@@ -28,7 +28,7 @@
 
 
 /***************************************************************************
-    MACROS
+    TYPE DEFINITIONS
 ***************************************************************************/
 
 /* include this at the top of your union to get the standard fields */
@@ -46,10 +46,23 @@
 	const INT64 *	i64ptr;		\
 
 
+/* generic_token can be used when there are no particularly special types */
+typedef struct _generic_token generic_token;
+struct _generic_token
+{
+	TOKEN_COMMON_FIELDS
+};
+
+
+
+/***************************************************************************
+    MACROS
+***************************************************************************/
+
 /* ----- compile-time token generation macros ----- */
 
 /* GCC and C99 compilers can use designated initializers for type safety */
-#if (defined(__GNUC__) && (__GNUC__ >= 3)) || (defined(_STDC_VERSION__) && (__STDC_VERSION__ >= 199901L))
+#if (defined(__GNUC__) && (__GNUC__ >= 3) && !defined(__cplusplus)) || (defined(_STDC_VERSION__) && (__STDC_VERSION__ >= 199901L))
 #define TOKEN_VALUE(field,a)   	{ .field = (a) }
 #else
 #define TOKEN_VALUE(field,a)	{ (FPTR)(a) }

@@ -160,44 +160,24 @@ static WRITE16_HANDLER( bitmap_1_w )
 	COMBINE_DATA(&bitmap1[offset + vbuffer*0x20000/2]);
 }
 
-static READ16_HANDLER( oki_0_r )
+static READ16_DEVICE_HANDLER( oki_r )
 {
 	if(offset)
-		return okim6295_status_0_r(space, 0);
+		return okim6295_r(device, 0);
 	else
 		return 0;
 }
 
-static WRITE16_HANDLER( oki_0_w )
+static WRITE16_DEVICE_HANDLER( oki_w )
 {
 	if(offset)
-		okim6295_data_0_w(space, 0, data);
+		okim6295_w(device, 0, data);
 }
 
-static WRITE16_HANDLER( oki_1_w )
+static WRITE16_DEVICE_HANDLER( oki_bank_w )
 {
 	if(offset)
-		okim6295_data_1_w(space, 0, data);
-}
-
-static READ16_HANDLER( oki_1_r )
-{
-	if(offset)
-		return okim6295_status_1_r(space, 0);
-	else
-		return 0;
-}
-
-static WRITE16_HANDLER( oki_0_bank_w )
-{
-	if(offset)
-		okim6295_set_bank_base(0, (data & 1) * 0x40000);
-}
-
-static WRITE16_HANDLER( oki_1_bank_w )
-{
-	if(offset)
-		okim6295_set_bank_base(1, (data & 1) * 0x40000);
+		okim6295_set_bank_base(device, (data & 1) * 0x40000);
 }
 
 static WRITE16_HANDLER( pasha2_lamps_w )
@@ -240,10 +220,10 @@ static ADDRESS_MAP_START( pasha2_io, ADDRESS_SPACE_IO, 16 )
 	AM_RANGE(0x80, 0x83) AM_READ_PORT("INPUTS")
 	AM_RANGE(0xa0, 0xa3) AM_WRITENOP //soundlatch?
 	AM_RANGE(0xc0, 0xc3) AM_WRITE(pasha2_misc_w)
-	AM_RANGE(0xe0, 0xe3) AM_READWRITE(oki_0_r, oki_0_w)
-	AM_RANGE(0xe4, 0xe7) AM_READWRITE(oki_1_r, oki_1_w)
-	AM_RANGE(0xe8, 0xeb) AM_WRITE(oki_0_bank_w)
-	AM_RANGE(0xec, 0xef) AM_WRITE(oki_1_bank_w)
+	AM_RANGE(0xe0, 0xe3) AM_DEVREADWRITE("oki1", oki_r, oki_w)
+	AM_RANGE(0xe4, 0xe7) AM_DEVREADWRITE("oki2", oki_r, oki_w)
+	AM_RANGE(0xe8, 0xeb) AM_DEVWRITE("oki1", oki_bank_w)
+	AM_RANGE(0xec, 0xef) AM_DEVWRITE("oki2", oki_bank_w)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( pasha2 )
@@ -394,16 +374,16 @@ static MACHINE_RESET( pasha2 )
 }
 
 static MACHINE_DRIVER_START( pasha2 )
-	MDRV_CPU_ADD("main", E116XT, 20000000*4)		/* 4x internal multiplier */
+	MDRV_CPU_ADD("maincpu", E116XT, 20000000*4)		/* 4x internal multiplier */
 	MDRV_CPU_PROGRAM_MAP(pasha2_map,0)
 	MDRV_CPU_IO_MAP(pasha2_io,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_MACHINE_RESET(pasha2)
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)

@@ -176,9 +176,8 @@ TODO:
       - MPU4 Master clock value taken from schematic, but 68k value is not.
       - Deal 'Em lockouts vary on certain cabinets (normally connected to AUX2, but not there?)
       - Deal 'Em has bad tiles (apostrophe, logo, bottom corner), black should actually be transparent
-      - to give black on green.
+        to give black on green.
 ***********************************************************************************************************/
-
 /* MPU4 Video */
 #include "cpu/m68000/m68000.h"
 #include "machine/6850acia.h"
@@ -212,7 +211,6 @@ static UINT8 m6809_acia_dcd;
 /* SCN2674 AVDC stuff */
 static int mpu4_gfx_index;
 static UINT16 * mpu4_vid_vidram;
-static UINT8  * mpu4_vid_vidram_is_dirty;
 static UINT16 * mpu4_vid_mainram;
 
 static UINT8 scn2674_IR[16];
@@ -279,44 +277,91 @@ static void update_mpu68_interrupts(running_machine *machine)
 /* Communications with 6809 board */
 /* Clock values are currently unknown, and are derived from the 68k board.*/
 
-static void m6809_acia_irq(const device_config *device, int state)
+static READ_LINE_DEVICE_HANDLER( m6809_acia_rx_r )
+{
+	return m68k_m6809_line;
+}
+
+static WRITE_LINE_DEVICE_HANDLER( m6809_acia_tx_w )
+{
+	m6809_m68k_line = state;
+}
+
+static READ_LINE_DEVICE_HANDLER( m6809_acia_cts_r )
+{
+	return m6809_acia_cts;
+}
+
+static WRITE_LINE_DEVICE_HANDLER( m6809_acia_rts_w )
+{
+	m6809_acia_rts = state;
+}
+
+static READ_LINE_DEVICE_HANDLER( m6809_acia_dcd_r )
+{
+	return m6809_acia_dcd;
+}
+
+static WRITE_LINE_DEVICE_HANDLER( m6809_acia_irq )
 {
 	m68k_acia_cts = state;
 	cpu_set_input_line(device->machine->cpu[0], M6809_IRQ_LINE, state?ASSERT_LINE:CLEAR_LINE);
 }
 
+static ACIA6850_INTERFACE( m6809_acia_if )
+{
+	0,
+	0,
+	DEVCB_LINE(m6809_acia_rx_r),/*&m68k_m6809_line,*/
+	DEVCB_LINE(m6809_acia_tx_w),/*&m6809_m68k_line,*/
+	DEVCB_LINE(m6809_acia_cts_r),/*&m6809_acia_cts,*/
+	DEVCB_LINE(m6809_acia_rts_w),/*&m6809_acia_rts,*/
+	DEVCB_LINE(m6809_acia_dcd_r),/*&m6809_acia_dcd,*/
+	DEVCB_LINE(m6809_acia_irq)
+};
 
-static void m68k_acia_irq(const device_config *device, int state)
+static READ_LINE_DEVICE_HANDLER( m68k_acia_rx_r )
+{
+	return m6809_m68k_line;
+}
+
+static WRITE_LINE_DEVICE_HANDLER( m68k_acia_tx_w )
+{
+	m68k_m6809_line = state;
+}
+
+static READ_LINE_DEVICE_HANDLER( m68k_acia_cts_r )
+{
+	return m68k_acia_cts;
+}
+
+static WRITE_LINE_DEVICE_HANDLER( m68k_acia_rts_w )
+{
+	m6809_acia_dcd = state;
+}
+
+static READ_LINE_DEVICE_HANDLER( m68k_acia_dcd_r )
+{
+	return m6809_acia_rts;
+}
+
+static WRITE_LINE_DEVICE_HANDLER( m68k_acia_irq )
 {
 	m6809_acia_cts = state;
 	m6850_irq_state = state;
 	update_mpu68_interrupts(device->machine);
 }
 
-
-static const acia6850_interface m6809_acia_if =
+static ACIA6850_INTERFACE( m68k_acia_if )
 {
 	0,
 	0,
-	&m68k_m6809_line,
-	&m6809_m68k_line,
-	&m6809_acia_cts,
-	&m6809_acia_rts,
-	&m6809_acia_dcd,
-	m6809_acia_irq
-};
-
-
-static const acia6850_interface m68k_acia_if =
-{
-	0,
-	0,
-	&m6809_m68k_line,
-	&m68k_m6809_line,
-	&m68k_acia_cts,
-	&m6809_acia_dcd,
-	&m6809_acia_rts,
-	m68k_acia_irq
+	DEVCB_LINE(m68k_acia_rx_r),/*&m6809_m68k_line,*/
+	DEVCB_LINE(m68k_acia_tx_w),/*&m68k_m6809_line,*/
+	DEVCB_LINE(m68k_acia_cts_r),/*&m68k_acia_cts,*/
+	DEVCB_LINE(m68k_acia_rts_w),/*&m6809_acia_dcd,*/
+	DEVCB_LINE(m68k_acia_dcd_r),/*&m6809_acia_rts,*/
+	DEVCB_LINE(m68k_acia_irq)
 };
 
 
@@ -333,12 +378,12 @@ static WRITE8_HANDLER( vid_o1_callback )
 
 	if (data)
 	{
-		const device_config *acia_0 = device_list_find_by_tag(space->machine->config->devicelist, ACIA6850, "acia6850_0");
-		const device_config *acia_1 = device_list_find_by_tag(space->machine->config->devicelist, ACIA6850, "acia6850_1");
-		acia_tx_clock_in(acia_0);
-		acia_rx_clock_in(acia_0);
-		acia_tx_clock_in(acia_1);
-		acia_rx_clock_in(acia_1);
+		const device_config *acia_0 = devtag_get_device(space->machine, "acia6850_0");
+		const device_config *acia_1 = devtag_get_device(space->machine, "acia6850_1");
+		acia6850_tx_clock_in(acia_0);
+		acia6850_rx_clock_in(acia_0);
+		acia6850_tx_clock_in(acia_1);
+		acia6850_rx_clock_in(acia_1);
 	}
 }
 
@@ -452,18 +497,6 @@ static VIDEO_UPDATE( mpu4_vid )
 
 	bitmap_fill(bitmap,cliprect,0);
 
-	for (i = 0; i < 0x1000; i++)
-	{
-		if (mpu4_vid_vidram_is_dirty[i]==1)
-		{
-			decodechar(screen->machine->gfx[mpu4_gfx_index+0], i, (UINT8 *)mpu4_vid_vidram);
-			decodechar(screen->machine->gfx[mpu4_gfx_index+1], i, (UINT8 *)mpu4_vid_vidram);
-			decodechar(screen->machine->gfx[mpu4_gfx_index+2], i, (UINT8 *)mpu4_vid_vidram);
-			decodechar(screen->machine->gfx[mpu4_gfx_index+3], i, (UINT8 *)mpu4_vid_vidram);
-			mpu4_vid_vidram_is_dirty[i]=0;
-		}
-	}
-
 	/* this is in main ram.. i think it must transfer it out of here??? */
 	/* count = 0x0018b6/2; - crmaze count = 0x004950/2; - turnover */
 
@@ -517,7 +550,10 @@ static WRITE16_HANDLER( mpu4_vid_vidram_w )
 {
 	COMBINE_DATA(&mpu4_vid_vidram[offset]);
 	offset <<= 1;
-	mpu4_vid_vidram_is_dirty[offset/0x20]=1;
+	gfx_element_mark_dirty(space->machine->gfx[mpu4_gfx_index+0], offset/0x20);
+	gfx_element_mark_dirty(space->machine->gfx[mpu4_gfx_index+1], offset/0x20);
+	gfx_element_mark_dirty(space->machine->gfx[mpu4_gfx_index+2], offset/0x20);
+	gfx_element_mark_dirty(space->machine->gfx[mpu4_gfx_index+3], offset/0x20);
 }
 
 
@@ -983,9 +1019,7 @@ static VIDEO_START( mpu4_vid )
       maybe we will anyway, but for now we don't need to */
 
 	mpu4_vid_vidram = auto_malloc (0x20000);
-	mpu4_vid_vidram_is_dirty = auto_malloc(0x1000);
 
-	memset(mpu4_vid_vidram_is_dirty,1,0x1000);
 	memset(mpu4_vid_vidram,0,0x20000);
 
  	/* find first empty slot to decode gfx */
@@ -996,16 +1030,10 @@ static VIDEO_START( mpu4_vid )
 	assert(mpu4_gfx_index != MAX_GFX_ELEMENTS);
 
 	/* create the char set (gfx will then be updated dynamically from RAM) */
-	machine->gfx[mpu4_gfx_index+0] = allocgfx(machine, &mpu4_vid_char_8x8_layout);
-	machine->gfx[mpu4_gfx_index+1] = allocgfx(machine, &mpu4_vid_char_8x16_layout);
-	machine->gfx[mpu4_gfx_index+2] = allocgfx(machine, &mpu4_vid_char_16x8_layout);
-	machine->gfx[mpu4_gfx_index+3] = allocgfx(machine, &mpu4_vid_char_16x16_layout);
-
-	/* set the color information */
-	machine->gfx[mpu4_gfx_index+0]->total_colors = machine->config->total_colors / 16;
-	machine->gfx[mpu4_gfx_index+1]->total_colors = machine->config->total_colors / 16;
-	machine->gfx[mpu4_gfx_index+2]->total_colors = machine->config->total_colors / 16;
-	machine->gfx[mpu4_gfx_index+3]->total_colors = machine->config->total_colors / 16;
+	machine->gfx[mpu4_gfx_index+0] = gfx_element_alloc(machine, &mpu4_vid_char_8x8_layout, (UINT8 *)mpu4_vid_vidram, machine->config->total_colors / 16, 0);
+	machine->gfx[mpu4_gfx_index+1] = gfx_element_alloc(machine, &mpu4_vid_char_8x16_layout, (UINT8 *)mpu4_vid_vidram, machine->config->total_colors / 16, 0);
+	machine->gfx[mpu4_gfx_index+2] = gfx_element_alloc(machine, &mpu4_vid_char_16x8_layout, (UINT8 *)mpu4_vid_vidram, machine->config->total_colors / 16, 0);
+	machine->gfx[mpu4_gfx_index+3] = gfx_element_alloc(machine, &mpu4_vid_char_16x16_layout, (UINT8 *)mpu4_vid_vidram, machine->config->total_colors / 16, 0);
 
 	scn2675_IR_pointer = 0;
 }
@@ -1352,7 +1380,6 @@ static INTERRUPT_GEN(mpu4_vid_irq)
 MACHINE_START( mpu4_vid )
 {
 	mpu4_config_common(machine);
-	pia_reset();
 
 	ptm6840_config(machine, 1, &ptm_vid_intf );
 
@@ -1425,8 +1452,8 @@ static ADDRESS_MAP_START( mpu4_68k_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800000, 0x80ffff) AM_RAM AM_BASE(&mpu4_vid_mainram) /* mainram / char address ram? */
 
 	/* what is here, the sound chip? Assume so */
-	AM_RANGE(0x900000, 0x900001) AM_WRITE(saa1099_control_port_0_lsb_w)
-	AM_RANGE(0x900002, 0x900003) AM_WRITE(saa1099_write_port_0_lsb_w)
+	AM_RANGE(0x900000, 0x900001) AM_DEVWRITE8("saa", saa1099_control_w, 0x00ff)
+	AM_RANGE(0x900002, 0x900003) AM_DEVWRITE8("saa", saa1099_data_w, 0x00ff)
 
 	AM_RANGE(0xa00000, 0xa00003) AM_READWRITE(ef9369_r, ef9369_w) /* the palette chip */
 /*  AM_RANGE(0xa00004, 0xa0000f) AM_READWRITE(mpu4_vid_unmap_r, mpu4_vid_unmap_w) */
@@ -1436,8 +1463,8 @@ static ADDRESS_MAP_START( mpu4_68k_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xc00000, 0xc1ffff) AM_READWRITE(mpu4_vid_vidram_r, mpu4_vid_vidram_w)
 
 	/* comms with the MPU4 */
-    AM_RANGE(0xff8000, 0xff8001) AM_DEVREADWRITE(ACIA6850, "acia6850_1", acia6850_stat_lsb_r, acia6850_ctrl_lsb_w)
-    AM_RANGE(0xff8002, 0xff8003) AM_DEVREADWRITE(ACIA6850, "acia6850_1", acia6850_data_lsb_r, acia6850_data_lsb_w)
+    AM_RANGE(0xff8000, 0xff8001) AM_DEVREADWRITE8("acia6850_1", acia6850_stat_r, acia6850_ctrl_w, 0xff)
+    AM_RANGE(0xff8002, 0xff8003) AM_DEVREADWRITE8("acia6850_1", acia6850_data_r, acia6850_data_w, 0xff)
 
 	AM_RANGE(0xff9000, 0xff900f) AM_READWRITE(ptm6840_1_lsb_r,ptm6840_1_lsb_w)	/* 6840PTM */
 
@@ -1448,24 +1475,24 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( mpu4_6809_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07FF) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 
-	AM_RANGE(0x0800, 0x0800) AM_DEVREADWRITE(ACIA6850, "acia6850_0", acia6850_stat_r, acia6850_ctrl_w)
-	AM_RANGE(0x0801, 0x0801) AM_DEVREADWRITE(ACIA6850, "acia6850_0", acia6850_data_r, acia6850_data_w)
+	AM_RANGE(0x0800, 0x0800) AM_DEVREADWRITE("acia6850_0", acia6850_stat_r, acia6850_ctrl_w)
+	AM_RANGE(0x0801, 0x0801) AM_DEVREADWRITE("acia6850_0", acia6850_data_r, acia6850_data_w)
 
 	AM_RANGE(0x0880, 0x0881) AM_NOP /* Could be a UART datalogger is here. */
 
 	AM_RANGE(0x0900, 0x0907) AM_READWRITE(ptm6840_0_r,ptm6840_0_w)  /* 6840PTM */
 
-	AM_RANGE(0x0A00, 0x0A03) AM_READWRITE(pia_0_r,pia_0_w)	  	/* PIA6821 IC3 */
-	AM_RANGE(0x0B00, 0x0B03) AM_READWRITE(pia_1_r,pia_1_w)	  	/* PIA6821 IC4 */
-	AM_RANGE(0x0C00, 0x0C03) AM_READWRITE(pia_2_r,pia_2_w)	  	/* PIA6821 IC5 */
-	AM_RANGE(0x0D00, 0x0D03) AM_READWRITE(pia_3_r,pia_3_w)		/* PIA6821 IC6 */
-	AM_RANGE(0x0E00, 0x0E03) AM_READWRITE(pia_4_r,pia_4_w)		/* PIA6821 IC7 */
-	AM_RANGE(0x0F00, 0x0F03) AM_READWRITE(pia_5_r,pia_5_w)		/* PIA6821 IC8 */
+	AM_RANGE(0x0A00, 0x0A03) AM_DEVREADWRITE("pia_ic3", pia6821_r,pia6821_w)	  	/* PIA6821 IC3 */
+	AM_RANGE(0x0B00, 0x0B03) AM_DEVREADWRITE("pia_ic4", pia6821_r,pia6821_w)	  	/* PIA6821 IC4 */
+	AM_RANGE(0x0C00, 0x0C03) AM_DEVREADWRITE("pia_ic5", pia6821_r,pia6821_w)	  	/* PIA6821 IC5 */
+	AM_RANGE(0x0D00, 0x0D03) AM_DEVREADWRITE("pia_ic6", pia6821_r,pia6821_w)		/* PIA6821 IC6 */
+	AM_RANGE(0x0E00, 0x0E03) AM_DEVREADWRITE("pia_ic7", pia6821_r,pia6821_w)		/* PIA6821 IC7 */
+	AM_RANGE(0x0F00, 0x0F03) AM_DEVREADWRITE("pia_ic8", pia6821_r,pia6821_w)		/* PIA6821 IC8 */
 
 	AM_RANGE(0x4000, 0x40FF) AM_RAM /* it actually runs code from here... */
 
 	AM_RANGE(0xBE00, 0xBFFF) AM_RAM /* 00 written on startup */
-	AM_RANGE(0xC000, 0xFFFF) AM_ROM	AM_REGION("main",0)  /* 64k EPROM on board, only this region read */
+	AM_RANGE(0xC000, 0xFFFF) AM_ROM	AM_REGION("maincpu",0)  /* 64k EPROM on board, only this region read */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( vp_68k_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -1478,8 +1505,8 @@ static ADDRESS_MAP_START( vp_68k_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x810000, 0x81ffff) AM_RAM /* ? */
 
 	/* what is here, the sound chip? Assume so */
-	AM_RANGE(0x900000, 0x900001) AM_WRITE(saa1099_control_port_0_lsb_w)
-	AM_RANGE(0x900002, 0x900003) AM_WRITE(saa1099_write_port_0_lsb_w)
+	AM_RANGE(0x900000, 0x900001) AM_DEVWRITE8("saa", saa1099_control_w, 0x00ff)
+	AM_RANGE(0x900002, 0x900003) AM_DEVWRITE8("saa", saa1099_data_w, 0x00ff)
 
 	/* the palette chip */
 	AM_RANGE(0xa00000, 0xa00003) AM_READWRITE(ef9369_r, ef9369_w) /* the palette chip */
@@ -1492,8 +1519,8 @@ static ADDRESS_MAP_START( vp_68k_map, ADDRESS_SPACE_PROGRAM, 16 )
 /*  AM_RANGE(0xe05000, 0xe05001) AM_READWRITE(adpcm_r, adpcm_w) */
 
 	/* comms with the MPU4 */
-    AM_RANGE(0xff8000, 0xff8001) AM_DEVREADWRITE(ACIA6850, "acia6850_1", acia6850_stat_lsb_r, acia6850_ctrl_lsb_w)
-    AM_RANGE(0xff8002, 0xff8003) AM_DEVREADWRITE(ACIA6850, "acia6850_1", acia6850_data_lsb_r, acia6850_data_lsb_w)
+    AM_RANGE(0xff8000, 0xff8001) AM_DEVREADWRITE8("acia6850_1", acia6850_stat_r, acia6850_ctrl_w, 0xff)
+    AM_RANGE(0xff8002, 0xff8003) AM_DEVREADWRITE8("acia6850_1", acia6850_data_r, acia6850_data_w, 0xff)
 
 	AM_RANGE(0xff9000, 0xff900f) AM_READ(  ptm6840_1_lsb_r)
 	AM_RANGE(0xff9000, 0xff900f) AM_WRITE( ptm6840_1_lsb_w)
@@ -1618,7 +1645,7 @@ static MC6845_ON_VSYNC_CHANGED( dealem_vsync_changed )
 
 static const mc6845_interface hd6845_intf =
 {
-	"main",						/* screen we are acting on */
+	"screen",					/* screen we are acting on */
 	8,							/* number of pixels per video memory address */
 	NULL,						/* before pixel update callback */
 	NULL,						/* row update callback */
@@ -1632,19 +1659,19 @@ static const mc6845_interface hd6845_intf =
 static ADDRESS_MAP_START( dealem_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 
-	AM_RANGE(0x0800, 0x0800) AM_DEVWRITE(HD6845, "crtc", mc6845_address_w)
-	AM_RANGE(0x0801, 0x0801) AM_DEVREADWRITE(HD6845, "crtc", mc6845_register_r, mc6845_register_w)
+	AM_RANGE(0x0800, 0x0800) AM_DEVWRITE("crtc", mc6845_address_w)
+	AM_RANGE(0x0801, 0x0801) AM_DEVREADWRITE("crtc", mc6845_register_r, mc6845_register_w)
 
 /*  AM_RANGE(0x08E0, 0x08E7) AM_READWRITE(68681_duart_r,68681_duart_w) */
 
 	AM_RANGE(0x0900, 0x0907) AM_READWRITE(ptm6840_0_r,ptm6840_0_w)  /* 6840PTM */
 
-	AM_RANGE(0x0A00, 0x0A03) AM_READWRITE(pia_0_r,pia_0_w)	  	/* PIA6821 IC3 */
-	AM_RANGE(0x0B00, 0x0B03) AM_READWRITE(pia_1_r,pia_1_w)	  	/* PIA6821 IC4 */
-	AM_RANGE(0x0C00, 0x0C03) AM_READWRITE(pia_2_r,pia_2_w)	  	/* PIA6821 IC5 */
-	AM_RANGE(0x0D00, 0x0D03) AM_READWRITE(pia_3_r,pia_3_w)		/* PIA6821 IC6 */
-	AM_RANGE(0x0E00, 0x0E03) AM_READWRITE(pia_4_r,pia_4_w)		/* PIA6821 IC7 */
-	AM_RANGE(0x0F00, 0x0F03) AM_READWRITE(pia_5_r,pia_5_w)		/* PIA6821 IC8 */
+	AM_RANGE(0x0A00, 0x0A03) AM_DEVREADWRITE("pia_ic3", pia6821_r,pia6821_w)	  	/* PIA6821 IC3 */
+	AM_RANGE(0x0B00, 0x0B03) AM_DEVREADWRITE("pia_ic4", pia6821_r,pia6821_w)	  	/* PIA6821 IC4 */
+	AM_RANGE(0x0C00, 0x0C03) AM_DEVREADWRITE("pia_ic5", pia6821_r,pia6821_w)	  	/* PIA6821 IC5 */
+	AM_RANGE(0x0D00, 0x0D03) AM_DEVREADWRITE("pia_ic6", pia6821_r,pia6821_w)		/* PIA6821 IC6 */
+	AM_RANGE(0x0E00, 0x0E03) AM_DEVREADWRITE("pia_ic7", pia6821_r,pia6821_w)		/* PIA6821 IC7 */
+	AM_RANGE(0x0F00, 0x0F03) AM_DEVREADWRITE("pia_ic8", pia6821_r,pia6821_w)		/* PIA6821 IC8 */
 
 	AM_RANGE(0x1000, 0x2fff) AM_RAM AM_BASE(&dealem_videoram)
 	AM_RANGE(0x8000, 0xffff) AM_ROM	AM_WRITENOP/* 64k  paged ROM (4 pages) */
@@ -1652,14 +1679,21 @@ ADDRESS_MAP_END
 
 
 static MACHINE_DRIVER_START( mpu4_vid )
-	MDRV_CPU_ADD("main", M6809, MPU4_MASTER_CLOCK/4 )
+	MDRV_CPU_ADD("maincpu", M6809, MPU4_MASTER_CLOCK/4 )
 	MDRV_CPU_PROGRAM_MAP(mpu4_6809_map,0)
 	MDRV_TIMER_ADD_PERIODIC("50hz",gen_50hz, HZ(100))
 
 	MDRV_NVRAM_HANDLER(generic_0fill)				/* confirm */
 
+	MDRV_PIA6821_ADD("pia_ic3", pia_ic3_intf)
+	MDRV_PIA6821_ADD("pia_ic4", pia_ic4_intf)
+	MDRV_PIA6821_ADD("pia_ic5", pia_ic5_intf)
+	MDRV_PIA6821_ADD("pia_ic6", pia_ic6_intf)
+	MDRV_PIA6821_ADD("pia_ic7", pia_ic7_intf)
+	MDRV_PIA6821_ADD("pia_ic8", pia_ic8_intf)
+
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 63*8-1, 0*8, 37*8-1)
@@ -1667,7 +1701,7 @@ static MACHINE_DRIVER_START( mpu4_vid )
 
 	MDRV_CPU_ADD("video", M68000, VIDEO_MASTER_CLOCK )
 	MDRV_CPU_PROGRAM_MAP(mpu4_68k_map,0)
-	MDRV_CPU_VBLANK_INT("main", mpu4_vid_irq)
+	MDRV_CPU_VBLANK_INT("screen", mpu4_vid_irq)
 
 	MDRV_QUANTUM_TIME(HZ(960))
 
@@ -1683,10 +1717,10 @@ static MACHINE_DRIVER_START( mpu4_vid )
 	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")/* Present on all video cards */
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")/* Present on all video cards */
 	MDRV_SOUND_ADD("saa", SAA1099, 8000000)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.00)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.00)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.00)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.00)
 
 	/* ACIAs */
 	MDRV_ACIA6850_ADD("acia6850_0", m6809_acia_if)
@@ -1704,10 +1738,17 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( dealem )
 	MDRV_MACHINE_START(mpu4mod2)							/* main mpu4 board initialisation */
 	MDRV_MACHINE_RESET(mpu4_vid)
-	MDRV_CPU_ADD("main", M6809, MPU4_MASTER_CLOCK/4)
+	MDRV_CPU_ADD("maincpu", M6809, MPU4_MASTER_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(dealem_memmap,0)
 
 	MDRV_TIMER_ADD_PERIODIC("50hz",gen_50hz, HZ(100))
+
+	MDRV_PIA6821_ADD("pia_ic3", pia_ic3_intf)
+	MDRV_PIA6821_ADD("pia_ic4", pia_ic4_intf)
+	MDRV_PIA6821_ADD("pia_ic5", pia_ic5_intf)
+	MDRV_PIA6821_ADD("pia_ic6", pia_ic6_intf)
+	MDRV_PIA6821_ADD("pia_ic7", pia_ic7_intf)
+	MDRV_PIA6821_ADD("pia_ic8", pia_ic8_intf)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("ay8913",AY8913, MPU4_MASTER_CLOCK/4)
@@ -1717,7 +1758,7 @@ static MACHINE_DRIVER_START( dealem )
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE((54+1)*8, (32+1)*8)					/* Taken from 6845 init, registers 00 & 04. Normally programmed with (value-1) */
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 31*8-1)		/* Taken from 6845 init, registers 01 & 06 */
@@ -1774,7 +1815,7 @@ static DRIVER_INIT (mating)
 
 
 ROM_START( dealem )
-	ROM_REGION( 0x10000, "main", ROMREGION_ERASE00  )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASE00  )
 	ROM_LOAD( "zenndlem.u6",	0x8000, 0x8000,  CRC(571e5c05) SHA1(89b4c331407a04eae34bb187b036791e0a671533) )
 
 	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
@@ -1797,12 +1838,12 @@ ROM_END
 	ROM_LOAD("vid.p1",  0x00000, 0x10000,  CRC(e996bc18) SHA1(49798165640627eb31024319353da04380787b10))
 
 ROM_START( bctvidbs )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 ROM_END
 
 ROM_START( crmaze )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
 	ROM_REGION( 0x800000, "video", 0 )
@@ -1819,7 +1860,7 @@ ROM_START( crmaze )
 ROM_END
 
 ROM_START( crmazea )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
 	ROM_REGION( 0x800000, "video", 0 )
@@ -1836,7 +1877,7 @@ ROM_START( crmazea )
 ROM_END
 
 ROM_START( crmazeb )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
 	ROM_REGION( 0x800000, "video", 0 )
@@ -1853,7 +1894,7 @@ ROM_START( crmazeb )
 ROM_END
 
 ROM_START( turnover )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
 	ROM_REGION( 0x800000, "video", 0 )
@@ -1876,7 +1917,7 @@ ROM_START( turnover )
 ROM_END
 
 ROM_START( skiltrek )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
 	ROM_REGION( 0x800000, "video", 0 )
@@ -1897,7 +1938,7 @@ ROM_START( skiltrek )
 ROM_END
 
 ROM_START( timemchn )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
 	ROM_REGION( 0x800000, "video", 0 )
@@ -1918,7 +1959,7 @@ ROM_START( timemchn )
 ROM_END
 
 ROM_START( mating )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
 	ROM_REGION( 0x800000, "video", 0 )
@@ -1942,7 +1983,7 @@ ROM_START( mating )
 ROM_END
 
 ROM_START( matinga )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	VID_BIOS
 
 	ROM_REGION( 0x800000, "video", 0 )
@@ -1967,7 +2008,7 @@ ROM_END
 
 /* Vegas Poker Protoype dumped by HIGHWAYMAN */
 ROM_START( vgpoker )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD("comms-v2.0.bin",  0x00000, 0x10000,  CRC(1717581f) SHA1(40f8cae39a2ab0c89d2bbfd8a37725aaae229c96))
 
 	ROM_REGION( 0x800000, "video", 0 )
@@ -1982,23 +2023,23 @@ ROM_START( vgpoker )
 ROM_END
 
 ROM_START( connect4 )
-	ROM_REGION( 0x10000, "main", ROMREGION_ERASE00  )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASE00  )
 	ROM_LOAD( "connect4.p2",  0x8000, 0x4000,  CRC(6090633c) SHA1(0cd2725a235bf93cfe94f2ca648d5fccb87b8e5c) )
 	ROM_LOAD( "connect4.p1",  0xC000, 0x4000,  CRC(b1af50c0) SHA1(7c9645ea378f0857b849ca24a239d9114f62da7f) )
 ROM_END
 
 ROM_START( mpu4utst )
-	ROM_REGION( 0x10000, "main", ROMREGION_ERASE00  )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASE00  )
 	ROM_LOAD( "ut4.p1",  0xC000, 0x4000,  CRC(086dc325) SHA1(923caeb61347ac9d3e6bcec45998ddf04b2c8ffd))
 ROM_END
 
 ROM_START( mpu4tst2 )
-	ROM_REGION( 0x10000, "main", ROMREGION_ERASE00  )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASE00  )
 	ROM_LOAD( "ut2.p1",  0xE000, 0x2000,  CRC(f7fb6575) SHA1(f7961cbd0801b9561d8cd2d23081043d733e1902))
 ROM_END
 
 ROM_START( mpu4met0 )
-	ROM_REGION( 0x10000, "main", ROMREGION_ERASE00  )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASE00  )
 	ROM_LOAD( "meter-zero.p1",  0x8000, 0x8000,  CRC(e74297e5) SHA1(49a2cc85eda14199975ec37a794b685c839d3ab9))
 ROM_END
 
@@ -2026,7 +2067,7 @@ GAME( 199?, mating,  bctvidbs,mpu4_vid, mpu4,     mating,ROT0,   "Barcrest", 		"
 GAME( 199?, matinga, mating,  mpu4_vid, mpu4,     mating,ROT0,   "Barcrest", 		"The Mating Game (Standard)",										GAME_NOT_WORKING|GAME_NO_SOUND )
 GAME( 199?, vgpoker, 0,		  vgpoker,	mpu4,     0,	 ROT0,   "BwB",				"Vegas Poker (Prototype)",											GAME_NOT_WORKING|GAME_NO_SOUND )
 
-GAMEL(1989?,connect4,0,       mpu4mod2, connect4, connect4, ROT0,"Dolbeck Systems", "Connect 4",														GAME_IMPERFECT_GRAPHICS,layout_connect4 )
+GAMEL(1989?,connect4,0,       mpu4mod2, connect4, connect4, ROT0,"Dolbeck Systems", "Connect 4",														GAME_IMPERFECT_GRAPHICS|GAME_REQUIRES_ARTWORK,layout_connect4 )
 GAME( 198?, mpu4utst,0,		  mpu4mod2, mpu4,			 0,	ROT0,"Barcrest", 		"MPU4 Unit Test (Program 4)",										0 )
 GAME( 198?, mpu4tst2,0,		  mpu4mod2, mpu4,			 0,	ROT0,"Barcrest", 		"MPU4 Unit Test (Program 2)",										0 )
 GAME( 198?, mpu4met0,0,		  mpu4mod2, mpu4,			 0, ROT0,"Barcrest", 		"MPU4 Meter Clear ROM",												0 )

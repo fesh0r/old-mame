@@ -70,7 +70,7 @@ VIDEO_UPDATE( exzisus );
 
 static WRITE8_HANDLER( exzisus_cpua_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(space->machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "maincpu");
 	static int exzisus_cpua_bank = 0;
 
 	if ( (data & 0x0f) != exzisus_cpua_bank )
@@ -140,7 +140,7 @@ static WRITE8_HANDLER( exzisus_cpub_reset_w )
 // the RAM check to work
 static DRIVER_INIT( exzisus )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 
 	/* Fix WORK RAM error */
 	RAM[0x67fd] = 0x18;
@@ -224,8 +224,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0x8fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x9000, 0x9000) AM_READ(SMH_NOP)
-	AM_RANGE(0x9001, 0x9001) AM_READ(ym2151_status_port_0_r)
+	AM_RANGE(0x9000, 0x9001) AM_DEVREAD("ym", ym2151_r)
 	AM_RANGE(0xa000, 0xa000) AM_READ(SMH_NOP)
 	AM_RANGE(0xa001, 0xa001) AM_READ(taitosound_slave_comm_r)
 ADDRESS_MAP_END
@@ -233,8 +232,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x8fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x9000, 0x9000) AM_WRITE(ym2151_register_port_0_w)
-	AM_RANGE(0x9001, 0x9001) AM_WRITE(ym2151_data_port_0_w)
+	AM_RANGE(0x9000, 0x9001) AM_DEVWRITE("ym", ym2151_w)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(taitosound_slave_port_w)
 	AM_RANGE(0xa001, 0xa001) AM_WRITE(taitosound_slave_comm_w)
 ADDRESS_MAP_END
@@ -311,9 +309,9 @@ GFXDECODE_END
 
 
 
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1], 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1], 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2151_interface ym2151_config =
@@ -326,25 +324,25 @@ static const ym2151_interface ym2151_config =
 static MACHINE_DRIVER_START( exzisus )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 6000000)			/* 6 MHz ??? */
+	MDRV_CPU_ADD("maincpu", Z80, 6000000)			/* 6 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(cpua_readmem,cpua_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, 4000000)			/* 4 MHz ??? */
+	MDRV_CPU_ADD("audiocpu", Z80, 4000000)			/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_CPU_ADD("cpub", Z80, 6000000)			/* 6 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(cpub_readmem,cpub_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("cpuc", Z80, 6000000)			/* 6 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(cpuc_readmem,cpuc_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -374,12 +372,12 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( exzisus )
-	ROM_REGION( 0x48000, "main", 0 ) 					/* Z80 CPU A */
+	ROM_REGION( 0x48000, "maincpu", 0 ) 					/* Z80 CPU A */
 	ROM_LOAD( "b23-10.bin", 0x00000, 0x08000, CRC(c80216fc) SHA1(7b952779c420be08573768f09bd65d0a188df024) )
 	ROM_CONTINUE(           0x10000, 0x08000 )
 	ROM_LOAD( "b23-12.bin", 0x18000, 0x10000, CRC(13637f54) SHA1(c175bc60120e32eec6ccca822fa497a42dd59823) )
 
-	ROM_REGION( 0x10000, "audio", 0 )     				/* Z80 for Sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )     				/* Z80 for Sound */
 	ROM_LOAD( "b23-14.bin",  0x00000, 0x08000, CRC(f7ca7df2) SHA1(6048d9341f0303546e447a76439e1927d14cdd57) )
 
 	ROM_REGION( 0x48000, "cpub", 0 )     				/* Z80 CPU B */

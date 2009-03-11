@@ -96,7 +96,7 @@ static WRITE8_HANDLER( junofrst_bankselect_w )
 }
 
 
-static READ8_HANDLER( junofrst_portA_r )
+static READ8_DEVICE_HANDLER( junofrst_portA_r )
 {
 	int timer;
 
@@ -105,7 +105,7 @@ static READ8_HANDLER( junofrst_portA_r )
 	/* divided by 1024 to get this timer */
 	/* (divide by (1024/2), and not 1024, because the CPU cycle counter is */
 	/* incremented every other state change of the clock) */
-	timer = (cputag_get_total_cycles(space->machine, "audio") / (1024/2)) & 0x0f;
+	timer = (cputag_get_total_cycles(device->machine, "audiocpu") / (1024/2)) & 0x0f;
 
 	/* low three bits come from the 8039 */
 
@@ -113,8 +113,9 @@ static READ8_HANDLER( junofrst_portA_r )
 }
 
 
-static WRITE8_HANDLER( junofrst_portB_w )
+static WRITE8_DEVICE_HANDLER( junofrst_portB_w )
 {
+	static const char *fltname[] = { "filter.0.0", "filter.0.1", "filter.0.2" };
 	int i;
 
 
@@ -127,7 +128,7 @@ static WRITE8_HANDLER( junofrst_portB_w )
 		if (data & 1) C += 47000;	/* 47000pF = 0.047uF */
 		if (data & 2) C += 220000;	/* 220000pF = 0.22uF */
 		data >>= 2;
-		filter_rc_set_RC(i,FLT_RC_LOWPASS,1000,2200,200,CAP_P(C));
+		filter_rc_set_RC(devtag_get_device(device->machine, fltname[i]),FLT_RC_LOWPASS,1000,2200,200,CAP_P(C));
 	}
 }
 
@@ -202,9 +203,9 @@ static ADDRESS_MAP_START( audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 	AM_RANGE(0x2000, 0x23ff) AM_RAM
 	AM_RANGE(0x3000, 0x3000) AM_READ(soundlatch_r)
-	AM_RANGE(0x4000, 0x4000) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x4001, 0x4001) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0x4002, 0x4002) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x4000, 0x4000) AM_DEVWRITE("ay", ay8910_address_w)
+	AM_RANGE(0x4001, 0x4001) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x4002, 0x4002) AM_DEVWRITE("ay", ay8910_data_w)
 	AM_RANGE(0x5000, 0x5000) AM_WRITE(soundlatch2_w)
 	AM_RANGE(0x6000, 0x6000) AM_WRITE(junofrst_i8039_irq_w)
 ADDRESS_MAP_END
@@ -217,7 +218,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mcu_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0xff) AM_READ(soundlatch2_r)
-	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_WRITE(dac_0_data_w)
+	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) AM_DEVWRITE("dac", dac_w)
 	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) AM_WRITE(i8039_irqen_and_status_w)
 ADDRESS_MAP_END
 
@@ -322,21 +323,21 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	junofrst_portA_r,
-	NULL,
-	NULL,
-	junofrst_portB_w
+	DEVCB_HANDLER(junofrst_portA_r),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(junofrst_portB_w)
 };
 
 
 static MACHINE_DRIVER_START( junofrst )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809, 1500000)			/* 1.5 MHz ??? */
+	MDRV_CPU_ADD("maincpu", M6809, 1500000)			/* 1.5 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,14318000/8)	/* 1.78975 MHz */
+	MDRV_CPU_ADD("audiocpu", Z80,14318000/8)	/* 1.78975 MHz */
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
 
 	MDRV_CPU_ADD("mcu", I8039,8000000)	/* 8MHz crystal */
@@ -344,7 +345,7 @@ static MACHINE_DRIVER_START( junofrst )
 	MDRV_CPU_IO_MAP(mcu_io_map,0)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(30)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
@@ -376,7 +377,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( junofrst )
-	ROM_REGION( 0x1c000, "main", 0 )	/* code + space for decrypted opcodes */
+	ROM_REGION( 0x1c000, "maincpu", 0 )	/* code + space for decrypted opcodes */
 	ROM_LOAD( "jfa_b9.bin",   0x0a000, 0x2000, CRC(f5a7ab9d) SHA1(9603e797839290f8e1f93ccff9cc820604cc49ab) ) /* program ROMs */
 	ROM_LOAD( "jfb_b10.bin",  0x0c000, 0x2000, CRC(f20626e0) SHA1(46f58bdc1a613124e2c148b61f774fcc6c232868) )
 	ROM_LOAD( "jfc_a10.bin",  0x0e000, 0x2000, CRC(1e7744a7) SHA1(bee69833af886436016560295cddf0c8b4c5e771) )
@@ -388,7 +389,7 @@ ROM_START( junofrst )
 	ROM_LOAD( "jfc5_a8.bin",  0x18000, 0x2000, CRC(0539f328) SHA1(c532aaed7f9e6f564e3df0dc6d8fdbee6ed721a2) )
 	ROM_LOAD( "jfc6_a9.bin",  0x1a000, 0x2000, CRC(1da2ad6e) SHA1(de997d1b2ff6671088b57192bc9f1279359fad5d) )
 
-	ROM_REGION(  0x10000 , "audio", 0 ) /* 64k for Z80 sound CPU code */
+	ROM_REGION(  0x10000 , "audiocpu", 0 ) /* 64k for Z80 sound CPU code */
 	ROM_LOAD( "jfs1_j3.bin",  0x0000, 0x1000, CRC(235a2893) SHA1(b90251c4971f7ba12e407f86c32723d513d6b4a0) )
 
 	ROM_REGION( 0x1000, "mcu", 0 )	/* 8039 */
@@ -401,7 +402,7 @@ ROM_START( junofrst )
 ROM_END
 
 ROM_START( junofstg )
-	ROM_REGION( 0x1c000, "main", 0 )	/* code + space for decrypted opcodes */
+	ROM_REGION( 0x1c000, "maincpu", 0 )	/* code + space for decrypted opcodes */
 	ROM_LOAD( "jfg_a.9b",     0x0a000, 0x2000, CRC(8f77d1c5) SHA1(d47fcdbc47673c228661a3528fff0c691c76df9e) ) /* program ROMs */
 	ROM_LOAD( "jfg_b.10b",    0x0c000, 0x2000, CRC(cd645673) SHA1(25994210a8a424bdf2eca3efa19e7eeffc097cec) )
 	ROM_LOAD( "jfg_c.10a",    0x0e000, 0x2000, CRC(47852761) SHA1(eeef814b6ad681d4c2274f0a69d1ed9c5c1b9118) )
@@ -413,7 +414,7 @@ ROM_START( junofstg )
 	ROM_LOAD( "jfc5_a8.bin",  0x18000, 0x2000, CRC(0539f328) SHA1(c532aaed7f9e6f564e3df0dc6d8fdbee6ed721a2) )
 	ROM_LOAD( "jfc6_a9.bin",  0x1a000, 0x2000, CRC(1da2ad6e) SHA1(de997d1b2ff6671088b57192bc9f1279359fad5d) )
 
-	ROM_REGION(  0x10000 , "audio", 0 ) /* 64k for Z80 sound CPU code */
+	ROM_REGION(  0x10000 , "audiocpu", 0 ) /* 64k for Z80 sound CPU code */
 	ROM_LOAD( "jfs1_j3.bin",  0x0000, 0x1000, CRC(235a2893) SHA1(b90251c4971f7ba12e407f86c32723d513d6b4a0) )
 
 	ROM_REGION( 0x1000, "mcu", 0 )	/* 8039 */
@@ -429,9 +430,9 @@ ROM_END
 
 static DRIVER_INIT( junofrst )
 {
-	UINT8 *decrypted = konami1_decode(machine, "main");
+	UINT8 *decrypted = konami1_decode(machine, "maincpu");
 
-	memory_configure_bank(machine, 1, 0, 16, memory_region(machine, "main") + 0x10000, 0x1000);
+	memory_configure_bank(machine, 1, 0, 16, memory_region(machine, "maincpu") + 0x10000, 0x1000);
 	memory_configure_bank_decrypted(machine, 1, 0, 16, decrypted + 0x10000, 0x1000);
 }
 

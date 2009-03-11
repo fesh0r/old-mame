@@ -179,9 +179,9 @@ static WRITE16_HANDLER( bestleag_fgram_w )
 	tilemap_mark_tile_dirty(fg_tilemap,offset);
 }
 
-static WRITE16_HANDLER( oki_bank_w )
+static WRITE16_DEVICE_HANDLER( oki_bank_w )
 {
-	okim6295_set_bank_base(0, 0x40000 * ((data & 3) - 1));
+	okim6295_set_bank_base(device, 0x40000 * ((data & 3) - 1));
 }
 
 
@@ -201,8 +201,8 @@ static ADDRESS_MAP_START( bestleag_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x300014, 0x300015) AM_READ_PORT("P2")
 	AM_RANGE(0x300016, 0x300017) AM_READ_PORT("DSWA")
 	AM_RANGE(0x300018, 0x300019) AM_READ_PORT("DSWB")
-	AM_RANGE(0x30001c, 0x30001d) AM_WRITE(oki_bank_w)
-	AM_RANGE(0x30001e, 0x30001f) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)
+	AM_RANGE(0x30001c, 0x30001d) AM_DEVWRITE("oki", oki_bank_w)
+	AM_RANGE(0x30001e, 0x30001f) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff)
 	AM_RANGE(0x304000, 0x304001) AM_WRITENOP
 	AM_RANGE(0xfe0000, 0xffffff) AM_RAM
 ADDRESS_MAP_END
@@ -316,12 +316,12 @@ static GFXDECODE_START( bestleag )
 GFXDECODE_END
 
 static MACHINE_DRIVER_START( bestleag )
-	MDRV_CPU_ADD("main", M68000, 12000000)
+	MDRV_CPU_ADD("maincpu", M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(bestleag_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -334,18 +334,18 @@ static MACHINE_DRIVER_START( bestleag )
 	MDRV_VIDEO_START(bestleag)
 	MDRV_VIDEO_UPDATE(bestleag)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("oki", OKIM6295, 1000000) /* Hand-tuned */
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.00)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.00)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.00)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.00)
 MACHINE_DRIVER_END
 
 /* Rom Loading */
 
 ROM_START( bestleag )
-	ROM_REGION( 0x40000, "main", 0 ) /* 68000 Code */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "2.bin", 0x00000, 0x20000, CRC(d2be3431) SHA1(37815c80b9fbc246fcdaa202d40fb40b10f55b45) )
 	ROM_LOAD16_BYTE( "3.bin", 0x00001, 0x20000, CRC(f29c613a) SHA1(c66fa53f38bfa77ce1b894db74f94ce573c62412) )
 

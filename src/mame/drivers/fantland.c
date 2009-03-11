@@ -49,11 +49,13 @@ Year + Game             Main CPU    Sound CPU    Sound            Video
 #include "cpu/i86/i86.h"
 #include "cpu/i86/i86.h"
 #include "sound/2151intf.h"
-#include "sound/3812intf.h"
+#include "sound/3526intf.h"
 #include "sound/dac.h"
 #include "sound/msm5205.h"
 
 VIDEO_UPDATE( fantland );
+
+static const char *msm_name[4] = { "msm1", "msm2", "msm3", "msm4" };
 
 /***************************************************************************
 
@@ -280,9 +282,13 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fantland_sound_iomap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x0080, 0x0080 ) AM_READ( soundlatch_r )
-	AM_RANGE( 0x0100, 0x0100 ) AM_WRITE( ym2151_register_port_0_w )
-	AM_RANGE( 0x0101, 0x0101 ) AM_READWRITE( ym2151_status_port_0_r, ym2151_data_port_0_w )
-	AM_RANGE( 0x0180, 0x0180 ) AM_WRITE( dac_0_data_w )
+	AM_RANGE( 0x0100, 0x0101 ) AM_DEVREADWRITE( "ym", ym2151_r, ym2151_w )
+	AM_RANGE( 0x0180, 0x0180 ) AM_DEVWRITE( "dac", dac_w )
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( galaxygn_sound_iomap, ADDRESS_SPACE_IO, 8 )
+	AM_RANGE( 0x0080, 0x0080 ) AM_READ( soundlatch_r )
+	AM_RANGE( 0x0100, 0x0101 ) AM_DEVREADWRITE( "ym", ym2151_r, ym2151_w )
 ADDRESS_MAP_END
 
 
@@ -299,17 +305,17 @@ static struct
 
 }	borntofi_adpcm[4];
 
-static void borntofi_adpcm_start(int voice)
+static void borntofi_adpcm_start(const device_config *device, int voice)
 {
-	msm5205_reset_w(voice,0);
+	msm5205_reset_w(device,0);
 	borntofi_adpcm[voice].playing = 1;
 	borntofi_adpcm[voice].nibble  = 0;
 //  logerror("%s: adpcm start = %06x, stop = %06x\n", cpuexec_describe_context(device->machine), borntofi_adpcm[voice].addr[0], borntofi_adpcm[voice].addr[1]);
 }
 
-static void borntofi_adpcm_stop(int voice)
+static void borntofi_adpcm_stop(const device_config *device, int voice)
 {
-	msm5205_reset_w(voice,1);
+	msm5205_reset_w(device,1);
 	borntofi_adpcm[voice].playing = 0;
 }
 
@@ -323,8 +329,8 @@ static WRITE8_HANDLER( borntofi_msm5205_w )
 		// Play / Stop
 		switch(data)
 		{
-			case 0x00:		borntofi_adpcm_stop(voice);			break;
-			case 0x03:		borntofi_adpcm_start(voice);		break;
+			case 0x00:		borntofi_adpcm_stop(devtag_get_device(space->machine, msm_name[voice]), voice);			break;
+			case 0x03:		borntofi_adpcm_start(devtag_get_device(space->machine, msm_name[voice]), voice);		break;
 			default:		logerror("CPU #0 PC = %04X: adpcm reg %d <- %02x\n", cpu_get_pc(space->cpu), reg, data);
 		}
 	}
@@ -355,18 +361,18 @@ static void borntofi_adpcm_int(const device_config *device, int voice)
 
 	if (start >= len)
 	{
-		borntofi_adpcm_stop(voice);
+		borntofi_adpcm_stop(device, voice);
 		logerror("adpcm address out of range: %06x\n", start);
 		return;
 	}
 
 	if (start >= stop)
 	{
-		borntofi_adpcm_stop(voice);
+		borntofi_adpcm_stop(device, voice);
 	}
 	else
 	{
-        msm5205_data_w( voice, rom[start/2] >> ((start & 1) * 4) );
+        msm5205_data_w( device, rom[start/2] >> ((start & 1) * 4) );
 		borntofi_adpcm[voice].nibble++;
 	}
 }
@@ -393,8 +399,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( wheelrun_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM
-	AM_RANGE(0xa000, 0xa000) AM_READWRITE( ym3526_status_port_0_r, ym3526_control_port_0_w )
-	AM_RANGE(0xa001, 0xa001) AM_WRITE( ym3526_write_port_0_w )
+	AM_RANGE(0xa000, 0xa001) AM_DEVREADWRITE("ym", ym3526_r, ym3526_w )
 
 	AM_RANGE(0xb000, 0xb000) AM_WRITE( SMH_NOP )	// on a car crash / hit
 	AM_RANGE(0xc000, 0xc000) AM_WRITE( SMH_NOP )	// ""
@@ -818,11 +823,11 @@ static INTERRUPT_GEN( fantland_sound_irq )
 
 static MACHINE_DRIVER_START( fantland )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", I8086, 8000000)        // ?
+	MDRV_CPU_ADD("maincpu", I8086, 8000000)        // ?
 	MDRV_CPU_PROGRAM_MAP(fantland_map, 0)
-	MDRV_CPU_VBLANK_INT("main", fantland_irq)
+	MDRV_CPU_VBLANK_INT("screen", fantland_irq)
 
-	MDRV_CPU_ADD("audio", I8088, 8000000)        // ?
+	MDRV_CPU_ADD("audiocpu", I8088, 8000000)        // ?
 	MDRV_CPU_PROGRAM_MAP(fantland_sound_map, 0)
 	MDRV_CPU_IO_MAP(fantland_sound_iomap, 0)
 	MDRV_CPU_PERIODIC_INT(fantland_sound_irq, 8000)
@@ -833,7 +838,7 @@ static MACHINE_DRIVER_START( fantland )
 	MDRV_QUANTUM_TIME(HZ(8000))	// sound irq must feed the DAC at 8kHz
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -857,9 +862,9 @@ static MACHINE_DRIVER_START( fantland )
 MACHINE_DRIVER_END
 
 
-static void galaxygn_sound_irq(running_machine *machine, int line)
+static void galaxygn_sound_irq(const device_config *device, int line)
 {
-	cpu_set_input_line_and_vector(machine->cpu[1], 0, line ? ASSERT_LINE : CLEAR_LINE, 0x80/4);
+	cpu_set_input_line_and_vector(device->machine->cpu[1], 0, line ? ASSERT_LINE : CLEAR_LINE, 0x80/4);
 }
 
 static const ym2151_interface galaxygn_ym2151_interface =
@@ -869,19 +874,19 @@ static const ym2151_interface galaxygn_ym2151_interface =
 
 static MACHINE_DRIVER_START( galaxygn )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", I8088, 8000000)        // ?
+	MDRV_CPU_ADD("maincpu", I8088, 8000000)        // ?
 	MDRV_CPU_PROGRAM_MAP(galaxygn_map, 0)
-	MDRV_CPU_VBLANK_INT("main", fantland_irq)
+	MDRV_CPU_VBLANK_INT("screen", fantland_irq)
 
-	MDRV_CPU_ADD("audio", I8088, 8000000)        // ?
+	MDRV_CPU_ADD("audiocpu", I8088, 8000000)        // ?
 	MDRV_CPU_PROGRAM_MAP(fantland_sound_map, 0)
-	MDRV_CPU_IO_MAP(fantland_sound_iomap, 0)
+	MDRV_CPU_IO_MAP(galaxygn_sound_iomap, 0)
 	// IRQ by YM2151, NMI when soundlatch is written
 
 	MDRV_MACHINE_RESET(fantland)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -932,22 +937,22 @@ static MACHINE_RESET( borntofi )
 	MACHINE_RESET_CALL(fantland);
 
 	for (voice = 0; voice < 4; voice++)
-		borntofi_adpcm_stop(voice);
+		borntofi_adpcm_stop(devtag_get_device(machine, msm_name[voice]), voice);
 }
 
 static MACHINE_DRIVER_START( borntofi )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", V20, 16000000/2)        // D701080C-8 - NEC D70108C-8 V20 CPU, running at 8.000MHz [16/2]
+	MDRV_CPU_ADD("maincpu", V20, 16000000/2)        // D701080C-8 - NEC D70108C-8 V20 CPU, running at 8.000MHz [16/2]
 	MDRV_CPU_PROGRAM_MAP(borntofi_map, 0)
-	MDRV_CPU_VBLANK_INT("main", fantland_irq)
+	MDRV_CPU_VBLANK_INT("screen", fantland_irq)
 
-	MDRV_CPU_ADD("audio", I8088, 18432000/3)        // 8088 - AMD P8088-2 CPU, running at 6.144MHz [18.432/3]
+	MDRV_CPU_ADD("audiocpu", I8088, 18432000/3)        // 8088 - AMD P8088-2 CPU, running at 6.144MHz [18.432/3]
 	MDRV_CPU_PROGRAM_MAP(borntofi_sound_map, 0)
 
 	MDRV_MACHINE_RESET(borntofi)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(54)	// 54 Hz
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -970,9 +975,9 @@ MACHINE_DRIVER_END
 
 
 
-static void wheelrun_ym3526_irqhandler(running_machine *machine, int state)
+static void wheelrun_ym3526_irqhandler(const device_config *device, int state)
 {
-	cpu_set_input_line(machine->cpu[1], INPUT_LINE_IRQ0, state);
+	cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_IRQ0, state);
 }
 
 static const ym3526_interface wheelrun_ym3526_interface =
@@ -982,18 +987,18 @@ static const ym3526_interface wheelrun_ym3526_interface =
 
 static MACHINE_DRIVER_START( wheelrun )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", V20, XTAL_18MHz/2)		// D701080C-8 (V20)
+	MDRV_CPU_ADD("maincpu", V20, XTAL_18MHz/2)		// D701080C-8 (V20)
 	MDRV_CPU_PROGRAM_MAP(wheelrun_map, 0)
-	MDRV_CPU_VBLANK_INT("main", fantland_irq)
+	MDRV_CPU_VBLANK_INT("screen", fantland_irq)
 
-	MDRV_CPU_ADD("audio", Z80, XTAL_18MHz/2)		// Z8400BB1 (Z80B)
+	MDRV_CPU_ADD("audiocpu", Z80, XTAL_18MHz/2)		// Z8400BB1 (Z80B)
 	MDRV_CPU_PROGRAM_MAP(wheelrun_sound_map, 0)
 	// IRQ by YM3526, NMI when soundlatch is written
 
 	MDRV_MACHINE_RESET(fantland)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1044,17 +1049,17 @@ Fantasy.05, 06, 07 was read as if it was a 27c040
 ***************************************************************************/
 
 ROM_START( fantland )
-	ROM_REGION( 0x100000, "main", 0 )					// Main CPU
+	ROM_REGION( 0x100000, "maincpu", 0 )					// Main CPU
 	ROM_LOAD16_BYTE( "fantasyl.ev2", 0x00000, 0x20000, CRC(f5bdca0e) SHA1(d05cf6f68d4d1a3dcc0171f7cf220c4920bd47bb) )
 	ROM_LOAD16_BYTE( "fantasyl.od2", 0x00001, 0x20000, CRC(9db35023) SHA1(81e2accd67dcf8563a68b2c4e35526f23a40150c) )
-	ROM_COPY( "main",     0x00000, 0x40000, 0x40000 )
+	ROM_COPY( "maincpu",     0x00000, 0x40000, 0x40000 )
 	ROM_LOAD16_BYTE( "fantasyl.ev1", 0xe0000, 0x10000, CRC(70e0ee30) SHA1(5253213da56b3f97e2811f2b10927d0e542447f0) )
 	ROM_LOAD16_BYTE( "fantasyl.od1", 0xe0001, 0x10000, CRC(577b4bd7) SHA1(1f08202d99c3e39e0dd1ed4947b928b695a5b411) )
 
-	ROM_REGION( 0x100000, "audio", 0 )					// Sound CPU
+	ROM_REGION( 0x100000, "audiocpu", 0 )					// Sound CPU
 	ROM_LOAD( "fantasyl.s2", 0x80000, 0x20000, CRC(f23837d8) SHA1(4048784f759781e50ae445ea61f1ca908e8e6ac1) )	// samples (8 bit unsigned)
 	ROM_LOAD( "fantasyl.s1", 0xc0000, 0x20000, CRC(1a324a69) SHA1(06f6877af6cd19bfaac8a4ea8057ef8faee276f5) )
-	ROM_COPY( "audio",          0xc0000, 0xe0000, 0x20000 )
+	ROM_COPY( "audiocpu",          0xc0000, 0xe0000, 0x20000 )
 
 	ROM_REGION( 0x480000, "gfx1", ROMREGION_DISPOSE )	// Sprites
 	ROMX_LOAD( "fantasyl.m00", 0x000000, 0x80000, CRC(82d819ff) SHA1(2b5b0759de8260eaa84ddded9dc2d12a6e0f5ec9) , ROM_GROUPWORD | ROM_SKIP(1) )
@@ -1073,17 +1078,17 @@ ROM_END
 
 /* this dump had several roms half size however they all appear to be data & gfx roms, the main program looks ok */
 ROM_START( fantlnda )
-	ROM_REGION( 0x100000, "main", 0 )					// Main CPU
+	ROM_REGION( 0x100000, "maincpu", 0 )					// Main CPU
 	ROM_LOAD16_BYTE( "fantasyl.ev2", 0x00000, 0x20000, CRC(f5bdca0e) SHA1(d05cf6f68d4d1a3dcc0171f7cf220c4920bd47bb) ) // 04.bin (was first half only)
 	ROM_LOAD16_BYTE( "fantasyl.od2", 0x00001, 0x20000, CRC(9db35023) SHA1(81e2accd67dcf8563a68b2c4e35526f23a40150c) ) // 03.bin (was first half only)
-	ROM_COPY( "main",     0x00000, 0x40000, 0x40000 )
+	ROM_COPY( "maincpu",     0x00000, 0x40000, 0x40000 )
 	ROM_LOAD16_BYTE( "02.bin",       0xe0000, 0x10000, CRC(8b835eed) SHA1(6a6b3fe116145f685b91dcd5301165f17973697c) )
 	ROM_LOAD16_BYTE( "01.bin",       0xe0001, 0x10000, CRC(4fa3eb8b) SHA1(56da42a4e2972a696ef28811116cbc20bb5ba3e8) )
 
-	ROM_REGION( 0x100000, "audio", 0 )					// Sound CPU
+	ROM_REGION( 0x100000, "audiocpu", 0 )					// Sound CPU
 	ROM_LOAD( "fantasyl.s2", 0x80000, 0x20000, CRC(f23837d8) SHA1(4048784f759781e50ae445ea61f1ca908e8e6ac1) ) // 05.bin (was first half only)
 	ROM_LOAD( "fantasyl.s1", 0xc0000, 0x20000, CRC(1a324a69) SHA1(06f6877af6cd19bfaac8a4ea8057ef8faee276f5) ) // 06.bin (was first half only)
-	ROM_COPY( "audio",          0xc0000, 0xe0000, 0x20000 )
+	ROM_COPY( "audiocpu",          0xc0000, 0xe0000, 0x20000 )
 
 	ROM_REGION( 0x480000, "gfx1", ROMREGION_DISPOSE )	// Sprites
 	ROMX_LOAD( "fantasyl.m00", 0x000000, 0x80000, CRC(82d819ff) SHA1(2b5b0759de8260eaa84ddded9dc2d12a6e0f5ec9) , ROM_GROUPWORD | ROM_SKIP(1) )
@@ -1105,17 +1110,17 @@ ROM_END
 ***************************************************************************/
 
 ROM_START( galaxygn )
-	ROM_REGION( 0x100000, "main", 0 )					// Main CPU
+	ROM_REGION( 0x100000, "maincpu", 0 )					// Main CPU
 	ROM_LOAD( "gg03.bin", 0x10000, 0x10000, CRC(9e469189) SHA1(07e5d36ca9665bdd13e3bb4241d34b9042371b79) )
 	ROM_LOAD( "gg02.bin", 0x20000, 0x10000, CRC(b87a438f) SHA1(96c39cc4d51a2fc0779f148971220117967173c0) )
 	ROM_LOAD( "gg01.bin", 0xf0000, 0x10000, CRC(ad0e5b29) SHA1(f9a7ebce9f47a009af213e4e10811bb1c26f891a) )
-	ROM_COPY( "main",0xf0000, 0x70000, 0x10000 )
+	ROM_COPY( "maincpu",0xf0000, 0x70000, 0x10000 )
 
-	ROM_REGION( 0x100000, "audio", 0 )					// Sound CPU
+	ROM_REGION( 0x100000, "audiocpu", 0 )					// Sound CPU
 	ROM_LOAD( "gg20.bin", 0xc0000, 0x10000, CRC(f5c65a85) SHA1(a094fa9531ea4e68ec0a448568e7d4b2307c8185) )
-	ROM_COPY( "audio", 0xc0000, 0xd0000, 0x10000 )
-	ROM_COPY( "audio", 0xc0000, 0xe0000, 0x10000 )
-	ROM_COPY( "audio", 0xc0000, 0xf0000, 0x10000 )
+	ROM_COPY( "audiocpu", 0xc0000, 0xd0000, 0x10000 )
+	ROM_COPY( "audiocpu", 0xc0000, 0xe0000, 0x10000 )
+	ROM_COPY( "audiocpu", 0xc0000, 0xf0000, 0x10000 )
 
 	ROM_REGION( 0x1b0000, "gfx1", ROMREGION_DISPOSE )	// Sprites
 	ROMX_LOAD( "gg54.bin", 0x000000, 0x10000, CRC(b3621119) SHA1(66ade772077e57f872ef1c8f45e244f4006023f0) , ROM_SKIP(2) )
@@ -1226,15 +1231,15 @@ Notes:
 */
 
 ROM_START( borntofi )
-	ROM_REGION( 0x100000, "main", 0 ) /* V20 */
+	ROM_REGION( 0x100000, "maincpu", 0 ) /* V20 */
 	ROM_LOAD( "3.bin", 0x10000, 0x10000, CRC(5f07f4a2) SHA1(240864d1d5d9e26d229bc21aa39ee03f4bd25814) )
 	ROM_LOAD( "2.bin", 0x20000, 0x10000, CRC(5d2b3395) SHA1(ac87f352f380b67802c26232824663063549ac7b) )
 	ROM_LOAD( "1.bin", 0xf0000, 0x10000, CRC(0a5e2f32) SHA1(5167a85329e5ea35c686af85e44d62227cf5800e) )
-	ROM_COPY( "main", 0xf0000, 0x70000, 0x10000 )
+	ROM_COPY( "maincpu", 0xf0000, 0x70000, 0x10000 )
 
-	ROM_REGION( 0x100000, "audio", 0 ) /* 8088 */
+	ROM_REGION( 0x100000, "audiocpu", 0 ) /* 8088 */
 	ROM_LOAD( "5.bin", 0xf8000, 0x08000, CRC(b5d587ce) SHA1(07687abd264ec80a6eb473cb3f3ab97ec6b365a2) )
-	ROM_COPY( "audio", 0xf8000, 0x08000, 0x08000 )
+	ROM_COPY( "audiocpu", 0xf8000, 0x08000, 0x08000 )
 
 	ROM_REGION( 0xc0000, "adpcm", 0 ) /* m5205 samples */
 	ROM_LOAD( "6.bin",  0x00000, 0x10000, CRC(731c523b) SHA1(b649a838ce70d5af607f8b9faf8b012e2ff1104b) )
@@ -1322,12 +1327,12 @@ Hardware info by f205v
 ***************************************************************************/
 
 ROM_START( wheelrun )
-	ROM_REGION( 0x100000, "main", 0 ) // V20
+	ROM_REGION( 0x100000, "maincpu", 0 ) // V20
 	ROM_LOAD( "4.4", 0x30000, 0x10000, CRC(359303df) SHA1(583b70f65b775e99856ffda61334be3b85046ed1) )
 	ROM_LOAD( "3.3", 0x70000, 0x10000, CRC(c28d0b31) SHA1(add8c4ffe529755c101b72a3b0530e796948876b) )
-	ROM_COPY( "main", 0x70000, 0xf0000, 0x10000 )
+	ROM_COPY( "maincpu", 0x70000, 0xf0000, 0x10000 )
 
-	ROM_REGION( 0x100000, "audio", 0 ) // Z80
+	ROM_REGION( 0x100000, "audiocpu", 0 ) // Z80
 	ROM_LOAD( "1.1", 0x00000, 0x10000, CRC(67b5f31f) SHA1(5553b132077686221fb7a21a0246fd55cb443332) )	// 1xxxxxxxxxxxxxxx = 0xFF
 
 	ROM_REGION( 0xc0000, "gfx1",0 ) // gfx

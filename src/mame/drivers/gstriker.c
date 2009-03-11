@@ -221,7 +221,7 @@ static WRITE8_HANDLER( gs_sh_pending_command_clear_w )
 
 static WRITE8_HANDLER( gs_sh_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(space->machine, "audio");
+	UINT8 *RAM = memory_region(space->machine, "audiocpu");
 	int bankaddress;
 
 	bankaddress = 0x10000 + (data & 0x03) * 0x8000;
@@ -267,12 +267,12 @@ GFXDECODE_END
 
 /*** MORE SOUND RELATED ******************************************************/
 
-static void gs_ym2610_irq(running_machine *machine, int irq)
+static void gs_ym2610_irq(const device_config *device, int irq)
 {
 	if (irq)
-		cpu_set_input_line(machine->cpu[1], 0, ASSERT_LINE);
+		cpu_set_input_line(device->machine->cpu[1], 0, ASSERT_LINE);
 	else
-		cpu_set_input_line(machine->cpu[1], 0, CLEAR_LINE);
+		cpu_set_input_line(device->machine->cpu[1], 0, CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -330,10 +330,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(ym2610_status_port_0_a_r, ym2610_control_port_0_a_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(ym2610_data_port_0_a_w)
-	AM_RANGE(0x02, 0x02) AM_READWRITE(ym2610_status_port_0_b_r, ym2610_control_port_0_b_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(ym2610_data_port_0_b_w)
+	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE("ym", ym2610_r, ym2610_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(gs_sh_bankswitch_w)
 	AM_RANGE(0x08, 0x08) AM_WRITE(gs_sh_pending_command_clear_w)
 	AM_RANGE(0x0c, 0x0c) AM_READ(soundlatch_r)
@@ -567,17 +564,17 @@ INPUT_PORTS_END
 /*** MACHINE DRIVER **********************************************************/
 
 static MACHINE_DRIVER_START( gstriker )
-	MDRV_CPU_ADD("main", M68000, 10000000)
+	MDRV_CPU_ADD("maincpu", M68000, 10000000)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,8000000/2)	/* 4 MHz ??? */
+	MDRV_CPU_ADD("audiocpu", Z80,8000000/2)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_io_map,0)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(5000) /* hand-tuned, it needs a bit */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -590,14 +587,14 @@ static MACHINE_DRIVER_START( gstriker )
 	MDRV_VIDEO_START(gstriker)
 	MDRV_VIDEO_UPDATE(gstriker)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2610, 8000000)
 	MDRV_SOUND_CONFIG(ym2610_config)
-	MDRV_SOUND_ROUTE(0, "left",  0.25)
-	MDRV_SOUND_ROUTE(0, "right", 0.25)
-	MDRV_SOUND_ROUTE(1, "left",  1.0)
-	MDRV_SOUND_ROUTE(2, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker",  0.25)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.25)
+	MDRV_SOUND_ROUTE(1, "lspeaker",  1.0)
+	MDRV_SOUND_ROUTE(2, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( twrldc94 )
@@ -607,17 +604,17 @@ MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( vgoal )
-	MDRV_CPU_ADD("main", M68000, 16000000)
+	MDRV_CPU_ADD("maincpu", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(vgoal_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,8000000/2)	/* 4 MHz ??? */
+	MDRV_CPU_ADD("audiocpu", Z80,8000000/2)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_io_map,0)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(5000) /* hand-tuned, it needs a bit */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -630,14 +627,14 @@ static MACHINE_DRIVER_START( vgoal )
 	MDRV_VIDEO_START(vgoalsoc)
 	MDRV_VIDEO_UPDATE(gstriker)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2610, 8000000)
 	MDRV_SOUND_CONFIG(ym2610_config)
-	MDRV_SOUND_ROUTE(0, "left",  0.25)
-	MDRV_SOUND_ROUTE(0, "right", 0.25)
-	MDRV_SOUND_ROUTE(1, "left",  1.0)
-	MDRV_SOUND_ROUTE(2, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker",  0.25)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.25)
+	MDRV_SOUND_ROUTE(1, "lspeaker",  1.0)
+	MDRV_SOUND_ROUTE(2, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -646,10 +643,10 @@ MACHINE_DRIVER_END
 /*** ROM LOADING *************************************************************/
 
 ROM_START( gstriker )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "human-1.u58",  0x00000, 0x80000, CRC(45cf4857) SHA1(8133a9a7bdd547cc3d69140a68a1a5a7341e9f5b) )
 
-	ROM_REGION( 0x40000, "audio", 0 )
+	ROM_REGION( 0x40000, "audiocpu", 0 )
 	ROM_LOAD( "human-3.u87",  0x00000, 0x20000, CRC(2f28c01e) SHA1(63829ad7969d197b2f2c87cb88bdb9e9880ed2d6) )
 	ROM_RELOAD(               0x10000, 0x20000 )
 
@@ -682,10 +679,10 @@ ROM_START( gstriker )
 ROM_END
 
 ROM_START( vgoalsoc )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "c16_u37.u37",  0x00000, 0x80000, CRC(18c05440) SHA1(0fc78ee0ba6d7817d4a93a80f668f193c352c00d) )
 
-	ROM_REGION( 0x40000, "audio", 0 )
+	ROM_REGION( 0x40000, "audiocpu", 0 )
 	ROM_LOAD( "c16_u65.u65",  0x000000, 0x040000, CRC(2f7bf23c) SHA1(1a1a06f57bbac59807679e3762cb2f23ab1ad35e) )
 
 	ROM_REGION( 0x20000, "gfx1", 0 ) // score tilemap
@@ -707,10 +704,10 @@ ROM_START( vgoalsoc )
 ROM_END
 
 ROM_START( vgoalsca )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "vgoalc16.u37", 0x00000, 0x80000, CRC(775ef300) SHA1(d0ab1c13a19ce646c6edfc25a0c0994989560cbc) )
 
-	ROM_REGION( 0x40000, "audio", 0 )
+	ROM_REGION( 0x40000, "audiocpu", 0 )
 	ROM_LOAD( "c16_u65.u65",  0x000000, 0x040000, CRC(2f7bf23c) SHA1(1a1a06f57bbac59807679e3762cb2f23ab1ad35e) )
 
 	ROM_REGION( 0x20000, "gfx1", 0 ) // fixed tile
@@ -732,10 +729,10 @@ ROM_START( vgoalsca )
 ROM_END
 
 ROM_START( twrldc94 )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "13.u37",           0x00000, 0x80000, CRC(42adb463) SHA1(ec7bcb684489b56f81ab851a9d8f42d54679363b) )
 
-	ROM_REGION( 0x40000, "audio", 0 )
+	ROM_REGION( 0x40000, "audiocpu", 0 )
 	ROM_LOAD( "12.u65",           0x000000, 0x040000, CRC(f316e7fc) SHA1(a2215605518e7293774735371c65abcead99bd88) )
 
 	ROM_REGION( 0x20000, "gfx1", 0 ) // fixed tile
@@ -759,10 +756,10 @@ ROM_START( twrldc94 )
 ROM_END
 
 ROM_START( twrdc94a )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "twrdc94a_13.u37",           0x00000, 0x80000, CRC(08f314ee) SHA1(3fca5050f5bcd60533d3bd9dea81ba631a98bfd6) )
 
-	ROM_REGION( 0x40000, "audio", 0 )
+	ROM_REGION( 0x40000, "audiocpu", 0 )
 	ROM_LOAD( "twrdc94a_12.u65",           0x000000, 0x040000, CRC(c131f5a4) SHA1(d8cc7c463ad628f6f052489a73b97f998532738d) )
 
 	ROM_REGION( 0x20000, "gfx1", 0 ) // fixed tile
@@ -1025,8 +1022,8 @@ static DRIVER_INIT( vgoalsoc )
 GAME( 1993, gstriker, 0,        gstriker, gstriker, 0,        ROT0, "Human", "Grand Striker", GAME_IMPERFECT_GRAPHICS )
 
 /* Similar, but not identical hardware, appear to be protected by an MCU :-( */
-GAME( 199?, vgoalsoc, 0,        vgoal,    vgoalsoc, vgoalsoc,   ROT0, "Tecmo", "V Goal Soccer (set 1)", GAME_NOT_WORKING )
-GAME( 199?, vgoalsca, vgoalsoc, vgoal,    vgoalsoc, vgoalsoc,   ROT0, "Tecmo", "V Goal Soccer (set 2)", GAME_NOT_WORKING )
+GAME( 1994, vgoalsoc, 0,        vgoal,    vgoalsoc, vgoalsoc,   ROT0, "Tecmo", "V Goal Soccer (set 1)", GAME_NOT_WORKING )
+GAME( 1994, vgoalsca, vgoalsoc, vgoal,    vgoalsoc, vgoalsoc,   ROT0, "Tecmo", "V Goal Soccer (set 2)", GAME_NOT_WORKING )
 GAME( 1994, twrldc94, 0,        twrldc94, twrldc94, twrldc94,   ROT0, "Tecmo", "Tecmo World Cup '94 (set 1)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS )
 GAME( 1994, twrdc94a, twrldc94, twrldc94, twrldc94, twrldc94a,  ROT0, "Tecmo", "Tecmo World Cup '94 (set 2)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS )
 

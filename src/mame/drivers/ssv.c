@@ -435,7 +435,7 @@ static READ16_HANDLER( fake_r )   {   return ssv_scroll[offset];  }
 	AM_RANGE(0x21000a, 0x21000b) AM_READ_PORT("P2")									\
 	AM_RANGE(0x21000c, 0x21000d) AM_READ_PORT("SYSTEM")								\
 	AM_RANGE(0x21000e, 0x21000f) AM_READ(SMH_NOP				)	/*          */	\
-	AM_RANGE(0x300000, 0x30007f) AM_READ(es5506_data_0_word_r	)	/*  Sound   */	\
+	AM_RANGE(0x300000, 0x30007f) AM_DEVREAD8("ensoniq", es5506_r, 0x00ff	)	/*  Sound   */	\
 	AM_RANGE(0x482000, 0x482fff) AM_RAM_WRITE(dsp_w) AM_BASE(&dsp_ram)				\
 	AM_RANGE(_ROM, 0xffffff) AM_READ(SMH_BANK1					)	/*  ROM  */	    \
 //AM_RANGE(0x990000, 0x99007f) AM_READ(fake_r)
@@ -451,7 +451,7 @@ static READ16_HANDLER( fake_r )   {   return ssv_scroll[offset];  }
 	AM_RANGE(0x230000, 0x230071) AM_WRITE(SMH_RAM) AM_BASE(&ssv_irq_vectors)	          /* IRQ Vectors */ \
 	AM_RANGE(0x240000, 0x240071) AM_WRITE(ssv_irq_ack_w )                                 /* IRQ Ack */     \
 	AM_RANGE(0x260000, 0x260001) AM_WRITE(ssv_irq_enable_w)                               /* IRQ Enable */  \
-	AM_RANGE(0x300000, 0x30007f) AM_WRITE(es5506_data_0_word_w)                           /* Sound */       \
+	AM_RANGE(0x300000, 0x30007f) AM_DEVWRITE8("ensoniq", es5506_w, 0x00ff)         /* Sound */       \
 //AM_RANGE(0x990000, 0x99007f) AM_WRITE(ssv_scroll_w)
 
 
@@ -536,9 +536,7 @@ static WRITE16_HANDLER( gdfs_gfxram_w )
 {
 	offset += gdfs_gfxram_bank * 0x100000/2;
 	COMBINE_DATA(&eaglshot_gfxram[offset]);
-
-	eaglshot_dirty = 1;
-	eaglshot_dirty_tile[offset / (16*8/2)] = 1;
+	gfx_element_mark_dirty(space->machine->gfx[2], offset / (16*8/2));
 }
 
 static READ16_HANDLER( gdfs_blitram_r )
@@ -588,14 +586,17 @@ static WRITE16_HANDLER( gdfs_blitram_w )
 
 			if ( (src+len <= size) && (dst+len <= 4 * 0x100000) )
 			{
-				eaglshot_dirty = 1;
-
 				memcpy( &eaglshot_gfxram[dst/2], &rom[src], len );
 
 				if (len % (16*8))	len = len / (16*8) + 1;
 				else				len = len / (16*8);
 
-				memset( &eaglshot_dirty_tile[dst / (16*8)], 1, len );
+				dst /= 16*8;
+				while (len--)
+				{
+					gfx_element_mark_dirty(space->machine->gfx[2], dst);
+					dst++;
+				}
 			}
 			else
 			{
@@ -834,10 +835,11 @@ static WRITE16_HANDLER( srmp7_sound_bank_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
+		const device_config *device = devtag_get_device(space->machine, "ensoniq");
 		int bank = 0x400000/2 * (data & 1);	// UINT16 address
 		int voice;
 		for (voice = 0; voice < 32; voice++)
-			es5506_voice_bank_0_w(voice, bank);
+			es5506_voice_bank_w(device, voice, bank);
 	}
 //  popmessage("%04X",data);
 }
@@ -1101,9 +1103,8 @@ static WRITE16_HANDLER( eaglshot_gfxram_w )
 {
 	offset += (ssv_scroll[0x76/2] & 0xf) * 0x40000/2;
 	COMBINE_DATA(&eaglshot_gfxram[offset]);
-
-	eaglshot_dirty = 1;
-	eaglshot_dirty_tile[offset / (16*8/2)] = 1;
+	gfx_element_mark_dirty(space->machine->gfx[0], offset / (16*8/2));
+	gfx_element_mark_dirty(space->machine->gfx[1], offset / (16*8/2));
 }
 
 
@@ -2716,7 +2717,6 @@ static void init_ssv(void)
 	ssv_enable_video(1);
 	ssv_special = 0;
 	interrupt_ultrax = 0;
-	eaglshot_dirty = 0;
 }
 
 static void init_ssv_hypreac2(void)
@@ -2800,13 +2800,13 @@ static DRIVER_INIT( jsk )			{	init_ssv();
 static MACHINE_DRIVER_START( ssv )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", V60, 16000000) /* Based on STA-0001 & STA-0001B System boards */
+	MDRV_CPU_ADD("maincpu", V60, 16000000) /* Based on STA-0001 & STA-0001B System boards */
 	MDRV_CPU_VBLANK_INT_HACK(ssv_interrupt,2)	/* Vblank */
 
 	MDRV_MACHINE_RESET(ssv)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(0x180, 0x100)
@@ -2818,12 +2818,12 @@ static MACHINE_DRIVER_START( ssv )
 	MDRV_VIDEO_UPDATE(ssv)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ensoniq", ES5506, 16000000)
 	MDRV_SOUND_CONFIG(es5506_config)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -2831,13 +2831,13 @@ static MACHINE_DRIVER_START( drifto94 )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(drifto94_readmem, drifto94_writemem)
 
 	MDRV_NVRAM_HANDLER(ssv)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x150-1, 4, 0xf0-1)
 MACHINE_DRIVER_END
 
@@ -2846,14 +2846,14 @@ static MACHINE_DRIVER_START( gdfs )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(gdfs_readmem, gdfs_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(gdfs_interrupt,1+4)
 
 	MDRV_NVRAM_HANDLER(gdfs)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x150-1, 0, 0xf0-1)
 
 	MDRV_GFXDECODE(gdfs)
@@ -2866,11 +2866,11 @@ static MACHINE_DRIVER_START( hypreact )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(hypreact_readmem, hypreact_writemem)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(8, 0x148-1, 16, 0xf0-1)
 MACHINE_DRIVER_END
 
@@ -2879,11 +2879,11 @@ static MACHINE_DRIVER_START( hypreac2 )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(hypreac2_readmem, hypreac2_writemem)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x150-1, 8, 0xf8-1)
 MACHINE_DRIVER_END
 
@@ -2892,11 +2892,11 @@ static MACHINE_DRIVER_START( janjans1 )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(janjans1_readmem, janjans1_writemem)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x150-1, 0, 0xf0-1)
 MACHINE_DRIVER_END
 
@@ -2905,11 +2905,11 @@ static MACHINE_DRIVER_START( keithlcy )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(keithlcy_readmem, keithlcy_writemem)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x150-1, 4, 0xf0-1)
 MACHINE_DRIVER_END
 
@@ -2918,13 +2918,13 @@ static MACHINE_DRIVER_START( meosism )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(meosism_readmem, meosism_writemem)
 
 	MDRV_NVRAM_HANDLER(ssv)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x150-1, 0, 0xf0-1)
 MACHINE_DRIVER_END
 
@@ -2933,11 +2933,11 @@ static MACHINE_DRIVER_START( mslider )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(mslider_readmem, mslider_writemem)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x150-1, 0, 0xf0-1)
 MACHINE_DRIVER_END
 
@@ -2946,11 +2946,11 @@ static MACHINE_DRIVER_START( ryorioh )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(ryorioh_readmem, ryorioh_writemem)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x150-1, 0, 0xf0-1)
 MACHINE_DRIVER_END
 
@@ -2959,11 +2959,11 @@ static MACHINE_DRIVER_START( srmp4 )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(srmp4_readmem, srmp4_writemem)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x150-1, 4, 0xf4-1)
 MACHINE_DRIVER_END
 
@@ -2972,11 +2972,11 @@ static MACHINE_DRIVER_START( srmp7 )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(srmp7_readmem, srmp7_writemem)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x150-1, 0, 0xf0-1)
 MACHINE_DRIVER_END
 
@@ -2985,12 +2985,12 @@ static MACHINE_DRIVER_START( stmblade )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(drifto94_readmem, drifto94_writemem)
 
 	MDRV_NVRAM_HANDLER(ssv)
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x158-1, 0, 0xf0-1)
 MACHINE_DRIVER_END
 
@@ -2999,11 +2999,11 @@ static MACHINE_DRIVER_START( survarts )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(survarts_readmem, survarts_writemem)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x150-1, 4, 0xf4-1)
 MACHINE_DRIVER_END
 
@@ -3011,7 +3011,7 @@ static MACHINE_DRIVER_START( dynagear )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(survarts)
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(8, 0x158-16-1, 0, 0xf0-1)
 MACHINE_DRIVER_END
 
@@ -3020,13 +3020,13 @@ static MACHINE_DRIVER_START( eaglshot )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(eaglshot_readmem, eaglshot_writemem)
 
 	MDRV_NVRAM_HANDLER(ssv)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x140-1, 8, 0xe8-1)
 
 	MDRV_GFXDECODE(eaglshot)
@@ -3039,13 +3039,13 @@ static MACHINE_DRIVER_START( sxyreact )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(sxyreact_readmem, sxyreact_writemem)
 
 	MDRV_NVRAM_HANDLER(ssv)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x150-1, 0, 0xf0-1)
 MACHINE_DRIVER_END
 
@@ -3054,11 +3054,11 @@ static MACHINE_DRIVER_START( twineag2 )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(twineag2_readmem, twineag2_writemem)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x150-1, 0, 0xf0-1)
 MACHINE_DRIVER_END
 
@@ -3067,11 +3067,11 @@ static MACHINE_DRIVER_START( ultrax )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(ultrax_readmem, ultrax_writemem)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x150-1, 0, 0xf0-1)
 MACHINE_DRIVER_END
 
@@ -3079,14 +3079,14 @@ static MACHINE_DRIVER_START( jsk )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ssv)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(jsk_readmem, jsk_writemem)
 
 	MDRV_CPU_ADD("sub", V810,25000000)
 	MDRV_CPU_PROGRAM_MAP(jsk_v810_mem, 0)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x150-1, 0, 0xf0-1)
 MACHINE_DRIVER_END
 

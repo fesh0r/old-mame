@@ -55,9 +55,10 @@ Notes:
 */
 
 #include "driver.h"
-#include "video/ppu2c0x.h"
-#include "sound/nes_apu.h"
 #include "cpu/m6502/m6502.h"
+#include "sound/dac.h"
+#include "sound/nes_apu.h"
+#include "video/ppu2c0x.h"
 
 static WRITE8_HANDLER( sprite_dma_w )
 {
@@ -65,19 +66,19 @@ static WRITE8_HANDLER( sprite_dma_w )
 	ppu2c0x_spriteram_dma( space, 0, source );
 }
 
-static READ8_HANDLER( psg_4015_r )
+static READ8_DEVICE_HANDLER( psg_4015_r )
 {
-	return nes_psg_0_r(space,0x15);
+	return nes_psg_r(device,0x15);
 }
 
-static WRITE8_HANDLER( psg_4015_w )
+static WRITE8_DEVICE_HANDLER( psg_4015_w )
 {
-	nes_psg_0_w(space,0x15, data);
+	nes_psg_w(device,0x15, data);
 }
 
-static WRITE8_HANDLER( psg_4017_w )
+static WRITE8_DEVICE_HANDLER( psg_4017_w )
 {
-	nes_psg_0_w(space,0x17, data);
+	nes_psg_w(device,0x17, data);
 }
 
 static UINT32 in_0;
@@ -123,7 +124,7 @@ static WRITE8_HANDLER( cham24_mapper_w )
 	UINT32 prg_bank_page_size = (offset >> 12) & 0x01;
 	UINT32 gfx_mirroring = (offset >> 13) & 0x01;
 
-	UINT8* dst = memory_region( space->machine, "main" );
+	UINT8* dst = memory_region( space->machine, "maincpu" );
 	UINT8* src = memory_region( space->machine, "user1" );
 
 	// switch PPU VROM bank
@@ -158,11 +159,11 @@ static WRITE8_HANDLER( cham24_mapper_w )
 static ADDRESS_MAP_START( cham24_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM	/* NES RAM */
 	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(ppu2c0x_0_r, ppu2c0x_0_w)
-	AM_RANGE(0x4000, 0x4013) AM_READWRITE(nes_psg_0_r, nes_psg_0_w)			/* PSG primary registers */
+	AM_RANGE(0x4000, 0x4013) AM_DEVREADWRITE("nes", nes_psg_r, nes_psg_w)			/* PSG primary registers */
 	AM_RANGE(0x4014, 0x4014) AM_WRITE(sprite_dma_w)
-	AM_RANGE(0x4015, 0x4015) AM_READWRITE(psg_4015_r, psg_4015_w)			/* PSG status / first control register */
+	AM_RANGE(0x4015, 0x4015) AM_DEVREADWRITE("nes", psg_4015_r, psg_4015_w)			/* PSG status / first control register */
 	AM_RANGE(0x4016, 0x4016) AM_READWRITE(cham24_IN0_r,        cham24_IN0_w)			/* IN0 - input port 1 */
-	AM_RANGE(0x4017, 0x4017) AM_READWRITE(cham24_IN1_r,        psg_4017_w)		/* IN1 - input port 2 / PSG second control register */
+	AM_RANGE(0x4017, 0x4017) AM_READ(cham24_IN1_r) AM_DEVWRITE("nes", psg_4017_w)		/* IN1 - input port 2 / PSG second control register */
 	AM_RANGE(0x8000, 0xffff) AM_ROM AM_WRITE(cham24_mapper_w)
 ADDRESS_MAP_END
 
@@ -191,13 +192,13 @@ INPUT_PORTS_END
 
 static const nes_interface cham24_interface_1 =
 {
-	"main"
+	"maincpu"
 };
 
 static MACHINE_RESET( cham24 )
 {
 	/* switch PRG rom */
-	UINT8* dst = memory_region( machine, "main" );
+	UINT8* dst = memory_region( machine, "maincpu" );
 	UINT8* src = memory_region( machine, "user1" );
 
 	memcpy( &dst[0x8000], &src[0x0f8000], 0x4000 );
@@ -252,13 +253,13 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( cham24 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", N2A03, N2A03_DEFAULTCLOCK)
+	MDRV_CPU_ADD("maincpu", N2A03, N2A03_DEFAULTCLOCK)
 	MDRV_CPU_PROGRAM_MAP(cham24_map, 0)
 
 	MDRV_MACHINE_RESET( cham24 )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 262)
@@ -283,7 +284,7 @@ static MACHINE_DRIVER_START( cham24 )
 MACHINE_DRIVER_END
 
 ROM_START( cham24 )
-	ROM_REGION(0x10000, "main", ROMREGION_ERASE00)
+	ROM_REGION(0x10000, "maincpu", ROMREGION_ERASE00)
 
 	ROM_REGION(0x100000, "user1", 0)
 	ROM_LOAD( "24-2.u2", 0x000000, 0x100000, CRC(686e9d05) SHA1(a55b9850a4b47f1b4495710e71534ca0287b05ee) )

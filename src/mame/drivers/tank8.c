@@ -44,53 +44,53 @@ static WRITE8_HANDLER( tank8_int_reset_w )
 	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
 }
 
-static WRITE8_HANDLER( tank8_crash_w )
+static WRITE8_DEVICE_HANDLER( tank8_crash_w )
 {
-	discrete_sound_w(space, TANK8_CRASH_EN, data);
+	discrete_sound_w(device, TANK8_CRASH_EN, data);
 }
 
-static WRITE8_HANDLER( tank8_explosion_w )
+static WRITE8_DEVICE_HANDLER( tank8_explosion_w )
 {
-	discrete_sound_w(space, TANK8_EXPLOSION_EN, data);
+	discrete_sound_w(device, TANK8_EXPLOSION_EN, data);
 }
 
-static WRITE8_HANDLER( tank8_bugle_w )
+static WRITE8_DEVICE_HANDLER( tank8_bugle_w )
 {
-	discrete_sound_w(space, TANK8_BUGLE_EN, data);
+	discrete_sound_w(device, TANK8_BUGLE_EN, data);
 }
 
-static WRITE8_HANDLER( tank8_bug_w )
+static WRITE8_DEVICE_HANDLER( tank8_bug_w )
 {
 	/* D0 and D1 determine the on/off time off the square wave */
 	switch(data & 3) {
 		case 0:
-			discrete_sound_w(space, TANK8_BUGLE_DATA1,8.0);
-			discrete_sound_w(space, TANK8_BUGLE_DATA2,4.0);
+			discrete_sound_w(device, TANK8_BUGLE_DATA1,8.0);
+			discrete_sound_w(device, TANK8_BUGLE_DATA2,4.0);
 			break;
 		case 1:
-			discrete_sound_w(space, TANK8_BUGLE_DATA1,8.0);
-			discrete_sound_w(space, TANK8_BUGLE_DATA2,7.0);
+			discrete_sound_w(device, TANK8_BUGLE_DATA1,8.0);
+			discrete_sound_w(device, TANK8_BUGLE_DATA2,7.0);
 			break;
 		case 2:
-			discrete_sound_w(space, TANK8_BUGLE_DATA1,8.0);
-			discrete_sound_w(space, TANK8_BUGLE_DATA2,2.0);
+			discrete_sound_w(device, TANK8_BUGLE_DATA1,8.0);
+			discrete_sound_w(device, TANK8_BUGLE_DATA2,2.0);
 			break;
 		case 3:
-			discrete_sound_w(space, TANK8_BUGLE_DATA1,16.0);
-			discrete_sound_w(space, TANK8_BUGLE_DATA2,4.0);
+			discrete_sound_w(device, TANK8_BUGLE_DATA1,16.0);
+			discrete_sound_w(device, TANK8_BUGLE_DATA2,4.0);
 			break;
 	}
 
 }
 
-static WRITE8_HANDLER( tank8_attract_w )
+static WRITE8_DEVICE_HANDLER( tank8_attract_w )
 {
-	discrete_sound_w(space, TANK8_ATTRACT_EN, data);
+	discrete_sound_w(device, TANK8_ATTRACT_EN, data);
 }
 
-static WRITE8_HANDLER( tank8_motor_w )
+static WRITE8_DEVICE_HANDLER( tank8_motor_w )
 {
-	discrete_sound_w(space, NODE_RELATIVE(TANK8_MOTOR1_EN, offset), data);
+	discrete_sound_w(device, NODE_RELATIVE(TANK8_MOTOR1_EN, offset), data);
 }
 
 static ADDRESS_MAP_START( tank8_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -120,13 +120,13 @@ static ADDRESS_MAP_START( tank8_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x1c30, 0x1c37) AM_WRITE(tank8_lockout_w)
 	AM_RANGE(0x1d00, 0x1d00) AM_WRITE(tank8_int_reset_w)
-	AM_RANGE(0x1d01, 0x1d01) AM_WRITE(tank8_crash_w)
-	AM_RANGE(0x1d02, 0x1d02) AM_WRITE(tank8_explosion_w)
-	AM_RANGE(0x1d03, 0x1d03) AM_WRITE(tank8_bugle_w)
-	AM_RANGE(0x1d04, 0x1d04) AM_WRITE(tank8_bug_w)
+	AM_RANGE(0x1d01, 0x1d01) AM_DEVWRITE("discrete", tank8_crash_w)
+	AM_RANGE(0x1d02, 0x1d02) AM_DEVWRITE("discrete", tank8_explosion_w)
+	AM_RANGE(0x1d03, 0x1d03) AM_DEVWRITE("discrete", tank8_bugle_w)
+	AM_RANGE(0x1d04, 0x1d04) AM_DEVWRITE("discrete", tank8_bug_w)
 	AM_RANGE(0x1d05, 0x1d05) AM_WRITE(SMH_RAM) AM_BASE(&tank8_team)
-	AM_RANGE(0x1d06, 0x1d06) AM_WRITE(tank8_attract_w)
-	AM_RANGE(0x1e00, 0x1e07) AM_WRITE(tank8_motor_w)
+	AM_RANGE(0x1d06, 0x1d06) AM_DEVWRITE("discrete", tank8_attract_w)
+	AM_RANGE(0x1e00, 0x1e07) AM_DEVWRITE("discrete", tank8_motor_w)
 
 ADDRESS_MAP_END
 
@@ -327,7 +327,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( tank8 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6800, 11055000 / 10) /* ? */
+	MDRV_CPU_ADD("maincpu", M6800, 11055000 / 10) /* ? */
 	MDRV_CPU_PROGRAM_MAP(tank8_cpu_map, 0)
 
 	MDRV_MACHINE_RESET(tank8)
@@ -335,7 +335,7 @@ static MACHINE_DRIVER_START( tank8 )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(30 * 1000000 / 15681))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -360,7 +360,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( tank8a )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "5071.c1",     0x10400, 0x0800, CRC(8e756e9e) BAD_DUMP SHA1(02ba64cae708967c39070b7e96085f41ed381fd4) )
 	ROM_LOAD( "5072.e1",     0x10c00, 0x0800, CRC(88d65e48) BAD_DUMP SHA1(377b3c9f838bd515f8ddb55feda44398e1922521) )
 	ROM_RELOAD(              0x1f800, 0x0800 )
@@ -383,7 +383,7 @@ ROM_END
 
 
 ROM_START( tank8b )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "5071.c1",     0x10400, 0x0800, CRC(8e756e9e) BAD_DUMP SHA1(02ba64cae708967c39070b7e96085f41ed381fd4) )
 	ROM_LOAD( "5072.e1",     0x10c00, 0x0800, CRC(88d65e48) BAD_DUMP SHA1(377b3c9f838bd515f8ddb55feda44398e1922521) )
 	ROM_RELOAD(              0x1f800, 0x0800 )
@@ -406,7 +406,7 @@ ROM_END
 
 
 ROM_START( tank8c )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "a05071.c1",   0x0400, 0x0800, /* wrong revision */ CRC(2211fb2c) SHA1(6d44d1e9c94a7cb364c8809445c015a6510b8c5f) )
 	ROM_LOAD( "a05072.e1",   0x0c00, 0x0800, CRC(d907b116) SHA1(290a77e6095d4ffc2365d784e74e115fe90617fb) )
 	ROM_RELOAD(              0xf800, 0x0800 )
@@ -425,7 +425,7 @@ ROM_END
 
 
 ROM_START( tank8d )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "a05071.c1",   0x0400, 0x0800, /* wrong revision */ CRC(2211fb2c) SHA1(6d44d1e9c94a7cb364c8809445c015a6510b8c5f) )
 	ROM_LOAD( "a05072.e1",   0x0c00, 0x0800, CRC(d907b116) SHA1(290a77e6095d4ffc2365d784e74e115fe90617fb) )
 	ROM_RELOAD(              0xf800, 0x0800 )
@@ -444,7 +444,7 @@ ROM_END
 
 
 ROM_START( tank8 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "b05475.c1",   0x0400, 0x0800, CRC(62a00e75) SHA1(58d80dc58bc2a4503348807db578348fc76a5349) )
 	ROM_LOAD( "a05072.e1",   0x0c00, 0x0800, CRC(d907b116) SHA1(290a77e6095d4ffc2365d784e74e115fe90617fb) )
 	ROM_RELOAD(              0xf800, 0x0800 )
@@ -466,8 +466,8 @@ static DRIVER_INIT( decode )
 {
 	const UINT8* DECODE = memory_region(machine, "user1");
 
-	UINT8* p1 = memory_region(machine, "main") + 0x00000;
-	UINT8* p2 = memory_region(machine, "main") + 0x10000;
+	UINT8* p1 = memory_region(machine, "maincpu") + 0x00000;
+	UINT8* p2 = memory_region(machine, "maincpu") + 0x10000;
 
 	int i;
 

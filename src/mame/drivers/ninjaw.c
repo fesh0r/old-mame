@@ -237,7 +237,7 @@ static INT32 banknum;
 
 static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr(machine,  10, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000 );
+	memory_set_bankptr(machine,  10, memory_region(machine, "audiocpu") + (banknum * 0x4000) + 0x10000 );
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
@@ -271,10 +271,11 @@ static READ16_HANDLER( ninjaw_sound_r )
 static int ninjaw_pandata[4];
 static WRITE8_HANDLER( ninjaw_pancontrol )
 {
-  offset = offset&3;
-  ninjaw_pandata[offset] = (float)data * (100.f / 255.0f);
-  //popmessage(" pan %02x %02x %02x %02x", ninjaw_pandata[0], ninjaw_pandata[1], ninjaw_pandata[2], ninjaw_pandata[3] );
-  flt_volume_set_volume(offset, ninjaw_pandata[offset] / 100.0);
+	static const char *fltname[] = { "2610.1.l", "2610.1.r", "2610.2.l", "2610.2.r" };
+	offset = offset&3;
+	ninjaw_pandata[offset] = (float)data * (100.f / 255.0f);
+	//popmessage(" pan %02x %02x %02x %02x", ninjaw_pandata[0], ninjaw_pandata[1], ninjaw_pandata[2], ninjaw_pandata[3] );
+	flt_volume_set_volume(devtag_get_device(space->machine, fltname[offset]), ninjaw_pandata[offset] / 100.0);
 }
 
 
@@ -409,9 +410,7 @@ static ADDRESS_MAP_START( z80_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK10)
 	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM)
-	AM_RANGE(0xe000, 0xe000) AM_READ(ym2610_status_port_0_a_r)
-	AM_RANGE(0xe001, 0xe001) AM_READ(ym2610_read_port_0_r)
-	AM_RANGE(0xe002, 0xe002) AM_READ(ym2610_status_port_0_b_r)
+	AM_RANGE(0xe000, 0xe003) AM_DEVREAD("ym", ym2610_r)
 	AM_RANGE(0xe200, 0xe200) AM_READ(SMH_NOP)
 	AM_RANGE(0xe201, 0xe201) AM_READ(taitosound_slave_comm_r)
 	AM_RANGE(0xea00, 0xea00) AM_READ(SMH_NOP)
@@ -420,10 +419,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( z80_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xdfff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xe000, 0xe000) AM_WRITE(ym2610_control_port_0_a_w)
-	AM_RANGE(0xe001, 0xe001) AM_WRITE(ym2610_data_port_0_a_w)
-	AM_RANGE(0xe002, 0xe002) AM_WRITE(ym2610_control_port_0_b_w)
-	AM_RANGE(0xe003, 0xe003) AM_WRITE(ym2610_data_port_0_b_w)
+	AM_RANGE(0xe000, 0xe003) AM_DEVWRITE("ym", ym2610_w)
 	AM_RANGE(0xe200, 0xe200) AM_WRITE(taitosound_slave_port_w)
 	AM_RANGE(0xe201, 0xe201) AM_WRITE(taitosound_slave_comm_w)
 	AM_RANGE(0xe400, 0xe403) AM_WRITE(ninjaw_pancontrol) /* pan */
@@ -569,9 +565,9 @@ GFXDECODE_END
 **************************************************************/
 
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -585,7 +581,7 @@ static const ym2610_interface ym2610_config =
 **************************************************************/
 
 #if 0
-static int subwoofer_sh_start(const sound_config *msound)
+static DEVICE_START( subwoofer )
 {
 	/* Adjust the lowpass filter of the first three YM2610 channels */
 
@@ -599,12 +595,20 @@ static int subwoofer_sh_start(const sound_config *msound)
 	return 0;
 }
 
-static const custom_sound_interface subwoofer_interface =
+static DEVICE_GET_INFO( subwoofer )
 {
-	subwoofer_sh_start,
-	0, /* none */
-	0 /* none */
-};
+	switch (state)
+	{
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(subwoofer);		break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Subwoofer");					break;
+		case DEVINFO_STR_SOURCE_FILE:						strcpy(info->s, __FILE__);						break;
+	}
+}
+
+#define SOUND_SUBWOOFER DEVICE_GET_INFO_NAME(subwoofer)
 #endif
 
 
@@ -621,16 +625,16 @@ Darius2: arbitrary interleaving of 10 to keep cpus synced.
 static MACHINE_DRIVER_START( ninjaw )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,16000000/2)	/* 8 MHz ? */
+	MDRV_CPU_ADD("maincpu", M68000,16000000/2)	/* 8 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(ninjaw_readmem,ninjaw_writemem)
-	MDRV_CPU_VBLANK_INT("left", irq4_line_hold)
+	MDRV_CPU_VBLANK_INT("lscreen", irq4_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,16000000/4)	/* 16/4 MHz ? */
+	MDRV_CPU_ADD("audiocpu", Z80,16000000/4)	/* 16/4 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(z80_sound_readmem,z80_sound_writemem)
 
 	MDRV_CPU_ADD("sub", M68000,16000000/2)	/* 8 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(ninjaw_cpub_readmem,ninjaw_cpub_writemem)
-	MDRV_CPU_VBLANK_INT("left", irq4_line_hold)
+	MDRV_CPU_VBLANK_INT("lscreen", irq4_line_hold)
 
 	MDRV_QUANTUM_TIME(HZ(6000))	/* CPU slices */
 
@@ -642,21 +646,21 @@ static MACHINE_DRIVER_START( ninjaw )
 	MDRV_PALETTE_LENGTH(4096*3)
 	MDRV_DEFAULT_LAYOUT(layout_darius)
 
-	MDRV_SCREEN_ADD("left", RASTER)
+	MDRV_SCREEN_ADD("lscreen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(36*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 3*8, 31*8-1)
 
-	MDRV_SCREEN_ADD("middle", RASTER)
+	MDRV_SCREEN_ADD("mscreen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(36*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 3*8, 31*8-1)
 
-	MDRV_SCREEN_ADD("right", RASTER)
+	MDRV_SCREEN_ADD("rscreen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
@@ -667,43 +671,43 @@ static MACHINE_DRIVER_START( ninjaw )
 	MDRV_VIDEO_UPDATE(ninjaw)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2610, 16000000/2)
 	MDRV_SOUND_CONFIG(ym2610_config)
-	MDRV_SOUND_ROUTE(0, "left",  0.25)
-	MDRV_SOUND_ROUTE(0, "right", 0.25)
+	MDRV_SOUND_ROUTE(0, "lspeaker",  0.25)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.25)
 	MDRV_SOUND_ROUTE(1, "2610.1.l", 1.0)
 	MDRV_SOUND_ROUTE(1, "2610.1.r", 1.0)
 	MDRV_SOUND_ROUTE(2, "2610.2.l", 1.0)
 	MDRV_SOUND_ROUTE(2, "2610.2.r", 1.0)
 
 	MDRV_SOUND_ADD("2610.1.l", FILTER_VOLUME, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 	MDRV_SOUND_ADD("2610.1.r", FILTER_VOLUME, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 	MDRV_SOUND_ADD("2610.2.l", FILTER_VOLUME, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 	MDRV_SOUND_ADD("2610.2.r", FILTER_VOLUME, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
-//  MDRV_SOUND_ADD("subwoofer", CUSTOM, subwoofer_interface)
+//  MDRV_SOUND_ADD("subwoofer", SUBWOOFER, 0)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( darius2 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,16000000/2)	/* 8 MHz ? */
+	MDRV_CPU_ADD("maincpu", M68000,16000000/2)	/* 8 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(darius2_readmem,darius2_writemem)
-	MDRV_CPU_VBLANK_INT("left", irq4_line_hold)
+	MDRV_CPU_VBLANK_INT("lscreen", irq4_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,16000000/4)	/* 4 MHz ? */
+	MDRV_CPU_ADD("audiocpu", Z80,16000000/4)	/* 4 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(z80_sound_readmem,z80_sound_writemem)
 
 	MDRV_CPU_ADD("sub", M68000,16000000/2)	/* 8 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(darius2_cpub_readmem,darius2_cpub_writemem)
-	MDRV_CPU_VBLANK_INT("left", irq4_line_hold)
+	MDRV_CPU_VBLANK_INT("lscreen", irq4_line_hold)
 
 	MDRV_QUANTUM_TIME(HZ(6000))	/* CPU slices */
 
@@ -715,21 +719,21 @@ static MACHINE_DRIVER_START( darius2 )
 	MDRV_PALETTE_LENGTH(4096*3)
 	MDRV_DEFAULT_LAYOUT(layout_darius)
 
-	MDRV_SCREEN_ADD("left", RASTER)
+	MDRV_SCREEN_ADD("lscreen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(36*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 3*8, 31*8-1)
 
-	MDRV_SCREEN_ADD("middle", RASTER)
+	MDRV_SCREEN_ADD("mscreen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(36*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 3*8, 31*8-1)
 
-	MDRV_SCREEN_ADD("right", RASTER)
+	MDRV_SCREEN_ADD("rscreen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
@@ -740,27 +744,27 @@ static MACHINE_DRIVER_START( darius2 )
 	MDRV_VIDEO_UPDATE(ninjaw)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2610, 16000000/2)
 	MDRV_SOUND_CONFIG(ym2610_config)
-	MDRV_SOUND_ROUTE(0, "left",  0.25)
-	MDRV_SOUND_ROUTE(0, "right", 0.25)
+	MDRV_SOUND_ROUTE(0, "lspeaker",  0.25)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.25)
 	MDRV_SOUND_ROUTE(1, "2610.1.l", 1.0)
 	MDRV_SOUND_ROUTE(1, "2610.1.r", 1.0)
 	MDRV_SOUND_ROUTE(2, "2610.2.l", 1.0)
 	MDRV_SOUND_ROUTE(2, "2610.2.r", 1.0)
 
 	MDRV_SOUND_ADD("2610.1.l", FILTER_VOLUME, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 	MDRV_SOUND_ADD("2610.1.r", FILTER_VOLUME, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 	MDRV_SOUND_ADD("2610.2.l", FILTER_VOLUME, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 	MDRV_SOUND_ADD("2610.2.r", FILTER_VOLUME, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
-//  MDRV_SOUND_ADD("subwoofer", CUSTOM, subwoofer_interface)
+//  MDRV_SOUND_ADD("subwoofer", SUBWOOFER, 0)
 MACHINE_DRIVER_END
 
 
@@ -769,7 +773,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( ninjaw )
-	ROM_REGION( 0xc0000, "main", 0 )	/* 256K for 68000 CPUA code */
+	ROM_REGION( 0xc0000, "maincpu", 0 )	/* 256K for 68000 CPUA code */
 	ROM_LOAD16_BYTE( "b31-45",    0x00000, 0x10000, CRC(107902c3) SHA1(026f71a918059e3374ae262304a2ee1270f5c5bd) )
 	ROM_LOAD16_BYTE( "b31-47",    0x00001, 0x10000, CRC(bd536b1e) SHA1(39c86cbb3a33fc77a0141b5648a1aca862e0a5fd) )
 	ROM_LOAD16_BYTE( "b31_29.34", 0x20000, 0x10000, CRC(f2941a37) SHA1(cf1f231d9caddc903116a8b654f49181ca459697) )
@@ -788,7 +792,7 @@ ROM_START( ninjaw )
 	ROM_LOAD16_BYTE( "b31_31.85", 0x40000, 0x10000, CRC(837f47e2) SHA1(88d596f01566456ba18a01afd0a6a7c121d3ca88) )
 	ROM_LOAD16_BYTE( "b31_34.95", 0x40001, 0x10000, CRC(d6b5fb2a) SHA1(e3ae0d7ec62740465a90e4939b10341d3866d860) )
 
-	ROM_REGION( 0x2c000, "audio", 0 )	/* sound cpu */
+	ROM_REGION( 0x2c000, "audiocpu", 0 )	/* sound cpu */
 	ROM_LOAD( "b31_37.11",  0x00000, 0x04000, CRC(0ca5799d) SHA1(6485dde076d15b69b9ee65880dda57ad4f8d129c) )
 	ROM_CONTINUE(           0x10000, 0x1c000 )  /* banked stuff */
 
@@ -825,7 +829,7 @@ ROM_START( ninjaw )
 ROM_END
 
 ROM_START( ninjawj )
-	ROM_REGION( 0xc0000, "main", 0 )	/* 256K for 68000 CPUA code */
+	ROM_REGION( 0xc0000, "maincpu", 0 )	/* 256K for 68000 CPUA code */
 	ROM_LOAD16_BYTE( "b31_30.35", 0x00000, 0x10000, CRC(056edd9f) SHA1(8922cede80b31ce0f7a00c8cab13d835464c6058) )
 	ROM_LOAD16_BYTE( "b31_28.32", 0x00001, 0x10000, CRC(cfa7661c) SHA1(a7a6abb33a514d910e3198d5acbd4c31b2434b6c) )
 	ROM_LOAD16_BYTE( "b31_29.34", 0x20000, 0x10000, CRC(f2941a37) SHA1(cf1f231d9caddc903116a8b654f49181ca459697) )
@@ -844,7 +848,7 @@ ROM_START( ninjawj )
 	ROM_LOAD16_BYTE( "b31_31.85", 0x40000, 0x10000, CRC(837f47e2) SHA1(88d596f01566456ba18a01afd0a6a7c121d3ca88) )
 	ROM_LOAD16_BYTE( "b31_34.95", 0x40001, 0x10000, CRC(d6b5fb2a) SHA1(e3ae0d7ec62740465a90e4939b10341d3866d860) )
 
-	ROM_REGION( 0x2c000, "audio", 0 )	/* sound cpu */
+	ROM_REGION( 0x2c000, "audiocpu", 0 )	/* sound cpu */
 	ROM_LOAD( "b31_37.11",  0x00000, 0x04000, CRC(0ca5799d) SHA1(6485dde076d15b69b9ee65880dda57ad4f8d129c) )
 	ROM_CONTINUE(           0x10000, 0x1c000 )  /* banked stuff */
 
@@ -881,7 +885,7 @@ ROM_START( ninjawj )
 ROM_END
 
 ROM_START( darius2 )
-	ROM_REGION( 0xc0000, "main", 0 )	/* 256K for 68000 CPUA code */
+	ROM_REGION( 0xc0000, "maincpu", 0 )	/* 256K for 68000 CPUA code */
 	ROM_LOAD16_BYTE( "c07-32-1", 0x00000, 0x10000, CRC(216c8f6a) SHA1(493b0779b99a228911f56ef9d2d4a3945683bec0) )
 	ROM_LOAD16_BYTE( "c07-29-1", 0x00001, 0x10000, CRC(48de567f) SHA1(cdf50052933cd2603fd4374e8bae8b30a6c690b5) )
 	ROM_LOAD16_BYTE( "c07-31-1", 0x20000, 0x10000, CRC(8279d2f8) SHA1(bd3c80a024a58e4b554f4867f56d7f5741eb3031) )
@@ -900,7 +904,7 @@ ROM_START( darius2 )
 	ROM_LOAD16_BYTE( "c07-33-1", 0x40000, 0x10000, CRC(2da03a3f) SHA1(f1f2de82e0addc5e19c8935e4f5810896691118f) )
 	ROM_LOAD16_BYTE( "c07-36-1", 0x40001, 0x10000, CRC(02cf2b1c) SHA1(c94a64f26f94f182cfe2b6edb37e4ce35a0f681b) )
 
-	ROM_REGION( 0x2c000, "audio", 0 )	/* sound cpu */
+	ROM_REGION( 0x2c000, "audiocpu", 0 )	/* sound cpu */
 	ROM_LOAD( "c07-28",  0x00000, 0x04000, CRC(da304bc5) SHA1(689b4f329d9a640145f82e12dff3dd1fcf8a28c8) )
 	ROM_CONTINUE(            0x10000, 0x1c000 )  /* banked stuff */
 

@@ -573,7 +573,7 @@ static WRITE8_HANDLER( key_type3_w )
 
 WRITE8_HANDLER( namcos1_sound_bankswitch_w )
 {
-	UINT8 *rom = memory_region(space->machine, "audio") + 0xc000;
+	UINT8 *rom = memory_region(space->machine, "audiocpu") + 0xc000;
 
 	int bank = (data & 0x70) >> 4;
 	memory_set_bankptr(space->machine, 17,rom + 0x4000 * bank);
@@ -627,7 +627,7 @@ static READ8_HANDLER( soundram_r )
 		offset &= 0x3ff;
 
 		/* CUS 30 */
-		return namcos1_cus30_r(space,offset);
+		return namcos1_cus30_r(devtag_get_device(space->machine, "namco"),offset);
 	}
 	else
 	{
@@ -645,7 +645,7 @@ static WRITE8_HANDLER( soundram_w )
 		offset &= 0x3ff;
 
 		/* CUS 30 */
-		namcos1_cus30_w(space,offset,data);
+		namcos1_cus30_w(devtag_get_device(space->machine, "namco"),offset,data);
 	}
 	else
 	{

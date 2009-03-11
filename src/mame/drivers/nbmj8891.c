@@ -56,9 +56,9 @@ TODO:
 
 #define SIGNED_DAC	0		// 0:unsigned DAC, 1:signed DAC
 #if SIGNED_DAC
-#define DAC_0_WRITE	dac_0_signed_data_w
+#define DAC_WRITE	dac_signed_w
 #else
-#define DAC_0_WRITE	dac_0_data_w
+#define DAC_WRITE	dac_w
 #endif
 
 
@@ -103,7 +103,7 @@ static DRIVER_INIT( omotesnd )
 #endif
 
 #if 1
-	UINT8 *ROM = memory_region(machine, "main");
+	UINT8 *ROM = memory_region(machine, "maincpu");
 
 	// Protection ROM check skip
 	ROM[0x0106] = 0x00;
@@ -175,7 +175,7 @@ static DRIVER_INIT( mgmen89 )
 static DRIVER_INIT( mjfocus )
 {
 	UINT8 *prot = memory_region(machine, "protection");
-	UINT8 *ram = memory_region(machine, "main") + 0xf800;
+	UINT8 *ram = memory_region(machine, "maincpu") + 0xf800;
 	int i;
 
 	/* need to clear RAM otherwise it doesn't boot... */
@@ -197,7 +197,7 @@ static DRIVER_INIT( mjfocus )
 static DRIVER_INIT( mjfocusm )
 {
 #if 1
-	UINT8 *ROM = memory_region(machine, "main");
+	UINT8 *ROM = memory_region(machine, "maincpu");
 
 	// Protection ROM check skip
 	ROM[0x014e] = 0x00;
@@ -209,7 +209,7 @@ static DRIVER_INIT( mjfocusm )
 
 static DRIVER_INIT( scandal )
 {
-	UINT8 *ROM = memory_region(machine, "main");
+	UINT8 *ROM = memory_region(machine, "maincpu");
 	int i;
 
 	for (i = 0xf800; i < 0x10000; i++) ROM[i] = 0x00;
@@ -229,7 +229,7 @@ static DRIVER_INIT( mjnanpas )
 	UINT8 *prot = memory_region(machine, "protection");
 	int i;
 
-	memory_region(machine, "main")[0x003d] = 0x01;	// force the protection check to be executed
+	memory_region(machine, "maincpu")[0x003d] = 0x01;	// force the protection check to be executed
 
 	/* this is one possible way to rearrange the protection ROM data to get the
        expected 0xfe1a checksum. It's probably completely wrong! But since the
@@ -521,12 +521,11 @@ static ADDRESS_MAP_START( writeport_gionbana, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x40, 0x40) AM_WRITE(nbmj8891_clutsel_w)
 	AM_RANGE(0x60, 0x60) AM_WRITE(nbmj8891_romsel_w)
 	AM_RANGE(0x70, 0x70) AM_WRITE(nbmj8891_scrolly_w)
-	AM_RANGE(0x80, 0x80) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0x81, 0x81) AM_WRITE(ym3812_write_port_0_w)
+	AM_RANGE(0x80, 0x81) AM_DEVWRITE("fm", ym3812_w)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
 //  AM_RANGE(0xc0, 0xc0) AM_WRITE(SMH_NOP)
-	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
+	AM_RANGE(0xd0, 0xd0) AM_DEVWRITE("dac", DAC_WRITE)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(nbmj8891_vramsel_w)
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(nb1413m3_outcoin_w)
 ADDRESS_MAP_END
@@ -538,12 +537,11 @@ static ADDRESS_MAP_START( writeport_mgion, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x40, 0x40) AM_WRITE(nbmj8891_clutsel_w)
 	AM_RANGE(0x60, 0x60) AM_WRITE(nbmj8891_romsel_w)
 	AM_RANGE(0x70, 0x70) AM_WRITE(nbmj8891_scrolly_w)
-	AM_RANGE(0x80, 0x80) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0x81, 0x81) AM_WRITE(ym3812_write_port_0_w)
+	AM_RANGE(0x80, 0x81) AM_DEVWRITE("fm", ym3812_w)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
 //  AM_RANGE(0xc0, 0xc0) AM_WRITE(SMH_NOP)
-	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
+	AM_RANGE(0xd0, 0xd0) AM_DEVWRITE("dac", DAC_WRITE)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(nbmj8891_vramsel_w)
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(nb1413m3_outcoin_w)
 ADDRESS_MAP_END
@@ -551,7 +549,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( readport_omotesnd, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x7f) AM_READ(nb1413m3_sndrom_r)
-	AM_RANGE(0x81, 0x81) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0x81, 0x81) AM_DEVREAD("fm", ay8910_r)
 	AM_RANGE(0x90, 0x90) AM_READ(nb1413m3_inputport0_r)
 	AM_RANGE(0xa0, 0xa0) AM_READ(nb1413m3_inputport1_r)
 	AM_RANGE(0xb0, 0xb0) AM_READ(nb1413m3_inputport2_r)
@@ -570,13 +568,12 @@ static ADDRESS_MAP_START( writeport_omotesnd, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x40, 0x4f) AM_WRITE(nbmj8891_clut_w)
 //  AM_RANGE(0x50, 0x50) AM_WRITE(nb1413m3_nmi_clock_w)
 	AM_RANGE(0x70, 0x70) AM_WRITE(nbmj8891_scrolly_w)
-	AM_RANGE(0x82, 0x82) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x83, 0x83) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x82, 0x83) AM_DEVWRITE("fm", ay8910_data_address_w)
 	AM_RANGE(0x90, 0x90) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
 AM_RANGE(0xc0, 0xc0) AM_WRITE(SMH_NOP)
-	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
+	AM_RANGE(0xd0, 0xd0) AM_DEVWRITE("dac", DAC_WRITE)
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(nb1413m3_outcoin_w)
 ADDRESS_MAP_END
 
@@ -587,12 +584,11 @@ static ADDRESS_MAP_START( writeport_hanamomo, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x40, 0x40) AM_WRITE(nbmj8891_clutsel_w)
 	AM_RANGE(0x60, 0x60) AM_WRITE(nbmj8891_romsel_w)
 	AM_RANGE(0x70, 0x70) AM_WRITE(nbmj8891_scrolly_w)
-	AM_RANGE(0x80, 0x80) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0x81, 0x81) AM_WRITE(ym3812_write_port_0_w)
+	AM_RANGE(0x80, 0x81) AM_DEVWRITE("fm", ym3812_w)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
 //  AM_RANGE(0xc0, 0xc0) AM_WRITE(SMH_NOP)
-	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
+	AM_RANGE(0xd0, 0xd0) AM_DEVWRITE("dac", DAC_WRITE)
 //  AM_RANGE(0xe0, 0xe0) AM_WRITE(SMH_NOP)
 //  AM_RANGE(0xf0, 0xf0) AM_WRITE(SMH_NOP)
 ADDRESS_MAP_END
@@ -604,12 +600,11 @@ static ADDRESS_MAP_START( writeport_msjiken, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x50, 0x57) AM_WRITE(nbmj8891_blitter_w)
 	AM_RANGE(0x60, 0x60) AM_WRITE(nbmj8891_romsel_w)
 	AM_RANGE(0x70, 0x70) AM_WRITE(nbmj8891_scrolly_w)
-	AM_RANGE(0x80, 0x80) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0x81, 0x81) AM_WRITE(ym3812_write_port_0_w)
+	AM_RANGE(0x80, 0x81) AM_DEVWRITE("fm", ym3812_w)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
 //  AM_RANGE(0xc0, 0xc0) AM_WRITE(SMH_NOP)
-	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
+	AM_RANGE(0xd0, 0xd0) AM_DEVWRITE("dac", DAC_WRITE)
 //  AM_RANGE(0xe0, 0xe0) AM_WRITE(SMH_NOP)
 //  AM_RANGE(0xf0, 0xf0) AM_WRITE(SMH_NOP)
 ADDRESS_MAP_END
@@ -621,12 +616,11 @@ static ADDRESS_MAP_START( writeport_scandal, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x10, 0x10) AM_WRITE(nbmj8891_romsel_w)
 	AM_RANGE(0x20, 0x20) AM_WRITE(nbmj8891_clutsel_w)
 	AM_RANGE(0x50, 0x50) AM_WRITE(nbmj8891_scrolly_w)
-	AM_RANGE(0x80, 0x80) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0x81, 0x81) AM_WRITE(ym3812_write_port_0_w)
+	AM_RANGE(0x80, 0x81) AM_DEVWRITE("fm", ym3812_w)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
 	AM_RANGE(0xc0, 0xc0) AM_WRITE(nb1413m3_nmi_clock_w)
-	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
+	AM_RANGE(0xd0, 0xd0) AM_DEVWRITE("dac", DAC_WRITE)
 //  AM_RANGE(0xe0, 0xe0) AM_WRITE(SMH_NOP)
 //  AM_RANGE(0xf0, 0xf0) AM_WRITE(SMH_NOP)
 ADDRESS_MAP_END
@@ -634,7 +628,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( readport_scandalm, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x7f) AM_READ(nb1413m3_sndrom_r)
-	AM_RANGE(0x81, 0x81) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0x81, 0x81) AM_DEVREAD("fm", ay8910_r)
 	AM_RANGE(0x90, 0x90) AM_READ(nb1413m3_inputport0_r)
 	AM_RANGE(0xa0, 0xa0) AM_READ(nb1413m3_inputport1_r)
 	AM_RANGE(0xb0, 0xb0) AM_READ(nb1413m3_inputport2_r)
@@ -650,12 +644,11 @@ static ADDRESS_MAP_START( writeport_scandalm, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x10, 0x10) AM_WRITE(nbmj8891_romsel_w)
 	AM_RANGE(0x20, 0x20) AM_WRITE(nbmj8891_clutsel_w)
 	AM_RANGE(0x50, 0x50) AM_WRITE(nbmj8891_scrolly_w)
-	AM_RANGE(0x82, 0x82) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x83, 0x83) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x82, 0x83) AM_DEVWRITE("fm", ay8910_data_address_w)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
 	AM_RANGE(0xc0, 0xc0) AM_WRITE(nb1413m3_nmi_clock_w)
-	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
+	AM_RANGE(0xd0, 0xd0) AM_DEVWRITE("dac", DAC_WRITE)
 //  AM_RANGE(0xe0, 0xe0) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(nb1413m3_outcoin_w)
 ADDRESS_MAP_END
@@ -668,12 +661,11 @@ static ADDRESS_MAP_START( writeport_bananadr, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x20, 0x20) AM_WRITE(nbmj8891_clutsel_w)
 	AM_RANGE(0x30, 0x30) AM_WRITE(nbmj8891_vramsel_w)
 	AM_RANGE(0x50, 0x50) AM_WRITE(nbmj8891_scrolly_w)
-	AM_RANGE(0x80, 0x80) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0x81, 0x81) AM_WRITE(ym3812_write_port_0_w)
+	AM_RANGE(0x80, 0x81) AM_DEVWRITE("fm", ym3812_w)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
 	AM_RANGE(0xc0, 0xc0) AM_WRITE(nb1413m3_nmi_clock_w)
-	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
+	AM_RANGE(0xd0, 0xd0) AM_DEVWRITE("dac", DAC_WRITE)
 //  AM_RANGE(0xe0, 0xe0) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(nb1413m3_outcoin_w)
 ADDRESS_MAP_END
@@ -696,12 +688,11 @@ static ADDRESS_MAP_START( writeport_lovehous, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x50, 0x57) AM_WRITE(nbmj8891_blitter_w)
 	AM_RANGE(0x60, 0x60) AM_WRITE(nbmj8891_romsel_w)
 	AM_RANGE(0x70, 0x70) AM_WRITE(nbmj8891_scrolly_w)
-	AM_RANGE(0x80, 0x80) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0x81, 0x81) AM_WRITE(ym3812_write_port_0_w)
+	AM_RANGE(0x80, 0x81) AM_DEVWRITE("fm", ym3812_w)
 //  AM_RANGE(0x90, 0x90) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
-	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
+	AM_RANGE(0xd0, 0xd0) AM_DEVWRITE("dac", DAC_WRITE)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(nbmj8891_vramsel_w)
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(nb1413m3_outcoin_w)
 ADDRESS_MAP_END
@@ -724,12 +715,11 @@ static ADDRESS_MAP_START( writeport_maiko, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x50, 0x57) AM_WRITE(nbmj8891_blitter_w)
 	AM_RANGE(0x60, 0x60) AM_WRITE(nbmj8891_romsel_w)
 	AM_RANGE(0x70, 0x70) AM_WRITE(nbmj8891_scrolly_w)
-	AM_RANGE(0x80, 0x80) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0x81, 0x81) AM_WRITE(ym3812_write_port_0_w)
+	AM_RANGE(0x80, 0x81) AM_DEVWRITE("fm", ym3812_w)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
 //  AM_RANGE(0xc0, 0xc0) AM_WRITE(SMH_NOP)
-	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
+	AM_RANGE(0xd0, 0xd0) AM_DEVWRITE("dac", DAC_WRITE)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(nbmj8891_vramsel_w)
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(nb1413m3_outcoin_w)
 ADDRESS_MAP_END
@@ -737,7 +727,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( readport_taiwanmb, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x7f) AM_READ(nb1413m3_sndrom_r)
-	AM_RANGE(0x81, 0x81) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0x81, 0x81) AM_DEVREAD("fm", ay8910_r)
 	AM_RANGE(0x90, 0x90) AM_READ(nb1413m3_inputport0_r)
 	AM_RANGE(0xa0, 0xa0) AM_READ(nb1413m3_inputport1_r)
 	AM_RANGE(0xb0, 0xb0) AM_READ(nb1413m3_inputport2_r)
@@ -750,13 +740,12 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport_taiwanmb, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x82, 0x82) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x83, 0x83) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x82, 0x83) AM_DEVWRITE("fm", ay8910_data_address_w)
 //  AM_RANGE(0x90, 0x90) AM_WRITE(SMH_NOP)                     // ?
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(nb1413m3_sndrombank1_w)
 //  AM_RANGE(0xc0, 0xc0) AM_WRITE(SMH_NOP)                     // ?
-	AM_RANGE(0xd0, 0xd0) AM_WRITE(DAC_0_WRITE)
+	AM_RANGE(0xd0, 0xd0) AM_DEVWRITE("dac", DAC_WRITE)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(nbmj8891_taiwanmb_gfxdraw_w)	// blitter draw start
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(nb1413m3_outcoin_w)
 ADDRESS_MAP_END
@@ -2708,10 +2697,10 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_0_r,		// DIPSW-A read
-	input_port_1_r,		// DIPSW-B read
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("DSWA"),
+	DEVCB_INPUT_PORT("DSWB"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -2720,16 +2709,16 @@ static const ay8910_interface ay8910_config =
 static MACHINE_DRIVER_START( gionbana )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 20000000/4)	/* 5.00 MHz ? */
+	MDRV_CPU_ADD("maincpu", Z80, 20000000/4)	/* 5.00 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(readmem_gionbana, writemem_gionbana)
 	MDRV_CPU_IO_MAP(readport_gionbana, writeport_gionbana)
 //  MDRV_CPU_VBLANK_INT_HACK(nb1413m3_interrupt, 132)    // nmiclock = 60
-	MDRV_CPU_VBLANK_INT("main", nb1413m3_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", nb1413m3_interrupt)
 
 	MDRV_MACHINE_RESET(nb1413m3)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -2744,7 +2733,7 @@ static MACHINE_DRIVER_START( gionbana )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD("3812", YM3812, 2500000)
+	MDRV_SOUND_ADD("fm", YM3812, 2500000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	MDRV_SOUND_ADD("dac", DAC, 0)
@@ -2756,7 +2745,7 @@ static MACHINE_DRIVER_START( mgion )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gionbana)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(readmem_hanamomo,writemem_mgion)
 	MDRV_CPU_IO_MAP(readport_gionbana,writeport_mgion)
 
@@ -2768,14 +2757,14 @@ static MACHINE_DRIVER_START( omotesnd )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gionbana)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(readmem_omotesnd,writemem_omotesnd)
 	MDRV_CPU_IO_MAP(readport_omotesnd,writeport_omotesnd)
 
 	MDRV_NVRAM_HANDLER(nb1413m3)
 
 	/* sound hardware */
-	MDRV_SOUND_REPLACE("3812", AY8910, 1250000)
+	MDRV_SOUND_REPLACE("fm", AY8910, 1250000)
 	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.35)
 MACHINE_DRIVER_END
@@ -2786,14 +2775,14 @@ static MACHINE_DRIVER_START( mjcamerb )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gionbana)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(readport_gionbana, writeport_hanamomo)
 //  MDRV_CPU_VBLANK_INT_HACK(nb1413m3_interrupt, 142)    // ?
 
 	MDRV_NVRAM_HANDLER(nb1413m3)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 512-1, 16, 240-1)
 	MDRV_VIDEO_START(nbmj8891_1layer)
 MACHINE_DRIVER_END
@@ -2802,14 +2791,14 @@ static MACHINE_DRIVER_START( mmcamera )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gionbana)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(readport_gionbana, writeport_hanamomo)
 //  MDRV_CPU_VBLANK_INT_HACK(nb1413m3_interrupt, 128)
 
 	MDRV_NVRAM_HANDLER(nb1413m3)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 512-1, 16, 240-1)
 	MDRV_VIDEO_START(nbmj8891_1layer)
 MACHINE_DRIVER_END
@@ -2818,13 +2807,13 @@ static MACHINE_DRIVER_START( hanamomo )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gionbana)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(readmem_hanamomo, writemem_hanamomo)
 	MDRV_CPU_IO_MAP(readport_gionbana, writeport_hanamomo)
 //  MDRV_CPU_VBLANK_INT_HACK(nb1413m3_interrupt, 128)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 512-1, 16, 240-1)
 	MDRV_VIDEO_START(nbmj8891_1layer)
 MACHINE_DRIVER_END
@@ -2834,7 +2823,7 @@ static MACHINE_DRIVER_START( msjiken )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(hanamomo)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(readmem_gionbana, writemem_gionbana)
 	MDRV_CPU_IO_MAP(readport_gionbana, writeport_msjiken)
 //  MDRV_CPU_VBLANK_INT_HACK(nb1413m3_interrupt, 142)    // nmiclock = 70
@@ -2847,7 +2836,7 @@ static MACHINE_DRIVER_START( telmahjn )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gionbana)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 //  MDRV_CPU_VBLANK_INT_HACK(nb1413m3_interrupt, 142)    // nmiclock = 70
 
 	/* video hardware */
@@ -2859,7 +2848,7 @@ static MACHINE_DRIVER_START( mgmen89 )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(telmahjn)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 //  MDRV_CPU_VBLANK_INT_HACK(nb1413m3_interrupt, 128)
 MACHINE_DRIVER_END
 
@@ -2880,7 +2869,7 @@ static MACHINE_DRIVER_START( mjnanpas )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gionbana)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(readmem_club90s, writemem_club90s)
 MACHINE_DRIVER_END
 
@@ -2889,7 +2878,7 @@ static MACHINE_DRIVER_START( maiko )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mjnanpas)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(readmem_maiko, writemem_maiko)
 	MDRV_CPU_IO_MAP(readport_maiko, writeport_maiko)
 MACHINE_DRIVER_END
@@ -2899,7 +2888,7 @@ static MACHINE_DRIVER_START( mmaiko )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(maiko)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(readmem_maiko, writemem_mmaiko)
 
 	MDRV_NVRAM_HANDLER(nb1413m3)
@@ -2910,7 +2899,7 @@ static MACHINE_DRIVER_START( lovehous )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mjnanpas)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(readmem_lovehous, writemem_lovehous)
 	MDRV_CPU_IO_MAP(readport_lovehous, writeport_lovehous)
 
@@ -2922,7 +2911,7 @@ static MACHINE_DRIVER_START( hanaoji )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(maiko)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(readmem_hanaoji, writemem_hanaoji)
 
 	MDRV_NVRAM_HANDLER(nb1413m3)
@@ -2932,7 +2921,7 @@ static MACHINE_DRIVER_START( hnxmasev )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(maiko)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(hnxmasev_mem, 0)
 	MDRV_CPU_IO_MAP(readport_maiko, writeport_maiko)
 MACHINE_DRIVER_END
@@ -2941,7 +2930,7 @@ static MACHINE_DRIVER_START( hnageman )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(maiko)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(hnageman_mem, 0)
 	MDRV_CPU_IO_MAP(readport_maiko, writeport_maiko)
 MACHINE_DRIVER_END
@@ -2950,7 +2939,7 @@ static MACHINE_DRIVER_START( scandal )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(hanamomo)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(readmem_scandalm, writemem_scandalm)
 	MDRV_CPU_IO_MAP(readport_gionbana, writeport_scandal)
 MACHINE_DRIVER_END
@@ -2960,7 +2949,7 @@ static MACHINE_DRIVER_START( bananadr )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mjnanpas)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(readmem_scandalm, writemem_scandalm)
 	MDRV_CPU_IO_MAP(readport_gionbana, writeport_bananadr)
 
@@ -2973,7 +2962,7 @@ static MACHINE_DRIVER_START( mjfocusm )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gionbana)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(readmem_scandalm, writemem_scandalm)
 	MDRV_CPU_IO_MAP(readport_scandalm, writeport_scandalm)
 //  MDRV_CPU_VBLANK_INT_HACK(nb1413m3_interrupt, 128)
@@ -2981,12 +2970,12 @@ static MACHINE_DRIVER_START( mjfocusm )
 	MDRV_NVRAM_HANDLER(nb1413m3)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 512-1, 16, 240-1)
 	MDRV_VIDEO_START(nbmj8891_1layer)
 
 	/* sound hardware */
-	MDRV_SOUND_REPLACE("3812", AY8910, 1250000)
+	MDRV_SOUND_REPLACE("fm", AY8910, 1250000)
 	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.35)
 MACHINE_DRIVER_END
@@ -2996,20 +2985,20 @@ static MACHINE_DRIVER_START( taiwanmb )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gionbana)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(readmem_taiwanmb, writemem_taiwanmb)
 	MDRV_CPU_IO_MAP(readport_taiwanmb, writeport_taiwanmb)
-//  MDRV_CPU_VBLANK_INT("main", nb1413m3_interrupt)
+//  MDRV_CPU_VBLANK_INT("screen", nb1413m3_interrupt)
 
 	MDRV_NVRAM_HANDLER(nb1413m3)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 512-1, 16, 240-1)
 	MDRV_VIDEO_START(nbmj8891_1layer)
 
 	/* sound hardware */
-	MDRV_SOUND_REPLACE("3812", AY8910, 1250000)
+	MDRV_SOUND_REPLACE("fm", AY8910, 1250000)
 	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.35)
 MACHINE_DRIVER_END
@@ -3017,7 +3006,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( gionbana )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "gion_03.bin", 0x00000, 0x10000, CRC(615e993b) SHA1(6efda8d1f0d5be6418a73dd86b898bb518de3f8b) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3043,7 +3032,7 @@ ROM_START( gionbana )
 ROM_END
 
 ROM_START( mgion )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "3.3h",   0x00000, 0x10000, CRC(ec8f5b5f) SHA1(895ea15a1d8fe88d94932273d1df2e535b5d1d58) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3070,7 +3059,7 @@ ROM_START( mgion )
 ROM_END
 
 ROM_START( omotesnd )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "10.4h", 0x00000, 0x10000, CRC(8b9856f6) SHA1(f2687ec47e2006af97e1119d9504eb505d3f9e42) )
 
 	ROM_REGION( 0x10000, "voice", 0 ) /* voice */
@@ -3091,7 +3080,7 @@ ROM_START( omotesnd )
 ROM_END
 
 ROM_START( abunai )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "1.3h",   0x00000, 0x10000, CRC(8ed2119f) SHA1(e77ad936657dc733a2ab5ed69e5ec387cb7e8b23) )
 
 	ROM_REGION( 0x10000, "voice", ROMREGION_ERASE00 ) /* voice */
@@ -3115,7 +3104,7 @@ ROM_START( abunai )
 ROM_END
 
 ROM_START( hanamomo )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "hmog_21.bin", 0x00000, 0x10000, CRC(5b59d413) SHA1(9f7b7fe9f50a88958f8f7d819fb7fb4275f43260) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3146,7 +3135,7 @@ ROM_START( hanamomo )
 ROM_END
 
 ROM_START( hanamomb )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "21.bin",      0x00000, 0x10000, CRC(d75920b9) SHA1(7504c5d1774c8c98513ada881472145e4dd23a98) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3177,7 +3166,7 @@ ROM_START( hanamomb )
 ROM_END
 
 ROM_START( msjiken )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "msjn_11.bin",  0x00000, 0x10000, CRC(723499ef) SHA1(ae709e992372c00791e50932ba59456d3dcbc84b) )
 
 	ROM_REGION( 0x10000, "voice", 0 ) /* voice */
@@ -3204,7 +3193,7 @@ ROM_START( msjiken )
 ROM_END
 
 ROM_START( telmahjn )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "telm_03.bin", 0x00000, 0x10000, CRC(851bff09) SHA1(850c0cf58646dfe49df68e607e8461a6e98c2137) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3234,7 +3223,7 @@ ROM_START( telmahjn )
 ROM_END
 
 ROM_START( mgmen89 )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "mg89_03.bin", 0x00000, 0x10000, CRC(1ac5cd84) SHA1(15cdfb95b586bd037c9584808911c6f38ed5eace) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3262,7 +3251,7 @@ ROM_START( mgmen89 )
 ROM_END
 
 ROM_START( mjfocus )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "2_3h",   0x00000, 0x10000, CRC(fd88b3e6) SHA1(3cb47cfaba421d8539268db353735174809d1506) )
 
 	ROM_REGION( 0x10000, "voice", 0 ) /* voice */
@@ -3296,7 +3285,7 @@ ROM_START( mjfocus )
 ROM_END
 
 ROM_START( mjfocusm )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "mfcs_02m.bin", 0x00000, 0x10000, CRC(409d4f0b) SHA1(c19196e8315337a075d44f0814630fb820688788) )
 
 	ROM_REGION( 0x10000, "voice", 0 ) /* voice */
@@ -3326,7 +3315,7 @@ ROM_START( mjfocusm )
 ROM_END
 
 ROM_START( peepshow )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "2.3h",   0x00000, 0x10000, CRC(8db1746c) SHA1(2735988352a831537efeb369a52f041c6c2d47b0) )
 
 	ROM_REGION( 0x10000, "voice", 0 ) /* voice */
@@ -3359,7 +3348,7 @@ ROM_START( peepshow )
 ROM_END
 
 ROM_START( scandal )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "1.3h",   0x00000, 0x10000, CRC(97e73a9c) SHA1(53d2cecb30b146da55674ea6bdde1b687597cf98) )
 
 	ROM_REGION( 0x10000, "voice", 0 ) /* voice */
@@ -3382,7 +3371,7 @@ ROM_START( scandal )
 ROM_END
 
 ROM_START( scandalm )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "scmm_01.bin", 0x00000, 0x10000, CRC(9811bab6) SHA1(05a0d9e2f038d5bf0588a66f71ac55a7c0386dac) )
 
 	ROM_REGION( 0x10000, "voice", 0 ) /* voice */
@@ -3405,7 +3394,7 @@ ROM_START( scandalm )
 ROM_END
 
 ROM_START( mjnanpas )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "mnst_03.bin", 0x00000, 0x10000, CRC(ece14e07) SHA1(de952a69fb9ecc676a43f5d4f0fd6159420fcc4f) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3441,7 +3430,7 @@ ROM_START( mjnanpas )
 ROM_END
 
 ROM_START( mjnanpaa )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "mnst_03.old", 0x00000, 0x10000, CRC(a105b2b8) SHA1(3aa9a41fc8a1ffd37f89b660a986f0c8e48d61f8) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3477,7 +3466,7 @@ ROM_START( mjnanpaa )
 ROM_END
 
 ROM_START( mjnanpau )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "03.bin",      0x00000, 0x10000, CRC(f96bdda7) SHA1(cea176ef11db0607137da70479ccde575bf7524a) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3543,7 +3532,7 @@ ROMs  : (All ROMs type 27C512)
 */
 
 ROM_START( pairsnb )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "3.bin",   0x00000, 0x10000, CRC(86cb9301) SHA1(ab0c1d01aac9a6e689ebf7a45e6cfae6e47bec85) )
 
 	ROM_REGION( 0x20000, "voice", 0 )
@@ -3572,7 +3561,7 @@ ROM_START( pairsnb )
 ROM_END
 
 ROM_START( pairsten )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "3.j3",    0x00000, 0x10000, CRC(037d6acb) SHA1(9a01f9765fd4cd459e22fc639b23306e50d2f051) )
 
 	ROM_REGION( 0x20000, "voice", 0 )
@@ -3601,7 +3590,7 @@ ROM_START( pairsten )
 ROM_END
 
 ROM_START( bananadr )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "1.4h",   0x00000, 0x10000, CRC(a6344e0d) SHA1(ee8df28fb2f579d3eb10d8aa454c6289de4a9239) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3631,7 +3620,7 @@ ROM_START( bananadr )
 ROM_END
 
 ROM_START( club90s )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "c90s_03.bin", 0x00000, 0x10000, CRC(f8148ba5) SHA1(befff52276c369d4a8f2cc78ae88ecb6d90e7543) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3650,7 +3639,7 @@ ROM_START( club90s )
 ROM_END
 
 ROM_START( club90sa )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "c90s_23.bin", 0x00000, 0x10000, CRC(60433c11) SHA1(58a07271d1c7c3578cd4857bfaf9c9568b22a049) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3669,7 +3658,7 @@ ROM_START( club90sa )
 ROM_END
 
 ROM_START( lovehous )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "2.3f",        0x00000, 0x10000, CRC(c3a0ed85) SHA1(93cc83f50e151fdf1a179f049604a02b590d4ec3) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3689,7 +3678,7 @@ ROM_START( lovehous )
 ROM_END
 
 ROM_START( mladyhtr )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "mlht_03.bin", 0x00000, 0x10000, CRC(bda76c24) SHA1(c779b9420162c5b077a16e2a20a592a56b088b2e) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3719,7 +3708,7 @@ ROM_START( mladyhtr )
 ROM_END
 
 ROM_START( chinmoku )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "3.3h",   0x00000, 0x10000, CRC(eddff33e) SHA1(b16ff69466463eeda01dc16ba7e62eac23bc8348) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3749,7 +3738,7 @@ ROM_START( chinmoku )
 ROM_END
 
 ROM_START( maiko )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "mikb_02.bin", 0x00000, 0x10000, CRC(fbf68ebd) SHA1(0ddc9fc39bc362563462c57a728f1fc4ce3f682b) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3766,7 +3755,7 @@ ROM_START( maiko )
 ROM_END
 
 ROM_START( mmaiko )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "2.3f",        0x00000, 0x10000, CRC(82b63476) SHA1(98c120b82953782f532c09b9305a8e6b5dedb374) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3783,7 +3772,7 @@ ROM_START( mmaiko )
 ROM_END
 
 ROM_START( hanaoji )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "hnoj_02.bin", 0x00000, 0x10000, CRC(580cd095) SHA1(e798e9db64072d14c46840235c88dcdcc3d3ec6a) )
 
 	ROM_REGION( 0x10000, "voice", 0 ) /* voice */
@@ -3802,7 +3791,7 @@ ROM_START( hanaoji )
 ROM_END
 
 ROM_START( mjcamerb )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "2.3h",        0x00000, 0x10000, CRC(3a0f110b) SHA1(8923136ed25ed91c90f93c3f75f5532ff8f9d420) )
 
 	ROM_REGION( 0x30000, "voice", 0 ) /* voice */
@@ -3832,7 +3821,7 @@ ROM_START( mjcamerb )
 ROM_END
 
 ROM_START( mmcamera )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "2.3ha",  0x00000, 0x10000, CRC(b6eed2cf) SHA1(87171ba9ba247e54244867f720738f9b88a1213e) )
 
 	ROM_REGION( 0x10000, "voice", 0 ) /* voice */
@@ -3859,7 +3848,7 @@ ROM_START( mmcamera )
 ROM_END
 
 ROM_START( taiwanmb )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "1.3d",        0x00000, 0x10000, CRC(2165310e) SHA1(18151e849fede6f7e5275ab27e50ce8e4c227332) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3914,7 +3903,7 @@ http://japump.i.am/
 */
 
 ROM_START( hnxmasev )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "b.3f",   0x00000, 0x10000, CRC(45e34624) SHA1(db7f880a8b2f36d5bed939bd0b2694f27e29141b) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */
@@ -3968,7 +3957,7 @@ http://japump.i.am/
 */
 
 ROM_START( hnageman )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "2.3f",   0x00000, 0x10000, CRC(155ed09a) SHA1(254f199063fe525c574032ae69d4d21b0debb4c5) )
 
 	ROM_REGION( 0x20000, "voice", 0 ) /* voice */

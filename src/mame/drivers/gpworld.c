@@ -72,7 +72,7 @@ static void gpworld_draw_tiles(running_machine *machine, bitmap_t *bitmap,const 
 			int current_screen_character = (characterY*64) + characterX;
 
 			drawgfx(bitmap, machine->gfx[0], tile_RAM[current_screen_character],
-					0, 0, 0, characterX*8, characterY*8, cliprect, TRANSPARENCY_PEN, 0);
+					characterY, 0, 0, characterX*8, characterY*8, cliprect, TRANSPARENCY_PEN, 0);
 		}
 	}
 }
@@ -217,7 +217,7 @@ static VIDEO_UPDATE( gpworld )
 
 static MACHINE_START( gpworld )
 {
-	laserdisc = device_list_find_by_tag(machine->config->devicelist, LASERDISC, "laserdisc");
+	laserdisc = devtag_get_device(machine, "laserdisc");
 }
 
 
@@ -267,14 +267,14 @@ static WRITE8_HANDLER( palette_write )
 	/* "Round down" to the nearest palette entry */
 	pal_index = offset & 0xffe;
 
-	b = (palette_RAM[pal_index]   & 0xf0) << 0;
-	g = (palette_RAM[pal_index]   & 0x0f) << 4;
+	g = (palette_RAM[pal_index]   & 0xf0) << 0;
+	b = (palette_RAM[pal_index]   & 0x0f) << 4;
 	r = (palette_RAM[pal_index+1] & 0x0f) << 4;
 	a = (palette_RAM[pal_index+1] & 0x80) ? 0 : 255;	/* guess */
 
 	/* logerror("PAL WRITE index : %x  rgb : %d %d %d (real %x) at %x\n", pal_index, r,g,b, data, offset); */
 
-	palette_set_color(space->machine, pal_index, MAKE_ARGB(a, r, g, b));
+	palette_set_color(space->machine, (pal_index & 0xffe) >> 1, MAKE_ARGB(a, r, g, b));
 }
 
 /* PROGRAM MAP */
@@ -430,7 +430,7 @@ static const gfx_layout gpworld_tile_layout =
 	8,8,
 	0x800/8,
 	2,
-	{ 0, 0x800*8 },
+	{ 0x800*8, 0 },
 	{ 0,1,2,3,4,5,6,7 },
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8
@@ -444,34 +444,33 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( gpworld )
 
 	/* main cpu */
-	MDRV_CPU_ADD("main", Z80, GUESSED_CLOCK)
+	MDRV_CPU_ADD("maincpu", Z80, GUESSED_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(mainmem,0)
 	MDRV_CPU_IO_MAP(mainport,0)
-	MDRV_CPU_VBLANK_INT("main", vblank_callback_gpworld)
+	MDRV_CPU_VBLANK_INT("screen", vblank_callback_gpworld)
 
 	MDRV_MACHINE_START(gpworld)
 
-	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000, "main", "ldsound")
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000, "screen", "ldsound")
 	MDRV_LASERDISC_OVERLAY(gpworld, 512, 256, BITMAP_FORMAT_INDEXED16)
 
 	/* video hardware */
-	MDRV_LASERDISC_SCREEN_ADD_NTSC("main", BITMAP_FORMAT_INDEXED16)
+	MDRV_LASERDISC_SCREEN_ADD_NTSC("screen", BITMAP_FORMAT_INDEXED16)
 
 	MDRV_GFXDECODE(gpworld)
 	MDRV_PALETTE_LENGTH(1024)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MDRV_SOUND_ADD("ldsound", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ADD("ldsound", LASERDISC, 0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( gpworld )
-	ROM_REGION( 0xc000, "main", 0 )
+	ROM_REGION( 0xc000, "maincpu", 0 )
 	ROM_LOAD( "epr6162a.ic51", 0x0000, 0x4000, CRC(70e42574) SHA1(2fa50c7a67a2efb6b2c313850ace40e42d18b0a8) )
 	ROM_LOAD( "epr6163.ic67",  0x4000, 0x4000, CRC(49539e46) SHA1(7cfd5b6b356c3fa5439e6fe3ac2e6a097b722a2c) )
 	ROM_LOAD( "epr6164.ic83",  0x8000, 0x4000, CRC(7f0e6853) SHA1(c255ac6e4b61faa8da9b5aa70f12c868b81acfe1) )

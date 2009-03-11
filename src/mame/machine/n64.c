@@ -2,18 +2,9 @@
 
 #include "driver.h"
 #include "cpu/mips/mips3.h"
-#include "sound/custom.h"
 #include "streams.h"
 #include "includes/n64.h"
 #include "sound/dmadac.h"
-
-#ifdef LSB_FIRST
-	#define BYTE_ADDR_XOR		3
-	#define WORD_ADDR_XOR		1
-#else
-	#define BYTE_ADDR_XOR		0
-	#define WORD_ADDR_XOR		0
-#endif
 
 UINT32 *rdram;
 UINT32 *rsp_imem;
@@ -25,6 +16,8 @@ UINT32 *rsp_dmem;
 static UINT32 mi_version;
 static UINT32 mi_interrupt = 0;
 static UINT32 mi_intr_mask = 0;
+
+static const device_config *dmadac[2];
 
 void signal_rcp_interrupt(running_machine *machine, int interrupt)
 {
@@ -720,7 +713,7 @@ static emu_timer *audio_timer;
 
 #define AUDIO_DMA_DEPTH     2
 
-static void start_audio_dma(void);
+static void start_audio_dma(running_machine *machine);
 
 typedef struct
 {
@@ -764,7 +757,7 @@ static void audio_fifo_push(running_machine *machine, UINT32 address, UINT32 len
     if (! (ai_status & 0x40000000))
     {
         signal_rcp_interrupt(machine, AI_INTERRUPT);
-        start_audio_dma();
+        start_audio_dma(machine);
     }
 }
 
@@ -802,7 +795,7 @@ static AUDIO_DMA *audio_fifo_get_top(void)
     }
 }
 
-static void start_audio_dma(void)
+static void start_audio_dma(running_machine *machine)
 {
     INT16 *ram = (INT16*)rdram;
     AUDIO_DMA *current = audio_fifo_get_top();
@@ -819,7 +812,9 @@ static void start_audio_dma(void)
 
 //  mame_printf_debug("DACDMA: %x for %x bytes\n", current->address, current->length);
 
-    dmadac_transfer(0, 2, 2, 2, current->length/4, ram);
+	dmadac[0] = devtag_get_device(machine, "dac1");
+	dmadac[1] = devtag_get_device(machine, "dac2");
+    dmadac_transfer(&dmadac[0], 2, 2, 2, current->length/4, ram);
 
     ai_status |= 0x40000000;
 
@@ -835,7 +830,7 @@ static TIMER_CALLBACK( audio_timer_callback )
     // keep playing if there's another DMA queued
     if (audio_fifo_get_top() != NULL)
     {
-        start_audio_dma();
+        start_audio_dma(machine);
         signal_rcp_interrupt(machine, AI_INTERRUPT);
     }
     else
@@ -902,9 +897,9 @@ WRITE32_HANDLER( n64_ai_reg_w )
 
         case 0x10/4:        // AI_DACRATE_REG
             ai_dacrate = data & 0x3fff;
-            dmadac_set_frequency(0, 2, (double)DACRATE_NTSC / (double)(ai_dacrate+1));
+            dmadac_set_frequency(&dmadac[0], 2, (double)DACRATE_NTSC / (double)(ai_dacrate+1));
             printf( "frequency: %f\n", (double)DACRATE_NTSC / (double)(ai_dacrate+1) );
-            dmadac_enable(0, 2, 1);
+            dmadac_enable(&dmadac[0], 2, 1);
             break;
 
         case 0x14/4:        // AI_BITRATE_REG
@@ -1572,7 +1567,15 @@ WRITE32_HANDLER( n64_pif_ram_w )
 
 //static UINT16 crc_seed = 0x3f;
 
-void n64_machine_reset(running_machine *machine)
+MACHINE_START( n64 )
+{
+	mips3drc_set_options(machine->cpu[0], MIPS3DRC_FASTEST_OPTIONS + MIPS3DRC_STRICT_VERIFY);
+
+		/* configure fast RAM regions for DRC */
+	mips3drc_add_fastram(machine->cpu[0], 0x00000000, 0x007fffff, FALSE, rdram);
+}
+
+MACHINE_RESET( n64 )
 {
 	int i;
 	//UINT32 *pif_rom   = (UINT32*)memory_region(machine, "user1");
@@ -1627,15 +1630,6 @@ void n64_machine_reset(running_machine *machine)
 	memset(mempack, 0, sizeof(mempack));
 
 	cic_status = 0;
-
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_DRC_OPTIONS, MIPS3DRC_FASTEST_OPTIONS + MIPS3DRC_STRICT_VERIFY);
-
-		/* configure fast RAM regions for DRC */
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_SELECT, 0);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_START, 0x00000000);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_END, 0x007fffff);
-	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_MIPS3_FASTRAM_BASE, rdram);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_READONLY, 0);
 
 	audio_timer = timer_alloc(machine, audio_timer_callback, NULL);
 	timer_adjust_oneshot(audio_timer, attotime_never, 0);

@@ -38,7 +38,8 @@ void triplhnt_set_collision(running_machine *machine, int code)
 
 static void triplhnt_update_misc(running_machine *machine, int offset)
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const device_config *samples = devtag_get_device(machine, "samples");
+	const device_config *discrete = devtag_get_device(machine, "discrete");
 	UINT8 is_witch_hunt;
 	UINT8 bit = offset >> 1;
 
@@ -73,22 +74,22 @@ static void triplhnt_update_misc(running_machine *machine, int offset)
 	coin_lockout_w(0, !(triplhnt_misc_flags & 0x08));
 	coin_lockout_w(1, !(triplhnt_misc_flags & 0x08));
 
-	discrete_sound_w(space, TRIPLHNT_SCREECH_EN, triplhnt_misc_flags & 0x04);	// screech
-	discrete_sound_w(space, TRIPLHNT_LAMP_EN, triplhnt_misc_flags & 0x02);	// Lamp is used to reset noise
-	discrete_sound_w(space, TRIPLHNT_BEAR_EN, triplhnt_misc_flags & 0x80);	// bear
+	discrete_sound_w(discrete, TRIPLHNT_SCREECH_EN, triplhnt_misc_flags & 0x04);	// screech
+	discrete_sound_w(discrete, TRIPLHNT_LAMP_EN, triplhnt_misc_flags & 0x02);	// Lamp is used to reset noise
+	discrete_sound_w(discrete, TRIPLHNT_BEAR_EN, triplhnt_misc_flags & 0x80);	// bear
 
 	is_witch_hunt = input_port_read(machine, "0C09") == 0x40;
 	bit = ~triplhnt_misc_flags & 0x40;
 
 	/* if we're not playing the sample yet, start it */
-	if (!sample_playing(0))
-		sample_start(0, 0, 1);
-	if (!sample_playing(1))
-		sample_start(1, 1, 1);
+	if (!sample_playing(samples, 0))
+		sample_start(samples, 0, 0, 1);
+	if (!sample_playing(samples, 1))
+		sample_start(samples, 1, 1, 1);
 
 	/* bit 6 turns cassette on/off */
-	sample_set_pause(0,  is_witch_hunt || bit);
-	sample_set_pause(1, !is_witch_hunt || bit);
+	sample_set_pause(samples, 0,  is_witch_hunt || bit);
+	sample_set_pause(samples, 1, !is_witch_hunt || bit);
 }
 
 
@@ -318,14 +319,14 @@ static PALETTE_INIT( triplhnt )
 static MACHINE_DRIVER_START( triplhnt )
 
 /* basic machine hardware */
-	MDRV_CPU_ADD("main", M6800, 800000)
+	MDRV_CPU_ADD("maincpu", M6800, 800000)
 	MDRV_CPU_PROGRAM_MAP(triplhnt_readmem, triplhnt_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 262)
@@ -351,7 +352,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( triplhnt )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD_NIB_HIGH( "8404.f1", 0x7000, 0x400, CRC(abc8acd5) SHA1(bcef2abc5829829a01aa21776c3deb2e1bf1d4ac) )
 	ROM_LOAD_NIB_LOW ( "8408.f2", 0x7000, 0x400, CRC(77fcdd3f) SHA1(ce0196abb8d6510aa9a5308f8efd6442e94272c4) )
 	ROM_LOAD_NIB_HIGH( "8403.e1", 0x7400, 0x400, CRC(8d756fa1) SHA1(48a74f710b130d9af0c866483d6fc4ecce4a3ac5) )

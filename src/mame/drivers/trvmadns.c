@@ -143,9 +143,7 @@ static WRITE8_HANDLER( trvmadns_banking_w )
 static WRITE8_HANDLER( trvmadns_gfxram_w )
 {
 	trvmadns_gfxram[offset] = data;
-	decodechar(space->machine->gfx[0], offset/16, trvmadns_gfxram);
-
-	tilemap_mark_all_tiles_dirty(bg_tilemap);
+	gfx_element_mark_dirty(space->machine->gfx[0], offset/16);
 }
 
 #ifdef UNUSED_FUNCTION
@@ -212,8 +210,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE("ay", ay8910_address_data_w)
 	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN0")
 	AM_RANGE(0x80, 0x80) AM_WRITE(trvmadns_banking_w)
 ADDRESS_MAP_END
@@ -268,6 +265,8 @@ static VIDEO_START( trvmadns )
 	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(bg_tilemap,1);
+
+	gfx_element_set_source(machine->gfx[0], trvmadns_gfxram);
 }
 
 static VIDEO_UPDATE( trvmadns )
@@ -285,15 +284,15 @@ static MACHINE_RESET( trvmadns )
 }
 
 static MACHINE_DRIVER_START( trvmadns )
-	MDRV_CPU_ADD("main", Z80,10000000/2) // ?
+	MDRV_CPU_ADD("maincpu", Z80,10000000/2) // ?
 	MDRV_CPU_PROGRAM_MAP(cpu_map,0)
 	MDRV_CPU_IO_MAP(io_map,0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	MDRV_MACHINE_RESET(trvmadns)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -315,7 +314,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( trvmadns )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "u5f lat la trivia.bin", 0x0000, 0x2000, CRC(a8fb07ea) SHA1(dcf2cccd8b98087d30b3347e69b1bf8565f95ad6) )
 	ROM_LOAD( "u6f lat green.bin",     0x2000, 0x2000, CRC(40f816f1) SHA1(a1a6a9af99edb1860bc4c8eb51859bbfbf91cae2) )
 	ROM_LOAD( "u7f lat green.bin",     0x4000, 0x2000, CRC(3e45feb0) SHA1(5ffc18ab3f6ace844242d4be52b3946c1469944a) )

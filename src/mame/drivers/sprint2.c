@@ -71,7 +71,7 @@ static int service_mode(running_machine *machine)
 
 static INTERRUPT_GEN( sprint2 )
 {
-	const address_space *space = cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM);
+	const device_config *discrete = devtag_get_device(device->machine, "discrete");
 	static UINT8 dial[2];
 
 	/* handle steering wheels */
@@ -105,9 +105,9 @@ static INTERRUPT_GEN( sprint2 )
 		}
 	}
 
-	discrete_sound_w(space, SPRINT2_MOTORSND1_DATA, sprint2_video_ram[0x394] & 15);	// also DOMINOS_FREQ_DATA
-	discrete_sound_w(space, SPRINT2_MOTORSND2_DATA, sprint2_video_ram[0x395] & 15);
-	discrete_sound_w(space, SPRINT2_CRASHSND_DATA, sprint2_video_ram[0x396] & 15);	// also DOMINOS_AMP_DATA
+	discrete_sound_w(discrete, SPRINT2_MOTORSND1_DATA, sprint2_video_ram[0x394] & 15);	// also DOMINOS_FREQ_DATA
+	discrete_sound_w(discrete, SPRINT2_MOTORSND2_DATA, sprint2_video_ram[0x395] & 15);
+	discrete_sound_w(discrete, SPRINT2_CRASHSND_DATA, sprint2_video_ram[0x396] & 15);	// also DOMINOS_AMP_DATA
 
 	/* interrupts and watchdog are disabled during service mode */
 
@@ -209,30 +209,30 @@ static WRITE8_HANDLER( sprint2_wram_w )
 }
 
 
-static WRITE8_HANDLER( sprint2_attract_w )
+static WRITE8_DEVICE_HANDLER( sprint2_attract_w )
 {
 	attract = offset & 1;
 
 	// also DOMINOS_ATTRACT_EN
-	discrete_sound_w(space, SPRINT2_ATTRACT_EN, attract);
+	discrete_sound_w(device, SPRINT2_ATTRACT_EN, attract);
 }
 
 
-static WRITE8_HANDLER( sprint2_noise_reset_w )
+static WRITE8_DEVICE_HANDLER( sprint2_noise_reset_w )
 {
-	discrete_sound_w(space, SPRINT2_NOISE_RESET, 0);
+	discrete_sound_w(device, SPRINT2_NOISE_RESET, 0);
 }
 
 
-static WRITE8_HANDLER( sprint2_skid1_w )
+static WRITE8_DEVICE_HANDLER( sprint2_skid1_w )
 {
 	// also DOMINOS_TUMBLE_EN
-	discrete_sound_w(space, SPRINT2_SKIDSND1_EN, offset & 1);
+	discrete_sound_w(device, SPRINT2_SKIDSND1_EN, offset & 1);
 }
 
-static WRITE8_HANDLER( sprint2_skid2_w )
+static WRITE8_DEVICE_HANDLER( sprint2_skid2_w )
 {
-	discrete_sound_w(space, SPRINT2_SKIDSND2_EN, offset & 1);
+	discrete_sound_w(device, SPRINT2_SKIDSND2_EN, offset & 1);
 }
 
 
@@ -267,9 +267,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_WRITE(sprint2_wram_w)
 	AM_RANGE(0x0400, 0x07ff) AM_WRITE(sprint2_video_ram_w) AM_BASE(&sprint2_video_ram)
-	AM_RANGE(0x0c00, 0x0c0f) AM_WRITE(sprint2_attract_w)
-	AM_RANGE(0x0c10, 0x0c1f) AM_WRITE(sprint2_skid1_w)
-	AM_RANGE(0x0c20, 0x0c2f) AM_WRITE(sprint2_skid2_w)
+	AM_RANGE(0x0c00, 0x0c0f) AM_DEVWRITE("discrete", sprint2_attract_w)
+	AM_RANGE(0x0c10, 0x0c1f) AM_DEVWRITE("discrete", sprint2_skid1_w)
+	AM_RANGE(0x0c20, 0x0c2f) AM_DEVWRITE("discrete", sprint2_skid2_w)
 	AM_RANGE(0x0c30, 0x0c3f) AM_WRITE(sprint2_lamp1_w)
 	AM_RANGE(0x0c40, 0x0c4f) AM_WRITE(sprint2_lamp2_w)
 	AM_RANGE(0x0c60, 0x0c6f) AM_WRITE(SMH_NOP) /* SPARE */
@@ -278,7 +278,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0d80, 0x0dff) AM_WRITE(sprint2_collision_reset2_w)
 	AM_RANGE(0x0e00, 0x0e7f) AM_WRITE(sprint2_steering_reset1_w)
 	AM_RANGE(0x0e80, 0x0eff) AM_WRITE(sprint2_steering_reset2_w)
-	AM_RANGE(0x0f00, 0x0f7f) AM_WRITE(sprint2_noise_reset_w)
+	AM_RANGE(0x0f00, 0x0f7f) AM_DEVWRITE("discrete", sprint2_noise_reset_w)
 	AM_RANGE(0x2000, 0x3fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xe000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
@@ -503,13 +503,13 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( sprint2 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 12096000 / 16)
+	MDRV_CPU_ADD("maincpu", M6502, 12096000 / 16)
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
-	MDRV_CPU_VBLANK_INT("main", sprint2)
+	MDRV_CPU_VBLANK_INT("screen", sprint2)
 	MDRV_WATCHDOG_VBLANK_INIT(8)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 262)
@@ -524,12 +524,12 @@ static MACHINE_DRIVER_START( sprint2 )
 	MDRV_VIDEO_EOF(sprint2)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(sprint2)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -538,11 +538,13 @@ static MACHINE_DRIVER_START( sprint1 )
 	MDRV_IMPORT_FROM(sprint2)
 
 	/* sound hardware */
-	MDRV_SPEAKER_REMOVE("left")
-	MDRV_SPEAKER_REMOVE("right")
+	MDRV_SPEAKER_REMOVE("lspeaker")
+	MDRV_SPEAKER_REMOVE("rspeaker")
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_REPLACE("discrete", DISCRETE, 0)
+	MDRV_SOUND_REMOVE("discrete")
+
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(sprint1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -553,18 +555,20 @@ static MACHINE_DRIVER_START( dominos )
 	MDRV_IMPORT_FROM(sprint2)
 
 	/* sound hardware */
-	MDRV_SPEAKER_REMOVE("left")
-	MDRV_SPEAKER_REMOVE("right")
+	MDRV_SPEAKER_REMOVE("lspeaker")
+	MDRV_SPEAKER_REMOVE("rspeaker")
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_REPLACE("discrete", DISCRETE, 0)
+	MDRV_SOUND_REMOVE("discrete")
+
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(dominos)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( sprint1 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "6290-01.b1", 0x2000, 0x0800, CRC(41fc985e) SHA1(7178846480cbf8d15955ccd987d0b0e902ab9f90) )
 	ROM_RELOAD(             0xe000, 0x0800 )
 	ROM_LOAD( "6291-01.c1", 0x2800, 0x0800, CRC(07f7a920) SHA1(845f65d2bd290eb295ca6bae2575f27aaa08c0dd) )
@@ -589,7 +593,7 @@ ROM_END
 
 
 ROM_START( sprint2 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "6290-01.b1", 0x2000, 0x0800, CRC(41fc985e) SHA1(7178846480cbf8d15955ccd987d0b0e902ab9f90) )
 	ROM_RELOAD(             0xe000, 0x0800 )
 	ROM_LOAD( "6291-01.c1", 0x2800, 0x0800, CRC(07f7a920) SHA1(845f65d2bd290eb295ca6bae2575f27aaa08c0dd) )
@@ -614,7 +618,7 @@ ROM_END
 
 
 ROM_START( sprint2a )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "6290-01.b1", 0x2000, 0x0800, CRC(41fc985e) SHA1(7178846480cbf8d15955ccd987d0b0e902ab9f90) )
 	ROM_RELOAD(             0xe000, 0x0800 )
 	ROM_LOAD( "6291-01.c1", 0x2800, 0x0800, CRC(07f7a920) SHA1(845f65d2bd290eb295ca6bae2575f27aaa08c0dd) )
@@ -639,7 +643,7 @@ ROM_END
 
 
 ROM_START( dominos )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "7352-02.d1",   0x3000, 0x0800, CRC(738b4413) SHA1(3a90ab25bb5f65504692f97da43f03e21392dcd8) )
 	ROM_RELOAD(               0xf000, 0x0800 )
 	ROM_LOAD( "7438-02.e1",   0x3800, 0x0800, CRC(c84e54e2) SHA1(383b388a1448a195f28352fc5e4ff1a2af80cc95) )

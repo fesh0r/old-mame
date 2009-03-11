@@ -163,8 +163,9 @@ static WRITE32_HANDLER( control_w )
 	/* toggling BSMT off then on causes a reset */
 	if (!(old & 0x80000000) && (control_data & 0x80000000))
 	{
-		bsmt2000_data_0_w(space, bsmt_data_bank, 0, 0xffff);
-		sndti_reset(SOUND_BSMT2000, 0);
+		const device_config *device = devtag_get_device(space->machine, "bsmt");
+		bsmt2000_data_w(device, bsmt_data_bank, 0, 0xffff);
+		device_reset(device);
 	}
 
 	/* log any unknown bits */
@@ -180,16 +181,16 @@ static WRITE32_HANDLER( control_w )
  *
  *************************************/
 
-static WRITE32_HANDLER( bsmt2000_reg_w )
+static WRITE32_DEVICE_HANDLER( policetr_bsmt2000_reg_w )
 {
 	if (control_data & 0x80000000)
-		bsmt2000_data_0_w(space, bsmt_reg, data & 0xffff, mem_mask & 0xffff);
+		bsmt2000_data_w(device, bsmt_reg, data & 0xffff, mem_mask & 0xffff);
 	else
 		COMBINE_DATA(&bsmt_data_offset);
 }
 
 
-static WRITE32_HANDLER( bsmt2000_data_w )
+static WRITE32_HANDLER( policetr_bsmt2000_data_w )
 {
 	if (control_data & 0x80000000)
 		COMBINE_DATA(&bsmt_reg);
@@ -281,8 +282,8 @@ static ADDRESS_MAP_START( policetr_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00400000, 0x00400003) AM_READ(policetr_video_r)
 	AM_RANGE(0x00500000, 0x00500003) AM_WRITENOP		// copies ROM here at startup, plus checksum
 	AM_RANGE(0x00600000, 0x00600003) AM_READ(bsmt2000_data_r)
-	AM_RANGE(0x00700000, 0x00700003) AM_WRITE(bsmt2000_reg_w)
-	AM_RANGE(0x00800000, 0x00800003) AM_WRITE(bsmt2000_data_w)
+	AM_RANGE(0x00700000, 0x00700003) AM_DEVWRITE("bsmt", policetr_bsmt2000_reg_w)
+	AM_RANGE(0x00800000, 0x00800003) AM_WRITE(policetr_bsmt2000_data_w)
 	AM_RANGE(0x00900000, 0x00900003) AM_WRITE(policetr_palette_offset_w)
 	AM_RANGE(0x00920000, 0x00920003) AM_WRITE(policetr_palette_data_w)
 	AM_RANGE(0x00a00000, 0x00a00003) AM_WRITE(control_w)
@@ -296,13 +297,13 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sshooter_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x0001ffff) AM_RAM AM_BASE(&policetr_rambase)
-	AM_RANGE(0x00200000, 0x00200003) AM_WRITE(bsmt2000_data_w)
+	AM_RANGE(0x00200000, 0x00200003) AM_WRITE(policetr_bsmt2000_data_w)
 	AM_RANGE(0x00300000, 0x00300003) AM_WRITE(policetr_palette_offset_w)
 	AM_RANGE(0x00320000, 0x00320003) AM_WRITE(policetr_palette_data_w)
 	AM_RANGE(0x00400000, 0x00400003) AM_READ(policetr_video_r)
 	AM_RANGE(0x00500000, 0x00500003) AM_WRITENOP		// copies ROM here at startup, plus checksum
 	AM_RANGE(0x00600000, 0x00600003) AM_READ(bsmt2000_data_r)
-	AM_RANGE(0x00700000, 0x00700003) AM_WRITE(bsmt2000_reg_w)
+	AM_RANGE(0x00700000, 0x00700003) AM_DEVWRITE("bsmt", policetr_bsmt2000_reg_w)
 	AM_RANGE(0x00800000, 0x0080000f) AM_WRITE(policetr_video_w)
 	AM_RANGE(0x00a00000, 0x00a00003) AM_WRITE(control_w)
 	AM_RANGE(0x00a00000, 0x00a00003) AM_READ_PORT("IN0")
@@ -438,17 +439,17 @@ static const r3000_cpu_core config =
 static MACHINE_DRIVER_START( policetr )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", R3000BE, MASTER_CLOCK/2)
+	MDRV_CPU_ADD("maincpu", R3000BE, MASTER_CLOCK/2)
 	MDRV_CPU_CONFIG(config)
 	MDRV_CPU_PROGRAM_MAP(policetr_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq4_gen)
+	MDRV_CPU_VBLANK_INT("screen", irq4_gen)
 
 	MDRV_NVRAM_HANDLER(policetr)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(400, 262)	/* needs to be verified */
@@ -460,11 +461,11 @@ static MACHINE_DRIVER_START( policetr )
 	MDRV_VIDEO_UPDATE(policetr)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("bsmt", BSMT2000, MASTER_CLOCK/2)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -472,7 +473,7 @@ static MACHINE_DRIVER_START( sshooter )
 	MDRV_IMPORT_FROM(policetr)
 
 	/* basic machine hardware */
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(sshooter_map,0)
 MACHINE_DRIVER_END
 

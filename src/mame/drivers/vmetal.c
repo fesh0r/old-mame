@@ -153,7 +153,7 @@ static READ16_HANDLER ( varia_dips_bit3_r ) { return ((input_port_read(space->ma
 static READ16_HANDLER ( varia_dips_bit2_r ) { return ((input_port_read(space->machine, "DSW2") & 0x02) << 6) | ((input_port_read(space->machine, "DSW1") & 0x02) << 5); }
 static READ16_HANDLER ( varia_dips_bit1_r ) { return ((input_port_read(space->machine, "DSW2") & 0x01) << 7) | ((input_port_read(space->machine, "DSW1") & 0x01) << 6); }
 
-static WRITE16_HANDLER( vmetal_control_w )
+static WRITE8_DEVICE_HANDLER( vmetal_control_w )
 {
 	/* Lower nibble is the coin control bits shown in
        service mode, but in game mode they're different */
@@ -163,20 +163,20 @@ static WRITE16_HANDLER( vmetal_control_w )
 	coin_lockout_w(1,data & 0x02);	/* never activated in game mode?? */
 
 	if ((data & 0x40) == 0)
-		sndti_reset(SOUND_ES8712, 0);
+		device_reset(device);
 	else
-		es8712_play(0);
+		es8712_play(device);
 
 	if (data & 0x10)
-		es8712_set_bank_base(0, 0x100000);
+		es8712_set_bank_base(device, 0x100000);
 	else
-		es8712_set_bank_base(0, 0x000000);
+		es8712_set_bank_base(device, 0x000000);
 
 	if (data & 0xa0)
-		logerror("PC:%06x - Writing unknown bits %04x to $200000\n",cpu_get_previouspc(space->cpu),data);
+		logerror("%s:Writing unknown bits %04x to $200000\n",cpuexec_describe_context(device->machine),data);
 }
 
-static WRITE16_HANDLER( vmetal_es8712_w )
+static WRITE8_DEVICE_HANDLER( vmetal_es8712_w )
 {
 	/* Many samples in the ADPCM ROM are actually not used.
 
@@ -208,8 +208,8 @@ static WRITE16_HANDLER( vmetal_es8712_w )
     16   002a 000e 0083 00ee 000f 0069 0069   0e832a-0f69ee
     */
 
-	es8712_data_0_lsb_w(space, offset, data, mem_mask);
-	logerror("PC:%06x - Writing %04x to ES8712 offset %02x\n",cpu_get_previouspc(space->cpu),data,offset);
+	es8712_w(device, offset, data);
+	logerror("%s:Writing %04x to ES8712 offset %02x\n",cpuexec_describe_context(device->machine),data,offset);
 }
 
 
@@ -228,7 +228,7 @@ static ADDRESS_MAP_START( varia_program_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x178800, 0x1796ff) AM_RAM AM_BASE(&vmetal_videoregs)
 	AM_RANGE(0x179700, 0x179713) AM_WRITE(SMH_RAM) AM_BASE(&metro_videoregs	)	// Video Registers
 
-	AM_RANGE(0x200000, 0x200001) AM_READ_PORT("P1_P2") AM_WRITE(vmetal_control_w)
+	AM_RANGE(0x200000, 0x200001) AM_READ_PORT("P1_P2") AM_DEVWRITE8("es", vmetal_control_w, 0x00ff)
 	AM_RANGE(0x200002, 0x200003) AM_READ_PORT("SYSTEM")
 
 	/* i have no idea whats meant to be going on here .. it seems to read one bit of the dips from some of them, protection ??? */
@@ -250,9 +250,9 @@ static ADDRESS_MAP_START( varia_program_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x31fffc, 0x31fffd) AM_READ(varia_dips_bit1_r )  // 0x40 = dip1-1 , 0x80 = dip2-1
 	AM_RANGE(0x31fffe, 0x31ffff) AM_READ(varia_random )  // nothing?
 
-	AM_RANGE(0x400000, 0x400001) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w )
-	AM_RANGE(0x400002, 0x400003) AM_WRITE(okim6295_data_0_lsb_w )	// Volume/channel info
-	AM_RANGE(0x500000, 0x50000d) AM_WRITE(vmetal_es8712_w)
+	AM_RANGE(0x400000, 0x400001) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff )
+	AM_RANGE(0x400002, 0x400003) AM_DEVWRITE8("oki", okim6295_w, 0x00ff)	// Volume/channel info
+	AM_RANGE(0x500000, 0x50000d) AM_DEVWRITE8("es", vmetal_es8712_w, 0x00ff)
 
 	AM_RANGE(0xff0000, 0xffffff) AM_RAM
 ADDRESS_MAP_END
@@ -425,12 +425,12 @@ static VIDEO_UPDATE(varia)
 }
 
 static MACHINE_DRIVER_START( varia )
-	MDRV_CPU_ADD("main", M68000, 16000000)
+	MDRV_CPU_ADD("maincpu", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(varia_program_map, 0)
-	MDRV_CPU_VBLANK_INT("main", irq1_line_hold) // also level 3
+	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold) // also level 3
 
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -443,21 +443,21 @@ static MACHINE_DRIVER_START( varia )
 	MDRV_VIDEO_START(varia)
 	MDRV_VIDEO_UPDATE(varia)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("oki", OKIM6295, 1320000)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.75)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.75)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.75)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.75)
 
 	MDRV_SOUND_ADD("es", ES8712, 12000)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.50)
 MACHINE_DRIVER_END
 
 
 ROM_START( vmetal )
-	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "5b.u19", 0x00001, 0x80000, CRC(4933ac6c) SHA1(1a3303e32fcb08854d4d6e13f36ca99d92aed4cc) )
 	ROM_LOAD16_BYTE( "6b.u18", 0x00000, 0x80000, CRC(4eb939d5) SHA1(741ab05043fc3bd886162d878630e45da9359718) )
 
@@ -476,7 +476,7 @@ ROM_START( vmetal )
 ROM_END
 
 ROM_START( vmetaln )
-	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "vm5.bin", 0x00001, 0x80000, CRC(43ef844e) SHA1(c673f34fcc9e406282c9008795b52d01a240099a) )
 	ROM_LOAD16_BYTE( "vm6.bin", 0x00000, 0x80000, CRC(cb292ab1) SHA1(41fdfe67e6cb848542fd5aa0dfde3b1936bb3a28) )
 

@@ -5,8 +5,9 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "machine/atarigen.h"
 #include "sound/dac.h"
+#include "sound/2151intf.h"
+#include "machine/atarigen.h"
 #include "includes/cyberbal.h"
 
 
@@ -23,7 +24,7 @@ static void update_sound_68k_interrupts(running_machine *machine);
 void cyberbal_sound_reset(running_machine *machine)
 {
 	/* reset the sound system */
-	bank_base = &memory_region(machine, "audio")[0x10000];
+	bank_base = &memory_region(machine, "audiocpu")[0x10000];
 	memory_set_bankptr(machine, 8, &bank_base[0x0000]);
 	fast_68k_int = io_68k_int = 0;
 	sound_data_from_68k = sound_data_from_6502 = 0;
@@ -63,8 +64,7 @@ WRITE8_HANDLER( cyberbal_sound_bank_select_w )
 	coin_counter_w(1, (data >> 5) & 1);
 	coin_counter_w(0, (data >> 4) & 1);
 	cpu_set_input_line(space->machine->cpu[3], INPUT_LINE_RESET, (data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
-	if (!(data & 0x01)) sndti_reset(SOUND_YM2151, 0);
-
+	if (!(data & 0x01)) devtag_reset(space->machine, "ym");
 }
 
 
@@ -146,7 +146,8 @@ WRITE16_HANDLER( cyberbal_sound_68k_w )
 
 WRITE16_HANDLER( cyberbal_sound_68k_dac_w )
 {
-	dac_data_16_w((offset >> 3) & 1, (((data >> 3) & 0x800) | ((data >> 2) & 0x7ff)) << 4);
+	const device_config *dac = devtag_get_device(space->machine, (offset & 8) ? "dac2" : "dac1");
+	dac_data_16_w(dac, (((data >> 3) & 0x800) | ((data >> 2) & 0x7ff)) << 4);
 
 	if (fast_68k_int)
 	{

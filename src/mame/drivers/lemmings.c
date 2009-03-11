@@ -34,10 +34,10 @@ static WRITE16_HANDLER( lemmings_control_w )
 static READ16_HANDLER( lemmings_trackball_r )
 {
 	switch (offset) {
-	case 0: return input_port_read(space->machine, "AN0"); break;
-	case 1: return input_port_read(space->machine, "AN1"); break;
-	case 4: return input_port_read(space->machine, "AN2"); break;
-	case 5: return input_port_read(space->machine, "AN3"); break;
+	case 0: return input_port_read(space->machine, "AN0");
+	case 1: return input_port_read(space->machine, "AN1");
+	case 4: return input_port_read(space->machine, "AN2");
+	case 5: return input_port_read(space->machine, "AN3");
 	}
 	return 0;
 }
@@ -118,17 +118,16 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x0801, 0x0801) AM_READ(ym2151_status_port_0_r)
-	AM_RANGE(0x1000, 0x1000) AM_READ(okim6295_status_0_r)
+	AM_RANGE(0x0800, 0x0801) AM_DEVREAD("ym", ym2151_r)
+	AM_RANGE(0x1000, 0x1000) AM_DEVREAD("oki", okim6295_r)
 	AM_RANGE(0x1800, 0x1800) AM_READ(soundlatch_r)
 	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x0800, 0x0800) AM_WRITE(ym2151_register_port_0_w)
-	AM_RANGE(0x0801, 0x0801) AM_WRITE(ym2151_data_port_0_w)
-	AM_RANGE(0x1000, 0x1000) AM_WRITE(okim6295_data_0_w)
+	AM_RANGE(0x0800, 0x0801) AM_DEVWRITE("ym", ym2151_w)
+	AM_RANGE(0x1000, 0x1000) AM_DEVWRITE("oki", okim6295_w)
 	AM_RANGE(0x1800, 0x1800) AM_WRITE(lemmings_sound_ack_w)
 	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
@@ -256,9 +255,9 @@ GFXDECODE_END
 
 /******************************************************************************/
 
-static void sound_irq(running_machine *machine, int state)
+static void sound_irq(const device_config *device, int state)
 {
-	cpu_set_input_line(machine->cpu[1],0,state);
+	cpu_set_input_line(device->machine->cpu[1],0,state);
 }
 
 static const ym2151_interface ym2151_config =
@@ -269,17 +268,17 @@ static const ym2151_interface ym2151_config =
 static MACHINE_DRIVER_START( lemmings )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 14000000)
+	MDRV_CPU_ADD("maincpu", M68000, 14000000)
 	MDRV_CPU_PROGRAM_MAP(lemmings_readmem,lemmings_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
-	MDRV_CPU_ADD("audio", M6809,32220000/8)
+	MDRV_CPU_ADD("audiocpu", M6809,32220000/8)
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -294,23 +293,23 @@ static MACHINE_DRIVER_START( lemmings )
 	MDRV_VIDEO_UPDATE(lemmings)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2151, 32220000/9)
 	MDRV_SOUND_CONFIG(ym2151_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.45)
-	MDRV_SOUND_ROUTE(1, "right", 0.45)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.45)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.45)
 
 	MDRV_SOUND_ADD("oki", OKIM6295, 1023924)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.50)
 MACHINE_DRIVER_END
 
 /******************************************************************************/
 
 ROM_START( lemmings )
-	ROM_REGION( 0x100000, "main", 0 ) /* 68000 code */
+	ROM_REGION( 0x100000, "maincpu", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "lemmings.5", 0x00000, 0x20000, CRC(e9a2b439) SHA1(873723a06d71bb41772951f451a75578b30267d5) )
 	ROM_LOAD16_BYTE( "lemmings.1", 0x00001, 0x20000, CRC(bf52293b) SHA1(47a1ed64bf02776db086fdce80997b8a0c068791) )
 	ROM_LOAD16_BYTE( "lemmings.6", 0x40000, 0x20000, CRC(0e3dc0ea) SHA1(533abf66ca4b578d03566d5de922dc5828c26eca) )
@@ -320,7 +319,7 @@ ROM_START( lemmings )
 	ROM_LOAD16_BYTE( "lemmings.8", 0xc0000, 0x20000, CRC(9166ce09) SHA1(7f0970cc07ebdbfc9a738342259d07d37b397161) )
 	ROM_LOAD16_BYTE( "lemmings.4", 0xc0001, 0x20000, CRC(aa845488) SHA1(d17ec80f43d2a0123e93fad83d4e1319eb18d7c7) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* Sound CPU */
 	ROM_LOAD( "lemmings.15",    0x00000, 0x10000, CRC(f0b24a35) SHA1(1aaeb1e6faee04d2e433161fd7aa965b58e3b8a7) )
 
 	ROM_REGION( 0x40000, "gfx1", ROMREGION_DISPOSE )

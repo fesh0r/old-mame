@@ -7,7 +7,9 @@ a.k.a. same Jangou blitter but with NCS CPU for displaying graphics as protectio
 preliminary driver by David Haywood & Angelo Salese
 
 TODO:
--Get the other three games to boot;
+-Get Night Gal Summer to boot;
+-Fix Sweet Gal/Sexy Gal gfxs if necessary (i.e. if the bugs aren't all caused by irq/nmi
+ wrong firing);
 -Proper Z80<->MCU comms,many video problems because of that;
 -Abstract the video chip to a proper video file and get the name of that chip;
 
@@ -15,6 +17,7 @@ TODO:
 
 #include "driver.h"
 #include "sound/ay8910.h"
+#include "sound/2203intf.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6800/m6800.h"
 
@@ -139,6 +142,60 @@ static WRITE8_HANDLER(nsc_true_blitter_w )
 	}
 }
 
+static WRITE8_HANDLER( sexygal_nsc_true_blitter_w )
+{
+	static UINT8 true_blit[7];
+
+	int src,x,y,h,w, flipx;
+	true_blit[offset] = data;
+
+	/*trigger blitter write to ram,might not be correct...*/
+	if(offset == 6)
+	{
+      //printf("%02x %02x %02x %02x %02x %02x %02x\n",true_blit[0],true_blit[1],true_blit[2],true_blit[3],true_blit[4],true_blit[5],true_blit[6]);
+		w = (true_blit[5] & 0xff)+1;
+		h = (true_blit[6] & 0xff)+1;
+		src = ((true_blit[1]<<8)|(true_blit[0]<<0));
+		src |= (true_blit[2]&3)<<16;
+
+
+		x = (true_blit[3] & 0xff);
+		y = (true_blit[4] & 0xff);
+
+		// lowest bit of src controls flipping / draw direction?
+		flipx=(true_blit[0] & 1);
+
+		if (!flipx) src += (w*h)-1;
+		else src -= (w*h)-1;
+
+		{
+			int count = 0;
+			int xcount,ycount;
+			for(ycount=0;ycount<h;ycount++)
+			{
+				for(xcount=0;xcount<w;xcount++)
+				{
+					int drawx = (x+xcount) & 0xff;
+					int drawy = (y+ycount) & 0xff;
+					UINT8 dat = nightgal_gfx_nibble(space->machine,src+count);
+					UINT8 cur_pen_hi = pen_data[(dat & 0xf0)>>4];
+					UINT8 cur_pen_lo = pen_data[(dat & 0x0f)>>0];
+
+					dat = cur_pen_lo | cur_pen_hi<<4;
+
+					if((dat & 0xff) != 0)
+						plot_nightgal_gfx_pixel(dat, drawx,drawy);
+
+					if (!flipx)	count--;
+					else count++;
+				}
+			}
+			//printf("%02x %02x %02x %02x %02x %02x %02x\n",true_blit[0],true_blit[1],true_blit[2],true_blit[3],true_blit[4],true_blit[5],true_blit[6]);
+			//cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE );
+		}
+	}
+}
+
 static PALETTE_INIT( nightgal )
 {
 	int	bit0, bit1, bit2 , r, g, b;
@@ -256,46 +313,46 @@ static WRITE8_HANDLER( mux_w )
 //  printf("%02x\n",mux_data);
 }
 
-static READ8_HANDLER( input_1p_r )
+static READ8_DEVICE_HANDLER( input_1p_r )
 {
 	static UINT8 cr_clear;
 
-	cr_clear = input_port_read(space->machine, "CR_CLEAR");
+	cr_clear = input_port_read(device->machine, "CR_CLEAR");
 
 	switch(mux_data)
 	{
-		case 0x01: return input_port_read(space->machine, "PL1_1") | cr_clear;
-		case 0x02: return input_port_read(space->machine, "PL1_2") | cr_clear;
-		case 0x04: return input_port_read(space->machine, "PL1_3") | cr_clear;
-		case 0x08: return input_port_read(space->machine, "PL1_4") | cr_clear;
-		case 0x10: return input_port_read(space->machine, "PL1_5") | cr_clear;
-		case 0x20: return input_port_read(space->machine, "PL1_6") | cr_clear;
+		case 0x01: return input_port_read(device->machine, "PL1_1") | cr_clear;
+		case 0x02: return input_port_read(device->machine, "PL1_2") | cr_clear;
+		case 0x04: return input_port_read(device->machine, "PL1_3") | cr_clear;
+		case 0x08: return input_port_read(device->machine, "PL1_4") | cr_clear;
+		case 0x10: return input_port_read(device->machine, "PL1_5") | cr_clear;
+		case 0x20: return input_port_read(device->machine, "PL1_6") | cr_clear;
 	}
 //  printf("%04x\n",mux_data);
 
-	return (input_port_read(space->machine, "PL1_1") & input_port_read(space->machine, "PL1_2") & input_port_read(space->machine, "PL1_3") &
-	       input_port_read(space->machine, "PL1_4") & input_port_read(space->machine, "PL1_5") & input_port_read(space->machine, "PL1_6")) | cr_clear;//input_port_read(space->machine, "PL1_0") && ;
+	return (input_port_read(device->machine, "PL1_1") & input_port_read(device->machine, "PL1_2") & input_port_read(device->machine, "PL1_3") &
+	       input_port_read(device->machine, "PL1_4") & input_port_read(device->machine, "PL1_5") & input_port_read(device->machine, "PL1_6")) | cr_clear;//input_port_read(device->machine, "PL1_0") && ;
 }
 
-static READ8_HANDLER( input_2p_r )
+static READ8_DEVICE_HANDLER( input_2p_r )
 {
 	static UINT8 coin_port;
 
-	coin_port = input_port_read(space->machine, "COINS");
+	coin_port = input_port_read(device->machine, "COINS");
 
 	switch(mux_data)
 	{
-		case 0x01: return input_port_read(space->machine, "PL2_1") | coin_port;
-		case 0x02: return input_port_read(space->machine, "PL2_2") | coin_port;
-		case 0x04: return input_port_read(space->machine, "PL2_3") | coin_port;
-		case 0x08: return input_port_read(space->machine, "PL2_4") | coin_port;
-		case 0x10: return input_port_read(space->machine, "PL2_5") | coin_port;
-		case 0x20: return input_port_read(space->machine, "PL2_6") | coin_port;
+		case 0x01: return input_port_read(device->machine, "PL2_1") | coin_port;
+		case 0x02: return input_port_read(device->machine, "PL2_2") | coin_port;
+		case 0x04: return input_port_read(device->machine, "PL2_3") | coin_port;
+		case 0x08: return input_port_read(device->machine, "PL2_4") | coin_port;
+		case 0x10: return input_port_read(device->machine, "PL2_5") | coin_port;
+		case 0x20: return input_port_read(device->machine, "PL2_6") | coin_port;
 	}
 //  printf("%04x\n",mux_data);
 
-	return (input_port_read(space->machine, "PL2_1") & input_port_read(space->machine, "PL2_2") & input_port_read(space->machine, "PL2_3") &
-	       input_port_read(space->machine, "PL2_4") & input_port_read(space->machine, "PL2_5") & input_port_read(space->machine, "PL2_6")) | coin_port;//input_port_read(space->machine, "PL1_0") && ;
+	return (input_port_read(device->machine, "PL2_1") & input_port_read(device->machine, "PL2_2") & input_port_read(device->machine, "PL2_3") &
+	       input_port_read(device->machine, "PL2_4") & input_port_read(device->machine, "PL2_5") & input_port_read(device->machine, "PL2_6")) | coin_port;//input_port_read(device->machine, "PL1_0") && ;
 
 }
 
@@ -304,6 +361,10 @@ static READ8_HANDLER( input_2p_r )
 * Memory Maps
 *
 ********************************************/
+
+/********************************
+* Night Gal
+********************************/
 
 static ADDRESS_MAP_START( nightgal_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
@@ -315,9 +376,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( nightgal_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x01,0x01) AM_READ(ay8910_read_port_0_r) //ay read port
-	AM_RANGE(0x02,0x02) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x03,0x03) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x01,0x01) AM_DEVREAD("ay", ay8910_r) //ay read port
+	AM_RANGE(0x02,0x03) AM_DEVWRITE("ay", ay8910_data_address_w)
 //  AM_RANGE(0x10,0x10) AM_WRITE(output_w)
 	AM_RANGE(0x10,0x10) AM_READ_PORT("DSWC")
 	AM_RANGE(0x11,0x11) AM_READ_PORT("SYSA")
@@ -340,6 +400,42 @@ static ADDRESS_MAP_START( nsc_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1300, 0x130f) AM_READ(blit_vregs_r)
 //  AM_RANGE(0x1000, 0xdfff) AM_ROM AM_REGION("gfx1", 0 )
 	AM_RANGE(0xe000, 0xffff) AM_ROM AM_WRITENOP
+ADDRESS_MAP_END
+
+/********************************
+* Sexy Gal
+********************************/
+
+static ADDRESS_MAP_START( sexygal_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0x807f) AM_RAM AM_SHARE(2)
+//  AM_RANGE(0xa000, 0xa000) AM_WRITE(nsc_latch_w) //???
+	AM_RANGE(0xe000, 0xe03f) AM_RAM AM_SHARE(1)
+	AM_RANGE(0xf000, 0xffff) AM_RAM
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( sexygal_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x00,0x01) AM_DEVREADWRITE("ym", ym2203_r, ym2203_w)
+//  AM_RANGE(0x10,0x10) AM_WRITE(output_w)
+	AM_RANGE(0x10,0x10) AM_READ_PORT("DSWC")
+	AM_RANGE(0x11,0x11) AM_READ_PORT("SYSA")
+	AM_RANGE(0x12,0x12) AM_READ_PORT("DSWA")
+	AM_RANGE(0x13,0x13) AM_READ_PORT("DSWB")
+	AM_RANGE(0x11,0x11) AM_WRITE(mux_w)
+	AM_RANGE(0x12,0x14) AM_WRITE(blitter_w) //data for the nsc to be processed
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( sexygal_nsc_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x007f) AM_RAM AM_SHARE(2)
+	AM_RANGE(0x0080, 0x0080) AM_READ(blitter_status_r)
+	AM_RANGE(0x0081, 0x0083) AM_READ(nsc_blit_r)
+	AM_RANGE(0x0080, 0x0086) AM_WRITE(sexygal_nsc_true_blitter_w)
+
+	AM_RANGE(0x00a0, 0x00af) AM_WRITE(blit_true_vregs_w)
+
+	AM_RANGE(0x1000, 0x103f) AM_RAM AM_SHARE(1)
+	AM_RANGE(0xc000, 0xffff) AM_ROM AM_WRITENOP
 ADDRESS_MAP_END
 
 /********************************************
@@ -574,26 +670,26 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_1p_r,
-	input_2p_r,
-	NULL,
-	NULL
+	DEVCB_HANDLER(input_1p_r),
+	DEVCB_HANDLER(input_2p_r),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static MACHINE_DRIVER_START( nightgal )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,MASTER_CLOCK / 4)		 /* ? MHz */
+	MDRV_CPU_ADD("maincpu", Z80,MASTER_CLOCK / 4)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(0,nightgal_map)
 	MDRV_CPU_IO_MAP(0,nightgal_io)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", NSC8105, MASTER_CLOCK / 4)
 	MDRV_CPU_PROGRAM_MAP(nsc_map, 0)
 
-	MDRV_QUANTUM_PERFECT_CPU("main")
+	MDRV_QUANTUM_PERFECT_CPU("maincpu")
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -614,12 +710,23 @@ static MACHINE_DRIVER_START( nightgal )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 MACHINE_DRIVER_END
 
-/*TODO*/
 static MACHINE_DRIVER_START( sexygal )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM( nightgal )
-//  MDRV_CPU_MODIFY("main")
-//  MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+  	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_PROGRAM_MAP(0,sexygal_map)
+	MDRV_CPU_IO_MAP(0,sexygal_io)
+	MDRV_CPU_PERIODIC_INT(nmi_line_pulse,244)//???
+
+	MDRV_CPU_MODIFY("sub")
+	MDRV_CPU_PROGRAM_MAP(sexygal_nsc_map, 0)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
+
+	MDRV_SOUND_REMOVE("ay")
+
+	MDRV_SOUND_ADD("ym", YM2203, MASTER_CLOCK / 8)
+	MDRV_SOUND_CONFIG(ay8910_config)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 MACHINE_DRIVER_END
 
 
@@ -652,7 +759,7 @@ Dumped by Uki. 2000/06/11
 */
 
 ROM_START( nightgal )
-	ROM_REGION( 0x8000, "main", 0 )
+	ROM_REGION( 0x8000, "maincpu", 0 )
 	ROM_LOAD( "ngal_10.bin", 0x00000, 0x02000, CRC(5eb28742) SHA1(d48045b7cbce69093494c4ec764cf4fb3c120bd6) )
 	ROM_LOAD( "ngal_11.bin", 0x02000, 0x02000, CRC(c52f7942) SHA1(e23b9e4936f9b3111ea14c0250190ee6de1ed4ab) )
 	ROM_LOAD( "ngal_12.bin", 0x04000, 0x02000, CRC(515e69a7) SHA1(234247c829c2b082360d7d44c1488fc5fcf45cd2) )
@@ -703,7 +810,7 @@ http://japump.i.am/
 
 */
 ROM_START( ngtbunny )
-	ROM_REGION( 0x8000, "main", 0 )
+	ROM_REGION( 0x8000, "maincpu", 0 )
 	ROM_LOAD( "6.3n", 0x00000, 0x02000, CRC(3e39c0ef) SHA1(56287fb19ff1a61ff606454315e433ecd2e9318a) )
 	ROM_LOAD( "7.3p", 0x02000, 0x02000, CRC(34024380) SHA1(ba535e2b198f55e68a45ad7030b12c9aa1389aea) )
 	ROM_LOAD( "8.3s", 0x04000, 0x02000, CRC(9bf96168) SHA1(f0e9302bc9577fe779b56cb72035672368c94481) )
@@ -722,7 +829,7 @@ ROM_START( ngtbunny )
 ROM_END
 
 ROM_START( royalngt )
-	ROM_REGION( 0x8000, "main", 0 )
+	ROM_REGION( 0x8000, "maincpu", 0 )
 	ROM_LOAD( "rn6.3n", 0x00000, 0x02000, CRC(abbf38b9) SHA1(455dcec2ac2187b7216ff53fbbb8975b763fb981) )
 	ROM_LOAD( "rn7.3p", 0x02000, 0x02000, CRC(ae9c082b) SHA1(ee3effea653f972fd732453e9ab72f48e75410f8) )
 	ROM_LOAD( "rn8.3s", 0x04000, 0x02000, CRC(1371a83a) SHA1(c7107b62534837dd51bb4a93ba9a690f91393930) )
@@ -782,7 +889,7 @@ SG.7E   color
 */
 
 ROM_START( sexygal )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "10.3n",  0x00000, 0x04000, CRC(53425b74) SHA1(1239c0527d00d693313366b7e3da669565f99ffd) )
 	ROM_LOAD( "11.3pr", 0x04000, 0x04000, CRC(a3138b42) SHA1(1bf7f6e2c4020251379cc72fa731c17795f35e2e) )
 
@@ -809,7 +916,7 @@ ROM_START( sexygal )
 ROM_END
 
 ROM_START( sweetgal )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "10.3n",  0x00000, 0x04000, CRC(0f6c4bf0) SHA1(50e5c6f08e124641f5df8938ccfcdebde18f6a0f) )
 	ROM_LOAD( "11.3p", 0x04000, 0x04000, CRC(7388e9b3) SHA1(e318d2d3888679bbd43a0aab68252fd359b7969d) )
 
@@ -875,7 +982,7 @@ NG2.6U  color
 */
 
 ROM_START( ngalsumr )
-	ROM_REGION( 0x8000, "main", 0 )
+	ROM_REGION( 0x8000, "maincpu", 0 )
 	ROM_LOAD( "8.3s", 0x00000, 0x02000, CRC(30f81b12) SHA1(e264b0cdc6ff400643cba56847344c270e96a204) )
 	ROM_LOAD( "9.3t", 0x02000, 0x02000, CRC(879fc493) SHA1(ec7c6928b5d4e46dcc99271466e7eb801f601a70) )
 	ROM_LOAD( "10.3v", 0x04000, 0x02000, CRC(31211088) SHA1(960b781c420602be3de66565a030cf5ebdcc2ffb) )
@@ -906,6 +1013,7 @@ GAME( 1984, nightgal, 0,       nightgal, sexygal,  0, ROT0,"Nichibutsu", "Night 
 GAME( 1984, ngtbunny, 0,       nightgal, sexygal,  0, ROT0,"Nichibutsu", "Night Bunny (Japan 840601 MRN 2-10)", GAME_NOT_WORKING|GAME_UNEMULATED_PROTECTION )
 GAME( 1984, royalngt, ngtbunny,nightgal, sexygal,  0, ROT0,"Royal Denshi", "Royal Night (Japan 840220 RN 2-00)", GAME_NOT_WORKING|GAME_UNEMULATED_PROTECTION )
 /* Type 2 HW*/
-GAME( 1985, sexygal,  0,       sexygal,  sexygal,  0, ROT0,"Nichibutsu", "Sexy Gal", GAME_NOT_WORKING|GAME_UNEMULATED_PROTECTION )
-GAME( 1985, sweetgal, sexygal, sexygal,  sexygal,  0, ROT0,"Nichibutsu", "Sweet Gal", GAME_NOT_WORKING|GAME_UNEMULATED_PROTECTION )
+GAME( 1985, sexygal,  0,       sexygal,  sexygal,  0, ROT0,"Nichibutsu", "Sexy Gal (Japan 850501 SXG 1-00)", GAME_NOT_WORKING|GAME_UNEMULATED_PROTECTION )
+GAME( 1985, sweetgal, sexygal, sexygal,  sexygal,  0, ROT0,"Nichibutsu", "Sweet Gal (Japan 850510 SWG 1-02)", GAME_NOT_WORKING|GAME_UNEMULATED_PROTECTION )
+/* Type 3 HW*/
 GAME( 1985, ngalsumr, 0,       sexygal,  sexygal,  0, ROT0,"Nichibutsu", "Night Gal Summer", GAME_NOT_WORKING|GAME_UNEMULATED_PROTECTION )

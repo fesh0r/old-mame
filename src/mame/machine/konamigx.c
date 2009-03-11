@@ -2,8 +2,6 @@
  *
  * machine/konamigx.c - contains various System GX hardware abstractions
  *
- * Currently includes: TMS57002 skipper/simulator to make the sound 68k happy.
- *
  */
 
 #include "driver.h"
@@ -11,159 +9,6 @@
 #include "machine/konamigx.h"
 
 #define GX_DEBUG 0
-
-
-static struct
-{
-	UINT8 control;
-	UINT8 program[1024];
-	UINT32 tables[256];
-	int curpos;
-	int bytepos;
-	UINT32 tmp;
-} tms57002;
-
-static int ldw = 0;
-
-
-void tms57002_init(void)
-{
-	tms57002.control = 0;
-}
-
-static void chk_ldw(void)
-{
-	ldw = 0;
-}
-
-WRITE8_HANDLER( tms57002_control_w )
-{
-	chk_ldw();
-
-	switch(tms57002.control)
-	{
-		case 0xf8:
-		break;
-		case 0xf0:
-		break;
-	}
-
-	tms57002.control = data;
-
-	switch(data)
-	{
-		case 0xf8: // Program write
-		case 0xf0: // Table write
-			tms57002.curpos = 0;
-			tms57002.bytepos = 3;
-			tms57002.tmp = 0;
-		break;
-		case 0xf4: // Entry write
-			tms57002.curpos = -1;
-			tms57002.bytepos = 3;
-			tms57002.tmp = 0;
-		break;
-		case 0xfc: // Checksum (?) Status (?)
-			tms57002.bytepos = 3;
-			tms57002.tmp = 0;
-		break;
-		case 0xff: // Standby
-		break;
-		case 0xfe: // Irq
-			/* (place ack of timer IRQ here) */
-		break;
-		default:
-		break;
-	}
-}
-
-READ8_HANDLER( tms57002_status_r )
-{
-	chk_ldw();
-	return 1;
-}
-
-WRITE8_HANDLER( tms57002_data_w )
-{
-	switch(tms57002.control)
-	{
-		case 0xf8:
-			tms57002.program[tms57002.curpos++] = data;
-		break;
-		case 0xf0:
-			tms57002.tmp |= data << (8*tms57002.bytepos);
-			tms57002.bytepos--;
-			if (tms57002.bytepos < 0)
-			{
-				tms57002.bytepos = 3;
-				tms57002.tables[tms57002.curpos++] =  tms57002.tmp;
-				tms57002.tmp = 0;
-			}
-		break;
-		case 0xf4:
-			if (tms57002.curpos == -1)
-	  			tms57002.curpos = data;
-			else
-			{
-				tms57002.tmp |= data << (8*tms57002.bytepos);
-				tms57002.bytepos--;
-
-				if (tms57002.bytepos < 0)
-				{
-					tms57002.bytepos = 3;
-					tms57002.tables[tms57002.curpos] =  tms57002.tmp;
-					tms57002.tmp = 0;
-					tms57002.curpos = -1;
-				}
-			}
-		break;
-		default:
-			ldw++;
-		break;
-	}
-}
-
-READ8_HANDLER( tms57002_data_r )
-{
-	UINT8 res;
-
-	chk_ldw();
-
-	switch(tms57002.control)
-	{
-		case 0xfc:
-			res = tms57002.tmp >> (8*tms57002.bytepos);
-			tms57002.bytepos--;
-
-			if(tms57002.bytepos < 0) tms57002.bytepos = 3;
-		return res;
-	}
-
-	return 0;
-}
-
-
-READ16_HANDLER( tms57002_data_word_r )
-{
-	return(tms57002_data_r(space,0));
-}
-
-READ16_HANDLER( tms57002_status_word_r )
-{
-	return(tms57002_status_r(space,0));
-}
-
-WRITE16_HANDLER( tms57002_control_word_w )
-{
-	tms57002_control_w(space, 0, data);
-}
-
-WRITE16_HANDLER( tms57002_data_word_w )
-{
-	tms57002_data_w(space, 0, data);
-}
-
-
 
 /***************************************************************************/
 /*                                                                         */
@@ -211,7 +56,7 @@ INLINE void K053936GP_copyroz32clip( running_machine *machine,
 		bitmap_t *dst_bitmap, bitmap_t *src_bitmap,
 		const rectangle *dst_cliprect, const rectangle *src_cliprect,
 		UINT32 _startx,UINT32 _starty,int _incxx,int _incxy,int _incyx,int _incyy,
-		int tilebpp, int blend, int clip )
+		int tilebpp, int blend, int alpha, int clip )
 {
 	static const int colormask[8]={1,3,7,0xf,0x1f,0x3f,0x7f,0xff};
 
@@ -288,7 +133,7 @@ INLINE void K053936GP_copyroz32clip( running_machine *machine,
 				if (!(pixel & cmask))
 					continue;
 
-				dst_ptr[ecx] = alpha_blend32(pal_base[pixel], dst_ptr[ecx]);
+				dst_ptr[ecx] = alpha_blend_r32(pal_base[pixel], dst_ptr[ecx], alpha);
 			}
 			while (++ecx);
 
@@ -357,11 +202,11 @@ INLINE void K053936GP_copyroz32clip( running_machine *machine,
 	}
 }
 
-// adpoted from generic K053936_zoom_draw()
+// adapted from generic K053936_zoom_draw()
 static void K053936GP_zoom_draw(running_machine *machine,
 		int chip, UINT16 *ctrl, UINT16 *linectrl,
 		bitmap_t *bitmap, const rectangle *cliprect, tilemap *tmap,
-		int tilebpp, int blend)
+		int tilebpp, int blend, int alpha)
 {
 	bitmap_t *src_bitmap;
 	rectangle *src_cliprect;
@@ -401,7 +246,7 @@ static void K053936GP_zoom_draw(running_machine *machine,
 			K053936GP_copyroz32clip(machine,
 					bitmap, src_bitmap, &my_clip, src_cliprect,
 					startx<<5, starty<<5, incxx<<5, incxy<<5, 0, 0,
-					tilebpp, blend, clip);
+					tilebpp, blend, alpha, clip);
 			y++;
 		}
 	}
@@ -426,20 +271,20 @@ static void K053936GP_zoom_draw(running_machine *machine,
 		K053936GP_copyroz32clip(machine,
 				bitmap, src_bitmap, cliprect, src_cliprect,
 				startx<<5, starty<<5, incxx<<5, incxy<<5, incyx<<5, incyy<<5,
-				tilebpp, blend, clip);
+				tilebpp, blend, alpha, clip);
 	}
 }
 
 void K053936GP_0_zoom_draw(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect,
-		tilemap *tmap, int tilebpp, int blend)
+		tilemap *tmap, int tilebpp, int blend, int alpha)
 {
-	K053936GP_zoom_draw(machine, 0,K053936_0_ctrl,K053936_0_linectrl,bitmap,cliprect,tmap,tilebpp,blend);
+	K053936GP_zoom_draw(machine, 0,K053936_0_ctrl,K053936_0_linectrl,bitmap,cliprect,tmap,tilebpp,blend,alpha);
 }
 
 void K053936GP_1_zoom_draw(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect,
-		tilemap *tmap, int tilebpp, int blend)
+		tilemap *tmap, int tilebpp, int blend, int alpha)
 {
-	K053936GP_zoom_draw(machine, 1,K053936_1_ctrl,K053936_1_linectrl,bitmap,cliprect,tmap,tilebpp,blend);
+	K053936GP_zoom_draw(machine, 1,K053936_1_ctrl,K053936_1_linectrl,bitmap,cliprect,tmap,tilebpp,blend,alpha);
 }
 
 
@@ -471,7 +316,7 @@ INLINE void zdrawgfxzoom32GP( running_machine *machine,
 #define FPENT  0
 
 	// inner loop
-	UINT8  *src_ptr;
+	const UINT8  *src_ptr;
 	int src_x;
 	int eax, ecx;
 	int src_fx, src_fdx;
@@ -485,7 +330,7 @@ INLINE void zdrawgfxzoom32GP( running_machine *machine,
 
 	// outter loop
 	int src_fby, src_fdy, src_fbx;
-	UINT8 *src_base;
+	const UINT8 *src_base;
 	int dst_w, dst_h;
 
 	// one-time
@@ -524,7 +369,7 @@ INLINE void zdrawgfxzoom32GP( running_machine *machine,
 	src_pitch = 16;
 	src_fw    = 16;
 	src_fh    = 16;
-	src_base  = gfx->gfxdata + (code % gfx->total_elements) * gfx->char_modulo;
+	src_base  = gfx_element_get_data(gfx, code % gfx->total_elements);
 
 	pal_base  = machine->pens + gfx->color_base + (color % gfx->total_colors) * granularity;
 	shd_base  = machine->shadow_table;
@@ -691,7 +536,7 @@ INLINE void zdrawgfxzoom32GP( running_machine *machine,
 							if (!eax || ozbuf_ptr[ecx] < z8) continue;
 							ozbuf_ptr[ecx] = z8;
 
-							dst_ptr[ecx] = alpha_blend32(pal_base[eax], dst_ptr[ecx]);
+							dst_ptr[ecx] = alpha_blend_r32(pal_base[eax], dst_ptr[ecx], alpha);
 						}
 						while (++ecx);
 
@@ -717,7 +562,7 @@ INLINE void zdrawgfxzoom32GP( running_machine *machine,
 							if (!eax || eax >= shdpen || ozbuf_ptr[ecx] < z8) continue;
 							ozbuf_ptr[ecx] = z8;
 
-							dst_ptr[ecx] = alpha_blend32(pal_base[eax], dst_ptr[ecx]);
+							dst_ptr[ecx] = alpha_blend_r32(pal_base[eax], dst_ptr[ecx], alpha);
 						}
 						while (++ecx);
 
@@ -838,7 +683,7 @@ INLINE void zdrawgfxzoom32GP( running_machine *machine,
 							if (!eax || ozbuf_ptr[ecx] < z8) continue;
 							ozbuf_ptr[ecx] = z8;
 
-							dst_ptr[ecx] = alpha_blend32(pal_base[eax], dst_ptr[ecx]);
+							dst_ptr[ecx] = alpha_blend_r32(pal_base[eax], dst_ptr[ecx], alpha);
 						}
 						while (++ecx);
 
@@ -858,7 +703,7 @@ INLINE void zdrawgfxzoom32GP( running_machine *machine,
 							if (!eax || eax >= shdpen || ozbuf_ptr[ecx] < z8) continue;
 							ozbuf_ptr[ecx] = z8;
 
-							dst_ptr[ecx] = alpha_blend32(pal_base[eax], dst_ptr[ecx]);
+							dst_ptr[ecx] = alpha_blend_r32(pal_base[eax], dst_ptr[ecx], alpha);
 						}
 						while (++ecx);
 
@@ -1603,10 +1448,10 @@ void konamigx_mixer(running_machine *machine, bitmap_t *bitmap, const rectangle 
 						temp4 = K054338_set_alpha_level(temp2);
 
 						if (temp4 <= 0) continue;
-						if (temp4 < 255) k = TILEMAP_DRAW_ALPHA;
+						if (temp4 < 255) k = TILEMAP_DRAW_ALPHA(temp4);
 					}
 
-					if (mixerflags & 1<<(code+12)) k |= TILE_LINE_DISABLED;
+					if (mixerflags & 1<<(code+12)) k |= K056382_DRAW_FLAG_FORCE_XYSCROLL;
 
 					K056832_tilemap_draw(machine, bitmap, cliprect, code, k, 0);
 				}
@@ -1615,6 +1460,7 @@ void konamigx_mixer(running_machine *machine, bitmap_t *bitmap, const rectangle 
 				case -4:
 				if (disp & K55_INP_SUB1)
 				{
+					int alpha = 255;
 					if (j == GXMIX_BLEND_NONE)  { temp1 = 0xff; temp2 = temp3 = 0; } else
 					if (j == GXMIX_BLEND_FORCE) { temp1 = 0x00; temp2 = mixerflags>>24; temp3 = 3; }
 					else
@@ -1626,7 +1472,7 @@ void konamigx_mixer(running_machine *machine, bitmap_t *bitmap, const rectangle 
 
 					if (temp1!=0xff && temp2 /*&& temp3==3*/)
 					{
-						temp4 = K054338_set_alpha_level(temp2);
+						alpha = temp4 = K054338_set_alpha_level(temp2);
 
 						if (temp4 <= 0) continue;
 						if (temp4 < 255) k = (j == GXMIX_BLEND_FAST) ? ~parity : 1;
@@ -1635,7 +1481,7 @@ void konamigx_mixer(running_machine *machine, bitmap_t *bitmap, const rectangle 
 					l = sub1flags & 0xf;
 
 					if (offs == -2)
-						K053936GP_0_zoom_draw(machine, bitmap, cliprect, sub1, l, k);
+						K053936GP_0_zoom_draw(machine, bitmap, cliprect, sub1, l, k, alpha);
 					else
 						K053250_draw(machine, bitmap, cliprect, 0, vcblk[4]<<l, 0, 0);
 				}
@@ -1644,6 +1490,7 @@ void konamigx_mixer(running_machine *machine, bitmap_t *bitmap, const rectangle 
 				case -5:
 				if (disp & K55_INP_SUB2)
 				{
+					int alpha = 255;
 					if (j == GXMIX_BLEND_NONE)  { temp1 = 0xff; temp2 = temp3 = 0; } else
 					if (j == GXMIX_BLEND_FORCE) { temp1 = 0x00; temp2 = mixerflags>>26; temp3 = 3; }
 					else
@@ -1655,7 +1502,7 @@ void konamigx_mixer(running_machine *machine, bitmap_t *bitmap, const rectangle 
 
 					if (temp1!=0xff && temp2 /*&& temp3==3*/)
 					{
-						temp4 = K054338_set_alpha_level(temp2);
+						alpha = temp4 = K054338_set_alpha_level(temp2);
 
 						if (temp4 <= 0) continue;
 						if (temp4 < 255) k = (j == GXMIX_BLEND_FAST) ? ~parity : 1;
@@ -1664,7 +1511,7 @@ void konamigx_mixer(running_machine *machine, bitmap_t *bitmap, const rectangle 
 					l = sub2flags & 0xf;
 
 					if (offs == -3)
-						K053936GP_1_zoom_draw(machine, bitmap, cliprect, sub2, l, k);
+						K053936GP_1_zoom_draw(machine, bitmap, cliprect, sub2, l, k, alpha);
 					else
 						K053250_draw(machine, bitmap, cliprect, 1, vcblk[5]<<l, 0, 0);
 				}

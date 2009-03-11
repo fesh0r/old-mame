@@ -251,23 +251,6 @@ static WRITE32_HANDLER( dreamwld_palette_w )
 	palette_set_color_rgb(space->machine, color, pal5bit(dat >> 10), pal5bit(dat >> 5), pal5bit(dat >> 0));
 }
 
-static READ32_HANDLER( dreamwld_6295_0_r )
-{
-	return okim6295_status_0_r(space, 0)<<24;
-}
-
-static WRITE32_HANDLER( dreamwld_6295_0_w )
-{
-	if (ACCESSING_BITS_24_31)
-	{
-		okim6295_data_0_w(space, 0, (data>>24) & 0xff);
-	}
-	else
-	{
-		logerror("OKI0: unk write %x mem_mask %8x\n", data, mem_mask);
-	}
-}
-
 static void dreamwld_oki_setbank( running_machine *machine, UINT8 chip, UINT8 bank )
 {
 	/* 0x30000-0x3ffff is banked.
@@ -287,23 +270,6 @@ static WRITE32_HANDLER( dreamwld_6295_0_bank_w )
 	else
 	{
 		logerror("OKI0: unk bank write %x mem_mask %8x\n", data, mem_mask);
-	}
-}
-
-static READ32_HANDLER( dreamwld_6295_1_r )
-{
-	return okim6295_status_1_r(space, 0)<<24;
-}
-
-static WRITE32_HANDLER( dreamwld_6295_1_w )
-{
-	if (ACCESSING_BITS_24_31)
-	{
-		okim6295_data_1_w(space, 0, (data>>24) & 0xff);
-	}
-	else
-	{
-		logerror("OKI1: unk write %x mem_mask %8x\n", data, mem_mask);
 	}
 }
 
@@ -332,10 +298,10 @@ static ADDRESS_MAP_START( dreamwld_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xc00004, 0xc00007) AM_READ_PORT("c00004")
 
 	AM_RANGE(0xc0000c, 0xc0000f) AM_WRITE( dreamwld_6295_0_bank_w ) // sfx
-	AM_RANGE(0xc00018, 0xc0001b) AM_READWRITE( dreamwld_6295_0_r, dreamwld_6295_0_w) // sfx
+	AM_RANGE(0xc00018, 0xc0001b) AM_DEVREADWRITE8( "oki1", okim6295_r, okim6295_w, 0xff000000 ) // sfx
 
 	AM_RANGE(0xc0002c, 0xc0002f) AM_WRITE( dreamwld_6295_1_bank_w ) // sfx
-	AM_RANGE(0xc00028, 0xc0002b) AM_READWRITE( dreamwld_6295_1_r, dreamwld_6295_1_w) // sfx
+	AM_RANGE(0xc00028, 0xc0002b) AM_DEVREADWRITE8( "oki2", okim6295_r, okim6295_w, 0xff000000 ) // sfx
 
 	AM_RANGE(0xc00030, 0xc00033) AM_READ(dreamwld_protdata_r) // it reads protection data (irq code) from here and puts it at ffd000
 
@@ -419,12 +385,12 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( dreamwld )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68EC020, MASTER_CLOCK/2)
+	MDRV_CPU_ADD("maincpu", M68EC020, MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(dreamwld_map, 0)
-	MDRV_CPU_VBLANK_INT("main", irq4_line_hold) // 4, 5, or 6, all point to the same place
+	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold) // 4, 5, or 6, all point to the same place
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(58)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -437,23 +403,23 @@ static MACHINE_DRIVER_START( dreamwld )
 	MDRV_VIDEO_START(dreamwld)
 	MDRV_VIDEO_UPDATE(dreamwld)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("oki1", OKIM6295, MASTER_CLOCK/32)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7low)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.50)
 
 	MDRV_SOUND_ADD("oki2", OKIM6295, MASTER_CLOCK/32)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7low)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.50)
 MACHINE_DRIVER_END
 
 
 
 ROM_START( dreamwld )
-	ROM_REGION( 0x200000, "main", 0 )
+	ROM_REGION( 0x200000, "maincpu", 0 )
 	ROM_LOAD32_BYTE( "1.bin", 0x000002, 0x040000, CRC(35c94ee5) SHA1(3440a65a807622b619c97bc2a88fd7d875c26f66) )
 	ROM_LOAD32_BYTE( "2.bin", 0x000003, 0x040000, CRC(5409e7fc) SHA1(2f94a6a8e4c94b36b43f0b94d58525f594339a9d) )
 	ROM_LOAD32_BYTE( "3.bin", 0x000000, 0x040000, CRC(e8f7ae78) SHA1(cfd393cec6dec967c82e1131547b7e7fdc5d814f) )

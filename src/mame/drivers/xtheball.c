@@ -119,20 +119,6 @@ static void xtheball_from_shiftreg(const address_space *space, UINT32 address, U
 
 /*************************************
  *
- *  Sound data access
- *
- *************************************/
-
-static WRITE16_HANDLER( dac_w )
-{
-	if (ACCESSING_BITS_8_15)
-		dac_data_w(0, data >> 8);
-}
-
-
-
-/*************************************
- *
  *  Output ports
  *
  *************************************/
@@ -249,7 +235,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x03040160, 0x0304016f) AM_READ_PORT("SERVICE")
 	AM_RANGE(0x03040170, 0x0304017f) AM_READ_PORT("SERVICE1")
 	AM_RANGE(0x03040180, 0x0304018f) AM_READ(analogy_watchdog_r)
-	AM_RANGE(0x03060000, 0x0306000f) AM_WRITE(dac_w)
+	AM_RANGE(0x03060000, 0x0306000f) AM_DEVWRITE8("dac", dac_w, 0xff00)
 	AM_RANGE(0x04000000, 0x057fffff) AM_ROM AM_REGION("user2", 0)
 	AM_RANGE(0xc0000000, 0xc00001ff) AM_READWRITE(tms34010_io_register_r, tms34010_io_register_w)
 	AM_RANGE(0xfff80000, 0xffffffff) AM_ROM AM_REGION("user1", 0)
@@ -337,7 +323,7 @@ INPUT_PORTS_END
 static const tms34010_config tms_config =
 {
 	FALSE,							/* halt on reset */
-	"main",							/* the screen operated on */
+	"screen",						/* the screen operated on */
 	10000000,						/* pixel clock */
 	1,								/* pixels per clock */
 	xtheball_scanline_update,		/* scanline callback */
@@ -356,7 +342,7 @@ static const tms34010_config tms_config =
 
 static MACHINE_DRIVER_START( xtheball )
 
-	MDRV_CPU_ADD("main", TMS34010, 40000000)
+	MDRV_CPU_ADD("maincpu", TMS34010, 40000000)
 	MDRV_CPU_CONFIG(tms_config)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_PERIODIC_INT(irq1_line_hold,15000)
@@ -367,7 +353,7 @@ static MACHINE_DRIVER_START( xtheball )
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(tms340x0)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(10000000, 640, 114, 626, 257, 24, 248)
 

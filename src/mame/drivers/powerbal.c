@@ -89,14 +89,14 @@ static WRITE16_HANDLER( tile_banking_w )
 	}
 }
 
-static WRITE16_HANDLER( oki_banking )
+static WRITE16_DEVICE_HANDLER( oki_banking )
 {
 	if(data & 3)
 	{
 		int addr = 0x40000 * ((data & 3) - 1);
 
-		if(addr < memory_region_length(space->machine, "oki"))
-			okim6295_set_bank_base(0, addr);
+		if(addr < memory_region_length(device->machine, "oki"))
+			okim6295_set_bank_base(device, addr);
 	}
 }
 
@@ -112,8 +112,8 @@ static ADDRESS_MAP_START( magicstk_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x0c2014, 0x0c2015) AM_READ_PORT("IN2") AM_WRITE(magicstk_coin_eeprom_w)
 	AM_RANGE(0x0c2016, 0x0c2017) AM_READ_PORT("DSW1")
 	AM_RANGE(0x0c2018, 0x0c2019) AM_READ_PORT("DSW2")
-	AM_RANGE(0x0c201c, 0x0c201d) AM_WRITE(oki_banking)
-	AM_RANGE(0x0c201e, 0x0c201f) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)
+	AM_RANGE(0x0c201c, 0x0c201d) AM_DEVWRITE("oki", oki_banking)
+	AM_RANGE(0x0c201e, 0x0c201f) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff)
 	AM_RANGE(0x0c4000, 0x0c4001) AM_WRITENOP
 	AM_RANGE(0x0e0000, 0x0fffff) AM_RAM
 	AM_RANGE(0x100000, 0x100fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
@@ -132,8 +132,8 @@ static ADDRESS_MAP_START( powerbal_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x0c2014, 0x0c2015) AM_READ_PORT("IN2")
 	AM_RANGE(0x0c2016, 0x0c2017) AM_READ_PORT("DSW1")
 	AM_RANGE(0x0c2018, 0x0c2019) AM_READ_PORT("DSW2")
-	AM_RANGE(0x0c201c, 0x0c201d) AM_WRITE(oki_banking)
-	AM_RANGE(0x0c201e, 0x0c201f) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)
+	AM_RANGE(0x0c201c, 0x0c201d) AM_DEVWRITE("oki", oki_banking)
+	AM_RANGE(0x0c201e, 0x0c201f) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff)
 	AM_RANGE(0x0c4000, 0x0c4001) AM_WRITENOP
 	AM_RANGE(0x0f0000, 0x0fffff) AM_RAM
 	AM_RANGE(0x101000, 0x101fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
@@ -487,12 +487,12 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( powerbal )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 12000000)	/* 12 MHz */
+	MDRV_CPU_ADD("maincpu", M68000, 12000000)	/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(powerbal_main_map, 0)
-	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(61)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -515,14 +515,14 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( magicstk )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 12000000)	/* 12 MHz */
+	MDRV_CPU_ADD("maincpu", M68000, 12000000)	/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(magicstk_main_map, 0)
-	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
 	MDRV_NVRAM_HANDLER(magicstk)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(61)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -594,7 +594,7 @@ Notes:
 */
 
 ROM_START( powerbal )
-	ROM_REGION( 0x80000, "main", 0 )	/* 68000 code */
+	ROM_REGION( 0x80000, "maincpu", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "3.u67",  0x00000, 0x40000, CRC(3aecdde4) SHA1(e78373246d55f120e8d94f4606da874df439b823) )
 	ROM_LOAD16_BYTE( "2.u66",  0x00001, 0x40000, CRC(a4552a19) SHA1(88b84daa1fd36d5c683cf0d6dce341aedbc360d1) )
 
@@ -628,7 +628,7 @@ ROM_START( powerbal )
 ROM_END
 
 ROM_START( magicstk )
-	ROM_REGION( 0x80000, "main", 0 )	/* 68000 code */
+	ROM_REGION( 0x80000, "maincpu", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "12.u67", 0x00000, 0x20000, CRC(70a9c66f) SHA1(0cf4b2d0f796e35881d68adc69eca4360d6ad693) )
 	ROM_LOAD16_BYTE( "11.u66", 0x00001, 0x20000, CRC(a9d7c90e) SHA1(e12517776dc14747b4bbe49f93c4d7e83e8eae01) )
 
@@ -655,7 +655,7 @@ ROM_END
 
 
 ROM_START( hotminda )
-	ROM_REGION( 0x80000, "main", 0 )	/* 68000 code */
+	ROM_REGION( 0x80000, "maincpu", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "rom1.rom",       0x00001, 0x20000, CRC(33aaceba) SHA1(a914400b081eabd869f1ca2c843a91b03af510b1) )
 	ROM_LOAD16_BYTE( "rom2.rom",       0x00000, 0x20000, CRC(f5accd9f) SHA1(12194ea7c35263be9afd91f0abe2041998528af9) )
 

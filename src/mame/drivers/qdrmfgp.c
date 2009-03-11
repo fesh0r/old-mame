@@ -85,11 +85,12 @@ static WRITE16_HANDLER( gp_control_w )
 		int vol = generic_nvram16[0x10] & 0xff;
 		if (vol)
 		{
+			const device_config *k054539 = devtag_get_device(space->machine, "konami");
 			int i;
 			double gain = vol / 90.0;
 
 			for (i=0; i<8; i++)
-				k054539_set_gain(0, i, gain);
+				k054539_set_gain(k054539, i, gain);
 		}
 	}
 }
@@ -114,11 +115,12 @@ static WRITE16_HANDLER( gp2_control_w )
 		int vol = generic_nvram16[0x8] & 0xff;
 		if (vol)
 		{
+			const device_config *k054539 = devtag_get_device(space->machine, "konami");
 			int i;
 			double gain = vol / 90.0;
 
 			for (i=0; i<8; i++)
-				k054539_set_gain(0, i, gain);
+				k054539_set_gain(k054539, i, gain);
 		}
 	}
 }
@@ -191,20 +193,6 @@ static WRITE16_HANDLER( sndram_w )
 	}
 }
 
-static READ16_HANDLER( k054539_word_r )
-{
-	if (ACCESSING_BITS_0_7)
-		return k054539_0_r(space, offset);
-
-	return 0;
-}
-
-static WRITE16_HANDLER( k054539_word_w )
-{
-	if (ACCESSING_BITS_0_7)
-		k054539_0_w(space, offset, data);
-}
-
 /*************/
 
 #define IDE_STD_OFFSET	(0x1f0/2)
@@ -243,7 +231,7 @@ static WRITE16_DEVICE_HANDLER( ide_alt_w )
 
 static READ16_HANDLER( gp2_ide_std_r )
 {
-	const device_config *device = devtag_get_device(space->machine, IDE_CONTROLLER, "ide");
+	const device_config *device = devtag_get_device(space->machine, "ide");
 	if (offset & 0x01)
 	{
 		if (offset == 0x07)
@@ -347,12 +335,12 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x320000, 0x32001f) AM_READ(K053252_word_r)		/* ccu */
 	AM_RANGE(0x330000, 0x330001) AM_READ_PORT("SENSOR")			/* battery power & service sw */
 	AM_RANGE(0x340000, 0x340001) AM_READ_PORT("340000")			/* inputport */
-	AM_RANGE(0x800000, 0x80045f) AM_READ(k054539_word_r)		/* sound regs */
+	AM_RANGE(0x800000, 0x80045f) AM_DEVREAD8("konami", k054539_r, 0x00ff)		/* sound regs */
 	AM_RANGE(0x880000, 0x881fff) AM_READ(K056832_ram_word_r)	/* vram */
 	AM_RANGE(0x882000, 0x883fff) AM_READ(K056832_ram_word_r)	/* vram (mirror) */
 	AM_RANGE(0x900000, 0x901fff) AM_READ(v_rom_r)				/* gfxrom through */
-	AM_RANGE(0xa00000, 0xa0000f) AM_DEVREAD(IDE_CONTROLLER, "ide", ide_std_r)				/* IDE control regs */
-	AM_RANGE(0xa4000c, 0xa4000f) AM_DEVREAD(IDE_CONTROLLER, "ide", ide_alt_r)				/* IDE status control reg */
+	AM_RANGE(0xa00000, 0xa0000f) AM_DEVREAD("ide", ide_std_r)				/* IDE control regs */
+	AM_RANGE(0xa4000c, 0xa4000f) AM_DEVREAD("ide", ide_alt_r)				/* IDE status control reg */
 	AM_RANGE(0xc00000, 0xcbffff) AM_READ(sndram_r)				/* sound ram */
 ADDRESS_MAP_END
 
@@ -367,11 +355,11 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x360000, 0x360001) AM_WRITE(SMH_NOP)			/* unknown */
 	AM_RANGE(0x370000, 0x370001) AM_WRITE(gp_control_w)			/* control reg */
 	AM_RANGE(0x380000, 0x380001) AM_WRITE(SMH_NOP)			/* Watchdog */
-	AM_RANGE(0x800000, 0x80045f) AM_WRITE(k054539_word_w)		/* sound regs */
+	AM_RANGE(0x800000, 0x80045f) AM_DEVWRITE8("konami", k054539_w, 0x00ff)		/* sound regs */
 	AM_RANGE(0x880000, 0x881fff) AM_WRITE(K056832_ram_word_w)	/* vram */
 	AM_RANGE(0x882000, 0x883fff) AM_WRITE(K056832_ram_word_w)	/* vram (mirror) */
-	AM_RANGE(0xa00000, 0xa0000f) AM_DEVWRITE(IDE_CONTROLLER, "ide", ide_std_w)			/* IDE control regs */
-	AM_RANGE(0xa4000c, 0xa4000f) AM_DEVWRITE(IDE_CONTROLLER, "ide", ide_alt_w)			/* IDE status control reg */
+	AM_RANGE(0xa00000, 0xa0000f) AM_DEVWRITE("ide", ide_std_w)			/* IDE control regs */
+	AM_RANGE(0xa4000c, 0xa4000f) AM_DEVWRITE("ide", ide_alt_w)			/* IDE status control reg */
 	AM_RANGE(0xc00000, 0xcbffff) AM_WRITE(sndram_w)				/* sound ram */
 ADDRESS_MAP_END
 
@@ -384,12 +372,12 @@ static ADDRESS_MAP_START( gp2_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x320000, 0x32001f) AM_READ(K053252_word_r)		/* ccu */
 	AM_RANGE(0x330000, 0x330001) AM_READ_PORT("SENSOR")			/* battery power & service */
 	AM_RANGE(0x340000, 0x340001) AM_READ_PORT("340000")			/* inputport */
-	AM_RANGE(0x800000, 0x80045f) AM_READ(k054539_word_r)		/* sound regs */
+	AM_RANGE(0x800000, 0x80045f) AM_DEVREAD8("konami", k054539_r, 0x00ff)		/* sound regs */
 	AM_RANGE(0x880000, 0x881fff) AM_READ(gp2_vram_r)			/* vram */
 	AM_RANGE(0x89f000, 0x8a0fff) AM_READ(gp2_vram_mirror_r)		/* vram (mirror) */
 	AM_RANGE(0x900000, 0x901fff) AM_READ(v_rom_r)				/* gfxrom through */
 	AM_RANGE(0xa00000, 0xa0000f) AM_READ(gp2_ide_std_r)			/* IDE control regs */
-	AM_RANGE(0xa4000c, 0xa4000f) AM_DEVREAD(IDE_CONTROLLER, "ide", ide_alt_r)				/* IDE status control reg */
+	AM_RANGE(0xa4000c, 0xa4000f) AM_DEVREAD("ide", ide_alt_r)				/* IDE status control reg */
 	AM_RANGE(0xc00000, 0xcbffff) AM_READ(sndram_r)				/* sound ram */
 ADDRESS_MAP_END
 
@@ -404,11 +392,11 @@ static ADDRESS_MAP_START( gp2_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x360000, 0x360001) AM_WRITE(SMH_NOP)			/* unknown */
 	AM_RANGE(0x370000, 0x370001) AM_WRITE(gp2_control_w)		/* control reg */
 	AM_RANGE(0x380000, 0x380001) AM_WRITE(SMH_NOP)			/* Watchdog */
-	AM_RANGE(0x800000, 0x80045f) AM_WRITE(k054539_word_w)		/* sound regs */
+	AM_RANGE(0x800000, 0x80045f) AM_DEVWRITE8("konami", k054539_w, 0x00ff)		/* sound regs */
 	AM_RANGE(0x880000, 0x881fff) AM_WRITE(gp2_vram_w)			/* vram */
 	AM_RANGE(0x89f000, 0x8a0fff) AM_WRITE(gp2_vram_mirror_w)	/* vram (mirror) */
-	AM_RANGE(0xa00000, 0xa0000f) AM_DEVWRITE(IDE_CONTROLLER, "ide", ide_std_w)			/* IDE control regs */
-	AM_RANGE(0xa4000c, 0xa4000f) AM_DEVWRITE(IDE_CONTROLLER, "ide", ide_alt_w)			/* IDE status control reg */
+	AM_RANGE(0xa00000, 0xa0000f) AM_DEVWRITE("ide", ide_std_w)			/* IDE control regs */
+	AM_RANGE(0xa4000c, 0xa4000f) AM_DEVWRITE("ide", ide_alt_w)			/* IDE status control reg */
 	AM_RANGE(0xc00000, 0xcbffff) AM_WRITE(sndram_w)				/* sound ram */
 ADDRESS_MAP_END
 
@@ -599,10 +587,10 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static void sound_irq(running_machine *machine)
+static void sound_irq(const device_config *device)
 {
 	if (control & 0x0001)
-		cpu_set_input_line(machine->cpu[0], 1, HOLD_LINE);
+		cpu_set_input_line(device->machine->cpu[0], 1, HOLD_LINE);
 }
 
 static const k054539_interface k054539_config =
@@ -632,7 +620,7 @@ static MACHINE_RESET( qdrmfgp )
 
 	/* reset the IDE controller */
 	gp2_irq_control = 0;
-	devtag_reset(machine, IDE_CONTROLLER, "ide");
+	devtag_reset(machine, "ide");
 }
 
 static MACHINE_RESET( qdrmfgp2 )
@@ -644,7 +632,7 @@ static MACHINE_RESET( qdrmfgp2 )
 
 	/* reset the IDE controller */
 	gp2_irq_control = 0;
-	devtag_reset(machine, IDE_CONTROLLER, "ide");
+	devtag_reset(machine, "ide");
 }
 
 
@@ -657,7 +645,7 @@ static MACHINE_RESET( qdrmfgp2 )
 static MACHINE_DRIVER_START( qdrmfgp )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 32000000/2)	/*  16.000 MHz */
+	MDRV_CPU_ADD("maincpu", M68000, 32000000/2)	/*  16.000 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT_HACK(qdrmfgp_interrupt, 2)
 
@@ -668,7 +656,7 @@ static MACHINE_DRIVER_START( qdrmfgp )
 	MDRV_IDE_CONTROLLER_ADD("ide", ide_interrupt)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -681,20 +669,20 @@ static MACHINE_DRIVER_START( qdrmfgp )
 	MDRV_VIDEO_UPDATE(qdrmfgp)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("konami", K054539, 18432000/384)
 	MDRV_SOUND_CONFIG(k054539_config)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( qdrmfgp2 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 32000000/2)	/*  16.000 MHz */
+	MDRV_CPU_ADD("maincpu", M68000, 32000000/2)	/*  16.000 MHz */
 	MDRV_CPU_PROGRAM_MAP(gp2_readmem,gp2_writemem)
-	MDRV_CPU_VBLANK_INT("main", qdrmfgp2_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", qdrmfgp2_interrupt)
 
 	MDRV_MACHINE_START(qdrmfgp)
 	MDRV_MACHINE_RESET(qdrmfgp2)
@@ -703,7 +691,7 @@ static MACHINE_DRIVER_START( qdrmfgp2 )
 	MDRV_IDE_CONTROLLER_ADD("ide", gp2_ide_interrupt)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -716,11 +704,11 @@ static MACHINE_DRIVER_START( qdrmfgp2 )
 	MDRV_VIDEO_UPDATE(qdrmfgp)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("konami", K054539, 18432000/384)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -731,7 +719,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( qdrmfgp )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "gq_460_b04.20e", 0x000000, 0x80000, CRC(293d8174) SHA1(cf507d0b29dab161190f0160c05c640f16306bae) )
 	ROM_LOAD16_WORD_SWAP( "gq_460_a05.22e", 0x080000, 0x80000, CRC(4128cb3c) SHA1(4a16d85a66934a20afd074546de362c40a1ea785) )
 
@@ -748,7 +736,7 @@ ROM_START( qdrmfgp )
 ROM_END
 
 ROM_START( qdrmfgp2 )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "ge_557_c05.20e", 0x000000, 0x80000, CRC(336df99f) SHA1(46fb36d40371761be0cfa17b34f28cc893a44a22) )
 	ROM_LOAD16_WORD_SWAP( "ge_557_a06.22e", 0x080000, 0x80000, CRC(ad77e10f) SHA1(4a762a59fe3096d48e3cbf0da3bb0d75c5087e78) )
 

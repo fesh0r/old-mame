@@ -70,7 +70,7 @@ VIDEO_UPDATE( lordgun );
 static DRIVER_INIT( lordgun )
 {
 	int i;
-	UINT16 *src = (UINT16 *)memory_region(machine, "main");
+	UINT16 *src = (UINT16 *)memory_region(machine, "maincpu");
 
 	int rom_size = 0x100000;
 
@@ -191,8 +191,8 @@ static ADDRESS_MAP_START( lordgun_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x503c00, 0x503c01) AM_READ(lordgun_gun_0_y_r)
 	AM_RANGE(0x503e00, 0x503e01) AM_READ(lordgun_gun_1_y_r)
 	AM_RANGE(0x504000, 0x504001) AM_WRITE(lordgun_soundlatch_w)
-	AM_RANGE(0x506000, 0x506007) AM_DEVREADWRITE(PPI8255, "ppi8255_0", lordgun_ppi8255_r, lordgun_ppi8255_w)
-	AM_RANGE(0x508000, 0x508007) AM_DEVREADWRITE(PPI8255, "ppi8255_1", lordgun_ppi8255_r, lordgun_ppi8255_w)
+	AM_RANGE(0x506000, 0x506007) AM_DEVREADWRITE("ppi8255_0", lordgun_ppi8255_r, lordgun_ppi8255_w)
+	AM_RANGE(0x508000, 0x508007) AM_DEVREADWRITE("ppi8255_1", lordgun_ppi8255_r, lordgun_ppi8255_w)
 	AM_RANGE(0x50a900, 0x50a9ff) AM_RAM	// protection
 ADDRESS_MAP_END
 
@@ -218,8 +218,8 @@ static ADDRESS_MAP_START( hfh_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x502e00, 0x502e01) AM_WRITE(SMH_RAM) AM_BASE(&lordgun_scroll_y_3)
 	AM_RANGE(0x503000, 0x503001) AM_WRITE(lordgun_priority_w)
 	AM_RANGE(0x504000, 0x504001) AM_WRITE(lordgun_soundlatch_w)
-	AM_RANGE(0x506000, 0x506007) AM_DEVREADWRITE(PPI8255, "ppi8255_0", lordgun_ppi8255_r, lordgun_ppi8255_w)
-	AM_RANGE(0x508000, 0x508007) AM_DEVREADWRITE(PPI8255, "ppi8255_1", lordgun_ppi8255_r, lordgun_ppi8255_w)
+	AM_RANGE(0x506000, 0x506007) AM_DEVREADWRITE("ppi8255_0", lordgun_ppi8255_r, lordgun_ppi8255_w)
+	AM_RANGE(0x508000, 0x508007) AM_DEVREADWRITE("ppi8255_1", lordgun_ppi8255_r, lordgun_ppi8255_w)
 	AM_RANGE(0x50b900, 0x50b9ff) AM_RAM	// protection
 ADDRESS_MAP_END
 
@@ -235,21 +235,20 @@ static ADDRESS_MAP_START( lordgun_soundmem_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static WRITE8_HANDLER( lordgun_okibank_w )
+static WRITE8_DEVICE_HANDLER( lordgun_okibank_w )
 {
-	okim6295_set_bank_base(0, (data & 2) ? 0x40000 : 0);
-	if (data & ~3)	logerror("%04x: unknown okibank bits %02x\n", cpu_get_pc(space->cpu), data);
+	okim6295_set_bank_base(device, (data & 2) ? 0x40000 : 0);
+	if (data & ~3)	logerror("%s: unknown okibank bits %02x\n", cpuexec_describe_context(device->machine), data);
 //  popmessage("OKI %x", data);
 }
 
 static ADDRESS_MAP_START( lordgun_soundio_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x1000, 0x1000) AM_WRITE( ym3812_control_port_0_w )
-	AM_RANGE(0x1001, 0x1001) AM_WRITE( ym3812_write_port_0_w )
-	AM_RANGE(0x2000, 0x2000) AM_READWRITE( okim6295_status_0_r, okim6295_data_0_w )
+	AM_RANGE(0x1000, 0x1001) AM_DEVWRITE( "ym", ym3812_w )
+	AM_RANGE(0x2000, 0x2000) AM_DEVREADWRITE( "oki", okim6295_r, okim6295_w )
 	AM_RANGE(0x3000, 0x3000) AM_READ( soundlatch2_r )
 	AM_RANGE(0x4000, 0x4000) AM_READ( soundlatch_r )
 	AM_RANGE(0x5000, 0x5000) AM_READ( SMH_NOP )
-	AM_RANGE(0x6000, 0x6000) AM_WRITE( lordgun_okibank_w )
+	AM_RANGE(0x6000, 0x6000) AM_DEVWRITE( "oki", lordgun_okibank_w )
 ADDRESS_MAP_END
 
 
@@ -257,10 +256,9 @@ static ADDRESS_MAP_START( hfh_soundio_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x3000, 0x3000) AM_READ( soundlatch2_r )
 	AM_RANGE(0x4000, 0x4000) AM_READ( soundlatch_r )
 	AM_RANGE(0x5000, 0x5000) AM_READ( SMH_NOP )
-	AM_RANGE(0x7000, 0x7000) AM_WRITE( ym3812_control_port_0_w )
-	AM_RANGE(0x7001, 0x7001) AM_WRITE( ym3812_write_port_0_w )
-	AM_RANGE(0x7400, 0x7400) AM_READWRITE( okim6295_status_0_r, okim6295_data_0_w )
-	AM_RANGE(0x7800, 0x7800) AM_READWRITE( okim6295_status_1_r, okim6295_data_1_w )
+	AM_RANGE(0x7000, 0x7001) AM_DEVWRITE( "ym", ym3812_w )
+	AM_RANGE(0x7400, 0x7400) AM_DEVREADWRITE( "oki", okim6295_r, okim6295_w )
+	AM_RANGE(0x7800, 0x7800) AM_DEVREADWRITE( "oki2", okim6295_r, okim6295_w )
 ADDRESS_MAP_END
 
 
@@ -406,26 +404,26 @@ INPUT_PORTS_END
 static const ppi8255_interface ppi8255_intf[2] =
 {
 	{
-		DEVICE8_PORT("IN0"),		// Port A read
-		NULL,						// Port B read
-		DEVICE8_PORT("IN3"),		// Port C read
-		fake_w,						// Port A write
-		lordgun_eeprom_w,			// Port B write
-		fake2_w						// Port C write
+		DEVCB_INPUT_PORT("IN0"),		// Port A read
+		DEVCB_NULL,						// Port B read
+		DEVCB_INPUT_PORT("IN3"),		// Port C read
+		DEVCB_HANDLER(fake_w),			// Port A write
+		DEVCB_HANDLER(lordgun_eeprom_w),// Port B write
+		DEVCB_HANDLER(fake2_w)			// Port C write
 	},
 	{
-		DEVICE8_PORT("IN1"),		// Port A read
-		DEVICE8_PORT("IN2"),		// Port B read
-		DEVICE8_PORT("IN4"),		// Port C read
-		fake_w,						// Port A write
-		fake_w,						// Port B write
-		fake_w						// Port C write
+		DEVCB_INPUT_PORT("IN1"),		// Port A read
+		DEVCB_INPUT_PORT("IN2"),		// Port B read
+		DEVCB_INPUT_PORT("IN4"),		// Port C read
+		DEVCB_HANDLER(fake_w),			// Port A write
+		DEVCB_HANDLER(fake_w),			// Port B write
+		DEVCB_HANDLER(fake_w)			// Port C write
 	}
 };
 
-static void soundirq(running_machine *machine, int state)
+static void soundirq(const device_config *device, int state)
 {
-	cpu_set_input_line(machine->cpu[1], 0, state);
+	cpu_set_input_line(device->machine->cpu[1], 0, state);
 }
 
 static const ym3812_interface lordgun_ym3812_interface =
@@ -434,11 +432,11 @@ static const ym3812_interface lordgun_ym3812_interface =
 };
 
 static MACHINE_DRIVER_START( lordgun )
-	MDRV_CPU_ADD("main", M68000, 10000000)
+	MDRV_CPU_ADD("maincpu", M68000, 10000000)
 	MDRV_CPU_PROGRAM_MAP(lordgun_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
-	MDRV_CPU_ADD("sound", Z80, 5000000)
+	MDRV_CPU_ADD("soundcpu", Z80, 5000000)
 	MDRV_CPU_PROGRAM_MAP(lordgun_soundmem_map,0)
 	MDRV_CPU_IO_MAP(lordgun_soundio_map,0)
 
@@ -450,7 +448,7 @@ static MACHINE_DRIVER_START( lordgun )
 	MDRV_GFXDECODE(lordgun)
 
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -463,33 +461,33 @@ static MACHINE_DRIVER_START( lordgun )
 	MDRV_VIDEO_UPDATE(lordgun)
 
 	// sound hardware
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM3812, 3579545)
 	MDRV_SOUND_CONFIG(lordgun_ym3812_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("oki", OKIM6295, 1000000)	// 5MHz can't be right!
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( hfh )
 	MDRV_IMPORT_FROM(lordgun)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(hfh_map,0)
 
-	MDRV_CPU_MODIFY("sound")
+	MDRV_CPU_MODIFY("soundcpu")
 	MDRV_CPU_IO_MAP(hfh_soundio_map,0)
 
 	// sound hardware
 	MDRV_SOUND_ADD("oki2", OKIM6295, 1000000)	// 5MHz can't be right!
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -675,11 +673,11 @@ NOTE: Speakers should be connected serially to Speaker (+) and Speaker (-).
 */
 
 ROM_START( lordgun )
-	ROM_REGION( 0x100000, "main", 0 ) // 68000
+	ROM_REGION( 0x100000, "maincpu", 0 ) // 68000
 	ROM_LOAD16_BYTE( "lordgun.10", 0x00000, 0x80000, CRC(acda77ef) SHA1(7cd8580419e2f62a3b5a1e4a6020a3ef978ff1e8) )
 	ROM_LOAD16_BYTE( "lordgun.4",  0x00001, 0x80000, CRC(a1a61254) SHA1(b0c5aa656024cfb9be28a11061656159e7b72d00) )
 
-	ROM_REGION( 0x010000, "sound", 0 ) // Z80
+	ROM_REGION( 0x010000, "soundcpu", 0 ) // Z80
 	ROM_LOAD( "lordgun.90", 0x00000, 0x10000, CRC(d59b5e28) SHA1(36696058684d69306f463ed543c8b0195bafa21e) )	// 1xxxxxxxxxxxxxxx = 0xFF
 
 	ROM_REGION( 0xc00000, "gfx1", 0 )	// Sprites
@@ -713,11 +711,11 @@ ROM_END
 */
 
 ROM_START( hfh )
-	ROM_REGION( 0x100000, "main", 0 ) // 68000
+	ROM_REGION( 0x100000, "maincpu", 0 ) // 68000
 	ROM_LOAD16_BYTE( "hfh_p.u80", 0x00000, 0x80000, CRC(5175ebdc) SHA1(4a0bdda0f8291f895f888bfd45328b2b124b9051) )
 	ROM_LOAD16_BYTE( "hfh_p.u79", 0x00001, 0x80000, CRC(42ad978c) SHA1(eccb96e7170902b37989c8f207e1a821f29b2475) )
 
-	ROM_REGION( 0x010000, "sound", 0 ) // Z80
+	ROM_REGION( 0x010000, "soundcpu", 0 ) // Z80
 	ROM_LOAD( "hfh_s.u86", 0x00000, 0x10000, CRC(5728a9ed) SHA1(e5a9e4a1a2cc6c848b08608bc8727bc739270873) )
 
 	ROM_REGION( 0x100000, "gfx1", 0 )

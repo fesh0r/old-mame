@@ -157,7 +157,7 @@ static const UINT8 *control_map;
 
 static MACHINE_START( kinst )
 {
-	const device_config *ide = device_list_find_by_tag(machine->config->devicelist, IDE_CONTROLLER, "ide");
+	const device_config *ide = devtag_get_device(machine, "ide");
 	UINT8 *features = ide_get_features(ide);
 
 	if (strncmp(machine->gamedrv->name, "kinst2", 6) != 0)
@@ -190,26 +190,12 @@ static MACHINE_START( kinst )
 	}
 
 	/* set the fastest DRC options */
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_DRC_OPTIONS, MIPS3DRC_FASTEST_OPTIONS);
+	mips3drc_set_options(machine->cpu[0], MIPS3DRC_FASTEST_OPTIONS);
 
 	/* configure fast RAM regions for DRC */
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_SELECT, 0);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_START, 0x08000000);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_END, 0x087fffff);
-	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_MIPS3_FASTRAM_BASE, rambase2);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_READONLY, 0);
-
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_SELECT, 1);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_START, 0x00000000);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_END, 0x0007ffff);
-	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_MIPS3_FASTRAM_BASE, rambase);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_READONLY, 0);
-
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_SELECT, 2);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_START, 0x1fc00000);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_END, 0x1fc7ffff);
-	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_MIPS3_FASTRAM_BASE, rombase);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_READONLY, 1);
+	mips3drc_add_fastram(machine->cpu[0], 0x08000000, 0x087fffff, FALSE, rambase2);
+	mips3drc_add_fastram(machine->cpu[0], 0x00000000, 0x0007ffff, FALSE, rambase);
+	mips3drc_add_fastram(machine->cpu[0], 0x1fc00000, 0x1fc7ffff, TRUE,  rombase);
 }
 
 
@@ -403,8 +389,8 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x0007ffff) AM_RAM AM_BASE(&rambase)
 	AM_RANGE(0x08000000, 0x087fffff) AM_RAM AM_BASE(&rambase2)
 	AM_RANGE(0x10000080, 0x100000ff) AM_READWRITE(kinst_control_r, kinst_control_w) AM_BASE(&kinst_control)
-	AM_RANGE(0x10000100, 0x1000013f) AM_DEVREADWRITE(IDE_CONTROLLER, "ide", kinst_ide_r, kinst_ide_w)
-	AM_RANGE(0x10000170, 0x10000173) AM_DEVREADWRITE(IDE_CONTROLLER, "ide", kinst_ide_extra_r, kinst_ide_extra_w)
+	AM_RANGE(0x10000100, 0x1000013f) AM_DEVREADWRITE("ide", kinst_ide_r, kinst_ide_w)
+	AM_RANGE(0x10000170, 0x10000173) AM_DEVREADWRITE("ide", kinst_ide_extra_r, kinst_ide_extra_w)
 	AM_RANGE(0x1fc00000, 0x1fc7ffff) AM_ROM AM_REGION("user1", 0) AM_BASE(&rombase)
 ADDRESS_MAP_END
 
@@ -653,10 +639,10 @@ static const mips3_config config =
 static MACHINE_DRIVER_START( kinst )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", R4600LE, MASTER_CLOCK*2)
+	MDRV_CPU_ADD("maincpu", R4600LE, MASTER_CLOCK*2)
 	MDRV_CPU_CONFIG(config)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_start)
+	MDRV_CPU_VBLANK_INT("screen", irq0_start)
 
 	MDRV_MACHINE_START(kinst)
 	MDRV_MACHINE_RESET(kinst)
@@ -666,7 +652,7 @@ static MACHINE_DRIVER_START( kinst )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)

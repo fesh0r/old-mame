@@ -103,39 +103,33 @@ static READ8_HANDLER( tunhunt_button_r )
 }
 
 
-static READ8_HANDLER( dsw1_r )
+static READ8_DEVICE_HANDLER( dsw2_0r )
 {
-	return input_port_read(space->machine, "DSW")&0xff;
+	return (input_port_read(device->machine, "DSW")&0x0100)?0x80:0x00;
 }
 
 
-static READ8_HANDLER( dsw2_0r )
+static READ8_DEVICE_HANDLER( dsw2_1r )
 {
-	return (input_port_read(space->machine, "DSW")&0x0100)?0x80:0x00;
+	return (input_port_read(device->machine, "DSW")&0x0200)?0x80:0x00;
 }
 
 
-static READ8_HANDLER( dsw2_1r )
+static READ8_DEVICE_HANDLER( dsw2_2r )
 {
-	return (input_port_read(space->machine, "DSW")&0x0200)?0x80:0x00;
+	return (input_port_read(device->machine, "DSW")&0x0400)?0x80:0x00;
 }
 
 
-static READ8_HANDLER( dsw2_2r )
+static READ8_DEVICE_HANDLER( dsw2_3r )
 {
-	return (input_port_read(space->machine, "DSW")&0x0400)?0x80:0x00;
+	return (input_port_read(device->machine, "DSW")&0x0800)?0x80:0x00;
 }
 
 
-static READ8_HANDLER( dsw2_3r )
+static READ8_DEVICE_HANDLER( dsw2_4r )
 {
-	return (input_port_read(space->machine, "DSW")&0x0800)?0x80:0x00;
-}
-
-
-static READ8_HANDLER( dsw2_4r )
-{
-	return (input_port_read(space->machine, "DSW")&0x1000)?0x80:0x00;
+	return (input_port_read(device->machine, "DSW")&0x1000)?0x80:0x00;
 }
 
 
@@ -161,8 +155,8 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2400, 0x2400) AM_WRITE(SMH_NOP)	/* INT ACK */
 	AM_RANGE(0x2800, 0x2800) AM_WRITE(tunhunt_control_w)
 	AM_RANGE(0x2c00, 0x2fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram)
-	AM_RANGE(0x3000, 0x300f) AM_READWRITE(pokey1_r, pokey1_w)
-	AM_RANGE(0x4000, 0x400f) AM_READWRITE(pokey2_r, pokey2_w)
+	AM_RANGE(0x3000, 0x300f) AM_DEVREADWRITE("pokey1", pokey_r, pokey_w)
+	AM_RANGE(0x4000, 0x400f) AM_DEVREADWRITE("pokey2", pokey_r, pokey_w)
 	AM_RANGE(0x5000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0xfffa, 0xffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x5000, 0xffff) AM_WRITE(SMH_ROM)
@@ -291,13 +285,21 @@ GFXDECODE_END
 
 static const pokey_interface pokey_interface_1 =
 {
-	{ 0 },
-	dsw1_r
+	{ DEVCB_NULL },
+	DEVCB_INPUT_PORT("DSW")
 };
 
 static const pokey_interface pokey_interface_2 =
 {
-	{ input_port_1_r,input_port_2_r,dsw2_0r,dsw2_1r,dsw2_2r,dsw2_3r,dsw2_4r }
+	{
+		DEVCB_INPUT_PORT("IN1"),
+		DEVCB_INPUT_PORT("IN2"),
+		DEVCB_HANDLER(dsw2_0r),
+		DEVCB_HANDLER(dsw2_1r),
+		DEVCB_HANDLER(dsw2_2r),
+		DEVCB_HANDLER(dsw2_3r),
+		DEVCB_HANDLER(dsw2_4r)
+	}
 };
 
 
@@ -311,12 +313,12 @@ static const pokey_interface pokey_interface_2 =
 static MACHINE_DRIVER_START( tunhunt )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502,2000000)		/* ??? */
+	MDRV_CPU_ADD("maincpu", M6502,2000000)		/* ??? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)	/* ? probably wrong */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -372,7 +374,7 @@ ATARI TUBE CHASE
 */
 
 ROM_START( tunhunt )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "001.lm1",	0x5000, 0x800, CRC(2601a3a4) SHA1(939bafc54576fdaccf688b49cc9d201b03feec3a) )
 	ROM_LOAD( "002.k1",		0x5800, 0x800, CRC(29bbf3df) SHA1(4a0ec4cfab362a976d3962b347f687db45095cfd) )
 	ROM_LOAD( "136000.103",	0x6000, 0x800, CRC(1a6a60a4) SHA1(7c60cc92595f1b90f421eabbaa20f657181ed4f0) )
@@ -396,7 +398,7 @@ ROM_START( tunhunt )
 ROM_END
 
 ROM_START( tunhuntc )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "001.lm1",	0x5000, 0x800, CRC(2601a3a4) SHA1(939bafc54576fdaccf688b49cc9d201b03feec3a) )
 	ROM_LOAD( "002.k1",		0x5800, 0x800, CRC(29bbf3df) SHA1(4a0ec4cfab362a976d3962b347f687db45095cfd) )
 	ROM_LOAD( "003.j1",		0x6000, 0x800, CRC(360c0f47) SHA1(8e3d815836504c7651812e0e26423b0c7045621c) ) /* bad crc? fails self-test */

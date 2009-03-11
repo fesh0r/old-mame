@@ -157,7 +157,7 @@ static READ16_HANDLER( extrarom2_r )
 
 static WRITE8_HANDLER( crshrace_sh_bankswitch_w )
 {
-	UINT8 *rom = memory_region(space->machine, "audio") + 0x10000;
+	UINT8 *rom = memory_region(space->machine, "audiocpu") + 0x10000;
 
 	memory_set_bankptr(space->machine, 1,rom + (data & 0x03) * 0x8000);
 }
@@ -237,10 +237,7 @@ static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(crshrace_sh_bankswitch_w)
 	AM_RANGE(0x04, 0x04) AM_READWRITE(soundlatch_r, pending_command_clear_w)
-	AM_RANGE(0x08, 0x08) AM_READWRITE(ym2610_status_port_0_a_r, ym2610_control_port_0_a_w)
-	AM_RANGE(0x09, 0x09) AM_WRITE(ym2610_data_port_0_a_w)
-	AM_RANGE(0x0a, 0x0a) AM_READWRITE(ym2610_status_port_0_b_r, ym2610_control_port_0_b_w)
-	AM_RANGE(0x0b, 0x0b) AM_WRITE(ym2610_data_port_0_b_w)
+	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("ym", ym2610_r, ym2610_w)
 ADDRESS_MAP_END
 
 
@@ -436,9 +433,9 @@ GFXDECODE_END
 
 
 
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -451,18 +448,18 @@ static const ym2610_interface ym2610_config =
 static MACHINE_DRIVER_START( crshrace )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,16000000)	/* 16 MHz ??? */
+	MDRV_CPU_ADD("maincpu", M68000,16000000)	/* 16 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,4000000)	/* 4 MHz ??? */
+	MDRV_CPU_ADD("audiocpu", Z80,4000000)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_io_map,0)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
@@ -476,19 +473,19 @@ static MACHINE_DRIVER_START( crshrace )
 	MDRV_VIDEO_UPDATE(crshrace)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2610, 8000000)
 	MDRV_SOUND_CONFIG(ym2610_config)
-	MDRV_SOUND_ROUTE(0, "left",  0.25)
-	MDRV_SOUND_ROUTE(0, "right", 0.25)
-	MDRV_SOUND_ROUTE(1, "left",  1.0)
-	MDRV_SOUND_ROUTE(2, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker",  0.25)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.25)
+	MDRV_SOUND_ROUTE(1, "lspeaker",  1.0)
+	MDRV_SOUND_ROUTE(2, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( crshrace )
-	ROM_REGION( 0x80000, "main", 0 )	/* 68000 code */
+	ROM_REGION( 0x80000, "maincpu", 0 )	/* 68000 code */
 	ROM_LOAD16_WORD_SWAP( "1",            0x000000, 0x80000, CRC(21e34fb7) SHA1(be47b4a9bce2d6ce0a127dffe032c61547b2a3c0) )
 
 	ROM_REGION( 0x100000, "user1", 0 )	/* extra ROM */
@@ -497,7 +494,7 @@ ROM_START( crshrace )
 	ROM_REGION( 0x100000, "user2", 0 )	/* extra ROM */
 	ROM_LOAD( "w22",          0x000000, 0x100000, CRC(fc9d666d) SHA1(45aafcce82b668f93e51b5e4d092b1d0077e5192) )
 
-	ROM_REGION( 0x30000, "audio", 0 )	/* 64k for the audio CPU + banks */
+	ROM_REGION( 0x30000, "audiocpu", 0 )	/* 64k for the audio CPU + banks */
 	ROM_LOAD( "2",            0x00000, 0x20000, CRC(e70a900f) SHA1(edfe5df2dab5a7dccebe1a6f978144bcd516ab03) )
 	ROM_RELOAD(               0x10000, 0x20000 )
 
@@ -522,7 +519,7 @@ ROM_START( crshrace )
 ROM_END
 
 ROM_START( crshrac2 )
-	ROM_REGION( 0x80000, "main", 0 )	/* 68000 code */
+	ROM_REGION( 0x80000, "maincpu", 0 )	/* 68000 code */
 	ROM_LOAD16_WORD_SWAP( "01-ic10.bin",  0x000000, 0x80000, CRC(b284aacd) SHA1(f0ef279cdec30eb32e8aa8cdd51e289b70f2d6f5) )
 
 	ROM_REGION( 0x100000, "user1", 0 )	/* extra ROM */
@@ -531,7 +528,7 @@ ROM_START( crshrac2 )
 	ROM_REGION( 0x100000, "user2", 0 )	/* extra ROM */
 	ROM_LOAD( "w22",          0x000000, 0x100000, CRC(fc9d666d) SHA1(45aafcce82b668f93e51b5e4d092b1d0077e5192) )	// IC13.BIN
 
-	ROM_REGION( 0x30000, "audio", 0 )	/* 64k for the audio CPU + banks */
+	ROM_REGION( 0x30000, "audiocpu", 0 )	/* 64k for the audio CPU + banks */
 	ROM_LOAD( "2",            0x00000, 0x20000, CRC(e70a900f) SHA1(edfe5df2dab5a7dccebe1a6f978144bcd516ab03) )	// 02-IC58.BIN
 	ROM_RELOAD(               0x10000, 0x20000 )
 
@@ -560,7 +557,7 @@ ROM_END
 void crshrace_patch_code(UINT16 offset)
 {
 	/* A hack which shows 3 player mode in code which is disabled */
-	UINT16 *RAM = (UINT16 *)memory_region(machine, "main");
+	UINT16 *RAM = (UINT16 *)memory_region(machine, "maincpu");
 	RAM[(offset + 0)/2] = 0x4e71;
 	RAM[(offset + 2)/2] = 0x4e71;
 	RAM[(offset + 4)/2] = 0x4e71;

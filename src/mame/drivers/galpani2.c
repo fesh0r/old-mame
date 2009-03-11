@@ -214,12 +214,12 @@ static WRITE16_HANDLER( galpani2_oki_0_bank_w )
 	}
 }
 
-static WRITE16_HANDLER( galpani2_oki_1_bank_w )
+static WRITE16_DEVICE_HANDLER( galpani2_oki_1_bank_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		okim6295_set_bank_base(1, 0x40000 * (data & 0xf) );
-		logerror("CPU #0 PC %06X : OKI 1 bank %08X\n",cpu_get_pc(space->cpu),data);
+		okim6295_set_bank_base(device, 0x40000 * (data & 0xf) );
+		logerror("%s:OKI 1 bank %08X\n",cpuexec_describe_context(device->machine),data);
 	}
 }
 
@@ -253,10 +253,10 @@ static ADDRESS_MAP_START( galpani2_mem1, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x780002, 0x780003) AM_READ_PORT("DSW2_P2")
 	AM_RANGE(0x780004, 0x780005) AM_READ_PORT("SPECIAL")
 	AM_RANGE(0x780006, 0x780007) AM_READ_PORT("SERVICE")
-	AM_RANGE(0xc00000, 0xc00001) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w	)	// 2 x OKIM6295
-	AM_RANGE(0xc40000, 0xc40001) AM_READWRITE(okim6295_status_1_lsb_r, okim6295_data_1_lsb_w	)	//
+	AM_RANGE(0xc00000, 0xc00001) AM_DEVREADWRITE8("oki1", okim6295_r, okim6295_w, 0x00ff	)	// 2 x OKIM6295
+	AM_RANGE(0xc40000, 0xc40001) AM_DEVREADWRITE8("oki2", okim6295_r, okim6295_w, 0x00ff	)	//
 	AM_RANGE(0xc80000, 0xc80001) AM_WRITE(galpani2_oki_0_bank_w					)	//
-	AM_RANGE(0xcc0000, 0xcc0001) AM_WRITE(galpani2_oki_1_bank_w					)	//
+	AM_RANGE(0xcc0000, 0xcc0001) AM_DEVWRITE("oki2", galpani2_oki_1_bank_w					)	//
 ADDRESS_MAP_END
 
 
@@ -466,7 +466,7 @@ static INTERRUPT_GEN( galpani2_interrupt2 )
 static MACHINE_DRIVER_START( galpani2 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 16000000)	/* 16MHz */
+	MDRV_CPU_ADD("maincpu", M68000, 16000000)	/* 16MHz */
 	MDRV_CPU_PROGRAM_MAP(galpani2_mem1, 0)
 	MDRV_CPU_VBLANK_INT_HACK(galpani2_interrupt,GALPANI2_INTERRUPTS_NUM)
 
@@ -478,7 +478,7 @@ static MACHINE_DRIVER_START( galpani2 )
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -493,15 +493,15 @@ static MACHINE_DRIVER_START( galpani2 )
 	MDRV_VIDEO_UPDATE(galpani2)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("oki1", OKIM6295, 1584000)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 
 	MDRV_SOUND_ADD("oki2", OKIM6295, 1584000)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -578,7 +578,7 @@ Custom ICs   - 10x PQFPs
 ***************************************************************************/
 
 ROM_START( galpani2 )
- 	ROM_REGION( 0x100000, "main", 0 )			/* CPU#1 Code */
+ 	ROM_REGION( 0x100000, "maincpu", 0 )			/* CPU#1 Code */
 	ROM_LOAD16_BYTE( "g000a2.u165-1", 0x000000, 0x080000, CRC(0c6dfe3f) SHA1(22b16eaa3fee7f8f8434c6775255b25c8d960620) )
 	ROM_LOAD16_BYTE( "g001a2.u164-1", 0x000001, 0x080000, CRC(b3a5951f) SHA1(78cf2d85a8b3cd46c5e30fd13b474af2ed2ee09b) )
 
@@ -624,7 +624,7 @@ ROM_START( galpani2 )
 ROM_END
 
 ROM_START( galpan2g )
- 	ROM_REGION( 0x100000, "main", 0 )			/* CPU#1 Code */
+ 	ROM_REGION( 0x100000, "maincpu", 0 )			/* CPU#1 Code */
 	ROM_LOAD16_BYTE( "g000g1.u133-0", 0x000000, 0x080000, CRC(5a9c4886) SHA1(6fbc443612e72bafc5cac30de78c72815db20c4c) )
 	ROM_LOAD16_BYTE( "g001g1.u134-0", 0x000001, 0x080000, CRC(c92937c3) SHA1(0c9e894c0e23e319bd2d01ec573f02ed510e3ed6) )
 
@@ -675,7 +675,7 @@ ROM_START( galpan2g )
 ROM_END
 
 ROM_START( galpan2t )
- 	ROM_REGION( 0x100000, "main", 0 )			/* CPU#1 Code */
+ 	ROM_REGION( 0x100000, "maincpu", 0 )			/* CPU#1 Code */
 	ROM_LOAD16_BYTE( "g000t1.133", 0x000000, 0x080000, CRC(332048e7) SHA1(1a353d4b29f7a08158fc454309dc496df6b5b108) )
 	ROM_LOAD16_BYTE( "g001t1.134", 0x000001, 0x080000, CRC(c92937c3) SHA1(0c9e894c0e23e319bd2d01ec573f02ed510e3ed6) )
 
@@ -753,7 +753,7 @@ this just appears to be a regular japanese version, NOT the quiz version, unless
 */
 
 ROM_START( galpan2j )
-	ROM_REGION( 0x100000, "main", 0 )			/* CPU#1 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 )			/* CPU#1 Code */
 	ROM_LOAD16_BYTE( "g000j2.165", 0x000000, 0x080000, CRC(e0c5a03d) SHA1(e12457400ca8cd78674b44d7f4d664cfc0afc8c9) )
 	ROM_LOAD16_BYTE( "g001j2.164", 0x000001, 0x080000, CRC(c8e12223) SHA1(0e0160565e95cb33dc6ad796225e995ed3baf8eb) )
 
@@ -790,7 +790,7 @@ ROM_START( galpan2j )
 ROM_END
 
 ROM_START( gp2se )
-	ROM_REGION( 0x100000, "main", 0 )			/* CPU#1 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 )			/* CPU#1 Code */
 	ROM_LOAD16_BYTE( "g000j4.u165", 0x000000, 0x080000, CRC(d8258a7a) SHA1(12991392d7e70bfba394ec4ad49b427959ca019e) )
 	ROM_LOAD16_BYTE( "g001j4.u164", 0x000001, 0x080000, CRC(23f706bf) SHA1(960c6e6c17f03072cecabfd52018e0351ff4b661) )
 
@@ -831,7 +831,7 @@ ROM_START( gp2se )
 ROM_END
 
 ROM_START( gp2quiz )
-	ROM_REGION( 0x100000, "main", 0 )			/* CPU#1 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 )			/* CPU#1 Code */
 	ROM_LOAD16_BYTE( "g000e3.u165-3", 0x000000, 0x080000, CRC(b6de2653) SHA1(a24daf5e6b6b268f60b1dbb374861c85f642cea5) )
 	ROM_LOAD16_BYTE( "g001e3.u164-3", 0x000001, 0x080000, CRC(74e8d0e8) SHA1(d131be9f52ee79e1b82f46721c2ad5d71b3da649) )
 

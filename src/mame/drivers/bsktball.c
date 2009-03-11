@@ -81,15 +81,15 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0802, 0x0802) AM_READ_PORT("IN1")
 	AM_RANGE(0x0803, 0x0803) AM_READ_PORT("DSW")
 	AM_RANGE(0x1000, 0x1000) AM_WRITE(SMH_NOP) /* Timer Reset */
-	AM_RANGE(0x1010, 0x1010) AM_WRITE(bsktball_bounce_w) /* Crowd Amp / Bounce */
+	AM_RANGE(0x1010, 0x1010) AM_DEVWRITE("discrete", bsktball_bounce_w) /* Crowd Amp / Bounce */
 	AM_RANGE(0x1022, 0x1023) AM_WRITE(SMH_NOP) /* Coin Counter */
 	AM_RANGE(0x1024, 0x1025) AM_WRITE(bsktball_led1_w) /* LED 1 */
 	AM_RANGE(0x1026, 0x1027) AM_WRITE(bsktball_led2_w) /* LED 2 */
 	AM_RANGE(0x1028, 0x1029) AM_WRITE(bsktball_ld1_w) /* LD 1 */
 	AM_RANGE(0x102a, 0x102b) AM_WRITE(bsktball_ld2_w) /* LD 2 */
-	AM_RANGE(0x102c, 0x102d) AM_WRITE(bsktball_noise_reset_w) /* Noise Reset */
+	AM_RANGE(0x102c, 0x102d) AM_DEVWRITE("discrete", bsktball_noise_reset_w) /* Noise Reset */
 	AM_RANGE(0x102e, 0x102f) AM_WRITE(bsktball_nmion_w) /* NMI On */
-	AM_RANGE(0x1030, 0x1030) AM_WRITE(bsktball_note_w) /* Music Ckt Note Dvsr */
+	AM_RANGE(0x1030, 0x1030) AM_DEVWRITE("discrete", bsktball_note_w) /* Music Ckt Note Dvsr */
 	AM_RANGE(0x1800, 0x1bbf) AM_RAM_WRITE(bsktball_videoram_w) AM_BASE(&videoram) /* DISPLAY */
 	AM_RANGE(0x1bc0, 0x1bff) AM_RAM AM_BASE(&bsktball_motion)
 	AM_RANGE(0x1c00, 0x1cff) AM_RAM
@@ -213,12 +213,12 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( bsktball )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502,750000)
+	MDRV_CPU_ADD("maincpu", M6502,750000)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(bsktball_interrupt,8)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -249,7 +249,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( bsktball )
-	ROM_REGION( 0x4000, "main", 0 )
+	ROM_REGION( 0x4000, "maincpu", 0 )
 	ROM_LOAD( "034765.d1",    0x2000, 0x0800, CRC(798cea39) SHA1(b1b709a74258b01b21d7c2038a3b6abe879944c5) )
 	ROM_LOAD( "034764.c1",    0x2800, 0x0800, CRC(a087109e) SHA1(f5d6dcccc4a54db35be3d8997bc51e73892747fb) )
 	ROM_LOAD( "034766.f1",    0x3000, 0x0800, CRC(a82e9a9f) SHA1(9aca236c5145c04a8aaebb316179482bbdc9ddfc) )

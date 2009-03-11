@@ -496,30 +496,30 @@ static READ16_HANDLER( inputs1_r )
  *  Sound control
  *
  *************************************/
-static WRITE16_HANDLER( volume_w )
+static WRITE16_DEVICE_HANDLER( volume_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		upd7759_set_bank_base(0, 0x20000 * ((data >> 1) & 3));
-		upd7759_reset_w(0, data & 0x01);
+		upd7759_set_bank_base(device, 0x20000 * ((data >> 1) & 3));
+		upd7759_reset_w(device, data & 0x01);
 	}
 }
 
-static WRITE16_HANDLER( upd7759_w )
+static WRITE16_DEVICE_HANDLER( upd7759_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		upd7759_port_w(0, data);
-		upd7759_start_w(0, 0);
-		upd7759_start_w(0, 1);
+		upd7759_port_w(device, 0, data);
+		upd7759_start_w(device, 0);
+		upd7759_start_w(device, 1);
 	}
 }
 
-static READ16_HANDLER( upd7759_r )
+static READ16_DEVICE_HANDLER( upd7759_r )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		return upd7759_busy_r(0);
+		return upd7759_busy_r(device);
 	}
 
 	return 0xffff;
@@ -630,9 +630,9 @@ static ADDRESS_MAP_START( m68k_program_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x004800e0, 0x004800e1) AM_WRITE(unk_w)
 	AM_RANGE(0x004801dc, 0x004801dd) AM_READ(unk_r)
 	AM_RANGE(0x004801de, 0x004801df) AM_READ(unk_r)
-	AM_RANGE(0x00480080, 0x00480081) AM_WRITE(upd7759_w)
-	AM_RANGE(0x00480082, 0x00480083) AM_WRITE(volume_w)
-	AM_RANGE(0x00480084, 0x00480085) AM_READ(upd7759_r)
+	AM_RANGE(0x00480080, 0x00480081) AM_DEVWRITE("upd", upd7759_w)
+	AM_RANGE(0x00480082, 0x00480083) AM_DEVWRITE("upd", volume_w)
+	AM_RANGE(0x00480084, 0x00480085) AM_DEVREAD("upd", upd7759_r)
 	AM_RANGE(0x004801e0, 0x004801ff) AM_READWRITE(duart_2_r, duart_2_w)
 	AM_RANGE(0x00800000, 0x00800007) AM_READWRITE(m68k_tms_r, m68k_tms_w)
 	AM_RANGE(0x00c00000, 0x00cfffff) AM_ROM
@@ -827,7 +827,7 @@ static void jpmimpct_tms_irq(const device_config *device, int state)
 static const tms34010_config tms_config =
 {
 	TRUE,                       /* halt on reset */
-	"main",                     /* the screen operated on */
+	"screen",                   /* the screen operated on */
 	40000000/16,                /* pixel clock */
 	4,                          /* pixels per clock */
 	jpmimpct_scanline_update,   /* scanline updater */
@@ -844,7 +844,7 @@ static const tms34010_config tms_config =
  *************************************/
 
 static MACHINE_DRIVER_START( jpmimpct )
-	MDRV_CPU_ADD("main", M68000, 8000000)
+	MDRV_CPU_ADD("maincpu", M68000, 8000000)
 	MDRV_CPU_PROGRAM_MAP(m68k_program_map, 0)
 
  	MDRV_CPU_ADD("dsp", TMS34010, 40000000)
@@ -855,7 +855,7 @@ static MACHINE_DRIVER_START( jpmimpct )
 	MDRV_MACHINE_RESET(jpmimpct)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(40000000/4, 156*4, 0, 100*4, 328, 0, 300)
 	MDRV_PALETTE_LENGTH(256)
@@ -876,7 +876,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( cluedo )
-	ROM_REGION( 0x1000000, "main", 0 )
+	ROM_REGION( 0x1000000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "7322.bin", 0x000000, 0x080000, CRC(049ad02d) SHA1(10297dd466d0019e8d6c162028a23dd235494fb4) )
 	ROM_LOAD16_BYTE( "7323.bin", 0x000001, 0x080000, CRC(47ce9c40) SHA1(596a1628142d3c81f2c4ab11ed421f27d082d5f6) )
 	ROM_LOAD16_BYTE( "7324.bin", 0x100000, 0x080000, CRC(5946bd75) SHA1(cc4ffa1e4c3628de6b60027d95df413b6d94e669) )
@@ -900,7 +900,7 @@ ROM_START( cluedo )
 ROM_END
 
 ROM_START( cluedo2c )
-	ROM_REGION( 0x1000000, "main", 0 )
+	ROM_REGION( 0x1000000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "clu2c1.bin", 0x000000, 0x080000, CRC(bf94a3c0) SHA1(e5a0d17136691642aba339f574aec7c27ed90848) )
 	ROM_LOAD16_BYTE( "clu2c2.bin", 0x000001, 0x080000, CRC(960cda80) SHA1(6b5946ed1241bc673f42991f57e0c74753085b63) )
 	ROM_LOAD16_BYTE( "clu2c3.bin", 0x100000, 0x080000, CRC(9d61b28d) SHA1(41c0e17b3933686a2e6f343cd39f90e5663c7787) )
@@ -924,7 +924,7 @@ ROM_START( cluedo2c )
 ROM_END
 
 ROM_START( cluedo2 )
-	ROM_REGION( 0x1000000, "main", 0 )
+	ROM_REGION( 0x1000000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "clu21.bin", 0x000000, 0x080000, CRC(b1aa0103)SHA1(52d10a428710cd04313a2638fc3c23fb9d0ab6db))
 	ROM_LOAD16_BYTE( "clu22.bin", 0x000001, 0x080000, CRC(90d8dd28)SHA1(3124a8313c6b362176283e145c4af27f5deac683))
 	ROM_LOAD16_BYTE( "clu23.bin", 0x100000, 0x080000, CRC(196bd993)SHA1(50920441707fc6cae9d36961d92ce213e53c4238))
@@ -948,7 +948,7 @@ ROM_START( cluedo2 )
 ROM_END
 
 ROM_START( trivialp )
-	ROM_REGION( 0x1000000, "main", 0 )
+	ROM_REGION( 0x1000000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "1422.bin", 0x000000, 0x080000, CRC(5e39c946) SHA1(bae7f572a32e90d716813271f03e7868be603086) )
 	ROM_LOAD16_BYTE( "1423.bin", 0x000001, 0x080000, CRC(bb48c225) SHA1(b479f0bdb69ad11af17b5457c02a9d9618ede455) )
 	ROM_LOAD16_BYTE( "1424.bin", 0x100000, 0x080000, CRC(c37d045b) SHA1(3c127b14e1dc1e453fb08c741847c712d1fea78b) )
@@ -972,7 +972,7 @@ ROM_START( trivialp )
 ROM_END
 
 ROM_START( scrabble )
-	ROM_REGION( 0x1000000, "main", 0 )
+	ROM_REGION( 0x1000000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "1562.bin", 0x000000, 0x080000, CRC(d7303b98) SHA1(46e8ed04c8fdc092b7d8910d3e3f6cc62f691646) )
 	ROM_LOAD16_BYTE( "1563.bin", 0x000001, 0x080000, CRC(77f61ba1) SHA1(276dc8b2c23880740309c456d4e4b2eae249cdde) )
 	ROM_FILL(                    0x100000, 0x100000, 0xff )
@@ -994,7 +994,7 @@ ROM_START( scrabble )
 ROM_END
 
 ROM_START( hngmnjpm )
-	ROM_REGION( 0x1000000, "main", 0 )
+	ROM_REGION( 0x1000000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "20264.bin", 0x000000, 0x080000, CRC(50074528) SHA1(8128b2270518af873df4b94d50c5c9849dda3e42) )
 	ROM_LOAD16_BYTE( "20265.bin", 0x000001, 0x080000, CRC(a0a6985c) SHA1(ed960e6e88df111aebf208d7105dc241aa916684) )
 	ROM_FILL(                     0x100000, 0x100000, 0xff )
@@ -1026,7 +1026,7 @@ ROM_START( hngmnjpm )
 ROM_END
 
 ROM_START( coronatn )
-	ROM_REGION( 0x1000000, "main", 0 )
+	ROM_REGION( 0x1000000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "20824.bin", 0x000000, 0x080000, CRC(f5cc07cb) SHA1(45b83829ba9bd5f22c2978bbde9c0e25c476e719) )
 	ROM_LOAD16_BYTE( "20825.bin", 0x000001, 0x080000, CRC(2e749edf) SHA1(12b24836a71085aef8ca1bc61e6671f8d6e1908c) )
 	ROM_FILL(                     0x100000, 0x100000, 0xff )

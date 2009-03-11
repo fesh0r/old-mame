@@ -14,7 +14,6 @@
 
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
-#include "deprecat.h"
 #include "sound/2203intf.h"
 
 extern UINT8 *tryout_gfx_control;
@@ -37,17 +36,19 @@ static WRITE8_HANDLER( tryout_nmi_ack_w )
 static WRITE8_HANDLER( tryout_sound_w )
 {
 	soundlatch_w(space,0,data);
-	cpu_set_input_line(space->machine->cpu[1], 0, ASSERT_LINE);
+	cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE);
 }
 
+/*this is actually irq/nmi mask, polls only four values at start up (81->01->81->01) and then
+  stays on this state.*/
 static WRITE8_HANDLER( tryout_sound_irq_ack_w )
 {
-	cpu_set_input_line(space->cpu, 0, CLEAR_LINE);
+//  cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( tryout_bankswitch_w )
 {
- 	UINT8 *RAM = memory_region(space->machine, "main");
+ 	UINT8 *RAM = memory_region(space->machine, "maincpu");
 	int bankaddress;
 
 	bankaddress = 0x10000 + (data & 0x01) * 0x2000;
@@ -56,7 +57,7 @@ static WRITE8_HANDLER( tryout_bankswitch_w )
 
 static ADDRESS_MAP_START( main_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM
-	AM_RANGE(0x1000, 0x17ff) AM_WRITE(tryout_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x1000, 0x17ff) AM_RAM_WRITE(tryout_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x2000, 0x3fff) AM_ROMBANK(1)
 	AM_RANGE(0x4000, 0xbfff) AM_ROM
 	AM_RANGE(0xc800, 0xc87f) AM_RAM AM_BASE(&spriteram)
@@ -72,13 +73,12 @@ static ADDRESS_MAP_START( main_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe402, 0xe404) AM_WRITE(SMH_RAM) AM_BASE(&tryout_gfx_control)
 	AM_RANGE(0xe414, 0xe414) AM_WRITE(tryout_sound_w)
 	AM_RANGE(0xe417, 0xe417) AM_WRITE(tryout_nmi_ack_w)
-	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION("main", 0xbff0) /* resect vectors */
+	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION("maincpu", 0xbff0) /* resect vectors */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM
-	AM_RANGE(0x4000, 0x4000) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0x4001, 0x4001) AM_WRITE(ym2203_write_port_0_w)
+	AM_RANGE(0x4000, 0x4001) AM_DEVREADWRITE("ym", ym2203_r, ym2203_w)
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
 	AM_RANGE(0xd000, 0xd000) AM_WRITE(tryout_sound_irq_ack_w)
 	AM_RANGE(0xc000, 0xffff) AM_ROM
@@ -190,21 +190,21 @@ static INTERRUPT_GEN( tryout_interrupt )
 
 static MACHINE_DRIVER_START( tryout )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 2000000)		 /* ? */
+	MDRV_CPU_ADD("maincpu", M6502, 2000000)		 /* ? */
 	MDRV_CPU_PROGRAM_MAP(main_cpu,0)
-	MDRV_CPU_VBLANK_INT("main", tryout_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", tryout_interrupt)
 
-	MDRV_CPU_ADD("audio", M6502, 1500000)		/* ? */
+	MDRV_CPU_ADD("audiocpu", M6502, 1500000)		/* ? */
 	MDRV_CPU_PROGRAM_MAP(sound_cpu,0)
-	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,16) /* ? */
+	MDRV_CPU_PERIODIC_INT(nmi_line_pulse,800) /* ? */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_SCREEN_VISIBLE_AREA(1*8, 32*8-1, 1*8, 31*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
 
 	MDRV_GFXDECODE(tryout)
 	MDRV_PALETTE_LENGTH(0x20)
@@ -221,12 +221,12 @@ static MACHINE_DRIVER_START( tryout )
 MACHINE_DRIVER_END
 
 ROM_START( tryout )
-	ROM_REGION( 0x14000, "main", 0 )
+	ROM_REGION( 0x14000, "maincpu", 0 )
 	ROM_LOAD( "ch10-1.bin",   0x04000, 0x4000, CRC(d046231b) SHA1(145f9e9b0707824f7ae6d1587754b28c17907807) )
 	ROM_LOAD( "ch11.bin",     0x08000, 0x4000, CRC(4d00b6f0) SHA1(cc1e700b8547672d7dd1d262c6181a5c321fbf72) )
 	ROM_LOAD( "ch12.bin",     0x10000, 0x4000, CRC(bcd221be) SHA1(69869de8b5d56a97e2cd15fa275527aa767f1e44) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "ch00-1.bin",   0x0c000, 0x4000, CRC(8b33d968) SHA1(cf44529e5577d09978b87dc2bbe1415babbf36a0) )
 
 	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )

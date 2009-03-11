@@ -21,13 +21,26 @@
 
 
 /* the state of the streamed output */
-struct tms5220_info
+typedef struct _tms5220_state tms5220_state;
+struct _tms5220_state
 {
 	const tms5220_interface *intf;
 	sound_stream *stream;
 	int clock;
 	void *chip;
 };
+
+
+INLINE tms5220_state *get_safe_token(const device_config *device)
+{
+	assert(device != NULL);
+	assert(device->token != NULL);
+	assert(device->type == SOUND);
+	assert(sound_get_type(device) == SOUND_TMS5220 ||
+		   sound_get_type(device) == SOUND_TMC0285 ||
+		   sound_get_type(device) == SOUND_TMS5200);
+	return (tms5220_state *)device->token;
+}
 
 
 /* static function prototypes */
@@ -37,27 +50,23 @@ static STREAM_UPDATE( tms5220_update );
 
 /**********************************************************************************************
 
-     SND_START( tms5220 ) -- allocate buffers and reset the 5220
+     DEVICE_START( tms5220 ) -- allocate buffers and reset the 5220
 
 ***********************************************************************************************/
 
-static SND_START( tms5220 )
+static DEVICE_START( tms5220 )
 {
 	static const tms5220_interface dummy = { 0 };
-	struct tms5220_info *info;
+	tms5220_state *info = get_safe_token(device);
 
-	info = auto_malloc(sizeof(*info));
-	memset(info, 0, sizeof(*info));
-	info->intf = config ? config : &dummy;
+	info->intf = device->static_config ? device->static_config : &dummy;
 
 	info->chip = tms5220_create(device);
-	if (!info->chip)
-		return NULL;
-	sndintrf_register_token(info);
+	assert_always(info->chip != NULL, "Error creating TMS5220 chip");
 
 	/* initialize a info->stream */
-	info->stream = stream_create(device, 0, 1, clock / 80, info, tms5220_update);
-	info->clock = clock;
+	info->stream = stream_create(device, 0, 1, device->clock / 80, info, tms5220_update);
+	info->clock = device->clock;
 
     /* reset the 5220 */
     tms5220_reset_chip(info->chip);
@@ -67,18 +76,15 @@ static SND_START( tms5220 )
 	tms5220_set_read(info->chip, info->intf->read);
 	tms5220_set_load_address(info->chip, info->intf->load_address);
 	tms5220_set_read_and_branch(info->chip, info->intf->read_and_branch);
-
-    /* request a sound channel */
-    return info;
 }
 
 
 #if (HAS_TMC0285 || HAS_TMS5200)
-static SND_START( tms5200 )
+static DEVICE_START( tms5200 )
 {
-	struct tms5220_info *info = SND_START_CALL( tms5220 );
+	tms5220_state *info = get_safe_token(device);
+	DEVICE_START_CALL( tms5220 );
 	tms5220_set_variant(info->chip, variant_tmc0285);
-	return info;
 }
 #endif /* (HAS_TMC0285) && (HAS_TMS5200) */
 
@@ -86,21 +92,21 @@ static SND_START( tms5200 )
 
 /**********************************************************************************************
 
-     SND_STOP( tms5220 ) -- free buffers
+     DEVICE_STOP( tms5220 ) -- free buffers
 
 ***********************************************************************************************/
 
-static SND_STOP( tms5220 )
+static DEVICE_STOP( tms5220 )
 {
-	struct tms5220_info *info = device->token;
+	tms5220_state *info = get_safe_token(device);
 	tms5220_destroy(info->chip);
 }
 
 
 
-static SND_RESET( tms5220 )
+static DEVICE_RESET( tms5220 )
 {
-	struct tms5220_info *info = device->token;
+	tms5220_state *info = get_safe_token(device);
 	tms5220_reset_chip(info->chip);
 }
 
@@ -112,9 +118,9 @@ static SND_RESET( tms5220 )
 
 ***********************************************************************************************/
 
-WRITE8_HANDLER( tms5220_data_w )
+WRITE8_DEVICE_HANDLER( tms5220_data_w )
 {
-	struct tms5220_info *info = sndti_token(SOUND_TMS5220, 0);
+	tms5220_state *info = get_safe_token(device);
     /* bring up to date first */
     stream_update(info->stream);
     tms5220_data_write(info->chip, data);
@@ -128,9 +134,9 @@ WRITE8_HANDLER( tms5220_data_w )
 
 ***********************************************************************************************/
 
-READ8_HANDLER( tms5220_status_r )
+READ8_DEVICE_HANDLER( tms5220_status_r )
 {
-	struct tms5220_info *info = sndti_token(SOUND_TMS5220, 0);
+	tms5220_state *info = get_safe_token(device);
     /* bring up to date first */
     stream_update(info->stream);
     return tms5220_status_read(info->chip);
@@ -144,9 +150,9 @@ READ8_HANDLER( tms5220_status_r )
 
 ***********************************************************************************************/
 
-int tms5220_ready_r(void)
+int tms5220_ready_r(const device_config *device)
 {
-	struct tms5220_info *info = sndti_token(SOUND_TMS5220, 0);
+	tms5220_state *info = get_safe_token(device);
     /* bring up to date first */
     stream_update(info->stream);
     return tms5220_ready_read(info->chip);
@@ -156,13 +162,13 @@ int tms5220_ready_r(void)
 
 /**********************************************************************************************
 
-     tms5220_ready_r -- return the time in seconds until the ready line is asserted
+     tms5220_time_to_ready -- return the time in seconds until the ready line is asserted
 
 ***********************************************************************************************/
 
-double tms5220_time_to_ready(void)
+double tms5220_time_to_ready(const device_config *device)
 {
-	struct tms5220_info *info = sndti_token(SOUND_TMS5220, 0);
+	tms5220_state *info = get_safe_token(device);
 	double cycles;
 
 	/* bring up to date first */
@@ -179,9 +185,9 @@ double tms5220_time_to_ready(void)
 
 ***********************************************************************************************/
 
-int tms5220_int_r(void)
+int tms5220_int_r(const device_config *device)
 {
-	struct tms5220_info *info = sndti_token(SOUND_TMS5220, 0);
+	tms5220_state *info = get_safe_token(device);
     /* bring up to date first */
     stream_update(info->stream);
     return tms5220_int_read(info->chip);
@@ -197,7 +203,7 @@ int tms5220_int_r(void)
 
 static STREAM_UPDATE( tms5220_update )
 {
-	struct tms5220_info *info = param;
+	tms5220_state *info = param;
 	INT16 sample_data[MAX_SAMPLE_CHUNK];
 	stream_sample_t *buffer = outputs[0];
 
@@ -225,9 +231,9 @@ static STREAM_UPDATE( tms5220_update )
 
 ***********************************************************************************************/
 
-void tms5220_set_frequency(int frequency)
+void tms5220_set_frequency(const device_config *device, int frequency)
 {
-	struct tms5220_info *info = sndti_token(SOUND_TMS5220, 0);
+	tms5220_state *info = get_safe_token(device);
 	stream_set_sample_rate(info->stream, frequency / 80);
 	info->clock = frequency;
 }
@@ -238,59 +244,47 @@ void tms5220_set_frequency(int frequency)
  * Generic get_info
  **************************************************************************/
 
-static SND_SET_INFO( tms5220 )
-{
-	struct tms5220_info *ti = device->token;
-
-	switch (state)
-	{
-		case SNDINFO_INT_TMS5220_VARIANT:				tms5220_set_variant(ti->chip, (tms5220_variant) info->i); break;
-	}
-}
-
-
-SND_GET_INFO( tms5220 )
+DEVICE_GET_INFO( tms5220 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case SNDINFO_INT_ALIAS:							info->i = SOUND_TMS5220;						break;
+		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(tms5220_state);			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( tms5220 );	break;
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( tms5220 );		break;
-		case SNDINFO_PTR_STOP:							info->stop = SND_STOP_NAME( tms5220 );			break;
-		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( tms5220 );		break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( tms5220 );		break;
+		case DEVINFO_FCT_STOP:							info->stop = DEVICE_STOP_NAME( tms5220 );			break;
+		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME( tms5220 );		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							strcpy(info->s, "TMS5220");						break;
-		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "TI Speech");					break;
-		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
-		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
-		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "TMS5220");						break;
+		case DEVINFO_STR_FAMILY:					strcpy(info->s, "TI Speech");					break;
+		case DEVINFO_STR_VERSION:					strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:						strcpy(info->s, __FILE__);						break;
+		case DEVINFO_STR_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 
 #if (HAS_TMC0285)
-SND_GET_INFO( tmc0285 )
+DEVICE_GET_INFO( tmc0285 )
 {
 	switch (state)
 	{
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( tms5200 );		break;
-		case SNDINFO_STR_NAME:							strcpy(info->s, "TMC0285");						break;
-		default: 										SND_GET_INFO_CALL( tms5220 );					break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( tms5200 );		break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "TMC0285");						break;
+		default: 										DEVICE_GET_INFO_CALL( tms5220 );					break;
 	}
 }
 #endif
 
 #if (HAS_TMS5200)
-SND_GET_INFO( tms5200 )
+DEVICE_GET_INFO( tms5200 )
 {
 	switch (state)
 	{
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( tms5200 );		break;
-		case SNDINFO_STR_NAME:							strcpy(info->s, "TMS5200");						break;
-		default: 										SND_GET_INFO_CALL( tms5220 );					break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( tms5200 );		break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "TMS5200");						break;
+		default: 										DEVICE_GET_INFO_CALL( tms5220 );					break;
 	}
 }
 #endif

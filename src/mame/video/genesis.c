@@ -36,11 +36,7 @@ static const device_config *genesis_screen;
 #define VDP_VRAM_WORD(x)	((VDP_VRAM_BYTE(x) << 8) | VDP_VRAM_BYTE((x) + 1))
 #define VDP_VSRAM_WORD(x)	((VDP_VSRAM_BYTE(x) << 8) | VDP_VSRAM_BYTE((x) + 1))
 
-#ifdef LSB_FIRST
-#define EXTRACT_PIXEL(x,i)	(((x) >> (((i) ^ 1) * 4)) & 0x0f)
-#else
-#define EXTRACT_PIXEL(x,i)	(((x) >> (((i) ^ 7) * 4)) & 0x0f)
-#endif
+#define EXTRACT_PIXEL(x,i)	(((x) >> (((i) ^ NATIVE_ENDIAN_VALUE_LE_BE(1,7)) * 4)) & 0x0f)
 
 
 
@@ -365,6 +361,7 @@ READ16_HANDLER( genesis_vdp_r )
 
 WRITE16_HANDLER( genesis_vdp_w )
 {
+	const device_config *device;
 	switch (offset)
 	{
 		case 0x00:	/* Write data */
@@ -397,8 +394,9 @@ WRITE16_HANDLER( genesis_vdp_w )
 		case 0x09:
 		case 0x0a:
 		case 0x0b:
-			if (ACCESSING_BITS_0_7 && sndti_exists(SOUND_SN76496, 0))
-				sn76496_0_w(space, 0, data & 0xff);
+			device = devtag_get_device(space->machine, "sn");
+			if (device != NULL && ACCESSING_BITS_0_7)
+				sn76496_w(device, 0, data & 0xff);
 			break;
 	}
 }

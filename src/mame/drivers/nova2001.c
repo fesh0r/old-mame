@@ -179,10 +179,10 @@ static ADDRESS_MAP_START( nova2001_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa800, 0xafff) AM_RAM_WRITE(nova2001_bg_videoram_w) AM_BASE(&nova2001_bg_videoram)
 	AM_RANGE(0xb000, 0xb7ff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0xb800, 0xbfff) AM_WRITE(nova2001_flipscreen_w)
-	AM_RANGE(0xc000, 0xc000) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0xc001, 0xc001) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
-	AM_RANGE(0xc002, 0xc002) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xc003, 0xc003) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0xc000, 0xc000) AM_DEVREADWRITE("ay1", ay8910_r, ay8910_data_w)
+	AM_RANGE(0xc001, 0xc001) AM_DEVREADWRITE("ay2", ay8910_r, ay8910_data_w)
+	AM_RANGE(0xc002, 0xc002) AM_DEVWRITE("ay1", ay8910_address_w)
+	AM_RANGE(0xc003, 0xc003) AM_DEVWRITE("ay2", ay8910_address_w)
 	AM_RANGE(0xc004, 0xc004) AM_READ(watchdog_reset_r)
 	AM_RANGE(0xc006, 0xc006) AM_READ_PORT("IN0")
 	AM_RANGE(0xc007, 0xc007) AM_READ_PORT("IN1")
@@ -194,10 +194,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( ninjakun_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0x8000) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x8001, 0x8001) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0x8002, 0x8002) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0x8003, 0x8003) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
+	AM_RANGE(0x8000, 0x8001) AM_DEVWRITE("ay1", ay8910_address_data_w)
+	AM_RANGE(0x8001, 0x8001) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0x8002, 0x8003) AM_DEVWRITE("ay2", ay8910_address_data_w)
+	AM_RANGE(0x8003, 0x8003) AM_DEVREAD("ay2", ay8910_r)
 	AM_RANGE(0xa000, 0xa000) AM_READ_PORT("IN0")
 	AM_RANGE(0xa001, 0xa001) AM_READ_PORT("IN1")
 	AM_RANGE(0xa002, 0xa002) AM_READ_PORT("IN2") AM_WRITE(ninjakun_cpu1_io_A002_w)
@@ -212,11 +212,11 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ninjakun_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
-	AM_RANGE(0x2000, 0x7fff) AM_ROM AM_REGION("main", 0x2000)
-	AM_RANGE(0x8000, 0x8000) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x8001, 0x8001) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0x8002, 0x8002) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0x8003, 0x8003) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
+	AM_RANGE(0x2000, 0x7fff) AM_ROM AM_REGION("maincpu", 0x2000)
+	AM_RANGE(0x8000, 0x8001) AM_DEVWRITE("ay1", ay8910_address_data_w)
+	AM_RANGE(0x8001, 0x8001) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0x8002, 0x8003) AM_DEVWRITE("ay2", ay8910_address_data_w)
+	AM_RANGE(0x8003, 0x8003) AM_DEVREAD("ay2", ay8910_r)
 	AM_RANGE(0xa000, 0xa000) AM_READ_PORT("IN0")
 	AM_RANGE(0xa001, 0xa001) AM_READ_PORT("IN1")
 	AM_RANGE(0xa002, 0xa002) AM_READ_PORT("IN2") AM_WRITE(ninjakun_cpu2_io_A002_w)
@@ -234,10 +234,10 @@ static ADDRESS_MAP_START( pkunwar_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x8800, 0x8fff) AM_RAM_WRITE(nova2001_bg_videoram_w) AM_BASE(&nova2001_bg_videoram)
-	AM_RANGE(0xa000, 0xa000) AM_WRITE(&ay8910_control_port_0_w)
-	AM_RANGE(0xa001, 0xa001) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0xa002, 0xa002) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0xa003, 0xa003) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
+	AM_RANGE(0xa000, 0xa001) AM_DEVWRITE("ay1", ay8910_address_data_w)
+	AM_RANGE(0xa001, 0xa001) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0xa002, 0xa003) AM_DEVWRITE("ay2", ay8910_address_data_w)
+	AM_RANGE(0xa003, 0xa003) AM_DEVREAD("ay2", ay8910_r)
 	AM_RANGE(0xc000, 0xc7ff) AM_RAM
 	AM_RANGE(0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -256,20 +256,20 @@ static ADDRESS_MAP_START( raiders5_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(nova2001_scroll_x_w)
 	AM_RANGE(0xa001, 0xa001) AM_WRITE(nova2001_scroll_y_w)
 	AM_RANGE(0xa002, 0xa002) AM_WRITE(pkunwar_flipscreen_w)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xc001, 0xc001) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0xc002, 0xc002) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0xc003, 0xc003) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
+	AM_RANGE(0xc000, 0xc001) AM_DEVWRITE("ay1", ay8910_address_data_w)
+	AM_RANGE(0xc001, 0xc001) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0xc002, 0xc003) AM_DEVWRITE("ay2", ay8910_address_data_w)
+	AM_RANGE(0xc003, 0xc003) AM_DEVREAD("ay2", ay8910_r)
 	AM_RANGE(0xd000, 0xd1ff) AM_RAM_WRITE(ninjakun_paletteram_w) AM_BASE(&paletteram)
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM AM_SHARE(1)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( raiders5_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
-	AM_RANGE(0x8000, 0x8000) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x8001, 0x8001) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0x8002, 0x8002) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0x8003, 0x8003) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
+	AM_RANGE(0x8000, 0x8001) AM_DEVWRITE("ay1", ay8910_address_data_w)
+	AM_RANGE(0x8001, 0x8001) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0x8002, 0x8003) AM_DEVWRITE("ay2", ay8910_address_data_w)
+	AM_RANGE(0x8003, 0x8003) AM_DEVREAD("ay2", ay8910_r)
 	AM_RANGE(0x9000, 0x9000) AM_READ(SMH_NOP) /* unknown */
 	AM_RANGE(0xa000, 0xa7ff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0xc000, 0xc000) AM_READ(SMH_NOP) /* unknown */
@@ -529,7 +529,7 @@ static INPUT_PORTS_START( raiders5 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_COCKTAIL
 
-	PORT_START("DSW1")
+	PORT_START("IN2")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
@@ -553,7 +553,7 @@ static INPUT_PORTS_START( raiders5 )
 	PORT_DIPSETTING(    0x80, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
 
-	PORT_START("DSW2")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 3C_1C ) )
@@ -656,40 +656,40 @@ static const ay8910_interface nova2001_ay8910_interface_1 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	NULL,
-	nova2001_scroll_x_w,
-	nova2001_scroll_y_w
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, nova2001_scroll_x_w),
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, nova2001_scroll_y_w)
 };
 
 static const ay8910_interface nova2001_ay8910_interface_2 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_3_r,
-	input_port_4_r,
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("DSW1"),
+	DEVCB_INPUT_PORT("DSW2"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static const ay8910_interface pkunwar_ay8910_interface_1 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_0_r,
-	input_port_1_r,
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("IN0"),
+	DEVCB_INPUT_PORT("IN1"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static const ay8910_interface pkunwar_ay8910_interface_2 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_2_r,
-	input_port_3_r,
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("IN2"),
+	DEVCB_INPUT_PORT("DSW1"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -703,12 +703,12 @@ static const ay8910_interface pkunwar_ay8910_interface_2 =
 static MACHINE_DRIVER_START( nova2001 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, MAIN_CLOCK/4)	// 3 MHz verified on schematics
+	MDRV_CPU_ADD("maincpu", Z80, MAIN_CLOCK/4)	// 3 MHz verified on schematics
 	MDRV_CPU_PROGRAM_MAP(nova2001_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
@@ -736,9 +736,9 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( ninjakun )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, MAIN_CLOCK/4)	// 3 MHz
+	MDRV_CPU_ADD("maincpu", Z80, MAIN_CLOCK/4)	// 3 MHz
 	MDRV_CPU_PROGRAM_MAP(ninjakun_cpu1_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, MAIN_CLOCK/4)	// 3 MHz
 	MDRV_CPU_PROGRAM_MAP(ninjakun_cpu2_map,0)
@@ -750,7 +750,7 @@ static MACHINE_DRIVER_START( ninjakun )
 
     /* video hardware */
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
@@ -777,13 +777,13 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( pkunwar )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, MAIN_CLOCK/4)	// 3 MHz
+	MDRV_CPU_ADD("maincpu", Z80, MAIN_CLOCK/4)	// 3 MHz
 	MDRV_CPU_PROGRAM_MAP(pkunwar_map,0)
 	MDRV_CPU_IO_MAP(pkunwar_io,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
@@ -811,10 +811,10 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( raiders5 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, MAIN_CLOCK/4)	// 3 MHz
+	MDRV_CPU_ADD("maincpu", Z80, MAIN_CLOCK/4)	// 3 MHz
 	MDRV_CPU_PROGRAM_MAP(raiders5_cpu1_map,0)
 	MDRV_CPU_IO_MAP(raiders5_io,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, MAIN_CLOCK/4)	// 3 MHz
 	MDRV_CPU_PROGRAM_MAP(raiders5_cpu2_map,0)
@@ -823,7 +823,7 @@ static MACHINE_DRIVER_START( raiders5 )
 	MDRV_QUANTUM_TIME(HZ(24000))
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
@@ -856,7 +856,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( nova2001 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "1.6c",         0x0000, 0x2000, CRC(368cffc0) SHA1(b756c0542d5b86640af62639bdd0d32f6e364dd3) )
 	ROM_LOAD( "2.6d",         0x2000, 0x2000, CRC(bc4e442b) SHA1(6e1dca5dde442db95403377bf49aaad2a337813e) )
 	ROM_LOAD( "3.6f",         0x4000, 0x2000, CRC(b2849038) SHA1(b56c7c03ef7c677cc6df0280a485f9cda3435b23) )
@@ -874,7 +874,7 @@ ROM_START( nova2001 )
 ROM_END
 
 ROM_START( nov2001u )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "nova2001.1",   0x0000, 0x2000, CRC(b79461bd) SHA1(7fac3313bc76612f66a6518450d0fed32fe70c45) )
 	ROM_LOAD( "nova2001.2",   0x2000, 0x2000, CRC(fab87144) SHA1(506703f9d96443839f864ef5bde1a71120f54384) )
 	ROM_LOAD( "3.6f",         0x4000, 0x2000, CRC(b2849038) SHA1(b56c7c03ef7c677cc6df0280a485f9cda3435b23) )
@@ -892,7 +892,7 @@ ROM_START( nov2001u )
 ROM_END
 
 ROM_START( ninjakun ) /* Original Board? */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "ninja-1.7a",  0x0000, 0x02000, CRC(1c1dc141) SHA1(423d3ed35e73a8d5bfce075a889b0322b207bd0d) )
 	ROM_LOAD( "ninja-2.7b",  0x2000, 0x02000, CRC(39cc7d37) SHA1(7f0d0e1e92cb6a57f15eb7fc51a67112f1c5fc8e) )
 	ROM_LOAD( "ninja-3.7d",  0x4000, 0x02000, CRC(d542bfe3) SHA1(3814d8f5b1acda21438fff4f71670fa653dc7b30) )
@@ -915,7 +915,7 @@ ROM_START( ninjakun ) /* Original Board? */
 ROM_END
 
 ROM_START( pkunwar )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "pkwar.01r",    0x0000, 0x4000, CRC(ce2d2c7b) SHA1(2ffe2eb339fd668ec4fe90eff66124a334db0693) )
 	ROM_LOAD( "pkwar.02r",    0x4000, 0x4000, CRC(abc1f661) SHA1(c4bf4a345efd4271617de9f334303d81c6885aa5) )
 	ROM_LOAD( "pkwar.03r",    0xe000, 0x2000, CRC(56faebea) SHA1(dd0406c723a08f5d1120655857a115ab8c2d2a11) )
@@ -931,7 +931,7 @@ ROM_START( pkunwar )
 ROM_END
 
 ROM_START( pkunwarj )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "pgunwar.6",    0x0000, 0x4000, CRC(357f3ef3) SHA1(bc651fb7701b395ae8cda1888814af5c5aa325a6) )
 	ROM_LOAD( "pgunwar.5",    0x4000, 0x4000, CRC(0092e49e) SHA1(7945361036f7679e4f4bb6b94f60f3ca09c077dc) )
 	ROM_LOAD( "pkwar.03r",    0xe000, 0x2000, CRC(56faebea) SHA1(dd0406c723a08f5d1120655857a115ab8c2d2a11) )
@@ -947,7 +947,7 @@ ROM_START( pkunwarj )
 ROM_END
 
 ROM_START( raiders5 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "raiders5.1", 0x0000,  0x4000, CRC(47cea11f) SHA1(0499e6627ad9c16775fdc59f2ff56dfdfc23490a) )
 	ROM_LOAD( "raiders5.2", 0x4000,  0x4000, CRC(eb2ff410) SHA1(5c995b66b6301cd3cd58efd173481deaa036f842) )
 
@@ -963,7 +963,7 @@ ROM_START( raiders5 )
 ROM_END
 
 ROM_START( raidrs5t )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "raiders1.4c", 0x0000,  0x4000, CRC(4e2d5679) SHA1(a1c1603ba98814a83b92ad024ca4422aea872111) )
 	ROM_LOAD( "raiders2.4d", 0x4000,  0x4000, CRC(c8604be1) SHA1(6d23f26174bb9b2f7db3a5fa6b39674fe237135b) )
 

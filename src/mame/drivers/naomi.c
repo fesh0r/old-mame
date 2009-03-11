@@ -745,7 +745,7 @@ static ADDRESS_MAP_START( naomi_base_map, ADDRESS_SPACE_PROGRAM, 64 )
 	AM_RANGE(0x005f7c00, 0x005f7cff) AM_READWRITE( pvr_ctrl_r, pvr_ctrl_w )
 	AM_RANGE(0x005f8000, 0x005f9fff) AM_READWRITE( pvr_ta_r, pvr_ta_w )
 	AM_RANGE(0x00600000, 0x006007ff) AM_READWRITE( dc_modem_r, dc_modem_w )
-	AM_RANGE(0x00700000, 0x00707fff) AM_READWRITE( dc_aica_reg_r, dc_aica_reg_w )
+	AM_RANGE(0x00700000, 0x00707fff) AM_DEVREADWRITE( "aica", dc_aica_reg_r, dc_aica_reg_w )
 	AM_RANGE(0x00710000, 0x0071000f) AM_READWRITE( dc_rtc_r, dc_rtc_w )
 	AM_RANGE(0x00800000, 0x00ffffff) AM_READWRITE( naomi_arm_r, naomi_arm_w )           // sound RAM (8 MB)
 	AM_RANGE(0x0103ff00, 0x0103ffff) AM_READWRITE( naomi_unknown1_r, naomi_unknown1_w ) // bios uses it, actual start and end addresses not known
@@ -756,7 +756,7 @@ static ADDRESS_MAP_START( naomi_base_map, ADDRESS_SPACE_PROGRAM, 64 )
 	AM_RANGE(0x10800000, 0x10ffffff) AM_WRITE( ta_fifo_yuv_w )
 	AM_RANGE(0x11000000, 0x11ffffff) AM_RAM AM_SHARE(2)                                 // another mirror of texture memory
 	AM_RANGE(0x13000000, 0x13ffffff) AM_RAM AM_SHARE(2)                                 // another mirror of texture memory
-	AM_RANGE(0xa0000000, 0xa01fffff) AM_ROM AM_REGION("main", 0)
+	AM_RANGE(0xa0000000, 0xa01fffff) AM_ROM AM_REGION("maincpu", 0)
 ADDRESS_MAP_END
 
 /*
@@ -773,7 +773,7 @@ static ADDRESS_MAP_START( naomi_map, ADDRESS_SPACE_PROGRAM, 64 )
 	AM_RANGE(0x005f7c00, 0x005f7cff) AM_READWRITE( pvr_ctrl_r, pvr_ctrl_w )
 	AM_RANGE(0x005f8000, 0x005f9fff) AM_READWRITE( pvr_ta_r, pvr_ta_w )
 	AM_RANGE(0x00600000, 0x006007ff) AM_READWRITE( dc_modem_r, dc_modem_w )
-	AM_RANGE(0x00700000, 0x00707fff) AM_READWRITE( dc_aica_reg_r, dc_aica_reg_w )
+	AM_RANGE(0x00700000, 0x00707fff) AM_DEVREADWRITE( "aica", dc_aica_reg_r, dc_aica_reg_w )
 	AM_RANGE(0x00710000, 0x0071000f) AM_READWRITE( dc_rtc_r, dc_rtc_w )
 	AM_RANGE(0x00800000, 0x00ffffff) AM_READWRITE( naomi_arm_r, naomi_arm_w )           // sound RAM (8 MB)
 	AM_RANGE(0x0103ff00, 0x0103ffff) AM_READWRITE( naomi_unknown1_r, naomi_unknown1_w ) // bios uses it, actual start and end addresses not known
@@ -784,9 +784,9 @@ static ADDRESS_MAP_START( naomi_map, ADDRESS_SPACE_PROGRAM, 64 )
 	AM_RANGE(0x10800000, 0x10ffffff) AM_WRITE( ta_fifo_yuv_w )
 	AM_RANGE(0x11000000, 0x11ffffff) AM_RAM AM_SHARE(2)                                 // another mirror of texture memory
 	AM_RANGE(0x13000000, 0x13ffffff) AM_RAM AM_SHARE(2)                                 // another mirror of texture memory
-	AM_RANGE(0xa0000000, 0xa01fffff) AM_ROM AM_REGION("main", 0)
+	AM_RANGE(0xa0000000, 0xa01fffff) AM_ROM AM_REGION("maincpu", 0)
 
-	AM_RANGE(0x005f7000, 0x005f70ff) AM_DEVREADWRITE(NAOMI_BOARD, "rom_board", naomibd_r, naomibd_w)
+	AM_RANGE(0x005f7000, 0x005f70ff) AM_DEVREADWRITE("rom_board", naomibd_r, naomibd_w)
 ADDRESS_MAP_END
 
 
@@ -798,14 +798,15 @@ ADDRESS_MAP_END
 /*
  * Aica
  */
-static void aica_irq(running_machine *machine, int irq)
+static void aica_irq(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1], ARM7_FIRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1], ARM7_FIRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static const aica_interface aica_config =
 {
+	TRUE,
 	0,
 	aica_irq
 };
@@ -815,7 +816,7 @@ static const aica_interface aica_config =
 static ADDRESS_MAP_START( dc_audio_map, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000000, 0x007fffff) AM_RAM	AM_BASE( &dc_sound_ram )                /* shared with SH-4 */
-	AM_RANGE(0x00800000, 0x00807fff) AM_READWRITE(dc_arm_aica_r, dc_arm_aica_w)
+	AM_RANGE(0x00800000, 0x00807fff) AM_DEVREADWRITE("aica", dc_arm_aica_r, dc_arm_aica_w)
 ADDRESS_MAP_END
 
 /*
@@ -855,7 +856,7 @@ INPUT_PORTS_END
 static MACHINE_RESET( naomi )
 {
 	MACHINE_RESET_CALL(dc);
-	aica_set_ram_base(0, dc_sound_ram, 8*1024*1024);
+	aica_set_ram_base(devtag_get_device(machine, "aica"), dc_sound_ram, 8*1024*1024);
 }
 
 /*
@@ -864,13 +865,13 @@ static MACHINE_RESET( naomi )
 
 static MACHINE_DRIVER_START( naomi_base )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", SH4, CPU_CLOCK) // SH4!!!
+	MDRV_CPU_ADD("maincpu", SH4, CPU_CLOCK) // SH4!!!
 	MDRV_CPU_CONFIG(sh4cpu_config)
 	MDRV_CPU_PROGRAM_MAP(naomi_map,0)
 	MDRV_CPU_IO_MAP(naomi_port,0)
-	MDRV_CPU_VBLANK_INT("main", naomi_vblank)
+	MDRV_CPU_VBLANK_INT("screen", naomi_vblank)
 
-	MDRV_CPU_ADD("sound", ARM7, ((XTAL_33_8688MHz*2)/3)/8)	// AICA bus clock is 2/3rds * 33.8688.  ARM7 gets 1 bus cycle out of each 8.
+	MDRV_CPU_ADD("soundcpu", ARM7, ((XTAL_33_8688MHz*2)/3)/8)	// AICA bus clock is 2/3rds * 33.8688.  ARM7 gets 1 bus cycle out of each 8.
 	MDRV_CPU_PROGRAM_MAP(dc_audio_map, 0)
 
 	MDRV_MACHINE_START( dc )
@@ -879,7 +880,7 @@ static MACHINE_DRIVER_START( naomi_base )
 	MDRV_NVRAM_HANDLER(naomi_eeproms)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
@@ -891,11 +892,11 @@ static MACHINE_DRIVER_START( naomi_base )
 	MDRV_VIDEO_START(dc)
 	MDRV_VIDEO_UPDATE(dc)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 	MDRV_SOUND_ADD("aica", AICA, 0)
 	MDRV_SOUND_CONFIG(aica_config)
-	MDRV_SOUND_ROUTE(0, "left", 2.0)
-	MDRV_SOUND_ROUTE(0, "right", 2.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 2.0)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 2.0)
 MACHINE_DRIVER_END
 
 /*
@@ -1028,7 +1029,7 @@ Scan ROM for the text string "LOADING TEST MODE NOW" back up four (4) bytes for 
 
 /* only revisions d and higher support the GDROM, and there is an additional bios (and SH4!) on the DIMM board for the CD Controller */
 #define NAOMIGD_BIOS \
-	ROM_REGION( 0x200000, "main", 0) \
+	ROM_REGION( 0x200000, "maincpu", 0) \
 	ROM_SYSTEM_BIOS( 0, "bios0", "epr-21578e (Export)" ) \
 	ROM_LOAD16_WORD_SWAP_BIOS( 0, "epr-21578e.bin",  0x000000, 0x200000, CRC(087f09a3) SHA1(0418eb2cf9766f0b1b874a4e92528779e22c0a4a) ) \
 	ROM_SYSTEM_BIOS( 1, "bios1", "epr-21578d (Export)" ) \
@@ -1076,7 +1077,7 @@ Region byte encoding is as follows:
 */
 
 #define NAOMI2_BIOS \
-	ROM_REGION( 0x200000, "main", 0) \
+	ROM_REGION( 0x200000, "maincpu", 0) \
 	ROM_SYSTEM_BIOS( 0, "bios0", "epr-23608b (Export)" ) \
 	ROM_LOAD16_WORD_SWAP_BIOS( 0, "epr-23608b.bin",   0x000000, 0x200000, CRC(a554b1e3) SHA1(343b727a3619d1c75a9b6d4cc156a9050447f155) ) \
 	ROM_SYSTEM_BIOS( 1, "bios1", "epr-23608 (Export)"  ) \
@@ -1102,7 +1103,7 @@ Region byte encoding is as follows:
 
 
 ROM_START( naomi )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x8400000, "user1", ROMREGION_ERASE)
@@ -1115,7 +1116,7 @@ ROM_START( naomigd )
 ROM_END
 
 ROM_START( hod2bios )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	HOTD2_BIOS
 
 	ROM_REGION( 0x8400000, "user1", ROMREGION_ERASE)
@@ -1128,7 +1129,7 @@ ROM_START( naomi2 )
 ROM_END
 
 ROM_START( awbios )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	AW_BIOS
 
 	ROM_REGION( 0x8400000, "user1", ROMREGION_ERASE)
@@ -1136,7 +1137,7 @@ ROM_END
 
 
 ROM_START( fotns )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	AW_BIOS
 
 	ROM_REGION( 0x8000000, "user1", ROMREGION_ERASE)
@@ -1151,7 +1152,7 @@ ROM_START( fotns )
 ROM_END
 
 ROM_START( demofist )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	AW_BIOS
 
 	ROM_REGION( 0x8000000, "user1", ROMREGION_ERASE)
@@ -1303,7 +1304,7 @@ IC12    64M     BA24    102F
 */
 
 ROM_START( cspike )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -1350,7 +1351,7 @@ IC13    64M     A12E    8DE4
 */
 
 ROM_START( capsnk )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -1395,7 +1396,7 @@ Serial: BCHE-01A0803
 */
 
 ROM_START( csmash )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x4800000, "user1", ROMREGION_ERASE00)
@@ -1412,7 +1413,7 @@ ROM_START( csmash )
 ROM_END
 
 ROM_START( csmasho )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x4800000, "user1", ROMREGION_ERASE00)
@@ -1457,7 +1458,7 @@ Serial: BAXE-02A1386
 */
 
 ROM_START( derbyoc )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -1514,7 +1515,7 @@ Serial: BBDE-01A0097
 */
 
 ROM_START( dybb99 )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -1578,7 +1579,7 @@ Serial: BCCG-21A0451
 */
 
 ROM_START( gram2000 )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -1622,7 +1623,7 @@ Serial: BAJE-01A0021
 */
 
 ROM_START( ggram2 )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -1657,7 +1658,7 @@ IC11    64M     4F77    EEFE
 
 
 ROM_START( hmgeo )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -1700,7 +1701,7 @@ IC10    64M     1E43    0F1A
 */
 
 ROM_START( gwing2 )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -1744,7 +1745,7 @@ IC14    32M     81F9    DA1B
 */
 
 ROM_START( suchie3 )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x8000000, "user1", 0)
@@ -1770,7 +1771,7 @@ ROM_END
 /* toy fighter - 1999 sega */
 
 ROM_START( toyfight )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x8000000, "user1", 0)
@@ -1824,7 +1825,7 @@ Serial: BCLE-01A2130
 */
 
 ROM_START( pjustic )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -1875,7 +1876,7 @@ IC8 64M C529    0501
 */
 
 ROM_START( pstone )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -1916,7 +1917,7 @@ Serial: BBJE-01A1613
 */
 
 ROM_START( pstone2 )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -1969,7 +1970,7 @@ Serial (from 2 carts): BAZE-01A0288
 */
 
 ROM_START( otrigger )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -2026,7 +2027,7 @@ IC16    64M     A10B    DDB4
 */
 
 ROM_START( samba )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -2081,7 +2082,7 @@ IC17 64M    6586    1F3F
 */
 
 ROM_START( slasho )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -2132,7 +2133,7 @@ Serial: BAVE-02A1305
 */
 
 ROM_START( spawn )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -2185,7 +2186,7 @@ IC21    64M AD60    2F74
 */
 
 ROM_START( virnba )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -2243,7 +2244,7 @@ IC15    32M     0DF9    FC01    MPR21928
 */
 
 ROM_START( vs2_2k )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x8000000, "user1", 0)
@@ -2268,7 +2269,7 @@ ROM_END
 /* Sega Marine Fishing */
 
 ROM_START( smarinef )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x8000000, "user1", 0)
@@ -2312,7 +2313,7 @@ IC11    64M F590    D280
 */
 
 ROM_START( vtennis )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -2364,7 +2365,7 @@ IC19    64M 04B8    49FB
 */
 
 ROM_START( zombrvn )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -2426,7 +2427,7 @@ IC21    64M     002C    8ECA
 */
 
 ROM_START( doa2 )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0xb000000, "user1", 0)
@@ -2491,7 +2492,7 @@ Serial: BALH-13A0175
 */
 
 ROM_START( doa2m )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0xb000000, "user1", 0)
@@ -2556,7 +2557,7 @@ Serial: ??? (sticker removed)
 */
 
 ROM_START( dybbnao )
-	ROM_REGION( 0x200000, "main", 0)
+	ROM_REGION( 0x200000, "maincpu", 0)
 	NAOMI_BIOS
 
 	ROM_REGION( 0x400000, "user1", 0)
@@ -2752,7 +2753,7 @@ GAME( 2000, doa2m,    doa2,     naomi,    naomi,    0, ROT0, "Tecmo",           
 GAME( 1998, dybbnao,  naomi,    naomi,    naomi,    0, ROT0, "Sega",            "Dynamite Baseball NAOMI (JPN)", GAME_NO_SOUND|GAME_NOT_WORKING )
 
 /* Games with game specific bios sets */
-GAME( 2001, hod2bios, 0,        naomi,    naomi,    0, ROT0, "Sega",            "Naomi House of the Dead 2 Bios", GAME_NO_SOUND|GAME_NOT_WORKING|GAME_IS_BIOS_ROOT )
+GAME( 1998, hod2bios, 0,        naomi,    naomi,    0, ROT0, "Sega",            "Naomi House of the Dead 2 Bios", GAME_NO_SOUND|GAME_NOT_WORKING|GAME_IS_BIOS_ROOT )
 /* HOTD2 isn't dumped */
 
 
@@ -3059,30 +3060,62 @@ ROM_END
 GAME( 2001, naomigd,   0,        naomi,    naomi,    0,       ROT0, "Sega",            "Naomi GD-ROM Bios", GAME_NO_SOUND|GAME_NOT_WORKING|GAME_IS_BIOS_ROOT )
 
 // GDL-xxxx (licensed games?)
-GAME( 200?, gundmgd,   naomigd,  naomigd,  naomi,    0,   ROT0,   "unknown",       "Mobile Suit Gundam: Federation VS Zeon (GDL-0001)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, sfz3ugd,   naomigd,  naomigd,  naomi,    0,   ROT0,   "Capcom",        "Street Fighter Zero 3 Upper (GDL-0002)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, cvsgd,     naomigd,  naomigd,  naomi,    0,   ROT0,   "Capcom",        "Capcom vs SNK Millenium Fight 2000 Pro (GDL-0004)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, gundmxgd,  naomigd,  naomigd,  naomi,    0,   ROT0,   "unknown",       "Mobile Suit Gundam: Federation VS Zeon DX  (GDL-0006)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, cvs2gd,    naomigd,  naomigd,  naomi,    0,	  ROT0,   "Capcom",        "Capcom vs SNK 2 Millionaire Fighting 2001 (GDL-0007A)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 2001, ikaruga,   naomigd,  naomigd,  naomi,    0,   ROT270, "Treasure",      "Ikaruga (GDL-0010)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, ggxx,      naomigd,  naomigd,  naomi,    0,   ROT0,   "unknown",       "Guilty Gear XX (GDL-0011)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, chocomk,   naomigd,  naomigd,  naomi,    0,   ROT0,   "unknown",       "Musapey's Choco Marker (GDL-0014A)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, quizqgd,   naomigd,  naomigd,  naomi,    0,   ROT0,   "unknown",       "Quiz Keitai Q mode (GDL-0017)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, ggxxrl,    naomigd,  naomigd,  naomi,    0,   ROT0,   "unknown",       "Guilty Gear XX #Reload (GDL-0019A)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, shikgam2,  naomigd,  naomigd,  naomi,    0,   ROT0,   "unknown",       "Shikigami No Shiro II / The Castle of Shikigami II (GDL-0021)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 2004, meltybld,  naomigd,  naomigd,  naomi,    0,   ROT0,   "Ecole",         "Melty Blood Act Cadenza (GDL-0028C)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, senko,     naomigd,  naomigd,  naomi,    0,   ROT0,   "unknown",       "Senko No Ronde (GDL-0030A)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 2005, ss2005,    naomigd,  naomigd,  naomi,    0,   ROT0,   "unknown",       "Super Shanghai 2005 (GDL-0031A)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2001, gundmgd,   naomigd,  naomigd,  naomi,    0,   ROT0,   "Capcom",       "Mobile Suit Gundam: Federation VS Zeon (GDL-0001)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2001, sfz3ugd,   naomigd,  naomigd,  naomi,    0,   ROT0,   "Capcom",       "Street Fighter Zero 3 Upper (GDL-0002)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2001, cvsgd,     naomigd,  naomigd,  naomi,    0,   ROT0,   "Capcom",       "Capcom vs SNK Millenium Fight 2000 Pro (GDL-0004)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2001, gundmxgd,  naomigd,  naomigd,  naomi,    0,   ROT0,   "Capcom",       "Mobile Suit Gundam: Federation VS Zeon DX  (GDL-0006)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2001, cvs2gd,    naomigd,  naomigd,  naomi,    0,	  ROT0,   "Capcom",       "Capcom vs SNK 2 Millionaire Fighting 2001 (GDL-0007A)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2001, ikaruga,   naomigd,  naomigd,  naomi,    0,   ROT270, "Treasure",     "Ikaruga (GDL-0010)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2002, ggxx,      naomigd,  naomigd,  naomi,    0,   ROT0,   "Arc System Works",       "Guilty Gear XX (GDL-0011)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2002, chocomk,   naomigd,  naomigd,  naomi,    0,   ROT0,   "Ecole Software Corporation", "Musapey's Choco Marker (GDL-0014A)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2002, quizqgd,   naomigd,  naomigd,  naomi,    0,   ROT0,   "Amedio",       "Quiz Keitai Q mode (GDL-0017)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2003, ggxxrl,    naomigd,  naomigd,  naomi,    0,   ROT0,   "Arc System Works",       "Guilty Gear XX #Reload (GDL-0019A)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2003, shikgam2,  naomigd,  naomigd,  naomi,    0,   ROT0,   "Alpha System", "Shikigami No Shiro II / The Castle of Shikigami II (GDL-0021)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2004, meltybld,  naomigd,  naomigd,  naomi,    0,   ROT0,   "Ecole",        "Melty Blood Act Cadenza (GDL-0028C)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2005, senko,     naomigd,  naomigd,  naomi,    0,   ROT0,   "Grev",         "Senko No Ronde (GDL-0030A)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2005, ss2005,    naomigd,  naomigd,  naomi,    0,   ROT0,   "Starfish",     "Super Shanghai 2005 (GDL-0031A)", GAME_NO_SOUND|GAME_NOT_WORKING )
 
 // GDS-xxxx (first party games?)
-GAME( 200?, sprtjam,   naomigd,  naomigd,  naomi,    0,  ROT0, "Sega",          "Sports Jam (GDS-0003)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, slashout,  naomigd,  naomigd,  naomi,    0,  ROT0, "Sega",          "Slashout (GDS-0004)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, spkrbtl,   naomigd,  naomigd,  naomi,    0,  ROT0, "Sega",          "Spikers Battle (GDS-0005)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, dygolf,    naomigd,  naomigd,  naomi,    0,  ROT0, "Sega",          "Virtua Golf / Dynamic Golf (GDS-0009)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, wsbbgd,    naomigd,  naomigd,  naomi,    0,  ROT0, "Sega",          "World Series Baseball (GDS-0010)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, vathlete,  naomigd,  naomigd,  naomi,    0,  ROT0, "Sega",          "Virtua Athletics / Virtua Athlete (GDS-0019)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2000, sprtjam,   naomigd,  naomigd,  naomi,    0,  ROT0, "Sega",          "Sports Jam (GDS-0003)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2000, slashout,  naomigd,  naomigd,  naomi,    0,  ROT0, "Sega",          "Slashout (GDS-0004)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2001, spkrbtl,   naomigd,  naomigd,  naomi,    0,  ROT0, "Sega",          "Spikers Battle (GDS-0005)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2001, dygolf,    naomigd,  naomigd,  naomi,    0,  ROT0, "Sega",          "Virtua Golf / Dynamic Golf (GDS-0009)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2001, wsbbgd,    naomigd,  naomigd,  naomi,    0,  ROT0, "Sega",          "World Series Baseball / Super Major League (GDS-0010)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2002, vathlete,  naomigd,  naomigd,  naomi,    0,  ROT0, "Sega",          "Virtua Athletics / Virtua Athlete (GDS-0019)", GAME_NO_SOUND|GAME_NOT_WORKING )
 
 /* Naomi 2 & Naomi 2 GD-ROM */
+
+ROM_START( vstrik3c )
+
+	NAOMI2_BIOS
+
+	ROM_REGION( 0x400000, "user1", 0)
+	ROM_LOAD("epr23663.22", 0x0000000, 0x0400000, CRC(7007fec7) SHA1(523168f0b218d0bd5c815d65bf0caba2c8468c9d) )
+
+	ROM_REGION( 0xa800000, "user2", 0)
+	ROM_LOAD("ic1", 0x0000000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic2", 0x0800000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic3", 0x1000000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic4", 0x1800000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic5", 0x2000000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic6", 0x2800000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic7", 0x3000000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic8", 0x3800000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic9", 0x4000000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic10",0x4800000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic11",0x5000000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic12",0x5800000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic13",0x6000000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic14",0x6800000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic15",0x7000000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic16",0x7800000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic17",0x8000000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic18",0x8800000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic19",0x9000000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic20",0x9800000, 0x0800000, NO_DUMP )
+	ROM_LOAD("ic21",0xa000000, 0x0800000, NO_DUMP )
+ROM_END
+
 
 
 ROM_START( vstrik3 )
@@ -3134,14 +3167,18 @@ ROM_START( initd )
 ROM_END
 
 GAME( 2001, naomi2,   0,        naomi,    naomi,    0, ROT0, "Sega",            "Naomi 2 Bios", GAME_NO_SOUND|GAME_NOT_WORKING|GAME_IS_BIOS_ROOT )
+
+//Naomi 2 Cart Games
+GAME( 2001, vstrik3c, naomi2,  naomi,    naomi,    0,  ROT0, "Sega",          "Virtua Striker 3 (Cart) (USA, EXP, KOR, AUS)", GAME_NO_SOUND|GAME_NOT_WORKING )
+
 // GDS-xxxx (first party games?)
-GAME( 200?, vstrik3, naomi2,  naomigd,    naomi,    0,  ROT0, "Sega",          "Virtua Striker 3 (GDS-0006)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, vf4,     naomi2,  naomigd,    naomi,    0,  ROT0, "Sega",          "Virtua Fighter 4 (GDS-0012)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 200?, initd,   naomi2,  naomigd,    naomi,    0,  ROT0, "Sega",          "Initial D (GDS-0020b)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2001, vstrik3, naomi2,  naomigd,    naomi,    0,  ROT0, "Sega",          "Virtua Striker 3 (GDS-0006)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2001, vf4,     naomi2,  naomigd,    naomi,    0,  ROT0, "Sega",          "Virtua Fighter 4 (GDS-0012)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2002, initd,   naomi2,  naomigd,    naomi,    0,  ROT0, "Sega",          "Initial D Arcade Stage (GDS-0020b)", GAME_NO_SOUND|GAME_NOT_WORKING )
 
 
 /* Atomiswave */
 GAME( 2001, awbios,   0,        naomi,    naomi,    0, ROT0, "Sammy",           "Atomiswave Bios", GAME_NO_SOUND|GAME_NOT_WORKING|GAME_IS_BIOS_ROOT )
-GAME( 2005, fotns,    awbios,   naomi,    naomi,    fotns, ROT0, "Sammy",           "Fist Of The North Star", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 2003, demofist, awbios,   naomi,    naomi,    demofist, ROT0, "Sammy",           "Demolish Fist", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2005, fotns,    awbios,   naomi,    naomi,    fotns, ROT0, "Arc System Works",           "Fist Of The North Star", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 2003, demofist, awbios,   naomi,    naomi,    demofist, ROT0, "Polygon Magic / Dimps",           "Demolish Fist", GAME_NO_SOUND|GAME_NOT_WORKING )
 

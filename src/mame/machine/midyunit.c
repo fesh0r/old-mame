@@ -7,7 +7,6 @@
 #include "driver.h"
 #include "cpu/tms34010/tms34010.h"
 #include "cpu/m6809/m6809.h"
-#include "machine/6821pia.h"
 #include "audio/williams.h"
 #include "midyunit.h"
 
@@ -164,10 +163,10 @@ static READ16_HANDLER( term2_input_r )
 	switch (term2_analog_select)
 	{
 		default:
-		case 0:  return input_port_read(space->machine, "STICK0_X");  break;
-		case 1:  return input_port_read(space->machine, "STICK0_Y");  break;
-		case 2:  return input_port_read(space->machine, "STICK1_X");  break;
-		case 3:  return input_port_read(space->machine, "STICK1_Y");  break;
+		case 0:  return input_port_read(space->machine, "STICK0_X");
+		case 1:  return input_port_read(space->machine, "STICK0_Y");
+		case 2:  return input_port_read(space->machine, "STICK1_X");
+		case 3:  return input_port_read(space->machine, "STICK1_Y");
 	}
 }
 
@@ -292,13 +291,13 @@ static void init_generic(running_machine *machine, int bpp, int sound, int prot_
 	switch (sound)
 	{
 		case SOUND_CVSD_SMALL:
-			williams_cvsd_init(machine, 0);
+			williams_cvsd_init(machine);
 			memory_install_write8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), prot_start, prot_end, 0, 0, cvsd_protection_w);
-			cvsd_protection_base = memory_region(machine, "cvsd") + 0x10000 + (prot_start - 0x8000);
+			cvsd_protection_base = memory_region(machine, "cvsdcpu") + 0x10000 + (prot_start - 0x8000);
 			break;
 
 		case SOUND_CVSD:
-			williams_cvsd_init(machine, 0);
+			williams_cvsd_init(machine);
 			memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), prot_start, prot_end, 0, 0, SMH_BANK9, SMH_BANK9);
 			memory_set_bankptr(machine, 9, auto_malloc(0x80));
 			break;

@@ -84,7 +84,7 @@ static READ8_DEVICE_HANDLER( ppi_port_b_r )
 	return 0xff;
 }
 
-void sfkick_remap_banks(running_machine *machine)
+static void sfkick_remap_banks(running_machine *machine)
 {
 	/* 0000-3ffff */
 	switch(sfkick_bank_cfg&3)
@@ -319,7 +319,7 @@ static ADDRESS_MAP_START (main_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE( 0x99, 0x99) AM_READWRITE( v9938_0_status_r, v9938_0_command_w )
 	AM_RANGE( 0x9a, 0x9a) AM_WRITE( v9938_0_palette_w )
 	AM_RANGE( 0x9b, 0x9b) AM_WRITE( v9938_0_register_w )
-	AM_RANGE( 0xa8, 0xab) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE( 0xa8, 0xab) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_mem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -330,8 +330,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START (sound_io, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(soundlatch_r)
-	AM_RANGE(0x04, 0x04) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0x05, 0x05) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
+	AM_RANGE(0x04, 0x05) AM_DEVREADWRITE("ym1", ym2203_r, ym2203_w)
 ADDRESS_MAP_END
 
 static WRITE8_DEVICE_HANDLER ( ppi_port_c_w )
@@ -341,12 +340,12 @@ static WRITE8_DEVICE_HANDLER ( ppi_port_c_w )
 
 static const ppi8255_interface ppi8255_intf =
 {
-	NULL,
-	ppi_port_b_r,
-	NULL,
-	ppi_port_a_w,
-	NULL,
-	ppi_port_c_w
+	DEVCB_NULL,
+	DEVCB_HANDLER(ppi_port_b_r),
+	DEVCB_NULL,
+	DEVCB_HANDLER(ppi_port_a_w),
+	DEVCB_NULL,
+	DEVCB_HANDLER(ppi_port_c_w)
 
 };
 
@@ -417,7 +416,7 @@ static void sfkick_vdp_interrupt(running_machine *machine, int i)
 	cpu_set_input_line (machine->cpu[0], 0, (i ? HOLD_LINE : CLEAR_LINE));
 }
 
-VIDEO_START( sfkick )
+static VIDEO_START( sfkick )
 {
 	VIDEO_START_CALL(generic_bitmapped);
 	v9938_init (machine, 0, machine->primary_screen, tmpbitmap, MODEL_V9938, 0x80000, sfkick_vdp_interrupt);
@@ -443,9 +442,9 @@ static INTERRUPT_GEN( sfkick_interrupt )
 {
 	v9938_interrupt(device->machine, 0);
 }
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line_and_vector(machine->cpu[1], 0, irq ? ASSERT_LINE : CLEAR_LINE, 0xff);
+	cpu_set_input_line_and_vector(device->machine->cpu[1], 0, irq ? ASSERT_LINE : CLEAR_LINE, 0xff);
 }
 
 static const ym2203_interface ym2203_config =
@@ -453,25 +452,25 @@ static const ym2203_interface ym2203_config =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		0,0,0,0,
+		DEVCB_NULL,DEVCB_NULL,DEVCB_NULL,DEVCB_NULL,
 	},
 	irqhandler
 };
 
 static MACHINE_DRIVER_START( sfkick )
 
-	MDRV_CPU_ADD("main",Z80,MASTER_CLOCK/6)
+	MDRV_CPU_ADD("maincpu",Z80,MASTER_CLOCK/6)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(main_io,0)
 	MDRV_CPU_VBLANK_INT_HACK(sfkick_interrupt,262)
 
 	MDRV_QUANTUM_TIME(HZ(60000))
 
-	MDRV_CPU_ADD("sound",Z80,MASTER_CLOCK/6)
+	MDRV_CPU_ADD("soundcpu",Z80,MASTER_CLOCK/6)
 	MDRV_CPU_PROGRAM_MAP(sound_mem,0)
 	MDRV_CPU_IO_MAP(sound_io,0)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -505,7 +504,7 @@ static DRIVER_INIT(sfkick)
 }
 
 ROM_START( sfkick )
-	ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 
 	ROM_REGION(0x20000,  "banked", ROMREGION_ERASEFF)
 	ROM_LOAD( "sfkick2.a7", 0x00000, 0x8000, CRC(1dcaec5e) SHA1(7e063d46fb6606df2d772866cc55f207035b98c4) )
@@ -522,13 +521,13 @@ ROM_START( sfkick )
 	ROM_REGION(0x8000,  "bios", 0)
 	ROM_LOAD( "sfkick7.l7", 0x00000, 0x8000, CRC(8cd94c63) SHA1(e6dba66c8716593b8ab88f79f7205211938d1598) )
 
-	ROM_REGION(0x10000,  "sound", 0)
+	ROM_REGION(0x10000,  "soundcpu", 0)
 	ROM_LOAD( "sfkick1.c5", 0x00000, 0x8000, CRC(2f5e3b7a) SHA1(d2ff566b415ab10c0681fa1eb221a56e3c137ecf) )
 ROM_END
 
 
 ROM_START( spinkick )
-	ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 
 	ROM_REGION(0x20000,  "banked", ROMREGION_ERASEFF)
 	ROM_LOAD( "spinkick.r2", 0x00000, 0x8000, CRC(1dcaec5e) SHA1(7e063d46fb6606df2d772866cc55f207035b98c4) )
@@ -545,7 +544,7 @@ ROM_START( spinkick )
 	ROM_REGION(0x8000,  "bios", 0)
 	ROM_LOAD( "spinkick.r7", 0x00000, 0x8000, CRC(8cd94c63) SHA1(e6dba66c8716593b8ab88f79f7205211938d1598) )
 
-	ROM_REGION(0x10000,  "sound", 0)
+	ROM_REGION(0x10000,  "soundcpu", 0)
 	ROM_LOAD( "spinkick.r1", 0x00000, 0x8000, CRC(2f5e3b7a) SHA1(d2ff566b415ab10c0681fa1eb221a56e3c137ecf) )
 ROM_END
 

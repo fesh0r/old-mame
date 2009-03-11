@@ -238,13 +238,13 @@ int atari_input_disabled(void)
 
 static ADDRESS_MAP_START(a600xl_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_RAM
-	AM_RANGE(0x5000, 0x57ff) AM_ROM AM_REGION("main", 0x5000)	/* self test */
+	AM_RANGE(0x5000, 0x57ff) AM_ROM AM_REGION("maincpu", 0x5000)	/* self test */
 	AM_RANGE(0x8000, 0xbfff) AM_ROM	/* game cartridge */
 	AM_RANGE(0xc000, 0xcfff) AM_ROM /* OS */
 	AM_RANGE(0xd000, 0xd0ff) AM_READWRITE(atari_gtia_r, atari_gtia_w)
 	AM_RANGE(0xd100, 0xd1ff) AM_NOP
-	AM_RANGE(0xd200, 0xd2ff) AM_READWRITE(pokey1_r, pokey1_w)
-    AM_RANGE(0xd300, 0xd3ff) AM_READWRITE(pia_0_alt_r, pia_0_alt_w)
+	AM_RANGE(0xd200, 0xd2ff) AM_DEVREADWRITE("pokey", pokey_r, pokey_w)
+    AM_RANGE(0xd300, 0xd3ff) AM_DEVREADWRITE("pia", pia6821_alt_r, pia6821_alt_w)
 	AM_RANGE(0xd400, 0xd4ff) AM_READWRITE(atari_antic_r, atari_antic_w)
 	AM_RANGE(0xd500, 0xd7ff) AM_NOP
 	AM_RANGE(0xd800, 0xffff) AM_ROM /* OS */
@@ -421,30 +421,32 @@ static PALETTE_INIT( atari )
 
 
 static const pokey_interface pokey_config = {
-	{ 0 },
-	0,
-	0,0,
+	{ DEVCB_NULL },
+	DEVCB_NULL,
+	DEVCB_NULL,DEVCB_NULL,
 	atari_interrupt_cb
 };
 
 static MACHINE_DRIVER_START( a600xl )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, FREQ_17_EXACT)
+	MDRV_CPU_ADD("maincpu", M6502, FREQ_17_EXACT)
 	MDRV_CPU_PROGRAM_MAP(a600xl_mem, 0)
 	MDRV_CPU_VBLANK_INT_HACK(a800xl_interrupt, TOTAL_LINES_60HZ)
 
 	MDRV_CPU_ADD("mcu", M68705, 3579545)
 	MDRV_CPU_PROGRAM_MAP(mcu_mem,0)
 
+	MDRV_PIA6821_ADD("pia", a600xl_pia_interface)
+
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_VISIBLE_AREA(MIN_X, MAX_X, MIN_Y, MAX_Y)
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
 
-	MDRV_PALETTE_LENGTH(sizeof(atari_palette) / sizeof(atari_palette[0]))
+	MDRV_PALETTE_LENGTH(ARRAY_LENGTH(atari_palette))
 	MDRV_PALETTE_INIT(atari)
 	MDRV_DEFAULT_LAYOUT(layout_maxaflex)
 
@@ -470,7 +472,7 @@ static MACHINE_DRIVER_START( maxaflex )
 MACHINE_DRIVER_END
 
 ROM_START(maxaflex)
-	ROM_REGION(0x10000,"main",0) /* 64K for the CPU */
+	ROM_REGION(0x10000,"maincpu",0) /* 64K for the CPU */
     ROM_LOAD("atarixl.rom", 0xc000, 0x4000, CRC(1f9cd270) SHA1(ae4f523ba08b6fd59f3cae515a2b2410bbd98f55))
 
 	ROM_REGION( 0x0800, "mcu", 0 )	/* 2k for the microcontroller */
@@ -481,7 +483,7 @@ ROM_START(maxaflex)
 ROM_END
 
 ROM_START(mf_bdash)
-	ROM_REGION(0x10000,"main",0) /* 64K for the CPU */
+	ROM_REGION(0x10000,"maincpu",0) /* 64K for the CPU */
 	ROM_LOAD("bd-acs-1.rom",	0x8000, 0x2000, CRC(2b11750e) SHA1(43e9ae44eb1767621920bb94a4370ed602d81056))
 	ROM_LOAD("bd-acs-2.rom",	0xa000, 0x2000, CRC(e9ea2658) SHA1(189ede7201ef122cf2b72fc847a896b9dbe007e5))
     ROM_LOAD("atarixl.rom",		0xc000, 0x4000, CRC(1f9cd270) SHA1(ae4f523ba08b6fd59f3cae515a2b2410bbd98f55))
@@ -494,7 +496,7 @@ ROM_START(mf_bdash)
 ROM_END
 
 ROM_START(mf_achas)
-	ROM_REGION(0x10000,"main",0) /* 64K for the CPU */
+	ROM_REGION(0x10000,"maincpu",0) /* 64K for the CPU */
 	ROM_LOAD("ac.rom",			0x8000, 0x4000, CRC(18752991) SHA1(f508b89d2251c53d017cff6cb23b8e9880a0cc0b))
     ROM_LOAD("atarixl.rom",		0xc000, 0x4000, CRC(1f9cd270) SHA1(ae4f523ba08b6fd59f3cae515a2b2410bbd98f55))
 
@@ -506,7 +508,7 @@ ROM_START(mf_achas)
 ROM_END
 
 ROM_START(mf_brist)
-	ROM_REGION(0x10000,"main",0) /* 64K for the CPU */
+	ROM_REGION(0x10000,"maincpu",0) /* 64K for the CPU */
 	ROM_LOAD("brist.rom",		0x8000, 0x4000, CRC(4263d64d) SHA1(80a041bceb499e1466516488013aa4439b3db6f2))
     ROM_LOAD("atarixl.rom",		0xc000, 0x4000, CRC(1f9cd270) SHA1(ae4f523ba08b6fd59f3cae515a2b2410bbd98f55))
 
@@ -518,7 +520,7 @@ ROM_START(mf_brist)
 ROM_END
 
 ROM_START(mf_flip)
-	ROM_REGION(0x10000,"main",0) /* 64K for the CPU */
+	ROM_REGION(0x10000,"maincpu",0) /* 64K for the CPU */
 	ROM_LOAD("flipflop.rom",	0x8000, 0x4000, CRC(8ae057be) SHA1(ba26d6a3790ebdb754c1192b2c28f0fe93aca377))
     ROM_LOAD("atarixl.rom",		0xc000, 0x4000, CRC(1f9cd270) SHA1(ae4f523ba08b6fd59f3cae515a2b2410bbd98f55))
 
@@ -531,7 +533,7 @@ ROM_END
 
 static DRIVER_INIT( a600xl )
 {
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(machine, "maincpu");
 	memcpy( rom + 0x5000, rom + 0xd000, 0x800 );
 }
 

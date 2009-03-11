@@ -100,15 +100,15 @@ static READ8_HANDLER( bishjan_videoram_2_hi_r )	{	return bishjan_videoram_2_hi[o
 
 // 16-bit handlers for an 8-bit chip
 
-WRITE8TO16BE_MSB( bishjan_byte_lo_msb,            bishjan_byte_lo_w );
+static WRITE8TO16BE_MSB( bishjan_byte_lo_msb,            bishjan_byte_lo_w );
 
-READWRITE8TO16BE( bishjan_videoram_1_lo_word,    bishjan_videoram_1_lo_r, bishjan_videoram_1_lo_w );
-READWRITE8TO16BE( bishjan_videoram_1_hi_word,    bishjan_videoram_1_hi_r, bishjan_videoram_1_hi_w );
-WRITE8TO16BE    ( bishjan_videoram_1_hi_lo_word, bishjan_videoram_1_hi_lo_w );
+static READ8TO16BE( bishjan_videoram_1_lo_word,    bishjan_videoram_1_lo_r );
+static READ8TO16BE( bishjan_videoram_1_hi_word,    bishjan_videoram_1_hi_r );
+static WRITE8TO16BE    ( bishjan_videoram_1_hi_lo_word, bishjan_videoram_1_hi_lo_w );
 
-READWRITE8TO16BE( bishjan_videoram_2_lo_word,    bishjan_videoram_2_lo_r, bishjan_videoram_2_lo_w );
-READWRITE8TO16BE( bishjan_videoram_2_hi_word,    bishjan_videoram_2_hi_r, bishjan_videoram_2_hi_w );
-WRITE8TO16BE    ( bishjan_videoram_2_hi_lo_word, bishjan_videoram_2_hi_lo_w );
+static READ8TO16BE( bishjan_videoram_2_lo_word,    bishjan_videoram_2_lo_r );
+static READ8TO16BE( bishjan_videoram_2_hi_word,    bishjan_videoram_2_hi_r );
+static WRITE8TO16BE    ( bishjan_videoram_2_hi_lo_word, bishjan_videoram_2_hi_lo_w );
 
 
 /***************************************************************************
@@ -163,15 +163,19 @@ static WRITE8_HANDLER( bishjan_scrollram_2_hi_lo_w )
 
 // 16-bit handlers for an 8-bit chip
 
-WRITE8TO16BE( bishjan_scroll_word, bishjan_scroll_w );
+static WRITE8TO16BE( bishjan_scroll_word, bishjan_scroll_w );
 
-READWRITE8TO16BE( bishjan_scrollram_1_lo_word,    bishjan_scrollram_1_lo_r, bishjan_scrollram_1_lo_w );
-READWRITE8TO16BE( bishjan_scrollram_1_hi_word,    bishjan_scrollram_1_hi_r, bishjan_scrollram_1_hi_w );
-WRITE8TO16BE    ( bishjan_scrollram_1_hi_lo_word, bishjan_scrollram_1_hi_lo_w );
+static READ8TO16BE( bishjan_scrollram_1_lo_word,    bishjan_scrollram_1_lo_r );
+static WRITE8TO16BE( bishjan_scrollram_1_lo_word,   bishjan_scrollram_1_lo_w );
+static READ8TO16BE( bishjan_scrollram_1_hi_word,    bishjan_scrollram_1_hi_r );
+static WRITE8TO16BE( bishjan_scrollram_1_hi_word,    bishjan_scrollram_1_hi_w );
+static WRITE8TO16BE    ( bishjan_scrollram_1_hi_lo_word, bishjan_scrollram_1_hi_lo_w );
 
-READWRITE8TO16BE( bishjan_scrollram_2_lo_word,    bishjan_scrollram_2_lo_r, bishjan_scrollram_2_lo_w );
-READWRITE8TO16BE( bishjan_scrollram_2_hi_word,    bishjan_scrollram_2_hi_r, bishjan_scrollram_2_hi_w );
-WRITE8TO16BE    ( bishjan_scrollram_2_hi_lo_word, bishjan_scrollram_2_hi_lo_w );
+static READ8TO16BE( bishjan_scrollram_2_lo_word,    bishjan_scrollram_2_lo_r );
+static WRITE8TO16BE( bishjan_scrollram_2_lo_word,    bishjan_scrollram_2_lo_w );
+static READ8TO16BE( bishjan_scrollram_2_hi_word,    bishjan_scrollram_2_hi_r );
+static WRITE8TO16BE( bishjan_scrollram_2_hi_word,    bishjan_scrollram_2_hi_w );
+static WRITE8TO16BE    ( bishjan_scrollram_2_hi_lo_word, bishjan_scrollram_2_hi_lo_w );
 
 
 /***************************************************************************
@@ -187,7 +191,7 @@ static WRITE8_HANDLER( bishjan_disable_w )
 
 // 16-bit handlers for an 8-bit chip
 
-WRITE8TO16BE_LSB( bishjan_disable_lsb, bishjan_disable_w );
+static WRITE8TO16BE_LSB( bishjan_disable_lsb, bishjan_disable_w );
 
 
 /***************************************************************************
@@ -298,7 +302,7 @@ static WRITE8_HANDLER(colordac_w)
 
 // 16-bit handlers for an 8-bit chip
 
-WRITE8TO16BE( colordac_word, colordac_w );
+static WRITE8TO16BE( colordac_word, colordac_w );
 
 
 /***************************************************************************
@@ -360,8 +364,8 @@ static WRITE16_HANDLER( bishjan_coin_w )
 static ADDRESS_MAP_START( bishjan_map, ADDRESS_SPACE_PROGRAM, 16 )
 	ADDRESS_MAP_GLOBAL_MASK(0xffffff)
 
-	AM_RANGE( 0x000000, 0x07ffff ) AM_ROM AM_REGION("main", 0)
-	AM_RANGE( 0x080000, 0x0fffff ) AM_ROM AM_REGION("main", 0)
+	AM_RANGE( 0x000000, 0x07ffff ) AM_ROM AM_REGION("maincpu", 0)
+	AM_RANGE( 0x080000, 0x0fffff ) AM_ROM AM_REGION("maincpu", 0)
 
 	AM_RANGE( 0x200000, 0x207fff ) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)	// battery
 
@@ -450,10 +454,10 @@ static WRITE8_HANDLER( saklove_outputs_w )
 //  popmessage("0: %02x - 1: %02x - 2: %02x - 3: %02x", saklove_outputs[0], saklove_outputs[1], saklove_outputs[2], saklove_outputs[3]);
 }
 
-static WRITE8_HANDLER( saklove_oki_bank_w )
+static WRITE8_DEVICE_HANDLER( saklove_oki_bank_w )
 {
 	// it writes 0x32 or 0x33
-	okim6295_set_bank_base(0, (data & 1) * 0x40000);
+	okim6295_set_bank_base(device, (data & 1) * 0x40000);
 }
 
 static READ8_HANDLER( saklove_vblank_r )
@@ -507,13 +511,12 @@ static ADDRESS_MAP_START( saklove_map, ADDRESS_SPACE_PROGRAM, 8 )
 	// write both (1)
 	AM_RANGE(0x34000, 0x35fff) AM_READWRITE( bishjan_videoram_1_hi_r, bishjan_videoram_1_hi_lo_w )
 
-	AM_RANGE(0xe0000, 0xfffff) AM_ROM AM_REGION("main",0)
+	AM_RANGE(0xe0000, 0xfffff) AM_ROM AM_REGION("maincpu",0)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( saklove_io, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x0020, 0x0020) AM_READWRITE( okim6295_status_0_r, okim6295_data_0_w )
-	AM_RANGE(0x0040, 0x0040) AM_WRITE( ym3812_control_port_0_w )
-	AM_RANGE(0x0041, 0x0041) AM_WRITE( ym3812_write_port_0_w )
+	AM_RANGE(0x0020, 0x0020) AM_DEVREADWRITE( "oki", okim6295_r, okim6295_w )
+	AM_RANGE(0x0040, 0x0041) AM_DEVWRITE( "ym", ym3812_w )
 
 	AM_RANGE(0x0060, 0x0062) AM_WRITE( colordac_w )
 
@@ -531,7 +534,7 @@ static ADDRESS_MAP_START( saklove_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0307, 0x0307) AM_READ ( saklove_dsw_r )
 	AM_RANGE(0x0308, 0x0308) AM_WRITE( saklove_dsw_mask_w )
 
-	AM_RANGE(0x0312, 0x0312) AM_READWRITE( saklove_vblank_r, saklove_oki_bank_w )
+	AM_RANGE(0x0312, 0x0312) AM_READ( saklove_vblank_r ) AM_DEVWRITE( "oki", saklove_oki_bank_w )
 
 	// Peripheral Control Block
 	AM_RANGE(0xff00, 0xffff) AM_READWRITE( am188em_regs_r, am188em_regs_w ) AM_BASE( &am188em_regs )
@@ -821,14 +824,14 @@ static INTERRUPT_GEN( bishjan_interrupt )
 }
 
 static MACHINE_DRIVER_START( bishjan )
-	MDRV_CPU_ADD("main", H83044, XTAL_44_1MHz / 3)
+	MDRV_CPU_ADD("maincpu", H83044, XTAL_44_1MHz / 3)
 	MDRV_CPU_PROGRAM_MAP( bishjan_map, 0 )
 	MDRV_CPU_VBLANK_INT_HACK(bishjan_interrupt,2)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( 512, 256 )
 	MDRV_SCREEN_VISIBLE_AREA( 0, 512-1, 0, 256-16-1 )
@@ -852,16 +855,16 @@ static INTERRUPT_GEN( saklove_interrupt )
 }
 
 static MACHINE_DRIVER_START( saklove )
-	MDRV_CPU_ADD("main", I80188, XTAL_20MHz )	// !! AMD AM188-EM !!
+	MDRV_CPU_ADD("maincpu", I80188, XTAL_20MHz )	// !! AMD AM188-EM !!
 	MDRV_CPU_PROGRAM_MAP( saklove_map, 0 )
 	MDRV_CPU_IO_MAP( saklove_io, 0 )
-	MDRV_CPU_VBLANK_INT( "main", saklove_interrupt )
+	MDRV_CPU_VBLANK_INT( "screen", saklove_interrupt )
 
 	MDRV_MACHINE_RESET(saklove)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( 512, 256 )
 	MDRV_SCREEN_VISIBLE_AREA( 0, 512-1, 0, 256-16-1 )
@@ -936,7 +939,7 @@ Notes:
 ***************************************************************************/
 
 ROM_START( bishjan )
-	ROM_REGION( 0x100000, "main", 0 )	// H8/3044
+	ROM_REGION( 0x100000, "maincpu", 0 )	// H8/3044
 	ROM_LOAD( "1-v203.u21", 0x000000, 0x080000, CRC(1f891d48) SHA1(0b6a5aa8b781ba8fc133289790419aa8ea21c400) )
 
 	ROM_REGION( 0x400000, "tilemap", ROMREGION_DISPOSE )
@@ -951,7 +954,7 @@ ROM_END
 
 static DRIVER_INIT(bishjan)
 {
-	UINT16 *rom = (UINT16*)memory_region(machine, "main");
+	UINT16 *rom = (UINT16*)memory_region(machine, "maincpu");
 
 	// check
 	rom[0x042EA/2] = 0x4008;
@@ -994,7 +997,7 @@ Notes:
 ***************************************************************************/
 
 ROM_START( saklove )
-	ROM_REGION( 0x20000, "main", 0 )	// AM188-EM
+	ROM_REGION( 0x20000, "maincpu", 0 )	// AM188-EM
 	ROM_LOAD( "1.u23", 0x00000, 0x20000, CRC(02319bfb) SHA1(1a425dcdeecae92d8b7457d1897c700ac7856a9d) )
 
 	ROM_REGION( 0x200000, "tilemap", ROMREGION_DISPOSE )
@@ -1009,7 +1012,7 @@ ROM_END
 
 static DRIVER_INIT(saklove)
 {
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(machine, "maincpu");
 
 	// patch protection test (it always enters test mode on boot otherwise)
 	rom[0x0e029] = 0xeb;

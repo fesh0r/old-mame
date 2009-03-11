@@ -125,26 +125,6 @@ static INPUT_PORTS_START( puckpkmn )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-static READ16_HANDLER( puckpkmn_YM3438_r )
-{
-	return	ym3438_status_port_0_a_r(space, 0) << 8;
-}
-
-static WRITE16_HANDLER( puckpkmn_YM3438_w )
-{
-	switch (offset)
-	{
-		case 0:
-			if (ACCESSING_BITS_8_15)	ym3438_control_port_0_a_w	(space, 0,	(data >> 8) & 0xff);
-			else 				ym3438_data_port_0_a_w		(space, 0,	(data >> 0) & 0xff);
-			break;
-		case 1:
-			if (ACCESSING_BITS_8_15)	ym3438_control_port_0_b_w	(space, 0,	(data >> 8) & 0xff);
-			else 				ym3438_data_port_0_b_w		(space, 0,	(data >> 0) & 0xff);
-			break;
-	}
-}
-
 
 static ADDRESS_MAP_START( puckpkmn_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x1fffff) AM_READ(SMH_ROM)					/* Main 68k Program Roms */
@@ -153,8 +133,8 @@ static ADDRESS_MAP_START( puckpkmn_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x700014, 0x700015) AM_READ_PORT("UNK")
 	AM_RANGE(0x700016, 0x700017) AM_READ_PORT("DSW1")
 	AM_RANGE(0x700018, 0x700019) AM_READ_PORT("DSW2")
-	AM_RANGE(0x700022, 0x700023) AM_READ(okim6295_status_0_lsb_r)	/* M6295 Sound Chip Status Register */
-	AM_RANGE(0xa04000, 0xa04001) AM_READ(puckpkmn_YM3438_r)			/* Ym3438 Sound Chip Status Register */
+	AM_RANGE(0x700022, 0x700023) AM_DEVREAD8("oki", okim6295_r, 0x00ff)	/* M6295 Sound Chip Status Register */
+	AM_RANGE(0xa04000, 0xa04003) AM_DEVREAD8("ym", ym3438_r, 0xffff)			/* Ym3438 Sound Chip Status Register */
 	AM_RANGE(0xc00000, 0xc0001f) AM_READ(genesis_vdp_r)				/* VDP Access */
 	AM_RANGE(0xe00000, 0xe1ffff) AM_READ(SMH_BANK1)					/* VDP sees the roms here */
 	AM_RANGE(0xfe0000, 0xfeffff) AM_READ(SMH_BANK2)					/* VDP sees the ram here */
@@ -168,8 +148,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( puckpkmn_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)					/* Main 68k Program Roms */
-	AM_RANGE(0x700022, 0x700023) AM_WRITE(okim6295_data_0_lsb_w)		/* M6295 Sound Chip Writes */
-	AM_RANGE(0xa04000, 0xa04003) AM_WRITE(puckpkmn_YM3438_w)			/* Ym3438 Sound Chip Writes */
+	AM_RANGE(0x700022, 0x700023) AM_DEVWRITE8("oki", okim6295_w, 0x00ff)		/* M6295 Sound Chip Writes */
+	AM_RANGE(0xa04000, 0xa04003) AM_DEVWRITE8("ym", ym3438_w, 0xffff)			/* Ym3438 Sound Chip Writes */
 	AM_RANGE(0xc00000, 0xc0001f) AM_WRITE(genesis_vdp_w)				/* VDP Access */
 	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(SMH_RAM) AM_BASE(&main_ram)		/* Main Ram */
 
@@ -191,9 +171,9 @@ static const ym3438_interface ym3438_intf =
 static MACHINE_DRIVER_START( puckpkmn )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main",M68000, MASTER_CLOCK/7) 		/*???*/
+	MDRV_CPU_ADD("maincpu",M68000, MASTER_CLOCK/7) 		/*???*/
 	MDRV_CPU_PROGRAM_MAP(puckpkmn_readmem,puckpkmn_writemem)
-	MDRV_CPU_VBLANK_INT("main", genesis_vblank_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", genesis_vblank_interrupt)
 
 	MDRV_MACHINE_START(genesis)
 	MDRV_MACHINE_RESET(genesis)
@@ -201,7 +181,7 @@ static MACHINE_DRIVER_START( puckpkmn )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(342,262)
@@ -304,19 +284,19 @@ Screenshots available on my site at http://unemulated.emuunlim.com (under PCB Sh
 
 static DRIVER_INIT( puckpkmn )
 {
-	UINT8 *rom	=	memory_region(machine, "main");
-	size_t len		=	memory_region_length(machine, "main");
+	UINT8 *rom	=	memory_region(machine, "maincpu");
+	size_t len		=	memory_region_length(machine, "maincpu");
 	int i;
 
 	for (i = 0; i < len; i++)
 		rom[i] = BITSWAP8(rom[i],1,4,2,0,7,5,3,6);
 
-	memory_set_bankptr(machine, 1, memory_region(machine, "main") );	// VDP reads the roms from here
+	memory_set_bankptr(machine, 1, memory_region(machine, "maincpu") );	// VDP reads the roms from here
 	memory_set_bankptr(machine, 2, main_ram );						// VDP reads the ram from here
 }
 
 ROM_START( puckpkmn ) /* Puckman Pockimon  (c)2000 Genie */
-	ROM_REGION( 0x200000, "main", 0 )
+	ROM_REGION( 0x200000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "puckpoke.u5", 0x000000, 0x080000, CRC(fd334b91) SHA1(cf8bf6645a4082ea4392937e169b1686c9c7e246) )
 	ROM_LOAD16_BYTE( "puckpoke.u4", 0x000001, 0x080000, CRC(839cc76b) SHA1(e15662a7175db7a8e222dda176a8ed92e0d56e9d) )
 	ROM_LOAD16_BYTE( "puckpoke.u8", 0x100000, 0x080000, CRC(7936bec8) SHA1(4b350105abe514fbfeabae1c6f3aeee695c3d07a) )

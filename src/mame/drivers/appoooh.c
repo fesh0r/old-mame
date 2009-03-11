@@ -54,35 +54,38 @@ Credits:
 #include "sound/msm5205.h"
 #include "sound/sn76496.h"
 
-static UINT8 *adpcmptr = 0;
-static int appoooh_adpcm_data;
+static UINT32 appoooh_adpcm_data;
+static UINT32 appoooh_adpcm_address = 0xffffffff;
 
 static void appoooh_adpcm_int(const device_config *device)
 {
-	if( adpcmptr )
+	if(appoooh_adpcm_address != 0xffffffff)
 	{
-		if( appoooh_adpcm_data==-1)
+		if(appoooh_adpcm_data == 0xffffffff)
 		{
-			appoooh_adpcm_data = *adpcmptr++;
-			msm5205_data_w(0,appoooh_adpcm_data >> 4);
-			if(appoooh_adpcm_data==0x70)
+            UINT8 *RAM = memory_region(device->machine, "adpcm");
+            appoooh_adpcm_data = RAM[appoooh_adpcm_address++];
+			msm5205_data_w(device, appoooh_adpcm_data >> 4);
+			if(appoooh_adpcm_data == 0x70)
 			{
-				adpcmptr = 0;
-				msm5205_reset_w(0,1);
+                appoooh_adpcm_address = 0xffffffff;
+				msm5205_reset_w(device,1);
 			}
-		}else{
-			msm5205_data_w(0,appoooh_adpcm_data & 0x0f );
-			appoooh_adpcm_data =-1;
+		}
+        else
+        {
+			msm5205_data_w(device,appoooh_adpcm_data & 0x0f );
+			appoooh_adpcm_data = -1;
 		}
 	}
 }
 /* adpcm address write */
 static WRITE8_HANDLER( appoooh_adpcm_w )
 {
-	UINT8 *RAM = memory_region(space->machine, "adpcm");
-	adpcmptr  = &RAM[data*256];
-	msm5205_reset_w(0,0);
-	appoooh_adpcm_data=-1;
+	const device_config *adpcm = devtag_get_device(space->machine, "msm");
+    appoooh_adpcm_address = data << 8;
+	msm5205_reset_w(adpcm,0);
+	appoooh_adpcm_data = 0xffffffff;
 }
 
 
@@ -105,9 +108,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( main_portmap, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READ_PORT("P1") AM_WRITE(sn76496_0_w)
-	AM_RANGE(0x01, 0x01) AM_READ_PORT("P2") AM_WRITE(sn76496_1_w)
-	AM_RANGE(0x02, 0x02) AM_WRITE(sn76496_2_w)
+	AM_RANGE(0x00, 0x00) AM_READ_PORT("P1") AM_DEVWRITE("sn1", sn76496_w)
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("P2") AM_DEVWRITE("sn2", sn76496_w)
+	AM_RANGE(0x02, 0x02) AM_DEVWRITE("sn3", sn76496_w)
 	AM_RANGE(0x03, 0x03) AM_READ_PORT("DSW1") AM_WRITE(appoooh_adpcm_w)
 	AM_RANGE(0x04, 0x04) AM_READ_PORT("BUTTON3") AM_WRITE(appoooh_out_w)
 	AM_RANGE(0x05, 0x05) AM_WRITE(appoooh_scroll_w) /* unknown */
@@ -211,16 +214,26 @@ static const msm5205_interface msm5205_config =
 
 
 
+static MACHINE_START( appoooh )
+{
+    state_save_register_global(machine, appoooh_adpcm_data);
+    state_save_register_global(machine, appoooh_adpcm_address);
+}
+
+
+
 static MACHINE_DRIVER_START( appoooh )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,18432000/6)	/* ??? the main xtal is 18.432 MHz */
+	MDRV_CPU_ADD("maincpu", Z80,18432000/6)	/* ??? the main xtal is 18.432 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(main_portmap,0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
+
+    MDRV_MACHINE_START(appoooh)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -416,13 +429,15 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( robowres )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,18432000/6)	/* ??? the main xtal is 18.432 MHz */
+	MDRV_CPU_ADD("maincpu", Z80,18432000/6)	/* ??? the main xtal is 18.432 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(main_portmap,0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
+
+    MDRV_MACHINE_START(appoooh)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -459,7 +474,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( appoooh )
-	ROM_REGION( 0x14000, "main", 0 )	/* 64k for code + 16k bank */
+	ROM_REGION( 0x14000, "maincpu", 0 )	/* 64k for code + 16k bank */
 	ROM_LOAD( "epr-5906.bin", 0x00000, 0x2000, CRC(fffae7fe) SHA1(b4bb60eb6331e503759bd963eafefa69331d6b86) )
 	ROM_LOAD( "epr-5907.bin", 0x02000, 0x2000, CRC(57696cd6) SHA1(74a005d18d55fed9ece9b579d2e7e6619a47538b) )
 	ROM_LOAD( "epr-5908.bin", 0x04000, 0x2000, CRC(4537cddc) SHA1(ecb71cab7b9269d713399987cbc45ff54735019f) )
@@ -494,12 +509,12 @@ ROM_START( appoooh )
 ROM_END
 
 ROM_START( robowres )
-	ROM_REGION( 0x1c000, "main", 0 )	/* 64k for code + 16k bank */
+	ROM_REGION( 0x1c000, "maincpu", 0 )	/* 64k for code + 16k bank */
 	ROM_LOAD( "epr-7540.13d", 0x00000, 0x8000, CRC(a2a54237) SHA1(06c80fe6725582d19aa957728977e871e79e79e1) )
 	ROM_LOAD( "epr-7541.14d", 0x08000, 0x6000, CRC(cbf7d1a8) SHA1(5eb6d2130d4e5401a332df6db5cad07f3131e8e4) )
 	ROM_CONTINUE(             0x10000, 0x2000 )
 	ROM_LOAD( "epr-7542.15d", 0x14000, 0x8000, CRC(3475fbd4) SHA1(96b28d6492d2e6e8ca9c57abdc5ad4df3777894b) )
-	ROM_COPY( "main", 0x16000, 0x10000, 0x4000 )
+	ROM_COPY( "maincpu", 0x16000, 0x10000, 0x4000 )
 
 	ROM_REGION( 0x18000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "epr-7544.7h", 0x000000, 0x8000, CRC(07b846ce) SHA1(6d214fbb43003d2ab35340d5b9fece5f637cadc6) )
@@ -521,12 +536,12 @@ ROM_START( robowres )
 ROM_END
 
 ROM_START( robowrb )
-	ROM_REGION( 0x1c000+0x8000, "main", 0 )	/* 64k for code + 16k bank */
+	ROM_REGION( 0x1c000+0x8000, "maincpu", 0 )	/* 64k for code + 16k bank */
 	ROM_LOAD( "dg4.e13",      0x00000, 0x8000, CRC(f7585d4f) SHA1(718879f8262681b6b66968eb49a0fb04fda5160b) )
 	ROM_LOAD( "epr-7541.14d", 0x08000, 0x6000, CRC(cbf7d1a8) SHA1(5eb6d2130d4e5401a332df6db5cad07f3131e8e4) )
 	ROM_CONTINUE(             0x10000, 0x2000 )
 	ROM_LOAD( "epr-7542.15d", 0x14000, 0x8000, CRC(3475fbd4) SHA1(96b28d6492d2e6e8ca9c57abdc5ad4df3777894b) )
-	ROM_COPY( "main", 0x16000, 0x10000, 0x4000 )
+	ROM_COPY( "maincpu", 0x16000, 0x10000, 0x4000 )
 	ROM_LOAD( "dg1.f13",      0x1c000, 0x8000, CRC(b724968d) SHA1(36618fb81da919d578c2aa1c62d964871903c49f) )
 
 	ROM_REGION( 0x18000, "gfx1", ROMREGION_DISPOSE )
@@ -551,15 +566,15 @@ ROM_END
 
 
 static DRIVER_INIT(robowres){
-	robowres_decode(machine, "main");
+	robowres_decode(machine, "maincpu");
 }
 
 static DRIVER_INIT(robowrb){
-	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
-	memory_set_decrypted_region(space, 0x0000, 0x7fff, memory_region(machine, "main") + 0x1c000);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	memory_set_decrypted_region(space, 0x0000, 0x7fff, memory_region(machine, "maincpu") + 0x1c000);
 }
 
 
-GAME( 1984, appoooh,  0,        appoooh,  appoooh,  0,        ROT0, "[Sanritsu] Sega", "Appoooh", 0 )
-GAME( 1986, robowres, 0, 		robowres, robowres, robowres, ROT0, "Sega", "Robo Wres 2001", 0 )
-GAME( 1986, robowrb,  robowres, robowres, robowres, robowrb,  ROT0, "bootleg", "Robo Wres 2001 (bootleg)", 0 )
+GAME( 1984, appoooh,  0,        appoooh,  appoooh,  0,        ROT0, "[Sanritsu] Sega", "Appoooh", GAME_SUPPORTS_SAVE )
+GAME( 1986, robowres, 0,        robowres, robowres, robowres, ROT0, "Sega", "Robo Wres 2001", GAME_SUPPORTS_SAVE )
+GAME( 1986, robowrb,  robowres, robowres, robowres, robowrb,  ROT0, "bootleg", "Robo Wres 2001 (bootleg)", GAME_SUPPORTS_SAVE )

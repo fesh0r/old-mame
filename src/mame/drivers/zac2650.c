@@ -18,6 +18,7 @@ extern UINT8 *zac2650_s2636_0_ram;
 WRITE8_HANDLER( tinvader_videoram_w );
 static WRITE8_HANDLER( tinvader_sound_w );
 READ8_HANDLER( zac_s2636_r );
+WRITE8_HANDLER( zac_s2636_w );
 READ8_HANDLER( tinvader_port_0_r );
 
 VIDEO_START( tinvader );
@@ -33,7 +34,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
     AM_RANGE(0x1e82, 0x1e82) AM_READ_PORT("1E82")
 	AM_RANGE(0x1e85, 0x1e85) AM_READ_PORT("1E85")					/* Dodgem Only */
 	AM_RANGE(0x1e86, 0x1e86) AM_READ_PORT("1E86") AM_WRITENOP		/* Dodgem Only */
-	AM_RANGE(0x1f00, 0x1fff) AM_READWRITE(zac_s2636_r, SMH_RAM) AM_BASE(&zac2650_s2636_0_ram)
+	AM_RANGE(0x1f00, 0x1fff) AM_READWRITE(zac_s2636_r, zac_s2636_w) AM_BASE(&zac2650_s2636_0_ram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( port_map, ADDRESS_SPACE_IO, 8 )
@@ -210,73 +211,42 @@ static PALETTE_INIT( zac2650 )
 
 static const gfx_layout tinvader_character =
 {
-	24,24,
+	8,8,
 	128,
 	1,
 	{ 0 },
-	{ 0,0,0,1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6,7,7,7 },
-   	{ 0*8, 0*8, 0*8, 1*8, 1*8, 1*8, 2*8, 2*8, 2*8, 3*8, 3*8, 3*8, 4*8, 4*8, 4*8,
-	  5*8, 5*8, 5*8, 6*8, 6*8, 6*8, 7*8, 7*8, 7*8 },
+	{ STEP8(0,1) },
+	{ STEP8(0,8) },
 	8*8
 };
 
 
-static const gfx_layout s2636_character8 =
+static const gfx_layout s2636_character =
 {
-	32,30,
+	8,10,
 	16,
 	1,
 	{ 0 },
-	{ 0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6,7,7,7,7 },
-   	{ 0*8, 0*8, 0*8, 1*8, 1*8, 1*8, 2*8, 2*8, 2*8, 3*8, 3*8, 3*8,
-	  4*8, 4*8, 4*8, 5*8, 5*8, 5*8, 6*8, 6*8, 6*8, 7*8, 7*8, 7*8,
-	  8*8, 8*8, 8*8, 9*8, 9*8, 9*8 	} ,
+	{ STEP8(0,1) },
+   	{ STEP8(0,8), STEP2(8*8,8) },
 	8*8
-};
-
-static const UINT32 s2636_character16_xoffset[64] =
-{
-	0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,
-	4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,6,7,7,7,7,7,7,7,7
-};
-
-static const UINT32 s2636_character16_yoffset[60] =
-{
-	0*8, 0*8, 0*8, 0*8, 0*8, 0*8, 1*8, 1*8, 1*8, 1*8, 1*8, 1*8,
-	2*8, 2*8, 2*8, 2*8, 2*8, 2*8, 3*8, 3*8, 3*8, 3*8, 3*8, 3*8,
-	4*8, 4*8, 4*8, 4*8, 4*8, 4*8, 5*8, 5*8, 5*8, 5*8, 5*8, 5*8,
-	6*8, 6*8, 6*8, 6*8, 6*8, 6*8, 7*8, 7*8, 7*8, 7*8, 7*8, 7*8,
-	8*8, 8*8, 8*8, 8*8, 8*8, 8*8, 9*8, 9*8, 9*8, 9*8, 9*8, 9*8
-};
-
-static const gfx_layout s2636_character16 =
-{
-	64,60,
-	16,
-	1,
-	{ 0 },
-	EXTENDED_XOFFS,
-	EXTENDED_YOFFS,
-	8*8,
-	s2636_character16_xoffset,
-	s2636_character16_yoffset
 };
 
 static GFXDECODE_START( tinvader )
-	GFXDECODE_ENTRY( "gfx1", 0, tinvader_character,  0, 2 )
-  	GFXDECODE_ENTRY( NULL,   0x1F00, s2636_character8, 0, 2 )	/* dynamic */
-  	GFXDECODE_ENTRY( NULL,   0x1F00, s2636_character16, 0, 2 )	/* dynamic */
+	GFXDECODE_SCALE( "gfx1", 0, tinvader_character,   0, 2, 3, 3 )
+  	GFXDECODE_SCALE( NULL,   0x1F00, s2636_character, 0, 2, 4, 3 )	/* dynamic */
+  	GFXDECODE_SCALE( NULL,   0x1F00, s2636_character, 0, 2, 8, 6 )	/* dynamic */
 GFXDECODE_END
 
 static MACHINE_DRIVER_START( tinvader )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", S2650, 3800000/4)
+	MDRV_CPU_ADD("maincpu", S2650, 3800000/4)
 	MDRV_CPU_PROGRAM_MAP(main_map, 0)
 	MDRV_CPU_IO_MAP(port_map,0)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(55)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1041))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -308,7 +278,7 @@ static WRITE8_HANDLER( tinvader_sound_w )
 }
 
 ROM_START( sia2650 )
-	ROM_REGION( 0x8000, "main", 0 )
+	ROM_REGION( 0x8000, "maincpu", 0 )
 	ROM_LOAD( "42_1.bin",   0x0000, 0x0800, CRC(a85550a9) SHA1(3f1e6b8e61894ff997e31b9c5ff819aa4678394e) )
 	ROM_LOAD( "44_2.bin",   0x0800, 0x0800, CRC(48d5a3ed) SHA1(7f6421ba8225d49c1038595517f31b076d566586) )
 	ROM_LOAD( "46_3.bin",   0x1000, 0x0800, CRC(d766e784) SHA1(88c113855c4cde8cefbe862d3e5abf80bd17aaa0) )
@@ -318,7 +288,7 @@ ROM_START( sia2650 )
 ROM_END
 
 ROM_START( tinv2650 )
-	ROM_REGION( 0x8000, "main", 0 )
+	ROM_REGION( 0x8000, "maincpu", 0 )
 	ROM_LOAD( "42_1.bin",   0x0000, 0x0800, CRC(a85550a9) SHA1(3f1e6b8e61894ff997e31b9c5ff819aa4678394e) )
 	ROM_LOAD( "44_2t.bin",  0x0800, 0x0800, CRC(083c8621) SHA1(d9b33d532903b0e6dee2357b9e3b329856505a73) )
 	ROM_LOAD( "46_3t.bin",  0x1000, 0x0800, CRC(12c0934f) SHA1(9fd67d425c533b0e09b201301020639eb9e452f7) )
@@ -328,7 +298,7 @@ ROM_START( tinv2650 )
 ROM_END
 
 ROM_START( dodgem )
-	ROM_REGION( 0x8000, "main", 0 )
+	ROM_REGION( 0x8000, "maincpu", 0 )
 	ROM_LOAD( "rom1.bin",     0x0000, 0x0400, CRC(a327b57d) SHA1(a9cb17e60ab7b4ed9d5a9e7f8451a8f29bb7d00d) )
 	ROM_LOAD( "rom2.bin",     0x0400, 0x0400, CRC(2a06ec74) SHA1(34fd3cbb1ddadb81abde54046bf245e2285bb740) )
 	ROM_LOAD( "rom3.bin",     0x0800, 0x0400, CRC(e9ed656d) SHA1(a36ec04fd7cdf26aa7fa36e18cd44b159ed53906) )

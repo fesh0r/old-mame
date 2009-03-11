@@ -238,8 +238,7 @@ static ADDRESS_MAP_START( mem_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xb40000, 0xb40001) AM_READ( ret_ffff )
 	AM_RANGE(0xb60000, 0xb60001) AM_READ( ret_ffff )
 
-	AM_RANGE(0xb80008, 0xb80009) AM_WRITE( ymz280b_register_0_lsb_w )
-	AM_RANGE(0xb8000a, 0xb8000b) AM_READWRITE( ymz280b_status_0_lsb_r, ymz280b_data_0_lsb_w )
+	AM_RANGE(0xb80008, 0xb8000b) AM_DEVREADWRITE8( "ymz", ymz280b_r, ymz280b_w, 0x00ff )
 
 	AM_RANGE(0xba0000, 0xba0001) AM_READ_PORT("IN4")
 	AM_RANGE(0xbc0000, 0xbc0001) AM_READ_PORT("IN3")
@@ -422,7 +421,7 @@ static INPUT_PORTS_START( livequiz )
 INPUT_PORTS_END
 
 
-static void livequiz_irqhandler(running_machine *machine, int state)
+static void livequiz_irqhandler(const device_config *device, int state)
 {
 	logerror("YMZ280 is generating an interrupt. State=%08x\n",state);
 }
@@ -435,14 +434,14 @@ static const ymz280b_interface ymz280b_config =
 static MACHINE_DRIVER_START( livequiz )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 24000000 / 2)
+	MDRV_CPU_ADD("maincpu", M68000, 24000000 / 2)
 	MDRV_CPU_PROGRAM_MAP(mem_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -456,11 +455,11 @@ static MACHINE_DRIVER_START( livequiz )
 	MDRV_VIDEO_UPDATE(livequiz)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 	MDRV_SOUND_ADD("ymz", YMZ280B, 16934400)
 	MDRV_SOUND_CONFIG(ymz280b_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.80)
-	MDRV_SOUND_ROUTE(1, "right", 0.80)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.80)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.80)
 MACHINE_DRIVER_END
 
 
@@ -553,7 +552,7 @@ Notes:
 ***************************************************************************************/
 
 ROM_START( livequiz )
-	ROM_REGION( 0x200000, "main", 0 )
+	ROM_REGION( 0x200000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "flash.u1", 0x000000, 0x200000, CRC(8ec44493) SHA1(a987886cb87ac0a744f01f2e4a7cc6d12efeaa04) )
 
 	ROM_REGION( 0x200000, "user1", 0 )
@@ -575,7 +574,7 @@ ROM_END
 
 static DRIVER_INIT( livequiz )
 {
-	UINT16 *rom = (UINT16 *) memory_region(machine, "main");
+	UINT16 *rom = (UINT16 *) memory_region(machine, "maincpu");
 
 	// PROTECTION CHECKS
 	rom[0x13345a/2]	=	0x4e75;

@@ -159,29 +159,6 @@ static WRITE32_HANDLER( avengrs_palette_w )
 	palette_set_color_rgb(space->machine,offset,pal5bit(paletteram32[offset] >> 0),pal5bit(paletteram32[offset] >> 5),pal5bit(paletteram32[offset] >> 10));
 }
 
-static READ32_HANDLER( avengrs_sound_r )
-{
-	if (ACCESSING_BITS_24_31) {
-		return ymz280b_status_0_r(space,0)<<24;
-	} else {
-		logerror("%08x:  non-byte read from sound mask %08x\n",cpu_get_pc(space->cpu),mem_mask);
-	}
-
-	return 0;
-}
-
-static WRITE32_HANDLER( avengrs_sound_w )
-{
-	if (ACCESSING_BITS_24_31) {
-		if (offset)
-			ymz280b_data_0_w(space,0,data>>24);
-		else
-			ymz280b_register_0_w(space,0,data>>24);
-	} else {
-		logerror("%08x:  non-byte written to sound %08x mask %08x\n",cpu_get_pc(space->cpu),data,mem_mask);
-	}
-}
-
 static READ32_HANDLER( decomlc_vbl_r )
 {
 	static int i=0xffffffff;
@@ -214,12 +191,10 @@ static WRITE32_HANDLER( mlc_irq_w )
 	case 0x10: /* IRQ ack.  Value written doesn't matter */
 		cpu_set_input_line(space->machine->cpu[0], mainCpuIsArm ? ARM_IRQ_LINE : 1, CLEAR_LINE);
 		return;
-		break;
 	case 0x14: /* Prepare scanline interrupt */
 		timer_adjust_oneshot(raster_irq_timer,video_screen_get_time_until_pos(space->machine->primary_screen, irq_ram[0x14/4], 0),0);
 		//logerror("prepare scanline to fire at %d (currently on %d)\n", irq_ram[0x14/4], video_screen_get_vpos(space->machine->primary_screen));
 		return;
-		break;
 	case 0x18:
 	case 0x1c:
 	case 0x20:
@@ -303,7 +278,7 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x0300000, 0x0307fff) AM_READ(SMH_RAM) AM_MIRROR(0xff000000)
 	AM_RANGE(0x0400000, 0x0400003) AM_READ_PORT("INPUTS") AM_MIRROR(0xff000000)
 	AM_RANGE(0x0440000, 0x044001f) AM_READ(test3_r)	AM_MIRROR(0xff000000)
-	AM_RANGE(0x0600004, 0x0600007) AM_READ(avengrs_sound_r) AM_MIRROR(0xff000000)
+	AM_RANGE(0x0600004, 0x0600007) AM_DEVREAD8("ymz", ymz280b_r, 0xff000000) AM_MIRROR(0xff000000)
 	AM_RANGE(0x070f000, 0x070ffff) AM_READ(stadhr96_prot_146_r) AM_MIRROR(0xff000000)
 ADDRESS_MAP_END
 
@@ -317,7 +292,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x0300000, 0x0307fff) AM_WRITE(avengrs_palette_w) AM_BASE(&paletteram32) AM_MIRROR(0xff000000)
 	AM_RANGE(0x044001c, 0x044001f) AM_WRITE(SMH_NOP) AM_MIRROR(0xff000000)
 	AM_RANGE(0x0500000, 0x0500003) AM_WRITE(avengrs_eprom_w) AM_MIRROR(0xff000000)
-	AM_RANGE(0x0600000, 0x0600007) AM_WRITE(avengrs_sound_w) AM_MIRROR(0xff000000)
+	AM_RANGE(0x0600000, 0x0600007) AM_DEVWRITE8("ymz", ymz280b_w, 0xff000000) AM_MIRROR(0xff000000)
 //  AM_RANGE(0x070f000, 0x070ffff) AM_READ(stadhr96_prot_146_w) AM_BASE(&deco32_prot_ram)
 ADDRESS_MAP_END
 
@@ -420,14 +395,14 @@ static MACHINE_RESET( mlc )
 static MACHINE_DRIVER_START( avengrgs )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", SH2,42000000/2) /* 21 MHz clock confirmed on real board */
+	MDRV_CPU_ADD("maincpu", SH2,42000000/2) /* 21 MHz clock confirmed on real board */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 
 	MDRV_MACHINE_RESET(mlc)
 	MDRV_NVRAM_HANDLER(93C46) /* Actually 93c45 */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(58)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
@@ -441,24 +416,24 @@ static MACHINE_DRIVER_START( avengrgs )
 	MDRV_VIDEO_EOF(mlc)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ymz", YMZ280B, 42000000 / 3)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( mlc )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", ARM,42000000/6) /* 42 MHz -> 7MHz clock confirmed on real board */
+	MDRV_CPU_ADD("maincpu", ARM,42000000/6) /* 42 MHz -> 7MHz clock confirmed on real board */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 
 	MDRV_MACHINE_RESET(mlc)
 	MDRV_NVRAM_HANDLER(93C46) /* Actually 93c45 */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(58)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
@@ -472,11 +447,11 @@ static MACHINE_DRIVER_START( mlc )
 	MDRV_VIDEO_EOF(mlc)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ymz", YMZ280B, 42000000 / 3)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( mlc_6bpp )
@@ -507,7 +482,7 @@ Notes:
 */
 
 ROM_START( avengrgs )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD32_WORD_SWAP( "sf_00-0.7k", 0x000002, 0x80000, CRC(7d20e2df) SHA1(e8be1751029aea74680ac00cd7f3cf84e1adfc56) )
 	ROM_LOAD32_WORD_SWAP( "sf_01-0.7l", 0x000000, 0x80000, CRC(f37c0a01) SHA1(8c4e28cde9e93457197b1849e6c9ef9516b5732f) )
 
@@ -535,7 +510,7 @@ ROM_START( avengrgs )
 ROM_END
 
 ROM_START( avengrgj )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD32_WORD_SWAP( "sd_00-2.7k", 0x000002, 0x80000, CRC(136be46a) SHA1(7679f5f78f7983d43ecdb9bdd04e45792a13d9f2) )
 	ROM_LOAD32_WORD_SWAP( "sd_01-2.7l", 0x000000, 0x80000, CRC(9d87f576) SHA1(dd20cd060d020d81f4e012be10d0211be7526641) )
 
@@ -563,7 +538,7 @@ ROM_START( avengrgj )
 ROM_END
 
 ROM_START( stadhr96 )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD32_WORD( "ead00-4.2a", 0x000000, 0x80000, CRC(b0adfc39) SHA1(3094dfb7c7f8fa9d7e10d98dff8fb8aba285d710) )
 	ROM_LOAD32_WORD( "ead01-4.2b", 0x000002, 0x80000, CRC(0b332820) SHA1(28b757fe529250711fcb82424ba63c222a9329b9) )
 
@@ -583,7 +558,7 @@ ROM_START( stadhr96 )
 ROM_END
 
 ROM_START( stadh96a )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD32_WORD( "sh-eaj.2a", 0x000000, 0x80000, CRC(10d1496a) SHA1(1dc151547463a38d717159b3dfce7ffd78a943ad) )
 	ROM_LOAD32_WORD( "sh-eaj.2b", 0x000002, 0x80000, CRC(608a9144) SHA1(15e2fa99dc96e8ebd9868713ae7708cb824fc6c5) )
 
@@ -603,7 +578,7 @@ ROM_START( stadh96a )
 ROM_END
 
 ROM_START( hoops96 )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD32_WORD( "sz00-0.2a", 0x000000, 0x80000, CRC(971b4376) SHA1(e60d8d628bd1dc95d7f2b8840b0b188e68905c12) )
 	ROM_LOAD32_WORD( "sz01-0.2b", 0x000002, 0x80000, CRC(b9679d7b) SHA1(3510b97390f2214cedb3387d32c7a7fd639a0a6e) )
 
@@ -622,7 +597,7 @@ ROM_START( hoops96 )
 ROM_END
 
 ROM_START( hoops95 )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD32_WORD( "hoops.a2", 0x000000, 0x80000, CRC(02b8c61a) SHA1(ae49f6bd8a3bffa181fa6a2740d92287e9d5dc02) )
 	ROM_LOAD32_WORD( "hoops.b2", 0x000002, 0x80000, CRC(b54c63d1) SHA1(21d9327675226a6e60d0447d461d7897212db33a) )
 
@@ -641,7 +616,7 @@ ROM_START( hoops95 )
 ROM_END
 
 ROM_START( ddream95 )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD32_WORD( "rl00-2.2a", 0x000000, 0x80000, CRC(07645092) SHA1(5f24bd6102b7e6212888b703f86bed5a19e08e85) )
 	ROM_LOAD32_WORD( "rl01-2.2b", 0x000002, 0x80000, CRC(cfc629fc) SHA1(c0bcfa75c6446def4af99b14a1a869b5576c244f) )
 
@@ -660,7 +635,28 @@ ROM_START( ddream95 )
 ROM_END
 
 ROM_START( skullfng )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
+	ROM_LOAD32_WORD( "sw00-0.2a", 0x000000, 0x80000, CRC(9658d9ce) SHA1(bd5b58a35e4fe301dc13bfe962e674fc8b26cf60) )
+	ROM_LOAD32_WORD( "sw01-0.2b", 0x000002, 0x80000, CRC(c0d83d14) SHA1(42a5e2fa0e26919b94566da3dec622cd25dd9558) )
+
+	ROM_REGION( 0xc00000, "gfx1", ROMREGION_DISPOSE )
+	ROM_LOAD16_BYTE( "mch-00.2e", 0x000001, 0x200000, CRC(d5cc4238) SHA1(f1bd86386e44a3f600475aeab310f7ea632998df) )
+	ROM_LOAD16_BYTE( "mch-01.8m", 0x000000, 0x200000, CRC(d37cf0cd) SHA1(c2fe7062a123ca2df65217c6dced857b803d8a8d) )
+	ROM_LOAD16_BYTE( "mch-02.4e", 0x400001, 0x200000, CRC(4046314d) SHA1(32e3b7ddbe20ffa6ba6ebe9bd55a32e3b3a120f6) )
+	ROM_LOAD16_BYTE( "mch-03.10m",0x400000, 0x200000, CRC(1dea8f6c) SHA1(c2ad59592385a00e323aac9057906c9384b67078) )
+	ROM_LOAD16_BYTE( "mch-04.6e", 0x800001, 0x200000, CRC(4869dfe8) SHA1(296df6274ecb3eed485de24258cf462e3942f1fa) )
+	ROM_LOAD16_BYTE( "mch-05.11m",0x800000, 0x200000, CRC(ef0b54ba) SHA1(3be56c064ac81686096be5f31ad2aad948ba6701) )
+
+	ROM_REGION( 0x80000, "gfx2", 0 )
+	ROM_LOAD( "sh02-0.6h", 0x000000, 0x80000, CRC(0d3ae757) SHA1(480fc3855d330380b75a47a271f3571a59aee10c) ) /* Labeld SW 02-0, but same contents */
+
+	ROM_REGION( 0x800000, "ymz", ROMREGION_ERASE00 )
+	ROM_LOAD( "mch-06.6a",  0x200000, 0x200000, CRC(b2efe4ae) SHA1(5a9dab74c2ba73a65e8f1419b897467804734fa2) )
+	ROM_LOAD( "mch-07.11j", 0x400000, 0x200000, CRC(bc1a50a1) SHA1(3de191fbc92d2ae84e54263f1c70afec6ff7cc3c) )
+ROM_END
+
+ROM_START( skullfnj )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD32_WORD( "sh00-0.2a", 0x000000, 0x80000, CRC(e50358e8) SHA1(e66ac5e1b16273cb905254c99b2bce435145a414) )
 	ROM_LOAD32_WORD( "sh01-0.2b", 0x000002, 0x80000, CRC(2c288bcc) SHA1(4ed1d5818362383240378056bf575f6acf8a593a) )
 
@@ -723,13 +719,11 @@ static READ32_HANDLER( avengrgs_speedup_r )
 static DRIVER_INIT( avengrgs )
 {
 	// init options
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_FASTEST_OPTIONS);
+	sh2drc_set_options(machine->cpu[0], SH2DRC_FASTEST_OPTIONS);
 
 	// set up speed cheat
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_PCFLUSH_SELECT, 0);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x3234);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_PCFLUSH_SELECT, 1);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_PCFLUSH_ADDR, 0x32dc);
+	sh2drc_add_pcflush(machine->cpu[0], 0x3234);
+	sh2drc_add_pcflush(machine->cpu[0], 0x32dc);
 
 	mainCpuIsArm=0;
 	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x01089a0, 0x01089a3, 0, 0, avengrgs_speedup_r );
@@ -753,7 +747,8 @@ GAME( 1995, avengrgs, 0,        avengrgs, mlc, avengrgs, ROT0,   "Data East Corp
 GAME( 1995, avengrgj, avengrgs, avengrgs, mlc, avengrgs, ROT0,   "Data East Corporation", "Avengers In Galactic Storm (Japan)", 0 )
 GAME( 1996, stadhr96, 0,        mlc_6bpp, mlc, mlc,      ROT0,   "Data East Corporation", "Stadium Hero 96 (Version EAD)", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
 GAME( 1996, stadh96a, stadhr96, mlc_6bpp, mlc, mlc,      ROT0,   "Data East Corporation", "Stadium Hero 96 (Version EAJ)", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
-GAME( 1996, skullfng, 0,        mlc_6bpp, mlc, mlc,      ROT270, "Data East Corporation", "Skull Fang (Japan)", 0 )
+GAME( 1996, skullfng, 0,        mlc_6bpp, mlc, mlc,      ROT270, "Data East Corporation", "Skull Fang (World)", 0 ) /* Version 1.13, Europe, Master 96.02.19 */
+GAME( 1996, skullfnj, skullfng, mlc_6bpp, mlc, mlc,      ROT270, "Data East Corporation", "Skull Fang (Japan)", 0 ) /* Version 1.09, Japan, Master 96.02.08 */
 GAME( 1996, hoops96,  0,        mlc_5bpp, mlc, mlc,      ROT0,   "Data East Corporation", "Hoops '96 (Europe/Asia 2.0)", 0 )
 GAME( 1995, ddream95, hoops96,  mlc_5bpp, mlc, mlc,      ROT0,   "Data East Corporation", "Dunk Dream '95 (Japan 1.4 EAM)", 0 )
 GAME( 1995, hoops95,  hoops96,  mlc_5bpp, mlc, mlc,      ROT0,   "Data East Corporation", "Hoops (Europe/Asia 1.7)", 0 )

@@ -149,6 +149,7 @@ static SAMPLES_START( pbillian_sh_start )
 
 static WRITE8_HANDLER( pbillian_sample_trigger_w )
 {
+	const device_config *samples = devtag_get_device(space->machine, "samples");
 	int start,end;
 
 	start = data << 7;
@@ -157,7 +158,7 @@ static WRITE8_HANDLER( pbillian_sample_trigger_w )
 	while (end < 0x8000 && samplebuf[end] != (0xff^0x80))
 		end++;
 
-	sample_start_raw(0, samplebuf + start, end - start, 5000, 0); // 5khz ?
+	sample_start_raw(samples, 0, samplebuf + start, end - start, 5000, 0); // 5khz ?
 }
 
 
@@ -195,13 +196,13 @@ The MCU acts this way:
 static UINT8 port1, port3, port3_latch, from_mcu, from_z80, portb;
 static int from_mcu_pending, from_z80_pending, invert_coin_lockout;
 
-static READ8_HANDLER( in4_mcu_r )
+static READ8_DEVICE_HANDLER( in4_mcu_r )
 {
 //  logerror("%04x: in4_mcu_r\n",cpu_get_pc(space->cpu));
-	return input_port_read(space->machine, "P2") | (from_mcu_pending << 6) | (from_z80_pending << 7);
+	return input_port_read(device->machine, "P2") | (from_mcu_pending << 6) | (from_z80_pending << 7);
 }
 
-static READ8_HANDLER( sqix_from_mcu_r )
+static READ8_DEVICE_HANDLER( sqix_from_mcu_r )
 {
 //  logerror("%04x: read mcu answer (%02x)\n",cpu_get_pc(space->cpu),from_mcu);
 	return from_mcu;
@@ -220,7 +221,7 @@ static READ8_HANDLER( mcu_acknowledge_r )
 	return 0;
 }
 
-static WRITE8_HANDLER( sqix_z80_mcu_w )
+static WRITE8_DEVICE_HANDLER( sqix_z80_mcu_w )
 {
 //  logerror("%04x: sqix_z80_mcu_w %02x\n",cpu_get_pc(space->cpu),data);
 	portb = data;
@@ -298,9 +299,9 @@ static READ8_HANDLER( nmi_ack_r )
 	return 0;
 }
 
-static READ8_HANDLER( bootleg_in0_r )
+static READ8_DEVICE_HANDLER( bootleg_in0_r )
 {
-	return BITSWAP8(input_port_read(space->machine, "DSW1"), 0,1,2,3,4,5,6,7);
+	return BITSWAP8(input_port_read(device->machine, "DSW1"), 0,1,2,3,4,5,6,7);
 }
 
 static WRITE8_HANDLER( bootleg_flipscreen_w )
@@ -449,10 +450,10 @@ logerror("%04x: z80 reads answer %02x\n",cpu_get_pc(space->cpu),from_mcu);
 	return from_mcu;
 }
 
-static READ8_HANDLER(hotsmash_ay_port_a_r)
+static READ8_DEVICE_HANDLER(hotsmash_ay_port_a_r)
 {
 //logerror("%04x: ay_port_a_r and mcu_pending is %d\n",cpu_get_pc(space->cpu),from_mcu_pending);
-	return input_port_read(space->machine, "SYSTEM") | ((from_mcu_pending^1) << 7);
+	return input_port_read(device->machine, "SYSTEM") | ((from_mcu_pending^1) << 7);
 }
 
 /**************************************************************************
@@ -484,11 +485,11 @@ static READ8_HANDLER(pbillian_from_mcu_r)
 	return 0;
 }
 
-static READ8_HANDLER(pbillian_ay_port_a_r)
+static READ8_DEVICE_HANDLER(pbillian_ay_port_a_r)
 {
 //  logerror("%04x: ay_port_a_r\n",cpu_get_pc(space->cpu));
 	 /* bits 76------  MCU status bits */
-	return (mame_rand(space->machine) & 0xc0) | input_port_read(space->machine, "BUTTONS");
+	return (mame_rand(device->machine) & 0xc0) | input_port_read(device->machine, "BUTTONS");
 }
 
 
@@ -513,7 +514,7 @@ static void machine_init_common(running_machine *machine)
 static MACHINE_START( superqix )
 {
 	/* configure the banks */
-	memory_configure_bank(machine, 1, 0, 4, memory_region(machine, "main") + 0x10000, 0x4000);
+	memory_configure_bank(machine, 1, 0, 4, memory_region(machine, "maincpu") + 0x10000, 0x4000);
 
 	machine_init_common(machine);
 }
@@ -521,7 +522,7 @@ static MACHINE_START( superqix )
 static MACHINE_START( pbillian )
 {
 	/* configure the banks */
-	memory_configure_bank(machine, 1, 0, 2, memory_region(machine, "main") + 0x10000, 0x4000);
+	memory_configure_bank(machine, 1, 0, 2, memory_region(machine, "maincpu") + 0x10000, 0x4000);
 
 	machine_init_common(machine);
 }
@@ -538,9 +539,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pbillian_port_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_RAM_WRITE(paletteram_BBGGRRII_w) AM_BASE(&paletteram)
-	AM_RANGE(0x0401, 0x0401) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0x0402, 0x0402) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x0403, 0x0403) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x0401, 0x0401) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x0402, 0x0403) AM_DEVWRITE("ay", ay8910_data_address_w)
 	AM_RANGE(0x0408, 0x0408) AM_READ(pbillian_from_mcu_r)
 	AM_RANGE(0x0408, 0x0408) AM_WRITE(pbillian_z80_mcu_w)
 	AM_RANGE(0x0410, 0x0410) AM_WRITE(pbillian_0410_w)
@@ -552,9 +552,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( hotsmash_port_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_RAM_WRITE(paletteram_BBGGRRII_w) AM_BASE(&paletteram)
-	AM_RANGE(0x0401, 0x0401) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0x0402, 0x0402) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x0403, 0x0403) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x0401, 0x0401) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x0402, 0x0403) AM_DEVWRITE("ay", ay8910_data_address_w)
 	AM_RANGE(0x0408, 0x0408) AM_READ(hotsmash_from_mcu_r)
 	AM_RANGE(0x0408, 0x0408) AM_WRITE(hotsmash_z80_mcu_w)
 	AM_RANGE(0x0410, 0x0410) AM_WRITE(pbillian_0410_w)
@@ -566,12 +565,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sqix_port_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0000, 0x00ff) AM_RAM_WRITE(paletteram_BBGGRRII_w) AM_BASE(&paletteram)
-	AM_RANGE(0x0401, 0x0401) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0x0402, 0x0402) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x0403, 0x0403) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x0405, 0x0405) AM_READ(ay8910_read_port_1_r)
-	AM_RANGE(0x0406, 0x0406) AM_WRITE(ay8910_write_port_1_w)
-	AM_RANGE(0x0407, 0x0407) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x0401, 0x0401) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0x0402, 0x0403) AM_DEVWRITE("ay1", ay8910_data_address_w)
+	AM_RANGE(0x0405, 0x0405) AM_DEVREAD("ay2", ay8910_r)
+	AM_RANGE(0x0406, 0x0407) AM_DEVWRITE("ay2", ay8910_data_address_w)
 	AM_RANGE(0x0408, 0x0408) AM_READ(mcu_acknowledge_r)
 	AM_RANGE(0x0410, 0x0410) AM_WRITE(superqix_0410_w)	/* ROM bank, NMI enable, tile bank */
 	AM_RANGE(0x0418, 0x0418) AM_READ(nmi_ack_r)
@@ -581,12 +578,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( bootleg_port_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0000, 0x00ff) AM_RAM_WRITE(paletteram_BBGGRRII_w) AM_BASE(&paletteram)
-	AM_RANGE(0x0401, 0x0401) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0x0402, 0x0402) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x0403, 0x0403) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x0405, 0x0405) AM_READ(ay8910_read_port_1_r)
-	AM_RANGE(0x0406, 0x0406) AM_WRITE(ay8910_write_port_1_w)
-	AM_RANGE(0x0407, 0x0407) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x0401, 0x0401) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0x0402, 0x0403) AM_DEVWRITE("ay1", ay8910_data_address_w)
+	AM_RANGE(0x0405, 0x0405) AM_DEVREAD("ay2", ay8910_r)
+	AM_RANGE(0x0406, 0x0407) AM_DEVWRITE("ay2", ay8910_data_address_w)
 	AM_RANGE(0x0408, 0x0408) AM_WRITE(bootleg_flipscreen_w)
 	AM_RANGE(0x0410, 0x0410) AM_WRITE(superqix_0410_w)	/* ROM bank, NMI enable, tile bank */
 	AM_RANGE(0x0418, 0x0418) AM_READ_PORT("SYSTEM")
@@ -907,60 +902,60 @@ static const ay8910_interface pbillian_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	pbillian_ay_port_a_r,			/* port Aread */
-	input_port_2_r,					/* port Bread */
-	NULL,
-	NULL
+	DEVCB_HANDLER(pbillian_ay_port_a_r),			/* port Aread */
+	DEVCB_INPUT_PORT("SYSTEM"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static const ay8910_interface hotsmash_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	hotsmash_ay_port_a_r,			/* port Aread */
-	input_port_2_r,					/* port Bread */
-	NULL,
-	NULL
+	DEVCB_HANDLER(hotsmash_ay_port_a_r),			/* port Aread */
+	DEVCB_INPUT_PORT("SYSTEM"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static const ay8910_interface sqix_ay8910_interface_1 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_3_r,	/* port Aread */
-	in4_mcu_r,		/* port Bread */
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("P1"),
+	DEVCB_HANDLER(in4_mcu_r),		/* port Bread */
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static const ay8910_interface sqix_ay8910_interface_2 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_1_r,		/* port Aread */
-	sqix_from_mcu_r,	/* port Bread */
-	NULL,				/* port Awrite */
-	sqix_z80_mcu_w		/* port Bwrite */
+	DEVCB_INPUT_PORT("DSW2"),
+	DEVCB_HANDLER(sqix_from_mcu_r),	/* port Bread */
+	DEVCB_NULL,				/* port Awrite */
+	DEVCB_HANDLER(sqix_z80_mcu_w)		/* port Bwrite */
 };
 
 static const ay8910_interface bootleg_ay8910_interface_1 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_3_r,		/* port Aread */
-	input_port_4_r,		/* port Bread */
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("P1"),
+	DEVCB_INPUT_PORT("P2"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static const ay8910_interface bootleg_ay8910_interface_2 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_1_r,		/* port Aread */
-	bootleg_in0_r,		/* port Bread */
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("DSW2"),
+	DEVCB_HANDLER(bootleg_in0_r),		/* port Bread */
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -982,15 +977,15 @@ static INTERRUPT_GEN( bootleg_interrupt )
 
 
 static MACHINE_DRIVER_START( pbillian )
-	MDRV_CPU_ADD("main", Z80,12000000/2)		 /* 6 MHz */
+	MDRV_CPU_ADD("maincpu", Z80,12000000/2)		 /* 6 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(pbillian_port_map,0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	MDRV_MACHINE_START(pbillian)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1015,10 +1010,10 @@ static MACHINE_DRIVER_START( pbillian )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( hotsmash )
-	MDRV_CPU_ADD("main", Z80,12000000/2)		 /* 6 MHz */
+	MDRV_CPU_ADD("maincpu", Z80,12000000/2)		 /* 6 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(hotsmash_port_map,0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	MDRV_CPU_ADD("mcu", M68705, 4000000) /* ???? */
 	MDRV_CPU_PROGRAM_MAP(m68705_map,0)
@@ -1026,7 +1021,7 @@ static MACHINE_DRIVER_START( hotsmash )
 	MDRV_MACHINE_START(pbillian)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1053,7 +1048,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( sqix )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 12000000/2)	/* 6 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, 12000000/2)	/* 6 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(sqix_port_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(sqix_interrupt,6)	/* ??? */
@@ -1066,7 +1061,7 @@ static MACHINE_DRIVER_START( sqix )
 	MDRV_MACHINE_START(superqix)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1095,7 +1090,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( sqixbl )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 12000000/2)	/* 6 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, 12000000/2)	/* 6 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(bootleg_port_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(bootleg_interrupt,6)	/* ??? */
@@ -1103,7 +1098,7 @@ static MACHINE_DRIVER_START( sqixbl )
 	MDRV_MACHINE_START(superqix)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1137,7 +1132,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( pbillian )
-	ROM_REGION( 0x018000, "main", 0 )
+	ROM_REGION( 0x018000, "maincpu", 0 )
 	ROM_LOAD( "1.6c",  0x00000, 0x08000, CRC(d379fe23) SHA1(e147a9151b1cdeacb126d9713687bd0aa92980ac) )
 	ROM_LOAD( "2.6d",  0x14000, 0x04000, CRC(1af522bc) SHA1(83e002dc831bfcedbd7096b350c9b34418b79674) )
 
@@ -1154,7 +1149,7 @@ ROM_START( pbillian )
 ROM_END
 
 ROM_START( hotsmash )
-	ROM_REGION( 0x018000, "main", 0 )
+	ROM_REGION( 0x018000, "maincpu", 0 )
 	ROM_LOAD( "b18-04",  0x00000, 0x08000, CRC(981bde2c) SHA1(ebcc901a036cde16b33d534d423500d74523b781) )
 
 	ROM_REGION( 0x0800, "mcu", 0 )
@@ -1170,7 +1165,7 @@ ROM_START( hotsmash )
 ROM_END
 
 ROM_START( sqix )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "b03-01-1",     0x00000, 0x08000, CRC(ad614117) SHA1(c461f00a2aecde1bc3860c15a3c31091b14665a2) )
 	ROM_LOAD( "b03-02",       0x10000, 0x10000, CRC(9c23cb64) SHA1(7e04cb18cabdc0031621162cbc228cd95875a022) )
 
@@ -1189,7 +1184,7 @@ ROM_START( sqix )
 ROM_END
 
 ROM_START( sqixu )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "b03-06.f3",     0x00000, 0x08000, CRC(4f59f7af) SHA1(6ea627ea8505cf8d1a5a1350258180c61fbd1ed9) )
 	ROM_LOAD( "b03-07.h3",     0x10000, 0x10000, CRC(4c417d4a) SHA1(de46551da1b27312dca40240a210e77595cf9dbd) )
 
@@ -1209,7 +1204,7 @@ ROM_END
 
 /* this was probably a bootleg */
 ROM_START( sqixa )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "sq01.97",      0x00000, 0x08000, CRC(0888b7de) SHA1(de3e4637436de185f43d2ad4186d4cfdcd4d33d9) )
 	ROM_LOAD( "b03-02",       0x10000, 0x10000, CRC(9c23cb64) SHA1(7e04cb18cabdc0031621162cbc228cd95875a022) )
 
@@ -1228,7 +1223,7 @@ ROM_START( sqixa )
 ROM_END
 
 ROM_START( sqixbl )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "cpu.2",        0x00000, 0x08000, CRC(682e28e3) SHA1(fe9221d26d7397be5a0fc8fdc51672b5924f3cf2) )
 	ROM_LOAD( "b03-02",       0x10000, 0x10000, CRC(9c23cb64) SHA1(7e04cb18cabdc0031621162cbc228cd95875a022) )
 
@@ -1244,7 +1239,7 @@ ROM_START( sqixbl )
 ROM_END
 
 ROM_START( perestrf )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	/* 0x8000 - 0x10000 in the rom is empty anyway */
 	ROM_LOAD( "rom1.bin",        0x00000, 0x20000, CRC(0cbf96c1) SHA1(cf2b1367887d1b8812a56aa55593e742578f220c) )
 
@@ -1259,7 +1254,7 @@ ROM_START( perestrf )
 ROM_END
 
 ROM_START( perestro )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	/* 0x8000 - 0x10000 in the rom is empty anyway */
 	ROM_LOAD( "rom1.bin",        0x00000, 0x20000, CRC(0cbf96c1) SHA1(cf2b1367887d1b8812a56aa55593e742578f220c) )
 
@@ -1303,8 +1298,8 @@ static DRIVER_INIT( perestro )
 	int i,j;
 
 	/* decrypt program code; the address lines are shuffled around in a non-trivial way */
-	src = memory_region(machine, "main");
-	len = memory_region_length(machine, "main");
+	src = memory_region(machine, "maincpu");
+	len = memory_region_length(machine, "maincpu");
 	for (i = 0;i < len;i += 16)
 	{
 		memcpy(temp,&src[i],16);

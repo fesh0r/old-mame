@@ -7,11 +7,16 @@ The most significant changes are that Punchout has a larger bottom tilemap,
 with scrolling, while Arm Wrestling has an additional FG tilemap displayed on
 the bottom screen.
 
-- money bag placement might not be 100% correct in Arm Wrestingl, however
+- money bag placement might not be 100% correct in Arm Wrestling, however
   the more serious part of armwrest35b9yel (unplayable bonus round after rounds
   5 and 9) is now fixed.
 
 driver by Nicola Salmoria
+
+TODO:
+- Finish emulation of RP5C01 and RP5H01 for spnchout. The RP5C01 features don't
+  seem to be used at all except for very basic protection e.g. relying on the
+  masking done by the internal registers.
 
 
 main CPU:
@@ -140,22 +145,22 @@ DRIVER_INIT( armwrest );
 static CUSTOM_INPUT( punchout_vlm5030_busy_r )
 {
 	/* bit 4 of DSW1 is busy pin level */
-	return (vlm5030_bsy()) ? 0x00 : 0x01;
+	return (vlm5030_bsy(devtag_get_device(field->port->machine, "vlm"))) ? 0x00 : 0x01;
 }
 
-static WRITE8_HANDLER( punchout_speech_reset_w )
+static WRITE8_DEVICE_HANDLER( punchout_speech_reset_w )
 {
-	vlm5030_rst( data&0x01 );
+	vlm5030_rst( device, data&0x01 );
 }
 
-static WRITE8_HANDLER( punchout_speech_st_w )
+static WRITE8_DEVICE_HANDLER( punchout_speech_st_w )
 {
-	vlm5030_st( data&0x01 );
+	vlm5030_st( device, data&0x01 );
 }
 
-static WRITE8_HANDLER( punchout_speech_vcu_w )
+static WRITE8_DEVICE_HANDLER( punchout_speech_vcu_w )
 {
-	vlm5030_vcu( data & 0x01 );
+	vlm5030_vcu( device, data & 0x01 );
 }
 
 static WRITE8_HANDLER( punchout_2a03_reset_w )
@@ -166,229 +171,167 @@ static WRITE8_HANDLER( punchout_2a03_reset_w )
 		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
 }
 
-static int prot_mode_sel; /* Mode selector */
-static int prot_mem[16];
+static int rp5c01_mode_sel; /* Mode selector */
+static int rp5c01_mem[16*4];
 
-static READ8_HANDLER( spunchout_prot_r ) {
+static READ8_HANDLER( spunchout_rp5c01_r )
+{
+	logerror("%04x: prot_r %x\n",cpu_get_previouspc(space->cpu),offset);
 
-	switch ( offset ) {
-		case 0x00:
-			if ( prot_mode_sel == 0x0a )
-				return memory_read_byte(space, 0xd012);
+	if (offset <= 0x0c)
+	{
+		switch (rp5c01_mode_sel & 3)
+		{
+			case 0:	// time
+				switch ( offset )
+				{
+					case 0x00:	// 1-second counter
+						return rp5c01_mem[0x00];
 
-			if ( prot_mode_sel == 0x0b || prot_mode_sel == 0x23 )
-				return memory_read_byte(space, 0xd7c1);
+					case 0x01:	// 10-second counter
+						return rp5c01_mem[0x01] & 0x7;
 
-			return prot_mem[offset];
-		break;
+					case 0x02:	// 1-minute counter
+						return rp5c01_mem[0x02];
 
-		case 0x01:
-			if ( prot_mode_sel == 0x08 ) /* PC = 0x0b6a */
-				return 0x00; /* under 6 */
-		break;
+					case 0x03:	// 10-minute counter
+						return rp5c01_mem[0x03] & 0x07;
 
-		case 0x02:
-			if ( prot_mode_sel == 0x0b ) /* PC = 0x0613 */
-				return 0x09; /* write "JMP (HL)"code to 0d79fh */
-			if ( prot_mode_sel == 0x09 ) /* PC = 0x20f9, 0x22d9 */
-				return prot_mem[offset]; /* act as registers */
-		break;
+					case 0x04:	// 1-hour counter
+						return rp5c01_mem[0x04];
 
-		case 0x03:
-			if ( prot_mode_sel == 0x09 ) /* PC = 0x1e4c */
-				return prot_mem[offset] & 0x07; /* act as registers with mask */
-		break;
+					case 0x05:	// 10-hour counter
+						return rp5c01_mem[0x05] & 0x03;
 
-		case 0x05:
-			if ( prot_mode_sel == 0x09 ) /* PC = 0x29D1 */
-				return prot_mem[offset] & 0x03; /* AND 0FH -> AND 06H */
-		break;
+					case 0x06:	// day-of-the-week counter
+						return rp5c01_mem[0x06] & 0x07;
 
-		case 0x06:
-			if ( prot_mode_sel == 0x0b ) /* PC = 0x2dd8 */
-				return 0x0a; /* E=00, HL=23E6, D = (ret and 0x0f), HL+DE = 2de6 */
+					case 0x07:	// 1-day counter
+						return rp5c01_mem[0x07];
 
-			if ( prot_mode_sel == 0x09 ) /* PC = 0x2289 */
-				return prot_mem[offset] & 0x07; /* act as registers with mask */
-		break;
+					case 0x08:	// 10-day counter
+						return rp5c01_mem[0x08] & 0x03;
 
-		case 0x09:
-			if ( prot_mode_sel == 0x09 ) /* PC = 0x0313 */
-				return ( prot_mem[15] << 4 ); /* pipe through register 0xf7 << 4 */
-				/* (ret or 0x10) -> (D7DF),(D7A0) - (D7DF),(D7A0) = 0d0h(ret nc) */
-		break;
+					case 0x09:	// 1-month counter
+						return rp5c01_mem[0x09];
 
-		case 0x0a:
-			if ( prot_mode_sel == 0x0b ) /* PC = 0x060a */
-				return 0x05; /* write "JMP (IX)"code to 0d79eh */
-			if ( prot_mode_sel == 0x09 ) /* PC = 0x1bd7 */
-				return prot_mem[offset] & 0x01; /* AND 0FH -> AND 01H */
-		break;
+					case 0x0a:	// 10-month counter
+						return rp5c01_mem[0x0a] & 0x01;
 
-		case 0x0b:
-			if ( prot_mode_sel == 0x09 ) /* PC = 0x2AA3 */
-				return prot_mem[11] & 0x03;	/* AND 0FH -> AND 03H */
-		break;
+					case 0x0b:	// 1-year counter
+						return rp5c01_mem[0x0b];
 
-		case 0x0c:
-			/* PC = 0x2162 */
-			/* B = 0(return value) */
-			return 0x00;
-		case 0x0d:
-			return prot_mode_sel;
-		break;
+					case 0x0c:	// 10-year counter
+						return rp5c01_mem[0x0c];
+				}
+				break;
+
+			case 1:	// alarm
+				switch ( offset )
+				{
+					case 0x00:	// n/a
+						return 0x00;
+
+					case 0x01:	// n/a
+						return 0x00;
+
+					case 0x02:	// 1-minute alarm register
+						return rp5c01_mem[0x12];
+
+					case 0x03:	// 10-minute alarm register
+						return rp5c01_mem[0x13] & 0x07;
+
+					case 0x04:	// 1-hour alarm register
+						return rp5c01_mem[0x14];
+
+					case 0x05:	// 10-hour alarm register
+						return rp5c01_mem[0x15] & 0x03;
+
+					case 0x06:	// day-of-the-week alarm register
+						return rp5c01_mem[0x16] & 0x07;
+
+					case 0x07:	// 1-day alarm register
+						return rp5c01_mem[0x17];
+
+					case 0x08:	// 10-day alarm register
+						return rp5c01_mem[0x18] & 0x03;
+
+					case 0x09:	// n/a
+						return 0x00;
+
+					case 0x0a:	// /12/24 select register
+						return rp5c01_mem[0x1a] & 0x01;
+
+					case 0x0b:	// leap year count
+						return rp5c01_mem[0x1b] & 0x03;
+
+					case 0x0c:	// n/a
+						return 0x00;
+				}
+				break;
+
+			case 2:	// RAM BLOCK 10
+			case 3:	// RAM BLOCK 11
+				return rp5c01_mem[0x10 * (rp5c01_mode_sel & 3) + offset];
+		}
+	}
+	else if (offset == 0x0d)
+	{
+		return rp5c01_mode_sel;
 	}
 
-	logerror("Read from unknown protection? port %02x ( selector = %02x )\n", offset, prot_mode_sel );
-
-	return prot_mem[offset];
+	logerror("Read from unknown protection? port %02x ( selector = %02x )\n", offset, rp5c01_mode_sel );
+	return 0;
 }
 
-static WRITE8_HANDLER( spunchout_prot_w ) {
+static WRITE8_HANDLER( spunchout_rp5c01_w )
+{
+	data &= 0x0f;
 
-	switch ( offset ) {
-		case 0x00:
-			if ( prot_mode_sel == 0x0a ) {
-				memory_write_byte(space, 0xd012, data);
-				return;
-			}
+	logerror("%04x: prot_w %x = %02x\n",cpu_get_previouspc(space->cpu),offset,data);
 
-			if ( prot_mode_sel == 0x0b || prot_mode_sel == 0x23 ) {
-				memory_write_byte(space, 0xd7c1, data);
-				return;
-			}
-
-			prot_mem[offset] = data;
-			return;
-		break;
-
-		case 0x02:
-			if ( prot_mode_sel == 0x09 ) { /* PC = 0x20f7, 0x22d7 */
-				prot_mem[offset] = data;
-				return;
-			}
-		break;
-
-		case 0x03:
-			if ( prot_mode_sel == 0x09 ) { /* PC = 0x1e4c */
-				prot_mem[offset] = data;
-				return;
-			}
-		break;
-
-		case 0x05:
-			prot_mem[offset] = data;
-			return;
-
-		case 0x06:
-			if ( prot_mode_sel == 0x09 ) { /* PC = 0x2287 */
-				prot_mem[offset] = data;
-				return;
-			}
-		break;
-
-		case 0x0b:
-			prot_mem[offset] = data;
-			return;
-
-		case 0x0d: /* PC = all over the code */
-			prot_mode_sel = data;
-			return;
-		case 0x0f:
-			prot_mem[offset] = data;
-			return;
+	if (offset <= 0x0c)
+	{
+		rp5c01_mem[0x10 * (rp5c01_mode_sel & 3) + offset] = data;
 	}
-
-	logerror("Wrote to unknown protection? port %02x ( %02x )\n", offset, data );
-
-	prot_mem[offset] = data;
+	else if (offset == 0x0d)
+	{
+		rp5c01_mode_sel = data;
+		logerror("MODE: Timer EN = %d  Alarm EN = %d  MODE %d\n",BIT(data,3),BIT(data,2),data&3);
+	}
+	else if (offset == 0x0e)
+	{
+		logerror("TEST = %d",data);
+	}
+	else if (offset == 0x0f)
+	{
+		logerror("RESET: /1Hz = %d  /16Hz = %d  Timer = %d  Timer = %d\n",BIT(data,3),BIT(data,2),BIT(data,1),BIT(data,0));
+	}
 }
 
-static READ8_HANDLER( spunchout_prot_0_r ) {
-	return spunchout_prot_r( space, 0 );
+static READ8_HANDLER( spunchout_exp_r )
+{
+	// bit 7 = DATA OUT from RP5H01
+	// bit 6 = COUNTER OUT from RP5H01
+	// bit 5 = /ALARM from RP5C01
+	// bit 4 = n.c.
+	// bits 3-0 = D3-D0 from RP5C01
+
+	UINT8 ret = spunchout_rp5c01_r( space, offset >> 4 );
+
+	// FIXME hack
+	/* PC = 0x0313 */
+	/* (ret or 0x10) -> (D7DF),(D7A0) - (D7DF),(D7A0) = 0d0h(ret nc) */
+
+	if (cpu_get_previouspc(space->cpu) == 0x0313)
+		ret |= 0xc0;
+
+	return ret;
 }
 
-static WRITE8_HANDLER( spunchout_prot_0_w ) {
-	spunchout_prot_w( space, 0, data );
-}
-
-static READ8_HANDLER( spunchout_prot_1_r ) {
-	return spunchout_prot_r( space, 1 );
-}
-
-static WRITE8_HANDLER( spunchout_prot_1_w ) {
-	spunchout_prot_w( space, 1, data );
-}
-
-static READ8_HANDLER( spunchout_prot_2_r ) {
-	return spunchout_prot_r( space, 2 );
-}
-
-static WRITE8_HANDLER( spunchout_prot_2_w ) {
-	spunchout_prot_w( space, 2, data );
-}
-
-static READ8_HANDLER( spunchout_prot_3_r ) {
-	return spunchout_prot_r( space, 3 );
-}
-
-static WRITE8_HANDLER( spunchout_prot_3_w ) {
-	spunchout_prot_w( space, 3, data );
-}
-
-static READ8_HANDLER( spunchout_prot_5_r ) {
-	return spunchout_prot_r( space, 5 );
-}
-
-static WRITE8_HANDLER( spunchout_prot_5_w ) {
-	spunchout_prot_w( space, 5, data );
-}
-
-
-static READ8_HANDLER( spunchout_prot_6_r ) {
-	return spunchout_prot_r( space, 6 );
-}
-
-static WRITE8_HANDLER( spunchout_prot_6_w ) {
-	spunchout_prot_w( space, 6, data );
-}
-
-static READ8_HANDLER( spunchout_prot_9_r ) {
-	return spunchout_prot_r( space, 9 );
-}
-
-static READ8_HANDLER( spunchout_prot_b_r ) {
-	return spunchout_prot_r( space, 11 );
-}
-
-static WRITE8_HANDLER( spunchout_prot_b_w ) {
-	spunchout_prot_w( space, 11, data );
-}
-
-static READ8_HANDLER( spunchout_prot_c_r ) {
-	return spunchout_prot_r( space, 12 );
-}
-
-static WRITE8_HANDLER( spunchout_prot_d_w ) {
-	spunchout_prot_w( space, 13, data );
-}
-
-static READ8_HANDLER( spunchout_prot_a_r ) {
-	return spunchout_prot_r( space, 10 );
-}
-
-static WRITE8_HANDLER( spunchout_prot_a_w ) {
-	spunchout_prot_w( space, 10, data );
-}
-
-#if 0
-static READ8_HANDLER( spunchout_prot_f_r ) {
-	return spunchout_prot_r( space, 15 );
-}
-#endif
-
-static WRITE8_HANDLER( spunchout_prot_f_w ) {
-	spunchout_prot_w( space, 15, data );
+static WRITE8_HANDLER( spunchout_exp_w )
+{
+	spunchout_rp5c01_w( space, offset >> 4, data );
 }
 
 
@@ -429,45 +372,33 @@ static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x01) AM_WRITE(SMH_NOP)	/* the 2A03 #1 is not present */
 	AM_RANGE(0x02, 0x02) AM_READ_PORT("DSW2") AM_WRITE(soundlatch_w)
 	AM_RANGE(0x03, 0x03) AM_READ_PORT("DSW1") AM_WRITE(soundlatch2_w)
-	AM_RANGE(0x04, 0x04) AM_WRITE(vlm5030_data_w)	/* VLM5030 */
-	AM_RANGE(0x05, 0x05) AM_WRITE(SMH_NOP)	/* unused */
-	AM_RANGE(0x06, 0x06) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x04, 0x04) AM_DEVWRITE("vlm", vlm5030_data_w)	/* VLM5030 */
+//  AM_RANGE(0x05, 0x05) AM_WRITE(SMH_NOP)  /* unused */
+//  AM_RANGE(0x06, 0x06) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x08, 0x08) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0x09, 0x09) AM_WRITE(SMH_NOP)	/* watchdog reset, seldom used because 08 clears the watchdog as well */
 	AM_RANGE(0x0a, 0x0a) AM_WRITE(SMH_NOP)	/* ?? */
 	AM_RANGE(0x0b, 0x0b) AM_WRITE(punchout_2a03_reset_w)
-	AM_RANGE(0x0c, 0x0c) AM_WRITE(punchout_speech_reset_w)	/* VLM5030 */
-	AM_RANGE(0x0d, 0x0d) AM_WRITE(punchout_speech_st_w)	/* VLM5030 */
-	AM_RANGE(0x0e, 0x0e) AM_WRITE(punchout_speech_vcu_w)	/* VLM5030 */
+	AM_RANGE(0x0c, 0x0c) AM_DEVWRITE("vlm", punchout_speech_reset_w)	/* VLM5030 */
+	AM_RANGE(0x0d, 0x0d) AM_DEVWRITE("vlm", punchout_speech_st_w)	/* VLM5030 */
+	AM_RANGE(0x0e, 0x0e) AM_DEVWRITE("vlm", punchout_speech_vcu_w)	/* VLM5030 */
 	AM_RANGE(0x0f, 0x0f) AM_WRITE(SMH_NOP)	/* enable NVRAM ? */
 
 	/* protection ports - Super Punchout only (move to install handler?) */
-	AM_RANGE(0x07, 0x07) AM_READWRITE(spunchout_prot_0_r, spunchout_prot_0_w)
-	AM_RANGE(0x17, 0x17) AM_READWRITE(spunchout_prot_1_r, spunchout_prot_1_w)
-	AM_RANGE(0x27, 0x27) AM_READWRITE(spunchout_prot_2_r, spunchout_prot_2_w)
-	AM_RANGE(0x37, 0x37) AM_READWRITE(spunchout_prot_3_r, spunchout_prot_3_w)
-	AM_RANGE(0x57, 0x57) AM_READWRITE(spunchout_prot_5_r, spunchout_prot_5_w)
-	AM_RANGE(0x67, 0x67) AM_READWRITE(spunchout_prot_6_r, spunchout_prot_6_w)
-	AM_RANGE(0x97, 0x97) AM_READ(spunchout_prot_9_r)
-	AM_RANGE(0xa7, 0xa7) AM_READWRITE(spunchout_prot_a_r, spunchout_prot_a_w)
-	AM_RANGE(0xb7, 0xb7) AM_READWRITE(spunchout_prot_b_r, spunchout_prot_b_w)
-	AM_RANGE(0xc7, 0xc7) AM_READ(spunchout_prot_c_r)
-	AM_RANGE(0xd7, 0xd7) AM_WRITE(spunchout_prot_d_w)
-	AM_RANGE(0xf7, 0xf7) AM_WRITE(spunchout_prot_f_w)
-	/* AM_RANGE(0xf7, 0xf7) AM_READ(spunchout_prot_f_r) */
+	AM_RANGE(0x07, 0x07) AM_MIRROR(0xf0) AM_MASK(0xf0) AM_READWRITE(spunchout_exp_r, spunchout_exp_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x4016, 0x4016) AM_READ(soundlatch_r)
 	AM_RANGE(0x4017, 0x4017) AM_READ(soundlatch2_r)
-	AM_RANGE(0x4000, 0x4017) AM_READ(nes_psg_0_r)
+	AM_RANGE(0x4000, 0x4017) AM_DEVREAD("nes", nes_psg_r)
 	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x4000, 0x4017) AM_WRITE(nes_psg_0_w)
+	AM_RANGE(0x4000, 0x4017) AM_DEVWRITE("nes", nes_psg_w)
 	AM_RANGE(0xe000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
@@ -667,25 +598,25 @@ GFXDECODE_END
 
 static const nes_interface nes_config =
 {
-	"audio"
+	"audiocpu"
 };
 
 static MACHINE_RESET( punchout )
 {
-	prot_mode_sel = -1;
-	memset(prot_mem, 0, sizeof(prot_mem));
+	rp5c01_mode_sel = 0;
+	memset(rp5c01_mem, 0, sizeof(rp5c01_mem));
 }
 
 
 static MACHINE_DRIVER_START( punchout )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 8000000/2)	/* 4 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, 8000000/2)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(punchout_map,0)
 	MDRV_CPU_IO_MAP(io_map,0)
 	MDRV_CPU_VBLANK_INT("top", nmi_line_pulse)
 
-	MDRV_CPU_ADD("audio", N2A03, N2A03_DEFAULTCLOCK)
+	MDRV_CPU_ADD("audiocpu", N2A03, N2A03_DEFAULTCLOCK)
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_VBLANK_INT("top", nmi_line_pulse)
 
@@ -731,7 +662,7 @@ static MACHINE_DRIVER_START( armwrest )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(punchout)
 
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(armwrest_map,0)
 
 	/* video hardware */
@@ -750,14 +681,14 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( punchout )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "chp1-c.8l",    0x0000, 0x2000, CRC(a4003adc) SHA1(a8026eb39aa883993a0c9cb4400bf1a7e5898a2b) )
 	ROM_LOAD( "chp1-c.8k",    0x2000, 0x2000, CRC(745ecf40) SHA1(430f80b688a515953fab177a3ec2eb31c886df22) )
 	ROM_LOAD( "chp1-c.8j",    0x4000, 0x2000, CRC(7a7f870e) SHA1(76bb9f3ef0a2fd514db63fb77f35bde12c15c29c) )
 	ROM_LOAD( "chp1-c.8h",    0x6000, 0x2000, CRC(5d8123d7) SHA1(04ddfcde969db93ff31e9c8a2af4dde285b82e2e) )
 	ROM_LOAD( "chp1-c.8f",    0x8000, 0x4000, CRC(c8a55ddb) SHA1(f91fb368542c50969a086f01a2e70ecce7f2697b) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the sound CPU */
 	ROM_LOAD( "chp1-c.4k",    0xe000, 0x2000, CRC(cb6ef376) SHA1(503dbcc1b18a497311bf129689d5650860bf96c7) )
 
 	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE | ROMREGION_ERASEFF | ROMREGION_INVERT )
@@ -815,14 +746,14 @@ ROM_END
 
 ROM_START( punchita )
 	/* Unique to this set */
-	ROM_REGION( 0x10000, "main", 0 )	/* 64k for code */
+	ROM_REGION( 0x10000, "maincpu", 0 )	/* 64k for code */
 	ROM_LOAD( "chp1-c.8l",    0x0000, 0x2000, CRC(1d595ce2) SHA1(affd43bef96c68f953e66cfa14ad4e9c304dc022) )
 	ROM_LOAD( "chp1-c.8k",    0x2000, 0x2000, CRC(c062fa5c) SHA1(8ebd6fd76f1fd1b85216a4e21d8a13be8317b9e2) )
 	ROM_LOAD( "chp1-c.8j",    0x4000, 0x2000, CRC(48d453ef) SHA1(145f3ace8bec87e83b64c6472e2b71f1ebea13ea) )
 	ROM_LOAD( "chp1-c.8h",    0x6000, 0x2000, CRC(67f5aedc) SHA1(c63a8b0696eec87bb147d435c18ee7e26d19e2a4) )
 	ROM_LOAD( "chp1-c.8f",    0x8000, 0x4000, CRC(761de4f3) SHA1(66754bc762c14fea620fabf408f85e6e3acb89ad) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the sound CPU */
 	ROM_LOAD( "chp1-c.4k",    0xe000, 0x2000, CRC(cb6ef376) SHA1(503dbcc1b18a497311bf129689d5650860bf96c7) )
 
 	/* Unique to this set */
@@ -901,14 +832,14 @@ ROM_START( punchita )
 ROM_END
 
 ROM_START( spnchout )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "chs1-c.8l",    0x0000, 0x2000, CRC(703b9780) SHA1(93b2fd8392ef094413330cd2474ac406c3db426e) )
 	ROM_LOAD( "chs1-c.8k",    0x2000, 0x2000, CRC(e13719f6) SHA1(d0f08a0999801dd5d55f2f4ae3e76f25b765b8d6) )
 	ROM_LOAD( "chs1-c.8j",    0x4000, 0x2000, CRC(1fa629e8) SHA1(e0c37883e65c77e9f25e323fb4dc05f7dcdc6347) )
 	ROM_LOAD( "chs1-c.8h",    0x6000, 0x2000, CRC(15a6c068) SHA1(3f42697a6d79c6fd4b638feb366c80e98a7f02e2) )
 	ROM_LOAD( "chs1-c.8f",    0x8000, 0x4000, CRC(4ff3cdd9) SHA1(282edf9a3fa085bc82523249a519f2a3fe04e87e) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the sound CPU */
 	ROM_LOAD( "chp1-c.4k",    0xe000, 0x2000, CRC(cb6ef376) SHA1(503dbcc1b18a497311bf129689d5650860bf96c7) )
 
 	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE | ROMREGION_ERASEFF )
@@ -981,14 +912,14 @@ ROM_START( spnchout )
 ROM_END
 
 ROM_START( spnchotj )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "chs1c8la.bin", 0x0000, 0x2000, CRC(dc2a592b) SHA1(a8a7fc5c836e2723ba6abcb1137f4c4f79e21c87) )
 	ROM_LOAD( "chs1c8ka.bin", 0x2000, 0x2000, CRC(ce687182) SHA1(f07d930d90eda199b089f9023b51fd4456c87bdf) )
 	ROM_LOAD( "chs1-c.8j",    0x4000, 0x2000, CRC(1fa629e8) SHA1(e0c37883e65c77e9f25e323fb4dc05f7dcdc6347) )
 	ROM_LOAD( "chs1-c.8h",    0x6000, 0x2000, CRC(15a6c068) SHA1(3f42697a6d79c6fd4b638feb366c80e98a7f02e2) )
 	ROM_LOAD( "chs1c8fa.bin", 0x8000, 0x4000, CRC(f745b5d5) SHA1(8130b5be011848625ebe6691fbb76dc338979b60) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the sound CPU */
 	ROM_LOAD( "chp1-c.4k",    0xe000, 0x2000, CRC(cb6ef376) SHA1(503dbcc1b18a497311bf129689d5650860bf96c7) )
 
 	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE | ROMREGION_ERASEFF | ROMREGION_INVERT )
@@ -1055,14 +986,14 @@ ROM_START( spnchotj )
 ROM_END
 
 ROM_START( armwrest )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "chv1-c.8l",    0x0000, 0x2000, CRC(b09764c1) SHA1(2f32acd689ef70ec81fe958c7a604855ae39cf5e) )
 	ROM_LOAD( "chv1-c.8k",    0x2000, 0x2000, CRC(0e147ff7) SHA1(7ea8b7b5562d9432c6cace2ee13377f91543975d) )
 	ROM_LOAD( "chv1-c.8j",    0x4000, 0x2000, CRC(e7365289) SHA1(9d4ed5ce73b93c3917b1411ed902974e2a4f3d35) )
 	ROM_LOAD( "chv1-c.8h",    0x6000, 0x2000, CRC(a2118eec) SHA1(93e1b19819352f88888b3caf67ed27cd50f866a9) )
 	ROM_LOAD( "chpv-c.8f",    0x8000, 0x4000, CRC(664a07c4) SHA1(a8a049be5beeab3940079465fb0c80382f3860f0) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the sound CPU */
 	ROM_LOAD( "chp1-c.4k",    0xe000, 0x2000, CRC(cb6ef376) SHA1(503dbcc1b18a497311bf129689d5650860bf96c7) )	/* same as Punch Out */
 
 	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE | ROMREGION_ERASEFF )

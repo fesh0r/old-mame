@@ -86,7 +86,7 @@ static MC6845_UPDATE_ROW( update_row )
 
 static const mc6845_interface mc6845_intf =
 {
-		"main",
+		"screen",
 		8,
 		NULL,
 		update_row,
@@ -121,7 +121,7 @@ static VIDEO_START(ssingles)
 
 static VIDEO_UPDATE( ssingles )
 {
-	const device_config *mc6845 = device_list_find_by_tag(screen->machine->config->devicelist, MC6845, "crtc");
+	const device_config *mc6845 = devtag_get_device(screen->machine, "crtc");
 	mc6845_update(mc6845, bitmap, cliprect);
 
 	return 0;
@@ -173,17 +173,17 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ssingles_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x04, 0x04) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x06, 0x06) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x00, 0x00) AM_DEVWRITE("ay1", ay8910_address_w)
+	AM_RANGE(0x04, 0x04) AM_DEVWRITE("ay1", ay8910_data_w)
+	AM_RANGE(0x06, 0x06) AM_DEVWRITE("ay2", ay8910_address_w)
 	AM_RANGE(0x08, 0x08) AM_READNOP
-	AM_RANGE(0x0a, 0x0a) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0x0a, 0x0a) AM_DEVWRITE("ay2", ay8910_data_w)
 	AM_RANGE(0x16, 0x16) AM_READ_PORT("DSW0")
 	AM_RANGE(0x18, 0x18) AM_READ_PORT("DSW1")
 	AM_RANGE(0x1c, 0x1c) AM_READ_PORT("INPUTS")
 	AM_RANGE(0x1a, 0x1a) AM_WRITENOP //video/crt related
-	AM_RANGE(0xfe, 0xfe) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0xff, 0xff) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
+	AM_RANGE(0xfe, 0xfe) AM_DEVWRITE("crtc", mc6845_address_w)
+	AM_RANGE(0xff, 0xff) AM_DEVWRITE("crtc", mc6845_register_w)
 
 ADDRESS_MAP_END
 
@@ -257,12 +257,12 @@ static INPUT_PORTS_START( ssingles )
 INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( ssingles )
-	MDRV_CPU_ADD("main", Z80,4000000)		 /* ? MHz */
+	MDRV_CPU_ADD("maincpu", Z80,4000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(ssingles_map,0)
 	MDRV_CPU_IO_MAP(ssingles_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(4000000, 256, 0, 256, 256, 0, 256)	/* temporary, CRTC will configure screen */
 
@@ -285,7 +285,7 @@ static MACHINE_DRIVER_START( ssingles )
 MACHINE_DRIVER_END
 
 ROM_START( ssingles )
-	ROM_REGION( 0x10000, "main", 0 ) /* Z80 main CPU  */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* Z80 main CPU  */
 	ROM_LOAD( "1.bin", 0x00000, 0x2000, CRC(43f02215) SHA1(9f04a7d4671ff39fd2bd8ec7afced4981ee7be05) )
 	ROM_LOAD( "2.bin", 0x06000, 0x2000, CRC(281f27e4) SHA1(cef28717ab2ed991a5709464c01490f0ab1dc17c) )
 	ROM_LOAD( "3.bin", 0x08000, 0x2000, CRC(14fdcb65) SHA1(70f7fcb46e74937de0e4037c9fe79349a30d0d07) )

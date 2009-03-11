@@ -83,6 +83,7 @@ static UINT8 m6850_sound_output;
 
 /* noise generator states */
 static UINT32 noise_position[6];
+static const device_config *cem_device[6];
 
 /* game-specific states */
 static UINT8 nstocker_bits;
@@ -183,10 +184,19 @@ MACHINE_RESET( balsente )
 	/* reset the noise generator */
 	memset(noise_position, 0, sizeof(noise_position));
 
+	/* find the CEM devices */
+	for (i = 0; i < ARRAY_LENGTH(cem_device); i++)
+	{
+		char name[10];
+		sprintf(name, "cem%d", i+1);
+		cem_device[i] = devtag_get_device(machine, name);
+		assert(cem_device[i] != NULL);
+	}
+
 	/* point the banks to bank 0 */
-	numbanks = (memory_region_length(machine, "main") > 0x40000) ? 16 : 8;
-	memory_configure_bank(machine, 1, 0, numbanks, &memory_region(machine, "main")[0x10000], 0x6000);
-	memory_configure_bank(machine, 2, 0, numbanks, &memory_region(machine, "main")[0x12000], 0x6000);
+	numbanks = (memory_region_length(machine, "maincpu") > 0x40000) ? 16 : 8;
+	memory_configure_bank(machine, 1, 0, numbanks, &memory_region(machine, "maincpu")[0x10000], 0x6000);
+	memory_configure_bank(machine, 2, 0, numbanks, &memory_region(machine, "maincpu")[0x12000], 0x6000);
 	memory_set_bank(space->machine, 1, 0);
 	memory_set_bank(space->machine, 2, 0);
 	device_reset(machine->cpu[0]);
@@ -279,11 +289,27 @@ static void poly17_init(void)
 }
 
 
-void balsente_noise_gen(int chip, int count, short *buffer)
+void balsente_noise_gen(const device_config *device, int count, short *buffer)
 {
+	int chip;
+	UINT32 step, noise_counter;
+
+	/* find the chip we are referring to */
+	for (chip = 0; chip < ARRAY_LENGTH(cem_device); chip++)
+	{
+		if (device == cem_device[chip])
+			break;
+		else if (cem_device[chip] == NULL)
+		{
+			cem_device[chip] = device;
+			break;
+		}
+	}
+	assert(chip < ARRAY_LENGTH(cem_device));
+
 	/* noise generator runs at 100kHz */
-	UINT32 step = (100000 << 14) / CEM3394_SAMPLE_RATE;
-	UINT32 noise_counter = noise_position[chip];
+	step = (100000 << 14) / CEM3394_SAMPLE_RATE;
+	noise_counter = noise_position[chip];
 
 	while (count--)
 	{
@@ -343,7 +369,7 @@ WRITE8_HANDLER( balsente_rombank2_select_w )
 	int bank = data & 7;
 
 	/* top bit controls which half of the ROMs to use (Name that Tune only) */
-	if (memory_region_length(space->machine, "main") > 0x40000) bank |= (data >> 4) & 8;
+	if (memory_region_length(space->machine, "maincpu") > 0x40000) bank |= (data >> 4) & 8;
 
 	/* when they set the AB bank, it appears as though the CD bank is reset */
 	if (data & 0x20)
@@ -940,17 +966,17 @@ static void update_counter_0_timer(void)
 	/* find the counter with the maximum frequency */
 	/* this is used to calibrate the timers at startup */
 	for (i = 0; i < 6; i++)
-		if (cem3394_get_parameter(i, CEM3394_FINAL_GAIN) < 10.0)
+		if (cem3394_get_parameter(cem_device[i], CEM3394_FINAL_GAIN) < 10.0)
 		{
 			double tempfreq;
 
 			/* if the filter resonance is high, then they're calibrating the filter frequency */
-			if (cem3394_get_parameter(i, CEM3394_FILTER_RESONANCE) > 0.9)
-				tempfreq = cem3394_get_parameter(i, CEM3394_FILTER_FREQENCY);
+			if (cem3394_get_parameter(cem_device[i], CEM3394_FILTER_RESONANCE) > 0.9)
+				tempfreq = cem3394_get_parameter(cem_device[i], CEM3394_FILTER_FREQENCY);
 
 			/* otherwise, they're calibrating the VCO frequency */
 			else
-				tempfreq = cem3394_get_parameter(i, CEM3394_VCO_FREQUENCY);
+				tempfreq = cem3394_get_parameter(cem_device[i], CEM3394_VCO_FREQUENCY);
 
 			if (tempfreq > maxfreq) maxfreq = tempfreq;
 		}
@@ -995,7 +1021,7 @@ WRITE8_HANDLER( balsente_counter_control_w )
 	{
 		int ch;
 		for (ch = 0; ch < 6; ch++)
-			sndti_set_output_gain(SOUND_CEM3394, ch, 0, (data & 0x01) ? 1.0 : 0);
+			sound_set_output_gain(cem_device[ch], 0, (data & 0x01) ? 1.0 : 0);
 	}
 
 	/* bit D1 is hooked to counter 0's gate */
@@ -1059,14 +1085,14 @@ WRITE8_HANDLER( balsente_chip_select_w )
 			double temp = 0;
 
 			/* remember the previous value */
-			temp = cem3394_get_parameter(i, reg);
+			temp = cem3394_get_parameter(cem_device[i], reg);
 
 			/* set the voltage */
-			cem3394_set_voltage(i, reg, voltage);
+			cem3394_set_voltage(cem_device[i], reg, voltage);
 
 			/* only log changes */
 #if LOG_CEM_WRITES
-			if (temp != cem3394_get_parameter(i, reg))
+			if (temp != cem3394_get_parameter(cem_device[i], reg))
 			{
 				static const char *const names[] =
 				{

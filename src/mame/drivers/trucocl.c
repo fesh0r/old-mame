@@ -57,9 +57,9 @@ static TIMER_CALLBACK( dac_irq )
 	cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE );
 }
 
-static WRITE8_HANDLER( audio_dac_w)
+static WRITE8_DEVICE_HANDLER( audio_dac_w)
 {
-	UINT8 *rom = memory_region(space->machine, "main");
+	UINT8 *rom = memory_region(device->machine, "maincpu");
 	int	dac_address = ( data & 0xf0 ) << 8;
 	int	sel = ( ( (~data) >> 1 ) & 2 ) | ( data & 1 );
 
@@ -81,9 +81,9 @@ static WRITE8_HANDLER( audio_dac_w)
 
 	dac_address += 0x10000;
 
-	dac_data_w( 0, rom[dac_address+cur_dac_address_index] );
+	dac_data_w( device, rom[dac_address+cur_dac_address_index] );
 
-	timer_set( space->machine, ATTOTIME_IN_HZ( 16000 ), NULL, 0, dac_irq );
+	timer_set( device->machine, ATTOTIME_IN_HZ( 16000 ), NULL, 0, dac_irq );
 }
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -93,7 +93,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4c00, 0x4fff) AM_RAM
 	AM_RANGE(0x5000, 0x5000) AM_WRITE(irq_enable_w)
 	AM_RANGE(0x5000, 0x503f) AM_READ_PORT("IN0")
-	AM_RANGE(0x5080, 0x5080) AM_WRITE(audio_dac_w)
+	AM_RANGE(0x5080, 0x5080) AM_DEVWRITE("dac", audio_dac_w)
 	AM_RANGE(0x50c0, 0x50c0) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -136,12 +136,12 @@ static INTERRUPT_GEN( trucocl_interrupt )
 
 static MACHINE_DRIVER_START( trucocl )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 18432000/6)
+	MDRV_CPU_ADD("maincpu", Z80, 18432000/6)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", trucocl_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", trucocl_interrupt)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -169,7 +169,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( trucocl )
-	ROM_REGION( 0x40000, "main", 0 )	/* ROMs + space for additional RAM + samples */
+	ROM_REGION( 0x40000, "maincpu", 0 )	/* ROMs + space for additional RAM + samples */
 	ROM_LOAD( "trucocl.01", 0x00000, 0x20000, CRC(c9511c37) SHA1(d6a0fa573c8d2faf1a94a2be26fcaafe631d0699) )
 	ROM_LOAD( "trucocl.03", 0x20000, 0x20000, CRC(b37ce38c) SHA1(00bd506e9a03cb8ed65b0b599514db6b9b0ee5f3) ) /* samples */
 

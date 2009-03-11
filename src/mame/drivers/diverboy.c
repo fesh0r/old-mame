@@ -67,12 +67,12 @@ static WRITE16_HANDLER( soundcmd_w )
 	}
 }
 
-static WRITE8_HANDLER( okibank_w )
+static WRITE8_DEVICE_HANDLER( okibank_w )
 {
 	/* bit 2 might be reset */
 //  popmessage("%02x",data);
 
-	okim6295_set_bank_base(0,(data & 3) * 0x40000);
+	okim6295_set_bank_base(device,(data & 3) * 0x40000);
 }
 
 
@@ -103,15 +103,15 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( snd_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x9800, 0x9800) AM_READ(okim6295_status_0_r)
+	AM_RANGE(0x9800, 0x9800) AM_DEVREAD("oki", okim6295_r)
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( snd_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x9000, 0x9000) AM_WRITE(okibank_w)
-	AM_RANGE(0x9800, 0x9800) AM_WRITE(okim6295_data_0_w)
+	AM_RANGE(0x9000, 0x9000) AM_DEVWRITE("oki", okibank_w)
+	AM_RANGE(0x9800, 0x9800) AM_DEVWRITE("oki", okim6295_w)
 ADDRESS_MAP_END
 
 
@@ -194,17 +194,17 @@ GFXDECODE_END
 
 
 static MACHINE_DRIVER_START( diverboy )
-	MDRV_CPU_ADD("main", M68000, 12000000) /* guess */
+	MDRV_CPU_ADD("maincpu", M68000, 12000000) /* guess */
 	MDRV_CPU_PROGRAM_MAP(diverboy_readmem,diverboy_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, 4000000)
+	MDRV_CPU_ADD("audiocpu", Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(snd_readmem,snd_writemem)
 
 	MDRV_GFXDECODE(diverboy)
 
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -226,11 +226,11 @@ MACHINE_DRIVER_END
 
 
 ROM_START( diverboy )
-	ROM_REGION( 0x40000, "main", 0 ) /* 68000 Code */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "db_01.bin", 0x00000, 0x20000, CRC(6aa11366) SHA1(714c8a4a64c18632825a734a76a2d1b031106d76) )
 	ROM_LOAD16_BYTE( "db_02.bin", 0x00001, 0x20000, CRC(45f8a673) SHA1(4eea1374cafacb4a2e0b623fcb802deb5fca1b3a) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* z80 */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* z80 */
 	ROM_LOAD( "db_05.bin", 0x00000, 0x8000, CRC(ffeb49ec) SHA1(911b13897ff4ace3940bfff4ab88584a93796c24) ) /* this part is empty */
 	ROM_CONTINUE( 0x0000, 0x8000 ) /* this part contains the code */
 

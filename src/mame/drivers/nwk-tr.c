@@ -243,8 +243,7 @@ static WRITE32_HANDLER( paletteram32_w )
 
 static UINT32 *K001604_tile_ram[MAX_K001604_CHIPS];
 static UINT32 *K001604_char_ram[MAX_K001604_CHIPS];
-static UINT8 *K001604_dirty_map[MAX_K001604_CHIPS][2];
-static int K001604_gfx_index[MAX_K001604_CHIPS][2], K001604_char_dirty[MAX_K001604_CHIPS][2];
+static int K001604_gfx_index[MAX_K001604_CHIPS][2];
 static tilemap *K001604_layer_8x8[MAX_K001604_CHIPS][2];
 static int K001604_tilemap_offset;
 static tilemap *K001604_layer_roz[MAX_K001604_CHIPS][2];
@@ -422,9 +421,6 @@ int K001604_vh_start(running_machine *machine, int chip)
 
 	K001604_tile_ram[chip] = auto_malloc(0x20000);
 
-	K001604_dirty_map[chip][0] = auto_malloc(K001604_NUM_TILES_LAYER0);
-	K001604_dirty_map[chip][1] = auto_malloc(K001604_NUM_TILES_LAYER1);
-
 	K001604_reg[chip] = auto_malloc(0x400);
 
 	if (chip == 0)
@@ -453,64 +449,13 @@ int K001604_vh_start(running_machine *machine, int chip)
 
 	memset(K001604_char_ram[chip], 0, 0x200000);
 	memset(K001604_tile_ram[chip], 0, 0x10000);
-	memset(K001604_dirty_map[chip][0], 0, K001604_NUM_TILES_LAYER0);
-	memset(K001604_dirty_map[chip][1], 0, K001604_NUM_TILES_LAYER1);
 	memset(K001604_reg[chip], 0, 0x400);
 
 
-	machine->gfx[K001604_gfx_index[chip][0]] = allocgfx(machine, &K001604_char_layout_layer_8x8);
-	decodegfx(machine->gfx[K001604_gfx_index[chip][0]], (UINT8*)&K001604_char_ram[chip][0], 0, machine->gfx[K001604_gfx_index[chip][0]]->total_elements);
-	machine->gfx[K001604_gfx_index[chip][1]] = allocgfx(machine, &K001604_char_layout_layer_16x16);
-	decodegfx(machine->gfx[K001604_gfx_index[chip][1]], (UINT8*)&K001604_char_ram[chip][0], 0, machine->gfx[K001604_gfx_index[chip][1]]->total_elements);
-
-	machine->gfx[K001604_gfx_index[chip][0]]->total_colors = machine->config->total_colors / 16;
-	machine->gfx[K001604_gfx_index[chip][1]]->total_colors = machine->config->total_colors / 16;
+	machine->gfx[K001604_gfx_index[chip][0]] = gfx_element_alloc(machine, &K001604_char_layout_layer_8x8, (UINT8*)&K001604_char_ram[chip][0], machine->config->total_colors / 16, 0);
+	machine->gfx[K001604_gfx_index[chip][1]] = gfx_element_alloc(machine, &K001604_char_layout_layer_16x16, (UINT8*)&K001604_char_ram[chip][0], machine->config->total_colors / 16, 0);
 
 	return 0;
-}
-
-void K001604_tile_update(running_machine *machine, int chip)
-{
-	if(K001604_char_dirty[chip][0])
-	{
-		int i;
-		for (i=0; i < K001604_NUM_TILES_LAYER0; i++)
-		{
-			if(K001604_dirty_map[chip][0][i])
-			{
-				K001604_dirty_map[chip][0][i] = 0;
-				decodechar(machine->gfx[K001604_gfx_index[chip][0]], i, (UINT8*)&K001604_char_ram[chip][0]);
-			}
-		}
-		tilemap_mark_all_tiles_dirty(K001604_layer_8x8[chip][0]);
-		tilemap_mark_all_tiles_dirty(K001604_layer_8x8[chip][1]);
-
-		if (K001604_roz_size[chip] == 0)
-		{
-			tilemap_mark_all_tiles_dirty(K001604_layer_roz[chip][0]);
-			tilemap_mark_all_tiles_dirty(K001604_layer_roz[chip][1]);
-		}
-		K001604_char_dirty[chip][0] = 0;
-	}
-	if(K001604_char_dirty[chip][1])
-	{
-		int i;
-		for (i=0; i < K001604_NUM_TILES_LAYER1; i++)
-		{
-			if(K001604_dirty_map[chip][1][i])
-			{
-				K001604_dirty_map[chip][1][i] = 0;
-				decodechar(machine->gfx[K001604_gfx_index[chip][1]], i, (UINT8*)&K001604_char_ram[chip][0]);
-			}
-		}
-
-		if (K001604_roz_size[chip] == 1)
-		{
-			tilemap_mark_all_tiles_dirty(K001604_layer_roz[chip][0]);
-			tilemap_mark_all_tiles_dirty(K001604_layer_roz[chip][1]);
-		}
-		K001604_char_dirty[chip][1] = 0;
-	}
 }
 
 void K001604_draw_back_layer(int chip, bitmap_t *bitmap, const rectangle *cliprect)
@@ -659,11 +604,8 @@ WRITE32_HANDLER(K001604_char_w)
 
 	COMBINE_DATA(K001604_char_ram[chip] + addr);
 
-	K001604_dirty_map[chip][0][addr / 32] = 1;
-	K001604_char_dirty[chip][0] = 1;
-
-	K001604_dirty_map[chip][1][addr / 128] = 1;
-	K001604_char_dirty[chip][1] = 1;
+	gfx_element_mark_dirty(space->machine->gfx[K001604_gfx_index[chip][0]], addr / 32);
+	gfx_element_mark_dirty(space->machine->gfx[K001604_gfx_index[chip][1]], addr / 128);
 }
 
 
@@ -718,13 +660,12 @@ static VIDEO_START( nwktr )
 
 static VIDEO_UPDATE( nwktr )
 {
-	const device_config *voodoo = device_list_find_by_tag(screen->machine->config->devicelist, VOODOO_GRAPHICS, "voodoo");
+	const device_config *voodoo = devtag_get_device(screen->machine, "voodoo");
 
 	bitmap_fill(bitmap, cliprect, screen->machine->pens[0]);
 
 	voodoo_update(voodoo, bitmap, cliprect);
 
-	K001604_tile_update(screen->machine, 0);
 	K001604_draw_front_layer(0, bitmap, cliprect);
 
 	draw_7segment_led(bitmap, 3, 3, led_reg0);
@@ -949,14 +890,10 @@ static WRITE32_HANDLER( lanc2_w )
 static MACHINE_START( nwktr )
 {
 	/* set conservative DRC options */
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
+	ppcdrc_set_options(machine->cpu[0], PPCDRC_COMPATIBLE_OPTIONS);
 
 	/* configure fast RAM regions for DRC */
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_END, 0x003fffff);
-	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_PPC_FASTRAM_BASE, work_ram);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
+	ppcdrc_add_fastram(machine->cpu[0], 0x00000000, 0x003fffff, FALSE, work_ram);
 }
 
 static ADDRESS_MAP_START( nwktr_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -969,7 +906,7 @@ static ADDRESS_MAP_START( nwktr_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x780c0000, 0x780c0003) AM_READWRITE(cgboard_dsp_comm_r_ppc, cgboard_dsp_comm_w_ppc)
 	AM_RANGE(0x7d000000, 0x7d00ffff) AM_READ(sysreg_r)
 	AM_RANGE(0x7d010000, 0x7d01ffff) AM_WRITE(sysreg_w)
-	AM_RANGE(0x7d020000, 0x7d021fff) AM_DEVREADWRITE8(M48T58, "m48t58", timekeeper_r, timekeeper_w, 0xffffffff)	/* M48T58Y RTC/NVRAM */
+	AM_RANGE(0x7d020000, 0x7d021fff) AM_DEVREADWRITE8("m48t58", timekeeper_r, timekeeper_w, 0xffffffff)	/* M48T58Y RTC/NVRAM */
 	AM_RANGE(0x7d030000, 0x7d030007) AM_READ(K056800_host_r)
 	AM_RANGE(0x7d030000, 0x7d030007) AM_WRITE(K056800_host_w)
 	AM_RANGE(0x7d030008, 0x7d03000f) AM_WRITE(K056800_host_w)
@@ -985,7 +922,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_memmap, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
 	AM_RANGE(0x100000, 0x10ffff) AM_RAM		/* Work RAM */
-	AM_RANGE(0x200000, 0x200fff) AM_READWRITE(rf5c400_0_r, rf5c400_0_w)		/* Ricoh RF5C400 */
+	AM_RANGE(0x200000, 0x200fff) AM_DEVREADWRITE("rf", rf5c400_r, rf5c400_w)		/* Ricoh RF5C400 */
 	AM_RANGE(0x300000, 0x30000f) AM_READWRITE(K056800_sound_r, K056800_sound_w)
 	AM_RANGE(0x600000, 0x600001) AM_NOP
 ADDRESS_MAP_END
@@ -1008,7 +945,7 @@ static ADDRESS_MAP_START( sharc_map, ADDRESS_SPACE_DATA, 32 )
 	AM_RANGE(0x0400000, 0x041ffff) AM_READWRITE(cgboard_0_shared_sharc_r, cgboard_0_shared_sharc_w)
 	AM_RANGE(0x0500000, 0x05fffff) AM_READWRITE(dsp_dataram_r, dsp_dataram_w)
 	AM_RANGE(0x1400000, 0x14fffff) AM_RAM
-	AM_RANGE(0x2400000, 0x27fffff) AM_DEVREADWRITE(VOODOO_GRAPHICS, "voodoo", nwk_voodoo_0_r, nwk_voodoo_0_w)
+	AM_RANGE(0x2400000, 0x27fffff) AM_DEVREADWRITE("voodoo", nwk_voodoo_0_r, nwk_voodoo_0_w)
 	AM_RANGE(0x3400000, 0x34000ff) AM_READWRITE(cgboard_0_comm_sharc_r, cgboard_0_comm_sharc_w)
 	AM_RANGE(0x3500000, 0x35000ff) AM_READWRITE(K033906_0_r, K033906_0_w)
 	AM_RANGE(0x3600000, 0x37fffff) AM_ROMBANK(5)
@@ -1093,10 +1030,10 @@ static MACHINE_RESET( nwktr )
 static MACHINE_DRIVER_START( nwktr )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
+	MDRV_CPU_ADD("maincpu", PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
 	MDRV_CPU_PROGRAM_MAP(nwktr_map, 0)
 
-	MDRV_CPU_ADD("audio", M68000, 64000000/4)	/* 16MHz */
+	MDRV_CPU_ADD("audiocpu", M68000, 64000000/4)	/* 16MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_memmap, 0)
 
 	MDRV_CPU_ADD("dsp", ADSP21062, 36000000)
@@ -1108,14 +1045,14 @@ static MACHINE_DRIVER_START( nwktr )
 	MDRV_MACHINE_START(nwktr)
 	MDRV_MACHINE_RESET(nwktr)
 
-	MDRV_3DFX_VOODOO_1_ADD("voodoo", STD_VOODOO_1_CLOCK, 2, "main")
+	MDRV_3DFX_VOODOO_1_ADD("voodoo", STD_VOODOO_1_CLOCK, 2, "screen")
 	MDRV_3DFX_VOODOO_CPU("dsp")
 	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 2)
 	MDRV_3DFX_VOODOO_TMU_MEMORY(1, 2)
 	MDRV_3DFX_VOODOO_VBLANK(voodoo_vblank_0)
 
  	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(512, 384)
@@ -1126,11 +1063,11 @@ static MACHINE_DRIVER_START( nwktr )
 	MDRV_VIDEO_START(nwktr)
 	MDRV_VIDEO_UPDATE(nwktr)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("rf", RF5C400, 64000000/4)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	MDRV_M48T58_ADD( "m48t58" )
 MACHINE_DRIVER_END
@@ -1178,7 +1115,7 @@ ROM_START(racingj)
 	ROM_LOAD32_WORD_SWAP( "676a13.8x",    0x000000, 0x400000, CRC(29077763) SHA1(ee087ca0d41966ca0fd10727055bb1dcd05a0873) )
 	ROM_LOAD32_WORD_SWAP( "676a14.16x",   0x000002, 0x400000, CRC(50a7e3c0) SHA1(7468a66111a3ddf7c043cd400fa175cae5f65632) )
 
-	ROM_REGION(0x80000, "audio", 0)		/* 68k program roms */
+	ROM_REGION(0x80000, "audiocpu", 0)		/* 68k program roms */
 	ROM_LOAD16_WORD_SWAP( "676gna08.7s", 0x000000, 0x080000, CRC(8973f6f2) SHA1(f5648a7e0205f7e979ccacbb52936809ce14a184) )
 
 	ROM_REGION(0x1000000, "rf", 0) 		/* other roms (textures?) */
@@ -1202,7 +1139,7 @@ ROM_START(racingj2)
 	ROM_LOAD32_WORD_SWAP( "888a13.8x",    0x000000, 0x400000, CRC(2292f530) SHA1(0f4d1332708fd5366a065e0a928cc9610558b42d) )
 	ROM_LOAD32_WORD_SWAP( "888a14.16x",   0x000002, 0x400000, CRC(6a834a26) SHA1(d1fbd7ae6afd05f0edac4efde12a5a45aa2bc7df) )
 
-	ROM_REGION(0x80000, "audio", 0)		/* 68k program roms */
+	ROM_REGION(0x80000, "audiocpu", 0)		/* 68k program roms */
 	ROM_LOAD16_WORD_SWAP( "888a08.7s",    0x000000, 0x080000, CRC(55fbea65) SHA1(ad953f758181731efccadcabc4326e6634c359e8) )
 
 	ROM_REGION(0x1000000, "rf", 0) 		/* PCM sample roms */
@@ -1225,7 +1162,7 @@ ROM_START(thrilld)
 	ROM_LOAD32_WORD_SWAP( "713a13.8x",    0x000000, 0x400000, CRC(b795c66b) SHA1(6e50de0d5cc444ffaa0fec7ada8c07f643374bb2) )
 	ROM_LOAD32_WORD_SWAP( "713a14.16x",   0x000002, 0x400000, CRC(5275a629) SHA1(16fadef06975f0f3625cac8f84e2e77ed7d75e15) )
 
-	ROM_REGION(0x80000, "audio", 0)		/* 68k program roms */
+	ROM_REGION(0x80000, "audiocpu", 0)		/* 68k program roms */
 	ROM_LOAD16_WORD_SWAP( "713a08.7s",    0x000000, 0x080000, CRC(6a72a825) SHA1(abeac99c5343efacabcb0cdff6d34f9f967024db) )
 
 	ROM_REGION(0x1000000, "rf", 0) 		/* PCM sample roms */

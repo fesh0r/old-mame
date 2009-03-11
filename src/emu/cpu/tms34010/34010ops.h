@@ -14,10 +14,6 @@
 
 #include "cpuintrf.h"
 
-#ifndef INLINE
-#define INLINE static inline
-#endif
-
 /* Size of the memory buffer allocated for the shiftr register */
 #define SHIFTREG_SIZE			(8 * 512 * sizeof(UINT16))
 
@@ -47,7 +43,7 @@ INLINE void TMS34010_WRMEM_DWORD(tms34010_state *tms, offs_t A,UINT32 V)
 
 /* IO registers accessor */
 #define IOREG(T,reg)				((T)->IOregs[reg])
-#define SMART_IOREG(T,reg)			((T)->IOregs[(T)->is_34020 ? REG020_##reg : REG_##reg])
+#define SMART_IOREG(T,reg)			((T)->IOregs[(T)->is_34020 ? (int)REG020_##reg : (int)REG_##reg])
 #define PBH(T) 						(IOREG(T, REG_CONTROL) & 0x0100)
 #define PBV(T) 						(IOREG(T, REG_CONTROL) & 0x0200)
 

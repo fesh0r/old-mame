@@ -168,6 +168,7 @@ static UINT16 *adsp_control_regs;
 static UINT16 *adsp_fastram_base;
 static UINT8 adsp_ireg;
 static offs_t adsp_ireg_base, adsp_incs, adsp_size;
+static const device_config *dmadac[SOUND_CHANNELS];
 
 static void adsp_tx_callback(const device_config *device, int port, INT32 data);
 static TIMER_CALLBACK( adsp_autobuffer_irq );
@@ -202,6 +203,13 @@ static MACHINE_RESET( common )
 
 	/* keep the TMS32031 halted until the code is ready to go */
 	cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
+
+	for (i = 0; i < SOUND_CHANNELS; i++)
+	{
+		char buffer[10];
+		sprintf(buffer, "dac%d", i + 1);
+		dmadac[i] = devtag_get_device(machine, buffer);
+	}
 
 	/* Save state support */
 	state_save_register_global(machine, sound_data);
@@ -501,7 +509,7 @@ static WRITE16_HANDLER( adsp_control_w )
 			/* see if SPORT1 got disabled */
 			if ((data & 0x0800) == 0)
 			{
-				dmadac_enable(0, SOUND_CHANNELS, 0);
+				dmadac_enable(&dmadac[0], SOUND_CHANNELS, 0);
 				timer_adjust_oneshot(adsp_autobuffer_timer, attotime_never, 0);
 			}
 			break;
@@ -510,7 +518,7 @@ static WRITE16_HANDLER( adsp_control_w )
 			/* autobuffer off: nuke the timer, and disable the DAC */
 			if ((data & 0x0002) == 0)
 			{
-				dmadac_enable(0, SOUND_CHANNELS, 0);
+				dmadac_enable(&dmadac[0], SOUND_CHANNELS, 0);
 				timer_adjust_oneshot(adsp_autobuffer_timer, attotime_never, 0);
 			}
 			break;
@@ -547,7 +555,7 @@ static TIMER_CALLBACK( adsp_autobuffer_irq )
 	/* copy the current data into the buffer */
 // logerror("ADSP buffer: I%d=%04X incs=%04X size=%04X\n", adsp_ireg, reg, adsp_incs, adsp_size);
 	if (adsp_incs)
-		dmadac_transfer(0, SOUND_CHANNELS, adsp_incs, SOUND_CHANNELS * adsp_incs, adsp_size / (SOUND_CHANNELS * adsp_incs), (INT16 *)&adsp_fastram_base[reg - 0x3800]);
+		dmadac_transfer(&dmadac[0], SOUND_CHANNELS, adsp_incs, SOUND_CHANNELS * adsp_incs, adsp_size / (SOUND_CHANNELS * adsp_incs), (INT16 *)&adsp_fastram_base[reg - 0x3800]);
 
 	/* increment it */
 	reg += adsp_size;
@@ -612,8 +620,8 @@ static void adsp_tx_callback(const device_config *device, int port, INT32 data)
 			/* now put it down to samples, so we know what the channel frequency has to be */
 			sample_period = attotime_mul(sample_period, 16 * SOUND_CHANNELS);
 
- 			dmadac_set_frequency(0, SOUND_CHANNELS, ATTOSECONDS_TO_HZ(sample_period.attoseconds));
-			dmadac_enable(0, SOUND_CHANNELS, 1);
+ 			dmadac_set_frequency(&dmadac[0], SOUND_CHANNELS, ATTOSECONDS_TO_HZ(sample_period.attoseconds));
+			dmadac_enable(&dmadac[0], SOUND_CHANNELS, 1);
 
 			/* fire off a timer wich will hit every half-buffer */
 			sample_period = attotime_div(attotime_mul(sample_period, adsp_size), SOUND_CHANNELS * adsp_incs);
@@ -627,7 +635,7 @@ static void adsp_tx_callback(const device_config *device, int port, INT32 data)
 	}
 
 	/* if we get there, something went wrong. Disable playing */
-	dmadac_enable(0, SOUND_CHANNELS, 0);
+	dmadac_enable(&dmadac[0], SOUND_CHANNELS, 0);
 
 	/* remove timer */
 	timer_adjust_oneshot(adsp_autobuffer_timer, attotime_never, 0);
@@ -924,9 +932,9 @@ static const tms32031_config tms_config =
 static MACHINE_DRIVER_START( gaelco3d )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 15000000)
+	MDRV_CPU_ADD("maincpu", M68000, 15000000)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", vblank_gen)
+	MDRV_CPU_VBLANK_INT("screen", vblank_gen)
 
 	MDRV_CPU_ADD("tms", TMS32031, 60000000)
 	MDRV_CPU_CONFIG(tms_config)
@@ -943,7 +951,7 @@ static MACHINE_DRIVER_START( gaelco3d )
 	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -977,7 +985,7 @@ static MACHINE_DRIVER_START( gaelco3d2 )
 	MDRV_IMPORT_FROM(gaelco3d)
 
 	/* basic machine hardware */
-	MDRV_CPU_REPLACE("main", M68EC020, 25000000)
+	MDRV_CPU_REPLACE("maincpu", M68EC020, 25000000)
 	MDRV_CPU_PROGRAM_MAP(main020_map,0)
 
 	MDRV_CPU_REPLACE("tms", TMS32031, 50000000)
@@ -994,7 +1002,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( speedup )
-	ROM_REGION( 0x200000, "main", 0 )	/* 68000 code */
+	ROM_REGION( 0x200000, "maincpu", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "sup10.bin", 0x000000, 0x80000, CRC(07e70bae) SHA1(17013d859ec075e12518b094040a056d850b3271) )
 	ROM_LOAD16_BYTE( "sup15.bin", 0x000001, 0x80000, CRC(7947c28d) SHA1(46efb56d0f7fe2e92d0d04dcd2f130aef3be436d) )
 
@@ -1021,7 +1029,7 @@ ROM_END
 
 
 ROM_START( surfplnt )
-	ROM_REGION( 0x200000, "main", 0 )	/* 68000 code */
+	ROM_REGION( 0x200000, "maincpu", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "surfplnt.u5",  0x000000, 0x80000, CRC(c96e0a18) SHA1(b313d02d1d1bff8717b3d798e6ae681baefc1061) )
 	ROM_LOAD16_BYTE( "surfplnt.u11", 0x000001, 0x80000, CRC(99211d2d) SHA1(dee5b157489ce9c6988c8eec92fa91fff60d521c) )
 	ROM_LOAD16_BYTE( "surfplnt.u8",  0x100000, 0x80000, CRC(aef9e1d0) SHA1(15258e62fbf61e21e7d77aa7a81fdbf842fd4560) )
@@ -1054,7 +1062,7 @@ ROM_END
 
 
 ROM_START( surfpl40 )
-	ROM_REGION( 0x200000, "main", 0 )	/* 68000 code */
+	ROM_REGION( 0x200000, "maincpu", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "surfpl40.u5",  0x000000, 0x80000, CRC(572e0343) SHA1(badb08a5a495611b5fd2d821d4299348b2c9f308) )
 	ROM_LOAD16_BYTE( "surfpl40.u11", 0x000001, 0x80000, CRC(6056edaa) SHA1(9bc2df54d1367b9d58272a8f506e523e74110361) )
 	ROM_LOAD16_BYTE( "surfplnt.u8",  0x100000, 0x80000, CRC(aef9e1d0) SHA1(15258e62fbf61e21e7d77aa7a81fdbf842fd4560) )
@@ -1087,7 +1095,7 @@ ROM_END
 
 
 ROM_START( radikalb )
-	ROM_REGION( 0x200000, "main", 0 )	/* 68020 code */
+	ROM_REGION( 0x200000, "maincpu", 0 )	/* 68020 code */
 	ROM_LOAD32_BYTE( "rab.6",  0x000000, 0x80000, CRC(ccac98c5) SHA1(43a30caf9880f48aba79676f9e746fdc6258139d) )
 	ROM_LOAD32_BYTE( "rab.12", 0x000001, 0x80000, CRC(26199506) SHA1(1b7b44895aa296eab8061ae85cbb5b0d30119dc7) )
 	ROM_LOAD32_BYTE( "rab.14", 0x000002, 0x80000, CRC(4a0ac8cb) SHA1(4883e5eddb833dcd39376be435aa8e8e2ec47ab5) )

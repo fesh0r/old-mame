@@ -102,7 +102,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( playch10 )
 {
-	const UINT8 *bios = memory_region(machine, "main");
+	const UINT8 *bios = memory_region(machine, "maincpu");
 	pc10_bios = (bios[3] == 0x2a) ? 1 : 2;
 
 	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
@@ -113,7 +113,7 @@ VIDEO_START( playch10 )
 
 VIDEO_START( playch10_hboard )
 {
-	const UINT8 *bios = memory_region(machine, "main");
+	const UINT8 *bios = memory_region(machine, "maincpu");
 	pc10_bios = (bios[3] == 0x2a) ? 1 : 2;
 
 	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,
@@ -133,7 +133,7 @@ VIDEO_UPDATE( playch10 )
 	/* Dual monitor version */
 	if (pc10_bios == 1)
 	{
-		const device_config *top_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "top");
+		const device_config *top_screen = devtag_get_device(screen->machine, "top");
 
 		/* On Playchoice 10 single monitor, this bit toggles    */
 		/* between PPU and BIOS display.                        */

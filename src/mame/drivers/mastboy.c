@@ -460,6 +460,7 @@ static int mastboy_m5205_sambit0, mastboy_m5205_sambit1;
 
 static VIDEO_START(mastboy)
 {
+	gfx_element_set_source(machine->gfx[0], mastboy_vram);
 }
 
 static VIDEO_UPDATE(mastboy)
@@ -563,7 +564,7 @@ static WRITE8_HANDLER( banked_ram_w )
 			mastboy_vram[offs] = data^0xff;
 
 			/* Decode the new tile */
-			decodechar(space->machine->gfx[0], offs/32, mastboy_vram);
+			gfx_element_mark_dirty(space->machine->gfx[0], offs/32);
 		}
 	}
 	else
@@ -608,25 +609,29 @@ static WRITE8_HANDLER( backupram_enable_w )
 
 static WRITE8_HANDLER( msm5205_mastboy_m5205_sambit0_w )
 {
+	const device_config *adpcm = devtag_get_device(space->machine, "msm");
+
 	mastboy_m5205_sambit0 = data & 1;
-	msm5205_playmode_w(0,  (1 << 2) | (mastboy_m5205_sambit1 << 1) | (mastboy_m5205_sambit0) );
+	msm5205_playmode_w(adpcm,  (1 << 2) | (mastboy_m5205_sambit1 << 1) | (mastboy_m5205_sambit0) );
 
 	logerror("msm5205 samplerate bit 0, set to %02x\n",data);
 }
 
 static WRITE8_HANDLER( msm5205_mastboy_m5205_sambit1_w )
 {
+	const device_config *adpcm = devtag_get_device(space->machine, "msm");
+
 	mastboy_m5205_sambit1 = data & 1;
 
-	msm5205_playmode_w(0,  (1 << 2) | (mastboy_m5205_sambit1 << 1) | (mastboy_m5205_sambit0) );
+	msm5205_playmode_w(adpcm,  (1 << 2) | (mastboy_m5205_sambit1 << 1) | (mastboy_m5205_sambit0) );
 
 	logerror("msm5205 samplerate bit 0, set to %02x\n",data);
 }
 
-static WRITE8_HANDLER( mastboy_msm5205_reset_w )
+static WRITE8_DEVICE_HANDLER( mastboy_msm5205_reset_w )
 {
 	mastboy_m5205_part = 0;
-	msm5205_reset_w(0,data&1);
+	msm5205_reset_w(device,data&1);
 }
 
 static WRITE8_HANDLER( mastboy_msm5205_data_w )
@@ -636,7 +641,7 @@ static WRITE8_HANDLER( mastboy_msm5205_data_w )
 
 static void mastboy_adpcm_int(const device_config *device)
 {
-	msm5205_data_w (0,mastboy_m5205_next);
+	msm5205_data_w (device,mastboy_m5205_next);
 	mastboy_m5205_next>>=4;
 
 	mastboy_m5205_part ^= 1;
@@ -696,13 +701,13 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0xff000, 0xff7ff) AM_WRITE(mastboy_backupram_w) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xff820, 0xff827) AM_WRITE(mastboy_bank_w)
-	AM_RANGE(0xff828, 0xff828) AM_WRITE(saa1099_write_port_0_w)
-	AM_RANGE(0xff829, 0xff829) AM_WRITE(saa1099_control_port_0_w)
+	AM_RANGE(0xff828, 0xff828) AM_DEVWRITE("saa", saa1099_data_w)
+	AM_RANGE(0xff829, 0xff829) AM_DEVWRITE("saa", saa1099_control_w)
 	AM_RANGE(0xff830, 0xff830) AM_WRITE(mastboy_msm5205_data_w)
 	AM_RANGE(0xff838, 0xff838) AM_WRITE(mastboy_irq0_ack_w)
 	AM_RANGE(0xff839, 0xff839) AM_WRITE(msm5205_mastboy_m5205_sambit0_w)
 	AM_RANGE(0xff83a, 0xff83a) AM_WRITE(msm5205_mastboy_m5205_sambit1_w)
-	AM_RANGE(0xff83b, 0xff83b) AM_WRITE(mastboy_msm5205_reset_w)
+	AM_RANGE(0xff83b, 0xff83b) AM_DEVWRITE("msm", mastboy_msm5205_reset_w)
 	AM_RANGE(0xff83c, 0xff83c) AM_WRITE(backupram_enable_w)
 	AM_RANGE(0xffc00, 0xfffff) AM_WRITE(SMH_RAM) // Internal RAM
 ADDRESS_MAP_END
@@ -851,24 +856,24 @@ static MACHINE_RESET( mastboy )
 	memset( mastboy_vram, 0x00, 0x10000);
 
 	mastboy_m5205_part = 0;
-	msm5205_reset_w(0,1);
+	msm5205_reset_w(devtag_get_device(machine, "msm"),1);
 	mastboy_irq0_ack = 0;
 }
 
 
 
 static MACHINE_DRIVER_START( mastboy )
-	MDRV_CPU_ADD("main", Z180, 12000000/2)	/* HD647180X0CP6-1M1R */
+	MDRV_CPU_ADD("maincpu", Z180, 12000000/2)	/* HD647180X0CP6-1M1R */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(port_readmem,0)
-	MDRV_CPU_VBLANK_INT("main", mastboy_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", mastboy_interrupt)
 
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	MDRV_MACHINE_RESET( mastboy )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(6000000.0f / 384.0f / 282.0f)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -894,7 +899,7 @@ MACHINE_DRIVER_END
 /* Romsets */
 
 ROM_START( mastboy )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "hd647180.bin", 0x00000, 0x4000, CRC(75716dd1) SHA1(9b14b9b889b29b6022a3815de95487fb6a720d7a) ) // game code is internal to the CPU!
 	ROM_LOAD( "03.bin",       0x04000, 0x4000, CRC(5020a37f) SHA1(8bc75623232f3ab457b47d5af6cd1c3fb24c0d0e) ) // sound data? (+ 1 piece of) 1ST AND 2ND HALF IDENTICAL
 	ROM_CONTINUE(             0x04000, 0x4000 )
@@ -934,7 +939,7 @@ ROM_END
 
 /* Is this actually official, or a hack? */
 ROM_START( mastboyi )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "hd647180.bin", 0x00000, 0x4000, CRC(75716dd1) SHA1(9b14b9b889b29b6022a3815de95487fb6a720d7a) ) // game code is internal to the CPU!
 	ROM_LOAD( "3-mem-a.ic77", 0x04000, 0x4000, CRC(3ee33282) SHA1(26371e3bb436869461e9870409b69aa9fb1845d6) ) // sound data? (+ 1 piece of) 1ST AND 2ND HALF IDENTICAL
 	ROM_CONTINUE(             0x04000, 0x4000 )

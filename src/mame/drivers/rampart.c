@@ -72,45 +72,6 @@ static MACHINE_RESET( rampart )
 
 /*************************************
  *
- *  MSM5295 I/O
- *
- *************************************/
-
-static READ16_HANDLER( adpcm_r )
-{
-	return (okim6295_status_0_r(space, offset) << 8) | 0x00ff;
-}
-
-
-static WRITE16_HANDLER( adpcm_w )
-{
-	if (ACCESSING_BITS_8_15)
-		okim6295_data_0_w(space, offset, (data >> 8) & 0xff);
-}
-
-
-
-/*************************************
- *
- *  YM2413 I/O
- *
- *************************************/
-
-static WRITE16_HANDLER( ym2413_w )
-{
-	if (ACCESSING_BITS_8_15)
-	{
-		if (offset & 1)
-			ym2413_data_port_0_w(space, 0, (data >> 8) & 0xff);
-		else
-			ym2413_register_port_0_w(space, 0, (data >> 8) & 0xff);
-	}
-}
-
-
-
-/*************************************
- *
  *  Latch write
  *
  *************************************/
@@ -147,10 +108,10 @@ static WRITE16_HANDLER( latch_w )
 	{
 		atarigen_set_oki6295_vol(space->machine, (data & 0x0020) ? 100 : 0);
 		if (!(data & 0x0010))
-			sndti_reset(SOUND_OKIM6295, 0);
+			devtag_reset(space->machine, "oki");
 		atarigen_set_ym2413_vol(space->machine, ((data >> 1) & 7) * 100 / 7);
 		if (!(data & 0x0001))
-			sndti_reset(SOUND_YM2413, 0);
+			devtag_reset(space->machine, "ym");
 	}
 }
 
@@ -174,8 +135,8 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x3e0800, 0x3e3f3f) AM_MIRROR(0x010000) AM_RAM
 	AM_RANGE(0x3e3f40, 0x3e3f7f) AM_MIRROR(0x010000) AM_RAM_WRITE(atarimo_0_slipram_w) AM_BASE(&atarimo_0_slipram)
 	AM_RANGE(0x3e3f80, 0x3effff) AM_MIRROR(0x010000) AM_RAM
-	AM_RANGE(0x460000, 0x460001) AM_MIRROR(0x019ffe) AM_READWRITE(adpcm_r, adpcm_w)
-	AM_RANGE(0x480000, 0x480003) AM_MIRROR(0x019ffc) AM_WRITE(ym2413_w)
+	AM_RANGE(0x460000, 0x460001) AM_MIRROR(0x019ffe) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0xff00)
+	AM_RANGE(0x480000, 0x480003) AM_MIRROR(0x019ffc) AM_DEVWRITE8("ym", ym2413_w, 0xff00)
 	AM_RANGE(0x500000, 0x500fff) AM_MIRROR(0x019000) AM_READWRITE(atarigen_eeprom_r, atarigen_eeprom_w) AM_BASE(&atarigen_eeprom) AM_SIZE(&atarigen_eeprom_size)
 	AM_RANGE(0x5a6000, 0x5a6001) AM_MIRROR(0x019ffe) AM_WRITE(atarigen_eeprom_enable_w)
 	AM_RANGE(0x640000, 0x640001) AM_MIRROR(0x019ffe) AM_WRITE(latch_w)
@@ -375,9 +336,9 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( rampart )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, MASTER_CLOCK/2)
+	MDRV_CPU_ADD("maincpu", M68000, MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(main_map, 0)
-	MDRV_CPU_VBLANK_INT("main", atarigen_video_int_gen)
+	MDRV_CPU_VBLANK_INT("screen", atarigen_video_int_gen)
 
 	MDRV_MACHINE_RESET(rampart)
 	MDRV_NVRAM_HANDLER(atarigen)
@@ -388,7 +349,7 @@ static MACHINE_DRIVER_START( rampart )
 	MDRV_GFXDECODE(rampart)
 	MDRV_PALETTE_LENGTH(512)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses an SOS-2 chip to generate video signals */
@@ -417,7 +378,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( rampart )
-	ROM_REGION( 0x148000, "main", 0 )
+	ROM_REGION( 0x148000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "136082-1033.13l", 0x00000, 0x80000, CRC(5c36795f) SHA1(2f3dcdfd6b04d851aa1082848624687ac0cec9e2) )
 	ROM_LOAD16_BYTE( "136082-1032.13j", 0x00001, 0x80000, CRC(ec7bc38c) SHA1(72d4dbb11e92c69cb560bbb39d7bbd5e845b1e4d) )
 	ROM_LOAD16_BYTE( "136082-2031.13l", 0x00000, 0x10000, CRC(07650c7e) SHA1(0a8eec76aefd4fd1515c1a0d5b96f71c674cdce7) )
@@ -441,7 +402,7 @@ ROM_END
 
 
 ROM_START( ramprt2p )
-	ROM_REGION( 0x148000, "main", 0 )
+	ROM_REGION( 0x148000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "136082-1033.13l",  0x00000, 0x80000, CRC(5c36795f) SHA1(2f3dcdfd6b04d851aa1082848624687ac0cec9e2) )
 	ROM_LOAD16_BYTE( "136082-1032.13j",  0x00001, 0x80000, CRC(ec7bc38c) SHA1(72d4dbb11e92c69cb560bbb39d7bbd5e845b1e4d) )
 	ROM_LOAD16_BYTE( "136082-2051.13kl", 0x00000, 0x20000, CRC(d4e26d0f) SHA1(5106549e6d003711bfd390aa2e19e6e5f33f2cf9) )
@@ -465,7 +426,7 @@ ROM_END
 
 
 ROM_START( rampartj )
-	ROM_REGION( 0x148000, "main", 0 )
+	ROM_REGION( 0x148000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "136082-3451.bin",  0x00000, 0x20000, CRC(c6596d32) SHA1(3e3e0cbb3b5fc6dd9685bbc4b18c22e0858d9282) )
 	ROM_LOAD16_BYTE( "136082-3450.bin",  0x00001, 0x20000, CRC(563b33cc) SHA1(8b454bc19644f1d3d76e4a13f08071cf5eab36e2) )
 	ROM_LOAD16_BYTE( "136082-1463.bin",  0x40000, 0x20000, CRC(65fe3491) SHA1(3aa3b98fb7fe808ef89e100b5e1ee1c99c4312b6) )
@@ -525,7 +486,7 @@ static DRIVER_INIT( rampart )
 		0x01FF,0x0E00,0x01FF,0x0E00,0x01FF,0x0E00,0x01FF,0x0E00,
 		0x0000
 	};
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(machine, "maincpu");
 
 	atarigen_eeprom_default = compressed_default_eeprom;
 	memcpy(&rom[0x140000], &rom[0x40000], 0x8000);

@@ -109,23 +109,23 @@ static WRITE8_HANDLER( tp84_filter_w )
 	C = 0;
 	if (offset & 0x008) C +=  47000;	/*  47000pF = 0.047uF */
 	if (offset & 0x010) C += 470000;	/* 470000pF = 0.47uF */
-	filter_rc_set_RC(0,FLT_RC_LOWPASS,1000,2200,1000,CAP_P(C));
+	filter_rc_set_RC(devtag_get_device(space->machine, "filter1"),FLT_RC_LOWPASS,1000,2200,1000,CAP_P(C));
 
 	/* 76489 #1 (optional) */
 	C = 0;
 	if (offset & 0x020) C +=  47000;	/*  47000pF = 0.047uF */
 	if (offset & 0x040) C += 470000;	/* 470000pF = 0.47uF */
-//  filter_rc_set_RC(1,1000,2200,1000,C);
+//  filter_rc_set_RC(devtag_get_device(space->machine, "filter2"),1000,2200,1000,C);
 
 	/* 76489 #2 */
 	C = 0;
 	if (offset & 0x080) C += 470000;	/* 470000pF = 0.47uF */
-	filter_rc_set_RC(1,FLT_RC_LOWPASS,1000,2200,1000,CAP_P(C));
+	filter_rc_set_RC(devtag_get_device(space->machine, "filter2"),FLT_RC_LOWPASS,1000,2200,1000,CAP_P(C));
 
 	/* 76489 #3 */
 	C = 0;
 	if (offset & 0x100) C += 470000;	/* 470000pF = 0.47uF */
-	filter_rc_set_RC(2,FLT_RC_LOWPASS,1000,2200,1000,CAP_P(C));
+	filter_rc_set_RC(devtag_get_device(space->machine, "filter3"),FLT_RC_LOWPASS,1000,2200,1000,CAP_P(C));
 }
 
 static WRITE8_HANDLER( tp84_sh_irqtrigger_w )
@@ -196,9 +196,9 @@ static ADDRESS_MAP_START( audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0x8000) AM_READ(tp84_sh_timer_r)
 	AM_RANGE(0xa000, 0xa1ff) AM_WRITE(tp84_filter_w)
 	AM_RANGE(0xc000, 0xc000) AM_WRITE(SMH_NOP)
-	AM_RANGE(0xc001, 0xc001) AM_WRITE(sn76496_0_w)
-	AM_RANGE(0xc003, 0xc003) AM_WRITE(sn76496_1_w)
-	AM_RANGE(0xc004, 0xc004) AM_WRITE(sn76496_2_w)
+	AM_RANGE(0xc001, 0xc001) AM_DEVWRITE("sn1", sn76496_w)
+	AM_RANGE(0xc003, 0xc003) AM_DEVWRITE("sn2", sn76496_w)
+	AM_RANGE(0xc004, 0xc004) AM_DEVWRITE("sn3", sn76496_w)
 ADDRESS_MAP_END
 
 
@@ -422,19 +422,19 @@ static MACHINE_DRIVER_START( tp84 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("cpu1",M6809, XTAL_18_432MHz/12) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(tp84_cpu1_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", M6809, XTAL_18_432MHz/12)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpu2_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,XTAL_14_31818MHz/4) /* verified on pcb */
+	MDRV_CPU_ADD("audiocpu", Z80,XTAL_14_31818MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
 
 	MDRV_QUANTUM_TIME(HZ(6000))	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -490,7 +490,7 @@ ROM_START( tp84 )
 	ROM_REGION( 0x10000, "sub", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "tp84_10d.bin", 0xe000, 0x2000, CRC(36462ff1) SHA1(118a1b46ee01a583e6cf39af59b073321c76dbff) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for code of sound cpu Z80 */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for code of sound cpu Z80 */
 	ROM_LOAD( "tp84s_6a.bin", 0x0000, 0x2000, CRC(c44414da) SHA1(981289f5bdf7dc1348f4ca547ac933ef503b6588) )
 
 	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )
@@ -521,7 +521,7 @@ ROM_START( tp84a )
 	ROM_REGION( 0x10000, "sub", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "tp84_10d.bin", 0xe000, 0x2000, CRC(36462ff1) SHA1(118a1b46ee01a583e6cf39af59b073321c76dbff) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for code of sound cpu Z80 */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for code of sound cpu Z80 */
 	ROM_LOAD( "tp84s_6a.bin", 0x0000, 0x2000, CRC(c44414da) SHA1(981289f5bdf7dc1348f4ca547ac933ef503b6588) )
 
 	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )
@@ -551,7 +551,7 @@ ROM_START( tp84b )
 	ROM_REGION( 0x10000, "sub", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "388j08.10d", 0xe000, 0x2000, CRC(2aea6b42) SHA1(58c3b4852f22a766f440b98904b73c00a31eae01) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for code of sound cpu Z80 */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for code of sound cpu Z80 */
 	ROM_LOAD( "388j13.6a", 0x0000, 0x2000, CRC(c44414da) SHA1(981289f5bdf7dc1348f4ca547ac933ef503b6588) )
 
 	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )

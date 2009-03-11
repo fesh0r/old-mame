@@ -51,7 +51,7 @@ static WRITE8_HANDLER( sound_data_w )
 	ay_data = data;
 }
 
-static WRITE8_HANDLER( sound_control_w )
+static WRITE8_DEVICE_HANDLER( sound_control_w )
 {
 /*
     AY 3-8910 :
@@ -62,8 +62,8 @@ static WRITE8_HANDLER( sound_control_w )
     D3 - /Reset
 
 */
-	if ((data &7)==7) ay8910_control_port_0_w(space,0,ay_data);
-	if ((data &7)==6) ay8910_write_port_0_w(space,0,ay_data);
+	if ((data &7)==7) ay8910_address_w(device,0,ay_data);
+	if ((data &7)==6) ay8910_data_w(device,0,ay_data);
 }
 
 
@@ -92,7 +92,7 @@ static ADDRESS_MAP_START( dynadice_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_READ(soundlatch_r)
 	AM_RANGE(0x01, 0x01) AM_WRITE(soundlatch_clear_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(sound_data_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(sound_control_w)
+	AM_RANGE(0x03, 0x03) AM_DEVWRITE("ay", sound_control_w)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( dynadice )
@@ -195,18 +195,18 @@ static PALETTE_INIT( dynadice )
 }
 
 static MACHINE_DRIVER_START( dynadice )
-	MDRV_CPU_ADD("main", 8080,18432000/8)
+	MDRV_CPU_ADD("maincpu", 8080,18432000/8)
 	MDRV_CPU_PROGRAM_MAP(dynadice_map,0)
 	MDRV_CPU_IO_MAP(dynadice_io_map,0)
 
-	MDRV_CPU_ADD("audio", Z80,18432000/6)
+	MDRV_CPU_ADD("audiocpu", Z80,18432000/6)
 	MDRV_CPU_PROGRAM_MAP(dynadice_sound_map,0)
 	MDRV_CPU_IO_MAP(dynadice_sound_io_map,0)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -227,12 +227,12 @@ static MACHINE_DRIVER_START( dynadice )
 MACHINE_DRIVER_END
 
 ROM_START( dynadice )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "dy_1.bin",     0x0000, 0x1000, CRC(4ad18724) SHA1(78151b02a727f4272eff72765883df9ca09606c3) )
 	ROM_LOAD( "dy_2.bin",     0x1000, 0x0800, CRC(82cb1873) SHA1(661f33af4a536b7929d432d755ab44f9280f82db) )
 	ROM_LOAD( "dy_3.bin",     0x1800, 0x0800, CRC(a8edad20) SHA1(b812141f216355c986047969326bd1e036be71e6) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "dy_6.bin",     0x0000, 0x0800, CRC(d4e6e6a3) SHA1(84c0fcfd8326a4301accbd192df6e372b98ae537) )
 
 	ROM_REGION( 0x0800, "gfx1", 0 )
@@ -249,7 +249,7 @@ static DRIVER_INIT( dynadice )
 {
 	int i,j;
 	UINT8 *usr1 = memory_region(machine, "user1");
-	UINT8 *cpu2 = memory_region(machine, "audio");
+	UINT8 *cpu2 = memory_region(machine, "audiocpu");
 	UINT8 *gfx1 = memory_region(machine, "gfx1");
 	UINT8 *gfx2 = memory_region(machine, "gfx2");
 

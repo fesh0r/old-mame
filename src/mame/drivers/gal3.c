@@ -70,12 +70,12 @@ better notes (complete chip lists) for each board still needed
 #include "driver.h"
 #include "cpu/m68000/m68000.h"
 
-VIDEO_START(gal3)
+static VIDEO_START(gal3)
 {
 
 }
 
-VIDEO_UPDATE(gal3)
+static VIDEO_UPDATE(gal3)
 {
 	return 0;
 }
@@ -128,7 +128,7 @@ static MACHINE_DRIVER_START( gal3 )
 
 
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)

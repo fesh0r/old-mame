@@ -195,11 +195,6 @@ static ADDRESS_MAP_START( gstream_32bit_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xFFF80000, 0xFFFFFFFF) AM_ROM AM_REGION("user1",0) // boot rom
 ADDRESS_MAP_END
 
-static READ32_HANDLER( gstream_oki_0_r ) { return okim6295_status_0_r(space, 0); }
-static READ32_HANDLER( gstream_oki_1_r ) { return okim6295_status_1_r(space, 0); }
-static WRITE32_HANDLER( gstream_oki_0_w ) { okim6295_data_0_w(space, 0, data & 0xff); }
-static WRITE32_HANDLER( gstream_oki_1_w ) { okim6295_data_1_w(space, 0, data & 0xff); }
-
 static WRITE32_HANDLER( gstream_oki_banking_w )
 {
 	/* OKI BANKING  (still far from perfect, based on game behaviour)
@@ -263,8 +258,8 @@ static WRITE32_HANDLER( gstream_oki_banking_w )
 		bank_1 = 3;		// end sequence music
 	}
 
-	okim6295_set_bank_base(0, bank_0 * 0x40000);
-	okim6295_set_bank_base(1, bank_1 * 0x40000);
+	okim6295_set_bank_base(devtag_get_device(space->machine, "oki1"), bank_0 * 0x40000);
+	okim6295_set_bank_base(devtag_get_device(space->machine, "oki2"), bank_1 * 0x40000);
 }
 
 static WRITE32_HANDLER( gstream_oki_4040_w )
@@ -278,8 +273,8 @@ static ADDRESS_MAP_START( gstream_io, ADDRESS_SPACE_IO, 32 )
 	AM_RANGE(0x4020, 0x4023) AM_READ_PORT("IN2") 	// extra coin switches etc
 	AM_RANGE(0x4030, 0x4033) AM_WRITE(gstream_oki_banking_w) 	// oki banking
 	AM_RANGE(0x4040, 0x4043) AM_WRITE(gstream_oki_4040_w) 	// ??
-	AM_RANGE(0x4050, 0x4053) AM_READWRITE(gstream_oki_1_r, gstream_oki_1_w) 	// music and samples
-	AM_RANGE(0x4060, 0x4063) AM_READWRITE(gstream_oki_0_r, gstream_oki_0_w) 	// music and samples
+	AM_RANGE(0x4050, 0x4053) AM_DEVREADWRITE8("oki2", okim6295_r, okim6295_w, 0x000000ff) 	// music and samples
+	AM_RANGE(0x4060, 0x4063) AM_DEVREADWRITE8("oki1", okim6295_r, okim6295_w, 0x000000ff) 	// music and samples
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( gstream )
@@ -445,13 +440,13 @@ static VIDEO_UPDATE(gstream)
 }
 
 static MACHINE_DRIVER_START( gstream )
-	MDRV_CPU_ADD("main", E132XT, 16000000*4)	/* 4x internal multiplier */
+	MDRV_CPU_ADD("maincpu", E132XT, 16000000*4)	/* 4x internal multiplier */
 	MDRV_CPU_PROGRAM_MAP(gstream_32bit_map,0)
 	MDRV_CPU_IO_MAP(gstream_io,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -516,7 +511,7 @@ static READ32_HANDLER( gstream_speedup_r )
 {
 	if (cpu_get_pc(space->cpu)==0xc0001592)
 	{
-		cpu_spinuntil_int(space->cpu);
+		cpu_eat_cycles(space->cpu, 50);
 	}
 
 	return gstream_workram[0xd1ee0/4];

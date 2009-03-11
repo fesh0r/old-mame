@@ -124,7 +124,8 @@ VIDEO_UPDATE( xmen )
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[layer[1]],0,2);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[layer[2]],0,4);
 
-	pdrawgfx_shadow_lowpri = 1;	/* fix shadows of boulders in front of feet */
+/* this isn't supported anymore and it is unsure if still needed; keeping here for reference
+    pdrawgfx_shadow_lowpri = 1; fix shadows of boulders in front of feet */
 	K053247_sprites_draw(screen->machine, bitmap,cliprect);
 	return 0;
 }
@@ -134,8 +135,8 @@ VIDEO_UPDATE( xmen6p )
 {
 	int x,y;
 
- 	const device_config *left_screen   = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "left");
-	const device_config *right_screen  = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "right");
+ 	const device_config *left_screen   = devtag_get_device(screen->machine, "lscreen");
+	const device_config *right_screen  = devtag_get_device(screen->machine, "rscreen");
 
 	if (screen == left_screen)
 		for(y=0;y<32*8;y++)
@@ -250,7 +251,8 @@ VIDEO_EOF( xmen6p )
 	tilemap_draw(renderbitmap,&cliprect,K052109_tilemap[layer[1]],0,2);
 	tilemap_draw(renderbitmap,&cliprect,K052109_tilemap[layer[2]],0,4);
 
-	pdrawgfx_shadow_lowpri = 1;	/* fix shadows of boulders in front of feet */
+/* this isn't supported anymore and it is unsure if still needed; keeping here for reference
+    pdrawgfx_shadow_lowpri = 1; fix shadows of boulders in front of feet */
 	K053247_sprites_draw(machine, renderbitmap,&cliprect);
 
 }

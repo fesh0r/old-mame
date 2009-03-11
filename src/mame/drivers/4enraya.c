@@ -65,16 +65,11 @@ static WRITE8_HANDLER( sound_data_w )
 	soundlatch = data;
 }
 
-static WRITE8_HANDLER( sound_control_w )
+static WRITE8_DEVICE_HANDLER( sound_control_w )
 {
 	static int last;
 	if ((last & 0x04) == 0x04 && (data & 0x4) == 0x00)
-	{
-		if (last & 0x01)
-			ay8910_control_port_0_w(space,0,soundlatch);
-		else
-			ay8910_write_port_0_w(space,0,soundlatch);
-	}
+		ay8910_data_address_w(device, last, soundlatch);
 	last=data;
 }
 
@@ -90,7 +85,7 @@ static ADDRESS_MAP_START( main_portmap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x01, 0x01) AM_READ_PORT("INPUTS")
 	AM_RANGE(0x02, 0x02) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0x23, 0x23) AM_WRITE(sound_data_w)
-	AM_RANGE(0x33, 0x33) AM_WRITE(sound_control_w)
+	AM_RANGE(0x33, 0x33) AM_DEVWRITE("ay", sound_control_w)
 ADDRESS_MAP_END
 
 
@@ -163,13 +158,13 @@ static MACHINE_START( 4enraya )
 static MACHINE_DRIVER_START( 4enraya )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main",Z80,8000000/2)
+	MDRV_CPU_ADD("maincpu",Z80,8000000/2)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(main_portmap,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -196,7 +191,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( 4enraya )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "5.bin",   0x0000, 0x8000, CRC(cf1cd151) SHA1(3920b0a6ed5798859158871b578b01ec742b0d13) )
 	ROM_LOAD( "4.bin",   0x8000, 0x4000, CRC(f9ec1be7) SHA1(189159129ecbc4f6909c086867b0e02821f5b976) )
 

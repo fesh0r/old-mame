@@ -19,9 +19,11 @@ Dip locations and recommended settings verified with manual
 #include "sound/2151intf.h"
 #include "sound/k007232.h"
 
+#include "chqflag.lh"
+
 static int K051316_readroms;
 
-static WRITE8_HANDLER( k007232_extvolume_w );
+static WRITE8_DEVICE_HANDLER( k007232_extvolume_w );
 
 /* from video/chqflag.c */
 VIDEO_START( chqflag );
@@ -45,7 +47,7 @@ static INTERRUPT_GEN( chqflag_interrupt )
 static WRITE8_HANDLER( chqflag_bankswitch_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(space->machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "maincpu");
 
 	/* bits 0-4 = ROM bank # (0x00-0x11) */
 	bankaddress = 0x10000 + (data & 0x1f)*0x4000;
@@ -186,9 +188,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( chqflag_readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)				/* ROM */
 	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)				/* RAM */
-	AM_RANGE(0xa000, 0xa00d) AM_READ(k007232_read_port_0_r)	/* 007232 (chip 1) */
-	AM_RANGE(0xb000, 0xb00d) AM_READ(k007232_read_port_1_r)	/* 007232 (chip 2) */
-	AM_RANGE(0xc001, 0xc001) AM_READ(ym2151_status_port_0_r)	/* YM2151 */
+	AM_RANGE(0xa000, 0xa00d) AM_DEVREAD("konami1", k007232_r)	/* 007232 (chip 1) */
+	AM_RANGE(0xb000, 0xb00d) AM_DEVREAD("konami2", k007232_r)	/* 007232 (chip 2) */
+	AM_RANGE(0xc000, 0xc001) AM_DEVREAD("ym", ym2151_r)	/* YM2151 */
 	AM_RANGE(0xd000, 0xd000) AM_READ(soundlatch_r)			/* soundlatch_r */
 	//AM_RANGE(0xe000, 0xe000) AM_READ(SMH_NOP)                /* ??? */
 ADDRESS_MAP_END
@@ -200,24 +202,23 @@ static WRITE8_HANDLER( k007232_bankswitch_w )
 	/* banks # for the 007232 (chip 1) */
 	bank_A = ((data >> 4) & 0x03);
 	bank_B = ((data >> 6) & 0x03);
-	k007232_set_bank( 0, bank_A, bank_B );
+	k007232_set_bank( devtag_get_device(space->machine, "konami1"), bank_A, bank_B );
 
 	/* banks # for the 007232 (chip 2) */
 	bank_A = ((data >> 0) & 0x03);
 	bank_B = ((data >> 2) & 0x03);
-	k007232_set_bank( 1, bank_A, bank_B );
+	k007232_set_bank( devtag_get_device(space->machine, "konami2"), bank_A, bank_B );
 }
 
 static ADDRESS_MAP_START( chqflag_writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)					/* ROM */
 	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)					/* RAM */
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(k007232_bankswitch_w)		/* 007232 bankswitch */
-	AM_RANGE(0xa000, 0xa00d) AM_WRITE(k007232_write_port_0_w)		/* 007232 (chip 1) */
-	AM_RANGE(0xa01c, 0xa01c) AM_WRITE(k007232_extvolume_w)/* extra volume, goes to the 007232 w/ A11 */
+	AM_RANGE(0xa000, 0xa00d) AM_DEVWRITE("konami1", k007232_w)		/* 007232 (chip 1) */
+	AM_RANGE(0xa01c, 0xa01c) AM_DEVWRITE("konami2", k007232_extvolume_w)/* extra volume, goes to the 007232 w/ A11 */
 											/* selecting a different latch for the external port */
-	AM_RANGE(0xb000, 0xb00d) AM_WRITE(k007232_write_port_1_w)		/* 007232 (chip 2) */
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(ym2151_register_port_0_w)	/* YM2151 */
-	AM_RANGE(0xc001, 0xc001) AM_WRITE(ym2151_data_port_0_w)		/* YM2151 */
+	AM_RANGE(0xb000, 0xb00d) AM_DEVWRITE("konami2", k007232_w)		/* 007232 (chip 2) */
+	AM_RANGE(0xc000, 0xc001) AM_DEVWRITE("ym", ym2151_w)		/* YM2151 */
 	AM_RANGE(0xf000, 0xf000) AM_WRITE(SMH_NOP)					/* ??? */
 ADDRESS_MAP_END
 
@@ -307,9 +308,9 @@ INPUT_PORTS_END
 
 
 
-static void chqflag_ym2151_irq_w(running_machine *machine, int data)
+static void chqflag_ym2151_irq_w(const device_config *device, int data)
 {
-	cpu_set_input_line(machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
+	cpu_set_input_line(device->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
 }
 
 
@@ -318,20 +319,20 @@ static const ym2151_interface ym2151_config =
 	chqflag_ym2151_irq_w
 };
 
-static void volume_callback0(int v)
+static void volume_callback0(const device_config *device, int v)
 {
-	k007232_set_volume(0,0,(v & 0x0f)*0x11,0);
-	k007232_set_volume(0,1,0,(v >> 4)*0x11);
+	k007232_set_volume(device,0,(v & 0x0f)*0x11,0);
+	k007232_set_volume(device,1,0,(v >> 4)*0x11);
 }
 
-static WRITE8_HANDLER( k007232_extvolume_w )
+static WRITE8_DEVICE_HANDLER( k007232_extvolume_w )
 {
-	k007232_set_volume(1,1,(data & 0x0f)*0x11/2,(data >> 4)*0x11/2);
+	k007232_set_volume(device,1,(data & 0x0f)*0x11/2,(data >> 4)*0x11/2);
 }
 
-static void volume_callback1(int v)
+static void volume_callback1(const device_config *device, int v)
 {
-	k007232_set_volume(1,0,(v & 0x0f)*0x11/2,(v >> 4)*0x11/2);
+	k007232_set_volume(device,0,(v & 0x0f)*0x11/2,(v >> 4)*0x11/2);
 }
 
 static const k007232_interface k007232_interface_1 =
@@ -347,11 +348,11 @@ static const k007232_interface k007232_interface_2 =
 static MACHINE_DRIVER_START( chqflag )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", KONAMI,XTAL_24MHz/8)	/* 052001 (verified on pcb) */
+	MDRV_CPU_ADD("maincpu", KONAMI,XTAL_24MHz/8)	/* 052001 (verified on pcb) */
 	MDRV_CPU_PROGRAM_MAP(chqflag_readmem,chqflag_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(chqflag_interrupt,16)	/* ? */
 
-	MDRV_CPU_ADD("audio", Z80, XTAL_3_579545MHz) /* verified on pcb */
+	MDRV_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(chqflag_readmem_sound,chqflag_writemem_sound)
 
 	MDRV_QUANTUM_TIME(HZ(600))
@@ -359,7 +360,7 @@ static MACHINE_DRIVER_START( chqflag )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -372,34 +373,34 @@ static MACHINE_DRIVER_START( chqflag )
 	MDRV_VIDEO_UPDATE(chqflag)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2151, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ym2151_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.80)
-	MDRV_SOUND_ROUTE(1, "right", 0.80)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.80)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.80)
 
 	MDRV_SOUND_ADD("konami1", K007232, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(k007232_interface_1)
-	MDRV_SOUND_ROUTE(0, "left", 0.20)
-	MDRV_SOUND_ROUTE(0, "right", 0.20)
-	MDRV_SOUND_ROUTE(1, "left", 0.20)
-	MDRV_SOUND_ROUTE(1, "right", 0.20)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.20)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.20)
+	MDRV_SOUND_ROUTE(1, "lspeaker", 0.20)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.20)
 
 	MDRV_SOUND_ADD("konami2", K007232, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(k007232_interface_2)
-	MDRV_SOUND_ROUTE(0, "left", 0.20)
-	MDRV_SOUND_ROUTE(1, "right", 0.20)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.20)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.20)
 MACHINE_DRIVER_END
 
 ROM_START( chqflag )
-	ROM_REGION( 0x58800, "main", 0 )	/* 052001 code */
+	ROM_REGION( 0x58800, "maincpu", 0 )	/* 052001 code */
 	ROM_LOAD( "717h02",		0x050000, 0x008000, CRC(f5bd4e78) SHA1(7bab02152d055a6c3a322c88e7ee0b85a39d8ef2) )	/* banked ROM */
 	ROM_CONTINUE(			0x008000, 0x008000 )				/* fixed ROM */
 	ROM_LOAD( "717e10",		0x010000, 0x040000, CRC(72fc56f6) SHA1(433ea9a33f0230e046c731c70060f6a38db14ac7) )	/* banked ROM */
 	/* extra memory for banked RAM */
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the SOUND CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the SOUND CPU */
 	ROM_LOAD( "717e01",		0x000000, 0x008000, CRC(966b8ba8) SHA1(ab7448cb61fa5922b1d8ae5f0d0f42d734ed4f93) )
 
     ROM_REGION( 0x100000, "gfx1", 0 )	/* graphics (addressable by the main CPU) */
@@ -423,13 +424,13 @@ ROM_START( chqflag )
 ROM_END
 
 ROM_START( chqflagj )
-	ROM_REGION( 0x58800, "main", 0 )	/* 052001 code */
+	ROM_REGION( 0x58800, "maincpu", 0 )	/* 052001 code */
 	ROM_LOAD( "717j02.bin",	0x050000, 0x008000, CRC(05355daa) SHA1(130ddbc289c077565e44f33c63a63963e6417e19) )	/* banked ROM */
 	ROM_CONTINUE(			0x008000, 0x008000 )				/* fixed ROM */
 	ROM_LOAD( "717e10",		0x010000, 0x040000, CRC(72fc56f6) SHA1(433ea9a33f0230e046c731c70060f6a38db14ac7) )	/* banked ROM */
 	/* extra memory for banked RAM */
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the SOUND CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the SOUND CPU */
 	ROM_LOAD( "717e01",		0x000000, 0x008000, CRC(966b8ba8) SHA1(ab7448cb61fa5922b1d8ae5f0d0f42d734ed4f93) )
 
     ROM_REGION( 0x100000, "gfx1", 0 )	/* graphics (addressable by the main CPU) */
@@ -456,11 +457,11 @@ ROM_END
 
 static DRIVER_INIT( chqflag )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 
 	konami_rom_deinterleave_2(machine, "gfx1");
 	paletteram = &RAM[0x58000];
 }
 
-GAME( 1988, chqflag,        0, chqflag, chqflag, chqflag, ROT90, "Konami", "Chequered Flag", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND )
-GAME( 1988, chqflagj, chqflag, chqflag, chqflag, chqflag, ROT90, "Konami", "Chequered Flag (Japan)", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND )
+GAMEL( 1988, chqflag,        0, chqflag, chqflag, chqflag, ROT90, "Konami", "Chequered Flag", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND, layout_chqflag )
+GAMEL( 1988, chqflagj, chqflag, chqflag, chqflag, chqflag, ROT90, "Konami", "Chequered Flag (Japan)", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND, layout_chqflag )

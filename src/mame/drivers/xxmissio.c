@@ -23,8 +23,8 @@ extern UINT8 *xxmissio_spriteram;
 static UINT8 xxmissio_status;
 
 
-WRITE8_HANDLER( xxmissio_scroll_x_w );
-WRITE8_HANDLER( xxmissio_scroll_y_w );
+WRITE8_DEVICE_HANDLER( xxmissio_scroll_x_w );
+WRITE8_DEVICE_HANDLER( xxmissio_scroll_y_w );
 WRITE8_HANDLER( xxmissio_flipscreen_w );
 
 READ8_HANDLER( xxmissio_bgram_r );
@@ -104,10 +104,8 @@ static MACHINE_START( xxmissio )
 static ADDRESS_MAP_START( map1, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 
-	AM_RANGE(0x8000, 0x8000) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0x8001, 0x8001) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
-	AM_RANGE(0x8002, 0x8002) AM_READWRITE(ym2203_status_port_1_r, ym2203_control_port_1_w)
-	AM_RANGE(0x8003, 0x8003) AM_READWRITE(ym2203_read_port_1_r, ym2203_write_port_1_w)
+	AM_RANGE(0x8000, 0x8001) AM_DEVREADWRITE("ym1", ym2203_r, ym2203_w)
+	AM_RANGE(0x8002, 0x8003) AM_DEVREADWRITE("ym2", ym2203_r, ym2203_w)
 
 	AM_RANGE(0xa000, 0xa000) AM_READ_PORT("P1")
 	AM_RANGE(0xa001, 0xa001) AM_READ_PORT("P2")
@@ -130,10 +128,8 @@ static ADDRESS_MAP_START( map2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK(1)
 
-	AM_RANGE(0x8000, 0x8000) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0x8001, 0x8001) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
-	AM_RANGE(0x8002, 0x8002) AM_READWRITE(ym2203_status_port_1_r, ym2203_control_port_1_w)
-	AM_RANGE(0x8003, 0x8003) AM_READWRITE(ym2203_read_port_1_r, ym2203_write_port_1_w)
+	AM_RANGE(0x8000, 0x8001) AM_DEVREADWRITE("ym1", ym2203_r, ym2203_w)
+	AM_RANGE(0x8002, 0x8003) AM_DEVREADWRITE("ym2", ym2203_r, ym2203_w)
 	AM_RANGE(0x8006, 0x8006) AM_WRITE(xxmissio_bank_sel_w)
 
 	AM_RANGE(0xa000, 0xa000) AM_READ_PORT("P1")
@@ -286,10 +282,10 @@ static const ym2203_interface ym2203_interface_1 =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		input_port_2_r,
-		input_port_3_r,
-		NULL,
-		NULL
+		DEVCB_INPUT_PORT("DSW1"),
+		DEVCB_INPUT_PORT("DSW2"),
+		DEVCB_NULL,
+		DEVCB_NULL
 	},
 	NULL
 };
@@ -299,10 +295,10 @@ static const ym2203_interface ym2203_interface_2 =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		NULL,
-		NULL,
-		xxmissio_scroll_x_w,
-		xxmissio_scroll_y_w
+		DEVCB_NULL,
+		DEVCB_NULL,
+		DEVCB_HANDLER(xxmissio_scroll_x_w),
+		DEVCB_HANDLER(xxmissio_scroll_y_w)
 	},
 	NULL
 };
@@ -310,9 +306,9 @@ static const ym2203_interface ym2203_interface_2 =
 static MACHINE_DRIVER_START( xxmissio )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,12000000/4)	/* 3.0MHz */
+	MDRV_CPU_ADD("maincpu", Z80,12000000/4)	/* 3.0MHz */
 	MDRV_CPU_PROGRAM_MAP(map1,0)
-	MDRV_CPU_VBLANK_INT("main", xxmissio_interrupt_m)
+	MDRV_CPU_VBLANK_INT("screen", xxmissio_interrupt_m)
 
 	MDRV_CPU_ADD("sub", Z80,12000000/4)	/* 3.0MHz */
 	MDRV_CPU_PROGRAM_MAP(map2,0)
@@ -323,7 +319,7 @@ static MACHINE_DRIVER_START( xxmissio )
 	MDRV_MACHINE_START(xxmissio)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -357,7 +353,7 @@ MACHINE_DRIVER_END
 /****************************************************************************/
 
 ROM_START( xxmissio )
-	ROM_REGION( 0x10000, "main", 0 ) /* CPU1 */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* CPU1 */
 	ROM_LOAD( "xx1.4l", 0x0000,  0x8000, CRC(86e07709) SHA1(7bfb7540b6509f07a6388ca2da6b3892f5b1df74) )
 
 	ROM_REGION( 0x10000, "sub", 0 ) /* CPU2 */

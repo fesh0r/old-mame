@@ -63,20 +63,20 @@ extern VIDEO_UPDATE( yiear );
 
 /* in audio/trackfld.c */
 extern WRITE8_HANDLER( konami_SN76496_latch_w );
-extern WRITE8_HANDLER( konami_SN76496_0_w );
+extern WRITE8_DEVICE_HANDLER( konami_SN76496_w );
 
 
-static READ8_HANDLER( yiear_speech_r )
+static READ8_DEVICE_HANDLER( yiear_speech_r )
 {
-	if (vlm5030_bsy()) return 1;
+	if (vlm5030_bsy(device)) return 1;
 	else return 0;
 }
 
-static WRITE8_HANDLER( yiear_VLM5030_control_w )
+static WRITE8_DEVICE_HANDLER( yiear_VLM5030_control_w )
 {
 	/* bit 0 is latch direction */
-	vlm5030_st( ( data >> 1 ) & 1 );
-	vlm5030_rst( ( data >> 2 ) & 1 );
+	vlm5030_st( device, ( data >> 1 ) & 1 );
+	vlm5030_rst( device, ( data >> 2 ) & 1 );
 }
 
 static INTERRUPT_GEN( yiear_nmi_interrupt )
@@ -87,12 +87,12 @@ static INTERRUPT_GEN( yiear_nmi_interrupt )
 
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0000) AM_READ(yiear_speech_r)
+	AM_RANGE(0x0000, 0x0000) AM_DEVREAD("vlm", yiear_speech_r)
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(yiear_control_w)
 	AM_RANGE(0x4800, 0x4800) AM_WRITE(konami_SN76496_latch_w)
-	AM_RANGE(0x4900, 0x4900) AM_WRITE(konami_SN76496_0_w)
-	AM_RANGE(0x4a00, 0x4a00) AM_WRITE(yiear_VLM5030_control_w)
-	AM_RANGE(0x4b00, 0x4b00) AM_WRITE(vlm5030_data_w)
+	AM_RANGE(0x4900, 0x4900) AM_DEVWRITE("sn", konami_SN76496_w)
+	AM_RANGE(0x4a00, 0x4a00) AM_DEVWRITE("vlm", yiear_VLM5030_control_w)
+	AM_RANGE(0x4b00, 0x4b00) AM_DEVWRITE("vlm", vlm5030_data_w)
 	AM_RANGE(0x4c00, 0x4c00) AM_READ_PORT("DSW1")
 	AM_RANGE(0x4d00, 0x4d00) AM_READ_PORT("DSW2")
 	AM_RANGE(0x4e00, 0x4e00) AM_READ_PORT("SYSTEM")
@@ -244,13 +244,13 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( yiear )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809,18432000/16)	/* ???? */
+	MDRV_CPU_ADD("maincpu", M6809,18432000/16)	/* ???? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 	MDRV_CPU_PERIODIC_INT(yiear_nmi_interrupt,500)	/* music tempo (correct frequency unknown) */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -282,7 +282,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( yiear )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "i08.10d",      0x08000, 0x4000, CRC(e2d7458b) SHA1(1b192130b5cd879ab686a21aa2b518c90edd89aa) )
 	ROM_LOAD( "i07.8d",       0x0c000, 0x4000, CRC(7db7442e) SHA1(d604a995a5505251904447ad697fc9e7f94bf241) )
 
@@ -304,7 +304,7 @@ ROM_START( yiear )
 ROM_END
 
 ROM_START( yiear2 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "d12_8.bin",    0x08000, 0x4000, CRC(49ecd9dd) SHA1(15692029351e87837cc5a251947ff315fd723aa4) )
 	ROM_LOAD( "d14_7.bin",    0x0c000, 0x4000, CRC(bc2e1208) SHA1(a5a0c78ff4e02bd7da3eab3842dfe99956e74155) )
 

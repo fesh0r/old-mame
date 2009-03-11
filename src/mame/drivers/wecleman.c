@@ -278,6 +278,8 @@ TODO:
 #include "sound/2151intf.h"
 #include "sound/k007232.h"
 
+#include "wecleman.lh"
+
 /* Variables only used here: */
 static UINT16 *blitter_regs;
 static int multiply_reg[2];
@@ -685,9 +687,9 @@ static WRITE8_HANDLER( multiply_w )
 
 ** sample playing ends when a byte with bit 7 set is reached **/
 
-static WRITE8_HANDLER( wecleman_K00723216_bank_w )
+static WRITE8_DEVICE_HANDLER( wecleman_K00723216_bank_w )
 {
-	k007232_set_bank( 0, 0, ~data&1 );	//* (wecleman062gre)
+	k007232_set_bank(device, 0, ~data&1 );	//* (wecleman062gre)
 }
 
 static ADDRESS_MAP_START( wecleman_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -698,10 +700,9 @@ static ADDRESS_MAP_START( wecleman_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9000, 0x9001) AM_WRITE(multiply_w)	// Protection
 	AM_RANGE(0x9006, 0x9006) AM_WRITE(SMH_NOP)	// ?
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)	// From main CPU
-	AM_RANGE(0xb000, 0xb00d) AM_READWRITE(k007232_read_port_0_r, k007232_write_port_0_w)	// K007232 (Reading offset 5/b triggers the sample)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(ym2151_register_port_0_w)	// YM2151
-	AM_RANGE(0xc001, 0xc001) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
-	AM_RANGE(0xf000, 0xf000) AM_WRITE(wecleman_K00723216_bank_w)	// Samples banking
+	AM_RANGE(0xb000, 0xb00d) AM_DEVREADWRITE("konami", k007232_r, k007232_w)	// K007232 (Reading offset 5/b triggers the sample)
+	AM_RANGE(0xc000, 0xc001) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
+	AM_RANGE(0xf000, 0xf000) AM_DEVWRITE("konami", wecleman_K00723216_bank_w)	// Samples banking
 ADDRESS_MAP_END
 
 
@@ -721,7 +722,13 @@ static WRITE16_HANDLER( hotchase_soundlatch_w )
 
 static WRITE8_HANDLER( hotchase_sound_control_w )
 {
+	const device_config *sound[3];
+
 	int reg[8];
+
+	sound[0] = devtag_get_device(space->machine, "konami1");
+	sound[1] = devtag_get_device(space->machine, "konami2");
+	sound[2] = devtag_get_device(space->machine, "konami3");
 
 	reg[offset] = data;
 
@@ -738,7 +745,7 @@ static WRITE8_HANDLER( hotchase_sound_control_w )
                 ++------ chip select ( 0:chip 1, 1:chip2, 2:chip3)
                 data&0x0f left volume  (data>>4)&0x0f right volume
             */
-		  k007232_set_volume( offset>>1, offset&1,  (data&0x0f) * 0x08, (data>>4) * 0x08 );
+		  k007232_set_volume( sound[offset>>1], offset&1,  (data&0x0f) * 0x08, (data>>4) * 0x08 );
 		  break;
 
 		case 0x06:	/* Bankswitch for chips 0 & 1 */
@@ -750,8 +757,8 @@ static WRITE8_HANDLER( hotchase_sound_control_w )
 			// bit 6: chip 2 - ch0 ?
 			// bit 7: chip 2 - ch1 ?
 
-			k007232_set_bank( 0, bank0_a, bank0_b );
-			k007232_set_bank( 1, bank1_a, bank1_b );
+			k007232_set_bank( sound[0], bank0_a, bank0_b );
+			k007232_set_bank( sound[1], bank1_a, bank1_b );
 		}
 		break;
 
@@ -760,7 +767,7 @@ static WRITE8_HANDLER( hotchase_sound_control_w )
 			int bank2_a = (data >> 0) & 7;
 			int bank2_b = (data >> 3) & 7;
 
-			k007232_set_bank( 2, bank2_a, bank2_b );
+			k007232_set_bank( sound[2], bank2_a, bank2_b );
 		}
 		break;
 	}
@@ -768,26 +775,21 @@ static WRITE8_HANDLER( hotchase_sound_control_w )
 
 /* Read and write handlers for one K007232 chip:
    even and odd register are mapped swapped */
-#define HOTCHASE_k007232_RW(_chip_) \
-static READ8_HANDLER( hotchase_k007232_##_chip_##_r ) \
-{ \
-	return k007232_read_port_##_chip_##_r(space, offset ^ 1); \
-} \
-static WRITE8_HANDLER( hotchase_k007232_##_chip_##_w ) \
-{ \
-	k007232_write_port_##_chip_##_w(space, offset ^ 1, data); \
-} \
+static READ8_DEVICE_HANDLER( hotchase_k007232_r )
+{
+	return k007232_r(device, offset ^ 1);
+}
 
-/* 3 x K007232 */
-HOTCHASE_k007232_RW(0)
-HOTCHASE_k007232_RW(1)
-HOTCHASE_k007232_RW(2)
+static WRITE8_DEVICE_HANDLER( hotchase_k007232_w )
+{
+	k007232_w(device, offset ^ 1, data);
+}
 
 static ADDRESS_MAP_START( hotchase_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM
-	AM_RANGE(0x1000, 0x100d) AM_READWRITE(hotchase_k007232_0_r, hotchase_k007232_0_w)	// 3 x K007232
-	AM_RANGE(0x2000, 0x200d) AM_READWRITE(hotchase_k007232_1_r, hotchase_k007232_1_w)
-	AM_RANGE(0x3000, 0x300d) AM_READWRITE(hotchase_k007232_2_r, hotchase_k007232_2_w)
+	AM_RANGE(0x1000, 0x100d) AM_DEVREADWRITE("konami1", hotchase_k007232_r, hotchase_k007232_w)	// 3 x K007232
+	AM_RANGE(0x2000, 0x200d) AM_DEVREADWRITE("konami2", hotchase_k007232_r, hotchase_k007232_w)
+	AM_RANGE(0x3000, 0x300d) AM_DEVREADWRITE("konami3", hotchase_k007232_r, hotchase_k007232_w)
 	AM_RANGE(0x4000, 0x4007) AM_WRITE(hotchase_sound_control_w)	// Sound volume, banking, etc.
 	AM_RANGE(0x5000, 0x5000) AM_WRITE(SMH_NOP)	// ? (written with 0 on IRQ, 1 on FIRQ)
 	AM_RANGE(0x6000, 0x6000) AM_READ(soundlatch_r)	// From main CPU (Read on IRQ)
@@ -1074,13 +1076,13 @@ static INTERRUPT_GEN( wecleman_interrupt )
 
 static MACHINE_RESET( wecleman )
 {
-	k007232_set_bank( 0, 0, 1 );
+	k007232_set_bank( devtag_get_device(machine, "konami"), 0, 1 );
 }
 
 static MACHINE_DRIVER_START( wecleman )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 10000000)	/* Schems show 10MHz */
+	MDRV_CPU_ADD("maincpu", M68000, 10000000)	/* Schems show 10MHz */
 	MDRV_CPU_PROGRAM_MAP(wecleman_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(wecleman_interrupt,5 + 1)	/* in order to read the inputs once per frame */
 
@@ -1088,7 +1090,7 @@ static MACHINE_DRIVER_START( wecleman )
 	MDRV_CPU_PROGRAM_MAP(wecleman_sub_map,0)
 
 	/* Schems: can be reset, no nmi, soundlatch, 3.58MHz */
-	MDRV_CPU_ADD("audio", Z80, 3579545)
+	MDRV_CPU_ADD("audiocpu", Z80, 3579545)
 	MDRV_CPU_PROGRAM_MAP(wecleman_sound_map,0)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
@@ -1096,7 +1098,7 @@ static MACHINE_DRIVER_START( wecleman )
 	MDRV_MACHINE_RESET(wecleman)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
@@ -1135,14 +1137,14 @@ static INTERRUPT_GEN( hotchase_sound_timer )
 static MACHINE_DRIVER_START( hotchase )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 10000000)	/* 10 MHz - PCB is drawn in one set's readme */
+	MDRV_CPU_ADD("maincpu", M68000, 10000000)	/* 10 MHz - PCB is drawn in one set's readme */
 	MDRV_CPU_PROGRAM_MAP(hotchase_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_CPU_ADD("sub", M68000, 10000000)	/* 10 MHz - PCB is drawn in one set's readme */
 	MDRV_CPU_PROGRAM_MAP(hotchase_sub_map,0)
 
-	MDRV_CPU_ADD("audio", M6809, 3579545 / 2)	/* 3.579/2 MHz - PCB is drawn in one set's readme */
+	MDRV_CPU_ADD("audiocpu", M6809, 3579545 / 2)	/* 3.579/2 MHz - PCB is drawn in one set's readme */
 	MDRV_CPU_PROGRAM_MAP(hotchase_sound_map,0)
 	MDRV_CPU_PERIODIC_INT( hotchase_sound_timer, 496 )
 
@@ -1151,7 +1153,7 @@ static MACHINE_DRIVER_START( hotchase )
 	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1187,7 +1189,7 @@ MACHINE_DRIVER_END
 
 ROM_START( wecleman )
 
-	ROM_REGION( 0x40000, "main", 0 )	/* Main CPU Code */
+	ROM_REGION( 0x40000, "maincpu", 0 )	/* Main CPU Code */
 	ROM_LOAD16_BYTE( "602f08.17h", 0x00000, 0x10000, CRC(493b79d3) SHA1(9625e3b65c211d5081d8ed8977de287eff100842) )
 	ROM_LOAD16_BYTE( "602f11.23h", 0x00001, 0x10000, CRC(6bb4f1fa) SHA1(2cfb7885b42b49dab9892e8dfd54914b64eeab06) )
 	ROM_LOAD16_BYTE( "602a09.18h", 0x20000, 0x10000, CRC(8a9d756f) SHA1(12605e86ce29e6300b5400720baac7b0293d9e66) )
@@ -1197,7 +1199,7 @@ ROM_START( wecleman )
 	ROM_LOAD16_BYTE( "602a06.18a", 0x00000, 0x08000, CRC(e12c0d11) SHA1(991afd48bf1b2c303b975ce80c754e5972c39111) )
 	ROM_LOAD16_BYTE( "602a07.20a", 0x00001, 0x08000, CRC(47968e51) SHA1(9b01b2c6a14dd80327a8f66a7f1994471a4bc38e) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU Code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* Sound CPU Code */
 	ROM_LOAD( "602a01.6d",  0x00000, 0x08000, CRC(deafe5f1) SHA1(4cfbe2841233b1222c22160af7287b7a7821c3a0) )
 
 	ROM_REGION( 0x200000 * 2, "gfx1", 0 )	/* x2, do not dispose, zooming sprites */
@@ -1274,7 +1276,7 @@ static DRIVER_INIT( wecleman )
 {
 	int i, len;
 	UINT8 *RAM;
-//  UINT16 *RAM1 = (UINT16 *) memory_region(machine, "main");   /* Main CPU patches */
+//  UINT16 *RAM1 = (UINT16 *) memory_region(machine, "maincpu");   /* Main CPU patches */
 //  RAM1[0x08c2/2] = 0x601e;    // faster self test
 
 	/* Decode GFX Roms - Compensate for the address lines scrambling */
@@ -1317,7 +1319,7 @@ static DRIVER_INIT( wecleman )
 ***************************************************************************/
 
 ROM_START( hotchase )
-	ROM_REGION( 0x40000, "main", 0 )	/* Main Code */
+	ROM_REGION( 0x40000, "maincpu", 0 )	/* Main Code */
 	ROM_LOAD16_BYTE( "763k05", 0x000000, 0x010000, CRC(f34fef0b) SHA1(9edaf6da988348cb32d5686fe7a67fb92b1c9777) )
 	ROM_LOAD16_BYTE( "763k04", 0x000001, 0x010000, CRC(60f73178) SHA1(49c919d09fa464b205d7eccce337349e3a633a14) )
 	ROM_LOAD16_BYTE( "763k03", 0x020000, 0x010000, CRC(28e3a444) SHA1(106b22a3cbe8301eac2e46674a267b96e72ac72f) )
@@ -1327,7 +1329,7 @@ ROM_START( hotchase )
 	ROM_LOAD16_BYTE( "763k07", 0x000000, 0x010000, CRC(ae12fa90) SHA1(7f76f09916fe152411b5af3c504ee7be07497ef4) )
 	ROM_LOAD16_BYTE( "763k06", 0x000001, 0x010000, CRC(b77e0c07) SHA1(98bf492ac889d31419df706029fdf3d51b85c936) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* Sound Code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* Sound Code */
 	ROM_LOAD( "763f01", 0x8000, 0x8000, CRC(4fddd061) SHA1(ff0aa18605612f6102107a6be1f93ae4c5edc84f) )
 
 	ROM_REGION( 0x300000 * 2, "gfx1", 0 )	/* x2, do not dispose, zooming sprites */
@@ -1415,7 +1417,7 @@ static void hotchase_sprite_decode( running_machine *machine, int num16_banks, i
 /* Unpack sprites data and do some patching */
 static DRIVER_INIT( hotchase )
 {
-//  UINT16 *RAM1 = (UINT16) memory_region(machine, "main"); /* Main CPU patches */
+//  UINT16 *RAM1 = (UINT16) memory_region(machine, "maincpu"); /* Main CPU patches */
 //  RAM[0x1140/2] = 0x0015; RAM[0x195c/2] = 0x601A; // faster self test
 
 	UINT8 *RAM;
@@ -1440,5 +1442,5 @@ static DRIVER_INIT( hotchase )
                                 Game driver(s)
 ***************************************************************************/
 
-GAME( 1986, wecleman, 0, wecleman, wecleman, wecleman, ROT0, "Konami", "WEC Le Mans 24", 0 )
-GAME( 1988, hotchase, 0, hotchase, hotchase, hotchase, ROT0, "Konami", "Hot Chase", 0 )
+GAMEL( 1986, wecleman, 0, wecleman, wecleman, wecleman, ROT0, "Konami", "WEC Le Mans 24", 0, layout_wecleman )
+GAMEL( 1988, hotchase, 0, hotchase, hotchase, hotchase, ROT0, "Konami", "Hot Chase", 0, layout_wecleman )

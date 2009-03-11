@@ -58,9 +58,9 @@ extern UINT16 *tumblep_pf1_data,*tumblep_pf2_data;
 /******************************************************************************/
 
 #ifdef UNUSED_FUNCTION
-static WRITE16_HANDLER( tumblep_oki_w )
+static WRITE16_DEVICE_HANDLER( tumblep_oki_w )
 {
-	okim6295_data_0_w(0,data&0xff);
+	okim6295_w(0,data&0xff);
     /* STUFF IN OTHER BYTE TOO..*/
 }
 
@@ -128,24 +128,12 @@ ADDRESS_MAP_END
 
 /******************************************************************************/
 
-static WRITE8_HANDLER( YM2151_w )
-{
-	switch (offset) {
-	case 0:
-		ym2151_register_port_0_w(space,0,data);
-		break;
-	case 1:
-		ym2151_data_port_0_w(space,0,data);
-		break;
-	}
-}
-
 /* Physical memory map (21 bits) */
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x000000, 0x00ffff) AM_ROM
 	AM_RANGE(0x100000, 0x100001) AM_NOP	/* YM2203 - this board doesn't have one */
-	AM_RANGE(0x110000, 0x110001) AM_READWRITE(ym2151_status_port_0_r, YM2151_w)
-	AM_RANGE(0x120000, 0x120001) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w)
+	AM_RANGE(0x110000, 0x110001) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
+	AM_RANGE(0x120000, 0x120001) AM_DEVREADWRITE("oki", okim6295_r, okim6295_w)
 	AM_RANGE(0x130000, 0x130001) AM_NOP	/* This board only has 1 oki chip */
 	AM_RANGE(0x140000, 0x140001) AM_READ(soundlatch_r)
 	AM_RANGE(0x1f0000, 0x1f1fff) AM_READWRITE(SMH_BANK8, SMH_BANK8)
@@ -286,9 +274,9 @@ GFXDECODE_END
 
 /***************************************************************************/
 
-static void sound_irq(running_machine *machine, int state)
+static void sound_irq(const device_config *device, int state)
 {
-	cpu_set_input_line(machine->cpu[1],1,state); /* IRQ 2 */
+	cpu_set_input_line(device->machine->cpu[1],1,state); /* IRQ 2 */
 }
 
 static const ym2151_interface ym2151_config =
@@ -299,15 +287,15 @@ static const ym2151_interface ym2151_config =
 static MACHINE_DRIVER_START( tumblep )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 14000000)
+	MDRV_CPU_ADD("maincpu", M68000, 14000000)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
-	MDRV_CPU_ADD("audio", H6280, 32220000/8)	/* Custom chip 45; Audio section crystal is 32.220 MHz */
+	MDRV_CPU_ADD("audiocpu", H6280, 32220000/8)	/* Custom chip 45; Audio section crystal is 32.220 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(58)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -321,27 +309,27 @@ static MACHINE_DRIVER_START( tumblep )
 	MDRV_VIDEO_UPDATE(tumblep)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2151, 32220000/9)
 	MDRV_SOUND_CONFIG(ym2151_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.45)
-	MDRV_SOUND_ROUTE(1, "right", 0.45)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.45)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.45)
 
 	MDRV_SOUND_ADD("oki", OKIM6295, 1023924)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.50)
 MACHINE_DRIVER_END
 
 /******************************************************************************/
 
 ROM_START( tumblep )
-	ROM_REGION( 0x80000, "main", 0 ) /* 68000 code */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE("hl00-1.f12", 0x00000, 0x40000, CRC(fd697c1b) SHA1(1a3dee4c7383f2bc2d73037e80f8f5d8297e7433) )
 	ROM_LOAD16_BYTE("hl01-1.f13", 0x00001, 0x40000, CRC(d5a62a3f) SHA1(7249563993fa8e1f19ddae51306d4a576b5cb206) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* Sound cpu */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* Sound cpu */
 	ROM_LOAD( "hl02-.f16",    0x00000, 0x10000, CRC(a5cab888) SHA1(622f6adb01e31b8f3adbaed2b9900b54c5922c57) )
 
 	ROM_REGION( 0x080000, "gfx1", ROMREGION_DISPOSE )
@@ -356,11 +344,11 @@ ROM_START( tumblep )
 ROM_END
 
 ROM_START( tumblepj )
-	ROM_REGION( 0x80000, "main", 0 ) /* 68000 code */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE("hk00-1.f12", 0x00000, 0x40000, CRC(2d3e4d3d) SHA1(0acc8b93bd49395904dff11c582bdbaccdbd3eef) )
 	ROM_LOAD16_BYTE("hk01-1.f13", 0x00001, 0x40000, CRC(56912a00) SHA1(0545f6bff2a0aa2f36adda0f9d73b165387abc3a) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* Sound cpu */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* Sound cpu */
 	ROM_LOAD( "hl02-.f16",    0x00000, 0x10000, CRC(a5cab888) SHA1(622f6adb01e31b8f3adbaed2b9900b54c5922c57) )
 
 	ROM_REGION( 0x080000, "gfx1", ROMREGION_DISPOSE )
@@ -380,7 +368,7 @@ ROM_END
 void tumblep_patch_code(UINT16 offset)
 {
 	/* A hack which enables all Dip Switches effects */
-	UINT16 *RAM = (UINT16 *)memory_region(machine, "main");
+	UINT16 *RAM = (UINT16 *)memory_region(machine, "maincpu");
 	RAM[(offset + 0)/2] = 0x0240;
 	RAM[(offset + 2)/2] = 0xffff;	// andi.w  #$f3ff, D0
 }

@@ -39,7 +39,7 @@ static void a600xl_mmu(running_machine *machine, UINT8 new_mmu);
 
 static void pokey_reset(running_machine *machine);
 
-void atari_interrupt_cb(running_machine *machine, int mask)
+void atari_interrupt_cb(const device_config *device, int mask)
 {
 
 	if (VERBOSE_POKEY)
@@ -68,7 +68,7 @@ void atari_interrupt_cb(running_machine *machine, int mask)
 			logerror("atari interrupt_cb TIMR1\n");
 	}
 
-	cpu_set_input_line(machine->cpu[0], 0, HOLD_LINE);
+	cpu_set_input_line(device->machine->cpu[0], 0, HOLD_LINE);
 }
 
 /**************************************************************
@@ -77,44 +77,69 @@ void atari_interrupt_cb(running_machine *machine, int mask)
  *
  **************************************************************/
 
-static READ8_HANDLER(atari_pia_pa_r)
+static READ8_DEVICE_HANDLER(atari_pia_pa_r)
 {
-	return atari_input_disabled() ? 0xFF : input_port_read_safe(space->machine, "djoy_0_1", 0);
+	return atari_input_disabled() ? 0xFF : input_port_read_safe(device->machine, "djoy_0_1", 0);
 }
 
-static READ8_HANDLER(atari_pia_pb_r)
+static READ8_DEVICE_HANDLER(atari_pia_pb_r)
 {
-	return atari_input_disabled() ? 0xFF : input_port_read_safe(space->machine, "djoy_2_3", 0);
+	return atari_input_disabled() ? 0xFF : input_port_read_safe(device->machine, "djoy_2_3", 0);
 }
 
-static WRITE8_HANDLER(a600xl_pia_pb_w) { a600xl_mmu(space->machine, data); }
-static WRITE8_HANDLER(a800xl_pia_pb_w) { a800xl_mmu(space->machine, data); }
+static WRITE8_DEVICE_HANDLER(a600xl_pia_pb_w) { a600xl_mmu(device->machine, data); }
+static WRITE8_DEVICE_HANDLER(a800xl_pia_pb_w) { a800xl_mmu(device->machine, data); }
 
-#ifdef MESS
-extern WRITE8_HANDLER(atari_pia_cb2_w);
-#else
-#define atari_pia_cb2_w		(0)
+#ifndef MESS
+WRITE_LINE_DEVICE_HANDLER(atari_pia_cb2_w) { }
 #endif
 
-static const pia6821_interface atari_pia_interface =
+const pia6821_interface atari_pia_interface =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ atari_pia_pa_r, atari_pia_pb_r, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ 0, 0, 0, atari_pia_cb2_w,
-	/*irqs   : A/B             */ 0, 0
+	DEVCB_HANDLER(atari_pia_pa_r),		/* port A in */
+	DEVCB_HANDLER(atari_pia_pb_r),	/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_NULL,		/* port A out */
+	DEVCB_NULL,		/* port B out */
+	DEVCB_NULL,		/* line CA2 out */
+	DEVCB_LINE(atari_pia_cb2_w),		/* port CB2 out */
+	DEVCB_NULL,		/* IRQA */
+	DEVCB_NULL		/* IRQB */
 };
 
-static const pia6821_interface a600xl_pia_interface =
+const pia6821_interface a600xl_pia_interface =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ atari_pia_pa_r, atari_pia_pb_r, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ 0, a600xl_pia_pb_w, 0, atari_pia_cb2_w,
-	/*irqs   : A/B             */ 0, 0
+	DEVCB_HANDLER(atari_pia_pa_r),		/* port A in */
+	DEVCB_HANDLER(atari_pia_pb_r),	/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_NULL,		/* port A out */
+	DEVCB_HANDLER(a600xl_pia_pb_w),		/* port B out */
+	DEVCB_NULL,		/* line CA2 out */
+	DEVCB_LINE(atari_pia_cb2_w),		/* port CB2 out */
+	DEVCB_NULL,		/* IRQA */
+	DEVCB_NULL		/* IRQB */
 };
 
-static const pia6821_interface a800xl_pia_interface =
+const pia6821_interface a800xl_pia_interface =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ atari_pia_pa_r, atari_pia_pb_r, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ 0, a800xl_pia_pb_w, 0, atari_pia_cb2_w,
-	/*irqs   : A/B             */ 0, 0
+	DEVCB_HANDLER(atari_pia_pa_r),		/* port A in */
+	DEVCB_HANDLER(atari_pia_pb_r),	/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_NULL,		/* port A out */
+	DEVCB_HANDLER(a800xl_pia_pb_w),		/* port B out */
+	DEVCB_NULL,		/* line CA2 out */
+	DEVCB_LINE(atari_pia_cb2_w),		/* port CB2 out */
+	DEVCB_NULL,		/* IRQA */
+	DEVCB_NULL		/* IRQB */
 };
 
 
@@ -146,7 +171,7 @@ void a600xl_mmu(running_machine *machine, UINT8 new_mmu)
 	}
 	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x5000, 0x57ff, 0, 0, rbank2, wbank2);
 	if (rbank2 == SMH_BANK2)
-		memory_set_bankptr(machine, 2, memory_region(machine, "main")+0x5000);
+		memory_set_bankptr(machine, 2, memory_region(machine, "maincpu")+0x5000);
 }
 
 void a800xl_mmu(running_machine *machine, UINT8 new_mmu)
@@ -161,20 +186,20 @@ void a800xl_mmu(running_machine *machine, UINT8 new_mmu)
 		logerror("%s MMU BIOS ROM\n", machine->gamedrv->name);
 		rbank3 = SMH_BANK3;
 		wbank3 = SMH_UNMAP;
-		base3 = memory_region(machine, "main")+0x14000;  /* 8K lo BIOS */
+		base3 = memory_region(machine, "maincpu")+0x14000;  /* 8K lo BIOS */
 		rbank4 = SMH_BANK4;
 		wbank4 = SMH_UNMAP;
-		base4 = memory_region(machine, "main")+0x15800;  /* 4K FP ROM + 8K hi BIOS */
+		base4 = memory_region(machine, "maincpu")+0x15800;  /* 4K FP ROM + 8K hi BIOS */
 	}
 	else
 	{
 		logerror("%s MMU BIOS RAM\n", machine->gamedrv->name);
 		rbank3 = SMH_BANK3;
 		wbank3 = SMH_BANK3;
-		base3 = memory_region(machine, "main")+0x0c000;  /* 8K RAM */
+		base3 = memory_region(machine, "maincpu")+0x0c000;  /* 8K RAM */
 		rbank4 = SMH_BANK4;
 		wbank4 = SMH_BANK4;
-		base4 = memory_region(machine, "main")+0x0d800;  /* 4K RAM + 8K RAM */
+		base4 = memory_region(machine, "maincpu")+0x0d800;  /* 4K RAM + 8K RAM */
 	}
 	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc000, 0xcfff, 0, 0, rbank3, wbank3);
 	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd800, 0xffff, 0, 0, rbank4, wbank4);
@@ -187,14 +212,14 @@ void a800xl_mmu(running_machine *machine, UINT8 new_mmu)
 		logerror("%s MMU BASIC RAM\n", machine->gamedrv->name);
 		rbank1 = SMH_BANK1;
 		wbank1 = SMH_BANK1;
-		base1 = memory_region(machine, "main")+0x0a000;  /* 8K RAM */
+		base1 = memory_region(machine, "maincpu")+0x0a000;  /* 8K RAM */
 	}
 	else
 	{
 		logerror("%s MMU BASIC ROM\n", machine->gamedrv->name);
 		rbank1 = SMH_BANK1;
 		wbank1 = SMH_UNMAP;
-		base1 = memory_region(machine, "main")+0x10000;  /* 8K BASIC */
+		base1 = memory_region(machine, "maincpu")+0x10000;  /* 8K BASIC */
 	}
 	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa000, 0xbfff, 0, 0, rbank1, wbank1);
 	memory_set_bankptr(machine, 1, base1);
@@ -205,14 +230,14 @@ void a800xl_mmu(running_machine *machine, UINT8 new_mmu)
 		logerror("%s MMU SELFTEST RAM\n", machine->gamedrv->name);
 		rbank2 = SMH_BANK2;
 		wbank2 = SMH_BANK2;
-		base2 = memory_region(machine, "main")+0x05000;  /* 0x0800 bytes */
+		base2 = memory_region(machine, "maincpu")+0x05000;  /* 0x0800 bytes */
 	}
 	else
 	{
 		logerror("%s MMU SELFTEST ROM\n", machine->gamedrv->name);
 		rbank2 = SMH_BANK2;
 		wbank2 = SMH_UNMAP;
-		base2 = memory_region(machine, "main")+0x15000;  /* 0x0800 bytes */
+		base2 = memory_region(machine, "maincpu")+0x15000;  /* 0x0800 bytes */
 	}
 	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x5000, 0x57ff, 0, 0, rbank2, wbank2);
 	memory_set_bankptr(machine, 2, base2);
@@ -517,6 +542,7 @@ static const UINT8 keys[64][4] = {
 
 void a800_handle_keyboard(running_machine *machine)
 {
+	const device_config *pokey = devtag_get_device(machine, "pokey");
 	static int atari_last = 0xff;
 	int i, modifiers, atari_code;
 	char tag[64];
@@ -544,16 +570,16 @@ void a800_handle_keyboard(running_machine *machine)
 				atari_last = atari_code;
 				if( (atari_code & 0x3f) == AKEY_BREAK )
 				{
-					pokey1_break_w(atari_code & 0x40);
+					pokey_break_w(pokey, atari_code & 0x40);
 					return;
 				}
-				pokey1_kbcode_w(atari_code, 1);
+				pokey_kbcode_w(pokey, atari_code, 1);
 				return;
 			}
 		}
 	}
 	/* remove key pressed status bit from skstat */
-	pokey1_kbcode_w(AKEY_NONE, 0);
+	pokey_kbcode_w(pokey, AKEY_NONE, 0);
 	atari_last = AKEY_NONE;
 }
 
@@ -562,6 +588,7 @@ void a800_handle_keyboard(running_machine *machine)
 /* absolutely no clue what to do here :((( */
 void a5200_handle_keypads(running_machine *machine)
 {
+	const device_config *pokey = devtag_get_device(machine, "pokey");
 	int i, modifiers;
 	static int atari_last = 0xff;
 
@@ -585,10 +612,10 @@ void a5200_handle_keypads(running_machine *machine)
 			atari_last = i;
 			if( i == 0 )
 			{
-				pokey1_break_w(i & 0x40);
+				pokey_break_w(pokey, i & 0x40);
 				return;
 			}
-			pokey1_kbcode_w((i << 1) | 0x21, 1);
+			pokey_kbcode_w(pokey, (i << 1) | 0x21, 1);
 			return;
 		}
 	}
@@ -598,16 +625,16 @@ void a5200_handle_keypads(running_machine *machine)
 	{
 		if (atari_last == 0xFE)
 			return;
-		pokey1_kbcode_w(0x61, 1);
-		//pokey1_break_w(0x40);
+		pokey_kbcode_w(pokey, 0x61, 1);
+		//pokey_break_w(pokey, 0x40);
 		atari_last = 0xFE;
 		return;
 	}
 	else if (atari_last == 0xFE)
-		pokey1_kbcode_w(0x21, 1);
+		pokey_kbcode_w(pokey, 0x21, 1);
 
 	/* remove key pressed status bit from skstat */
-	pokey1_kbcode_w(0xFF, 0);
+	pokey_kbcode_w(pokey, 0xFF, 0);
 	atari_last = 0xff;
 }
 
@@ -653,7 +680,7 @@ static void a800_setbank(running_machine *machine, int n)
 {
 	void *read_addr;
 	void *write_addr;
-	UINT8 *mem = memory_region(machine, "main");
+	UINT8 *mem = memory_region(machine, "maincpu");
 
 	switch (n)
 	{
@@ -691,8 +718,8 @@ static void a800_setbank(running_machine *machine, int n)
 
 static void pokey_reset(running_machine *machine)
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
-	pokey1_w(space,15,0);
+	const device_config *pokey = devtag_get_device(machine, "pokey");
+	pokey_w(pokey,15,0);
 }
 
 
@@ -716,17 +743,13 @@ static UINT8 console_read(const address_space *space)
 
 static void console_write(const address_space *space, UINT8 data)
 {
+	const device_config *dac = devtag_get_device(space->machine, "dac");
 	if (data & 0x08)
-		dac_data_w(0, -120);
+		dac_data_w(dac, -120);
 	else
-		dac_data_w(0, +120);
+		dac_data_w(dac, +120);
 }
 
-
-static void _pia_reset(running_machine *machine)
-{
-	pia_reset();
-}
 
 static void _antic_reset(running_machine *machine)
 {
@@ -734,7 +757,7 @@ static void _antic_reset(running_machine *machine)
 }
 
 
-static void atari_machine_start(running_machine *machine, int type, const pia6821_interface *pia_intf, int has_cart)
+static void atari_machine_start(running_machine *machine, int type, int has_cart)
 {
 	gtia_interface gtia_intf;
 
@@ -744,19 +767,12 @@ static void atari_machine_start(running_machine *machine, int type, const pia682
 	memset(&gtia_intf, 0, sizeof(gtia_intf));
 	if (input_port_by_tag(machine->portconfig, "console") != NULL)
 		gtia_intf.console_read = console_read;
-	if (sndti_exists(SOUND_DAC, 0))
+	if (devtag_get_device(machine, "dac") != NULL)
 		gtia_intf.console_write = console_write;
 	gtia_init(machine, &gtia_intf);
 
 	/* pokey */
 	add_reset_callback(machine, pokey_reset);
-
-	/* PIA */
-	if (pia_intf)
-	{
-		pia_config(machine, 0, pia_intf);
-		add_reset_callback(machine, _pia_reset);
-	}
 
 	/* ANTIC */
 	add_reset_callback(machine, _antic_reset);
@@ -809,12 +825,12 @@ static void atari_machine_start(running_machine *machine, int type, const pia682
 
 MACHINE_START( a400 )
 {
-	atari_machine_start(machine, ATARI_400, &atari_pia_interface, TRUE);
+	atari_machine_start(machine, ATARI_400, TRUE);
 }
 
 MACHINE_START( a600xl )
 {
-	atari_machine_start(machine, ATARI_600XL, &a600xl_pia_interface, TRUE);
+	atari_machine_start(machine, ATARI_600XL, TRUE);
 }
 
 
@@ -827,7 +843,7 @@ MACHINE_START( a600xl )
 
 MACHINE_START( a800 )
 {
-	atari_machine_start(machine, ATARI_800, &atari_pia_interface, TRUE);
+	atari_machine_start(machine, ATARI_800, TRUE);
 }
 
 
@@ -835,7 +851,7 @@ MACHINE_START( a800 )
 #ifdef MESS
 DEVICE_IMAGE_LOAD( a800_cart )
 {
-	UINT8 *mem = memory_region(image->machine, "main");
+	UINT8 *mem = memory_region(image->machine, "maincpu");
 	int size;
 
 	/* load an optional (dual) cartridge (e.g. basic.rom) */
@@ -881,7 +897,7 @@ DEVICE_IMAGE_UNLOAD( a800_cart )
 
 MACHINE_START( a800xl )
 {
-	atari_machine_start(machine, ATARI_800XL, &a800xl_pia_interface, TRUE);
+	atari_machine_start(machine, ATARI_800XL, TRUE);
 }
 
 
@@ -889,7 +905,7 @@ MACHINE_START( a800xl )
 #ifdef MESS
 DEVICE_IMAGE_LOAD( a800xl_cart )
 {
-	UINT8 *mem = memory_region(image->machine, "main");
+	UINT8 *mem = memory_region(image->machine, "maincpu");
 	astring *fname;
 	mame_file *basic_fp;
 	file_error filerr;
@@ -938,7 +954,7 @@ DEVICE_IMAGE_LOAD( a800xl_cart )
 
 MACHINE_START( a5200 )
 {
-	atari_machine_start(machine, ATARI_800XL, NULL, FALSE);
+	atari_machine_start(machine, ATARI_800XL, FALSE);
 }
 
 
@@ -946,7 +962,7 @@ MACHINE_START( a5200 )
 #ifdef MESS
 DEVICE_IMAGE_LOAD( a5200_cart )
 {
-	UINT8 *mem = memory_region(image->machine, "main");
+	UINT8 *mem = memory_region(image->machine, "maincpu");
 	int size;
 
 	/* load an optional (dual) cartidge */
@@ -973,7 +989,7 @@ DEVICE_IMAGE_LOAD( a5200_cart )
 
 DEVICE_IMAGE_UNLOAD( a5200_cart )
 {
-	UINT8 *mem = memory_region(image->machine, "main");
+	UINT8 *mem = memory_region(image->machine, "maincpu");
 	/* zap the cartridge memory (again) */
 	memset(&mem[0x4000], 0x00, 0x8000);
 }

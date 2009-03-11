@@ -64,48 +64,40 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd804, 0xd804) AM_READ_PORT("DSWB")
 	AM_RANGE(0xd800, 0xd800) AM_WRITE(sound_cmd_w)
 	AM_RANGE(0xd801, 0xd801) AM_WRITE(kncljoe_control_w)
-	AM_RANGE(0xd802, 0xd802) AM_WRITE(sn76496_0_w)
-	AM_RANGE(0xd803, 0xd803) AM_WRITE(sn76496_1_w)
+	AM_RANGE(0xd802, 0xd802) AM_DEVWRITE("sn1", sn76496_w)
+	AM_RANGE(0xd803, 0xd803) AM_DEVWRITE("sn2", sn76496_w)
 	AM_RANGE(0xd807, 0xd807) AM_READ(SMH_NOP)		/* unknown read */
 	AM_RANGE(0xd817, 0xd817) AM_READ(SMH_NOP)		/* unknown read */
 	AM_RANGE(0xe800, 0xefff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xf000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static WRITE8_HANDLER( m6803_port1_w )
+static WRITE8_DEVICE_HANDLER( m6803_port1_w )
 {
 	port1 = data;
 }
 
-static WRITE8_HANDLER( m6803_port2_w )
+static WRITE8_DEVICE_HANDLER( m6803_port2_w )
 {
 
 	/* write latch */
 	if ((port2 & 0x01) && !(data & 0x01))
 	{
 		/* control or data port? */
-		if (port2 & 0x04)
-		{
-			if (port2 & 0x08)
-				ay8910_control_port_0_w(space, 0, port1);
-		}
-		else
-		{
-			if (port2 & 0x08)
-				ay8910_write_port_0_w(space, 0, port1);
-		}
+		if (port2 & 0x08)
+			ay8910_data_address_w(device, port2 >> 2, port1);
 	}
 	port2 = data;
 }
 
-static READ8_HANDLER( m6803_port1_r )
+static READ8_DEVICE_HANDLER( m6803_port1_r )
 {
 	if (port2 & 0x08)
-		return ay8910_read_port_0_r(space, 0);
+		return ay8910_r(device, 0);
 	return 0xff;
 }
 
-static READ8_HANDLER( m6803_port2_r )
+static READ8_DEVICE_HANDLER( m6803_port2_r )
 {
 	return 0;
 }
@@ -115,7 +107,7 @@ static WRITE8_HANDLER( sound_irq_ack_w )
 	cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
 }
 
-static WRITE8_HANDLER(unused_w)
+static WRITE8_DEVICE_HANDLER(unused_w)
 {
 	//unused - no MSM on the pcb
 }
@@ -128,8 +120,8 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_portmap, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(M6803_PORT1, M6803_PORT1) AM_READWRITE(m6803_port1_r, m6803_port1_w)
-	AM_RANGE(M6803_PORT2, M6803_PORT2) AM_READWRITE(m6803_port2_r, m6803_port2_w)
+	AM_RANGE(M6803_PORT1, M6803_PORT1) AM_DEVREADWRITE("ay", m6803_port1_r, m6803_port1_w)
+	AM_RANGE(M6803_PORT2, M6803_PORT2) AM_DEVREADWRITE("ay", m6803_port2_r, m6803_port2_w)
 ADDRESS_MAP_END
 
 
@@ -249,10 +241,10 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	soundlatch_r,
-	NULL,
-	NULL,
-	unused_w
+	DEVCB_MEMORY_HANDLER("soundcpu", PROGRAM, soundlatch_r),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(unused_w)
 };
 
 static INTERRUPT_GEN (sound_nmi)
@@ -264,11 +256,11 @@ static MACHINE_DRIVER_START( kncljoe )
 
 	/* basic machine hardware */
 
-	MDRV_CPU_ADD("main", Z80, XTAL_6MHz)  /* verified on pcb */
+	MDRV_CPU_ADD("maincpu", Z80, XTAL_6MHz)  /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("sound", M6803, XTAL_3_579545MHz) /* verified on pcb */
+	MDRV_CPU_ADD("soundcpu", M6803, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_portmap,0)
 	MDRV_CPU_PERIODIC_INT(sound_nmi, (double)3970) //measured 3.970 kHz
@@ -277,7 +269,7 @@ static MACHINE_DRIVER_START( kncljoe )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1500))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -308,12 +300,12 @@ MACHINE_DRIVER_END
 
 
 ROM_START( kncljoe )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "kj-1.bin", 0x0000, 0x4000, CRC(4e4f5ff2) SHA1(7d889aa4f4138f01014c1dda391f82396074cfab) )
 	ROM_LOAD( "kj-2.bin", 0x4000, 0x4000, CRC(cb11514b) SHA1(c75d4019d1617493ff074ce8187a81ad70d9b60c) )
 	ROM_LOAD( "kj-3.bin", 0x8000, 0x4000, CRC(0f50697b) SHA1(412c6aba270824299ca2a74e9bea42b83e69797b) )
 
-	ROM_REGION( 0x8000, "sound", 0 )  /* 64k for audio code */
+	ROM_REGION( 0x8000, "soundcpu", 0 )  /* 64k for audio code */
 	ROM_LOAD( "kj-13.bin",0x6000, 0x2000, CRC(0a0be3f5) SHA1(00be47fc76500843b6f5de63622edb1748ef5f7d) )
 
 	ROM_REGION( 0xc000, "gfx1", ROMREGION_DISPOSE )	/* tiles */
@@ -340,12 +332,12 @@ ROM_START( kncljoe )
 ROM_END
 
 ROM_START( kncljoea )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "kj01.bin", 0x0000, 0x4000, CRC(f251019e) SHA1(a7ca2fae57ce698ec19e118e967c74eb92341803) )
 	ROM_LOAD( "kj-2.bin", 0x4000, 0x4000, CRC(cb11514b) SHA1(c75d4019d1617493ff074ce8187a81ad70d9b60c) )
 	ROM_LOAD( "kj-3.bin", 0x8000, 0x4000, CRC(0f50697b) SHA1(412c6aba270824299ca2a74e9bea42b83e69797b) )
 
-	ROM_REGION( 0x8000, "sound", 0 )  /* 64k for audio code */
+	ROM_REGION( 0x8000, "soundcpu", 0 )  /* 64k for audio code */
 	ROM_LOAD( "kj-13.bin",0x6000, 0x2000, CRC(0a0be3f5) SHA1(00be47fc76500843b6f5de63622edb1748ef5f7d) )
 
 	ROM_REGION( 0xc000, "gfx1", ROMREGION_DISPOSE )	/* tiles */
@@ -372,12 +364,12 @@ ROM_START( kncljoea )
 ROM_END
 
 ROM_START( bcrusher )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "bcrush1.bin", 0x0000, 0x4000, CRC(e8979196) SHA1(f1aff40e645760c786510c77a4841acb782ba157) )
 	ROM_LOAD( "bcrush2.bin", 0x4000, 0x4000, CRC(1be4c731) SHA1(11f3a33263d66172902dfb6f3fe2d0ab5cad38d7) )
 	ROM_LOAD( "bcrush3.bin", 0x8000, 0x4000, CRC(0772d993) SHA1(430f0319bd4765add2f1ee197e7217fdf9ae79c8) )
 
-	ROM_REGION( 0x8000, "sound", 0 )  /* 64k for audio code */
+	ROM_REGION( 0x8000, "soundcpu", 0 )  /* 64k for audio code */
 	ROM_LOAD( "kj-13.bin",0x6000, 0x2000, CRC(0a0be3f5) SHA1(00be47fc76500843b6f5de63622edb1748ef5f7d) )
 
 	ROM_REGION( 0xc000, "gfx1", ROMREGION_DISPOSE )	/* tiles */

@@ -9,6 +9,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "sound/ay8910.h"
 
 
 UINT8 *dday_bgvideoram;
@@ -296,7 +297,7 @@ WRITE8_HANDLER( dday_control_w )
 
 	/* bit 4 is sound enable */
 	if (!(data & 0x10) && (control & 0x10))
-		sndti_reset(SOUND_AY8910, 0);
+		devtag_reset(space->machine, "ay");
 
 	sound_global_enable(data & 0x10);
 

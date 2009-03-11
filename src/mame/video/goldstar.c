@@ -8,10 +8,8 @@
 
 #include "driver.h"
 
-
-
-UINT8 *goldstar_video1, *goldstar_video2, *goldstar_video3;
-size_t goldstar_video_size;
+//UINT8 *goldstar_video1, *goldstar_video2, *goldstar_video3;
+//size_t goldstar_video_size;
 UINT8 *goldstar_reel1_scroll, *goldstar_reel2_scroll, *goldstar_reel3_scroll;
 
 static int bgcolor;
@@ -25,7 +23,24 @@ static int bgcolor;
 ***************************************************************************/
 
 static tilemap *goldstar_fg_tilemap;
+static UINT8 cmaster_girl_num;
+static UINT8 cmaster_girl_pal;
+static UINT8 cm_enable_reg;
 
+WRITE8_HANDLER( cm_outport0_w )
+{
+	cm_enable_reg = data;
+	/*
+        ---- ---x  (global enable or irq enable?)
+        ---- --x-  (fg enable)
+        ---- -x--  (girl enable?)
+        ---- x---  (reels enable)
+
+        xxxx ----  unused?
+
+    */
+	//popmessage("%02x",data);
+}
 
 WRITE8_HANDLER( goldstar_fg_vidram_w )
 {
@@ -141,6 +156,9 @@ VIDEO_START( goldstar )
 
 	goldstar_fg_tilemap = tilemap_create(machine,get_goldstar_fg_tile_info,tilemap_scan_rows,8,8, 64, 32);
 	tilemap_set_transparent_pen(goldstar_fg_tilemap,0);
+
+	// is there an enable reg for this game?
+	cm_enable_reg = 0x0b;
 }
 
 VIDEO_START( cherrym )
@@ -153,8 +171,13 @@ VIDEO_START( cherrym )
 	tilemap_set_scroll_cols(goldstar_reel2_tilemap, 64);
 	tilemap_set_scroll_cols(goldstar_reel3_tilemap, 64);
 
+	cmaster_girl_num = 0;
+	cmaster_girl_pal = 0;
+
 	goldstar_fg_tilemap = tilemap_create(machine,get_cherrym_fg_tile_info,tilemap_scan_rows,8,8, 64, 32);
 	tilemap_set_transparent_pen(goldstar_fg_tilemap,0);
+
+	cm_enable_reg = 0x0b;
 }
 
 
@@ -165,13 +188,49 @@ WRITE8_HANDLER( goldstar_fa00_w )
 
 	/* bit 2 selects background gfx color (I think) */
 	bgcolor = (data & 0x04) >> 2;
+	tilemap_mark_all_tiles_dirty (goldstar_reel1_tilemap);
+	tilemap_mark_all_tiles_dirty (goldstar_reel2_tilemap);
+	tilemap_mark_all_tiles_dirty (goldstar_reel3_tilemap);
 }
 
+WRITE8_HANDLER( cm_background_col_w )
+{
+
+	//printf("cm_background_col_w %02x\n",data);
+
+	/* cherry master writes
+
+    so it's probably
+
+    0ggg cc00
+
+    where g is which girl to display and c is the colour palette
+
+    (note, this doesn't apply to the amcoe games which have no girls, I'm unsure how the priority/positioning works)
+
+
+    */
+	cmaster_girl_num = (data >> 4)&0x7;
+	cmaster_girl_pal = (data >> 2)&0x3;
+
+	bgcolor = (data & 0x03) >> 0;
+	tilemap_mark_all_tiles_dirty (goldstar_reel1_tilemap);
+	tilemap_mark_all_tiles_dirty (goldstar_reel2_tilemap);
+	tilemap_mark_all_tiles_dirty (goldstar_reel3_tilemap);
+}
 
 // are these hardcoded, or registers?
 static const rectangle visible1 = { 0*8, (14+48)*8-1,  4*8,  (4+7)*8-1 };
 static const rectangle visible2 = { 0*8, (14+48)*8-1, 12*8, (12+7)*8-1 };
 static const rectangle visible3 = { 0*8, (14+48)*8-1, 20*8, (20+7)*8-1 };
+
+static const rectangle cm91_visible1 = { 0*8, (14+48)*8-1, 4*8,  (4+7)*8-1 };	/* same start for reel1 */
+static const rectangle cm91_visible2 = { 0*8, (14+48)*8-1, 11*8, (12+7)*8-1 };	/* 4 pixels less for reel2 */
+static const rectangle cm91_visible3 = { 0*8, (14+48)*8-1, 19*8, (19+7)*8-1 };	/* 8 pixels less for reel3 */
+
+static const rectangle am1a_visible1 = { 0*8, (14+48)*8-1,  4*8,  (4+6)*8-1 };
+static const rectangle am1a_visible2 = { 0*8, (14+48)*8-1, 10*8, (10+6)*8-1 };
+static const rectangle am1a_visible3 = { 0*8, (14+48)*8-1, 16*8, (16+6)*8-1 };
 
 
 VIDEO_UPDATE( goldstar )
@@ -180,18 +239,104 @@ VIDEO_UPDATE( goldstar )
 
 	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
-	for (i= 0;i < 64;i++)
+	if (!cm_enable_reg &0x01)
+		return 0;
+
+	if (cm_enable_reg &0x08)
 	{
-		tilemap_set_scrolly(goldstar_reel1_tilemap, i, goldstar_reel1_scroll[i]);
-		tilemap_set_scrolly(goldstar_reel2_tilemap, i, goldstar_reel2_scroll[i]);
-		tilemap_set_scrolly(goldstar_reel3_tilemap, i, goldstar_reel3_scroll[i]);
+		for (i= 0;i < 64;i++)
+		{
+			tilemap_set_scrolly(goldstar_reel1_tilemap, i, goldstar_reel1_scroll[i]);
+			tilemap_set_scrolly(goldstar_reel2_tilemap, i, goldstar_reel2_scroll[i]);
+			tilemap_set_scrolly(goldstar_reel3_tilemap, i, goldstar_reel3_scroll[i]);
+		}
+
+
+		tilemap_draw(bitmap, &visible1, goldstar_reel1_tilemap, 0, 0);
+		tilemap_draw(bitmap, &visible2, goldstar_reel2_tilemap, 0, 0);
+		tilemap_draw(bitmap, &visible3, goldstar_reel3_tilemap, 0, 0);
 	}
 
-	tilemap_draw(bitmap,&visible1,goldstar_reel1_tilemap,0,0);
-	tilemap_draw(bitmap,&visible2,goldstar_reel2_tilemap,0,0);
-	tilemap_draw(bitmap,&visible3,goldstar_reel3_tilemap,0,0);
+	if (cm_enable_reg &0x04)
+	{
+		if (memory_region(screen->machine,"user1"))
+		{
+			const gfx_element *gfx = screen->machine->gfx[2];
+			drawgfxzoom(bitmap,gfx,cmaster_girl_num,cmaster_girl_pal,0,0,32*8,16*8,cliprect,TRANSPARENCY_PEN,0, 0x20000, 0x10000);
+		}
+	}
 
-	tilemap_draw(bitmap,cliprect,goldstar_fg_tilemap,0,0);
+	if (cm_enable_reg &0x02)
+	{
+		tilemap_draw(bitmap,cliprect, goldstar_fg_tilemap, 0, 0);
+	}
+
+	return 0;
+}
+
+VIDEO_UPDATE( cmast91 )
+{
+	int i;
+
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
+
+	if (!cm_enable_reg &0x01)
+		return 0;
+
+	if (cm_enable_reg &0x08)
+	{
+		for (i= 0;i < 64;i++)
+		{
+			tilemap_set_scrolly(goldstar_reel1_tilemap, i, goldstar_reel1_scroll[i]);
+			tilemap_set_scrolly(goldstar_reel2_tilemap, i, goldstar_reel2_scroll[i]);
+			tilemap_set_scrolly(goldstar_reel3_tilemap, i, goldstar_reel3_scroll[i]);
+		}
+
+		tilemap_draw(bitmap, &cm91_visible1, goldstar_reel1_tilemap, 0, 0);
+		tilemap_draw(bitmap, &cm91_visible2, goldstar_reel2_tilemap, 0, 0);
+		tilemap_draw(bitmap, &cm91_visible3, goldstar_reel3_tilemap, 0, 0);
+	}
+
+	if (cm_enable_reg &0x02)
+	{
+		tilemap_draw(bitmap, cliprect, goldstar_fg_tilemap, 0, 0);
+	}
+
+	return 0;
+}
+
+VIDEO_UPDATE( amcoe1a )
+{
+	int i;
+
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
+
+	if (!cm_enable_reg &0x01)
+		return 0;
+
+	if (cm_enable_reg &0x08)
+	{
+		for (i= 0;i < 64;i++)
+		{
+			tilemap_set_scrolly(goldstar_reel1_tilemap, i, goldstar_reel1_scroll[i]);
+			tilemap_set_scrolly(goldstar_reel2_tilemap, i, goldstar_reel2_scroll[i]);
+			tilemap_set_scrolly(goldstar_reel3_tilemap, i, goldstar_reel3_scroll[i]);
+		}
+
+		tilemap_draw(bitmap, &am1a_visible1, goldstar_reel1_tilemap, 0, 0);
+		tilemap_draw(bitmap, &am1a_visible2, goldstar_reel2_tilemap, 0, 0);
+		tilemap_draw(bitmap, &am1a_visible3, goldstar_reel3_tilemap, 0, 0);
+	}
+
+	if (cm_enable_reg &0x04)
+	{
+		// no girls
+	}
+
+	if (cm_enable_reg &0x02)
+	{
+		tilemap_draw(bitmap, cliprect, goldstar_fg_tilemap, 0, 0);
+	}
 
 	return 0;
 }

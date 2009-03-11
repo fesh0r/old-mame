@@ -144,23 +144,6 @@ static READ16_HANDLER( bishi_mirror_r )
 	return paletteram16[offset];
 }
 
-static READ16_HANDLER( bishi_sound_r )
-{
-	return ymz280b_status_0_r(space, offset)<<8;
-}
-
-static WRITE16_HANDLER( bishi_sound_w )
-{
- 	if (offset)
-	{
-		ymz280b_data_0_w(space, offset, data>>8);
-	}
- 	else
-	{
-		ymz280b_register_0_w(space, offset, data>>8);
-	}
-}
-
 static READ16_HANDLER( bishi_K056832_rom_r )
 {
 	UINT16 ouroffs;
@@ -192,7 +175,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x840000, 0x840007) AM_WRITE(K056832_b_word_w)	// VSCCS
 	AM_RANGE(0x850000, 0x85001f) AM_WRITE(K054338_word_w)	// CLTC
 	AM_RANGE(0x870000, 0x8700ff) AM_WRITE(K055555_word_w)	// PCU2
-	AM_RANGE(0x880000, 0x880003) AM_READWRITE(bishi_sound_r, bishi_sound_w)
+	AM_RANGE(0x880000, 0x880003) AM_DEVREADWRITE8("ymz", ymz280b_r, ymz280b_w, 0xff00)
 	AM_RANGE(0xa00000, 0xa01fff) AM_READWRITE(K056832_ram_word_r, K056832_ram_word_w)	// Graphic planes
 	AM_RANGE(0xb00000, 0xb03fff) AM_RAM_WRITE(paletteram16_xbgr_word_be_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xb04000, 0xb047ff) AM_READ(bishi_mirror_r)	// bug in the ram/rom test?
@@ -299,12 +282,12 @@ static MACHINE_RESET( bishi )
 {
 }
 
-static void sound_irq_gen(running_machine *machine, int state)
+static void sound_irq_gen(const device_config *device, int state)
 {
 	if (state)
-		cpu_set_input_line(machine->cpu[0], M68K_IRQ_1, ASSERT_LINE);
+		cpu_set_input_line(device->machine->cpu[0], M68K_IRQ_1, ASSERT_LINE);
 	else
-		cpu_set_input_line(machine->cpu[0], M68K_IRQ_1, CLEAR_LINE);
+		cpu_set_input_line(device->machine->cpu[0], M68K_IRQ_1, CLEAR_LINE);
 }
 
 static const ymz280b_interface ymz280b_intf =
@@ -315,7 +298,7 @@ static const ymz280b_interface ymz280b_intf =
 static MACHINE_DRIVER_START( bishi )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, CPU_CLOCK) /* 12MHz (24MHz OSC / 2 ) */
+	MDRV_CPU_ADD("maincpu", M68000, CPU_CLOCK) /* 12MHz (24MHz OSC / 2 ) */
 	MDRV_CPU_PROGRAM_MAP(main_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(bishi_interrupt, 2)
 
@@ -325,7 +308,7 @@ static MACHINE_DRIVER_START( bishi )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1200))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
@@ -338,19 +321,19 @@ static MACHINE_DRIVER_START( bishi )
 	MDRV_VIDEO_UPDATE(bishi)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ymz", YMZ280B, SOUND_CLOCK) /* 16.9344MHz */
 	MDRV_SOUND_CONFIG(ymz280b_intf)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 // ROM definitions
 
 
 ROM_START( bishi )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "575jaa05.12e", 0x000000, 0x80000, CRC(7d354567) SHA1(7fc11585693c91c0ef7a8e00df4f2f01b356210f) )
 	ROM_LOAD16_WORD_SWAP( "575jaa06.15e", 0x080000, 0x80000, CRC(9b2f7fbb) SHA1(26c828085c44a9c4d4e713e8fcc0bc8fc973d107) )
 
@@ -371,7 +354,7 @@ ROM_START( bishi )
 ROM_END
 
 ROM_START( sbishi )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "675jaa05.12e", 0x000000, 0x80000, CRC(28a09c01) SHA1(627f6c9b9e88434ff3198c778ae5c57d9cda82c5) )
 	ROM_LOAD16_WORD_SWAP( "675jaa06.15e", 0x080000, 0x80000, CRC(e4998b33) SHA1(3012f7661542b38b1a113c5c10e2729c6a37e709) )
 
@@ -392,7 +375,7 @@ ROM_START( sbishi )
 ROM_END
 
 ROM_START( sbishik )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "675kaa05.12e", 0x000000, 0x80000, CRC(23600e1d) SHA1(b3224c84e41e3077425a60232bb91775107f37a8) )
 	ROM_LOAD16_WORD_SWAP( "675kaa06.15e", 0x080000, 0x80000, CRC(bd1091f5) SHA1(29872abc49fe8209d0f414ca40a34fc494ff9b96) )
 

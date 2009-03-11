@@ -117,7 +117,7 @@ static WRITE8_HANDLER( nmi_enable_w )
 	}
 }
 
-static WRITE8_HANDLER(unk_w)
+static WRITE8_DEVICE_HANDLER(unk_w)
 {
 
 }
@@ -126,10 +126,10 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	NULL,
-	unk_w,
-	unk_w
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(unk_w),
+	DEVCB_HANDLER(unk_w)
 };
 
 static const msm5232_interface msm5232_config =
@@ -189,9 +189,8 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xc800, 0xc801) AM_WRITE(SMH_NOP)
-	AM_RANGE(0xc802, 0xc802) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xc803, 0xc803) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0xc900, 0xc90d) AM_WRITE(msm5232_0_w)
+	AM_RANGE(0xc802, 0xc803) AM_DEVWRITE("ay", ay8910_address_data_w)
+	AM_RANGE(0xc900, 0xc90d) AM_DEVWRITE("msm", msm5232_w)
 	AM_RANGE(0xca00, 0xca00) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xcb00, 0xcb00) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xcc00, 0xcc00) AM_WRITE(SMH_NOP)
@@ -281,11 +280,11 @@ static GFXDECODE_START( ladyfrog )
 GFXDECODE_END
 
 static MACHINE_DRIVER_START( ladyfrog )
-	MDRV_CPU_ADD("main", Z80,8000000/2)
+	MDRV_CPU_ADD("maincpu", Z80,8000000/2)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,8000000/2)
+	MDRV_CPU_ADD("audiocpu", Z80,8000000/2)
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)
 
@@ -293,7 +292,7 @@ static MACHINE_DRIVER_START( ladyfrog )
 	MDRV_QUANTUM_TIME(HZ(6000))
 
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -334,10 +333,10 @@ MACHINE_DRIVER_END
 
 
 ROM_START( ladyfrog )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "2.107",   0x0000, 0x10000, CRC(fa4466e6) SHA1(08e5cc8e1d3c845bc9c253267f2683671bffa9f2) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "1.115",   0x0000, 0x8000, CRC(b0932498) SHA1(13d90698f2682e64ff3597c9267ca9d33a6d62ba) ) /* NY Captor*/
 
 	ROM_REGION( 0x60000, "gfx1", ROMREGION_DISPOSE |ROMREGION_INVERT )

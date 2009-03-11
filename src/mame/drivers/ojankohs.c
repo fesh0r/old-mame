@@ -74,29 +74,29 @@ static MACHINE_RESET( ojankohs )
 
 static WRITE8_HANDLER( ojankohs_rombank_w )
 {
-	UINT8 *ROM = memory_region(space->machine, "main");
+	UINT8 *ROM = memory_region(space->machine, "maincpu");
 
 	memory_set_bankptr(space->machine, 1, &ROM[0x10000 + (0x4000 * (data & 0x3f))]);
 }
 
 static WRITE8_HANDLER( ojankoy_rombank_w )
 {
-	UINT8 *ROM = memory_region(space->machine, "main");
+	UINT8 *ROM = memory_region(space->machine, "maincpu");
 
 	memory_set_bankptr(space->machine, 1, &ROM[0x10000 + (0x4000 * (data & 0x1f))]);
 
 	ojankohs_adpcm_reset = ((data & 0x20) >> 5);
 	if (!ojankohs_adpcm_reset) ojankohs_vclk_left = 0;
 
-	msm5205_reset_w(0, !ojankohs_adpcm_reset);
+	msm5205_reset_w(devtag_get_device(space->machine, "msm"), !ojankohs_adpcm_reset);
 }
 
-static WRITE8_HANDLER( ojankohs_adpcm_reset_w )
+static WRITE8_DEVICE_HANDLER( ojankohs_adpcm_reset_w )
 {
 	ojankohs_adpcm_reset = (data & 0x01);
 	ojankohs_vclk_left = 0;
 
-	msm5205_reset_w(0, !ojankohs_adpcm_reset);
+	msm5205_reset_w(device, !ojankohs_adpcm_reset);
 }
 
 static WRITE8_HANDLER( ojankohs_msm5205_w )
@@ -113,7 +113,7 @@ static void ojankohs_adpcm_int(const device_config *device)
 
 	/* clock the data through */
 	if (ojankohs_vclk_left) {
-		msm5205_data_w(0, (ojankohs_adpcm_data >> 4));
+		msm5205_data_w(device, (ojankohs_adpcm_data >> 4));
 		ojankohs_adpcm_data <<= 4;
 		ojankohs_vclk_left--;
 	}
@@ -131,7 +131,7 @@ static WRITE8_HANDLER( ojankoc_ctrl_w )
 	memory_set_bankptr(space->machine, 1, &BANKROM[bank_address]);
 
 	ojankohs_adpcm_reset = ((data & 0x10) >> 4);
-	msm5205_reset_w(0, (!(data & 0x10) >> 4));
+	msm5205_reset_w(devtag_get_device(space->machine, "msm"), (!(data & 0x10) >> 4));
 	ojankoc_flipscreen(space, data);
 }
 
@@ -184,32 +184,22 @@ static READ8_HANDLER( ojankoc_keymatrix_r )
 	return (ret & 0x3f) | (input_port_read(space->machine, offset ? "IN1" : "IN0") & 0xc0);
 }
 
-static READ8_HANDLER( ojankohs_ay8910_0_r )
+static READ8_DEVICE_HANDLER( ojankohs_ay8910_0_r )
 {
 	// DIPSW 1
-	return (((input_port_read(space->machine, "DSW1") & 0x01) << 7) | ((input_port_read(space->machine, "DSW1") & 0x02) << 5) |
-	        ((input_port_read(space->machine, "DSW1") & 0x04) << 3) | ((input_port_read(space->machine, "DSW1") & 0x08) << 1) |
-	        ((input_port_read(space->machine, "DSW1") & 0x10) >> 1) | ((input_port_read(space->machine, "DSW1") & 0x20) >> 3) |
-	        ((input_port_read(space->machine, "DSW1") & 0x40) >> 5) | ((input_port_read(space->machine, "DSW1") & 0x80) >> 7));
+	return (((input_port_read(device->machine, "DSW1") & 0x01) << 7) | ((input_port_read(device->machine, "DSW1") & 0x02) << 5) |
+	        ((input_port_read(device->machine, "DSW1") & 0x04) << 3) | ((input_port_read(device->machine, "DSW1") & 0x08) << 1) |
+	        ((input_port_read(device->machine, "DSW1") & 0x10) >> 1) | ((input_port_read(device->machine, "DSW1") & 0x20) >> 3) |
+	        ((input_port_read(device->machine, "DSW1") & 0x40) >> 5) | ((input_port_read(device->machine, "DSW1") & 0x80) >> 7));
 }
 
-static READ8_HANDLER( ojankohs_ay8910_1_r )
+static READ8_DEVICE_HANDLER( ojankohs_ay8910_1_r )
 {
 	// DIPSW 1
-	return (((input_port_read(space->machine, "DSW2") & 0x01) << 7) | ((input_port_read(space->machine, "DSW2") & 0x02) << 5) |
-	        ((input_port_read(space->machine, "DSW2") & 0x04) << 3) | ((input_port_read(space->machine, "DSW2") & 0x08) << 1) |
-	        ((input_port_read(space->machine, "DSW2") & 0x10) >> 1) | ((input_port_read(space->machine, "DSW2") & 0x20) >> 3) |
-	        ((input_port_read(space->machine, "DSW2") & 0x40) >> 5) | ((input_port_read(space->machine, "DSW2") & 0x80) >> 7));
-}
-
-static READ8_HANDLER( ojankoy_ay8910_0_r )
-{
-	return input_port_read(space->machine, "DSW1");				// DIPSW 1
-}
-
-static READ8_HANDLER( ojankoy_ay8910_1_r )
-{
-	return input_port_read(space->machine, "DSW2");				// DIPSW 2
+	return (((input_port_read(device->machine, "DSW2") & 0x01) << 7) | ((input_port_read(device->machine, "DSW2") & 0x02) << 5) |
+	        ((input_port_read(device->machine, "DSW2") & 0x04) << 3) | ((input_port_read(device->machine, "DSW2") & 0x08) << 1) |
+	        ((input_port_read(device->machine, "DSW2") & 0x10) >> 1) | ((input_port_read(device->machine, "DSW2") & 0x20) >> 3) |
+	        ((input_port_read(device->machine, "DSW2") & 0x40) >> 5) | ((input_port_read(device->machine, "DSW2") & 0x80) >> 7));
 }
 
 static READ8_HANDLER( ccasino_dipsw3_r )
@@ -285,11 +275,11 @@ static ADDRESS_MAP_START( ojankohs_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0") AM_WRITE(ojankohs_portselect_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(ojankohs_keymatrix_r, ojankohs_rombank_w)
 	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN1") AM_WRITE(ojankohs_gfxreg_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(ojankohs_adpcm_reset_w)
+	AM_RANGE(0x03, 0x03) AM_DEVWRITE("msm", ojankohs_adpcm_reset_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(ojankohs_flipscreen_w)
 	AM_RANGE(0x05, 0x05) AM_WRITE(ojankohs_msm5205_w)
-	AM_RANGE(0x06, 0x06) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0x07, 0x07) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x06, 0x06) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x06, 0x07) AM_DEVWRITE("ay", ay8910_data_address_w)
 	AM_RANGE(0x10, 0x10) AM_WRITE(SMH_NOP)				// unknown
 	AM_RANGE(0x11, 0x11) AM_WRITE(SMH_NOP)				// unknown
 ADDRESS_MAP_END
@@ -301,8 +291,8 @@ static ADDRESS_MAP_START( ojankoy_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN1") AM_WRITE(ojankoy_coinctr_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(ojankohs_flipscreen_w)
 	AM_RANGE(0x05, 0x05) AM_WRITE(ojankohs_msm5205_w)
-	AM_RANGE(0x06, 0x06) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0x07, 0x07) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x06, 0x06) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x06, 0x07) AM_DEVWRITE("ay", ay8910_data_address_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ccasino_io_map, ADDRESS_SPACE_IO, 8 )
@@ -310,11 +300,11 @@ static ADDRESS_MAP_START( ccasino_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0") AM_WRITE(ojankohs_portselect_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(ojankohs_keymatrix_r, ojankohs_rombank_w)
 	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN1") AM_WRITE(ccasino_coinctr_w)
-	AM_RANGE(0x03, 0x03) AM_READWRITE(ccasino_dipsw3_r, ojankohs_adpcm_reset_w)
+	AM_RANGE(0x03, 0x03) AM_READ(ccasino_dipsw3_r) AM_DEVWRITE("msm", ojankohs_adpcm_reset_w)
 	AM_RANGE(0x04, 0x04) AM_READWRITE(ccasino_dipsw4_r, ojankohs_flipscreen_w)
 	AM_RANGE(0x05, 0x05) AM_WRITE(ojankohs_msm5205_w)
-	AM_RANGE(0x06, 0x06) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0x07, 0x07) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x06, 0x06) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x06, 0x07) AM_DEVWRITE("ay", ay8910_data_address_w)
 	AM_RANGE(0x08, 0x0f) AM_WRITE(ccasino_palette_w)		// 16bit address access
 	AM_RANGE(0x10, 0x10) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x11, 0x11) AM_WRITE(SMH_NOP)
@@ -327,8 +317,8 @@ static ADDRESS_MAP_START( ojankoc_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xfb, 0xfb) AM_WRITE(ojankoc_ctrl_w)
 	AM_RANGE(0xfc, 0xfd) AM_READ(ojankoc_keymatrix_r)
 	AM_RANGE(0xfd, 0xfd) AM_WRITE(ojankohs_portselect_w)
-	AM_RANGE(0xfe, 0xfe) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0xff, 0xff) AM_READWRITE(ay8910_read_port_0_r, ay8910_control_port_0_w)
+	AM_RANGE(0xfe, 0xff) AM_DEVWRITE("ay", ay8910_data_address_w)
+	AM_RANGE(0xff, 0xff) AM_DEVREAD("ay", ay8910_r)
 ADDRESS_MAP_END
 
 
@@ -822,24 +812,24 @@ static const ay8910_interface ojankohs_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	ojankohs_ay8910_0_r,	/* read port #0 */
-	ojankohs_ay8910_1_r	/* read port #1 */
+	DEVCB_HANDLER(ojankohs_ay8910_0_r),	/* read port #0 */
+	DEVCB_HANDLER(ojankohs_ay8910_1_r)	/* read port #1 */
 };
 
 static const ay8910_interface ojankoy_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	ojankoy_ay8910_0_r,		/* read port #0 */
-	ojankoy_ay8910_1_r,		/* read port #1 */
+	DEVCB_INPUT_PORT("DSW1"),		/* read port #0 */
+	DEVCB_INPUT_PORT("DSW2"),		/* read port #1 */
 };
 
 static const ay8910_interface ojankoc_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_0_r,			/* read port #0 */
-	input_port_1_r			/* read port #1 */
+	DEVCB_INPUT_PORT("DSW1"),		/* read port #0 */
+	DEVCB_INPUT_PORT("DSW2"),		/* read port #1 */
 };
 
 static const msm5205_interface msm5205_config =
@@ -852,16 +842,16 @@ static const msm5205_interface msm5205_config =
 static MACHINE_DRIVER_START( ojankohs )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,12000000/2)		/* 6.00 MHz ? */
+	MDRV_CPU_ADD("maincpu", Z80,12000000/2)		/* 6.00 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(readmem_ojankohs,writemem_ojankohs)
 	MDRV_CPU_IO_MAP(ojankohs_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_MACHINE_RESET(ojankohs)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -889,16 +879,16 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( ojankoy )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,12000000/2)		/* 6.00 MHz ? */
+	MDRV_CPU_ADD("maincpu", Z80,12000000/2)		/* 6.00 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(readmem_ojankoy,writemem_ojankoy)
 	MDRV_CPU_IO_MAP(ojankoy_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_MACHINE_RESET(ojankohs)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -927,16 +917,16 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( ccasino )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,12000000/2)		/* 6.00 MHz ? */
+	MDRV_CPU_ADD("maincpu", Z80,12000000/2)		/* 6.00 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(readmem_ojankoy,writemem_ojankoy)
 	MDRV_CPU_IO_MAP(ccasino_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_MACHINE_RESET(ojankohs)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -964,16 +954,16 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( ojankoc )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,8000000/2)			/* 4.00 MHz */
+	MDRV_CPU_ADD("maincpu", Z80,8000000/2)			/* 4.00 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem_ojankoc,writemem_ojankoc)
 	MDRV_CPU_IO_MAP(ojankoc_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_MACHINE_RESET(ojankohs)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -999,7 +989,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( ojankohs )
-	ROM_REGION( 0x98000, "main", 0 )
+	ROM_REGION( 0x98000, "maincpu", 0 )
 	ROM_LOAD( "3.3c", 0x00000, 0x08000, CRC(f652db23) SHA1(7fcb4227804301f0404af4b007eb4accb0787c98) )
 	ROM_LOAD( "5b",   0x10000, 0x80000, CRC(bd4fd0b6) SHA1(79e0937fdd34ec03b4b0a503efc1fa7c8f29e7cf) )
 	ROM_LOAD( "6.6c", 0x90000, 0x08000, CRC(30772679) SHA1(8bc415da465faa70ec468a23b3528493849e83ee) )
@@ -1009,7 +999,7 @@ ROM_START( ojankohs )
 ROM_END
 
 ROM_START( ojankoy )
-	ROM_REGION( 0x70000, "main", 0 )
+	ROM_REGION( 0x70000, "maincpu", 0 )
 	ROM_LOAD( "p-ic17.bin", 0x00000, 0x08000, CRC(9f149c30) SHA1(e3a8407844c0bb2d2fda83b01a187c87b3b7767a) )
 	ROM_LOAD( "ic30.bin",   0x10000, 0x20000, CRC(37be3f7c) SHA1(9ef19ef1e118d75ae719623b90188d68e6faa8f2) )
 	ROM_LOAD( "ic29.bin",   0x30000, 0x20000, CRC(dab7c4d8) SHA1(812f56a15545e98eb67ac46ca1c006201d432b5d) )
@@ -1033,7 +1023,7 @@ ROM_START( ojankoy )
 ROM_END
 
 ROM_START( ojanko2 )
-	ROM_REGION( 0x70000, "main", 0 )
+	ROM_REGION( 0x70000, "maincpu", 0 )
 	ROM_LOAD( "p-ic17.bin", 0x00000, 0x08000, CRC(4b33bd54) SHA1(be235492cf3824ea740f401201ad821bb71c6d89) )
 	ROM_LOAD( "ic30.bin",   0x10000, 0x20000, CRC(37be3f7c) SHA1(9ef19ef1e118d75ae719623b90188d68e6faa8f2) )
 	ROM_LOAD( "ic29.bin",   0x30000, 0x20000, CRC(dab7c4d8) SHA1(812f56a15545e98eb67ac46ca1c006201d432b5d) )
@@ -1056,7 +1046,7 @@ ROM_START( ojanko2 )
 ROM_END
 
 ROM_START( ccasino )
-	ROM_REGION( 0x68000, "main", 0 )
+	ROM_REGION( 0x68000, "maincpu", 0 )
 	ROM_LOAD( "p5.bin", 0x00000, 0x08000, CRC(d6cf3387) SHA1(507a40a0ace0742a8fd205c641d27d22d80da948) )
 	ROM_LOAD( "l5.bin", 0x10000, 0x20000, CRC(49c9ecfb) SHA1(96005904cef9b9e4434034c9d68978ff9c431457) )
 	ROM_LOAD( "f5.bin", 0x50000, 0x08000, CRC(fa71c91c) SHA1(f693f6bb0a9433fbf3f272e43472f6a728ae35ef) )
@@ -1073,7 +1063,7 @@ ROM_START( ccasino )
 ROM_END
 
 ROM_START( ojankoc )
-	ROM_REGION( 0x10000, "main", 0 )   /* CPU */
+	ROM_REGION( 0x10000, "maincpu", 0 )   /* CPU */
 	ROM_LOAD( "c11.1p", 0x0000, 0x8000, CRC(cb3e900c) SHA1(95f0354f147e339a97368b5cc67200151cdfa0e9) )
 
 	ROM_REGION( 0x80000, "user1", 0 )  /* BANK */

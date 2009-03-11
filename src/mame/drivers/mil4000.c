@@ -133,7 +133,7 @@ static TILE_GET_INFO( get_sc3_tile_info )
 			0);
 }
 
-VIDEO_START(mil4000)
+static VIDEO_START(mil4000)
 {
 	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	int i;
@@ -152,7 +152,7 @@ VIDEO_START(mil4000)
 	tilemap_set_transparent_pen(sc3_tilemap,0);
 }
 
-VIDEO_UPDATE(mil4000)
+static VIDEO_UPDATE(mil4000)
 {
 	tilemap_draw(bitmap,cliprect,sc0_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,sc1_tilemap,0,0);
@@ -251,7 +251,7 @@ static ADDRESS_MAP_START( mil4000_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x708006, 0x708007) AM_READ_PORT("IN2")
 	AM_RANGE(0x708008, 0x708009) AM_WRITE(output_w)
 	AM_RANGE(0x708010, 0x708011) AM_NOP //touch screen
-	AM_RANGE(0x70801e, 0x70801f) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)
+	AM_RANGE(0x70801e, 0x70801f) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff)
 
 	AM_RANGE(0x780000, 0x780fff) AM_RAM_WRITE(paletteram16_RRRRRGGGGGBBBBBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xff0000, 0xffffff) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size) // 2x CY62256L-70 (U7 & U8).
@@ -332,14 +332,14 @@ GFXDECODE_END
 
 
 static MACHINE_DRIVER_START( mil4000 )
-	MDRV_CPU_ADD("main", M68000, 12000000 )	// ?
+	MDRV_CPU_ADD("maincpu", M68000, 12000000 )	// ?
 	MDRV_CPU_PROGRAM_MAP(mil4000_map,0)
 	// irq 2/4/5 point to the same place, others invalid
-	MDRV_CPU_VBLANK_INT("main", irq5_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq5_line_hold)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
@@ -361,7 +361,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( mil4000 )
-	ROM_REGION( 0x100000, "main", 0 ) // 68000 code
+	ROM_REGION( 0x100000, "maincpu", 0 ) // 68000 code
 	ROM_LOAD16_BYTE( "9.u75", 0x000001, 0x20000, CRC(e3e520df) SHA1(16ee86deb75bd711c846a647e3a0a4293b5685a8) )
 	ROM_LOAD16_BYTE( "10.u76", 0x000000, 0x20000, CRC(9020e19a) SHA1(e9ba0b69e8cb1fc35d024ae702d4670d78bf5cc8) )
 
@@ -382,7 +382,7 @@ ROM_START( mil4000 )
 ROM_END
 
 ROM_START( mil4000a )
-	ROM_REGION( 0x100000, "main", 0 ) // 68000 code
+	ROM_REGION( 0x100000, "maincpu", 0 ) // 68000 code
 	ROM_LOAD16_BYTE( "27.u75", 0x000001, 0x20000, CRC(2a090f82) SHA1(c70295de25a99ec78752f2bd63e6ef0714141c84) )
 	ROM_LOAD16_BYTE( "28.u76", 0x000000, 0x20000, CRC(009e1f16) SHA1(33014ccd33abf2de8e83ec964192ebb9cbda8a08) )
 

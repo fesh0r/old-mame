@@ -99,12 +99,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM
-	AM_RANGE(0x9000, 0x9000) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x9001, 0x9001) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x9002, 0x9002) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0xa000, 0xa000) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0xa001, 0xa001) AM_WRITE(ay8910_write_port_1_w)
-	AM_RANGE(0xa002, 0xa002) AM_READ(ay8910_read_port_1_r)
+	AM_RANGE(0x9000, 0x9001) AM_DEVWRITE("ay1", ay8910_address_data_w)
+	AM_RANGE(0x9002, 0x9002) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0xa000, 0xa001) AM_DEVWRITE("ay2", ay8910_address_data_w)
+	AM_RANGE(0xa002, 0xa002) AM_DEVREAD("ay2", ay8910_r)
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -223,25 +221,32 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	soundlatch_r,
-	soundlatch2_r,
-	NULL,
-	NULL
+	DEVCB_MEMORY_HANDLER("audiocpu", PROGRAM, soundlatch_r),
+	DEVCB_MEMORY_HANDLER("audiocpu", PROGRAM, soundlatch2_r),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
+
+static MACHINE_START( formatz )
+{
+    state_save_register_global(machine, disable_irq);
+}
 
 static MACHINE_DRIVER_START( formatz )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809, XTAL_10MHz/8) /* verified on pcb */
+	MDRV_CPU_ADD("maincpu", M6809, XTAL_10MHz/8) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", aeroboto_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", aeroboto_interrupt)
 
-	MDRV_CPU_ADD("audio", M6809, XTAL_10MHz/16) /* verified on pcb */
+	MDRV_CPU_ADD("audiocpu", M6809, XTAL_10MHz/16) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
+
+    MDRV_MACHINE_START(formatz)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -276,12 +281,12 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( formatz )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "format_z.8",   0x4000, 0x4000, CRC(81a2416c) SHA1(d43c6bcc079847cb4c8e77fdc4d9d5bb9c2cc41a) )
 	ROM_LOAD( "format_z.7",   0x8000, 0x4000, CRC(986e6052) SHA1(4d39eda38fa17695f8217b0032a750cbe71c5674) )
 	ROM_LOAD( "format_z.6",   0xc000, 0x4000, CRC(baa0d745) SHA1(72b6cf31c9bbf9b5c55ef3f4ca5877ce576beda9) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "format_z.9",   0xf000, 0x1000, CRC(6b9215ad) SHA1(3ab416d070bf6b9a8be3e19d4dbc3a399d9ab5cb) )
 
 	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
@@ -302,12 +307,12 @@ ROM_START( formatz )
 ROM_END
 
 ROM_START( aeroboto )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "aeroboto.8",   0x4000, 0x4000, CRC(4d3fc049) SHA1(6efb8c58c025a69ac2dce99049128861f7ede690) )
 	ROM_LOAD( "aeroboto.7",   0x8000, 0x4000, CRC(522f51c1) SHA1(4ea47d0b8b65e711c99701c055dbaf70a003d441) )
 	ROM_LOAD( "aeroboto.6",   0xc000, 0x4000, CRC(1a295ffb) SHA1(990b3f2f883717c180089b6ba5ae381ed9272341) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "format_z.9",   0xf000, 0x1000, CRC(6b9215ad) SHA1(3ab416d070bf6b9a8be3e19d4dbc3a399d9ab5cb) )
 
 	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
@@ -329,5 +334,5 @@ ROM_END
 
 
 
-GAME( 1984, formatz,  0,       formatz, formatz, 0, ROT0, "Jaleco", "Formation Z", GAME_IMPERFECT_GRAPHICS )
-GAME( 1984, aeroboto, formatz, formatz, formatz, 0, ROT0, "[Jaleco] (Williams license)", "Aeroboto", GAME_IMPERFECT_GRAPHICS )
+GAME( 1984, formatz,  0,       formatz, formatz, 0, ROT0, "Jaleco", "Formation Z", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
+GAME( 1984, aeroboto, formatz, formatz, formatz, 0, ROT0, "[Jaleco] (Williams license)", "Aeroboto", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )

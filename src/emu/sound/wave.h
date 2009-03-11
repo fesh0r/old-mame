@@ -11,7 +11,7 @@
 #include "messdrv.h"
 #endif
 
-SND_GET_INFO( wave );
-
+DEVICE_GET_INFO( wave );
+#define SOUND_WAVE DEVICE_GET_INFO_NAME( wave )
 
 #endif /* __WAVE_H__ */

@@ -86,7 +86,7 @@ static VIDEO_START( alg )
 
 static MACHINE_START( alg )
 {
-	laserdisc = device_list_find_by_tag(machine->config->devicelist, LASERDISC, "laserdisc");
+	laserdisc = devtag_get_device(machine, "laserdisc");
 
 	serial_timer = timer_alloc(machine, response_timer, NULL);
 	serial_timer_active = FALSE;
@@ -196,7 +196,7 @@ static CUSTOM_INPUT( lightgun_holster_r )
  *
  *************************************/
 
-static void alg_cia_0_porta_w(const device_config *device, UINT8 data)
+static WRITE8_DEVICE_HANDLER( alg_cia_0_porta_w )
 {
 	/* switch banks as appropriate */
 	memory_set_bank(device->machine, 1, data & 1);
@@ -212,34 +212,34 @@ static void alg_cia_0_porta_w(const device_config *device, UINT8 data)
 }
 
 
-static UINT8 alg_cia_0_porta_r(const device_config *device)
+static READ8_DEVICE_HANDLER( alg_cia_0_porta_r )
 {
 	return input_port_read(device->machine, "FIRE") | 0x3f;
 }
 
 
-static UINT8 alg_cia_0_portb_r(const device_config *device)
+static READ8_DEVICE_HANDLER( alg_cia_0_portb_r )
 {
 	logerror("%s:alg_cia_0_portb_r\n", cpuexec_describe_context(device->machine));
 	return 0xff;
 }
 
 
-static void alg_cia_0_portb_w(const device_config *device, UINT8 data)
+static WRITE8_DEVICE_HANDLER( alg_cia_0_portb_w )
 {
 	/* parallel port */
 	logerror("%s:alg_cia_0_portb_w(%02x)\n", cpuexec_describe_context(device->machine), data);
 }
 
 
-static UINT8 alg_cia_1_porta_r(const device_config *device)
+static READ8_DEVICE_HANDLER( alg_cia_1_porta_r )
 {
 	logerror("%s:alg_cia_1_porta_r\n", cpuexec_describe_context(device->machine));
 	return 0xff;
 }
 
 
-static void alg_cia_1_porta_w(const device_config *device, UINT8 data)
+static WRITE8_DEVICE_HANDLER( alg_cia_1_porta_w )
 {
 	logerror("%s:alg_cia_1_porta_w(%02x)\n", cpuexec_describe_context(device->machine), data);
 }
@@ -371,59 +371,48 @@ INPUT_PORTS_END
 
 /*************************************
  *
- *  Sound definitions
- *
- *************************************/
-
-static const custom_sound_interface amiga_custom_interface =
-{
-	amiga_sh_start
-};
-
-
-
-/*************************************
- *
  *  Machine driver
  *
  *************************************/
 
 static const cia6526_interface cia_0_intf =
 {
-	amiga_cia_0_irq,								/* irq_func */
+	DEVCB_LINE(amiga_cia_0_irq),								/* irq_func */
+	DEVCB_NULL,	/* pc_func */
 	0,												/* tod_clock */
 	{
-		{ alg_cia_0_porta_r, alg_cia_0_porta_w },	/* port A */
-		{ alg_cia_0_portb_r, alg_cia_0_portb_w }	/* port B */
+		{ DEVCB_HANDLER(alg_cia_0_porta_r), DEVCB_HANDLER(alg_cia_0_porta_w) },	/* port A */
+		{ DEVCB_HANDLER(alg_cia_0_portb_r), DEVCB_HANDLER(alg_cia_0_portb_w) }	/* port B */
 	}
 };
 
 static const cia6526_interface cia_1_intf =
 {
-	amiga_cia_1_irq,								/* irq_func */
+	DEVCB_LINE(amiga_cia_1_irq),								/* irq_func */
+	DEVCB_NULL,	/* pc_func */
 	0,												/* tod_clock */
 	{
-		{ alg_cia_1_porta_r, alg_cia_1_porta_w, },	/* port A */
-		{ NULL, NULL }								/* port B */
+		{ DEVCB_HANDLER(alg_cia_1_porta_r), DEVCB_HANDLER(alg_cia_1_porta_w), },	/* port A */
+		{ DEVCB_NULL, DEVCB_NULL }								/* port B */
 	}
 };
 
 static MACHINE_DRIVER_START( alg_r1 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, AMIGA_68000_NTSC_CLOCK)
+	MDRV_CPU_ADD("maincpu", M68000, AMIGA_68000_NTSC_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(main_map_r1,0)
 
 	MDRV_MACHINE_START(alg)
 	MDRV_MACHINE_RESET(alg)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_LASERDISC_ADD("laserdisc", SONY_LDP1450, "main", "ldsound")
+	MDRV_LASERDISC_ADD("laserdisc", SONY_LDP1450, "screen", "ldsound")
 	MDRV_LASERDISC_OVERLAY(amiga, 512*2, 262, BITMAP_FORMAT_INDEXED16)
 	MDRV_LASERDISC_OVERLAY_CLIP((129-8)*2, (449+8-1)*2, 44-8, 244+8-1)
 
     /* video hardware */
-	MDRV_LASERDISC_SCREEN_ADD_NTSC("main", BITMAP_FORMAT_INDEXED16)
+	MDRV_LASERDISC_SCREEN_ADD_NTSC("screen", BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(59.997)
 	MDRV_SCREEN_SIZE(512*2, 262)
 	MDRV_SCREEN_VISIBLE_AREA((129-8)*2, (449+8-1)*2, 44-8, 244+8-1)
@@ -434,19 +423,17 @@ static MACHINE_DRIVER_START( alg_r1 )
 	MDRV_VIDEO_START(alg)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MDRV_SOUND_ADD("amiga", CUSTOM, 3579545)
-	MDRV_SOUND_CONFIG(amiga_custom_interface)
-	MDRV_SOUND_ROUTE(0, "left", 0.25)
-	MDRV_SOUND_ROUTE(1, "right", 0.25)
-	MDRV_SOUND_ROUTE(2, "right", 0.25)
-	MDRV_SOUND_ROUTE(3, "left", 0.25)
+	MDRV_SOUND_ADD("amiga", AMIGA, 3579545)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.25)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.25)
+	MDRV_SOUND_ROUTE(2, "rspeaker", 0.25)
+	MDRV_SOUND_ROUTE(3, "lspeaker", 0.25)
 
-	MDRV_SOUND_ADD("ldsound", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ADD("ldsound", LASERDISC, 0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	/* cia */
 	MDRV_CIA8520_ADD("cia_0", AMIGA_68000_NTSC_CLOCK / 10, cia_0_intf)
@@ -457,7 +444,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( alg_r2 )
 	MDRV_IMPORT_FROM(alg_r1)
 
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(main_map_r2,0)
 MACHINE_DRIVER_END
 
@@ -466,10 +453,10 @@ static MACHINE_DRIVER_START( picmatic )
 	MDRV_IMPORT_FROM(alg_r1)
 
 	/* adjust for PAL specs */
-	MDRV_CPU_REPLACE("main", M68000, AMIGA_68000_PAL_CLOCK)
+	MDRV_CPU_REPLACE("maincpu", M68000, AMIGA_68000_PAL_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(main_map_picmatic,0)
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_SIZE(512*2, 312)
 	MDRV_SCREEN_VISIBLE_AREA((129-8)*2, (449+8-1)*2, 44-8, 300+8-1)

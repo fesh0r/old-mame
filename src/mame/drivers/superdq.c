@@ -24,7 +24,6 @@
 #include "cpu/z80/z80.h"
 #include "render.h"
 #include "sound/sn76496.h"
-#include "sound/custom.h"
 #include "machine/laserdsc.h"
 #include "video/resnet.h"
 
@@ -187,7 +186,7 @@ static ADDRESS_MAP_START( superdq_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1")
 	AM_RANGE(0x02, 0x02) AM_READ_PORT("DSW1")
 	AM_RANGE(0x03, 0x03) AM_READ_PORT("DSW2")
-	AM_RANGE(0x04, 0x04) AM_READWRITE(superdq_ld_r,sn76496_0_w)
+	AM_RANGE(0x04, 0x04) AM_READ(superdq_ld_r) AM_DEVWRITE("sn", sn76496_w)
 	AM_RANGE(0x08, 0x08) AM_WRITE(superdq_io_w)
 	AM_RANGE(0x0c, 0x0d) AM_NOP /* HD46505S */
 ADDRESS_MAP_END
@@ -293,26 +292,26 @@ GFXDECODE_END
 
 static MACHINE_START( superdq )
 {
-	laserdisc = device_list_find_by_tag(machine->config->devicelist, LASERDISC, "laserdisc");
+	laserdisc = devtag_get_device(machine, "laserdisc");
 }
 
 
 static MACHINE_DRIVER_START( superdq )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, MASTER_CLOCK/8)
+	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK/8)
 	MDRV_CPU_PROGRAM_MAP(superdq_map,0)
 	MDRV_CPU_IO_MAP(superdq_io,0)
-	MDRV_CPU_VBLANK_INT("main", superdq_vblank)
+	MDRV_CPU_VBLANK_INT("screen", superdq_vblank)
 
 	MDRV_MACHINE_START(superdq)
 	MDRV_MACHINE_RESET(superdq)
 
-	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000, "main", "ldsound")
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000, "screen", "ldsound")
 	MDRV_LASERDISC_OVERLAY(superdq, 256, 256, BITMAP_FORMAT_INDEXED16)
 
 	/* video hardware */
-	MDRV_LASERDISC_SCREEN_ADD_NTSC("main", BITMAP_FORMAT_INDEXED16)
+	MDRV_LASERDISC_SCREEN_ADD_NTSC("screen", BITMAP_FORMAT_INDEXED16)
 
 	MDRV_GFXDECODE(superdq)
 	MDRV_PALETTE_LENGTH(32)
@@ -321,15 +320,14 @@ static MACHINE_DRIVER_START( superdq )
 	MDRV_VIDEO_START(superdq)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("sn", SN76496, MASTER_CLOCK/8)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.8)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.8)
 
-	MDRV_SOUND_ADD("ldsound", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ADD("ldsound", LASERDISC, 0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -341,7 +339,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( superdq )		/* long scenes */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "sdq-prog.bin", 0x0000, 0x4000, CRC(96b931e2) SHA1(a2408272e19b02755368a6d7e526eec15896e586) )
 
 	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
@@ -355,7 +353,7 @@ ROM_START( superdq )		/* long scenes */
 ROM_END
 
 ROM_START( superdqs )		/* short scenes */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "sdq_c45.rom", 0x0000, 0x4000, CRC(0f4d4832) SHA1(c6db63721f0c73151eb9a678ceafd0e7d6121fd3) )
 
 	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
@@ -369,7 +367,7 @@ ROM_START( superdqs )		/* short scenes */
 ROM_END
 
 ROM_START( superdqa )		/* short scenes, alternate */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "sdq_c45a.rom", 0x0000, 0x4000, CRC(b12ce1f8) SHA1(3f0238ea73a6d3e1fe62f83ed3343ca4c268bdd6) )
 
 	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )

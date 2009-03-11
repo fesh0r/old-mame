@@ -217,7 +217,6 @@ Notes:
 #include "machine/namcoio.h"
 #include "sound/namco.h"
 #include "sound/namco52.h"
-#include "sound/custom.h"
 #include "sound/samples.h"
 #include "audio/namco54.h"
 #include "polepos.h"
@@ -300,7 +299,7 @@ static WRITE8_HANDLER( polepos_latch_w )
 			break;
 
 		case 0x02:	/* CLSON */
-			polepos_sound_enable(bit);
+			polepos_sound_enable(devtag_get_device(space->machine, "namco"),bit);
 			if (!bit)
 			{
 				polepos_engine_sound_lsb_w(space,0,0);
@@ -410,7 +409,7 @@ static ADDRESS_MAP_START( z80_map, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x8000, 0x83ff) AM_READ(SMH_RAM)						/* Sound Memory */
 	AM_RANGE(0x8000, 0x83bf) AM_WRITE(SMH_RAM)						/* Sound Memory */
-	AM_RANGE(0x83c0, 0x83ff) AM_WRITE(polepos_sound_w) AM_BASE(&polepos_soundregs)/* Sound data */
+	AM_RANGE(0x83c0, 0x83ff) AM_DEVWRITE("namco", polepos_sound_w) AM_BASE(&polepos_soundregs)/* Sound data */
 
 	AM_RANGE(0x9000, 0x90ff) AM_READWRITE(namco_06xx_0_data_r, namco_06xx_0_data_w)
 	AM_RANGE(0x9100, 0x9100) AM_READWRITE(namco_06xx_0_ctrl_r, namco_06xx_0_ctrl_w)
@@ -826,13 +825,6 @@ static const namco_52xx_interface namco_52xx_config =
 	.5				/* Combined gain of both filters */
 };
 
-static const custom_sound_interface custom_interface =
-{
-	polepos_sh_start,
-	NULL,
-	polepos_sh_reset
-};
-
 
 /*********************************************************************
  * Machine driver
@@ -841,18 +833,18 @@ static const custom_sound_interface custom_interface =
 static MACHINE_DRIVER_START( polepos )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 24576000/8)	/* 3.072 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, 24576000/8)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(z80_map,0)
 	MDRV_CPU_IO_MAP(z80_io,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_assert,2)	/* 64V */
 
 	MDRV_CPU_ADD("sub", Z8000, 24576000/8)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(z8002_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_assert)
 
 	MDRV_CPU_ADD("sub2", Z8000, 24576000/8)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(z8002_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_assert)
 
 	MDRV_CPU_ADD(CPUTAG_54XX, MB8844, 18432000/12/6)	/* 1.536 MHz, internally divided by 6 */
 	MDRV_CPU_PROGRAM_MAP(namco_54xx_map_program,0)
@@ -867,7 +859,7 @@ static MACHINE_DRIVER_START( polepos )
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60.606060)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -883,29 +875,28 @@ static MACHINE_DRIVER_START( polepos )
 	MDRV_VIDEO_UPDATE(polepos)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("namco", NAMCO, 24576000/512)
 	MDRV_SOUND_CONFIG(namco_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.80)
-	MDRV_SOUND_ROUTE(1, "right", 0.80)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.80)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.80)
 
-	MDRV_SOUND_ADD("namco2", NAMCO_52XX, 24576000/16)	/* 1.536 MHz */
+	MDRV_SOUND_ADD("namco52", NAMCO_52XX, 24576000/16)	/* 1.536 MHz */
 	MDRV_SOUND_CONFIG(namco_52xx_config)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.80)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.80)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.80)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.80)
 
 	/* discrete circuit on the 54XX outputs */
 	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(polepos)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.90)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.90)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.90)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.90)
 
 	/* engine sound */
-	MDRV_SOUND_ADD("polepos", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(custom_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.90 * 0.77)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.90 * 0.77)
+	MDRV_SOUND_ADD("polepos", POLEPOS, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.90 * 0.77)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.90 * 0.77)
 MACHINE_DRIVER_END
 
 
@@ -919,9 +910,13 @@ MACHINE_DRIVER_END
 	ROM_REGION_NAMCO_52XX( "52xx" ) \
 	ROM_REGION_NAMCO_53XX( "53xx" ) \
 
+/*
+    Pole Position - Namco Version
+*/
+
 ROM_START( polepos )
 	/* Z80 memory/ROM data */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "pp1_9b.6h",    0x0000, 0x2000, CRC(94436b70) SHA1(7495c2a8c3928c59146760d19e672afee01c5b17) )
 	ROM_LOAD( "136014.116",   0x2000, 0x1000, CRC(7174bcb7) SHA1(460326a6cea201db2df813013c95562a222ea95d) )
 
@@ -987,7 +982,7 @@ ROM_START( polepos )
 	ROM_LOAD( "136014.110",   0x0000, 0x2000, CRC(b5ad4d5f) SHA1(c07e77a050200d6fe9952031f971ca35f4d15ff8) )    /* engine sound */
 	ROM_LOAD( "136014.111",   0x2000, 0x2000, CRC(8fdd2f6f) SHA1(3818dc94c60cd78c4212ab7a4367cf3d98166ee6) )    /* engine sound */
 
-	ROM_REGION( 0x8000, "namco2", 0 )
+	ROM_REGION( 0x8000, "namco52", 0 )
 	ROM_LOAD( "pp1_11.2e",    0x0000, 0x2000, CRC(45b9bfeb) SHA1(ff8c690471944d414931fb88666594ef608997f8) )    /* voice */
 	ROM_LOAD( "pp1_12.2f",    0x2000, 0x2000, CRC(a31b4be5) SHA1(38298093bb97ea8647fe187359cae05b65e1c616) )    /* voice */
 	ROM_LOAD( "pp1_13.1e",    0x4000, 0x2000, CRC(a4237466) SHA1(88a397276038cc2fc05f2c18472e6b7cef167f2e) )    /* voice */
@@ -998,10 +993,16 @@ ROM_START( polepos )
 	ROM_LOAD( "136014.117",   0x0000, 0x0100, CRC(2401c817) SHA1(8991b7994513a469e64392fa8f233af5e5f06d54) )    /* sync chain */
 ROM_END
 
+/*
+    Pole Position - Atari Version
+
+    CPU/Sound Board: A039185
+    Video Board:     A039187
+*/
 
 ROM_START( poleposa )
 	/* Z80 memory/ROM data */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "136014.105",   0x0000, 0x2000, CRC(c918c043) SHA1(abc1aa3d7b670b5a65b4565dc646cd3c4edf4e6f) )
 	ROM_LOAD( "136014.116",   0x2000, 0x1000, CRC(7174bcb7) SHA1(460326a6cea201db2df813013c95562a222ea95d) )
 
@@ -1067,18 +1068,22 @@ ROM_START( poleposa )
 	ROM_LOAD( "136014.110",   0x0000, 0x2000, CRC(b5ad4d5f) SHA1(c07e77a050200d6fe9952031f971ca35f4d15ff8) )    /* engine sound */
 	ROM_LOAD( "136014.111",   0x2000, 0x2000, CRC(8fdd2f6f) SHA1(3818dc94c60cd78c4212ab7a4367cf3d98166ee6) )    /* engine sound */
 
-	ROM_REGION( 0x6000, "namco2", 0 )
+	ROM_REGION( 0x6000, "namco52", 0 )
 	ROM_LOAD( "136014.106",   0x0000, 0x2000, CRC(5b4cf05e) SHA1(52342572940489175607bbf5b6cfd05ee9b0f004) )    /* voice */
 
 	/* unknown or unused (P)ROM data */
 	ROM_REGION( 0x0100, "user1", 0 )
 	ROM_LOAD( "136014.117",   0x0000, 0x0100, CRC(2401c817) SHA1(8991b7994513a469e64392fa8f233af5e5f06d54) )    /* sync chain */
+
+    ROM_REGION( 0x0002, "cpu_pals", 0 ) /* PAL's located on the cpu board */
+    ROM_LOAD( "137316-001.2n", 0x0000, 0x0001, NO_DUMP ) /* MMI PAL16L6CN */
+    ROM_LOAD( "137316-00x.5c", 0x0000, 0x0001, NO_DUMP ) /* MMI PAL16L6CN */
 ROM_END
 
 
 ROM_START( polepos1 )
 	/* Z80 memory/ROM data */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "136014.105",   0x0000, 0x2000, CRC(c918c043) SHA1(abc1aa3d7b670b5a65b4565dc646cd3c4edf4e6f) )
 	ROM_LOAD( "136014.116",   0x2000, 0x1000, CRC(7174bcb7) SHA1(460326a6cea201db2df813013c95562a222ea95d) )
 
@@ -1144,12 +1149,16 @@ ROM_START( polepos1 )
 	ROM_LOAD( "136014.110",   0x0000, 0x2000, CRC(b5ad4d5f) SHA1(c07e77a050200d6fe9952031f971ca35f4d15ff8) )    /* engine sound */
 	ROM_LOAD( "136014.111",   0x2000, 0x2000, CRC(8fdd2f6f) SHA1(3818dc94c60cd78c4212ab7a4367cf3d98166ee6) )    /* engine sound */
 
-	ROM_REGION( 0x6000, "namco2", 0 )
+	ROM_REGION( 0x6000, "namco52", 0 )
 	ROM_LOAD( "136014.106",   0x0000, 0x2000, CRC(5b4cf05e) SHA1(52342572940489175607bbf5b6cfd05ee9b0f004) )    /* voice */
 
 	/* unknown or unused (P)ROM data */
 	ROM_REGION( 0x0100, "user1", 0 )
 	ROM_LOAD( "136014.117",   0x0000, 0x0100, CRC(2401c817) SHA1(8991b7994513a469e64392fa8f233af5e5f06d54) )    /* sync chain */
+
+    ROM_REGION( 0x0002, "cpu_pals", 0 ) /* PAL's located on the cpu board */
+    ROM_LOAD( "137316-001.2n", 0x0000, 0x0001, NO_DUMP ) /* MMI PAL16L6CN */
+    ROM_LOAD( "137316-00x.5c", 0x0000, 0x0001, NO_DUMP ) /* MMI PAL16L6CN */
 ROM_END
 
 /*
@@ -1252,7 +1261,7 @@ Notes:
 */
 ROM_START( topracer )
 	/* Z80 memory/ROM data */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "pp1_9b.6h",    0x0000, 0x2000, CRC(94436b70) SHA1(7495c2a8c3928c59146760d19e672afee01c5b17) )
 	ROM_LOAD( "136014.116",   0x2000, 0x1000, CRC(7174bcb7) SHA1(460326a6cea201db2df813013c95562a222ea95d) )
 
@@ -1319,7 +1328,7 @@ ROM_START( topracer )
 	ROM_LOAD( "136014.110",   0x0000, 0x2000, CRC(b5ad4d5f) SHA1(c07e77a050200d6fe9952031f971ca35f4d15ff8) )    /* engine sound */
 	ROM_LOAD( "136014.111",   0x2000, 0x2000, CRC(8fdd2f6f) SHA1(3818dc94c60cd78c4212ab7a4367cf3d98166ee6) )    /* engine sound */
 
-	ROM_REGION( 0x6000, "namco2", 0 )
+	ROM_REGION( 0x6000, "namco52", 0 )
 	ROM_LOAD( "136014.106",   0x0000, 0x2000, CRC(5b4cf05e) SHA1(52342572940489175607bbf5b6cfd05ee9b0f004) )    /* voice */
 
 	/* unknown or unused (P)ROM data */
@@ -1329,7 +1338,7 @@ ROM_END
 
 ROM_START( topracra )
 	/* Z80 memory/ROM data */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "pole-c2",      0x0000, 0x2000, CRC(caab829a) SHA1(826f25f5c792ab8b24e73ebb735aebcad552454f) )
 	ROM_LOAD( "pole-h2",      0x2000, 0x1000, CRC(148f5000) SHA1(071f75518f06a317f53db78f11da3ee878569f86) )
 
@@ -1396,7 +1405,7 @@ ROM_START( topracra )
 	ROM_LOAD( "136014.110",   0x0000, 0x2000, CRC(b5ad4d5f) SHA1(c07e77a050200d6fe9952031f971ca35f4d15ff8) )    /* engine sound */
 	ROM_LOAD( "136014.111",   0x2000, 0x2000, CRC(8fdd2f6f) SHA1(3818dc94c60cd78c4212ab7a4367cf3d98166ee6) )    /* engine sound */
 
-	ROM_REGION( 0x8000, "namco2", 0 )
+	ROM_REGION( 0x8000, "namco52", 0 )
 	ROM_LOAD( "pp1_11.2e",    0x0000, 0x2000, CRC(45b9bfeb) SHA1(ff8c690471944d414931fb88666594ef608997f8) )    /* voice */
 	ROM_LOAD( "pp1_12.2f",    0x2000, 0x2000, CRC(a31b4be5) SHA1(38298093bb97ea8647fe187359cae05b65e1c616) )    /* voice */
 	ROM_LOAD( "pp1_13.1e",    0x4000, 0x2000, CRC(a4237466) SHA1(88a397276038cc2fc05f2c18472e6b7cef167f2e) )    /* voice */
@@ -1409,7 +1418,7 @@ ROM_END
 
 ROM_START( topracrb )
 	/* Z80 memory/ROM data */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "tr9.f17",    0x0000, 0x2000, CRC(94436b70) SHA1(7495c2a8c3928c59146760d19e672afee01c5b17) )
 	ROM_LOAD( "tr10.f16",   0x2000, 0x1000, CRC(7174bcb7) SHA1(460326a6cea201db2df813013c95562a222ea95d) )
 
@@ -1476,7 +1485,7 @@ ROM_START( topracrb )
 	ROM_LOAD( "tr15.a8",      0x0000, 0x2000, CRC(b5ad4d5f) SHA1(c07e77a050200d6fe9952031f971ca35f4d15ff8) )    /* engine sound */
 	ROM_LOAD( "tr16.b9",      0x2000, 0x2000, CRC(8fdd2f6f) SHA1(3818dc94c60cd78c4212ab7a4367cf3d98166ee6) )    /* engine sound */
 
-	ROM_REGION( 0x6000, "namco2", 0 )
+	ROM_REGION( 0x6000, "namco52", 0 )
 	ROM_LOAD( "tr11.b1",      0x0000, 0x2000, CRC(5b4cf05e) SHA1(52342572940489175607bbf5b6cfd05ee9b0f004) )    /* voice */
 
 	/* unknown or unused (P)ROM data */
@@ -1485,9 +1494,13 @@ ROM_START( topracrb )
 ROM_END
 
 
+/*
+    Pole Position - Namco Version
+*/
+
 ROM_START( polepos2 )
 	/* Z80 memory/ROM data */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "pp4_9.6h",      0x0000, 0x2000, CRC(bcf87004) SHA1(0c60cbb777fe72dfd11c6f3e9da806a515cd0f8a) )
 	ROM_LOAD( "136014.183",    0x2000, 0x1000, CRC(a9d4c380) SHA1(6048a8e858824936901e8e3e6b65d7505ccd82b4) )
 
@@ -1557,7 +1570,7 @@ ROM_START( polepos2 )
 	ROM_LOAD( "136014.181",   0x0000, 0x2000, CRC(7d93bc1c) SHA1(dad7c0aa24aef593c84e21f7f8858ca7ada86364) )    /* engine sound */
 	ROM_LOAD( "136014.182",   0x2000, 0x2000, CRC(7d93bc1c) SHA1(dad7c0aa24aef593c84e21f7f8858ca7ada86364) )    /* engine sound */
 
-	ROM_REGION( 0x8000, "namco2", 0 )
+	ROM_REGION( 0x8000, "namco52", 0 )
 	ROM_LOAD( "pp1_11.2e",     0x0000, 0x2000, CRC(45b9bfeb) SHA1(ff8c690471944d414931fb88666594ef608997f8) )    /* voice */
 	ROM_LOAD( "pp1_12.2f",     0x2000, 0x2000, CRC(a31b4be5) SHA1(38298093bb97ea8647fe187359cae05b65e1c616) )    /* voice */
 	ROM_LOAD( "pp1_13.1e",     0x4000, 0x2000, CRC(a4237466) SHA1(88a397276038cc2fc05f2c18472e6b7cef167f2e) )    /* voice */
@@ -1569,9 +1582,19 @@ ROM_START( polepos2 )
 ROM_END
 
 
+/*
+    Pole Position 2 - Atari Version
+
+    CPU/Sound Board: A039185
+    Video Board:     A039187
+
+    Pole Position 2 uses the same hardware as Pole Position except there a
+    couple of extra roms.
+*/
+
 ROM_START( poleps2a )
 	/* Z80 memory/ROM data */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "136014.180",   0x0000, 0x2000, CRC(f85212c4) SHA1(666e55a7662247e72393b105b3e719be4233f1ff) )
 	ROM_LOAD( "136014.183",   0x2000, 0x1000, CRC(a9d4c380) SHA1(6048a8e858824936901e8e3e6b65d7505ccd82b4) )
 
@@ -1641,18 +1664,22 @@ ROM_START( poleps2a )
 	ROM_LOAD( "136014.181",   0x0000, 0x2000, CRC(7d93bc1c) SHA1(dad7c0aa24aef593c84e21f7f8858ca7ada86364) )    /* engine sound */
 	ROM_LOAD( "136014.182",   0x2000, 0x2000, CRC(7d93bc1c) SHA1(dad7c0aa24aef593c84e21f7f8858ca7ada86364) )    /* engine sound */
 
-	ROM_REGION( 0x6000, "namco2", 0 )
+	ROM_REGION( 0x6000, "namco52", 0 )
 	ROM_LOAD( "136014.106",   0x0000, 0x2000, CRC(5b4cf05e) SHA1(52342572940489175607bbf5b6cfd05ee9b0f004) )    /* voice */
 
 	/* unknown or unused (P)ROM data */
 	ROM_REGION( 0x0100, "user1", 0 )
 	ROM_LOAD( "136014.117",   0x0000, 0x0100, CRC(2401c817) SHA1(8991b7994513a469e64392fa8f233af5e5f06d54) )    /* sync chain */
+
+    ROM_REGION( 0x0002, "cpu_pals", 0 ) /* PAL's located on the cpu board */
+    ROM_LOAD( "137316-001.2n", 0x0000, 0x0001, NO_DUMP ) /* MMI PAL16L6CN */
+    ROM_LOAD( "137316-00x.5c", 0x0000, 0x0001, NO_DUMP ) /* MMI PAL16L6CN */
 ROM_END
 
 
 ROM_START( poleps2b )
 	/* Z80 memory/ROM data */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "136014.180",   0x0000, 0x2000, CRC(f85212c4) SHA1(666e55a7662247e72393b105b3e719be4233f1ff) )
 	ROM_LOAD( "136014.183",   0x2000, 0x1000, CRC(a9d4c380) SHA1(6048a8e858824936901e8e3e6b65d7505ccd82b4) )
 
@@ -1724,7 +1751,7 @@ ROM_START( poleps2b )
 	ROM_LOAD( "136014.181",   0x0000, 0x2000, CRC(7d93bc1c) SHA1(dad7c0aa24aef593c84e21f7f8858ca7ada86364) )    /* engine sound */
 	ROM_LOAD( "136014.182",   0x2000, 0x2000, CRC(7d93bc1c) SHA1(dad7c0aa24aef593c84e21f7f8858ca7ada86364) )    /* engine sound */
 
-	ROM_REGION( 0x6000, "namco2", 0 )
+	ROM_REGION( 0x6000, "namco52", 0 )
 	ROM_LOAD( "136014.106",   0x0000, 0x2000, CRC(5b4cf05e) SHA1(52342572940489175607bbf5b6cfd05ee9b0f004) )    /* voice */
 
 	/* unknown or unused (P)ROM data */
@@ -1747,9 +1774,9 @@ static DRIVER_INIT( topracra )
 	polepos_gear_bit = 0x20;
 
 	/* extra direct mapped inputs read */
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x02, 0x02, 0, 0, input_port_read_handler8(machine->portconfig, "STEER"));
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x03, 0x03, 0, 0, input_port_read_handler8(machine->portconfig, "IN0"));
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x04, 0x04, 0, 0, input_port_read_handler8(machine->portconfig, "DSWA"));
+	memory_install_read_port_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x02, 0x02, 0, 0, "STEER");
+	memory_install_read_port_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x03, 0x03, 0, 0, "IN0");
+	memory_install_read_port_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x04, 0x04, 0, 0, "DSWA");
 
 }
 

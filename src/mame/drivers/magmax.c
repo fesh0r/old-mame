@@ -64,7 +64,7 @@ static READ8_HANDLER( magmax_sound_r )
 	return (sound_latch | LS74_q);
 }
 
-static WRITE8_HANDLER( ay8910_portB_0_w )
+static WRITE8_DEVICE_HANDLER( ay8910_portB_0_w )
 {
 	/*bit 0 is input to CLR line of the LS74*/
 	LS74_clr = data & 1;
@@ -114,8 +114,11 @@ static MACHINE_RESET( magmax )
 
 
 
-static WRITE8_HANDLER( ay8910_portA_0_w )
+static WRITE8_DEVICE_HANDLER( ay8910_portA_0_w )
 {
+const device_config *ay1 = devtag_get_device(device->machine, "ay1");
+const device_config *ay2 = devtag_get_device(device->machine, "ay2");
+const device_config *ay3 = devtag_get_device(device->machine, "ay3");
 float percent;
 
 /*There are three AY8910 chips and four(!) separate amplifiers on the board
@@ -170,26 +173,26 @@ bit3 - SOUND Chan#8 name=AY-3-8910 #2 Ch C
 	/*popmessage("gain_ctrl = %2x",data&0x0f);*/
 
 	percent = (gain_control & 1) ? 1.0 : 0.50;
-	sndti_set_output_gain(SOUND_AY8910, 0, 0, percent);
+	sound_set_output_gain(ay1, 0, percent);
 //fixme:    set_RC_filter(0,10000,100000000,0,10000);   /* 10K, 10000pF = 0.010uF */
 
 	percent = (gain_control & 2) ? 0.45 : 0.23;
-	sndti_set_output_gain(SOUND_AY8910, 0, 1, percent);
-	sndti_set_output_gain(SOUND_AY8910, 0, 2, percent);
-	sndti_set_output_gain(SOUND_AY8910, 1, 0, percent);
-	sndti_set_output_gain(SOUND_AY8910, 1, 1, percent);
+	sound_set_output_gain(ay1, 1, percent);
+	sound_set_output_gain(ay1, 2, percent);
+	sound_set_output_gain(ay2, 0, percent);
+	sound_set_output_gain(ay2, 1, percent);
 //fixme:    set_RC_filter(1,4700,100000000,0,4700); /*  4.7K, 4700pF = 0.0047uF */
 //fixme:    set_RC_filter(2,4700,100000000,0,4700); /*  4.7K, 4700pF = 0.0047uF */
 //fixme:    set_RC_filter(3,4700,100000000,0,4700); /*  4.7K, 4700pF = 0.0047uF */
 //fixme:    set_RC_filter(4,4700,100000000,0,4700); /*  4.7K, 4700pF = 0.0047uF */
 
 	percent = (gain_control & 4) ? 0.45 : 0.23;
-	sndti_set_output_gain(SOUND_AY8910, 1, 2, percent);
-	sndti_set_output_gain(SOUND_AY8910, 2, 0, percent);
+	sound_set_output_gain(ay2, 2, percent);
+	sound_set_output_gain(ay3, 0, percent);
 
 	percent = (gain_control & 8) ? 0.45 : 0.23;
-	sndti_set_output_gain(SOUND_AY8910, 2, 1, percent);
-	sndti_set_output_gain(SOUND_AY8910, 2, 2, percent);
+	sound_set_output_gain(ay3, 1, percent);
+	sound_set_output_gain(ay3, 2, percent);
 }
 
 static WRITE16_HANDLER( magmax_vreg_w )
@@ -243,12 +246,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( magmax_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x02, 0x02) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(ay8910_write_port_1_w)
-	AM_RANGE(0x04, 0x04) AM_WRITE(ay8910_control_port_2_w)
-	AM_RANGE(0x05, 0x05) AM_WRITE(ay8910_write_port_2_w)
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE("ay1", ay8910_address_data_w)
+	AM_RANGE(0x02, 0x03) AM_DEVWRITE("ay2", ay8910_address_data_w)
+	AM_RANGE(0x04, 0x05) AM_DEVWRITE("ay3", ay8910_address_data_w)
 	AM_RANGE(0x06, 0x06) AM_READ(magmax_sound_r)
 ADDRESS_MAP_END
 
@@ -360,21 +360,21 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	NULL,
-	ay8910_portA_0_w, /*write port A*/
-	ay8910_portB_0_w  /*write port B*/
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(ay8910_portA_0_w), /*write port A*/
+	DEVCB_HANDLER(ay8910_portB_0_w)  /*write port B*/
 };
 
 
 static MACHINE_DRIVER_START( magmax )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, XTAL_16MHz/2)	/* verified on pcb */
+	MDRV_CPU_ADD("maincpu", M68000, XTAL_16MHz/2)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(magmax_readmem,magmax_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,XTAL_20MHz/8) /* verified on pcb */
+	MDRV_CPU_ADD("audiocpu", Z80,XTAL_20MHz/8) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(magmax_soundreadmem,magmax_soundwritemem)
 	MDRV_CPU_IO_MAP(magmax_sound_io_map,0)
 
@@ -384,7 +384,7 @@ static MACHINE_DRIVER_START( magmax )
 	MDRV_MACHINE_RESET(magmax)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
@@ -413,7 +413,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( magmax )
-	ROM_REGION( 0x14000, "main", 0 )
+	ROM_REGION( 0x14000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "1.3b", 0x00001, 0x4000, CRC(33793cbb) SHA1(a0bc0e4be434d9fc8115de8d63c92e942334bc85) )
 	ROM_LOAD16_BYTE( "6.3d", 0x00000, 0x4000, CRC(677ef450) SHA1(9003ff1c1c455970c1bd036b0b5e44dae2e379a5) )
 	ROM_LOAD16_BYTE( "2.5b", 0x08001, 0x4000, CRC(1a0c84df) SHA1(77ff21de33392a148d7ca69a77acc654260af0db) )
@@ -421,7 +421,7 @@ ROM_START( magmax )
 	ROM_LOAD16_BYTE( "3.6b", 0x10001, 0x2000, CRC(d06e6cae) SHA1(94047b2bcf030d34295ff8107f95097ce57efe6b) )
 	ROM_LOAD16_BYTE( "8.6d", 0x10000, 0x2000, CRC(790a82be) SHA1(9a25d5a7c87aeef5e736b0f2fb8dde1c9be70039) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "15.17b", 0x00000, 0x2000, CRC(19e7b983) SHA1(b1cd0b728e7cce87d9b1039be179d0915d939a4f) )
 	ROM_LOAD( "16.18b", 0x02000, 0x2000, CRC(055e3126) SHA1(8c9b03eb7588512ef17f8c1b731a2fd7cf372bf8) )
 

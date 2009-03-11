@@ -54,7 +54,7 @@ static INTERRUPT_GEN( ddrible_interrupt_1 )
 static WRITE8_HANDLER( ddrible_bankswitch_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(space->machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "maincpu");
 
 	bankaddress = 0x10000 + (data & 0x0f)*0x2000;
 	memory_set_bankptr(space->machine, 1,&RAM[bankaddress]);
@@ -91,40 +91,36 @@ static WRITE8_HANDLER( ddrible_coin_counter_w )
 	coin_counter_w(1,(data >> 1) & 0x01);
 }
 
-static READ8_HANDLER( ddrible_vlm5030_busy_r )
+static READ8_DEVICE_HANDLER( ddrible_vlm5030_busy_r )
 {
-	return mame_rand(space->machine); /* patch */
+	return mame_rand(device->machine); /* patch */
 	/* FIXME: remove ? */
 #if 0
-	if (vlm5030_bsy()) return 1;
+	if (vlm5030_bsy(device)) return 1;
 	else return 0;
 #endif
 }
 
-static WRITE8_HANDLER( ddrible_vlm5030_ctrl_w )
+static WRITE8_DEVICE_HANDLER( ddrible_vlm5030_ctrl_w )
 {
-	UINT8 *SPEECH_ROM = memory_region(space->machine, "vlm");
+	UINT8 *SPEECH_ROM = memory_region(device->machine, "vlm");
+
 	/* b7 : vlm data bus OE   */
 	/* b6 : VLM5030-RST       */
 	/* b5 : VLM5030-ST        */
 	/* b4 : VLM5300-VCU       */
 	/* b3 : ROM bank select   */
-	if (sndti_exists(SOUND_VLM5030, 0))
-	{
-		vlm5030_rst( data & 0x40 ? 1 : 0 );
-		vlm5030_st(  data & 0x20 ? 1 : 0 );
-		vlm5030_vcu( data & 0x10 ? 1 : 0 );
-		vlm5030_set_rom(&SPEECH_ROM[data & 0x08 ? 0x10000 : 0]);
-	}
+	vlm5030_rst( device, data & 0x40 ? 1 : 0 );
+	vlm5030_st(  device, data & 0x20 ? 1 : 0 );
+	vlm5030_vcu( device, data & 0x10 ? 1 : 0 );
+	vlm5030_set_rom(device, &SPEECH_ROM[data & 0x08 ? 0x10000 : 0]);
+
 	/* b2 : SSG-C rc filter enable */
 	/* b1 : SSG-B rc filter enable */
 	/* b0 : SSG-A rc filter enable */
-	if (sndti_exists(SOUND_FILTER_RC, 2))
-	{
-		filter_rc_set_RC(2,FLT_RC_LOWPASS, 1000,2200,1000,data & 0x04 ? CAP_N(150) : 0); /* YM2203-SSG-C */
-		filter_rc_set_RC(1,FLT_RC_LOWPASS, 1000,2200,1000,data & 0x02 ? CAP_N(150) : 0); /* YM2203-SSG-B */
-		filter_rc_set_RC(0,FLT_RC_LOWPASS, 1000,2200,1000,data & 0x01 ? CAP_N(150) : 0); /* YM2203-SSG-A */
-	}
+	filter_rc_set_RC(devtag_get_device(device->machine, "filter3"),FLT_RC_LOWPASS, 1000,2200,1000,data & 0x04 ? CAP_N(150) : 0); /* YM2203-SSG-C */
+	filter_rc_set_RC(devtag_get_device(device->machine, "filter2"),FLT_RC_LOWPASS, 1000,2200,1000,data & 0x02 ? CAP_N(150) : 0); /* YM2203-SSG-B */
+	filter_rc_set_RC(devtag_get_device(device->machine, "filter1"),FLT_RC_LOWPASS, 1000,2200,1000,data & 0x01 ? CAP_N(150) : 0); /* YM2203-SSG-A */
 }
 
 
@@ -173,16 +169,14 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmem_cpu2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_READ(SMH_RAM)					/* shared RAM with CPU #1 */
-	AM_RANGE(0x1000, 0x1000) AM_READ(ym2203_status_port_0_r)		/* YM2203 */
-	AM_RANGE(0x1001, 0x1001) AM_READ(ym2203_read_port_0_r)		/* YM2203 */
+	AM_RANGE(0x1000, 0x1001) AM_DEVREAD("ym", ym2203_r)		/* YM2203 */
 	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)					/* ROM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_cpu2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_WRITE(SMH_RAM) AM_BASE(&ddrible_snd_sharedram)	/* shared RAM with CPU #1 */
-	AM_RANGE(0x1000, 0x1000) AM_WRITE(ym2203_control_port_0_w)			/* YM2203 */
-	AM_RANGE(0x1001, 0x1001) AM_WRITE(ym2203_write_port_0_w)				/* YM2203 */
-	AM_RANGE(0x3000, 0x3000) AM_WRITE(vlm5030_data_w)						/* Speech data */
+	AM_RANGE(0x1000, 0x1001) AM_DEVWRITE("ym", ym2203_w)				/* YM2203 */
+	AM_RANGE(0x3000, 0x3000) AM_DEVWRITE("vlm", vlm5030_data_w)						/* Speech data */
 	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)							/* ROM */
 ADDRESS_MAP_END
 
@@ -323,10 +317,10 @@ static const ym2203_interface ym2203_config =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		NULL,
-		ddrible_vlm5030_busy_r,
-		ddrible_vlm5030_ctrl_w,
-		NULL
+		DEVCB_NULL,
+		DEVCB_DEVICE_HANDLER("vlm", ddrible_vlm5030_busy_r),
+		DEVCB_DEVICE_HANDLER("vlm", ddrible_vlm5030_ctrl_w),
+		DEVCB_NULL
 	},
 	NULL
 };
@@ -339,13 +333,13 @@ static const vlm5030_interface vlm5030_config =
 static MACHINE_DRIVER_START( ddribble )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809,	XTAL_18_432MHz/12)	/* verified on pcb */
+	MDRV_CPU_ADD("maincpu", M6809,	XTAL_18_432MHz/12)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu0,writemem_cpu0)
-	MDRV_CPU_VBLANK_INT("main", ddrible_interrupt_0)
+	MDRV_CPU_VBLANK_INT("screen", ddrible_interrupt_0)
 
 	MDRV_CPU_ADD("cpu1", M6809,	XTAL_18_432MHz/12)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu1,writemem_cpu1)
-	MDRV_CPU_VBLANK_INT("main", ddrible_interrupt_1)
+	MDRV_CPU_VBLANK_INT("screen", ddrible_interrupt_1)
 
 	MDRV_CPU_ADD("cpu2", M6809,	XTAL_18_432MHz/12)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu2,writemem_cpu2)
@@ -353,7 +347,7 @@ static MACHINE_DRIVER_START( ddribble )
 	MDRV_QUANTUM_TIME(HZ(6000))	/* we need heavy synch */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -393,7 +387,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( ddribble )
-	ROM_REGION( 0x1a000, "main", 0 ) /* 64K CPU #0 + 40K for Banked ROMS */
+	ROM_REGION( 0x1a000, "maincpu", 0 ) /* 64K CPU #0 + 40K for Banked ROMS */
 	ROM_LOAD( "690c03.bin",	0x10000, 0x0a000, CRC(07975a58) SHA1(96fd1b2348bbdf560067d8ee3cd4c0514e263d7a) )
 	ROM_CONTINUE(			0x0a000, 0x06000 )
 

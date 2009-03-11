@@ -31,7 +31,7 @@
           the Z180, but the cpu core doesn't support that yet.
         * Is the clock divide 3 or 4?
 
-    Versions known to exist but not dumped: v1.03
+    Versions known to exist but not dumped: v1.02 & v1.03
 
 ***************************************************************************/
 
@@ -85,12 +85,6 @@ static const namco_interface namco_config =
 	3,		/* number of voices */
 	0		/* stereo */
 };
-
-
-static WRITE8_HANDLER( _20pacgal_dac_w )
-{
-	dac_signed_data_w(0, data);
-}
 
 
 
@@ -172,7 +166,7 @@ static WRITE8_HANDLER( rom_bank_select_w )
 
 	if (state->game_selected == 0)
 	{
-		UINT8 *rom = memory_region(space->machine, "main");
+		UINT8 *rom = memory_region(space->machine, "maincpu");
 		memcpy(rom+0x48000, rom+0x8000, 0x2000);
 	}
 }
@@ -187,7 +181,7 @@ static WRITE8_HANDLER( rom_48000_w )
 		if (offset < 0x0800)
 			state->video_ram[offset & 0x07ff] = data;
 
-		memory_region(space->machine, "main")[0x48000 + offset] = data;
+		memory_region(space->machine, "maincpu")[0x48000 + offset] = data;
 	}
 }
 
@@ -205,9 +199,9 @@ static ADDRESS_MAP_START( 20pacgal_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0a000, 0x0ffff) AM_MIRROR(0x40000) AM_ROM
 	AM_RANGE(0x10000, 0x3ffff) AM_ROM
 	AM_RANGE(0x44000, 0x447ff) AM_RAM AM_BASE_MEMBER(_20pacgal_state, video_ram)
-	AM_RANGE(0x45040, 0x4505f) AM_WRITE(pacman_sound_w) AM_BASE(&namco_soundregs)
+	AM_RANGE(0x45040, 0x4505f) AM_DEVWRITE("namco", pacman_sound_w) AM_BASE(&namco_soundregs)
 	AM_RANGE(0x44800, 0x45eff) AM_RAM
-	AM_RANGE(0x45f00, 0x45fff) AM_WRITE(_20pacgal_wavedata_w) AM_BASE(&namco_wavedata)
+	AM_RANGE(0x45f00, 0x45fff) AM_DEVWRITE("namco", _20pacgal_wavedata_w) AM_BASE(&namco_wavedata)
 	AM_RANGE(0x46000, 0x46fff) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(_20pacgal_state, char_gfx_ram)
 	AM_RANGE(0x47100, 0x47100) AM_RAM	/* leftover from original Galaga code */
 	AM_RANGE(0x48000, 0x49fff) AM_READWRITE(SMH_ROM, rom_48000_w)	/* this should be a mirror of 08000-09ffff */
@@ -237,7 +231,7 @@ static ADDRESS_MAP_START( 20pacgal_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x85, 0x86) AM_WRITE(SMH_NOP)				/* stars: rng seed (lo/hi) */
 	AM_RANGE(0x87, 0x87) AM_READWRITE(eeprom_r, eeprom_w)
 	AM_RANGE(0x88, 0x88) AM_WRITE(rom_bank_select_w)
-	AM_RANGE(0x89, 0x89) AM_WRITE(_20pacgal_dac_w)
+	AM_RANGE(0x89, 0x89) AM_DEVWRITE("dac", dac_signed_w)
 	AM_RANGE(0x8a, 0x8a) AM_WRITE(SMH_NOP)				/* stars: bits 3-4 = active set; bit 5 = enable */
 	AM_RANGE(0x8b, 0x8b) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(_20pacgal_state, flip)
 	AM_RANGE(0x8f, 0x8f) AM_WRITE(_20pacgal_coin_counter_w)
@@ -296,10 +290,10 @@ static MACHINE_DRIVER_START( 20pacgal )
 	MDRV_DRIVER_DATA(_20pacgal_state)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z180, MAIN_CPU_CLOCK)
+	MDRV_CPU_ADD("maincpu", Z180, MAIN_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(20pacgal_map,0)
 	MDRV_CPU_IO_MAP(20pacgal_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_assert)
 
 	MDRV_NVRAM_HANDLER(eeprom)
 
@@ -326,7 +320,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( 20pacgal ) /* Version 1.04 */
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD( "20th_104.u13", 0x00000, 0x40000, CRC(6c474d2d) SHA1(5a150fc9d2ed0e908385b9f9d532aa33cf80dba4) )
 
 	ROM_REGION( 0x8000, "proms", 0 )	/* palette */
@@ -334,7 +328,7 @@ ROM_START( 20pacgal ) /* Version 1.04 */
 ROM_END
 
 ROM_START( 20pacgaa ) /* Version 1.01 */
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD( "20th_101.u13", 0x00000, 0x40000, CRC(77159582) SHA1(c05e005a941cbdc806dcd76b315069362c792a72) )
 
 	ROM_REGION( 0x8000, "proms", 0 )	/* palette */

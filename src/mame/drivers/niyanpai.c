@@ -46,11 +46,9 @@ Memo:
 
 #define SIGNED_DAC	0		// 0:unsigned DAC, 1:signed DAC
 #if SIGNED_DAC
-#define DAC_0_WRITE	dac_0_signed_data_w
-#define DAC_1_WRITE	dac_1_signed_data_w
+#define DAC_WRITE	dac_signed_w
 #else
-#define DAC_0_WRITE	dac_0_data_w
-#define DAC_1_WRITE	dac_1_data_w
+#define DAC_WRITE	dac_w
 #endif
 
 
@@ -61,7 +59,7 @@ static int musobana_outcoin_flag;
 
 static void niyanpai_soundbank_w(running_machine *machine, int data)
 {
-	UINT8 *SNDROM = memory_region(machine, "audio");
+	UINT8 *SNDROM = memory_region(machine, "audiocpu");
 
 	memory_set_bankptr(machine, 1, &SNDROM[0x08000 + (0x8000 * (data & 0x03))]);
 }
@@ -124,10 +122,10 @@ static WRITE8_HANDLER( tmpz84c011_pio_w)
 			niyanpai_soundbank_w(space->machine, data & 0x03);
 			break;
 		case 1:			/* PB_0 */
-			DAC_1_WRITE(space, 0, data);
+			DAC_WRITE(devtag_get_device(space->machine, "dac2"), 0, data);
 			break;
 		case 2:			/* PC_0 */
-			DAC_0_WRITE(space, 0, data);
+			DAC_WRITE(devtag_get_device(space->machine, "dac1"), 0, data);
 			break;
 		case 3:			/* PD_0 */
 			break;
@@ -169,10 +167,10 @@ static WRITE8_HANDLER( tmpz84c011_0_dir_pe_w )	{ pio_dir[4] = data; }
 
 static void ctc0_interrupt(const device_config *device, int state)
 {
-	cputag_set_input_line(device->machine, "audio", 0, state);
+	cputag_set_input_line(device->machine, "audiocpu", 0, state);
 }
 
-static z80ctc_interface ctc_intf =
+static const z80ctc_interface ctc_intf =
 {
 	0,					/* timer disables */
 	ctc0_interrupt,		/* interrupt handler */
@@ -196,8 +194,8 @@ static MACHINE_RESET( niyanpai )
 
 static DRIVER_INIT( niyanpai )
 {
-	UINT8 *MAINROM = memory_region(machine, "main");
-	UINT8 *SNDROM = memory_region(machine, "audio");
+	UINT8 *MAINROM = memory_region(machine, "maincpu");
+	UINT8 *SNDROM = memory_region(machine, "audiocpu");
 
 	// main program patch (USR0 -> IRQ LEVEL1)
 	MAINROM[(25 * 4) + 0] = MAINROM[(64 * 4) + 0];
@@ -468,7 +466,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE(Z80CTC, "ctc", z80ctc_r, z80ctc_w)
+	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE("ctc", z80ctc_r, z80ctc_w)
 	AM_RANGE(0x50, 0x50) AM_READWRITE(tmpz84c011_0_pa_r, tmpz84c011_0_pa_w)
 	AM_RANGE(0x51, 0x51) AM_READWRITE(tmpz84c011_0_pb_r, tmpz84c011_0_pb_w)
 	AM_RANGE(0x52, 0x52) AM_READWRITE(tmpz84c011_0_pc_r, tmpz84c011_0_pc_w)
@@ -479,8 +477,7 @@ static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x56, 0x56) AM_READWRITE(tmpz84c011_0_dir_pc_r, tmpz84c011_0_dir_pc_w)
 	AM_RANGE(0x34, 0x34) AM_READWRITE(tmpz84c011_0_dir_pd_r, tmpz84c011_0_dir_pd_w)
 	AM_RANGE(0x44, 0x44) AM_READWRITE(tmpz84c011_0_dir_pe_r, tmpz84c011_0_dir_pe_w)
-	AM_RANGE(0x80, 0x80) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0x81, 0x81) AM_WRITE(ym3812_write_port_0_w)
+	AM_RANGE(0x80, 0x81) AM_DEVWRITE("ym", ym3812_w)
 ADDRESS_MAP_END
 
 
@@ -842,7 +839,7 @@ static INTERRUPT_GEN( niyanpai_interrupt )
 
 static const z80_daisy_chain daisy_chain_sound[] =
 {
-	{ Z80CTC, "ctc" },
+	{ "ctc" },
 	{ NULL }
 };
 
@@ -850,22 +847,22 @@ static const z80_daisy_chain daisy_chain_sound[] =
 static MACHINE_DRIVER_START( niyanpai )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 12288000/2)	/* TMP68301, 6.144 MHz */
+	MDRV_CPU_ADD("maincpu", M68000, 12288000/2)	/* TMP68301, 6.144 MHz */
 	MDRV_CPU_PROGRAM_MAP(niyanpai_readmem,niyanpai_writemem)
-	MDRV_CPU_VBLANK_INT("main", niyanpai_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", niyanpai_interrupt)
 
-	MDRV_CPU_ADD("audio", Z80, 8000000/1)					/* TMPZ84C011, 8.00 MHz */
+	MDRV_CPU_ADD("audiocpu", Z80, 8000000/1)					/* TMPZ84C011, 8.00 MHz */
 	MDRV_CPU_CONFIG(daisy_chain_sound)
 	MDRV_CPU_PROGRAM_MAP(sound_readmem, sound_writemem)
 	MDRV_CPU_IO_MAP(sound_io_map,0)
 
-	MDRV_Z80CTC_ADD("ctc", 8000000/1 /* same as "audio" */, ctc_intf)
+	MDRV_Z80CTC_ADD("ctc", 8000000/1 /* same as "audiocpu" */, ctc_intf)
 
 	MDRV_MACHINE_RESET(niyanpai)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -894,7 +891,7 @@ static MACHINE_DRIVER_START( musobana )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(niyanpai)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(musobana_readmem, musobana_writemem)
 MACHINE_DRIVER_END
 
@@ -902,17 +899,17 @@ static MACHINE_DRIVER_START( mhhonban )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(niyanpai)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(mhhonban_readmem, mhhonban_writemem)
 MACHINE_DRIVER_END
 
 
 ROM_START( niyanpai )
-	ROM_REGION( 0x40000, "main", 0 ) /* TMP68301 main program */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* TMP68301 main program */
 	ROM_LOAD16_BYTE( "npai_01.bin", 0x00000, 0x20000, CRC(a904e8a1) SHA1(77865d7b48cac96af1e3cac4a702f7de4b5ee82b) )
 	ROM_LOAD16_BYTE( "npai_02.bin", 0x00001, 0x20000, CRC(244f9d6f) SHA1(afde18f32c4879a66c0707671d783c21c54cffa4) )
 
-	ROM_REGION( 0x20000, "audio", 0 ) /* TMPZ84C011 sound program */
+	ROM_REGION( 0x20000, "audiocpu", 0 ) /* TMPZ84C011 sound program */
 	ROM_LOAD( "npai_03.bin", 0x000000, 0x20000, CRC(d154306b) SHA1(3375568a6d387d850b8996b8bad3d0220de13993) )
 
 	ROM_REGION( 0x400000, "gfx1", 0 ) /* gfx */
@@ -927,11 +924,11 @@ ROM_START( niyanpai )
 ROM_END
 
 ROM_START( musobana )
-	ROM_REGION( 0x40000, "main", 0 ) /* TMP68301 main program */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* TMP68301 main program */
 	ROM_LOAD16_BYTE( "1.209", 0x00000, 0x20000, CRC(574929a1) SHA1(70ea96c3aa8a3512176b719de0928470541d85cb) )
 	ROM_LOAD16_BYTE( "2.208", 0x00001, 0x20000, CRC(12734fda) SHA1(46241efe4266ad6426eb31db757ae4852c70c25d) )
 
-	ROM_REGION( 0x20000, "audio", 0 ) /* TMPZ84C011 sound program */
+	ROM_REGION( 0x20000, "audiocpu", 0 ) /* TMPZ84C011 sound program */
 	ROM_LOAD( "3.804",  0x000000, 0x20000, CRC(0be8f2ce) SHA1(c1ee8907c03f615fbc42654a3c37387714761560) )
 
 	ROM_REGION( 0x500000, "gfx1", 0 ) /* gfx */
@@ -948,11 +945,11 @@ ROM_START( musobana )
 ROM_END
 
 ROM_START( 4psimasy )
-	ROM_REGION( 0x40000, "main", 0 ) /* TMP68301 main program */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* TMP68301 main program */
 	ROM_LOAD16_BYTE( "1.209", 0x00000, 0x20000, CRC(28dda353) SHA1(3d4738189a7b8b8b0434b3e58550572c3ce74b42) )
 	ROM_LOAD16_BYTE( "2.208", 0x00001, 0x20000, CRC(3679c9fb) SHA1(74a940c3c95723680a63a281f194ef4bbe3dc58a) )
 
-	ROM_REGION( 0x20000, "audio", 0 ) /* TMPZ84C011 sound program */
+	ROM_REGION( 0x20000, "audiocpu", 0 ) /* TMPZ84C011 sound program */
 	ROM_LOAD( "3.804",  0x000000, 0x20000, CRC(bd644726) SHA1(1f8e12a081657d6e1dd9c896056d1ffd977dfe95) )
 
 	ROM_REGION( 0x400000, "gfx1", 0 ) /* gfx */
@@ -967,11 +964,11 @@ ROM_START( 4psimasy )
 ROM_END
 
 ROM_START( mhhonban )
-	ROM_REGION( 0x40000, "main", 0 ) /* TMP68301 main program */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* TMP68301 main program */
 	ROM_LOAD16_BYTE( "u209.bin", 0x00000, 0x20000, CRC(121c861f) SHA1(70a6b695998904dccb8791ea5d9acbf7484bd812) )
 	ROM_LOAD16_BYTE( "u208.bin", 0x00001, 0x20000, CRC(d6712d0b) SHA1(a384c8f508ec6885bccb989d150cfd7f36a6898d) )
 
-	ROM_REGION( 0x20000, "audio", 0 ) /* TMPZ84C011 sound program */
+	ROM_REGION( 0x20000, "audiocpu", 0 ) /* TMPZ84C011 sound program */
 	ROM_LOAD( "u804.bin",  0x000000, 0x20000, CRC(48407507) SHA1(afd24d16d487fd2b6548d967e2f1ae122e2633a2) )
 
 	ROM_REGION( 0x300000, "gfx1", 0 ) /* gfx */

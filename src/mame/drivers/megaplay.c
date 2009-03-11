@@ -563,7 +563,7 @@ static WRITE16_HANDLER ( OLD_megaplay_genesis_io_w )
 static READ8_HANDLER( bank_r )
 {
 	UINT8* bank = memory_region(space->machine, "mpbios");
-	UINT8* game = memory_region(space->machine, "main");
+	UINT8* game = memory_region(space->machine, "maincpu");
 
 	if(game_banksel == 0x142) // Genesis I/O
 		return OLD_megaplay_genesis_io_r(space, (offset & 0x1f) / 2, 0xffff);
@@ -686,38 +686,24 @@ static WRITE8_HANDLER( megaplay_game_w )
 	}
 }
 
-static ADDRESS_MAP_START( megaplay_bios_readmem, ADDRESS_SPACE_PROGRAM, 8 )
- 	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x4000, 0x4fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x5000, 0x5fff) AM_READ(SMH_RAM)
+static ADDRESS_MAP_START( megaplay_bios_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x3fff) AM_ROM
+	AM_RANGE(0x4000, 0x4fff) AM_RAM
+	AM_RANGE(0x5000, 0x5fff) AM_RAM
+	AM_RANGE(0x6000, 0x6000) AM_WRITE(megaplay_game_w)
 	AM_RANGE(0x6200, 0x6200) AM_READ_PORT("DSW0")
 	AM_RANGE(0x6201, 0x6201) AM_READ_PORT("DSW1")
+	AM_RANGE(0x6203, 0x6203) AM_READWRITE(megaplay_bios_banksel_r, megaplay_bios_banksel_w)
+	AM_RANGE(0x6204, 0x6204) AM_READWRITE(megaplay_bios_6204_r, megaplay_bios_width_w)
 	AM_RANGE(0x6400, 0x6400) AM_READ_PORT("TEST")
 	AM_RANGE(0x6401, 0x6401) AM_READ_PORT("COIN")
-	AM_RANGE(0x6204, 0x6204) AM_READ(megaplay_bios_6204_r)
-	AM_RANGE(0x6203, 0x6203) AM_READ(megaplay_bios_banksel_r)
-	AM_RANGE(0x6402, 0x6402) AM_READ(megaplay_bios_6402_r)
-	AM_RANGE(0x6403, 0x6403) AM_READ(megaplay_bios_gamesel_r)
-	AM_RANGE(0x6404, 0x6404) AM_READ(megaplay_bios_6404_r)
-	AM_RANGE(0x6600, 0x6600) AM_READ(megaplay_bios_6600_r)
-	AM_RANGE(0x6800, 0x77ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x8000, 0xffff) AM_READ(bank_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( megaplay_bios_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x4000, 0x4fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x5000, 0x5fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x6000, 0x6000) AM_WRITE(megaplay_game_w)
-	AM_RANGE(0x6203, 0x6203) AM_WRITE(megaplay_bios_banksel_w)
-	AM_RANGE(0x6204, 0x6204) AM_WRITE(megaplay_bios_width_w)
-	AM_RANGE(0x6402, 0x6402) AM_WRITE(megaplay_bios_6402_w)
-	AM_RANGE(0x6403, 0x6403) AM_WRITE(megaplay_bios_gamesel_w)
-	AM_RANGE(0x6404, 0x6404) AM_WRITE(megaplay_bios_6404_w)
-	AM_RANGE(0x6600, 0x6600) AM_WRITE(megaplay_bios_6600_w)
+	AM_RANGE(0x6402, 0x6402) AM_READWRITE(megaplay_bios_6402_r, megaplay_bios_6402_w)
+	AM_RANGE(0x6403, 0x6403) AM_READWRITE(megaplay_bios_gamesel_r, megaplay_bios_gamesel_w)
+	AM_RANGE(0x6404, 0x6404) AM_READWRITE(megaplay_bios_6404_r, megaplay_bios_6404_w)
+	AM_RANGE(0x6600, 0x6600) AM_READWRITE(megaplay_bios_6600_r, megaplay_bios_6600_w)
 	AM_RANGE(0x6001, 0x67ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x6800, 0x77ff) AM_WRITE(SMH_RAM) AM_BASE(&ic3_ram)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(bank_w)
+	AM_RANGE(0x6800, 0x77ff) AM_RAM AM_BASE(&ic3_ram)
+	AM_RANGE(0x8000, 0xffff) AM_READWRITE(bank_r, bank_w)
 ADDRESS_MAP_END
 
 /* basically from src/drivers/segasyse.c */
@@ -755,7 +741,7 @@ static WRITE8_HANDLER (megaplay_bios_port_be_bf_w)
 static ADDRESS_MAP_START( megaplay_bios_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 //  AM_RANGE(0x3f, 0x3f) AM_WRITE(megatech_bios_port_ctrl_w)
-	AM_RANGE(0x7f, 0x7f) AM_WRITE(sn76496_1_w)	/* SN76489 */
+	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE("sn2", sn76496_w)	/* SN76489 */
 //  AM_RANGE(0xdc, 0xdc) AM_READ(megatech_bios_port_dc_r)  // player inputs
 //  AM_RANGE(0xdd, 0xdd) AM_READ(megatech_bios_port_dd_r)  // other player 2 inputs
 	AM_RANGE(0xbe, 0xbf) AM_READWRITE(megaplay_bios_port_be_bf_r, megaplay_bios_port_be_bf_w)	/* VDP */
@@ -791,15 +777,15 @@ static MACHINE_DRIVER_START( mpnew )
 	/* The Megaplay has an extra BIOS cpu which drives an SMS VDP
        which includes an SN76496 for sound */
 	MDRV_CPU_ADD("mpbios", Z80, MASTER_CLOCK / 15) /* ?? */
-	MDRV_CPU_PROGRAM_MAP(megaplay_bios_readmem, megaplay_bios_writemem)
+	MDRV_CPU_PROGRAM_MAP(megaplay_bios_map,0)
 	MDRV_CPU_IO_MAP(megaplay_bios_io_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(megaplay_bios_irq, 262)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_SOUND_ADD("sn2", SN76496, MASTER_CLOCK/15)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.25) /* 3.58 MHz */
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right",0.25) /* 3.58 MHz */
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.25) /* 3.58 MHz */
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker",0.25) /* 3.58 MHz */
 
 	/* New update functions to handle the extra layer */
 	MDRV_VIDEO_START(megplay)
@@ -819,7 +805,7 @@ MACHINE_DRIVER_END
 	ROM_LOAD_BIOS( 1, "epr-a15294.ic2",0x000000, 0x20000, CRC(f97c68aa) SHA1(bcabc879950bca1ced11c550a484e697ec5706b2) ) \
 
 ROM_START( megaplay )
-	ROM_REGION( 0x400000, "main", ROMREGION_ERASEFF )
+	ROM_REGION( 0x400000, "maincpu", ROMREGION_ERASEFF )
 
 	ROM_REGION( 0x8000, "user1", ROMREGION_ERASEFF )
 
@@ -828,7 +814,7 @@ ROM_START( megaplay )
 ROM_END
 
 ROM_START( mp_sonic ) /* Sonic */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "ep15177.ic2", 0x000000, 0x040000, CRC(a389b03b) SHA1(8e9e1cf3dd65ddf08757f5a1ce472130c902ea2c) )
 	ROM_LOAD16_BYTE( "ep15176.ic1", 0x000001, 0x040000, CRC(d180cc21) SHA1(62805cfaaa80c1da6146dd89fc2b49d819fd4f22) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
@@ -844,7 +830,7 @@ ROM_END
    but the code looks like it's probably real */
 /* pcb  171-5834 */
 ROM_START( mp_col3 ) /* Columns 3 */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "3.ic2", 0x000000, 0x040000, CRC(a1602235) SHA1(38751b585849c8966acc3f508714937fe29dcf5c) )
 	ROM_LOAD16_BYTE( "2.ic1", 0x000001, 0x040000, CRC(999b2fe6) SHA1(ad967a28e4eebd7b01273e4e04c35a0198ef834a) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
@@ -857,7 +843,7 @@ ROM_START( mp_col3 ) /* Columns 3 */
 ROM_END
 
 ROM_START( mp_gaxe2 ) /* Golden Axe 2 */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "ep15179b.ic2", 0x000000, 0x040000, CRC(00d97b84) SHA1(914bbf566ddf940aab67b92af237d251650ddadf) )
 	ROM_LOAD16_BYTE( "ep15178b.ic1", 0x000001, 0x040000, CRC(2ea576db) SHA1(6d96b948243533de1f488b1f80e0d5431a4f1f53) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
@@ -870,7 +856,7 @@ ROM_START( mp_gaxe2 ) /* Golden Axe 2 */
 ROM_END
 
 ROM_START( mp_gslam ) /* Grand Slam */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "epr-15181.ic2", 0x000000, 0x040000, CRC(642437c1) SHA1(cbf88e196c04b6d886bf9642b69bf165045510fe) )
 	ROM_LOAD16_BYTE( "epr-15180.ic1", 0x000001, 0x040000, CRC(73bb48f1) SHA1(981b64f834d5618599352f5fad683bf232390ba3) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
@@ -884,7 +870,7 @@ ROM_END
 
 
 ROM_START( mp_twc ) /* Tecmo World Cup */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "ep15183.ic2", 0x000000, 0x040000, CRC(8b79b861) SHA1(c72af72840513b82f2562409eccdf13b031bf3c0) )
 	ROM_LOAD16_BYTE( "ep15182.ic1", 0x000001, 0x040000, CRC(eb8325c3) SHA1(bb21ac926c353e14184dd476222bc6a8714606e5) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
@@ -897,7 +883,7 @@ ROM_START( mp_twc ) /* Tecmo World Cup */
 ROM_END
 
 ROM_START( mp_sor2 ) /* Streets of Rage 2 */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "mpr-15425.ic1", 0x000000, 0x200000, CRC(cd6376af) SHA1(57ec210975e40505649f152b60ef54f99da31f0e) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
 
@@ -909,7 +895,7 @@ ROM_START( mp_sor2 ) /* Streets of Rage 2 */
 ROM_END
 
 ROM_START( mp_bio ) /* Bio Hazard Battle */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "mpr-15699-f.ic1", 0x000000, 0x100000, CRC(4b193229) SHA1(f8629171ae9b4792f142f6957547d886e5cc6817) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
 
@@ -921,7 +907,7 @@ ROM_START( mp_bio ) /* Bio Hazard Battle */
 ROM_END
 
 ROM_START( mp_soni2 ) /* Sonic The Hedgehog 2 */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "mpr-16011.ic1", 0x000000, 0x100000, CRC(3d7bf98a) SHA1(dce0e4e8f2573e0ffe851edaa235e4ed9e61ee2d) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
 
@@ -933,7 +919,7 @@ ROM_START( mp_soni2 ) /* Sonic The Hedgehog 2 */
 ROM_END
 
 ROM_START( mp_mazin ) /* Mazin Wars */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "mpr-16460.ic1", 0x000000, 0x100000, CRC(e9635a83) SHA1(ab3afa11656f0ae3a50c957dce012fb15d3992e0) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
 
@@ -945,7 +931,7 @@ ROM_START( mp_mazin ) /* Mazin Wars */
 ROM_END
 
 ROM_START( mp_shnb3 ) /* Shinobi 3 */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "mpr-16197.ic1", 0x000000, 0x100000, CRC(48162361) SHA1(77d544509339b5ddf6d19941377e81d29e9e21dc) )
 	/* Game Instruction rom copied to 0x300000 - 0x310000 (odd / even bytes equal) */
 
@@ -961,7 +947,7 @@ static void megplay_stat(running_machine *machine)
 {
 	UINT8 *src = memory_region(machine, "mpbios");
 	UINT8 *instruction_rom = memory_region(machine, "user1");
-	UINT8 *game_rom = memory_region(machine, "main");
+	UINT8 *game_rom = memory_region(machine, "maincpu");
 	int offs;
 
 

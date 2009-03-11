@@ -51,7 +51,7 @@ Dip locations verified with manual for brkthru (US conv. kit) and darwin
 #include "driver.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/2203intf.h"
-#include "sound/3812intf.h"
+#include "sound/3526intf.h"
 
 
 #define MASTER_CLOCK		XTAL_12MHz
@@ -138,12 +138,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_RAM
-	AM_RANGE(0x2000, 0x2000) AM_WRITE(ym3526_control_port_0_w)
-	AM_RANGE(0x2001, 0x2001) AM_WRITE(ym3526_write_port_0_w)
+	AM_RANGE(0x2000, 0x2001) AM_DEVWRITE("ym2", ym3526_w)
 	AM_RANGE(0x4000, 0x4000) AM_READ(soundlatch_r)
-	AM_RANGE(0x6000, 0x6000) AM_READ(ym2203_status_port_0_r)
-	AM_RANGE(0x6000, 0x6000) AM_WRITE(ym2203_control_port_0_w)
-	AM_RANGE(0x6001, 0x6001) AM_WRITE(ym2203_write_port_0_w)
+	AM_RANGE(0x6000, 0x6001) AM_DEVREADWRITE("ym1", ym2203_r, ym2203_w)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -325,9 +322,9 @@ static GFXDECODE_START( brkthru )
 GFXDECODE_END
 
 /* handler called by the 3812 emulator when the internal timers cause an IRQ */
-static void irqhandler(running_machine *machine, int linestate)
+static void irqhandler(const device_config *device, int linestate)
 {
-	cpu_set_input_line(machine->cpu[1],M6809_IRQ_LINE,linestate);
+	cpu_set_input_line(device->machine->cpu[1],M6809_IRQ_LINE,linestate);
 }
 
 static const ym3526_interface ym3526_config =
@@ -340,11 +337,11 @@ static const ym3526_interface ym3526_config =
 static MACHINE_DRIVER_START( brkthru )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809, MASTER_CLOCK/8)        /* 1.5 MHz ? */
+	MDRV_CPU_ADD("maincpu", M6809, MASTER_CLOCK/8)        /* 1.5 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(brkthru_map,0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
-	MDRV_CPU_ADD("audio", M6809, MASTER_CLOCK/8)		/* 1.5 MHz ? */
+	MDRV_CPU_ADD("audiocpu", M6809, MASTER_CLOCK/8)		/* 1.5 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	/* video hardware */
@@ -352,7 +349,7 @@ static MACHINE_DRIVER_START( brkthru )
 	MDRV_PALETTE_LENGTH(256)
 
 	/* not sure; assuming to be the same as darwin */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK/2, 384, 8, 248, 272, 8, 248)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 
@@ -378,18 +375,18 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( darwin )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809, MASTER_CLOCK/8)        /* 1.5 MHz ? */
+	MDRV_CPU_ADD("maincpu", M6809, MASTER_CLOCK/8)        /* 1.5 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(darwin_map,0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
-	MDRV_CPU_ADD("audio", M6809, MASTER_CLOCK/8)		/* 1.5 MHz ? */
+	MDRV_CPU_ADD("audiocpu", M6809, MASTER_CLOCK/8)		/* 1.5 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	/* video hardware */
 	MDRV_GFXDECODE(brkthru)
 	MDRV_PALETTE_LENGTH(256)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK/2, 384, 8, 248, 272, 8, 248)
 	/* frames per second, vblank duration
         Horizontal video frequency:
@@ -432,7 +429,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( brkthru )
-	ROM_REGION( 0x20000, "main", 0 )     /* 64k for main CPU + 64k for banked ROMs */
+	ROM_REGION( 0x20000, "maincpu", 0 )     /* 64k for main CPU + 64k for banked ROMs */
 	ROM_LOAD( "brkthru.1",    0x04000, 0x4000, CRC(cfb4265f) SHA1(4cd748fa06fd2727de1694196912d605672d4883) )
 	ROM_LOAD( "brkthru.2",    0x08000, 0x8000, CRC(fa8246d9) SHA1(d6da03b2a3d8a83411191351ee110b89352a3ead) )
 	ROM_LOAD( "brkthru.4",    0x10000, 0x8000, CRC(8cabf252) SHA1(45e8847b2e6b278989f67e0b27b827a9b3b92581) )
@@ -467,12 +464,12 @@ ROM_START( brkthru )
 	ROM_LOAD( "brkthru.13",   0x0000, 0x0100, CRC(aae44269) SHA1(7c66aeb93577104109d264ee8b848254256c81eb) ) /* red and green component */
 	ROM_LOAD( "brkthru.14",   0x0100, 0x0100, CRC(f2d4822a) SHA1(f535e91b87ff01f2a73662856fd3f72907ca62e9) ) /* blue component */
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "brkthru.5",    0x8000, 0x8000, CRC(c309435f) SHA1(82914004c2b169a7c31aa49af83a699ebbc7b33f) )
 ROM_END
 
 ROM_START( brkthruj )
-	ROM_REGION( 0x20000, "main", 0 )     /* 64k for main CPU + 64k for banked ROMs */
+	ROM_REGION( 0x20000, "maincpu", 0 )     /* 64k for main CPU + 64k for banked ROMs */
 	ROM_LOAD( "1",            0x04000, 0x4000, CRC(09bd60ee) SHA1(9591a4c89bb69d5615a5d6b29c47e6b17350c007) )
 	ROM_LOAD( "2",            0x08000, 0x8000, CRC(f2b2cd1c) SHA1(dafccc74310876bc1c88de7f3c86f93ed8a0eb62) )
 	ROM_LOAD( "4",            0x10000, 0x8000, CRC(b42b3359) SHA1(c1da550e0f7cc52721802c7c0f2770ef0087e28b) )
@@ -507,13 +504,13 @@ ROM_START( brkthruj )
 	ROM_LOAD( "brkthru.13",   0x0000, 0x0100, CRC(aae44269) SHA1(7c66aeb93577104109d264ee8b848254256c81eb) ) /* red and green component */
 	ROM_LOAD( "brkthru.14",   0x0100, 0x0100, CRC(f2d4822a) SHA1(f535e91b87ff01f2a73662856fd3f72907ca62e9) ) /* blue component */
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "brkthru.5",    0x8000, 0x8000, CRC(c309435f) SHA1(82914004c2b169a7c31aa49af83a699ebbc7b33f) )
 ROM_END
 
 /* bootleg, changed prg rom fails test, probably just the japanese version modified to have english title */
 ROM_START( forcebrk )
-	ROM_REGION( 0x20000, "main", 0 )     /* 64k for main CPU + 64k for banked ROMs */
+	ROM_REGION( 0x20000, "maincpu", 0 )     /* 64k for main CPU + 64k for banked ROMs */
 	ROM_LOAD( "1",            0x04000, 0x4000, CRC(09bd60ee) SHA1(9591a4c89bb69d5615a5d6b29c47e6b17350c007) )
 	ROM_LOAD( "2",            0x08000, 0x8000, CRC(f2b2cd1c) SHA1(dafccc74310876bc1c88de7f3c86f93ed8a0eb62) )
 	ROM_LOAD( "forcebrk4",    0x10000, 0x8000, CRC(b4838c19) SHA1(b32f183ee042872a6eb6689aab219108d37829e4) )
@@ -548,12 +545,12 @@ ROM_START( forcebrk )
 	ROM_LOAD( "brkthru.13",   0x0000, 0x0100, CRC(aae44269) SHA1(7c66aeb93577104109d264ee8b848254256c81eb) ) /* red and green component */
 	ROM_LOAD( "brkthru.14",   0x0100, 0x0100, CRC(f2d4822a) SHA1(f535e91b87ff01f2a73662856fd3f72907ca62e9) ) /* blue component */
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "brkthru.5",    0x8000, 0x8000, CRC(c309435f) SHA1(82914004c2b169a7c31aa49af83a699ebbc7b33f) )
 ROM_END
 
 ROM_START( darwin )
-	ROM_REGION( 0x20000, "main", 0 )     /* 64k for main CPU + 64k for banked ROMs */
+	ROM_REGION( 0x20000, "maincpu", 0 )     /* 64k for main CPU + 64k for banked ROMs */
 	ROM_LOAD( "darw_04.rom",  0x04000, 0x4000, CRC(0eabf21c) SHA1(ccad6b30fe9361e8a21b8aaf8116aa85f9e6bb19) )
 	ROM_LOAD( "darw_05.rom",  0x08000, 0x8000, CRC(e771f864) SHA1(8ba9f97c6abf035ceaf9f5505495708506f1b0c5) )
 	ROM_LOAD( "darw_07.rom",  0x10000, 0x8000, CRC(97ac052c) SHA1(8baa117472d46b99e5946f095b869de9b5c48f9a) )
@@ -588,7 +585,7 @@ ROM_START( darwin )
 	ROM_LOAD( "df.12",   0x0000, 0x0100, CRC(89b952ef) SHA1(77dc4020a2e25f81fae1182d58993cf09d13af00) ) /* red and green component */
 	ROM_LOAD( "df.13",   0x0100, 0x0100, CRC(d595e91d) SHA1(5e9793f6602455c79afdc855cd13183a7f48ab1e) ) /* blue component */
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "darw_08.rom",  0x8000, 0x8000, CRC(6b580d58) SHA1(a70aebc6b4a291b4adddbb41d092b2682fc2d421) )
 ROM_END
 

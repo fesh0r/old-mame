@@ -76,19 +76,19 @@ static WRITE8_DEVICE_HANDLER( p1c_w )
 	s3 = (data & 2) >> 1;
 }
 
-static READ8_HANDLER( p8910_0a_r )
+static READ8_DEVICE_HANDLER( p8910_0a_r )
 {
 	return latchA;
 }
 
-static READ8_HANDLER( p8910_1a_r )
+static READ8_DEVICE_HANDLER( p8910_1a_r )
 {
 	return s3;
 }
 
 /* note that a lot of writes happen with port B set as input. I think this is a bug in the
    original, since it works anyway even if the communication is flawed. */
-static WRITE8_HANDLER( p8910_0b_w )
+static WRITE8_DEVICE_HANDLER( p8910_0b_w )
 {
 	s4 = data & 1;
 }
@@ -97,44 +97,44 @@ static WRITE8_HANDLER( p8910_0b_w )
 static const ppi8255_interface ppi8255_intf[5] =
 {
 	{
-		p0a_r,		/* Port A read */
-		NULL,		/* Port B read */
-		p0c_r,		/* Port C read */
-		NULL,		/* Port A write */
-		p0b_w,		/* Port B write */
-		p0c_w		/* Port C write */
+		DEVCB_HANDLER(p0a_r),		/* Port A read */
+		DEVCB_NULL,					/* Port B read */
+		DEVCB_HANDLER(p0c_r),		/* Port C read */
+		DEVCB_NULL,					/* Port A write */
+		DEVCB_HANDLER(p0b_w),		/* Port B write */
+		DEVCB_HANDLER(p0c_w)		/* Port C write */
 	},
 	{
-		NULL,		/* Port A read */
-		p1b_r,		/* Port B read */
-		p1c_r,		/* Port C read */
-		p1a_w,		/* Port A write */
-		NULL,		/* Port B write */
-		p1c_w		/* Port C write */
+		DEVCB_NULL,					/* Port A read */
+		DEVCB_HANDLER(p1b_r),		/* Port B read */
+		DEVCB_HANDLER(p1c_r),		/* Port C read */
+		DEVCB_HANDLER(p1a_w),		/* Port A write */
+		DEVCB_NULL,					/* Port B write */
+		DEVCB_HANDLER(p1c_w)		/* Port C write */
 	},
 	{
-		NULL,		/* Port A read */
-		NULL,		/* Port B read */
-		NULL,		/* Port C read */
-		p2a_w,		/* Port A write */
-		p2b_w,		/* Port B write */
-		p2c_w		/* Port C write */
+		DEVCB_NULL,					/* Port A read */
+		DEVCB_NULL,					/* Port B read */
+		DEVCB_NULL,					/* Port C read */
+		DEVCB_HANDLER(p2a_w),		/* Port A write */
+		DEVCB_HANDLER(p2b_w),		/* Port B write */
+		DEVCB_HANDLER(p2c_w)		/* Port C write */
 	},
 	{
-		NULL,		/* Port A read */
-		NULL,		/* Port B read */
-		NULL,		/* Port C read */
-		p3a_w,		/* Port A write */
-		p3b_w,		/* Port B write */
-		p3c_w		/* Port C write */
+		DEVCB_NULL,					/* Port A read */
+		DEVCB_NULL,					/* Port B read */
+		DEVCB_NULL,					/* Port C read */
+		DEVCB_HANDLER(p3a_w),		/* Port A write */
+		DEVCB_HANDLER(p3b_w),		/* Port B write */
+		DEVCB_HANDLER(p3c_w)		/* Port C write */
 	},
 	{
-		NULL,		/* Port A read */
-		NULL,		/* Port B read */
-		NULL,		/* Port C read */
-		p4a_w,		/* Port A write */
-		p4b_w,		/* Port B write */
-		p4c_w		/* Port C write */
+		DEVCB_NULL,					/* Port A read */
+		DEVCB_NULL,					/* Port B read */
+		DEVCB_NULL,					/* Port C read */
+		DEVCB_HANDLER(p4a_w),		/* Port A write */
+		DEVCB_HANDLER(p4b_w),		/* Port B write */
+		DEVCB_HANDLER(p4c_w)		/* Port C write */
 	}
 };
 
@@ -154,10 +154,10 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe400, 0xebff) AM_WRITE(SMH_RAM) AM_BASE(&taxidrvr_vram2)	/* bg1 tilemap */
 	AM_RANGE(0xec00, 0xefff) AM_WRITE(SMH_RAM) AM_BASE(&taxidrvr_vram0)	/* fg tilemap */
 	AM_RANGE(0xf000, 0xf3ff) AM_WRITE(SMH_RAM) AM_BASE(&taxidrvr_vram3)	/* bg2 tilemap */
-	AM_RANGE(0xf400, 0xf403) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
-	AM_RANGE(0xf480, 0xf483) AM_DEVREADWRITE(PPI8255, "ppi8255_2", ppi8255_r, ppi8255_w)	/* "sprite1" placement */
-	AM_RANGE(0xf500, 0xf503) AM_DEVREADWRITE(PPI8255, "ppi8255_3", ppi8255_r, ppi8255_w)	/* "sprite2" placement */
-	AM_RANGE(0xf580, 0xf583) AM_DEVREADWRITE(PPI8255, "ppi8255_4", ppi8255_r, ppi8255_w)	/* "sprite3" placement */
+	AM_RANGE(0xf400, 0xf403) AM_DEVREADWRITE("ppi8255_0", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xf480, 0xf483) AM_DEVREADWRITE("ppi8255_2", ppi8255_r, ppi8255_w)	/* "sprite1" placement */
+	AM_RANGE(0xf500, 0xf503) AM_DEVREADWRITE("ppi8255_3", ppi8255_r, ppi8255_w)	/* "sprite2" placement */
+	AM_RANGE(0xf580, 0xf583) AM_DEVREADWRITE("ppi8255_4", ppi8255_r, ppi8255_w)	/* "sprite3" placement */
 	//AM_RANGE(0xf780, 0xf781) AM_WRITE(SMH_RAM)     /* more scroll registers? */
 	AM_RANGE(0xf782, 0xf787) AM_WRITE(SMH_RAM) AM_BASE(&taxidrvr_scroll)	/* bg scroll (three copies always identical) */
 	AM_RANGE(0xf800, 0xffff) AM_RAM
@@ -167,7 +167,7 @@ static ADDRESS_MAP_START( cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x6000, 0x67ff) AM_RAM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM
-	AM_RANGE(0xa000, 0xa003) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xa000, 0xa003) AM_DEVREADWRITE("ppi8255_1", ppi8255_r, ppi8255_w)
 	AM_RANGE(0xe000, 0xe000) AM_READ_PORT("DSW0")
 	AM_RANGE(0xe001, 0xe001) AM_READ_PORT("DSW1")
 	AM_RANGE(0xe002, 0xe002) AM_READ_PORT("DSW2")
@@ -183,10 +183,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cpu3_port_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0x02, 0x02) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0x03, 0x03) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE("ay1", ay8910_address_data_w)
+	AM_RANGE(0x01, 0x01) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0x02, 0x03) AM_DEVWRITE("ay2", ay8910_address_data_w)
+	AM_RANGE(0x03, 0x03) AM_DEVREAD("ay2", ay8910_r)
 ADDRESS_MAP_END
 
 
@@ -340,20 +340,20 @@ static const ay8910_interface ay8910_interface_1 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	p8910_0a_r,
-	NULL,
-	NULL,
-	p8910_0b_w
+	DEVCB_HANDLER(p8910_0a_r),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(p8910_0b_w)
 };
 
 static const ay8910_interface ay8910_interface_2 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	p8910_1a_r,
-	NULL,
-	NULL,
-	NULL
+	DEVCB_HANDLER(p8910_1a_r),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -361,18 +361,18 @@ static const ay8910_interface ay8910_interface_2 =
 static MACHINE_DRIVER_START( taxidrvr )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,4000000)	/* 4 MHz ??? */
+	MDRV_CPU_ADD("maincpu", Z80,4000000)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80,4000000)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(cpu2_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)	/* ??? */
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)	/* ??? */
 
-	MDRV_CPU_ADD("audio", Z80,4000000)	/* 4 MHz ??? */
+	MDRV_CPU_ADD("audiocpu", Z80,4000000)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(cpu3_map,0)
 	MDRV_CPU_IO_MAP(cpu3_port_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)	/* ??? */
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)	/* ??? */
 
 	MDRV_QUANTUM_TIME(HZ(6000))	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
@@ -384,7 +384,7 @@ static MACHINE_DRIVER_START( taxidrvr )
 	MDRV_PPI8255_ADD( "ppi8255_4", ppi8255_intf[4] )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -417,7 +417,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( taxidrvr )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "1",            0x0000, 0x2000, CRC(6b2424e9) SHA1(a65bb01da8f3b0649d945981cc4f1324b7fac5c7) )
 	ROM_LOAD( "2",            0x2000, 0x2000, CRC(15111229) SHA1(0350918f9504b0e470684ebc94a823bb2513a54d) )
 	ROM_LOAD( "3",            0x4000, 0x2000, CRC(a7782eee) SHA1(0f10b7876420f4237937b1b922aa410de3f79af1) )
@@ -427,7 +427,7 @@ ROM_START( taxidrvr )
 	ROM_LOAD( "8",            0x0000, 0x2000, CRC(9f9a3865) SHA1(908cf4f2cc68c088649241997276ea25c27d9718) )
 	ROM_LOAD( "9",            0x2000, 0x2000, CRC(b28b766c) SHA1(21e08ef1e2671c8540380e3fa0858e8a4d821945) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "7",            0x0000, 0x2000, CRC(2b4cbfe6) SHA1(a2a900831116554d5aea1a81c93245d3bb424d48) )
 
 	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )

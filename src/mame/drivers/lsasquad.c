@@ -155,7 +155,7 @@ Notes:
 
 static WRITE8_HANDLER( lsasquad_bankswitch_w )
 {
-	UINT8 *ROM = memory_region(space->machine, "main");
+	UINT8 *ROM = memory_region(space->machine, "maincpu");
 
 	/* bits 0-2 select ROM bank */
 	memory_set_bankptr(space->machine, 1,&ROM[0x10000 + 0x2000 * (data & 7)]);
@@ -199,8 +199,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
-	AM_RANGE(0xa000, 0xa000) AM_READ(ym2203_status_port_0_r)
-	AM_RANGE(0xa001, 0xa001) AM_READ(ym2203_read_port_0_r)
+	AM_RANGE(0xa000, 0xa001) AM_DEVREAD("ym", ym2203_r)
 	AM_RANGE(0xd000, 0xd000) AM_READ(lsasquad_sh_sound_command_r)
 	AM_RANGE(0xd800, 0xd800) AM_READ(lsasquad_sound_status_r)
 	AM_RANGE(0xe000, 0xefff) AM_READ(SMH_ROM)	/* space for diagnostic ROM? */
@@ -209,10 +208,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xa000, 0xa000) AM_WRITE(ym2203_control_port_0_w)
-	AM_RANGE(0xa001, 0xa001) AM_WRITE(ym2203_write_port_0_w)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xc001, 0xc001) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0xa000, 0xa001) AM_DEVWRITE("ym", ym2203_w)
+	AM_RANGE(0xc000, 0xc001) AM_DEVWRITE("ay", ay8910_address_data_w)
 	AM_RANGE(0xd000, 0xd000) AM_WRITE(lsasquad_sh_result_w)
 	AM_RANGE(0xd400, 0xd400) AM_WRITE(lsasquad_sh_nmi_disable_w)
 	AM_RANGE(0xd800, 0xd800) AM_WRITE(lsasquad_sh_nmi_enable_w)
@@ -388,10 +385,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_mem_daikaiju, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM
-	AM_RANGE(0xa000, 0xa000) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0xa001, 0xa001) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xc001, 0xc001) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0xa000, 0xa001) AM_DEVREADWRITE("ym", ym2203_r, ym2203_w)
+	AM_RANGE(0xc000, 0xc001) AM_DEVWRITE("ay", ay8910_address_data_w)
 	AM_RANGE(0xd000, 0xd000) AM_READ(daikaiju_sh_sound_command_r)
 	AM_RANGE(0xd400, 0xd400) AM_WRITENOP
 	AM_RANGE(0xd800, 0xd800) AM_READ(daikaiju_sound_status_r) AM_WRITENOP
@@ -532,12 +527,12 @@ GFXDECODE_END
 
 
 
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static WRITE8_HANDLER( unk )
+static WRITE8_DEVICE_HANDLER( unk )
 {
 
 }
@@ -548,10 +543,10 @@ static const ym2203_interface ym2203_config =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		NULL,
-		NULL,
-		unk,
-		unk,
+		DEVCB_NULL,
+		DEVCB_NULL,
+		DEVCB_HANDLER(unk),
+		DEVCB_HANDLER(unk),
 	},
 	irqhandler
 };
@@ -560,11 +555,11 @@ static const ym2203_interface ym2203_config =
 static MACHINE_DRIVER_START( lsasquad )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 6000000)	/* 6 MHz? */
+	MDRV_CPU_ADD("maincpu", Z80, 6000000)	/* 6 MHz? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz? */
+	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	/* 4 MHz? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 								/* IRQs are triggered by the YM2203 */
 	MDRV_CPU_ADD("mcu", M68705,4000000)	/* ? */
@@ -575,7 +570,7 @@ static MACHINE_DRIVER_START( lsasquad )
 							/* main<->sound synchronization depends on this */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -605,11 +600,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( daikaiju )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 6000000)
+	MDRV_CPU_ADD("maincpu", Z80, 6000000)
 	MDRV_CPU_PROGRAM_MAP(mem_daikaiju, 0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, 3000000)
+	MDRV_CPU_ADD("audiocpu", Z80, 3000000)
 	MDRV_CPU_PROGRAM_MAP(sound_mem_daikaiju, 0)
 	/* IRQs are triggered by the YM2203 */
 
@@ -620,7 +615,7 @@ static MACHINE_DRIVER_START( daikaiju )
 	MDRV_MACHINE_RESET(daikaiju)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -655,13 +650,13 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( lsasquad )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "a64-21.4",     0x00000, 0x8000, CRC(5ff6b017) SHA1(96cc74edba1208bb8e82f93d2d3a88ea24922dc0) )
     /* ROMs banked at 8000-9fff */
 	ROM_LOAD( "a64-20.3",     0x10000, 0x8000, CRC(7f8b4979) SHA1(975b1a678e1f7d7b5789565063177593639645ce) )
 	ROM_LOAD( "a64-19.2",     0x18000, 0x8000, CRC(ba31d34a) SHA1(e2c515ae8146a37534b19403c03fc5a8719f115f) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the second CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "a64-04.44",    0x0000, 0x8000, CRC(c238406a) SHA1(bb8f9d952c4568edb375328a1f9f6681a1bb5907) )
 
 	ROM_REGION( 0x0800, "mcu", 0 )	/* 2k for the microcontroller */
@@ -690,13 +685,13 @@ ROM_START( lsasquad )
 ROM_END
 
 ROM_START( storming )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "stpartyj.001", 0x00000, 0x8000, CRC(07e6bc61) SHA1(6989a1401868dd93c9466cfd1636ac48a734a5d4) )
     /* ROMs banked at 8000-9fff */
 	ROM_LOAD( "stpartyj.002", 0x10000, 0x8000, CRC(1c7fe5d5) SHA1(15c09e3301d8ce55e59fe90db9f50ee19584ab7b) )
 	ROM_LOAD( "stpartyj.003", 0x18000, 0x8000, CRC(159f23a6) SHA1(2cb4ed78e54dc2acbbfc2d4cfb2d29ff604aa9ae) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the second CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "a64-04.44",    0x0000, 0x8000, CRC(c238406a) SHA1(bb8f9d952c4568edb375328a1f9f6681a1bb5907) )
 
 	ROM_REGION( 0x0800, "mcu", 0 )	/* 2k for the microcontroller */
@@ -725,13 +720,13 @@ ROM_START( storming )
 ROM_END
 
 ROM_START( daikaiju )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "a74_01-1.ic4",   0x00000, 0x8000, CRC(89c13d7f) SHA1(2eaec80d7aa360b700387df00b37a692acc50d74) )
     /* ROMs banked at 8000-9fff */
 	ROM_LOAD( "a74_02.ic3",     0x10000, 0x8000, CRC(8ddf6131) SHA1(b5b23550e7ee52554bc1f045ed6f42e254a05bf4) )
 	ROM_LOAD( "a74_03.ic2",     0x18000, 0x8000, CRC(3911ffed) SHA1(ba6dbd74d37ef26621a02baf3479e2764d10d2ba) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the second CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "a74_04.ic44",    0x0000, 0x8000, CRC(98a6a703) SHA1(0c169a7a5f8b26606f67ee7f14bd487951536ac5) )
 
 	ROM_REGION( 0x0800, "cpu2", 0 )

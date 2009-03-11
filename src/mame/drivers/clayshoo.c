@@ -136,20 +136,20 @@ static void create_analog_timers(running_machine *machine)
 static const ppi8255_interface ppi8255_intf[2] =
 {
 	{
-		NULL,					/* Port A read */
-		NULL,					/* Port B read */
-		NULL,					/* Port C read */
-		NULL,					/* Port A write */
-		NULL,					/* Port B write */
-		NULL					/* Port C write */
+		DEVCB_NULL,					/* Port A read */
+		DEVCB_NULL,					/* Port B read */
+		DEVCB_NULL,					/* Port C read */
+		DEVCB_NULL,					/* Port A write */
+		DEVCB_NULL,					/* Port B write */
+		DEVCB_NULL					/* Port C write */
 	},
 	{
-		NULL,					/* Port A read */
-		input_port_r,			/* Port B read */
-		NULL,					/* Port C read */
-		input_port_select_w,	/* Port A write */
-		NULL,					/* Port B write */
-		NULL					/* sound effects, Port C write */
+		DEVCB_NULL,					/* Port A read */
+		DEVCB_HANDLER(input_port_r),/* Port B read */
+		DEVCB_NULL,					/* Port C read */
+		DEVCB_HANDLER(input_port_select_w),	/* Port A write */
+		DEVCB_NULL,					/* Port B write */
+		DEVCB_NULL					/* sound effects, Port C write */
 	}
 };
 
@@ -224,8 +224,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( main_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x20, 0x23) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
-	AM_RANGE(0x30, 0x33) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x20, 0x23) AM_DEVREADWRITE("ppi8255_0", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x30, 0x33) AM_DEVREADWRITE("ppi8255_1", ppi8255_r, ppi8255_w)
 ADDRESS_MAP_END
 
 
@@ -304,17 +304,17 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( clayshoo )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,5068000/4)		/* 5.068/4 Mhz (divider is a guess) */
+	MDRV_CPU_ADD("maincpu", Z80,5068000/4)		/* 5.068/4 Mhz (divider is a guess) */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(main_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_MACHINE_START(clayshoo)
 
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(clayshoo)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 64, 255)
@@ -334,7 +334,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( clayshoo )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "0",      0x0000, 0x0800, CRC(9df9d9e3) SHA1(8ce71a6faf5df9c8c3dbb92a443b62c0f376491c) )
 	ROM_LOAD( "1",      0x0800, 0x0800, CRC(5134a631) SHA1(f0764a5161934564fd0416be26087cf812e0c422) )
 	ROM_LOAD( "2",      0x1000, 0x0800, CRC(5b5a67f6) SHA1(c97b4d44e6dc5dd0c42e04ffceed8934975fe769) )

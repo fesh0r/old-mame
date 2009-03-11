@@ -330,8 +330,6 @@ static DEVICE_START(timekeeper)
 	timer = timer_alloc( device->machine, timekeeper_tick, c );
 	duration = ATTOTIME_IN_SEC(1);
 	timer_adjust_periodic( timer, duration, 0, duration );
-
-	return DEVICE_START_OK;
 }
 
 static DEVICE_START(m48t02)
@@ -350,7 +348,7 @@ static DEVICE_START(m48t02)
 	c->offset_flags = -1;
 	c->size = 0x800;
 
-	return DEVICE_START_CALL( timekeeper );
+	DEVICE_START_CALL( timekeeper );
 }
 
 static DEVICE_START(m48t35)
@@ -369,7 +367,7 @@ static DEVICE_START(m48t35)
 	c->offset_flags = -1;
 	c->size = 0x8000;
 
-	return DEVICE_START_CALL( timekeeper );
+	DEVICE_START_CALL( timekeeper );
 }
 
 static DEVICE_START(m48t58)
@@ -388,7 +386,7 @@ static DEVICE_START(m48t58)
 	c->offset_flags = -1;
 	c->size = 0x2000;
 
-	return DEVICE_START_CALL( timekeeper );
+	DEVICE_START_CALL( timekeeper );
 }
 
 static DEVICE_START(mk48t08)
@@ -407,7 +405,7 @@ static DEVICE_START(mk48t08)
 	c->offset_flags = 0x1ff0;
 	c->size = 0x2000;
 
-	return DEVICE_START_CALL( timekeeper );
+	DEVICE_START_CALL( timekeeper );
 }
 
 /*-------------------------------------------------

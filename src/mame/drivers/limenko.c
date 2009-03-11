@@ -208,11 +208,11 @@ static READ8_HANDLER( spotty_sound_r )
 	if(spotty_sound_cmd == 0xf7)
 		return soundlatch_r(space,0);
 	else
-		return okim6295_status_0_r(space,0);
+		return okim6295_r(devtag_get_device(space->machine, "oki"),0);
 }
 
 static ADDRESS_MAP_START( spotty_sound_io_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(MCS51_PORT_P1, MCS51_PORT_P1) AM_READWRITE(spotty_sound_r, okim6295_data_0_w) //? sound latch and ?
+	AM_RANGE(MCS51_PORT_P1, MCS51_PORT_P1) AM_READ(spotty_sound_r) AM_DEVWRITE("oki", okim6295_w) //? sound latch and ?
 	AM_RANGE(MCS51_PORT_P3, MCS51_PORT_P3) AM_READWRITE(spotty_sound_cmd_r, spotty_sound_cmd_w) //not sure about anything...
 ADDRESS_MAP_END
 
@@ -246,7 +246,7 @@ static void draw_single_sprite(bitmap_t *dest_bmp,const gfx_element *gfx,
 		const rectangle *clip,int priority)
 {
 	int pal_base = gfx->color_base + gfx->color_granularity * (color % gfx->total_colors);
-	UINT8 *source_base = gfx->gfxdata + (code % gfx->total_elements) * gfx->char_modulo;
+	const UINT8 *source_base = gfx_element_get_data(gfx, code % gfx->total_elements);
 
 	int sprite_screen_height = ((1<<16)*gfx->height+0x8000)>>16;
 	int sprite_screen_width = ((1<<16)*gfx->width+0x8000)>>16;
@@ -316,7 +316,7 @@ static void draw_single_sprite(bitmap_t *dest_bmp,const gfx_element *gfx,
 
 			for( y=sy; y<ey; y++ )
 			{
-				UINT8 *source = source_base + (y_index>>16) * gfx->line_modulo;
+				const UINT8 *source = source_base + (y_index>>16) * gfx->line_modulo;
 				UINT16 *dest = BITMAP_ADDR16(dest_bmp, y, 0);
 				UINT8 *pri = BITMAP_ADDR8(sprites_bitmap_pri, y, 0);
 
@@ -327,9 +327,10 @@ static void draw_single_sprite(bitmap_t *dest_bmp,const gfx_element *gfx,
 					if( c != 0 )
 					{
 						if (pri[x]<priority)
+						{
 							dest[x] = pal_base+c;
-
-						pri[x] = priority;
+							pri[x] = priority;
+						}
 
 					}
 					x_index += dx;
@@ -380,24 +381,12 @@ static void draw_sprites(running_machine *machine, UINT32 *sprites, const rectan
 
 		gfxdata	= base_gfx + 64 * code;
 
-		/* prepare GfxElement on the fly */
-		gfx.machine = machine;
-		gfx.width = width;
-		gfx.height = height;
-		gfx.total_elements = 1;
-		gfx.color_depth = 256;
-		gfx.color_granularity = 256;
-		gfx.color_base = 0;
-		gfx.total_colors = 0x10;
-		gfx.pen_usage = NULL;
-		gfx.gfxdata = gfxdata;
-		gfx.line_modulo = width;
-		gfx.char_modulo = 0;	/* doesn't matter */
-		gfx.flags = 0;
-
 		/* Bounds checking */
 		if ( (gfxdata + width * height - 1) >= gfx_max )
 			continue;
+
+		/* prepare GfxElement on the fly */
+		gfx_element_build_temporary(&gfx, machine, gfxdata, width, height, width, 0, 256, 0);
 
 		draw_single_sprite(sprites_bitmap,&gfx,0,color,flipx,flipy,x,y,cliprect,pri);
 
@@ -574,7 +563,8 @@ static INPUT_PORTS_START( sb2003 )
 	PORT_DIPSETTING(          0x20000000, DEF_STR( Off ) )
 	PORT_DIPSETTING(          0x00000000, DEF_STR( On ) )
 	PORT_BIT( 0x80000000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(spriteram_bit_r, NULL) //changes spriteram location
-	PORT_BIT( 0x5f10ffff, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x00100000, IP_ACTIVE_LOW, IPT_SERVICE1 ) // checked in dynabomb I/O test, but doesn't work in game
+	PORT_BIT( 0x5f00ffff, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( spotty )
@@ -642,15 +632,15 @@ GFXDECODE_END
 
 
 static MACHINE_DRIVER_START( limenko )
-	MDRV_CPU_ADD("main", E132XN, 20000000*4)	/* 4x internal multiplier */
+	MDRV_CPU_ADD("maincpu", E132XN, 20000000*4)	/* 4x internal multiplier */
 	MDRV_CPU_PROGRAM_MAP(limenko_map,0)
 	MDRV_CPU_IO_MAP(limenko_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -667,18 +657,18 @@ static MACHINE_DRIVER_START( limenko )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( spotty )
-	MDRV_CPU_ADD("main", GMS30C2232, 20000000)	/* 20 MHz, no internal multiplier */
+	MDRV_CPU_ADD("maincpu", GMS30C2232, 20000000)	/* 20 MHz, no internal multiplier */
 	MDRV_CPU_PROGRAM_MAP(spotty_map,0)
 	MDRV_CPU_IO_MAP(spotty_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", AT89C4051, 4000000)	/* 4 MHz */
+	MDRV_CPU_ADD("audiocpu", AT89C4051, 4000000)	/* 4 MHz */
 	MDRV_CPU_IO_MAP(spotty_sound_io_map,0)
 
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -950,7 +940,7 @@ ROM_START( spotty )
 	/* sys_rom1 empty */
 	ROM_LOAD16_WORD_SWAP( "sys_rom2",     0x080000, 0x80000, CRC(6ded8d9b) SHA1(547c532f4014d818c4412244b60dbc439496de20) )
 
-	ROM_REGION( 0x01000, "audio", 0 )
+	ROM_REGION( 0x01000, "audiocpu", 0 )
 	ROM_LOAD( "at89c4051.mcu", 0x000000, 0x01000, CRC(82ceab26) SHA1(9bbc454bdcbc70dc01f10a13c9fc01c884918fe8) )
 
 	/* Expand the gfx roms here */

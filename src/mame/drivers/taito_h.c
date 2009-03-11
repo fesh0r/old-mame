@@ -160,9 +160,9 @@ VIDEO_UPDATE( dleague );
 ***************************************************************************/
 
 /* Handler called by the YM2610 emulator when the internal timers cause an IRQ */
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -242,7 +242,7 @@ static INT32 banknum;
 
 static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr(machine, 1, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000);
+	memory_set_bankptr(machine, 1, memory_region(machine, "audiocpu") + (banknum * 0x4000) + 0x10000);
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
@@ -331,9 +331,7 @@ static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK1)
 	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM)
-	AM_RANGE(0xe000, 0xe000) AM_READ(ym2610_status_port_0_a_r)
-	AM_RANGE(0xe001, 0xe001) AM_READ(ym2610_read_port_0_r)
-	AM_RANGE(0xe002, 0xe002) AM_READ(ym2610_status_port_0_b_r)
+	AM_RANGE(0xe000, 0xe003) AM_DEVREAD("ym", ym2610_r)
 	AM_RANGE(0xe200, 0xe200) AM_READ(SMH_NOP)
 	AM_RANGE(0xe201, 0xe201) AM_READ(taitosound_slave_comm_r)
 	AM_RANGE(0xea00, 0xea00) AM_READ(SMH_NOP)
@@ -342,10 +340,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xdfff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xe000, 0xe000) AM_WRITE(ym2610_control_port_0_a_w)
-	AM_RANGE(0xe001, 0xe001) AM_WRITE(ym2610_data_port_0_a_w)
-	AM_RANGE(0xe002, 0xe002) AM_WRITE(ym2610_control_port_0_b_w)
-	AM_RANGE(0xe003, 0xe003) AM_WRITE(ym2610_data_port_0_b_w)
+	AM_RANGE(0xe000, 0xe003) AM_DEVWRITE("ym", ym2610_w)
 	AM_RANGE(0xe200, 0xe200) AM_WRITE(taitosound_slave_port_w)
 	AM_RANGE(0xe201, 0xe201) AM_WRITE(taitosound_slave_comm_w)
 	AM_RANGE(0xe400, 0xe403) AM_WRITE(SMH_NOP)		/* pan control */
@@ -581,11 +576,11 @@ static MACHINE_START( taitoh )
 static MACHINE_DRIVER_START( syvalion )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,24000000 / 2)		/* 12 MHz */
+	MDRV_CPU_ADD("maincpu", M68000,24000000 / 2)		/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(syvalion_readmem,syvalion_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,8000000 / 2)		/* 4 MHz ??? */
+	MDRV_CPU_ADD("audiocpu", Z80,8000000 / 2)		/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_MACHINE_START(taitoh)
@@ -594,7 +589,7 @@ static MACHINE_DRIVER_START( syvalion )
 	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -621,11 +616,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( recordbr )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,24000000 / 2)		/* 12 MHz */
+	MDRV_CPU_ADD("maincpu", M68000,24000000 / 2)		/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(recordbr_readmem,recordbr_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,8000000 / 2)		/* 4 MHz ??? */
+	MDRV_CPU_ADD("audiocpu", Z80,8000000 / 2)		/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_MACHINE_START(taitoh)
@@ -634,7 +629,7 @@ static MACHINE_DRIVER_START( recordbr )
 	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -661,11 +656,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( dleague )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,24000000 / 2)		/* 12 MHz */
+	MDRV_CPU_ADD("maincpu", M68000,24000000 / 2)		/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(dleague_readmem,dleague_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,8000000 / 2)		/* 4 MHz ??? */
+	MDRV_CPU_ADD("audiocpu", Z80,8000000 / 2)		/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_MACHINE_START(taitoh)
@@ -674,7 +669,7 @@ static MACHINE_DRIVER_START( dleague )
 	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -705,13 +700,13 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( syvalion )
-	ROM_REGION( 0x80000, "main", 0 )		/* main cpu */
+	ROM_REGION( 0x80000, "maincpu", 0 )		/* main cpu */
 	ROM_LOAD16_BYTE( "b51-20.bin", 0x00000, 0x20000, CRC(440b6418) SHA1(262b65f39eb13c11ae7b87013951097ab0a9cb63) )
 	ROM_LOAD16_BYTE( "b51-22.bin", 0x00001, 0x20000, CRC(e6c61079) SHA1(b786ef1bfc72706347c12c17616652bc8302a98c) )
 	ROM_LOAD16_BYTE( "b51-19.bin", 0x40000, 0x20000, CRC(2abd762c) SHA1(97cdb9f1dba5b11b96b5d3431937669de5220512) )
 	ROM_LOAD16_BYTE( "b51-21.bin", 0x40001, 0x20000, CRC(aa111f30) SHA1(77da4a8db49999f5fa2cf0209028d0f70e26dfe3) )
 
-	ROM_REGION( 0x1c000, "audio", 0 )		/* sound cpu */
+	ROM_REGION( 0x1c000, "audiocpu", 0 )		/* sound cpu */
 	ROM_LOAD( "b51-23.bin", 0x00000, 0x04000, CRC(734662de) SHA1(0058d6de68f26cd58b9eb8859e15f3ced6bd3489) )
 	ROM_CONTINUE(           0x10000, 0x0c000 )
 
@@ -741,13 +736,13 @@ ROM_START( syvalion )
 ROM_END
 
 ROM_START( recordbr )
-	ROM_REGION( 0x80000, "main", 0 )		/* main cpu */
+	ROM_REGION( 0x80000, "maincpu", 0 )		/* main cpu */
 	ROM_LOAD16_BYTE( "b56-17.rom", 0x00000, 0x20000, CRC(3e0a9c35) SHA1(900a741b2abbbbe883b9d78162a88b4397af1a56) )
 	ROM_LOAD16_BYTE( "b56-16.rom", 0x00001, 0x20000, CRC(b447f12c) SHA1(58ee30337836f260c7fbda728dac93f06d861ec4) )
 	ROM_LOAD16_BYTE( "b56-15.rom", 0x40000, 0x20000, CRC(b346e282) SHA1(f6b4a2e9093a33d19c2eaf3ef9801179f39a83a3) )
 	ROM_LOAD16_BYTE( "b56-21.rom", 0x40001, 0x20000, CRC(e5f63790) SHA1(b81db7690a989146c438609d9633ddcb1fd219dd) )
 
-	ROM_REGION( 0x1c000, "audio", 0 )		/* sound cpu */
+	ROM_REGION( 0x1c000, "audiocpu", 0 )		/* sound cpu */
 	ROM_LOAD( "b56-19.rom", 0x00000, 0x04000, CRC(c68085ee) SHA1(78634216a622a08c20dae0422283c4a7ed360546) )
 	ROM_CONTINUE(           0x10000, 0x0c000 )
 
@@ -769,13 +764,13 @@ ROM_START( recordbr )
 ROM_END
 
 ROM_START( dleague )
-	ROM_REGION( 0x60000, "main", 0 )
+	ROM_REGION( 0x60000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "c02-19a.33", 0x00000, 0x20000, CRC(7e904e45) SHA1(04ac470c973753e71fba3998099a88ab0e6fcbab) )
 	ROM_LOAD16_BYTE( "c02-21a.36", 0x00001, 0x20000, CRC(18c8a32b) SHA1(507cd7a83dcb6eaefa52f2661b9f3a6fabbfbd46) )
 	ROM_LOAD16_BYTE( "c02-20.34",  0x40000, 0x10000, CRC(cdf593f3) SHA1(6afbd9d8d74e6801dc991eb9fd3205057747b986) )
 	ROM_LOAD16_BYTE( "c02-22.37",  0x40001, 0x10000, CRC(f50db2d7) SHA1(4f16cc42469f1e5bf6dc1aee0919712db089f9cc) )
 
-	ROM_REGION( 0x1c000, "audio", 0 )
+	ROM_REGION( 0x1c000, "audiocpu", 0 )
 	ROM_LOAD( "c02-23.40", 0x00000, 0x04000, CRC(5632ee49) SHA1(90dedaf40ab526529cd7d569b78a9d5451ec3e25) )
 	ROM_CONTINUE(          0x10000, 0x0c000 )
 

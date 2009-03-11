@@ -22,7 +22,17 @@ static UINT8 screen_red;
 static UINT8 schaser_background_disable;
 static UINT8 schaser_background_select;
 
+MACHINE_START( extra_8080bw_vh )
+{
+    state_save_register_global(machine, c8080bw_flip_screen);
+    state_save_register_global(machine, color_map);
+    state_save_register_global(machine, screen_red);
 
+    // These two only belong to schaser, but for simplicity's sake let's waste
+    // two bytes in other drivers' .sta files.
+    state_save_register_global(machine, schaser_background_disable);
+    state_save_register_global(machine, schaser_background_select);
+}
 
 void c8080bw_flip_screen_w(const address_space *space, int data)
 {
@@ -207,7 +217,7 @@ VIDEO_UPDATE( schaser )
 		UINT8 x = offs << 3;
 
 		UINT8 data = mw8080bw_ram[offs];
-		UINT8 fore_color = c8080bw_colorram[offs & 0x1f1f] & 0x07;
+		UINT8 fore_color = c8080bw_colorram[offs & 0x1f9f] & 0x07;
 
 		if (!schaser_background_disable)
 		{
@@ -242,7 +252,7 @@ VIDEO_UPDATE( schasrcv )
 		UINT8 x = offs << 3;
 
 		UINT8 data = mw8080bw_ram[offs];
-		UINT8 fore_color = c8080bw_colorram[offs & 0x1f1f] & 0x07;
+		UINT8 fore_color = c8080bw_colorram[offs & 0x1f9f] & 0x07;
 
 		/* blue background */
 		set_8_pixels(bitmap, y, x, data, pens, fore_color, 2);
@@ -306,7 +316,7 @@ VIDEO_UPDATE( polaris )
            bits 1 and 2 are marked 'not use' (sic) */
 
 		UINT8 back_color = (color_map_base[color_address] & 0x01) ? 6 : 2;
-		UINT8 fore_color = ~c8080bw_colorram[offs & 0x1f1f] & 0x07;
+		UINT8 fore_color = ~c8080bw_colorram[offs & 0x1f9f] & 0x07;
 
 		UINT8 cloud_y = y - polaris_get_cloud_pos();
 
@@ -362,7 +372,7 @@ VIDEO_UPDATE( lupin3 )
 		UINT8 x = offs << 3;
 
 		UINT8 data = mw8080bw_ram[offs];
-		UINT8 fore_color = ~c8080bw_colorram[offs & 0x1f1f] & 0x07;
+		UINT8 fore_color = ~c8080bw_colorram[offs & 0x1f9f] & 0x07;
 
 		set_8_pixels(bitmap, y, x, data, pens, fore_color, 0);
 	}
@@ -473,7 +483,7 @@ VIDEO_UPDATE( sflush )
 		UINT8 x = offs << 3;
 
 		UINT8 data = mw8080bw_ram[offs];
-		UINT8 fore_color = c8080bw_colorram[offs & 0x1f1f] & 0x07;
+		UINT8 fore_color = c8080bw_colorram[offs & 0x1f9f] & 0x07;
 
 		set_8_pixels(bitmap, y, x, data, pens, fore_color, 0);
 	}

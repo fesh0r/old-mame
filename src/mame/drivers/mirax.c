@@ -110,22 +110,12 @@ static WRITE8_HANDLER(audio_w)
 }
 
 
-static WRITE8_HANDLER(ay1_sel)
+static WRITE8_DEVICE_HANDLER(ay_sel)
 {
-	if(cpu_get_previouspc(space->cpu)==0x309)
+	if(cpu_get_previouspc(device->machine->cpu[0])==0x309)
 	{
-		ay8910_control_port_0_w(space,0,nAyCtrl);
-		ay8910_write_port_0_w(space,0,nAyData);
-	}
-}
-
-static WRITE8_HANDLER(ay2_sel)
-{
-
-	if(cpu_get_previouspc(space->cpu)==0x309)
-	{
-		ay8910_control_port_1_w(space,0,nAyCtrl);
-		ay8910_write_port_1_w(space,0,nAyData);
+		ay8910_address_w(device,0,nAyCtrl);
+		ay8910_data_w(device,0,nAyData);
 	}
 }
 
@@ -134,11 +124,11 @@ static ADDRESS_MAP_START( memory_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0x8fff) AM_RAM
 	AM_RANGE(0xa000, 0xa000) AM_READ(snd_read)
 
-	AM_RANGE(0xe000, 0xe000) AM_WRITE(ay1_sel) //1st ay ?
+	AM_RANGE(0xe000, 0xe000) AM_DEVWRITE("ay1", ay_sel) //1st ay ?
 	AM_RANGE(0xe001, 0xe001) AM_WRITENOP
 	AM_RANGE(0xe003, 0xe003) AM_WRITENOP
 
-	AM_RANGE(0xe400, 0xe400) AM_WRITE(ay2_sel) //2nd ay ?
+	AM_RANGE(0xe400, 0xe400) AM_DEVWRITE("ay2", ay_sel) //2nd ay ?
 	AM_RANGE(0xe401, 0xe401) AM_WRITENOP
 	AM_RANGE(0xe403, 0xe403) AM_WRITENOP
 
@@ -185,13 +175,13 @@ static INPUT_PORTS_START( mirax )
 INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( mirax )
-	MDRV_CPU_ADD("main", Z80, 12000000) // audio cpu ?
+	MDRV_CPU_ADD("maincpu", Z80, 12000000) // audio cpu ?
 	MDRV_CPU_PROGRAM_MAP(memory_map,0)
 	MDRV_CPU_IO_MAP(io_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 2)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -214,7 +204,7 @@ static MACHINE_DRIVER_START( mirax )
 MACHINE_DRIVER_END
 
 ROM_START( mirax )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "mxr2-4v.rom",   0x0000, 0x2000, CRC(cd2d52dc) SHA1(0d4181dc68beac338f47a2065c7b755008877896) )
 
 	ROM_REGION( 0xc000, "gfx1", ROMREGION_DISPOSE )

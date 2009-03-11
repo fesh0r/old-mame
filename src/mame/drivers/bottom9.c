@@ -69,7 +69,7 @@ static WRITE8_HANDLER( bottom9_bankedram2_w )
 
 static WRITE8_HANDLER( bankswitch_w )
 {
-	UINT8 *RAM = memory_region(space->machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "maincpu");
 	int offs;
 
 	/* bit 0 = RAM bank */
@@ -124,10 +124,10 @@ static WRITE8_HANDLER( sound_bank_w )
 
 	bank_A = ((data >> 0) & 0x03);
 	bank_B = ((data >> 2) & 0x03);
-	k007232_set_bank( 0, bank_A, bank_B );
+	k007232_set_bank( devtag_get_device(space->machine, "konami1"), bank_A, bank_B );
 	bank_A = ((data >> 4) & 0x03);
 	bank_B = ((data >> 6) & 0x03);
-	k007232_set_bank( 1, bank_A, bank_B );
+	k007232_set_bank( devtag_get_device(space->machine, "konami2"), bank_A, bank_B );
 }
 
 
@@ -155,8 +155,8 @@ static ADDRESS_MAP_START( audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(sound_bank_w)
-	AM_RANGE(0xa000, 0xa00d) AM_READWRITE(k007232_read_port_0_r, k007232_write_port_0_w)
-	AM_RANGE(0xb000, 0xb00d) AM_READWRITE(k007232_read_port_1_r, k007232_write_port_1_w)
+	AM_RANGE(0xa000, 0xa00d) AM_DEVREADWRITE("konami1", k007232_r, k007232_w)
+	AM_RANGE(0xb000, 0xb00d) AM_DEVREADWRITE("konami2", k007232_r, k007232_w)
 	AM_RANGE(0xd000, 0xd000) AM_READ(soundlatch_r)
 	AM_RANGE(0xf000, 0xf000) AM_WRITE(nmi_enable_w)
 ADDRESS_MAP_END
@@ -279,16 +279,16 @@ INPUT_PORTS_END
 
 
 
-static void volume_callback0(int v)
+static void volume_callback0(const device_config *device, int v)
 {
-	k007232_set_volume(0,0,(v >> 4) * 0x11,0);
-	k007232_set_volume(0,1,0,(v & 0x0f) * 0x11);
+	k007232_set_volume(device,0,(v >> 4) * 0x11,0);
+	k007232_set_volume(device,1,0,(v & 0x0f) * 0x11);
 }
 
-static void volume_callback1(int v)
+static void volume_callback1(const device_config *device, int v)
 {
-	k007232_set_volume(1,0,(v >> 4) * 0x11,0);
-	k007232_set_volume(1,1,0,(v & 0x0f) * 0x11);
+	k007232_set_volume(device,0,(v >> 4) * 0x11,0);
+	k007232_set_volume(device,1,0,(v & 0x0f) * 0x11);
 }
 
 static const k007232_interface k007232_interface_1 =
@@ -306,18 +306,18 @@ static const k007232_interface k007232_interface_2 =
 static MACHINE_DRIVER_START( bottom9 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809, 2000000) /* ? */
+	MDRV_CPU_ADD("maincpu", M6809, 2000000) /* ? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", bottom9_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", bottom9_interrupt)
 
-	MDRV_CPU_ADD("audio", Z80, 3579545)
+	MDRV_CPU_ADD("audiocpu", Z80, 3579545)
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(bottom9_sound_interrupt,8)	/* irq is triggered by the main CPU */
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -351,12 +351,12 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( bottom9 )
-	ROM_REGION( 0x28000, "main", 0 ) /* code + banked roms */
+	ROM_REGION( 0x28000, "maincpu", 0 ) /* code + banked roms */
 	ROM_LOAD( "891n03.k17",   0x10000, 0x10000, CRC(8b083ff3) SHA1(045fef944b192e4bb147fa0f28680c0602af7377) )
     ROM_LOAD( "891-t02.k15",  0x20000, 0x08000, CRC(2c10ced2) SHA1(ecd43825a67b495cade94a454c96a19143d87760) )
     ROM_CONTINUE(             0x08000, 0x08000 )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 code */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* Z80 code */
 	ROM_LOAD( "891j01.g8",    0x0000, 0x8000, CRC(31b0a0a8) SHA1(8e047f81c19f25de97fa22e70dcfe9e06bfae699) )
 
 	ROM_REGION( 0x080000, "gfx1", 0 ) /* graphics ( dont dispose as the program can read them, 0 ) */
@@ -408,12 +408,12 @@ ROM_START( bottom9 )
 ROM_END
 
 ROM_START( bottom9n )
-	ROM_REGION( 0x28000, "main", 0 ) /* code + banked roms */
+	ROM_REGION( 0x28000, "maincpu", 0 ) /* code + banked roms */
 	ROM_LOAD( "891n03.k17",   0x10000, 0x10000, CRC(8b083ff3) SHA1(045fef944b192e4bb147fa0f28680c0602af7377) )
     ROM_LOAD( "891n02.k15",   0x20000, 0x08000, CRC(d44d9ed4) SHA1(2a12bcfba81ab7e074569e2ad2da6a237a1c0ce5) )
     ROM_CONTINUE(             0x08000, 0x08000 )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 code */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* Z80 code */
 	ROM_LOAD( "891j01.g8",    0x0000, 0x8000, CRC(31b0a0a8) SHA1(8e047f81c19f25de97fa22e70dcfe9e06bfae699) )
 
 	ROM_REGION( 0x080000, "gfx1", 0 ) /* graphics ( dont dispose as the program can read them, 0 ) */
@@ -465,12 +465,12 @@ ROM_START( bottom9n )
 ROM_END
 
 ROM_START( mstadium )
-	ROM_REGION( 0x28000, "main", 0 ) /* code + banked roms */
+	ROM_REGION( 0x28000, "maincpu", 0 ) /* code + banked roms */
 	ROM_LOAD( "891-403.k17",   0x10000, 0x10000, CRC(1c00c4e8) SHA1(8a3400a8df44f21616422e5af3bca84d0f390f63) )
     ROM_LOAD( "891-402.k15",   0x20000, 0x08000, CRC(b850bbce) SHA1(a64300d1b1068e59eb59c427946c9bff164e2da8) )
     ROM_CONTINUE(             0x08000, 0x08000 )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 code */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* Z80 code */
 	ROM_LOAD( "891w01.g8",    0x0000, 0x8000, CRC(edec565a) SHA1(69cba0d00c6ef76c4ce2b553e3fd15de8abbbf31) )
 
 	ROM_REGION( 0x080000, "gfx1", 0 ) /* graphics ( dont dispose as the program can read them, 0 ) */

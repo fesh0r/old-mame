@@ -21,7 +21,6 @@ todo:
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
-#include "sound/custom.h"
 #include "includes/gomoku.h"
 
 
@@ -126,19 +125,14 @@ static GFXDECODE_START( gomoku )
 GFXDECODE_END
 
 
-static const custom_sound_interface custom_interface =
-{
-	gomoku_sh_start
-};
-
 static MACHINE_DRIVER_START( gomoku )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 18432000/12)		 /* 1.536 MHz ? */
+	MDRV_CPU_ADD("maincpu", Z80, 18432000/12)		 /* 1.536 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(readmem_gomoku, writemem_gomoku)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -155,14 +149,13 @@ static MACHINE_DRIVER_START( gomoku )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD("gomoku", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(custom_interface)
+	MDRV_SOUND_ADD("gomoku", GOMOKU, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( gomoku )
-	ROM_REGION( 0x10000, "main", 0 )	// program
+	ROM_REGION( 0x10000, "maincpu", 0 )	// program
 	ROM_LOAD( "rj_1.7a",    0x0000, 0x1000, CRC(ed20d539) SHA1(7cbbc678cbe5c85b914ca44f82bdbd452cf694a0) )
 	ROM_LOAD( "rj_2.7c",    0x1000, 0x1000, CRC(26a28516) SHA1(53d5d134cd91020fa06e380d355deb1df6b9cb6e) )
 	ROM_LOAD( "rj_3.7d",    0x2000, 0x1000, CRC(d05db072) SHA1(9697c932c6dcee6f8536c9f0b3c84a719a7d3dee) )

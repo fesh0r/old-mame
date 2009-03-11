@@ -147,14 +147,14 @@ static WRITE8_HANDLER( skydiver_nmion_w )
 
 static INTERRUPT_GEN( skydiver_interrupt )
 {
-	const address_space *space = cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM);
+	const device_config *discrete = devtag_get_device(device->machine, "discrete");
 
 	/* Convert range data to divide value and write to sound */
-	discrete_sound_w(space, SKYDIVER_RANGE_DATA, (0x01 << (~skydiver_videoram[0x394] & 0x07)) & 0xff);	// Range 0-2
+	discrete_sound_w(discrete, SKYDIVER_RANGE_DATA, (0x01 << (~skydiver_videoram[0x394] & 0x07)) & 0xff);	// Range 0-2
 
-	discrete_sound_w(space, SKYDIVER_RANGE3_EN,  skydiver_videoram[0x394] & 0x08);		// Range 3 - note disable
-	discrete_sound_w(space, SKYDIVER_NOTE_DATA, ~skydiver_videoram[0x395] & 0xff);		// Note - freq
-	discrete_sound_w(space, SKYDIVER_NOISE_DATA,  skydiver_videoram[0x396] & 0x0f);	// NAM - Noise Amplitude
+	discrete_sound_w(discrete, SKYDIVER_RANGE3_EN,  skydiver_videoram[0x394] & 0x08);		// Range 3 - note disable
+	discrete_sound_w(discrete, SKYDIVER_NOTE_DATA, ~skydiver_videoram[0x395] & 0xff);		// Note - freq
+	discrete_sound_w(discrete, SKYDIVER_NOISE_DATA,  skydiver_videoram[0x396] & 0x0f);	// NAM - Noise Amplitude
 
 	if (skydiver_nmion)
 		cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
@@ -168,14 +168,14 @@ static INTERRUPT_GEN( skydiver_interrupt )
  *
  *************************************/
 
-static WRITE8_HANDLER( skydiver_sound_enable_w )
+static WRITE8_DEVICE_HANDLER( skydiver_sound_enable_w )
 {
-	discrete_sound_w(space, SKYDIVER_SOUND_EN, offset);
+	discrete_sound_w(device, SKYDIVER_SOUND_EN, offset);
 }
 
-static WRITE8_HANDLER( skydiver_whistle_w )
+static WRITE8_DEVICE_HANDLER( skydiver_whistle_w )
 {
-	discrete_sound_w(space, NODE_RELATIVE(SKYDIVER_WHISTLE1_EN, (offset >> 1)), offset & 0x01);
+	discrete_sound_w(device, NODE_RELATIVE(SKYDIVER_WHISTLE1_EN, (offset >> 1)), offset & 0x01);
 }
 
 
@@ -197,11 +197,11 @@ static ADDRESS_MAP_START( skydiver_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0806, 0x0807) AM_MIRROR(0x47f0) AM_WRITE(skydiver_start_lamp_2_w)
 	AM_RANGE(0x0808, 0x0809) AM_MIRROR(0x47f0) AM_WRITE(skydiver_lamp_y_w)
 	AM_RANGE(0x080a, 0x080b) AM_MIRROR(0x47f0) AM_WRITE(skydiver_lamp_d_w)
-	AM_RANGE(0x080c, 0x080d) AM_MIRROR(0x47f0) AM_WRITE(skydiver_sound_enable_w)
+	AM_RANGE(0x080c, 0x080d) AM_MIRROR(0x47f0) AM_DEVWRITE("discrete", skydiver_sound_enable_w)
 	// AM_RANGE(0x1000, 0x1001) AM_MIRROR(0x47f0) AM_WRITE(skydiver_jump1_lamps_w)
 	AM_RANGE(0x1002, 0x1003) AM_MIRROR(0x47f0) AM_WRITE(skydiver_coin_lockout_w)
 	// AM_RANGE(0x1006, 0x1007) AM_MIRROR(0x47f0) AM_WRITE(skydiver_jump2_lamps_w)
-	AM_RANGE(0x1008, 0x100b) AM_MIRROR(0x47f0) AM_WRITE(skydiver_whistle_w)
+	AM_RANGE(0x1008, 0x100b) AM_MIRROR(0x47f0) AM_DEVWRITE("discrete", skydiver_whistle_w)
 	AM_RANGE(0x100c, 0x100d) AM_MIRROR(0x47f0) AM_WRITE(skydiver_nmion_w)
 	AM_RANGE(0x100e, 0x100f) AM_MIRROR(0x47f0) AM_WRITE(skydiver_width_w)
 	AM_RANGE(0x1800, 0x1800) AM_MIRROR(0x47e0) AM_READ_PORT("IN0")
@@ -374,7 +374,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( skydiver )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6800,MASTER_CLOCK/16)	   /* ???? */
+	MDRV_CPU_ADD("maincpu", M6800,MASTER_CLOCK/16)	   /* ???? */
 	MDRV_CPU_PROGRAM_MAP(skydiver_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(skydiver_interrupt, 5)
 	MDRV_WATCHDOG_VBLANK_INIT(8)	// 128V clocks the same as VBLANK
@@ -382,7 +382,7 @@ static MACHINE_DRIVER_START( skydiver )
 	MDRV_MACHINE_RESET(skydiver)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -413,7 +413,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( skydiver )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "33167-02.f1", 0x2800, 0x0800, CRC(25a5c976) SHA1(50fbf5dceab5d78292dc14bf25f2076e8139a594) )
 	ROM_LOAD( "33164-02.e1", 0x3000, 0x0800, CRC(a348ac39) SHA1(7401cbd2f7236bd1d6ad0e39eb3de2b7d75e8f45) )
 	ROM_LOAD( "33165-02.d1", 0x3800, 0x0800, CRC(a1fc5504) SHA1(febaa78936de7703b708c0d1f350fe288e0a106b) )

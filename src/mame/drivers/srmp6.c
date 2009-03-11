@@ -72,7 +72,6 @@ Dumped 06/15/2000
 #include "sound/nile.h"
 
 static UINT16* tileram;
-static UINT8* dirty_tileram;
 static UINT16* dmaram;
 
 static UINT16 *sprram, *sprram_old;
@@ -127,40 +126,20 @@ static void update_palette(running_machine *machine)
 
 static VIDEO_START(srmp6)
 {
-	/* create the char set (gfx will then be updated dynamically from RAM) */
-	machine->gfx[0] = allocgfx(machine, &tiles8x8_layout);
-	machine->gfx[0]->total_colors = machine->config->total_colors / 256;
-	machine->gfx[0]->color_granularity=256;
-
 	tileram = auto_malloc(0x100000*16);
-	dirty_tileram = auto_malloc((0x100000*16)/0x40); // every 8x8x8 tile is 0x40 bytes
-
 	memset(tileram,0x00,(0x100000*16));
-	memset(dirty_tileram,1,(0x100000*16)/0x40);
 
 	dmaram = auto_malloc(0x100);
 
 	sprram_old = auto_malloc(0x80000);
 	memset(sprram_old, 0, 0x80000);
 
+	/* create the char set (gfx will then be updated dynamically from RAM) */
+	machine->gfx[0] = gfx_element_alloc(machine, &tiles8x8_layout, (UINT8*)tileram, machine->config->total_colors / 256, 0);
+	machine->gfx[0]->color_granularity=256;
+
 	brightness = 0x60;
 }
-
-/* Debug code */
-#ifdef UNUSED_FUNCTION
-static void srmp6_decode_charram(running_machine *machine)
-{
-	if(input_code_pressed_once(KEYCODE_Z))
-	{
-		int i;
-		for (i=0;i<(0x100000*16)/0x40;i++)
-		{
-			decodechar(machine->gfx[0], i, (UINT8*)tileram);
-			dirty_tileram[i] = 0;
-		}
-	}
-}
-#endif
 
 #if 0
 static int xixi=0;
@@ -168,7 +147,7 @@ static int xixi=0;
 
 static VIDEO_UPDATE(srmp6)
 {
-	int trans = TRANSPARENCY_PEN;
+	int alpha;
 	int x,y,tileno,height,width,xw,yw,sprite,xb,yb;
 	UINT16 *sprite_list=sprram_old;
 	UINT16 mainlist_offset = 0;
@@ -182,11 +161,6 @@ static VIDEO_UPDATE(srmp6)
 	bitmap_fill(bitmap,cliprect,0);
 
 #if 0
-	/* debug */
-	srmp6_decode_charram(screen->machine);
-
-
-
 	/* debug */
 	if(input_code_pressed_once(KEYCODE_Q))
 	{
@@ -226,13 +200,11 @@ static VIDEO_UPDATE(srmp6)
 
 			if((sprite_list[mainlist_offset+5] & 0x700) == 0x700)
 			{
-				trans = TRANSPARENCY_ALPHA;
-				alpha_set_level((sprite_list[mainlist_offset+5] & 0x1F) << 3);
+				alpha = (sprite_list[mainlist_offset+5] & 0x1F) << 3;
 			}
 			else
 			{
-				trans = TRANSPARENCY_PEN;
-				alpha_set_level(255);
+				alpha = 255;
 			}
 	//  printf("%x %x \n",sprite_list[mainlist_offset+1],sublist_length);
 
@@ -273,13 +245,7 @@ static VIDEO_UPDATE(srmp6)
 						else
 							yb=y+(height-yw-1)*8+global_y;
 
-						if (dirty_tileram[tileno])
-						{
-							decodechar(screen->machine->gfx[0], tileno, (UINT8*)tileram);
-							dirty_tileram[tileno] = 0;
-						}
-
-						drawgfx(bitmap,screen->machine->gfx[0],tileno,global_pal,flip_x,flip_y,xb,yb,cliprect,trans,0);
+						drawgfx_alpha(bitmap,cliprect,screen->machine->gfx[0],tileno,global_pal,flip_x,flip_y,xb,yb,0,alpha);
 						tileno++;
 		 			}
 				}
@@ -384,7 +350,7 @@ static unsigned short lastb;
 static unsigned short lastb2;
 static int destl;
 
-static UINT32 process(UINT8 b,UINT32 dst_offset)
+static UINT32 process(running_machine *machine,UINT8 b,UINT32 dst_offset)
 {
 
  	int l=0;
@@ -399,7 +365,7 @@ static UINT32 process(UINT8 b,UINT32 dst_offset)
  		for(i=0;i<rle;++i)
  		{
 			tram[dst_offset+destl] = lastb;
-			dirty_tileram[(dst_offset+destl)/0x40] = 1;
+			gfx_element_mark_dirty(machine->gfx[0], (dst_offset+destl)/0x40);
 
 			dst_offset++;
  			++l;
@@ -413,7 +379,7 @@ static UINT32 process(UINT8 b,UINT32 dst_offset)
  		lastb2=lastb;
  		lastb=b;
 		tram[dst_offset+destl] = b;
-		dirty_tileram[(dst_offset+destl)/0x40] = 1;
+		gfx_element_mark_dirty(machine->gfx[0], (dst_offset+destl)/0x40);
 
  		return 1;
  	}
@@ -467,13 +433,13 @@ static WRITE16_HANDLER(srmp6_dma_w)
 				{
 					UINT8 real_byte;
 					real_byte = rom[srctab+p*2];
-					tempidx+=process(real_byte,tempidx);
+					tempidx+=process(space->machine,real_byte,tempidx);
 					real_byte = rom[srctab+p*2+1];//px[DMA_XOR((current_table_address+p*2+1))];
-					tempidx+=process(real_byte,tempidx);
+					tempidx+=process(space->machine,real_byte,tempidx);
  				}
  				else
  				{
- 					tempidx+=process(p,tempidx);
+ 					tempidx+=process(space->machine,p,tempidx);
  				}
 
  				ctrl<<=1;
@@ -562,8 +528,8 @@ static ADDRESS_MAP_START( srmp6, ADDRESS_SPACE_PROGRAM, 16 )
 //  AM_RANGE(0x5fff00, 0x5fffff) AM_WRITE(dma_w) AM_BASE(&dmaram)
 
 	AM_RANGE(0x4c0000, 0x4c006f) AM_READWRITE(video_regs_r, video_regs_w) AM_BASE(&video_regs)	// ? gfx regs ST-0026 NiLe
-  	AM_RANGE(0x4e0000, 0x4e00ff) AM_READWRITE(nile_snd_r, nile_snd_w) AM_BASE(&nile_sound_regs)
-  	AM_RANGE(0x4e0100, 0x4e0101) AM_READWRITE(nile_sndctrl_r, nile_sndctrl_w)
+  	AM_RANGE(0x4e0000, 0x4e00ff) AM_DEVREADWRITE("nile", nile_snd_r, nile_snd_w) AM_BASE(&nile_sound_regs)
+  	AM_RANGE(0x4e0100, 0x4e0101) AM_DEVREADWRITE("nile", nile_sndctrl_r, nile_sndctrl_w)
 //  AM_RANGE(0x4e0110, 0x4e0111) AM_NOP // ? accessed once ($268dc, written $b.w)
 //  AM_RANGE(0x5fff00, 0x5fff1f) AM_RAM // ? see routine $5ca8, video_regs related ???
 
@@ -678,12 +644,12 @@ static INTERRUPT_GEN(srmp6_interrupt)
 }
 
 static MACHINE_DRIVER_START( srmp6 )
-	MDRV_CPU_ADD("main", M68000, 16000000)
+	MDRV_CPU_ADD("maincpu", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(srmp6,0)
 	MDRV_CPU_VBLANK_INT_HACK(srmp6_interrupt,2)
 
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
@@ -696,11 +662,11 @@ static MACHINE_DRIVER_START( srmp6 )
 	MDRV_VIDEO_UPDATE(srmp6)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("nile", NILE, 0)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -709,7 +675,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( srmp6 )
-	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "sx011-10.4", 0x000001, 0x080000, CRC(8f4318a5) SHA1(44160968cca027b3d42805f2dd42662d11257ef6) )
 	ROM_LOAD16_BYTE( "sx011-11.5", 0x000000, 0x080000, CRC(7503d9cf) SHA1(03ab35f13b6166cb362aceeda18e6eda8d3abf50) )
 

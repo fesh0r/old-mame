@@ -212,8 +212,8 @@ static ADDRESS_MAP_START( mirage_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE(0x130000, 0x1307ff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 
-	AM_RANGE(0x140000, 0x14000f) AM_READWRITE(okim6295_status_1_lsb_r, okim6295_data_1_lsb_w)
-	AM_RANGE(0x150000, 0x15000f) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)
+	AM_RANGE(0x140000, 0x14000f) AM_DEVREADWRITE8("oki2", okim6295_r, okim6295_w, 0x00ff)
+	AM_RANGE(0x150000, 0x15000f) AM_DEVREADWRITE8("oki1", okim6295_r, okim6295_w, 0x00ff)
 
 	AM_RANGE(0x160000, 0x160001) AM_WRITE(SMH_NOP)
 
@@ -356,12 +356,12 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( mirage )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 28000000/2)
+	MDRV_CPU_ADD("maincpu", M68000, 28000000/2)
 	MDRV_CPU_PROGRAM_MAP(mirage_readmem,mirage_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(58)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -388,7 +388,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( mirage )
-	ROM_REGION( 0x80000, "main", 0 ) /* 68000 code */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "mr_00-.2a", 0x00000, 0x40000, CRC(3a53f33d) SHA1(0f654021dcd64202b41e0ef5ef3cdf5dd274f8a5) )
 	ROM_LOAD16_BYTE( "mr_01-.3a", 0x00001, 0x40000, CRC(a0b758aa) SHA1(7fb5faf6fb57cd72a3ac24b8af1f33e504ac8398) )
 

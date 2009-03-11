@@ -1340,7 +1340,7 @@ void decocass_machine_state_save_init(running_machine *machine)
 
 MACHINE_START( decocass )
 {
-	cassette_device = devtag_get_device(machine, DECOCASS_TAPE, "cassette");
+	cassette_device = devtag_get_device(machine, "cassette");
 }
 
 static void decocass_reset_common(running_machine *machine)
@@ -2128,7 +2128,7 @@ static DEVICE_START( decocass_tape )
 	/* fetch the data pointer */
 	tape->timer = timer_alloc(device->machine, tape_clock_callback, (void *)device);
 	if (device->region == NULL)
-		return DEVICE_START_OK;
+		return;
 
 	/* scan for the first non-empty block in the image */
 	for (offs = device->regionbytes - 1; offs >= 0; offs--)
@@ -2161,8 +2161,6 @@ static DEVICE_START( decocass_tape )
 	state_save_register_device_item(device, 0, tape->speed);
 	state_save_register_device_item(device, 0, tape->bitnum);
 	state_save_register_device_item(device, 0, tape->clockpos);
-
-	return DEVICE_START_OK;
 }
 
 

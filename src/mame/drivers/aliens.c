@@ -77,7 +77,7 @@ static WRITE8_HANDLER( aliens_sh_irqtrigger_w )
 	cpu_set_input_line_and_vector(space->machine->cpu[1], 0, HOLD_LINE, 0xff);
 }
 
-static WRITE8_HANDLER( aliens_snd_bankswitch_w )
+static WRITE8_DEVICE_HANDLER( aliens_snd_bankswitch_w )
 {
 	/* b1: bank for chanel A */
 	/* b0: bank for chanel B */
@@ -85,7 +85,7 @@ static WRITE8_HANDLER( aliens_snd_bankswitch_w )
 	int bank_A = ((data >> 1) & 0x01);
 	int bank_B = ((data) & 0x01);
 
-	k007232_set_bank( 0, bank_A, bank_B );
+	k007232_set_bank( devtag_get_device(device->machine, "konami"), bank_A, bank_B );
 }
 
 
@@ -107,10 +107,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( aliens_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM								/* ROM g04_b03.bin */
 	AM_RANGE(0x8000, 0x87ff) AM_RAM								/* RAM */
-	AM_RANGE(0xa000, 0xa000) AM_WRITE(ym2151_register_port_0_w)
-	AM_RANGE(0xa001, 0xa001) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
+	AM_RANGE(0xa000, 0xa001) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
 	AM_RANGE(0xc000, 0xc000) AM_READ(soundlatch_r)				/* soundlatch_r */
-	AM_RANGE(0xe000, 0xe00d) AM_READWRITE(k007232_read_port_0_r, k007232_write_port_0_w)
+	AM_RANGE(0xe000, 0xe00d) AM_DEVREADWRITE("konami", k007232_r, k007232_w)
 ADDRESS_MAP_END
 
 
@@ -215,10 +214,10 @@ INPUT_PORTS_END
 
 ***************************************************************************/
 
-static void volume_callback(int v)
+static void volume_callback(const device_config *device, int v)
 {
-	k007232_set_volume(0,0,(v & 0x0f) * 0x11,0);
-	k007232_set_volume(0,1,0,(v >> 4) * 0x11);
+	k007232_set_volume(device,0,(v & 0x0f) * 0x11,0);
+	k007232_set_volume(device,1,0,(v >> 4) * 0x11);
 }
 
 static const k007232_interface k007232_config =
@@ -238,11 +237,11 @@ static MACHINE_DRIVER_START( aliens )
 
 	/* external clock should be 12MHz probably, CPU internal divider and precise cycle timings */
 	/* are unknown though. 3MHz is too low, sprites flicker in the pseudo-3D levels */
-	MDRV_CPU_ADD("main", KONAMI, 6000000)		/* ? */
+	MDRV_CPU_ADD("maincpu", KONAMI, 6000000)		/* ? */
 	MDRV_CPU_PROGRAM_MAP(aliens_map,0)
-	MDRV_CPU_VBLANK_INT("main", aliens_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", aliens_interrupt)
 
-	MDRV_CPU_ADD("audio", Z80, 3579545)
+	MDRV_CPU_ADD("audiocpu", Z80, 3579545)
 	MDRV_CPU_PROGRAM_MAP(aliens_sound_map,0)
 
 	MDRV_MACHINE_RESET(aliens)
@@ -250,7 +249,7 @@ static MACHINE_DRIVER_START( aliens )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -284,12 +283,12 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( aliens )
-	ROM_REGION( 0x38000, "main", 0 ) /* code + banked roms */
+	ROM_REGION( 0x38000, "maincpu", 0 ) /* code + banked roms */
 	ROM_LOAD( "875_j02.e24", 0x10000, 0x08000, CRC(56c20971) SHA1(af272e146705e97342466a208c64d823ebc83d83) )
 	ROM_CONTINUE(            0x08000, 0x08000 )
 	ROM_LOAD( "875_j01.c24", 0x18000, 0x20000, CRC(6a529cd6) SHA1(bff6dee33141d8ed2b2c28813cf49f52dceac364) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* 64k for the sound CPU */
 	ROM_LOAD( "875_b03.g04", 0x00000, 0x08000, CRC(1ac4d283) SHA1(2253f1f39c7edb6cef438b3d97f3af67a1f491ff) )
 
 	ROM_REGION( 0x200000, "gfx1", 0 ) /* graphics */
@@ -316,12 +315,12 @@ ROM_START( aliens )
 ROM_END
 
 ROM_START( aliens2 )
-	ROM_REGION( 0x38000, "main", 0 ) /* code + banked roms */
+	ROM_REGION( 0x38000, "maincpu", 0 ) /* code + banked roms */
 	ROM_LOAD( "875_p02.e24", 0x10000, 0x08000, CRC(4edd707d) SHA1(02b39068e5fd99ecb5b35a586335b65a20fde490) )
 	ROM_CONTINUE(            0x08000, 0x08000 )
 	ROM_LOAD( "875_n01.c24", 0x18000, 0x20000, CRC(106cf59c) SHA1(78622adc02055d31cd587c83b23a6cde30c9bc22) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* 64k for the sound CPU */
 	ROM_LOAD( "875_b03.g04", 0x00000, 0x08000, CRC(1ac4d283) SHA1(2253f1f39c7edb6cef438b3d97f3af67a1f491ff) )
 
 	ROM_REGION( 0x200000, "gfx1", 0 ) /* graphics */
@@ -348,12 +347,12 @@ ROM_START( aliens2 )
 ROM_END
 
 ROM_START( aliens3 )
-	ROM_REGION( 0x38000, "main", 0 ) /* code + banked roms */
+	ROM_REGION( 0x38000, "maincpu", 0 ) /* code + banked roms */
 	ROM_LOAD( "875_w3_2.e24", 0x10000, 0x08000, CRC(f917f7b5) SHA1(ab95ad40c82f11572bbaa03d76dae35f76bacf0c) ) /* Needs correct rom label */
 	ROM_CONTINUE(             0x08000, 0x08000 )
 	ROM_LOAD( "875_w3_1.c24", 0x18000, 0x20000, CRC(3c0006fb) SHA1(e8730d50c358e7321dd676c74368fe44b9bbe5b2) ) /* Needs correct rom label */
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* 64k for the sound CPU */
 	ROM_LOAD( "875_b03.g04", 0x00000, 0x08000, CRC(1ac4d283) SHA1(2253f1f39c7edb6cef438b3d97f3af67a1f491ff) )
 
 	ROM_REGION( 0x200000, "gfx1", 0 ) /* graphics */
@@ -380,12 +379,12 @@ ROM_START( aliens3 )
 ROM_END
 
 ROM_START( aliensu )
-	ROM_REGION( 0x38000, "main", 0 ) /* code + banked roms */
+	ROM_REGION( 0x38000, "maincpu", 0 ) /* code + banked roms */
 	ROM_LOAD( "875_n02.e24", 0x10000, 0x08000, CRC(24dd612e) SHA1(35bceb3045cd0bd9d107312b371fb60dcf3f1272) )
 	ROM_CONTINUE(            0x08000, 0x08000 )
 	ROM_LOAD( "875_n01.c24", 0x18000, 0x20000, CRC(106cf59c) SHA1(78622adc02055d31cd587c83b23a6cde30c9bc22) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* 64k for the sound CPU */
 	ROM_LOAD( "875_b03.g04", 0x00000, 0x08000, CRC(1ac4d283) SHA1(2253f1f39c7edb6cef438b3d97f3af67a1f491ff) )
 
 	ROM_REGION( 0x200000, "gfx1", 0 ) /* graphics */
@@ -412,12 +411,12 @@ ROM_START( aliensu )
 ROM_END
 
 ROM_START( aliensj )
-	ROM_REGION( 0x38000, "main", 0 ) /* code + banked roms */
+	ROM_REGION( 0x38000, "maincpu", 0 ) /* code + banked roms */
 	ROM_LOAD( "875_m02.e24",  0x10000, 0x08000, CRC(54a774e5) SHA1(b6413b2199f863cae1c6fcef766989162cd4b95e) )
 	ROM_CONTINUE(             0x08000, 0x08000 )
 	ROM_LOAD( "875_m01.c24",  0x18000, 0x20000, CRC(1663d3dc) SHA1(706bdf3daa3bda372d94263f3405d67a7ef8dc69) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* 64k for the sound CPU */
 	ROM_LOAD( "875_k03.g04", 0x00000, 0x08000, CRC(bd86264d) SHA1(345fd666daf8a29ef314b14306c1a976cb159bed) )
 
 	ROM_REGION( 0x200000, "gfx1", 0 ) /* graphics */
@@ -444,12 +443,12 @@ ROM_START( aliensj )
 ROM_END
 
 ROM_START( aliensj2 )
-	ROM_REGION( 0x38000, "main", 0 ) /* code + banked roms */
+	ROM_REGION( 0x38000, "maincpu", 0 ) /* code + banked roms */
 	ROM_LOAD( "875_j2_2.e24", 0x10000, 0x08000, CRC(4bb84952) SHA1(ca40a7181f11d6c34c26b65f8d4a1d1df2c7fb48) ) /* Needs correct rom label */
 	ROM_CONTINUE(             0x08000, 0x08000 )
 	ROM_LOAD( "875_m01.c24",  0x18000, 0x20000, CRC(1663d3dc) SHA1(706bdf3daa3bda372d94263f3405d67a7ef8dc69) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* 64k for the sound CPU */
 	ROM_LOAD( "875_k03.g04", 0x00000, 0x08000, CRC(bd86264d) SHA1(345fd666daf8a29ef314b14306c1a976cb159bed) )
 
 	ROM_REGION( 0x200000, "gfx1", 0 ) /* graphics */
@@ -483,7 +482,7 @@ ROM_END
 
 static KONAMI_SETLINES_CALLBACK( aliens_banking )
 {
-	UINT8 *RAM = memory_region(device->machine, "main");
+	UINT8 *RAM = memory_region(device->machine, "maincpu");
 	int offs = 0x18000;
 
 
@@ -495,7 +494,7 @@ static KONAMI_SETLINES_CALLBACK( aliens_banking )
 
 static MACHINE_RESET( aliens )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 
 	konami_configure_set_lines(machine->cpu[0], aliens_banking);
 

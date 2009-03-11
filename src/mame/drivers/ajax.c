@@ -19,7 +19,7 @@ TO DO:
 #include "sound/k007232.h"
 #include "includes/ajax.h"
 
-static WRITE8_HANDLER( k007232_extvol_w );
+static WRITE8_DEVICE_HANDLER( k007232_extvol_w );
 static WRITE8_HANDLER( sound_bank_w );
 
 /****************************************************************************/
@@ -50,12 +50,11 @@ static ADDRESS_MAP_START( ajax_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM								/* ROM F6 */
 	AM_RANGE(0x8000, 0x87ff) AM_RAM								/* RAM 2128SL at D16 */
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(sound_bank_w)				/* 007232 bankswitch */
-	AM_RANGE(0xa000, 0xa00d) AM_READWRITE(k007232_read_port_0_r, k007232_write_port_0_w)		/* 007232 registers (chip 1) */
-	AM_RANGE(0xb000, 0xb00d) AM_READWRITE(k007232_read_port_1_r, k007232_write_port_1_w)		/* 007232 registers (chip 2) */
-	AM_RANGE(0xb80c, 0xb80c) AM_WRITE(k007232_extvol_w)			/* extra volume, goes to the 007232 w/ A11 */
+	AM_RANGE(0xa000, 0xa00d) AM_DEVREADWRITE("konami1", k007232_r, k007232_w)		/* 007232 registers (chip 1) */
+	AM_RANGE(0xb000, 0xb00d) AM_DEVREADWRITE("konami2", k007232_r, k007232_w)		/* 007232 registers (chip 2) */
+	AM_RANGE(0xb80c, 0xb80c) AM_DEVWRITE("konami2", k007232_extvol_w)			/* extra volume, goes to the 007232 w/ A11 */
 																/* selecting a different latch for the external port */
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(ym2151_register_port_0_w)	/* YM2151 */
-	AM_RANGE(0xc001, 0xc001) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)		/* YM2151 */
+	AM_RANGE(0xc000, 0xc001) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)		/* YM2151 */
 	AM_RANGE(0xe000, 0xe000) AM_READ(soundlatch_r)				/* soundlatch_r */
 ADDRESS_MAP_END
 
@@ -188,30 +187,30 @@ static WRITE8_HANDLER( sound_bank_w )
 	/* banks # for the 007232 (chip 1) */
 	bank_A = ((data >> 1) & 0x01);
 	bank_B = ((data >> 0) & 0x01);
-	k007232_set_bank( 0, bank_A, bank_B );
+	k007232_set_bank( devtag_get_device(space->machine, "konami1"), bank_A, bank_B );
 
 	/* banks # for the 007232 (chip 2) */
 	bank_A = ((data >> 4) & 0x03);
 	bank_B = ((data >> 2) & 0x03);
-	k007232_set_bank( 1, bank_A, bank_B );
+	k007232_set_bank( devtag_get_device(space->machine, "konami2"), bank_A, bank_B );
 }
 
-static void volume_callback0(int v)
+static void volume_callback0(const device_config *device, int v)
 {
-	k007232_set_volume(0,0,(v >> 4) * 0x11,0);
-	k007232_set_volume(0,1,0,(v & 0x0f) * 0x11);
+	k007232_set_volume(device,0,(v >> 4) * 0x11,0);
+	k007232_set_volume(device,1,0,(v & 0x0f) * 0x11);
 }
 
-static WRITE8_HANDLER( k007232_extvol_w )
+static WRITE8_DEVICE_HANDLER( k007232_extvol_w )
 {
 	/* channel A volume (mono) */
-	k007232_set_volume(1,0,(data & 0x0f) * 0x11/2,(data & 0x0f) * 0x11/2);
+	k007232_set_volume(device,0,(data & 0x0f) * 0x11/2,(data & 0x0f) * 0x11/2);
 }
 
-static void volume_callback1(int v)
+static void volume_callback1(const device_config *device, int v)
 {
 	/* channel B volume/pan */
-	k007232_set_volume(1,1,(v & 0x0f) * 0x11/2,(v >> 4) * 0x11/2);
+	k007232_set_volume(device,1,(v & 0x0f) * 0x11/2,(v >> 4) * 0x11/2);
 }
 
 static const k007232_interface k007232_interface_1 =
@@ -229,24 +228,25 @@ static const k007232_interface k007232_interface_2 =
 static MACHINE_DRIVER_START( ajax )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", KONAMI, 3000000)	/* 12/4 MHz*/
+	MDRV_CPU_ADD("maincpu", KONAMI, 3000000)	/* 12/4 MHz*/
 	MDRV_CPU_PROGRAM_MAP(ajax_main_map,0)
-	MDRV_CPU_VBLANK_INT("main", ajax_interrupt)	/* IRQs triggered by the 051960 */
+	MDRV_CPU_VBLANK_INT("screen", ajax_interrupt)	/* IRQs triggered by the 051960 */
 
 	MDRV_CPU_ADD("sub", M6809, 3000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(ajax_sub_map,0)
 
-	MDRV_CPU_ADD("audio", Z80, 3579545)	/* 3.58 MHz */
+	MDRV_CPU_ADD("audiocpu", Z80, 3579545)	/* 3.58 MHz */
 	MDRV_CPU_PROGRAM_MAP(ajax_sound_map,0)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 
 	MDRV_MACHINE_RESET(ajax)
+    MDRV_MACHINE_START(ajax)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -258,23 +258,23 @@ static MACHINE_DRIVER_START( ajax )
 	MDRV_VIDEO_UPDATE(ajax)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2151, 3579545)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("konami1", K007232, 3579545)
 	MDRV_SOUND_CONFIG(k007232_interface_1)
-	MDRV_SOUND_ROUTE(0, "left", 0.20)
-	MDRV_SOUND_ROUTE(0, "right", 0.20)
-	MDRV_SOUND_ROUTE(1, "left", 0.20)
-	MDRV_SOUND_ROUTE(1, "right", 0.20)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.20)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.20)
+	MDRV_SOUND_ROUTE(1, "lspeaker", 0.20)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.20)
 
 	MDRV_SOUND_ADD("konami2", K007232, 3579545)
 	MDRV_SOUND_CONFIG(k007232_interface_2)
-	MDRV_SOUND_ROUTE(0, "left", 0.50)
-	MDRV_SOUND_ROUTE(1, "right", 0.50)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.50)
 MACHINE_DRIVER_END
 
 
@@ -290,7 +290,7 @@ MACHINE_DRIVER_END
 */
 
 ROM_START( ajax )
-	ROM_REGION( 0x28000, "main", 0 )	/* 052001 code */
+	ROM_REGION( 0x28000, "maincpu", 0 )	/* 052001 code */
 	ROM_LOAD( "770_m01.n11",	0x10000, 0x08000, CRC(4a64e53a) SHA1(acd249bfcb5f248c41b3e40c7c1bce1b8c645d3a) )	/* banked ROM */
 	ROM_CONTINUE(				0x08000, 0x08000 )				/* fixed ROM */
 	ROM_LOAD( "770_l02.n12",	0x18000, 0x10000, CRC(ad7d592b) SHA1(c75d9696b16de231c479379dd02d33fe54021d88) )	/* banked ROM */
@@ -300,7 +300,7 @@ ROM_START( ajax )
 	ROM_CONTINUE(				0x0a000, 0x06000 )				/* fixed ROM */
 	ROM_LOAD( "770_f04.g16",	0x10000, 0x10000, CRC(e0e4ec9c) SHA1(15ae09c3ad67ec626d8178ec1417f0c57ca4eca4) )	/* banked ROM */
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the SOUND CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the SOUND CPU */
 	ROM_LOAD( "770_h03.f16",	0x00000, 0x08000, CRC(2ffd2afc) SHA1(ca2ef684f87bcf9b70b3ec66ec80685edaf04b9b) )
 
 	ROM_REGION( 0x080000, "gfx1", 0 )	/* graphics (addressable by the main CPU) */
@@ -356,7 +356,7 @@ ROM_START( ajax )
 ROM_END
 
 ROM_START( typhoon )
-	ROM_REGION( 0x28000, "main", 0 )	/* 052001 code */
+	ROM_REGION( 0x28000, "maincpu", 0 )	/* 052001 code */
 	ROM_LOAD( "770_k01.n11",	0x10000, 0x08000, CRC(5ba74a22) SHA1(897d3309f2efb3bfa56e86581ee4a492e656788c) )	/* banked ROM */
 	ROM_CONTINUE(				0x08000, 0x08000 )				/* fixed ROM */
 	ROM_LOAD( "770_k02.n12",	0x18000, 0x10000, CRC(3bcf782a) SHA1(4b6127bced0b2519f8ad30587f32588a16368071) )	/* banked ROM */
@@ -366,7 +366,7 @@ ROM_START( typhoon )
 	ROM_CONTINUE(				0x0a000, 0x06000 )				/* fixed ROM */
 	ROM_LOAD( "770_f04.g16",	0x10000, 0x10000, CRC(e0e4ec9c) SHA1(15ae09c3ad67ec626d8178ec1417f0c57ca4eca4) )	/* banked ROM */
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the SOUND CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the SOUND CPU */
 	ROM_LOAD( "770_h03.f16",	0x00000, 0x08000, CRC(2ffd2afc) SHA1(ca2ef684f87bcf9b70b3ec66ec80685edaf04b9b) )
 
 	ROM_REGION( 0x080000, "gfx1", 0 )	/* graphics (addressable by the main CPU) */
@@ -392,7 +392,7 @@ ROM_START( typhoon )
 ROM_END
 
 ROM_START( ajaxj )
-	ROM_REGION( 0x28000, "main", 0 )	/* 052001 code */
+	ROM_REGION( 0x28000, "maincpu", 0 )	/* 052001 code */
 	ROM_LOAD( "770_l01.n11",	0x10000, 0x08000, CRC(7cea5274) SHA1(8e3b2b11a8189e3a1703b3b4b453fbb386f5537f) )	/* banked ROM */
 	ROM_CONTINUE(				0x08000, 0x08000 )				/* fixed ROM */
 	ROM_LOAD( "770_l02.n12",	0x18000, 0x10000, CRC(ad7d592b) SHA1(c75d9696b16de231c479379dd02d33fe54021d88) )	/* banked ROM */
@@ -402,7 +402,7 @@ ROM_START( ajaxj )
 	ROM_CONTINUE(				0x0a000, 0x06000 )				/* fixed ROM */
 	ROM_LOAD( "770_f04.g16",	0x10000, 0x10000, CRC(e0e4ec9c) SHA1(15ae09c3ad67ec626d8178ec1417f0c57ca4eca4) )	/* banked ROM */
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the SOUND CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the SOUND CPU */
 	ROM_LOAD( "770_f03.f16",	0x00000, 0x08000, CRC(3fe914fd) SHA1(c691920402bd859e2bf765084704a8bfad302cfa) )
 
 	ROM_REGION( 0x080000, "gfx1", 0 )	/* graphics (addressable by the main CPU) */
@@ -436,6 +436,6 @@ static DRIVER_INIT( ajax )
 
 
 
-GAME( 1987, ajax,    0,    ajax, ajax, ajax, ROT90, "Konami", "Ajax", 0 )
-GAME( 1987, typhoon, ajax, ajax, ajax, ajax, ROT90, "Konami", "Typhoon", 0 )
-GAME( 1987, ajaxj,   ajax, ajax, ajax, ajax, ROT90, "Konami", "Ajax (Japan)", 0 )
+GAME( 1987, ajax,    0,    ajax, ajax, ajax, ROT90, "Konami", "Ajax", GAME_SUPPORTS_SAVE )
+GAME( 1987, typhoon, ajax, ajax, ajax, ajax, ROT90, "Konami", "Typhoon", GAME_SUPPORTS_SAVE )
+GAME( 1987, ajaxj,   ajax, ajax, ajax, ajax, ROT90, "Konami", "Ajax (Japan)", GAME_SUPPORTS_SAVE )

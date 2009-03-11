@@ -613,12 +613,12 @@ static void region_post_process(rom_load_data *romdata, const char *rgntag)
 	UINT32 regionlength = memory_region_length(romdata->machine, rgntag);
 	UINT32 regionflags = memory_region_flags(romdata->machine, rgntag);
 	UINT8 *regionbase = memory_region(romdata->machine, rgntag);
-	int littleendian = ((regionflags & ROMREGION_ENDIANMASK) == ROMREGION_LE);
+	int endianness = ((regionflags & ROMREGION_ENDIANMASK) == ROMREGION_LE) ? ENDIANNESS_LITTLE : ENDIANNESS_BIG;
 	int datawidth = 1 << ((regionflags & ROMREGION_WIDTHMASK) >> 8);
 	UINT8 *base;
 	int i, j;
 
-	LOG(("+ datawidth=%d little=%d\n", datawidth, littleendian));
+	LOG(("+ datawidth=%d little=%d\n", datawidth, endianness == ENDIANNESS_LITTLE));
 
 	/* if the region is inverted, do that now */
 	if (regionflags & ROMREGION_INVERTMASK)
@@ -629,11 +629,7 @@ static void region_post_process(rom_load_data *romdata, const char *rgntag)
 	}
 
 	/* swap the endianness if we need to */
-#ifdef LSB_FIRST
-	if (datawidth > 1 && !littleendian)
-#else
-	if (datawidth > 1 && littleendian)
-#endif
+	if (datawidth > 1 && endianness != ENDIANNESS_NATIVE)
 	{
 		LOG(("+ Byte swapping region\n"));
 		for (i = 0, base = regionbase; i < regionlength; i += datawidth)
@@ -1035,6 +1031,13 @@ chd_error open_disk_image_options(core_options *options, const game_driver *game
 		astring_free(fname);
 	}
 
+	if (filerr != FILERR_NONE)
+	{
+		astring *fname = astring_assemble_2(astring_alloc(), ROM_GETNAME(romp), ".chd");
+		filerr = mame_fopen_options(options, SEARCHPATH_IMAGE, astring_c(fname), OPEN_FLAG_READ, image_file);
+		astring_free(fname);
+	}
+
 	/* did the file open succeed? */
 	if (filerr == FILERR_NONE)
 	{
@@ -1067,6 +1070,13 @@ chd_error open_disk_image_options(core_options *options, const game_driver *game
 							for (searchdrv = drv; searchdrv != NULL && filerr != FILERR_NONE; searchdrv = driver_get_clone(searchdrv))
 							{
 								astring *fname = astring_assemble_4(astring_alloc(), searchdrv->name, PATH_SEPARATOR, ROM_GETNAME(rom), ".chd");
+								filerr = mame_fopen_options(options, SEARCHPATH_IMAGE, astring_c(fname), OPEN_FLAG_READ, image_file);
+								astring_free(fname);
+							}
+
+							if (filerr != FILERR_NONE)
+							{
+								astring *fname = astring_assemble_2(astring_alloc(), ROM_GETNAME(rom), ".chd");
 								filerr = mame_fopen_options(options, SEARCHPATH_IMAGE, astring_c(fname), OPEN_FLAG_READ, image_file);
 								astring_free(fname);
 							}

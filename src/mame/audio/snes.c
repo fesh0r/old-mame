@@ -200,7 +200,7 @@ static int AdvanceEnvelope          /* Run envelope step & retn ENVX*/
 
 /***** DSP_Reset *****/
 
-void DSP_Reset                      /* Reset emulated DSP           */
+static void DSP_Reset                      /* Reset emulated DSP           */
     ( void )
 {
 int                     i;
@@ -235,7 +235,7 @@ DSPregs[ 0x5C ]  = 0;
 
 /***** DSP_Update *****/
 
-void DSP_Update                     /* Mix one sample of audio      */
+static void DSP_Update                     /* Mix one sample of audio      */
     (
     short *             sound_ptr   /* Pointer to mix audio into    */
     )
@@ -1134,7 +1134,7 @@ static TIMER_CALLBACK( snes_spc_timer  )
 	}
 }
 
-CUSTOM_START( snes_sh_start )
+static DEVICE_START( snes_sound )
 {
 	running_machine *machine = device->machine;
 	UINT8 ii;
@@ -1166,9 +1166,21 @@ CUSTOM_START( snes_sh_start )
 	timer_enable( timers[2].timer, 0 );
 
 	DSP_Reset();
-
-	return auto_malloc(1);
 }
+
+DEVICE_GET_INFO( snes_sound )
+{
+	switch (state)
+	{
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(snes_sound);	break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_NAME:							strcpy(info->s, "SNES Custom");					break;
+		case DEVINFO_STR_SOURCE_FILE:						strcpy(info->s, __FILE__);						break;
+	}
+}
+
 
 STREAM_UPDATE( snes_sh_update )
 {

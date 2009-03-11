@@ -93,7 +93,7 @@ static ADDRESS_MAP_START( powerins_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100002, 0x100003) AM_READ_PORT("P1_P2")
 	AM_RANGE(0x100008, 0x100009) AM_READ_PORT("DSW1")
 	AM_RANGE(0x10000a, 0x10000b) AM_READ_PORT("DSW2")
-	AM_RANGE(0x10003e, 0x10003f) AM_READ(okim6295_status_0_lsb_r)	// OKI Status (used by powerina)
+	AM_RANGE(0x10003e, 0x10003f) AM_DEVREAD8("oki1", okim6295_r, 0x00ff)	// OKI Status (used by powerina)
 	AM_RANGE(0x120000, 0x120fff) AM_READ(SMH_RAM				)	// Palette
 	AM_RANGE(0x130000, 0x130007) AM_READ(SMH_RAM				)	// VRAM 0 Control
 	AM_RANGE(0x140000, 0x143fff) AM_READ(SMH_RAM				)	// VRAM 0
@@ -108,7 +108,7 @@ static ADDRESS_MAP_START( powerins_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100018, 0x100019) AM_WRITE(powerins_tilebank_w					)	// Tiles Banking (VRAM 0)
 	AM_RANGE(0x10001e, 0x10001f) AM_WRITE(powerins_soundlatch_w					)	// Sound Latch
 	AM_RANGE(0x100030, 0x100031) AM_WRITE(powerins_okibank_w					)	// Sound
-	AM_RANGE(0x10003e, 0x10003f) AM_WRITE(okim6295_data_0_lsb_w					)	// used by powerina
+	AM_RANGE(0x10003e, 0x10003f) AM_DEVWRITE8("oki1", okim6295_w, 0x00ff	)	// used by powerina
 	AM_RANGE(0x120000, 0x120fff) AM_WRITE(powerins_paletteram16_w) AM_BASE(&paletteram16	)	// Palette
 	AM_RANGE(0x130000, 0x130007) AM_WRITE(SMH_RAM) AM_BASE(&powerins_vctrl_0	)	// VRAM 0 Control
 	AM_RANGE(0x140000, 0x143fff) AM_WRITE(powerins_vram_0_w) AM_BASE(&powerins_vram_0		)	// VRAM 0
@@ -136,10 +136,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( powerins_io_snd, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
-	AM_RANGE(0x80, 0x80) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w)
-	AM_RANGE(0x88, 0x88) AM_READWRITE(okim6295_status_1_r, okim6295_data_1_w)
+	AM_RANGE(0x00, 0x01) AM_DEVREADWRITE("ym2203", ym2203_r, ym2203_w)
+	AM_RANGE(0x80, 0x80) AM_DEVREADWRITE("oki1", okim6295_r, okim6295_w)
+	AM_RANGE(0x88, 0x88) AM_DEVREADWRITE("oki2", okim6295_r, okim6295_w)
 	AM_RANGE(0x90, 0x97) AM_WRITE(NMK112_okibank_w)
 ADDRESS_MAP_END
 
@@ -147,8 +146,8 @@ static ADDRESS_MAP_START( powerinb_io_snd, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(powerinb_fake_ym2203_r, SMH_NOP)
 	AM_RANGE(0x01, 0x01) AM_NOP
-	AM_RANGE(0x80, 0x80) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w)
-	AM_RANGE(0x88, 0x88) AM_READWRITE(okim6295_status_1_r, okim6295_data_1_w)
+	AM_RANGE(0x80, 0x80) AM_DEVREADWRITE("oki1", okim6295_r, okim6295_w)
+	AM_RANGE(0x88, 0x88) AM_DEVREADWRITE("oki2", okim6295_r, okim6295_w)
 	AM_RANGE(0x90, 0x97) AM_WRITE(NMK112_okibank_w)
 ADDRESS_MAP_END
 
@@ -334,9 +333,9 @@ static MACHINE_RESET( powerins )
 }
 
 
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =
@@ -344,7 +343,7 @@ static const ym2203_interface ym2203_config =
 	{
 			AY8910_LEGACY_OUTPUT,
 			AY8910_DEFAULT_LOADS,
-			NULL, NULL, NULL, NULL,
+			DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL,
 	},
 	irqhandler
 };
@@ -352,18 +351,18 @@ static const ym2203_interface ym2203_config =
 static MACHINE_DRIVER_START( powerins )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 12000000)	/* 12MHz */
+	MDRV_CPU_ADD("maincpu", M68000, 12000000)	/* 12MHz */
 	MDRV_CPU_PROGRAM_MAP(powerins_readmem,powerins_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
-	MDRV_CPU_ADD("sound", Z80, 6000000) /* 6 MHz */
+	MDRV_CPU_ADD("soundcpu", Z80, 6000000) /* 6 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem_snd,writemem_snd)
 	MDRV_CPU_IO_MAP(powerins_io_snd,0)
 
 	MDRV_MACHINE_RESET(powerins)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(56)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -397,10 +396,10 @@ static MACHINE_DRIVER_START( powerina )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(powerins)
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 
-	MDRV_CPU_REMOVE("sound")
+	MDRV_CPU_REMOVE("soundcpu")
 
 	MDRV_SOUND_REPLACE("oki1", OKIM6295, 990000) // pin7 not verified
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7low)
@@ -415,10 +414,10 @@ static MACHINE_DRIVER_START( powerinb )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(powerins)
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 
-	MDRV_CPU_MODIFY("sound") /* 6 MHz */
+	MDRV_CPU_MODIFY("soundcpu") /* 6 MHz */
 	MDRV_CPU_IO_MAP(powerinb_io_snd,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, 120)	// YM2203 rate is at 150??
 
@@ -489,11 +488,11 @@ Notes:
 */
 
 ROM_START( powerins )
-	ROM_REGION( 0x100000, "main", 0 )		/* 68000 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_WORD_SWAP( "93095-3a.u108", 0x00000, 0x80000, CRC(9825ea3d) SHA1(567fd8e3d866a58a68608ea20c5d3fc16cf9f444) )
 	ROM_LOAD16_WORD_SWAP( "93095-4.u109",  0x80000, 0x80000, CRC(d3d7a782) SHA1(7846de0ebb09bd9b2534cd451ff9aa5175e60647) )
 
-	ROM_REGION( 0x20000, "sound", 0 )		/* Z80 Code */
+	ROM_REGION( 0x20000, "soundcpu", 0 )		/* Z80 Code */
 	ROM_LOAD( "93095-2.u90",  0x00000, 0x20000, CRC(4b123cc6) SHA1(ed61d3a2ab20c86b91fd7bafa717be3ce26159be) )
 
 	ROM_REGION( 0x280000, "gfx1", ROMREGION_DISPOSE )	/* Layer 0 */
@@ -529,11 +528,11 @@ ROM_START( powerins )
 ROM_END
 
 ROM_START( powerinj )
-	ROM_REGION( 0x100000, "main", 0 )		/* 68000 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_WORD_SWAP( "93095-3j.u108", 0x00000, 0x80000, CRC(3050a3fb) SHA1(e7e729bf62266e2e78ccd84cf937abb99de18ad5) )
 	ROM_LOAD16_WORD_SWAP( "93095-4.u109",  0x80000, 0x80000, CRC(d3d7a782) SHA1(7846de0ebb09bd9b2534cd451ff9aa5175e60647) )
 
-	ROM_REGION( 0x20000, "sound", 0 )		/* Z80 Code */
+	ROM_REGION( 0x20000, "soundcpu", 0 )		/* Z80 Code */
 	ROM_LOAD( "93095-2.u90",  0x00000, 0x20000, CRC(4b123cc6) SHA1(ed61d3a2ab20c86b91fd7bafa717be3ce26159be) )
 
 	ROM_REGION( 0x280000, "gfx1", ROMREGION_DISPOSE )	/* Layer 0 */
@@ -599,7 +598,7 @@ Sound processor -  Main processor
 ***************************************************************************/
 
 ROM_START( powerina )
-	ROM_REGION( 0x100000, "main", 0 )		/* 68000 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_WORD_SWAP( "rom1", 0x000000, 0x080000, CRC(b86c84d6) SHA1(2ec0933130925dfae859ea6abe62a8c92385aee8) )
 	ROM_LOAD16_WORD_SWAP( "rom2", 0x080000, 0x080000, CRC(d3d7a782) SHA1(7846de0ebb09bd9b2534cd451ff9aa5175e60647) )
 
@@ -673,11 +672,11 @@ Notes:
 ***************************************************************************/
 
 ROM_START( powerinb )
-	ROM_REGION( 0x100000, "main", 0 )		/* 68000 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "2q.bin", 0x000000, 0x80000, CRC(11bf3f2a) SHA1(c840add78da9b19839c667f9bbd77e0a7c560ed7) )
 	ROM_LOAD16_BYTE( "2r.bin", 0x000001, 0x80000, CRC(d8d621be) SHA1(91d501ac661c1ff52c85eee96c455c008a7dad1c) )
 
-	ROM_REGION( 0x20000, "sound", 0 )		/* Z80 Code */
+	ROM_REGION( 0x20000, "soundcpu", 0 )		/* Z80 Code */
 	ROM_LOAD( "1f.bin",  0x000000, 0x20000, CRC(4b123cc6) SHA1(ed61d3a2ab20c86b91fd7bafa717be3ce26159be) )
 
 	ROM_REGION( 0x280000, "gfx1", ROMREGION_DISPOSE )	/* Layer 0 */

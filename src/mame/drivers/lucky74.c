@@ -716,7 +716,7 @@ static WRITE8_HANDLER( custom_09R81P_port_w )
 	lucky74_adpcm_reg[offset] = data;
 }
 
-static WRITE8_HANDLER( ym2149_portb_w )
+static WRITE8_DEVICE_HANDLER( ym2149_portb_w )
 {
 /*  when is in game mode writes 0x0a.
     when is in test mode writes 0x0e.
@@ -725,7 +725,7 @@ static WRITE8_HANDLER( ym2149_portb_w )
     bit 0 contains the screen orientation.
 */
 	ym2149_portb = data;
-	flip_screen_set(space->machine, data & 0x01);
+	flip_screen_set(device->machine, data & 0x01);
 }
 
 static READ8_HANDLER( usart_8251_r )
@@ -825,15 +825,15 @@ static ADDRESS_MAP_START( lucky74_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd800, 0xdfff) AM_RAM_WRITE(fg_colorram_w) AM_BASE(&fg_colorram)				/* VRAM1-2 */
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM_WRITE(bg_videoram_w) AM_BASE(&bg_videoram)				/* VRAM2-1 */
 	AM_RANGE(0xe800, 0xefff) AM_RAM_WRITE(bg_colorram_w) AM_BASE(&bg_colorram)				/* VRAM2-2 */
-	AM_RANGE(0xf000, 0xf003) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)	/* Input Ports 0 & 1 */
-	AM_RANGE(0xf080, 0xf083) AM_DEVREADWRITE(PPI8255, "ppi8255_2", ppi8255_r, ppi8255_w)	/* DSW 1, 2 & 3 */
-	AM_RANGE(0xf0c0, 0xf0c3) AM_DEVREADWRITE(PPI8255, "ppi8255_3", ppi8255_r, ppi8255_w)	/* DSW 4 */
-	AM_RANGE(0xf100, 0xf100) AM_WRITE(sn76496_0_w)											/* SN76489 #1 */
-	AM_RANGE(0xf200, 0xf203) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)	/* Input Ports 2 & 4 */
-	AM_RANGE(0xf300, 0xf300) AM_WRITE(sn76496_1_w)											/* SN76489 #2 */
-	AM_RANGE(0xf400, 0xf400) AM_WRITE(ay8910_control_port_0_w)								/* YM2149 control */
-	AM_RANGE(0xf500, 0xf500) AM_WRITE(sn76496_2_w)											/* SN76489 #3 */
-	AM_RANGE(0xf600, 0xf600) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)		/* YM2149 (Input Port 1) */
+	AM_RANGE(0xf000, 0xf003) AM_DEVREADWRITE("ppi8255_0", ppi8255_r, ppi8255_w)	/* Input Ports 0 & 1 */
+	AM_RANGE(0xf080, 0xf083) AM_DEVREADWRITE("ppi8255_2", ppi8255_r, ppi8255_w)	/* DSW 1, 2 & 3 */
+	AM_RANGE(0xf0c0, 0xf0c3) AM_DEVREADWRITE("ppi8255_3", ppi8255_r, ppi8255_w)	/* DSW 4 */
+	AM_RANGE(0xf100, 0xf100) AM_DEVWRITE("sn1", sn76496_w)							/* SN76489 #1 */
+	AM_RANGE(0xf200, 0xf203) AM_DEVREADWRITE("ppi8255_1", ppi8255_r, ppi8255_w)	/* Input Ports 2 & 4 */
+	AM_RANGE(0xf300, 0xf300) AM_DEVWRITE("sn2", sn76496_w)							/* SN76489 #2 */
+	AM_RANGE(0xf400, 0xf400) AM_DEVWRITE("ay", ay8910_address_w)						/* YM2149 control */
+	AM_RANGE(0xf500, 0xf500) AM_DEVWRITE("sn3", sn76496_w)							/* SN76489 #3 */
+	AM_RANGE(0xf600, 0xf600) AM_DEVREADWRITE("ay", ay8910_r, ay8910_data_w)			/* YM2149 (Input Port 1) */
 	AM_RANGE(0xf700, 0xf701) AM_READWRITE(usart_8251_r, usart_8251_w)						/* USART 8251 port */
 	AM_RANGE(0xf800, 0xf803) AM_READWRITE(copro_sm7831_r, copro_sm7831_w)					/* SM7831 Co-Processor */
 ADDRESS_MAP_END
@@ -1146,11 +1146,11 @@ static void lucky74_adpcm_int(const device_config *device)
 			/* transferring 1st nibble */
 			lucky74_adpcm_data = memory_region(device->machine, "adpcm")[lucky74_adpcm_pos];
 			lucky74_adpcm_pos = (lucky74_adpcm_pos + 1) & 0xffff;
-			msm5205_data_w(0, lucky74_adpcm_data >> 4);
+			msm5205_data_w(device, lucky74_adpcm_data >> 4);
 
 			if (lucky74_adpcm_pos == lucky74_adpcm_end)
 			{
-				msm5205_reset_w(0, 0);			/* reset the M5205 */
+				msm5205_reset_w(device, 0);			/* reset the M5205 */
 				lucky74_adpcm_reg[05] = 0;		/* clean trigger register */
 				lucky74_adpcm_busy_line = 0x01;	/* deactivate busy flag */
 				logerror("end of sample.\n");
@@ -1159,7 +1159,7 @@ static void lucky74_adpcm_int(const device_config *device)
 		else
 		{
 			/* transferring 2nd nibble */
-			msm5205_data_w(0, lucky74_adpcm_data & 0x0f);
+			msm5205_data_w(device, lucky74_adpcm_data & 0x0f);
 			lucky74_adpcm_data = -1;
 		}
 	}
@@ -1179,36 +1179,36 @@ static void lucky74_adpcm_int(const device_config *device)
 static const ppi8255_interface ppi8255_intf[4] =
 {
 	{	/* A & B set as input */
-		DEVICE8_PORT("IN0"),	/* Port A read, IN0 */
-		DEVICE8_PORT("IN1"),	/* Port B read, IN1 */
-		NULL,					/* Port C read */
-		NULL,					/* Port A write */
-		NULL,					/* Port B write */
-		NULL					/* Port C writes: 0x00 after reset, 0xff during game, and 0xfd when tap F2 for percentage and run count */
+		DEVCB_INPUT_PORT("IN0"),	/* Port A read, IN0 */
+		DEVCB_INPUT_PORT("IN1"),	/* Port B read, IN1 */
+		DEVCB_NULL,					/* Port C read */
+		DEVCB_NULL,					/* Port A write */
+		DEVCB_NULL,					/* Port B write */
+		DEVCB_NULL					/* Port C writes: 0x00 after reset, 0xff during game, and 0xfd when tap F2 for percentage and run count */
 	},
 	{	/* A & C set as input */
-		DEVICE8_PORT("IN2"),	/* Port A read, IN2 */
-		NULL,					/* Port B read */
-		DEVICE8_PORT("IN4"),	/* Port C read, IN4 */
-		NULL,					/* Port A write */
-		NULL,					/* Port B write */
-		NULL					/* Port C write */
+		DEVCB_INPUT_PORT("IN2"),	/* Port A read, IN2 */
+		DEVCB_NULL,					/* Port B read */
+		DEVCB_INPUT_PORT("IN4"),	/* Port C read, IN4 */
+		DEVCB_NULL,					/* Port A write */
+		DEVCB_NULL,					/* Port B write */
+		DEVCB_NULL					/* Port C write */
 	},
 	{	/* A, B & C set as input */
-		DEVICE8_PORT("DSW1"),	/* Port A read, DSW1 */
-		DEVICE8_PORT("DSW2"),	/* Port B read, DSW2 */
-		DEVICE8_PORT("DSW3"),	/* Port C read, DSW3 */
-		NULL,					/* Port A write */
-		NULL,					/* Port B write */
-		NULL					/* Port C write */
+		DEVCB_INPUT_PORT("DSW1"),	/* Port A read, DSW1 */
+		DEVCB_INPUT_PORT("DSW2"),	/* Port B read, DSW2 */
+		DEVCB_INPUT_PORT("DSW3"),	/* Port C read, DSW3 */
+		DEVCB_NULL,					/* Port A write */
+		DEVCB_NULL,					/* Port B write */
+		DEVCB_NULL					/* Port C write */
 	},
 	{	/* A set as input */
-		DEVICE8_PORT("DSW4"),	/* Port A read, DSW4 */
-		NULL,					/* Port B read */
-		NULL,					/* Port C read */
-		NULL,					/* Port A write */
-		lamps_a_w,				/* Port B write, LAMPSA */
-		lamps_b_w				/* Port C write, LAMPSB */
+		DEVCB_INPUT_PORT("DSW4"),	/* Port A read, DSW4 */
+		DEVCB_NULL,					/* Port B read */
+		DEVCB_NULL,					/* Port C read */
+		DEVCB_NULL,					/* Port A write */
+		DEVCB_HANDLER(lamps_a_w),	/* Port B write, LAMPSA */
+		DEVCB_HANDLER(lamps_b_w)	/* Port C write, LAMPSB */
 	}
 };
 
@@ -1221,10 +1221,10 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_3_r,
-	NULL,	/* a sort of status byte */
-	NULL,
-	ym2149_portb_w
+	DEVCB_INPUT_PORT("IN3"),
+	DEVCB_NULL,	/* a sort of status byte */
+	DEVCB_NULL,
+	DEVCB_HANDLER(ym2149_portb_w)
 };
 
 static const msm5205_interface msm5205_config =
@@ -1241,10 +1241,10 @@ static const msm5205_interface msm5205_config =
 static MACHINE_DRIVER_START( lucky74 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, C_06B49P_CLKOUT_03)	/* 3 MHz. */
+	MDRV_CPU_ADD("maincpu", Z80, C_06B49P_CLKOUT_03)	/* 3 MHz. */
 	MDRV_CPU_PROGRAM_MAP(lucky74_map, 0)
 	MDRV_CPU_IO_MAP(lucky74_portmap,0)
-	MDRV_CPU_VBLANK_INT("main", nmi_interrupt)	/* 60 Hz. measured */
+	MDRV_CPU_VBLANK_INT("screen", nmi_interrupt)	/* 60 Hz. measured */
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
@@ -1257,7 +1257,7 @@ static MACHINE_DRIVER_START( lucky74 )
 	MDRV_PPI8255_ADD( "ppi8255_3", ppi8255_intf[3] )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1284,7 +1284,7 @@ static MACHINE_DRIVER_START( lucky74 )
 	MDRV_SOUND_ADD("sn3", SN76489, C_06B49P_CLKOUT_03)	/* 3 MHz. */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
-	MDRV_SOUND_ADD("ym", AY8910, C_06B49P_CLKOUT_04)	/* 1.5 MHz. */
+	MDRV_SOUND_ADD("ay", AY8910, C_06B49P_CLKOUT_04)	/* 1.5 MHz. */
 	MDRV_SOUND_CONFIG(ay8910_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.00)			/* not routed to audio hardware */
 
@@ -1311,7 +1311,7 @@ MACHINE_DRIVER_END
 
 */
 ROM_START( lucky74 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "luckychi.00",	0x0000, 0x10000, CRC(3b906f0e) SHA1(1f9abd168c60b0d22fa6c7391bfdf5f3aabd66ef) )
 
 	ROM_REGION( 0x20000, "fgtiles", ROMREGION_DISPOSE )
@@ -1348,7 +1348,7 @@ ROM_END
 
 */
 ROM_START( lucky74a )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "luckygde.00",	0x0000, 0x10000, CRC(e3f7db99) SHA1(5c7d9d3fed9eb19d3d666c8c08b34968a9996a96) )	/* bad dump? */
 
 	ROM_REGION( 0x20000, "fgtiles", ROMREGION_DISPOSE )

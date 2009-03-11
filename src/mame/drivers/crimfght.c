@@ -39,14 +39,14 @@ static WRITE8_HANDLER( crimfght_sh_irqtrigger_w )
 	cpu_set_input_line_and_vector(space->machine->cpu[1],0,HOLD_LINE,0xff);
 }
 
-static WRITE8_HANDLER( crimfght_snd_bankswitch_w )
+static WRITE8_DEVICE_HANDLER( crimfght_snd_bankswitch_w )
 {
 	/* b1: bank for channel A */
 	/* b0: bank for channel B */
 
 	int bank_A = ((data >> 1) & 0x01);
 	int bank_B = ((data) & 0x01);
-	k007232_set_bank( 0, bank_A, bank_B );
+	k007232_set_bank( devtag_get_device(device->machine, "konami"), bank_A, bank_B );
 }
 
 
@@ -82,17 +82,16 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( crimfght_readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)				/* ROM 821l01.h4 */
 	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)				/* RAM */
-	AM_RANGE(0xa001, 0xa001) AM_READ(ym2151_status_port_0_r)	/* YM2151 */
+	AM_RANGE(0xa000, 0xa001) AM_DEVREAD("ym", ym2151_r)	/* YM2151 */
 	AM_RANGE(0xc000, 0xc000) AM_READ(soundlatch_r)			/* soundlatch_r */
-	AM_RANGE(0xe000, 0xe00d) AM_READ(k007232_read_port_0_r)	/* 007232 registers */
+	AM_RANGE(0xe000, 0xe00d) AM_DEVREAD("konami", k007232_r)	/* 007232 registers */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( crimfght_writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)					/* ROM 821l01.h4 */
 	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)					/* RAM */
-	AM_RANGE(0xa000, 0xa000) AM_WRITE(ym2151_register_port_0_w)	/* YM2151 */
-	AM_RANGE(0xa001, 0xa001) AM_WRITE(ym2151_data_port_0_w)		/* YM2151 */
-	AM_RANGE(0xe000, 0xe00d) AM_WRITE(k007232_write_port_0_w)		/* 007232 registers */
+	AM_RANGE(0xa000, 0xa001) AM_DEVWRITE("ym", ym2151_w)	/* YM2151 */
+	AM_RANGE(0xe000, 0xe00d) AM_DEVWRITE("konami", k007232_w)		/* 007232 registers */
 ADDRESS_MAP_END
 
 /***************************************************************************
@@ -278,10 +277,10 @@ static const ym2151_interface ym2151_config =
 	crimfght_snd_bankswitch_w
 };
 
-static void volume_callback(int v)
+static void volume_callback(const device_config *device, int v)
 {
-	k007232_set_volume(0,0,(v & 0x0f) * 0x11,0);
-	k007232_set_volume(0,1,0,(v >> 4) * 0x11);
+	k007232_set_volume(device,0,(v & 0x0f) * 0x11,0);
+	k007232_set_volume(device,1,0,(v >> 4) * 0x11);
 }
 
 static const k007232_interface k007232_config =
@@ -294,11 +293,11 @@ static const k007232_interface k007232_config =
 static MACHINE_DRIVER_START( crimfght )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", KONAMI, 3000000)		/* ? */
+	MDRV_CPU_ADD("maincpu", KONAMI, 3000000)		/* ? */
 	MDRV_CPU_PROGRAM_MAP(crimfght_readmem,crimfght_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, 3579545)	/* verified with PCB */
+	MDRV_CPU_ADD("audiocpu", Z80, 3579545)	/* verified with PCB */
 	MDRV_CPU_PROGRAM_MAP(crimfght_readmem_sound,crimfght_writemem_sound)
 
 	MDRV_MACHINE_RESET(crimfght)
@@ -306,7 +305,7 @@ static MACHINE_DRIVER_START( crimfght )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(54)	/* adjusted - compared with PCB speed */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -319,19 +318,19 @@ static MACHINE_DRIVER_START( crimfght )
 	MDRV_VIDEO_UPDATE(crimfght)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2151, 3579545)	/* verified with PCB */
 	MDRV_SOUND_CONFIG(ym2151_config)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("konami", K007232, 3579545)
 	MDRV_SOUND_CONFIG(k007232_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.20)
-	MDRV_SOUND_ROUTE(0, "right", 0.20)
-	MDRV_SOUND_ROUTE(1, "left", 0.20)
-	MDRV_SOUND_ROUTE(1, "right", 0.20)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.20)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.20)
+	MDRV_SOUND_ROUTE(1, "lspeaker", 0.20)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.20)
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -341,11 +340,11 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( crimfght )
-	ROM_REGION( 0x28000, "main", 0 ) /* code + banked roms */
+	ROM_REGION( 0x28000, "maincpu", 0 ) /* code + banked roms */
 	ROM_LOAD( "821l02.f24", 0x10000, 0x18000, CRC(588e7da6) SHA1(285febb3bcca31f82b34af3695a59eafae01cd30) )
 	ROM_CONTINUE(           0x08000, 0x08000 )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* 64k for the sound CPU */
 	ROM_LOAD( "821l01.h4",  0x0000, 0x8000, CRC(0faca89e) SHA1(21c9c6d736b398a29e8709e1187c5bf3cacdc99d) )
 
 	ROM_REGION( 0x080000, "gfx1", 0 ) /* graphics ( don't dispose as the program can read them, 0 ) */
@@ -364,11 +363,11 @@ ROM_START( crimfght )
 ROM_END
 
 ROM_START( crimfgtj )
-	ROM_REGION( 0x28000, "main", 0 ) /* code + banked roms */
+	ROM_REGION( 0x28000, "maincpu", 0 ) /* code + banked roms */
 	ROM_LOAD( "821p02.bin", 0x10000, 0x18000, CRC(f33fa2e1) SHA1(00fc9e8250fa51386f3af2fca0f137bec9e1c220) )
 	ROM_CONTINUE(           0x08000, 0x08000 )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* 64k for the sound CPU */
 	ROM_LOAD( "821l01.h4",  0x0000, 0x8000, CRC(0faca89e) SHA1(21c9c6d736b398a29e8709e1187c5bf3cacdc99d) )
 
 	ROM_REGION( 0x080000, "gfx1", 0 ) /* graphics ( don't dispose as the program can read them, 0 ) */
@@ -387,11 +386,11 @@ ROM_START( crimfgtj )
 ROM_END
 
 ROM_START( crimfgt2 )
-ROM_REGION( 0x28000, "main", 0 ) /* code + banked roms */
+ROM_REGION( 0x28000, "maincpu", 0 ) /* code + banked roms */
 	ROM_LOAD( "crimefb.r02", 0x10000, 0x18000, CRC(4ecdd923) SHA1(78e5260c4bb9b18d7818fb6300d7e1d3a577fb63) )
 	ROM_CONTINUE(           0x08000, 0x08000 )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* 64k for the sound CPU */
 	ROM_LOAD( "821l01.h4",  0x0000, 0x8000, CRC(0faca89e) SHA1(21c9c6d736b398a29e8709e1187c5bf3cacdc99d) )
 
 	ROM_REGION( 0x080000, "gfx1", 0 ) /* graphics ( don't dispose as the program can read them, 0 ) */
@@ -417,7 +416,7 @@ ROM_END
 
 static KONAMI_SETLINES_CALLBACK( crimfght_banking )
 {
-	UINT8 *RAM = memory_region(device->machine, "main");
+	UINT8 *RAM = memory_region(device->machine, "maincpu");
 	int offs = 0;
 
 	/* bit 5 = select work RAM or palette */
@@ -438,7 +437,7 @@ static KONAMI_SETLINES_CALLBACK( crimfght_banking )
 
 static MACHINE_RESET( crimfght )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 
 	konami_configure_set_lines(machine->cpu[0], crimfght_banking);
 

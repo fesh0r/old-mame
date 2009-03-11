@@ -26,7 +26,6 @@ TODO:
 #include "streams.h"
 #include "sound/sn76496.h"
 #include "sound/okim6295.h"
-#include "sound/custom.h"
 
 extern UINT8 *mjkjidai_videoram;
 
@@ -64,7 +63,7 @@ static STREAM_UPDATE( mjkjidai_adpcm_callback )
 				state->playing = 0;
 		}
 
-		*dest++ = clock_adpcm(&state->adpcm, val);
+		*dest++ = clock_adpcm(&state->adpcm, val) << 4;
 		samples--;
 	}
 	while (samples > 0)
@@ -74,16 +73,31 @@ static STREAM_UPDATE( mjkjidai_adpcm_callback )
 	}
 }
 
-static CUSTOM_START( mjkjidai_adpcm_start )
+static DEVICE_START( mjkjidai_adpcm )
 {
 	running_machine *machine = device->machine;
 	struct mjkjidai_adpcm_state *state = &mjkjidai_adpcm;
 	state->playing = 0;
-	state->stream = stream_create(device, 0, 1, clock, state, mjkjidai_adpcm_callback);
+	state->stream = stream_create(device, 0, 1, device->clock, state, mjkjidai_adpcm_callback);
 	state->base = memory_region(machine, "adpcm");
 	reset_adpcm(&state->adpcm);
-	return state;
 }
+
+static DEVICE_GET_INFO( mjkjidai_adpcm )
+{
+	switch (state)
+	{
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(mjkjidai_adpcm);break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Custom ADPCM");				break;
+		case DEVINFO_STR_SOURCE_FILE:						strcpy(info->s, __FILE__);						break;
+	}
+}
+
+#define SOUND_MJKJIDAI DEVICE_GET_INFO_NAME(mjkjidai_adpcm)
+
 
 static void mjkjidai_adpcm_play (int offset, int lenght)
 {
@@ -183,8 +197,8 @@ static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x10, 0x10) AM_WRITE(mjkjidai_ctrl_w)	// rom bank, coin counter, flip screen etc
 	AM_RANGE(0x11, 0x11) AM_READ_PORT("IN0")
 	AM_RANGE(0x12, 0x12) AM_READ_PORT("IN1")
-	AM_RANGE(0x20, 0x20) AM_WRITE(sn76496_0_w)
-	AM_RANGE(0x30, 0x30) AM_WRITE(sn76496_1_w)
+	AM_RANGE(0x20, 0x20) AM_DEVWRITE("sn1", sn76496_w)
+	AM_RANGE(0x30, 0x30) AM_DEVWRITE("sn2", sn76496_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(adpcm_w)
 ADDRESS_MAP_END
 
@@ -341,25 +355,18 @@ static GFXDECODE_START( mjkjidai )
 GFXDECODE_END
 
 
-static const custom_sound_interface adpcm_interface =
-{
-	mjkjidai_adpcm_start
-};
-
-
-
 static MACHINE_DRIVER_START( mjkjidai )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,10000000/2)	/* 5 MHz ??? */
+	MDRV_CPU_ADD("maincpu", Z80,10000000/2)	/* 5 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(io_map,0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	MDRV_NVRAM_HANDLER(mjkjidai)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -382,8 +389,7 @@ static MACHINE_DRIVER_START( mjkjidai )
 	MDRV_SOUND_ADD("sn2", SN76489, 10000000/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_ADD("adpcm", CUSTOM, 6000)
-	MDRV_SOUND_CONFIG(adpcm_interface)
+	MDRV_SOUND_ADD("adpcm", MJKJIDAI, 6000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -396,7 +402,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( mjkjidai )
-	ROM_REGION( 0x1c000, "main", 0 )
+	ROM_REGION( 0x1c000, "maincpu", 0 )
 	ROM_LOAD( "mkj-00.14g",   0x00000, 0x8000, CRC(188a27e9) SHA1(2306ad112aaf8d9ac77a89d0e4c3a17f36945130) )
 	ROM_LOAD( "mkj-01.15g",   0x08000, 0x4000, CRC(a6a5e9c7) SHA1(974f4343f4347a0065f833c1fdcc47e96d42932d) )	/* banked, there is code flowing from 7fff to this bank */
 	ROM_CONTINUE(             0x10000, 0x4000 )

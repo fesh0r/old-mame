@@ -278,13 +278,13 @@ static WRITE8_HANDLER( mt_sms_standard_rom_bank_w )
 			//printf("bank ram??\n");
 			break;
 		case 1:
-			memcpy(sms_rom+0x0000, memory_region(space->machine, "main")+bank*0x4000, 0x4000);
+			memcpy(sms_rom+0x0000, memory_region(space->machine, "maincpu")+bank*0x4000, 0x4000);
 			break;
 		case 2:
-			memcpy(sms_rom+0x4000, memory_region(space->machine, "main")+bank*0x4000, 0x4000);
+			memcpy(sms_rom+0x4000, memory_region(space->machine, "maincpu")+bank*0x4000, 0x4000);
 			break;
 		case 3:
-			memcpy(sms_rom+0x8000, memory_region(space->machine, "main")+bank*0x4000, 0x4000);
+			memcpy(sms_rom+0x8000, memory_region(space->machine, "maincpu")+bank*0x4000, 0x4000);
 			break;
 
 	}
@@ -307,19 +307,23 @@ READ8_HANDLER( md_sms_ioport_dd_r )
 static void megatech_set_genz80_as_sms_standard_ports(running_machine *machine)
 {
 	/* INIT THE PORTS *********************************************************************************************/
-	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_IO), 0x0000, 0xffff, 0, 0, z80_unmapped_port_r, z80_unmapped_port_w);
 
-	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_IO), 0x7e, 0x7e, 0, 0, md_sms_vdp_vcounter_r, sms_sn76496_w);
-	memory_install_write8_handler    (cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_IO), 0x7f, 0x7f, 0, 0, sms_sn76496_w);
-	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_IO), 0xbe, 0xbe, 0, 0, md_sms_vdp_data_r, md_sms_vdp_data_w);
-	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_IO), 0xbf, 0xbf, 0, 0, md_sms_vdp_ctrl_r, md_sms_vdp_ctrl_w);
+	const address_space *io = cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_IO);
+	const device_config *sn = devtag_get_device(machine, "sn");
 
-	memory_install_read8_handler     (cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_IO), 0x10, 0x10, 0, 0, megatech_sms_ioport_dd_r); // super tetris
+	memory_install_readwrite8_handler(io, 0x0000, 0xffff, 0, 0, z80_unmapped_port_r, z80_unmapped_port_w);
 
-	memory_install_read8_handler     (cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_IO), 0xdc, 0xdc, 0, 0, megatech_sms_ioport_dc_r);
-	memory_install_read8_handler     (cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_IO), 0xdd, 0xdd, 0, 0, megatech_sms_ioport_dd_r);
-	memory_install_read8_handler     (cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_IO), 0xde, 0xde, 0, 0, megatech_sms_ioport_dd_r);
-	memory_install_read8_handler     (cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_IO), 0xdf, 0xdf, 0, 0, megatech_sms_ioport_dd_r); // adams family
+	memory_install_read8_handler     (io, 0x7e, 0x7e, 0, 0, md_sms_vdp_vcounter_r);
+	memory_install_write8_device_handler(io, sn, 0x7e, 0x7f, 0, 0, sn76496_w);
+	memory_install_readwrite8_handler(io, 0xbe, 0xbe, 0, 0, md_sms_vdp_data_r, md_sms_vdp_data_w);
+	memory_install_readwrite8_handler(io, 0xbf, 0xbf, 0, 0, md_sms_vdp_ctrl_r, md_sms_vdp_ctrl_w);
+
+	memory_install_read8_handler     (io, 0x10, 0x10, 0, 0, megatech_sms_ioport_dd_r); // super tetris
+
+	memory_install_read8_handler     (io, 0xdc, 0xdc, 0, 0, megatech_sms_ioport_dc_r);
+	memory_install_read8_handler     (io, 0xdd, 0xdd, 0, 0, megatech_sms_ioport_dd_r);
+	memory_install_read8_handler     (io, 0xde, 0xde, 0, 0, megatech_sms_ioport_dd_r);
+	memory_install_read8_handler     (io, 0xdf, 0xdf, 0, 0, megatech_sms_ioport_dd_r); // adams family
 }
 
 static void megatech_set_genz80_as_sms_standard_map(running_machine *machine)
@@ -334,7 +338,7 @@ static void megatech_set_genz80_as_sms_standard_map(running_machine *machine)
 	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x0000, 0xbfff, 0, 0, SMH_BANK5, SMH_UNMAP);
 	memory_set_bankptr(machine,  5, sms_rom );
 
-	memcpy(sms_rom, memory_region(machine, "main"), 0x400000);
+	memcpy(sms_rom, memory_region(machine, "maincpu"), 0x400000);
 
 	/* main ram area */
 	sms_mainram = auto_malloc(0x2000); // 8kb of main ram
@@ -363,7 +367,7 @@ static void megatech_select_game(running_machine *machine, int gameno)
 	cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
 	cpu_set_input_line(machine->cpu[0], INPUT_LINE_HALT, ASSERT_LINE);
 	cpu_set_input_line(machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE);
-	sndti_reset(SOUND_YM2612, 0);
+	devtag_reset(machine, "ym");
 
 	sprintf(tempname, "game%d", gameno);
 	game_region = memory_region(machine, tempname);
@@ -378,7 +382,7 @@ static void megatech_select_game(running_machine *machine, int gameno)
 	if (game_region && bios_region)
 	{
 		memcpy(memory_region(machine, "mtbios")+0x8000, bios_region, 0x8000);
-		memcpy(memory_region(machine, "main"), game_region, 0x300000);
+		memcpy(memory_region(machine, "maincpu"), game_region, 0x300000);
 
 		// I store an extra byte at the end of the instruction rom region when loading
 		// to indicate if the current cart is an SMS cart.. the original hardware
@@ -415,7 +419,7 @@ static void megatech_select_game(running_machine *machine, int gameno)
 
 		/* no cart.. */
 		memset(memory_region(machine, "mtbios")+0x8000, 0x00, 0x8000);
-		memset(memory_region(machine, "main"), 0x00, 0x300000);
+		memset(memory_region(machine, "maincpu"), 0x00, 0x300000);
 	}
 
 	return;
@@ -529,7 +533,7 @@ static ADDRESS_MAP_START( megatech_bios_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x6800, 0x6800) AM_READ_PORT("BIOS_IN0")
 	AM_RANGE(0x6801, 0x6801) AM_READ_PORT("BIOS_IN1")
 	AM_RANGE(0x6802, 0x6807) AM_READWRITE(bios_ctrl_r, bios_ctrl_w)
-//  AM_RANGE(0x6805, 0x6805) AM_READ(input_port_8_r)
+//  AM_RANGE(0x6805, 0x6805) AM_READ_PORT("???")
  	AM_RANGE(0x7000, 0x77ff) AM_ROM // from bios rom (0x7000-0x77ff populated in ROM)
 	//AM_RANGE(0x7800, 0x7fff) AM_RAM // ?
 	AM_RANGE(0x8000, 0x9fff) AM_READ(megatech_instr_r) // window into 68k address space, reads instr rom and writes to reset banks on z80 carts?
@@ -583,8 +587,8 @@ static VIDEO_START(mtnew)
 //attotime_never
 static VIDEO_UPDATE(mtnew)
 {
-	const device_config *megadriv_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "megadriv");
-	const device_config *menu_screen     = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "menu");
+	const device_config *megadriv_screen = devtag_get_device(screen->machine, "megadriv");
+	const device_config *menu_screen     = devtag_get_device(screen->machine, "menu");
 
 	if (screen == megadriv_screen)
 	{
@@ -637,8 +641,8 @@ static MACHINE_DRIVER_START( megatech )
 
 	/* sound hardware */
 	MDRV_SOUND_ADD("sn2", SN76496, MASTER_CLOCK/15)
-	MDRV_SOUND_ROUTE(0, "left", 0.50)
-	MDRV_SOUND_ROUTE(1, "right", 0.50)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.50)
 MACHINE_DRIVER_END
 
 
@@ -657,7 +661,7 @@ MACHINE_DRIVER_END
 	ROM_FILL(0x8000, 2, FLAG) \
 
 #define MEGATECH_BIOS \
-	ROM_REGION( 0x400000, "main", ROMREGION_ERASEFF ) \
+	ROM_REGION( 0x400000, "maincpu", ROMREGION_ERASEFF ) \
 	ROM_REGION( 0x10000, "mtbios", 0 ) \
 	ROM_LOAD( "epr12664.20", 0x000000, 0x8000, CRC(f71e9526) SHA1(1c7887541d02c41426992d17f8e3db9e03975953) ) \
 

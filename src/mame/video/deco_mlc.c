@@ -10,9 +10,9 @@
 
 #include "driver.h"
 
-extern int mlc_raster_table[9][256];
-extern UINT32 mlc_clipper[32];
-static bitmap_t *temp_bitmap;
+//extern int mlc_raster_table[9][256];
+//extern UINT32 mlc_clipper[32];
+//static bitmap_t *temp_bitmap;
 static UINT32 colour_mask, *mlc_buffered_spriteram;
 UINT32 *mlc_vram, *mlc_clip_ram;
 
@@ -20,8 +20,6 @@ UINT32 *mlc_vram, *mlc_clip_ram;
 
 VIDEO_START( mlc )
 {
-	alpha_set_level(0x80);
-
 	if (machine->gfx[0]->color_granularity==16)
 		colour_mask=0x7f;
 	else if (machine->gfx[0]->color_granularity==32)
@@ -29,7 +27,7 @@ VIDEO_START( mlc )
 	else
 		colour_mask=0x1f;
 
-	temp_bitmap = auto_bitmap_alloc( 512, 512, BITMAP_FORMAT_RGB32 );
+//  temp_bitmap = auto_bitmap_alloc( 512, 512, BITMAP_FORMAT_RGB32 );
 	mlc_buffered_spriteram = auto_malloc(0x3000);
 }
 
@@ -65,8 +63,8 @@ static void blitRaster(bitmap_t *bitmap, int rasterMode)
 static void mlc_drawgfxzoom(running_machine *machine,
 		bitmap_t *dest_bmp,const gfx_element *gfx,
 		UINT32 code1,UINT32 code2, UINT32 color,int flipx,int flipy,int sx,int sy,
-		const rectangle *clip,int transparency,int transparent_color,int use8bpp,
-		int scalex, int scaley)
+		const rectangle *clip,int transparent_color,int use8bpp,
+		int scalex, int scaley,int alpha)
 {
 	rectangle myclip;
 
@@ -99,8 +97,8 @@ static void mlc_drawgfxzoom(running_machine *machine,
 		if( gfx )
 		{
 			const pen_t *pal = &machine->pens[gfx->color_base + gfx->color_granularity * (color % gfx->total_colors)];
-			int source_base1 = (code1 % gfx->total_elements) * gfx->height;
-			int source_base2 = (code2 % gfx->total_elements) * gfx->height;
+			const UINT8 *code_base1 = gfx_element_get_data(gfx, code1 % gfx->total_elements);
+			const UINT8 *code_base2 = gfx_element_get_data(gfx, code2 % gfx->total_elements);
 
 			int sprite_screen_height = (scaley*gfx->height+(sy&0xffff))>>16;
 			int sprite_screen_width = (scalex*gfx->width+(sx&0xffff))>>16;
@@ -172,13 +170,13 @@ static void mlc_drawgfxzoom(running_machine *machine,
 					int y;
 
 					/* case 1: TRANSPARENCY_PEN */
-					if (transparency == TRANSPARENCY_PEN)
+					if (alpha == 0xff)
 					{
 						{
 							for( y=sy; y<ey; y++ )
 							{
-								UINT8 *source1 = gfx->gfxdata + (source_base1+(y_index>>16)) * gfx->line_modulo;
-								UINT8 *source2 = gfx->gfxdata + (source_base2+(y_index>>16)) * gfx->line_modulo;
+								const UINT8 *source1 = code_base1 + (y_index>>16) * gfx->line_modulo;
+								const UINT8 *source2 = code_base2 + (y_index>>16) * gfx->line_modulo;
 								UINT32 *dest = BITMAP_ADDR32(dest_bmp, y, 0);
 
 								int x, x_index = x_index_base;
@@ -199,20 +197,20 @@ static void mlc_drawgfxzoom(running_machine *machine,
 						}
 					}
 
-					/* case 6: TRANSPARENCY_ALPHA */
-					if (transparency == TRANSPARENCY_ALPHA)
+					/* case 6: alpha blended */
+					else
 					{
 						{
 							for( y=sy; y<ey; y++ )
 							{
-								UINT8 *source = gfx->gfxdata + (source_base1+(y_index>>16)) * gfx->line_modulo;
+								const UINT8 *source = code_base1 + (y_index>>16) * gfx->line_modulo;
 								UINT32 *dest = BITMAP_ADDR32(dest_bmp, y, 0);
 
 								int x, x_index = x_index_base;
 								for( x=sx; x<ex; x++ )
 								{
 									int c = source[x_index>>16];
-									if( c != transparent_color ) dest[x] = alpha_blend32(dest[x], 0); //pal[c]);
+									if( c != transparent_color ) dest[x] = alpha_blend_r32(dest[x], 0, alpha); //pal[c]);
 									x_index += dx;
 								}
 
@@ -237,13 +235,13 @@ static void draw_sprites(running_machine* machine, bitmap_t *bitmap,const rectan
 	int sprite2=0,indx2=0,use8bppMode=0;
 	int yscale,xscale;
 	int ybase,yinc;
-	int trans;
+	int alpha;
 	int useIndicesInRom=0;
 	int hibits=0;
 	int tileFormat=0;
-	int rasterMode=0;
-	int lastRasterMode=0;
-	int rasterDirty=0;
+//  int rasterMode=0;
+//  int lastRasterMode=0;
+//  int rasterDirty=0;
 	int clipper=0;
 	rectangle user_clip;
 	UINT32* mlc_spriteram=mlc_buffered_spriteram; // spriteram32
@@ -302,7 +300,7 @@ static void draw_sprites(running_machine* machine, bitmap_t *bitmap,const rectan
 		fx = mlc_spriteram[offs+1]&0x8000;
 		fy = mlc_spriteram[offs+1]&0x4000;
 		color = mlc_spriteram[offs+1]&0xff;
-		rasterMode = (mlc_spriteram[offs+1]>>10)&0x1;
+//      rasterMode = (mlc_spriteram[offs+1]>>10)&0x1;
 		clipper = (mlc_spriteram[offs+1]>>8)&0x3;
 		indx = mlc_spriteram[offs+0]&0x3fff;
 		yscale = mlc_spriteram[offs+4]&0x3ff;
@@ -318,16 +316,13 @@ static void draw_sprites(running_machine* machine, bitmap_t *bitmap,const rectan
 		user_clip.min_x=mlc_clip_ram[(clipper*4)+2];
 		user_clip.max_x=mlc_clip_ram[(clipper*4)+3];
 
-		if (user_clip.min_y < cliprect->min_y) user_clip.min_y=cliprect->min_y;
-		if (user_clip.max_y > cliprect->max_y) user_clip.max_y=cliprect->max_y;
-		if (user_clip.min_x < cliprect->min_x) user_clip.min_x=cliprect->min_x;
-		if (user_clip.max_x > cliprect->max_x) user_clip.max_x=cliprect->max_x;
+		sect_rect(&user_clip, cliprect);
 
 		/* Any colours out of range (for the bpp value) trigger 'shadow' mode */
 		if (color & (colour_mask+1))
-			trans=TRANSPARENCY_ALPHA;
+			alpha=0x80;
 		else
-			trans=TRANSPARENCY_PEN;
+			alpha=0xff;
 		color&=colour_mask;
 
 		/* If this bit is set, combine this block with the next one */
@@ -484,15 +479,15 @@ static void draw_sprites(running_machine* machine, bitmap_t *bitmap,const rectan
 					}
 				}
 
-				if (rasterMode)
-					rasterDirty=1;
+//              if (rasterMode)
+//                  rasterDirty=1;
 
 				mlc_drawgfxzoom(machine,
 								/*rasterMode ? temp_bitmap : */bitmap,machine->gfx[0],
 								tile,tile2,
 								color + colorOffset,fx,fy,xbase,ybase,
-								&user_clip,trans,0,
-								use8bppMode,(xscale<<8),(yscale<<8));
+								&user_clip,0,
+								use8bppMode,(xscale<<8),(yscale<<8),alpha);
 
 				sprite++;
 				sprite2++;
@@ -502,13 +497,13 @@ static void draw_sprites(running_machine* machine, bitmap_t *bitmap,const rectan
 			ybase+=yinc;
 		}
 
-		if (lastRasterMode!=0 && rasterDirty)
-		{
-	//      blitRaster(bitmap, rasterMode);
+//      if (lastRasterMode!=0 && rasterDirty)
+//      {
+//          blitRaster(bitmap, rasterMode);
 //          bitmap_fill(temp_bitmap,cliprect,0);
-			rasterDirty=0;
-		}
-		lastRasterMode=rasterMode;
+//          rasterDirty=0;
+//      }
+//      lastRasterMode=rasterMode;
 
 		if (use8bppMode)
 			offs-=8;

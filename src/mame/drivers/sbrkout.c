@@ -120,7 +120,7 @@ static TIMER_CALLBACK( scanline_callback )
 		cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
 
 	/* update the DAC state */
-	dac_data_w(0, (videoram[0x380 + 0x11] & (scanline >> 2)) ? 255 : 0);
+	dac_data_w(devtag_get_device(machine, "dac"), (videoram[0x380 + 0x11] & (scanline >> 2)) ? 255 : 0);
 
 	/* on the VBLANK, read the pot and schedule an interrupt time for it */
 	if (scanline == video_screen_get_visible_area(machine->primary_screen)->max_y + 1)
@@ -478,7 +478,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( sbrkout )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502,MAIN_CLOCK/16) 	   /* 375 KHz? Should be 750KHz? */
+	MDRV_CPU_ADD("maincpu", M6502,MAIN_CLOCK/16) 	   /* 375 KHz? Should be 750KHz? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
 	MDRV_MACHINE_START(sbrkout)
@@ -489,7 +489,7 @@ static MACHINE_DRIVER_START( sbrkout )
 	MDRV_GFXDECODE(sbrkout)
 	MDRV_PALETTE_LENGTH(2)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_RAW_PARAMS(MAIN_CLOCK/2, 384, 0, 256, 262, 0, 224)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 
@@ -512,7 +512,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( sbrkout )
-	ROM_REGION( 0x4000, "main", 0 )
+	ROM_REGION( 0x4000, "maincpu", 0 )
 	ROM_LOAD( "033453.c1",    0x2800, 0x0800, CRC(a35d00e3) SHA1(53617ed1d362e82d6f45abd66056bffe23300e3b) )
 	ROM_LOAD( "033454.d1",    0x3000, 0x0800, CRC(d42ea79a) SHA1(66c9b29226cde36d1ac6d1e81f34ebb5c79eded4) )
 	ROM_LOAD( "033455.e1",    0x3800, 0x0800, CRC(e0a6871c) SHA1(1bdfa73d7b8d91e1c68b7847fc310cac314ee02d) )

@@ -61,12 +61,13 @@ static WRITE8_HANDLER( sound_command_w )
 static WRITE8_HANDLER( spd_adpcm_w )
 {
 	int chip = offset & 1;
+	const device_config *adpcm = devtag_get_device(space->machine, (chip == 0) ? "msm1" : "msm2");
 
 	switch (offset/2)
 	{
 		case 3:
 			adpcm_idle[chip] = 1;
-			msm5205_reset_w(chip,1);
+			msm5205_reset_w(adpcm,1);
 			break;
 
 		case 2:
@@ -79,7 +80,7 @@ static WRITE8_HANDLER( spd_adpcm_w )
 
 		case 0:
 			adpcm_idle[chip] = 0;
-			msm5205_reset_w(chip,0);
+			msm5205_reset_w(adpcm,0);
 			break;
 	}
 }
@@ -90,11 +91,11 @@ static void spd_adpcm_int(const device_config *device)
 	if (adpcm_pos[chip] >= adpcm_end[chip] || adpcm_pos[chip] >= 0x10000)
 	{
 		adpcm_idle[chip] = 1;
-		msm5205_reset_w(chip,1);
+		msm5205_reset_w(device,1);
 	}
 	else if (adpcm_data[chip] != -1)
 	{
-		msm5205_data_w(chip,adpcm_data[chip] & 0x0f);
+		msm5205_data_w(device,adpcm_data[chip] & 0x0f);
 		adpcm_data[chip] = -1;
 	}
 	else
@@ -102,7 +103,7 @@ static void spd_adpcm_int(const device_config *device)
 		UINT8 *ROM = memory_region(device->machine, "adpcm") + 0x10000 * chip;
 
 		adpcm_data[chip] = ROM[adpcm_pos[chip]++];
-		msm5205_data_w(chip,adpcm_data[chip] >> 4);
+		msm5205_data_w(device,adpcm_data[chip] >> 4);
 	}
 }
 
@@ -299,8 +300,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x2800, 0x2800) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0x2801, 0x2801) AM_WRITE(ym3812_write_port_0_w)
+	AM_RANGE(0x2800, 0x2801) AM_DEVWRITE("ym", ym3812_w)
 	AM_RANGE(0x3800, 0x3807) AM_WRITE(spd_adpcm_w)
 	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
@@ -413,9 +413,9 @@ static GFXDECODE_START( spdodgeb )
 GFXDECODE_END
 
 
-static void irq_handler(running_machine *machine, int irq)
+static void irq_handler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1],M6809_FIRQ_LINE,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1],M6809_FIRQ_LINE,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym3812_interface ym3812_config =
@@ -447,15 +447,15 @@ static MACHINE_RESET( spdodgeb )
 static MACHINE_DRIVER_START( spdodgeb )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502,12000000/6)	/* 2MHz ? */
+	MDRV_CPU_ADD("maincpu", M6502,12000000/6)	/* 2MHz ? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT_HACK(spdodgeb_interrupt,33)	/* 1 IRQ every 8 visible scanlines, plus NMI for vblank */
 
-	MDRV_CPU_ADD("audio", M6809,12000000/6)	/* 2MHz ? */
+	MDRV_CPU_ADD("audiocpu", M6809,12000000/6)	/* 2MHz ? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -472,32 +472,32 @@ static MACHINE_DRIVER_START( spdodgeb )
 	MDRV_MACHINE_RESET( spdodgeb )
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM3812, 3000000)
 	MDRV_SOUND_CONFIG(ym3812_config)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("msm1", MSM5205, 384000)
 	MDRV_SOUND_CONFIG(msm5205_config)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.50)
 
 	MDRV_SOUND_ADD("msm2", MSM5205, 384000)
 	MDRV_SOUND_CONFIG(msm5205_config)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.50)
 MACHINE_DRIVER_END
 
 
 
 ROM_START( spdodgeb )
-	ROM_REGION( 0x18000, "main", 0 )
+	ROM_REGION( 0x18000, "maincpu", 0 )
 	ROM_LOAD( "22a-04.139",	  0x10000, 0x08000, CRC(66071fda) SHA1(4a239295900e6234a2a693321ca821671747a58e) )  /* Two banks */
 	ROM_CONTINUE(             0x08000, 0x08000 )		 /* Static code */
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* audio cpu */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* audio cpu */
 	ROM_LOAD( "22j5-0.33",    0x08000, 0x08000, CRC(c31e264e) SHA1(0828a2094122e3934b784ec9ad7c2b89d91a83bb) )
 
 	ROM_REGION( 0x10000, "cpu2", 0 ) /* I/O mcu */
@@ -552,11 +552,11 @@ TJ22J2-0.35 /
 */
 
 ROM_START( nkdodge )
-	ROM_REGION( 0x18000, "main", 0 )
+	ROM_REGION( 0x18000, "maincpu", 0 )
 	ROM_LOAD( "22j4-0.139",	  0x10000, 0x08000, CRC(aa674fd8) SHA1(4e8d3e07b54d23b221cb39cf10389bc7a56c4021) )  /* Two banks */
 	ROM_CONTINUE(             0x08000, 0x08000 )		 /* Static code */
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* audio cpu */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* audio cpu */
 	ROM_LOAD( "22j5-0.33",    0x08000, 0x08000, CRC(c31e264e) SHA1(0828a2094122e3934b784ec9ad7c2b89d91a83bb) )
 
 	ROM_REGION( 0x10000, "cpu2", 0 ) /* I/O mcu */
@@ -582,11 +582,11 @@ ROM_END
 /* the bootleg just seems to have the gfx roms in a different format, program is identical */
 
 ROM_START( nkdodgeb )
-	ROM_REGION( 0x18000, "main", 0 )
+	ROM_REGION( 0x18000, "maincpu", 0 )
 	ROM_LOAD( "12.bin",	      0x10000, 0x08000, CRC(aa674fd8) SHA1(4e8d3e07b54d23b221cb39cf10389bc7a56c4021) )  /* Two banks */
 	ROM_CONTINUE(             0x08000, 0x08000 )		 /* Static code */
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* audio cpu */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* audio cpu */
 	ROM_LOAD( "22j5-0.33",    0x08000, 0x08000, CRC(c31e264e) SHA1(0828a2094122e3934b784ec9ad7c2b89d91a83bb) )
 
 	ROM_REGION( 0x10000, "cpu2", 0 ) /* I/O mcu */

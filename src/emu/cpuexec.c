@@ -160,7 +160,7 @@ static int get_register_string_max_width(const device_config *device, void *base
 INLINE cpu_class_data *get_class_data(const device_config *device)
 {
 	assert(device != NULL);
-	assert(device->class == DEVICE_CLASS_CPU_CHIP);
+	assert(device->devclass == DEVICE_CLASS_CPU_CHIP);
 	assert(device->token != NULL);
 	return (cpu_class_data *)cpu_get_class_header(device) - 1;
 }
@@ -433,7 +433,7 @@ const char *cpuexec_describe_context(running_machine *machine)
 
 
 /***************************************************************************
-    VIDEO SCREEN DEVICE INTERFACE
+    CPU DEVICE INTERFACE
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -536,15 +536,13 @@ static DEVICE_START( cpu )
 	/* if no state registered for saving, we can't save */
 	if (num_regs == 0)
 	{
-		logerror("CPU '%s' did not register any state to save!\n", cpu_get_name(device));
+		logerror("CPU '%s' did not register any state to save!\n", device->tag);
 		if (device->machine->gamedrv->flags & GAME_SUPPORTS_SAVE)
-			fatalerror("CPU '%s' did not register any state to save!", cpu_get_name(device));
+			fatalerror("CPU '%s' did not register any state to save!", device->tag);
 	}
 
 	/* register some internal states as well */
 	register_save_states(device);
-
-	return DEVICE_START_OK;
 }
 
 
@@ -590,7 +588,7 @@ static DEVICE_RESET( cpu )
 
 		/* new style - use screen tag directly */
 		if (config->vblank_interrupt_screen != NULL)
-			screen = devtag_get_device(device->machine, VIDEO_SCREEN, config->vblank_interrupt_screen);
+			screen = devtag_get_device(device->machine, config->vblank_interrupt_screen);
 
 		/* old style 'hack' setup - use screen #0 */
 		else
@@ -709,6 +707,10 @@ DEVICE_GET_INFO( cpu )
 		case DEVINFO_FCT_RESET:					info->reset = DEVICE_RESET_NAME(cpu); 		break;
 
 		default:
+			/* if we don't have a device pointer, ignore everything else */
+			if (device == NULL)
+				break;
+
 			/* if we have a state pointer, we can handle some stuff for free */
 			if (device->token != NULL)
 			{

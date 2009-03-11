@@ -150,9 +150,9 @@ WRITE8_HANDLER( leland_scroll_w )
 }
 
 
-WRITE8_HANDLER( leland_gfx_port_w )
+WRITE8_DEVICE_HANDLER( leland_gfx_port_w )
 {
-	video_screen_update_partial(space->machine->primary_screen, video_screen_get_vpos(space->machine->primary_screen));
+	video_screen_update_partial(device->machine->primary_screen, video_screen_get_vpos(device->machine->primary_screen));
 	gfxbank = data;
 }
 
@@ -555,7 +555,7 @@ MACHINE_DRIVER_START( leland_video )
 
 	MDRV_PALETTE_LENGTH(1024)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)

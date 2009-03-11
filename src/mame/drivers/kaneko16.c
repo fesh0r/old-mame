@@ -276,34 +276,20 @@ static WRITE16_HANDLER( kaneko16_soundlatch_w )
 
 /* Two identically mapped YM2149 chips */
 
-static READ16_HANDLER( kaneko16_YM2149_0_r )
+static READ16_DEVICE_HANDLER( kaneko16_YM2149_r )
 {
 	/* Each 2149 register is mapped to a different address */
-	ay8910_control_port_0_w(space,0,offset);
-	return ay8910_read_port_0_r(space,0);
-}
-static READ16_HANDLER( kaneko16_YM2149_1_r )
-{
-	/* Each 2149 register is mapped to a different address */
-	ay8910_control_port_1_w(space,0,offset);
-	return ay8910_read_port_1_r(space,0);
+	ay8910_address_w(device,0,offset);
+	return ay8910_r(device,0);
 }
 
-static WRITE16_HANDLER( kaneko16_YM2149_0_w )
+static WRITE16_DEVICE_HANDLER( kaneko16_YM2149_w )
 {
 	/* Each 2149 register is mapped to a different address */
-	ay8910_control_port_0_w(space,0,offset);
+	ay8910_address_w(device,0,offset);
 	/* The registers are mapped to odd addresses, except one! */
-	if (ACCESSING_BITS_0_7)	ay8910_write_port_0_w(space,0, data       & 0xff);
-	else				ay8910_write_port_0_w(space,0,(data >> 8) & 0xff);
-}
-static WRITE16_HANDLER( kaneko16_YM2149_1_w )
-{
-	/* Each 2149 register is mapped to a different address */
-	ay8910_control_port_1_w(space,0,offset);
-	/* The registers are mapped to odd addresses, except one! */
-	if (ACCESSING_BITS_0_7)	ay8910_write_port_1_w(space,0, data       & 0xff);
-	else				ay8910_write_port_1_w(space,0,(data >> 8) & 0xff);
+	if (ACCESSING_BITS_0_7)	ay8910_data_w(device,0, data       & 0xff);
+	else				ay8910_data_w(device,0,(data >> 8) & 0xff);
 }
 
 
@@ -315,12 +301,12 @@ static WRITE16_HANDLER( kaneko16_YM2149_1_w )
 
 ***************************************************************************/
 
-static READ8_HANDLER( kaneko16_eeprom_r )
+static READ8_DEVICE_HANDLER( kaneko16_eeprom_r )
 {
 	return eeprom_read_bit() & 1;
 }
 
-static WRITE8_HANDLER( kaneko16_eeprom_reset_w )
+static WRITE8_DEVICE_HANDLER( kaneko16_eeprom_reset_w )
 {
 	// reset line asserted: reset.
 	eeprom_set_cs_line((data & 0x01) ? CLEAR_LINE : ASSERT_LINE );
@@ -377,10 +363,10 @@ static ADDRESS_MAP_START( berlwall, ADDRESS_SPACE_PROGRAM, 16 )
 //  AM_RANGE(0x680006, 0x680007) AM_READ_PORT("UNK")
 	AM_RANGE(0x700000, 0x700001) AM_WRITE(kaneko16_coin_lockout_w)	// Coin Lockout
 	AM_RANGE(0x780000, 0x780001) AM_READ(watchdog_reset16_r)		// Watchdog
-	AM_RANGE(0x800000, 0x80001f) AM_READWRITE(kaneko16_YM2149_0_r, kaneko16_YM2149_0_w)	// Sound
-	AM_RANGE(0x800200, 0x80021f) AM_READWRITE(kaneko16_YM2149_1_r, kaneko16_YM2149_1_w)
+	AM_RANGE(0x800000, 0x80001f) AM_DEVREADWRITE("ay1", kaneko16_YM2149_r, kaneko16_YM2149_w)	// Sound
+	AM_RANGE(0x800200, 0x80021f) AM_DEVREADWRITE("ay2", kaneko16_YM2149_r, kaneko16_YM2149_w)
 	AM_RANGE(0x8003fe, 0x8003ff) AM_NOP // for OKI when accessed as .l
-	AM_RANGE(0x800400, 0x800401) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)
+	AM_RANGE(0x800400, 0x800401) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff)
 	AM_RANGE(0xc00000, 0xc00fff) AM_RAM_WRITE(kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers
 	AM_RANGE(0xc01000, 0xc01fff) AM_RAM_WRITE(kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
 	AM_RANGE(0xc02000, 0xc02fff) AM_RAM AM_BASE(&kaneko16_vscroll_1)									//
@@ -397,22 +383,22 @@ ADDRESS_MAP_END
 /* The two YM2149 chips are only used when entering high score initials, and */
 /* when the game is fully completed. Overkill??? */
 
-static WRITE16_HANDLER( bakubrkr_oki_bank_sw )
+static WRITE16_DEVICE_HANDLER( bakubrkr_oki_bank_sw )
 {
 	if (ACCESSING_BITS_0_7) {
-		okim6295_set_bank_base(0, 0x40000 * (data & 0x7) );
-		logerror("PC:%06X  Selecting OKI bank %02X\n",cpu_get_pc(space->cpu),data&0xff);
+		okim6295_set_bank_base(device, 0x40000 * (data & 0x7) );
+		logerror("%s:Selecting OKI bank %02X\n",cpuexec_describe_context(device->machine),data&0xff);
 	}
 }
 
 static ADDRESS_MAP_START( bakubrkr, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM		// ROM
 	AM_RANGE(0x100000, 0x10ffff) AM_RAM		// Work RAM
-	AM_RANGE(0x400000, 0x40001f) AM_READ(kaneko16_YM2149_0_r)	// Sound
-	AM_RANGE(0x400000, 0x40001d) AM_WRITE(kaneko16_YM2149_0_w)
-	AM_RANGE(0x40001e, 0x40001f) AM_WRITE(bakubrkr_oki_bank_sw)	// OKI bank Switch
-	AM_RANGE(0x400200, 0x40021f) AM_READWRITE(kaneko16_YM2149_1_r,kaneko16_YM2149_1_w)			// Sound
-	AM_RANGE(0x400400, 0x400401) AM_READWRITE(okim6295_status_0_lsb_r,okim6295_data_0_lsb_w)	//
+	AM_RANGE(0x400000, 0x40001f) AM_DEVREAD("ay1", kaneko16_YM2149_r)	// Sound
+	AM_RANGE(0x400000, 0x40001d) AM_DEVWRITE("ay1", kaneko16_YM2149_w)
+	AM_RANGE(0x40001e, 0x40001f) AM_DEVWRITE("oki", bakubrkr_oki_bank_sw)	// OKI bank Switch
+	AM_RANGE(0x400200, 0x40021f) AM_DEVREADWRITE("ay2", kaneko16_YM2149_r,kaneko16_YM2149_w)			// Sound
+	AM_RANGE(0x400400, 0x400401) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff)	//
 	AM_RANGE(0x500000, 0x500fff) AM_READWRITE(SMH_RAM,kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
 	AM_RANGE(0x501000, 0x501fff) AM_READWRITE(SMH_RAM,kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
 	AM_RANGE(0x502000, 0x502fff) AM_RAM AM_BASE(&kaneko16_vscroll_1)									//
@@ -467,20 +453,20 @@ ADDRESS_MAP_END
                                 Blood Warrior
 ***************************************************************************/
 
-static WRITE16_HANDLER( bloodwar_oki_0_bank_w )
+static WRITE16_DEVICE_HANDLER( bloodwar_oki_0_bank_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		okim6295_set_bank_base(0, 0x40000 * (data & 0xf) );
+		okim6295_set_bank_base(device, 0x40000 * (data & 0xf) );
 //      logerror("CPU #0 PC %06X : OKI0  bank %08X\n",cpu_get_pc(space->cpu),data);
 	}
 }
 
-static WRITE16_HANDLER( bloodwar_oki_1_bank_w )
+static WRITE16_DEVICE_HANDLER( bloodwar_oki_1_bank_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		okim6295_set_bank_base(1, 0x40000 * data );
+		okim6295_set_bank_base(device, 0x40000 * data );
 //      logerror("CPU #0 PC %06X : OKI1  bank %08X\n",cpu_get_pc(space->cpu),data);
 	}
 }
@@ -517,8 +503,8 @@ static ADDRESS_MAP_START( bloodwar, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x600000, 0x60001f) AM_RAM_WRITE(kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers 0 Regs
 	AM_RANGE(0x680000, 0x68001f) AM_RAM_WRITE(kaneko16_layers_1_regs_w) AM_BASE(&kaneko16_layers_1_regs)	// Layers 1 Regs
 	AM_RANGE(0x700000, 0x70001f) AM_RAM_WRITE(kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs)	// Sprites Regs
-	AM_RANGE(0x800000, 0x800001) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)
-	AM_RANGE(0x880000, 0x880001) AM_READWRITE(okim6295_status_1_lsb_r, okim6295_data_1_lsb_w)
+	AM_RANGE(0x800000, 0x800001) AM_DEVREADWRITE8("oki1", okim6295_r, okim6295_w, 0x00ff)
+	AM_RANGE(0x880000, 0x880001) AM_DEVREADWRITE8("oki2", okim6295_r, okim6295_w, 0x00ff)
 	AM_RANGE(0x900000, 0x900039) AM_READWRITE(bloodwar_calc_r, bloodwar_calc_w)
 	AM_RANGE(0xa00000, 0xa00001) AM_READWRITE(watchdog_reset16_r, watchdog_reset16_w)	// Watchdog
 	AM_RANGE(0xb00000, 0xb00001) AM_READ_PORT("P1")
@@ -528,8 +514,8 @@ static ADDRESS_MAP_START( bloodwar, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xb80000, 0xb80001) AM_WRITE(bloodwar_coin_lockout_w)	// Coin Lockout
 	AM_RANGE(0xc00000, 0xc00001) AM_WRITE(kaneko16_display_enable)
 	AM_RANGE(0xd00000, 0xd00001) AM_READ(toybox_mcu_status_r)
-	AM_RANGE(0xe00000, 0xe00001) AM_WRITE(bloodwar_oki_0_bank_w)
-	AM_RANGE(0xe80000, 0xe80001) AM_WRITE(bloodwar_oki_1_bank_w)
+	AM_RANGE(0xe00000, 0xe00001) AM_DEVWRITE("oki1", bloodwar_oki_0_bank_w)
+	AM_RANGE(0xe80000, 0xe80001) AM_DEVWRITE("oki2", bloodwar_oki_1_bank_w)
 ADDRESS_MAP_END
 
 
@@ -537,21 +523,21 @@ ADDRESS_MAP_END
                                 Bonk's Adventure
 ***************************************************************************/
 
-static WRITE16_HANDLER( bonkadv_oki_0_bank_w )
+static WRITE16_DEVICE_HANDLER( bonkadv_oki_0_bank_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		okim6295_set_bank_base(0, 0x40000 * (data & 0xF));
-		logerror("CPU #0 PC %06X : OKI0  bank %08X\n",cpu_get_pc(space->cpu),data);
+		okim6295_set_bank_base(device, 0x40000 * (data & 0xF));
+		logerror("%s: OKI0  bank %08X\n",cpuexec_describe_context(device->machine),data);
 	}
 }
 
-static WRITE16_HANDLER( bonkadv_oki_1_bank_w )
+static WRITE16_DEVICE_HANDLER( bonkadv_oki_1_bank_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		okim6295_set_bank_base(1, 0x40000 * data );
-		logerror("CPU #0 PC %06X : OKI1  bank %08X\n",cpu_get_pc(space->cpu),data);
+		okim6295_set_bank_base(device, 0x40000 * data );
+		logerror("%s: OKI1  bank %08X\n",cpuexec_describe_context(device->machine),data);
 	}
 }
 
@@ -577,8 +563,8 @@ static ADDRESS_MAP_START( bonkadv, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x600000, 0x60001f) AM_RAM_WRITE(kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers 0 Regs
 	AM_RANGE(0x680000, 0x68001f) AM_RAM_WRITE(kaneko16_layers_1_regs_w) AM_BASE(&kaneko16_layers_1_regs)	// Layers 1 Regs
 	AM_RANGE(0x700000, 0x70001f) AM_RAM_WRITE(kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs)	// Sprites Regs
-	AM_RANGE(0x800000, 0x800001) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)
-	AM_RANGE(0x880000, 0x880001) AM_READWRITE(okim6295_status_1_lsb_r, okim6295_data_1_lsb_w)
+	AM_RANGE(0x800000, 0x800001) AM_DEVREADWRITE8("oki1", okim6295_r, okim6295_w, 0x00ff)
+	AM_RANGE(0x880000, 0x880001) AM_DEVREADWRITE8("oki2", okim6295_r, okim6295_w, 0x00ff)
 	AM_RANGE(0x900000, 0x900015) AM_READWRITE(galpanib_calc_r,galpanib_calc_w)
 	AM_RANGE(0xa00000, 0xa00001) AM_READWRITE(watchdog_reset16_r, watchdog_reset16_w)	// Watchdog
 	AM_RANGE(0xb00000, 0xb00001) AM_READ_PORT("P1")
@@ -588,8 +574,8 @@ static ADDRESS_MAP_START( bonkadv, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xb80000, 0xb80001) AM_WRITE(bloodwar_coin_lockout_w)	// Coin Lockout
 	AM_RANGE(0xc00000, 0xc00001) AM_WRITE(kaneko16_display_enable)
 	AM_RANGE(0xd00000, 0xd00001) AM_READ(toybox_mcu_status_r)
-	AM_RANGE(0xe00000, 0xe00001) AM_WRITE(bonkadv_oki_0_bank_w)
-	AM_RANGE(0xe80000, 0xe80001) AM_WRITE(bonkadv_oki_1_bank_w)
+	AM_RANGE(0xe00000, 0xe00001) AM_DEVWRITE("oki1", bonkadv_oki_0_bank_w)
+	AM_RANGE(0xe80000, 0xe80001) AM_DEVWRITE("oki2", bonkadv_oki_1_bank_w)
 ADDRESS_MAP_END
 
 
@@ -605,50 +591,28 @@ static READ16_HANDLER( gtmr_wheel_r )
 	{
 		case 0x0000:	// 'Both Sides' = 270deg Wheel
 			return	(input_port_read(space->machine, "WHEEL0"));
-			break;
-
 		case 0x1000:	// '1P Side' = 360' Wheel
 			return	(input_port_read(space->machine, "WHEEL1"));
-			break;
 		default:
 			return	(0);
-			break;
-		}
+	}
 }
 
-static WRITE16_HANDLER( gtmr_oki_0_bank_w )
+static WRITE16_DEVICE_HANDLER( gtmr_oki_0_bank_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		okim6295_set_bank_base(0, 0x40000 * (data & 0xF) );
+		okim6295_set_bank_base(device, 0x40000 * (data & 0xF) );
 //      logerror("CPU #0 PC %06X : OKI0 bank %08X\n",cpu_get_pc(space->cpu),data);
 	}
 }
 
-static WRITE16_HANDLER( gtmr_oki_1_bank_w )
+static WRITE16_DEVICE_HANDLER( gtmr_oki_1_bank_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		okim6295_set_bank_base(1, 0x40000 * (data & 0x1) );
+		okim6295_set_bank_base(device, 0x40000 * (data & 0x1) );
 //      logerror("CPU #0 PC %06X : OKI1 bank %08X\n",cpu_get_pc(space->cpu),data);
-	}
-}
-
-static WRITE16_HANDLER( gtmr_oki_0_data_w )
-{
-	if (ACCESSING_BITS_0_7)
-	{
-		okim6295_data_0_w(space,0,data);
-//      logerror("CPU #0 PC %06X : OKI0 <- %08X\n",cpu_get_pc(space->cpu),data);
-	}
-}
-
-static WRITE16_HANDLER( gtmr_oki_1_data_w )
-{
-	if (ACCESSING_BITS_0_7)
-	{
-		okim6295_data_1_w(space,0,data);
-//      logerror("CPU #0 PC %06X : OKI1 <- %08X\n",cpu_get_pc(space->cpu),data);
 	}
 }
 
@@ -665,8 +629,8 @@ static ADDRESS_MAP_START( gtmr_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x600000, 0x60000f) AM_READ(SMH_RAM					)	// Layers 0 Regs
 	AM_RANGE(0x680000, 0x68000f) AM_READ(SMH_RAM					)	// Layers 1 Regs
 	AM_RANGE(0x700000, 0x70001f) AM_READ(kaneko16_sprites_regs_r	)	// Sprites Regs
-	AM_RANGE(0x800000, 0x800001) AM_READ(okim6295_status_0_lsb_r	)	// Samples
-	AM_RANGE(0x880000, 0x880001) AM_READ(okim6295_status_1_lsb_r	)
+	AM_RANGE(0x800000, 0x800001) AM_DEVREAD8("oki1", okim6295_r, 0x00ff	)	// Samples
+	AM_RANGE(0x880000, 0x880001) AM_DEVREAD8("oki2", okim6295_r, 0x00ff	)
 	AM_RANGE(0x900014, 0x900015) AM_READ(kaneko16_rnd_r			)	// Random Number ?
 	AM_RANGE(0xa00000, 0xa00001) AM_READ(watchdog_reset16_r		)	// Watchdog
 	AM_RANGE(0xb00000, 0xb00001) AM_READ_PORT("P1")
@@ -698,13 +662,13 @@ static ADDRESS_MAP_START( gtmr_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x600000, 0x60000f) AM_WRITE(kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs	)	// Layers 0 Regs
 	AM_RANGE(0x680000, 0x68000f) AM_WRITE(kaneko16_layers_1_regs_w) AM_BASE(&kaneko16_layers_1_regs	)	// Layers 1 Regs
 	AM_RANGE(0x700000, 0x70001f) AM_WRITE(kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs	)	// Sprites Regs
-	AM_RANGE(0x800000, 0x800001) AM_WRITE(gtmr_oki_0_data_w			)	// Samples
-	AM_RANGE(0x880000, 0x880001) AM_WRITE(gtmr_oki_1_data_w			)
+	AM_RANGE(0x800000, 0x800001) AM_DEVWRITE8("oki1", okim6295_w, 0x00ff			)	// Samples
+	AM_RANGE(0x880000, 0x880001) AM_DEVWRITE8("oki2", okim6295_w, 0x00ff			)
 	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(watchdog_reset16_w		)	// Watchdog
 	AM_RANGE(0xb80000, 0xb80001) AM_WRITE(kaneko16_coin_lockout_w	)	// Coin Lockout
 	AM_RANGE(0xc00000, 0xc00001) AM_WRITE(kaneko16_display_enable	)	// might do more than that
-	AM_RANGE(0xe00000, 0xe00001) AM_WRITE(gtmr_oki_0_bank_w			)	// Samples Bankswitching
-	AM_RANGE(0xe80000, 0xe80001) AM_WRITE(gtmr_oki_1_bank_w			)
+	AM_RANGE(0xe00000, 0xe00001) AM_DEVWRITE("oki1", gtmr_oki_0_bank_w			)	// Samples Bankswitching
+	AM_RANGE(0xe80000, 0xe80001) AM_DEVWRITE("oki2", gtmr_oki_1_bank_w			)
 ADDRESS_MAP_END
 
 
@@ -719,17 +683,13 @@ static READ16_HANDLER( gtmr2_wheel_r )
 	{
 		case 0x0000:	// 270' A. Wheel
 			return	(input_port_read(space->machine, "WHEEL0"));
-			break;
 		case 0x1000:	// 270' D. Wheel
 			return	(input_port_read(space->machine, "WHEEL1") << 8);
-			break;
 		case 0x0800:	// 360' Wheel
 			return	(input_port_read(space->machine, "WHEEL2") << 8);
-			break;
 		default:
 			logerror("gtmr2_wheel_r : read at %06x with joystick\n", cpu_get_pc(space->cpu));
 			return	(~0);
-			break;
 	}
 }
 
@@ -751,8 +711,8 @@ static ADDRESS_MAP_START( gtmr2_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x600000, 0x60000f) AM_READ(SMH_RAM					)	// Layers 0 Regs
 	AM_RANGE(0x680000, 0x68000f) AM_READ(SMH_RAM					)	// Layers 1 Regs
 	AM_RANGE(0x700000, 0x70001f) AM_READ(kaneko16_sprites_regs_r	)	// Sprites Regs
-	AM_RANGE(0x800000, 0x800001) AM_READ(okim6295_status_0_lsb_r	)	// Samples
-	AM_RANGE(0x880000, 0x880001) AM_READ(okim6295_status_1_lsb_r	)
+	AM_RANGE(0x800000, 0x800001) AM_DEVREAD8("oki1", okim6295_r, 0x00ff	)	// Samples
+	AM_RANGE(0x880000, 0x880001) AM_DEVREAD8("oki2", okim6295_r, 0x00ff	)
 	AM_RANGE(0x900014, 0x900015) AM_READ(kaneko16_rnd_r			)	// Random Number ?
 	AM_RANGE(0xa00000, 0xa00001) AM_READ(watchdog_reset16_r		)	// Watchdog
 	AM_RANGE(0xb00000, 0xb00001) AM_READ_PORT("P1")
@@ -771,9 +731,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( mgcrystl, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM		// ROM
 	AM_RANGE(0x300000, 0x30ffff) AM_RAM		// Work RAM
-	AM_RANGE(0x400000, 0x40001f) AM_READWRITE(kaneko16_YM2149_0_r, kaneko16_YM2149_0_w)	// Sound
-	AM_RANGE(0x400200, 0x40021f) AM_READWRITE(kaneko16_YM2149_1_r, kaneko16_YM2149_1_w)
-	AM_RANGE(0x400400, 0x400401) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)
+	AM_RANGE(0x400000, 0x40001f) AM_DEVREADWRITE("ay1", kaneko16_YM2149_r, kaneko16_YM2149_w)	// Sound
+	AM_RANGE(0x400200, 0x40021f) AM_DEVREADWRITE("ay2", kaneko16_YM2149_r, kaneko16_YM2149_w)
+	AM_RANGE(0x400400, 0x400401) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff)
 	AM_RANGE(0x500000, 0x500fff) AM_RAM_WRITE(paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
 	AM_RANGE(0x600000, 0x600fff) AM_RAM_WRITE(kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
 	AM_RANGE(0x601000, 0x601fff) AM_RAM_WRITE(kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
@@ -805,8 +765,8 @@ static WRITE16_HANDLER( shogwarr_oki_bank_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		okim6295_set_bank_base(0, 0x10000 * ((data >> 0) & 0x3) );
-		okim6295_set_bank_base(1, 0x10000 * ((data >> 4) & 0x3) );
+		okim6295_set_bank_base(devtag_get_device(space->machine, "oki1"), 0x10000 * ((data >> 0) & 0x3) );
+		okim6295_set_bank_base(devtag_get_device(space->machine, "oki2"), 0x10000 * ((data >> 4) & 0x3) );
 	}
 }
 
@@ -819,8 +779,8 @@ static ADDRESS_MAP_START( shogwarr, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x2b0000, 0x2b0001) AM_WRITE(calc3_mcu_com2_w)
 	AM_RANGE(0x2d0000, 0x2d0001) AM_WRITE(calc3_mcu_com3_w)
 	AM_RANGE(0x380000, 0x380fff) AM_RAM_WRITE(paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
-	AM_RANGE(0x400000, 0x400001) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)	// Samples
-	AM_RANGE(0x480000, 0x480001) AM_READWRITE(okim6295_status_1_lsb_r, okim6295_data_1_lsb_w)
+	AM_RANGE(0x400000, 0x400001) AM_DEVREADWRITE8("oki1", okim6295_r, okim6295_w, 0x00ff)	// Samples
+	AM_RANGE(0x480000, 0x480001) AM_DEVREADWRITE8("oki2", okim6295_r, okim6295_w, 0x00ff)
 	AM_RANGE(0x580000, 0x581fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)					// Sprites
 	AM_RANGE(0x600000, 0x600fff) AM_RAM_WRITE(kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
 	AM_RANGE(0x601000, 0x601fff) AM_READWRITE(SMH_RAM,kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)
@@ -858,8 +818,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( blazeon_soundport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x02, 0x02) AM_WRITE(ym2151_register_port_0_w)
-	AM_RANGE(0x03, 0x03) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
+	AM_RANGE(0x02, 0x03) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
 	AM_RANGE(0x06, 0x06) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
@@ -1331,8 +1290,10 @@ static INPUT_PORTS_START( gtmr )
 	PORT_DIPSETTING(      0x0800, DEF_STR( Joystick ) )
 	PORT_DIPSETTING(      0x0000, "Wheel" )
 	PORT_DIPNAME( 0x1000, 0x1000, DEF_STR( Controls ) ) PORT_DIPLOCATION("SW1:5")
-	PORT_DIPSETTING(      0x1000, "1P Side" )    /* 360 degree wheel if SW1:4 set to wheel */
-	PORT_DIPSETTING(      0x0000, "Both Sides" ) /* 270 degree wheel if SW1:4 set to wheel */
+	PORT_DIPSETTING(      0x1000, "1P Side" )			PORT_CONDITION("DSW1",0x0800,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(      0x0000, "Both Sides" )		PORT_CONDITION("DSW1",0x0800,PORTCOND_NOTEQUALS,0x00)
+	PORT_DIPSETTING(      0x1000, "360 degree wheel" )	PORT_CONDITION("DSW1",0x0800,PORTCOND_EQUALS,0x00)
+	PORT_DIPSETTING(      0x0000, "270 degree wheel" )	PORT_CONDITION("DSW1",0x0800,PORTCOND_EQUALS,0x00)
 	PORT_DIPNAME( 0x2000, 0x2000, "Use Brake" ) PORT_DIPLOCATION("SW1:6") /* Valid only when joystick is used */
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x2000, DEF_STR( On ) )
@@ -1652,20 +1613,20 @@ static const ay8910_interface ay8910_intf_dsw =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_4_r,	/* input A: DSW 1 */
-	input_port_5_r,	/* input B: DSW 2 */
-	NULL,
-	NULL,
+	DEVCB_INPUT_PORT("DSW1"),
+	DEVCB_INPUT_PORT("DSW2"),
+	DEVCB_NULL,
+	DEVCB_NULL,
 };
 
 static const ay8910_interface ay8910_intf_eeprom =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	kaneko16_eeprom_r,		/* inputs  A:  0,EEPROM bit read */
-	NULL,						/* inputs  B */
-	NULL,						/* outputs A */
-	kaneko16_eeprom_reset_w	/* outputs B:  0,EEPROM reset */
+	DEVCB_HANDLER(kaneko16_eeprom_r),		/* inputs  A:  0,EEPROM bit read */
+	DEVCB_NULL,						/* inputs  B */
+	DEVCB_NULL,						/* outputs A */
+	DEVCB_HANDLER(kaneko16_eeprom_reset_w)	/* outputs B:  0,EEPROM reset */
 };
 
 
@@ -1685,7 +1646,7 @@ static const ay8910_interface ay8910_intf_eeprom =
 static MACHINE_DRIVER_START( berlwall )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 12000000)	/* MC68000P12 */
+	MDRV_CPU_ADD("maincpu", M68000, 12000000)	/* MC68000P12 */
 	MDRV_CPU_PROGRAM_MAP(berlwall,0)
 	MDRV_CPU_VBLANK_INT_HACK(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM)
 
@@ -1694,7 +1655,7 @@ static MACHINE_DRIVER_START( berlwall )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)	// mangled sprites otherwise
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1709,19 +1670,19 @@ static MACHINE_DRIVER_START( berlwall )
 	MDRV_VIDEO_UPDATE(berlwall)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ay1", AY8910, 1000000)
 	MDRV_SOUND_CONFIG(ay8910_intf_dsw)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 
 	MDRV_SOUND_ADD("ay2", AY8910, 1000000)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("oki", OKIM6295, 12000000/6)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7low)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -1732,7 +1693,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( bakubrkr )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, XTAL_12MHz) /* verified on pcb */
+	MDRV_CPU_ADD("maincpu", M68000, XTAL_12MHz) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(bakubrkr,0)
 	MDRV_CPU_VBLANK_INT_HACK(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM)
 
@@ -1742,7 +1703,7 @@ static MACHINE_DRIVER_START( bakubrkr )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)	// mangled sprites otherwise
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(59)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1788,11 +1749,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( blazeon )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,12000000)	/* TMP68HC000-12 */
+	MDRV_CPU_ADD("maincpu", M68000,12000000)	/* TMP68HC000-12 */
 	MDRV_CPU_PROGRAM_MAP(blazeon,0)
 	MDRV_CPU_VBLANK_INT_HACK(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM)
 
-	MDRV_CPU_ADD("audio", Z80,4000000)	/* D780C-2 */
+	MDRV_CPU_ADD("audiocpu", Z80,4000000)	/* D780C-2 */
 	MDRV_CPU_PROGRAM_MAP(blazeon_soundmem,0)
 	MDRV_CPU_IO_MAP(blazeon_soundport,0)
 
@@ -1801,7 +1762,7 @@ static MACHINE_DRIVER_START( blazeon )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1815,11 +1776,11 @@ static MACHINE_DRIVER_START( blazeon )
 	MDRV_VIDEO_UPDATE(kaneko16)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2151, 4000000)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -1850,7 +1811,7 @@ static MACHINE_DRIVER_START( gtmr )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1933,7 +1894,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( mgcrystl )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, XTAL_12MHz) /* verified on pcb */
+	MDRV_CPU_ADD("maincpu", M68000, XTAL_12MHz) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(mgcrystl,0)
 	MDRV_CPU_VBLANK_INT_HACK(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM)
 
@@ -1943,7 +1904,7 @@ static MACHINE_DRIVER_START( mgcrystl )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -2003,14 +1964,14 @@ static INTERRUPT_GEN( shogwarr_interrupt )
 static MACHINE_DRIVER_START( shogwarr )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 12000000)
+	MDRV_CPU_ADD("maincpu", M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(shogwarr,0)
 	MDRV_CPU_VBLANK_INT_HACK(shogwarr_interrupt,SHOGWARR_INTERRUPTS_NUM)
 
 	MDRV_MACHINE_RESET(shogwarr)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -2166,7 +2127,7 @@ Notes:
 ***************************************************************************/
 
 ROM_START( explbrkr )
- 	ROM_REGION( 0x080000, "main", 0 )			/* 68000 Code */
+ 	ROM_REGION( 0x080000, "maincpu", 0 )			/* 68000 Code */
 	ROM_LOAD16_BYTE( "ts100e.u18", 0x000000, 0x040000, CRC(cc84a985) SHA1(1732a607cc1f894dd45cfc915dfe0407335f0073) )
 	ROM_LOAD16_BYTE( "ts101e.u19", 0x000001, 0x040000, CRC(88f4afb7) SHA1(08b8efd6bd935bc1b8cf9753d58b38ccf9a70b4d) )
 
@@ -2209,7 +2170,7 @@ ROM_START( explbrkr )
 ROM_END
 
 ROM_START( bakubrkr )
- 	ROM_REGION( 0x080000, "main", 0 )			/* 68000 Code */
+ 	ROM_REGION( 0x080000, "maincpu", 0 )			/* 68000 Code */
 	ROM_LOAD16_BYTE( "ts100j.u18", 0x000000, 0x040000, CRC(8cc0a4fd) SHA1(e7e18b5ea236522a79ba9db8f573ac8f7ade504b) )
 	ROM_LOAD16_BYTE( "ts101j.u19", 0x000001, 0x040000, CRC(aea92195) SHA1(e89f964e7e936fd7774f21956eb4ff5c9104837b) )
 
@@ -2285,7 +2246,7 @@ PALs : BW-U47, BW-U48 (backgrounds encryption)
 ***************************************************************************/
 
 ROM_START( berlwall )
-	ROM_REGION( 0x040000, "main", 0 )			/* 68000 Code */
+	ROM_REGION( 0x040000, "maincpu", 0 )			/* 68000 Code */
 	ROM_LOAD16_BYTE( "u23_01.bin", 0x000000, 0x020000, CRC(76b526ce) SHA1(95ba7cccbe88fd695c28b6a7c25a1afd130c1aa6) )
 	ROM_LOAD16_BYTE( "u39_01.bin", 0x000001, 0x020000, CRC(78fa7ef2) SHA1(8392de6e307dcd2bf5bcbeb37d578d33246acfcf) )
 
@@ -2357,7 +2318,7 @@ berlwall and not berlwalt!
 */
 
 ROM_START( berlwalt )
- 	ROM_REGION( 0x040000, "main", 0 )			/* 68000 Code */
+ 	ROM_REGION( 0x040000, "maincpu", 0 )			/* 68000 Code */
 	ROM_LOAD16_BYTE( "bw100a", 0x000000, 0x020000, CRC(e6bcb4eb) SHA1(220b8fddc79230b4f6a8cf33e1035355c485e8d1) )
 	ROM_LOAD16_BYTE( "bw101a", 0x000001, 0x020000, CRC(38056fb2) SHA1(48338b9a5ebea872286541a3c45016673c4af76b) )
 
@@ -2411,11 +2372,11 @@ CUSTOM:       KANEKO VU-002 x2
 ***************************************************************************/
 
 ROM_START( blazeon )
- 	ROM_REGION( 0x080000, "main", 0 )			/* 68000 Code */
+ 	ROM_REGION( 0x080000, "maincpu", 0 )			/* 68000 Code */
 	ROM_LOAD16_BYTE( "bz_prg1.u80", 0x000000, 0x040000, CRC(8409e31d) SHA1(a9dfc299f4b457df190314401aef309adfaf9bae) )
 	ROM_LOAD16_BYTE( "bz_prg2.u81", 0x000001, 0x040000, CRC(b8a0a08b) SHA1(5f275b98d3e49a834850b45179d26e8c2f9fd604) )
 
- 	ROM_REGION( 0x020000, "audio", 0 )			/* Z80 Code */
+ 	ROM_REGION( 0x020000, "audiocpu", 0 )			/* Z80 Code */
 	ROM_LOAD( "3.u45", 0x000000, 0x020000, CRC(52fe4c94) SHA1(896230e4627503292575bbd84edc3cf9cb18b27e) )	// 1xxxxxxxxxxxxxxxx = 0xFF
 
 	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE )	/* Sprites */
@@ -3075,7 +3036,7 @@ Yes, one program rom actually is a 27C010 and the other one is a 27C020
 ***************************************************************************/
 
 ROM_START( mgcrystl ) /* Master Up: 92/01/10 14:21:30 */
- 	ROM_REGION( 0x040000*2, "main", ROMREGION_ERASE )			/* 68000 Code */
+ 	ROM_REGION( 0x040000*2, "maincpu", ROMREGION_ERASE )			/* 68000 Code */
 	ROM_LOAD16_BYTE( "mc100e02.u18", 0x000000, 0x020000, CRC(246a1335) SHA1(8333945a92e08a7bff425d2d6602557386016dc5) ) /* Labeled as MC100E/U18-02 */
 	ROM_LOAD16_BYTE( "mc101e02.u19", 0x000001, 0x040000, CRC(708ea1dc) SHA1(ae6eca6620729bc1e815f1bfbd8fe130f0ba943c) ) /* Labeled as MC101E/U19-02 */
 
@@ -3099,7 +3060,7 @@ ROM_START( mgcrystl ) /* Master Up: 92/01/10 14:21:30 */
 ROM_END
 
 ROM_START( mgcrysto ) /* Master Up: 91/12/10 01:56:06 */
- 	ROM_REGION( 0x040000*2, "main", ROMREGION_ERASE )			/* 68000 Code */
+ 	ROM_REGION( 0x040000*2, "maincpu", ROMREGION_ERASE )			/* 68000 Code */
 	ROM_LOAD16_BYTE( "mc100h00.u18", 0x000000, 0x020000, CRC(c7456ba7) SHA1(96c25c3432069373fa86d7af3e093e02e39aea34) ) /* Labeled as MC100H/U18-00 */
 	ROM_LOAD16_BYTE( "mc101h00.u19", 0x000001, 0x040000, CRC(ea8f9300) SHA1(0cd0d448805aa45986b63befca00b08fe066dbb2) ) /* Labeled as MC101H/U19-00 */
 
@@ -3123,7 +3084,7 @@ ROM_START( mgcrysto ) /* Master Up: 91/12/10 01:56:06 */
 ROM_END
 
 ROM_START( mgcrystj ) /* Master Up: 92/01/13 14:44:20 */
- 	ROM_REGION( 0x040000*2, "main", ROMREGION_ERASE )			/* 68000 Code */
+ 	ROM_REGION( 0x040000*2, "maincpu", ROMREGION_ERASE )			/* 68000 Code */
 	ROM_LOAD16_BYTE( "mc100j02.u18", 0x000000, 0x020000, CRC(afe5882d) SHA1(176e6e12e3df63c08d7aff781f5e5a9bd83ec293) ) /* Labeled as MC100J/U18-02 */
 	ROM_LOAD16_BYTE( "mc101j02.u19", 0x000001, 0x040000, CRC(60da5492) SHA1(82b90a617d355825624ce9fb30bddf4714bd0d18) ) /* Labeled as MC101J/U19-02 */
 
@@ -3189,7 +3150,7 @@ ROUTINES:
 ***************************************************************************/
 
 ROM_START( shogwarr )
- 	ROM_REGION( 0x040000, "main", 0 )			/* 68000 Code */
+ 	ROM_REGION( 0x040000, "maincpu", 0 )			/* 68000 Code */
 	ROM_LOAD16_BYTE( "fb030a.u61", 0x000000, 0x020000, CRC(a04106c6) SHA1(95ab084f2e709be7cec2964cb09bcf5a8d3aacdf) )
 	ROM_LOAD16_BYTE( "fb031a.u62", 0x000001, 0x020000, CRC(d1def5e2) SHA1(f442de4433547e52b483549aca5786e4597a7122) )
 
@@ -3248,7 +3209,7 @@ KANEKO JAPAN 9203 T (44 PIN PQFP)         = KANEKO JAPAN 9204 T (44 PIN PQFP)
 ***************************************************************************/
 
 ROM_START( shogware )
- 	ROM_REGION( 0x040000, "main", 0 )			/* 68000 Code */
+ 	ROM_REGION( 0x040000, "maincpu", 0 )			/* 68000 Code */
 	ROM_LOAD16_BYTE( "fb030e.u61", 0x000000, 0x020000, CRC(32ce7909) SHA1(02d87342706ac9547eb611bd542f8498ba41e34a) )
 	ROM_LOAD16_BYTE( "fb031e.u62", 0x000001, 0x020000, CRC(228aeaf5) SHA1(5e080d7975bc5dcf6fccfbc286eafe939496d9bf) )
 
@@ -3333,7 +3294,7 @@ NOTE: U67 & U68 are empty on this Original board.
 ***************************************************************************/
 
 ROM_START( fjbuster )	// Fujiyama Buster - Japan version of Shogun Warriors
- 	ROM_REGION( 0x040000, "main", 0 )			/* 68000 Code */
+ 	ROM_REGION( 0x040000, "maincpu", 0 )			/* 68000 Code */
 	ROM_LOAD16_BYTE( "fb030j.u61", 0x000000, 0x020000, CRC(32ce7909) SHA1(02d87342706ac9547eb611bd542f8498ba41e34a) )
 	ROM_LOAD16_BYTE( "fb031j.u62", 0x000001, 0x020000, CRC(000c8c08) SHA1(439daac1541c34557b5a4308ed69dfebb93abe13) )
 
@@ -3475,7 +3436,7 @@ Game can be ROM Swapped onto a Shogun Warriors board and works
 ***************************************************************************/
 
 ROM_START( brapboys ) /* Single PCB, fully populated, no rom sub board */
- 	ROM_REGION( 0x040000, "main", 0 )			/* 68000 Code */
+ 	ROM_REGION( 0x040000, "maincpu", 0 )			/* 68000 Code */
 	ROM_LOAD16_BYTE( "rb-030.u61", 0x000000, 0x020000, CRC(ccbe9a53) SHA1(b96baf0ecbf6550bfaf8e512d9275c53a3928bee) )
 	ROM_LOAD16_BYTE( "rb-031.u62", 0x000001, 0x020000, CRC(c72b8dda) SHA1(450e1fb8acb140fa0ab23630daad82924f7ce72b) )
 
@@ -3511,7 +3472,7 @@ ROM_START( brapboys ) /* Single PCB, fully populated, no rom sub board */
 ROM_END
 
 ROM_START( brapboyj ) /* The Japanese version has an extra rom??? and used a rom sub board */
- 	ROM_REGION( 0x040000, "main", 0 )			/* 68000 Code */
+ 	ROM_REGION( 0x040000, "maincpu", 0 )			/* 68000 Code */
 	ROM_LOAD16_BYTE( "rb-004.u61", 0x000000, 0x020000, CRC(5432442c) SHA1(f0f7328ece96ef25e6d4fd1958d734f64a9ef371) )
 	ROM_LOAD16_BYTE( "rb-005.u62", 0x000001, 0x020000, CRC(118b3cfb) SHA1(1690ecf5c629879bd97131ff77029e152919e45d) )
 

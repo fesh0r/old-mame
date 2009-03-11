@@ -88,6 +88,8 @@ enum
 typedef struct _handler_data handler_data;
 typedef struct _subtable_data subtable_data;
 
+/* direct_range is an opaque type used to track ranges for direct access */
+typedef struct _direct_range direct_range;
 
 /* forward-declare the address_space structure */
 typedef struct _address_space address_space;
@@ -103,10 +105,12 @@ struct _direct_read_data
 {
 	UINT8 *					raw;				/* direct access data pointer (raw) */
 	UINT8 *					decrypted;			/* direct access data pointer (decrypted) */
-	offs_t					mask;				/* address mask */
-	offs_t					min;				/* minimum valid address */
-	offs_t					max;				/* maximum valid address */
+	offs_t					bytemask;			/* byte address mask */
+	offs_t					bytestart;			/* minimum valid byte address */
+	offs_t					byteend;			/* maximum valid byte address */
 	UINT8		 			entry;				/* live entry */
+	direct_range *			rangelist[256];		/* list of ranges for each entry */
+	direct_range *			freerangelist;		/* list of recycled range entries */
 };
 
 
@@ -217,14 +221,12 @@ struct _address_map_entry
 	UINT8					read_bits;			/* bits for the read handler callback (0=default, 1=8, 2=16, 3=32) */
 	UINT8					read_mask;			/* mask bits indicating which subunits to process */
 	const char *			read_name;			/* read handler callback name */
-	device_type				read_devtype;		/* read device type for device references */
 	const char *			read_devtag;		/* read tag for the relevant device */
 	const char *			read_porttag;		/* tag for input port reading */
 	write_handler 			write;				/* write handler callback */
 	UINT8					write_bits;			/* bits for the write handler callback (0=default, 1=8, 2=16, 3=32) */
 	UINT8					write_mask;			/* mask bits indicating which subunits to process */
 	const char *			write_name;			/* write handler callback name */
-	device_type				write_devtype;		/* read device type for device references */
 	const char *			write_devtag;		/* read tag for the relevant device */
 	UINT32					share;				/* index of a shared memory block */
 	void **					baseptr;			/* receives pointer to memory (optional) */
@@ -307,7 +309,6 @@ union _addrmap_token
 	const addrmap_token *	tokenptr;
 	read_handler			read;				/* generic read handlers */
 	write_handler			write;				/* generic write handlers */
-	device_type				devtype;			/* device type */
 	UINT8 **				memptr;				/* memory pointer */
 	size_t *				sizeptr;			/* size pointer */
 };
@@ -325,7 +326,6 @@ union _addrmap8_token
 	write8_device_func		dwrite;				/* pointer to native device write handler */
 	read_handler			read;				/* generic read handlers */
 	write_handler			write;				/* generic write handlers */
-	device_type				devtype;			/* device type */
 	UINT8 **				memptr;				/* memory pointer */
 	size_t *				sizeptr;			/* size pointer */
 };
@@ -347,7 +347,6 @@ union _addrmap16_token
 	write8_device_func		dwrite8;			/* pointer to 8-bit device write handler */
 	read_handler			read;				/* generic read handlers */
 	write_handler			write;				/* generic write handlers */
-	device_type				devtype;			/* device type */
 	UINT16 **				memptr;				/* memory pointer */
 	size_t *				sizeptr;			/* size pointer */
 };
@@ -373,7 +372,6 @@ union _addrmap32_token
 	write16_device_func		dwrite16;			/* pointer to 16-bit device write handler */
 	read_handler			read;				/* generic read handlers */
 	write_handler			write;				/* generic write handlers */
-	device_type				devtype;			/* device type */
 	UINT32 **				memptr;				/* memory pointer */
 	size_t *				sizeptr;			/* size pointer */
 };
@@ -403,7 +401,6 @@ union _addrmap64_token
 	write32_device_func		dwrite32;			/* pointer to 32-bit device write handler */
 	read_handler			read;				/* generic read handlers */
 	write_handler			write;				/* generic write handlers */
-	device_type				devtype;			/* device type */
 	UINT64 **				memptr;				/* memory pointer */
 	size_t *				sizeptr;			/* size pointer */
 };
@@ -502,7 +499,7 @@ union _addrmap64_token
 
 
 /* opcode range safety check */
-#define address_is_unsafe(S,A)			((UNEXPECTED((A) < (S)->direct.min) || UNEXPECTED((A) > (S)->direct.max)))
+#define memory_address_outside_direct_region(S,A)	((UNEXPECTED((A) < (S)->direct.bytestart) || UNEXPECTED((A) > (S)->direct.byteend)))
 
 
 /* wrappers for dynamic read handler installation */
@@ -578,37 +575,30 @@ union _addrmap64_token
 
 
 /* macros for accessing bytes and words within larger chunks */
-#ifdef LSB_FIRST
 
-#define BYTE_XOR_BE(a)  				((a) ^ 1)		/* read/write a byte to a 16-bit space */
-#define BYTE_XOR_LE(a)  				(a)
-#define BYTE4_XOR_BE(a) 				((a) ^ 3)		/* read/write a byte to a 32-bit space */
-#define BYTE4_XOR_LE(a) 				(a)
-#define WORD_XOR_BE(a)  				((a) ^ 2)		/* read/write a word to a 32-bit space */
-#define WORD_XOR_LE(a)  				(a)
-#define BYTE8_XOR_BE(a) 				((a) ^ 7)		/* read/write a byte to a 64-bit space */
-#define BYTE8_XOR_LE(a) 				(a)
-#define WORD2_XOR_BE(a)  				((a) ^ 6)		/* read/write a word to a 64-bit space */
-#define WORD2_XOR_LE(a)  				(a)
-#define DWORD_XOR_BE(a)  				((a) ^ 4)		/* read/write a dword to a 64-bit space */
-#define DWORD_XOR_LE(a)  				(a)
+/* read/write a byte to a 16-bit space */
+#define BYTE_XOR_BE(a)  				((a) ^ NATIVE_ENDIAN_VALUE_LE_BE(1,0))
+#define BYTE_XOR_LE(a)  				((a) ^ NATIVE_ENDIAN_VALUE_LE_BE(0,1))
 
-#else
+/* read/write a byte to a 32-bit space */
+#define BYTE4_XOR_BE(a) 				((a) ^ NATIVE_ENDIAN_VALUE_LE_BE(3,0))
+#define BYTE4_XOR_LE(a) 				((a) ^ NATIVE_ENDIAN_VALUE_LE_BE(0,3))
 
-#define BYTE_XOR_BE(a)  				(a)
-#define BYTE_XOR_LE(a)  				((a) ^ 1)		/* read/write a byte to a 16-bit space */
-#define BYTE4_XOR_BE(a) 				(a)
-#define BYTE4_XOR_LE(a) 				((a) ^ 3)		/* read/write a byte to a 32-bit space */
-#define WORD_XOR_BE(a)  				(a)
-#define WORD_XOR_LE(a)  				((a) ^ 2)		/* read/write a word to a 32-bit space */
-#define BYTE8_XOR_BE(a) 				(a)
-#define BYTE8_XOR_LE(a) 				((a) ^ 7)		/* read/write a byte to a 64-bit space */
-#define WORD2_XOR_BE(a)  				(a)
-#define WORD2_XOR_LE(a)  				((a) ^ 6)		/* read/write a word to a 64-bit space */
-#define DWORD_XOR_BE(a)  				(a)
-#define DWORD_XOR_LE(a)  				((a) ^ 4)		/* read/write a dword to a 64-bit space */
+/* read/write a word to a 32-bit space */
+#define WORD_XOR_BE(a)  				((a) ^ NATIVE_ENDIAN_VALUE_LE_BE(2,0))
+#define WORD_XOR_LE(a)  				((a) ^ NATIVE_ENDIAN_VALUE_LE_BE(0,2))
 
-#endif
+/* read/write a byte to a 64-bit space */
+#define BYTE8_XOR_BE(a) 				((a) ^ NATIVE_ENDIAN_VALUE_LE_BE(7,0))
+#define BYTE8_XOR_LE(a) 				((a) ^ NATIVE_ENDIAN_VALUE_LE_BE(0,7))
+
+/* read/write a word to a 64-bit space */
+#define WORD2_XOR_BE(a)  				((a) ^ NATIVE_ENDIAN_VALUE_LE_BE(6,0))
+#define WORD2_XOR_LE(a)  				((a) ^ NATIVE_ENDIAN_VALUE_LE_BE(0,6))
+
+/* read/write a dword to a 64-bit space */
+#define DWORD_XOR_BE(a)  				((a) ^ NATIVE_ENDIAN_VALUE_LE_BE(4,0))
+#define DWORD_XOR_LE(a)  				((a) ^ NATIVE_ENDIAN_VALUE_LE_BE(0,4))
 
 
 
@@ -727,60 +717,52 @@ union _addrmap64_token
 	TOKEN_PTR(swrite32, _handler), \
 	TOKEN_STRING(#_handler),
 
-#define AM_DEVREAD(_type, _tag, _handler) \
+#define AM_DEVREAD(_tag, _handler) \
 	TOKEN_UINT32_PACK3(ADDRMAP_TOKEN_DEVICE_READ, 8, 0, 8, 0, 8), \
 	TOKEN_PTR(dread, _handler), \
 	TOKEN_STRING(#_handler), \
-	TOKEN_PTR(devtype, _type), \
 	TOKEN_STRING(_tag),
 
-#define AM_DEVREAD8(_type, _tag, _handler, _unitmask) \
+#define AM_DEVREAD8(_tag, _handler, _unitmask) \
 	TOKEN_UINT32_PACK3(ADDRMAP_TOKEN_DEVICE_READ, 8, 8, 8, UNITMASK8(_unitmask), 8), \
 	TOKEN_PTR(dread8, _handler), \
 	TOKEN_STRING(#_handler), \
-	TOKEN_PTR(devtype, _type), \
 	TOKEN_STRING(_tag),
 
-#define AM_DEVREAD16(_type, _tag, _handler, _unitmask) \
+#define AM_DEVREAD16(_tag, _handler, _unitmask) \
 	TOKEN_UINT32_PACK3(ADDRMAP_TOKEN_DEVICE_READ, 8, 16, 8, UNITMASK16(_unitmask), 8), \
 	TOKEN_PTR(dread16, _handler), \
 	TOKEN_STRING(#_handler), \
-	TOKEN_PTR(devtype, _type), \
 	TOKEN_STRING(_tag),
 
-#define AM_DEVREAD32(_type, _tag, _handler, _unitmask) \
+#define AM_DEVREAD32(_tag, _handler, _unitmask) \
 	TOKEN_UINT32_PACK3(ADDRMAP_TOKEN_DEVICE_READ, 8, 32, 8, UNITMASK32(_unitmask), 8), \
 	TOKEN_PTR(dread32, _handler), \
 	TOKEN_STRING(#_handler), \
-	TOKEN_PTR(devtype, _type), \
 	TOKEN_STRING(_tag),
 
-#define AM_DEVWRITE(_type, _tag, _handler) \
+#define AM_DEVWRITE(_tag, _handler) \
 	TOKEN_UINT32_PACK3(ADDRMAP_TOKEN_DEVICE_WRITE, 8, 0, 8, 0, 8), \
 	TOKEN_PTR(dwrite, _handler), \
 	TOKEN_STRING(#_handler), \
-	TOKEN_PTR(devtype, _type), \
 	TOKEN_STRING(_tag),
 
-#define AM_DEVWRITE8(_type, _tag, _handler, _unitmask) \
+#define AM_DEVWRITE8(_tag, _handler, _unitmask) \
 	TOKEN_UINT32_PACK3(ADDRMAP_TOKEN_DEVICE_WRITE, 8, 8, 8, UNITMASK8(_unitmask), 8), \
 	TOKEN_PTR(dwrite8, _handler), \
 	TOKEN_STRING(#_handler), \
-	TOKEN_PTR(devtype, _type), \
 	TOKEN_STRING(_tag),
 
-#define AM_DEVWRITE16(_type, _tag, _handler, _unitmask) \
+#define AM_DEVWRITE16(_tag, _handler, _unitmask) \
 	TOKEN_UINT32_PACK3(ADDRMAP_TOKEN_DEVICE_WRITE, 8, 16, 8, UNITMASK16(_unitmask), 8), \
 	TOKEN_PTR(dwrite16, _handler), \
 	TOKEN_STRING(#_handler), \
-	TOKEN_PTR(devtype, _type), \
 	TOKEN_STRING(_tag),
 
-#define AM_DEVWRITE32(_type, _tag, _handler, _unitmask) \
+#define AM_DEVWRITE32(_tag, _handler, _unitmask) \
 	TOKEN_UINT32_PACK3(ADDRMAP_TOKEN_DEVICE_WRITE, 8, 32, 8, UNITMASK32(_unitmask), 8), \
 	TOKEN_PTR(dwrite32, _handler), \
 	TOKEN_STRING(#_handler), \
-	TOKEN_PTR(devtype, _type), \
 	TOKEN_STRING(_tag),
 
 #define AM_READ_PORT(_tag) \
@@ -815,10 +797,10 @@ union _addrmap64_token
 #define AM_READWRITE16(_read,_write,_mask)	AM_READ16(_read,_mask) AM_WRITE16(_write,_mask)
 #define AM_READWRITE32(_read,_write,_mask)	AM_READ32(_read,_mask) AM_WRITE32(_write,_mask)
 
-#define AM_DEVREADWRITE(_type,_tag,_read,_write) AM_DEVREAD(_type,_tag,_read) AM_DEVWRITE(_type,_tag,_write)
-#define AM_DEVREADWRITE8(_type,_tag,_read,_write,_mask) AM_DEVREAD8(_type,_tag,_read,_mask) AM_DEVWRITE8(_type,_tag,_write,_mask)
-#define AM_DEVREADWRITE16(_type,_tag,_read,_write,_mask) AM_DEVREAD16(_type,_tag,_read,_mask) AM_DEVWRITE16(_type,_tag,_write,_mask)
-#define AM_DEVREADWRITE32(_type,_tag,_read,_write,_mask) AM_DEVREAD32(_type,_tag,_read,_mask) AM_DEVWRITE32(_type,_tag,_write,_mask)
+#define AM_DEVREADWRITE(_tag,_read,_write) AM_DEVREAD(_tag,_read) AM_DEVWRITE(_tag,_write)
+#define AM_DEVREADWRITE8(_tag,_read,_write,_mask) AM_DEVREAD8(_tag,_read,_mask) AM_DEVWRITE8(_tag,_write,_mask)
+#define AM_DEVREADWRITE16(_tag,_read,_write,_mask) AM_DEVREAD16(_tag,_read,_mask) AM_DEVWRITE16(_tag,_write,_mask)
+#define AM_DEVREADWRITE32(_tag,_read,_write,_mask) AM_DEVREAD32(_tag,_read,_mask) AM_DEVWRITE32(_tag,_write,_mask)
 
 #define AM_ROM								AM_READ(SMH_ROM)
 #define AM_ROMBANK(_bank)					AM_READ(SMH_BANK(_bank))
@@ -877,7 +859,7 @@ void memory_set_decrypted_region(const address_space *space, offs_t addrstart, o
 direct_update_func memory_set_direct_update_handler(const address_space *space, direct_update_func function) ATTR_NONNULL;
 
 /* called by CPU cores to update the opcode base for the given address */
-int memory_set_direct_region(const address_space *space, offs_t byteaddress) ATTR_NONNULL;
+int memory_set_direct_region(const address_space *space, offs_t *byteaddress) ATTR_NONNULL;
 
 /* return a pointer the memory byte provided in the given address space, or NULL if it is not mapped to a bank */
 void *memory_get_read_ptr(const address_space *space, offs_t byteaddress) ATTR_NONNULL;
@@ -937,6 +919,9 @@ UINT32 *_memory_install_device_handler32(const address_space *space, const devic
 
 /* same as above but explicitly for 64-bit handlers */
 UINT64 *_memory_install_device_handler64(const address_space *space, const device_config *device, offs_t addrstart, offs_t addrend, offs_t addrmask, offs_t addrmirror, read64_device_func rhandler, write64_device_func whandler, const char *rhandler_name, const char *whandler_name) ATTR_NONNULL;
+
+/* install a new input port handler into the given address space */
+void memory_install_read_port_handler(const address_space *space, offs_t addrstart, offs_t addrend, offs_t addrmask, offs_t addrmirror, const char *tag) ATTR_NONNULL;
 
 
 
@@ -1108,36 +1093,36 @@ INLINE void memory_write_qword_masked(const address_space *space, offs_t byteadd
 
 INLINE void *memory_decrypted_read_ptr(const address_space *space, offs_t byteaddress)
 {
-	if (!address_is_unsafe(space, byteaddress) || memory_set_direct_region(space, byteaddress))
-		return &space->direct.decrypted[byteaddress & space->direct.mask];
+	if (!memory_address_outside_direct_region(space, byteaddress) || memory_set_direct_region(space, &byteaddress))
+		return &space->direct.decrypted[byteaddress & space->direct.bytemask];
 	return NULL;
 }
 
 INLINE UINT8 memory_decrypted_read_byte(const address_space *space, offs_t byteaddress)
 {
-	if (!address_is_unsafe(space, byteaddress) || memory_set_direct_region(space, byteaddress))
-		return space->direct.decrypted[byteaddress & space->direct.mask];
+	if (!memory_address_outside_direct_region(space, byteaddress) || memory_set_direct_region(space, &byteaddress))
+		return space->direct.decrypted[byteaddress & space->direct.bytemask];
 	return memory_read_byte(space, byteaddress);
 }
 
 INLINE UINT16 memory_decrypted_read_word(const address_space *space, offs_t byteaddress)
 {
-	if (!address_is_unsafe(space, byteaddress) || memory_set_direct_region(space, byteaddress))
-		return *(UINT16 *)&space->direct.decrypted[byteaddress & space->direct.mask];
+	if (!memory_address_outside_direct_region(space, byteaddress) || memory_set_direct_region(space, &byteaddress))
+		return *(UINT16 *)&space->direct.decrypted[byteaddress & space->direct.bytemask];
 	return memory_read_word(space, byteaddress);
 }
 
 INLINE UINT32 memory_decrypted_read_dword(const address_space *space, offs_t byteaddress)
 {
-	if (!address_is_unsafe(space, byteaddress) || memory_set_direct_region(space, byteaddress))
-		return *(UINT32 *)&space->direct.decrypted[byteaddress & space->direct.mask];
+	if (!memory_address_outside_direct_region(space, byteaddress) || memory_set_direct_region(space, &byteaddress))
+		return *(UINT32 *)&space->direct.decrypted[byteaddress & space->direct.bytemask];
 	return memory_read_dword(space, byteaddress);
 }
 
 INLINE UINT64 memory_decrypted_read_qword(const address_space *space, offs_t byteaddress)
 {
-	if (!address_is_unsafe(space, byteaddress) || memory_set_direct_region(space, byteaddress))
-		return *(UINT64 *)&space->direct.decrypted[byteaddress & space->direct.mask];
+	if (!memory_address_outside_direct_region(space, byteaddress) || memory_set_direct_region(space, &byteaddress))
+		return *(UINT64 *)&space->direct.decrypted[byteaddress & space->direct.bytemask];
 	return memory_read_qword(space, byteaddress);
 }
 
@@ -1151,36 +1136,36 @@ INLINE UINT64 memory_decrypted_read_qword(const address_space *space, offs_t byt
 
 INLINE void *memory_raw_read_ptr(const address_space *space, offs_t byteaddress)
 {
-	if (!address_is_unsafe(space, byteaddress) || memory_set_direct_region(space, byteaddress))
-		return &space->direct.raw[byteaddress & space->direct.mask];
+	if (!memory_address_outside_direct_region(space, byteaddress) || memory_set_direct_region(space, &byteaddress))
+		return &space->direct.raw[byteaddress & space->direct.bytemask];
 	return NULL;
 }
 
 INLINE UINT8 memory_raw_read_byte(const address_space *space, offs_t byteaddress)
 {
-	if (!address_is_unsafe(space, byteaddress) || memory_set_direct_region(space, byteaddress))
-		return space->direct.raw[byteaddress & space->direct.mask];
+	if (!memory_address_outside_direct_region(space, byteaddress) || memory_set_direct_region(space, &byteaddress))
+		return space->direct.raw[byteaddress & space->direct.bytemask];
 	return memory_read_byte(space, byteaddress);
 }
 
 INLINE UINT16 memory_raw_read_word(const address_space *space, offs_t byteaddress)
 {
-	if (!address_is_unsafe(space, byteaddress) || memory_set_direct_region(space, byteaddress))
-		return *(UINT16 *)&space->direct.raw[byteaddress & space->direct.mask];
+	if (!memory_address_outside_direct_region(space, byteaddress) || memory_set_direct_region(space, &byteaddress))
+		return *(UINT16 *)&space->direct.raw[byteaddress & space->direct.bytemask];
 	return memory_read_word(space, byteaddress);
 }
 
 INLINE UINT32 memory_raw_read_dword(const address_space *space, offs_t byteaddress)
 {
-	if (!address_is_unsafe(space, byteaddress) || memory_set_direct_region(space, byteaddress))
-		return *(UINT32 *)&space->direct.raw[byteaddress & space->direct.mask];
+	if (!memory_address_outside_direct_region(space, byteaddress) || memory_set_direct_region(space, &byteaddress))
+		return *(UINT32 *)&space->direct.raw[byteaddress & space->direct.bytemask];
 	return memory_read_dword(space, byteaddress);
 }
 
 INLINE UINT64 memory_raw_read_qword(const address_space *space, offs_t byteaddress)
 {
-	if (!address_is_unsafe(space, byteaddress) || memory_set_direct_region(space, byteaddress))
-		return *(UINT64 *)&space->direct.raw[byteaddress & space->direct.mask];
+	if (!memory_address_outside_direct_region(space, byteaddress) || memory_set_direct_region(space, &byteaddress))
+		return *(UINT64 *)&space->direct.raw[byteaddress & space->direct.bytemask];
 	return memory_read_qword(space, byteaddress);
 }
 

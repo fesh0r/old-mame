@@ -107,9 +107,9 @@ static INTERRUPT_GEN( asterix_interrupt )
                                               mask used is 0 or 7 */
 }
 
-static READ16_HANDLER( asterix_sound_r )
+static READ8_DEVICE_HANDLER( asterix_sound_r )
 {
-	return k053260_0_r(space,2 + offset);
+	return k053260_r(device,2 + offset);
 }
 
 static TIMER_CALLBACK( nmi_callback )
@@ -186,7 +186,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x380000, 0x380001) AM_READ_PORT("IN0")
 	AM_RANGE(0x380002, 0x380003) AM_READ(control1_r)
 	AM_RANGE(0x380100, 0x380101) AM_WRITE(control2_w)
-	AM_RANGE(0x380200, 0x380203) AM_READWRITE(asterix_sound_r, k053260_0_lsb_w)
+	AM_RANGE(0x380200, 0x380203) AM_DEVREADWRITE8("konami", asterix_sound_r, k053260_w, 0x00ff)
 	AM_RANGE(0x380300, 0x380301) AM_WRITE(sound_irq_w)
 	AM_RANGE(0x380400, 0x380401) AM_WRITE(asterix_spritebank_w)
 	AM_RANGE(0x380500, 0x38051f) AM_WRITE(K053251_lsb_w)
@@ -201,10 +201,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xefff) AM_ROM
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM
-	AM_RANGE(0xf801, 0xf801) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
-	AM_RANGE(0xfa00, 0xfa2f) AM_READWRITE(k053260_0_r, k053260_0_w)
+	AM_RANGE(0xf801, 0xf801) AM_DEVREADWRITE("ym", ym2151_status_port_r, ym2151_data_port_w)
+	AM_RANGE(0xfa00, 0xfa2f) AM_DEVREADWRITE("konami", k053260_r, k053260_w)
 	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(sound_arm_nmi_w)
-	AM_RANGE(0xfe00, 0xfe00) AM_WRITE(ym2151_register_port_0_w)
+	AM_RANGE(0xfe00, 0xfe00) AM_DEVWRITE("ym", ym2151_register_port_w)
 ADDRESS_MAP_END
 
 
@@ -242,11 +242,11 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( asterix )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 12000000)
+	MDRV_CPU_ADD("maincpu", M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", asterix_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", asterix_interrupt)
 
-	MDRV_CPU_ADD("audio", Z80, 8000000)
+	MDRV_CPU_ADD("audiocpu", Z80, 8000000)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	MDRV_NVRAM_HANDLER(asterix)
@@ -254,7 +254,7 @@ static MACHINE_DRIVER_START( asterix )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -266,26 +266,26 @@ static MACHINE_DRIVER_START( asterix )
 	MDRV_VIDEO_UPDATE(asterix)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2151, 4000000)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("konami", K053260, 4000000)
-	MDRV_SOUND_ROUTE(0, "left", 0.75)
-	MDRV_SOUND_ROUTE(1, "right", 0.75)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.75)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.75)
 MACHINE_DRIVER_END
 
 
 ROM_START( asterix )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "aster8c.bin", 0x000000,  0x20000, CRC(61d6621d) SHA1(908a344e9bbce0c7544bd049494258d1d3ad073b) )
 	ROM_LOAD16_BYTE( "aster8d.bin", 0x000001,  0x20000, CRC(53aac057) SHA1(7401ca5b70f384688c3353fc1ac9ef0b27814c66) )
 	ROM_LOAD16_BYTE( "aster7c.bin", 0x080000,  0x20000, CRC(8223ebdc) SHA1(e4aa39e4bc1d210bdda5b0cb41d6c8006c48dd24) )
 	ROM_LOAD16_BYTE( "aster7d.bin", 0x080001,  0x20000, CRC(9f351828) SHA1(e03842418f08e6267eeea03362450da249af73be) )
 
-	ROM_REGION( 0x010000, "audio", 0 )
+	ROM_REGION( 0x010000, "audiocpu", 0 )
 	ROM_LOAD( "aster5f.bin", 0x000000, 0x010000,  CRC(d3d0d77b) SHA1(bfa77a8bf651dc27f481e96a2d63242084cc214c) )
 
 	ROM_REGION( 0x100000, "gfx1", 0 )
@@ -301,13 +301,13 @@ ROM_START( asterix )
 ROM_END
 
 ROM_START( astrxeac )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "asterix.8c",  0x000000,  0x20000, CRC(0ccd1feb) SHA1(016d642e3a745f0564aa93f0f66d5c0f37962990) )
 	ROM_LOAD16_BYTE( "asterix.8d",  0x000001,  0x20000, CRC(b0805f47) SHA1(b58306164e8fec69002656993ae80abbc8f136cd) )
 	ROM_LOAD16_BYTE( "aster7c.bin", 0x080000,  0x20000, CRC(8223ebdc) SHA1(e4aa39e4bc1d210bdda5b0cb41d6c8006c48dd24) )
 	ROM_LOAD16_BYTE( "aster7d.bin", 0x080001,  0x20000, CRC(9f351828) SHA1(e03842418f08e6267eeea03362450da249af73be) )
 
-	ROM_REGION( 0x010000, "audio", 0 )
+	ROM_REGION( 0x010000, "audiocpu", 0 )
 	ROM_LOAD( "aster5f.bin", 0x000000, 0x010000,  CRC(d3d0d77b) SHA1(bfa77a8bf651dc27f481e96a2d63242084cc214c) )
 
 	ROM_REGION( 0x100000, "gfx1", 0 )
@@ -323,13 +323,13 @@ ROM_START( astrxeac )
 ROM_END
 
 ROM_START( astrxeaa )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "068eaa01.8c", 0x000000,  0x20000, CRC(85b41d8e) SHA1(e1326f6d61b8097f5201d5bd37e4d2a357d17b47) )
 	ROM_LOAD16_BYTE( "068eaa02.8d", 0x000001,  0x20000, CRC(8e886305) SHA1(41a9de2cdad8c1185b4d13ea5b4a9309716947c5) )
 	ROM_LOAD16_BYTE( "aster7c.bin", 0x080000,  0x20000, CRC(8223ebdc) SHA1(e4aa39e4bc1d210bdda5b0cb41d6c8006c48dd24) )
 	ROM_LOAD16_BYTE( "aster7d.bin", 0x080001,  0x20000, CRC(9f351828) SHA1(e03842418f08e6267eeea03362450da249af73be) )
 
-	ROM_REGION( 0x010000, "audio", 0 )
+	ROM_REGION( 0x010000, "audiocpu", 0 )
 	ROM_LOAD( "aster5f.bin", 0x000000, 0x010000,  CRC(d3d0d77b) SHA1(bfa77a8bf651dc27f481e96a2d63242084cc214c) )
 
 	ROM_REGION( 0x100000, "gfx1", 0 )
@@ -351,8 +351,8 @@ static DRIVER_INIT( asterix )
 	konami_rom_deinterleave_2(machine, "gfx2");
 
 #if 0
-	*(UINT16 *)(memory_region(machine, "main") + 0x07f34) = 0x602a;
-	*(UINT16 *)(memory_region(machine, "main") + 0x00008) = 0x0400;
+	*(UINT16 *)(memory_region(machine, "maincpu") + 0x07f34) = 0x602a;
+	*(UINT16 *)(memory_region(machine, "maincpu") + 0x00008) = 0x0400;
 #endif
 }
 

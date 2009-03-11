@@ -440,7 +440,7 @@ static ADDRESS_MAP_START( crystal_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x03000000, 0x0300ffff) AM_RAM AM_BASE(&vidregs)
 	AM_RANGE(0x03800000, 0x03ffffff) AM_RAM AM_BASE(&textureram)
 	AM_RANGE(0x04000000, 0x047fffff) AM_RAM AM_BASE(&frameram)
-	AM_RANGE(0x04800000, 0x04800fff) AM_READ(vr0_snd_read) AM_WRITE(vr0_snd_write)
+	AM_RANGE(0x04800000, 0x04800fff) AM_DEVREADWRITE("vrender", vr0_snd_read, vr0_snd_write)
 
 	AM_RANGE(0x05000000, 0x05000003) AM_READ(FlashCmd_r) AM_WRITE(FlashCmd_w)
 	AM_RANGE(0x05000000, 0x05ffffff) AM_READ(SMH_BANK1)
@@ -531,7 +531,7 @@ static MACHINE_RESET(crystal)
 		timer_adjust_oneshot(Timer[i],attotime_never,0);
 	}
 
-	vr0_snd_set_areas(textureram,frameram);
+	vr0_snd_set_areas(devtag_get_device(machine, "vrender"), textureram,frameram);
 #ifdef IDLE_LOOP_SPEEDUP
 	FlipCntRead=0;
 #endif
@@ -734,16 +734,16 @@ static const vr0_interface vr0_config =
 
 
 static MACHINE_DRIVER_START( crystal )
-	MDRV_CPU_ADD("main", SE3208, 43000000)
+	MDRV_CPU_ADD("maincpu", SE3208, 43000000)
 	MDRV_CPU_PROGRAM_MAP(crystal_mem,0)
- 	MDRV_CPU_VBLANK_INT("main", crystal_interrupt)
+ 	MDRV_CPU_VBLANK_INT("screen", crystal_interrupt)
 
 	MDRV_MACHINE_START(crystal)
 	MDRV_MACHINE_RESET(crystal)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -757,12 +757,12 @@ static MACHINE_DRIVER_START( crystal )
 	MDRV_PALETTE_INIT(RRRRR_GGGGGG_BBBBB)
 	MDRV_PALETTE_LENGTH(65536)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("vrender", VRENDER0, 0)
 	MDRV_SOUND_CONFIG(vr0_config)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 /*
@@ -771,14 +771,14 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( topbladv )
 	MDRV_IMPORT_FROM(crystal)
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_SIZE(320+32, 240)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319+32, 0, 239)
 
 MACHINE_DRIVER_END
 
 ROM_START( crysbios )
-	ROM_REGION( 0x20000, "main", 0 ) // bios
+	ROM_REGION( 0x20000, "maincpu", 0 ) // bios
 	ROM_LOAD("mx27l1000.u14",  0x000000, 0x020000, CRC(BEFF39A9) SHA1(b6f6dda58d9c82273f9422c1bd623411e58982cb) )
 
 	ROM_REGION32_LE( 0x3000000, "user1", ROMREGION_ERASEFF ) // Flash
@@ -787,7 +787,7 @@ ROM_START( crysbios )
 ROM_END
 
 ROM_START( crysking )
-	ROM_REGION( 0x20000, "main", 0 ) // bios
+	ROM_REGION( 0x20000, "maincpu", 0 ) // bios
 	ROM_LOAD("mx27l1000.u14",  0x000000, 0x020000, CRC(BEFF39A9) SHA1(b6f6dda58d9c82273f9422c1bd623411e58982cb))
 
 	ROM_REGION32_LE( 0x3000000, "user1", 0 ) // Flash
@@ -799,7 +799,7 @@ ROM_START( crysking )
 ROM_END
 
 ROM_START( evosocc )
-	ROM_REGION( 0x20000, "main", 0 ) // bios
+	ROM_REGION( 0x20000, "maincpu", 0 ) // bios
 	ROM_LOAD("mx27l1000.u14",  0x000000, 0x020000, CRC(BEFF39A9) SHA1(b6f6dda58d9c82273f9422c1bd623411e58982cb))
 
 	ROM_REGION32_LE( 0x3000000, "user1", 0 ) // Flash
@@ -811,7 +811,7 @@ ROM_START( evosocc )
 ROM_END
 
 ROM_START( topbladv )
-	ROM_REGION( 0x20000, "main", 0 ) // bios
+	ROM_REGION( 0x20000, "maincpu", 0 ) // bios
 	ROM_LOAD("mx27l1000.u14",  0x000000, 0x020000, CRC(BEFF39A9) SHA1(b6f6dda58d9c82273f9422c1bd623411e58982cb))
 
 	ROM_REGION32_LE( 0x1000000, "user1", 0 ) // Flash
@@ -822,7 +822,7 @@ ROM_END
 
 
 ROM_START( officeye )
-	ROM_REGION( 0x20000, "main", 0 ) // bios (not the standard one)
+	ROM_REGION( 0x20000, "maincpu", 0 ) // bios (not the standard one)
 	ROM_LOAD("bios.u14",  0x000000, 0x020000, CRC(ffc57e90) SHA1(6b6a17fd4798dea9c7b880f3063be8494e7db302) )
 
 	ROM_REGION32_LE( 0x2000000, "user1", 0 ) // Flash

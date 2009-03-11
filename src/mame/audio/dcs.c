@@ -288,11 +288,14 @@ struct _dcs_state
 	const address_space *program;
 	const address_space *data;
 	UINT8		rev;
+	offs_t		polling_offset;
+	UINT32		polling_count;
 
 	/* sound output */
 	UINT8		channels;
 	UINT16		size;
 	UINT16		incs;
+	const device_config *dmadac[6];
 	emu_timer *	reg_timer;
 	emu_timer *	sport_timer;
 	emu_timer *	internal_timer;
@@ -414,6 +417,7 @@ static void recompute_sample_rate(running_machine *machine);
 static void sound_tx_callback(const device_config *device, int port, INT32 data);
 
 static READ16_HANDLER( dcs_polling_r );
+static WRITE16_HANDLER( dcs_polling_w );
 
 static TIMER_CALLBACK( transfer_watchdog_callback );
 static int preprocess_write(running_machine *machine, UINT16 data);
@@ -649,13 +653,13 @@ MACHINE_DRIVER_START( dcs2_audio_2115 )
 	MDRV_CPU_PROGRAM_MAP(dcs2_2115_program_map,0)
 	MDRV_CPU_DATA_MAP(dcs2_2115_data_map,0)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("dac1", DMADAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("dac2", DMADAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -681,13 +685,13 @@ MACHINE_DRIVER_START( dcs2_audio_dsio )
 	MDRV_CPU_DATA_MAP(dsio_data_map,0)
 	MDRV_CPU_IO_MAP(dsio_io_map,0)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("dac1", DMADAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("dac2", DMADAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -705,25 +709,25 @@ MACHINE_DRIVER_START( dcs2_audio_denver )
 	MDRV_CPU_DATA_MAP(denver_data_map,0)
 	MDRV_CPU_IO_MAP(denver_io_map,0)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("dac1", DMADAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("dac2", DMADAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 
 	MDRV_SOUND_ADD("dac3", DMADAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("dac4", DMADAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 
 	MDRV_SOUND_ADD("dac5", DMADAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("dac6", DMADAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -933,6 +937,7 @@ void dcs_init(running_machine *machine)
 	dcs.data = cpu_get_address_space(dcs.cpu, ADDRESS_SPACE_DATA);
 	dcs.rev = 1;
 	dcs.channels = 1;
+	dcs.dmadac[0] = devtag_get_device(machine, "dac");
 
 	/* configure boot and sound ROMs */
 	dcs.bootrom = (UINT16 *)memory_region(machine, "dcs");
@@ -982,6 +987,8 @@ void dcs2_init(running_machine *machine, int dram_in_mb, offs_t polling_offset)
 	dcs.program = cpu_get_address_space(dcs.cpu, ADDRESS_SPACE_PROGRAM);
 	dcs.data = cpu_get_address_space(dcs.cpu, ADDRESS_SPACE_DATA);
 	dcs.channels = 2;
+	dcs.dmadac[0] = devtag_get_device(machine, "dac1");
+	dcs.dmadac[1] = devtag_get_device(machine, "dac2");
 
 	/* always boot from the base of "dcs" */
 	dcs.bootrom = (UINT16 *)memory_region(machine, "dcs");
@@ -1014,8 +1021,9 @@ void dcs2_init(running_machine *machine, int dram_in_mb, offs_t polling_offset)
 	dcs.auto_ack = FALSE;
 
 	/* install the speedup handler */
+	dcs.polling_offset = polling_offset;
 	if (polling_offset)
-		dcs_polling_base = memory_install_read16_handler(cpu_get_address_space(dcs.cpu, ADDRESS_SPACE_DATA), polling_offset, polling_offset, 0, 0, dcs_polling_r);
+		dcs_polling_base = memory_install_readwrite16_handler(cpu_get_address_space(dcs.cpu, ADDRESS_SPACE_DATA), polling_offset, polling_offset, 0, 0, dcs_polling_r, dcs_polling_w);
 
 	/* allocate a watchdog timer for HLE transfers */
 	transfer.hle_enabled = (ENABLE_HLE_TRANSFERS && dram_in_mb != 0);
@@ -1157,6 +1165,10 @@ static void sdrc_remap_memory(running_machine *machine)
 
 	/* update the bank pointers */
 	sdrc_update_bank_pointers(machine);
+
+	/* reinstall the polling hotspot */
+	if (dcs.polling_offset)
+		dcs_polling_base = memory_install_readwrite16_handler(cpu_get_address_space(dcs.cpu, ADDRESS_SPACE_DATA), dcs.polling_offset, dcs.polling_offset, 0, 0, dcs_polling_r, dcs_polling_w);
 }
 
 
@@ -1246,7 +1258,7 @@ static WRITE16_HANDLER( sdrc_w )
 		/* offset 1 controls RAM mapping */
 		case 1:
 			sdrc.reg[1] = data;
-//          dmadac_enable(0, dcs.channels, SDRC_MUTE);
+//          dmadac_enable(&dcs.dmadac[0], dcs.channels, SDRC_MUTE);
 			if (diff & 0x0003)
 				sdrc_remap_memory(space->machine);
 			break;
@@ -1331,7 +1343,7 @@ static WRITE16_HANDLER( dsio_w )
 			dsio.reg[1] = data;
 
 			/* determine /MUTE and number of channels */
-			dmadac_enable(0, dcs.channels, DSIO_MUTE);
+			dmadac_enable(&dcs.dmadac[0], dcs.channels, DSIO_MUTE);
 
 			/* bit 0 resets the FIFO */
 			midway_ioasic_fifo_reset_w(space->machine, DSIO_EMPTY_FIFO ^ 1);
@@ -1374,7 +1386,7 @@ static READ16_HANDLER( denver_r )
 
 static WRITE16_HANDLER( denver_w )
 {
-	int enable, channels;
+	int enable, channels, chan;
 
 	switch (offset)
 	{
@@ -1390,9 +1402,15 @@ static WRITE16_HANDLER( denver_w )
 			if (channels != dcs.channels)
 			{
 				dcs.channels = channels;
-				dmadac_enable(0, dcs.channels, enable);
+				for (chan = 0; chan < dcs.channels; chan++)
+				{
+					char buffer[10];
+					sprintf(buffer, "dac%d", chan + 1);
+					dcs.dmadac[chan] = devtag_get_device(space->machine, buffer);
+				}
+				dmadac_enable(&dcs.dmadac[0], dcs.channels, enable);
 				if (dcs.channels < 6)
-					dmadac_enable(dcs.channels, 6 - dcs.channels, FALSE);
+					dmadac_enable(&dcs.dmadac[dcs.channels], 6 - dcs.channels, FALSE);
 				recompute_sample_rate(space->machine);
 			}
 			break;
@@ -1862,7 +1880,7 @@ static WRITE16_HANDLER( adsp_control_w )
 			/* see if SPORT1 got disabled */
 			if ((data & 0x0800) == 0)
 			{
-				dmadac_enable(0, dcs.channels, 0);
+				dmadac_enable(&dcs.dmadac[0], dcs.channels, 0);
 				timer_adjust_oneshot(dcs.reg_timer, attotime_never, 0);
 			}
 			break;
@@ -1871,7 +1889,7 @@ static WRITE16_HANDLER( adsp_control_w )
 			/* autobuffer off: nuke the timer, and disable the DAC */
 			if ((data & 0x0002) == 0)
 			{
-				dmadac_enable(0, dcs.channels, 0);
+				dmadac_enable(&dcs.dmadac[0], dcs.channels, 0);
 				timer_adjust_oneshot(dcs.reg_timer, attotime_never, 0);
 			}
 			break;
@@ -1936,7 +1954,7 @@ static TIMER_CALLBACK( dcs_irq )
 		}
 
 		if (dcs.channels)
-			dmadac_transfer(0, dcs.channels, 1, dcs.channels, (dcs.size / 2) / dcs.channels, buffer);
+			dmadac_transfer(&dcs.dmadac[0], dcs.channels, 1, dcs.channels, (dcs.size / 2) / dcs.channels, buffer);
 	}
 
 	/* check for wrapping */
@@ -1977,8 +1995,8 @@ static void recompute_sample_rate(running_machine *machine)
 
 	/* now put it down to samples, so we know what the channel frequency has to be */
 	sample_period = attotime_mul(sample_period, 16 * dcs.channels);
-	dmadac_set_frequency(0, dcs.channels, ATTOSECONDS_TO_HZ(sample_period.attoseconds));
-	dmadac_enable(0, dcs.channels, 1);
+	dmadac_set_frequency(&dcs.dmadac[0], dcs.channels, ATTOSECONDS_TO_HZ(sample_period.attoseconds));
+	dmadac_enable(&dcs.dmadac[0], dcs.channels, 1);
 
 	/* fire off a timer wich will hit every half-buffer */
 	if (dcs.incs)
@@ -2034,7 +2052,7 @@ static void sound_tx_callback(const device_config *device, int port, INT32 data)
 	}
 
 	/* if we get there, something went wrong. Disable playing */
-	dmadac_enable(0, dcs.channels, 0);
+	dmadac_enable(&dcs.dmadac[0], dcs.channels, 0);
 
 	/* remove timer */
 	timer_adjust_oneshot(dcs.reg_timer, attotime_never, 0);
@@ -2048,8 +2066,16 @@ static void sound_tx_callback(const device_config *device, int port, INT32 data)
 
 static READ16_HANDLER( dcs_polling_r )
 {
-	cpu_eat_cycles(space->cpu, 1000);
+	if (dcs.polling_count++ > 5)
+		cpu_eat_cycles(space->cpu, 10000);
 	return *dcs_polling_base;
+}
+
+
+static WRITE16_HANDLER( dcs_polling_w )
+{
+	dcs.polling_count = 0;
+	COMBINE_DATA(dcs_polling_base);
 }
 
 

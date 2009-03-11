@@ -81,7 +81,7 @@ static MACHINE_RESET( relief )
 	atarigen_interrupt_reset(update_interrupts);
 	atarivc_reset(machine->primary_screen, atarivc_eof_data, 2);
 
-	okim6295_set_bank_base(0, 0);
+	okim6295_set_bank_base(devtag_get_device(machine, "oki"), 0);
 	ym2413_volume = 15;
 	overall_volume = 127;
 	adpcm_bank_base = 0;
@@ -122,7 +122,7 @@ static WRITE16_HANDLER( audio_control_w )
 	if (ACCESSING_BITS_8_15)
 		adpcm_bank_base = (0x100000 * ((data >> 8) & 1)) | (adpcm_bank_base & 0x0c0000);
 
-	okim6295_set_bank_base(0, adpcm_bank_base);
+	okim6295_set_bank_base(devtag_get_device(space->machine, "oki"), adpcm_bank_base);
 }
 
 
@@ -140,45 +140,6 @@ static WRITE16_HANDLER( audio_volume_w )
 
 /*************************************
  *
- *  MSM5295 I/O
- *
- *************************************/
-
-static READ16_HANDLER( adpcm_r )
-{
-	return okim6295_status_0_r(space, offset) | 0xff00;
-}
-
-
-static WRITE16_HANDLER( adpcm_w )
-{
-	if (ACCESSING_BITS_0_7)
-		okim6295_data_0_w(space, offset, data & 0xff);
-}
-
-
-
-/*************************************
- *
- *  YM2413 I/O
- *
- *************************************/
-
-static WRITE16_HANDLER( ym2413_w )
-{
-	if (ACCESSING_BITS_0_7)
-	{
-		if (offset & 1)
-			ym2413_data_port_0_w(space, 0, data & 0xff);
-		else
-			ym2413_register_port_0_w(space, 0, data & 0xff);
-	}
-}
-
-
-
-/*************************************
- *
  *  Main CPU memory handlers
  *
  *************************************/
@@ -187,8 +148,8 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0x3fffff)
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
-	AM_RANGE(0x140000, 0x140003) AM_WRITE(ym2413_w)
-	AM_RANGE(0x140010, 0x140011) AM_READWRITE(adpcm_r, adpcm_w)
+	AM_RANGE(0x140000, 0x140003) AM_DEVWRITE8("ym", ym2413_w, 0x00ff)
+	AM_RANGE(0x140010, 0x140011) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff)
 	AM_RANGE(0x140020, 0x140021) AM_WRITE(audio_volume_w)
 	AM_RANGE(0x140030, 0x140031) AM_WRITE(audio_control_w)
 	AM_RANGE(0x180000, 0x180fff) AM_READWRITE(atarigen_eeprom_upper_r, atarigen_eeprom_w) AM_BASE(&atarigen_eeprom) AM_SIZE(&atarigen_eeprom_size)
@@ -294,34 +255,33 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static const gfx_layout pfmolayout =
+static const gfx_layout pflayout =
 {
 	8,8,
-	RGN_FRAC(1,4),
+	RGN_FRAC(1,5),
 	4,
-	{ RGN_FRAC(3,4), RGN_FRAC(2,4), RGN_FRAC(1,4), RGN_FRAC(0,4) },
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0*8, 2*8, 4*8, 6*8, 8*8, 10*8, 12*8, 14*8 },
+	{ RGN_FRAC(3,5), RGN_FRAC(2,5), RGN_FRAC(1,5), RGN_FRAC(0,5) },
+	{ STEP8(0,1) },
+	{ STEP8(0,16) },
 	16*8
 };
 
 
-static const gfx_layout moexlayout =
+static const gfx_layout molayout =
 {
 	8,8,
-	RGN_FRAC(1,1),
+	RGN_FRAC(1,5),
 	5,
-	{ 0, 0, 0, 0, 0 },
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*8
+	{ RGN_FRAC(4,5), RGN_FRAC(3,5), RGN_FRAC(2,5), RGN_FRAC(1,5), RGN_FRAC(0,5) },
+	{ STEP8(0,1) },
+	{ STEP8(0,16) },
+	16*8
 };
 
 
 static GFXDECODE_START( relief )
-	GFXDECODE_ENTRY( "gfx1", 0, pfmolayout,   0, 64 )		/* alpha & playfield */
-	GFXDECODE_ENTRY( "gfx1", 1, pfmolayout, 256, 16 )		/* sprites */
-	GFXDECODE_ENTRY( "gfx2", 0, moexlayout, 256, 16 )		/* extra sprite bit */
+	GFXDECODE_ENTRY( "gfx1", 0, pflayout,   0, 64 )		/* alpha & playfield */
+	GFXDECODE_ENTRY( "gfx1", 1, molayout, 256, 16 )		/* sprites */
 GFXDECODE_END
 
 
@@ -335,7 +295,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( relief )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, ATARI_CLOCK_14MHz/2)
+	MDRV_CPU_ADD("maincpu", M68000, ATARI_CLOCK_14MHz/2)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
 	MDRV_MACHINE_RESET(relief)
@@ -346,7 +306,7 @@ static MACHINE_DRIVER_START( relief )
 	MDRV_GFXDECODE(relief)
 	MDRV_PALETTE_LENGTH(2048)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses a VAD chip to generate video signals */
@@ -375,20 +335,18 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( relief )
-	ROM_REGION( 0x80000, "main", 0 )	/* 8*64k for 68000 code */
+	ROM_REGION( 0x80000, "maincpu", 0 )	/* 8*64k for 68000 code */
 	ROM_LOAD16_BYTE( "136093-0011d.19e", 0x00000, 0x20000, CRC(cb3f73ad) SHA1(533a96095e678b4a414d6d9b861b1d4010ced30f) )
 	ROM_LOAD16_BYTE( "136093-0012d.19j", 0x00001, 0x20000, CRC(90655721) SHA1(f50a2f317215a864d09e33a4acd927b873350425) )
 	ROM_LOAD16_BYTE( "136093-0013.17e", 0x40000, 0x20000, CRC(1e1e82e5) SHA1(d33c84ae950db9775f9db9bf953aa63188d3f2f9) )
 	ROM_LOAD16_BYTE( "136093-0014.17j", 0x40001, 0x20000, CRC(19e5decd) SHA1(8d93d93f966df46d59cf9f4cdaa689e4dcd2689a) )
 
-	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
-	ROM_LOAD( "136093-0025a.14s", 0x000000, 0x80000, CRC(1b9e5ef2) SHA1(d7d14e75ca2d56c5c67154506096570c9ccbcf8e) )
-	ROM_LOAD( "136093-0026a.8d",  0x080000, 0x80000, CRC(09b25d93) SHA1(94d424b21410182b5121201066f4acfa415f4b6b) )
-	ROM_LOAD( "136093-0027a.18s", 0x100000, 0x80000, CRC(5bc1c37b) SHA1(89f1bca55dd431ca3171b89347209decf0b25e12) )
-	ROM_LOAD( "136093-0028a.10d", 0x180000, 0x80000, CRC(55fb9111) SHA1(a95508f0831842fa79ca2fc168cfadc8c6d3fbd4) )
-
-	ROM_REGION( 0x040000, "gfx2", ROMREGION_DISPOSE | ROMREGION_INVERT )
-	ROM_LOAD( "136093-0029a.4d",  0x000000, 0x40000, CRC(e4593ff4) SHA1(7360ec7a65aabc90aa787dc30f39992e342495dd) )
+	ROM_REGION( 0x280000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
+	ROM_LOAD( "136093-0025a.14s",       0x000000, 0x80000, CRC(1b9e5ef2) SHA1(d7d14e75ca2d56c5c67154506096570c9ccbcf8e) )
+	ROM_LOAD( "136093-0026a.8d",        0x080000, 0x80000, CRC(09b25d93) SHA1(94d424b21410182b5121201066f4acfa415f4b6b) )
+	ROM_LOAD( "136093-0027a.18s",       0x100000, 0x80000, CRC(5bc1c37b) SHA1(89f1bca55dd431ca3171b89347209decf0b25e12) )
+	ROM_LOAD( "136093-0028a.10d",       0x180000, 0x80000, CRC(55fb9111) SHA1(a95508f0831842fa79ca2fc168cfadc8c6d3fbd4) )
+	ROM_LOAD16_BYTE( "136093-0029a.4d", 0x200001, 0x40000, CRC(e4593ff4) SHA1(7360ec7a65aabc90aa787dc30f39992e342495dd) )
 
 	ROM_REGION( 0x200000, "oki", 0 )	/* 2MB for ADPCM data */
 	ROM_LOAD( "136093-0030a.9b",  0x100000, 0x80000, CRC(f4c567f5) SHA1(7e8c1d54d918b0b41625eacbaf6dcb5bd99d1949) )
@@ -406,20 +364,18 @@ ROM_START( relief )
 ROM_END
 
 ROM_START( relief2 )
-	ROM_REGION( 0x80000, "main", 0 )	/* 8*64k for 68000 code */
+	ROM_REGION( 0x80000, "maincpu", 0 )	/* 8*64k for 68000 code */
 	ROM_LOAD16_BYTE( "136093-0011b.19e", 0x00000, 0x20000, CRC(794cea33) SHA1(6e9830ce04a505746dea5aafaf37c629c28b061d) )
 	ROM_LOAD16_BYTE( "136093-0012b.19j", 0x00001, 0x20000, CRC(577495f8) SHA1(f45b0928b13db7f49b7688620008fc03fca08cde) )
 	ROM_LOAD16_BYTE( "136093-0013.17e", 0x40000, 0x20000, CRC(1e1e82e5) SHA1(d33c84ae950db9775f9db9bf953aa63188d3f2f9) )
 	ROM_LOAD16_BYTE( "136093-0014.17j", 0x40001, 0x20000, CRC(19e5decd) SHA1(8d93d93f966df46d59cf9f4cdaa689e4dcd2689a) )
 
-	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
-	ROM_LOAD( "136093-0025a.14s", 0x000000, 0x80000, CRC(1b9e5ef2) SHA1(d7d14e75ca2d56c5c67154506096570c9ccbcf8e) )
-	ROM_LOAD( "136093-0026a.8d",  0x080000, 0x80000, CRC(09b25d93) SHA1(94d424b21410182b5121201066f4acfa415f4b6b) )
-	ROM_LOAD( "136093-0027a.18s", 0x100000, 0x80000, CRC(5bc1c37b) SHA1(89f1bca55dd431ca3171b89347209decf0b25e12) )
-	ROM_LOAD( "136093-0028a.10d", 0x180000, 0x80000, CRC(55fb9111) SHA1(a95508f0831842fa79ca2fc168cfadc8c6d3fbd4) )
-
-	ROM_REGION( 0x040000, "gfx2", ROMREGION_DISPOSE | ROMREGION_INVERT )
-	ROM_LOAD( "136093-0029.4d",  0x000000, 0x40000, CRC(e4593ff4) SHA1(7360ec7a65aabc90aa787dc30f39992e342495dd) )
+	ROM_REGION( 0x280000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
+	ROM_LOAD( "136093-0025a.14s",      0x000000, 0x80000, CRC(1b9e5ef2) SHA1(d7d14e75ca2d56c5c67154506096570c9ccbcf8e) )
+	ROM_LOAD( "136093-0026a.8d",       0x080000, 0x80000, CRC(09b25d93) SHA1(94d424b21410182b5121201066f4acfa415f4b6b) )
+	ROM_LOAD( "136093-0027a.18s",      0x100000, 0x80000, CRC(5bc1c37b) SHA1(89f1bca55dd431ca3171b89347209decf0b25e12) )
+	ROM_LOAD( "136093-0028a.10d",      0x180000, 0x80000, CRC(55fb9111) SHA1(a95508f0831842fa79ca2fc168cfadc8c6d3fbd4) )
+	ROM_LOAD16_BYTE( "136093-0029.4d", 0x200001, 0x40000, CRC(e4593ff4) SHA1(7360ec7a65aabc90aa787dc30f39992e342495dd) )
 
 	ROM_REGION( 0x200000, "oki", 0 )	/* 2MB for ADPCM data */
 	ROM_LOAD( "136093-0030a.9b",  0x100000, 0x80000, CRC(f4c567f5) SHA1(7e8c1d54d918b0b41625eacbaf6dcb5bd99d1949) )

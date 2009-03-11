@@ -327,10 +327,10 @@ static ADDRESS_MAP_START( imolagp_master, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2802, 0x2802) AM_READ(steerlatch_r) AM_WRITE(SMH_NOP)
 	/*  AM_RANGE(0x2803, 0x2803) ? */
 	AM_RANGE(0x3000, 0x3000) AM_WRITE(vreg_control_w)
-	AM_RANGE(0x37f0, 0x37f0) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x37f0, 0x37f0) AM_DEVWRITE("ay", ay8910_address_w)
 	/*  AM_RANGE(0x37f7, 0x37f7) ? */
 	AM_RANGE(0x3800, 0x3800) AM_WRITE(vreg_data_w)
-	AM_RANGE(0x3810, 0x3810) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x3810, 0x3810) AM_DEVWRITE("ay", ay8910_data_w)
 	AM_RANGE(0x4000, 0x4000) AM_READ_PORT("DSWA")	/* DSWA */
 	AM_RANGE(0x5000, 0x50ff) AM_WRITE(imola_ledram_w)
 	AM_RANGE(0x47ff, 0x4800) AM_WRITE(transmit_data_w)
@@ -395,17 +395,17 @@ static INTERRUPT_GEN( master_interrupt )
 
 static const ppi8255_interface ppi8255_intf =
 {
-	NULL,		/* Port A read */
-	NULL,		/* Port B read */
-	NULL,		/* Port C read */
-	NULL,		/* Port A write */
-	NULL,		/* Port B write */
-	NULL		/* Port C write */
+	DEVCB_NULL,		/* Port A read */
+	DEVCB_NULL,		/* Port B read */
+	DEVCB_NULL,		/* Port C read */
+	DEVCB_NULL,		/* Port A write */
+	DEVCB_NULL,		/* Port B write */
+	DEVCB_NULL		/* Port C write */
 };
 
 
 static MACHINE_DRIVER_START( imolagp )
-	MDRV_CPU_ADD("main", Z80,8000000) /* ? */
+	MDRV_CPU_ADD("maincpu", Z80,8000000) /* ? */
 	MDRV_CPU_PROGRAM_MAP(imolagp_master,0)
 	MDRV_CPU_IO_MAP(readport_master,0)
 	MDRV_CPU_VBLANK_INT_HACK(master_interrupt,4)
@@ -413,13 +413,13 @@ static MACHINE_DRIVER_START( imolagp )
 	MDRV_CPU_ADD("slave", Z80,8000000) /* ? */
 	MDRV_CPU_PROGRAM_MAP(imolagp_slave,0)
 	MDRV_CPU_IO_MAP(readport_slave,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_PPI8255_ADD( "ppi8255", ppi8255_intf )
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -506,7 +506,7 @@ static INPUT_PORTS_START( imolagp )
 INPUT_PORTS_END
 
 ROM_START( imolagp )
-	ROM_REGION( 0x10000, "main", 0 ) /* Z80 code */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* Z80 code */
 	ROM_LOAD( "yd.bin", 0x0000, 0x800, CRC(5eb61bb7) SHA1(b897ecc7fa9aa1ae4e095d22d16a901b9d439a8e) )
 	ROM_LOAD( "yc.bin", 0x0800, 0x800, CRC(f7468a3b) SHA1(af1664e30b732b3d5321e76659961af3ebeb1237) )
 	ROM_LOAD( "yb.bin", 0x1000, 0x800, CRC(9f21506e) SHA1(6b46ff4815b8a02b190ec13e067f9a6687980774) )

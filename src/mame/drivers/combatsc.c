@@ -222,34 +222,39 @@ static WRITE8_HANDLER( combasc_sh_irqtrigger_w )
 	cpu_set_input_line_and_vector(space->machine->cpu[1],0,HOLD_LINE,0xff);
 }
 
-static WRITE8_HANDLER( combasc_play_w )
+static READ8_DEVICE_HANDLER( combasc_busy_r )
 {
-	upd7759_start_w(0, data & 2);
+	return upd7759_busy_r(device) ? 1 : 0;
 }
 
-static WRITE8_HANDLER( combasc_voice_reset_w )
+static WRITE8_DEVICE_HANDLER( combasc_play_w )
 {
-    upd7759_reset_w(0,data & 1);
+	upd7759_start_w(device, data & 2);
 }
 
-static WRITE8_HANDLER( combasc_portA_w )
+static WRITE8_DEVICE_HANDLER( combasc_voice_reset_w )
+{
+    upd7759_reset_w(device,data & 1);
+}
+
+static WRITE8_DEVICE_HANDLER( combasc_portA_w )
 {
 	/* unknown. always write 0 */
 }
 
 static emu_timer *combasc_interleave_timer;
 
-static READ8_HANDLER ( combasc_YM2203_status_port_0_r )
+static READ8_DEVICE_HANDLER ( combasc_ym2203_r )
 {
 	static int boost = 1;
-	int status = ym2203_status_port_0_r(space,0);
+	int status = ym2203_r(device,offset);
 
-	if (cpu_get_pc(space->cpu) == 0x334)
+	if (cpu_get_pc(device->machine->cpu[1]) == 0x334)
 	{
 		if (boost)
 		{
 			boost = 0;
-			timer_adjust_periodic(combasc_interleave_timer, attotime_zero, 0, cpu_clocks_to_attotime(space->cpu,80));
+			timer_adjust_periodic(combasc_interleave_timer, attotime_zero, 0, cpu_clocks_to_attotime(device->machine->cpu[1],80));
 		}
 		else if (status & 2)
 		{
@@ -321,8 +326,8 @@ static ADDRESS_MAP_START( readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)					/* ROM */
 	AM_RANGE(0x8000, 0x87ef) AM_READ(SMH_RAM)					/* RAM */
 	AM_RANGE(0x87f0, 0x87ff) AM_READ(SMH_RAM)					/* ??? */
-	AM_RANGE(0x9000, 0x9000) AM_READ(ym2203_status_port_0_r)		/* YM 2203 */
-	AM_RANGE(0x9008, 0x9008) AM_READ(ym2203_status_port_0_r)		/* ??? */
+	AM_RANGE(0x9000, 0x9001) AM_DEVREAD("ym", ym2203_r)	/* YM 2203 */
+	AM_RANGE(0x9008, 0x9009) AM_DEVREAD("ym", ym2203_r)	/* ??? */
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)				/* soundlatch_r? */
 	AM_RANGE(0x8800, 0xfffb) AM_READ(SMH_ROM)					/* ROM? */
 	AM_RANGE(0xfffc, 0xffff) AM_READ(SMH_RAM)					/* ??? */
@@ -332,8 +337,7 @@ static ADDRESS_MAP_START( writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)				/* ROM */
 	AM_RANGE(0x8000, 0x87ef) AM_WRITE(SMH_RAM)				/* RAM */
 	AM_RANGE(0x87f0, 0x87ff) AM_WRITE(SMH_RAM)				/* ??? */
- 	AM_RANGE(0x9000, 0x9000) AM_WRITE(ym2203_control_port_0_w)/* YM 2203 */
-	AM_RANGE(0x9001, 0x9001) AM_WRITE(ym2203_write_port_0_w)	/* YM 2203 */
+ 	AM_RANGE(0x9000, 0x9001) AM_DEVWRITE("ym", ym2203_w)	/* YM 2203 */
 	//AM_RANGE(0x9800, 0x9800) AM_WRITE(combasc_unknown_w_1)    /* OKIM5205? */
 	//AM_RANGE(0xa800, 0xa800) AM_WRITE(combasc_unknown_w_2)    /* OKIM5205? */
 	AM_RANGE(0x8800, 0xfffb) AM_WRITE(SMH_ROM)				/* ROM */
@@ -344,19 +348,18 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( combasc_readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)					/* ROM */
 	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)					/* RAM */
-	AM_RANGE(0xb000, 0xb000) AM_READ(upd7759_0_busy_r)			/* upd7759 busy? */
+	AM_RANGE(0xb000, 0xb000) AM_DEVREAD("upd", combasc_busy_r)	/* upd7759 busy? */
 	AM_RANGE(0xd000, 0xd000) AM_READ(soundlatch_r)				/* soundlatch_r? */
-	AM_RANGE(0xe000, 0xe000) AM_READ(combasc_YM2203_status_port_0_r)	/* YM 2203 intercepted */
+	AM_RANGE(0xe000, 0xe001) AM_DEVREAD("ym", combasc_ym2203_r)	/* YM 2203 intercepted */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( combasc_writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)				/* ROM */
 	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)				/* RAM */
-	AM_RANGE(0x9000, 0x9000) AM_WRITE(combasc_play_w)			/* upd7759 play voice */
-	AM_RANGE(0xa000, 0xa000) AM_WRITE(upd7759_0_port_w)		/* upd7759 voice select */
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(combasc_voice_reset_w)	/* upd7759 reset? */
- 	AM_RANGE(0xe000, 0xe000) AM_WRITE(ym2203_control_port_0_w)/* YM 2203 */
-	AM_RANGE(0xe001, 0xe001) AM_WRITE(ym2203_write_port_0_w)	/* YM 2203 */
+	AM_RANGE(0x9000, 0x9000) AM_DEVWRITE("upd", combasc_play_w)			/* upd7759 play voice */
+	AM_RANGE(0xa000, 0xa000) AM_DEVWRITE("upd", upd7759_port_w)			/* upd7759 voice select */
+	AM_RANGE(0xc000, 0xc000) AM_DEVWRITE("upd", combasc_voice_reset_w)	/* upd7759 reset? */
+ 	AM_RANGE(0xe000, 0xe001) AM_DEVWRITE("ym", ym2203_w)	/* YM 2203 */
 ADDRESS_MAP_END
 
 
@@ -563,10 +566,10 @@ static const ym2203_interface ym2203_config =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		NULL,
-		NULL,
-		combasc_portA_w,
-		NULL
+		DEVCB_NULL,
+		DEVCB_NULL,
+		DEVCB_HANDLER(combasc_portA_w),
+		DEVCB_NULL
 	},
 	NULL
 };
@@ -576,11 +579,11 @@ static const ym2203_interface ym2203_config =
 static MACHINE_DRIVER_START( combasc )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", HD6309, 3000000*4)	/* 3 MHz? */
+	MDRV_CPU_ADD("maincpu", HD6309, 3000000*4)	/* 3 MHz? */
 	MDRV_CPU_PROGRAM_MAP(combasc_readmem,combasc_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,3579545)	/* 3.579545 MHz */
+	MDRV_CPU_ADD("audiocpu", Z80,3579545)	/* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(combasc_readmem_sound,combasc_writemem_sound)
 
 	MDRV_QUANTUM_TIME(HZ(1200))
@@ -588,7 +591,7 @@ static MACHINE_DRIVER_START( combasc )
 	MDRV_MACHINE_RESET(combasc)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -617,11 +620,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( combascb )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", HD6309, 3000000*4)	/* 3 MHz? */
+	MDRV_CPU_ADD("maincpu", HD6309, 3000000*4)	/* 3 MHz? */
 	MDRV_CPU_PROGRAM_MAP(combascb_readmem,combascb_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,3579545)	/* 3.579545 MHz */
+	MDRV_CPU_ADD("audiocpu", Z80,3579545)	/* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(combasc_readmem_sound,combasc_writemem_sound) /* FAKE */
 
 	MDRV_QUANTUM_TIME(HZ(1200))
@@ -629,7 +632,7 @@ static MACHINE_DRIVER_START( combascb )
 	MDRV_MACHINE_RESET(combasc)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -657,13 +660,13 @@ MACHINE_DRIVER_END
 
 
 ROM_START( combasc )
-	ROM_REGION( 0x40000, "main", 0 ) /* 6309 code */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* 6309 code */
 	ROM_LOAD( "611g01.rom", 0x30000, 0x08000, CRC(857ffffe) SHA1(de7566d58314df4b7fdc07eb31a3f9bdd12d1a73) )
 	ROM_CONTINUE(           0x08000, 0x08000 )
 	ROM_LOAD( "611g02.rom", 0x10000, 0x20000, CRC(9ba05327) SHA1(ea03845fb49d18ac4fca97cfffce81db66b9967b) )
 	/* extra 0x8000 for banked RAM */
 
-	ROM_REGION( 0x10000 , "audio", 0 ) /* sound CPU */
+	ROM_REGION( 0x10000 , "audiocpu", 0 ) /* sound CPU */
 	ROM_LOAD( "611g03.rom", 0x00000, 0x08000, CRC(2a544db5) SHA1(94a97c3c54bf13ccc665aa5057ac6b1d700fae2d) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
@@ -690,13 +693,13 @@ ROM_START( combasc )
 ROM_END
 
 ROM_START( combasct )
-	ROM_REGION( 0x40000, "main", 0 ) /* 6309 code */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* 6309 code */
 	ROM_LOAD( "g01.rom",     0x30000, 0x08000, CRC(489c132f) SHA1(c717195f89add4be4a21ecc1ddd58361b0ab4a74) )
 	ROM_CONTINUE(            0x08000, 0x08000 )
 	ROM_LOAD( "611g02.rom",  0x10000, 0x20000, CRC(9ba05327) SHA1(ea03845fb49d18ac4fca97cfffce81db66b9967b) )
 	/* extra 0x8000 for banked RAM */
 
-	ROM_REGION( 0x10000 , "audio", 0 ) /* sound CPU */
+	ROM_REGION( 0x10000 , "audiocpu", 0 ) /* sound CPU */
 	ROM_LOAD( "611g03.rom", 0x00000, 0x08000, CRC(2a544db5) SHA1(94a97c3c54bf13ccc665aa5057ac6b1d700fae2d) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
@@ -718,13 +721,13 @@ ROM_START( combasct )
 ROM_END
 
 ROM_START( combascj )
-	ROM_REGION( 0x40000, "main", 0 ) /* 6309 code */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* 6309 code */
 	ROM_LOAD( "611p01.a14",  0x30000, 0x08000, CRC(d748268e) SHA1(91588b6a0d3af47065204b980a56544a9f29b6d9) )
 	ROM_CONTINUE(            0x08000, 0x08000 )
 	ROM_LOAD( "611g02.rom",  0x10000, 0x20000, CRC(9ba05327) SHA1(ea03845fb49d18ac4fca97cfffce81db66b9967b) )
 	/* extra 0x8000 for banked RAM */
 
-	ROM_REGION( 0x10000 , "audio", 0 ) /* sound CPU */
+	ROM_REGION( 0x10000 , "audiocpu", 0 ) /* sound CPU */
 	ROM_LOAD( "611g03.rom", 0x00000, 0x08000, CRC(2a544db5) SHA1(94a97c3c54bf13ccc665aa5057ac6b1d700fae2d) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
@@ -746,13 +749,13 @@ ROM_START( combascj )
 ROM_END
 
 ROM_START( bootcamp )
-	ROM_REGION( 0x40000, "main", 0 ) /* 6309 code */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* 6309 code */
 	ROM_LOAD( "xxx-v01.12a", 0x30000, 0x08000, CRC(c10dca64) SHA1(f34de26e998b1501e430d46e96cdc58ebc68481e) )
 	ROM_CONTINUE(            0x08000, 0x08000 )
 	ROM_LOAD( "611g02.rom",  0x10000, 0x20000, CRC(9ba05327) SHA1(ea03845fb49d18ac4fca97cfffce81db66b9967b) )
 	/* extra 0x8000 for banked RAM */
 
-	ROM_REGION( 0x10000 , "audio", 0 ) /* sound CPU */
+	ROM_REGION( 0x10000 , "audiocpu", 0 ) /* sound CPU */
 	ROM_LOAD( "611g03.rom", 0x00000, 0x08000, CRC(2a544db5) SHA1(94a97c3c54bf13ccc665aa5057ac6b1d700fae2d) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
@@ -774,14 +777,14 @@ ROM_START( bootcamp )
 ROM_END
 
 ROM_START( combascb )
-	ROM_REGION( 0x40000, "main", 0 ) /* 6809 code */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* 6809 code */
 	ROM_LOAD( "combat.002",	 0x30000, 0x08000, CRC(0996755d) SHA1(bb6bbbf7ab3b5fab5e1c6cebc7b3f0d720493c3b) )
 	ROM_CONTINUE(            0x08000, 0x08000 )
 	ROM_LOAD( "combat.003",	 0x10000, 0x10000, CRC(229c93b2) SHA1(ac3fd3df1bb5f6a461d0d1423c50568348ef69df) )
 	ROM_LOAD( "combat.004",	 0x20000, 0x10000, CRC(a069cb84) SHA1(f49f70afb17df46b16f5801ef42edb0706730723) )
 	/* extra 0x8000 for banked RAM */
 
-	ROM_REGION( 0x10000 , "audio", 0 ) /* sound CPU */
+	ROM_REGION( 0x10000 , "audiocpu", 0 ) /* sound CPU */
 	ROM_LOAD( "combat.001",  0x00000, 0x10000, CRC(61456b3b) SHA1(320db628283dd1bec465e95020d1a1158e6d6ae4) )
 	ROM_LOAD( "611g03.rom",  0x00000, 0x08000, CRC(2a544db5) SHA1(94a97c3c54bf13ccc665aa5057ac6b1d700fae2d) ) /* FAKE - from Konami set! */
 
@@ -828,7 +831,7 @@ static DRIVER_INIT( combasct )
 static DRIVER_INIT( combasc )
 {
 	/* joystick instead of trackball */
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0404, 0x0404, 0, 0, input_port_read_handler8(machine->portconfig, "IN1"));
+	memory_install_read_port_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0404, 0x0404, 0, 0, "IN1");
 
 	combasc_init_common(machine);
 }

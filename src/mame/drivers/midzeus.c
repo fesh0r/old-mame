@@ -605,7 +605,7 @@ static ADDRESS_MAP_START( zeus2_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x990000, 0x99000f) AM_READWRITE(midway_ioasic_r, midway_ioasic_w)
 	AM_RANGE(0x9c0000, 0x9c000f) AM_READWRITE(analog_r, analog_w)
 	AM_RANGE(0x9e0000, 0x9e0000) AM_WRITENOP		// watchdog?
-	AM_RANGE(0x9f0000, 0x9f7fff) AM_DEVREADWRITE(M48T35, "m48t35", zeus2_timekeeper_r, zeus2_timekeeper_w)
+	AM_RANGE(0x9f0000, 0x9f7fff) AM_DEVREADWRITE("m48t35", zeus2_timekeeper_r, zeus2_timekeeper_w)
 	AM_RANGE(0x9f8000, 0x9f8000) AM_WRITE(cmos_protect_w)
 	AM_RANGE(0xa00000, 0xbfffff) AM_ROM AM_REGION("user1", 0)
 	AM_RANGE(0xc00000, 0xffffff) AM_ROMBANK(1) AM_REGION("user2", 0)
@@ -1106,9 +1106,9 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( midzeus )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", TMS32032, CPU_CLOCK)
+	MDRV_CPU_ADD("maincpu", TMS32032, CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(zeus_map,0)
-	MDRV_CPU_VBLANK_INT("main", display_irq)
+	MDRV_CPU_VBLANK_INT("screen", display_irq)
 
 	MDRV_MACHINE_START(midzeus)
 	MDRV_MACHINE_RESET(midzeus)
@@ -1117,7 +1117,7 @@ static MACHINE_DRIVER_START( midzeus )
 	/* video hardware */
 	MDRV_PALETTE_LENGTH(32768)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_RAW_PARAMS(MIDZEUS_VIDEO_CLOCK/8, 529, 0, 400, 278, 0, 256)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 
@@ -1132,16 +1132,16 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( midzeus2 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", TMS32032, CPU_CLOCK)
+	MDRV_CPU_ADD("maincpu", TMS32032, CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(zeus2_map,0)
-	MDRV_CPU_VBLANK_INT("main", display_irq)
+	MDRV_CPU_VBLANK_INT("screen", display_irq)
 
 	MDRV_MACHINE_START(midzeus)
 	MDRV_MACHINE_RESET(midzeus)
 	MDRV_NVRAM_HANDLER(midzeus2)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_RAW_PARAMS(MIDZEUS_VIDEO_CLOCK/4, 666, 0, 512, 438, 0, 400)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 

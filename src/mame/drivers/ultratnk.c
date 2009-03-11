@@ -128,21 +128,21 @@ static WRITE8_HANDLER( ultratnk_lockout_w )
 }
 
 
-static WRITE8_HANDLER( ultratnk_fire_1_w )
+static WRITE8_DEVICE_HANDLER( ultratnk_fire_1_w )
 {
-	discrete_sound_w(space, ULTRATNK_FIRE_EN_1, offset & 1);
+	discrete_sound_w(device, ULTRATNK_FIRE_EN_1, offset & 1);
 }
-static WRITE8_HANDLER( ultratnk_fire_2_w )
+static WRITE8_DEVICE_HANDLER( ultratnk_fire_2_w )
 {
-	discrete_sound_w(space, ULTRATNK_FIRE_EN_2, offset & 1);
+	discrete_sound_w(device, ULTRATNK_FIRE_EN_2, offset & 1);
 }
-static WRITE8_HANDLER( ultratnk_attract_w )
+static WRITE8_DEVICE_HANDLER( ultratnk_attract_w )
 {
-	discrete_sound_w(space, ULTRATNK_ATTRACT_EN, data & 1);
+	discrete_sound_w(device, ULTRATNK_ATTRACT_EN, data & 1);
 }
-static WRITE8_HANDLER( ultratnk_explosion_w )
+static WRITE8_DEVICE_HANDLER( ultratnk_explosion_w )
 {
-	discrete_sound_w(space, ULTRATNK_EXPLOSION_DATA, data & 15);
+	discrete_sound_w(device, ULTRATNK_EXPLOSION_DATA, data & 15);
 }
 
 
@@ -162,16 +162,16 @@ static ADDRESS_MAP_START( ultratnk_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2040, 0x2047) AM_MIRROR(0x718) AM_READ(ultratnk_collision_r)
 	AM_RANGE(0x2060, 0x2063) AM_MIRROR(0x71c) AM_READ(ultratnk_options_r)
 
-	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x71f) AM_WRITE(ultratnk_attract_w)
+	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x71f) AM_DEVWRITE("discrete", ultratnk_attract_w)
 	AM_RANGE(0x2020, 0x2027) AM_MIRROR(0x718) AM_WRITE(ultratnk_collision_reset_w)
 	AM_RANGE(0x2040, 0x2041) AM_MIRROR(0x718) AM_WRITE(ultratnk_da_latch_w)
-	AM_RANGE(0x2042, 0x2043) AM_MIRROR(0x718) AM_WRITE(ultratnk_explosion_w)
+	AM_RANGE(0x2042, 0x2043) AM_MIRROR(0x718) AM_DEVWRITE("discrete", ultratnk_explosion_w)
 	AM_RANGE(0x2044, 0x2045) AM_MIRROR(0x718) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x2066, 0x2067) AM_MIRROR(0x710) AM_WRITE(ultratnk_lockout_w)
 	AM_RANGE(0x2068, 0x2069) AM_MIRROR(0x710) AM_WRITE(ultratnk_led_1_w)
 	AM_RANGE(0x206a, 0x206b) AM_MIRROR(0x710) AM_WRITE(ultratnk_led_2_w)
-	AM_RANGE(0x206c, 0x206d) AM_MIRROR(0x710) AM_WRITE(ultratnk_fire_2_w)
-	AM_RANGE(0x206e, 0x206f) AM_MIRROR(0x710) AM_WRITE(ultratnk_fire_1_w)
+	AM_RANGE(0x206c, 0x206d) AM_MIRROR(0x710) AM_DEVWRITE("discrete", ultratnk_fire_2_w)
+	AM_RANGE(0x206e, 0x206f) AM_MIRROR(0x710) AM_DEVWRITE("discrete", ultratnk_fire_1_w)
 
 	AM_RANGE(0x2800, 0x2fff) AM_NOP /* diagnostic ROM */
 	AM_RANGE(0x3000, 0x3fff) AM_ROM
@@ -290,14 +290,14 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( ultratnk )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, PIXEL_CLOCK / 8)
+	MDRV_CPU_ADD("maincpu", M6502, PIXEL_CLOCK / 8)
 	MDRV_CPU_PROGRAM_MAP(ultratnk_cpu_map, 0)
 
 	MDRV_WATCHDOG_VBLANK_INIT(8)
 	MDRV_MACHINE_RESET(ultratnk)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, 0, 256, VTOTAL, 0, 224)
 
@@ -320,7 +320,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( ultratnk )
-	ROM_REGION( 0x4000, "main", 0 )
+	ROM_REGION( 0x4000, "maincpu", 0 )
 	ROM_LOAD_NIB_LOW ( "030180.n1",	 0x3000, 0x0800, CRC(b6aa6056) SHA1(6de094017b5d87a238053fac88129d20260f8222) ) /* ROM 3 */
 	ROM_LOAD_NIB_HIGH( "030181.k1",	 0x3000, 0x0800, CRC(17145c97) SHA1(afe0c9c562c27cd1fba57ea83377b0a4c12496db) ) /* ROM 3 */
 	ROM_LOAD_NIB_LOW ( "030182.m1",	 0x3800, 0x0800, CRC(034366a2) SHA1(dc289ce4c79e9937977ca8804ce07b4c8e40e969) ) /* ROM 4 */

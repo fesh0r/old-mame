@@ -81,13 +81,7 @@ static UINT16 *textram;
 
 static VIDEO_UPDATE( drill )
 {
-	int i;
 	bitmap_fill(bitmap,NULL,0);
-
-	for (i=0; i<256; i++)
-	{
-		decodechar(screen->machine->gfx[1],i,(UINT8*)&charram[0]);
-	}
 
 	DRAW_MAP(map1ram,0)
 	DRAW_MAP(map2ram,1)
@@ -117,6 +111,7 @@ static VIDEO_UPDATE( drill )
 static VIDEO_START( drill )
 {
 	machine->gfx[0]->color_granularity=16;
+	gfx_element_set_source(machine->gfx[1], (UINT8 *)charram);
 }
 
 static UINT16 *iodata;
@@ -220,6 +215,12 @@ static WRITE16_HANDLER( sensors_w )
 	}
 }
 
+static WRITE16_HANDLER( charram_w )
+{
+	COMBINE_DATA(&charram[offset]);
+	gfx_element_mark_dirty(space->machine->gfx[1], offset/16);
+}
+
 static ADDRESS_MAP_START( drill_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
 	AM_RANGE(0x200000, 0x20ffff) AM_RAM
@@ -229,14 +230,11 @@ static ADDRESS_MAP_START( drill_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x414000, 0x415fff) AM_RAM AM_BASE(&map3ram)
 	AM_RANGE(0x416000, 0x417fff) AM_RAM AM_BASE(&map4ram)
 	AM_RANGE(0x41c000, 0x41dfff) AM_RAM AM_BASE(&textram)
-	AM_RANGE(0x41e000, 0x41ffff) AM_RAM AM_BASE(&charram)
+	AM_RANGE(0x41e000, 0x41ffff) AM_RAM_WRITE(charram_w) AM_BASE(&charram)
 	AM_RANGE(0x400000, 0x4fffff) AM_RAM AM_BASE(&unkram)// video stuff, 460000 - video regs ?
 	AM_RANGE(0x500000, 0x501fff) AM_RAM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x502000, 0x503fff) AM_RAM
-	AM_RANGE(0x600000, 0x600001) AM_READ(ym2610_status_port_0_a_lsb_r) AM_WRITE(ym2610_control_port_0_a_lsb_w)
-	AM_RANGE(0x600002, 0x600003) AM_READ(ym2610_read_port_0_lsb_r) AM_WRITE(ym2610_data_port_0_a_lsb_w)
-	AM_RANGE(0x600004, 0x600005) AM_READ(ym2610_status_port_0_b_lsb_r) AM_WRITE(ym2610_control_port_0_b_lsb_w)
-	AM_RANGE(0x600006, 0x600007) AM_WRITE(ym2610_data_port_0_b_lsb_w)
+	AM_RANGE(0x600000, 0x600007) AM_DEVREADWRITE8("ym", ym2610_r, ym2610_w, 0x00ff)
 	AM_RANGE(0x60000c, 0x60000d) AM_RAM
 	AM_RANGE(0x60000e, 0x60000f) AM_RAM
 	AM_RANGE(0x700000, 0x70000f) AM_READWRITE(drill_io_r,drill_io_w) AM_BASE(&iodata) // i/o
@@ -393,9 +391,9 @@ static INTERRUPT_GEN( drill_interrupt )
 }
 
 /* WRONG,it does something with 60000c & 700002,likely to be called when the player throws the ball.*/
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-//  cpu_set_input_line(machine->cpu[0],5,irq ? ASSERT_LINE : CLEAR_LINE);
+//  cpu_set_input_line(device->machine->cpu[0],5,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -404,12 +402,12 @@ static const ym2610_interface ym2610_config =
 };
 
 static MACHINE_DRIVER_START( drill )
-	MDRV_CPU_ADD("main", M68000, 16000000 )
+	MDRV_CPU_ADD("maincpu", M68000, 16000000 )
 	MDRV_CPU_PROGRAM_MAP(drill_map,0)
-	MDRV_CPU_VBLANK_INT("main", drill_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", drill_interrupt)
 	MDRV_GFXDECODE(2mindril)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -420,19 +418,19 @@ static MACHINE_DRIVER_START( drill )
 	MDRV_VIDEO_START(drill)
 	MDRV_VIDEO_UPDATE(drill)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2610, 16000000/2)
 	MDRV_SOUND_CONFIG(ym2610_config)
-	MDRV_SOUND_ROUTE(0, "left",  0.25)
-	MDRV_SOUND_ROUTE(0, "right", 0.25)
-	MDRV_SOUND_ROUTE(1, "left",  1.0)
-	MDRV_SOUND_ROUTE(2, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker",  0.25)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.25)
+	MDRV_SOUND_ROUTE(1, "lspeaker",  1.0)
+	MDRV_SOUND_ROUTE(2, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( 2mindril )
-	ROM_REGION( 0x80000, "main", 0 ) /* 68000 Code */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "d58-38.ic11", 0x00000, 0x40000, CRC(c58e8e4f) SHA1(648db679c3bfb5de1cd6c1b1217773a2fe56f11b) )
 	ROM_LOAD16_BYTE( "d58-37.ic9",  0x00001, 0x40000, CRC(19e5cc3c) SHA1(04ac0eef893c579fe90d91d7fd55c5741a2b7460) )
 
@@ -452,7 +450,7 @@ static DRIVER_INIT( drill )
 	// rearrange gfx roms to something we can decode, two of the roms form 4bpp of the graphics, the third forms another 2bpp but is in a different format
 	UINT32 *src = (UINT32*)memory_region( machine, "gfx2" );
 	UINT32 *dst = (UINT32*)memory_region( machine, "gfx1" );// + 0x400000;
-//  UINT8 *rom = memory_region( machine, "main" );
+//  UINT8 *rom = memory_region( machine, "maincpu" );
 	int i;
 
 	for (i=0; i< 0x400000/4; i++)

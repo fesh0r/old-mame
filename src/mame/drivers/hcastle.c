@@ -28,7 +28,7 @@ WRITE8_HANDLER( hcastle_pf2_control_w );
 
 static WRITE8_HANDLER( hcastle_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(space->machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "maincpu");
 	int bankaddress;
 
 	bankaddress = 0x10000 + (data & 0x1f) * 0x2000;
@@ -86,32 +86,31 @@ ADDRESS_MAP_END
 
 /*****************************************************************************/
 
-static WRITE8_HANDLER( sound_bank_w )
+static WRITE8_DEVICE_HANDLER( sound_bank_w )
 {
 	int bank_A=(data&0x3);
 	int bank_B=((data>>2)&0x3);
-	k007232_set_bank( 0, bank_A, bank_B );
+	k007232_set_bank(device, bank_A, bank_B );
 }
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
-	AM_RANGE(0xa000, 0xa000) AM_READ(ym3812_status_port_0_r)
-	AM_RANGE(0xb000, 0xb00d) AM_READ(k007232_read_port_0_r)
+	AM_RANGE(0xa000, 0xa001) AM_DEVREAD("ym", ym3812_r)
+	AM_RANGE(0xb000, 0xb00d) AM_DEVREAD("konami1", k007232_r)
 	AM_RANGE(0xd000, 0xd000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x9800, 0x987f) AM_WRITE(k051649_waveform_w)
-	AM_RANGE(0x9880, 0x9889) AM_WRITE(k051649_frequency_w)
-	AM_RANGE(0x988a, 0x988e) AM_WRITE(k051649_volume_w)
-	AM_RANGE(0x988f, 0x988f) AM_WRITE(k051649_keyonoff_w)
-	AM_RANGE(0xa000, 0xa000) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0xa001, 0xa001) AM_WRITE(ym3812_write_port_0_w)
-	AM_RANGE(0xb000, 0xb00d) AM_WRITE(k007232_write_port_0_w)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(sound_bank_w) /* 7232 bankswitch */
+	AM_RANGE(0x9800, 0x987f) AM_DEVWRITE("konami2", k051649_waveform_w)
+	AM_RANGE(0x9880, 0x9889) AM_DEVWRITE("konami2", k051649_frequency_w)
+	AM_RANGE(0x988a, 0x988e) AM_DEVWRITE("konami2", k051649_volume_w)
+	AM_RANGE(0x988f, 0x988f) AM_DEVWRITE("konami2", k051649_keyonoff_w)
+	AM_RANGE(0xa000, 0xa001) AM_DEVWRITE("ym", ym3812_w)
+	AM_RANGE(0xb000, 0xb00d) AM_DEVWRITE("konami1", k007232_w)
+	AM_RANGE(0xc000, 0xc000) AM_DEVWRITE("konami1", sound_bank_w) /* 7232 bankswitch */
 ADDRESS_MAP_END
 
 /*****************************************************************************/
@@ -241,15 +240,15 @@ GFXDECODE_END
 
 /*****************************************************************************/
 
-static void irqhandler(running_machine *machine, int linestate)
+static void irqhandler(const device_config *device, int linestate)
 {
-//  cpu_set_input_line(machine->cpu[1],0,linestate);
+//  cpu_set_input_line(device->machine->cpu[1],0,linestate);
 }
 
-static void volume_callback(int v)
+static void volume_callback(const device_config *device, int v)
 {
-	k007232_set_volume(0,0,(v >> 4) * 0x11,0);
-	k007232_set_volume(0,1,0,(v & 0x0f) * 0x11);
+	k007232_set_volume(device,0,(v >> 4) * 0x11,0);
+	k007232_set_volume(device,1,0,(v & 0x0f) * 0x11);
 }
 
 static const k007232_interface k007232_config =
@@ -265,17 +264,17 @@ static const ym3812_interface ym3812_config =
 static MACHINE_DRIVER_START( hcastle )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", KONAMI, 3000000)	/* Derived from 24 MHz clock */
+	MDRV_CPU_ADD("maincpu", KONAMI, 3000000)	/* Derived from 24 MHz clock */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, 3579545)
+	MDRV_CPU_ADD("audiocpu", Z80, 3579545)
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(59)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0)	/* frames per second verified by comparison with real board */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -308,11 +307,11 @@ MACHINE_DRIVER_END
 /***************************************************************************/
 
 ROM_START( hcastle )
-	ROM_REGION( 0x30000, "main", 0 )
+	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "m03.k12",      0x08000, 0x08000, CRC(d85e743d) SHA1(314e2a2bbe650540306b85c8b89ec5bcaef11a0d) )
 	ROM_LOAD( "b06.k8",       0x10000, 0x20000, CRC(abd07866) SHA1(a261d0cd90f5909abd06e8b691669e63d890c3be) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "768.e01",      0x00000, 0x08000, CRC(b9fff184) SHA1(c55f468c0da6afdaa2af65a111583c0c42868bd1) )
 
 	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE )
@@ -335,11 +334,11 @@ ROM_START( hcastle )
 ROM_END
 
 ROM_START( hcastleo )
-	ROM_REGION( 0x30000, "main", 0 )
+	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "768.k03",      0x08000, 0x08000, CRC(40ce4f38) SHA1(1ab6d62a75c818b2ccbbb714373d6c7418500eb7) )
 	ROM_LOAD( "768.g06",      0x10000, 0x20000, CRC(cdade920) SHA1(e15b7458ded4e4c811a737575ec3f16e5eec4121) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "768.e01",      0x00000, 0x08000, CRC(b9fff184) SHA1(c55f468c0da6afdaa2af65a111583c0c42868bd1) )
 
 	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE )
@@ -362,11 +361,11 @@ ROM_START( hcastleo )
 ROM_END
 
 ROM_START( hcastlej )
-	ROM_REGION( 0x30000, "main", 0 )
+	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "768p03.k12",0x08000, 0x08000, CRC(d509e340) SHA1(3a8078bd89a80ab9529e4ee8658fcafb8dd65258) )
 	ROM_LOAD( "768j06.k8", 0x10000, 0x20000, CRC(42283c3e) SHA1(565a2eb607e262484f48919536c045d515cff89f) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "768.e01",   0x00000, 0x08000, CRC(b9fff184) SHA1(c55f468c0da6afdaa2af65a111583c0c42868bd1) )
 
 	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE )
@@ -389,11 +388,11 @@ ROM_START( hcastlej )
 ROM_END
 
 ROM_START( hcastljo )
-	ROM_REGION( 0x30000, "main", 0 )
+	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "768n03.k12",0x08000, 0x08000, CRC(3e4dca2a) SHA1(cd70fdc42b970b89ae16ab6c81d1a5003fa53dbd) )
 	ROM_LOAD( "768j06.k8", 0x10000, 0x20000, CRC(42283c3e) SHA1(565a2eb607e262484f48919536c045d515cff89f) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "768.e01",   0x00000, 0x08000, CRC(b9fff184) SHA1(c55f468c0da6afdaa2af65a111583c0c42868bd1) )
 
 	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE )

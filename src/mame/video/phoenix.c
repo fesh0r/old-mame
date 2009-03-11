@@ -229,7 +229,7 @@ VIDEO_START( phoenix )
 
 WRITE8_HANDLER( phoenix_videoram_w )
 {
-	UINT8 *rom = memory_region(space->machine, "main");
+	UINT8 *rom = memory_region(space->machine, "maincpu");
 
 	videoram_pg[videoram_pg_index][offset] = data;
 
@@ -327,12 +327,10 @@ CUSTOM_INPUT( pleiads_protection_r )
 	case 0x20:
 		/* Bit 3 is 0 */
 		return 0;
-		break;
 	case 0x0c:
 	case 0x30:
 		/* Bit 3 is 1 */
 		return 1;
-		break;
 	default:
 		logerror("%s:Unknown protection question %02X\n", cpuexec_describe_context(field->port->machine), pleiads_protection_question);
 		return 0;
@@ -432,7 +430,7 @@ READ8_HANDLER( survival_input_port_0_r )
 	return survival_input_latches[0];
 }
 
-READ8_HANDLER( survival_protection_r )
+READ8_DEVICE_HANDLER( survival_protection_r )
 {
 	return survival_protection_value;
 }

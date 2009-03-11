@@ -354,7 +354,7 @@ static WRITE8_HANDLER(write_a00x)
 
 			if(newbank != bank)
 			{
-				UINT8 *ROM = memory_region(space->machine, "main");
+				UINT8 *ROM = memory_region(space->machine, "maincpu");
 				bank = newbank;
 				ROM = &ROM[0x10000+0x8000 * newbank + UNBANKED_SIZE];
 				memory_set_bankptr(space->machine, 1,ROM);
@@ -400,29 +400,26 @@ static READ8_HANDLER(prot_read_700x)
  * Status from ES8712?
  * BIT1 is zero when no sample is playing?
  */
-static READ8_HANDLER(read_8010) {	return 0x00; }
+static READ8_DEVICE_HANDLER(read_8010) {	return 0x00; }
 
-static WRITE8_HANDLER(xscroll_w)
+static WRITE8_DEVICE_HANDLER(xscroll_w)
 {
 	scrollx=data;
 }
-static WRITE8_HANDLER(yscroll_w)
+static WRITE8_DEVICE_HANDLER(yscroll_w)
 {
 	scrolly=data;
 }
-
-static READ8_HANDLER(portA_r) {	return input_port_read(space->machine, "YM_PortA"); }
-static READ8_HANDLER(portB_r) {	return input_port_read(space->machine, "YM_PortB");}
 
 static const ym2203_interface ym2203_interface_0 =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		portA_r,
-		portB_r,
-		NULL,
-		NULL
+		DEVCB_INPUT_PORT("YM_PortA"),
+		DEVCB_INPUT_PORT("YM_PortB"),
+		DEVCB_NULL,
+		DEVCB_NULL
 	},
 	NULL
 };
@@ -432,10 +429,10 @@ static const ym2203_interface ym2203_interface_1 =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		NULL,
-		NULL,
-		xscroll_w,
-		yscroll_w
+		DEVCB_NULL,
+		DEVCB_NULL,
+		DEVCB_HANDLER(xscroll_w),
+		DEVCB_HANDLER(yscroll_w)
 	},
 	NULL
 };
@@ -443,10 +440,8 @@ static const ym2203_interface ym2203_interface_1 =
 static ADDRESS_MAP_START( map_main, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, UNBANKED_SIZE-1) AM_ROM
 	AM_RANGE(UNBANKED_SIZE, 0x7fff) AM_READ(SMH_BANK1)
-	AM_RANGE(0x8000, 0x8000) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0x8001, 0x8001) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
-	AM_RANGE(0x8008, 0x8008) AM_READWRITE(ym2203_status_port_1_r, ym2203_control_port_1_w)
-	AM_RANGE(0x8009, 0x8009) AM_READWRITE(ym2203_read_port_1_r, ym2203_write_port_1_w)
+	AM_RANGE(0x8000, 0x8001) AM_DEVREADWRITE("ym1", ym2203_r, ym2203_w)
+	AM_RANGE(0x8008, 0x8009) AM_DEVREADWRITE("ym2", ym2203_r, ym2203_w)
 	AM_RANGE(0xa000, 0xa00f) AM_READWRITE(read_a00x, write_a00x)
 	AM_RANGE(0xc000, 0xc3ff) AM_READWRITE(gfx0_vram_r, gfx0_vram_w) AM_BASE(&gfx0_vram)
 	AM_RANGE(0xc400, 0xc7ff) AM_READWRITE(gfx0_cram_r, gfx0_cram_w) AM_BASE(&gfx0_cram)
@@ -463,11 +458,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( map_sub, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0x8000) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0x8001, 0x8001) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
-	AM_RANGE(0x8008, 0x8008) AM_READWRITE(ym2203_status_port_1_r, ym2203_control_port_1_w)
-	AM_RANGE(0x8009, 0x8009) AM_READWRITE(ym2203_read_port_1_r, ym2203_write_port_1_w)
-	AM_RANGE(0x8010, 0x8016) AM_READWRITE(read_8010, es8712_data_0_w)
+	AM_RANGE(0x8000, 0x8001) AM_DEVREADWRITE("ym1", ym2203_r, ym2203_w)
+	AM_RANGE(0x8008, 0x8009) AM_DEVREADWRITE("ym2", ym2203_r, ym2203_w)
+	AM_RANGE(0x8010, 0x8016) AM_DEVREADWRITE("es", read_8010, es8712_w)
 	AM_RANGE(0xa000, 0xa00f) AM_READWRITE(read_a00x, write_a00x)
 	AM_RANGE(0xf000, 0xf0ff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0xf180, 0xffff) AM_RAM AM_SHARE(2)
@@ -769,19 +762,19 @@ static INTERRUPT_GEN( witch_sub_interrupt )
 
 static MACHINE_DRIVER_START( witch )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,8000000)		 /* ? MHz */
+	MDRV_CPU_ADD("maincpu", Z80,8000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(map_main, 0)
-	MDRV_CPU_VBLANK_INT("main", witch_main_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", witch_main_interrupt)
 
 	/* 2nd z80 */
 	MDRV_CPU_ADD("sub", Z80,8000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(map_sub, 0)
-	MDRV_CPU_VBLANK_INT("main", witch_sub_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", witch_sub_interrupt)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -812,9 +805,9 @@ MACHINE_DRIVER_END
 
 /* this set has (c)1992 Sega / Vic Tokai in the roms? */
 ROM_START( witch )
-	ROM_REGION( 0x30000, "main", 0 )
+	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "rom.u5", 0x10000, 0x20000, CRC(348fccb8) SHA1(947defd86c4a597fbfb9327eec4903aa779b3788)  )
-	ROM_COPY( "main" , 0x10000, 0x0000, 0x8000 )
+	ROM_COPY( "maincpu" , 0x10000, 0x0000, 0x8000 )
 
 	ROM_REGION( 0x10000, "sub", 0 )
 	ROM_LOAD( "rom.s6", 0x00000, 0x08000, CRC(82460b82) SHA1(d85a9d77edaa67dfab8ff6ac4cb6273f0904b3c0)  )
@@ -831,9 +824,9 @@ ROM_END
 
 /* no sega logo? a bootleg? */
 ROM_START( pbchmp95 )
-	ROM_REGION( 0x30000, "main", 0 )
+	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "3.bin", 0x10000, 0x20000, CRC(e881aa05) SHA1(10d259396cac4b9a1b72c262c11ffa5efbdac433)  )
-	ROM_COPY( "main" , 0x10000, 0x0000, 0x8000 )
+	ROM_COPY( "maincpu" , 0x10000, 0x0000, 0x8000 )
 
 	ROM_REGION( 0x10000, "sub", 0 )
 	ROM_LOAD( "4.bin", 0x00000, 0x08000, CRC(82460b82) SHA1(d85a9d77edaa67dfab8ff6ac4cb6273f0904b3c0)  )
@@ -850,7 +843,7 @@ ROM_END
 
 static DRIVER_INIT(witch)
 {
- 	UINT8 *ROM = (UINT8 *)memory_region(machine, "main");
+ 	UINT8 *ROM = (UINT8 *)memory_region(machine, "maincpu");
 	memory_set_bankptr(machine, 1,&ROM[0x10000+UNBANKED_SIZE]);
 
 	memory_install_read8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x7000, 0x700f, 0, 0, prot_read_700x);

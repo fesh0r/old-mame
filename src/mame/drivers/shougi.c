@@ -278,8 +278,8 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x5000, 0x5000) AM_READ_PORT("P1")
 	AM_RANGE(0x5800, 0x5800) AM_READ_PORT("P2") AM_WRITE(shougi_watchdog_reset_w)	/* game won't boot if watchdog doesn't work */
-	AM_RANGE(0x6000, 0x6000) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x6800, 0x6800) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x6000, 0x6000) AM_DEVWRITE("ay", ay8910_address_w)
+	AM_RANGE(0x6800, 0x6800) AM_DEVWRITE("ay", ay8910_data_w)
 	AM_RANGE(0x7000, 0x73ff) AM_RAM AM_SHARE(1) /* 2114 x 2 (0x400 x 4bit each) */
 	AM_RANGE(0x7800, 0x7bff) AM_RAM AM_SHARE(2) /* 2114 x 2 (0x400 x 4bit each) */
 
@@ -375,9 +375,9 @@ INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( shougi )
 
-	MDRV_CPU_ADD("main", Z80,10000000/4)
+	MDRV_CPU_ADD("maincpu", Z80,10000000/4)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", shougi_vblank_nmi)
+	MDRV_CPU_VBLANK_INT("screen", shougi_vblank_nmi)
 
 	MDRV_CPU_ADD("sub", Z80,10000000/4)
 	MDRV_CPU_PROGRAM_MAP(sub_map,0)
@@ -392,7 +392,7 @@ static MACHINE_DRIVER_START( shougi )
 	MDRV_WATCHDOG_VBLANK_INIT(16)	// assuming it's the same as champbas
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -414,7 +414,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( shougi )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "1.3a",    0x0000, 0x1000, CRC(b601303f) SHA1(ed07fb09053e15be49f4cb66e8916d1bdff48336) )
 	ROM_LOAD( "3.3c",    0x1000, 0x1000, CRC(2b8c7314) SHA1(5d21e425889f8dc118fcd2ba8cfc6fb8f94ddc5f) )
 	ROM_LOAD( "2.3b",    0x2000, 0x1000, CRC(09cb831f) SHA1(5a83a22d9245f980fe6a495433e51437d1f95644) )
@@ -436,7 +436,7 @@ ROM_START( shougi )
 ROM_END
 
 ROM_START( shougi2 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "1-2.3a",    0x0000, 0x1000, CRC(16d75306) SHA1(2d090396abd1fe2b31cb8450cc5d2fbde75e0230) )
 	ROM_LOAD( "3-2.3c",    0x1000, 0x1000, CRC(35b6d98b) SHA1(fc125acd4d504d9c883e685b9c6e5a509dc75c69) )
 	ROM_LOAD( "2-2.3b",    0x2000, 0x1000, CRC(b38affed) SHA1(44529233358923f114285533270b2a3c078b70f4) )

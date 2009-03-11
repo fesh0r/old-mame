@@ -100,7 +100,7 @@ static UINT16 star_shift_reg;
  *
  *************************************/
 
-static WRITE8_HANDLER( flipscreen_w );
+static WRITE_LINE_DEVICE_HANDLER( flipscreen_w );
 static WRITE8_HANDLER( audio_2_command_w );
 
 
@@ -111,17 +111,19 @@ static WRITE8_HANDLER( audio_2_command_w );
  *
  *************************************/
 
-static void main_cpu_irq(running_machine *machine, int state)
+static WRITE_LINE_DEVICE_HANDLER( main_cpu_irq )
 {
-	int combined_state = pia_get_irq_a(1) | pia_get_irq_b(1) | pia_get_irq_b(2);
+	const device_config *pia1 = devtag_get_device(device->machine, "pia1");
+	const device_config *pia2 = devtag_get_device(device->machine, "pia2");
+	int combined_state = pia6821_get_irq_a(pia1) | pia6821_get_irq_b(pia1) | pia6821_get_irq_b(pia2);
 
-	cpu_set_input_line(machine->cpu[0], M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[0], M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
-static void main_cpu_firq(running_machine *machine, int state)
+static WRITE_LINE_DEVICE_HANDLER( main_cpu_firq )
 {
-	cpu_set_input_line(machine->cpu[0], M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[0], M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -134,17 +136,17 @@ static void main_cpu_firq(running_machine *machine, int state)
 
 static INTERRUPT_GEN( update_pia_1 )
 {
-	const address_space *space = cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM);
+	const device_config *pia1 = devtag_get_device(device->machine, "pia1");
 	/* update the different PIA pins from the input ports */
 
 	/* CA1 - copy of PA0 (COIN1) */
-	pia_1_ca1_w(space, 0, input_port_read(device->machine, "IN0") & 0x01);
+	pia6821_ca1_w(pia1, 0, input_port_read(device->machine, "IN0") & 0x01);
 
 	/* CA2 - copy of PA1 (SERVICE1) */
-	pia_1_ca2_w(space, 0, input_port_read(device->machine, "IN0") & 0x02);
+	pia6821_ca2_w(pia1, 0, input_port_read(device->machine, "IN0") & 0x02);
 
 	/* CB1 - (crosshatch) */
-	pia_1_cb1_w(space, 0, input_port_read(device->machine, "CROSS"));
+	pia6821_cb1_w(pia1, 0, input_port_read(device->machine, "CROSS"));
 
 	/* CB2 - NOT CONNECTED */
 }
@@ -152,9 +154,18 @@ static INTERRUPT_GEN( update_pia_1 )
 
 static const pia6821_interface pia_1_intf =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ input_port_0_r, input_port_1_r, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ 0, 0, 0, 0,
-	/*irqs   : A/B             */ main_cpu_irq, main_cpu_irq
+	DEVCB_INPUT_PORT("IN0"),		/* port A in */
+	DEVCB_INPUT_PORT("IN1"),		/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_NULL,		/* port A out */
+	DEVCB_NULL,		/* port B out */
+	DEVCB_NULL,		/* line CA2 out */
+	DEVCB_NULL,		/* port CB2 out */
+	DEVCB_LINE(main_cpu_irq),		/* IRQA */
+	DEVCB_LINE(main_cpu_irq)		/* IRQB */
 };
 
 
@@ -165,13 +176,13 @@ static const pia6821_interface pia_1_intf =
  *
  *************************************/
 
-static WRITE8_HANDLER( pia_2_port_a_w )
+static WRITE8_DEVICE_HANDLER( pia_2_port_a_w )
 {
 	star_delay_counter = (star_delay_counter & 0x0f00) | data;
 }
 
 
-static WRITE8_HANDLER( pia_2_port_b_w )
+static WRITE8_DEVICE_HANDLER( pia_2_port_b_w )
 {
 	/* bits 0-3 go to bits 8-11 of the star delay counter */
 	star_delay_counter = (star_delay_counter & 0x00ff) | ((data & 0x0f) << 8);
@@ -180,15 +191,24 @@ static WRITE8_HANDLER( pia_2_port_b_w )
 	star_enable = data & 0x10;
 
 	/* bits 5-7 go to the music board connector */
-	audio_2_command_w(space, 0, data & 0xe0);
+	audio_2_command_w(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0, data & 0xe0);
 }
 
 
 static const pia6821_interface pia_2_intf =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ pia_2_port_a_w, pia_2_port_b_w, flipscreen_w, 0,
-	/*irqs   : A/B             */ main_cpu_firq, main_cpu_irq
+	DEVCB_NULL,		/* port A in */
+	DEVCB_NULL,		/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_HANDLER(pia_2_port_a_w),		/* port A out */
+	DEVCB_HANDLER(pia_2_port_b_w),		/* port B out */
+	DEVCB_LINE(flipscreen_w),			/* line CA2 out */
+	DEVCB_NULL,		/* port CB2 out */
+	DEVCB_LINE(main_cpu_firq),		/* IRQA */
+	DEVCB_LINE(main_cpu_irq)		/* IRQB */
 };
 
 
@@ -207,8 +227,8 @@ static const pia6821_interface pia_2_intf =
 
 static WRITE8_DEVICE_HANDLER(ic48_1_74123_output_changed)
 {
-	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
-	pia_2_ca1_w(space, 0, data);
+	const device_config *pia2 = devtag_get_device(device->machine, "pia2");
+	pia6821_ca1_w(pia2, 0, data);
 }
 
 
@@ -233,27 +253,11 @@ static const ttl74123_config ic48_1_config =
 
 static MACHINE_START( nyny )
 {
-	pia_config(machine, 1, &pia_1_intf);
-	pia_config(machine, 2, &pia_2_intf);
-
 	/* setup for save states */
 	state_save_register_global(machine, flipscreen);
 	state_save_register_global(machine, star_enable);
 	state_save_register_global(machine, star_delay_counter);
 	state_save_register_global(machine, star_shift_reg);
-}
-
-
-
-/*************************************
- *
- *  Machine reset
- *
- *************************************/
-
-static MACHINE_RESET( nyny )
-{
-	pia_reset();
 }
 
 
@@ -267,9 +271,9 @@ static MACHINE_RESET( nyny )
 #define NUM_PENS	(8)
 
 
-static WRITE8_HANDLER( flipscreen_w )
+static WRITE_LINE_DEVICE_HANDLER( flipscreen_w )
 {
-	flipscreen = data ? 0 : 1;
+	flipscreen = state ? 0 : 1;
 }
 
 
@@ -395,13 +399,13 @@ static MC6845_END_UPDATE( end_update )
 
 static MC6845_ON_DE_CHANGED( display_enable_changed )
 {
-	ttl74123_a_w(devtag_get_device(device->machine, TTL74123, "ic48_1"), 0, display_enabled);
+	ttl74123_a_w(devtag_get_device(device->machine, "ic48_1"), 0, display_enabled);
 }
 
 
 static const mc6845_interface mc6845_intf =
 {
-	"main",					/* screen we are acting on */
+	"screen",				/* screen we are acting on */
 	8,						/* number of pixels per video memory address */
 	begin_update,			/* before pixel update callback */
 	update_row,				/* row update callback */
@@ -414,7 +418,7 @@ static const mc6845_interface mc6845_intf =
 
 static VIDEO_UPDATE( nyny )
 {
-	const device_config *mc6845 = device_list_find_by_tag(screen->machine->config->devicelist, MC6845, "crtc");
+	const device_config *mc6845 = devtag_get_device(screen->machine, "crtc");
 	mc6845_update(mc6845, bitmap, cliprect);
 
 	return 0;
@@ -442,7 +446,7 @@ static WRITE8_HANDLER( audio_1_answer_w )
 }
 
 
-static WRITE8_HANDLER( nyny_ay8910_37_port_a_w )
+static WRITE8_DEVICE_HANDLER( nyny_ay8910_37_port_a_w )
 {
 	/* not sure what this does */
 
@@ -450,20 +454,14 @@ static WRITE8_HANDLER( nyny_ay8910_37_port_a_w )
 }
 
 
-static WRITE8_HANDLER( nyny_ay8910_37_port_b_w )
-{
-	dac_data_w(0, data);
-}
-
-
 static const ay8910_interface ay8910_37_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	NULL,
-	nyny_ay8910_37_port_a_w,
-	nyny_ay8910_37_port_b_w
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(nyny_ay8910_37_port_a_w),
+	DEVCB_DEVICE_HANDLER("dac", dac_w)
 };
 
 
@@ -471,10 +469,10 @@ static const ay8910_interface ay8910_64_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_3_r,
-	input_port_2_r,
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("SW2"),
+	DEVCB_INPUT_PORT("SW1"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -501,11 +499,13 @@ static WRITE8_HANDLER( audio_2_command_w )
 
 static READ8_HANDLER( nyny_pia_1_2_r )
 {
+	const device_config *pia1 = devtag_get_device(space->machine, "pia1");
+	const device_config *pia2 = devtag_get_device(space->machine, "pia2");
 	UINT8 ret = 0;
 
 	/* the address bits are directly connected to the chip selects */
-	if (offset & 0x04)  ret = pia_1_r(space, offset & 0x03);
-	if (offset & 0x08)  ret = pia_2_alt_r(space, offset & 0x03);
+	if (offset & 0x04)  ret = pia6821_r(pia1, offset & 0x03);
+	if (offset & 0x08)  ret = pia6821_alt_r(pia2, offset & 0x03);
 
 	return ret;
 }
@@ -513,9 +513,12 @@ static READ8_HANDLER( nyny_pia_1_2_r )
 
 static WRITE8_HANDLER( nyny_pia_1_2_w )
 {
+	const device_config *pia1 = devtag_get_device(space->machine, "pia1");
+	const device_config *pia2 = devtag_get_device(space->machine, "pia2");
+
 	/* the address bits are directly connected to the chip selects */
-	if (offset & 0x04)  pia_1_w(space, offset & 0x03, data);
-	if (offset & 0x08)  pia_2_alt_w(space, offset & 0x03, data);
+	if (offset & 0x04)  pia6821_w(pia1, offset & 0x03, data);
+	if (offset & 0x08)  pia6821_alt_w(pia2, offset & 0x03, data);
 }
 
 
@@ -526,8 +529,8 @@ static ADDRESS_MAP_START( nyny_main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x6000, 0x7fff) AM_RAM AM_BASE(&nyny_colorram_2)
 	AM_RANGE(0x8000, 0x9fff) AM_RAM
 	AM_RANGE(0xa000, 0xa0ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size) /* SRAM (coin counter, shown when holding F2) */
-	AM_RANGE(0xa100, 0xa100) AM_MIRROR(0x00fe) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0xa101, 0xa101) AM_MIRROR(0x00fe) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
+	AM_RANGE(0xa100, 0xa100) AM_MIRROR(0x00fe) AM_DEVWRITE("crtc", mc6845_address_w)
+	AM_RANGE(0xa101, 0xa101) AM_MIRROR(0x00fe) AM_DEVWRITE("crtc", mc6845_register_w)
 	AM_RANGE(0xa200, 0xa20f) AM_MIRROR(0x00f0) AM_READWRITE(nyny_pia_1_2_r, nyny_pia_1_2_w)
 	AM_RANGE(0xa300, 0xa300) AM_MIRROR(0x00ff) AM_READWRITE(soundlatch3_r, audio_1_command_w)
 	AM_RANGE(0xa400, 0xa7ff) AM_NOP
@@ -543,10 +546,10 @@ static ADDRESS_MAP_START( nyny_audio_1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0080, 0x0fff) AM_NOP
 	AM_RANGE(0x1000, 0x1000) AM_MIRROR(0x0fff) AM_READWRITE(soundlatch_r, audio_1_answer_w)
 	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x0fff) AM_READ_PORT("SW3")
-	AM_RANGE(0x3000, 0x3000) AM_MIRROR(0x0ffc) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0x3001, 0x3001) AM_MIRROR(0x0ffc) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x3002, 0x3002) AM_MIRROR(0x0ffc) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
-	AM_RANGE(0x3003, 0x3003) AM_MIRROR(0x0ffc) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x3000, 0x3000) AM_MIRROR(0x0ffc) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0x3000, 0x3001) AM_MIRROR(0x0ffc) AM_DEVWRITE("ay1", ay8910_data_address_w)
+	AM_RANGE(0x3002, 0x3002) AM_MIRROR(0x0ffc) AM_DEVREAD("ay2", ay8910_r)
+	AM_RANGE(0x3002, 0x3003) AM_MIRROR(0x0ffc) AM_DEVWRITE("ay2", ay8910_data_address_w)
 	AM_RANGE(0x4000, 0x4fff) AM_NOP
 	AM_RANGE(0x5000, 0x57ff) AM_MIRROR(0x0800) AM_ROM
 	AM_RANGE(0x6000, 0x67ff) AM_MIRROR(0x0800) AM_ROM
@@ -559,8 +562,8 @@ static ADDRESS_MAP_START( nyny_audio_2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x007f) AM_RAM		/* internal RAM */
 	AM_RANGE(0x0080, 0x0fff) AM_NOP
 	AM_RANGE(0x1000, 0x1000) AM_MIRROR(0x0fff) AM_READ(soundlatch2_r)
-	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x0ffe) AM_READWRITE(ay8910_read_port_2_r, ay8910_write_port_2_w)
-	AM_RANGE(0x2001, 0x2001) AM_MIRROR(0x0ffe) AM_WRITE(ay8910_control_port_2_w)
+	AM_RANGE(0x2000, 0x2000) AM_MIRROR(0x0ffe) AM_DEVREAD("ay3", ay8910_r)
+	AM_RANGE(0x2000, 0x2001) AM_MIRROR(0x0ffe) AM_DEVWRITE("ay3", ay8910_data_address_w)
 	AM_RANGE(0x3000, 0x6fff) AM_NOP
 	AM_RANGE(0x7000, 0x77ff) AM_MIRROR(0x0800) AM_ROM
 ADDRESS_MAP_END
@@ -662,24 +665,23 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( nyny )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809, 1400000)	/* 1.40 MHz? The clock signal is generated by analog chips */
+	MDRV_CPU_ADD("maincpu", M6809, 1400000)	/* 1.40 MHz? The clock signal is generated by analog chips */
 	MDRV_CPU_PROGRAM_MAP(nyny_main_map,0)
 	MDRV_CPU_PERIODIC_INT(update_pia_1, 25)
 
-	MDRV_CPU_ADD("audio", M6802, AUDIO_CPU_1_CLOCK)
+	MDRV_CPU_ADD("audiocpu", M6802, AUDIO_CPU_1_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(nyny_audio_1_map,0)
 
 	MDRV_CPU_ADD("audio2", M6802, AUDIO_CPU_2_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(nyny_audio_2_map,0)
 
 	MDRV_MACHINE_START(nyny)
-	MDRV_MACHINE_RESET(nyny)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(nyny)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, 256, 0, 256, 256, 0, 256)	/* temporary, CRTC will configure screen */
 
@@ -688,6 +690,9 @@ static MACHINE_DRIVER_START( nyny )
 	/* 74LS123 */
 
 	MDRV_TTL74123_ADD("ic48_1", ic48_1_config)
+
+	MDRV_PIA6821_ADD("pia1", pia_1_intf)
+	MDRV_PIA6821_ADD("pia2", pia_2_intf)
 
 	/* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -716,7 +721,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( nyny )
-	ROM_REGION(0x10000, "main", 0)	/* main CPU */
+	ROM_REGION(0x10000, "maincpu", 0)	/* main CPU */
 	ROM_LOAD( "nyny01s.100",  0xa800, 0x0800, CRC(a2b76eca) SHA1(e46717e6ad330be4c4e7d9fab4f055f89aa31bcc) )
 	ROM_LOAD( "nyny02s.099",  0xb000, 0x0800, CRC(ef2d4dae) SHA1(718c0ecf7770a780aebb1dc8bf4ca86ea0a5ea28) )
 	ROM_LOAD( "nyny03s.098",  0xb800, 0x0800, CRC(2734c229) SHA1(b028d057d26838bae50b8ddb90a3755b5315b4ee) )
@@ -725,7 +730,7 @@ ROM_START( nyny )
 	ROM_LOAD( "nyny06s.095",  0xf000, 0x0800, CRC(8c073052) SHA1(0ce103ac0e79124ac9f1e097dda1a0664b92b89b) )
 	ROM_LOAD( "nyny07s.094",  0xf800, 0x0800, CRC(d49d7429) SHA1(c12eaae7ba0b1d44c45a584232db03c5731c046a) )
 
-	ROM_REGION(0x10000, "audio", 0)	/* first audio CPU */
+	ROM_REGION(0x10000, "audiocpu", 0)	/* first audio CPU */
 	ROM_LOAD( "nyny08.093",   0x5000, 0x0800, CRC(19ddb6c3) SHA1(0097fad542f9a33849565093c2fb106d90007b1a) )
 	ROM_LOAD( "nyny09.092",   0x6000, 0x0800, CRC(a359c6f1) SHA1(1bc7b487581399908c3cec823733810fb6d944ce) )
 	ROM_LOAD( "nyny10.091",   0x7000, 0x0800, CRC(a72a70fa) SHA1(deed7dec9cc43fa1d6c4854ba18169c894c9a2f0) )
@@ -736,7 +741,7 @@ ROM_END
 
 
 ROM_START( nynyg )
-	ROM_REGION(0x10000, "main", 0)	/* main CPU */
+	ROM_REGION(0x10000, "maincpu", 0)	/* main CPU */
 	ROM_LOAD( "gny1.cpu",     0xa800, 0x0800, CRC(fb5b8f17) SHA1(2202325451dfd4e7c16cba93f0fade46929ffa72) )
 	ROM_LOAD( "gny2.cpu",     0xb000, 0x0800, CRC(d248dd93) SHA1(0c4579698f8917332041c08af6902b8f8acd7d62) )
 	ROM_LOAD( "gny3.cpu",     0xb800, 0x0800, CRC(223a9d09) SHA1(c2b12270d375587489208d6a1b37a4e3ec87bc20) )
@@ -745,7 +750,7 @@ ROM_START( nynyg )
 	ROM_LOAD( "gny6.cpu",     0xf000, 0x0800, CRC(4839d4d2) SHA1(cfd6f2f252ee2f6a4d881496a017c02d7dd77944) )
 	ROM_LOAD( "gny7.cpu",     0xf800, 0x0800, CRC(b7564c5b) SHA1(e1d8fe7f37aa7aa98f18c538fe6e688675cc2de1) )
 
-	ROM_REGION(0x10000, "audio", 0)	/* first audio CPU */
+	ROM_REGION(0x10000, "audiocpu", 0)	/* first audio CPU */
 	ROM_LOAD( "gny8.cpu",     0x5000, 0x0800, CRC(e0bf7d00) SHA1(7afca3affa413179f4f59ce2cad89525cfa5efbc) )
 	ROM_LOAD( "gny9.cpu",     0x6000, 0x0800, CRC(639bc81a) SHA1(91819d49099e438ac8c70920a787aeaed3ed82e9) )
 	ROM_LOAD( "gny10.cpu",    0x7000, 0x0800, CRC(73764021) SHA1(bb2f62130142487afbd8d2540e2d4fe5bb67c4ee) )
@@ -758,7 +763,7 @@ ROM_END
 
 
 ROM_START( arcadia )
-	ROM_REGION(0x10000, "main", 0)	/* main CPU */
+	ROM_REGION(0x10000, "maincpu", 0)	/* main CPU */
 	ROM_LOAD( "ar-01",        0xa800, 0x0800, CRC(7b7e8f27) SHA1(2bb1d07d87ad5b952de9460c840d7e8b59ed1b4a) )
 	ROM_LOAD( "ar-02",        0xb000, 0x0800, CRC(81d9e172) SHA1(4279582f1edf54f0974fa277565d8ade6d9faa50) )
 	ROM_LOAD( "ar-03",        0xb800, 0x0800, CRC(2c5feb05) SHA1(6f8952e7744ba7d7b8b345d67f546b504f7a3b30) )
@@ -767,7 +772,7 @@ ROM_START( arcadia )
 	ROM_LOAD( "ar-06",        0xf000, 0x0800, CRC(27b79cc0) SHA1(2c5c3a9a09069751c5e9c23d0840ee4996006c0b) )
 	ROM_LOAD( "ar-07",        0xf800, 0x0800, CRC(be77a477) SHA1(817c069855634dd844f0068d64bfbf1862980d6b) )
 
-	ROM_REGION(0x10000, "audio", 0)	/* first audio CPU */
+	ROM_REGION(0x10000, "audiocpu", 0)	/* first audio CPU */
 	ROM_LOAD( "ar-08",        0x5000, 0x0800, CRC(38569b25) SHA1(887a9afaa65d0961097f7fb5f1ae390d40e9c164) )
 	ROM_LOAD( "nyny09.092",   0x6000, 0x0800, CRC(a359c6f1) SHA1(1bc7b487581399908c3cec823733810fb6d944ce) )
 	ROM_LOAD( "nyny10.091",   0x7000, 0x0800, CRC(a72a70fa) SHA1(deed7dec9cc43fa1d6c4854ba18169c894c9a2f0) )

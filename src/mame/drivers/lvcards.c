@@ -177,8 +177,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( lvcards_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x00, 0x00) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE("ay", ay8910_data_address_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( lvpoker_map, ADDRESS_SPACE_PROGRAM, 8  )
@@ -390,7 +390,7 @@ static INPUT_PORTS_START( ponttehk )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_CODE(KEYCODE_3) PORT_NAME("Coinout Sensor") //Token Out
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SPECIAL )//Motor On?
 
-	PORT_START("DSW1")
+	PORT_START("DSW0")
 	PORT_DIPNAME( 0x07, 0x07, "Winning Percentage" )
 	PORT_DIPSETTING(    0x06, "70%" )
 	PORT_DIPSETTING(    0x05, "74%" )
@@ -410,7 +410,7 @@ static INPUT_PORTS_START( ponttehk )
 	PORT_DIPSETTING(    0x80, "Disabled" )
 	PORT_DIPSETTING(    0x00, "Enabled" )
 
-	PORT_START("DSW2")
+	PORT_START("DSW1")
 	PORT_DIPNAME( 0x07, 0x06, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 2C_1C ) )
@@ -461,24 +461,24 @@ static const ay8910_interface lcay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_3_r, //DSW0
-	input_port_4_r,  //DSW1
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("DSW0"),
+	DEVCB_INPUT_PORT("DSW1"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
 static MACHINE_DRIVER_START( lvcards )
 	// basic machine hardware
- 	MDRV_CPU_ADD("main",Z80, 18432000/6)	// 3.072 MHz ?
+ 	MDRV_CPU_ADD("maincpu",Z80, 18432000/6)	// 3.072 MHz ?
 
 	MDRV_CPU_PROGRAM_MAP(lvcards_map, 0)
 	MDRV_CPU_IO_MAP(lvcards_io_map, 0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	// video hardware
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -505,7 +505,7 @@ static MACHINE_DRIVER_START( lvpoker )
 
 	// basic machine hardware
 	MDRV_NVRAM_HANDLER(generic_1fill)
- 	MDRV_CPU_MODIFY("main")
+ 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(lvpoker_map,0)
 	MDRV_MACHINE_START(lvpoker)
 	MDRV_MACHINE_RESET(lvpoker)
@@ -516,7 +516,7 @@ static MACHINE_DRIVER_START( ponttehk )
 
 	// basic machine hardware
 	MDRV_NVRAM_HANDLER(generic_1fill)
- 	MDRV_CPU_MODIFY("main")
+ 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(ponttehk_map,0)
 	MDRV_MACHINE_RESET(lvpoker)
 
@@ -525,7 +525,7 @@ static MACHINE_DRIVER_START( ponttehk )
 MACHINE_DRIVER_END
 
 ROM_START( lvpoker )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "lp1.bin",	  0x0000, 0x4000, CRC(ecfefa91) SHA1(7f6e0f30a2c4299797a8066419bf247b2900e312) )
 	ROM_LOAD( "lp2.bin",	  0x4000, 0x2000, CRC(06d5484f) SHA1(326756a03eaeefc944428c7e011fcdc128aa415a) )
 	ROM_LOAD( "lp3.bin",	  0xc000, 0x2000, CRC(05e17de8) SHA1(76b38e414f225789de8af9ca0556008e17285ffe) )
@@ -547,7 +547,7 @@ ROM_START( lvpoker )
 ROM_END
 
 ROM_START( lvcards )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "lc1.bin", 0x0000, 0x4000, CRC(0c5fbf05) SHA1(bf996bdccfc5748cee91d004f2b1da10bcd8e329) )
 	ROM_LOAD( "lc2.bin", 0x4000, 0x2000, CRC(deb54548) SHA1(a245898635c5cd3c26989c2bba89bb71edacd906) )
 	ROM_LOAD( "lc3.bin", 0xc000, 0x2000, CRC(45c2bea9) SHA1(3a33501824769656aa87649c3fd0a8b8a4d83f3c) )
@@ -569,7 +569,7 @@ ROM_START( lvcards )
 ROM_END
 
 ROM_START( ponttehk )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "ponttehk.001", 0x0000, 0x4000, CRC(1f8c1b38) SHA1(3776ddd695741223bd9ad41f74187bff31f2cd3b) )
 	ROM_LOAD( "ponttehk.002", 0x4000, 0x2000, CRC(befb4f48) SHA1(8ca146c8b52afab5deb6f0ff52bdbb2b1ff3ded7) )
 

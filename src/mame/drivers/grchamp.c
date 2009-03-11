@@ -46,6 +46,7 @@
 #include "sound/ay8910.h"
 #include "grchamp.h"
 
+#include "grchamp.lh"
 
 
 /*************************************
@@ -243,6 +244,7 @@ static WRITE8_HANDLER( led_board_w )
 
 static WRITE8_HANDLER( cpu1_outputs_w )
 {
+	const device_config *discrete = devtag_get_device(space->machine, "discrete");
 	grchamp_state *state = space->machine->driver_data;
 	UINT8 diff = data ^ state->cpu1_out[offset];
 	state->cpu1_out[offset] = data;
@@ -306,18 +308,18 @@ static WRITE8_HANDLER( cpu1_outputs_w )
 			/* bit 2-4: ATTACK UP 1-3 */
 			/* bit 5-6: SIFT 1-2 */
 			/* bit 7:   ENGINE CS */
-			discrete_sound_w(space, GRCHAMP_ENGINE_CS_EN, data & 0x80);
-			discrete_sound_w(space, GRCHAMP_SIFT_DATA, (data >> 5) & 0x03);
-			discrete_sound_w(space, GRCHAMP_ATTACK_UP_DATA, (data >> 2) & 0x07);
-			discrete_sound_w(space, GRCHAMP_IDLING_EN, data & 0x02);
-			discrete_sound_w(space, GRCHAMP_FOG_EN, data & 0x01);
+			discrete_sound_w(discrete, GRCHAMP_ENGINE_CS_EN, data & 0x80);
+			discrete_sound_w(discrete, GRCHAMP_SIFT_DATA, (data >> 5) & 0x03);
+			discrete_sound_w(discrete, GRCHAMP_ATTACK_UP_DATA, (data >> 2) & 0x07);
+			discrete_sound_w(discrete, GRCHAMP_IDLING_EN, data & 0x02);
+			discrete_sound_w(discrete, GRCHAMP_FOG_EN, data & 0x01);
 			break;
 
 		case 0x0d: /* OUTD */
 			/* bit 0-3: ATTACK SPEED 1-4 */
 			/* bit 4-7: PLAYER SPEED 1-4 */
-			discrete_sound_w(space, GRCHAMP_PLAYER_SPEED_DATA, (data >> 4) & 0x0f);
-			discrete_sound_w(space, GRCHAMP_ATTACK_SPEED_DATA,  data & 0x0f);
+			discrete_sound_w(discrete, GRCHAMP_PLAYER_SPEED_DATA, (data >> 4) & 0x0f);
+			discrete_sound_w(discrete, GRCHAMP_ATTACK_SPEED_DATA,  data & 0x0f);
 			break;
 
 		default:
@@ -420,22 +422,22 @@ static READ8_HANDLER( main_to_sub_comm_r )
  *
  *************************************/
 
-static WRITE8_HANDLER( grchamp_portA_0_w )
+static WRITE8_DEVICE_HANDLER( grchamp_portA_0_w )
 {
-	discrete_sound_w(space, GRCHAMP_A_DATA, data);
+	discrete_sound_w(device, GRCHAMP_A_DATA, data);
 }
 
-static WRITE8_HANDLER( grchamp_portB_0_w )
+static WRITE8_DEVICE_HANDLER( grchamp_portB_0_w )
 {
-	discrete_sound_w(space, GRCHAMP_B_DATA, 255-data);
+	discrete_sound_w(device, GRCHAMP_B_DATA, 255-data);
 }
 
-static WRITE8_HANDLER( grchamp_portA_2_w )
+static WRITE8_DEVICE_HANDLER( grchamp_portA_2_w )
 {
 	/* A0/A1 modify the output of AY8910 #2 */
 	/* A7 contributes to the discrete logic hanging off of AY8910 #0 */
 }
-static WRITE8_HANDLER( grchamp_portB_2_w )
+static WRITE8_DEVICE_HANDLER( grchamp_portB_2_w )
 {
 	/* B0 connects elsewhere */
 }
@@ -452,20 +454,20 @@ static const ay8910_interface ay8910_interface_1 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	NULL,
-	grchamp_portA_0_w,
-	grchamp_portB_0_w
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_DEVICE_HANDLER("discrete", grchamp_portA_0_w),
+	DEVCB_DEVICE_HANDLER("discrete", grchamp_portB_0_w)
 };
 
 static const ay8910_interface ay8910_interface_3 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	NULL,
-	grchamp_portA_2_w,
-	grchamp_portB_2_w
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(grchamp_portA_2_w),
+	DEVCB_HANDLER(grchamp_portB_2_w)
 };
 
 
@@ -564,12 +566,12 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x4000, 0x43ff) AM_RAM
-	AM_RANGE(0x4800, 0x4800) AM_MIRROR(0x07f8) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x4801, 0x4801) AM_MIRROR(0x07f8) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0x4802, 0x4802) AM_MIRROR(0x07f8) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0x4803, 0x4803) AM_MIRROR(0x07f8) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
-	AM_RANGE(0x4804, 0x4804) AM_MIRROR(0x07fa) AM_WRITE(ay8910_control_port_2_w)
-	AM_RANGE(0x4805, 0x4805) AM_MIRROR(0x07fa) AM_READWRITE(ay8910_read_port_2_r, ay8910_write_port_2_w)
+	AM_RANGE(0x4800, 0x4801) AM_MIRROR(0x07f8) AM_DEVWRITE("ay1", ay8910_address_data_w)
+	AM_RANGE(0x4801, 0x4801) AM_MIRROR(0x07f8) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0x4802, 0x4803) AM_MIRROR(0x07f8) AM_DEVWRITE("ay2", ay8910_address_data_w)
+	AM_RANGE(0x4803, 0x4803) AM_MIRROR(0x07f8) AM_DEVREAD("ay2", ay8910_r)
+	AM_RANGE(0x4804, 0x4805) AM_MIRROR(0x07fa) AM_DEVWRITE("ay3", ay8910_address_data_w)
+	AM_RANGE(0x4805, 0x4805) AM_MIRROR(0x07fa) AM_DEVREAD("ay3", ay8910_r)
 	AM_RANGE(0x5000, 0x5000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
@@ -674,19 +676,19 @@ static MACHINE_DRIVER_START( grchamp )
 
 	/* basic machine hardware */
 	/* CPU BOARD */
-	MDRV_CPU_ADD("main", Z80, PIXEL_CLOCK/2)
+	MDRV_CPU_ADD("maincpu", Z80, PIXEL_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(main_portmap,0)
-	MDRV_CPU_VBLANK_INT("main", grchamp_cpu0_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", grchamp_cpu0_interrupt)
 
 	/* GAME BOARD */
 	MDRV_CPU_ADD("sub", Z80, PIXEL_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(sub_map,0)
 	MDRV_CPU_IO_MAP(sub_portmap,0)
-	MDRV_CPU_VBLANK_INT("main", grchamp_cpu1_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", grchamp_cpu1_interrupt)
 
 	/* SOUND BOARD */
-	MDRV_CPU_ADD("audio", Z80, SOUND_CLOCK/2)
+	MDRV_CPU_ADD("audiocpu", Z80, SOUND_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, (double)SOUND_CLOCK/4/16/16/10/16)
 
@@ -698,7 +700,7 @@ static MACHINE_DRIVER_START( grchamp )
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)
 	MDRV_GFXDECODE(grchamp)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
 
@@ -734,7 +736,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( grchamp )
-	ROM_REGION( 0x4000, "main", 0 )
+	ROM_REGION( 0x4000, "maincpu", 0 )
 	ROM_LOAD( "gm03",   0x0000, 0x1000, CRC(47fda76e) SHA1(fd5f1a651481669d64e5e0799369c22472265535) )
 	ROM_LOAD( "gm04",   0x1000, 0x1000, CRC(07a623dc) SHA1(bb8a6531d95e996148c06fd336db4054eb1d28dd) )
 	ROM_LOAD( "gm05",	0x2000, 0x1000, CRC(716e1fba) SHA1(fe596873c932513227b982cd23af440d31612de9) )
@@ -746,7 +748,7 @@ ROM_START( grchamp )
 	ROM_LOAD( "gr16",	0x5000, 0x1000, CRC(885d708e) SHA1(d5d2978a0eeca167ec1fb9f6f981388de46fbf81) )
 	ROM_LOAD( "gr15",	0x6000, 0x1000, CRC(a822430b) SHA1(4d29612489362d2dc3f3a9eab609902a50c34aff) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "gm07",	0x0000, 0x1000, CRC(65dcc572) SHA1(c9b19af365fa7ade2698be0bb892591ba281ecb0) )
 	ROM_LOAD( "gm08",	0x1000, 0x1000, CRC(224d880c) SHA1(68aaaa0213d09cf34ba50c91d8c031d041f8a76f) )
 
@@ -788,4 +790,4 @@ ROM_END
  *
  *************************************/
 
-GAME( 1981, grchamp, 0, grchamp, grchamp, 0, ROT270, "Taito", "Grand Champion", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAMEL( 1981, grchamp, 0, grchamp, grchamp, 0, ROT270, "Taito", "Grand Champion", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS, layout_grchamp )

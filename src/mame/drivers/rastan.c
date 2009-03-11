@@ -176,7 +176,7 @@ static int adpcm_pos;
 static int adpcm_data;
 
 
-static WRITE8_HANDLER( rastan_bankswitch_w )
+static WRITE8_DEVICE_HANDLER( rastan_bankswitch_w )
 {
 	int offs;
 
@@ -184,7 +184,7 @@ static WRITE8_HANDLER( rastan_bankswitch_w )
 	if (data == 0) offs = 0x0000;
 	else offs = (data-1) * 0x4000 + 0x10000;
 
-	memory_set_bankptr(space->machine,  1, memory_region(space->machine, "audio") + offs );
+	memory_set_bankptr(device->machine,  1, memory_region(device->machine, "audiocpu") + offs );
 }
 
 
@@ -192,14 +192,14 @@ static void rastan_msm5205_vck(const device_config *device)
 {
 	if (adpcm_data != -1)
 	{
-		msm5205_data_w(0, adpcm_data & 0x0f);
+		msm5205_data_w(device, adpcm_data & 0x0f);
 		adpcm_data = -1;
 	}
 	else
 	{
 		adpcm_data = memory_region(device->machine, "adpcm")[adpcm_pos];
 		adpcm_pos = (adpcm_pos + 1) & 0xffff;
-		msm5205_data_w(0, adpcm_data >> 4);
+		msm5205_data_w(device, adpcm_data >> 4);
 	}
 }
 
@@ -208,14 +208,14 @@ static WRITE8_HANDLER( rastan_msm5205_address_w )
 	adpcm_pos = (adpcm_pos & 0x00ff) | (data << 8);
 }
 
-static WRITE8_HANDLER( rastan_msm5205_start_w )
+static WRITE8_DEVICE_HANDLER( rastan_msm5205_start_w )
 {
-	msm5205_reset_w(0, 0);
+	msm5205_reset_w(device, 0);
 }
 
-static WRITE8_HANDLER( rastan_msm5205_stop_w )
+static WRITE8_DEVICE_HANDLER( rastan_msm5205_stop_w )
 {
-	msm5205_reset_w(0, 1);
+	msm5205_reset_w(device, 1);
 	adpcm_pos &= 0xff00;
 }
 
@@ -248,13 +248,12 @@ static ADDRESS_MAP_START( rastan_s_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK(1)
 	AM_RANGE(0x8000, 0x8fff) AM_RAM
-	AM_RANGE(0x9000, 0x9000) AM_WRITE(ym2151_register_port_0_w)
-	AM_RANGE(0x9001, 0x9001) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
+	AM_RANGE(0x9000, 0x9001) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(taitosound_slave_port_w)
 	AM_RANGE(0xa001, 0xa001) AM_READWRITE(taitosound_slave_comm_r, taitosound_slave_comm_w)
 	AM_RANGE(0xb000, 0xb000) AM_WRITE(rastan_msm5205_address_w)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(rastan_msm5205_start_w)
-	AM_RANGE(0xd000, 0xd000) AM_WRITE(rastan_msm5205_stop_w)
+	AM_RANGE(0xc000, 0xc000) AM_DEVWRITE("msm", rastan_msm5205_start_w)
+	AM_RANGE(0xd000, 0xd000) AM_DEVWRITE("msm", rastan_msm5205_stop_w)
 ADDRESS_MAP_END
 
 
@@ -358,9 +357,9 @@ GFXDECODE_END
 
 
 /* handler called by the YM2151 emulator when the internal timers cause an IRQ */
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2151_interface ym2151_config =
@@ -385,17 +384,17 @@ static MACHINE_RESET( rastan )
 static MACHINE_DRIVER_START( rastan )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, XTAL_16MHz/2)	/* verified on pcb */
+	MDRV_CPU_ADD("maincpu", M68000, XTAL_16MHz/2)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(rastan_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq5_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq5_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, XTAL_16MHz/4)	/* verified on pcb */
+	MDRV_CPU_ADD("audiocpu", Z80, XTAL_16MHz/4)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(rastan_s_map,0)
 
 	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -432,7 +431,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( rastan )
-	ROM_REGION( 0x60000, "main", 0 )	/* 6*64k for 68000 code */
+	ROM_REGION( 0x60000, "maincpu", 0 )	/* 6*64k for 68000 code */
 	ROM_LOAD16_BYTE( "b04-35.19", 0x00000, 0x10000, CRC(1c91dbb1) SHA1(17fc55e8546cc0b847aebd67fb4570a1e9f128f3) )
 	ROM_LOAD16_BYTE( "b04-37.07", 0x00001, 0x10000, CRC(ecf20bdd) SHA1(92e46b1edef40a19be17091c09daba598d77bca8) )
 	ROM_LOAD16_BYTE( "b04-40.20", 0x20000, 0x10000, CRC(0930d4b3) SHA1(c269b3856040ed9409de99cca48f22a2f355fc4c) )
@@ -440,7 +439,7 @@ ROM_START( rastan )
 	ROM_LOAD16_BYTE( "b04-42.21", 0x40000, 0x10000, CRC(1857a7cb) SHA1(7d967d04ade648c6ddb19aad9e184b6e272856da) )
 	ROM_LOAD16_BYTE( "b04-43.09", 0x40001, 0x10000, CRC(c34b9152) SHA1(6ed9247ad455bc3b71d78b541591b269969830cb) )
 
-	ROM_REGION( 0x1c000, "audio", 0 )
+	ROM_REGION( 0x1c000, "audiocpu", 0 )
 	ROM_LOAD( "b04-19.49", 0x00000, 0x4000, CRC(ee81fdd8) SHA1(fa59dac2583a7d2979550dffc6f9c6c2bd67bfd5) )
 	ROM_CONTINUE(          0x10000, 0xc000 )
 
@@ -461,7 +460,7 @@ ROM_START( rastan )
 ROM_END
 
 ROM_START( rastanu )
-	ROM_REGION( 0x60000, "main", 0 )	/* 6*64k for 68000 code */
+	ROM_REGION( 0x60000, "maincpu", 0 )	/* 6*64k for 68000 code */
 	ROM_LOAD16_BYTE( "b04-35.19", 0x00000, 0x10000, CRC(1c91dbb1) SHA1(17fc55e8546cc0b847aebd67fb4570a1e9f128f3) )
 	ROM_LOAD16_BYTE( "b04-37.07", 0x00001, 0x10000, CRC(ecf20bdd) SHA1(92e46b1edef40a19be17091c09daba598d77bca8) )
 	ROM_LOAD16_BYTE( "b04-45.20", 0x20000, 0x10000, CRC(362812dd) SHA1(f7df037ef423d931ca780b34813d4e9e4db67054) )
@@ -469,7 +468,7 @@ ROM_START( rastanu )
 	ROM_LOAD16_BYTE( "b04-42.21", 0x40000, 0x10000, CRC(1857a7cb) SHA1(7d967d04ade648c6ddb19aad9e184b6e272856da) )
 	ROM_LOAD16_BYTE( "b04-41-1.09", 0x40001, 0x10000, CRC(bd403269) SHA1(14aee828d5efb65370a5e453c8fd1c7b3e718074) )
 
-	ROM_REGION( 0x1c000, "audio", 0 )
+	ROM_REGION( 0x1c000, "audiocpu", 0 )
 	ROM_LOAD( "b04-19.49", 0x00000, 0x4000, CRC(ee81fdd8) SHA1(fa59dac2583a7d2979550dffc6f9c6c2bd67bfd5) )
 	ROM_CONTINUE(            0x10000, 0xc000 )
 
@@ -490,7 +489,7 @@ ROM_START( rastanu )
 ROM_END
 
 ROM_START( rastanu2 )
-	ROM_REGION( 0x60000, "main", 0 )	/* 6*64k for 68000 code */
+	ROM_REGION( 0x60000, "maincpu", 0 )	/* 6*64k for 68000 code */
 	ROM_LOAD16_BYTE( "rs19_38.bin", 0x00000, 0x10000, CRC(a38ac909) SHA1(66d792fee03c6bd87d15060b9d5cae74137c5ebd) )
 	ROM_LOAD16_BYTE( "b04-21.7",    0x00001, 0x10000, CRC(7c8dde9a) SHA1(0cfc3b4f3bc7b940a6c07267ac95e4aae25801ea) )
 	ROM_LOAD16_BYTE( "b04-23.20",   0x20000, 0x10000, CRC(254b3dce) SHA1(5126cd5268abaa78dfdcd2ca70621c093c79be67) )
@@ -498,7 +497,7 @@ ROM_START( rastanu2 )
 	ROM_LOAD16_BYTE( "b04-25.21",   0x40000, 0x10000, CRC(d1e5adee) SHA1(eafc275a0023aecb2efaff14cd890915fa162624) )
 	ROM_LOAD16_BYTE( "b04-24.9",    0x40001, 0x10000, CRC(a3dcc106) SHA1(3a8854530b08864a1f7f46c427e49ceec8297806) )
 
-	ROM_REGION( 0x1c000, "audio", 0 )
+	ROM_REGION( 0x1c000, "audiocpu", 0 )
 	ROM_LOAD( "b04-19.49", 0x00000, 0x4000, CRC(ee81fdd8) SHA1(fa59dac2583a7d2979550dffc6f9c6c2bd67bfd5) )
 	ROM_CONTINUE(            0x10000, 0xc000 )
 
@@ -519,7 +518,7 @@ ROM_START( rastanu2 )
 ROM_END
 
 ROM_START( rastsaga )
-	ROM_REGION( 0x60000, "main", 0 ) /* 6*64k for 68000 code */
+	ROM_REGION( 0x60000, "maincpu", 0 ) /* 6*64k for 68000 code */
 	ROM_LOAD16_BYTE( "b04-38.19", 0x00000, 0x10000, CRC(a38ac909) SHA1(66d792fee03c6bd87d15060b9d5cae74137c5ebd) )
 	ROM_LOAD16_BYTE( "b04-37.7",  0x00001, 0x10000, CRC(bad60872) SHA1(e020f79b3ac3d2abccfcd5d135d2dc49e1335c7d) )
 	ROM_LOAD16_BYTE( "b04-40.20", 0x20000, 0x10000, CRC(6bcf70dc) SHA1(3e369548ac01981c503150b44c2747e6c2cec12a) )
@@ -527,7 +526,7 @@ ROM_START( rastsaga )
 	ROM_LOAD16_BYTE( "b04-42.21", 0x40000, 0x10000, CRC(b626c439) SHA1(976e820edc4ba107c5b579edaaee1e354e85fb67) )
 	ROM_LOAD16_BYTE( "b04-43.9",  0x40001, 0x10000, CRC(c928a516) SHA1(fe87fdf2d1b7ba93e1986460eb6af648b58f42e4) )
 
-	ROM_REGION( 0x1c000, "audio", 0 )
+	ROM_REGION( 0x1c000, "audiocpu", 0 )
 	ROM_LOAD( "b04-19.49", 0x00000, 0x4000, CRC(ee81fdd8) SHA1(fa59dac2583a7d2979550dffc6f9c6c2bd67bfd5) )
 	ROM_CONTINUE(            0x10000, 0xc000 )
 
@@ -548,7 +547,7 @@ ROM_START( rastsaga )
 ROM_END
 
 ROM_START( rastsag1 )
-	ROM_REGION( 0x60000, "main", 0 )	/* 6*64k for 68000 code */
+	ROM_REGION( 0x60000, "maincpu", 0 )	/* 6*64k for 68000 code */
 	ROM_LOAD16_BYTE( "b04-14.19",   0x00000, 0x10000, CRC(a38ac909) SHA1(66d792fee03c6bd87d15060b9d5cae74137c5ebd) )
 	ROM_LOAD16_BYTE( "b04-13.7",    0x00001, 0x10000, CRC(bad60872) SHA1(e020f79b3ac3d2abccfcd5d135d2dc49e1335c7d) )
 	ROM_LOAD16_BYTE( "b04-16-1.20", 0x20000, 0x10000, CRC(00b59e60) SHA1(545ab3eb9ef25c532dda5a9eec087665ba0cecc1) )
@@ -556,7 +555,7 @@ ROM_START( rastsag1 )
 	ROM_LOAD16_BYTE( "b04-18-1.21", 0x40000, 0x10000, CRC(b626c439) SHA1(976e820edc4ba107c5b579edaaee1e354e85fb67) )
 	ROM_LOAD16_BYTE( "b04-17-1.9",  0x40001, 0x10000, CRC(c928a516) SHA1(fe87fdf2d1b7ba93e1986460eb6af648b58f42e4) )
 
-	ROM_REGION( 0x1c000, "audio", 0 )
+	ROM_REGION( 0x1c000, "audiocpu", 0 )
 	ROM_LOAD( "b04-19.49", 0x00000, 0x4000, CRC(ee81fdd8) SHA1(fa59dac2583a7d2979550dffc6f9c6c2bd67bfd5) )
 	ROM_CONTINUE(            0x10000, 0xc000 )
 

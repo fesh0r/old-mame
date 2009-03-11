@@ -29,9 +29,9 @@ Memo:
 
 #define SIGNED_DAC	0		// 0:unsigned DAC, 1:signed DAC
 #if SIGNED_DAC
-#define DAC_0_WRITE	dac_0_signed_data_w
+#define DAC_WRITE	dac_signed_w
 #else
-#define DAC_0_WRITE	dac_0_data_w
+#define DAC_WRITE	dac_w
 #endif
 
 
@@ -68,16 +68,15 @@ static ADDRESS_MAP_START( pastelg_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 //  AM_RANGE(0x00, 0x00) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x00, 0x7f) AM_READ(nb1413m3_sndrom_r)
-	AM_RANGE(0x81, 0x81) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0x82, 0x82) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x83, 0x83) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x81, 0x81) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x82, 0x83) AM_DEVWRITE("ay", ay8910_data_address_w)
 	AM_RANGE(0x90, 0x90) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0x90, 0x96) AM_WRITE(pastelg_blitter_w)
 	AM_RANGE(0xa0, 0xa0) AM_READWRITE(nb1413m3_inputport1_r, nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_READWRITE(nb1413m3_inputport2_r, pastelg_romsel_w)
 	AM_RANGE(0xc0, 0xc0) AM_READ(pastelg_sndrom_r)
 	AM_RANGE(0xc0, 0xcf) AM_WRITE(pastelg_clut_w)
-	AM_RANGE(0xd0, 0xd0) AM_READWRITE(SMH_NOP, DAC_0_WRITE)					// unknown
+	AM_RANGE(0xd0, 0xd0) AM_READNOP AM_DEVWRITE("dac", DAC_WRITE)					// unknown
 	AM_RANGE(0xe0, 0xe0) AM_READ_PORT("DSWC")
 ADDRESS_MAP_END
 
@@ -118,16 +117,15 @@ static WRITE8_HANDLER( threeds_inputportsel_w )
 
 static ADDRESS_MAP_START( threeds_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x81, 0x81) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0x82, 0x82) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x83, 0x83) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x81, 0x81) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x82, 0x83) AM_DEVWRITE("ay", ay8910_data_address_w)
 	AM_RANGE(0x90, 0x90) AM_READ_PORT("SYSTEM") AM_WRITE( threeds_romsel_w )
 	AM_RANGE(0xf0, 0xf6) AM_WRITE(pastelg_blitter_w)
 	AM_RANGE(0xa0, 0xa0) AM_READWRITE(threeds_inputport1_r, threeds_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_READ(threeds_inputport2_r)
 	AM_RANGE(0xc0, 0xcf) AM_WRITE(pastelg_clut_w)
 	AM_RANGE(0xc0, 0xc0) AM_READ_PORT("DSWC")
-	AM_RANGE(0xd0, 0xd0) AM_READWRITE(SMH_NOP, DAC_0_WRITE)					// unknown
+	AM_RANGE(0xd0, 0xd0) AM_READNOP AM_DEVWRITE("dac", DAC_WRITE)					// unknown
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( pastelg )
@@ -218,7 +216,7 @@ static INPUT_PORTS_START( pastelg )
 INPUT_PORTS_END
 
 // stops the game hanging..
-CUSTOM_INPUT( nb1413m3_hackbusyflag_r )
+static CUSTOM_INPUT( nb1413m3_hackbusyflag_r )
 {
 	static int i = 0;
 	i ^= 1;
@@ -392,27 +390,27 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_1_r,
-	input_port_0_r,
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("DSWB"),
+	DEVCB_INPUT_PORT("DSWA"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
 static MACHINE_DRIVER_START( pastelg )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 19968000/8)	/* 2.496 MHz ? */
+	MDRV_CPU_ADD("maincpu", Z80, 19968000/8)	/* 2.496 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(pastelg_map,0)
 	MDRV_CPU_IO_MAP(pastelg_io_map,0)
 //  MDRV_CPU_VBLANK_INT_HACK(nb1413m3_interrupt,96)  // nmiclock not written, chip is 1411M1 instead of 1413M3
-	MDRV_CPU_VBLANK_INT("main", nb1413m3_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", nb1413m3_interrupt)
 
 	MDRV_MACHINE_RESET(nb1413m3)
 	MDRV_NVRAM_HANDLER(nb1413m3)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -462,16 +460,16 @@ Note
 static MACHINE_DRIVER_START( threeds )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 19968000/8)	/* 2.496 MHz ? */
+	MDRV_CPU_ADD("maincpu", Z80, 19968000/8)	/* 2.496 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(pastelg_map,0)
 	MDRV_CPU_IO_MAP(threeds_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", nb1413m3_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", nb1413m3_interrupt)
 
 	MDRV_MACHINE_RESET(nb1413m3)
 	MDRV_NVRAM_HANDLER(nb1413m3)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -497,7 +495,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( pastelg )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "pgal_09.bin",  0x00000, 0x04000, CRC(1e494af3) SHA1(1597a7da22ecfbb1df83cf9d0acc7a8be461bc2c) )
 	ROM_LOAD( "pgal_10.bin",  0x04000, 0x04000, CRC(677cccea) SHA1(a294bf4e3c5e74291160a0858371961868afc1d1) )
 	ROM_LOAD( "pgal_11.bin",  0x08000, 0x04000, CRC(c2ccea38) SHA1(0374e8aa0e7961426e417ffe6e1a0d8dc7fd9ecf) )
@@ -520,7 +518,7 @@ ROM_START( pastelg )
 ROM_END
 
 ROM_START( 3ds )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "up9.9a",    0x00000, 0x04000, CRC(bc0e7cfd) SHA1(4e84f573fb2c1228757d34b8bc69649b145d9707) )
 	ROM_LOAD( "up10.10a",  0x04000, 0x04000, CRC(e185d9f5) SHA1(98d4a824ed6a89e42543fb87daed33ef606bcced) )
 	ROM_LOAD( "up11.11a",  0x08000, 0x04000, CRC(d1fb728b) SHA1(46e8e6ccdc1b78da29c969cd9290158c96bac4c4) )

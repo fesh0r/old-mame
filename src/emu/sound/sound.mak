@@ -18,12 +18,7 @@ SOUNDOBJ = $(EMUOBJ)/sound
 # Core sound types
 #-------------------------------------------------
 
-SOUNDDEFS += -DHAS_CUSTOM=$(if $(filter CUSTOM,$(SOUNDS)),1,0)
 SOUNDDEFS += -DHAS_SAMPLES=$(if $(filter SAMPLES,$(SOUNDS)),1,0)
-
-ifneq ($(filter CUSTOM,$(SOUNDS)),)
-SOUNDOBJS += $(SOUNDOBJ)/custom.o
-endif
 
 ifneq ($(filter SAMPLES,$(SOUNDS)),)
 SOUNDOBJS += $(SOUNDOBJ)/samples.o
@@ -336,6 +331,18 @@ endif
 
 
 #-------------------------------------------------
+# National Semiconductor Digitalker
+#-------------------------------------------------
+
+SOUNDDEFS += -DHAS_DIGITALKER=$(if $(filter DIGITALKER,$(SOUNDS)),1,0)
+
+ifneq ($(filter DIGITALKER,$(SOUNDS)),)
+SOUNDOBJS += $(SOUNDOBJ)/digitalk.o
+endif
+
+
+
+#-------------------------------------------------
 # Nintendo custom sound chips
 #-------------------------------------------------
 
@@ -365,6 +372,7 @@ endif
 
 SOUNDDEFS += -DHAS_MSM5205=$(if $(filter MSM5205,$(SOUNDS)),1,0)
 SOUNDDEFS += -DHAS_MSM5232=$(if $(filter MSM5232,$(SOUNDS)),1,0)
+SOUNDDEFS += -DHAS_OKIM6376=$(if $(filter OKIM6376,$(SOUNDS)),1,0)
 SOUNDDEFS += -DHAS_OKIM6295=$(if $(filter OKIM6295,$(SOUNDS)),1,0)
 SOUNDDEFS += -DHAS_OKIM6258=$(if $(filter OKIM6258,$(SOUNDS)),1,0)
 
@@ -374,6 +382,10 @@ endif
 
 ifneq ($(filter MSM5232,$(SOUNDS)),)
 SOUNDOBJS += $(SOUNDOBJ)/msm5232.o
+endif
+
+ifneq ($(filter OKIM6376,$(SOUNDS)),)
+SOUNDOBJS += $(SOUNDOBJ)/okim6376.o
 endif
 
 ifneq ($(filter OKIM6295,$(SOUNDS)),)
@@ -713,12 +725,16 @@ ifneq ($(filter YM2612 YM3438,$(SOUNDS)),)
 SOUNDOBJS += $(SOUNDOBJ)/2612intf.o $(SOUNDOBJ)/ay8910.o $(SOUNDOBJ)/fm.o
 endif
 
-ifneq ($(filter YM3812 YM3526,$(SOUNDS)),)
+ifneq ($(filter YM3812,$(SOUNDS)),)
 SOUNDOBJS += $(SOUNDOBJ)/3812intf.o $(SOUNDOBJ)/fmopl.o
 endif
 
+ifneq ($(filter YM3526,$(SOUNDS)),)
+SOUNDOBJS += $(SOUNDOBJ)/3526intf.o $(SOUNDOBJ)/fmopl.o
+endif
+
 ifneq ($(filter Y8950,$(SOUNDS)),)
-SOUNDOBJS += $(SOUNDOBJ)/3812intf.o $(SOUNDOBJ)/fmopl.o $(SOUNDOBJ)/ymdeltat.o
+SOUNDOBJS += $(SOUNDOBJ)/8950intf.o $(SOUNDOBJ)/fmopl.o $(SOUNDOBJ)/ymdeltat.o
 endif
 
 ifneq ($(filter YMF262,$(SOUNDS)),)

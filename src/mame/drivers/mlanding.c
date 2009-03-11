@@ -14,10 +14,8 @@
 
 static UINT16 * ml_tileram;
 static UINT16 * ml_spriteram;
-static UINT16 * ml_unk;
 static bitmap_t *ml_bitmap[8];
 #define ML_CHARS 0x2000
-static UINT8 dirtychar[ML_CHARS];
 static int status_bit;
 static int adpcm_pos;
 static int adpcm_data;
@@ -35,23 +33,10 @@ static const gfx_layout tiles8x8_layout =
 	32*8
 };
 
-static void updateChars(running_machine *machine)
-{
-	int i;
-	for(i=0;i<ML_CHARS;i++)
-	{
-		if(dirtychar[i])
-		{
-			dirtychar[i]=0;
-			decodechar(machine->gfx[0], i,(UINT8 *) ml_tileram);
-		}
-	}
-}
-
 static WRITE16_HANDLER(ml_tileram_w)
 {
 	COMBINE_DATA(&ml_tileram[offset]);
-	dirtychar[offset>>4]=1;
+	gfx_element_mark_dirty(space->machine->gfx[0], offset>>4);
 }
 
 static READ16_HANDLER(ml_tileram_r)
@@ -86,24 +71,24 @@ static WRITE16_HANDLER(ml_subreset_w)
 		cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, PULSE_LINE);
 }
 
-static WRITE8_HANDLER( sound_bankswitch_w )
+static WRITE8_DEVICE_HANDLER( sound_bankswitch_w )
 {
 	data=0;
-	memory_set_bankptr(space->machine,  1, memory_region(space->machine, "z80") + ((data) & 0x03) * 0x4000 + 0x10000 );
+	memory_set_bankptr(device->machine,  1, memory_region(device->machine, "z80") + ((data) & 0x03) * 0x4000 + 0x10000 );
 }
 
 static void ml_msm5205_vck(const device_config *device)
 {
 	if (adpcm_data != -1)
 	{
-		msm5205_data_w(0, adpcm_data & 0x0f);
+		msm5205_data_w(device, adpcm_data & 0x0f);
 		adpcm_data = -1;
 	}
 	else
 	{
 		adpcm_data = memory_region(device->machine, "adpcm")[adpcm_pos];
 		adpcm_pos = (adpcm_pos + 1) & 0xffff;
-		msm5205_data_w(0, adpcm_data >> 4);
+		msm5205_data_w(device, adpcm_data >> 4);
 	}
 }
 
@@ -112,14 +97,14 @@ static WRITE8_HANDLER( ml_msm5205_address_w )
 	adpcm_pos = (adpcm_pos & 0x00ff) | (data << 8);
 }
 
-static WRITE8_HANDLER( ml_msm5205_start_w )
+static WRITE8_DEVICE_HANDLER( ml_msm5205_start_w )
 {
-	msm5205_reset_w(0, 0);
+	msm5205_reset_w(device, 0);
 }
 
-static WRITE8_HANDLER( ml_msm5205_stop_w )
+static WRITE8_DEVICE_HANDLER( ml_msm5205_stop_w )
 {
-	msm5205_reset_w(0, 1);
+	msm5205_reset_w(device, 1);
 	adpcm_pos &= 0xff00;
 }
 
@@ -139,7 +124,7 @@ static ADDRESS_MAP_START( mlanding_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x2d0000, 0x2d0001) AM_READ(SMH_NOP) AM_WRITE(taitosound_port16_lsb_w)
 	AM_RANGE(0x2d0002, 0x2d0003) AM_READ(taitosound_comm16_msb_r) AM_WRITE(taitosound_comm16_lsb_w)
 
-	AM_RANGE(0x200000, 0x20ffff) AM_RAM AM_BASE(&ml_unk)//AM_SHARE(2)
+	AM_RANGE(0x200000, 0x20ffff) AM_RAM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)//AM_SHARE(2)
 	AM_RANGE(0x280000, 0x2807ff) AM_RAM // is it shared with mecha ? tested around $940
 
 	AM_RANGE(0x290000, 0x290001) AM_READ_PORT("IN1")
@@ -172,15 +157,14 @@ static ADDRESS_MAP_START( mlanding_z80_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK1)
 	AM_RANGE(0x8000, 0x8fff) AM_RAM
-	AM_RANGE(0x9000, 0x9000) AM_WRITE(ym2151_register_port_0_w)
-	AM_RANGE(0x9001, 0x9001) AM_READ(ym2151_status_port_0_r) AM_WRITE(ym2151_data_port_0_w)
+	AM_RANGE(0x9000, 0x9001) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
 	AM_RANGE(0x9002, 0x9100) AM_READ(SMH_RAM)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(taitosound_slave_port_w)
 	AM_RANGE(0xa001, 0xa001) AM_READ(taitosound_slave_comm_r) AM_WRITE(taitosound_slave_comm_w)
 
 	AM_RANGE(0xb000, 0xb000) AM_WRITE(ml_msm5205_address_w) //guess
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(ml_msm5205_start_w)
-	AM_RANGE(0xd000, 0xd000) AM_WRITE(ml_msm5205_stop_w)
+	AM_RANGE(0xc000, 0xc000) AM_DEVWRITE("msm", ml_msm5205_start_w)
+	AM_RANGE(0xd000, 0xd000) AM_DEVWRITE("msm", ml_msm5205_stop_w)
 
 	AM_RANGE(0xf400, 0xf400) AM_WRITENOP
 	AM_RANGE(0xf600, 0xf600) AM_WRITENOP
@@ -200,10 +184,8 @@ ADDRESS_MAP_END
 static VIDEO_START(mlanding)
 {
 	int i;
-	for(i=0;i<ML_CHARS;i++)
-	{
-		dirtychar[i]=0;
-	}
+
+	gfx_element_set_source(machine->gfx[0], (UINT8 *) ml_tileram);
 
 	for	(i=0;i<8;i++)
 		ml_bitmap[i] = video_screen_auto_bitmap_alloc(machine->primary_screen);
@@ -212,8 +194,6 @@ static VIDEO_START(mlanding)
 static VIDEO_UPDATE(mlanding)
 {
 	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
-
-	updateChars(screen->machine);
 
 	{
 		int i,dx,dy,j,k,num;
@@ -248,10 +228,10 @@ static VIDEO_UPDATE(mlanding)
 					{
 						drawgfx(ml_bitmap[num],screen->machine->gfx[0],
 							code++,
-							0,
+							color,
 							0,0,
 							x+j*8,y+k*8,
-							cliprect,TRANSPARENCY_PEN,0);
+							cliprect,TRANSPARENCY_NONE,0);
 					}
 					else
 					{
@@ -332,13 +312,13 @@ static INPUT_PORTS_START( mlanding )
 	PORT_BIT( 0xffff, 0x0000, IPT_AD_STICK_Z ) PORT_MINMAX(0xffc4,0x3c) PORT_SENSITIVITY(30) PORT_KEYDELTA(1) PORT_PLAYER(1)
 INPUT_PORTS_END
 
-static void irq_handler(running_machine *machine, int irq)
+static void irq_handler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static GFXDECODE_START( mlanding )
-	GFXDECODE_ENTRY( "gfx1", 0, tiles8x8_layout, 0, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, tiles8x8_layout, 0, 16*16 )
 GFXDECODE_END
 
 static const msm5205_interface msm5205_config =
@@ -363,9 +343,9 @@ static MACHINE_RESET( mlanding )
 static MACHINE_DRIVER_START( mlanding )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 12000000 )		/* 12 MHz ??? (guess) */
+	MDRV_CPU_ADD("maincpu", M68000, 12000000 )		/* 12 MHz ??? (guess) */
 	MDRV_CPU_PROGRAM_MAP(mlanding_mem, 0)
-	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_CPU_ADD("z80", Z80, 4000000 )		/* 4 MHz ??? (guess) */
 	MDRV_CPU_PROGRAM_MAP(mlanding_z80_mem,0)
@@ -376,10 +356,10 @@ static MACHINE_DRIVER_START( mlanding )
 
 	MDRV_CPU_ADD("z80sub", Z80, 4000000 )		/* 4 MHz ??? (guess) */
 	MDRV_CPU_PROGRAM_MAP(mlanding_z80_sub_mem,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
@@ -408,7 +388,7 @@ static MACHINE_DRIVER_START( mlanding )
 MACHINE_DRIVER_END
 
 ROM_START( mlanding )
-	ROM_REGION( 0x60000, "main", 0 )	/* 68000 */
+	ROM_REGION( 0x60000, "maincpu", 0 )	/* 68000 */
 	ROM_LOAD16_BYTE( "ml_b0929.epr", 0x00000, 0x10000, CRC(ab3f38f3) SHA1(4357112ca11a8e7bfe08ba99ac3bddac046c230a))
 	ROM_LOAD16_BYTE( "ml_b0928.epr", 0x00001, 0x10000, CRC(21e7a8f6) SHA1(860d3861d4375866cd27d426d546ddb2894a6629) )
 	ROM_LOAD16_BYTE( "ml_b0927.epr", 0x20000, 0x10000, CRC(b02f1805) SHA1(b8050f955c7070dc9b962db329b5b0ee8b2acb70) )

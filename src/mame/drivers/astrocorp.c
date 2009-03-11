@@ -114,11 +114,11 @@ static WRITE16_HANDLER( astrocorp_eeprom_w )
 	}
 }
 
-static WRITE16_HANDLER( astrocorp_sound_bank_w )
+static WRITE16_DEVICE_HANDLER( astrocorp_sound_bank_w )
 {
 	if (ACCESSING_BITS_8_15)
 	{
-		okim6295_set_bank_base(0, 0x40000 * ((data >> 8) & 1) );
+		okim6295_set_bank_base(device, 0x40000 * ((data >> 8) & 1) );
 //      logerror("CPU #0 PC %06X: OKI bank %08X\n",cpu_get_pc(space->cpu),data);
 	}
 }
@@ -177,15 +177,15 @@ static ADDRESS_MAP_START( showhand_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE( 0x05e000, 0x05e001 ) AM_READ( astrocorp_eeprom_r )
 	AM_RANGE( 0x060000, 0x0601ff ) AM_RAM_WRITE( astrocorp_palette_w ) AM_BASE( &paletteram16 )
 	AM_RANGE( 0x070000, 0x073fff ) AM_RAM
-	AM_RANGE( 0x080000, 0x080001 ) AM_WRITE( astrocorp_sound_bank_w )
+	AM_RANGE( 0x080000, 0x080001 ) AM_DEVWRITE( "oki", astrocorp_sound_bank_w )
 	AM_RANGE( 0x0a0000, 0x0a0001 ) AM_WRITE( astrocorp_enable_w )
-	AM_RANGE( 0x0d0000, 0x0d0001 ) AM_READWRITE( astrocorp_unk_r, okim6295_data_0_msb_w )
+	AM_RANGE( 0x0d0000, 0x0d0001 ) AM_READ( astrocorp_unk_r ) AM_DEVWRITE8( "oki", okim6295_w, 0xff00 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( showhanc_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE( 0x000000, 0x01ffff ) AM_ROM
 	AM_RANGE( 0x060000, 0x0601ff ) AM_RAM_WRITE( astrocorp_palette_w ) AM_BASE( &paletteram16 )
-	AM_RANGE( 0x070000, 0x070001 ) AM_WRITE( astrocorp_sound_bank_w )
+	AM_RANGE( 0x070000, 0x070001 ) AM_DEVWRITE( "oki", astrocorp_sound_bank_w )
 	AM_RANGE( 0x080000, 0x080fff ) AM_RAM AM_BASE( &spriteram16 ) AM_SIZE( &spriteram_size )
 	AM_RANGE( 0x082000, 0x082001 ) AM_WRITE( SMH_NOP )
 	AM_RANGE( 0x084000, 0x084001 ) AM_READ_PORT( "INPUTS" )
@@ -194,7 +194,7 @@ static ADDRESS_MAP_START( showhanc_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE( 0x08e000, 0x08e001 ) AM_READ( astrocorp_eeprom_r )
 	AM_RANGE( 0x090000, 0x093fff ) AM_RAM
 	AM_RANGE( 0x0a0000, 0x0a0001 ) AM_WRITE( astrocorp_enable_w )
-	AM_RANGE( 0x0e0000, 0x0e0001 ) AM_READWRITE( astrocorp_unk_r, okim6295_data_0_msb_w )
+	AM_RANGE( 0x0e0000, 0x0e0001 ) AM_READ( astrocorp_unk_r ) AM_DEVWRITE8( "oki", okim6295_w, 0xff00 )
 ADDRESS_MAP_END
 
 /***************************************************************************
@@ -286,14 +286,14 @@ static NVRAM_HANDLER( showhand )
 
 static MACHINE_DRIVER_START( showhand )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, XTAL_20MHz / 2)
+	MDRV_CPU_ADD("maincpu", M68000, XTAL_20MHz / 2)
 	MDRV_CPU_PROGRAM_MAP(showhand_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_NVRAM_HANDLER(showhand)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(58.846)	// measured on pcb
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -316,7 +316,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( showhanc )
 	MDRV_IMPORT_FROM( showhand )
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(showhanc_map,0)
 MACHINE_DRIVER_END
 
@@ -357,7 +357,7 @@ Hardware info by f205v
 ***************************************************************************/
 
 ROM_START( showhand )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "1-8.even.u16", 0x00000, 0x10000, CRC(cf34bf0d) SHA1(72ad7ca63ef89451b2572d64cccfa764b9d9b353) )
 	ROM_LOAD16_BYTE( "2-8.odd.u17",  0x00001, 0x10000, CRC(dd031c36) SHA1(198d0e685dd2d824a04c787f8a17c173efa272d9) )
 
@@ -403,7 +403,7 @@ Hardware info by Guru
 ***************************************************************************/
 
 ROM_START( showhanc )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "1even.u16", 0x00000, 0x10000, CRC(d1295bdb) SHA1(bb035ee89b21368fb11c3b9cd23164b68feb84bd) )
 	ROM_LOAD16_BYTE( "2odd.u17",  0x00001, 0x10000, CRC(bbca78e7) SHA1(a163569acad8d6b8821602ce24013fc46887aba9) )
 
@@ -419,7 +419,7 @@ ROM_END
 static DRIVER_INIT( showhand )
 {
 #if 0
-	UINT16 *rom = (UINT16*)memory_region(machine, "main");
+	UINT16 *rom = (UINT16*)memory_region(machine, "maincpu");
 
 	rom[0x0a1a/2] = 0x6000;	// hopper jam
 
@@ -435,7 +435,7 @@ static DRIVER_INIT( showhand )
 static DRIVER_INIT( showhanc )
 {
 #if 0
-	UINT16 *rom = (UINT16*)memory_region(machine, "main");
+	UINT16 *rom = (UINT16*)memory_region(machine, "maincpu");
 
 	rom[0x14d4/2] = 0x4e71;	// enable full test mode
 	rom[0x14d6/2] = 0x4e71;	// ""

@@ -2,7 +2,6 @@
 #define _SNES_H_
 
 #include "streams.h"
-#include "sound/custom.h"
 
 /*
     SNES timing theory:
@@ -400,7 +399,7 @@ extern WRITE8_HANDLER( snes_w_bank5 );
 extern WRITE8_HANDLER( snes_w_bank6 );
 extern WRITE8_HANDLER( snes_w_bank7 );
 
-extern UINT8 has_addon_chip;
+extern UINT8 snes_has_addon_chip;
 
 extern void snes_gdma( const address_space *space, UINT8 channels );
 extern void snes_hdma_init(void);
@@ -493,7 +492,9 @@ extern WRITE8_HANDLER( spc_io_w );
 extern READ8_HANDLER( spc_ram_r );
 extern WRITE8_HANDLER( spc_ram_w );
 extern READ8_HANDLER( spc_ipl_r );
-extern CUSTOM_START( snes_sh_start );
+extern DEVICE_GET_INFO( snes_sound );
+#define SOUND_SNES DEVICE_GET_INFO_NAME( snes_sound )
+
 extern STREAM_UPDATE( snes_sh_update );
 
 /* Stuff from OpenSPC 0.3.99 by Brad Martin */
@@ -552,16 +553,6 @@ typedef struct                      /* Source directory entry       */
 
 /* All other writes should store the value in the addressed register as
    expected. */
-
-/*========== PROCEDURES ==========*/
-
-void DSP_Reset                      /* Reset emulated DSP           */
-    ( void );
-
-void DSP_Update                     /* Mix one sample of audio      */
-    (
-    short *             sound_ptr   /* Pointer to mix audio into    */
-    );
 
 /*----------- defined in video/snes.c -----------*/
 

@@ -1,43 +1,37 @@
-/*******************************************************************************
+/**************************************************************************************
 
     Counter Steer                   (c) 1985 Data East Corporation
     Zero Target                     (c) 1985 Data East Corporation
     Gekitsui Oh                     (c) 1985 Data East Corporation
 
     Emulation by Bryan McPhail, mish@tendril.co.uk
-    Improvements by Pierpaolo Prazzoli, David Haywood
-
-    Various things aren't fully understood, for example the rotating BG layer
+    Improvements by Pierpaolo Prazzoli, David Haywood, Angelo Salese
 
     todo:
     finish
-        sprite fixes
-        roz fixes
-        colour fixes?
-        input fixes?
-        sound
-        make cntsteer work
+        - correct roz rotation;
+        - make cntsteer work, comms looks awkward and probably different than Zero Target;
+        - flip screen support;
+        - according to a side-by-side test, sound should be "darker" by some octanes,
+          likely that a sound filter is needed;
     cleanup
-        split into driver/video
-        add any missing sha info etc.
-        remove unneeded debug code
+        - split into driver/video;
 
-
-*******************************************************************************/
+***************************************************************************************/
 
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
-#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/ay8910.h"
-#include "sound/2203intf.h"
+#include <math.h>
 
 static tilemap *bg_tilemap, *fg_tilemap;
-
 static UINT8 *videoram2;
 
 static int flipscreen=0;
-static int bg_bank = 0;
+static int bg_bank = 0,bg_color_bank;
+static int scrolly = 0, scrollx = 0, scrollx_hi = 0, scrolly_hi = 0, rotation_x = 0, rotation_sign = 0;
+static int disable_roz;
 
 static PALETTE_INIT( zerotrgt )
 {
@@ -50,12 +44,12 @@ static PALETTE_INIT( zerotrgt )
 		bit0 = (color_prom[i] >> 0) & 0x01;
 		bit1 = (color_prom[i] >> 1) & 0x01;
 		bit2 = (color_prom[i] >> 2) & 0x01;
-		r = /*255 - */(0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2);
+		g = /*255 - */(0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2);
 		/* green component */
 		bit0 = (color_prom[i] >> 4) & 0x01;
 		bit1 = (color_prom[i] >> 5) & 0x01;
 		bit2 = (color_prom[i] >> 6) & 0x01;
-		g =/* 255 - */(0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2);
+		r =/* 255 - */(0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2);
 		/* blue component */
 		bit0 = (color_prom[i+256] >> 0) & 0x01;
 		bit1 = (color_prom[i+256] >> 1) & 0x01;
@@ -65,212 +59,193 @@ static PALETTE_INIT( zerotrgt )
 		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
 }
-static int colo=0;
+
 static TILE_GET_INFO( get_bg_tile_info )
 {
 	int code = videoram2[tile_index];
 
-	SET_TILE_INFO(2, code + bg_bank, 0/*colo*/, 0);
+	SET_TILE_INFO(2, code + bg_bank, bg_color_bank, 0);
 }
 
 static TILE_GET_INFO( get_fg_tile_info )
 {
 	int code = videoram[tile_index];
-	int attr = videoram[tile_index + 0x400];
+	int attr = colorram[tile_index];
 
-	SET_TILE_INFO(0, code + ((attr & 0x0f) << 8), ((attr & 0x70) >> 4)+colo, 0);
+	code|= (attr & 0x01)<<8;
+
+	SET_TILE_INFO(0, code, 0x30+((attr & 0x78)>>3), 0);
 }
 
-static VIDEO_START( zerotrgt )
+static VIDEO_START( cntsteer )
 {
-	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,       16,16,64,64);
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_cols,16,16,64,64);
 	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows_flip_x,8, 8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
-	tilemap_set_flip(bg_tilemap, TILEMAP_FLIPX|TILEMAP_FLIPY);
+//  tilemap_set_flip(bg_tilemap, TILEMAP_FLIPX | TILEMAP_FLIPY);
 }
 
-static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int pri)
+static VIDEO_START( zerotrgt )
+{
+	bg_tilemap = tilemap_create(machine, get_bg_tile_info,tilemap_scan_rows,16,16,64,64);
+	fg_tilemap = tilemap_create(machine, get_fg_tile_info,tilemap_scan_rows_flip_x,8, 8,32,32);
+
+	tilemap_set_transparent_pen(fg_tilemap,0);
+
+//  tilemap_set_flip(bg_tilemap, TILEMAP_FLIPX | TILEMAP_FLIPY);
+}
+
+/*
+Sprite list:
+
+[0] xxxx xxxx Y attribute
+[1] xx-- ---- sprite number bank
+    --x- x--- color number
+    ---x ---- double-height attribute
+    ---- -x-- flip x (active low)
+    ---- --x- flip y
+    ---- ---x draw sprite flag (active low)
+[2] xxxx xxxx X attribute
+[3] xxxx xxxx sprite number
+*/
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
-	/* Sprites */
 	for (offs = 0;offs < 0x200;offs += 4)
 	{
-		int multi,fx,fy,sx,sy,sy2,code,code2,color;
+		int multi,fx,fy,sx,sy,code,color;
+
+		if((spriteram[offs+1] & 1) == 1)
+			continue;
 
 		code = spriteram[offs+3] + ( ( spriteram[offs+1] & 0xc0 ) << 2 );
-//todo..
+		sx = (spriteram[offs+2]);
+		sy = 0xf0 - spriteram[offs];
+		color = 0x10+((spriteram[offs+1] & 0x20) >> 4) + ((spriteram[offs+1] & 0x8)>>3);
 
-		code2 = code+1;
-		sx = (241 - spriteram[offs+2]);
-	//if (sx < -7) sx += 256;
-
-		sy = 241 - spriteram[offs];
-		color = (spriteram[offs+1] & 0x03) + ((spriteram[offs+1] & 0x08) >> 1);
-
-//      if (pri==0 && color!=0) continue;
-//      if (pri==1 && color==0) continue;
-
-		fx = spriteram[offs+1] & 0x04;
-		fy = spriteram[offs+1] & 0x02;  //check
+		fx = !(spriteram[offs+1] & 0x04);
+		fy = (spriteram[offs+1] & 0x02);
 
 		multi = spriteram[offs+1] & 0x10;
-
-
 
 		if (flipscreen) {
 			sy=240-sy;
 			sx=240-sx;
 			if (fx) fx=0; else fx=1;
-			sy2=sy-16;
-		}
-		else sy2=sy+16;
-
-		if (fy && multi) {
-			sy2=sy;
-			sy-=16;
-			code++;
-			code2--;
+			//sy2=sy-16;
 		}
 
-    	drawgfx(bitmap,machine->gfx[1],
-        		code,
-				color,
-				fx,fy,
-				sx,sy,
-				cliprect,TRANSPARENCY_PEN,0);
-        if (multi)
-    		drawgfx(bitmap,machine->gfx[1],
-				code2,
-				color,
-				fx,fy,
-				sx,sy2,
-				cliprect,TRANSPARENCY_PEN,0);
+        if(multi)
+        {
+			if(fy)
+			{
+				drawgfx(bitmap,machine->gfx[1],code,color,fx,fy,sx,sy,cliprect,TRANSPARENCY_PEN,0);
+				drawgfx(bitmap,machine->gfx[1],code+1,color,fx,fy,sx,sy-16,cliprect,TRANSPARENCY_PEN,0);
+			}
+			else
+			{
+        		drawgfx(bitmap,machine->gfx[1],code,color,fx,fy,sx,sy-16,cliprect,TRANSPARENCY_PEN,0);
+        		drawgfx(bitmap,machine->gfx[1],code+1,color,fx,fy,sx,sy,cliprect,TRANSPARENCY_PEN,0);
+			}
+		}
+		else
+		   	drawgfx(bitmap,machine->gfx[1],code,color,fx,fy,sx,sy,cliprect,TRANSPARENCY_PEN,0);
 	}
 }
-
-static int scrolly = 0, scrollx = 0, scrolly_hi = 0, rotation_x = 0, rotation_y = 0, rotation_sign = 0;
 
 static VIDEO_UPDATE( zerotrgt )
 {
-static int rot2=0,zoom=0;
-static int scroll=0;
-
-	if (input_code_pressed_once(KEYCODE_Q))
+	if(disable_roz)
+		bitmap_fill(bitmap, cliprect, screen->machine->pens[8*bg_color_bank]);
+	else
 	{
-		colo++;
-		mame_printf_debug("colo = %X\n",colo);
-		tilemap_mark_all_tiles_dirty(bg_tilemap);
-		tilemap_mark_all_tiles_dirty(fg_tilemap);
+		static int p1,p2,p3,p4;
+		static int rot_val,x,y;
+
+		rot_val = rotation_sign ? (-rotation_x) : (rotation_x);
+
+//      popmessage("%d %02x %02x",rot_val,rotation_sign,rotation_x);
+
+		if(rot_val > 90) { rot_val = 90; }
+		if(rot_val < -90) { rot_val = -90; }
+
+		/*
+        (u, v) = (a + cx + dy, b - dx + cy) when (x, y)=screen and (u, v) = tilemap
+        */
+		/*
+             1
+        0----|----0
+            -1
+             0
+        0----|----1
+             0
+        */
+		/*65536*z*cos(a), 65536*z*sin(a), -65536*z*sin(a), 65536*z*cos(a)*/
+		p1 = -65536*1*cos(2*M_PI*(rot_val)/1024);
+		p2 = -65536*1*sin(2*M_PI*(rot_val)/1024);
+		p3 = 65536*1*sin(2*M_PI*(rot_val)/1024);
+		p4 = -65536*1*cos(2*M_PI*(rot_val)/1024);
+
+		x = -256-(scrollx | scrollx_hi);
+		y = 256+(scrolly | scrolly_hi);
+
+		tilemap_draw_roz(bitmap, cliprect, bg_tilemap,
+						(x << 16), (y << 16),
+						p1, p2,
+						p3, p4,
+						1,
+						0, 0);
 	}
 
-	if (input_code_pressed_once(KEYCODE_W))
-	{
-		colo--;
-		mame_printf_debug("colo = %X\n",colo);
-		tilemap_mark_all_tiles_dirty(bg_tilemap);
-		tilemap_mark_all_tiles_dirty(fg_tilemap);
-	}
-
-
-	if (input_code_pressed_once(KEYCODE_E))
-	{
-		rot2++;
-		mame_printf_debug("rot2 = %X\n",rot2);
-	}
-
-	if (input_code_pressed_once(KEYCODE_R))
-	{
-		rot2--;
-		mame_printf_debug("rot2 = %X\n",rot2);
-	}
-
-	if (input_code_pressed_once(KEYCODE_T))
-	{
-		zoom+=0x100;
-		mame_printf_debug("zoom= %X\n",zoom);
-	}
-
-	if (input_code_pressed_once(KEYCODE_Y))
-	{
-		zoom-=0x100;
-		mame_printf_debug("zoom= %X\n",zoom);
-	}
-
-	if (input_code_pressed_once(KEYCODE_A))
-	{
-		scroll+=0x10;
-		mame_printf_debug("scroll = %d\n",scroll);
-	}
-
-	if (input_code_pressed_once(KEYCODE_S))
-	{
-		scroll-=0x10;
-		mame_printf_debug("scroll = %d\n",scroll);
-	}
-
-
-	if (input_code_pressed_once(KEYCODE_I))
-	{
-		scrollx+=0x10;
-		mame_printf_debug("scrollx = %d\n",scrollx);
-	}
-
-	if (input_code_pressed_once(KEYCODE_O))
-	{
-		scrollx-=0x10;
-		mame_printf_debug("scrollx = %d\n",scrollx);
-	}
-
-//  if (input_code_pressed(KEYCODE_A)) cpu_cause_interrupt(0,M6809_INT_IRQ);
-
-
-//  spriteram=batwings_ram+0x100;
-//  tilemap_set_scrolly( bg_tilemap, 0, scrolly | scrolly_hi);
-//  tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-
-	scrollx = 256;
-
-	if(rotation_sign)
-		rotation_x = -rotation_x;
-
-	tilemap_draw_roz(bitmap, cliprect, bg_tilemap,
-					scrollx << 16, (scrolly | scrolly_hi) << 16,
-					1<<16, rotation_x << 10,
-					rotation_y << 8, 1<<16,
-					1,
-					0, 0);
-
+	draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
-
-	draw_sprites(screen->machine,bitmap,cliprect,0);
-	draw_sprites(screen->machine,bitmap,cliprect,1);
-
-#if 0
-{
-
-	int i,j;
-	char buf[60];
-	struct osd_bitmap *mybitmap = bitmap;
-	UINT8 *RAM = memory_region(machine, "main");
-
-buf[0] = 0;
-for (i = 0;i < 8;i+=2)
-	sprintf(&buf[strlen(buf)],"%04X\n",RAM[0x3000+i+1]+(RAM[0x3000+i]<<8));
-ui_draw_text(buf,50,8*6);
-}
-#endif
 
 	return 0;
 }
 
 
-static WRITE8_HANDLER( cntsteer_foreground_w )
+/*
+[0] = scroll y
+[1] = scroll x
+[2] = -x-- ---- disable roz layer (Used when you lose a life / start a new play)
+      --xx ---- bg bank
+      ---- -xxx bg color bank
+[3] = xx-- ---- high word scrolling x bits
+      --xx ---- high word scrolling y bits
+      ---- -x-- flip screen bit (inverted)
+      ---- ---x rotation sign (landscape should be turning right (0) == / , turning left (1) == \)
+[4] = xxxx xxxx rotation factor?
+*/
+static WRITE8_HANDLER(cntsteer_vregs_w)
+{
+//  static UINT8 test[5];
+
+//  test[offset] = data;
+//    popmessage("%02x %02x %02x %02x %02x",test[0],test[1],test[2],test[3],test[4]);
+
+	switch(offset)
+	{
+		case 0:	scrolly = data; break;
+		case 1: scrollx = data; break;
+		case 2: bg_bank = (data & 0x30) << 4; bg_color_bank = (data & 7); disable_roz = (data & 0x40); tilemap_mark_all_tiles_dirty(bg_tilemap); break;
+		case 3:	rotation_sign = (data & 1); flip_screen_set(space->machine, !(data & 4)); scrolly_hi = (data & 0x30) << 4; scrollx_hi = (data & 0xc0) << 2; break;
+		case 4: rotation_x = data; break;
+	}
+}
+
+static WRITE8_HANDLER( cntsteer_foreground_vram_w )
 {
 	videoram[offset] = data;
-	tilemap_mark_tile_dirty(fg_tilemap, offset & 0x3ff);
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
+}
+
+static WRITE8_HANDLER( cntsteer_foreground_attr_w )
+{
+	colorram[offset] = data;
+	tilemap_mark_tile_dirty(fg_tilemap, offset);
 }
 
 static WRITE8_HANDLER( cntsteer_background_w )
@@ -279,38 +254,26 @@ static WRITE8_HANDLER( cntsteer_background_w )
 	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
-#if 0
-static WRITE8_HANDLER( gekitsui_int_w )
-{
-//  if (errorlog) fprintf(errorlog,"%04x: CPU 2 causes NMI\n",cpu_get_pc());
-	cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, ASSERT_LINE);
-}
-static WRITE8_HANDLER( gekitsui_int2_w ) // not used..
-{
-//  if (errorlog) fprintf(errorlog,"%04x: CPU 1 causes IRQ\n",cpu_get_pc());
-	cpu_set_input_line(space->machine->cpu[1], M6809_IRQ_LINE, ASSERT_LINE);
-}
-#endif
+/*************************************
+ *
+ * CPU comms
+ *
+ *************************************/
 
 static WRITE8_HANDLER( gekitsui_sub_irq_ack )
 {
 	cpu_set_input_line(space->machine->cpu[1], M6809_IRQ_LINE, CLEAR_LINE);
 }
 
-#if 0
-static WRITE8_HANDLER( cntsteer_int_w )
-{
-	cpu_set_input_line(space->machine->cpu[0], M6809_IRQ_LINE, ASSERT_LINE);
-}
-#endif
-
 static WRITE8_HANDLER( cntsteer_sound_w )
 {
  	soundlatch_w(space,0,data);
+ 	cpu_set_input_line(space->machine->cpu[2], 0, HOLD_LINE);
 }
 
 static WRITE8_HANDLER( zerotrgt_ctrl_w )
 {
+	/*TODO: check this.*/
 	logerror("CTRL: %04x: %04x: %04x\n",cpu_get_pc(space->cpu),offset,data);
 //  if (offset==0) cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
 
@@ -319,156 +282,58 @@ static WRITE8_HANDLER( zerotrgt_ctrl_w )
 //  if (offset==2) cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
 }
 
-#if 0
-static WRITE8_HANDLER( cntsteer_halt_cpu0_w )
-{
-//  if (errorlog) fprintf(errorlog,"%04x: CPU halt %02x\n",cpu_get_pc(),data);
-//  cpu_halt(0,0); /* Halt cpu */
-}
-
-static WRITE8_HANDLER( cntsteer_restart_cpu0_w )
-{
-//  if (errorlog) fprintf(errorlog,"%04x: CPU restart %02x\n",cpu_get_pc(),data);
-//if (data&0x4) cpu_halt(0,1); /* Restart cpu */
-}
-#endif
-
-
 /***************************************************************************/
-
-#if 0
-static ADDRESS_MAP_START( cntsteer_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_SHARE(1)
-	AM_RANGE(0x1000, 0x11ff) AM_RAM AM_BASE(&spriteram)
-	AM_RANGE(0x1200, 0x1fff) AM_RAM
-	AM_RANGE(0x2000, 0x27ff) AM_RAM_WRITE(cntsteer_foreground_w) AM_BASE(&videoram)
-	AM_RANGE(0x2800, 0x2fff) AM_RAM
-
-//  AM_RANGE(0x1b00, 0x1b00) AM_READ_PORT("DSW0")
-//  AM_RANGE(0x1b01, 0x1b01) AM_READ_PORT("DSW0")
-//  AM_RANGE(0x3000, 0x3003) AM_WRITE(zerotrgt_ctrl_w)
-//  AM_RANGE(0x3000, 0x3000) AM_WRITE(cntsteer_halt_cpu0_w)
-//  AM_RANGE(0x3001, 0x3001) AM_WRITE(gekitsui_int2_w)
-
-//  AM_RANGE(0x3003, 0x3003) AM_READ_PORT("DSW1")
-	AM_RANGE(0x8000, 0xffff) AM_ROM
-ADDRESS_MAP_END
-
-
-static ADDRESS_MAP_START( cntsteer_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_SHARE(1)
-	AM_RANGE(0x1000, 0x1fff) AM_RAM_WRITE(cntsteer_background_w) AM_BASE(&videoram2)
-	AM_RANGE(0x3000, 0x3000) AM_READ_PORT("DSW0")
-	AM_RANGE(0x3001, 0x3001) AM_READ_PORT("DSW1")
-	AM_RANGE(0x3002, 0x3002) AM_READ_PORT("P1")
-	AM_RANGE(0x3003, 0x3003) AM_READ_PORT("P2")
-//  AM_RANGE(0x3002, 0x3002) AM_WRITE(gekitsui_int_w)
-//  AM_RANGE(0x3000, 0x3003) AM_WRITE(zerotrgt_ctrl_w)
-//  wrong 0 1 2 3 are scroll/rotate
-//  AM_RANGE(0x3002, 0x3002) AM_WRITE(cntsteer_restart_cpu0_w)
-//  AM_RANGE(0x3000, 0x3003) AM_WRITENOP
-//  3007 and 3003 have values..
-	AM_RANGE(0x3007, 0x3007) AM_WRITE(cntsteer_sound_w)
-//  AM_RANGE(0x300a, 0x300a) AM_WRITE(cntsteer_int_w)
-//  AM_RANGE(0x3004, 0x3004) AM_WRITE(cntsteer_int_w)
-	AM_RANGE(0x4000, 0xffff) AM_ROM
-ADDRESS_MAP_END
-#endif
 
 static ADDRESS_MAP_START( gekitsui_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x1000, 0x11ff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x1200, 0x1fff) AM_RAM
-	AM_RANGE(0x2000, 0x27ff) AM_RAM_WRITE(cntsteer_foreground_w) AM_BASE(&videoram)
+	AM_RANGE(0x2000, 0x23ff) AM_RAM_WRITE(cntsteer_foreground_vram_w) AM_BASE(&videoram)
+	AM_RANGE(0x2400, 0x27ff) AM_RAM_WRITE(cntsteer_foreground_attr_w) AM_BASE(&colorram)
 	AM_RANGE(0x3000, 0x3003) AM_WRITE(zerotrgt_ctrl_w)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
-
-static int newdata[5];
-
-static WRITE8_HANDLER(scrivi)
-{
-	if(offset == 0)
-	{
-		scrolly = data;
-		return;
-
-	}
-
-	if(offset == 1)
-	{
-		//rotation related? zoom?
-//      increment or decrement.. incyx?
-		rotation_y = data;
-	}
-
-	if(offset == 4)
-	{
-		rotation_x = data;
-
-		if(data != newdata[offset])
-		{newdata[offset] = data;
-			if(data >0x55)
-				mame_printf_debug("off = %X data = %X\n",offset,data);
-		}
-		return;
-
-	}
-
-	if(offset == 2)
-	{
-		bg_bank = (data & 0x30) << 4;
-	//  scrollx = data & 0x0f;
-	//  mame_printf_debug("scrollx = %d %X\n",scrollx<<8,scrollx);
-		if(data != newdata[offset])
-		{newdata[offset] = data;
-			if(data & ~0x30)
-				mame_printf_debug("off = %X data = %X\n",offset,data&~0x30);
-		}
-		tilemap_mark_all_tiles_dirty(bg_tilemap);
-		return;
-	}
-
-	if(offset == 3)
-	{
-		rotation_sign = !(data & 1);
-
-		flip_screen_set(space->machine, !(data & 4));
-
-		scrolly_hi = (data & 0xf0) << 4;
-
-		if(data != newdata[offset])
-		{newdata[offset] = data;
-			if(data & ~0xf5)
-				mame_printf_debug("off = %X data = %X\n",offset,data&~0xf5);
-		}
-		return;
-
-	}
-
-	if(data != newdata[offset] && offset !=1) {
-		newdata[offset] = data;
-		mame_printf_debug("off = %X data = %X\n",offset,data);
-	}
-}
 
 static ADDRESS_MAP_START( gekitsui_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x1000, 0x1fff) AM_RAM_WRITE(cntsteer_background_w) AM_BASE(&videoram2)
 	AM_RANGE(0x3000, 0x3000) AM_READ_PORT("DSW0")
-	AM_RANGE(0x3001, 0x3001) AM_READ_PORT("DSW1")
+	AM_RANGE(0x3001, 0x3001) AM_READ_PORT("P2")
 	AM_RANGE(0x3002, 0x3002) AM_READ_PORT("P1")
-	AM_RANGE(0x3003, 0x3003) AM_READ_PORT("P2")
-	AM_RANGE(0x3000, 0x3004) AM_WRITE(scrivi) /* Scroll, gfx? */
+	AM_RANGE(0x3003, 0x3003) AM_READ_PORT("COINS")
+	AM_RANGE(0x3000, 0x3004) AM_WRITE(cntsteer_vregs_w)
 	AM_RANGE(0x3005, 0x3005) AM_WRITE(gekitsui_sub_irq_ack)
 	AM_RANGE(0x3007, 0x3007) AM_WRITE(cntsteer_sound_w)
 	AM_RANGE(0x4000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START( cntsteer_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x0fff) AM_RAM //AM_SHARE(1)
+	AM_RANGE(0x1000, 0x11ff) AM_RAM AM_BASE(&spriteram)
+	AM_RANGE(0x1200, 0x1fff) AM_RAM
+	AM_RANGE(0x2000, 0x23ff) AM_RAM_WRITE(cntsteer_foreground_vram_w) AM_BASE(&videoram)
+	AM_RANGE(0x2400, 0x27ff) AM_RAM_WRITE(cntsteer_foreground_attr_w) AM_BASE(&colorram)
+	AM_RANGE(0x3000, 0x3003) AM_WRITE(zerotrgt_ctrl_w)
+	AM_RANGE(0x8000, 0xffff) AM_ROM
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( cntsteer_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x1fff) AM_RAM //AM_SHARE(1)
+	AM_RANGE(0x2000, 0x2fff) AM_RAM_WRITE(cntsteer_background_w) AM_BASE(&videoram2)
+	AM_RANGE(0x3000, 0x3000) AM_READ_PORT("DSW0")
+	AM_RANGE(0x3001, 0x3001) AM_READ_PORT("P2")
+	AM_RANGE(0x3002, 0x3002) AM_READ_PORT("P1")
+	AM_RANGE(0x3003, 0x3003) AM_READ_PORT("COINS")
+	AM_RANGE(0x3000, 0x3004) AM_WRITE(cntsteer_vregs_w)
+	AM_RANGE(0x3005, 0x3005) AM_WRITE(gekitsui_sub_irq_ack)
+	AM_RANGE(0x3007, 0x3007) AM_WRITE(cntsteer_sound_w)
+	AM_RANGE(0x4000, 0xffff) AM_ROM
+ADDRESS_MAP_END
 
 /***************************************************************************/
 
 static int nmimask;
+
 static WRITE8_HANDLER( nmimask_w ) { nmimask = data & 0x80; }
 
 static INTERRUPT_GEN ( sound_interrupt ) { if (!nmimask) cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE); }
@@ -476,10 +341,10 @@ static INTERRUPT_GEN ( sound_interrupt ) { if (!nmimask) cpu_set_input_line(devi
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_RAM
 //  AM_RANGE(0x1000, 0x1000) AM_WRITE(nmiack_w)
-	AM_RANGE(0x2000, 0x2000) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x4000, 0x4000) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x6000, 0x6000) AM_WRITE(ay8910_write_port_1_w)
-	AM_RANGE(0x8000, 0x8000) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x2000, 0x2000) AM_DEVWRITE("ay1", ay8910_data_w)
+	AM_RANGE(0x4000, 0x4000) AM_DEVWRITE("ay1", ay8910_address_w)
+	AM_RANGE(0x6000, 0x6000) AM_DEVWRITE("ay2", ay8910_data_w)
+	AM_RANGE(0x8000, 0x8000) AM_DEVWRITE("ay2", ay8910_address_w)
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
 	AM_RANGE(0xd000, 0xd000) AM_WRITE(nmimask_w)
 	AM_RANGE(0xe000, 0xffff) AM_ROM
@@ -487,138 +352,40 @@ ADDRESS_MAP_END
 
 
 /***************************************************************************/
-static INPUT_PORTS_START( cntsteer )
-	PORT_START("DSW0")
-	PORT_DIPNAME( 0x01, 0x01, "0" )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START("DSW1")
-	PORT_DIPNAME( 0x01, 0x01, "1" )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-
-	PORT_START("P1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
-
-	PORT_START("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON3 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON4 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON5 )
-//  PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
-//  PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON6 )
-	PORT_DIPNAME( 0x80, 0x80, "vblank" )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-INPUT_PORTS_END
-
-
-#ifdef UNUSED_DEFINITION
 static INPUT_PORTS_START( zerotrgt )
 	PORT_START("DSW0")
-	PORT_DIPNAME( 0x01, 0x01, "0" )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SW1:1,2")
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( 1C_3C ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_B ) ) PORT_DIPLOCATION("SW1:3,4")
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( 1C_3C ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW1:5")
+	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Cocktail ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:6")
+	PORT_DIPSETTING(    0x20, DEF_STR( Normal ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW1:7")
+	PORT_DIPSETTING(    0x40, "3" )
+	PORT_DIPSETTING(    0x00, "5" )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW1:8")
+	PORT_DIPSETTING(    0x80, "30K only" )
+	PORT_DIPSETTING(    0x00, "30K and 100K" )
 
-	PORT_START("DSW1")
-	PORT_DIPNAME( 0x01, 0x01, "1" )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_START("P2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
+	PORT_BIT( 0x60, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 
 	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -626,29 +393,130 @@ static INPUT_PORTS_START( zerotrgt )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON3 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON4 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON5 )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON6 )
+	PORT_START("COINS")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
+	PORT_BIT( 0xf8, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
-#endif
+
+/* inputs needs some work in this one.*/
+static INPUT_PORTS_START( cntsteer )
+	PORT_INCLUDE( zerotrgt )
+
+	PORT_MODIFY("P1")
+	PORT_DIPNAME( 0x01, 0x01, "SYSTEM" )
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
+	PORT_MODIFY("P2")
+	PORT_DIPNAME( 0x01, 0x01, "SYSTEM" )
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
+	PORT_MODIFY("COINS")
+	PORT_DIPNAME( 0x01, 0x01, "SYSTEM" )
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
+	PORT_MODIFY("DSW0")
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SW1:1,2")
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( 1C_3C ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_B ) ) PORT_DIPLOCATION("SW1:3,4")
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( 1C_3C ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Service_Mode ) ) PORT_DIPLOCATION("SW1:5")
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW1:6")
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:7")
+	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW1:8")
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+INPUT_PORTS_END
 
 /***************************************************************************/
 
-/* this layout is bad and reads way beyond the end of the array */
 static const gfx_layout cntsteer_charlayout =
 {
 	8,8,	/* 8*8 characters */
-	RGN_FRAC(1,2),
+	0x200,
 	2,	/* 2 bits per pixel */
 	{ 0, 4 },	/* the two bitplanes for 4 pixels are packed into one byte */
 	{ 0, 1, 2, 3, 0x800*8+0, 0x800*8+1, 0x800*8+2, 0x800*8+3 },
@@ -656,13 +524,12 @@ static const gfx_layout cntsteer_charlayout =
 	8*8	/* every char takes 8 consecutive bytes */
 };
 
-/* this layout is bad and reads way beyond the end of the array */
 static const gfx_layout zerotrgt_charlayout =
 {
 	8,8,
-	RGN_FRAC(1,2),
+	0x200,
 	2,
-	{ 4,0 },
+	{ 0,4 },
 	{ 0, 1, 2, 3, 1024*8*8+0, 1024*8*8+1, 1024*8*8+2, 1024*8*8+3 },
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8*8	/* every tile takes 32 consecutive bytes */
@@ -683,7 +550,7 @@ static const gfx_layout sprites =
 static const gfx_layout tilelayout =
 {
 	16,16,
-	0x200,
+	0x400,
 	3,	/* 3 bits per pixel */
 	{ RGN_FRAC(4,8)+4, 0, 4 },
 	{ 3, 2, 1, 0, 11, 10, 9 , 8, 19, 18, 17,16, 27, 26, 25, 24 },
@@ -716,66 +583,70 @@ static MACHINE_RESET( zerotrgt )
 	nmimask = 0;
 }
 
-
 static MACHINE_DRIVER_START( cntsteer )
-	MDRV_CPU_ADD("main", M6809, 2000000)		 /* ? */
-	MDRV_CPU_PROGRAM_MAP(gekitsui_cpu1_map,0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse) /* ? */
+	MDRV_CPU_ADD("maincpu", M6809, 2000000)		 /* ? */
+	MDRV_CPU_PROGRAM_MAP(cntsteer_cpu1_map,0)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse) /* ? */
 
 	MDRV_CPU_ADD("sub", M6809, 2000000)		 /* ? */
-	MDRV_CPU_PROGRAM_MAP(gekitsui_cpu2_map,0)
-//  MDRV_CPU_VBLANK_INT("main", nmi_line_pulse) /* ? */
+	MDRV_CPU_PROGRAM_MAP(cntsteer_cpu2_map,0)
+//  MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse) /* ? */
 
-//  MDRV_CPU_ADD("audio", M6502, 1500000)        /* ? */
-//  MDRV_CPU_PROGRAM_MAP(sound_map,0)
-//  MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,16) /* ? */ // should be interrupt, 16?
+    MDRV_CPU_ADD("audiocpu", M6502, 1500000)        /* ? */
+    MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PERIODIC_INT(sound_interrupt, 480)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
 
-	// interleave 200?
+	MDRV_QUANTUM_TIME(HZ(6000))
+
 	MDRV_GFXDECODE(cntsteer)
 	MDRV_PALETTE_LENGTH(256)
 //  MDRV_PALETTE_INIT(zerotrgt)
 
-	MDRV_VIDEO_START(zerotrgt)
+	MDRV_VIDEO_START(cntsteer)
 	MDRV_VIDEO_UPDATE(zerotrgt)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-//  MDRV_SOUND_ADD("ym", YM2203, ym2203_config)
+	MDRV_SOUND_ADD("ay1", AY8910, 1500000)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	MDRV_SOUND_ADD("ay2", AY8910, 1500000)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( zerotrgt )
-	MDRV_CPU_ADD("main", M6809, 2000000)		 /* ? */
+	MDRV_CPU_ADD("maincpu", M6809, 2000000)		 /* ? */
 	MDRV_CPU_PROGRAM_MAP(gekitsui_cpu1_map,0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse) /* ? */
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse) /* ? */
 
 	MDRV_CPU_ADD("sub", M6809, 2000000)		 /* ? */
 	MDRV_CPU_PROGRAM_MAP(gekitsui_cpu2_map,0)
-//  MDRV_CPU_VBLANK_INT("main", nmi_line_pulse) /* ? */
+//  MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse) /* ? */
 
-	MDRV_CPU_ADD("audio", M6502, 1500000)		/* ? */
+	MDRV_CPU_ADD("audiocpu", M6502, 1500000)		/* ? */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_VBLANK_INT_HACK(irq0_line_pulse,16) /* ? */ // should be interrupt, 16?
-	MDRV_CPU_PERIODIC_INT(sound_interrupt, 1000)
+	MDRV_CPU_PERIODIC_INT(sound_interrupt, 640)
+
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
 
 	MDRV_MACHINE_RESET(zerotrgt)
 
-	// interleave 200?
 	MDRV_GFXDECODE(zerotrgt)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -796,7 +667,7 @@ MACHINE_DRIVER_END
 /***************************************************************************/
 
 ROM_START( cntsteer )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "by02", 0x8000, 0x4000, CRC(b6fdd7fd) SHA1(e54cc31628966f747f9ccbf9db1017ed1eee0d5d) )
 	ROM_LOAD( "by01", 0xc000, 0x4000, CRC(932423a5) SHA1(0d8164359a79ae554328dfb4d729a8d07de7ee75) )
 
@@ -805,8 +676,8 @@ ROM_START( cntsteer )
 	ROM_LOAD( "by11", 0x8000, 0x4000, CRC(00624e34) SHA1(27bd472e9f2feef4a2c4753d8b0da26ff30d930d) )
 	ROM_LOAD( "by10", 0xc000, 0x4000, CRC(9227a9ce) SHA1(8c86f22f90a3a8853562469037ffa06693045f4c) )
 
-	ROM_REGION( 0x10000, "cpu2", 0 )
-	ROM_LOAD( "by00", 0xc000, 0x2000, CRC(740e4896) SHA1(959652515188966e1c2810eabf2f428fe31a31a9) )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
+	ROM_LOAD( "by00", 0xe000, 0x2000, CRC(740e4896) SHA1(959652515188966e1c2810eabf2f428fe31a31a9) )
 
 	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE ) /* Characters */
 	ROM_LOAD( "by09", 0x0000, 0x2000, CRC(273eddae) SHA1(4b5450407217d9110acb85e02ea9a6584552362e) )
@@ -833,10 +704,12 @@ ROM_START( cntsteer )
 	ROM_LOAD( "by20", 0x30000, 0x2000, CRC(e2198c9e) SHA1(afea262db9154301f4b9e53e1fc91985dd934170) )
 
 	ROM_REGION( 0x200, "proms", ROMREGION_ERASE00 )
+	ROM_LOAD( "mb7118h.7k",  0x0000, 0x100, NO_DUMP )
+	ROM_LOAD( "mb7052.6k",   0x0100, 0x100, NO_DUMP )
 ROM_END
 
 ROM_START( zerotrgt )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
  	ROM_LOAD( "ct01-s.4c", 0x8000, 0x8000, CRC(b35a16cb) SHA1(49581324c3e3d5219f0512d08a40161185368b10) )
 
 	ROM_REGION( 0x10000, "sub", 0 )
@@ -844,7 +717,7 @@ ROM_START( zerotrgt )
 	ROM_LOAD( "cty07.14a", 0x8000, 0x4000,  CRC(119b6211) SHA1(2042f06387d34fad6b63bcb8ac6f9b06377f634d) )
 	ROM_LOAD( "ct06.13a",  0xc000, 0x4000,  CRC(bce5adad) SHA1(86c4eef0d68679a24bab6460b49640a498f32ecd) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "ct00.1c",  0xe000, 0x2000,  CRC(ae091b6c) SHA1(8b3a1c0acbfa56f05bcf65677f85d70c8c9640d6) )
 
 	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE ) /* Characters */
@@ -879,7 +752,7 @@ ROM_START( zerotrgt )
 ROM_END
 
 ROM_START( gekitsui )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
  	ROM_LOAD( "ct01", 0x8000, 0x8000, CRC(d3d82d8d) SHA1(c175c626d4cb89a2d82740c04892092db6faf616) )
 
 	ROM_REGION( 0x10000, "sub", 0 )
@@ -887,7 +760,7 @@ ROM_START( gekitsui )
 	ROM_LOAD( "cty07.14a", 0x8000, 0x4000,  CRC(119b6211) SHA1(2042f06387d34fad6b63bcb8ac6f9b06377f634d) )
 	ROM_LOAD( "ct06.13a",  0xc000, 0x4000,  CRC(bce5adad) SHA1(86c4eef0d68679a24bab6460b49640a498f32ecd) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "ct00.1c",  0xe000, 0x2000,  CRC(ae091b6c) SHA1(8b3a1c0acbfa56f05bcf65677f85d70c8c9640d6) )
 
 	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE )
@@ -960,16 +833,12 @@ static void init_cntsteer(void)
 
 static DRIVER_INIT( zerotrgt )
 {
-	int i;
-	for (i=0; i<ARRAY_LENGTH(newdata); i++)
-		newdata[i] = -1;
-
 	zerotrgt_rearrange_gfx(machine, 0x02000, 0x10000);
 }
 
 
 /***************************************************************************/
 
-GAME( 1985, cntsteer, 0,        cntsteer,  cntsteer, zerotrgt, ROT270, "Data East Corporation", "Counter Steer", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 1985, zerotrgt, 0,        zerotrgt,  cntsteer, zerotrgt, ROT0,   "Data East Corporation", "Zero Target (World)", GAME_NO_SOUND|GAME_NOT_WORKING )
-GAME( 1985, gekitsui, zerotrgt, zerotrgt,  cntsteer, zerotrgt, ROT0,   "Data East Corporation", "Gekitsui Oh (Japan)", GAME_NO_SOUND|GAME_NOT_WORKING )
+GAME( 1985, cntsteer, 0,        cntsteer,  cntsteer, zerotrgt, ROT90,  "Data East Corporation", "Counter Steer", GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND|GAME_NO_COCKTAIL|GAME_NOT_WORKING )
+GAME( 1985, zerotrgt, 0,        zerotrgt,  zerotrgt, zerotrgt, ROT0,   "Data East Corporation", "Zero Target (World)", GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND|GAME_NO_COCKTAIL|GAME_NOT_WORKING )
+GAME( 1985, gekitsui, zerotrgt, zerotrgt,  zerotrgt, zerotrgt, ROT0,   "Data East Corporation", "Gekitsui Oh (Japan)", GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND|GAME_NO_COCKTAIL|GAME_NOT_WORKING )

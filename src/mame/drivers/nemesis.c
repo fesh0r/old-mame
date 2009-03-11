@@ -239,75 +239,50 @@ static WRITE16_HANDLER( nemesis_soundlatch_word_w )
 	}
 }
 
-static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
-	AM_RANGE(0x040000, 0x04ffff) AM_READ(SMH_RAM)
-	AM_RANGE(0x050000, 0x0503ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x050400, 0x0507ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x050800, 0x050bff) AM_READ(SMH_RAM)
-	AM_RANGE(0x050c00, 0x050fff) AM_READ(SMH_RAM)
-
-	AM_RANGE(0x052000, 0x052fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x053000, 0x053fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x054000, 0x054fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x055000, 0x055fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x056000, 0x056fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x05a000, 0x05afff) AM_READ(SMH_RAM)
-
+static ADDRESS_MAP_START( nemesis_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x03ffff) AM_ROM
+	AM_RANGE(0x040000, 0x04ffff) AM_RAM_WRITE(nemesis_characterram_word_w) AM_BASE(&nemesis_characterram) AM_SIZE(&nemesis_characterram_size)
+	AM_RANGE(0x050000, 0x050fff) AM_RAM
+	AM_RANGE(0x050000, 0x0503ff) AM_BASE(&nemesis_xscroll1)
+	AM_RANGE(0x050400, 0x0507ff) AM_BASE(&nemesis_xscroll2)
+	AM_RANGE(0x050c00, 0x050fff) AM_BASE(&nemesis_yscroll)
+	AM_RANGE(0x051000, 0x051fff) AM_WRITENOP		/* used, but written to with 0's */
+	AM_RANGE(0x052000, 0x052fff) AM_RAM_WRITE(nemesis_videoram1b_word_w) AM_BASE(&nemesis_videoram1b)	/* VRAM 1 */
+	AM_RANGE(0x053000, 0x053fff) AM_RAM_WRITE(nemesis_videoram1f_word_w) AM_BASE(&nemesis_videoram1f)	/* VRAM 1 */
+	AM_RANGE(0x054000, 0x054fff) AM_RAM_WRITE(nemesis_videoram2b_word_w) AM_BASE(&nemesis_videoram2b)	/* VRAM 2 */
+	AM_RANGE(0x055000, 0x055fff) AM_RAM_WRITE(nemesis_videoram2f_word_w) AM_BASE(&nemesis_videoram2f)	/* VRAM 2 */
+	AM_RANGE(0x056000, 0x056fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x05a000, 0x05afff) AM_RAM_WRITE(nemesis_palette_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x05c000, 0x05c001) AM_WRITE(nemesis_soundlatch_word_w)
 	AM_RANGE(0x05c400, 0x05c401) AM_READ_PORT("DSW0")
 	AM_RANGE(0x05c402, 0x05c403) AM_READ_PORT("DSW1")
-
+	AM_RANGE(0x05c800, 0x05c801) AM_WRITE(watchdog_reset16_w)	/* probably */
 	AM_RANGE(0x05cc00, 0x05cc01) AM_READ_PORT("IN0")
 	AM_RANGE(0x05cc02, 0x05cc03) AM_READ_PORT("IN1")
 	AM_RANGE(0x05cc04, 0x05cc05) AM_READ_PORT("IN2")
 	AM_RANGE(0x05cc06, 0x05cc07) AM_READ_PORT("TEST")
-
-	AM_RANGE(0x060000, 0x067fff) AM_READ(SMH_RAM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)	/* ROM */
-
-	AM_RANGE(0x040000, 0x04ffff) AM_WRITE(nemesis_characterram_word_w) AM_BASE(&nemesis_characterram) AM_SIZE(&nemesis_characterram_size)
-
-	AM_RANGE(0x050000, 0x0503ff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_xscroll1)
-	AM_RANGE(0x050400, 0x0507ff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_xscroll2)
-	AM_RANGE(0x050800, 0x050bff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x050c00, 0x050fff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_yscroll)
-	AM_RANGE(0x051000, 0x051fff) AM_WRITE(SMH_NOP)		/* used, but written to with 0's */
-
-	AM_RANGE(0x052000, 0x052fff) AM_WRITE(nemesis_videoram1b_word_w) AM_BASE(&nemesis_videoram1b)	/* VRAM 1 */
-	AM_RANGE(0x053000, 0x053fff) AM_WRITE(nemesis_videoram1f_word_w) AM_BASE(&nemesis_videoram1f)	/* VRAM 1 */
-	AM_RANGE(0x054000, 0x054fff) AM_WRITE(nemesis_videoram2b_word_w) AM_BASE(&nemesis_videoram2b)	/* VRAM 2 */
-	AM_RANGE(0x055000, 0x055fff) AM_WRITE(nemesis_videoram2f_word_w) AM_BASE(&nemesis_videoram2f)	/* VRAM 2 */
-	AM_RANGE(0x056000, 0x056fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x05a000, 0x05afff) AM_WRITE(nemesis_palette_word_w) AM_BASE(&paletteram16)
-
-	AM_RANGE(0x05c000, 0x05c001) AM_WRITE(nemesis_soundlatch_word_w)
-	AM_RANGE(0x05c800, 0x05c801) AM_WRITE(watchdog_reset16_w)	/* probably */
-
 	AM_RANGE(0x05e000, 0x05e001) AM_WRITE(&nemesis_irq_enable_word_w)	/* Nemesis */
 	AM_RANGE(0x05e002, 0x05e003) AM_WRITE(&nemesis_irq_enable_word_w)	/* Konami GT */
 	AM_RANGE(0x05e004, 0x05e005) AM_WRITE(nemesis_gfx_flipx_w)
 	AM_RANGE(0x05e006, 0x05e007) AM_WRITE(nemesis_gfx_flipy_w)
-	AM_RANGE(0x060000, 0x067fff) AM_WRITE(SMH_RAM) AM_BASE(&ram)	/* WORK RAM */
+	AM_RANGE(0x060000, 0x067fff) AM_RAM AM_BASE(&ram)	/* WORK RAM */
 ADDRESS_MAP_END
 
-static WRITE8_HANDLER( salamand_speech_start_w )
+static WRITE8_DEVICE_HANDLER( salamand_speech_start_w )
 {
-        vlm5030_st ( 1 );
-        vlm5030_st ( 0 );
+        vlm5030_st ( device, 1 );
+        vlm5030_st ( device, 0 );
 }
 
-static WRITE8_HANDLER( gx400_speech_start_w )
+static WRITE8_DEVICE_HANDLER( gx400_speech_start_w )
 {
 	/* the voice data is not in a rom but in sound RAM at $8000 */
-	vlm5030_set_rom (gx400_shared_ram + 0x4000);
-	vlm5030_st (1);
-	vlm5030_st (0);
+	vlm5030_set_rom (device, gx400_shared_ram + 0x4000);
+	vlm5030_st (device, 1);
+	vlm5030_st (device, 0);
 }
 
-static READ8_HANDLER( nemesis_portA_r )
+static READ8_DEVICE_HANDLER( nemesis_portA_r )
 {
 /*
    bit 0-3:   timer
@@ -316,407 +291,257 @@ static READ8_HANDLER( nemesis_portA_r )
    bit 7:     unused by this software version. Bubble Memory version uses this bit.
 */
 
-	int res = (cputag_get_total_cycles(space->machine, "audio") / 1024) & 0x2f; // this should be 0x0f, but it doesn't work
+	const device_config *vlm = devtag_get_device(device->machine, "vlm");
+	int res = (cputag_get_total_cycles(device->machine, "audiocpu") / 1024) & 0x2f; // this should be 0x0f, but it doesn't work
 
 	res |= 0xd0;
 
-	if (sndti_exists(SOUND_VLM5030, 0) && vlm5030_bsy())
+	if (vlm != NULL && vlm5030_bsy(vlm))
 		res |= 0x20;
 
 	return res;
 }
 
-static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x4000, 0x47ff) AM_READ(SMH_RAM)
+static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x3fff) AM_ROM
+	AM_RANGE(0x4000, 0x47ff) AM_RAM
+	AM_RANGE(0xa000, 0xafff) AM_DEVWRITE("konami", k005289_pitch_A_w)
+	AM_RANGE(0xc000, 0xcfff) AM_DEVWRITE("konami", k005289_pitch_B_w)
 	AM_RANGE(0xe001, 0xe001) AM_READ(soundlatch_r)
-	AM_RANGE(0xe086, 0xe086) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0xe205, 0xe205) AM_READ(ay8910_read_port_1_r)
+	AM_RANGE(0xe003, 0xe003) AM_DEVWRITE("konami", k005289_keylatch_A_w)
+	AM_RANGE(0xe004, 0xe004) AM_DEVWRITE("konami", k005289_keylatch_B_w)
+	AM_RANGE(0xe005, 0xe005) AM_DEVWRITE("ay2", ay8910_address_w)
+	AM_RANGE(0xe006, 0xe006) AM_DEVWRITE("ay1", ay8910_address_w)
+	AM_RANGE(0xe086, 0xe086) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0xe106, 0xe106) AM_DEVWRITE("ay1", ay8910_data_w)
+	AM_RANGE(0xe205, 0xe205) AM_DEVREAD("ay2", ay8910_r)
+	AM_RANGE(0xe405, 0xe405) AM_DEVWRITE("ay2", ay8910_data_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x4000, 0x47ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xa000, 0xafff) AM_WRITE(k005289_pitch_A_w)
-	AM_RANGE(0xc000, 0xcfff) AM_WRITE(k005289_pitch_B_w)
-	AM_RANGE(0xe003, 0xe003) AM_WRITE(k005289_keylatch_A_w)
-	AM_RANGE(0xe004, 0xe004) AM_WRITE(k005289_keylatch_B_w)
-	AM_RANGE(0xe005, 0xe005) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0xe006, 0xe006) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xe106, 0xe106) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0xe405, 0xe405) AM_WRITE(ay8910_write_port_1_w)
-ADDRESS_MAP_END
+static ADDRESS_MAP_START( konamigt_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x03ffff) AM_ROM
+	AM_RANGE(0x040000, 0x04ffff) AM_RAM_WRITE(nemesis_characterram_word_w) AM_BASE(&nemesis_characterram) AM_SIZE(&nemesis_characterram_size)
+	AM_RANGE(0x050000, 0x050fff) AM_RAM
+	AM_RANGE(0x050000, 0x0503ff) AM_BASE(&nemesis_xscroll1)
+	AM_RANGE(0x050400, 0x0507ff) AM_BASE(&nemesis_xscroll2)
+	AM_RANGE(0x050c00, 0x050fff) AM_BASE(&nemesis_yscroll)
+	AM_RANGE(0x051000, 0x051fff) AM_WRITENOP		/* used, but written to with 0's */
+	AM_RANGE(0x052000, 0x052fff) AM_RAM_WRITE(nemesis_videoram1b_word_w) AM_BASE(&nemesis_videoram1b)	/* VRAM 1 */
+	AM_RANGE(0x053000, 0x053fff) AM_RAM_WRITE(nemesis_videoram1f_word_w) AM_BASE(&nemesis_videoram1f)	/* VRAM 1 */
+	AM_RANGE(0x054000, 0x054fff) AM_RAM_WRITE(nemesis_videoram2b_word_w) AM_BASE(&nemesis_videoram2b)	/* VRAM 2 */
+	AM_RANGE(0x055000, 0x055fff) AM_RAM_WRITE(nemesis_videoram2f_word_w) AM_BASE(&nemesis_videoram2f)	/* VRAM 2 */
+	AM_RANGE(0x056000, 0x056fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x05a000, 0x05afff) AM_RAM_WRITE(nemesis_palette_word_w) AM_BASE(&paletteram16)
 
-static ADDRESS_MAP_START( konamigt_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
-	AM_RANGE(0x040000, 0x04ffff) AM_READ(SMH_RAM)
-	AM_RANGE(0x050000, 0x0503ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x050400, 0x0507ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x050800, 0x050bff) AM_READ(SMH_RAM)
-	AM_RANGE(0x050c00, 0x050fff) AM_READ(SMH_RAM)
-
-	AM_RANGE(0x052000, 0x052fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x053000, 0x053fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x054000, 0x054fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x055000, 0x055fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x056000, 0x056fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x05a000, 0x05afff) AM_READ(SMH_RAM)
-
+	AM_RANGE(0x05c000, 0x05c001) AM_WRITE(nemesis_soundlatch_word_w)
 	AM_RANGE(0x05c400, 0x05c401) AM_READ_PORT("DSW0")
 	AM_RANGE(0x05c402, 0x05c403) AM_READ_PORT("DSW1")
-
+	AM_RANGE(0x05c800, 0x05c801) AM_WRITE(watchdog_reset16_w)	/* probably */
 	AM_RANGE(0x05cc00, 0x05cc01) AM_READ_PORT("IN0")
 	AM_RANGE(0x05cc02, 0x05cc03) AM_READ_PORT("IN1")
 	AM_RANGE(0x05cc04, 0x05cc05) AM_READ_PORT("IN2")
 	AM_RANGE(0x05cc06, 0x05cc07) AM_READ_PORT("TEST")
 
-	AM_RANGE(0x060000, 0x067fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x070000, 0x070001) AM_READ(konamigt_input_word_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( konamigt_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)	/* ROM */
-
-	AM_RANGE(0x040000, 0x04ffff) AM_WRITE(nemesis_characterram_word_w) AM_BASE(&nemesis_characterram) AM_SIZE(&nemesis_characterram_size)
-
-	AM_RANGE(0x050000, 0x0503ff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_xscroll1)
-	AM_RANGE(0x050400, 0x0507ff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_xscroll2)
-	AM_RANGE(0x050800, 0x050bff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x050c00, 0x050fff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_yscroll)
-	AM_RANGE(0x051000, 0x051fff) AM_WRITE(SMH_NOP)		/* used, but written to with 0's */
-
-	AM_RANGE(0x052000, 0x052fff) AM_WRITE(nemesis_videoram1b_word_w) AM_BASE(&nemesis_videoram1b)	/* VRAM 1 */
-	AM_RANGE(0x053000, 0x053fff) AM_WRITE(nemesis_videoram1f_word_w) AM_BASE(&nemesis_videoram1f)	/* VRAM 1 */
-	AM_RANGE(0x054000, 0x054fff) AM_WRITE(nemesis_videoram2b_word_w) AM_BASE(&nemesis_videoram2b)	/* VRAM 2 */
-	AM_RANGE(0x055000, 0x055fff) AM_WRITE(nemesis_videoram2f_word_w) AM_BASE(&nemesis_videoram2f)	/* VRAM 2 */
-	AM_RANGE(0x056000, 0x056fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x05a000, 0x05afff) AM_WRITE(nemesis_palette_word_w) AM_BASE(&paletteram16)
-
-	AM_RANGE(0x05c000, 0x05c001) AM_WRITE(nemesis_soundlatch_word_w)
-	AM_RANGE(0x05c800, 0x05c801) AM_WRITE(watchdog_reset16_w)	/* probably */
-
 	AM_RANGE(0x05e000, 0x05e001) AM_WRITE(&konamigt_irq2_enable_word_w)
 	AM_RANGE(0x05e002, 0x05e003) AM_WRITE(&konamigt_irq_enable_word_w)
 	AM_RANGE(0x05e004, 0x05e005) AM_WRITE(nemesis_gfx_flipx_w)
 	AM_RANGE(0x05e006, 0x05e007) AM_WRITE(nemesis_gfx_flipy_w)
-	AM_RANGE(0x060000, 0x067fff) AM_WRITE(SMH_RAM) AM_BASE(&ram)	/* WORK RAM */
-ADDRESS_MAP_END
-
-
-static ADDRESS_MAP_START( gx400_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x00ffff) AM_READ(SMH_ROM)
-	AM_RANGE(0x010000, 0x01ffff) AM_READ(SMH_RAM)
-	AM_RANGE(0x020000, 0x0287ff) AM_READ(gx400_sharedram_word_r)
-	AM_RANGE(0x030000, 0x03ffff) AM_READ(SMH_RAM)
-	AM_RANGE(0x050000, 0x0503ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x050400, 0x0507ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x050800, 0x050bff) AM_READ(SMH_RAM)
-	AM_RANGE(0x050c00, 0x050fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x052000, 0x052fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x053000, 0x053fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x054000, 0x054fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x055000, 0x055fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x056000, 0x056fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x057000, 0x057fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x05a000, 0x05afff) AM_READ(SMH_RAM)
-	AM_RANGE(0x05c402, 0x05c403) AM_READ_PORT("DSW0")
-	AM_RANGE(0x05c404, 0x05c405) AM_READ_PORT("DSW1")
-	AM_RANGE(0x05c406, 0x05c407) AM_READ_PORT("TEST")
-	AM_RANGE(0x05cc00, 0x05cc01) AM_READ_PORT("IN0")
-	AM_RANGE(0x05cc02, 0x05cc03) AM_READ_PORT("IN1")
-	AM_RANGE(0x05cc04, 0x05cc05) AM_READ_PORT("IN2")
-	AM_RANGE(0x060000, 0x07ffff) AM_READ(SMH_RAM)
-	AM_RANGE(0x080000, 0x0bffff) AM_READ(SMH_ROM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( gx400_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x010000, 0x01ffff) AM_WRITE(SMH_RAM) AM_BASE(&ram)
-	AM_RANGE(0x020000, 0x0287ff) AM_WRITE(gx400_sharedram_word_w)
-	AM_RANGE(0x030000, 0x03ffff) AM_WRITE(nemesis_characterram_word_w) AM_BASE(&nemesis_characterram) AM_SIZE(&nemesis_characterram_size)
-	AM_RANGE(0x050000, 0x0503ff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_xscroll1)
-	AM_RANGE(0x050400, 0x0507ff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_xscroll2)
-	AM_RANGE(0x050800, 0x050bff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x050c00, 0x050fff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_yscroll)
-	AM_RANGE(0x051000, 0x051fff) AM_WRITE(SMH_NOP)		/* used, but written to with 0's */
-	AM_RANGE(0x052000, 0x052fff) AM_WRITE(nemesis_videoram1b_word_w) AM_BASE(&nemesis_videoram1b)	/* VRAM 1 */
-	AM_RANGE(0x053000, 0x053fff) AM_WRITE(nemesis_videoram1f_word_w) AM_BASE(&nemesis_videoram1f)	/* VRAM 1 */
-	AM_RANGE(0x054000, 0x054fff) AM_WRITE(nemesis_videoram2b_word_w) AM_BASE(&nemesis_videoram2b)	/* VRAM 2 */
-	AM_RANGE(0x055000, 0x055fff) AM_WRITE(nemesis_videoram2f_word_w) AM_BASE(&nemesis_videoram2f)	/* VRAM 2 */
-	AM_RANGE(0x056000, 0x056fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x057000, 0x057fff) AM_WRITE(SMH_RAM)										/* needed for twinbee */
-	AM_RANGE(0x05a000, 0x05afff) AM_WRITE(nemesis_palette_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x05c000, 0x05c001) AM_WRITE(nemesis_soundlatch_word_w)
-	AM_RANGE(0x05c800, 0x05c801) AM_WRITE(watchdog_reset16_w)	/* probably */
-	AM_RANGE(0x05e000, 0x05e001) AM_WRITE(&gx400_irq2_enable_word_w)	/* ?? */
-	AM_RANGE(0x05e002, 0x05e003) AM_WRITE(&gx400_irq1_enable_word_w)	/* ?? */
-	AM_RANGE(0x05e004, 0x05e005) AM_WRITE(nemesis_gfx_flipx_w)
-	AM_RANGE(0x05e006, 0x05e007) AM_WRITE(nemesis_gfx_flipy_w)
-	AM_RANGE(0x05e008, 0x05e009) AM_WRITE(SMH_NOP)	/* IRQ acknowledge??? */
-	AM_RANGE(0x05e00e, 0x05e00f) AM_WRITE(&gx400_irq4_enable_word_w)	/* ?? */
-	AM_RANGE(0x060000, 0x07ffff) AM_WRITE(SMH_RAM) AM_BASE(&ram2)
-	AM_RANGE(0x080000, 0x0bffff) AM_WRITE(SMH_ROM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( rf2_gx400_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x00ffff) AM_READ(SMH_ROM)
-	AM_RANGE(0x010000, 0x01ffff) AM_READ(SMH_RAM)
-	AM_RANGE(0x020000, 0x0287ff) AM_READ(gx400_sharedram_word_r)
-	AM_RANGE(0x030000, 0x03ffff) AM_READ(SMH_RAM)
-	AM_RANGE(0x050000, 0x0503ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x050400, 0x0507ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x050800, 0x050bff) AM_READ(SMH_RAM)
-	AM_RANGE(0x050c00, 0x050fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x052000, 0x052fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x053000, 0x053fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x054000, 0x054fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x055000, 0x055fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x056000, 0x056fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x05a000, 0x05afff) AM_READ(SMH_RAM)
-	AM_RANGE(0x05c402, 0x05c403) AM_READ_PORT("DSW0")
-	AM_RANGE(0x05c404, 0x05c405) AM_READ_PORT("DSW1")
-	AM_RANGE(0x05c406, 0x05c407) AM_READ_PORT("TEST")
-	AM_RANGE(0x05cc00, 0x05cc01) AM_READ_PORT("IN0")
-	AM_RANGE(0x05cc02, 0x05cc03) AM_READ_PORT("IN1")
-	AM_RANGE(0x05cc04, 0x05cc05) AM_READ_PORT("IN2")
-	AM_RANGE(0x060000, 0x067fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x060000, 0x067fff) AM_RAM AM_BASE(&ram)	/* WORK RAM */
 	AM_RANGE(0x070000, 0x070001) AM_READ(konamigt_input_word_r)
-	AM_RANGE(0x080000, 0x0bffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( rf2_gx400_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x010000, 0x01ffff) AM_WRITE(SMH_RAM) AM_BASE(&ram2)
-	AM_RANGE(0x020000, 0x0287ff) AM_WRITE(gx400_sharedram_word_w)
-	AM_RANGE(0x030000, 0x03ffff) AM_WRITE(nemesis_characterram_word_w) AM_BASE(&nemesis_characterram) AM_SIZE(&nemesis_characterram_size)
-	AM_RANGE(0x050000, 0x0503ff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_xscroll1)
-	AM_RANGE(0x050400, 0x0507ff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_xscroll2)
-	AM_RANGE(0x050800, 0x050bff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x050c00, 0x050fff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_yscroll)
-	AM_RANGE(0x051000, 0x051fff) AM_WRITE(SMH_NOP)		/* used, but written to with 0's */
-	AM_RANGE(0x052000, 0x052fff) AM_WRITE(nemesis_videoram1b_word_w) AM_BASE(&nemesis_videoram1b)	/* VRAM 1 */
-	AM_RANGE(0x053000, 0x053fff) AM_WRITE(nemesis_videoram1f_word_w) AM_BASE(&nemesis_videoram1f)	/* VRAM 1 */
-	AM_RANGE(0x054000, 0x054fff) AM_WRITE(nemesis_videoram2b_word_w) AM_BASE(&nemesis_videoram2b)	/* VRAM 2 */
-	AM_RANGE(0x055000, 0x055fff) AM_WRITE(nemesis_videoram2f_word_w) AM_BASE(&nemesis_videoram2f)	/* VRAM 2 */
-	AM_RANGE(0x056000, 0x056fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x05a000, 0x05afff) AM_WRITE(nemesis_palette_word_w) AM_BASE(&paletteram16)
+
+static ADDRESS_MAP_START( gx400_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x00ffff) AM_ROM
+	AM_RANGE(0x010000, 0x01ffff) AM_RAM AM_BASE(&ram)
+	AM_RANGE(0x020000, 0x0287ff) AM_READWRITE(gx400_sharedram_word_r, gx400_sharedram_word_w)
+	AM_RANGE(0x030000, 0x03ffff) AM_RAM_WRITE(nemesis_characterram_word_w) AM_BASE(&nemesis_characterram) AM_SIZE(&nemesis_characterram_size)
+	AM_RANGE(0x050000, 0x050fff) AM_RAM
+	AM_RANGE(0x050000, 0x0503ff) AM_BASE(&nemesis_xscroll1)
+	AM_RANGE(0x050400, 0x0507ff) AM_BASE(&nemesis_xscroll2)
+	AM_RANGE(0x050c00, 0x050fff) AM_BASE(&nemesis_yscroll)
+	AM_RANGE(0x051000, 0x051fff) AM_WRITENOP		/* used, but written to with 0's */
+	AM_RANGE(0x052000, 0x052fff) AM_RAM_WRITE(nemesis_videoram1b_word_w) AM_BASE(&nemesis_videoram1b)	/* VRAM 1 */
+	AM_RANGE(0x053000, 0x053fff) AM_RAM_WRITE(nemesis_videoram1f_word_w) AM_BASE(&nemesis_videoram1f)	/* VRAM 1 */
+	AM_RANGE(0x054000, 0x054fff) AM_RAM_WRITE(nemesis_videoram2b_word_w) AM_BASE(&nemesis_videoram2b)	/* VRAM 2 */
+	AM_RANGE(0x055000, 0x055fff) AM_RAM_WRITE(nemesis_videoram2f_word_w) AM_BASE(&nemesis_videoram2f)	/* VRAM 2 */
+	AM_RANGE(0x056000, 0x056fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x057000, 0x057fff) AM_RAM				/* needed for twinbee */
+	AM_RANGE(0x05a000, 0x05afff) AM_RAM_WRITE(nemesis_palette_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x05c000, 0x05c001) AM_WRITE(nemesis_soundlatch_word_w)
+	AM_RANGE(0x05c402, 0x05c403) AM_READ_PORT("DSW0")
+	AM_RANGE(0x05c404, 0x05c405) AM_READ_PORT("DSW1")
+	AM_RANGE(0x05c406, 0x05c407) AM_READ_PORT("TEST")
 	AM_RANGE(0x05c800, 0x05c801) AM_WRITE(watchdog_reset16_w)	/* probably */
+	AM_RANGE(0x05cc00, 0x05cc01) AM_READ_PORT("IN0")
+	AM_RANGE(0x05cc02, 0x05cc03) AM_READ_PORT("IN1")
+	AM_RANGE(0x05cc04, 0x05cc05) AM_READ_PORT("IN2")
 	AM_RANGE(0x05e000, 0x05e001) AM_WRITE(&gx400_irq2_enable_word_w)	/* ?? */
 	AM_RANGE(0x05e002, 0x05e003) AM_WRITE(&gx400_irq1_enable_word_w)	/* ?? */
 	AM_RANGE(0x05e004, 0x05e005) AM_WRITE(nemesis_gfx_flipx_w)
 	AM_RANGE(0x05e006, 0x05e007) AM_WRITE(nemesis_gfx_flipy_w)
 	AM_RANGE(0x05e008, 0x05e009) AM_WRITE(SMH_NOP)	/* IRQ acknowledge??? */
 	AM_RANGE(0x05e00e, 0x05e00f) AM_WRITE(&gx400_irq4_enable_word_w)	/* ?? */
-	AM_RANGE(0x060000, 0x067fff) AM_WRITE(SMH_RAM) AM_BASE(&ram)	/* WORK RAM */
-	AM_RANGE(0x080000, 0x0bffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x060000, 0x07ffff) AM_RAM AM_BASE(&ram2)
+	AM_RANGE(0x080000, 0x0bffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( gx400_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x4000, 0x87ff) AM_READ(SMH_RAM)
+static ADDRESS_MAP_START( rf2_gx400_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x00ffff) AM_ROM
+	AM_RANGE(0x010000, 0x01ffff) AM_RAM AM_BASE(&ram2)
+	AM_RANGE(0x020000, 0x0287ff) AM_READWRITE(gx400_sharedram_word_r, gx400_sharedram_word_w)
+	AM_RANGE(0x030000, 0x03ffff) AM_RAM_WRITE(nemesis_characterram_word_w) AM_BASE(&nemesis_characterram) AM_SIZE(&nemesis_characterram_size)
+	AM_RANGE(0x050000, 0x050fff) AM_RAM
+	AM_RANGE(0x050000, 0x0503ff) AM_BASE(&nemesis_xscroll1)
+	AM_RANGE(0x050400, 0x0507ff) AM_BASE(&nemesis_xscroll2)
+	AM_RANGE(0x050c00, 0x050fff) AM_BASE(&nemesis_yscroll)
+	AM_RANGE(0x051000, 0x051fff) AM_WRITENOP	/* used, but written to with 0's */
+	AM_RANGE(0x052000, 0x052fff) AM_RAM_WRITE(nemesis_videoram1b_word_w) AM_BASE(&nemesis_videoram1b)	/* VRAM 1 */
+	AM_RANGE(0x053000, 0x053fff) AM_RAM_WRITE(nemesis_videoram1f_word_w) AM_BASE(&nemesis_videoram1f)	/* VRAM 1 */
+	AM_RANGE(0x054000, 0x054fff) AM_RAM_WRITE(nemesis_videoram2b_word_w) AM_BASE(&nemesis_videoram2b)	/* VRAM 2 */
+	AM_RANGE(0x055000, 0x055fff) AM_RAM_WRITE(nemesis_videoram2f_word_w) AM_BASE(&nemesis_videoram2f)	/* VRAM 2 */
+	AM_RANGE(0x056000, 0x056fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x05a000, 0x05afff) AM_RAM_WRITE(nemesis_palette_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x05c000, 0x05c001) AM_WRITE(nemesis_soundlatch_word_w)
+	AM_RANGE(0x05c402, 0x05c403) AM_READ_PORT("DSW0")
+	AM_RANGE(0x05c404, 0x05c405) AM_READ_PORT("DSW1")
+	AM_RANGE(0x05c406, 0x05c407) AM_READ_PORT("TEST")
+	AM_RANGE(0x05c800, 0x05c801) AM_WRITE(watchdog_reset16_w)	/* probably */
+	AM_RANGE(0x05cc00, 0x05cc01) AM_READ_PORT("IN0")
+	AM_RANGE(0x05cc02, 0x05cc03) AM_READ_PORT("IN1")
+	AM_RANGE(0x05cc04, 0x05cc05) AM_READ_PORT("IN2")
+	AM_RANGE(0x05e000, 0x05e001) AM_WRITE(&gx400_irq2_enable_word_w)	/* ?? */
+	AM_RANGE(0x05e002, 0x05e003) AM_WRITE(&gx400_irq1_enable_word_w)	/* ?? */
+	AM_RANGE(0x05e004, 0x05e005) AM_WRITE(nemesis_gfx_flipx_w)
+	AM_RANGE(0x05e006, 0x05e007) AM_WRITE(nemesis_gfx_flipy_w)
+	AM_RANGE(0x05e008, 0x05e009) AM_WRITE(SMH_NOP)	/* IRQ acknowledge??? */
+	AM_RANGE(0x05e00e, 0x05e00f) AM_WRITE(&gx400_irq4_enable_word_w)	/* ?? */
+	AM_RANGE(0x060000, 0x067fff) AM_RAM AM_BASE(&ram)	/* WORK RAM */
+	AM_RANGE(0x070000, 0x070001) AM_READ(konamigt_input_word_r)
+	AM_RANGE(0x080000, 0x0bffff) AM_ROM
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( gx400_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x1fff) AM_ROM
+	AM_RANGE(0x4000, 0x87ff) AM_RAM AM_BASE(&gx400_shared_ram)
+	AM_RANGE(0xa000, 0xafff) AM_DEVWRITE("konami", k005289_pitch_A_w)
+	AM_RANGE(0xc000, 0xcfff) AM_DEVWRITE("konami", k005289_pitch_B_w)
+	AM_RANGE(0xe000, 0xe000) AM_DEVWRITE("vlm", vlm5030_data_w)
 	AM_RANGE(0xe001, 0xe001) AM_READ(soundlatch_r)
-	AM_RANGE(0xe086, 0xe086) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0xe205, 0xe205) AM_READ(ay8910_read_port_1_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( gx400_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x4000, 0x87ff) AM_WRITE(SMH_RAM) AM_BASE(&gx400_shared_ram)
-	AM_RANGE(0xa000, 0xafff) AM_WRITE(k005289_pitch_A_w)
-	AM_RANGE(0xc000, 0xcfff) AM_WRITE(k005289_pitch_B_w)
-	AM_RANGE(0xe000, 0xe000) AM_WRITE(vlm5030_data_w)
-	AM_RANGE(0xe003, 0xe003) AM_WRITE(k005289_keylatch_A_w)
-	AM_RANGE(0xe004, 0xe004) AM_WRITE(k005289_keylatch_B_w)
-	AM_RANGE(0xe005, 0xe005) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0xe006, 0xe006) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xe030, 0xe030) AM_WRITE(gx400_speech_start_w)
-	AM_RANGE(0xe106, 0xe106) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0xe405, 0xe405) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0xe003, 0xe003) AM_DEVWRITE("konami", k005289_keylatch_A_w)
+	AM_RANGE(0xe004, 0xe004) AM_DEVWRITE("konami", k005289_keylatch_B_w)
+	AM_RANGE(0xe005, 0xe005) AM_DEVWRITE("ay2", ay8910_address_w)
+	AM_RANGE(0xe006, 0xe006) AM_DEVWRITE("ay1", ay8910_address_w)
+	AM_RANGE(0xe030, 0xe030) AM_DEVWRITE("vlm", gx400_speech_start_w)
+	AM_RANGE(0xe086, 0xe086) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0xe106, 0xe106) AM_DEVWRITE("ay1", ay8910_data_w)
+	AM_RANGE(0xe205, 0xe205) AM_DEVREAD("ay2", ay8910_r)
+	AM_RANGE(0xe405, 0xe405) AM_DEVWRITE("ay2", ay8910_data_w)
 ADDRESS_MAP_END
 
 /******************************************************************************/
 
-static ADDRESS_MAP_START( salamand_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)		/* ROM BIOS */
-	AM_RANGE(0x080000, 0x087fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x090000, 0x091fff) AM_READ(SMH_RAM)
+static ADDRESS_MAP_START( salamand_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x07ffff) AM_ROM
+	AM_RANGE(0x080000, 0x087fff) AM_RAM AM_BASE(&ram)
+	AM_RANGE(0x090000, 0x091fff) AM_RAM_WRITE(salamander_palette_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x0A0000, 0x0A0001) AM_WRITE(nemesis_irq_enable_word_w)          /* irq enable */
+	AM_RANGE(0x0C0000, 0x0C0001) AM_WRITE(salamand_soundlatch_word_w)
 	AM_RANGE(0x0c0002, 0x0c0003) AM_READ_PORT("DSW0")
+	AM_RANGE(0x0C0004, 0x0C0005) AM_WRITE(SMH_NOP)        /* Watchdog at $c0005 */
 	AM_RANGE(0x0c2000, 0x0c2001) AM_READ_PORT("IN0")	/* Coins, start buttons, test mode */
 	AM_RANGE(0x0c2002, 0x0c2003) AM_READ_PORT("IN1")
 	AM_RANGE(0x0c2004, 0x0c2005) AM_READ_PORT("IN2")
 	AM_RANGE(0x0c2006, 0x0c2007) AM_READ_PORT("DSW1")
-	AM_RANGE(0x100000, 0x100fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x101000, 0x101fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x102000, 0x102fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x103000, 0x103fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x120000, 0x12ffff) AM_READ(SMH_RAM)
-	AM_RANGE(0x180000, 0x180fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x190000, 0x1903ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x190400, 0x1907ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x190800, 0x190eff) AM_READ(SMH_RAM)
-	AM_RANGE(0x190f00, 0x190f7f) AM_READ(SMH_RAM)
-	AM_RANGE(0x190f80, 0x190fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x191000, 0x191fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x100000, 0x100fff) AM_RAM_WRITE(nemesis_videoram1b_word_w) AM_BASE(&nemesis_videoram1b)	/* VRAM 1 */
+	AM_RANGE(0x101000, 0x101fff) AM_RAM_WRITE(nemesis_videoram1f_word_w) AM_BASE(&nemesis_videoram1f)	/* VRAM 1 */
+	AM_RANGE(0x102000, 0x102fff) AM_RAM_WRITE(nemesis_videoram2b_word_w) AM_BASE(&nemesis_videoram2b)	/* VRAM 2 */
+	AM_RANGE(0x103000, 0x103fff) AM_RAM_WRITE(nemesis_videoram2f_word_w) AM_BASE(&nemesis_videoram2f)	/* VRAM 2 */
+	AM_RANGE(0x120000, 0x12ffff) AM_RAM_WRITE(nemesis_characterram_word_w) AM_BASE(&nemesis_characterram) AM_SIZE(&nemesis_characterram_size)
+	AM_RANGE(0x180000, 0x180fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)		/* more sprite ram ??? */
+	AM_RANGE(0x190000, 0x191fff) AM_RAM
+	AM_RANGE(0x190000, 0x1903ff) AM_RAM AM_BASE(&nemesis_xscroll1)
+	AM_RANGE(0x190400, 0x1907ff) AM_RAM AM_BASE(&nemesis_xscroll2)
+	AM_RANGE(0x190f00, 0x190f7f) AM_RAM AM_BASE(&nemesis_yscroll1)
+	AM_RANGE(0x190f80, 0x190fff) AM_RAM AM_BASE(&nemesis_yscroll2)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( salamand_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x080000, 0x087fff) AM_WRITE(SMH_RAM) AM_BASE(&ram)
-	AM_RANGE(0x090000, 0x091fff) AM_WRITE(salamander_palette_word_w) AM_BASE(&paletteram16)
+static ADDRESS_MAP_START( blkpnthr_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x07ffff) AM_ROM
+	AM_RANGE(0x080000, 0x081fff) AM_RAM_WRITE(salamander_palette_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x090000, 0x097fff) AM_RAM AM_BASE(&ram)
 	AM_RANGE(0x0A0000, 0x0A0001) AM_WRITE(nemesis_irq_enable_word_w)          /* irq enable */
 	AM_RANGE(0x0C0000, 0x0C0001) AM_WRITE(salamand_soundlatch_word_w)
-	AM_RANGE(0x0C0004, 0x0C0005) AM_WRITE(SMH_NOP)        /* Watchdog at $c0005 */
-	AM_RANGE(0x100000, 0x100fff) AM_WRITE(nemesis_videoram1b_word_w) AM_BASE(&nemesis_videoram1b)	/* VRAM 1 */
-	AM_RANGE(0x101000, 0x101fff) AM_WRITE(nemesis_videoram1f_word_w) AM_BASE(&nemesis_videoram1f)	/* VRAM 1 */
-	AM_RANGE(0x102000, 0x102fff) AM_WRITE(nemesis_videoram2b_word_w) AM_BASE(&nemesis_videoram2b)	/* VRAM 2 */
-	AM_RANGE(0x103000, 0x103fff) AM_WRITE(nemesis_videoram2f_word_w) AM_BASE(&nemesis_videoram2f)	/* VRAM 2 */
-	AM_RANGE(0x120000, 0x12ffff) AM_WRITE(nemesis_characterram_word_w) AM_BASE(&nemesis_characterram) AM_SIZE(&nemesis_characterram_size)
-	AM_RANGE(0x180000, 0x180fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)		/* more sprite ram ??? */
-	AM_RANGE(0x190000, 0x1903ff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_xscroll1)
-	AM_RANGE(0x190400, 0x1907ff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_xscroll2)
-	AM_RANGE(0x190800, 0x190eff) AM_WRITE(SMH_RAM)			/* not used */
-	AM_RANGE(0x190f00, 0x190f7f) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_yscroll1)
-	AM_RANGE(0x190f80, 0x190fff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_yscroll2)
-	AM_RANGE(0x191000, 0x191fff) AM_WRITE(SMH_RAM)			/* not used */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( blkpnthr_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)  /* ROM BIOS */
-	AM_RANGE(0x080000, 0x081fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x090000, 0x097fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0c0002, 0x0c0003) AM_READ_PORT("DSW0")
+	AM_RANGE(0x0C0004, 0x0C0005) AM_WRITE(SMH_NOP)        /* Watchdog at $c0005 */
 	AM_RANGE(0x0c2000, 0x0c2001) AM_READ_PORT("IN0")	/* Coins, start buttons, test mode */
 	AM_RANGE(0x0c2002, 0x0c2003) AM_READ_PORT("IN1")
 	AM_RANGE(0x0c2004, 0x0c2005) AM_READ_PORT("IN2")
 	AM_RANGE(0x0c2006, 0x0c2007) AM_READ_PORT("DSW1")
-	AM_RANGE(0x100000, 0x100fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x101000, 0x101fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x102000, 0x102fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x103000, 0x103fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x120000, 0x12ffff) AM_READ(SMH_RAM)
-	AM_RANGE(0x180000, 0x1803ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x180400, 0x1807ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x180800, 0x180eff) AM_READ(SMH_RAM)
-	AM_RANGE(0x180f00, 0x180f7f) AM_READ(SMH_RAM)
-	AM_RANGE(0x180f80, 0x180fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x181000, 0x181fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x190000, 0x190fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x100000, 0x100fff) AM_RAM_WRITE(nemesis_videoram2f_word_w) AM_BASE(&nemesis_videoram2f)	/* VRAM 2 */
+	AM_RANGE(0x101000, 0x101fff) AM_RAM_WRITE(nemesis_videoram2b_word_w) AM_BASE(&nemesis_videoram2b)	/* VRAM 2 */
+	AM_RANGE(0x102000, 0x102fff) AM_RAM_WRITE(nemesis_videoram1f_word_w) AM_BASE(&nemesis_videoram1f)	/* VRAM 1 */
+	AM_RANGE(0x103000, 0x103fff) AM_RAM_WRITE(nemesis_videoram1b_word_w) AM_BASE(&nemesis_videoram1b)	/* VRAM 1 */
+	AM_RANGE(0x120000, 0x12ffff) AM_RAM_WRITE(nemesis_characterram_word_w) AM_BASE(&nemesis_characterram) AM_SIZE(&nemesis_characterram_size)
+	AM_RANGE(0x180000, 0x181fff) AM_RAM
+	AM_RANGE(0x180000, 0x1803ff) AM_BASE(&nemesis_xscroll2)
+	AM_RANGE(0x180400, 0x1807ff) AM_BASE(&nemesis_xscroll1)
+	AM_RANGE(0x180f00, 0x180f7f) AM_BASE(&nemesis_yscroll2)
+	AM_RANGE(0x180f80, 0x180fff) AM_BASE(&nemesis_yscroll1)
+	AM_RANGE(0x190000, 0x190fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)		/* more sprite ram ??? */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( blkpnthr_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x080000, 0x081fff) AM_WRITE(salamander_palette_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x090000, 0x097fff) AM_WRITE(SMH_RAM) AM_BASE(&ram)
-	AM_RANGE(0x0A0000, 0x0A0001) AM_WRITE(nemesis_irq_enable_word_w)          /* irq enable */
-	AM_RANGE(0x0C0000, 0x0C0001) AM_WRITE(salamand_soundlatch_word_w)
-	AM_RANGE(0x0C0004, 0x0C0005) AM_WRITE(SMH_NOP)        /* Watchdog at $c0005 */
-	AM_RANGE(0x100000, 0x100fff) AM_WRITE(nemesis_videoram2f_word_w) AM_BASE(&nemesis_videoram2f)	/* VRAM 2 */
-	AM_RANGE(0x101000, 0x101fff) AM_WRITE(nemesis_videoram2b_word_w) AM_BASE(&nemesis_videoram2b)	/* VRAM 2 */
-	AM_RANGE(0x102000, 0x102fff) AM_WRITE(nemesis_videoram1f_word_w) AM_BASE(&nemesis_videoram1f)	/* VRAM 1 */
-	AM_RANGE(0x103000, 0x103fff) AM_WRITE(nemesis_videoram1b_word_w) AM_BASE(&nemesis_videoram1b)	/* VRAM 1 */
-	AM_RANGE(0x120000, 0x12ffff) AM_WRITE(nemesis_characterram_word_w) AM_BASE(&nemesis_characterram) AM_SIZE(&nemesis_characterram_size)
-	AM_RANGE(0x180000, 0x1803ff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_xscroll2)
-	AM_RANGE(0x180400, 0x1807ff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_xscroll1)
-	AM_RANGE(0x180800, 0x180eff) AM_WRITE(SMH_RAM)			/* not used */
-	AM_RANGE(0x180f00, 0x180f7f) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_yscroll2)
-	AM_RANGE(0x180f80, 0x180fff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_yscroll1)
-	AM_RANGE(0x181000, 0x181fff) AM_WRITE(SMH_RAM)			/* not used */
-	AM_RANGE(0x190000, 0x190fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)		/* more sprite ram ??? */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( citybomb_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x01ffff) AM_READ(SMH_ROM)		/* ROM BIOS */
-	AM_RANGE(0x080000, 0x087fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x0e0000, 0x0e1fff) AM_READ(SMH_RAM)
+static ADDRESS_MAP_START( citybomb_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x01ffff) AM_ROM		/* ROM BIOS */
+	AM_RANGE(0x080000, 0x087fff) AM_RAM AM_BASE(&ram)
+	AM_RANGE(0x0e0000, 0x0e1fff) AM_RAM_WRITE(salamander_palette_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0f0000, 0x0f0001) AM_READ_PORT("DSW1")
 	AM_RANGE(0x0f0002, 0x0f0003) AM_READ_PORT("IN2")
 	AM_RANGE(0x0f0004, 0x0f0005) AM_READ_PORT("IN1")
 	AM_RANGE(0x0f0006, 0x0f0007) AM_READ_PORT("IN0")	/* Coins, start buttons, test mode */
 	AM_RANGE(0x0f0008, 0x0f0009) AM_READ_PORT("DSW0")
-	AM_RANGE(0x0f0020, 0x0f0021) AM_READ(SMH_NOP)		/* Analog device */
-	AM_RANGE(0x100000, 0x1bffff) AM_READ(SMH_ROM)		/* ROM BIOS */
-	AM_RANGE(0x200000, 0x20ffff) AM_READ(SMH_RAM)
-	AM_RANGE(0x210000, 0x210fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x211000, 0x211fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x212000, 0x212fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x213000, 0x213fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x300000, 0x3003ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x300400, 0x3007ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x300800, 0x300eff) AM_READ(SMH_RAM)
-	AM_RANGE(0x300f00, 0x300f7f) AM_READ(SMH_RAM)
-	AM_RANGE(0x300f80, 0x300fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x301000, 0x301fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x310000, 0x310fff) AM_READ(SMH_RAM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( citybomb_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x01ffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x080000, 0x087fff) AM_WRITE(SMH_RAM) AM_BASE(&ram)
-	AM_RANGE(0x0e0000, 0x0e1fff) AM_WRITE(salamander_palette_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0f0010, 0x0f0011) AM_WRITE(salamand_soundlatch_word_w)
-	AM_RANGE(0x0f0018, 0x0f0019) AM_WRITE(SMH_NOP)			/* Watchdog */
-	AM_RANGE(0x0f0020, 0x0f0021) AM_WRITE(SMH_NOP)			/* Analog device */
+	AM_RANGE(0x0f0018, 0x0f0019) AM_WRITENOP			/* Watchdog */
+	AM_RANGE(0x0f0020, 0x0f0021) AM_NOP					/* Analog device */
 	AM_RANGE(0x0f8000, 0x0f8001) AM_WRITE(nemesis_irq_enable_word_w)          /* irq enable */
-	AM_RANGE(0x100000, 0x1bffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x200000, 0x20ffff) AM_WRITE(nemesis_characterram_word_w) AM_BASE(&nemesis_characterram) AM_SIZE(&nemesis_characterram_size)
-	AM_RANGE(0x210000, 0x210fff) AM_WRITE(nemesis_videoram1f_word_w) AM_BASE(&nemesis_videoram1f)	/* VRAM 1 */
-	AM_RANGE(0x211000, 0x211fff) AM_WRITE(nemesis_videoram1b_word_w) AM_BASE(&nemesis_videoram1b)	/* VRAM 1 */
-	AM_RANGE(0x212000, 0x212fff) AM_WRITE(nemesis_videoram2f_word_w) AM_BASE(&nemesis_videoram2f)	/* VRAM 2 */
-	AM_RANGE(0x213000, 0x213fff) AM_WRITE(nemesis_videoram2b_word_w) AM_BASE(&nemesis_videoram2b)	/* VRAM 2 */
-	AM_RANGE(0x300000, 0x3003ff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_xscroll2)
-	AM_RANGE(0x300400, 0x3007ff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_xscroll1)
-	AM_RANGE(0x300800, 0x300eff) AM_WRITE(SMH_RAM)			/* not used */
-	AM_RANGE(0x300f00, 0x300f7f) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_yscroll2)
-	AM_RANGE(0x300f80, 0x300fff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_yscroll1)
-	AM_RANGE(0x301000, 0x301fff) AM_WRITE(SMH_RAM)			/* not used */
-	AM_RANGE(0x310000, 0x310fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)		/* more sprite ram ??? */
+	AM_RANGE(0x100000, 0x1bffff) AM_ROM
+	AM_RANGE(0x200000, 0x20ffff) AM_RAM_WRITE(nemesis_characterram_word_w) AM_BASE(&nemesis_characterram) AM_SIZE(&nemesis_characterram_size)
+	AM_RANGE(0x210000, 0x210fff) AM_RAM_WRITE(nemesis_videoram1f_word_w) AM_BASE(&nemesis_videoram1f)	/* VRAM 1 */
+	AM_RANGE(0x211000, 0x211fff) AM_RAM_WRITE(nemesis_videoram1b_word_w) AM_BASE(&nemesis_videoram1b)	/* VRAM 1 */
+	AM_RANGE(0x212000, 0x212fff) AM_RAM_WRITE(nemesis_videoram2f_word_w) AM_BASE(&nemesis_videoram2f)	/* VRAM 2 */
+	AM_RANGE(0x213000, 0x213fff) AM_RAM_WRITE(nemesis_videoram2b_word_w) AM_BASE(&nemesis_videoram2b)	/* VRAM 2 */
+	AM_RANGE(0x300000, 0x301fff) AM_RAM
+	AM_RANGE(0x300000, 0x3003ff) AM_BASE(&nemesis_xscroll2)
+	AM_RANGE(0x300400, 0x3007ff) AM_BASE(&nemesis_xscroll1)
+	AM_RANGE(0x300f00, 0x300f7f) AM_BASE(&nemesis_yscroll2)
+	AM_RANGE(0x300f80, 0x300fff) AM_BASE(&nemesis_yscroll1)
+	AM_RANGE(0x310000, 0x310fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)		/* more sprite ram ??? */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( nyanpani_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x01ffff) AM_READ(SMH_ROM)		/* ROM BIOS */
-	AM_RANGE(0x040000, 0x047fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x060000, 0x061fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x100000, 0x13ffff) AM_READ(SMH_ROM)		/* ROM BIOS */
+static ADDRESS_MAP_START( nyanpani_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x01ffff) AM_ROM		/* ROM BIOS */
+	AM_RANGE(0x040000, 0x047fff) AM_RAM AM_BASE(&ram)
+	AM_RANGE(0x060000, 0x061fff) AM_RAM_WRITE(salamander_palette_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x100000, 0x13ffff) AM_ROM		/* ROM BIOS */
 	AM_RANGE(0x070000, 0x070001) AM_READ_PORT("DSW1")
 	AM_RANGE(0x070002, 0x070003) AM_READ_PORT("IN2")
 	AM_RANGE(0x070004, 0x070005) AM_READ_PORT("IN1")
 	AM_RANGE(0x070006, 0x070007) AM_READ_PORT("IN0")	/* Coins, start buttons, test mode */
 	AM_RANGE(0x070008, 0x070009) AM_READ_PORT("DSW0")
-	AM_RANGE(0x200000, 0x200fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x201000, 0x201fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x202000, 0x202fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x203000, 0x203fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x210000, 0x21ffff) AM_READ(SMH_RAM)
-	AM_RANGE(0x300000, 0x300fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x310000, 0x3103ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x310400, 0x3107ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x310800, 0x310eff) AM_READ(SMH_RAM)
-	AM_RANGE(0x310f00, 0x310f7f) AM_READ(SMH_RAM)
-	AM_RANGE(0x310f80, 0x310fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x311000, 0x311fff) AM_READ(SMH_RAM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( nyanpani_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x01ffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x040000, 0x047fff) AM_WRITE(SMH_RAM) AM_BASE(&ram)
-	AM_RANGE(0x060000, 0x061fff) AM_WRITE(salamander_palette_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x100000, 0x13ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x070010, 0x070011) AM_WRITE(salamand_soundlatch_word_w)
 	AM_RANGE(0x070018, 0x070019) AM_WRITE(SMH_NOP)        /* Watchdog */
 	AM_RANGE(0x078000, 0x078001) AM_WRITE(nemesis_irq_enable_word_w)          /* irq enable */
-	AM_RANGE(0x200000, 0x200fff) AM_WRITE(nemesis_videoram1f_word_w) AM_BASE(&nemesis_videoram1f)	/* VRAM 1 */
-	AM_RANGE(0x201000, 0x201fff) AM_WRITE(nemesis_videoram1b_word_w) AM_BASE(&nemesis_videoram1b)	/* VRAM 1 */
-	AM_RANGE(0x202000, 0x202fff) AM_WRITE(nemesis_videoram2f_word_w) AM_BASE(&nemesis_videoram2f)	/* VRAM 2 */
-	AM_RANGE(0x203000, 0x203fff) AM_WRITE(nemesis_videoram2b_word_w) AM_BASE(&nemesis_videoram2b)	/* VRAM 2 */
-	AM_RANGE(0x210000, 0x21ffff) AM_WRITE(nemesis_characterram_word_w) AM_BASE(&nemesis_characterram) AM_SIZE(&nemesis_characterram_size)
-	AM_RANGE(0x300000, 0x300fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)		/* more sprite ram ??? */
-	AM_RANGE(0x310000, 0x3103ff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_xscroll2)
-	AM_RANGE(0x310400, 0x3107ff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_xscroll1)
-	AM_RANGE(0x310800, 0x310eff) AM_WRITE(SMH_RAM)			/* not used */
-	AM_RANGE(0x310f00, 0x310f7f) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_yscroll2)
-	AM_RANGE(0x310f80, 0x310fff) AM_WRITE(SMH_RAM) AM_BASE(&nemesis_yscroll1)
-	AM_RANGE(0x311000, 0x311fff) AM_WRITE(SMH_RAM)			/* not used */
+	AM_RANGE(0x200000, 0x200fff) AM_RAM_WRITE(nemesis_videoram1f_word_w) AM_BASE(&nemesis_videoram1f)	/* VRAM 1 */
+	AM_RANGE(0x201000, 0x201fff) AM_RAM_WRITE(nemesis_videoram1b_word_w) AM_BASE(&nemesis_videoram1b)	/* VRAM 1 */
+	AM_RANGE(0x202000, 0x202fff) AM_RAM_WRITE(nemesis_videoram2f_word_w) AM_BASE(&nemesis_videoram2f)	/* VRAM 2 */
+	AM_RANGE(0x203000, 0x203fff) AM_RAM_WRITE(nemesis_videoram2b_word_w) AM_BASE(&nemesis_videoram2b)	/* VRAM 2 */
+	AM_RANGE(0x210000, 0x21ffff) AM_RAM_WRITE(nemesis_characterram_word_w) AM_BASE(&nemesis_characterram) AM_SIZE(&nemesis_characterram_size)
+	AM_RANGE(0x300000, 0x300fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)		/* more sprite ram ??? */
+	AM_RANGE(0x310000, 0x311fff) AM_RAM
+	AM_RANGE(0x310000, 0x3103ff) AM_BASE(&nemesis_xscroll2)
+	AM_RANGE(0x310400, 0x3107ff) AM_BASE(&nemesis_xscroll1)
+	AM_RANGE(0x310f00, 0x310f7f) AM_BASE(&nemesis_yscroll2)
+	AM_RANGE(0x310f80, 0x310fff) AM_BASE(&nemesis_yscroll1)
 ADDRESS_MAP_END
 
 static READ8_HANDLER( wd_r )
@@ -725,51 +550,44 @@ static READ8_HANDLER( wd_r )
 	return a;
 }
 
-static WRITE8_HANDLER( city_sound_bank_w )
+static WRITE8_DEVICE_HANDLER( city_sound_bank_w )
 {
 	int bank_A=(data&0x3);
 	int bank_B=((data>>2)&0x3);
-	k007232_set_bank( 0, bank_A, bank_B );
+	k007232_set_bank( device, bank_A, bank_B );
 }
 
-static ADDRESS_MAP_START( sal_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
+static ADDRESS_MAP_START( sal_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0x87ff) AM_RAM
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
-	AM_RANGE(0xb000, 0xb00d) AM_READ(k007232_read_port_0_r)
-	AM_RANGE(0xc001, 0xc001) AM_READ(ym2151_status_port_0_r)
+	AM_RANGE(0xb000, 0xb00d) AM_DEVREADWRITE("konami", k007232_r, k007232_w)
+	AM_RANGE(0xc000, 0xc001) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
+	AM_RANGE(0xd000, 0xd000) AM_DEVWRITE("vlm", vlm5030_data_w)
+	AM_RANGE(0xe000, 0xe000) AM_READ(wd_r) /* watchdog?? */
+	AM_RANGE(0xf000, 0xf000) AM_DEVWRITE("vlm", salamand_speech_start_w)
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( blkpnthr_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0x87ff) AM_RAM
+	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
+	AM_RANGE(0xb000, 0xb00d) AM_DEVREADWRITE("konami", k007232_r, k007232_w)
+	AM_RANGE(0xc000, 0xc001) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
 	AM_RANGE(0xe000, 0xe000) AM_READ(wd_r) /* watchdog?? */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sal_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xb000, 0xb00d) AM_WRITE(k007232_write_port_0_w)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(ym2151_register_port_0_w)
-	AM_RANGE(0xc001, 0xc001) AM_WRITE(ym2151_data_port_0_w)
-	AM_RANGE(0xd000, 0xd000) AM_WRITE(vlm5030_data_w)
-	AM_RANGE(0xf000, 0xf000) AM_WRITE(salamand_speech_start_w)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( city_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
-	AM_RANGE(0xa000, 0xa000) AM_READ(ym3812_status_port_0_r)
-	AM_RANGE(0xb000, 0xb00d) AM_READ(k007232_read_port_0_r)
+static ADDRESS_MAP_START( city_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0x87ff) AM_RAM
+	AM_RANGE(0x9800, 0x987f) AM_DEVWRITE("konami2", k051649_waveform_w)
+	AM_RANGE(0x9880, 0x9889) AM_DEVWRITE("konami2", k051649_frequency_w)
+	AM_RANGE(0x988a, 0x988e) AM_DEVWRITE("konami2", k051649_volume_w)
+	AM_RANGE(0x988f, 0x988f) AM_DEVWRITE("konami2", k051649_keyonoff_w)
+	AM_RANGE(0xa000, 0xa001) AM_DEVREADWRITE("ym", ym3812_r, ym3812_w)
+	AM_RANGE(0xb000, 0xb00d) AM_DEVREADWRITE("konami", k007232_r, k007232_w)
+	AM_RANGE(0xc000, 0xc000) AM_DEVWRITE("konami", city_sound_bank_w) /* 7232 bankswitch */
 	AM_RANGE(0xd000, 0xd000) AM_READ(soundlatch_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( city_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x9800, 0x987f) AM_WRITE(k051649_waveform_w)
-	AM_RANGE(0x9880, 0x9889) AM_WRITE(k051649_frequency_w)
-	AM_RANGE(0x988a, 0x988e) AM_WRITE(k051649_volume_w)
-	AM_RANGE(0x988f, 0x988f) AM_WRITE(k051649_keyonoff_w)
-	AM_RANGE(0xa000, 0xa000) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0xa001, 0xa001) AM_WRITE(ym3812_write_port_0_w)
-	AM_RANGE(0xb000, 0xb00d) AM_WRITE(k007232_write_port_0_w)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(city_sound_bank_w) /* 7232 bankswitch */
 ADDRESS_MAP_END
 
 /******************************************************************************/
@@ -1909,16 +1727,12 @@ INPUT_PORTS_END
 
 /******************************************************************************/
 
-#ifdef LSB_FIRST
-#define XOR(x) ((x)^8)
-#else
-#define XOR(x) (x)
-#endif
+#define XOR(x) ((x)^NATIVE_ENDIAN_VALUE_LE_BE(8,0))
 
 static const gfx_layout charlayout =
 {
 	8,8,	/* 8*8 characters */
-	2048+1,	/* 2048 characters (+ blank one) */
+	2048,	/* 2048 characters (+ blank one) */
 	4,	/* 4 bits per pixel */
 	{ 0, 1, 2, 3 }, /* the two bitplanes are merged in the same nibble */
 	{ XOR(0*4), XOR(1*4), XOR(2*4), XOR(3*4), XOR(4*4), XOR(5*4), XOR(6*4), XOR(7*4) },
@@ -2065,26 +1879,26 @@ static const ay8910_interface ay8910_interface_1 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	nemesis_portA_r,
-	NULL,
-	NULL,
-	NULL
+	DEVCB_HANDLER(nemesis_portA_r),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static const ay8910_interface ay8910_interface_2 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	NULL,
-	k005289_control_A_w,
-	k005289_control_B_w
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_DEVICE_HANDLER("konami", k005289_control_A_w),
+	DEVCB_DEVICE_HANDLER("konami", k005289_control_B_w)
 };
 
-static void sound_irq(running_machine *machine, int state)
+static void sound_irq(const device_config *device, int state)
 {
 /* Interrupts _are_ generated, I wonder where they go.. */
-/*cpu_set_input_line(machine->cpu[1],0,HOLD_LINE);*/
+/*cpu_set_input_line(device->machine->cpu[1],0,HOLD_LINE);*/
 }
 
 static const ym2151_interface ym2151_config =
@@ -2097,10 +1911,10 @@ static const ym3812_interface ym3812_config =
 	sound_irq
 };
 
-static void volume_callback(int v)
+static void volume_callback(const device_config *device, int v)
 {
-	k007232_set_volume(0,0,(v >> 4) * 0x11,0);
-	k007232_set_volume(0,1,0,(v & 0x0f) * 0x11);
+	k007232_set_volume(device,0,(v >> 4) * 0x11,0);
+	k007232_set_volume(device,1,0,(v & 0x0f) * 0x11);
 }
 
 static const k007232_interface k007232_config =
@@ -2113,18 +1927,18 @@ static const k007232_interface k007232_config =
 static MACHINE_DRIVER_START( nemesis )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,18432000/2)         /* 9.216 MHz? */
+	MDRV_CPU_ADD("maincpu", M68000,18432000/2)         /* 9.216 MHz? */
 //          14318180/2, /* From schematics, should be accurate */
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT("main", nemesis_interrupt)
+	MDRV_CPU_PROGRAM_MAP(nemesis_map,0)
+	MDRV_CPU_VBLANK_INT("screen", nemesis_interrupt)
 
-	MDRV_CPU_ADD("audio", Z80,14318180/4) /* From schematics, should be accurate */
-	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)	/* fixed */
+	MDRV_CPU_ADD("audiocpu", Z80,14318180/4) /* From schematics, should be accurate */
+	MDRV_CPU_PROGRAM_MAP(sound_map,0)	/* fixed */
 
 	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE((18432000.0/4)/(288*264))		/* ??? */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -2159,17 +1973,17 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( konamigt )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,18432000/2)         /* 9.216 MHz? */
-	MDRV_CPU_PROGRAM_MAP(konamigt_readmem,konamigt_writemem)
+	MDRV_CPU_ADD("maincpu", M68000,18432000/2)         /* 9.216 MHz? */
+	MDRV_CPU_PROGRAM_MAP(konamigt_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(konamigt_interrupt,2)
 
-	MDRV_CPU_ADD("audio", Z80,14318180/4)        /* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
+	MDRV_CPU_ADD("audiocpu", Z80,14318180/4)        /* 3.579545 MHz */
+	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -2201,19 +2015,19 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( salamand )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,18432000/2)       /* 9.216MHz */
-	MDRV_CPU_PROGRAM_MAP(salamand_readmem,salamand_writemem)
-	MDRV_CPU_VBLANK_INT("main", salamand_interrupt)
+	MDRV_CPU_ADD("maincpu", M68000,18432000/2)       /* 9.216MHz */
+	MDRV_CPU_PROGRAM_MAP(salamand_map,0)
+	MDRV_CPU_VBLANK_INT("screen", salamand_interrupt)
 
-	MDRV_CPU_ADD("audio", Z80, 3579545)         /* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(sal_sound_readmem,sal_sound_writemem)
+	MDRV_CPU_ADD("audiocpu", Z80, 3579545)         /* 3.579545 MHz */
+	MDRV_CPU_PROGRAM_MAP(sal_sound_map,0)
 
 	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC((264-256)*125/2))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -2227,42 +2041,42 @@ static MACHINE_DRIVER_START( salamand )
 	MDRV_VIDEO_UPDATE(salamand)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("vlm", VLM5030, 3579545)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.60)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.60)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.60)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.60)
 
 	MDRV_SOUND_ADD("konami", K007232, 3579545)
 	MDRV_SOUND_CONFIG(k007232_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.10)
-	MDRV_SOUND_ROUTE(0, "right", 0.10)
-	MDRV_SOUND_ROUTE(1, "left", 0.10)
-	MDRV_SOUND_ROUTE(1, "right", 0.10)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.10)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.10)
+	MDRV_SOUND_ROUTE(1, "lspeaker", 0.10)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.10)
 
 	MDRV_SOUND_ADD("ym", YM2151, 3579545)
 	MDRV_SOUND_CONFIG(ym2151_config)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( blkpnthr )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,18432000/2)         /* 9.216 MHz? */
-	MDRV_CPU_PROGRAM_MAP(blkpnthr_readmem,blkpnthr_writemem)
-	MDRV_CPU_VBLANK_INT("main", blkpnthr_interrupt)
+	MDRV_CPU_ADD("maincpu", M68000,18432000/2)         /* 9.216 MHz? */
+	MDRV_CPU_PROGRAM_MAP(blkpnthr_map,0)
+	MDRV_CPU_VBLANK_INT("screen", blkpnthr_interrupt)
 
-	MDRV_CPU_ADD("audio", Z80, 3579545)        /* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(sal_sound_readmem,sal_sound_writemem)
+	MDRV_CPU_ADD("audiocpu", Z80, 3579545)        /* 3.579545 MHz */
+	MDRV_CPU_PROGRAM_MAP(blkpnthr_sound_map,0)
 
 	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -2276,38 +2090,38 @@ static MACHINE_DRIVER_START( blkpnthr )
 	MDRV_VIDEO_UPDATE(salamand)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("konami", K007232, 3579545)
 	MDRV_SOUND_CONFIG(k007232_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.10)
-	MDRV_SOUND_ROUTE(0, "right", 0.10)
-	MDRV_SOUND_ROUTE(1, "left", 0.10)
-	MDRV_SOUND_ROUTE(1, "right", 0.10)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.10)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.10)
+	MDRV_SOUND_ROUTE(1, "lspeaker", 0.10)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.10)
 
 	MDRV_SOUND_ADD("ym", YM2151, 3579545)
 	MDRV_SOUND_CONFIG(ym2151_config)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( citybomb )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,18432000/2)         /* 9.216 MHz? */
-	MDRV_CPU_PROGRAM_MAP(citybomb_readmem,citybomb_writemem)
-	MDRV_CPU_VBLANK_INT("main", salamand_interrupt)
+	MDRV_CPU_ADD("maincpu", M68000,18432000/2)         /* 9.216 MHz? */
+	MDRV_CPU_PROGRAM_MAP(citybomb_map,0)
+	MDRV_CPU_VBLANK_INT("screen", salamand_interrupt)
 
-	MDRV_CPU_ADD("audio", Z80, 3579545)        /* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(city_sound_readmem,city_sound_writemem)
+	MDRV_CPU_ADD("audiocpu", Z80, 3579545)        /* 3.579545 MHz */
+	MDRV_CPU_PROGRAM_MAP(city_sound_map,0)
 
 	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -2321,42 +2135,42 @@ static MACHINE_DRIVER_START( citybomb )
 	MDRV_VIDEO_UPDATE(salamand)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MDRV_SOUND_ADD("konami1", K007232, 3579545)
+	MDRV_SOUND_ADD("konami", K007232, 3579545)
 	MDRV_SOUND_CONFIG(k007232_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.30)
-	MDRV_SOUND_ROUTE(0, "right", 0.30)
-	MDRV_SOUND_ROUTE(1, "left", 0.30)
-	MDRV_SOUND_ROUTE(1, "right", 0.30)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.30)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.30)
+	MDRV_SOUND_ROUTE(1, "lspeaker", 0.30)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.30)
 
 	MDRV_SOUND_ADD("ym", YM3812, 3579545)
 	MDRV_SOUND_CONFIG(ym3812_config)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("konami2", K051649, 3579545/2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.38)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.38)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.38)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.38)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( nyanpani )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,18432000/2)         /* 9.216 MHz? */
-	MDRV_CPU_PROGRAM_MAP(nyanpani_readmem,nyanpani_writemem)
-	MDRV_CPU_VBLANK_INT("main", salamand_interrupt)
+	MDRV_CPU_ADD("maincpu", M68000,18432000/2)         /* 9.216 MHz? */
+	MDRV_CPU_PROGRAM_MAP(nyanpani_map,0)
+	MDRV_CPU_VBLANK_INT("screen", salamand_interrupt)
 
-	MDRV_CPU_ADD("audio", Z80, 3579545)        /* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(city_sound_readmem,city_sound_writemem)
+	MDRV_CPU_ADD("audiocpu", Z80, 3579545)        /* 3.579545 MHz */
+	MDRV_CPU_PROGRAM_MAP(city_sound_map,0)
 
 	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -2370,41 +2184,41 @@ static MACHINE_DRIVER_START( nyanpani )
 	MDRV_VIDEO_UPDATE(salamand)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MDRV_SOUND_ADD("konami1", K007232, 3579545)
+	MDRV_SOUND_ADD("konami", K007232, 3579545)
 	MDRV_SOUND_CONFIG(k007232_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.30)
-	MDRV_SOUND_ROUTE(0, "right", 0.30)
-	MDRV_SOUND_ROUTE(1, "left", 0.30)
-	MDRV_SOUND_ROUTE(1, "right", 0.30)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.30)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.30)
+	MDRV_SOUND_ROUTE(1, "lspeaker", 0.30)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.30)
 
 	MDRV_SOUND_ADD("ym", YM3812, 3579545)
 	MDRV_SOUND_CONFIG(ym3812_config)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("konami2", K051649, 3579545/2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.38)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.38)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.38)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.38)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( gx400 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,18432000/2)     /* 9.216MHz */
-	MDRV_CPU_PROGRAM_MAP(gx400_readmem,gx400_writemem)
+	MDRV_CPU_ADD("maincpu", M68000,18432000/2)     /* 9.216MHz */
+	MDRV_CPU_PROGRAM_MAP(gx400_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(gx400_interrupt,3)
 
-	MDRV_CPU_ADD("audio", Z80,14318180/4)        /* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(gx400_sound_readmem,gx400_sound_writemem)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)	/* interrupts are triggered by the main CPU */
+	MDRV_CPU_ADD("audiocpu", Z80,14318180/4)        /* 3.579545 MHz */
+	MDRV_CPU_PROGRAM_MAP(gx400_sound_map,0)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)	/* interrupts are triggered by the main CPU */
 
 	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -2439,18 +2253,18 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( rf2_gx400 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,18432000/2)     /* 9.216MHz */
-	MDRV_CPU_PROGRAM_MAP(rf2_gx400_readmem,rf2_gx400_writemem)
+	MDRV_CPU_ADD("maincpu", M68000,18432000/2)     /* 9.216MHz */
+	MDRV_CPU_PROGRAM_MAP(rf2_gx400_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(gx400_interrupt,3)
 
-	MDRV_CPU_ADD("audio", Z80,14318180/4)        /* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(gx400_sound_readmem,gx400_sound_writemem)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)	/* interrupts are triggered by the main CPU */
+	MDRV_CPU_ADD("audiocpu", Z80,14318180/4)        /* 3.579545 MHz */
+	MDRV_CPU_PROGRAM_MAP(gx400_sound_map,0)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)	/* interrupts are triggered by the main CPU */
 
 	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -2484,17 +2298,17 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( hcrash )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,18432000/3)         /* 6.144MHz */
+	MDRV_CPU_ADD("maincpu", M68000,18432000/3)         /* 6.144MHz */
 	MDRV_CPU_PROGRAM_MAP(hcrash_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(konamigt_interrupt,2)
 
-	MDRV_CPU_ADD("audio", Z80,14318180/4)       /* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(sal_sound_readmem,sal_sound_writemem)
+	MDRV_CPU_ADD("audiocpu", Z80,14318180/4)       /* 3.579545 MHz */
+	MDRV_CPU_PROGRAM_MAP(sal_sound_map,0)
 
 	MDRV_MACHINE_RESET(nemesis)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE((18432000.0/4)/(288*264))		/* 60.606060 Hz */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -2508,23 +2322,23 @@ static MACHINE_DRIVER_START( hcrash )
 	MDRV_VIDEO_UPDATE(salamand)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("vlm", VLM5030, 3579545)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.60)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.60)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.60)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.60)
 
 	MDRV_SOUND_ADD("konami", K007232, 3579545)
 	MDRV_SOUND_CONFIG(k007232_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.10)
-	MDRV_SOUND_ROUTE(0, "right", 0.10)
-	MDRV_SOUND_ROUTE(1, "left", 0.10)
-	MDRV_SOUND_ROUTE(1, "right", 0.10)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.10)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.10)
+	MDRV_SOUND_ROUTE(1, "lspeaker", 0.10)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.10)
 
 	MDRV_SOUND_ADD("ym", YM2151, 3579545)
 	MDRV_SOUND_CONFIG(ym2151_config)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -2534,7 +2348,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( nemesis )
-	ROM_REGION( 0x40000, "main", 0 )    /* 4 * 64k for code and rom */
+	ROM_REGION( 0x40000, "maincpu", 0 )    /* 4 * 64k for code and rom */
 	ROM_LOAD16_BYTE( "456-d01.12a",   0x00000, 0x8000, CRC(35ff1aaa) SHA1(2879a5d2ff7dca217fe5cd40be871878294c491f) )
 	ROM_LOAD16_BYTE( "456-d05.12c",   0x00001, 0x8000, CRC(23155faa) SHA1(08c73c669b3a5275353cbfcbe58ced92d93244a7) )
 	ROM_LOAD16_BYTE( "456-d02.13a",   0x10000, 0x8000, CRC(ac0cf163) SHA1(8b1a46c3ad102fe78cf099425e108d09dafd0955) )
@@ -2544,7 +2358,7 @@ ROM_START( nemesis )
 	ROM_LOAD16_BYTE( "456-d04.15a",   0x30000, 0x8000, CRC(9ca75592) SHA1(04388f2874faa54dd2cabfec4d6ce3e8d164cbcc) )
 	ROM_LOAD16_BYTE( "456-d08.15c",   0x30001, 0x8000, CRC(03c0b7f5) SHA1(4eb31bcbd2ee66afe4158308351a57589c5a1e4e) )
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD(      "456-d09.9c",   0x00000, 0x4000, CRC(26bf9636) SHA1(009dcbf18ea6230fc75a72232bd4fc29ad28dbf0) )
 
 	ROM_REGION( 0x0200,  "konami", 0 )      /* 2x 256 byte for 0005289 wavetable data */
@@ -2553,7 +2367,7 @@ ROM_START( nemesis )
 ROM_END
 
 ROM_START( nemesuk )
-	ROM_REGION( 0x40000, "main", 0 )    /* 4 * 64k for code and rom */
+	ROM_REGION( 0x40000, "maincpu", 0 )    /* 4 * 64k for code and rom */
 	ROM_LOAD16_BYTE( "456-e01.12a",   0x00000, 0x8000, CRC(e1993f91) SHA1(6759bb9ba0ce28ad4d7f61b824a7d0fe43215bdc) )
 	ROM_LOAD16_BYTE( "456-e05.12c",   0x00001, 0x8000, CRC(c9761c78) SHA1(bfd63517efa820a05a0d9a908dd0917cd0d01b77) )
 	ROM_LOAD16_BYTE( "456-e02.13a",   0x10000, 0x8000, CRC(f6169c4b) SHA1(047a204fbcf8c24eca2db7197d4297e5a28c2b42) )
@@ -2563,7 +2377,7 @@ ROM_START( nemesuk )
 	ROM_LOAD16_BYTE( "456-e04.15a",   0x30000, 0x8000, CRC(322423d0) SHA1(6106b607132a09193353f339d06032a13b1e3de8) )
 	ROM_LOAD16_BYTE( "456-e08.15c",   0x30001, 0x8000, CRC(eb656266) SHA1(2f4abea282d30775f7a25747eb41bfd8d5299967) )
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD(      "456-d09.9c",   0x00000, 0x4000, CRC(26bf9636) SHA1(009dcbf18ea6230fc75a72232bd4fc29ad28dbf0) )
 
 	ROM_REGION( 0x0200,  "konami", 0 )      /* 2x 256 byte for 0005289 wavetable data */
@@ -2572,7 +2386,7 @@ ROM_START( nemesuk )
 ROM_END
 
 ROM_START( konamigt )
-	ROM_REGION( 0x40000, "main", 0 )    /* 4 * 64k for code and rom */
+	ROM_REGION( 0x40000, "maincpu", 0 )    /* 4 * 64k for code and rom */
 	ROM_LOAD16_BYTE( "561-c01.12a",   0x00000, 0x8000, CRC(56245bfd) SHA1(12579ae0031c172d42b766f5a801ef479148105e) )
 	ROM_LOAD16_BYTE( "561-c05.12c",   0x00001, 0x8000, CRC(8d651f44) SHA1(0d057ce063dd19c0a708cffa413511b367206682) )
 	ROM_LOAD16_BYTE( "561-c02.13a",   0x10000, 0x8000, CRC(3407b7cb) SHA1(1df834a47e3b4cabc79ece4cd90e05e5df68df9a) )
@@ -2582,7 +2396,7 @@ ROM_START( konamigt )
 	ROM_LOAD16_BYTE( "561-b04.15a",   0x30000, 0x8000, CRC(94bd4bd7) SHA1(314b537ba97dec1a91dcfc5deeb1dd9f7bb4a930) )
 	ROM_LOAD16_BYTE( "561-b08.15c",   0x30001, 0x8000, CRC(b7236567) SHA1(7626d70262a0acff36357877a5e7c9ed3f45415e) )
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD(       "561-b09.9c",  0x00000, 0x4000, CRC(539d0c49) SHA1(4c16b07fbd876b6445fc0ec49c3ad5ab1a92cbf6) )
 
 	ROM_REGION( 0x0200,  "konami", 0 )      /* 2x 256 byte for 0005289 wavetable data */
@@ -2591,13 +2405,13 @@ ROM_START( konamigt )
 ROM_END
 
 ROM_START( rf2 )
-	ROM_REGION( 0xc0000, "main", 0 )    /* 5 * 64k for code and rom */
+	ROM_REGION( 0xc0000, "maincpu", 0 )    /* 5 * 64k for code and rom */
 	ROM_LOAD16_BYTE( "400-a06.15l",  0x00000, 0x08000, CRC(b99d8cff) SHA1(18e277827a534bab2b3b8b81e51d886b8382d435) )
 	ROM_LOAD16_BYTE( "400-a04.10l",  0x00001, 0x08000, CRC(d02c9552) SHA1(ec0aaa093541dab98412c11f666161cd558c383a) )
 	ROM_LOAD16_BYTE( "561-a07.17l",  0x80000, 0x20000, CRC(ed6e7098) SHA1(a28f2846b091b5bc333088054451d7b6d7f6458e) )
 	ROM_LOAD16_BYTE( "561-a05.12l",  0x80001, 0x20000, CRC(dfe04425) SHA1(0817992aeeba140feba1417c265b794f096936d9) )
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD(      "400-e03.5l",   0x00000, 0x02000, CRC(a5a8e57d) SHA1(f4236770093392dec3f76835a5766e9b3ed64e2e) )
 
 	ROM_REGION( 0x0200,  "konami", 0 )      /* 2x 256 byte for 0005289 wavetable data */
@@ -2606,13 +2420,13 @@ ROM_START( rf2 )
 ROM_END
 
 ROM_START( twinbee )
-	ROM_REGION( 0xc0000, "main", 0 )    /* 5 * 64k for code and rom */
+	ROM_REGION( 0xc0000, "maincpu", 0 )    /* 5 * 64k for code and rom */
 	ROM_LOAD16_BYTE( "400-a06.15l",  0x00000, 0x08000, CRC(b99d8cff) SHA1(18e277827a534bab2b3b8b81e51d886b8382d435) )
 	ROM_LOAD16_BYTE( "400-a04.10l",  0x00001, 0x08000, CRC(d02c9552) SHA1(ec0aaa093541dab98412c11f666161cd558c383a) )
 	ROM_LOAD16_BYTE( "412-a07.17l",  0x80000, 0x20000, CRC(d93c5499) SHA1(4555b9232ce86192360ea5b5092643ff51446aa0) )
 	ROM_LOAD16_BYTE( "412-a05.12l",  0x80001, 0x20000, CRC(2b357069) SHA1(409cf3aa174f5d7dc5efc8b8b1c925fcb677fc98) )
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD(      "400-e03.5l",   0x00000, 0x02000, CRC(a5a8e57d) SHA1(f4236770093392dec3f76835a5766e9b3ed64e2e) )
 
 	ROM_REGION( 0x0200,  "konami", 0 )      /* 2x 256 byte for 0005289 wavetable data */
@@ -2621,13 +2435,13 @@ ROM_START( twinbee )
 ROM_END
 
 ROM_START( gradius )
-	ROM_REGION( 0xc0000, "main", 0 )    /* 5 * 64k for code and rom */
+	ROM_REGION( 0xc0000, "maincpu", 0 )    /* 5 * 64k for code and rom */
 	ROM_LOAD16_BYTE( "400-a06.15l",  0x00000, 0x08000, CRC(b99d8cff) SHA1(18e277827a534bab2b3b8b81e51d886b8382d435) )
 	ROM_LOAD16_BYTE( "400-a04.10l",  0x00001, 0x08000, CRC(d02c9552) SHA1(ec0aaa093541dab98412c11f666161cd558c383a) )
 	ROM_LOAD16_BYTE( "456-a07.17l",  0x80000, 0x20000, CRC(92df792c) SHA1(aec916f70af92a2d6476d7a36ba9be265890f9aa) )
 	ROM_LOAD16_BYTE( "456-a05.12l",  0x80001, 0x20000, CRC(5cafb263) SHA1(7cd12c695ec6ef4d5785ce218911961fc3528e95) )
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD(      "400-e03.5l",   0x00000, 0x2000, CRC(a5a8e57d) SHA1(f4236770093392dec3f76835a5766e9b3ed64e2e) )
 
 	ROM_REGION( 0x0200,  "konami", 0 )      /* 2x 256 byte for 0005289 wavetable data */
@@ -2636,13 +2450,13 @@ ROM_START( gradius )
 ROM_END
 
 ROM_START( gwarrior )
-	ROM_REGION( 0xc0000, "main", 0 )    /* 5 * 64k for code and rom */
+	ROM_REGION( 0xc0000, "maincpu", 0 )    /* 5 * 64k for code and rom */
 	ROM_LOAD16_BYTE( "400-a06.15l",  0x00000, 0x08000, CRC(b99d8cff) SHA1(18e277827a534bab2b3b8b81e51d886b8382d435) )
 	ROM_LOAD16_BYTE( "400-a04.10l",  0x00001, 0x08000, CRC(d02c9552) SHA1(ec0aaa093541dab98412c11f666161cd558c383a) )
 	ROM_LOAD16_BYTE( "578-a07.17l",  0x80000, 0x20000, CRC(0aedacb5) SHA1(bf8e4b443df37e021a86e1fe76683113977a1a76) )
 	ROM_LOAD16_BYTE( "578-a05.12l",  0x80001, 0x20000, CRC(76240e2e) SHA1(3f4086972fa655704ec6480fa3012c3e8999d8ab) )
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD(      "400-e03.5l",   0x00000, 0x02000, CRC(a5a8e57d) SHA1(f4236770093392dec3f76835a5766e9b3ed64e2e) )
 
 	ROM_REGION( 0x0200,  "konami", 0 )      /* 2x 256 byte for 0005289 wavetable data */
@@ -2651,13 +2465,13 @@ ROM_START( gwarrior )
 ROM_END
 
 ROM_START( salamand )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "587-d02.18b",  0x00000, 0x10000, CRC(a42297f9) SHA1(7c974779e438eae649b39b36f6f6d24847099a6e) )
 	ROM_LOAD16_BYTE( "587-d05.18c",  0x00001, 0x10000, CRC(f9130b0a) SHA1(925ea65c13fc87fc59f893cc0ead2c82fd0bed6f) )
 	ROM_LOAD16_BYTE( "587-c03.17b",  0x40000, 0x20000, CRC(e5caf6e6) SHA1(f5df4fbc43cfa6e2866558c99dd95ba8dc89dc7a) ) /* Mask rom */
 	ROM_LOAD16_BYTE( "587-c06.17c",  0x40001, 0x20000, CRC(c2f567ea) SHA1(0c38fea53f3d4a9ae0deada5669deca4be8c9fd3) ) /* Mask rom */
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD(      "587-d09.11j",      0x00000, 0x08000, CRC(5020972c) SHA1(04c752c3b7fd850a8a51ecd230b39e6edde9dd7e) )
 
 	ROM_REGION( 0x04000, "vlm", 0 )    /* VLM5030 data? */
@@ -2668,13 +2482,13 @@ ROM_START( salamand )
 ROM_END
 
 ROM_START( salamanj )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "587-j02.18b",  0x00000, 0x10000, CRC(f68ee99a) SHA1(aec1f4720abe2529120ae711daa9e7e7d966b351) )
 	ROM_LOAD16_BYTE( "587-j05.18c",  0x00001, 0x10000, CRC(72c16128) SHA1(6921445caa0b1121e483c9c62c17aad8aa42cc18) )
 	ROM_LOAD16_BYTE( "587-c03.17b",  0x40000, 0x20000, CRC(e5caf6e6) SHA1(f5df4fbc43cfa6e2866558c99dd95ba8dc89dc7a) ) /* Mask rom */
 	ROM_LOAD16_BYTE( "587-c06.17c",  0x40001, 0x20000, CRC(c2f567ea) SHA1(0c38fea53f3d4a9ae0deada5669deca4be8c9fd3) ) /* Mask rom */
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD(      "587-d09.11j",      0x00000, 0x08000, CRC(5020972c) SHA1(04c752c3b7fd850a8a51ecd230b39e6edde9dd7e) )
 
 	ROM_REGION( 0x04000, "vlm", 0 )    /* VLM5030 data? */
@@ -2685,13 +2499,13 @@ ROM_START( salamanj )
 ROM_END
 
 ROM_START( lifefrce )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "587-k02.18b",  0x00000, 0x10000, CRC(4a44da18) SHA1(8e76bc2b9c48bfc65664fb6ee4d1d33622ee1eb8) )
 	ROM_LOAD16_BYTE( "587-k05.18c",  0x00001, 0x10000, CRC(2f8c1cbd) SHA1(aa309d509be69f315e50047abff42d9b30334e1d) )
 	ROM_LOAD16_BYTE( "587-c03.17b",  0x40000, 0x20000, CRC(e5caf6e6) SHA1(f5df4fbc43cfa6e2866558c99dd95ba8dc89dc7a) ) /* Mask rom */
 	ROM_LOAD16_BYTE( "587-c06.17c",  0x40001, 0x20000, CRC(c2f567ea) SHA1(0c38fea53f3d4a9ae0deada5669deca4be8c9fd3) ) /* Mask rom */
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD(      "587-k09.11j",  0x00000, 0x08000, CRC(2255fe8c) SHA1(6ee35575a15f593642b29020857ec466094ef495) )
 
 	ROM_REGION( 0x04000, "vlm", 0 )    /* VLM5030 data? */
@@ -2702,13 +2516,13 @@ ROM_START( lifefrce )
 ROM_END
 
 ROM_START( lifefrcj )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "587-n02.18b",  0x00000, 0x10000, CRC(235dba71) SHA1(f3a0092a7d002436253054953e36d0865ce95b80) )
 	ROM_LOAD16_BYTE( "587-n05.18c",  0x00001, 0x10000, CRC(054e569f) SHA1(e810f7e3e762875e2e71e4356997257e1bbe0da1) )
 	ROM_LOAD16_BYTE( "587-n03.17b",  0x40000, 0x20000, CRC(9041f850) SHA1(d62b8c3132916a4053cb282448b2404ac0143e01) )
 	ROM_LOAD16_BYTE( "587-n06.17c",  0x40001, 0x20000, CRC(fba8b6aa) SHA1(5ef861b89b7a89c9d70355e09621b106baa5c1e7) )
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD(      "587-n09.11j",  0x00000, 0x08000, CRC(e8496150) SHA1(c7d40b6dc56849dfd8d080f1aaebad36c88d93df) )
 
 	ROM_REGION( 0x04000, "vlm", 0 )    /* VLM5030 data? */
@@ -2719,13 +2533,13 @@ ROM_START( lifefrcj )
 ROM_END
 
 ROM_START( blkpnthr )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "604-f02.18b",  0x00000, 0x10000, CRC(487bf8da) SHA1(43b01599a1e3f82972d597a7a92bdd4ce1343847) )
 	ROM_LOAD16_BYTE( "604-f05.18c",  0x00001, 0x10000, CRC(b08f8ca2) SHA1(ca3b17709a86abdcfa0034ccb4ff8d0afc84558f) )
 	ROM_LOAD16_BYTE( "604-c03.17b",  0x40000, 0x20000, CRC(815bc3b0) SHA1(ee643b9af5906d12b1d621996503c2e28d93a207) )
 	ROM_LOAD16_BYTE( "604-c06.17c",  0x40001, 0x20000, CRC(4af6bf7f) SHA1(bf6d128670dda1f30cbf72cb82b61bf6ddfcde60) )
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD(      "604-a08.11j",  0x00000, 0x08000, CRC(aff88a2b) SHA1(7080add63deab5755606759a218dea9105df4819) )
 
 	ROM_REGION( 0x20000, "konami", 0 )    /* 007232 data */
@@ -2733,7 +2547,7 @@ ROM_START( blkpnthr )
 ROM_END
 
 ROM_START( citybomb )
-	ROM_REGION( 0x1c0000, "main", 0 )
+	ROM_REGION( 0x1c0000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "787-g10.15k",  0x000000, 0x10000, CRC(26207530) SHA1(ccb5e4ca472aad11cf308973d6a020d3af22a134) )
 	ROM_LOAD16_BYTE( "787-g09.15h",  0x000001, 0x10000, CRC(ce7de262) SHA1(73ab58c057113ffffb633c314fa383e65236d423) )
 	ROM_LOAD16_BYTE( "787-g08.15f",  0x100000, 0x20000, CRC(6242ef35) SHA1(16fd4478d54117bbf09792e22c786622ca5049bb) )
@@ -2743,15 +2557,15 @@ ROM_START( citybomb )
 	ROM_LOAD16_BYTE( "787-g04.13f",  0x180000, 0x20000, CRC(137cf39f) SHA1(39cfd25c45d824cabc3641fd39eb77c98d32ec9b) )
 	ROM_LOAD16_BYTE( "787-g03.13d",  0x180001, 0x20000, CRC(0cc704dc) SHA1(b0c3991393cdb6a75461597d51452bfa08955081) )
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD(      "787-e02.4h",  0x00000, 0x08000, CRC(f4591e46) SHA1(c17c1a24bf1866fbba388521a4b7ea0975bda587) )
 
-	ROM_REGION( 0x80000, "konami1", 0 )    /* 007232 data */
+	ROM_REGION( 0x80000, "konami", 0 )    /* 007232 data */
 	ROM_LOAD(      "787-e01.1k",  0x00000, 0x80000, CRC(edc34d01) SHA1(b1465d1a7364a7cebc14b96cd01dc78e57975972) )
 ROM_END
 
 ROM_START( citybmrj )
-	ROM_REGION( 0x1c0000, "main", 0 )
+	ROM_REGION( 0x1c0000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "787-h10.15k",  0x000000, 0x10000, CRC(66fecf69) SHA1(5881ec019ef6228a693af5c9f6c26e05bdee3846) )
 	ROM_LOAD16_BYTE( "787-h09.15h",  0x000001, 0x10000, CRC(a0e29468) SHA1(78971da14a748ade6ea94770080a393c7617b97d) )
 	ROM_LOAD16_BYTE( "787-g08.15f",  0x100000, 0x20000, CRC(6242ef35) SHA1(16fd4478d54117bbf09792e22c786622ca5049bb) )
@@ -2761,38 +2575,38 @@ ROM_START( citybmrj )
 	ROM_LOAD16_BYTE( "787-g04.13f",  0x180000, 0x20000, CRC(137cf39f) SHA1(39cfd25c45d824cabc3641fd39eb77c98d32ec9b) )
 	ROM_LOAD16_BYTE( "787-g03.13d",  0x180001, 0x20000, CRC(0cc704dc) SHA1(b0c3991393cdb6a75461597d51452bfa08955081) )
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD(      "787-e02.4h",  0x00000, 0x08000, CRC(f4591e46) SHA1(c17c1a24bf1866fbba388521a4b7ea0975bda587) )
 
-	ROM_REGION( 0x80000, "konami1", 0 )    /* 007232 data */
+	ROM_REGION( 0x80000, "konami", 0 )    /* 007232 data */
 	ROM_LOAD(      "787-e01.1k",  0x00000, 0x80000, CRC(edc34d01) SHA1(b1465d1a7364a7cebc14b96cd01dc78e57975972) )
 ROM_END
 
 ROM_START( kittenk )
-	ROM_REGION( 0x140000, "main", 0 )
+	ROM_REGION( 0x140000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "kitten.15k",   0x000000, 0x10000, CRC(8267cb2b) SHA1(63c4ebef834850eff379141b8eb0fafbdcf26d0e) )
 	ROM_LOAD16_BYTE( "kitten.15h",   0x000001, 0x10000, CRC(eb41cfa5) SHA1(d481e63faea098625a42613c13f82fec310a7c62) )
 	ROM_LOAD16_BYTE( "712-b08.15f",  0x100000, 0x20000, CRC(e6d71611) SHA1(89fced4074c491c211fea908f08be94595c57f31) )
 	ROM_LOAD16_BYTE( "712-b07.15d",  0x100001, 0x20000, CRC(30f75c9f) SHA1(0cbc247ff37800dd3275d2ff23a63ed19ec4cef2) )
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD(      "712-e02.4h",  0x00000, 0x08000, CRC(ba76f310) SHA1(cc2164a9617493d1b3b8ac67430f9eb26fd987d2) )
 
-	ROM_REGION( 0x80000, "konami1", 0 )    /* 007232 data */
+	ROM_REGION( 0x80000, "konami", 0 )    /* 007232 data */
 	ROM_LOAD(      "712-b01.1k",  0x00000, 0x80000, CRC(f65b5d95) SHA1(12701be68629844720cd16af857ce38ef06af61c) )
 ROM_END
 
 ROM_START( nyanpani )
-	ROM_REGION( 0x140000, "main", 0 )
+	ROM_REGION( 0x140000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "712-j10.15k",  0x000000, 0x10000, CRC(924b27ec) SHA1(019279349b1be45ba46e57ef8f21d79a1b115d7b) )
 	ROM_LOAD16_BYTE( "712-j09.15h",  0x000001, 0x10000, CRC(a9862ea1) SHA1(84e481eb6159889d54d0dfe4c31399ab06e13bb7) )
 	ROM_LOAD16_BYTE( "712-b08.15f",  0x100000, 0x20000, CRC(e6d71611) SHA1(89fced4074c491c211fea908f08be94595c57f31) )
 	ROM_LOAD16_BYTE( "712-b07.15d",  0x100001, 0x20000, CRC(30f75c9f) SHA1(0cbc247ff37800dd3275d2ff23a63ed19ec4cef2) )
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD(      "712-e02.4h",  0x00000, 0x08000, CRC(ba76f310) SHA1(cc2164a9617493d1b3b8ac67430f9eb26fd987d2) )
 
-	ROM_REGION( 0x80000, "konami1", 0 )    /* 007232 data */
+	ROM_REGION( 0x80000, "konami", 0 )    /* 007232 data */
 	ROM_LOAD(      "712-b01.1k",  0x00000, 0x80000, CRC(f65b5d95) SHA1(12701be68629844720cd16af857ce38ef06af61c) )
 ROM_END
 
@@ -2903,13 +2717,13 @@ Notes:
 */
 
 ROM_START( hcrash )
-	ROM_REGION( 0x140000, "main", 0 )
+	ROM_REGION( 0x140000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "790-d03.t9",   0x00000, 0x08000, CRC(10177dce) SHA1(e46f75e3206eff5299e08e5258e67b68efc4c20c) )
 	ROM_LOAD16_BYTE( "790-d06.t7",   0x00001, 0x08000, CRC(fca5ab3e) SHA1(2ad335cf25a86fe38c190e2e0fe101ea161eb81d) )
 	ROM_LOAD16_BYTE( "790-c02.s9",   0x40000, 0x10000, CRC(8ae6318f) SHA1(b3205df1103a69eef34c5207e567a27a5fee5660) )
 	ROM_LOAD16_BYTE( "790-c05.s7",   0x40001, 0x10000, CRC(c214f77b) SHA1(c5754c3da2a3820d8d06f8ff171be6c2aea92ecc) )
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD( "790-c09.n2",   0x00000, 0x8000, CRC(a68a8cce) SHA1(a54966b9cbbe37b2be6a2276ee09c81452d9c0ca) )
 
 	ROM_REGION( 0x80000, "vlm", 0 )  /* VLM5030 data data */
@@ -2921,13 +2735,13 @@ ROM_START( hcrash )
 ROM_END
 
 ROM_START( hcrashc )
-	ROM_REGION( 0x140000, "main", 0 )
+	ROM_REGION( 0x140000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "790-c03.t9",   0x00000, 0x08000, CRC(d98ec625) SHA1(ddec88b0babd1c538fe5055adec73b537d637d3e) )
 	ROM_LOAD16_BYTE( "790-c06.t7",   0x00001, 0x08000, CRC(1d641a86) SHA1(d20ae01565d04db62d5687546c19d87c8e26248c) )
 	ROM_LOAD16_BYTE( "790-c02.s9",   0x40000, 0x10000, CRC(8ae6318f) SHA1(b3205df1103a69eef34c5207e567a27a5fee5660) )
 	ROM_LOAD16_BYTE( "790-c05.s7",   0x40001, 0x10000, CRC(c214f77b) SHA1(c5754c3da2a3820d8d06f8ff171be6c2aea92ecc) )
 
-	ROM_REGION( 0x10000, "audio", 0 )    /* 64k for sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )    /* 64k for sound */
 	ROM_LOAD( "790-c09.n2",   0x00000, 0x8000, CRC(a68a8cce) SHA1(a54966b9cbbe37b2be6a2276ee09c81452d9c0ca) )
 
 	ROM_REGION( 0x80000, "vlm", 0 )  /* VLM5030 data data */

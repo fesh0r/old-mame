@@ -7,6 +7,7 @@
 #include "cpu/z80/z80.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/tms32010/tms32010.h"
+#include "sound/3812intf.h"
 #include "includes/toaplan1.h"
 
 #define CLEAR 0
@@ -231,8 +232,7 @@ WRITE16_HANDLER( toaplan1_reset_sound )
 	if (ACCESSING_BITS_0_7 && (data == 0))
 	{
 		logerror("PC:%04x  Resetting Sound CPU and Sound chip (%08x)\n",cpu_get_previouspc(space->cpu),data);
-		if (space->machine->config->sound[0].type == SOUND_YM3812)
-			sndti_reset(SOUND_YM3812, 0);
+		devtag_reset(space->machine, "ym");
 		if (space->machine->cpu[1] != NULL && cpu_get_type(space->machine->cpu[1]) == CPU_Z80)
 			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, PULSE_LINE);
 	}

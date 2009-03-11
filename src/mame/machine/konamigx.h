@@ -1,28 +1,14 @@
 #ifndef __MACH_KONAMIGX_H
 #define __MACH_KONAMIGX_H
 
-void tms57002_init(void);
-
-READ8_HANDLER( tms57002_data_r );
-READ8_HANDLER( tms57002_status_r );
-WRITE8_HANDLER( tms57002_control_w );
-WRITE8_HANDLER( tms57002_data_w );
-
-READ16_HANDLER( tms57002_data_word_r );
-READ16_HANDLER( tms57002_status_word_r );
-WRITE16_HANDLER( tms57002_control_word_w );
-WRITE16_HANDLER( tms57002_data_word_w );
-
-
-
 // 2nd-Tier GX/MW Hardware Functions
 void K053247GP_set_SpriteOffset(int offsx, int offsy);
 
 void K053936GP_set_offset(int chip, int xoffs, int yoffs);
 void K053936GP_clip_enable(int chip, int status);
 void K053936GP_set_cliprect(int chip, int minx, int maxx, int miny, int maxy);
-void K053936GP_0_zoom_draw(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, tilemap *tmap, int tilebpp, int blend);
-void K053936GP_1_zoom_draw(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, tilemap *tmap, int tilebpp, int blend);
+void K053936GP_0_zoom_draw(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, tilemap *tmap, int tilebpp, int blend, int alpha);
+void K053936GP_1_zoom_draw(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, tilemap *tmap, int tilebpp, int blend, int alpha);
 
 
 

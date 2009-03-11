@@ -309,7 +309,7 @@ static WRITE8_HANDLER( slave_bankswitch_w )
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
-	airbustr_bankswitch(space->machine, "audio", 3, data);
+	airbustr_bankswitch(space->machine, "audiocpu", 3, data);
 }
 
 static READ8_HANDLER( soundcommand_status_r )
@@ -418,9 +418,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(sound_bankswitch_w)
-	AM_RANGE(0x02, 0x02) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0x03, 0x03) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
-	AM_RANGE(0x04, 0x04) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w)
+	AM_RANGE(0x02, 0x03) AM_DEVREADWRITE("ym", ym2203_r, ym2203_w)
+	AM_RANGE(0x04, 0x04) AM_DEVREADWRITE("oki", okim6295_r, okim6295_w)
 	AM_RANGE(0x06, 0x06) AM_READWRITE(soundcommand_r, soundcommand2_w)
 ADDRESS_MAP_END
 
@@ -565,10 +564,10 @@ static const ym2203_interface ym2203_config =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		input_port_3_r,		// DSW-1 connected to port A
-		input_port_4_r,		// DSW-2 connected to port B
-		NULL,
-		NULL
+		DEVCB_INPUT_PORT("DSW1"),		// DSW-1 connected to port A
+		DEVCB_INPUT_PORT("DSW2"),		// DSW-2 connected to port B
+		DEVCB_NULL,
+		DEVCB_NULL
 	},
 	NULL
 };
@@ -588,6 +587,14 @@ static INTERRUPT_GEN( slave_interrupt )
 }
 
 /* Machine Initialization */
+
+static MACHINE_START( airbustr )
+{
+    state_save_register_global(machine, soundlatch_status);
+    state_save_register_global(machine, soundlatch2_status);
+    state_save_register_global(machine, master_addr);
+    state_save_register_global(machine, slave_addr);
+}
 
 static MACHINE_RESET( airbustr )
 {
@@ -614,19 +621,20 @@ static MACHINE_DRIVER_START( airbustr )
 	MDRV_CPU_IO_MAP(slave_io_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(slave_interrupt, 2)		// nmi caused by main cpu, ?
 
-	MDRV_CPU_ADD("audio", Z80, 6000000)	// ???
+	MDRV_CPU_ADD("audiocpu", Z80, 6000000)	// ???
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
 	MDRV_CPU_IO_MAP(sound_io_map, 0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)		// nmi are caused by sub cpu writing a sound command
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)		// nmi are caused by sub cpu writing a sound command
 
 	MDRV_QUANTUM_TIME(HZ(6000))	// Palette RAM is filled by sub cpu with data supplied by main cpu
 							// Maybe a high value is safer in order to avoid glitches
+    MDRV_MACHINE_START(airbustr)
 	MDRV_MACHINE_RESET(airbustr)
 	MDRV_WATCHDOG_TIME_INIT(SEC(3))	/* a guess, and certainly wrong */
 
 	// video hardware
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -671,7 +679,7 @@ ROM_START( airbustr )
 	ROM_LOAD( "pr13.l15",   0x00000, 0x0c000, CRC(13b2257b) SHA1(325efa54e757a1f08caf81801930d61ea4e7b6d4) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
 
-	ROM_REGION( 0x24000, "audio", 0 )
+	ROM_REGION( 0x24000, "audiocpu", 0 )
 	ROM_LOAD( "pr-21.bin",  0x00000, 0x0c000, CRC(6e0a5df0) SHA1(616b7c7aaf52a9a55b63c60717c1866940635cd4) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
 
@@ -695,7 +703,7 @@ ROM_START( airbustj )
 	ROM_LOAD( "pr-11j.bin", 0x00000, 0x0c000, CRC(85464124) SHA1(8cce8dfdede48032c40d5f155fd58061866668de) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
 
-	ROM_REGION( 0x24000, "audio", 0 )
+	ROM_REGION( 0x24000, "audiocpu", 0 )
 	ROM_LOAD( "pr-21.bin",  0x00000, 0x0c000, CRC(6e0a5df0) SHA1(616b7c7aaf52a9a55b63c60717c1866940635cd4) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
 
@@ -732,7 +740,7 @@ ROM_START( airbusb )
 	ROM_LOAD( "1.bin",   0x00000, 0x0c000, CRC(85464124) SHA1(8cce8dfdede48032c40d5f155fd58061866668de) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
 
-	ROM_REGION( 0x24000, "audio", 0 )
+	ROM_REGION( 0x24000, "audiocpu", 0 )
 	ROM_LOAD( "2.bin",  0x00000, 0x0c000, CRC(6e0a5df0) SHA1(616b7c7aaf52a9a55b63c60717c1866940635cd4) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
 
@@ -768,6 +776,6 @@ static DRIVER_INIT( airbustr )
 
 /* Game Drivers */
 
-GAME( 1990, airbustr, 0,        airbustr, airbustr, airbustr, ROT0, "Kaneko (Namco license)", "Air Buster: Trouble Specialty Raid Unit (World)" , 0)	// 891220
-GAME( 1990, airbustj, airbustr, airbustr, airbustj, airbustr, ROT0, "Kaneko (Namco license)", "Air Buster: Trouble Specialty Raid Unit (Japan)" , 0)	// 891229
-GAME( 1990, airbusb,  airbustr, airbusb,  airbustj, 0,        ROT0, "bootleg", "Air Buster: Trouble Specialty Raid Unit (bootleg)" , 0)	// based on Japan set (891229)
+GAME( 1990, airbustr, 0,        airbustr, airbustr, airbustr, ROT0, "Kaneko (Namco license)", "Air Buster: Trouble Specialty Raid Unit (World)", GAME_SUPPORTS_SAVE )	// 891220
+GAME( 1990, airbustj, airbustr, airbustr, airbustj, airbustr, ROT0, "Kaneko (Namco license)", "Air Buster: Trouble Specialty Raid Unit (Japan)", GAME_SUPPORTS_SAVE)    // 891229
+GAME( 1990, airbusb,  airbustr, airbusb,  airbustj, 0,        ROT0, "bootleg", "Air Buster: Trouble Specialty Raid Unit (bootleg)", GAME_SUPPORTS_SAVE)	// based on Japan set (891229)

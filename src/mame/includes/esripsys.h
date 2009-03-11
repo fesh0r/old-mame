@@ -6,7 +6,7 @@
 
 /* TODO */
 #define ESRIPSYS_PIXEL_CLOCK	(XTAL_25MHz / 2)
-#define ESRIPSYS_HTOTAL			(512 + 141)
+#define ESRIPSYS_HTOTAL			(512 + 141 + 2)
 #define ESRIPSYS_HBLANK_START	(512)
 #define ESRIPSYS_HBLANK_END		(0)
 #define ESRIPSYS_VTOTAL			(384 + 20)
@@ -26,6 +26,7 @@ enum
 
 /*----------- defined in video/esripsys.c -----------*/
 
+extern int esripsys_hblank;
 extern UINT8 *esripsys_pal_ram;
 extern int esripsys_frame_vbl;
 extern int esripsys__12sel;
@@ -37,4 +38,4 @@ VIDEO_UPDATE( esripsys );
 WRITE8_HANDLER( esripsys_bg_intensity_w );
 INTERRUPT_GEN( esripsys_vblank_irq );
 
-int esripsys_draw(running_machine *machine, int l, int r, int fig, int attr, int addr, int col, int x_scale, int line_latch);
+int esripsys_draw(running_machine *machine, int l, int r, int fig, int attr, int addr, int col, int x_scale, int bank);

@@ -234,7 +234,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( sandscrp_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(space->machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "maincpu");
 	int bank = data & 0x07;
 
 	if ( bank != data )	logerror("CPU #1 - PC %04X: Bank %02X\n",cpu_get_pc(space->cpu),data);
@@ -272,9 +272,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sandscrp_soundport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(sandscrp_bankswitch_w)	// ROM Bank
-	AM_RANGE(0x02, 0x02) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)	// YM2203
-	AM_RANGE(0x03, 0x03) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)		// PORTA/B read
-	AM_RANGE(0x04, 0x04) AM_WRITE(okim6295_data_0_w)		// OKIM6295
+	AM_RANGE(0x02, 0x03) AM_DEVREADWRITE("ym", ym2203_r, ym2203_w)		// PORTA/B read
+	AM_RANGE(0x04, 0x04) AM_DEVWRITE("oki", okim6295_w)		// OKIM6295
 	AM_RANGE(0x06, 0x06) AM_WRITE(sandscrp_soundlatch_w)	//
 	AM_RANGE(0x07, 0x07) AM_READ(sandscrp_soundlatch_r)		//
 	AM_RANGE(0x08, 0x08) AM_READ(sandscrp_latchstatus_r)	//
@@ -413,9 +412,9 @@ GFXDECODE_END
 
 /* YM3014B + YM2203C */
 
-static void irq_handler(running_machine *machine, int irq)
+static void irq_handler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_intf_sandscrp =
@@ -423,10 +422,10 @@ static const ym2203_interface ym2203_intf_sandscrp =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		input_port_4_r,	/* Port A Read - DSW 1 */
-		input_port_5_r,	/* Port B Read - DSW 2 */
-		NULL,	/* Port A Write */
-		NULL,	/* Port B Write */
+		DEVCB_INPUT_PORT("DSW1"), /* Port A Read */
+		DEVCB_INPUT_PORT("DSW2"), /* Port B Read */
+		DEVCB_NULL,	/* Port A Write */
+		DEVCB_NULL,	/* Port B Write */
 	},
 	irq_handler	/* IRQ handler */
 };
@@ -435,11 +434,11 @@ static const ym2203_interface ym2203_intf_sandscrp =
 static MACHINE_DRIVER_START( sandscrp )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,12000000)	/* TMP68HC000N-12 */
+	MDRV_CPU_ADD("maincpu", M68000,12000000)	/* TMP68HC000N-12 */
 	MDRV_CPU_PROGRAM_MAP(sandscrp,0)
-	MDRV_CPU_VBLANK_INT("main", sandscrp_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", sandscrp_interrupt)
 
-	MDRV_CPU_ADD("audio", Z80,4000000)	/* Z8400AB1, Reads the DSWs: it can't be disabled */
+	MDRV_CPU_ADD("audiocpu", Z80,4000000)	/* Z8400AB1, Reads the DSWs: it can't be disabled */
 	MDRV_CPU_PROGRAM_MAP(sandscrp_soundmem,0)
 	MDRV_CPU_IO_MAP(sandscrp_soundport,0)
 
@@ -448,7 +447,7 @@ static MACHINE_DRIVER_START( sandscrp )
 	MDRV_MACHINE_RESET(sandscrp)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME( ATTOSECONDS_IN_USEC(2500) /* not accurate */ )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -463,17 +462,17 @@ static MACHINE_DRIVER_START( sandscrp )
 	MDRV_VIDEO_UPDATE(sandscrp)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("oki", OKIM6295, 12000000/6)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.25)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.25)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.25)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.25)
 
 	MDRV_SOUND_ADD("ym", YM2203, 4000000)
 	MDRV_SOUND_CONFIG(ym2203_intf_sandscrp)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.25)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.25)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.25)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.25)
 MACHINE_DRIVER_END
 
 
@@ -485,11 +484,11 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( sandscrp ) /* Z03VA-003 PCB */
-	ROM_REGION( 0x080000, "main", 0 )		/* 68000 Code */
+	ROM_REGION( 0x080000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "11.bin", 0x000000, 0x040000, CRC(9b24ab40) SHA1(3187422dbe8b15d8053be4cb20e56d3e6afbd5f2) ) /* Location is IC4 */
 	ROM_LOAD16_BYTE( "12.bin", 0x000001, 0x040000, CRC(ad12caee) SHA1(83267445b89c3cf4dc317106aa68763d2f29eff7) ) /* Location is IC5 */
 
-	ROM_REGION( 0x24000, "audio", 0 )		/* Z80 Code */
+	ROM_REGION( 0x24000, "audiocpu", 0 )		/* Z80 Code */
 	ROM_LOAD( "8.ic51", 0x00000, 0x0c000, CRC(6f3e9db1) SHA1(06a04fa17f44319986913bff70433510c89e38f1) )
 	ROM_CONTINUE(       0x10000, 0x14000 )
 
@@ -506,11 +505,11 @@ ROM_START( sandscrp ) /* Z03VA-003 PCB */
 ROM_END
 
 ROM_START( sandscra ) /* Z03VA-003 PCB, earlier program version */
-	ROM_REGION( 0x080000, "main", 0 )		/* 68000 Code */
+	ROM_REGION( 0x080000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "1.ic4", 0x000000, 0x040000, CRC(c0943ae2) SHA1(04dac4e1f116cd96d6292daa61ef40efc7eba919) )
 	ROM_LOAD16_BYTE( "2.ic5", 0x000001, 0x040000, CRC(6a8e0012) SHA1(2350b11c9bd545c8ba4b3c25cd6547ba2ad474b5) )
 
-	ROM_REGION( 0x24000, "audio", 0 )		/* Z80 Code */
+	ROM_REGION( 0x24000, "audiocpu", 0 )		/* Z80 Code */
 	ROM_LOAD( "8.ic51", 0x00000, 0x0c000, CRC(6f3e9db1) SHA1(06a04fa17f44319986913bff70433510c89e38f1) )
 	ROM_CONTINUE(       0x10000, 0x14000 )
 
@@ -528,11 +527,11 @@ ROM_END
 
 
 ROM_START( sandscrb ) /* Different rev PCB */
-	ROM_REGION( 0x080000, "main", 0 )		/* 68000 Code */
+	ROM_REGION( 0x080000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "11.ic4", 0x000000, 0x040000, CRC(80020cab) SHA1(4f1f4d8ea07ad745f2d6d3f800686f07fe4bf20f) )
 	ROM_LOAD16_BYTE( "12.ic5", 0x000001, 0x040000, CRC(8df1d42f) SHA1(2a9db5c4b99a8a3f62bffa9ddd96a95e2042602b) )
 
-	ROM_REGION( 0x24000, "audio", 0 )		/* Z80 Code */
+	ROM_REGION( 0x24000, "audiocpu", 0 )		/* Z80 Code */
 	ROM_LOAD( "8.ic51", 0x00000, 0x0c000, CRC(6f3e9db1) SHA1(06a04fa17f44319986913bff70433510c89e38f1) )
 	ROM_CONTINUE(       0x10000, 0x14000 )
 

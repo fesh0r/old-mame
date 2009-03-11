@@ -148,12 +148,12 @@ static WRITE8_HANDLER( fromance_rombank_w )
  *
  *************************************/
 
-static WRITE8_HANDLER( fromance_adpcm_reset_w )
+static WRITE8_DEVICE_HANDLER( fromance_adpcm_reset_w )
 {
 	fromance_adpcm_reset = (data & 0x01);
 	fromance_vclk_left = 0;
 
-	msm5205_reset_w(0, !(data & 0x01));
+	msm5205_reset_w(device, !(data & 0x01));
 }
 
 
@@ -173,7 +173,7 @@ static void fromance_adpcm_int(const device_config *device)
 	/* clock the data through */
 	if (fromance_vclk_left)
 	{
-		msm5205_data_w(0, (fromance_adpcm_data >> 4));
+		msm5205_data_w(device, (fromance_adpcm_data >> 4));
 		fromance_adpcm_data <<= 4;
 		fromance_vclk_left--;
 	}
@@ -335,10 +335,9 @@ static ADDRESS_MAP_START( nekkyoku_sub_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xe1, 0xe1) AM_READWRITE(fromance_busycheck_sub_r, fromance_gfxreg_w)
 	AM_RANGE(0xe2, 0xe5) AM_WRITE(fromance_scroll_w)
 	AM_RANGE(0xe6, 0xe6) AM_READWRITE(fromance_commanddata_r, fromance_busycheck_sub_w)
-	AM_RANGE(0xe7, 0xe7) AM_WRITE(fromance_adpcm_reset_w)
+	AM_RANGE(0xe7, 0xe7) AM_DEVWRITE("msm", fromance_adpcm_reset_w)
 	AM_RANGE(0xe8, 0xe8) AM_WRITE(fromance_adpcm_w)
-	AM_RANGE(0xe9, 0xe9) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0xea, 0xea) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xe9, 0xea) AM_DEVWRITE("ay", ay8910_data_address_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( idolmj_sub_io_map, ADDRESS_SPACE_IO, 8 )
@@ -350,10 +349,9 @@ static ADDRESS_MAP_START( idolmj_sub_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x21, 0x21) AM_READWRITE(fromance_busycheck_sub_r, fromance_gfxreg_w)
 	AM_RANGE(0x22, 0x25) AM_WRITE(fromance_scroll_w)
 	AM_RANGE(0x26, 0x26) AM_READWRITE(fromance_commanddata_r, fromance_busycheck_sub_w)
-	AM_RANGE(0x27, 0x27) AM_WRITE(fromance_adpcm_reset_w)
+	AM_RANGE(0x27, 0x27) AM_DEVWRITE("msm", fromance_adpcm_reset_w)
 	AM_RANGE(0x28, 0x28) AM_WRITE(fromance_adpcm_w)
-	AM_RANGE(0x29, 0x29) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x2a, 0x2a) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x29, 0x2a) AM_DEVWRITE("ay", ay8910_data_address_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fromance_sub_io_map, ADDRESS_SPACE_IO, 8 )
@@ -365,10 +363,9 @@ static ADDRESS_MAP_START( fromance_sub_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x21, 0x21) AM_READWRITE(fromance_busycheck_sub_r, fromance_gfxreg_w)
 	AM_RANGE(0x22, 0x25) AM_WRITE(fromance_scroll_w)
 	AM_RANGE(0x26, 0x26) AM_READWRITE(fromance_commanddata_r, fromance_busycheck_sub_w)
-	AM_RANGE(0x27, 0x27) AM_WRITE(fromance_adpcm_reset_w)
+	AM_RANGE(0x27, 0x27) AM_DEVWRITE("msm", fromance_adpcm_reset_w)
 	AM_RANGE(0x28, 0x28) AM_WRITE(fromance_adpcm_w)
-	AM_RANGE(0x2a, 0x2a) AM_WRITE(ym2413_register_port_0_w)
-	AM_RANGE(0x2b, 0x2b) AM_WRITE(ym2413_data_port_0_w)
+	AM_RANGE(0x2a, 0x2b) AM_DEVWRITE("ym", ym2413_w)
 ADDRESS_MAP_END
 
 
@@ -1014,9 +1011,9 @@ static const msm5205_interface msm5205_config =
 static MACHINE_DRIVER_START( nekkyoku )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,12000000/2)		/* 6.00 Mhz ? */
+	MDRV_CPU_ADD("maincpu", Z80,12000000/2)		/* 6.00 Mhz ? */
 	MDRV_CPU_PROGRAM_MAP(nekkyoku_readmem_main,nekkyoku_writemem_main)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80,12000000/2)		/* 6.00 Mhz ? */
 	MDRV_CPU_PROGRAM_MAP(nekkyoku_readmem_sub,nekkyoku_writemem_sub)
@@ -1025,7 +1022,7 @@ static MACHINE_DRIVER_START( nekkyoku )
 	MDRV_MACHINE_RESET(fromance)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
@@ -1052,9 +1049,9 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( idolmj )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,12000000/2)		/* 6.00 Mhz ? */
+	MDRV_CPU_ADD("maincpu", Z80,12000000/2)		/* 6.00 Mhz ? */
 	MDRV_CPU_PROGRAM_MAP(fromance_readmem_main,fromance_writemem_main)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80,12000000/2)		/* 6.00 Mhz ? */
 	MDRV_CPU_PROGRAM_MAP(fromance_readmem_sub,fromance_writemem_sub)
@@ -1063,7 +1060,7 @@ static MACHINE_DRIVER_START( idolmj )
 	MDRV_MACHINE_RESET(fromance)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
@@ -1090,9 +1087,9 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( fromance )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,12000000/2)		/* 6.00 Mhz ? */
+	MDRV_CPU_ADD("maincpu", Z80,12000000/2)		/* 6.00 Mhz ? */
 	MDRV_CPU_PROGRAM_MAP(fromance_readmem_main,fromance_writemem_main)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80,12000000/2)		/* 6.00 Mhz ? */
 	MDRV_CPU_PROGRAM_MAP(fromance_readmem_sub,fromance_writemem_sub)
@@ -1101,7 +1098,7 @@ static MACHINE_DRIVER_START( fromance )
 	MDRV_MACHINE_RESET(fromance)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
@@ -1133,7 +1130,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( nekkyoku )
-	ROM_REGION( 0x010000, "main", 0 )
+	ROM_REGION( 0x010000, "maincpu", 0 )
 	ROM_LOAD( "1-ic1a.bin",  0x000000, 0x008000, CRC(bb52d959) SHA1(1dfeb108879978dbcc1398e64b26c36505bee6d0) )
 	ROM_LOAD( "2-ic2a.bin",  0x008000, 0x008000, CRC(61848d8b) SHA1(72048c53e4364544ca8a79e213db9d02b7b4778f) )
 
@@ -1161,7 +1158,7 @@ ROM_END
 
 
 ROM_START( idolmj )
-	ROM_REGION( 0x010000, "main", 0 )
+	ROM_REGION( 0x010000, "maincpu", 0 )
 	ROM_LOAD( "3-13g.bin", 0x000000, 0x008000, CRC(910e9e7a) SHA1(5d577549ca25def14fbc6db682afda105244b7c1) )
 
 	ROM_REGION( 0x410000, "sub", 0 )
@@ -1185,7 +1182,7 @@ ROM_END
 
 
 ROM_START( mjnatsu )
-	ROM_REGION( 0x010000, "main", 0 )
+	ROM_REGION( 0x010000, "maincpu", 0 )
 	ROM_LOAD( "3-ic70.bin", 0x000000, 0x008000, CRC(543eb9e1) SHA1(cfe1d33bdf6541e2207465a941f342be21b69f7d) )
 
 	ROM_REGION( 0x410000, "sub", 0 )
@@ -1210,7 +1207,7 @@ ROM_END
 
 
 ROM_START( natsuiro )
-	ROM_REGION( 0x010000, "main", 0 )
+	ROM_REGION( 0x010000, "maincpu", 0 )
 	ROM_LOAD( "3-ic70.bin", 0x000000, 0x008000, CRC(543eb9e1) SHA1(cfe1d33bdf6541e2207465a941f342be21b69f7d) )
 
 	ROM_REGION( 0x410000, "sub", 0 )
@@ -1236,7 +1233,7 @@ ROM_END
 
 
 ROM_START( mfunclub )
-	ROM_REGION( 0x010000, "main", 0 )
+	ROM_REGION( 0x010000, "maincpu", 0 )
 	ROM_LOAD( "3.70",        0x000000, 0x008000, CRC(e6f76ca3) SHA1(2f4292e50770c3325c1573781cb21940d73e8fb1) )
 
 	ROM_REGION( 0x410000, "sub", 0 )
@@ -1261,7 +1258,7 @@ ROM_END
 
 
 ROM_START( daiyogen )
-	ROM_REGION( 0x010000, "main", 0 )
+	ROM_REGION( 0x010000, "maincpu", 0 )
 	ROM_LOAD( "n1-ic70.bin", 0x000000, 0x008000, CRC(29af632b) SHA1(9a55cc7a82dc2735be6310de27521ff0f5c352bd) )
 
 	ROM_REGION( 0x130000, "sub", 0 )
@@ -1281,7 +1278,7 @@ ROM_END
 
 
 ROM_START( nmsengen )
-	ROM_REGION( 0x010000, "main", 0 )
+	ROM_REGION( 0x010000, "maincpu", 0 )
 	ROM_LOAD( "3-ic70.bin",   0x000000, 0x008000, CRC(4e6edbbb) SHA1(890f93569a6dec6bf7c917a3db4f268c6ec64564) )
 
 	ROM_REGION( 0x410000, "sub", 0 )
@@ -1306,7 +1303,7 @@ ROM_END
 
 
 ROM_START( fromance )
-	ROM_REGION( 0x010000, "main", 0 )
+	ROM_REGION( 0x010000, "maincpu", 0 )
 	ROM_LOAD( "2-ic70.bin", 0x000000, 0x008000, CRC(a0866e26) SHA1(019a8dfaa54dd397f642622d7ed847b7147a61f7) )
 
 	ROM_REGION( 0x410000, "sub", 0 )

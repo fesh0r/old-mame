@@ -55,17 +55,17 @@ static INPUT_CHANGED( coin_inserted )
 static UINT8 porta;
 static UINT8 portb;
 
-static READ8_HANDLER( exerion_porta_r )
+static READ8_DEVICE_HANDLER( exerion_porta_r )
 {
 	porta ^= 0x40;
 	return porta;
 }
 
 
-static WRITE8_HANDLER( exerion_portb_w )
+static WRITE8_DEVICE_HANDLER( exerion_portb_w )
 {
 	/* pull the expected value from the ROM */
-	porta = memory_region(space->machine, "main")[0x5f76];
+	porta = memory_region(device->machine, "maincpu")[0x5f76];
 	portb = data;
 
 	logerror("Port B = %02X\n", data);
@@ -75,7 +75,7 @@ static WRITE8_HANDLER( exerion_portb_w )
 static READ8_HANDLER( exerion_protection_r )
 {
 	if (cpu_get_pc(space->cpu) == 0x4143)
-		return memory_region(space->machine, "main")[0x33c0 + (exerion_ram[0xd] << 2) + offset];
+		return memory_region(space->machine, "maincpu")[0x33c0 + (exerion_ram[0xd] << 2) + offset];
 	else
 		return exerion_ram[0x8 + offset];
 }
@@ -100,11 +100,9 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xb000, 0xb000) AM_READ_PORT("DSW1")
 	AM_RANGE(0xc000, 0xc000) AM_WRITE(exerion_videoreg_w)
 	AM_RANGE(0xc800, 0xc800) AM_WRITE(soundlatch_w)
-	AM_RANGE(0xd000, 0xd000) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xd001, 0xd001) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0xd800, 0xd800) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0xd801, 0xd801) AM_WRITE(ay8910_write_port_1_w)
-	AM_RANGE(0xd802, 0xd802) AM_READ(ay8910_read_port_1_r)
+	AM_RANGE(0xd000, 0xd001) AM_DEVWRITE("ay1", ay8910_address_data_w)
+	AM_RANGE(0xd800, 0xd801) AM_DEVWRITE("ay2", ay8910_address_data_w)
+	AM_RANGE(0xd802, 0xd802) AM_DEVREAD("ay2", ay8910_r)
 ADDRESS_MAP_END
 
 
@@ -263,10 +261,10 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	exerion_porta_r,
-	NULL,
-	NULL,
-	exerion_portb_w
+	DEVCB_HANDLER(exerion_porta_r),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(exerion_portb_w)
 };
 
 
@@ -279,14 +277,14 @@ static const ay8910_interface ay8910_config =
 
 static MACHINE_DRIVER_START( exerion )
 
-	MDRV_CPU_ADD("main", Z80, EXERION_CPU_CLOCK)
+	MDRV_CPU_ADD("maincpu", Z80, EXERION_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
 	MDRV_CPU_ADD("sub", Z80, EXERION_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(sub_map,0)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(EXERION_PIXEL_CLOCK, EXERION_HTOTAL, EXERION_HBEND, EXERION_HBSTART, EXERION_VTOTAL, EXERION_VBEND, EXERION_VBSTART)
 
@@ -317,7 +315,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( exerion )
-	ROM_REGION( 0x6000, "main", 0 )
+	ROM_REGION( 0x6000, "maincpu", 0 )
 	ROM_LOAD( "exerion.07",   0x0000, 0x2000, CRC(4c78d57d) SHA1(ac702e9ad2bc05493fb1355858667c31c36acfe4) )
 	ROM_LOAD( "exerion.08",   0x2000, 0x2000, CRC(dcadc1df) SHA1(91388f617cfaa4289ca1c84c697fcfdd8834ae15) )
 	ROM_LOAD( "exerion.09",   0x4000, 0x2000, CRC(34cc4d14) SHA1(511c9de038f7bcaf6f7c96f2cbbe50a80673fa72) )
@@ -348,7 +346,7 @@ ROM_END
 
 
 ROM_START( exeriont )
-	ROM_REGION( 0x6000, "main", 0 )
+	ROM_REGION( 0x6000, "maincpu", 0 )
 	ROM_LOAD( "prom5.4p",     0x0000, 0x4000, CRC(58b4dc1b) SHA1(3e34d1eda0b0537dac1062e96259d4cc7c64049c) )
 	ROM_LOAD( "prom6.4s",     0x4000, 0x2000, CRC(fca18c2d) SHA1(31077dada3ed4aa2e26af933f589e01e0c71e5cd) )
 
@@ -378,7 +376,7 @@ ROM_END
 
 
 ROM_START( exerionb )
-	ROM_REGION( 0x6000, "main", 0 )
+	ROM_REGION( 0x6000, "maincpu", 0 )
 	ROM_LOAD( "eb5.bin",      0x0000, 0x4000, CRC(da175855) SHA1(11ea46fd1d504e16e5ffc604d74c1ce210d6be1c) )
 	ROM_LOAD( "eb6.bin",      0x4000, 0x2000, CRC(0dbe2eff) SHA1(5b0e5e8453619beec46c4350d1b2ed571fe3dc24) )
 
@@ -464,7 +462,7 @@ static DRIVER_INIT( exerion )
 
 static DRIVER_INIT( exerionb )
 {
-	UINT8 *ram = memory_region(machine, "main");
+	UINT8 *ram = memory_region(machine, "maincpu");
 	int addr;
 
 	/* the program ROMs have data lines D1 and D2 swapped. Decode them. */

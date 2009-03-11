@@ -18,7 +18,6 @@
 #include "wave.h"
 
 #define ALWAYS_PLAY_SOUND	0
-#define WAVE_TOKEN_MASK		0xFFFF0000
 
 
 
@@ -56,15 +55,17 @@ static STREAM_UPDATE( wave_sound_update )
 
 
 
-static SND_START( wave )
+static DEVICE_START( wave )
 {
 	const device_config *image = NULL;
 
+	assert( device != NULL );
+	assert( device->static_config != NULL );
+
 #ifdef MESS
-	image = device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, device->tag );
+	image = devtag_get_device( device->machine, (const char *)device->static_config );
 #endif
 	stream_create(device, 0, 1, device->machine->sample_rate, (void *)image, wave_sound_update);
-	return (void *) (FPTR)(sndindex | WAVE_TOKEN_MASK);
 }
 
 
@@ -73,32 +74,23 @@ static SND_START( wave )
  * Generic get_info
  **************************************************************************/
 
-static SND_SET_INFO( wave )
-{
-	switch (state)
-	{
-		/* no parameters to set */
-	}
-}
-
-
-SND_GET_INFO( wave )
+DEVICE_GET_INFO( wave )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TOKEN_BYTES:					info->i = 0;	 							break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( wave );	break;
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( wave );		break;
-		case SNDINFO_PTR_STOP:							/* nothing */								break;
-		case SNDINFO_PTR_RESET:							/* nothing */								break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( wave );		break;
+		case DEVINFO_FCT_STOP:							/* nothing */								break;
+		case DEVINFO_FCT_RESET:							/* nothing */								break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							strcpy(info->s, "Cassette");				break;
-		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Cassette");				break;
-		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");						break;
-		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);					break;
-		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright The MESS Team"); break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Cassette");				break;
+		case DEVINFO_STR_FAMILY:					strcpy(info->s, "Cassette");				break;
+		case DEVINFO_STR_VERSION:					strcpy(info->s, "1.0");						break;
+		case DEVINFO_STR_SOURCE_FILE:						strcpy(info->s, __FILE__);					break;
+		case DEVINFO_STR_CREDITS:					strcpy(info->s, "Copyright The MESS Team"); break;
 	}
 }

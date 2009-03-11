@@ -446,7 +446,7 @@ static WRITE8_HANDLER(meritm_crt250_questions_bank_w)
 		return;
 	}
 
-	dst = memory_region(space->machine, "main") + 0x70000 + 2;
+	dst = memory_region(space->machine, "maincpu") + 0x70000 + 2;
 
 	if (data == 0)
 	{
@@ -559,11 +559,11 @@ static ADDRESS_MAP_START( meritm_crt250_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x21, 0x21) AM_READWRITE(v9938_1_status_r, v9938_1_command_w)
 	AM_RANGE(0x22, 0x22) AM_WRITE(v9938_1_palette_w)
 	AM_RANGE(0x23, 0x23) AM_WRITE(v9938_1_register_w)
-	AM_RANGE(0x30, 0x33) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
-	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE(Z80PIO, "z80pio_0", z80pio_r, z80pio_w)
-	AM_RANGE(0x50, 0x53) AM_DEVREADWRITE(Z80PIO, "z80pio_1", z80pio_r, z80pio_w)
-	AM_RANGE(0x80, 0x80) AM_READWRITE(ay8910_read_port_0_r, ay8910_control_port_0_w)
-	AM_RANGE(0x81, 0x81) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x30, 0x33) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE("z80pio_0", z80pio_r, z80pio_w)
+	AM_RANGE(0x50, 0x53) AM_DEVREADWRITE("z80pio_1", z80pio_r, z80pio_w)
+	AM_RANGE(0x80, 0x80) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x80, 0x81) AM_DEVWRITE("ay", ay8910_address_data_w)
 	AM_RANGE(0xff, 0xff) AM_WRITE(meritm_crt250_bank_w)
 ADDRESS_MAP_END
 
@@ -585,12 +585,12 @@ static ADDRESS_MAP_START( meritm_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x21, 0x21) AM_READWRITE(v9938_1_status_r, v9938_1_command_w)
 	AM_RANGE(0x22, 0x22) AM_WRITE(v9938_1_palette_w)
 	AM_RANGE(0x23, 0x23) AM_WRITE(v9938_1_register_w)
-	AM_RANGE(0x30, 0x33) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
-	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE(Z80PIO, "z80pio_0", z80pio_r, z80pio_w)
-	AM_RANGE(0x50, 0x53) AM_DEVREADWRITE(Z80PIO, "z80pio_1", z80pio_r, z80pio_w)
+	AM_RANGE(0x30, 0x33) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE("z80pio_0", z80pio_r, z80pio_w)
+	AM_RANGE(0x50, 0x53) AM_DEVREADWRITE("z80pio_1", z80pio_r, z80pio_w)
 	AM_RANGE(0x60, 0x67) AM_READWRITE(pc16552d_0_r,pc16552d_0_w)
-	AM_RANGE(0x80, 0x80) AM_READWRITE(ay8910_read_port_0_r, ay8910_control_port_0_w)
-	AM_RANGE(0x81, 0x81) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x80, 0x80) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x80, 0x81) AM_DEVWRITE("ay", ay8910_address_data_w)
 	AM_RANGE(0xff, 0xff) AM_WRITE(meritm_bank_w)
 ADDRESS_MAP_END
 
@@ -618,6 +618,9 @@ static INPUT_PORTS_START(meritm_crt260)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME( "Calibration" ) PORT_CODE(KEYCODE_C)
+
+	PORT_START("DSW")	/* need for AY-8910 accesses */
+	PORT_BIT( 0xff, 0x00, IPT_UNUSED)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START(meritm_crt250)
@@ -636,12 +639,15 @@ static INPUT_PORTS_START(meritm_crt250)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN)
+
+	PORT_START("DSW")	/* need for AY-8910 accesses */
+	PORT_BIT( 0xff, 0x00, IPT_UNUSED)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START(pitbossm)
 	PORT_INCLUDE(meritm_crt250)
 
-	PORT_START("DSW")
+	PORT_MODIFY("DSW")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -694,22 +700,22 @@ static WRITE8_DEVICE_HANDLER(meritm_crt250_port_b_w)
 
 static const ppi8255_interface crt260_ppi8255_intf =
 {
-	NULL,						/* Port A read */
-	NULL,						/* Port B read */
-	meritm_8255_port_c_r,		/* Port C read */
-	NULL,						/* Port A write (used) */
-	NULL,						/* Port B write (used LMP x DRIVE) */
-	NULL						/* Port C write */
+	DEVCB_NULL,								/* Port A read */
+	DEVCB_NULL,								/* Port B read */
+	DEVCB_HANDLER(meritm_8255_port_c_r),	/* Port C read */
+	DEVCB_NULL,								/* Port A write (used) */
+	DEVCB_NULL,								/* Port B write (used LMP x DRIVE) */
+	DEVCB_NULL								/* Port C write */
 };
 
 static const ppi8255_interface crt250_ppi8255_intf =
 {
-	NULL,						/* Port A read */
-	NULL,						/* Port B read */
-	meritm_8255_port_c_r,		/* Port C read */
-	NULL,						/* Port A write (used) */
-	meritm_crt250_port_b_w,		/* Port B write (used LMP x DRIVE) */
-	NULL						/* Port C write */
+	DEVCB_NULL,								/* Port A read */
+	DEVCB_NULL,								/* Port B read */
+	DEVCB_HANDLER(meritm_8255_port_c_r),	/* Port C read */
+	DEVCB_NULL,								/* Port A write (used) */
+	DEVCB_HANDLER(meritm_crt250_port_b_w),	/* Port B write (used LMP x DRIVE) */
+	DEVCB_NULL								/* Port C write */
 };
 
 /*************************************
@@ -723,12 +729,7 @@ static const ppi8255_interface crt250_ppi8255_intf =
  Port B: Bits 0,1 used
 */
 
-static READ8_HANDLER(meritm_ay8930_port_a_r)
-{
-	return input_port_read_safe(space->machine, "DSW", 0);
-};
-
-static WRITE8_HANDLER(meritm_ay8930_port_b_w)
+static WRITE8_DEVICE_HANDLER(meritm_ay8930_port_b_w)
 {
 	// lamps
 };
@@ -737,10 +738,10 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	meritm_ay8930_port_a_r, /* Port A read */
-	NULL, /* Port B read */
-	NULL, /* Port A write */
-	meritm_ay8930_port_b_w  /* Port B write */
+	DEVCB_INPUT_PORT("DSW"), /* Port A read */
+	DEVCB_NULL, /* Port B read */
+	DEVCB_NULL, /* Port A write */
+	DEVCB_HANDLER(meritm_ay8930_port_b_w)  /* Port B write */
 };
 
 /*************************************
@@ -825,21 +826,21 @@ static const z80pio_interface meritm_io_pio_intf =
 
 static const z80_daisy_chain meritm_daisy_chain[] =
 {
-	{ Z80PIO, "z80pio_1" },
-	{ Z80PIO, "z80pio_0" },
+	{ "z80pio_1" },
+	{ "z80pio_0" },
 	{ NULL }
 };
 
 static MACHINE_START(merit_common)
 {
-	meritm_z80pio[0] = devtag_get_device( machine, Z80PIO, "z80pio_0" );
-	meritm_z80pio[1] = devtag_get_device( machine, Z80PIO, "z80pio_1" );
+	meritm_z80pio[0] = devtag_get_device( machine, "z80pio_0" );
+	meritm_z80pio[1] = devtag_get_device( machine, "z80pio_1" );
 
 };
 
 static MACHINE_START(meritm_crt250)
 {
-	memory_configure_bank(machine, 1, 0, 8, memory_region(machine, "main"), 0x10000);
+	memory_configure_bank(machine, 1, 0, 8, memory_region(machine, "maincpu"), 0x10000);
 	meritm_bank = 0xff;
 	meritm_crt250_switch_banks(machine);
 	MACHINE_START_CALL(merit_common);
@@ -857,8 +858,8 @@ static MACHINE_START(meritm_crt260)
 {
 	meritm_ram = auto_malloc( 0x8000 );
 	memset( meritm_ram, 0x8000, 0x00 );
-	memory_configure_bank(machine, 1, 0, 128, memory_region(machine, "main"), 0x8000);
-	memory_configure_bank(machine, 2, 0, 128, memory_region(machine, "main"), 0x8000);
+	memory_configure_bank(machine, 1, 0, 128, memory_region(machine, "maincpu"), 0x8000);
+	memory_configure_bank(machine, 2, 0, 128, memory_region(machine, "maincpu"), 0x8000);
 	memory_configure_bank(machine, 3, 0, 4, meritm_ram, 0x2000);
 	meritm_bank = 0xff;
 	meritm_psd_a15 = 0;
@@ -892,7 +893,7 @@ static NVRAM_HANDLER(meritm_crt260)
 #define MSX2_VISIBLE_YBORDER_PIXELS	14 * 2
 
 static MACHINE_DRIVER_START(meritm_crt250)
-	MDRV_CPU_ADD("main", Z80, SYSTEM_CLK/6)
+	MDRV_CPU_ADD("maincpu", Z80, SYSTEM_CLK/6)
 	MDRV_CPU_PROGRAM_MAP(meritm_crt250_map,0)
 	MDRV_CPU_IO_MAP(meritm_crt250_io_map,0)
 	MDRV_CPU_CONFIG(meritm_daisy_chain)
@@ -909,7 +910,7 @@ static MACHINE_DRIVER_START(meritm_crt250)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 
-  	MDRV_SCREEN_ADD("main",RASTER)
+  	MDRV_SCREEN_ADD("screen",RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 
@@ -932,14 +933,14 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(meritm_crt250_questions)
 	MDRV_IMPORT_FROM(meritm_crt250)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(meritm_crt250_questions_map,0)
 	MDRV_MACHINE_START(meritm_crt250_questions)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(meritm_crt260)
 	MDRV_IMPORT_FROM(meritm_crt250)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(meritm_map,0)
 	MDRV_CPU_IO_MAP(meritm_io_map,0)
 
@@ -979,7 +980,7 @@ MACHINE_DRIVER_END
 */
 
 ROM_START( pitboss2 )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD( "u9",  0x00000, 0x10000, CRC(a1b6ac15) SHA1(b7b395f3e7e14dbb84003e03bf7d054e795a7211) )
 	ROM_LOAD( "u10", 0x10000, 0x10000, CRC(207aa83c) SHA1(1955d75b9e561312e98831571c9853579ded3734) )
 	ROM_LOAD( "u11", 0x20000, 0x10000, CRC(2052e043) SHA1(36b6cbc5712fc736c748a68bd12675291eae669d) )
@@ -991,7 +992,7 @@ ROM_START( pitboss2 )
 ROM_END
 
 ROM_START( pitbosss )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD( "9221-10-0b.u9",  0x00000, 0x10000, CRC(e1fbf7cb) SHA1(e04163219c357cd3da2a78ba2590d453df8e9477) )
 	ROM_LOAD( "9221-10-0.u10",  0x10000, 0x10000, CRC(853a1a99) SHA1(45e33442aa7e51c05c9ac8b8458937ee3ff4c21d) )
 	ROM_LOAD( "9221-10-0b.u11", 0x20000, 0x10000, CRC(6d6dfaf3) SHA1(de76c577eef1bb6637aacffedcc40266af92506e) )
@@ -1003,7 +1004,7 @@ ROM_START( pitbosss )
 ROM_END
 
 ROM_START( spitboss )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD( "u9-0a.rom",  0x00000, 0x10000, CRC(e0c45c9c) SHA1(534bff67c8fee08f1c348275de8977659efa9f69) )
 	ROM_LOAD( "u10.rom",    0x10000, 0x10000, CRC(ed010c58) SHA1(02750944a28c1c27ce2a9904d11b7e46272a940e) )
 	ROM_LOAD( "u11-0a.rom", 0x20000, 0x10000, CRC(0c65fa86) SHA1(7906a8d615116ca67bf370dfb2da8cb2389a313d) )
@@ -1047,7 +1048,7 @@ ROM_END
 */
 
 ROM_START( pitbossm )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD( "4",  0x00000, 0x10000, CRC(55e14fb1) SHA1(ec29764d1b63360f64b82452e0db8054b99fcca0) )
 	ROM_LOAD( "5",  0x10000, 0x10000, CRC(853a1a99) SHA1(45e33442aa7e51c05c9ac8b8458937ee3ff4c21d) )
 	ROM_LOAD( "6",  0x20000, 0x10000, CRC(47a9dfc7) SHA1(eca100003f5605bcf405f610a0458ccb67894d35) )
@@ -1146,7 +1147,7 @@ SC3943.u20    = ATF16V8B25PC
 */
 
 ROM_START( megat3 ) /* Dallas DS1204V security key at U5 labeled 9255-20-01 U5-RO1 C1995 MII */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD( "9255-20-01_u32-r0d", 0x000000, 0x080000, CRC(ac969296) SHA1(7e09e9141637339b83c21f2488560cdf8a460069) ) /* Location U32 */
 	ROM_RELOAD(                     0x080000, 0x080000)
 	ROM_LOAD( "qs9255-01_u36-r0",   0x100000, 0x080000, CRC(96bb501e) SHA1(f48ef238e8543676c42e3b85464a25ac179dcdd1) ) /* Location U36 */
@@ -1163,7 +1164,7 @@ ROM_START( megat3 ) /* Dallas DS1204V security key at U5 labeled 9255-20-01 U5-R
 ROM_END
 
 ROM_START( megat3a ) /* Dallas DS1204V security key at U5 labeled 9255-20-01 U5-RO1 C1995 MII */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD( "9255-20-01_u32-r0d", 0x000000, 0x080000, CRC(ac969296) SHA1(7e09e9141637339b83c21f2488560cdf8a460069) ) /* Location U32 */
 	ROM_RELOAD(                     0x080000, 0x080000)
 	ROM_LOAD( "qs9255-01_u36-r0",   0x100000, 0x080000, CRC(96bb501e) SHA1(f48ef238e8543676c42e3b85464a25ac179dcdd1) ) /* Location U36 */
@@ -1180,7 +1181,7 @@ ROM_START( megat3a ) /* Dallas DS1204V security key at U5 labeled 9255-20-01 U5-
 ROM_END
 
 ROM_START( megat3ca ) /* Dallas DS1204V security key at U5 labeled 9255-20-01 U5-RO1 C1995 MII */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD( "9255-20-01_u32-r0a", 0x000000, 0x080000, CRC(69110f8f) SHA1(253487f0b4a82072efb7c70bebf953ea1c41d0d8) ) /* Location U32 */
 	ROM_RELOAD(                     0x080000, 0x080000)
 	ROM_LOAD( "qs9255-01_u36-r0",   0x100000, 0x080000, CRC(96bb501e) SHA1(f48ef238e8543676c42e3b85464a25ac179dcdd1) ) /* Location U36 */
@@ -1197,7 +1198,7 @@ ROM_START( megat3ca ) /* Dallas DS1204V security key at U5 labeled 9255-20-01 U5
 ROM_END
 
 ROM_START( megat3nj ) /* Dallas DS1204V security key at U5 labeled 9255-20-01 U5-RO1 C1995 MII */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD( "9255-20-01_u32-r0d", 0x000000, 0x080000, CRC(ac969296) SHA1(7e09e9141637339b83c21f2488560cdf8a460069) ) /* Location U32 */
 	ROM_RELOAD(                     0x080000, 0x080000)
 	ROM_LOAD( "qs9255-01_u36-r0",   0x100000, 0x080000, CRC(96bb501e) SHA1(f48ef238e8543676c42e3b85464a25ac179dcdd1) ) /* Location U36 */
@@ -1214,7 +1215,7 @@ ROM_START( megat3nj ) /* Dallas DS1204V security key at U5 labeled 9255-20-01 U5
 ROM_END
 
 ROM_START( megat3te ) /* Dallas DS1204V security key at U5 labeled 9255-30-01 U5-RO1 C1995 MII */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD( "9255-30-01_u32-r0",  0x000000, 0x100000, CRC(31ac0004) SHA1(4bec97a852a7dadb0ab4f193bc376ed149102082) ) /* Location U32 */
 	ROM_LOAD( "qs9255-01_u36-r0",   0x100000, 0x080000, CRC(96bb501e) SHA1(f48ef238e8543676c42e3b85464a25ac179dcdd1) ) /* Location U36 */
 	ROM_RELOAD(                     0x180000, 0x080000)
@@ -1230,7 +1231,7 @@ ROM_START( megat3te ) /* Dallas DS1204V security key at U5 labeled 9255-30-01 U5
 ROM_END
 
 ROM_START( megat4 ) /* Dallas DS1204V security key at U5 labeled 9255-40-01 U5-B-RO1 C1996 MII */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD( "9255-40-01_u32-r0",  0x000000, 0x100000, CRC(08b1b8fe) SHA1(c562f2e065d6d7f753f6fd1d0b8355b01cb089ec) ) /* Location U32 */
 	ROM_LOAD( "qs9255-02_u36-r0",   0x100000, 0x80000,  CRC(57322328) SHA1(12bc604c9d34cde431ef7cd2aa33c7b12ac01833) ) /* Location U36 */
 	ROM_RELOAD(                     0x180000, 0x80000)
@@ -1247,7 +1248,7 @@ ROM_START( megat4 ) /* Dallas DS1204V security key at U5 labeled 9255-40-01 U5-B
 ROM_END
 
 ROM_START( megat4a ) /* Dallas DS1204V security key at U5 labeled 9255-40-01 U5-B-RO1 C1996 MII */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD( "9255-40-01_u32-r0",  0x000000, 0x100000, CRC(08b1b8fe) SHA1(c562f2e065d6d7f753f6fd1d0b8355b01cb089ec) ) /* Location U32 */
 	ROM_LOAD( "qs9255-02_u36-r0",   0x100000, 0x80000,  CRC(57322328) SHA1(12bc604c9d34cde431ef7cd2aa33c7b12ac01833) ) /* Location U36 */
 	ROM_RELOAD(                     0x180000, 0x80000)
@@ -1264,7 +1265,7 @@ ROM_START( megat4a ) /* Dallas DS1204V security key at U5 labeled 9255-40-01 U5-
 ROM_END
 
 ROM_START( megat4sn ) /* Dallas DS1204V security key at U5 labeled 9255-40-01 U5-B-RO1 C1996 MII */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD( "9255-40-01_u32-r0a", 0x000000, 0x100000, CRC(9ace8f52) SHA1(7c755c77cbfb234e1d6f531c90e4a8661275d464) ) /* Location U32 */
 	ROM_LOAD( "qs9255-02_u36-r0",   0x100000, 0x80000,  CRC(57322328) SHA1(12bc604c9d34cde431ef7cd2aa33c7b12ac01833) ) /* Location U36 */
 	ROM_RELOAD(                     0x180000, 0x80000)
@@ -1284,7 +1285,7 @@ ROM_START( megat4sn ) /* Dallas DS1204V security key at U5 labeled 9255-40-01 U5
 ROM_END
 
 ROM_START( megat4te ) /* Dallas DS1204V security key at U5 labeled 9255-50-01 U5-B-RO1 C1996 MII */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD( "9255-40-01_u32-r0",  0x000000, 0x100000, CRC(08b1b8fe) SHA1(c562f2e065d6d7f753f6fd1d0b8355b01cb089ec) ) /* Location U32 */
 	ROM_LOAD( "qs9255-02_u36-r0",   0x100000, 0x80000,  CRC(57322328) SHA1(12bc604c9d34cde431ef7cd2aa33c7b12ac01833) ) /* Location U36 */
 	ROM_RELOAD(                     0x180000, 0x80000)
@@ -1304,7 +1305,7 @@ ROM_START( megat4te ) /* Dallas DS1204V security key at U5 labeled 9255-50-01 U5
 ROM_END
 
 ROM_START( megat5 ) /* Dallas DS1204V security key at U5 labeled 9255-60-01 U5-B-RO1 C1998 MII */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD( "9255-60-01_u32-r0",  0x000000, 0x100000, CRC(f8f7f48e) SHA1(1bebe1f8898c60b795a0f794ca9b79e03d2744e4) )
 	ROM_LOAD( "qs9255-05_u36-r0",   0x100000, 0x80000,  CRC(0bed9e27) SHA1(1414385ce562b127e1ddeccc20ea4ff2a7098b7e) )
 	ROM_RELOAD(                     0x180000, 0x80000)
@@ -1321,7 +1322,7 @@ ROM_START( megat5 ) /* Dallas DS1204V security key at U5 labeled 9255-60-01 U5-B
 ROM_END
 
 ROM_START( megat5nj ) /* Dallas DS1204V security key at U5 labeled 9255-60-01 U5-B-RO1 C1998 MII */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD( "9255-60-01_u32-r0",  0x000000, 0x100000, CRC(f8f7f48e) SHA1(1bebe1f8898c60b795a0f794ca9b79e03d2744e4) )
 	ROM_LOAD( "qs9255-05_u36-r0",   0x100000, 0x80000,  CRC(0bed9e27) SHA1(1414385ce562b127e1ddeccc20ea4ff2a7098b7e) )
 	ROM_RELOAD(                     0x180000, 0x80000)
@@ -1337,7 +1338,7 @@ ROM_START( megat5nj ) /* Dallas DS1204V security key at U5 labeled 9255-60-01 U5
 ROM_END
 
 ROM_START( megat6 ) /* Dallas DS1204V security key at U5 labeled 9255-80 U5-B-RO1 C1998 MII */
-	ROM_REGION( 0x400000, "main", 0 )
+	ROM_REGION( 0x400000, "maincpu", 0 )
 	ROM_LOAD( "9255-60-01_u32-r0",  0x000000, 0x100000, CRC(f8f7f48e) SHA1(1bebe1f8898c60b795a0f794ca9b79e03d2744e4) ) /* Location U32 */
 	ROM_LOAD( "qs9255-08_u36-r0",   0x100000, 0x080000, CRC(800f5a1f) SHA1(4d3ee6fb896d6452aab1f279a3ee878284bd1acc) ) /* Location U36 */
 	ROM_RELOAD(                     0x180000, 0x080000 )

@@ -764,27 +764,9 @@ static CPU_DISASSEMBLE( ppcdrc )
 static CPU_SET_INFO( ppcdrc )
 {
 	powerpc_state *ppc = *(powerpc_state **)device->token;
-	switch (state)
-	{
-		/* --- the following bits of info are set as 64-bit signed integers --- */
-		case CPUINFO_INT_PPC_DRC_OPTIONS:				ppc->impstate->drcoptions = info->i;				break;
 
-		case CPUINFO_INT_PPC_FASTRAM_SELECT:			if (info->i >= 0 && info->i < PPC_MAX_FASTRAM) ppc->impstate->fastram_select = info->i; ppc->impstate->cache_dirty = TRUE; break;
-		case CPUINFO_INT_PPC_FASTRAM_START:				ppc->impstate->fastram[ppc->impstate->fastram_select].start = info->i; ppc->impstate->cache_dirty = TRUE; break;
-		case CPUINFO_INT_PPC_FASTRAM_END:				ppc->impstate->fastram[ppc->impstate->fastram_select].end = info->i; ppc->impstate->cache_dirty = TRUE; break;
-		case CPUINFO_INT_PPC_FASTRAM_READONLY:			ppc->impstate->fastram[ppc->impstate->fastram_select].readonly = info->i; ppc->impstate->cache_dirty = TRUE; break;
-
-		case CPUINFO_INT_PPC_HOTSPOT_SELECT:			if (info->i >= 0 && info->i < PPC_MAX_HOTSPOTS) ppc->impstate->hotspot_select = info->i; ppc->impstate->cache_dirty = TRUE; break;
-		case CPUINFO_INT_PPC_HOTSPOT_PC:				ppc->impstate->hotspot[ppc->impstate->hotspot_select].pc = info->i; ppc->impstate->cache_dirty = TRUE; break;
-		case CPUINFO_INT_PPC_HOTSPOT_OPCODE:			ppc->impstate->hotspot[ppc->impstate->hotspot_select].opcode = info->i; ppc->impstate->cache_dirty = TRUE; break;
-		case CPUINFO_INT_PPC_HOTSPOT_CYCLES:			ppc->impstate->hotspot[ppc->impstate->hotspot_select].cycles = info->i; ppc->impstate->cache_dirty = TRUE; break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_PPC_FASTRAM_BASE:				ppc->impstate->fastram[ppc->impstate->fastram_select].base = info->p;	break;
-
-		/* --- everything else is handled generically --- */
-		default:										ppccom_set_info(ppc, state, info);	break;
-	}
+	/* --- everything is handled generically --- */
+	ppccom_set_info(ppc, state, info);
 }
 
 
@@ -816,6 +798,53 @@ static CPU_GET_INFO( ppcdrc )
 
 		/* --- everything else is handled generically --- */
 		default:										ppccom_get_info(ppc, state, info); 				break;
+	}
+}
+
+
+/*-------------------------------------------------
+    ppcdrc_set_options - configure DRC options
+-------------------------------------------------*/
+
+void ppcdrc_set_options(const device_config *device, UINT32 options)
+{
+	powerpc_state *ppc = *(powerpc_state **)device->token;
+	ppc->impstate->drcoptions = options;
+}
+
+
+/*-------------------------------------------------
+    ppcdrc_add_fastram - add a new fastram
+    region
+-------------------------------------------------*/
+
+void ppcdrc_add_fastram(const device_config *device, offs_t start, offs_t end, UINT8 readonly, void *base)
+{
+	powerpc_state *ppc = *(powerpc_state **)device->token;
+	if (ppc->impstate->fastram_select < ARRAY_LENGTH(ppc->impstate->fastram))
+	{
+		ppc->impstate->fastram[ppc->impstate->fastram_select].start = start;
+		ppc->impstate->fastram[ppc->impstate->fastram_select].end = end;
+		ppc->impstate->fastram[ppc->impstate->fastram_select].readonly = readonly;
+		ppc->impstate->fastram[ppc->impstate->fastram_select].base = base;
+		ppc->impstate->fastram_select++;
+	}
+}
+
+
+/*-------------------------------------------------
+    ppcdrc_add_hotspot - add a new hotspot
+-------------------------------------------------*/
+
+void ppcdrc_add_hotspot(const device_config *device, offs_t pc, UINT32 opcode, UINT32 cycles)
+{
+	powerpc_state *ppc = *(powerpc_state **)device->token;
+	if (ppc->impstate->hotspot_select < ARRAY_LENGTH(ppc->impstate->hotspot))
+	{
+		ppc->impstate->hotspot[ppc->impstate->hotspot_select].pc = pc;
+		ppc->impstate->hotspot[ppc->impstate->hotspot_select].opcode = opcode;
+		ppc->impstate->hotspot[ppc->impstate->hotspot_select].cycles = cycles;
+		ppc->impstate->hotspot_select++;
 	}
 }
 
@@ -2060,8 +2089,9 @@ static void generate_checksum_block(powerpc_state *ppc, drcuml_block *block, com
 	{
 		if (!(seqhead->flags & OPFLAG_VIRTUAL_NOOP))
 		{
-			UML_LOAD(block, IREG(0), seqhead->opptr.l, IMM(0), DWORD);						// load    i0,*opptr,dword
-			UML_CMP(block, IREG(0), IMM(*seqhead->opptr.l));								// cmp     i0,*opptr
+			void *base = memory_decrypted_read_ptr(ppc->program, seqhead->physpc);
+			UML_LOAD(block, IREG(0), base, IMM(0), DWORD);									// load    i0,base,dword
+			UML_CMP(block, IREG(0), IMM(seqhead->opptr.l[0]));								// cmp     i0,*opptr
 			UML_EXHc(block, IF_NE, ppc->impstate->nocode, IMM(seqhead->pc));				// exne    nocode,seqhead->pc
 		}
 	}
@@ -2073,20 +2103,23 @@ static void generate_checksum_block(powerpc_state *ppc, drcuml_block *block, com
 		for (curdesc = seqhead->next; curdesc != seqlast->next; curdesc = curdesc->next)
 			if (!(curdesc->flags & OPFLAG_VIRTUAL_NOOP))
 			{
-				UML_LOAD(block, IREG(0), curdesc->opptr.l, IMM(0), DWORD);					// load    i0,*opptr,dword
-				UML_CMP(block, IREG(0), IMM(*curdesc->opptr.l));							// cmp     i0,*opptr
+				void *base = memory_decrypted_read_ptr(ppc->program, seqhead->physpc);
+				UML_LOAD(block, IREG(0), base, IMM(0), DWORD);								// load    i0,base,dword
+				UML_CMP(block, IREG(0), IMM(curdesc->opptr.l[0]));							// cmp     i0,*opptr
 				UML_EXHc(block, IF_NE, ppc->impstate->nocode, IMM(seqhead->pc));			// exne    nocode,seqhead->pc
 			}
 #else
 		UINT32 sum = 0;
-		UML_LOAD(block, IREG(0), seqhead->opptr.l, IMM(0), DWORD);							// load    i0,*opptr,dword
-		sum += *seqhead->opptr.l;
+		void *base = memory_decrypted_read_ptr(ppc->program, seqhead->physpc);
+		UML_LOAD(block, IREG(0), base, IMM(0), DWORD);										// load    i0,base,dword
+		sum += seqhead->opptr.l[0];
 		for (curdesc = seqhead->next; curdesc != seqlast->next; curdesc = curdesc->next)
 			if (!(curdesc->flags & OPFLAG_VIRTUAL_NOOP))
 			{
-				UML_LOAD(block, IREG(1), curdesc->opptr.l, IMM(0), DWORD);					// load    i1,*opptr,dword
+				base = memory_decrypted_read_ptr(ppc->program, curdesc->physpc);
+				UML_LOAD(block, IREG(1), base, IMM(0), DWORD);								// load    i1,base,dword
 				UML_ADD(block, IREG(0), IREG(0), IREG(1));									// add     i0,i0,i1
-				sum += *curdesc->opptr.l;
+				sum += curdesc->opptr.l[0];
 			}
 		UML_CMP(block, IREG(0), IMM(sum));													// cmp     i0,sum
 		UML_EXHc(block, IF_NE, ppc->impstate->nocode, IMM(seqhead->pc));					// exne    nocode,seqhead->pc
@@ -2106,7 +2139,7 @@ static void generate_sequence_instruction(powerpc_state *ppc, drcuml_block *bloc
 
 	/* add an entry for the log */
 	if (LOG_UML && !(desc->flags & OPFLAG_VIRTUAL_NOOP))
-		log_add_disasm_comment(block, desc->pc, *desc->opptr.l);
+		log_add_disasm_comment(block, desc->pc, desc->opptr.l[0]);
 
 	/* set the PC map variable */
 	UML_MAPVAR(block, MAPVAR_PC, desc->pc);													// mapvar  PC,desc->pc
@@ -2116,7 +2149,7 @@ static void generate_sequence_instruction(powerpc_state *ppc, drcuml_block *bloc
 
 	/* is this a hotspot? */
 	for (hotnum = 0; hotnum < PPC_MAX_HOTSPOTS; hotnum++)
-		if (ppc->impstate->hotspot[hotnum].pc != 0 && desc->pc == ppc->impstate->hotspot[hotnum].pc && *desc->opptr.l == ppc->impstate->hotspot[hotnum].opcode)
+		if (ppc->impstate->hotspot[hotnum].pc != 0 && desc->pc == ppc->impstate->hotspot[hotnum].pc && desc->opptr.l[0] == ppc->impstate->hotspot[hotnum].opcode)
 		{
 			compiler->cycles += ppc->impstate->hotspot[hotnum].cycles;
 			break;
@@ -2210,7 +2243,7 @@ static void generate_sequence_instruction(powerpc_state *ppc, drcuml_block *bloc
 		if (!generate_opcode(ppc, block, compiler, desc))
 		{
 			UML_MOV(block, MEM(&ppc->pc), IMM(desc->pc));									// mov     [pc],desc->pc
-			UML_MOV(block, MEM(&ppc->impstate->arg0), IMM(*desc->opptr.l));					// mov     [arg0],*desc->opptr.l
+			UML_MOV(block, MEM(&ppc->impstate->arg0), IMM(desc->opptr.l[0]));				// mov     [arg0],*desc->opptr.l
 			UML_CALLC(block, cfunc_unimplemented, ppc);										// callc   cfunc_unimplemented,ppc
 		}
 	}
@@ -2361,7 +2394,7 @@ static void generate_branch_bo(powerpc_state *ppc, drcuml_block *block, compiler
 
 static int generate_opcode(powerpc_state *ppc, drcuml_block *block, compiler_state *compiler, const opcode_desc *desc)
 {
-	UINT32 op = *desc->opptr.l;
+	UINT32 op = desc->opptr.l[0];
 	UINT32 opswitch = op >> 26;
 	int regnum;
 
@@ -2745,7 +2778,7 @@ static int generate_opcode(powerpc_state *ppc, drcuml_block *block, compiler_sta
 
 static int generate_instruction_13(powerpc_state *ppc, drcuml_block *block, compiler_state *compiler, const opcode_desc *desc)
 {
-	UINT32 op = *desc->opptr.l;
+	UINT32 op = desc->opptr.l[0];
 	UINT32 opswitch = (op >> 1) & 0x3ff;
 
 	switch (opswitch)
@@ -2882,7 +2915,7 @@ static int generate_instruction_13(powerpc_state *ppc, drcuml_block *block, comp
 
 static int generate_instruction_1f(powerpc_state *ppc, drcuml_block *block, compiler_state *compiler, const opcode_desc *desc)
 {
-	UINT32 op = *desc->opptr.l;
+	UINT32 op = desc->opptr.l[0];
 	UINT32 opswitch = (op >> 1) & 0x3ff;
 	int item;
 
@@ -3730,7 +3763,7 @@ static int generate_instruction_1f(powerpc_state *ppc, drcuml_block *block, comp
 
 static int generate_instruction_3b(powerpc_state *ppc, drcuml_block *block, compiler_state *compiler, const opcode_desc *desc)
 {
-	UINT32 op = *desc->opptr.l;
+	UINT32 op = desc->opptr.l[0];
 	UINT32 opswitch = (op >> 1) & 0x1f;
 
 	switch (opswitch)
@@ -3822,7 +3855,7 @@ static int generate_instruction_3b(powerpc_state *ppc, drcuml_block *block, comp
 
 static int generate_instruction_3f(powerpc_state *ppc, drcuml_block *block, compiler_state *compiler, const opcode_desc *desc)
 {
-	UINT32 op = *desc->opptr.l;
+	UINT32 op = desc->opptr.l[0];
 	UINT32 opswitch = (op >> 1) & 0x3ff;
 
 	if (opswitch & 0x10)
@@ -4169,7 +4202,7 @@ static void log_opcode_desc(drcuml_state *drcuml, const opcode_desc *desclist, i
 			if (desclist->flags & OPFLAG_VIRTUAL_NOOP)
 				strcpy(buffer, "<virtual nop>");
 			else
-				ppc_dasm_one(buffer, desclist->pc, *desclist->opptr.l);
+				ppc_dasm_one(buffer, desclist->pc, desclist->opptr.l[0]);
 		}
 		else
 			strcpy(buffer, "???");

@@ -36,7 +36,7 @@ The driver has been updated accordingly.
 #include "cpu/m6805/m6805.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
-#include "sound/3812intf.h"
+#include "sound/3526intf.h"
 #include "includes/matmania.h"
 
 static WRITE8_HANDLER( matmania_sh_command_w )
@@ -44,12 +44,6 @@ static WRITE8_HANDLER( matmania_sh_command_w )
 	soundlatch_w(space,offset,data);
 	cpu_set_input_line(space->machine->cpu[1],M6502_IRQ_LINE,HOLD_LINE);
 }
-
-static WRITE8_HANDLER( matmania_dac_w )
-{
-	dac_signed_data_w(0,data);
-}
-
 
 static WRITE8_HANDLER( maniach_sh_command_w )
 {
@@ -126,11 +120,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x2000, 0x2000) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x2001, 0x2001) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x2002, 0x2002) AM_WRITE(ay8910_write_port_1_w)
-	AM_RANGE(0x2003, 0x2003) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0x2004, 0x2004) AM_WRITE(matmania_dac_w)
+	AM_RANGE(0x2000, 0x2001) AM_DEVWRITE("ay1", ay8910_data_address_w)
+	AM_RANGE(0x2002, 0x2003) AM_DEVWRITE("ay2", ay8910_data_address_w)
+	AM_RANGE(0x2004, 0x2004) AM_DEVWRITE("dac", dac_signed_w)
 	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
@@ -142,9 +134,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( maniach_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x2000, 0x2000) AM_WRITE(ym3526_control_port_0_w)
-	AM_RANGE(0x2001, 0x2001) AM_WRITE(ym3526_write_port_0_w)
-	AM_RANGE(0x2002, 0x2002) AM_WRITE(matmania_dac_w)
+	AM_RANGE(0x2000, 0x2001) AM_DEVWRITE("ym", ym3526_w)
+	AM_RANGE(0x2002, 0x2002) AM_DEVWRITE("dac", dac_signed_w)
 	AM_RANGE(0x4000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
@@ -321,18 +312,18 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( matmania )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 1500000)	/* 1.5 MHz ???? */
+	MDRV_CPU_ADD("maincpu", M6502, 1500000)	/* 1.5 MHz ???? */
 	MDRV_CPU_PROGRAM_MAP(matmania_readmem,matmania_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", M6502, 1200000)	/* 1.2 MHz ???? */
+	MDRV_CPU_ADD("audiocpu", M6502, 1200000)	/* 1.2 MHz ???? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,15)	/* ???? */
 								/* IRQs are caused by the main CPU */
 	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -362,9 +353,9 @@ MACHINE_DRIVER_END
 
 
 /* handler called by the 3526 emulator when the internal timers cause an IRQ */
-static void irqhandler(running_machine *machine, int linestate)
+static void irqhandler(const device_config *device, int linestate)
 {
-	cpu_set_input_line(machine->cpu[1],1,linestate);
+	cpu_set_input_line(device->machine->cpu[1],1,linestate);
 }
 
 static const ym3526_interface ym3526_config =
@@ -376,11 +367,11 @@ static const ym3526_interface ym3526_config =
 static MACHINE_DRIVER_START( maniach )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 1500000)	/* 1.5 MHz ???? */
+	MDRV_CPU_ADD("maincpu", M6502, 1500000)	/* 1.5 MHz ???? */
 	MDRV_CPU_PROGRAM_MAP(maniach_readmem,maniach_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", M6809, 1500000)	/* 1.5 MHz ???? */
+	MDRV_CPU_ADD("audiocpu", M6809, 1500000)	/* 1.5 MHz ???? */
 	MDRV_CPU_PROGRAM_MAP(maniach_sound_readmem,maniach_sound_writemem)
 								/* IRQs are caused by the main CPU */
 	MDRV_CPU_ADD("mcu", M68705, 1500000*2)	/* (don't know really how fast, but it doesn't need to even be this fast) */
@@ -389,7 +380,7 @@ static MACHINE_DRIVER_START( maniach )
 	MDRV_QUANTUM_TIME(HZ(6000))	/* 100 CPU slice per frame - high interleaving to sync main and mcu */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -421,12 +412,12 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( matmania )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "k0-03",        0x4000, 0x4000, CRC(314ab8a4) SHA1(dc86b2f71a9af8524edad2317343b0d05fe5ef4a) )
 	ROM_LOAD( "k1-03",        0x8000, 0x4000, CRC(3b3c3f08) SHA1(65f0c5dba0b8eeb5c2d42b050cac37c475e6a398) )
 	ROM_LOAD( "k2-03",        0xc000, 0x4000, CRC(286c0917) SHA1(50d6133406e7db0694b02858c7d06725744cf243) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for audio code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for audio code */
 	ROM_LOAD( "k4-0",         0x8000, 0x4000, CRC(86dab489) SHA1(27f6eea29b0287e461e0e321fd7bfaada52c39dc) )
 	ROM_LOAD( "k5-0",         0xc000, 0x4000, CRC(4c41cdba) SHA1(a0af0c019bd6d9456cbbe83ecdeee689bc5f1bea) )
 
@@ -471,12 +462,12 @@ ROM_START( matmania )
 ROM_END
 
 ROM_START( excthour )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "e29",          0x04000, 0x4000, CRC(c453e855) SHA1(52ce83042ec04e7ba5b45a61316d6281cb10170a) )
 	ROM_LOAD( "e28",          0x08000, 0x4000, CRC(17b63708) SHA1(01c868b7ea32c4857f7187ce73a4cab5b4def246) )
 	ROM_LOAD( "e27",          0x0c000, 0x4000, CRC(269ab3bc) SHA1(f2f307c5fc6d50167be8904bef8c7ef21209be50) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for audio code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for audio code */
 	ROM_LOAD( "k4-0",         0x8000, 0x4000, CRC(86dab489) SHA1(27f6eea29b0287e461e0e321fd7bfaada52c39dc) )
 	ROM_LOAD( "k5-0",         0xc000, 0x4000, CRC(4c41cdba) SHA1(a0af0c019bd6d9456cbbe83ecdeee689bc5f1bea) )
 
@@ -521,12 +512,12 @@ ROM_START( excthour )
 ROM_END
 
 ROM_START( maniach )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "mc-mb2.bin",   0x04000, 0x4000, CRC(a6da1ba8) SHA1(d861c1c68b25272205939df43cdcca423ba7c937) )
 	ROM_LOAD( "mc-ma2.bin",   0x08000, 0x4000, CRC(84583323) SHA1(f1512fec6f3e03dc633a96917a114b0b6369c577) )
 	ROM_LOAD( "mc-m92.bin",   0x0c000, 0x4000, CRC(e209a500) SHA1(d1a3ab91ffbc321a51c99a2170aca3e217b22576) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for audio code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for audio code */
 	ROM_LOAD( "mc-m50.bin",   0x4000, 0x4000, CRC(ba415d68) SHA1(484af7a1f109cc9546f17d19b53d284c934705db) )
 	ROM_LOAD( "mc-m40.bin",   0x8000, 0x4000, CRC(2a217ed0) SHA1(b06f7c9a2c96ffe78a7065e5edadfdbf985305a5) )
 	ROM_LOAD( "mc-m30.bin",   0xc000, 0x4000, CRC(95af1723) SHA1(691ca3f7400d10897e805ff691c904fb2d5bb53a) )
@@ -581,12 +572,12 @@ ROM_START( maniach )
 ROM_END
 
 ROM_START( maniach2 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "ic40-mb1",     0x04000, 0x4000, CRC(b337a867) SHA1(a615283a70700028267e223df00e70bdd159ec09) )
 	ROM_LOAD( "ic41-ma1",     0x08000, 0x4000, CRC(85ec8279) SHA1(dada5fa6981573a1fbb235becbc647e1e2d497e1) )
 	ROM_LOAD( "ic42-m91",     0x0c000, 0x4000, CRC(a14b86dd) SHA1(73172dfeb34846beaa713c8886d56ed691139d06) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for audio code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for audio code */
 	ROM_LOAD( "mc-m50.bin",   0x4000, 0x4000, CRC(ba415d68) SHA1(484af7a1f109cc9546f17d19b53d284c934705db) )
 	ROM_LOAD( "mc-m40.bin",   0x8000, 0x4000, CRC(2a217ed0) SHA1(b06f7c9a2c96ffe78a7065e5edadfdbf985305a5) )
 	ROM_LOAD( "mc-m30.bin",   0xc000, 0x4000, CRC(95af1723) SHA1(691ca3f7400d10897e805ff691c904fb2d5bb53a) )

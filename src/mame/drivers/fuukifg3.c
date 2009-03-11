@@ -160,7 +160,6 @@ FG-3J ROM-J 507KA0301P04       Rev:1.3
 #include "driver.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m68000/m68000.h"
-#include "sound/262intf.h"
 #include "sound/ymf278b.h"
 
 static emu_timer *raster_interrupt_timer;
@@ -319,7 +318,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER ( fuuki32_sound_bw_w )
 {
-	UINT8 *rom = memory_region(space->machine, "sound");
+	UINT8 *rom = memory_region(space->machine, "soundcpu");
 
 	memory_set_bankptr(space->machine, 1, rom + 0x10000 + (data * 0x8000));
 }
@@ -353,12 +352,7 @@ static ADDRESS_MAP_START( fuuki32_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(fuuki32_sound_bw_w)
 	AM_RANGE(0x30, 0x30) AM_WRITE(SMH_NOP)
-	AM_RANGE(0x40, 0x40) AM_READWRITE(ymf262_status_0_r, ymf262_register_a_0_w)
-	AM_RANGE(0x41, 0x41) AM_WRITE(ymf262_data_a_0_w)
-	AM_RANGE(0x42, 0x42) AM_WRITE(ymf262_register_b_0_w)
-	AM_RANGE(0x43, 0x43) AM_WRITE(ymf262_data_b_0_w)
-	AM_RANGE(0x44, 0x44) AM_WRITE(ymf278b_control_port_0_c_w)
-	AM_RANGE(0x45, 0x45) AM_WRITE(ymf278b_data_port_0_c_w)
+	AM_RANGE(0x40, 0x45) AM_DEVREADWRITE("ymf", ymf278b_r, ymf278b_w)
 ADDRESS_MAP_END
 
 /***************************************************************************
@@ -583,12 +577,12 @@ static MACHINE_RESET( fuuki32 )
 }
 
 
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1], 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1], 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const ymf262_interface fuuki32_ymf262_interface =
+static const ymf278b_interface fuuki32_ymf278b_interface =
 {
 	irqhandler		/* irq */
 };
@@ -596,10 +590,10 @@ static const ymf262_interface fuuki32_ymf262_interface =
 static MACHINE_DRIVER_START( fuuki32 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68EC020, CPU_CLOCK) /* 20MHz verified */
+	MDRV_CPU_ADD("maincpu", M68EC020, CPU_CLOCK) /* 20MHz verified */
 	MDRV_CPU_PROGRAM_MAP(fuuki32_readmem,fuuki32_writemem)
 
-	MDRV_CPU_ADD("sound", Z80, SOUND_CPU_CLOCK) /* 6MHz verified */
+	MDRV_CPU_ADD("soundcpu", Z80, SOUND_CPU_CLOCK) /* 6MHz verified */
 	MDRV_CPU_PROGRAM_MAP(fuuki32_sound_readmem,fuuki32_sound_writemem)
 	MDRV_CPU_IO_MAP(fuuki32_sound_io_map,0)
 
@@ -609,7 +603,7 @@ static MACHINE_DRIVER_START( fuuki32 )
 	/* video hardware */
 	//MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM) // Buffered by 2 frames
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
@@ -623,18 +617,12 @@ static MACHINE_DRIVER_START( fuuki32 )
 	MDRV_VIDEO_EOF(fuuki32)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MDRV_SOUND_ADD("ymf1", YMF262, FM_SOUND_CLOCK) /* 33.8688MHz OSC divided by 2 is 16.9344MHz */
-	MDRV_SOUND_CONFIG(fuuki32_ymf262_interface)
-	MDRV_SOUND_ROUTE(0, "left", 0.50)
-	MDRV_SOUND_ROUTE(1, "right", 0.50)
-	MDRV_SOUND_ROUTE(2, "left", 0.50)
-	MDRV_SOUND_ROUTE(3, "right", 0.50)
-
-	MDRV_SOUND_ADD("ymf2", YMF278B, YMF278B_STD_CLOCK) /* YMF278B_STD_CLOCK = OSC 33.8688MHz */
-	MDRV_SOUND_ROUTE(0, "left", 0.50)
-	MDRV_SOUND_ROUTE(1, "right", 0.50)
+	MDRV_SOUND_ADD("ymf", YMF278B, YMF278B_STD_CLOCK) /* YMF278B_STD_CLOCK = OSC 33.8688MHz */
+	MDRV_SOUND_CONFIG(fuuki32_ymf278b_interface)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.50)
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -654,13 +642,13 @@ Fuuki, 1999   Consists of a FG-3J MAIN-J mainboard &  FG-3J ROM-J combo
 ***************************************************************************/
 
 ROM_START( asurabld )
-	ROM_REGION( 0x200000, "main", 0 ) /* M68020 */
+	ROM_REGION( 0x200000, "maincpu", 0 ) /* M68020 */
 	ROM_LOAD32_BYTE( "pgm3.u1", 0x000000, 0x80000, CRC(053e9758) SHA1(c2754d3f0c607c81c8fa33b667b576eb0474fd0b) )
 	ROM_LOAD32_BYTE( "pgm2.u2", 0x000001, 0x80000, CRC(16b656ca) SHA1(5ffb551ce7dec462d3896f0fed693454496894bc) )
 	ROM_LOAD32_BYTE( "pgm1.u3", 0x000002, 0x80000, CRC(35104452) SHA1(03cfd81429f8a945d5419c9750925bfa997d0607) )
 	ROM_LOAD32_BYTE( "pgm0.u4", 0x000003, 0x80000, CRC(68615497) SHA1(de93751f151f195a863dc6fe83b6e7ed8f99430a) )
 
-	ROM_REGION( 0x090000, "sound", 0 ) /* Z80 */
+	ROM_REGION( 0x090000, "soundcpu", 0 ) /* Z80 */
 	ROM_LOAD( "srom.u7", 0x00000, 0x80000, CRC(bb1deb89) SHA1(b1c70abddc0b9a88beb69a592376ff69a7e091eb) )
 	ROM_RELOAD(          0x10000, 0x80000) /* for banks */
 
@@ -684,10 +672,7 @@ ROM_START( asurabld )
 	ROM_REGION( 0x200000, "gfx4", ROMREGION_DISPOSE ) // background tiles
 	ROM_LOAD( "map.u5", 0x00000, 0x200000, CRC(e681155e) SHA1(458845b9c86df72685d92d0d4052aacc2fa7d1bd) )
 
-	ROM_REGION( 0x400000, "ymf1", 0 ) // OPL4 samples
-	ROM_LOAD( "pcm.u6", 0x00000, 0x400000, CRC(ac72225a) SHA1(8d16399ed34ac5bd69dbf43b2de2b0db9ac1c610) )
-
-	ROM_REGION( 0x400000, "ymf2", 0 ) // OPL4 samples
+	ROM_REGION( 0x400000, "ymf", 0 ) // OPL4 samples
 	ROM_LOAD( "pcm.u6", 0x00000, 0x400000, CRC(ac72225a) SHA1(8d16399ed34ac5bd69dbf43b2de2b0db9ac1c610) )
 ROM_END
 
@@ -700,13 +685,13 @@ Fuuki, 2000   Consists of a FG-3J MAIN-J mainboard &  FG-3J ROM-J combo
 ***************************************************************************/
 
 ROM_START( asurabus )
-	ROM_REGION( 0x200000, "main", 0 ) /* M68020 */
+	ROM_REGION( 0x200000, "maincpu", 0 ) /* M68020 */
 	ROM_LOAD32_BYTE( "pgm3.u1", 0x000000, 0x80000, CRC(2c6b5271) SHA1(188371f1f003823ac719e962e048719d76696b2f) )
 	ROM_LOAD32_BYTE( "pgm2.u2", 0x000001, 0x80000, CRC(8f8694ec) SHA1(3334df4aecc5ab2f8914ef6748c027a99b39ce26) )
 	ROM_LOAD32_BYTE( "pgm1.u3", 0x000002, 0x80000, CRC(0a040f0f) SHA1(d5e86d33efcbbde7ee62cfc8dfe867f250a33415) )
 	ROM_LOAD32_BYTE( "pgm0.u4", 0x000003, 0x80000, CRC(9b71e9d8) SHA1(9b705b5b6fff549f5679890422b481b5cf1d7bd7) )
 
-	ROM_REGION( 0x090000, "sound", 0 ) /* Z80 */
+	ROM_REGION( 0x090000, "soundcpu", 0 ) /* Z80 */
 	ROM_LOAD( "srom.u7", 0x00000, 0x80000, CRC(368da389) SHA1(1423b709da40bf3033c9032c4bd07658f1a969de) )
 	ROM_RELOAD(          0x10000, 0x80000) /* for banks */
 
@@ -731,10 +716,7 @@ ROM_START( asurabus )
 	ROM_REGION( 0x200000, "gfx4", ROMREGION_DISPOSE ) // background tiles
 	ROM_LOAD( "map.u5", 0x00000, 0x200000, CRC(bd179dc5) SHA1(ce3fcac573b14fd5365eb5dcec3257e439d2c129) )
 
-	ROM_REGION( 0x400000, "ymf1", 0 ) // OPL4 samples
-	ROM_LOAD( "opm.u6", 0x00000, 0x400000, CRC(31b05be4) SHA1(d0f4f387f84a74591224b0f42b7f5c538a3dc498) )
-
-	ROM_REGION( 0x400000, "ymf2", 0 ) // OPL4 samples
+	ROM_REGION( 0x400000, "ymf", 0 ) // OPL4 samples
 	ROM_LOAD( "opm.u6", 0x00000, 0x400000, CRC(31b05be4) SHA1(d0f4f387f84a74591224b0f42b7f5c538a3dc498) )
 ROM_END
 

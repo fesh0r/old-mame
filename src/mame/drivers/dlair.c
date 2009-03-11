@@ -40,7 +40,6 @@
 #include "machine/z80ctc.h"
 #include "machine/z80sio.h"
 #include "sound/ay8910.h"
-#include "sound/custom.h"
 #include "sound/beep.h"
 #include "dlair.lh"
 
@@ -128,8 +127,8 @@ static const z80sio_interface sio_intf =
 
 static const z80_daisy_chain dleuro_daisy_chain[] =
 {
-	{ Z80SIO, "sio" },
-	{ Z80CTC, "ctc" },
+	{ "sio" },
+	{ "ctc" },
 	{ NULL }
 };
 
@@ -185,7 +184,7 @@ static VIDEO_UPDATE( dleuro )
 
 static MACHINE_START( dlair )
 {
-	laserdisc = device_list_find_by_tag(machine->config->devicelist, LASERDISC, "laserdisc");
+	laserdisc = devtag_get_device(machine, "laserdisc");
 }
 
 
@@ -210,11 +209,12 @@ static MACHINE_RESET( dlair )
 static INTERRUPT_GEN( vblank_callback )
 {
 	/* also update the speaker on the European version */
-	if (sndti_exists(SOUND_BEEP, 0))
+	const device_config *beep = devtag_get_device(device->machine, "beep");
+	if (beep != NULL)
 	{
-		const device_config *ctc = devtag_get_device(device->machine, Z80CTC, "ctc");
-		beep_set_state(0, 1);
-		beep_set_frequency(0, ATTOSECONDS_TO_HZ(z80ctc_getperiod(ctc, 0).attoseconds));
+		const device_config *ctc = devtag_get_device(device->machine, "ctc");
+		beep_set_state(beep, 1);
+		beep_set_frequency(beep, ATTOSECONDS_TO_HZ(z80ctc_getperiod(ctc, 0).attoseconds));
 	}
 }
 
@@ -376,13 +376,13 @@ static WRITE8_DEVICE_HANDLER( sio_w )
 static ADDRESS_MAP_START( dlus_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x9fff) AM_ROM
 	AM_RANGE(0xa000, 0xa7ff) AM_MIRROR(0x1800) AM_RAM
-	AM_RANGE(0xc000, 0xc000) AM_MIRROR(0x1fc7) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0xc000, 0xc000) AM_MIRROR(0x1fc7) AM_DEVREAD("ay", ay8910_r)
 	AM_RANGE(0xc008, 0xc008) AM_MIRROR(0x1fc7) AM_READ_PORT("CONTROLS")
 	AM_RANGE(0xc010, 0xc010) AM_MIRROR(0x1fc7) AM_READ_PORT("SERVICE")
 	AM_RANGE(0xc020, 0xc020) AM_MIRROR(0x1fc7) AM_READ(laserdisc_r)
-	AM_RANGE(0xe000, 0xe000) AM_MIRROR(0x1fc7) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0xe000, 0xe000) AM_MIRROR(0x1fc7) AM_DEVWRITE("ay", ay8910_data_w)
 	AM_RANGE(0xe008, 0xe008) AM_MIRROR(0x1fc7) AM_WRITE(misc_w)
-	AM_RANGE(0xe010, 0xe010) AM_MIRROR(0x1fc7) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xe010, 0xe010) AM_MIRROR(0x1fc7) AM_DEVWRITE("ay", ay8910_address_w)
 	AM_RANGE(0xe020, 0xe020) AM_MIRROR(0x1fc7) AM_WRITE(laserdisc_w)
 	AM_RANGE(0xe030, 0xe037) AM_MIRROR(0x1fc0) AM_WRITE(led_den2_w)
 	AM_RANGE(0xe038, 0xe03f) AM_MIRROR(0x1fc0) AM_WRITE(led_den1_w)
@@ -419,8 +419,8 @@ ADDRESS_MAP_END
 /* complete memory map derived from schematics */
 static ADDRESS_MAP_START( dleuro_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x03) AM_MIRROR(0x7c) AM_DEVREADWRITE(Z80CTC, "ctc", z80ctc_r, z80ctc_w)
-	AM_RANGE(0x80, 0x83) AM_MIRROR(0x7c) AM_DEVREADWRITE(Z80SIO, "sio", sio_r, sio_w)
+	AM_RANGE(0x00, 0x03) AM_MIRROR(0x7c) AM_DEVREADWRITE("ctc", z80ctc_r, z80ctc_w)
+	AM_RANGE(0x80, 0x83) AM_MIRROR(0x7c) AM_DEVREADWRITE("sio", sio_r, sio_w)
 ADDRESS_MAP_END
 
 
@@ -679,8 +679,8 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_0_r,
-	input_port_1_r
+	DEVCB_INPUT_PORT("DSW1"),
+	DEVCB_INPUT_PORT("DSW2")
 };
 
 
@@ -694,65 +694,64 @@ static const ay8910_interface ay8910_config =
 static MACHINE_DRIVER_START( dlair_base )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, MASTER_CLOCK_US/4)
+	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK_US/4)
 	MDRV_CPU_PROGRAM_MAP(dlus_map,0)
-	MDRV_CPU_VBLANK_INT("main", vblank_callback)
+	MDRV_CPU_VBLANK_INT("screen", vblank_callback)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, (double)MASTER_CLOCK_US/8/16/16/16/16)
 
 	MDRV_MACHINE_START(dlair)
 	MDRV_MACHINE_RESET(dlair)
 
 	/* video hardware */
-	MDRV_LASERDISC_SCREEN_ADD_NTSC("main", BITMAP_FORMAT_RGB32)
+	MDRV_LASERDISC_SCREEN_ADD_NTSC("screen", BITMAP_FORMAT_RGB32)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ay", AY8910, MASTER_CLOCK_US/8)
 	MDRV_SOUND_CONFIG(ay8910_config)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.33)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.33)
 
-	MDRV_SOUND_ADD("ldsound", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ADD("ldsound", LASERDISC, 0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( dlair_pr7820 )
 	MDRV_IMPORT_FROM(dlair_base)
-	MDRV_LASERDISC_ADD("laserdisc", PIONEER_PR7820, "main", "ldsound")
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_PR7820, "screen", "ldsound")
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( dlair_ldv1000 )
 	MDRV_IMPORT_FROM(dlair_base)
-	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000, "main", "ldsound")
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_LDV1000, "screen", "ldsound")
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( dleuro )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, MASTER_CLOCK_EURO/4)
+	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK_EURO/4)
 	MDRV_CPU_CONFIG(dleuro_daisy_chain)
 	MDRV_CPU_PROGRAM_MAP(dleuro_map,0)
 	MDRV_CPU_IO_MAP(dleuro_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", vblank_callback)
+	MDRV_CPU_VBLANK_INT("screen", vblank_callback)
 
-	MDRV_Z80CTC_ADD("ctc", MASTER_CLOCK_EURO/4 /* same as "main" */, ctc_intf)
-	MDRV_Z80SIO_ADD("sio", MASTER_CLOCK_EURO/4 /* same as "main" */, sio_intf)
+	MDRV_Z80CTC_ADD("ctc", MASTER_CLOCK_EURO/4 /* same as "maincpu" */, ctc_intf)
+	MDRV_Z80SIO_ADD("sio", MASTER_CLOCK_EURO/4 /* same as "maincpu" */, sio_intf)
 
 	MDRV_WATCHDOG_TIME_INIT(HZ(MASTER_CLOCK_EURO/(16*16*16*16*16*8)))
 
 	MDRV_MACHINE_START(dlair)
 	MDRV_MACHINE_RESET(dlair)
 
-	MDRV_LASERDISC_ADD("laserdisc", PHILLIPS_22VP932, "main", "ldsound")
+	MDRV_LASERDISC_ADD("laserdisc", PHILLIPS_22VP932, "screen", "ldsound")
 	MDRV_LASERDISC_OVERLAY(dleuro, 256, 256, BITMAP_FORMAT_INDEXED16)
 
 	/* video hardware */
-	MDRV_LASERDISC_SCREEN_ADD_PAL("main", BITMAP_FORMAT_INDEXED16)
+	MDRV_LASERDISC_SCREEN_ADD_PAL("screen", BITMAP_FORMAT_INDEXED16)
 
 	MDRV_GFXDECODE(dlair)
 	MDRV_PALETTE_LENGTH(16)
@@ -760,16 +759,15 @@ static MACHINE_DRIVER_START( dleuro )
 	MDRV_PALETTE_INIT(dleuro)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("beep", BEEP, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.33)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.33)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.33)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.33)
 
-	MDRV_SOUND_ADD("laserdisc", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ADD("ldsound", LASERDISC, 0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -781,7 +779,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( dlair )		/* revision F2 */
-	ROM_REGION( 0xa000, "main", 0 )
+	ROM_REGION( 0xa000, "maincpu", 0 )
 	ROM_LOAD( "dl_f2_u1.bin", 0x0000, 0x2000,  CRC(f5ea3b9d) SHA1(c0cafff8b2982125fd3314ffc66681e47f027fc9) )
 	ROM_LOAD( "dl_f2_u2.bin", 0x2000, 0x2000,  CRC(dcc1dff2) SHA1(614ca8f6c5b6fa1d590f6b80d731377faa3a65a9) )
 	ROM_LOAD( "dl_f2_u3.bin", 0x4000, 0x2000,  CRC(ab514e5b) SHA1(29d1015b951f0f2d4e5257497f3bf007c5e2262c) )
@@ -792,7 +790,7 @@ ROM_START( dlair )		/* revision F2 */
 ROM_END
 
 ROM_START( dlaira )		/* revision A */
-	ROM_REGION( 0xa000, "main", 0 )
+	ROM_REGION( 0xa000, "maincpu", 0 )
 	ROM_LOAD( "dl_a_u1.bin", 0x0000, 0x2000,  CRC(d76e83ec) SHA1(fc7ff5d883de9b38a9e0532c35990f4b319ba1d3) )
 	ROM_LOAD( "dl_a_u2.bin", 0x2000, 0x2000,  CRC(a6a723d8) SHA1(5c71cb0b6be7331083adaf6fac6bdfc8445cb485) )
 	ROM_LOAD( "dl_a_u3.bin", 0x4000, 0x2000,  CRC(52c59014) SHA1(d4015046bf1c1f51c29d9d9f8e8d008519b61cd1) )
@@ -804,7 +802,7 @@ ROM_START( dlaira )		/* revision A */
 ROM_END
 
 ROM_START( dlairb )		/* revision B */
-	ROM_REGION( 0xa000, "main", 0 )
+	ROM_REGION( 0xa000, "maincpu", 0 )
 	ROM_LOAD( "dl_b_u1.bin", 0x0000, 0x2000,  CRC(d76e83ec) SHA1(fc7ff5d883de9b38a9e0532c35990f4b319ba1d3) )
 	ROM_LOAD( "dl_b_u2.bin", 0x2000, 0x2000,  CRC(6751103d) SHA1(e94e19f738e0eb69700e56c6069c7f3c0911303f) )
 	ROM_LOAD( "dl_b_u3.bin", 0x4000, 0x2000,  CRC(52c59014) SHA1(d4015046bf1c1f51c29d9d9f8e8d008519b61cd1) )
@@ -816,7 +814,7 @@ ROM_START( dlairb )		/* revision B */
 ROM_END
 
 ROM_START( dlairc )		/* revision C */
-	ROM_REGION( 0xa000, "main", 0 )
+	ROM_REGION( 0xa000, "maincpu", 0 )
 	ROM_LOAD( "dl_c_u1.bin", 0x0000, 0x2000,  CRC(cebfe26a) SHA1(1c808de5c92fef67d8088621fbd743c1a0a3bb5e) )
 	ROM_LOAD( "dl_c_u2.bin", 0x2000, 0x2000,  CRC(6751103d) SHA1(e94e19f738e0eb69700e56c6069c7f3c0911303f) )
 	ROM_LOAD( "dl_c_u3.bin", 0x4000, 0x2000,  CRC(52c59014) SHA1(d4015046bf1c1f51c29d9d9f8e8d008519b61cd1) )
@@ -828,7 +826,7 @@ ROM_START( dlairc )		/* revision C */
 ROM_END
 
 ROM_START( dlaird )		/* revision D */
-	ROM_REGION( 0xa000, "main", 0 )
+	ROM_REGION( 0xa000, "maincpu", 0 )
 	ROM_LOAD( "dl_d_u1.bin", 0x0000, 0x2000,  CRC(0b5ab120) SHA1(6ec59d6aaa27994d8de4f5635935fd6c1d42d2f6) )
 	ROM_LOAD( "dl_d_u2.bin", 0x2000, 0x2000,  CRC(93ebfffb) SHA1(2a8f6d7ab18845e22a2ba238b44d7c636908a125) )
 	ROM_LOAD( "dl_d_u3.bin", 0x4000, 0x2000,  CRC(22e6591f) SHA1(3176c07af6d942496c9ae338e3b93e28e2ce7982) )
@@ -840,7 +838,7 @@ ROM_START( dlaird )		/* revision D */
 ROM_END
 
 ROM_START( dlaire )		/* revision E */
-	ROM_REGION( 0xa000, "main", 0 )
+	ROM_REGION( 0xa000, "maincpu", 0 )
 	ROM_LOAD( "dl_e_u1.bin", 0x0000, 0x2000,  CRC(02980426) SHA1(409de05045adbd054bc1fda24d4a9672832e2fae) )
 	ROM_LOAD( "dl_e_u2.bin", 0x2000, 0x2000,  CRC(979d4c97) SHA1(5da6ceab5029ac5f5846bf52841675c5c70b17af) )
 	ROM_LOAD( "dl_e_u3.bin", 0x4000, 0x2000,  CRC(897bf075) SHA1(d2ff9c2fec37544cfe8fb60273524c6610488502) )
@@ -851,7 +849,7 @@ ROM_START( dlaire )		/* revision E */
 ROM_END
 
 ROM_START( dlairf )		/* revision F */
-	ROM_REGION( 0xa000, "main", 0 )
+	ROM_REGION( 0xa000, "maincpu", 0 )
 	ROM_LOAD( "dl_f_u1.bin", 0x0000, 0x2000,  CRC(06fc6941) SHA1(ea8cf6d370f89d60721ab00ec58ff24027b5252f) )
 	ROM_LOAD( "dl_f_u2.bin", 0x2000, 0x2000,  CRC(dcc1dff2) SHA1(614ca8f6c5b6fa1d590f6b80d731377faa3a65a9) )
 	ROM_LOAD( "dl_f_u3.bin", 0x4000, 0x2000,  CRC(ab514e5b) SHA1(29d1015b951f0f2d4e5257497f3bf007c5e2262c) )
@@ -862,7 +860,7 @@ ROM_START( dlairf )		/* revision F */
 ROM_END
 
 ROM_START( dleuro )		/* European Atari version */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "elu45.bin", 0x0000, 0x2000, CRC(4d3a9eac) SHA1(e6cd274b4a0f92b1fb1f013f80f6fd2db3212431) )
 	ROM_LOAD( "elu46.bin", 0x2000, 0x2000, CRC(8479612b) SHA1(b5543a06928274bde0e1bdda0747d936feaff177) )
 	ROM_LOAD( "elu47.bin", 0x4000, 0x2000, CRC(6a66f6b4) SHA1(2bee981870e61977565439c34568952043656cfa) )
@@ -876,7 +874,7 @@ ROM_START( dleuro )		/* European Atari version */
 ROM_END
 
 ROM_START( dlital )		/* Italian Sidam version */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "dlita45.bin", 0x0000, 0x2000, CRC(4d3a9eac) SHA1(e6cd274b4a0f92b1fb1f013f80f6fd2db3212431) )
 	ROM_LOAD( "dlita46.bin", 0x2000, 0x2000, CRC(8479612b) SHA1(b5543a06928274bde0e1bdda0747d936feaff177) )
 	ROM_LOAD( "dlita47.bin", 0x4000, 0x2000, CRC(6a66f6b4) SHA1(2bee981870e61977565439c34568952043656cfa) )
@@ -891,7 +889,7 @@ ROM_END
 
 
 ROM_START( spaceace )		/* revision A3 */
-	ROM_REGION( 0xa000, "main", 0 )
+	ROM_REGION( 0xa000, "maincpu", 0 )
 	ROM_LOAD( "sa_a3_u1.bin", 0x0000, 0x2000,  CRC(427522d0) SHA1(de4d5353af0be3e60afe1ed13d1d531c425cdb4d) )
 	ROM_LOAD( "sa_a3_u2.bin", 0x2000, 0x2000,  CRC(18d0262d) SHA1(c3920e3cabfe2b2add51881e262f090c5018e508) )
 	ROM_LOAD( "sa_a3_u3.bin", 0x4000, 0x2000,  CRC(4646832d) SHA1(9f1370b13cca9857b0ed13f58641ef4ba3c7326d) )
@@ -903,7 +901,7 @@ ROM_START( spaceace )		/* revision A3 */
 ROM_END
 
 ROM_START( spaceaa2 )		/* revision A2 */
-	ROM_REGION( 0xa000, "main", 0 )
+	ROM_REGION( 0xa000, "maincpu", 0 )
 	ROM_LOAD( "sa_a2_u1.bin", 0x0000, 0x2000,  CRC(71b39e27) SHA1(15a34eee9d541b186761a78b5c97449c7b496e4f) )
 	ROM_LOAD( "sa_a2_u2.bin", 0x2000, 0x2000,  CRC(18d0262d) SHA1(c3920e3cabfe2b2add51881e262f090c5018e508) )
 	ROM_LOAD( "sa_a2_u3.bin", 0x4000, 0x2000,  CRC(4646832d) SHA1(9f1370b13cca9857b0ed13f58641ef4ba3c7326d) )
@@ -915,7 +913,7 @@ ROM_START( spaceaa2 )		/* revision A2 */
 ROM_END
 
 ROM_START( spaceaa )		/* revision A */
-	ROM_REGION( 0xa000, "main", 0 )
+	ROM_REGION( 0xa000, "maincpu", 0 )
 	ROM_LOAD( "sa_a_u1.bin", 0x0000, 0x2000,  CRC(8eb1889e) SHA1(bfa2c5fc139c448b7b6b5c5757d4f2f74e610b85) )
 	ROM_LOAD( "sa_a_u2.bin", 0x2000, 0x2000,  CRC(18d0262d) SHA1(c3920e3cabfe2b2add51881e262f090c5018e508) )
 	ROM_LOAD( "sa_a_u3.bin", 0x4000, 0x2000,  CRC(4646832d) SHA1(9f1370b13cca9857b0ed13f58641ef4ba3c7326d) )
@@ -927,7 +925,7 @@ ROM_START( spaceaa )		/* revision A */
 ROM_END
 
 ROM_START( saeuro )		/* Italian Sidam version */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "sa_u45a.bin", 0x0000, 0x2000, CRC(41264d46) SHA1(3e0ecfb3249f857a29fe58a3853a55d31cbd63d6) )
 	ROM_LOAD( "sa_u46a.bin", 0x2000, 0x2000, CRC(bc1c70cf) SHA1(cd6d2456ac2fbbfb86e1f31bd7cbd0cec0d31b45) )
 	ROM_LOAD( "sa_u47a.bin", 0x4000, 0x2000, CRC(ff3f77c7) SHA1(d10ffd14ab9853cef8085c70aedfabea4059657e) )

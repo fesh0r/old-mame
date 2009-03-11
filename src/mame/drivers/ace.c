@@ -61,18 +61,17 @@ static READ8_HANDLER( ace_objpos_r )
 }
 #endif
 
+static VIDEO_START( ace )
+{
+	gfx_element_set_source(machine->gfx[1], ace_characterram);
+	gfx_element_set_source(machine->gfx[2], ace_characterram);
+	gfx_element_set_source(machine->gfx[3], ace_characterram);
+	gfx_element_set_source(machine->gfx[4], ace_scoreram);
+}
+
 static VIDEO_UPDATE( ace )
 {
 	int offs;
-
-	decodechar(screen->machine->gfx[1], 0, ace_characterram);
-	decodechar(screen->machine->gfx[2], 0, ace_characterram);
-	decodechar(screen->machine->gfx[3], 0, ace_characterram);
-
-	for (offs = 0; offs < 8; offs++)
-	{
-		decodechar(screen->machine->gfx[4], offs, ace_scoreram);
-	}
 
 	/* first of all, fill the screen with the background color */
 	bitmap_fill(bitmap, cliprect, 0);
@@ -119,11 +118,6 @@ static PALETTE_INIT( ace )
 }
 
 
-static READ8_HANDLER( ace_characterram_r )
-{
-	return ace_characterram[offset];
-}
-
 static WRITE8_HANDLER( ace_characterram_w )
 {
 	if (ace_characterram[offset] != data)
@@ -134,9 +128,17 @@ static WRITE8_HANDLER( ace_characterram_w )
 			popmessage("write to %04x data=%02x\n", 0x8000+offset, data);
 		}
 		ace_characterram[offset] = data;
+		gfx_element_mark_dirty(space->machine->gfx[1], 0);
+		gfx_element_mark_dirty(space->machine->gfx[2], 0);
+		gfx_element_mark_dirty(space->machine->gfx[3], 0);
 	}
 }
 
+static WRITE8_HANDLER( ace_scoreram_w )
+{
+	ace_scoreram[offset] = data;
+	gfx_element_mark_dirty(space->machine->gfx[4], offset / 32);
+}
 
 static READ8_HANDLER( unk_r )
 {
@@ -152,9 +154,9 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x0000, 0x09ff) AM_ROM
 
-	AM_RANGE(0x2000, 0x20ff) AM_RAM AM_BASE(&ace_scoreram)	/* 2x2101 */
+	AM_RANGE(0x2000, 0x20ff) AM_RAM_WRITE(ace_scoreram_w) AM_BASE(&ace_scoreram)	/* 2x2101 */
 	AM_RANGE(0x8300, 0x83ff) AM_RAM AM_BASE(&ace_ram2)		/* 2x2101 */
-	AM_RANGE(0x8000, 0x80ff) AM_READWRITE(ace_characterram_r, ace_characterram_w) AM_BASE(&ace_characterram)	/* 3x3101 (3bits: 0, 1, 2) */
+	AM_RANGE(0x8000, 0x80ff) AM_RAM_WRITE(ace_characterram_w) AM_BASE(&ace_characterram)	/* 3x3101 (3bits: 0, 1, 2) */
 
 	AM_RANGE(0xc000, 0xc005) AM_WRITE(ace_objpos_w)
 
@@ -303,16 +305,20 @@ static GFXDECODE_START( ace )
 	GFXDECODE_ENTRY( NULL          , 0x8000, scorelayout, 0, 2 )    /* the game dynamically modifies this */
 GFXDECODE_END
 
-
+static MACHINE_START( ace )
+{
+    state_save_register_global_array(machine, objpos);
+}
 
 static MACHINE_DRIVER_START( ace )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", 8080, MASTER_CLOCK/9)	/* 2 MHz ? */
+	MDRV_CPU_ADD("maincpu", 8080, MASTER_CLOCK/9)	/* 2 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
+    MDRV_MACHINE_START(ace)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -322,6 +328,7 @@ static MACHINE_DRIVER_START( ace )
 	MDRV_PALETTE_LENGTH(2)
 
 	MDRV_PALETTE_INIT(ace)
+	MDRV_VIDEO_START(ace)
 	MDRV_VIDEO_UPDATE(ace)
 
 	/* sound hardware */
@@ -336,7 +343,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( ace )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "ace.a1",		0x0000, 0x0200, CRC(16811834) SHA1(5502812dd161908eea3fa8851d7e5c1e22b0f8ff) )
 	ROM_LOAD( "ace.a2",		0x0200, 0x0200, CRC(f9eae80e) SHA1(8865b86c7b5d57c76312c16f8a614bf35ffaf532) )
 	ROM_LOAD( "ace.a3",		0x0400, 0x0200, CRC(c5c63b8c) SHA1(2079dd12ff0c4aafec19aeb9baa70fc9b6788356) )
@@ -349,4 +356,4 @@ ROM_START( ace )
 
 ROM_END
 
-GAME( 1976, ace, 0, ace, ace, 0, ROT0, "Allied Leisure", "Ace", GAME_NO_SOUND | GAME_IMPERFECT_COLORS )
+GAME( 1976, ace, 0, ace, ace, 0, ROT0, "Allied Leisure", "Ace", GAME_SUPPORTS_SAVE | GAME_NO_SOUND | GAME_IMPERFECT_COLORS )

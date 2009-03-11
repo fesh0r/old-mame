@@ -136,10 +136,10 @@ Notes:
  *
  *************************************/
 
-static WRITE8_HANDLER( yawdim_oki_bank_w )
+static WRITE8_DEVICE_HANDLER( yawdim_oki_bank_w )
 {
 	if (data & 4)
-		okim6295_set_bank_base(0, 0x40000 * (data & 3));
+		okim6295_set_bank_base(device, 0x40000 * (data & 3));
 }
 
 
@@ -212,8 +212,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( yawdim_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM
-	AM_RANGE(0x9000, 0x97ff) AM_WRITE(yawdim_oki_bank_w)
-	AM_RANGE(0x9800, 0x9fff) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w)
+	AM_RANGE(0x9000, 0x97ff) AM_DEVWRITE("oki", yawdim_oki_bank_w)
+	AM_RANGE(0x9800, 0x9fff) AM_DEVREADWRITE("oki", okim6295_r, okim6295_w)
 	AM_RANGE(0xa000, 0xa7ff) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
@@ -985,7 +985,7 @@ INPUT_PORTS_END
 static const tms34010_config zunit_tms_config =
 {
 	FALSE,							/* halt on reset */
-	"main",							/* the screen operated on */
+	"screen",						/* the screen operated on */
 	MEDRES_PIXEL_CLOCK,				/* pixel clock */
 	2,								/* pixels per clock */
 	midyunit_scanline_update,		/* scanline updater */
@@ -997,7 +997,7 @@ static const tms34010_config zunit_tms_config =
 static const tms34010_config yunit_tms_config =
 {
 	FALSE,							/* halt on reset */
-	"main",							/* the screen operated on */
+	"screen",						/* the screen operated on */
 	STDRES_PIXEL_CLOCK,				/* pixel clock */
 	2,								/* pixels per clock */
 	midyunit_scanline_update,		/* scanline updater */
@@ -1017,7 +1017,7 @@ static const tms34010_config yunit_tms_config =
 static MACHINE_DRIVER_START( zunit )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", TMS34010, FAST_MASTER_CLOCK)
+	MDRV_CPU_ADD("maincpu", TMS34010, FAST_MASTER_CLOCK)
 	MDRV_CPU_CONFIG(zunit_tms_config)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
@@ -1028,7 +1028,7 @@ static MACHINE_DRIVER_START( zunit )
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)
 	MDRV_PALETTE_LENGTH(8192)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(MEDRES_PIXEL_CLOCK*2, 673, 0, 511, 433, 0, 399)
 
@@ -1050,7 +1050,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( yunit_core )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", TMS34010, SLOW_MASTER_CLOCK)
+	MDRV_CPU_ADD("maincpu", TMS34010, SLOW_MASTER_CLOCK)
 	MDRV_CPU_CONFIG(yunit_tms_config)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
@@ -1061,7 +1061,7 @@ static MACHINE_DRIVER_START( yunit_core )
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)
 	MDRV_PALETTE_LENGTH(256)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(STDRES_PIXEL_CLOCK*2, 505, 0, 399, 289, 0, 253)
 
@@ -1085,7 +1085,7 @@ static MACHINE_DRIVER_START( yunit_cvsd_4bit_fast )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(yunit_core)
-	MDRV_CPU_REPLACE("main", TMS34010, FAST_MASTER_CLOCK)
+	MDRV_CPU_REPLACE("maincpu", TMS34010, FAST_MASTER_CLOCK)
 	MDRV_IMPORT_FROM(williams_cvsd_sound)
 
 	/* video hardware */
@@ -1110,7 +1110,7 @@ static MACHINE_DRIVER_START( yunit_adpcm_6bit_fast )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(yunit_core)
-	MDRV_CPU_REPLACE("main", TMS34010, FAST_MASTER_CLOCK)
+	MDRV_CPU_REPLACE("maincpu", TMS34010, FAST_MASTER_CLOCK)
 	MDRV_IMPORT_FROM(williams_adpcm_sound)
 
 	/* video hardware */
@@ -1123,7 +1123,7 @@ static MACHINE_DRIVER_START( yunit_adpcm_6bit_faster )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(yunit_core)
-	MDRV_CPU_REPLACE("main", TMS34010, FASTER_MASTER_CLOCK)
+	MDRV_CPU_REPLACE("maincpu", TMS34010, FASTER_MASTER_CLOCK)
 	MDRV_IMPORT_FROM(williams_adpcm_sound)
 
 	/* video hardware */
@@ -1137,7 +1137,7 @@ static MACHINE_DRIVER_START( mkyawdim )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(yunit_core)
 
-	MDRV_CPU_ADD("audio", Z80, 5000000)
+	MDRV_CPU_ADD("audiocpu", Z80, 5000000)
 	MDRV_CPU_PROGRAM_MAP(yawdim_sound_map,0)
 
 	/* video hardware */
@@ -1161,13 +1161,13 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( narc )
-	ROM_REGION( 0x90000, "narc1", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "narc1cpu", 0 )	/* sound CPU */
 	ROM_LOAD( "u4-snd", 0x50000, 0x10000, CRC(450a591a) SHA1(bbda8061262738e5866f2707f69483a0a51d2910) )
 	ROM_RELOAD(         0x60000, 0x10000 )
 	ROM_LOAD( "u5-snd", 0x70000, 0x10000, CRC(e551e5e3) SHA1(c8b4f53dbd4c534abb77d4dc07c4d12653b79894) )
 	ROM_RELOAD(         0x80000, 0x10000 )
 
-	ROM_REGION( 0x90000, "narc2", 0 )	/* slave sound CPU */
+	ROM_REGION( 0x90000, "narc2cpu", 0 )	/* slave sound CPU */
 	ROM_LOAD( "u35-snd", 0x10000, 0x10000, CRC(81295892) SHA1(159664e5ee03c88d6e940e70e87e2150dc5b8b25) )
 	ROM_RELOAD(          0x20000, 0x10000 )
 	ROM_LOAD( "u36-snd", 0x30000, 0x10000, CRC(16cdbb13) SHA1(2dfd961a5d909c1804f4fda34de33ee2664c4bc6) )
@@ -1251,13 +1251,13 @@ ROM_END
 
 
 ROM_START( narc3 )
-	ROM_REGION( 0x90000, "narc1", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "narc1cpu", 0 )	/* sound CPU */
 	ROM_LOAD( "u4-snd", 0x50000, 0x10000, CRC(450a591a) SHA1(bbda8061262738e5866f2707f69483a0a51d2910) )
 	ROM_RELOAD(         0x60000, 0x10000 )
 	ROM_LOAD( "u5-snd", 0x70000, 0x10000, CRC(e551e5e3) SHA1(c8b4f53dbd4c534abb77d4dc07c4d12653b79894) )
 	ROM_RELOAD(         0x80000, 0x10000 )
 
-	ROM_REGION( 0x90000, "narc2", 0 )	/* slave sound CPU */
+	ROM_REGION( 0x90000, "narc2cpu", 0 )	/* slave sound CPU */
 	ROM_LOAD( "u35-snd", 0x10000, 0x10000, CRC(81295892) SHA1(159664e5ee03c88d6e940e70e87e2150dc5b8b25) )
 	ROM_RELOAD(          0x20000, 0x10000 )
 	ROM_LOAD( "u36-snd", 0x30000, 0x10000, CRC(16cdbb13) SHA1(2dfd961a5d909c1804f4fda34de33ee2664c4bc6) )
@@ -1353,7 +1353,7 @@ ROM_END
 
 
 ROM_START( trog )
-	ROM_REGION( 0x90000, "cvsd", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 )	/* sound CPU */
 	ROM_LOAD (   "trogu4.bin", 0x10000, 0x10000, CRC(759d0bf4) SHA1(c4c3fa51c43cf7fd241ac1f33d7d220aa9f9edb3) )
 	ROM_RELOAD(                0x20000, 0x10000 )
 	ROM_LOAD (  "trogu19.bin", 0x30000, 0x10000, CRC(960c333d) SHA1(da8ce8dfffffe7a2d60b3f75cc5aa88e5e2be659) )
@@ -1383,7 +1383,7 @@ ROM_END
 
 
 ROM_START( trog4 )
-	ROM_REGION( 0x90000, "cvsd", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 )	/* sound CPU */
 	ROM_LOAD (   "trogu4.bin", 0x10000, 0x10000, CRC(759d0bf4) SHA1(c4c3fa51c43cf7fd241ac1f33d7d220aa9f9edb3) )
 	ROM_RELOAD(                0x20000, 0x10000 )
 	ROM_LOAD (  "trogu19.bin", 0x30000, 0x10000, CRC(960c333d) SHA1(da8ce8dfffffe7a2d60b3f75cc5aa88e5e2be659) )
@@ -1413,7 +1413,7 @@ ROM_END
 
 
 ROM_START( trog3 )
-	ROM_REGION( 0x90000, "cvsd", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 )	/* sound CPU */
 	ROM_LOAD (   "trogu4.bin", 0x10000, 0x10000, CRC(759d0bf4) SHA1(c4c3fa51c43cf7fd241ac1f33d7d220aa9f9edb3) )
 	ROM_RELOAD(                0x20000, 0x10000 )
 	ROM_LOAD (  "trogu19.bin", 0x30000, 0x10000, CRC(960c333d) SHA1(da8ce8dfffffe7a2d60b3f75cc5aa88e5e2be659) )
@@ -1443,7 +1443,7 @@ ROM_END
 
 
 ROM_START( trogpa6 )
-	ROM_REGION( 0x90000, "cvsd", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 )	/* sound CPU */
 	ROM_LOAD (   "trogu4.bin", 0x10000, 0x10000, CRC(759d0bf4) SHA1(c4c3fa51c43cf7fd241ac1f33d7d220aa9f9edb3) )
 	ROM_RELOAD(                0x20000, 0x10000 )
 	ROM_LOAD (  "trogu19.bin", 0x30000, 0x10000, CRC(960c333d) SHA1(da8ce8dfffffe7a2d60b3f75cc5aa88e5e2be659) )
@@ -1473,7 +1473,7 @@ ROM_END
 
 
 ROM_START( trogp )
-	ROM_REGION( 0x90000, "cvsd", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 )	/* sound CPU */
 	ROM_LOAD (   "trogu4.bin", 0x10000, 0x10000, CRC(759d0bf4) SHA1(c4c3fa51c43cf7fd241ac1f33d7d220aa9f9edb3) )
 	ROM_RELOAD(                0x20000, 0x10000 )
 	ROM_LOAD (  "trogu19.bin", 0x30000, 0x10000, CRC(960c333d) SHA1(da8ce8dfffffe7a2d60b3f75cc5aa88e5e2be659) )
@@ -1503,7 +1503,7 @@ ROM_END
 
 
 ROM_START( smashtv )
-	ROM_REGION( 0x90000, "cvsd", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 )	/* sound CPU */
 	ROM_LOAD (  "u4.snd", 0x10000, 0x10000, CRC(29d3f6c8) SHA1(8a90cdff54f59ddb7dba521504d880515a59df08) )
 	ROM_RELOAD(           0x20000, 0x10000 )
 	ROM_LOAD ( "u19.snd", 0x30000, 0x10000, CRC(ac5a402a) SHA1(c476018062126dc3936caa2c328de490737165ec) )
@@ -1531,7 +1531,7 @@ ROM_END
 
 
 ROM_START( smashtv6 )
-	ROM_REGION( 0x90000, "cvsd", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 )	/* sound CPU */
 	ROM_LOAD (  "u4.snd", 0x10000, 0x10000, CRC(29d3f6c8) SHA1(8a90cdff54f59ddb7dba521504d880515a59df08) )
 	ROM_RELOAD(           0x20000, 0x10000 )
 	ROM_LOAD ( "u19.snd", 0x30000, 0x10000, CRC(ac5a402a) SHA1(c476018062126dc3936caa2c328de490737165ec) )
@@ -1559,7 +1559,7 @@ ROM_END
 
 
 ROM_START( smashtv5 )
-	ROM_REGION( 0x90000, "cvsd", 0 ) /* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 ) /* sound CPU */
 	ROM_LOAD (  "u4.snd", 0x10000, 0x10000, CRC(29d3f6c8) SHA1(8a90cdff54f59ddb7dba521504d880515a59df08) )
 	ROM_RELOAD(           0x20000, 0x10000 )
 	ROM_LOAD ( "u19.snd", 0x30000, 0x10000, CRC(ac5a402a) SHA1(c476018062126dc3936caa2c328de490737165ec) )
@@ -1587,7 +1587,7 @@ ROM_END
 
 
 ROM_START( smashtv4 )
-	ROM_REGION( 0x90000, "cvsd", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 )	/* sound CPU */
 	ROM_LOAD (  "u4.snd", 0x10000, 0x10000, CRC(29d3f6c8) SHA1(8a90cdff54f59ddb7dba521504d880515a59df08) )
 	ROM_RELOAD(           0x20000, 0x10000 )
 	ROM_LOAD ( "u19.snd", 0x30000, 0x10000, CRC(ac5a402a) SHA1(c476018062126dc3936caa2c328de490737165ec) )
@@ -1615,7 +1615,7 @@ ROM_END
 
 
 ROM_START( hiimpact )
-	ROM_REGION( 0x90000, "cvsd", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 )	/* sound CPU */
 	ROM_LOAD (  "sl1u4.bin", 0x10000, 0x20000, CRC(28effd6a) SHA1(4a839f15e1b453a22fdef7b1801b8cc5cfdf3c29) )
 	ROM_LOAD ( "sl1u19.bin", 0x30000, 0x20000, CRC(0ea22c89) SHA1(6d4579f6b10cac685be01348451b3537a0626034) )
 	ROM_LOAD ( "sl1u20.bin", 0x50000, 0x20000, CRC(4e747ab5) SHA1(82040f40aac7dae577376a742eadaaa9644500c1) )
@@ -1650,7 +1650,7 @@ ROM_END
 
 
 ROM_START( hiimpac3 )
-	ROM_REGION( 0x90000, "cvsd", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 )	/* sound CPU */
 	ROM_LOAD (  "sl1u4.bin", 0x10000, 0x20000, CRC(28effd6a) SHA1(4a839f15e1b453a22fdef7b1801b8cc5cfdf3c29) )
 	ROM_LOAD ( "sl1u19.bin", 0x30000, 0x20000, CRC(0ea22c89) SHA1(6d4579f6b10cac685be01348451b3537a0626034) )
 	ROM_LOAD ( "sl1u20.bin", 0x50000, 0x20000, CRC(4e747ab5) SHA1(82040f40aac7dae577376a742eadaaa9644500c1) )
@@ -1685,7 +1685,7 @@ ROM_END
 
 
 ROM_START( hiimpacp )
-	ROM_REGION( 0x90000, "cvsd", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 )	/* sound CPU */
 	ROM_LOAD (  "sl1u4.bin", 0x10000, 0x20000, CRC(28effd6a) SHA1(4a839f15e1b453a22fdef7b1801b8cc5cfdf3c29) )
 	ROM_LOAD ( "sl1u19.bin", 0x30000, 0x20000, CRC(0ea22c89) SHA1(6d4579f6b10cac685be01348451b3537a0626034) )
 	ROM_LOAD ( "sl1u20.bin", 0x50000, 0x20000, CRC(4e747ab5) SHA1(82040f40aac7dae577376a742eadaaa9644500c1) )
@@ -1720,7 +1720,7 @@ ROM_END
 
 
 ROM_START( shimpact )
-	ROM_REGION( 0x90000, "cvsd", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 )	/* sound CPU */
 	ROM_LOAD (   "shiu4.bin", 0x10000, 0x20000, CRC(1e5a012c) SHA1(4077fc266799a01738b7f88e867535f1fbacd557) )
 	ROM_LOAD (  "shiu19.bin", 0x30000, 0x20000, CRC(10f9684e) SHA1(1fdc5364f87fb65f4f2a438841e0fe847f765aaf) )
 	ROM_LOAD (  "shiu20.bin", 0x50000, 0x20000, CRC(1b4a71c1) SHA1(74b7b4ae76ebe65f1f46b2117970bfefefbb5344) )
@@ -1748,7 +1748,7 @@ ROM_END
 
 
 ROM_START( shimpap6 )
-	ROM_REGION( 0x90000, "cvsd", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 )	/* sound CPU */
 	ROM_LOAD (   "shiu4.bin", 0x10000, 0x20000, CRC(1e5a012c) SHA1(4077fc266799a01738b7f88e867535f1fbacd557) )
 	ROM_LOAD (  "shiu19.bin", 0x30000, 0x20000, CRC(10f9684e) SHA1(1fdc5364f87fb65f4f2a438841e0fe847f765aaf) )
 	ROM_LOAD (  "shiu20.bin", 0x50000, 0x20000, CRC(1b4a71c1) SHA1(74b7b4ae76ebe65f1f46b2117970bfefefbb5344) )
@@ -1776,7 +1776,7 @@ ROM_END
 
 
 ROM_START( shimpap5 )
-	ROM_REGION( 0x90000, "cvsd", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 )	/* sound CPU */
 	ROM_LOAD (   "shiu4.bin", 0x10000, 0x20000, CRC(1e5a012c) SHA1(4077fc266799a01738b7f88e867535f1fbacd557) )
 	ROM_LOAD (  "shiu19.bin", 0x30000, 0x20000, CRC(10f9684e) SHA1(1fdc5364f87fb65f4f2a438841e0fe847f765aaf) )
 	ROM_LOAD (  "shiu20.bin", 0x50000, 0x20000, CRC(1b4a71c1) SHA1(74b7b4ae76ebe65f1f46b2117970bfefefbb5344) )
@@ -1804,7 +1804,7 @@ ROM_END
 
 
 ROM_START( shimpap4 ) /* You must manualy reset the high score table or game will hang after initial demo screen, it's best to do a "Full Factory Restore" */
-	ROM_REGION( 0x90000, "cvsd", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 )	/* sound CPU */
 	ROM_LOAD (   "shiu4.bin", 0x10000, 0x20000, CRC(1e5a012c) SHA1(4077fc266799a01738b7f88e867535f1fbacd557) )
 	ROM_LOAD (  "shiu19.bin", 0x30000, 0x20000, CRC(10f9684e) SHA1(1fdc5364f87fb65f4f2a438841e0fe847f765aaf) )
 	ROM_LOAD (  "shiu20.bin", 0x50000, 0x20000, CRC(1b4a71c1) SHA1(74b7b4ae76ebe65f1f46b2117970bfefefbb5344) )
@@ -1832,7 +1832,7 @@ ROM_END
 
 
 ROM_START( strkforc )
-	ROM_REGION( 0x90000, "cvsd", 0 )	/* sound CPU */
+	ROM_REGION( 0x90000, "cvsdcpu", 0 )	/* sound CPU */
 	ROM_LOAD (  "sfu4.bin", 0x10000, 0x10000, CRC(8f747312) SHA1(729929c209741e72eb83b407cf95d7709ec1b5ae) )
 	ROM_RELOAD(             0x20000, 0x10000 )
 	ROM_LOAD ( "sfu19.bin", 0x30000, 0x10000, CRC(afb29926) SHA1(ad904c0968a90b8187cc87d6c171fbc021d2f66f) )
@@ -1863,12 +1863,44 @@ ROM_START( strkforc )
 ROM_END
 
 
+ROM_START( mkprot8 )
+	ROM_REGION( 0x50000, "adpcm", 0 )	/* sound CPU */
+	ROM_LOAD (  "mks-u3.rom", 0x10000, 0x40000, CRC(c615844c) SHA1(5732f9053a5f73b0cc3b0166d7dc4430829d5bc7) )
+
+	ROM_REGION( 0x200000, "oki", 0 )	/* ADPCM */
+	ROM_LOAD ( "mks-u12.rom", 0x00000, 0x40000, CRC(258bd7f9) SHA1(463890b23f17350fb9b8a85897b0777c45bc2d54) )
+	ROM_RELOAD(               0x40000, 0x40000 )
+	ROM_LOAD ( "mks-u13.rom", 0x80000, 0x40000, CRC(7b7ec3b6) SHA1(6eec1b90d4a4855f34a7ebfbf93f3358d5627db4) )
+	ROM_RELOAD(               0xc0000, 0x40000 )
+
+	ROM_REGION16_LE( 0x100000, "user1", 0 )	/* 34010 code */
+	ROM_LOAD16_BYTE( "mkprot8.105",  0x00000, 0x80000, CRC(2f3c095d) SHA1(f6e9ac0fc0f997f4b323ba48590b042eae079a16) )
+	ROM_LOAD16_BYTE(  "mkprot8.89",  0x00001, 0x80000, CRC(edcf217f) SHA1(29e17bd20844a3e666e794c2fc068a011ccff2e8) )
+
+	ROM_REGION( 0x800000, "gfx1", ROMREGION_DISPOSE )
+	ROM_LOAD ( "mkg-u111.rom",  0x000000, 0x80000, CRC(d17096c4) SHA1(01ef390a372c9d94adf138f9543ebb88b89f4c38) )
+	ROM_LOAD ( "mkg-u112.rom",  0x080000, 0x80000, CRC(993bc2e4) SHA1(7791edbec2b4b8971a3e790346dd7564ecf16d5c) )
+	ROM_LOAD ( "mkg-u113.rom",  0x100000, 0x80000, CRC(6fb91ede) SHA1(a3735b49f93b08c44fbc97e2b5aad394628fbe90) )
+	ROM_LOAD ( "mkg-u114.rom",  0x180000, 0x80000, CRC(ed1ff88a) SHA1(6b090b658ee6148af953bd0c9216f37162b6460f) )
+
+ 	ROM_LOAD (  "mkg-u95.rom",  0x200000, 0x80000, CRC(a002a155) SHA1(3cf7909e92bcd428063596fc5b9953e0000d6eca) )
+ 	ROM_LOAD (  "mkg-u96.rom",  0x280000, 0x80000, CRC(dcee8492) SHA1(a912b74d3b26ebd1b1613cc631080f83ececeaf8) )
+	ROM_LOAD (  "mkg-u97.rom",  0x300000, 0x80000, CRC(de88caef) SHA1(a7927b504dc56ca5c9048373977fe5743b0a3f0b) )
+	ROM_LOAD (  "mkg-u98.rom",  0x380000, 0x80000, CRC(37eb01b4) SHA1(06092460bd137e08d0f8df8560942ed877d40e09) )
+
+	ROM_LOAD ( "mkg-u106.rom",  0x400000, 0x80000, CRC(45acaf21) SHA1(5edd36c55f4e5d3c74fb85171728ec0a58284b12) )
+ 	ROM_LOAD ( "mkg-u107.rom",  0x480000, 0x80000, CRC(2a6c10a0) SHA1(cc90923c44f2961b945a0fd0f85ecc2ba04af2cb) )
+  	ROM_LOAD ( "mkg-u108.rom",  0x500000, 0x80000, CRC(23308979) SHA1(0b36788624a1cf0d3f4c895be5ba967b8dfcf85e) )
+ 	ROM_LOAD ( "mkg-u109.rom",  0x580000, 0x80000, CRC(cafc47bb) SHA1(8610af6e52f7089ff4acd850c53ab8b4119e4445) )
+ROM_END
+
+
 ROM_START( mkprot9 )
 	ROM_REGION( 0x50000, "adpcm", 0 )	/* sound CPU */
 	ROM_LOAD (  "mks-u3.rom", 0x10000, 0x40000, CRC(c615844c) SHA1(5732f9053a5f73b0cc3b0166d7dc4430829d5bc7) )
 
 	ROM_REGION( 0x200000, "oki", 0 )	/* ADPCM */
-	ROM_LOAD( "mks-u12.rom", 0x00000, 0x40000, CRC(258bd7f9) SHA1(463890b23f17350fb9b8a85897b0777c45bc2d54) )
+	ROM_LOAD ( "mks-u12.rom", 0x00000, 0x40000, CRC(258bd7f9) SHA1(463890b23f17350fb9b8a85897b0777c45bc2d54) )
 	ROM_RELOAD(               0x40000, 0x40000 )
 	ROM_LOAD ( "mks-u13.rom", 0x80000, 0x40000, CRC(7b7ec3b6) SHA1(6eec1b90d4a4855f34a7ebfbf93f3358d5627db4) )
 	ROM_RELOAD(               0xc0000, 0x40000 )
@@ -2024,7 +2056,7 @@ ROM_END
 
 
 ROM_START( mkyawdim )
-	ROM_REGION( 0x10000, "audio", 0 )	/* sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* sound CPU */
 	ROM_LOAD (  "1.u67", 0x00000, 0x10000, CRC(b58d229e) SHA1(3ed14ef650dfa7f9d460611b19e9233a022cbea6) )
 
 	ROM_REGION( 0x100000, "oki", 0 )	/* ADPCM */
@@ -2256,6 +2288,7 @@ GAME( 1991, shimpap4, shimpact, yunit_cvsd_6bit_slow,  trog,     shimpact, ROT0,
 GAME( 1991, term2,    0,        yunit_adpcm_6bit_faster, term2,    term2,    ORIENTATION_FLIP_X, "Midway",   "Terminator 2 - Judgment Day (rev LA3 03/27/92)", GAME_SUPPORTS_SAVE )
 GAME( 1991, term2la2, term2,    yunit_adpcm_6bit_faster, term2,    term2la2, ORIENTATION_FLIP_X, "Midway",   "Terminator 2 - Judgment Day (rev LA2 12/09/91)", GAME_SUPPORTS_SAVE )
 GAME( 1991, term2la1, term2,    yunit_adpcm_6bit_faster, term2,    term2la1, ORIENTATION_FLIP_X, "Midway",   "Terminator 2 - Judgment Day (rev LA1 11/01/91)", GAME_SUPPORTS_SAVE )
+GAME( 1992, mkprot8,  mk,       yunit_adpcm_6bit_faster, mkla2,    mkyunit,  ROT0, "Midway",   "Mortal Kombat (prototype, rev 8.0 07/21/92)", GAME_SUPPORTS_SAVE )
 GAME( 1992, mkprot9,  mk,       yunit_adpcm_6bit_faster, mkla2,    mkyunit,  ROT0, "Midway",   "Mortal Kombat (prototype, rev 9.0 07/28/92)", GAME_SUPPORTS_SAVE )
 GAME( 1992, mkla1,    mk,       yunit_adpcm_6bit_fast,   mkla2,    mkyunit,  ROT0, "Midway",   "Mortal Kombat (rev 1.0 08/09/92)", GAME_SUPPORTS_SAVE )
 GAME( 1992, mkla2,    mk,       yunit_adpcm_6bit_fast,   mkla2,    mkyunit,  ROT0, "Midway",   "Mortal Kombat (rev 2.0 08/18/92)", GAME_SUPPORTS_SAVE )

@@ -18,7 +18,7 @@ static UINT8 *bg0_videoram;
 static UINT8 *bg0_regs_x, *bg0_regs_y, *bg1_regs_x, *bg1_regs_y, *bg2_regs_x, *bg2_regs_y;
 static tilemap *bg0_tilemap, *bg1_tilemap, *bg2_tilemap;
 
-static int video_enable = 0;
+static int video_bank = 0;
 static int irq_enable = 0;
 static int bg1_bank = 0, bg2_bank = 0;
 static int old_bank;
@@ -27,20 +27,20 @@ static TILE_GET_INFO( get_bg1_tile_info )
 {
 	UINT8 *region = memory_region(machine, "gfx3") + 0x200000 + 0x80000 * bg1_bank;
 	int code = region[tile_index*2] + (region[tile_index*2+1] << 8);
-	SET_TILE_INFO(2, code, 0, 0);
+	SET_TILE_INFO(2, code, code>>12, 0);
 }
 
 static TILE_GET_INFO( get_bg2_tile_info )
 {
 	UINT8 *region = memory_region(machine, "gfx2") + 0x200000 + 0x80000 * bg2_bank;
 	int code = region[tile_index*2] + (region[tile_index*2+1] << 8);
-	SET_TILE_INFO(1, code, 0, 0);
+	SET_TILE_INFO(1, code, code>>12, 0);
 }
 
 static TILE_GET_INFO( get_bg0_tile_info )
 {
 	int code = bg0_videoram[tile_index*2] + (bg0_videoram[tile_index*2+1] << 8);
-	SET_TILE_INFO(0, code, 0, 0);
+	SET_TILE_INFO(0, code, code>>12, 0);
 }
 
 static VIDEO_START( cultures )
@@ -86,28 +86,40 @@ static VIDEO_UPDATE( cultures )
 	tilemap_set_scrolly(bg1_tilemap, 0, (bg1_regs_y[2] << 8) + bg1_regs_y[0]);
 	tilemap_set_scrolly(bg2_tilemap, 0, (bg2_regs_y[2] << 8) + bg2_regs_y[0]);
 
-	if (video_enable)
-	{
-		tilemap_draw(bitmap, cliprect, bg2_tilemap, 0, 0);
-		tilemap_draw(bitmap, cliprect, bg0_tilemap, 0, 0);
-		tilemap_draw(bitmap, cliprect, bg1_tilemap, 0, 0);
-	}
-	else
-		bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
+	tilemap_draw(bitmap, cliprect, bg2_tilemap, 0, 0);
+	tilemap_draw(bitmap, cliprect, bg0_tilemap, 0, 0);
+	tilemap_draw(bitmap, cliprect, bg1_tilemap, 0, 0);
 
 	return 0;
 }
 
 static WRITE8_HANDLER( cpu_bankswitch_w )
 {
-	memory_set_bankptr(space->machine, 1, memory_region(space->machine, "main") + 0x4000 * (data & 0xf));
-	video_enable = ~data & 0x20;
+	memory_set_bankptr(space->machine, 1, memory_region(space->machine, "maincpu") + 0x4000 * (data & 0xf));
+	video_bank = ~data & 0x20;
 }
 
 static WRITE8_HANDLER( bg0_videoram_w )
 {
-	bg0_videoram[offset] = data;
-	tilemap_mark_tile_dirty(bg0_tilemap, offset >> 1);
+
+	if(video_bank==0)
+	{
+		int r,g,b,datax;
+		paletteram[offset] = data;
+		offset>>=1;
+		datax=paletteram[offset*2]+256*paletteram[offset*2+1];
+
+		r=((datax>>7)&0x1e)|((datax&0x4000)?0x1:0);
+		g=((datax>>3)&0x1e)|((datax&0x2000)?0x1:0);
+		b=((datax<<1)&0x1e)|((datax&0x1000)?0x1:0);
+
+		palette_set_color_rgb(space->machine, offset, pal5bit(r), pal5bit(g), pal5bit(b));
+	}
+	else
+	{
+		bg0_videoram[offset] = data;
+		tilemap_mark_tile_dirty(bg0_tilemap, offset >> 1);
+	}
 }
 
 static WRITE8_HANDLER( misc_w )
@@ -140,7 +152,6 @@ static WRITE8_HANDLER( bg_bank_w )
 		bg2_bank = (data & 0xc) >> 2;
 		tilemap_mark_all_tiles_dirty(bg2_tilemap);
 	}
-
 	coin_counter_w(0,data & 0x10);
 }
 
@@ -154,8 +165,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cultures_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x03) AM_RAM //?
-	AM_RANGE(0x10, 0x13) AM_RAM //?
+	AM_RANGE(0x00, 0x03) AM_RAM
+	AM_RANGE(0x10, 0x13) AM_RAM
 	AM_RANGE(0x20, 0x23) AM_RAM AM_BASE(&bg0_regs_x)
 	AM_RANGE(0x30, 0x33) AM_RAM AM_BASE(&bg0_regs_y)
 	AM_RANGE(0x40, 0x43) AM_RAM AM_BASE(&bg1_regs_x)
@@ -165,7 +176,7 @@ static ADDRESS_MAP_START( cultures_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x80, 0x80) AM_WRITE(cpu_bankswitch_w)
 	AM_RANGE(0x90, 0x90) AM_WRITE(misc_w)
 	AM_RANGE(0xa0, 0xa0) AM_WRITE(bg_bank_w)
-	AM_RANGE(0xc0, 0xc0) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w)
+	AM_RANGE(0xc0, 0xc0) AM_DEVREADWRITE("oki", okim6295_r, okim6295_w)
 	AM_RANGE(0xd0, 0xd0) AM_READ_PORT("SW1_A")
 	AM_RANGE(0xd1, 0xd1) AM_READ_PORT("SW1_B")
 	AM_RANGE(0xd2, 0xd2) AM_READ_PORT("SW2_A")
@@ -312,42 +323,16 @@ static const gfx_layout gfxlayout =
 };
 
 static GFXDECODE_START( culture )
-	GFXDECODE_ENTRY("gfx1", 0, gfxlayout, 0x000, 1 )
-	GFXDECODE_ENTRY("gfx2", 0, gfxlayout, 0x100, 1 )
-	GFXDECODE_ENTRY("gfx3", 0, gfxlayout, 0x200, 1 )
+	GFXDECODE_ENTRY("gfx1", 0, gfxlayout, 0x0000, 0x10 )
+	GFXDECODE_ENTRY("gfx2", 0, gfxlayout, 0x1000, 0x10 )
+	GFXDECODE_ENTRY("gfx3", 0, gfxlayout, 0x1000, 0x10 )
 GFXDECODE_END
 
 
 //WRONG!
 static PALETTE_INIT( cultures )
 {
-	int c,x,plane;
 
-	/*every plane appears to use his dedicated color table*/
-	for(plane = 0;plane < 0x300;plane+=0x100)
-	{
-		for (c = 0; c < 256; c++)
-		{
- 			int r,g,b,i;
-
- 			i = c & 0x03;
- 			r = ((c & 0x04) >> 0) | ((c & 0x10) >> 1) | i;
- 			g = ((c & 0x20) >> 3) | ((c & 0x40) >> 3) | i;
- 			b = ((c & 0x08) >> 1) | ((c & 0x80) >> 4) | i;
-
-			/*
-            r = ((c & 0x0c) >> 0) | i;
-            g = ((c & 0x30) >> 2) | i;
-            b = ((c & 0xc0) >> 4) | i;
-            */
-
-			x = ((c >> 4) & 0x0f);
-
-			x = ((x & 4) << 1) | ((x & 8) >> 1) | (x & 1);
-
-	 		palette_set_color_rgb(machine, plane+(x | (((c << 4) & 0xf0) ^ 0)), pal4bit(r), pal4bit(g), pal4bit(b));
-		}
-	}
 }
 
 
@@ -366,15 +351,15 @@ static MACHINE_RESET( cultures )
 static MACHINE_DRIVER_START( cultures )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, MCLK/2) /* 8.000 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, MCLK/2) /* 8.000 MHz */
 	MDRV_CPU_PROGRAM_MAP(cultures_map,0)
 	MDRV_CPU_IO_MAP(cultures_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", cultures_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", cultures_interrupt)
 
 	MDRV_MACHINE_RESET( cultures )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -382,7 +367,7 @@ static MACHINE_DRIVER_START( cultures )
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 0*8, 30*8-1)
 
 	MDRV_GFXDECODE(culture)
-	MDRV_PALETTE_LENGTH(0x300)
+	MDRV_PALETTE_LENGTH(0x2000)
 
 	MDRV_PALETTE_INIT(cultures)
 
@@ -438,7 +423,7 @@ P custom      custom
 */
 
 ROM_START( cultures )
-	ROM_REGION( 0x40000, "main", 0 )
+	ROM_REGION( 0x40000, "maincpu", 0 )
 	ROM_LOAD( "ma01.u12",     0x000000, 0x040000, CRC(f57417b3) SHA1(9a2a50222f54e5da9bc5c66863b8be16e33b171f) )
 
 	ROM_REGION( 0x300000, "gfx1", 0 )
@@ -460,4 +445,9 @@ ROM_START( cultures )
 	ROM_RELOAD(               0x000000, 0x020000 )
 ROM_END
 
-GAME( 1994, cultures, 0, cultures, cultures, 0, ROT0, "Face", "Jibun wo Migaku Culture School Mahjong Hen", GAME_WRONG_COLORS )
+static DRIVER_INIT(cultures)
+{
+	paletteram=auto_malloc(0x4000);
+}
+
+GAME( 1994, cultures, 0, cultures, cultures, cultures, ROT0, "Face", "Jibun wo Migaku Culture School Mahjong Hen", 0 )

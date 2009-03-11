@@ -150,7 +150,7 @@ static MC6845_ON_VSYNC_CHANGED(vsync_changed)
 
 static const mc6845_interface mc6845_intf =
 {
-	"main",					/* screen we are acting on */
+	"screen",				/* screen we are acting on */
 	8,						/* number of pixels per video memory address */
 	begin_update,			/* before pixel update callback */
 	update_row,				/* row update callback */
@@ -168,27 +168,35 @@ static const mc6845_interface mc6845_intf =
 static ADDRESS_MAP_START( slotcarn_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x5fff) AM_ROM
 	AM_RANGE(0x6000, 0x67ff) AM_RAM AM_BASE(&backup_ram)
+	AM_RANGE(0x6800, 0x6fff) AM_RAM // spielbud
+	AM_RANGE(0x7000, 0xafff) AM_ROM // spielbud
 
-	AM_RANGE(0xb000, 0xb000) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xb100, 0xb100) AM_READWRITE(ay8910_read_port_0_r,ay8910_write_port_0_w)
 
-	AM_RANGE(0xb800, 0xb803) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)	/* Input Ports */
-	AM_RANGE(0xba00, 0xba03) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)	/* Input Ports */
-	AM_RANGE(0xbc00, 0xbc03) AM_DEVREADWRITE(PPI8255, "ppi8255_2", ppi8255_r, ppi8255_w)	/* Input/Output Ports */
+	AM_RANGE(0xb000, 0xb000) AM_DEVWRITE("ay", ay8910_address_w)
+	AM_RANGE(0xb100, 0xb100) AM_DEVREADWRITE("ay", ay8910_r, ay8910_data_w)
+
+	AM_RANGE(0xb800, 0xb803) AM_DEVREADWRITE("ppi8255_0", ppi8255_r, ppi8255_w)	/* Input Ports */
+	AM_RANGE(0xba00, 0xba03) AM_DEVREADWRITE("ppi8255_1", ppi8255_r, ppi8255_w)	/* Input Ports */
+	AM_RANGE(0xbc00, 0xbc03) AM_DEVREADWRITE("ppi8255_2", ppi8255_r, ppi8255_w)	/* Input/Output Ports */
 
 	AM_RANGE(0xc000, 0xc000) AM_READ_PORT("DSW3")
 	AM_RANGE(0xc400, 0xc400) AM_READ_PORT("DSW4")
 
 	AM_RANGE(0xd800, 0xd81f) AM_RAM // column scroll for reels?
 
-	AM_RANGE(0xe000, 0xe000) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0xe001, 0xe001) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
+	AM_RANGE(0xe000, 0xe000) AM_DEVWRITE("crtc", mc6845_address_w)
+	AM_RANGE(0xe001, 0xe001) AM_DEVWRITE("crtc", mc6845_register_w)
 
 	AM_RANGE(0xe800, 0xefff) AM_RAM AM_BASE(&ram_attr)
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM AM_BASE(&ram_video)
 	AM_RANGE(0xf800, 0xfbff) AM_READWRITE(palette_r, palette_w)
 ADDRESS_MAP_END
 
+// spielbud - is the ay mirrored, or are there now 2?
+static ADDRESS_MAP_START( spielbud_io_map, ADDRESS_SPACE_IO, 8 )
+	AM_RANGE(0xb000, 0xb000) AM_DEVWRITE("ay", ay8910_address_w)
+	AM_RANGE(0xb100, 0xb100) AM_DEVWRITE("ay", ay8910_data_w)
+ADDRESS_MAP_END
 
 /********************************
 *          Input Ports          *
@@ -200,50 +208,36 @@ static INPUT_PORTS_START( slotcarn )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Key In") PORT_CODE(KEYCODE_Q)
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("Start")  PORT_CODE(KEYCODE_N)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_NAME("Cancel") PORT_CODE(KEYCODE_M)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_NAME("Select") PORT_CODE(KEYCODE_B)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_CODE(KEYCODE_Q) PORT_NAME("Key In")
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_CODE(KEYCODE_N) PORT_NAME("Start")
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_CODE(KEYCODE_M) PORT_NAME("Cancel")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_CODE(KEYCODE_B) PORT_NAME("Select")
 
 	PORT_START("IN1")	/* b801 (ppi8255) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1)    PORT_IMPULSE(2)       /* Coin A */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2)    PORT_IMPULSE(2)       /* Coin B */
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Stats")    PORT_CODE(KEYCODE_0)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Settings") PORT_CODE(KEYCODE_9)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_CODE(KEYCODE_0) PORT_NAME("Stats")
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_CODE(KEYCODE_9) PORT_NAME("Settings")
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN3)    PORT_IMPULSE(2)       /* Coin C */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN4)    PORT_IMPULSE(2)       /* Coin D */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START("IN2")	/* b802 (ppi8255) */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START("IN3")	/* bc00 (ppi8255) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("Double-Up")    PORT_CODE(KEYCODE_C)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_NAME("Take Score")   PORT_CODE(KEYCODE_V)
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Bet")          PORT_CODE(KEYCODE_Z)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Payout")       PORT_CODE(KEYCODE_W)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Empty Hopper") PORT_CODE(KEYCODE_H)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_CODE(KEYCODE_C) PORT_NAME("Double-Up")
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_CODE(KEYCODE_V) PORT_NAME("Take Score")
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_CODE(KEYCODE_Z) PORT_NAME("Bet")
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_CODE(KEYCODE_W) PORT_NAME("Payout")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_CODE(KEYCODE_H) PORT_NAME("Empty Hopper")
 
 	PORT_START("IN4")	/* bc01 (ppi8255) */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START("DSW1")	/* ba00 (ppi8255) */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )	PORT_DIPLOCATION("DSW1:8")
@@ -349,6 +343,143 @@ static INPUT_PORTS_START( slotcarn )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
+static INPUT_PORTS_START( spielbud )
+	PORT_START("IN0")	/* b800 (ppi8255) */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_CODE(KEYCODE_Z) PORT_NAME("Discard 1 / Deal (BJ)")
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_CODE(KEYCODE_X) PORT_NAME("Discard 2")
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_CODE(KEYCODE_C) PORT_NAME("Discard 3 / Bet 1 / Split (BJ)")
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_CODE(KEYCODE_V) PORT_NAME("Discard4 / Stand (BJ)")
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_CODE(KEYCODE_B) PORT_NAME("Discard5 / Hit (BJ)")
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_CODE(KEYCODE_1) PORT_NAME("Start")
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_CODE(KEYCODE_N) PORT_NAME("Cancel / Select")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START("IN1")	/* b801 (ppi8255) */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1)    PORT_IMPULSE(2)	/* Coin A */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2)    PORT_IMPULSE(2)	/* Coin B */
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_CODE(KEYCODE_0) PORT_NAME("Stats")
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_CODE(KEYCODE_9) PORT_NAME("Settings")
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN3)    PORT_IMPULSE(2)	/* Coin C */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN4)    PORT_IMPULSE(2)	/* Coin D */
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START("IN2")	/* b802 (ppi8255) */
+	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START("IN3")	/* bc00 (ppi8255) */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON8 )  PORT_CODE(KEYCODE_A) PORT_NAME("Tief (Low)")
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON9 )  PORT_CODE(KEYCODE_S) PORT_NAME("Hoch (High)")
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON10 ) PORT_CODE(KEYCODE_3) PORT_NAME("Double-Up")
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON11 ) PORT_CODE(KEYCODE_4) PORT_NAME("Take Score")
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON12 ) PORT_CODE(KEYCODE_2) PORT_NAME("Bet 2")
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE )  PORT_CODE(KEYCODE_W) PORT_NAME("Payout")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START("IN4")	/* bc01 (ppi8255) */
+	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START("DSW1")	/* ba00 (ppi8255) */
+	PORT_DIPNAME( 0x01, 0x01, "Game STRATEGIE" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x02, "Game MITTE TRIFFT" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x04, "Game KNOBELN" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x08, "Game BLACK JACK" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, "Game CONTINENTAL" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, "Game 5 LINIEN SPIEL" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
+	PORT_DIPNAME( 0xc0, 0xc0, "Max Bet Settings" )
+	PORT_DIPSETTING(    0xc0, "Play 1 to 10 bets" )
+	PORT_DIPSETTING(    0x80, "Play 1 to 20 bets" )
+	PORT_DIPSETTING(    0x40, "Play 1 bet by hand" )
+	PORT_DIPSETTING(    0x00, "Play 1 to 50 bets" )
+
+	PORT_START("DSW2")	/* ay8910, port B */
+	PORT_DIPNAME( 0x07, 0x07, "Main Game rate" )
+	PORT_DIPSETTING(    0x06, "75%" )
+	PORT_DIPSETTING(    0x05, "80%" )
+	PORT_DIPSETTING(    0x07, "85%" )
+	PORT_DIPSETTING(    0x03, "90%" )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x00, "Hold Buttons Behaviour" )
+	PORT_DIPSETTING(    0x00, "Hold" )
+	PORT_DIPSETTING(    0x80, "Discard" )
+
+	PORT_START("DSW3")	/* c000 direct */
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
+	PORT_START("DSW4")	/* c400 direct */
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+INPUT_PORTS_END
+
 
 /*************************************
 *          Graphics Layouts          *
@@ -392,7 +523,7 @@ GFXDECODE_END
 
 static VIDEO_UPDATE( slotcarn )
 {
-	const device_config *mc6845 = device_list_find_by_tag(screen->machine->config->devicelist, MC6845, "crtc");
+	const device_config *mc6845 = devtag_get_device(screen->machine, "crtc");
 	mc6845_update(mc6845, bitmap, cliprect);
 
 	return 0;
@@ -413,28 +544,28 @@ static MACHINE_START(merit)
 static const ppi8255_interface scarn_ppi8255_intf[3] =
 {
 	{	/* A, B & C set as input */
-		DEVICE8_PORT("IN0"),	/* Port A read */
-		DEVICE8_PORT("IN1"),	/* Port B read */
-		DEVICE8_PORT("IN2"),	/* Port C read */
-		NULL,					/* Port A write */
-		NULL,					/* Port B write */
-		NULL					/* Port C write */
+		DEVCB_INPUT_PORT("IN0"),	/* Port A read */
+		DEVCB_INPUT_PORT("IN1"),	/* Port B read */
+		DEVCB_INPUT_PORT("IN2"),	/* Port C read */
+		DEVCB_NULL,					/* Port A write */
+		DEVCB_NULL,					/* Port B write */
+		DEVCB_NULL					/* Port C write */
 	},
 	{	/* A set as input */
-		DEVICE8_PORT("DSW1"),	/* Port A read */
-		NULL,					/* Port B read */
-		NULL,					/* Port C read */
-		NULL,					/* Port A write */
-		NULL,					/* Port B write */
-		NULL					/* Port C write */
+		DEVCB_INPUT_PORT("DSW1"),	/* Port A read */
+		DEVCB_NULL,					/* Port B read */
+		DEVCB_NULL,					/* Port C read */
+		DEVCB_NULL,					/* Port A write */
+		DEVCB_NULL,					/* Port B write */
+		DEVCB_NULL					/* Port C write */
 	},
 	{	/* A & B set as input */
-		DEVICE8_PORT("IN3"),	/* Port A read */
-		DEVICE8_PORT("IN4"),	/* Port B read */
-		NULL,					/* Port C read */
-		NULL,					/* Port A write */
-		NULL,					/* Port B write */
-		NULL					/* Port C write */
+		DEVCB_INPUT_PORT("IN3"),	/* Port A read */
+		DEVCB_INPUT_PORT("IN4"),	/* Port B read */
+		DEVCB_NULL,					/* Port C read */
+		DEVCB_NULL,					/* Port A write */
+		DEVCB_NULL,					/* Port B write */
+		DEVCB_NULL					/* Port C write */
 	}
 };
 
@@ -447,10 +578,10 @@ static const ay8910_interface scarn_ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	input_port_6_r,	/* DSW2 */
-	NULL,
-	NULL
+	DEVCB_NULL,
+	DEVCB_INPUT_PORT("DSW2"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -461,10 +592,9 @@ static const ay8910_interface scarn_ay8910_config =
 static MACHINE_DRIVER_START( slotcarn )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, CPU_CLOCK) // 2.5 Mhz?
+	MDRV_CPU_ADD("maincpu", Z80, CPU_CLOCK) // 2.5 Mhz?
 	MDRV_CPU_PROGRAM_MAP(slotcarn_map,0)
-	//MDRV_CPU_IO_MAP(goldstar_readport,0)
-	//MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_IO_MAP(spielbud_io_map,0)
 
 	/* 3x 8255 */
 	MDRV_PPI8255_ADD( "ppi8255_0", scarn_ppi8255_intf[0] )
@@ -474,7 +604,7 @@ static MACHINE_DRIVER_START( slotcarn )
 	MDRV_MACHINE_START(merit)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, 512, 0, 512, 256, 0, 256)	/* temporary, CRTC will configure screen */
 
@@ -547,7 +677,7 @@ rom3 has mention of coin hopper and coin jam.
 */
 
 ROM_START( slotcarn )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "rom1.e10", 0x0000, 0x2000, CRC(a7ea6420) SHA1(4dd88f1bcaf354da93c3e88979a5e1a026105598) )
 	ROM_LOAD( "rom2.e9",  0x2000, 0x2000, CRC(8156a603) SHA1(92618ac2ac908d24adb75eb705dc2f84eef12211) )
 	ROM_LOAD( "rom3.e8",  0x4000, 0x2000, CRC(bf74ccad) SHA1(7f5049693de236790671b16dd1e1d0d2ac120e1a) )
@@ -561,11 +691,60 @@ ROM_START( slotcarn )
 	ROM_LOAD( "rom4.a5", 0x0000, 0x4000, CRC(1428c46c) SHA1(ea30eeebcc2cc825f33e1ffeb590b047e3072b9c) )
 ROM_END
 
+/*
+
+Lucky - Wing?
+--------------
+
+CPU:      1x Z80 (NEC D780C)
+Video:    1x 6845 (HD46505SP HD6845SP)
+Sound:    1x AY-3-8910
+I/O:      3x 8255 (M5L8255AP-5)
+
+ROM:      6x 2764 (0, 1, 2, 3, 4, 9)
+          3x 27128 (6, 7, 8)
+
+RAM:      1x HM6116LP-3 near ROMs 0 to 4
+          1x M58725P near ROMs 0 to 4
+          2x M58725P near ROMs 6 to 9
+
+Xtal:     10 MHz.
+
+DIP SW:   4x 8 DSW banks.
+
+
+---------------------------------
+
+Not from Wing.
+It's a multi cards game produced in 1983, called "Spiel Bud" (Play Booth)
+Language: german.
+
+Roms have stickers with only a number, so were renamed from lwing to spielbud.
+
+*/
+
+ROM_START( spielbud )
+	ROM_REGION( 0x20000, "maincpu", 0 )
+	ROM_LOAD( "spielbud.00", 0x0000, 0x2000, CRC(201c7f19) SHA1(fb902824d1f6cfdf7ba124fca4c680af099ca4e1) )
+	ROM_LOAD( "spielbud.01", 0x2000, 0x2000, CRC(16339de8) SHA1(00b14c6bca268b98bfb6ac9840d59b9a64d43b92) )
+	ROM_LOAD( "spielbud.02", 0x4000, 0x2000, CRC(c791e75b) SHA1(b0276a82302a194fc1ab2608440a5bf1efe99e64) )
+	ROM_LOAD( "spielbud.03", 0x7000, 0x2000, CRC(ddc60075) SHA1(592dc1f9ff00e703ed1c06fd037aa32569b19143) )
+	ROM_LOAD( "spielbud.04", 0x9000, 0x2000, CRC(74f1ca60) SHA1(17a67beb00d9c4b3310930ad5c5f566b801634d7) )
+
+	ROM_REGION( 0xc000, "gfx1", 0 )
+	ROM_LOAD( "spielbud.08", 0x0000, 0x4000, CRC(4a4ebe62) SHA1(5d789f2eea61864cd55f20a7697304daaff105c4) )
+	ROM_LOAD( "spielbud.07", 0x4000, 0x4000, CRC(33c0064e) SHA1(bb4b80359b36b0b34e0d31ee1f18fd64b92ed342) )
+	ROM_LOAD( "spielbud.06", 0x8000, 0x4000, CRC(bb2b6fd3) SHA1(5adb543c1d10aaede08609463f2ce82c5a68aca8) )
+
+	ROM_REGION( 0x4000, "gfx2", 0 )
+	ROM_LOAD( "spielbud.09", 0x0000, 0x2000, CRC(d88c72f2) SHA1(bb015685f4c2cc7723c24880c11cb6d31f71e73f) )
+ROM_END
+
 
 /*********************************************
 *                Game Drivers                *
 **********************************************
 
-      YEAR  NAME      PARENT   MACHINE   INPUT     INIT   ROT    COMPANY        FULLNAME        FLAGS  */
-GAME( 1985, slotcarn, 0,       slotcarn, slotcarn, 0,     ROT0, "Wing Co.Ltd", "Slot Carnival", GAME_NOT_WORKING )
-
+      YEAR  NAME      PARENT   MACHINE   INPUT     INIT   ROT    COMPANY        FULLNAME               FLAGS  */
+GAME( 1985, slotcarn, 0,       slotcarn, slotcarn, 0,     ROT0, "Wing Co.Ltd", "Slot Carnival",        GAME_NOT_WORKING )
+GAME( 1985, spielbud, 0,       slotcarn, spielbud, 0,     ROT0, "ADP",         "Spiel Bude (German)",  GAME_NOT_WORKING )

@@ -114,26 +114,6 @@ static MACHINE_RESET( arcadecl )
 
 /*************************************
  *
- *  MSM6295 I/O
- *
- *************************************/
-
-static READ16_HANDLER( adpcm_r )
-{
-	return (okim6295_status_0_r(space, offset) << 8) | 0x00ff;
-}
-
-
-static WRITE16_HANDLER( adpcm_w )
-{
-	if (ACCESSING_BITS_8_15)
-		okim6295_data_0_w(space, offset, (data >> 8) & 0xff);
-}
-
-
-
-/*************************************
- *
  *  Latch write
  *
  *************************************/
@@ -149,7 +129,7 @@ static WRITE16_HANDLER( latch_w )
 	/* lower byte being modified? */
 	if (ACCESSING_BITS_0_7)
 	{
-		okim6295_set_bank_base(0, (data & 0x80) ? 0x40000 : 0x00000);
+		okim6295_set_bank_base(devtag_get_device(space->machine, "oki"), (data & 0x80) ? 0x40000 : 0x00000);
 		atarigen_set_oki6295_vol(space->machine, (data & 0x001f) * 100 / 0x1f);
 	}
 }
@@ -180,7 +160,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x640040, 0x64004f) AM_WRITE(latch_w)
 	AM_RANGE(0x640060, 0x64006f) AM_WRITE(atarigen_eeprom_enable_w)
 	AM_RANGE(0x641000, 0x641fff) AM_READWRITE(atarigen_eeprom_r, atarigen_eeprom_w) AM_BASE(&atarigen_eeprom) AM_SIZE(&atarigen_eeprom_size)
-	AM_RANGE(0x642000, 0x642001) AM_READWRITE(adpcm_r, adpcm_w)
+	AM_RANGE(0x642000, 0x642001) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0xff00)
 	AM_RANGE(0x646000, 0x646fff) AM_WRITE(atarigen_scanline_int_ack_w)
 	AM_RANGE(0x647000, 0x647fff) AM_WRITE(watchdog_reset16_w)
 ADDRESS_MAP_END
@@ -337,9 +317,9 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( arcadecl )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, MASTER_CLOCK)
+	MDRV_CPU_ADD("maincpu", M68000, MASTER_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", atarigen_video_int_gen)
+	MDRV_CPU_VBLANK_INT("screen", atarigen_video_int_gen)
 
 	MDRV_MACHINE_RESET(arcadecl)
 	MDRV_NVRAM_HANDLER(atarigen)
@@ -349,7 +329,7 @@ static MACHINE_DRIVER_START( arcadecl )
 	MDRV_GFXDECODE(arcadecl)
 	MDRV_PALETTE_LENGTH(512)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses an SOS-2 chip to generate video signals */
@@ -375,7 +355,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( arcadecl )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "pgm0",  0x00000, 0x80000, CRC(b5b93623) SHA1(a2e96c0c6eceb3d8f205e28d6b8197055aeb8cc4) )
 	ROM_LOAD16_BYTE( "prog1", 0x00001, 0x80000, CRC(e7efef85) SHA1(05f2119d8ecc27f6efea85f5174ea7da404d7e9b) )
 
@@ -388,7 +368,7 @@ ROM_END
 
 
 ROM_START( sparkz )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "sparkzpg.0", 0x00000, 0x80000, CRC(a75c331c) SHA1(855ed44bd23c1dd0ca64926cacc8be62aca82fe2) )
 	ROM_LOAD16_BYTE( "sparkzpg.1", 0x00001, 0x80000, CRC(1af1fc04) SHA1(6d92edb1a881ba6b63e0144c9c3e631b654bf8ae) )
 
@@ -427,5 +407,5 @@ static DRIVER_INIT( sparkz )
  *
  *************************************/
 
-GAME( 1992, arcadecl, 0, arcadecl, arcadecl, arcadecl, ROT0, "Atari Games", "Arcade Classics (prototype)", 0 )
-GAME( 1992, sparkz,   0, arcadecl, sparkz,   sparkz,   ROT0, "Atari Games", "Sparkz (prototype)", 0 )
+GAME( 1992, arcadecl, 0, arcadecl, arcadecl, arcadecl, ROT0, "Atari Games", "Arcade Classics (prototype)", GAME_SUPPORTS_SAVE )
+GAME( 1992, sparkz,   0, arcadecl, sparkz,   sparkz,   ROT0, "Atari Games", "Sparkz (prototype)", GAME_SUPPORTS_SAVE )

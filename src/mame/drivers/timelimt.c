@@ -101,12 +101,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(soundlatch_clear_w)
-	AM_RANGE(0x8c, 0x8c) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x8c, 0x8d) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0x8d, 0x8d) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x8e, 0x8e) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0x8e, 0x8f) AM_READ(ay8910_read_port_1_r)
-	AM_RANGE(0x8f, 0x8f) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0x8c, 0x8d) AM_DEVREADWRITE("ay1", ay8910_r, ay8910_address_data_w)
+	AM_RANGE(0x8e, 0x8f) AM_DEVREADWRITE("ay2", ay8910_r, ay8910_address_data_w)
 ADDRESS_MAP_END
 
 /***************************************************************************/
@@ -145,10 +141,10 @@ static INPUT_PORTS_START( timelimt )
 	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x10, "5" )
-	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Unknown ) )	/* probably bonus */
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Unknown ) )	/* probably screen-flip */
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
 	PORT_DIPNAME( 0x80, 0x00, "Invincibility (Cheat)")
@@ -190,13 +186,13 @@ static INPUT_PORTS_START( progress )
 	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x10, "5" )
-	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x00, "20,000 & 100,000" )
+	PORT_DIPSETTING(    0x20, "50,000 & 200,000" )
+	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Unknown ) ) /* Manual shows "SCREEN" Table=On / Upright=Off */
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x80, 0x00, "Invincibility (Cheat)")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 INPUT_PORTS_END
@@ -245,10 +241,10 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	soundlatch_r,
-	NULL,
-	NULL,
-	NULL
+	DEVCB_MEMORY_HANDLER("audiocpu", PROGRAM, soundlatch_r),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static INTERRUPT_GEN( timelimt_irq ) {
@@ -261,15 +257,15 @@ static INTERRUPT_GEN( timelimt_irq ) {
 static MACHINE_DRIVER_START( timelimt )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 5000000)	/* 5.000 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, 5000000)	/* 5.000 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(io_map,0)
-	MDRV_CPU_VBLANK_INT("main", timelimt_irq)
+	MDRV_CPU_VBLANK_INT("screen", timelimt_irq)
 
-	MDRV_CPU_ADD("audio", Z80,18432000/6)	/* 3.072 MHz */
+	MDRV_CPU_ADD("audiocpu", Z80,18432000/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
 	MDRV_CPU_IO_MAP(sound_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) /* ? */
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold) /* ? */
 
 	MDRV_QUANTUM_TIME(HZ(3000))
 
@@ -277,7 +273,7 @@ static MACHINE_DRIVER_START( timelimt )
 	MDRV_MACHINE_RESET(timelimt)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -318,13 +314,13 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( timelimt )
-	ROM_REGION( 0x10000, "main", 0 )	/* ROMs */
+	ROM_REGION( 0x10000, "maincpu", 0 )	/* ROMs */
 	ROM_LOAD( "t8",     0x0000, 0x2000, CRC(006767ca) SHA1(a5d528c58cd73c0101ffa9ab783ec870668256db) )
 	ROM_LOAD( "t7",     0x2000, 0x2000, CRC(cbe7cd86) SHA1(502a78c14c9717a466ea24cdc63da4c0f3bec1f9) )
 	ROM_LOAD( "t6",     0x4000, 0x2000, CRC(f5f17e39) SHA1(7d78f551ce73276725c349703a790f2a63bb5503) )
 	ROM_LOAD( "t9",     0x6000, 0x2000, CRC(2d72ab45) SHA1(01d4afacc01b9e7c49355123efd5f5ad4d79a9cd) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* ROMs */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* ROMs */
 	ROM_LOAD( "tl5",    0x0000, 0x1000, CRC(5b782e4a) SHA1(2f4fe2beb8efa5a636fefc1ee172d0200d1c9497) )
 	ROM_LOAD( "tl4",    0x1000, 0x1000, CRC(a32883a9) SHA1(26e1725b67be87db28855672facb1504b8ac84d6) )
 
@@ -348,13 +344,13 @@ ROM_START( timelimt )
 ROM_END
 
 ROM_START( progress )
-	ROM_REGION( 0x10000, "main", 0 )	/* ROMs */
+	ROM_REGION( 0x10000, "maincpu", 0 )	/* ROMs */
 	ROM_LOAD( "pg8.bin",     0x0000, 0x2000, CRC(e8779658) SHA1(3eca574d7328d54e544e663f58be789dbf151e77) )
 	ROM_LOAD( "pg7.bin",     0x2000, 0x2000, CRC(5dcf6b6f) SHA1(550f02ff5ed2935f4c3c9055c5742fea46f42351) )
 	ROM_LOAD( "pg6.bin",     0x4000, 0x2000, CRC(f21d2a08) SHA1(b2542e895d6d011895abec641b056ad8d7dc0d15) )
 	ROM_LOAD( "pg9.bin",     0x6000, 0x2000, CRC(052ab4ac) SHA1(a2bfb575f2dfde862f9b1e8a4378f9b6b6200831) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* ROMs */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* ROMs */
 	ROM_LOAD( "pg4.bin",    0x0000, 0x1000, CRC(b1cc2fe8) SHA1(c9045e7b65311b052c337ad3bedadf108d1c24c3) )
 
 	ROM_REGION( 0x2000, "tiles_1", ROMREGION_DISPOSE )	/* tiles */

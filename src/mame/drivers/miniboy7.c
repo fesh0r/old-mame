@@ -187,8 +187,8 @@ static ADDRESS_MAP_START( miniboy7_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1000, 0x17ff) AM_RAM_WRITE(miniboy7_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x1800, 0x25ff) AM_RAM	/* looks like videoram */
 	AM_RANGE(0x2600, 0x27ff) AM_RAM
-	AM_RANGE(0x2800, 0x2800) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0x2801, 0x2801) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
+	AM_RANGE(0x2800, 0x2800) AM_DEVWRITE("crtc", mc6845_address_w)
+	AM_RANGE(0x2801, 0x2801) AM_DEVREADWRITE("crtc", mc6845_register_r, mc6845_register_w)
 //  AM_RANGE(0x3000, 0x3001) ????? R/W
 //  AM_RANGE(0x3080, 0x3083) AM_READWRITE(pia_0_r, pia_0_w)
 //  AM_RANGE(0x3800, 0x3800) ????? R
@@ -254,7 +254,7 @@ GFXDECODE_END
 
 static const mc6845_interface mc6845_intf =
 {
-	"main",		/* screen we are acting on */
+	"screen",	/* screen we are acting on */
 	8,			/* number of pixels per video memory address */
 	NULL,		/* before pixel update callback */
 	NULL,		/* row update callback */
@@ -272,12 +272,12 @@ static const mc6845_interface mc6845_intf =
 static MACHINE_DRIVER_START( miniboy7 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, MASTER_CLOCK/16)	/* guess */
+	MDRV_CPU_ADD("maincpu", M6502, MASTER_CLOCK/16)	/* guess */
 	MDRV_CPU_PROGRAM_MAP(miniboy7_map, 0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -300,7 +300,7 @@ MACHINE_DRIVER_END
 *************************/
 
 ROM_START( miniboy7 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "mb7111.8a",	0x4000, 0x2000,  BAD_DUMP CRC(1b7ac5f0) SHA1(a52052771fcce688afccf9f0c3e3c2b5e7cec4e4) )    /* marked as BAD for the dumper but seems OK */
 	ROM_LOAD( "mb7211.7a",	0x6000, 0x2000, CRC(ac9b66a6) SHA1(66a33e475de4fb3ffdd9a68a24932574e7d78116) )
 	ROM_LOAD( "mb7311.6a",	0x8000, 0x2000,  BAD_DUMP CRC(99f2a063) SHA1(94108cdc574c7e9400fe8a249b78ba190d10502b) )    /* marked as BAD for the dumper */

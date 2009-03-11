@@ -88,9 +88,9 @@ static UINT8 psg_pa, psg_pb = 0, mux_data = 0, ledant = 0, player = 1, stat_a= 1
 * Read Handlers *
 ****************/
 
-static READ8_HANDLER (re_psg_portA_r)
+static READ8_DEVICE_HANDLER (re_psg_portA_r)
 {
-	if ((input_port_read(space->machine, "IN0") & 0x01) == 0)
+	if ((input_port_read(device->machine, "IN0") & 0x01) == 0)
 	{
 		output_set_lamp_value(0,1);		// Operator Key ON
 	}
@@ -100,10 +100,10 @@ static READ8_HANDLER (re_psg_portA_r)
 		output_set_lamp_value(0,0);		// Operator Key OFF
 	}
 
-	return input_port_read(space->machine, "IN0");
+	return input_port_read(device->machine, "IN0");
 }
 
-static READ8_HANDLER (re_psg_portB_r)
+static READ8_DEVICE_HANDLER (re_psg_portB_r)
 {
 	UINT8 retval = 0xff;
 	logerror("llamada a re_psg_portB_r\n");
@@ -111,7 +111,7 @@ static READ8_HANDLER (re_psg_portB_r)
 
 	output_set_lamp_value(player,1);
 
-	if (input_port_read(space->machine, "IN_S"))
+	if (input_port_read(device->machine, "IN_S"))
 	{
 		if (!stat_a)
 		{
@@ -142,25 +142,15 @@ static READ8_HANDLER (re_psg_portB_r)
 	/* "INA": Unified port to share the player Keys among all players - Key In & Key Out have their own buttons on keyboard. */
 	switch( mux_data )
 	{
-		case 0x01: retval = (input_port_read(space->machine, "IN6") | 0x80 ) - (( player == 6 ) ? (input_port_read(space->machine, "INA") | 0x80 ) ^ 0xff: 0x00 ); break; /* Player 6 */
-		case 0x02: retval = (input_port_read(space->machine, "IN5") | 0x80 ) - (( player == 5 ) ? (input_port_read(space->machine, "INA") | 0x80 ) ^ 0xff: 0x00 ); break; /* Player 5 */
-		case 0x04: retval = (input_port_read(space->machine, "IN4") | 0x80 ) - (( player == 4 ) ? (input_port_read(space->machine, "INA") | 0x80 ) ^ 0xff: 0x00 ); break; /* Player 4 */
-		case 0x08: retval = (input_port_read(space->machine, "IN3") | 0x80 ) - (( player == 3 ) ? (input_port_read(space->machine, "INA") | 0x80 ) ^ 0xff: 0x00 ); break; /* Player 3 */
-		case 0x10: retval = (input_port_read(space->machine, "IN2") | 0x80 ) - (( player == 2 ) ? (input_port_read(space->machine, "INA") | 0x80 ) ^ 0xff: 0x00 ); break; /* Player 2 */
-		case 0x20: retval = (input_port_read(space->machine, "IN1") | 0x80 ) - (( player == 1 ) ? (input_port_read(space->machine, "INA") | 0x80 ) ^ 0xff: 0x00 ); break; /* Player 1 */
+		case 0x01: retval = (input_port_read(device->machine, "IN6") | 0x80 ) - (( player == 6 ) ? (input_port_read(device->machine, "INA") | 0x80 ) ^ 0xff: 0x00 ); break; /* Player 6 */
+		case 0x02: retval = (input_port_read(device->machine, "IN5") | 0x80 ) - (( player == 5 ) ? (input_port_read(device->machine, "INA") | 0x80 ) ^ 0xff: 0x00 ); break; /* Player 5 */
+		case 0x04: retval = (input_port_read(device->machine, "IN4") | 0x80 ) - (( player == 4 ) ? (input_port_read(device->machine, "INA") | 0x80 ) ^ 0xff: 0x00 ); break; /* Player 4 */
+		case 0x08: retval = (input_port_read(device->machine, "IN3") | 0x80 ) - (( player == 3 ) ? (input_port_read(device->machine, "INA") | 0x80 ) ^ 0xff: 0x00 ); break; /* Player 3 */
+		case 0x10: retval = (input_port_read(device->machine, "IN2") | 0x80 ) - (( player == 2 ) ? (input_port_read(device->machine, "INA") | 0x80 ) ^ 0xff: 0x00 ); break; /* Player 2 */
+		case 0x20: retval = (input_port_read(device->machine, "IN1") | 0x80 ) - (( player == 1 ) ? (input_port_read(device->machine, "INA") | 0x80 ) ^ 0xff: 0x00 ); break; /* Player 1 */
 	}
 
 	return retval;
-}
-
-static READ8_HANDLER (bs94_portA_r)
-{
-	return input_port_read(space->machine, "IN0");
-}
-
-static READ8_HANDLER (bs94_portB_r)
-{
-	return input_port_read(space->machine, "IN1");
 }
 
 static READ8_HANDLER (rom_r)
@@ -173,13 +163,13 @@ static READ8_HANDLER (rom_r)
 *    Write Handlers    *
 ***********************/
 
-static WRITE8_HANDLER (re_mux_port_A_w)
+static WRITE8_DEVICE_HANDLER (re_mux_port_A_w)
 {
 	psg_pa = data;
 	mux_data = ((data >> 2) & 0x3f) ^ 0x3f;
 }
 
-static WRITE8_HANDLER (re_mux_port_B_w)
+static WRITE8_DEVICE_HANDLER (re_mux_port_B_w)
 {
 	UINT8 led;
 	psg_pb = data;
@@ -222,9 +212,8 @@ static ADDRESS_MAP_START( mem_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xc000, 0xdfff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(TMS9928A_vram_w)
 	AM_RANGE(0xe001, 0xe001) AM_WRITE(TMS9928A_register_w)
-	AM_RANGE(0xe800, 0xe800) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xe801, 0xe801) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0xe802, 0xe802) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0xe800, 0xe801) AM_DEVWRITE("ay_re900", ay8910_address_data_w)
+	AM_RANGE(0xe802, 0xe802) AM_DEVREAD("ay_re900", ay8910_r)
 	AM_RANGE(0xe000, 0xefff) AM_WRITE(re900_watchdog_reset_w)
 	AM_RANGE(MCS51_PORT_P0, MCS51_PORT_P0) AM_WRITE(cpu_port_0_w)
 	AM_RANGE(MCS51_PORT_P2, MCS51_PORT_P2) AM_NOP
@@ -247,7 +236,7 @@ static void vdp_interrupt (running_machine *machine, int state)
 *      Input ports      *
 ************************/
 
-INPUT_PORTS_START( re900 )
+static INPUT_PORTS_START( re900 )
 
 	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Operator Key") PORT_TOGGLE PORT_CODE(KEYCODE_0)
@@ -334,7 +323,7 @@ INPUT_PORTS_START( re900 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
-INPUT_PORTS_START( bs94 )
+static INPUT_PORTS_START( bs94 )
 	PORT_START("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Bet")       PORT_CODE(KEYCODE_2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("Double")    PORT_CODE(KEYCODE_3)
@@ -378,20 +367,20 @@ static const ay8910_interface ay8910_re900 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	re_psg_portA_r,
-	re_psg_portB_r,
-	re_mux_port_A_w,
-	re_mux_port_B_w
+	DEVCB_HANDLER(re_psg_portA_r),
+	DEVCB_HANDLER(re_psg_portB_r),
+	DEVCB_HANDLER(re_mux_port_A_w),
+	DEVCB_HANDLER(re_mux_port_B_w)
 };
 
 static const ay8910_interface ay8910_bs94 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	bs94_portA_r,
-	bs94_portB_r,
-	0,
-	0
+	DEVCB_INPUT_PORT("IN0"),
+	DEVCB_INPUT_PORT("IN1"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 /***************************
@@ -401,14 +390,14 @@ static const ay8910_interface ay8910_bs94 =
 static MACHINE_DRIVER_START( re900 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", I8051, MAIN_CLOCK)
+	MDRV_CPU_ADD("maincpu", I8051, MAIN_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(mem_prg, 0)
 	MDRV_CPU_IO_MAP(mem_io, 0)
-	MDRV_CPU_VBLANK_INT("main", re900_video_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", re900_video_interrupt)
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
@@ -436,12 +425,12 @@ MACHINE_DRIVER_END
 *************************/
 
 ROM_START( re900 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "re900.bin", 0x0000, 0x10000, CRC(967ae944) SHA1(104bab79fd50a8e38ae15058dbe47a59f1ec4b05) )
 ROM_END
 
 ROM_START( bs94 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "bs94.bin",  0x0000, 0x10000, CRC(bbd484ce) SHA1(4128e488ca806842c3639e05c4c9cf4c0da2990d) )
 ROM_END
 

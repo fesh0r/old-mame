@@ -56,10 +56,10 @@ VIDEO_UPDATE( yunsung8 );
 static MACHINE_RESET( yunsung8 )
 {
 	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
-	UINT8 *RAM = memory_region(machine, "main") + 0x24000;
+	UINT8* yunsung8_videoram = auto_malloc(0x4000);
 
-	yunsung8_videoram_0 = RAM + 0x0000;	// Ram is banked
-	yunsung8_videoram_1 = RAM + 0x2000;
+	yunsung8_videoram_0 = yunsung8_videoram + 0x0000;	// Ram is banked
+	yunsung8_videoram_1 = yunsung8_videoram + 0x2000;
 	yunsung8_videobank_w(space,0,0);
 }
 
@@ -75,7 +75,7 @@ static MACHINE_RESET( yunsung8 )
 
 static WRITE8_HANDLER( yunsung8_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(space->machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "maincpu");
 
 	int bank				=	data & 7;		// ROM bank
 	yunsung8_layers_ctrl	=	data & 0x30;	// Layers enable
@@ -130,19 +130,19 @@ ADDRESS_MAP_END
 
 static int adpcm;
 
-static WRITE8_HANDLER( yunsung8_sound_bankswitch_w )
+static WRITE8_DEVICE_HANDLER( yunsung8_sound_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(space->machine, "audio");
+	UINT8 *RAM = memory_region(device->machine, "audiocpu");
 	int bank = data & 7;
 
-	if ( bank != (data&(~0x20)) ) 	logerror("CPU #1 - PC %04X: Bank %02X\n",cpu_get_pc(space->cpu),data);
+	if ( bank != (data&(~0x20)) ) 	logerror("%s: Bank %02X\n",cpuexec_describe_context(device->machine),data);
 
 	if (bank < 3)	RAM = &RAM[0x4000 * bank];
 	else			RAM = &RAM[0x4000 * (bank-3) + 0x10000];
 
-	memory_set_bankptr(space->machine, 2, RAM);
+	memory_set_bankptr(device->machine, 2, RAM);
 
-	msm5205_reset_w(0,data & 0x20);
+	msm5205_reset_w(device,data & 0x20);
 }
 
 static WRITE8_HANDLER( yunsung8_adpcm_w )
@@ -156,10 +156,9 @@ static WRITE8_HANDLER( yunsung8_adpcm_w )
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK2,SMH_ROM		)	// Banked ROM
-	AM_RANGE(0xe000, 0xe000) AM_WRITE(yunsung8_sound_bankswitch_w	)	// ROM Bank
+	AM_RANGE(0xe000, 0xe000) AM_DEVWRITE("msm", yunsung8_sound_bankswitch_w	)	// ROM Bank
 	AM_RANGE(0xe400, 0xe400) AM_WRITE(yunsung8_adpcm_w				)
-	AM_RANGE(0xec00, 0xec00) AM_WRITE(ym3812_control_port_0_w		)	// YM3812
-	AM_RANGE(0xec01, 0xec01) AM_WRITE(ym3812_write_port_0_w			)
+	AM_RANGE(0xec00, 0xec01) AM_DEVWRITE("ym", ym3812_w		)
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM
 	AM_RANGE(0xf800, 0xf800) AM_READ(soundlatch_r					)	// From Main CPU
 ADDRESS_MAP_END
@@ -345,6 +344,12 @@ static INPUT_PORTS_START( cannball )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
+static INPUT_PORTS_START( cannbalv )
+	PORT_INCLUDE(cannball)
+	PORT_MODIFY("SYSTEM")
+	PORT_BIT(  0x40, IP_ACTIVE_HIGH, IPT_SPECIAL  ) // always activated, otherwise the game resets. a simple check for horizontal / vertical version of the game?
+INPUT_PORTS_END
+
 /***************************************************************************
                                     Rock Tris
 ***************************************************************************/
@@ -483,7 +488,7 @@ static void yunsung8_adpcm_int(const device_config *device)
 {
 	static int toggle=0;
 
-	msm5205_data_w (0,adpcm>>4);
+	msm5205_data_w (device,adpcm>>4);
 	adpcm<<=4;
 
 	toggle ^= 1;
@@ -501,19 +506,19 @@ static const msm5205_interface yunsung8_msm5205_interface =
 static MACHINE_DRIVER_START( yunsung8 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 8000000)			/* Z80B */
+	MDRV_CPU_ADD("maincpu", Z80, 8000000)			/* Z80B */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(port_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)	/* No nmi routine */
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)	/* No nmi routine */
 
-	MDRV_CPU_ADD("audio", Z80, 4000000)			/* ? */
+	MDRV_CPU_ADD("audiocpu", Z80, 4000000)			/* ? */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)	/* NMI caused by the MSM5205? */
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)	/* NMI caused by the MSM5205? */
 
 	MDRV_MACHINE_RESET(yunsung8)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -527,16 +532,16 @@ static MACHINE_DRIVER_START( yunsung8 )
 	MDRV_VIDEO_UPDATE(yunsung8)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM3812, 4000000)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
-	MDRV_SOUND_ADD("msm", MSM5205, 384000)
+	MDRV_SOUND_ADD("msm", MSM5205, XTAL_400kHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(yunsung8_msm5205_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.80)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.80)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.80)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.80)
 MACHINE_DRIVER_END
 
 
@@ -561,13 +566,11 @@ OSC : 16.000
 
 ROM_START( magix )
 
-	ROM_REGION( 0x24000+0x4000, "main", 0 )		/* Main Z80 Code */
+	ROM_REGION( 0x24000, "maincpu", 0 )		/* Main Z80 Code */
 	ROM_LOAD( "yunsung8.07", 0x00000, 0x0c000, CRC(d4d0b68b) SHA1(d7e1fb57a14f8b822791b98cecc6d5a053a89e0f) )
 	ROM_CONTINUE(         0x10000, 0x14000             )
-	/* $2000 bytes for bank 0 of video ram (text) */
-	/* $2000 bytes for bank 1 of video ram (background) */
 
-	ROM_REGION( 0x24000, "audio", 0 )		/* Sound Z80 Code */
+	ROM_REGION( 0x24000, "audiocpu", 0 )		/* Sound Z80 Code */
 	ROM_LOAD( "yunsung8.08", 0x00000, 0x0c000, CRC(6fd60be9) SHA1(87622dc2967842629e90a02b415bec86cc26cbc7) )
 	ROM_CONTINUE(         0x10000, 0x14000             )
 
@@ -601,13 +604,11 @@ Cy7c384A
 
 ROM_START( cannball )
 
-	ROM_REGION( 0x24000+0x4000, "main", 0 )		/* Main Z80 Code */
+	ROM_REGION( 0x24000, "maincpu", 0 )		/* Main Z80 Code */
 	ROM_LOAD( "cannball.07", 0x00000, 0x0c000, CRC(17db56b4) SHA1(032e3dbde0b0e315dcb5f2b31f57e75e78818f2d) )
 	ROM_CONTINUE(            0x10000, 0x14000             )
-	/* $2000 bytes for bank 0 of video ram (text) */
-	/* $2000 bytes for bank 1 of video ram (background) */
 
-	ROM_REGION( 0x24000, "audio", 0 )		/* Sound Z80 Code */
+	ROM_REGION( 0x24000, "audiocpu", 0 )		/* Sound Z80 Code */
 	ROM_LOAD( "cannball.08", 0x00000, 0x0c000, CRC(11403875) SHA1(9f583bc4f08e7aef3fd0f3fe3f31cce1d226641a) )
 	ROM_CONTINUE(            0x10000, 0x14000             )
 
@@ -622,6 +623,30 @@ ROM_START( cannball )
 	ROM_LOAD( "cannball.06", 0x20000, 0x20000, CRC(e722bee8) SHA1(3aed7df9df81a6776b6bf2f5b167965b0d689216) )
 
 ROM_END
+
+
+ROM_START( cannbalv )
+
+	ROM_REGION( 0x24000, "maincpu", 0 )		/* Main Z80 Code */
+	ROM_LOAD( "yunsung1", 0x00000, 0x0c000, CRC(f7398b0d) SHA1(f2cdb9c4662cd325376d25ae9611f689605042db) )
+	ROM_CONTINUE(            0x10000, 0x14000             )
+
+	ROM_REGION( 0x24000, "audiocpu", 0 )		/* Sound Z80 Code */
+	ROM_LOAD( "yunsung8", 0x00000, 0x0c000, CRC(11403875) SHA1(9f583bc4f08e7aef3fd0f3fe3f31cce1d226641a) )
+	ROM_CONTINUE(            0x10000, 0x14000             )
+
+	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE )	/* Background */
+	ROM_LOAD( "yunsung7",  0x000000, 0x80000, CRC(a5f1a648) SHA1(7a5bf5bc0ad257ccb12104512e98dfb3525babfc) )
+	ROM_LOAD( "yunsung6",  0x080000, 0x80000, CRC(8baa686e) SHA1(831c3e2864d262bf5429dca6653c83dc976e610e) )
+	ROM_LOAD( "yunsung5",  0x100000, 0x80000, CRC(a7f2ce51) SHA1(81632aca067f2c8c45488266c4489d9af24fb552) )
+	ROM_LOAD( "yunsung4",  0x180000, 0x80000, CRC(74bef793) SHA1(6208580ce747cec3d410ce3c71e07aa570b9121d) )
+
+	ROM_REGION( 0x40000, "gfx2", ROMREGION_DISPOSE )	/* Text */
+	ROM_LOAD( "yunsung3", 0x00000, 0x20000, CRC(8217abbe) SHA1(1a459a816a1aa5b68858e39c4a21bd78ee78dcab) )
+	ROM_LOAD( "yunsung2", 0x20000, 0x20000, CRC(76de1045) SHA1(a3845ee1874e6ec0ce26e6e73e4643243779e70d) )
+
+ROM_END
+
 
 /***************************************************************************
 
@@ -645,13 +670,11 @@ they jumpered the first position)
 
 ROM_START( rocktris )
 
-	ROM_REGION( 0x24000+0x4000, "main", 0 )		/* Main Z80 Code */
+	ROM_REGION( 0x24000, "maincpu", 0 )		/* Main Z80 Code */
 	ROM_LOAD( "cpu.bin",     0x00000, 0x0c000, CRC(46e3b79c) SHA1(81a587b9f986c4e39b1888ec6ed6b86d1469b9a0) )
 	ROM_CONTINUE(         0x10000, 0x14000             )
-	/* $2000 bytes for bank 0 of video ram (text) */
-	/* $2000 bytes for bank 1 of video ram (background) */
 
-	ROM_REGION( 0x24000, "audio", 0 )		/* Sound Z80 Code */
+	ROM_REGION( 0x24000, "audiocpu", 0 )		/* Sound Z80 Code */
 	ROM_LOAD( "cpu2.bin",    0x00000, 0x0c000, CRC(3a78a4cf) SHA1(f643c7a217cbb71f3a03f1f4a16545c546332819) )
 	ROM_CONTINUE(         0x10000, 0x14000             )
 
@@ -679,6 +702,7 @@ ROM_END
 
 ***************************************************************************/
 
-GAME( 1995,  cannball, 0, yunsung8, cannball, 0, ROT0, "Yun Sung / Soft Vision", "Cannon Ball (Yun Sung)",  GAME_IMPERFECT_SOUND )
-GAME( 1995,  magix,    0, yunsung8, magix,    0, ROT0, "Yun Sung",               "Magix / Rock", GAME_IMPERFECT_SOUND ) // Title: DSW
-GAME( 1994?, rocktris, 0, yunsung8, rocktris, 0, ROT0, "Yun Sung",               "Rock Tris",    GAME_IMPERFECT_SOUND )
+GAME( 1995,  cannball, 0,        yunsung8, cannball, 0, ROT0,   "Yun Sung / Soft Vision", "Cannon Ball (Yun Sung) (horizontal)",  GAME_IMPERFECT_SOUND )
+GAME( 1995,  cannbalv, cannball, yunsung8, cannbalv, 0, ROT270, "Yun Sung / T&K",         "Cannon Ball (Yun Sung) (vertical)",  GAME_IMPERFECT_SOUND )
+GAME( 1995,  magix,    0,        yunsung8, magix,    0, ROT0,   "Yun Sung",               "Magix / Rock", GAME_IMPERFECT_SOUND ) // Title: DSW
+GAME( 1994?, rocktris, 0,        yunsung8, rocktris, 0, ROT0,   "Yun Sung",               "Rock Tris",    GAME_IMPERFECT_SOUND )

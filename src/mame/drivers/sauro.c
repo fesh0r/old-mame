@@ -130,15 +130,9 @@ static WRITE8_HANDLER( flip_screen_w )
 	flip_screen_set(space->machine, data);
 }
 
-static WRITE8_HANDLER( adpcm_w )
+static WRITE8_DEVICE_HANDLER( adpcm_w )
 {
-	sp0256_ALD_w(space, 0, data);
-}
-
-static void lrq_callback(const device_config *device, int state)
-{
-	//cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
-	cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, state);
+	sp0256_ALD_w(device, 0, data);
 }
 
 static ADDRESS_MAP_START( sauro_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -191,9 +185,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sauro_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0xc001, 0xc001) AM_WRITE(ym3812_write_port_0_w)
-	AM_RANGE(0xa000, 0xa000) AM_WRITE(adpcm_w)
+	AM_RANGE(0xc000, 0xc001) AM_DEVWRITE("ym", ym3812_w)
+	AM_RANGE(0xa000, 0xa000) AM_DEVWRITE("speech", adpcm_w)
 	AM_RANGE(0xe000, 0xe006) AM_WRITE(SMH_NOP)	/* echo from write to e0000 */
 	AM_RANGE(0xe00e, 0xe00f) AM_WRITE(SMH_NOP)
 ADDRESS_MAP_END
@@ -215,8 +208,7 @@ static ADDRESS_MAP_START( trckydoc_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xec00, 0xefff) AM_WRITE(trckydoc_spriteram_mirror_w) // it clears sprites from the screen by writing here to set some of the attributes
 	AM_RANGE(0xf000, 0xf3ff) AM_WRITE(tecfri_videoram_w) AM_BASE(&tecfri_videoram)
 	AM_RANGE(0xf400, 0xf7ff) AM_WRITE(tecfri_colorram_w) AM_BASE(&tecfri_colorram)
-	AM_RANGE(0xf820, 0xf820) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0xf821, 0xf821) AM_WRITE(ym3812_write_port_0_w)
+	AM_RANGE(0xf820, 0xf821) AM_DEVWRITE("ym", ym3812_w)
 	AM_RANGE(0xf830, 0xf830) AM_WRITE(tecfri_scroll_bg_w)
 	AM_RANGE(0xf838, 0xf838) AM_WRITE(SMH_NOP)				/* only written at startup */
 	AM_RANGE(0xf839, 0xf839) AM_WRITE(flip_screen_w)
@@ -336,8 +328,8 @@ static const gfx_layout sauro_spritelayout =
 
 static const sp0256_interface sauro_sp256 =
 {
-	lrq_callback,
-	0
+	DEVCB_CPU_INPUT_LINE("audiocpu", INPUT_LINE_NMI),
+	DEVCB_NULL
 };
 
 static GFXDECODE_START( sauro )
@@ -358,11 +350,11 @@ static INTERRUPT_GEN( sauro_interrupt )
 
 static MACHINE_DRIVER_START( tecfri )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 4000000)        // 4 MHz???
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_ADD("maincpu", Z80, 4000000)        // 4 MHz???
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(5000))  // frames per second, vblank duration (otherwise sprites lag)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -383,7 +375,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( trckydoc )
 	MDRV_IMPORT_FROM(tecfri)
 
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(trckydoc_readmem, trckydoc_writemem )
 
 	MDRV_GFXDECODE(trckydoc)
@@ -396,11 +388,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( sauro )
 	MDRV_IMPORT_FROM(tecfri)
 
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(sauro_readmem, sauro_writemem)
 	MDRV_CPU_IO_MAP(sauro_io_map,0)
 
-	MDRV_CPU_ADD("audio", Z80, 4000000)	// 4 MHz?
+	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	// 4 MHz?
 	MDRV_CPU_PROGRAM_MAP(sauro_sound_readmem, sauro_sound_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(sauro_interrupt, 8) // ?
 
@@ -422,11 +414,11 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( sauro )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "sauro-2.bin",     0x00000, 0x8000, CRC(19f8de25) SHA1(52eea7c0416ab0a8dbb3d1664b2f57ab7a405a67) )
 	ROM_LOAD( "sauro-1.bin",     0x08000, 0x8000, CRC(0f8b876f) SHA1(6e61a8934a2cc3c80c1f47dd59aa43aaeec12f75) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "sauro-3.bin",     0x00000, 0x8000, CRC(0d501e1b) SHA1(20a56ff30d4fa5d2f483a449703b49153839f6bc) )
 
 	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
@@ -454,7 +446,7 @@ ROM_START( sauro )
 ROM_END
 
 ROM_START( trckydoc )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "trckydoc.d9",  0x0000,  0x8000, CRC(c6242fc3) SHA1(c8a6f6abe8b51061a113ed75fead0479df68ec40) )
 	ROM_LOAD( "trckydoc.b9",  0x8000,  0x8000, CRC(8645c840) SHA1(79c2acfc1aeafbe94afd9d230200bd7cdd7bcd1b) )
 
@@ -478,7 +470,7 @@ ROM_START( trckydoc )
 ROM_END
 
 ROM_START( trckydca )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "trckydca.d9",  0x0000,  0x8000, CRC(99c38aa4) SHA1(298a19439cc17743e10d101c50a26b9a7348299e) )
 	ROM_LOAD( "trckydca.b9",  0x8000,  0x8000, CRC(b6048a15) SHA1(d982fafbfa391ef9bab50bfd52607494e2a9eedf) )
 
@@ -506,7 +498,7 @@ static DRIVER_INIT( tecfri )
 	/* This game doesn't like all memory to be initialized to zero, it won't
        initialize the high scores */
 
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 
 	memset(&RAM[0xe000], 0, 0x100);
 	RAM[0xe000] = 1;

@@ -90,11 +90,13 @@ static VIDEO_UPDATE( acefruit )
 
 				for( x = 0; x < 16; x++ )
 				{
+					int sprite = ( spriteram[ ( spriteindex / 64 ) % 6 ] & 0xf ) ^ 0xf;
+					const UINT8 *gfxdata = gfx_element_get_data(gfx, sprite);
+
 					for( y = 0; y < 8; y++ )
 					{
 						UINT16 *dst = BITMAP_ADDR16( bitmap, y + ( row * 8 ), x + ( col * 16 ) );
-						int sprite = ( spriteram[ ( spriteindex / 64 ) % 6 ] & 0xf ) ^ 0xf;
-						*( dst ) = *( gfx->gfxdata + ( sprite * gfx->char_modulo ) + ( ( spriterow + y ) * gfx->line_modulo ) + ( ( spriteindex % 64 ) >> 1 ) );
+						*( dst ) = *( gfxdata + ( ( spriterow + y ) * gfx->line_modulo ) + ( ( spriteindex % 64 ) >> 1 ) );
 					}
 
 					spriteindex += spritesize;
@@ -545,14 +547,14 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( acefruit )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 2500000) /* 2.5MHz */
+	MDRV_CPU_ADD("maincpu", Z80, 2500000) /* 2.5MHz */
 	MDRV_CPU_PROGRAM_MAP(acefruit_map,0)
 	MDRV_CPU_IO_MAP(acefruit_io,0)
 	MDRV_GFXDECODE(acefruit)
-	MDRV_CPU_VBLANK_INT("main", acefruit_vblank)
+	MDRV_CPU_VBLANK_INT("screen", acefruit_vblank)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -571,7 +573,7 @@ MACHINE_DRIVER_END
 
 static DRIVER_INIT( sidewndr )
 {
-	UINT8 *ROM = memory_region( machine, "main" );
+	UINT8 *ROM = memory_region( machine, "maincpu" );
 	/* replace "ret nc" ( 0xd0 ) with "di" */
 	ROM[ 0 ] = 0xf3;
 	/* this is either a bad dump or the cpu core should set the carry flag on reset */
@@ -584,7 +586,7 @@ static DRIVER_INIT( sidewndr )
 ***************************************************************************/
 
 ROM_START( sidewndr )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "2_h09.bin",    0x000000, 0x000800, BAD_DUMP CRC(141f3b0c) SHA1(1704feba950fe7aa939b9ed54c37264d10527d11) )
 	ROM_LOAD( "2_h10.bin",    0x000800, 0x000800, CRC(36a2d4af) SHA1(2388e22245497240e5721895d94d2ccd1f579eff) )
 	ROM_LOAD( "2_h11.bin",    0x001000, 0x000800, CRC(e2932643) SHA1(e1c0cd5d0cd332519432cbefa8718362a6cd1ccc) )
@@ -598,7 +600,7 @@ ROM_START( sidewndr )
 ROM_END
 
 ROM_START( spellbnd )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "h9.bin",       0x000000, 0x000800, CRC(9919fcfa) SHA1(04167b12ee9e60ef891893a305a35d3f2eccb0bb) )
 	ROM_LOAD( "h10.bin",      0x000800, 0x000800, CRC(90502d00) SHA1(3bdd859d9146df2eb97b4517c446182569a55a46) )
 	ROM_LOAD( "h11.bin",      0x001000, 0x000800, CRC(7375166c) SHA1(f05b01941423fd36e0a5d3aa913a594e4e7aa5d4) )
@@ -661,7 +663,7 @@ Notes:
 */
 
 ROM_START( starspnr )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "h9.h9",        0x00e000, 0x0800, CRC(083068aa) SHA1(160a5f3bf33d0a53354f98295cd67022762928b6) )
 	ROM_CONTINUE(             0x000000, 0x0800 )
 	ROM_LOAD( "h10.h10",      0x00e800, 0x0800, CRC(a0a96e55) SHA1(de4dc0da5a1f358085817690cc6bdc8d94a849f8) )
@@ -683,6 +685,32 @@ ROM_START( starspnr )
 	ROM_LOAD( "16-1-101.b11", 0x0200, 0x0100, NO_DUMP )
 ROM_END
 
+/* no information about this one */
+ROM_START( acefruit  )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "vp-h9.bin",    0x00e000, 0x0800, CRC(f595daf7) SHA1(be5abd34fd06f73cd80f5b15902d158e33705c8f) )
+	ROM_CONTINUE(             0x000000, 0x0800 )
+	ROM_LOAD( "vp-h10.bin",   0x00e800, 0x0800, CRC(b0539100) SHA1(763f31f72f55c3322b24e127b37130d37daa5216) )
+	ROM_CONTINUE(             0x000800, 0x0800 )
+	ROM_LOAD( "vp-h11.bin",   0x00f000, 0x0800, CRC(fa176072) SHA1(18203278bb9c505f07390f7b95ecf9ab6d7b7122) )
+	ROM_CONTINUE(             0x001000, 0x0800 )
+
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE ) /* 8k for graphics */
+	ROM_LOAD( "vp-h5.bin",         0x000000, 0x000800, CRC(dfffe063) SHA1(1b860323fe93b7d010fa35167769555a6bd4a49c) )
+	ROM_LOAD( "vp-h6.bin",         0x000800, 0x000800, CRC(355203b8) SHA1(959f3599a24293f392e8b10061c39d3244f34c05) )
+	ROM_LOAD( "vp-h7.bin",         0x001000, 0x000800, CRC(7784de8a) SHA1(40851724c9b7ef26964462b5e97ad943df4d56e2) )
+	ROM_LOAD( "vp-h8.bin",         0x001800, 0x000800, CRC(d587e541) SHA1(902b6c4673b8b989d034d60d3c47f2499f100ba2) )
+
+	/* there were no proms in the set */
+	ROM_REGION( 0x300, "proms", 0 )
+	ROM_LOAD( "16-1-101.b9",  0x0000, 0x0100, NO_DUMP )
+	ROM_LOAD( "16-1-101.b10", 0x0100, 0x0100, NO_DUMP )
+	ROM_LOAD( "16-1-101.b11", 0x0200, 0x0100, NO_DUMP )
+ROM_END
+
+
 GAMEL( 1981?, sidewndr, 0,        acefruit, sidewndr, sidewndr, ROT270, "ACE", "Sidewinder", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND, layout_sidewndr )
 GAMEL( 1981?, spellbnd, sidewndr, acefruit, spellbnd, 0,        ROT270, "ACE", "Spellbound", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND, layout_sidewndr )
 GAME ( 1982?, starspnr, 0,        acefruit, starspnr, 0,        ROT270, "ACE", "Starspinner (Dutch/Nederlands)", GAME_NOT_WORKING | GAME_NO_SOUND )
+// inputs need fixing on this one, no idea what it's called either
+GAME ( 1982?, acefruit, 0,        acefruit, spellbnd, 0,        ROT270, "ACE", "Unknown ACE Fruits Game", GAME_NOT_WORKING | GAME_NO_SOUND )

@@ -48,10 +48,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc800, 0xc800) AM_WRITE(higemaru_c800_w)
-	AM_RANGE(0xc801, 0xc801) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xc802, 0xc802) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0xc803, 0xc803) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0xc804, 0xc804) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0xc801, 0xc802) AM_DEVWRITE("ay1", ay8910_address_data_w)
+	AM_RANGE(0xc803, 0xc804) AM_DEVWRITE("ay2", ay8910_address_data_w)
 	AM_RANGE(0xd000, 0xd3ff) AM_WRITE(higemaru_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xd400, 0xd7ff) AM_WRITE(higemaru_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xd880, 0xd9ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
@@ -174,12 +172,12 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( higemaru )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_12MHz/3)	/* 4 MHz? Sharp LH0080A Z80A-CPU-D */
+	MDRV_CPU_ADD("maincpu", Z80, XTAL_12MHz/3)	/* 4 MHz? Sharp LH0080A Z80A-CPU-D */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT_HACK(higemaru_interrupt,2)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -210,7 +208,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( higemaru )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "hg4.p12", 0x0000, 0x2000, CRC(dc67a7f9) SHA1(701875e2e85efbe84bf66515117861563f3883c0) )
 	ROM_LOAD( "hg5.m12", 0x2000, 0x2000, CRC(f65a4b68) SHA1(687d46406de389c8bad6cc052a2516135db93d4a) )
 	ROM_LOAD( "hg6.p11", 0x4000, 0x2000, CRC(5f5296aa) SHA1(410ee1df63492e488b3578b9c4cfbfbd2f41c888) )

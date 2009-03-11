@@ -99,9 +99,9 @@ static TIMER_CALLBACK( setvector_callback )
 		logerror("You didn't call m72_init_sound()\n");
 
 	if (irqvector == 0xff)	/* no IRQs pending */
-		cputag_set_input_line_and_vector(machine, "sound",0,CLEAR_LINE, irqvector);
+		cputag_set_input_line_and_vector(machine, "soundcpu",0,CLEAR_LINE, irqvector);
 	else	/* IRQ pending */
-		cputag_set_input_line_and_vector(machine, "sound",0,ASSERT_LINE, irqvector);
+		cputag_set_input_line_and_vector(machine, "soundcpu",0,ASSERT_LINE, irqvector);
 }
 
 MACHINE_RESET( m72_sound )
@@ -112,12 +112,12 @@ MACHINE_RESET( m72_sound )
 	state_save_register_global(machine, sample_addr);
 }
 
-void m72_ym2151_irq_handler(running_machine *machine, int irq)
+void m72_ym2151_irq_handler(const device_config *device, int irq)
 {
 	if (irq)
-		timer_call_after_resynch(machine, NULL, YM2151_ASSERT,setvector_callback);
+		timer_call_after_resynch(device->machine, NULL, YM2151_ASSERT,setvector_callback);
 	else
-		timer_call_after_resynch(machine, NULL, YM2151_CLEAR,setvector_callback);
+		timer_call_after_resynch(device->machine, NULL, YM2151_CLEAR,setvector_callback);
 }
 
 WRITE16_HANDLER( m72_sound_command_w )
@@ -200,8 +200,8 @@ READ8_HANDLER( m72_sample_r )
 	return memory_region(space->machine, "samples")[sample_addr];
 }
 
-WRITE8_HANDLER( m72_sample_w )
+WRITE8_DEVICE_HANDLER( m72_sample_w )
 {
-	dac_signed_data_w(0,data);
-	sample_addr = (sample_addr + 1) & (memory_region_length(space->machine, "samples") - 1);
+	dac_signed_data_w(device, data);
+	sample_addr = (sample_addr + 1) & (memory_region_length(device->machine, "samples") - 1);
 }

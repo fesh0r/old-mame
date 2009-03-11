@@ -53,7 +53,7 @@ static READ16_HANDLER( wwfwfest_paletteram16_xxxxBBBBGGGGRRRR_word_r );
 static WRITE16_HANDLER( wwfwfest_paletteram16_xxxxBBBBGGGGRRRR_word_w );
 static WRITE16_HANDLER( wwfwfest_1410_write ); /* priority write */
 static WRITE16_HANDLER( wwfwfest_scroll_write ); /* scrolling write */
-static WRITE8_HANDLER( oki_bankswitch_w );
+static WRITE8_DEVICE_HANDLER( oki_bankswitch_w );
 static WRITE16_HANDLER ( wwfwfest_soundwrite );
 static WRITE16_HANDLER ( wwfwfest_flipscreen_w );
 static WRITE16_HANDLER ( wwfwfest_irq_ack_w );
@@ -88,11 +88,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_ROM
 	AM_RANGE(0xc000, 0xc7ff) AM_RAM
-	AM_RANGE(0xc800, 0xc800) AM_WRITE(ym2151_register_port_0_w)
-	AM_RANGE(0xc801, 0xc801) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
-	AM_RANGE(0xd800, 0xd800) AM_READWRITE(okim6295_status_0_r,okim6295_data_0_w)
+	AM_RANGE(0xc800, 0xc801) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
+	AM_RANGE(0xd800, 0xd800) AM_DEVREADWRITE("oki", okim6295_r, okim6295_w)
 	AM_RANGE(0xe000, 0xe000) AM_READ(soundlatch_r)
-	AM_RANGE(0xe800, 0xe800) AM_WRITE(oki_bankswitch_w)
+	AM_RANGE(0xe800, 0xe800) AM_DEVWRITE("oki", oki_bankswitch_w)
 ADDRESS_MAP_END
 
 /*******************************************************************************
@@ -159,9 +158,9 @@ static WRITE16_HANDLER( wwfwfest_scroll_write )
 
 /*- Sound Related (from dd3) -*/
 
-static WRITE8_HANDLER( oki_bankswitch_w )
+static WRITE8_DEVICE_HANDLER( oki_bankswitch_w )
 {
-	okim6295_set_bank_base(0, (data & 1) * 0x40000);
+	okim6295_set_bank_base(device, (data & 1) * 0x40000);
 }
 
 static WRITE16_HANDLER ( wwfwfest_soundwrite )
@@ -370,9 +369,9 @@ static TIMER_DEVICE_CALLBACK( wwfwfest_scanline )
  Straight from Ddragon 3 with some adjusted volumes
 *******************************************************************************/
 
-static void dd3_ymirq_handler(running_machine *machine, int irq)
+static void dd3_ymirq_handler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1], 0 , irq ? ASSERT_LINE : CLEAR_LINE );
+	cpu_set_input_line(device->machine->cpu[1], 0 , irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
 static const ym2151_interface ym2151_config =
@@ -394,17 +393,17 @@ static VIDEO_EOF( wwfwfest )
 static MACHINE_DRIVER_START( wwfwfest )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, CPU_CLOCK)	/* 24 crystal, 12 rated chip */
+	MDRV_CPU_ADD("maincpu", M68000, CPU_CLOCK)	/* 24 crystal, 12 rated chip */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_TIMER_ADD_SCANLINE("scantimer", wwfwfest_scanline, "main", 0, 1)
+	MDRV_TIMER_ADD_SCANLINE("scantimer", wwfwfest_scanline, "screen", 0, 1)
 
-	MDRV_CPU_ADD("audio", Z80, XTAL_3_579545MHz)
+	MDRV_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, 384, 0, 320, 272, 8, 248)	/* HTOTAL and VTOTAL are guessed */
 
@@ -482,11 +481,11 @@ MACHINE_DRIVER_END
 *******************************************************************************/
 
 ROM_START( wwfwfest )
-	ROM_REGION( 0x80000, "main", 0 ) /* Main CPU  (68000) */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* Main CPU  (68000) */
 	ROM_LOAD16_BYTE( "31a13-2.ic19", 0x00001, 0x40000, CRC(7175bca7) SHA1(992b47a787b5bc2a5a381ec78b8dfaf7d42c614b) )
 	ROM_LOAD16_BYTE( "31a14-2.ic18", 0x00000, 0x40000, CRC(5d06bfd1) SHA1(39a93da662158aa5a9953dcabfcb47c2fc196dc7) )
 
- 	ROM_REGION( 0x10000, "audio", 0 ) /* Sound CPU (Z80)  */
+ 	ROM_REGION( 0x10000, "audiocpu", 0 ) /* Sound CPU (Z80)  */
 	ROM_LOAD( "31a11-2.ic42", 0x00000, 0x10000, CRC(5ddebfea) SHA1(30073963e965250d94f0dc3bd261a054850adf95) )
 
  	ROM_REGION( 0x80000, "oki", 0 )	/* ADPCM samples */
@@ -511,11 +510,11 @@ ROM_START( wwfwfest )
 ROM_END
 
 ROM_START( wwfwfsta )
-	ROM_REGION( 0x80000, "main", 0 ) /* Main CPU  (68000) */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* Main CPU  (68000) */
 	ROM_LOAD16_BYTE( "wf_18.rom", 0x00000, 0x40000, CRC(933ea1a0) SHA1(61da142cfa7abd3b77ab21979c061a078c0d0c63) )
 	ROM_LOAD16_BYTE( "wf_19.rom", 0x00001, 0x40000, CRC(bd02e3c4) SHA1(7ae63e48caf9919ce7b63b4c5aa9474ba8c336da) )
 
- 	ROM_REGION( 0x10000, "audio", 0 ) /* Sound CPU (Z80)  */
+ 	ROM_REGION( 0x10000, "audiocpu", 0 ) /* Sound CPU (Z80)  */
 	ROM_LOAD( "31a11-2.ic42", 0x00000, 0x10000, CRC(5ddebfea) SHA1(30073963e965250d94f0dc3bd261a054850adf95) )
 
  	ROM_REGION( 0x80000, "oki", 0 )	/* ADPCM samples */
@@ -540,11 +539,11 @@ ROM_START( wwfwfsta )
 ROM_END
 
 ROM_START( wwfwfstb )
-	ROM_REGION( 0x80000, "main", 0 ) /* Main CPU  (68000) */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* Main CPU  (68000) */
 	ROM_LOAD16_BYTE( "3",      0x00000, 0x40000, CRC(ea73369c) SHA1(be614a342f9014251810fa30ec56fec03f7c8ef3) )
 	ROM_LOAD16_BYTE( "2",      0x00001, 0x40000, CRC(632bb3a4) SHA1(9c04fed5aeefc683810cfbd9b3318e155ed9813f) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* Sound CPU (Z80)  */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* Sound CPU (Z80)  */
 	ROM_LOAD( "1",             0x00000, 0x10000, CRC(d9e8cda2) SHA1(754c73cd341d51ffd35cdb62155a3f061416c9ba) )
 
 	ROM_REGION( 0x80000, "oki", 0 )	/* ADPCM samples */
@@ -571,11 +570,11 @@ ROM_START( wwfwfstb )
 ROM_END
 
 ROM_START( wwfwfstj )
-	ROM_REGION( 0x80000, "main", 0 ) /* Main CPU  (68000) */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* Main CPU  (68000) */
 	ROM_LOAD16_BYTE( "31j13-0.ic19", 0x00001, 0x40000, CRC(2147780d) SHA1(9a7a5db06117f3780e084d3f0c7b642ff8a9db55) )
 	ROM_LOAD16_BYTE( "31j14-0.ic18", 0x00000, 0x40000, CRC(d76fc747) SHA1(5f6819bc61756d1df4ac0776ac420a59c438cf8a) )
 
- 	ROM_REGION( 0x10000, "audio", 0 ) /* Sound CPU (Z80)  */
+ 	ROM_REGION( 0x10000, "audiocpu", 0 ) /* Sound CPU (Z80)  */
 	ROM_LOAD( "31a11-2.ic42", 0x00000, 0x10000, CRC(5ddebfea) SHA1(30073963e965250d94f0dc3bd261a054850adf95) )
 
  	ROM_REGION( 0x80000, "oki", 0 )	/* ADPCM samples */

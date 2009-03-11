@@ -21,6 +21,17 @@
 #define TEMP_STRING_POOL_ENTRIES		16
 #define MAX_STRING_LENGTH				256
 
+// ->started states
+//
+// Only 0 and 1 are externally visible in practice, making it a
+// boolean //for external users
+
+enum {
+	DEVICE_STOPPED = 0,
+	DEVICE_STARTED = 1,
+	DEVICE_STARTING = 2,
+	DEVICE_DELAYED = 3
+};
 
 
 /***************************************************************************
@@ -38,6 +49,7 @@ static int temp_string_pool_index;
 
 static void device_list_stop(running_machine *machine);
 static void device_list_reset(running_machine *machine);
+static void set_default_string(UINT32 state, char *buffer);
 
 
 
@@ -50,7 +62,7 @@ static void device_list_reset(running_machine *machine);
     a temporary string buffer
 -------------------------------------------------*/
 
-char *get_temp_string_buffer(void)
+static char *get_temp_string_buffer(void)
 {
 	char *string = &temp_string_pool[temp_string_pool_index++ % TEMP_STRING_POOL_ENTRIES][0];
 	string[0] = 0;
@@ -92,7 +104,7 @@ device_config *device_list_add(device_config **listheadptr, const device_config 
 
 	/* find the end of the list, and ensure no duplicates along the way */
 	for (devptr = listheadptr; *devptr != NULL; devptr = &(*devptr)->next)
-		if (type == (*devptr)->type && strcmp(tag, (*devptr)->tag) == 0)
+		if (strcmp(tag, (*devptr)->tag) == 0)
 			fatalerror("Attempted to add duplicate device: type=%s tag=%s\n", device_get_name(*devptr), tag);
 
 	/* get the size of the inline config */
@@ -109,7 +121,7 @@ device_config *device_list_add(device_config **listheadptr, const device_config 
 
 	/* populate device properties */
 	device->type = type;
-	device->class = devtype_get_info_int(type, DEVINFO_INT_CLASS);
+	device->devclass = devtype_get_info_int(type, DEVINFO_INT_CLASS);
 	device->set_info = (device_set_info_func)devtype_get_info_fct(type, DEVINFO_FCT_SET_INFO);
 	device->execute = NULL;
 
@@ -120,7 +132,7 @@ device_config *device_list_add(device_config **listheadptr, const device_config 
 
 	/* ensure live fields are all cleared */
 	device->machine = NULL;
-	device->started = FALSE;
+	device->started = DEVICE_STOPPED;
 	device->token = NULL;
 	device->tokenbytes = 0;
 	device->region = NULL;
@@ -141,7 +153,7 @@ device_config *device_list_add(device_config **listheadptr, const device_config 
 	*tempdevptr = device;
 
 	/* and to the end of the class list */
-	tempdevice = (device_config *)device_list_class_first(*listheadptr, device->class);
+	tempdevice = (device_config *)device_list_class_first(*listheadptr, device->devclass);
 	for (tempdevptr = &tempdevice; *tempdevptr != NULL; tempdevptr = &(*tempdevptr)->classnext) ;
 	*tempdevptr = device;
 
@@ -156,31 +168,30 @@ device_config *device_list_add(device_config **listheadptr, const device_config 
     device list
 -------------------------------------------------*/
 
-void device_list_remove(device_config **listheadptr, device_type type, const char *tag)
+void device_list_remove(device_config **listheadptr, const char *tag)
 {
 	device_config **devptr, **tempdevptr;
 	device_config *device, *tempdevice;
 
 	assert(listheadptr != NULL);
-	assert(type != NULL);
 	assert(tag != NULL);
 
 	/* find the device in the list */
 	for (devptr = listheadptr; *devptr != NULL; devptr = &(*devptr)->next)
-		if (type == (*devptr)->type && strcmp(tag, (*devptr)->tag) == 0)
+		if (strcmp(tag, (*devptr)->tag) == 0)
 			break;
 	device = *devptr;
 	if (device == NULL)
-		fatalerror("Attempted to remove non-existant device: type=%s tag=%s\n", devtype_get_name(type), tag);
+		fatalerror("Attempted to remove non-existant device: tag=%s\n", tag);
 
 	/* before removing us from the global list, remove us from the type list */
-	tempdevice = (device_config *)device_list_first(*listheadptr, type);
+	tempdevice = (device_config *)device_list_first(*listheadptr, device->type);
 	for (tempdevptr = &tempdevice; *tempdevptr != device; tempdevptr = &(*tempdevptr)->typenext) ;
 	assert(*tempdevptr == device);
 	*tempdevptr = device->typenext;
 
 	/* and from the class list */
-	tempdevice = (device_config *)device_list_class_first(*listheadptr, device->class);
+	tempdevice = (device_config *)device_list_class_first(*listheadptr, device->devclass);
 	for (tempdevptr = &tempdevice; *tempdevptr != device; tempdevptr = &(*tempdevptr)->classnext) ;
 	assert(*tempdevptr == device);
 	*tempdevptr = device->classnext;
@@ -305,28 +316,16 @@ const device_config *device_list_next(const device_config *prevdevice, device_ty
     DEVICE_TYPE_WILDCARD is allowed
 -------------------------------------------------*/
 
-const device_config *device_list_find_by_tag(const device_config *listhead, device_type type, const char *tag)
+const device_config *device_list_find_by_tag(const device_config *listhead, const char *tag)
 {
 	const device_config *curdev;
 
 	assert(tag != NULL);
 
 	/* locate among all devices */
-	if (type == DEVICE_TYPE_WILDCARD)
-	{
-		for (curdev = listhead; curdev != NULL; curdev = curdev->next)
-			if (strcmp(tag, curdev->tag) == 0)
-				return curdev;
-	}
-
-	/* locate among all devices of a given type */
-	else
-	{
-		for (curdev = listhead; curdev != NULL && curdev->type != type; curdev = curdev->next) ;
-		for ( ; curdev != NULL; curdev = curdev->typenext)
-			if (strcmp(tag, curdev->tag) == 0)
-				return curdev;
-	}
+	for (curdev = listhead; curdev != NULL; curdev = curdev->next)
+		if (strcmp(tag, curdev->tag) == 0)
+			return curdev;
 
 	/* fail */
 	return NULL;
@@ -414,13 +413,13 @@ const device_config *device_list_find_by_index(const device_config *listhead, de
     items of a given class
 -------------------------------------------------*/
 
-int device_list_class_items(const device_config *listhead, device_class class)
+int device_list_class_items(const device_config *listhead, device_class devclass)
 {
 	const device_config *curdev;
 	int count = 0;
 
 	/* locate all devices of a given class */
-	for (curdev = listhead; curdev != NULL && curdev->class != class; curdev = curdev->next) ;
+	for (curdev = listhead; curdev != NULL && curdev->devclass != devclass; curdev = curdev->next) ;
 	for ( ; curdev != NULL; curdev = curdev->classnext)
 		count++;
 
@@ -433,12 +432,12 @@ int device_list_class_items(const device_config *listhead, device_class class)
     device in the list of a given class
 -------------------------------------------------*/
 
-const device_config *device_list_class_first(const device_config *listhead, device_class class)
+const device_config *device_list_class_first(const device_config *listhead, device_class devclass)
 {
 	const device_config *curdev;
 
 	/* first of a given class */
-	for (curdev = listhead; curdev != NULL && curdev->class != class; curdev = curdev->next) ;
+	for (curdev = listhead; curdev != NULL && curdev->devclass != devclass; curdev = curdev->next) ;
 	return curdev;
 }
 
@@ -448,32 +447,10 @@ const device_config *device_list_class_first(const device_config *listhead, devi
     device in the list of a given class
 -------------------------------------------------*/
 
-const device_config *device_list_class_next(const device_config *prevdevice, device_class class)
+const device_config *device_list_class_next(const device_config *prevdevice, device_class devclass)
 {
 	assert(prevdevice != NULL);
 	return prevdevice->classnext;
-}
-
-
-/*-------------------------------------------------
-    device_list_class_find_by_tag - retrieve a
-    device configuration based on a class and tag
--------------------------------------------------*/
-
-const device_config *device_list_class_find_by_tag(const device_config *listhead, device_class class, const char *tag)
-{
-	const device_config *curdev;
-
-	assert(tag != NULL);
-
-	/* locate among all devices of a given class */
-	for (curdev = listhead; curdev != NULL && curdev->class != class; curdev = curdev->next) ;
-	for ( ; curdev != NULL; curdev = curdev->classnext)
-		if (strcmp(tag, curdev->tag) == 0)
-			return curdev;
-
-	/* fail */
-	return NULL;
 }
 
 
@@ -482,7 +459,7 @@ const device_config *device_list_class_find_by_tag(const device_config *listhead
     device based on its class and tag
 -------------------------------------------------*/
 
-int device_list_class_index(const device_config *listhead, device_class class, const char *tag)
+int device_list_class_index(const device_config *listhead, device_class devclass, const char *tag)
 {
 	const device_config *curdev;
 	int index = 0;
@@ -490,7 +467,7 @@ int device_list_class_index(const device_config *listhead, device_class class, c
 	assert(tag != NULL);
 
 	/* locate among all devices of a given class */
-	for (curdev = listhead; curdev != NULL && curdev->class != class; curdev = curdev->next) ;
+	for (curdev = listhead; curdev != NULL && curdev->devclass != devclass; curdev = curdev->next) ;
 	for ( ; curdev != NULL; curdev = curdev->classnext)
 	{
 		if (strcmp(tag, curdev->tag) == 0)
@@ -508,12 +485,12 @@ int device_list_class_index(const device_config *listhead, device_class class, c
     index
 -------------------------------------------------*/
 
-const device_config *device_list_class_find_by_index(const device_config *listhead, device_class class, int index)
+const device_config *device_list_class_find_by_index(const device_config *listhead, device_class devclass, int index)
 {
 	const device_config *curdev;
 
 	/* locate among all devices of a given class */
-	for (curdev = listhead; curdev != NULL && curdev->class != class; curdev = curdev->next) ;
+	for (curdev = listhead; curdev != NULL && curdev->devclass != devclass; curdev = curdev->next) ;
 	for ( ; curdev != NULL; curdev = curdev->classnext)
 		if (index-- == 0)
 			return curdev;
@@ -592,23 +569,46 @@ void device_list_start(running_machine *machine)
 	while (numstarted < devcount)
 	{
 		int prevstarted = numstarted;
-		numstarted = 0;
 
 		/* iterate over devices and start them */
 		for (device = (device_config *)machine->config->devicelist; device != NULL; device = device->next)
 		{
 			device_start_func start = (device_start_func)device_get_info_fct(device, DEVINFO_FCT_START);
-
 			assert(start != NULL);
-			if (!device->started && (*start)(device) == DEVICE_START_OK)
-				device->started = TRUE;
-			numstarted += device->started;
+
+			if (!device->started)
+			{
+				device->started = DEVICE_STARTING;
+				(*start)(device);
+
+				/* if the start was delayed, move back to the stopped state, otherwise count it */
+				if (device->started == DEVICE_DELAYED)
+					device->started = DEVICE_STOPPED;
+				else
+				{
+					device->started = DEVICE_STARTED;
+					numstarted++;
+				}
+			}
 		}
 
 		/* if we didn't start anything new, we're in trouble */
 		if (numstarted == prevstarted)
 			fatalerror("Circular dependency in device startup; unable to start %d/%d devices\n", devcount - numstarted, devcount);
 	}
+}
+
+
+/*-------------------------------------------------
+    device_delay_init - delay the startup of a
+    given device for dependency reasons
+-------------------------------------------------*/
+
+void device_delay_init(const device_config *device)
+{
+	if (device->started != DEVICE_STARTING && device->started != DEVICE_DELAYED)
+		fatalerror("Error: Calling device_delay_init on a device not in the process of starting.");
+	((device_config *)device)->started = DEVICE_DELAYED;
 }
 
 
@@ -781,6 +781,8 @@ const char *device_get_info_string(const device_config *device, UINT32 state)
 	/* retrieve the value */
 	info.s = get_temp_string_buffer();
 	(*device->type)(device, state, &info);
+	if (info.s[0] == 0)
+		set_default_string(state, info.s);
 	return info.s;
 }
 
@@ -846,6 +848,8 @@ const char *devtype_get_info_string(device_type type, UINT32 state)
 	/* retrieve the value */
 	info.s = get_temp_string_buffer();
 	(*type)(NULL, state, &info);
+	if (info.s[0] == 0)
+		set_default_string(state, info.s);
 	return info.s;
 }
 
@@ -912,4 +916,27 @@ void device_set_info_fct(const device_config *device, UINT32 state, genf *data)
 	/* set the value */
 	info.f = data;
 	(*device->set_info)(device, state, &info);
+}
+
+
+
+/***************************************************************************
+    DEVICE INFORMATION SETTERS
+***************************************************************************/
+
+/*-------------------------------------------------
+    set_default_string - compute a default string
+    if none is provided
+-------------------------------------------------*/
+
+static void set_default_string(UINT32 state, char *buffer)
+{
+	switch (state)
+	{
+		case DEVINFO_STR_NAME:			strcpy(buffer, "Custom");						break;
+		case DEVINFO_STR_FAMILY:		strcpy(buffer, "Custom");						break;
+		case DEVINFO_STR_VERSION:		strcpy(buffer, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:	strcpy(buffer, __FILE__);						break;
+		case DEVINFO_STR_CREDITS:		strcpy(buffer, "Copyright Nicola Salmoria and the MAME Team"); break;
+	}
 }

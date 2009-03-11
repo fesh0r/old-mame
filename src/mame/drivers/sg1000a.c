@@ -132,10 +132,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x7f, 0x7f) AM_WRITE(sn76496_0_w)
+	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE("sn", sn76496_w)
 	AM_RANGE(0xbe, 0xbe) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0xbf, 0xbf) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
-	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w)
 ADDRESS_MAP_END
 
 /*************************************
@@ -249,12 +249,12 @@ static WRITE8_DEVICE_HANDLER( sg1000a_coin_counter_w )
 
 static const ppi8255_interface ppi8255_intf =
 {
-	DEVICE8_PORT("P1"),
-	DEVICE8_PORT("P2"),
-	DEVICE8_PORT("DSW"),
-	NULL,
-	NULL,
-	sg1000a_coin_counter_w
+	DEVCB_INPUT_PORT("P1"),
+	DEVCB_INPUT_PORT("P2"),
+	DEVCB_INPUT_PORT("DSW"),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(sg1000a_coin_counter_w)
 };
 
 /*************************************
@@ -265,16 +265,16 @@ static const ppi8255_interface ppi8255_intf =
 
 static MACHINE_DRIVER_START( sg1000a )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_3_579545MHz)
+	MDRV_CPU_ADD("maincpu", Z80, XTAL_3_579545MHz)
 	MDRV_CPU_PROGRAM_MAP(program_map, 0)
 	MDRV_CPU_IO_MAP(io_map, 0)
-	MDRV_CPU_VBLANK_INT("main", sg1000a_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", sg1000a_interrupt)
 
 	MDRV_PPI8255_ADD( "ppi8255", ppi8255_intf )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE((float)XTAL_10_738635MHz/2/342/262)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
@@ -293,21 +293,21 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( chwrestl )
-	ROM_REGION( 2*0x10000, "main", 0 )
+	ROM_REGION( 2*0x10000, "maincpu", 0 )
 	ROM_LOAD( "5732",	0x0000, 0x4000, CRC(a4e44370) SHA1(a9dbf60e77327dd2bec6816f3142b42ad9ca4d09) ) /* encrypted */
 	ROM_LOAD( "5733",	0x4000, 0x4000, CRC(4f493538) SHA1(467862fe9337497e3cdebb29bf28f6cfe3066ccd) ) /* encrypted */
 	ROM_LOAD( "5734",	0x8000, 0x4000, CRC(d99b6301) SHA1(5e762ed45cde08d5223828c6b1d3569b2240462c) )
 ROM_END
 
 ROM_START( chboxing )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "cb6105.bin",	0x0000, 0x4000, CRC(43516f2e) SHA1(e3a9bbe914b5bfdcd1f85ca5fae922c4cae3c106) )
 	ROM_LOAD( "cb6106.bin",	0x4000, 0x4000, CRC(65e2c750) SHA1(843466b8d6baebb4d5e434fbdafe3ae8fed03475) )
 	ROM_LOAD( "cb6107.bin",	0x8000, 0x2000, CRC(c2f8e522) SHA1(932276e7ad33aa9efbb4cd10bc3071d88cb082cb) )
 ROM_END
 
 ROM_START( dokidoki )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "epr-7356.ic1",	0x0000, 0x4000, CRC(95658c31) SHA1(f7b5638ab1b8b244b189317d954eb37b51923791) )
 	ROM_LOAD( "epr-7357.ic2",	0x4000, 0x4000, CRC(e8dbad85) SHA1(9f13dafacee370d6e4720d8e27cf889053e79eb3) )
 	ROM_LOAD( "epr-7358.ic3",	0x8000, 0x4000, CRC(c6f26b0b) SHA1(3753e05b6e77159832dbe88562ba7a818120d1a3) )
@@ -327,7 +327,7 @@ static DRIVER_INIT( sg1000a )
 static DRIVER_INIT(chwrestl)
 {
 	DRIVER_INIT_CALL(sg1000a);
-	regulus_decode(machine, "main");
+	regulus_decode(machine, "maincpu");
 }
 
 /*************************************

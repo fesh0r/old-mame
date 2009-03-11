@@ -124,8 +124,8 @@ static WRITE16_HANDLER( k3_scrolly_w )
 
 static WRITE16_HANDLER( k3_soundbanks_w )
 {
-	okim6295_set_bank_base(0, (data & 4) ? 0x40000 : 0);
-	okim6295_set_bank_base(1, (data & 2) ? 0x40000 : 0);
+	okim6295_set_bank_base(devtag_get_device(space->machine, "oki1"), (data & 4) ? 0x40000 : 0);
+	okim6295_set_bank_base(devtag_get_device(space->machine, "oki2"), (data & 2) ? 0x40000 : 0);
 }
 
 
@@ -146,8 +146,8 @@ static ADDRESS_MAP_START( k3_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x400000, 0x400001) AM_READ_PORT("INPUTS")
 	AM_RANGE(0x440000, 0x440001) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0x480000, 0x480001) AM_READ_PORT("DSW")
-	AM_RANGE(0x4c0000, 0x4c0001) AM_READWRITE(okim6295_status_1_msb_r, okim6295_data_1_msb_w)
-	AM_RANGE(0x500000, 0x500001) AM_READWRITE(okim6295_status_0_msb_r, okim6295_data_0_msb_w)
+	AM_RANGE(0x4c0000, 0x4c0001) AM_DEVREADWRITE8("oki2", okim6295_r, okim6295_w, 0xff00)
+	AM_RANGE(0x500000, 0x500001) AM_DEVREADWRITE8("oki1", okim6295_r, okim6295_w, 0xff00)
 	AM_RANGE(0x8c0000, 0x8cffff) AM_RAM	// not used?
 ADDRESS_MAP_END
 
@@ -233,14 +233,14 @@ GFXDECODE_END
 
 
 static MACHINE_DRIVER_START( k3 )
-	MDRV_CPU_ADD("main", M68000, 16000000)
+	MDRV_CPU_ADD("maincpu", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(k3_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_GFXDECODE(1945kiii)
 
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -265,7 +265,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( 1945kiii )
-	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "prg-1.u51", 0x00001, 0x80000, CRC(6b345f27) SHA1(60867fa0e2ea7ebdd4b8046315ee0c83e5cf0d74) )
 	ROM_LOAD16_BYTE( "prg-2.u52", 0x00000, 0x80000, CRC(ce09b98c) SHA1(a06bb712b9cf2249cc535de4055b14a21c68e0c5) )
 

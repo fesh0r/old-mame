@@ -36,16 +36,16 @@ static UINT8 clear_tv;
  *
  *************************************/
 
-static READ8_HANDLER( port_b_u3_r )
+static READ8_DEVICE_HANDLER( port_b_u3_r )
 {
-	logerror("%04x: read DIP\n",cpu_get_pc(space->cpu));
-	return input_port_read(space->machine, "DSW");
+	logerror("%s: read DIP\n",cpuexec_describe_context(device->machine));
+	return input_port_read(device->machine, "DSW");
 }
 
 
-static WRITE8_HANDLER( cb2_u3_w )
+static WRITE_LINE_DEVICE_HANDLER( cb2_u3_w )
 {
-	logerror("DIP tristate %sactive\n",(data & 1) ? "in" : "");
+	logerror("DIP tristate %sactive\n",(state & 1) ? "in" : "");
 }
 
 
@@ -101,9 +101,9 @@ static WRITE8_HANDLER( clear_tv_w )
  *
  *************************************/
 
-static WRITE8_HANDLER( port_b_u1_w )
+static WRITE8_DEVICE_HANDLER( port_b_u1_w )
 {
-	if (pia_get_port_b_z_mask(0) & 0x20)
+	if (pia6821_get_port_b_z_mask(device) & 0x20)
 		coin_counter_w(0, 1);
 	else
 		coin_counter_w(0, data & 0x20);
@@ -117,12 +117,12 @@ static WRITE8_HANDLER( port_b_u1_w )
  *
  *************************************/
 
-static void main_cpu_irq(running_machine *machine, int state)
+static WRITE_LINE_DEVICE_HANDLER( main_cpu_irq )
 {
-	int combined_state = pia_get_irq_a(0) | pia_get_irq_b(0);
+	int combined_state = pia6821_get_irq_a(device) | pia6821_get_irq_b(device);
 
 logerror("GEN IRQ: %x\n", combined_state);
-	cpu_set_input_line(machine->cpu[0], 0, combined_state ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[0], 0, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -133,6 +133,7 @@ static int timer;
 
 static INTERRUPT_GEN( toratora_timer )
 {
+	const device_config *pia = devtag_get_device(device->machine, "pia_u1");
 static UINT8 last = 0;
 	timer++;	/* timer counting at 16 Hz */
 
@@ -145,11 +146,11 @@ static UINT8 last = 0;
 		last = input_port_read(device->machine, "INPUT") & 0x0f;
 		generic_pulse_irq_line(device, 0);
 	}
-	pia_set_input_a(0, input_port_read(device->machine, "INPUT") & 0x0f, 0);
+	pia6821_set_input_a(pia, input_port_read(device->machine, "INPUT") & 0x0f, 0);
 
-	pia_set_input_ca1(0, input_port_read(device->machine, "INPUT") & 0x10);
+	pia6821_ca1_w(pia, 0, input_port_read(device->machine, "INPUT") & 0x10);
 
-	pia_set_input_ca2(0, input_port_read(device->machine, "INPUT") & 0x20);
+	pia6821_ca2_w(pia, 0, input_port_read(device->machine, "INPUT") & 0x20);
 }
 
 static READ8_HANDLER( timer_r )
@@ -199,14 +200,14 @@ static const sn76477_interface sn76477_intf =
 };
 
 
-static void port_a_u2_u3_w(int which, UINT8 data)
+static WRITE8_DEVICE_HANDLER( port_a_u2_u3_w )
 {
-	sn76477_vco_voltage_w(which, 2.35 * (data & 0x7f) / 128.0);
-	sn76477_enable_w(which, (data >> 7) & 0x01);
+	sn76477_vco_voltage_w(device, 2.35 * (data & 0x7f) / 128.0);
+	sn76477_enable_w(device, (data >> 7) & 0x01);
 }
 
 
-static void port_b_u2_u3_w(int which, UINT8 data)
+static WRITE8_DEVICE_HANDLER( port_b_u2_u3_w )
 {
 	static const double resistances[] =
 	{
@@ -220,56 +221,19 @@ static void port_b_u2_u3_w(int which, UINT8 data)
 	  RES_K(47)
 	};
 
-	sn76477_mixer_a_w      (which, (data >> 0) & 0x01);
-	sn76477_mixer_b_w      (which, (data >> 1) & 0x01);
-	sn76477_mixer_c_w      (which, (data >> 2) & 0x01);
-	sn76477_envelope_1_w   (which, (data >> 3) & 0x01);
-	sn76477_envelope_2_w   (which, (data >> 4) & 0x01);
-	sn76477_amplitude_res_w(which, resistances[(data >> 5)] * 2);  /* the *2 shouldn't be neccassary, but... */
+	sn76477_mixer_a_w      (device, (data >> 0) & 0x01);
+	sn76477_mixer_b_w      (device, (data >> 1) & 0x01);
+	sn76477_mixer_c_w      (device, (data >> 2) & 0x01);
+	sn76477_envelope_1_w   (device, (data >> 3) & 0x01);
+	sn76477_envelope_2_w   (device, (data >> 4) & 0x01);
+	sn76477_amplitude_res_w(device, resistances[(data >> 5)] * 2);  /* the *2 shouldn't be neccassary, but... */
 }
 
 
-static void ca2_u2_u3_w(int which, UINT8 data)
+static WRITE_LINE_DEVICE_HANDLER( ca2_u2_u3_w )
 {
-	sn76477_vco_w(which, data);
+	sn76477_vco_w(device, state);
 }
-
-
-static WRITE8_HANDLER( port_a_u2_w )
-{
-	port_a_u2_u3_w(0, data);
-}
-
-
-static WRITE8_HANDLER( port_a_u3_w )
-{
-	port_a_u2_u3_w(1, data);
-}
-
-
-static WRITE8_HANDLER( port_b_u2_w )
-{
-	port_b_u2_u3_w(0, data);
-}
-
-
-static WRITE8_HANDLER( port_b_u3_w )
-{
-	port_b_u2_u3_w(1, data);
-}
-
-
-static WRITE8_HANDLER( ca2_u2_w )
-{
-	ca2_u2_u3_w(0, data);
-}
-
-
-static WRITE8_HANDLER( ca2_u3_w )
-{
-	ca2_u2_u3_w(1, data);
-}
-
 
 
 /*************************************
@@ -280,47 +244,54 @@ static WRITE8_HANDLER( ca2_u3_w )
 
 static const pia6821_interface pia_u1_intf =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ 0, port_b_u1_w, 0, 0,
-	/*irqs   : A/B             */ main_cpu_irq, main_cpu_irq,
+	DEVCB_NULL,		/* port A in */
+	DEVCB_NULL,		/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_NULL,		/* port A out */
+	DEVCB_HANDLER(port_b_u1_w),		/* port B out */
+	DEVCB_NULL,		/* line CA2 out */
+	DEVCB_NULL,		/* port CB2 out */
+	DEVCB_LINE(main_cpu_irq),		/* IRQA */
+	DEVCB_LINE(main_cpu_irq)		/* IRQB */
 };
+
 
 static const pia6821_interface pia_u2_intf =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ port_a_u2_w, port_b_u2_w, ca2_u2_w, 0,
-	/*irqs   : A/B             */ 0, 0,
+	DEVCB_NULL,		/* port A in */
+	DEVCB_NULL,		/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_DEVICE_HANDLER("sn1", port_a_u2_u3_w),		/* port A out */
+	DEVCB_DEVICE_HANDLER("sn1", port_b_u2_u3_w),		/* port B out */
+	DEVCB_DEVICE_LINE("sn1", ca2_u2_u3_w),				/* line CA2 out */
+	DEVCB_NULL,		/* port CB2 out */
+	DEVCB_NULL,		/* IRQA */
+	DEVCB_NULL		/* IRQB */
 };
 
 
 static const pia6821_interface pia_u3_intf =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ 0, port_b_u3_r, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ port_a_u3_w, port_b_u3_w, ca2_u3_w, cb2_u3_w,
-	/*irqs   : A/B             */ 0, 0,
+	DEVCB_NULL,		/* port A in */
+	DEVCB_HANDLER(port_b_u3_r),		/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_DEVICE_HANDLER("sn2", port_a_u2_u3_w),		/* port A out */
+	DEVCB_DEVICE_HANDLER("sn2", port_b_u2_u3_w),		/* port B out */
+	DEVCB_DEVICE_LINE("sn2", ca2_u2_u3_w),				/* line CA2 out */
+	DEVCB_LINE(cb2_u3_w),								/* port CB2 out */
+	DEVCB_NULL,		/* IRQA */
+	DEVCB_NULL		/* IRQB */
 };
 
-
-
-static MACHINE_START( toratora )
-{
-	pia_config(machine, 0, &pia_u1_intf);
-	pia_config(machine, 1, &pia_u3_intf);
-	pia_config(machine, 2, &pia_u2_intf);
-}
-
-
-
-/*************************************
- *
- *  Machine reset
- *
- *************************************/
-
-static MACHINE_RESET( toratora )
-{
-	pia_reset();
-}
 
 
 
@@ -342,9 +313,9 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf04a, 0xf04a) AM_WRITE(clear_tv_w)	/* the read is mark *LEDEN, but not used */
 	AM_RANGE(0xf04b, 0xf04b) AM_READWRITE(timer_r, clear_timer_w)
 	AM_RANGE(0xa04c, 0xf09f) AM_NOP
-	AM_RANGE(0xf0a0, 0xf0a3) AM_READWRITE(pia_0_r, pia_0_w)
-	AM_RANGE(0xf0a4, 0xf0a7) AM_READWRITE(pia_1_r, pia_1_w)
-	AM_RANGE(0xf0a8, 0xf0ab) AM_READWRITE(pia_2_r, pia_2_w)
+	AM_RANGE(0xf0a0, 0xf0a3) AM_DEVREADWRITE("pia_u1", pia6821_r, pia6821_w)
+	AM_RANGE(0xf0a4, 0xf0a7) AM_DEVREADWRITE("pia_u3", pia6821_r, pia6821_w)
+	AM_RANGE(0xf0a8, 0xf0ab) AM_DEVREADWRITE("pia_u2", pia6821_r, pia6821_w)
 	AM_RANGE(0xf0ac, 0xf7ff) AM_NOP
 	AM_RANGE(0xf800, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -400,17 +371,18 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( toratora )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6800,500000)	/* ?????? game speed is entirely controlled by this */
+	MDRV_CPU_ADD("maincpu", M6800,500000)	/* ?????? game speed is entirely controlled by this */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_PERIODIC_INT(toratora_timer,16)	/* timer counting at 16 Hz */
 
-	MDRV_MACHINE_START(toratora)
-	MDRV_MACHINE_RESET(toratora)
+	MDRV_PIA6821_ADD("pia_u1", pia_u1_intf)
+	MDRV_PIA6821_ADD("pia_u2", pia_u2_intf)
+	MDRV_PIA6821_ADD("pia_u3", pia_u3_intf)
 
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(toratora)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0,256-1,8,248-1)
@@ -439,7 +411,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( toratora )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "tora.u1",  0x1000, 0x0800, CRC(413c743a) SHA1(a887dfaaee557327a1699bb424488b934dab8612) )
 	ROM_LOAD( "tora.u10", 0x1800, 0x0800, CRC(dc771b1c) SHA1(1bd81decb4d0a854878227c52d45ac0eea0602ec) )
 	ROM_LOAD( "tora.u2",  0x2000, 0x0800, CRC(c574c664) SHA1(9f41a53ca51d04e5bec7525fe83c5f4bdfcf128d) )

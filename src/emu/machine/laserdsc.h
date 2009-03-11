@@ -15,7 +15,6 @@
 #define __LASERDSC_H__
 
 #include "chd.h"
-#include "sound/custom.h"
 
 
 
@@ -128,8 +127,8 @@ struct _laserdisc_config
 	MDRV_DEVICE_CONFIG_DATAFP32(laserdisc_config, overscalex, _scalex, 24) \
 	MDRV_DEVICE_CONFIG_DATAFP32(laserdisc_config, overscaley, _scaley, 24)
 
-#define MDRV_LASERDISC_REMOVE(_tag, _type) \
-	MDRV_DEVICE_REMOVE(_tag, _type)
+#define MDRV_LASERDISC_REMOVE(_tag) \
+	MDRV_DEVICE_REMOVE(_tag)
 
 
 /* use these to add laserdisc screens with proper video update parameters */
@@ -149,14 +148,6 @@ struct _laserdisc_config
 	MDRV_SCREEN_ADD(_tag, RASTER) \
 	MDRV_SCREEN_FORMAT(_format) \
 	MDRV_SCREEN_RAW_PARAMS(XTAL_14_31818MHz, 910, 0, 704, 525.0/2, 0, 480/2) \
-
-
-
-/***************************************************************************
-    GLOBAL VARIABLES
-***************************************************************************/
-
-extern const custom_sound_interface laserdisc_custom_interface;
 
 
 
@@ -232,6 +223,10 @@ void laserdisc_set_config(const device_config *device, const laserdisc_config *c
 /* device get info callback */
 #define LASERDISC DEVICE_GET_INFO_NAME(laserdisc)
 DEVICE_GET_INFO( laserdisc );
+
+/* audio get info callback */
+#define SOUND_LASERDISC DEVICE_GET_INFO_NAME(laserdisc_sound)
+DEVICE_GET_INFO( laserdisc_sound );
 
 
 #endif 	/* __LASERDSC_H__ */

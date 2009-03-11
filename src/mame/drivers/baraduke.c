@@ -144,19 +144,19 @@ static READ8_HANDLER( inputport_r )
 	switch (inputport_selected)
 	{
 		case 0x00:	/* DSW A (bits 0-4) */
-			return (input_port_read(space->machine, "DSWA") & 0xf8) >> 3; break;
+			return (input_port_read(space->machine, "DSWA") & 0xf8) >> 3;
 		case 0x01:	/* DSW A (bits 5-7), DSW B (bits 0-1) */
-			return ((input_port_read(space->machine, "DSWA") & 0x07) << 2) | ((input_port_read(space->machine, "DSWB") & 0xc0) >> 6); break;
+			return ((input_port_read(space->machine, "DSWA") & 0x07) << 2) | ((input_port_read(space->machine, "DSWB") & 0xc0) >> 6);
 		case 0x02:	/* DSW B (bits 2-6) */
-			return (input_port_read(space->machine, "DSWB") & 0x3e) >> 1; break;
+			return (input_port_read(space->machine, "DSWB") & 0x3e) >> 1;
 		case 0x03:	/* DSW B (bit 7), DSW C (bits 0-3) */
-			return ((input_port_read(space->machine, "DSWB") & 0x01) << 4) | (input_port_read(space->machine, "EDGE") & 0x0f); break;
+			return ((input_port_read(space->machine, "DSWB") & 0x01) << 4) | (input_port_read(space->machine, "EDGE") & 0x0f);
 		case 0x04:	/* coins, start */
-			return input_port_read(space->machine, "IN0"); break;
+			return input_port_read(space->machine, "IN0");
 		case 0x05:	/* 2P controls */
-			return input_port_read(space->machine, "IN2"); break;
+			return input_port_read(space->machine, "IN2");
 		case 0x06:	/* 1P controls */
-			return input_port_read(space->machine, "IN1"); break;
+			return input_port_read(space->machine, "IN1");
 		default:
 			return 0xff;
 	}
@@ -178,7 +178,7 @@ static WRITE8_HANDLER( baraduke_irq_ack_w )
 static ADDRESS_MAP_START( baraduke_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_READWRITE(baraduke_spriteram_r,baraduke_spriteram_w) AM_BASE(&baraduke_spriteram)	/* Sprite RAM */
 	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(baraduke_videoram_r,baraduke_videoram_w) AM_BASE(&baraduke_videoram)	/* Video RAM */
-	AM_RANGE(0x4000, 0x43ff) AM_READWRITE(namcos1_cus30_r,namcos1_cus30_w)		/* PSG device, shared RAM */
+	AM_RANGE(0x4000, 0x43ff) AM_DEVREADWRITE("namco", namcos1_cus30_r,namcos1_cus30_w)		/* PSG device, shared RAM */
 	AM_RANGE(0x4800, 0x4fff) AM_READWRITE(baraduke_textram_r,baraduke_textram_w) AM_BASE(&baraduke_textram)/* video RAM (text layer) */
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(watchdog_reset_w)			/* watchdog reset */
 	AM_RANGE(0x8800, 0x8800) AM_WRITE(baraduke_irq_ack_w)		/* irq acknowledge */
@@ -198,7 +198,7 @@ static ADDRESS_MAP_START( mcu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x001f) AM_READWRITE(hd63701_internal_registers_r,hd63701_internal_registers_w)/* internal registers */
 	AM_RANGE(0x0080, 0x00ff) AM_RAM								/* built in RAM */
 	AM_RANGE(0x1105, 0x1105) AM_READ(soundkludge_r)				/* cures speech */
-	AM_RANGE(0x1000, 0x13ff) AM_READWRITE(namcos1_cus30_r,namcos1_cus30_w) AM_BASE(&namco_wavedata)/* PSG device, shared RAM */
+	AM_RANGE(0x1000, 0x13ff) AM_DEVREADWRITE("namco", namcos1_cus30_r,namcos1_cus30_w) AM_BASE(&namco_wavedata)/* PSG device, shared RAM */
 	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_ROM)					/* MCU external ROM */
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(SMH_NOP)					/* watchdog reset? */
 	AM_RANGE(0x8800, 0x8800) AM_WRITE(SMH_NOP)					/* irq acknoledge? */
@@ -393,19 +393,19 @@ static const namco_interface namco_config =
 static MACHINE_DRIVER_START( baraduke )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809,49152000/32)
+	MDRV_CPU_ADD("maincpu", M6809,49152000/32)
 	MDRV_CPU_PROGRAM_MAP(baraduke_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_assert)
 
 	MDRV_CPU_ADD("mcu", HD63701,49152000/8)
 	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 	MDRV_CPU_IO_MAP(mcu_port_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_TIME(HZ(6000))		/* we need heavy synch */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60.606060)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -430,7 +430,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( aliensec )
-	ROM_REGION( 0x10000, "main", 0 ) /* 6809 code */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* 6809 code */
 	ROM_LOAD( "bd1_3.9c", 0x6000, 0x02000, CRC(ea2ea790) SHA1(ab6f523803b2b0ea04b78f2f252de6c2d344a26c) )
 	ROM_LOAD( "bd2_1.9a", 0x8000, 0x04000, CRC(9a0a9a87) SHA1(6d88fb5b443c822ede4884d4452e333834b16aca) )
 	ROM_LOAD( "bd2_2.9b", 0xc000, 0x04000, CRC(383e5458) SHA1(091f25e287f0a81649c9a4fa196ebe4112a82295) )
@@ -460,7 +460,7 @@ ROM_START( aliensec )
 ROM_END
 
 ROM_START( baraduke )
-	ROM_REGION( 0x10000, "main", 0 ) /* 6809 code */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* 6809 code */
 	ROM_LOAD( "bd1_3.9c", 0x6000, 0x02000, CRC(ea2ea790) SHA1(ab6f523803b2b0ea04b78f2f252de6c2d344a26c) )
 	ROM_LOAD( "bd1_1.9a", 0x8000, 0x04000, CRC(4e9f2bdc) SHA1(bc6e71d4d3b2064e662a105c1a77d2731070d58e) )
 	ROM_LOAD( "bd1_2.9b", 0xc000, 0x04000, CRC(40617fcd) SHA1(51d17f3a2fc96e13c8ef5952efece526e0fb33f4) )
@@ -490,7 +490,7 @@ ROM_START( baraduke )
 ROM_END
 
 ROM_START( metrocrs )
-	ROM_REGION( 0x10000, "main", 0 ) /* 6809 code */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* 6809 code */
 	ROM_LOAD( "mc1-3.9c",	0x6000, 0x02000, CRC(3390b33c) SHA1(0733aece368acc913e2ff32e8817194cb4b630fb) )
 	ROM_LOAD( "mc1-1.9a",	0x8000, 0x04000, CRC(10b0977e) SHA1(6266d173b55075da1f252092bf38185880bc4969) )
 	ROM_LOAD( "mc1-2.9b",	0xc000, 0x04000, CRC(5c846f35) SHA1(3c98a0f1131f2e2477fc75a588123c57ff5350ad) )
@@ -518,7 +518,7 @@ ROM_START( metrocrs )
 ROM_END
 
 ROM_START( metrocra )
-	ROM_REGION( 0x10000, "main", 0 ) /* 6809 code */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* 6809 code */
 	ROM_LOAD( "mc2-3.9b",	0x6000, 0x02000, CRC(ffe08075) SHA1(4e1341d5a9a58f171e1e6f9aa18092d5557a6947) )
 	ROM_LOAD( "mc2-1.9a",	0x8000, 0x04000, CRC(05a239ea) SHA1(3e7c7d305d0f48e2431d60b176a0cb451ddc4637) )
 	ROM_LOAD( "mc2-2.9a",	0xc000, 0x04000, CRC(db9b0e6d) SHA1(2772b59fe7dc0e78ee29dd001a6bba75b94e0334) )

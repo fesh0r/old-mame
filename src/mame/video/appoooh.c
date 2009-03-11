@@ -145,6 +145,9 @@ VIDEO_START( appoooh )
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_scrolldy(fg_tilemap,8,8);
 	tilemap_set_scrolldy(bg_tilemap,8,8);
+
+    state_save_register_global(machine, scroll_x);
+    state_save_register_global(machine, priority);
 }
 
 WRITE8_HANDLER( appoooh_scroll_w )
@@ -195,7 +198,7 @@ WRITE8_HANDLER( appoooh_out_w )
 
 	/* bit 6 ROM bank select */
 	{
-		UINT8 *RAM = memory_region(space->machine, "main");
+		UINT8 *RAM = memory_region(space->machine, "maincpu");
 
 		memory_set_bankptr(space->machine, 1,&RAM[data&0x40 ? 0x10000 : 0x0a000]);
 	}

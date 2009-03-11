@@ -236,7 +236,6 @@ and off as it normally does during speech). Once START has gone low-high-low, th
 
 typedef struct
 {
-	int index;
 	sound_stream * stream;
 
 	UINT8 WordInput; // value on word input bus
@@ -261,6 +260,16 @@ typedef struct
 	INT16 filtervals[8];
 	UINT8 VSU1000_amp; // amplitude setting on VSU-1000 board
 } S14001AChip;
+
+INLINE S14001AChip *get_safe_token(const device_config *device)
+{
+	assert(device != NULL);
+	assert(device->token != NULL);
+	assert(device->type == SOUND);
+	assert(sound_get_type(device) == SOUND_S14001A);
+	return (S14001AChip *)device->token;
+}
+
 
 //#define DEBUGSTATE
 
@@ -558,14 +567,10 @@ static STREAM_UPDATE( s14001a_pcm_update )
 	}
 }
 
-static SND_START( s14001a )
+static DEVICE_START( s14001a )
 {
-	S14001AChip *chip;
+	S14001AChip *chip = get_safe_token(device);
 	int i;
-
-	chip = auto_malloc(sizeof(*chip));
-	memset(chip, 0, sizeof(*chip));
-	chip->index = sndindex;
 
 	chip->GlobalSilenceState = 1;
 	chip->OldDelta = 0x02;
@@ -578,22 +583,12 @@ static SND_START( s14001a )
 
 	chip->SpeechRom = device->region;
 
-	chip->stream = stream_create(device, 0, 1, clock ? clock : device->machine->sample_rate, chip, s14001a_pcm_update);
-
-	return chip;
+	chip->stream = stream_create(device, 0, 1, device->clock ? device->clock : device->machine->sample_rate, chip, s14001a_pcm_update);
 }
 
-static SND_SET_INFO( s14001a )
+int s14001a_bsy_r(const device_config *device)
 {
-	switch (state)
-	{
-		/* no parameters to set */
-	}
-}
-
-int s14001a_bsy_0_r(void)
-{
-	S14001AChip *chip = sndti_token(SOUND_S14001A, 0);
+	S14001AChip *chip = get_safe_token(device);
 	stream_update(chip->stream);
 #ifdef DEBUGSTATE
 	fprintf(stderr,"busy state checked: %d\n",(chip->machineState != 0) );
@@ -601,48 +596,50 @@ int s14001a_bsy_0_r(void)
 	return (chip->machineState != 0);
 }
 
-void s14001a_reg_0_w(int data)
+void s14001a_reg_w(const device_config *device, int data)
 {
-	S14001AChip *chip = sndti_token(SOUND_S14001A, 0);
+	S14001AChip *chip = get_safe_token(device);
 	stream_update(chip->stream);
 	chip->WordInput = data;
 }
 
-void s14001a_rst_0_w(int data)
+void s14001a_rst_w(const device_config *device, int data)
 {
-	S14001AChip *chip = sndti_token(SOUND_S14001A, 0);
+	S14001AChip *chip = get_safe_token(device);
 	stream_update(chip->stream);
 	chip->LatchedWord = chip->WordInput;
 	chip->resetState = (data==1);
 	chip->machineState = chip->resetState ? 1 : chip->machineState;
 }
 
-void s14001a_set_clock(int clock)
+void s14001a_set_clock(const device_config *device, int clock)
 {
-	S14001AChip *chip = sndti_token(SOUND_S14001A, 0);
+	S14001AChip *chip = get_safe_token(device);
 	stream_set_sample_rate(chip->stream, clock);
 }
 
-void s14001a_set_volume(int volume)
+void s14001a_set_volume(const device_config *device, int volume)
 {
-	S14001AChip *chip = sndti_token(SOUND_S14001A, 0);
+	S14001AChip *chip = get_safe_token(device);
 	stream_update(chip->stream);
 	chip->VSU1000_amp = volume;
 }
 
-SND_GET_INFO( s14001a )
+DEVICE_GET_INFO( s14001a )
 {
 	switch (state)
 	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TOKEN_BYTES:				info->i = sizeof(S14001AChip);					break;
+
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:					info->set_info = SND_SET_INFO_NAME( s14001a );	break;
-		case SNDINFO_PTR_START:						info->start = SND_START_NAME( s14001a );		break;
+		case DEVINFO_FCT_START:						info->start = DEVICE_START_NAME( s14001a );		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:						strcpy(info->s, "S14001A");						break;
-		case SNDINFO_STR_CORE_FAMILY:				strcpy(info->s, "TSI S14001A");					break;
-		case SNDINFO_STR_CORE_VERSION:				strcpy(info->s, "1.31");						break;
-		case SNDINFO_STR_CORE_FILE:					strcpy(info->s, __FILE__);						break;
-		case SNDINFO_STR_CORE_CREDITS:				strcpy(info->s, "Copyright Jonathan Gevaryahu"); break;
+		case DEVINFO_STR_NAME:						strcpy(info->s, "S14001A");						break;
+		case DEVINFO_STR_FAMILY:				strcpy(info->s, "TSI S14001A");					break;
+		case DEVINFO_STR_VERSION:				strcpy(info->s, "1.31");						break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
+		case DEVINFO_STR_CREDITS:				strcpy(info->s, "Copyright Jonathan Gevaryahu"); break;
 	}
 }

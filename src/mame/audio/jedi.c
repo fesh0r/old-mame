@@ -146,14 +146,17 @@ static WRITE8_HANDLER( speech_strobe_w )
 	int new_speech_strobe_state = (~offset >> 8) & 1;
 
 	if ((new_speech_strobe_state != state->speech_strobe_state) && new_speech_strobe_state)
-		tms5220_data_w(space, 0, *state->speech_data);
+	{
+		const device_config *tms = devtag_get_device(space->machine, "tms");
+		tms5220_data_w(tms, 0, *state->speech_data);
+	}
 	state->speech_strobe_state = new_speech_strobe_state;
 }
 
 
 static READ8_HANDLER( speech_ready_r )
 {
-	return (!tms5220_ready_r()) << 7;
+	return (!tms5220_ready_r(devtag_get_device(space->machine, "tms"))) << 7;
 }
 
 
@@ -172,10 +175,10 @@ static WRITE8_HANDLER( speech_reset_w )
 
 static ADDRESS_MAP_START( audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM
-	AM_RANGE(0x0800, 0x080f) AM_MIRROR(0x07c0) AM_READWRITE(pokey1_r, pokey1_w)
-	AM_RANGE(0x0810, 0x081f) AM_MIRROR(0x07c0) AM_READWRITE(pokey2_r, pokey2_w)
-	AM_RANGE(0x0820, 0x082f) AM_MIRROR(0x07c0) AM_READWRITE(pokey3_r, pokey3_w)
-	AM_RANGE(0x0830, 0x083f) AM_MIRROR(0x07c0) AM_READWRITE(pokey4_r, pokey4_w)
+	AM_RANGE(0x0800, 0x080f) AM_MIRROR(0x07c0) AM_DEVREADWRITE("pokey1", pokey_r, pokey_w)
+	AM_RANGE(0x0810, 0x081f) AM_MIRROR(0x07c0) AM_DEVREADWRITE("pokey2", pokey_r, pokey_w)
+	AM_RANGE(0x0820, 0x082f) AM_MIRROR(0x07c0) AM_DEVREADWRITE("pokey3", pokey_r, pokey_w)
+	AM_RANGE(0x0830, 0x083f) AM_MIRROR(0x07c0) AM_DEVREADWRITE("pokey4", pokey_r, pokey_w)
 	AM_RANGE(0x1000, 0x1000) AM_MIRROR(0x00ff) AM_READWRITE(SMH_NOP, irq_ack_w)
 	AM_RANGE(0x1100, 0x1100) AM_MIRROR(0x00ff) AM_READWRITE(SMH_NOP, SMH_RAM) AM_BASE_MEMBER(jedi_state, speech_data)
 	AM_RANGE(0x1200, 0x13ff) AM_READWRITE(SMH_NOP, speech_strobe_w)
@@ -199,29 +202,29 @@ ADDRESS_MAP_END
 
 MACHINE_DRIVER_START( jedi_audio )
 
-	MDRV_CPU_ADD("audio", M6502, JEDI_AUDIO_CPU_CLOCK)
+	MDRV_CPU_ADD("audiocpu", M6502, JEDI_AUDIO_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
 
 	MDRV_SOUND_START(jedi)
 	MDRV_SOUND_RESET(jedi)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("pokey1", POKEY, JEDI_POKEY_CLOCK)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.30)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.30)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.30)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.30)
 
 	MDRV_SOUND_ADD("pokey2", POKEY, JEDI_POKEY_CLOCK)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.30)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.30)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.30)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.30)
 
 	MDRV_SOUND_ADD("pokey3", POKEY, JEDI_POKEY_CLOCK)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.30)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.30)
 
 	MDRV_SOUND_ADD("pokey4", POKEY, JEDI_POKEY_CLOCK)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.30)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.30)
 
 	MDRV_SOUND_ADD("tms", TMS5220, JEDI_TMS5220_CLOCK)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_DRIVER_END

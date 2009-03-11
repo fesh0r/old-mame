@@ -12,11 +12,11 @@
 
 
 
-static SID6581 *get_sid(int indx)
+static SID6581 *get_sid(const device_config *device)
 {
-	sound_type type = sndnum_to_sndti(indx, NULL);
-	assert((type == SOUND_SID6581) || (type == SOUND_SID8580));
-	return (SID6581 *) sndti_token(type, indx);
+	assert(device != NULL);
+	assert((sound_get_type(device) == SOUND_SID6581) || (sound_get_type(device) == SOUND_SID8580));
+	return (SID6581 *) device->token;
 }
 
 
@@ -29,29 +29,25 @@ static STREAM_UPDATE( sid_update )
 
 
 
-static void *sid_start(const device_config *device, int clock, SIDTYPE sidtype)
+static void sid_start(const device_config *device, SIDTYPE sidtype)
 {
-	SID6581 *sid;
+	SID6581 *sid = device->token;
 	const sid6581_interface *iface = (const sid6581_interface*) device->static_config;
-
-	sid = (SID6581 *) auto_malloc(sizeof(*sid));
-	memset(sid, 0, sizeof(*sid));
 
 	sid->device = device;
 	sid->mixer_channel = stream_create (device, 0, 1,  device->machine->sample_rate, (void *) sid, sid_update);
 	sid->PCMfreq = device->machine->sample_rate;
-	sid->clock = clock;
+	sid->clock = device->clock;
 	sid->ad_read = iface ? iface->ad_read : NULL;
 	sid->type = sidtype;
 
 	sid6581_init(sid);
 	sidInitWaveformTables(sidtype);
-	return sid;
 }
 
 
 
-static SND_RESET( sid )
+static DEVICE_RESET( sid )
 {
 	SID6581 *sid = device->token;
 	sidEmuReset(sid);
@@ -59,38 +55,29 @@ static SND_RESET( sid )
 
 
 
-static SND_START( sid6581 )
+static DEVICE_START( sid6581 )
 {
-	return sid_start(device, clock, MOS6581);
+	sid_start(device, MOS6581);
 }
 
 
 
-static SND_START( sid8580 )
+static DEVICE_START( sid8580 )
 {
-	return sid_start(device, clock, MOS8580);
+	sid_start(device, MOS8580);
 }
 
 
 
-READ8_HANDLER ( sid6581_0_port_r )
+READ8_DEVICE_HANDLER  ( sid6581_r )
 {
-	return sid6581_port_r(space->machine, get_sid(0), offset);
+	return sid6581_port_r(device->machine, get_sid(device), offset);
 }
 
-READ8_HANDLER ( sid6581_1_port_r )
-{
-	return sid6581_port_r(space->machine, get_sid(1), offset);
-}
 
-WRITE8_HANDLER ( sid6581_0_port_w )
+WRITE8_DEVICE_HANDLER ( sid6581_w )
 {
-	sid6581_port_w(get_sid(0), offset, data);
-}
-
-WRITE8_HANDLER ( sid6581_1_port_w )
-{
-	sid6581_port_w(get_sid(1), offset, data);
+	sid6581_port_w(get_sid(device), offset, data);
 }
 
 
@@ -99,47 +86,38 @@ WRITE8_HANDLER ( sid6581_1_port_w )
  * Generic get_info
  **************************************************************************/
 
-static SND_SET_INFO( sid6581 )
-{
-	switch (state)
-	{
-		/* no parameters to set */
-	}
-}
-
-
-SND_GET_INFO( sid6581 )
+DEVICE_GET_INFO( sid6581 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(SID6581);						break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( sid6581 );	break;
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( sid6581 );		break;
-		case SNDINFO_PTR_STOP:							info->stop = NULL;								break;
-		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( sid );			break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( sid6581 );		break;
+		case DEVINFO_FCT_STOP:							info->stop = NULL;								break;
+		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME( sid );			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							strcpy(info->s, "SID6581");						break;
-		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "SID");							break;
-		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
-		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
-		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright The MESS Team"); 	break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "SID6581");						break;
+		case DEVINFO_STR_FAMILY:					strcpy(info->s, "SID");							break;
+		case DEVINFO_STR_VERSION:					strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:						strcpy(info->s, __FILE__);						break;
+		case DEVINFO_STR_CREDITS:					strcpy(info->s, "Copyright The MESS Team"); 	break;
 	}
 }
 
 
-SND_GET_INFO( sid8580 )
+DEVICE_GET_INFO( sid8580 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( sid8580 );		break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( sid8580 );		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							strcpy(info->s, "SID8580");						break;
-		default:										SND_GET_INFO_CALL(sid6581);						break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "SID8580");						break;
+		default:										DEVICE_GET_INFO_CALL(sid6581);						break;
 	}
 }
 

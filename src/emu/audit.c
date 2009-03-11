@@ -136,17 +136,18 @@ int audit_images(core_options *options, const game_driver *gamedrv, UINT32 valid
 
 int audit_samples(core_options *options, const game_driver *gamedrv, audit_record **audit)
 {
-	machine_config *config = machine_config_alloc(gamedrv->machine_config);
-	audit_record *record;
-	int sndnum, sampnum;
 	int records = 0;
+#if HAS_SAMPLES
+	machine_config *config = machine_config_alloc(gamedrv->machine_config);
+	const device_config *device;
+	audit_record *record;
+	int sampnum;
 
 	/* count the number of sample records attached to this driver */
-#if HAS_SAMPLES
-	for (sndnum = 0; sndnum < ARRAY_LENGTH(config->sound); sndnum++)
-		if (config->sound[sndnum].type == SOUND_SAMPLES)
+	for (device = sound_first(config); device != NULL; device = sound_next(device))
+		if (sound_get_type(device) == SOUND_SAMPLES)
 		{
-			const samples_interface *intf = (const samples_interface *)config->sound[sndnum].config;
+			const samples_interface *intf = (const samples_interface *)device->static_config;
 
 			if (intf->samplenames != NULL)
 			{
@@ -156,7 +157,6 @@ int audit_samples(core_options *options, const game_driver *gamedrv, audit_recor
 						records++;
 			}
 		}
-#endif
 
 	/* if no records, just quit now */
 	if (records == 0)
@@ -168,10 +168,10 @@ int audit_samples(core_options *options, const game_driver *gamedrv, audit_recor
 	record = *audit;
 
 	/* now iterate over sample entries */
-	for (sndnum = 0; sndnum < ARRAY_LENGTH(config->sound); sndnum++)
-		if (config->sound[sndnum].type == SOUND_SAMPLES)
+	for (device = sound_first(config); device != NULL; device = sound_next(device))
+		if (sound_get_type(device) == SOUND_SAMPLES)
 		{
-			const samples_interface *intf = (const samples_interface *)config->sound[sndnum].config;
+			const samples_interface *intf = (const samples_interface *)device->static_config;
 			const char *sharedname = NULL;
 
 			if (intf->samplenames != NULL)
@@ -188,13 +188,13 @@ int audit_samples(core_options *options, const game_driver *gamedrv, audit_recor
 
 						/* attempt to access the file from the game driver name */
 						fname = astring_assemble_3(astring_alloc(), gamedrv->name, PATH_SEPARATOR, intf->samplenames[sampnum]);
-						filerr = mame_fopen_options(options, SEARCHPATH_SAMPLE, astring_c(fname), OPEN_FLAG_READ, &file);
+						filerr = mame_fopen_options(options, SEARCHPATH_SAMPLE, astring_c(fname), OPEN_FLAG_READ | OPEN_FLAG_NO_PRELOAD, &file);
 
 						/* attempt to access the file from the shared driver name */
 						if (filerr != FILERR_NONE && sharedname != NULL)
 						{
 							astring_assemble_3(fname, sharedname, PATH_SEPARATOR, intf->samplenames[sampnum]);
-							filerr = mame_fopen_options(options, SEARCHPATH_SAMPLE, astring_c(fname), OPEN_FLAG_READ, &file);
+							filerr = mame_fopen_options(options, SEARCHPATH_SAMPLE, astring_c(fname), OPEN_FLAG_READ | OPEN_FLAG_NO_PRELOAD, &file);
 						}
 						astring_free(fname);
 
@@ -214,6 +214,7 @@ int audit_samples(core_options *options, const game_driver *gamedrv, audit_recor
 
 skip:
 	machine_config_free(config);
+#endif /* HAS_SAMPLES */
 	return records;
 }
 
@@ -229,9 +230,11 @@ int audit_summary(const game_driver *gamedrv, int count, const audit_record *rec
 	int notfound = 0;
 	int recnum;
 
-	/* no count or records means not found */
-	if (count == 0 || records == NULL)
+	/* no count AND no records means not found, no count only means no ROMs required (= correct) */
+	if (count == 0 && records == NULL)
 		return NOTFOUND;
+        else if (count == 0)
+		return CORRECT;
 
 	/* loop over records */
 	for (recnum = 0; recnum < count; recnum++)
@@ -355,9 +358,9 @@ static int audit_one_rom(core_options *options, const rom_entry *rom, const char
 		/* open the file if we can */
 		fname = astring_assemble_3(astring_alloc(), drv->name, PATH_SEPARATOR, ROM_GETNAME(rom));
 	    if (has_crc)
-			filerr = mame_fopen_crc_options(options, SEARCHPATH_ROM, astring_c(fname), crc, OPEN_FLAG_READ, &file);
+			filerr = mame_fopen_crc_options(options, SEARCHPATH_ROM, astring_c(fname), crc, OPEN_FLAG_READ | OPEN_FLAG_NO_PRELOAD, &file);
 		else
-			filerr = mame_fopen_options(options, SEARCHPATH_ROM, astring_c(fname), OPEN_FLAG_READ, &file);
+			filerr = mame_fopen_options(options, SEARCHPATH_ROM, astring_c(fname), OPEN_FLAG_READ | OPEN_FLAG_NO_PRELOAD, &file);
 		astring_free(fname);
 
 		/* if we got it, extract the hash and length */
@@ -380,9 +383,9 @@ static int audit_one_rom(core_options *options, const rom_entry *rom, const char
 		/* open the file if we can */
 		fname = astring_assemble_3(astring_alloc(), regiontag, PATH_SEPARATOR, ROM_GETNAME(rom));
 	    if (has_crc)
-			filerr = mame_fopen_crc_options(options, SEARCHPATH_ROM, astring_c(fname), crc, OPEN_FLAG_READ, &file);
+			filerr = mame_fopen_crc_options(options, SEARCHPATH_ROM, astring_c(fname), crc, OPEN_FLAG_READ | OPEN_FLAG_NO_PRELOAD, &file);
 		else
-			filerr = mame_fopen_options(options, SEARCHPATH_ROM, astring_c(fname), OPEN_FLAG_READ, &file);
+			filerr = mame_fopen_options(options, SEARCHPATH_ROM, astring_c(fname), OPEN_FLAG_READ | OPEN_FLAG_NO_PRELOAD, &file);
 		astring_free(fname);
 
 		/* if we got it, extract the hash and length */

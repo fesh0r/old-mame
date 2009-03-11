@@ -27,7 +27,7 @@ extern UINT8 *homerun_videoram;
 
 WRITE8_HANDLER( homerun_videoram_w );
 WRITE8_HANDLER( homerun_color_w );
-WRITE8_HANDLER( homerun_banking_w );
+WRITE8_DEVICE_HANDLER( homerun_banking_w );
 VIDEO_START(homerun);
 VIDEO_UPDATE(homerun);
 
@@ -37,12 +37,12 @@ static WRITE8_DEVICE_HANDLER(pc_w){homerun_xpc=data;}
 
 static const ppi8255_interface ppi8255_intf =
 {
-	NULL,
-	NULL,
-	NULL,
-	pa_w,
-	pb_w,
-	pc_w
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(pa_w),
+	DEVCB_HANDLER(pb_w),
+	DEVCB_HANDLER(pc_w)
 };
 
 
@@ -99,12 +99,11 @@ static ADDRESS_MAP_START( homerun_iomap, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x10, 0x10) AM_WRITE(SMH_NOP) /* ?? */
 	AM_RANGE(0x20, 0x20) AM_WRITE(SMH_NOP) /* ?? */
-	AM_RANGE(0x30, 0x33) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x30, 0x33) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w)
 	AM_RANGE(0x40, 0x40) AM_READ_PORT("IN0")
 	AM_RANGE(0x50, 0x50) AM_READ_PORT("IN2")
 	AM_RANGE(0x60, 0x60) AM_READ_PORT("IN1")
-	AM_RANGE(0x70, 0x70) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0x71, 0x71) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
+	AM_RANGE(0x70, 0x71) AM_DEVREADWRITE("ym", ym2203_r, ym2203_w)
 ADDRESS_MAP_END
 
 static const ym2203_interface ym2203_config =
@@ -112,10 +111,10 @@ static const ym2203_interface ym2203_config =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		input_port_3_r,
-		NULL,
-		NULL,
-		homerun_banking_w
+		DEVCB_INPUT_PORT("DSW"),
+		DEVCB_NULL,
+		DEVCB_NULL,
+		DEVCB_HANDLER(homerun_banking_w)
 	},
 	NULL
 };
@@ -188,17 +187,17 @@ INPUT_PORTS_END
 
 
 static MACHINE_DRIVER_START( homerun )
-	MDRV_CPU_ADD("main", Z80, 5000000)
+	MDRV_CPU_ADD("maincpu", Z80, 5000000)
 	MDRV_CPU_PROGRAM_MAP(homerun_memmap, 0)
 	MDRV_CPU_IO_MAP(homerun_iomap, 0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_MACHINE_RESET(homerun)
 
 	MDRV_PPI8255_ADD( "ppi8255", ppi8255_intf )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
@@ -250,7 +249,7 @@ Notes:
 */
 
 ROM_START( homerun )
-	ROM_REGION( 0x30000, "main", 0 )
+	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "homerun.43",        0x0000, 0x4000, CRC(e759e476) SHA1(ad4f356ff26209033320a3e6353e4d4d9beb59c1) )
 	ROM_CONTINUE(        0x10000,0x1c000)
 
@@ -266,7 +265,7 @@ ROM_START( homerun )
 ROM_END
 
 ROM_START( dynashot )
-	ROM_REGION( 0x30000, "main", 0 )
+	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "1.ic43",        0x0000, 0x4000, CRC(bf3c9586) SHA1(439effbda305f5fa265e5897c81dc1447e5d867d) )
 	ROM_CONTINUE(        0x10000,0x1c000)
 

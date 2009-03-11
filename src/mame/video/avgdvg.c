@@ -57,16 +57,18 @@ UINT16 *quantum_vectorram;
  *
  *************************************/
 
-typedef struct _vgvector
+typedef struct _vgvector vgvector;
+struct _vgvector
 {
 	int x; int y;
 	rgb_t color;
 	int intensity;
 	int arg1; int arg2;
 	int status;
-} vgvector;
+};
 
-typedef struct _vgdata
+typedef struct _vgdata vgdata;
+struct _vgdata
 {
 	running_machine *machine;
 
@@ -107,16 +109,17 @@ typedef struct _vgdata
 	INT32 clipy_min;
 	INT32 clipx_max;
 	INT32 clipy_max;
-} vgdata;
+};
 
-typedef struct _vgconf
+typedef struct _vgconf vgconf;
+struct _vgconf
 {
 	int (*handler[8])(vgdata *);
 	UINT8 (*state_addr)(vgdata *);
 	void (*update_databus)(vgdata *);
 	void (*vggo)(vgdata *);
 	void (*vgrst)(vgdata *);
-} vgconf;
+};
 
 
 /*************************************
@@ -1409,6 +1412,23 @@ static const vgconf avg_quantum =
 	avg_vgrst
 };
 
+static const vgconf avg_tomcat =
+{
+	{
+		avg_latch0,
+		avg_latch1,
+		avg_latch2,
+		avg_latch3,
+		avg_strobe0,
+		avg_strobe1,
+		starwars_strobe2,
+		starwars_strobe3
+	},
+	avg_state_addr,
+	avg_data,
+	avg_vggo,
+	avg_vgrst
+};
 
 /*************************************
  *
@@ -1449,6 +1469,10 @@ static void register_state (running_machine *machine)
 	state_save_register_item(machine, "AVG", NULL, 0, vg->clipy_min);
 	state_save_register_item(machine, "AVG", NULL, 0, vg->clipx_max);
 	state_save_register_item(machine, "AVG", NULL, 0, vg->clipy_max);
+
+	state_save_register_item(machine, "AVG", NULL, 0, flip_x);
+	state_save_register_item(machine, "AVG", NULL, 0, flip_y);
+
 }
 
 static VIDEO_START( avg_common )
@@ -1498,6 +1522,9 @@ VIDEO_START( dvg )
 	vg_run_timer = timer_alloc(machine, run_state_machine, NULL);
 
 	register_state (machine);
+
+	state_save_register_item_pointer(machine, "AVG", NULL, 0, vectorram, vectorram_size);
+
 	VIDEO_START_CALL(vector);
 }
 
@@ -1505,6 +1532,8 @@ VIDEO_START( avg )
 {
 	vgc = &avg_default;
 	VIDEO_START_CALL(avg_common);
+
+	state_save_register_item_pointer(machine, "AVG", NULL, 0, vectorram, vectorram_size);
 }
 
 VIDEO_START( avg_starwars )
@@ -1517,18 +1546,24 @@ VIDEO_START( avg_tempest )
 {
 	vgc = &avg_tempest;
 	VIDEO_START_CALL(avg_common);
+
+	state_save_register_item_pointer(machine, "AVG", NULL, 0, vectorram, vectorram_size);
 }
 
 VIDEO_START( avg_mhavoc )
 {
 	vgc = &avg_mhavoc;
 	VIDEO_START_CALL(avg_common);
+
+	state_save_register_item_pointer(machine, "AVG", NULL, 0, vectorram, vectorram_size);
 }
 
 VIDEO_START( avg_bzone )
 {
 	vgc = &avg_bzone;
 	VIDEO_START_CALL(avg_common);
+
+	state_save_register_item_pointer(machine, "AVG", NULL, 0, vectorram, vectorram_size);
 }
 
 VIDEO_START( avg_quantum )
@@ -1537,3 +1572,8 @@ VIDEO_START( avg_quantum )
 	VIDEO_START_CALL(avg_common);
 }
 
+VIDEO_START( avg_tomcat )
+{
+	vgc = &avg_tomcat;
+	VIDEO_START_CALL(avg_common);
+}

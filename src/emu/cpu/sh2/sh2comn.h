@@ -21,6 +21,8 @@
 #include "cpu/drcumlsh.h"
 #endif
 
+#define SH2_CODE_XOR(a)		((a) ^ NATIVE_ENDIAN_VALUE_LE_BE(2,0))
+
 typedef struct _irq_entry irq_entry;
 struct _irq_entry
 {
@@ -177,7 +179,6 @@ TIMER_CALLBACK( sh2_dmac_callback );
 void sh2_common_init(SH2 *sh2, const device_config *device, cpu_irq_callback irqcallback);
 void sh2_recalc_irq(SH2 *sh2);
 void sh2_set_irq_line(SH2 *sh2, int irqline, int state);
-void sh2_set_frt_input(const device_config *device, int state);
 void sh2_exception(SH2 *sh2, const char *message, int irqline);
 
 #endif /* __SH2COMN_H__ */

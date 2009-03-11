@@ -10,6 +10,7 @@
 #define CPS3_VOICES		16
 
 static sound_stream *cps3_stream;
+extern UINT8* cps3_user5region;
 
 typedef struct _cps3_voice_
 {
@@ -22,12 +23,16 @@ static struct
 {
 	cps3_voice voice[CPS3_VOICES];
 	UINT16     key;
+	INT8*	   base;
 } chip;
 
 static STREAM_UPDATE( cps3_stream_update )
 {
 	int i;
-	INT8 *base = (INT8*)memory_region(device->machine, "user5");
+
+	// the actual 'user5' region only exists on the nocd sets, on the others it's allocated in the initialization.
+	// it's a shared gfx/sound region, so can't be allocated as part of the sound device.
+	chip.base = (INT8*)cps3_user5region;
 
 	/* Clear the buffers */
 	memset(outputs[0], 0, samples*sizeof(*outputs[0]));
@@ -82,7 +87,7 @@ static STREAM_UPDATE( cps3_stream_update )
 					}
 				}
 
-				sample = base[BYTE4_XOR_LE(start + pos)];
+				sample = chip.base[BYTE4_XOR_LE(start + pos)];
 				frac += step;
 
 				outputs[0][j] += (sample * (vol_l >> 8));
@@ -96,15 +101,27 @@ static STREAM_UPDATE( cps3_stream_update )
 
 }
 
-CUSTOM_START( cps3_sh_start )
+static DEVICE_START( cps3_sound )
 {
 	/* Allocate the stream */
-	cps3_stream = stream_create(device, 0, 2, clock / 384, NULL, cps3_stream_update);
+	cps3_stream = stream_create(device, 0, 2, device->clock / 384, NULL, cps3_stream_update);
 
 	memset(&chip, 0, sizeof(chip));
-
-	return auto_malloc(1);
 }
+
+DEVICE_GET_INFO( cps3_sound )
+{
+	switch (state)
+	{
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(cps3_sound);	break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_NAME:							strcpy(info->s, "CPS3 Custom");					break;
+		case DEVINFO_STR_SOURCE_FILE:						strcpy(info->s, __FILE__);						break;
+	}
+}
+
 
 WRITE32_HANDLER( cps3_sound_w )
 {

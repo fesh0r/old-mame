@@ -147,6 +147,7 @@
 #include "mw8080bw.h"
 #include "machine/mb14241.h"
 
+#include "280zzzap.lh"
 #include "clowns.lh"
 #include "invaders.lh"
 #include "invad2ct.lh"
@@ -223,7 +224,7 @@ ADDRESS_MAP_END
 MACHINE_DRIVER_START( mw8080bw_root )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main",8080,MW8080BW_CPU_CLOCK)
+	MDRV_CPU_ADD("maincpu",8080,MW8080BW_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_MACHINE_START(mw8080bw)
 	MDRV_MACHINE_RESET(mw8080bw)
@@ -231,7 +232,7 @@ MACHINE_DRIVER_START( mw8080bw_root )
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(mw8080bw)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(MW8080BW_PIXEL_CLOCK, MW8080BW_HTOTAL, MW8080BW_HBEND, MW8080BW_HPIXCOUNT, MW8080BW_VTOTAL, MW8080BW_VBEND, MW8080BW_VBSTART)
 
@@ -403,7 +404,7 @@ static MACHINE_DRIVER_START( seawolf )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(seawolf_io_map,0)
 	/* there is no watchdog */
 
@@ -497,7 +498,7 @@ static MACHINE_DRIVER_START( gunfight )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(gunfight_io_map,0)
 	/* there is no watchdog */
 
@@ -611,7 +612,7 @@ static CUSTOM_INPUT( tornbase_score_input_r )
 
 static WRITE8_HANDLER( tornbase_io_w )
 {
-	if (offset & 0x01)  tornbase_audio_w(space, 0, data);
+	if (offset & 0x01)  tornbase_audio_w(devtag_get_device(space->machine, "discrete"), 0, data);
 
 	if (offset & 0x02)  mb14241_0_shift_count_w(space, 0, data);
 
@@ -720,7 +721,7 @@ static MACHINE_DRIVER_START( tornbase)
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(tornbase_io_map,0)
 	/* there is no watchdog */
 
@@ -833,7 +834,7 @@ static MACHINE_DRIVER_START( zzzap )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(zzzap_io_map,0)
 	MDRV_WATCHDOG_TIME_INIT(NSEC(PERIOD_OF_555_MONOSTABLE_NSEC(RES_M(1), CAP_U(1)))) /* 1.1s */
 
@@ -859,14 +860,14 @@ static UINT8 maze_tone_timing_state;
 
 static STATE_POSTLOAD( maze_update_discrete )
 {
-	maze_write_discrete(machine, maze_tone_timing_state);
+	maze_write_discrete(devtag_get_device(machine, "discrete"), maze_tone_timing_state);
 }
 
 
 static TIMER_CALLBACK( maze_tone_timing_timer_callback )
 {
 	maze_tone_timing_state = !maze_tone_timing_state;
-	maze_write_discrete(machine, maze_tone_timing_state);
+	maze_write_discrete(devtag_get_device(machine, "discrete"), maze_tone_timing_state);
 }
 
 
@@ -944,7 +945,7 @@ static MACHINE_DRIVER_START( maze )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(maze_io_map,0)
 	MDRV_MACHINE_START(maze)
 	MDRV_WATCHDOG_TIME_INIT(NSEC(PERIOD_OF_555_MONOSTABLE_NSEC(RES_K(270), CAP_U(10)))) /* 2.97s */
@@ -980,10 +981,10 @@ static ADDRESS_MAP_START( boothill_io_map, ADDRESS_SPACE_IO, 8 )
 
 	AM_RANGE(0x01, 0x01) AM_WRITE(mw8080bw_reversable_shift_count_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(mb14241_0_shift_data_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(boothill_audio_w)
+	AM_RANGE(0x03, 0x03) AM_DEVWRITE("discrete", boothill_audio_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x05, 0x05) AM_WRITE(midway_tone_generator_lo_w)
-	AM_RANGE(0x06, 0x06) AM_WRITE(midway_tone_generator_hi_w)
+	AM_RANGE(0x05, 0x05) AM_DEVWRITE("discrete", midway_tone_generator_lo_w)
+	AM_RANGE(0x06, 0x06) AM_DEVWRITE("discrete", midway_tone_generator_hi_w)
 ADDRESS_MAP_END
 
 
@@ -1035,7 +1036,7 @@ static MACHINE_DRIVER_START( boothill )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(boothill_io_map,0)
 	MDRV_MACHINE_START(boothill)
 	MDRV_WATCHDOG_TIME_INIT(NSEC(PERIOD_OF_555_MONOSTABLE_NSEC(RES_K(270), CAP_U(10)))) /* 2.97s */
@@ -1055,7 +1056,7 @@ MACHINE_DRIVER_END
 
 static WRITE8_HANDLER( checkmat_io_w )
 {
-	if (offset & 0x01)  checkmat_audio_w(space, 0, data);
+	if (offset & 0x01)  checkmat_audio_w(devtag_get_device(space->machine, "discrete"), 0, data);
 
 	if (offset & 0x02)  watchdog_reset_w(space, 0, data);
 }
@@ -1138,7 +1139,7 @@ static MACHINE_DRIVER_START( checkmat )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(checkmat_io_map,0)
 	MDRV_WATCHDOG_TIME_INIT(NSEC(PERIOD_OF_555_MONOSTABLE_NSEC(RES_K(270), CAP_U(10)))) /* 2.97s */
 
@@ -1212,11 +1213,11 @@ static ADDRESS_MAP_START( desertgu_io_map, ADDRESS_SPACE_IO, 8 )
 
 	AM_RANGE(0x01, 0x01) AM_WRITE(mb14241_0_shift_count_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(mb14241_0_shift_data_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(desertgu_audio_1_w)
+	AM_RANGE(0x03, 0x03) AM_DEVWRITE("discrete", desertgu_audio_1_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x05, 0x05) AM_WRITE(midway_tone_generator_lo_w)
-	AM_RANGE(0x06, 0x06) AM_WRITE(midway_tone_generator_hi_w)
-	AM_RANGE(0x07, 0x07) AM_WRITE(desertgu_audio_2_w)
+	AM_RANGE(0x05, 0x05) AM_DEVWRITE("discrete", midway_tone_generator_lo_w)
+	AM_RANGE(0x06, 0x06) AM_DEVWRITE("discrete", midway_tone_generator_hi_w)
+	AM_RANGE(0x07, 0x07) AM_DEVWRITE("discrete", desertgu_audio_2_w)
 ADDRESS_MAP_END
 
 
@@ -1273,7 +1274,7 @@ static MACHINE_DRIVER_START( desertgu )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(desertgu_io_map,0)
 	MDRV_MACHINE_START(desertgu)
 	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
@@ -1332,10 +1333,10 @@ static ADDRESS_MAP_START( dplay_io_map, ADDRESS_SPACE_IO, 8 )
 
 	AM_RANGE(0x01, 0x01) AM_WRITE(mb14241_0_shift_count_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(mb14241_0_shift_data_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(dplay_audio_w)
+	AM_RANGE(0x03, 0x03) AM_DEVWRITE("discrete", dplay_audio_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x05, 0x05) AM_WRITE(midway_tone_generator_lo_w)
-	AM_RANGE(0x06, 0x06) AM_WRITE(midway_tone_generator_hi_w)
+	AM_RANGE(0x05, 0x05) AM_DEVWRITE("discrete", midway_tone_generator_lo_w)
+	AM_RANGE(0x06, 0x06) AM_DEVWRITE("discrete", midway_tone_generator_hi_w)
 ADDRESS_MAP_END
 
 
@@ -1471,7 +1472,7 @@ static MACHINE_DRIVER_START( dplay )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(dplay_io_map,0)
 	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
@@ -1562,7 +1563,7 @@ static MACHINE_DRIVER_START( gmissile )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(gmissile_io_map,0)
 	MDRV_MACHINE_START(gmissile)
 	MDRV_WATCHDOG_VBLANK_INIT(255) /* really based on a 60Hz clock source */
@@ -1652,7 +1653,7 @@ static MACHINE_DRIVER_START( m4 )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(m4_io_map,0)
 	MDRV_MACHINE_START(m4)
 	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
@@ -1720,9 +1721,9 @@ static ADDRESS_MAP_START( clowns_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x02, 0x02) AM_WRITE(mb14241_0_shift_data_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(clowns_audio_1_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x05, 0x05) AM_WRITE(midway_tone_generator_lo_w)
-	AM_RANGE(0x06, 0x06) AM_WRITE(midway_tone_generator_hi_w)
-	AM_RANGE(0x07, 0x07) AM_WRITE(clowns_audio_2_w)
+	AM_RANGE(0x05, 0x05) AM_DEVWRITE("discrete", midway_tone_generator_lo_w)
+	AM_RANGE(0x06, 0x06) AM_DEVWRITE("discrete", midway_tone_generator_hi_w)
+	AM_RANGE(0x07, 0x07) AM_DEVWRITE("discrete", clowns_audio_2_w)
 ADDRESS_MAP_END
 
 
@@ -1826,7 +1827,7 @@ static MACHINE_DRIVER_START( clowns )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(clowns_io_map,0)
 	MDRV_MACHINE_START(clowns)
 	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
@@ -1905,7 +1906,7 @@ static MACHINE_DRIVER_START( shuffle )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(shuffle_io_map,0)
 	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
@@ -1933,8 +1934,8 @@ static ADDRESS_MAP_START( dogpatch_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x02, 0x02) AM_WRITE(mb14241_0_shift_data_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(dogpatch_audio_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x05, 0x05) AM_WRITE(midway_tone_generator_lo_w)
-	AM_RANGE(0x06, 0x06) AM_WRITE(midway_tone_generator_hi_w)
+	AM_RANGE(0x05, 0x05) AM_DEVWRITE("discrete", midway_tone_generator_lo_w)
+	AM_RANGE(0x06, 0x06) AM_DEVWRITE("discrete", midway_tone_generator_hi_w)
 ADDRESS_MAP_END
 
 
@@ -1988,7 +1989,7 @@ static MACHINE_DRIVER_START( dogpatch )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(dogpatch_io_map,0)
 	/* the watch dog time is unknown, but all other */
 	/* Midway boards of the era used the same circuit */
@@ -2065,13 +2066,13 @@ static WRITE8_HANDLER( spcenctr_io_w )
 		watchdog_reset_w(space, 0, data);		/*  -  -  -  -  -  0  1  0 */
 
 	else if ((offset & 0x5f) == 0x01)
-		spcenctr_audio_1_w(space, 0, data);	/*  -  0  -  0  0  0  0  1 */
+		spcenctr_audio_1_w(devtag_get_device(space->machine, "discrete"), 0, data);	/*  -  0  -  0  0  0  0  1 */
 
 	else if ((offset & 0x5f) == 0x09)
-		spcenctr_audio_2_w(space, 0, data);	/*  -  0  -  0  1  0  0  1 */
+		spcenctr_audio_2_w(devtag_get_device(space->machine, "discrete"), 0, data);	/*  -  0  -  0  1  0  0  1 */
 
 	else if ((offset & 0x5f) == 0x11)
-		spcenctr_audio_3_w(space, 0, data);	/*  -  0  -  1  0  0  0  1 */
+		spcenctr_audio_3_w(devtag_get_device(space->machine, "discrete"), 0, data);	/*  -  0  -  1  0  0  0  1 */
 
 	else if ((offset & 0x07) == 0x03)
 	{											/*  -  -  -  -  -  0  1  1 */
@@ -2155,7 +2156,7 @@ static MACHINE_DRIVER_START( spcenctr )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(spcenctr_io_map,0)
 	MDRV_MACHINE_START(spcenctr)
 	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
@@ -2263,7 +2264,7 @@ static MACHINE_DRIVER_START( phantom2 )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(phantom2_io_map,0)
 	MDRV_MACHINE_START(phantom2)
 	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
@@ -2343,7 +2344,7 @@ static ADDRESS_MAP_START( bowler_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x01, 0x01) AM_WRITE(mb14241_0_shift_count_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(mb14241_0_shift_data_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x05, 0x05) AM_WRITE(bowler_audio_1_w)
+	AM_RANGE(0x05, 0x05) AM_DEVWRITE("discrete", bowler_audio_1_w)
 	AM_RANGE(0x06, 0x06) AM_WRITE(bowler_audio_2_w)
 	AM_RANGE(0x07, 0x07) AM_WRITE(bowler_lights_1_w)
 	AM_RANGE(0x08, 0x08) AM_WRITE(bowler_audio_3_w)
@@ -2400,7 +2401,7 @@ static MACHINE_DRIVER_START( bowler )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(bowler_io_map,0)
 	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
@@ -2539,9 +2540,9 @@ static ADDRESS_MAP_START( invaders_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x03, 0x03) AM_MIRROR(0x04) AM_READ(mb14241_0_shift_result_r)
 
 	AM_RANGE(0x02, 0x02) AM_WRITE(mb14241_0_shift_count_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(invaders_audio_1_w)
+	AM_RANGE(0x03, 0x03) AM_DEVWRITE("discrete", invaders_audio_1_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(mb14241_0_shift_data_w)
-	AM_RANGE(0x05, 0x05) AM_WRITE(invaders_audio_2_w)
+	AM_RANGE(0x05, 0x05) AM_DEVWRITE("discrete", invaders_audio_2_w)
 	AM_RANGE(0x06, 0x06) AM_WRITE(watchdog_reset_w)
 ADDRESS_MAP_END
 
@@ -2625,7 +2626,7 @@ MACHINE_DRIVER_START( invaders )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(invaders_io_map,0)
 	MDRV_MACHINE_START(invaders)
 	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
@@ -2668,7 +2669,7 @@ static ADDRESS_MAP_START( blueshrk_io_map, ADDRESS_SPACE_IO, 8 )
 
 	AM_RANGE(0x01, 0x01) AM_WRITE(mb14241_0_shift_count_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(mb14241_0_shift_data_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(blueshrk_audio_w)
+	AM_RANGE(0x03, 0x03) AM_DEVWRITE("discrete", blueshrk_audio_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(watchdog_reset_w)
 ADDRESS_MAP_END
 
@@ -2705,7 +2706,7 @@ static MACHINE_DRIVER_START( blueshrk )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(blueshrk_io_map,0)
 	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
@@ -2744,13 +2745,13 @@ static ADDRESS_MAP_START( invad2ct_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x02, 0x02) AM_MIRROR(0x04) AM_READ_PORT("IN2")
 	AM_RANGE(0x03, 0x03) AM_MIRROR(0x04) AM_READ(mb14241_0_shift_result_r)
 
-	AM_RANGE(0x01, 0x01) AM_WRITE(invad2ct_audio_3_w)
+	AM_RANGE(0x01, 0x01) AM_DEVWRITE("discrete", invad2ct_audio_3_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(mb14241_0_shift_count_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(invad2ct_audio_1_w)
+	AM_RANGE(0x03, 0x03) AM_DEVWRITE("discrete", invad2ct_audio_1_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(mb14241_0_shift_data_w)
-	AM_RANGE(0x05, 0x05) AM_WRITE(invad2ct_audio_2_w)
+	AM_RANGE(0x05, 0x05) AM_DEVWRITE("discrete", invad2ct_audio_2_w)
 	AM_RANGE(0x06, 0x06) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x07, 0x07) AM_WRITE(invad2ct_audio_4_w)
+	AM_RANGE(0x07, 0x07) AM_DEVWRITE("discrete", invad2ct_audio_4_w)
 ADDRESS_MAP_END
 
 
@@ -2803,7 +2804,7 @@ static MACHINE_DRIVER_START( invad2ct )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(invad2ct_io_map,0)
 	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
 
@@ -2821,7 +2822,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( seawolf )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "sw0041.h",   0x0000, 0x0400, CRC(8f597323) SHA1(b538277d3a633dd8a3179cff202f18d322e6fe17) )
 	ROM_LOAD( "sw0042.g",   0x0400, 0x0400, CRC(db980974) SHA1(cc2a99b18695f61e0540c9f6bf8fe3b391dde4a0) )
 	ROM_LOAD( "sw0043.f",   0x0800, 0x0400, CRC(e6ffa008) SHA1(385198434b08fe4651ad2c920d44fb49cfe0bc33) )
@@ -2830,7 +2831,7 @@ ROM_END
 
 
 ROM_START( gunfight )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "7609h.bin",  0x0000, 0x0400, CRC(0b117d73) SHA1(99d01313e251818d336281700e206d9003c71dae) )
 	ROM_LOAD( "7609g.bin",  0x0400, 0x0400, CRC(57bc3159) SHA1(c177e3f72db9af17ab99b2481448ca26318184b9) )
 	ROM_LOAD( "7609f.bin",  0x0800, 0x0400, CRC(8049a6bd) SHA1(215b068663e431582591001cbe028929fa96d49f) )
@@ -2839,7 +2840,7 @@ ROM_END
 
 
 ROM_START( tornbase )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "tb.h",       0x0000, 0x0800, CRC(653f4797) SHA1(feb4c802aa3e0c2a66823cd032496cca5742c883) )
 	ROM_LOAD( "tb.g",       0x0800, 0x0800, CRC(b63dcdb3) SHA1(bdaa0985bcb5257204ee10faa11a4e02a38b9ac5) )
 	ROM_LOAD( "tb.f",       0x1000, 0x0800, CRC(215e070c) SHA1(425915b37e5315f9216707de0850290145f69a30) )
@@ -2847,7 +2848,7 @@ ROM_END
 
 
 ROM_START( 280zzzap )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "zzzaph",     0x0000, 0x0400, CRC(1fa86e1c) SHA1(b9cf16eb037ada73631ed24297e9e3b3bf6ab3cd) )
 	ROM_LOAD( "zzzapg",     0x0400, 0x0400, CRC(9639bc6b) SHA1(b2e2497e421e79a411d07ebf2eed2bb8dc227003) )
 	ROM_LOAD( "zzzapf",     0x0800, 0x0400, CRC(adc6ede1) SHA1(206bf2575696c4b14437f3db37a215ba33211943) )
@@ -2858,14 +2859,14 @@ ROM_END
 
 
 ROM_START( maze )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "maze.h",     0x0000, 0x0800, CRC(f2860cff) SHA1(62b3fd3d04bf9c5dd9b50964374fb884dc0ab79c) )
 	ROM_LOAD( "maze.g",     0x0800, 0x0800, CRC(65fad839) SHA1(893f0a7621e7df19f777be991faff0db4a9ad571) )
 ROM_END
 
 
 ROM_START( boothill )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "romh.cpu",   0x0000, 0x0800, CRC(1615d077) SHA1(e59a26c2f2fc67ab24301e22d2e3f33043acdf72) )
 	ROM_LOAD( "romg.cpu",   0x0800, 0x0800, CRC(65a90420) SHA1(9f36c44b5ae5b912cdbbeb9ff11a42221b8362d2) )
 	ROM_LOAD( "romf.cpu",   0x1000, 0x0800, CRC(3fdafd79) SHA1(b18e8ac9df40c4687ac1acd5174eb99f2ef60081) )
@@ -2874,7 +2875,7 @@ ROM_END
 
 
 ROM_START( checkmat )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "checkmat.h", 0x0000, 0x0400, CRC(3481a6d1) SHA1(f758599d6393398a6a8e6e7399dc1a3862604f65) )
 	ROM_LOAD( "checkmat.g", 0x0400, 0x0400, CRC(df5fa551) SHA1(484ff9bfb95166ba09f34c753a7908a73de3cc7d) )
 	ROM_LOAD( "checkmat.f", 0x0800, 0x0400, CRC(25586406) SHA1(39e0cf502735819a7e1d933e3686945fcfae21af) )
@@ -2884,7 +2885,7 @@ ROM_END
 
 
 ROM_START( desertgu )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "9316.1h",    0x0000, 0x0800, CRC(c0030d7c) SHA1(4d0a3a59d4f8181c6e30966a6b1d19ba5b29c398) )
 	ROM_LOAD( "9316.1g",    0x0800, 0x0800, CRC(1ddde10b) SHA1(8fb8e85844a8ec6c0722883013ecdd4eeaeb08c1) )
 	ROM_LOAD( "9316.1f",    0x1000, 0x0800, CRC(808e46f1) SHA1(1cc4e9b0aa7e9546c133bd40d40ede6f2fbe93ba) )
@@ -2893,7 +2894,7 @@ ROM_END
 
 
 ROM_START( roadrunm )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "9316.1h",    0x0000, 0x0800, CRC(c0030d7c) SHA1(4d0a3a59d4f8181c6e30966a6b1d19ba5b29c398) )
 	ROM_LOAD( "9316.1g",    0x0800, 0x0800, CRC(1ddde10b) SHA1(8fb8e85844a8ec6c0722883013ecdd4eeaeb08c1) )
 	ROM_LOAD( "9316.1f",    0x1000, 0x0800, CRC(808e46f1) SHA1(1cc4e9b0aa7e9546c133bd40d40ede6f2fbe93ba) )
@@ -2902,7 +2903,7 @@ ROM_END
 
 
 ROM_START( dplay )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "dplay619.h", 0x0000, 0x0800, CRC(6680669b) SHA1(49ad2333f81613c2f27231de60b415cbc254546a) )
 	ROM_LOAD( "dplay619.g", 0x0800, 0x0800, CRC(0eec7e01) SHA1(2661e77061119d7d95d498807bd29d2630c6b6ab) )
 	ROM_LOAD( "dplay619.f", 0x1000, 0x0800, CRC(3af4b719) SHA1(3122138ac36b1a129226836ddf1916d763d73e10) )
@@ -2911,7 +2912,7 @@ ROM_END
 
 
 ROM_START( lagunar )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "lagunar.h",  0x0000, 0x0800, CRC(0cd5a280) SHA1(89a744c912070f11b0b90b0cc92061e238b00b64) )
 	ROM_LOAD( "lagunar.g",  0x0800, 0x0800, CRC(824cd6f5) SHA1(a74f6983787cf040eab6f19de2669c019962b9cb) )
 	ROM_LOAD( "lagunar.f",  0x1000, 0x0800, CRC(62692ca7) SHA1(d62051bd1b45ca6e60df83942ff26a64ae25a97b) )
@@ -2920,7 +2921,7 @@ ROM_END
 
 
 ROM_START( gmissile )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "gm_623.h",   0x0000, 0x0800, CRC(a3ebb792) SHA1(30d9613de849c1a868056c5e28cf2a8608b63e88) )
 	ROM_LOAD( "gm_623.g",   0x0800, 0x0800, CRC(a5e740bb) SHA1(963c0984953eb58fe7eab84fabb724ec6e29e706) )
 	ROM_LOAD( "gm_623.f",   0x1000, 0x0800, CRC(da381025) SHA1(c9d0511567ed571b424459896ce7de0326850388) )
@@ -2929,7 +2930,7 @@ ROM_END
 
 
 ROM_START( m4 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "m4.h",       0x0000, 0x0800, CRC(9ee2a0b5) SHA1(b81b4001c90ac6db25edd838652c42913022d9a9) )
 	ROM_LOAD( "m4.g",       0x0800, 0x0800, CRC(0e84b9cb) SHA1(a7b74851979aaaa16496e506c487a18df14ab6dc) )
 	ROM_LOAD( "m4.f",       0x1000, 0x0800, CRC(9ded9956) SHA1(449204a50efd3345cde815ca5f1fb596843a30ac) )
@@ -2938,7 +2939,7 @@ ROM_END
 
 
 ROM_START( clowns )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "h2.cpu",     0x0000, 0x0400, CRC(ff4432eb) SHA1(997aee1e3669daa1d8169b4e103d04baaab8ea8d) )
 	ROM_LOAD( "g2.cpu",     0x0400, 0x0400, CRC(676c934b) SHA1(72b681ca9ef23d820fdd297cc417932aecc9677b) )
 	ROM_LOAD( "f2.cpu",     0x0800, 0x0400, CRC(00757962) SHA1(ef39211493393e97284a08eea63be0757643ac88) )
@@ -2949,7 +2950,7 @@ ROM_END
 
 
 ROM_START( clowns1 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "clownsv1.h", 0x0000, 0x0400, CRC(5560c951) SHA1(b6972e1918604263579de577ec58fa6a91e8ff3e) )
 	ROM_LOAD( "clownsv1.g", 0x0400, 0x0400, CRC(6a571d66) SHA1(e825f95863e901a1b648c74bb47098c8e74f179b) )
 	ROM_LOAD( "clownsv1.f", 0x0800, 0x0400, CRC(a2d56cea) SHA1(61bc07e6a24a1980216453b4dd2688695193a4ae) )
@@ -2960,7 +2961,7 @@ ROM_END
 
 
 ROM_START( einning )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "ei.h",       0x0000, 0x0800, CRC(eff9c7af) SHA1(316fffc972bd9935ead5ee4fd629bddc8a8ed5ce) )
 	ROM_LOAD( "ei.g",       0x0800, 0x0800, CRC(5d1e66cb) SHA1(a5475362e12b7c251a05d67c2fd070cf7d333ad0) )
 	ROM_LOAD( "ei.f",       0x1000, 0x0800, CRC(ed96785d) SHA1(d5557620227fcf6f30dcf6c8f5edd760d77d30ae) )
@@ -2970,7 +2971,7 @@ ROM_END
 
 
 ROM_START( shuffle )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "shuffle.h",  0x0000, 0x0800, CRC(0d422a18) SHA1(909c5b9e3c1194abd101cbf993a2ed7c8fbeb5d0) )
 	ROM_LOAD( "shuffle.g",  0x0800, 0x0800, CRC(7db7fcf9) SHA1(f41b568f2340e5307a7a45658946cfd4cf4056bf) )
 	ROM_LOAD( "shuffle.f",  0x1000, 0x0800, CRC(cd04d848) SHA1(f0f7e9bc483f08934d5c29568b4a7fe084623031) )
@@ -2979,7 +2980,7 @@ ROM_END
 
 
 ROM_START( dogpatch )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "dogpatch.h", 0x0000, 0x0800, CRC(74ebdf4d) SHA1(6b31f9563b0f79fe9128ee83e85a3e2f90d7985b) )
 	ROM_LOAD( "dogpatch.g", 0x0800, 0x0800, CRC(ac246f70) SHA1(7ee356c3218558a78ee0ff495f9f51ef88cac951) )
 	ROM_LOAD( "dogpatch.f", 0x1000, 0x0800, CRC(a975b011) SHA1(fb807d9eefde7177d7fd7ab06fc2dbdc58ae6fcb) )
@@ -2988,7 +2989,7 @@ ROM_END
 
 
 ROM_START( spcenctr )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "4m33.h",     0x0000, 0x0800, CRC(7458b2db) SHA1(c4f41efb8a35fd8bebc75bff0111476affe2b34d) )
 	ROM_LOAD( "4m32.g",     0x0800, 0x0800, CRC(1b873788) SHA1(6cdf0d602a65c7efcf8abe149c6172b4c7ab87a1) )
 	ROM_LOAD( "4m31.f",     0x1000, 0x0800, CRC(d4319c91) SHA1(30830595c220f490fe150ad018fbf4671bb71e02) )
@@ -3001,7 +3002,7 @@ ROM_END
 
 
 ROM_START( phantom2 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "phantom2.h", 0x0000, 0x0800, CRC(0e3c2439) SHA1(450182e590845c651530b2c84e1f11fe2451dcf6) )
 	ROM_LOAD( "phantom2.g", 0x0800, 0x0800, CRC(e8df3e52) SHA1(833925e44e686df4d4056bce4c0ffae3269d57df) )
 	ROM_LOAD( "phantom2.f", 0x1000, 0x0800, CRC(30e83c6d) SHA1(fe34a3e4519a7e5ffe66e76fe974049988656b71) )
@@ -3013,7 +3014,7 @@ ROM_END
 
 
 ROM_START( bowler )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "h.cpu",      0x0000, 0x0800, CRC(74c29b93) SHA1(9cbd5b7b8a4c889406b6bc065360f74c036320b2) )
 	ROM_LOAD( "g.cpu",      0x0800, 0x0800, CRC(ca26d8b4) SHA1(cf18991cde8044a961cf556f18c6eb60a7ade595) )
 	ROM_LOAD( "f.cpu",      0x1000, 0x0800, CRC(ba8a0bfa) SHA1(bb017ddac58d031b249596b70ab1068cd1bad499) )
@@ -3023,7 +3024,7 @@ ROM_END
 
 
 ROM_START( invaders )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "invaders.h", 0x0000, 0x0800, CRC(734f5ad8) SHA1(ff6200af4c9110d8181249cbcef1a8a40fa40b7f) )
 	ROM_LOAD( "invaders.g", 0x0800, 0x0800, CRC(6bfaca4a) SHA1(16f48649b531bdef8c2d1446c429b5f414524350) )
 	ROM_LOAD( "invaders.f", 0x1000, 0x0800, CRC(0ccead96) SHA1(537aef03468f63c5b9e11dd61e253f7ae17d9743) )
@@ -3032,7 +3033,7 @@ ROM_END
 
 
 ROM_START( blueshrk )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "blueshrk.h", 0x0000, 0x0800, CRC(4ff94187) SHA1(7cb80e2ccc34983bfd688c549ffc032d6dacf880) )
 	ROM_LOAD( "blueshrk.g", 0x0800, 0x0800, CRC(e49368fd) SHA1(2495ba48532bb714361e4f0e94c9317161c6c77f) )
 	ROM_LOAD( "blueshrk.f", 0x1000, 0x0800, CRC(86cca79d) SHA1(7b4633fb8033ee2c0e692135c383ebf57deef0e5) )
@@ -3040,7 +3041,7 @@ ROM_END
 
 
 ROM_START( invad2ct )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "invad2ct.h", 0x0000, 0x0800, CRC(51d02a71) SHA1(2fa82ddc2702a72de0a9559ec244b70ab3db3f18) )
 	ROM_LOAD( "invad2ct.g", 0x0800, 0x0800, CRC(533ac770) SHA1(edb65c289027432dad7861a7d6abbda9223c13b1) )
 	ROM_LOAD( "invad2ct.f", 0x1000, 0x0800, CRC(d1799f39) SHA1(f7f1ba34d57f9883241ba3ef90e34ed20dfb8003) )
@@ -3063,14 +3064,14 @@ ROM_END
 /* 597 */ GAMEL(1975, gunfight, 0,        gunfight, gunfight, 0, ROT0,   "Midway", "Gun Fight", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE , layout_hoffff20 )
 /* 604 Gun Fight (cocktail, dump does not exist) */
 /* 605 */ GAME( 1976, tornbase, 0,        tornbase, tornbase, 0, ROT0,   "Midway / Taito", "Tornado Baseball / Ball Park", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
-/* 610 */ GAME( 1976, 280zzzap, 0,        zzzap,    zzzap,    0, ROT0,   "Midway", "Datsun 280 Zzzap", GAME_NO_SOUND | GAME_SUPPORTS_SAVE  )
+/* 610 */ GAMEL(1976, 280zzzap, 0,        zzzap,    zzzap,    0, ROT0,   "Midway", "Datsun 280 Zzzap", GAME_NO_SOUND | GAME_SUPPORTS_SAVE , layout_280zzzap )
 /* 611 */ GAMEL(1976, maze,     0,        maze,     maze,     0, ROT0,   "Midway", "Amazing Maze", GAME_SUPPORTS_SAVE , layout_ho4f893d )
 /* 612 */ GAME( 1977, boothill, 0,        boothill, boothill, 0, ROT0,   "Midway", "Boot Hill" , GAME_SUPPORTS_SAVE  )
 /* 615 */ GAME( 1977, checkmat, 0,        checkmat, checkmat, 0, ROT0,   "Midway", "Checkmate", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
 /* 618 */ GAME( 1977, desertgu, 0,        desertgu, desertgu, 0, ROT0,   "Midway", "Desert Gun", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
 /* 618 */ GAME( 1977, roadrunm, desertgu, desertgu, desertgu, 0, ROT0,   "Midway", "Road Runner (Midway)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
 /* 619 */ GAME( 1977, dplay,    0,        dplay,    dplay,    0, ROT0,   "Midway", "Double Play", GAME_SUPPORTS_SAVE  )
-/* 622 */ GAME( 1977, lagunar,  0,        zzzap,    lagunar,  0, ROT90,  "Midway", "Laguna Racer", GAME_NO_SOUND | GAME_SUPPORTS_SAVE  )
+/* 622 */ GAMEL(1977, lagunar,  0,        zzzap,    lagunar,  0, ROT90,  "Midway", "Laguna Racer", GAME_NO_SOUND | GAME_SUPPORTS_SAVE , layout_280zzzap )
 /* 623 */ GAME( 1977, gmissile, 0,        gmissile, gmissile, 0, ROT0,   "Taito / Midway", "Missile X / Guided Missile", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
 /* 626 */ GAME( 1977, m4,       0,        m4,       m4,       0, ROT0,   "Midway", "M-4", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
 /* 630 */ GAMEL(1978, clowns,   0,        clowns,   clowns,   0, ROT0,   "Midway", "Clowns (rev. 2)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE , layout_clowns )

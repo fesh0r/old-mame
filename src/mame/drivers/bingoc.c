@@ -35,12 +35,12 @@ SOUND : YM2151 uPD7759C
 
 #define SOUND_TEST 0
 
-VIDEO_START(bingoc)
+static VIDEO_START(bingoc)
 {
 
 }
 
-VIDEO_UPDATE(bingoc)
+static VIDEO_UPDATE(bingoc)
 {
 	return 0;
 }
@@ -81,15 +81,15 @@ static WRITE16_HANDLER( main_sound_latch_w )
 }
 #endif
 
-static WRITE8_HANDLER( bingoc_play_w )
+static WRITE8_DEVICE_HANDLER( bingoc_play_w )
 {
 	/*
     ---- --x- sound rom banking
     ---- ---x start-stop sample
     */
-	UINT8 *upd = memory_region(space->machine, "upd");
+	UINT8 *upd = memory_region(device->machine, "upd");
 	memcpy(&upd[0x00000], &upd[0x20000 + (((data & 2)>>1) * 0x20000)], 0x20000);
-	upd7759_start_w(0, data & 1);
+	upd7759_start_w(device, data & 1);
 //  printf("%02x\n",data);
 }
 
@@ -110,10 +110,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(ym2151_register_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
-	AM_RANGE(0x40, 0x40) AM_WRITE(bingoc_play_w)
-	AM_RANGE(0x80, 0x80) AM_WRITE(upd7759_0_port_w)
+	AM_RANGE(0x00, 0x01) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
+	AM_RANGE(0x40, 0x40) AM_DEVWRITE("upd", bingoc_play_w)
+	AM_RANGE(0x80, 0x80) AM_DEVWRITE("upd", upd7759_port_w)
 #if !SOUND_TEST
 	AM_RANGE(0xc0, 0xc0) AM_READ(soundlatch_r) //soundlatch
 #else
@@ -128,19 +127,19 @@ INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( bingoc )
 
-	MDRV_CPU_ADD("main", M68000,8000000)		 /* ? MHz */
+	MDRV_CPU_ADD("maincpu", M68000,8000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
-	MDRV_CPU_ADD("sound", Z80,4000000)		 /* ? MHz */
+	MDRV_CPU_ADD("soundcpu", Z80,4000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_io,0)
 #if SOUND_TEST
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 #endif
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -152,26 +151,26 @@ static MACHINE_DRIVER_START( bingoc )
 	MDRV_VIDEO_START(bingoc)
 	MDRV_VIDEO_UPDATE(bingoc)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right") //might just be mono...
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker") //might just be mono...
 
 	MDRV_SOUND_ADD("ym", YM2151, 7159160/2)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("upd", UPD7759, UPD7759_STANDARD_CLOCK)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 ROM_START( bingoc )
-	ROM_REGION( 0x40000, "main", 0 )
+	ROM_REGION( 0x40000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "12636a.epr", 0x00000, 0x20000, CRC(ef8dccff) SHA1(9eb6e55e2000b252647fc748cbbeedf4f119aed7) )
 	ROM_LOAD16_BYTE( "12635a.epr", 0x00001, 0x20000, CRC(a94cd74e) SHA1(0c3e157a5ddf34f4f1a2d30b9758bf067896371c) )
 
 	ROM_REGION( 0x10000, "ter_1", 0 ) //just as a re-dump reminder,might be either one sub-board or eight of them...
 	ROM_LOAD( "terminal.rom", 0x00000, 0x10000, NO_DUMP )
 
-	ROM_REGION( 0x10000, "sound", 0 )
+	ROM_REGION( 0x10000, "soundcpu", 0 )
 	ROM_LOAD( "12639.epr", 0x00000, 0x10000, CRC(4307f6ba) SHA1(f568930191cd31a2112ef8d4cf5ff340826d5877) )
 
 	ROM_REGION( 0x60000, "upd", 0 )

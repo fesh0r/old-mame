@@ -206,43 +206,45 @@ static WRITE8_HANDLER( seawolf2_lamps_w )
 
 static WRITE8_HANDLER( seawolf2_sound_1_w )  // Port 40
 {
+	const device_config *samples = devtag_get_device(space->machine, "samples");
 	UINT8 rising_bits = data & ~port_1_last;
 	port_1_last = data;
 
-	if (rising_bits & 0x01) sample_start(1, 1, 0);  /* Left Torpedo */
-	if (rising_bits & 0x02) sample_start(0, 0, 0);  /* Left Ship Hit */
-	if (rising_bits & 0x04) sample_start(4, 4, 0);  /* Left Mine Hit */
-	if (rising_bits & 0x08) sample_start(6, 1, 0);  /* Right Torpedo */
-	if (rising_bits & 0x10) sample_start(5, 0, 0);  /* Right Ship Hit */
-	if (rising_bits & 0x20) sample_start(9, 4, 0);  /* Right Mine Hit */
+	if (rising_bits & 0x01) sample_start(samples, 1, 1, 0);  /* Left Torpedo */
+	if (rising_bits & 0x02) sample_start(samples, 0, 0, 0);  /* Left Ship Hit */
+	if (rising_bits & 0x04) sample_start(samples, 4, 4, 0);  /* Left Mine Hit */
+	if (rising_bits & 0x08) sample_start(samples, 6, 1, 0);  /* Right Torpedo */
+	if (rising_bits & 0x10) sample_start(samples, 5, 0, 0);  /* Right Ship Hit */
+	if (rising_bits & 0x20) sample_start(samples, 9, 4, 0);  /* Right Mine Hit */
 }
 
 
 static WRITE8_HANDLER( seawolf2_sound_2_w )  // Port 41
 {
+	const device_config *samples = devtag_get_device(space->machine, "samples");
 	UINT8 rising_bits = data & ~port_2_last;
 	port_2_last = data;
 
-	sample_set_volume(0, (data & 0x80) ? 1.0 : 0.0);
-	sample_set_volume(1, (data & 0x80) ? 1.0 : 0.0);
-	sample_set_volume(3, (data & 0x80) ? 1.0 : 0.0);
-	sample_set_volume(4, (data & 0x80) ? 1.0 : 0.0);
-	sample_set_volume(5, (data & 0x80) ? 1.0 : 0.0);
-	sample_set_volume(6, (data & 0x80) ? 1.0 : 0.0);
-	sample_set_volume(8, (data & 0x80) ? 1.0 : 0.0);
-	sample_set_volume(9, (data & 0x80) ? 1.0 : 0.0);
+	sample_set_volume(samples, 0, (data & 0x80) ? 1.0 : 0.0);
+	sample_set_volume(samples, 1, (data & 0x80) ? 1.0 : 0.0);
+	sample_set_volume(samples, 3, (data & 0x80) ? 1.0 : 0.0);
+	sample_set_volume(samples, 4, (data & 0x80) ? 1.0 : 0.0);
+	sample_set_volume(samples, 5, (data & 0x80) ? 1.0 : 0.0);
+	sample_set_volume(samples, 6, (data & 0x80) ? 1.0 : 0.0);
+	sample_set_volume(samples, 8, (data & 0x80) ? 1.0 : 0.0);
+	sample_set_volume(samples, 9, (data & 0x80) ? 1.0 : 0.0);
 
 	/* dive panning controlled by low 3 bits */
-	sample_set_volume(2, (float)(~data & 0x07) / 7.0);
-	sample_set_volume(7, (float)(data & 0x07) / 7.0);
+	sample_set_volume(samples, 2, (float)(~data & 0x07) / 7.0);
+	sample_set_volume(samples, 7, (float)(data & 0x07) / 7.0);
 
 	if (rising_bits & 0x08)
 	{
-		sample_start(2, 2, 0);
-		sample_start(7, 2, 0);
+		sample_start(samples, 2, 2, 0);
+		sample_start(samples, 7, 2, 0);
 	}
-	if (rising_bits & 0x10) sample_start(8, 3, 0);  /* Right Sonar */
-	if (rising_bits & 0x20) sample_start(3, 3, 0);  /* Left Sonar */
+	if (rising_bits & 0x10) sample_start(samples, 8, 3, 0);  /* Right Sonar */
+	if (rising_bits & 0x20) sample_start(samples, 3, 3, 0);  /* Left Sonar */
 
 	coin_counter_w(0, data & 0x40);    /* Coin Counter */
 }
@@ -334,8 +336,8 @@ static READ8_HANDLER( gorf_io_1_r )
 		case 4: astrocade_sparkle[2] = data;	break;
 		case 5: astrocade_sparkle[3] = data;	break;
 		case 6:
-			sndti_set_output_gain(SOUND_ASTROCADE, 0, 0, data ? 0.0 : 1.0);
-			sndti_set_output_gain(SOUND_SAMPLES,   0, 0, data ? 1.0 : 0.0);
+			sound_set_output_gain(devtag_get_device(space->machine, "astrocade1"), 0, data ? 0.0 : 1.0);
+			sound_set_output_gain(devtag_get_device(space->machine, "samples"), 0, data ? 1.0 : 0.0);
 			break;
 		case 7:	mame_printf_debug("io_1:%d\n", data); break;
 	}
@@ -502,7 +504,7 @@ static void ctc_interrupt(const device_config *device, int state)
 }
 
 
-static z80ctc_interface ctc_intf =
+static const z80ctc_interface ctc_intf =
 {
 	0,              	/* timer disables */
 	ctc_interrupt,  	/* interrupt handler */
@@ -516,10 +518,10 @@ static const ay8910_interface ay8912_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_5_r,
-	NULL,
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("DIPSW"),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -679,7 +681,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( port_map_stereo_pattern, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0000, 0x0019) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(astrocade_data_chip_register_r, astrocade_data_chip_register_w)
-	AM_RANGE(0x0050, 0x0058) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_WRITE(astrocade_sound2_w)
+	AM_RANGE(0x0050, 0x0058) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_DEVWRITE("astrocade2", astrocade_sound_w)
 	AM_RANGE(0x0078, 0x007e) AM_MIRROR(0xff00) AM_WRITE(astrocade_pattern_board_w)
 	AM_RANGE(0xa55b, 0xa55b) AM_WRITE(protected_ram_enable_w)
 ADDRESS_MAP_END
@@ -687,7 +689,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( port_map_16col_pattern, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0000, 0x0019) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(astrocade_data_chip_register_r, astrocade_data_chip_register_w)
-	AM_RANGE(0x0050, 0x0058) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_WRITE(astrocade_sound2_w)
+	AM_RANGE(0x0050, 0x0058) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_DEVWRITE("astrocade2", astrocade_sound_w)
 	AM_RANGE(0x0078, 0x007e) AM_MIRROR(0xff00) AM_WRITE(astrocade_pattern_board_w)
 	AM_RANGE(0x00bf, 0x00bf) AM_MIRROR(0xff00) AM_WRITE(profpac_page_select_w)
 	AM_RANGE(0x00c3, 0x00c3) AM_MIRROR(0xff00) AM_READ(profpac_intercept_r)
@@ -710,11 +712,11 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tenpin_sub_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x90, 0x93) AM_DEVREADWRITE(Z80CTC, "ctc", z80ctc_r, z80ctc_w)
+	AM_RANGE(0x90, 0x93) AM_DEVREADWRITE("ctc", z80ctc_r, z80ctc_w)
 	AM_RANGE(0x97, 0x97) AM_READ(soundlatch_r)
-	AM_RANGE(0x98, 0x98) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x98, 0x98) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0x9a, 0x9a) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x98, 0x98) AM_DEVWRITE("ay", ay8910_address_w)
+	AM_RANGE(0x98, 0x98) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x9a, 0x9a) AM_DEVWRITE("ay", ay8910_data_w)
 ADDRESS_MAP_END
 
 
@@ -1241,7 +1243,7 @@ static const samples_interface gorf_samples_interface =
 
 static const z80_daisy_chain tenpin_daisy_chain[] =
 {
-	{ Z80CTC, "ctc" },
+	{ "ctc" },
 	{ NULL }
 };
 
@@ -1256,7 +1258,7 @@ static const z80_daisy_chain tenpin_daisy_chain[] =
 static MACHINE_DRIVER_START( astrocade_base )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, ASTROCADE_CLOCK/4)
+	MDRV_CPU_ADD("maincpu", Z80, ASTROCADE_CLOCK/4)
 	/* each game has its own map */
 
 	MDRV_MACHINE_START(astrocde)
@@ -1264,7 +1266,7 @@ static MACHINE_DRIVER_START( astrocade_base )
 	/* video hardware */
 	MDRV_PALETTE_LENGTH(512)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(ASTROCADE_CLOCK, 455, 0, 352, 262, 0, 240)
 	MDRV_SCREEN_DEFAULT_POSITION(1.1, 0.0, 1.18, -0.018)	/* clip out borders */
@@ -1295,7 +1297,7 @@ static MACHINE_DRIVER_START( astrocade_mono_sound )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD("astrocade",  ASTROCADE, ASTROCADE_CLOCK/4)
+	MDRV_SOUND_ADD("astrocade1",  ASTROCADE, ASTROCADE_CLOCK/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -1303,13 +1305,13 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( astrocade_stereo_sound )
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("astrocade1",  ASTROCADE, ASTROCADE_CLOCK/4)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 
 	MDRV_SOUND_ADD("astrocade2",  ASTROCADE, ASTROCADE_CLOCK/4)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -1324,25 +1326,25 @@ static MACHINE_DRIVER_START( seawolf2 )
 	MDRV_IMPORT_FROM(astrocade_base)
 
 	/* basic machine hardware */
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(seawolf2_map,0)
 	MDRV_CPU_IO_MAP(port_map,0)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("samples", SAMPLES, 0)
 	MDRV_SOUND_CONFIG(seawolf2_samples_interface)
-	MDRV_SOUND_ROUTE(0, "left", 0.25)
-	MDRV_SOUND_ROUTE(1, "left", 0.25)
-	MDRV_SOUND_ROUTE(2, "left", 0.25)
-	MDRV_SOUND_ROUTE(3, "left", 0.25)
-	MDRV_SOUND_ROUTE(4, "left", 0.25)
-	MDRV_SOUND_ROUTE(5, "right", 0.25)
-	MDRV_SOUND_ROUTE(6, "right", 0.25)
-	MDRV_SOUND_ROUTE(7, "right", 0.25)
-	MDRV_SOUND_ROUTE(8, "right", 0.25)
-	MDRV_SOUND_ROUTE(9, "right", 0.25)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.25)
+	MDRV_SOUND_ROUTE(1, "lspeaker", 0.25)
+	MDRV_SOUND_ROUTE(2, "lspeaker", 0.25)
+	MDRV_SOUND_ROUTE(3, "lspeaker", 0.25)
+	MDRV_SOUND_ROUTE(4, "lspeaker", 0.25)
+	MDRV_SOUND_ROUTE(5, "rspeaker", 0.25)
+	MDRV_SOUND_ROUTE(6, "rspeaker", 0.25)
+	MDRV_SOUND_ROUTE(7, "rspeaker", 0.25)
+	MDRV_SOUND_ROUTE(8, "rspeaker", 0.25)
+	MDRV_SOUND_ROUTE(9, "rspeaker", 0.25)
 MACHINE_DRIVER_END
 
 
@@ -1351,7 +1353,7 @@ static MACHINE_DRIVER_START( ebases )
 	MDRV_IMPORT_FROM(astrocade_mono_sound)
 
 	/* basic machine hardware */
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(ebases_map,0)
 	MDRV_CPU_IO_MAP(port_map,0)
 MACHINE_DRIVER_END
@@ -1362,7 +1364,7 @@ static MACHINE_DRIVER_START( spacezap )
 	MDRV_IMPORT_FROM(astrocade_mono_sound)
 
 	/* basic machine hardware */
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(spacezap_map,0)
 	MDRV_CPU_IO_MAP(port_map_mono_pattern,0)
 MACHINE_DRIVER_END
@@ -1373,12 +1375,12 @@ static MACHINE_DRIVER_START( wow )
 	MDRV_IMPORT_FROM(astrocade_stereo_sound)
 
 	/* basic machine hardware */
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(wow_map,0)
 	MDRV_CPU_IO_MAP(port_map_stereo_pattern,0)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_DEFAULT_POSITION(1.0, 0.0, 1.0, 0.0)	/* adjusted to match screenshots */
 //  MDRV_SCREEN_DEFAULT_POSITION(1.066, -0.004, 1.048, -0.026)  /* adjusted to match flyer */
 
@@ -1395,12 +1397,12 @@ static MACHINE_DRIVER_START( gorf )
 	MDRV_IMPORT_FROM(astrocade_base)
 
 	/* basic machine hardware */
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(wow_map,0)
 	MDRV_CPU_IO_MAP(port_map_stereo_pattern,0)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_DEFAULT_POSITION(1.0, 0.0, 1.0, 0.0)	/* adjusted to match flyer */
 
 	/* sound hardware */
@@ -1424,7 +1426,7 @@ static MACHINE_DRIVER_START( robby )
 	MDRV_IMPORT_FROM(astrocade_stereo_sound)
 
 	/* basic machine hardware */
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(robby_map,0)
 	MDRV_CPU_IO_MAP(port_map_stereo_pattern,0)
 
@@ -1437,7 +1439,7 @@ static MACHINE_DRIVER_START( profpac )
 	MDRV_IMPORT_FROM(astrocade_stereo_sound)
 
 	/* basic machine hardware */
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(profpac_map,0)
 	MDRV_CPU_IO_MAP(port_map_16col_pattern,0)
 MACHINE_DRIVER_END
@@ -1447,7 +1449,7 @@ static MACHINE_DRIVER_START( demndrgn )
 	MDRV_IMPORT_FROM(astrocade_16color_base)
 
 	/* basic machine hardware */
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(demndrgn_map,0)
 	MDRV_CPU_IO_MAP(port_map_16col_pattern_nosound,0)
 MACHINE_DRIVER_END
@@ -1457,7 +1459,7 @@ static MACHINE_DRIVER_START( tenpindx )
 	MDRV_IMPORT_FROM(astrocade_16color_base)
 
 	/* basic machine hardware */
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(profpac_map,0)
 	MDRV_CPU_IO_MAP(port_map_16col_pattern_nosound,0)
 
@@ -1484,7 +1486,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( seawolf2 )
-	ROM_REGION( 0x2000, "main", 0 )
+	ROM_REGION( 0x2000, "maincpu", 0 )
 	ROM_LOAD( "sw2x1.bin",    0x0000, 0x0800, CRC(ad0103f6) SHA1(c6e411444a824ce54b0eee10f7dc15e4229ec070) )
 	ROM_LOAD( "sw2x2.bin",    0x0800, 0x0800, CRC(e0430f0a) SHA1(63d8c6b77e0aa536b4f5bb774bc9285f736d4265) )
 	ROM_LOAD( "sw2x3.bin",    0x1000, 0x0800, CRC(05ad1619) SHA1(c9dbeaa4540dc95f98970f501a420b18b9898c91) )
@@ -1493,7 +1495,7 @@ ROM_END
 
 
 ROM_START( spacezap )
-	ROM_REGION( 0x4000, "main", 0 )
+	ROM_REGION( 0x4000, "maincpu", 0 )
 	ROM_LOAD( "0662.01",      0x0000, 0x1000, CRC(a92de312) SHA1(784ac67c75c7c101f97ebfd39b2b3f7bf7fa470a) )
 	ROM_LOAD( "0663.xx",      0x1000, 0x1000, CRC(4836ebf1) SHA1(ad0e8c34a209c827c1336f0250cc61fee667fb03) )
 	ROM_LOAD( "0664.xx",      0x2000, 0x1000, CRC(d8193a80) SHA1(72151e773562da62acd2c1d9638711711cbc13a3) )
@@ -1502,7 +1504,7 @@ ROM_END
 
 
 ROM_START( ebases )
-	ROM_REGION( 0x4000, "main", 0 )
+	ROM_REGION( 0x4000, "maincpu", 0 )
 	ROM_LOAD( "m761a",        0x0000, 0x1000, CRC(34422147) SHA1(6483ca1359b675b0dd739605db2a1dbd4b7fb8cb) )
 	ROM_LOAD( "m761b",        0x1000, 0x1000, CRC(4f28dfd6) SHA1(52e571e671fa61b0f9ab397a5947094c24f6c388) )
 	ROM_LOAD( "m761c",        0x2000, 0x1000, CRC(bff6c97e) SHA1(e41fb9db919039c8a48b4caebf80821a066d7ccf) )
@@ -1511,7 +1513,7 @@ ROM_END
 
 
 ROM_START( wow )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "wow.x1",       0x0000, 0x1000, CRC(c1295786) SHA1(1e4f30cc15537aed6603b4e664e6e60f4bccb5c5) )
 	ROM_LOAD( "wow.x2",       0x1000, 0x1000, CRC(9be93215) SHA1(0bc8ee6d8391104eb217b612f32856b105946682) )
 	ROM_LOAD( "wow.x3",       0x2000, 0x1000, CRC(75e5a22e) SHA1(50a8ca11909ce49412c47de4da69e39a083ce5af) )
@@ -1524,7 +1526,7 @@ ROM_END
 
 
 ROM_START( gorf )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "gorf-a.bin",   0x0000, 0x1000, CRC(5b348321) SHA1(76e2e3ad1a66755f1a369167fdb157690fd44a52) )
 	ROM_LOAD( "gorf-b.bin",   0x1000, 0x1000, CRC(62d6de77) SHA1(2601faf12d0ab4972c5535ffd722b03ecd8c097c) )
 	ROM_LOAD( "gorf-c.bin",   0x2000, 0x1000, CRC(1d3bc9c9) SHA1(0b363a71d7585a4828e08668ebb2999c55e02721) )
@@ -1536,7 +1538,7 @@ ROM_START( gorf )
 ROM_END
 
 ROM_START( gorfpgm1 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "873a",         0x0000, 0x1000, CRC(97cb4a6a) SHA1(efdae9a437c665fb861665a38c6cb13fd848ad91) )
 	ROM_LOAD( "873b",         0x1000, 0x1000, CRC(257236f8) SHA1(d1e8555fe5e6705ef88535bcd6071d1072b01386) )
 	ROM_LOAD( "873c",         0x2000, 0x1000, CRC(16b0638b) SHA1(65e1e2e4df80140976915e0982ce3219b14beece) )
@@ -1549,7 +1551,7 @@ ROM_END
 
 
 ROM_START( robby )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "rotox1.bin",   0x0000, 0x1000, CRC(a431b85a) SHA1(3478da56addba1cdd98cbef7a15b17fca9aed2cd) )
 	ROM_LOAD( "rotox2.bin",   0x1000, 0x1000, CRC(33cdda83) SHA1(ccbc741a2fc0b7385ca42afe5b377432249b44cb) )
 	ROM_LOAD( "rotox3.bin",   0x2000, 0x1000, CRC(dbf97491) SHA1(11574baf04af02b38ae147be8409de7c34e87611) )
@@ -1564,7 +1566,7 @@ ROM_END
 
 
 ROM_START( profpac )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "pps1",         0x0000, 0x2000, CRC(a244a62d) SHA1(f7a9606ce6d66c3e6d210cc25572904aeab2b6c8) )
 	ROM_LOAD( "pps2",         0x2000, 0x2000, CRC(8a9a6653) SHA1(b730b24088dcfddbe954670ff9212b7383c923f6) )
 	ROM_LOAD( "pps9",         0xc000, 0x2000, CRC(17a0b418) SHA1(8b7ed84090dbc5181deef6f55ec755c05d4c0d5e) )
@@ -1608,7 +1610,7 @@ ROM_END
 
 
 ROM_START( demndrgn )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "dd-x1.bin",     0x0000, 0x2000, CRC(9aeaf79e) SHA1(c70aa1a31bc085cca904d497c34e55d49fef49b7) )
 	ROM_LOAD( "dd-x2.bin",     0x2000, 0x2000, CRC(0c63b624) SHA1(3eaeb4e0820e9dda7233a13bb146acc44402addd) )
 	ROM_LOAD( "dd-x9.bin",     0xc000, 0x2000, CRC(3792d632) SHA1(da053df344f39a8f25a2c57fb1a908131c10f248) )
@@ -1628,7 +1630,7 @@ ROM_END
 
 
 ROM_START( tenpindx )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "tpd_x1.bin",     0x0000, 0x2000, CRC(ef424484) SHA1(d70f8491059e24775ee05140c8c3b0afa6c1107c) )
 	ROM_LOAD( "tpd_x2.bin",     0x2000, 0x2000, CRC(a0f53af2) SHA1(966a98f73bdd358601f105ca97c823575b33bab3) )
 	ROM_LOAD( "tpd_x9.bin",     0xc000, 0x2000, CRC(ce9a9bd4) SHA1(fcc48a66b6079c56992afef2ca8ab95c66f8f431) )
@@ -1739,8 +1741,8 @@ static DRIVER_INIT( demndrgn )
 
 	astrocade_video_config = 0x00;
 	memory_install_read8_handler(iospace, 0x14, 0x14, 0x1fff, 0xff00, demndrgn_io_r);
-	memory_install_read8_handler(iospace, 0x1c, 0x1c, 0x0000, 0xff00, input_port_read_handler8(machine->portconfig, "FIREX"));
-	memory_install_read8_handler(iospace, 0x1d, 0x1d, 0x0000, 0xff00, input_port_read_handler8(machine->portconfig, "FIREY"));
+	memory_install_read_port_handler(iospace, 0x1c, 0x1c, 0x0000, 0xff00, "FIREX");
+	memory_install_read_port_handler(iospace, 0x1d, 0x1d, 0x0000, 0xff00, "FIREY");
 	memory_install_write8_handler(iospace, 0x97, 0x97, 0x0000, 0xff00, demndrgn_sound_w);
 
 	/* reset banking */
@@ -1754,11 +1756,11 @@ static DRIVER_INIT( tenpindx )
 	const address_space *iospace = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO);
 
 	astrocade_video_config = 0x00;
-	memory_install_read8_handler(iospace, 0x60, 0x60, 0x0000, 0xff00, input_port_read_handler8(machine->portconfig, "P60"));
-	memory_install_read8_handler(iospace, 0x61, 0x61, 0x0000, 0xff00, input_port_read_handler8(machine->portconfig, "P61"));
-	memory_install_read8_handler(iospace, 0x62, 0x62, 0x0000, 0xff00, input_port_read_handler8(machine->portconfig, "P62"));
-	memory_install_read8_handler(iospace, 0x63, 0x63, 0x0000, 0xff00, input_port_read_handler8(machine->portconfig, "P63"));
-	memory_install_read8_handler(iospace, 0x64, 0x64, 0x0000, 0xff00, input_port_read_handler8(machine->portconfig, "P64"));
+	memory_install_read_port_handler(iospace, 0x60, 0x60, 0x0000, 0xff00, "P60");
+	memory_install_read_port_handler(iospace, 0x61, 0x61, 0x0000, 0xff00, "P61");
+	memory_install_read_port_handler(iospace, 0x62, 0x62, 0x0000, 0xff00, "P62");
+	memory_install_read_port_handler(iospace, 0x63, 0x63, 0x0000, 0xff00, "P63");
+	memory_install_read_port_handler(iospace, 0x64, 0x64, 0x0000, 0xff00, "P64");
 	memory_install_write8_handler(iospace, 0x65, 0x66, 0x0000, 0xff00, tenpindx_lamp_w);
 	memory_install_write8_handler(iospace, 0x67, 0x67, 0x0000, 0xff00, tenpindx_counter_w);
 	memory_install_write8_handler(iospace, 0x68, 0x68, 0x0000, 0xff00, tenpindx_lights_w);

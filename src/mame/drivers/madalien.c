@@ -70,25 +70,25 @@ static READ8_HANDLER(madalien_sound_command_r )
 }
 
 
-static WRITE8_HANDLER( madalien_portA_w )
+static WRITE8_DEVICE_HANDLER( madalien_portA_w )
 {
-	discrete_sound_w(space, MADALIEN_8910_PORTA, data);
+	discrete_sound_w(device, MADALIEN_8910_PORTA, data);
 }
-static WRITE8_HANDLER( madalien_portB_w )
+static WRITE8_DEVICE_HANDLER( madalien_portB_w )
 {
-	discrete_sound_w(space, MADALIEN_8910_PORTB, data);
+	discrete_sound_w(device, MADALIEN_8910_PORTB, data);
 }
 
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
 
-	AM_RANGE(0x6000, 0x63ff) AM_RAM AM_BASE(&madalien_videoram)
+	AM_RANGE(0x6000, 0x63ff) AM_RAM_WRITE(madalien_videoram_w) AM_BASE(&madalien_videoram)
 	AM_RANGE(0x6400, 0x67ff) AM_RAM
-	AM_RANGE(0x6800, 0x7fff) AM_RAM AM_BASE(&madalien_charram)
+	AM_RANGE(0x6800, 0x7fff) AM_RAM_WRITE(madalien_charram_w) AM_BASE(&madalien_charram)
 
-	AM_RANGE(0x8000, 0x8000) AM_MIRROR(0x0ff0) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0x8001, 0x8001) AM_MIRROR(0x0ff0) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
+	AM_RANGE(0x8000, 0x8000) AM_MIRROR(0x0ff0) AM_DEVWRITE("crtc", mc6845_address_w)
+	AM_RANGE(0x8001, 0x8001) AM_MIRROR(0x0ff0) AM_DEVREADWRITE("crtc", mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0x8004, 0x8004) AM_MIRROR(0x0ff0) AM_WRITE(SMH_RAM) AM_BASE(&madalien_video_control)
 	AM_RANGE(0x8005, 0x8005) AM_MIRROR(0x0ff0) AM_WRITE(madalien_output_w)
 	AM_RANGE(0x8006, 0x8006) AM_MIRROR(0x0ff0) AM_READWRITE(soundlatch2_r, madalien_sound_command_w)
@@ -112,8 +112,7 @@ static ADDRESS_MAP_START( audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_MIRROR(0x1c00) AM_RAM
 	AM_RANGE(0x6000, 0x6003) AM_MIRROR(0x1ffc) AM_RAM /* unknown device in an epoxy block, might be tilt detection */
 	AM_RANGE(0x8000, 0x8000) AM_MIRROR(0x1ffc) AM_READ(madalien_sound_command_r)
-	AM_RANGE(0x8000, 0x8000) AM_MIRROR(0x1ffc) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x8001, 0x8001) AM_MIRROR(0x1ffc) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x8000, 0x8001) AM_MIRROR(0x1ffc) AM_DEVWRITE("ay", ay8910_address_data_w)
 	AM_RANGE(0x8002, 0x8002) AM_MIRROR(0x1ffc) AM_WRITE(soundlatch2_w)
 	AM_RANGE(0xf800, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -166,22 +165,22 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	NULL,
-	madalien_portA_w,
-	madalien_portB_w
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_DEVICE_HANDLER("discrete", madalien_portA_w),
+	DEVCB_DEVICE_HANDLER("discrete", madalien_portB_w)
 };
 
 
 static MACHINE_DRIVER_START( madalien )
 
 	/* main CPU */
-	MDRV_CPU_ADD("main", M6502, MADALIEN_MAIN_CLOCK / 8)    /* 1324kHz */
+	MDRV_CPU_ADD("maincpu", M6502, MADALIEN_MAIN_CLOCK / 8)    /* 1324kHz */
 	MDRV_CPU_PROGRAM_MAP(main_map, 0)
 
-	MDRV_CPU_ADD("audio", M6502, SOUND_CLOCK / 8)   /* 512kHz */
+	MDRV_CPU_ADD("audiocpu", M6502, SOUND_CLOCK / 8)   /* 512kHz */
 	MDRV_CPU_PROGRAM_MAP(audio_map, 0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(madalien_video)
@@ -203,7 +202,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( madalien )
-	ROM_REGION( 0x10000, "main", 0 )                   /* main CPU */
+	ROM_REGION( 0x10000, "maincpu", 0 )                   /* main CPU */
 	ROM_LOAD( "m7.3f",	0xc000, 0x0800, CRC(4d12f89d) SHA1(e155f9135bc2bea56e211052f2b74d25e76308c8) )
 	ROM_LOAD( "m6.3h",	0xc800, 0x0800, CRC(1bc4a57b) SHA1(02252b868d0c07c0a18240e9d831c303cdcfa9a6) )
 	ROM_LOAD( "m5.3k",	0xd000, 0x0800, CRC(8db99572) SHA1(f8cf22f8c134b47756b7f02c5ca0217100466744) )
@@ -213,7 +212,7 @@ ROM_START( madalien )
 	ROM_LOAD( "m1.4k",	0xf000, 0x0800, CRC(ad654b1d) SHA1(f8b365dae3801e97e04a10018a790d3bdb5d9439) )
 	ROM_LOAD( "m0.4l",	0xf800, 0x0800, CRC(cf7aa787) SHA1(f852cc806ecc582661582326747974a14f50174a) )
 
-	ROM_REGION( 0x10000, "audio", 0 )                   /* audio CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )                   /* audio CPU */
 	ROM_LOAD( "m8", 0xf800, 0x0400, CRC(cfd19dab) SHA1(566dc84ffe9bcaeb112250a9e1882bf62f47b579) )
 	ROM_LOAD( "m9", 0xfc00, 0x0400, CRC(48f30f24) SHA1(9c0bf6e43b143d6af1ebb9dad2bdc2b53eb2e48e) )
 
@@ -384,7 +383,7 @@ Notes:
 ***************************************************************************/
 
 ROM_START( madalina )
-	ROM_REGION( 0x10000, "main", 0 )                   /* main CPU */
+	ROM_REGION( 0x10000, "maincpu", 0 )                   /* main CPU */
 	ROM_LOAD( "2716.4c", 0xb000, 0x0800, CRC(90be68af) SHA1(472ccfd2e04d6d49be47d919cba0c55d850b2887) )
 	ROM_LOAD( "2716.4e", 0xb800, 0x0800, CRC(aba10cbb) SHA1(6ca213ded8ed7f4f310ab5ae25220cf867dd1d00) )
 	ROM_LOAD( "2716.3f", 0xc000, 0x0800, CRC(c3af484c) SHA1(c3667526d3b5aeee68823f92826053e657512851) )
@@ -396,7 +395,7 @@ ROM_START( madalina )
 	ROM_LOAD( "2716.4k", 0xf000, 0x0800, CRC(06991af6) SHA1(19112306529721222b6e1c07920348c263d8b8aa) )
 	ROM_LOAD( "2716.4l", 0xf800, 0x0800, CRC(57752b47) SHA1(a34d3150ea9082889154042dbea3386f71322a78) )
 
-	ROM_REGION( 0x10000, "audio", 0 )                   /* audio CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )                   /* audio CPU */
 	ROM_LOAD( "8_2708.4d", 0xf800, 0x0400, CRC(46162e7e) SHA1(7ed85f4a9ac58d6d9bafba0c843a16c269656563) )
 	ROM_LOAD( "9_2708.3d", 0xfc00, 0x0400, CRC(4175f5c4) SHA1(45cae8a1fcfd34b91c63cc7e544a32922da14f16) )
 

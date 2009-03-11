@@ -50,14 +50,14 @@ static WRITE8_HANDLER( tankbust_soundlatch_w )
 	timer_call_after_resynch(space->machine, NULL, data,soundlatch_callback);
 }
 
-static READ8_HANDLER( tankbust_soundlatch_r )
+static READ8_DEVICE_HANDLER( tankbust_soundlatch_r )
 {
 	return latch;
 }
 
 //port B of ay8910#0
 static UINT32 timer1=0;
-static READ8_HANDLER( tankbust_soundtimer_r )
+static READ8_DEVICE_HANDLER( tankbust_soundtimer_r )
 {
 	int ret;
 
@@ -114,8 +114,8 @@ static WRITE8_HANDLER( tankbust_e0xx_w )
 	case 7: /* 0xe007 bankswitch */
 		/* bank 1 at 0x6000-9fff = from 0x10000 when bit0=0 else from 0x14000 */
 		/* bank 2 at 0xa000-bfff = from 0x18000 when bit0=0 else from 0x1a000 */
-		memory_set_bankptr(space->machine,  1, memory_region(space->machine, "main") + 0x10000 + ((data&1) * 0x4000) );
-		memory_set_bankptr(space->machine,  2, memory_region(space->machine, "main") + 0x18000 + ((data&1) * 0x2000) ); /* verified (the game will reset after the "game over" otherwise) */
+		memory_set_bankptr(space->machine,  1, memory_region(space->machine, "maincpu") + 0x10000 + ((data&1) * 0x4000) );
+		memory_set_bankptr(space->machine,  2, memory_region(space->machine, "maincpu") + 0x18000 + ((data&1) * 0x2000) ); /* verified (the game will reset after the "game over" otherwise) */
 	break;
 	}
 }
@@ -213,12 +213,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( port_map_cpu2, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x10, 0x10) AM_WRITE(ay8910_write_port_1_w)
-	AM_RANGE(0x30, 0x30) AM_READ(ay8910_read_port_1_r)
-	AM_RANGE(0x30, 0x30) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0x40, 0x40) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0xc0, 0xc0) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0xc0, 0xc0) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x10, 0x10) AM_DEVWRITE("ay2", ay8910_data_w)
+	AM_RANGE(0x30, 0x30) AM_DEVREADWRITE("ay2", ay8910_r, ay8910_address_w)
+	AM_RANGE(0x40, 0x40) AM_DEVWRITE("ay1", ay8910_data_w)
+	AM_RANGE(0xc0, 0xc0) AM_DEVREADWRITE("ay1", ay8910_r, ay8910_address_w)
 ADDRESS_MAP_END
 
 
@@ -328,10 +326,10 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	tankbust_soundlatch_r,
-	tankbust_soundtimer_r,
-	NULL,
-	NULL
+	DEVCB_HANDLER(tankbust_soundlatch_r),
+	DEVCB_HANDLER(tankbust_soundtimer_r),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static MACHINE_RESET( tankbust )
@@ -343,9 +341,9 @@ static MACHINE_RESET( tankbust )
 static MACHINE_DRIVER_START( tankbust )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 4000000)		/* 4 MHz ? */
+	MDRV_CPU_ADD("maincpu", Z80, 4000000)		/* 4 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, 4000000)		/* 3.072 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(map_cpu2,0)
@@ -356,7 +354,7 @@ static MACHINE_DRIVER_START( tankbust )
 	MDRV_MACHINE_RESET( tankbust )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -391,7 +389,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( tankbust )
-	ROM_REGION( 0x1c000, "main", 0 )
+	ROM_REGION( 0x1c000, "maincpu", 0 )
 	ROM_LOAD( "a-s4-6.bin",		0x00000, 0x4000, CRC(8ebe7317) SHA1(bc45d530ad6335312c9c3efdcedf7acd2cdeeb55) )
 	ROM_LOAD( "a-s7-9.bin",		0x04000, 0x2000, CRC(047aee33) SHA1(62ee776c403b228e065baa9218f32597951ca935) )
 

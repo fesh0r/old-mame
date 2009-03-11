@@ -623,7 +623,7 @@ void mc6845_set_clock(const device_config *device, int clock)
 	if (clock != mc6845->clock)
 	{
 		mc6845->clock = clock;
-		recompute_parameters(mc6845, FALSE);
+		recompute_parameters(mc6845, TRUE);
 	}
 }
 
@@ -738,7 +738,7 @@ void mc6845_update(const device_config *device, bitmap_t *bitmap, const rectangl
 
 
 /* device interface */
-static device_start_err common_start(const device_config *device, int device_type)
+static void common_start(const device_config *device, int device_type)
 {
 	mc6845_t *mc6845 = get_safe_token(device);
 
@@ -759,7 +759,7 @@ static device_start_err common_start(const device_config *device, int device_typ
 		mc6845->hpixels_per_column = mc6845->intf->hpixels_per_column;
 
 		/* get the screen device */
-		mc6845->screen = device_list_find_by_tag(device->machine->config->devicelist, VIDEO_SCREEN, mc6845->intf->screen_tag);
+		mc6845->screen = devtag_get_device(device->machine, mc6845->intf->screen_tag);
 		assert(mc6845->screen != NULL);
 
 		/* create the timers */
@@ -806,43 +806,41 @@ static device_start_err common_start(const device_config *device, int device_typ
 	state_save_register_device_item(device, 0, mc6845->cursor_state);
 	state_save_register_device_item(device, 0, mc6845->cursor_blink_count);
 	state_save_register_device_item(device, 0, mc6845->update_addr);
-
-	return DEVICE_START_OK;
 }
 
 static DEVICE_START( mc6845 )
 {
-	return common_start(device, TYPE_MC6845);
+	common_start(device, TYPE_MC6845);
 }
 
 static DEVICE_START( mc6845_1 )
 {
-	return common_start(device, TYPE_MC6845_1);
+	common_start(device, TYPE_MC6845_1);
 }
 
 static DEVICE_START( c6545_1 )
 {
-	return common_start(device, TYPE_C6545_1);
+	common_start(device, TYPE_C6545_1);
 }
 
 static DEVICE_START( r6545_1 )
 {
-	return common_start(device, TYPE_R6545_1);
+	common_start(device, TYPE_R6545_1);
 }
 
 static DEVICE_START( h46505 )
 {
-	return common_start(device, TYPE_H46505);
+	common_start(device, TYPE_H46505);
 }
 
 static DEVICE_START( hd6845 )
 {
-	return common_start(device, TYPE_HD6845);
+	common_start(device, TYPE_HD6845);
 }
 
 static DEVICE_START( sy6545_1 )
 {
-	return common_start(device, TYPE_SY6545_1);
+	common_start(device, TYPE_SY6545_1);
 }
 
 
@@ -908,7 +906,7 @@ DEVICE_GET_INFO( mc6845 )
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;								break;
 		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;			break;
 
-		/* --- the following bits of info are returned as pointers to data or functions --- */
+		/* --- the following bits of info are returned as pointers to functions --- */
 		case DEVINFO_FCT_SET_INFO:						info->set_info = DEVICE_SET_INFO_NAME(mc6845); break;
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(mc6845);	break;
 		case DEVINFO_FCT_STOP:							/* Nothing */								break;

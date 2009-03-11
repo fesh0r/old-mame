@@ -126,8 +126,8 @@ static ADDRESS_MAP_START( memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_READWRITE(SMH_ROM, SMH_NOP) // there are some garbage writes to ROM
 	AM_RANGE(0xc000, 0xc7ff) AM_RAM
 
-	AM_RANGE(0xd000, 0xd000) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xd001, 0xd001) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
+	AM_RANGE(0xd000, 0xd001) AM_DEVWRITE("ay", ay8910_address_data_w)
+	AM_RANGE(0xd001, 0xd001) AM_DEVREAD("ay", ay8910_r)
 	AM_RANGE(0xd008, 0xd008) AM_WRITE(dominob_d008_w)
 	AM_RANGE(0xd00c, 0xd00c) AM_READ_PORT("IN0")
 	AM_RANGE(0xd010, 0xd010) AM_READ_PORT("IN1") AM_WRITE(SMH_NOP)
@@ -239,23 +239,23 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_5_r,
-	input_port_4_r,
-	NULL,
-	NULL
+	DEVCB_NULL,
+	DEVCB_INPUT_PORT("DSW"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
 static MACHINE_DRIVER_START( dominob )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,8000000/2)
+	MDRV_CPU_ADD("maincpu", Z80,8000000/2)
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
 	MDRV_CPU_IO_MAP(portmap,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -282,7 +282,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( dominob )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "u81",   0x0000, 0x10000, CRC(709b7a29) SHA1(7c95cbaf669a0885101a48e937868c245f87567e) )
 
 	ROM_REGION( 0x18000, "gfx1", ROMREGION_DISPOSE )

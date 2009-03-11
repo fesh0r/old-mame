@@ -208,7 +208,7 @@ part of the screen, in the attract mode this works fine, but in the
 game it doesn't, so maybe it wasn't really hooked up and instead
 only one of the register (f001) is used for both part?
 
-* update, it is correct, the screen is meant to split in two when
+ update, it is correct, the screen is meant to split in two when
  the kid goes what would be offscreen, just looked kinda odd
 
 Interesting note, each Bank in the 0x8000 - 0xbfff appears to
@@ -262,10 +262,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sub_portmap, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(ym2203_write_port_0_w)
-	AM_RANGE(0x40, 0x40) AM_READWRITE(ym2203_status_port_1_r, ym2203_control_port_1_w)
-	AM_RANGE(0x41, 0x41) AM_WRITE(ym2203_write_port_1_w)
+	AM_RANGE(0x00, 0x01) AM_DEVREADWRITE("ym1", ym2203_r, ym2203_w)
+	AM_RANGE(0x40, 0x41) AM_DEVREADWRITE("ym2", ym2203_r, ym2203_w)
 	AM_RANGE(0x80, 0x83) AM_READWRITE(angelkds_sub_sound_r, angelkds_sub_sound_w) // spcpostn
 ADDRESS_MAP_END
 
@@ -538,9 +536,9 @@ static READ8_HANDLER( angelkds_sub_sound_r )
 }
 
 
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =
@@ -548,7 +546,7 @@ static const ym2203_interface ym2203_config =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		NULL, NULL, NULL, NULL
+		DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL
 	},
 	irqhandler
 };
@@ -598,20 +596,28 @@ GFXDECODE_END
 
 */
 
+static MACHINE_START( angelkds )
+{
+    state_save_register_global_array(machine, angelkds_sound);
+    state_save_register_global_array(machine, angelkds_sound2);
+}
+
 static MACHINE_DRIVER_START( angelkds )
-	MDRV_CPU_ADD("main", Z80, 8000000) /* 8MHz? 6 seems too slow? */
+	MDRV_CPU_ADD("maincpu", Z80, 8000000) /* 8MHz? 6 seems too slow? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(main_portmap,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, 4000000) /* 8 MHz? */
 	MDRV_CPU_PROGRAM_MAP(sub_map,0)
 	MDRV_CPU_IO_MAP(sub_portmap,0)
 
+    MDRV_MACHINE_START(angelkds)
+
 	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -641,7 +647,7 @@ MACHINE_DRIVER_END
 
 /*** Rom Loading
 
- "main" for the main code
+ "maincpu" for the main code
  "user1" for the banked data
  "sub" for the sound cpu code
  "gfx1" for the 8x8 Txt Layer Tiles
@@ -654,7 +660,7 @@ MACHINE_DRIVER_END
 
 ROM_START( angelkds )
 	/* Nasco X090-PC-A  (Sega 837-6600) */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "11428.c10",    0x00000, 0x08000, CRC(90daacd2) SHA1(7e50ad1cbed0c1e6bad04ef1611cad25538c905f) )
 
 	ROM_REGION( 0x20000, "user1", 0 ) /* Banked Code */
@@ -701,7 +707,7 @@ ROM_END
 
 ROM_START( spcpostn )
 	/* X090-PC-A 171-5383 */
-	ROM_REGION( 2*0x10000, "main", 0 ) /* D317-0005 (NEC Z80 Custom) */
+	ROM_REGION( 2*0x10000, "maincpu", 0 ) /* D317-0005 (NEC Z80 Custom) */
 	ROM_LOAD( "epr10125.c10", 0x00000, 0x08000, CRC(bffd38c6) SHA1(af02907124343ddecd21439d25f1ebb81ef9f51a) ) /* encrypted */
 
 	ROM_REGION( 0x28000, "user1", 0 ) /* Banked Code */
@@ -737,8 +743,8 @@ ROM_START( spcpostn )
 ROM_END
 
 
-static DRIVER_INIT( spcpostn )	{ spcpostn_decode(machine, "main"); }
+static DRIVER_INIT( spcpostn )	{ spcpostn_decode(machine, "maincpu"); }
 
 
-GAME( 1988, angelkds, 0, angelkds, angelkds,        0,  ROT90,  "Sega / Nasco?", "Angel Kids (Japan)" , 0) /* Nasco not displayed but 'Exa Planning' is */
-GAME( 1986, spcpostn, 0, angelkds, spcpostn, spcpostn,  ROT90,  "Sega / Nasco", "Space Position (Japan)" , 0) /* encrypted */
+GAME( 1988, angelkds, 0, angelkds, angelkds,        0,  ROT90,  "Sega / Nasco?", "Angel Kids (Japan)" , GAME_SUPPORTS_SAVE) /* Nasco not displayed but 'Exa Planning' is */
+GAME( 1986, spcpostn, 0, angelkds, spcpostn, spcpostn,  ROT90,  "Sega / Nasco", "Space Position (Japan)" , GAME_SUPPORTS_SAVE) /* encrypted */

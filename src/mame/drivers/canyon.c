@@ -113,12 +113,12 @@ static WRITE8_HANDLER( canyon_led_w )
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 	AM_RANGE(0x0000, 0x00ff) AM_MIRROR(0x100) AM_RAM
-	AM_RANGE(0x0400, 0x0401) AM_WRITE(canyon_motor_w)
-	AM_RANGE(0x0500, 0x0500) AM_WRITE(canyon_explode_w)
+	AM_RANGE(0x0400, 0x0401) AM_DEVWRITE("discrete", canyon_motor_w)
+	AM_RANGE(0x0500, 0x0500) AM_DEVWRITE("discrete", canyon_explode_w)
 	AM_RANGE(0x0501, 0x0501) AM_WRITE(watchdog_reset_w) /* watchdog, disabled in service mode */
-	AM_RANGE(0x0600, 0x0603) AM_WRITE(canyon_whistle_w)
+	AM_RANGE(0x0600, 0x0603) AM_DEVWRITE("discrete", canyon_whistle_w)
 	AM_RANGE(0x0680, 0x0683) AM_WRITE(canyon_led_w)
-	AM_RANGE(0x0700, 0x0703) AM_WRITE(canyon_attract_w)
+	AM_RANGE(0x0700, 0x0703) AM_DEVWRITE("discrete", canyon_attract_w)
 	AM_RANGE(0x0800, 0x0bff) AM_RAM_WRITE(canyon_videoram_w) AM_BASE(&canyon_videoram)
 	AM_RANGE(0x1000, 0x17ff) AM_READWRITE(canyon_switches_r, SMH_NOP)  /* sloppy code writes here */
 	AM_RANGE(0x1800, 0x1fff) AM_READ(canyon_options_r)
@@ -242,13 +242,13 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( canyon )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 12096000 / 16)
+	MDRV_CPU_ADD("maincpu", M6502, 12096000 / 16)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 	MDRV_WATCHDOG_VBLANK_INIT(8)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(22 * 1000000 / 15750))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -263,12 +263,12 @@ static MACHINE_DRIVER_START( canyon )
 	MDRV_VIDEO_UPDATE(canyon)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(canyon)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -280,7 +280,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( canyon )
-	ROM_REGION( 0x4000, "main", 0 )
+	ROM_REGION( 0x4000, "maincpu", 0 )
 	ROM_LOAD_NIB_LOW ( "9499-01.j1", 0x3000, 0x0400, CRC(31800767) SHA1(d4aebe12d3c45a2a8a361dc6f63e1a6230a78c17) )
 	ROM_LOAD_NIB_HIGH( "9503-01.p1", 0x3000, 0x0400, CRC(1eddbe28) SHA1(7d30280bf9edff743c16386d7cdec78094477996) )
 	ROM_LOAD         ( "9496-01.d1", 0x3800, 0x0800, CRC(8be15080) SHA1(095c15e9ac91623b2d514858dca2e4c261d36fd0) )
@@ -298,7 +298,7 @@ ROM_END
 
 
 ROM_START( canyonp )
-	ROM_REGION( 0x4000, "main", 0 )
+	ROM_REGION( 0x4000, "maincpu", 0 )
 	ROM_LOAD_NIB_LOW ( "cbp3000l.j1", 0x3000, 0x0800, CRC(49cf29a0) SHA1(b58f024f45f85e5c2a48a95c60e80fd1be60eaac) )
 	ROM_LOAD_NIB_HIGH( "cbp3000m.p1", 0x3000, 0x0800, CRC(b4385c23) SHA1(b550dfe9182f2b29aedba160a0917ca78b82f0e7) )
 	ROM_LOAD_NIB_LOW ( "cbp3800l.h1", 0x3800, 0x0800, CRC(c7ee4431) SHA1(7a0f4454a981c4e9ee27e273e9a8379458e660e5) )

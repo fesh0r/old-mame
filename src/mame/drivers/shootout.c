@@ -108,7 +108,7 @@ static ADDRESS_MAP_START( readmem_alt, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1002, 0x1002) AM_READ_PORT("P2")
 	AM_RANGE(0x1003, 0x1003) AM_READ_PORT("DSW2")
 	AM_RANGE(0x2000, 0x21ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x2800, 0x2800) AM_READ(ym2203_status_port_0_r)
+	AM_RANGE(0x2800, 0x2801) AM_DEVREAD("ym", ym2203_r)
 	AM_RANGE(0x3000, 0x37ff) AM_READ(SMH_RAM)	/* foreground */
 	AM_RANGE(0x3800, 0x3fff) AM_READ(SMH_RAM)	/* background */
 	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK1)
@@ -119,8 +119,7 @@ static ADDRESS_MAP_START( writemem_alt, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x1800, 0x1800) AM_WRITE(shootout_coin_counter_w)
 	AM_RANGE(0x2000, 0x21ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x2800, 0x2800) AM_WRITE(ym2203_control_port_0_w)
-	AM_RANGE(0x2801, 0x2801) AM_WRITE(ym2203_write_port_0_w)
+	AM_RANGE(0x2800, 0x2801) AM_DEVWRITE("ym", ym2203_w)
 	AM_RANGE(0x3000, 0x37ff) AM_WRITE(shootout_textram_w) AM_BASE(&shootout_textram)
 	AM_RANGE(0x3800, 0x3fff) AM_WRITE(shootout_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x4000, 0xffff) AM_WRITE(SMH_ROM)
@@ -130,15 +129,14 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x4000, 0x4000) AM_READ(ym2203_status_port_0_r)
+	AM_RANGE(0x4000, 0x4001) AM_DEVREAD("ym", ym2203_r)
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
 	AM_RANGE(0xc000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x4000, 0x4000) AM_WRITE(ym2203_control_port_0_w)
-	AM_RANGE(0x4001, 0x4001) AM_WRITE(ym2203_write_port_0_w)
+	AM_RANGE(0x4000, 0x4001) AM_DEVWRITE("ym", ym2203_w)
 	AM_RANGE(0xd000, 0xd000) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0xc000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
@@ -262,14 +260,14 @@ static GFXDECODE_START( shootout )
 	GFXDECODE_ENTRY( "gfx3", 0, tile_layout,   0,		16 ) /* tiles */
 GFXDECODE_END
 
-static void shootout_snd_irq(running_machine *machine, int linestate)
+static void shootout_snd_irq(const device_config *device, int linestate)
 {
-	cpu_set_input_line(machine->cpu[1],0,linestate);
+	cpu_set_input_line(device->machine->cpu[1],0,linestate);
 }
 
-static void shootout_snd2_irq(running_machine *machine, int linestate)
+static void shootout_snd2_irq(const device_config *device, int linestate)
 {
-	cpu_set_input_line(machine->cpu[0],0,linestate);
+	cpu_set_input_line(device->machine->cpu[0],0,linestate);
 }
 
 static const ym2203_interface ym2203_config =
@@ -277,7 +275,7 @@ static const ym2203_interface ym2203_config =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		NULL, NULL, NULL, NULL
+		DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL
 	},
 	shootout_snd_irq
 };
@@ -287,10 +285,10 @@ static const ym2203_interface ym2203_interface2 =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		NULL,
-		NULL,
-		shootout_bankswitch_w,
-		shootout_flipscreen_w
+		DEVCB_NULL,
+		DEVCB_NULL,
+		DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, shootout_bankswitch_w),
+		DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, shootout_flipscreen_w)
 	},
 	shootout_snd2_irq
 };
@@ -311,15 +309,15 @@ static INTERRUPT_GEN( shootout_interrupt )
 static MACHINE_DRIVER_START( shootout )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 2000000)	/* 2 MHz? */
+	MDRV_CPU_ADD("maincpu", M6502, 2000000)	/* 2 MHz? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT("main", shootout_interrupt) /* nmi's are triggered at coin up */
+	MDRV_CPU_VBLANK_INT("screen", shootout_interrupt) /* nmi's are triggered at coin up */
 
-	MDRV_CPU_ADD("audio", M6502, 1500000)
+	MDRV_CPU_ADD("audiocpu", M6502, 1500000)
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -345,12 +343,12 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( shootouj )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 2000000)	/* 2 MHz? */
+	MDRV_CPU_ADD("maincpu", M6502, 2000000)	/* 2 MHz? */
 	MDRV_CPU_PROGRAM_MAP(readmem_alt,writemem_alt)
-	MDRV_CPU_VBLANK_INT("main", shootout_interrupt) /* nmi's are triggered at coin up */
+	MDRV_CPU_VBLANK_INT("screen", shootout_interrupt) /* nmi's are triggered at coin up */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -374,13 +372,13 @@ MACHINE_DRIVER_END
 
 
 ROM_START( shootout )
-	ROM_REGION( 2*0x20000, "main", 0 )	/* 128k for code + 128k for decrypted opcodes */
+	ROM_REGION( 2*0x20000, "maincpu", 0 )	/* 128k for code + 128k for decrypted opcodes */
 	ROM_LOAD( "cu00.b1",        0x08000, 0x8000, CRC(090edeb6) SHA1(ab849d123dacf3947b1ebd29b70a20e066911a60) ) /* opcodes encrypted */
 	/* banked at 0x4000-0x8000 */
 	ROM_LOAD( "cu02.c3",        0x10000, 0x8000, CRC(2a913730) SHA1(584488278d58c4d34a2eebeaf39518f87cf5eecd) ) /* opcodes encrypted */
 	ROM_LOAD( "cu01.c1",        0x18000, 0x4000, CRC(8843c3ae) SHA1(c58ed4acac566f890cadf62bcbcced07a59243fc) ) /* opcodes encrypted */
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "cu09.j1",        0x0c000, 0x4000, CRC(c4cbd558) SHA1(0e940ae99febc1161e5f35550aa75afca88cb5e9) ) /* Sound CPU */
 
 	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE )
@@ -406,7 +404,7 @@ ROM_START( shootout )
 ROM_END
 
 ROM_START( shootouj )
-	ROM_REGION( 0x20000, "main", 0 )	/* 128k for code  */
+	ROM_REGION( 0x20000, "maincpu", 0 )	/* 128k for code  */
 	ROM_LOAD( "cg02.bin",    0x08000, 0x8000, CRC(8fc5d632) SHA1(809ac4eba09972229fe741c96fa8036d7139b6a8) )
 	ROM_LOAD( "cg00.bin",    0x10000, 0x8000, CRC(ef6ced1e) SHA1(feea508c7a60fc6cde1efee52cba628accd26028) )
 	ROM_LOAD( "cg01.bin",    0x18000, 0x4000, CRC(74cf11ca) SHA1(59edbc4633cd560e7b928b33e4c42d0125332a1b) )
@@ -431,7 +429,7 @@ ROM_START( shootouj )
 ROM_END
 
 ROM_START( shootoub )
-	ROM_REGION( 2*0x20000, "main", 0 )	/* 128k for code + 128k for decrypted opcodes */
+	ROM_REGION( 2*0x20000, "maincpu", 0 )	/* 128k for code + 128k for decrypted opcodes */
 	ROM_LOAD( "shootout.006", 0x08000, 0x8000, CRC(2c054888) SHA1(cb0de2f7d743506789626304e6bcbbc292fbe8bc) )
 	ROM_LOAD( "shootout.008", 0x10000, 0x8000, CRC(9651b656) SHA1(e90eddf2833ef36fa73b7b8d81d28443d2f60220) )
 	ROM_LOAD( "cg01.bin",     0x18000, 0x4000, CRC(74cf11ca) SHA1(59edbc4633cd560e7b928b33e4c42d0125332a1b) )
@@ -459,10 +457,10 @@ ROM_END
 
 static DRIVER_INIT( shootout )
 {
-	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
-	int length = memory_region_length(machine, "main");
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	int length = memory_region_length(machine, "maincpu");
 	UINT8 *decrypt = auto_malloc(length - 0x8000);
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(machine, "maincpu");
 	int A;
 
 	memory_set_decrypted_region(space, 0x8000, 0xffff, decrypt);
@@ -470,13 +468,13 @@ static DRIVER_INIT( shootout )
 	for (A = 0x8000;A < length;A++)
 		decrypt[A-0x8000] = (rom[A] & 0x9f) | ((rom[A] & 0x40) >> 1) | ((rom[A] & 0x20) << 1);
 
-	memory_configure_bank(machine, 1, 0, 16, memory_region(machine, "main") + 0x10000, 0x4000);
+	memory_configure_bank(machine, 1, 0, 16, memory_region(machine, "maincpu") + 0x10000, 0x4000);
 	memory_configure_bank_decrypted(machine, 1, 0, 16, decrypt + 0x8000, 0x4000);
 }
 
 static DRIVER_INIT( shootouj )
 {
-	memory_configure_bank(machine, 1, 0, 16, memory_region(machine, "main") + 0x10000, 0x4000);
+	memory_configure_bank(machine, 1, 0, 16, memory_region(machine, "maincpu") + 0x10000, 0x4000);
 }
 
 

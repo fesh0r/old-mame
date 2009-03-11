@@ -55,6 +55,7 @@ static TILE_GET_INFO( get_mogura_tile_info )
 
 static VIDEO_START( mogura )
 {
+	gfx_element_set_source(machine->gfx[0], mogura_gfxram);
 	mogura_tilemap = tilemap_create(machine, get_mogura_tile_info,tilemap_scan_rows,8,8,64, 32);
 }
 
@@ -87,10 +88,10 @@ static WRITE8_HANDLER( mogura_tileram_w )
 	tilemap_mark_tile_dirty(mogura_tilemap,offset&0x7ff);
 }
 
-static WRITE8_HANDLER(dac_w)
+static WRITE8_HANDLER(mogura_dac_w)
 {
-	dac_0_data_w(space, 0, data & 0xf0 );	/* left */
-	dac_1_data_w(space, 0, (data & 0x0f)<<4 );	/* right */
+	dac_data_w(devtag_get_device(space->machine, "dac1"), data & 0xf0 );	/* left */
+	dac_data_w(devtag_get_device(space->machine, "dac2"), (data & 0x0f)<<4 );	/* right */
 }
 
 static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
@@ -102,7 +103,7 @@ static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0e, 0x0e) AM_READ_PORT("P3")
 	AM_RANGE(0x0f, 0x0f) AM_READ_PORT("P4")
 	AM_RANGE(0x10, 0x10) AM_READ_PORT("SERVICE")
-	AM_RANGE(0x14, 0x14) AM_WRITE(dac_w)	/* 4 bit DAC x 2. MSB = left, LSB = right */
+	AM_RANGE(0x14, 0x14) AM_WRITE(mogura_dac_w)	/* 4 bit DAC x 2. MSB = left, LSB = right */
 ADDRESS_MAP_END
 
 
@@ -110,9 +111,7 @@ static WRITE8_HANDLER ( mogura_gfxram_w )
 {
 	mogura_gfxram[offset] = data ;
 
-	decodechar(space->machine->gfx[0], offset/16, mogura_gfxram);
-
-	tilemap_mark_all_tiles_dirty(mogura_tilemap);
+	gfx_element_mark_dirty(space->machine->gfx[0], offset/16);
 }
 
 
@@ -206,15 +205,15 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( mogura )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,3000000)		 /* 3 MHz */
+	MDRV_CPU_ADD("maincpu", Z80,3000000)		 /* 3 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_GFXDECODE(mogura)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60) // ?
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -228,17 +227,17 @@ static MACHINE_DRIVER_START( mogura )
 	MDRV_VIDEO_UPDATE(mogura)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("dac1", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.50)
 
 	MDRV_SOUND_ADD("dac2", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.50)
 MACHINE_DRIVER_END
 
 ROM_START( mogura )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "gx141.5n", 0x00000, 0x08000, CRC(98e6120d) SHA1(45cdb2d78224a7c44fff8cd3487f33c57669a06c)  )
 
 	ROM_REGION( 0x20, "proms", 0 )

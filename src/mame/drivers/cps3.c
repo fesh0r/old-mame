@@ -326,15 +326,15 @@ Notes:
 #include "includes/cps3.h"
 #include "machine/wd33c93.h"
 
+#define MASTER_CLOCK	42954500
+
 /* load extracted cd content? */
 #define LOAD_CD_CONTENT 1
 #define DEBUG_PRINTF 0
 
-#ifdef LSB_FIRST
-	#define DMA_XOR(a)	((a) ^ 1)
-#else
-	#define DMA_XOR(a)	((a) ^ 2)
-#endif
+
+
+#define DMA_XOR(a)		((a) ^ NATIVE_ENDIAN_VALUE_LE_BE(1,2))
 
 
 static UINT32* decrypted_bios;
@@ -370,6 +370,10 @@ static UINT32* cps3_mame_colours;//[0x20000]; // actual values to write to 32-bi
 static bitmap_t *renderbuffer_bitmap;
 static rectangle renderbuffer_clip;
 
+static UINT8* cps3_user4region;
+UINT8* cps3_user5region;
+#define USER4REGION_LENGTH 0x800000*2
+#define USER5REGION_LENGTH 0x800000*10
 
 #define CPS3_TRANSPARENCY_NONE 0
 #define CPS3_TRANSPARENCY_PEN 1
@@ -428,7 +432,7 @@ INLINE void cps3_drawgfxzoom(running_machine *machine, bitmap_t *dest_bmp,const 
 //          const pen_t *pal = &gfx->colortable[gfx->color_granularity * (color % gfx->total_colors)];
 			UINT32 palbase = (gfx->color_granularity * color) & 0x1ffff;
 			const pen_t *pal = &cps3_mame_colours[palbase];
-			UINT8 *source_base = gfx->gfxdata + (code % gfx->total_elements) * gfx->char_modulo;
+			const UINT8 *source_base = gfx_element_get_data(gfx, code % gfx->total_elements);
 
 			int sprite_screen_height = (scaley*gfx->height+0x8000)>>16;
 			int sprite_screen_width = (scalex*gfx->width+0x8000)>>16;
@@ -501,7 +505,7 @@ INLINE void cps3_drawgfxzoom(running_machine *machine, bitmap_t *dest_bmp,const 
 						{
 							for( y=sy; y<ey; y++ )
 							{
-								UINT8 *source = source_base + (y_index>>16) * gfx->line_modulo;
+								const UINT8 *source = source_base + (y_index>>16) * gfx->line_modulo;
 								UINT32 *dest = BITMAP_ADDR32(dest_bmp, y, 0);
 
 								int x, x_index = x_index_base;
@@ -520,7 +524,7 @@ INLINE void cps3_drawgfxzoom(running_machine *machine, bitmap_t *dest_bmp,const 
 						{
 							for( y=sy; y<ey; y++ )
 							{
-								UINT8 *source = source_base + (y_index>>16) * gfx->line_modulo;
+								const UINT8 *source = source_base + (y_index>>16) * gfx->line_modulo;
 								UINT32 *dest = BITMAP_ADDR32(dest_bmp, y, 0);
 
 								int x, x_index = x_index_base;
@@ -540,7 +544,7 @@ INLINE void cps3_drawgfxzoom(running_machine *machine, bitmap_t *dest_bmp,const 
 						{
 							for( y=sy; y<ey; y++ )
 							{
-								UINT8 *source = source_base + (y_index>>16) * gfx->line_modulo;
+								const UINT8 *source = source_base + (y_index>>16) * gfx->line_modulo;
 								UINT32 *dest = BITMAP_ADDR32(dest_bmp, y, 0);
 
 								int x, x_index = x_index_base;
@@ -560,7 +564,7 @@ INLINE void cps3_drawgfxzoom(running_machine *machine, bitmap_t *dest_bmp,const 
 						{
 							for( y=sy; y<ey; y++ )
 							{
-								UINT8 *source = source_base + (y_index>>16) * gfx->line_modulo;
+								const UINT8 *source = source_base + (y_index>>16) * gfx->line_modulo;
 								UINT32 *dest = BITMAP_ADDR32(dest_bmp, y, 0);
 
 								int x, x_index = x_index_base;
@@ -646,38 +650,6 @@ static UINT32 cps3_mask(UINT32 address, UINT32 key1, UINT32 key2)
 	return val | (val << 16);
 }
 
-struct game_keys2
-{
-	const char *name;             /* game driver name */
-	const UINT32 keys[2];
-	int isSpecial;
-};
-
-static const struct game_keys2 keys_table2[] =
-{
-	// name         key1       key2
-	{ "jojo",     { 0x02203ee3, 0x01301972 },0 },
-	{ "jojon",    { 0x02203ee3, 0x01301972 },0 },
-	{ "jojoalt",  { 0x02203ee3, 0x01301972 },0 },
-	{ "jojoaltn", { 0x02203ee3, 0x01301972 },0 },
-	{ "jojoba",   { 0x23323ee3, 0x03021972 },0 },
-	{ "jojoban",  { 0x23323ee3, 0x03021972 },0 },
-	{ "jojobane", { 0x23323ee3, 0x03021972 },0 },
-	{ "sfiii",    { 0xb5fe053e, 0xfc03925a },0 },
-	{ "sfiiiu",   { 0xb5fe053e, 0xfc03925a },0 },
-	{ "sfiiin",   { 0xb5fe053e, 0xfc03925a },0 },
-	{ "sfiii2",   { 0x00000000, 0x00000000 },1 },
-	{ "sfiii2u",  { 0x00000000, 0x00000000 },1 },
-	{ "sfiii2n",  { 0x00000000, 0x00000000 },1 },
-	{ "sfiii3",   { 0xa55432b4, 0x0c129981 },0 },
-	{ "sfiii3n",  { 0xa55432b4, 0x0c129981 },0 },
-	{ "sfiii3a",  { 0xa55432b4, 0x0c129981 },0 },
-	{ "sfiii3an", { 0xa55432b4, 0x0c129981 },0 },
-	{ "warzard",  { 0x9e300ab1, 0xa175b82c },0 },
-	{ "redearth", { 0x9e300ab1, 0xa175b82c },0 },
-	{ 0 }	// end of table
-};
-
 static void cps3_decrypt_bios(running_machine *machine)
 {
 	int i;
@@ -689,16 +661,7 @@ static void cps3_decrypt_bios(running_machine *machine)
 	{
 		UINT32 dword = coderegion[i/4];
 		UINT32 xormask = cps3_mask(i, cps3_key1, cps3_key2);
-
-		/* a bit of a hack, don't decrypt the FLASH commands which are transfered by SH2 DMA */
-//      if (((i<0x1ff00) || (i>0x1ff6b)) && (i<0x20000) )
-//      {
-			decrypted_bios[i/4] = dword ^ xormask;
-//      }
-//      else
-//      {
-//          decrypted_bios[i/4] = dword;
-//      }
+		decrypted_bios[i/4] = dword ^ xormask;
 	}
 #if 0
 	/* Dump to file */
@@ -718,31 +681,20 @@ static void cps3_decrypt_bios(running_machine *machine)
 #endif
 }
 
+
 static DRIVER_INIT( cps3 )
 {
-	const char *gamename = machine->gamedrv->name;
-	const struct game_keys2 *k = &keys_table2[0];
 	int i;
 
+	// cache pointers to regions
+	cps3_user4region = memory_region(machine,"user4");
+	cps3_user5region = memory_region(machine,"user5");
+
+	if (!cps3_user4region) cps3_user4region = auto_malloc(USER4REGION_LENGTH);
+	if (!cps3_user5region) cps3_user5region = auto_malloc(USER5REGION_LENGTH);
+
 	// set strict verify
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_STRICT_VERIFY);
-
-	cps3_key1 = -1;
-	cps3_key2 = -1;
-	cps3_altEncryption = -1;
-
-	while (k->name)
-	{
-		if (strcmp(k->name, gamename) == 0)
-		{
-			// we have a proper key set the global variables to it (so that we can decrypt code in ram etc.)
-			cps3_key1 = k->keys[0];
-			cps3_key2 = k->keys[1];
-			cps3_altEncryption = k->isSpecial;
-			break;
-		}
-		++k;
-	}
+	sh2drc_set_options(machine->cpu[0], SH2DRC_STRICT_VERIFY);
 
 	cps3_decrypt_bios(machine);
 	decrypted_gamerom = auto_malloc(0x1000000);
@@ -762,10 +714,15 @@ static DRIVER_INIT( cps3 )
 		intelflash_init( machine, i, FLASH_FUJITSU_29F016A, NULL );
 
 	cps3_eeprom = auto_malloc(0x400);
-
-
-
 }
+
+static DRIVER_INIT( jojo )    { cps3_key1 = 0x02203ee3; cps3_key2 = 0x01301972; cps3_altEncryption = 0; DRIVER_INIT_CALL(cps3); }
+static DRIVER_INIT( jojoba )  { cps3_key1 = 0x23323ee3; cps3_key2 = 0x03021972; cps3_altEncryption = 0; DRIVER_INIT_CALL(cps3); }
+static DRIVER_INIT( sfiii )   { cps3_key1 = 0xb5fe053e; cps3_key2 = 0xfc03925a; cps3_altEncryption = 0; DRIVER_INIT_CALL(cps3); }
+static DRIVER_INIT( sfiii2 )  { cps3_key1 = 0x00000000; cps3_key2 = 0x00000000; cps3_altEncryption = 1; DRIVER_INIT_CALL(cps3); }
+static DRIVER_INIT( sfiii3 )  { cps3_key1 = 0xa55432b4; cps3_key2 = 0x0c129981; cps3_altEncryption = 0; DRIVER_INIT_CALL(cps3); }
+static DRIVER_INIT( redearth ){ cps3_key1 = 0x9e300ab1; cps3_key2 = 0xa175b82c; cps3_altEncryption = 0; DRIVER_INIT_CALL(cps3); }
+
 
 /* GFX decodes */
 
@@ -797,11 +754,6 @@ static const gfx_layout cps3_tiles8x8_layout =
 };
 
 static UINT32* cps3_ss_ram;
-static UINT8* cps3_ss_ram_dirty;
-static int cps3_ss_ram_is_dirty;
-
-static UINT8* cps3_char_ram_dirty;
-static int cps3_char_ram_is_dirty;
 
 static void cps3_set_mame_colours(running_machine *machine, int colournum, UINT16 data, UINT32 fadeval )
 {
@@ -845,29 +797,21 @@ static void cps3_set_mame_colours(running_machine *machine, int colournum, UINT1
 static VIDEO_START(cps3)
 {
 	cps3_ss_ram       = auto_malloc(0x10000);
-	cps3_ss_ram_dirty = auto_malloc(0x400);
-	cps3_ss_ram_is_dirty = 1;
 	memset(cps3_ss_ram, 0x00, 0x10000);
-	memset(cps3_ss_ram_dirty, 1, 0x400);
 	state_save_register_global_pointer(machine, cps3_ss_ram, 0x10000/4);
 
 	cps3_char_ram = auto_malloc(0x800000);
-	cps3_char_ram_dirty = auto_malloc(0x800000/256);
-	cps3_char_ram_is_dirty = 1;
 	memset(cps3_char_ram, 0x00, 0x800000);
-	memset(cps3_char_ram_dirty, 1, 0x8000);
 	state_save_register_global_pointer(machine, cps3_char_ram, 0x800000 /4);
 
 	/* create the char set (gfx will then be updated dynamically from RAM) */
-	machine->gfx[0] = allocgfx(machine, &cps3_tiles8x8_layout);
-	machine->gfx[0]->total_colors = machine->config->total_colors / 16;
+	machine->gfx[0] = gfx_element_alloc(machine, &cps3_tiles8x8_layout, (UINT8 *)cps3_ss_ram, machine->config->total_colors / 16, 0);
 
 	//decode_ssram();
 
 	/* create the char set (gfx will then be updated dynamically from RAM) */
-	machine->gfx[1] = allocgfx(machine, &cps3_tiles16x16_layout);
-	machine->gfx[1]->total_colors = machine->config->total_colors / 64;
-	machine->gfx[1]->color_granularity=64;
+	machine->gfx[1] = gfx_element_alloc(machine, &cps3_tiles16x16_layout, (UINT8 *)cps3_char_ram, machine->config->total_colors / 64, 0);
+	machine->gfx[1]->color_granularity = 64;
 
 	//decode_charram();
 
@@ -968,13 +912,7 @@ static void cps3_draw_tilemapsprite_line(running_machine *machine, int tmnum, in
 			if (!bpp) machine->gfx[1]->color_granularity=256;
 			else machine->gfx[1]->color_granularity=64;
 
-			if (cps3_char_ram_dirty[tileno])
-			{
-				decodechar(machine->gfx[1], tileno, (UINT8*)cps3_char_ram);
-				cps3_char_ram_dirty[tileno] = 0;
-			}
 			cps3_drawgfxzoom(machine, bitmap, machine->gfx[1],tileno,colour,xflip,yflip,(x*16)-scrollx%16,drawline-tilesubline,&clip,CPS3_TRANSPARENCY_PEN_INDEX,0, 0x10000, 0x10000, NULL, 0);
-
 		}
 	}
 }
@@ -1215,12 +1153,6 @@ static VIDEO_UPDATE(cps3)
 								{
 									int realtileno = tileno+count;
 
-									if (cps3_char_ram_dirty[realtileno])
-									{
-										decodechar(screen->machine->gfx[1], realtileno, (UINT8*)cps3_char_ram);
-										cps3_char_ram_dirty[realtileno] = 0;
-									}
-
 									if (global_alpha || alpha)
 									{
 										cps3_drawgfxzoom(screen->machine, renderbuffer_bitmap, screen->machine->gfx[1],realtileno,actualpal,0^flipx,0^flipy,current_xpos,current_ypos,&renderbuffer_clip,CPS3_TRANSPARENCY_PEN_INDEX_BLEND,0,xinc,yinc, NULL, 0);
@@ -1293,13 +1225,6 @@ static VIDEO_UPDATE(cps3)
 				pal += cps3_ss_pal_base << 5;
 				tile+=0x200;
 
-
-				if (cps3_ss_ram_dirty[tile])
-				{
-					decodechar(screen->machine->gfx[0], tile, (UINT8*)cps3_ss_ram);
-					cps3_ss_ram_dirty[tile] = 0;
-				}
-
 				cps3_drawgfxzoom(screen->machine, bitmap, screen->machine->gfx[0],tile,pal,flipx,flipy,x*8,y*8,cliprect,CPS3_TRANSPARENCY_PEN,0,0x10000,0x10000,NULL,0);
 				count++;
 			}
@@ -1323,9 +1248,7 @@ static WRITE32_HANDLER( cps3_ssram_w )
 		// we only want to endian-flip the character data, the tilemap info is fine
 		data = LITTLE_ENDIANIZE_INT32(data);
 		mem_mask = LITTLE_ENDIANIZE_INT32(mem_mask);
-
-		cps3_ss_ram_dirty[offset/16] = 1;
-		cps3_ss_ram_is_dirty = 1;
+		gfx_element_mark_dirty(space->machine->gfx[0], offset/16);
 	}
 
 	COMBINE_DATA(&cps3_ss_ram[offset]);
@@ -1356,7 +1279,7 @@ static DIRECT_UPDATE_HANDLER( cps3_direct_handler )
 		direct->decrypted = (UINT8*)decrypted_gamerom-0x06000000;
 		direct->raw = (UINT8*)decrypted_gamerom-0x06000000;
 
-		if (cps3_altEncryption) direct->raw = (UINT8*) memory_region(space->machine, "user4")-0x06000000;
+		if (cps3_altEncryption) direct->raw = (UINT8*) cps3_user4region-0x06000000;
 
 
 		return ~0;
@@ -1419,8 +1342,7 @@ static WRITE32_HANDLER( cram_data_w )
 	mem_mask = LITTLE_ENDIANIZE_INT32(mem_mask);
 	data = LITTLE_ENDIANIZE_INT32(data);
 	COMBINE_DATA(&cps3_char_ram[fulloffset]);
-	cps3_char_ram_dirty[fulloffset/0x40] = 1;
-	cps3_char_ram_is_dirty = 1;
+	gfx_element_mark_dirty(space->machine->gfx[1], fulloffset/0x40);
 }
 
 /* FLASH ROM ACCESS */
@@ -1504,7 +1426,7 @@ static WRITE32_HANDLER( cps3_gfxflash_w )
 
 	/* make a copy in the linear memory region we actually use for drawing etc.  having it stored in interleaved flash roms isnt' very useful */
 	{
-		UINT32* romdata = (UINT32*)memory_region(space->machine, "user5");
+		UINT32* romdata = (UINT32*)cps3_user5region;
 		int real_offset = 0;
 		UINT32 newdata;
 		UINT8* ptr1 = intelflash_getmemptr(flash1);
@@ -1606,7 +1528,7 @@ static void cps3_flashmain_w(running_machine *machine, int base, UINT32 offset, 
 
 	/* copy data into regions to execute from */
 	{
-		UINT32* romdata =  (UINT32*)memory_region(machine, "user4");
+		UINT32* romdata =  (UINT32*)cps3_user4region;
 		UINT32* romdata2 = (UINT32*)decrypted_gamerom;
 		int real_offset = 0;
 		UINT32 newdata;
@@ -1871,7 +1793,7 @@ static WRITE32_HANDLER( cps3_palettedma_w )
 			if (data & 0x0002)
 			{
 				int i;
-				UINT16* src = (UINT16*)memory_region(space->machine, "user5");
+				UINT16* src = (UINT16*)cps3_user5region;
 			//  if(DEBUG_PRINTF) printf("CPS3 pal dma start %08x (real: %08x) dest %08x fade %08x other2 %08x (length %04x)\n", paldma_source, paldma_realsource, paldma_dest, paldma_fade, paldma_other2, paldma_length);
 
 				for (i=0;i<paldma_length;i++)
@@ -1904,7 +1826,7 @@ static int cps3_rle_length = 0;
 static int last_normal_byte = 0;
 
 
-static UINT32 process_byte( UINT8 real_byte, UINT32 destination, int max_length )
+static UINT32 process_byte( running_machine *machine, UINT8 real_byte, UINT32 destination, int max_length )
 {
 	UINT8* dest       = (UINT8*)cps3_char_ram;
 
@@ -1924,8 +1846,7 @@ static UINT32 process_byte( UINT8 real_byte, UINT32 destination, int max_length 
 		while (cps3_rle_length)
 		{
 			dest[((destination+tranfercount)&0x7fffff)^3] = (last_normal_byte&0x3f);
-			cps3_char_ram_dirty[((destination+tranfercount)&0x7fffff)/0x100] = 1;
-			cps3_char_ram_is_dirty = 1;
+			gfx_element_mark_dirty(machine->gfx[1], ((destination+tranfercount)&0x7fffff)/0x100);
 			//printf("RLE WRite Byte %08x, %02x\n", destination+tranfercount, real_byte);
 
 			tranfercount++;
@@ -1944,15 +1865,14 @@ static UINT32 process_byte( UINT8 real_byte, UINT32 destination, int max_length 
 		//printf("Write Normal Data\n");
 		dest[(destination&0x7fffff)^3] = real_byte;
 		last_normal_byte = real_byte;
-		cps3_char_ram_dirty[(destination&0x7fffff)/0x100] = 1;
-		cps3_char_ram_is_dirty = 1;
+		gfx_element_mark_dirty(machine->gfx[1], (destination&0x7fffff)/0x100);
 		return 1;
 	}
 }
 
 static void cps3_do_char_dma( running_machine *machine, UINT32 real_source, UINT32 real_destination, UINT32 real_length )
 {
-	UINT8* sourcedata = (UINT8*)memory_region(machine, "user5");
+	UINT8* sourcedata = (UINT8*)cps3_user5region;
 	int length_remaining;
 
 	last_normal_byte = 0;
@@ -1973,7 +1893,7 @@ static void cps3_do_char_dma( running_machine *machine, UINT32 real_source, UINT
 
 			real_byte = sourcedata[DMA_XOR((current_table_address+current_byte*2+0))];
 			//if (real_byte&0x80) return;
-			length_processed = process_byte( real_byte, real_destination, length_remaining );
+			length_processed = process_byte( machine, real_byte, real_destination, length_remaining );
 			length_remaining-=length_processed; // subtract the number of bytes the operation has taken
 			real_destination+=length_processed; // add it onto the destination
 			if (real_destination>0x7fffff) return;
@@ -1981,7 +1901,7 @@ static void cps3_do_char_dma( running_machine *machine, UINT32 real_source, UINT
 
 			real_byte = sourcedata[DMA_XOR((current_table_address+current_byte*2+1))];
 			//if (real_byte&0x80) return;
-			length_processed = process_byte( real_byte, real_destination, length_remaining );
+			length_processed = process_byte( machine, real_byte, real_destination, length_remaining );
 			length_remaining-=length_processed; // subtract the number of bytes the operation has taken
 			real_destination+=length_processed; // add it onto the destination
 			if (real_destination>0x7fffff) return;
@@ -1990,7 +1910,7 @@ static void cps3_do_char_dma( running_machine *machine, UINT32 real_source, UINT
 		else
 		{
 			UINT32 length_processed;
-			length_processed = process_byte( current_byte, real_destination, length_remaining );
+			length_processed = process_byte( machine, current_byte, real_destination, length_remaining );
 			length_remaining-=length_processed; // subtract the number of bytes the operation has taken
 			real_destination+=length_processed; // add it onto the destination
 			if (real_destination>0x7fffff) return;
@@ -2003,7 +1923,7 @@ static void cps3_do_char_dma( running_machine *machine, UINT32 real_source, UINT
 
 static unsigned short lastb;
 static unsigned short lastb2;
-static UINT32 ProcessByte8(UINT8 b,UINT32 dst_offset)
+static UINT32 ProcessByte8(running_machine *machine,UINT8 b,UINT32 dst_offset)
 {
 	UINT8* destRAM = (UINT8*)cps3_char_ram;
  	int l=0;
@@ -2016,8 +1936,7 @@ static UINT32 ProcessByte8(UINT8 b,UINT32 dst_offset)
  		for(i=0;i<rle;++i)
  		{
 			destRAM[(dst_offset&0x7fffff)^3] = lastb;
-			cps3_char_ram_dirty[(dst_offset&0x7fffff)/0x100] = 1;
-			cps3_char_ram_is_dirty = 1;
+			gfx_element_mark_dirty(machine->gfx[1], (dst_offset&0x7fffff)/0x100);
 
 			dst_offset++;
  			++l;
@@ -2031,15 +1950,14 @@ static UINT32 ProcessByte8(UINT8 b,UINT32 dst_offset)
  		lastb2=lastb;
  		lastb=b;
 		destRAM[(dst_offset&0x7fffff)^3] = b;
-		cps3_char_ram_dirty[(dst_offset&0x7fffff)/0x100] = 1;
-		cps3_char_ram_is_dirty = 1;
+		gfx_element_mark_dirty(machine->gfx[1], (dst_offset&0x7fffff)/0x100);
  		return 1;
  	}
  }
 
 static void cps3_do_alt_char_dma( running_machine *machine, UINT32 src, UINT32 real_dest, UINT32 real_length )
 {
-	UINT8* px = (UINT8*)memory_region(machine, "user5");
+	UINT8* px = (UINT8*)cps3_user5region;
 	UINT32 start = real_dest;
 	UINT32 ds = real_dest;
 
@@ -2061,13 +1979,13 @@ static void cps3_do_alt_char_dma( running_machine *machine, UINT32 src, UINT32 r
 				UINT8 real_byte;
 				p&=0x7f;
 				real_byte = px[DMA_XOR((current_table_address+p*2+0))];
-				ds+=ProcessByte8(real_byte,ds);
+				ds+=ProcessByte8(machine,real_byte,ds);
 				real_byte = px[DMA_XOR((current_table_address+p*2+1))];
-				ds+=ProcessByte8(real_byte,ds);
+				ds+=ProcessByte8(machine,real_byte,ds);
  			}
  			else
  			{
- 				ds+=ProcessByte8(p,ds);
+ 				ds+=ProcessByte8(machine,p,ds);
  			}
  			++src;
  			ctrl<<=1;
@@ -2339,14 +2257,6 @@ static INTERRUPT_GEN(cps3_other_interrupt)
 //static sh2_cpu_core sh2cp_conf_slave  = { 1 };
 
 
-static const custom_sound_interface custom_interface =
-{
-	cps3_sh_start
-};
-
-
-
-
 static const SCSIConfigTable dev_table =
 {
 	1,                                      /* 1 SCSI device */
@@ -2375,13 +2285,13 @@ static MACHINE_RESET( cps3 )
 	current_table_address = -1;
 }
 
-#define MASTER_CLOCK	42954500
+
 
 
 
 static void precopy_to_flash(running_machine *machine)
 {
-	UINT32* romdata = (UINT32*)memory_region(machine, "user4");
+	UINT32* romdata = (UINT32*)cps3_user4region;
 	int i;
 	/* precopy program roms, ok, sfiii2 tests pass, others fail because of how the decryption affects testing */
 	for (i=0;i<0x800000;i+=4)
@@ -2418,10 +2328,10 @@ static void precopy_to_flash(running_machine *machine)
 
 	/* precopy gfx roms, good, tests pass */
 	{
-		UINT32 thebase, len = memory_region_length(machine, "user5");
+		UINT32 thebase, len = USER5REGION_LENGTH;
 		int flashnum = 8;
 
-		romdata = (UINT32*)memory_region(machine, "user5");
+		romdata = (UINT32*)cps3_user5region;
 		for (thebase = 0;thebase < len/2; thebase+=0x200000)
 		{
 		//  printf("flashnums %d. %d\n",flashnum, flashnum+1);
@@ -2447,7 +2357,7 @@ static void precopy_to_flash(running_machine *machine)
 // make a copy in the regions we execute code / draw gfx from
 static void copy_from_nvram(running_machine *machine)
 {
-	UINT32* romdata = (UINT32*)memory_region(machine, "user4");
+	UINT32* romdata = (UINT32*)cps3_user4region;
 	UINT32* romdata2 = (UINT32*)decrypted_gamerom;
 	int i;
 	/* copy + decrypt program roms which have been loaded from flashroms/nvram */
@@ -2487,11 +2397,11 @@ static void copy_from_nvram(running_machine *machine)
 
 	/* copy gfx from loaded flashroms to user reigon 5, where it's used */
 	{
-		UINT32 thebase, len = memory_region_length(machine, "user5");
+		UINT32 thebase, len = USER5REGION_LENGTH;
 		int flashnum = 8;
 		int countoffset = 0;
 
-		romdata = (UINT32*)memory_region(machine, "user5");
+		romdata = (UINT32*)cps3_user5region;
 		for (thebase = 0;thebase < len/2; thebase+=0x200000)
 		{
 		//  printf("flashnums %d. %d\n",flashnum, flashnum+1);
@@ -2630,14 +2540,14 @@ static const sh2_cpu_core sh2_conf_cps3 = {
 
 static MACHINE_DRIVER_START( cps3 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", SH2, 6250000*4) // external clock is 6.25 Mhz, it sets the intenral multiplier to 4x (this should probably be handled in the core..)
+	MDRV_CPU_ADD("maincpu", SH2, 6250000*4) // external clock is 6.25 Mhz, it sets the intenral multiplier to 4x (this should probably be handled in the core..)
 	MDRV_CPU_PROGRAM_MAP(cps3_map,0)
-	MDRV_CPU_VBLANK_INT("main", cps3_vbl_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", cps3_vbl_interrupt)
 	MDRV_CPU_PERIODIC_INT(cps3_other_interrupt,80) /* ?source? */
 	MDRV_CPU_CONFIG(sh2_conf_cps3)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(XTAL_60MHz/8, 486, 0, 384, 259, 0, 224)
 /*
@@ -2660,21 +2570,17 @@ static MACHINE_DRIVER_START( cps3 )
 	MDRV_VIDEO_UPDATE(cps3)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MDRV_SOUND_ADD("cps3", CUSTOM, MASTER_CLOCK / 3)
-	MDRV_SOUND_CONFIG(custom_interface)
-	MDRV_SOUND_ROUTE(1, "left", 1.0)
-	MDRV_SOUND_ROUTE(0, "right", 1.0)
+	MDRV_SOUND_ADD("cps3", CPS3, MASTER_CLOCK / 3)
+	MDRV_SOUND_ROUTE(1, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( sfiii )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "sfiii_usa.29f400.u2", 0x000000, 0x080000, CRC(fb172a8e) SHA1(48ebf59910f246835f7dc0c588da30f7a908072f) )
-
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* Program Code Region */
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* GFX Region */
 
 	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "sf3000", 0, MD5(cdc5c5423bd8c053de7cdd927dc60da7) SHA1(cc72c9eb2096f4d51f2cf6df18f29fd79d05067c) )
@@ -2684,9 +2590,6 @@ ROM_START( sfiiij )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "sfiii_japan.29f400.u2", 0x000000, 0x080000, CRC(74205250) SHA1(c3e83ace7121d32da729162662ec6b5285a31211) )
 
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* Program Code Region */
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* GFX Region */
-
 	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "sf3000", 0, MD5(cdc5c5423bd8c053de7cdd927dc60da7) SHA1(cc72c9eb2096f4d51f2cf6df18f29fd79d05067c) )
 ROM_END
@@ -2694,9 +2597,6 @@ ROM_END
 ROM_START( sfiii2 )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "sfiii2_usa.29f400.u2", 0x000000, 0x080000, CRC(75dd72e0) SHA1(5a12d6ea6734df5de00ecee6f9ef470749d2f242) )
-
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* Program Code Region */
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* GFX Region */
 
 	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "3ga000", 0, MD5(941c7e8d0838db9880ea7bf169ad310d) SHA1(76e9fdef020c4b85a10aa8828a63e67c7dca22bd) )
@@ -2706,9 +2606,6 @@ ROM_START( sfiii2j )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "sfiii2_japan.29f400.u2", 0x000000, 0x080000, CRC(faea0a3e) SHA1(a03cd63bcf52e4d57f7a598c8bc8e243694624ec) )
 
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* Program Code Region */
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* GFX Region */
-
 	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "3ga000", 0, MD5(941c7e8d0838db9880ea7bf169ad310d) SHA1(76e9fdef020c4b85a10aa8828a63e67c7dca22bd) )
 ROM_END
@@ -2716,9 +2613,6 @@ ROM_END
 ROM_START( sfiii3 )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "sfiii3_usa.29f400.u2", 0x000000, 0x080000, CRC(ecc545c1) SHA1(e39083820aae914fd8b80c9765129bedb745ceba) )
-
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* Program Code Region */
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* GFX Region */
 
 	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "cap-33s-2", 0, SHA1(24e78b8c66fb1573ffd642ee51607f3b53ed40b7) MD5(cf63f3dbcc2653b95709133fe79c7225) )
@@ -2728,9 +2622,6 @@ ROM_START( sfiii3a )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "sfiii3_usa.29f400.u2", 0x000000, 0x080000, CRC(ecc545c1) SHA1(e39083820aae914fd8b80c9765129bedb745ceba) )
 
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* Program Code Region */
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* GFX Region */
-
 	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "33s000", 0, MD5(f159ad85cc94ced3ddb9ef5e92173a9f) SHA1(47c7ae0f2dc47c7d28bdf66d378a3aaba4c99c75) )
 ROM_END
@@ -2738,9 +2629,6 @@ ROM_END
 ROM_START( redearth )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "warzard_euro.29f400.u2", 0x000000, 0x080000, CRC(02e0f336) SHA1(acc37e830dfeb9674f5a0fb24f4cc23217ae4ff5) )
-
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* Program Code Region */
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* GFX Region */
 
 	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "wzd000", 0, MD5(028ff12a4ce34118dd0091e87c8cdd08) SHA1(6d4e6b7fff4ff3f04e349479fa5a1cbe63e673b8) )
@@ -2750,9 +2638,6 @@ ROM_START( warzard )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "warzard_japan.29f400.u2", 0x000000, 0x080000, CRC(f8e2f0c6) SHA1(93d6a986f44c211fff014e55681eca4d2a2774d6) )
 
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* Program Code Region */
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* GFX Region */
-
 	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "wzd000", 0, MD5(028ff12a4ce34118dd0091e87c8cdd08) SHA1(6d4e6b7fff4ff3f04e349479fa5a1cbe63e673b8) )
 ROM_END
@@ -2760,9 +2645,6 @@ ROM_END
 ROM_START( jojo )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "jojo_japan.29f400.u2", 0x000000, 0x080000, CRC(02778f60) SHA1(a167f9ebe030592a0cdb0c6a3c75835c6a43be4c) )
-
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* Program Code Region */
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* GFX Region */
 
 	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "cap-jjk-160", 0, SHA1(74fb14d838d98c3e10baa08e6f7b2464d840dcf0) MD5(93cc16f11a88c8f5268cb96baebc0a13) )
@@ -2772,9 +2654,6 @@ ROM_START( jojoa )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "jojo_japan.29f400.u2", 0x000000, 0x080000, CRC(02778f60) SHA1(a167f9ebe030592a0cdb0c6a3c75835c6a43be4c) )
 
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* Program Code Region */
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* GFX Region */
-
 	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "jjk000", 0, MD5(05440ecf90e836207a27a99c817a3328) SHA1(d5a11315ac21e573ffe78e63602ec2cb420f361f) )
 ROM_END
@@ -2782,9 +2661,6 @@ ROM_END
 ROM_START( jojoba )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "jojoba_japan.29f400.u2",  0x000000, 0x080000,  CRC(3085478c) SHA1(055eab1fc42816f370a44b17fd7e87ffcb10e8b7) )
-
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* Program Code Region */
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* GFX Region */
 
 	DISK_REGION( "cdrom" )
 	DISK_IMAGE_READONLY( "jjm000", 0, MD5(bf6b90334bf1f6bd8dbfed737face2d6) SHA1(688520bb83ccbf4b31c3bfe26bd0cc8292a8c558) )
@@ -2797,9 +2673,9 @@ ROM_START( sfiiin )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "sfiii_asia_nocd.29f400.u2", 0x000000, 0x080000, CRC(73e32463) SHA1(45d144e533e4b20cc5a744ca4f618e288430c601) )
 
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION32_BE( USER4REGION_LENGTH, "user4", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "10",  0x0000000, 0x800000, CRC(e896dc27) SHA1(47623820c64b72e69417afcafaacdd2c318cde1c) )
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION16_BE( USER5REGION_LENGTH, "user5", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "30",  0x0000000, 0x800000, CRC(98c2d07c) SHA1(604ce4a16170847c10bc233a47a47a119ce170f7) )
 	ROM_LOAD( "31",  0x0800000, 0x800000, CRC(7115a396) SHA1(b60a74259e3c223138e66e68a3f6457694a0c639) )
 	ROM_LOAD( "40",  0x1000000, 0x800000, CRC(839f0972) SHA1(844e43fcc157b7c774044408bfe918c49e174cdb) )
@@ -2811,10 +2687,10 @@ ROM_START( sfiii2n )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "sfiii2_asia_nocd.29f400.u2", 0x000000, 0x080000, CRC(fd297c0d) SHA1(4323deda2789f104b53f32a663196ec16de73215) )
 
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION32_BE( USER4REGION_LENGTH, "user4", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "10",  0x0000000, 0x800000, CRC(682b014a) SHA1(abd5785f4b7c89584d6d1cf6fb61a77d7224f81f) )
 	ROM_LOAD( "20",  0x0800000, 0x800000, CRC(38090460) SHA1(aaade89b8ccdc9154f97442ca35703ec538fe8be) )
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION16_BE( USER5REGION_LENGTH, "user5", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "30",  0x0000000, 0x800000, CRC(77c197c0) SHA1(944381161462e65de7ae63a656658f3fbe44727a) )
 	ROM_LOAD( "31",  0x0800000, 0x800000, CRC(7470a6f2) SHA1(850b2e20afe8a5a1f0d212d9abe002cb5cf14d22) )
 	ROM_LOAD( "40",  0x1000000, 0x800000, CRC(01a85ced) SHA1(802df3274d5f767636b2785606e0558f6d3b9f13) )
@@ -2827,10 +2703,10 @@ ROM_START( sfiii3n )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "sfiii3_japan_nocd.29f400.u2", 0x000000, 0x080000, CRC(1edc6366) SHA1(60b4b9adeb030a33059d74fdf03873029e465b52) )
 
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION32_BE( USER4REGION_LENGTH, "user4", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "10",  0x0000000, 0x800000, CRC(ba7f76b2) SHA1(6b396596dea009b34af17484919ae37eda53ec65) )
 	ROM_LOAD( "20",  0x0800000, 0x800000, CRC(5ca8faba) SHA1(71c12638ae7fa38b362d68c3ccb4bb3ccd67f0e9) )
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION16_BE( USER5REGION_LENGTH, "user5", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "30",  0x0000000, 0x800000, CRC(b37cf960) SHA1(60310f95e4ecedee85846c08ccba71e286cda73b) )
 	ROM_LOAD( "31",  0x0800000, 0x800000, CRC(450ec982) SHA1(1cb3626b8479997c4f1b29c41c81cac038fac31b) )
 	ROM_LOAD( "40",  0x1000000, 0x800000, CRC(632c965f) SHA1(9a46b759f5dee35411fd6446c2457c084a6dfcd8) )
@@ -2845,10 +2721,10 @@ ROM_START( sfiii3an )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "sfiii3_japan_nocd.29f400.u2", 0x000000, 0x080000, CRC(1edc6366) SHA1(60b4b9adeb030a33059d74fdf03873029e465b52) )
 
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION32_BE( USER4REGION_LENGTH, "user4", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "10",  0x0000000, 0x800000, CRC(77233d39) SHA1(59c3f890fdc33a7d8dc91e5f9c4e7b7019acfb00) )
 	ROM_LOAD( "20",  0x0800000, 0x800000, CRC(5ca8faba) SHA1(71c12638ae7fa38b362d68c3ccb4bb3ccd67f0e9) )
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION16_BE( USER5REGION_LENGTH, "user5", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "30",  0x0000000, 0x800000, CRC(b37cf960) SHA1(60310f95e4ecedee85846c08ccba71e286cda73b) )
 	ROM_LOAD( "31",  0x0800000, 0x800000, CRC(450ec982) SHA1(1cb3626b8479997c4f1b29c41c81cac038fac31b) )
 	ROM_LOAD( "40",  0x1000000, 0x800000, CRC(632c965f) SHA1(9a46b759f5dee35411fd6446c2457c084a6dfcd8) )
@@ -2863,10 +2739,10 @@ ROM_START( jojon )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "jojo_asia_nocd.29f400.u2", 0x000000, 0x080000, CRC(05b4f953) SHA1(c746c7bb5359acc9adced817cb4870b1912eaefd) )
 
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION32_BE( USER4REGION_LENGTH, "user4", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "10",  0x0000000, 0x800000, CRC(bc612872) SHA1(18930f2906176b54a9b8bec56f06dda3362eb418) )
 	ROM_LOAD( "20",  0x0800000, 0x800000, CRC(0e1daddf) SHA1(34bb4e0fb86258095a7b20f60174453195f3735a) )
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION16_BE( USER5REGION_LENGTH, "user5", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "30",  0x0000000, 0x800000, CRC(1d99181b) SHA1(25c216de16cefac2d5892039ad23d07848a457e6) )
 	ROM_LOAD( "31",  0x0800000, 0x800000, CRC(6889fbda) SHA1(53a51b993d319d81a604cdf70b224955eacb617e) )
 	ROM_LOAD( "40",  0x1000000, 0x800000, CRC(8069f9de) SHA1(7862ee104a2e9034910dd592687b40ebe75fa9ce) )
@@ -2878,10 +2754,10 @@ ROM_START( jojoan )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "jojo_asia_nocd.29f400.u2", 0x000000, 0x080000, CRC(05b4f953) SHA1(c746c7bb5359acc9adced817cb4870b1912eaefd) )
 
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION32_BE( USER4REGION_LENGTH, "user4", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "10",  0x0000000, 0x800000, CRC(e40dc123) SHA1(517e7006349b5a8fd6c30910362583f48d009355) )
 	ROM_LOAD( "20",  0x0800000, 0x800000, CRC(0571e37c) SHA1(1aa28ef6ea1b606a55d0766480b3ee156f0bca5a) )
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION16_BE( USER5REGION_LENGTH, "user5", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "30",  0x0000000, 0x800000, CRC(1d99181b) SHA1(25c216de16cefac2d5892039ad23d07848a457e6) )
 	ROM_LOAD( "31",  0x0800000, 0x800000, CRC(6889fbda) SHA1(53a51b993d319d81a604cdf70b224955eacb617e) )
 	ROM_LOAD( "40",  0x1000000, 0x800000, CRC(8069f9de) SHA1(7862ee104a2e9034910dd592687b40ebe75fa9ce) )
@@ -2893,10 +2769,10 @@ ROM_START( jojoban )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "jojoba_japan_nocd.29f400.u2", 0x000000, 0x080000, CRC(4dab19f5) SHA1(ba07190e7662937fc267f07285c51e99a45c061e) )
 
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION32_BE( USER4REGION_LENGTH, "user4", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "10",  0x000000, 0x800000, CRC(6e2490f6) SHA1(75cbf1e39ad6362a21c937c827e492d927b7cf39) )
 	ROM_LOAD( "20",  0x800000, 0x800000, CRC(1293892b) SHA1(b1beafac1a9c4b6d0640658af8a3eb359e76eb25) )
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION16_BE( USER5REGION_LENGTH, "user5", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "30",  0x0000000, 0x800000, CRC(d25c5005) SHA1(93a19a14783d604bb42feffbe23eb370d11281e8) )
 	ROM_LOAD( "31",  0x0800000, 0x800000, CRC(51bb3dba) SHA1(39e95a05882909820b3efa6a3b457b8574012638) )
 	ROM_LOAD( "40",  0x1000000, 0x800000, CRC(94dc26d4) SHA1(5ae2815142972f322886eea4885baf2b82563ab1) )
@@ -2909,10 +2785,10 @@ ROM_START( jojobane )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "jojoba_euro_nocd.29f400.u2", 0x000000, 0x080000,  CRC(1ee2d679) SHA1(9e129b454a376606b3f7e8aec64de425cf9c635c) )
 
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION32_BE( USER4REGION_LENGTH, "user4", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "10",  0x000000, 0x800000, CRC(6e2490f6) SHA1(75cbf1e39ad6362a21c937c827e492d927b7cf39) )
 	ROM_LOAD( "20",  0x800000, 0x800000, CRC(1293892b) SHA1(b1beafac1a9c4b6d0640658af8a3eb359e76eb25) )
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION16_BE( USER5REGION_LENGTH, "user5", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "30",  0x0000000, 0x800000, CRC(d25c5005) SHA1(93a19a14783d604bb42feffbe23eb370d11281e8) )
 	ROM_LOAD( "31",  0x0800000, 0x800000, CRC(51bb3dba) SHA1(39e95a05882909820b3efa6a3b457b8574012638) )
 	ROM_LOAD( "40",  0x1000000, 0x800000, CRC(94dc26d4) SHA1(5ae2815142972f322886eea4885baf2b82563ab1) )
@@ -2926,9 +2802,9 @@ ROM_START( redeartn )
 	ROM_REGION32_BE( 0x080000, "user1", 0 ) /* bios region */
 	ROM_LOAD( "redearth_nocd.bios", 0x000000, 0x080000, NO_DUMP )
 
-	ROM_REGION32_BE( 0x800000*2, "user4", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION32_BE( USER4REGION_LENGTH, "user4", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "10",  0x000000, 0x800000, CRC(68188016) SHA1(93aaac08cb5566c33aabc16457085b0a36048019) )
-	ROM_REGION16_BE( 0x800000*10, "user5", ROMREGION_ERASEFF ) /* cd content region */
+	ROM_REGION16_BE( USER5REGION_LENGTH, "user5", ROMREGION_ERASEFF ) /* cd content region */
 	ROM_LOAD( "30",  0x0000000, 0x800000, CRC(074cab4d) SHA1(4cb6cc9cce3b1a932b07058a5d723b3effa23fcf) )
 	ROM_LOAD( "31",  0x0800000, 0x800000, CRC(14e2cad4) SHA1(9958a4e315e4476e4791a6219b93495413c7b751) )
 	ROM_LOAD( "40",  0x1000000, 0x800000, CRC(72d98890) SHA1(f40926c52cb7a71b0ef0027a0ea38bbc7e8b31b0) )
@@ -3082,37 +2958,37 @@ ROM_END
 
 /* todo: use BIOS for the bios roms, having clones only for CD / No CD */
 
-GAME( 1997, sfiii,   0,        cps3, cps3, cps3,  ROT0,   "Capcom", "Street Fighter III: New Generation (USA, 970204)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1997, sfiiij,  sfiii,    cps3, cps3, cps3,  ROT0,   "Capcom", "Street Fighter III: New Generation (Japan, 970204)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1997, sfiii,   0,        cps3, cps3, sfiii,  ROT0,   "Capcom", "Street Fighter III: New Generation (USA, 970204)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1997, sfiiij,  sfiii,    cps3, cps3, sfiii,  ROT0,   "Capcom", "Street Fighter III: New Generation (Japan, 970204)", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1997, sfiii2,  0,        cps3, cps3, cps3, ROT0,   "Capcom", "Street Fighter III 2nd Impact: Giant Attack (USA, 970930)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1997, sfiii2j, sfiii2,   cps3, cps3, cps3, ROT0,   "Capcom", "Street Fighter III 2nd Impact: Giant Attack (Japan, 970930)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1997, sfiii2,  0,        cps3, cps3, sfiii2, ROT0,   "Capcom", "Street Fighter III 2nd Impact: Giant Attack (USA, 970930)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1997, sfiii2j, sfiii2,   cps3, cps3, sfiii2, ROT0,   "Capcom", "Street Fighter III 2nd Impact: Giant Attack (Japan, 970930)", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1999, sfiii3,  0,        cps3, cps3, cps3, ROT0,   "Capcom", "Street Fighter III 3rd Strike: Fight for the Future (USA, 990608)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1999, sfiii3a, sfiii3,   cps3, cps3, cps3, ROT0,   "Capcom", "Street Fighter III 3rd Strike: Fight for the Future (USA, 990512)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1999, sfiii3,  0,        cps3, cps3, sfiii3, ROT0,   "Capcom", "Street Fighter III 3rd Strike: Fight for the Future (USA, 990608)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1999, sfiii3a, sfiii3,   cps3, cps3, sfiii3, ROT0,   "Capcom", "Street Fighter III 3rd Strike: Fight for the Future (USA, 990512)", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1998, jojo,    0,        cps3, cps3, cps3, ROT0,   "Capcom", "JoJo's Venture / JoJo no Kimyouna Bouken (Japan, 990108)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1998, jojoa,   jojo,     cps3, cps3, cps3, ROT0,   "Capcom", "JoJo's Venture / JoJo no Kimyouna Bouken (Japan, 981202)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1998, jojo,    0,        cps3, cps3, jojo, ROT0,   "Capcom", "JoJo's Venture / JoJo no Kimyouna Bouken (Japan, 990108)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1998, jojoa,   jojo,     cps3, cps3, jojo, ROT0,   "Capcom", "JoJo's Venture / JoJo no Kimyouna Bouken (Japan, 981202)", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1999, jojoba,  0,        cps3, cps3, cps3, ROT0,   "Capcom", "JoJo's Bizarre Adventure: Heritage for the Future / JoJo no Kimyouna Bouken: Miraie no Isan (Japan, 990913)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1999, jojoba,  0,        cps3, cps3, jojoba, ROT0,   "Capcom", "JoJo's Bizarre Adventure: Heritage for the Future / JoJo no Kimyouna Bouken: Miraie no Isan (Japan, 990913)", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1996, redearth,0,        cps3, cps3, cps3, ROT0,   "Capcom", "Red Earth (Euro, 961121)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1996, warzard, redearth, cps3, cps3, cps3, ROT0,   "Capcom", "Warzard (Japan, 961121)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1996, redearth,0,        cps3, cps3, redearth, ROT0,   "Capcom", "Red Earth (Euro, 961121)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1996, warzard, redearth, cps3, cps3, redearth, ROT0,   "Capcom", "Warzard (Japan, 961121)", GAME_IMPERFECT_GRAPHICS )
 
 /* NO-CD sets */
 
-GAME( 1997, sfiiin,  sfiii,    cps3, cps3, cps3, ROT0,   "Capcom", "Street Fighter III: New Generation (Asia, 970204, NO CD)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1997, sfiiin,  sfiii,    cps3, cps3, sfiii, ROT0,   "Capcom", "Street Fighter III: New Generation (Asia, 970204, NO CD)", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1997, sfiii2n, sfiii2,   cps3, cps3, cps3, ROT0,   "Capcom", "Street Fighter III 2nd Impact: Giant Attack (Asia, 970930, NO CD)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1997, sfiii2n, sfiii2,   cps3, cps3, sfiii2, ROT0,   "Capcom", "Street Fighter III 2nd Impact: Giant Attack (Asia, 970930, NO CD)", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1999, sfiii3n, sfiii3,   cps3, cps3, cps3, ROT0,   "Capcom", "Street Fighter III 3rd Strike: Fight for the Future (Japan, 990608, NO CD)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1999, sfiii3an,sfiii3,   cps3, cps3, cps3, ROT0,   "Capcom", "Street Fighter III 3rd Strike: Fight for the Future (Japan, 990512, NO CD)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1999, sfiii3n, sfiii3,   cps3, cps3, sfiii3, ROT0,   "Capcom", "Street Fighter III 3rd Strike: Fight for the Future (Japan, 990608, NO CD)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1999, sfiii3an,sfiii3,   cps3, cps3, sfiii3, ROT0,   "Capcom", "Street Fighter III 3rd Strike: Fight for the Future (Japan, 990512, NO CD)", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1998, jojon,   jojo,     cps3, cps3, cps3, ROT0,   "Capcom", "JoJo's Venture / JoJo no Kimyouna Bouken (Asia, 990108, NO CD)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1998, jojoan,  jojo,     cps3, cps3, cps3, ROT0,   "Capcom", "JoJo's Venture / JoJo no Kimyouna Bouken (Asia, 981202, NO CD)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1998, jojon,   jojo,     cps3, cps3, jojo, ROT0,   "Capcom", "JoJo's Venture / JoJo no Kimyouna Bouken (Asia, 990108, NO CD)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1998, jojoan,  jojo,     cps3, cps3, jojo, ROT0,   "Capcom", "JoJo's Venture / JoJo no Kimyouna Bouken (Asia, 981202, NO CD)", GAME_IMPERFECT_GRAPHICS )
 
-GAME( 1999, jojoban, jojoba,   cps3, cps3, cps3, ROT0,   "Capcom", "JoJo's Bizarre Adventure: Heritage for the Future / JoJo no Kimyouna Bouken: Miraie no Isan (Japan, 990913, NO CD)", GAME_IMPERFECT_GRAPHICS )
-GAME( 1999, jojobane,jojoba,   cps3, cps3, cps3, ROT0,   "Capcom", "JoJo's Bizarre Adventure: Heritage for the Future / JoJo no Kimyouna Bouken: Miraie no Isan (Euro, 990913, NO CD)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1999, jojoban, jojoba,   cps3, cps3, jojoba, ROT0,   "Capcom", "JoJo's Bizarre Adventure: Heritage for the Future / JoJo no Kimyouna Bouken: Miraie no Isan (Japan, 990913, NO CD)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1999, jojobane,jojoba,   cps3, cps3, jojoba, ROT0,   "Capcom", "JoJo's Bizarre Adventure: Heritage for the Future / JoJo no Kimyouna Bouken: Miraie no Isan (Euro, 990913, NO CD)", GAME_IMPERFECT_GRAPHICS )
 
 // We don't have any actual warzard / red earth no cd bios sets, but keep this here anyway
-GAME( 1996, redeartn,redearth, cps3, cps3, cps3, ROT0,   "Capcom", "Red Earth (961121, NO CD)", GAME_NOT_WORKING )
+GAME( 1996, redeartn,redearth, cps3, cps3, redearth, ROT0,   "Capcom", "Red Earth (961121, NO CD)", GAME_NOT_WORKING )

@@ -37,9 +37,8 @@ static ADDRESS_MAP_START( io_mem, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x98, 0x98) AM_READWRITE( TMS9928A_vram_r, TMS9928A_vram_w )
 	AM_RANGE(0x99, 0x99) AM_READWRITE( TMS9928A_register_r, TMS9928A_register_w )
-	AM_RANGE(0xa0, 0xa0) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xa1, 0xa1) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0xa2, 0xa2) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0xa0, 0xa1) AM_DEVWRITE("ay", ay8910_address_data_w)
+	AM_RANGE(0xa2, 0xa2) AM_DEVREAD("ay", ay8910_r)
 
 //Ports a8-ab are originally for communicating with the i8255 PPI on MSX.
 //( http://map.tni.nl/resources/msx_io_ports.php#ppi )
@@ -63,12 +62,12 @@ static INPUT_PORTS_START( pesadelo )
 INPUT_PORTS_END
 
 
-static READ8_HANDLER(forte2_ay8910_read_input)
+static READ8_DEVICE_HANDLER(forte2_ay8910_read_input)
 {
-	return input_port_read(space->machine, "IN0") | (forte2_input_mask&0x3f);
+	return input_port_read(device->machine, "IN0") | (forte2_input_mask&0x3f);
 }
 
-static WRITE8_HANDLER( forte2_ay8910_set_input_mask )
+static WRITE8_DEVICE_HANDLER( forte2_ay8910_set_input_mask )
 {
 	/* PSG reg 15, writes 0 at coin insert, 0xff at boot and game over */
 	forte2_input_mask = data;
@@ -78,10 +77,10 @@ static const ay8910_interface forte2_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	forte2_ay8910_read_input,
-	NULL,
-	NULL,
-	forte2_ay8910_set_input_mask
+	DEVCB_HANDLER(forte2_ay8910_read_input),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(forte2_ay8910_set_input_mask)
 };
 
 
@@ -119,17 +118,17 @@ static INTERRUPT_GEN( pesadelo_interrupt )
 
 static MACHINE_DRIVER_START( pesadelo )
 
-	MDRV_CPU_ADD("main", Z80, 3579545)		  /* 3.579545 Mhz */
+	MDRV_CPU_ADD("maincpu", Z80, 3579545)		  /* 3.579545 Mhz */
 	MDRV_CPU_PROGRAM_MAP(program_mem, 0)
 	MDRV_CPU_IO_MAP(io_mem, 0)
-	MDRV_CPU_VBLANK_INT("main",pesadelo_interrupt)
+	MDRV_CPU_VBLANK_INT("screen",pesadelo_interrupt)
 
 	MDRV_MACHINE_START( forte2 )
 	MDRV_MACHINE_RESET( forte2 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE((float)XTAL_10_738635MHz/2/342/262)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(4458)) /* 70 lines */
@@ -144,8 +143,8 @@ MACHINE_DRIVER_END
 static DRIVER_INIT(pesadelo)
 {
 	int i;
-	UINT8 *mem = memory_region(machine, "main");
-	int memsize = memory_region_length(machine, "main");
+	UINT8 *mem = memory_region(machine, "maincpu");
+	int memsize = memory_region_length(machine, "maincpu");
 	UINT8 *buf;
 
 	// data swap
@@ -166,7 +165,7 @@ static DRIVER_INIT(pesadelo)
 }
 
 ROM_START( pesadelo )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "epr2764.15", 0x00000, 0x10000, CRC(1ae2f724) SHA1(12880dd7ad82acf04861843fb9d4f0f926d18f6b) )
 ROM_END
 

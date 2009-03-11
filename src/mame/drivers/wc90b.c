@@ -98,6 +98,8 @@ extern UINT8 *wc90b_scroll2x;
 extern UINT8 *wc90b_scroll1y;
 extern UINT8 *wc90b_scroll2y;
 
+extern UINT8 *wc90b_scroll_x_lo;
+
 VIDEO_START( wc90b );
 WRITE8_HANDLER( wc90b_bgvideoram_w );
 WRITE8_HANDLER( wc90b_fgvideoram_w );
@@ -121,7 +123,7 @@ static WRITE8_HANDLER( wc90b_shared_w )
 static WRITE8_HANDLER( wc90b_bankswitch_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(space->machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "maincpu");
 
 
 	bankaddress = 0x10000 + ((data & 0xf8) << 8);
@@ -144,16 +146,16 @@ static WRITE8_HANDLER( wc90b_sound_command_w )
 	cpu_set_input_line(space->machine->cpu[2],0,HOLD_LINE);
 }
 
-static WRITE8_HANDLER( adpcm_control_w )
+static WRITE8_DEVICE_HANDLER( adpcm_control_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(space->machine, "sub");
+	UINT8 *RAM = memory_region(device->machine, "sub");
 
 	/* the code writes either 2 or 3 in the bottom two bits */
 	bankaddress = 0x10000 + (data & 0x01) * 0x4000;
-	memory_set_bankptr(space->machine, 3,&RAM[bankaddress]);
+	memory_set_bankptr(device->machine, 3,&RAM[bankaddress]);
 
-	msm5205_reset_w(0,data & 0x08);
+	msm5205_reset_w(device,data & 0x08);
 }
 
 static WRITE8_HANDLER( adpcm_data_w )
@@ -176,6 +178,7 @@ static ADDRESS_MAP_START( wc90b_map1, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xfd06, 0xfd06) AM_WRITEONLY AM_BASE(&wc90b_scroll1x)
 	AM_RANGE(0xfd08, 0xfd08) AM_WRITEONLY AM_BASE(&wc90b_scroll2y)
 	AM_RANGE(0xfd0a, 0xfd0a) AM_WRITEONLY AM_BASE(&wc90b_scroll2x)
+	AM_RANGE(0xfd0e, 0xfd0e) AM_WRITEONLY AM_BASE(&wc90b_scroll_x_lo)
 	AM_RANGE(0xfd00, 0xfd00) AM_READ_PORT("P1")
 	AM_RANGE(0xfd02, 0xfd02) AM_READ_PORT("P2")
 	AM_RANGE(0xfd06, 0xfd06) AM_READ_PORT("DSW1")
@@ -197,10 +200,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(3)
-	AM_RANGE(0xe000, 0xe000) AM_WRITE(adpcm_control_w)
+	AM_RANGE(0xe000, 0xe000) AM_DEVWRITE("msm", adpcm_control_w)
 	AM_RANGE(0xe400, 0xe400) AM_WRITE(adpcm_data_w)
-	AM_RANGE(0xe800, 0xe800) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0xe801, 0xe801) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
+	AM_RANGE(0xe800, 0xe801) AM_DEVREADWRITE("ym", ym2203_r, ym2203_w)
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM
 	AM_RANGE(0xf800, 0xf800) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
@@ -347,9 +349,9 @@ GFXDECODE_END
 
 
 /* handler called by the 2203 emulator when the internal timers cause an IRQ */
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[2], INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[2], INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =
@@ -357,7 +359,7 @@ static const ym2203_interface ym2203_config =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		NULL, NULL, NULL, NULL
+		DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL
 	},
 	irqhandler
 };
@@ -366,7 +368,7 @@ static void adpcm_int(const device_config *device)
 {
 	static int toggle = 0;
 
-	msm5205_data_w (0,msm5205next);
+	msm5205_data_w (device,msm5205next);
 	msm5205next>>=4;
 
 	toggle ^= 1;
@@ -384,20 +386,20 @@ static const msm5205_interface msm5205_config =
 static MACHINE_DRIVER_START( wc90b )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_14MHz/2)
+	MDRV_CPU_ADD("maincpu", Z80, XTAL_14MHz/2)
 	MDRV_CPU_PROGRAM_MAP(wc90b_map1,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, XTAL_14MHz/2)
 	MDRV_CPU_PROGRAM_MAP(wc90b_map2,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, XTAL_19_6608MHz/8)
+	MDRV_CPU_ADD("audiocpu", Z80, XTAL_19_6608MHz/8)
 	MDRV_CPU_PROGRAM_MAP(sound_cpu,0)
 	/* IRQs are triggered by the main CPU */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -423,7 +425,7 @@ static MACHINE_DRIVER_START( wc90b )
 MACHINE_DRIVER_END
 
 ROM_START( wc90b1 )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "a02.bin",      0x00000, 0x10000, CRC(192a03dd) SHA1(ab98d370bba5437f956631b0199b173be55f1c27) )	/* c000-ffff is not used */
 	ROM_LOAD( "a03.bin",      0x10000, 0x10000, CRC(f54ff17a) SHA1(a19850fc28a5a0da20795a5cc6b56d9c16554bce) )	/* banked at f000-f7ff */
 
@@ -431,7 +433,7 @@ ROM_START( wc90b1 )
 	ROM_LOAD( "a04.bin",      0x00000, 0x10000, CRC(3d535e2f) SHA1(f1e1878b5a8316e770c74a1e1f29a7a81a4e5dfe) )	/* c000-ffff is not used */
 	ROM_LOAD( "a05.bin",      0x10000, 0x10000, CRC(9e421c4b) SHA1(e23a1f1d5d1e960696f45df653869712eb889839) )	/* banked at f000-f7ff */
 
-	ROM_REGION( 0x18000, "audio", 0 )
+	ROM_REGION( 0x18000, "audiocpu", 0 )
 	ROM_LOAD( "a01.bin",      0x00000, 0x8000, CRC(3d317622) SHA1(ae4e8c5247bc215a2769786cb8639bce2f80db22) )
 	ROM_CONTINUE(             0x10000, 0x8000 ) /* banked at 8000-bfff */
 
@@ -466,7 +468,7 @@ ROM_START( wc90b1 )
 ROM_END
 
 ROM_START( wc90b2 )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "a02",          0x00000, 0x10000, CRC(1e6e94c9) SHA1(1731e3e3b5d17ba676a7e42638d7206212a0080d) )	/* c000-ffff is not used */
 	ROM_LOAD( "a03.bin",      0x10000, 0x10000, CRC(f54ff17a) SHA1(a19850fc28a5a0da20795a5cc6b56d9c16554bce) )	/* banked at f000-f7ff */
 
@@ -474,7 +476,7 @@ ROM_START( wc90b2 )
 	ROM_LOAD( "a04.bin",      0x00000, 0x10000, CRC(3d535e2f) SHA1(f1e1878b5a8316e770c74a1e1f29a7a81a4e5dfe) )	/* c000-ffff is not used */
 	ROM_LOAD( "a05.bin",      0x10000, 0x10000, CRC(9e421c4b) SHA1(e23a1f1d5d1e960696f45df653869712eb889839) )	/* banked at f000-f7ff */
 
-	ROM_REGION( 0x18000, "audio", 0 )
+	ROM_REGION( 0x18000, "audiocpu", 0 )
 	ROM_LOAD( "a01.bin",      0x00000, 0x8000, CRC(3d317622) SHA1(ae4e8c5247bc215a2769786cb8639bce2f80db22) )
 	ROM_CONTINUE(             0x10000, 0x8000 ) /* banked at 8000-bfff */
 
@@ -520,7 +522,7 @@ probably just a minor text mod from the supported set (only two bytes differs), 
     00000591: FF FA
 */
 ROM_START( wc90ba )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "a02.bin",      0x00000, 0x10000, CRC(192a03dd) SHA1(ab98d370bba5437f956631b0199b173be55f1c27) )	/* c000-ffff is not used */
 	ROM_LOAD( "a03.bin",      0x10000, 0x10000, CRC(f54ff17a) SHA1(a19850fc28a5a0da20795a5cc6b56d9c16554bce) )	/* banked at f000-f7ff */
 
@@ -528,7 +530,7 @@ ROM_START( wc90ba )
 	ROM_LOAD( "a04.bin",              0x00000, 0x10000, CRC(3d535e2f) SHA1(f1e1878b5a8316e770c74a1e1f29a7a81a4e5dfe) )	/* c000-ffff is not used */
 	ROM_LOAD( "el_ic98_27c512_05.bin",0x10000, 0x10000, CRC(c70d8c13) SHA1(365718725ea7d0355c68ba703b7f9624cb1134bc) )
 
-	ROM_REGION( 0x18000, "audio", 0 )
+	ROM_REGION( 0x18000, "audiocpu", 0 )
 	ROM_LOAD( "a01.bin",      0x00000, 0x8000, CRC(3d317622) SHA1(ae4e8c5247bc215a2769786cb8639bce2f80db22) )
 	ROM_CONTINUE(             0x10000, 0x8000 ) /* banked at 8000-bfff */
 

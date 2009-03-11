@@ -8,9 +8,14 @@
 
 
 #include "driver.h"
-#include "atarigen.h"
-#include "slapstic.h"
 #include "cpu/m6502/m6502.h"
+#include "sound/2151intf.h"
+#include "sound/2413intf.h"
+#include "sound/5220intf.h"
+#include "sound/okim6295.h"
+#include "sound/pokey.h"
+#include "slapstic.h"
+#include "atarigen.h"
 
 
 
@@ -667,10 +672,10 @@ WRITE8_HANDLER( atarigen_6502_irq_ack_w )
     IRQ line.
 ---------------------------------------------------------------*/
 
-void atarigen_ym2151_irq_gen(running_machine *machine, int irq)
+void atarigen_ym2151_irq_gen(const device_config *device, int irq)
 {
 	ym2151_int = irq;
-	update_6502_irq(machine);
+	update_6502_irq(device->machine);
 }
 
 
@@ -869,17 +874,11 @@ static TIMER_CALLBACK( delayed_6502_sound_w )
 
 void atarigen_set_vol(running_machine *machine, int volume, sound_type type)
 {
-	int sndindex = 0;
-	int ch;
+	const device_config *device;
 
-	for (ch = 0; ch < MAX_SOUND; ch++)
-		if (machine->config->sound[ch].type == type)
-		{
-			int output;
-			for (output = 0; output < 2; output++)
-				sndti_set_output_gain(type, sndindex, output, volume / 100.0);
-			sndindex++;
-		}
+	for (device = sound_first(machine->config); device != NULL; device = sound_next(device))
+		if (sound_get_type(device) == type)
+			sound_set_output_gain(device, ALL_OUTPUTS, volume / 100.0);
 }
 
 
@@ -1605,35 +1604,48 @@ void atarigen_blend_gfx(running_machine *machine, int gfx0, int gfx1, int mask0,
 {
 	gfx_element *gx0 = machine->gfx[gfx0];
 	gfx_element *gx1 = machine->gfx[gfx1];
+	UINT8 *srcdata, *dest;
 	int c, x, y;
 
+	/* allocate memory for the assembled data */
+	srcdata = auto_malloc(gx0->total_elements * gx0->width * gx0->height);
+
 	/* loop over elements */
+	dest = srcdata;
 	for (c = 0; c < gx0->total_elements; c++)
 	{
-		UINT8 *c0base = gx0->gfxdata + gx0->char_modulo * c;
-		UINT8 *c1base = gx1->gfxdata + gx1->char_modulo * c;
-		UINT32 usage = 0;
+		const UINT8 *c0base = gfx_element_get_data(gx0, c);
+		const UINT8 *c1base = gfx_element_get_data(gx1, c);
 
 		/* loop over height */
 		for (y = 0; y < gx0->height; y++)
 		{
-			UINT8 *c0 = c0base, *c1 = c1base;
+			const UINT8 *c0 = c0base;
+			const UINT8 *c1 = c1base;
 
-			for (x = 0; x < gx0->width; x++, c0++, c1++)
-			{
-				*c0 = (*c0 & mask0) | (*c1 & mask1);
-				usage |= 1 << *c0;
-			}
+			for (x = 0; x < gx0->width; x++)
+				*dest++ = (*c0++ & mask0) | (*c1++ & mask1);
 			c0base += gx0->line_modulo;
 			c1base += gx1->line_modulo;
-			if (gx0->pen_usage)
-				gx0->pen_usage[c] = usage;
 		}
 	}
 
 	/* free the second graphics element */
-	freegfx(gx1);
+	gfx_element_free(gx1);
 	machine->gfx[gfx1] = NULL;
+
+	/* create a simple target layout */
+	gx0->layout.planes = 8;
+	for (x = 0; x < 8; x++)
+		gx0->layout.planeoffset[x] = x;
+	for (x = 0; x < gx0->width; x++)
+		gx0->layout.xoffset[x] = 8 * x;
+	for (y = 0; y < gx0->height; y++)
+		gx0->layout.yoffset[y] = 8 * y * gx0->width;
+	gx0->layout.charincrement = 8 * gx0->width * gx0->height;
+
+	/* make the assembled data our new source data */
+	gfx_element_set_source(gx0, srcdata);
 }
 
 

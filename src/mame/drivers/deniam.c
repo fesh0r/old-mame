@@ -61,35 +61,22 @@ static WRITE16_HANDLER( sound_command_w )
 	}
 }
 
-static WRITE8_HANDLER( deniam16b_oki_rom_bank_w )
+static WRITE8_DEVICE_HANDLER( deniam16b_oki_rom_bank_w )
 {
-	okim6295_set_bank_base(0,(data & 0x40) ? 0x40000 : 0x00000);
+	okim6295_set_bank_base(device,(data & 0x40) ? 0x40000 : 0x00000);
 }
 
-static WRITE16_HANDLER( deniam16c_oki_rom_bank_w )
+static WRITE16_DEVICE_HANDLER( deniam16c_oki_rom_bank_w )
 {
 	if (ACCESSING_BITS_0_7)
-		okim6295_set_bank_base(0,(data & 0x01) ? 0x40000 : 0x00000);
+		okim6295_set_bank_base(device,(data & 0x01) ? 0x40000 : 0x00000);
 }
 
 static MACHINE_RESET( deniam )
 {
 	/* logicpr2 does not reset the bank base on startup */
-	okim6295_set_bank_base(0,0x00000);
+	okim6295_set_bank_base(devtag_get_device(machine, "oki"),0x00000);
 }
-
-static WRITE16_HANDLER( YM3812_control_port_0_msb_w )
-{
-	if (ACCESSING_BITS_8_15)
-		ym3812_control_port_0_w(space,0,(data >> 8) & 0xff);
-}
-
-static WRITE16_HANDLER( YM3812_write_port_0_msb_w )
-{
-	if (ACCESSING_BITS_8_15)
-		ym3812_write_port_0_w(space,0,(data >> 8) & 0xff);
-}
-
 
 
 static ADDRESS_MAP_START( deniam16b_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -130,10 +117,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x01, 0x01) AM_READ(soundlatch_r)
-	AM_RANGE(0x02, 0x02) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(ym3812_write_port_0_w)
-	AM_RANGE(0x05, 0x05) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w)
-	AM_RANGE(0x07, 0x07) AM_WRITE(deniam16b_oki_rom_bank_w)
+	AM_RANGE(0x02, 0x03) AM_DEVWRITE("ym", ym3812_w)
+	AM_RANGE(0x05, 0x05) AM_DEVREADWRITE("oki", okim6295_r, okim6295_w)
+	AM_RANGE(0x07, 0x07) AM_DEVWRITE("oki", deniam16b_oki_rom_bank_w)
 ADDRESS_MAP_END
 
 /* identical to 16b, but handles sound directly */
@@ -141,13 +127,13 @@ static ADDRESS_MAP_START( deniam16c_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x400000, 0x40ffff) AM_READ(SMH_RAM)
 	AM_RANGE(0x410000, 0x410fff) AM_READ(SMH_RAM)
-	AM_RANGE(0xc40000, 0xc40001) AM_READ(okim6295_status_0_lsb_r)
+	AM_RANGE(0xc40000, 0xc40001) AM_DEVREAD8("oki", okim6295_r, 0x00ff)
 	AM_RANGE(0xc40002, 0xc40003) AM_READ(deniam_coinctrl_r)
 	AM_RANGE(0xc44000, 0xc44001) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0xc44002, 0xc44003) AM_READ_PORT("P1")
 	AM_RANGE(0xc44004, 0xc44005) AM_READ_PORT("P2")
 	AM_RANGE(0xc44006, 0xc44007) AM_READ(SMH_NOP)	/* unused? */
-	AM_RANGE(0xc4400a, 0xc4400b) AM_READ_PORT("DSW")
+	AM_RANGE(0xc4400a, 0xc4400b) AM_READ_PORT("DSW") /* probably YM3812 input port */
 	AM_RANGE(0xff0000, 0xffffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
@@ -157,12 +143,11 @@ static ADDRESS_MAP_START( deniam16c_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x410000, 0x410fff) AM_WRITE(deniam_textram_w) AM_BASE(&deniam_textram)
 	AM_RANGE(0x440000, 0x4407ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x840000, 0x840fff) AM_WRITE(deniam_palette_w) AM_BASE(&paletteram16)
-	AM_RANGE(0xc40000, 0xc40001) AM_WRITE(okim6295_data_0_lsb_w)
+	AM_RANGE(0xc40000, 0xc40001) AM_DEVWRITE8("oki", okim6295_w, 0x00ff)
 	AM_RANGE(0xc40002, 0xc40003) AM_WRITE(deniam_coinctrl_w)
 	AM_RANGE(0xc40004, 0xc40005) AM_WRITE(SMH_NOP)	/* irq ack? */
-	AM_RANGE(0xc40006, 0xc40007) AM_WRITE(deniam16c_oki_rom_bank_w)
-	AM_RANGE(0xc40008, 0xc40009) AM_WRITE(YM3812_control_port_0_msb_w)
-	AM_RANGE(0xc4000a, 0xc4000b) AM_WRITE(YM3812_write_port_0_msb_w)
+	AM_RANGE(0xc40006, 0xc40007) AM_DEVWRITE("oki", deniam16c_oki_rom_bank_w)
+	AM_RANGE(0xc40008, 0xc4000b) AM_DEVWRITE8("ym", ym3812_w, 0xff00)
 	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
@@ -260,11 +245,11 @@ static GFXDECODE_START( deniam )
 GFXDECODE_END
 
 
-static void irqhandler(running_machine *machine, int linestate)
+static void irqhandler(const device_config *device, int linestate)
 {
 	/* system 16c doesn't have the sound CPU */
-	if (machine->cpu[1] != NULL)
-		cpu_set_input_line(machine->cpu[1],0,linestate);
+	if (device->machine->cpu[1] != NULL)
+		cpu_set_input_line(device->machine->cpu[1],0,linestate);
 }
 
 static const ym3812_interface ym3812_config =
@@ -277,18 +262,18 @@ static const ym3812_interface ym3812_config =
 static MACHINE_DRIVER_START( deniam16b )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,25000000/2)	/* ??? */
+	MDRV_CPU_ADD("maincpu", M68000,25000000/2)	/* ??? */
 	MDRV_CPU_PROGRAM_MAP(deniam16b_readmem,deniam16b_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,25000000/4)	/* (makes logicpro music tempo correct) */
+	MDRV_CPU_ADD("audiocpu", Z80,25000000/4)	/* (makes logicpro music tempo correct) */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_io_map,0)
 
 	MDRV_MACHINE_RESET(deniam)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -316,14 +301,14 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( deniam16c )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,25000000/2)	/* ??? */
+	MDRV_CPU_ADD("maincpu", M68000,25000000/2)	/* ??? */
 	MDRV_CPU_PROGRAM_MAP(deniam16c_readmem,deniam16c_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_MACHINE_RESET(deniam)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -357,11 +342,11 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( logicpro )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "logicpro.r4", 0x00000, 0x40000, CRC(c506d484) SHA1(5d662b109e1d2e09556bc4ecbc11bbf5ccb639d3) )
 	ROM_LOAD16_BYTE( "logicpro.r3", 0x00001, 0x40000, CRC(d5a4cf62) SHA1(138ea4f1629e453c1a00410eda7086d3633240e3) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* sound */
 	ROM_LOAD( "logicpro.r2", 0x0000, 0x10000, CRC(000d624b) SHA1(c0da218ee81d01b3dcef2159bbaaff5d3ddb7619) )
 
 	ROM_REGION( 0x180000, "gfx1", ROMREGION_DISPOSE )	/* chars */
@@ -378,11 +363,11 @@ ROM_START( logicpro )
 ROM_END
 
 ROM_START( croquis )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "r4.bin", 0x00000, 0x40000, CRC(03c9055e) SHA1(b1fa8e7a272887decca30eefe73ac782f296f0dd) )
 	ROM_LOAD16_BYTE( "r3.bin", 0x00001, 0x40000, CRC(a98ae4f6) SHA1(80fcedb4ee0f35eb2d0b4a248c15f872af2e08f2) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* sound */
 	ROM_LOAD( "logicpro.r2", 0x0000, 0x10000, CRC(000d624b) SHA1(c0da218ee81d01b3dcef2159bbaaff5d3ddb7619) )
 
 	ROM_REGION( 0x180000, "gfx1", ROMREGION_DISPOSE )	/* chars */
@@ -399,11 +384,11 @@ ROM_START( croquis )
 ROM_END
 
 ROM_START( karianx )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "even",        0x00000, 0x80000, CRC(fd0ce238) SHA1(4b727366c942c62187d8700666b42a85c059c060) )
 	ROM_LOAD16_BYTE( "odd",         0x00001, 0x80000, CRC(be173cdc) SHA1(13230b6129fd1910257624a69a3a4b74696e982e) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* sound */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* sound */
 	ROM_LOAD( "snd",         0x0000, 0x10000, CRC(fedd3375) SHA1(09fb2d5fc91704120f757acf9fa00d149f891a28) )
 
 	ROM_REGION( 0x180000, "gfx1", ROMREGION_DISPOSE )	/* chars */
@@ -424,7 +409,7 @@ ROM_START( karianx )
 ROM_END
 
 ROM_START( logicpr2 )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "lp2-2",       0x00000, 0x80000, CRC(cc1880bf) SHA1(5ea542b63947a570aaf924f7ab739e060e359af8) )
 	ROM_LOAD16_BYTE( "lp2-1",       0x00001, 0x80000, CRC(46d5e954) SHA1(7bf5ae19caeecd2123754698276bbc78d68984d9) )
 

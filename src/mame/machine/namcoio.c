@@ -931,7 +931,7 @@ static void namco_06xx_data_write(running_machine *machine,int chipnum,UINT8 dat
 		case NAMCOIO_50XX:   namco_50xx_write(machine, data); break;
 		case NAMCOIO_50XX_2: namco_50xx_2_write(machine, data); break;
 		case NAMCOIO_51XX:   namcoio_51XX_write(machine,chipnum,data); break;
-		case NAMCOIO_52XX:   namcoio_52xx_write(data); break;
+		case NAMCOIO_52XX:   namcoio_52xx_write(devtag_get_device(machine, "namco52"), data); break;
 		case NAMCOIO_54XX:   namco_54xx_write(machine, data); break;
 		default:
 			logerror("%s: custom IO type %d unsupported write\n",cpuexec_describe_context(machine),io[chipnum].type);
@@ -967,10 +967,10 @@ static UINT8 namco_06xx_data_r(running_machine *machine,int chip,int offset)
 
 	switch (customio_command[chip] & 0xf)
 	{
-		case 0x1: return namco_06xx_data_read(machine, 4*chip + 0); break;
-		case 0x2: return namco_06xx_data_read(machine, 4*chip + 1); break;
-		case 0x4: return namco_06xx_data_read(machine, 4*chip + 2); break;
-		case 0x8: return namco_06xx_data_read(machine, 4*chip + 3); break;
+		case 0x1: return namco_06xx_data_read(machine, 4*chip + 0);
+		case 0x2: return namco_06xx_data_read(machine, 4*chip + 1);
+		case 0x4: return namco_06xx_data_read(machine, 4*chip + 2);
+		case 0x8: return namco_06xx_data_read(machine, 4*chip + 3);
 		default:
 			logerror("%s: 06XX #%d read in unsupported mode %02x\n",cpuexec_describe_context(machine),chip,customio_command[chip]);
 			return 0xff;

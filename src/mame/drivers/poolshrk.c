@@ -105,12 +105,12 @@ static ADDRESS_MAP_START( poolshrk_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0800, 0x080f) AM_MIRROR(0x23f0) AM_WRITE(SMH_RAM) AM_BASE(&poolshrk_hpos_ram)
 	AM_RANGE(0x0c00, 0x0c0f) AM_MIRROR(0x23f0) AM_WRITE(SMH_RAM) AM_BASE(&poolshrk_vpos_ram)
 	AM_RANGE(0x1000, 0x13ff) AM_MIRROR(0x2000) AM_READWRITE(poolshrk_input_r, poolshrk_watchdog_w)
-	AM_RANGE(0x1400, 0x17ff) AM_MIRROR(0x2000) AM_WRITE(poolshrk_scratch_sound_w)
-	AM_RANGE(0x1800, 0x1bff) AM_MIRROR(0x2000) AM_WRITE(poolshrk_score_sound_w)
-	AM_RANGE(0x1c00, 0x1fff) AM_MIRROR(0x2000) AM_WRITE(poolshrk_click_sound_w)
+	AM_RANGE(0x1400, 0x17ff) AM_MIRROR(0x2000) AM_DEVWRITE("discrete", poolshrk_scratch_sound_w)
+	AM_RANGE(0x1800, 0x1bff) AM_MIRROR(0x2000) AM_DEVWRITE("discrete", poolshrk_score_sound_w)
+	AM_RANGE(0x1c00, 0x1fff) AM_MIRROR(0x2000) AM_DEVWRITE("discrete", poolshrk_click_sound_w)
 	AM_RANGE(0x4000, 0x4000) AM_NOP /* diagnostic ROM location */
 	AM_RANGE(0x6000, 0x63ff) AM_WRITE(poolshrk_da_latch_w)
-	AM_RANGE(0x6400, 0x67ff) AM_WRITE(poolshrk_bump_sound_w)
+	AM_RANGE(0x6400, 0x67ff) AM_DEVWRITE("discrete", poolshrk_bump_sound_w)
 	AM_RANGE(0x6800, 0x6bff) AM_READ(poolshrk_irq_reset_r)
 	AM_RANGE(0x6c00, 0x6fff) AM_WRITE(poolshrk_led_w)
 	AM_RANGE(0x7000, 0x7fff) AM_ROM
@@ -215,12 +215,12 @@ static PALETTE_INIT( poolshrk )
 static MACHINE_DRIVER_START( poolshrk )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6800, 11055000 / 8) /* ? */
+	MDRV_CPU_ADD("maincpu", M6800, 11055000 / 8) /* ? */
 	MDRV_CPU_PROGRAM_MAP(poolshrk_cpu_map, 0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_assert)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
@@ -242,7 +242,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( poolshrk )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "7329.k1", 0x7000, 0x800, CRC(88152245) SHA1(c7c5e43ea488a197e92a1dc2231578f8ed86c98d) )
 	ROM_LOAD( "7330.l1", 0x7800, 0x800, CRC(fb41d3e9) SHA1(c17994179362da13acfcd36a28f45e328428c031) )
 

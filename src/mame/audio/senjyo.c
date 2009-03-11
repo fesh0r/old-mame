@@ -14,8 +14,8 @@ static int single_volume = 0;
 
 const z80_daisy_chain senjyo_daisy_chain[] =
 {
-	{ Z80CTC, "z80ctc" },
-	{ Z80PIO, "z80pio" },
+	{ "z80ctc" },
+	{ "z80pio" },
 	{ NULL }
 };
 
@@ -50,21 +50,24 @@ const z80ctc_interface senjyo_ctc_intf =
 
 WRITE8_HANDLER( senjyo_volume_w )
 {
+	const device_config *samples = devtag_get_device(space->machine, "samples");
 	single_volume = data & 0x0f;
-	sample_set_volume(0,single_volume / 15.0);
+	sample_set_volume(samples,0,single_volume / 15.0);
 }
 
 
 static TIMER_CALLBACK( senjyo_sh_update )
 {
+	const device_config *samples = devtag_get_device(machine, "samples");
+
 	/* ctc2 timer single tone generator frequency */
-	attotime period = z80ctc_getperiod (devtag_get_device(machine, Z80CTC, "z80ctc"), 2);
+	attotime period = z80ctc_getperiod (devtag_get_device(machine, "z80ctc"), 2);
 	if (attotime_compare(period, attotime_zero) != 0 )
 		single_rate = ATTOSECONDS_TO_HZ(period.attoseconds);
 	else
 		single_rate = 0;
 
-	sample_set_freq(0,single_rate);
+	sample_set_freq(samples, 0,single_rate);
 }
 
 
@@ -79,8 +82,8 @@ SAMPLES_START( senjyo_sh_start )
 		_single[i] = ((i/SINGLE_DIVIDER)&0x01)*127*256;
 
 	/* CTC2 single tone generator */
-	sample_set_volume(0,0);
-	sample_start_raw(0,_single,SINGLE_LENGTH,single_rate,1);
+	sample_set_volume(device,0,0);
+	sample_start_raw(device,0,_single,SINGLE_LENGTH,single_rate,1);
 
 	timer_pulse(machine, video_screen_get_frame_period(machine->primary_screen), NULL, 0, senjyo_sh_update);
 }

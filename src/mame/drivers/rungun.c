@@ -100,7 +100,6 @@ static READ16_HANDLER( rng_sysregs_r )
 				data = input_port_read(space->machine, "P1") & input_port_read(space->machine, "P3");
 				return(data<<8 | data);
 			}
-		break;
 
 		case 0x02/2:
 			if (input_port_read(space->machine, "DSW") & 0x20)
@@ -110,7 +109,6 @@ static READ16_HANDLER( rng_sysregs_r )
 				data = input_port_read(space->machine, "P2") & input_port_read(space->machine, "P4");
 				return(data<<8 | data);
 			}
-		break;
 
 		case 0x04/2:
 			/*
@@ -119,7 +117,6 @@ static READ16_HANDLER( rng_sysregs_r )
                 bit9 : joysticks layout(auto detect???)
             */
 			return input_port_read(space->machine, "SYSTEM");
-		break;
 
 		case 0x06/2:
 			if (ACCESSING_BITS_0_7)
@@ -133,7 +130,6 @@ static READ16_HANDLER( rng_sysregs_r )
 				}
 			}
 			return((rng_sysreg[0x06/2] & 0xff00) | data);
-		break;
 	}
 
 	return(rng_sysreg[offset]);
@@ -262,7 +258,7 @@ static WRITE8_HANDLER( z80ctrl_w )
 {
 	rng_z80_control = data;
 
-	memory_set_bankptr(space->machine, 2, memory_region(space->machine, "sound") + 0x10000 + (data & 0x07) * 0x4000);
+	memory_set_bankptr(space->machine, 2, memory_region(space->machine, "soundcpu") + 0x10000 + (data & 0x07) * 0x4000);
 
 	if (data & 0x10)
 		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, CLEAR_LINE);
@@ -281,9 +277,9 @@ static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK2)
 	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM)
-	AM_RANGE(0xe000, 0xe22f) AM_READ(k054539_0_r)
+	AM_RANGE(0xe000, 0xe22f) AM_DEVREAD("konami1", k054539_r)
 	AM_RANGE(0xe230, 0xe3ff) AM_READ(SMH_RAM)
-	AM_RANGE(0xe400, 0xe62f) AM_READ(k054539_1_r)
+	AM_RANGE(0xe400, 0xe62f) AM_DEVREAD("konami2", k054539_r)
 	AM_RANGE(0xe630, 0xe7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xf002, 0xf002) AM_READ(soundlatch_r)
 	AM_RANGE(0xf003, 0xf003) AM_READ(soundlatch2_r)
@@ -292,9 +288,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xdfff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xe000, 0xe22f) AM_WRITE(k054539_0_w)
+	AM_RANGE(0xe000, 0xe22f) AM_DEVWRITE("konami1", k054539_w)
 	AM_RANGE(0xe230, 0xe3ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xe400, 0xe62f) AM_WRITE(k054539_1_w)
+	AM_RANGE(0xe400, 0xe62f) AM_DEVWRITE("konami2", k054539_w)
 	AM_RANGE(0xe630, 0xe7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xf000, 0xf000) AM_WRITE(sound_status_w)
 	AM_RANGE(0xf800, 0xf800) AM_WRITE(z80ctrl_w)
@@ -328,11 +324,11 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( rng )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 16000000)
+	MDRV_CPU_ADD("maincpu", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(rngreadmem,rngwritemem)
-	MDRV_CPU_VBLANK_INT("main", rng_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", rng_interrupt)
 
-	MDRV_CPU_ADD("sound", Z80, 10000000) // 8Mhz (10Mhz is much safer in self-test due to heavy sync)
+	MDRV_CPU_ADD("soundcpu", Z80, 10000000) // 8Mhz (10Mhz is much safer in self-test due to heavy sync)
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_PERIODIC_INT(audio_interrupt, 480)
 
@@ -346,7 +342,7 @@ static MACHINE_DRIVER_START( rng )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_BEFORE_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -359,17 +355,17 @@ static MACHINE_DRIVER_START( rng )
 	MDRV_VIDEO_UPDATE(rng)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("konami1", K054539, 48000)
 	MDRV_SOUND_CONFIG(k054539_config)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("konami2", K054539, 48000)
 	MDRV_SOUND_CONFIG(k054539_config)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 static INPUT_PORTS_START( rng )
@@ -450,11 +446,10 @@ static INPUT_PORTS_START( rng )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START4 )
 INPUT_PORTS_END
 
-#define ROM_LOAD64_WORD(name,offset,length,crc)		ROMX_LOAD(name, offset, length, crc, ROM_GROUPWORD | ROM_SKIP(6))
 
 ROM_START( rungun )
 	/* main program Europe Version AA  1993, 10.8 */
-	ROM_REGION( 0x300000, "main", 0)
+	ROM_REGION( 0x300000, "maincpu", 0)
 	ROM_LOAD16_BYTE( "247eaa03.bin", 0x000000, 0x80000, CRC(f5c91ec0) SHA1(298926ea30472fa8d2c0578dfeaf9a93509747ef) )
 	ROM_LOAD16_BYTE( "247eaa04.bin", 0x000001, 0x80000, CRC(0e62471f) SHA1(2861b7a4e78ff371358d318a1b13a6488c0ac364) )
 
@@ -465,7 +460,7 @@ ROM_START( rungun )
 	ROM_CONTINUE(                  0x100001, 0x80000)
 
 	/* sound program */
-	ROM_REGION( 0x030000, "sound", 0 )
+	ROM_REGION( 0x030000, "soundcpu", 0 )
 	ROM_LOAD("247a05",  0x000000, 0x20000, CRC(64e85430) SHA1(542919c3be257c8f118fc21d3835d7b6426a22ed) )
 	ROM_RELOAD(         0x010000, 0x20000 )
 
@@ -492,7 +487,7 @@ ROM_END
 
 ROM_START( runguna )
 	/* main program Europe Version AA 1993, 10.4 */
-	ROM_REGION( 0x300000, "main", 0)
+	ROM_REGION( 0x300000, "maincpu", 0)
 	ROM_LOAD16_BYTE( "247eaa03.rom", 0x000000, 0x80000, CRC(fec3e1d6) SHA1(cd89dc32ad06308134d277f343a7e8b5fe381f69) )
 	ROM_LOAD16_BYTE( "247eaa04.rom", 0x000001, 0x80000, CRC(1b556af9) SHA1(c8351ebd595307d561d089c66cd6ed7f6111d996) )
 
@@ -503,7 +498,7 @@ ROM_START( runguna )
 	ROM_CONTINUE(                  0x100001, 0x80000)
 
 	/* sound program */
-	ROM_REGION( 0x030000, "sound", 0 )
+	ROM_REGION( 0x030000, "soundcpu", 0 )
 	ROM_LOAD("1.13g",  0x000000, 0x20000, CRC(c0b35df9) SHA1(a0c73d993eb32bd0cd192351b5f86794efd91949) )
 	ROM_RELOAD(         0x010000, 0x20000 )
 
@@ -530,7 +525,7 @@ ROM_END
 
 ROM_START( rungunu )
 	/* main program US Version AB 1993 10.12 */
-	ROM_REGION( 0x300000, "main", 0)
+	ROM_REGION( 0x300000, "maincpu", 0)
 	ROM_LOAD16_BYTE( "247uab03.bin", 0x000000, 0x80000, CRC(f259fd11) SHA1(60381a3fa7f78022dcb3e2f3d13ea32a10e4e36e) )
 	ROM_LOAD16_BYTE( "247uab04.bin", 0x000001, 0x80000, CRC(b918cf5a) SHA1(4314c611ef600ec081f409c78218de1639f8b463) )
 
@@ -539,7 +534,7 @@ ROM_START( rungunu )
 	ROM_LOAD16_BYTE( "247a02", 0x100001, 0x80000, CRC(f5ef3f45) SHA1(2e1d8f672c130dbfac4365dc1301b47beee10161) )
 
 	/* sound program */
-	ROM_REGION( 0x030000, "sound", 0 )
+	ROM_REGION( 0x030000, "soundcpu", 0 )
 	ROM_LOAD("247a05", 0x000000, 0x20000, CRC(64e85430) SHA1(542919c3be257c8f118fc21d3835d7b6426a22ed) )
 	ROM_RELOAD(        0x010000, 0x20000 )
 
@@ -566,7 +561,7 @@ ROM_END
 
 ROM_START( rungunua )
 	/* main program US Version BA 1993 10.8 */
-	ROM_REGION( 0x300000, "main", 0)
+	ROM_REGION( 0x300000, "maincpu", 0)
 	ROM_LOAD16_BYTE( "247uba03.bin", 0x000000, 0x80000, CRC(c24d7500) SHA1(38e6ae9fc00bf8f85549be4733992336c46fe1f3) )
 	ROM_LOAD16_BYTE( "247uba04.bin", 0x000001, 0x80000, CRC(3f255a4a) SHA1(3a4d50ecec8546933ad8dabe21682ba0951eaad0) )
 
@@ -577,7 +572,7 @@ ROM_START( rungunua )
 	ROM_CONTINUE(                  0x100001, 0x80000)
 
 	/* sound program */
-	ROM_REGION( 0x030000, "sound", 0 )
+	ROM_REGION( 0x030000, "soundcpu", 0 )
 	ROM_LOAD("247a05", 0x000000, 0x20000, CRC(64e85430) SHA1(542919c3be257c8f118fc21d3835d7b6426a22ed) )
 	ROM_RELOAD(        0x010000, 0x20000 )
 
@@ -604,7 +599,7 @@ ROM_END
 
 ROM_START( slmdunkj )
 	/* main program Japan Version AA 1993 10.8 */
-	ROM_REGION( 0x300000, "main", 0)
+	ROM_REGION( 0x300000, "maincpu", 0)
 	ROM_LOAD16_BYTE( "247jaa03.bin", 0x000000, 0x20000, CRC(87572078) SHA1(cfa784eb40ed8b3bda9d57abb6022bbe92056206) )
 	ROM_LOAD16_BYTE( "247jaa04.bin", 0x000001, 0x20000, CRC(aa105e00) SHA1(617ac14535048b6e0da43cc98c4b67c8e306bef1) )
 
@@ -615,7 +610,7 @@ ROM_START( slmdunkj )
 	ROM_CONTINUE(                  0x100001, 0x80000)
 
 	/* sound program */
-	ROM_REGION( 0x030000, "sound", 0 )
+	ROM_REGION( 0x030000, "soundcpu", 0 )
 	ROM_LOAD("247a05",  0x000000, 0x20000, CRC(64e85430) SHA1(542919c3be257c8f118fc21d3835d7b6426a22ed) )
 	ROM_RELOAD(         0x010000, 0x20000 )
 
@@ -646,7 +641,7 @@ static DRIVER_INIT( rng )
 
 static MACHINE_RESET( rng )
 {
-	k054539_init_flags(0, K054539_REVERSE_STEREO);
+	k054539_init_flags(devtag_get_device(machine, "konami1"), K054539_REVERSE_STEREO);
 
 	memset(rng_sysreg, 0, 0x20);
 

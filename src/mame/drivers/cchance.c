@@ -74,8 +74,8 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf000, 0xf000) AM_READNOP AM_WRITENOP //???
 	AM_RANGE(0xf001, 0xf001) AM_READ(input_1_r) AM_WRITE(output_0_w)
 	AM_RANGE(0xf002, 0xf002) AM_READ_PORT("IN0") AM_WRITE(output_1_w)
-	AM_RANGE(0xf800, 0xf800) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xf801, 0xf801) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
+	AM_RANGE(0xf800, 0xf801) AM_DEVWRITE("ay", ay8910_address_data_w)
+	AM_RANGE(0xf801, 0xf801) AM_DEVREAD("ay", ay8910_r)
 ADDRESS_MAP_END
 
 
@@ -169,35 +169,25 @@ static GFXDECODE_START( cchance )
 	GFXDECODE_ENTRY( "gfx1", 0, cchance_layout,   0x0, 32  )
 GFXDECODE_END
 
-static READ8_HANDLER( dsw1_r )
-{
-	return input_port_read(space->machine, "DSW1");
-}
-
-static READ8_HANDLER( dsw2_r )
-{
-	return input_port_read(space->machine, "DSW2");
-}
-
 static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	dsw1_r,
-	dsw2_r,
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("DSW1"),
+	DEVCB_INPUT_PORT("DSW2"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static MACHINE_DRIVER_START( cchance )
-	MDRV_CPU_ADD("main", Z80,4000000)		 /* ? MHz */
+	MDRV_CPU_ADD("maincpu", Z80,4000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_GFXDECODE(cchance)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(57.5)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -218,7 +208,7 @@ static MACHINE_DRIVER_START( cchance )
 MACHINE_DRIVER_END
 
 ROM_START( cchance )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD("chance-cccpu.bin", 0x00000, 0x10000, CRC(77531028) SHA1(6f647dea3f1c5884c32a35e04ab6c8a61688171a) )
 
 	ROM_REGION( 0x40000, "gfx1", 0 )

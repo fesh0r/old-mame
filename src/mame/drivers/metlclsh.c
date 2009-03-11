@@ -35,7 +35,7 @@ metlclsh:
 #include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/2203intf.h"
-#include "sound/3812intf.h"
+#include "sound/3526intf.h"
 
 /* Variables defined in video: */
 
@@ -82,7 +82,7 @@ static ADDRESS_MAP_START( metlclsh_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc003, 0xc003) AM_READ_PORT("DSW")
 //  AM_RANGE(0xc800, 0xc82f) AM_READ(SMH_RAM                   )   // not actually read
 //  AM_RANGE(0xcc00, 0xcc2f) AM_READ(SMH_RAM                   )   // ""
-	AM_RANGE(0xd000, 0xd000) AM_READ(ym2203_status_port_0_r	)
+	AM_RANGE(0xd000, 0xd001) AM_DEVREAD("ym1", ym2203_r	)
 //  AM_RANGE(0xd800, 0xdfff) AM_READ(SMH_RAM                   )   // not actually read
 	AM_RANGE(0xe800, 0xe9ff) AM_READ(SMH_RAM					)
 	AM_RANGE(0xfff0, 0xffff) AM_READ(SMH_ROM					)	// Reset/IRQ vectors
@@ -97,10 +97,8 @@ static ADDRESS_MAP_START( metlclsh_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc0c3, 0xc0c3) AM_WRITE(metlclsh_ack_nmi			)	// nmi ack
 	AM_RANGE(0xc800, 0xc82f) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_split1_w) AM_BASE(&paletteram		)
 	AM_RANGE(0xcc00, 0xcc2f) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_split2_w) AM_BASE(&paletteram_2	)
-	AM_RANGE(0xd000, 0xd000) AM_WRITE(ym2203_control_port_0_w	)
-	AM_RANGE(0xd001, 0xd001) AM_WRITE(ym2203_write_port_0_w		)
-	AM_RANGE(0xe000, 0xe000) AM_WRITE(ym3526_control_port_0_w	)
-	AM_RANGE(0xe001, 0xe001) AM_WRITE(ym3526_write_port_0_w		)
+	AM_RANGE(0xd000, 0xd001) AM_DEVWRITE("ym1", ym2203_w	)
+	AM_RANGE(0xe000, 0xe001) AM_DEVWRITE("ym2", ym3526_w	)
 	AM_RANGE(0xe800, 0xe9ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size	)
 	AM_RANGE(0xd800, 0xdfff) AM_WRITE(metlclsh_fgram_w) AM_BASE(&metlclsh_fgram		)
 	AM_RANGE(0xfff0, 0xffff) AM_WRITE(SMH_ROM					)
@@ -287,9 +285,9 @@ GFXDECODE_END
 
 ***************************************************************************/
 
-static void metlclsh_irqhandler(running_machine *machine, int linestate)
+static void metlclsh_irqhandler(const device_config *device, int linestate)
 {
-	cpu_set_input_line(machine->cpu[0],M6809_IRQ_LINE,linestate);
+	cpu_set_input_line(device->machine->cpu[0],M6809_IRQ_LINE,linestate);
 }
 
 static const ym3526_interface ym3526_config =
@@ -314,7 +312,7 @@ static MACHINE_RESET( metlclsh )
 static MACHINE_DRIVER_START( metlclsh )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809, 1500000)        // ?
+	MDRV_CPU_ADD("maincpu", M6809, 1500000)        // ?
 	MDRV_CPU_PROGRAM_MAP(metlclsh_readmem, metlclsh_writemem)
 	// IRQ by YM3526, NMI by cpu #2
 
@@ -326,7 +324,7 @@ static MACHINE_DRIVER_START( metlclsh )
 	MDRV_MACHINE_RESET(metlclsh)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(58)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)	// we're using IPT_VBLANK
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -417,10 +415,10 @@ SW2
 ***************************************************************************/
 
 ROM_START( metlclsh )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "cs04.bin",    0x00000, 0x8000, CRC(c2cc79a6) SHA1(0f586d4145afabbb45ea4865ed7a6590b14a2ab0) )
 	ROM_LOAD( "cs00.bin",    0x0a000, 0x2000, CRC(af0f2998) SHA1(09dd2516406168660d5cd3a36be1e5f0adbcdb8a) )
-	ROM_COPY( "main", 0x7ff0, 0xfff0, 0x10 )
+	ROM_COPY( "maincpu", 0x7ff0, 0xfff0, 0x10 )
 
 	ROM_REGION( 0x10000, "sub", 0 )
 	ROM_LOAD( "cs03.bin",    0x00000, 0x8000, CRC(51c4720c) SHA1(7fd93bdcf029e7d2509b73b32f61fddf85f3453f) )

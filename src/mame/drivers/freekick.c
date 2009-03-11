@@ -88,7 +88,7 @@ static READ8_HANDLER( spinner_r )
 
 static MACHINE_RESET( pbillrd )
 {
-	memory_configure_bank(machine, 1, 0, 2, memory_region(machine, "main") + 0x10000, 0x4000);
+	memory_configure_bank(machine, 1, 0, 2, memory_region(machine, "maincpu") + 0x10000, 0x4000);
 }
 
 static WRITE8_HANDLER( pbillrd_bankswitch_w )
@@ -195,10 +195,10 @@ static ADDRESS_MAP_START( pbillrd_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe002, 0xe003) AM_WRITE(coin_w)
 	AM_RANGE(0xe004, 0xe004) AM_WRITE(nmi_enable_w)
 	AM_RANGE(0xf000, 0xf000) AM_WRITE(pbillrd_bankswitch_w)
-	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(sn76496_0_w)
-	AM_RANGE(0xfc01, 0xfc01) AM_WRITE(sn76496_1_w)
-	AM_RANGE(0xfc02, 0xfc02) AM_WRITE(sn76496_2_w)
-	AM_RANGE(0xfc03, 0xfc03) AM_WRITE(sn76496_3_w)
+	AM_RANGE(0xfc00, 0xfc00) AM_DEVWRITE("sn1", sn76496_w)
+	AM_RANGE(0xfc01, 0xfc01) AM_DEVWRITE("sn2", sn76496_w)
+	AM_RANGE(0xfc02, 0xfc02) AM_DEVWRITE("sn3", sn76496_w)
+	AM_RANGE(0xfc03, 0xfc03) AM_DEVWRITE("sn4", sn76496_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( freekckb_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -206,8 +206,8 @@ static ADDRESS_MAP_START( freekckb_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd000, 0xdfff) AM_READ(SMH_RAM)
 	AM_RANGE(0xe000, 0xe7ff) AM_READ(SMH_RAM)	// tilemap
 	AM_RANGE(0xe800, 0xe8ff) AM_READ(SMH_RAM)	// sprites
-	AM_RANGE(0xec00, 0xec03) AM_DEVREAD(PPI8255, "ppi8255_0", ppi8255_r)
-	AM_RANGE(0xf000, 0xf003) AM_DEVREAD(PPI8255, "ppi8255_1", ppi8255_r)
+	AM_RANGE(0xec00, 0xec03) AM_DEVREAD("ppi8255_0", ppi8255_r)
+	AM_RANGE(0xf000, 0xf003) AM_DEVREAD("ppi8255_1", ppi8255_r)
 	AM_RANGE(0xf800, 0xf800) AM_READ_PORT("IN0")
 	AM_RANGE(0xf801, 0xf801) AM_READ_PORT("IN1")
 	AM_RANGE(0xf802, 0xf802) AM_READ(SMH_NOP)	//MUST return bit 0 = 0, otherwise game resets
@@ -219,16 +219,16 @@ static ADDRESS_MAP_START( freekckb_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd000, 0xdfff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(freek_videoram_w) AM_BASE(&freek_videoram)
 	AM_RANGE(0xe800, 0xe8ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xec00, 0xec03) AM_DEVWRITE(PPI8255, "ppi8255_0", ppi8255_w)
-	AM_RANGE(0xf000, 0xf003) AM_DEVWRITE(PPI8255, "ppi8255_1", ppi8255_w)
+	AM_RANGE(0xec00, 0xec03) AM_DEVWRITE("ppi8255_0", ppi8255_w)
+	AM_RANGE(0xf000, 0xf003) AM_DEVWRITE("ppi8255_1", ppi8255_w)
 	AM_RANGE(0xf800, 0xf801) AM_WRITE(flipscreen_w)
 	AM_RANGE(0xf802, 0xf803) AM_WRITE(coin_w)
 	AM_RANGE(0xf804, 0xf804) AM_WRITE(nmi_enable_w)
 	AM_RANGE(0xf806, 0xf806) AM_WRITE(spinner_select_w)
-	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(sn76496_0_w)
-	AM_RANGE(0xfc01, 0xfc01) AM_WRITE(sn76496_1_w)
-	AM_RANGE(0xfc02, 0xfc02) AM_WRITE(sn76496_2_w)
-	AM_RANGE(0xfc03, 0xfc03) AM_WRITE(sn76496_3_w)
+	AM_RANGE(0xfc00, 0xfc00) AM_DEVWRITE("sn1", sn76496_w)
+	AM_RANGE(0xfc01, 0xfc01) AM_DEVWRITE("sn2", sn76496_w)
+	AM_RANGE(0xfc02, 0xfc02) AM_DEVWRITE("sn3", sn76496_w)
+	AM_RANGE(0xfc03, 0xfc03) AM_DEVWRITE("sn4", sn76496_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gigas_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -252,10 +252,10 @@ static ADDRESS_MAP_START( gigas_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe004, 0xe004) AM_WRITE(nmi_enable_w)
 	AM_RANGE(0xe005, 0xe005) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xf000, 0xf000) AM_WRITE(SMH_NOP) //bankswitch ?
-	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(sn76496_0_w)
-	AM_RANGE(0xfc01, 0xfc01) AM_WRITE(sn76496_1_w)
-	AM_RANGE(0xfc02, 0xfc02) AM_WRITE(sn76496_2_w)
-	AM_RANGE(0xfc03, 0xfc03) AM_WRITE(sn76496_3_w)
+	AM_RANGE(0xfc00, 0xfc00) AM_DEVWRITE("sn1", sn76496_w)
+	AM_RANGE(0xfc01, 0xfc01) AM_DEVWRITE("sn2", sn76496_w)
+	AM_RANGE(0xfc02, 0xfc02) AM_DEVWRITE("sn3", sn76496_w)
+	AM_RANGE(0xfc03, 0xfc03) AM_DEVWRITE("sn4", sn76496_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gigas_io_map, ADDRESS_SPACE_IO, 8 )
@@ -569,20 +569,20 @@ static READ8_DEVICE_HANDLER( snd_rom_r )
 static const ppi8255_interface ppi8255_intf[2] =
 {
 	{
-		NULL,							/* Port A read */
-		NULL,							/* Port B read */
-		snd_rom_r,						/* Port C read */
-		snd_rom_addr_l_w,				/* Port A write */
-		snd_rom_addr_h_w,				/* Port B write */
-		NULL							/* Port C write */
+		DEVCB_NULL,							/* Port A read */
+		DEVCB_NULL,							/* Port B read */
+		DEVCB_HANDLER(snd_rom_r),			/* Port C read */
+		DEVCB_HANDLER(snd_rom_addr_l_w),	/* Port A write */
+		DEVCB_HANDLER(snd_rom_addr_h_w),	/* Port B write */
+		DEVCB_NULL							/* Port C write */
 	},
 	{
-		DEVICE8_PORT("DSW1"),			/* Port A read */
-		DEVICE8_PORT("DSW2"),			/* Port B read */
-		DEVICE8_PORT("DSW3"),			/* Port C read */
-		NULL,							/* Port A write */
-		NULL,							/* Port B write */
-		NULL							/* Port C write */
+		DEVCB_INPUT_PORT("DSW1"),			/* Port A read */
+		DEVCB_INPUT_PORT("DSW2"),			/* Port B read */
+		DEVCB_INPUT_PORT("DSW3"),			/* Port C read */
+		DEVCB_NULL,							/* Port A write */
+		DEVCB_NULL,							/* Port B write */
+		DEVCB_NULL							/* Port C write */
 	}
 };
 
@@ -632,15 +632,15 @@ GFXDECODE_END
  *************************************/
 
 static MACHINE_DRIVER_START( base )
-	MDRV_CPU_ADD("main",Z80, 18432000/6)	//confirmed
+	MDRV_CPU_ADD("maincpu",Z80, 18432000/6)	//confirmed
 	MDRV_CPU_PROGRAM_MAP(pbillrd_readmem,pbillrd_writemem)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, 50*3) //??
-	MDRV_CPU_VBLANK_INT("main", freekick_irqgen)
+	MDRV_CPU_VBLANK_INT("screen", freekick_irqgen)
 
 	MDRV_GFXDECODE(freekick)
 
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -678,7 +678,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( freekckb )
 	MDRV_IMPORT_FROM(base)
 
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(freekckb_readmem,freekckb_writemem)
 	MDRV_CPU_IO_MAP(freekckb_io_map,0)
 
@@ -691,7 +691,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( gigas )
 	MDRV_IMPORT_FROM(base)
 
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(gigas_readmem,gigas_writemem)
 	MDRV_CPU_IO_MAP(gigas_io_map,0)
 
@@ -700,7 +700,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( oigas )
 	MDRV_IMPORT_FROM(gigas)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(oigas_io_map,0)
 MACHINE_DRIVER_END
 
@@ -713,7 +713,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( pbillrd )
-	ROM_REGION( 0x18000, "main", 0 ) /* Z80 Code */
+	ROM_REGION( 0x18000, "maincpu", 0 ) /* Z80 Code */
 	ROM_LOAD( "pb.18", 0x00000, 0x4000, CRC(9e6275ac) SHA1(482e845e7fb4190da483155bd908ad470373cd5c) )
 	ROM_LOAD( "pb.7",  0x04000, 0x4000, CRC(dd438431) SHA1(07a950e38b3f627ecf95e5831e5480abb337a010) )
 	ROM_CONTINUE(      0x10000, 0x4000 )
@@ -739,7 +739,7 @@ ROM_START( pbillrd )
 ROM_END
 
 ROM_START( pbillrds ) /* Encrytped with a Sega MC-8123 (317-0030) CPU modual */
-	ROM_REGION( 0x18000, "main", 0 ) /* Z80 Code */
+	ROM_REGION( 0x18000, "maincpu", 0 ) /* Z80 Code */
 	ROM_LOAD( "10626.8n",  0x00000, 0x4000, CRC(51d725e6) SHA1(d7007c983530780e7fa3686cb7a6d7c382c802fa) ) /* encrypted */
 	ROM_LOAD( "10625.8r",  0x04000, 0x4000, CRC(8977c724) SHA1(f00835a04dc6fa7d8c1e382dace515f2aa7d6f44) ) /* encrypted */
 	ROM_CONTINUE(          0x10000, 0x4000 )
@@ -776,7 +776,7 @@ from an original counter run board before they all die :-(
 */
 
 ROM_START( freekick )
-	ROM_REGION( 0x10000, "main", 0 ) /* Z80 Code */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* Z80 Code */
 	// Custom CPU (pack) No. NS6201-A 1987.9 FREE KICK (also found NS6201-A 1987.10 FREE KICK)
 	ROM_LOAD( "freekick.cpu", 0x00000, 0x10000, NO_DUMP ) // missing, might be the same as the bootleg but not confirmed
 
@@ -803,7 +803,7 @@ ROM_START( freekick )
 ROM_END
 
 ROM_START( freekckb )
-	ROM_REGION( 0x10000, "main", 0 ) /* Z80 Code */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* Z80 Code */
 	ROM_LOAD( "freekbl8.q7", 0x00000, 0x10000, CRC(4208cfe5) SHA1(21628cbe8a217fbae30a6c24c9cc4c790fe45d65) ) // this was on the bootleg, would normally be battery backed inside cpu?
 
 	ROM_REGION( 0x08000, "user1", 0 ) /* sound data */
@@ -829,7 +829,7 @@ ROM_START( freekckb )
 ROM_END
 
 ROM_START( freekcb2 )
-	ROM_REGION( 0x10000, "main", 0 ) /* Z80 Code */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* Z80 Code */
 	ROM_LOAD( "15.bin", 0x00000, 0x10000, CRC(6569f2b0) SHA1(9306e316e6ae659bae3759a12a4e445b555a8893) ) // this was on the bootleg, would normally be battery backed inside cpu?
 
 	ROM_REGION( 0x08000, "user1", 0 ) /* sound data */
@@ -865,7 +865,7 @@ ROM_END
 
 
 ROM_START( countrun )
-	ROM_REGION( 0x10000, "main", 0 ) /* Z80 Code */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* Z80 Code */
 	//  Custom CPU (pack) No. NS6201-A 1988.3 COUNTER RUN
 	ROM_LOAD( "countrun.cpu", 0x00000, 0x10000, NO_DUMP ) // missing
 
@@ -892,7 +892,7 @@ ROM_START( countrun )
 ROM_END
 
 ROM_START( countrb2 )
-	ROM_REGION( 0x10000, "main", 0 ) /* Z80 Code */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* Z80 Code */
 	ROM_LOAD( "crunbl.8", 0x00000, 0x10000, CRC(318f95d9) SHA1(f2386b9d26d1bc98728aad9e257363b381043dc9) ) // encrypted? bad? its strange anyway
 
 	ROM_REGION( 0x01000, "cpu1", 0 )
@@ -921,7 +921,7 @@ ROM_START( countrb2 )
 ROM_END
 
 ROM_START( countrnb )
-	ROM_REGION( 0x10000, "main", 0 ) /* Z80 Code */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* Z80 Code */
 	ROM_LOAD( "rom_cpu.bin", 0x00000, 0x10000, CRC(f65639ae) SHA1(faa81607858d49559098c887ac847722df955a76) )
 
 	ROM_REGION( 0x08000, "user1", 0 ) /* sound data */
@@ -947,7 +947,7 @@ ROM_START( countrnb )
 ROM_END
 
 ROM_START( gigasm2b )
-	ROM_REGION( 2*0x10000, "main", 0 )
+	ROM_REGION( 2*0x10000, "maincpu", 0 )
 	ROM_LOAD( "8.rom", 0x10000, 0x4000, CRC(c00a4a6c) SHA1(0d1bb849c9bfe4e92ad70e4ef19da494c0bd7ba8) )
 	ROM_CONTINUE(      0x00000, 0x4000 )
 	ROM_LOAD( "7.rom", 0x14000, 0x4000, CRC(92bd9045) SHA1(e4d8a94deeb795bb284ca0bd211ed40ed498b172) )
@@ -989,7 +989,7 @@ Note: MCU dump has fixed bits, but read is good. If not correct, it's protected.
 */
 
 ROM_START( gigasb )
-	ROM_REGION( 2*0x10000, "main", 0 )
+	ROM_REGION( 2*0x10000, "maincpu", 0 )
 	ROM_LOAD( "g-7",   0x10000, 0x4000, CRC(daf4e88d) SHA1(391dff914ce8e9b7975fc8827c066d7db16c4171) )
 	ROM_CONTINUE(      0x00000, 0x4000 )
 	ROM_LOAD( "g-8",   0x14000, 0x8000, CRC(4ab4c1f1) SHA1(63d8f489c7a8271e99a66d97e6eb0eb252cb2b67) )
@@ -1015,7 +1015,7 @@ ROM_START( gigasb )
 ROM_END
 
 ROM_START( oigas )
-	ROM_REGION( 2*0x10000, "main", 0 )
+	ROM_REGION( 2*0x10000, "maincpu", 0 )
 	ROM_LOAD( "rom.7",   0x10000, 0x4000, CRC(e5bc04cc) SHA1(ffbd416313a9e49d2f9a7268d5ef48a8b641e480) )
 	ROM_CONTINUE(        0x00000, 0x4000)
 	ROM_LOAD( "rom.8",   0x04000, 0x8000, CRC(c199060d) SHA1(de8f1e0f941533abbbed25b595b1d51fadbb428d) )
@@ -1052,14 +1052,14 @@ ROM_END
 
 static DRIVER_INIT(gigas)
 {
-	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
-	memory_set_decrypted_region(space, 0x0000, 0x7fff, memory_region(machine, "main") + 0x10000);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	memory_set_decrypted_region(space, 0x0000, 0x7fff, memory_region(machine, "maincpu") + 0x10000);
 }
 
 
 static DRIVER_INIT( pbillrds )
 {
-	mc8123_decrypt_rom(machine, "main", "user1", 1, 2);
+	mc8123_decrypt_rom(machine, "maincpu", "user1", 1, 2);
 }
 
 

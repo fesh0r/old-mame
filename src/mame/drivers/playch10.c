@@ -361,19 +361,19 @@ static WRITE8_HANDLER( time_w )
 	popmessage("Time: %d%d%d%d",timedata[3],timedata[2],timedata[1],timedata[0]);
 }
 
-static READ8_HANDLER( psg_4015_r )
+static READ8_DEVICE_HANDLER( psg_4015_r )
 {
-	return nes_psg_0_r(space, 0x15);
+	return nes_psg_r(device, 0x15);
 }
 
-static WRITE8_HANDLER( psg_4015_w )
+static WRITE8_DEVICE_HANDLER( psg_4015_w )
 {
-	nes_psg_0_w(space, 0x15, data);
+	nes_psg_w(device, 0x15, data);
 }
 
-static WRITE8_HANDLER( psg_4017_w )
+static WRITE8_DEVICE_HANDLER( psg_4017_w )
 {
-	nes_psg_0_w(space, 0x17, data);
+	nes_psg_w(device, 0x17, data);
 }
 
 /******************************************************************************/
@@ -408,12 +408,12 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( cart_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_MIRROR(0x1800) AM_BASE(&work_ram)
 	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(ppu2c0x_0_r, ppu2c0x_0_w)
-	AM_RANGE(0x4011, 0x4011) AM_WRITE(dac_0_data_w)
-	AM_RANGE(0x4000, 0x4013) AM_READWRITE(nes_psg_0_r, nes_psg_0_w)
+	AM_RANGE(0x4011, 0x4011) AM_DEVWRITE("dac", dac_w)
+	AM_RANGE(0x4000, 0x4013) AM_DEVREADWRITE("nes", nes_psg_r, nes_psg_w)
 	AM_RANGE(0x4014, 0x4014) AM_WRITE(sprite_dma_w)
-	AM_RANGE(0x4015, 0x4015) AM_READWRITE(psg_4015_r, psg_4015_w)  /* PSG status / first control register */
+	AM_RANGE(0x4015, 0x4015) AM_DEVREADWRITE("nes", psg_4015_r, psg_4015_w)  /* PSG status / first control register */
 	AM_RANGE(0x4016, 0x4016) AM_READWRITE(pc10_in0_r, pc10_in0_w)
-	AM_RANGE(0x4017, 0x4017) AM_READWRITE(pc10_in1_r, psg_4017_w) /* IN1 - input port 2 / PSG second control register */
+	AM_RANGE(0x4017, 0x4017) AM_READ(pc10_in1_r) AM_DEVWRITE("nes", psg_4017_w) /* IN1 - input port 2 / PSG second control register */
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -686,7 +686,7 @@ static const nes_interface nes_config =
 
 static MACHINE_DRIVER_START( playch10 )
 	// basic machine hardware
-	MDRV_CPU_ADD("main", Z80, 8000000/2)	// 4 MHz
+	MDRV_CPU_ADD("maincpu", Z80, 8000000/2)	// 4 MHz
 	MDRV_CPU_PROGRAM_MAP(bios_map, 0)
 	MDRV_CPU_IO_MAP(bios_io_map, 0)
 	MDRV_CPU_VBLANK_INT("top", playch10_interrupt)
@@ -747,7 +747,7 @@ MACHINE_DRIVER_END
 	ROMX_LOAD(name, offset, length, hash, ROM_BIOS(bios+1)) /* Note '+1' */
 
 #define BIOS_CPU											\
-	ROM_REGION( 0x10000, "main", 0 )						\
+	ROM_REGION( 0x10000, "maincpu", 0 )						\
 	ROM_SYSTEM_BIOS( 0, "dual",   "Dual Monitor Version" ) \
 	ROM_LOAD_BIOS( 0, "pch1-c.8t", 0x00000, 0x4000, CRC(d52fa07a) SHA1(55cabf52ae10c050c2229081a80b9fe5454ab8c5) ) \
 	ROM_SYSTEM_BIOS( 1, "single", "Single Monitor Version" ) \

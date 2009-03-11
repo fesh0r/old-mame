@@ -146,7 +146,7 @@ static WRITE8_HANDLER( sound_int_state_w )
 {
 	/* top bit controls BSMT2000 reset */
 	if (!(sound_int_state & 0x80) && (data & 0x80))
-		sndti_reset(SOUND_BSMT2000, 0);
+		devtag_reset(space->machine, "bsmt");
 
 	/* also clears interrupts */
 	cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
@@ -167,11 +167,11 @@ static READ8_HANDLER( bsmt_ready_r )
 }
 
 
-static WRITE8_HANDLER( bsmt2000_port_w )
+static WRITE8_DEVICE_HANDLER( bsmt2000_port_w )
 {
 	UINT16 reg = offset >> 8;
 	UINT16 val = ((offset & 0xff) << 8) | data;
-	bsmt2000_data_0_w(space, reg, val, 0xffff);
+	bsmt2000_data_w(device, reg, val, 0xffff);
 }
 
 
@@ -224,7 +224,7 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(bsmt2000_port_w)
+	AM_RANGE(0x0000, 0x7fff) AM_DEVWRITE("bsmt", bsmt2000_port_w)
 	AM_RANGE(0x8000, 0x8000) AM_READWRITE(sound_data_r, sound_data_w)
 	AM_RANGE(0x8002, 0x8002) AM_WRITE(sound_int_state_w)
 	AM_RANGE(0x8004, 0x8004) AM_READ(sound_data_ready_r)
@@ -320,7 +320,7 @@ INPUT_PORTS_END
 static const tms34010_config tms_config =
 {
 	FALSE,							/* halt on reset */
-	"main",							/* the screen operated on */
+	"screen",						/* the screen operated on */
 	VIDEO_CLOCK/2,					/* pixel clock */
 	1,								/* pixels per clock */
 	btoads_scanline_update,			/* scanline callback */
@@ -339,11 +339,11 @@ static const tms34010_config tms_config =
 
 static MACHINE_DRIVER_START( btoads )
 
-	MDRV_CPU_ADD("main", TMS34020, CPU_CLOCK/2)
+	MDRV_CPU_ADD("maincpu", TMS34020, CPU_CLOCK/2)
 	MDRV_CPU_CONFIG(tms_config)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
-	MDRV_CPU_ADD("audio", Z80, SOUND_CLOCK/4)
+	MDRV_CPU_ADD("audiocpu", Z80, SOUND_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_io_map,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_assert, 183)
@@ -356,16 +356,16 @@ static MACHINE_DRIVER_START( btoads )
 	MDRV_VIDEO_START(btoads)
 	MDRV_VIDEO_UPDATE(tms340x0)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(VIDEO_CLOCK/2, 640, 0, 512, 257, 0, 224)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("bsmt", BSMT2000, SOUND_CLOCK)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -377,7 +377,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( btoads )
-	ROM_REGION( 0x10000, "audio", 0 )	/* sound program, M27C256B rom */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* sound program, M27C256B rom */
 	ROM_LOAD( "bt.u102", 0x0000, 0x8000, CRC(a90b911a) SHA1(6ec25161e68df1c9870d48cc2b1f85cd1a49aba9) )
 
 	ROM_REGION16_LE( 0x800000, "user1", 0 )	/* 34020 code, M27C322 roms */

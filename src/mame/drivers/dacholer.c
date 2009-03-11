@@ -136,12 +136,9 @@ static ADDRESS_MAP_START( snd_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x08, 0x08) AM_WRITE(snd_irq_w)
 	AM_RANGE(0x0c, 0x0c) AM_WRITE(snd_ack_w)
 	AM_RANGE(0x80, 0x80) AM_WRITE(adpcm_w)
-	AM_RANGE(0x86, 0x86) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x87, 0x87) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x8a, 0x8a) AM_WRITE(ay8910_write_port_1_w)
-	AM_RANGE(0x8b, 0x8b) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0x8e, 0x8e) AM_WRITE(ay8910_write_port_2_w)
-	AM_RANGE(0x8f, 0x8f) AM_WRITE(ay8910_control_port_2_w)
+	AM_RANGE(0x86, 0x87) AM_DEVWRITE("ay1", ay8910_data_address_w)
+	AM_RANGE(0x8a, 0x8b) AM_DEVWRITE("ay2", ay8910_data_address_w)
+	AM_RANGE(0x8e, 0x8f) AM_DEVWRITE("ay3", ay8910_data_address_w)
 ADDRESS_MAP_END
 
 
@@ -384,7 +381,7 @@ static void adpcm_int(const device_config *device)
 {
 	if(snd_interrupt_enable == 1 || (snd_interrupt_enable ==0 && msm_toggle==1))
 	{
-		msm5205_data_w(0,msm_data >> 4);
+		msm5205_data_w(device,msm_data >> 4);
 		msm_data<<=4;
 		msm_toggle^=1;
 		if (msm_toggle==0)
@@ -403,18 +400,18 @@ static const msm5205_interface msm_interface =
 static MACHINE_DRIVER_START( dacholer )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 4000000)	/* ? */
+	MDRV_CPU_ADD("maincpu", Z80, 4000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(main_map, 0)
 	MDRV_CPU_IO_MAP(main_io_map, 0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, 4000000)	/* ? */
+	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(snd_map, 0)
 	MDRV_CPU_IO_MAP(snd_io_map, 0)
-	MDRV_CPU_VBLANK_INT("main",sound_irq)
+	MDRV_CPU_VBLANK_INT("screen",sound_irq)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -446,13 +443,13 @@ static MACHINE_DRIVER_START( dacholer )
 MACHINE_DRIVER_END
 
 ROM_START( dacholer )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "dacholer8.rom",  0x0000, 0x2000, CRC(8b73a441) SHA1(6de9e4845b9063af8df42aa82ad536737190582c) )
 	ROM_LOAD( "dacholer9.rom",  0x2000, 0x2000, CRC(9499289f) SHA1(bcfe554eb1f8e686d193050c18278b6bf93f179f) )
 	ROM_LOAD( "dacholer10.rom", 0x4000, 0x2000, CRC(39d37281) SHA1(daaf84079dd18dd854946e066e2dcde994bcbba4) )
 	ROM_LOAD( "dacholer11.rom", 0x6000, 0x2000, CRC(bb781ea4) SHA1(170966c4bcd0246968850d908a69f81ea1e136d5) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "dacholer12.rom", 0x0000, 0x2000, CRC(cc3a4b68) SHA1(29344dc10c5d236f9a452196b3809565b4101327) )
 	ROM_LOAD( "dacholer13.rom", 0x2000, 0x2000, CRC(aa18e126) SHA1(e6af334188d0edbc37a7fb4a00a325b2039172b7) )
 	ROM_LOAD( "dacholer14.rom", 0x4000, 0x2000, CRC(3b0131c7) SHA1(338ca2c2c7480e1cd0bb15ee6b90d683ce06f0fd) )
@@ -475,13 +472,13 @@ ROM_START( dacholer )
 ROM_END
 
 ROM_START( kickboy )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "kickboy1.rom", 0x0000, 0x2000, CRC(525746f1) SHA1(4044f880f271f77b56b2d8964ab97d34fb507c7a) )
 	ROM_LOAD( "kickboy2.rom", 0x2000, 0x2000, CRC(9d091725) SHA1(827cea1c371094720b47fda271945cee20c9d956) )
 	ROM_LOAD( "kickboy3.rom", 0x4000, 0x2000, CRC(d61b6ff6) SHA1(071ab4c05ed54526144f2ba751c111e8c4bdc61a) )
 	ROM_LOAD( "kickboy4.rom", 0x6000, 0x2000, CRC(a8985bfe) SHA1(a8e466a7df381dfc8dd2e3483eba0215bfec7551) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "kickboy5.rom", 0x0000, 0x2000, CRC(cc3a4b68) SHA1(29344dc10c5d236f9a452196b3809565b4101327) )
 	ROM_LOAD( "kickboy6.rom", 0x2000, 0x2000, CRC(aa18e126) SHA1(e6af334188d0edbc37a7fb4a00a325b2039172b7) )
 	ROM_LOAD( "kickboy7.rom", 0x4000, 0x2000, CRC(3b0131c7) SHA1(338ca2c2c7480e1cd0bb15ee6b90d683ce06f0fd) )

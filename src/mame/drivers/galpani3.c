@@ -121,8 +121,6 @@ static INTERRUPT_GEN( galpani3_vblank ) // 2, 3, 5 ?
 }
 
 
-extern int suprnova_alt_enable_sprites;
-
 static VIDEO_START(galpani3)
 {
 	/* so we can use suprnova.c */
@@ -535,7 +533,7 @@ static READ16_HANDLER( galpani3_mcu_status_r )
 
 // might be blitter regs? - there are 3, probably GRAP2 chips
 
-READ16_HANDLER( galpani3_regs1_r )
+static READ16_HANDLER( galpani3_regs1_r )
 {
 	switch (offset)
 	{
@@ -560,7 +558,7 @@ READ16_HANDLER( galpani3_regs1_r )
 }
 
 
-READ16_HANDLER( galpani3_regs2_r )
+static READ16_HANDLER( galpani3_regs2_r )
 {
 	switch (offset)
 	{
@@ -585,7 +583,7 @@ READ16_HANDLER( galpani3_regs2_r )
 }
 
 
-READ16_HANDLER( galpani3_regs3_r )
+static READ16_HANDLER( galpani3_regs3_r )
 {
 	switch (offset)
 	{
@@ -610,11 +608,11 @@ READ16_HANDLER( galpani3_regs3_r )
 }
 
 
-UINT16 galpani3_regs1_address_regs[0x20];
-UINT16 galpani3_regs2_address_regs[0x20];
-UINT16 galpani3_regs3_address_regs[0x20];
+static UINT16 galpani3_regs1_address_regs[0x20];
+static UINT16 galpani3_regs2_address_regs[0x20];
+static UINT16 galpani3_regs3_address_regs[0x20];
 
-void gp3_do_rle(UINT32 address, UINT16*framebuffer, UINT8* rledata)
+static void gp3_do_rle(UINT32 address, UINT16*framebuffer, UINT8* rledata)
 {
 	int rle_count = 0;
 	int normal_count = 0;
@@ -664,13 +662,13 @@ void gp3_do_rle(UINT32 address, UINT16*framebuffer, UINT8* rledata)
 
 }
 
-WRITE16_HANDLER( galpani3_regs1_address_w )
+static WRITE16_HANDLER( galpani3_regs1_address_w )
 {
 	logerror("galpani3_regs1_address_w %04x\n",data);
 	COMBINE_DATA(&galpani3_regs1_address_regs[offset]);
 }
 
-WRITE16_HANDLER( galpani3_regs1_go_w )
+static WRITE16_HANDLER( galpani3_regs1_go_w )
 {
 	UINT32 address = galpani3_regs1_address_regs[1]| (galpani3_regs1_address_regs[0]<<16);
 	UINT8* rledata = memory_region(space->machine,"gfx2");
@@ -680,13 +678,13 @@ WRITE16_HANDLER( galpani3_regs1_go_w )
 }
 
 
-WRITE16_HANDLER( galpani3_regs2_address_w )
+static WRITE16_HANDLER( galpani3_regs2_address_w )
 {
 	logerror("galpani3_regs2_address_w %04x\n",data);
 	COMBINE_DATA(&galpani3_regs2_address_regs[offset]);
 }
 
-WRITE16_HANDLER( galpani3_regs2_go_w )
+static WRITE16_HANDLER( galpani3_regs2_go_w )
 {
 	UINT32 address = galpani3_regs2_address_regs[1]| (galpani3_regs2_address_regs[0]<<16);
 	UINT8* rledata = memory_region(space->machine,"gfx2");
@@ -700,13 +698,13 @@ WRITE16_HANDLER( galpani3_regs2_go_w )
 
 
 
-WRITE16_HANDLER( galpani3_regs3_address_w )
+static WRITE16_HANDLER( galpani3_regs3_address_w )
 {
 	logerror("galpani3_regs3_address_w %04x\n",data);
 	COMBINE_DATA(&galpani3_regs3_address_regs[offset]);
 }
 
-WRITE16_HANDLER( galpani3_regs3_go_w )
+static WRITE16_HANDLER( galpani3_regs3_go_w )
 {
 	UINT32 address =  galpani3_regs3_address_regs[1]| (galpani3_regs3_address_regs[0]<<16);
 	UINT8* rledata = memory_region(space->machine,"gfx2");
@@ -891,8 +889,7 @@ static ADDRESS_MAP_START( galpani3_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xf00012, 0xf00013) AM_READ_PORT("P2")
 	AM_RANGE(0xf00014, 0xf00015) AM_READ_PORT("COIN")
 	AM_RANGE(0xf00016, 0xf00017) AM_NOP // ? read, but overwritten
-	AM_RANGE(0xf00020, 0xf00021) AM_WRITE(ymz280b_register_0_lsb_w)	// sound
-	AM_RANGE(0xf00022, 0xf00023) AM_WRITE(ymz280b_data_0_lsb_w)		//
+	AM_RANGE(0xf00020, 0xf00023) AM_DEVWRITE8("ymz", ymz280b_w, 0x00ff)	// sound
 	AM_RANGE(0xf00040, 0xf00041) AM_READWRITE(watchdog_reset16_r, watchdog_reset16_w)	// watchdog
 	AM_RANGE(0xf00050, 0xf00051) AM_NOP // ? written once (3rd opcode, $30.b)
 ADDRESS_MAP_END
@@ -904,12 +901,12 @@ static const ymz280b_interface ymz280b_intf =
 };
 
 static MACHINE_DRIVER_START( galpani3 )
-	MDRV_CPU_ADD("main", M68000, 16000000)	 // ? (from which clock?)
+	MDRV_CPU_ADD("maincpu", M68000, 16000000)	 // ? (from which clock?)
 	MDRV_CPU_PROGRAM_MAP(galpani3_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(galpani3_vblank, 3)
 
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
@@ -933,7 +930,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( galpani3 )
-	ROM_REGION( 0x180000, "main", 0 ) /* 68000 Code */
+	ROM_REGION( 0x180000, "maincpu", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "g3p0j1.71",  0x000000, 0x080000, CRC(52893326) SHA1(78fdbf3436a4ba754d7608fedbbede5c719a4505) )
 	ROM_LOAD16_BYTE( "g3p1j1.102", 0x000001, 0x080000, CRC(05f935b4) SHA1(81e78875585bcdadad1c302614b2708e60563662) )
 

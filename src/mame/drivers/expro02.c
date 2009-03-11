@@ -357,7 +357,7 @@ static ADDRESS_MAP_START( galsnew_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM // main program
 	AM_RANGE(0x080000, 0x0fffff) AM_ROM AM_REGION("user2",0) // other data
 	AM_RANGE(0x100000, 0x3fffff) AM_ROM AM_REGION("user1",0) // main data
-	AM_RANGE(0x400000, 0x400001) AM_READWRITE(okim6295_status_0_lsb_r,okim6295_data_0_lsb_w)
+	AM_RANGE(0x400000, 0x400001) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff)
 
 
 	AM_RANGE(0x500000, 0x51ffff) AM_RAM AM_BASE(&galsnew_bg_pixram)
@@ -418,7 +418,7 @@ static ADDRESS_MAP_START( fantasia_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xd80000, 0xd80001) AM_WRITE(galsnew_vram_1_bank_w)	/* ??? */
 	//AM_RANGE(0xe00000, 0xe00015) AM_READWRITE(galpanib_calc_r,galpanib_calc_w) /* CALC1 MCU interaction (simulated) */
 	AM_RANGE(0xe80000, 0xe80001) AM_WRITE(galsnew_vram_0_bank_w)	/* ??? */
-	AM_RANGE(0xf00000, 0xf00001) AM_READWRITE(okim6295_status_0_msb_r,okim6295_data_0_msb_w)
+	AM_RANGE(0xf00000, 0xf00001) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0xff00)
 ADDRESS_MAP_END
 
 /*************************************
@@ -478,14 +478,14 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( galsnew )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 12000000)
+	MDRV_CPU_ADD("maincpu", M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(galsnew_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(galsnew_interrupt,3)
 
 	/* CALC01 MCU @ 16Mhz (unknown type, simulated) */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -517,7 +517,7 @@ static MACHINE_DRIVER_START( fantasia )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM( galsnew )
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(fantasia_map,0)
 
 	MDRV_WATCHDOG_TIME_INIT(SEC(0))	/* a guess, and certainly wrong */
@@ -531,7 +531,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( galsnew ) /* EXPRO-02 PCB */
-	ROM_REGION( 0x40000, "main", 0 )	/* 68000 code */
+	ROM_REGION( 0x40000, "maincpu", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "pm110u_u87-01.u87", 0x000000, 0x20000, CRC(b793a57d) SHA1(12d57b2b4add532f0d0453c25b30d34b3449d717) ) /* US region */
 	ROM_LOAD16_BYTE( "pm109u_u88-01.u88", 0x000001, 0x20000, CRC(35b936f8) SHA1(d272067f10542d511a777802cafa4d72b93fa5e8) )
 
@@ -570,7 +570,7 @@ ROM_START( galsnew ) /* EXPRO-02 PCB */
 ROM_END
 
 ROM_START( galsnewa ) /* EXPRO-02 PCB */
-	ROM_REGION( 0x40000, "main", 0 )
+	ROM_REGION( 0x40000, "maincpu", 0 )
 	/* 68000 code */
 	ROM_LOAD16_BYTE( "pm110e.u87-01",  0x000000, 0x20000, CRC(34e1ee0d) SHA1(567df65b04667a6d35725c4a131fb174acb3ad0a) ) /* Export region */
 	ROM_LOAD16_BYTE( "pm109e.u88-01",  0x000001, 0x20000, CRC(c694255a) SHA1(16faf5ea5ff69a0e7a981021ea5fc09a0aefd7cf) )
@@ -609,7 +609,7 @@ ROM_START( galsnewa ) /* EXPRO-02 PCB */
 ROM_END
 
 ROM_START( galsnewj ) /* EXPRO-02 PCB */
-	ROM_REGION( 0x40000, "main", 0 )
+	ROM_REGION( 0x40000, "maincpu", 0 )
 	/* 68000 code */
 	ROM_LOAD16_BYTE( "pm110j.u87", 0x000000, 0x20000, CRC(220b6df5) SHA1(d653b67bc66ca341bc660c2bb39b05dcf186fcb7) ) /* Japan region */
 	ROM_LOAD16_BYTE( "pm109j.u88", 0x000001, 0x20000, CRC(17721444) SHA1(9d97fe1ddac99105798fc22375a0b89ab316459a) )
@@ -649,7 +649,7 @@ ROM_END
 
 
 ROM_START( fantasia )
-	ROM_REGION( 0x500000, "main", 0 )	/* 68000 code */
+	ROM_REGION( 0x500000, "maincpu", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "prog2_16.rom", 0x000000, 0x80000, CRC(e27c6c57) SHA1(420b66928c46e76fa2496f221691dd6c34542287) )
 	ROM_LOAD16_BYTE( "prog1_13.rom", 0x000001, 0x80000, CRC(68d27413) SHA1(84cb7d6523325496469d621f6f4da1b719162147) )
 	ROM_LOAD16_BYTE( "iscr6_09.rom", 0x100000, 0x80000, CRC(2a588393) SHA1(ef66ed94dd40a95a9b0fb5c3b075c1f654f60927) )

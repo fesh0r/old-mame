@@ -59,8 +59,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x4fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xe800, 0xe800) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0xe801, 0xe801) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
+	AM_RANGE(0xe800, 0xe800) AM_DEVWRITE("crtc", mc6845_address_w)
+	AM_RANGE(0xe801, 0xe801) AM_DEVWRITE("crtc", mc6845_register_w)
 	AM_RANGE(0xf000, 0xffff) AM_WRITE(SMH_RAM) AM_BASE(&carrera_tileram)
 ADDRESS_MAP_END
 
@@ -74,8 +74,7 @@ static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x04, 0x04) AM_READ_PORT("IN4")
 	AM_RANGE(0x05, 0x05) AM_READ_PORT("IN5")
 	AM_RANGE(0x06, 0x06) AM_WRITE(SMH_NOP) // ?
-	AM_RANGE(0x08, 0x08) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x09, 0x09) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x08, 0x09) AM_DEVWRITE("ay", ay8910_address_data_w)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( carrera )
@@ -259,9 +258,9 @@ static VIDEO_UPDATE(carrera)
 	return 0;
 }
 
-static READ8_HANDLER( unknown_r )
+static READ8_DEVICE_HANDLER( unknown_r )
 {
-	return mame_rand(space->machine);
+	return mame_rand(device->machine);
 }
 
 /* these are set as input, but I have no idea which input port it uses is for the AY */
@@ -269,10 +268,10 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	unknown_r,
-	unknown_r,
-	NULL,
-	NULL
+	DEVCB_HANDLER(unknown_r),
+	DEVCB_HANDLER(unknown_r),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static PALETTE_INIT(carrera)
@@ -287,7 +286,7 @@ static PALETTE_INIT(carrera)
 
 static const mc6845_interface mc6845_intf =
 {
-	"main",		/* screen we are acting on */
+	"screen",	/* screen we are acting on */
 	8,			/* number of pixels per video memory address */
 	NULL,		/* before pixel update callback */
 	NULL,		/* row update callback */
@@ -300,13 +299,13 @@ static const mc6845_interface mc6845_intf =
 
 static MACHINE_DRIVER_START( carrera )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, MASTER_CLOCK / 6)
+	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK / 6)
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
 	MDRV_CPU_IO_MAP(io_map, 0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -331,7 +330,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( carrera )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "27512.ic22", 0x00000, 0x10000, CRC(2385b9c8) SHA1(12d4397779e074096fbb23b114985f104366b79c) )
 
 	ROM_REGION( 0x50000, "gfx1", 0 )

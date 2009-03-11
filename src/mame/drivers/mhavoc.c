@@ -192,8 +192,6 @@
 #include "sound/pokey.h"
 #include "mhavoc.h"
 
-static UINT8 speech_write_buffer;
-
 /*************************************
  *
  *  Alpha One: dual POKEY?
@@ -207,9 +205,9 @@ static READ8_HANDLER( dual_pokey_r )
 	int pokey_reg = (offset % 8) | control;
 
 	if (pokey_num == 0)
-		return pokey1_r(space, pokey_reg);
+		return pokey_r(devtag_get_device(space->machine, "pokey1"), pokey_reg);
 	else
-		return pokey2_r(space, pokey_reg);
+		return pokey_r(devtag_get_device(space->machine, "pokey2"), pokey_reg);
 }
 
 
@@ -220,28 +218,11 @@ static WRITE8_HANDLER( dual_pokey_w )
 	int pokey_reg = (offset % 8) | control;
 
 	if (pokey_num == 0)
-		pokey1_w(space, pokey_reg, data);
+		pokey_w(devtag_get_device(space->machine, "pokey1"), pokey_reg, data);
 	else
-		pokey2_w(space, pokey_reg, data);
+		pokey_w(devtag_get_device(space->machine, "pokey2"), pokey_reg, data);
 }
 
-
-/*************************************
- *
- *  Speech access
- *
- *************************************/
-
-static WRITE8_HANDLER( speech_data_w )
-{
-	speech_write_buffer = data;
-}
-
-
-static WRITE8_HANDLER( speech_strobe_w )
-{
-	tms5220_data_w(space, 0, speech_write_buffer);
-}
 
 /*************************************
  *
@@ -479,8 +460,8 @@ INPUT_PORTS_END
 
 static const pokey_interface pokey_config =
 {
-	{ 0 },
-	input_port_3_r
+	{ DEVCB_NULL },
+	DEVCB_INPUT_PORT("DSW1")
 };
 
 
@@ -503,7 +484,7 @@ static MACHINE_DRIVER_START( mhavoc )
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", VECTOR)
+	MDRV_SCREEN_ADD("screen", VECTOR)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_SIZE(400, 300)
 	MDRV_SCREEN_VISIBLE_AREA(0, 300, 0, 260)
@@ -514,17 +495,17 @@ static MACHINE_DRIVER_START( mhavoc )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD("pokey.1", POKEY, MHAVOC_CLOCK_1_25M)
+	MDRV_SOUND_ADD("pokey1", POKEY, MHAVOC_CLOCK_1_25M)
 	MDRV_SOUND_CONFIG(pokey_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD("pokey.2", POKEY, MHAVOC_CLOCK_1_25M)
+	MDRV_SOUND_ADD("pokey2", POKEY, MHAVOC_CLOCK_1_25M)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD("pokey.3", POKEY, MHAVOC_CLOCK_1_25M)
+	MDRV_SOUND_ADD("pokey3", POKEY, MHAVOC_CLOCK_1_25M)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD("pokey.4", POKEY, MHAVOC_CLOCK_1_25M)
+	MDRV_SOUND_ADD("pokey4", POKEY, MHAVOC_CLOCK_1_25M)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
 
@@ -545,18 +526,18 @@ static MACHINE_DRIVER_START( alphaone )
 	MDRV_CPU_PROGRAM_MAP(alphaone_map, 0)
 	MDRV_CPU_REMOVE("gamma")
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 580, 0, 500)
 
 	/* sound hardware */
-	MDRV_SOUND_REPLACE("pokey.1", POKEY, MHAVOC_CLOCK_1_25M)
+	MDRV_SOUND_REPLACE("pokey1", POKEY, MHAVOC_CLOCK_1_25M)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_REPLACE("pokey.2", POKEY, MHAVOC_CLOCK_1_25M)
+	MDRV_SOUND_REPLACE("pokey2", POKEY, MHAVOC_CLOCK_1_25M)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_REMOVE("pokey.3")
-	MDRV_SOUND_REMOVE("pokey.4")
+	MDRV_SOUND_REMOVE("pokey3")
+	MDRV_SOUND_REMOVE("pokey4")
 MACHINE_DRIVER_END
 
 
@@ -749,22 +730,6 @@ ROM_START( alphaona )
 	ROM_REGION( 0x100, "user1", 0 )
 	ROM_LOAD( "136002-125.6c",	 0x0000, 0x0100, BAD_DUMP CRC(5903af03) SHA1(24bc0366f394ad0ec486919212e38be0f08d0239) )
 ROM_END
-
-
-
-/*************************************
- *
- *  Driver-specific init
- *
- *************************************/
-
-static DRIVER_INIT( mhavocrv )
-{
-	/* install the speech support that was only optionally stuffed for use */
-	/* in the Return to Vax hack */
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x5800, 0x5800, 0, 0, speech_data_w);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x5900, 0x5900, 0, 0, speech_strobe_w);
-}
 
 
 

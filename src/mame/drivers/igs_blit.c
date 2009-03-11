@@ -394,7 +394,7 @@ static WRITE16_HANDLER( igs_palette_w )
 static void grtwall_decrypt(running_machine *machine)
 {
 	int i;
-	UINT16 *src = (UINT16 *) (memory_region(machine, "main"));
+	UINT16 *src = (UINT16 *) (memory_region(machine, "maincpu"));
 
 	int rom_size = 0x80000;
 
@@ -418,7 +418,7 @@ static void grtwall_decrypt(running_machine *machine)
 static void lhb_decrypt(running_machine *machine)
 {
 	int i;
-	UINT16 *src = (UINT16 *) (memory_region(machine, "main"));
+	UINT16 *src = (UINT16 *) (memory_region(machine, "maincpu"));
 
 	int rom_size = 0x80000;
 
@@ -443,7 +443,7 @@ static void lhb_decrypt(running_machine *machine)
 static void chindrag_decrypt(running_machine *machine)
 {
 	int i;
-	UINT16 *src = (UINT16 *) (memory_region(machine, "main"));
+	UINT16 *src = (UINT16 *) (memory_region(machine, "maincpu"));
 
 	int rom_size = 0x80000;
 
@@ -472,7 +472,7 @@ static void chindrag_decrypt(running_machine *machine)
 static void drgnwrld_decrypt(running_machine *machine)
 {
 	int i;
-	UINT16 *src = (UINT16 *) (memory_region(machine, "main"));
+	UINT16 *src = (UINT16 *) (memory_region(machine, "maincpu"));
 
 	int rom_size = 0x80000;
 
@@ -502,7 +502,7 @@ static void chmplst2_decrypt(running_machine *machine)
 {
 	int i,j;
 	int rom_size = 0x80000;
-	UINT16 *src = (UINT16 *) (memory_region(machine, "main"));
+	UINT16 *src = (UINT16 *) (memory_region(machine, "maincpu"));
 	UINT16 *result_data = malloc_or_die(rom_size);
 
  	for (i=0; i<rom_size/2; i++)
@@ -532,7 +532,7 @@ static void chmplst2_decrypt(running_machine *machine)
 static void vbowlj_decrypt(running_machine *machine)
 {
 	int i;
-	UINT16 *src = (UINT16 *) (memory_region(machine, "main"));
+	UINT16 *src = (UINT16 *) (memory_region(machine, "maincpu"));
 
 	int rom_size = 0x80000;
 
@@ -566,7 +566,7 @@ static void vbowlj_decrypt(running_machine *machine)
 static void dbc_decrypt(running_machine *machine)
 {
 	int i;
-	UINT16 *src = (UINT16 *) (memory_region(machine, "main"));
+	UINT16 *src = (UINT16 *) (memory_region(machine, "maincpu"));
 
 	int rom_size = 0x80000;
 
@@ -689,7 +689,7 @@ static WRITE16_HANDLER( chmplst2_magic_w )
 			{
 				chmplst2_pen_hi = data & 0x07;
 
-				okim6295_set_bank_base(0, (data & 0x08) ? 0x40000 : 0);
+				okim6295_set_bank_base(devtag_get_device(space->machine, "oki"), (data & 0x08) ? 0x40000 : 0);
 			}
 
 			if ( chmplst2_pen_hi & ~0xf )
@@ -830,7 +830,7 @@ static WRITE16_HANDLER( grtwall_magic_w )
 			{
 				coin_counter_w(0,data & 0x01);
 
-				okim6295_set_bank_base(0, (data & 0x10) ? 0x40000 : 0);
+				okim6295_set_bank_base(devtag_get_device(space->machine, "oki"), (data & 0x10) ? 0x40000 : 0);
 			}
 
 			if (data & ~0x11)
@@ -881,15 +881,15 @@ static READ16_HANDLER( grtwall_magic_r )
 
 
 
-static WRITE16_HANDLER( lhb_okibank_w )
+static WRITE16_DEVICE_HANDLER( lhb_okibank_w )
 {
 	if (ACCESSING_BITS_8_15)
 	{
-		okim6295_set_bank_base(0, (data & 0x200) ? 0x40000 : 0);
+		okim6295_set_bank_base(device, (data & 0x200) ? 0x40000 : 0);
 	}
 
 	if ( data & (~0x200) )
-		logerror("%06x: warning, unknown bits written in oki bank = %02x\n", cpu_get_pc(space->cpu), data);
+		logerror("%s: warning, unknown bits written in oki bank = %02x\n", cpuexec_describe_context(device->machine), data);
 
 //  popmessage("oki %04x",data);
 }
@@ -1078,27 +1078,14 @@ static READ16_HANDLER( xymg_magic_r )
 
 ***************************************************************************/
 
-static WRITE16_HANDLER( igs_YM3812_control_port_0_w )
-{
-	if (ACCESSING_BITS_0_7)
-		ym3812_control_port_0_w(space,0,data);
-}
-
-static WRITE16_HANDLER( igs_YM3812_write_port_0_w )
-{
-	if (ACCESSING_BITS_0_7)
-		ym3812_write_port_0_w(space,0,data);
-}
-
 static ADDRESS_MAP_START( chindrag, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE( 0x000000, 0x07ffff ) AM_ROM
 	AM_RANGE( 0x100000, 0x103fff ) AM_RAM AM_BASE( &generic_nvram16 ) AM_SIZE( &generic_nvram_size )
 	AM_RANGE( 0x200000, 0x200fff ) AM_RAM AM_BASE( &igs_priority_ram )
 	AM_RANGE( 0x400000, 0x401fff ) AM_RAM_WRITE( igs_palette_w ) AM_BASE( &paletteram16 )
 	AM_RANGE( 0x500000, 0x500001 ) AM_READ_PORT( "COIN" )
-	AM_RANGE( 0x600000, 0x600001 ) AM_READWRITE( okim6295_status_0_lsb_r, okim6295_data_0_lsb_w )
-	AM_RANGE( 0x700000, 0x700001 ) AM_WRITE( igs_YM3812_control_port_0_w )
-	AM_RANGE( 0x700002, 0x700003 ) AM_WRITE( igs_YM3812_write_port_0_w )
+	AM_RANGE( 0x600000, 0x600001 ) AM_DEVREADWRITE8( "oki", okim6295_r, okim6295_w, 0x00ff )
+	AM_RANGE( 0x700000, 0x700003 ) AM_DEVWRITE8( "ym", ym3812_w, 0x00ff )
 	AM_RANGE( 0x800000, 0x800003 ) AM_WRITE( chindrag_magic_w )
 	AM_RANGE( 0x800002, 0x800003 ) AM_READ ( chindrag_magic_r )
 	AM_RANGE( 0xa20000, 0xa20001 ) AM_WRITE( igs_priority_w )
@@ -1119,9 +1106,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( chmplst2, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE( 0x000000, 0x07ffff ) AM_ROM
 	AM_RANGE( 0x100000, 0x103fff ) AM_RAM AM_BASE( &generic_nvram16 ) AM_SIZE( &generic_nvram_size )
-	AM_RANGE( 0x200000, 0x200001 ) AM_READWRITE( okim6295_status_0_lsb_r, okim6295_data_0_lsb_w )
-	AM_RANGE( 0x204000, 0x204001 ) AM_WRITE( ym2413_register_port_0_lsb_w )
-	AM_RANGE( 0x204002, 0x204003 ) AM_WRITE( ym2413_data_port_0_lsb_w )
+	AM_RANGE( 0x200000, 0x200001 ) AM_DEVREADWRITE8( "oki", okim6295_r, okim6295_w, 0x00ff )
+	AM_RANGE( 0x204000, 0x204003 ) AM_DEVWRITE8( "ym", ym2413_w, 0x00ff )
 	AM_RANGE( 0x208000, 0x208003 ) AM_WRITE( chmplst2_magic_w )
 	AM_RANGE( 0x208002, 0x208003 ) AM_READ ( chmplst2_magic_r )
 	AM_RANGE( 0x20c000, 0x20cfff ) AM_RAM AM_BASE(&igs_priority_ram)
@@ -1150,7 +1136,7 @@ static ADDRESS_MAP_START( grtwall, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE( 0x300000, 0x3fffff ) AM_READWRITE( igs_layers_r, igs_layers_w )
 	AM_RANGE( 0x400000, 0x401fff ) AM_RAM_WRITE( igs_palette_w ) AM_BASE( &paletteram16 )
 	AM_RANGE( 0x520000, 0x520001 ) AM_READ_PORT( "COIN" )
-	AM_RANGE( 0x600000, 0x600001 ) AM_READWRITE( okim6295_status_0_lsb_r, okim6295_data_0_lsb_w )
+	AM_RANGE( 0x600000, 0x600001 ) AM_DEVREADWRITE8( "oki", okim6295_r, okim6295_w, 0x00ff )
 	AM_RANGE( 0x800000, 0x800003 ) AM_WRITE( grtwall_magic_w )
 	AM_RANGE( 0x800002, 0x800003 ) AM_READ ( grtwall_magic_r )
 	AM_RANGE( 0xa20000, 0xa20001 ) AM_WRITE( igs_priority_w )
@@ -1176,13 +1162,13 @@ static WRITE16_HANDLER( lhb_irq_enable_w )
 }
 
 static ADDRESS_MAP_START( lhb, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE( 0x010000, 0x010001 ) AM_WRITE( lhb_okibank_w )
+	AM_RANGE( 0x010000, 0x010001 ) AM_DEVWRITE( "oki", lhb_okibank_w )
 	AM_RANGE( 0x000000, 0x07ffff ) AM_ROM
 	AM_RANGE( 0x100000, 0x103fff ) AM_RAM AM_BASE( &generic_nvram16 ) AM_SIZE( &generic_nvram_size )
 	AM_RANGE( 0x200000, 0x200fff ) AM_RAM AM_BASE( &igs_priority_ram )
 	AM_RANGE( 0x300000, 0x3fffff ) AM_READWRITE( igs_layers_r, igs_layers_w )
 	AM_RANGE( 0x400000, 0x401fff ) AM_RAM_WRITE( igs_palette_w ) AM_BASE( &paletteram16 )
-	AM_RANGE( 0x600000, 0x600001 ) AM_READWRITE( okim6295_status_0_lsb_r, okim6295_data_0_lsb_w )
+	AM_RANGE( 0x600000, 0x600001 ) AM_DEVREADWRITE8( "oki", okim6295_r, okim6295_w, 0x00ff )
 	AM_RANGE( 0x700000, 0x700001 ) AM_READ_PORT( "COIN" )
 	AM_RANGE( 0x700002, 0x700005 ) AM_READ ( lhb_inputs_r )
 	AM_RANGE( 0x700002, 0x700003 ) AM_WRITE( lhb_inputs_w )
@@ -1204,27 +1190,27 @@ ADDRESS_MAP_END
 
 
 
-static READ16_HANDLER( ics2115_0_word_r )
+static READ16_DEVICE_HANDLER( ics2115_word_r )
 {
 	switch(offset)
 	{
-		case 0:	return ics2115_r(space,0);
-		case 1:	return ics2115_r(space,1);
-		case 2:	return (ics2115_r(space,3) << 8) | ics2115_r(space,2);
+		case 0:	return ics2115_r(device,0);
+		case 1:	return ics2115_r(device,1);
+		case 2:	return (ics2115_r(device,3) << 8) | ics2115_r(device,2);
 	}
 	return 0xff;
 }
 
-static WRITE16_HANDLER( ics2115_0_word_w )
+static WRITE16_DEVICE_HANDLER( ics2115_word_w )
 {
 	switch(offset)
 	{
 		case 1:
-			if (ACCESSING_BITS_0_7)		ics2115_w(space,1,data);
+			if (ACCESSING_BITS_0_7)		ics2115_w(device,1,data);
 			break;
 		case 2:
-			if (ACCESSING_BITS_0_7)		ics2115_w(space,2,data);
-			if (ACCESSING_BITS_8_15)	ics2115_w(space,3,data>>8);
+			if (ACCESSING_BITS_0_7)		ics2115_w(device,2,data);
+			if (ACCESSING_BITS_8_15)	ics2115_w(device,3,data>>8);
 			break;
 	}
 }
@@ -1264,7 +1250,7 @@ static ADDRESS_MAP_START( vbowl, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE( 0x300000, 0x3fffff ) AM_READWRITE( igs_layers_r, igs_layers_w )
 	AM_RANGE( 0x400000, 0x401fff ) AM_RAM_WRITE( igs_palette_w ) AM_BASE( &paletteram16 )
 	AM_RANGE( 0x520000, 0x520001 ) AM_READ_PORT( "COIN" )
-	AM_RANGE( 0x600000, 0x600007 ) AM_READWRITE( ics2115_0_word_r, ics2115_0_word_w )
+	AM_RANGE( 0x600000, 0x600007 ) AM_DEVREADWRITE( "ics", ics2115_word_r, ics2115_word_w )
 	AM_RANGE( 0x700000, 0x700003 ) AM_RAM AM_BASE( &vbowl_trackball )
 	AM_RANGE( 0x700004, 0x700005 ) AM_WRITE( vbowl_pen_hi_w )
 	AM_RANGE( 0x800000, 0x800003 ) AM_WRITE( vbowl_magic_w )
@@ -1296,13 +1282,13 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( xymg, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE( 0x010000, 0x010001 ) AM_WRITE( lhb_okibank_w )
+	AM_RANGE( 0x010000, 0x010001 ) AM_DEVWRITE( "oki", lhb_okibank_w )
 	AM_RANGE( 0x000000, 0x07ffff ) AM_ROM
 	AM_RANGE( 0x100000, 0x103fff ) AM_RAM
 	AM_RANGE( 0x200000, 0x200fff ) AM_RAM AM_BASE( &igs_priority_ram )
 	AM_RANGE( 0x300000, 0x3fffff ) AM_READWRITE( igs_layers_r, igs_layers_w )
 	AM_RANGE( 0x400000, 0x401fff ) AM_RAM_WRITE( igs_palette_w ) AM_BASE( &paletteram16 )
-	AM_RANGE( 0x600000, 0x600001 ) AM_READWRITE( okim6295_status_0_lsb_r, okim6295_data_0_lsb_w )
+	AM_RANGE( 0x600000, 0x600001 ) AM_DEVREADWRITE8( "oki", okim6295_r, okim6295_w, 0x00ff )
 	AM_RANGE( 0x700000, 0x700003 ) AM_WRITE( xymg_magic_w )
 	AM_RANGE( 0x700002, 0x700003 ) AM_READ ( xymg_magic_r )
 	AM_RANGE( 0x820000, 0x820001 ) AM_WRITE( igs_priority_w )
@@ -2403,14 +2389,14 @@ GFXDECODE_END
 */
 
 static MACHINE_DRIVER_START( igs_base )
-	MDRV_CPU_ADD("main",M68000, 22000000/3)
+	MDRV_CPU_ADD("maincpu",M68000, 22000000/3)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 //  MDRV_GFXDECODE(igs_blit)
 
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -2443,7 +2429,7 @@ static INTERRUPT_GEN( chmplst2_interrupt )
 
 static MACHINE_DRIVER_START( chmplst2 )
 	MDRV_IMPORT_FROM(igs_base)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(chmplst2,0)
 	MDRV_CPU_VBLANK_INT_HACK(chmplst2_interrupt,1+4)	// lev5 frequency drives the music tempo
 
@@ -2456,7 +2442,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( chindrag )
 	MDRV_IMPORT_FROM(igs_base)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(chindrag,0)
 	MDRV_CPU_VBLANK_INT_HACK(chmplst2_interrupt,1+4)	// lev5 frequency drives the music tempo
 
@@ -2476,7 +2462,7 @@ static INTERRUPT_GEN( grtwall_interrupt )
 
 static MACHINE_DRIVER_START( grtwall )
 	MDRV_IMPORT_FROM(igs_base)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(grtwall,0)
 	MDRV_CPU_VBLANK_INT_HACK(grtwall_interrupt,2)
 MACHINE_DRIVER_END
@@ -2500,14 +2486,14 @@ static INTERRUPT_GEN( lhb_interrupt )
 
 static MACHINE_DRIVER_START( lhb )
 	MDRV_IMPORT_FROM(igs_base)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(lhb,0)
 	MDRV_CPU_VBLANK_INT_HACK(lhb_interrupt,3+1)
 MACHINE_DRIVER_END
 
 
 
-static void sound_irq(running_machine *machine, int state)
+static void sound_irq(const device_config *device, int state)
 {
 //   cpu_set_input_line(machine->cpu[0], 3, state);
 }
@@ -2530,7 +2516,7 @@ static INTERRUPT_GEN( vbowl_interrupt )
 
 static MACHINE_DRIVER_START( vbowl )
 	MDRV_IMPORT_FROM(igs_base)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(vbowl,0)
 	MDRV_CPU_VBLANK_INT_HACK(vbowl_interrupt,3+4)
 
@@ -2547,7 +2533,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( xymg )
 	MDRV_IMPORT_FROM(igs_base)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(xymg,0)
 	MDRV_CPU_VBLANK_INT_HACK(grtwall_interrupt,2)
 MACHINE_DRIVER_END
@@ -2556,7 +2542,7 @@ MACHINE_DRIVER_END
 
 static DRIVER_INIT( chmplst2 )
 {
-	UINT16 *rom = (UINT16 *) memory_region(machine, "main");
+	UINT16 *rom = (UINT16 *) memory_region(machine, "maincpu");
 
 	chmplst2_decrypt(machine);
 	chmplst2_decrypt_gfx(machine);
@@ -2578,7 +2564,7 @@ static DRIVER_INIT( chmplst2 )
 
 static DRIVER_INIT( drgnwrld )
 {
-	UINT16 *rom = (UINT16 *) memory_region(machine, "main");
+	UINT16 *rom = (UINT16 *) memory_region(machine, "maincpu");
 
 	drgnwrld_decrypt(machine);
 	chindrag_gfx_decrypt(machine);
@@ -2601,7 +2587,7 @@ static DRIVER_INIT( drgnwrld )
 
 static DRIVER_INIT( drgwrld3 )
 {
-	UINT16 *rom = (UINT16 *) memory_region(machine, "main");
+	UINT16 *rom = (UINT16 *) memory_region(machine, "maincpu");
 
 	drgnwrld_decrypt(machine);
 	chindrag_gfx_decrypt(machine);
@@ -2625,7 +2611,7 @@ static DRIVER_INIT( drgwrld3 )
 
 static DRIVER_INIT( chindrac )
 {
-	UINT16 *rom = (UINT16 *) memory_region(machine, "main");
+	UINT16 *rom = (UINT16 *) memory_region(machine, "maincpu");
 
 	drgnwrld_decrypt(machine);
 	chindrag_gfx_decrypt(machine);
@@ -2657,7 +2643,7 @@ static DRIVER_INIT( chindrah )
 
 static DRIVER_INIT( chindrag )
 {
-	UINT16 *rom = (UINT16 *) memory_region(machine, "main");
+	UINT16 *rom = (UINT16 *) memory_region(machine, "maincpu");
 
 	chindrag_decrypt(machine);
 	chindrag_gfx_decrypt(machine);
@@ -2683,7 +2669,7 @@ static DRIVER_INIT( chindrag )
 
 static DRIVER_INIT( chugokur )
 {
-	UINT16 *rom = (UINT16 *) memory_region(machine, "main");
+	UINT16 *rom = (UINT16 *) memory_region(machine, "maincpu");
 
 	chindrag_decrypt(machine);
 	chindrag_gfx_decrypt(machine);
@@ -2711,7 +2697,7 @@ static DRIVER_INIT( chugokur )
 
 static DRIVER_INIT( grtwall )
 {
-	UINT16 *rom = (UINT16 *) memory_region(machine, "main");
+	UINT16 *rom = (UINT16 *) memory_region(machine, "maincpu");
 
 	grtwall_decrypt(machine);
 
@@ -2733,7 +2719,7 @@ static DRIVER_INIT( grtwall )
 
 static DRIVER_INIT( lhb )
 {
-	UINT16 *rom = (UINT16 *) memory_region(machine, "main");
+	UINT16 *rom = (UINT16 *) memory_region(machine, "maincpu");
 
 	lhb_decrypt(machine);
 
@@ -2743,7 +2729,7 @@ static DRIVER_INIT( lhb )
 
 static DRIVER_INIT( lhba )
 {
-	UINT16 *rom = (UINT16 *) memory_region(machine, "main");
+	UINT16 *rom = (UINT16 *) memory_region(machine, "maincpu");
 
 	lhb_decrypt(machine);
 
@@ -2753,7 +2739,7 @@ static DRIVER_INIT( lhba )
 
 static DRIVER_INIT( vbowl )
 {
-	UINT16 *rom = (UINT16 *) memory_region(machine, "main");
+	UINT16 *rom = (UINT16 *) memory_region(machine, "maincpu");
 	UINT8  *gfx = (UINT8 *)  memory_region(machine, "gfx1");
 	int i;
 
@@ -2774,7 +2760,7 @@ static DRIVER_INIT( vbowl )
 
 static DRIVER_INIT( vbowlj )
 {
-	UINT16 *rom = (UINT16 *) memory_region(machine, "main");
+	UINT16 *rom = (UINT16 *) memory_region(machine, "maincpu");
 	UINT8  *gfx = (UINT8 *)  memory_region(machine, "gfx1");
 	int i;
 
@@ -2794,7 +2780,7 @@ static DRIVER_INIT( vbowlj )
 
 static DRIVER_INIT( xymg )
 {
-	UINT16 *rom = (UINT16 *) memory_region(machine, "main");
+	UINT16 *rom = (UINT16 *) memory_region(machine, "maincpu");
 
 	lhb_decrypt(machine);
 
@@ -2827,7 +2813,7 @@ static DRIVER_INIT( xymg )
 
 static DRIVER_INIT( dbc )
 {
-	UINT16 *rom = (UINT16 *) memory_region(machine, "main");
+	UINT16 *rom = (UINT16 *) memory_region(machine, "maincpu");
 
 	dbc_decrypt(machine);
 
@@ -2896,7 +2882,7 @@ Notes:
 ***************************************************************************/
 
 ROM_START( chmplst2 )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "maj2v185h.u29", 0x00000, 0x80000, CRC(2572d59a) SHA1(1d5362e209dadf8b21c10d1351d4bb038bfcaaef) )
 
 	ROM_REGION( 0x200000, "gfx1", 0 )
@@ -2939,7 +2925,7 @@ Notes:
 ***************************************************************************/
 
 ROM_START( drgnwrld )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "chinadr-v0400.u3", 0x00000, 0x80000, CRC(a6daa2b8) SHA1(0cbfd001c1fd82a6385453d1c2a808add67746af) )
 
 	ROM_REGION( 0x400000, "gfx1", 0 )
@@ -2964,7 +2950,7 @@ ROMs:
 ***************************************************************************/
 
 ROM_START( drgwrld3 )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "chinadr-v0300.u3", 0x00000, 0x80000, CRC(5ac243e5) SHA1(50cccff0307239187ac2b65331ad2bcc666f8033) )
 
 	ROM_REGION( 0x400000, "gfx1", 0 )
@@ -3011,7 +2997,7 @@ The PCB is perfectly working, empty spaces and empty sockets are clearly intende
 ***************************************************************************/
 
 ROM_START( chindrac )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "igs-d0303.u3", 0x00000, 0x80000, CRC(3b3c29bb) SHA1(77b7e58104314303985c283cce3aec40bd7b9334) )
 
 	ROM_REGION( 0x400000, "gfx1", 0 )
@@ -3050,7 +3036,7 @@ SOUND DATA?: "CHINA DRAGON U44"
 ***************************************************************************/
 
 ROM_START( chugokur )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "china_jp.v20", 0x00000, 0x80000, CRC(9e018d1a) SHA1(fe14e6344434cabf43685e50fd49c90f05f565be) )
 
 	ROM_REGION( 0x420000, "gfx1", 0 )
@@ -3063,7 +3049,7 @@ ROM_START( chugokur )
 ROM_END
 
 ROM_START( chindrag )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "v-021j", 0x00000, 0x80000, CRC(2f87f6e4) SHA1(d43065b078fdd9605c121988ad3092dce6cf0bf1) )
 
 	ROM_REGION( 0x420000, "gfx1", 0 )
@@ -3081,7 +3067,7 @@ ROM_END
 ***************************************************************************/
 
 ROM_START( chindrah )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "c_drgn_hk.u3", 0x00000, 0x80000, CRC(182037ce) SHA1(141b698777533e57493e588d2526523d4bd3e17d) )
 
 	ROM_REGION( 0x400000, "gfx1", 0 )
@@ -3107,7 +3093,7 @@ ROM_END
 ***************************************************************************/
 
 ROM_START( grtwall )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "wlcc4096.rom", 0x00000, 0x80000, CRC(3b16729f) SHA1(4ef4e5cbd6ccc65775e36c2c8b459bc1767d6574) )
 	ROM_CONTINUE        (                 0x00000, 0x80000 ) // 1ST+2ND IDENTICAL
 
@@ -3134,7 +3120,7 @@ ROM_END
 ***************************************************************************/
 
 ROM_START( lhb )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	// identical to LHB-4096
 	ROM_LOAD16_WORD_SWAP( "v305j-409", 0x00000, 0x80000, CRC(701de8ef) SHA1(4a77160f642f4de02fa6fbacf595b75c0d4a505d) )
 
@@ -3197,7 +3183,7 @@ Notes:
 ***************************************************************************/
 
 ROM_START( lhba )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "maj_v-033c.u30", 0x00000, 0x80000, CRC(02a0b716) SHA1(cd0ee32ea69f66768196b0e9b4df0fae3af84ed3) )
 
 	ROM_REGION( 0x200000, "gfx1", 0 )
@@ -3259,7 +3245,7 @@ Notes:
 ***************************************************************************/
 
 ROM_START( dbc )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "maj-h_v027h.u30", 0x00000, 0x80000, CRC(5d5ccd5b) SHA1(7a1223923f9a5825fd919ae9a36912284e705382) )
 
 	ROM_REGION( 0x280000, "gfx1", 0 )
@@ -3295,7 +3281,7 @@ there are 4 banks of 8 dip switches
 ***************************************************************************/
 
 ROM_START( vbowl )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "bowlingv101xcm.u45", 0x00000, 0x80000, BAD_DUMP CRC(ab8e3f1f) SHA1(69159e22559d6a26fe2afafd770aa640c192ba4b) )
 
 	ROM_REGION( 0x400000 * 2, "gfx1", 0)
@@ -3314,7 +3300,7 @@ ROM_START( vbowl )
 ROM_END
 
 ROM_START( vbowlj )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "vrbowlng.u45", 0x00000, 0x80000, CRC(091c19c1) SHA1(5a7bfbee357122e9061b38dfe988c3853b0984b0) ) // second half all 00
 
 	ROM_REGION( 0x400000 * 2, "gfx1", 0)
@@ -3346,7 +3332,7 @@ ROM_END
 ***************************************************************************/
 
 ROM_START( xymg )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "u30-ebac.rom", 0x00000, 0x80000, CRC(7d272b6f) SHA1(15fd1be23cabdc77b747541f5cd9fed6b08be4ad) )
 
 	ROM_REGION( 0x280000, "gfx1", 0 )

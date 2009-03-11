@@ -217,7 +217,7 @@ ADDRESS_MAP_END
 // the same as in zaccaria.c ?
 static ADDRESS_MAP_START( catnmous_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x007f) AM_RAM
-	AM_RANGE(0x500c, 0x500f) AM_READWRITE(pia_0_r, pia_0_w)
+	AM_RANGE(0x500c, 0x500f) AM_DEVREADWRITE("pia", pia6821_r, pia6821_w)
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -595,25 +595,22 @@ static const sn76477_interface laserbat_sn76477_interface =
 
 /* Cat'N Mouse sound ***********************************/
 
-static void zaccaria_irq0a(running_machine *machine, int state) { cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE); }
-static void zaccaria_irq0b(running_machine *machine, int state) { cpu_set_input_line(machine->cpu[1],0,state ? ASSERT_LINE : CLEAR_LINE); }
+static WRITE_LINE_DEVICE_HANDLER( zaccaria_irq0a ) { cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE); }
+static WRITE_LINE_DEVICE_HANDLER( zaccaria_irq0b ) { cpu_set_input_line(device->machine->cpu[1],0,state ? ASSERT_LINE : CLEAR_LINE); }
 
 static int active_8910,port0a;
 
-static READ8_HANDLER( zaccaria_port0a_r )
+static READ8_DEVICE_HANDLER( zaccaria_port0a_r )
 {
-	if (active_8910 == 0)
-		return ay8910_read_port_0_r(space,0);
-	else
-		return ay8910_read_port_1_r(space,0);
+	return ay8910_r(devtag_get_device(device->machine, (active_8910 == 0) ? "ay1" : "ay2"), 0);
 }
 
-static WRITE8_HANDLER( zaccaria_port0a_w )
+static WRITE8_DEVICE_HANDLER( zaccaria_port0a_w )
 {
 	port0a = data;
 }
 
-static WRITE8_HANDLER( zaccaria_port0b_w )
+static WRITE8_DEVICE_HANDLER( zaccaria_port0b_w )
 {
 	static int last;
 
@@ -622,10 +619,7 @@ static WRITE8_HANDLER( zaccaria_port0b_w )
 	if ((last & 0x02) == 0x02 && (data & 0x02) == 0x00)
 	{
 		/* bit 0 goes to the 8910 #0 BC1 pin */
-		if (last & 0x01)
-			ay8910_control_port_0_w(space,0,port0a);
-		else
-			ay8910_write_port_0_w(space,0,port0a);
+		ay8910_data_address_w(devtag_get_device(device->machine, "ay1"), last >> 0, port0a);
 	}
 	else if ((last & 0x02) == 0x00 && (data & 0x02) == 0x02)
 	{
@@ -637,10 +631,7 @@ static WRITE8_HANDLER( zaccaria_port0b_w )
 	if ((last & 0x08) == 0x08 && (data & 0x08) == 0x00)
 	{
 		/* bit 2 goes to the 8910 #1 BC1 pin */
-		if (last & 0x04)
-			ay8910_control_port_1_w(space,0,port0a);
-		else
-			ay8910_write_port_1_w(space,0,port0a);
+		ay8910_data_address_w(devtag_get_device(device->machine, "ay2"), last >> 2, port0a);
 	}
 	else if ((last & 0x08) == 0x00 && (data & 0x08) == 0x08)
 	{
@@ -652,32 +643,31 @@ static WRITE8_HANDLER( zaccaria_port0b_w )
 	last = data;
 }
 
-static const pia6821_interface pia_0_intf =
+static const pia6821_interface pia_intf =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ zaccaria_port0a_r, 0, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ zaccaria_port0a_w, zaccaria_port0b_w, 0, 0,
-	/*irqs   : A/B             */ zaccaria_irq0a, zaccaria_irq0b
+	DEVCB_HANDLER(zaccaria_port0a_r),		/* port A in */
+	DEVCB_NULL,		/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_HANDLER(zaccaria_port0a_w),		/* port A out */
+	DEVCB_HANDLER(zaccaria_port0b_w),		/* port B out */
+	DEVCB_NULL,		/* line CA2 out */
+	DEVCB_NULL,		/* port CB2 out */
+	DEVCB_LINE(zaccaria_irq0a),		/* IRQA */
+	DEVCB_LINE(zaccaria_irq0b)		/* IRQB */
 };
 
 static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	soundlatch_r,
-	NULL,//ay8910_port0a_w,
-	NULL
+	DEVCB_NULL,
+	DEVCB_MEMORY_HANDLER("audiocpu", PROGRAM, soundlatch_r),
+	DEVCB_NULL,//ay8910_port0a_w,
+	DEVCB_NULL
 };
-
-static MACHINE_START( catnmous )
-{
-	pia_config(machine, 0, &pia_0_intf);
-}
-
-static MACHINE_RESET( catnmous )
-{
-	pia_reset();
-}
 
 
 static INTERRUPT_GEN( laserbat_interrupt )
@@ -687,22 +677,23 @@ static INTERRUPT_GEN( laserbat_interrupt )
 
 static INTERRUPT_GEN( zaccaria_cb1_toggle )
 {
+	const device_config *pia = devtag_get_device(device->machine, "pia");
 	static int toggle;
 
-	pia_0_cb1_w(cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM),0,toggle & 1);
+	pia6821_cb1_w(pia,0,toggle & 1);
 	toggle ^= 1;
 }
 
 
 static MACHINE_DRIVER_START( laserbat )
 
-	MDRV_CPU_ADD("main", S2650, 14318180/4) // ???
+	MDRV_CPU_ADD("maincpu", S2650, 14318180/4) // ???
 	MDRV_CPU_PROGRAM_MAP(laserbat_map,0)
 	MDRV_CPU_IO_MAP(laserbat_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", laserbat_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", laserbat_interrupt)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -730,20 +721,19 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( catnmous )
 
-	MDRV_CPU_ADD("main", S2650, 14318000/4)	/* ? */
+	MDRV_CPU_ADD("maincpu", S2650, 14318000/4)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(laserbat_map,0)
 	MDRV_CPU_IO_MAP(catnmous_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", laserbat_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", laserbat_interrupt)
 
-	MDRV_CPU_ADD("audio", M6802,3580000) /* ? */
+	MDRV_CPU_ADD("audiocpu", M6802,3580000) /* ? */
 	MDRV_CPU_PROGRAM_MAP(catnmous_sound_map,0)
 	MDRV_CPU_PERIODIC_INT(zaccaria_cb1_toggle, (double)3580000/4096)
 
-	MDRV_MACHINE_START(catnmous)
-	MDRV_MACHINE_RESET(catnmous)
+	MDRV_PIA6821_ADD("pia", pia_intf)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -788,7 +778,7 @@ Xtal : 4.000 Mhz
 */
 
 ROM_START( laserbat )
-	ROM_REGION( 0x8000, "main", 0 )
+	ROM_REGION( 0x8000, "maincpu", 0 )
 	ROM_LOAD( "lb02.7c",      0x0000, 0x0400, CRC(23a257cd) SHA1(08d9e1ff1a5cd8a5e5af6a12ba6104d3b2ccfddf) )
 	ROM_CONTINUE(			  0x4000, 0x0400 )
 	ROM_LOAD( "lb02.6c",      0x0400, 0x0400, CRC(d1d6a67a) SHA1(727898c733633daffb0193cf4a556f89fe7e8a5a) )
@@ -823,7 +813,7 @@ ROM_START( laserbat )
 ROM_END
 
 ROM_START( lazarian )
-	ROM_REGION( 0x8000, "main", 0 )
+	ROM_REGION( 0x8000, "maincpu", 0 )
 	ROM_LOAD( "laz.7c",      0x0000, 0x0400, CRC(a2454cf2) SHA1(163b9323e77ee0107e13860b3468e002c335df9e) )
 	ROM_CONTINUE(			 0x4000, 0x0400 )
 	ROM_LOAD( "laz.6c",      0x0400, 0x0400, CRC(23ee6013) SHA1(7ad53d6c321b0161906a512f6575620fd049d2f7) )
@@ -860,7 +850,7 @@ ROM_START( lazarian )
 ROM_END
 
 ROM_START( catnmous )
-	ROM_REGION( 0x8000, "main", 0 )
+	ROM_REGION( 0x8000, "maincpu", 0 )
 	ROM_LOAD( "02-1.7c",      0x0000, 0x0400, CRC(d26ec566) SHA1(ceb16f64a3c1ff25a9eab6549f1ae24085bb9e27) )
 	ROM_CONTINUE(			  0x4000, 0x0400 )
 	ROM_LOAD( "02-2.6c",      0x0400, 0x0400, CRC(02a7e36c) SHA1(8495b2906ecb0791a47e9b6f1959ed6cbc14cce8) )
@@ -884,7 +874,7 @@ ROM_START( catnmous )
 	ROM_CONTINUE(			  0x3000, 0x0400 )
 	ROM_CONTINUE(			  0x7000, 0x0400 )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "sound01.1d",   0xd000, 0x1000, CRC(f65cb9d0) SHA1(a2fe7563c6da055bf6aa20797b2d9fa184f0133c) )
 	ROM_LOAD( "sound01.1f",   0xe000, 0x1000, CRC(473c44de) SHA1(ff08b02d45a2c23cabb5db716aa203225a931424) )
 	ROM_LOAD( "sound01.1e",   0xf000, 0x1000, CRC(1bd90c93) SHA1(20fd2b765a42e25cf7f716e6631b8c567785a866) )
@@ -902,7 +892,7 @@ ROM_START( catnmous )
 ROM_END
 
 ROM_START( catmousa )
-	ROM_REGION( 0x8000, "main", 0 )
+	ROM_REGION( 0x8000, "maincpu", 0 )
 	ROM_LOAD( "catnmous.7c",  0x0000, 0x0400, CRC(0bf9fc06) SHA1(7d5857121fe51f43e4ae7db34df720198994afdd) )
 	ROM_CONTINUE(			  0x4000, 0x0400 )
 	ROM_LOAD( "catnmous.6c",  0x0400, 0x0400, CRC(b0e140a0) SHA1(68d8ca25642e872f2177d09b78d553c033411dd5) )
@@ -925,7 +915,7 @@ ROM_START( catmousa )
 	ROM_LOAD( "catnmous.2b",  0x3000, 0x0400, BAD_DUMP CRC(880728fa) SHA1(f204d669c190ad0cf2c885af12625026534db655) )
 	ROM_CONTINUE(			  0x7000, 0x0400 )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "snd.1d",       0xd000, 0x1000, CRC(f65cb9d0) SHA1(a2fe7563c6da055bf6aa20797b2d9fa184f0133c) )
 	ROM_LOAD( "snd.1f",       0xe000, 0x1000, CRC(473c44de) SHA1(ff08b02d45a2c23cabb5db716aa203225a931424) )
 	ROM_LOAD( "snd.1e",       0xf000, 0x1000, CRC(1bd90c93) SHA1(20fd2b765a42e25cf7f716e6631b8c567785a866) )

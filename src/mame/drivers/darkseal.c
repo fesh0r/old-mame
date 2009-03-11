@@ -101,46 +101,22 @@ ADDRESS_MAP_END
 
 /******************************************************************************/
 
-static WRITE8_HANDLER( YM2151_w )
-{
-	switch (offset) {
-	case 0:
-		ym2151_register_port_0_w(space,0,data);
-		break;
-	case 1:
-		ym2151_data_port_0_w(space,0,data);
-		break;
-	}
-}
-
-static WRITE8_HANDLER( YM2203_w )
-{
-	switch (offset) {
-	case 0:
-		ym2203_control_port_0_w(space,0,data);
-		break;
-	case 1:
-		ym2203_write_port_0_w(space,0,data);
-		break;
-	}
-}
-
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x000000, 0x00ffff) AM_READ(SMH_ROM)
-	AM_RANGE(0x100000, 0x100001) AM_READ(ym2203_status_port_0_r)
-	AM_RANGE(0x110000, 0x110001) AM_READ(ym2151_status_port_0_r)
-	AM_RANGE(0x120000, 0x120001) AM_READ(okim6295_status_0_r)
-	AM_RANGE(0x130000, 0x130001) AM_READ(okim6295_status_1_r)
+	AM_RANGE(0x100000, 0x100001) AM_DEVREAD("ym1", ym2203_r)
+	AM_RANGE(0x110000, 0x110001) AM_DEVREAD("ym2", ym2151_r)
+	AM_RANGE(0x120000, 0x120001) AM_DEVREAD("oki1", okim6295_r)
+	AM_RANGE(0x130000, 0x130001) AM_DEVREAD("oki2", okim6295_r)
 	AM_RANGE(0x140000, 0x140001) AM_READ(soundlatch_r)
 	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(SMH_BANK8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x100000, 0x100001) AM_WRITE(YM2203_w)
-	AM_RANGE(0x110000, 0x110001) AM_WRITE(YM2151_w)
-	AM_RANGE(0x120000, 0x120001) AM_WRITE(okim6295_data_0_w)
-	AM_RANGE(0x130000, 0x130001) AM_WRITE(okim6295_data_1_w)
+	AM_RANGE(0x100000, 0x100001) AM_DEVWRITE("ym1", ym2203_w)
+	AM_RANGE(0x110000, 0x110001) AM_DEVWRITE("ym2", ym2151_w)
+	AM_RANGE(0x120000, 0x120001) AM_DEVWRITE("oki1", okim6295_w)
+	AM_RANGE(0x130000, 0x130001) AM_DEVWRITE("oki2", okim6295_w)
 	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(SMH_BANK8)
 	AM_RANGE(0x1fec00, 0x1fec01) AM_WRITE(h6280_timer_w)
 	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(h6280_irq_status_w)
@@ -273,9 +249,9 @@ GFXDECODE_END
 
 /******************************************************************************/
 
-static void sound_irq(running_machine *machine, int state)
+static void sound_irq(const device_config *device, int state)
 {
-	cpu_set_input_line(machine->cpu[1],1,state); /* IRQ 2 */
+	cpu_set_input_line(device->machine->cpu[1],1,state); /* IRQ 2 */
 }
 
 static const ym2151_interface ym2151_config =
@@ -286,17 +262,17 @@ static const ym2151_interface ym2151_config =
 static MACHINE_DRIVER_START( darkseal )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,12000000) /* Custom chip 59 */
+	MDRV_CPU_ADD("maincpu", M68000,12000000) /* Custom chip 59 */
 	MDRV_CPU_PROGRAM_MAP(darkseal_readmem,darkseal_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)/* VBL */
+	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)/* VBL */
 
-	MDRV_CPU_ADD("audio", H6280, 32220000/4) /* Custom chip 45, Audio section crystal is 32.220 MHz */
+	MDRV_CPU_ADD("audiocpu", H6280, 32220000/4) /* Custom chip 45, Audio section crystal is 32.220 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(58)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -332,13 +308,13 @@ MACHINE_DRIVER_END
 /******************************************************************************/
 
 ROM_START( darkseal )
-	ROM_REGION( 0x80000, "main", 0 ) /* 68000 code */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "ga04-3.rom",   0x00000, 0x20000, CRC(bafad556) SHA1(5bd8a787d41a33919701ced29212bc11301e31d9) )
 	ROM_LOAD16_BYTE( "ga01-3.rom",   0x00001, 0x20000, CRC(f409050e) SHA1(4653094aeb5dd7ba1e490c04897a23ba8990df3c) )
 	ROM_LOAD16_BYTE( "ga-00.rom",    0x40000, 0x20000, CRC(fbf3ac63) SHA1(51af581ee951eedeb4aa413ecbebe8bf4d30613b) )
 	ROM_LOAD16_BYTE( "ga-05.rom",    0x40001, 0x20000, CRC(d5e3ae3f) SHA1(12f6e92af115422c6ab6ef1d33675d1e1cd58e10) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* Sound CPU */
 	ROM_LOAD( "fz-06.rom",    0x00000, 0x10000, CRC(c4828a6d) SHA1(fbfd0c85730bbe18401879cd68c19aaec9d482d8) )
 
 	ROM_REGION( 0x020000, "gfx1", ROMREGION_DISPOSE )
@@ -363,13 +339,13 @@ ROM_START( darkseal )
 ROM_END
 
 ROM_START( darksea1 )
-	ROM_REGION( 0x80000, "main", 0 ) /* 68000 code */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "ga-04.rom",    0x00000, 0x20000, CRC(a1a985a9) SHA1(eac3f43ff4016dcc21fe34b6bfed36e0d4b86959) )
 	ROM_LOAD16_BYTE( "ga-01.rom",    0x00001, 0x20000, CRC(98bd2940) SHA1(88ac727c3797e646834266320a71aa159e2b2541) )
 	ROM_LOAD16_BYTE( "ga-00.rom",    0x40000, 0x20000, CRC(fbf3ac63) SHA1(51af581ee951eedeb4aa413ecbebe8bf4d30613b) )
 	ROM_LOAD16_BYTE( "ga-05.rom",    0x40001, 0x20000, CRC(d5e3ae3f) SHA1(12f6e92af115422c6ab6ef1d33675d1e1cd58e10) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* Sound CPU */
 	ROM_LOAD( "fz-06.rom",    0x00000, 0x10000, CRC(c4828a6d) SHA1(fbfd0c85730bbe18401879cd68c19aaec9d482d8) )
 
 	ROM_REGION( 0x020000, "gfx1", ROMREGION_DISPOSE )
@@ -394,13 +370,13 @@ ROM_START( darksea1 )
 ROM_END
 
 ROM_START( darkseaj )
-	ROM_REGION( 0x80000, "main", 0 ) /* 68000 code */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "fz-04.bin",    0x00000, 0x20000, CRC(817faa2c) SHA1(8a79703f0e3aeb2ceeb098466561ab604baef301) )
 	ROM_LOAD16_BYTE( "fz-01.bin",    0x00001, 0x20000, CRC(373caeee) SHA1(5cfa0c7672c439e9d011d9ec93da32c2377dce19) )
 	ROM_LOAD16_BYTE( "fz-00.bin",    0x40000, 0x20000, CRC(1ab99aa7) SHA1(1da51f3ee0d15094911d4090264b945090d51242) )
 	ROM_LOAD16_BYTE( "fz-05.bin",    0x40001, 0x20000, CRC(3374ef8c) SHA1(4144e71e452e281078bcd9b9a996db9f5dccc346) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* Sound CPU */
 	ROM_LOAD( "fz-06.rom",    0x00000, 0x10000, CRC(c4828a6d) SHA1(fbfd0c85730bbe18401879cd68c19aaec9d482d8) )
 
 	ROM_REGION( 0x020000, "gfx1", ROMREGION_DISPOSE )
@@ -425,13 +401,13 @@ ROM_START( darkseaj )
 ROM_END
 
 ROM_START( gatedoom )
-	ROM_REGION( 0x80000, "main", 0 ) /* 68000 code */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "gb04-4",       0x00000, 0x20000, CRC(8e3a0bfd) SHA1(1d20bd678a630e2006c7f50f4d13656136db3721) )
 	ROM_LOAD16_BYTE( "gb01-4",       0x00001, 0x20000, CRC(8d0fd383) SHA1(797e3cf43c9315b4195232eb1787a2292af4901b) )
 	ROM_LOAD16_BYTE( "ga-00.rom",    0x40000, 0x20000, CRC(fbf3ac63) SHA1(51af581ee951eedeb4aa413ecbebe8bf4d30613b) )
 	ROM_LOAD16_BYTE( "ga-05.rom",    0x40001, 0x20000, CRC(d5e3ae3f) SHA1(12f6e92af115422c6ab6ef1d33675d1e1cd58e10) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* Sound CPU */
 	ROM_LOAD( "fz-06.rom",    0x00000, 0x10000, CRC(c4828a6d) SHA1(fbfd0c85730bbe18401879cd68c19aaec9d482d8) )
 
 	ROM_REGION( 0x020000, "gfx1", ROMREGION_DISPOSE )
@@ -456,13 +432,13 @@ ROM_START( gatedoom )
 ROM_END
 
 ROM_START( gatedom1 )
-	ROM_REGION( 0x80000, "main", 0 ) /* 68000 code */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "gb04.bin",     0x00000, 0x20000, CRC(4c3bbd2b) SHA1(e74a532edd01a559d0c388b37a2ead98c19fe5de) )
 	ROM_LOAD16_BYTE( "gb01.bin",     0x00001, 0x20000, CRC(59e367f4) SHA1(f88fa23b8e91f312103eb8a1d9a91d8171ec3ad4) )
 	ROM_LOAD16_BYTE( "gb00.bin",     0x40000, 0x20000, CRC(a88c16a1) SHA1(e02d5470692f23afa658b9bda933bb20be64602f) )
 	ROM_LOAD16_BYTE( "gb05.bin",     0x40001, 0x20000, CRC(252d7e14) SHA1(b2f27cd9686dfc697f3faca74d20b298a59efab2) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* Sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* Sound CPU */
 	ROM_LOAD( "fz-06.rom",    0x00000, 0x10000, CRC(c4828a6d) SHA1(fbfd0c85730bbe18401879cd68c19aaec9d482d8) )
 
 	ROM_REGION( 0x020000, "gfx1", ROMREGION_DISPOSE )
@@ -493,7 +469,7 @@ ROM_END
 
 static DRIVER_INIT( darkseal )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 	int i;
 
 	for (i=0x00000; i<0x80000; i++)

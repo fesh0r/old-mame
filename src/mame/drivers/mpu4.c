@@ -1,6 +1,8 @@
 /***********************************************************************************************************
   Barcrest MPU4 highly preliminary driver by J.Wallace, and Anonymous.
-  This is the core driver, no game specific stuff should go in here.
+
+  This is the core driver, no video specific stuff should go in here.
+  This driver holds all the mechanical games.
 
      09-2007: Haze: Added Deal 'Em video support.
   03-08-2007: J Wallace: Removed audio filter for now, since sound is more accurate without them.
@@ -240,7 +242,6 @@ IRQ line connected to CPU
 TODO: - Fix lamp timing, MAME doesn't update fast enough to see everything
       - Distinguish door switches using manual
 ***********************************************************************************************************/
-
 #include "driver.h"
 #include "machine/6821pia.h"
 #include "machine/6840ptm.h"
@@ -249,6 +250,8 @@ TODO: - Fix lamp timing, MAME doesn't update fast enough to see everything
 #include "timer.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/ay8910.h"
+#include "sound/okim6376.h"
+#include "sound/2413intf.h"
 #include "machine/steppers.h"
 #include "machine/roc10937.h"
 #include "machine/meters.h"
@@ -265,13 +268,10 @@ TODO: - Fix lamp timing, MAME doesn't update fast enough to see everything
 #define LOG_IC3(x)	do { if (MPU4VERBOSE) logerror x; } while (0)
 #define LOG_IC8(x)	do { if (MPU4VERBOSE) logerror x; } while (0)
 
-#ifndef AWP_VIDEO /*Defined for fruit machines with mechanical reels*/
-#define draw_reel(x)
-#else
-#define draw_reel(x) awp_draw_reel x
-#endif
-#include "mpu4.lh"
+#include "video/awpvid.h"		//Fruit Machines Only
 #include "connect4.lh"
+#include "gamball.lh"
+#include "mpu4.lh"
 #define MPU4_MASTER_CLOCK (6880000)
 
 /* local vars */
@@ -296,6 +296,9 @@ static int led_extend;
 static int serial_card_connected;
 static emu_timer *ic24_timer;
 static TIMER_CALLBACK( ic24_timeout );
+
+static int expansion_latch;// OKI MOD 4 and above only
+static int global_volume;// OKI MOD 4 and above only
 
 
 /* 32 multiplexed inputs - but a further 8 possible per AUX.
@@ -429,7 +432,7 @@ static MACHINE_RESET( mpu4 )
 
 /* init rom bank, some games don't set this */
 	{
-		UINT8 *rom = memory_region(machine, "main");
+		UINT8 *rom = memory_region(machine, "maincpu");
 
 		memory_configure_bank(machine, 1, 0, 8, &rom[0x01000], 0x10000);
 
@@ -441,27 +444,39 @@ static MACHINE_RESET( mpu4 )
 
 
 /* 6809 IRQ handler */
-static void cpu0_irq(running_machine *machine, int state)
+static WRITE_LINE_DEVICE_HANDLER( cpu0_irq )
 {
+	const device_config *pia3 = devtag_get_device(device->machine, "pia_ic3");
+	const device_config *pia4 = devtag_get_device(device->machine, "pia_ic4");
+	const device_config *pia5 = devtag_get_device(device->machine, "pia_ic5");
+	const device_config *pia6 = devtag_get_device(device->machine, "pia_ic6");
+	const device_config *pia7 = devtag_get_device(device->machine, "pia_ic7");
+	const device_config *pia8 = devtag_get_device(device->machine, "pia_ic8");
+
 	/* The PIA and PTM IRQ lines are all connected to a common PCB track, leading directly to the 6809 IRQ line. */
-	int combined_state = pia_get_irq_a(0) | pia_get_irq_b(0) |
-						 pia_get_irq_a(1) | pia_get_irq_b(1) |
-						 pia_get_irq_a(2) | pia_get_irq_b(2) |
-						 pia_get_irq_a(3) | pia_get_irq_b(3) |
-						 pia_get_irq_a(4) | pia_get_irq_b(4) |
-						 pia_get_irq_a(5) | pia_get_irq_b(5) |
+	int combined_state = pia6821_get_irq_a(pia3) | pia6821_get_irq_b(pia3) |
+						 pia6821_get_irq_a(pia4) | pia6821_get_irq_b(pia4) |
+						 pia6821_get_irq_a(pia5) | pia6821_get_irq_b(pia5) |
+						 pia6821_get_irq_a(pia6) | pia6821_get_irq_b(pia6) |
+						 pia6821_get_irq_a(pia7) | pia6821_get_irq_b(pia7) |
+						 pia6821_get_irq_a(pia8) | pia6821_get_irq_b(pia8) |
 						 ptm6840_get_irq(0);
 
 	if (!serial_card_connected)
 	{
-		cpu_set_input_line(machine->cpu[0], M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+		cpu_set_input_line(device->machine->cpu[0], M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 		LOG(("6809 int%d \n", combined_state));
 	}
 	else
 	{
-		cpu_set_input_line(machine->cpu[0], M6809_FIRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+		cpu_set_input_line(device->machine->cpu[0], M6809_FIRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 		LOG(("6809 fint%d \n", combined_state));
 	}
+}
+
+static void cpu0_irq_m6840(running_machine *machine, int state)
+{
+	cpu0_irq(devtag_get_device(machine, "pia_ic3"), state);
 }
 
 
@@ -490,7 +505,8 @@ static WRITE8_HANDLER( ic2_o1_callback )
 
 static WRITE8_HANDLER( ic2_o2_callback )
 {
-	pia_set_input_ca1(0, data); /* copy output value to IC3 ca1 */
+	const device_config *pia = devtag_get_device(space->machine, "pia_ic3");
+	pia6821_ca1_w(pia, 0, data); /* copy output value to IC3 ca1 */
 
 	/* the output from timer2 is the input clock for timer3 */
 	ptm6840_set_c3(   space->machine, 0, data);
@@ -511,15 +527,15 @@ static const ptm6840_interface ptm_ic2_intf =
 	MPU4_MASTER_CLOCK/4,
 	{ 0,0,0 },
 	{ ic2_o1_callback, ic2_o2_callback, ic2_o3_callback },
-	cpu0_irq
+	cpu0_irq_m6840
 };
 
 
 /* 6821 PIA handlers */
 /* IC3, lamp data lines + alpha numeric display */
-static WRITE8_HANDLER( pia_ic3_porta_w )
+static WRITE8_DEVICE_HANDLER( pia_ic3_porta_w )
 {
-	LOG_IC3(("%04x IC3 PIA Port A Set to %2x (lamp strobes 1 - 9)\n", cpu_get_previouspc(space->cpu),data));
+	LOG_IC3(("%s: IC3 PIA Port A Set to %2x (lamp strobes 1 - 9)\n", cpuexec_describe_context(device->machine),data));
 
 	if(ic23_active)
 	{
@@ -529,9 +545,9 @@ static WRITE8_HANDLER( pia_ic3_porta_w )
 }
 
 
-static WRITE8_HANDLER( pia_ic3_portb_w )
+static WRITE8_DEVICE_HANDLER( pia_ic3_portb_w )
 {
-	LOG_IC3(("%04x IC3 PIA Port B Set to %2x  (lamp strobes 10 - 17)\n", cpu_get_previouspc(space->cpu),data));
+	LOG_IC3(("%s: IC3 PIA Port B Set to %2x  (lamp strobes 10 - 17)\n", cpuexec_describe_context(device->machine),data));
 
 	if(ic23_active)
 	{
@@ -541,30 +557,40 @@ static WRITE8_HANDLER( pia_ic3_portb_w )
 }
 
 
-static WRITE8_HANDLER( pia_ic3_ca2_w )
+static WRITE_LINE_DEVICE_HANDLER( pia_ic3_ca2_w )
 {
-	LOG_IC3(("%04x IC3 PIA Write CA2 (alpha data), %02X\n", cpu_get_previouspc(space->cpu),data));
+	LOG_IC3(("%s: IC3 PIA Write CA2 (alpha data), %02X\n", cpuexec_describe_context(device->machine),state));
 
-	alpha_data_line = data;
+	alpha_data_line = state;
 	ROC10937_draw_16seg(0);
 }
 
 
-static WRITE8_HANDLER( pia_ic3_cb2_w )
+static WRITE_LINE_DEVICE_HANDLER( pia_ic3_cb2_w )
 {
-	LOG_IC3(("%04x IC3 PIA Write CB (alpha reset), %02X\n",cpu_get_previouspc(space->cpu),data));
+	LOG_IC3(("%s: IC3 PIA Write CB (alpha reset), %02X\n",cpuexec_describe_context(device->machine),state));
 
-	if ( data ) ROC10937_reset(0);
+	if ( state ) ROC10937_reset(0);
 	ROC10937_draw_16seg(0);
 }
 
 
 static const pia6821_interface pia_ic3_intf =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ pia_ic3_porta_w, pia_ic3_portb_w, pia_ic3_ca2_w, pia_ic3_cb2_w,
-	/*irqs   : A/B             */ cpu0_irq, cpu0_irq
+	DEVCB_NULL,		/* port A in */
+	DEVCB_NULL,		/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_HANDLER(pia_ic3_porta_w),		/* port A out */
+	DEVCB_HANDLER(pia_ic3_portb_w),		/* port B out */
+	DEVCB_LINE(pia_ic3_ca2_w),			/* line CA2 out */
+	DEVCB_LINE(pia_ic3_cb2_w),			/* port CB2 out */
+	DEVCB_LINE(cpu0_irq),				/* IRQA */
+	DEVCB_LINE(cpu0_irq)				/* IRQB */
 };
+
 
 /*
 IC23 emulation
@@ -637,7 +663,7 @@ static TIMER_CALLBACK( ic24_timeout )
 
 
 /* IC4 IC4, 7 seg leds, 50Hz timer reel sensors, current sensors */
-static WRITE8_HANDLER( pia_ic4_porta_w )
+static WRITE8_DEVICE_HANDLER( pia_ic4_porta_w )
 {
 	if(ic23_active)
 	{
@@ -647,17 +673,17 @@ static WRITE8_HANDLER( pia_ic4_porta_w )
 }
 
 
-static READ8_HANDLER( pia_ic4_portb_r )
+static READ8_DEVICE_HANDLER( pia_ic4_portb_r )
 {
 	if ( serial_data )
 	{
 		ic4_input_b |=  0x80;
-		pia_set_input_cb1(1, 1);
+		pia6821_cb1_w(device, 0, 1);
 	}
 	else
 	{
 		ic4_input_b &= ~0x80;
-		pia_set_input_cb1(1, 0);
+		pia6821_cb1_w(device, 0, 0);
 	}
 
 	if ( optic_pattern & 0x01 ) ic4_input_b |=  0x40; /* reel A tab */
@@ -680,51 +706,61 @@ static READ8_HANDLER( pia_ic4_portb_r )
 	if ( lamp_undercurrent ) ic4_input_b |= 0x01;
 	#endif
 
-	LOG_IC3(("%04x IC4 PIA Read of Port B %x\n",cpu_get_previouspc(space->cpu),ic4_input_b));
+	LOG_IC3(("%s: IC4 PIA Read of Port B %x\n",cpuexec_describe_context(device->machine),ic4_input_b));
 	return ic4_input_b;
 }
 
 
-static WRITE8_HANDLER( pia_ic4_ca2_w )
+static WRITE_LINE_DEVICE_HANDLER( pia_ic4_ca2_w )
 {
-	LOG_IC3(("%04x IC4 PIA Write CA (input MUX strobe /LED B), %02X\n", cpu_get_previouspc(space->cpu),data));
+	LOG_IC3(("%s: IC4 PIA Write CA (input MUX strobe /LED B), %02X\n", cpuexec_describe_context(device->machine),state));
 
-	IC23GB = data;
+	IC23GB = state;
 	ic23_update();
 }
 
 
 static const pia6821_interface pia_ic4_intf =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ 0, pia_ic4_portb_r, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ pia_ic4_porta_w, 0, pia_ic4_ca2_w, 0,
-	/*irqs   : A/B             */ cpu0_irq, cpu0_irq
+	DEVCB_NULL,		/* port A in */
+	DEVCB_HANDLER(pia_ic4_portb_r),	/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_HANDLER(pia_ic4_porta_w),		/* port A out */
+	DEVCB_NULL,		/* port B out */
+	DEVCB_LINE(pia_ic4_ca2_w),		/* line CA2 out */
+	DEVCB_NULL,		/* port CB2 out */
+	DEVCB_LINE(cpu0_irq),		/* IRQA */
+	DEVCB_LINE(cpu0_irq)		/* IRQB */
 };
 
 
 /* IC5, AUX ports, coin lockouts and AY sound chip select (MODs below 4 only) */
-static READ8_HANDLER( pia_ic5_porta_r )
+static READ8_DEVICE_HANDLER( pia_ic5_porta_r )
 {
-	LOG(("%04x IC5 PIA Read of Port A (AUX1)\n",cpu_get_previouspc(space->cpu)));
-	return input_port_read(space->machine, "AUX1");
+	LOG(("%s: IC5 PIA Read of Port A (AUX1)\n",cpuexec_describe_context(device->machine)));
+	return input_port_read(device->machine, "AUX1");
 }
 
 
-static READ8_HANDLER( pia_ic5_portb_r )
+static READ8_DEVICE_HANDLER( pia_ic5_portb_r )
 {
-	LOG(("%04x IC5 PIA Read of Port B (coin input AUX2)\n",cpu_get_previouspc(space->cpu)));
-	coin_lockout_w(0, (pia_get_output_b(2) & 0x01) );
-	coin_lockout_w(1, (pia_get_output_b(2) & 0x02) );
-	coin_lockout_w(2, (pia_get_output_b(2) & 0x04) );
-	coin_lockout_w(3, (pia_get_output_b(2) & 0x08) );
-	return input_port_read(space->machine, "AUX2");
+	const device_config *pia_ic5 = devtag_get_device(device->machine, "pia_ic5");
+	LOG(("%s: IC5 PIA Read of Port B (coin input AUX2)\n",cpuexec_describe_context(device->machine)));
+	coin_lockout_w(0, (pia6821_get_output_b(pia_ic5) & 0x01) );
+	coin_lockout_w(1, (pia6821_get_output_b(pia_ic5) & 0x02) );
+	coin_lockout_w(2, (pia6821_get_output_b(pia_ic5) & 0x04) );
+	coin_lockout_w(3, (pia6821_get_output_b(pia_ic5) & 0x08) );
+	return input_port_read(device->machine, "AUX2");
 }
 
 
-static WRITE8_HANDLER( pia_ic5_ca2_w )
+static WRITE_LINE_DEVICE_HANDLER( pia_ic5_ca2_w )
 {
-	LOG(("%04x IC5 PIA Write CA2 (Serial Tx) %2x\n",cpu_get_previouspc(space->cpu),data));
-	serial_data = data;
+	LOG(("%s: IC5 PIA Write CA2 (Serial Tx) %2x\n",cpuexec_describe_context(device->machine),state));
+	serial_data = state;
 }
 
 
@@ -751,9 +787,9 @@ BDIR BC1       |
 */
 
 /* PSG function selected */
-static void update_ay(const address_space *space)
+static void update_ay(const device_config *device)
 {
-	if (!pia_get_output_cb2(2))
+	if (!pia6821_get_output_cb2(device))
 	{
 		switch (ay8913_address)
 		{
@@ -764,19 +800,24 @@ static void update_ay(const address_space *space)
 		    }
 		  	case 0x01:
 			{	/* CA2 = 1 CB2 = 0? : Read from selected PSG register and make the register data available to Port A */
-				LOG(("AY8913 address = %d \n",pia_get_output_a(3)&0x0f));
+				const device_config *pia_ic6 = devtag_get_device(device->machine, "pia_ic6");
+				LOG(("AY8913 address = %d \n",pia6821_get_output_a(pia_ic6)&0x0f));
 				break;
 		  	}
 		  	case 0x02:
 			{/* CA2 = 0 CB2 = 1? : Write to selected PSG register and write data to Port A */
-	  			ay8910_write_port_0_w(space, 0, pia_get_output_a(3));
+				const device_config *pia_ic6 = devtag_get_device(device->machine, "pia_ic6");
+				const device_config *ay = devtag_get_device(device->machine, "ay8913");
+	  			ay8910_data_w(ay, 0, pia6821_get_output_a(pia_ic6));
 				LOG(("AY Chip Write \n"));
 				break;
 	  		}
 		  	case 0x03:
 			{/* CA2 = 1 CB2 = 1? : The register will now be selected and the user can read from or write to it.
              The register will remain selected until another is chosen.*/
-				ay8910_control_port_0_w(space, 0, pia_get_output_a(3));
+				const device_config *pia_ic6 = devtag_get_device(device->machine, "pia_ic6");
+				const device_config *ay = devtag_get_device(device->machine, "ay8913");
+				ay8910_address_w(ay, 0, pia6821_get_output_a(pia_ic6));
 				LOG(("AY Chip Select \n"));
 				break;
 	  		}
@@ -789,28 +830,37 @@ static void update_ay(const address_space *space)
 }
 
 
-static WRITE8_HANDLER( pia_ic5_cb2_w )
+static WRITE_LINE_DEVICE_HANDLER( pia_ic5_cb2_w )
 {
-    update_ay(space);
+    update_ay(device);
 }
 
 
 static const pia6821_interface pia_ic5_intf =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ pia_ic5_porta_r, pia_ic5_portb_r, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ 0, 0, pia_ic5_ca2_w,  pia_ic5_cb2_w,
-	/*irqs   : A/B             */ cpu0_irq, cpu0_irq
+	DEVCB_HANDLER(pia_ic5_porta_r),		/* port A in */
+	DEVCB_HANDLER(pia_ic5_portb_r),	/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_NULL,		/* port A out */
+	DEVCB_NULL,		/* port B out */
+	DEVCB_LINE(pia_ic5_ca2_w),		/* line CA2 out */
+	DEVCB_LINE(pia_ic5_cb2_w),		/* port CB2 out */
+	DEVCB_LINE(cpu0_irq),			/* IRQA */
+	DEVCB_LINE(cpu0_irq)			/* IRQB */
 };
 
 
 /* IC6, Reel A and B and AY registers (MODs below 4 only) */
-static WRITE8_HANDLER( pia_ic6_portb_w )
+static WRITE8_DEVICE_HANDLER( pia_ic6_portb_w )
 {
-	LOG(("%04x IC6 PIA Port B Set to %2x (Reel A and B)\n", cpu_get_previouspc(space->cpu),data));
+	LOG(("%s: IC6 PIA Port B Set to %2x (Reel A and B)\n", cpuexec_describe_context(device->machine),data));
 	stepper_update(0, data & 0x0F );
 	stepper_update(1, (data>>4) & 0x0F );
 
-/*  if ( pia_get_output_cb2(1)) */
+/*  if ( pia6821_get_output_cb2(1)) */
 	{
 		if ( stepper_optic_state(0) ) optic_pattern |=  0x01;
 		else                          optic_pattern &= ~0x01;
@@ -818,77 +868,86 @@ static WRITE8_HANDLER( pia_ic6_portb_w )
 		if ( stepper_optic_state(1) ) optic_pattern |=  0x02;
 		else                          optic_pattern &= ~0x02;
 	}
-	draw_reel((0));
-	draw_reel((1));
+	awp_draw_reel(0);
+	awp_draw_reel(1);
 }
 
 
-static WRITE8_HANDLER( pia_ic6_porta_w )
+static WRITE8_DEVICE_HANDLER( pia_ic6_porta_w )
 {
-	LOG(("%04x IC6 PIA Write A %2x\n", cpu_get_previouspc(space->cpu),data));
+	LOG(("%s: IC6 PIA Write A %2x\n", cpuexec_describe_context(device->machine),data));
 	if (mod_number <4)
 	{
 	  	ay_data = data;
-	    update_ay(space);
+	    update_ay(device);
 	}
 }
 
 
-static WRITE8_HANDLER( pia_ic6_ca2_w )
+static WRITE_LINE_DEVICE_HANDLER( pia_ic6_ca2_w )
 {
-	LOG(("%04x IC6 PIA write CA2 %2x (AY8913 BC1)\n", cpu_get_previouspc(space->cpu),data));
+	LOG(("%s: IC6 PIA write CA2 %2x (AY8913 BC1)\n", cpuexec_describe_context(device->machine),state));
 	if (mod_number <4)
 	{
-		if ( data ) ay8913_address |=  0x01;
-		else        ay8913_address &= ~0x01;
-		update_ay(space);
+		if ( state ) ay8913_address |=  0x01;
+		else         ay8913_address &= ~0x01;
+		update_ay(device);
 	}
 }
 
 
-static WRITE8_HANDLER( pia_ic6_cb2_w )
+static WRITE_LINE_DEVICE_HANDLER( pia_ic6_cb2_w )
 {
-	LOG(("%04x IC6 PIA write CB2 %2x (AY8913 BCDIR)\n", cpu_get_previouspc(space->cpu),data));
+	LOG(("%s: IC6 PIA write CB2 %2x (AY8913 BCDIR)\n", cpuexec_describe_context(device->machine),state));
 	if (mod_number <4)
 	{
-		if ( data ) ay8913_address |=  0x02;
-		else        ay8913_address &= ~0x02;
-		update_ay(space);
+		if ( state ) ay8913_address |=  0x02;
+		else         ay8913_address &= ~0x02;
+		update_ay(device);
 	}
 }
 
 
 static const pia6821_interface pia_ic6_intf =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ pia_ic6_porta_w, pia_ic6_portb_w, pia_ic6_ca2_w, pia_ic6_cb2_w,
-	/*irqs   : A/B             */ cpu0_irq, cpu0_irq
+	DEVCB_NULL,		/* port A in */
+	DEVCB_NULL,		/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_HANDLER(pia_ic6_porta_w),		/* port A out */
+	DEVCB_HANDLER(pia_ic6_portb_w),		/* port B out */
+	DEVCB_LINE(pia_ic6_ca2_w),			/* line CA2 out */
+	DEVCB_LINE(pia_ic6_cb2_w),			/* port CB2 out */
+	DEVCB_LINE(cpu0_irq),				/* IRQA */
+	DEVCB_LINE(cpu0_irq)				/* IRQB */
 };
 
 
 /* IC7 Reel C and D, mechanical meters/Reel E and F, input strobe bit A */
-static WRITE8_HANDLER( pia_ic7_porta_w )
+static WRITE8_DEVICE_HANDLER( pia_ic7_porta_w )
 {
-	LOG(("%04x IC7 PIA Port A Set to %2x (Reel C and D)\n", cpu_get_previouspc(space->cpu),data));
+	LOG(("%s: IC7 PIA Port A Set to %2x (Reel C and D)\n", cpuexec_describe_context(device->machine),data));
 	stepper_update(2, data & 0x0F );
 	stepper_update(3, (data >> 4)& 0x0F );
 
-/*  if ( pia_get_output_cb2(1)) */
+/*  if ( pia6821_get_output_cb2(1)) */
 	{
 		if ( stepper_optic_state(2) ) optic_pattern |=  0x04;
 		else                          optic_pattern &= ~0x04;
 		if ( stepper_optic_state(3) ) optic_pattern |=  0x08;
 		else                          optic_pattern &= ~0x08;
 	}
-	draw_reel((2));
-	draw_reel((3));
+	awp_draw_reel(2);
+	awp_draw_reel(3);
 }
 
 
-static WRITE8_HANDLER( pia_ic7_portb_w )
+static WRITE8_DEVICE_HANDLER( pia_ic7_portb_w )
 {
 	int meter;
-	UINT64 cycles = cpu_get_total_cycles(space->cpu);
+	UINT64 cycles = cputag_get_total_cycles(device->machine, "maincpu");
 
 /* The meters are connected to a voltage drop sensor, where current
 flowing through them also passes through pin B7, meaning that when
@@ -902,101 +961,197 @@ all eight meters are driven from this port, giving the 8 line driver chip
 	mmtr_data = data;
 	if (mmtr_data)
 	{
-		pia_set_input_b(4, mmtr_data | 0x80);
+		pia6821_portb_w(device, 0, mmtr_data | 0x80);
 		for (meter = 0; meter < 8; meter ++)
 		if (mmtr_data & (1 << meter))	Mechmtr_update(meter, cycles, mmtr_data & (1 << meter));
 	}
 	else
 	{
-		pia_set_input_b(4, mmtr_data &~0x80);
+		pia6821_portb_w(device, 0, mmtr_data &~0x80);
 	}
 
-	LOG(("%04x IC7 PIA Port B Set to %2x (Meters, Reel E and F)\n", cpu_get_previouspc(space->cpu),data));
+	LOG(("%s: IC7 PIA Port B Set to %2x (Meters, Reel E and F)\n", cpuexec_describe_context(device->machine),data));
 }
 
 
-static WRITE8_HANDLER( pia_ic7_ca2_w )
+static WRITE_LINE_DEVICE_HANDLER( pia_ic7_ca2_w )
 {
-	LOG(("%04x IC7 PIA write CA2 %2x (input strobe bit 0 / LED A)\n", cpu_get_previouspc(space->cpu),data));
+	LOG(("%s: IC7 PIA write CA2 %2x (input strobe bit 0 / LED A)\n", cpuexec_describe_context(device->machine),state));
 
-	IC23GA = data;
+	IC23GA = state;
 	ic24_setup();
 	ic23_update();
 }
 
 
-static WRITE8_HANDLER( pia_ic7_cb2_w )
+static WRITE_LINE_DEVICE_HANDLER( pia_ic7_cb2_w )
 {
 /* The eighth meter is connected here, because the voltage sensor
 is on PB7. */
-	UINT64 cycles = cpu_get_total_cycles(space->cpu);
-	if (data)
+	UINT64 cycles = cputag_get_total_cycles(device->machine, "maincpu");
+	if (state)
 	{
-		pia_set_input_b(4,mmtr_data|0x80);
-		Mechmtr_update(7, cycles, data );
+		pia6821_portb_w(device, 0, mmtr_data|0x80);
+		Mechmtr_update(7, cycles, state );
 	}
-	LOG(("%04x IC7 PIA write CB2 %2x \n", cpu_get_previouspc(space->cpu),data));
+	LOG(("%s: IC7 PIA write CB2 %2x \n", cpuexec_describe_context(device->machine),state));
 }
 
 
 static const pia6821_interface pia_ic7_intf =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ 0, 0, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ pia_ic7_porta_w, pia_ic7_portb_w, pia_ic7_ca2_w, pia_ic7_cb2_w,
-	/*irqs   : A/B             */ cpu0_irq, cpu0_irq
+	DEVCB_NULL,		/* port A in */
+	DEVCB_NULL,		/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_HANDLER(pia_ic7_porta_w),		/* port A out */
+	DEVCB_HANDLER(pia_ic7_portb_w),		/* port B out */
+	DEVCB_LINE(pia_ic7_ca2_w),			/* line CA2 out */
+	DEVCB_LINE(pia_ic7_cb2_w),			/* port CB2 out */
+	DEVCB_LINE(cpu0_irq),				/* IRQA */
+	DEVCB_LINE(cpu0_irq)				/* IRQB */
 };
 
 
 /* IC8, Inputs, TRIACS, alpha clock */
-static READ8_HANDLER( pia_ic8_porta_r )
+static READ8_DEVICE_HANDLER( pia_ic8_porta_r )
 {
 	static const char *const portnames[] = { "ORANGE1", "ORANGE2", "BLACK1", "BLACK2", "ORANGE1", "ORANGE2", "DIL1", "DIL2" };
+	const device_config *pia_ic5 = devtag_get_device(device->machine, "pia_ic5");
 
-	LOG_IC8(("%04x IC8 PIA Read of Port A (MUX input data)\n", cpu_get_previouspc(space->cpu)));
+	LOG_IC8(("%s: IC8 PIA Read of Port A (MUX input data)\n", cpuexec_describe_context(device->machine)));
 /* The orange inputs are polled twice as often as the black ones, for reasons of efficiency.
    This is achieved via connecting every input line to an AND gate, thus allowing two strobes
    to represent each orange input bank (strobes are active low). */
-	pia_set_input_cb1(2, (input_port_read(space->machine, "AUX2") & 0x80));
-	return input_port_read(space->machine, portnames[input_strobe]);
+	pia6821_cb1_w(pia_ic5, 0, (input_port_read(device->machine, "AUX2") & 0x80));
+	return input_port_read(device->machine, portnames[input_strobe]);
 }
 
 
-static WRITE8_HANDLER( pia_ic8_portb_w )
+static WRITE8_DEVICE_HANDLER( pia_ic8_portb_w )
 {
 	int i;
-	LOG_IC8(("%04x IC8 PIA Port B Set to %2x (OUTPUT PORT, TRIACS)\n", cpu_get_previouspc(space->cpu),data));
+	LOG_IC8(("%s: IC8 PIA Port B Set to %2x (OUTPUT PORT, TRIACS)\n", cpuexec_describe_context(device->machine),data));
 	for (i = 0; i < 8; i++)
 		if ( data & (1 << i) )		output_set_indexed_value("triac", i, data & (1 << i));
 }
 
 
-static WRITE8_HANDLER( pia_ic8_ca2_w )
+static WRITE_LINE_DEVICE_HANDLER( pia_ic8_ca2_w )
 {
-	LOG_IC8(("%04x IC8 PIA write CA2 (input_strobe bit 2 / LED C) %02X\n", cpu_get_previouspc(space->cpu), data & 0xFF));
+	LOG_IC8(("%s: IC8 PIA write CA2 (input_strobe bit 2 / LED C) %02X\n", cpuexec_describe_context(device->machine), state & 0xFF));
 
-	IC23GC = data;
+	IC23GC = state;
 	ic23_update();
 }
 
 
-static WRITE8_HANDLER( pia_ic8_cb2_w )
+static WRITE_LINE_DEVICE_HANDLER( pia_ic8_cb2_w )
 {
-	LOG_IC8(("%04x IC8 PIA write CB2 (alpha clock) %02X\n", cpu_get_previouspc(space->cpu), data & 0xFF));
+	LOG_IC8(("%s: IC8 PIA write CB2 (alpha clock) %02X\n", cpuexec_describe_context(device->machine), state & 0xFF));
 
-	if ( !alpha_clock && (data) )
+	if ( !alpha_clock && (state) )
 	{
 		ROC10937_shift_data(0, alpha_data_line&0x01?0:1);
 	}
-	alpha_clock = data;
+	alpha_clock = state;
 	ROC10937_draw_16seg(0);
 }
 
 
 static const pia6821_interface pia_ic8_intf =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ pia_ic8_porta_r, 0, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ 0, pia_ic8_portb_w, pia_ic8_ca2_w, pia_ic8_cb2_w,
-	/*irqs   : A/B             */ cpu0_irq, cpu0_irq
+	DEVCB_HANDLER(pia_ic8_porta_r),		/* port A in */
+	DEVCB_NULL,		/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_NULL,		/* port A out */
+	DEVCB_HANDLER(pia_ic8_portb_w),		/* port B out */
+	DEVCB_LINE(pia_ic8_ca2_w),			/* line CA2 out */
+	DEVCB_LINE(pia_ic8_cb2_w),			/* port CB2 out */
+	DEVCB_LINE(cpu0_irq),				/* IRQA */
+	DEVCB_LINE(cpu0_irq)				/* IRQB */
+};
+
+
+static WRITE8_DEVICE_HANDLER( pia_gb_porta_w )
+{
+	const device_config *msm6376 = devtag_get_device(device->machine, "msm6376");
+
+	LOG(("%s: GAMEBOARD: PIA Port A Set to %2x\n", cpuexec_describe_context(device->machine),data));
+	okim6376_w(msm6376, 0, data);
+}
+
+static WRITE8_DEVICE_HANDLER( pia_gb_portb_w )
+{
+	int changed = expansion_latch^data;
+
+	LOG(("%s: GAMEBOARD: PIA Port B Set to %2x\n", cpuexec_describe_context(device->machine),data));
+
+	expansion_latch = data;
+
+	if ( changed & 0x20)
+	{ // digital volume clock line changed
+		if ( !(data & 0x20) )
+		{ // changed from high to low,
+			if ( !(data & 0x10) )
+			{
+				if ( global_volume < 31 ) global_volume++; //steps unknown
+			}
+			else
+			{
+				if ( global_volume > 0  ) global_volume--;
+			}
+
+			{
+//              float percent = (32-global_volume)/32.0; //volume_override?1.0:(32-global_volume)/32.0;
+//              LOG(("GAMEBOARD: OKI volume %f \n",percent));
+//              sndti_set_output_gain(SOUND_OKIM6295,  0, 0, percent);
+			}
+		}
+	}
+}
+static READ8_DEVICE_HANDLER( pia_gb_portb_r )
+{
+	LOG(("%s: GAMEBOARD: PIA Read of Port B\n",cpuexec_describe_context(device->machine)));
+	//
+	// b7, 1 = OKI ready, 0 = OKI busy
+	// b5, vol clock
+	// b4, 1 = Vol down, 0 = Vol up
+	//
+
+//if (offset == 0x40)
+//{
+//  return OKIM6295_status_r(0);
+//}
+	return 0x40;
+}
+
+static WRITE_LINE_DEVICE_HANDLER( pia_gb_ca2_w )
+{
+	LOG(("%s: GAMEBOARD: OKI RESET data = %02X\n", cpuexec_describe_context(device->machine), state));
+
+//  return okim6376_status_0_r();
+}
+
+static const pia6821_interface pia_gameboard_intf =
+{
+	DEVCB_NULL,		/* port A in */
+	DEVCB_HANDLER(pia_gb_portb_r),	/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_HANDLER(pia_gb_porta_w),		/* port A out */
+	DEVCB_HANDLER(pia_gb_portb_w),		/* port B out */
+	DEVCB_LINE(pia_gb_ca2_w),		/* line CA2 out */
+	DEVCB_NULL,		/* port CB2 out */
+	DEVCB_NULL,		/* IRQA */
+	DEVCB_NULL		/* IRQB */
 };
 
 
@@ -1230,6 +1385,136 @@ static INPUT_PORTS_START( connect4 )
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_COIN4) PORT_NAME("100p")PORT_IMPULSE(5)
 INPUT_PORTS_END
 
+static INPUT_PORTS_START( gamball )
+	PORT_START("ORANGE1")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("00")
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("01")
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("02")
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("03")
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("04")
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("05")
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("06")
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("07")
+
+	PORT_START("ORANGE2")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("08")
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("09")
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("10")
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("11")
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("12")
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("13")
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("14")
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("15")
+
+	PORT_START("BLACK1")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_NAME("Hi")
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_NAME("Lo")
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("18")
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("19")
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("20")
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_SERVICE) PORT_NAME("Test Button") PORT_CODE(KEYCODE_W)
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_SERVICE) PORT_NAME("Refill Key") PORT_CODE(KEYCODE_R) PORT_TOGGLE
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_INTERLOCK) PORT_NAME("Cashbox Door")  PORT_CODE(KEYCODE_Q) PORT_TOGGLE
+
+	PORT_START("BLACK2")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("24")
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_OTHER) PORT_NAME("25")
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_BUTTON3) PORT_NAME("Cancel/Collect")
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_BUTTON4) PORT_NAME("Hold/Nudge 1")
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_BUTTON5) PORT_NAME("Hold/Nudge 2")
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_BUTTON6) PORT_NAME("Hold/Nudge 3")
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_BUTTON7) PORT_NAME("Hold/Nudge 4")
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_START1)
+
+	PORT_START("DIL1")
+	PORT_DIPNAME( 0x01, 0x00, "DIL101" ) PORT_DIPLOCATION("DIL1:01")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x02, 0x00, "DIL102" ) PORT_DIPLOCATION("DIL1:02")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x04, 0x00, "DIL103" ) PORT_DIPLOCATION("DIL1:03")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x08, 0x00, "DIL104" ) PORT_DIPLOCATION("DIL1:04")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x10, 0x00, "DIL105" ) PORT_DIPLOCATION("DIL1:05")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x20, 0x00, "DIL106" ) PORT_DIPLOCATION("DIL1:06")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x40, 0x00, "DIL107" ) PORT_DIPLOCATION("DIL1:07")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x80, 0x00, "DIL108" ) PORT_DIPLOCATION("DIL1:08")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( On  ) )
+
+	PORT_START("DIL2")
+	PORT_DIPNAME( 0x01, 0x00, "DIL201" ) PORT_DIPLOCATION("DIL2:01")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x02, 0x00, "DIL202" ) PORT_DIPLOCATION("DIL2:02")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x04, 0x00, "DIL203" ) PORT_DIPLOCATION("DIL2:03")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x08, 0x00, "DIL204" ) PORT_DIPLOCATION("DIL2:04")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x10, 0x00, "DIL205" ) PORT_DIPLOCATION("DIL2:05")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x20, 0x00, "DIL206" ) PORT_DIPLOCATION("DIL2:06")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x40, 0x00, "DIL207" ) PORT_DIPLOCATION("DIL2:07")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x80, 0x00, "DIL208" ) PORT_DIPLOCATION("DIL2:08")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( On  ) )
+
+	PORT_START("AUX1")
+/*  PORT_DIPNAME( 0x01, 0x00, "AUX101" )
+    PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+    PORT_DIPSETTING(    0x01, DEF_STR( On  ) )
+    PORT_DIPNAME( 0x02, 0x00, "AUX102" )
+    PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+    PORT_DIPSETTING(    0x02, DEF_STR( On  ) )
+    PORT_DIPNAME( 0x04, 0x00, "AUX103" )
+    PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+    PORT_DIPSETTING(    0x04, DEF_STR( On  ) )
+    PORT_DIPNAME( 0x08, 0x00, "AUX104" )
+    PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+    PORT_DIPSETTING(    0x08, DEF_STR( On  ) )*/
+	PORT_DIPNAME( 0x10, 0x00, "AUX105" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x20, 0x00, "AUX106" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x40, 0x00, "AUX107" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( On  ) )
+	PORT_DIPNAME( 0x80, 0x00, "AUX108" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( On  ) )
+
+	PORT_START("AUX2")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_SPECIAL)
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_SPECIAL)
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_SPECIAL)
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_SPECIAL)
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_COIN1) PORT_NAME("10p")PORT_IMPULSE(5)
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_COIN2) PORT_NAME("20p")PORT_IMPULSE(5)
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_COIN3) PORT_NAME("50p")PORT_IMPULSE(5)
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_COIN4) PORT_NAME("100p")PORT_IMPULSE(5)
+INPUT_PORTS_END
+
 static const stepper_interface barcrest_reel_interface =
 {
 	BARCREST_48STEP_REEL,
@@ -1241,13 +1526,6 @@ static const stepper_interface barcrest_reel_interface =
 /* Common configurations */
 static void mpu4_config_common(running_machine *machine)
 {
-	pia_config(machine, 0,&pia_ic3_intf);
-	pia_config(machine, 1,&pia_ic4_intf);
-	pia_config(machine, 2,&pia_ic5_intf);
-	pia_config(machine, 3,&pia_ic6_intf);
-	pia_config(machine, 4,&pia_ic7_intf);
-	pia_config(machine, 5,&pia_ic8_intf);
-
 	ic24_timer = timer_alloc(machine, ic24_timeout, NULL);
 	/* setup 6840ptm */
 	ptm6840_config(machine, 0, &ptm_ic2_intf );
@@ -1256,7 +1534,6 @@ static void mpu4_config_common(running_machine *machine)
 static MACHINE_START( mpu4mod2 )
 {
 	mpu4_config_common(machine);
-	pia_reset();
 
 	serial_card_connected=0;
 	mod_number=2;
@@ -1274,6 +1551,45 @@ static MACHINE_START( mpu4mod2 )
 	ROC10937_init(0, MSC1937,0);
 }
 
+static MACHINE_START( mpu4dutch )
+{
+	mpu4_config_common(machine);
+
+	serial_card_connected=0;
+
+// setup 8 mechanical meters ////////////////////////////////////////////
+	Mechmtr_init(8);
+
+// setup 4 default 96 half step reels ///////////////////////////////////
+	stepper_config(machine, 0, &barcrest_reel_interface);
+	stepper_config(machine, 1, &barcrest_reel_interface);
+	stepper_config(machine, 2, &barcrest_reel_interface);
+	stepper_config(machine, 3, &barcrest_reel_interface);
+
+// setup the standard oki MSC1937 display ///////////////////////////////
+	ROC10937_init(0, MSC1937,1);	// does oldtimer use a OKI MSC1937 alpha display controller?
+}
+
+static MACHINE_START( mpu4mod4 )
+{
+	mpu4_config_common(machine);
+
+	serial_card_connected=0;
+	mod_number=4;
+
+// setup 8 mechanical meters ////////////////////////////////////////////
+	Mechmtr_init(8);
+
+// setup 4 default 96 half step reels ///////////////////////////////////
+	stepper_config(machine, 0, &barcrest_reel_interface);
+	stepper_config(machine, 1, &barcrest_reel_interface);
+	stepper_config(machine, 2, &barcrest_reel_interface);
+	stepper_config(machine, 3, &barcrest_reel_interface);
+
+	awp_reel_setup();
+// setup the standard oki MSC1937 display ///////////////////////////////
+	ROC10937_init(0, MSC1937,0);
+}
 
 /*
 Characteriser (CHR)
@@ -1370,6 +1686,46 @@ static READ8_HANDLER( characteriser_r )
 	return 0;
 }
 
+static DRIVER_INIT (m_ccelbr)
+{
+	int x;
+	static const UINT8 chr_table[72]={	0x00,0x84,0x8C,0xB8,0x74,0x80,0x1C,0xB4,
+										0xD8,0x74,0x00,0xD4,0xC8,0x78,0xA4,0x4C,
+										0xE0,0xDC,0xF4,0x88,0x78,0x24,0x84,0xCC,
+										0xB8,0x74,0x90,0x48,0xA0,0x1C,0x24,0x94,
+										0xC8,0xB8,0x74,0x00,0x94,0x48,0x30,0x90,
+										0x08,0x60,0xD4,0x58,0xF4,0x18,0x74,0x80,
+										0xDC,0x74,0xD0,0x58,0x24,0x94,0xD8,0x34,
+										0x90,0x58,0xF4,0x88,0x38,0x24,0xD4,0x00,
+										0x00,0x50,0x00,0x50,0x10,0x40,0x04,0x00};
+
+	for (x=0; x<72; x++)
+	{
+		MPU4_chr_data[(x)] = chr_table[(x)];
+	}
+
+}
+
+static DRIVER_INIT (m_gmball)
+{
+	int x;
+	static const UINT8 chr_table[72]= {	0x00,0x0C,0x50,0x90,0xB0,0x38,0xD4,0xA0,
+										0xBC,0xD4,0x30,0x90,0x38,0xC4,0xAC,0x70,
+										0x98,0xDC,0xDC,0x54,0x80,0xB4,0x38,0xCC,
+										0xE8,0xF8,0xD4,0x30,0x00,0x84,0x2C,0xC8,
+										0xF8,0x4C,0x58,0xD4,0xA8,0x78,0x44,0x0C,
+										0x48,0x50,0x98,0xD4,0xB0,0xA0,0xA4,0x3C,
+										0xDC,0xD4,0xB8,0xD4,0x30,0x88,0xE0,0x24,
+										0x8C,0xF8,0xCC,0x70,0x90,0x20,0x9C,0x00,
+										0x00,0x18,0x08,0x10,0x00,0x18,0x08,0x00};
+
+	for (x=0; x < 72; x++)
+	{
+		MPU4_chr_data[(x)] = chr_table[(x)];
+	}
+
+}
+
 
 /* generate a 50 Hz signal (based on an RC time) */
 static TIMER_DEVICE_CALLBACK( gen_50hz )
@@ -1379,7 +1735,7 @@ static TIMER_DEVICE_CALLBACK( gen_50hz )
     oscillating signal.*/
 	signal_50hz = signal_50hz?0:1;
 
-	pia_set_input_ca1(1,signal_50hz);	/* signal is connected to IC4 CA1 */
+	pia6821_ca1_w(devtag_get_device(timer->machine, "pia_ic4"), 0,  signal_50hz);	/* signal is connected to IC4 CA1 */
 }
 
 
@@ -1393,24 +1749,96 @@ static ADDRESS_MAP_START( mod2_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x0900, 0x0907) AM_READWRITE(ptm6840_0_r,ptm6840_0_w)  /* 6840PTM */
 
-	AM_RANGE(0x0A00, 0x0A03) AM_READWRITE(pia_0_r,pia_0_w)	  	/* PIA6821 IC3 */
-	AM_RANGE(0x0B00, 0x0B03) AM_READWRITE(pia_1_r,pia_1_w)	  	/* PIA6821 IC4 */
-	AM_RANGE(0x0C00, 0x0C03) AM_READWRITE(pia_2_r,pia_2_w)	  	/* PIA6821 IC5 */
-	AM_RANGE(0x0D00, 0x0D03) AM_READWRITE(pia_3_r,pia_3_w)		/* PIA6821 IC6 */
-	AM_RANGE(0x0E00, 0x0E03) AM_READWRITE(pia_4_r,pia_4_w)		/* PIA6821 IC7 */
-	AM_RANGE(0x0F00, 0x0F03) AM_READWRITE(pia_5_r,pia_5_w)		/* PIA6821 IC8 */
+	AM_RANGE(0x0A00, 0x0A03) AM_DEVREADWRITE("pia_ic3", pia6821_r,pia6821_w)	  	/* PIA6821 IC3 */
+	AM_RANGE(0x0B00, 0x0B03) AM_DEVREADWRITE("pia_ic4", pia6821_r,pia6821_w)	  	/* PIA6821 IC4 */
+	AM_RANGE(0x0C00, 0x0C03) AM_DEVREADWRITE("pia_ic5", pia6821_r,pia6821_w)	  	/* PIA6821 IC5 */
+	AM_RANGE(0x0D00, 0x0D03) AM_DEVREADWRITE("pia_ic6", pia6821_r,pia6821_w)		/* PIA6821 IC6 */
+	AM_RANGE(0x0E00, 0x0E03) AM_DEVREADWRITE("pia_ic7", pia6821_r,pia6821_w)		/* PIA6821 IC7 */
+	AM_RANGE(0x0F00, 0x0F03) AM_DEVREADWRITE("pia_ic8", pia6821_r,pia6821_w)		/* PIA6821 IC8 */
 
 	AM_RANGE(0x1000, 0xffff) AM_READ(SMH_BANK1)	/* 64k  paged ROM (4 pages)  */
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( mod4_yam_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
+
+	AM_RANGE(0x0800, 0x0810) AM_READWRITE(characteriser_r,characteriser_w)
+
+	AM_RANGE(0x0850, 0x0850) AM_WRITE(bankswitch_w)	// write bank (rom page select)
+
+	AM_RANGE(0x0880, 0x0881) AM_DEVWRITE( "ym2413", ym2413_w )
+
+//  AM_RANGE(0x08E0, 0x08E7) AM_READWRITE(68681_duart_r,68681_duart_w)
+
+	AM_RANGE(0x0900, 0x0907) AM_READWRITE(ptm6840_0_r,ptm6840_0_w)	// 6840PTM
+	AM_RANGE(0x0A00, 0x0A03) AM_DEVREADWRITE("pia_ic3", pia6821_r,pia6821_w)	  	/* PIA6821 IC3 */
+	AM_RANGE(0x0B00, 0x0B03) AM_DEVREADWRITE("pia_ic4", pia6821_r,pia6821_w)	  	/* PIA6821 IC4 */
+	AM_RANGE(0x0C00, 0x0C03) AM_DEVREADWRITE("pia_ic5", pia6821_r,pia6821_w)	  	/* PIA6821 IC5 */
+	AM_RANGE(0x0D00, 0x0D03) AM_DEVREADWRITE("pia_ic6", pia6821_r,pia6821_w)		/* PIA6821 IC6 */
+	AM_RANGE(0x0E00, 0x0E03) AM_DEVREADWRITE("pia_ic7", pia6821_r,pia6821_w)		/* PIA6821 IC7 */
+	AM_RANGE(0x0F00, 0x0F03) AM_DEVREADWRITE("pia_ic8", pia6821_r,pia6821_w)		/* PIA6821 IC8 */
+
+	AM_RANGE(0x1000, 0xffff) AM_READ(SMH_BANK1)	// 64k  paged ROM (4 pages)
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( mod4_oki_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
+
+	AM_RANGE(0x0800, 0x0810) AM_READWRITE(characteriser_r,characteriser_w)
+
+	AM_RANGE(0x0850, 0x0850) AM_WRITE(bankswitch_w)	// write bank (rom page select)
+
+	AM_RANGE(0x0880, 0x0883) AM_DEVREADWRITE("pia_gamebd", pia6821_r,pia6821_w)      // PIA6821 on game board
+
+//  AM_RANGE(0x08C0, 0x08C7) AM_READERITE(ptm6840_1_r,ptm6840_1_w)  // 6840PTM on game board
+
+//  AM_RANGE(0x08E0, 0x08E7) AM_READWRITE(68681_duart_r,68681_duart_w)
+
+	AM_RANGE(0x0900, 0x0907) AM_READWRITE(ptm6840_0_r,ptm6840_0_w)	// 6840PTM
+	AM_RANGE(0x0A00, 0x0A03) AM_DEVREADWRITE("pia_ic3", pia6821_r,pia6821_w)	  	/* PIA6821 IC3 */
+	AM_RANGE(0x0B00, 0x0B03) AM_DEVREADWRITE("pia_ic4", pia6821_r,pia6821_w)	  	/* PIA6821 IC4 */
+	AM_RANGE(0x0C00, 0x0C03) AM_DEVREADWRITE("pia_ic5", pia6821_r,pia6821_w)	  	/* PIA6821 IC5 */
+	AM_RANGE(0x0D00, 0x0D03) AM_DEVREADWRITE("pia_ic6", pia6821_r,pia6821_w)		/* PIA6821 IC6 */
+	AM_RANGE(0x0E00, 0x0E03) AM_DEVREADWRITE("pia_ic7", pia6821_r,pia6821_w)		/* PIA6821 IC7 */
+	AM_RANGE(0x0F00, 0x0F03) AM_DEVREADWRITE("pia_ic8", pia6821_r,pia6821_w)		/* PIA6821 IC8 */
+
+	AM_RANGE(0x1000, 0xffff) AM_READ(SMH_BANK1)	// 64k  paged ROM (4 pages)
+ADDRESS_MAP_END
+
+// memory map for barcrest mpu4 board /////////////////////////////////////
+
+static ADDRESS_MAP_START( dutch_memmap, ADDRESS_SPACE_PROGRAM, 8 )
+
+	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
+
+//  AM_RANGE(0x0800, 0x0810) AM_READWRITE(characteriser_r,characteriser_w)
+
+	AM_RANGE(0x0850, 0x0850) AM_WRITE(bankswitch_w)	// write bank (rom page select)
+	AM_RANGE(0x0880, 0x0883) AM_DEVREADWRITE("pia_gamebd", pia6821_r,pia6821_w)		// PIA6821 on game board
+
+//  AM_RANGE(0x08C0, 0x08C7) AM_READERITE(ptm6840_2_r,ptm6840_2_w)  // 6840PTM on game board
+
+//  AM_RANGE(0x08E0, 0x08E7) AM_READWRITE(68681_duart_r,68681_duart_w)
+
+	AM_RANGE(0x0900, 0x0907) AM_READWRITE(ptm6840_0_r,ptm6840_0_w)	// 6840PTM
+	AM_RANGE(0x0A00, 0x0A03) AM_DEVREADWRITE("pia_ic3", pia6821_r,pia6821_w)	  	/* PIA6821 IC3 */
+	AM_RANGE(0x0B00, 0x0B03) AM_DEVREADWRITE("pia_ic4", pia6821_r,pia6821_w)	  	/* PIA6821 IC4 */
+	AM_RANGE(0x0C00, 0x0C03) AM_DEVREADWRITE("pia_ic5", pia6821_r,pia6821_w)	  	/* PIA6821 IC5 */
+	AM_RANGE(0x0D00, 0x0D03) AM_DEVREADWRITE("pia_ic6", pia6821_r,pia6821_w)		/* PIA6821 IC6 */
+	AM_RANGE(0x0E00, 0x0E03) AM_DEVREADWRITE("pia_ic7", pia6821_r,pia6821_w)		/* PIA6821 IC7 */
+	AM_RANGE(0x0F00, 0x0F03) AM_DEVREADWRITE("pia_ic8", pia6821_r,pia6821_w)		/* PIA6821 IC8 */
+
+	AM_RANGE(0x1000, 0xffff) AM_READ(SMH_BANK1)	// 64k paged ROM (4 pages)
 ADDRESS_MAP_END
 
 static const ay8910_interface ay8910_config =
 {
 	AY8910_SINGLE_OUTPUT,
 	{820,0,0},
-	NULL,
-	NULL,
-	NULL,
-	NULL
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -1419,10 +1847,17 @@ static MACHINE_DRIVER_START( mpu4mod2 )
 
 	MDRV_MACHINE_START(mpu4mod2)
 	MDRV_MACHINE_RESET(mpu4)
-	MDRV_CPU_ADD("main", M6809, MPU4_MASTER_CLOCK/4)
+	MDRV_CPU_ADD("maincpu", M6809, MPU4_MASTER_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(mod2_memmap,0)
 
 	MDRV_TIMER_ADD_PERIODIC("50hz",gen_50hz, HZ(100))
+
+	MDRV_PIA6821_ADD("pia_ic3", pia_ic3_intf)
+	MDRV_PIA6821_ADD("pia_ic4", pia_ic4_intf)
+	MDRV_PIA6821_ADD("pia_ic5", pia_ic5_intf)
+	MDRV_PIA6821_ADD("pia_ic6", pia_ic6_intf)
+	MDRV_PIA6821_ADD("pia_ic7", pia_ic7_intf)
+	MDRV_PIA6821_ADD("pia_ic8", pia_ic8_intf)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("ay8913",AY8913, MPU4_MASTER_CLOCK/4)
@@ -1434,5 +1869,57 @@ static MACHINE_DRIVER_START( mpu4mod2 )
 	MDRV_DEFAULT_LAYOUT(layout_mpu4)
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( mod4yam )
+	MDRV_IMPORT_FROM( mpu4mod2 )
+	MDRV_MACHINE_START(mpu4mod4)
+
+	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_PROGRAM_MAP(mod4_yam_map,0)
+
+	MDRV_SOUND_REMOVE("ay8913")
+	MDRV_SOUND_ADD("ym2413", YM2413, MPU4_MASTER_CLOCK/4)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( mod4oki )
+	MDRV_IMPORT_FROM( mpu4mod2 )
+	MDRV_MACHINE_START(mpu4mod4)
+
+	MDRV_PIA6821_ADD("pia_gamebd", pia_gameboard_intf)
+
+	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_PROGRAM_MAP(mod4_oki_map,0)
+
+	MDRV_SOUND_REMOVE("ay8913")
+	MDRV_SOUND_ADD("msm6376", OKIM6376, 4000000) //?
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( mpu4dutch )
+	MDRV_IMPORT_FROM( mod4oki )
+	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_PROGRAM_MAP(dutch_memmap,0)	  			// setup read and write memorymap
+	MDRV_MACHINE_START(mpu4dutch)						// main mpu4 board initialisation
+MACHINE_DRIVER_END
+
+ROM_START( m_oldtmr )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "dot11.bin",  0x00000, 0x10000,  CRC(da095666) SHA1(bc7654dc9da1f830a43f925db8079f27e18bb61e))
+ROM_END
+
+ROM_START( m_ccelbr )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "cels.p1",  0x00000, 0x10000,  CRC(19d2162f) SHA1(24fe435809352725e7614c32e2184142f355298e))
+ROM_END
+
+ROM_START( m_gmball )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASE00  )
+	ROM_LOAD( "gbbx.p1",	0x0000, 0x10000,  CRC(0b5adcd0) SHA1(1a198bd4a1e7d6bf4cf025c43d35aaef351415fc))
+ROM_END
+
+//    year, name,    parent,  machine,  input,       init,    monitor, company,         fullname,                                    flags
+GAME( 198?, m_oldtmr,0,       mpu4dutch,mpu4,		 0,        ROT0,   "Barcrest", 		"Old Timer",														GAME_NOT_WORKING|GAME_NO_SOUND|GAME_REQUIRES_ARTWORK )
+GAME( 198?, m_ccelbr,0,       mpu4mod2, mpu4,		 m_ccelbr, ROT0,   "Barcrest", 		"Club Celebration",													GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK )
+GAMEL(198?, m_gmball,0,		  mod4yam,  gamball,     m_gmball, ROT0,   "Barcrest",      "Gamball",															GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK,layout_gamball )
 
 #include "drivers/mpu4drvr.c"

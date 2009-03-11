@@ -52,7 +52,7 @@ Mighty Guy board layout:
 #include "driver.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
-#include "sound/3812intf.h"
+#include "sound/3526intf.h"
 
 #define MIGHTGUY_HACK	0
 
@@ -152,12 +152,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( audio_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x02, 0x02) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(ay8910_write_port_1_w)
-	AM_RANGE(0x04, 0x04) AM_WRITE(ay8910_control_port_2_w)
-	AM_RANGE(0x05, 0x05) AM_WRITE(ay8910_write_port_2_w)
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE("ay1", ay8910_address_data_w)
+	AM_RANGE(0x02, 0x03) AM_DEVWRITE("ay2", ay8910_address_data_w)
+	AM_RANGE(0x04, 0x05) AM_DEVWRITE("ay3", ay8910_address_data_w)
 	AM_RANGE(0x06, 0x06) AM_READ(cop01_sound_command_r)
 ADDRESS_MAP_END
 
@@ -167,8 +164,7 @@ static READ8_HANDLER( kludge ) { static int timer; return timer++; }
 
 static ADDRESS_MAP_START( mightguy_audio_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(ym3526_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(ym3526_write_port_0_w)
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE("ym", ym3526_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(SMH_NOP)	/* 1412M2? */
 	AM_RANGE(0x03, 0x03) AM_WRITE(SMH_NOP)	/* 1412M2? */
 	AM_RANGE(0x03, 0x03) AM_READ(kludge)	/* 1412M2? */
@@ -404,17 +400,17 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( cop01 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 4000000)	/* ???? */
+	MDRV_CPU_ADD("maincpu", Z80, 4000000)	/* ???? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, 3000000)	/* ???? */
+	MDRV_CPU_ADD("audiocpu", Z80, 3000000)	/* ???? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(audio_io_map,0)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -444,17 +440,17 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( mightguy )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 4000000)	/* ???? */
+	MDRV_CPU_ADD("maincpu", Z80, 4000000)	/* ???? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(mightguy_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, 3000000)	/* ???? */
+	MDRV_CPU_ADD("audiocpu", Z80, 3000000)	/* ???? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(mightguy_audio_io_map,0)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -478,12 +474,12 @@ MACHINE_DRIVER_END
 
 
 ROM_START( cop01 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "cop01.2b",     0x0000, 0x4000, CRC(5c2734ab) SHA1(dd6724dfb1c58e6ce3c1c99cad8732a0f5c9b773) )
 	ROM_LOAD( "cop02.4b",     0x4000, 0x4000, CRC(9c7336ef) SHA1(2aa58aea19dafb53190d9bef7b3aa9c3004522f0) )
 	ROM_LOAD( "cop03.5b",     0x8000, 0x4000, CRC(2566c8bf) SHA1(c9d98afd1f02a208b1af1d418e69e88f8703afa5) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "cop15.17b",    0x0000, 0x4000, CRC(6a5f08fa) SHA1(8838549502b1a6ac72dd5efd58e0968f8abe338a) )
 	ROM_LOAD( "cop16.18b",    0x4000, 0x4000, CRC(56bf6946) SHA1(5414d00c6de96cfb5a3e68c35376333df6c525ee) )
 
@@ -513,12 +509,12 @@ ROM_START( cop01 )
 ROM_END
 
 ROM_START( cop01a )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "cop01alt.001", 0x0000, 0x4000, CRC(a13ee0d3) SHA1(2f28f901bdc041c79f785821d0052823654983a2) )
 	ROM_LOAD( "cop01alt.002", 0x4000, 0x4000, CRC(20bad28e) SHA1(79155880ae1c9e8d19390c163cac31093ee11604) )
 	ROM_LOAD( "cop01alt.003", 0x8000, 0x4000, CRC(a7e10b79) SHA1(ec7e4153a211d070c2dc09ab98a59f61ab10ea78) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "cop01alt.015", 0x0000, 0x4000, CRC(95be9270) SHA1(ffb4786e354c4c6ddce134ae3362da660199fd44) )
 	ROM_LOAD( "cop01alt.016", 0x4000, 0x4000, CRC(c20bf649) SHA1(a719ad6bf35811957ad32e6f07494bb00f256965) )
 
@@ -549,12 +545,12 @@ ROM_START( cop01a )
 ROM_END
 
 ROM_START( mightguy )
-	ROM_REGION( 0x60000, "main", 0 ) /* Z80 code (main cpu) */
+	ROM_REGION( 0x60000, "maincpu", 0 ) /* Z80 code (main cpu) */
 	ROM_LOAD( "1.2b",       0x0000, 0x4000,CRC(bc8e4557) SHA1(4304ac1a0e11bad254ad937195f0be6e7186577d) )
 	ROM_LOAD( "2.4b",       0x4000, 0x4000,CRC(fb73d684) SHA1(d8a4b6fb93b2c3710fc66f92df05c1459e4171c3) )
 	ROM_LOAD( "3.5b",       0x8000, 0x4000,CRC(b14b6ab8) SHA1(a60059dd54c8cc974334fd879ff0cfd436a7a981) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* Z80 code (sound cpu) */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* Z80 code (sound cpu) */
 	ROM_LOAD( "11.15b",     0x0000, 0x4000, CRC(576183ea) SHA1(e3f28e8e8c34ab396d158da122584ed226729c99) )
 
 	ROM_REGION( 0x8000, "user1", 0 ) /* 1412M2 protection data */
@@ -588,7 +584,7 @@ static DRIVER_INIT( mightguy )
 #if MIGHTGUY_HACK
 	/* This is a hack to fix the game code to get a fully working
        "Starting Area" fake Dip Switch */
-	UINT8 *RAM = (UINT8 *)memory_region(machine, "main");
+	UINT8 *RAM = (UINT8 *)memory_region(machine, "maincpu");
 	RAM[0x00e4] = 0x07;	// rlca
 	RAM[0x00e5] = 0x07;	// rlca
 	RAM[0x00e6] = 0x07;	// rlca

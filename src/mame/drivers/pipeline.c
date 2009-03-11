@@ -219,8 +219,8 @@ static ADDRESS_MAP_START( cpu0_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0x87ff) AM_RAM
 	AM_RANGE(0x8800, 0x97ff) AM_RAM_WRITE(vram1_w) AM_BASE(&vram1)
 	AM_RANGE(0x9800, 0xa7ff) AM_RAM_WRITE(vram2_w) AM_BASE(&vram2)
-	AM_RANGE(0xb800, 0xb803) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
-	AM_RANGE(0xb810, 0xb813) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xb800, 0xb803) AM_DEVREADWRITE("ppi8255_0", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xb810, 0xb813) AM_DEVREADWRITE("ppi8255_1", ppi8255_r, ppi8255_w)
 	AM_RANGE(0xb830, 0xb830) AM_NOP
 	AM_RANGE(0xb840, 0xb840) AM_NOP
 ADDRESS_MAP_END
@@ -228,12 +228,12 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( cpu1_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0xc000, 0xc7ff) AM_RAM
-	AM_RANGE(0xe000, 0xe003) AM_DEVREADWRITE(PPI8255, "ppi8255_2", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xe000, 0xe003) AM_DEVREADWRITE("ppi8255_2", ppi8255_r, ppi8255_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_port, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE(Z80CTC, "ctc", z80ctc_r, z80ctc_w)
+	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE("ctc", z80ctc_r, z80ctc_w)
 	AM_RANGE(0x06, 0x07) AM_NOP
 ADDRESS_MAP_END
 
@@ -288,7 +288,7 @@ GFXDECODE_END
 
 static void ctc0_interrupt(const device_config *device, int state)
 {
-	cputag_set_input_line(device->machine, "audio", 0, state);
+	cputag_set_input_line(device->machine, "audiocpu", 0, state);
 }
 
 static const z80ctc_interface ctc_intf =
@@ -302,35 +302,35 @@ static const z80ctc_interface ctc_intf =
 
 static const z80_daisy_chain daisy_chain_sound[] =
 {
-	{ Z80CTC, "ctc" },
+	{ "ctc" },
 	{ NULL }
 };
 
 static const ppi8255_interface ppi8255_intf[3] =
 {
 	{
-		DEVICE8_PORT("P1"),			/* Port A read */
-		NULL,						/* Port B read */
-		NULL,						/* Port C read */
-		NULL,						/* Port A write */
-		NULL,						/* Port B write */
-		vidctrl_w					/* Port C write */
+		DEVCB_INPUT_PORT("P1"),			/* Port A read */
+		DEVCB_NULL,						/* Port B read */
+		DEVCB_NULL,						/* Port C read */
+		DEVCB_NULL,						/* Port A write */
+		DEVCB_NULL,						/* Port B write */
+		DEVCB_HANDLER(vidctrl_w)		/* Port C write */
 	},
 	{
-		DEVICE8_PORT("DSW1"),		/* Port A read */
-		DEVICE8_PORT("DSW2"),		/* Port B read */
-		protection_r,				/* Port C read */
-		NULL,						/* Port A write */
-		NULL,						/* Port B write */
-		protection_w				/* Port C write */
+		DEVCB_INPUT_PORT("DSW1"),		/* Port A read */
+		DEVCB_INPUT_PORT("DSW2"),		/* Port B read */
+		DEVCB_HANDLER(protection_r),	/* Port C read */
+		DEVCB_NULL,						/* Port A write */
+		DEVCB_NULL,						/* Port B write */
+		DEVCB_HANDLER(protection_w)		/* Port C write */
 	},
 	{
-		NULL,						/* Port A read */
-		NULL,						/* Port B read */
-		NULL,						/* Port C read */
-		NULL,						/* Port A write */
-		NULL,						/* Port B write */
-		NULL						/* Port C write */
+		DEVCB_NULL,						/* Port A read */
+		DEVCB_NULL,						/* Port B read */
+		DEVCB_NULL,						/* Port C read */
+		DEVCB_NULL,						/* Port A write */
+		DEVCB_NULL,						/* Port B write */
+		DEVCB_NULL						/* Port C write */
 	}
 };
 
@@ -339,7 +339,7 @@ static const ym2203_interface ym2203_config =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		NULL, NULL, NULL, NULL
+		DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL
 	},
 	NULL
 };
@@ -366,11 +366,11 @@ static PALETTE_INIT(pipeline)
 static MACHINE_DRIVER_START( pipeline )
 	/* basic machine hardware */
 
-	MDRV_CPU_ADD("main", Z80, 7372800/2)
+	MDRV_CPU_ADD("maincpu", Z80, 7372800/2)
 	MDRV_CPU_PROGRAM_MAP(cpu0_mem, 0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
-	MDRV_CPU_ADD("audio", Z80, 7372800/2)
+	MDRV_CPU_ADD("audiocpu", Z80, 7372800/2)
 	MDRV_CPU_CONFIG(daisy_chain_sound)
 	MDRV_CPU_PROGRAM_MAP(cpu1_mem, 0)
 	MDRV_CPU_IO_MAP(sound_port, 0)
@@ -378,14 +378,14 @@ static MACHINE_DRIVER_START( pipeline )
 	MDRV_CPU_ADD("mcu", M68705, 7372800/2)
 	MDRV_CPU_PROGRAM_MAP(mcu_mem, 0)
 
-	MDRV_Z80CTC_ADD( "ctc", 7372800/2 /* same as "audio" */, ctc_intf )
+	MDRV_Z80CTC_ADD( "ctc", 7372800/2 /* same as "audiocpu" */, ctc_intf )
 
 	MDRV_PPI8255_ADD( "ppi8255_0", ppi8255_intf[0] )
 	MDRV_PPI8255_ADD( "ppi8255_1", ppi8255_intf[1] )
 	MDRV_PPI8255_ADD( "ppi8255_2", ppi8255_intf[2] )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -409,10 +409,10 @@ static MACHINE_DRIVER_START( pipeline )
 MACHINE_DRIVER_END
 
 ROM_START( pipeline )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "rom1.u77", 0x00000, 0x08000, CRC(6e928290) SHA1(e2c8c35c04fd8ce3ddd6ecec04b0193a248e4362) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "rom2.u84", 0x00000, 0x08000, CRC(e77c43b7) SHA1(8b04005bc448083a429ace3319fc7e168a61f2f9) )
 
 	ROM_REGION( 0x1000, "mcu", 0 )

@@ -295,7 +295,7 @@ static ADDRESS_MAP_START( sderby_map, ADDRESS_SPACE_PROGRAM, 16 )
     AM_RANGE(0x200000, 0x200fff) AM_RAM AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x308000, 0x30800d) AM_READ(sderby_input_r)
 	AM_RANGE(0x308008, 0x308009) AM_WRITE(sderby_out_w)	/* output port */
-	AM_RANGE(0x30800e, 0x30800f) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)
+	AM_RANGE(0x30800e, 0x30800f) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff)
 	AM_RANGE(0x380000, 0x380fff) AM_WRITE(paletteram16_RRRRRGGGGGBBBBBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x500000, 0x500001) AM_WRITE(SMH_NOP)	/* unknown... write 0x01 in game, and 0x00 on reset */
 	AM_RANGE(0xd00000, 0xd007ff) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
@@ -314,7 +314,7 @@ static ADDRESS_MAP_START( spacewin_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x300000, 0x300001) AM_WRITE(SMH_NOP)	/* unknown... write 0x01 in game, and 0x00 on reset */
 	AM_RANGE(0x308000, 0x30800d) AM_READ(sderby_input_r)
 	AM_RANGE(0x308008, 0x308009) AM_WRITE(scmatto_out_w)	/* output port */
-	AM_RANGE(0x30800e, 0x30800f) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)
+	AM_RANGE(0x30800e, 0x30800f) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff)
 	AM_RANGE(0x380000, 0x380fff) AM_WRITE(paletteram16_RRRRRGGGGGBBBBBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xd00000, 0xd001ff) AM_RAM
     AM_RANGE(0x800000, 0x800fff) AM_RAM AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
@@ -334,7 +334,7 @@ static ADDRESS_MAP_START( roulette_map, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE(0x708000, 0x708009) AM_READ(roulette_input_r)
 	AM_RANGE(0x708006, 0x708007) AM_WRITE(roulette_out_w)
-	AM_RANGE(0x70800a, 0x70800b) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)
+	AM_RANGE(0x70800a, 0x70800b) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff)
 	AM_RANGE(0x70800c, 0x70800d) AM_WRITE(SMH_NOP)	/* watchdog?? (0x0003) */
 	AM_RANGE(0x70800e, 0x70800f) AM_READWRITE(rprot_r, rprot_w)	/* MCU communication */
 	AM_RANGE(0x780000, 0x780fff) AM_WRITE(paletteram16_RRRRRGGGGGBBBBBx_word_w) AM_BASE(&paletteram16)
@@ -465,13 +465,13 @@ GFXDECODE_END
 ****************************/
 
 static MACHINE_DRIVER_START( sderby )
-	MDRV_CPU_ADD("main", M68000, 12000000)
+	MDRV_CPU_ADD("maincpu", M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(sderby_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -490,13 +490,13 @@ static MACHINE_DRIVER_START( sderby )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( spacewin )
-	MDRV_CPU_ADD("main", M68000, 12000000)
+	MDRV_CPU_ADD("maincpu", M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(spacewin_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -515,13 +515,13 @@ static MACHINE_DRIVER_START( spacewin )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( pmroulet )
-	MDRV_CPU_ADD("main", M68000, 12000000)
+	MDRV_CPU_ADD("maincpu", M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(roulette_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -570,7 +570,7 @@ two FPGA chips - one labelled 'Playmark 010412'
 
 */
 ROM_START( sderby )
-	ROM_REGION( 0x80000, "main", 0 ) /* 68000 Code */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "22.bin", 0x00000, 0x20000, CRC(a319f1e0) SHA1(d932cc7e990aa87308dcd9ffa5af2aaea333aa9a) )
 	ROM_LOAD16_BYTE( "23.bin", 0x00001, 0x20000, CRC(1d6e2321) SHA1(3bb32021cc9ee6bd6d1fd79a89159fef70f34f41) )
 
@@ -623,7 +623,7 @@ Title depends on graphics type in test mode.
 
 */
 ROM_START( spacewin )
-	ROM_REGION( 0x40000, "main", 0 ) /* 68000 Code */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* 68000 Code */
     ROM_LOAD16_BYTE( "2.u16", 0x00000, 0x20000, CRC(2d17c2ab) SHA1(833ab39081fbc3d114103055e3a3f2ea2a28f158) )
 	ROM_LOAD16_BYTE( "3.u15", 0x00001, 0x20000, CRC(fd6f93ef) SHA1(1dc35fd92a0185434b44aa3c7da47a408fb2ce27) )
 
@@ -639,7 +639,7 @@ ROM_START( spacewin )
 ROM_END
 
 ROM_START( pmroulet )
-	ROM_REGION( 0x40000, "main", 0 ) /* 68000 code */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* 68000 code */
     ROM_LOAD16_BYTE( "2.bin", 0x00000, 0x20000, CRC(1677a2de) SHA1(4dcbb3c1ce9b65e06ba7e0cffa00c0c8016538f5))
 	ROM_LOAD16_BYTE( "3.bin", 0x00001, 0x20000, CRC(11acaac2) SHA1(19e7bbbf4356fc9a866f9f36d0568c42d6a36c07))
 

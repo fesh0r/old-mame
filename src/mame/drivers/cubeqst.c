@@ -21,7 +21,6 @@
 #include "cpu/m68000/m68000.h"
 #include "cpu/cubeqcpu/cubeqcpu.h"
 #include "sound/dac.h"
-#include "sound/custom.h"
 #include "streams.h"
 #include "machine/laserdsc.h"
 
@@ -436,7 +435,7 @@ ADDRESS_MAP_END
 
 static MACHINE_START( cubeqst )
 {
-	laserdisc = device_list_find_by_tag(machine->config->devicelist, LASERDISC, "laserdisc");
+	laserdisc = devtag_get_device(machine, "laserdisc");
 }
 
 static MACHINE_RESET( cubeqst )
@@ -465,7 +464,18 @@ static MACHINE_RESET( cubeqst )
 /* Called by the sound CPU emulation */
 static void sound_dac_w(const device_config *device, UINT16 data)
 {
-	dac_signed_data_16_w(data & 15, (data & 0xfff0) ^ 0x8000);
+	static const char *dacs[] =
+	{
+		"rdac0", "ldac0",
+		"rdac1", "ldac1",
+		"rdac2", "ldac2",
+		"rdac3", "ldac3",
+		"rdac4", "ldac4",
+		"rdac5", "ldac5",
+		"rdac6", "ldac6",
+		"rdac7", "ldac7"
+	};
+	dac_signed_data_16_w(devtag_get_device(device->machine, dacs[data & 15]), (data & 0xfff0) ^ 0x8000);
 }
 
 static const cubeqst_snd_config snd_config =
@@ -494,7 +504,7 @@ static const cubeqst_lin_config lin_config =
 static MACHINE_DRIVER_START( cubeqst )
 	MDRV_CPU_ADD("main_cpu", M68000, XTAL_16MHz / 2)
 	MDRV_CPU_PROGRAM_MAP(m68k_program_map, 0)
-	MDRV_CPU_VBLANK_INT("main", vblank)
+	MDRV_CPU_VBLANK_INT("screen", vblank)
 
 	MDRV_CPU_ADD("rotate_cpu", CQUESTROT, XTAL_10MHz / 2)
 	MDRV_CPU_PROGRAM_MAP(rotate_map, 0)
@@ -514,56 +524,55 @@ static MACHINE_DRIVER_START( cubeqst )
 	MDRV_MACHINE_RESET(cubeqst)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_LASERDISC_SCREEN_ADD_NTSC("main", BITMAP_FORMAT_RGB32)
+	MDRV_LASERDISC_SCREEN_ADD_NTSC("screen", BITMAP_FORMAT_RGB32)
 	MDRV_VIDEO_START(cubeqst)
 
 	MDRV_PALETTE_INIT(cubeqst)
 
-	MDRV_LASERDISC_ADD("laserdisc", SIMUTREK_SPECIAL, "main", "ldsound")
+	MDRV_LASERDISC_ADD("laserdisc", SIMUTREK_SPECIAL, "screen", "ldsound")
 	MDRV_LASERDISC_OVERLAY(cubeqst, CUBEQST_HBLANK, CUBEQST_VCOUNT, BITMAP_FORMAT_RGB32)
 	MDRV_LASERDISC_OVERLAY_CLIP(0, 320-1, 0, 256-8)
 	MDRV_LASERDISC_OVERLAY_POSITION(0.002, -0.018)
 	MDRV_LASERDISC_OVERLAY_SCALE(1.0, 1.030)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MDRV_SOUND_ADD("ldsound", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ADD("ldsound", LASERDISC, 0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("rdac0", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "right", 0.125)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.125)
 	MDRV_SOUND_ADD("ldac0", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "left", 0.125)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.125)
 	MDRV_SOUND_ADD("rdac1", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "right", 0.125)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.125)
 	MDRV_SOUND_ADD("ldac1", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "left", 0.125)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.125)
 	MDRV_SOUND_ADD("rdac2", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "right", 0.125)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.125)
 	MDRV_SOUND_ADD("ldac2", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "left", 0.125)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.125)
 	MDRV_SOUND_ADD("rdac3", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "right", 0.125)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.125)
 	MDRV_SOUND_ADD("ldac3", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "left", 0.125)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.125)
 	MDRV_SOUND_ADD("rdac4", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "right", 0.125)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.125)
 	MDRV_SOUND_ADD("ldac4", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "left", 0.125)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.125)
 	MDRV_SOUND_ADD("rdac5", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "right", 0.125)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.125)
 	MDRV_SOUND_ADD("ldac5", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "left", 0.125)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.125)
 	MDRV_SOUND_ADD("rdac6", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "right", 0.125)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.125)
 	MDRV_SOUND_ADD("ldac6", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "left", 0.125)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.125)
 	MDRV_SOUND_ADD("rdac7", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "right", 0.125)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.125)
 	MDRV_SOUND_ADD("ldac7", DAC, 0)
-	MDRV_SOUND_ROUTE(0, "left", 0.125)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.125)
 MACHINE_DRIVER_END
 
 

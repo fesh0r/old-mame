@@ -109,9 +109,9 @@ static WRITE8_HANDLER( mcu_irq_disable_w )
 }
 
 
-static WRITE8_HANDLER( voice_w )
+static WRITE8_DEVICE_HANDLER( voice_w )
 {
-	dac_signed_data_16_w(0, data ? (data + 1) * 0x100 : 0x8000);
+	dac_signed_data_16_w(device, data ? (data + 1) * 0x100 : 0x8000);
 }
 
 
@@ -180,7 +180,7 @@ static ADDRESS_MAP_START( m6809_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1800, 0x1bff) AM_RAM_WRITE(tceptor_tile_ram_w) AM_BASE(&tceptor_tile_ram)
 	AM_RANGE(0x1c00, 0x1fff) AM_RAM_WRITE(tceptor_tile_attr_w) AM_BASE(&tceptor_tile_attr)
 	AM_RANGE(0x2000, 0x3fff) AM_RAM_WRITE(tceptor_bg_ram_w) AM_BASE(&tceptor_bg_ram)	// background (VIEW RAM)
-	AM_RANGE(0x4000, 0x43ff) AM_READWRITE(namcos1_cus30_r, namcos1_cus30_w)
+	AM_RANGE(0x4000, 0x43ff) AM_DEVREADWRITE("namco", namcos1_cus30_r, namcos1_cus30_w)
 	AM_RANGE(0x4800, 0x4800) AM_WRITE(SMH_NOP)				// 3D scope left/right?
 	AM_RANGE(0x4f00, 0x4f00) AM_READ(SMH_NOP)				// unknown
 	AM_RANGE(0x4f01, 0x4f01) AM_READ_PORT("PEDAL")			// analog input (accel)
@@ -200,8 +200,7 @@ static ADDRESS_MAP_START( m6502_a_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0100, 0x01ff) AM_RAM
 	AM_RANGE(0x0200, 0x02ff) AM_RAM
 	AM_RANGE(0x0300, 0x030f) AM_RAM
-	AM_RANGE(0x2000, 0x2000) AM_WRITE(ym2151_register_port_0_w)
-	AM_RANGE(0x2001, 0x2001) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
+	AM_RANGE(0x2000, 0x2001) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
 	AM_RANGE(0x3000, 0x30ff) AM_RAM AM_SHARE(3)
 	AM_RANGE(0x3c01, 0x3c01) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
@@ -211,7 +210,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( m6502_b_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x00ff) AM_RAM AM_SHARE(2)
 	AM_RANGE(0x0100, 0x01ff) AM_RAM
-	AM_RANGE(0x4000, 0x4000) AM_WRITE(voice_w)			// voice data
+	AM_RANGE(0x4000, 0x4000) AM_DEVWRITE("dac", voice_w)			// voice data
 	AM_RANGE(0x5000, 0x5000) AM_WRITE(SMH_RAM)			// voice ctrl??
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -232,7 +231,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( mcu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x001f) AM_READWRITE(hd63701_internal_registers_r, hd63701_internal_registers_w)
 	AM_RANGE(0x0080, 0x00ff) AM_RAM
-	AM_RANGE(0x1000, 0x13ff) AM_READWRITE(namcos1_cus30_r, namcos1_cus30_w) AM_BASE(&namco_wavedata)
+	AM_RANGE(0x1000, 0x13ff) AM_DEVREADWRITE("namco", namcos1_cus30_r, namcos1_cus30_w) AM_BASE(&namco_wavedata)
 	AM_RANGE(0x1400, 0x154d) AM_RAM
 	AM_RANGE(0x17c0, 0x17ff) AM_RAM
 	AM_RANGE(0x2000, 0x20ff) AM_RAM AM_SHARE(3)
@@ -381,11 +380,11 @@ static MACHINE_RESET( tceptor )
 static MACHINE_DRIVER_START( tceptor )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809, 49152000/32)
+	MDRV_CPU_ADD("maincpu", M6809, 49152000/32)
 	MDRV_CPU_PROGRAM_MAP(m6809_map,0)
 	MDRV_CPU_VBLANK_INT("2d", m6809_vb_interrupt)
 
-	MDRV_CPU_ADD("audio", M65C02, 49152000/24)
+	MDRV_CPU_ADD("audiocpu", M65C02, 49152000/24)
 	MDRV_CPU_PROGRAM_MAP(m6502_a_map,0)
 
 	MDRV_CPU_ADD("audio2", M65C02, 49152000/24)
@@ -440,20 +439,20 @@ static MACHINE_DRIVER_START( tceptor )
 	MDRV_VIDEO_EOF(tceptor)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2151, 14318180/4)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("namco", NAMCO_CUS30, 49152000/2048)
 	MDRV_SOUND_CONFIG(namco_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.40)
-	MDRV_SOUND_ROUTE(1, "right", 0.40)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.40)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.40)
 
 	MDRV_SOUND_ADD("dac", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.40)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.40)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.40)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.40)
 MACHINE_DRIVER_END
 
 
@@ -464,10 +463,10 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( tceptor )
-	ROM_REGION( 0x10000, "main", 0 )			// 68A09EP
+	ROM_REGION( 0x10000, "maincpu", 0 )			// 68A09EP
 	ROM_LOAD( "tc1-1.10f",  0x08000, 0x08000, CRC(4c6b063e) SHA1(d9701657186f8051391084f51a720037f9f418b1) )
 
-	ROM_REGION( 0x10000, "audio", 0 )			// RC65C02
+	ROM_REGION( 0x10000, "audiocpu", 0 )			// RC65C02
 	ROM_LOAD( "tc1-21.1m",  0x08000, 0x08000, CRC(2d0b2fa8) SHA1(16ecd70954e52a8661642b15a5cf1db51783e444) )
 
 	ROM_REGION( 0x10000, "audio2", 0 )			// RC65C02
@@ -520,10 +519,10 @@ ROM_START( tceptor )
 ROM_END
 
 ROM_START( tceptor2 )
-	ROM_REGION( 0x10000, "main", 0 )			// 68A09EP
+	ROM_REGION( 0x10000, "maincpu", 0 )			// 68A09EP
 	ROM_LOAD( "tc2-1.10f",  0x08000, 0x08000, CRC(f953f153) SHA1(f4cd0a133d23b4bf3c24c70c28c4ecf8ad4daf6f) )
 
-	ROM_REGION( 0x10000, "audio", 0 )			// RC65C02
+	ROM_REGION( 0x10000, "audiocpu", 0 )			// RC65C02
 	ROM_LOAD( "tc1-21.1m",  0x08000, 0x08000, CRC(2d0b2fa8) SHA1(16ecd70954e52a8661642b15a5cf1db51783e444) )
 
 	ROM_REGION( 0x10000, "audio2", 0 )			// RC65C02

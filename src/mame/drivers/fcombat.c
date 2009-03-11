@@ -220,15 +220,12 @@ static ADDRESS_MAP_START( audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x47ff) AM_RAM
 	AM_RANGE(0x6000, 0x6000) AM_READ(soundlatch_r)
-	AM_RANGE(0x8001, 0x8001) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0x8002, 0x8002) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x8003, 0x8003) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xa001, 0xa001) AM_READ(ay8910_read_port_1_r)
-	AM_RANGE(0xa002, 0xa002) AM_WRITE(ay8910_write_port_1_w)
-	AM_RANGE(0xa003, 0xa003) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0xc001, 0xc001) AM_READ(ay8910_read_port_2_r)
-	AM_RANGE(0xc002, 0xc002) AM_WRITE(ay8910_write_port_2_w)
-	AM_RANGE(0xc003, 0xc003) AM_WRITE(ay8910_control_port_2_w)
+	AM_RANGE(0x8001, 0x8001) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0x8002, 0x8003) AM_DEVWRITE("ay1", ay8910_data_address_w)
+	AM_RANGE(0xa001, 0xa001) AM_DEVREAD("ay2", ay8910_r)
+	AM_RANGE(0xa002, 0xa003) AM_DEVWRITE("ay2", ay8910_data_address_w)
+	AM_RANGE(0xc001, 0xc001) AM_DEVREAD("ay3", ay8910_r)
+	AM_RANGE(0xc002, 0xc003) AM_DEVWRITE("ay3", ay8910_data_address_w)
 ADDRESS_MAP_END
 
 
@@ -282,14 +279,14 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( fcombat )
 
-	MDRV_CPU_ADD("main", Z80, 10000000/3)
+	MDRV_CPU_ADD("maincpu", Z80, 10000000/3)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
-	MDRV_CPU_ADD("audio", Z80, 10000000/3)
+	MDRV_CPU_ADD("audiocpu", Z80, 10000000/3)
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(FCOMBAT_PIXEL_CLOCK, FCOMBAT_HTOTAL, FCOMBAT_HBEND, FCOMBAT_HBSTART, FCOMBAT_VTOTAL, FCOMBAT_VBEND, FCOMBAT_VBSTART)
 
@@ -413,11 +410,11 @@ static DRIVER_INIT( fcombat )
 }
 
 ROM_START( fcombat )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "fcombat2.t9",  0x0000, 0x4000, CRC(30cb0c14) SHA1(8b5b6a4efaca2f138709184725e9e0e0b9cfc4c7) )
 	ROM_LOAD( "fcombat3.10t", 0x4000, 0x4000, CRC(e8511da0) SHA1(bab5c9244c970b97c025381c37ad372aa3b5cddf) )
 
-	ROM_REGION( 0x10000, "audio", 0 )     /* 64k for the second CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )     /* 64k for the second CPU */
 	ROM_LOAD( "fcombat1.t5",  0x0000, 0x4000, CRC(a0cc1216) SHA1(3a8963ffde2ff4a3f428369133f94bb37717cae5) )
 
 	ROM_REGION( 0x02000, "gfx1", ROMREGION_DISPOSE )

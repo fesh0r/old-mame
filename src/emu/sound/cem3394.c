@@ -105,10 +105,11 @@
 
 
 /* this structure defines the parameters for a channel */
-typedef struct
+typedef struct _cem3394_state cem3394_state;
+struct _cem3394_state
 {
 	sound_stream * stream;			/* our stream */
-	void (*external)(int, int, short *);/* callback to generate external samples */
+	void (*external)(const device_config *, int, short *);/* callback to generate external samples */
 	double vco_zero_freq;			/* frequency of VCO at 0.0V */
 	double filter_zero_freq;		/* frequency of filter at 0.0V */
 
@@ -131,17 +132,27 @@ typedef struct
 
 	double inv_sample_rate;
 	int sample_rate;
-	int index;
+	const device_config *device;
 
 	INT16 *mixer_buffer;
 	INT16 *external_buffer;
-} sound_chip;
+};
+
+
+INLINE cem3394_state *get_safe_token(const device_config *device)
+{
+	assert(device != NULL);
+	assert(device->token != NULL);
+	assert(device->type == SOUND);
+	assert(sound_get_type(device) == SOUND_CEM3394);
+	return (cem3394_state *)device->token;
+}
 
 
 /* generate sound to the mix buffer in mono */
 static STREAM_UPDATE( cem3394_update )
 {
-	sound_chip *chip = param;
+	cem3394_state *chip = param;
 	int int_volume = (chip->volume * chip->mixer_internal) / 256;
 	int ext_volume = (chip->volume * chip->mixer_external) / 256;
 	UINT32 step = chip->step, position, end_position = 0;
@@ -171,7 +182,7 @@ static STREAM_UPDATE( cem3394_update )
 		INT16 last_ext = chip->last_ext;
 
 		/* fetch the external data */
-		(*chip->external)(chip->index, samples, chip->external_buffer);
+		(*chip->external)(chip->device, samples, chip->external_buffer);
 
 		/* compute the modulation depth, and adjust fstep to the maximum frequency */
 		/* we lop off 13 bits of depth so that we can multiply by stepadjust, below, */
@@ -315,14 +326,12 @@ static STREAM_UPDATE( cem3394_update )
 }
 
 
-static SND_START( cem3394 )
+static DEVICE_START( cem3394 )
 {
-	const cem3394_interface *intf = config;
-	sound_chip *chip;
+	const cem3394_interface *intf = device->static_config;
+	cem3394_state *chip = get_safe_token(device);
 
-	chip = auto_malloc(sizeof(*chip));
-	memset(chip, 0, sizeof(*chip));
-	chip->index = sndindex;
+	chip->device = device;
 
 	/* copy global parameters */
 	chip->sample_rate = CEM3394_SAMPLE_RATE;
@@ -350,8 +359,6 @@ static SND_START( cem3394 )
 	state_save_register_device_item(device, 0, chip->modulation_depth);
 	state_save_register_device_item(device, 0, chip->last_ext);
 	state_save_register_device_item(device, 0, chip->pulse_width);
-
-	return chip;
 }
 
 
@@ -411,9 +418,9 @@ INLINE UINT32 compute_db_volume(double voltage)
 }
 
 
-void cem3394_set_voltage(int chipnum, int input, double voltage)
+void cem3394_set_voltage(const device_config *device, int input, double voltage)
 {
-	sound_chip *chip = sndti_token(SOUND_CEM3394, chipnum);
+	cem3394_state *chip = get_safe_token(device);
 	double temp;
 
 	/* don't do anything if no change */
@@ -505,9 +512,9 @@ void cem3394_set_voltage(int chipnum, int input, double voltage)
 }
 
 
-double cem3394_get_parameter(int chipnum, int input)
+double cem3394_get_parameter(const device_config *device, int input)
 {
-	sound_chip *chip = sndti_token(SOUND_CEM3394, chipnum);
+	cem3394_state *chip = get_safe_token(device);
 	double voltage = chip->values[input];
 
 	switch (input)
@@ -561,33 +568,24 @@ double cem3394_get_parameter(int chipnum, int input)
  * Generic get_info
  **************************************************************************/
 
-static SND_SET_INFO( cem3394 )
-{
-	switch (state)
-	{
-		/* no parameters to set */
-	}
-}
-
-
-SND_GET_INFO( cem3394 )
+DEVICE_GET_INFO( cem3394 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(cem3394_state);					break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( cem3394 );	break;
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( cem3394 );		break;
-		case SNDINFO_PTR_STOP:							/* nothing */									break;
-		case SNDINFO_PTR_RESET:							/* nothing */									break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( cem3394 );		break;
+		case DEVINFO_FCT_STOP:							/* nothing */									break;
+		case DEVINFO_FCT_RESET:							/* nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							strcpy(info->s, "CEM3394");						break;
-		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Analog Synth");				break;
-		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
-		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
-		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "CEM3394");						break;
+		case DEVINFO_STR_FAMILY:					strcpy(info->s, "Analog Synth");				break;
+		case DEVINFO_STR_VERSION:					strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:						strcpy(info->s, __FILE__);						break;
+		case DEVINFO_STR_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

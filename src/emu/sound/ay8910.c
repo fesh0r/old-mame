@@ -2,13 +2,14 @@
 
   ay8910.c
 
-
   Emulation of the AY-3-8910 / YM2149 sound chip.
 
   Based on various code snippets by Ville Hallik, Michael Cuddy,
   Tatsuyuki Satoh, Fabrice Frances, Nicola Salmoria.
 
   Mostly rewritten by couriersud in 2008
+
+  Games using ADSR: gyruss
 
   TODO:
   * The AY8930 has an extended mode which is currently
@@ -112,6 +113,8 @@ has twice the steps, happening twice as fast.
  *
  *************************************/
 
+#define ENABLE_REGISTER_TEST		(0)		/* Enable preprogrammed registers */
+
 #define MAX_OUTPUT 0x7fff
 #define NUM_CHANNELS 3
 
@@ -187,7 +190,28 @@ struct _ay8910_context
 	INT32 vol_table[NUM_CHANNELS][16];
 	INT32 env_table[NUM_CHANNELS][32];
 	INT32 vol3d_table[8*32*32*32];
+	devcb_resolved_read8 portAread;
+	devcb_resolved_read8 portBread;
+	devcb_resolved_write8 portAwrite;
+	devcb_resolved_write8 portBwrite;
 };
+
+INLINE ay8910_context *get_safe_token(const device_config *device)
+{
+	assert(device != NULL);
+	assert(device->token != NULL);
+	assert(device->type == SOUND);
+	assert(sound_get_type(device) == SOUND_AY8910 ||
+		   sound_get_type(device) == SOUND_AY8912 ||
+		   sound_get_type(device) == SOUND_AY8913 ||
+		   sound_get_type(device) == SOUND_AY8930 ||
+		   sound_get_type(device) == SOUND_YM2149 ||
+		   sound_get_type(device) == SOUND_YM3439 ||
+		   sound_get_type(device) == SOUND_YMZ284 ||
+		   sound_get_type(device) == SOUND_YMZ294);
+	return (ay8910_context *)device->token;
+}
+
 
 /*************************************
  *
@@ -248,7 +272,6 @@ static const ay_ym_param ay8910_param =
 	{ 93399, 33289, 25808, 19285, 13940, 9846,  7237,  4493,
 	   3814,  2337,  1629,  1263,   962,  727,   580,   458 },
 };
-#endif
 
 /*
  * RL = 1000, Hacker Kay normalized pattern, 0.2V to 1.5V
@@ -259,6 +282,48 @@ static const ay_ym_param ay8910_param =
 	16,
 	{ 118996, 42698, 33105, 24770, 17925, 12678,  9331,  5807,
         4936,  3038,  2129,  1658,  1271,   969,   781,   623 }
+};
+#endif
+
+/*
+ * RL = 2000, Based on Matthew Westcott's measurements from Dec 2001.
+ *
+ * http://groups.google.com/group/comp.sys.sinclair/browse_thread/thread/fb3091da4c4caf26/d5959a800cda0b5e?lnk=gst&q=Matthew+Westcott#d5959a800cda0b5e
+ * After what Russell mentioned a couple of weeks back about the lack of
+ * publicised measurements of AY chip volumes - I've finally got round to
+ * making these readings, and I'm placing them in the public domain - so
+ * anyone's welcome to use them in emulators or anything else.
+
+ * To make the readings, I set up the chip to produce a constant voltage on
+ * channel C (setting bits 2 and 5 of register 6), and varied the amplitude
+ * (the low 4 bits of register 10). The voltages were measured between the
+ * channel C output (pin 1) and ground (pin 6).
+ *
+ * Level  Voltage
+ *  0     1.147
+ *  1     1.162
+ *  2     1.169
+ *  3     1.178
+ *  4     1.192
+ *  5     1.213
+ *  6     1.238
+ *  7     1.299
+ *  8     1.336
+ *  9     1.457
+ * 10     1.573
+ * 11     1.707
+ * 12     1.882
+ * 13     2.06
+ * 14     2.32
+ * 15     2.58
+ */
+
+static const ay_ym_param ay8910_param =
+{
+	1030, 357,
+	16,
+	{ 81509, 34403, 26998, 21248, 15890, 11495, 8625, 5314,
+	   4287,  2583,  1836,  1350,   978,   745,  530,  392 }
 };
 
 /*************************************
@@ -386,9 +451,6 @@ INLINE UINT16 mix_3D(ay8910_context *psg)
 
 static void ay8910_write_reg(ay8910_context *psg, int r, int v)
 {
-	/* temporary hack until this is converted to a device */
-	const address_space *space = memory_find_address_space(psg->device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
-
 	//if (r >= 11 && r <= 13 ) printf("%d %x %02x\n", PSG->index, r, v);
 	psg->regs[r] = v;
 
@@ -405,7 +467,13 @@ static void ay8910_write_reg(ay8910_context *psg, int r, int v)
 		case AY_BVOL:
 		case AY_CVOL:
 		case AY_EFINE:
+			/* No action required */
+			break;
 		case AY_ECOARSE:
+			#ifdef MAME_DEBUG
+			if ( (v & 0x0f) > 0)
+				popmessage("Write to ECoarse register detected - please inform www.mametesters.org");
+			#endif
 			/* No action required */
 			break;
 		case AY_ENABLE:
@@ -413,21 +481,23 @@ static void ay8910_write_reg(ay8910_context *psg, int r, int v)
 			    ((psg->last_enable & 0x40) != (psg->regs[AY_ENABLE] & 0x40)))
 			{
 				/* write out 0xff if port set to input */
-				if (psg->intf->portAwrite)
-					(*psg->intf->portAwrite)(space, 0, (psg->regs[AY_ENABLE] & 0x40) ? psg->regs[AY_PORTA] : 0xff);
+				devcb_call_write8(&psg->portAwrite, 0, (psg->regs[AY_ENABLE] & 0x40) ? psg->regs[AY_PORTA] : 0xff);
 			}
 
 			if ((psg->last_enable == -1) ||
 			    ((psg->last_enable & 0x80) != (psg->regs[AY_ENABLE] & 0x80)))
 			{
 				/* write out 0xff if port set to input */
-				if (psg->intf->portBwrite)
-					(*psg->intf->portBwrite)(space, 0, (psg->regs[AY_ENABLE] & 0x80) ? psg->regs[AY_PORTB] : 0xff);
+				devcb_call_write8(&psg->portBwrite, 0, (psg->regs[AY_ENABLE] & 0x80) ? psg->regs[AY_PORTB] : 0xff);
 			}
 
 			psg->last_enable = psg->regs[AY_ENABLE];
 			break;
 		case AY_ESHAPE:
+			#ifdef MAME_DEBUG
+			if ( (v & 0x0f) > 0)
+				popmessage("Write to EShape register detected - please inform www.mametesters.org");
+			#endif
 			psg->attack = (psg->regs[AY_ESHAPE] & 0x04) ? psg->env_step_mask : 0x00;
 			if ((psg->regs[AY_ESHAPE] & 0x08) == 0)
 			{
@@ -447,8 +517,8 @@ static void ay8910_write_reg(ay8910_context *psg, int r, int v)
 		case AY_PORTA:
 			if (psg->regs[AY_ENABLE] & 0x40)
 			{
-				if (psg->intf->portAwrite)
-					(*psg->intf->portAwrite)(space, 0, psg->regs[AY_PORTA]);
+				if (psg->portAwrite.write)
+					devcb_call_write8(&psg->portAwrite, 0, psg->regs[AY_PORTA]);
 				else
 					logerror("warning - write %02x to 8910 '%s' Port A\n",psg->regs[AY_PORTA],psg->device->tag);
 			}
@@ -460,8 +530,8 @@ static void ay8910_write_reg(ay8910_context *psg, int r, int v)
 		case AY_PORTB:
 			if (psg->regs[AY_ENABLE] & 0x80)
 			{
-				if (psg->intf->portBwrite)
-					(*psg->intf->portBwrite)(space, 0, psg->regs[AY_PORTB]);
+				if (psg->portBwrite.write)
+					devcb_call_write8(&psg->portBwrite, 0, psg->regs[AY_PORTB]);
 				else
 					logerror("warning - write %02x to 8910 '%s' Port B\n",psg->regs[AY_PORTB],psg->device->tag);
 			}
@@ -659,14 +729,21 @@ static void ay8910_statesave(ay8910_context *psg, const device_config *device)
  *
  *************************************/
 
-void *ay8910_start_ym(sound_type chip_type, const device_config *device, int clock, const ay8910_interface *intf)
+void *ay8910_start_ym(void *infoptr, sound_type chip_type, const device_config *device, int clock, const ay8910_interface *intf)
 {
-	ay8910_context *info;
+	ay8910_context *info = infoptr;
 
-	info = auto_malloc(sizeof(*info));
-	memset(info, 0, sizeof(*info));
+	if (info == NULL)
+	{
+		info = auto_malloc(sizeof(*info));
+		memset(info, 0, sizeof(*info));
+	}
 	info->device = device;
 	info->intf = intf;
+	devcb_resolve_read8(&info->portAread, &intf->portAread, device);
+	devcb_resolve_read8(&info->portBread, &intf->portBread, device);
+	devcb_resolve_write8(&info->portAwrite, &intf->portAwrite, device);
+	devcb_resolve_write8(&info->portBwrite, &intf->portBwrite, device);
 	if ((info->intf->flags & AY8910_SINGLE_OUTPUT) != 0)
 	{
 		logerror("AY-3-8910/YM2149 using single output!\n");
@@ -675,40 +752,30 @@ void *ay8910_start_ym(sound_type chip_type, const device_config *device, int clo
 	else
 		info->streams = 3;
 
-	switch (chip_type)
+	if (chip_type == SOUND_AY8910 || chip_type == SOUND_AY8930)
 	{
-		case SOUND_AY8910:
-		case SOUND_AY8930:
-			info->step = 2;
-			info->par = &ay8910_param;
-			info->par_env = &ay8910_param;
-			info->zero_is_off = 1;
-			info->env_step_mask = 0x0F;
-			break;
-		case SOUND_YM2149:
-		case SOUND_YM2203:
-		case SOUND_YM2610:
-		case SOUND_YM2610B:
-		case SOUND_YM2608:
-		case SOUND_YMZ284:
-		case SOUND_YMZ294:
-		case SOUND_YM3439:
-		default:
-			info->step = 1;
-			info->par = &ym2149_param;
-			info->par_env = &ym2149_param_env;
-			info->zero_is_off = 0;
-			info->env_step_mask = 0x1F;
-			break;
+		info->step = 2;
+		info->par = &ay8910_param;
+		info->par_env = &ay8910_param;
+		info->zero_is_off = 0;		/* FIXME: Remove after verification that off=vol(0) */
+		info->env_step_mask = 0x0F;
+	}
+	else
+	{
+		info->step = 1;
+		info->par = &ym2149_param;
+		info->par_env = &ym2149_param_env;
+		info->zero_is_off = 0;
+		info->env_step_mask = 0x1F;
 	}
 
 	build_mixer_table(info);
 
 	/* The envelope is pacing twice as fast for the YM2149 as for the AY-3-8910,    */
 	/* This handled by the step parameter. Consequently we use a divider of 8 here. */
-	info->channel = stream_create(device, 0, info->streams, clock / 8, info, ay8910_update);
+	info->channel = stream_create(device, 0, info->streams, device->clock / 8, info, ay8910_update);
 
-	ay8910_set_clock_ym(info,clock);
+	ay8910_set_clock_ym(info,device->clock);
 	ay8910_statesave(info, device);
 
 	return info;
@@ -738,11 +805,27 @@ void ay8910_reset_ym(void *chip)
 	for (i = 0;i < AY_PORTA;i++)
 		ay8910_write_reg(psg,i,0);
 	psg->ready = 1;
+#if ENABLE_REGISTER_TEST
+	ay8910_write_reg(psg, AY_AFINE, 0);
+	ay8910_write_reg(psg, AY_ACOARSE, 1);
+	ay8910_write_reg(psg, AY_BFINE, 0);
+	ay8910_write_reg(psg, AY_BCOARSE, 2);
+	ay8910_write_reg(psg, AY_CFINE, 0);
+	ay8910_write_reg(psg, AY_CCOARSE, 4);
+	//#define AY_NOISEPER   (6)
+	ay8910_write_reg(psg, AY_ENABLE, ~7);
+	ay8910_write_reg(psg, AY_AVOL, 10);
+	ay8910_write_reg(psg, AY_BVOL, 10);
+	ay8910_write_reg(psg, AY_CVOL, 10);
+	//#define AY_EFINE  (11)
+	//#define AY_ECOARSE    (12)
+	//#define AY_ESHAPE (13)
+#endif
 }
 
-void ay8910_set_volume(int chip,int channel,int volume)
+void ay8910_set_volume(const device_config *device,int channel,int volume)
 {
-	ay8910_context *psg = sndti_token(SOUND_AY8910, chip);
+	ay8910_context *psg = get_safe_token(device);
 	int ch;
 
 	for (ch = 0; ch < psg->streams; ch++)
@@ -782,11 +865,12 @@ void ay8910_write_ym(void *chip, int addr, int data)
 int ay8910_read_ym(void *chip)
 {
 	ay8910_context *psg = chip;
-	/* temporary hack until this is converted to a device */
-	const address_space *space = memory_find_address_space(psg->device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	int r = psg->register_latch;
 
 	if (r > 15) return 0;
+
+	/* update the output buffer before returning the register */
+	stream_update(psg->channel);
 
 	switch (r)
 	{
@@ -797,16 +881,16 @@ int ay8910_read_ym(void *chip)
            even if the port is set as output, we still need to return the external
            data. Some games, like kidniki, need this to work.
          */
-		if (psg->intf->portAread)
-			psg->regs[AY_PORTA] = (*psg->intf->portAread)(space, 0);
+		if (psg->portAread.read)
+			psg->regs[AY_PORTA] = devcb_call_read8(&psg->portAread, 0);
 		else
 			logerror("%s: warning - read 8910 '%s' Port A\n",cpuexec_describe_context(psg->device->machine),psg->device->tag);
 		break;
 	case AY_PORTB:
 		if ((psg->regs[AY_ENABLE] & 0x80) != 0)
 			logerror("warning: read from 8910 '%s' Port B set as output\n",psg->device->tag);
-		if (psg->intf->portBread)
-			psg->regs[AY_PORTB] = (*psg->intf->portBread)(space, 0);
+		if (psg->portBread.read)
+			psg->regs[AY_PORTB] = devcb_call_read8(&psg->portBread, 0);
 		else
 			logerror("%s: warning - read 8910 '%s' Port B\n",cpuexec_describe_context(psg->device->machine),psg->device->tag);
 		break;
@@ -820,137 +904,128 @@ int ay8910_read_ym(void *chip)
  *
  *************************************/
 
-static SND_START( ay8910 )
+static DEVICE_START( ay8910 )
 {
 	static const ay8910_interface generic_ay8910 =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		NULL, NULL, NULL, NULL
+		DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL
 	};
-	const ay8910_interface *intf = (config ? config : &generic_ay8910);
-	return ay8910_start_ym(SOUND_AY8910, device, clock, intf);
+	const ay8910_interface *intf = (device->static_config ? device->static_config : &generic_ay8910);
+	ay8910_start_ym(get_safe_token(device), SOUND_AY8910, device, device->clock, intf);
 }
 
-static SND_START( ym2149 )
+static DEVICE_START( ym2149 )
 {
 	static const ay8910_interface generic_ay8910 =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		NULL, NULL, NULL, NULL
+		DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL
 	};
-	const ay8910_interface *intf = (config ? config : &generic_ay8910);
-	return ay8910_start_ym(SOUND_YM2149, device, clock, intf);
+	const ay8910_interface *intf = (device->static_config ? device->static_config : &generic_ay8910);
+	ay8910_start_ym(get_safe_token(device), SOUND_YM2149, device, device->clock, intf);
 }
 
-static SND_STOP( ay8910 )
+static DEVICE_STOP( ay8910 )
 {
-	ay8910_stop_ym(device->token);
+	ay8910_stop_ym(get_safe_token(device));
 }
 
-static SND_RESET( ay8910 )
+static DEVICE_RESET( ay8910 )
 {
-	ay8910_reset_ym(device->token);
+	ay8910_reset_ym(get_safe_token(device));
 }
 
-static SND_SET_INFO( ay8910 )
-{
-	switch (state)
-	{
-		/* no parameters to set */
-	}
-}
-
-SND_GET_INFO( ay8910 )
+DEVICE_GET_INFO( ay8910 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case SNDINFO_INT_ALIAS:							info->i = SOUND_AY8910;							break;
+		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(ay8910_context);				break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( ay8910 );	break;
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( ay8910 );			break;
-		case SNDINFO_PTR_STOP:							info->stop = SND_STOP_NAME( ay8910 );			break;
-		case SNDINFO_PTR_RESET:							info->reset = SND_RESET_NAME( ay8910 );			break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( ay8910 );			break;
+		case DEVINFO_FCT_STOP:							info->stop = DEVICE_STOP_NAME( ay8910 );			break;
+		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME( ay8910 );			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							strcpy(info->s, "AY-3-8910A");					break;
-		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "PSG");							break;
-		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
-		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
-		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "AY-3-8910A");					break;
+		case DEVINFO_STR_FAMILY:					strcpy(info->s, "PSG");							break;
+		case DEVINFO_STR_VERSION:					strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:						strcpy(info->s, __FILE__);						break;
+		case DEVINFO_STR_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 
-SND_GET_INFO( ay8912 )
+DEVICE_GET_INFO( ay8912 )
 {
 	switch (state)
 	{
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( ay8910 );			break;
-		case SNDINFO_STR_NAME:							strcpy(info->s, "AY-3-8912A");					break;
-		default: 										SND_GET_INFO_CALL(ay8910);						break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( ay8910 );			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "AY-3-8912A");					break;
+		default: 										DEVICE_GET_INFO_CALL(ay8910);						break;
 	}
 }
 
-SND_GET_INFO( ay8913 )
+DEVICE_GET_INFO( ay8913 )
 {
 	switch (state)
 	{
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( ay8910 );			break;
-		case SNDINFO_STR_NAME:							strcpy(info->s, "AY-3-8913A");					break;
-		default: 										SND_GET_INFO_CALL(ay8910);						break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( ay8910 );			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "AY-3-8913A");					break;
+		default: 										DEVICE_GET_INFO_CALL(ay8910);						break;
 	}
 }
 
-SND_GET_INFO( ay8930 )
+DEVICE_GET_INFO( ay8930 )
 {
 	switch (state)
 	{
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( ay8910 );			break;
-		case SNDINFO_STR_NAME:							strcpy(info->s, "AY8930");						break;
-		default: 										SND_GET_INFO_CALL(ay8910);						break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( ay8910 );			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "AY8930");						break;
+		default: 										DEVICE_GET_INFO_CALL(ay8910);						break;
 	}
 }
 
-SND_GET_INFO( ym2149 )
+DEVICE_GET_INFO( ym2149 )
 {
 	switch (state)
 	{
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( ym2149 );			break;
-		case SNDINFO_STR_NAME:							strcpy(info->s, "YM2149");						break;
-		default: 										SND_GET_INFO_CALL(ay8910);						break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( ym2149 );			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "YM2149");						break;
+		default: 										DEVICE_GET_INFO_CALL(ay8910);						break;
 	}
 }
 
-SND_GET_INFO( ym3439 )
+DEVICE_GET_INFO( ym3439 )
 {
 	switch (state)
 	{
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( ym2149 );			break;
-		case SNDINFO_STR_NAME:							strcpy(info->s, "YM3439");						break;
-		default: 										SND_GET_INFO_CALL(ay8910);						break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( ym2149 );			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "YM3439");						break;
+		default: 										DEVICE_GET_INFO_CALL(ay8910);						break;
 	}
 }
 
-SND_GET_INFO( ymz284 )
+DEVICE_GET_INFO( ymz284 )
 {
 	switch (state)
 	{
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( ym2149 );			break;
-		case SNDINFO_STR_NAME:							strcpy(info->s, "YMZ284");						break;
-		default: 										SND_GET_INFO_CALL(ay8910);						break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( ym2149 );			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "YMZ284");						break;
+		default: 										DEVICE_GET_INFO_CALL(ay8910);						break;
 	}
 }
 
-SND_GET_INFO( ymz294 )
+DEVICE_GET_INFO( ymz294 )
 {
 	switch (state)
 	{
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( ym2149 );			break;
-		case SNDINFO_STR_NAME:							strcpy(info->s, "YMZ294");						break;
-		default: 										SND_GET_INFO_CALL(ay8910);						break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( ym2149 );			break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "YMZ294");						break;
+		default: 										DEVICE_GET_INFO_CALL(ay8910);						break;
 	}
 }
 
@@ -960,50 +1035,34 @@ SND_GET_INFO( ymz294 )
  *
  *************************************/
 
-READ8_HANDLER( ay8910_read_port_0_r ) { return ay8910_read_ym(sndti_token(SOUND_AY8910, 0)); }
-READ8_HANDLER( ay8910_read_port_1_r ) { return ay8910_read_ym(sndti_token(SOUND_AY8910, 1)); }
-READ8_HANDLER( ay8910_read_port_2_r ) { return ay8910_read_ym(sndti_token(SOUND_AY8910, 2)); }
-READ8_HANDLER( ay8910_read_port_3_r ) { return ay8910_read_ym(sndti_token(SOUND_AY8910, 3)); }
-READ8_HANDLER( ay8910_read_port_4_r ) { return ay8910_read_ym(sndti_token(SOUND_AY8910, 4)); }
-READ16_HANDLER( ay8910_read_port_0_lsb_r ) { return ay8910_read_ym(sndti_token(SOUND_AY8910, 0)); }
-READ16_HANDLER( ay8910_read_port_1_lsb_r ) { return ay8910_read_ym(sndti_token(SOUND_AY8910, 1)); }
-READ16_HANDLER( ay8910_read_port_2_lsb_r ) { return ay8910_read_ym(sndti_token(SOUND_AY8910, 2)); }
-READ16_HANDLER( ay8910_read_port_3_lsb_r ) { return ay8910_read_ym(sndti_token(SOUND_AY8910, 3)); }
-READ16_HANDLER( ay8910_read_port_4_lsb_r ) { return ay8910_read_ym(sndti_token(SOUND_AY8910, 4)); }
-READ16_HANDLER( ay8910_read_port_0_msb_r ) { return ay8910_read_ym(sndti_token(SOUND_AY8910, 0)) << 8; }
-READ16_HANDLER( ay8910_read_port_1_msb_r ) { return ay8910_read_ym(sndti_token(SOUND_AY8910, 1)) << 8; }
-READ16_HANDLER( ay8910_read_port_2_msb_r ) { return ay8910_read_ym(sndti_token(SOUND_AY8910, 2)) << 8; }
-READ16_HANDLER( ay8910_read_port_3_msb_r ) { return ay8910_read_ym(sndti_token(SOUND_AY8910, 3)) << 8; }
-READ16_HANDLER( ay8910_read_port_4_msb_r ) { return ay8910_read_ym(sndti_token(SOUND_AY8910, 4)) << 8; }
+READ8_DEVICE_HANDLER( ay8910_r )
+{
+	return ay8910_read_ym(get_safe_token(device));
+}
 
-WRITE8_HANDLER( ay8910_control_port_0_w ) { ay8910_write_ym(sndti_token(SOUND_AY8910, 0),0,data); }
-WRITE8_HANDLER( ay8910_control_port_1_w ) { ay8910_write_ym(sndti_token(SOUND_AY8910, 1),0,data); }
-WRITE8_HANDLER( ay8910_control_port_2_w ) { ay8910_write_ym(sndti_token(SOUND_AY8910, 2),0,data); }
-WRITE8_HANDLER( ay8910_control_port_3_w ) { ay8910_write_ym(sndti_token(SOUND_AY8910, 3),0,data); }
-WRITE8_HANDLER( ay8910_control_port_4_w ) { ay8910_write_ym(sndti_token(SOUND_AY8910, 4),0,data); }
-WRITE16_HANDLER( ay8910_control_port_0_lsb_w ) { if (ACCESSING_BITS_0_7) ay8910_write_ym(sndti_token(SOUND_AY8910, 0),0,data & 0xff); }
-WRITE16_HANDLER( ay8910_control_port_1_lsb_w ) { if (ACCESSING_BITS_0_7) ay8910_write_ym(sndti_token(SOUND_AY8910, 1),0,data & 0xff); }
-WRITE16_HANDLER( ay8910_control_port_2_lsb_w ) { if (ACCESSING_BITS_0_7) ay8910_write_ym(sndti_token(SOUND_AY8910, 2),0,data & 0xff); }
-WRITE16_HANDLER( ay8910_control_port_3_lsb_w ) { if (ACCESSING_BITS_0_7) ay8910_write_ym(sndti_token(SOUND_AY8910, 3),0,data & 0xff); }
-WRITE16_HANDLER( ay8910_control_port_4_lsb_w ) { if (ACCESSING_BITS_0_7) ay8910_write_ym(sndti_token(SOUND_AY8910, 4),0,data & 0xff); }
-WRITE16_HANDLER( ay8910_control_port_0_msb_w ) { if (ACCESSING_BITS_8_15) ay8910_write_ym(sndti_token(SOUND_AY8910, 0),0,data >> 8); }
-WRITE16_HANDLER( ay8910_control_port_1_msb_w ) { if (ACCESSING_BITS_8_15) ay8910_write_ym(sndti_token(SOUND_AY8910, 1),0,data >> 8); }
-WRITE16_HANDLER( ay8910_control_port_2_msb_w ) { if (ACCESSING_BITS_8_15) ay8910_write_ym(sndti_token(SOUND_AY8910, 2),0,data >> 8); }
-WRITE16_HANDLER( ay8910_control_port_3_msb_w ) { if (ACCESSING_BITS_8_15) ay8910_write_ym(sndti_token(SOUND_AY8910, 3),0,data >> 8); }
-WRITE16_HANDLER( ay8910_control_port_4_msb_w ) { if (ACCESSING_BITS_8_15) ay8910_write_ym(sndti_token(SOUND_AY8910, 4),0,data >> 8); }
+WRITE8_DEVICE_HANDLER( ay8910_data_address_w )
+{
+	/* note that directly connecting BC1 to A0 puts data on 0 and address on 1 */
+	ay8910_write_ym(get_safe_token(device), ~offset & 1, data);
+}
 
-WRITE8_HANDLER( ay8910_write_port_0_w ) { ay8910_write_ym(sndti_token(SOUND_AY8910, 0),1,data); }
-WRITE8_HANDLER( ay8910_write_port_1_w ) { ay8910_write_ym(sndti_token(SOUND_AY8910, 1),1,data); }
-WRITE8_HANDLER( ay8910_write_port_2_w ) { ay8910_write_ym(sndti_token(SOUND_AY8910, 2),1,data); }
-WRITE8_HANDLER( ay8910_write_port_3_w ) { ay8910_write_ym(sndti_token(SOUND_AY8910, 3),1,data); }
-WRITE8_HANDLER( ay8910_write_port_4_w ) { ay8910_write_ym(sndti_token(SOUND_AY8910, 4),1,data); }
-WRITE16_HANDLER( ay8910_write_port_0_lsb_w ) { if (ACCESSING_BITS_0_7) ay8910_write_ym(sndti_token(SOUND_AY8910, 0),1,data & 0xff); }
-WRITE16_HANDLER( ay8910_write_port_1_lsb_w ) { if (ACCESSING_BITS_0_7) ay8910_write_ym(sndti_token(SOUND_AY8910, 1),1,data & 0xff); }
-WRITE16_HANDLER( ay8910_write_port_2_lsb_w ) { if (ACCESSING_BITS_0_7) ay8910_write_ym(sndti_token(SOUND_AY8910, 2),1,data & 0xff); }
-WRITE16_HANDLER( ay8910_write_port_3_lsb_w ) { if (ACCESSING_BITS_0_7) ay8910_write_ym(sndti_token(SOUND_AY8910, 3),1,data & 0xff); }
-WRITE16_HANDLER( ay8910_write_port_4_lsb_w ) { if (ACCESSING_BITS_0_7) ay8910_write_ym(sndti_token(SOUND_AY8910, 4),1,data & 0xff); }
-WRITE16_HANDLER( ay8910_write_port_0_msb_w ) { if (ACCESSING_BITS_8_15) ay8910_write_ym(sndti_token(SOUND_AY8910, 0),1,data >> 8); }
-WRITE16_HANDLER( ay8910_write_port_1_msb_w ) { if (ACCESSING_BITS_8_15) ay8910_write_ym(sndti_token(SOUND_AY8910, 1),1,data >> 8); }
-WRITE16_HANDLER( ay8910_write_port_2_msb_w ) { if (ACCESSING_BITS_8_15) ay8910_write_ym(sndti_token(SOUND_AY8910, 2),1,data >> 8); }
-WRITE16_HANDLER( ay8910_write_port_3_msb_w ) { if (ACCESSING_BITS_8_15) ay8910_write_ym(sndti_token(SOUND_AY8910, 3),1,data >> 8); }
-WRITE16_HANDLER( ay8910_write_port_4_msb_w ) { if (ACCESSING_BITS_8_15) ay8910_write_ym(sndti_token(SOUND_AY8910, 4),1,data >> 8); }
+WRITE8_DEVICE_HANDLER( ay8910_address_data_w )
+{
+	ay8910_write_ym(get_safe_token(device), offset & 1, data);
+}
+
+WRITE8_DEVICE_HANDLER( ay8910_address_w )
+{
+#if ENABLE_REGISTER_TEST
+	return;
+#endif
+	ay8910_data_address_w(device, 1, data);
+}
+
+WRITE8_DEVICE_HANDLER( ay8910_data_w )
+{
+#if ENABLE_REGISTER_TEST
+	return;
+#endif
+	ay8910_data_address_w(device, 0, data);
+}

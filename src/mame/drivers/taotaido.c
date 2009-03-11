@@ -126,7 +126,7 @@ static WRITE8_HANDLER( pending_command_clear_w )
 
 static WRITE8_HANDLER( taotaido_sh_bankswitch_w )
 {
-	UINT8 *rom = memory_region(space->machine, "audio") + 0x10000;
+	UINT8 *rom = memory_region(space->machine, "audiocpu") + 0x10000;
 
 	memory_set_bankptr(space->machine, 1,rom + (data & 0x03) * 0x8000);
 }
@@ -139,10 +139,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_port_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(ym2610_status_port_0_a_r, ym2610_control_port_0_a_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(ym2610_data_port_0_a_w)
-	AM_RANGE(0x02, 0x02) AM_READWRITE(ym2610_status_port_0_b_r, ym2610_control_port_0_b_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(ym2610_data_port_0_b_w)
+	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE("ym", ym2610_r, ym2610_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(taotaido_sh_bankswitch_w)
 	AM_RANGE(0x08, 0x08) AM_WRITE(pending_command_clear_w)
 	AM_RANGE(0x0c, 0x0c) AM_READ(soundlatch_r)
@@ -309,9 +306,9 @@ static GFXDECODE_START( taotaido )
 	GFXDECODE_ENTRY( "gfx2", 0, taotaido_layout,  0x300, 256  ) /* bg tiles */
 GFXDECODE_END
 
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -320,18 +317,18 @@ static const ym2610_interface ym2610_config =
 };
 
 static MACHINE_DRIVER_START( taotaido )
-	MDRV_CPU_ADD("main", M68000, 32000000/2)
+	MDRV_CPU_ADD("maincpu", M68000, 32000000/2)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,20000000/4) // ??
+	MDRV_CPU_ADD("audiocpu", Z80,20000000/4) // ??
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_port_map,0)
 								/* IRQs are triggered by the YM2610 */
 
 	MDRV_GFXDECODE(taotaido)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -345,23 +342,23 @@ static MACHINE_DRIVER_START( taotaido )
 	MDRV_VIDEO_EOF( taotaido )
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2610, 8000000)
 	MDRV_SOUND_CONFIG(ym2610_config)
-	MDRV_SOUND_ROUTE(0, "left",  0.25)
-	MDRV_SOUND_ROUTE(0, "right", 0.25)
-	MDRV_SOUND_ROUTE(1, "left",  1.0)
-	MDRV_SOUND_ROUTE(2, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker",  0.25)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.25)
+	MDRV_SOUND_ROUTE(1, "lspeaker",  1.0)
+	MDRV_SOUND_ROUTE(2, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( taotaido )
-	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 ) /* 68000 Code */
 	ROM_LOAD16_WORD_SWAP( "1-u90.bin", 0x00000, 0x80000, CRC(a3ee30da) SHA1(920a83ce9192bf785bffdc041e280f1a420de4c9) )
 	ROM_LOAD16_WORD_SWAP( "2-u91.bin", 0x80000, 0x80000, CRC(30b7e4fb) SHA1(15e1f6d252c736fdee33b691a0a1a45f0307bffb) )
 
-	ROM_REGION( 0x30000, "audio", 0 ) /* z80 Code */
+	ROM_REGION( 0x30000, "audiocpu", 0 ) /* z80 Code */
 	ROM_LOAD( "3-u113.bin", 0x000000, 0x20000, CRC(a167c4e4) SHA1(d32184e7040935cd440d4d82c66491b710ec87a8) )
 	ROM_RELOAD ( 0x10000, 0x20000 )
 
@@ -381,11 +378,11 @@ ROM_START( taotaido )
 ROM_END
 
 ROM_START( taotaida )
-	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 ) /* 68000 Code */
 	ROM_LOAD16_WORD_SWAP( "tt0-u90.bin", 0x00000, 0x80000, CRC(69d4cca7) SHA1(f1aba74fef8fe4271d19763f428fc0e2674d08b3) )
 	ROM_LOAD16_WORD_SWAP( "tt1-u91.bin", 0x80000, 0x80000, CRC(41025469) SHA1(fa3a424ca3ecb513f418e436e4191ff76f6a0de1) )
 
-	ROM_REGION( 0x30000, "audio", 0 ) /* z80 Code */
+	ROM_REGION( 0x30000, "audiocpu", 0 ) /* z80 Code */
 	ROM_LOAD( "3-u113.bin", 0x000000, 0x20000, CRC(a167c4e4) SHA1(d32184e7040935cd440d4d82c66491b710ec87a8) )
 	ROM_RELOAD ( 0x10000, 0x20000 )
 

@@ -240,13 +240,10 @@ static TIMER_CALLBACK( master_sound_nmi_callback )
 }
 
 
-static WRITE8_HANDLER( ym2151_data_latch_w )
+static WRITE8_DEVICE_HANDLER( ym2151_data_latch_w )
 {
 	/* bit 7 of the sound control selects which port */
-	if (sound_control & 0x80)
-		ym2151_data_port_0_w(space, offset, data);
-	else
-		ym2151_register_port_0_w(space, offset, data);
+	ym2151_w(device, sound_control >> 7, data);
 }
 
 
@@ -276,11 +273,11 @@ static READ8_HANDLER( sound_slave_latch_r )
 }
 
 
-static WRITE8_HANDLER( sound_slave_dac_w )
+static WRITE8_DEVICE_HANDLER( sound_slave_dac_w )
 {
 	/* DAC A is used to modulate DAC B */
 	dac_value[offset & 1] = data;
-	dac_data_16_w(0, (dac_value[0] ^ 0xff) * dac_value[1]);
+	dac_data_16_w(device, (dac_value[0] ^ 0xff) * dac_value[1]);
 }
 
 
@@ -345,7 +342,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_master_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x1800) AM_RAM
-	AM_RANGE(0x4000, 0x5fff) AM_WRITE(ym2151_data_latch_w)
+	AM_RANGE(0x4000, 0x5fff) AM_DEVWRITE("ym", ym2151_data_latch_w)
 	AM_RANGE(0x6000, 0x67ff) AM_WRITE(sound_nmi_rate_w)
 	AM_RANGE(0x6800, 0x6fff) AM_READ(sound_master_latch_r)
 	AM_RANGE(0x7000, 0x77ff) AM_READ(sound_nmi_to_slave_r)
@@ -358,7 +355,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_slave_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x3800) AM_RAM
 	AM_RANGE(0x4000, 0x5fff) AM_READ(sound_slave_latch_r)
-	AM_RANGE(0x8000, 0xbfff) AM_WRITE(sound_slave_dac_w)
+	AM_RANGE(0x8000, 0xbfff) AM_DEVWRITE("dac", sound_slave_dac_w)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -443,7 +440,7 @@ INPUT_PORTS_END
 static const tms34010_config master_config =
 {
 	FALSE,						/* halt on reset */
-	"main",						/* the screen operated on */
+	"screen",					/* the screen operated on */
 	40000000/8,					/* pixel clock */
 	1,							/* pixels per clock */
 	exterm_scanline_update,		/* scanline updater */
@@ -455,7 +452,7 @@ static const tms34010_config master_config =
 static const tms34010_config slave_config =
 {
 	TRUE,						/* halt on reset */
-	"main",						/* the screen operated on */
+	"screen",					/* the screen operated on */
 	40000000/8,					/* pixel clock */
 	1,							/* pixels per clock */
 	NULL,						/* scanline updater */
@@ -475,7 +472,7 @@ static const tms34010_config slave_config =
 static MACHINE_DRIVER_START( exterm )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", TMS34010, 40000000)
+	MDRV_CPU_ADD("maincpu", TMS34010, 40000000)
 	MDRV_CPU_CONFIG(master_config)
 	MDRV_CPU_PROGRAM_MAP(master_map,0)
 
@@ -483,7 +480,7 @@ static MACHINE_DRIVER_START( exterm )
 	MDRV_CPU_CONFIG(slave_config)
 	MDRV_CPU_PROGRAM_MAP(slave_map,0)
 
-	MDRV_CPU_ADD("audio", M6502, 2000000)
+	MDRV_CPU_ADD("audiocpu", M6502, 2000000)
 	MDRV_CPU_PROGRAM_MAP(sound_master_map,0)
 
 	MDRV_CPU_ADD("audioslave", M6502, 2000000)
@@ -497,7 +494,7 @@ static MACHINE_DRIVER_START( exterm )
 	/* video hardware */
 	MDRV_PALETTE_LENGTH(2048+32768)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(40000000/8, 318, 0, 256, 264, 0, 240)
 
@@ -523,7 +520,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( exterm )
-	ROM_REGION( 0x10000, "audio", 0 )		/* 64k for YM2151 code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )		/* 64k for YM2151 code */
 	ROM_LOAD( "v101y1", 0x8000, 0x8000, CRC(cbeaa837) SHA1(87d8a258f059512dbf9bc0e7cfff728ef9e616f1) )
 
 	ROM_REGION( 0x10000, "audioslave", 0 )		/* 64k for DAC code */

@@ -70,7 +70,7 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xec10, 0xec10) AM_READ_PORT("IN4")
 	AM_RANGE(0xec12, 0xec12) AM_READ_PORT("IN5")
 
-	AM_RANGE(0xec20, 0xec20) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0xec20, 0xec20) AM_DEVREAD("ay", ay8910_r)
 	AM_RANGE(0xec21, 0xec21) AM_READ_PORT("BUTTONS") //ltcasino -> pc: F3F3 (A in service) and F3FD (B in service)
 	AM_RANGE(0xec3e, 0xec3e) AM_READ(SMH_NOP) //not used
 
@@ -86,8 +86,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(ltcasino_tile_atr_w) AM_BASE(&ltcasino_tile_atr_ram)
 	AM_RANGE(0xe800, 0xebff) AM_WRITE(SMH_RAM)
 
-	AM_RANGE(0xec20, 0xec20) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0xec21, 0xec21) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xec20, 0xec21) AM_DEVWRITE("ay", ay8910_data_address_w)
 
 	AM_RANGE(0xec30, 0xec3f) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xf000, 0xffff) AM_WRITE(SMH_ROM)
@@ -648,12 +647,12 @@ static VIDEO_UPDATE(ltcasino)
 
 static MACHINE_DRIVER_START( ltcasino )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502,2000000)		 /* ? MHz */
+	MDRV_CPU_ADD("maincpu", M6502,2000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -675,7 +674,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( ltcasino )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "a",			0x8000, 0x1000, CRC(14909fee) SHA1(bf53fa65da7f013ea1ac6b4942cdfdb34ef16252) )
 	ROM_LOAD( "b",			0x9800, 0x0800, CRC(1473f854) SHA1(eadaec1f6d653e61458bc262945c20140f4530eb) )
 	ROM_LOAD( "c",			0xa800, 0x0800, CRC(7a07004b) SHA1(62bd0f3d12b7eada6fc271abea60569aca7262b0) )
@@ -689,7 +688,7 @@ ROM_END
 
 
 ROM_START( ltcasinn )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "lc2_ra.bin", 0x8000, 0x1000, CRC(1a595442) SHA1(b8fe3e5ed2024a57187c0ce547c1bbef2429ed63) )
 	ROM_LOAD( "lc2_rb.bin", 0x9000, 0x1000, CRC(4f5502c1) SHA1(cd1b7c08d26fed71c45e44ebd208bd18dc262e8f) )
 	ROM_LOAD( "lc2_rc.bin", 0xa000, 0x1000, CRC(990283b8) SHA1(8a3fe5be8381894b8e8dd14c7d42190e60a25600) )
@@ -702,7 +701,7 @@ ROM_START( ltcasinn )
 ROM_END
 
 ROM_START( mv4in1 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "g.ic13",   0x8000, 0x1000, CRC(ac33bd85) SHA1(fd555f70d0a7040473d35ec38e19185671a471ea) )
 	ROM_LOAD( "f.ic14",   0x9000, 0x1000, CRC(f95c87d1) SHA1(df5ed53722ec55a97eabe10b0ed3f1ba32cbe55f) )
 	ROM_LOAD( "e.ic15",   0xa000, 0x1000, CRC(e525fcf2) SHA1(f1ec0c514e25ec4a1caf737ff8a962c81fb2706a) )
@@ -717,7 +716,7 @@ ROM_END
 static DRIVER_INIT(mv4in1)
 {
 	int i;
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(machine, "maincpu");
 	for(i=0;i<0x10000;i++)
 		rom[i]=BITSWAP8(rom[i],7,6,5,4,3,1,2,0);
 }

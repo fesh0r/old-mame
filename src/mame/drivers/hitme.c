@@ -180,7 +180,7 @@ static READ8_HANDLER( hitme_port_3_r )
  *
  *************************************/
 
-static WRITE8_HANDLER( output_port_0_w )
+static WRITE8_DEVICE_HANDLER( output_port_0_w )
 {
 	/*
         Note: We compute the timeout time on a write here. Unfortunately, the situation is
@@ -188,20 +188,20 @@ static WRITE8_HANDLER( output_port_0_w )
         In fact, it is very important that our timing calculation timeout AFTER the sound
         system's equivalent computation, or else we will hang notes.
     */
-	UINT8 raw_game_speed = input_port_read(space->machine, "R3");
+	UINT8 raw_game_speed = input_port_read(device->machine, "R3");
 	double resistance = raw_game_speed * 25000 / 100;
 	attotime duration = attotime_make(0, ATTOSECONDS_PER_SECOND * 0.45 * 6.8e-6 * resistance * (data+1));
-	timeout_time = attotime_add(timer_get_time(space->machine), duration);
+	timeout_time = attotime_add(timer_get_time(device->machine), duration);
 
-	discrete_sound_w(space, HITME_DOWNCOUNT_VAL, data);
-	discrete_sound_w(space, HITME_OUT0, 1);
+	discrete_sound_w(device, HITME_DOWNCOUNT_VAL, data);
+	discrete_sound_w(device, HITME_OUT0, 1);
 }
 
 
-static WRITE8_HANDLER( output_port_1_w )
+static WRITE8_DEVICE_HANDLER( output_port_1_w )
 {
-	discrete_sound_w(space, HITME_ENABLE_VAL, data);
-	discrete_sound_w(space, HITME_OUT1, 1);
+	discrete_sound_w(device, HITME_ENABLE_VAL, data);
+	discrete_sound_w(device, HITME_OUT1, 1);
 }
 
 
@@ -230,8 +230,8 @@ static ADDRESS_MAP_START( hitme_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1700, 0x17ff) AM_READ(hitme_port_3_r)
 	AM_RANGE(0x1800, 0x18ff) AM_READ_PORT("IN4")
 	AM_RANGE(0x1900, 0x19ff) AM_READ_PORT("IN5")
-	AM_RANGE(0x1d00, 0x1dff) AM_WRITE(output_port_0_w)
-	AM_RANGE(0x1e00, 0x1fff) AM_WRITE(output_port_1_w)
+	AM_RANGE(0x1d00, 0x1dff) AM_DEVWRITE("discrete", output_port_0_w)
+	AM_RANGE(0x1e00, 0x1fff) AM_DEVWRITE("discrete", output_port_1_w)
 ADDRESS_MAP_END
 
 
@@ -242,8 +242,8 @@ static ADDRESS_MAP_START( hitme_portmap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x17, 0x17) AM_READ(hitme_port_3_r)
 	AM_RANGE(0x18, 0x18) AM_READ_PORT("IN4")
 	AM_RANGE(0x19, 0x19) AM_READ_PORT("IN5")
-	AM_RANGE(0x1d, 0x1d) AM_WRITE(output_port_0_w)
-	AM_RANGE(0x1e, 0x1f) AM_WRITE(output_port_1_w)
+	AM_RANGE(0x1d, 0x1d) AM_DEVWRITE("discrete", output_port_0_w)
+	AM_RANGE(0x1e, 0x1f) AM_DEVWRITE("discrete", output_port_1_w)
 ADDRESS_MAP_END
 
 
@@ -303,12 +303,12 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( hitme )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", 8080, MASTER_CLOCK/16)
+	MDRV_CPU_ADD("maincpu", 8080, MASTER_CLOCK/16)
 	MDRV_CPU_PROGRAM_MAP(hitme_map,0)
 	MDRV_CPU_IO_MAP(hitme_portmap,0)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -342,7 +342,7 @@ static MACHINE_DRIVER_START( barricad )
 	MDRV_IMPORT_FROM(hitme)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_SIZE(32*8, 24*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 24*8-1)
 
@@ -522,7 +522,7 @@ INPUT_PORTS_END
  *************************************/
 
 ROM_START( hitme )
-	ROM_REGION( 0x2000, "main", ROMREGION_INVERT )
+	ROM_REGION( 0x2000, "maincpu", ROMREGION_INVERT )
 	ROM_LOAD( "hm0.b7", 0x0000, 0x0200, CRC(6c48c50f) SHA1(42dc7c3461687e5be4393cc21d695bc84ae4f5dc) )
 	ROM_LOAD( "hm2.c7", 0x0200, 0x0200, CRC(25d47ba4) SHA1(6f3bb4ca6918dc07f37d0c0c7fe5ec53aa7171a5) )
 	ROM_LOAD( "hm4.d7", 0x0400, 0x0200, CRC(f8bfda8d) SHA1(48bbc106f8d80d6c1ad1a2c1575ce7d6452fbe9d) )
@@ -533,8 +533,8 @@ ROM_START( hitme )
 ROM_END
 
 
-ROM_START( mblkjack )
-	ROM_REGION( 0x2000, "main", ROMREGION_INVERT )
+ROM_START( m21 )
+	ROM_REGION( 0x2000, "maincpu", ROMREGION_INVERT )
 	ROM_LOAD( "mirco1.bin", 0x0000, 0x0200, CRC(aa796ad7) SHA1(2908bdb4ab17a2f5bc4da2f957906bf2b57afa50) )
 	ROM_LOAD( "hm2.c7", 0x0200, 0x0200, CRC(25d47ba4) SHA1(6f3bb4ca6918dc07f37d0c0c7fe5ec53aa7171a5) )
 	ROM_LOAD( "hm4.d7", 0x0400, 0x0200, CRC(f8bfda8d) SHA1(48bbc106f8d80d6c1ad1a2c1575ce7d6452fbe9d) )
@@ -546,7 +546,7 @@ ROM_END
 
 
 ROM_START( barricad )
-   ROM_REGION( 0x2000, "main", ROMREGION_INVERT )
+   ROM_REGION( 0x2000, "maincpu", ROMREGION_INVERT )
    ROM_LOAD( "550806.7b",   0x0000, 0x0200, CRC(ea7f5da7) SHA1(c0ad37a0ffdb0500e8adc8fb9c4369e461307f84) )
    ROM_LOAD( "550807.7c",   0x0200, 0x0200, CRC(0afef174) SHA1(2a7be988262b855bc81a1b0036fa9f2481d4d53b) )
    ROM_LOAD( "550808.7d",   0x0400, 0x0200, CRC(6e02d260) SHA1(8a1640a1d56cbc34f74f07bc15e77db63635e8f5) )
@@ -558,7 +558,7 @@ ROM_END
 
 
 ROM_START( brickyrd )
-   ROM_REGION( 0x2000, "main", ROMREGION_INVERT )
+   ROM_REGION( 0x2000, "maincpu", ROMREGION_INVERT )
    ROM_LOAD( "550806.7b",   0x0000, 0x0200, CRC(ea7f5da7) SHA1(c0ad37a0ffdb0500e8adc8fb9c4369e461307f84) )
    ROM_LOAD( "barricad.7c", 0x0200, 0x0200, CRC(94e1d1c0) SHA1(f6e6f9a783867c3602ba8cff6a18c47c5df987a4) )
    ROM_LOAD( "550808.7d",   0x0400, 0x0200, CRC(6e02d260) SHA1(8a1640a1d56cbc34f74f07bc15e77db63635e8f5) )
@@ -577,6 +577,6 @@ ROM_END
  *************************************/
 
 GAME( 1976, hitme,    0,        hitme,    hitme,    0, ROT0, "RamTek", "Hit Me", 0 )
-GAME( 197?, mblkjack, hitme,    hitme,    hitme,    0, ROT0, "Mirco", "Black Jack (Mirco)", 0 )
+GAME( 1976, m21,      hitme,    hitme,    hitme,    0, ROT0, "Mirco", "21 (Mirco)", 0 )
 GAME( 1976, barricad, 0,        barricad, barricad, 0, ROT0, "RamTek", "Barricade", GAME_IMPERFECT_SOUND  )
 GAME( 1976, brickyrd, barricad, barricad, barricad, 0, ROT0, "RamTek", "Brickyard", GAME_IMPERFECT_SOUND  )

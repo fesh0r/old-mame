@@ -64,7 +64,7 @@ static ADDRESS_MAP_START( thoop2_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x700004, 0x700005) AM_READ_PORT("P1")
 	AM_RANGE(0x700006, 0x700007) AM_READ_PORT("P2")
 	AM_RANGE(0x700008, 0x700009) AM_READ_PORT("SYSTEM")
-	AM_RANGE(0x70000e, 0x70000f) AM_READ(okim6295_status_0_lsb_r)/* OKI6295 status register */
+	AM_RANGE(0x70000e, 0x70000f) AM_DEVREAD8("oki", okim6295_r, 0x00ff)/* OKI6295 status register */
 	AM_RANGE(0xfe0000, 0xfeffff) AM_READ(SMH_RAM)			/* Work RAM (partially shared with DS5002FP) */
 ADDRESS_MAP_END
 
@@ -104,7 +104,7 @@ static ADDRESS_MAP_START( thoop2_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x200000, 0x2007ff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)/* Palette */
 	AM_RANGE(0x440000, 0x440fff) AM_WRITE(SMH_RAM) AM_BASE(&thoop2_spriteram)			/* Sprite RAM */
 	AM_RANGE(0x70000c, 0x70000d) AM_WRITE(OKIM6295_bankswitch_w)					/* OKI6295 bankswitch */
-	AM_RANGE(0x70000e, 0x70000f) AM_WRITE(okim6295_data_0_lsb_w)					/* OKI6295 data register */
+	AM_RANGE(0x70000e, 0x70000f) AM_DEVWRITE8("oki", okim6295_w, 0x00ff)					/* OKI6295 data register */
 	AM_RANGE(0x70000a, 0x70005b) AM_WRITE(thoop2_coin_w)							/* Coin Counters + Coin Lockout */
 	AM_RANGE(0xfe0000, 0xfeffff) AM_WRITE(SMH_RAM)								/* Work RAM (partially shared with DS5002FP) */
 ADDRESS_MAP_END
@@ -194,12 +194,12 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( thoop2 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,24000000/2)			/* 12 MHz */
+	MDRV_CPU_ADD("maincpu", M68000,24000000/2)			/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(thoop2_readmem,thoop2_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -222,7 +222,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( thoop2 )
-	ROM_REGION( 0x100000, "main", 0 )	/* 68000 code */
+	ROM_REGION( 0x100000, "maincpu", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE(	"th2c23.040",	0x000000, 0x080000, CRC(3e465753) SHA1(1ea1173b9fe5d652e7b5fafb822e2535cecbc198) )
 	ROM_LOAD16_BYTE(	"th2c22.040",	0x000001, 0x080000, CRC(837205b7) SHA1(f78b90c2be0b4dddaba26f074ea00eff863cfdb2) )
 

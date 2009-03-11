@@ -220,11 +220,11 @@ static READ16_HANDLER( dual539_r )
 	data = 0;
 	if( ACCESSING_BITS_0_7 )
 	{
-		data |= k054539_1_r( space, offset );
+		data |= k054539_r( devtag_get_device(space->machine, "konami2"), offset );
 	}
 	if( ACCESSING_BITS_8_15 )
 	{
-		data |= k054539_0_r( space, offset ) << 8;
+		data |= k054539_r( devtag_get_device(space->machine, "konami1"), offset ) << 8;
 	}
 	return data;
 }
@@ -233,11 +233,11 @@ static WRITE16_HANDLER( dual539_w )
 {
 	if( ACCESSING_BITS_0_7 )
 	{
-		k054539_1_w( space, offset, data );
+		k054539_w( devtag_get_device(space->machine, "konami2"), offset, data );
 	}
 	if( ACCESSING_BITS_8_15 )
 	{
-		k054539_0_w( space, offset, data >> 8 );
+		k054539_w( devtag_get_device(space->machine, "konami1"), offset, data >> 8 );
 	}
 }
 
@@ -249,6 +249,24 @@ static READ16_HANDLER( sndcomm68k_r )
 static WRITE16_HANDLER( sndcomm68k_w )
 {
 	sndtor3k[ offset ] = data;
+}
+
+static READ16_HANDLER(tms57002_data_word_r)
+{
+	return 0;
+}
+
+static WRITE16_HANDLER(tms57002_data_word_w)
+{
+}
+
+static READ16_HANDLER(tms57002_status_word_r)
+{
+	return 0;
+}
+
+static WRITE16_HANDLER(tms57002_control_word_w)
+{
 }
 
 /* 68000 memory handling */
@@ -364,16 +382,15 @@ static MACHINE_START( konamigq )
 static MACHINE_RESET( konamigq )
 {
 	psx_machine_init(machine);
-	tms57002_init();
 }
 
 static MACHINE_DRIVER_START( konamigq )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main",  PSXCPU, XTAL_67_7376MHz )
+	MDRV_CPU_ADD("maincpu",  PSXCPU, XTAL_67_7376MHz )
 	MDRV_CPU_PROGRAM_MAP( konamigq_map, 0 )
-	MDRV_CPU_VBLANK_INT("main", psx_vblank)
+	MDRV_CPU_VBLANK_INT("screen", psx_vblank)
 
-	MDRV_CPU_ADD( "sound", M68000, 8000000 )
+	MDRV_CPU_ADD( "soundcpu", M68000, 8000000 )
 	MDRV_CPU_PROGRAM_MAP( sndreadmem, sndwritemem )
 	MDRV_CPU_PERIODIC_INT( irq2_line_hold, 480 )
 
@@ -382,7 +399,7 @@ static MACHINE_DRIVER_START( konamigq )
 	MDRV_NVRAM_HANDLER( konamigq_93C46 )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE( 60 )
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC( 0 ))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -396,17 +413,17 @@ static MACHINE_DRIVER_START( konamigq )
 	MDRV_VIDEO_UPDATE( psx )
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("konami1", K054539, 48000)
 	MDRV_SOUND_CONFIG(k054539_config)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("konami2", K054539, 48000)
 	MDRV_SOUND_CONFIG(k054539_config)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 static INPUT_PORTS_START( konamigq )
@@ -489,7 +506,7 @@ static INPUT_PORTS_START( konamigq )
 INPUT_PORTS_END
 
 ROM_START( cryptklr )
-	ROM_REGION( 0x80000, "sound", 0 ) /* 68000 sound program */
+	ROM_REGION( 0x80000, "soundcpu", 0 ) /* 68000 sound program */
 	ROM_LOAD16_WORD_SWAP( "420a01.2g", 0x000000, 0x080000, CRC(84fc2613) SHA1(e06f4284614d33c76529eb43b168d095200a9eac) )
 
 	ROM_REGION( 0x400000, "shared", 0 )

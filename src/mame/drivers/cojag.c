@@ -376,7 +376,7 @@ static MACHINE_RESET( cojag )
 	cojag_sound_reset(machine);
 
 	/* reset the IDE controller */
-	devtag_reset(machine, IDE_CONTROLLER, "ide");
+	devtag_reset(machine, "ide");
 }
 
 
@@ -785,7 +785,7 @@ static ADDRESS_MAP_START( r3000_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x04000000, 0x047fffff) AM_RAM AM_BASE(&jaguar_shared_ram) AM_SHARE(1)
 	AM_RANGE(0x04800000, 0x04bfffff) AM_ROMBANK(1)
 	AM_RANGE(0x04c00000, 0x04dfffff) AM_ROMBANK(2)
-	AM_RANGE(0x04e00000, 0x04e003ff) AM_DEVREADWRITE(IDE_CONTROLLER, "ide", ide_controller32_r, ide_controller32_w)
+	AM_RANGE(0x04e00000, 0x04e003ff) AM_DEVREADWRITE("ide", ide_controller32_r, ide_controller32_w)
 	AM_RANGE(0x04f00000, 0x04f003ff) AM_READWRITE(jaguar_tom_regs32_r, jaguar_tom_regs32_w)
 	AM_RANGE(0x04f00400, 0x04f007ff) AM_RAM AM_BASE(&jaguar_gpu_clut) AM_SHARE(2)
 	AM_RANGE(0x04f02100, 0x04f021ff) AM_READWRITE(gpuctrl_r, gpuctrl_w)
@@ -819,7 +819,7 @@ static ADDRESS_MAP_START( m68020_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xa40000, 0xa40003) AM_WRITE(eeprom_enable_w)
 	AM_RANGE(0xb70000, 0xb70003) AM_READWRITE(misc_control_r, misc_control_w)
 	AM_RANGE(0xc00000, 0xdfffff) AM_ROMBANK(2)
-	AM_RANGE(0xe00000, 0xe003ff) AM_DEVREADWRITE(IDE_CONTROLLER, "ide",  ide_controller32_r, ide_controller32_w)
+	AM_RANGE(0xe00000, 0xe003ff) AM_DEVREADWRITE("ide",  ide_controller32_r, ide_controller32_w)
 	AM_RANGE(0xf00000, 0xf003ff) AM_READWRITE(jaguar_tom_regs32_r, jaguar_tom_regs32_w)
 	AM_RANGE(0xf00400, 0xf007ff) AM_RAM AM_BASE(&jaguar_gpu_clut) AM_SHARE(2)
 	AM_RANGE(0xf02100, 0xf021ff) AM_READWRITE(gpuctrl_r, gpuctrl_w)
@@ -847,7 +847,7 @@ static ADDRESS_MAP_START( gpu_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x000000, 0x7fffff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x800000, 0xbfffff) AM_ROMBANK(8)
 	AM_RANGE(0xc00000, 0xdfffff) AM_ROMBANK(9)
-	AM_RANGE(0xe00000, 0xe003ff) AM_DEVREADWRITE(IDE_CONTROLLER, "ide", ide_controller32_r, ide_controller32_w)
+	AM_RANGE(0xe00000, 0xe003ff) AM_DEVREADWRITE("ide", ide_controller32_r, ide_controller32_w)
 	AM_RANGE(0xf00000, 0xf003ff) AM_READWRITE(jaguar_tom_regs32_r, jaguar_tom_regs32_w)
 	AM_RANGE(0xf00400, 0xf007ff) AM_RAM AM_SHARE(2)
 	AM_RANGE(0xf02100, 0xf021ff) AM_READWRITE(gpuctrl_r, gpuctrl_w)
@@ -1106,7 +1106,7 @@ static const jaguar_cpu_config dsp_config =
 static MACHINE_DRIVER_START( cojagr3k )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", R3041BE, R3000_CLOCK)
+	MDRV_CPU_ADD("maincpu", R3041BE, R3000_CLOCK)
 	MDRV_CPU_CONFIG(config)
 	MDRV_CPU_PROGRAM_MAP(r3000_map,0)
 
@@ -1114,7 +1114,7 @@ static MACHINE_DRIVER_START( cojagr3k )
 	MDRV_CPU_CONFIG(gpu_config)
 	MDRV_CPU_PROGRAM_MAP(gpu_map,0)
 
-	MDRV_CPU_ADD("audio", JAGUARDSP, JAGUAR_CLOCK/2)
+	MDRV_CPU_ADD("audiocpu", JAGUARDSP, JAGUAR_CLOCK/2)
 	MDRV_CPU_CONFIG(dsp_config)
 	MDRV_CPU_PROGRAM_MAP(dsp_map,0)
 
@@ -1126,7 +1126,7 @@ static MACHINE_DRIVER_START( cojagr3k )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_RAW_PARAMS(COJAG_PIXEL_CLOCK/2, 456, 42, 402, 262, 17, 257)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 
@@ -1134,13 +1134,13 @@ static MACHINE_DRIVER_START( cojagr3k )
 	MDRV_VIDEO_UPDATE(cojag)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("dac1", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 
 	MDRV_SOUND_ADD("dac2", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -1148,7 +1148,7 @@ static MACHINE_DRIVER_START( cojag68k )
 	MDRV_IMPORT_FROM(cojagr3k)
 
 	/* basic machine hardware */
-	MDRV_CPU_REPLACE("main", M68EC020, M68K_CLOCK/2)
+	MDRV_CPU_REPLACE("maincpu", M68EC020, M68K_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(m68020_map,0)
 MACHINE_DRIVER_END
 

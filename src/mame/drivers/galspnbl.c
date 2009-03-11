@@ -71,9 +71,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xefff) AM_ROM
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM
-	AM_RANGE(0xf800, 0xf800) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w)
-	AM_RANGE(0xf810, 0xf810) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0xf811, 0xf811) AM_WRITE(ym3812_write_port_0_w)
+	AM_RANGE(0xf800, 0xf800) AM_DEVREADWRITE("oki", okim6295_r, okim6295_w)
+	AM_RANGE(0xf810, 0xf811) AM_DEVWRITE("ym", ym3812_w)
 	AM_RANGE(0xfc00, 0xfc00) AM_READWRITE(SMH_NOP, SMH_NOP)	/* irq ack ?? */
 	AM_RANGE(0xfc20, 0xfc20) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
@@ -195,9 +194,9 @@ GFXDECODE_END
 
 
 
-static void irqhandler(running_machine *machine, int linestate)
+static void irqhandler(const device_config *device, int linestate)
 {
-	cpu_set_input_line(machine->cpu[1],0,linestate);
+	cpu_set_input_line(device->machine->cpu[1],0,linestate);
 }
 
 static const ym3812_interface ym3812_config =
@@ -210,16 +209,16 @@ static const ym3812_interface ym3812_config =
 static MACHINE_DRIVER_START( galspnbl )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 10000000)	/* 10 MHz ??? */
+	MDRV_CPU_ADD("maincpu", M68000, 10000000)	/* 10 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq3_line_hold)/* also has vector for 6, but it does nothing */
+	MDRV_CPU_VBLANK_INT("screen", irq3_line_hold)/* also has vector for 6, but it does nothing */
 
-	MDRV_CPU_ADD("audio", Z80, 4000000)	/* 4 MHz ??? */
+	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
 								/* NMI is caused by the main CPU */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -253,7 +252,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( galspnbl )
-	ROM_REGION( 0x400000, "main", 0 )	/* 68000 code */
+	ROM_REGION( 0x400000, "maincpu", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "7.rom",        0x000000, 0x80000, CRC(ce0189bf) SHA1(06d8cc6f5b819fe2ca536ce553db6986547a15ba) )
 	ROM_LOAD16_BYTE( "3.rom",        0x000001, 0x80000, CRC(9b0a8744) SHA1(ac80f22b8b2f4c559c225bf203af698bf59699e7) )
 	ROM_LOAD16_BYTE( "8.rom",        0x100000, 0x80000, CRC(eee2f087) SHA1(37285ae7b49c9d20ad92b3971db89ba593975154) )
@@ -263,7 +262,7 @@ ROM_START( galspnbl )
 	ROM_LOAD16_BYTE( "10.rom",       0x300000, 0x80000, CRC(3a20e1e5) SHA1(850be621547bc9c7519055211392f2684e440462) )
 	ROM_LOAD16_BYTE( "6.rom",        0x300001, 0x80000, CRC(94927d20) SHA1(0ea1a179956ad9a93a99cccec92f0490044ad1d3) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* Z80 code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* Z80 code */
 	ROM_LOAD( "2.rom",        0x0000, 0x10000, CRC(fae688a7) SHA1(e1ef7abd18f6a820d1a7f0ceb9a9b1a2c7de41f0) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
@@ -279,7 +278,7 @@ ROM_START( galspnbl )
 ROM_END
 
 ROM_START( hotpinbl )
-	ROM_REGION( 0x400000, "main", 0 )	/* 68000 code */
+	ROM_REGION( 0x400000, "maincpu", 0 )	/* 68000 code */
 	ROM_LOAD16_BYTE( "hp_07.bin",    0x000000, 0x80000, CRC(978cc13e) SHA1(0060aaf7259fdeeacb07e9ced01bdf69c27bdfb6) )
 	ROM_LOAD16_BYTE( "hp_03.bin",    0x000001, 0x80000, CRC(68388726) SHA1(d8dca9050403be70097a0f833ba189bd2fa87e80) )
 	ROM_LOAD16_BYTE( "hp_08.bin",    0x100000, 0x80000, CRC(bd16be12) SHA1(36e64705efba8ecdc96a62f55d68e959022fb98f) )
@@ -289,7 +288,7 @@ ROM_START( hotpinbl )
 	ROM_LOAD16_BYTE( "hp_10.bin",    0x300000, 0x80000, CRC(a5c63e34) SHA1(de27cfe20e09e8c13ee28d6eb42bfab1ebe33149) )
 	ROM_LOAD16_BYTE( "hp_06.bin",    0x300001, 0x80000, CRC(513eda91) SHA1(14a43c00ad1f55bff525a14cd53913dd78e80f0c) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* Z80 code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* Z80 code */
 	ROM_LOAD( "hp_02.bin",    0x0000, 0x10000, CRC(82698269) SHA1(5e27e89f1bdd7c3793d40867c50981f5fac0a7fb) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )

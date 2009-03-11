@@ -210,22 +210,6 @@ static WRITE16_HANDLER( analog_w )
 
 /*************************************
  *
- *  POKEY I/O
- *
- *************************************/
-
-static READ16_HANDLER( pokey1_word_r ) { return pokey1_r(space, offset); }
-static READ16_HANDLER( pokey2_word_r ) { return pokey2_r(space, offset); }
-static READ16_HANDLER( pokey3_word_r ) { return pokey3_r(space, offset); }
-
-static WRITE16_HANDLER( pokey1_word_w ) { if (ACCESSING_BITS_0_7) pokey1_w(space, offset, data & 0xff); }
-static WRITE16_HANDLER( pokey2_word_w ) { if (ACCESSING_BITS_0_7) pokey2_w(space, offset, data & 0xff); }
-static WRITE16_HANDLER( pokey3_word_w ) { if (ACCESSING_BITS_0_7) pokey3_w(space, offset, data & 0xff); }
-
-
-
-/*************************************
- *
  *  Main CPU memory handlers
  *
  *************************************/
@@ -243,9 +227,9 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x950000, 0x9501ff) AM_MIRROR(0x023e00) AM_WRITE(foodf_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x954000, 0x954001) AM_MIRROR(0x023ffe) AM_WRITENOP	/* RECALL */
 	AM_RANGE(0x958000, 0x958001) AM_MIRROR(0x023ffe) AM_READWRITE(watchdog_reset16_r, watchdog_reset16_w)
-	AM_RANGE(0xa40000, 0xa4001f) AM_MIRROR(0x03ffe0) AM_READWRITE(pokey2_word_r, pokey2_word_w)
-	AM_RANGE(0xa80000, 0xa8001f) AM_MIRROR(0x03ffe0) AM_READWRITE(pokey1_word_r, pokey1_word_w)
-	AM_RANGE(0xac0000, 0xac001f) AM_MIRROR(0x03ffe0) AM_READWRITE(pokey3_word_r, pokey3_word_w)
+	AM_RANGE(0xa40000, 0xa4001f) AM_MIRROR(0x03ffe0) AM_DEVREADWRITE8("pokey2", pokey_r, pokey_w, 0x00ff)
+	AM_RANGE(0xa80000, 0xa8001f) AM_MIRROR(0x03ffe0) AM_DEVREADWRITE8("pokey1", pokey_r, pokey_w, 0x00ff)
+	AM_RANGE(0xac0000, 0xac001f) AM_MIRROR(0x03ffe0) AM_DEVREADWRITE8("pokey3", pokey_r, pokey_w, 0x00ff)
 ADDRESS_MAP_END
 
 
@@ -346,14 +330,23 @@ GFXDECODE_END
  *
  *************************************/
 
-static READ8_HANDLER( pot_r )
+static READ8_DEVICE_HANDLER( pot_r )
 {
-	return (input_port_read(space->machine, "DSW") >> offset) << 7;
+	return (input_port_read(device->machine, "DSW") >> offset) << 7;
 }
 
 static const pokey_interface pokey_config =
 {
-	{ pot_r,pot_r,pot_r,pot_r,pot_r,pot_r,pot_r,pot_r }
+	{
+		DEVCB_HANDLER(pot_r),
+		DEVCB_HANDLER(pot_r),
+		DEVCB_HANDLER(pot_r),
+		DEVCB_HANDLER(pot_r),
+		DEVCB_HANDLER(pot_r),
+		DEVCB_HANDLER(pot_r),
+		DEVCB_HANDLER(pot_r),
+		DEVCB_HANDLER(pot_r)
+	}
 };
 
 
@@ -367,9 +360,9 @@ static const pokey_interface pokey_config =
 static MACHINE_DRIVER_START( foodf )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, MASTER_CLOCK/2)
+	MDRV_CPU_ADD("maincpu", M68000, MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", atarigen_video_int_gen)
+	MDRV_CPU_VBLANK_INT("screen", atarigen_video_int_gen)
 
 	MDRV_MACHINE_START(foodf)
 	MDRV_MACHINE_RESET(foodf)
@@ -380,7 +373,7 @@ static MACHINE_DRIVER_START( foodf )
 	MDRV_GFXDECODE(foodf)
 	MDRV_PALETTE_LENGTH(256)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK/2, 384, 0, 256, 259, 0, 224)
 
@@ -410,7 +403,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( foodf )
-	ROM_REGION( 0x10000, "main", 0 )	/* 64k for 68000 code */
+	ROM_REGION( 0x10000, "maincpu", 0 )	/* 64k for 68000 code */
 	ROM_LOAD16_BYTE( "136020-301.8c",   0x000001, 0x002000, CRC(dfc3d5a8) SHA1(7abe5e9c27098bd8c93cc06f1b9e3db0744019e9) )
 	ROM_LOAD16_BYTE( "136020-302.9c",   0x000000, 0x002000, CRC(ef92dc5c) SHA1(eb41291615165f549a68ebc6d4664edef1a04ac5) )
 	ROM_LOAD16_BYTE( "136020-303.8d",   0x004001, 0x002000, CRC(64b93076) SHA1(efa4090d96aa0ffd4192a045f174ac5960810bca) )
@@ -433,7 +426,7 @@ ROM_END
 
 
 ROM_START( foodf2 )
-	ROM_REGION( 0x10000, "main", 0 )	/* 64k for 68000 code */
+	ROM_REGION( 0x10000, "maincpu", 0 )	/* 64k for 68000 code */
 	ROM_LOAD16_BYTE( "136020-201.8c",   0x000001, 0x002000, CRC(4ee52d73) SHA1(ff4ab8169a9b260bbd1f49023a30064e2f0b6686) )
 	ROM_LOAD16_BYTE( "136020-202.9c",   0x000000, 0x002000, CRC(f8c4b977) SHA1(824d33baa413b2ee898c75157624ea007c92032f) )
 	ROM_LOAD16_BYTE( "136020-203.8d",   0x004001, 0x002000, CRC(0e9f99a3) SHA1(37bba66957ee19e7d05fcc3e4583e909809075ed) )
@@ -456,7 +449,7 @@ ROM_END
 
 
 ROM_START( foodfc )
-	ROM_REGION( 0x10000, "main", 0 )	/* 64k for 68000 code */
+	ROM_REGION( 0x10000, "maincpu", 0 )	/* 64k for 68000 code */
 	ROM_LOAD16_BYTE( "136020-113.8c",   0x000001, 0x002000, CRC(193a299f) SHA1(58bbf714eff22d8a47b174e4b121f14a8dcb4ef9) )
 	ROM_LOAD16_BYTE( "136020-114.9c",   0x000000, 0x002000, CRC(33ed6bbe) SHA1(5d80fb092d2964b851e6c5982572d4ffc5078c55) )
 	ROM_LOAD16_BYTE( "136020-115.8d",   0x004001, 0x002000, CRC(64b93076) SHA1(efa4090d96aa0ffd4192a045f174ac5960810bca) )

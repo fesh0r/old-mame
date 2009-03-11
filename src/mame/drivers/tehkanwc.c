@@ -181,29 +181,29 @@ static WRITE8_HANDLER( sound_answer_w )
 
 static int msm_data_offs;
 
-static READ8_HANDLER( tehkanwc_portA_r )
+static READ8_DEVICE_HANDLER( tehkanwc_portA_r )
 {
 	return msm_data_offs & 0xff;
 }
 
-static READ8_HANDLER( tehkanwc_portB_r )
+static READ8_DEVICE_HANDLER( tehkanwc_portB_r )
 {
 	return (msm_data_offs >> 8) & 0xff;
 }
 
-static WRITE8_HANDLER( tehkanwc_portA_w )
+static WRITE8_DEVICE_HANDLER( tehkanwc_portA_w )
 {
 	msm_data_offs = (msm_data_offs & 0xff00) | data;
 }
 
-static WRITE8_HANDLER( tehkanwc_portB_w )
+static WRITE8_DEVICE_HANDLER( tehkanwc_portB_w )
 {
 	msm_data_offs = (msm_data_offs & 0x00ff) | (data << 8);
 }
 
-static WRITE8_HANDLER( msm_reset_w )
+static WRITE8_DEVICE_HANDLER( msm_reset_w )
 {
-	msm5205_reset_w(0,data ? 0 : 1);
+	msm5205_reset_w(device,data ? 0 : 1);
 }
 
 static void tehkanwc_adpcm_int(const device_config *device)
@@ -214,10 +214,10 @@ static void tehkanwc_adpcm_int(const device_config *device)
 	int msm_data = SAMPLES[msm_data_offs & 0x7fff];
 
 	if (toggle == 0)
-		msm5205_data_w(0,(msm_data >> 4) & 0x0f);
+		msm5205_data_w(device,(msm_data >> 4) & 0x0f);
 	else
 	{
-		msm5205_data_w(0,msm_data & 0x0f);
+		msm5205_data_w(device,msm_data & 0x0f);
 		msm_data_offs++;
 	}
 
@@ -272,7 +272,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x47ff) AM_RAM
-	AM_RANGE(0x8001, 0x8001) AM_WRITE(msm_reset_w)/* MSM51xx reset */
+	AM_RANGE(0x8001, 0x8001) AM_DEVWRITE("msm", msm_reset_w)/* MSM51xx reset */
 	AM_RANGE(0x8002, 0x8002) AM_WRITE(SMH_NOP)	/* ?? written in the IRQ handler */
 	AM_RANGE(0x8003, 0x8003) AM_WRITE(SMH_NOP)	/* ?? written in the NMI handler */
 	AM_RANGE(0xc000, 0xc000) AM_READWRITE(soundlatch_r, sound_answer_w)
@@ -280,10 +280,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_port, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x02, 0x02) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x00, 0x00) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE("ay1", ay8910_data_address_w)
+	AM_RANGE(0x02, 0x02) AM_DEVREAD("ay2", ay8910_r)
+	AM_RANGE(0x02, 0x03) AM_DEVWRITE("ay2", ay8910_data_address_w)
 ADDRESS_MAP_END
 
 
@@ -633,20 +633,20 @@ static const ay8910_interface ay8910_interface_1 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	NULL,
-	tehkanwc_portA_w,
-	tehkanwc_portB_w
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(tehkanwc_portA_w),
+	DEVCB_HANDLER(tehkanwc_portB_w)
 };
 
 static const ay8910_interface ay8910_interface_2 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	tehkanwc_portA_r,
-	tehkanwc_portB_r,
-	NULL,
-	NULL
+	DEVCB_HANDLER(tehkanwc_portA_r),
+	DEVCB_HANDLER(tehkanwc_portB_r),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static const msm5205_interface msm5205_config =
@@ -658,23 +658,23 @@ static const msm5205_interface msm5205_config =
 static MACHINE_DRIVER_START( tehkanwc )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 18432000/4)	/* 18.432000 / 4 */
+	MDRV_CPU_ADD("maincpu", Z80, 18432000/4)	/* 18.432000 / 4 */
 	MDRV_CPU_PROGRAM_MAP(main_mem,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, 18432000/4)
 	MDRV_CPU_PROGRAM_MAP(sub_mem,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, 18432000/4)
+	MDRV_CPU_ADD("audiocpu", Z80, 18432000/4)
 	MDRV_CPU_PROGRAM_MAP(sound_mem,0)
 	MDRV_CPU_IO_MAP(sound_port,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - seems enough to keep the CPUs in sync */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -723,7 +723,7 @@ static DRIVER_INIT( teedoff )
         023A: 00          nop
     */
 
-	UINT8 *ROM = memory_region(machine, "main");
+	UINT8 *ROM = memory_region(machine, "maincpu");
 
 	ROM[0x0238] = 0x00;
 	ROM[0x0239] = 0x00;
@@ -739,7 +739,7 @@ static DRIVER_INIT( teedoff )
 ***************************************************************************/
 
 ROM_START( tehkanwc )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "twc-1.bin",    0x0000, 0x4000, CRC(34d6d5ff) SHA1(72f4d408b8a7766d348f6a229d395e0c98215c40) )
 	ROM_LOAD( "twc-2.bin",    0x4000, 0x4000, CRC(7017a221) SHA1(4b4700af0a6ff64f976db369ba4b9d97cee1fd5f) )
 	ROM_LOAD( "twc-3.bin",    0x8000, 0x4000, CRC(8b662902) SHA1(13bcd4bf23e34dd7193545561e05bb2cb2c95f9b) )
@@ -747,7 +747,7 @@ ROM_START( tehkanwc )
 	ROM_REGION( 0x10000, "sub", 0 )
 	ROM_LOAD( "twc-4.bin",    0x0000, 0x8000, CRC(70a9f883) SHA1(ace04359265271eb37512a89eb0217eb013aecb7) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "twc-6.bin",    0x0000, 0x4000, CRC(e3112be2) SHA1(7859e51b4312dc5df01c88e1d97cf608abc7ca72) )
 
 	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE )
@@ -806,7 +806,7 @@ Notes:
 */
 
 ROM_START( tehkanwb )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "e-1.3-18.ic32",    0x0000, 0x4000, CRC(ac9d851b) SHA1(38a799cec4f29a88ed22c7a1e35fd2287cee869a) )
 	ROM_LOAD( "e-2.3-17.ic31",    0x4000, 0x4000, CRC(65b53d99) SHA1(ea172b2540763d64dc4a238700421cea27138fae) )
 	ROM_LOAD( "e-3.3-15.ic30",    0x8000, 0x4000, CRC(12064bfc) SHA1(954b56a548c697927d58b9cb2ecfe32b4db8d769) )
@@ -814,7 +814,7 @@ ROM_START( tehkanwb )
 	ROM_REGION( 0x10000, "sub", 0 )
 	ROM_LOAD( "e-4.9-17.ic100",    0x0000, 0x8000, CRC(70a9f883) SHA1(ace04359265271eb37512a89eb0217eb013aecb7) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "e-6.8-3.ic83",    0x0000, 0x4000, CRC(e3112be2) SHA1(7859e51b4312dc5df01c88e1d97cf608abc7ca72) )
 
 	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE )
@@ -834,7 +834,7 @@ ROM_END
 
 
 ROM_START( gridiron )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "gfight1.bin",  0x0000, 0x4000, CRC(51612741) SHA1(a0417a35f0ce51ba7fc81f27b356852a97f52a58) )
 	ROM_LOAD( "gfight2.bin",  0x4000, 0x4000, CRC(a678db48) SHA1(5ddcb93b3ed52cec6ba04bb19832ae239b7d2287) )
 	ROM_LOAD( "gfight3.bin",  0x8000, 0x4000, CRC(8c227c33) SHA1(c0b58dbebc159ee681aed33c858f5e0172edd75a) )
@@ -842,7 +842,7 @@ ROM_START( gridiron )
 	ROM_REGION( 0x10000, "sub", 0 )
 	ROM_LOAD( "gfight4.bin",  0x0000, 0x4000, CRC(8821415f) SHA1(772ce0770ed869ebf625d210bc2b9c381b14b7ea) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "gfight5.bin",  0x0000, 0x4000, CRC(92ca3c07) SHA1(580077ca8cf01996b29497187e41a54242de7f50) )
 
 	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE )
@@ -864,7 +864,7 @@ ROM_START( gridiron )
 ROM_END
 
 ROM_START( teedoff )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "to-1.bin",     0x0000, 0x4000, CRC(cc2aebc5) SHA1(358e77e53b35dd89fcfdb3b2484b8c4fbc34c1be) )
 	ROM_LOAD( "to-2.bin",     0x4000, 0x4000, CRC(f7c9f138) SHA1(2fe56059ef67387b5938bb4751aa2f74a58b04fb) )
 	ROM_LOAD( "to-3.bin",     0x8000, 0x4000, CRC(a0f0a6da) SHA1(72390c8dc5519d90e39a660e6ec18861fdbadcc8) )
@@ -872,7 +872,7 @@ ROM_START( teedoff )
 	ROM_REGION( 0x10000, "sub", 0 )
 	ROM_LOAD( "to-4.bin",     0x0000, 0x8000, CRC(e922cbd2) SHA1(922c030be70150efb760fa81bda0bc54f2ec681a) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "to-6.bin",     0x0000, 0x4000, CRC(d8dfe1c8) SHA1(d00a71ad89b530339990780334588f5738c60f25) )
 
 	ROM_REGION( 0x04000, "gfx1", ROMREGION_DISPOSE )

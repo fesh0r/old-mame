@@ -128,42 +128,60 @@ static VIDEO_UPDATE( tugboat )
 
 static int ctrl;
 
-static READ8_HANDLER( tugboat_input_r )
+static READ8_DEVICE_HANDLER( tugboat_input_r )
 {
 	if (~ctrl & 0x80)
-		return input_port_read(space->machine, "IN0");
+		return input_port_read(device->machine, "IN0");
 	else if (~ctrl & 0x40)
-		return input_port_read(space->machine, "IN1");
+		return input_port_read(device->machine, "IN1");
 	else if (~ctrl & 0x20)
-		return input_port_read(space->machine, "IN2");
+		return input_port_read(device->machine, "IN2");
 	else if (~ctrl & 0x10)
-		return input_port_read(space->machine, "IN3");
+		return input_port_read(device->machine, "IN3");
 	else
-		return input_port_read(space->machine, "IN4");
+		return input_port_read(device->machine, "IN4");
 }
 
-static READ8_HANDLER( tugboat_ctrl_r )
+static READ8_DEVICE_HANDLER( tugboat_ctrl_r )
 {
 	return ctrl;
 }
 
-static WRITE8_HANDLER( tugboat_ctrl_w )
+static WRITE8_DEVICE_HANDLER( tugboat_ctrl_w )
 {
 	ctrl = data;
 }
 
 static const pia6821_interface pia0_intf =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ tugboat_input_r, 0, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ 0, 0, 0, 0,
-	/*irqs   : A/B             */ 0, 0,
+	DEVCB_HANDLER(tugboat_input_r),		/* port A in */
+	DEVCB_NULL,		/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_NULL,		/* port A out */
+	DEVCB_NULL,		/* port B out */
+	DEVCB_NULL,		/* line CA2 out */
+	DEVCB_NULL,		/* port CB2 out */
+	DEVCB_NULL,		/* IRQA */
+	DEVCB_NULL		/* IRQB */
 };
 
 static const pia6821_interface pia1_intf =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ input_port_5_r, tugboat_ctrl_r, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B2       */ 0,              tugboat_ctrl_w, 0, 0,
-	/*irqs   : A/B             */ 0, 0
+	DEVCB_INPUT_PORT("DSW"),			/* port A in */
+	DEVCB_HANDLER(tugboat_ctrl_r),		/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_NULL,		/* port A out */
+	DEVCB_HANDLER(tugboat_ctrl_w),		/* port B out */
+	DEVCB_NULL,		/* line CA2 out */
+	DEVCB_NULL,		/* port CB2 out */
+	DEVCB_NULL,		/* IRQA */
+	DEVCB_NULL		/* IRQB */
 };
 
 static TIMER_CALLBACK( interrupt_gen )
@@ -172,27 +190,19 @@ static TIMER_CALLBACK( interrupt_gen )
 	timer_set(machine, video_screen_get_frame_period(machine->primary_screen), NULL, 0, interrupt_gen);
 }
 
-static MACHINE_START( tugboat )
-{
-	pia_config(machine, 0, &pia0_intf);
-	pia_config(machine, 1, &pia1_intf);
-}
-
 static MACHINE_RESET( tugboat )
 {
-	pia_reset();
 	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 30*8+4, 0), NULL, 0, interrupt_gen);
 }
 
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_RAM AM_BASE(&tugboat_ram)
-	AM_RANGE(0x1060, 0x1060) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x1061, 0x1061) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x1060, 0x1061) AM_DEVWRITE("ay", ay8910_address_data_w)
 	AM_RANGE(0x10a0, 0x10a1) AM_WRITE(tugboat_hd46505_0_w)	/* scrolling is performed changing the start_addr register (0C/0D) */
 	AM_RANGE(0x10c0, 0x10c1) AM_WRITE(tugboat_hd46505_1_w)
-	AM_RANGE(0x11e4, 0x11e7) AM_READWRITE(pia_0_r, pia_0_w)
-	AM_RANGE(0x11e8, 0x11eb) AM_READWRITE(pia_1_r, pia_1_w)
+	AM_RANGE(0x11e4, 0x11e7) AM_DEVREADWRITE("pia0", pia6821_r, pia6821_w)
+	AM_RANGE(0x11e8, 0x11eb) AM_DEVREADWRITE("pia1", pia6821_r, pia6821_w)
 	//AM_RANGE(0x1700, 0x1fff) AM_RAM
 	AM_RANGE(0x18e0, 0x18ef) AM_WRITE(tugboat_score_w)
 	AM_RANGE(0x2000, 0x2fff) AM_RAM	/* tilemap RAM */
@@ -304,15 +314,16 @@ GFXDECODE_END
 
 
 static MACHINE_DRIVER_START( tugboat )
-	MDRV_CPU_ADD("main", M6502, 2000000)	/* 2 MHz ???? */
+	MDRV_CPU_ADD("maincpu", M6502, 2000000)	/* 2 MHz ???? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
-	MDRV_MACHINE_START(tugboat)
 	MDRV_MACHINE_RESET(tugboat)
 
+	MDRV_PIA6821_ADD("pia0", pia0_intf)
+	MDRV_PIA6821_ADD("pia1", pia1_intf)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8,32*8)
@@ -333,7 +344,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( tugboat )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "u7.bin", 0x5000, 0x1000, CRC(e81d7581) SHA1(c76327e3b027a5a2af69f8cfafa1f828ad0ebdb1) )
 	ROM_LOAD( "u8.bin", 0x6000, 0x1000, CRC(7525de06) SHA1(0722c7a0b89c55162227173679ffbe398ca350a2) )
 	ROM_LOAD( "u9.bin", 0x7000, 0x1000, CRC(aa4ae687) SHA1(a212eed5d04d6197aa3484ff36059fd7998604a6) )
@@ -365,7 +376,7 @@ ROM_END
 
 
 ROM_START( noahsark )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "u6.bin", 0x4000, 0x1000, CRC(3579eeac) SHA1(f54435ac6b31cf81342de83965cf8a8503b26eb8) )
 	ROM_LOAD( "u7.bin", 0x5000, 0x1000, CRC(64b0afae) SHA1(1fcc17490d1290565be38a817f783604bcefb8be) )
 	ROM_LOAD( "u8.bin", 0x6000, 0x1000, CRC(02d53f62) SHA1(e51a583a548b4bdaf43d376d5d276325ee448d49) )

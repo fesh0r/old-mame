@@ -286,9 +286,9 @@ static void start_interrupt_timers(running_machine *machine)
  *
  *************************************/
 
-static void audio_cpu_irq(running_machine *machine, int assert)
+static void audio_cpu_irq(const device_config *device, int assert)
 {
-	cpu_set_input_line(machine->cpu[1], 0, assert ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1], 0, assert ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -622,7 +622,7 @@ static void set_main_cpu_vector_table_source(running_machine *machine, UINT8 dat
 
 static void _set_main_cpu_bank_address(running_machine *machine)
 {
-	memory_set_bankptr(machine, NEOGEO_BANK_CARTRIDGE, &memory_region(machine, "main")[main_cpu_bank_address]);
+	memory_set_bankptr(machine, NEOGEO_BANK_CARTRIDGE, &memory_region(machine, "maincpu")[main_cpu_bank_address]);
 }
 
 
@@ -639,7 +639,7 @@ void neogeo_set_main_cpu_bank_address(const address_space *space, UINT32 bank_ad
 static WRITE16_HANDLER( main_cpu_bank_select_w )
 {
 	UINT32 bank_address;
-	UINT32 len = memory_region_length(space->machine, "main");
+	UINT32 len = memory_region_length(space->machine, "maincpu");
 
 	if ((len <= 0x100000) && (data & 0x07))
 		logerror("PC %06x: warning: bankswitch to %02x but no banks available\n", cpu_get_pc(space->cpu), data);
@@ -664,10 +664,10 @@ static void main_cpu_banking_init(running_machine *machine)
 
 	/* create vector banks */
 	memory_configure_bank(machine, NEOGEO_BANK_VECTORS, 0, 1, memory_region(machine, "mainbios"), 0);
-	memory_configure_bank(machine, NEOGEO_BANK_VECTORS, 1, 1, memory_region(machine, "main"), 0);
+	memory_configure_bank(machine, NEOGEO_BANK_VECTORS, 1, 1, memory_region(machine, "maincpu"), 0);
 
 	/* set initial main CPU bank */
-	if (memory_region_length(machine, "main") > 0x100000)
+	if (memory_region_length(machine, "maincpu") > 0x100000)
 		neogeo_set_main_cpu_bank_address(mainspace, 0x100000);
 	else
 		neogeo_set_main_cpu_bank_address(mainspace, 0x000000);
@@ -769,12 +769,12 @@ static void audio_cpu_banking_init(running_machine *machine)
 	/* audio bios/cartridge selection */
  	if (memory_region(machine, "audiobios"))
 		memory_configure_bank(machine, NEOGEO_BANK_AUDIO_CPU_MAIN_BANK, 0, 1, memory_region(machine, "audiobios"), 0);
-	memory_configure_bank(machine, NEOGEO_BANK_AUDIO_CPU_MAIN_BANK, 1, 1, memory_region(machine, "audio"), 0);
+	memory_configure_bank(machine, NEOGEO_BANK_AUDIO_CPU_MAIN_BANK, 1, 1, memory_region(machine, "audiocpu"), 0);
 
 	/* audio banking */
-	address_mask = memory_region_length(machine, "audio") - 0x10000 - 1;
+	address_mask = memory_region_length(machine, "audiocpu") - 0x10000 - 1;
 
-	rgn = memory_region(machine, "audio");
+	rgn = memory_region(machine, "audiocpu");
 	for (region = 0; region < 4; region++)
 	{
 		for (bank = 0; bank < 0x100; bank++)
@@ -1084,10 +1084,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( auido_io_map, ADDRESS_SPACE_IO, 8 )
   /*AM_RANGE(0x00, 0x00) AM_MIRROR(0xff00) AM_READWRITE(audio_command_r, audio_cpu_clear_nmi_w);*/  /* may not and NMI clear */
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0xff00) AM_READ(audio_command_r)
-	AM_RANGE(0x04, 0x04) AM_MIRROR(0xff00) AM_READWRITE(ym2610_status_port_0_a_r, ym2610_control_port_0_a_w)
-	AM_RANGE(0x05, 0x05) AM_MIRROR(0xff00) AM_READWRITE(ym2610_read_port_0_r, ym2610_data_port_0_a_w)
-	AM_RANGE(0x06, 0x06) AM_MIRROR(0xff00) AM_READWRITE(ym2610_status_port_0_b_r, ym2610_control_port_0_b_w)
-	AM_RANGE(0x07, 0x07) AM_MIRROR(0xff00) AM_WRITE(ym2610_data_port_0_b_w)
+	AM_RANGE(0x04, 0x07) AM_MIRROR(0xff00) AM_DEVREADWRITE("ym", ym2610_r, ym2610_w)
 	AM_RANGE(0x08, 0x08) AM_MIRROR(0xff00) /* write - NMI enable / acknowledge? (the data written doesn't matter) */
 	AM_RANGE(0x08, 0x08) AM_MIRROR(0xfff0) AM_MASK(0xfff0) AM_READ(audio_cpu_bank_select_f000_f7ff_r)
 	AM_RANGE(0x09, 0x09) AM_MIRROR(0xfff0) AM_MASK(0xfff0) AM_READ(audio_cpu_bank_select_e000_efff_r)
@@ -1105,7 +1102,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-static ym2610_interface ym2610_config =
+static const ym2610_interface ym2610_config =
 {
 	audio_cpu_irq
 };
@@ -1119,32 +1116,34 @@ static ym2610_interface ym2610_config =
  *
  *************************************/
 
-#define STANDARD_DIPS 																	\
-	PORT_DIPNAME( 0x0001, 0x0001, "Test Switch" ) PORT_DIPLOCATION("SW:1")				\
-	PORT_DIPSETTING(	  0x0001, DEF_STR( Off ) )										\
-	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )										\
-	PORT_DIPNAME( 0x0002, 0x0002, "Coin Chutes?" ) PORT_DIPLOCATION("SW:2")				\
-	PORT_DIPSETTING(	  0x0000, "1?" )												\
-	PORT_DIPSETTING(	  0x0002, "2?" )												\
-	PORT_DIPNAME( 0x0004, 0x0004, "Autofire (in some games)" ) PORT_DIPLOCATION("SW:3")	\
-	PORT_DIPSETTING(	  0x0004, DEF_STR( Off ) )										\
-	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )										\
-	PORT_DIPNAME( 0x0038, 0x0038, "COMM Setting" ) PORT_DIPLOCATION("SW:4,5,6")			\
-	PORT_DIPSETTING(	  0x0038, DEF_STR( Off ) )										\
-	PORT_DIPSETTING(	  0x0030, "1" )													\
-	PORT_DIPSETTING(	  0x0020, "2" )													\
-	PORT_DIPSETTING(	  0x0010, "3" )													\
-	PORT_DIPSETTING(	  0x0000, "4" )													\
-	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Free_Play ) ) PORT_DIPLOCATION("SW:7")		\
-	PORT_DIPSETTING(	  0x0040, DEF_STR( Off ) )										\
-	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )										\
-	PORT_DIPNAME( 0x0080, 0x0080, "Freeze" ) PORT_DIPLOCATION("SW:8")					\
-	PORT_DIPSETTING(	  0x0080, DEF_STR( Off ) )										\
+#define STANDARD_DIPS																		\
+	PORT_DIPNAME( 0x0001, 0x0001, "Test Switch" ) PORT_DIPLOCATION("SW:1")					\
+	PORT_DIPSETTING(	  0x0001, DEF_STR( Off ) )											\
+	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )											\
+	PORT_DIPNAME( 0x0002, 0x0002, "Coin Chutes?" ) PORT_DIPLOCATION("SW:2")					\
+	PORT_DIPSETTING(	  0x0000, "1?" )													\
+	PORT_DIPSETTING(	  0x0002, "2?" )													\
+	PORT_DIPNAME( 0x0004, 0x0004, "Autofire (in some games)" ) PORT_DIPLOCATION("SW:3")		\
+	PORT_DIPSETTING(	  0x0004, DEF_STR( Off ) )											\
+	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )											\
+	PORT_DIPNAME( 0x0018, 0x0018, "COMM Setting (Cabinet No.)" ) PORT_DIPLOCATION("SW:4,5")	\
+	PORT_DIPSETTING(	  0x0018, "1" )														\
+	PORT_DIPSETTING(	  0x0008, "2" )														\
+	PORT_DIPSETTING(	  0x0010, "3" )														\
+	PORT_DIPSETTING(	  0x0000, "4" )														\
+	PORT_DIPNAME( 0x0020, 0x0020, "COMM Setting (Link Enable)" ) PORT_DIPLOCATION("SW:6")	\
+	PORT_DIPSETTING(	  0x0020, DEF_STR( Off ) )											\
+	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )											\
+	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Free_Play ) ) PORT_DIPLOCATION("SW:7")			\
+	PORT_DIPSETTING(	  0x0040, DEF_STR( Off ) )											\
+	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )											\
+	PORT_DIPNAME( 0x0080, 0x0080, "Freeze" ) PORT_DIPLOCATION("SW:8")						\
+	PORT_DIPSETTING(	  0x0080, DEF_STR( Off ) )											\
 	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
 
 
 #define STANDARD_IN0														\
-	PORT_START("IN0")													\
+	PORT_START("IN0")														\
 	STANDARD_DIPS															\
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)		\
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)		\
@@ -1228,10 +1227,10 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( neogeo )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, NEOGEO_MAIN_CPU_CLOCK)
+	MDRV_CPU_ADD("maincpu", M68000, NEOGEO_MAIN_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
-	MDRV_CPU_ADD("audio", Z80, NEOGEO_AUDIO_CPU_CLOCK)
+	MDRV_CPU_ADD("audiocpu", Z80, NEOGEO_AUDIO_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
 	MDRV_CPU_IO_MAP(auido_io_map,0)
 
@@ -1248,19 +1247,19 @@ static MACHINE_DRIVER_START( neogeo )
 	MDRV_VIDEO_UPDATE(neogeo)
 	MDRV_DEFAULT_LAYOUT(layout_neogeo)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(NEOGEO_PIXEL_CLOCK, NEOGEO_HTOTAL, NEOGEO_HBEND, NEOGEO_HBSTART, NEOGEO_VTOTAL, NEOGEO_VBEND, NEOGEO_VBSTART)
 
 	/* audio hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2610, NEOGEO_YM2610_CLOCK)
 	MDRV_SOUND_CONFIG(ym2610_config)
-	MDRV_SOUND_ROUTE(0, "left",  0.60)
-	MDRV_SOUND_ROUTE(0, "right", 0.60)
-	MDRV_SOUND_ROUTE(1, "left",  1.0)
-	MDRV_SOUND_ROUTE(2, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker",  0.60)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.60)
+	MDRV_SOUND_ROUTE(1, "lspeaker",  1.0)
+	MDRV_SOUND_ROUTE(2, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 /*************************************

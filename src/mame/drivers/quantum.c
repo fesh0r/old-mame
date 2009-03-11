@@ -65,15 +65,15 @@ static READ16_HANDLER( trackball_r )
 }
 
 
-static READ8_HANDLER( input_1_r )
+static READ8_DEVICE_HANDLER( input_1_r )
 {
-	return (input_port_read(space->machine, "DSW0") << (7 - (offset - POT0_C))) & 0x80;
+	return (input_port_read(device->machine, "DSW0") << (7 - (offset - POT0_C))) & 0x80;
 }
 
 
-static READ8_HANDLER( input_2_r )
+static READ8_DEVICE_HANDLER( input_2_r )
 {
-	return (input_port_read(space->machine, "DSW1") << (7 - (offset - POT0_C))) & 0x80;
+	return (input_port_read(device->machine, "DSW1") << (7 - (offset - POT0_C))) & 0x80;
 }
 
 
@@ -108,30 +108,6 @@ static WRITE16_HANDLER( led_w )
 
 /*************************************
  *
- *  POKEY I/O
- *
- *************************************/
-
-static WRITE16_HANDLER( pokey_word_w )
-{
-	if (offset & 0x10) /* A5 selects chip */
-		pokey2_w(space, offset & 0x0f, data);
-	else
-		pokey1_w(space, offset & 0x0f, data);
-}
-
-
-static READ16_HANDLER( pokey_word_r )
-{
-	if (offset & 0x10)
-		return pokey2_r(space, offset & 0x0f);
-	else
-		return pokey1_r(space, offset & 0x0f);
-}
-
-
-/*************************************
- *
  *  Main CPU memory handlers
  *
  *************************************/
@@ -140,7 +116,8 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x013fff) AM_ROM
 	AM_RANGE(0x018000, 0x01cfff) AM_RAM
 	AM_RANGE(0x800000, 0x801fff) AM_RAM AM_BASE(&quantum_vectorram) AM_SIZE(&vectorram_size)
-	AM_RANGE(0x840000, 0x84003f) AM_READWRITE(pokey_word_r, pokey_word_w)
+	AM_RANGE(0x840000, 0x84001f) AM_DEVREADWRITE8("pokey1", pokey_r, pokey_w, 0x00ff)
+	AM_RANGE(0x840020, 0x84003f) AM_DEVREADWRITE8("pokey2", pokey_r, pokey_w, 0x00ff)
 	AM_RANGE(0x900000, 0x9001ff) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x940000, 0x940001) AM_READ(trackball_r) /* trackball */
 	AM_RANGE(0x948000, 0x948001) AM_READ_PORT("SYSTEM")
@@ -214,12 +191,30 @@ INPUT_PORTS_END
 
 static const pokey_interface pokey_interface_1 =
 {
-	{ input_1_r,input_1_r,input_1_r,input_1_r,input_1_r,input_1_r,input_1_r,input_1_r }
+	{
+		DEVCB_HANDLER(input_1_r),
+		DEVCB_HANDLER(input_1_r),
+		DEVCB_HANDLER(input_1_r),
+		DEVCB_HANDLER(input_1_r),
+		DEVCB_HANDLER(input_1_r),
+		DEVCB_HANDLER(input_1_r),
+		DEVCB_HANDLER(input_1_r),
+		DEVCB_HANDLER(input_1_r)
+	}
 };
 
 static const pokey_interface pokey_interface_2 =
 {
-	{ input_2_r,input_2_r,input_2_r,input_2_r,input_2_r,input_2_r,input_2_r,input_2_r }
+	{
+		DEVCB_HANDLER(input_2_r),
+		DEVCB_HANDLER(input_2_r),
+		DEVCB_HANDLER(input_2_r),
+		DEVCB_HANDLER(input_2_r),
+		DEVCB_HANDLER(input_2_r),
+		DEVCB_HANDLER(input_2_r),
+		DEVCB_HANDLER(input_2_r),
+		DEVCB_HANDLER(input_2_r)
+	}
 };
 
 
@@ -233,14 +228,14 @@ static const pokey_interface pokey_interface_2 =
 static MACHINE_DRIVER_START( quantum )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, MASTER_CLOCK / 2)
+	MDRV_CPU_ADD("maincpu", M68000, MASTER_CLOCK / 2)
 	MDRV_CPU_PROGRAM_MAP(main_map, 0)
 	MDRV_CPU_PERIODIC_INT(irq1_line_hold, (double)MASTER_CLOCK / 4096 / 12)
 
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", VECTOR)
+	MDRV_SCREEN_ADD("screen", VECTOR)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_SIZE(400, 300)
 	MDRV_SCREEN_VISIBLE_AREA(0, 900, 0, 600)
@@ -269,7 +264,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( quantum )
-	ROM_REGION( 0x014000, "main", 0 )
+	ROM_REGION( 0x014000, "maincpu", 0 )
     ROM_LOAD16_BYTE( "136016.201",   0x000000, 0x002000, CRC(7e7be63a) SHA1(11b2d0168cdbaa7a48656b77abc0bcbe9408fe84) )
     ROM_LOAD16_BYTE( "136016.206",   0x000001, 0x002000, CRC(2d8f5759) SHA1(54b0388ef44b5d34e621b48b465566aa16887e8f) )
     ROM_LOAD16_BYTE( "136016.102",   0x004000, 0x002000, CRC(408d34f4) SHA1(9a30debd1240b9c103134701943c94d6b48b926d) )
@@ -287,7 +282,7 @@ ROM_END
 
 
 ROM_START( quantum1 )
-	ROM_REGION( 0x014000, "main", 0 )
+	ROM_REGION( 0x014000, "maincpu", 0 )
     ROM_LOAD16_BYTE( "136016.101",   0x000000, 0x002000, CRC(5af0bd5b) SHA1(f6e46fbebbf52294e78ae240fe2628c6b29b8dea) )
     ROM_LOAD16_BYTE( "136016.106",   0x000001, 0x002000, CRC(f9724666) SHA1(1bb073135029c92bef9afc9ccd910e0ab3302c8a) )
     ROM_LOAD16_BYTE( "136016.102",   0x004000, 0x002000, CRC(408d34f4) SHA1(9a30debd1240b9c103134701943c94d6b48b926d) )
@@ -305,7 +300,7 @@ ROM_END
 
 
 ROM_START( quantump )
-	ROM_REGION( 0x014000, "main", 0 )
+	ROM_REGION( 0x014000, "maincpu", 0 )
     ROM_LOAD16_BYTE( "quantump.2e",  0x000000, 0x002000, CRC(176d73d3) SHA1(b887ee50af5db6f6d43cc6ba57451173f996dedc) )
     ROM_LOAD16_BYTE( "quantump.3e",  0x000001, 0x002000, CRC(12fc631f) SHA1(327a44da897199536f43e5f792cb4a18d9055ac4) )
     ROM_LOAD16_BYTE( "quantump.2f",  0x004000, 0x002000, CRC(b64fab48) SHA1(d5a77a367d4f652261c381e6bdd55c2175ace857) )
@@ -329,6 +324,6 @@ ROM_END
  *
  *************************************/
 
-GAME( 1982, quantum,  0,       quantum, quantum, 0, ROT270, "Atari", "Quantum (rev 2)", 0 )
-GAME( 1982, quantum1, quantum, quantum, quantum, 0, ROT270, "Atari", "Quantum (rev 1)", 0 )
-GAME( 1982, quantump, quantum, quantum, quantum, 0, ROT270, "Atari", "Quantum (prototype)", 0 )
+GAME( 1982, quantum,  0,       quantum, quantum, 0, ROT270, "Atari", "Quantum (rev 2)", GAME_SUPPORTS_SAVE )
+GAME( 1982, quantum1, quantum, quantum, quantum, 0, ROT270, "Atari", "Quantum (rev 1)", GAME_SUPPORTS_SAVE )
+GAME( 1982, quantump, quantum, quantum, quantum, 0, ROT270, "Atari", "Quantum (prototype)", GAME_SUPPORTS_SAVE )

@@ -106,7 +106,7 @@ static INTERRUPT_GEN( srmp2_interrupt )
 
 static DRIVER_INIT( srmp2 )
 {
-	UINT16 *RAM = (UINT16 *) memory_region(machine, "main");
+	UINT16 *RAM = (UINT16 *) memory_region(machine, "maincpu");
 
 	/* Fix "ERROR BACK UP" and "ERROR IOX" */
 	RAM[0x20c80 / 2] = 0x4e75;								// RTS
@@ -114,7 +114,7 @@ static DRIVER_INIT( srmp2 )
 
 static DRIVER_INIT( srmp3 )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 
 	/* BANK ROM (0x08000 - 0x1ffff) Check skip [MAIN ROM side] */
 	RAM[0x00000 + 0x7b69] = 0x00;							// NOP
@@ -191,7 +191,7 @@ static WRITE16_HANDLER( mjyuugi_adpcm_bank_w )
 }
 
 
-static WRITE16_HANDLER( srmp2_adpcm_code_w )
+static WRITE16_DEVICE_HANDLER( srmp2_adpcm_code_w )
 {
 /*
     - Received data may be playing ADPCM number.
@@ -200,7 +200,7 @@ static WRITE16_HANDLER( srmp2_adpcm_code_w )
       table and plays the ADPCM for itself.
 */
 
-	UINT8 *ROM = memory_region(space->machine, "adpcm");
+	UINT8 *ROM = memory_region(device->machine, "adpcm");
 
 	srmp2_adpcm_sptr = (ROM[((srmp2_adpcm_bank * 0x10000) + (data << 2) + 0)] << 8);
 	srmp2_adpcm_eptr = (ROM[((srmp2_adpcm_bank * 0x10000) + (data << 2) + 1)] << 8);
@@ -209,12 +209,12 @@ static WRITE16_HANDLER( srmp2_adpcm_code_w )
 	srmp2_adpcm_sptr += (srmp2_adpcm_bank * 0x10000);
 	srmp2_adpcm_eptr += (srmp2_adpcm_bank * 0x10000);
 
-	msm5205_reset_w(0, 0);
+	msm5205_reset_w(device, 0);
 	srmp2_adpcm_data = -1;
 }
 
 
-static WRITE8_HANDLER( srmp3_adpcm_code_w )
+static WRITE8_DEVICE_HANDLER( srmp3_adpcm_code_w )
 {
 /*
     - Received data may be playing ADPCM number.
@@ -223,7 +223,7 @@ static WRITE8_HANDLER( srmp3_adpcm_code_w )
       table and plays the ADPCM for itself.
 */
 
-	UINT8 *ROM = memory_region(space->machine, "adpcm");
+	UINT8 *ROM = memory_region(device->machine, "adpcm");
 
 	srmp2_adpcm_sptr = (ROM[((srmp2_adpcm_bank * 0x10000) + (data << 2) + 0)] << 8);
 	srmp2_adpcm_eptr = (ROM[((srmp2_adpcm_bank * 0x10000) + (data << 2) + 1)] << 8);
@@ -232,7 +232,7 @@ static WRITE8_HANDLER( srmp3_adpcm_code_w )
 	srmp2_adpcm_sptr += (srmp2_adpcm_bank * 0x10000);
 	srmp2_adpcm_eptr += (srmp2_adpcm_bank * 0x10000);
 
-	msm5205_reset_w(0, 0);
+	msm5205_reset_w(device, 0);
 	srmp2_adpcm_data = -1;
 }
 
@@ -249,25 +249,25 @@ static void srmp2_adpcm_int(const device_config *device)
 
 			if (srmp2_adpcm_sptr >= srmp2_adpcm_eptr)
 			{
-				msm5205_reset_w(0, 1);
+				msm5205_reset_w(device, 1);
 				srmp2_adpcm_data = 0;
 				srmp2_adpcm_sptr = 0;
 			}
 			else
 			{
-				msm5205_data_w(0, ((srmp2_adpcm_data >> 4) & 0x0f));
+				msm5205_data_w(device, ((srmp2_adpcm_data >> 4) & 0x0f));
 			}
 		}
 		else
 		{
-			msm5205_data_w(0, ((srmp2_adpcm_data >> 0) & 0x0f));
+			msm5205_data_w(device, ((srmp2_adpcm_data >> 0) & 0x0f));
 			srmp2_adpcm_sptr++;
 			srmp2_adpcm_data = -1;
 		}
 	}
 	else
 	{
-		msm5205_reset_w(0, 1);
+		msm5205_reset_w(device, 1);
 	}
 }
 
@@ -368,7 +368,7 @@ static WRITE8_HANDLER( srmp3_rombank_w )
     xxx- ---- : ADPCM ROM bank
 */
 
-	UINT8 *ROM = memory_region(space->machine, "main");
+	UINT8 *ROM = memory_region(space->machine, "maincpu");
 	int addr;
 
 	srmp2_adpcm_bank = ((data & 0xe0) >> 5);
@@ -396,7 +396,7 @@ static ADDRESS_MAP_START( srmp2_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xa00002, 0xa00003) AM_READ(srmp2_input_2_r)		/* I/O port 2 */
 	AM_RANGE(0xb00000, 0xb00001) AM_READ(srmp2_cchip_status_0_r)	/* Custom chip status ??? */
 	AM_RANGE(0xb00002, 0xb00003) AM_READ(srmp2_cchip_status_1_r)	/* Custom chip status ??? */
-	AM_RANGE(0xf00000, 0xf00001) AM_READ(ay8910_read_port_0_lsb_r)
+	AM_RANGE(0xf00000, 0xf00001) AM_DEVREAD8("ay", ay8910_r, 0x00ff)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( srmp2_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -409,12 +409,11 @@ static ADDRESS_MAP_START( srmp2_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x900000, 0x900001) AM_WRITE(SMH_NOP)					/* ??? */
 	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(srmp2_input_1_w)			/* I/O ??? */
 	AM_RANGE(0xa00002, 0xa00003) AM_WRITE(srmp2_input_2_w)			/* I/O ??? */
-	AM_RANGE(0xb00000, 0xb00001) AM_WRITE(srmp2_adpcm_code_w)			/* ADPCM number */
+	AM_RANGE(0xb00000, 0xb00001) AM_DEVWRITE("msm", srmp2_adpcm_code_w)			/* ADPCM number */
 	AM_RANGE(0xc00000, 0xc00001) AM_WRITE(SMH_NOP)					/* ??? */
 	AM_RANGE(0xd00000, 0xd00001) AM_WRITE(SMH_NOP)					/* ??? */
 	AM_RANGE(0xe00000, 0xe00001) AM_WRITE(SMH_NOP)					/* ??? */
-	AM_RANGE(0xf00000, 0xf00001) AM_WRITE(ay8910_control_port_0_lsb_w)
-	AM_RANGE(0xf00002, 0xf00003) AM_WRITE(ay8910_write_port_0_lsb_w)
+	AM_RANGE(0xf00000, 0xf00003) AM_DEVWRITE8("ay", ay8910_address_data_w, 0x00ff)
 ADDRESS_MAP_END
 
 
@@ -432,7 +431,7 @@ static ADDRESS_MAP_START( mjyuugi_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x900002, 0x900003) AM_READ(srmp2_input_2_r)		/* I/O port 2 */
 	AM_RANGE(0xa00000, 0xa00001) AM_READ(srmp2_cchip_status_0_r)	/* custom chip status ??? */
 	AM_RANGE(0xa00002, 0xa00003) AM_READ(srmp2_cchip_status_1_r)	/* custom chip status ??? */
-	AM_RANGE(0xb00000, 0xb00001) AM_READ(ay8910_read_port_0_lsb_r)
+	AM_RANGE(0xb00000, 0xb00001) AM_DEVREAD8("ay", ay8910_r, 0x00ff)
 	AM_RANGE(0xd00000, 0xd00609) AM_READ(SMH_RAM)				/* Sprites Y */
 	AM_RANGE(0xd02000, 0xd023ff) AM_READ(SMH_RAM)				/* ??? */
 	AM_RANGE(0xe00000, 0xe03fff) AM_READ(SMH_RAM)				/* Sprites Code + X + Attr */
@@ -446,9 +445,8 @@ static ADDRESS_MAP_START( mjyuugi_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x700000, 0x7003ff) AM_WRITE(paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x900000, 0x900001) AM_WRITE(srmp2_input_1_w)			/* I/O ??? */
 	AM_RANGE(0x900002, 0x900003) AM_WRITE(srmp2_input_2_w)			/* I/O ??? */
-	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(srmp2_adpcm_code_w)			/* ADPCM number */
-	AM_RANGE(0xb00000, 0xb00001) AM_WRITE(ay8910_control_port_0_lsb_w)
-	AM_RANGE(0xb00002, 0xb00003) AM_WRITE(ay8910_write_port_0_lsb_w)
+	AM_RANGE(0xa00000, 0xa00001) AM_DEVWRITE("msm", srmp2_adpcm_code_w)			/* ADPCM number */
+	AM_RANGE(0xb00000, 0xb00003) AM_DEVWRITE8("ay", ay8910_address_data_w, 0x00ff)
 	AM_RANGE(0xc00000, 0xc00001) AM_WRITE(SMH_NOP)					/* ??? */
 	AM_RANGE(0xd00000, 0xd00609) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16)	/* Sprites Y */
 	AM_RANGE(0xd02000, 0xd023ff) AM_WRITE(SMH_RAM)					/* ??? only writes $00fa */
@@ -589,13 +587,12 @@ static ADDRESS_MAP_START( srmp3_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x20, 0x20) AM_WRITE(SMH_NOP)								/* elapsed interrupt signal */
 	AM_RANGE(0x40, 0x40) AM_READ_PORT("SYSTEM")	AM_WRITE(srmp3_flags_w)	/* coin, service | GFX bank, counter, lockout */
 	AM_RANGE(0x60, 0x60) AM_WRITE(srmp3_rombank_w)						/* ROM bank select */
-	AM_RANGE(0xa0, 0xa0) AM_WRITE(srmp3_adpcm_code_w)					/* ADPCM number */
+	AM_RANGE(0xa0, 0xa0) AM_DEVWRITE("msm", srmp3_adpcm_code_w)					/* ADPCM number */
 	AM_RANGE(0xa1, 0xa1) AM_READ(srmp3_cchip_status_0_r)				/* custom chip status ??? */
 	AM_RANGE(0xc0, 0xc0) AM_READWRITE(srmp3_input_r, srmp3_input_1_w)	/* key matrix | I/O ??? */
 	AM_RANGE(0xc1, 0xc1) AM_READWRITE(srmp3_cchip_status_1_r, srmp3_input_2_w)	/* custom chip status ??? | I/O ??? */
-	AM_RANGE(0xe0, 0xe0) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xe1, 0xe1) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0xe2, 0xe2) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0xe0, 0xe1) AM_DEVWRITE("ay", ay8910_address_data_w)
+	AM_RANGE(0xe2, 0xe2) AM_DEVREAD("ay", ay8910_r)
 ADDRESS_MAP_END
 
 
@@ -1023,10 +1020,10 @@ static const ay8910_interface srmp2_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_2_r,				/* Input A: DSW 2 */
-	input_port_1_r,				/* Input B: DSW 1 */
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("DSW2"),
+	DEVCB_INPUT_PORT("DSW1"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -1061,7 +1058,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( srmp2 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,16000000/2)				/* 8.00 MHz */
+	MDRV_CPU_ADD("maincpu", M68000,16000000/2)				/* 8.00 MHz */
 	MDRV_CPU_PROGRAM_MAP(srmp2_readmem,srmp2_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(srmp2_interrupt,16)		/* Interrupt times is not understood */
 
@@ -1069,7 +1066,7 @@ static MACHINE_DRIVER_START( srmp2 )
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1099,17 +1096,17 @@ static MACHINE_DRIVER_START( srmp3 )
 
 	/* basic machine hardware */
 
-	MDRV_CPU_ADD("main", Z80, 3500000)		/* 3.50 MHz ? */
+	MDRV_CPU_ADD("maincpu", Z80, 3500000)		/* 3.50 MHz ? */
 	//      4000000,                /* 4.00 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(srmp3_readmem,srmp3_writemem)
 	MDRV_CPU_IO_MAP(srmp3_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_MACHINE_RESET(srmp3)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1138,7 +1135,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( mjyuugi )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,16000000/2)				/* 8.00 MHz */
+	MDRV_CPU_ADD("maincpu", M68000,16000000/2)				/* 8.00 MHz */
 	MDRV_CPU_PROGRAM_MAP(mjyuugi_readmem,mjyuugi_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(srmp2_interrupt,16)		/* Interrupt times is not understood */
 
@@ -1146,7 +1143,7 @@ static MACHINE_DRIVER_START( mjyuugi )
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1215,7 +1212,7 @@ UB-3 (PAL16L8A - not dumped)
 ***************************************************************************/
 
 ROM_START( srmp1 )
-	ROM_REGION( 0x40000, "main", 0 )					/* 68000 Code */
+	ROM_REGION( 0x40000, "maincpu", 0 )					/* 68000 Code */
 	ROM_LOAD16_BYTE( "ub0-2.17", 0x000000, 0x20000, CRC(71a00a3d) SHA1(8deb07a4621e0f0f1d6dd503cd7f4f826a63c255) )
 	ROM_LOAD16_BYTE( "ub0-3.18", 0x000001, 0x20000, CRC(2950841b) SHA1(1859636602375b4cadbd23457a0d16bc85063ff5) )
 
@@ -1238,7 +1235,7 @@ ROM_START( srmp1 )
 ROM_END
 
 ROM_START( srmp2 )
-	ROM_REGION( 0x040000, "main", 0 )					/* 68000 Code */
+	ROM_REGION( 0x040000, "maincpu", 0 )					/* 68000 Code */
 	ROM_LOAD16_BYTE( "uco-2.17", 0x000000, 0x020000, CRC(0d6c131f) SHA1(be85f2578b0ae2a072565605b7dbeb970e5e3851) )
 	ROM_LOAD16_BYTE( "uco-3.18", 0x000001, 0x020000, CRC(e9fdf5f8) SHA1(aa1f8cc3f1d0ed942403c0473605775bc1537cbf) )
 
@@ -1261,7 +1258,7 @@ ROM_START( srmp2 )
 ROM_END
 
 ROM_START( srmp3 )
-	ROM_REGION( 0x028000, "main", 0 )					/* 68000 Code */
+	ROM_REGION( 0x028000, "maincpu", 0 )					/* 68000 Code */
 	ROM_LOAD( "za0-10.bin", 0x000000, 0x008000, CRC(939d126f) SHA1(7a5c7f7fbee8de11a08194d3c8f10a20f8dc2f0a) )
 	ROM_CONTINUE(           0x010000, 0x018000 )
 
@@ -1284,7 +1281,7 @@ ROM_START( srmp3 )
 ROM_END
 
 ROM_START( mjyuugi )
-	ROM_REGION( 0x080000, "main", 0 )					/* 68000 Code */
+	ROM_REGION( 0x080000, "maincpu", 0 )					/* 68000 Code */
 	ROM_LOAD16_BYTE( "um001.001", 0x000000, 0x020000, CRC(28d5340f) SHA1(683d89987b8b794695fdb6104d8e6ff5204afafb) )
 	ROM_LOAD16_BYTE( "um001.003", 0x000001, 0x020000, CRC(275197de) SHA1(2f8efa112f23f172eaef9bb732b2a253307dd896) )
 	ROM_LOAD16_BYTE( "um001.002", 0x040000, 0x020000, CRC(d5dd4710) SHA1(b70c280f828af507c73ebec3209043eb7ce0ce95) )
@@ -1306,7 +1303,7 @@ ROM_START( mjyuugi )
 ROM_END
 
 ROM_START( mjyuugia )
-	ROM_REGION( 0x080000, "main", 0 )					/* 68000 Code */
+	ROM_REGION( 0x080000, "maincpu", 0 )					/* 68000 Code */
 	ROM_LOAD16_BYTE( "um_001.001", 0x000000, 0x020000, CRC(76dc0594) SHA1(4bd81616769cdc59eaf6f7921e404e166500f67f) )
 	ROM_LOAD16_BYTE( "um001.003",  0x000001, 0x020000, CRC(275197de) SHA1(2f8efa112f23f172eaef9bb732b2a253307dd896) )
 	ROM_LOAD16_BYTE( "um001.002",  0x040000, 0x020000, CRC(d5dd4710) SHA1(b70c280f828af507c73ebec3209043eb7ce0ce95) )
@@ -1328,7 +1325,7 @@ ROM_START( mjyuugia )
 ROM_END
 
 ROM_START( ponchin )
-	ROM_REGION( 0x080000, "main", 0 )					/* 68000 Code */
+	ROM_REGION( 0x080000, "maincpu", 0 )					/* 68000 Code */
 	ROM_LOAD16_BYTE( "um2_1_1.u22", 0x000000, 0x020000, CRC(cf88efbb) SHA1(7bd2304d365524fc5bcf3fb30752f5efec73a9f5) )
 	ROM_LOAD16_BYTE( "um2_1_3.u42", 0x000001, 0x020000, CRC(e053458f) SHA1(db4a34589a08d0252d700144a6260a0f6c4e8e30) )
 	ROM_LOAD16_BYTE( "um2_1_2.u29", 0x040000, 0x020000, CRC(5c2f9bcf) SHA1(e2880123373653c7e5d85fb957474e1c5774640d) )
@@ -1346,7 +1343,7 @@ ROM_START( ponchin )
 ROM_END
 
 ROM_START( ponchina )
-	ROM_REGION( 0x080000, "main", 0 )					/* 68000 Code */
+	ROM_REGION( 0x080000, "maincpu", 0 )					/* 68000 Code */
 	ROM_LOAD16_BYTE( "u22.bin",     0x000000, 0x020000, CRC(9181de20) SHA1(03fdb289d862ff2d87249d35991bd60784e172d9) )
 	ROM_LOAD16_BYTE( "um2_1_3.u42", 0x000001, 0x020000, CRC(e053458f) SHA1(db4a34589a08d0252d700144a6260a0f6c4e8e30) )
 	ROM_LOAD16_BYTE( "um2_1_2.u29", 0x040000, 0x020000, CRC(5c2f9bcf) SHA1(e2880123373653c7e5d85fb957474e1c5774640d) )

@@ -208,7 +208,7 @@ VIDEO_UPDATE( gladiatr );
 /*Rom bankswitching*/
 static WRITE8_HANDLER( gladiatr_bankswitch_w )
 {
-	UINT8 *rom = memory_region(space->machine, "main") + 0x10000;
+	UINT8 *rom = memory_region(space->machine, "maincpu") + 0x10000;
 
 	memory_set_bankptr(space->machine, 1, rom + 0x6000 * (data & 0x01));
 }
@@ -270,42 +270,37 @@ static MACHINE_RESET( gladiator )
 	TAITO8741_start(&gsword_8741interface);
 	/* 6809 bank memory set */
 	{
-		UINT8 *rom = memory_region(machine, "audio") + 0x10000;
+		UINT8 *rom = memory_region(machine, "audiocpu") + 0x10000;
 		memory_set_bankptr(machine, 2,rom);
 		device_reset(machine->cpu[2]);
 	}
 }
 
-/* YM2203 port A handler (input) */
-static READ8_HANDLER( gladiator_dsw3_r )
-{
-	return input_port_read(space->machine, "DSW3");
-}
 /* YM2203 port B handler (output) */
-static WRITE8_HANDLER( gladiator_int_control_w )
+static WRITE8_DEVICE_HANDLER( gladiator_int_control_w )
 {
 	/* bit 7   : SSRST = sound reset ? */
 	/* bit 6-1 : N.C.                  */
 	/* bit 0   : ??                    */
 }
 /* YM2203 IRQ */
-static void gladiator_ym_irq(running_machine *machine, int irq)
+static void gladiator_ym_irq(const device_config *device, int irq)
 {
 	/* NMI IRQ is not used by gladiator sound program */
-	cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /*Sound Functions*/
-static WRITE8_HANDLER( glad_adpcm_w )
+static WRITE8_DEVICE_HANDLER( glad_adpcm_w )
 {
-	UINT8 *rom = memory_region(space->machine, "audio") + 0x10000;
+	UINT8 *rom = memory_region(device->machine, "audiocpu") + 0x10000;
 
 	/* bit6 = bank offset */
-	memory_set_bankptr(space->machine, 2,rom + ((data & 0x40) ? 0xc000 : 0));
+	memory_set_bankptr(device->machine, 2,rom + ((data & 0x40) ? 0xc000 : 0));
 
-	msm5205_data_w(0,data);         /* bit0..3  */
-	msm5205_reset_w(0,(data>>5)&1); /* bit 5    */
-	msm5205_vclk_w (0,(data>>4)&1); /* bit4     */
+	msm5205_data_w(device,data);         /* bit0..3  */
+	msm5205_reset_w(device,(data>>5)&1); /* bit 5    */
+	msm5205_vclk_w (device,(data>>4)&1); /* bit4     */
 }
 
 static WRITE8_HANDLER( glad_cpu_sound_command_w )
@@ -416,8 +411,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ppking_cpu2_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READ(ym2203_status_port_0_r) AM_WRITE(ym2203_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_READ(ym2203_read_port_0_r) AM_WRITE(ym2203_write_port_0_w)
+	AM_RANGE(0x00, 0x01) AM_DEVREADWRITE("ym", ym2203_r, ym2203_w)
 	AM_RANGE(0x20, 0x21) AM_READ(qx1_r) AM_WRITE(qx1_w)
 	AM_RANGE(0x40, 0x40) AM_READ(SMH_NOP)
 	AM_RANGE(0x60, 0x61) AM_READ(qx2_r) AM_WRITE(qx2_w)
@@ -445,7 +439,7 @@ static ADDRESS_MAP_START( cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gladiatr_cpu3_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x1000, 0x1fff) AM_WRITE(glad_adpcm_w)
+	AM_RANGE(0x1000, 0x1fff) AM_DEVWRITE("msm", glad_adpcm_w)
 	AM_RANGE(0x2000, 0x2fff) AM_READ(glad_cpu_sound_command_r)
 	AM_RANGE(0x4000, 0xffff) AM_ROMBANK(2)
 ADDRESS_MAP_END
@@ -464,8 +458,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gladiatr_cpu2_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
+	AM_RANGE(0x00, 0x01) AM_DEVREADWRITE("ym", ym2203_r, ym2203_w)
 	AM_RANGE(0x20, 0x21) AM_READWRITE(TAITO8741_1_r, TAITO8741_1_w)
 	AM_RANGE(0x40, 0x40) AM_NOP	// WRITE(sub_irq_ack_w)
 	AM_RANGE(0x60, 0x61) AM_READWRITE(TAITO8741_2_r, TAITO8741_2_w)
@@ -650,9 +643,9 @@ GFXDECODE_END
 
 
 
-static READ8_HANDLER(f1_r)
+static READ8_DEVICE_HANDLER(f1_r)
 {
-	return mame_rand(space->machine);
+	return mame_rand(device->machine);
 }
 
 static const ym2203_interface ppking_ym2203_interface =
@@ -660,10 +653,10 @@ static const ym2203_interface ppking_ym2203_interface =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		f1_r,
-		f1_r,
-		NULL,
-		NULL
+		DEVCB_HANDLER(f1_r),
+		DEVCB_HANDLER(f1_r),
+		DEVCB_NULL,
+		DEVCB_NULL
 	},
 	NULL
 };
@@ -673,10 +666,10 @@ static const ym2203_interface gladiatr_ym2203_interface =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		NULL,
-		gladiator_dsw3_r,         /* port B read */
-		gladiator_int_control_w, /* port A write */
-		NULL,
+		DEVCB_NULL,
+		DEVCB_INPUT_PORT("DSW3"),         		/* port B read */
+		DEVCB_HANDLER(gladiator_int_control_w), /* port A write */
+		DEVCB_NULL,
 	},
 	gladiator_ym_irq          /* NMI request for 2nd cpu */
 };
@@ -692,17 +685,17 @@ static const msm5205_interface msm5205_config =
 static MACHINE_DRIVER_START( ppking )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_12MHz/2) /* verified on pcb */
+	MDRV_CPU_ADD("maincpu", Z80, XTAL_12MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(ppking_cpu1_map,0)
 	MDRV_CPU_IO_MAP(ppking_cpu1_io,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, XTAL_12MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpu2_map,0)
 	MDRV_CPU_IO_MAP(ppking_cpu2_io,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", M6809, XTAL_12MHz/16) /* verified on pcb */
+	MDRV_CPU_ADD("audiocpu", M6809, XTAL_12MHz/16) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(ppking_cpu3_map,0)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
@@ -711,7 +704,7 @@ static MACHINE_DRIVER_START( ppking )
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -742,16 +735,16 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( gladiatr )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_12MHz/2) /* verified on pcb */
+	MDRV_CPU_ADD("maincpu", Z80, XTAL_12MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(gladiatr_cpu1_map,0)
 	MDRV_CPU_IO_MAP(gladiatr_cpu1_io,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, XTAL_12MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpu2_map,0)
 	MDRV_CPU_IO_MAP(gladiatr_cpu2_io,0)
 
-	MDRV_CPU_ADD("audio", M6809, XTAL_12MHz/16) /* verified on pcb */
+	MDRV_CPU_ADD("audiocpu", M6809, XTAL_12MHz/16) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(gladiatr_cpu3_map,0)
 
 	MDRV_QUANTUM_TIME(HZ(600))
@@ -760,7 +753,7 @@ static MACHINE_DRIVER_START( gladiatr )
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -795,7 +788,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( ppking )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "q1_1.a1",        0x00000, 0x2000, CRC(b74b2718) SHA1(29833439211076873324ccfa5897eb1e6aa9d134) )
 	ROM_LOAD( "q1_2.b1",        0x02000, 0x2000, CRC(1b1e4cd4) SHA1(34c6cf5e0775c0c834dda34a3a2a4685465daa8e) )
 	ROM_LOAD( "q0_3.c1",        0x04000, 0x2000, CRC(6a7acf8e) SHA1(06d37e813605f507ea1c720764fc554e58defdf8) )
@@ -806,7 +799,7 @@ ROM_START( ppking )
 	ROM_LOAD( "q0_17.6f",       0x0000, 0x2000, CRC(f7fe0d24) SHA1(6dcb23aa7fc08fc892a8b3843ccb982997c20571) )
 	ROM_LOAD( "q0_16.6e",       0x4000, 0x2000, CRC(b1e32588) SHA1(13c74479238a34a08e249f9120b42a52d80f8274) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "q0_19.5n",       0x0c000, 0x2000, CRC(4bcf896d) SHA1(f587a66fcc63e989742ce2d5f4cf2bb464987038) )
 	ROM_LOAD( "q0_18.5m",       0x0e000, 0x2000, CRC(89ba64f8) SHA1(fa01316ea744b4277ee64d5f14cb6d7e3a949f2b) )
 
@@ -835,7 +828,7 @@ ROM_END
 
 
 ROM_START( gladiatr )
-	ROM_REGION( 0x1c000, "main", 0 )
+	ROM_REGION( 0x1c000, "maincpu", 0 )
 	ROM_LOAD( "qb0-5",          0x00000, 0x4000, CRC(25b19efb) SHA1(c41344278f6c7f3d6527aced3e459ed1ba86dea5) )
 	ROM_LOAD( "qb0-4",          0x04000, 0x2000, CRC(347ec794) SHA1(51100f9fef2e96f00e94fce709eed6583b01a2eb) )
 	ROM_LOAD( "qb0-1",          0x10000, 0x2000, CRC(040c9839) SHA1(8c0d9a246847461a59eb5e6a53a94218e701d6c3) )
@@ -846,7 +839,7 @@ ROM_START( gladiatr )
 	ROM_REGION( 0x10000, "sub", 0 ) /* Code for the 2nd CPU */
 	ROM_LOAD( "qb0-17",       	0x0000, 0x4000, CRC(e78be010) SHA1(157231d858d13a006b57a4ab419368168e64edb7) )
 
-	ROM_REGION( 0x28000, "audio", 0 )  /* 6809 Code & ADPCM data */
+	ROM_REGION( 0x28000, "audiocpu", 0 )  /* 6809 Code & ADPCM data */
 	ROM_LOAD( "qb0-20",         0x10000, 0x4000, CRC(15916eda) SHA1(6558bd2ae6f14d630ae93e66ce7d09be33870cce) )
 	ROM_CONTINUE(               0x1c000, 0x4000 )
 	ROM_LOAD( "qb0-19",         0x14000, 0x4000, CRC(79caa7ed) SHA1(57adc8429ad016c4da41deda6b7b6fe36de5a225) )
@@ -878,7 +871,7 @@ ROM_START( gladiatr )
 ROM_END
 
 ROM_START( ogonsiro )
-	ROM_REGION( 0x1c000, "main", 0 )
+	ROM_REGION( 0x1c000, "maincpu", 0 )
 	ROM_LOAD( "qb0-5",          0x00000, 0x4000, CRC(25b19efb) SHA1(c41344278f6c7f3d6527aced3e459ed1ba86dea5) )
 	ROM_LOAD( "qb0-4",          0x04000, 0x2000, CRC(347ec794) SHA1(51100f9fef2e96f00e94fce709eed6583b01a2eb) )
 	ROM_LOAD( "qb0-1",          0x10000, 0x2000, CRC(040c9839) SHA1(8c0d9a246847461a59eb5e6a53a94218e701d6c3) )
@@ -889,7 +882,7 @@ ROM_START( ogonsiro )
 	ROM_REGION( 0x10000, "sub", 0 ) /* Code for the 2nd CPU */
 	ROM_LOAD( "qb0-17",       	0x0000, 0x4000, CRC(e78be010) SHA1(157231d858d13a006b57a4ab419368168e64edb7) )
 
-	ROM_REGION( 0x28000, "audio", 0 )  /* 6809 Code & ADPCM data */
+	ROM_REGION( 0x28000, "audiocpu", 0 )  /* 6809 Code & ADPCM data */
 	ROM_LOAD( "qb0-20",         0x10000, 0x4000, CRC(15916eda) SHA1(6558bd2ae6f14d630ae93e66ce7d09be33870cce) )
 	ROM_CONTINUE(               0x1c000, 0x4000 )
 	ROM_LOAD( "qb0-19",         0x14000, 0x4000, CRC(79caa7ed) SHA1(57adc8429ad016c4da41deda6b7b6fe36de5a225) )
@@ -921,7 +914,7 @@ ROM_START( ogonsiro )
 ROM_END
 
 ROM_START( greatgur )
-	ROM_REGION( 0x1c000, "main", 0 )
+	ROM_REGION( 0x1c000, "maincpu", 0 )
 	ROM_LOAD( "qb0-5",          0x00000, 0x4000, CRC(25b19efb) SHA1(c41344278f6c7f3d6527aced3e459ed1ba86dea5) )
 	ROM_LOAD( "qb0-4",          0x04000, 0x2000, CRC(347ec794) SHA1(51100f9fef2e96f00e94fce709eed6583b01a2eb) )
 	ROM_LOAD( "qb0-1",          0x10000, 0x2000, CRC(040c9839) SHA1(8c0d9a246847461a59eb5e6a53a94218e701d6c3) )
@@ -932,7 +925,7 @@ ROM_START( greatgur )
 	ROM_REGION( 0x10000, "sub", 0 ) /* Code for the 2nd CPU */
 	ROM_LOAD( "qb0-17",         0x0000, 0x4000, CRC(e78be010) SHA1(157231d858d13a006b57a4ab419368168e64edb7) )
 
-	ROM_REGION( 0x28000, "audio", 0 )  /* 6809 Code & ADPCM data */
+	ROM_REGION( 0x28000, "audiocpu", 0 )  /* 6809 Code & ADPCM data */
 	ROM_LOAD( "qb0-20",         0x10000, 0x4000, CRC(15916eda) SHA1(6558bd2ae6f14d630ae93e66ce7d09be33870cce) )
 	ROM_CONTINUE(               0x1c000, 0x4000 )
 	ROM_LOAD( "qb0-19",         0x14000, 0x4000, CRC(79caa7ed) SHA1(57adc8429ad016c4da41deda6b7b6fe36de5a225) )
@@ -1018,7 +1011,7 @@ static DRIVER_INIT( gladiatr )
 	swap_block(rom + 0x24000, rom + 0x28000, 0x4000);
 
 	/* make sure bank is valid in cpu-reset */
-	rom = memory_region(machine, "audio") + 0x10000;
+	rom = memory_region(machine, "audiocpu") + 0x10000;
 	memory_set_bankptr(machine, 2,rom);
 }
 

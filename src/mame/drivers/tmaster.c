@@ -124,13 +124,13 @@ static struct
 ***************************************************************************/
 
 static int okibank;
-static WRITE16_HANDLER( tmaster_oki_bank_w )
+static WRITE16_DEVICE_HANDLER( tmaster_oki_bank_w )
 {
 	if (ACCESSING_BITS_8_15)
 	{
 		// data & 0x0800?
 		okibank = ((data >> 8) & 3);
-		okim6295_set_bank_base(0, okibank * 0x40000);
+		okim6295_set_bank_base(device, okibank * 0x40000);
 	}
 
 	if (ACCESSING_BITS_0_7)
@@ -441,9 +441,9 @@ static ADDRESS_MAP_START( tmaster_map, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE( 0x300010, 0x300011 ) AM_READ( tmaster_coins_r )
 
-	AM_RANGE( 0x300020, 0x30003f ) AM_DEVREADWRITE8( DUART68681, "duart68681", duart68681_r, duart68681_w, 0xff )
+	AM_RANGE( 0x300020, 0x30003f ) AM_DEVREADWRITE8( "duart68681", duart68681_r, duart68681_w, 0xff )
 
-	AM_RANGE( 0x300040, 0x300041 ) AM_WRITE( tmaster_oki_bank_w )
+	AM_RANGE( 0x300040, 0x300041 ) AM_DEVWRITE( "oki", tmaster_oki_bank_w )
 
 	AM_RANGE( 0x300070, 0x300071 ) AM_WRITE( tmaster_addr_w )
 
@@ -454,7 +454,7 @@ static ADDRESS_MAP_START( tmaster_map, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE( 0x600000, 0x600fff ) AM_READWRITE( SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w ) AM_BASE(&paletteram16) // looks like palettes, maybe
 
-	AM_RANGE( 0x800000, 0x800001 ) AM_READWRITE( okim6295_status_0_lsb_r, okim6295_data_0_lsb_w )
+	AM_RANGE( 0x800000, 0x800001 ) AM_DEVREADWRITE8( "oki", okim6295_r, okim6295_w, 0x00ff )
 
 	AM_RANGE( 0x800010, 0x800011 ) AM_WRITE( tmaster_color_w )
 ADDRESS_MAP_END
@@ -603,9 +603,9 @@ static READ16_HANDLER( dummy_read_01 )
 static ADDRESS_MAP_START( galgames_map, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE( 0x000000, 0x03ffff ) AM_READWRITE(SMH_BANK1, SMH_BANK2)
-	AM_RANGE( 0x040000, 0x1fffff ) AM_ROM AM_REGION( "main", 0 )
+	AM_RANGE( 0x040000, 0x1fffff ) AM_ROM AM_REGION( "maincpu", 0 )
 	AM_RANGE( 0x200000, 0x23ffff ) AM_READWRITE(SMH_BANK3, SMH_BANK4)
-	AM_RANGE( 0x240000, 0x3fffff ) AM_ROM AM_REGION( "main", 0 )
+	AM_RANGE( 0x240000, 0x3fffff ) AM_ROM AM_REGION( "maincpu", 0 )
 
 	AM_RANGE( 0x400000, 0x400011 ) AM_WRITE( tmaster_blitter_w ) AM_BASE( &tmaster_regs )
 	AM_RANGE( 0x400012, 0x400013 ) AM_WRITE( tmaster_addr_w )
@@ -617,7 +617,7 @@ static ADDRESS_MAP_START( galgames_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE( 0x800020, 0x80003f ) AM_NOP	// ?
 	AM_RANGE( 0x900000, 0x900001 ) AM_WRITE( watchdog_reset16_w )
 
-	AM_RANGE( 0xa00000, 0xa00001 ) AM_READWRITE( okim6295_status_0_lsb_r, okim6295_data_0_lsb_w )
+	AM_RANGE( 0xa00000, 0xa00001 ) AM_DEVREADWRITE8( "oki", okim6295_r, okim6295_w, 0x00ff )
 	AM_RANGE( 0xb00000, 0xb7ffff ) AM_READWRITE( galgames_okiram_r, galgames_okiram_w ) // (only low bytes tested) 4x N341024SJ-15
 
 	AM_RANGE( 0xc00000, 0xc00001 ) AM_WRITE( galgames_palette_offset_w )
@@ -750,7 +750,7 @@ static MACHINE_START( tmaster )
 
 static MACHINE_RESET( tmaster )
 {
-	tmaster_devices.duart68681 = device_list_find_by_tag( machine->config->devicelist, DUART68681, "duart68681" );
+	tmaster_devices.duart68681 = devtag_get_device( machine, "duart68681" );
 }
 
 static INTERRUPT_GEN( tm3k_interrupt )
@@ -773,7 +773,7 @@ static const duart68681_config tmaster_duart68681_config =
 };
 
 static MACHINE_DRIVER_START( tm3k )
-	MDRV_CPU_ADD("main", M68000, XTAL_24MHz / 2) /* 12MHz */
+	MDRV_CPU_ADD("maincpu", M68000, XTAL_24MHz / 2) /* 12MHz */
 	MDRV_CPU_PROGRAM_MAP(tmaster_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(tm3k_interrupt,2+20) // ??
 
@@ -785,7 +785,7 @@ static MACHINE_DRIVER_START( tm3k )
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -836,7 +836,7 @@ static MACHINE_RESET( galgames )
 }
 
 static MACHINE_DRIVER_START( galgames )
-	MDRV_CPU_ADD("main", M68000, XTAL_24MHz / 2)
+	MDRV_CPU_ADD("maincpu", M68000, XTAL_24MHz / 2)
 	MDRV_CPU_PROGRAM_MAP(galgames_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(galgames_interrupt, 1+20)	// ??
 
@@ -844,7 +844,7 @@ static MACHINE_DRIVER_START( galgames )
 	MDRV_MACHINE_RESET( galgames )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
@@ -887,7 +887,7 @@ Xlinx XC3042a
 ***************************************************************************/
 
 ROM_START( tm )
-	ROM_REGION( 0x200000, "main", 0 ) // 68000 Code
+	ROM_REGION( 0x200000, "maincpu", 0 ) // 68000 Code
 	ROM_LOAD16_BYTE( "tmaster.u51", 0x000000, 0x080000, CRC(edaa5874) SHA1(48b99bc7f5a6453def265967ca7d8eefdf9dc97b) ) /* Ver: 3.00 Euro 11-25-96 */
 	ROM_LOAD16_BYTE( "tmaster.u52", 0x000001, 0x080000, CRC(e9fd30fc) SHA1(d91ea05d5f574603883336729fb9df705688945d) ) /* Ver: 3.00 Euro 11-25-96 */
 
@@ -944,7 +944,7 @@ xc3042A      www.xilinx.com
 ***************************************************************************/
 
 ROM_START( tm3k )
-	ROM_REGION( 0x200000, "main", 0 ) // 68000 Code
+	ROM_REGION( 0x200000, "maincpu", 0 ) // 68000 Code
 	ROM_LOAD16_BYTE( "tm3k_v502.u51", 0x000000, 0x100000, CRC(6267e2bd) SHA1(c81e5cd059a9ad2f6a36261738e39740a1a3a03f) ) /* TOUCHMASTER 3000 U51 DOMESTIC 5.02 (Standard 11-17-97) (yellow label) */
 	ROM_LOAD16_BYTE( "tm3k_v502.u52", 0x000001, 0x100000, CRC(836fdf1e) SHA1(2ee9c0929950afb72f172b253d6c392e9a698037) ) /* TOUCHMASTER 3000 U52 DOMESTIC 5.02 (Standard 11-17-97) (yellow label) */
 
@@ -961,7 +961,7 @@ ROM_START( tm3k )
 ROM_END
 
 ROM_START( tm3ka )
-	ROM_REGION( 0x200000, "main", 0 ) // 68000 Code
+	ROM_REGION( 0x200000, "maincpu", 0 ) // 68000 Code
 	ROM_LOAD16_BYTE( "tm3k_v501.u51", 0x000000, 0x100000, CRC(c9522279) SHA1(e613b791f831271722f05b7e96c35519fa9fc174) ) /* TOUCHMASTER 3000 U51 DOMESTIC 5.01 (Standard 11-4-97) (yellow label) */
 	ROM_LOAD16_BYTE( "tm3k_v501.u52", 0x000001, 0x100000, CRC(8c6a0db7) SHA1(6b0eae60ea471cd8c4001749ac2677d8d4532567) ) /* TOUCHMASTER 3000 U52 DOMESTIC 5.01 (Standard 11-4-97) (yellow label) */
 
@@ -1007,7 +1007,7 @@ xc3042A      www.xilinx.com
 ***************************************************************************/
 
 ROM_START( tm4k )
-	ROM_REGION( 0x200000, "main", 0 ) // 68000 Code
+	ROM_REGION( 0x200000, "maincpu", 0 ) // 68000 Code
 	ROM_LOAD16_BYTE( "tm4k_v602.u51", 0x000000, 0x100000, CRC(3d8d7848) SHA1(31638f23cdd5e6cfbb2270e953f84fe1bd437950) ) /* TOUCHMASTER 4000 U51 DOMESTIC  6.02 (Standard 4-14-98) */
 	ROM_LOAD16_BYTE( "tm4k_v602.u52", 0x000001, 0x100000, CRC(6d412871) SHA1(ae27c7723b292daf6682c53bafac22e4a3cd1ece) ) /* TOUCHMASTER 4000 U52 DOMESTIC  6.02 (Standard 4-14-98) */
 
@@ -1052,7 +1052,7 @@ J12 DALLAS DS1204V         N/A  Security Key (required for this Version) - Label
 ***************************************************************************/
 
 ROM_START( tm5k )
-	ROM_REGION( 0x200000, "main", 0 ) // 68000 Code
+	ROM_REGION( 0x200000, "maincpu", 0 ) // 68000 Code
 	ROM_LOAD16_BYTE( "tm5k_v7_10.u51", 0x000000, 0x100000, CRC(df0bd25e) SHA1(db1a197ed4c868743397f3823f3f1d42b9329f80) ) /* TOUCHMASTER 5000 U51 DOMESTIC 7.10 (Standard 10-9-98) (tan label) */
 	ROM_LOAD16_BYTE( "tm5k_v7_10.u52", 0x000001, 0x100000, CRC(ddf9e8dc) SHA1(3228f2eba067bdf1bd639116bffc589585ea3e72) ) /* TOUCHMASTER 5000 U52 DOMESTIC 7.10 (Standard 10-9-98) (tan label) */
 
@@ -1100,7 +1100,7 @@ J12 DALLAS DS1204V         N/A  Security Key (required for this Version) - Label
 ***************************************************************************/
 
 ROM_START( tm7k )
-	ROM_REGION( 0x200000, "main", 0 ) // 68000 Code
+	ROM_REGION( 0x200000, "maincpu", 0 ) // 68000 Code
 	ROM_LOAD16_BYTE( "tm7k_v804.u51", 0x000000, 0x100000, CRC(2461af04) SHA1(9cf37c04db0297ff8f9f316fd476d6d5d1c39acf) ) /* TOUCHMASTER 7000 U51 DOMESTIC 8.04 (Standard 06/02/99) (orange label) */
 	ROM_LOAD16_BYTE( "tm7k_v804.u52", 0x000001, 0x100000, CRC(5d39fad2) SHA1(85e8d110b88e1099117ab7963eaee47dc86ec7c5) ) /* TOUCHMASTER 7000 U52 DOMESTIC 8.04 (Standard 06/02/99) (orange label) */
 
@@ -1117,7 +1117,7 @@ ROM_START( tm7k )
 ROM_END
 
 ROM_START( tm7ka )
-	ROM_REGION( 0x200000, "main", 0 ) // 68000 Code
+	ROM_REGION( 0x200000, "maincpu", 0 ) // 68000 Code
 	ROM_LOAD16_BYTE( "tm7k_v800.u51", 0x000000, 0x100000, CRC(83ec3da7) SHA1(37fa7183e7acc2eab35ac431d99cbbfe4862979e) ) /* TOUCHMASTER 7000 U51 DOMESTIC 8.00 (Standard 03/26/99) (orange label) */
 	ROM_LOAD16_BYTE( "tm7k_v800.u52", 0x000001, 0x100000, CRC(e2004282) SHA1(aa73029f31e2062cabedfcd778db97b314624ae8) ) /* TOUCHMASTER 7000 U52 DOMESTIC 8.00 (Standard 03/26/99) (orange label) */
 
@@ -1162,7 +1162,7 @@ J12 DALLAS DS1204V         N/A  Security Key (required for this Version) - Label
 ***************************************************************************/
 
 ROM_START( tm8k )
-	ROM_REGION( 0x200000, "main", 0 ) // 68000 Code
+	ROM_REGION( 0x200000, "maincpu", 0 ) // 68000 Code
 	ROM_LOAD16_BYTE( "tm8k_v904.u51", 0x000000, 0x100000, CRC(28864ec8) SHA1(e703f9ee350dd915102e784bbd04445a95b7d0a5) ) /* TOUCHMASTER 8000 U51 DOMESTIC 9.04 (Standard 04/25/00) */
 	ROM_LOAD16_BYTE( "tm8k_v904.u52", 0x000001, 0x100000, CRC(c123eec2) SHA1(3e9c84755b18a4fd900068f385ee47107771391d) ) /* TOUCHMASTER 8000 U52 DOMESTIC 9.04 (Standard 04/25/00) */
 
@@ -1219,7 +1219,7 @@ PAL16V8H-15 @ U45   red dot on it
 ***************************************************************************/
 
 ROM_START( galgbios )
-	ROM_REGION( 0x200000 + 0x40000, "main", 0 )
+	ROM_REGION( 0x200000 + 0x40000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "galaxy.u2", 0x1c0000, 0x020000, CRC(e51ff184) SHA1(aaa795f2c15ec29b3ceeb5c917b643db0dbb7083) )
 	ROM_CONTINUE(                 0x000000, 0x0e0000 )
 	ROM_LOAD16_BYTE( "galaxy.u1", 0x1c0001, 0x020000, CRC(c6d7bc6d) SHA1(93c032f9aa38cbbdda59a8a25ff9f38f7ad9c760) )
@@ -1237,7 +1237,7 @@ ROM_END
 
 static DRIVER_INIT( tm4k )
 {
-	UINT16 *ROM = (UINT16 *)memory_region( machine, "main" );
+	UINT16 *ROM = (UINT16 *)memory_region( machine, "maincpu" );
 
 	// protection
 	ROM[0x83476/2] = 0x4e75;
@@ -1258,7 +1258,7 @@ Protection starts:
 
 static DRIVER_INIT( tm5k )
 {
-	UINT16 *ROM = (UINT16 *)memory_region( machine, "main" );
+	UINT16 *ROM = (UINT16 *)memory_region( machine, "maincpu" );
 
 	// protection
 	ROM[0x96002/2] = 0x4e75;
@@ -1281,7 +1281,7 @@ Protection starts:
 
 static DRIVER_INIT( tm7k )
 {
-	UINT16 *ROM = (UINT16 *)memory_region( machine, "main" );
+	UINT16 *ROM = (UINT16 *)memory_region( machine, "maincpu" );
 
 	// protection
 	ROM[0x81730/2] = 0x4e75;
@@ -1304,7 +1304,7 @@ Protection starts:
 
 static DRIVER_INIT( tm7ka )
 {
-	UINT16 *ROM = (UINT16 *)memory_region( machine, "main" );
+	UINT16 *ROM = (UINT16 *)memory_region( machine, "maincpu" );
 
 	// protection
 	ROM[0x81594/2] = 0x4e75;
@@ -1327,7 +1327,7 @@ Protection starts:
 
 static DRIVER_INIT( tm8k )
 {
-	UINT16 *ROM = (UINT16 *)memory_region( machine, "main" );
+	UINT16 *ROM = (UINT16 *)memory_region( machine, "maincpu" );
 
 	// protection
 	ROM[0x78b70/2] = 0x4e75;
@@ -1350,7 +1350,7 @@ Protection starts:
 
 static DRIVER_INIT( galgames )
 {
-	UINT8 *ROM = memory_region(machine, "main");
+	UINT8 *ROM = memory_region(machine, "maincpu");
 	// configure memory banks
 	memory_configure_bank(machine, 1, 0, 2, ROM+0x1c0000, 0x40000);
 	memory_configure_bank(machine, 3, 0, 2, ROM+0x1c0000, 0x40000);

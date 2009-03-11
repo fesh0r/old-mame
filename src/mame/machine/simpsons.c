@@ -102,9 +102,9 @@ READ8_HANDLER( simpsons_sound_interrupt_r )
 	return 0x00;
 }
 
-READ8_HANDLER( simpsons_sound_r )
+READ8_DEVICE_HANDLER( simpsons_sound_r )
 {
-	return k053260_0_r(space, 2 + offset);
+	return k053260_r(device, 2 + offset);
 }
 
 
@@ -121,7 +121,7 @@ static KONAMI_SETLINES_CALLBACK( simpsons_banking )
 
 MACHINE_RESET( simpsons )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 
 	konami_configure_set_lines(machine->cpu[0], simpsons_banking);
 
@@ -132,11 +132,11 @@ MACHINE_RESET( simpsons )
 	simpsons_firq_enabled = 0;
 
 	/* init the default banks */
-	memory_configure_bank(machine, 1, 0, 64, memory_region(machine, "main") + 0x10000, 0x2000);
+	memory_configure_bank(machine, 1, 0, 64, memory_region(machine, "maincpu") + 0x10000, 0x2000);
 	memory_set_bank(machine, 1, 0);
 
-	memory_configure_bank(machine, 2, 0, 2, memory_region(machine, "audio") + 0x10000, 0);
-	memory_configure_bank(machine, 2, 2, 6, memory_region(machine, "audio") + 0x10000, 0x4000);
+	memory_configure_bank(machine, 2, 0, 2, memory_region(machine, "audiocpu") + 0x10000, 0);
+	memory_configure_bank(machine, 2, 2, 6, memory_region(machine, "audiocpu") + 0x10000, 0x4000);
 	memory_set_bank(machine, 2, 0);
 
 	simpsons_video_banking( machine, 0 );

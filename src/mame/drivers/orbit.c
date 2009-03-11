@@ -66,7 +66,7 @@ static INTERRUPT_GEN( orbit_interrupt )
 
 static void update_misc_flags(running_machine *machine, UINT8 val)
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const device_config *discrete = devtag_get_device(machine, "discrete");
 
 	orbit_misc_flags = val;
 
@@ -79,7 +79,7 @@ static void update_misc_flags(running_machine *machine, UINT8 val)
 	/* BIT6 => HYPER LED    */
 	/* BIT7 => WARNING SND  */
 
-	discrete_sound_w(space, ORBIT_WARNING_EN, orbit_misc_flags & 0x80);
+	discrete_sound_w(discrete, ORBIT_WARNING_EN, orbit_misc_flags & 0x80);
 
 	set_led_status(0, orbit_misc_flags & 0x08);
 	set_led_status(1, orbit_misc_flags & 0x40);
@@ -130,11 +130,11 @@ static ADDRESS_MAP_START( orbit_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2800, 0x2800) AM_MIRROR(0x07ff) AM_READ_PORT("BUTTONS")
 	AM_RANGE(0x3000, 0x33bf) AM_MIRROR(0x0400) AM_RAM_WRITE(orbit_playfield_w) AM_BASE(&orbit_playfield_ram)
 	AM_RANGE(0x33c0, 0x33ff) AM_MIRROR(0x0400) AM_RAM AM_BASE(&orbit_sprite_ram)
-	AM_RANGE(0x3800, 0x3800) AM_MIRROR(0x00ff) AM_WRITE(orbit_note_w)
-	AM_RANGE(0x3900, 0x3900) AM_MIRROR(0x00ff) AM_WRITE(orbit_noise_amp_w)
-	AM_RANGE(0x3a00, 0x3a00) AM_MIRROR(0x00ff) AM_WRITE(orbit_note_amp_w)
+	AM_RANGE(0x3800, 0x3800) AM_MIRROR(0x00ff) AM_DEVWRITE("discrete", orbit_note_w)
+	AM_RANGE(0x3900, 0x3900) AM_MIRROR(0x00ff) AM_DEVWRITE("discrete", orbit_noise_amp_w)
+	AM_RANGE(0x3a00, 0x3a00) AM_MIRROR(0x00ff) AM_DEVWRITE("discrete", orbit_note_amp_w)
 	AM_RANGE(0x3c00, 0x3c0f) AM_MIRROR(0x00f0) AM_WRITE(orbit_misc_w)
-	AM_RANGE(0x3e00, 0x3e00) AM_MIRROR(0x00ff) AM_WRITE(orbit_noise_rst_w)
+	AM_RANGE(0x3e00, 0x3e00) AM_MIRROR(0x00ff) AM_DEVWRITE("discrete", orbit_noise_rst_w)
 	AM_RANGE(0x3f00, 0x3f00) AM_MIRROR(0x00ff) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x6000, 0x7fff) AM_ROM
 ADDRESS_MAP_END
@@ -290,16 +290,16 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( orbit )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6800, MASTER_CLOCK / 16)
+	MDRV_CPU_ADD("maincpu", M6800, MASTER_CLOCK / 16)
 	MDRV_CPU_PROGRAM_MAP(orbit_map, 0)
-	MDRV_CPU_VBLANK_INT("main", orbit_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", orbit_interrupt)
 
-	MDRV_TIMER_ADD_SCANLINE("32v", nmi_32v, "main", 0, 32)
+	MDRV_TIMER_ADD_SCANLINE("32v", nmi_32v, "screen", 0, 32)
 
 	MDRV_MACHINE_RESET(orbit)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK*2, 384*2, 0, 256*2, 261*2, 0, 240*2)
 
@@ -310,12 +310,12 @@ static MACHINE_DRIVER_START( orbit )
 	MDRV_VIDEO_UPDATE(orbit)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(orbit)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -327,7 +327,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( orbit )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD_NIB_LOW ( "033701.h2", 0x6800, 0x400, CRC(6de43b85) SHA1(1643972f45d3a0dd6540158c575cd84cee2b0c9a) )
 	ROM_LOAD_NIB_HIGH( "033693.l2", 0x6800, 0x400, CRC(8878409e) SHA1(a14e0161705bbc230f0aec1837ebc41d62178368) )
 	ROM_LOAD_NIB_LOW ( "033702.h1", 0x6C00, 0x400, CRC(8166bdcb) SHA1(b7ae6cd46b4aff6e1e1ec9273cf068dec4a8cd46) )

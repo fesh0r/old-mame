@@ -189,11 +189,7 @@
  *
  *************************************/
 
-#ifdef LSB_FIRST
-#define SWAP_HALVES(x)			(x)
-#else
-#define SWAP_HALVES(x)			(((x) >> 16) | ((x) << 16))
-#endif
+#define SWAP_HALVES(x)			NATIVE_ENDIAN_VALUE_LE_BE(x, ((x) >> 16) | ((x) << 16))
 
 
 
@@ -2629,7 +2625,7 @@ VIDEO_UPDATE( multi32 )
 {
 	UINT8 enablemask;
 
-	const device_config *left_screen  = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "left");
+	const device_config *left_screen  = devtag_get_device(screen->machine, "lscreen");
 
 	/* update the visible area */
 	if (system32_videoram[0x1ff00/2] & 0x8000)

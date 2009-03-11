@@ -22,10 +22,7 @@
 #endif
 
 
-// Atrocious hack that makes the soldivid music correct
-
-//static const int div_tab[4] = { 3, 5, 7, 0 };
-static const int div_tab[4] = { 3, 5, 3, 0 };
+static const int div_tab[4] = { 3, 5, 7, 0 };
 
 INLINE UINT32 RL(SH2 *sh2, offs_t A)
 {
@@ -278,7 +275,7 @@ static void sh2_dmac_check(SH2 *sh2, int dma)
 	{
 		if(sh2->dma_timer_active[dma])
 		{
-			logerror("SH2: DMA %d cancelled in-flight", dma);
+			logerror("SH2: DMA %d cancelled in-flight\n", dma);
 			timer_adjust_oneshot(sh2->dma_timer[dma], attotime_never, 0);
 			sh2->dma_timer_active[dma] = 0;
 		}
@@ -501,6 +498,12 @@ READ32_HANDLER( sh2_internal_r )
 		return sh2->m[0x44];
 	}
 	return sh2->m[offset];
+}
+
+void sh2_set_ftcsr_read_callback(const device_config *device, void (*callback)(UINT32))
+{
+	SH2 *sh2 = GET_SH2(device);
+	sh2->ftcsr_read_callback = callback;
 }
 
 void sh2_set_frt_input(const device_config *device, int state)

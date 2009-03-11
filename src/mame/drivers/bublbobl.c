@@ -273,9 +273,12 @@ TODO:
 #include "cpu/m6800/m6800.h"
 #include "deprecat.h"
 #include "sound/2203intf.h"
-#include "sound/3812intf.h"
+#include "sound/3526intf.h"
 #include "cpu/m6805/m6805.h"
 #include "includes/bublbobl.h"
+
+
+#define MAIN_XTAL 	XTAL_24MHz
 
 #if 0 // doesn't work for some reason
 static WRITE8_HANDLER(soundcpu_reset_w)
@@ -307,10 +310,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x8fff) AM_RAM
-	AM_RANGE(0x9000, 0x9000) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0x9001, 0x9001) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
-	AM_RANGE(0xa000, 0xa000) AM_READWRITE(ym3526_status_port_0_r, ym3526_control_port_0_w)
-	AM_RANGE(0xa001, 0xa001) AM_WRITE(ym3526_write_port_0_w)
+	AM_RANGE(0x9000, 0x9001) AM_DEVREADWRITE("ym1", ym2203_r, ym2203_w)
+	AM_RANGE(0xa000, 0xa001) AM_DEVREADWRITE("ym2", ym3526_r, ym3526_w)
 	AM_RANGE(0xb000, 0xb000) AM_READ(soundlatch_r) AM_WRITENOP
 	AM_RANGE(0xb001, 0xb001) AM_WRITE(bublbobl_sh_nmi_enable_w) AM_READNOP
 	AM_RANGE(0xb002, 0xb002) AM_WRITE(bublbobl_sh_nmi_disable_w)
@@ -399,8 +400,7 @@ static ADDRESS_MAP_START( tokio_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9800, 0x9800) AM_READNOP	// ???
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(bublbobl_sh_nmi_disable_w)
 	AM_RANGE(0xa800, 0xa800) AM_WRITE(bublbobl_sh_nmi_enable_w)
-	AM_RANGE(0xb000, 0xb000) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0xb001, 0xb001) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
+	AM_RANGE(0xb000, 0xb001) AM_DEVREADWRITE("ym", ym2203_r, ym2203_w)
 	AM_RANGE(0xe000, 0xffff) AM_ROM	// space for diagnostic ROM?
 ADDRESS_MAP_END
 
@@ -664,16 +664,10 @@ static GFXDECODE_START( bublbobl )
 GFXDECODE_END
 
 
-
-#define MAIN_XTAL 	24000000
-#define HSYNC 		MAIN_XTAL / 4 / 384
-#define VSYNC		HSYNC / 264
-#define VBLANK		1 / VSYNC * (40 / 264)
-
 // handler called by the 2203 emulator when the internal timers cause an IRQ
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[2], 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[2], 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =
@@ -681,7 +675,7 @@ static const ym2203_interface ym2203_config =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		NULL, NULL, NULL, NULL
+		DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL
 	},
 	irqhandler
 };
@@ -690,27 +684,24 @@ static const ym2203_interface ym2203_config =
 
 static MACHINE_DRIVER_START( tokio )
 	// basic machine hardware
-	MDRV_CPU_ADD("main", Z80, MAIN_XTAL/4)	// 6 MHz
+	MDRV_CPU_ADD("maincpu", Z80, MAIN_XTAL/4)	// 6 MHz
 	MDRV_CPU_PROGRAM_MAP(tokio_map, 0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("slave", Z80, MAIN_XTAL/4)	// 6 MHz
 	MDRV_CPU_PROGRAM_MAP(tokio_slave_map, 0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, MAIN_XTAL/8)	// 3 MHz
+	MDRV_CPU_ADD("audiocpu", Z80, MAIN_XTAL/8)	// 3 MHz
 	MDRV_CPU_PROGRAM_MAP(tokio_sound_map, 0) // NMIs are triggered by the main CPU, IRQs are triggered by the YM2203
 
 	MDRV_QUANTUM_TIME(HZ(6000)) // 100 CPU slices per frame - a high value to ensure proper synchronization of the CPUs
 
 	// video hardware
 
-	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(VSYNC)	// 59.185606 Hz
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(VBLANK)) 	// 2560 us
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_SCREEN_VISIBLE_AREA(0, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_RAW_PARAMS(MAIN_XTAL/4, 384, 0, 256, 264, 16, 240)
 
 	MDRV_GFXDECODE(bublbobl)
 	MDRV_PALETTE_LENGTH(256)
@@ -730,31 +721,28 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( bublbobl )
 	// basic machine hardware
-	MDRV_CPU_ADD("main", Z80, MAIN_XTAL/4)	// 6 MHz
+	MDRV_CPU_ADD("maincpu", Z80, MAIN_XTAL/4)	// 6 MHz
 	MDRV_CPU_PROGRAM_MAP(master_map, 0)
 	// IRQs are triggered by the MCU
 
 	MDRV_CPU_ADD("slave", Z80, MAIN_XTAL/4)	// 6 MHz
 	MDRV_CPU_PROGRAM_MAP(slave_map, 0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, MAIN_XTAL/8)	// 3 MHz
+	MDRV_CPU_ADD("audiocpu", Z80, MAIN_XTAL/8)	// 3 MHz
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0) // IRQs are triggered by the YM2203
 
 	MDRV_CPU_ADD("mcu", M6801, 4000000)	// actually 6801U4  // xtal is 4MHz, divided by 4 internally
 	MDRV_CPU_PROGRAM_MAP(mcu_map, 0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_pulse) // comes from the same clock that latches the INT pin on the second Z80
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_pulse) // comes from the same clock that latches the INT pin on the second Z80
 
 	MDRV_QUANTUM_TIME(HZ(6000)) // 100 CPU slices per frame - a high value to ensure proper synchronization of the CPUs
 
 	// video hardware
 
-	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(VSYNC)	// 59.185606 Hz
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(VBLANK)) 	// 2560 us
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_SCREEN_VISIBLE_AREA(0, 32*8-1, 2*8, 30*8-1)
+	MDRV_SCREEN_RAW_PARAMS(MAIN_XTAL/4, 384, 0, 256, 264, 16, 240)
 
 	MDRV_GFXDECODE(bublbobl)
 	MDRV_PALETTE_LENGTH(256)
@@ -777,9 +765,9 @@ static MACHINE_DRIVER_START( boblbobl )
 	MDRV_IMPORT_FROM(bublbobl)
 
 	// basic machine hardware
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(bootleg_map, 0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)	// interrupt mode 1, unlike Bubble Bobble
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)	// interrupt mode 1, unlike Bubble Bobble
 
 	MDRV_CPU_REMOVE("mcu")
 MACHINE_DRIVER_END
@@ -797,7 +785,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( tokio )
-	ROM_REGION( 0x30000, "main", 0 )	/* main CPU */
+	ROM_REGION( 0x30000, "maincpu", 0 )	/* main CPU */
 	ROM_LOAD( "a71-02.4",     0x00000, 0x8000, CRC(d556c908) SHA1(d5d8afb7f7888d77aa9a372dfbab75fbd0358cc3) )
     /* ROMs banked at 8000-bfff */
 	ROM_LOAD( "a71-03.5",     0x10000, 0x8000, CRC(69dacf44) SHA1(ee8c33702749c0e2562951f9f80c897d3fbd7dd7) )
@@ -808,7 +796,7 @@ ROM_START( tokio )
 	ROM_REGION( 0x10000, "slave", 0 )	/* video CPU */
 	ROM_LOAD( "a71-01.1",     0x00000, 0x8000, CRC(0867c707) SHA1(7129974f1252b28e9e338bd3c7fcb87210dcf412) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* audio CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* audio CPU */
 	ROM_LOAD( "a71-07.10",    0x0000, 0x08000, CRC(f298cc7b) SHA1(ebf5c804aa07b7f198ec3e1f8d1e111cd89ebdf3) )
 
 	ROM_REGION( 0x0800, "cpu3", 0 )	/* 2k for the microcontroller (68705P5) */
@@ -840,7 +828,7 @@ ROM_START( tokio )
 ROM_END
 
 ROM_START( tokiou )
-	ROM_REGION( 0x30000, "main", 0 )	/* main CPU */
+	ROM_REGION( 0x30000, "maincpu", 0 )	/* main CPU */
 	ROM_LOAD( "a71-27-1.4",   0x00000, 0x8000, CRC(8c180896) SHA1(bc8aeb42da4bae7db6f65b9874224f60a9bc4500) )
     /* ROMs banked at 8000-bfff */
 	ROM_LOAD( "a71-28-1.5",   0x10000, 0x8000, CRC(1b447527) SHA1(6939e6c1b8492825d18f4e96f39ff45f4c96eea2) )
@@ -851,7 +839,7 @@ ROM_START( tokiou )
 	ROM_REGION( 0x10000, "slave", 0 )	/* video CPU */
 	ROM_LOAD( "a71-01.1",     0x00000, 0x8000, CRC(0867c707) SHA1(7129974f1252b28e9e338bd3c7fcb87210dcf412) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* audio CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* audio CPU */
 	ROM_LOAD( "a71-07.10",    0x0000, 0x08000, CRC(f298cc7b) SHA1(ebf5c804aa07b7f198ec3e1f8d1e111cd89ebdf3) )
 
 	ROM_REGION( 0x0800, "cpu3", 0 )	/* 2k for the microcontroller (68705P5) */
@@ -883,7 +871,7 @@ ROM_START( tokiou )
 ROM_END
 
 ROM_START( tokiob )
-	ROM_REGION( 0x30000, "main", 0 ) /* main CPU */
+	ROM_REGION( 0x30000, "maincpu", 0 ) /* main CPU */
 	ROM_LOAD( "2",            0x00000, 0x8000, CRC(f583b1ef) SHA1(a97b36299b51792953516224191f11decc579a38) )
     /* ROMs banked at 8000-bfff */
 	ROM_LOAD( "a71-03.5",     0x10000, 0x8000, CRC(69dacf44) SHA1(ee8c33702749c0e2562951f9f80c897d3fbd7dd7) )
@@ -894,7 +882,7 @@ ROM_START( tokiob )
 	ROM_REGION( 0x10000, "slave", 0 )	/* video CPU */
 	ROM_LOAD( "a71-01.1",     0x00000, 0x8000, CRC(0867c707) SHA1(7129974f1252b28e9e338bd3c7fcb87210dcf412) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* audio CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* audio CPU */
 	ROM_LOAD( "a71-07.10",    0x0000, 0x08000, CRC(f298cc7b) SHA1(ebf5c804aa07b7f198ec3e1f8d1e111cd89ebdf3) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
@@ -935,7 +923,7 @@ a78-06-1.51    32768  0x567934b6  Intel D27256
 */
 
 ROM_START( bublbobl )
-	ROM_REGION( 0x30000, "main", 0 )
+	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "a78-06-1.51",    0x00000, 0x08000, CRC(567934b6) SHA1(b0c4d49fd551f465d148c25c3e80b278835e2f0d) )
     /* ROMs banked at 8000-bfff */
 	ROM_LOAD( "a78-05-1.52",    0x10000, 0x10000, CRC(9f8ee242) SHA1(924150d4e7e087a9b2b0a294c2d0e9903a266c6c) )
@@ -944,7 +932,7 @@ ROM_START( bublbobl )
 	ROM_REGION( 0x10000, "slave", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "a78-08.37",    0x0000, 0x08000, CRC(ae11a07b) SHA1(af7a335c8da637103103cc274e077f123908ebb7) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the third CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the third CPU */
 	ROM_LOAD( "a78-07.46",    0x0000, 0x08000, CRC(4f9a26e8) SHA1(3105b34b88a7134493c2b3f584729f8b0407a011) )
 
 	ROM_REGION( 0x10000, "mcu", 0 )	/* 64k for the MCU */
@@ -984,7 +972,7 @@ VER 0.018.AUG,1986 SUMMER
 */
 
 ROM_START( bublbob1 )
-	ROM_REGION( 0x30000, "main", 0 )
+	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "a78-06.51",    0x00000, 0x08000, CRC(32c8305b) SHA1(6bf69b3edfbefd33cd670a762b4bf0b39629a220) )
     /* ROMs banked at 8000-bfff */
 	ROM_LOAD( "a78-05.52",    0x10000, 0x10000, CRC(53f4bc6e) SHA1(15a2e6d83438d4136b154b3d90dd2cf9f1ce572c) )
@@ -993,7 +981,7 @@ ROM_START( bublbob1 )
 	ROM_REGION( 0x10000, "slave", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "a78-08.37",    0x0000, 0x08000, CRC(ae11a07b) SHA1(af7a335c8da637103103cc274e077f123908ebb7) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the third CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the third CPU */
 	ROM_LOAD( "a78-07.46",    0x0000, 0x08000, CRC(4f9a26e8) SHA1(3105b34b88a7134493c2b3f584729f8b0407a011) )
 
 	ROM_REGION( 0x10000, "mcu", 0 )	/* 64k for the MCU */
@@ -1033,7 +1021,7 @@ VER 5.1 8.NOV,1986 SUMMER
 */
 
 ROM_START( bublbobr )
-	ROM_REGION( 0x30000, "main", 0 )
+	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "a78-25.51",    0x00000, 0x08000, CRC(2d901c9d) SHA1(72504225d3a26212e8f35508a79200eeb91138b6) )
     /* ROMs banked at 8000-bfff */
 	ROM_LOAD( "a78-24.52",    0x10000, 0x10000, CRC(b7afedc4) SHA1(6e4c8712f1fdf000e231cfd622dd3b514c61a6fd) )
@@ -1042,7 +1030,7 @@ ROM_START( bublbobr )
 	ROM_REGION( 0x10000, "slave", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "a78-08.37",    0x0000, 0x08000, CRC(ae11a07b) SHA1(af7a335c8da637103103cc274e077f123908ebb7) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the third CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the third CPU */
 	ROM_LOAD( "a78-07.46",    0x0000, 0x08000, CRC(4f9a26e8) SHA1(3105b34b88a7134493c2b3f584729f8b0407a011) )
 
 	ROM_REGION( 0x10000, "mcu", 0 )	/* 64k for the MCU */
@@ -1082,7 +1070,7 @@ VER 1.0 26.AUG,1986 SUMMER
 */
 
 ROM_START( bubbobr1 )
-	ROM_REGION( 0x30000, "main", 0 )
+	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "a78-06.51",    0x00000, 0x08000, CRC(32c8305b) SHA1(6bf69b3edfbefd33cd670a762b4bf0b39629a220) )
     /* ROMs banked at 8000-bfff */
 	ROM_LOAD( "a78-21.52",    0x10000, 0x10000, CRC(2844033d) SHA1(6ac0b09d0325990cf18935f35b0adbc033758947) )
@@ -1091,7 +1079,7 @@ ROM_START( bubbobr1 )
 	ROM_REGION( 0x10000, "slave", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "a78-08.37",    0x0000, 0x08000, CRC(ae11a07b) SHA1(af7a335c8da637103103cc274e077f123908ebb7) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the third CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the third CPU */
 	ROM_LOAD( "a78-07.46",    0x0000, 0x08000, CRC(4f9a26e8) SHA1(3105b34b88a7134493c2b3f584729f8b0407a011) )
 
 	ROM_REGION( 0x10000, "mcu", 0 )	/* 64k for the MCU */
@@ -1124,7 +1112,7 @@ ROM_START( bubbobr1 )
 ROM_END
 
 ROM_START( boblbobl )
-	ROM_REGION( 0x30000, "main", 0 )
+	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "bb3",          0x00000, 0x08000, CRC(01f81936) SHA1(a48489a13bfd01949e7fd273029d9cb8bfd7be48) )
     /* ROMs banked at 8000-bfff */
 	ROM_LOAD( "bb5",          0x10000, 0x08000, CRC(13118eb1) SHA1(5a5da40c2cc82420f70bc58ffa32de1088c6c82f) )
@@ -1134,7 +1122,7 @@ ROM_START( boblbobl )
 	ROM_REGION( 0x10000, "slave", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "a78-08.37",    0x0000, 0x08000, CRC(ae11a07b) SHA1(af7a335c8da637103103cc274e077f123908ebb7) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the third CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the third CPU */
 	ROM_LOAD( "a78-07.46",    0x0000, 0x08000, CRC(4f9a26e8) SHA1(3105b34b88a7134493c2b3f584729f8b0407a011) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
@@ -1164,7 +1152,7 @@ ROM_END
 
 
 ROM_START( sboblboa )
-	ROM_REGION( 0x30000, "main", 0 )
+	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "1c.bin",    0x00000, 0x08000, CRC(f304152a) SHA1(103d9beddccef289ed739d28ebda69bbad3d42f9) )
     /* ROMs banked at 8000-bfff */
 	ROM_LOAD( "1a.bin",          0x10000, 0x08000, CRC(0865209c) SHA1(eddd3547ae675b73376e5c284e0b15830f4a6645) )
@@ -1174,7 +1162,7 @@ ROM_START( sboblboa )
 	ROM_REGION( 0x10000, "slave", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "1e.rom",    0x0000, 0x08000, CRC(ae11a07b) SHA1(af7a335c8da637103103cc274e077f123908ebb7) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the third CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the third CPU */
 	ROM_LOAD( "1d.rom",    0x0000, 0x08000, CRC(4f9a26e8) SHA1(3105b34b88a7134493c2b3f584729f8b0407a011) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
@@ -1198,7 +1186,7 @@ ROM_START( sboblboa )
 ROM_END
 
 ROM_START( sboblbob )
-	ROM_REGION( 0x30000, "main", 0 )
+	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "bbb-3.rom",    0x00000, 0x08000, CRC(f304152a) SHA1(103d9beddccef289ed739d28ebda69bbad3d42f9) )
     /* ROMs banked at 8000-bfff */
 	ROM_LOAD( "bb5",          0x10000, 0x08000, CRC(13118eb1) SHA1(5a5da40c2cc82420f70bc58ffa32de1088c6c82f) )
@@ -1208,7 +1196,7 @@ ROM_START( sboblbob )
 	ROM_REGION( 0x10000, "slave", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "a78-08.37",    0x0000, 0x08000, CRC(ae11a07b) SHA1(af7a335c8da637103103cc274e077f123908ebb7) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the third CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the third CPU */
 	ROM_LOAD( "a78-07.46",    0x0000, 0x08000, CRC(4f9a26e8) SHA1(3105b34b88a7134493c2b3f584729f8b0407a011) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
@@ -1234,7 +1222,7 @@ ROM_END
 
 
 ROM_START( bub68705 )
-	ROM_REGION( 0x30000, "main", 0 ) /* Program roms match Bubble Bobble (older) */
+	ROM_REGION( 0x30000, "maincpu", 0 ) /* Program roms match Bubble Bobble (older) */
 	ROM_LOAD( "2.bin",    0x00000, 0x08000, CRC(32c8305b) SHA1(6bf69b3edfbefd33cd670a762b4bf0b39629a220) )
     /* ROMs banked at 8000-bfff */
 	ROM_LOAD( "3-1.bin",        0x10000, 0x08000, CRC(980c2615) SHA1(3670cf3e4e73028aadf4460ad887a0b544bcdbc4) )
@@ -1244,7 +1232,7 @@ ROM_START( bub68705 )
 	ROM_REGION( 0x10000, "slave", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "4.bin",    0x0000, 0x08000, CRC(ae11a07b) SHA1(af7a335c8da637103103cc274e077f123908ebb7) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the third CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the third CPU */
 	ROM_LOAD( "1.bin",    0x0000, 0x08000, CRC(4f9a26e8) SHA1(3105b34b88a7134493c2b3f584729f8b0407a011) )
 
 	ROM_REGION( 0x800, "mcu", 0 )	/* 64k for the MCU */
@@ -1274,7 +1262,7 @@ ROM_END
 
 static void configure_banks(running_machine* machine)
 {
-	UINT8 *ROM = memory_region(machine, "main");
+	UINT8 *ROM = memory_region(machine, "maincpu");
 	memory_configure_bank(machine, 1, 0, 8, &ROM[0x10000], 0x4000);
 }
 

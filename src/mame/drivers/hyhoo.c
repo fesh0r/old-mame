@@ -30,9 +30,9 @@ Memo:
 
 #define	SIGNED_DAC	0		// 0:unsigned DAC, 1:signed DAC
 #if SIGNED_DAC
-#define DAC_0_WRITE	dac_0_signed_data_w
+#define DAC_WRITE	dac_signed_w
 #else
-#define DAC_0_WRITE	dac_0_data_w
+#define DAC_WRITE	dac_w
 #endif
 
 
@@ -69,15 +69,14 @@ static ADDRESS_MAP_START( hyhoo_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 //  AM_RANGE(0x00, 0x00) AM_WRITE(nb1413m3_nmi_clock_w)
 	AM_RANGE(0x00, 0x7f) AM_READ(nb1413m3_sndrom_r)
-	AM_RANGE(0x81, 0x81) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0x82, 0x82) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x83, 0x83) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x81, 0x81) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x82, 0x83) AM_DEVWRITE("ay", ay8910_data_address_w)
 	AM_RANGE(0x90, 0x90) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0x90, 0x97) AM_WRITE(hyhoo_blitter_w)
 	AM_RANGE(0xa0, 0xa0) AM_READWRITE(nb1413m3_inputport1_r, nb1413m3_inputportsel_w)
 	AM_RANGE(0xb0, 0xb0) AM_READWRITE(nb1413m3_inputport2_r, nb1413m3_sndrombank1_w)
 	AM_RANGE(0xc0, 0xcf) AM_WRITE(SMH_RAM) AM_BASE(&hyhoo_clut)
-	AM_RANGE(0xd0, 0xd0) AM_READWRITE(SMH_NOP, DAC_0_WRITE)		// unknown read
+	AM_RANGE(0xd0, 0xd0) AM_READNOP AM_DEVWRITE("dac", DAC_WRITE)		// unknown read
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(hyhoo_romsel_w)
 	AM_RANGE(0xe0, 0xe1) AM_READ(nb1413m3_gfxrom_r)
 	AM_RANGE(0xf0, 0xf0) AM_READ(nb1413m3_dipsw1_r)
@@ -251,26 +250,26 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_0_r,				// DIPSW-A read
-	input_port_1_r,				// DIPSW-B read
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("DSWA"),
+	DEVCB_INPUT_PORT("DSWB"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
 static MACHINE_DRIVER_START( hyhoo )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 5000000/1)	/* 5.00 MHz ?? */
+	MDRV_CPU_ADD("maincpu", Z80, 5000000/1)	/* 5.00 MHz ?? */
 	MDRV_CPU_PROGRAM_MAP(readmem_hyhoo, writemem_hyhoo)
 	MDRV_CPU_IO_MAP(hyhoo_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", nb1413m3_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", nb1413m3_interrupt)
 
 	MDRV_MACHINE_RESET(nb1413m3)
 	MDRV_NVRAM_HANDLER(nb1413m3)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
@@ -293,7 +292,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( hyhoo )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "hyhoo.1",     0x00000, 0x08000, CRC(c2852861) SHA1(ad23d8f5b196f15f863862010c8fb0dc4c072172) )
 
 	ROM_REGION( 0x10000, "voice", 0 ) /* voice */
@@ -308,7 +307,7 @@ ROM_START( hyhoo )
 ROM_END
 
 ROM_START( hyhoo2 )
-	ROM_REGION( 0x10000, "main", 0 ) /* program */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* program */
 	ROM_LOAD( "hyhoo2.2",    0x00000, 0x08000, CRC(d8733cdc) SHA1(e683e3a799ed06fb5d4149e1ba76ebd6828b6369) )
 	ROM_LOAD( "hyhoo2.1",    0x08000, 0x08000, CRC(4a1d9493) SHA1(ee9288e9cb1f681216a98fb31539cb75b4548935) )
 

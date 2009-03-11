@@ -347,7 +347,7 @@ static INT32 banknum;
 
 static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr(machine, 1, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000);
+	memory_set_bankptr(machine, 1, memory_region(machine, "audiocpu") + (banknum * 0x4000) + 0x10000);
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
@@ -399,10 +399,7 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK(1)
 	AM_RANGE(0xc000, 0xdfff) AM_RAM
-	AM_RANGE(0xe000, 0xe000) AM_READWRITE(ym2610_status_port_0_a_r, ym2610_control_port_0_a_w)
-	AM_RANGE(0xe001, 0xe001) AM_READWRITE(ym2610_read_port_0_r, ym2610_data_port_0_a_w)
-	AM_RANGE(0xe002, 0xe002) AM_READWRITE(ym2610_status_port_0_b_r, ym2610_control_port_0_b_w)
-	AM_RANGE(0xe003, 0xe003) AM_WRITE(ym2610_data_port_0_b_w)
+	AM_RANGE(0xe000, 0xe003) AM_DEVREADWRITE("ym", ym2610_r, ym2610_w)
 	AM_RANGE(0xe200, 0xe200) AM_READWRITE(SMH_NOP, taitosound_slave_port_w)
 	AM_RANGE(0xe201, 0xe201) AM_READWRITE(taitosound_slave_comm_r, taitosound_slave_comm_w)
 	AM_RANGE(0xe400, 0xe403) AM_WRITE(SMH_NOP)		/* pan control */
@@ -583,9 +580,9 @@ GFXDECODE_END
 ************************************************************/
 
 /* Handler called by the YM2610 emulator when the internal timers cause an IRQ */
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface airsys_ym2610_interface =
@@ -601,11 +598,11 @@ static const ym2610_interface airsys_ym2610_interface =
 static MACHINE_DRIVER_START( airsys )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000,24000000 / 2)		/* 12 MHz ??? */
+	MDRV_CPU_ADD("maincpu", M68000,24000000 / 2)		/* 12 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(airsys_map, 0)
-	MDRV_CPU_VBLANK_INT("main", irq5_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq5_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80,8000000 / 2)			/* 4 MHz ??? */
+	MDRV_CPU_ADD("audiocpu", Z80,8000000 / 2)			/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
 
 	MDRV_CPU_ADD("dsp", TMS32025,24000000)			/* 24 MHz ??? *///
@@ -618,7 +615,7 @@ static MACHINE_DRIVER_START( airsys )
 	MDRV_MACHINE_START(taitoair)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -650,7 +647,7 @@ board - possibly?
 *************************************************************/
 
 ROM_START( topland )
-	ROM_REGION( 0xc0000, "main", 0 )	/* 68000 */
+	ROM_REGION( 0xc0000, "maincpu", 0 )	/* 68000 */
 	ROM_LOAD16_BYTE( "b62_41.43",  0x00000, 0x20000, CRC(28264798) SHA1(72e4441ad468f37cff69c36699867119ad28274c) )
 	ROM_LOAD16_BYTE( "b62_40.14",  0x00001, 0x20000, CRC(db872f7d) SHA1(6932c62d8051b1811c30139dbd0375115305c731) )
 	ROM_LOAD16_BYTE( "b62_25.42",  0x40000, 0x20000, CRC(1bd53a72) SHA1(ada679198739cd6a419d3fa4311bb92dc385099c) )
@@ -658,7 +655,7 @@ ROM_START( topland )
 	ROM_LOAD16_BYTE( "b62_23.41",  0x80000, 0x20000, CRC(ef3a971c) SHA1(0840668dda48f4c9a85410361bfba3ae9580a71f) )
 	ROM_LOAD16_BYTE( "b62_22.12",  0x80001, 0x20000, CRC(94279201) SHA1(8518d8e722d4f2516f75224d9a21ab20d8ee6c78) )
 
-	ROM_REGION( 0x1c000, "audio", 0 )	/* Z80 */
+	ROM_REGION( 0x1c000, "audiocpu", 0 )	/* Z80 */
 	ROM_LOAD( "b62-42.34", 0x00000, 0x04000, CRC(389230e0) SHA1(3a336987aad7bf4df658f924de4bbe6f0fff6d59) )
 	ROM_CONTINUE(          0x10000, 0x0c000 )
 
@@ -697,7 +694,7 @@ ROM_START( topland )
 ROM_END
 
 ROM_START( ainferno )
-	ROM_REGION( 0xc0000, "main", 0 )	/* 68000 */
+	ROM_REGION( 0xc0000, "maincpu", 0 )	/* 68000 */
 	ROM_LOAD16_BYTE( "c45_22.43", 0x00000, 0x20000, CRC(50300926) SHA1(9c2a60282d3f9f115b94cb5b6d64bbfc9d726d1d) )
 	ROM_LOAD16_BYTE( "c45_20.14", 0x00001, 0x20000, CRC(39b189d9) SHA1(002013c02b546d3f5a9f3a3149971975a73cc8ce) )
 	ROM_LOAD16_BYTE( "c45_21.42", 0x40000, 0x20000, CRC(1b687241) SHA1(309e42f79cbd48ceae58a15afb648aef838822f0) )
@@ -705,7 +702,7 @@ ROM_START( ainferno )
 
 	/* 0x80000 to 0xbffff is empty for this game */
 
-	ROM_REGION( 0x1c000, "audio", 0 )	/* Z80 */
+	ROM_REGION( 0x1c000, "audiocpu", 0 )	/* Z80 */
 	ROM_LOAD( "c45-23.34", 0x00000, 0x04000, CRC(d0750c78) SHA1(63232c2acef86e8c8ffaad36ab0b6c4cc1eb48f8) )
 	ROM_CONTINUE(          0x10000, 0x0c000 )
 

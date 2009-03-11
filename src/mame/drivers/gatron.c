@@ -329,12 +329,12 @@ static WRITE8_DEVICE_HANDLER( output_port_1_w )
 
 static const ppi8255_interface ppi8255_intf =
 {
-	DEVICE8_PORT("IN0"),/* Port A read */
-	DEVICE8_PORT("IN1"),/* Port B read */
-	NULL,				/* Port C read */
-	NULL,				/* Port A write */
-	NULL,				/* Port B write */
-	output_port_1_w,	/* Port C write */
+	DEVCB_INPUT_PORT("IN0"),		/* Port A read */
+	DEVCB_INPUT_PORT("IN1"),		/* Port B read */
+	DEVCB_NULL,						/* Port C read */
+	DEVCB_NULL,						/* Port A write */
+	DEVCB_NULL,						/* Port B write */
+	DEVCB_HANDLER(output_port_1_w),	/* Port C write */
 };
 
 
@@ -346,13 +346,13 @@ static ADDRESS_MAP_START( gat_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x5fff) AM_ROM
 	AM_RANGE(0x6000, 0x63ff) AM_RAM_WRITE(gat_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)	/* battery backed RAM */
-	AM_RANGE(0xa000, 0xa000) AM_WRITE(sn76496_0_w)											/* PSG */
+	AM_RANGE(0xa000, 0xa000) AM_DEVWRITE("sn", sn76496_w)							/* PSG */
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(output_port_0_w)										/* lamps */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gat_portmap, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w)
 ADDRESS_MAP_END
 
 
@@ -440,17 +440,17 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( gat )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, MASTER_CLOCK/24)	/* 666.66 kHz, guess */
+	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK/24)	/* 666.66 kHz, guess */
 	MDRV_CPU_PROGRAM_MAP(gat_map, 0)
 	MDRV_CPU_IO_MAP(gat_portmap,0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	MDRV_PPI8255_ADD( "ppi8255", ppi8255_intf )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -465,7 +465,7 @@ static MACHINE_DRIVER_START( gat )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sn1", SN76496, MASTER_CLOCK/8 )	/* 2 MHz, guess */
+	MDRV_SOUND_ADD("sn", SN76496, MASTER_CLOCK/8 )	/* 2 MHz, guess */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 2.00)
 MACHINE_DRIVER_END
 
@@ -475,7 +475,7 @@ MACHINE_DRIVER_END
 *************************/
 
 ROM_START( poker41 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "poker.u00",		0x0000, 0x2000, CRC(8361fccd) SHA1(4faae6bb3104c1f4a0939d613966085d7e34c1df))
 	ROM_LOAD( "poker-4-1.u08",	0x2000, 0x1000, CRC(61e71f31) SHA1(b8d162a47752cff7412b3920ec9dd7a469e81e62) )
 
@@ -486,7 +486,7 @@ ROM_START( poker41 )
 ROM_END
 
 ROM_START( pulltabs )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "pull-tabs-1-90.u00",	0x0000, 0x2000, CRC(7cfd490d) SHA1(8eb360f8f4806a4281dae12236d30aa86d00993d) )
 
 	ROM_REGION( 0x3000, "gfx1", ROMREGION_DISPOSE )

@@ -191,9 +191,9 @@ static READ16_HANDLER( sound_status_r )
 	return soundlatch2_r(space,0);
 }
 
-static void sound_nmi(running_machine *machine)
+static void sound_nmi(const device_config *device)
 {
-	cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static MACHINE_START( gijoe )
@@ -250,14 +250,14 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xebff) AM_READ(SMH_ROM)
 	AM_RANGE(0xf000, 0xf7ff) AM_READ(SMH_RAM)
-	AM_RANGE(0xf800, 0xfa2f) AM_READ(k054539_0_r)
+	AM_RANGE(0xf800, 0xfa2f) AM_DEVREAD("konami", k054539_r)
 	AM_RANGE(0xfc02, 0xfc02) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xebff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xf800, 0xfa2f) AM_WRITE(k054539_0_w)
+	AM_RANGE(0xf800, 0xfa2f) AM_DEVWRITE("konami", k054539_w)
 	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(soundlatch2_w)
 ADDRESS_MAP_END
 
@@ -334,11 +334,11 @@ static const k054539_interface k054539_config =
 static MACHINE_DRIVER_START( gijoe )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 16000000)	/* Confirmed */
+	MDRV_CPU_ADD("maincpu", M68000, 16000000)	/* Confirmed */
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
-	MDRV_CPU_VBLANK_INT("main", gijoe_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", gijoe_interrupt)
 
-	MDRV_CPU_ADD("audio", Z80, 8000000)	/* Amuse & confirmed. z80e */
+	MDRV_CPU_ADD("audiocpu", Z80, 8000000)	/* Amuse & confirmed. z80e */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_MACHINE_START(gijoe)
@@ -347,7 +347,7 @@ static MACHINE_DRIVER_START( gijoe )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_UPDATE_BEFORE_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -360,27 +360,27 @@ static MACHINE_DRIVER_START( gijoe )
 	MDRV_VIDEO_UPDATE(gijoe)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2151, 3579545)
-	MDRV_SOUND_ROUTE(0, "left", 0.50)
-	MDRV_SOUND_ROUTE(1, "right", 0.50)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.50)
 
 	MDRV_SOUND_ADD("konami", K054539, 48000)
 	MDRV_SOUND_CONFIG(k054539_config)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
 ROM_START( gijoe )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "069eab03.rom", 0x000000,  0x40000, CRC(dd2d533f) SHA1(6fc9f7a8fc89155ef2b9ee43fe5e456d9b574f8c) )
 	ROM_LOAD16_BYTE( "069eab02.rom", 0x000001,  0x40000, CRC(6bb11c87) SHA1(86581d24f73f2e837f1d4fc5f1f2188f610c50b6) )
 	ROM_LOAD16_BYTE( "069a12",       0x080000,  0x40000, CRC(75a7585c) SHA1(443d6dee99edbe81ab1b7289e6cad403fe01cc0d) )
 	ROM_LOAD16_BYTE( "069a11",       0x080001,  0x40000, CRC(3153e788) SHA1(fde4543eac707ef24b431e64011cf0f923d4d3ac) )
 
-	ROM_REGION( 0x010000, "audio", 0 )
+	ROM_REGION( 0x010000, "audiocpu", 0 )
 	ROM_LOAD( "069a01", 0x000000, 0x010000, CRC(74172b99) SHA1(f5e0e0d43317454fdacd3df7cd3035fcae4aef68) )
 
 	ROM_REGION( 0x200000, "gfx1", 0 )
@@ -398,13 +398,13 @@ ROM_START( gijoe )
 ROM_END
 
 ROM_START( gijoeu )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE("069uab03", 0x000000,  0x40000, CRC(25ff77d2) SHA1(bea2ae975718806698fd35ef1217bd842b2b69ec) )
 	ROM_LOAD16_BYTE("069uab02", 0x000001,  0x40000, CRC(31cced1c) SHA1(3df1def671966b3c3d8117ac1b68adeeef9d98c0) )
 	ROM_LOAD16_BYTE("069a12",   0x080000,  0x40000, CRC(75a7585c) SHA1(443d6dee99edbe81ab1b7289e6cad403fe01cc0d) )
 	ROM_LOAD16_BYTE("069a11",   0x080001,  0x40000, CRC(3153e788) SHA1(fde4543eac707ef24b431e64011cf0f923d4d3ac) )
 
-	ROM_REGION( 0x010000, "audio", 0 )
+	ROM_REGION( 0x010000, "audiocpu", 0 )
 	ROM_LOAD( "069a01", 0x000000, 0x010000, CRC(74172b99) SHA1(f5e0e0d43317454fdacd3df7cd3035fcae4aef68) )
 
 	ROM_REGION( 0x200000, "gfx1", 0 )
@@ -422,13 +422,13 @@ ROM_START( gijoeu )
 ROM_END
 
 ROM_START( gijoej )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE("069jaa03", 0x000000,  0x40000, CRC(4b398901) SHA1(98fcc6ae9cc69c67d82eb1a7ab0bb71e61aee623) )
 	ROM_LOAD16_BYTE("069jaa02", 0x000001,  0x40000, CRC(8bb22392) SHA1(9f066ce2b529f7dad6f80a91fff266c478d56414) )
 	ROM_LOAD16_BYTE("069a12", 0x080000,  0x40000, CRC(75a7585c) SHA1(443d6dee99edbe81ab1b7289e6cad403fe01cc0d) )
 	ROM_LOAD16_BYTE("069a11", 0x080001,  0x40000, CRC(3153e788) SHA1(fde4543eac707ef24b431e64011cf0f923d4d3ac) )
 
-	ROM_REGION( 0x010000, "audio", 0 )
+	ROM_REGION( 0x010000, "audiocpu", 0 )
 	ROM_LOAD( "069a01", 0x000000, 0x010000, CRC(74172b99) SHA1(f5e0e0d43317454fdacd3df7cd3035fcae4aef68) )
 
 	ROM_REGION( 0x200000, "gfx1", 0 )

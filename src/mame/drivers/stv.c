@@ -222,7 +222,7 @@ static INT32  scu_size_0,		/* Transfer DMA size lv 0*/
 			  scu_size_1,		/* lv 1*/
 			  scu_size_2;		/* lv 2*/
 
-struct
+static struct
 {
 	UINT8 vblank_out;
 	UINT8 vblank_in;
@@ -1952,19 +1952,6 @@ static READ32_HANDLER( stv_sh2_soundram_r )
 	return (sound_ram[offset*2]<<16)|sound_ram[offset*2+1];
 }
 
-static READ32_HANDLER( stv_scsp_regs_r32 )
-{
-	offset <<= 1;
-	return (scsp_0_r(space, offset+1, 0xffff) | (scsp_0_r(space, offset, 0xffff)<<16));
-}
-
-static WRITE32_HANDLER( stv_scsp_regs_w32 )
-{
-	offset <<= 1;
-	scsp_0_w(space, offset, data>>16, mem_mask >> 16);
-	scsp_0_w(space, offset+1, data, mem_mask);
-}
-
 /* communication,SLAVE CPU acquires data from the MASTER CPU and triggers an irq.  *
  * Enter into Radiant Silver Gun specific menu for a test...                       */
 static WRITE32_HANDLER( minit_w )
@@ -1972,14 +1959,14 @@ static WRITE32_HANDLER( minit_w )
 	logerror("cpu %s (PC=%08X) MINIT write = %08x\n", space->cpu->tag, cpu_get_pc(space->cpu),data);
 	cpuexec_boost_interleave(space->machine, minit_boost_timeslice, ATTOTIME_IN_USEC(minit_boost));
 	cpuexec_trigger(space->machine, 1000);
-	device_set_info_int(space->machine->cpu[1], CPUINFO_INT_SH2_FRT_INPUT, PULSE_LINE);
+	sh2_set_frt_input(space->machine->cpu[1], PULSE_LINE);
 }
 
 static WRITE32_HANDLER( sinit_w )
 {
 	logerror("cpu %s (PC=%08X) SINIT write = %08x\n", space->cpu->tag, cpu_get_pc(space->cpu),data);
 	cpuexec_boost_interleave(space->machine, sinit_boost_timeslice, ATTOTIME_IN_USEC(sinit_boost));
-	device_set_info_int(space->machine->cpu[0], CPUINFO_INT_SH2_FRT_INPUT, PULSE_LINE);
+	sh2_set_frt_input(space->machine->cpu[0], PULSE_LINE);
 }
 
 
@@ -2005,7 +1992,7 @@ static ADDRESS_MAP_START( stv_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	/* Sound */
 	AM_RANGE(0x05a00000, 0x05a7ffff) AM_READWRITE(stv_sh2_soundram_r, stv_sh2_soundram_w)
 	//AM_RANGE(0x05a80000, 0x05afffff) AM_READ(stv_sh2_random_r)
-	AM_RANGE(0x05b00000, 0x05b00fff) AM_READWRITE(stv_scsp_regs_r32, stv_scsp_regs_w32)
+	AM_RANGE(0x05b00000, 0x05b00fff) AM_DEVREADWRITE16("scsp", scsp_r, scsp_w, 0xffffffff)
 	/* VDP1 */
 	AM_RANGE(0x05c00000, 0x05c7ffff) AM_READWRITE(stv_vdp1_vram_r, stv_vdp1_vram_w)
 	AM_RANGE(0x05c80000, 0x05cbffff) AM_READWRITE(stv_vdp1_framebuffer0_r, stv_vdp1_framebuffer0_w)
@@ -2021,7 +2008,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_RAM AM_BASE(&sound_ram)
-	AM_RANGE(0x100000, 0x100fff) AM_READWRITE(scsp_0_r, scsp_0_w)
+	AM_RANGE(0x100000, 0x100fff) AM_DEVREADWRITE("scsp", scsp_r, scsp_w)
 ADDRESS_MAP_END
 
 #define STV_PLAYER_INPUTS(_n_, _b1_, _b2_, _b3_)							\
@@ -2330,8 +2317,8 @@ DRIVER_INIT ( stv )
 	// do strict overwrite verification - maruchan and rsgun crash after coinup without this.
 	// cottonbm needs strict PCREL
 	// todo: test what games need this and don't turn it on for them...
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_STRICT_VERIFY|SH2DRC_STRICT_PCREL);
-	device_set_info_int(machine->cpu[1], CPUINFO_INT_SH2_DRC_OPTIONS, SH2DRC_STRICT_VERIFY|SH2DRC_STRICT_PCREL);
+	sh2drc_set_options(machine->cpu[0], SH2DRC_STRICT_VERIFY|SH2DRC_STRICT_PCREL);
+	sh2drc_set_options(machine->cpu[1], SH2DRC_STRICT_VERIFY|SH2DRC_STRICT_PCREL);
 
 	/* debug .. watch the command buffer rsgun, cottonbm etc. appear to use to communicate between cpus */
 	memory_install_write32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x60ffc44, 0x60ffc47, 0, 0, w60ffc44_write );
@@ -2426,18 +2413,18 @@ static const gfx_layout tiles16x16x4_layout =
 static const gfx_layout tiles8x8x8_layout =
 {
 	8,8,
-	0x100000/(64*8/8),
+	0x100000/(32*8/8),
 	8,
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
 	{ 0, 8, 16, 24, 32, 40, 48, 56 },
 	{ 0*64, 1*64, 2*64, 3*64, 4*64, 5*64, 6*64, 7*64 },
-	64*8
+	32*8	/* really 64*8, but granularity is 32 bytes */
 };
 
 static const gfx_layout tiles16x16x8_layout =
 {
 	16,16,
-	0x100000/(128*16/8),
+	0x100000/(64*16/8),
 	8,
 	{ 0, 1, 2, 3, 4, 5, 6, 7 },
 	{ 0, 8, 16, 24, 32, 40, 48, 56,
@@ -2447,7 +2434,7 @@ static const gfx_layout tiles16x16x8_layout =
 	{ 0*64, 1*64, 2*64, 3*64, 4*64, 5*64, 6*64, 7*64,
 	64*16, 64*17, 64*18, 64*19, 64*20, 64*21, 64*22, 64*23
 	},
-	128*16
+	64*16	/* really 128*16, but granularity is 32 bytes */
 };
 
 
@@ -2472,7 +2459,7 @@ static const sh2_cpu_core sh2_conf_slave  = { 1, NULL };
 
 static int scsp_last_line = 0;
 
-static void scsp_irq(running_machine *machine, int irq)
+static void scsp_irq(const device_config *device, int irq)
 {
 	// don't bother the 68k if it's off
 	if (!en_68k)
@@ -2483,15 +2470,15 @@ static void scsp_irq(running_machine *machine, int irq)
 	if (irq > 0)
 	{
 		scsp_last_line = irq;
-		cpu_set_input_line(machine->cpu[2], irq, ASSERT_LINE);
+		cpu_set_input_line(device->machine->cpu[2], irq, ASSERT_LINE);
 	}
 	else if (irq < 0)
 	{
-		cpu_set_input_line(machine->cpu[2], -irq, CLEAR_LINE);
+		cpu_set_input_line(device->machine->cpu[2], -irq, CLEAR_LINE);
 	}
 	else
 	{
-		cpu_set_input_line(machine->cpu[2], scsp_last_line, CLEAR_LINE);
+		cpu_set_input_line(device->machine->cpu[2], scsp_last_line, CLEAR_LINE);
 	}
 }
 
@@ -2503,7 +2490,7 @@ static const scsp_interface scsp_config =
 
 static MACHINE_START( stv )
 {
-	SCSP_set_ram_base(0, sound_ram);
+	scsp_set_ram_base(devtag_get_device(machine, "scsp"), sound_ram);
 
 	// save states
 	state_save_register_global_pointer(machine, smpc_ram, 0x80);
@@ -2711,16 +2698,16 @@ static MACHINE_RESET( stv )
 static MACHINE_DRIVER_START( stv )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", SH2, MASTER_CLOCK_352/2) // 28.6364 MHz
+	MDRV_CPU_ADD("maincpu", SH2, MASTER_CLOCK_352/2) // 28.6364 MHz
 	MDRV_CPU_PROGRAM_MAP(stv_mem, 0)
-	MDRV_CPU_VBLANK_INT("main",stv_interrupt)
+	MDRV_CPU_VBLANK_INT("screen",stv_interrupt)
 	MDRV_CPU_CONFIG(sh2_conf_master)
 
 	MDRV_CPU_ADD("slave", SH2, MASTER_CLOCK_352/2) // 28.6364 MHz
 	MDRV_CPU_PROGRAM_MAP(stv_mem, 0)
 	MDRV_CPU_CONFIG(sh2_conf_slave)
 
-	MDRV_CPU_ADD("audio", M68000, MASTER_CLOCK_352/5) //11.46 MHz
+	MDRV_CPU_ADD("audiocpu", M68000, MASTER_CLOCK_352/5) //11.46 MHz
 	MDRV_CPU_PROGRAM_MAP(sound_mem, 0)
 
 	MDRV_MACHINE_START(stv)
@@ -2730,7 +2717,7 @@ static MACHINE_DRIVER_START( stv )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(192))	// guess, needed to force video update after V-Blank OUT interrupt
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
@@ -2743,12 +2730,12 @@ static MACHINE_DRIVER_START( stv )
 	MDRV_VIDEO_START(stv_vdp2)
 	MDRV_VIDEO_UPDATE(stv_vdp2)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("scsp", SCSP, 0)
 	MDRV_SOUND_CONFIG(scsp_config)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 #define ROM_LOAD16_WORD_SWAP_BIOS(bios,name,offset,length,hash) \
@@ -2785,7 +2772,7 @@ ROM_LOAD16_WORD_SWAP_BIOS( x, "saturn.bin", 0x000000, 0x080000, CRC(653ff2d8) SH
 */
 
 #define STV_BIOS \
-	ROM_REGION( 0x080000, "main", 0 ) /* SH2 code */ \
+	ROM_REGION( 0x080000, "maincpu", 0 ) /* SH2 code */ \
 	ROM_SYSTEM_BIOS( 0, "jp",   "EPR-20091 (Japan 97/08/21)" ) \
 	ROM_LOAD16_WORD_SWAP_BIOS( 0, "epr-20091.ic8",   0x000000, 0x080000, CRC(59ed40f4) SHA1(eff0f54c70bce05ff3a289bf30b1027e1c8cd117) ) \
 	ROM_SYSTEM_BIOS( 1, "jp1",  "EPR-19730 (Japan 97/02/17)" ) \
@@ -2806,7 +2793,7 @@ ROM_LOAD16_WORD_SWAP_BIOS( x, "saturn.bin", 0x000000, 0x080000, CRC(653ff2d8) SH
 	ROM_LOAD16_WORD_SWAP_BIOS( 8, "stv1061.bin",     0x000000, 0x080000, CRC(728dbca3) SHA1(0ed2030177f0aa8285645c395ae9ad9f568ab1d6) ) \
 	\
 	ROM_REGION( 0x080000, "slave", 0 ) /* SH2 code */ \
-	ROM_COPY( "main",0,0,0x080000) \
+	ROM_COPY( "maincpu",0,0,0x080000) \
 
 ROM_START( stvbios )
 	STV_BIOS
@@ -2947,6 +2934,7 @@ ROM_END
 
 ROM_START( diehard ) /* must use USA, Europe or Taiwan BIOS */
 	STV_BIOS
+	ROM_DEFAULT_BIOS( "us" )
 
 	ROM_REGION32_BE( 0x3000000, "user1", 0 ) /* SH2 code */
 
@@ -3400,6 +3388,7 @@ ROM_END
 
 ROM_START( smleague ) /* only runs with the USA bios */
 	STV_BIOS
+	ROM_DEFAULT_BIOS( "us" )
 
 	ROM_REGION32_BE( 0x3000000, "user1", 0 ) /* SH2 code */
 	ROM_LOAD16_BYTE( "epr18777.13",               0x0000001, 0x0080000, CRC(8d180866) SHA1(d47ebabab6e06400312d39f68cd818852e496b96) )
@@ -3622,6 +3611,7 @@ On the other side of the PCB are 2 more maskROMs, MPR-18788 @ IC9 and MPR-18789 
 
 ROM_START( critcrsh ) /* Must use Europe or Asia BIOS */
 	STV_BIOS
+	ROM_DEFAULT_BIOS( "euro" )
 
 	ROM_REGION32_BE( 0x3000000, "user1", 0 ) /* SH2 code */
 	ROM_LOAD16_BYTE( "epr-18821.ic13",  0x0000001, 0x0080000, CRC(9a6658e2) SHA1(16dbae3d9ab584713afcb403f89fe71049609245) )
@@ -3640,10 +3630,10 @@ ROM_END
 ROM_START( sfish2 )
 //  STV_BIOS // - sports fishing 2 uses its own bios
 
-	ROM_REGION( 0x080000, "main", 0 ) /* SH2 code */
+	ROM_REGION( 0x080000, "maincpu", 0 ) /* SH2 code */
 	ROM_LOAD16_WORD_SWAP( "epr18343.bin",   0x000000, 0x080000, CRC(48e2eecf) SHA1(a38bfbd5f279525e413b18b5ed3f37f6e9e31cdc) ) /* sport fishing 2 bios */
 	ROM_REGION( 0x080000, "slave", 0 ) /* SH2 code */
-	ROM_COPY( "main",0,0,0x080000)
+	ROM_COPY( "maincpu",0,0,0x080000)
 
 	ROM_REGION32_BE( 0x3000000, "user1", 0 ) /* SH2 code */
 	ROM_LOAD(             "epr18427.bin",      0x0000000, 0x0100000, CRC(3f25bec8) SHA1(43a5342b882d5aec0f35a8777cb475659f43b1c4) )
@@ -3658,10 +3648,10 @@ ROM_END
 ROM_START( sfish2j )
 //  STV_BIOS // - sports fishing 2 uses its own bios
 
-	ROM_REGION( 0x080000, "main", 0 ) /* SH2 code */
+	ROM_REGION( 0x080000, "maincpu", 0 ) /* SH2 code */
 	ROM_LOAD16_WORD_SWAP( "epr18343.bin",   0x000000, 0x080000, CRC(48e2eecf) SHA1(a38bfbd5f279525e413b18b5ed3f37f6e9e31cdc) ) /* sport fishing 2 bios */
 	ROM_REGION( 0x080000, "slave", 0 ) /* SH2 code */
-	ROM_COPY( "main",0,0,0x080000)
+	ROM_COPY( "maincpu",0,0,0x080000)
 
 	ROM_REGION32_BE( 0x3000000, "user1", 0 ) /* SH2 code */
 	ROM_LOAD16_BYTE(             "epr18344.a",      0x0000001, 0x0100000,  CRC(5a7de018) SHA1(88e0c2a9a9d4ebf699878c0aa9737af85f95ccf8) )

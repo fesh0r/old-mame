@@ -401,9 +401,9 @@ static WRITE16_HANDLER( dsp_romaddr_w )
 }
 
 
-static WRITE16_HANDLER( dsp_dac_w )
+static WRITE16_DEVICE_HANDLER( dsp_dac_w )
 {
-	dac_signed_data_16_w(0, (INT16)(data << 4) + 0x8000);
+	dac_signed_data_16_w(device, (INT16)(data << 4) + 0x8000);
 }
 
 
@@ -540,7 +540,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( dsp_io_map, ADDRESS_SPACE_IO, 16 )
 	AM_RANGE(0x00, 0x01) AM_WRITE(dsp_romaddr_w)
 	AM_RANGE(0x02, 0x02) AM_READWRITE(dsp_cmd_r, dsp_answer_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(dsp_dac_w)
+	AM_RANGE(0x03, 0x03) AM_DEVWRITE("dac", dsp_dac_w)
 	AM_RANGE(0x04, 0x04) AM_READ(dsp_rom_r)
 	AM_RANGE(0x05, 0x05) AM_READ_PORT("IN0")
 	AM_RANGE(0x07, 0x07) AM_READ_PORT("IN1")
@@ -651,7 +651,7 @@ INPUT_PORTS_END
 static const tms34010_config tms_config_amerdart =
 {
 	FALSE,							/* halt on reset */
-	"main",							/* the screen operated on */
+	"screen",						/* the screen operated on */
 	40000000/12,					/* pixel clock */
 	2,								/* pixels per clock */
 	amerdart_scanline,				/* scanline callback */
@@ -664,7 +664,7 @@ static const tms34010_config tms_config_amerdart =
 static const tms34010_config tms_config_coolpool =
 {
 	FALSE,							/* halt on reset */
-	"main",							/* the screen operated on */
+	"screen",						/* the screen operated on */
 	40000000/6,						/* pixel clock */
 	1,								/* pixels per clock */
 	coolpool_scanline,				/* scanline callback */
@@ -684,7 +684,7 @@ static const tms34010_config tms_config_coolpool =
 static MACHINE_DRIVER_START( amerdart )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", TMS34010, 40000000)
+	MDRV_CPU_ADD("maincpu", TMS34010, 40000000)
 	MDRV_CPU_CONFIG(tms_config_amerdart)
 	MDRV_CPU_PROGRAM_MAP(amerdart_map,0)
 
@@ -698,7 +698,7 @@ static MACHINE_DRIVER_START( amerdart )
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(tms340x0)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(40000000/6, 212*2, 0, 161*2, 262, 0, 241)
 
@@ -713,7 +713,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( coolpool )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", TMS34010, 40000000)
+	MDRV_CPU_ADD("maincpu", TMS34010, 40000000)
 	MDRV_CPU_CONFIG(tms_config_coolpool)
 	MDRV_CPU_PROGRAM_MAP(coolpool_map,0)
 
@@ -727,7 +727,7 @@ static MACHINE_DRIVER_START( coolpool )
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(tms340x0)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(40000000/6, 424, 0, 320, 262, 0, 240)
 
@@ -742,7 +742,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( 9ballsht )
 	MDRV_IMPORT_FROM(coolpool)
 
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(nballsht_map,0)
 MACHINE_DRIVER_END
 

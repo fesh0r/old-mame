@@ -14,6 +14,8 @@
 #ifndef __6522VIA_H__
 #define __6522VIA_H__
 
+#include "devcb.h"
+
 
 /***************************************************************************
     MACROS / CONSTANTS
@@ -26,7 +28,7 @@
 	MDRV_DEVICE_CONFIG(_intrf)
 
 #define MDRV_VIA6522_REMOVE(_tag) \
-	MDRV_DEVICE_REMOVE(_tag, VIA6522)
+	MDRV_DEVICE_REMOVE(_tag)
 
 #define	VIA_PB	    0
 #define	VIA_PA	    1
@@ -53,19 +55,19 @@
 typedef struct _via6522_interface via6522_interface;
 struct _via6522_interface
 {
-	read8_device_func in_a_func;
-	read8_device_func in_b_func;
-	read8_device_func in_ca1_func;
-	read8_device_func in_cb1_func;
-	read8_device_func in_ca2_func;
-	read8_device_func in_cb2_func;
-	write8_device_func out_a_func;
-	write8_device_func out_b_func;
-	write8_device_func out_ca1_func;
-	write8_device_func out_cb1_func;
-	write8_device_func out_ca2_func;
-	write8_device_func out_cb2_func;
-	void (*irq_func)(const device_config *device, int state);
+	devcb_read8 in_a_func;
+	devcb_read8 in_b_func;
+	devcb_read_line in_ca1_func;
+	devcb_read_line in_cb1_func;
+	devcb_read_line in_ca2_func;
+	devcb_read_line in_cb2_func;
+	devcb_write8 out_a_func;
+	devcb_write8 out_b_func;
+	devcb_write_line out_ca1_func;
+	devcb_write_line out_cb1_func;
+	devcb_write_line out_ca2_func;
+	devcb_write_line out_cb2_func;
+	devcb_write_line irq_func;
 };
 
 

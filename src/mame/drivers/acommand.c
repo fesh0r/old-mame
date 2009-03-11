@@ -295,10 +295,10 @@ static READ16_HANDLER(ac_devices_r)
 			return input_port_read(space->machine, "IN0");
 		case 0x0014/2:
 		case 0x0016/2:
-			return okim6295_status_0_r(space,0);
+			return okim6295_r(devtag_get_device(space->machine, "oki1"),0);
 		case 0x0018/2:
 		case 0x001a/2:
-			return okim6295_status_1_r(space,0);
+			return okim6295_r(devtag_get_device(space->machine, "oki2"),0);
 		case 0x0040/2:
 			/*
                 "Upper switch / Under Switch"
@@ -378,19 +378,19 @@ static WRITE16_HANDLER(ac_devices_w)
 		case 0x00/2:
 			if (ACCESSING_BITS_0_7)
 			{
-				okim6295_set_bank_base(0, 0x40000 * (data & 0x3));
-				okim6295_set_bank_base(1, 0x40000 * (data & 0x30) >> 4);
+				okim6295_set_bank_base(devtag_get_device(space->machine, "oki1"), 0x40000 * (data & 0x3));
+				okim6295_set_bank_base(devtag_get_device(space->machine, "oki2"), 0x40000 * (data & 0x30) >> 4);
 			}
 			break;
 		case 0x14/2:
 		case 0x16/2:
 			if(ACCESSING_BITS_0_7)
-				okim6295_data_0_w(space,0,data);
+				okim6295_w(devtag_get_device(space->machine, "oki1"),0,data);
 			break;
 		case 0x18/2:
 		case 0x1a/2:
 			if(ACCESSING_BITS_0_7)
-				okim6295_data_1_w(space,0,data);
+				okim6295_w(devtag_get_device(space->machine, "oki2"),0,data);
 			break;
 		case 0x1c/2:
 			/*IRQ mask?*/
@@ -561,12 +561,12 @@ static INTERRUPT_GEN( acommand_irq )
 static MACHINE_DRIVER_START( acommand )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main",M68000,12000000)
+	MDRV_CPU_ADD("maincpu",M68000,12000000)
 	MDRV_CPU_PROGRAM_MAP(acommand_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(acommand_irq,2)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -579,17 +579,17 @@ static MACHINE_DRIVER_START( acommand )
 	MDRV_VIDEO_UPDATE(acommand)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("oki1", OKIM6295, 2112000)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("oki2", OKIM6295, 2112000)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -599,7 +599,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( acommand )
-	ROM_REGION( 0x040000, "main", 0 )
+	ROM_REGION( 0x040000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "jalcf3.bin",   0x000000, 0x020000, CRC(f031abf7) SHA1(e381742fd6a6df4ddae42ddb3a074a55dc550b3c) )
 	ROM_LOAD16_BYTE( "jalcf4.bin",   0x000001, 0x020000, CRC(dd0c0540) SHA1(3e788fcb30ae725bd0ec9b57424e3946db1e946f) )
 

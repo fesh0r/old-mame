@@ -73,7 +73,7 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800002, 0x800003) AM_READ_PORT("P2")
 	AM_RANGE(0xa00000, 0xa00001) AM_READ_PORT("DSW1")
 	AM_RANGE(0xa00002, 0xa00003) AM_READ_PORT("DSW2")
-	AM_RANGE(0xb00000, 0xb00001) AM_READ(okim6295_status_0_lsb_r)
+	AM_RANGE(0xb00000, 0xb00001) AM_DEVREAD8("oki", okim6295_r, 0x00ff)
 	AM_RANGE(0xc00000, 0xc00001) AM_READ(watchdog_reset16_r)
 ADDRESS_MAP_END
 
@@ -89,7 +89,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x704000, 0x707fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x708000, 0x70ffff) AM_WRITE(SMH_RAM)	/* work RAM */
 	AM_RANGE(0x900000, 0x900001) AM_WRITE(ohmygod_ctrl_w)
-	AM_RANGE(0xb00000, 0xb00001) AM_WRITE(okim6295_data_0_lsb_w)
+	AM_RANGE(0xb00000, 0xb00001) AM_DEVWRITE8("oki", okim6295_w, 0x00ff)
 	AM_RANGE(0xd00000, 0xd00001) AM_WRITE(ohmygod_spritebank_w)
 ADDRESS_MAP_END
 
@@ -331,15 +331,15 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( ohmygod )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 12000000)
+	MDRV_CPU_ADD("maincpu", M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
 	MDRV_MACHINE_RESET(ohmygod)
 	MDRV_WATCHDOG_TIME_INIT(SEC(3))	/* a guess, and certainly wrong */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -368,7 +368,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( ohmygod )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "omg-p.114", 0x00000, 0x80000, CRC(48fa40ca) SHA1(b1d91e1a4a888526febbe53a12b73e375f604f2b) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
@@ -384,7 +384,7 @@ ROM_START( ohmygod )
 ROM_END
 
 ROM_START( naname )
-	ROM_REGION( 0x80000, "main", 0 )
+	ROM_REGION( 0x80000, "maincpu", 0 )
 	ROM_LOAD16_WORD_SWAP( "036-prg.114", 0x00000, 0x80000, CRC(3b7362f7) SHA1(ba16ec9df8569bacd387561ef2b3ea5b17cb650c) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )

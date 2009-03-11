@@ -178,12 +178,6 @@ typedef enum _read_or_write read_or_write;
 #define HANDLER_TO_BANK(h)		((UINT32)(FPTR)(h))
 #define BANK_TO_HANDLER(b)		((genf *)(FPTR)(b))
 
-#undef ADDR2BYTE
-#undef BYTE2ADDR
-#define ADDR2BYTE(s,a)			(((s)->ashift < 0) ? ((a) << -(s)->ashift) : ((a) >> (s)->ashift))
-#define ADDR2BYTE_END(s,a)		(((s)->ashift < 0) ? (((a) << -(s)->ashift) | ((1 << -(s)->ashift) - 1)) : ((a) >> (s)->ashift))
-#define BYTE2ADDR(s,a)			(((s)->ashift < 0) ? ((a) >> -(s)->ashift) : ((a) << (s)->ashift))
-
 #define SUBTABLE_PTR(tabledata, entry) (&(tabledata)->table[(1 << LEVEL1_BITS) + (((entry) - SUBTABLE_BASE) << LEVEL2_BITS)])
 
 
@@ -224,6 +218,14 @@ struct _bank_data
 	UINT16					curentry;				/* current entry */
 	void *					entry[MAX_BANK_ENTRIES];/* array of entries for this bank */
 	void *					entryd[MAX_BANK_ENTRIES];/* array of decrypted entries for this bank */
+};
+
+/* In memory.h: typedef struct _direct_range direct_range; */
+struct _direct_range
+{
+    direct_range *			next;					/* pointer to the next range in the list */
+    offs_t 					bytestart;				/* starting byte offset of the range */
+    offs_t					byteend;				/* ending byte offset of the range */
 };
 
 /* In memory.h: typedef struct _handler_data handler_data */
@@ -331,7 +333,8 @@ static STATE_POSTLOAD( bank_reattach );
 static UINT8 table_assign_handler(const address_space *space, handler_data **table, void *object, genf *handler, const char *handler_name, offs_t bytestart, offs_t byteend, offs_t bytemask);
 static void table_compute_subhandler(handler_data **table, UINT8 entry, read_or_write readorwrite, int spacebits, int spaceendian, int handlerbits, int handlerunitmask);
 static void table_populate_range(address_table *tabledata, offs_t bytestart, offs_t byteend, UINT8 handler);
-static void table_populate_range_mirrored(address_table *tabledata, offs_t bytestart, offs_t byteend, offs_t bytemirror, UINT8 handler);
+static void table_populate_range_mirrored(address_space *space, address_table *tabledata, offs_t bytestart, offs_t byteend, offs_t bytemirror, UINT8 handler);
+static UINT8 table_derive_range(const address_table *table, offs_t byteaddress, offs_t *bytestart, offs_t *byteend);
 
 /* subtable management */
 static UINT8 subtable_alloc(address_table *tabledata);
@@ -340,6 +343,10 @@ static int subtable_merge(address_table *tabledata);
 static void subtable_release(address_table *tabledata, UINT8 subentry);
 static UINT8 *subtable_open(address_table *tabledata, offs_t l1index);
 static void subtable_close(address_table *tabledata, offs_t l1index);
+
+/* direct memory ranges */
+static direct_range *direct_range_find(address_space *space, offs_t byteaddress, UINT8 *entry);
+static void direct_range_remove_intersecting(address_space *space, offs_t bytestart, offs_t byteend);
 
 /* memory block allocation */
 static void *block_allocate(const address_space *space, offs_t bytestart, offs_t byteend, void *memory);
@@ -353,6 +360,12 @@ static genf *get_static_handler(int handlerbits, int readorwrite, int which);
 static const char *handler_to_string(const address_table *table, UINT8 entry);
 static void dump_map(FILE *file, const address_space *space, const address_table *table);
 static void mem_dump(running_machine *machine);
+
+/* input port handlers */
+static UINT8 input_port_read8(const input_port_config *port, offs_t offset);
+static UINT16 input_port_read16(const input_port_config *port, offs_t offset, UINT16 mem_mask);
+static UINT32 input_port_read32(const input_port_config *port, offs_t offset, UINT32 mem_mask);
+static UINT64 input_port_read64(const input_port_config *port, offs_t offset, UINT64 mem_mask);
 
 
 
@@ -368,8 +381,8 @@ static void mem_dump(running_machine *machine);
 INLINE void force_opbase_update(const address_space *space)
 {
 	address_space *spacerw = (address_space *)space;
-	spacerw->direct.max = 0;
-	spacerw->direct.min = 1;
+	spacerw->direct.byteend = 0;
+	spacerw->direct.bytestart = 1;
 }
 
 
@@ -389,10 +402,10 @@ INLINE void adjust_addresses(address_space *space, offs_t *start, offs_t *end, o
 	*end &= ~*mirror & space->addrmask;
 
 	/* adjust to byte values */
-	*start = ADDR2BYTE(space, *start);
-	*end = ADDR2BYTE_END(space, *end);
-	*mask = ADDR2BYTE(space, *mask);
-	*mirror = ADDR2BYTE(space, *mirror);
+	*start = memory_address_to_byte(space, *start);
+	*end = memory_address_to_byte_end(space, *end);
+	*mask = memory_address_to_byte_end(space, *mask);
+	*mirror = memory_address_to_byte(space, *mirror);
 }
 
 
@@ -813,8 +826,8 @@ void address_map_free(address_map *map)
 
 void memory_set_decrypted_region(const address_space *space, offs_t addrstart, offs_t addrend, void *base)
 {
-	offs_t bytestart = ADDR2BYTE(space, addrstart);
-	offs_t byteend = ADDR2BYTE_END(space, addrend);
+	offs_t bytestart = memory_address_to_byte(space, addrstart);
+	offs_t byteend = memory_address_to_byte_end(space, addrend);
 	int banknum, found = FALSE;
 
 	/* loop over banks looking for a match */
@@ -869,48 +882,45 @@ direct_update_func memory_set_direct_update_handler(const address_space *space, 
     update the opcode base for the given address
 -------------------------------------------------*/
 
-int memory_set_direct_region(const address_space *space, offs_t byteaddress)
+int memory_set_direct_region(const address_space *space, offs_t *byteaddress)
 {
 	memory_private *memdata = space->machine->memory_data;
 	address_space *spacerw = (address_space *)space;
 	UINT8 *base = NULL, *based = NULL;
 	const handler_data *handlers;
+	direct_range *range;
+	offs_t maskedbits;
+	offs_t overrideaddress = *byteaddress;
 	UINT8 entry;
 
 	/* allow overrides */
 	if (spacerw->directupdate != NULL)
 	{
-		byteaddress = (*spacerw->directupdate)(spacerw, byteaddress, &spacerw->direct);
-		if (byteaddress == ~0)
+		overrideaddress = (*spacerw->directupdate)(spacerw, overrideaddress, &spacerw->direct);
+		if (overrideaddress == ~0)
 			return TRUE;
+
+		*byteaddress = overrideaddress;
 	}
 
-	/* perform the lookup */
-	byteaddress &= spacerw->bytemask;
-	entry = spacerw->readlookup[LEVEL1_INDEX(byteaddress)];
-	if (entry >= SUBTABLE_BASE)
-		entry = spacerw->readlookup[LEVEL2_INDEX(entry,byteaddress)];
+	/* remove the masked bits (we'll put them back later) */
+	maskedbits = overrideaddress & ~spacerw->bytemask;
+
+	/* find or allocate a matching range */
+	range = direct_range_find(spacerw, overrideaddress, &entry);
 
 	/* keep track of current entry */
 	spacerw->direct.entry = entry;
 
-	/* if we don't map to a bank, see if there are any banks we can map to */
+	/* if we don't map to a bank, return FALSE */
 	if (entry < STATIC_BANK1 || entry >= STATIC_RAM)
 	{
-		/* loop over banks and find a match */
-		for (entry = 1; entry < STATIC_COUNT; entry++)
-		{
-			bank_info *bank = &memdata->bankdata[entry];
-			if (bank->used && bank_references_space(bank, space) && bank->bytestart < byteaddress && bank->byteend > byteaddress)
-				break;
-		}
-
-		/* if nothing was found, leave everything alone */
-		if (entry == STATIC_COUNT)
-		{
-			logerror("CPU '%s': warning - attempt to direct-map address %08X in %s space\n", space->cpu->tag, byteaddress, space->name);
-			return FALSE;
-		}
+		/* ensure future updates to land here as well until we get back into a bank */
+		spacerw->direct.byteend = 0;
+		spacerw->direct.bytestart = 1;
+		if (!spacerw->debugger_access)
+			logerror("CPU '%s': warning - attempt to direct-map address %08X in %s space\n", space->cpu->tag, overrideaddress, space->name);
+		return FALSE;
 	}
 
 	/* if no decrypted opcodes, point to the same base */
@@ -921,11 +931,11 @@ int memory_set_direct_region(const address_space *space, offs_t byteaddress)
 
 	/* compute the adjusted base */
 	handlers = spacerw->read.handlers[entry];
-	spacerw->direct.mask = handlers->bytemask;
-	spacerw->direct.raw = base - (handlers->bytestart & spacerw->direct.mask);
-	spacerw->direct.decrypted = based - (handlers->bytestart & spacerw->direct.mask);
-	spacerw->direct.min = handlers->bytestart;
-	spacerw->direct.max = handlers->byteend;
+	spacerw->direct.bytemask = handlers->bytemask;
+	spacerw->direct.raw = base - (handlers->bytestart & spacerw->direct.bytemask);
+	spacerw->direct.decrypted = based - (handlers->bytestart & spacerw->direct.bytemask);
+	spacerw->direct.bytestart = maskedbits | range->bytestart;
+	spacerw->direct.byteend = maskedbits | range->byteend;
 	return TRUE;
 }
 
@@ -1154,7 +1164,7 @@ void *_memory_install_handler(const address_space *space, offs_t addrstart, offs
 	if (whandler != 0)
 		space_map_range(spacerw, ROW_WRITE, spacerw->dbits, 0, addrstart, addrend, addrmask, addrmirror, (genf *)(FPTR)whandler, spacerw, whandler_name);
 	mem_dump(space->machine);
-	return space_find_backing_memory(spacerw, ADDR2BYTE(spacerw, addrstart));
+	return space_find_backing_memory(spacerw, memory_address_to_byte(spacerw, addrstart));
 }
 
 
@@ -1171,7 +1181,7 @@ UINT8 *_memory_install_handler8(const address_space *space, offs_t addrstart, of
 	if (whandler != NULL)
 		space_map_range(spacerw, ROW_WRITE, 8, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, spacerw, whandler_name);
 	mem_dump(space->machine);
-	return space_find_backing_memory(spacerw, ADDR2BYTE(spacerw, addrstart));
+	return space_find_backing_memory(spacerw, memory_address_to_byte(spacerw, addrstart));
 }
 
 
@@ -1188,7 +1198,7 @@ UINT16 *_memory_install_handler16(const address_space *space, offs_t addrstart, 
 	if (whandler != NULL)
 		space_map_range(spacerw, ROW_WRITE, 16, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, spacerw, whandler_name);
 	mem_dump(space->machine);
-	return space_find_backing_memory(spacerw, ADDR2BYTE(spacerw, addrstart));
+	return space_find_backing_memory(spacerw, memory_address_to_byte(spacerw, addrstart));
 }
 
 
@@ -1205,7 +1215,7 @@ UINT32 *_memory_install_handler32(const address_space *space, offs_t addrstart, 
 	if (whandler != NULL)
 		space_map_range(spacerw, ROW_WRITE, 32, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, spacerw, whandler_name);
 	mem_dump(space->machine);
-	return space_find_backing_memory(spacerw, ADDR2BYTE(spacerw, addrstart));
+	return space_find_backing_memory(spacerw, memory_address_to_byte(spacerw, addrstart));
 }
 
 
@@ -1222,7 +1232,7 @@ UINT64 *_memory_install_handler64(const address_space *space, offs_t addrstart, 
 	if (whandler != NULL)
 		space_map_range(spacerw, ROW_WRITE, 64, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, spacerw, whandler_name);
 	mem_dump(space->machine);
-	return space_find_backing_memory(spacerw, ADDR2BYTE(spacerw, addrstart));
+	return space_find_backing_memory(spacerw, memory_address_to_byte(spacerw, addrstart));
 }
 
 
@@ -1243,7 +1253,7 @@ void *_memory_install_device_handler(const address_space *space, const device_co
 	if (whandler != 0)
 		space_map_range(spacerw, ROW_WRITE, spacerw->dbits, 0, addrstart, addrend, addrmask, addrmirror, (genf *)(FPTR)whandler, (void *)device, whandler_name);
 	mem_dump(space->machine);
-	return space_find_backing_memory(spacerw, ADDR2BYTE(spacerw, addrstart));
+	return space_find_backing_memory(spacerw, memory_address_to_byte(spacerw, addrstart));
 }
 
 
@@ -1260,7 +1270,7 @@ UINT8 *_memory_install_device_handler8(const address_space *space, const device_
 	if (whandler != NULL)
 		space_map_range(spacerw, ROW_WRITE, 8, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, (void *)device, whandler_name);
 	mem_dump(space->machine);
-	return space_find_backing_memory(spacerw, ADDR2BYTE(spacerw, addrstart));
+	return space_find_backing_memory(spacerw, memory_address_to_byte(spacerw, addrstart));
 }
 
 
@@ -1277,7 +1287,7 @@ UINT16 *_memory_install_device_handler16(const address_space *space, const devic
 	if (whandler != NULL)
 		space_map_range(spacerw, ROW_WRITE, 16, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, (void *)device, whandler_name);
 	mem_dump(space->machine);
-	return space_find_backing_memory(spacerw, ADDR2BYTE(spacerw, addrstart));
+	return space_find_backing_memory(spacerw, memory_address_to_byte(spacerw, addrstart));
 }
 
 
@@ -1294,7 +1304,7 @@ UINT32 *_memory_install_device_handler32(const address_space *space, const devic
 	if (whandler != NULL)
 		space_map_range(spacerw, ROW_WRITE, 32, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, (void *)device, whandler_name);
 	mem_dump(space->machine);
-	return space_find_backing_memory(spacerw, ADDR2BYTE(spacerw, addrstart));
+	return space_find_backing_memory(spacerw, memory_address_to_byte(spacerw, addrstart));
 }
 
 
@@ -1311,7 +1321,32 @@ UINT64 *_memory_install_device_handler64(const address_space *space, const devic
 	if (whandler != NULL)
 		space_map_range(spacerw, ROW_WRITE, 64, 0, addrstart, addrend, addrmask, addrmirror, (genf *)whandler, (void *)device, whandler_name);
 	mem_dump(space->machine);
-	return space_find_backing_memory(spacerw, ADDR2BYTE(spacerw, addrstart));
+	return space_find_backing_memory(spacerw, memory_address_to_byte(spacerw, addrstart));
+}
+
+
+/*-------------------------------------------------
+    memory_install_read_port_handler - install a
+    new 8-bit input port handler into the given
+    address space
+-------------------------------------------------*/
+
+void memory_install_read_port_handler(const address_space *space, offs_t addrstart, offs_t addrend, offs_t addrmask, offs_t addrmirror, const char *tag)
+{
+	const input_port_config *port = input_port_by_tag(space->machine->portconfig, tag);
+	address_space *spacerw = (address_space *)space;
+	genf *handler = NULL;
+
+	if (port == NULL)
+		fatalerror("Non-existent port referenced: '%s'\n", tag);
+	switch (space->dbits)
+	{
+		case 8:		handler = (genf *)input_port_read8; 	break;
+		case 16:	handler = (genf *)input_port_read16; 	break;
+		case 32:	handler = (genf *)input_port_read32; 	break;
+		case 64:	handler = (genf *)input_port_read64; 	break;
+	}
+	space_map_range(spacerw, ROW_READ, space->dbits, 0, addrstart, addrend, addrmask, addrmirror, handler, (void *)port, tag);
 }
 
 
@@ -1546,9 +1581,9 @@ static void memory_init_spaces(running_machine *machine)
 
 				/* set the direct access information base */
 				space->direct.raw = space->direct.decrypted = NULL;
-				space->direct.mask = space->bytemask;
-				space->direct.min = 1;
-				space->direct.max = 0;
+				space->direct.bytemask = space->bytemask;
+				space->direct.bytestart = 1;
+				space->direct.byteend = 0;
 				space->direct.entry = STATIC_UNMAP;
 				space->directupdate = NULL;
 
@@ -1587,7 +1622,7 @@ static void memory_init_preflight(running_machine *machine)
 		if (space->map->globalmask != 0)
 		{
 			space->addrmask = space->map->globalmask;
-			space->bytemask = ADDR2BYTE_END(space, space->addrmask);
+			space->bytemask = memory_address_to_byte_end(space, space->addrmask);
 		}
 
 		/* make a pass over the address map, adjusting for the CPU and getting memory pointers */
@@ -1678,15 +1713,20 @@ static void memory_init_populate(running_machine *machine)
 				/* if we have a read port tag, look it up */
 				if (entry->read_porttag != NULL)
 				{
-					switch (space->dbits)
-					{
-						case 8:		rhandler.shandler8  = input_port_read_handler8(machine->portconfig, entry->read_porttag);	break;
-						case 16:	rhandler.shandler16 = input_port_read_handler16(machine->portconfig, entry->read_porttag);	break;
-						case 32:	rhandler.shandler32 = input_port_read_handler32(machine->portconfig, entry->read_porttag);	break;
-						case 64:	rhandler.shandler64 = input_port_read_handler64(machine->portconfig, entry->read_porttag);	break;
-					}
-					if (rhandler.generic == NULL)
+					const input_port_config *port = input_port_by_tag(machine->portconfig, entry->read_porttag);
+					int bits = (entry->read_bits == 0) ? space->dbits : entry->read_bits;
+					genf *handler = NULL;
+
+					if (port == NULL)
 						fatalerror("Non-existent port referenced: '%s'\n", entry->read_porttag);
+					switch (bits)
+					{
+						case 8:		handler = (genf *)input_port_read8; 	break;
+						case 16:	handler = (genf *)input_port_read16; 	break;
+						case 32:	handler = (genf *)input_port_read32; 	break;
+						case 64:	handler = (genf *)input_port_read64; 	break;
+					}
+					space_map_range_private(space, ROW_READ, bits, entry->read_mask, entry->addrstart, entry->addrend, entry->addrmask, entry->addrmirror, handler, (void *)port, entry->read_porttag);
 				}
 
 				/* install the read handler if present */
@@ -1694,11 +1734,11 @@ static void memory_init_populate(running_machine *machine)
 				{
 					int bits = (entry->read_bits == 0) ? space->dbits : entry->read_bits;
 					void *object = space;
-					if (entry->read_devtype != NULL)
+					if (entry->read_devtag != NULL)
 					{
-						object = (void *)device_list_find_by_tag(machine->config->devicelist, entry->read_devtype, entry->read_devtag);
+						object = (void *)device_list_find_by_tag(machine->config->devicelist, entry->read_devtag);
 						if (object == NULL)
-							fatalerror("Unidentified object in memory map: type=%s tag=%s\n", devtype_get_name(entry->read_devtype), entry->read_devtag);
+							fatalerror("Unidentified object in memory map: tag=%s\n", entry->read_devtag);
 					}
 					space_map_range_private(space, ROW_READ, bits, entry->read_mask, entry->addrstart, entry->addrend, entry->addrmask, entry->addrmirror, rhandler.generic, object, entry->read_name);
 				}
@@ -1708,11 +1748,11 @@ static void memory_init_populate(running_machine *machine)
 				{
 					int bits = (entry->write_bits == 0) ? space->dbits : entry->write_bits;
 					void *object = space;
-					if (entry->write_devtype != NULL)
+					if (entry->write_devtag != NULL)
 					{
-						object = (void *)device_list_find_by_tag(machine->config->devicelist, entry->write_devtype, entry->write_devtag);
+						object = (void *)device_list_find_by_tag(machine->config->devicelist, entry->write_devtag);
 						if (object == NULL)
-							fatalerror("Unidentified object in memory map: type=%s tag=%s\n", devtype_get_name(entry->write_devtype), entry->write_devtag);
+							fatalerror("Unidentified object in memory map: tag=%s\n", entry->write_devtag);
 					}
 					space_map_range_private(space, ROW_WRITE, bits, entry->write_mask, entry->addrstart, entry->addrend, entry->addrmask, entry->addrmirror, whandler.generic, object, entry->write_name);
 				}
@@ -1898,13 +1938,35 @@ static void memory_exit(running_machine *machine)
 	/* free all the address spaces and tables */
 	for (space = (address_space *)memdata->spacelist; space != NULL; space = nextspace)
 	{
+		int entry;
+
 		nextspace = (address_space *)space->next;
+
+		/* free all direct ranges */
+		for (entry = 0; entry < ARRAY_LENGTH(space->direct.rangelist); entry++)
+			while (space->direct.rangelist[entry] != NULL)
+			{
+				direct_range *range = space->direct.rangelist[entry];
+				space->direct.rangelist[entry] = range->next;
+				free(range);
+			}
+
+		/* free the free list of direct ranges */
+		while (space->direct.freerangelist != NULL)
+		{
+			direct_range *range = space->direct.freerangelist;
+			space->direct.freerangelist = range->next;
+			free(range);
+		}
+
+		/* free the address map and tables */
 		if (space->map != NULL)
 			address_map_free(space->map);
 		if (space->read.table != NULL)
 			free(space->read.table);
 		if (space->write.table != NULL)
 			free(space->write.table);
+
 		free(space);
 	}
 }
@@ -2037,7 +2099,6 @@ static void map_detokenize(address_map *map, const game_driver *driver, const ch
 				TOKEN_GET_UINT32_UNPACK3(tokens, entrytype, 8, entry->read_bits, 8, entry->read_mask, 8);
 				entry->read = TOKEN_GET_PTR(tokens, read);
 				entry->read_name = TOKEN_GET_STRING(tokens);
-				entry->read_devtype = TOKEN_GET_PTR(tokens, devtype);
 				if (entry->read_devtag_string == NULL)
 					entry->read_devtag_string = astring_alloc();
 				entry->read_devtag = device_inherit_tag(entry->read_devtag_string, cputag, TOKEN_GET_STRING(tokens));
@@ -2049,7 +2110,6 @@ static void map_detokenize(address_map *map, const game_driver *driver, const ch
 				TOKEN_GET_UINT32_UNPACK3(tokens, entrytype, 8, entry->write_bits, 8, entry->write_mask, 8);
 				entry->write = TOKEN_GET_PTR(tokens, write);
 				entry->write_name = TOKEN_GET_STRING(tokens);
-				entry->write_devtype = TOKEN_GET_PTR(tokens, devtype);
 				if (entry->write_devtag_string == NULL)
 					entry->write_devtag_string = astring_alloc();
 				entry->write_devtag = device_inherit_tag(entry->write_devtag_string, cputag, TOKEN_GET_STRING(tokens));
@@ -2193,7 +2253,7 @@ static void space_map_range(address_space *space, read_or_write readorwrite, int
 		table_compute_subhandler(tabledata->handlers, entry, readorwrite, space->dbits, space->endianness, handlerbits, handlerunitmask);
 
 	/* populate it */
-	table_populate_range_mirrored(tabledata, bytestart, byteend, bytemirror, entry);
+	table_populate_range_mirrored(space, tabledata, bytestart, byteend, bytemirror, entry);
 
 	/* reset read/write pointers if necessary (could have moved due to realloc) */
 	if (reset_write)
@@ -2205,8 +2265,8 @@ static void space_map_range(address_space *space, read_or_write readorwrite, int
 	if (readorwrite == ROW_READ && entry == space->direct.entry)
 	{
 		space->direct.entry = STATIC_UNMAP;
-		space->direct.min = 1;
-		space->direct.max = 0;
+		space->direct.bytestart = 1;
+		space->direct.byteend = 0;
 	}
 }
 
@@ -2551,7 +2611,7 @@ static void table_populate_range(address_table *tabledata, offs_t bytestart, off
     including mirrors
 -------------------------------------------------*/
 
-static void table_populate_range_mirrored(address_table *tabledata, offs_t bytestart, offs_t byteend, offs_t bytemirror, UINT8 handler)
+static void table_populate_range_mirrored(address_space *space, address_table *tabledata, offs_t bytestart, offs_t byteend, offs_t bytemirror, UINT8 handler)
 {
 	offs_t lmirrorbit[LEVEL2_BITS], lmirrorbits, hmirrorbit[32 - LEVEL2_BITS], hmirrorbits, lmirrorcount, hmirrorcount;
 	UINT8 prev_entry = STATIC_INVALID;
@@ -2575,6 +2635,17 @@ static void table_populate_range_mirrored(address_table *tabledata, offs_t bytes
 		for (i = 0; i < hmirrorbits; i++)
 			if (hmirrorcount & (1 << i))
 				hmirrorbase |= hmirrorbit[i];
+
+		/* invalidate any intersecting cached ranges */
+		for (lmirrorcount = 0; lmirrorcount < (1 << lmirrorbits); lmirrorcount++)
+		{
+			/* compute the base of this mirror */
+			offs_t lmirrorbase = hmirrorbase;
+			for (i = 0; i < lmirrorbits; i++)
+				if (lmirrorcount & (1 << i))
+					lmirrorbase |= lmirrorbit[i];
+			direct_range_remove_intersecting(space, bytestart + lmirrorbase, byteend + lmirrorbase);
+		}
 
 		/* if this is not our first time through, and the level 2 entry matches the previous
            level 2 entry, just do a quick map and get out; note that this only works for entries
@@ -2615,6 +2686,108 @@ static void table_populate_range_mirrored(address_table *tabledata, offs_t bytes
 			table_populate_range(tabledata, bytestart + lmirrorbase, byteend + lmirrorbase, handler);
 		}
 	}
+}
+
+
+/*-------------------------------------------------
+    table_derive_range - look up the entry for
+    a memory range, and then compute the extent
+    of that range based on the lookup tables
+-------------------------------------------------*/
+
+static UINT8 table_derive_range(const address_table *table, offs_t byteaddress, offs_t *bytestart, offs_t *byteend)
+{
+	UINT32 curentry, entry, curl1entry, l1entry;
+	const handler_data *handler;
+	offs_t minscan, maxscan;
+
+	/* look up the initial address to get the entry we care about */
+	entry = l1entry = table->table[LEVEL1_INDEX(byteaddress)];
+	if (l1entry >= SUBTABLE_BASE)
+		entry = table->table[LEVEL2_INDEX(l1entry, byteaddress)];
+	handler = table->handlers[entry];
+
+	/* use the bytemask of the entry to set minimum and maximum bounds */
+	minscan = handler->bytestart | ((byteaddress - handler->bytestart) & ~handler->bytemask);
+	maxscan = handler->byteend | ((byteaddress - handler->bytestart) & ~handler->bytemask);
+
+	/* first scan backwards to find the start address */
+	curl1entry = l1entry;
+	curentry = entry;
+	*bytestart = byteaddress;
+	while (1)
+	{
+		/* if we need to scan the subtable, do it */
+		if (curentry != curl1entry)
+		{
+			UINT32 minindex = LEVEL2_INDEX(curl1entry, 0);
+			UINT32 index;
+
+			/* scan backwards from the current address, until the previous entry doesn't match */
+			for (index = LEVEL2_INDEX(curl1entry, *bytestart); index > minindex; index--, *bytestart -= 1)
+				if (table->table[index - 1] != entry)
+					break;
+
+			/* if we didn't hit the beginning, then we're finished scanning */
+			if (index != minindex)
+				break;
+		}
+
+		/* move to the beginning of this L1 entry; stop at the minimum address */
+		*bytestart &= ~((1 << LEVEL2_BITS) - 1);
+		if (*bytestart <= minscan)
+			break;
+
+		/* look up the entry of the byte at the end of the previous L1 entry; if it doesn't match, stop */
+		curentry = curl1entry = table->table[LEVEL1_INDEX(*bytestart - 1)];
+		if (curl1entry >= SUBTABLE_BASE)
+			curentry = table->table[LEVEL2_INDEX(curl1entry, *bytestart - 1)];
+		if (curentry != entry)
+			break;
+
+		/* move into the previous entry and resume searching */
+		*bytestart -= 1;
+	}
+
+	/* then scan forwards to find the end address */
+	curl1entry = l1entry;
+	curentry = entry;
+	*byteend = byteaddress;
+	while (1)
+	{
+		/* if we need to scan the subtable, do it */
+		if (curentry != curl1entry)
+		{
+			UINT32 maxindex = LEVEL2_INDEX(curl1entry, ~0);
+			UINT32 index;
+
+			/* scan forwards from the current address, until the next entry doesn't match */
+			for (index = LEVEL2_INDEX(curl1entry, *byteend); index < maxindex; index++, *byteend += 1)
+				if (table->table[index + 1] != entry)
+					break;
+
+			/* if we didn't hit the end, then we're finished scanning */
+			if (index != maxindex)
+				break;
+		}
+
+		/* move to the end of this L1 entry; stop at the maximum address */
+		*byteend |= (1 << LEVEL2_BITS) - 1;
+		if (*byteend >= maxscan)
+			break;
+
+		/* look up the entry of the byte at the start of the next L1 entry; if it doesn't match, stop */
+		curentry = curl1entry = table->table[LEVEL1_INDEX(*byteend + 1)];
+		if (curl1entry >= SUBTABLE_BASE)
+			curentry = table->table[LEVEL2_INDEX(curl1entry, *byteend + 1)];
+		if (curentry != entry)
+			break;
+
+		/* move into the next entry and resume searching */
+		*byteend += 1;
+	}
+
+	return entry;
 }
 
 
@@ -2811,6 +2984,95 @@ static UINT8 *subtable_open(address_table *tabledata, offs_t l1index)
 static void subtable_close(address_table *tabledata, offs_t l1index)
 {
 	/* defer any merging until we run out of tables */
+}
+
+
+
+/***************************************************************************
+    DIRECT MEMORY RANGES
+***************************************************************************/
+
+/*-------------------------------------------------
+    direct_range_find - find a byte address in
+    a range
+-------------------------------------------------*/
+
+static direct_range *direct_range_find(address_space *space, offs_t byteaddress, UINT8 *entry)
+{
+	direct_range **rangelistptr;
+	direct_range **rangeptr;
+	direct_range *range;
+
+	/* determine which entry */
+	byteaddress &= space->bytemask;
+	*entry = space->read.table[LEVEL1_INDEX(byteaddress)];
+	if (*entry >= SUBTABLE_BASE)
+		*entry = space->read.table[LEVEL2_INDEX(*entry, byteaddress)];
+	rangelistptr = &space->direct.rangelist[*entry];
+
+	/* scan our table */
+	for (rangeptr = rangelistptr; *rangeptr != NULL; rangeptr = &(*rangeptr)->next)
+		if (byteaddress >= (*rangeptr)->bytestart && byteaddress <= (*rangeptr)->byteend)
+		{
+			/* found a match; move us to the head of the list if we're not already there */
+			range = *rangeptr;
+			if (range != *rangelistptr)
+			{
+				*rangeptr = range->next;
+				range->next = *rangelistptr;
+				*rangelistptr = range;
+			}
+			return range;
+		}
+
+	/* didn't find out; allocate a new one */
+	range = space->direct.freerangelist;
+	if (range != NULL)
+		space->direct.freerangelist = range->next;
+	else
+		range = malloc_or_die(sizeof(*range));
+
+	/* fill in the range */
+	table_derive_range(&space->read, byteaddress, &range->bytestart, &range->byteend);
+	range->next = *rangelistptr;
+	*rangelistptr = range;
+
+	return range;
+}
+
+
+/*-------------------------------------------------
+    direct_range_remove_intersecting - remove
+    all cached ranges that intersect the given
+    address range
+-------------------------------------------------*/
+
+static void direct_range_remove_intersecting(address_space *space, offs_t bytestart, offs_t byteend)
+{
+    int entry;
+
+    /* loop over all entries */
+    for (entry = 0; entry < ARRAY_LENGTH(space->read.handlers); entry++)
+    {
+        direct_range **rangeptr, **nextrangeptr;
+
+        /* loop over all ranges in this entry's list */
+        for (nextrangeptr = rangeptr = &space->direct.rangelist[entry]; *rangeptr != NULL; rangeptr = nextrangeptr)
+        {
+        	/* if we intersect, remove and add to the free range list */
+            if (bytestart <= (*rangeptr)->byteend && byteend >= (*rangeptr)->bytestart)
+            {
+                direct_range *range = *rangeptr;
+                *rangeptr = range->next;
+                range->next = space->direct.freerangelist;
+                space->direct.freerangelist = range;
+            }
+
+            /* otherwise advance to the next in the list */
+            else
+                nextrangeptr = &(*rangeptr)->next;
+        }
+    }
 }
 
 
@@ -3180,11 +3442,7 @@ static const char *handler_to_string(const address_table *table, UINT8 entry)
 
 static void dump_map(FILE *file, const address_space *space, const address_table *table)
 {
-	int l1count = 1 << LEVEL1_BITS;
-	int l2count = 1 << LEVEL2_BITS;
-	UINT8 lastentry = STATIC_UNMAP;
-	int entrymatches = 0;
-	int i, j;
+	offs_t byteaddress, bytestart, byteend;
 
 	/* dump generic information */
 	fprintf(file, "  Address bits = %d\n", space->abits);
@@ -3194,83 +3452,13 @@ static void dump_map(FILE *file, const address_space *space, const address_table
 	fprintf(file, "  Address mask = %X\n", space->bytemask);
 	fprintf(file, "\n");
 
-	/* loop over level 1 entries */
-	for (i = 0; i < l1count; i++)
+	/* iterate over addresses */
+	for (byteaddress = 0; byteaddress <= space->bytemask; byteaddress = byteend + 1)
 	{
-		UINT8 entry = table->table[i];
-
-		/* if this entry matches the previous one, just count it */
-		if (entry < SUBTABLE_BASE && entry == lastentry)
-		{
-			entrymatches++;
-			continue;
-		}
-
-		/* otherwise, print accumulated info */
-		if (lastentry < SUBTABLE_BASE && lastentry != STATIC_UNMAP)
-			fprintf(file, "%08X-%08X    = %02X: %s [offset=%08X]\n",
-							(i - entrymatches) << LEVEL2_BITS,
-							(i << LEVEL2_BITS) - 1,
-							lastentry,
-							handler_to_string(table, lastentry),
-							table->handlers[lastentry]->bytestart);
-
-		/* start counting with this entry */
-		lastentry = entry;
-		entrymatches = 1;
-
-		/* if we're a subtable, we need to drill down */
-		if (entry >= SUBTABLE_BASE)
-		{
-			UINT8 lastentry2 = STATIC_UNMAP;
-			int entry2matches = 0;
-
-			/* loop over level 2 entries */
-			entry -= SUBTABLE_BASE;
-			for (j = 0; j < l2count; j++)
-			{
-				UINT8 entry2 = table->table[(1 << LEVEL1_BITS) + (entry << LEVEL2_BITS) + j];
-
-				/* if this entry matches the previous one, just count it */
-				if (entry2 < SUBTABLE_BASE && entry2 == lastentry2)
-				{
-					entry2matches++;
-					continue;
-				}
-
-				/* otherwise, print accumulated info */
-				if (lastentry2 < SUBTABLE_BASE && lastentry2 != STATIC_UNMAP)
-					fprintf(file, "%08X-%08X    = %02X: %s [offset=%08X]\n",
-									((i << LEVEL2_BITS) | (j - entry2matches)),
-									((i << LEVEL2_BITS) | (j - 1)),
-									lastentry2,
-									handler_to_string(table, lastentry2),
-									table->handlers[lastentry2]->bytestart);
-
-				/* start counting with this entry */
-				lastentry2 = entry2;
-				entry2matches = 1;
-			}
-
-			/* flush the last entry */
-			if (lastentry2 < SUBTABLE_BASE && lastentry2 != STATIC_UNMAP)
-				fprintf(file, "%08X-%08X    = %02X: %s [offset=%08X]\n",
-								((i << LEVEL2_BITS) | (j - entry2matches)),
-								((i << LEVEL2_BITS) | (j - 1)),
-								lastentry2,
-								handler_to_string(table, lastentry2),
-								table->handlers[lastentry2]->bytestart);
-		}
-	}
-
-	/* flush the last entry */
-	if (lastentry < SUBTABLE_BASE && lastentry != STATIC_UNMAP)
+		UINT8 entry = table_derive_range(table, byteaddress, &bytestart, &byteend);
 		fprintf(file, "%08X-%08X    = %02X: %s [offset=%08X]\n",
-						(i - entrymatches) << LEVEL2_BITS,
-						(i << LEVEL2_BITS) - 1,
-						lastentry,
-						handler_to_string(table, lastentry),
-						table->handlers[lastentry]->bytestart);
+						bytestart, byteend, entry, handler_to_string(table, entry), table->handlers[entry]->bytestart);
+	}
 }
 
 
@@ -3291,6 +3479,36 @@ static void mem_dump(running_machine *machine)
 			fclose(file);
 		}
 	}
+}
+
+
+
+/***************************************************************************
+    INPUT PORT READ HANDLERS
+***************************************************************************/
+
+/*-------------------------------------------------
+    input port handlers
+-------------------------------------------------*/
+
+static UINT8 input_port_read8(const input_port_config *port, offs_t offset)
+{
+	return input_port_read_direct(port);
+}
+
+static UINT16 input_port_read16(const input_port_config *port, offs_t offset, UINT16 mem_mask)
+{
+	return input_port_read_direct(port);
+}
+
+static UINT32 input_port_read32(const input_port_config *port, offs_t offset, UINT32 mem_mask)
+{
+	return input_port_read_direct(port);
+}
+
+static UINT64 input_port_read64(const input_port_config *port, offs_t offset, UINT64 mem_mask)
+{
+	return input_port_read_direct(port);
 }
 
 

@@ -162,12 +162,12 @@ static WRITE16_HANDLER( tigeroad_soundcmd_w )
 		soundlatch_w(space,offset,data >> 8);
 }
 
-static WRITE8_HANDLER( msm5205_w )
+static WRITE8_DEVICE_HANDLER( msm5205_w )
 {
-	msm5205_reset_w(offset,(data>>7)&1);
-	msm5205_data_w(offset,data);
-	msm5205_vclk_w(offset,1);
-	msm5205_vclk_w(offset,0);
+	msm5205_reset_w(device,(data>>7)&1);
+	msm5205_data_w(device,data);
+	msm5205_vclk_w(device,1);
+	msm5205_vclk_w(device,0);
 }
 
 
@@ -191,10 +191,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0x8000) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0x8001, 0x8001) AM_WRITE(ym2203_write_port_0_w)
-	AM_RANGE(0xa000, 0xa000) AM_READWRITE(ym2203_status_port_1_r, ym2203_control_port_1_w)
-	AM_RANGE(0xa001, 0xa001) AM_WRITE(ym2203_write_port_1_w)
+	AM_RANGE(0x8000, 0x8001) AM_DEVREADWRITE("ym1", ym2203_r, ym2203_w)
+	AM_RANGE(0xa000, 0xa001) AM_DEVREADWRITE("ym2", ym2203_r, ym2203_w)
 	AM_RANGE(0xc000, 0xc7ff) AM_RAM
 	AM_RANGE(0xe000, 0xe000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
@@ -211,7 +209,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sample_port_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(soundlatch2_r)
-	AM_RANGE(0x01, 0x01) AM_WRITE(msm5205_w)
+	AM_RANGE(0x01, 0x01) AM_DEVWRITE("msm", msm5205_w)
 ADDRESS_MAP_END
 
 
@@ -501,9 +499,9 @@ GFXDECODE_END
 
 
 /* handler called by the 2203 emulator when the internal timers cause an IRQ */
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =
@@ -511,7 +509,7 @@ static const ym2203_interface ym2203_config =
 	{
 			AY8910_LEGACY_OUTPUT,
 			AY8910_DEFAULT_LOADS,
-			NULL, NULL, NULL, NULL,
+			DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL,
 	},
 	irqhandler
 };
@@ -526,11 +524,11 @@ static const msm5205_interface msm5205_config =
 static MACHINE_DRIVER_START( tigeroad )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, XTAL_10MHz) /* verified on pcb */
+	MDRV_CPU_ADD("maincpu", M68000, XTAL_10MHz) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, XTAL_3_579545MHz) /* verified on pcb */
+	MDRV_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_port_map,0)
 
@@ -539,7 +537,7 @@ static MACHINE_DRIVER_START( tigeroad )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -591,11 +589,11 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( tigeroad )
-	ROM_REGION( 0x40000, "main", 0 ) /* 256K for 68000 code */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* 256K for 68000 code */
 	ROM_LOAD16_BYTE( "tru02.bin",    0x00000, 0x20000, CRC(8d283a95) SHA1(eb6c9225f79f62c22ae1e8980a557d896f598947) )
 	ROM_LOAD16_BYTE( "tru04.bin",    0x00001, 0x20000, CRC(72e2ef20) SHA1(57ab7df2050042690ccfb1f2d170840f926dcf46) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* audio CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* audio CPU */
 	ROM_LOAD( "tru05.bin",    0x0000, 0x8000, CRC(f9a7c9bf) SHA1(4d37c71aa6523ac21c6e8b23f9957e75ec4304bf) )
 
 	/* no samples player in the English version */
@@ -627,11 +625,11 @@ ROM_START( tigeroad )
 ROM_END
 
 ROM_START( toramich )
-	ROM_REGION( 0x40000, "main", 0 ) /* 256K for 68000 code */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* 256K for 68000 code */
 	ROM_LOAD16_BYTE( "tr_02.bin",    0x00000, 0x20000, CRC(b54723b1) SHA1(dfad82e96dff072c967dd59e3db71fb3b43b6dcb) )
 	ROM_LOAD16_BYTE( "tr_04.bin",    0x00001, 0x20000, CRC(ab432479) SHA1(b8ec547f7bab67107a7c83931c7ed89142a7af69) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* audio CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* audio CPU */
 	ROM_LOAD( "tr_05.bin",    0x0000, 0x8000, CRC(3ebe6e62) SHA1(6f5708b6ff8c91bc706f73300e0785f15999d570) )
 
 	ROM_REGION( 0x10000, "sample", 0 ) /* samples player */
@@ -664,13 +662,13 @@ ROM_START( toramich )
 ROM_END
 
 ROM_START( tigerodb )
-	ROM_REGION( 0x40000, "main", 0 ) /* 256K for 68000 code */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* 256K for 68000 code */
 	ROM_LOAD16_BYTE( "tgrroad.3",    0x00000, 0x10000, CRC(14c87e07) SHA1(31363b56dd9d387f3ebd7ca1c209148c389ec1aa) )
 	ROM_LOAD16_BYTE( "tgrroad.5",    0x00001, 0x10000, CRC(0904254c) SHA1(9ce7b8a699bc21618032db9b0c5494242ad77a6b) )
 	ROM_LOAD16_BYTE( "tgrroad.2",    0x20000, 0x10000, CRC(cedb1f46) SHA1(bc2d5730ff809fb0f38327d72485d472ab9da54d) )
 	ROM_LOAD16_BYTE( "tgrroad.4",    0x20001, 0x10000, CRC(e117f0b1) SHA1(ed0050247789bedaeb213c3d7c2d2cdb239bb4b4) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* audio CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* audio CPU */
 	ROM_LOAD( "tru05.bin",    0x0000, 0x8000, CRC(f9a7c9bf) SHA1(4d37c71aa6523ac21c6e8b23f9957e75ec4304bf) )
 
 	/* no samples player in the English version */
@@ -703,11 +701,11 @@ ROM_START( tigerodb )
 ROM_END
 
 ROM_START( f1dream )
-	ROM_REGION( 0x40000, "main", 0 ) /* 256K for 68000 code */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* 256K for 68000 code */
 	ROM_LOAD16_BYTE( "06j_02.bin",   0x00000, 0x20000, CRC(3c2ec697) SHA1(bccb431ad92455484420f91770e91db6d69b09ec) )
 	ROM_LOAD16_BYTE( "06k_03.bin",   0x00001, 0x20000, CRC(85ebad91) SHA1(000f5c617417ff20ee9b378166776fecfacdff95) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* audio CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* audio CPU */
 	ROM_LOAD( "12k_04.bin",   0x0000, 0x8000, CRC(4b9a7524) SHA1(19004958c19ac0af35f2c97790b0082ee2c15bc4) )
 
 	ROM_REGION( 0x008000, "text", ROMREGION_DISPOSE )
@@ -735,13 +733,13 @@ ROM_START( f1dream )
 ROM_END
 
 ROM_START( f1dreamb )
-	ROM_REGION( 0x40000, "main", 0 ) /* 256K for 68000 code */
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* 256K for 68000 code */
 	ROM_LOAD16_BYTE( "f1d_04.bin",   0x00000, 0x10000, CRC(903febad) SHA1(73726b220ce45e1f13798e50fb6455671f1150f3) )
 	ROM_LOAD16_BYTE( "f1d_05.bin",   0x00001, 0x10000, CRC(666fa2a7) SHA1(f38e71293368ddc586f437c38ced1d8ce91527ea) )
 	ROM_LOAD16_BYTE( "f1d_02.bin",   0x20000, 0x10000, CRC(98973c4c) SHA1(a73d396a1c3e43e6250d9e0ab1902d6f754d1ed9) )
 	ROM_LOAD16_BYTE( "f1d_03.bin",   0x20001, 0x10000, CRC(3d21c78a) SHA1(edee180131a5b4d507ce0490fd3890bdd03ce62f) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* audio CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* audio CPU */
 	ROM_LOAD( "12k_04.bin",   0x0000, 0x8000, CRC(4b9a7524) SHA1(19004958c19ac0af35f2c97790b0082ee2c15bc4) )
 
 	ROM_REGION( 0x008000, "text", ROMREGION_DISPOSE )

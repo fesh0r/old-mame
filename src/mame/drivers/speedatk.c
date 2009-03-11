@@ -185,8 +185,8 @@ static ADDRESS_MAP_START( speedatk_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x01) AM_WRITE(speedatk_videoregs_w) // HD46505SP video registers
 	AM_RANGE(0x24, 0x24) AM_WRITE(SMH_NOP) //video timing
-	AM_RANGE(0x40, 0x40) AM_READ_PORT("DSW") AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x41, 0x41) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0x40, 0x40) AM_READ_PORT("DSW") /* likely ay8910 input port, not direct */
+	AM_RANGE(0x40, 0x41) AM_DEVWRITE("ay", ay8910_address_data_w)
 	/*Used only during attract mode,unknown meaning.*/
 	AM_RANGE(0x60, 0x60) AM_READWRITE(SMH_NOP,SMH_NOP)//write the result to $62/$65
 	AM_RANGE(0x61, 0x61) AM_READ(SMH_NOP)//write the result to $66
@@ -279,13 +279,13 @@ static GFXDECODE_START( speedatk )
 GFXDECODE_END
 
 static MACHINE_DRIVER_START( speedatk )
-	MDRV_CPU_ADD("main", Z80,12000000/2)
+	MDRV_CPU_ADD("maincpu", Z80,12000000/2)
 	MDRV_CPU_PROGRAM_MAP(speedatk_mem,0)
 	MDRV_CPU_IO_MAP(speedatk_io,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -307,7 +307,7 @@ static MACHINE_DRIVER_START( speedatk )
 MACHINE_DRIVER_END
 
 ROM_START( speedatk )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "cb1-1",        0x0000, 0x2000, CRC(df988e05) SHA1(0ec91c5f2e1adf952a4fe7aede591e763773a75b) )
 	ROM_LOAD( "cb0-2",        0x2000, 0x2000, CRC(be949154) SHA1(8a594a7ebdc8456290919163f7ea4ccb0d1f4edb) )
 	ROM_LOAD( "cb1-3",        0x4000, 0x2000, CRC(741a5949) SHA1(7f7bebd4fb73fef9aa28549d100f632c442ac9b3) )

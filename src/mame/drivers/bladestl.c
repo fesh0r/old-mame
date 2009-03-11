@@ -65,7 +65,7 @@ static READ8_HANDLER( trackball_r )
 
 static WRITE8_HANDLER( bladestl_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(space->machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "maincpu");
 	int bankaddress;
 
 	/* bits 0 & 1 = coin counters */
@@ -94,14 +94,18 @@ static WRITE8_HANDLER( bladestl_sh_irqtrigger_w )
 	//logerror("(sound) write %02x\n", data);
 }
 
-static WRITE8_HANDLER( bladestl_port_B_w ){
+static WRITE8_DEVICE_HANDLER( bladestl_port_B_w ){
 	/* bit 1, 2 unknown */
-	upd7759_set_bank_base(0, ((data & 0x38) >> 3)*0x20000);
+	upd7759_set_bank_base(device, ((data & 0x38) >> 3)*0x20000);
 }
 
-static WRITE8_HANDLER( bladestl_speech_ctrl_w ){
-	upd7759_reset_w(0, data & 1);
-	upd7759_start_w(0, data & 2);
+static READ8_DEVICE_HANDLER( bladestl_speech_busy_r ){
+	return upd7759_busy_r(device) ? 1 : 0;
+}
+
+static WRITE8_DEVICE_HANDLER( bladestl_speech_ctrl_w ){
+	upd7759_reset_w(device, data & 1);
+	upd7759_start_w(device, data & 2);
 }
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -128,10 +132,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM
-	AM_RANGE(0x1000, 0x1000) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)	/* YM2203 */
-	AM_RANGE(0x1001, 0x1001) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)		/* YM2203 */
-	AM_RANGE(0x3000, 0x3000) AM_WRITE(bladestl_speech_ctrl_w)	/* UPD7759 */
-	AM_RANGE(0x4000, 0x4000) AM_READ(upd7759_0_busy_r)			/* UPD7759 */
+	AM_RANGE(0x1000, 0x1001) AM_DEVREADWRITE("ym", ym2203_r, ym2203_w)		/* YM2203 */
+	AM_RANGE(0x3000, 0x3000) AM_DEVWRITE("upd", bladestl_speech_ctrl_w)	/* UPD7759 */
+	AM_RANGE(0x4000, 0x4000) AM_DEVREAD("upd", bladestl_speech_busy_r)			/* UPD7759 */
 	AM_RANGE(0x5000, 0x5000) AM_WRITE(SMH_NOP)					/* ??? */
 	AM_RANGE(0x6000, 0x6000) AM_READ(soundlatch_r)				/* soundlatch_r */
 	AM_RANGE(0x8000, 0xffff) AM_ROM
@@ -304,10 +307,10 @@ static const ym2203_interface ym2203_config =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		NULL,
-		NULL,
-		upd7759_0_port_w,
-		bladestl_port_B_w
+		DEVCB_NULL,
+		DEVCB_NULL,
+		DEVCB_DEVICE_HANDLER("upd", upd7759_port_w),
+		DEVCB_DEVICE_HANDLER("upd", bladestl_port_B_w)
 	},
 	NULL
 };
@@ -315,17 +318,17 @@ static const ym2203_interface ym2203_config =
 static MACHINE_DRIVER_START( bladestl )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", HD6309, 24000000/2)		/* 24MHz/2 (?) */
+	MDRV_CPU_ADD("maincpu", HD6309, 24000000/2)		/* 24MHz/2 (?) */
 	MDRV_CPU_PROGRAM_MAP(main_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(bladestl_interrupt,2) /* (1 IRQ + 1 NMI) */
 
-	MDRV_CPU_ADD("audio", M6809, 2000000)
+	MDRV_CPU_ADD("audiocpu", M6809, 2000000)
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -359,11 +362,11 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( bladestl )
-	ROM_REGION( 0x18000, "main", 0 ) /* code + banked roms */
+	ROM_REGION( 0x18000, "maincpu", 0 ) /* code + banked roms */
 	ROM_LOAD( "797t01.bin", 0x10000, 0x08000, CRC(89d7185d) SHA1(0d2f346d9515cab0389106c0e227fb0bd84a2c9c) )	/* fixed ROM */
 	ROM_CONTINUE(			0x08000, 0x08000 )				/* banked ROM */
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* 64k for the sound CPU */
 	ROM_LOAD( "797c02", 0x08000, 0x08000, CRC(65a331ea) SHA1(f206f6c5f0474542a5b7686b2f4d2cc7077dd5b9) )
 
 	ROM_REGION( 0x080000, "gfx1", ROMREGION_DISPOSE )
@@ -379,11 +382,11 @@ ROM_START( bladestl )
 ROM_END
 
 ROM_START( bladstle )
-	ROM_REGION( 0x18000, "main", 0 ) /* code + banked roms */
+	ROM_REGION( 0x18000, "maincpu", 0 ) /* code + banked roms */
 	ROM_LOAD( "797e01", 0x10000, 0x08000, CRC(f8472e95) SHA1(8b6caa905fb1642300dd9da508871b00429872c3) )	/* fixed ROM */
 	ROM_CONTINUE(		0x08000, 0x08000 )				/* banked ROM */
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* 64k for the sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* 64k for the sound CPU */
 	ROM_LOAD( "797c02", 0x08000, 0x08000, CRC(65a331ea) SHA1(f206f6c5f0474542a5b7686b2f4d2cc7077dd5b9) )
 
 	ROM_REGION( 0x080000, "gfx1", ROMREGION_DISPOSE )

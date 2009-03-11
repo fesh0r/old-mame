@@ -14,6 +14,7 @@ segac2.c
 #include "driver.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m68000/m68000.h"
+#include "sound/2612intf.h"
 #include "genesis.h"
 
 #define MASTER_CLOCK		53693100
@@ -132,10 +133,10 @@ INTERRUPT_GEN( genesis_vblank_interrupt )
 
 
 /* interrupt callback to generate the YM3438 interrupt */
-void genesis_irq2_interrupt(running_machine *machine, int state)
+void genesis_irq2_interrupt(const device_config *device, int state)
 {
 	irq2_int = state;
-	update_interrupts(machine);
+	update_interrupts(device->machine);
 }
 
 
@@ -180,14 +181,11 @@ READ16_HANDLER(genesis_ctrl_r)
 	{
 	case 0:							/* DRAM mode is write only */
 		return 0xffff;
-		break;
 	case 0x80:						/* return Z80 CPU Function Stop Accessible or not */
 		/* logerror("Returning z80 state\n"); */
 		return (z80running ? 0x0100 : 0x0);
-		break;
 	case 0x100:						/* Z80 CPU Reset - write only */
 		return 0xffff;
-		break;
 	}
 	return 0x00;
 
@@ -204,7 +202,6 @@ WRITE16_HANDLER(genesis_ctrl_w)
 	{
 	case 0:							/* set DRAM mode... we have to ignore this for production cartridges */
 		return;
-		break;
 	case 0x80:						/* Z80 BusReq */
 		if (data == 0x100)
 		{
@@ -221,7 +218,6 @@ WRITE16_HANDLER(genesis_ctrl_w)
 			/* logerror("z80 started, BusReq ends\n"); */
 		}
 		return;
-		break;
 	case 0x100:						/* Z80 CPU Reset */
 		if (data == 0x00)
 		{
@@ -238,8 +234,6 @@ WRITE16_HANDLER(genesis_ctrl_w)
 			/* logerror("z80 out of reset\n"); */
 		}
 		return;
-
-		break;
 	}
 }
 
@@ -260,17 +254,9 @@ READ16_HANDLER ( genesis_68k_to_z80_r )
 	/* YM2610 */
 	if ((offset >= 0x4000) && (offset <= 0x5fff))
 	{
-		switch (offset & 3)
-		{
-		case 0:
-			if (ACCESSING_BITS_8_15)	 return ym3438_status_port_0_a_r(space, 0) << 8;
-			else 				 return ym3438_read_port_0_r(space, 0);
-			break;
-		case 2:
-			if (ACCESSING_BITS_8_15)	return ym3438_status_port_0_b_r(space, 0) << 8;
-			else 				return 0;
-			break;
-		}
+		if (ACCESSING_BITS_0_7)
+			offset += 1;
+		return ym3438_r(devtag_get_device(space->machine, "ym"), offset);
 	}
 
 	/* Bank Register */
@@ -320,17 +306,9 @@ READ16_HANDLER ( megaplay_68k_to_z80_r )
 	/* YM2610 */
 	if ((offset >= 0x4000) && (offset <= 0x5fff))
 	{
-		switch (offset & 3)
-		{
-		case 0:
-			if (ACCESSING_BITS_8_15)	 return ym3438_status_port_0_a_r(space, 0) << 8;
-			else 				 return ym3438_read_port_0_r(space, 0);
-			break;
-		case 2:
-			if (ACCESSING_BITS_8_15)	return ym3438_status_port_0_b_r(space, 0) << 8;
-			else 				return 0;
-			break;
-		}
+		if (ACCESSING_BITS_0_7)
+			offset += 1;
+		return ym3438_r(devtag_get_device(space->machine, "ym"), offset);
 	}
 
 	/* Bank Register */
@@ -369,18 +347,19 @@ WRITE16_HANDLER ( genesis_68k_to_z80_w )
 	}
 
 
-	/* YM2610 */
+	/* YM2612 */
 	if ((offset >= 0x4000) && (offset <= 0x5fff))
 	{
+		const device_config *ym = devtag_get_device(space->machine, "ym");
 		switch (offset & 3)
 		{
 		case 0:
-			if (ACCESSING_BITS_8_15)	ym3438_control_port_0_a_w	(space, 0,	(data >> 8) & 0xff);
-			else 				ym3438_data_port_0_a_w		(space, 0,	(data >> 0) & 0xff);
+			if (ACCESSING_BITS_8_15)	ym3438_control_port_a_w	(ym, 0,	(data >> 8) & 0xff);
+			else 				ym3438_data_port_a_w		(ym, 0,	(data >> 0) & 0xff);
 			break;
 		case 2:
-			if (ACCESSING_BITS_8_15)	ym3438_control_port_0_b_w	(space, 0,	(data >> 8) & 0xff);
-			else 				ym3438_data_port_0_b_w		(space, 0,	(data >> 0) & 0xff);
+			if (ACCESSING_BITS_8_15)	ym3438_control_port_b_w	(ym, 0,	(data >> 8) & 0xff);
+			else 				ym3438_data_port_b_w		(ym, 0,	(data >> 0) & 0xff);
 			break;
 		}
 	}
@@ -404,8 +383,9 @@ WRITE16_HANDLER ( genesis_68k_to_z80_w )
 
 		if ( (offset >= 0x10) && (offset <=0x17) )
 		{
-			if (ACCESSING_BITS_0_7) sn76496_0_w(space, 0, data & 0xff);
-			if (ACCESSING_BITS_8_15) sn76496_0_w(space, 0, (data >>8) & 0xff);
+			const device_config *sn = devtag_get_device(space->machine, "sn");
+			if (ACCESSING_BITS_0_7) sn76496_w(sn, 0, data & 0xff);
+			if (ACCESSING_BITS_8_15) sn76496_w(sn, 0, (data >>8) & 0xff);
 		}
 
 	}
@@ -508,13 +488,6 @@ ADDRESS_MAP_END
 
 /* Z80 Sound Hardware - based on MESS code, to be improved, it can do some strange things */
 
-#ifdef LSB_FIRST
-	#define BYTE_XOR(a) ((a) ^ 1)
-#else
-	#define BYTE_XOR(a) (a)
-#endif
-
-
 
 static WRITE8_HANDLER ( genesis_bank_select_w ) /* note value will be meaningless unless all bits are correctly set in */
 {
@@ -539,13 +512,7 @@ READ8_HANDLER ( genesis_z80_r )
 	/* YM2610 */
 	if ((offset >= 0x4000) && (offset <= 0x5fff))
 	{
-		switch (offset & 3)
-		{
-		case 0: return ym3438_status_port_0_a_r(space, 0);
-		case 1: return ym3438_read_port_0_r(space, 0);
-		case 2: return ym3438_status_port_0_b_r(space, 0);
-		case 3: return 0;
-		}
+		return ym3438_r(devtag_get_device(space->machine, "ym"), offset);
 	}
 
 	/* Bank Register */
@@ -576,17 +543,7 @@ WRITE8_HANDLER ( genesis_z80_w )
 	/* YM2610 */
 	if ((offset >= 0x4000) && (offset <= 0x5fff))
 	{
-		switch (offset & 3)
-		{
-		case 0: ym3438_control_port_0_a_w	(space, 0,	data);
-			break;
-		case 1: ym3438_data_port_0_a_w		(space, 0, data);
-			break;
-		case 2: ym3438_control_port_0_b_w	(space, 0,	data);
-			break;
-		case 3: ym3438_data_port_0_b_w		(space, 0,	data);
-			break;
-		}
+		ym3438_w(devtag_get_device(space->machine, "ym"), offset & 3, data);
 	}
 
 	/* Bank Register */
@@ -611,7 +568,7 @@ WRITE8_HANDLER ( genesis_z80_w )
 READ8_HANDLER ( genesis_z80_bank_r )
 {
 	int address = (z80_68000_latch) + (offset & 0x7fff);
-	const UINT8 *base = memory_region(space->machine, "sound");
+	const UINT8 *base = memory_region(space->machine, "soundcpu");
 
 	if (!z80running) logerror("undead Z80->68000 read!\n");
 
@@ -620,9 +577,9 @@ READ8_HANDLER ( genesis_z80_bank_r )
 	logerror("z80 read from address %x\n", address);
 
 	/* Read the data out of the 68k ROM */
-	if (base != NULL && address < 0x400000) return base[BYTE_XOR(address)];
+	if (base != NULL && address < 0x400000) return base[BYTE_XOR_BE(address)];
 	/* else read the data out of the 68k RAM */
-//  else if (address > 0xff0000) return genesis_68k_ram[BYTE_XOR(offset)];
+//  else if (address > 0xff0000) return genesis_68k_ram[BYTE_XOR_BE(offset)];
 
 	return -1;
 }
@@ -645,13 +602,13 @@ ADDRESS_MAP_END
 
 static MACHINE_DRIVER_START( genesis_base )
 	/*basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, MASTER_CLOCK / 7)
+	MDRV_CPU_ADD("maincpu", M68000, MASTER_CLOCK / 7)
 	MDRV_CPU_PROGRAM_MAP(genesis_readmem, genesis_writemem)
-	MDRV_CPU_VBLANK_INT("main", genesis_vblank_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", genesis_vblank_interrupt)
 
-	MDRV_CPU_ADD("sound", Z80, MASTER_CLOCK / 15)
+	MDRV_CPU_ADD("soundcpu", Z80, MASTER_CLOCK / 15)
 	MDRV_CPU_PROGRAM_MAP(genesis_z80_readmem, genesis_z80_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) /* from vdp at scanline 0xe0 */
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold) /* from vdp at scanline 0xe0 */
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 
@@ -661,7 +618,7 @@ static MACHINE_DRIVER_START( genesis_base )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(342,262)

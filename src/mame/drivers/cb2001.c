@@ -36,7 +36,6 @@ In test mode (c) is 2000
 
 ------------------------------
 
-
 *************************************************************************************************/
 
 #include "driver.h"
@@ -44,17 +43,17 @@ In test mode (c) is 2000
 
 #define xxxx 0x90 /* Unknown */
 
-const UINT8 cb2001_decryption_table[256] = {
+static const UINT8 cb2001_decryption_table[256] = {
 	0xe8,xxxx,xxxx,xxxx,xxxx,0x61,xxxx,xxxx, xxxx,xxxx,xxxx,xxxx,xxxx,xxxx,xxxx,xxxx, /* 00 */
 //  pppp                     ????
-	xxxx,xxxx,xxxx,xxxx,xxxx,xxxx,xxxx,xxxx, 0x32,xxxx,xxxx,xxxx,0x3a,xxxx,xxxx,0x1f, /* 10 */
-//                                           pppp                pppp           ????
+	xxxx,xxxx,xxxx,xxxx,xxxx,xxxx,xxxx,xxxx, 0x32,xxxx,0xa0,xxxx,0x3a,xxxx,xxxx,0x1f, /* 10 */
+//                                           pppp     ????       pppp           ????
 	xxxx,0x8e,xxxx,0x0f,xxxx,0x49,0xbc,xxxx, xxxx,xxxx,xxxx,0x75,xxxx,xxxx,xxxx,xxxx, /* 20 */
 //       !!!!      ????      ???? ????                      pppp
 	0x9d,xxxx,xxxx,xxxx,xxxx,xxxx,0xbe,xxxx, xxxx,xxxx,0x74,xxxx,xxxx,0xa6,0xbf,xxxx, /* 30 */
 //  ????                          pppp                 ????           ???? ????
-	xxxx,0xea,xxxx,xxxx,xxxx,0xb0,xxxx,xxxx, xxxx,xxxx,xxxx,xxxx,xxxx,xxxx,xxxx,xxxx, /* 40 */
-//       !!!!                gggg
+	xxxx,0xea,xxxx,xxxx,xxxx,0xb0,xxxx,xxxx, xxxx,0xa2,xxxx,xxxx,xxxx,xxxx,xxxx,xxxx, /* 40 */
+//       !!!!                gggg                 ????
 	xxxx,xxxx,xxxx,xxxx,xxxx,xxxx,0x42,xxxx, xxxx,xxxx,xxxx,xxxx,0xeb,xxxx,xxxx,xxxx, /* 50 */
 //                                ????                           ????
 	xxxx,xxxx,xxxx,xxxx,xxxx,xxxx,xxxx,xxxx, xxxx,0xa5,xxxx,xxxx,xxxx,xxxx,0xba,xxxx, /* 60 */
@@ -127,12 +126,12 @@ e328e 18 c0 xor al,al
 */
 
 
-VIDEO_START(cb2001)
+static VIDEO_START(cb2001)
 {
 
 }
 
-VIDEO_UPDATE(cb2001)
+static VIDEO_UPDATE(cb2001)
 {
 	return 0;
 }
@@ -153,15 +152,44 @@ static INTERRUPT_GEN( vblank_irq )
 //  cpu_set_input_line_and_vector(device,0,HOLD_LINE,0x08/4);
 }
 
+static const gfx_layout cb2001_layout =
+{
+	8,8,
+	RGN_FRAC(1,1),
+	4,
+	{ 0,1,2,3 },
+	{ 8,12,0,4,24,28, 16,20 },
+	{ 0*32,1*32,2*32,3*32,4*32,5*32,6*32,7*32 },
+	8*32
+};
+
+static const gfx_layout cb2001_layout32 =
+	{
+	8,32,
+	RGN_FRAC(1,1),
+	4,
+	{ 0,1,2,3 },
+	{ 8,12,0,4,24,28, 16,20 },
+	{ 0*32,1*32,2*32,3*32,4*32,5*32,6*32,7*32, 8*32, 9*32, 10*32, 11*32, 12*32, 13*32,14*32,15*32,16*32,17*32,18*32,19*32,20*32,21*32,22*32,23*32,24*32,25*32,26*32,27*32,28*32,29*32,30*32,31*32 },
+	32*32
+};
+
+static GFXDECODE_START( cb2001 )
+	GFXDECODE_ENTRY( "gfx", 0, cb2001_layout,   0x0, 2  )
+	GFXDECODE_ENTRY( "gfx", 0, cb2001_layout32, 0x0, 2  )
+GFXDECODE_END
+
 static const nec_config cb2001_config = { cb2001_decryption_table, };
 static MACHINE_DRIVER_START( cb2001 )
-	MDRV_CPU_ADD("main", V30, 20000000) // CPU91A-011-0016JK004; encrypted cpu like nec v25/35 used in some irem game
+	MDRV_CPU_ADD("maincpu", V30, 20000000) // CPU91A-011-0016JK004; encrypted cpu like nec v25/35 used in some irem game
 	MDRV_CPU_CONFIG(cb2001_config)
 	MDRV_CPU_PROGRAM_MAP(cb2001_map,0)
 	MDRV_CPU_IO_MAP(cb2001_io,0)
-	MDRV_CPU_VBLANK_INT("main", vblank_irq)
+	MDRV_CPU_VBLANK_INT("screen", vblank_irq)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_GFXDECODE(cb2001)
+
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)

@@ -110,7 +110,7 @@ static WRITE8_HANDLER( pending_command_clear_w )
 
 static WRITE8_HANDLER( inufuku_soundrombank_w )
 {
-	UINT8 *ROM = memory_region(space->machine, "audio") + 0x10000;
+	UINT8 *ROM = memory_region(space->machine, "audiocpu") + 0x10000;
 
 	memory_set_bankptr(space->machine, 1, ROM + (data & 0x03) * 0x8000);
 }
@@ -232,10 +232,7 @@ static ADDRESS_MAP_START( inufuku_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(inufuku_soundrombank_w)
 	AM_RANGE(0x04, 0x04) AM_READWRITE(soundlatch_r, pending_command_clear_w)
-	AM_RANGE(0x08, 0x08) AM_READWRITE(ym2610_status_port_0_a_r, ym2610_control_port_0_a_w)
-	AM_RANGE(0x09, 0x09) AM_READWRITE(ym2610_read_port_0_r, ym2610_data_port_0_a_w)
-	AM_RANGE(0x0a, 0x0a) AM_READWRITE(ym2610_status_port_0_b_r, ym2610_control_port_0_b_w)
-	AM_RANGE(0x0b, 0x0b) AM_WRITE(ym2610_data_port_0_b_w)
+	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("ym", ym2610_r, ym2610_w)
 ADDRESS_MAP_END
 
 /******************************************************************************
@@ -352,9 +349,9 @@ GFXDECODE_END
 
 ******************************************************************************/
 
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1], 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1], 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -372,11 +369,11 @@ static const ym2610_interface ym2610_config =
 static MACHINE_DRIVER_START( inufuku )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 32000000/2)	/* 16.00 MHz */
+	MDRV_CPU_ADD("maincpu", M68000, 32000000/2)	/* 16.00 MHz */
 	MDRV_CPU_PROGRAM_MAP(inufuku_readmem, inufuku_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, 32000000/4)		/* 8.00 MHz */
+	MDRV_CPU_ADD("audiocpu", Z80, 32000000/4)		/* 8.00 MHz */
 	MDRV_CPU_PROGRAM_MAP(inufuku_readmem_sound, inufuku_writemem_sound)
 	MDRV_CPU_IO_MAP(inufuku_sound_io_map,0)
 								/* IRQs are triggered by the YM2610 */
@@ -385,7 +382,7 @@ static MACHINE_DRIVER_START( inufuku )
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -416,12 +413,12 @@ MACHINE_DRIVER_END
 ******************************************************************************/
 
 ROM_START( inufuku )
-	ROM_REGION( 0x1000000, "main", 0 )	// main cpu + data
+	ROM_REGION( 0x1000000, "maincpu", 0 )	// main cpu + data
 	ROM_LOAD16_WORD_SWAP( "u147.bin",     0x0000000, 0x080000, CRC(ab72398c) SHA1(f5dc266ffa936ea6528b46a34113f5e2f8141d71) )
 	ROM_LOAD16_WORD_SWAP( "u146.bin",     0x0080000, 0x080000, CRC(e05e9bd4) SHA1(af0fdf31c2bdf851bf15c9de725dcbbb58464d54) )
 	ROM_LOAD16_WORD_SWAP( "lhmn5l28.148", 0x0800000, 0x400000, CRC(802d17e7) SHA1(43b26efea65fd051c094d19784cb977ced39a1a0) )
 
-	ROM_REGION( 0x0030000, "audio", 0 )	// sound cpu
+	ROM_REGION( 0x0030000, "audiocpu", 0 )	// sound cpu
 	ROM_LOAD( "u107.bin", 0x0000000, 0x020000, CRC(1744ef90) SHA1(e019f4ca83e21aa25710cc0ca40ffe765c7486c9) )
 	ROM_RELOAD( 0x010000, 0x020000 )
 

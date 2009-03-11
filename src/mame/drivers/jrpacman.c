@@ -125,10 +125,10 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4ff0, 0x4fff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x5000, 0x503f) AM_READ_PORT("P1")
 	AM_RANGE(0x5000, 0x5000) AM_WRITE(interrupt_enable_w)
-	AM_RANGE(0x5001, 0x5001) AM_WRITE(pacman_sound_enable_w)
+	AM_RANGE(0x5001, 0x5001) AM_DEVWRITE("namco", pacman_sound_enable_w)
 	AM_RANGE(0x5003, 0x5003) AM_WRITE(pacman_flipscreen_w)
 	AM_RANGE(0x5040, 0x507f) AM_READ_PORT("P2")
-	AM_RANGE(0x5040, 0x505f) AM_WRITE(pacman_sound_w) AM_BASE(&pacman_soundregs)
+	AM_RANGE(0x5040, 0x505f) AM_DEVWRITE("namco", pacman_sound_w) AM_BASE(&pacman_soundregs)
 	AM_RANGE(0x5060, 0x506f) AM_WRITEONLY AM_BASE(&spriteram_2)
 	AM_RANGE(0x5070, 0x5070) AM_WRITE(pengo_palettebank_w)
 	AM_RANGE(0x5071, 0x5071) AM_WRITE(pengo_colortablebank_w)
@@ -266,13 +266,13 @@ static const namco_interface namco_config =
 static MACHINE_DRIVER_START( jrpacman )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 18432000/6)	/* 3.072 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, 18432000/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(port_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60.606060)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -303,7 +303,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( jrpacman )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "jrp8d.bin",             0x0000, 0x2000, CRC(e3fa972e) SHA1(5ea34621213c649ca2848ab31aab2cbe751723d4) )
 	ROM_LOAD( "jrp8e.bin",             0x2000, 0x2000, CRC(ec889e94) SHA1(8294e9e79f8fd19a419431fa690e6ac4a1302f58) )
 	ROM_LOAD( "jrp8h.bin",             0x8000, 0x2000, CRC(35f1fc6e) SHA1(b84b34560b9aae18b24274712b052283faa01730) )
@@ -369,7 +369,7 @@ static DRIVER_INIT( jrpacman )
 	    { 0,0 }
 	};
 
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 	int i, j, A;
 
 	for (i = A = 0; table[i].count; i++)

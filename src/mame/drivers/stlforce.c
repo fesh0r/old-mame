@@ -95,9 +95,9 @@ static WRITE16_HANDLER( eeprom_w )
 	}
 }
 
-static WRITE16_HANDLER( oki_bank_w )
+static WRITE16_DEVICE_HANDLER( oki_bank_w )
 {
-	okim6295_set_bank_base(0, 0x40000 * ((data>>8) & 3));
+	okim6295_set_bank_base(device, 0x40000 * ((data>>8) & 3));
 }
 
 static ADDRESS_MAP_START( stlforce_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -118,9 +118,9 @@ static ADDRESS_MAP_START( stlforce_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x400000, 0x400001) AM_READ_PORT("INPUT")
 	AM_RANGE(0x400002, 0x400003) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0x400010, 0x400011) AM_WRITE(eeprom_w)
-	AM_RANGE(0x400012, 0x400013) AM_WRITE(oki_bank_w)
+	AM_RANGE(0x400012, 0x400013) AM_DEVWRITE("oki", oki_bank_w)
 	AM_RANGE(0x40001e, 0x40001f) AM_WRITENOP // sprites buffer commands
-	AM_RANGE(0x410000, 0x410001) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)
+	AM_RANGE(0x410000, 0x410001) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( stlforce )
@@ -238,12 +238,12 @@ static MACHINE_DRIVER_START( stlforce )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("cpu", M68000, 15000000)
 	MDRV_CPU_PROGRAM_MAP(stlforce_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_NVRAM_HANDLER(stlforce)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(58)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -269,7 +269,7 @@ static MACHINE_DRIVER_START( twinbrat )
 	MDRV_IMPORT_FROM(stlforce)
 	MDRV_CPU_REPLACE("cpu", M68000, 14745600)
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(3*8, 45*8-1, 0*8, 30*8-1)
 MACHINE_DRIVER_END
 

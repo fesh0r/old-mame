@@ -324,10 +324,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( s_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(SMH_NOP) // ym2203_control_port_0_w ?
-	AM_RANGE(0xc001, 0xc001) AM_WRITE(SMH_NOP) // ym2203_write_port_0_w
-	AM_RANGE(0xc800, 0xc800) AM_WRITE(SMH_NOP) // ym2203_control_port_1_w ?
-	AM_RANGE(0xc801, 0xc801) AM_WRITE(SMH_NOP) // ym2203_write_port_1_w
+	AM_RANGE(0xc000, 0xc001) AM_WRITE(SMH_NOP) // AM_DEVWRITE("ym1", ym2203_w) ?
+	AM_RANGE(0xc800, 0xc801) AM_WRITE(SMH_NOP) // AM_DEVWRITE("ym2", ym2203_w) ?
 	AM_RANGE(0xf800, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
@@ -337,11 +335,8 @@ static ADDRESS_MAP_START( s2_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( s2_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x4000, 0x4000) AM_WRITE(SMH_NOP) // ym2203_control_port_0_w ?
-	AM_RANGE(0x4001, 0x4001) AM_WRITE(SMH_NOP) // ym2203_write_port_0_w
-
-	AM_RANGE(0x4008, 0x4008) AM_WRITE(SMH_NOP) // ym2203_control_port_0_w ?
-	AM_RANGE(0x4009, 0x4009) AM_WRITE(SMH_NOP) // ym2203_write_port_0_w
+	AM_RANGE(0x4000, 0x4001) AM_WRITE(SMH_NOP) // AM_DEVWRITE("ym1", ym2203_w) ?
+	AM_RANGE(0x4008, 0x4009) AM_WRITE(SMH_NOP) // AM_DEVWRITE("ym2", ym2203_w) ?
 ADDRESS_MAP_END
 
 
@@ -446,17 +441,17 @@ static GFXDECODE_START( cshooter )
 GFXDECODE_END
 
 static MACHINE_DRIVER_START( cshooter )
-	MDRV_CPU_ADD("main", Z80,XTAL_12MHz/2)		 /* verified on pcb */
+	MDRV_CPU_ADD("maincpu", Z80,XTAL_12MHz/2)		 /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT_HACK(cshooter_interrupt,2)
 
-	MDRV_CPU_ADD("audio", Z80,XTAL_14_31818MHz/4)		 /* verified on pcb */
+	MDRV_CPU_ADD("audiocpu", Z80,XTAL_14_31818MHz/4)		 /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(s_readmem,s_writemem)
 
 	MDRV_MACHINE_RESET(cshooter)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -475,17 +470,17 @@ static MACHINE_DRIVER_START( cshooter )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( airraid )
-	MDRV_CPU_ADD("main", Z80,XTAL_12MHz/2)		 /* verified on pcb */
+	MDRV_CPU_ADD("maincpu", Z80,XTAL_12MHz/2)		 /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(arreadmem,arwritemem)
 	MDRV_CPU_VBLANK_INT_HACK(cshooter_interrupt,2)
 
-	MDRV_CPU_ADD("audio", Z80,XTAL_14_31818MHz/4)		 /* verified on pcb */
+	MDRV_CPU_ADD("audiocpu", Z80,XTAL_14_31818MHz/4)		 /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(s2_readmem,s2_writemem)
 
 	MDRV_MACHINE_RESET(cshooter)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -558,10 +553,10 @@ data in the custom SIPs. I am not sure though.
 
 
 ROM_START( cshooter )
-	ROM_REGION( 0x10000, "main", 0 )	// Main CPU?
+	ROM_REGION( 0x10000, "maincpu", 0 )	// Main CPU?
 	ROM_LOAD( "r1",  0x00000, 0x08000, CRC(fbe8c518) SHA1(bff8319f4892e6d06f1c7a679f67dc8407279cfa) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	// Sub/Sound CPU?
+	ROM_REGION( 0x10000, "audiocpu", 0 )	// Sub/Sound CPU?
 	ROM_LOAD( "r4",  0x00000, 0x08000, CRC(84fed017) SHA1(9a564c9379eb48569cfba48562889277991864d8) )
 
 	ROM_REGION( 0x0800, "cpu2", 0 )	/* 2k for the microcontroller */
@@ -614,10 +609,10 @@ Note, all ROMs have official sticker, "(C) SEIBU KAIHATSU INC." and a number.
 */
 
 ROM_START( cshootre )
-	ROM_REGION( 0x10000, "main", 0 )	// Main CPU?
+	ROM_REGION( 0x10000, "maincpu", 0 )	// Main CPU?
 	ROM_LOAD( "1.k19",  0x00000, 0x08000, CRC(71418952) SHA1(9745ca006576381c9e9595d8e42ab276bab80a41) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	// Sub/Sound CPU?
+	ROM_REGION( 0x10000, "audiocpu", 0 )	// Sub/Sound CPU?
 	ROM_LOAD( "5.6f",  0x00000, 0x02000, CRC(30be398c) SHA1(6c61200ee8888d6270c8cec50423b3b5602c2027) )	// 5.g6
 
 	ROM_REGION( 0x02000, "gfx1",  ROMREGION_INVERT )	// TX Layer
@@ -656,10 +651,10 @@ SEI0030BU          SEI0060BU                             sw1 xx xxxxx
 */
 
 ROM_START( airraid )
-	ROM_REGION( 0x10000, "main", 0 )	// Main CPU?
+	ROM_REGION( 0x10000, "maincpu", 0 )	// Main CPU?
 	ROM_LOAD( "1.16j",  0x00000, 0x08000, CRC(7ac2cedf) SHA1(272831f51a2731e067b5aec6dba6bddd3c5350c9) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	// Sub/Sound CPU?
+	ROM_REGION( 0x10000, "audiocpu", 0 )	// Sub/Sound CPU?
 	ROM_LOAD( "5.6f",  0x00000, 0x02000, CRC(30be398c) SHA1(6c61200ee8888d6270c8cec50423b3b5602c2027) )
 
 	ROM_REGION( 0x02000, "gfx1", ROMREGION_INVERT )	// TX Layer
@@ -679,7 +674,7 @@ ROM_END
 static DRIVER_INIT( cshooter )
 {
 	/* temp so it boots */
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(machine, "maincpu");
 
 	rom[0xa2] = 0x00;
 	rom[0xa3] = 0x00;
@@ -689,9 +684,9 @@ static DRIVER_INIT( cshooter )
 
 static DRIVER_INIT( cshootre )
 {
-	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	int A;
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(machine, "maincpu");
 	UINT8 *decrypt = auto_malloc(0x8000);
 
 	memory_set_decrypted_region(space, 0x0000, 0x7fff, decrypt);
@@ -722,7 +717,7 @@ static DRIVER_INIT( cshootre )
 	}
 
 	memory_set_bankptr(machine, 1,&memory_region(machine, "user1")[0]);
-	seibu_sound_decrypt(machine,"audio",0x2000);
+	seibu_sound_decrypt(machine,"audiocpu",0x2000);
 }
 
 

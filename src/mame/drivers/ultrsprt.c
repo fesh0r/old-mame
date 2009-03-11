@@ -82,20 +82,11 @@ static WRITE32_HANDLER( int_ack_w )
 static MACHINE_START( ultrsprt )
 {
 	/* set conservative DRC options */
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
+	ppcdrc_set_options(machine->cpu[0], PPCDRC_COMPATIBLE_OPTIONS);
 
 	/* configure fast RAM regions for DRC */
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_END, 0x0007ffff);
-	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_PPC_FASTRAM_BASE, vram);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
-
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_SELECT, 1);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_START, 0x7f000000);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_END, 0x7f01ffff);
-	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_PPC_FASTRAM_BASE, workram);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
+	ppcdrc_add_fastram(machine->cpu[0], 0x80000000, 0x8007ffff, FALSE, vram);
+	ppcdrc_add_fastram(machine->cpu[0], 0xff000000, 0xff01ffff, FALSE, workram);
 }
 
 
@@ -110,39 +101,12 @@ static ADDRESS_MAP_START( ultrsprt_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x700000e0, 0x700000e3) AM_WRITE(int_ack_w)
 	AM_RANGE(0x7f000000, 0x7f01ffff) AM_RAM AM_BASE(&workram)
 	AM_RANGE(0x7f700000, 0x7f703fff) AM_RAM_WRITE(palette_w) AM_BASE(&paletteram32)
-	AM_RANGE(0x7fa00000, 0x7fbfffff) AM_ROM AM_SHARE(1)
-	AM_RANGE(0x7fc00000, 0x7fdfffff) AM_ROM AM_SHARE(1)
-	AM_RANGE(0x7fe00000, 0x7fffffff) AM_ROM AM_REGION("user1", 0) AM_SHARE(1)
+	AM_RANGE(0x7f800000, 0x7f9fffff) AM_MIRROR(0x00600000) AM_ROM AM_REGION("user1", 0)
 ADDRESS_MAP_END
 
 
 /*****************************************************************************/
 
-
-static READ16_HANDLER( sound_r )
-{
-	UINT16 r = 0;
-	int reg = offset * 2;
-
-	if (ACCESSING_BITS_8_15)
-		r |= k054539_0_r(space, reg+0) << 8;
-
-	if (ACCESSING_BITS_0_7)
-		r |= k054539_0_r(space, reg+1) << 0;
-
-	return r;
-}
-
-static WRITE16_HANDLER( sound_w )
-{
-	int reg = offset * 2;
-
-	if (ACCESSING_BITS_8_15)
-		k054539_0_w(space, reg+0, (data >> 8) & 0xff);
-
-	if (ACCESSING_BITS_0_7)
-		k054539_0_w(space, reg+1, (data >> 0) & 0xff);
-}
 
 static READ16_HANDLER( K056800_68k_r )
 {
@@ -167,11 +131,11 @@ static WRITE16_HANDLER( K056800_68k_w )
 }
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x00000000, 0x0001ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x00000000, 0x0001ffff) AM_ROM
 	AM_RANGE(0x00100000, 0x00101fff) AM_RAM
 	AM_RANGE(0x00200000, 0x00200007) AM_WRITE(K056800_68k_w)
 	AM_RANGE(0x00200008, 0x0020000f) AM_READ(K056800_68k_r)
-	AM_RANGE(0x00400000, 0x004002ff) AM_READWRITE(sound_r, sound_w)
+	AM_RANGE(0x00400000, 0x004002ff) AM_DEVREADWRITE8("konami", k054539_r, k054539_w, 0xffff)
 ADDRESS_MAP_END
 
 /*****************************************************************************/
@@ -232,11 +196,11 @@ static INTERRUPT_GEN( ultrsprt_vblank )
 
 static MACHINE_DRIVER_START( ultrsprt )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", PPC403GA, 25000000)		/* PowerPC 403GA 25MHz */
+	MDRV_CPU_ADD("maincpu", PPC403GA, 25000000)		/* PowerPC 403GA 25MHz */
 	MDRV_CPU_PROGRAM_MAP(ultrsprt_map, 0)
-	MDRV_CPU_VBLANK_INT("main", ultrsprt_vblank)
+	MDRV_CPU_VBLANK_INT("screen", ultrsprt_vblank)
 
-	MDRV_CPU_ADD("audio", M68000, 8000000)		/* Not sure about the frequency */
+	MDRV_CPU_ADD("audiocpu", M68000, 8000000)		/* Not sure about the frequency */
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
 	MDRV_CPU_PERIODIC_INT(irq5_line_hold, 1)	// ???
 
@@ -246,7 +210,7 @@ static MACHINE_DRIVER_START( ultrsprt )
 	MDRV_MACHINE_START(ultrsprt)
 
  	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -258,11 +222,11 @@ static MACHINE_DRIVER_START( ultrsprt )
 	MDRV_VIDEO_UPDATE(ultrsprt)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("konami", K054539, 48000)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 static void sound_irq_callback(running_machine *machine, int irq)
@@ -287,7 +251,7 @@ ROM_START( fiveside )
 	ROM_LOAD32_BYTE("479uaa03.bin", 0x000001, 0x80000, CRC(5c0b176f) SHA1(9560259bc081d4cfd72eb485c3fdcecf484ba7a8))
 	ROM_LOAD32_BYTE("479uaa04.bin", 0x000000, 0x80000, CRC(01a3e4cb) SHA1(819df79909d57fa12481698ffdb32b00586131d8))
 
-	ROM_REGION(0x20000, "audio", 0)		/* M68K program */
+	ROM_REGION(0x20000, "audiocpu", 0)		/* M68K program */
 	ROM_LOAD("479_a05.bin", 0x000000, 0x20000, CRC(251ae299) SHA1(5ffd74357e3c6ddb3a208c39a3b32b53fea90282))
 
 	ROM_REGION(0x100000, "konami", 0)	/* Sound roms */

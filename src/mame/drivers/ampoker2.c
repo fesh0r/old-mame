@@ -14,16 +14,17 @@
     --- Supported Sets ---
 
     Set Name | Relation | Description
-    --------------------------------------------
-    ampoker2   parent     American Poker II.
-    ampkr2b1   clone      American Poker II (bootleg, set 1).
-    ampkr2b2   clone      American Poker II (bootleg, set 2).
-    ampkr2b3   clone      American Poker II (bootleg, set 3).
-    pkrdewin   clone      Poker De Win.
-    ampkr95    clone      American Poker 95.
-    videomat   clone      Videomat (polish bootleg).
-    sigmapkr   parent     Sigma Poker.
-    sigma2k    parent     Sigma Poker 2000.
+    ---------+----------+------------------------------------
+    ampoker2 |  parent  |  American Poker II.
+    ampkr2b1 |  clone   |  American Poker II (bootleg, set 1).
+    ampkr2b2 |  clone   |  American Poker II (bootleg, set 2).
+    ampkr2b3 |  clone   |  American Poker II (bootleg, set 3).
+    ampkr228 |  clone   |  American Poker II (iamp2 v28).
+    pkrdewin |  clone   |  Poker De Win.
+    ampkr95  |  clone   |  American Poker 95.
+    videomat |  clone   |  Videomat (polish bootleg).
+    sigmapkr |  parent  |  Sigma Poker.
+    sigma2k  |  parent  |  Sigma Poker 2000.
 
 
 *********************************************************************************
@@ -598,9 +599,8 @@ static ADDRESS_MAP_START( ampoker2_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x35, 0x35) AM_WRITE (ampoker2_port35_w)	/* see write handlers */
 	AM_RANGE(0x36, 0x36) AM_WRITE (ampoker2_port36_w)	/* see write handlers */
 	AM_RANGE(0x37, 0x37) AM_WRITE(ampoker2_watchdog_reset_w)
-	AM_RANGE(0x38, 0x38) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x39, 0x39) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x3A, 0x3A) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0x38, 0x39) AM_DEVWRITE("ay", ay8910_address_data_w)
+	AM_RANGE(0x3A, 0x3A) AM_DEVREAD("ay", ay8910_r)
 ADDRESS_MAP_END
 
 
@@ -1010,7 +1010,7 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL, NULL, NULL, NULL	/* no ports used */
+	DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL	/* no ports used */
 };
 
 
@@ -1021,7 +1021,7 @@ static const ay8910_interface ay8910_config =
 static MACHINE_DRIVER_START( ampoker2 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, MASTER_CLOCK/2)		/* 3 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK/2)		/* 3 MHz */
 	MDRV_CPU_PROGRAM_MAP(ampoker2_map, 0)
 	MDRV_CPU_IO_MAP(ampoker2_io_map, 0)
 	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, 1536)
@@ -1030,7 +1030,7 @@ static MACHINE_DRIVER_START( ampoker2 )
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	/*  if VBLANK is used, the watchdog timer stop to work.
     MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
@@ -1068,9 +1068,9 @@ MACHINE_DRIVER_END
 *************************/
 
 ROM_START( ampoker2 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "poker9.003", 0x4000, 0x8000, CRC(a31221fc) SHA1(4a8bdd8ce8d5bff7e7cfc4ae91e27c1d366dc54d) )
-	ROM_COPY( "main", 0x8000, 0x0000, 0x4000 ) /* poker9.003 contains the 16K halves swapped around */
+	ROM_COPY( "maincpu", 0x8000, 0x0000, 0x4000 ) /* poker9.003 contains the 16K halves swapped around */
 	ROM_LOAD( "poker9.002", 0x8000, 0x4000, CRC(bfde5bce) SHA1(c7c7ca2268694015e8ec673e8fa5c48043086d3f) )
 
 	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )
@@ -1081,7 +1081,7 @@ ROM_START( ampoker2 )
 ROM_END
 
 ROM_START( ampkr2b1 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "airl-v00.512", 0x0000, 0x10000, CRC(e5953bf4) SHA1(291367431e3b21b57704228c63e4da853e6d25b7) )
 
 	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )
@@ -1092,7 +1092,7 @@ ROM_START( ampkr2b1 )
 ROM_END
 
 ROM_START( ampkr2b2 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "rom9.u6", 0x0000, 0x10000, CRC(820a491d) SHA1(36654aacac010e7c086dd18d4e0ca5d959b9044f) )
 
 	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )
@@ -1103,7 +1103,7 @@ ROM_START( ampkr2b2 )
 ROM_END
 
 ROM_START( ampkr2b3 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "ampoker.u6", 0x0000, 0x10000, CRC(d7b055bd) SHA1(f5231d2ec80f740eabedaba07547ccbb977accc1) )
 
 	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )
@@ -1114,7 +1114,7 @@ ROM_START( ampkr2b3 )
 ROM_END
 
 ROM_START( ampkr95 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "amp95rus.u6", 0x0000, 0x10000, CRC(6ec74b2b) SHA1(2dca05bc111071f1407dd524b67b5a3dc5848c70) )
 
 	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )
@@ -1124,11 +1124,38 @@ ROM_START( ampkr95 )
 	ROM_LOAD( "82s147an.u48", 0x0000, 0x0200, CRC(9bc8e543) SHA1(e4882868a43e21a509a180b9731600d1dd63b5cc) )
 ROM_END
 
+/*
+  iamp2 v28
+
+- Taiwanese board.
+- Original Novomatic program??
+- Gfx set seems from a bootleg...
+- No scroll in the attract.
+- Analysis page in operator/supervisor mode.
+- Min-Max bet, and a kind of 3-strings password given in supervisor mode.
+
+*/
+ROM_START( ampkr228 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "9.u6",  0x0000, 0x10000, CRC(747316cf) SHA1(7c2bb7a1a28e421a27f743eefe3c8878967ce4a9) )
+
+	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )
+	ROM_LOAD( "0.u47", 0x0000, 0x4000, CRC(cefed6c7) SHA1(79591339eab2712b432dfe89929dbc97000a13d2) )
+
+	ROM_REGION( 0x200, "proms", 0 )
+	ROM_LOAD( "82s147an.u48", 0x0000, 0x0200, CRC(9bc8e543) SHA1(e4882868a43e21a509a180b9731600d1dd63b5cc) )
+
+	ROM_REGION( 0x400, "plds", 0 )
+	ROM_LOAD( "gal16v8a_bad.u41", 0x0000, 0x0117, CRC(a26ba7e6) SHA1(fd22ccb1ff3bf6956f300668ecd8cfe699182b39) )
+	ROM_LOAD( "gal16v8b.u8",      0x0200, 0x0117, CRC(7edb3276) SHA1(1302aec1d9703e6ce9da77fc7a0613e7eff1ccb5) )
+
+ROM_END
+
 ROM_START( pkrdewin )
-	ROM_REGION( 0x14000, "main", 0 )
+	ROM_REGION( 0x14000, "maincpu", 0 )
 	ROM_LOAD( "poker7.001", 0x4000, 0x10000, CRC(eca16b9e) SHA1(5063d733721457ab3b08caafbe8d33b2cbe4f88b) )
-	ROM_COPY( "main",	0x8000, 0x0000, 0x4000 ) /* poker7.001 contains the 1st and 2nd 16K quarters swapped */
-	ROM_COPY( "main", 0x10000, 0x8000, 0x4000 ) /* poker7.001 contains the 1st and 2nd 16K quarters swapped */
+	ROM_COPY( "maincpu",	0x8000, 0x0000, 0x4000 ) /* poker7.001 contains the 1st and 2nd 16K quarters swapped */
+	ROM_COPY( "maincpu", 0x10000, 0x8000, 0x4000 ) /* poker7.001 contains the 1st and 2nd 16K quarters swapped */
 
 	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "poker7.002", 0x0000, 0x4000, CRC(65bccb40) SHA1(75f154a2aaf9f9be62e0e1dd8cbe630b9ea0145c) )
@@ -1138,7 +1165,7 @@ ROM_START( pkrdewin )
 ROM_END
 
 ROM_START( videomat )	/* polish bootleg */
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "rom.bin", 0x0000, 0x10000, CRC(910cd941) SHA1(350ca70370c5082901343d0c0c1424729d77b006) )
 
 	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )
@@ -1149,7 +1176,7 @@ ROM_START( videomat )	/* polish bootleg */
 ROM_END
 
 ROM_START( sigmapkr )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "sigmapkr.u6", 0x0000, 0x10000, CRC(aa3f429a) SHA1(8c82e86de7280590ba157860cbf9783f893f8554) )
 
 	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )
@@ -1160,7 +1187,7 @@ ROM_START( sigmapkr )
 ROM_END
 
 ROM_START( sigma2k )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "sigma2k.u6", 0x0000, 0x10000, CRC(608d1771) SHA1(0ec94d780565472c7e68da7e3ce19aea3f1ab4a5) )
 
 	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
@@ -1176,12 +1203,13 @@ ROM_END
 *************************/
 
 /*     YEAR  NAME      PARENT    MACHINE   INPUT     INIT  ROT    COMPANY       FULLNAME                             FLAGS  LAYOUT      */
-GAMEL( 1990, ampoker2, 0,        ampoker2, ampoker2, 0,    ROT0, "Novomatic",  "American Poker II",                  0,     layout_ampoker2 )
-GAMEL( 1990, ampkr2b1, ampoker2, ampoker2, ampoker2, 0,    ROT0, "Bootleg",    "American Poker II (bootleg, set 1)", 0,     layout_ampoker2 )
-GAMEL( 1990, ampkr2b2, ampoker2, ampoker2, ampoker2, 0,    ROT0, "Bootleg",    "American Poker II (bootleg, set 2)", 0,     layout_ampoker2 )
-GAMEL( 1994, ampkr2b3, ampoker2, ampoker2, ampoker2, 0,    ROT0, "Bootleg",    "American Poker II (bootleg, set 3)", 0,     layout_ampoker2 )
-GAMEL( 1995, ampkr95,  ampoker2, ampoker2, ampkr95,  0,    ROT0, "Bootleg",    "American Poker 95",                  0,     layout_ampoker2 )
-GAMEL( 1990, pkrdewin, ampoker2, ampoker2, ampoker2, 0,    ROT0, "Bootleg",    "Poker De Win",                       0,     layout_ampoker2 )
-GAMEL( 1990, videomat, ampoker2, ampoker2, ampoker2, 0,    ROT0, "Bootleg",    "Videomat (polish bootleg)",          0,     layout_ampoker2 )
-GAMEL( 1995, sigmapkr, 0,        ampoker2, sigmapkr, 0,    ROT0, "Sigma Inc.", "Sigma Poker",                        0,     layout_sigmapkr )
-GAMEL( 1998, sigma2k,  0,        sigma2k,  sigma2k,  0,    ROT0, "Sigma Inc.", "Sigma Poker 2000",                   0,     layout_sigmapkr )
+GAMEL( 1990, ampoker2, 0,        ampoker2, ampoker2, 0,    ROT0, "Novomatic",  "American Poker II",                  GAME_SUPPORTS_SAVE,     layout_ampoker2 )
+GAMEL( 1990, ampkr2b1, ampoker2, ampoker2, ampoker2, 0,    ROT0, "Bootleg",    "American Poker II (bootleg, set 1)", GAME_SUPPORTS_SAVE,     layout_ampoker2 )
+GAMEL( 1990, ampkr2b2, ampoker2, ampoker2, ampoker2, 0,    ROT0, "Bootleg",    "American Poker II (bootleg, set 2)", GAME_SUPPORTS_SAVE,     layout_ampoker2 )
+GAMEL( 1994, ampkr2b3, ampoker2, ampoker2, ampoker2, 0,    ROT0, "Bootleg",    "American Poker II (bootleg, set 3)", GAME_SUPPORTS_SAVE,     layout_ampoker2 )
+GAMEL( 1994, ampkr228, ampoker2, ampoker2, ampoker2, 0,    ROT0, "Bootleg?",   "American Poker II (iamp2 v28)",      GAME_SUPPORTS_SAVE,     layout_ampoker2 )
+GAMEL( 1995, ampkr95,  ampoker2, ampoker2, ampkr95,  0,    ROT0, "Bootleg",    "American Poker 95",                  GAME_SUPPORTS_SAVE,     layout_ampoker2 )
+GAMEL( 1990, pkrdewin, ampoker2, ampoker2, ampoker2, 0,    ROT0, "Bootleg",    "Poker De Win",                       GAME_SUPPORTS_SAVE,     layout_ampoker2 )
+GAMEL( 1990, videomat, ampoker2, ampoker2, ampoker2, 0,    ROT0, "Bootleg",    "Videomat (polish bootleg)",          GAME_SUPPORTS_SAVE,     layout_ampoker2 )
+GAMEL( 1995, sigmapkr, 0,        ampoker2, sigmapkr, 0,    ROT0, "Sigma Inc.", "Sigma Poker",                        GAME_SUPPORTS_SAVE,     layout_sigmapkr )
+GAMEL( 1998, sigma2k,  0,        sigma2k,  sigma2k,  0,    ROT0, "Sigma Inc.", "Sigma Poker 2000",                   GAME_SUPPORTS_SAVE,     layout_sigmapkr )

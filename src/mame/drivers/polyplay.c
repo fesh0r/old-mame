@@ -119,9 +119,9 @@ static MACHINE_RESET( polyplay )
 	channel2_const = 0;
 
 	polyplay_set_channel1(0);
-	polyplay_play_channel1(0);
+	polyplay_play_channel1(machine, 0);
 	polyplay_set_channel2(0);
-	polyplay_play_channel2(0);
+	polyplay_play_channel2(machine, 0);
 
 	polyplay_timer = timer_alloc(machine, polyplay_timer_callback, NULL);
 }
@@ -192,7 +192,7 @@ static WRITE8_HANDLER( polyplay_sound_channel )
 				polyplay_set_channel1(0);
 			}
 			channel1_const = 0;
-			polyplay_play_channel1(data*prescale1);
+			polyplay_play_channel1(space->machine, data*prescale1);
 
 		}
 		else {
@@ -203,7 +203,7 @@ static WRITE8_HANDLER( polyplay_sound_channel )
 			}
 			if ((data == 0x41) || (data == 0x65) || (data == 0x45)) {
 				polyplay_set_channel1(0);
-				polyplay_play_channel1(0);
+				polyplay_play_channel1(space->machine, 0);
 			}
 		}
 		break;
@@ -213,7 +213,7 @@ static WRITE8_HANDLER( polyplay_sound_channel )
 				polyplay_set_channel2(0);
 			}
 			channel2_const = 0;
-			polyplay_play_channel2(data*prescale2);
+			polyplay_play_channel2(space->machine, data*prescale2);
 
 		}
 		else {
@@ -224,7 +224,7 @@ static WRITE8_HANDLER( polyplay_sound_channel )
 			}
 			if ((data == 0x41) || (data == 0x65) || (data == 0x45)) {
 				polyplay_set_channel2(0);
-				polyplay_play_channel2(0);
+				polyplay_play_channel2(space->machine, 0);
 			}
 		}
 		break;
@@ -279,16 +279,16 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( polyplay )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 9830400/4)
+	MDRV_CPU_ADD("maincpu", Z80, 9830400/4)
 	MDRV_CPU_PROGRAM_MAP(polyplay_map,0)
 	MDRV_CPU_IO_MAP(polyplay_io_map,0)
 	MDRV_CPU_PERIODIC_INT(periodic_interrupt,75)
-	MDRV_CPU_VBLANK_INT("main", coin_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", coin_interrupt)
 
 	MDRV_MACHINE_RESET(polyplay)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
@@ -298,6 +298,7 @@ static MACHINE_DRIVER_START( polyplay )
 	MDRV_PALETTE_LENGTH(10)
 
 	MDRV_PALETTE_INIT(polyplay)
+	MDRV_VIDEO_START(polyplay)
 	MDRV_VIDEO_UPDATE(polyplay)
 
 	/* sound hardware */
@@ -311,7 +312,7 @@ MACHINE_DRIVER_END
 
 /* ROM loading and mapping */
 ROM_START( polyplay )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "cpu_0000.37",       0x0000, 0x0400, CRC(87884c5f) SHA1(849c6b3f40496c694a123d6eec268a7128c037f0) )
 	ROM_LOAD( "cpu_0400.36",       0x0400, 0x0400, CRC(d5c84829) SHA1(baa8790e77db66e1e543b3a0e5390cc71256de2f) )
 	ROM_LOAD( "cpu_0800.35",       0x0800, 0x0400, CRC(5f36d08e) SHA1(08ecf8143e818a9844b4f168e68629d6d4481a8a) )

@@ -14,8 +14,11 @@
         * Suit Pursuit
         * Treasure Trail?
 
-    Known bugs:
-        * Neither game registers coins. Protection maybe?
+    Known issues:
+        * Neither game registers coins and I can't find where the credit
+        count gets updated in the code. Each game requires a unique
+        security PAL - maybe this is related? I'm poking the coin values
+        directly into RAM for now.
 
 ***************************************************************************/
 
@@ -85,7 +88,7 @@ static void tms_interrupt(running_machine *machine, int state)
 
 static const struct tms34061_interface tms34061intf =
 {
-	"main",			/* The screen we are acting on */
+	"screen",		/* The screen we are acting on */
 	8,				/* VRAM address is (row << rowshift) | col */
 	0x40000,		/* Size of video RAM */
 	tms_interrupt	/* Interrupt gen callback */
@@ -558,11 +561,24 @@ static READ16_HANDLER( io_r )
 		}
 		default:
 		{
+			mame_printf_debug("Unknown IO R:0x%x\n", 0xc0000 + (offset * 2));
 			return 0;
 		}
 	}
 }
 
+static INPUT_CHANGED( coin_inserted )
+{
+	if (newval == 0)
+	{
+		UINT32 credit;
+		const address_space *space = cpu_get_address_space(field->port->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+
+		/* Get the current credit value and add the new coin value */
+		credit = memory_read_dword(space, 0x8002c) + (UINT32)(FPTR)param;
+		memory_write_dword(space, 0x8002c, credit);
+	}
+}
 
 /****************************************
  *
@@ -606,7 +622,7 @@ static WRITE16_HANDLER( io_w )
 		}
 		case 0x30:
 		{
-			sn76496_0_w(0, 0, data & 0xff);
+			sn76496_w(devtag_get_device(space->machine, "sn"), 0, data & 0xff);
 			break;
 		}
 		case 0x31:
@@ -641,7 +657,7 @@ static WRITE16_HANDLER( io_w )
 
 static ADDRESS_MAP_START( guab_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x00ffff) AM_ROM
-	AM_RANGE(0x040000, 0x04ffff) AM_ROM AM_REGION("main", 0x10000)
+	AM_RANGE(0x040000, 0x04ffff) AM_ROM AM_REGION("maincpu", 0x10000)
 	AM_RANGE(0x0c0000, 0x0c007f) AM_READWRITE(io_r, io_w)
 	AM_RANGE(0x0c0080, 0x0c0083) AM_NOP /* ACIA 1 */
 	AM_RANGE(0x0c00a0, 0x0c00a3) AM_NOP /* ACIA 2 */
@@ -664,10 +680,10 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( guab )
 	PORT_START("IN0")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN3 )   PORT_NAME("50p")
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN4 )   PORT_NAME("100p")
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Back door")  PORT_CODE(KEYCODE_R) PORT_TOGGLE
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Cash door")  PORT_CODE(KEYCODE_T) PORT_TOGGLE
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN3 )   PORT_NAME("50p") PORT_CHANGED(coin_inserted, (void *)50)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN4 )   PORT_NAME("100p") PORT_CHANGED(coin_inserted, (void *)100)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Back door") PORT_CODE(KEYCODE_R) PORT_TOGGLE
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Cash door") PORT_CODE(KEYCODE_T) PORT_TOGGLE
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Key switch") PORT_CODE(KEYCODE_Y) PORT_TOGGLE
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH,IPT_UNUSED )  PORT_NAME("50p level")
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH,IPT_UNUSED )  PORT_NAME("100p level")
@@ -690,16 +706,16 @@ static INPUT_PORTS_START( guab )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("C")
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_NAME("D")
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )   PORT_NAME("10p")
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )   PORT_NAME("20p")
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )   PORT_NAME("10p") PORT_CHANGED(coin_inserted, (void *)10)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )   PORT_NAME("20p") PORT_CHANGED(coin_inserted, (void *)20)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( tenup )
 	PORT_START("IN0")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN3 )   PORT_NAME("50p")
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN4 )   PORT_NAME("100p")
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Back door")  PORT_CODE(KEYCODE_R) PORT_TOGGLE
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Cash door")  PORT_CODE(KEYCODE_T) PORT_TOGGLE
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN3 )   PORT_NAME("50p") PORT_CHANGED(coin_inserted, (void *)50)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN4 )   PORT_NAME("100p") PORT_CHANGED(coin_inserted, (void *)100)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Back door") PORT_CODE(KEYCODE_R) PORT_TOGGLE
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Cash door") PORT_CODE(KEYCODE_T) PORT_TOGGLE
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Key switch") PORT_CODE(KEYCODE_Y) PORT_TOGGLE
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH,IPT_UNUSED )  PORT_NAME("10p level")
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH,IPT_UNUSED )  PORT_NAME("100p level")
@@ -722,8 +738,8 @@ static INPUT_PORTS_START( tenup )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("A")
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("B")
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("C")
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )   PORT_NAME("10p")
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )   PORT_NAME("20p")
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )   PORT_NAME("10p")  PORT_CHANGED(coin_inserted, (void *)10)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )   PORT_NAME("20p")  PORT_CHANGED(coin_inserted, (void *)20)
 INPUT_PORTS_END
 
 
@@ -746,14 +762,14 @@ static MACHINE_RESET( guab )
 
 static MACHINE_DRIVER_START( guab )
 	/* TODO: Verify clock */
-	MDRV_CPU_ADD("main", M68000, 8000000)
+	MDRV_CPU_ADD("maincpu", M68000, 8000000)
 	MDRV_CPU_PROGRAM_MAP(guab_map, 0)
 
 	MDRV_MACHINE_START(guab)
 	MDRV_MACHINE_RESET(guab)
 
 	/* TODO: Use real video timings */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -780,7 +796,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( guab )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "guab1a1.rom", 0x00000, 0x8000, CRC(f23a9d7d) SHA1(f933e131bdcf21cfa6001c8e20fd11d94c7a9450) )
 	ROM_LOAD16_BYTE( "guab1b1.rom", 0x00001, 0x8000, CRC(af3b5492) SHA1(6fd7f29e6ed2fadccc9246f1ebd049c3f9aeff13) )
 	ROM_LOAD16_BYTE( "guab2a1.rom", 0x10000, 0x8000, CRC(ae7a162c) SHA1(d69721818b8e4daba776a678b62bc7f44f371a3f) )
@@ -791,7 +807,7 @@ ROM_START( guab )
 ROM_END
 
 ROM_START( guab3 )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "guab1a1.rom", 0x00000, 0x8000, CRC(f23a9d7d) SHA1(f933e131bdcf21cfa6001c8e20fd11d94c7a9450) )
 	ROM_LOAD16_BYTE( "guab1b1.rom", 0x00001, 0x8000, CRC(af3b5492) SHA1(6fd7f29e6ed2fadccc9246f1ebd049c3f9aeff13) )
 	ROM_LOAD16_BYTE( "guab2a1.rom", 0x10000, 0x8000, CRC(ae7a162c) SHA1(d69721818b8e4daba776a678b62bc7f44f371a3f) )
@@ -802,7 +818,7 @@ ROM_START( guab3 )
 ROM_END
 
 ROM_START( tenup )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "tu-11.bin", 0x00000, 0x8000, CRC(01843086) SHA1(106a226900e8cf929f89edf801c627f02e4afce3) )
 	ROM_LOAD16_BYTE( "tu-12.bin", 0x00001, 0x8000, CRC(1c7f32b1) SHA1(2b14e2206695ae53909ae838a5c036248d9ab940) )
 	ROM_LOAD16_BYTE( "tu-13.bin", 0x10000, 0x8000, CRC(d19e2bf7) SHA1(76a9cbd4f604ad39eb0e319a9a6d5a6739b0ed8c) )
@@ -813,7 +829,7 @@ ROM_START( tenup )
 ROM_END
 
 ROM_START( tenup3 )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "tu-11.bin", 0x00000, 0x8000, CRC(01843086) SHA1(106a226900e8cf929f89edf801c627f02e4afce3) )
 	ROM_LOAD16_BYTE( "tu-12.bin", 0x00001, 0x8000, CRC(1c7f32b1) SHA1(2b14e2206695ae53909ae838a5c036248d9ab940) )
 	ROM_LOAD16_BYTE( "tu-13.bin", 0x10000, 0x8000, CRC(d19e2bf7) SHA1(76a9cbd4f604ad39eb0e319a9a6d5a6739b0ed8c) )
@@ -830,8 +846,7 @@ ROM_END
  *
  *************************************/
 
-GAME( 1986, guab,   0,     guab, guab,  0, ROT0, "JPM", "Give us a Break (6th edition)", GAME_NOT_WORKING )
-GAME( 1986, guab3,  guab,  guab, guab,  0, ROT0, "JPM", "Give us a Break (3rd edition)", GAME_NOT_WORKING )
-
-GAME( 1988, tenup,  0,     guab, tenup, 0, ROT0, "JPM", "Ten Up (compendium 17)",        GAME_NOT_WORKING )
-GAME( 1988, tenup3, tenup, guab, tenup, 0, ROT0, "JPM", "Ten Up (compendium 3)",         GAME_NOT_WORKING )
+GAME( 1986, guab,   0,     guab, guab,  0, ROT0, "JPM", "Give us a Break (6th edition)", 0 )
+GAME( 1986, guab3,  guab,  guab, guab,  0, ROT0, "JPM", "Give us a Break (3rd edition)", 0 )
+GAME( 1988, tenup,  0,     guab, tenup, 0, ROT0, "JPM", "Ten Up (compendium 17)",        0 )
+GAME( 1988, tenup3, tenup, guab, tenup, 0, ROT0, "JPM", "Ten Up (compendium 3)",         0 )

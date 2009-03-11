@@ -142,7 +142,7 @@ static READ8_HANDLER( cliff_irq_ack_r )
 	return 0x00;
 }
 
-static WRITE8_HANDLER( cliff_sound_overlay_w )
+static WRITE8_DEVICE_HANDLER( cliff_sound_overlay_w )
 {
 	int sound = data & 3;
 	int overlay = ( data & 0x10 ) ? 1 : 0;
@@ -150,18 +150,18 @@ static WRITE8_HANDLER( cliff_sound_overlay_w )
 	/* configure pen 0 and 1 as transparent in the renderer and use it as the compositing color */
 	if (overlay)
 	{
-		palette_set_color(space->machine, 0, palette_get_color(space->machine, 0) & MAKE_ARGB(0,255,255,255));
-		palette_set_color(space->machine, 1, palette_get_color(space->machine, 1) & MAKE_ARGB(0,255,255,255));
+		palette_set_color(device->machine, 0, palette_get_color(device->machine, 0) & MAKE_ARGB(0,255,255,255));
+		palette_set_color(device->machine, 1, palette_get_color(device->machine, 1) & MAKE_ARGB(0,255,255,255));
 	}
 	else
 	{
-		palette_set_color(space->machine, 0, palette_get_color(space->machine, 0) | MAKE_ARGB(255,0,0,0));
-		palette_set_color(space->machine, 1, palette_get_color(space->machine, 1) | MAKE_ARGB(255,0,0,0));
+		palette_set_color(device->machine, 0, palette_get_color(device->machine, 0) | MAKE_ARGB(255,0,0,0));
+		palette_set_color(device->machine, 1, palette_get_color(device->machine, 1) | MAKE_ARGB(255,0,0,0));
 	}
 
 	/* audio */
-	discrete_sound_w(space, CLIFF_ENABLE_SND_1, sound&1);
-	discrete_sound_w(space, CLIFF_ENABLE_SND_2, (sound>>1)&1);
+	discrete_sound_w(device, CLIFF_ENABLE_SND_1, sound&1);
+	discrete_sound_w(device, CLIFF_ENABLE_SND_2, (sound>>1)&1);
 }
 
 static WRITE8_HANDLER( cliff_ldwire_w )
@@ -211,7 +211,7 @@ static void vdp_interrupt (running_machine *machine, int state)
 
 static MACHINE_START( cliffhgr )
 {
-	laserdisc = device_list_find_by_tag(machine->config->devicelist, LASERDISC, "laserdisc");
+	laserdisc = devtag_get_device(machine, "laserdisc");
 	irq_timer = timer_alloc(machine, cliff_irq_callback, NULL);
 }
 
@@ -234,7 +234,7 @@ static ADDRESS_MAP_START( mainport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x44, 0x44) AM_WRITE(TMS9928A_vram_w)
 	AM_RANGE(0x45, 0x45) AM_READ(TMS9928A_vram_r)
-	AM_RANGE(0x46, 0x46) AM_WRITE(cliff_sound_overlay_w)
+	AM_RANGE(0x46, 0x46) AM_DEVWRITE("discrete", cliff_sound_overlay_w)
 	AM_RANGE(0x50, 0x52) AM_READ(cliff_phillips_code_r)
 	AM_RANGE(0x53, 0x53) AM_READ(cliff_irq_ack_r)
 	AM_RANGE(0x54, 0x54) AM_WRITE(TMS9928A_register_w)
@@ -682,17 +682,17 @@ DISCRETE_SOUND_EXTERN( cliffhgr );
 
 static MACHINE_DRIVER_START( cliffhgr )
 
-	MDRV_CPU_ADD("main", Z80, 4000000)       /* 4MHz */
+	MDRV_CPU_ADD("maincpu", Z80, 4000000)       /* 4MHz */
 	MDRV_CPU_PROGRAM_MAP(mainmem,0)
 	MDRV_CPU_IO_MAP(mainport,0)
-	MDRV_CPU_VBLANK_INT("main", cliff_vsync)
+	MDRV_CPU_VBLANK_INT("screen", cliff_vsync)
 
 	MDRV_MACHINE_START(cliffhgr)
 	MDRV_MACHINE_RESET(cliffhgr)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_LASERDISC_ADD("laserdisc", PIONEER_PR8210, "main", "ldsound")
+	MDRV_LASERDISC_ADD("laserdisc", PIONEER_PR8210, "screen", "ldsound")
 	MDRV_LASERDISC_OVERLAY(tms9928a, 15+32*8+15, 27+24*8+24, BITMAP_FORMAT_INDEXED16)
 	MDRV_LASERDISC_OVERLAY_CLIP(15-12, 15+32*8+12-1, 27-9, 27+24*8+9-1)
 
@@ -700,20 +700,19 @@ static MACHINE_DRIVER_START( cliffhgr )
 	MDRV_IMPORT_FROM(tms9928a)
 
 	/* override video rendering and raw screen info */
-	MDRV_SCREEN_REMOVE("main")
-	MDRV_LASERDISC_SCREEN_ADD_NTSC("main", BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_REMOVE("screen")
+	MDRV_LASERDISC_SCREEN_ADD_NTSC("screen", BITMAP_FORMAT_INDEXED16)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MDRV_SOUND_ADD("ldsound", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(laserdisc_custom_interface)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ADD("ldsound", LASERDISC, 0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(cliffhgr)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -725,7 +724,7 @@ MACHINE_DRIVER_END
 *************************************/
 
 ROM_START( cliffhgr )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "cliff_u1.bin",	0x0000, 0x2000, CRC(a86ec38f) SHA1(bfca1b1c084f5b7b1e0ccb2f3616ecea1340f04c) )
 	ROM_LOAD( "cliff_u2.bin",	0x2000, 0x2000, CRC(b8d33b6b) SHA1(02778f87a78199129c758a8fb0629b9ba74cab99) )
 	ROM_LOAD( "cliff_u3.bin",	0x4000, 0x2000, CRC(75a64cd2) SHA1(18fe4d8885b59ec8b8c28b5d7141a27164c982ac) )
@@ -737,7 +736,7 @@ ROM_START( cliffhgr )
 ROM_END
 
 ROM_START( cliffhga )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "cliff_alt_0.bin",	0x0000, 0x2000, CRC(27caa67c) SHA1(70d8270766b8712d4250b1a23489007d59eb262f) )
 	ROM_LOAD( "cliff_alt_1.bin",	0x2000, 0x2000, CRC(6e5f1515) SHA1(1c4116f4f5910857408826d73c630abbf1434119) )
 	ROM_LOAD( "cliff_alt_2.bin",	0x4000, 0x2000, CRC(045f895d) SHA1(364e259a9630d87ca917c7a9dc1a94d6f0d0eba5) )
@@ -748,7 +747,7 @@ ROM_START( cliffhga )
 ROM_END
 
 ROM_START( goaltogo )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "gtg.rm0",	0x0000, 0x2000, CRC(d8efddea) SHA1(69a076fed60ebabad3032d8c10804f57a0904327) )
 	ROM_LOAD( "gtg.rm1",	0x2000, 0x2000, CRC(69953d38) SHA1(2a51aa785a4576db8b046e128bbfc1b3949d7bf7) )
 	ROM_LOAD( "gtg.rm2",	0x4000, 0x2000, CRC(b043e205) SHA1(8992c0e294f59bd9331fb3a50a0dfd8d5c194fa3) )

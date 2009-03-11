@@ -118,46 +118,46 @@ static WRITE8_HANDLER( jongkyo_coin_counter_w )
 	/* bit 2 always set? */
 }
 
-static READ8_HANDLER( input_1p_r )
+static READ8_DEVICE_HANDLER( input_1p_r )
 {
 	static UINT8 cr_clear;
 
-	cr_clear = input_port_read(space->machine, "CR_CLEAR");
+	cr_clear = input_port_read(device->machine, "CR_CLEAR");
 
 	switch(mux_data)
 	{
-		case 0x01: return input_port_read(space->machine, "PL1_1") | cr_clear;
-		case 0x02: return input_port_read(space->machine, "PL1_2") | cr_clear;
-		case 0x04: return input_port_read(space->machine, "PL1_3") | cr_clear;
-		case 0x08: return input_port_read(space->machine, "PL1_4") | cr_clear;
-		case 0x10: return input_port_read(space->machine, "PL1_5") | cr_clear;
-		case 0x20: return input_port_read(space->machine, "PL1_6") | cr_clear;
+		case 0x01: return input_port_read(device->machine, "PL1_1") | cr_clear;
+		case 0x02: return input_port_read(device->machine, "PL1_2") | cr_clear;
+		case 0x04: return input_port_read(device->machine, "PL1_3") | cr_clear;
+		case 0x08: return input_port_read(device->machine, "PL1_4") | cr_clear;
+		case 0x10: return input_port_read(device->machine, "PL1_5") | cr_clear;
+		case 0x20: return input_port_read(device->machine, "PL1_6") | cr_clear;
 	}
 //  printf("%04x\n",mux_data);
 
-	return (input_port_read(space->machine, "PL1_1") & input_port_read(space->machine, "PL1_2") & input_port_read(space->machine, "PL1_3") &
-	       input_port_read(space->machine, "PL1_4") & input_port_read(space->machine, "PL1_5") & input_port_read(space->machine, "PL1_6")) | cr_clear;//input_port_read(space->machine, "PL1_0") && ;
+	return (input_port_read(device->machine, "PL1_1") & input_port_read(device->machine, "PL1_2") & input_port_read(device->machine, "PL1_3") &
+	       input_port_read(device->machine, "PL1_4") & input_port_read(device->machine, "PL1_5") & input_port_read(device->machine, "PL1_6")) | cr_clear;//input_port_read(device->machine, "PL1_0") && ;
 }
 
-static READ8_HANDLER( input_2p_r )
+static READ8_DEVICE_HANDLER( input_2p_r )
 {
 	static UINT8 coin_port;
 
-	coin_port = input_port_read(space->machine, "COINS");
+	coin_port = input_port_read(device->machine, "COINS");
 
 	switch(mux_data)
 	{
-		case 0x01: return input_port_read(space->machine, "PL2_1") | coin_port;
-		case 0x02: return input_port_read(space->machine, "PL2_2") | coin_port;
-		case 0x04: return input_port_read(space->machine, "PL2_3") | coin_port;
-		case 0x08: return input_port_read(space->machine, "PL2_4") | coin_port;
-		case 0x10: return input_port_read(space->machine, "PL2_5") | coin_port;
-		case 0x20: return input_port_read(space->machine, "PL2_6") | coin_port;
+		case 0x01: return input_port_read(device->machine, "PL2_1") | coin_port;
+		case 0x02: return input_port_read(device->machine, "PL2_2") | coin_port;
+		case 0x04: return input_port_read(device->machine, "PL2_3") | coin_port;
+		case 0x08: return input_port_read(device->machine, "PL2_4") | coin_port;
+		case 0x10: return input_port_read(device->machine, "PL2_5") | coin_port;
+		case 0x20: return input_port_read(device->machine, "PL2_6") | coin_port;
 	}
 //  printf("%04x\n",mux_data);
 
-	return (input_port_read(space->machine, "PL2_1") & input_port_read(space->machine, "PL2_2") & input_port_read(space->machine, "PL2_3") &
-	       input_port_read(space->machine, "PL2_4") & input_port_read(space->machine, "PL2_5") & input_port_read(space->machine, "PL2_6")) | coin_port;//input_port_read(space->machine, "PL1_0") && ;
+	return (input_port_read(device->machine, "PL2_1") & input_port_read(device->machine, "PL2_2") & input_port_read(device->machine, "PL2_3") &
+	       input_port_read(device->machine, "PL2_4") & input_port_read(device->machine, "PL2_5") & input_port_read(device->machine, "PL2_6")) | coin_port;//input_port_read(device->machine, "PL1_0") && ;
 
 }
 static WRITE8_HANDLER( videoram2_w )
@@ -204,9 +204,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( jongkyo_portmap, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	// R 01 keyboard
-	AM_RANGE(0x01, 0x01) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0x02, 0x02) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x01, 0x01) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x02, 0x03) AM_DEVWRITE("ay", ay8910_data_address_w)
 
 	AM_RANGE(0x10, 0x10) AM_READ_PORT("DSW") AM_WRITE(jongkyo_coin_counter_w)
 	AM_RANGE(0x11, 0x11) AM_READ_PORT("IN0") AM_WRITE(mux_w)
@@ -410,21 +409,21 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_1p_r,
-	input_2p_r,
-	NULL,
-	NULL
+	DEVCB_HANDLER(input_1p_r),
+	DEVCB_HANDLER(input_2p_r),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static MACHINE_DRIVER_START( jongkyo )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,JONGKYO_CLOCK/4)
+	MDRV_CPU_ADD("maincpu", Z80,JONGKYO_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(jongkyo_memmap,0)
 	MDRV_CPU_IO_MAP(jongkyo_portmap,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -445,7 +444,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( jongkyo )
-	ROM_REGION( 0x9000, "main", 0 )
+	ROM_REGION( 0x9000, "maincpu", 0 )
 	ROM_LOAD( "epr-6258", 0x00000, 0x02000, CRC(fb8b7bcc) SHA1(8ece7c2c82c237b4b51829d412b2109b96ccd0e7) )
 	ROM_LOAD( "epr-6259", 0x02000, 0x02000, CRC(e46cde5d) SHA1(1cbe1677cfb3fa9f76ad90d5b1446ce9cefee6b7) )
 	ROM_LOAD( "epr-6260", 0x04000, 0x02000, CRC(369a5365) SHA1(037a2971a59ab339595b333cbdfd4cbb104de2be) )
@@ -466,7 +465,7 @@ ROM_END
 static DRIVER_INIT( jongkyo )
 {
 	int i;
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(machine, "maincpu");
 
 	/* first of all, do a simple bitswap */
 	for (i = 0x6000; i < 0x9000; ++i)
@@ -475,7 +474,7 @@ static DRIVER_INIT( jongkyo )
 	}
 
 	/* then do the standard Sega decryption */
-	jongkyo_decode(machine, "main");
+	jongkyo_decode(machine, "maincpu");
 
 	videoram2 = auto_malloc(0x4000);
 	state_save_register_global_pointer(machine, videoram2, 0x4000);

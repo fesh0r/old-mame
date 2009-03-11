@@ -44,6 +44,7 @@ EMUOBJS = \
 	$(EMUOBJ)/cpuexec.o \
 	$(EMUOBJ)/crsshair.o \
 	$(EMUOBJ)/debugger.o \
+	$(EMUOBJ)/devcb.o \
 	$(EMUOBJ)/devintrf.o \
 	$(EMUOBJ)/drawgfx.o \
 	$(EMUOBJ)/driver.o \
@@ -67,7 +68,6 @@ EMUOBJS = \
 	$(EMUOBJ)/restrack.o \
 	$(EMUOBJ)/romload.o \
 	$(EMUOBJ)/sound.o \
-	$(EMUOBJ)/sndintrf.o \
 	$(EMUOBJ)/state.o \
 	$(EMUOBJ)/streams.o \
 	$(EMUOBJ)/tilemap.o \
@@ -175,7 +175,6 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/z80sio.o \
 
 EMUVIDEOOBJS = \
- 	$(EMUVIDEO)/cdp1869.o \
 	$(EMUVIDEO)/generic.o \
  	$(EMUVIDEO)/mc6845.o \
 	$(EMUVIDEO)/poly.o \

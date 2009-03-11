@@ -105,8 +105,7 @@ static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x05, 0x05) AM_READ_PORT("IN4") AM_WRITE(rom_bank_select_w)
 	AM_RANGE(0x06, 0x06) AM_READ(suprgolf_random) // game locks up or crashes? if this doesn't return right values?
 
-	AM_RANGE(0x08, 0x08) AM_READ(ym2203_status_port_0_r) AM_WRITE(ym2203_control_port_0_w)
-	AM_RANGE(0x09, 0x09) AM_READ(ym2203_read_port_0_r) AM_WRITE(ym2203_write_port_0_w)
+	AM_RANGE(0x08, 0x09) AM_DEVREADWRITE("ym", ym2203_r, ym2203_w)
  ADDRESS_MAP_END
 
 static INPUT_PORTS_START( suprgolf )
@@ -247,19 +246,19 @@ static INPUT_PORTS_START( suprgolf )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
 
-static WRITE8_HANDLER( suprgolf_writeA )
+static WRITE8_DEVICE_HANDLER( suprgolf_writeA )
 {
 	mame_printf_debug("ymwA\n");
 }
 
-static WRITE8_HANDLER( suprgolf_writeB )
+static WRITE8_DEVICE_HANDLER( suprgolf_writeB )
 {
 	mame_printf_debug("ymwA\n");
 }
 
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-//  cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+//  cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =
@@ -267,10 +266,10 @@ static const ym2203_interface ym2203_config =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		input_port_5_r,
-		input_port_6_r,
-		suprgolf_writeA,
-		suprgolf_writeB,
+		DEVCB_INPUT_PORT("DSW0"),
+		DEVCB_INPUT_PORT("DSW1"),
+		DEVCB_HANDLER(suprgolf_writeA),
+		DEVCB_HANDLER(suprgolf_writeB),
 	},
 	irqhandler
 };
@@ -292,10 +291,10 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( suprgolf )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,4000000)
+	MDRV_CPU_ADD("maincpu", Z80,4000000)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_VIDEO_START(suprgolf)
 	MDRV_VIDEO_UPDATE(suprgolf)
@@ -303,7 +302,7 @@ static MACHINE_DRIVER_START( suprgolf )
 	MDRV_MACHINE_RESET(suprgolf)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -351,7 +350,7 @@ CG23     7F         "
 */
 
 ROM_START( suprgolf )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "cg24.6k",0x000000, 0x08000, CRC(de548044) SHA1(f96b4cfcfca4dffabfaf205eb903cbc70972626b) )
 
 	ROM_REGION( 0x100000, "user1", ROMREGION_ERASEFF )

@@ -140,7 +140,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800114, 0x800117) AM_RAM AM_BASE(&yunsun16_scroll_0				)	// Scrolling
 	AM_RANGE(0x800154, 0x800155) AM_RAM AM_BASE(&yunsun16_priority				)	// Priority
 	AM_RANGE(0x800180, 0x800181) AM_WRITE(yunsun16_sound_bank_w					)	// Sound
-	AM_RANGE(0x800188, 0x800189) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w	)	// Sound
+	AM_RANGE(0x800188, 0x800189) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff	)	// Sound
 	AM_RANGE(0x8001fe, 0x8001ff) AM_WRITE(SMH_NOP							)	// ? 0 (during int)
 	AM_RANGE(0x900000, 0x903fff) AM_RAM_WRITE(paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
 	AM_RANGE(0x908000, 0x90bfff) AM_RAM_WRITE(yunsun16_vram_1_w) AM_BASE(&yunsun16_vram_1	)	// Layer 1
@@ -187,10 +187,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_port_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x10, 0x10) AM_READWRITE(ym3812_status_port_0_r, ym3812_control_port_0_w )	// YM3812
-	AM_RANGE(0x11, 0x11) AM_WRITE(ym3812_write_port_0_w )
+	AM_RANGE(0x10, 0x11) AM_DEVREADWRITE("ym", ym3812_r, ym3812_w )
 	AM_RANGE(0x18, 0x18) AM_READ(soundlatch_r )						// From Main CPU
-	AM_RANGE(0x1c, 0x1c) AM_READWRITE(okim6295_status_0_r, okim6295_data_0_w )		// M6295
+	AM_RANGE(0x1c, 0x1c) AM_DEVREADWRITE("oki", okim6295_r, okim6295_w )		// M6295
 ADDRESS_MAP_END
 
 
@@ -572,9 +571,9 @@ GFXDECODE_END
                                 Magic Bubble
 ***************************************************************************/
 
-static void soundirq(running_machine *machine, int state)
+static void soundirq(const device_config *device, int state)
 {
-	cpu_set_input_line(machine->cpu[1], 0, state);
+	cpu_set_input_line(device->machine->cpu[1], 0, state);
 }
 
 static const ym3812_interface magicbub_ym3812_intf =
@@ -585,16 +584,16 @@ static const ym3812_interface magicbub_ym3812_intf =
 static MACHINE_DRIVER_START( magicbub )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 16000000)
+	MDRV_CPU_ADD("maincpu", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, 3000000)	/* ? */
+	MDRV_CPU_ADD("audiocpu", Z80, 3000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_port_map,0)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -608,17 +607,17 @@ static MACHINE_DRIVER_START( magicbub )
 	MDRV_VIDEO_UPDATE(yunsun16)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM3812, 4000000)
 	MDRV_SOUND_CONFIG(magicbub_ym3812_intf)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.20)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.20)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.20)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.20)
 
 	MDRV_SOUND_ADD("oki", OKIM6295, 1056000)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.80)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.80)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.80)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.80)
 MACHINE_DRIVER_END
 
 
@@ -629,12 +628,12 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( shocking )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 16000000)
+	MDRV_CPU_ADD("maincpu", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -648,12 +647,12 @@ static MACHINE_DRIVER_START( shocking )
 	MDRV_VIDEO_UPDATE(yunsun16)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("oki", OKIM6295, 1000000)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -724,11 +723,11 @@ Sound section:
 
 ROM_START( magicbub )
 
-	ROM_REGION( 0x080000, "main", 0 )		/* 68000 Code */
+	ROM_REGION( 0x080000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "magbuble.u33", 0x000000, 0x040000, CRC(18fdd582) SHA1(89f4c52ec0e213285a04743da88f6e39408b573d) )
 	ROM_LOAD16_BYTE( "magbuble.u32", 0x000001, 0x040000, CRC(f6ea7004) SHA1(069541e37b60370810451616ee66bbd05dc10137) )
 
-	ROM_REGION( 0x10000, "audio", 0 )		/* Z80 Code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )		/* Z80 Code */
 	ROM_LOAD( "magbuble.143", 0x00000, 0x10000, CRC(04192753) SHA1(9c56ba70e1d074906ea1dc593c2a8516c6ba2074) )
 
 	ROM_REGION( 0x200000*8, "gfx1", ROMREGION_ERASEFF | ROMREGION_DISPOSE )	/* 16x16x8 */
@@ -750,11 +749,11 @@ ROM_END
 
 ROM_START( magicbua )
 
-	ROM_REGION( 0x080000, "main", 0 )		/* 68000 Code */
+	ROM_REGION( 0x080000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "u33.bin", 0x000000, 0x040000, CRC(a8164a02) SHA1(7275209d5d73881839f7fa3ac7d362194ef2cfd9) )
 	ROM_LOAD16_BYTE( "u32.bin", 0x000001, 0x040000, CRC(58f885ad) SHA1(e66f5bb1ac0acd9abc2def439af7f932c3a09cbd) )
 
-	ROM_REGION( 0x10000, "audio", 0 )		/* Z80 Code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )		/* Z80 Code */
 	ROM_LOAD( "magbuble.143", 0x00000, 0x10000, CRC(04192753) SHA1(9c56ba70e1d074906ea1dc593c2a8516c6ba2074) )
 
 	ROM_REGION( 0x200000*8, "gfx1", ROMREGION_ERASEFF | ROMREGION_DISPOSE )	/* 16x16x8 */
@@ -825,7 +824,7 @@ Notes:
 
 ROM_START( paprazzi )
 
-	ROM_REGION( 0x080000, "main", 0 )		/* 68000 Code */
+	ROM_REGION( 0x080000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "u33.bin", 0x000000, 0x020000, CRC(91f33abd) SHA1(694868bc1ef612ba47cb38957d965f271bf16105) )
 	ROM_LOAD16_BYTE( "u32.bin", 0x000001, 0x020000, CRC(ad5a3fec) SHA1(a2db3f2926bdbb5bc44f307b919a0431c9deb76d) )
 
@@ -859,7 +858,7 @@ ROM_END
 
 ROM_START( shocking )
 
-	ROM_REGION( 0x080000, "main", 0 )		/* 68000 Code */
+	ROM_REGION( 0x080000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "yunsun16.u33", 0x000000, 0x040000, CRC(8a155521) SHA1(000c9095558e6cae30ce43a885c3fbcf55713f40) )
 	ROM_LOAD16_BYTE( "yunsun16.u32", 0x000001, 0x040000, CRC(c4998c10) SHA1(431ae1f9982a70421650e1bfe4bf87152e2fe85c) )
 
@@ -890,7 +889,7 @@ ROM_END
 
 ROM_START( bombkick )
 
-	ROM_REGION( 0x080000, "main", 0 )		/* 68000 Code */
+	ROM_REGION( 0x080000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "bk_u33", 0x000000, 0x040000, CRC(d6eb50bf) SHA1(a24c31f212f86f066c35d39da137ef0933323e43) )
 	ROM_LOAD16_BYTE( "bk_u32", 0x000001, 0x040000, CRC(d55388a2) SHA1(928f1a8933b986cf099e184002660e30ee1aeb0a) )
 

@@ -49,10 +49,7 @@ static int mrflea_main;
 
 static int mrflea_status;
 
-static int mrflea_select0;
 static int mrflea_select1;
-static int mrflea_select2;
-static int mrflea_select3;
 
 extern WRITE8_HANDLER( mrflea_gfx_bank_w );
 extern WRITE8_HANDLER( mrflea_videoram_w );
@@ -182,29 +179,8 @@ ADDRESS_MAP_END
 
 /*******************************************************/
 
-static WRITE8_HANDLER( mrflea_select0_w ){
-	mrflea_select0 = data;
-}
-
 static WRITE8_HANDLER( mrflea_select1_w ){
 	mrflea_select1 = data;
-}
-
-static WRITE8_HANDLER( mrflea_select2_w ){
-	mrflea_select2 = data;
-}
-
-static WRITE8_HANDLER( mrflea_select3_w ){
-	mrflea_select3 = data;
-}
-
-/*******************************************************/
-
-static READ8_HANDLER( mrflea_input0_r )
-{
-	if( mrflea_select0 == 0x0f ) return input_port_read(space->machine, "IN0");
-	if( mrflea_select0 == 0x0e ) return input_port_read(space->machine, "IN1");
-	return 0x00;
 }
 
 static READ8_HANDLER( mrflea_input1_r )
@@ -212,36 +188,7 @@ static READ8_HANDLER( mrflea_input1_r )
 	return 0x00;
 }
 
-static READ8_HANDLER( mrflea_input2_r )
-{
-	if( mrflea_select2 == 0x0f ) return input_port_read(space->machine, "DSW1");
-	if( mrflea_select2 == 0x0e ) return input_port_read(space->machine, "DSW2");
-	return 0x00;
-}
-
-static READ8_HANDLER( mrflea_input3_r )
-{
-	return 0x00;
-}
-
-/*******************************************************/
-
-static WRITE8_HANDLER( mrflea_data0_w ){
-	ay8910_control_port_0_w( space, offset, mrflea_select0 );
-	ay8910_write_port_0_w( space, offset, data );
-}
-
 static WRITE8_HANDLER( mrflea_data1_w ){
-}
-
-static WRITE8_HANDLER( mrflea_data2_w ){
-	ay8910_control_port_1_w( space, offset, mrflea_select2 );
-	ay8910_write_port_1_w( space, offset, data );
-}
-
-static WRITE8_HANDLER( mrflea_data3_w ){
-	ay8910_control_port_2_w( space, offset, mrflea_select3 );
-	ay8910_write_port_2_w( space, offset, data );
 }
 
 static ADDRESS_MAP_START( inout_io_map, ADDRESS_SPACE_IO, 8 )
@@ -253,25 +200,41 @@ static ADDRESS_MAP_START( inout_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x21, 0x21) AM_WRITE(mrflea_main_w)
 	AM_RANGE(0x22, 0x22) AM_READ(mrflea_io_status_r)
 	AM_RANGE(0x23, 0x23) AM_WRITE(SMH_NOP) /* 0xb4,0x09,0x05 */
-	AM_RANGE(0x40, 0x40) AM_READWRITE(mrflea_input0_r, mrflea_data0_w)
-	AM_RANGE(0x41, 0x41) AM_WRITE(mrflea_select0_w)
+	AM_RANGE(0x40, 0x40) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0x40, 0x41) AM_DEVWRITE("ay1", ay8910_data_address_w)
 	AM_RANGE(0x42, 0x42) AM_READWRITE(mrflea_input1_r, mrflea_data1_w)
 	AM_RANGE(0x43, 0x43) AM_WRITE(mrflea_select1_w)
-	AM_RANGE(0x44, 0x44) AM_READWRITE(mrflea_input2_r, mrflea_data2_w)
-	AM_RANGE(0x45, 0x45) AM_WRITE(mrflea_select2_w)
-	AM_RANGE(0x46, 0x46) AM_READWRITE(mrflea_input3_r, mrflea_data3_w)
-	AM_RANGE(0x47, 0x47) AM_WRITE(mrflea_select3_w)
+	AM_RANGE(0x44, 0x44) AM_DEVREAD("ay2", ay8910_r)
+	AM_RANGE(0x44, 0x45) AM_DEVWRITE("ay2", ay8910_data_address_w)
+	AM_RANGE(0x46, 0x46) AM_DEVREAD("ay3", ay8910_r)
+	AM_RANGE(0x46, 0x47) AM_DEVWRITE("ay3", ay8910_data_address_w)
 ADDRESS_MAP_END
 
 /*******************************************************/
 
+static const ay8910_interface mrflea_ay8910_interface_0 =
+{
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	DEVCB_INPUT_PORT("IN1"),
+	DEVCB_INPUT_PORT("IN0")
+};
+
+static const ay8910_interface mrflea_ay8910_interface_1 =
+{
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	DEVCB_INPUT_PORT("DSW2"),
+	DEVCB_INPUT_PORT("DSW1")
+};
+
 static MACHINE_DRIVER_START( mrflea )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 4000000) /* 4 MHz? */
+	MDRV_CPU_ADD("maincpu", Z80, 4000000) /* 4 MHz? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) /* NMI resets the game */
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold) /* NMI resets the game */
 
 	MDRV_CPU_ADD("sub", Z80, 6000000)
 	MDRV_CPU_PROGRAM_MAP(readmem_io,writemem_io)
@@ -281,7 +244,7 @@ static MACHINE_DRIVER_START( mrflea )
 	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -298,9 +261,11 @@ static MACHINE_DRIVER_START( mrflea )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
 	MDRV_SOUND_ADD("ay1", AY8910, 2000000)
+	MDRV_SOUND_CONFIG(mrflea_ay8910_interface_0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MDRV_SOUND_ADD("ay2", AY8910, 2000000)
+	MDRV_SOUND_CONFIG(mrflea_ay8910_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MDRV_SOUND_ADD("ay3", AY8910, 2000000)
@@ -308,7 +273,7 @@ static MACHINE_DRIVER_START( mrflea )
 MACHINE_DRIVER_END
 
 ROM_START( mrflea )
-	ROM_REGION( 0x10000, "main", 0 ) /* Z80 code; main CPU */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* Z80 code; main CPU */
 	ROM_LOAD( "cpu_d1",	0x0000, 0x2000, CRC(d286217c) SHA1(d750d64bb70f735a38b737881abb9a5fbde1c98c) )
 	ROM_LOAD( "cpu_d3",	0x2000, 0x2000, CRC(95cf94bc) SHA1(dd0a51d79b0b28952e6177f36af93f296b3cd954) )
 	ROM_LOAD( "cpu_d5",	0x4000, 0x2000, CRC(466ca77e) SHA1(513f41a888166a057d28bdc572571a713d77ae5f) )

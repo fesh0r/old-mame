@@ -44,9 +44,12 @@
 #include "cpu/z80/z80.h"
 #include "cpu/i86/i86.h"
 #include "sound/ay8910.h"
-#include "sound/custom.h"
 #include "rendlay.h"
 #include "tx1.h"
+
+#include "tx1.lh"
+#include "buggyboy.lh"
+#include "buggybjr.lh"
 
 
 /*************************************
@@ -477,23 +480,23 @@ static READ8_HANDLER( bbjr_analog_r )
 /* Buggy Boy uses an 8255 PPI instead of YM2149 ports for inputs! */
 static const ppi8255_interface buggyboy_ppi8255_intf =
 {
-	DEVICE8_PORT("PPI_PORTA"),
-	NULL,
-	DEVICE8_PORT("PPI_PORTC"),
-	NULL,
-	bb_coin_cnt_w,
-	NULL,
+	DEVCB_INPUT_PORT("PPI_PORTA"),
+	DEVCB_NULL,
+	DEVCB_INPUT_PORT("PPI_PORTC"),
+	DEVCB_NULL,
+	DEVCB_HANDLER(bb_coin_cnt_w),
+	DEVCB_NULL,
 };
 
 
 static const ppi8255_interface tx1_ppi8255_intf =
 {
-	tx1_ppi_porta_r,
-	tx1_ppi_portb_r,
-	DEVICE8_PORT("PPI_PORTC"),
-	NULL,
-	NULL,
-	tx1_coin_cnt_w
+	DEVCB_HANDLER(tx1_ppi_porta_r),
+	DEVCB_HANDLER(tx1_ppi_portb_r),
+	DEVCB_INPUT_PORT("PPI_PORTC"),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(tx1_coin_cnt_w)
 };
 
 
@@ -538,7 +541,7 @@ static ADDRESS_MAP_START( tx1_sound_prg, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x3000, 0x37ff) AM_RAM AM_MIRROR(0x800) AM_BASE(&z80_ram)
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(z80_intreq_w)
-	AM_RANGE(0x5000, 0x5003) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x5000, 0x5003) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w)
 	AM_RANGE(0x6000, 0x6003) AM_READWRITE(tx1_pit8253_r, tx1_pit8253_w)
 	AM_RANGE(0x7000, 0x7fff) AM_WRITE(tx1_ppi_latch_w)
 	AM_RANGE(0xb000, 0xbfff) AM_READWRITE(ts_r, ts_w)
@@ -546,8 +549,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tx1_sound_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x40, 0x40) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x41, 0x41) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x40, 0x41) AM_DEVWRITE("ay", ay8910_data_address_w)
 ADDRESS_MAP_END
 
 
@@ -606,7 +608,7 @@ static ADDRESS_MAP_START( buggyboy_sound_prg, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x47ff) AM_RAM AM_BASE(&z80_ram)
 	AM_RANGE(0x6000, 0x6001) AM_READ(bb_analog_r)
-	AM_RANGE(0x6800, 0x6803) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x6800, 0x6803) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w)
 	AM_RANGE(0x7000, 0x7003) AM_READWRITE(tx1_pit8253_r, tx1_pit8253_w)
 	AM_RANGE(0x7800, 0x7800) AM_WRITE(z80_intreq_w)
 	AM_RANGE(0xc000, 0xc7ff) AM_READWRITE(ts_r, ts_w)
@@ -625,10 +627,10 @@ ADDRESS_MAP_END
 /* Common */
 static ADDRESS_MAP_START( buggyboy_sound_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x40, 0x40) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0x41, 0x41) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x80, 0x80) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
-	AM_RANGE(0x81, 0x81) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x40, 0x40) AM_DEVREAD("ym1", ay8910_r)
+	AM_RANGE(0x40, 0x41) AM_DEVWRITE("ym1", ay8910_data_address_w)
+	AM_RANGE(0x80, 0x80) AM_DEVREAD("ym2", ay8910_r)
+	AM_RANGE(0x80, 0x81) AM_DEVWRITE("ym2", ay8910_data_address_w)
 ADDRESS_MAP_END
 
 
@@ -642,10 +644,10 @@ static const ay8910_interface tx1_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	NULL,
-	tx1_ay8910_a_w,
-	tx1_ay8910_b_w,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(tx1_ay8910_a_w),
+	DEVCB_HANDLER(tx1_ay8910_b_w),
 };
 
 
@@ -653,20 +655,20 @@ static const ay8910_interface buggyboy_ym2149_interface_1 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	NULL,
-	bb_ym1_a_w,
-	NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(bb_ym1_a_w),
+	DEVCB_NULL,
 };
 
 static const ay8910_interface buggyboy_ym2149_interface_2 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	NULL,
-	bb_ym2_a_w,
-	bb_ym2_b_w,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(bb_ym2_a_w),
+	DEVCB_HANDLER(bb_ym2_b_w),
 };
 
 
@@ -675,10 +677,10 @@ static const ay8910_interface buggybjr_ym2149_interface_1 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_1_r,
-	input_port_2_r,
-	NULL,
-	NULL,
+	DEVCB_INPUT_PORT("YM2149_IC19_A"),
+	DEVCB_INPUT_PORT("YM2149_IC19_B"),
+	DEVCB_NULL,
+	DEVCB_NULL,
 };
 
 /* YM2149 IC24 */
@@ -686,24 +688,10 @@ static const ay8910_interface buggybjr_ym2149_interface_2 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	NULL,
-	bb_ym2_a_w,
-	bb_ym2_b_w,
-};
-
-static const custom_sound_interface tx1_custom_interface =
-{
-	tx1_sh_start,
-	NULL,
-	tx1_sh_reset
-};
-
-static const custom_sound_interface bb_custom_interface =
-{
-	buggyboy_sh_start,
-	NULL,
-	buggyboy_sh_reset
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(bb_ym2_a_w),
+	DEVCB_HANDLER(bb_ym2_b_w),
 };
 
 
@@ -714,14 +702,14 @@ static const custom_sound_interface bb_custom_interface =
  *************************************/
 
 static MACHINE_DRIVER_START( tx1 )
-	MDRV_CPU_ADD("main", I8086, CPU_MASTER_CLOCK / 3)
+	MDRV_CPU_ADD("maincpu", I8086, CPU_MASTER_CLOCK / 3)
 	MDRV_CPU_PROGRAM_MAP(tx1_main, 0)
 //  MDRV_WATCHDOG_TIME_INIT(5)
 
 	MDRV_CPU_ADD("math", I8086, CPU_MASTER_CLOCK / 3)
 	MDRV_CPU_PROGRAM_MAP(tx1_math, 0)
 
-	MDRV_CPU_ADD("audio", Z80, TX1_PIXEL_CLOCK / 2)
+	MDRV_CPU_ADD("audiocpu", Z80, TX1_PIXEL_CLOCK / 2)
 	MDRV_CPU_PROGRAM_MAP(tx1_sound_prg, 0)
 	MDRV_CPU_IO_MAP(tx1_sound_io, 0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, TX1_PIXEL_CLOCK / 4 / 2048 / 2)
@@ -738,15 +726,15 @@ static MACHINE_DRIVER_START( tx1 )
 
 	MDRV_DEFAULT_LAYOUT(layout_triphsxs)
 
-	MDRV_SCREEN_ADD("left", RASTER)
+	MDRV_SCREEN_ADD("lscreen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(TX1_PIXEL_CLOCK, TX1_HTOTAL, TX1_HBEND, TX1_HBSTART, TX1_VTOTAL, TX1_VBEND, TX1_VBSTART)
 
-	MDRV_SCREEN_ADD("center", RASTER)
+	MDRV_SCREEN_ADD("cscreen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(TX1_PIXEL_CLOCK, TX1_HTOTAL, TX1_HBEND, TX1_HBSTART, TX1_VTOTAL, TX1_VBEND, TX1_VBSTART)
 
-	MDRV_SCREEN_ADD("right", RASTER)
+	MDRV_SCREEN_ADD("rscreen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(TX1_PIXEL_CLOCK, TX1_HTOTAL, TX1_HBEND, TX1_HBSTART, TX1_VTOTAL, TX1_VBEND, TX1_VBSTART)
 
@@ -761,22 +749,21 @@ static MACHINE_DRIVER_START( tx1 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "frontleft", 0.1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "frontright", 0.1)
 
-	MDRV_SOUND_ADD("tx1", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(tx1_custom_interface)
+	MDRV_SOUND_ADD("tx1", TX1, 0)
 	MDRV_SOUND_ROUTE(0, "frontleft", 0.2)
 	MDRV_SOUND_ROUTE(1, "frontright", 0.2)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( buggyboy )
-	MDRV_CPU_ADD("main", I8086, CPU_MASTER_CLOCK / 3)
+	MDRV_CPU_ADD("maincpu", I8086, CPU_MASTER_CLOCK / 3)
 	MDRV_CPU_PROGRAM_MAP(buggyboy_main, 0)
 //  MDRV_WATCHDOG_TIME_INIT(5)
 
 	MDRV_CPU_ADD("math", I8086, CPU_MASTER_CLOCK / 3)
 	MDRV_CPU_PROGRAM_MAP(buggyboy_math, 0)
 
-	MDRV_CPU_ADD("audio", Z80, BUGGYBOY_ZCLK / 2)
+	MDRV_CPU_ADD("audiocpu", Z80, BUGGYBOY_ZCLK / 2)
 	MDRV_CPU_PROGRAM_MAP(buggyboy_sound_prg, 0)
 	MDRV_CPU_PERIODIC_INT(z80_irq, BUGGYBOY_ZCLK / 2 / 4 / 2048)
 	MDRV_CPU_IO_MAP(buggyboy_sound_io, 0)
@@ -789,15 +776,15 @@ static MACHINE_DRIVER_START( buggyboy )
 
 	MDRV_DEFAULT_LAYOUT(layout_triphsxs)
 
-	MDRV_SCREEN_ADD("left", RASTER)
+	MDRV_SCREEN_ADD("lscreen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(BB_PIXEL_CLOCK, BB_HTOTAL, BB_HBEND, BB_HBSTART, BB_VTOTAL, BB_VBEND, BB_VBSTART)
 
-	MDRV_SCREEN_ADD("center", RASTER)
+	MDRV_SCREEN_ADD("cscreen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(BB_PIXEL_CLOCK, BB_HTOTAL, BB_HBEND, BB_HBSTART, BB_VTOTAL, BB_VBEND, BB_VBSTART)
 
-	MDRV_SCREEN_ADD("right", RASTER)
+	MDRV_SCREEN_ADD("rscreen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(BB_PIXEL_CLOCK, BB_HTOTAL, BB_HBEND, BB_HBSTART, BB_VTOTAL, BB_VBEND, BB_VBSTART)
 
@@ -817,22 +804,21 @@ static MACHINE_DRIVER_START( buggyboy )
 	MDRV_SOUND_CONFIG(buggyboy_ym2149_interface_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "frontright", 0.15)
 
-	MDRV_SOUND_ADD("buggyboy", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(bb_custom_interface)
+	MDRV_SOUND_ADD("buggyboy", BUGGYBOY, 0)
 	MDRV_SOUND_ROUTE(0, "frontleft", 0.2)
 	MDRV_SOUND_ROUTE(1, "frontright", 0.2)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( buggybjr )
-	MDRV_CPU_ADD("main", I8086, CPU_MASTER_CLOCK / 3)
+	MDRV_CPU_ADD("maincpu", I8086, CPU_MASTER_CLOCK / 3)
 	MDRV_CPU_PROGRAM_MAP(buggybjr_main, 0)
 //  MDRV_WATCHDOG_TIME_INIT(5)
 
 	MDRV_CPU_ADD("math", I8086, CPU_MASTER_CLOCK / 3)
 	MDRV_CPU_PROGRAM_MAP(buggyboy_math, 0)
 
-	MDRV_CPU_ADD("audio", Z80, BUGGYBOY_ZCLK / 2)
+	MDRV_CPU_ADD("audiocpu", Z80, BUGGYBOY_ZCLK / 2)
 	MDRV_CPU_PROGRAM_MAP(buggybjr_sound_prg, 0)
 	MDRV_CPU_IO_MAP(buggyboy_sound_io, 0)
 	MDRV_CPU_PERIODIC_INT(z80_irq, BUGGYBOY_ZCLK / 2 / 4 / 2048)
@@ -841,7 +827,7 @@ static MACHINE_DRIVER_START( buggybjr )
 	MDRV_MACHINE_START(buggybjr)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 #if 0
 	MDRV_SCREEN_RAW_PARAMS(BB_PIXEL_CLOCK, BB_HTOTAL, BB_HBEND, BB_HBSTART, BB_VTOTAL, BB_VBEND, BB_VBSTART)
@@ -869,8 +855,7 @@ static MACHINE_DRIVER_START( buggybjr )
 	MDRV_SOUND_CONFIG(buggybjr_ym2149_interface_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "frontright", 0.15)
 
-	MDRV_SOUND_ADD("buggyboy", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(bb_custom_interface)
+	MDRV_SOUND_ADD("buggyboy", BUGGYBOY, 0)
 	MDRV_SOUND_ROUTE(0, "frontleft", 0.2)
 	MDRV_SOUND_ROUTE(1, "frontright", 0.2)
 MACHINE_DRIVER_END
@@ -883,7 +868,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( tx1 )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "tx1_1c.ic22", 0xf0000, 0x4000, CRC(eedcee83) SHA1(7fa0590b142fb13c6562126a9bdd5a1e032880c7) )
 	ROM_LOAD16_BYTE( "tx1_2c.ic29", 0xf0001, 0x4000, CRC(294bf5bf) SHA1(02b425caba8a187c58211bab27988205eb044558) )
 	ROM_LOAD16_BYTE( "tx1_4c.ic54", 0xf8001, 0x4000, CRC(15bb8ef2) SHA1(83968f010ec555fcd0548a80562fb23a892b5afb) )
@@ -900,7 +885,7 @@ ROM_START( tx1 )
 	ROM_RELOAD(                  0xc001, 0x2000 )
 
 	/* Sound */
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "8411-136027-157.11", 0x00000, 0x2000, CRC(10ae3075) SHA1(69c5f62f2473aba848383eed3cecf15e273d86ca) )
 
 	/* 8x8 characters */
@@ -978,7 +963,7 @@ ROM_END
 
 /* Some PROMs haven't been confirmed to be the same as the Tatsumi set (but are very likely identical) */
 ROM_START( tx1a )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "8412-136027-244.22", 0xf0000, 0x4000, CRC(2e9cefa2) SHA1(4ca04eae446e8df08ab793488a79217ed1a27875) )
 	ROM_LOAD16_BYTE( "8412-136027-245.29", 0xf0001, 0x4000, CRC(ade7895c) SHA1(1c33a574cae46fddb4cadb85f5de17f02ae7a596) )
 	ROM_LOAD16_BYTE( "8412-136027-250.54", 0xf8001, 0x4000, CRC(c8c9368f) SHA1(0972d54d506216eb2b204cf22ccdff9210fb7b10) )
@@ -995,7 +980,7 @@ ROM_START( tx1a )
 	ROM_RELOAD(                  0xc001, 0x2000 )
 
 	/* Sound */
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "8411-136027-157.11", 0x00000, 0x2000, CRC(10ae3075) SHA1(69c5f62f2473aba848383eed3cecf15e273d86ca) )
 
 	/* 8x8 characters */
@@ -1082,7 +1067,7 @@ ROM_END
 */
 
 ROM_START( buggybjr )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "bug1a.214", 0x20000, 0x8000, CRC(92797c25) SHA1(8f7434abbd7f557d3202abb01b1e4899c82c67a5) )
 	ROM_LOAD16_BYTE( "bug4a.175", 0x20001, 0x8000, CRC(40ce3930) SHA1(4bf62ebeea1549a13a21a32cb860717f064b186a) )
 
@@ -1101,7 +1086,7 @@ ROM_START( buggybjr )
 	ROM_RELOAD(                  0xfc001, 0x2000 )
 
     /* ROM's Located on the sound board */
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "bug35s.21", 0x00000, 0x4000, CRC(65d9af57) SHA1(17b09404942d17e7254550c43b56ae96a8c55680) )
 
 	/* 8x8 characters */
@@ -1188,7 +1173,7 @@ ROM_END
 
 
 ROM_START( buggyboy )
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "bug1a.230", 0x20000, 0x8000, CRC(92797c25) SHA1(8f7434abbd7f557d3202abb01b1e4899c82c67a5) )
 	ROM_LOAD16_BYTE( "bug4a.173", 0x20001, 0x8000, CRC(40ce3930) SHA1(4bf62ebeea1549a13a21a32cb860717f064b186a) )
 
@@ -1209,7 +1194,7 @@ ROM_START( buggyboy )
 	ROM_RELOAD(                  0xc001,  0x2000 )
 	ROM_RELOAD(                  0xfc001, 0x2000 )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "bug35.11", 0x00000, 0x4000,  CRC(7aa16e9e) SHA1(ea54e56270f70351a62a78fa32027bb41ef9861e) )
 
 	/* 8x8 characters */
@@ -1268,7 +1253,7 @@ ROM_END
  *
  *************************************/
 
-GAME( 1983, tx1,      0,        tx1,      tx1,      0, ROT0, "Tatsumi", "TX-1",                                   GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-GAME( 1983, tx1a,     tx1,      tx1,      tx1a,     0, ROT0, "Tatsumi", "TX-1 (Atari/Namco/Taito license)",       GAME_IMPERFECT_SOUND )
-GAME( 1985, buggyboy, buggybjr, buggyboy, buggyboy, 0, ROT0, "Tatsumi", "Buggy Boy/Speed Buggy (Cockpit)",        GAME_NOT_WORKING )
-GAME( 1986, buggybjr, 0,        buggybjr, buggybjr, 0, ROT0, "Tatsumi", "Buggy Boy Junior/Speed Buggy (Upright)", 0 )
+GAMEL( 1983, tx1,      0,        tx1,      tx1,      0, ROT0, "Tatsumi", "TX-1",                                   GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND, layout_tx1 )
+GAMEL( 1983, tx1a,     tx1,      tx1,      tx1a,     0, ROT0, "Tatsumi", "TX-1 (Atari/Namco/Taito license)",       GAME_IMPERFECT_SOUND, layout_tx1 )
+GAMEL( 1985, buggyboy, buggybjr, buggyboy, buggyboy, 0, ROT0, "Tatsumi", "Buggy Boy/Speed Buggy (Cockpit)",        GAME_NOT_WORKING, layout_buggyboy )
+GAMEL( 1986, buggybjr, 0,        buggybjr, buggybjr, 0, ROT0, "Tatsumi", "Buggy Boy Junior/Speed Buggy (Upright)", 0, layout_buggybjr )

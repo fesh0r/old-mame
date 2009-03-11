@@ -35,7 +35,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x7c00, 0x7fff) AM_RAM AM_BASE(&battery_ram)				/* battery backed ram */
 	AM_RANGE(0x8000, 0x8000) AM_READ_PORT("P1") AM_WRITENOP				/* controls (and irq ack?) */
 	AM_RANGE(0x8001, 0x8001) AM_READWRITE(SMH_NOP, SMH_NOP)				/* unknown */
-	AM_RANGE(0x8002, 0x8002) AM_READ_PORT("DSW") AM_WRITE(dac_0_data_w)	/* dipswitches */
+	AM_RANGE(0x8002, 0x8002) AM_READ_PORT("DSW") AM_DEVWRITE("dac", dac_w)	/* dipswitches */
 	AM_RANGE(0x8003, 0x8007) AM_READWRITE(SMH_NOP, SMH_NOP)				/* unknown */
 	AM_RANGE(0x8008, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -138,15 +138,15 @@ static INTERRUPT_GEN( truco_interrupt )
 static MACHINE_DRIVER_START( truco )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809, 750000)        /* ?? guess */
+	MDRV_CPU_ADD("maincpu", M6809, 750000)        /* ?? guess */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
-	MDRV_CPU_VBLANK_INT("main", truco_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", truco_interrupt)
 
 	MDRV_MACHINE_RESET(truco)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -173,7 +173,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( truco )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "truco.u3",   0x08000, 0x4000, CRC(4642fb96) SHA1(e821f6fd582b141a5ca2d5bd53f817697048fb81) )
 	ROM_LOAD( "truco.u2",   0x0c000, 0x4000, CRC(ff355750) SHA1(1538f20b1919928ffca439e4046a104ddfbc756c) )
 ROM_END

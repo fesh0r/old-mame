@@ -238,6 +238,9 @@ Stephh's notes (based on the game M68000 code and some tests) :
 #include "sound/2151intf.h"
 #include "sound/msm5205.h"
 
+#include "topspeed.lh"
+
+
 WRITE16_HANDLER( rainbow_spritectrl_w );
 WRITE16_HANDLER( rastan_spriteflip_w );
 
@@ -406,39 +409,39 @@ logerror("CPU #0 PC %06x: warning - write %04x to motor cpu %03x\n",cpu_get_pc(s
 
 static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr(machine,  10, memory_region(machine, "audio") + (banknum * 0x4000) + 0x10000 );
+	memory_set_bankptr(machine,  10, memory_region(machine, "audiocpu") + (banknum * 0x4000) + 0x10000 );
 }
 
-static WRITE8_HANDLER( sound_bankswitch_w )	/* assumes Z80 sandwiched between 68Ks */
+static WRITE8_DEVICE_HANDLER( sound_bankswitch_w )	/* assumes Z80 sandwiched between 68Ks */
 {
 	banknum = (data - 1) & 7;
-	reset_sound_region(space->machine);
+	reset_sound_region(device->machine);
 }
 
 static void topspeed_msm5205_vck(const device_config *device)
 {
 	if (adpcm_data != -1)
 	{
-		msm5205_data_w(0, adpcm_data & 0x0f);
+		msm5205_data_w(device, adpcm_data & 0x0f);
 		adpcm_data = -1;
 	}
 	else
 	{
 		adpcm_data = memory_region(device->machine, "adpcm")[adpcm_pos];
 		adpcm_pos = (adpcm_pos + 1) & 0x1ffff;
-		msm5205_data_w(0, adpcm_data >> 4);
+		msm5205_data_w(device, adpcm_data >> 4);
 	}
 }
 
-static WRITE8_HANDLER( topspeed_msm5205_address_w )
+static WRITE8_DEVICE_HANDLER( topspeed_msm5205_address_w )
 {
 	adpcm_pos = (adpcm_pos & 0x00ff) | (data << 8);
-	msm5205_reset_w(0, 0);
+	msm5205_reset_w(device, 0);
 }
 
-static WRITE8_HANDLER( topspeed_msm5205_stop_w )
+static WRITE8_DEVICE_HANDLER( topspeed_msm5205_stop_w )
 {
-	msm5205_reset_w(0, 1);
+	msm5205_reset_w(device, 1);
 	adpcm_pos &= 0xff00;
 }
 
@@ -507,20 +510,19 @@ static ADDRESS_MAP_START( z80_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK10)
 	AM_RANGE(0x8000, 0x8fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x9001, 0x9001) AM_READ(ym2151_status_port_0_r)
+	AM_RANGE(0x9000, 0x9001) AM_DEVREAD("ym", ym2151_r)
 	AM_RANGE(0xa001, 0xa001) AM_READ(taitosound_slave_comm_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x8fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x9000, 0x9000) AM_WRITE(ym2151_register_port_0_w)
-	AM_RANGE(0x9001, 0x9001) AM_WRITE(ym2151_data_port_0_w)
+	AM_RANGE(0x9000, 0x9001) AM_DEVWRITE("ym", ym2151_w)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(taitosound_slave_port_w)
 	AM_RANGE(0xa001, 0xa001) AM_WRITE(taitosound_slave_comm_w)
-	AM_RANGE(0xb000, 0xb000) AM_WRITE(topspeed_msm5205_address_w)
+	AM_RANGE(0xb000, 0xb000) AM_DEVWRITE("msm", topspeed_msm5205_address_w)
 //  AM_RANGE(0xb400, 0xb400) // msm5205 start? doesn't seem to work right
-	AM_RANGE(0xb800, 0xb800) AM_WRITE(topspeed_msm5205_stop_w)
+	AM_RANGE(0xb800, 0xb800) AM_DEVWRITE("msm", topspeed_msm5205_stop_w)
 //  AM_RANGE(0xc000, 0xc000) // ??
 //  AM_RANGE(0xc400, 0xc400) // ??
 //  AM_RANGE(0xc800, 0xc800) // ??
@@ -654,9 +656,9 @@ GFXDECODE_END
 
 /* handler called by the YM2151 emulator when the internal timers cause an IRQ */
 
-static void irq_handler(running_machine *machine, int irq)	/* assumes Z80 sandwiched between 68Ks */
+static void irq_handler(const device_config *device, int irq)	/* assumes Z80 sandwiched between 68Ks */
 {
-	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2151_interface ym2151_config =
@@ -702,22 +704,22 @@ static MACHINE_RESET( topspeed )
 static MACHINE_DRIVER_START( topspeed )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 12000000)	/* 12 MHz ??? */
+	MDRV_CPU_ADD("maincpu", M68000, 12000000)	/* 12 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(topspeed_readmem,topspeed_writemem)
-	MDRV_CPU_VBLANK_INT("main", topspeed_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", topspeed_interrupt)
 
-	MDRV_CPU_ADD("audio", Z80,16000000/4)	/* 4 MHz ??? */
+	MDRV_CPU_ADD("audiocpu", Z80,16000000/4)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(z80_readmem,z80_writemem)
 
 	MDRV_CPU_ADD("sub", M68000, 12000000)	/* 12 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(topspeed_cpub_readmem,topspeed_cpub_writemem)
-	MDRV_CPU_VBLANK_INT("main", topspeed_cpub_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", topspeed_cpub_interrupt)
 
 	MDRV_MACHINE_START(topspeed)
 	MDRV_MACHINE_RESET(topspeed)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -752,7 +754,7 @@ Note: driver does NOT make use of the zoom sprite tables rom.
 ***************************************************************************/
 
 ROM_START( topspeed )
-	ROM_REGION( 0x100000, "main", 0 )	/* 128K for 68000 code (CPU A) */
+	ROM_REGION( 0x100000, "maincpu", 0 )	/* 128K for 68000 code (CPU A) */
 	ROM_LOAD16_BYTE( "b14-67-1.11", 0x00000, 0x10000, CRC(23f17616) SHA1(653ab6537f2e5898a77060c82b776852ab1f2b51) )
 	ROM_LOAD16_BYTE( "b14-68-1.9",  0x00001, 0x10000, CRC(835659d9) SHA1(e99967f795c3c6e14bad7a66315640ca5db43c72) )
 	ROM_LOAD16_BYTE( "b14-54.24",   0x80000, 0x20000, CRC(172924d5) SHA1(4a963f2e816f4b1c5acc6d38e99a68d3baeee8c6) )	/* 4 data roms */
@@ -764,7 +766,7 @@ ROM_START( topspeed )
 	ROM_LOAD16_BYTE( "b14-69.80",   0x00000, 0x10000, CRC(d652e300) SHA1(b559bdb564d96da4c656dc7b2c88dae84c4861ae) )
 	ROM_LOAD16_BYTE( "b14-70.81",   0x00001, 0x10000, CRC(b720592b) SHA1(13298b498a198dcc1a56e533d106545dd77e1bbc) )
 
-	ROM_REGION( 0x1c000, "audio", 0 )	/* Z80 sound cpu */
+	ROM_REGION( 0x1c000, "audiocpu", 0 )	/* Z80 sound cpu */
 	ROM_LOAD( "b14-25.67", 0x00000, 0x04000, CRC(9eab28ef) SHA1(9a90f2c1881f4664d6d6241f3bc57faeaf150ffc) )
 	ROM_CONTINUE(          0x10000, 0x0c000 )	/* banked stuff */
 
@@ -806,7 +808,7 @@ ROM_START( topspeed )
 ROM_END
 
 ROM_START( topspedu )
-	ROM_REGION( 0x100000, "main", 0 )	/* 128K for 68000 code (CPU A) */
+	ROM_REGION( 0x100000, "maincpu", 0 )	/* 128K for 68000 code (CPU A) */
 	ROM_LOAD16_BYTE     ( "b14-23", 0x00000, 0x10000, CRC(dd0307fd) SHA1(63218a707c78b3c785d1741dabdc511a76f12af1) )
 	ROM_LOAD16_BYTE     ( "b14-24", 0x00001, 0x10000, CRC(acdf08d4) SHA1(506d48d27fc26684a3f884919665cf65a1b3062f) )
 	ROM_LOAD16_WORD_SWAP( "b14-05", 0x80000, 0x80000, CRC(6557e9d8) SHA1(ff528b27fcaef5c181f5f3a56d6a41b935cf07e1) )	/* data rom */
@@ -815,7 +817,7 @@ ROM_START( topspedu )
 	ROM_LOAD16_BYTE( "b14-26", 0x00000, 0x10000, CRC(659dc872) SHA1(0a168122fe6324510c830e21a56eace9c8a2c189) )
 	ROM_LOAD16_BYTE( "b14-56", 0x00001, 0x10000, CRC(d165cf1b) SHA1(bfbb8699c5671d3841d4057678ef4085c1927684) )
 
-	ROM_REGION( 0x1c000, "audio", 0 )	/* Z80 sound cpu */
+	ROM_REGION( 0x1c000, "audiocpu", 0 )	/* Z80 sound cpu */
 	ROM_LOAD( "b14-25.67", 0x00000, 0x04000, CRC(9eab28ef) SHA1(9a90f2c1881f4664d6d6241f3bc57faeaf150ffc) )
 	ROM_CONTINUE(          0x10000, 0x0c000 )	/* banked stuff */
 
@@ -841,7 +843,7 @@ ROM_START( topspedu )
 ROM_END
 
 ROM_START( fullthrl )
-	ROM_REGION( 0x100000, "main", 0 )	/* 128K for 68000 code (CPU A) */
+	ROM_REGION( 0x100000, "maincpu", 0 )	/* 128K for 68000 code (CPU A) */
 	ROM_LOAD16_BYTE     ( "b14-67", 0x00000, 0x10000, CRC(284c943f) SHA1(e4720b138052d9cbf1290aeca8f9dd7fe2cffcc5) )	// Later rev?
 	ROM_LOAD16_BYTE     ( "b14-68", 0x00001, 0x10000, CRC(54cf6196) SHA1(0e86a7bf7d43526222160f4cd09f8d29fa9abdc4) )
 	ROM_LOAD16_WORD_SWAP( "b14-05", 0x80000, 0x80000, CRC(6557e9d8) SHA1(ff528b27fcaef5c181f5f3a56d6a41b935cf07e1) )	/* data rom */
@@ -850,7 +852,7 @@ ROM_START( fullthrl )
 	ROM_LOAD16_BYTE( "b14-69.80", 0x00000, 0x10000, CRC(d652e300) SHA1(b559bdb564d96da4c656dc7b2c88dae84c4861ae) )
 	ROM_LOAD16_BYTE( "b14-71",    0x00001, 0x10000, CRC(f7081727) SHA1(f0ab6ce9975dd7a1fadd439fd3dfd2f1bf88796c) )
 
-	ROM_REGION( 0x1c000, "audio", 0 )	/* Z80 sound cpu */
+	ROM_REGION( 0x1c000, "audiocpu", 0 )	/* Z80 sound cpu */
 	ROM_LOAD( "b14-25.67", 0x00000, 0x04000, CRC(9eab28ef) SHA1(9a90f2c1881f4664d6d6241f3bc57faeaf150ffc) )
 	ROM_CONTINUE(          0x10000, 0x0c000 )	/* banked stuff */
 
@@ -883,7 +885,7 @@ static DRIVER_INIT( topspeed )
 	cpua_ctrl = 0xff;
 }
 
-GAME( 1987, topspeed, 0,        topspeed, topspeed, topspeed, ROT0, "Taito Corporation Japan", "Top Speed (World)", 0 )
-GAME( 1987, topspedu, topspeed, topspeed, fullthrl, topspeed, ROT0, "Taito America Corporation (Romstar license)", "Top Speed (US)", 0 )
-GAME( 1987, fullthrl, topspeed, topspeed, fullthrl, topspeed, ROT0, "Taito Corporation", "Full Throttle (Japan)", 0 )
+GAMEL( 1987, topspeed, 0,        topspeed, topspeed, topspeed, ROT0, "Taito Corporation Japan", "Top Speed (World)", 0, layout_topspeed )
+GAMEL( 1987, topspedu, topspeed, topspeed, fullthrl, topspeed, ROT0, "Taito America Corporation (Romstar license)", "Top Speed (US)", 0, layout_topspeed )
+GAMEL( 1987, fullthrl, topspeed, topspeed, fullthrl, topspeed, ROT0, "Taito Corporation", "Full Throttle (Japan)", 0, layout_topspeed )
 

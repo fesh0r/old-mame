@@ -23,7 +23,7 @@ static INTERRUPT_GEN( starshp1_interrupt )
 }
 
 
-static WRITE8_HANDLER( starshp1_audio_w )
+static WRITE8_DEVICE_HANDLER( starshp1_audio_w )
 {
 	data &= 1;
 
@@ -31,26 +31,26 @@ static WRITE8_HANDLER( starshp1_audio_w )
 	{
 	case 0:
 		starshp1_attract = data;
-		discrete_sound_w(space, STARSHP1_ATTRACT, data);
+		discrete_sound_w(device, STARSHP1_ATTRACT, data);
 		break;
 	case 1:
 		starshp1_phasor = data;
-		discrete_sound_w(space, STARSHP1_PHASOR_ON, data);
+		discrete_sound_w(device, STARSHP1_PHASOR_ON, data);
 		break;
 	case 2:
-		discrete_sound_w(space, STARSHP1_KICKER, data);
+		discrete_sound_w(device, STARSHP1_KICKER, data);
 		break;
 	case 3:
-		discrete_sound_w(space, STARSHP1_SL1, data);
+		discrete_sound_w(device, STARSHP1_SL1, data);
 		break;
 	case 4:
-		discrete_sound_w(space, STARSHP1_SL2, data);
+		discrete_sound_w(device, STARSHP1_SL2, data);
 		break;
 	case 5:
-		discrete_sound_w(space, STARSHP1_MOLVL, data);
+		discrete_sound_w(device, STARSHP1_MOLVL, data);
 		break;
 	case 6:
-		discrete_sound_w(space, STARSHP1_NOISE_FREQ, data);
+		discrete_sound_w(device, STARSHP1_NOISE_FREQ, data);
 		break;
 	}
 
@@ -101,7 +101,7 @@ static WRITE8_HANDLER( starshp1_analog_in_w )
 }
 
 
-static WRITE8_HANDLER( starshp1_analog_out_w )
+static WRITE8_DEVICE_HANDLER( starshp1_analog_out_w )
 {
 	switch (offset & 7)
 	{
@@ -109,13 +109,13 @@ static WRITE8_HANDLER( starshp1_analog_out_w )
 		starshp1_ship_size = data;
 		break;
 	case 2:
-		discrete_sound_w(space, STARSHP1_NOISE_AMPLITUDE, data);
+		discrete_sound_w(device, STARSHP1_NOISE_AMPLITUDE, data);
 		break;
 	case 3:
-		discrete_sound_w(space, STARSHP1_TONE_PITCH, data);
+		discrete_sound_w(device, STARSHP1_TONE_PITCH, data);
 		break;
 	case 4:
-		discrete_sound_w(space, STARSHP1_MOTOR_SPEED, data);
+		discrete_sound_w(device, STARSHP1_MOTOR_SPEED, data);
 		break;
 	case 5:
 		starshp1_circle_hpos = data;
@@ -186,8 +186,8 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd800, 0xd80f) AM_WRITE(starshp1_collision_reset_w)
 	AM_RANGE(0xdc00, 0xdc0f) AM_WRITE(starshp1_misc_w)
 	AM_RANGE(0xdd00, 0xdd0f) AM_WRITE(starshp1_analog_in_w)
-	AM_RANGE(0xde00, 0xde0f) AM_WRITE(starshp1_audio_w)
-	AM_RANGE(0xdf00, 0xdf0f) AM_WRITE(starshp1_analog_out_w)
+	AM_RANGE(0xde00, 0xde0f) AM_DEVWRITE("discrete", starshp1_audio_w)
+	AM_RANGE(0xdf00, 0xdf0f) AM_DEVWRITE("discrete", starshp1_analog_out_w)
 	AM_RANGE(0xf000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
@@ -303,14 +303,14 @@ static MACHINE_DRIVER_START( starshp1 )
 
 	/* basic machine hardware */
 
-	MDRV_CPU_ADD("main", M6502, STARSHP1_CPU_CLOCK)
+	MDRV_CPU_ADD("maincpu", M6502, STARSHP1_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
-	MDRV_CPU_VBLANK_INT("main", starshp1_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", starshp1_interrupt)
 
 	/* video hardware */
 
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(STARSHP1_PIXEL_CLOCK, STARSHP1_HTOTAL, STARSHP1_HBEND, STARSHP1_HBSTART, STARSHP1_VTOTAL, STARSHP1_VBEND, STARSHP1_VBSTART)
 
@@ -338,7 +338,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( starshp1 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD_NIB_HIGH( "7529-02.c2", 0x2c00, 0x0400, CRC(f191c328) SHA1(5d44be879bcf16a142a69e4f1501533e02720fe5) )
 	ROM_LOAD_NIB_LOW ( "7528-02.c1", 0x2c00, 0x0400, CRC(605ed4df) SHA1(b0d892bcd08b611d2c01ab23b491c1d9db498e7b) )
 	ROM_LOAD(          "7530-02.h3", 0x3000, 0x0800, CRC(4b2d466c) SHA1(2104c4d163adbf53f9853334868622752ccb01b8) )
@@ -363,7 +363,7 @@ ROM_START( starshp1 )
 ROM_END
 
 ROM_START( starshpp )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD_NIB_HIGH( "7529-02.c2", 0x2c00, 0x0400, CRC(f191c328) SHA1(5d44be879bcf16a142a69e4f1501533e02720fe5) )
 	ROM_LOAD_NIB_LOW ( "7528-02.c1", 0x2c00, 0x0400, CRC(605ed4df) SHA1(b0d892bcd08b611d2c01ab23b491c1d9db498e7b) )
 	ROM_LOAD_NIB_HIGH( "7521.h2", 0x3000, 0x0400, CRC(6e3525db) SHA1(b615c60e4958d6576f4c179bbead9e8d330bba99) )

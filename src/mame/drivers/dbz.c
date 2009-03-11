@@ -123,12 +123,12 @@ static WRITE16_HANDLER( dbz_sound_cause_nmi )
 	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
-static void dbz_sound_irq(running_machine *machine, int irq)
+static void dbz_sound_irq(const device_config *device, int irq)
 {
 	if (irq)
-		cpu_set_input_line(machine->cpu[1], 0, ASSERT_LINE);
+		cpu_set_input_line(device->machine->cpu[1], 0, ASSERT_LINE);
 	else
-		cpu_set_input_line(machine->cpu[1], 0, CLEAR_LINE);
+		cpu_set_input_line(device->machine->cpu[1], 0, CLEAR_LINE);
 }
 
 static ADDRESS_MAP_START( dbz_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -183,17 +183,16 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( dbz_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_RAM)
-	AM_RANGE(0xc000, 0xc001) AM_READ(ym2151_status_port_0_r)
-	AM_RANGE(0xd000, 0xd002) AM_READ(okim6295_status_0_r)
+	AM_RANGE(0xc000, 0xc001) AM_DEVREAD("ym", ym2151_r)
+	AM_RANGE(0xd000, 0xd002) AM_DEVREAD("oki", okim6295_r)
 	AM_RANGE(0xe000, 0xe001) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( dbz_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0xbfff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(ym2151_register_port_0_w)
-	AM_RANGE(0xc001, 0xc001) AM_WRITE(ym2151_data_port_0_w)
-	AM_RANGE(0xd000, 0xd001) AM_WRITE(okim6295_data_0_w)
+	AM_RANGE(0xc000, 0xc001) AM_DEVWRITE("ym", ym2151_w)
+	AM_RANGE(0xd000, 0xd001) AM_DEVWRITE("oki", okim6295_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( dbz_sound_io_map, ADDRESS_SPACE_IO, 8 )
@@ -340,11 +339,11 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( dbz )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 16000000)
+	MDRV_CPU_ADD("maincpu", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(dbz_readmem,dbz_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(dbz_interrupt,2)
 
-	MDRV_CPU_ADD("audio", Z80, 4000000)
+	MDRV_CPU_ADD("audiocpu", Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(dbz_sound_readmem, dbz_sound_writemem)
 	MDRV_CPU_IO_MAP(dbz_sound_io_map, 0)
 
@@ -353,7 +352,7 @@ static MACHINE_DRIVER_START( dbz )
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(55)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -365,26 +364,24 @@ static MACHINE_DRIVER_START( dbz )
 	MDRV_PALETTE_LENGTH(0x4000/2)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2151, 4000000)
 	MDRV_SOUND_CONFIG(ym2151_config)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("oki", OKIM6295, 1056000)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 /**********************************************************************************/
 
-#define ROM_LOAD64_WORD(name,offset,length,crc)		ROMX_LOAD(name, offset, length, crc, ROM_GROUPWORD | ROM_SKIP(6))
-
 ROM_START( dbz )
 	/* main program */
-	ROM_REGION( 0x400000, "main", 0)
+	ROM_REGION( 0x400000, "maincpu", 0)
 	ROM_LOAD16_BYTE( "222a11.9e", 0x000000, 0x80000, CRC(60c7d9b2) SHA1(718ef89e89b3943845e91bedfc5c1d26229f9fe5) )
 	ROM_LOAD16_BYTE( "222a12.9f", 0x000001, 0x80000, CRC(6ebc6853) SHA1(e9b2068246228968cc6b8554215563cacaa5ba9f) )
 
@@ -393,7 +390,7 @@ ROM_START( dbz )
 	ROM_LOAD16_BYTE( "222a12.9f", 0x000001, 0x80000, CRC(6ebc6853) SHA1(e9b2068246228968cc6b8554215563cacaa5ba9f) )
 
 	/* sound program */
-	ROM_REGION( 0x010000, "audio", 0 )
+	ROM_REGION( 0x010000, "audiocpu", 0 )
 	ROM_LOAD("222a10.5e", 0x000000, 0x08000, CRC(1c93e30a) SHA1(8545a0ac5126b3c855e1901b186f57820699895d) )
 
 	/* tiles */
@@ -423,12 +420,12 @@ ROM_END
 
 ROM_START( dbz2 )
 	/* main program */
-	ROM_REGION( 0x400000, "main", 0)
+	ROM_REGION( 0x400000, "maincpu", 0)
 	ROM_LOAD16_BYTE( "a9e.9e", 0x000000, 0x80000, CRC(e6a142c9) SHA1(7951c8f7036a67a0cd3260f434654820bf3e603f) )
 	ROM_LOAD16_BYTE( "a9f.9f", 0x000001, 0x80000, CRC(76cac399) SHA1(af6daa1f8b87c861dc62adef5ca029190c3cb9ae) )
 
 	/* sound program */
-	ROM_REGION( 0x010000, "audio", 0 )
+	ROM_REGION( 0x010000, "audiocpu", 0 )
 	ROM_LOAD("s-001.5e", 0x000000, 0x08000, CRC(154e6d03) SHA1(db15c20982692271f40a733dfc3f2486221cd604) )
 
 	/* tiles */
@@ -464,7 +461,7 @@ static DRIVER_INIT( dbz )
 
 	konami_rom_deinterleave_2(machine, "gfx1");
 
-	ROM = (UINT16 *)memory_region(machine, "main");
+	ROM = (UINT16 *)memory_region(machine, "maincpu");
 
 	// nop out dbz1's mask rom test
 	// tile ROM test

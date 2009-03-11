@@ -61,20 +61,10 @@ static READ8_DEVICE_HANDLER( ppi0_portc_r )
 	return (~(eeprom_read_bit()<<1) & 2);
 }
 
-static READ8_DEVICE_HANDLER( ppi0_porta_r )
-{
-	return input_port_read(device->machine, "DSW1");
-}
-
-static READ8_DEVICE_HANDLER( ppi0_portb_r )
-{
-	return input_port_read(device->machine, "IN2");
-}
-
 static const ppi8255_interface ppi0intf =
 {
-	ppi0_porta_r,	ppi0_portb_r,	ppi0_portc_r,
-	NULL,			NULL,			ppi0_portc_w
+	DEVCB_INPUT_PORT("DSW1"),	DEVCB_INPUT_PORT("IN2"),	DEVCB_HANDLER(ppi0_portc_r),
+	DEVCB_NULL,					DEVCB_NULL,					DEVCB_HANDLER(ppi0_portc_w)
 };
 
 static WRITE8_HANDLER( rom_bank_w )
@@ -82,7 +72,7 @@ static WRITE8_HANDLER( rom_bank_w )
 	int new_bank = (data&0xff)>>0;
 
 	if(bank!=new_bank) {
-		UINT8 *ROM = memory_region(space->machine, "main");
+		UINT8 *ROM = memory_region(space->machine, "maincpu");
 		UINT32 bankaddress;
 
 		bank = new_bank;
@@ -91,11 +81,11 @@ static WRITE8_HANDLER( rom_bank_w )
 	}
 }
 
-static WRITE8_HANDLER( ayporta_w )
+static WRITE8_DEVICE_HANDLER( ayporta_w )
 {
 }
 
-static WRITE8_HANDLER( ayportb_w )
+static WRITE8_DEVICE_HANDLER( ayportb_w )
 {
 }
 
@@ -103,10 +93,10 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	NULL,
-	ayporta_w,
-	ayportb_w
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(ayporta_w),
+	DEVCB_HANDLER(ayportb_w)
 };
 
 static ADDRESS_MAP_START( fortecar_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -119,9 +109,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( fortecar_ports, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x20, 0x21) AM_WRITE(fortecar_videoregs_w) // MC6845?
-	AM_RANGE(0x40, 0x40) AM_READWRITE(ay8910_read_port_0_r, ay8910_control_port_0_w)
-	AM_RANGE(0x41, 0x41) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x60, 0x62) AM_DEVREADWRITE(PPI8255, "fcppi0", ppi8255_r, ppi8255_w)//M5L8255AP
+	AM_RANGE(0x40, 0x40) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x40, 0x41) AM_DEVWRITE("ay", ay8910_address_data_w)
+	AM_RANGE(0x60, 0x62) AM_DEVREADWRITE("fcppi0", ppi8255_r, ppi8255_w)//M5L8255AP
 	AM_RANGE(0x81, 0x81) AM_WRITE(rom_bank_w) //completely wrong,might not be there...
  	AM_RANGE(0xa0, 0xa0) AM_READ_PORT("IN0") //written too,multiplexer?
  	AM_RANGE(0xa1, 0xa1) AM_READ_PORT("IN1")
@@ -282,13 +272,13 @@ static MACHINE_RESET(fortecar)
 
 static MACHINE_DRIVER_START( fortecar )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,6000000)		 /* ? MHz */
+	MDRV_CPU_ADD("maincpu", Z80,6000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(fortecar_map,0)
 	MDRV_CPU_IO_MAP(fortecar_ports,0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -314,7 +304,7 @@ static MACHINE_DRIVER_START( fortecar )
 MACHINE_DRIVER_END
 
 ROM_START( fortecar )
-	ROM_REGION( 0x14000, "main", 0 )
+	ROM_REGION( 0x14000, "maincpu", 0 )
 	ROM_LOAD( "fortecar.u7", 0x00000, 0x0c000, CRC(2a4b3429) SHA1(8fa630dac949e758678a1a36b05b3412abe8ae16)  )
 	ROM_CONTINUE(			 0x10000, 0x04000 )
 

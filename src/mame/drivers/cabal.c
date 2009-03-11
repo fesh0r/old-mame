@@ -188,17 +188,16 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4001, 0x4001) AM_WRITE(seibu_irq_clear_w)
 	AM_RANGE(0x4002, 0x4002) AM_WRITE(seibu_rst10_ack_w)
 	AM_RANGE(0x4003, 0x4003) AM_WRITE(seibu_rst18_ack_w)
-	AM_RANGE(0x4005, 0x4006) AM_WRITE(seibu_adpcm_adr_1_w)
-	AM_RANGE(0x4008, 0x4008) AM_WRITE(ym2151_register_port_0_w)
-	AM_RANGE(0x4009, 0x4009) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
+	AM_RANGE(0x4005, 0x4006) AM_DEVWRITE("adpcm1", seibu_adpcm_adr_w)
+	AM_RANGE(0x4008, 0x4009) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
 	AM_RANGE(0x4010, 0x4011) AM_READ(seibu_soundlatch_r)
 	AM_RANGE(0x4012, 0x4012) AM_READ(seibu_main_data_pending_r)
 	AM_RANGE(0x4013, 0x4013) AM_READ_PORT("COIN")
 	AM_RANGE(0x4018, 0x4019) AM_WRITE(seibu_main_data_w)
-	AM_RANGE(0x401a, 0x401a) AM_WRITE(seibu_adpcm_ctl_1_w)
+	AM_RANGE(0x401a, 0x401a) AM_DEVWRITE("adpcm1", seibu_adpcm_ctl_w)
 	AM_RANGE(0x401b, 0x401b) AM_WRITE(seibu_coin_w)
-	AM_RANGE(0x6005, 0x6006) AM_WRITE(seibu_adpcm_adr_2_w)
-	AM_RANGE(0x601a, 0x601a) AM_WRITE(seibu_adpcm_ctl_2_w)
+	AM_RANGE(0x6005, 0x6006) AM_DEVWRITE("adpcm2", seibu_adpcm_adr_w)
+	AM_RANGE(0x601a, 0x601a) AM_DEVWRITE("adpcm2", seibu_adpcm_ctl_w)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -212,30 +211,20 @@ static ADDRESS_MAP_START( cabalbl_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4008, 0x4008) AM_READ(cabalbl_snd2_r)
 	AM_RANGE(0x400a, 0x400a) AM_READ(cabalbl_snd1_r)
 	AM_RANGE(0x400c, 0x400c) AM_WRITE(soundlatch2_w)
-	AM_RANGE(0x400e, 0x400e) AM_WRITE(ym2151_register_port_0_w)
-	AM_RANGE(0x400f, 0x400f) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
+	AM_RANGE(0x400e, 0x400f) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
 	AM_RANGE(0x6000, 0x6000) AM_WRITE(SMH_NOP)  /* ??? */
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 /* the bootleg has 2x z80 sample players */
 
-static WRITE8_HANDLER( cabalbl_adpcm_0_w )
+static WRITE8_DEVICE_HANDLER( cabalbl_adpcm_w )
 {
-	msm5205_reset_w(0,(data>>7)&1);
+	msm5205_reset_w(device,(data>>7)&1);
 	/* ?? bit 6?? */
-	msm5205_data_w(0,data);
-	msm5205_vclk_w(0,1);
-	msm5205_vclk_w(0,0);
-}
-
-static WRITE8_HANDLER( cabalbl_adpcm_1_w )
-{
-	msm5205_reset_w(1,(data>>7)&1);
-	/* ?? bit 6?? */
-	msm5205_data_w(1,data);
-	msm5205_vclk_w(1,1);
-	msm5205_vclk_w(1,0);
+	msm5205_data_w(device,data);
+	msm5205_vclk_w(device,1);
+	msm5205_vclk_w(device,0);
 }
 
 static ADDRESS_MAP_START( cabalbl_talk1_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -245,7 +234,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( cabalbl_talk1_portmap, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(soundlatch3_r)
-	AM_RANGE(0x01, 0x01) AM_WRITE(cabalbl_adpcm_0_w)
+	AM_RANGE(0x01, 0x01) AM_DEVWRITE("msm1", cabalbl_adpcm_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cabalbl_talk2_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -255,7 +244,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( cabalbl_talk2_portmap, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(soundlatch4_r)
-	AM_RANGE(0x01, 0x01) AM_WRITE(cabalbl_adpcm_1_w)
+	AM_RANGE(0x01, 0x01) AM_DEVWRITE("msm2", cabalbl_adpcm_w)
 ADDRESS_MAP_END
 
 /***************************************************************************/
@@ -473,9 +462,9 @@ static GFXDECODE_START( cabal )
 GFXDECODE_END
 
 
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2151_interface cabalbl_ym2151_interface =
@@ -498,17 +487,17 @@ static const msm5205_interface msm5205_interface_2 =
 static MACHINE_DRIVER_START( cabal )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, XTAL_20MHz/2) /* verified on pcb */
+	MDRV_CPU_ADD("maincpu", M68000, XTAL_20MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, XTAL_3_579545MHz) /* verified on pcb */
+	MDRV_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	MDRV_MACHINE_RESET(seibu_sound)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -528,12 +517,10 @@ static MACHINE_DRIVER_START( cabal )
 	MDRV_SOUND_CONFIG(seibu_ym2151_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS,"mono", 0.80)
 
-	MDRV_SOUND_ADD("adpcm1", CUSTOM, 8000) /* it should use the msm5205 */
-	MDRV_SOUND_CONFIG(seibu_adpcm_interface)
+	MDRV_SOUND_ADD("adpcm1", SEIBU_ADPCM, 8000) /* it should use the msm5205 */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS,"mono", 0.40)
 
-	MDRV_SOUND_ADD("adpcm2", CUSTOM, 8000) /* it should use the msm5205 */
-	MDRV_SOUND_CONFIG(seibu_adpcm_interface)
+	MDRV_SOUND_ADD("adpcm2", SEIBU_ADPCM, 8000) /* it should use the msm5205 */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS,"mono", 0.40)
 MACHINE_DRIVER_END
 
@@ -542,11 +529,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( cabalbl )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, XTAL_20MHz/2) /* verified on pcb */
+	MDRV_CPU_ADD("maincpu", M68000, XTAL_20MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cabalbl_main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, XTAL_3_579545MHz) /* verified on pcb */
+	MDRV_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cabalbl_sound_map,0)
 
 	/* there are 2x z80s for the ADPCM */
@@ -565,7 +552,7 @@ static MACHINE_DRIVER_START( cabalbl )
 	MDRV_MACHINE_RESET(cabalbl)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -595,13 +582,13 @@ static MACHINE_DRIVER_START( cabalbl )
 MACHINE_DRIVER_END
 
 ROM_START( cabal )
-	ROM_REGION( 0x50000, "main", 0 )	/* 64k for cpu code */
+	ROM_REGION( 0x50000, "maincpu", 0 )	/* 64k for cpu code */
 	ROM_LOAD16_BYTE( "13.7h",    0x00000, 0x10000, CRC(00abbe0c) SHA1(bacf17444abfb4f56248ff56e37b0aa2b1a3800d) )
 	ROM_LOAD16_BYTE( "11.6h",    0x00001, 0x10000, CRC(44736281) SHA1(1d6da95ef96d9c02aea70791e1cb87b70097d5ed) )
 	ROM_LOAD16_BYTE( "12.7j",    0x20000, 0x10000, CRC(d763a47c) SHA1(146d8082a404b6eddaf2dc9ba41a997949c17f8a) )
 	ROM_LOAD16_BYTE( "10.6j",    0x20001, 0x10000, CRC(96d5e8af) SHA1(ed7d854f08e87db5ae6cf526eafa029dfd2bfb9f) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for sound cpu code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for sound cpu code */
 	ROM_LOAD( "4-3n",         0x0000, 0x2000, CRC(4038eff2) SHA1(0bcafc1b78c3bef9a0e9b822c482ea4a942fd180) )
 	ROM_LOAD( "3-3p",         0x8000, 0x8000, CRC(d9defcbf) SHA1(f26b10b1dbe5aa6446f70fd18e5f1379455578ec) )
 
@@ -636,7 +623,7 @@ ROM_START( cabal )
 ROM_END
 
 ROM_START( cabala )
-	ROM_REGION( 0x50000, "main", 0 )	/* 64k for cpu code */
+	ROM_REGION( 0x50000, "maincpu", 0 )	/* 64k for cpu code */
 	ROM_LOAD16_BYTE( "epr-a-9.7h",    0x00000, 0x10000, CRC(00abbe0c) SHA1(bacf17444abfb4f56248ff56e37b0aa2b1a3800d) )
 	ROM_LOAD16_BYTE( "epr-a-7.6h",    0x00001, 0x10000, CRC(c89608db) SHA1(a56e77526227af5b693eea9ef74da0d9d57cc55c) )
 	ROM_LOAD16_BYTE( "epr-a-8.7k",    0x20000, 0x08000, CRC(fe84788a) SHA1(29c49ebbe62357c27befcdcc4c19841a8bf32b2d) )
@@ -644,7 +631,7 @@ ROM_START( cabala )
 	ROM_LOAD16_BYTE( "epr-a-6.6k",    0x20001, 0x08000, CRC(81eb1355) SHA1(bbf926d40164d78319e982da0e8fb8ec4d4f8b87) )
 	ROM_RELOAD(0x30001,0x08000)
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for sound cpu code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for sound cpu code */
 	ROM_LOAD( "epr-a-4.3n",         0x0000, 0x2000, CRC(4038eff2) SHA1(0bcafc1b78c3bef9a0e9b822c482ea4a942fd180) )
 	ROM_LOAD( "epr-a-3.3p",         0x8000, 0x4000, CRC(c0097c55) SHA1(874f813c1b466dab2d15a707e340b9bdb200246c) )
 
@@ -663,13 +650,13 @@ ROM_START( cabala )
 ROM_END
 
 ROM_START( cabalus )
-	ROM_REGION( 0x50000, "main", 0 )	/* 64k for cpu code */
+	ROM_REGION( 0x50000, "maincpu", 0 )	/* 64k for cpu code */
 	ROM_LOAD16_BYTE( "h7_512.bin",      0x00000, 0x10000, CRC(8fe16fb4) SHA1(fedb2d0c6c21516f68cfa99093772fe8fa862389) )
 	ROM_LOAD16_BYTE( "h6_512.bin",      0x00001, 0x10000, CRC(6968101c) SHA1(d65005ac235dae5c32bbcd182cb365e8fa067fe7) )
 	ROM_LOAD16_BYTE( "k7_512.bin",      0x20000, 0x10000, CRC(562031a2) SHA1(ed5ef50a66c7797a7f345e479162cf83d6777f7c) )
 	ROM_LOAD16_BYTE( "k6_512.bin",      0x20001, 0x10000, CRC(4fda2856) SHA1(a213cb7443cdccbad3f2610e8d42b2e149cbedb9) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for sound cpu code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for sound cpu code */
 	ROM_LOAD( "4-3n",         0x0000, 0x2000, CRC(4038eff2) SHA1(0bcafc1b78c3bef9a0e9b822c482ea4a942fd180) )
 	ROM_LOAD( "3-3p",         0x8000, 0x8000, CRC(d9defcbf) SHA1(f26b10b1dbe5aa6446f70fd18e5f1379455578ec) )
 
@@ -692,13 +679,13 @@ ROM_START( cabalus )
 ROM_END
 
 ROM_START( cabalus2 )
-	ROM_REGION( 0x50000, "main", 0 )	/* 64k for cpu code */
+	ROM_REGION( 0x50000, "maincpu", 0 )	/* 64k for cpu code */
 	ROM_LOAD16_BYTE( "9-7h",            0x00000, 0x10000, CRC(ebbb9484) SHA1(2c77d5b4acdc37720dc7ccab526862981bf8da51) )
 	ROM_LOAD16_BYTE( "7-6h",            0x00001, 0x10000, CRC(51aeb49e) SHA1(df38dc58d8c6fa3d35904bf34e29111e7bd523ad) )
 	ROM_LOAD16_BYTE( "8-7k",            0x20000, 0x10000, CRC(4c24ed9a) SHA1(f0fc25c3e7dc8ac71fdad3e91ab618cd7a037123) )
 	ROM_LOAD16_BYTE( "6-6k",            0x20001, 0x10000, CRC(681620e8) SHA1(c9eacfb55059986dbecc2fae1339069a852f917b) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for sound cpu code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for sound cpu code */
 	ROM_LOAD( "4-3n",         0x0000, 0x2000, CRC(4038eff2) SHA1(0bcafc1b78c3bef9a0e9b822c482ea4a942fd180) )
 	ROM_LOAD( "3-3p",         0x8000, 0x8000, CRC(d9defcbf) SHA1(f26b10b1dbe5aa6446f70fd18e5f1379455578ec) )
 
@@ -757,13 +744,13 @@ Note: The bootleg has *3* Z80s
 */
 
 ROM_START( cabalbl )
-	ROM_REGION( 0x50000, "main", 0 )	/* 64k for cpu code */
+	ROM_REGION( 0x50000, "maincpu", 0 )	/* 64k for cpu code */
 	ROM_LOAD16_BYTE( "cabal_24.bin",    0x00000, 0x10000, CRC(00abbe0c) SHA1(bacf17444abfb4f56248ff56e37b0aa2b1a3800d) )
 	ROM_LOAD16_BYTE( "cabal_22.bin",    0x00001, 0x10000, CRC(78c4af27) SHA1(31049d1ec76d76284682de7a0592f63d97019240) )
 	ROM_LOAD16_BYTE( "cabal_23.bin",    0x20000, 0x10000, CRC(d763a47c) SHA1(146d8082a404b6eddaf2dc9ba41a997949c17f8a) )
 	ROM_LOAD16_BYTE( "cabal_21.bin",    0x20001, 0x10000, CRC(96d5e8af) SHA1(ed7d854f08e87db5ae6cf526eafa029dfd2bfb9f) )
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for sound cpu code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for sound cpu code */
 	ROM_LOAD( "cabal_11.bin",    0x0000, 0x10000, CRC(d308a543) SHA1(4f45db42512f83266001daee55d06f49e7908e35) )
 
 	ROM_REGION( 0x8000,  "gfx1", ROMREGION_DISPOSE )
@@ -802,7 +789,7 @@ ROM_END
 
 static DRIVER_INIT( cabal )
 {
-	seibu_sound_decrypt(machine,"audio",0x2000);
+	seibu_sound_decrypt(machine,"audiocpu",0x2000);
 	seibu_adpcm_decrypt(machine,"adpcm");
 }
 

@@ -10,7 +10,6 @@
     not all games work due to either banking, dma or protection issues.
     graphics are glitchy in some games.
 
-    - day, date, and year from the RTC appear to be ignored (hour/min/sec are fine). H8 core bug or BIOS doesn't care?
     - golgo13 assumes the test switch is a switch, not a button - must hold down F2 to stay in test mode
 
 
@@ -1089,7 +1088,7 @@ static ADDRESS_MAP_START( namcos12_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x003fffff) AM_RAM	AM_SHARE(1) AM_BASE(&g_p_n_psxram) AM_SIZE(&g_n_psxramsize) /* ram */
 	AM_RANGE(0x1f000000, 0x1f000003) AM_READWRITE(SMH_NOP, bankoffset_w)			/* banking */
 	AM_RANGE(0x1f080000, 0x1f083fff) AM_READWRITE(sharedram_r, sharedram_w) AM_BASE(&namcos12_sharedram) /* shared ram?? */
-	AM_RANGE(0x1f140000, 0x1f140fff) AM_DEVREADWRITE8(AT28C16, "at28c16", at28c16_r, at28c16_w, 0x00ff00ff) /* eeprom */
+	AM_RANGE(0x1f140000, 0x1f140fff) AM_DEVREADWRITE8("at28c16", at28c16_r, at28c16_w, 0x00ff00ff) /* eeprom */
 	AM_RANGE(0x1f1bff08, 0x1f1bff0f) AM_WRITENOP    /* ?? */
 	AM_RANGE(0x1f700000, 0x1f70ffff) AM_WRITE(dmaoffset_w)  /* dma */
 	AM_RANGE(0x1f800000, 0x1f8003ff) AM_RAM /* scratchpad */
@@ -1251,7 +1250,7 @@ static MACHINE_RESET( namcos12 )
 static ADDRESS_MAP_START( s12h8rwmap, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x080000, 0x08ffff) AM_READWRITE( sharedram_sub_r, sharedram_sub_w )
-	AM_RANGE(0x280000, 0x287fff) AM_READWRITE( c352_0_r, c352_0_w )
+	AM_RANGE(0x280000, 0x287fff) AM_DEVREADWRITE( "c352", c352_r, c352_w )
 	AM_RANGE(0x300000, 0x300001) AM_READ_PORT("IN0")
 	AM_RANGE(0x300002, 0x300003) AM_READ_PORT("IN1")
 	AM_RANGE(0x300010, 0x300011) AM_NOP	// golgo13 writes here a lot, possibly also a wait state generator?
@@ -1311,16 +1310,19 @@ static READ8_HANDLER( s12_mcu_rtc_r )
 			ret = make_bcd(systime.local_time.hour);	// hour (BCD, 0-23)
 			break;
 		case 3:
-			ret = make_bcd(weekday[systime.local_time.weekday]); // day of the week (1 = Monday, 7 = Sunday)
+			ret = make_bcd(weekday[systime.local_time.weekday]);	// low nibble = day of the week
+			ret |= (make_bcd(systime.local_time.mday) & 0x0f)<<4;	// high nibble = low digit of day
 			break;
 		case 4:
-			ret = make_bcd(systime.local_time.mday);	// day (BCD, 1-31)
+			ret = (make_bcd(systime.local_time.mday) >> 4);			// low nibble = high digit of day
+			ret |= (make_bcd(systime.local_time.month + 1) & 0x0f)<<4;	// high nibble = low digit of month
 			break;
 		case 5:
-			ret = make_bcd(systime.local_time.month + 1);	// month (BCD, 1-12)
+			ret = make_bcd(systime.local_time.month + 1) >> 4;	// low nibble = high digit of month
+			ret |= (make_bcd(systime.local_time.year % 10) << 4);	// high nibble = low digit of year
 			break;
 		case 6:
-			ret = make_bcd(systime.local_time.year % 100);	// year (BCD, 0-99)
+			ret = make_bcd(systime.local_time.year % 100) >> 4;	// low nibble = tens digit of year (BCD, 0-9)
 			break;
 	}
 
@@ -1475,19 +1477,19 @@ static DRIVER_INIT( ghlpanic )
 
 static MACHINE_DRIVER_START( coh700 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main",  CXD8661R, XTAL_100MHz )
+	MDRV_CPU_ADD("maincpu",  CXD8661R, XTAL_100MHz )
 	MDRV_CPU_PROGRAM_MAP( namcos12_map, 0 )
-	MDRV_CPU_VBLANK_INT("main", psx_vblank)
+	MDRV_CPU_VBLANK_INT("screen", psx_vblank)
 
 	MDRV_CPU_ADD("sub", H83002, 14745600 )	/* verified 14.7456 MHz */
 	MDRV_CPU_PROGRAM_MAP( s12h8rwmap, 0 )
 	MDRV_CPU_IO_MAP( s12h8iomap, 0 )
-	MDRV_CPU_VBLANK_INT("main", irq1_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", irq1_line_pulse)
 
 	MDRV_MACHINE_RESET( namcos12 )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE( 60 )
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1501,13 +1503,13 @@ static MACHINE_DRIVER_START( coh700 )
 	MDRV_VIDEO_UPDATE( psx )
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("c352", C352, 14745600)
-	MDRV_SOUND_ROUTE(0, "right", 1.00)
-	MDRV_SOUND_ROUTE(1, "left", 1.00)
-	MDRV_SOUND_ROUTE(2, "right", 1.00)
-	MDRV_SOUND_ROUTE(3, "left", 1.00)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 1.00)
+	MDRV_SOUND_ROUTE(1, "lspeaker", 1.00)
+	MDRV_SOUND_ROUTE(2, "rspeaker", 1.00)
+	MDRV_SOUND_ROUTE(3, "lspeaker", 1.00)
 
 	MDRV_AT28C16_ADD( "at28c16", NULL )
 MACHINE_DRIVER_END

@@ -178,9 +178,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( rcasino_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x01, 0x01) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0x02, 0x02) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0x01, 0x01) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x02, 0x03) AM_DEVWRITE("ay", ay8910_data_address_w)
 	AM_RANGE(0x10, 0x10) AM_READ_PORT("IN0") AM_WRITE(rcasino_port_10_w)
 //  AM_RANGE(0x11, 0x11) AM_READ_PORT("IN1") AM_WRITE(rcasino_port_11_w)
 	AM_RANGE(0x11, 0x11) AM_READWRITE(rcasino_port_11_r, rcasino_port_11_w)
@@ -288,22 +287,22 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_2_r,	// DSW1
-	input_port_3_r,	// DSW2
-	0,
-	0
+	DEVCB_INPUT_PORT("DSW1"),
+	DEVCB_INPUT_PORT("DSW2"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static MACHINE_DRIVER_START( rcasino )
 	// basic machine hardware
-	MDRV_CPU_ADD("main", Z80, 8000000/2)	// ???
+	MDRV_CPU_ADD("maincpu", Z80, 8000000/2)	// ???
 	MDRV_CPU_PROGRAM_MAP(rcasino_map, 0)
 	MDRV_CPU_IO_MAP(rcasino_io_map, 0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	// video hardware
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -327,7 +326,7 @@ static MACHINE_DRIVER_START( rcasino )
 MACHINE_DRIVER_END
 
 ROM_START( rcasino )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "ri-w1.18b", 0x0000, 0x2000, CRC(ed105d69) SHA1(951697e1050f72967f0710155aa8ff72db73fce1) )
 	ROM_LOAD( "ri-w2.16b", 0x2000, 0x2000, CRC(a1a80b33) SHA1(2f969713cae288de1985d7baa70cad50c4148970) )
 	ROM_LOAD( "ri-w3.15b", 0x4000, 0x1000, CRC(acf77a36) SHA1(599470e461a261130e942d174051648459f37a37) )

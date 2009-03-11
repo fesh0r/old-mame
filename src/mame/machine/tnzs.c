@@ -242,7 +242,6 @@ static READ8_HANDLER( mcu_arknoid2_r )
 				logerror("error, unknown mcu command\n");
 				/* should not happen */
 				return 0xff;
-				break;
 		}
 	}
 	else
@@ -370,7 +369,6 @@ static READ8_HANDLER( mcu_extrmatn_r )
 				logerror("error, unknown mcu command\n");
 				/* should not happen */
 				return 0xff;
-				break;
 		}
 	}
 	else
@@ -555,9 +553,9 @@ DRIVER_INIT( insectx )
 	mcu_type = MCU_NONE_INSECTX;
 
 	/* this game has no mcu, replace the handler with plain input port handlers */
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0xc000, 0xc000, 0, 0, input_port_2_r );
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0xc001, 0xc001, 0, 0, input_port_3_r );
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0xc002, 0xc002, 0, 0, input_port_4_r );
+	memory_install_read_port_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0xc000, 0xc000, 0, 0, "IN0" );
+	memory_install_read_port_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0xc001, 0xc001, 0, 0, "IN1" );
+	memory_install_read_port_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0xc002, 0xc002, 0, 0, "IN2" );
 }
 
 DRIVER_INIT( kageki )
@@ -573,18 +571,14 @@ READ8_HANDLER( tnzs_mcu_r )
 		case MCU_TNZS:
 		case MCU_CHUKATAI:
 			return mcu_tnzs_r(space,offset);
-			break;
 		case MCU_ARKANOID:
 			return mcu_arknoid2_r(space,offset);
-			break;
 		case MCU_EXTRMATN:
 		case MCU_DRTOPPEL:
 		case MCU_PLUMPOP:
 			return mcu_extrmatn_r(space,offset);
-			break;
 		default:
 			return 0xff;
-			break;
 	}
 }
 
@@ -652,7 +646,7 @@ MACHINE_RESET( tnzs )
 	{
 		UINT8 *RAM;
 
-		RAM = memory_region(machine, "main");
+		RAM = memory_region(machine, "maincpu");
 		memory_set_bankptr(machine, 1,&RAM[0x18000]);
 
 		RAM = memory_region(machine, "sub");
@@ -675,7 +669,7 @@ WRITE8_HANDLER( tnzs_sharedram_w )
 
 WRITE8_HANDLER( tnzs_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(space->machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "maincpu");
 
 //  logerror("PC %04x: writing %02x to bankswitch\n", cpu_get_pc(space->cpu),data);
 

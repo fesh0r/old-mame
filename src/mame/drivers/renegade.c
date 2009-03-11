@@ -104,9 +104,8 @@ $8000 - $ffff   ROM
 #include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "cpu/m6809/m6809.h"
-#include "sound/3812intf.h"
+#include "sound/3526intf.h"
 #include "sound/okim6295.h"
-#include "sound/custom.h"
 
 extern VIDEO_UPDATE( renegade );
 extern VIDEO_START( renegade );
@@ -155,7 +154,7 @@ static STREAM_UPDATE( renegade_adpcm_callback )
 				state->playing = 0;
 		}
 
-		*dest++ = clock_adpcm(&state->adpcm, val);
+		*dest++ = clock_adpcm(&state->adpcm, val) << 4;
 		samples--;
 	}
 	while (samples > 0)
@@ -165,16 +164,31 @@ static STREAM_UPDATE( renegade_adpcm_callback )
 	}
 }
 
-static CUSTOM_START( renegade_adpcm_start )
+static DEVICE_START( renegade_adpcm )
 {
 	running_machine *machine = device->machine;
 	struct renegade_adpcm_state *state = &renegade_adpcm;
 	state->playing = 0;
-	state->stream = stream_create(device, 0, 1, clock, state, renegade_adpcm_callback);
+	state->stream = stream_create(device, 0, 1, device->clock, state, renegade_adpcm_callback);
 	state->base = memory_region(machine, "adpcm");
 	reset_adpcm(&state->adpcm);
-	return state;
 }
+
+static DEVICE_GET_INFO( renegade_adpcm )
+{
+	switch (state)
+	{
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(renegade_adpcm);break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Renegade Custom ADPCM");		break;
+		case DEVINFO_STR_SOURCE_FILE:						strcpy(info->s, __FILE__);						break;
+	}
+}
+
+#define SOUND_RENEGADE_ADPCM DEVICE_GET_INFO_NAME(renegade_adpcm)
+
 
 static WRITE8_HANDLER( adpcm_play_w )
 {
@@ -240,7 +254,7 @@ static const UINT8 kuniokun_xor_table[0x2a] =
 
 static void setbank(running_machine *machine)
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 	memory_set_bankptr(machine, 1, &RAM[bank ? 0x10000 : 0x4000]);
 }
 
@@ -555,7 +569,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x1000, 0x1000) AM_READ(soundlatch_r)
-	AM_RANGE(0x2801, 0x2801) AM_READ(ym3526_status_port_0_r)
+	AM_RANGE(0x2800, 0x2801) AM_DEVREAD("ym", ym3526_r)
 	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
@@ -563,8 +577,7 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x1800, 0x1800) AM_WRITE(SMH_NOP) // this gets written the same values as 0x2000
 	AM_RANGE(0x2000, 0x2000) AM_WRITE(adpcm_play_w)
-	AM_RANGE(0x2800, 0x2800) AM_WRITE(ym3526_control_port_0_w)
-	AM_RANGE(0x2801, 0x2801) AM_WRITE(ym3526_write_port_0_w)
+	AM_RANGE(0x2800, 0x2801) AM_DEVWRITE("ym", ym3526_w)
 	AM_RANGE(0x3000, 0x3000) AM_WRITE(SMH_NOP) /* adpcm related? stereo pan? */
 	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
@@ -764,19 +777,14 @@ GFXDECODE_END
 
 
 /* handler called by the 3526 emulator when the internal timers cause an IRQ */
-static void irqhandler(running_machine *machine, int linestate)
+static void irqhandler(const device_config *device, int linestate)
 {
-	cpu_set_input_line(machine->cpu[1], M6809_FIRQ_LINE, linestate);
+	cpu_set_input_line(device->machine->cpu[1], M6809_FIRQ_LINE, linestate);
 }
 
 static const ym3526_interface ym3526_config =
 {
 	irqhandler
-};
-
-static const custom_sound_interface adpcm_interface =
-{
-	renegade_adpcm_start
 };
 
 
@@ -790,18 +798,18 @@ static MACHINE_RESET( renegade )
 static MACHINE_DRIVER_START( renegade )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 12000000/8)	/* 1.5 MHz (measured) */
+	MDRV_CPU_ADD("maincpu", M6502, 12000000/8)	/* 1.5 MHz (measured) */
 	MDRV_CPU_PROGRAM_MAP(main_readmem,main_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(renegade_interrupt,2)
 
-	MDRV_CPU_ADD("audio", M6809, 12000000/8)
+	MDRV_CPU_ADD("audiocpu", M6809, 12000000/8)
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 								/* IRQs are caused by the main CPU */
 	MDRV_MACHINE_START(renegade)
 	MDRV_MACHINE_RESET(renegade)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */*2)
     MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -821,20 +829,19 @@ static MACHINE_DRIVER_START( renegade )
 	MDRV_SOUND_CONFIG(ym3526_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
-	MDRV_SOUND_ADD("adpcm", CUSTOM, 8000)
-	MDRV_SOUND_CONFIG(adpcm_interface)
+	MDRV_SOUND_ADD("adpcm", RENEGADE_ADPCM, 8000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 
 
 ROM_START( renegade )
-	ROM_REGION( 0x14000, "main", 0 )	/* 64k for code + bank switched ROM */
+	ROM_REGION( 0x14000, "maincpu", 0 )	/* 64k for code + bank switched ROM */
 	ROM_LOAD( "nb-5.bin",     0x08000, 0x8000, CRC(ba683ddf) SHA1(7516fac1c4fd14cbf43481e94c0c26c662c4cd28) )
 	ROM_LOAD( "na-5.bin",     0x04000, 0x4000, CRC(de7e7df4) SHA1(7d26ac29e0b5858d9a0c0cdc86c864e464145260) )
 	ROM_CONTINUE(		  0x10000, 0x4000 )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* audio CPU (M6809) */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* audio CPU (M6809) */
 	ROM_LOAD( "n0-5.bin",     0x8000, 0x8000, CRC(3587de3b) SHA1(f82e758254b21eb0c5a02469c72adb86d9577065) )
 
 	ROM_REGION( 0x10000, "cpu2", 0 ) /* mcu (missing) */
@@ -872,12 +879,12 @@ ROM_START( renegade )
 ROM_END
 
 ROM_START( kuniokun )
-	ROM_REGION( 0x14000, "main", 0 )	/* 64k for code + bank switched ROM */
+	ROM_REGION( 0x14000, "maincpu", 0 )	/* 64k for code + bank switched ROM */
 	ROM_LOAD( "nb-01.bin",    0x08000, 0x8000, CRC(93fcfdf5) SHA1(51cdb9377544ae17895e427f21d150ce195ab8e7) ) // original
 	ROM_LOAD( "ta18-11.bin",  0x04000, 0x4000, CRC(f240f5cd) SHA1(ed6875e8ad2988e88389d4f63ff448d0823c195f) )
 	ROM_CONTINUE(		  0x10000, 0x4000 )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* audio CPU (M6809) */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* audio CPU (M6809) */
 	ROM_LOAD( "n0-5.bin",     0x8000, 0x8000, CRC(3587de3b) SHA1(f82e758254b21eb0c5a02469c72adb86d9577065) )
 
 	ROM_REGION( 0x10000, "cpu2", 0 ) /* mcu (missing) */
@@ -915,12 +922,12 @@ ROM_START( kuniokun )
 ROM_END
 
 ROM_START( kuniokub )
-	ROM_REGION( 0x14000, "main", 0 )	/* 64k for code + bank switched ROM */
+	ROM_REGION( 0x14000, "maincpu", 0 )	/* 64k for code + bank switched ROM */
 	ROM_LOAD( "ta18-10.bin",  0x08000, 0x8000, CRC(a90cf44a) SHA1(6d63d9c29da7b8c5bc391e074b6b8fe6ae3892ae) ) // bootleg
 	ROM_LOAD( "ta18-11.bin",  0x04000, 0x4000, CRC(f240f5cd) SHA1(ed6875e8ad2988e88389d4f63ff448d0823c195f) )
 	ROM_CONTINUE(		  0x10000, 0x4000 )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* audio CPU (M6809) */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* audio CPU (M6809) */
 	ROM_LOAD( "n0-5.bin",     0x8000, 0x8000, CRC(3587de3b) SHA1(f82e758254b21eb0c5a02469c72adb86d9577065) )
 
 	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )

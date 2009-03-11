@@ -199,41 +199,41 @@ static WRITE8_HANDLER( sprint4_lockout_w )
 #endif
 
 
-static WRITE8_HANDLER( sprint4_screech_1_w )
+static WRITE8_DEVICE_HANDLER( sprint4_screech_1_w )
 {
-	discrete_sound_w(space, SPRINT4_SCREECH_EN_1, offset & 1);
+	discrete_sound_w(device, SPRINT4_SCREECH_EN_1, offset & 1);
 }
 
 
-static WRITE8_HANDLER( sprint4_screech_2_w )
+static WRITE8_DEVICE_HANDLER( sprint4_screech_2_w )
 {
-	discrete_sound_w(space, SPRINT4_SCREECH_EN_2, offset & 1);
+	discrete_sound_w(device, SPRINT4_SCREECH_EN_2, offset & 1);
 }
 
 
-static WRITE8_HANDLER( sprint4_screech_3_w )
+static WRITE8_DEVICE_HANDLER( sprint4_screech_3_w )
 {
-	discrete_sound_w(space, SPRINT4_SCREECH_EN_3, offset & 1);
+	discrete_sound_w(device, SPRINT4_SCREECH_EN_3, offset & 1);
 }
 
 
-static WRITE8_HANDLER( sprint4_screech_4_w )
+static WRITE8_DEVICE_HANDLER( sprint4_screech_4_w )
 {
-	discrete_sound_w(space, SPRINT4_SCREECH_EN_4, offset & 1);
+	discrete_sound_w(device, SPRINT4_SCREECH_EN_4, offset & 1);
 }
 
 
 
 
-static WRITE8_HANDLER( sprint4_bang_w )
+static WRITE8_DEVICE_HANDLER( sprint4_bang_w )
 {
-	discrete_sound_w(space, SPRINT4_BANG_DATA, data & 0x0f);
+	discrete_sound_w(device, SPRINT4_BANG_DATA, data & 0x0f);
 }
 
 
-static WRITE8_HANDLER( sprint4_attract_w )
+static WRITE8_DEVICE_HANDLER( sprint4_attract_w )
 {
-	discrete_sound_w(space, SPRINT4_ATTRACT_EN, data & 1);
+	discrete_sound_w(device, SPRINT4_ATTRACT_EN, data & 1);
 }
 
 
@@ -252,16 +252,16 @@ static ADDRESS_MAP_START( sprint4_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1000, 0x17ff) AM_READ_PORT("IN0")
 	AM_RANGE(0x1800, 0x1fff) AM_READ_PORT("IN1")
 
-	AM_RANGE(0x0000, 0x0000) AM_MIRROR(0x71f) AM_WRITE(sprint4_attract_w)
+	AM_RANGE(0x0000, 0x0000) AM_MIRROR(0x71f) AM_DEVWRITE("discrete", sprint4_attract_w)
 	AM_RANGE(0x0020, 0x0027) AM_MIRROR(0x718) AM_WRITE(sprint4_collision_reset_w)
 	AM_RANGE(0x0040, 0x0041) AM_MIRROR(0x718) AM_WRITE(sprint4_da_latch_w)
-	AM_RANGE(0x0042, 0x0043) AM_MIRROR(0x718) AM_WRITE(sprint4_bang_w)
+	AM_RANGE(0x0042, 0x0043) AM_MIRROR(0x718) AM_DEVWRITE("discrete", sprint4_bang_w)
 	AM_RANGE(0x0044, 0x0045) AM_MIRROR(0x718) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x0060, 0x0067) AM_MIRROR(0x710) AM_WRITE(sprint4_lamp_w)
-	AM_RANGE(0x0068, 0x0069) AM_MIRROR(0x710) AM_WRITE(sprint4_screech_1_w)
-	AM_RANGE(0x006a, 0x006b) AM_MIRROR(0x710) AM_WRITE(sprint4_screech_2_w)
-	AM_RANGE(0x006c, 0x006d) AM_MIRROR(0x710) AM_WRITE(sprint4_screech_3_w)
-	AM_RANGE(0x006e, 0x006f) AM_MIRROR(0x710) AM_WRITE(sprint4_screech_4_w)
+	AM_RANGE(0x0068, 0x0069) AM_MIRROR(0x710) AM_DEVWRITE("discrete", sprint4_screech_1_w)
+	AM_RANGE(0x006a, 0x006b) AM_MIRROR(0x710) AM_DEVWRITE("discrete", sprint4_screech_2_w)
+	AM_RANGE(0x006c, 0x006d) AM_MIRROR(0x710) AM_DEVWRITE("discrete", sprint4_screech_3_w)
+	AM_RANGE(0x006e, 0x006f) AM_MIRROR(0x710) AM_DEVWRITE("discrete", sprint4_screech_4_w)
 
 	AM_RANGE(0x2000, 0x27ff) AM_NOP /* diagnostic ROM */
 	AM_RANGE(0x2800, 0x3fff) AM_ROM
@@ -405,14 +405,14 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( sprint4 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, PIXEL_CLOCK / 8)
+	MDRV_CPU_ADD("maincpu", M6502, PIXEL_CLOCK / 8)
 	MDRV_CPU_PROGRAM_MAP(sprint4_cpu_map, 0)
 
 	MDRV_WATCHDOG_VBLANK_INIT(8)
 	MDRV_MACHINE_RESET(sprint4)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, 0, 256, VTOTAL, 0, 224)
 	MDRV_GFXDECODE(sprint4)
@@ -424,18 +424,18 @@ static MACHINE_DRIVER_START( sprint4 )
 	MDRV_VIDEO_EOF(sprint4)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(sprint4)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 MACHINE_DRIVER_END
 
 
 ROM_START( sprint4 )
-	ROM_REGION( 0x4000, "main", 0 )
+	ROM_REGION( 0x4000, "maincpu", 0 )
 	ROM_LOAD         ( "30031.c1",    0x2800, 0x0800, CRC(017ee7c4) SHA1(9386cacc619669c18af31f66691a45af6dafef64) )
 	ROM_LOAD_NIB_LOW ( "30036-02.n1", 0x3000, 0x0800, CRC(883b9d7c) SHA1(af52ffdd9cd8dfed54013c9b0d3c6e48c7419d17) )
 	ROM_LOAD_NIB_HIGH( "30037-02.k1", 0x3000, 0x0800, CRC(c297fbd8) SHA1(8cc0f486429e12bee21a5dd1135e799196480044) )
@@ -455,7 +455,7 @@ ROM_END
 
 
 ROM_START( sprint4a )
-	ROM_REGION( 0x4000, "main", 0 )
+	ROM_REGION( 0x4000, "maincpu", 0 )
 	ROM_LOAD         ( "30031.c1",    0x2800, 0x0800, CRC(017ee7c4) SHA1(9386cacc619669c18af31f66691a45af6dafef64) )
 	ROM_LOAD_NIB_LOW ( "30036-02.n1", 0x3000, 0x0800, CRC(883b9d7c) SHA1(af52ffdd9cd8dfed54013c9b0d3c6e48c7419d17) )
 	ROM_LOAD_NIB_HIGH( "30037-02.k1", 0x3000, 0x0800, CRC(c297fbd8) SHA1(8cc0f486429e12bee21a5dd1135e799196480044) )

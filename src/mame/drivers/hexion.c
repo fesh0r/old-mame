@@ -132,12 +132,12 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa000, 0xbfff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xc000, 0xdffe) AM_WRITE(hexion_bankedram_w)
 	AM_RANGE(0xdfff, 0xdfff) AM_WRITE(hexion_bankctrl_w)
-	AM_RANGE(0xe800, 0xe87f) AM_WRITE(k051649_waveform_w)
-	AM_RANGE(0xe880, 0xe889) AM_WRITE(k051649_frequency_w)
-	AM_RANGE(0xe88a, 0xe88e) AM_WRITE(k051649_volume_w)
-	AM_RANGE(0xe88f, 0xe88f) AM_WRITE(k051649_keyonoff_w)
+	AM_RANGE(0xe800, 0xe87f) AM_DEVWRITE("konami", k051649_waveform_w)
+	AM_RANGE(0xe880, 0xe889) AM_DEVWRITE("konami", k051649_frequency_w)
+	AM_RANGE(0xe88a, 0xe88e) AM_DEVWRITE("konami", k051649_volume_w)
+	AM_RANGE(0xe88f, 0xe88f) AM_DEVWRITE("konami", k051649_keyonoff_w)
 	AM_RANGE(0xf000, 0xf00f) AM_WRITE(SMH_NOP)	/* 053252? f00e = IRQ ack, f00f = NMI ack */
-	AM_RANGE(0xf200, 0xf200) AM_WRITE(okim6295_data_0_w)
+	AM_RANGE(0xf200, 0xf200) AM_DEVWRITE("oki", okim6295_w)
 	AM_RANGE(0xf480, 0xf480) AM_WRITE(hexion_bankswitch_w)
 	AM_RANGE(0xf4c0, 0xf4c0) AM_WRITE(coincntr_w)
 	AM_RANGE(0xf500, 0xf500) AM_WRITE(hexion_gfxrom_select_w)
@@ -283,12 +283,12 @@ static INTERRUPT_GEN( hexion_interrupt )
 static MACHINE_DRIVER_START( hexion )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,24000000/4)	/* Z80B 6 MHz */
+	MDRV_CPU_ADD("maincpu", Z80,24000000/4)	/* Z80B 6 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT_HACK(hexion_interrupt,3)	/* both IRQ and NMI are used */
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -322,7 +322,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( hexion )
-	ROM_REGION( 0x34800, "main", 0 )	/* ROMs + space for additional RAM */
+	ROM_REGION( 0x34800, "maincpu", 0 )	/* ROMs + space for additional RAM */
 	ROM_LOAD( "122jab01.bin", 0x00000, 0x20000, CRC(eabc6dd1) SHA1(e74c1f1f2fcf8973f0741a2d544f25c8639448bf) )
 	ROM_RELOAD(               0x10000, 0x20000 )	/* banked at 8000-9fff */
 

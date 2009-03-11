@@ -250,17 +250,6 @@ static WRITE32_HANDLER( darkhors_eeprom_w )
 	}
 }
 
-static WRITE32_HANDLER( okim6295_data_0_msb32_w )
-{
-	if (ACCESSING_BITS_24_31)
-		okim6295_data_0_msb_w(space, offset, data >> 16, mem_mask >> 16);
-}
-
-static READ32_HANDLER( okim6295_status_0_msb32_r )
-{
-	return okim6295_status_0_msb_r(space, offset, mem_mask >> 16) << 16;
-}
-
 static WRITE32_HANDLER( paletteram32_xBBBBBGGGGGRRRRR_dword_w )
 {
 	paletteram16 = (UINT16 *)paletteram32;
@@ -315,7 +304,7 @@ static ADDRESS_MAP_START( darkhors_readmem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x580000, 0x580003) AM_READ_PORT("580000")
 	AM_RANGE(0x580004, 0x580007) AM_READ_PORT("580004")
 	AM_RANGE(0x580008, 0x58000b) AM_READ( darkhors_input_sel_r		)
-	AM_RANGE(0x580084, 0x580087) AM_READ( okim6295_status_0_msb32_r	)
+	AM_RANGE(0x580084, 0x580087) AM_DEVREAD8( "oki", okim6295_r, 0xff000000	)
 	AM_RANGE(0x580200, 0x580203) AM_READ( SMH_NOP					)
 	AM_RANGE(0x580400, 0x580403) AM_READ_PORT("580400")
 	AM_RANGE(0x580420, 0x580423) AM_READ_PORT("580420")
@@ -328,7 +317,7 @@ static ADDRESS_MAP_START( darkhors_writemem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x490040, 0x490043) AM_WRITE( darkhors_eeprom_w		)
 	AM_RANGE(0x58000c, 0x58000f) AM_WRITE( darkhors_input_sel_w		)
 	AM_RANGE(0x4e0080, 0x4e0083) AM_WRITE( darkhors_unk1_w			)
-	AM_RANGE(0x580084, 0x580087) AM_WRITE( okim6295_data_0_msb32_w	)
+	AM_RANGE(0x580084, 0x580087) AM_DEVWRITE8( "oki", okim6295_w, 0xff000000	)
 	AM_RANGE(0x800000, 0x86bfff) AM_WRITE( SMH_RAM				)
 	AM_RANGE(0x86c000, 0x86ffff) AM_WRITE( darkhors_tmapram_w		)	AM_BASE(&darkhors_tmapram)
 	AM_RANGE(0x870000, 0x873fff) AM_WRITE( darkhors_tmapram2_w		)	AM_BASE(&darkhors_tmapram2)
@@ -594,14 +583,14 @@ static INTERRUPT_GEN( darkhors )
 }
 
 static MACHINE_DRIVER_START( darkhors )
-	MDRV_CPU_ADD("main", M68EC020, 12000000) // 36MHz/3 ??
+	MDRV_CPU_ADD("maincpu", M68EC020, 12000000) // 36MHz/3 ??
 	MDRV_CPU_PROGRAM_MAP(darkhors_readmem,darkhors_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(darkhors,3)
 
 	MDRV_NVRAM_HANDLER(darkhors)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -631,7 +620,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( darkhors )
-	ROM_REGION( 0x100000, "main", 0 )	// 68EC020 code
+	ROM_REGION( 0x100000, "maincpu", 0 )	// 68EC020 code
 	ROM_LOAD32_WORD_SWAP( "prg2", 0x00000, 0x80000, CRC(f2ec5818) SHA1(326937a331496880f517f41b0b8ab54e55fd7af7) )
 	ROM_LOAD32_WORD_SWAP( "prg1", 0x00002, 0x80000, CRC(b80f8f59) SHA1(abc26dd8b36da0d510978364febe385f69fb317f) )
 
@@ -663,7 +652,7 @@ ROM_END
 
 static DRIVER_INIT( darkhors )
 {
-	UINT32 *rom    = (UINT32 *) memory_region(machine, "main");
+	UINT32 *rom    = (UINT32 *) memory_region(machine, "maincpu");
 	UINT8  *eeprom = (UINT8 *)  memory_region(machine, "user1");
 	int i;
 

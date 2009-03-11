@@ -392,7 +392,7 @@ static void draw_sprites(const device_config *screen, bitmap_t *bitmap, const re
 					} else { /* last palette entry is reserved for shadows and highlights */
 
 						/* get a pointer to the current sprite's gfx data */
-						UINT8 *gfx_src = gfx->gfxdata + (number % gfx->total_elements)*gfx->char_modulo;
+						const UINT8 *gfx_src = gfx_element_get_data(gfx, number % gfx->total_elements);
 
 						for (py = 0; py < gfx->height; py++){
 							/* get a pointer to the current line in the screen bitmap */
@@ -468,8 +468,8 @@ VIDEO_UPDATE( gaelco2_dual )
 {
 	int i;
 
-	const device_config *left_screen  = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "left");
-	const device_config *right_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "right");
+	const device_config *left_screen  = devtag_get_device(screen->machine, "lscreen");
+	const device_config *right_screen = devtag_get_device(screen->machine, "rscreen");
 
 	/* read scroll values */
 	int scroll0x = gaelco2_videoram[0x2802/2] + 0x14;

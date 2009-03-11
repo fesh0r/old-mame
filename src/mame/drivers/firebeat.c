@@ -1331,37 +1331,6 @@ static WRITE32_HANDLER( rtc_w )
 
 /*****************************************************************************/
 
-static READ32_HANDLER( sound_r )
-{
-	UINT32 r = 0;
-
-//  printf("sound_r: %08X, %08X\n", offset, mem_mask);
-
-	if (ACCESSING_BITS_24_31)	/* External RAM read */
-	{
-		r |= ymz280b_data_0_r(space, offset) << 24;
-	}
-	if (ACCESSING_BITS_16_23)
-	{
-		r |= ymz280b_status_0_r(space, offset) << 16;
-	}
-
-	return r;
-}
-
-static WRITE32_HANDLER( sound_w )
-{
-//  printf("sound_w: %08X, %08X, %08X\n", offset, data, mem_mask);
-	if (ACCESSING_BITS_24_31)
-	{
-		ymz280b_register_0_w(space, offset, (data >> 24) & 0xff);
-	}
-	if (ACCESSING_BITS_16_23)
-	{
-		ymz280b_data_0_w(space, offset, (data >> 16) & 0xff);
-	}
-}
-
 static const int cab_data[2] = { 0x0, 0x8 };
 static const int kbm_cab_data[2] = { 0x2, 0x8 };
 static const int ppd_cab_data[2] = { 0x1, 0x9 };
@@ -1764,14 +1733,10 @@ static UINT32 *work_ram;
 static MACHINE_START( firebeat )
 {
 	/* set conservative DRC options */
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
+	ppcdrc_set_options(machine->cpu[0], PPCDRC_COMPATIBLE_OPTIONS);
 
 	/* configure fast RAM regions for DRC */
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_END, 0x01ffffff);
-	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_PPC_FASTRAM_BASE, work_ram);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
+	ppcdrc_add_fastram(machine->cpu[0], 0x00000000, 0x01ffffff, FALSE, work_ram);
 }
 
 static ADDRESS_MAP_START( firebeat_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -1783,7 +1748,7 @@ static ADDRESS_MAP_START( firebeat_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x74000000, 0x740003ff) AM_READWRITE(ppc_spu_share_r, ppc_spu_share_w) // SPU shared RAM
 	AM_RANGE(0x7d000200, 0x7d00021f) AM_READ(cabinet_r)
 	AM_RANGE(0x7d000340, 0x7d000347) AM_READ(sensor_r)
-	AM_RANGE(0x7d000400, 0x7d000403) AM_READWRITE(sound_r, sound_w)
+	AM_RANGE(0x7d000400, 0x7d000403) AM_DEVREADWRITE8("ymz", ymz280b_r, ymz280b_w, 0xffff0000)
 	AM_RANGE(0x7d000800, 0x7d000803) AM_READ(input_r)
 	AM_RANGE(0x7d400000, 0x7d5fffff) AM_READWRITE(flashram_r, flashram_w)
 	AM_RANGE(0x7d800000, 0x7dbfffff) AM_READWRITE(soundflash_r, soundflash_w)
@@ -1804,7 +1769,7 @@ ADDRESS_MAP_END
 
 /*****************************************************************************/
 
-static READ8_HANDLER( soundram_r )
+static READ8_DEVICE_HANDLER( soundram_r )
 {
 	if (offset >= 0 && offset < 0x200000)
 	{
@@ -1817,19 +1782,14 @@ static READ8_HANDLER( soundram_r )
 	return 0;
 }
 
-static WRITE8_HANDLER( soundram_w )
-{
-}
-
-static void sound_irq_callback(running_machine *machine, int state)
+static void sound_irq_callback(const device_config *device, int state)
 {
 }
 
 static const ymz280b_interface ymz280b_intf =
 {
 	sound_irq_callback,			// irq
-	soundram_r,
-	soundram_w,
+	DEVCB_HANDLER(soundram_r)
 };
 
 static NVRAM_HANDLER(firebeat)
@@ -2012,22 +1972,22 @@ static MACHINE_RESET( firebeat )
 	}
 
 	SCSIGetDevice( atapi_device_data[1], &cd );
-	cdda_set_cdrom(0, cd);
+	cdda_set_cdrom(devtag_get_device(machine, "cdda"), cd);
 }
 
 static MACHINE_DRIVER_START(firebeat)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", PPC403GCX, 66000000)
+	MDRV_CPU_ADD("maincpu", PPC403GCX, 66000000)
 	MDRV_CPU_PROGRAM_MAP(firebeat_map, 0)
-	MDRV_CPU_VBLANK_INT("main", firebeat_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", firebeat_interrupt)
 
 	MDRV_MACHINE_START(firebeat)
 	MDRV_MACHINE_RESET(firebeat)
 	MDRV_NVRAM_HANDLER(firebeat)
 
  	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -2041,25 +2001,25 @@ static MACHINE_DRIVER_START(firebeat)
 	MDRV_VIDEO_UPDATE(firebeat)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ymz", YMZ280B, 16934400)
 	MDRV_SOUND_CONFIG(ymz280b_intf)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("cdda", CDDA, 0)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(firebeat2)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", PPC403GCX, 66000000)
+	MDRV_CPU_ADD("maincpu", PPC403GCX, 66000000)
 	MDRV_CPU_PROGRAM_MAP(firebeat_map, 0)
-	MDRV_CPU_VBLANK_INT("left", firebeat_interrupt)
+	MDRV_CPU_VBLANK_INT("lscreen", firebeat_interrupt)
 
 	MDRV_MACHINE_RESET(firebeat)
 	MDRV_NVRAM_HANDLER(firebeat)
@@ -2068,14 +2028,14 @@ static MACHINE_DRIVER_START(firebeat2)
 	MDRV_PALETTE_LENGTH(32768)
 	MDRV_PALETTE_INIT(RRRRR_GGGGG_BBBBB)
 
-	MDRV_SCREEN_ADD("left", RASTER)
+	MDRV_SCREEN_ADD("lscreen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_SIZE(640, 480)
 	MDRV_SCREEN_VISIBLE_AREA(0, 639, 0, 479)
 
-	MDRV_SCREEN_ADD("right", RASTER)
+	MDRV_SCREEN_ADD("rscreen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
@@ -2086,23 +2046,23 @@ static MACHINE_DRIVER_START(firebeat2)
 	MDRV_VIDEO_UPDATE(firebeat)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ymz", YMZ280B, 16934400)
 	MDRV_SOUND_CONFIG(ymz280b_intf)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	MDRV_SOUND_ADD("cdda", CDDA, 0)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(firebeat_spu)
 
 	MDRV_IMPORT_FROM(firebeat)
 
-	MDRV_CPU_ADD("audio", M68000, 16000000)
+	MDRV_CPU_ADD("audiocpu", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(spu_map, 0)
 
 MACHINE_DRIVER_END
@@ -2404,7 +2364,7 @@ ROM_START( popn7 )
 	ROM_REGION(0xc0, "user2", ROMREGION_ERASE00)	// Security dongle
 	ROM_LOAD("gcb00-ja", 0x00, 0xc0, BAD_DUMP CRC(cc28625a) SHA1(e7de79ae72fdbd22328c9de74dfa17b5e6ae43b6))
 
-	ROM_REGION(0x80000, "audio", 0)			// SPU 68K program
+	ROM_REGION(0x80000, "audiocpu", 0)			// SPU 68K program
 	ROM_LOAD16_WORD_SWAP("a02jaa04.3q", 0x00000, 0x80000, CRC(8c6000dd) SHA1(94ab2a66879839411eac6c673b25143d15836683))
 
 	DISK_REGION( "scsi0" )

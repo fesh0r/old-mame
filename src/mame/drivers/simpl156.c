@@ -180,33 +180,13 @@ static WRITE32_HANDLER( simpl156_eeprom_w )
 
 	okibank = data & 0x07;
 
-	okim6295_set_bank_base(1, 0x40000 * (data & 0x7) );
+	okim6295_set_bank_base(devtag_get_device(space->machine, "okimusic"), 0x40000 * (data & 0x7) );
 
 	eeprom_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
 	eeprom_write_bit(data & 0x10);
 	eeprom_set_cs_line((data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
 }
 
-
-static READ32_HANDLER( oki_r )
-{
-	return okim6295_status_0_r(space, 0);
-}
-
-static WRITE32_HANDLER( oki_w )
-{
-	okim6295_data_0_w(space, 0, data & 0xff);
-}
-
-static READ32_HANDLER( oki2_r )
-{
-	return okim6295_status_1_r(space, 0);
-}
-
-static WRITE32_HANDLER( oki2_w )
-{
-	okim6295_data_1_w(space, 0, data & 0xff);
-}
 
 /* we need to throw away bits for all ram accesses as the devices are connected as 16-bit */
 
@@ -321,8 +301,8 @@ static ADDRESS_MAP_START( joemacr_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x160000, 0x161fff) AM_READWRITE(simpl156_pf1_rowscroll_r, simpl156_pf1_rowscroll_w)
 	AM_RANGE(0x164000, 0x165fff) AM_READWRITE(simpl156_pf2_rowscroll_r, simpl156_pf2_rowscroll_w)
 	AM_RANGE(0x170000, 0x170003) AM_RAM_WRITE(SMH_NOP) // ?
-	AM_RANGE(0x180000, 0x180003) AM_READWRITE(oki_r,oki_w)
-	AM_RANGE(0x1c0000, 0x1c0003) AM_READWRITE(oki2_r,oki2_w)
+	AM_RANGE(0x180000, 0x180003) AM_DEVREADWRITE8("okisfx", okim6295_r, okim6295_w, 0x000000ff)
+	AM_RANGE(0x1c0000, 0x1c0003) AM_DEVREADWRITE8("okimusic", okim6295_r, okim6295_w, 0x000000ff)
 	AM_RANGE(0x200000, 0x200003) AM_READ(simpl156_inputs_read)
 	AM_RANGE(0x201000, 0x201fff) AM_RAM AM_BASE(&simpl156_systemram) // work ram (32-bit)
 ADDRESS_MAP_END
@@ -333,7 +313,7 @@ static ADDRESS_MAP_START( chainrec_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM // rom (32-bit)
 	AM_RANGE(0x200000, 0x200003) AM_READ(simpl156_inputs_read)
 	AM_RANGE(0x201000, 0x201fff) AM_RAM AM_BASE(&simpl156_systemram) // work ram (32-bit)
-	AM_RANGE(0x3c0000, 0x3c0003) AM_READWRITE(oki2_r,oki2_w)
+	AM_RANGE(0x3c0000, 0x3c0003) AM_DEVREADWRITE8("okimusic", okim6295_r, okim6295_w, 0x000000ff)
 	AM_RANGE(0x400000, 0x407fff) AM_READWRITE(simpl156_mainram_r, simpl156_mainram_w) AM_BASE(&simpl156_mainram) // main ram?
 	AM_RANGE(0x410000, 0x411fff) AM_READWRITE(simpl156_spriteram_r, simpl156_spriteram_w) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x420000, 0x420fff) AM_READWRITE(simpl156_palette_r,simpl156_palette_w)
@@ -345,7 +325,7 @@ static ADDRESS_MAP_START( chainrec_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x460000, 0x461fff) AM_READWRITE(simpl156_pf1_rowscroll_r, simpl156_pf1_rowscroll_w)
 	AM_RANGE(0x464000, 0x465fff) AM_READWRITE(simpl156_pf2_rowscroll_r, simpl156_pf2_rowscroll_w)
 	AM_RANGE(0x470000, 0x470003) AM_RAM_WRITE(SMH_NOP) // ??
-	AM_RANGE(0x480000, 0x480003) AM_READWRITE(oki_r,oki_w)
+	AM_RANGE(0x480000, 0x480003) AM_DEVREADWRITE8("okisfx", okim6295_r, okim6295_w, 0x000000ff)
 ADDRESS_MAP_END
 
 
@@ -354,7 +334,7 @@ static ADDRESS_MAP_START( magdrop_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
 	AM_RANGE(0x200000, 0x200003) AM_READ(simpl156_inputs_read)
 	AM_RANGE(0x201000, 0x201fff) AM_RAM AM_BASE(&simpl156_systemram) // work ram (32-bit)
-	AM_RANGE(0x340000, 0x340003) AM_READWRITE(oki2_r,oki2_w)
+	AM_RANGE(0x340000, 0x340003) AM_DEVREADWRITE8("okimusic", okim6295_r, okim6295_w, 0x000000ff)
 	AM_RANGE(0x380000, 0x387fff) AM_READWRITE(simpl156_mainram_r, simpl156_mainram_w) AM_BASE(&simpl156_mainram) // main ram?
 	AM_RANGE(0x390000, 0x391fff) AM_READWRITE(simpl156_spriteram_r, simpl156_spriteram_w) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x3a0000, 0x3a0fff) AM_READWRITE(simpl156_palette_r,simpl156_palette_w)
@@ -366,7 +346,7 @@ static ADDRESS_MAP_START( magdrop_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x3e0000, 0x3e1fff) AM_READWRITE(simpl156_pf1_rowscroll_r, simpl156_pf1_rowscroll_w)
 	AM_RANGE(0x3e4000, 0x3e5fff) AM_READWRITE(simpl156_pf2_rowscroll_r, simpl156_pf2_rowscroll_w)
 	AM_RANGE(0x3f0000, 0x3f0003) AM_RAM_WRITE(SMH_NOP) //?
-	AM_RANGE(0x400000, 0x400003) AM_READWRITE(oki_r,oki_w)
+	AM_RANGE(0x400000, 0x400003) AM_DEVREADWRITE8("okisfx", okim6295_r, okim6295_w, 0x000000ff)
 ADDRESS_MAP_END
 
 
@@ -375,7 +355,7 @@ static ADDRESS_MAP_START( magdropp_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
 	AM_RANGE(0x200000, 0x200003) AM_READ(simpl156_inputs_read)
 	AM_RANGE(0x201000, 0x201fff) AM_RAM AM_BASE(&simpl156_systemram) // work ram (32-bit)
-	AM_RANGE(0x4c0000, 0x4c0003) AM_READWRITE(oki2_r,oki2_w)
+	AM_RANGE(0x4c0000, 0x4c0003) AM_DEVREADWRITE8("okimusic", okim6295_r, okim6295_w, 0x000000ff)
 	AM_RANGE(0x680000, 0x687fff) AM_READWRITE(simpl156_mainram_r, simpl156_mainram_w) AM_BASE(&simpl156_mainram) // main ram?
 	AM_RANGE(0x690000, 0x691fff) AM_READWRITE(simpl156_spriteram_r, simpl156_spriteram_w) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x6a0000, 0x6a0fff) AM_READWRITE(simpl156_palette_r,simpl156_palette_w)
@@ -387,15 +367,15 @@ static ADDRESS_MAP_START( magdropp_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x6e0000, 0x6e1fff) AM_READWRITE(simpl156_pf1_rowscroll_r, simpl156_pf1_rowscroll_w)
 	AM_RANGE(0x6e4000, 0x6e5fff) AM_READWRITE(simpl156_pf2_rowscroll_r, simpl156_pf2_rowscroll_w)
 	AM_RANGE(0x6f0000, 0x6f0003) AM_RAM_WRITE(SMH_NOP) // ?
-	AM_RANGE(0x780000, 0x780003) AM_READWRITE(oki_r,oki_w)
+	AM_RANGE(0x780000, 0x780003) AM_DEVREADWRITE8("okisfx", okim6295_r, okim6295_w, 0x000000ff)
 ADDRESS_MAP_END
 
 
 /* Mitchell MT5601-0 PCB (prtytime, charlien, osman) */
 static ADDRESS_MAP_START( mitchell156_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
-	AM_RANGE(0x100000, 0x100003) AM_READWRITE(oki_r,oki_w)
-	AM_RANGE(0x140000, 0x140003) AM_READWRITE(oki2_r,oki2_w)
+	AM_RANGE(0x100000, 0x100003) AM_DEVREADWRITE8("okisfx", okim6295_r, okim6295_w, 0x000000ff)
+	AM_RANGE(0x140000, 0x140003) AM_DEVREADWRITE8("okimusic", okim6295_r, okim6295_w, 0x000000ff)
 	AM_RANGE(0x180000, 0x187fff) AM_READWRITE(simpl156_mainram_r, simpl156_mainram_w) AM_BASE(&simpl156_mainram) // main ram
 	AM_RANGE(0x190000, 0x191fff) AM_READWRITE(simpl156_spriteram_r, simpl156_spriteram_w) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x1a0000, 0x1a0fff) AM_READWRITE(simpl156_palette_r,simpl156_palette_w)
@@ -479,14 +459,14 @@ static INTERRUPT_GEN( simpl156_vbl_interrupt )
 static MACHINE_DRIVER_START( chainrec )
 	/* basic machine hardware */
 
-	MDRV_CPU_ADD("main", ARM, 28000000 /* /4 */)	/*DE156*/ /* 7.000 MHz */ /* measured at 7.. seems to need 28? */
+	MDRV_CPU_ADD("maincpu", ARM, 28000000 /* /4 */)	/*DE156*/ /* 7.000 MHz */ /* measured at 7.. seems to need 28? */
 	MDRV_CPU_PROGRAM_MAP(chainrec_map,0)
-	MDRV_CPU_VBLANK_INT("main", simpl156_vbl_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", simpl156_vbl_interrupt)
 
 	MDRV_NVRAM_HANDLER(simpl156) // 93C45
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(58)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(800))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -498,51 +478,51 @@ static MACHINE_DRIVER_START( chainrec )
 	MDRV_VIDEO_START(simpl156)
 	MDRV_VIDEO_UPDATE(simpl156)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 
 	MDRV_SOUND_ADD("okisfx", OKIM6295, 32220000/32)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.6)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.6)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.6)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.6)
 
 	MDRV_SOUND_ADD("okimusic", OKIM6295, 32220000/16)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.2)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.2)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.2)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( magdrop )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(chainrec)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(magdrop_map,0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( magdropp )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(chainrec)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(magdropp_map,0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( joemacr )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(chainrec)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(joemacr_map,0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( mitchell156 )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(chainrec)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(mitchell156_map,0)
 
 	MDRV_SOUND_REPLACE("okimusic", OKIM6295, 32220000/32)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.2)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.2)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.2)
 MACHINE_DRIVER_END
 
 
@@ -612,7 +592,7 @@ All roms are socketted eproms, no labels, just a number in pencel.
 */
 
 ROM_START( joemacr )
-	ROM_REGION( 0x80000, "main", 0 ) /* DE156 code (encrypted) */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* DE156 code (encrypted) */
 	ROM_LOAD( "05.u29",    0x000000, 0x080000,  CRC(74e9a158) SHA1(eee447303ac0884e152b89f59a9694afade87336) )
 
 	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE )
@@ -649,7 +629,7 @@ DE-0491-1
 */
 
 ROM_START( joemacra )
-	ROM_REGION( 0x80000, "main", 0 ) /* DE156 code (encrypted) */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* DE156 code (encrypted) */
 	ROM_LOAD( "mw00",    0x000000, 0x080000,  CRC(e1b78f40) SHA1(e611c317ada5a049a5e05d69c051e22a43fa2845) )
 
 	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE ) // rebuilt with roms from other set
@@ -693,7 +673,7 @@ DE-0409-1
 */
 
 ROM_START( chainrec )
-	ROM_REGION( 0x80000, "main", 0 ) /* DE156 code (encrypted) */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* DE156 code (encrypted) */
 	ROM_LOAD( "e1",    0x000000, 0x080000, CRC(8a8340ef) SHA1(4aaee56127b73453b862ff2a33dc241eeabf5658) ) /* No DECO ID number on label */
 
 	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE )
@@ -737,7 +717,7 @@ DE-0409-1
 */
 
 ROM_START( magdrop )
-	ROM_REGION( 0x80000, "main", 0 ) /* DE156 code (encrypted) */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* DE156 code (encrypted) */
 	ROM_LOAD( "re00-2.e1",    0x000000, 0x080000,  CRC(7138f10f) SHA1(ca93c3c2dc9a7dd6901c8429a6bf6883076a9b8f) )
 
 	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE )
@@ -758,7 +738,7 @@ ROM_START( magdrop )
 ROM_END
 
 ROM_START( magdropp )
-	ROM_REGION( 0x80000, "main", 0 ) /* DE156 code (encrypted) */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* DE156 code (encrypted) */
 	ROM_LOAD( "rz00-1.e1",    0x000000, 0x080000,  CRC(28caf639) SHA1(a17e792c82e65009e21680094acf093c0c4f1021) )
 
 	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE )
@@ -821,7 +801,7 @@ maskrom 9a   27c160  labeled MBR-00
 */
 
 ROM_START( charlien )
-	ROM_REGION( 0x80000, "main", 0 ) /* DE156 code (encrypted) */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* DE156 code (encrypted) */
 	ROM_LOAD( "nd00-1.1e",    0x000000, 0x080000,  CRC(f18f4b23) SHA1(cb0c159b4dde3a3c5f295f270485996811e5e4d2) )
 
 	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE )
@@ -902,7 +882,7 @@ vz-02.8f
 */
 
 ROM_START( prtytime )
-	ROM_REGION( 0x80000, "main", 0 ) /* DE156 code (encrypted) */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* DE156 code (encrypted) */
 	ROM_LOAD( "pz_00-0.1e",    0x000000, 0x080000, CRC(ec715c87) SHA1(c9f28399d59b37977f31a5c67cb97af6c58947ae) )
 
 	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE )
@@ -925,7 +905,7 @@ ROM_START( prtytime )
 ROM_END
 
 ROM_START( gangonta )
-	ROM_REGION( 0x80000, "main", 0 ) /* DE156 code (encrypted) */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* DE156 code (encrypted) */
 	ROM_LOAD( "rd_00-0.1e",    0x000000, 0x080000, CRC(f80f43bb) SHA1(f9d26829eb90d41a6c410d4d673fe9595f814868) )
 
 	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE )
@@ -987,7 +967,7 @@ MT5601-0
 */
 
 ROM_START( osman )
-	ROM_REGION( 0x80000, "main", 0 ) /* DE156 code (encrypted) */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* DE156 code (encrypted) */
 	ROM_LOAD( "sa00-0.1e",    0x000000, 0x080000, CRC(ec6b3257) SHA1(10a42a680ce122ab030eaa2ccd99d302cb77854e) )
 
 	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE )
@@ -1012,7 +992,7 @@ ROM_END
 /* NOTE: Cannon Dancer uses IDENTICAL roms to Osman. Region is contained in the eeprom settings which we set in the INIT function */
 
 ROM_START( candance )
-	ROM_REGION( 0x80000, "main", 0 ) /* DE156 code (encrypted) */
+	ROM_REGION( 0x80000, "maincpu", 0 ) /* DE156 code (encrypted) */
 	ROM_LOAD( "sa00-0.1e",    0x000000, 0x080000, CRC(ec6b3257) SHA1(10a42a680ce122ab030eaa2ccd99d302cb77854e) )
 
 	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE )

@@ -25,14 +25,12 @@
             - calls init_machine() [mame.c]
 
             init_machine() [mame.c]
-                - calls sndintrf_init() [sndintrf.c] to determine which sound chips are available
                 - calls fileio_init() [fileio.c] to initialize file I/O info
                 - calls config_init() [config.c] to initialize configuration system
                 - calls input_init() [input.c] to initialize the input system
                 - calls output_init() [output.c] to initialize the output system
                 - calls state_init() [state.c] to initialize save state system
                 - calls state_save_allow_registration() [state.c] to allow registrations
-                - calls drawgfx_init() [drawgfx.c] to initialize rendering globals
                 - calls palette_init() [palette.c] to initialize palette system
                 - calls render_init() [render.c] to initialize the rendering system
                 - calls ui_init() [ui.c] to initialize the user interface
@@ -87,6 +85,7 @@
 #include "ui.h"
 #include "uimenu.h"
 #include "uiinput.h"
+#include "streams.h"
 #include "deprecat.h"
 #include "debug/debugcon.h"
 
@@ -336,6 +335,7 @@ int mame_execute(core_options *options)
 			/* load the configuration settings and NVRAM */
 			settingsloaded = config_load_settings(machine);
 			nvram_load(machine);
+			sound_mute(FALSE);
 
 			/* display the startup screens */
 			ui_display_startup_screens(machine, firstrun, !settingsloaded);
@@ -377,6 +377,7 @@ int mame_execute(core_options *options)
 			end_resource_tracking();
 
 			/* save the NVRAM and configuration */
+			sound_mute(TRUE);
 			nvram_save(machine);
 			config_save_settings(machine);
 		}
@@ -1471,14 +1472,12 @@ static void init_machine(running_machine *machine)
 	time_t newbase;
 
 	/* initialize basic can't-fail systems here */
-	sndintrf_init(machine);
 	fileio_init(machine);
 	config_init(machine);
 	input_init(machine);
 	output_init(machine);
 	state_init(machine);
 	state_save_allow_registration(machine, TRUE);
-	drawgfx_init(machine);
 	palette_init(machine);
 	render_init(machine);
 	ui_init(machine);
@@ -1510,6 +1509,9 @@ static void init_machine(running_machine *machine)
 
 	/* intialize UI input */
 	ui_input_init(machine);
+
+	/* initialize the streams engine before the sound devices start */
+	streams_init(machine);
 
 	/* first load ROMs, then populate memory, and finally initialize CPUs */
 	/* these operations must proceed in this order */
@@ -1559,7 +1561,7 @@ static void init_machine(running_machine *machine)
 
 	/* free memory regions allocated with REGIONFLAG_DISPOSE (typically gfx roms) */
 	/* but not if the debugger is enabled (so we can look at the data) */
-	if (!options_get_bool(mame_options(), OPTION_DEBUG))
+	if (PREDECODE_GFX && !options_get_bool(mame_options(), OPTION_DEBUG))
 		for (rgntag = memory_region_next(machine, NULL); rgntag != NULL; rgntag = nextrgntag)
 		{
 			nextrgntag = memory_region_next(machine, rgntag);

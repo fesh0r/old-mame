@@ -111,6 +111,7 @@ enum
 	XTAL_20_079MHz		= 20790000,		/* Blockade-hardware Gremlin games */
 	XTAL_21MHz  		= 21000000,		/* Lock-On pixel clock */
 	XTAL_21_3MHz  		= 21300000,
+	XTAL_21_477MHz 		= 21477000,		/* Super Othello */
 	XTAL_21_4772MHz 	= 21477200,		/* BMC bowling, some Data East 90's games */
 	XTAL_22MHz   		= 22000000,
 	XTAL_22_1184MHz		= 22118400,
@@ -118,6 +119,7 @@ enum
 	XTAL_24_576MHz  	= 24576000,		/* Pole Position h/w, Model 3 CPU board */
 	XTAL_25MHz   		= 25000000,		/* Namco System 22, Taito GNET, Dogyuun h/w */
 	XTAL_25_1748MHz  	= 25174800,		/* Sega S16A, S16B */
+	XTAL_25_447MHz  	= 25447000,		/* Namco EVA3A (Funcube2) */
 	XTAL_25_601712MHz  	= 25601712,		/* Astro Corp.'s Show Hand */
 	XTAL_26_66666MHz 	= 26666660,		/* Irem M92 but most use 27MHz */
 	XTAL_26_686MHz 		= 26686000,		/* Typically used on 90's Taito PCBs to drive the custom chips */

@@ -71,9 +71,9 @@ static WRITE16_HANDLER( tx_videoram_w )
 	tilemap_mark_tile_dirty(tx_tilemap,offset);
 }
 
-static WRITE16_HANDLER( oki1_bank_w )
+static WRITE16_DEVICE_HANDLER( oki1_bank_w )
 {
-	okim6295_set_bank_base(1, 0x40000 * (data & 3));
+	okim6295_set_bank_base(device, 0x40000 * (data & 3));
 }
 
 static WRITE16_HANDLER( sprites_commands_w )
@@ -144,12 +144,12 @@ static ADDRESS_MAP_START( mwarr_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x110000, 0x110001) AM_READ_PORT("P1_P2")
 	AM_RANGE(0x110002, 0x110003) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0x110004, 0x110005) AM_READ_PORT("DSW")
-	AM_RANGE(0x110010, 0x110011) AM_WRITE(oki1_bank_w)
+	AM_RANGE(0x110010, 0x110011) AM_DEVWRITE("oki2", oki1_bank_w)
 	AM_RANGE(0x110014, 0x110015) AM_WRITE(mwarr_brightness_w)
 	AM_RANGE(0x110016, 0x110017) AM_WRITE(sprites_commands_w)
 	AM_RANGE(0x110000, 0x11ffff) AM_RAM AM_BASE(&mwarr_ram)
-	AM_RANGE(0x180000, 0x180001) AM_READWRITE(okim6295_status_0_lsb_r, okim6295_data_0_lsb_w)
-	AM_RANGE(0x190000, 0x190001) AM_READWRITE(okim6295_status_1_lsb_r, okim6295_data_1_lsb_w)
+	AM_RANGE(0x180000, 0x180001) AM_DEVREADWRITE8("oki1", okim6295_r, okim6295_w, 0x00ff)
+	AM_RANGE(0x190000, 0x190001) AM_DEVREADWRITE8("oki2", okim6295_r, okim6295_w, 0x00ff)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( mwarr )
@@ -451,14 +451,14 @@ static VIDEO_UPDATE( mwarr )
 }
 
 static MACHINE_DRIVER_START( mwarr )
-	MDRV_CPU_ADD("main", M68000, 12000000)
+	MDRV_CPU_ADD("maincpu", M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(mwarr_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_GFXDECODE(mwarr)
 
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(54)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -483,7 +483,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( mwarr )
-	ROM_REGION( 0x100000, "main", 0 ) /* 68000 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 ) /* 68000 Code */
 	ROM_LOAD16_BYTE( "prg_ev", 0x00000, 0x80000, CRC(d1d5e0a6) SHA1(f47955459d41c904b96de000b32cae156ee3bcba) )
 	ROM_LOAD16_BYTE( "prg_od", 0x00001, 0x80000, CRC(e5217d91) SHA1(6a5d282e8e5b98628f98530e3c47b9b398e9334e) )
 

@@ -60,7 +60,6 @@ struct _drcfe_state
 	const address_space *program;					/* program address space for this CPU */
 	offs_t				pageshift;					/* shift to convert address to a page index */
 	cpu_translate_func	translate;					/* pointer to translation function */
-	offs_t				codexor;					/* XOR to reach code */
 
 	/* opcode descriptor arrays */
 	opcode_desc *		desc_live_list;				/* head of list of live descriptions */
@@ -148,12 +147,6 @@ drcfe_state *drcfe_init(const device_config *cpu, const drcfe_config *config, vo
 	drcfe->program = memory_find_address_space(cpu, ADDRESS_SPACE_PROGRAM);
 	drcfe->pageshift = cpu_get_page_shift(cpu, ADDRESS_SPACE_PROGRAM);
 	drcfe->translate = (cpu_translate_func)device_get_info_fct(cpu, CPUINFO_FCT_TRANSLATE);
-#ifdef LSB_FIRST
-	if (cpu_get_endianness(cpu) == ENDIANNESS_BIG)
-#else
-	if (cpu_get_endianness(cpu) == ENDIANNESS_LITTLE)
-#endif
-		drcfe->codexor = (cpu_get_databus_width(cpu, ADDRESS_SPACE_PROGRAM) / 8 / cpu_get_min_opcode_bytes(cpu) - 1) * cpu_get_min_opcode_bytes(cpu);
 
 	return drcfe;
 }
@@ -290,25 +283,6 @@ static opcode_desc *describe_one(drcfe_state *drcfe, offs_t curpc, const opcode_
 	desc->pc = curpc;
 	desc->physpc = curpc;
 	desc->targetpc = BRANCH_TARGET_DYNAMIC;
-
-	/* compute the physical PC */
-	if (drcfe->translate != NULL && !(*drcfe->translate)(drcfe->device, ADDRESS_SPACE_PROGRAM, TRANSLATE_FETCH, &desc->physpc))
-	{
-		/* uh-oh: a page fault; leave the description empty and just if this is the first instruction, leave it empty and */
-		/* mark as needing to validate; otherwise, just end the sequence here */
-		desc->flags |= OPFLAG_VALIDATE_TLB | OPFLAG_CAN_CAUSE_EXCEPTION | OPFLAG_COMPILER_PAGE_FAULT | OPFLAG_VIRTUAL_NOOP | OPFLAG_END_SEQUENCE;
-		return desc;
-	}
-
-	/* get a pointer to the physical address */
-	desc->opptr.v = memory_decrypted_read_ptr(drcfe->program, desc->physpc ^ drcfe->codexor);
-	assert(desc->opptr.v != NULL);
-	if (desc->opptr.v == NULL)
-	{
-		/* address is unmapped; report it as such */
-		desc->flags |= OPFLAG_VALIDATE_TLB | OPFLAG_CAN_CAUSE_EXCEPTION | OPFLAG_COMPILER_UNMAPPED | OPFLAG_VIRTUAL_NOOP | OPFLAG_END_SEQUENCE;
-		return desc;
-	}
 
 	/* call the callback to describe an instruction */
 	if (!(*drcfe->describe)(drcfe->param, desc, prevdesc))

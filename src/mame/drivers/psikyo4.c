@@ -363,54 +363,6 @@ static READ32_HANDLER( ps4_sample_r ) /* Send sample data for test */
 }
 #endif
 
-static READ32_HANDLER( psh_ymf_fm_r )
-{
-	return ymf278b_status_port_0_r(space, 0)<<24; /* Also, bit 0 being high indicates not ready to send sample data for test */
-}
-
-static WRITE32_HANDLER( psh_ymf_fm_w )
-{
-	if (ACCESSING_BITS_24_31)	// FM bank 1 address (OPL2/OPL3 compatible)
-	{
-		ymf278b_control_port_0_a_w(space, 0, data>>24);
-	}
-
-	if (ACCESSING_BITS_16_23)	// FM bank 1 data
-	{
-		ymf278b_data_port_0_a_w(space, 0, data>>16);
-	}
-
-	if (ACCESSING_BITS_8_15)	// FM bank 2 address (OPL3/YMF 262 extended)
-	{
-		ymf278b_control_port_0_b_w(space, 0, data>>8);
-	}
-
-	if (ACCESSING_BITS_0_7)	// FM bank 2 data
-	{
-		ymf278b_data_port_0_b_w(space, 0, data);
-	}
-}
-
-static WRITE32_HANDLER( psh_ymf_pcm_w )
-{
-	if (ACCESSING_BITS_24_31)	// PCM address (OPL4/YMF 278B extended)
-	{
-		ymf278b_control_port_0_c_w(space, 0, data>>24);
-
-#if ROMTEST
-		if (data>>24 == 0x06)	// Reset Sample reading (They always write this code immediately before reading data)
-		{
-			sample_offs = 0;
-		}
-#endif
-	}
-
-	if (ACCESSING_BITS_16_23)	// PCM data
-	{
-		ymf278b_data_port_0_c_w(space, 0, data>>16);
-	}
-}
-
 #define PCM_BANK_NO(n)	((ps4_io_select[0] >> (n * 4 + 24)) & 0x07)
 
 static void set_hotgmck_pcm_bank(running_machine *machine, int n)
@@ -447,7 +399,7 @@ static ADDRESS_MAP_START( ps4_readmem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x03003fe4, 0x03003fe7) AM_READ(SMH_NOP) // also writes to this address - might be vblank?
 //  AM_RANGE(0x03003fe8, 0x03003fef) AM_READ(SMH_RAM) // vid regs?
 	AM_RANGE(0x03004000, 0x03005fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x05000000, 0x05000003) AM_READ(psh_ymf_fm_r) // read YMF status
+	AM_RANGE(0x05000000, 0x05000003) AM_DEVREAD8("ymf", ymf278b_r, 0xffffffff) // read YMF status
 	AM_RANGE(0x05800000, 0x05800003) AM_READ_PORT("P1_P2")
 	AM_RANGE(0x05800004, 0x05800007) AM_READ_PORT("P3_P4")
 	AM_RANGE(0x06000000, 0x060fffff) AM_READ(SMH_RAM)	// main RAM (1 meg)
@@ -469,18 +421,17 @@ static ADDRESS_MAP_START( ps4_writemem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x03003ff8, 0x03003ffb) AM_WRITE(ps4_screen2_brt_w) // screen 2 brightness
 	AM_RANGE(0x03003ffc, 0x03003fff) AM_WRITE(ps4_bgpen_2_dword_w) AM_BASE(&bgpen_2) // screen 2 clear colour
 	AM_RANGE(0x03004000, 0x03005fff) AM_WRITE(ps4_paletteram32_RRRRRRRRGGGGGGGGBBBBBBBBxxxxxxxx_dword_w) AM_BASE(&paletteram32) // palette
-	AM_RANGE(0x05000000, 0x05000003) AM_WRITE(psh_ymf_fm_w) // first 2 OPL4 register banks
-	AM_RANGE(0x05000004, 0x05000007) AM_WRITE(psh_ymf_pcm_w) // third OPL4 register bank
+	AM_RANGE(0x05000000, 0x05000007) AM_DEVWRITE8("ymf", ymf278b_w, 0xffffffff)
 	AM_RANGE(0x05800008, 0x0580000b) AM_WRITE(SMH_RAM) AM_BASE(&ps4_io_select) // Used by Mahjong games to choose input (also maps normal loderndf inputs to offsets)
 	AM_RANGE(0x06000000, 0x060fffff) AM_WRITE(SMH_RAM) AM_BASE(&ps4_ram)	// work RAM
 ADDRESS_MAP_END
 
-static void irqhandler(running_machine *machine, int linestate)
+static void irqhandler(const device_config *device, int linestate)
 {
 	if (linestate)
-		cpu_set_input_line(machine->cpu[0], 12, ASSERT_LINE);
+		cpu_set_input_line(device->machine->cpu[0], 12, ASSERT_LINE);
 	else
-		cpu_set_input_line(machine->cpu[0], 12, CLEAR_LINE);
+		cpu_set_input_line(device->machine->cpu[0], 12, CLEAR_LINE);
 }
 
 static const ymf278b_interface ymf278b_config =
@@ -490,9 +441,9 @@ static const ymf278b_interface ymf278b_config =
 
 static MACHINE_DRIVER_START( ps4big )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", SH2, MASTER_CLOCK/2)
+	MDRV_CPU_ADD("maincpu", SH2, MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(ps4_readmem,ps4_writemem)
-	MDRV_CPU_VBLANK_INT("left", psikyosh_interrupt)
+	MDRV_CPU_VBLANK_INT("lscreen", psikyosh_interrupt)
 
 	MDRV_NVRAM_HANDLER(93C56)
 
@@ -501,14 +452,14 @@ static MACHINE_DRIVER_START( ps4big )
 	MDRV_PALETTE_LENGTH((0x2000/4)*2 + 2) /* 0x2000/4 for each screen. 1 for each screen clear colour */
 	MDRV_DEFAULT_LAYOUT(layout_dualhsxs)
 
-	MDRV_SCREEN_ADD("left", RASTER)
+	MDRV_SCREEN_ADD("lscreen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
 
-	MDRV_SCREEN_ADD("right", RASTER)
+	MDRV_SCREEN_ADD("rscreen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
@@ -519,22 +470,22 @@ static MACHINE_DRIVER_START( ps4big )
 	MDRV_VIDEO_UPDATE(psikyo4)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ymf", YMF278B, MASTER_CLOCK/2)
 	MDRV_SOUND_CONFIG(ymf278b_config)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ps4small )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(ps4big)
 
-	MDRV_SCREEN_MODIFY("left")
+	MDRV_SCREEN_MODIFY("lscreen")
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)
 
-	MDRV_SCREEN_MODIFY("right")
+	MDRV_SCREEN_MODIFY("rscreen")
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)
 MACHINE_DRIVER_END
 
@@ -829,7 +780,7 @@ INPUT_PORTS_END
 
 ROM_START( hotgmck )
 	/* main program */
-	ROM_REGION( 0x300000, "main", 0)
+	ROM_REGION( 0x300000, "maincpu", 0)
 	ROM_LOAD32_WORD_SWAP( "2-u23.bin", 0x000002, 0x080000, CRC(23ed4aa5) SHA1(bb4f57a6adffc6336fc572a4ff1f5dfc284ee4fb) )
 	ROM_LOAD32_WORD_SWAP( "1-u22.bin", 0x000000, 0x080000, CRC(5db3649f) SHA1(6ea7bd18bcf6224ed9b0480bb59c684f13b71d8a) )
 	ROM_LOAD16_WORD_SWAP( "prog.bin",  0x100000, 0x200000, CRC(500f6b1b) SHA1(4ce454e44da08e351a81ca4b670ff3e080dcb330) )
@@ -852,7 +803,7 @@ ROM_START( hotgmck )
 ROM_END
 
 ROM_START( hgkairak )
-	ROM_REGION( 0x300000, "main", 0)
+	ROM_REGION( 0x300000, "maincpu", 0)
 	ROM_LOAD32_WORD_SWAP( "2.u23",   0x000002, 0x080000, CRC(1c1a034d) SHA1(1be7793b1f9a0a738519b4b4f663b247011870db) )
 	ROM_LOAD32_WORD_SWAP( "1.u22",   0x000000, 0x080000, CRC(24b04aa2) SHA1(b63d02fc15f03b93a74f5549fad236939905e382) )
 	ROM_LOAD16_WORD_SWAP( "prog.u1", 0x100000, 0x100000, CRC(83cff542) SHA1(0ea5717e0b9e6c27aaf61f7e4909ed9a353b4d3b) )
@@ -880,7 +831,7 @@ ROM_END
 
 ROM_START( hotgmck3 )
 	/* main program */
-	ROM_REGION( 0x300000, "main", 0)
+	ROM_REGION( 0x300000, "maincpu", 0)
 	ROM_LOAD32_WORD_SWAP( "2.u22",   0x000000, 0x080000, CRC(3b06a4a3) SHA1(7363c2867367ca92a20fcb5ee1a5f1afbd785c63) )
 	ROM_LOAD32_WORD_SWAP( "1.u23",   0x000002, 0x080000, CRC(7aad6b24) SHA1(160dfac94002766709369aad66d3b1b11d35ee63) )
 	ROM_LOAD16_WORD_SWAP( "prog.u1", 0x100000, 0x100000, CRC(316c3356) SHA1(4664465c3f88d655379235881f1142a7954c80fc) )
@@ -912,7 +863,7 @@ ROM_END
 
 ROM_START( hotgm4ev )
 	/* main program */
-	ROM_REGION( 0x500000, "main", 0)
+	ROM_REGION( 0x500000, "maincpu", 0)
 	ROM_LOAD32_WORD_SWAP( "2.u22",   0x000000, 0x080000, CRC(3334c21e) SHA1(8d825448e40bc50d670ab8587a40df6b27ac918e) )
 	ROM_LOAD32_WORD_SWAP( "1.u23",   0x000002, 0x080000, CRC(b1a1c643) SHA1(1912a2d231e97ffbe9b668ca7f25cf406664f3ba) )
     ROM_LOAD16_WORD_SWAP( "prog.u1", 0x100000, 0x400000, CRC(ad556d8e) SHA1(d3dc3c5cbe939b6fc28f861e4132c5485ba89f50) ) // no test
@@ -943,7 +894,7 @@ ROM_START( hotgm4ev )
 ROM_END
 
 ROM_START( hotgmcki )
-	ROM_REGION( 0x500000, "main", 0)
+	ROM_REGION( 0x500000, "maincpu", 0)
 	ROM_LOAD32_WORD_SWAP( "2.u22",   0x000000, 0x080000, CRC(abc192dd) SHA1(674c2b8814319605c1b6221bbe18588a98dda093) )
 	ROM_LOAD32_WORD_SWAP( "1.u23",   0x000002, 0x080000, CRC(8be896d0) SHA1(5d677dede4ec18cbfc54acae95fe0f10bfc4d566) )
     ROM_LOAD16_WORD_SWAP( "prog.u1", 0x100000, 0x200000, CRC(9017ae8e) SHA1(0879198606095a2d209df059538ce1c73460b30e) ) // no test
@@ -993,7 +944,7 @@ ROM_END
 
 
 ROM_START( loderndf )
-	ROM_REGION( 0x100000, "main", 0)
+	ROM_REGION( 0x100000, "maincpu", 0)
 	ROM_LOAD32_WORD_SWAP( "1b.u23", 0x000002, 0x080000, CRC(fae92286) SHA1(c3d3a50514fb9c0bbd3ffb5c4bfcc853dc1893d2) )
 	ROM_LOAD32_WORD_SWAP( "2b.u22", 0x000000, 0x080000, CRC(fe2424c0) SHA1(48a329cfdf98da1a8701b430c159d470c0f5eca1) )
 
@@ -1008,7 +959,7 @@ ROM_START( loderndf )
 ROM_END
 
 ROM_START( loderdfa )
-	ROM_REGION( 0x100000, "main", 0)
+	ROM_REGION( 0x100000, "maincpu", 0)
 	ROM_LOAD32_WORD_SWAP( "12.u23", 0x000002, 0x080000, CRC(661d372e) SHA1(c509c3ad9ca01e0f58bfc319b2738ecc36865ffd) )
 	ROM_LOAD32_WORD_SWAP( "3.u22", 0x000000, 0x080000, CRC(0a63529f) SHA1(05dd7877041b69d46e41c5bddb877c083620294b) )
 
@@ -1023,7 +974,7 @@ ROM_START( loderdfa )
 ROM_END
 
 ROM_START( hotdebut )
-	ROM_REGION( 0x100000, "main", 0)
+	ROM_REGION( 0x100000, "maincpu", 0)
 	ROM_LOAD32_WORD_SWAP( "1.u23",   0x000002, 0x080000, CRC(0b0d0027) SHA1(f62c487a725439af035d2904d453d3c2f7a5649b) )
 	ROM_LOAD32_WORD_SWAP( "2.u22",   0x000000, 0x080000, CRC(c3b5180b) SHA1(615cc1fd99a1e4634b04bb92a3c41f914644e903) )
 
@@ -1115,7 +1066,7 @@ static void install_hotgmck_pcm_bank(running_machine *machine)
 
 static DRIVER_INIT( hotgmck )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 	memory_set_bankptr(machine, 1,&RAM[0x100000]);
 	install_hotgmck_pcm_bank(machine);	// Banked PCM ROM
 }

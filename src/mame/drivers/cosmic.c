@@ -59,6 +59,7 @@ static UINT32 pixel_clock = 0;
 
 static WRITE8_HANDLER( panic_sound_output_w )
 {
+	const device_config *samples = devtag_get_device(space->machine, "samples");
     static int sound_enabled=1;
 
     /* Sound Enable / Disable */
@@ -67,7 +68,7 @@ static WRITE8_HANDLER( panic_sound_output_w )
     {
     	int count;
     	if (data == 0)
-        	for(count=0; count<9; count++) sample_stop(count);
+        	for(count=0; count<9; count++) sample_stop(samples, count);
 
     	sound_enabled = data;
     }
@@ -76,50 +77,50 @@ static WRITE8_HANDLER( panic_sound_output_w )
     {
         switch (offset)
         {
-		case 0:  if (data) sample_start(0, 0, 0); break;  	/* Walk */
-        case 1:  if (data) sample_start(0, 5, 0); break;  	/* Enemy Die 1 */
+		case 0:  if (data) sample_start(samples, 0, 0, 0); break;  	/* Walk */
+        case 1:  if (data) sample_start(samples, 0, 5, 0); break;  	/* Enemy Die 1 */
         case 2:  if (data)								  	/* Drop 1 */
 				 {
-					 if (!sample_playing(1))
+					 if (!sample_playing(samples, 1))
 					 {
-						 sample_stop(2);
-						 sample_start(1, 3, 0);
+						 sample_stop(samples, 2);
+						 sample_start(samples, 1, 3, 0);
 					 }
 				 }
 				 else
-				 	sample_stop(1);
+				 	sample_stop(samples, 1);
 				 	break;
 
-		case 3:	 if (data && !sample_playing(6))			/* Oxygen */
-					sample_start(6, 9, 1);
+		case 3:	 if (data && !sample_playing(samples, 6))			/* Oxygen */
+					sample_start(samples, 6, 9, 1);
                  break;
 
         case 4:  break;										/* Drop 2 */
-        case 5:  if (data) sample_start(0, 5, 0); break;	/* Enemy Die 2 (use same sample as 1) */
-        case 6:  if (data && !sample_playing(1) && !sample_playing(3))   /* Hang */
-                 	sample_start(2, 2, 0);
+        case 5:  if (data) sample_start(samples, 0, 5, 0); break;	/* Enemy Die 2 (use same sample as 1) */
+        case 6:  if (data && !sample_playing(samples, 1) && !sample_playing(samples, 3))   /* Hang */
+                 	sample_start(samples, 2, 2, 0);
                     break;
 
 		case 7:  if (data) 									/* Escape */
 				 {
-					 sample_stop(2);
-					 sample_start(3, 4, 0);
+					 sample_stop(samples, 2);
+					 sample_start(samples, 3, 4, 0);
 				 }
 				 else
-				 	 sample_stop(3);
+				 	 sample_stop(samples, 3);
                      break;
 
-    	case 8:  if (data) sample_start(0, 1, 0); break;	/* Stairs */
+    	case 8:  if (data) sample_start(samples, 0, 1, 0); break;	/* Stairs */
     	case 9:  if (data)									/* Extend */
-				 	sample_start(4, 8, 0);
+				 	sample_start(samples, 4, 8, 0);
 				 else
-					sample_stop(4);
+					sample_stop(samples, 4);
 	  			 break;
 
-        case 10: dac_data_w(0, data); break;				/* Bonus */
-		case 15: if (data) sample_start(0, 6, 0); break;	/* Player Die */
-		case 16: if (data) sample_start(5, 7, 0); break;	/* Enemy Laugh */
-        case 17: if (data) sample_start(0, 10, 0); break;	/* Coin - Not triggered by software */
+        case 10: dac_data_w(devtag_get_device(space->machine, "dac"), data); break;/* Bonus */
+		case 15: if (data) sample_start(samples, 0, 6, 0); break;	/* Player Die */
+		case 16: if (data) sample_start(samples, 5, 7, 0); break;	/* Enemy Laugh */
+        case 17: if (data) sample_start(samples, 0, 10, 0); break;	/* Coin - Not triggered by software */
         }
     }
 
@@ -135,6 +136,7 @@ static WRITE8_HANDLER( panic_sound_output2_w )
 
 static WRITE8_HANDLER( cosmicg_output_w )
 {
+	const device_config *samples = devtag_get_device(space->machine, "samples");
 	static int march_select;
     static int gun_die_select;
     static int sound_enabled;
@@ -147,7 +149,7 @@ static WRITE8_HANDLER( cosmicg_output_w )
 
     	sound_enabled = data;
     	if (data == 0)
-        	for(count=0;count<9;count++) sample_stop(count);
+        	for(count=0;count<9;count++) sample_stop(samples, count);
     }
 
     if (sound_enabled)
@@ -158,38 +160,38 @@ static WRITE8_HANDLER( cosmicg_output_w )
 		/* as other cosmic series games, but it never seems to */
 		/* be used for anything. It is implemented for sake of */
 		/* completness. Maybe it plays a tune if you win ?     */
-		case 1:  dac_data_w(0, -data); break;
-		case 2:  if (data) sample_start (0, march_select, 0); break;	/* March Sound */
+		case 1:  dac_data_w(devtag_get_device(space->machine, "dac"), -data); break;
+		case 2:  if (data) sample_start (samples, 0, march_select, 0); break;	/* March Sound */
 		case 3:  march_select = (march_select & 0xfe) | data; break;
         case 4:  march_select = (march_select & 0xfd) | (data << 1); break;
         case 5:  march_select = (march_select & 0xfb) | (data << 2); break;
 
         case 6:  if (data)  							/* Killer Attack (crawly thing at bottom of screen) */
-					sample_start(1, 8, 1);
+					sample_start(samples, 1, 8, 1);
 				 else
-					sample_stop(1);
+					sample_stop(samples, 1);
 				 break;
 
 		case 7:  if (data)								/* Bonus Chance & Got Bonus */
 				 {
-					 sample_stop(4);
-					 sample_start(4, 10, 0);
+					 sample_stop(samples, 4);
+					 sample_start(samples, 4, 10, 0);
 				 }
 				 break;
 
 		case 8:  if (data)
 				 {
-					 if (!sample_playing(4)) sample_start(4, 9, 1);
+					 if (!sample_playing(samples, 4)) sample_start(samples, 4, 9, 1);
 				 }
 				 else
-				 	sample_stop(4);
+				 	sample_stop(samples, 4);
 				 break;
 
-		case 9:  if (data) sample_start(3, 11, 0); break;	/* Got Ship */
+		case 9:  if (data) sample_start(samples, 3, 11, 0); break;	/* Got Ship */
 //      case 11: watchdog_reset_w(0, 0); break;             /* Watchdog */
-		case 13: if (data) sample_start(8, 13-gun_die_select, 0); break;  /* Got Monster / Gunshot */
+		case 13: if (data) sample_start(samples, 8, 13-gun_die_select, 0); break;  /* Got Monster / Gunshot */
 		case 14: gun_die_select = data; break;
-		case 15: if (data) sample_start(5, 14, 0); break;	/* Coin Extend (extra base) */
+		case 15: if (data) sample_start(samples, 5, 14, 0); break;	/* Coin Extend (extra base) */
         }
     }
 
@@ -201,6 +203,7 @@ static WRITE8_HANDLER( cosmicg_output_w )
 
 static WRITE8_HANDLER( cosmica_sound_output_w )
 {
+	const device_config *samples = devtag_get_device(space->machine, "samples");
     static int  sound_enabled=1;
     static int dive_bomb_b_select=0;
 
@@ -209,10 +212,10 @@ static WRITE8_HANDLER( cosmica_sound_output_w )
     {
     	int count;
     	if (data == 0)
-        	for(count=0; count<12; count++) sample_stop(count);
+        	for(count=0; count<12; count++) sample_stop(samples, count);
 	else
 	{
-	  sample_start(0, 0, 1); /*Background Noise*/
+	  sample_start(samples, 0, 0, 1); /*Background Noise*/
 	}
 
     	sound_enabled = data;
@@ -222,7 +225,7 @@ static WRITE8_HANDLER( cosmica_sound_output_w )
     {
         switch (offset)
         {
-		case 0: if (data) sample_start(1, 2, 0); break; /*Dive Bombing Type A*/
+		case 0: if (data) sample_start(samples, 1, 2, 0); break; /*Dive Bombing Type A*/
 
 		case 2:	/*Dive Bombing Type B (Main Control)*/
 
@@ -235,65 +238,65 @@ static WRITE8_HANDLER( cosmica_sound_output_w )
 
 			    case 2:
 
-					if (sample_playing(2))
+					if (sample_playing(samples, 2))
 					{
-					  sample_stop(2);
-	   				  sample_start(2, 3, 0); break;
+					  sample_stop(samples, 2);
+	   				  sample_start(samples, 2, 3, 0); break;
 					}
 					else
- 		    			 sample_start(2, 3, 0); break;
+ 		    			 sample_start(samples, 2, 3, 0); break;
 
 
 			    case 3:
 
-					if (sample_playing(3))
+					if (sample_playing(samples, 3))
 					{
-					  sample_stop(3);
-	   				  sample_start(3, 4, 0); break;
+					  sample_stop(samples, 3);
+	   				  sample_start(samples, 3, 4, 0); break;
 					}
 					else
- 		    			 sample_start(3, 4, 0); break;
+ 		    			 sample_start(samples, 3, 4, 0); break;
 
 
 			    case 4:
-					if (sample_playing(4))
+					if (sample_playing(samples, 4))
 					{
-					  sample_stop(4);
-	   				  sample_start(4, 5, 0); break;
+					  sample_stop(samples, 4);
+	   				  sample_start(samples, 4, 5, 0); break;
 					}
 					else
-	 	    			 sample_start(4, 5, 0); break;
+	 	    			 sample_start(samples, 4, 5, 0); break;
 
 
 
 			    case 5:
-					if (sample_playing(5))
+					if (sample_playing(samples, 5))
 					{
-					  sample_stop(5);
-	   				  sample_start(5, 6, 0); break;
+					  sample_stop(samples, 5);
+	   				  sample_start(samples, 5, 6, 0); break;
 					}
 					else
- 		    			 sample_start(5, 6, 0); break;
+ 		    			 sample_start(samples, 5, 6, 0); break;
 
 
 			    case 6:
-					if (sample_playing(6))
+					if (sample_playing(samples, 6))
 					{
-					  sample_stop(6);
-	   				  sample_start(6, 7, 0); break;
+					  sample_stop(samples, 6);
+	   				  sample_start(samples, 6, 7, 0); break;
 					}
 					else
- 		    			 sample_start(6, 7, 0); break;
+ 		    			 sample_start(samples, 6, 7, 0); break;
 
 			    case 7:
 
-					if (sample_playing(7))
+					if (sample_playing(samples, 7))
 					{
-					  sample_stop(7);
-	   				  sample_start(7, 8, 0); break;
+					  sample_stop(samples, 7);
+	   				  sample_start(samples, 7, 8, 0); break;
 					}
 					else
- 		    			 sample_start(7, 8, 0); break;
+ 		    			 sample_start(samples, 7, 8, 0); break;
 			  }
 			}
 
@@ -324,22 +327,22 @@ static WRITE8_HANDLER( cosmica_sound_output_w )
 			break;
 
 
-		case 6: if (data) sample_start(8, 9, 0); break; /*Fire Control*/
+		case 6: if (data) sample_start(samples, 8, 9, 0); break; /*Fire Control*/
 
-		case 7: if (data) sample_start(9, 10, 0); break; /*Small Explosion*/
+		case 7: if (data) sample_start(samples, 9, 10, 0); break; /*Small Explosion*/
 
-		case 8: if (data) sample_start(10, 11, 0); break; /*Loud Explosion*/
+		case 8: if (data) sample_start(samples, 10, 11, 0); break; /*Loud Explosion*/
 
 		case 9:
 		 if (data)
-		  sample_start(11, 1, 1);
+		  sample_start(samples, 11, 1, 1);
 		else
-		 sample_stop(11);
+		 sample_stop(samples, 11);
 
 		break; /*Extend Sound control*/
 
 		case 12:
-		 if (data) sample_start(11,12, 0); break; /*Insert Coin*/
+		 if (data) sample_start(samples, 11,12, 0); break; /*Insert Coin*/
         }
     }
 
@@ -536,7 +539,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( magspot_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x2fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x4000, 0x401f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x4800, 0x4800) AM_WRITE(dac_0_data_w)
+	AM_RANGE(0x4800, 0x4800) AM_DEVWRITE("dac", dac_w)
 	AM_RANGE(0x480c, 0x480d) AM_WRITE(cosmic_color_register_w)
 	AM_RANGE(0x480f, 0x480f) AM_WRITE(flip_screen_w)
 	AM_RANGE(0x6000, 0x7fff) AM_WRITE(SMH_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
@@ -1082,10 +1085,10 @@ static const samples_interface cosmicg_samples_interface =
 static MACHINE_DRIVER_START( cosmic )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,10816000/6)	/* 1.802 MHz*/
+	MDRV_CPU_ADD("maincpu", Z80,10816000/6)	/* 1.802 MHz*/
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
@@ -1097,7 +1100,7 @@ static MACHINE_DRIVER_START( panic )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(cosmic)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 
 	MDRV_CPU_PROGRAM_MAP(panic_readmem,panic_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(panic_interrupt,2)
@@ -1125,7 +1128,7 @@ static MACHINE_DRIVER_START( cosmica )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(cosmic)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 
 	MDRV_CPU_PROGRAM_MAP(cosmica_readmem,cosmica_writemem)
 	MDRV_CPU_VBLANK_INT_HACK(cosmica_interrupt,32)
@@ -1153,17 +1156,17 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( cosmicg )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", TMS9980, MASTER_CLOCK/8)
+	MDRV_CPU_ADD("maincpu", TMS9980, MASTER_CLOCK/8)
 			/* 9.828 MHz Crystal */
 			/* R Nabet : huh ? This would imply the crystal frequency is somehow divided by 2 before being
             fed to the tms9904 or tms9980.  Also, I have never heard of a tms9900/9980 operating under
             1.5MHz.  So, if someone can check this... */
 	MDRV_CPU_PROGRAM_MAP(cosmicg_readmem,cosmicg_writemem)
 	MDRV_CPU_IO_MAP(cosmicg_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", cosmicg_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", cosmicg_interrupt)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
@@ -1190,10 +1193,10 @@ static MACHINE_DRIVER_START( magspot )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(cosmic)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 
 	MDRV_CPU_PROGRAM_MAP(magspot_readmem,magspot_writemem)
-	MDRV_CPU_VBLANK_INT("main", magspot_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", magspot_interrupt)
 
 	/* video hardware */
 	MDRV_GFXDECODE(panic)
@@ -1224,10 +1227,10 @@ static MACHINE_DRIVER_START( nomnlnd )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(cosmic)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 
 	MDRV_CPU_PROGRAM_MAP(magspot_readmem,magspot_writemem)
-	MDRV_CPU_VBLANK_INT("main", nomnlnd_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", nomnlnd_interrupt)
 
 	/* video hardware */
 	MDRV_GFXDECODE(panic)
@@ -1245,7 +1248,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( panic )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "spe1",         0x0000, 0x0800, CRC(70ac0888) SHA1(bdc6dfb74b4643df36cae60923f9759751340c86) )
 	ROM_LOAD( "spe2",         0x0800, 0x0800, CRC(2b910c48) SHA1(9ebb15694e068a4d8769ec5d312af1148818d472) )
 	ROM_LOAD( "spe3",         0x1000, 0x0800, CRC(03810148) SHA1(768418bc0a3a5bc9f7ec07b8edd4099da69efac6) )
@@ -1268,7 +1271,7 @@ ROM_START( panic )
 ROM_END
 
 ROM_START( panic2 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "spcpanic.1",   0x0000, 0x0800, CRC(405ae6f9) SHA1(92000f5f9bc1384ebae36dd30e715764747504d8) )
 	ROM_LOAD( "spcpanic.2",   0x0800, 0x0800, CRC(b6a286c5) SHA1(b33beb1fbe622e9c90888d25d018fd5bef6cb65b) )
 	ROM_LOAD( "spcpanic.3",   0x1000, 0x0800, CRC(85ae8b2e) SHA1(a5676d38e3c0ea0aeedc29bea0c04086e51da67f) )
@@ -1291,7 +1294,7 @@ ROM_START( panic2 )
 ROM_END
 
 ROM_START( panic3 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "panica.1",     0x0000, 0x0800, CRC(289720ce) SHA1(8601bda95ac32a55f17fe9c723796bfe8b2b2fa7) )
 	ROM_LOAD( "spcpanic.2",   0x0800, 0x0800, CRC(b6a286c5) SHA1(b33beb1fbe622e9c90888d25d018fd5bef6cb65b) )
 	ROM_LOAD( "spcpanic.3",   0x1000, 0x0800, CRC(85ae8b2e) SHA1(a5676d38e3c0ea0aeedc29bea0c04086e51da67f) )
@@ -1314,7 +1317,7 @@ ROM_START( panic3 )
 ROM_END
 
 ROM_START( panich )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "sph1",         0x0000, 0x0800, CRC(f6e9c6ef) SHA1(90b5bba0fd726e4c6618793467eba8c18c63fd43) )
 	ROM_LOAD( "sph2",         0x0800, 0x0800, CRC(58dbc49b) SHA1(f716e8cdbb7eb456bd7f2996241b5ebd03086de3) )
 	ROM_LOAD( "sph3",         0x1000, 0x0800, CRC(c4f275ad) SHA1(446be24dc99e46f3c69cf2cfb657958053857b7d) )
@@ -1337,7 +1340,7 @@ ROM_START( panich )
 ROM_END
 
 ROM_START( panicger )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "spacepan.001", 0x0000, 0x0800, CRC(a6d9515a) SHA1(20fe6fa4cb10e83f97b77e19d9d4f883aba73d1a) )
 	ROM_LOAD( "spacepan.002", 0x0800, 0x0800, CRC(cfc22663) SHA1(44036a69ca3463759c56637c3435a3305b102879) )
 	ROM_LOAD( "spacepan.003", 0x1000, 0x0800, CRC(e1f36893) SHA1(689b77b4df15dc980d35cf245aca1affe46d6b21) )
@@ -1360,7 +1363,7 @@ ROM_START( panicger )
 ROM_END
 
 ROM_START( cosmica )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "ca.e3",        0x0000, 0x0800, CRC(535ee0c5) SHA1(3ec3056b7fabe07ef49a9179114aa74be44a943e) )
 	ROM_LOAD( "ca.e4",        0x0800, 0x0800, CRC(ed3cf8f7) SHA1(6ba1d98d82400519e844b950cb2fb1274c06d89a) )
 	ROM_LOAD( "ca.e5",        0x1000, 0x0800, CRC(6a111e5e) SHA1(593be409bc969cece2ff88623e53c166b4dc43cd) )
@@ -1382,7 +1385,7 @@ ROM_START( cosmica )
 ROM_END
 
 ROM_START( cosmica2 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "ca.e3",        0x0000, 0x0800, CRC(535ee0c5) SHA1(3ec3056b7fabe07ef49a9179114aa74be44a943e) )
 	ROM_LOAD( "c3.bin",       0x0800, 0x0400, CRC(699c849e) SHA1(90a58ab8ede9c31eec3df1f8f251b59858f85eb6) )
 	ROM_LOAD( "d4.bin",       0x0c00, 0x0400, CRC(168e38da) SHA1(63c5f8346861aa7c70ad58a05977c7af413cbfaf) )
@@ -1406,7 +1409,7 @@ ROM_START( cosmica2 )
 ROM_END
 
 ROM_START( cosmicg )
-	ROM_REGION( 0x10000, "main", 0 )  /* 8k for code */
+	ROM_REGION( 0x10000, "maincpu", 0 )  /* 8k for code */
 	ROM_LOAD( "cosmicg1.bin", 0x0000, 0x0400, CRC(e1b9f894) SHA1(bab7fd9b3db145a889542653191905b6efc5ce75) )
 	ROM_LOAD( "cosmicg2.bin", 0x0400, 0x0400, CRC(35c75346) SHA1(4e50eaa0b50ab04802dc63992ad2600c227301ad) )
 	ROM_LOAD( "cosmicg3.bin", 0x0800, 0x0400, CRC(82a49b48) SHA1(4cf9f684f3eb18b99a88ca879bb7083b1334f0cc) )
@@ -1422,7 +1425,7 @@ ROM_END
 
 /* rom 9 not dumped according to readme? */
 ROM_START( magspot )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "ms1.bin",	  0x0000, 0x0800, CRC(59e9019d) SHA1(3c64ae956ec4eed988018b89c986ad8f6f065fe0) )
 	ROM_LOAD( "ms2.bin",	  0x0800, 0x0800, CRC(98b913b1) SHA1(2ce86f5069e2664e2ea44bda567ca26432fd59f7) )
 	ROM_LOAD( "ms3.bin",	  0x1000, 0x0800, CRC(ea58c124) SHA1(7551c14ed9563e3aed7220cc03f7bca4029b3a4e) )
@@ -1442,7 +1445,7 @@ ROM_START( magspot )
 ROM_END
 
 ROM_START( magspot2 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "ms.e3",        0x0000, 0x0800, CRC(c0085ade) SHA1(ab60ba7c0e45ea2576d935135e930e2fdf165867) )
 	ROM_LOAD( "ms.e4",        0x0800, 0x0800, CRC(d534a68b) SHA1(fd3b5e619b22a8c53e3c6f5f5351068a3f26eb61) )
 	ROM_LOAD( "ms.e5",        0x1000, 0x0800, CRC(25513b2a) SHA1(c7f3d9a53cb7e7cf523ff710c333dbc744088e31) )
@@ -1462,7 +1465,7 @@ ROM_START( magspot2 )
 ROM_END
 
 ROM_START( devzone )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "dv1.e3",       0x0000, 0x0800, CRC(c70faf00) SHA1(d3f0f071e6c7552724eba64a7182637dae4438c7) )
 	ROM_LOAD( "dv2.e4",       0x0800, 0x0800, CRC(eacfed61) SHA1(493c0d21fd1574b12978dd1f52e8735df6c1732c) )
 	ROM_LOAD( "dv3.e5",       0x1000, 0x0800, CRC(7973317e) SHA1(d236e3dad8c991c32a2550e561518b522a4580bc) )
@@ -1488,7 +1491,7 @@ ROM_START( devzone )
 ROM_END
 
 ROM_START( devzone2 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "p10_1.e3",     0x0000, 0x0800, BAD_DUMP CRC(38bd45a4) SHA1(192eee64ff53c20fb5b369703b52a5bb3976ba1d)  )
 	ROM_LOAD( "my4_2.e4",     0x0800, 0x0800, BAD_DUMP CRC(e1637800) SHA1(3705ce1f02f3fefec0285f5db6a7606e6cec1bac)  )
 	ROM_LOAD( "ms6_3.e5",     0x1000, 0x0800, BAD_DUMP CRC(c1952e2f) SHA1(d42f0f547e989a71254957e5e634ac359e72bb14)  )
@@ -1514,7 +1517,7 @@ ROM_START( devzone2 )
 ROM_END
 
 ROM_START( nomnlnd )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "1.bin",        0x0000, 0x0800, CRC(ba117ba6) SHA1(7399e7ac8a585ed6502ea0d740850b1ed2dc5bcd) )
 	ROM_LOAD( "2.bin",        0x0800, 0x0800, CRC(e5ed654f) SHA1(c26dc12ade6dc63392945ec0caca229d936f7f89) )
 	ROM_LOAD( "3.bin",        0x1000, 0x0800, CRC(7fc42724) SHA1(0f8fdfad0a2557b9dd99ae3890c37bbc5c59bc89) )
@@ -1538,7 +1541,7 @@ ROM_START( nomnlnd )
 ROM_END
 
 ROM_START( nomnlndg )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "nml1.e3",      0x0000, 0x0800, CRC(e212ed91) SHA1(135c20fc97790769d5e1619d7ac844a1d3f6aace) )
 	ROM_LOAD( "nml2.e4",      0x0800, 0x0800, CRC(f66ef3d8) SHA1(c42a325dd952cda074ef2857e7fa5154f0b7c7ce) )
 	ROM_LOAD( "nml3.e5",      0x1000, 0x0800, CRC(d422fc8a) SHA1(18cafc462ce0800fea2af277439827dc1f4fc91b) )
@@ -1569,8 +1572,8 @@ static DRIVER_INIT( cosmicg )
 	offs_t offs, len;
 	UINT8 *rom;
 
-    len = memory_region_length(machine, "main");
-    rom = memory_region(machine, "main");
+    len = memory_region_length(machine, "maincpu");
+    rom = memory_region(machine, "maincpu");
     for (offs =0; offs < len; offs++)
     {
         UINT8 scrambled = rom[offs];
@@ -1593,10 +1596,11 @@ static DRIVER_INIT( devzone )
 
 static DRIVER_INIT( nomnlnd )
 {
+	const device_config *dac = devtag_get_device(machine, "dac");
 	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x5000, 0x5001, 0, 0, nomnlnd_port_0_1_r);
 	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x4800, 0x4800, 0, 0, SMH_NOP);
 	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x4807, 0x4807, 0, 0, cosmic_background_enable_w);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x480a, 0x480a, 0, 0, dac_0_data_w);
+	memory_install_write8_device_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), dac, 0x480a, 0x480a, 0, 0, dac_w);
 }
 
 

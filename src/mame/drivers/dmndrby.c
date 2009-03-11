@@ -75,7 +75,7 @@ static NVRAM_HANDLER( dderby )
 static WRITE8_HANDLER( dderby_sound_w )
 {
 	soundlatch_w(space,0,data);
-	cpu_set_input_line(cputag_get_cpu(space->machine, "audio"), 0, HOLD_LINE);
+	cpu_set_input_line(cputag_get_cpu(space->machine, "audiocpu"), 0, HOLD_LINE);
 }
 
 static UINT8 io_port[8];
@@ -134,8 +134,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( dderby_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 	AM_RANGE(0x1000, 0x1000) AM_RAM //???
-	AM_RANGE(0x4000, 0x4000) AM_READWRITE(soundlatch_r,ay8910_control_port_0_w)
-	AM_RANGE(0x4001, 0x4001) AM_READWRITE(ay8910_read_port_0_r,ay8910_write_port_0_w)
+	AM_RANGE(0x4000, 0x4001) AM_DEVWRITE("ay1", ay8910_address_data_w)
+	AM_RANGE(0x4000, 0x4000) AM_READ(soundlatch_r)
+	AM_RANGE(0x4001, 0x4001) AM_DEVREAD("ay1", ay8910_r)
 	AM_RANGE(0x6000, 0x67ff) AM_RAM
 ADDRESS_MAP_END
 
@@ -273,8 +274,8 @@ static const gfx_layout tiles8x8_layout =
 {
 	8,8,
 	RGN_FRAC(1,2),
-	4,
-	{ 0,4,RGN_FRAC(1,2)},
+	3,
+	{ RGN_FRAC(1,2),4,0 },
 	{ 0, 1, 2, 3,8,9,10,11 },
 	{ 0*16, 1*16, 2*16, 3*16, 4*16, 5*16, 6*16, 7*16 },
 	16*8
@@ -304,7 +305,7 @@ static const gfx_layout tiles8x8_layout2 =
 };
 
 static GFXDECODE_START( dmndrby )
-	GFXDECODE_ENTRY( "gfx1", 0, tiles8x8_layout, 32*16, 16 )
+	GFXDECODE_ENTRY( "gfx1", 0, tiles8x8_layout, 32*16, 32 )
 	GFXDECODE_ENTRY( "gfx2", 0, tiles8x8_layout2, 0, 8)
 	GFXDECODE_ENTRY( "gfx3", 0, tiles16x16_layout, 16*16, 32 )
 GFXDECODE_END
@@ -338,7 +339,7 @@ static VIDEO_UPDATE(dderby)
 {
 	int x,y,count;
 	int off,scrolly;
-	static int bg=0;
+	static int bg;
 	const gfx_element *gfx = screen->machine->gfx[0];
 	const gfx_element *sprites = screen->machine->gfx[1];
 	const gfx_element *track = screen->machine->gfx[2];
@@ -409,26 +410,19 @@ wouldnt like to say its the most effective way though...
 
 	}
 
-
-	// char tiles. seems right - no idea about the palette
+	/*TODO: Fix / understand how the transparency works properly. */
 	count=0;
 	for (y=0;y<32;y++)
 	{
 		for(x=0;x<32;x++)
 		{
 			int tileno,bank,color;
-			int trans = TRANSPARENCY_NONE;//((dderby_vidattribs[count]&0x10)==0x10)?TRANSPARENCY_PEN:TRANSPARENCY_NONE;
 			tileno=dderby_vidchars[count];
-			bank=dderby_vidattribs[count]&0x20;
-			color=((dderby_vidattribs[count]+bg)&0x1f);
-			if(tileno!=0x38) {
-				if (bank)
-					tileno+=0x100;
+			bank=(dderby_vidattribs[count]&0x20)>>5;
+			tileno|=(bank<<8);
+			color=((dderby_vidattribs[count])&0x1f);
 
-
-
-				drawgfx(bitmap,gfx,tileno,color,0,0,x*8,y*8,cliprect,trans,0);
-			}
+			drawgfx(bitmap,gfx,tileno,color,0,0,x*8,y*8,cliprect,(tileno == 0x38) ? TRANSPARENCY_PEN : TRANSPARENCY_NONE,0);
 
 			count++;
 		}
@@ -495,29 +489,29 @@ static PALETTE_INIT( dmnderby )
 /*Main Z80 is IM 0,HW-latched irqs. */
 static INTERRUPT_GEN( dderby_irq )
 {
-	cpu_set_input_line_and_vector(cputag_get_cpu(device->machine, "main"), 0, HOLD_LINE, 0xd7); /* RST 10h */
+	cpu_set_input_line_and_vector(cputag_get_cpu(device->machine, "maincpu"), 0, HOLD_LINE, 0xd7); /* RST 10h */
 }
 
 static INTERRUPT_GEN( dderby_timer_irq )
 {
-	cpu_set_input_line_and_vector(cputag_get_cpu(device->machine, "main"), 0, HOLD_LINE, 0xcf); /* RST 08h */
+	cpu_set_input_line_and_vector(cputag_get_cpu(device->machine, "maincpu"), 0, HOLD_LINE, 0xcf); /* RST 08h */
 }
 
 static MACHINE_DRIVER_START( dderby )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,4000000)		 /* ? MHz */
+	MDRV_CPU_ADD("maincpu", Z80,4000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(memmap,0)
-	MDRV_CPU_VBLANK_INT("main", dderby_irq)
-	MDRV_CPU_PERIODIC_INT(dderby_timer_irq, 244)
+	MDRV_CPU_VBLANK_INT("screen", dderby_irq)
+	MDRV_CPU_PERIODIC_INT(dderby_timer_irq, 244/2)
 
-	MDRV_CPU_ADD("audio", Z80, 4000000)	/* verified on schematics */
+	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	/* verified on schematics */
 	MDRV_CPU_PROGRAM_MAP(dderby_sound_map,0)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 	MDRV_NVRAM_HANDLER(dderby)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -539,12 +533,12 @@ MACHINE_DRIVER_END
 
 
 ROM_START( dmndrby )
-	ROM_REGION( 0x10000, "main", 0 ) /* main cpu */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* main cpu */
 	ROM_LOAD( "dd04.m6", 0x00000, 0x02000, CRC(a3cfd28e) SHA1(7ba14876fa4409634a699e049bce3bc457522932) )
 	ROM_LOAD( "dd05.m7", 0x02000, 0x02000, CRC(16f7ac0b) SHA1(030b8c2b294a0287f3aaf72424304fc191315888) )
 	ROM_LOAD( "dd06.m8", 0x04000, 0x02000, CRC(914ba8f5) SHA1(d1b3f3d5d2625e42ea6cb5c777942cec7faea58e) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* sound cpu */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* sound cpu */
 	ROM_LOAD( "dd03.j9", 0x00000, 0x01000, CRC(660f0cae) SHA1(b3b414e52342de877a5c20886a87002a63310a94) )
 
 	ROM_REGION( 0x04000, "gfx1", 0 ) /* tiles */
@@ -588,12 +582,12 @@ ROM_START( dmndrby )
 ROM_END
 
 ROM_START( dmndrbya )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "dd4", 0x00000, 0x02000, CRC(29b06e0f) SHA1(301fc2fe25ce47c2ad5112f0b795cd6bae605071) )
 	ROM_LOAD( "dd5", 0x02000, 0x02000, CRC(5299d020) SHA1(678d338d2cee5250154454be97456d5f80bb4759) )
 	ROM_LOAD( "dd6", 0x04000, 0x02000, CRC(f7e30ec0) SHA1(bf898987366ee9def190e3575108395b0aaef2d6) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* sound cpu */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* sound cpu */
 	ROM_LOAD( "dd03.j9", 0x00000, 0x01000, CRC(660f0cae) SHA1(b3b414e52342de877a5c20886a87002a63310a94) )
 
 	ROM_REGION( 0x04000, "gfx1", 0 )

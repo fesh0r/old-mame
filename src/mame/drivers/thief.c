@@ -76,35 +76,35 @@ enum
 	kTalkTrack, kCrashTrack
 };
 
-static void tape_set_audio( int track, int bOn )
+static void tape_set_audio( const device_config *samples, int track, int bOn )
 {
-	sample_set_volume( track, bOn ? 1.0 : 0.0 );
+	sample_set_volume(samples, track, bOn ? 1.0 : 0.0 );
 }
 
-static void tape_set_motor( int bOn )
+static void tape_set_motor( const device_config *samples, int bOn )
 {
 	if( bOn )
 	{
 		/* If talk track is not playing, start it. */
-		if (! sample_playing( kTalkTrack ))
-			sample_start( 0, kTalkTrack, 1 );
+		if (! sample_playing(samples,  kTalkTrack ))
+			sample_start( samples, 0, kTalkTrack, 1 );
 
 		/* Resume playback of talk track. */
-		sample_set_pause( kTalkTrack, 0);
+		sample_set_pause( samples, kTalkTrack, 0);
 
 
 		/* If crash track is not playing, start it. */
-		if (! sample_playing( kCrashTrack ))
-			sample_start( 1, kCrashTrack, 1 );
+		if (! sample_playing(samples,  kCrashTrack ))
+			sample_start( samples, 1, kCrashTrack, 1 );
 
 		/* Resume playback of crash track. */
-		sample_set_pause( kCrashTrack, 0);
+		sample_set_pause( samples, kCrashTrack, 0);
 	}
 	else
 	{
 		/* Pause both the talk and crash tracks. */
-		sample_set_pause( kTalkTrack, 1 );
-		sample_set_pause( kCrashTrack, 1 );
+		sample_set_pause( samples, kTalkTrack, 1 );
+		sample_set_pause( samples, kCrashTrack, 1 );
 	}
 }
 
@@ -115,7 +115,7 @@ static WRITE8_HANDLER( thief_input_select_w )
 	thief_input_select = data;
 }
 
-static WRITE8_HANDLER( tape_control_w )
+static WRITE8_DEVICE_HANDLER( tape_control_w )
 {
 	switch( data )
 	{
@@ -129,27 +129,27 @@ static WRITE8_HANDLER( tape_control_w )
 		break;
 
 	case 0x08: /* talk track on */
-		tape_set_audio( kTalkTrack, 1 );
+		tape_set_audio( device, kTalkTrack, 1 );
 		break;
 
 	case 0x09: /* talk track off */
-		tape_set_audio( kTalkTrack, 0 );
+		tape_set_audio( device, kTalkTrack, 0 );
 		break;
 
 	case 0x0a: /* motor on */
-		tape_set_motor( 1 );
+		tape_set_motor( device, 1 );
 		break;
 
 	case 0x0b: /* motor off */
-		tape_set_motor( 0 );
+		tape_set_motor( device, 0 );
 		break;
 
 	case 0x0c: /* crash track on */
-		tape_set_audio( kCrashTrack, 1 );
+		tape_set_audio( device, kCrashTrack, 1 );
 		break;
 
 	case 0x0d: /* crash track off */
-		tape_set_audio( kCrashTrack, 0 );
+		tape_set_audio( device, kCrashTrack, 0 );
 		break;
 	}
 }
@@ -192,11 +192,11 @@ static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x10, 0x10) AM_WRITE(thief_video_control_w)
 	AM_RANGE(0x30, 0x30) AM_WRITE(thief_input_select_w) /* 8255 */
 	AM_RANGE(0x31, 0x31) AM_READ(thief_io_r) 	/* 8255 */
-	AM_RANGE(0x33, 0x33) AM_WRITE(tape_control_w)
-	AM_RANGE(0x40, 0x40) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x41, 0x41) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0x42, 0x42) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0x43, 0x43) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
+	AM_RANGE(0x33, 0x33) AM_DEVWRITE("samples", tape_control_w)
+	AM_RANGE(0x40, 0x41) AM_DEVWRITE("ay1", ay8910_address_data_w)
+	AM_RANGE(0x41, 0x41) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0x42, 0x43) AM_DEVWRITE("ay2", ay8910_address_data_w)
+	AM_RANGE(0x43, 0x43) AM_DEVREAD("ay2", ay8910_r)
 	AM_RANGE(0x50, 0x50) AM_WRITE(thief_color_plane_w)
 	AM_RANGE(0x60, 0x6f) AM_WRITE(thief_vtcsel_w)
 	AM_RANGE(0x70, 0x7f) AM_WRITE(thief_color_map_w)
@@ -448,13 +448,13 @@ static const samples_interface natodef_samples_interface =
 static MACHINE_DRIVER_START( sharkatt )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 4000000)        /* 4 MHz? */
+	MDRV_CPU_ADD("maincpu", Z80, 4000000)        /* 4 MHz? */
 	MDRV_CPU_PROGRAM_MAP(sharkatt_main_map,0)
 	MDRV_CPU_IO_MAP(io_map,0)
-	MDRV_CPU_VBLANK_INT("main", thief_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", thief_interrupt)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
@@ -484,13 +484,13 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( thief )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 4000000) /* 4 MHz? */
+	MDRV_CPU_ADD("maincpu", Z80, 4000000) /* 4 MHz? */
 	MDRV_CPU_PROGRAM_MAP(thief_main_map,0)
 	MDRV_CPU_IO_MAP(io_map,0)
-	MDRV_CPU_VBLANK_INT("main", thief_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", thief_interrupt)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -520,13 +520,13 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( natodef )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 4000000) /* 4 MHz? */
+	MDRV_CPU_ADD("maincpu", Z80, 4000000) /* 4 MHz? */
 	MDRV_CPU_PROGRAM_MAP(thief_main_map,0)
 	MDRV_CPU_IO_MAP(io_map,0)
-	MDRV_CPU_VBLANK_INT("main", thief_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", thief_interrupt)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -555,7 +555,7 @@ MACHINE_DRIVER_END
 /**********************************************************/
 
 ROM_START( sharkatt )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "sharkatt.0",   0x0000, 0x800, CRC(c71505e9) SHA1(068c92e9d797918f281fa509f3c86578b3f0de3a) )
 	ROM_LOAD( "sharkatt.1",   0x0800, 0x800, CRC(3e3abf70) SHA1(ef69e72db583a22093a3c32ba437a6eaef4b132a) )
 	ROM_LOAD( "sharkatt.2",   0x1000, 0x800, CRC(96ded944) SHA1(e60db225111423b0a481e85fe38a85c3ea844351) )
@@ -572,7 +572,7 @@ ROM_START( sharkatt )
 ROM_END
 
 ROM_START( thief )
-	ROM_REGION( 0x10000, "main", 0 ) /* Z80 code */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* Z80 code */
 	ROM_LOAD( "t8a0ah0a",	0x0000, 0x1000, CRC(edbbf71c) SHA1(9f13841c54fbe5449280c24954a45517014a834e) )
 	ROM_LOAD( "t2662h2",	0x1000, 0x1000, CRC(85b4f6ff) SHA1(8e007bfff2f27809e7a9881bc3b2587bf35cff6d) )
 	ROM_LOAD( "tc162h4",	0x2000, 0x1000, CRC(70478a82) SHA1(547bad88a44c63657bf8f65f2877ab1323515521) )
@@ -595,7 +595,7 @@ ROM_START( thief )
 ROM_END
 
 ROM_START( natodef )
-	ROM_REGION( 0x10000, "main", 0 ) /* Z80 code */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* Z80 code */
 	ROM_LOAD( "natodef.cp0",	0x0000, 0x1000, CRC(8397c787) SHA1(5957613f1ace7dc4612f28f6fba3a7374be905ac) )
 	ROM_LOAD( "natodef.cp2",	0x1000, 0x1000, CRC(8cfbf26f) SHA1(a15f0d5d82cd96b80ee91dc91858b660c5895f34) )
 	ROM_LOAD( "natodef.cp4",	0x2000, 0x1000, CRC(b4c90fb2) SHA1(3ff4691415433863bfe74d51b9f3aa428f3bf88f) )
@@ -621,7 +621,7 @@ ROM_START( natodef )
 ROM_END
 
 ROM_START( natodefa )
-	ROM_REGION( 0x10000, "main", 0 ) /* Z80 code */
+	ROM_REGION( 0x10000, "maincpu", 0 ) /* Z80 code */
 	ROM_LOAD( "natodef.cp0",	0x0000, 0x1000, CRC(8397c787) SHA1(5957613f1ace7dc4612f28f6fba3a7374be905ac) )
 	ROM_LOAD( "natodef.cp2",	0x1000, 0x1000, CRC(8cfbf26f) SHA1(a15f0d5d82cd96b80ee91dc91858b660c5895f34) )
 	ROM_LOAD( "natodef.cp4",	0x2000, 0x1000, CRC(b4c90fb2) SHA1(3ff4691415433863bfe74d51b9f3aa428f3bf88f) )
@@ -649,7 +649,7 @@ ROM_END
 
 static DRIVER_INIT( thief )
 {
-	UINT8 *dest = memory_region( machine, "main" );
+	UINT8 *dest = memory_region( machine, "maincpu" );
 	const UINT8 *source = memory_region( machine, "cpu1" );
 
 	/* C8 is mapped (banked) in CPU1's address space; it contains Z80 code */

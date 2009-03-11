@@ -622,7 +622,6 @@ static WRITE32_HANDLER( hng64_pal_w )
 	a = ((paletteram32[offset] & 0xff000000) >>24);
 
 	// a sure ain't alpha.
-	// alpha_set_level(mame_rand(space->machine)) ;
 	// mame_printf_debug("Alpha : %d %d %d %d\n", a, b, g, r) ;
 
 	//if (a != 0)
@@ -1452,6 +1451,16 @@ static INTERRUPT_GEN( irq_start )
 }
 
 
+static MACHINE_START(hyperneo)
+{
+	/* set the fastest DRC options */
+	mips3drc_set_options(machine->cpu[0], MIPS3DRC_FASTEST_OPTIONS + MIPS3DRC_STRICT_VERIFY);
+
+	/* configure fast RAM regions for DRC */
+	mips3drc_add_fastram(machine->cpu[0], 0x00000000, 0x00ffffff, FALSE, hng_mainram);
+	mips3drc_add_fastram(machine->cpu[0], 0x04000000, 0x05ffffff, TRUE,  hng_cart);
+	mips3drc_add_fastram(machine->cpu[0], 0x1fc00000, 0x1fc7ffff, TRUE,  rombase);
+}
 
 
 static MACHINE_RESET(hyperneo)
@@ -1488,39 +1497,17 @@ static MACHINE_RESET(hyperneo)
 
 	// "Display List" init - ugly
 	activeBuffer = 0 ;
-
-	/* set the fastest DRC options */
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_DRC_OPTIONS, MIPS3DRC_FASTEST_OPTIONS + MIPS3DRC_STRICT_VERIFY);
-
-	/* configure fast RAM regions for DRC */
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_SELECT, 0);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_START, 0x00000000);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_END, 0x00ffffff);
-	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_MIPS3_FASTRAM_BASE, hng_mainram);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_READONLY, 0);
-
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_SELECT, 1);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_START, 0x04000000);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_END, 0x05ffffff);
-	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_MIPS3_FASTRAM_BASE, hng_cart);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_READONLY, 1);
-
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_SELECT, 2);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_START, 0x1fc00000);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_END, 0x1fc7ffff);
-	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_MIPS3_FASTRAM_BASE, rombase);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_MIPS3_FASTRAM_READONLY, 1);
 }
 
 
 static MACHINE_DRIVER_START( hng64 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", R4600BE, MASTER_CLOCK)  	// actually R4300
+	MDRV_CPU_ADD("maincpu", R4600BE, MASTER_CLOCK)  	// actually R4300
 	MDRV_CPU_CONFIG(config)
 	MDRV_CPU_PROGRAM_MAP(hng_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(irq_start,3)
 
-	MDRV_CPU_ADD("audio", V30,8000000)		 		// v53, 16? mhz!
+	MDRV_CPU_ADD("audiocpu", V30,8000000)		 		// v53, 16? mhz!
 	MDRV_CPU_PROGRAM_MAP(hng_sound_map,0)
 
 	MDRV_CPU_ADD("comm", Z80,MASTER_CLOCK/4)		/* KL5C80A12CFP - binary compatible with Z80. */
@@ -1528,9 +1515,10 @@ static MACHINE_DRIVER_START( hng64 )
 	MDRV_CPU_IO_MAP(hng_comm_io_map, 0)
 
 	MDRV_GFXDECODE(hng64)
+	MDRV_MACHINE_START(hyperneo)
 	MDRV_MACHINE_RESET(hyperneo)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)

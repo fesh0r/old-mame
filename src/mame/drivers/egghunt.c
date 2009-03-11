@@ -177,15 +177,15 @@ static WRITE8_HANDLER( egghunt_soundlatch_w )
 	cpu_set_input_line(space->machine->cpu[1],0,HOLD_LINE);
 }
 
-static READ8_HANDLER( egghunt_okibanking_r )
+static READ8_DEVICE_HANDLER( egghunt_okibanking_r )
 {
 	return egghunt_okibanking;
 }
 
-static WRITE8_HANDLER( egghunt_okibanking_w )
+static WRITE8_DEVICE_HANDLER( egghunt_okibanking_w )
 {
 	egghunt_okibanking = data;
-	okim6295_set_bank_base(0, (data & 0x10) ? 0x40000 : 0);
+	okim6295_set_bank_base(device, (data & 0x10) ? 0x40000 : 0);
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -218,14 +218,14 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0xe000, 0xe000) AM_READ(soundlatch_r)
-	AM_RANGE(0xe004, 0xe004) AM_READ(okim6295_status_0_r)
+	AM_RANGE(0xe004, 0xe004) AM_DEVREAD("oki", okim6295_r)
 	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0xe001, 0xe001) AM_READWRITE(egghunt_okibanking_r, egghunt_okibanking_w)
-	AM_RANGE(0xe004, 0xe004) AM_WRITE(okim6295_data_0_w)
+	AM_RANGE(0xe001, 0xe001) AM_DEVREADWRITE("oki", egghunt_okibanking_r, egghunt_okibanking_w)
+	AM_RANGE(0xe004, 0xe004) AM_DEVWRITE("oki", okim6295_w)
 	AM_RANGE(0xf000, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
@@ -378,18 +378,18 @@ static MACHINE_RESET( egghunt )
 
 static MACHINE_DRIVER_START( egghunt )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,12000000/2)		 /* 6 MHz ?*/
+	MDRV_CPU_ADD("maincpu", Z80,12000000/2)		 /* 6 MHz ?*/
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) // or 2 like mitchell.c?
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold) // or 2 like mitchell.c?
 
-	MDRV_CPU_ADD("audio", Z80,12000000/2)		 /* 6 MHz ?*/
+	MDRV_CPU_ADD("audiocpu", Z80,12000000/2)		 /* 6 MHz ?*/
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_MACHINE_RESET(egghunt)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -411,10 +411,10 @@ static MACHINE_DRIVER_START( egghunt )
 MACHINE_DRIVER_END
 
 ROM_START( egghunt )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "prg.bin", 0x00000, 0x20000, CRC(eb647145) SHA1(792951b76b5fac01e72ae34a2fe2108e373c5b62) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "rom2.bin", 0x00000, 0x10000, CRC(88a71bc3) SHA1(cf5acccfda9fda0d55af91a415a54391d0d0b7a2) )
 
 	ROM_REGION( 0x100000, "gfx1", ROMREGION_INVERT )

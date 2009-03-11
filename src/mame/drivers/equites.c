@@ -418,15 +418,16 @@ static float cymvol,hihatvol;
 
 static TIMER_CALLBACK( equites_frq_adjuster_callback )
 {
+	const device_config *msm = devtag_get_device(machine, "msm");
 	UINT8 frq = input_port_read(machine, FRQ_ADJUSTER_TAG);
 
-	msm5232_set_clock(sndti_token(SOUND_MSM5232, 0), MSM5232_MIN_CLOCK + frq * (MSM5232_MAX_CLOCK - MSM5232_MIN_CLOCK) / 100);
+	msm5232_set_clock(msm, MSM5232_MIN_CLOCK + frq * (MSM5232_MAX_CLOCK - MSM5232_MIN_CLOCK) / 100);
 //popmessage("8155: C %02x A %02x  AY: A %02x B %02x Unk:%x", eq8155_port_c,eq8155_port_a,ay_port_a,ay_port_b,eq_cymbal_ctrl&15);
 
 	cymvol *= 0.94f;
 	hihatvol *= 0.94f;
 
-	sndti_set_output_gain(SOUND_MSM5232, 0, 10, hihatvol + cymvol * (ay_port_b & 3) * 0.33);	/* NO from msm5232 */
+	sound_set_output_gain(msm, 0, hihatvol + cymvol * (ay_port_b & 3) * 0.33);	/* NO from msm5232 */
 }
 
 static SOUND_START(equites)
@@ -489,17 +490,17 @@ static WRITE8_HANDLER(equites_c0f8_w)
 static int hihat,cymbal;
 #endif
 
-static WRITE8_HANDLER(equites_8910porta_w)
+static WRITE8_DEVICE_HANDLER(equites_8910porta_w)
 {
 	// bongo 1
-	sample_set_volume(0, ((data & 0x30)>>4) * 0.33);
+	sample_set_volume(device, 0, ((data & 0x30)>>4) * 0.33);
 	if (data & ~ay_port_a & 0x80)
-		sample_start(0, 0, 0);
+		sample_start(device, 0, 0, 0);
 
 	// bongo 2
-	sample_set_volume(1, (data & 0x03) * 0.33);
+	sample_set_volume(device, 1, (data & 0x03) * 0.33);
 	if (data & ~ay_port_a & 0x08)
-		sample_start(1, 1, 0);
+		sample_start(device, 1, 1, 0);
 
 	ay_port_a = data;
 
@@ -508,7 +509,7 @@ popmessage("HH %d(%d) CYM %d(%d)",hihat,BIT(ay_port_b,6),cymbal,ay_port_b&3);
 #endif
 }
 
-static WRITE8_HANDLER(equites_8910portb_w)
+static WRITE8_DEVICE_HANDLER(equites_8910portb_w)
 {
 #if POPDRUMKIT
 if (data & ~ay_port_b & 0x08) cymbal++;
@@ -516,9 +517,9 @@ if (data & ~ay_port_b & 0x04) hihat++;
 #endif
 
 	// bongo 3
-	sample_set_volume(2, ((data & 0x30)>>4) * 0.33);
+	sample_set_volume(device, 2, ((data & 0x30)>>4) * 0.33);
 	if (data & ~ay_port_b & 0x80)
-		sample_start(2, 2, 0);
+		sample_start(device, 2, 2, 0);
 
 	// FIXME I'm just enabling the MSM5232 Noise Output for now. Proper emulation
 	// of the analog circuitry should be done instead.
@@ -550,7 +551,7 @@ static WRITE8_HANDLER(equites_cymbal_ctrl_w)
 
 
 
-static void equites_update_dac(void)
+static void equites_update_dac(running_machine *machine)
 {
 	// there is only one latch, which is used to drive two DAC channels.
 	// When the channel is enabled in the 4066, it goes to a series of
@@ -559,25 +560,25 @@ static void equites_update_dac(void)
 	// Note that PB0 goes through three filters while PB1 only goes through one.
 
 	if (equites_8155_portb & 1)
-		dac_signed_data_w(0, equites_dac_latch);
+		dac_signed_data_w(devtag_get_device(machine, "dac1"), equites_dac_latch);
 
 	if (equites_8155_portb & 2)
-		dac_signed_data_w(1, equites_dac_latch);
+		dac_signed_data_w(devtag_get_device(machine, "dac2"), equites_dac_latch);
 }
 
 static WRITE8_HANDLER(equites_dac_latch_w)
 {
 	equites_dac_latch = data<<2;
-	equites_update_dac();
+	equites_update_dac(space->machine);
 }
 
 static WRITE8_HANDLER(equites_8155_portb_w)
 {
 	equites_8155_portb = data;
-	equites_update_dac();
+	equites_update_dac(space->machine);
 }
 
-static void equites_msm5232_gate(int state)
+static void equites_msm5232_gate(const device_config *device, int state)
 {
 }
 
@@ -599,6 +600,7 @@ static INTERRUPT_GEN( equites_interrupt )
 static WRITE8_HANDLER(equites_8155_w)
 {
 	static int timer_count;
+	const device_config *device;
 
 	// FIXME proper 8155 emulation must be implemented
 	switch( offset )
@@ -610,14 +612,15 @@ static WRITE8_HANDLER(equites_8155_w)
 		case 1: //logerror( "8155 I/O Port A write %x\n", data );
 			eq8155_port_a = data;
 
-			sndti_set_output_gain(SOUND_MSM5232, 0, 0, (data >> 4) / 15.0);	/* group1 from msm5232 */
-			sndti_set_output_gain(SOUND_MSM5232, 0, 1, (data >> 4) / 15.0);	/* group1 from msm5232 */
-			sndti_set_output_gain(SOUND_MSM5232, 0, 2, (data >> 4) / 15.0);	/* group1 from msm5232 */
-			sndti_set_output_gain(SOUND_MSM5232, 0, 3, (data >> 4) / 15.0);	/* group1 from msm5232 */
-			sndti_set_output_gain(SOUND_MSM5232, 0, 4, (data & 0x0f) / 15.0);	/* group2 from msm5232 */
-			sndti_set_output_gain(SOUND_MSM5232, 0, 5, (data & 0x0f) / 15.0);	/* group2 from msm5232 */
-			sndti_set_output_gain(SOUND_MSM5232, 0, 6, (data & 0x0f) / 15.0);	/* group2 from msm5232 */
-			sndti_set_output_gain(SOUND_MSM5232, 0, 7, (data & 0x0f) / 15.0);	/* group2 from msm5232 */
+			device = devtag_get_device(space->machine, "msm");
+			sound_set_output_gain(device, 0, (data >> 4) / 15.0);	/* group1 from msm5232 */
+			sound_set_output_gain(device, 1, (data >> 4) / 15.0);	/* group1 from msm5232 */
+			sound_set_output_gain(device, 2, (data >> 4) / 15.0);	/* group1 from msm5232 */
+			sound_set_output_gain(device, 3, (data >> 4) / 15.0);	/* group1 from msm5232 */
+			sound_set_output_gain(device, 4, (data & 0x0f) / 15.0);	/* group2 from msm5232 */
+			sound_set_output_gain(device, 5, (data & 0x0f) / 15.0);	/* group2 from msm5232 */
+			sound_set_output_gain(device, 6, (data & 0x0f) / 15.0);	/* group2 from msm5232 */
+			sound_set_output_gain(device, 7, (data & 0x0f) / 15.0);	/* group2 from msm5232 */
 
 			break;
 		case 2: //logerror( "8155 I/O Port B write %x\n", data );
@@ -626,11 +629,12 @@ static WRITE8_HANDLER(equites_8155_w)
 		case 3: //logerror( "8155 I/O Port C (or control) write %x\n", data );
 			eq8155_port_c = data;
 
-			sndti_set_output_gain(SOUND_MSM5232, 0, 8, (data & 0x0f) / 15.0);	/* SOLO  8' from msm5232 */
+			device = devtag_get_device(space->machine, "msm");
+			sound_set_output_gain(device, 8, (data & 0x0f) / 15.0);	/* SOLO  8' from msm5232 */
 			if (data & 0x20)
-				sndti_set_output_gain(SOUND_MSM5232, 0, 9, (data & 0x0f) / 15.0);	/* SOLO 16' from msm5232 */
+				sound_set_output_gain(device, 9, (data & 0x0f) / 15.0);	/* SOLO 16' from msm5232 */
 			else
-				sndti_set_output_gain(SOUND_MSM5232, 0, 9, 0);	/* SOLO 16' from msm5232 */
+				sound_set_output_gain(device, 9, 0);	/* SOLO 16' from msm5232 */
 
 			break;
 		case 4: //logerror( "8155 Timer low 8 bits write %x\n", data );
@@ -755,9 +759,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_ROM
 	AM_RANGE(0xc000, 0xc000) AM_READ(soundlatch_r)
-	AM_RANGE(0xc080, 0xc08d) AM_WRITE(msm5232_0_w)
-	AM_RANGE(0xc0a0, 0xc0a0) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0xc0a1, 0xc0a1) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xc080, 0xc08d) AM_DEVWRITE("msm", msm5232_w)
+	AM_RANGE(0xc0a0, 0xc0a1) AM_DEVWRITE("ay", ay8910_data_address_w)
 	AM_RANGE(0xc0b0, 0xc0b0) AM_WRITENOP // n.c.
 	AM_RANGE(0xc0c0, 0xc0c0) AM_WRITE(equites_cymbal_ctrl_w)
 	AM_RANGE(0xc0d0, 0xc0d0) AM_WRITE(equites_dac_latch_w)	// followed by 1 (and usually 0) on 8155 port B
@@ -1126,10 +1129,10 @@ static const ay8910_interface equites_8910intf =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	0,
-	0,
-	equites_8910porta_w,
-	equites_8910portb_w
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_DEVICE_HANDLER("samples", equites_8910porta_w),
+	DEVCB_DEVICE_HANDLER("samples", equites_8910portb_w)
 };
 
 
@@ -1154,7 +1157,7 @@ static const samples_interface alphamc07_samples_interface =
 // the sound board is the same in all games
 static MACHINE_DRIVER_START( common_sound )
 
-	MDRV_CPU_ADD("audio", 8085A, XTAL_6_144MHz)	/* verified on pcb */
+	MDRV_CPU_ADD("audiocpu", 8085A, XTAL_6_144MHz)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_portmap,0)
 
@@ -1197,7 +1200,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( equites )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, XTAL_12MHz/4) /* 68000P8 running at 3mhz! verified on pcb */
+	MDRV_CPU_ADD("maincpu", M68000, XTAL_12MHz/4) /* 68000P8 running at 3mhz! verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(equites_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(equites_interrupt, 2)
 
@@ -1207,7 +1210,7 @@ static MACHINE_DRIVER_START( equites )
 	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
@@ -1235,7 +1238,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( splndrbt )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, XTAL_24MHz/4) /* 68000P8 running at 6mhz, verified on pcb */
+	MDRV_CPU_ADD("maincpu", M68000, XTAL_24MHz/4) /* 68000P8 running at 6mhz, verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(splndrbt_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(equites_interrupt, 2)
 
@@ -1245,7 +1248,7 @@ static MACHINE_DRIVER_START( splndrbt )
 	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
@@ -1281,7 +1284,7 @@ Sound processor  - 8085 3.073MHz
                  - AY-3-8910
 */
 ROM_START( equites )
-	ROM_REGION( 0x10000, "main", 0 ) // 68000 ROMs
+	ROM_REGION( 0x10000, "maincpu", 0 ) // 68000 ROMs
 	ROM_LOAD16_BYTE( "ep1",         0x00001, 0x2000, CRC(6a4fe5f7) SHA1(5ff1594a2cee28cc7d59448eb57473088ac6f14b) )
 	ROM_LOAD16_BYTE( "ep5",         0x00000, 0x2000, CRC(00faa3eb) SHA1(6b31d041ad4ca81eda36487f659997cc4030f23c) )
 	ROM_LOAD16_BYTE( "epr-ep2.12d", 0x04001, 0x2000, CRC(0c1bc2e7) SHA1(4c3510dfeee2fb2f295a32e2fe2021c4c7f08e8a) )
@@ -1291,7 +1294,7 @@ ROM_START( equites )
 	ROM_LOAD16_BYTE( "ep4",         0x0c001, 0x2000, CRC(b636e086) SHA1(5fc23a86b6051ecf6ff3f95f810f0eb471a203b0) )
 	ROM_LOAD16_BYTE( "ep8",         0x0c000, 0x2000, CRC(d7ee48b0) SHA1(d0398704d8e89f2b0a9ed05e18f7c644d1e047c0) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) // 8085A ROMs
+	ROM_REGION( 0x10000, "audiocpu", 0 ) // 8085A ROMs
 	ROM_LOAD( "ev1.1m", 0x00000, 0x2000, CRC(43faaf2e) SHA1(c9aaf298d673eb70399366776474f1b242549eb4) )
 	ROM_LOAD( "ev2.1l", 0x02000, 0x2000, CRC(09e6702d) SHA1(896771f73a486e5035909eeed9ef48103d81d4ae) )
 	ROM_LOAD( "ev3.1k", 0x04000, 0x2000, CRC(10ff140b) SHA1(7c28f988a9c8b2a702d007096199e67b447a183c) )
@@ -1345,7 +1348,7 @@ SOUND : AY-3-8910 MSM5232RS
 OSC.  : 12.000MHz 14.31818MHz ?MHz
 */
 ROM_START( equitess )
-	ROM_REGION( 0x10000, "main", 0 ) // 68000 ROMs
+	ROM_REGION( 0x10000, "maincpu", 0 ) // 68000 ROMs
 	ROM_LOAD16_BYTE( "epr-ep1.13d", 0x00001, 0x2000, CRC(c6edf1cd) SHA1(21dba62e692f4fdc79155ce169a48ae827bd5994) )
 	ROM_LOAD16_BYTE( "epr-ep5.13b", 0x00000, 0x2000, CRC(c11f0759) SHA1(5caf2b6b777b2fdabc26ea232225be2d789e87f3) )
 	ROM_LOAD16_BYTE( "epr-ep2.12d", 0x04001, 0x2000, CRC(0c1bc2e7) SHA1(4c3510dfeee2fb2f295a32e2fe2021c4c7f08e8a) )
@@ -1355,7 +1358,7 @@ ROM_START( equitess )
 	ROM_LOAD16_BYTE( "epr-ep4.9d",  0x0c001, 0x2000, CRC(956a06bd) SHA1(a716f9aaf0c32c522968f4ff13de904d6e8c7f98) )
 	ROM_LOAD16_BYTE( "epr-ep8.9b",  0x0c000, 0x2000, CRC(4c78d60d) SHA1(207a82779e2fe3e9082f4fa09b87c713a51167e6) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) // 8085A ROMs
+	ROM_REGION( 0x10000, "audiocpu", 0 ) // 8085A ROMs
 	ROM_LOAD( "ev1.1m", 0x00000, 0x2000, CRC(43faaf2e) SHA1(c9aaf298d673eb70399366776474f1b242549eb4) )
 	ROM_LOAD( "ev2.1l", 0x02000, 0x2000, CRC(09e6702d) SHA1(896771f73a486e5035909eeed9ef48103d81d4ae) )
 	ROM_LOAD( "ev3.1k", 0x04000, 0x2000, CRC(10ff140b) SHA1(7c28f988a9c8b2a702d007096199e67b447a183c) )
@@ -1404,7 +1407,7 @@ ROM_END
 // Bull Fighter ROM Map
 
 ROM_START( bullfgtr )
-	ROM_REGION( 0x10000, "main", 0 ) // 68000 ROMs
+	ROM_REGION( 0x10000, "maincpu", 0 ) // 68000 ROMs
 	ROM_LOAD16_BYTE( "hp1vr.bin",  0x00001, 0x2000, CRC(e5887586) SHA1(c06883f5c4a2e777b011199787bd4d52f48ceb41) )
 	ROM_LOAD16_BYTE( "hp5vr.bin",  0x00000, 0x2000, CRC(b49fa09f) SHA1(ee947f7b4fa96f887f9b14e7503f98b4d117d1c8) )
 	ROM_LOAD16_BYTE( "hp2vr.bin",  0x04001, 0x2000, CRC(845bdf28) SHA1(4eac9ca034aaa6a7db4061ad11587189fc843ca0) )
@@ -1413,7 +1416,7 @@ ROM_START( bullfgtr )
 	ROM_LOAD16_BYTE( "hp7vr.bin",  0x08000, 0x2000, CRC(665cc015) SHA1(17fe18c8f22808a102f48bc4cbc8e4a1f6f9eaf1) )
 	ROM_FILL(                      0x0c000, 0x4000, 0 )
 
-	ROM_REGION( 0x10000, "audio", 0 ) // 8085A ROMs
+	ROM_REGION( 0x10000, "audiocpu", 0 ) // 8085A ROMs
 	ROM_LOAD( "hv1vr.bin", 0x00000, 0x2000, CRC(2a8e6fcf) SHA1(866903408e05938a982ffef4c9b849203c6cc060) )
 	ROM_LOAD( "hv2vr.bin", 0x02000, 0x2000, CRC(026e1533) SHA1(6271869a3faaafacfac35262746e87a83c158b93) )
 	ROM_LOAD( "hv3vr.bin", 0x04000, 0x2000, CRC(51ee751c) SHA1(60bf848dfdfe313ab05df5a5c05819b0fa87ca50) )
@@ -1486,7 +1489,7 @@ All roms 2764
 All Proms TBP24S10
 */
 ROM_START( bullfgts )
-	ROM_REGION( 0x10000, "main", 0 ) // 68000 ROMs
+	ROM_REGION( 0x10000, "maincpu", 0 ) // 68000 ROMs
 	ROM_LOAD16_BYTE( "m_d13.bin",  0x00001, 0x2000, CRC(7c35dd4b) SHA1(6bd604ee32c0c5db17f90e24aa254ec7072d27dd) )
 	ROM_LOAD16_BYTE( "m_b13.bin",  0x00000, 0x2000, CRC(c4adddce) SHA1(48b6ddbad52a3941d3e651642b26d9adf70f71f5) )
 	ROM_LOAD16_BYTE( "m_d12.bin",  0x04001, 0x2000, CRC(5d51be2b) SHA1(55d2718479cb71ceefefbaf40c14285e5603e526) )
@@ -1495,7 +1498,7 @@ ROM_START( bullfgts )
 	ROM_LOAD16_BYTE( "m_b10.bin",  0x08000, 0x2000, CRC(9d84f678) SHA1(32584d54788cb570bd5210992836f28ba9c87aac) )
 	ROM_FILL(                      0x0c000, 0x4000, 0 )
 
-	ROM_REGION( 0x10000, "audio", 0 ) // 8085A ROMs
+	ROM_REGION( 0x10000, "audiocpu", 0 ) // 8085A ROMs
 	ROM_LOAD( "hv1vr.bin", 0x00000, 0x2000, CRC(2a8e6fcf) SHA1(866903408e05938a982ffef4c9b849203c6cc060) )
 	ROM_LOAD( "hv2vr.bin", 0x02000, 0x2000, CRC(026e1533) SHA1(6271869a3faaafacfac35262746e87a83c158b93) )
 	ROM_LOAD( "hv3vr.bin", 0x04000, 0x2000, CRC(51ee751c) SHA1(60bf848dfdfe313ab05df5a5c05819b0fa87ca50) )
@@ -1554,7 +1557,7 @@ Sound :AY-3-8910 M3M5232RS
 OSC   :12.000MHz 6.??MHz 14.31818MHz
 */
 ROM_START( kouyakyu )
-	ROM_REGION( 0x10000, "main", 0 )  // 68000 ROMs
+	ROM_REGION( 0x10000, "maincpu", 0 )  // 68000 ROMs
 	ROM_LOAD16_BYTE( "epr-6704.bin", 0x00001, 0x2000, CRC(c7ac2292) SHA1(614bfb0949620d4c260768f14a116b076dd38438) )
 	ROM_LOAD16_BYTE( "epr-6707.bin", 0x00000, 0x2000, CRC(9cb2962e) SHA1(bd1bcbc53a3346e22789f24a35ab3aa681317d02) )
 	ROM_LOAD16_BYTE( "epr-6705.bin", 0x04001, 0x2000, CRC(985327cb) SHA1(86969fe763cbaa527d64de35844773b5ab1d7f83) )
@@ -1563,7 +1566,7 @@ ROM_START( kouyakyu )
 	ROM_LOAD16_BYTE( "epr-6709.bin", 0x08000, 0x2000, CRC(f41cb58c) SHA1(f0d1048e949d51432739755f985e4df65b8e918b) )
 	ROM_FILL(                        0x0c000, 0x4000, 0 )
 
-	ROM_REGION( 0x10000, "audio", 0 ) // 8085A ROMs
+	ROM_REGION( 0x10000, "audiocpu", 0 ) // 8085A ROMs
 	ROM_LOAD( "epr-6703.bin", 0x00000, 0x2000, CRC(fbff3a86) SHA1(4ed2887b1e4509ded853a230f735d4d2aa475886) )
 	ROM_LOAD( "epr-6702.bin", 0x02000, 0x2000, CRC(27ddf031) SHA1(2f11d3b693e46852762669ed1e35a667990edec7) )
 	ROM_LOAD( "epr-6701.bin", 0x04000, 0x2000, CRC(3c83588a) SHA1(a84c813ba9d464cffc855397aaacbb9177c86fb4) )
@@ -1622,13 +1625,13 @@ Sound:AY-3-8910A,OKI M5232,D8155HC
 OSC  :6.144MHz
 */
 ROM_START( gekisou )
-	ROM_REGION( 0x10000, "main", 0 ) // 68000 ROMs
+	ROM_REGION( 0x10000, "maincpu", 0 ) // 68000 ROMs
 	ROM_LOAD16_BYTE( "1.15b", 0x00001, 0x4000, CRC(945fd546) SHA1(6045dbf11272fcec8320aacb2852d4223d0943a0) )
 	ROM_LOAD16_BYTE( "2.15d", 0x00000, 0x4000, CRC(3c057150) SHA1(2b1ad7993addfd1c0eee99dfe5bb3476cd387f6a) )
 	ROM_LOAD16_BYTE( "3.14b", 0x08001, 0x4000, CRC(7c1cf4d0) SHA1(a122d3a51d205123e04c694912809e0bb31155d5) )
 	ROM_LOAD16_BYTE( "4.14d", 0x08000, 0x4000, CRC(c7282391) SHA1(144a34d74bb1e71e2f799913ab04927d00faec87) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) // 8085A ROMs
+	ROM_REGION( 0x10000, "audiocpu", 0 ) // 8085A ROMs
 	ROM_LOAD( "v1.1l", 0x00000, 0x4000, CRC(dc6af437) SHA1(77112fec51343d8e73765b2a342a888612813c3b) )
 	ROM_LOAD( "v2.1h", 0x04000, 0x4000, CRC(cb12582e) SHA1(ef378232e2744540cc4c9187cfb36d780dadc962) )
 	ROM_LOAD( "v3.1e", 0x08000, 0x4000, CRC(0ab5e777) SHA1(9177c42418f022a65d73c3302873b894c5a137a4) )
@@ -1687,13 +1690,13 @@ Sound:AY-3-8910A,OKI M5232,M5L8155P
 OSC  :6.144MHz
 */
 ROM_START( splndrbt )
-	ROM_REGION( 0x10000, "main", 0 ) // 68000 ROMs(16k x 4)
+	ROM_REGION( 0x10000, "maincpu", 0 ) // 68000 ROMs(16k x 4)
 	ROM_LOAD16_BYTE( "1.16a", 0x00001, 0x4000, CRC(4bf4b047) SHA1(ef0efffa2f49905e17e4ed3a03cac419793b26d1) )
 	ROM_LOAD16_BYTE( "2.16c", 0x00000, 0x4000, CRC(27acb656) SHA1(5f2f8d05f2f1c6c92c8364e9e6831ca525cbacd0) )
 	ROM_LOAD16_BYTE( "3.15a", 0x08001, 0x4000, CRC(5b182189) SHA1(50ebb1fddcb6838442e8a20261f200f3386ce8a8) )
 	ROM_LOAD16_BYTE( "4.15c", 0x08000, 0x4000, CRC(cde99613) SHA1(250b59f75eee84442da3cc7c599d1e16f0294df9) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) // 8085A ROMs
+	ROM_REGION( 0x10000, "audiocpu", 0 ) // 8085A ROMs
 	ROM_LOAD( "1_v.1m", 0x00000, 0x2000, CRC(1b3a6e42) SHA1(41a4f0503c939ec0a739c8bc6bf3c8fc354912ee) )
 	ROM_LOAD( "2_v.1l", 0x02000, 0x2000, CRC(2a618c72) SHA1(6ad459d94352c317150ae6344d4db9bb613938dd) )
 	ROM_LOAD( "3_v.1k", 0x04000, 0x2000, CRC(bbee5346) SHA1(753cb784b04f081fa1f8590dc28056d9918f313b) )
@@ -1754,13 +1757,13 @@ Sound:AY-3-8910A,OKI M5232,D8155HC
 OSC  :6.144MHz
 */
 ROM_START( hvoltage )
-	ROM_REGION( 0x10000, "main", 0 ) // 68000 ROMs(16k x 4)
+	ROM_REGION( 0x10000, "maincpu", 0 ) // 68000 ROMs(16k x 4)
 	ROM_LOAD16_BYTE( "1.16a", 0x00001, 0x4000, CRC(82606e3b) SHA1(25c3172928d8f1eda2c4c757d505fdfd91f21ea1) )
 	ROM_LOAD16_BYTE( "2.16c", 0x00000, 0x4000, CRC(1d74fef2) SHA1(3df3dc98a78a137da8c5cddf6a8519b477824fb9) )
 	ROM_LOAD16_BYTE( "3.15a", 0x08001, 0x4000, CRC(677abe14) SHA1(78b343122f9ad187c823bf49e8f001288c762586) )
 	ROM_LOAD16_BYTE( "4.15c", 0x08000, 0x4000, CRC(8aab5a20) SHA1(fb90817173ad69c0e00d03814b4e10b18955c07e) )
 
-	ROM_REGION( 0x10000, "audio", 0 ) // 8085A ROMs
+	ROM_REGION( 0x10000, "audiocpu", 0 ) // 8085A ROMs
 	ROM_LOAD( "5_v.1l", 0x00000, 0x4000, CRC(ed9bb6ea) SHA1(73b0251b86835368ec2a4e98a5f61e28e58fd234) )
 	ROM_LOAD( "6_v.1h", 0x04000, 0x4000, CRC(e9542211) SHA1(482f2c90e842fe5cc31cc6a39025adf65ba47ce9) )
 	ROM_LOAD( "7_v.1e", 0x08000, 0x4000, CRC(44d38554) SHA1(6765971376eafa218fda1accb1e173a7c1850cc8) )

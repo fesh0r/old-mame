@@ -15,6 +15,8 @@ Tomasz Slanina
 #include "sound/ay8910.h"
 #include "includes/changela.h"
 
+#include "changela.lh"
+
 
 static UINT8 portA_in,portA_out,ddrA;
 static UINT8 portB_out,ddrB;
@@ -256,8 +258,8 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0xc000, 0xc7ff) AM_READ(changela_mem_device_r)			/* RAM4 (River Bed RAM); RAM5 (Tree RAM) */
 
-	AM_RANGE(0xd000, 0xd000) AM_READ(ay8910_read_port_0_r)
-	AM_RANGE(0xd010, 0xd010) AM_READ(ay8910_read_port_1_r)
+	AM_RANGE(0xd000, 0xd000) AM_DEVREAD("ay1", ay8910_r)
+	AM_RANGE(0xd010, 0xd010) AM_DEVREAD("ay2", ay8910_r)
 
 	/* LS139 - U24 */
 	AM_RANGE(0xd024, 0xd024) AM_READ(changela_24_r)
@@ -288,10 +290,8 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xca00, 0xca00) AM_WRITE(changela_slope_rom_addr_hi_w)
 	AM_RANGE(0xcb00, 0xcb00) AM_WRITE(changela_slope_rom_addr_lo_w)
 
-	AM_RANGE(0xd000, 0xd000) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xd001, 0xd001) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0xd010, 0xd010) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0xd011, 0xd011) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0xd000, 0xd001) AM_DEVWRITE("ay1", ay8910_address_data_w)
+	AM_RANGE(0xd010, 0xd011) AM_DEVWRITE("ay2", ay8910_address_data_w)
 
 	/* LS259 - U44 */
 	AM_RANGE(0xd020, 0xd020) AM_WRITE(changela_collision_reset_0)
@@ -451,20 +451,20 @@ static const ay8910_interface ay8910_interface_1 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_0_r,
-	input_port_1_r,
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("DSWA"),
+	DEVCB_INPUT_PORT("DSWB"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static const ay8910_interface ay8910_interface_2 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_2_r,
-	input_port_3_r,
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("DSWC"),
+	DEVCB_INPUT_PORT("DSWD"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -486,7 +486,7 @@ static INTERRUPT_GEN( chl_interrupt )
 
 static MACHINE_DRIVER_START( changela )
 
-	MDRV_CPU_ADD("main", Z80,5000000)
+	MDRV_CPU_ADD("maincpu", Z80,5000000)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_VBLANK_INT_HACK(chl_interrupt,4)
 
@@ -496,7 +496,7 @@ static MACHINE_DRIVER_START( changela )
 	MDRV_MACHINE_RESET(changela)
 
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 262)  /* vert size is a guess */
@@ -520,7 +520,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( changela )
-	ROM_REGION( 0x10000, "main", 0 )	/* Z80 code */
+	ROM_REGION( 0x10000, "maincpu", 0 )	/* Z80 code */
 	ROM_LOAD( "cl25a",	0x0000, 0x2000, CRC(38530a60) SHA1(0b0ef1abe11c5271fcd1671322b77165217553c3) )
 	ROM_LOAD( "cl24a",	0x2000, 0x2000, CRC(2fcf4a82) SHA1(c33355e2d4d3fab32c8d713a680ec0fceedab341) )
 	ROM_LOAD( "cl23",	0x4000, 0x2000, CRC(08385891) SHA1(d8d66664ec25db067d5a4a6c35ec0ac65b9e0c6a) )
@@ -579,4 +579,4 @@ static DRIVER_INIT(changela)
 	state_save_register_global(machine, changela_tree_collision_reset);
 }
 
-GAME( 1983, changela, 0, changela, changela, changela, ROT180, "Taito Corporation", "Change Lanes", GAME_SUPPORTS_SAVE )
+GAMEL( 1983, changela, 0, changela, changela, changela, ROT180, "Taito Corporation", "Change Lanes", GAME_SUPPORTS_SAVE, layout_changela )

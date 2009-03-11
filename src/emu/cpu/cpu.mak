@@ -300,55 +300,23 @@ $(CPUOBJ)/cdp1802/cdp1802.o:	$(CPUSRC)/cdp1802/cdp1802.c \
 
 
 #-------------------------------------------------
-# National Semiconductor COP4xx
+# National Semiconductor COP400 family
 #-------------------------------------------------
 
-CPUDEFS += -DHAS_COP401=$(if $(filter COP401,$(CPUS)),1,0)
-CPUDEFS += -DHAS_COP410=$(if $(filter COP410,$(CPUS)),1,0)
-CPUDEFS += -DHAS_COP411=$(if $(filter COP411,$(CPUS)),1,0)
-CPUDEFS += -DHAS_COP402=$(if $(filter COP402,$(CPUS)),1,0)
-CPUDEFS += -DHAS_COP420=$(if $(filter COP420,$(CPUS)),1,0)
-CPUDEFS += -DHAS_COP421=$(if $(filter COP421,$(CPUS)),1,0)
-CPUDEFS += -DHAS_COP422=$(if $(filter COP421,$(CPUS)),1,0)
-CPUDEFS += -DHAS_COP404=$(if $(filter COP404,$(CPUS)),1,0)
-CPUDEFS += -DHAS_COP424=$(if $(filter COP424,$(CPUS)),1,0)
-CPUDEFS += -DHAS_COP425=$(if $(filter COP425,$(CPUS)),1,0)
-CPUDEFS += -DHAS_COP426=$(if $(filter COP426,$(CPUS)),1,0)
-CPUDEFS += -DHAS_COP444=$(if $(filter COP444,$(CPUS)),1,0)
-CPUDEFS += -DHAS_COP445=$(if $(filter COP445,$(CPUS)),1,0)
+CPUDEFS += -DHAS_COP400=$(if $(filter COP400,$(CPUS)),1,0)
 
-ifneq ($(filter COP401 COP410 COP411,$(CPUS)),)
+ifneq ($(filter COP400,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/cop400
-CPUOBJS += $(CPUOBJ)/cop400/cop410.o
+CPUOBJS += $(CPUOBJ)/cop400/cop400.o
 DBGOBJS += $(CPUOBJ)/cop400/cop410ds.o
-endif
-
-ifneq ($(filter COP402 COP420 COP421 COP422,$(CPUS)),)
-OBJDIRS += $(CPUOBJ)/cop400
-CPUOBJS += $(CPUOBJ)/cop400/cop420.o
 DBGOBJS += $(CPUOBJ)/cop400/cop420ds.o
-endif
-
-ifneq ($(filter COP404 COP424 COP425 COP426 COP444 COP445,$(CPUS)),)
-OBJDIRS += $(CPUOBJ)/cop400
-CPUOBJS += $(CPUOBJ)/cop400/cop440.o
 DBGOBJS += $(CPUOBJ)/cop400/cop440ds.o
 endif
 
-$(CPUOBJ)/cop400/cop410.o:	$(CPUSRC)/cop400/cop410.c \
+$(CPUOBJ)/cop400/cop400.o:	$(CPUSRC)/cop400/cop400.c \
 							$(CPUSRC)/cop400/cop400.h \
-							$(CPUSRC)/cop400/410ops.c
+							$(CPUSRC)/cop400/cop400op.c
 
-$(CPUOBJ)/cop400/cop420.o:	$(CPUSRC)/cop400/cop420.c \
-							$(CPUSRC)/cop400/cop400.h \
-							$(CPUSRC)/cop400/410ops.c \
-							$(CPUSRC)/cop400/420ops.c
-
-$(CPUOBJ)/cop400/cop440.o:	$(CPUSRC)/cop400/cop440.c \
-							$(CPUSRC)/cop400/cop400.h \
-							$(CPUSRC)/cop400/410ops.c \
-							$(CPUSRC)/cop400/420ops.c \
-							$(CPUSRC)/cop400/440ops.c
 
 
 #-------------------------------------------------
@@ -535,7 +503,7 @@ CPUDEFS += -DHAS_SH1=$(if $(filter SH1,$(CPUS)),1,0)
 
 ifneq ($(filter SH1,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/sh2
-CPUOBJS += $(CPUOBJ)/sh2/sh2.o $(CPUOBJ)/sh2/sh2comn.o $(CPUOBJ)/sh2/sh2drc.o $(CPUOBJ)/sh2/sh2fe.o
+CPUOBJS += $(CPUOBJ)/sh2/sh2.o $(CPUOBJ)/sh2/sh2comn.o $(CPUOBJ)/sh2/sh2drc.o $(CPUOBJ)/sh2/sh2fe.o $(DRCOBJ)
 DBGOBJS += $(CPUOBJ)/sh2/sh2dasm.o
 endif
 
@@ -543,7 +511,7 @@ CPUDEFS += -DHAS_SH2=$(if $(filter SH2,$(CPUS)),1,0)
 
 ifneq ($(filter SH2,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/sh2
-CPUOBJS += $(CPUOBJ)/sh2/sh2.o $(CPUOBJ)/sh2/sh2comn.o $(CPUOBJ)/sh2/sh2drc.o $(CPUOBJ)/sh2/sh2fe.o
+CPUOBJS += $(CPUOBJ)/sh2/sh2.o $(CPUOBJ)/sh2/sh2comn.o $(CPUOBJ)/sh2/sh2drc.o $(CPUOBJ)/sh2/sh2fe.o $(DRCOBJ)
 DBGOBJS += $(CPUOBJ)/sh2/sh2dasm.o
 endif
 
@@ -776,12 +744,12 @@ CPUDEFS += -DHAS_I860=$(if $(filter I860,$(CPUS)),1,0)
 ifneq ($(filter I860,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/i860
 CPUOBJS += $(CPUOBJ)/i860/i860.o
-DBGOBJS += $(CPUOBJ)/i860/i860dasm.o
+DBGOBJS += $(CPUOBJ)/i860/i860dis.o
 endif
 
-$(CPUOBJ)/i860/i860.o:	$(CPUSRC)/i860/i860.c \
-						$(CPUSRC)/i860/i860.h
-
+$(CPUOBJ)/i860/i860.o:  $(CPUSRC)/i860/i860.c \
+                                               $(CPUSRC)/i860/i860.h \
+                                               $(CPUSRC)/i860/i860dec.c
 
 #-------------------------------------------------
 # Intel i960
@@ -1686,6 +1654,39 @@ endif
 $(CPUOBJ)/tms32051/tms32051.o:	$(CPUSRC)/tms32051/tms32051.c \
 								$(CPUSRC)/tms32051/tms32051.h
 
+
+
+#-------------------------------------------------
+# Texas Instruments TMS57002 DSP
+#-------------------------------------------------
+
+CPUDEFS += -DHAS_TMS57002=$(if $(filter TMS57002,$(CPUS)),1,0)
+
+ifneq ($(filter TMS57002,$(CPUS)),)
+OBJDIRS += $(CPUOBJ)/tms57002
+CPUOBJS += $(CPUOBJ)/tms57002/tms57002.o
+TMSMAKE += $(BUILDOUT)/tmsmake$(BUILD_EXE)
+endif
+
+$(CPUOBJ)/tms57002/tms57002.o:	$(CPUSRC)/tms57002/tms57002.c \
+								$(CPUSRC)/tms57002/tms57002.h \
+								$(CPUOBJ)/tms57002/tms57002.inc
+
+# rule to generate the C file
+$(CPUOBJ)/tms57002/tms57002.inc: $(TMSMAKE) $(CPUSRC)/tms57002/tmsinstr.lst
+	@echo Generating TMS57002 source file...
+	$(TMSMAKE) $(CPUSRC)/tms57002/tmsinstr.lst $@
+
+# rule to build the generator
+ifneq ($(CROSS_BUILD),1)
+
+BUILD += $(TMSMAKE)
+
+$(TMSMAKE): $(CPUOBJ)/tms57002/tmsmake.o $(LIBOCORE)
+	@echo Linking $@...
+	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
+
+endif
 
 
 #-------------------------------------------------

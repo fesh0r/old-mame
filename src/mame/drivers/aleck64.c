@@ -166,10 +166,10 @@ Notes:
 */
 
 #include "driver.h"
+#include "streams.h"
 #include "cpu/rsp/rsp.h"
 #include "cpu/mips/mips3.h"
-#include "streams.h"
-#include "sound/custom.h"
+#include "sound/dmadac.h"
 #include "includes/n64.h"
 
 static READ32_HANDLER( aleck_dips_r )
@@ -421,25 +421,21 @@ static INTERRUPT_GEN( n64_vblank )
 	signal_rcp_interrupt(device->machine, VI_INTERRUPT);
 }
 
-static MACHINE_RESET( aleck64 )
-{
-	n64_machine_reset(machine);
-}
-
 static MACHINE_DRIVER_START( aleck64 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", R4600BE, 93750000)
+	MDRV_CPU_ADD("maincpu", R4600BE, 93750000)
 	MDRV_CPU_CONFIG(config)
 	MDRV_CPU_PROGRAM_MAP(n64_map, 0)
-	MDRV_CPU_VBLANK_INT("main", n64_vblank)
+	MDRV_CPU_VBLANK_INT("screen", n64_vblank)
 
 	MDRV_CPU_ADD("rsp", RSP, 62500000)
 	MDRV_CPU_CONFIG(n64_rsp_config)
 	MDRV_CPU_PROGRAM_MAP(rsp_map, 0)
 
-	MDRV_MACHINE_RESET( aleck64 )
+	MDRV_MACHINE_START( n64 )
+	MDRV_MACHINE_RESET( n64 )
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
@@ -450,12 +446,12 @@ static MACHINE_DRIVER_START( aleck64 )
 	MDRV_VIDEO_START(n64)
 	MDRV_VIDEO_UPDATE(n64)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("dac1", DMADAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 	MDRV_SOUND_ADD("dac2", DMADAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 static DRIVER_INIT( aleck64 )

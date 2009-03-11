@@ -114,10 +114,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( vroulet_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
-	AM_RANGE(0x80, 0x83) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x00, 0x00) AM_DEVREAD("ay", ay8910_r)
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE("ay", ay8910_data_address_w)
+	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE("ppi8255_0", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x80, 0x83) AM_DEVREADWRITE("ppi8255_1", ppi8255_r, ppi8255_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -223,10 +223,10 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_3_r,// DSWA
-	input_port_4_r,// DSWB
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("DSWA"),
+	DEVCB_INPUT_PORT("DSWB"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 /* PPI8255 Interface */
@@ -238,20 +238,20 @@ static WRITE8_DEVICE_HANDLER( ppi8255_c_w ){}
 static const ppi8255_interface ppi8255_intf[2] =
 {
 	{
-		DEVICE8_PORT("IN0"),    // Port A read
-		DEVICE8_PORT("IN1"),	// Port B read
-		DEVICE8_PORT("IN2"),	// Port C read
-		NULL,					// Port A write
-		NULL,					// Port B write
-		NULL					// Port C write
+		DEVCB_INPUT_PORT("IN0"),    // Port A read
+		DEVCB_INPUT_PORT("IN1"),	// Port B read
+		DEVCB_INPUT_PORT("IN2"),	// Port C read
+		DEVCB_NULL,					// Port A write
+		DEVCB_NULL,					// Port B write
+		DEVCB_NULL					// Port C write
 	},
 	{
-		NULL,					// Port A read
-		NULL,					// Port B read
-		NULL,					// Port C read
-		ppi8255_a_w,			// Port A write
-		ppi8255_b_w,			// Port B write
-		ppi8255_c_w				// Port C write
+		DEVCB_NULL,					// Port A read
+		DEVCB_NULL,					// Port B read
+		DEVCB_NULL,					// Port C read
+		DEVCB_HANDLER(ppi8255_a_w),	// Port A write
+		DEVCB_HANDLER(ppi8255_b_w),	// Port B write
+		DEVCB_HANDLER(ppi8255_c_w)	// Port C write
 	}
 };
 
@@ -259,10 +259,10 @@ static const ppi8255_interface ppi8255_intf[2] =
 
 static MACHINE_DRIVER_START( vroulet )
 	// basic machine hardware
-	MDRV_CPU_ADD("main", Z80, 4000000)	//???
+	MDRV_CPU_ADD("maincpu", Z80, 4000000)	//???
 	MDRV_CPU_PROGRAM_MAP(vroulet_map, 0)
 	MDRV_CPU_IO_MAP(vroulet_io_map, 0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
@@ -271,7 +271,7 @@ static MACHINE_DRIVER_START( vroulet )
 
 	// video hardware
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -296,7 +296,7 @@ MACHINE_DRIVER_END
 /* ROMs */
 
 ROM_START( vroulet )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "roul1.bin", 0x0000, 0x2000, CRC(0cff99e5) SHA1(0aa6680c4b8d780d71b3e6c6fe511f86f40abc4c) )
 	ROM_LOAD( "roul2.bin", 0x2000, 0x2000, CRC(61924d9f) SHA1(8334d6825ed40e8347909817b8b73be97d23faf8) )
 	ROM_LOAD( "roul3.bin", 0x4000, 0x2000, CRC(73dedff6) SHA1(d01c4fc99ac8dc03bd6e0cf779c221d403b2b648) )

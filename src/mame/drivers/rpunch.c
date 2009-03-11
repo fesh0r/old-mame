@@ -144,10 +144,10 @@ WRITE16_HANDLER( rpunch_crtc_register_w );
  *
  *************************************/
 
-static void ym2151_irq_gen(running_machine *machine, int state)
+static void ym2151_irq_gen(const device_config *device, int state)
 {
 	ym2151_irq = state;
-	cpu_set_input_line(machine->cpu[1], 0, (ym2151_irq | sound_busy) ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[1], 0, (ym2151_irq | sound_busy) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -213,23 +213,23 @@ static READ16_HANDLER( sound_busy_r )
  *
  *************************************/
 
-static WRITE8_HANDLER( upd_control_w )
+static WRITE8_DEVICE_HANDLER( upd_control_w )
 {
 	if ((data & 1) != upd_rom_bank)
 	{
-		UINT8 *snd = memory_region(space->machine, "upd");
+		UINT8 *snd = memory_region(device->machine, "upd");
 		upd_rom_bank = data & 1;
 		memcpy(snd, snd + 0x20000 * (upd_rom_bank + 1), 0x20000);
 	}
-	upd7759_reset_w(0, data >> 7);
+	upd7759_reset_w(device, data >> 7);
 }
 
 
-static WRITE8_HANDLER( upd_data_w )
+static WRITE8_DEVICE_HANDLER( upd_data_w )
 {
-	upd7759_port_w(0, data);
-	upd7759_start_w(0, 0);
-	upd7759_start_w(0, 1);
+	upd7759_port_w(device, 0, data);
+	upd7759_start_w(device, 0);
+	upd7759_start_w(device, 1);
 }
 
 
@@ -240,35 +240,24 @@ static WRITE8_HANDLER( upd_data_w )
  *
  *************************************/
 
-static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
+static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	ADDRESS_MAP_GLOBAL_MASK(0xfffff)
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
-	AM_RANGE(0x040000, 0x04ffff) AM_READ(SMH_RAM)
-	AM_RANGE(0x060000, 0x060fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x080000, 0x083fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x0c0018, 0x0c0019) AM_READ_PORT("P1")
-	AM_RANGE(0x0c001a, 0x0c001b) AM_READ_PORT("P2")
-	AM_RANGE(0x0c001c, 0x0c001d) AM_READ_PORT("DSW")
-	AM_RANGE(0x0c001e, 0x0c001f) AM_READ(sound_busy_r)
-	AM_RANGE(0x0a0000, 0x0a07ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x0fc000, 0x0fffff) AM_READ(SMH_RAM)
-ADDRESS_MAP_END
-
-
-static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_GLOBAL_MASK(0xfffff)
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x040000, 0x04ffff) AM_WRITE(SMH_RAM) AM_BASE(&rpunch_bitmapram) AM_SIZE(&rpunch_bitmapram_size)
-	AM_RANGE(0x060000, 0x060fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16)
-	AM_RANGE(0x080000, 0x083fff) AM_WRITE(rpunch_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
-	AM_RANGE(0x0a0000, 0x0a07ff) AM_WRITE(paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x000000, 0x03ffff) AM_ROM
+	AM_RANGE(0x040000, 0x04ffff) AM_RAM AM_BASE(&rpunch_bitmapram) AM_SIZE(&rpunch_bitmapram_size)
+	AM_RANGE(0x060000, 0x060fff) AM_RAM AM_BASE(&spriteram16)
+	AM_RANGE(0x080000, 0x083fff) AM_RAM_WRITE(rpunch_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
+	AM_RANGE(0x0a0000, 0x0a07ff) AM_RAM_WRITE(paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0c0000, 0x0c0007) AM_WRITE(rpunch_scrollreg_w)
 	AM_RANGE(0x0c0008, 0x0c0009) AM_WRITE(rpunch_crtc_data_w)
 	AM_RANGE(0x0c000c, 0x0c000d) AM_WRITE(rpunch_videoreg_w)
 	AM_RANGE(0x0c000e, 0x0c000f) AM_WRITE(sound_command_w)
 	AM_RANGE(0x0c0010, 0x0c0013) AM_WRITE(rpunch_ins_w)
+	AM_RANGE(0x0c0018, 0x0c0019) AM_READ_PORT("P1")
+	AM_RANGE(0x0c001a, 0x0c001b) AM_READ_PORT("P2")
+	AM_RANGE(0x0c001c, 0x0c001d) AM_READ_PORT("DSW")
+	AM_RANGE(0x0c001e, 0x0c001f) AM_READ(sound_busy_r)
 	AM_RANGE(0x0c0028, 0x0c0029) AM_WRITE(rpunch_crtc_register_w)
-	AM_RANGE(0x0fc000, 0x0fffff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x0fc000, 0x0fffff) AM_RAM
 ADDRESS_MAP_END
 
 
@@ -279,21 +268,13 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-static ADDRESS_MAP_START( readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xefff) AM_READ(SMH_ROM)
-	AM_RANGE(0xf000, 0xf001) AM_READ(ym2151_status_port_0_r)
+static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0xefff) AM_ROM
+	AM_RANGE(0xf000, 0xf001) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
 	AM_RANGE(0xf200, 0xf200) AM_READ(sound_command_r)
-	AM_RANGE(0xf800, 0xffff) AM_READ(SMH_RAM)
-ADDRESS_MAP_END
-
-
-static ADDRESS_MAP_START( writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xefff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0xf000, 0xf000) AM_WRITE(ym2151_register_port_0_w)
-	AM_RANGE(0xf001, 0xf001) AM_WRITE(ym2151_data_port_0_w)
-	AM_RANGE(0xf400, 0xf400) AM_WRITE(upd_control_w)
-	AM_RANGE(0xf600, 0xf600) AM_WRITE(upd_data_w)
-	AM_RANGE(0xf800, 0xffff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xf400, 0xf400) AM_DEVWRITE("upd", upd_control_w)
+	AM_RANGE(0xf600, 0xf600) AM_DEVWRITE("upd", upd_data_w)
+	AM_RANGE(0xf800, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 
@@ -501,16 +482,16 @@ static const ym2151_interface ym2151_config =
 static MACHINE_DRIVER_START( rpunch )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, MASTER_CLOCK/2)
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
+	MDRV_CPU_ADD("maincpu", M68000, MASTER_CLOCK/2)
+	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
-	MDRV_CPU_ADD("audio", Z80, MASTER_CLOCK/4)
-	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
+	MDRV_CPU_ADD("audiocpu", Z80, MASTER_CLOCK/4)
+	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	MDRV_MACHINE_RESET(rpunch)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(304, 224)
@@ -543,13 +524,13 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( rpunch )
-	ROM_REGION( 0x40000, "main", 0 )
+	ROM_REGION( 0x40000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "rpunch.20", 0x00000, 0x08000, CRC(a2028d59) SHA1(d304811853ad68b3977edb90b94f3e2c7507be82) )
 	ROM_LOAD16_BYTE( "rpunch.21", 0x00001, 0x08000, CRC(1cdb13d3) SHA1(a51b2bbbd7b4553500b65aa6a20fabe03432e6ca) )
 	ROM_LOAD16_BYTE( "rpunch.2",  0x10000, 0x08000, CRC(9b9729bb) SHA1(3fcf8df9787137d331c062bc4ee97d865af29c78) )
 	ROM_LOAD16_BYTE( "rpunch.3",  0x10001, 0x08000, CRC(5704a688) SHA1(3c447cd98ecd25798dbeea328e3ccbaad384c8b1) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "rpunch.92", 0x00000, 0x10000, CRC(5e1870e3) SHA1(0ab33f39144ed72d805341d869f61764610d3df6) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_ERASEFF )
@@ -577,13 +558,13 @@ ROM_START( rpunch )
 ROM_END
 
 ROM_START( rabiolep )
-	ROM_REGION( 0x40000, "main", 0 )
+	ROM_REGION( 0x40000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "rl_e2.bin", 0x00000, 0x08000, CRC(7d936a12) SHA1(4f472ccbceb13b4d0b14c686d151faa8d4c466c7) )
 	ROM_LOAD16_BYTE( "rl_d2.bin", 0x00001, 0x08000, CRC(d8d85429) SHA1(dc52c30c18026300a4625bddc987a00396bcd079) )
 	ROM_LOAD16_BYTE( "rl_e4.bin", 0x10000, 0x08000, CRC(5bfaee12) SHA1(c918b1843ad96410f41915574cf12949658c6e90) )
 	ROM_LOAD16_BYTE( "rl_d4.bin", 0x10001, 0x08000, CRC(e64216bf) SHA1(851ebab8d7cddb60ab0a8a290df151b35d605e3e) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "rl_f20.bin", 0x00000, 0x10000, CRC(a6f50351) SHA1(3152d4ed100b0dfaf0da4ee79cd9e0f1692335e0) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_ERASEFF )
@@ -611,13 +592,13 @@ ROM_END
 
 
 ROM_START( svolley )
-	ROM_REGION( 0x40000, "main", 0 )
+	ROM_REGION( 0x40000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "sps_13.bin", 0x00000, 0x10000, CRC(2fbc5dcf) SHA1(fba4d353948f29b75b4db464509f7e606703f9dc) )
 	ROM_LOAD16_BYTE( "sps_11.bin", 0x00001, 0x10000, CRC(51b025c9) SHA1(4eae91ee9fe893083d0ff5fed28d847dba49b244) )
 	ROM_LOAD16_BYTE( "sps_14.bin", 0x20000, 0x08000, CRC(e7630122) SHA1(d200afe5134030be615f112af0ab54ac3b349eca) )
 	ROM_LOAD16_BYTE( "sps_12.bin", 0x20001, 0x08000, CRC(b6b24910) SHA1(2e4cf80a8eb1fcd9448405ff881bb99ae4ce8909) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "sps_17.bin", 0x00000, 0x10000, CRC(48b89688) SHA1(1f39d979a852f5237a7d95231e86a28cdc1f4d65) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_ERASEFF )
@@ -648,13 +629,13 @@ ROM_START( svolley )
 ROM_END
 
 ROM_START( svolleyk )
-	ROM_REGION( 0x40000, "main", 0 )
+	ROM_REGION( 0x40000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "a14.bin", 0x00000, 0x10000, CRC(dbab3bf9) SHA1(b329245666fb5082871d661714332b10cf49fe41) )
 	ROM_LOAD16_BYTE( "a11.bin", 0x00001, 0x10000, CRC(92afd56f) SHA1(6edb421af6051de640c3ed9bb75bd9e7f609ce14) )
 	ROM_LOAD16_BYTE( "a15.bin", 0x20000, 0x08000, CRC(d8f89c4a) SHA1(454b42277457d3ebdefb04fc91f6bdc1e0d28439) )
 	ROM_LOAD16_BYTE( "a12.bin", 0x20001, 0x08000, CRC(de3dd5cb) SHA1(ea997b91ff45513e69fe76d71da40c8f9dc112f7) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "sps_17.bin", 0x00000, 0x10000, CRC(48b89688) SHA1(1f39d979a852f5237a7d95231e86a28cdc1f4d65) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_ERASEFF )
@@ -686,13 +667,13 @@ ROM_START( svolleyk )
 ROM_END
 
 ROM_START( svolleyu )
-	ROM_REGION( 0x40000, "main", 0 )
+	ROM_REGION( 0x40000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "svb-du8.137", 0x00000, 0x10000, CRC(ffd5d261) SHA1(cf1a6897b88481d6dc7ffca647f85b91b04c2242) )
 	ROM_LOAD16_BYTE( "svb-du5.136", 0x00001, 0x10000, CRC(c1e943f5) SHA1(dda0db7dcf61038fd14d1717ee036e0e5b92253d) )
 	ROM_LOAD16_BYTE( "svb-du9.127", 0x20000, 0x08000, CRC(70e04a2e) SHA1(0dec1e21a7bf611caf3487a31965654ce1fe2989) )
 	ROM_LOAD16_BYTE( "svb-du6.126", 0x20001, 0x08000, CRC(acb3872b) SHA1(a720efe3f248c6a8c8f95c5c90bfe7f1e8537911) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "sps_17.bin", 0x00000, 0x10000, CRC(48b89688) SHA1(1f39d979a852f5237a7d95231e86a28cdc1f4d65) )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_ERASEFF )

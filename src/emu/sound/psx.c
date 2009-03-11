@@ -80,7 +80,18 @@ struct psxinfo
 	UINT32 m_n_loop[ MAX_CHANNEL ];
 
 	sound_stream *stream;
+	int installHack;
 };
+
+INLINE struct psxinfo *get_safe_token(const device_config *device)
+{
+	assert(device != NULL);
+	assert(device->token != NULL);
+	assert(device->type == SOUND);
+	assert(sound_get_type(device) == SOUND_PSXSPU);
+	return (struct psxinfo *)device->token;
+}
+
 
 #define SPU_REG( a ) ( ( a - 0xc00 ) / 4 )
 #define SPU_CHANNEL_REG( a ) ( a / 4 )
@@ -156,7 +167,7 @@ static STREAM_UPDATE( PSXSPU_update )
 					( chip->m_n_irqaddress * 4 ) >= chip->m_p_n_blockaddress[ n_channel ] &&
 					( chip->m_n_irqaddress * 4 ) <= chip->m_p_n_blockaddress[ n_channel ] + 7 )
 				{
-					chip->intf->irq_set( chip->device->machine, 0x0200 );
+					chip->intf->irq_set( chip->device, 0x0200 );
 				}
 
 				n_shift =   ( chip->m_p_n_spuram[ chip->m_p_n_blockaddress[ n_channel ] ] >> 0 ) & 0x0f;
@@ -215,7 +226,7 @@ static STREAM_UPDATE( PSXSPU_update )
 
 static void spu_read( running_machine *machine, UINT32 n_address, INT32 n_size )
 {
-	struct psxinfo *chip = sndti_token(SOUND_PSXSPU, 0);
+	struct psxinfo *chip = get_safe_token(devtag_get_device(machine, "spu"));
 	verboselog( machine, 1, "spu_read( %08x, %08x )\n", n_address, n_size );
 
 	while( n_size > 0 )
@@ -234,7 +245,7 @@ static void spu_read( running_machine *machine, UINT32 n_address, INT32 n_size )
 
 static void spu_write( running_machine *machine, UINT32 n_address, INT32 n_size )
 {
-	struct psxinfo *chip = sndti_token(SOUND_PSXSPU, 0);
+	struct psxinfo *chip = get_safe_token(devtag_get_device(machine, "spu"));
 	verboselog( machine, 1, "spu_write( %08x, %08x )\n", n_address, n_size );
 
 	while( n_size > 0 )
@@ -250,16 +261,13 @@ static void spu_write( running_machine *machine, UINT32 n_address, INT32 n_size 
 	}
 }
 
-static SND_START( psxspu )
+static DEVICE_START( psxspu )
 {
-	struct psxinfo *chip;
+	struct psxinfo *chip = get_safe_token(device);
 	int n_effect;
 	int n_channel;
 
-	chip = auto_malloc(sizeof(*chip));
-	memset(chip, 0, sizeof(*chip));
-
-	chip->intf = config;
+	chip->intf = device->static_config;
 	chip->device = device;
 	chip->g_p_n_psxram = *(chip->intf->p_psxram);
 
@@ -348,32 +356,30 @@ static SND_START( psxspu )
 	state_save_register_device_item_array( device, 0, chip->m_p_n_s2 );
 	state_save_register_device_item_array( device, 0, chip->m_n_loop );
 
-	chip->intf->spu_install_read_handler( 4, spu_read );
-	chip->intf->spu_install_write_handler( 4, spu_write );
+	chip->installHack = 0;
 
 	chip->stream = stream_create( device, 0, 2, 44100, chip, PSXSPU_update );
-	return chip;
 }
 
 
 static UINT32 psx_spu_delay = 0;
 
-WRITE32_HANDLER( psx_spu_delay_w )
+WRITE32_DEVICE_HANDLER( psx_spu_delay_w )
 {
 	COMBINE_DATA( &psx_spu_delay );
-	verboselog( space->machine, 1, "psx_spu_delay_w( %08x %08x )\n", data, mem_mask );
+	verboselog( device->machine, 1, "psx_spu_delay_w( %08x %08x )\n", data, mem_mask );
 }
 
-READ32_HANDLER( psx_spu_delay_r )
+READ32_DEVICE_HANDLER( psx_spu_delay_r )
 {
-	verboselog( space->machine, 1, "psx_spu_delay_r( %08x )\n", mem_mask );
+	verboselog( device->machine, 1, "psx_spu_delay_r( %08x )\n", mem_mask );
 	return psx_spu_delay;
 }
 
-READ32_HANDLER( psx_spu_r )
+READ32_DEVICE_HANDLER( psx_spu_r )
 {
-	running_machine *machine = space->machine;
-	struct psxinfo *chip = sndti_token(SOUND_PSXSPU, 0);
+	struct psxinfo *chip = get_safe_token(device);
+	running_machine *machine = device->machine;
 	int n_channel;
 	n_channel = offset / 4;
 	if( n_channel < MAX_CHANNEL )
@@ -440,12 +446,21 @@ READ32_HANDLER( psx_spu_r )
 	}
 }
 
-WRITE32_HANDLER( psx_spu_w )
+WRITE32_DEVICE_HANDLER( psx_spu_w )
 {
-	running_machine *machine = space->machine;
-	struct psxinfo *chip = sndti_token(SOUND_PSXSPU, 0);
+	struct psxinfo *chip = get_safe_token(device);
+	running_machine *machine = device->machine;
 	int n_channel;
 	n_channel = offset / 4;
+
+	if( !chip->installHack )
+	{
+		chip->intf->spu_install_read_handler( 4, spu_read );
+		chip->intf->spu_install_write_handler( 4, spu_write );
+
+		chip->installHack = 1;
+	}
+
 	if( n_channel < MAX_CHANNEL )
 	{
 		switch( offset % 4 )
@@ -668,33 +683,24 @@ WRITE32_HANDLER( psx_spu_w )
  * Generic get_info
  **************************************************************************/
 
-static SND_SET_INFO( psxspu )
-{
-	switch (state)
-	{
-		/* no parameters to set */
-	}
-}
-
-
-SND_GET_INFO( psxspu )
+DEVICE_GET_INFO( psxspu )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(struct psxinfo);				break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( psxspu );	break;
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( psxspu );			break;
-		case SNDINFO_PTR_STOP:							/* Nothing */									break;
-		case SNDINFO_PTR_RESET:							/* Nothing */									break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( psxspu );			break;
+		case DEVINFO_FCT_STOP:							/* Nothing */									break;
+		case DEVINFO_FCT_RESET:							/* Nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							strcpy(info->s, "SPU");							break;
-		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Sony custom");					break;
-		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
-		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
-		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "SPU");							break;
+		case DEVINFO_STR_FAMILY:					strcpy(info->s, "Sony custom");					break;
+		case DEVINFO_STR_VERSION:					strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:						strcpy(info->s, __FILE__);						break;
+		case DEVINFO_STR_CREDITS:					strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
 

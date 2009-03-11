@@ -176,11 +176,11 @@ static ADDRESS_MAP_START( jokrwild_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_WRITE(jokrwild_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x2000, 0x27ff) AM_RAM AM_WRITE(jokrwild_colorram_w) AM_BASE(&colorram)
 //  AM_RANGE(0x0010, 0x0010) AM_READ(random_gen_r)
-//  AM_RANGE(0x4004, 0x4007) AM_READWRITE(pia_0_r, pia_0_w)
-//  AM_RANGE(0x4008, 0x400b) AM_READWRITE(pia_1_r, pia_1_w)
+//  AM_RANGE(0x4004, 0x4007) AM_DEVREADWRITE("pia0", pia6821_r, pia6821_w)
+//  AM_RANGE(0x4008, 0x400b) AM_DEVREADWRITE("pia1", pia6821_r, pia6821_w)
 //  AM_RANGE(0x4010, 0x4010) AM_READNOP /* R ???? */
-	AM_RANGE(0x6000, 0x6000) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0x6001, 0x6001) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
+	AM_RANGE(0x6000, 0x6000) AM_DEVWRITE("crtc", mc6845_address_w)
+	AM_RANGE(0x6001, 0x6001) AM_DEVREADWRITE("crtc", mc6845_register_r, mc6845_register_w)
 //  AM_RANGE(0x6100, 0x6100) AM_READWRITENOP    /* R/W ???? */
 //  AM_RANGE(0x6200, 0x6203) another PIA?
 //  AM_RANGE(0x6300, 0x6300) unknown
@@ -309,26 +309,34 @@ GFXDECODE_END
 
 static const pia6821_interface pia0_intf =
 {
-	/* PIA inputs: A, B, CA1, CB1, CA2, CB2 */
-	input_port_0_r, input_port_1_r, 0, 0, 0, 0,
-
-	/* PIA outputs: A, B, CA2, CB2 */
-	0, 0, 0, 0,
-
-	/* PIA IRQs: A, B */
-	0, 0
+	DEVCB_INPUT_PORT("IN0"),		/* port A in */
+	DEVCB_INPUT_PORT("IN1"),		/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_NULL,		/* port A out */
+	DEVCB_NULL,		/* port B out */
+	DEVCB_NULL,		/* line CA2 out */
+	DEVCB_NULL,		/* port CB2 out */
+	DEVCB_NULL,		/* IRQA */
+	DEVCB_NULL		/* IRQB */
 };
 
 static const pia6821_interface pia1_intf =
 {
-	/* PIA inputs: A, B, CA1, CB1, CA2, CB2 */
-	input_port_2_r, input_port_3_r, 0, 0, 0, 0,
-
-	/* PIA outputs: A, B, CA2, CB2 */
-	0, 0, 0, 0,
-
-	/* PIA IRQs: A, B */
-	0, 0
+	DEVCB_INPUT_PORT("IN2"),		/* port A in */
+	DEVCB_INPUT_PORT("IN3"),		/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_NULL,		/* port A out */
+	DEVCB_NULL,		/* port B out */
+	DEVCB_NULL,		/* line CA2 out */
+	DEVCB_NULL,		/* port CB2 out */
+	DEVCB_NULL,		/* IRQA */
+	DEVCB_NULL		/* IRQB */
 };
 
 
@@ -338,7 +346,7 @@ static const pia6821_interface pia1_intf =
 
 static const mc6845_interface mc6845_intf =
 {
-	"main",		/* screen we are acting on */
+	"screen",	/* screen we are acting on */
 	8,			/* number of pixels per video memory address */
 	NULL,		/* before pixel update callback */
 	NULL,		/* row update callback */
@@ -356,14 +364,17 @@ static const mc6845_interface mc6845_intf =
 static MACHINE_DRIVER_START( jokrwild )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809, MASTER_CLOCK/8)	/* guess */
+	MDRV_CPU_ADD("maincpu", M6809, MASTER_CLOCK/8)	/* guess */
 	MDRV_CPU_PROGRAM_MAP(jokrwild_map, 0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 //  MDRV_NVRAM_HANDLER(generic_0fill)
 
+	MDRV_PIA6821_ADD("pia0", pia0_intf)
+	MDRV_PIA6821_ADD("pia1", pia1_intf)
+
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -392,7 +403,7 @@ MACHINE_DRIVER_END
 
 */
 ROM_START( jokrwild )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "jwild.7b",	0x8000, 0x4000, CRC(744cd029) SHA1(766faea330836344ffc6a1b4e1a64a679b9bf579) )
 	ROM_LOAD( "jwild.7a",	0xc000, 0x4000, CRC(ca8e4f58) SHA1(a4f682980fe562dcd8743890ce94619719cd1153) )
 
@@ -430,17 +441,13 @@ static DRIVER_INIT( jokrwild )
 *****************************************************************************/
 {
 	int i, offs;
-	UINT8 *srcp = memory_region( machine, "main" );
+	UINT8 *srcp = memory_region( machine, "maincpu" );
 
 	for (i = 0x8000; i < 0x10000; i++)
 	{
 		offs = i & 0xff;
 		srcp[i] = srcp[i] ^ 0xcc ^ offs;
 	}
-
-	/* Initializing PIAs... */
-//  pia_config(machine, 0, &pia0_intf);
-//  pia_config(machine, 1, &pia1_intf);
 }
 
 

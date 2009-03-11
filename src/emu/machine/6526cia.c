@@ -58,15 +58,16 @@ struct _cia_port
 	UINT8		latch;
 	UINT8		in;
 	UINT8		out;
-	UINT8		(*read)(const device_config *);
-	void		(*write)(const device_config *, UINT8);
+	devcb_resolved_read8	read;
+	devcb_resolved_write8	write;
 	UINT8		mask_value; /* in READ operation the value can be forced by a extern electric circuit */
 };
 
 struct _cia_state
 {
 	const device_config *device;
-	void			(*irq_func)(const device_config *device, int state);
+	devcb_resolved_write_line irq_func;
+	devcb_resolved_write_line pc_func;
 
 	cia_port		port[2];
 	cia_timer		timer[2];
@@ -140,13 +141,14 @@ static DEVICE_START( cia )
 	/* clear out CIA structure, and copy the interface */
 	memset(cia, 0, sizeof(*cia));
 	cia->device = device;
-	cia->irq_func = intf->irq_func;
+	devcb_resolve_write_line(&cia->irq_func, &intf->irq_func, device);
+	devcb_resolve_write_line(&cia->pc_func, &intf->pc_func, device);
 
 	/* setup ports */
 	for (p = 0; p < (sizeof(cia->port) / sizeof(cia->port[0])); p++)
 	{
-		cia->port[p].read = intf->port[p].read;
-		cia->port[p].write = intf->port[p].write;
+		devcb_resolve_read8(&cia->port[p].read, &intf->port[p].read, device);
+		devcb_resolve_write8(&cia->port[p].write, &intf->port[p].write, device);
 		cia->port[p].mask_value = 0xff;
 	}
 
@@ -196,7 +198,6 @@ static DEVICE_START( cia )
 	state_save_register_device_item(device, 0, cia->cnt);
 	state_save_register_device_item(device, 0, cia->shift);
 	state_save_register_device_item(device, 0, cia->serial);
-	return DEVICE_START_OK;
 }
 
 
@@ -256,6 +257,38 @@ static DEVICE_RESET( cia )
 
 
 /*-------------------------------------------------
+    DEVICE_VALIDITY_CHECK( cia )
+-------------------------------------------------*/
+
+static DEVICE_VALIDITY_CHECK( cia )
+{
+	int error = FALSE;
+
+	if (device->clock <= 0)
+	{
+		mame_printf_error("%s: %s has a cia with an invalid clock\n", driver->source_file, driver->name);
+		error = TRUE;
+	}
+
+	return error;
+}
+
+
+/*-------------------------------------------------
+    cia_update_pc - pulse /pc output
+-------------------------------------------------*/
+
+static void cia_update_pc(const device_config *device)
+{
+	cia_state *cia = get_token(device);
+
+	/* this should really be one cycle long */
+	devcb_call_write_line(&cia->pc_func, 0);
+	devcb_call_write_line(&cia->pc_func, 1);
+}
+
+
+/*-------------------------------------------------
     cia_update_interrupts
 -------------------------------------------------*/
 
@@ -275,8 +308,7 @@ static void cia_update_interrupts(const device_config *device)
 	if (cia->irq != new_irq)
 	{
 		cia->irq = new_irq;
-		if (cia->irq_func)
-			(*cia->irq_func)(device, cia->irq);
+		devcb_call_write_line(&cia->irq_func, cia->irq);
 	}
 }
 
@@ -610,7 +642,7 @@ READ8_DEVICE_HANDLER( cia_r )
 		case CIA_PRA:
 		case CIA_PRB:
 			port = &cia->port[offset & 1];
-			data = port->read ? (*port->read)(device) : 0;
+			data = devcb_call_read8(&port->read, 0);
 			data = ((data & ~port->ddr) | (port->latch & port->ddr)) & port->mask_value;
 			port->in = data;
 
@@ -635,6 +667,9 @@ READ8_DEVICE_HANDLER( cia_r )
 					else
 						data &= ~0x80;
 				}
+
+				/* pulse /PC following the read */
+				cia_update_pc(device);
 			}
 			break;
 
@@ -725,8 +760,12 @@ WRITE8_DEVICE_HANDLER( cia_w )
 			port = &cia->port[offset & 1];
 			port->latch = data;
 			port->out = (data & port->ddr) | (port->in & ~port->ddr);
-			if (port->write != NULL)
-				(*port->write)(device, port->out);
+			devcb_call_write8(&port->write, 0, port->out);
+
+			/* pulse /PC following the write */
+			if (offset == CIA_PRB)
+				cia_update_pc(device);
+
 			break;
 
 		/* port A/B direction */
@@ -852,6 +891,7 @@ DEVICE_GET_INFO(cia6526r1)
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(cia);		break;
 		case DEVINFO_FCT_STOP:							/* Nothing */								break;
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(cia);		break;
+		case DEVINFO_FCT_VALIDITY_CHECK:				info->validity_check = DEVICE_VALIDITY_CHECK_NAME(cia); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "6526 CIA rev1");			break;

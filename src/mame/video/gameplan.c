@@ -142,7 +142,7 @@ static WRITE8_DEVICE_HANDLER( leprechn_video_command_w )
 
 static TIMER_CALLBACK( clear_screen_done_callback )
 {
-	const device_config *via = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
+	const device_config *via = devtag_get_device(machine, "via6522_0");
 
 	/* indicate that the we are done clearing the screen */
 	via_ca1_w(via, 0, 0);
@@ -195,7 +195,7 @@ static WRITE8_DEVICE_HANDLER( video_command_trigger_w )
 		case 3:
 			/* indicate that the we are busy */
 			{
-				const device_config *via = device_list_find_by_tag(device->machine->config->devicelist, VIA6522, "via6522_0");
+				const device_config *via = devtag_get_device(device->machine, "via6522_0");
 				via_ca1_w(via, 0, 1);
 			}
 
@@ -236,38 +236,38 @@ static READ8_DEVICE_HANDLER( vblank_r )
 
 const via6522_interface gameplan_via_0_interface =
 {
-	0, vblank_r,							/*inputs : A/B         */
-	0, 0, 0, 0,								/*inputs : CA/B1,CA/B2 */
-	video_data_w, gameplan_video_command_w,	/*outputs: A/B         */
-	0, 0, video_command_trigger_w, 0,		/*outputs: CA/B1,CA/B2 */
-	via_irq									/*irq                  */
+	DEVCB_NULL, DEVCB_HANDLER(vblank_r),							/*inputs : A/B         */
+	DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL,								/*inputs : CA/B1,CA/B2 */
+	DEVCB_HANDLER(video_data_w), DEVCB_HANDLER(gameplan_video_command_w),	/*outputs: A/B         */
+	DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(video_command_trigger_w), DEVCB_NULL,		/*outputs: CA/B1,CA/B2 */
+	DEVCB_LINE(via_irq)									/*irq                  */
 };
 
 
 const via6522_interface leprechn_via_0_interface =
 {
-	0, vblank_r,							/*inputs : A/B         */
-	0, 0, 0, 0,								/*inputs : CA/B1,CA/B2 */
-	video_data_w, leprechn_video_command_w,	/*outputs: A/B         */
-	0, 0, video_command_trigger_w, 0,		/*outputs: CA/B1,CA/B2 */
-	via_irq									/*irq                  */
+	DEVCB_NULL, DEVCB_HANDLER(vblank_r),							/*inputs : A/B         */
+	DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL,								/*inputs : CA/B1,CA/B2 */
+	DEVCB_HANDLER(video_data_w), DEVCB_HANDLER(leprechn_video_command_w),	/*outputs: A/B         */
+	DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(video_command_trigger_w), DEVCB_NULL,		/*outputs: CA/B1,CA/B2 */
+	DEVCB_LINE(via_irq)									/*irq                  */
 };
 
 
 const via6522_interface trvquest_via_0_interface =
 {
-	0, vblank_r,							/*inputs : A/B         */
-	0, 0, 0, 0,								/*inputs : CA/B1,CA/B2 */
-	video_data_w, gameplan_video_command_w,	/*outputs: A/B         */
-	0, 0, video_command_trigger_w, 0,		/*outputs: CA/B1,CA/B2 */
-	0										/*irq                  */
+	DEVCB_NULL, DEVCB_HANDLER(vblank_r),							/*inputs : A/B         */
+	DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL,								/*inputs : CA/B1,CA/B2 */
+	DEVCB_HANDLER(video_data_w), DEVCB_HANDLER(gameplan_video_command_w),	/*outputs: A/B         */
+	DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(video_command_trigger_w), DEVCB_NULL,		/*outputs: CA/B1,CA/B2 */
+	DEVCB_NULL										/*irq                  */
 };
 
 
 static TIMER_CALLBACK( via_0_ca1_timer_callback )
 {
 	gameplan_state *state = machine->driver_data;
-	const device_config *via = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
+	const device_config *via = devtag_get_device(machine, "via6522_0");
 
 	/* !VBLANK is connected to CA1 */
 	via_ca1_w(via, 0, (UINT8)param);
@@ -361,7 +361,7 @@ MACHINE_DRIVER_START( gameplan_video )
 	MDRV_VIDEO_START(gameplan)
 	MDRV_VIDEO_UPDATE(gameplan)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(GAMEPLAN_PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
 MACHINE_DRIVER_END

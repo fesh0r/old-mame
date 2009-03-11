@@ -124,20 +124,22 @@ Notes (couriersud)
  *
  *************************************/
 
-#define DEBUG		(1)
+#define DEBUG		(0)
+
+#define LOG(x) do { if (DEBUG) printf x; } while (0)
 
 static WRITE8_DEVICE_HANDLER(ic8j1_output_changed)
 {
-	printf("ic8j1: %d %d\n", data, video_screen_get_vpos(device->machine->primary_screen));
+	LOG(("ic8j1: %d %d\n", data, video_screen_get_vpos(device->machine->primary_screen)));
 	cpu_set_input_line(device->machine->cpu[0], 0, !data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_DEVICE_HANDLER(ic8j2_output_changed)
 {
 	/* written from /Q to A with slight delight */
-	printf("ic8j2: %d\n", data);
+	LOG(("ic8j2: %d\n", data));
 	ttl74123_a_w(device, 0, data);
-	ttl74123_a_w(devtag_get_device(device->machine, TTL74123, "ic8j1"), 0, data);
+	ttl74123_a_w(devtag_get_device(device->machine, "ic8j1"), 0, data);
 }
 
 static const ttl74123_config ic8j1_intf =
@@ -222,6 +224,7 @@ static MACHINE_RESET( irem )
 
 static WRITE8_HANDLER( m10_ctrl_w )
 {
+	const device_config *samples = devtag_get_device(space->machine, "samples");
 	m10_state *state = space->machine->driver_data;
 
 #if DEBUG
@@ -246,27 +249,27 @@ static WRITE8_HANDLER( m10_ctrl_w )
 			break;
 		case 0x01:
 			/* MISSILE sound */
-			sample_start_n(0, 0, 0, 0);
+			sample_start(samples, 0, 0, 0);
 			break;
 		case 0x02:
 			/* EXPLOSION sound */
-			sample_start_n(0, 1, 1, 0);
+			sample_start(samples, 1, 1, 0);
 			break;
 		case 0x03:
 			/* INVADER HIT sound */
-			sample_start_n(0, 2, 2, 0);
+			sample_start(samples, 2, 2, 0);
 			break;
 		case 0x04:
 			/* BONUS BASE sound */
-			sample_start_n(0, 3, 8, 0);
+			sample_start(samples, 3, 8, 0);
 			break;
 		case 0x05:
 			/* FLEET MOVE sound */
-			sample_start_n(0, 3, 3, 0);
+			sample_start(samples, 3, 3, 0);
 			break;
 		case 0x06:
 			/* SAUCER HIT SOUND */
-			sample_start_n(0, 2, 7, 0);
+			sample_start(samples, 2, 7, 0);
 			break;
 		default:
 			popmessage("Unknown sound M10: %02x\n", data & 0x07);
@@ -274,9 +277,9 @@ static WRITE8_HANDLER( m10_ctrl_w )
 	}
 	/* UFO SOUND */
 	if (data & 0x08)
-		sample_stop_n(0, 4);
+		sample_stop(samples, 4);
 	else
-		sample_start_n(0, 4, 9, 1);
+		sample_start(samples, 4, 9, 1);
 
 }
 
@@ -369,6 +372,7 @@ static WRITE8_HANDLER( m10_a500_w )
 static WRITE8_HANDLER( m11_a100_w )
 {
 	static int last = 0x00;
+	const device_config *samples = devtag_get_device(space->machine, "samples");
 	int raising_bits = data & ~last;
 	//int falling_bits = ~data & last;
 
@@ -382,27 +386,28 @@ static WRITE8_HANDLER( m11_a100_w )
 	// audio control!
 	/* MISSILE sound */
 	if (raising_bits & 0x01)
-		sample_start_n(0, 0, 0, 0);
+		sample_start(samples, 0, 0, 0);
 
 	/* EXPLOSION sound */
 	if (raising_bits & 0x02)
-		sample_start_n(0, 1, 1, 0);
+		sample_start(samples, 1, 1, 0);
 
 	/* Rapidly falling parachute */
 	if (raising_bits & 0x04)
-		sample_start_n(0, 3, 8, 0);
+		sample_start(samples, 3, 8, 0);
 
 	/* Background sound ? */
 	if (data & 0x10)
-		sample_start_n(0, 4, 9, 1);
+		sample_start(samples, 4, 9, 1);
 	else
-		sample_stop_n(0, 4);
+		sample_stop(samples, 4);
 
 }
 
 static WRITE8_HANDLER( m15_a100_w )
 {
 	static int last = 0x00;
+	const device_config *samples = devtag_get_device(space->machine, "samples");
 	//int raising_bits = data & ~last;
 	int falling_bits = ~data & last;
 
@@ -425,34 +430,34 @@ static WRITE8_HANDLER( m15_a100_w )
 #endif
 	/* DOT sound */
 	if (falling_bits & 0x40)
-		sample_start_n(0, 0, 0, 0);
+		sample_start(samples, 0, 0, 0);
 #if 0
 	if (raising_bits & 0x40)
-		sample_stop_n(0, 0);
+		sample_stop(samples, 0);
 #endif
 
 	/* EXPLOSION sound */
 	if (falling_bits & 0x08)
-		sample_start_n(0, 1, 1, 0);
+		sample_start(samples, 1, 1, 0);
 #if 0
 	if (raising_bits & 0x08)
-		sample_stop_n(0, 1);
+		sample_stop(samples, 1);
 #endif
 
 	/* player changes lane */
 	if (falling_bits & 0x10)
-		sample_start_n(0, 3, 3, 0);
+		sample_start(samples, 3, 3, 0);
 #if 0
 	if (raising_bits & 0x10)
-		sample_stop_n(0, 3);
+		sample_stop(samples, 3);
 #endif
 
 	/* computer car changes lane */
 	if (falling_bits & 0x20)
-		sample_start_n(0, 4, 4, 0);
+		sample_start(samples, 4, 4, 0);
 #if 0
 	if (raising_bits & 0x20)
-		sample_stop_n(0, 4);
+		sample_stop(samples, 4);
 #endif
 
 	last = data;
@@ -460,20 +465,20 @@ static WRITE8_HANDLER( m15_a100_w )
 
 static READ8_HANDLER( m10_a700_r )
 {
-   	//printf("rd:%d\n",video_screen_get_vpos(space->machine->primary_screen));
-	printf("clear\n");
-	ttl74123_clear_w(devtag_get_device(space->machine, TTL74123, "ic8j1"), 0, 0);
-	ttl74123_clear_w(devtag_get_device(space->machine, TTL74123, "ic8j1"), 0, 1);
+   	//LOG(("rd:%d\n",video_screen_get_vpos(space->machine->primary_screen)));
+	LOG(("clear\n"));
+	ttl74123_clear_w(devtag_get_device(space->machine, "ic8j1"), 0, 0);
+	ttl74123_clear_w(devtag_get_device(space->machine, "ic8j1"), 0, 1);
 	return 0x00;
 }
 
 static READ8_HANDLER( m11_a700_r )
 {
-   	//printf("rd:%d\n",video_screen_get_vpos(space->machine->primary_screen));
+   	//LOG(("rd:%d\n",video_screen_get_vpos(space->machine->primary_screen)));
 	//cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
-	printf("clear\n");
-	ttl74123_clear_w(devtag_get_device(space->machine, TTL74123, "ic8j1"), 0, 0);
-	ttl74123_clear_w(devtag_get_device(space->machine, TTL74123, "ic8j1"), 0, 1);
+	LOG(("clear\n"));
+	ttl74123_clear_w(devtag_get_device(space->machine, "ic8j1"), 0, 0);
+	ttl74123_clear_w(devtag_get_device(space->machine, "ic8j1"), 0, 1);
 	return 0x00;
 }
 
@@ -537,7 +542,7 @@ static ADDRESS_MAP_START( m10_main, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1000, 0x2fff) AM_READ(SMH_ROM) AM_BASE_MEMBER(m10_state, rom)
 	AM_RANGE(0x4000, 0x43ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x4800, 0x4bff) AM_RAM_WRITE(m10_colorram_w) AM_BASE(&colorram) /* foreground colour  */
-	AM_RANGE(0x5000, 0x53ff) AM_RAM AM_BASE_MEMBER(m10_state, chargen) /* background ????? */
+	AM_RANGE(0x5000, 0x53ff) AM_RAM_WRITE(m10_chargen_w) AM_BASE_MEMBER(m10_state, chargen) /* background ????? */
 	AM_RANGE(0xa200, 0xa200) AM_READ_PORT("DSW")
 	AM_RANGE(0xa300, 0xa300) AM_READ_PORT("INPUTS")
 	AM_RANGE(0xa400, 0xa400) AM_WRITE(m10_ctrl_w)	/* line at bottom of screen?, sound, flip screen */
@@ -813,15 +818,15 @@ static MACHINE_DRIVER_START( m10 )
 	MDRV_DRIVER_DATA(m10_state)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502,IREMM10_CPU_CLOCK)
+	MDRV_CPU_ADD("maincpu", M6502,IREMM10_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(m10_main,0)
 
 	MDRV_MACHINE_RESET(irem)
 
-	//MDRV_CPU_VBLANK_INT("main", m10_interrupt)
+	//MDRV_CPU_VBLANK_INT("screen", m10_interrupt)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(IREMM10_PIXEL_CLOCK, IREMM10_HTOTAL, IREMM10_HBEND, IREMM10_HBSTART, IREMM10_VTOTAL, IREMM10_VBEND, IREMM10_VBSTART)
 
@@ -852,10 +857,10 @@ static MACHINE_DRIVER_START( m11 )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(m10)
-	MDRV_CPU_REPLACE("main", M6502,IREMM10_CPU_CLOCK)
-	//MDRV_CPU_MODIFY("main")
+	MDRV_CPU_REPLACE("maincpu", M6502,IREMM10_CPU_CLOCK)
+	//MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(m11_main,0)
-	//MDRV_CPU_VBLANK_INT("main", m11_interrupt)
+	//MDRV_CPU_VBLANK_INT("screen", m11_interrupt)
 
 	/* sound hardware */
 MACHINE_DRIVER_END
@@ -865,15 +870,15 @@ static MACHINE_DRIVER_START( m15 )
 	MDRV_DRIVER_DATA(m10_state)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502,IREMM15_CPU_CLOCK)
+	MDRV_CPU_ADD("maincpu", M6502,IREMM15_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(m15_main,0)
 
 	MDRV_MACHINE_RESET(irem)
 
-	MDRV_CPU_VBLANK_INT("main", m15_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", m15_interrupt)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(IREMM15_PIXEL_CLOCK, IREMM15_HTOTAL, IREMM15_HBEND, IREMM15_HBSTART, IREMM15_VTOTAL, IREMM15_VBEND, IREMM15_VBSTART)
 
@@ -895,7 +900,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( headoni )
 	MDRV_IMPORT_FROM(m15)
-	MDRV_CPU_REPLACE("main", M6502,11730000/16)
+	MDRV_CPU_REPLACE("maincpu", M6502,11730000/16)
 MACHINE_DRIVER_END
 
 /*************************************
@@ -933,7 +938,7 @@ static DRIVER_INIT( ipminva1 )
 ***************************************************************************/
 
 ROM_START( andromed )//Jumps to an unmapped sub-routine at $2fc9
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "am1",  0x1000, 0x0400, CRC(53df0152) SHA1(d27113740094d219b0e05a930d8daa4c22129183) )
 	ROM_LOAD( "am2",  0x1400, 0x0400, CRC(dab64957) SHA1(77ced520f8e78bb08ddab4213646cf55d834e63e) )
 	ROM_LOAD( "am3",  0x1800, 0x0400, CRC(f983f35c) SHA1(1bfee6cf7d18b56594831f2efa7dcc53b47d7e30) )
@@ -950,7 +955,7 @@ ROM_START( andromed )//Jumps to an unmapped sub-routine at $2fc9
 ROM_END
 
 ROM_START( ipminvad )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "b1r",  0x1000, 0x0400, CRC(f9a7eb9b) SHA1(93ac65d3ac725d3e4c2fb769816ee808ab609911) )
 	ROM_LOAD( "b2r",  0x1400, 0x0400, CRC(af11c1aa) SHA1(6a74fcc7cb1627b1c427a77da89b69ccf3175800) )
 	ROM_LOAD( "b3r",  0x1800, 0x0400, CRC(ed49e481) SHA1(8771a34f432e6d88acc5f7529f16c980a77485db) )
@@ -966,7 +971,7 @@ ROM_START( ipminvad )
 ROM_END
 
 ROM_START( ipminva1 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "b1g",  0x1000, 0x0400, CRC(069102e2) SHA1(90affe384a688b0d42154633e80b708371117fc2) )
 	ROM_LOAD( "b2f",  0x1400, 0x0400, CRC(a6aa5879) SHA1(959ab207110785c03e57ca69c0e62356dd974085) )
 	ROM_LOAD( "b3f",  0x1800, 0x0400, CRC(0c09feb9) SHA1(0db43f480162f8e3fb8b61fcceb2884d19ff115b) )
@@ -982,7 +987,7 @@ ROM_START( ipminva1 )
 ROM_END
 
 ROM_START( skychut )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "sc1d",  0x1000, 0x0400, CRC(30b5ded1) SHA1(3a8b4fa344522404661b062808a2ea1d5858fdd0) )
 	ROM_LOAD( "sc2d",  0x1400, 0x0400, CRC(fd1f4b9e) SHA1(e5606979abe1fa4cc9eae0c4f61516769db35c39) )
 	ROM_LOAD( "sc3d",  0x1800, 0x0400, CRC(67ed201e) SHA1(589b1efdc1bbccff296f6420e2b320cd54b4ac8e) )
@@ -999,7 +1004,7 @@ ROM_START( skychut )
 ROM_END
 
 ROM_START( spacbeam )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "m1b", 0x1000, 0x0400, CRC(5a1c3e0b) SHA1(1c9c58359d74b14ce96934fcc6acefbdfaf1e1be) )
 	ROM_LOAD( "m2b", 0x1400, 0x0400, CRC(a02bd9d7) SHA1(d25dfa66b422bdbb29b1922007c84f1947fe9be1) )
 	ROM_LOAD( "m3b", 0x1800, 0x0400, CRC(78040843) SHA1(0b8a3ab09dff951aa527649f82b8877cf01126c1) )
@@ -1010,7 +1015,7 @@ ROM_START( spacbeam )
 ROM_END
 
 ROM_START( headoni )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "e1.9a", 0x1000, 0x0400, CRC(05da5265) SHA1(17e0c9261978770325a0befdcdd8a1b07ed39df0) )
 	ROM_LOAD( "e2.9b", 0x1400, 0x0400, CRC(dada26a8) SHA1(1368ade1c0c57d33d15594370cf1edf95fc44fd1) )
 	ROM_LOAD( "e3.9c", 0x1800, 0x0400, CRC(61ff24f5) SHA1(0e68aedd01b765fb2af76f914b3d287ecf30f716) )
@@ -1021,7 +1026,7 @@ ROM_START( headoni )
 ROM_END
 
 ROM_START( greenber )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "gb1", 0x1000, 0x0400, CRC(018ff672) SHA1(54d082a332831afc28b47704a5656da0a8a902fa) ) // ok
 	ROM_LOAD( "gb2", 0x1400, 0x0400, CRC(ea8f2267) SHA1(ad5bb38a80fbc7c70c8fa6f41086a7ade81655bc) ) // ok
 	ROM_LOAD( "gb3", 0x1800, 0x0400, CRC(8f337920) SHA1(ac3d76eb368645ba23f5823b39c04fae49d481e1) ) // ok

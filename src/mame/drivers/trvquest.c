@@ -60,13 +60,11 @@ static WRITE8_DEVICE_HANDLER( trvquest_misc_w )
 static ADDRESS_MAP_START( cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size) // cmos ram
 	AM_RANGE(0x2000, 0x27ff) AM_RAM // main ram
-	AM_RANGE(0x3800, 0x380f) AM_DEVREADWRITE(VIA6522, "via6522_1", via_r, via_w)
-	AM_RANGE(0x3810, 0x381f) AM_DEVREADWRITE(VIA6522, "via6522_2", via_r, via_w)
-	AM_RANGE(0x3820, 0x382f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
-	AM_RANGE(0x3830, 0x3830) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x3831, 0x3831) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x3840, 0x3840) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0x3841, 0x3841) AM_WRITE(ay8910_write_port_1_w)
+	AM_RANGE(0x3800, 0x380f) AM_DEVREADWRITE("via6522_1", via_r, via_w)
+	AM_RANGE(0x3810, 0x381f) AM_DEVREADWRITE("via6522_2", via_r, via_w)
+	AM_RANGE(0x3820, 0x382f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
+	AM_RANGE(0x3830, 0x3831) AM_DEVWRITE("ay1", ay8910_address_data_w)
+	AM_RANGE(0x3840, 0x3841) AM_DEVWRITE("ay2", ay8910_address_data_w)
 	AM_RANGE(0x3850, 0x3850) AM_READNOP //watchdog_reset_r ?
 	AM_RANGE(0x8000, 0x9fff) AM_READ(trvquest_question_r)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(gameplan_state, trvquest_question)
@@ -177,20 +175,20 @@ static READ8_DEVICE_HANDLER( via_input_port_3_r ) { return input_port_read_index
 
 static const via6522_interface via_1_interface =
 {
-	/*inputs : A/B         */ via_input_port_0_r, via_input_port_1_r,
-	/*inputs : CA/B1,CA/B2 */ NULL, NULL, NULL, NULL,
-	/*outputs: A/B         */ NULL, NULL,
-	/*outputs: CA/B1,CA/B2 */ NULL, NULL, trvquest_coin_w, NULL,
-	/*irq                  */ NULL
+	/*inputs : A/B         */ DEVCB_HANDLER(via_input_port_0_r), DEVCB_HANDLER(via_input_port_1_r),
+	/*inputs : CA/B1,CA/B2 */ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL,
+	/*outputs: A/B         */ DEVCB_NULL, DEVCB_NULL,
+	/*outputs: CA/B1,CA/B2 */ DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(trvquest_coin_w), DEVCB_NULL,
+	/*irq                  */ DEVCB_NULL
 };
 
 static const via6522_interface via_2_interface =
 {
-	/*inputs : A/B         */ via_input_port_2_r, via_input_port_3_r,
-	/*inputs : CA/B1,CA/B2 */ NULL, NULL, NULL, NULL,
-	/*outputs: A/B         */ NULL, NULL,
-	/*outputs: CA/B1,CA/B2 */ NULL, NULL, trvquest_misc_w, NULL,
-	/*irq                  */ via_irq
+	/*inputs : A/B         */ DEVCB_HANDLER(via_input_port_2_r), DEVCB_HANDLER(via_input_port_3_r),
+	/*inputs : CA/B1,CA/B2 */ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL,
+	/*outputs: A/B         */ DEVCB_NULL, DEVCB_NULL,
+	/*outputs: CA/B1,CA/B2 */ DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(trvquest_misc_w), DEVCB_NULL,
+	/*irq                  */ DEVCB_LINE(via_irq)
 };
 
 
@@ -204,7 +202,7 @@ static MACHINE_RESET( trvquest )
 
 static INTERRUPT_GEN( trvquest_interrupt )
 {
-	const device_config *via_2 = device_list_find_by_tag(device->machine->config->devicelist, VIA6522, "via6522_2");
+	const device_config *via_2 = devtag_get_device(device->machine, "via6522_2");
 	via_ca1_w(via_2, 0, 1);
 	via_ca1_w(via_2, 0, 0);
 }
@@ -213,9 +211,9 @@ static MACHINE_DRIVER_START( trvquest )
 
 	MDRV_DRIVER_DATA(gameplan_state)
 
-	MDRV_CPU_ADD("main", M6809,XTAL_6MHz/4)
+	MDRV_CPU_ADD("maincpu", M6809,XTAL_6MHz/4)
 	MDRV_CPU_PROGRAM_MAP(cpu_map,0)
-	MDRV_CPU_VBLANK_INT("main", trvquest_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", trvquest_interrupt)
 
 	MDRV_NVRAM_HANDLER(generic_1fill)
 	MDRV_MACHINE_START(trvquest)
@@ -240,7 +238,7 @@ static MACHINE_DRIVER_START( trvquest )
 MACHINE_DRIVER_END
 
 ROM_START( trvquest )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "rom3", 0xb000, 0x1000, CRC(2ff7f370) SHA1(66f40426ed02ee44235e17a49d9054ede42b83b9) )
 	ROM_LOAD( "rom4", 0xc000, 0x1000, CRC(b1adebcb) SHA1(661cabc92b1defce5c2edb8e873a80d5032084d0) )
 	ROM_LOAD( "rom5", 0xd000, 0x1000, CRC(2fc10a15) SHA1(8ecce32a5a167056c8fb48554a8907ae6299921e) )

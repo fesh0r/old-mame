@@ -32,10 +32,86 @@ These boards use two 8910's for sound, controlled by a dedicated 6502. The
 main processor triggers an IRQ request when writing a command to the sound
 CPU.
 
-Main clock: XTAL = 12 MHz
-Horizontal video frequency: HSYNC = XTAL/768?? = 15.625 kHz ??
-Video frequency: VSYNC = HSYNC/272 = 57.44 Hz ?
-VBlank duration: 1/VSYNC * (24/272) = 1536 us ?
+
+PCB Layouts
+-----------
+
+Zoar
+Data East, 1982
+
+Top PCB
+
+DE-0123
+|---------------------------------|
+|UPC1181H   SW2         Z17.15B   |
+|   VOL     SW1                  |-|
+|                       Z16.13B  | |
+|          2128         Z15.12B  | |
+|                         X      | |
+|        AY-3-8910        X      |-|
+|           AY-3-8910    DIP24    |
+|                    6502         |
+|1                      Z13.6B    |
+|8                               |-|
+|W                      Z12.4B   | |
+|A                               | |
+|Y                      Z11.3B   | |
+|                                |-|
+|  555                  Z10.1B    |
+|---------------------------------|
+Notes:
+      6502      - clock 500.0kHz [12/24]
+      AY-3-8910 - clock 3.00MHz(both) [12/4]
+      2128      - 2k x8 SRAM == 6116
+      X         - Position for a socket, but not populated with anything
+      DIP24     - Empty socket. There are rumours that this socket would hold test mode code or something else.
+                  It's possible a factory test ROM did exist for factory-only testing as this was common with
+                  several manufacturers at the time. However the PCB came from the factory with this socket empty
+                  so it would be extremely unlikely to find a PCB with that socket populated.
+      SW1/2     - 8 position DIP switches
+                  To set cocktail mode, set DIP#1 SW7 & 8 OFF. The player has 2 buttons only and the screen will flip between PL1 & PL2
+                  To set upright mode, set DIP#1 SW7 & 8 ON. The player has 3 buttons and the screen will not flip between PL1 & PL2
+                  DIP Notes:
+                           SW1 #5 is unused
+                           SW1 #6 must remain OFF otherwise the game will not boot-up and just displays garbage.
+                           There is no TEST mode.
+                           SW2 #5 is listed in the manual as "Panel B". This enables or removes the 2nd button.
+                           There were two types of panels supplied, either cocktail or upright cabs. The cocktail panel
+                           doesn't have 3 buttons. The 2 buttons are air-air missile and air-ground missile/bomb and
+                           there's an extra button for accelerate on the 3 button panel. On the 2 button panel, button 1 is
+                           the air-air and air-ground missile/bomb weapon button and is auto selected based on the enemies on
+                           screen and the 2nd button is wired to accelerate. There is no button for manually selecting
+                           the missiles/bombs.
+
+Bottom PCB
+
+DE-0122
+|---------------------------------|
+|    Z08.15L     PB3  PB0   2128  |
+|    Z07.14L     2128  |-------| |-|
+|                2128  |       | | |
+|    Z06.12L           | CPU-7 | | |
+|                      |       | | |
+|    Z05.11L           |       | |-|
+|                      |-------|  |
+|    Z04.9L                       |
+|    Z03.8L               Z19.7B  |
+|                    AM93425     |-|
+|1   Z02.6L  AM93425 AM93425     | |
+|0   Z01.5L  AM93425 AM93425 PB2 | |
+|W   Z00.3L  AM93425  PB4   PB1  | |
+|A   Z21.2L    PB4           555 |-|
+|Y   Z20.1L                12MHz  |
+|---------------------------------|
+Notes:
+      CPU-7     - Epoxy block containing a 6502 clocked at 1.5MHz [12/8]
+                  and possibly something else ^_^
+      2128      - 2k x8 SRAM == 6116
+      AM93425   - 1k x1 SRAM == 2125
+      PB*       - PALs (not dumped, registered types)
+      Z19/20/21 - PROMs, type Harris 7603 (32 bytes)
+      VSync     - 57.4358Hz
+      HSync     - 15.6235kHz
 
 
 Note on Lock'n'Chase:
@@ -64,6 +140,7 @@ A few notes:
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/ay8910.h"
+#include "sound/discrete.h"
 #include "includes/btime.h"
 
 #define MASTER_CLOCK 	XTAL_12MHz
@@ -82,6 +159,7 @@ enum
 
 static WRITE8_HANDLER( audio_command_w );
 static READ8_HANDLER( audio_command_r );
+static READ8_HANDLER( zoar_dsw1_read );
 
 static UINT8 *decrypted;
 static UINT8 *rambase;
@@ -111,13 +189,13 @@ static WRITE8_HANDLER( audio_nmi_enable_w )
 	}
 }
 
-static WRITE8_HANDLER( ay_audio_nmi_enable_w )
+static WRITE8_DEVICE_HANDLER( ay_audio_nmi_enable_w )
 {
 	/* port A bit 0, when 1, inhibits the NMI */
 	if (audio_nmi_enable_type == AUDIO_ENABLE_AY8910)
 	{
 		audio_nmi_enabled = ~data & 1;
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, (audio_nmi_enabled && audio_nmi_state) ? ASSERT_LINE : CLEAR_LINE);
+		cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, (audio_nmi_enabled && audio_nmi_state) ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -155,12 +233,12 @@ static void btime_decrypt(const address_space *space)
 	/* however if the previous instruction was JSR (which caused a write to */
 	/* the stack), fetch the address of the next instruction. */
 	addr1 = cpu_get_previouspc(space->cpu);
-	src1 = (addr1 < 0x9000) ? rambase : memory_region(space->machine, "main");
+	src1 = (addr1 < 0x9000) ? rambase : memory_region(space->machine, "maincpu");
 	if (decrypted[addr1] == 0x20)	/* JSR $xxxx */
 		addr = src1[addr1+1] + 256 * src1[addr1+2];
 
 	/* If the address of the next instruction is xxxx xxx1 xxxx x1xx, decode it. */
-	src = (addr < 0x9000) ? rambase : memory_region(space->machine, "main");
+	src = (addr < 0x9000) ? rambase : memory_region(space->machine, "maincpu");
 	if ((addr & 0x0104) == 0x0104)
 	{
 		/* 76543210 -> 65342710 bit rotation */
@@ -339,7 +417,7 @@ static ADDRESS_MAP_START( zoar_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8800, 0x8bff) AM_WRITE(btime_mirrorvideoram_w)
 	AM_RANGE(0x8c00, 0x8fff) AM_WRITE(btime_mirrorcolorram_w)
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(zoar_video_control_w)
-	AM_RANGE(0x9800, 0x9800) AM_READ_PORT("DSW1")
+	AM_RANGE(0x9800, 0x9800) AM_READ(zoar_dsw1_read)
 	AM_RANGE(0x9801, 0x9801) AM_READ_PORT("DSW2")
 	AM_RANGE(0x9802, 0x9802) AM_READ_PORT("P1")
 	AM_RANGE(0x9803, 0x9803) AM_READ_PORT("P2")
@@ -423,10 +501,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_MIRROR(0x1c00) AM_RAM AM_BASE(&audio_rambase)
-	AM_RANGE(0x2000, 0x3fff) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x4000, 0x5fff) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x6000, 0x7fff) AM_WRITE(ay8910_write_port_1_w)
-	AM_RANGE(0x8000, 0x9fff) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x2000, 0x3fff) AM_DEVWRITE("ay1", ay8910_data_w)
+	AM_RANGE(0x4000, 0x5fff) AM_DEVWRITE("ay1", ay8910_address_w)
+	AM_RANGE(0x6000, 0x7fff) AM_DEVWRITE("ay2", ay8910_data_w)
+	AM_RANGE(0x8000, 0x9fff) AM_DEVWRITE("ay2", ay8910_address_w)
 	AM_RANGE(0xa000, 0xbfff) AM_READ(audio_command_r)
 	AM_RANGE(0xc000, 0xdfff) AM_WRITE(audio_nmi_enable_w)
 	AM_RANGE(0xe000, 0xefff) AM_MIRROR(0x1000) AM_ROM
@@ -434,10 +512,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( disco_audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
-	AM_RANGE(0x4000, 0x4fff) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x5000, 0x5fff) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x6000, 0x6fff) AM_WRITE(ay8910_write_port_1_w)
-	AM_RANGE(0x7000, 0x7fff) AM_WRITE(ay8910_control_port_1_w)
+	AM_RANGE(0x4000, 0x4fff) AM_DEVWRITE("ay1", ay8910_data_w)
+	AM_RANGE(0x5000, 0x5fff) AM_DEVWRITE("ay1", ay8910_address_w)
+	AM_RANGE(0x6000, 0x6fff) AM_DEVWRITE("ay2", ay8910_data_w)
+	AM_RANGE(0x7000, 0x7fff) AM_DEVWRITE("ay2", ay8910_address_w)
 	AM_RANGE(0x8000, 0x8fff) AM_READWRITE(soundlatch_r, SMH_NOP) /* ack ? */
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -473,6 +551,10 @@ static READ8_HANDLER( audio_command_r )
 	return soundlatch_r(space,offset);
 }
 
+static READ8_HANDLER( zoar_dsw1_read )
+{
+	return (!video_screen_get_vblank(space->machine->primary_screen) << 7) | (input_port_read(space->machine, "DSW1") & 0x7f);
+}
 
 static INPUT_PORTS_START( btime )
 	PORT_START("P1")
@@ -662,52 +744,45 @@ static INPUT_PORTS_START( zoar )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_CHANGED(coin_inserted_irq_lo, 0)
 
 	PORT_START("DSW1")
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SW I:1,2")
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SW1:1,2")
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_3C ) )
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_B ) ) PORT_DIPLOCATION("SW I:3,4")
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_B ) ) PORT_DIPLOCATION("SW1:3,4")
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_3C ) )
 	/* Manual says bit 4,5 have to stay OFF */
-	PORT_DIPUNKNOWN_DIPLOC( 0x10, 0x00, "SW I:5" )    /* almost certainly unused */
+	PORT_DIPUNKNOWN_DIPLOC( 0x10, 0x10, "SW1:5" )    /* almost certainly unused */
 	/* Service mode doesn't work because of missing ROMs */
-	PORT_SERVICE_DIPLOC( 0x20, IP_ACTIVE_LOW, "SW I:6" )
-	PORT_DIPNAME( 0x40, 0x00, "Control Panel" ) PORT_DIPLOCATION("SW I:7")
+	PORT_SERVICE_DIPLOC( 0x20, IP_ACTIVE_LOW, "SW1:6" )
+	PORT_DIPNAME( 0x40, 0x00, "Control Panel" ) PORT_DIPLOCATION("SW1:7")
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Cocktail ) )
-//  PORT_DIPNAME( 0x80, 0x00, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW I:8")
-//  PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
-//  PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_VBLANK  )
+	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW1:8")
+	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
 
 	PORT_START("DSW2")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW II:1")
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW2:1")
 	PORT_DIPSETTING(    0x01, "3" )
 	PORT_DIPSETTING(    0x00, "5" )
-	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW II:2,3")
+	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW2:2,3")
 	PORT_DIPSETTING(    0x06, "5000" )
 	PORT_DIPSETTING(    0x04, "10000" )
 	PORT_DIPSETTING(    0x02, "15000"  )
 	PORT_DIPSETTING(    0x00, "20000"  )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW II:4")
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW2:4")
 	PORT_DIPSETTING(    0x08, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
-	PORT_DIPNAME( 0x10, 0x00, "Weapon Select" ) PORT_DIPLOCATION("SW II:5")
+	PORT_DIPNAME( 0x10, 0x00, "Weapon Select" ) PORT_DIPLOCATION("SW2:5")
 	PORT_DIPSETTING(    0x00, "Manual" )
 	PORT_DIPSETTING(    0x10, "Auto" )
-	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW II:6")		/* These 3 switches     */
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )										/* have to do with      */
-	PORT_DIPSETTING(    0x20, DEF_STR( On ) )										/* coinage.             */
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW II:7")		/* See code at $d234.   */
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )										/* Feel free to figure  */
-	PORT_DIPSETTING(    0x40, DEF_STR( On ) )										/* them out.            */
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW II:8")		/* Manual says to leave */
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )										/* them OFF.            */
-	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
+	PORT_DIPUNKNOWN_DIPLOC( 0x20, 0x20, "SW2:6" )	/* These 3 switches have something to do with coinage  */
+	PORT_DIPUNKNOWN_DIPLOC( 0x40, 0x40, "SW2:7" )	/* See code at $d234. Feel free to figure them out     */
+	PORT_DIPUNKNOWN_DIPLOC( 0x80, 0x80, "SW2:8" )	/* Manual says to leave them OFF                       */
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( lnc )
@@ -1155,6 +1230,16 @@ static const gfx_layout tile8layout =
 	8*8
 };
 
+static const gfx_layout disco_tile8layout =
+{
+	8,8,
+	0x6000/3/8,
+	3,
+	{ 0x4000*8, 0x2000*8, 0x0000*8 },
+	{ STEP8(0,1) },
+	{ STEP8(0,8) },
+	8*8
+};
 
 
 static const gfx_layout tile16layout =
@@ -1168,7 +1253,16 @@ static const gfx_layout tile16layout =
 	32*8
 };
 
-
+static const gfx_layout disco_tile16layout =
+{
+	16,16,
+	0x6000/3/32,
+	3,
+	{ 0x4000*8, 0x2000*8, 0x0000*8 },
+	{ STEP8(16*8,1), STEP8(0,1) },
+	{ STEP16(0,8) },
+	32*8
+};
 
 static const gfx_layout bnj_tile16layout =
 {
@@ -1211,31 +1305,122 @@ static GFXDECODE_START( zoar )
 GFXDECODE_END
 
 static GFXDECODE_START( disco )
-	GFXDECODE_ENTRY( "gfx1", 0, tile8layout,  0, 4 ) /* char set #1 */
-	GFXDECODE_ENTRY( "gfx1", 0, tile16layout, 0, 4 ) /* sprites */
+	GFXDECODE_ENTRY( NULL, 0, disco_tile8layout,  0, 4 ) /* char set #1 */
+	GFXDECODE_ENTRY( NULL, 0, disco_tile16layout, 0, 4 ) /* sprites */
 GFXDECODE_END
 
+/***************************************************************************
+  Discrete Filtering and Mixing
 
+  All values taken from Burger Time Schematics.
+
+ ****************************************************************************/
 
 static const ay8910_interface ay1_intf =
 {
-	AY8910_LEGACY_OUTPUT,
-	AY8910_DEFAULT_LOADS,
-	NULL, NULL, ay_audio_nmi_enable_w, NULL
+	AY8910_DISCRETE_OUTPUT,
+	{RES_K(5), RES_K(5), RES_K(5)},
+	DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(ay_audio_nmi_enable_w), DEVCB_NULL
 };
+
+static const ay8910_interface ay2_intf =
+{
+	AY8910_DISCRETE_OUTPUT,
+	{RES_K(1), RES_K(5), RES_K(5)},
+	DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL
+};
+
+static const discrete_mixer_desc btime_sound_mixer_desc =
+	{DISC_MIXER_IS_OP_AMP,
+		{RES_K(100), RES_K(100)},
+		{0,0},	/* no variable resistors   */
+		{0,0},  /* no node capacitors      */
+		0,		/* no RI */
+		RES_K(10),
+		CAP_P(150),
+		0,		/* Modelled separately */
+		0, 1};
+
+/* R49 has 4.7k in schematics, but listed as 47k in bill of material
+ * 47k gives proper low pass filtering
+ */
+#define BTIME_R49	RES_K(47)
+
+/* The input divider R51 R50 is not independant of R52, which
+ * also depends on ay internal resistance.
+ * FIXME: Develop proper model when I am retired.
+ *
+ * With R51 being 1K, the gain is way to high (23.5). Therefore R51
+ * is set to 5k, but this is a hack. With the modification,
+ * sound levels are in line with observations.
+ * FIXME: Verify R51,R50,R52 and R49 on real pcb
+ *
+ * http://www.coinopvideogames.com/videogames01.php
+ * There are two recordings from 1982 where the filtered sound is way louder
+ * than the music. There is a later recording
+ * http://www.coinopvideogames.com/videogames03.php
+ * in which the filtered sounds have volumes closer to the music.
+ *
+ */
+
+#define BTIME_R52	RES_K(1)
+#define BTIME_R51	RES_K(5) 	/* schematics 1k */
+#define BTIME_R50	RES_K(10)
+
+static const discrete_op_amp_filt_info btime_opamp_desc =
+	{BTIME_R51, 0, BTIME_R50, 0, BTIME_R49, CAP_U(0.068), CAP_U(0.068), 0, 0, 5.0, -5.0};
+
+static DISCRETE_SOUND_START( btime_sound )
+
+	DISCRETE_INPUTX_STREAM(NODE_01, 0, 5.0/32767.0, 0)
+	DISCRETE_INPUTX_STREAM(NODE_02, 1, 5.0/32767.0, 0)
+	DISCRETE_INPUTX_STREAM(NODE_03, 2, 5.0/32767.0, 0)
+
+	DISCRETE_INPUTX_STREAM(NODE_04, 3, 5.0/32767.0, 0)
+	DISCRETE_INPUTX_STREAM(NODE_05, 4, 5.0/32767.0, 0)
+	DISCRETE_INPUTX_STREAM(NODE_06, 5, 5.0/32767.0, 0)
+
+	/* Mix 5 channels 1A, 1B, 1C, 2B, 2C directly */
+	DISCRETE_ADDER3(NODE_20, 1, NODE_01, NODE_02, NODE_03)
+	DISCRETE_ADDER3(NODE_21, 1, NODE_20, NODE_05, NODE_06)
+	DISCRETE_MULTIPLY(NODE_22, 1, NODE_21, 0.2)
+
+	/* Filter of channel 2A */
+	DISCRETE_OP_AMP_FILTER(NODE_30, 1, NODE_04, NODE_NC, DISC_OP_AMP_FILTER_IS_BAND_PASS_1M, &btime_opamp_desc)
+
+	DISCRETE_MIXER2(NODE_40, 1, NODE_22, NODE_30, &btime_sound_mixer_desc)
+	DISCRETE_CRFILTER(NODE_41, 1, NODE_40, RES_K(10), CAP_U(10))
+
+	/* Amplifier is upc1181H3
+     *
+     * http://www.mydarc.de/dj7oh/fad/ics/upc1181/upc1181.htm
+     *
+     * A linear frequency response is mentioned as well as a lower
+     * edge frequency determined by cap on pin3, however no formula given.
+     *
+     * not modelled here
+     */
+
+	/* Assuming a 4 Ohm impedance speaker */
+	DISCRETE_CRFILTER(NODE_43, 1, NODE_41, 3.0, CAP_U(100))
+
+	DISCRETE_OUTPUT(NODE_43, 32767.0 / 5. * 35.0)
+
+DISCRETE_SOUND_END
+
 
 static MACHINE_DRIVER_START( btime )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, HCLK2)	/* seletable between H2/H4 via jumper */
+	MDRV_CPU_ADD("maincpu", M6502, HCLK2)	/* seletable between H2/H4 via jumper */
 	MDRV_CPU_PROGRAM_MAP(btime_map,0)
 
-	MDRV_CPU_ADD("audio", M6502, HCLK1/3/2)
+	MDRV_CPU_ADD("audiocpu", M6502, HCLK1/3/2)
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
-	MDRV_TIMER_ADD_SCANLINE("audionmi", audio_nmi_gen, "main", 0, 8)
+	MDRV_TIMER_ADD_SCANLINE("audionmi", audio_nmi_gen, "screen", 0, 8)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(HCLK, 384, 8, 248, 272, 8, 248)
 
@@ -1252,11 +1437,20 @@ static MACHINE_DRIVER_START( btime )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
 	MDRV_SOUND_ADD("ay1", AY8910, HCLK2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.23)
 	MDRV_SOUND_CONFIG(ay1_intf)
+	MDRV_SOUND_ROUTE_EX(0, "discrete", 1.0, 0)
+	MDRV_SOUND_ROUTE_EX(1, "discrete", 1.0, 1)
+	MDRV_SOUND_ROUTE_EX(2, "discrete", 1.0, 2)
 
 	MDRV_SOUND_ADD("ay2", AY8910, HCLK2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.23)
+	MDRV_SOUND_CONFIG(ay2_intf)
+	MDRV_SOUND_ROUTE_EX(0, "discrete", 1.0, 3)
+	MDRV_SOUND_ROUTE_EX(1, "discrete", 1.0, 4)
+	MDRV_SOUND_ROUTE_EX(2, "discrete", 1.0, 5)
+
+	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
+	MDRV_SOUND_CONFIG_DISCRETE(btime_sound)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -1264,10 +1458,10 @@ static MACHINE_DRIVER_START( cookrace )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(btime)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(cookrace_map,0)
 
-	MDRV_CPU_MODIFY("audio")
+	MDRV_CPU_MODIFY("audiocpu")
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
 
 	/* video hardware */
@@ -1282,7 +1476,7 @@ static MACHINE_DRIVER_START( lnc )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(btime)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(lnc_map,0)
 
 	MDRV_MACHINE_RESET(lnc)
@@ -1310,7 +1504,7 @@ static MACHINE_DRIVER_START( mmonkey )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(wtennis)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(mmonkey_map,0)
 MACHINE_DRIVER_END
 
@@ -1319,7 +1513,7 @@ static MACHINE_DRIVER_START( bnj )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(btime)
-	MDRV_CPU_REPLACE("main", M6502, HCLK4)
+	MDRV_CPU_REPLACE("maincpu", M6502, HCLK4)
 	MDRV_CPU_PROGRAM_MAP(bnj_map,0)
 
 	/* video hardware */
@@ -1335,7 +1529,7 @@ static MACHINE_DRIVER_START( zoar )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(btime)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(zoar_map,0)
 
 	/* video hardware */
@@ -1343,6 +1537,13 @@ static MACHINE_DRIVER_START( zoar )
 	MDRV_PALETTE_LENGTH(64)
 
 	MDRV_VIDEO_UPDATE(zoar)
+
+	MDRV_SOUND_REPLACE("ay1", AY8910, HCLK1)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.23)
+	MDRV_SOUND_CONFIG(ay1_intf)
+
+	MDRV_SOUND_REPLACE("ay2", AY8910, HCLK1)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.23)
 MACHINE_DRIVER_END
 
 
@@ -1350,10 +1551,10 @@ static MACHINE_DRIVER_START( disco )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(btime)
-	MDRV_CPU_REPLACE("main", M6502, HCLK4)
+	MDRV_CPU_REPLACE("maincpu", M6502, HCLK4)
 	MDRV_CPU_PROGRAM_MAP(disco_map,0)
 
-	MDRV_CPU_MODIFY("audio")
+	MDRV_CPU_MODIFY("audiocpu")
 	MDRV_CPU_PROGRAM_MAP(disco_audio_map,0)
 
 	/* video hardware */
@@ -1368,7 +1569,7 @@ static MACHINE_DRIVER_START( tisland )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(btime)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(tisland_map,0)
 
 	/* video hardware */
@@ -1383,13 +1584,13 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( btime )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "aa04.9b",      0xc000, 0x1000, CRC(368a25b5) SHA1(ed3f3712423979dcb351941fa85dce6a0a7bb16b) )
 	ROM_LOAD( "aa06.13b",     0xd000, 0x1000, CRC(b4ba400d) SHA1(8c77397e934907bc47a739f263196a0f2f81ba3d) )
 	ROM_LOAD( "aa05.10b",     0xe000, 0x1000, CRC(8005bffa) SHA1(d0da4e360039f6a8d8142a4e8e05c1f90c0af68a) )
 	ROM_LOAD( "aa07.15b",     0xf000, 0x1000, CRC(086440ad) SHA1(4a32bc92f8ff5fbe112f56e62d2c03da8851a7b9) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "ab14.12h",     0xe000, 0x1000, CRC(f55e5211) SHA1(27940026d0c6212d1138d2fd88880df697218627) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
@@ -1411,13 +1612,13 @@ ROM_END
 
 
 ROM_START( btime2 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "aa04.9b2",     0xc000, 0x1000, CRC(a041e25b) SHA1(caaab3ae46619d0a87a8985d316411f23be0b696) )
 	ROM_LOAD( "aa06.13b",     0xd000, 0x1000, CRC(b4ba400d) SHA1(8c77397e934907bc47a739f263196a0f2f81ba3d) )
 	ROM_LOAD( "aa05.10b",     0xe000, 0x1000, CRC(8005bffa) SHA1(d0da4e360039f6a8d8142a4e8e05c1f90c0af68a) )
 	ROM_LOAD( "aa07.15b",     0xf000, 0x1000, CRC(086440ad) SHA1(4a32bc92f8ff5fbe112f56e62d2c03da8851a7b9) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "ab14.12h",     0xe000, 0x1000, CRC(f55e5211) SHA1(27940026d0c6212d1138d2fd88880df697218627) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
@@ -1438,14 +1639,14 @@ ROM_START( btime2 )
 ROM_END
 
 ROM_START( btimem )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "ab05a1.12b",   0xb000, 0x1000, CRC(0a98b230) SHA1(aeee4f6f0aaa27575b80261d03c5453cc6ebd646) )
 	ROM_LOAD( "ab04.9b",      0xc000, 0x1000, CRC(797e5f75) SHA1(35ea5fa4b8f3494adf7774b3946ed2540ac826ff) )
 	ROM_LOAD( "ab06.13b",     0xd000, 0x1000, CRC(c77f3f64) SHA1(f283087fad0a102fe92be7ce80ed18e64dc93b67) )
 	ROM_LOAD( "ab05.10b",     0xe000, 0x1000, CRC(b0d3640f) SHA1(6ba28971714ece6f1c04fa2dbf1f9f216ded7cfa) )
 	ROM_LOAD( "ab07.15b",     0xf000, 0x1000, CRC(a142f862) SHA1(39d7ef172d18874885f1b1542e885cc4287dc344) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "ab14.12h",     0xe000, 0x1000, CRC(f55e5211) SHA1(27940026d0c6212d1138d2fd88880df697218627) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
@@ -1466,13 +1667,13 @@ ROM_START( btimem )
 ROM_END
 
 ROM_START( cookrace )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	/* code is in the range 0500-3fff, encrypted */
 	ROM_LOAD( "1f.1",         0x0000, 0x2000, CRC(68759d32) SHA1(2112a6f17b871aefdb39739e47d4a9f368a2eb3c) )
 	ROM_LOAD( "2f.2",         0x2000, 0x2000, CRC(be7d72d1) SHA1(232d108098cb490e7c828aa4524ad09d3866ae18) )
 	ROM_LOAD( "2k",           0xffe0, 0x0020, CRC(e2553b3d) SHA1(0a38929cdb3f37c6e4bacc5c3f94c049b4352858) )	/* reset/interrupt vectors */
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "6f.6",         0xe000, 0x1000, CRC(6b8e0272) SHA1(372a891b7b357aea0297ba9bcae752c3c9d8c1be) ) /* starts at 0000, not f000; 0000-01ff is RAM */
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
@@ -1493,10 +1694,8 @@ ROM_START( cookrace )
 	ROM_LOAD( "b7",           0x0020, 0x0020, CRC(e4268fa6) SHA1(93f74e633c3a19755e78e0e2883109cd8ccde9a8) )	/* unknown */
 ROM_END
 
-
-
 ROM_START( tisland )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "t-04.b7",      0xa000, 0x1000, CRC(641af7f9) SHA1(50cd8f2372725356bb5a66024084363f5c5a870d) )
 	ROM_RELOAD(               0x9000, 0x1000 )
 	ROM_LOAD( "t-07.b11",     0xb000, 0x1000, CRC(6af00c8b) SHA1(e3948ca36642d3c2a1f94b017893d6e2fe178bb0) )
@@ -1505,7 +1704,7 @@ ROM_START( tisland )
 	ROM_LOAD( "t-06.b10",     0xe000, 0x1000, CRC(5a6783cf) SHA1(f518290efec0fedb92432b4e3448aea2438b8448) )
 	ROM_LOAD( "t-09.b14",     0xf000, 0x1000, CRC(5b26771a) SHA1(31d86acba4b6549fc08a3947d6d6d1a470fcb9da) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "t-0a.j11",     0xe000, 0x1000, CRC(807e1652) SHA1(ccfee616dc0e34d10a0e62b9864fd987291bf176) )
 
 	ROM_REGION( 0x3000, "gfx1", ROMREGION_DISPOSE )
@@ -1535,13 +1734,13 @@ ROM_END
    http://www.gamearchive.com/flyers/video/taito/locknchase_f.jpg  */
 
 ROM_START( lnc )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "s3-3d",        0xc000, 0x1000, CRC(1ab4f2c2) SHA1(c5890b768172cd2e3912b84db5f71546969ad7e2) )
 	ROM_LOAD( "s2-3c",        0xd000, 0x1000, CRC(5e46b789) SHA1(00b2510e07eb565cb373db798dd537191b0b7cc8) )
 	ROM_LOAD( "s1-3b",        0xe000, 0x1000, CRC(1308a32e) SHA1(da64fe7b76f5ac8ac35460e6c789ab1e986c78ef) )
 	ROM_LOAD( "s0-3a",        0xf000, 0x1000, CRC(beb4b1fc) SHA1(166a96b5757946231f3619844366218065412935) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "sa-1h",        0xe000, 0x1000, CRC(379387ec) SHA1(29d37f04c64ed53a2573962dfa9c0623b89e0045) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
@@ -1559,7 +1758,7 @@ ROM_END
 
 /*This one doesn't have the (c) deco and the "pro" word at the title screen so I'm assuming it's a bootleg.*/
 ROM_START( protennb )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "t6.a1",        0xa000, 0x1000, CRC(e89cc295) SHA1(68f1578c4be816db6028a561d286b19553c87506) )
 	ROM_LOAD( "t5.a3",        0xb000, 0x1000, CRC(9131ed87) SHA1(af2276a82e024bf00c6db02deb7f06ade89dd386) )
 	ROM_LOAD( "t4.a4",        0xc000, 0x1000, CRC(01dc0e71) SHA1(a359468fb9dab9cfadcf8ec22a4d7ce9341f4324) )
@@ -1567,7 +1766,7 @@ ROM_START( protennb )
 	ROM_LOAD( "t2.a8",        0xe000, 0x1000, CRC(6faf561c) SHA1(7fd5430af4b3f255e2c01e9b092b960ebdca8d13) )
 	ROM_LOAD( "t1.a9",        0xf000, 0x1000, CRC(baa330ae) SHA1(b10c66d9a03b036d95926d0c0fe441bb7ca4015d) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "t7.b1",        0xf000, 0x1000, CRC(a6bcc2d1) SHA1(383cd170417256467dfce94939d6afa66518c6d2) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_ERASE00 )
@@ -1579,13 +1778,13 @@ ROM_START( protennb )
 ROM_END
 
 ROM_START( wtennis )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "tx",           0xc000, 0x0800, CRC(fd343474) SHA1(1e1fd3f20ce1c7533767344f924029c8c62139a1) )
 	ROM_LOAD( "t4",           0xd000, 0x1000, CRC(e465d82c) SHA1(c357dcf17539150425574985afa559db2e6ab834) )
 	ROM_LOAD( "t3",           0xe000, 0x1000, CRC(8f090eab) SHA1(baeef8ee05010bf44cf8865a22911f3d458df1b0) )
 	ROM_LOAD( "t2",           0xf000, 0x1000, CRC(d2f9dd30) SHA1(1faa088806e8627b5e561d8b99054d295045dcfb) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "t1",           0xe000, 0x1000, CRC(40737ea7) SHA1(27e8474028385574035d3982f9c576bb9bb3facd) ) /* starts at 0000, not f000; 0000-01ff is RAM */
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
@@ -1602,13 +1801,13 @@ ROM_START( wtennis )
 ROM_END
 
 ROM_START( mmonkey )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "mmonkey.e4",   0xc000, 0x1000, CRC(8d31bf6a) SHA1(77b44d8e2b4db148727e7bfc5162c7e9e9cfc662) )
 	ROM_LOAD( "mmonkey.d4",   0xd000, 0x1000, CRC(e54f584a) SHA1(a03fef09f6a0bb6802b33b28c45548efb85cda5c) )
 	ROM_LOAD( "mmonkey.b4",   0xe000, 0x1000, CRC(399a161e) SHA1(0eb3c5031a7d8c7b14019e215b18dac24a9e70dd) )
 	ROM_LOAD( "mmonkey.a4",   0xf000, 0x1000, CRC(f7d3d1e3) SHA1(ff650a833e5e8975fe5b4a644ce6c35de5e04740) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "mmonkey.h1",   0xe000, 0x1000, CRC(5bcb2e81) SHA1(60fb8fd83c83b278e3aaf96f0b6dbefbc1eef0f7) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
@@ -1625,12 +1824,12 @@ ROM_START( mmonkey )
 ROM_END
 
 ROM_START( brubber )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	/* a000-bfff space for the service ROM */
 	ROM_LOAD( "brubber.12c",  0xc000, 0x2000, CRC(b5279c70) SHA1(5fb1c50040dc4e9444aed440e2c3cf4c79b72311) )
 	ROM_LOAD( "brubber.12d",  0xe000, 0x2000, CRC(b2ce51f5) SHA1(5e38ea24bcafef1faba023def96532abd6f97d38) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "bnj6c.bin",    0xe000, 0x1000, CRC(8c02f662) SHA1(1279d564e65fd3ccac25b1f9fbb40d910de2b544) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
@@ -1644,12 +1843,12 @@ ROM_START( brubber )
 ROM_END
 
 ROM_START( bnj )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "bnj12b.bin",   0xa000, 0x2000, CRC(ba3e3801) SHA1(56284076d938c33c1492a07281b936681eb09808) )
 	ROM_LOAD( "bnj12c.bin",   0xc000, 0x2000, CRC(fb3a2cdd) SHA1(4a964389cc8035b9264d4cb133eb6d3826e74b95) )
 	ROM_LOAD( "bnj12d.bin",   0xe000, 0x2000, CRC(b88bc99e) SHA1(08a4ddea4037f9e14d0d9f4262a1746b0a3a140c) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "bnj6c.bin",    0xe000, 0x1000, CRC(8c02f662) SHA1(1279d564e65fd3ccac25b1f9fbb40d910de2b544) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
@@ -1663,12 +1862,12 @@ ROM_START( bnj )
 ROM_END
 
 ROM_START( caractn )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	/* a000-bfff space for the service ROM */
 	ROM_LOAD( "c7.12c",  0xc000, 0x2000, CRC(b5279c70) SHA1(5fb1c50040dc4e9444aed440e2c3cf4c79b72311) )
 	ROM_LOAD( "c6.12d",  0xe000, 0x2000, CRC(1d6957c4) SHA1(bd30f00187e56eef9adcc167dd752a3bb616454c) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "c5.6c",   0xe000, 0x1000, CRC(8c02f662) SHA1(1279d564e65fd3ccac25b1f9fbb40d910de2b544) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
@@ -1690,42 +1889,43 @@ ROM_START( caractn )
 ROM_END
 
 ROM_START( zoar )
-	ROM_REGION( 0x10000, "main", 0 )
-	ROM_LOAD( "zoar15",       0xd000, 0x1000, CRC(1f0cfdb7) SHA1(ce7e871f17c52b6eaf99cfb721e702e4f0e6bb25) )
-	ROM_LOAD( "zoar16",       0xe000, 0x1000, CRC(7685999c) SHA1(fabe38d71e797ae0b04b5d3aba228b4c85d96185) )
-	ROM_LOAD( "zoar17",       0xf000, 0x1000, CRC(619ea867) SHA1(0a3735384f03a1052d54ab799b5e37038d8ece2a) )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "z15.12b", 0xd000, 0x1000, CRC(1f0cfdb7) SHA1(ce7e871f17c52b6eaf99cfb721e702e4f0e6bb25) )
+	ROM_LOAD( "z16.13b", 0xe000, 0x1000, CRC(7685999c) SHA1(fabe38d71e797ae0b04b5d3aba228b4c85d96185) )
+	ROM_LOAD( "z17.15b", 0xf000, 0x1000, CRC(619ea867) SHA1(0a3735384f03a1052d54ab799b5e37038d8ece2a) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
-	ROM_LOAD( "zoar09",       0xe000, 0x1000, CRC(18d96ff1) SHA1(671d934a451e0b042450ea86d24c3751a39b38f8) )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
+	ROM_LOAD( "z09.13c", 0xe000, 0x1000, CRC(18d96ff1) SHA1(671d934a451e0b042450ea86d24c3751a39b38f8) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
-	ROM_LOAD( "zoar00",       0x0000, 0x1000, CRC(fd2dcb64) SHA1(1a49a6ec6ffd354d872b1af83d55ec96e8215b2b) )
-	ROM_LOAD( "zoar01",       0x1000, 0x1000, CRC(74d3ca48) SHA1(2c75ea246f86a057467deb35ef6a6e72f667dd84) )
-	ROM_LOAD( "zoar03",       0x2000, 0x1000, CRC(77b7df14) SHA1(a1cbc214fc849b7e3417b1156d1e4440ab67f631) )
-	ROM_LOAD( "zoar04",       0x3000, 0x1000, CRC(9be786de) SHA1(480733a1438dffa4b0fac6f76bf84a0deec5d1fa) )
-	ROM_LOAD( "zoar06",       0x4000, 0x1000, CRC(07638c71) SHA1(1a7fc49657ac7ac0033bd60c86663bd615079230) )
-	ROM_LOAD( "zoar07",       0x5000, 0x1000, CRC(f4710f25) SHA1(08b4cc4252f83a689cded38d9a5a50f55ee6beee) )
+	ROM_LOAD( "z00.3l",  0x0000, 0x1000, CRC(fd2dcb64) SHA1(1a49a6ec6ffd354d872b1af83d55ec96e8215b2b) )
+	ROM_LOAD( "z01.5l",  0x1000, 0x1000, CRC(74d3ca48) SHA1(2c75ea246f86a057467deb35ef6a6e72f667dd84) )
+	ROM_LOAD( "z03.8l",  0x2000, 0x1000, CRC(77b7df14) SHA1(a1cbc214fc849b7e3417b1156d1e4440ab67f631) )
+	ROM_LOAD( "z04.9l",  0x3000, 0x1000, CRC(9be786de) SHA1(480733a1438dffa4b0fac6f76bf84a0deec5d1fa) )
+	ROM_LOAD( "z06.12l", 0x4000, 0x1000, CRC(07638c71) SHA1(1a7fc49657ac7ac0033bd60c86663bd615079230) )
+	ROM_LOAD( "z07.14l", 0x5000, 0x1000, CRC(f4710f25) SHA1(08b4cc4252f83a689cded38d9a5a50f55ee6beee) )
 
 	ROM_REGION( 0x1800, "gfx2", ROMREGION_DISPOSE )
-	ROM_LOAD( "zoar10",       0x0000, 0x0800, CRC(aa8bcab8) SHA1(81f1a9fd754fd6f8030ff6b5aa80c7670be9d02e) )
-	ROM_LOAD( "zoar11",       0x0800, 0x0800, CRC(dcdad357) SHA1(d1569e1d38f14f5f457547e24df4f80f726c6157) )
-	ROM_LOAD( "zoar12",       0x1000, 0x0800, CRC(ed317e40) SHA1(db70889af5f233ca71acf734abfbdb74b6a393c0) )
+	ROM_LOAD( "z10.1b",  0x0000, 0x0800, CRC(aa8bcab8) SHA1(81f1a9fd754fd6f8030ff6b5aa80c7670be9d02e) )
+	ROM_LOAD( "z11.3b",  0x0800, 0x0800, CRC(dcdad357) SHA1(d1569e1d38f14f5f457547e24df4f80f726c6157) )
+	ROM_LOAD( "z12.4b",  0x1000, 0x0800, CRC(ed317e40) SHA1(db70889af5f233ca71acf734abfbdb74b6a393c0) )
 
 	ROM_REGION( 0x3000, "gfx3", ROMREGION_DISPOSE )
-	ROM_LOAD( "zoar02",       0x0000, 0x1000, CRC(d8c3c122) SHA1(841006cc84622e851df462a64696b64bb8cb62a1) )
-	ROM_LOAD( "zoar05",       0x1000, 0x1000, CRC(05dc6b09) SHA1(197c720544a090e12980513b441a2b9cf04e212f) )
-	ROM_LOAD( "zoar08",       0x2000, 0x1000, CRC(9a148551) SHA1(db92dd7552c6f76a062910f37a3fe3524fdffd38) )
+	ROM_LOAD( "z02.6l",  0x0000, 0x1000, CRC(d8c3c122) SHA1(841006cc84622e851df462a64696b64bb8cb62a1) )
+	ROM_LOAD( "z05.14l", 0x1000, 0x1000, CRC(05dc6b09) SHA1(197c720544a090e12980513b441a2b9cf04e212f) )
+	ROM_LOAD( "z08.15l", 0x2000, 0x1000, CRC(9a148551) SHA1(db92dd7552c6f76a062910f37a3fe3524fdffd38) )
 
 	ROM_REGION( 0x1000, "bg_map", 0 )	/* background tilemaps */
-	ROM_LOAD( "zoar13",       0x0000, 0x1000, CRC(8fefa960) SHA1(614026aa71703dd3898e470f45730e5c6934b31b) )
+	ROM_LOAD( "z13.6b",  0x0000, 0x1000, CRC(8fefa960) SHA1(614026aa71703dd3898e470f45730e5c6934b31b) )
 
-	ROM_REGION( 0x0040, "proms", 0 )
-	ROM_LOAD( "z20-1l",       0x0000, 0x0020, CRC(a63f0a07) SHA1(16532d3ac0536ad4b712005fd722ee8c14d02e9b) )
-	ROM_LOAD( "z21-1l",       0x0020, 0x0020, CRC(5e1e5788) SHA1(56068b209cc7c734bbcbb9858f40faa6474c8095) )
+	ROM_REGION( 0x0060, "proms", 0 )
+	ROM_LOAD( "z20.1l",  0x0000, 0x0020, CRC(a63f0a07) SHA1(16532d3ac0536ad4b712005fd722ee8c14d02e9b) )
+	ROM_LOAD( "z21.2l",  0x0020, 0x0020, CRC(5e1e5788) SHA1(56068b209cc7c734bbcbb9858f40faa6474c8095) )
+	ROM_LOAD( "z19.7b",  0x0040, 0x0020, CRC(03ee3a96) SHA1(4acb4061ef0d8a1fab50207fc81a54bfa4c7455d) )
 ROM_END
 
 ROM_START( disco )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "disco.w5",     0xa000, 0x1000, CRC(b2c87b78) SHA1(4095f0052ff0ac35ecd2ec1c1e99d21283d336e1) )
 	ROM_LOAD( "disco.w4",     0xb000, 0x1000, CRC(ad7040ee) SHA1(287a4ff06edda4c66e2351e49a94212728aacb4e) )
 	ROM_LOAD( "disco.w3",     0xc000, 0x1000, CRC(12fb4f08) SHA1(d6095f20d8676df89b1459134b5521ac311ddded) )
@@ -1733,18 +1933,15 @@ ROM_START( disco )
 	ROM_LOAD( "disco.w1",     0xe000, 0x1000, CRC(ee7b536b) SHA1(b2de5da15cee1d80391eafd0a08361803f859c89) )
 	ROM_LOAD( "disco.w0",     0xf000, 0x1000, CRC(7c26e76b) SHA1(952e91c4acc18d01b0e2c3efd764da8768f583da) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "disco.w6",     0xf000, 0x1000, CRC(d81e781e) SHA1(bde510bfed06a13bd56bf7ddbf220e7cf82f79b6) )
-
-	ROM_REGION( 0x6000, "gfx1", ROMREGION_ERASE00 )
-	/* dynamically allocated */
 
 	ROM_REGION( 0x0020, "proms", 0 )
 	ROM_LOAD( "disco.clr",    0x0000, 0x0020, CRC(a393f913) SHA1(42dce159283427064b3f5ce3a6e2189744ecd943) )
 ROM_END
 
 ROM_START( discof )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "w5-f",     0xa000, 0x1000, CRC(9d53c71c) SHA1(53c410cfa4fbbfd08e1c3cf7aeba1c9627171a71) )
 	ROM_LOAD( "w4-f",     0xb000, 0x1000, CRC(c1f8d747) SHA1(33f5fe73d1851ef4da670075d1aec1550e0417ce) )
 	ROM_LOAD( "w3-f",     0xc000, 0x1000, CRC(9aadd252) SHA1(c6da7ef46333d525e676c59f03ccc908108b41ba) )
@@ -1752,23 +1949,20 @@ ROM_START( discof )
 	ROM_LOAD( "w1-f",     0xe000, 0x1000, CRC(c8ec57c5) SHA1(904a9ed0a7f1230c611bf473b9bc52e63eb56dbe) )
 	ROM_LOAD( "w0-f",     0xf000, 0x1000, CRC(b3787a92) SHA1(7f40621dc739c1108a5df43142ab04709a380219) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "disco.w6",     0xf000, 0x1000, CRC(d81e781e) SHA1(bde510bfed06a13bd56bf7ddbf220e7cf82f79b6) )
-
-	ROM_REGION( 0x6000, "gfx1", ROMREGION_ERASE00 )
-	/* dynamically allocated */
 
 	ROM_REGION( 0x0020, "proms", 0 )
 	ROM_LOAD( "disco.clr",    0x0000, 0x0020, CRC(a393f913) SHA1(42dce159283427064b3f5ce3a6e2189744ecd943) )
 ROM_END
 
 ROM_START( sdtennis )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "ao_08.12b",  0xa000, 0x2000, CRC(6193724c) SHA1(97239c5aa8c8cd1812fba1b15be4d9a48eb0651a) )
 	ROM_LOAD( "ao_07.12c",  0xc000, 0x2000, CRC(064888db) SHA1(f7bb728ab3408bb553191d9e131a441db1b39666) )
 	ROM_LOAD( "ao_06.12d",  0xe000, 0x2000, CRC(413c984c) SHA1(1431df4db52d621ba39fd47dbd49da103b5c0bcf) )
 
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "ao_05.6c",    0xe000, 0x1000, CRC(46833e38) SHA1(420831149a566199d6a3c74ef3df0687b4ddcbe4) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
@@ -1800,7 +1994,7 @@ static void decrypt_C10707_cpu(running_machine *machine, const char *cputag)
 
 static READ8_HANDLER( wtennis_reset_hack_r )
 {
-	UINT8 *RAM = memory_region(space->machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "maincpu");
 
 	/* Otherwise the game goes into test mode and there is no way out that I
        can see.  I'm not sure how it can work, it probably somehow has to do
@@ -1813,8 +2007,8 @@ static READ8_HANDLER( wtennis_reset_hack_r )
 
 static void init_rom1(running_machine *machine)
 {
-	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
-	UINT8 *rom = memory_region(machine, "main");
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	UINT8 *rom = memory_region(machine, "maincpu");
 
 	decrypted = auto_malloc(0x10000);
 	memory_set_decrypted_region(space, 0x0000, 0xffff, decrypted);
@@ -1833,7 +2027,7 @@ static DRIVER_INIT( btime )
 
 static DRIVER_INIT( zoar )
 {
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(machine, "maincpu");
 
 	/* At location 0xD50A is what looks like an undocumented opcode. I tried
        implementing it given what opcode 0x23 should do, but it still didn't
@@ -1847,7 +2041,7 @@ static DRIVER_INIT( zoar )
 
 static DRIVER_INIT( tisland )
 {
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(machine, "maincpu");
 
 	/* At location 0xa2b6 there's a strange RLA followed by a BPL that reads from an
     unmapped area that causes the game to fail in several circumstances.On the Cassette
@@ -1861,13 +2055,13 @@ static DRIVER_INIT( tisland )
 
 static DRIVER_INIT( lnc )
 {
-	decrypt_C10707_cpu(machine, "main");
+	decrypt_C10707_cpu(machine, "maincpu");
 	audio_nmi_enable_type = AUDIO_ENABLE_AY8910;
 }
 
 static DRIVER_INIT( bnj )
 {
-	decrypt_C10707_cpu(machine, "main");
+	decrypt_C10707_cpu(machine, "maincpu");
 	audio_nmi_enable_type = AUDIO_ENABLE_DIRECT;
 }
 
@@ -1879,10 +2073,10 @@ static DRIVER_INIT( disco )
 
 static DRIVER_INIT( cookrace )
 {
-	decrypt_C10707_cpu(machine, "main");
+	decrypt_C10707_cpu(machine, "maincpu");
 
 	memory_install_read8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x0200, 0x0fff, 0, 0, SMH_BANK10);
-	memory_set_bankptr(machine, 10, memory_region(machine, "audio") + 0xe200);
+	memory_set_bankptr(machine, 10, memory_region(machine, "audiocpu") + 0xe200);
 	audio_nmi_enable_type = AUDIO_ENABLE_DIRECT;
 }
 
@@ -1894,19 +2088,19 @@ static DRIVER_INIT( protennb )
 
 static DRIVER_INIT( wtennis )
 {
-	decrypt_C10707_cpu(machine, "main");
+	decrypt_C10707_cpu(machine, "maincpu");
 
 	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc15f, 0xc15f, 0, 0, wtennis_reset_hack_r);
 
 	memory_install_read8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x0200, 0x0fff, 0, 0, SMH_BANK10);
-	memory_set_bankptr(machine, 10, memory_region(machine, "audio") + 0xe200);
+	memory_set_bankptr(machine, 10, memory_region(machine, "audiocpu") + 0xe200);
 	audio_nmi_enable_type = AUDIO_ENABLE_DIRECT;
 }
 
 static DRIVER_INIT( sdtennis )
 {
-	decrypt_C10707_cpu(machine, "main");
-	decrypt_C10707_cpu(machine, "audio");
+	decrypt_C10707_cpu(machine, "maincpu");
+	decrypt_C10707_cpu(machine, "audiocpu");
 	audio_nmi_enable_type = AUDIO_ENABLE_DIRECT;
 }
 

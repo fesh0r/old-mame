@@ -254,7 +254,7 @@ static ADDRESS_MAP_START( writemem_cpu1, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xc0ff) AM_WRITE(SMH_RAM) AM_BASE(&paletteram)
 	AM_RANGE(0xc100, 0xc1ff) AM_WRITE(SMH_RAM) AM_BASE(&paletteram_2)
 	AM_RANGE(0xc500, 0xc500) AM_WRITE(stfight_fm_w)               /* play fm sound */
-	AM_RANGE(0xc600, 0xc600) AM_WRITE(stfight_adpcm_control_w)    /* voice control */
+	AM_RANGE(0xc600, 0xc600) AM_DEVWRITE("msm", stfight_adpcm_control_w)    /* voice control */
 	AM_RANGE(0xc700, 0xc700) AM_WRITE(stfight_coin_w)             /* coin mech */
 	AM_RANGE(0xc804, 0xc806) AM_WRITE(SMH_NOP)                    /* TBD */
 	AM_RANGE(0xc807, 0xc807) AM_WRITE(stfight_sprite_bank_w)
@@ -268,8 +268,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmem_cpu2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
-	AM_RANGE(0xc001, 0xc001) AM_READ(ym2203_read_port_0_r)
-	AM_RANGE(0xc801, 0xc801) AM_READ(ym2203_read_port_1_r)
+	AM_RANGE(0xc000, 0xc001) AM_DEVREAD("ym1", ym2203_r)
+	AM_RANGE(0xc800, 0xc801) AM_DEVREAD("ym2", ym2203_r)
 	AM_RANGE(0xf000, 0xf000) AM_READ(stfight_fm_r)
 	AM_RANGE(0xf800, 0xffff) AM_READ(SMH_RAM)
 
@@ -277,10 +277,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_cpu2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(ym2203_control_port_0_w)
-	AM_RANGE(0xc001, 0xc001) AM_WRITE(ym2203_write_port_0_w)
-	AM_RANGE(0xc800, 0xc800) AM_WRITE(ym2203_control_port_1_w)
-	AM_RANGE(0xc801, 0xc801) AM_WRITE(ym2203_write_port_1_w)
+	AM_RANGE(0xc000, 0xc001) AM_DEVWRITE("ym1", ym2203_w)
+	AM_RANGE(0xc800, 0xc801) AM_DEVWRITE("ym2", ym2203_w)
 	AM_RANGE(0xe800, 0xe800) AM_WRITE(stfight_e800_w)
 	AM_RANGE(0xf800, 0xffff) AM_WRITE(SMH_RAM)
 
@@ -455,11 +453,11 @@ static const msm5205_interface msm5205_config =
 static MACHINE_DRIVER_START( stfight )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 3000000)	/* 3 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, 3000000)	/* 3 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu1,writemem_cpu1)
-	MDRV_CPU_VBLANK_INT("main", stfight_vb_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", stfight_vb_interrupt)
 
-	MDRV_CPU_ADD("audio", Z80, 3000000)	/* 3 MHz */
+	MDRV_CPU_ADD("audiocpu", Z80, 3000000)	/* 3 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu2,writemem_cpu2)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold,120)
 
@@ -468,7 +466,7 @@ static MACHINE_DRIVER_START( stfight )
 	MDRV_MACHINE_RESET(stfight)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -510,11 +508,11 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( empcity )
-	ROM_REGION( 2*0x18000, "main", 0 )	/* 96k for code + 96k for decrypted opcodes */
+	ROM_REGION( 2*0x18000, "maincpu", 0 )	/* 96k for code + 96k for decrypted opcodes */
 	ROM_LOAD( "ec_01.rom",  0x00000, 0x8000, CRC(fe01d9b1) SHA1(c4b62d1b7e3a062f6a7a75f49cce5712f9016f98) )
 	ROM_LOAD( "ec_02.rom",  0x10000, 0x8000, CRC(b3cf1ef7) SHA1(91bc92293cbb47c38a2552c5beea53894b87d446) )	/* bank switched */
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the second CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "ec_04.rom",  0x0000,  0x8000, CRC(aa3e7d1e) SHA1(da350384d55f011253d19ce17fc327cd2604257f) )
 
 	ROM_REGION( 0x02000, "gfx1", ROMREGION_DISPOSE )	/* character data */
@@ -562,11 +560,11 @@ ROM_END
 
 /* set just contained the 3 roms cpu.4u, cpu.2u and vid.2p and the prom 82s123.a7 */
 ROM_START( empcityu )
-	ROM_REGION( 2*0x18000, "main", 0 )	/* 96k for code + 96k for decrypted opcodes */
+	ROM_REGION( 2*0x18000, "maincpu", 0 )	/* 96k for code + 96k for decrypted opcodes */
 	ROM_LOAD( "cpu.4u",  0x00000, 0x8000, CRC(e2c40ea3) SHA1(fd3c21fe3b5faf323a16be54ad2eed23b12c977e) )
 	ROM_LOAD( "cpu.2u",  0x10000, 0x8000, CRC(96ee8b81) SHA1(95b516c023766fae79241d4422814e39e268ae7d) )	/* bank switched */
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the second CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "ec_04.rom",  0x0000,  0x8000, CRC(aa3e7d1e) SHA1(da350384d55f011253d19ce17fc327cd2604257f) )
 
 	ROM_REGION( 0x02000, "gfx1", ROMREGION_DISPOSE )	/* character data */
@@ -616,11 +614,11 @@ ROM_START( empcityu )
 ROM_END
 
 ROM_START( empcityj )
-	ROM_REGION( 2*0x18000, "main", 0 )	/* 96k for code + 96k for decrypted opcodes */
+	ROM_REGION( 2*0x18000, "maincpu", 0 )	/* 96k for code + 96k for decrypted opcodes */
 	ROM_LOAD( "1.bin",      0x00000, 0x8000, CRC(8162331c) SHA1(f2fdf5fbc52d4ea692fb87fa049c48935a73d67b) )
 	ROM_LOAD( "2.bin",      0x10000, 0x8000, CRC(960edea6) SHA1(fd19475e841defe42625a94c40c6390b7e6e7682) )	/* bank switched */
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the second CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "ec_04.rom",  0x0000,  0x8000, CRC(aa3e7d1e) SHA1(da350384d55f011253d19ce17fc327cd2604257f) )
 
 	ROM_REGION( 0x02000, "gfx1", ROMREGION_DISPOSE )	/* character data */
@@ -667,11 +665,11 @@ ROM_START( empcityj )
 ROM_END
 
 ROM_START( stfight )
-	ROM_REGION( 2*0x18000, "main", 0 )	/* 96k for code + 96k for decrypted opcodes */
+	ROM_REGION( 2*0x18000, "maincpu", 0 )	/* 96k for code + 96k for decrypted opcodes */
 	ROM_LOAD( "a-1.4q",     0x00000, 0x8000, CRC(ff83f316) SHA1(84553ebd96ddbf59a1bcb221d53781980a006925) )
 	ROM_LOAD( "sf02.bin",   0x10000, 0x8000, CRC(e626ce9e) SHA1(2c6c5a5cf15cc50217c9864a4d861af8a1b1b5ad) )	/* bank switched */
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the second CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "sf03.bin",   0x0000,  0x8000, CRC(6a8cb7a6) SHA1(dc123cc48d3623752b78e7c23dd8d2f5adf84f92) )
 
 	ROM_REGION( 0x02000, "gfx1", ROMREGION_DISPOSE )	/* character data */
@@ -720,11 +718,11 @@ ROM_END
 /* not sure if this is a bootleg or not, it still displays the seibu copyright on a screen during the attract mode
    but not during the initial startup, must investigate this set more later */
 ROM_START( stfighta )
-	ROM_REGION( 2*0x18000, "main", 0 )	/* 96k for code + 96k for decrypted opcodes */
+	ROM_REGION( 2*0x18000, "maincpu", 0 )	/* 96k for code + 96k for decrypted opcodes */
 	ROM_LOAD( "sfight2.bin",     0x00000, 0x8000, CRC(8fb4dfc9) SHA1(0350f4a8749883a4e2e9c4aed2447a64a078f9ce) )//  2.bin 58.532715%
 	ROM_LOAD( "sfight1.bin",     0x10000, 0x8000, CRC(983ce746) SHA1(3c7b9498f1adf253ba651558ee40641ec3dbc5eb) )/* bank switched */ //  a-1.4q 99.737549%
 
-	ROM_REGION( 0x10000, "audio", 0 )	/* 64k for the second CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "sf03.bin",   0x0000,  0x8000, CRC(6a8cb7a6) SHA1(dc123cc48d3623752b78e7c23dd8d2f5adf84f92) )
 
 	ROM_REGION( 0x02000, "gfx1", ROMREGION_DISPOSE )	/* character data */

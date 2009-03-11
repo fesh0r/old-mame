@@ -69,7 +69,7 @@ UINT16 *aquarium_bak_videoram;
 #if AQUARIUS_HACK
 static MACHINE_RESET( aquarium )
 {
-	UINT16 *RAM = (UINT16 *)memory_region(machine, "main");
+	UINT16 *RAM = (UINT16 *)memory_region(machine, "maincpu");
 	int data = input_port_read(machine, "FAKE");
 
 	/* Language : 0x0000 = Japanese - Other value = English */
@@ -104,7 +104,7 @@ static WRITE16_HANDLER( aquarium_sound_w )
 static WRITE8_HANDLER( aquarium_z80_bank_w )
 {
 	int soundbank = ((data & 0x7) + 1) * 0x8000;
-	UINT8 *Z80 = (UINT8 *)memory_region(space->machine, "audio");
+	UINT8 *Z80 = (UINT8 *)memory_region(space->machine, "audiocpu");
 
 	memory_set_bankptr(space->machine, 1, &Z80[soundbank + 0x10000]);
 }
@@ -125,15 +125,15 @@ static UINT8 aquarium_snd_bitswap(UINT8 scrambled_data)
 	return data;
 }
 
-static READ8_HANDLER( aquarium_oki_r )
+static READ8_DEVICE_HANDLER( aquarium_oki_r )
 {
-	return (aquarium_snd_bitswap(okim6295_status_0_r(space,0)) );
+	return (aquarium_snd_bitswap(okim6295_r(device,0)) );
 }
 
-static WRITE8_HANDLER( aquarium_oki_w )
+static WRITE8_DEVICE_HANDLER( aquarium_oki_w )
 {
-	logerror("Z80-PC:%04x Writing %04x to the OKI M6295\n",cpu_get_previouspc(space->cpu),aquarium_snd_bitswap(data));
-	okim6295_data_0_w( space, 0, (aquarium_snd_bitswap(data)) );
+	logerror("%s:Writing %04x to the OKI M6295\n",cpuexec_describe_context(device->machine),aquarium_snd_bitswap(data));
+	okim6295_w( device, 0, (aquarium_snd_bitswap(data)) );
 }
 
 
@@ -165,9 +165,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( snd_portmap, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(ym2151_register_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_READWRITE(ym2151_status_port_0_r, ym2151_data_port_0_w)
-	AM_RANGE(0x02, 0x02) AM_READWRITE(aquarium_oki_r, aquarium_oki_w)
+	AM_RANGE(0x00, 0x01) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
+	AM_RANGE(0x02, 0x02) AM_DEVREADWRITE("oki", aquarium_oki_r, aquarium_oki_w)
 	AM_RANGE(0x04, 0x04) AM_READ(soundlatch_r)
 	AM_RANGE(0x06, 0x06) AM_WRITE(aquarium_snd_ack_w)
 	AM_RANGE(0x08, 0x08) AM_WRITE(aquarium_z80_bank_w)
@@ -330,9 +329,9 @@ static GFXDECODE_START( aquarium )
 	GFXDECODE_ENTRY( "gfx4", 0, char5bpplayout,   0x400, 32 )
 GFXDECODE_END
 
-static void irq_handler(running_machine *machine, int irq)
+static void irq_handler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[1], 0 , irq ? ASSERT_LINE : CLEAR_LINE );
+	cpu_set_input_line(device->machine->cpu[1], 0 , irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
 static const ym2151_interface ym2151_config =
@@ -341,23 +340,29 @@ static const ym2151_interface ym2151_config =
 };
 
 
+static MACHINE_START( aquarium )
+{
+    state_save_register_global(machine, aquarium_snd_ack);
+}
+
 static MACHINE_DRIVER_START( aquarium )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 32000000/2)
+	MDRV_CPU_ADD("maincpu", M68000, 32000000/2)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
-	MDRV_CPU_ADD("audio", Z80, 6000000)
+	MDRV_CPU_ADD("audiocpu", Z80, 6000000)
 	MDRV_CPU_PROGRAM_MAP(snd_map,0)
 	MDRV_CPU_IO_MAP(snd_portmap,0)
 
+    MDRV_MACHINE_START(aquarium)
 #if AQUARIUS_HACK
 	MDRV_MACHINE_RESET(aquarium)
 #endif
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -370,24 +375,24 @@ static MACHINE_DRIVER_START( aquarium )
 	MDRV_VIDEO_UPDATE(aquarium)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2151, 3579545)
 	MDRV_SOUND_CONFIG(ym2151_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.45)
-	MDRV_SOUND_ROUTE(1, "right", 0.45)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.45)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.45)
 
 	MDRV_SOUND_ADD("oki", OKIM6295, 1122000)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.47)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.47)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.47)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.47)
 MACHINE_DRIVER_END
 
 ROM_START( aquarium )
-	ROM_REGION( 0x080000, "main", 0 )     /* 68000 code */
+	ROM_REGION( 0x080000, "maincpu", 0 )     /* 68000 code */
 	ROM_LOAD16_WORD_SWAP( "aquar3",  0x000000, 0x080000, CRC(344509a1) SHA1(9deb610732dee5066b3225cd7b1929b767579235) )
 
-	ROM_REGION( 0x50000, "audio", 0 ) /* z80 (sound) code */
+	ROM_REGION( 0x50000, "audiocpu", 0 ) /* z80 (sound) code */
 	ROM_LOAD( "aquar5",  0x000000, 0x40000, CRC(fa555be1) SHA1(07236f2b2ba67e92984b9ddf4a8154221d535245) )
 	ROM_RELOAD( 		0x010000, 0x40000 )
 
@@ -414,7 +419,7 @@ ROM_START( aquarium )
 ROM_END
 
 #if !AQUARIUS_HACK
-GAME( 1996, aquarium, 0, aquarium, aquarium, aquarium, ROT0, "Excellent System", "Aquarium (Japan)", GAME_NO_COCKTAIL )
+GAME( 1996, aquarium, 0, aquarium, aquarium, aquarium, ROT0, "Excellent System", "Aquarium (Japan)", GAME_SUPPORTS_SAVE | GAME_NO_COCKTAIL )
 #else
-GAME( 1996, aquarium, 0, aquarium, aquarium, aquarium, ROT0, "Excellent System", "Aquarium", GAME_NO_COCKTAIL )
+GAME( 1996, aquarium, 0, aquarium, aquarium, aquarium, ROT0, "Excellent System", "Aquarium", GAME_SUPPORTS_SAVE | GAME_NO_COCKTAIL )
 #endif

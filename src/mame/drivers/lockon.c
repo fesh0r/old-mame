@@ -207,8 +207,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_READWRITE(ym2203_read_port_0_r, ym2203_write_port_0_w)
+	AM_RANGE(0x00, 0x01) AM_DEVREADWRITE("ym", ym2203_r, ym2203_w)
 	AM_RANGE(0x02, 0x02) AM_NOP
 ADDRESS_MAP_END
 
@@ -415,21 +414,21 @@ static WRITE8_HANDLER( sound_vol )
 	double lgain = gains[data & 0xf];
 	double rgain = gains[data >> 4];
 
-	flt_volume_set_volume(0, lgain);
-	flt_volume_set_volume(2, lgain);
-	flt_volume_set_volume(4, lgain);
+	flt_volume_set_volume(devtag_get_device(space->machine, "f2203.1l"), lgain);
+	flt_volume_set_volume(devtag_get_device(space->machine, "f2203.2l"), lgain);
+	flt_volume_set_volume(devtag_get_device(space->machine, "f2203.3l"), lgain);
 
-	flt_volume_set_volume(1, rgain);
-	flt_volume_set_volume(3, rgain);
-	flt_volume_set_volume(5, rgain);
+	flt_volume_set_volume(devtag_get_device(space->machine, "f2203.1r"), rgain);
+	flt_volume_set_volume(devtag_get_device(space->machine, "f2203.2r"), rgain);
+	flt_volume_set_volume(devtag_get_device(space->machine, "f2203.3r"), rgain);
 }
 
-static void ym2203_irq(running_machine *machine, int irq)
+static void ym2203_irq(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[SOUND_CPU], 0, irq ? ASSERT_LINE : CLEAR_LINE );
+	cpu_set_input_line(device->machine->cpu[SOUND_CPU], 0, irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
-static WRITE8_HANDLER( ym2203_out_b )
+static WRITE8_DEVICE_HANDLER( ym2203_out_b )
 {
 	coin_counter_w(0, data & 0x80);
 	coin_counter_w(1, data & 0x40);
@@ -444,10 +443,10 @@ static const ym2203_interface ym2203_config =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		input_port_1_r,
-		NULL,
-		NULL,
-		ym2203_out_b,
+		DEVCB_INPUT_PORT("YM2203"),
+		DEVCB_NULL,
+		DEVCB_NULL,
+		DEVCB_HANDLER(ym2203_out_b),
 	},
 	ym2203_irq
 };
@@ -460,7 +459,7 @@ static const ym2203_interface ym2203_config =
  *************************************/
 
 static MACHINE_DRIVER_START( lockon )
-	MDRV_CPU_ADD("main", V30, XTAL_16MHz / 2)
+	MDRV_CPU_ADD("maincpu", V30, XTAL_16MHz / 2)
 	MDRV_CPU_PROGRAM_MAP(main_v30, 0)
 
 	MDRV_CPU_ADD("ground", V30, XTAL_16MHz / 2)
@@ -469,7 +468,7 @@ static MACHINE_DRIVER_START( lockon )
 	MDRV_CPU_ADD("object", V30, XTAL_16MHz / 2)
 	MDRV_CPU_PROGRAM_MAP(object_v30, 0)
 
-	MDRV_CPU_ADD("audio", Z80, XTAL_16MHz / 4)
+	MDRV_CPU_ADD("audiocpu", Z80, XTAL_16MHz / 4)
 	MDRV_CPU_PROGRAM_MAP(sound_prg, 0)
 	MDRV_CPU_IO_MAP(sound_io, 0)
 
@@ -478,7 +477,7 @@ static MACHINE_DRIVER_START( lockon )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
 
@@ -490,12 +489,12 @@ static MACHINE_DRIVER_START( lockon )
 	MDRV_VIDEO_UPDATE(lockon)
 	MDRV_VIDEO_EOF(lockon)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym", YM2203, XTAL_16MHz / 4)
 	MDRV_SOUND_CONFIG(ym2203_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.40)
-	MDRV_SOUND_ROUTE(0, "right", 0.40)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.40)
+	MDRV_SOUND_ROUTE(0, "rspeaker", 0.40)
 	MDRV_SOUND_ROUTE(1, "f2203.1l", 1.0)
 	MDRV_SOUND_ROUTE(1, "f2203.1r", 1.0)
 	MDRV_SOUND_ROUTE(2, "f2203.2l", 1.0)
@@ -504,17 +503,17 @@ static MACHINE_DRIVER_START( lockon )
 	MDRV_SOUND_ROUTE(3, "f2203.3r", 1.0)
 
 	MDRV_SOUND_ADD("f2203.1l", FILTER_VOLUME, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 	MDRV_SOUND_ADD("f2203.1r", FILTER_VOLUME, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 	MDRV_SOUND_ADD("f2203.2l", FILTER_VOLUME, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 	MDRV_SOUND_ADD("f2203.2r", FILTER_VOLUME, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 	MDRV_SOUND_ADD("f2203.3l", FILTER_VOLUME, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
 	MDRV_SOUND_ADD("f2203.3r", FILTER_VOLUME, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 MACHINE_DRIVER_END
 
 
@@ -527,7 +526,7 @@ MACHINE_DRIVER_END
 
 ROM_START( lockon )
 	/* TF012 V30 (Main) */
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "lo1_02c.89", 0x60000, 0x8000, CRC(bbf17263) SHA1(96821a0ecd6efe6764380fef094f87c1d6e1d299) )
 	ROM_LOAD16_BYTE( "lo1_03c.88", 0x60001, 0x8000, CRC(fa58fd36) SHA1(16af24027610bf6d3fdc4c3df3bf6d94c6776420) )
 
@@ -550,7 +549,7 @@ ROM_START( lockon )
 	ROM_LOAD16_BYTE( "lo4_01b", 0x30001, 0x8000, CRC(7e88bcf2) SHA1(d541458ba6178ec3bce0e9b872b9fa1d8edb107c) )
 
 	/* TF014 Z80 (Sound) */
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "lo1_08b.24", 0x00000, 0x8000, CRC(73860ec9) SHA1(a94afa274321b9f9ac2184e133132f9829fb9485) )
 
 	/* 8x8x2 characters */
@@ -639,7 +638,7 @@ ROM_END
 
 ROM_START( lockonc )
 	/* TF012 V30 (Main) */
-	ROM_REGION( 0x100000, "main", 0 )
+	ROM_REGION( 0x100000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "lo1_02c.89", 0x60000, 0x8000, CRC(bbf17263) SHA1(96821a0ecd6efe6764380fef094f87c1d6e1d299) )
 	ROM_LOAD16_BYTE( "lo1_03c.88", 0x60001, 0x8000, CRC(fa58fd36) SHA1(16af24027610bf6d3fdc4c3df3bf6d94c6776420) )
 
@@ -662,7 +661,7 @@ ROM_START( lockonc )
 	ROM_LOAD16_BYTE( "lo4_01b", 0x30001, 0x8000, CRC(7e88bcf2) SHA1(d541458ba6178ec3bce0e9b872b9fa1d8edb107c) )
 
 	/* TF014 Z80 (Sound) */
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "lo1_08b.24", 0x00000, 0x8000, CRC(73860ec9) SHA1(a94afa274321b9f9ac2184e133132f9829fb9485) )
 
 	/* 8x8x2 characters */

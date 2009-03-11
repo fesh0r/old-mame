@@ -1,21 +1,14 @@
-#include "sound/custom.h"
-
 /*----------- defined in audio/tiamc1.c -----------*/
 
-CUSTOM_START( tiamc1_sh_start );
+DEVICE_GET_INFO( tiamc1_sound );
+#define SOUND_TIAMC1 DEVICE_GET_INFO_NAME(tiamc1_sound)
+
 WRITE8_HANDLER( tiamc1_timer0_w );
 WRITE8_HANDLER( tiamc1_timer1_w );
 WRITE8_HANDLER( tiamc1_timer1_gate_w );
 
 
 /*----------- defined in video/tiamc1.c -----------*/
-
-extern UINT8 *tiamc1_charram;
-extern UINT8 *tiamc1_tileram;
-extern UINT8 *tiamc1_spriteram_x;
-extern UINT8 *tiamc1_spriteram_y;
-extern UINT8 *tiamc1_spriteram_n;
-extern UINT8 *tiamc1_spriteram_a;
 
 PALETTE_INIT( tiamc1 );
 VIDEO_START( tiamc1 );

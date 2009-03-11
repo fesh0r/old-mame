@@ -64,12 +64,11 @@ typedef struct
 
 	UINT8 *docram;
 
-	int index;
 	sound_stream * stream;
 
-	void (*irq_callback)(running_machine *machine, int);	// IRQ callback
+	void (*irq_callback)(const device_config *, int);	// IRQ callback
 
-	read8_space_func adc_read;		// callback for the 5503's built-in analog to digital converter
+	read8_device_func adc_read;		// callback for the 5503's built-in analog to digital converter
 
 	INT8  oscsenabled;		// # of oscillators enabled
 
@@ -79,6 +78,15 @@ typedef struct
 	UINT32 output_rate;
 	const device_config *device;
 } ES5503Chip;
+
+INLINE ES5503Chip *get_safe_token(const device_config *device)
+{
+	assert(device != NULL);
+	assert(device->token != NULL);
+	assert(device->type == SOUND);
+	assert(sound_get_type(device) == SOUND_ES5503);
+	return (ES5503Chip *)device->token;
+}
 
 static const UINT16 wavesizes[8] = { 256, 512, 1024, 2048, 4096, 8192, 16384, 32768 };
 static const UINT32 wavemasks[8] = { 0x1ff00, 0x1fe00, 0x1fc00, 0x1f800, 0x1f000, 0x1e000, 0x1c000, 0x18000 };
@@ -128,7 +136,7 @@ static void es5503_halt_osc(ES5503Chip *chip, int onum, int type, UINT32 *accumu
 
 		if (chip->irq_callback)
 		{
-			chip->irq_callback(chip->device->machine, 1);
+			chip->irq_callback(chip->device, 1);
 		}
 	}
 }
@@ -224,22 +232,18 @@ static STREAM_UPDATE( es5503_pcm_update )
 }
 
 
-static SND_START( es5503 )
+static DEVICE_START( es5503 )
 {
 	const es5503_interface *intf;
 	int osc;
-	ES5503Chip *chip;
+	ES5503Chip *chip = get_safe_token(device);
 
-	chip = auto_malloc(sizeof(*chip));
-	memset(chip, 0, sizeof(*chip));
-	chip->index = sndindex;
-
-	intf = config;
+	intf = device->static_config;
 
 	chip->irq_callback = intf->irq_callback;
 	chip->adc_read = intf->adc_read;
 	chip->docram = intf->wave_memory;
-	chip->clock = clock;
+	chip->clock = device->clock;
 	chip->device = device;
 
 	chip->rege0 = 0x80;
@@ -267,17 +271,15 @@ static SND_START( es5503 )
 
 	chip->oscsenabled = 1;
 
-	chip->output_rate = (clock/8)/34;	// (input clock / 8) / # of oscs. enabled + 2
+	chip->output_rate = (device->clock/8)/34;	// (input clock / 8) / # of oscs. enabled + 2
 	chip->stream = stream_create(device, 0, 2, chip->output_rate, chip, es5503_pcm_update);
-
-	return chip;
 }
 
-READ8_HANDLER(es5503_reg_0_r)
+READ8_DEVICE_HANDLER( es5503_r )
 {
 	UINT8 retval;
 	int i;
-	ES5503Chip *chip = sndti_token(SOUND_ES5503, 0);
+	ES5503Chip *chip = get_safe_token(device);
 
 	stream_update(chip->stream);
 
@@ -289,27 +291,21 @@ READ8_HANDLER(es5503_reg_0_r)
 		{
 			case 0:		// freq lo
 				return (chip->oscillators[osc].freq & 0xff);
-				break;
 
 			case 0x20:     	// freq hi
 				return (chip->oscillators[osc].freq >> 8);
-				break;
 
 			case 0x40:	// volume
 				return chip->oscillators[osc].vol;
-				break;
 
 			case 0x60:	// data
 				return chip->oscillators[osc].data;
-				break;
 
 			case 0x80:	// wavetable pointer
 				return (chip->oscillators[osc].wavetblpointer>>8) & 0xff;
-				break;
 
 			case 0xa0:	// oscillator control
 				return chip->oscillators[osc].control;
-				break;
 
 			case 0xc0:	// bank select / wavetable size / resolution
 				retval = 0;
@@ -321,7 +317,6 @@ READ8_HANDLER(es5503_reg_0_r)
 				retval |= (chip->oscillators[osc].wavetblsize<<3);
 				retval |= chip->oscillators[osc].resolution;
 				return retval;
-				break;
 		}
 	}
 	else	 // global registers
@@ -346,7 +341,7 @@ READ8_HANDLER(es5503_reg_0_r)
 
 						if (chip->irq_callback)
 						{
-							chip->irq_callback(space->machine, 0);
+							chip->irq_callback(chip->device, 0);
 						}
 						break;
 					}
@@ -359,23 +354,21 @@ READ8_HANDLER(es5503_reg_0_r)
 					{
 						if (chip->irq_callback)
 						{
-							chip->irq_callback(space->machine, 1);
+							chip->irq_callback(chip->device, 1);
 						}
 						break;
 					}
 				}
 
 				return retval;
-				break;
 
 			case 0xe1:	// oscillator enable
 				return chip->oscsenabled<<1;
-				break;
 
 			case 0xe2:	// A/D converter
 				if (chip->adc_read)
 				{
-					return chip->adc_read(space, 0);
+					return chip->adc_read(chip->device, 0);
 				}
 				break;
 		}
@@ -384,9 +377,9 @@ READ8_HANDLER(es5503_reg_0_r)
 	return 0;
 }
 
-WRITE8_HANDLER(es5503_reg_0_w)
+WRITE8_DEVICE_HANDLER( es5503_w )
 {
-	ES5503Chip *chip = sndti_token(SOUND_ES5503, 0);
+	ES5503Chip *chip = get_safe_token(device);
 
 	stream_update(chip->stream);
 
@@ -507,9 +500,9 @@ WRITE8_HANDLER(es5503_reg_0_w)
 	}
 }
 
-void es5503_set_base_0(UINT8 *wavemem)
+void es5503_set_base(const device_config *device, UINT8 *wavemem)
 {
-	ES5503Chip *chip = sndti_token(SOUND_ES5503, 0);
+	ES5503Chip *chip = get_safe_token(device);
 
 	chip->docram = wavemem;
 }
@@ -518,33 +511,24 @@ void es5503_set_base_0(UINT8 *wavemem)
  * Generic get_info
  **************************************************************************/
 
-static SND_SET_INFO( es5503 )
-{
-	switch (state)
-	{
-		/* no parameters to set */
-	}
-}
-
-
-SND_GET_INFO( es5503 )
+DEVICE_GET_INFO( es5503 )
 {
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(ES5503Chip);					break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case SNDINFO_PTR_SET_INFO:						info->set_info = SND_SET_INFO_NAME( es5503 );	break;
-		case SNDINFO_PTR_START:							info->start = SND_START_NAME( es5503 );			break;
-		case SNDINFO_PTR_STOP:							/* Nothing */									break;
-		case SNDINFO_PTR_RESET:							/* Nothing */									break;
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( es5503 );			break;
+		case DEVINFO_FCT_STOP:							/* Nothing */									break;
+		case DEVINFO_FCT_RESET:							/* Nothing */									break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case SNDINFO_STR_NAME:							strcpy(info->s, "ES5503");						break;
-		case SNDINFO_STR_CORE_FAMILY:					strcpy(info->s, "Ensoniq ES550x");				break;
-		case SNDINFO_STR_CORE_VERSION:					strcpy(info->s, "1.0");							break;
-		case SNDINFO_STR_CORE_FILE:						strcpy(info->s, __FILE__);						break;
-		case SNDINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright R. Belmont");	 	break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "ES5503");						break;
+		case DEVINFO_STR_FAMILY:					strcpy(info->s, "Ensoniq ES550x");				break;
+		case DEVINFO_STR_VERSION:					strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_SOURCE_FILE:						strcpy(info->s, __FILE__);						break;
+		case DEVINFO_STR_CREDITS:					strcpy(info->s, "Copyright R. Belmont");	 	break;
 	}
 }
 

@@ -1,7 +1,8 @@
-/*  Konami ZR107 System
+/*
+    Konami 'ZR107' Hardware
+    Konami, 1995-1996
 
     Driver by Ville Linde
-
 
 
     Hardware overview:
@@ -29,25 +30,14 @@
         2x KS10081 (custom 3D texel unit)
 
 
-    Hardware configurations:
+    Known games on this hardware:
 
-    Game                           | ID        | CPU PCB      | CG Board(s)
+    Game                     | Year | ID    | CPU PCB | CG Board(s)
     --------------------------------------------------------------------------
-    Midnight Run                   | GX???     | ZR107        | ZR107
-    Winding Heat                   | GX677     | ZR107        | ZR107
-    Jetwave / Waveshark            | GX678     | ZR107        | GN678
+    Midnight Run             | 1995 | GX??? | ZR107   | ZR107
+    Winding Heat             | 1996 | GX677 | ZR107   | ZR107
+    Jet Wave / Wave Shark    | 1996 | GX678 | ZR107   | GN678
 
-
-Konami 'ZR107' Hardware
-Konami, 1995-1996
-
-Known games on this hardware include....
-
-Game                   (C)      Year
--------------------------------------
-Midnight Run           Konami   1995
-Jet Wave / Wave Shark  Konami   1996 (top board only)
-Winding Heat           Konami   1996
 
 PCB Layouts
 -----------
@@ -102,12 +92,12 @@ Notes:
 
 ROM Usage
 ---------
-                            |-------------------------- ROM Locations ---------------------------|
-Game                        5R      3R      5N      13U       15U       17U       20U       19L
---------------------------------------------------------------------------------------------------
-Midnight Run (code# unknown)xxxA08  xxxA09  xxxA10  xxxExx04  xxxExx03  xxxExx02  xxxExx01  xxxA07
-Jet Wave                    678A08  678A09  678A10  678UAB04  678UAB03  678UAB02  678UAB01  678A07
-Winding Heat                677A08  677A09  677A10  677UBC04  677UBC03  677UBC02  677UBC01  677A07
+                            |-------------------------- ROM Locations -------------------------------|
+Game                        5R      3R      5N      13U        15U        17U        20U        19L
+------------------------------------------------------------------------------------------------------
+Midnight Run                477A08  477A09  477A10  476EA1A04  476EA1A03  476EA1A02  476EA1A01  477A07
+Jet Wave                    678A08  678A09  678A10  678UAB04   678UAB03   678UAB02   678UAB01   678A07
+Winding Heat                677A08  677A09  677A10  677UBC04   677UBC03   677UBC02   677UBC01   677A07
 
 
 Bottom Board
@@ -164,7 +154,7 @@ ROM Usage
                  |--------------- ROM Locations ---------------|
 Game             35A     35B     2H      5H      7H      9H
 ---------------------------------------------------------------
-Midnight Run     xxxA12  xxxA11  xxxA16  xxxA15  xxxA14  xxxA13 (xxx= code unknown)
+Midnight Run     477A12  477A11  477A16  477A15  477A14  477A13
 Jet Wave         - see note -
 Winding Heat     677A12  677A11  677A16  677A15  677A14  677A13
 
@@ -199,7 +189,6 @@ extern WRITE32_HANDLER(lanc_ram_w);
 
 // defined in drivers/nwk-tr.c
 int K001604_vh_start(running_machine *machine, int chip);
-void K001604_tile_update(running_machine *machine, int chip);
 void K001604_draw_front_layer(int chip, bitmap_t *bitmap, const rectangle *cliprect);
 void K001604_draw_back_layer(int chip, bitmap_t *bitmap, const rectangle *cliprect);
 READ32_HANDLER(K001604_tile_r);
@@ -224,7 +213,6 @@ static VIDEO_UPDATE( jetwave )
 {
 	bitmap_fill(bitmap, cliprect, screen->machine->pens[0]);
 
-	K001604_tile_update(screen->machine, 0);
 	K001005_draw(bitmap, cliprect);
 
 	K001604_draw_front_layer(0, bitmap, cliprect);
@@ -454,14 +442,10 @@ static UINT32 *workram;
 static MACHINE_START( zr107 )
 {
 	/* set conservative DRC options */
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
+	ppcdrc_set_options(machine->cpu[0], PPCDRC_COMPATIBLE_OPTIONS);
 
 	/* configure fast RAM regions for DRC */
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_END, 0x000fffff);
-	device_set_info_ptr(machine->cpu[0], CPUINFO_PTR_PPC_FASTRAM_BASE, workram);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
+	ppcdrc_add_fastram(machine->cpu[0], 0x00000000, 0x000fffff, FALSE, workram);
 }
 
 static ADDRESS_MAP_START( zr107_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -505,7 +489,7 @@ static ADDRESS_MAP_START( jetwave_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x780c0000, 0x780c0007) AM_MIRROR(0x80000000) AM_READWRITE(cgboard_dsp_comm_r_ppc, cgboard_dsp_comm_w_ppc)
 	AM_RANGE(0x7e000000, 0x7e003fff) AM_MIRROR(0x80000000) AM_READWRITE8(sysreg_r, sysreg_w, 0xffffffff)
 	AM_RANGE(0x7e008000, 0x7e009fff) AM_MIRROR(0x80000000) AM_READWRITE8(K056230_r, K056230_w, 0xffffffff)				/* LANC registers */
-	AM_RANGE(0x7e00a000, 0x7e00bfff) AM_MIRROR(0x80000000) AM_READWRITE(lanc_ram_r, lanc_ram_w)		/* LANC Buffer RAM (27E) */
+	AM_RANGE(0x7e00a000, 0x7e00bfff) AM_MIRROR(0x80000000) AM_READWRITE(lanc_ram_r, lanc_ram_w)	 AM_BASE(&lanc_ram)	/* LANC Buffer RAM (27E) */
 	AM_RANGE(0x7e00c000, 0x7e00c007) AM_MIRROR(0x80000000) AM_WRITE(K056800_host_w)
 	AM_RANGE(0x7e00c008, 0x7e00c00f) AM_MIRROR(0x80000000) AM_READ(K056800_host_r)
 	AM_RANGE(0x7f000000, 0x7f3fffff) AM_MIRROR(0x80000000) AM_ROM AM_REGION("user2", 0)
@@ -522,9 +506,9 @@ static READ16_HANDLER( dual539_r )
 	UINT16 ret = 0;
 
 	if (ACCESSING_BITS_0_7)
-		ret |= k054539_1_r(space, offset);
+		ret |= k054539_r(devtag_get_device(space->machine, "konami2"), offset);
 	if (ACCESSING_BITS_8_15)
-		ret |= k054539_0_r(space, offset)<<8;
+		ret |= k054539_r(devtag_get_device(space->machine, "konami1"), offset)<<8;
 
 	return ret;
 }
@@ -532,9 +516,9 @@ static READ16_HANDLER( dual539_r )
 static WRITE16_HANDLER( dual539_w )
 {
 	if (ACCESSING_BITS_0_7)
-		k054539_1_w(space, offset, data);
+		k054539_w(devtag_get_device(space->machine, "konami2"), offset, data);
 	if (ACCESSING_BITS_8_15)
-		k054539_0_w(space, offset, data>>8);
+		k054539_w(devtag_get_device(space->machine, "konami1"), offset, data>>8);
 }
 
 static ADDRESS_MAP_START( sound_memmap, ADDRESS_SPACE_PROGRAM, 16 )
@@ -732,11 +716,11 @@ static MACHINE_RESET( zr107 )
 static MACHINE_DRIVER_START( zr107 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
+	MDRV_CPU_ADD("maincpu", PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
 	MDRV_CPU_PROGRAM_MAP(zr107_map, 0)
-	MDRV_CPU_VBLANK_INT("main", zr107_vblank)
+	MDRV_CPU_VBLANK_INT("screen", zr107_vblank)
 
-	MDRV_CPU_ADD("audio", M68000, 64000000/8)	/* 8MHz */
+	MDRV_CPU_ADD("audiocpu", M68000, 64000000/8)	/* 8MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_memmap, 0)
 
 	MDRV_CPU_ADD("dsp", ADSP21062, 36000000)
@@ -750,7 +734,7 @@ static MACHINE_DRIVER_START( zr107 )
 	MDRV_MACHINE_RESET(zr107)
 
  	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(64*8, 48*8)
@@ -761,27 +745,27 @@ static MACHINE_DRIVER_START( zr107 )
 	MDRV_VIDEO_START(zr107)
 	MDRV_VIDEO_UPDATE(zr107)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("konami1", K054539, 48000)
 	MDRV_SOUND_CONFIG(k054539_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.75)
-	MDRV_SOUND_ROUTE(1, "right", 0.75)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.75)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.75)
 
 	MDRV_SOUND_ADD("konami2", K054539, 48000)
 	MDRV_SOUND_CONFIG(k054539_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.75)
-	MDRV_SOUND_ROUTE(1, "right", 0.75)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.75)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.75)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( jetwave )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
+	MDRV_CPU_ADD("maincpu", PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
 	MDRV_CPU_PROGRAM_MAP(jetwave_map, 0)
-	MDRV_CPU_VBLANK_INT("main", zr107_vblank)
+	MDRV_CPU_VBLANK_INT("screen", zr107_vblank)
 
-	MDRV_CPU_ADD("audio", M68000, 64000000/8)	/* 8MHz */
+	MDRV_CPU_ADD("audiocpu", M68000, 64000000/8)	/* 8MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_memmap, 0)
 
 	MDRV_CPU_ADD("dsp", ADSP21062, 36000000)
@@ -795,7 +779,7 @@ static MACHINE_DRIVER_START( jetwave )
 	MDRV_MACHINE_RESET(zr107)
 
  	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(64*8, 48*8)
@@ -806,17 +790,17 @@ static MACHINE_DRIVER_START( jetwave )
 	MDRV_VIDEO_START(jetwave)
 	MDRV_VIDEO_UPDATE(jetwave)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("konami1", K054539, 48000)
 	MDRV_SOUND_CONFIG(k054539_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.75)
-	MDRV_SOUND_ROUTE(1, "right", 0.75)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.75)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.75)
 
 	MDRV_SOUND_ADD("konami2", K054539, 48000)
 	MDRV_SOUND_CONFIG(k054539_config)
-	MDRV_SOUND_ROUTE(0, "left", 0.75)
-	MDRV_SOUND_ROUTE(1, "right", 0.75)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.75)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.75)
 MACHINE_DRIVER_END
 
 /*****************************************************************************/
@@ -860,32 +844,30 @@ static DRIVER_INIT(jetwave)
 
 /*****************************************************************************/
 
-#define ROM_LOAD64_WORD(name,offset,length,hash)      ROMX_LOAD(name, offset, length, hash, ROM_GROUPWORD | ROM_SKIP(6))
-
 ROM_START(midnrun)
 	ROM_REGION(0x200000, "user1", 0)	/* PowerPC program roms */
-	ROM_LOAD32_BYTE("midnight.20u", 0x000003, 0x80000, CRC(ea70edf2) SHA1(51c882383a150ba118ccd39eb869525fcf5eee3c) )
-	ROM_LOAD32_BYTE("midnight.17u", 0x000002, 0x80000, CRC(1462994f) SHA1(c8614c6c416f81737cc77c46eea6d8d440bc8cf3) )
-	ROM_LOAD32_BYTE("midnight.15u", 0x000001, 0x80000, CRC(b770ae46) SHA1(c61daa8353802957eb1c2e2c6204c3a98569627e) )
-	ROM_LOAD32_BYTE("midnight.13u", 0x000000, 0x80000, CRC(9644b277) SHA1(b9cb812b6035dfd93032d277c8aa0037cf6b3dbe) )
+	ROM_LOAD32_BYTE( "476ea1a01.20u", 0x000003, 0x80000, CRC(ea70edf2) SHA1(51c882383a150ba118ccd39eb869525fcf5eee3c) )
+	ROM_LOAD32_BYTE( "476ea1a02.17u", 0x000002, 0x80000, CRC(1462994f) SHA1(c8614c6c416f81737cc77c46eea6d8d440bc8cf3) )
+	ROM_LOAD32_BYTE( "476ea1a03.15u", 0x000001, 0x80000, CRC(b770ae46) SHA1(c61daa8353802957eb1c2e2c6204c3a98569627e) )
+	ROM_LOAD32_BYTE( "476ea1a04.13u", 0x000000, 0x80000, CRC(9644b277) SHA1(b9cb812b6035dfd93032d277c8aa0037cf6b3dbe) )
 
-	ROM_REGION(0x20000, "audio", 0)		/* M68K program */
-	ROM_LOAD16_WORD_SWAP("midnight.19l", 0x000000, 0x20000, CRC(a82c0ba1) SHA1(dad69f2e5e75009d70cc2748477248ec47627c30) )
+	ROM_REGION(0x20000, "audiocpu", 0)		/* M68K program */
+	ROM_LOAD16_WORD_SWAP( "477a07.19l", 0x000000, 0x20000, CRC(a82c0ba1) SHA1(dad69f2e5e75009d70cc2748477248ec47627c30) )
 
 	ROM_REGION(0x100000, "gfx2", 0)	/* Tilemap */
-	ROM_LOAD16_BYTE("midnight.35b", 0x000000, 0x80000, CRC(85eef04b) SHA1(02e26d2d4a8b29894370f28d2a49fdf5c7d23f95) )
-	ROM_LOAD16_BYTE("midnight.35a", 0x000001, 0x80000, CRC(451d7777) SHA1(0bf280ca475100778bbfd3f023547bf0413fc8b7) )
+	ROM_LOAD16_BYTE( "477a11.35b", 0x000000, 0x80000, CRC(85eef04b) SHA1(02e26d2d4a8b29894370f28d2a49fdf5c7d23f95) )
+	ROM_LOAD16_BYTE( "477a12.35a", 0x000001, 0x80000, CRC(451d7777) SHA1(0bf280ca475100778bbfd3f023547bf0413fc8b7) )
 
 	ROM_REGION(0x800000, "gfx1", 0)	/* Texture data */
-	ROM_LOAD32_BYTE("midnight.m9h", 0x000000, 0x200000, CRC(b1ee901d) SHA1(b1432cb1379b35d99d3f2b7f6409db6f7e88121d) )
-	ROM_LOAD32_BYTE("midnight.7h",  0x000001, 0x200000, CRC(9ffa8cc5) SHA1(eaa19e26df721bec281444ca1c5ccc9e48df1b0b) )
-	ROM_LOAD32_BYTE("midnight.5h",  0x000002, 0x200000, CRC(e337fce7) SHA1(c84875f3275efd47273508b340231721f5a631d2) )
-	ROM_LOAD32_BYTE("midnight.m2h", 0x000003, 0x200000, CRC(2c03ee63) SHA1(6b74d340dddf92bb4e4b1e037f003d58c65d8d9b) )
+	ROM_LOAD32_BYTE( "477a13.9h", 0x000000, 0x200000, CRC(b1ee901d) SHA1(b1432cb1379b35d99d3f2b7f6409db6f7e88121d) )
+	ROM_LOAD32_BYTE( "477a14.7h",  0x000001, 0x200000, CRC(9ffa8cc5) SHA1(eaa19e26df721bec281444ca1c5ccc9e48df1b0b) )
+	ROM_LOAD32_BYTE( "477a15.5h",  0x000002, 0x200000, CRC(e337fce7) SHA1(c84875f3275efd47273508b340231721f5a631d2) )
+	ROM_LOAD32_BYTE( "477a16.2h", 0x000003, 0x200000, CRC(2c03ee63) SHA1(6b74d340dddf92bb4e4b1e037f003d58c65d8d9b) )
 
 	ROM_REGION(0x600000, "shared", 0)	/* Sound data */
-	ROM_LOAD("midnight.m3r", 0x000000, 0x200000, CRC(f431e29f) SHA1(e6082d88f86abb63d02ac34e70873b58f88b0ddc) )
-	ROM_LOAD("midnight.m5n", 0x200000, 0x200000, CRC(8db31bd4) SHA1(d662d3bb6e8b44a01ffa158f5d7425454aad49a3) )
-	ROM_LOAD("midnight.m5r", 0x400000, 0x200000, CRC(d320dbde) SHA1(eb602cad6ac7c7151c9f29d39b10041d5a354164) )
+	ROM_LOAD( "477a09.3r", 0x000000, 0x200000, CRC(f431e29f) SHA1(e6082d88f86abb63d02ac34e70873b58f88b0ddc) )
+	ROM_LOAD( "477a10.5n", 0x200000, 0x200000, CRC(8db31bd4) SHA1(d662d3bb6e8b44a01ffa158f5d7425454aad49a3) )
+	ROM_LOAD( "477a08.5r", 0x400000, 0x200000, CRC(d320dbde) SHA1(eb602cad6ac7c7151c9f29d39b10041d5a354164) )
 ROM_END
 
 ROM_START(windheat)
@@ -895,7 +877,7 @@ ROM_START(windheat)
 	ROM_LOAD32_BYTE( "677eaa03.15u", 0x000001, 0x080000, CRC(c46eba6b) SHA1(80fea082d09071875d30a6a838736cf3a3e4501d) )
 	ROM_LOAD32_BYTE( "677eaa04.13u", 0x000000, 0x080000, CRC(20dfcf4e) SHA1(4de8e22507f4719441f14fe96e25f0e0712dfa95) )
 
-	ROM_REGION(0x20000, "audio", 0)		/* M68K program */
+	ROM_REGION(0x20000, "audiocpu", 0)		/* M68K program */
 	ROM_LOAD16_WORD_SWAP( "677a07.19l", 0x000000, 0x020000, CRC(05b14f2d) SHA1(3753f71173594ee741980e08eed0f7c3fc3588c9) )
 
 	ROM_REGION(0x100000, "gfx2", 0)	/* Tilemap */
@@ -921,7 +903,7 @@ ROM_START(windheau)
 	ROM_LOAD32_BYTE( "677ubc03.15u", 0x000001, 0x080000, CRC(0f7d8c1f) SHA1(63de03c7be794b6dae8d0af69e894ac573dbbc11) )
 	ROM_LOAD32_BYTE( "677ubc04.13u", 0x000000, 0x080000, CRC(4e42791c) SHA1(a53c6374c6b46db578be4ced2ee7c2af7062d961) )
 
-	ROM_REGION(0x20000, "audio", 0)		/* M68K program */
+	ROM_REGION(0x20000, "audiocpu", 0)		/* M68K program */
 	ROM_LOAD16_WORD_SWAP( "677a07.19l", 0x000000, 0x020000, CRC(05b14f2d) SHA1(3753f71173594ee741980e08eed0f7c3fc3588c9) )
 
 	ROM_REGION(0x100000, "gfx2", 0)	/* Tilemap */
@@ -947,7 +929,7 @@ ROM_START(jetwave)
 	ROM_LOAD32_BYTE( "678uab03.15u", 0x000001, 0x080000, CRC(f4a595e7) SHA1(e05e7ea6613ecf70d8470af5fe0c6a7274c6e45b) )
 	ROM_LOAD32_BYTE( "678uab04.13u", 0x000000, 0x080000, CRC(fd3320a7) SHA1(03a50a7bba9eb7cdb9f84953d6fb5c09f2d4b2db) )
 
-	ROM_REGION(0x20000, "audio", 0)		/* M68K program */
+	ROM_REGION(0x20000, "audiocpu", 0)		/* M68K program */
 	ROM_LOAD16_WORD_SWAP( "678a07.19l", 0x000000, 0x020000, CRC(bb3f5875) SHA1(97f80d9b55d4177217b7cd1ba14e8ed2d64376bb) )
 
 	ROM_REGION32_BE(0x400000, "user2", 0)	/* data roms */

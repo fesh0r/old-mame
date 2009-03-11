@@ -27,9 +27,9 @@ NVRAM   :   Battery for main RAM
 
 
 static tilemap *gp98_reel1_tilemap;
-UINT8 *gp98_reel1_ram;
+static UINT8 *gp98_reel1_ram;
 
-WRITE8_HANDLER( gp98_reel1_ram_w )
+static WRITE8_HANDLER( gp98_reel1_ram_w )
 {
 	gp98_reel1_ram[offset] = data;
 	tilemap_mark_tile_dirty(gp98_reel1_tilemap,offset);
@@ -59,9 +59,9 @@ static TILE_GET_INFO( get_gp98_reel1_tile_info )
 }
 
 static tilemap *gp98_reel2_tilemap;
-UINT8 *gp98_reel2_ram;
+static UINT8 *gp98_reel2_ram;
 
-WRITE8_HANDLER( gp98_reel2_ram_w )
+static WRITE8_HANDLER( gp98_reel2_ram_w )
 {
 	gp98_reel2_ram[offset] = data;
 	tilemap_mark_tile_dirty(gp98_reel2_tilemap,offset);
@@ -91,9 +91,9 @@ static TILE_GET_INFO( get_gp98_reel2_tile_info )
 
 
 static tilemap *gp98_reel3_tilemap;
-UINT8 *gp98_reel3_ram;
+static UINT8 *gp98_reel3_ram;
 
-WRITE8_HANDLER( gp98_reel3_ram_w )
+static WRITE8_HANDLER( gp98_reel3_ram_w )
 {
 	gp98_reel3_ram[offset] = data;
 	tilemap_mark_tile_dirty(gp98_reel3_tilemap,offset);
@@ -123,9 +123,9 @@ static TILE_GET_INFO( get_gp98_reel3_tile_info )
 
 
 static tilemap *gp98_reel4_tilemap;
-UINT8 *gp98_reel4_ram;
+static UINT8 *gp98_reel4_ram;
 
-WRITE8_HANDLER( gp98_reel4_ram_w )
+static WRITE8_HANDLER( gp98_reel4_ram_w )
 {
 	gp98_reel4_ram[offset] = data;
 	tilemap_mark_tile_dirty(gp98_reel4_tilemap,offset);
@@ -438,10 +438,9 @@ static ADDRESS_MAP_START( jingbell_portmap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x6492, 0x6492 ) AM_WRITE( jingbell_leds_w )
 	AM_RANGE( 0x64a0, 0x64a0 ) AM_READ_PORT( "BUTTONS2" )
 
-	AM_RANGE( 0x64b0, 0x64b0 ) AM_WRITE( ym2413_register_port_0_w )
-	AM_RANGE( 0x64b1, 0x64b1 ) AM_WRITE( ym2413_data_port_0_w )
+	AM_RANGE( 0x64b0, 0x64b1 ) AM_DEVWRITE( "ym", ym2413_w )
 
-	AM_RANGE( 0x64c0, 0x64c0 ) AM_READWRITE( okim6295_status_0_r, okim6295_data_0_w )
+	AM_RANGE( 0x64c0, 0x64c0 ) AM_DEVREADWRITE( "oki", okim6295_r, okim6295_w )
 
 	AM_RANGE( 0x64d0, 0x64d1 ) AM_READWRITE( jingbell_magic_r, jingbell_magic_w )	// DSW1-5
 
@@ -633,17 +632,17 @@ static INTERRUPT_GEN( jingbell_interrupt )
 
 static MACHINE_DRIVER_START( jingbell )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z180, XTAL_12MHz / 2)	/* HD64180RP8, 8 MHz? */
+	MDRV_CPU_ADD("maincpu", Z180, XTAL_12MHz / 2)	/* HD64180RP8, 8 MHz? */
 	MDRV_CPU_PROGRAM_MAP(jingbell_map,0)
 	MDRV_CPU_IO_MAP(jingbell_portmap,0)
-	MDRV_CPU_VBLANK_INT("main",jingbell_interrupt)
+	MDRV_CPU_VBLANK_INT("screen",jingbell_interrupt)
 
 	MDRV_MACHINE_RESET(jingbell)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -711,7 +710,7 @@ Notes:
 ***************************************************************************/
 
 ROM_START( jingbell )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "jinglev133i.u44", 0x00000, 0x10000, CRC(df60dc39) SHA1(ff57afd50c045b621395353fdc50ffd1e1b65e9e) )
 
 	ROM_REGION( 0x8000, "data", 0 )
@@ -740,8 +739,8 @@ ROM_END
 static DRIVER_INIT( jingbell )
 {
 	int i;
-	UINT8 *rom  = (UINT8 *)memory_region(machine, "main");
-	size_t size = memory_region_length(machine, "main");
+	UINT8 *rom  = (UINT8 *)memory_region(machine, "maincpu");
+	size_t size = memory_region_length(machine, "maincpu");
 
 	for (i=0; i<size; i++)
 	{
@@ -767,11 +766,11 @@ static DRIVER_INIT( jingbell )
 }
 
 ROM_START( gp98 )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "prg", 0x00000, 0x20000, CRC(1c02b8cc) SHA1(b8a29cbd96581f8ae1c1028279b8ee703be29f5f) )
 
 	ROM_REGION( 0x8000, "data", 0 )
-	ROM_COPY( "main", 0x18000, 0x00000, 0x8000 )
+	ROM_COPY( "maincpu", 0x18000, 0x00000, 0x8000 )
 
 	ROM_REGION( 0x180000, "tempgfx", ROMREGION_DISPOSE ) // 6bpp (2bpp per rom) font at tile # 0x4000
 	ROM_LOAD( "49", 0x000000, 0x80000, BAD_DUMP CRC(a9d9367d) SHA1(91c74740fc8394f1e1cd68feb8c993afd2042d70) )
@@ -794,4 +793,4 @@ ROM_START( gp98 )
 ROM_END
 
 GAME( 1995?, jingbell, 0, jingbell, jingbell, jingbell, ROT0, "IGS", "Jingle Bell (Italy, V133I)", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS | GAME_UNEMULATED_PROTECTION )
-GAME( 19??,  gp98,  0,    gp98,  jingbell,        0,        ROT0, "unknown", "Grand Prix '98",GAME_NOT_WORKING| GAME_NO_SOUND )
+GAME( 1998,  gp98,  0,    gp98,  jingbell,        0,    ROT0, "Romtec Co. LTD", "Grand Prix '98",GAME_NOT_WORKING| GAME_NO_SOUND )

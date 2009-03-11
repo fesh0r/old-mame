@@ -94,20 +94,20 @@ static WRITE8_HANDLER( b800_w )
 		/* special case to return the value written to 0xb000 */
 		/* does it reset the chips too ? */
 		case 0:	break;
-		case 0xc4: b000_ret = ay8910_read_port_0_r(space,0);	break;
-		case 0x94: b000_ret = ay8910_read_port_1_r(space,0);	break;
-		case 0x86: b000_ret = ay8910_read_port_2_r(space,0);	break;
+		case 0xc4: b000_ret = ay8910_r(devtag_get_device(space->machine, "ay1"), 0);	break;
+		case 0x94: b000_ret = ay8910_r(devtag_get_device(space->machine, "ay2"), 0);	break;
+		case 0x86: b000_ret = ay8910_r(devtag_get_device(space->machine, "ay3"), 0);	break;
 
 		case 0x80:
 			switch(b800_prev)
 			{
-				case 0xe0: ay8910_control_port_0_w(space,0,b000_val);	break;
-				case 0x98: ay8910_control_port_1_w(space,0,b000_val);	break;
-				case 0x83: ay8910_control_port_2_w(space,0,b000_val);	break;
+				case 0xe0: ay8910_address_w(devtag_get_device(space->machine, "ay1"),0,b000_val);	break;
+				case 0x98: ay8910_address_w(devtag_get_device(space->machine, "ay2"),0,b000_val);	break;
+				case 0x83: ay8910_address_w(devtag_get_device(space->machine, "ay3"),0,b000_val);	break;
 
-				case 0xa0: ay8910_write_port_0_w(space,0,b000_val);	break;
-				case 0x88: ay8910_write_port_1_w(space,0,b000_val);	break;
-				case 0x81: ay8910_write_port_2_w(space,0,b000_val);	break;
+				case 0xa0: ay8910_data_w(devtag_get_device(space->machine, "ay1"),0,b000_val);	break;
+				case 0x88: ay8910_data_w(devtag_get_device(space->machine, "ay2"),0,b000_val);	break;
+				case 0x81: ay8910_data_w(devtag_get_device(space->machine, "ay3"),0,b000_val);	break;
 
 			}
 		break;
@@ -132,7 +132,7 @@ static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0000, 0xffff) AM_READ(ettrivia_question_r)
 ADDRESS_MAP_END
 
-INPUT_PORTS_START( ettrivia )
+static INPUT_PORTS_START( ettrivia )
 	PORT_START("IN0")
 	PORT_SERVICE( 0x01, IP_ACTIVE_LOW )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -212,20 +212,20 @@ static const ay8910_interface ay8912_interface_2 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_1_r,
-	NULL,
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("IN1"),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static const ay8910_interface ay8912_interface_3 =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_0_r,
-	NULL,
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("IN0"),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -238,15 +238,15 @@ static INTERRUPT_GEN( ettrivia_interrupt )
 }
 
 static MACHINE_DRIVER_START( ettrivia )
-	MDRV_CPU_ADD("main", Z80,12000000/4-48000) //should be ok, it gives the 300 interrupts expected
+	MDRV_CPU_ADD("maincpu", Z80,12000000/4-48000) //should be ok, it gives the 300 interrupts expected
 	MDRV_CPU_PROGRAM_MAP(cpu_map,0)
 	MDRV_CPU_IO_MAP(io_map,0)
-	MDRV_CPU_VBLANK_INT("main", ettrivia_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", ettrivia_interrupt)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -276,7 +276,7 @@ static MACHINE_DRIVER_START( ettrivia )
 MACHINE_DRIVER_END
 
 ROM_START( promutrv )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "u16.u16",      0x0000, 0x8000, CRC(e37d48be) SHA1(1d700cff0c28e50fa2851e0c46de21aa47a23416) )
 
 	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
@@ -303,7 +303,7 @@ ROM_START( promutrv )
 ROM_END
 
 ROM_START( promutra )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "u16.u16",      0x0000, 0x8000, CRC(e37d48be) SHA1(1d700cff0c28e50fa2851e0c46de21aa47a23416) )
 
 	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
@@ -330,7 +330,7 @@ ROM_START( promutra )
 ROM_END
 
 ROM_START( promutrb )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "u16.u16",      0x0000, 0x8000, CRC(e37d48be) SHA1(1d700cff0c28e50fa2851e0c46de21aa47a23416) )
 
 	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
@@ -361,7 +361,7 @@ ROM_START( promutrb )
 ROM_END
 
 ROM_START( promutrc )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "u16.u16",      0x0000, 0x8000, CRC(e37d48be) SHA1(1d700cff0c28e50fa2851e0c46de21aa47a23416) )
 
 	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
@@ -392,7 +392,7 @@ ROM_START( promutrc )
 ROM_END
 
 ROM_START( strvmstr )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "stm16.u16",    0x0000, 0x8000, CRC(ae734db9) SHA1(1bacdfdebaa1f250bfbd49053c3910f1396afe11) )
 
 	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )

@@ -159,6 +159,9 @@ static READ8_HANDLER( pc3259_r )
 
 static WRITE8_HANDLER( port_sound_w )
 {
+	const device_config *discrete = devtag_get_device(space->machine, "discrete");
+	const device_config *sn = devtag_get_device(space->machine, "sn");
+
 	/* D0 - interrupt enable - also goes to PC3259 as /HTCTRL */
 	cpu_interrupt_enable(space->machine->cpu[0], (data & 0x01) ? TRUE : FALSE);
 	crbaloon_set_clear_collision_address((data & 0x01) ? TRUE : FALSE);
@@ -167,29 +170,23 @@ static WRITE8_HANDLER( port_sound_w )
 	sound_global_enable((data & 0x02) ? TRUE : FALSE);
 
 	/* D2 - unlabeled - music enable */
-	crbaloon_audio_set_music_enable(space, (data & 0x04) ? TRUE : FALSE);
+	crbaloon_audio_set_music_enable(discrete, 0, (data & 0x04) ? TRUE : FALSE);
 
 	/* D3 - EXPLOSION */
-	crbaloon_audio_set_explosion_enable((data & 0x08) ? TRUE : FALSE);
+	crbaloon_audio_set_explosion_enable(sn, (data & 0x08) ? TRUE : FALSE);
 
 	/* D4 - BREATH */
-	crbaloon_audio_set_breath_enable((data & 0x10) ? TRUE : FALSE);
+	crbaloon_audio_set_breath_enable(sn, (data & 0x10) ? TRUE : FALSE);
 
 	/* D5 - APPEAR */
-	crbaloon_audio_set_appear_enable((data & 0x20) ? TRUE : FALSE);
+	crbaloon_audio_set_appear_enable(sn, (data & 0x20) ? TRUE : FALSE);
 
 	/* D6 - unlabeled - laugh enable */
-	crbaloon_audio_set_laugh_enable(space, (data & 0x40) ? TRUE : FALSE);
+	crbaloon_audio_set_laugh_enable(discrete, 0, (data & 0x40) ? TRUE : FALSE);
 
 	/* D7 - unlabeled - goes to PC3259 pin 16 */
 
 	pc3259_update();
-}
-
-
-static WRITE8_HANDLER( port_music_w )
-{
-	crbaloon_audio_set_music_freq(space, data);
 }
 
 
@@ -227,7 +224,7 @@ static ADDRESS_MAP_START( main_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_WRITE(SMH_NOP)	/* not connected */
 	AM_RANGE(0x01, 0x01) AM_WRITE(SMH_NOP) /* watchdog */
 	AM_RANGE(0x02, 0x04) AM_WRITE(SMH_RAM) AM_BASE(&crbaloon_spriteram)
-	AM_RANGE(0x05, 0x05) AM_WRITE(port_music_w)
+	AM_RANGE(0x05, 0x05) AM_DEVWRITE("discrete", crbaloon_audio_set_music_freq)
 	AM_RANGE(0x06, 0x06) AM_WRITE(port_sound_w)
 	AM_RANGE(0x07, 0x0b) AM_WRITE(pc3092_w) AM_BASE(&pc3092_data)
 	AM_RANGE(0x0c, 0x0c) AM_WRITE(SMH_NOP) /* MSK - to PC3259 */
@@ -346,10 +343,11 @@ GFXDECODE_END
 static MACHINE_RESET( crballoon )
 {
 	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO);
+	const device_config *discrete = devtag_get_device(machine, "discrete");
 
 	pc3092_reset();
 	port_sound_w(space, 0, 0);
-	port_music_w(space, 0, 0);
+	crbaloon_audio_set_music_freq(discrete, 0, 0);
 }
 
 
@@ -363,10 +361,10 @@ static MACHINE_RESET( crballoon )
 static MACHINE_DRIVER_START( crbaloon )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, CRBALOON_MASTER_XTAL / 3)
+	MDRV_CPU_ADD("maincpu", Z80, CRBALOON_MASTER_XTAL / 3)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(main_io_map,0)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_MACHINE_RESET(crballoon)
 
@@ -379,7 +377,7 @@ static MACHINE_DRIVER_START( crbaloon )
 	MDRV_PALETTE_LENGTH(32)
 	MDRV_PALETTE_INIT(crbaloon)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -400,7 +398,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( crbaloon )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "cl01.bin",     0x0000, 0x0800, CRC(9d4eef0b) SHA1(a8dd814ac2612073982123c91fa62deaf5bee242) )
 	ROM_LOAD( "cl02.bin",     0x0800, 0x0800, CRC(10f7a6f7) SHA1(e672a7dcdaae08b202cfc2e19033846ebb267e1b) )
 	ROM_LOAD( "cl03.bin",     0x1000, 0x0800, CRC(44ed6030) SHA1(8bbf5d9e893710138be15e56682037f128c83527) )
@@ -417,7 +415,7 @@ ROM_END
 
 
 ROM_START( crbalon2 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "cl01.bin",     0x0000, 0x0800, CRC(9d4eef0b) SHA1(a8dd814ac2612073982123c91fa62deaf5bee242) )
 	ROM_LOAD( "crazybal.ep2", 0x0800, 0x0800, CRC(87572086) SHA1(dba842c7c4cb16154ae0da43d71f8f03a56441c3) )
 	ROM_LOAD( "crazybal.ep3", 0x1000, 0x0800, CRC(575fe995) SHA1(829db1da27cc9b706db6d9563bd271ffcd42be4a) )

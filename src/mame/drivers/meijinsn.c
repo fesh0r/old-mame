@@ -162,8 +162,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( meijinsn_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
+	AM_RANGE(0x00, 0x01) AM_DEVWRITE("ay", ay8910_address_data_w)
+	AM_RANGE(0x01, 0x01) AM_DEVREAD("ay", ay8910_r)
 	AM_RANGE(0x02, 0x02) AM_WRITE(soundlatch_clear_w)
 	AM_RANGE(0x06, 0x06) AM_WRITE(SMH_NOP)
 ADDRESS_MAP_END
@@ -295,7 +295,7 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	soundlatch_r
+	DEVCB_MEMORY_HANDLER("audiocpu", PROGRAM, soundlatch_r)
 };
 
 static MACHINE_RESET( meijinsn )
@@ -307,11 +307,11 @@ static MACHINE_RESET( meijinsn )
 
 
 static MACHINE_DRIVER_START( meijinsn )
-	MDRV_CPU_ADD("main", M68000, 9000000 )
+	MDRV_CPU_ADD("maincpu", M68000, 9000000 )
 	MDRV_CPU_PROGRAM_MAP(meijinsn_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(meijinsn_interrupt,2)
 
-	MDRV_CPU_ADD("audio", Z80, 4000000)
+	MDRV_CPU_ADD("audiocpu", Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(meijinsn_sound_map,0)
 	MDRV_CPU_IO_MAP(meijinsn_sound_io_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 160)
@@ -319,7 +319,7 @@ static MACHINE_DRIVER_START( meijinsn )
 	MDRV_MACHINE_RESET(meijinsn)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -343,7 +343,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( meijinsn )
-	ROM_REGION( 0x40000, "main", 0 )
+	ROM_REGION( 0x40000, "maincpu", 0 )
 	ROM_LOAD16_BYTE( "p1", 0x00000, 0x04000, CRC(8c9697a3) SHA1(19258e20a6aaadd6ba3469079fef85bc6dba548c) )
 	ROM_CONTINUE   (       0x20000,  0x4000 )
 	ROM_LOAD16_BYTE( "p2", 0x00001, 0x04000, CRC(f7da3535) SHA1(fdbacd075d45abda782966b16b3ea1ad68d60f91) )
@@ -361,7 +361,7 @@ ROM_START( meijinsn )
 	ROM_LOAD16_BYTE( "p8", 0x18001, 0x04000, CRC(e3eaef19) SHA1(b290922f252a790443109e5023c3c35b133275cc) )
 	ROM_CONTINUE   (       0x38001,  0x4000 )
 
-	ROM_REGION( 0x10000, "audio", 0 ) /* Sound CPU */
+	ROM_REGION( 0x10000, "audiocpu", 0 ) /* Sound CPU */
 	ROM_LOAD( "p9", 0x00000, 0x04000, CRC(aedfefdf) SHA1(f9d35737a0e942fe7d483f87c52efa92a1bbb3e5) )
 	ROM_LOAD( "p10",0x04000, 0x04000, CRC(93b4d764) SHA1(4fedd3fd1f3ef6c5f60ca86219f877df68d3027d) )
 

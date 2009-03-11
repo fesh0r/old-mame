@@ -1315,10 +1315,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( z80_io_map, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x23) AM_READWRITE(chipset_r, chipset_w)
-	AM_RANGE(0x24, 0x24) AM_DEVWRITE(ACIA6850, "acia6850_0", acia6850_ctrl_w)
-	AM_RANGE(0x25, 0x25) AM_DEVWRITE(ACIA6850, "acia6850_0", acia6850_data_w)
-	AM_RANGE(0x26, 0x26) AM_DEVREAD(ACIA6850, "acia6850_0", acia6850_stat_r)
-	AM_RANGE(0x27, 0x27) AM_DEVREAD(ACIA6850, "acia6850_0", acia6850_data_r)
+	AM_RANGE(0x24, 0x24) AM_DEVWRITE("acia6850_0", acia6850_ctrl_w)
+	AM_RANGE(0x25, 0x25) AM_DEVWRITE("acia6850_0", acia6850_data_w)
+	AM_RANGE(0x26, 0x26) AM_DEVREAD("acia6850_0", acia6850_stat_r)
+	AM_RANGE(0x27, 0x27) AM_DEVREAD("acia6850_0", acia6850_data_r)
 	AM_RANGE(0x30, 0x30) AM_READ(fdctrl_r)
 	AM_RANGE(0x31, 0x31) AM_READWRITE(fddata_r, fdctrl_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(rombank_w)
@@ -1424,16 +1424,16 @@ static WRITE8_HANDLER( latch_w )
 	}
 }
 
-static READ8_HANDLER( upd7759_r )
+static READ8_DEVICE_HANDLER( upd_r )
 {
-	return 2 | upd7759_busy_r(0);
+	return 2 | upd7759_busy_r(device);
 }
 
-static WRITE8_HANDLER( upd7759_w )
+static WRITE8_DEVICE_HANDLER( upd_w )
 {
-	upd7759_reset_w(0, data & 0x80);
-	upd7759_port_w(0, data & 0x3f);
-	upd7759_start_w(0, data & 0x40 ? 0 : 1);
+	upd7759_reset_w(device, data & 0x80);
+	upd7759_port_w(device, 0, data & 0x3f);
+	upd7759_start_w(device, data & 0x40 ? 0 : 1);
 }
 
 static ADDRESS_MAP_START( m6809_prog_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -1444,16 +1444,16 @@ static ADDRESS_MAP_START( m6809_prog_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2800, 0x2800) AM_RAM		// W
 	AM_RANGE(0x2A00, 0x2A02) AM_READWRITE(latch_r, latch_w)
 	AM_RANGE(0x2E00, 0x2E00) AM_READ(int_latch_r)
-	AM_RANGE(0x3001, 0x3001) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0x3201, 0x3201) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0x3404, 0x3404) AM_DEVREADWRITE(ACIA6850, "acia6850_1", acia6850_stat_r, acia6850_ctrl_w)
-	AM_RANGE(0x3405, 0x3405) AM_DEVREADWRITE(ACIA6850, "acia6850_1", acia6850_data_r, acia6850_data_w)
-	AM_RANGE(0x3406, 0x3406) AM_DEVREADWRITE(ACIA6850, "acia6850_2", acia6850_stat_r, acia6850_ctrl_w)
-	AM_RANGE(0x3407, 0x3407) AM_DEVREADWRITE(ACIA6850, "acia6850_2", acia6850_data_r, acia6850_data_w)
+	AM_RANGE(0x3001, 0x3001) AM_DEVWRITE("ay", ay8910_data_w)
+	AM_RANGE(0x3201, 0x3201) AM_DEVWRITE("ay", ay8910_address_w)
+	AM_RANGE(0x3404, 0x3404) AM_DEVREADWRITE("acia6850_1", acia6850_stat_r, acia6850_ctrl_w)
+	AM_RANGE(0x3405, 0x3405) AM_DEVREADWRITE("acia6850_1", acia6850_data_r, acia6850_data_w)
+	AM_RANGE(0x3406, 0x3406) AM_DEVREADWRITE("acia6850_2", acia6850_stat_r, acia6850_ctrl_w)
+	AM_RANGE(0x3407, 0x3407) AM_DEVREADWRITE("acia6850_2", acia6850_data_r, acia6850_data_w)
 //  AM_RANGE(0x3408, 0x3408) AM_NOP
 //  AM_RANGE(0x340A, 0x340A) AM_NOP
 //  AM_RANGE(0x3600, 0x3600) AM_NOP
-	AM_RANGE(0x3801, 0x3801) AM_READWRITE(upd7759_r, upd7759_w)
+	AM_RANGE(0x3801, 0x3801) AM_DEVREADWRITE("upd", upd_r, upd_w)
 	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 	AM_RANGE(0xf000, 0xf000) AM_WRITE(SMH_NOP)	/* Watchdog */
 ADDRESS_MAP_END
@@ -1576,54 +1576,86 @@ static void init_ram(void)
 	memset(video_ram, 0, 0x20000);
 }
 
-static void z80_acia_irq(const device_config *device, int state)
+/*
+    What are the correct ACIA clocks ?
+*/
+
+static READ_LINE_DEVICE_HANDLER( z80_acia_rx_r )
+{
+	return m6809_z80_line;
+}
+
+static WRITE_LINE_DEVICE_HANDLER( z80_acia_tx_w )
+{
+	z80_m6809_line = state;
+}
+
+static WRITE_LINE_DEVICE_HANDLER( z80_acia_irq )
 {
 	acia_irq = state ? CLEAR_LINE : ASSERT_LINE;
 	update_irqs(device->machine);
 }
 
-static void m6809_data_irq(const device_config *device, int state)
+static ACIA6850_INTERFACE( z80_acia_if )
+{
+	500000,
+	500000,
+	DEVCB_LINE(z80_acia_rx_r), /*&m6809_z80_line,*/
+	DEVCB_LINE(z80_acia_tx_w), /*&z80_m6809_line,*/
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_LINE(z80_acia_irq)
+};
+
+static READ_LINE_DEVICE_HANDLER( m6809_acia_rx_r )
+{
+	return z80_m6809_line;
+}
+
+static WRITE_LINE_DEVICE_HANDLER( m6809_acia_tx_w )
+{
+	m6809_z80_line = state;
+}
+
+static WRITE_LINE_DEVICE_HANDLER( m6809_data_irq )
 {
 	cpu_set_input_line(device->machine->cpu[1], M6809_IRQ_LINE, state ? CLEAR_LINE : ASSERT_LINE);
 }
 
-/*
-    What are the correct ACIA clocks ?
-*/
-static const acia6850_interface z80_acia_if =
+static ACIA6850_INTERFACE( m6809_acia_if )
 {
 	500000,
 	500000,
-	&m6809_z80_line,
-	&z80_m6809_line,
-	NULL,
-	NULL,
-	NULL,
-	z80_acia_irq
+	DEVCB_LINE(m6809_acia_rx_r),/*&z80_m6809_line,*/
+	DEVCB_LINE(m6809_acia_tx_w),/*&m6809_z80_line,*/
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
-static const acia6850_interface m6809_acia_if =
+static READ_LINE_DEVICE_HANDLER( data_acia_rx_r )
 {
-	500000,
-	500000,
-	&z80_m6809_line,
-	&m6809_z80_line,
-	NULL,
-	NULL,
-	NULL,
-	NULL
-};
+	return data_r;
+}
 
-static const acia6850_interface data_acia_if =
+static WRITE_LINE_DEVICE_HANDLER( data_acia_tx_w )
+{
+	 data_t = state;
+}
+
+
+static ACIA6850_INTERFACE( data_acia_if )
 {
 	500000,
 	500000,
-	&data_r,
-	&data_t,
-	NULL,
-	NULL,
-	NULL,
-	m6809_data_irq
+	DEVCB_LINE(data_acia_rx_r),/*data_r,*/
+	DEVCB_LINE(data_acia_tx_w),/*data_t,*/
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_LINE(m6809_data_irq)
 };
 
 
@@ -1642,7 +1674,7 @@ static DRIVER_INIT( bfcobra )
 	UINT8 *tmp;
 
 	tmp = malloc_or_die(0x8000);
-	rom = memory_region(machine, "audio") + 0x8000;
+	rom = memory_region(machine, "audiocpu") + 0x8000;
 	memcpy(tmp, rom, 0x8000);
 
 	for (i = 0; i < 0x8000; i++)
@@ -1706,12 +1738,12 @@ static INTERRUPT_GEN( vblank_gen )
 }
 
 static MACHINE_DRIVER_START( bfcobra )
-	MDRV_CPU_ADD("main", Z80, Z80_XTAL)
+	MDRV_CPU_ADD("maincpu", Z80, Z80_XTAL)
 	MDRV_CPU_PROGRAM_MAP(z80_prog_map, 0)
 	MDRV_CPU_IO_MAP(z80_io_map, 0)
-	MDRV_CPU_VBLANK_INT("main", vblank_gen)
+	MDRV_CPU_VBLANK_INT("screen", vblank_gen)
 
-	MDRV_CPU_ADD("audio", M6809, M6809_XTAL)
+	MDRV_CPU_ADD("audiocpu", M6809, M6809_XTAL)
 	MDRV_CPU_PROGRAM_MAP(m6809_prog_map, 0)
 	MDRV_CPU_PERIODIC_INT(timer_irq, 1000)
 
@@ -1720,7 +1752,7 @@ static MACHINE_DRIVER_START( bfcobra )
 	MDRV_MACHINE_RESET(bfcobra)
 
 	/* TODO */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
@@ -1755,7 +1787,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( inquiztr )
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "inq6809", 0x08000, 0x08000, CRC(ae996600) SHA1(f360399e77b81399d910770fa8106c196f04363c) )
 
 	ROM_REGION( 0x20000, "user1", 0 )
@@ -1767,7 +1799,7 @@ ROM_START( inquiztr )
 ROM_END
 
 ROM_START( escounts )
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 //  ROM_LOAD( "escint1b", 0x08000, 0x08000, CRC(96918aae) SHA1(849ce7b8eccc89c45aacc840a73935f95788a141) )
 	ROM_LOAD( "esc12int", 0x08000, 0x08000, CRC(741a1fe6) SHA1(e741d0ae0d2f11036a358120381e4b0df4a560a1) )
 
@@ -1780,7 +1812,7 @@ ROM_START( escounts )
 ROM_END
 
 ROM_START( trebltop )
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "95740078.bin", 0x08000, 0x08000, CRC(aca1980b) SHA1(3d4ed1dc545cc80f56d7daa13028fb10a12a718b) )
 
 	ROM_REGION( 0x20000, "user1", 0 )
@@ -1796,7 +1828,7 @@ ROM_START( trebltop )
 ROM_END
 
 ROM_START( beeline )
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "bln12int.a", 0x08000, 0x08000, CRC(cb97905e) SHA1(9725156bf64e53a56bc0f90795d4b07db41d059e) )
 
 	ROM_REGION( 0x20000, "user1", 0 )
@@ -1808,7 +1840,7 @@ ROM_START( beeline )
 ROM_END
 
 ROM_START( quizvadr )
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "q6809.bin", 0x08000, 0x8000, CRC(a74dff10) SHA1(87578694a022dc3d7ade9cc76d387c1ae5fc74d9) )
 
 	ROM_REGION( 0x200000, "user1", 0 )
@@ -1823,7 +1855,7 @@ ROM_START( quizvadr )
 ROM_END
 
 ROM_START( qos )
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "39360107.bin", 0x08000, 0x8000, CRC(20844655) SHA1(b67c7f7bbabf6d5139b8ad8cbb5f8cc3f28e9cc7) )
 
 	ROM_REGION( 0x200000, "user1", 0 )
@@ -1838,7 +1870,7 @@ ROM_START( qos )
 ROM_END
 
 ROM_START( qosa )
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "qos_nondata_68f4.bin", 0x08000, 0x8000, CRC(5f40005a) SHA1(180017acf6b432bc135d1090099fdf99f1e3583a) )
 
 	ROM_REGION( 0x200000, "user1", 0 )
@@ -1853,7 +1885,7 @@ ROM_START( qosa )
 ROM_END
 
 ROM_START( qosb )
-	ROM_REGION( 0x10000, "audio", 0 )
+	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "95740599.bin", 0x08000, 0x8000, CRC(bf1e321f) SHA1(51f18620f22ba2a1b110954284ddf00614d51a0e) )
 
 	ROM_REGION( 0x200000, "user1", 0 )

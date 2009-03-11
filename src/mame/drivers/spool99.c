@@ -107,12 +107,12 @@ static TILE_GET_INFO( get_spool99_tile_info )
 			0);
 }
 
-VIDEO_START(spool99)
+static VIDEO_START(spool99)
 {
 	sc0_tilemap = tilemap_create(machine, get_spool99_tile_info,tilemap_scan_rows,8,8,64,32);
 }
 
-VIDEO_UPDATE(spool99)
+static VIDEO_UPDATE(spool99)
 {
 	tilemap_draw(bitmap,cliprect,sc0_tilemap,0,0);
 	return 0;
@@ -134,7 +134,7 @@ static WRITE8_HANDLER( spool99_cram_w )
 
 static READ8_HANDLER( spool99_io_r )
 {
-	UINT8 *ROM = memory_region(space->machine, "main");
+	UINT8 *ROM = memory_region(space->machine, "maincpu");
 
 //  if(!(io_switch))
 	{
@@ -156,7 +156,7 @@ static READ8_HANDLER( spool99_io_r )
 //          case 0xafe5: return 1;
 //          case 0xafe6: return 1;
 			case 0xafe7: return eeprom_read_bit();
-			case 0xaff8: return okim6295_status_0_r(space,0);
+			case 0xaff8: return okim6295_r(devtag_get_device(space->machine, "oki"),0);
 		}
 	}
 //  printf("%04x %d\n",offset+0xaf00,io_switch);
@@ -188,7 +188,7 @@ static ADDRESS_MAP_START( spool99_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xafed, 0xafed) AM_WRITE(eeprom_resetline_w )
 	AM_RANGE(0xafee, 0xafee) AM_WRITE(eeprom_clockline_w )
 	AM_RANGE(0xafef, 0xafef) AM_WRITE(eeprom_dataline_w )
-	AM_RANGE(0xaff8, 0xaff8) AM_WRITE(okim6295_data_0_w)
+	AM_RANGE(0xaff8, 0xaff8) AM_DEVWRITE("oki", okim6295_w)
 
 	AM_RANGE(0xb000, 0xb3ff) AM_RAM AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_le_w) AM_BASE(&paletteram) // palette
 
@@ -265,13 +265,13 @@ INPUT_PORTS_END
 
 
 static MACHINE_DRIVER_START( spool99 )
-	MDRV_CPU_ADD("main", Z80, 24000000/8)
+	MDRV_CPU_ADD("maincpu", Z80, 24000000/8)
 	MDRV_CPU_PROGRAM_MAP(0,spool99_map)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_GFXDECODE(spool99)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -285,18 +285,18 @@ static MACHINE_DRIVER_START( spool99 )
 	MDRV_VIDEO_START(spool99)
 	MDRV_VIDEO_UPDATE(spool99)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("oki", OKIM6295, 1000000)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.47)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.47)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.47)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.47)
 MACHINE_DRIVER_END
 
 
 
 ROM_START( spool99 )
-	ROM_REGION( 0x40000, "main", 0 ) // z80 code
+	ROM_REGION( 0x40000, "maincpu", 0 ) // z80 code
 	ROM_LOAD( "v.36.u2", 0x00000, 0x10000, CRC(29527f38) SHA1(bf302f4c6eb53ea55fe1ace7bc9bc7a68ad269e6) )
 
 	ROM_REGION( 0x040000, "oki", 0 ) /* Samples */
@@ -307,7 +307,7 @@ ROM_START( spool99 )
 ROM_END
 
 ROM_START( spool99a )
-	ROM_REGION( 0x40000, "main", 0 ) // z80 code
+	ROM_REGION( 0x40000, "maincpu", 0 ) // z80 code
 	ROM_LOAD( "u2.bin", 0x00000, 0x10000, CRC(488dd1bf) SHA1(7289b639fa56722d1f60d8c4bda566d726f8e00b) ) // first half empty!
 	ROM_CONTINUE( 0x00000, 0x10000) // 0x0000 - 0xafff used
 
@@ -322,7 +322,7 @@ ROM_END
 
 static DRIVER_INIT( spool99 )
 {
-	UINT8 *ROM = memory_region(machine, "main");
+	UINT8 *ROM = memory_region(machine, "maincpu");
 //  vram = auto_malloc(0x2000);
 	memcpy(spool99_main, ROM, 0xae00);
 }

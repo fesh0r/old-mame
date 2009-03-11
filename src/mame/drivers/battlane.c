@@ -11,7 +11,7 @@
 
 #include "driver.h"
 #include "cpu/m6809/m6809.h"
-#include "sound/3812intf.h"
+#include "sound/3526intf.h"
 
 extern UINT8 *battlane_spriteram;
 extern UINT8 *battlane_tileram;
@@ -97,8 +97,7 @@ static ADDRESS_MAP_START( battlane_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1c01, 0x1c01) AM_READ_PORT("P2") AM_WRITE(battlane_scrollx_w)
 	AM_RANGE(0x1c02, 0x1c02) AM_READ_PORT("DSW1") AM_WRITE(battlane_scrolly_w)
 	AM_RANGE(0x1c03, 0x1c03) AM_READ_PORT("DSW2") AM_WRITE(battlane_cpu_command_w)
-	AM_RANGE(0x1c04, 0x1c04) AM_READWRITE(ym3526_status_port_0_r, ym3526_control_port_0_w)
-	AM_RANGE(0x1c05, 0x1c05) AM_WRITE(ym3526_write_port_0_w)
+	AM_RANGE(0x1c04, 0x1c05) AM_DEVREADWRITE("ym", ym3526_r, ym3526_w)
 	AM_RANGE(0x1e00, 0x1e3f) AM_WRITE(battlane_palette_w)
 	AM_RANGE(0x2000, 0x3fff) AM_RAM_WRITE(battlane_bitmap_w) AM_SHARE(4)
 	AM_RANGE(0x4000, 0xffff) AM_ROM
@@ -241,9 +240,9 @@ static GFXDECODE_START( battlane )
 GFXDECODE_END
 
 
-static void irqhandler(running_machine *machine, int irq)
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(machine->cpu[0], M6809_FIRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(device->machine->cpu[0], M6809_FIRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym3526_interface ym3526_config =
@@ -255,9 +254,9 @@ static const ym3526_interface ym3526_config =
 static MACHINE_DRIVER_START( battlane )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809, 1250000)        /* 1.25 MHz ? */
+	MDRV_CPU_ADD("maincpu", M6809, 1250000)        /* 1.25 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(battlane_map, 0)
-	MDRV_CPU_VBLANK_INT("main", battlane_cpu1_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", battlane_cpu1_interrupt)
 
 	MDRV_CPU_ADD("sub", M6809, 1250000)        /* 1.25 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(battlane_map, 0)
@@ -265,7 +264,7 @@ static MACHINE_DRIVER_START( battlane )
 	MDRV_QUANTUM_TIME(HZ(6000))
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -296,7 +295,7 @@ ROM_START( battlane )
 	ROM_REGION( 0x8000, "user1", 0 )     /*  */
 	ROM_LOAD( "da00-5",     0x0000, 0x8000, CRC(85b4ed73) SHA1(b8e61eedf8fb75bb07f1df91a7465cee2b6ff372) )
 
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	/* first half of da00-5 will be copied at 0x4000-0x7fff */
 	ROM_COPY( "user1", 0x0000, 0x4000, 0x4000 )
 	ROM_LOAD( "da01-5",     0x8000, 0x8000, CRC(7a6c3f02) SHA1(bee1ee858f81453a53afc2d016f549924801b090) )
@@ -324,7 +323,7 @@ ROM_START( battlan2 )
 	ROM_REGION( 0x8000, "user1", 0 )
 	ROM_LOAD( "da00-3",     0x0000, 0x8000, CRC(7a0a5d58) SHA1(ef97e5a64a668c437c18cda931c52bf39b580b4a) )
 
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	/* first half of da00-3 will be copied at 0x4000-0x7fff */
 	ROM_COPY( "user1", 0x0000, 0x4000, 0x4000 )
 	ROM_LOAD( "da01-3",     0x8000, 0x8000, CRC(d9e40800) SHA1(dc87ae0d8631c220dbbddbf0e49b6bdaeb635269) )
@@ -352,7 +351,7 @@ ROM_START( battlan3 )
 	ROM_REGION( 0x8000, "user1", 0 )
 	ROM_LOAD( "bl_04.rom",  0x0000, 0x8000, CRC(5681564c) SHA1(25b3a715e91976830d87c7c45b93b473df709241) )
 
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	/* first half of bl_04.rom will be copied at 0x4000-0x7fff */
 	ROM_COPY( "user1", 0x0000, 0x4000, 0x4000 )
 	ROM_LOAD( "bl_05.rom",  0x8000, 0x8000, CRC(001c4bbe) SHA1(4320c0a85b5b3505ac7292673759e5288cf4187f) )

@@ -132,19 +132,19 @@ ADDRESS_MAP_END
 static WRITE8_HANDLER( fuuki16_sound_rombank_w )
 {
 	if (data <= 2)
-		memory_set_bankptr(space->machine, 1, memory_region(space->machine, "audio") + 0x8000 * data + 0x10000);
+		memory_set_bankptr(space->machine, 1, memory_region(space->machine, "audiocpu") + 0x8000 * data + 0x10000);
 	else
 	 	logerror("CPU #1 - PC %04X: unknown bank bits: %02X\n",cpu_get_pc(space->cpu),data);
 }
 
-static WRITE8_HANDLER( fuuki16_oki_banking_w )
+static WRITE8_DEVICE_HANDLER( fuuki16_oki_banking_w )
 {
 	/*
         data & 0x06 is always equals to data & 0x60
         data & 0x10 is always set
     */
 
-	okim6295_set_bank_base(0, ((data & 6) >> 1) * 0x40000);
+	okim6295_set_bank_base(device, ((data & 6) >> 1) * 0x40000);
 }
 
 static ADDRESS_MAP_START( fuuki16_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -163,14 +163,12 @@ static ADDRESS_MAP_START( fuuki16_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(fuuki16_sound_rombank_w 	)	// ROM Bank
 	AM_RANGE(0x11, 0x11) AM_READWRITE(soundlatch_r, SMH_NOP	)	// From Main CPU / ? To Main CPU ?
-	AM_RANGE(0x20, 0x20) AM_WRITE(fuuki16_oki_banking_w		)	// Oki Banking
+	AM_RANGE(0x20, 0x20) AM_DEVWRITE("oki", fuuki16_oki_banking_w		)	// Oki Banking
 	AM_RANGE(0x30, 0x30) AM_WRITE(SMH_NOP					)	// ? In the NMI routine
-	AM_RANGE(0x40, 0x40) AM_WRITE(ym2203_control_port_0_w	)	// YM2203
-	AM_RANGE(0x41, 0x41) AM_WRITE(ym2203_write_port_0_w		)
-	AM_RANGE(0x50, 0x50) AM_READWRITE(ym3812_status_port_0_r, ym3812_control_port_0_w)	// YM3812
-	AM_RANGE(0x51, 0x51) AM_WRITE(ym3812_write_port_0_w		)
-	AM_RANGE(0x60, 0x60) AM_READ(okim6295_status_0_r		)	// M6295
-	AM_RANGE(0x61, 0x61) AM_WRITE(okim6295_data_0_w			)	// M6295
+	AM_RANGE(0x40, 0x41) AM_DEVWRITE("ym1", ym2203_w	)
+	AM_RANGE(0x50, 0x51) AM_DEVREADWRITE("ym2", ym3812_r, ym3812_w		)
+	AM_RANGE(0x60, 0x60) AM_DEVREAD("oki", okim6295_r)	// M6295
+	AM_RANGE(0x61, 0x61) AM_DEVWRITE("oki", okim6295_w)	// M6295
 ADDRESS_MAP_END
 
 
@@ -407,9 +405,9 @@ GFXDECODE_END
 
 ***************************************************************************/
 
-static void soundirq(running_machine *machine, int state)
+static void soundirq(const device_config *device, int state)
 {
-	cpu_set_input_line(machine->cpu[1], 0, state);
+	cpu_set_input_line(device->machine->cpu[1], 0, state);
 }
 
 static const ym3812_interface fuuki16_ym3812_intf =
@@ -470,10 +468,10 @@ static MACHINE_RESET( fuuki16 )
 static MACHINE_DRIVER_START( fuuki16 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 16000000)
+	MDRV_CPU_ADD("maincpu", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(fuuki16_readmem,fuuki16_writemem)
 
-	MDRV_CPU_ADD("audio", Z80, 3000000)	/* ? */
+	MDRV_CPU_ADD("audiocpu", Z80, 3000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(fuuki16_sound_readmem,fuuki16_sound_writemem)
 	MDRV_CPU_IO_MAP(fuuki16_sound_io_map,0)
 
@@ -481,7 +479,7 @@ static MACHINE_DRIVER_START( fuuki16 )
 	MDRV_MACHINE_RESET(fuuki16)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 256)
@@ -494,21 +492,21 @@ static MACHINE_DRIVER_START( fuuki16 )
 	MDRV_VIDEO_UPDATE(fuuki16)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MDRV_SOUND_ADD("ym1", YM2203, 4000000)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.15)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.15)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.15)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.15)
 
 	MDRV_SOUND_ADD("ym2", YM3812, 4000000)
 	MDRV_SOUND_CONFIG(fuuki16_ym3812_intf)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.30)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.30)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.30)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.30)
 
 	MDRV_SOUND_ADD("oki", OKIM6295, 1056000)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.85)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.85)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.85)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.85)
 MACHINE_DRIVER_END
 
 
@@ -559,11 +557,11 @@ Mitsubishi M60067-0901FP 452100 (208pin PQFP, GA1)
 ***************************************************************************/
 
 ROM_START( gogomile )
-	ROM_REGION( 0x100000, "main", 0 )		/* 68000 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "fp2n", 0x000000, 0x080000, CRC(e73583a0) SHA1(05c6ee5cb2c151b32c462e8b920f9a57fb6cce5b) )
 	ROM_LOAD16_BYTE( "fp1n", 0x000001, 0x080000, CRC(7b110824) SHA1(980e326d3b9e113ed522be3076663a249da4e739) )
 
-	ROM_REGION( 0x28000, "audio", 0 )		/* Z80 Code */
+	ROM_REGION( 0x28000, "audiocpu", 0 )		/* Z80 Code */
 	ROM_LOAD( "fs1.24", 0x00000, 0x08000, CRC(4e4bd371) SHA1(429e776135ce8960e147762763d952d16ed3f9d4) )	// same as japanese version
 	ROM_CONTINUE(       0x10000, 0x18000             )
 
@@ -588,11 +586,11 @@ ROM_START( gogomile )
 ROM_END
 
 ROM_START( gogomilj )
-	ROM_REGION( 0x100000, "main", 0 )		/* 68000 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "fp2.2", 0x000000, 0x080000, CRC(28fd3e4e) SHA1(3303e5759c0781035c74354587e1916719695754) )	// 1xxxxxxxxxxxxxxxxxx = 0xFF
 	ROM_LOAD16_BYTE( "fp1.1", 0x000001, 0x080000, CRC(35a5fc45) SHA1(307207791cee7f40e88feffc5805ac25008a8566) )	// 1xxxxxxxxxxxxxxxxxx = 0xFF
 
-	ROM_REGION( 0x28000, "audio", 0 )		/* Z80 Code */
+	ROM_REGION( 0x28000, "audiocpu", 0 )		/* Z80 Code */
 	ROM_LOAD( "fs1.24", 0x00000, 0x08000, CRC(4e4bd371) SHA1(429e776135ce8960e147762763d952d16ed3f9d4) )
 	ROM_CONTINUE(       0x10000, 0x18000             )
 
@@ -651,11 +649,11 @@ Mitsubishi M60067-0901FP 452100 (208pin PQFP, GA1)
 ***************************************************************************/
 
 ROM_START( pbancho )
-	ROM_REGION( 0x100000, "main", 0 )		/* 68000 Code */
+	ROM_REGION( 0x100000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "rom2.no1", 0x000000, 0x080000, CRC(1b4fd178) SHA1(02cf3d2554b29cd253470d68ea959738f3b98dbe) )	// 1xxxxxxxxxxxxxxxxxx = 0xFF
 	ROM_LOAD16_BYTE( "rom1.no2", 0x000001, 0x080000, CRC(9cf510a5) SHA1(08e79b5bbd1c011c32f82dd15fba42d7898861be) )	// 1xxxxxxxxxxxxxxxxxx = 0xFF
 
-	ROM_REGION( 0x28000, "audio", 0 )		/* Z80 Code */
+	ROM_REGION( 0x28000, "audiocpu", 0 )		/* Z80 Code */
 	ROM_LOAD( "rom24.no4", 0x00000, 0x08000, CRC(dfbfdb81) SHA1(84b0cbe843a9bbae43975afdbd029a9b76fd488b) )
 	ROM_CONTINUE(          0x10000, 0x18000             )
 

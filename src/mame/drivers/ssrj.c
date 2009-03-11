@@ -50,7 +50,7 @@ static int oldport;
 
 static MACHINE_RESET(ssrj)
 {
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(machine, "maincpu");
 	memset(&rom[0xc000], 0 ,0x3fff); /* req for some control types */
 	oldport = 0x80;
 }
@@ -74,7 +74,7 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf000, 0xf000) AM_READ_PORT("IN0")
 	AM_RANGE(0xf001, 0xf001) AM_READ(ssrj_wheel_r)
 	AM_RANGE(0xf002, 0xf002) AM_READ_PORT("IN2")
-	AM_RANGE(0xf401, 0xf401) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0xf401, 0xf401) AM_DEVREAD("ay", ay8910_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -86,8 +86,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xe800, 0xefff) AM_WRITE(SMH_RAM) AM_BASE(&ssrj_scrollram)
 	AM_RANGE(0xf003, 0xf003) AM_WRITE(SMH_NOP) /* unknown */
-	AM_RANGE(0xf401, 0xf401) AM_WRITE(ay8910_write_port_0_w)
-	AM_RANGE(0xf400, 0xf400) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xf400, 0xf401) AM_DEVWRITE("ay", ay8910_address_data_w)
 	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(SMH_NOP) /* unknown */
 	AM_RANGE(0xf800, 0xf800) AM_WRITE(SMH_NOP) /* wheel ? */
 ADDRESS_MAP_END
@@ -155,22 +154,22 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL, /* not used ? */
-	input_port_3_r,
-	NULL,
-	NULL
+	DEVCB_NULL, /* not used ? */
+	DEVCB_INPUT_PORT("IN3"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
 static MACHINE_DRIVER_START( ssrj )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80,8000000/2)
+	MDRV_CPU_ADD("maincpu", Z80,8000000/2)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -202,7 +201,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( ssrj )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "a40-01.bin",   0x0000, 0x4000, CRC(1ff7dbff) SHA1(a9e676ee087141d62f880cd98e7748db1e6e9461) )
 	ROM_LOAD( "a40-02.bin",   0x4000, 0x4000, CRC(bbb36f9f) SHA1(9f85bac639d18ee932273a6c00b36ac969e69bb8) )
 

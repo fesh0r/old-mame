@@ -518,11 +518,11 @@ static READ8_HANDLER( mux_port_r )
 {
 	switch( input_selector )
 	{
-		case 0x01: return input_port_read(space->machine, "IN0-0"); break;
-		case 0x02: return input_port_read(space->machine, "IN0-1"); break;
-		case 0x04: return input_port_read(space->machine, "IN0-2"); break;
-		case 0x08: return input_port_read(space->machine, "IN0-3"); break;
-		case 0x00: return input_port_read(space->machine, "DSW0"); break;
+		case 0x01: return input_port_read(space->machine, "IN0-0");
+		case 0x02: return input_port_read(space->machine, "IN0-1");
+		case 0x04: return input_port_read(space->machine, "IN0-2");
+		case 0x08: return input_port_read(space->machine, "IN0-3");
+		case 0x00: return input_port_read(space->machine, "DSW0");
 	}
 	return 0xff;
 }
@@ -540,7 +540,7 @@ static WRITE8_HANDLER( mux_port_w )
 */
 	input_selector = data & 0x0f;	/* Input Selector */
 
-	dac_data_w(0, data & 0x80);		/* Sound DAC */
+	dac_data_w(devtag_get_device(space->machine, "dac"), data & 0x80);		/* Sound DAC */
 
 	coin_counter_w(0, data & 0x40);	/* Coin1 */
 	coin_counter_w(1, data & 0x10);	/* Coin2 */
@@ -554,8 +554,8 @@ static WRITE8_HANDLER( mux_port_w )
 
 static ADDRESS_MAP_START( magicfly_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)    /* MK48Z02B NVRAM */
-	AM_RANGE(0x0800, 0x0800) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0x0801, 0x0801) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
+	AM_RANGE(0x0800, 0x0800) AM_DEVWRITE("crtc", mc6845_address_w)
+	AM_RANGE(0x0801, 0x0801) AM_DEVREADWRITE("crtc", mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0x1000, 0x13ff) AM_RAM_WRITE(magicfly_videoram_w) AM_BASE(&videoram)	/* HM6116LP #1 (2K x 8) RAM (only 1st half used) */
 	AM_RANGE(0x1800, 0x1bff) AM_RAM_WRITE(magicfly_colorram_w) AM_BASE(&colorram)	/* HM6116LP #2 (2K x 8) RAM (only 1st half used) */
 	AM_RANGE(0x2800, 0x2800) AM_READ(mux_port_r)	/* multiplexed input port */
@@ -736,7 +736,7 @@ GFXDECODE_END
 
 static const mc6845_interface mc6845_intf =
 {
-	"main",		/* screen we are acting on */
+	"screen",	/* screen we are acting on */
 	8,			/* number of pixels per video memory address */
 	NULL,		/* before pixel update callback */
 	NULL,		/* row update callback */
@@ -754,14 +754,14 @@ static const mc6845_interface mc6845_intf =
 static MACHINE_DRIVER_START( magicfly )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, MASTER_CLOCK/12)	/* guess */
+	MDRV_CPU_ADD("maincpu", M6502, MASTER_CLOCK/12)	/* guess */
 	MDRV_CPU_PROGRAM_MAP(magicfly_map, 0)
-	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
+	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -799,7 +799,7 @@ MACHINE_DRIVER_END
 *************************/
 
 ROM_START( magicfly )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "magicfly3_3.bin",	0xc000, 0x4000, CRC(c29798d5) SHA1(bf92ac93d650398569b3ab79d01344e74a6d35be) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
@@ -813,7 +813,7 @@ ROM_START( magicfly )
 ROM_END
 
 ROM_START( 7mezzo )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "ns3_1.bin",	0xc000, 0x4000, CRC(b1867b76) SHA1(eb76cffb81c865352f4767015edade54801f6155) )
 
 	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )

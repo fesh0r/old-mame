@@ -71,7 +71,7 @@ static int adpcm_data;
 static WRITE8_HANDLER( tecmo_bankswitch_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(space->machine, "main");
+	UINT8 *RAM = memory_region(space->machine, "maincpu");
 
 
 	bankaddress = 0x10000 + ((data & 0xf8) << 8);
@@ -84,27 +84,27 @@ static WRITE8_HANDLER( tecmo_sound_command_w )
 	cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
 }
 
-static WRITE8_HANDLER( tecmo_adpcm_start_w )
+static WRITE8_DEVICE_HANDLER( tecmo_adpcm_start_w )
 {
 	adpcm_pos = data << 8;
-	msm5205_reset_w(0,0);
+	msm5205_reset_w(device,0);
 }
 static WRITE8_HANDLER( tecmo_adpcm_end_w )
 {
 	adpcm_end = (data + 1) << 8;
 }
-static WRITE8_HANDLER( tecmo_adpcm_vol_w )
+static WRITE8_DEVICE_HANDLER( tecmo_adpcm_vol_w )
 {
-	msm5205_set_volume(0,(data & 0x0f) * 100 / 15);
+	msm5205_set_volume(device,(data & 0x0f) * 100 / 15);
 }
 static void tecmo_adpcm_int(const device_config *device)
 {
 	if (adpcm_pos >= adpcm_end ||
 				adpcm_pos >= memory_region_length(device->machine, "adpcm"))
-		msm5205_reset_w(0,1);
+		msm5205_reset_w(device,1);
 	else if (adpcm_data != -1)
 	{
-		msm5205_data_w(0,adpcm_data & 0x0f);
+		msm5205_data_w(device,adpcm_data & 0x0f);
 		adpcm_data = -1;
 	}
 	else
@@ -112,7 +112,7 @@ static void tecmo_adpcm_int(const device_config *device)
 		UINT8 *ROM = memory_region(device->machine, "adpcm");
 
 		adpcm_data = ROM[adpcm_pos++];
-		msm5205_data_w(0,adpcm_data >> 4);
+		msm5205_data_w(device,adpcm_data >> 4);
 	}
 }
 
@@ -196,11 +196,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( rygar_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x4000, 0x47ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x8000, 0x8000) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0x8001, 0x8001) AM_WRITE(ym3812_write_port_0_w)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(tecmo_adpcm_start_w)
+	AM_RANGE(0x8000, 0x8001) AM_DEVWRITE("ym", ym3812_w)
+	AM_RANGE(0xc000, 0xc000) AM_DEVWRITE("msm", tecmo_adpcm_start_w)
 	AM_RANGE(0xd000, 0xd000) AM_WRITE(tecmo_adpcm_end_w)
-	AM_RANGE(0xe000, 0xe000) AM_WRITE(tecmo_adpcm_vol_w)
+	AM_RANGE(0xe000, 0xe000) AM_DEVWRITE("msm", tecmo_adpcm_vol_w)
 	AM_RANGE(0xf000, 0xf000) AM_WRITE(SMH_NOP)	/* NMI acknowledge */
 ADDRESS_MAP_END
 
@@ -215,11 +214,10 @@ static ADDRESS_MAP_START( tecmo_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 									/* writes code to this area */
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xa000, 0xa000) AM_WRITE(ym3812_control_port_0_w)
-	AM_RANGE(0xa001, 0xa001) AM_WRITE(ym3812_write_port_0_w)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(tecmo_adpcm_start_w)
+	AM_RANGE(0xa000, 0xa001) AM_DEVWRITE("ym", ym3812_w)
+	AM_RANGE(0xc000, 0xc000) AM_DEVWRITE("msm", tecmo_adpcm_start_w)
 	AM_RANGE(0xc400, 0xc400) AM_WRITE(tecmo_adpcm_end_w)
-	AM_RANGE(0xc800, 0xc800) AM_WRITE(tecmo_adpcm_vol_w)
+	AM_RANGE(0xc800, 0xc800) AM_DEVWRITE("msm", tecmo_adpcm_vol_w)
 	AM_RANGE(0xcc00, 0xcc00) AM_WRITE(SMH_NOP)	/* NMI acknowledge */
 ADDRESS_MAP_END
 
@@ -542,12 +540,12 @@ GFXDECODE_END
 
 
 
-static void irqhandler(running_machine *machine, int linestate)
+static void irqhandler(const device_config *device, int linestate)
 {
-	cpu_set_input_line(machine->cpu[1],0,linestate);
+	cpu_set_input_line(device->machine->cpu[1],0,linestate);
 }
 
-static const ym3526_interface ym3526_config =
+static const ym3812_interface ym3812_config =
 {
 	irqhandler
 };
@@ -569,15 +567,15 @@ static MACHINE_RESET( rygar )
 static MACHINE_DRIVER_START( rygar )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_24MHz/4) /* verified on pcb */
+	MDRV_CPU_ADD("maincpu", Z80, XTAL_24MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem,rygar_writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
-	MDRV_CPU_ADD("sound", Z80, XTAL_4MHz) /* verified on pcb */
+	MDRV_CPU_ADD("soundcpu", Z80, XTAL_4MHz) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(rygar_sound_readmem,rygar_sound_writemem)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0)	/* frames per second, vblank duration */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -596,7 +594,7 @@ static MACHINE_DRIVER_START( rygar )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
 	MDRV_SOUND_ADD("ym", YM3812, XTAL_4MHz) /* verified on pcb */
-	MDRV_SOUND_CONFIG(ym3526_config)
+	MDRV_SOUND_CONFIG(ym3812_config)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 	MDRV_SOUND_ADD("msm", MSM5205, XTAL_400kHz) /* verified on pcb, even if schematics shows a 384khz resonator */
@@ -609,10 +607,10 @@ static MACHINE_DRIVER_START( gemini )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(rygar)
-	MDRV_CPU_REPLACE("main", Z80, 6000000)
+	MDRV_CPU_REPLACE("maincpu", Z80, 6000000)
 	MDRV_CPU_PROGRAM_MAP(readmem,gemini_writemem)
 
-	MDRV_CPU_MODIFY("sound")
+	MDRV_CPU_MODIFY("soundcpu")
 	MDRV_CPU_PROGRAM_MAP(tecmo_sound_readmem,tecmo_sound_writemem)
 MACHINE_DRIVER_END
 
@@ -621,7 +619,7 @@ static MACHINE_DRIVER_START( silkworm )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gemini)
-	MDRV_CPU_REPLACE("main", Z80, 6000000)
+	MDRV_CPU_REPLACE("maincpu", Z80, 6000000)
 	MDRV_CPU_PROGRAM_MAP(readmem,silkworm_writemem)
 MACHINE_DRIVER_END
 
@@ -634,12 +632,12 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( rygar )
-	ROM_REGION( 0x18000, "main", 0 )
+	ROM_REGION( 0x18000, "maincpu", 0 )
 	ROM_LOAD( "5.5p",         0x00000, 0x08000, CRC(062cd55d) SHA1(656e29c890f5de964920b7841b3e11469cd20051) ) /* code */
 	ROM_LOAD( "cpu_5m.bin",   0x08000, 0x04000, CRC(7ac5191b) SHA1(305f39d974f906f9bc24e9fe2ca58e647925ab63) ) /* code */
 	ROM_LOAD( "cpu_5j.bin",   0x10000, 0x08000, CRC(ed76d606) SHA1(39c8a07e9a1f218ad088d00a2c9dfc993efafb6b) ) /* banked at f000-f7ff */
 
-	ROM_REGION( 0x10000, "sound", 0 )
+	ROM_REGION( 0x10000, "soundcpu", 0 )
 	ROM_LOAD( "cpu_4h.bin",   0x0000, 0x2000, CRC(e4a2fa87) SHA1(ed58187dbbcf59358496a98ffd6c227a87d6c433) )
 
 	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )
@@ -668,12 +666,12 @@ ROM_START( rygar )
 ROM_END
 
 ROM_START( rygar2 )
-	ROM_REGION( 0x18000, "main", 0 )
+	ROM_REGION( 0x18000, "maincpu", 0 )
 	ROM_LOAD( "5p.bin",   	  0x00000, 0x08000, CRC(151ffc0b) SHA1(0eb877f2c68d3d1f52d7b12d0a8ad08c9932c054) ) /* code */
 	ROM_LOAD( "cpu_5m.bin",   0x08000, 0x04000, CRC(7ac5191b) SHA1(305f39d974f906f9bc24e9fe2ca58e647925ab63) ) /* code */
 	ROM_LOAD( "cpu_5j.bin",   0x10000, 0x08000, CRC(ed76d606) SHA1(39c8a07e9a1f218ad088d00a2c9dfc993efafb6b) ) /* banked at f000-f7ff */
 
-	ROM_REGION( 0x10000, "sound", 0 )
+	ROM_REGION( 0x10000, "soundcpu", 0 )
 	ROM_LOAD( "cpu_4h.bin",   0x0000, 0x2000, CRC(e4a2fa87) SHA1(ed58187dbbcf59358496a98ffd6c227a87d6c433) )
 
 	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )
@@ -702,12 +700,12 @@ ROM_START( rygar2 )
 ROM_END
 
 ROM_START( rygar3 )
-	ROM_REGION( 0x18000, "main", 0 )
+	ROM_REGION( 0x18000, "maincpu", 0 )
 	ROM_LOAD( "cpu_5p.bin",   0x00000, 0x08000, CRC(e79c054a) SHA1(1aaffa53d121d5c55899bf18e85c42333fe0df54) ) /* code */
 	ROM_LOAD( "cpu_5m.bin",   0x08000, 0x04000, CRC(7ac5191b) SHA1(305f39d974f906f9bc24e9fe2ca58e647925ab63) ) /* code */
 	ROM_LOAD( "cpu_5j.bin",   0x10000, 0x08000, CRC(ed76d606) SHA1(39c8a07e9a1f218ad088d00a2c9dfc993efafb6b) ) /* banked at f000-f7ff */
 
-	ROM_REGION( 0x10000, "sound", 0 )
+	ROM_REGION( 0x10000, "soundcpu", 0 )
 	ROM_LOAD( "cpu_4h.bin",   0x0000, 0x2000, CRC(e4a2fa87) SHA1(ed58187dbbcf59358496a98ffd6c227a87d6c433) )
 
 	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )
@@ -736,13 +734,13 @@ ROM_START( rygar3 )
 ROM_END
 
 ROM_START( rygarj )
-	ROM_REGION( 0x18000, "main", 0 )
+	ROM_REGION( 0x18000, "maincpu", 0 )
 
 	ROM_LOAD( "cpuj_5p.bin",  0x00000, 0x08000, CRC(b39698ba) SHA1(01a5a12a71973ad117b0bbd763e470f89c439e45) ) /* code */
 	ROM_LOAD( "cpuj_5m.bin",  0x08000, 0x04000, CRC(3f180979) SHA1(c4c2e9f83b06b8677978800bfcc39f4ba3b344ab) ) /* code */
 	ROM_LOAD( "cpuj_5j.bin",  0x10000, 0x08000, CRC(69e44e8f) SHA1(e979760a3582e64788c043adf7e475f0e1b75033) ) /* banked at f000-f7ff */
 
-	ROM_REGION( 0x10000, "sound", 0 )
+	ROM_REGION( 0x10000, "soundcpu", 0 )
 	ROM_LOAD( "cpu_4h.bin",   0x0000, 0x2000, CRC(e4a2fa87) SHA1(ed58187dbbcf59358496a98ffd6c227a87d6c433) )
 
 	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )
@@ -771,11 +769,11 @@ ROM_START( rygarj )
 ROM_END
 
 ROM_START( silkworm )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "silkworm.4",   0x00000, 0x10000, CRC(a5277cce) SHA1(3886a3f3d1230d49d541f884c5b29938e13f98c8) )	/* c000-ffff is not used */
 	ROM_LOAD( "silkworm.5",   0x10000, 0x10000, CRC(a6c7bb51) SHA1(75f6625459ab65f2d47a282c1295d4db38f5fe51) )	/* banked at f000-f7ff */
 
-	ROM_REGION( 0x20000, "sound", 0 )
+	ROM_REGION( 0x20000, "soundcpu", 0 )
 	ROM_LOAD( "silkworm.3",   0x0000, 0x8000, CRC(b589f587) SHA1(0be5e2bf3daf3e28d63fdc8c89bb6fe7c48c6c3f) )
 
 	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )
@@ -804,11 +802,11 @@ ROM_START( silkworm )
 ROM_END
 
 ROM_START( silkwrm2 )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "r4",           0x00000, 0x10000, CRC(6df3df22) SHA1(9d6201c2df014bdb6877dfff936dddde1fe6fbd0) )	/* c000-ffff is not used */
 	ROM_LOAD( "silkworm.5",   0x10000, 0x10000, CRC(a6c7bb51) SHA1(75f6625459ab65f2d47a282c1295d4db38f5fe51) )	/* banked at f000-f7ff */
 
-	ROM_REGION( 0x20000, "sound", 0 )
+	ROM_REGION( 0x20000, "soundcpu", 0 )
 	ROM_LOAD( "r3",           0x0000, 0x8000, CRC(b79848d0) SHA1(d8162ab847bd0768572454d9775b0e9ed92b9519) )
 
 	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )
@@ -837,11 +835,11 @@ ROM_START( silkwrm2 )
 ROM_END
 
 ROM_START( gemini )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "gw04-5s.rom",  0x00000, 0x10000, CRC(ff9de855) SHA1(34167af8456a081f68b338f10d4319ce1e703fd4) )	/* c000-ffff is not used */
 	ROM_LOAD( "gw05-6s.rom",  0x10000, 0x10000, CRC(5a6947a9) SHA1(18b7aeb0f0e2c396bc759118dd7c45fd6070b804) )	/* banked at f000-f7ff */
 
-	ROM_REGION( 0x10000, "sound", 0 )
+	ROM_REGION( 0x10000, "soundcpu", 0 )
 	ROM_LOAD( "gw03-5h.rom",  0x0000, 0x8000, CRC(9bc79596) SHA1(61de9ddd45140e8ed88173294bd26147e2abfa21) )
 
 	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )

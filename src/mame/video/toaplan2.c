@@ -146,6 +146,7 @@ Pipi & Bibis     | Fix Eight        | V-Five           | Snow Bros. 2     |
 
 #include "driver.h"
 #include "cpu/m68000/m68000.h"
+#include "sound/3812intf.h"
 #include "includes/toaplan2.h"
 
 
@@ -558,6 +559,9 @@ VIDEO_START( truxton2_0 )
 	toaplan2_vram_alloc(0);
 	truxton2_create_tilemaps_0(machine);
 
+	if (machine->gfx[2]->srcdata == NULL)
+		gfx_element_set_source(machine->gfx[2], (UINT8 *)toaplan2_tx_gfxram16);
+
 	if(!strcmp(machine->gamedrv->name,"fixeighb"))
 	{
 		xoffset[0]=-26;
@@ -594,6 +598,8 @@ VIDEO_START( batrider_0 )
 	raizing_tx_gfxram16 = auto_malloc(RAIZING_TX_GFXRAM_SIZE);
 	memset(raizing_tx_gfxram16,0,RAIZING_TX_GFXRAM_SIZE);
 	state_save_register_global_pointer(machine, raizing_tx_gfxram16, RAIZING_TX_GFXRAM_SIZE/2);
+
+	gfx_element_set_source(machine->gfx[2], (UINT8 *)raizing_tx_gfxram16);
 
 	toaplan2_vram_alloc(0);
 	spriteram16_n[0] = spriteram16_new[0];
@@ -702,15 +708,12 @@ WRITE16_HANDLER( toaplan2_tx_gfxram16_w )
 	/*** Dynamic GFX decoding for Truxton 2 / FixEight ***/
 
 	UINT16 oldword = toaplan2_tx_gfxram16[offset];
-	UINT8 *toaplan2_tx_gfxram = (UINT8 *)(toaplan2_tx_gfxram16);
 
 	if (oldword != data)
 	{
 		int code = offset/32;
 		COMBINE_DATA(&toaplan2_tx_gfxram16[offset]);
-		decodechar(space->machine->gfx[2], code, toaplan2_tx_gfxram);
-
-		tilemap_mark_all_tiles_dirty(tx_tilemap);
+		gfx_element_mark_dirty(space->machine->gfx[2], code);
 	}
 }
 
@@ -738,7 +741,6 @@ WRITE16_HANDLER( batrider_textdata_decode )
 	/*** Only done once during start-up ***/
 
 	int code;
-	UINT8 *raizing_tx_gfxram = (UINT8 *)raizing_tx_gfxram16;
 	UINT16 *dest = (UINT16 *)raizing_tx_gfxram16;
 
 	memcpy(dest, toaplan2_txvideoram16, toaplan2_tx_vram_size);
@@ -749,10 +751,9 @@ WRITE16_HANDLER( batrider_textdata_decode )
 	dest += (toaplan2_tx_offs_vram_size/2);
 	memcpy(dest, toaplan2_txscrollram16, toaplan2_tx_scroll_vram_size);
 
-	/* Decode text characters */
+	/* Decode text characters; force them to update immediately */
 	for (code = 0; code < 1024; code++)
-		decodechar (space->machine->gfx[2], code, raizing_tx_gfxram);
-	tilemap_mark_all_tiles_dirty(tx_tilemap);
+		gfx_element_decode(space->machine->gfx[2], code);
 }
 
 WRITE16_HANDLER( batrider_objectbank_w )
@@ -1003,10 +1004,12 @@ static void toaplan2_scroll_reg_data_w(running_machine *machine, offs_t offset, 
 					if ((toaplan2_sub_cpu == CPU_2_Z80) && (data == 3))
 					{
 						/* HACK! When tilted, sound CPU needs to be reset. */
-						if (machine->config->sound[0].type == SOUND_YM3812)
+						const device_config *ym = devtag_get_device(machine, "ym");
+
+						if (ym && (sound_get_type(ym) == SOUND_YM3812))
 						{
 							cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, PULSE_LINE);
-							sndti_reset(SOUND_YM3812, 0);
+							devtag_reset(machine, "ym");
 						}
 					}
 

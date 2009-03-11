@@ -25,6 +25,8 @@ extern WRITE8_HANDLER( ironhors_flipscreen_w );
 extern PALETTE_INIT( ironhors );
 extern VIDEO_START( ironhors );
 extern VIDEO_UPDATE( ironhors );
+extern VIDEO_START( farwest );
+extern VIDEO_UPDATE( farwest );
 
 
 static INTERRUPT_GEN( ironhors_interrupt )
@@ -46,14 +48,11 @@ static WRITE8_HANDLER( ironhors_sh_irqtrigger_w )
 	cpu_set_input_line_and_vector(space->machine->cpu[1],0,HOLD_LINE,0xff);
 }
 
-static WRITE8_HANDLER( ironhors_filter_w )
+static WRITE8_DEVICE_HANDLER( ironhors_filter_w )
 {
-	if (sndti_exists(SOUND_DISCRETE, 2))
-	{
-		discrete_sound_w(space, NODE_11, (data & 0x04) >> 2);
-		discrete_sound_w(space, NODE_12, (data & 0x02) >> 1);
-		discrete_sound_w(space, NODE_13, (data & 0x01) >> 0);
-	}
+	discrete_sound_w(device, NODE_11, (data & 0x04) >> 2);
+	discrete_sound_w(device, NODE_12, (data & 0x02) >> 1);
+	discrete_sound_w(device, NODE_13, (data & 0x01) >> 0);
 }
 
 static ADDRESS_MAP_START( master_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -92,16 +91,47 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( slave_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(ym2203_status_port_0_r, ym2203_control_port_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(ym2203_write_port_0_w)
+	AM_RANGE(0x00, 0x01) AM_DEVREADWRITE("ym2203", ym2203_r, ym2203_w)
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START( farwest_master_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x0002) AM_RAM
+	//20=31db
+
+	AM_RANGE(0x0005, 0x001f) AM_RAM
+	AM_RANGE(0x31db, 0x31fa) AM_RAM AM_BASE(&ironhors_scroll)
+	AM_RANGE(0x0040, 0x005f) AM_RAM
+	AM_RANGE(0x0060, 0x00ff) AM_RAM
+	AM_RANGE(0x0800, 0x0800) AM_WRITE(soundlatch_w)
+	AM_RANGE(0x0900, 0x0900) /*AM_READ_PORT("DSW3") */AM_WRITE(ironhors_sh_irqtrigger_w)
+	AM_RANGE(0x0a00, 0x0a00) AM_READ_PORT("DSW1") //AM_WRITE(ironhors_palettebank_w)
+	AM_RANGE(0x0b00, 0x0b00) AM_READ_PORT("DSW2") AM_WRITE(ironhors_flipscreen_w)
+	AM_RANGE(0x0b01, 0x0b01) AM_READ_PORT("DSW1") //AM_WRITE(ironhors_palettebank_w)
+	AM_RANGE(0x0b02, 0x0b02) AM_READ_PORT("P1")
+	AM_RANGE(0x0b03, 0x0b03) AM_READ_PORT("SYSTEM")
+
+
+
+	AM_RANGE(0x1800, 0x1800) AM_WRITE(ironhors_sh_irqtrigger_w)
+	AM_RANGE(0x1a00, 0x1a00) AM_RAM AM_BASE(&ironhors_interrupt_enable)
+	AM_RANGE(0x1a01, 0x1a01) AM_RAM_WRITE(ironhors_charbank_w)
+	AM_RANGE(0x1a02, 0x1a02) AM_WRITE(ironhors_palettebank_w)
+	AM_RANGE(0x0000, 0x1bff) AM_ROM
+//  AM_RANGE(0x1c00, 0x1fff) AM_RAM
+	AM_RANGE(0x2000, 0x23ff) AM_RAM_WRITE(ironhors_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0x2400, 0x27ff) AM_RAM_WRITE(ironhors_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x2800, 0x2fff) AM_RAM
+	AM_RANGE(0x1c00, 0x1dff) AM_RAM AM_BASE(&spriteram_2)
+	AM_RANGE(0x3000, 0x38ff) AM_RAM
+	AM_RANGE(0x1e00, 0x1eff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x3900, 0x3fff) AM_RAM
+	AM_RANGE(0x4000, 0xffff) AM_ROM
+ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( farwest_slave_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x43ff) AM_RAM
-	AM_RANGE(0x8000, 0x8000) AM_READWRITE(soundlatch_r, ym2203_control_port_0_w)
-	AM_RANGE(0x8001, 0x8001) AM_WRITE(ym2203_write_port_0_w)
+	AM_RANGE(0x8000, 0x8001) AM_DEVREADWRITE("ym2203", ym2203_r, ym2203_w)
 ADDRESS_MAP_END
 
 
@@ -342,10 +372,10 @@ static const ym2203_interface ym2203_config =
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		NULL,
-		NULL,
-		ironhors_filter_w,
-		NULL
+		DEVCB_NULL,
+		DEVCB_NULL,
+		DEVCB_DEVICE_HANDLER("disc_ih", ironhors_filter_w),
+		DEVCB_NULL
 	},
 	NULL
 };
@@ -354,16 +384,16 @@ static const ym2203_interface ym2203_config =
 static MACHINE_DRIVER_START( ironhors )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809,18432000/6)        /* 3.072 MHz??? mod by Shingo Suzuki 1999/10/15 */
+	MDRV_CPU_ADD("maincpu", M6809,18432000/6)        /* 3.072 MHz??? mod by Shingo Suzuki 1999/10/15 */
 	MDRV_CPU_PROGRAM_MAP(master_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(ironhors_interrupt,8)
 
-	MDRV_CPU_ADD("sound",Z80,18432000/6)		 /* 3.072 MHz */
+	MDRV_CPU_ADD("soundcpu",Z80,18432000/6)		 /* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(slave_map, 0)
 	MDRV_CPU_IO_MAP(slave_io_map, 0)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(30)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -394,15 +424,57 @@ static MACHINE_DRIVER_START( ironhors )
 
 MACHINE_DRIVER_END
 
+static INTERRUPT_GEN( farwest_interrupt )
+{
+	if (cpu_getiloops(device) &1)
+	{
+		if (*ironhors_interrupt_enable & 4)
+			cpu_set_input_line(device, M6809_FIRQ_LINE, HOLD_LINE);
+	}
+	else //if (cpu_getiloops() % 2)
+	{
+		if (*ironhors_interrupt_enable & 1)
+			cpu_set_input_line(device, INPUT_LINE_NMI, PULSE_LINE);
+	}
+}
+
+static READ8_DEVICE_HANDLER( farwest_soundlatch_r )
+{
+	return soundlatch_r(cpu_get_address_space(device->machine->cpu[1], ADDRESS_SPACE_PROGRAM),0);
+}
+
+static const ym2203_interface farwest_ym2203_config =
+{
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		DEVCB_NULL,
+		DEVCB_HANDLER(farwest_soundlatch_r),
+		DEVCB_DEVICE_HANDLER("disc_ih", ironhors_filter_w),
+		DEVCB_NULL
+	},
+	NULL
+};
+
+
 
 static MACHINE_DRIVER_START( farwest )
 	MDRV_IMPORT_FROM(ironhors)
 
-	MDRV_CPU_MODIFY("sound")
+	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_PROGRAM_MAP(farwest_master_map, 0)
+	MDRV_CPU_VBLANK_INT_HACK(farwest_interrupt,255)
+
+	MDRV_CPU_MODIFY("soundcpu")
 	MDRV_CPU_PROGRAM_MAP(farwest_slave_map, 0)
 	MDRV_CPU_IO_MAP(0, 0)
 
 	MDRV_GFXDECODE(farwest)
+	MDRV_VIDEO_START(farwest)
+	MDRV_VIDEO_UPDATE(farwest)
+
+	MDRV_SOUND_MODIFY("ym2203")
+	MDRV_SOUND_CONFIG(farwest_ym2203_config)
 MACHINE_DRIVER_END
 
 
@@ -414,11 +486,11 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( ironhors )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "13c_h03.bin",  0x4000, 0x8000, CRC(24539af1) SHA1(1eb96a2cb03007665587d6ec114894ab4cafdb23) )
 	ROM_LOAD( "12c_h02.bin",  0xc000, 0x4000, CRC(fab07f86) SHA1(9f599d32d473d873113b89f2b24a54a435dbcbe5) )
 
-	ROM_REGION( 0x10000, "sound", 0 )
+	ROM_REGION( 0x10000, "soundcpu", 0 )
 	ROM_LOAD( "10c_h01.bin",  0x0000, 0x4000, CRC(2b17930f) SHA1(be7b21f050f6b74c75a33c9284455bbed5b03c63) )
 
 	ROM_REGION( 0x20000, "gfx1", ROMREGION_DISPOSE )
@@ -436,11 +508,11 @@ ROM_START( ironhors )
 ROM_END
 
 ROM_START( dairesya )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "560-k03.13c",  0x4000, 0x8000, CRC(2ac6103b) SHA1(331e1be3f29df85d65081831c215743354d76778) )
 	ROM_LOAD( "560-k02.12c",  0xc000, 0x4000, CRC(07bc13a9) SHA1(1d3a44ad41799f89bfa84cc05fbe0792e57305af) )
 
-	ROM_REGION( 0x10000, "sound", 0 )
+	ROM_REGION( 0x10000, "soundcpu", 0 )
 	ROM_LOAD( "560-j01.10c",  0x0000, 0x4000, CRC(a203b223) SHA1(fd19ae55bda467a09151539be6dce3791c28f18a) )
 
 	ROM_REGION( 0x20000, "gfx1", ROMREGION_DISPOSE )
@@ -458,12 +530,12 @@ ROM_START( dairesya )
 ROM_END
 
 ROM_START( farwest )
-	ROM_REGION( 0x12000, "main", 0 )	/* 64k for code + 8k for extra ROM */
+	ROM_REGION( 0x12000, "maincpu", 0 )	/* 64k for code + 8k for extra ROM */
 	ROM_LOAD( "ironhors.008", 0x04000, 0x4000, CRC(b1c8246c) SHA1(4ceb098bb0b4efcbe50bb4b23bd27a60dabf2b3e) )
 	ROM_LOAD( "ironhors.009", 0x08000, 0x8000, CRC(ea34ecfc) SHA1(8c7f12e76d2b9eb592ebf1bfd3e16a6b130da8e5) )
-	ROM_LOAD( "ironhors.007", 0x10000, 0x2000, CRC(471182b7) SHA1(48ff58cbbf971b257e8099ec331397cf73dc8325) )	/* don't know what this is for */
+	ROM_LOAD( "ironhors.007", 0x00000, 0x2000, CRC(471182b7) SHA1(48ff58cbbf971b257e8099ec331397cf73dc8325) )	/* don't know what this is for */
 
-	ROM_REGION( 0x10000, "sound", 0 )
+	ROM_REGION( 0x10000, "soundcpu", 0 )
 	ROM_LOAD( "ironhors.010", 0x0000, 0x4000, CRC(a28231a6) SHA1(617e8fdf8129081c6a1bbbf140837a375a51da72) )
 
 	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )

@@ -63,15 +63,14 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
 	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
-	AM_RANGE(0xd001, 0xd001) AM_READ(ay8910_read_port_0_r)
+	AM_RANGE(0xd001, 0xd001) AM_DEVREAD("ay", ay8910_r)
 	AM_RANGE(0xe000, 0xe7ff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xd000, 0xd000) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xd001, 0xd001) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0xd000, 0xd001) AM_DEVWRITE("ay", ay8910_address_data_w)
 	AM_RANGE(0xd008, 0xd008) AM_WRITE(hexa_d008_w)
 	AM_RANGE(0xd010, 0xd010) AM_WRITE(watchdog_reset_w)	/* or IRQ acknowledge, or both */
 	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(hexa_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
@@ -140,10 +139,10 @@ static const ay8910_interface ay8910_config =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	input_port_0_r,
-	input_port_1_r,
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("INPUTS"),
+	DEVCB_INPUT_PORT("DSW"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -151,12 +150,12 @@ static const ay8910_interface ay8910_config =
 static MACHINE_DRIVER_START( hexa )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 4000000)		/* 4 MHz ??????? */
+	MDRV_CPU_ADD("maincpu", Z80, 4000000)		/* 4 MHz ??????? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -185,7 +184,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( hexa )
-	ROM_REGION( 0x18000, "main", 0 )		/* 64k for code + 32k for banked ROM */
+	ROM_REGION( 0x18000, "maincpu", 0 )		/* 64k for code + 32k for banked ROM */
 	ROM_LOAD( "hexa.20",      0x00000, 0x8000, CRC(98b00586) SHA1(3591a3b0486d720f0aaa9f0bf4be352cd0ffcbc7) )
 	ROM_LOAD( "hexa.21",      0x10000, 0x8000, CRC(3d5d006c) SHA1(ad4eadab82024b122182eacb5a322cfd6e476a70) )
 
@@ -205,7 +204,7 @@ ROM_END
 static DRIVER_INIT( hexa )
 {
 #if 0
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 
 
 	/* Hexa is not protected or anything, but it keeps writing 0x3f to register */

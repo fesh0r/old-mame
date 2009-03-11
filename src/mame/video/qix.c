@@ -86,9 +86,9 @@ static MC6845_ON_DE_CHANGED( display_enable_changed )
  *
  *************************************/
 
-WRITE8_HANDLER( qix_flip_screen_w )
+WRITE8_DEVICE_HANDLER( qix_flip_screen_w )
 {
-	qix_state *state = space->machine->driver_data;
+	qix_state *state = device->machine->driver_data;
 
 	state->flip = data;
 }
@@ -327,8 +327,8 @@ static MC6845_BEGIN_UPDATE( begin_update )
 static MC6845_UPDATE_ROW( update_row )
 {
 	qix_state *state = device->machine->driver_data;
+	UINT32 *dest = BITMAP_ADDR32(bitmap, y, 0);
 	UINT16 x;
-	UINT8 scanline[256];
 
 	pen_t *pens = (pen_t *)param;
 
@@ -337,9 +337,7 @@ static MC6845_UPDATE_ROW( update_row )
 	offs_t offs_xor = state->flip ? 0xffff : 0;
 
 	for (x = 0; x < x_count * 8; x++)
-		scanline[x] = state->videoram[(offs + x) ^ offs_xor];
-
-	draw_scanline8(bitmap, 0, y, x_count * 8, scanline, pens, -1);
+		dest[x] = pens[state->videoram[(offs + x) ^ offs_xor]];
 }
 
 
@@ -352,7 +350,7 @@ static MC6845_UPDATE_ROW( update_row )
 
 static VIDEO_UPDATE( qix )
 {
-	const device_config *mc6845 = device_list_find_by_tag(screen->machine->config->devicelist, MC6845, MC6845_TAG);
+	const device_config *mc6845 = devtag_get_device(screen->machine, MC6845_TAG);
 	mc6845_update(mc6845, bitmap, cliprect);
 
 	return 0;
@@ -377,8 +375,8 @@ static ADDRESS_MAP_START( qix_video_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9400, 0x9400) AM_MIRROR(0x03fc) AM_READWRITE(qix_addresslatch_r, qix_addresslatch_w)
 	AM_RANGE(0x9402, 0x9403) AM_MIRROR(0x03fc) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(qix_state, videoram_address)
 	AM_RANGE(0x9800, 0x9800) AM_MIRROR(0x03ff) AM_READ(SMH_RAM) AM_BASE_MEMBER(qix_state, scanline_latch)
-	AM_RANGE(0x9c00, 0x9c00) AM_MIRROR(0x03fe) AM_DEVWRITE(MC6845, "vid_u18", mc6845_address_w)
-	AM_RANGE(0x9c01, 0x9c01) AM_MIRROR(0x03fe) AM_DEVREADWRITE(MC6845, "vid_u18", mc6845_register_r, mc6845_register_w)
+	AM_RANGE(0x9c00, 0x9c00) AM_MIRROR(0x03fe) AM_DEVWRITE("vid_u18", mc6845_address_w)
+	AM_RANGE(0x9c01, 0x9c01) AM_MIRROR(0x03fe) AM_DEVREADWRITE("vid_u18", mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0xa000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -395,8 +393,8 @@ static ADDRESS_MAP_START( zookeep_video_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9400, 0x9400) AM_MIRROR(0x03fc) AM_READWRITE(qix_addresslatch_r, qix_addresslatch_w)
 	AM_RANGE(0x9402, 0x9403) AM_MIRROR(0x03fc) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(qix_state, videoram_address)
 	AM_RANGE(0x9800, 0x9800) AM_MIRROR(0x03ff) AM_READ(SMH_RAM) AM_BASE_MEMBER(qix_state, scanline_latch)
-	AM_RANGE(0x9c00, 0x9c00) AM_MIRROR(0x03fe) AM_DEVWRITE(MC6845, "vid_u18", mc6845_address_w)
-	AM_RANGE(0x9c01, 0x9c01) AM_MIRROR(0x03fe) AM_DEVREADWRITE(MC6845, "vid_u18", mc6845_register_r, mc6845_register_w)
+	AM_RANGE(0x9c00, 0x9c00) AM_MIRROR(0x03fe) AM_DEVWRITE("vid_u18", mc6845_address_w)
+	AM_RANGE(0x9c01, 0x9c01) AM_MIRROR(0x03fe) AM_DEVREADWRITE("vid_u18", mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK(1)
 	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -414,8 +412,8 @@ static ADDRESS_MAP_START( slither_video_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9401, 0x9401) AM_MIRROR(0x03fc) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(qix_state, videoram_mask)
 	AM_RANGE(0x9402, 0x9403) AM_MIRROR(0x03fc) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(qix_state, videoram_address)
 	AM_RANGE(0x9800, 0x9800) AM_MIRROR(0x03ff) AM_READ(SMH_RAM) AM_BASE_MEMBER(qix_state, scanline_latch)
-	AM_RANGE(0x9c00, 0x9c00) AM_MIRROR(0x03fe) AM_DEVWRITE(MC6845, "vid_u18", mc6845_address_w)
-	AM_RANGE(0x9c01, 0x9c01) AM_MIRROR(0x03fe) AM_DEVREADWRITE(MC6845, "vid_u18", mc6845_register_r, mc6845_register_w)
+	AM_RANGE(0x9c00, 0x9c00) AM_MIRROR(0x03fe) AM_DEVWRITE("vid_u18", mc6845_address_w)
+	AM_RANGE(0x9c01, 0x9c01) AM_MIRROR(0x03fe) AM_DEVREADWRITE("vid_u18", mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0xa000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -429,7 +427,7 @@ ADDRESS_MAP_END
 
 static const mc6845_interface mc6845_intf =
 {
-	"main",					/* screen we are acting on */
+	"screen",				/* screen we are acting on */
 	8,						/* number of pixels per video memory address */
 	begin_update,			/* before pixel update callback */
 	update_row,				/* row update callback */
@@ -447,7 +445,7 @@ static const m6809_config encryption_config =
 
 
 MACHINE_DRIVER_START( qix_video )
-	MDRV_CPU_ADD("video", M6809, MAIN_CLOCK_OSC/4/4)	/* 1.25 MHz */
+	MDRV_CPU_ADD("videocpu", M6809, MAIN_CLOCK_OSC/4/4)	/* 1.25 MHz */
 	MDRV_CPU_PROGRAM_MAP(qix_video_map,0)
 	MDRV_CPU_CONFIG(encryption_config)	// for kram3
 
@@ -456,19 +454,19 @@ MACHINE_DRIVER_START( qix_video )
 
 	MDRV_MC6845_ADD(MC6845_TAG, MC6845, QIX_CHARACTER_CLOCK, mc6845_intf)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(QIX_CHARACTER_CLOCK*8, 256, 0, 256, 256, 0, 256)	/* temporary, CRTC will configure screen */
 MACHINE_DRIVER_END
 
 
 MACHINE_DRIVER_START( zookeep_video )
-	MDRV_CPU_MODIFY("video")
+	MDRV_CPU_MODIFY("videocpu")
 	MDRV_CPU_PROGRAM_MAP(zookeep_video_map,0)
 MACHINE_DRIVER_END
 
 
 MACHINE_DRIVER_START( slither_video )
-	MDRV_CPU_REPLACE("video", M6809, SLITHER_CLOCK_OSC/4/4)	/* 1.34 MHz */
+	MDRV_CPU_REPLACE("videocpu", M6809, SLITHER_CLOCK_OSC/4/4)	/* 1.34 MHz */
 	MDRV_CPU_PROGRAM_MAP(slither_video_map,0)
 MACHINE_DRIVER_END
