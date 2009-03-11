@@ -23,6 +23,7 @@ Galaksija driver by Krzysztof Strzecha and Miodrag Milanovic
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
+#include "sound/wave.h"
 #include "includes/galaxy.h"
 #include "devices/snapquik.h"
 #include "devices/cassette.h"
@@ -32,8 +33,8 @@ Galaksija driver by Krzysztof Strzecha and Miodrag Milanovic
 static ADDRESS_MAP_START (galaxyp_io, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0x01)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0xbe, 0xbe) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xbf, 0xbf) AM_WRITE(ay8910_write_port_0_w)
+	AM_RANGE(0xbe, 0xbe) AM_DEVWRITE("ay8910", ay8910_address_w)
+	AM_RANGE(0xbf, 0xbf) AM_DEVWRITE("ay8910", ay8910_data_w)
 ADDRESS_MAP_END
 
 
@@ -146,7 +147,7 @@ static const ay8910_interface galaxy_ay_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL
+	DEVCB_NULL
 };
 
 #define XTAL 6144000
@@ -162,10 +163,10 @@ static const cassette_config galaxy_cassette_config =
 
 static MACHINE_DRIVER_START( galaxy )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL / 2)
+	MDRV_CPU_ADD("maincpu", Z80, XTAL / 2)
 	MDRV_CPU_PROGRAM_MAP(galaxy_mem, 0)
-	MDRV_CPU_VBLANK_INT("main", galaxy_interrupt)
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_CPU_VBLANK_INT("screen", galaxy_interrupt)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 
 	MDRV_MACHINE_RESET( galaxy )
@@ -181,10 +182,10 @@ static MACHINE_DRIVER_START( galaxy )
 	MDRV_VIDEO_UPDATE( galaxy )
 
 	/* snapshot */
-	MDRV_SNAPSHOT_ADD(galaxy, "gal", 0)
+	MDRV_SNAPSHOT_ADD("snapshot", galaxy, "gal", 0)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 	MDRV_CASSETTE_ADD( "cassette", galaxy_cassette_config )
@@ -192,11 +193,11 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( galaxyp )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL / 2)
+	MDRV_CPU_ADD("maincpu", Z80, XTAL / 2)
 	MDRV_CPU_PROGRAM_MAP(galaxyp_mem, 0)
 	MDRV_CPU_IO_MAP(galaxyp_io, 0)
-	MDRV_CPU_VBLANK_INT("main", galaxy_interrupt)
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_CPU_VBLANK_INT("screen", galaxy_interrupt)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 
 	MDRV_MACHINE_RESET( galaxyp )
@@ -212,20 +213,20 @@ static MACHINE_DRIVER_START( galaxyp )
 	MDRV_VIDEO_UPDATE( galaxy )
 	
 	/* snapshot */
-	MDRV_SNAPSHOT_ADD(galaxy, "gal", 0)
+	MDRV_SNAPSHOT_ADD("snapshot", galaxy, "gal", 0)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("ay8910", AY8910, XTAL/4)
 	MDRV_SOUND_CONFIG(galaxy_ay_interface)
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", galaxy_cassette_config )
 MACHINE_DRIVER_END
 
 ROM_START (galaxy)
-	ROM_REGION (0x10000, "main", ROMREGION_ERASEFF)
+	ROM_REGION (0x10000, "maincpu", ROMREGION_ERASEFF)
 	ROM_LOAD ("galrom1.bin", 0x0000, 0x1000, CRC(365f3e24) SHA1(ffc6bf2ec09eabdad76604a63f5dd697c30c4358))
 	ROM_LOAD_OPTIONAL ("galrom2.bin", 0x1000, 0x1000, CRC(5dc5a100) SHA1(5d5ab4313a2d0effe7572bb129193b64cab002c1))
 	ROM_REGION(0x0800, "gfx1",0)
@@ -233,7 +234,7 @@ ROM_START (galaxy)
 ROM_END
 
 ROM_START (galaxyp)
-	ROM_REGION (0x10000, "main", ROMREGION_ERASEFF)
+	ROM_REGION (0x10000, "maincpu", ROMREGION_ERASEFF)
 	ROM_LOAD ("galrom1.bin", 0x0000, 0x1000, CRC(365f3e24) SHA1(ffc6bf2ec09eabdad76604a63f5dd697c30c4358))
 	ROM_LOAD ("galrom2.bin", 0x1000, 0x1000, CRC(5dc5a100) SHA1(5d5ab4313a2d0effe7572bb129193b64cab002c1))
 	ROM_LOAD ("galplus.bin", 0xe000, 0x1000, CRC(d4cfab14) SHA1(b507b9026844eeb757547679907394aa42055eee))

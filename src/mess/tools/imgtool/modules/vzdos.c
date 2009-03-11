@@ -38,7 +38,7 @@ as track map, with one bit for each sector used.
 */
 
 #define DATA_SIZE	(126)
-#define SECTOR_SIZE	(0x9a)
+#define SECTOR_SIZE	(0x9b)
 #define MAX_DIRENTS	(15*8)
 
 /* vzdos directry entry */
@@ -185,10 +185,10 @@ static imgtoolerr_t vzdos_get_dirent(imgtool_image *img, int index, vzdos_dirent
 
 	/* check values */
 	if (ent->start_track > 39)
-		return IMGTOOLERR_CORRUPTIMAGE;
+		return IMGTOOLERR_CORRUPTFILE;
 
 	if (ent->start_sector > 15)
-		return IMGTOOLERR_CORRUPTIMAGE;
+		return IMGTOOLERR_CORRUPTFILE;
 
 	return IMGTOOLERR_SUCCESS;
 }
@@ -361,24 +361,22 @@ static imgtoolerr_t vzdos_free_trackmap(imgtool_image *img, int *track, int *sec
 static imgtoolerr_t vzdos_write_formatted_sector(imgtool_image *img, int track, int sector)
 {
 	int ret;
-	UINT8 sector_data[DATA_SIZE + 4];
+	UINT8 sector_data[DATA_SIZE + 4 + 24];
 
-	static UINT8 sector_header[24] = {
+	static const UINT8 sector_header[24] = {
 		0x80, 0x80, 0x80, 0x80, 0x80, 0x00, 0xFE, 0xE7,
 		0x18, 0xC3, 0x00, 0x00, 0x00, 0x80, 0x80, 0x80,
 		0x80, 0x80, 0x80, 0x00, 0xC3, 0x18, 0xE7, 0xFE
 	};
 
 	memset(sector_data, 0x00, sizeof(sector_data));
+	memcpy(sector_data, sector_header, sizeof(sector_header));
 
-	sector_header[10] = (UINT8) track;			/* current track */
-	sector_header[11] = (UINT8) sector;			/* current sector */
-	sector_header[12] = (UINT8) track + sector;	/* checksum-8 */
+	sector_data[10] = (UINT8) track;			/* current track */
+	sector_data[11] = (UINT8) sector;			/* current sector */
+	sector_data[12] = (UINT8) track + sector;	/* checksum-8 */
 
-	ret = floppy_write_sector(imgtool_floppy(img), 0, track, sector_order[sector], 0, sector_header, sizeof(sector_header));
-	if (ret) return ret;
-
-	ret = floppy_write_sector(imgtool_floppy(img), 0, track, sector_order[sector], sizeof(sector_header), sector_data, sizeof(sector_data));
+	ret = floppy_write_sector(imgtool_floppy(img), 0, track, sector_order[sector], 0, sector_data, sizeof(sector_data));
 	if (ret) return ret;
 
 	return IMGTOOLERR_SUCCESS;
@@ -412,16 +410,20 @@ static imgtoolerr_t vzdos_diskimage_nextenum(imgtool_directory *enumeration, img
 	} else {
 
 		const char *type;
-		int /*ret,*/ len;
+		int ret, len;
 		vzdos_dirent dirent;
 
-		/*ret = */vzdos_get_dirent(imgtool_directory_image(enumeration), iter->index - 1, &dirent);
+		ret = vzdos_get_dirent(imgtool_directory_image(enumeration), iter->index - 1, &dirent);
 
-		if (dirent.ftype == 0x00) {
+		if (ret == IMGTOOLERR_FILENOTFOUND)
+		{
 			iter->eof = 1;
 			ent->eof = 1;
 			return IMGTOOLERR_SUCCESS;
 		}
+
+		if (ret == IMGTOOLERR_CORRUPTFILE)
+			ent->corrupt = 1;
 
 		/* kill trailing spaces */
 		for (len = 7; len > 0; len--) {
@@ -433,17 +435,20 @@ static imgtoolerr_t vzdos_diskimage_nextenum(imgtool_directory *enumeration, img
 		memcpy(ent->filename, &dirent.fname, len + 1);
 		ent->filesize = dirent.end_address - dirent.start_address;
 
-		switch (dirent.ftype) {
-			case 'T': type = "Basic";      break;
-			case 'B': type = "Binary";     break;
-			case 'D': type = "Data";       break;
-			case 'F': type = "Quickwrite"; break;
-			case 'A': type = "Assembler";  break;
-			case 'S': type = "Diskops";    break;
-			case 'W': type = "Wordpro";    break;
-			default: type = "Unknown";
+		switch (dirent.ftype)
+		{
+		case 0x01: type = "Deleted";    break;
+		case 'T':  type = "Basic";      break;
+		case 'B':  type = "Binary";     break;
+		case 'D':  type = "Data";       break;
+		case 'F':  type = "Quickwrite"; break;
+		case 'A':  type = "Assembler";  break;
+		case 'S':  type = "Diskops";    break;
+		case 'W':  type = "Wordpro";    break;
+		default:   type = "Unknown";
 		}
-		snprintf(ent->attr, sizeof(ent->attr) / sizeof(ent->attr[0]), "%s", type);
+
+		snprintf(ent->attr, ARRAY_LENGTH(ent->attr), "%s", type);
 
 		iter->index++;
 	}

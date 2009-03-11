@@ -31,7 +31,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kramermc_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0xfc, 0x0ff) AM_DEVREADWRITE(Z80PIO, "z80pio", z80pio_r, z80pio_w)
+	AM_RANGE(0xfc, 0x0ff) AM_DEVREADWRITE("z80pio", z80pio_r, z80pio_w)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -106,7 +106,7 @@ INPUT_PORTS_END
 /* Machine driver */
 static MACHINE_DRIVER_START( kramermc )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 1500000)
+	MDRV_CPU_ADD("maincpu", Z80, 1500000)
 	MDRV_CPU_PROGRAM_MAP(kramermc_mem, 0)
 	MDRV_CPU_IO_MAP(kramermc_io, 0)
 	MDRV_MACHINE_RESET( kramermc )
@@ -114,7 +114,7 @@ static MACHINE_DRIVER_START( kramermc )
 	MDRV_Z80PIO_ADD( "z80pio", kramermc_z80pio_intf )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -131,7 +131,7 @@ MACHINE_DRIVER_END
 
 /* ROM definition */
 ROM_START( kramermc )
-	ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 	ROM_LOAD( "io-mon.kmc",   0x0000, 0x0400, CRC(ba230fc8) SHA1(197d4ede31ee8768dd4a17854ee21c468e98b3d6) )
 	ROM_LOAD( "debugger.kmc", 0x0400, 0x0400, CRC(5ea3d9e1) SHA1(42e5ced4f965124ae50ec7ac9861d6b668cfab99) )
 	ROM_LOAD( "reass.kmc",    0x0800, 0x0400, CRC(7cc8e605) SHA1(3319a96aad710441af30dace906b9725e07ca92c) )

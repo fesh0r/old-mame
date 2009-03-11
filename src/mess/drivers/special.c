@@ -11,10 +11,11 @@
 #include "driver.h"
 #include "cpu/z80/z80.h"
 #include "cpu/i8085/i8085.h"
+#include "sound/dac.h"
+#include "sound/wave.h"
 #include "includes/special.h"
 #include "machine/8255ppi.h"
 #include "machine/pit8253.h"
-#include "sound/dac.h"
 #include "devices/cassette.h"
 #include "devices/basicdsk.h"
 #include "formats/rk_cas.h"
@@ -53,10 +54,10 @@ static ADDRESS_MAP_START( erik_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xf1, 0xf1) AM_READWRITE(erik_rr_reg_r, erik_rr_reg_w)
 	AM_RANGE(0xf2, 0xf2) AM_READWRITE(erik_rc_reg_r, erik_rc_reg_w)
 	AM_RANGE(0xf3, 0xf3) AM_READWRITE(erik_disk_reg_r, erik_disk_reg_w)
-	AM_RANGE(0xf4, 0xf4) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_status_r, wd17xx_command_w)
-	AM_RANGE(0xf5, 0xf5) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_track_r, wd17xx_track_w)
-	AM_RANGE(0xf6, 0xf6) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_sector_r, wd17xx_sector_w)
-	AM_RANGE(0xf7, 0xf7) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_data_r, wd17xx_data_w)
+	AM_RANGE(0xf4, 0xf4) AM_DEVREADWRITE("wd1793", wd17xx_status_r, wd17xx_command_w)
+	AM_RANGE(0xf5, 0xf5) AM_DEVREADWRITE("wd1793", wd17xx_track_r, wd17xx_track_w)
+	AM_RANGE(0xf6, 0xf6) AM_DEVREADWRITE("wd1793", wd17xx_sector_r, wd17xx_sector_w)
+	AM_RANGE(0xf7, 0xf7) AM_DEVREADWRITE("wd1793", wd17xx_data_r, wd17xx_data_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(specimx_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -67,11 +68,11 @@ static ADDRESS_MAP_START(specimx_mem, ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE( 0xffc0, 0xffdf ) AM_RAMBANK(4)
     AM_RANGE( 0xffe0, 0xffe3 ) AM_READWRITE(specialist_keyboard_r,specialist_keyboard_w) // 8255 for keyboard
     AM_RANGE( 0xffe4, 0xffe7 ) AM_RAM //external 8255
-    AM_RANGE( 0xffe8, 0xffe8 ) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_status_r,wd17xx_command_w)
-    AM_RANGE( 0xffe9, 0xffe9 ) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_track_r,wd17xx_track_w)
-    AM_RANGE( 0xffea, 0xffea ) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_sector_r,wd17xx_sector_w)
-    AM_RANGE( 0xffea, 0xffeb ) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_data_r,wd17xx_data_w)
-    AM_RANGE( 0xffec, 0xffef ) AM_DEVREADWRITE(PIT8253, "pit8253", pit8253_r, pit8253_w)
+    AM_RANGE( 0xffe8, 0xffe8 ) AM_DEVREADWRITE("wd1793", wd17xx_status_r,wd17xx_command_w)
+    AM_RANGE( 0xffe9, 0xffe9 ) AM_DEVREADWRITE("wd1793", wd17xx_track_r,wd17xx_track_w)
+    AM_RANGE( 0xffea, 0xffea ) AM_DEVREADWRITE("wd1793", wd17xx_sector_r,wd17xx_sector_w)
+    AM_RANGE( 0xffea, 0xffeb ) AM_DEVREADWRITE("wd1793", wd17xx_data_r,wd17xx_data_w)
+    AM_RANGE( 0xffec, 0xffef ) AM_DEVREADWRITE("pit8253", pit8253_r, pit8253_w)
     AM_RANGE( 0xfff0, 0xfff3 ) AM_READWRITE(specimx_disk_ctrl_r, specimx_disk_ctrl_w)
     AM_RANGE( 0xfff8, 0xfff8 ) AM_READWRITE(specimx_video_color_r,specimx_video_color_w)
     AM_RANGE( 0xfffc, 0xfffe ) AM_WRITE(specimx_select_bank)
@@ -317,7 +318,7 @@ static const cassette_config special_cassette_config =
 /* Machine driver */
 static MACHINE_DRIVER_START( special )
     /* basic machine hardware */
-    MDRV_CPU_ADD("main", 8080, 2000000)
+    MDRV_CPU_ADD("maincpu", 8080, 2000000)
     MDRV_CPU_PROGRAM_MAP(specialist_mem, 0)
     MDRV_MACHINE_RESET( special )
 
@@ -326,7 +327,7 @@ static MACHINE_DRIVER_START( special )
 	MDRV_PPI8255_ADD( "ppi8255", specialist_ppi8255_interface )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -342,7 +343,7 @@ static MACHINE_DRIVER_START( special )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", special_cassette_config )
@@ -351,10 +352,10 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( specialp )
     /* basic machine hardware */
     MDRV_IMPORT_FROM(special)
-    MDRV_CPU_MODIFY("main")
+    MDRV_CPU_MODIFY("maincpu")
     MDRV_CPU_PROGRAM_MAP(specialp_mem, 0)
 
-    MDRV_SCREEN_MODIFY("main")
+    MDRV_SCREEN_MODIFY("screen")
     MDRV_VIDEO_START(specialp)
     MDRV_VIDEO_UPDATE(specialp)
 	MDRV_SCREEN_SIZE(512, 256)
@@ -363,14 +364,14 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( specimx )
     MDRV_IMPORT_FROM(special)
-    MDRV_CPU_MODIFY("main")
+    MDRV_CPU_MODIFY("maincpu")
   	MDRV_CPU_PROGRAM_MAP(specimx_mem, 0)
 
   	MDRV_MACHINE_START ( specimx )
   	MDRV_MACHINE_RESET ( specimx )
 
     /* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_PALETTE_LENGTH(16)
 	MDRV_PALETTE_INIT( specimx )
 
@@ -378,8 +379,7 @@ static MACHINE_DRIVER_START( specimx )
    	MDRV_VIDEO_UPDATE(specimx)
 
     /* audio hardware */
-	MDRV_SOUND_ADD("custom", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(specimx_sound_interface)
+	MDRV_SOUND_ADD("custom", SPECIMX, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 		
 	MDRV_WD1793_ADD("wd1793", default_wd17xx_interface )	
@@ -387,7 +387,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( erik )
     /* basic machine hardware */
-    MDRV_CPU_ADD("main", Z80, 4000000)
+    MDRV_CPU_ADD("maincpu", Z80, 4000000)
     MDRV_CPU_PROGRAM_MAP(erik_mem, 0)
     MDRV_CPU_IO_MAP(erik_io_map, 0)
 
@@ -396,7 +396,7 @@ static MACHINE_DRIVER_START( erik )
 	MDRV_PPI8255_ADD( "ppi8255", specialist_ppi8255_interface )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -411,7 +411,7 @@ static MACHINE_DRIVER_START( erik )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", special_cassette_config )
@@ -421,7 +421,7 @@ MACHINE_DRIVER_END
 
 /* ROM definition */
 ROM_START( special )
-    ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
     ROM_SYSTEM_BIOS(0, "2nd", "2nd rev.")
     ROMX_LOAD( "special2.rom", 0xc000, 0x1000, CRC(FEDFBC37) SHA1(b79474833bbf558c39493dec3e8eabf9885c7c7c), ROM_BIOS(1))
     ROM_SYSTEM_BIOS(1, "1st", "1st rev.")
@@ -433,12 +433,12 @@ ROM_START( special )
 ROM_END
 
 ROM_START( specialp )
-    ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
     ROM_LOAD( "special6.rom", 0xc000, 0x1000, CRC(f0c5a0ac) SHA1(50b53bd7c05117930aa84653a9ea0fc0c6f0f496) )
  ROM_END
 
 ROM_START( lik )
-    ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
     ROM_SYSTEM_BIOS(0, "1st", "1st rev.")
     ROMX_LOAD( "lik.rom", 	0xc000, 0x3000, CRC(705BB3A0) SHA1(f90b009ec9d3303bbda228714dd24de057e744b6), ROM_BIOS(1))
     ROM_SYSTEM_BIOS(1, "2nd", "2nd rev.")
@@ -446,7 +446,7 @@ ROM_START( lik )
 ROM_END
 
 ROM_START( specimx )
-    ROM_REGION( 0x20000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x20000, "maincpu", ROMREGION_ERASEFF )
     ROM_SYSTEM_BIOS(0, "FOS", "ROM FOS")
     ROMX_LOAD( "specimx.rom", 0x10000, 0xb800,  CRC(DB68F9B1) SHA1(c79888449f8a605267ec3e10dcc8e6e6f43b3a95), ROM_BIOS(1))
     ROM_SYSTEM_BIOS(1, "NC", "NC")
@@ -454,7 +454,7 @@ ROM_START( specimx )
 ROM_END
 
 ROM_START( erik )
-    ROM_REGION( 0x20000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x20000, "maincpu", ROMREGION_ERASEFF )
     ROM_LOAD( "erik.bin", 0x10000, 0x10000, CRC(6F3208F4) SHA1(41f6e2763ef60d3c7214c98893e580d25346fa2d))
 ROM_END
 

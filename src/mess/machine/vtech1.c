@@ -50,7 +50,7 @@ Todo:
 #include "video/m6847.h"
 #include "includes/vtech1.h"
 #include "devices/cassette.h"
-#include "devices/printer.h"
+#include "machine/ctronics.h"
 #include "cpu/z80/z80.h"
 #include "sound/speaker.h"
 
@@ -59,7 +59,7 @@ Todo:
 
 int vtech1_latch = -1;
 
-#define TRKSIZE_VZ	0x9a0	/* arbitrary (actually from analyzing format) */
+#define TRKSIZE_VZ	0x9b0	/* arbitrary (actually from analyzing format) */
 #define TRKSIZE_FM	3172	/* size of a standard FM mode track */
 
 static UINT8 vtech1_track_x2[2] = {80, 80};
@@ -166,7 +166,7 @@ WRITE8_HANDLER (vtech1_memory_bank_w)
 
 static const device_config *cassette_device_image(running_machine *machine)
 {
-	return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
+	return devtag_get_device(machine, "cassette");
 }
 
 
@@ -176,7 +176,7 @@ static const device_config *cassette_device_image(running_machine *machine)
 
 SNAPSHOT_LOAD(vtech1)
 {
-	const address_space *space = cputag_get_address_space(image->machine, "main", ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(image->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 i, header[24];
 	UINT16 start, end, size;
 	char pgmname[18];
@@ -222,7 +222,7 @@ SNAPSHOT_LOAD(vtech1)
 		memory_write_byte(space, 0x788e, start % 256); /* usr subroutine address */
 		memory_write_byte(space, 0x788f, start / 256);
 		image_message(image, " %s (M)\nsize=%04X : start=%04X : end=%04X",pgmname,size,start,end);
-		cpu_set_reg(cputag_get_cpu(image->machine, "main"), REG_GENPC, start);				/* start program */
+		cpu_set_reg(cputag_get_cpu(image->machine, "maincpu"), REG_GENPC, start);				/* start program */
 		break;
 
 	default:
@@ -483,11 +483,11 @@ READ8_HANDLER(vtech1_keyboard_r)
 	static int cassette_bit = 0;
 	int row, data = 0xff;
 	double level;
-	static const char *const keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", 
+	static const char *const keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3",
 										"keyboard_4", "keyboard_5", "keyboard_6", "keyboard_7" };
 
 	/* scan keyboard rows */
-	for (row = 0; row < 8; row++) 
+	for (row = 0; row < 8; row++)
 	{
 		if (!(offset & (1 << row)))
 			data &= input_port_read(space->machine, keynames[row]);
@@ -521,6 +521,8 @@ READ8_HANDLER(vtech1_keyboard_r)
  ************************************************/
 WRITE8_HANDLER(vtech1_latch_w)
 {
+	const device_config *speaker = devtag_get_device(space->machine, "speaker");
+
 	if (LOG_VTECH1_LATCH)
 		logerror("vtech1_latch_w $%02X\n", data);
 
@@ -533,7 +535,7 @@ WRITE8_HANDLER(vtech1_latch_w)
 
 	/* speaker data bits toggle? */
 	if ((vtech1_latch ^ data ) & 0x41)
-		speaker_level_w(0, (data & 1) | ((data >> 5) & 2));
+		speaker_level_w(speaker, (data & 1) | ((data >> 5) & 2));
 
 	vtech1_latch = data;
 }
@@ -543,41 +545,28 @@ WRITE8_HANDLER(vtech1_latch_w)
  Printer Handling
 ******************************************************************************/
 
-static const device_config *printer_device(running_machine *machine)
-{
-	return device_list_find_by_tag(machine->config->devicelist, PRINTER, "printer");
-}
-
 /*
 The VZ200/300 printer interface uses I/O port address OE Hex for the ASCII
 character code data and strobe output, and address OOH for the busy/ready-bar
 status input (bit 0).
 */
 
-READ8_HANDLER(vtech1_printer_r)
+READ8_HANDLER( vtech1_printer_r )
 {
-	int data = 0xff;
+	const device_config *printer = devtag_get_device(space->machine, "centronics");
+	UINT8 result = 0xff;
 
-	if (printer_is_ready(printer_device(space->machine)))
-		data &= ~0x01;
+	result &= ~(!centronics_busy_r(printer));
 
-	return data;
+	return result;
 }
 
-WRITE8_HANDLER(vtech1_printer_w)
+/* TODO: figure out how this really works */
+WRITE8_HANDLER( vtech1_strobe_w )
 {
-	static int prn_data;
-
-	switch (offset) {
-		case 0x0d:	/* strobe data to printer */
-			printer_output(printer_device(space->machine), prn_data);
-			break;
-		case 0x0e:	/* load output latch */
-			prn_data = data;
-			break;
-		default:
-			logerror("vtech1_printer_w $%02x, unknown offset %02x\n", data, offset);
-	}
+	const device_config *printer = devtag_get_device(space->machine, "centronics");
+	centronics_strobe_w(printer, TRUE);
+	centronics_strobe_w(printer, FALSE);
 }
 
 

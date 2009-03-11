@@ -84,6 +84,7 @@ interface; no special expansion modules like ieee488 interface
 
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
+#include "sound/dac.h"
 
 #include "machine/6522via.h"
 #include "includes/vc1541.h"
@@ -114,8 +115,8 @@ static ADDRESS_MAP_START( vc20_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x8000, 0x8fff) AM_ROM
 	AM_RANGE(0x9000, 0x900f) AM_READWRITE( vic6560_port_r, vic6560_port_w )
 	AM_RANGE(0x9010, 0x910f) AM_NOP
-	AM_RANGE(0x9110, 0x911f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
-	AM_RANGE(0x9120, 0x912f) AM_DEVREADWRITE(VIA6522, "via6522_1", via_r, via_w)
+	AM_RANGE(0x9110, 0x911f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
+	AM_RANGE(0x9120, 0x912f) AM_DEVREADWRITE("via6522_1", via_r, via_w)
 	AM_RANGE(0x9130, 0x93ff) AM_NOP
 	AM_RANGE(0x9400, 0x97ff) AM_READWRITE(SMH_RAM, vc20_write_9400) AM_BASE(&vc20_memory_9400)	/*color ram 4 bit */
 	AM_RANGE(0x9800, 0x9fff) AM_RAM
@@ -133,11 +134,11 @@ static ADDRESS_MAP_START( vc20i_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x8000, 0x8fff) AM_ROM
 	AM_RANGE(0x9000, 0x900f) AM_READWRITE( vic6560_port_r, vic6560_port_w )
 	AM_RANGE(0x9010, 0x910f) AM_NOP
-	AM_RANGE(0x9110, 0x911f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
-	AM_RANGE(0x9120, 0x912f) AM_DEVREADWRITE(VIA6522, "via6522_1", via_r, via_w)
+	AM_RANGE(0x9110, 0x911f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
+	AM_RANGE(0x9120, 0x912f) AM_DEVREADWRITE("via6522_1", via_r, via_w)
 	AM_RANGE(0x9400, 0x97ff) AM_READWRITE( SMH_RAM, vc20_write_9400) AM_BASE(&vc20_memory_9400)	/* color ram 4 bit */
-	AM_RANGE(0x9800, 0x980f) AM_DEVREADWRITE(VIA6522, "via6522_4", via_r, via_w)
-	AM_RANGE(0x9810, 0x981f) AM_DEVREADWRITE(VIA6522, "via6522_5", via_r, via_w)
+	AM_RANGE(0x9800, 0x980f) AM_DEVREADWRITE("via6522_4", via_r, via_w)
+	AM_RANGE(0x9810, 0x981f) AM_DEVREADWRITE("via6522_5", via_r, via_w)
 	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK(5)
 	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -253,15 +254,15 @@ static PALETTE_INIT( vc20 )
 
 static MACHINE_DRIVER_START( vic20 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, VIC6560_CLOCK)        /* 7.8336 MHz */
+	MDRV_CPU_ADD("maincpu", M6502, VIC6560_CLOCK)        /* 7.8336 MHz */
 	MDRV_CPU_PROGRAM_MAP(vc20_mem, 0)
-	MDRV_CPU_VBLANK_INT("main", vic20_frame_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", vic20_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic656x_raster_interrupt, VIC656X_HRETRACERATE)
 
 	MDRV_MACHINE_RESET( vic20 )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(VIC6560_VRETRACERATE)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -275,14 +276,13 @@ static MACHINE_DRIVER_START( vic20 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("custom", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(vic6560_sound_interface)
+	MDRV_SOUND_ADD("custom", VIC6560, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
-	MDRV_QUICKLOAD_ADD(cbm_vc20, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
+	MDRV_QUICKLOAD_ADD("quickload", cbm_vc20, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", cbm_cassette_config )
@@ -319,7 +319,7 @@ static MACHINE_DRIVER_START( vic20i )
 	MDRV_QUANTUM_TIME(HZ(180000))
 #endif
 
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( vc20i_mem, 0 )
 MACHINE_DRIVER_END
 
@@ -327,10 +327,10 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( vc20 )
 	MDRV_IMPORT_FROM( vic20 )
 
-	MDRV_CPU_REPLACE( "main", M6502, VIC6561_CLOCK )
+	MDRV_CPU_REPLACE( "maincpu", M6502, VIC6561_CLOCK )
 	MDRV_CPU_PROGRAM_MAP( vc20i_mem, 0 )
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(VIC6561_VRETRACERATE)
 	MDRV_SCREEN_SIZE((VIC6561_XSIZE + 7) & ~7, VIC6561_YSIZE)
 	MDRV_SCREEN_VISIBLE_AREA(VIC6561_MAME_XPOS, VIC6561_MAME_XPOS + VIC6561_MAME_XSIZE - 1, VIC6561_MAME_YPOS, VIC6561_MAME_YPOS + VIC6561_MAME_YSIZE - 1)
@@ -356,7 +356,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( vic1001 )
-	ROM_REGION (0x10000, "main", 0 )
+	ROM_REGION (0x10000, "maincpu", 0 )
 	ROM_FILL( 0x0000, 0x8000, 0xff )
 	ROM_LOAD( "901460.02", 0x8000, 0x1000, CRC(fcfd8a4b) SHA1(dae61ac03065aa2904af5c123ce821855898c555) )
 	ROM_FILL( 0x9000, 0x3000, 0xff )
@@ -366,7 +366,7 @@ ROM_END
 
 
 ROM_START( vic20 )
-	ROM_REGION (0x10000, "main", 0 )
+	ROM_REGION (0x10000, "maincpu", 0 )
 	ROM_FILL( 0x0000, 0x8000, 0xff )
 	ROM_LOAD( "901460.03", 0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4) )
 	ROM_FILL( 0x9000, 0x3000, 0xff )
@@ -375,7 +375,7 @@ ROM_START( vic20 )
 ROM_END
 
 ROM_START( vic20pal )
-	ROM_REGION (0x10000, "main", 0 )
+	ROM_REGION (0x10000, "maincpu", 0 )
 	ROM_FILL( 0x0000, 0x8000, 0xff )
 	ROM_LOAD( "901460.03", 0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4) )
 	ROM_FILL( 0x9000, 0x3000, 0xff )
@@ -391,7 +391,7 @@ ROM_END
 ROM_START( vic20swe )
 	/* patched pal system for swedish/finish keyboard and chars */
 	/* but in rom? (maybe patched means in this case nec version) */
-	ROM_REGION (0x10000, "main", 0 )
+	ROM_REGION (0x10000, "maincpu", 0 )
 	ROM_FILL( 0x0000, 0x8000, 0xff )
 	ROM_LOAD( "nec22101.207", 0x8000, 0x1000, CRC(d808551d) SHA1(f403f0b0ce5922bd61bbd768bdd6f0b38e648c9f) )
 	ROM_FILL( 0x9000, 0x3000, 0xff )
@@ -401,7 +401,7 @@ ROM_END
 
 
 ROM_START( vic20i )
-	ROM_REGION (0x10000, "main", 0 )
+	ROM_REGION (0x10000, "maincpu", 0 )
 	ROM_FILL( 0x0000, 0x8000, 0xff )
 	ROM_LOAD( "901460.03", 0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4) )
 	ROM_FILL( 0x9000, 0x2000, 0xff )
@@ -413,7 +413,7 @@ ROM_START( vic20i )
 ROM_END
 
 ROM_START( vic20v )
-	ROM_REGION (0x10000, "main", 0 )
+	ROM_REGION (0x10000, "maincpu", 0 )
 	ROM_FILL( 0x0000, 0x8000, 0xff )
 	ROM_LOAD( "901460.03", 0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4) )
 	ROM_FILL( 0x9000, 0x3000, 0xff )
@@ -424,7 +424,7 @@ ROM_START( vic20v )
 ROM_END
 
 ROM_START( vic20plv )
-	ROM_REGION (0x10000, "main", 0 )
+	ROM_REGION (0x10000, "maincpu", 0 )
 	ROM_FILL( 0x0000, 0x8000, 0xff )
 	ROM_LOAD( "901460.03", 0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4) )
 	ROM_FILL( 0x9000, 0x3000, 0xff )

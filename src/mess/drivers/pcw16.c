@@ -93,8 +93,7 @@ TODO:
 #include "includes/pcw16.h"
 
 /* Components */
-#include "machine/centroni.h"	/* centronics printer handshake simulation */
-#include "includes/pclpt.h"		/* PC-Parallel Port */
+#include "machine/pc_lpt.h"		/* PC-Parallel Port */
 #include "machine/pckeybrd.h"	/* PC-AT keyboard */
 #include "machine/pc_fdc.h"		/* change to superio later */
 #include "machine/ins8250.h"	/* pc com port */
@@ -105,7 +104,6 @@ TODO:
 /* Devices */
 #include "formats/pc_dsk.h"		/* pc disk images */
 #include "devices/mflopimg.h"
-#include "devices/printer.h"	/* printer device */
 
 
 // interrupt counter
@@ -432,7 +430,7 @@ static void pcw16_update_bank(running_machine *machine, int bank)
 		{
 			/* lower 4 banks are write protected. Use the rom
             loaded */
-			mem_ptr = &memory_region(machine, "main")[0x010000];
+			mem_ptr = &memory_region(machine, "maincpu")[0x010000];
 		}
 		else
 		{
@@ -1058,6 +1056,7 @@ static READ8_HANDLER(pcw16_timer_interrupt_counter_r)
 
 static WRITE8_HANDLER(pcw16_system_control_w)
 {
+	const device_config *speaker = devtag_get_device(space->machine, "beep");
 	//logerror("0x0f8: function: %d\n",data);
 
 	/* lower 4 bits define function code */
@@ -1113,14 +1112,14 @@ static WRITE8_HANDLER(pcw16_system_control_w)
 		/* bleeper on */
 		case 0x0b:
 		{
-                        beep_set_state(0,1);
+                        beep_set_state(speaker,1);
 		}
 		break;
 
 		/* bleeper off */
 		case 0x0c:
 		{
-                        beep_set_state(0,0);
+                        beep_set_state(speaker,0);
 		}
 		break;
 
@@ -1205,7 +1204,7 @@ static void	pcw16_fdc_interrupt(running_machine *machine, int state)
 
 static device_config * pcw16_get_device(running_machine *machine )
 {
-	return (device_config*)device_list_find_by_tag( machine->config->devicelist, NEC765A, "nec765");	
+	return (device_config*)devtag_get_device(machine, "nec765");
 }
 
 static const struct pc_fdc_interface pcw16_fdc_interface=
@@ -1288,9 +1287,9 @@ static ADDRESS_MAP_START(pcw16_io, ADDRESS_SPACE_IO, 8)
     AM_RANGE(0x01c, 0x01c) AM_READ(pcw16_superio_fdc_main_status_register_r)
 	AM_RANGE(0x01d, 0x01d) AM_READWRITE(pcw16_superio_fdc_data_r, pcw16_superio_fdc_data_w)
 	AM_RANGE(0x01f, 0x01f) AM_READWRITE(pcw16_superio_fdc_digital_input_register_r, pcw16_superio_fdc_datarate_w)
-	AM_RANGE(0x020, 0x027) AM_DEVREADWRITE(NS16550, "ns16550_1", ins8250_r, ins8250_w)
-	AM_RANGE(0x028, 0x02f) AM_DEVREADWRITE(NS16550, "ns16550_2", ins8250_r, ins8250_w)
-	AM_RANGE(0x038, 0x03a) AM_READWRITE(pc_parallelport0_r, pc_parallelport0_w)
+	AM_RANGE(0x020, 0x027) AM_DEVREADWRITE("ns16550_1", ins8250_r, ins8250_w)
+	AM_RANGE(0x028, 0x02f) AM_DEVREADWRITE("ns16550_2", ins8250_r, ins8250_w)
+	AM_RANGE(0x038, 0x03a) AM_DEVREADWRITE("lpt", pc_lpt_r, pc_lpt_w)
 	/* anne asic */
 	AM_RANGE(0x0e0, 0x0ef) AM_WRITE(pcw16_palette_w)
 	AM_RANGE(0x0f0, 0x0f3) AM_READWRITE(pcw16_bankhw_r, pcw16_bankhw_w)
@@ -1333,21 +1332,9 @@ static void pcw16_reset(running_machine *machine)
 }
 
 
-static const PC_LPT_CONFIG lpt_config =
-{
-	1,
-	LPT_UNIDIRECTIONAL, // more one of these epp/ecp aware ports
-	NULL
-};
-
-static const CENTRONICS_CONFIG cent_config =
-{
-	PRINTER_CENTRONICS,
-	pc_lpt_handshake_in
-};
-
 static MACHINE_RESET( pcw16 )
 {
+	const device_config *speaker = devtag_get_device(machine, "beep");
 	pcw16_system_status = 0;
 	pcw16_interrupt_counter = 0;
 
@@ -1361,13 +1348,9 @@ static MACHINE_RESET( pcw16 )
 
 	pc_fdc_init(machine, &pcw16_fdc_interface);
 
-	pc_lpt_config(0, &lpt_config);
-	centronics_config(machine, 0, &cent_config);
-	pc_lpt_set_device(0, &CENTRONICS_PRINTER_DEVICE);
-
 	/* initialise mouse */
 	pc_mouse_initialise(machine);
-	pc_mouse_set_serial_port( device_list_find_by_tag( machine->config->devicelist, NS16550, "ns16550_0" ) );
+	pc_mouse_set_serial_port( devtag_get_device(machine, "ns16550_0") );
 
 	/* initialise keyboard */
 	at_keyboard_init(machine, AT_KEYBOARD_TYPE_AT);
@@ -1375,8 +1358,8 @@ static MACHINE_RESET( pcw16 )
 
 	pcw16_reset(machine);
 
-	beep_set_state(0,0);
-	beep_set_frequency(0,3750);
+	beep_set_state(speaker,0);
+	beep_set_frequency(speaker,3750);
 }
 
 static INPUT_PORTS_START(pcw16)
@@ -1394,10 +1377,15 @@ static INPUT_PORTS_START(pcw16)
 INPUT_PORTS_END
 
 
+static const pc_lpt_interface pcw16_lpt_config =
+{
+	DEVCB_CPU_INPUT_LINE("maincpu", 0)
+};
+
 
 static MACHINE_DRIVER_START( pcw16 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 16000000)
+	MDRV_CPU_ADD("maincpu", Z80, 16000000)
 	MDRV_CPU_PROGRAM_MAP(pcw16_map, 0)
 	MDRV_CPU_IO_MAP(pcw16_io, 0)
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -1410,7 +1398,7 @@ static MACHINE_DRIVER_START( pcw16 )
 	MDRV_NS16550_ADD( "ns16550_2", pcw16_com_interface[1] )				/* TODO: Verify uart model */
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1428,7 +1416,7 @@ static MACHINE_DRIVER_START( pcw16 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* printer */
-	/* MDRV_PRINTER_ADD("printer") */
+	MDRV_PC_LPT_ADD("lpt", pcw16_lpt_config)
 	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_connected_interface)
 MACHINE_DRIVER_END
 
@@ -1449,7 +1437,7 @@ static DRIVER_INIT( pcw16 )
 /* the lower 64k of the flash-file memory is write protected. This contains the boot
     rom. The boot rom is also on the OS rescue disc. Handy! */
 ROM_START(pcw16)
-	ROM_REGION((0x010000+524288), "main",0)
+	ROM_REGION((0x010000+524288), "maincpu",0)
 	ROM_LOAD("pcw045.sys",0x10000, 524288, CRC(c642f498) SHA1(8a5c05de92e7b2c5acdfb038217503ad363285b5))
 ROM_END
 

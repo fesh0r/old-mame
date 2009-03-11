@@ -9,6 +9,7 @@
 
 #include "driver.h"
 #include "cpu/i8085/i8085.h"
+#include "sound/wave.h"
 #include "machine/8255ppi.h"
 #include "machine/8257dma.h"
 #include "video/i8275.h"
@@ -21,10 +22,10 @@ static ADDRESS_MAP_START(apogee_mem, ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK(1) // First bank
     AM_RANGE( 0x1000, 0xebff ) AM_RAM  // RAM
     //AM_RANGE( 0xec00, 0xecff ) AM_RAM  // Timer
-    AM_RANGE( 0xed00, 0xed03 ) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w) AM_MIRROR(0x00fc)
-    //AM_RANGE( 0xee00, 0xee03 ) AM_DEVREADWRITE(PPI8255, "ppi8255_2", ppi8255_r, ppi8255_w) AM_MIRROR(0x00fc)
-    AM_RANGE( 0xef00, 0xef01 ) AM_DEVREADWRITE(I8275, "i8275", i8275_r, i8275_w) AM_MIRROR(0x00fe) // video
-    AM_RANGE( 0xf000, 0xf0ff ) AM_DEVWRITE(DMA8257, "dma8257", dma8257_w)	 // DMA
+    AM_RANGE( 0xed00, 0xed03 ) AM_DEVREADWRITE("ppi8255_1", ppi8255_r, ppi8255_w) AM_MIRROR(0x00fc)
+    //AM_RANGE( 0xee00, 0xee03 ) AM_DEVREADWRITE("ppi8255_2", ppi8255_r, ppi8255_w) AM_MIRROR(0x00fc)
+    AM_RANGE( 0xef00, 0xef01 ) AM_DEVREADWRITE("i8275", i8275_r, i8275_w) AM_MIRROR(0x00fe) // video
+    AM_RANGE( 0xf000, 0xf0ff ) AM_DEVWRITE("dma8257", dma8257_w)	 // DMA
     AM_RANGE( 0xf000, 0xffff ) AM_ROM  // System ROM
 ADDRESS_MAP_END
 
@@ -124,7 +125,7 @@ static const cassette_config apogee_cassette_config =
 /* Machine driver */
 static MACHINE_DRIVER_START( apogee )
     /* basic machine hardware */
-    MDRV_CPU_ADD("main", 8080, XTAL_16MHz / 9)
+    MDRV_CPU_ADD("maincpu", 8080, XTAL_16MHz / 9)
     MDRV_CPU_PROGRAM_MAP(apogee_mem, 0)
     MDRV_MACHINE_RESET( radio86 )
 
@@ -134,7 +135,7 @@ static MACHINE_DRIVER_START( apogee )
 
 	MDRV_I8275_ADD	( "i8275", apogee_i8275_interface)
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -147,7 +148,7 @@ static MACHINE_DRIVER_START( apogee )
 	MDRV_VIDEO_UPDATE(radio86)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MDRV_DMA8257_ADD("dma8257", XTAL_16MHz / 9, radio86_dma)
@@ -157,7 +158,7 @@ MACHINE_DRIVER_END
 
 /* ROM definition */
 ROM_START( apogee )
-	ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 	ROM_LOAD( "apogee.rom", 0xf000, 0x1000, CRC(a47383a7) SHA1(6a868371c7980f92c2fc9ced921517209f197375))
 	ROM_REGION(0x0800, "gfx1",0)
 	ROM_LOAD ("apogee.fnt", 0x0000, 0x0800, CRC(fe5867f0) SHA1(82c5aca63ada5e4533eb0516384aaa7b77a1f8e2))

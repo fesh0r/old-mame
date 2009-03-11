@@ -2,7 +2,7 @@
 
   Copyright (C) Antoine Mine' 2008
 
-   Hewlett Packard HP48 S/SX & G/GX
+   Hewlett Packard HP48 S/SX & G/GX/G+
 
 **********************************************************************/
 
@@ -14,6 +14,7 @@
 #include "devices/xmodem.h"
 #include "devices/kermit.h"
 #include "cpu/saturn/saturn.h"
+#include "sound/dac.h"
 
 #include "includes/hp48.h"
 
@@ -28,6 +29,7 @@
    base RAM is saved as nvram, RAM in expansion ports is saved as image, 
    IO RAM is & CPU state are discarded; save-state saves base & IO RAM, 
    CPU state, but not expansion port RAM)
+   - more accurate IRQ, NMI, sleep and wake-up handling
 */
 
 
@@ -43,6 +45,7 @@
   - 1991-04-02 HP48S  (discontinued in 1993)
   - 1993-06-01 HP48G  (discontinued in 1999)
                HP48GX (discontinued in 2003)
+  - 1998-03-30 HP48G+ (discontinued in 2003)
 
   Common characteristics:
   - HP family name: Charlemagne
@@ -94,6 +97,11 @@
       . port 1: up to 128 KB RAM, can be merged with base RAM
       . port 2: up to   4 MB RAM, in 32 banks of 128 KB, cannot be merged
 
+  - G+ model specific:
+    + Codename: Plus
+    + 128 KB RAM, not expandable
+    + no expansion port
+
 */
 
 
@@ -140,7 +148,7 @@
 
   References:
 
-  - Voyage au centre de la HP48 S/SX, by Paul Courbis & SÃ©bastien Lalande
+  - Voyage au centre de la HP48 S/SX, by Paul Courbis & Sébastien Lalande
     (English version: HP48 machine language - a journey to the center 
      of the HP48 s/sx)
     available at http://www.courbis.com
@@ -472,7 +480,7 @@ INPUT_PORTS_END
 
 
 
-/* G/GX */
+/* G/GX/G+ */
 static INPUT_PORTS_START( hp48gx_kbd )
 
         PORT_START( "LINE0" ) /* OUT = 0x001 */
@@ -779,8 +787,8 @@ INPUT_PORTS_END
 
 /**************************** I/O **********************************/
 
-static xmodem_config hp48_xmodem_rs232_conf = { &hp48_rs232_start_recv_byte };
-static kermit_config hp48_kermit_rs232_conf = { &hp48_rs232_start_recv_byte };
+static const xmodem_config hp48_xmodem_rs232_conf = { &hp48_rs232_start_recv_byte };
+static const kermit_config hp48_kermit_rs232_conf = { &hp48_rs232_start_recv_byte };
 
 
 /**************************** ROMs *********************************/
@@ -793,53 +801,40 @@ static kermit_config hp48_kermit_rs232_conf = { &hp48_rs232_start_recv_byte };
  */
 
 
-/* These ROMS are common to the G and GX models.
+/* These ROMS are common to the G, GX, and G+ models.
    The ROM detects whether it runs a G or a GX by simply testing the memory:
    if there are 32 KB (i.e., addresses wraps-around at 0x10000), it is a G; if there are
    128 KB, it is a GX.
    When a G is detected, some specially optimized routines may be used (they use the fact that
    no extension may be physically present).
+   The G+ model has always revision R.
  */
 ROM_START ( hp48gx )
-        ROM_REGION( 0x80000, "main", 0 ) 
+	ROM_REGION( 0x80000, "maincpu", 0 )
+	ROM_DEFAULT_BIOS("r")
 
-	/* latest revision (preferred) */
-	ROM_SYSTEM_BIOS( 0, "r", "Version R" )
-	ROMX_LOAD( "gxrom-r", 
-		   0x00000, 0x80000, 
-		   CRC(00ee1a62) SHA1(5705fc9ea791916c4456ac35e22275862411db9b),
-		   ROM_BIOS(1) )
-     
-	/* now in chronological order, from first revision */
-	
-        ROM_SYSTEM_BIOS( 1, "k", "Version K" )
-	ROMX_LOAD( "gxrom-k", 
-		   0x00000, 0x80000, 
-		   CRC(bdd5d2ee) SHA1(afa1498238e991b1e3d07fb8b4c227b115f7bcc1), 
-		   ROM_BIOS(2) )
+	/* in chronological order, from first revision, version r is default*/
+	ROM_SYSTEM_BIOS( 0, "k", "Version K" )
+	ROMX_LOAD( "gxrom-k", 0x00000, 0x80000, CRC(bdd5d2ee) SHA1(afa1498238e991b1e3d07fb8b4c227b115f7bcc1), ROM_BIOS(1) )
 
-	ROM_SYSTEM_BIOS( 2, "l", "Version L" )
-	ROMX_LOAD( "gxrom-l", 
-		   0x00000, 0x80000, 
-		   CRC(70958e6b) SHA1(8eebac69ff804086247b989bf320e57a2d8a59a7),
-		   ROM_BIOS(3) )
+	ROM_SYSTEM_BIOS( 1, "l", "Version L" )
+	ROMX_LOAD( "gxrom-l", 0x00000, 0x80000, CRC(70958e6b) SHA1(8eebac69ff804086247b989bf320e57a2d8a59a7), ROM_BIOS(2) )
 
-	ROM_SYSTEM_BIOS( 3, "m", "Version M" )
-	ROMX_LOAD( "gxrom-m", 
-		   0x00000, 0x80000, 
-		   CRC(e21a09e4) SHA1(09932d543594e459eeb94a79654168cd15e79a87),
-		   ROM_BIOS(4) )
+	ROM_SYSTEM_BIOS( 2, "m", "Version M" )
+	ROMX_LOAD( "gxrom-m", 0x00000, 0x80000, CRC(e21a09e4) SHA1(09932d543594e459eeb94a79654168cd15e79a87), ROM_BIOS(3) )
 
 	/* there does not seem to exist an N revision? */
-	
-	ROM_SYSTEM_BIOS( 4, "p", "Version P" )
-	ROMX_LOAD( "gxrom-p", 
-		   0x00000, 0x80000, 
-		   CRC(022d46df) SHA1(877a536865641f096212d1ce7296f580afbd6a2d),
-		   ROM_BIOS(5) )
+
+	ROM_SYSTEM_BIOS( 3, "p", "Version P" )
+	ROMX_LOAD( "gxrom-p", 0x00000, 0x80000, CRC(022d46df) SHA1(877a536865641f096212d1ce7296f580afbd6a2d), ROM_BIOS(4) )
+
+	ROM_SYSTEM_BIOS( 4, "r", "Version R" )
+	ROMX_LOAD( "gxrom-r", 0x00000, 0x80000, CRC(00ee1a62) SHA1(5705fc9ea791916c4456ac35e22275862411db9b), ROM_BIOS(5) )
+
 ROM_END
 
-#define rom_hp48g rom_hp48gx
+#define rom_hp48g  rom_hp48gx
+#define rom_hp48gp rom_hp48gx
 
 
 /* These ROMS are common to the S and SX models.
@@ -850,49 +845,27 @@ ROM_END
  */
 
 ROM_START ( hp48sx )
-        ROM_REGION( 0x40000, "main", 0 ) 
+	ROM_REGION( 0x40000, "maincpu", 0 )
+	ROM_DEFAULT_BIOS("j")
 
-	/* latest revision (preferred) */
-	ROM_SYSTEM_BIOS( 0, "j", "Version J" )
-	ROMX_LOAD( "sxrom-j", 
-		   0x00000, 0x40000, 
-		   CRC(1a6378ef) SHA1(5235f5379f1fd7edfe9bb6bf466b60d279163e73),
-		   ROM_BIOS(1) )
+	/* in chronological order, from first revision, version j is default*/
+	ROM_SYSTEM_BIOS( 0, "a", "Version A" )
+	ROMX_LOAD( "sxrom-a", 0x00000, 0x40000, CRC(a87696c7) SHA1(3271b103ad99254d069e20171beb418ace72cc90), ROM_BIOS(1) )
 
-	/* now in chronological order, from first revision */
+	ROM_SYSTEM_BIOS( 1, "b", "Version B" )
+	ROMX_LOAD( "sxrom-b", 0x00000, 0x40000, CRC(034f6ce4) SHA1(acd256f2efee868ce402008f4131d94b312e60bc), ROM_BIOS(2) )
 
-	ROM_SYSTEM_BIOS( 1, "a", "Version A" )
-	ROMX_LOAD( "sxrom-a", 
-		   0x00000, 0x40000, 
-		   CRC(a87696c7) SHA1(3271b103ad99254d069e20171beb418ace72cc90),
-		   ROM_BIOS(2) )
+	ROM_SYSTEM_BIOS( 2, "c", "Version C" )
+	ROMX_LOAD( "sxrom-c", 0x00000, 0x40000, CRC(a9a0279d) SHA1(fee852d43ae6941d07a9d0d31f37e68e4f9051b1), ROM_BIOS(3) )
 
-	ROM_SYSTEM_BIOS( 2, "b", "Version B" )
-	ROMX_LOAD( "sxrom-b", 
-		   0x00000, 0x40000, 
-		   CRC(034f6ce4) SHA1(acd256f2efee868ce402008f4131d94b312e60bc),
-		   ROM_BIOS(3) )
+	ROM_SYSTEM_BIOS( 3, "d", "Version D" )
+	ROMX_LOAD( "sxrom-d", 0x00000, 0x40000, CRC(f8f5dc58) SHA1(3be5f895f4c731fd4c863237c7342cab4e8c42b1), ROM_BIOS(4) )
 
+	ROM_SYSTEM_BIOS( 4, "e", "Version E" )
+	ROMX_LOAD( "sxrom-e", 0x00000, 0x40000, CRC(704ffa08) SHA1(0d498d135bf729c1d775cce522528837729e2e94), ROM_BIOS(5) )
 
-	ROM_SYSTEM_BIOS( 3, "c", "Version C" )
-	ROMX_LOAD( "sxrom-c", 
-		   0x00000, 0x40000, 
-		   CRC(a9a0279d) SHA1(fee852d43ae6941d07a9d0d31f37e68e4f9051b1),
-		   ROM_BIOS(4) )
-
-
-	ROM_SYSTEM_BIOS( 4, "d", "Version D" )
-	ROMX_LOAD( "sxrom-d", 
-		   0x00000, 0x40000, 
-		   CRC(f8f5dc58) SHA1(3be5f895f4c731fd4c863237c7342cab4e8c42b1),
-		   ROM_BIOS(5) )
-
-
-	ROM_SYSTEM_BIOS( 5, "e", "Version E" )
-	ROMX_LOAD( "sxrom-e", 
-		   0x00000, 0x40000, 
-		   CRC(704ffa08) SHA1(0d498d135bf729c1d775cce522528837729e2e94),
-		   ROM_BIOS(6) )
+	ROM_SYSTEM_BIOS( 5, "j", "Version J" )
+	ROMX_LOAD( "sxrom-j", 0x00000, 0x40000, CRC(1a6378ef) SHA1(5235f5379f1fd7edfe9bb6bf466b60d279163e73), ROM_BIOS(6) )
 
 	/* no F, G, H, I revisions? */
 
@@ -936,6 +909,7 @@ static const saturn_cpu_core hp48_config =
 
 static const char layout_hp48gx[] = "hp48gx";
 static const char layout_hp48g [] = "hp48g";
+static const char layout_hp48gp[] = "hp48gp";
 static const char layout_hp48sx[] = "hp48sx";
 static const char layout_hp48s [] = "hp48s";
 
@@ -947,7 +921,7 @@ static MACHINE_DRIVER_START ( hp48_common )
 	MDRV_MACHINE_RESET ( hp48 )
 
 	/* cpu */
-	MDRV_CPU_ADD ( "main", SATURN, 3937007 ) /* almost 4 MHz */
+	MDRV_CPU_ADD ( "maincpu", SATURN, 3937007 ) /* almost 4 MHz */
 	MDRV_CPU_PROGRAM_MAP ( hp48, 0 )
 	MDRV_CPU_CONFIG( hp48_config )
  
@@ -955,7 +929,7 @@ static MACHINE_DRIVER_START ( hp48_common )
 	MDRV_NVRAM_HANDLER( generic_0fill )
 
 	/* video */
-	MDRV_SCREEN_ADD( "main", RASTER )
+	MDRV_SCREEN_ADD( "screen", RASTER )
 	MDRV_SCREEN_REFRESH_RATE( 64 )
 	MDRV_SCREEN_VBLANK_TIME(0)
 	MDRV_SCREEN_FORMAT( BITMAP_FORMAT_INDEXED16 )
@@ -996,9 +970,20 @@ static MACHINE_DRIVER_START ( hp48g )
 MACHINE_DRIVER_END
 
 
+static MACHINE_DRIVER_START ( hp48gp )
+	MDRV_IMPORT_FROM    ( hp48_common )
+	MDRV_MACHINE_START  ( hp48gp )
+	MDRV_DEFAULT_LAYOUT ( layout_hp48gp )
+
+	/* serial I/O */
+	MDRV_XMODEM_ADD( "rs232_x", hp48_xmodem_rs232_conf )
+	MDRV_KERMIT_ADD( "rs232_k", hp48_kermit_rs232_conf )
+MACHINE_DRIVER_END
+
+
 static MACHINE_DRIVER_START ( hp48sx )
 	MDRV_IMPORT_FROM    ( hp48_common )
-	MDRV_CPU_REPLACE    ( "main", SATURN, 2000000 )
+	MDRV_CPU_REPLACE    ( "maincpu", SATURN, 2000000 )
 	MDRV_MACHINE_START  ( hp48sx )
 	MDRV_DEFAULT_LAYOUT ( layout_hp48sx )
 
@@ -1012,7 +997,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START ( hp48s )
 	MDRV_IMPORT_FROM    ( hp48_common )
-	MDRV_CPU_REPLACE    ( "main", SATURN, 2000000 )
+	MDRV_CPU_REPLACE    ( "maincpu", SATURN, 2000000 )
 	MDRV_MACHINE_START  ( hp48s )
 	MDRV_DEFAULT_LAYOUT ( layout_hp48s )
 
@@ -1027,3 +1012,4 @@ COMP ( 1990, hp48sx, 0     , 0, hp48sx, hp48sx, hp48, NULL, "Hewlett Packard", "
 COMP ( 1991, hp48s , hp48sx, 0, hp48s,  hp48sx, hp48, NULL, "Hewlett Packard", "HP48S", 0 )
 COMP ( 1993, hp48gx, 0     , 0, hp48gx, hp48gx, hp48, NULL, "Hewlett Packard", "HP48GX", 0 )
 COMP ( 1993, hp48g , hp48gx, 0, hp48g,  hp48gx, hp48, NULL, "Hewlett Packard", "HP48G", 0 )
+COMP ( 1998, hp48gp, hp48gx, 0, hp48gp, hp48gx, hp48, NULL, "Hewlett Packard", "HP48G+", 0 )

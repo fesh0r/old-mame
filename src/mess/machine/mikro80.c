@@ -19,7 +19,7 @@ static int mikro80_key_mask;
 DRIVER_INIT(mikro80)
 {
 	/* set initialy ROM to be visible on first bank */
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 	memset(RAM,0x0000,0x0800); // make frist page empty by default
   	memory_configure_bank(machine, 1, 1, 2, RAM, 0x0000);
 	memory_configure_bank(machine, 1, 0, 2, RAM, 0xf800);
@@ -66,12 +66,12 @@ static WRITE8_DEVICE_HANDLER( mikro80_8255_porta_device_w ) { mikro80_8255_porta
 
 const ppi8255_interface mikro80_ppi8255_interface =
 {
-	NULL,
-	mikro80_8255_portb_device_r,
-	mikro80_8255_portc_device_r,
-	mikro80_8255_porta_device_w,
-	NULL,
-	NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(mikro80_8255_portb_device_r),
+	DEVCB_HANDLER(mikro80_8255_portc_device_r),
+	DEVCB_HANDLER(mikro80_8255_porta_device_w),
+	DEVCB_NULL,
+	DEVCB_NULL,
 };
 
 
@@ -101,13 +101,13 @@ WRITE8_DEVICE_HANDLER( mikro80_keyboard_w )
 
 WRITE8_HANDLER( mikro80_tape_w )
 {
-	cassette_output(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ),data & 0x01 ? 1 : -1);
+	cassette_output(devtag_get_device(space->machine, "cassette"),data & 0x01 ? 1 : -1);
 }
 
 
 READ8_HANDLER( mikro80_tape_r )
 {
-	double level = cassette_input(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ));
+	double level = cassette_input(devtag_get_device(space->machine, "cassette"));
 	if (level <  0) {
 		 	return 0x00;
  	}

@@ -360,7 +360,7 @@ static MC6845_ON_HSYNC_CHANGED(abc806_hsync_changed)
 		if (state->d_vsync != vsync)
 		{
 			/* signal _DEW to DART */
-			z80dart_ri_w(state->z80dart, 1, !vsync);
+			z80dart_rib_w(state->z80dart, !vsync);
 		}
 
 		state->d_vsync = vsync;
@@ -440,7 +440,7 @@ static VIDEO_START(abc806)
 
 	/* find devices */
 
-	state->mc6845 = devtag_get_device(machine, MC6845, MC6845_TAG);
+	state->mc6845 = devtag_get_device(machine, MC6845_TAG);
 
 	/* find memory regions */
 

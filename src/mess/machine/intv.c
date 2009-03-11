@@ -334,7 +334,7 @@ static int intv_load_rom_file(const device_config *image)
 	UINT8 high_byte;
 	UINT8 low_byte;
 
-	UINT8 *memory = memory_region(image->machine, "main");
+	UINT8 *memory = memory_region(image->machine, "maincpu");
 	const char *filetype = image_filetype(image);
 	
 	/* if it is in .rom format, we enter here */
@@ -468,7 +468,7 @@ DEVICE_START( intv_cart )
 {
 	/* First, initialize these as empty so that the intellivision
 	 * will think that the playcable and keyboard are not attached */
-	UINT8 *memory = memory_region(device->machine, "main");
+	UINT8 *memory = memory_region(device->machine, "maincpu");
 
 	/* assume playcable is absent */
 	memory[0x4800 << 1] = 0xff;
@@ -477,15 +477,13 @@ DEVICE_START( intv_cart )
 	/* assume keyboard is absent */
 	memory[0x7000 << 1] = 0xff;
 	memory[(0x7000 << 1) + 1] = 0xff;
-
-	return DEVICE_START_OK;
 }
 
 DEVICE_IMAGE_LOAD( intv_cart )
 {
 	/* First, initialize these as empty so that the intellivision
 	 * will think that the playcable and keyboard are not attached */
-	UINT8 *memory = memory_region(image->machine, "main");
+	UINT8 *memory = memory_region(image->machine, "maincpu");
 
 	/* assume playcable is absent */
 	memory[0x4800 << 1] = 0xff;
@@ -537,7 +535,7 @@ static const UINT8 controller_table[] =
 	0x04, 0x16, 0x02, 0x13, 0x01, 0x19, 0x08, 0x1c
 };
 
- READ8_HANDLER( intv_right_control_r )
+READ8_HANDLER( intv_right_control_r )
 {
 	UINT8 rv = 0x00;
 
@@ -569,7 +567,7 @@ static const UINT8 controller_table[] =
 	return rv ^ 0xff;
 }
 
- READ8_HANDLER( intv_left_control_r )
+READ8_HANDLER( intv_left_control_r )
 {
 	return 0xff;
 }
@@ -582,7 +580,7 @@ DEVICE_IMAGE_LOAD( intvkbd_cart )
 	{
 		/* First, initialize these as empty so that the intellivision
 		 * will think that the playcable is not attached */
-		UINT8 *memory = memory_region(image->machine, "main");
+		UINT8 *memory = memory_region(image->machine, "maincpu");
 
 		/* assume playcable is absent */
 		memory[0x4800 << 1] = 0xff;

@@ -53,13 +53,13 @@ static DEVICE_IMAGE_LOAD( apexc_cylinder )
 	if (apexc_cylinder.fd)
 	{	/* load RAM contents */
 
-		image_fread(apexc_cylinder.fd, memory_region(image->machine, "main"), /*0x8000*/0x1000);
+		image_fread(apexc_cylinder.fd, memory_region(image->machine, "maincpu"), /*0x8000*/0x1000);
 #ifdef LSB_FIRST
 		{	/* fix endianness */
 			UINT32 *RAM;
 			int i;
 
-			RAM = (UINT32 *) memory_region(image->machine, "main");
+			RAM = (UINT32 *) memory_region(image->machine, "maincpu");
 
 			for (i=0; i < /*0x2000*/0x0400; i++)
 				RAM[i] = BIG_ENDIANIZE_INT32(RAM[i]);
@@ -84,14 +84,14 @@ static DEVICE_IMAGE_UNLOAD( apexc_cylinder )
 			UINT32 *RAM;
 			int i;
 
-			RAM = (UINT32 *) memory_region(image->machine, "main");
+			RAM = (UINT32 *) memory_region(image->machine, "maincpu");
 
 			for (i=0; i < /*0x2000*/0x0400; i++)
 				RAM[i] = BIG_ENDIANIZE_INT32(RAM[i]);
 		}
 #endif
 		/* write */
-		image_fwrite(apexc_cylinder.fd, memory_region(image->machine, "main"), /*0x8000*/0x1000);
+		image_fwrite(apexc_cylinder.fd, memory_region(image->machine, "maincpu"), /*0x8000*/0x1000);
 	}
 }
 
@@ -172,7 +172,6 @@ static void apexc_get_open_mode(int id,
 
 static DEVICE_START( apexc_tape )
 {
-	return DEVICE_START_OK;
 }
 
 
@@ -576,7 +575,7 @@ static void apexc_teletyper_linefeed(running_machine *machine)
 	for (y=teletyper_window_offset_y; y<teletyper_window_offset_y+teletyper_window_height-teletyper_scroll_step; y++)
 	{
 		extract_scanline8(apexc_bitmap, teletyper_window_offset_x, y+teletyper_scroll_step, teletyper_window_width, buf);
-		draw_scanline8(apexc_bitmap, teletyper_window_offset_x, y, teletyper_window_width, buf, machine->pens, -1);
+		draw_scanline8(apexc_bitmap, teletyper_window_offset_x, y, teletyper_window_width, buf, machine->pens);
 	}
 
 	bitmap_fill(apexc_bitmap, &teletyper_scroll_clear_window, 0);
@@ -798,18 +797,18 @@ static MACHINE_DRIVER_START(apexc)
 
 	/* basic machine hardware */
 	/* APEXC CPU @ 2.0 kHz (memory word clock frequency) */
-	MDRV_CPU_ADD("main", APEXC, 2000)
+	MDRV_CPU_ADD("maincpu", APEXC, 2000)
 	/*MDRV_CPU_CONFIG(NULL)*/
 	MDRV_CPU_PROGRAM_MAP(apexc_mem_map, 0)
 	MDRV_CPU_IO_MAP(apexc_io_map, 0)
 	/* dummy interrupt: handles the control panel */
-	MDRV_CPU_VBLANK_INT("main", apexc_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", apexc_interrupt)
 	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
 
 	MDRV_MACHINE_START( apexc )
 
 	/* video hardware does not exist, but we display a control panel and the typewriter output */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -827,7 +826,7 @@ MACHINE_DRIVER_END
 
 ROM_START(apexc)
 	/*CPU memory space*/
-	ROM_REGION32_BE(0x10000, "main", ROMREGION_ERASEFF)
+	ROM_REGION32_BE(0x10000, "maincpu", ROMREGION_ERASEFF)
 		/* Note this computer has no ROM... */
 
 	ROM_REGION(apexcfontdata_size, "gfx1", ROMREGION_ERASEFF)

@@ -13,8 +13,8 @@
 #include "machine/8255ppi.h"
 #include "machine/ins8250.h"
 #include "machine/wd17xx.h"
+#include "machine/ctronics.h"
 #include "devices/basicdsk.h"
-#include "devices/printer.h"
 #include "devices/cassette.h"
 #include "formats/svi_cas.h"
 #include "sound/dac.h"
@@ -43,9 +43,6 @@ typedef struct {
 	UINT8	bankHigh2_read_only;
 	/* keyboard */
 	UINT8	keyboard_row;
-	/* printer */
-	UINT8	prn_data;
-	UINT8	prn_strobe;
 	/* SVI-806 80 column card */
 	UINT8	svi806_present;
 	UINT8	svi806_ram_enabled;
@@ -109,7 +106,6 @@ DEVICE_START( svi318_cart )
 {
 	pcart = NULL;
 	pcart_rom_size = 0;
-	return DEVICE_START_OK;
 }
 
 DEVICE_IMAGE_LOAD( svi318_cart )
@@ -165,7 +161,7 @@ static READ8_DEVICE_HANDLER ( svi318_ppi_port_a_r )
 {
 	int data = 0x0f;
 
-	if (cassette_input(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" )) > 0.0038)
+	if (cassette_input(devtag_get_device(device->machine, "cassette")) > 0.0038)
 		data |= 0x80;
 	if (!svi318_cassette_present(device->machine, 0))
 		data |= 0x40;
@@ -190,7 +186,7 @@ static READ8_DEVICE_HANDLER ( svi318_ppi_port_a_r )
 static READ8_DEVICE_HANDLER ( svi318_ppi_port_b_r )
 {
 	int row;
-	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", 
+	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5",
 										"LINE6", "LINE7", "LINE8", "LINE9", "LINE10" };
 
 	row = svi.keyboard_row;
@@ -220,31 +216,31 @@ static WRITE8_DEVICE_HANDLER ( svi318_ppi_port_c_w )
 	/* key click */
 	val = (data & 0x80) ? 0x3e : 0;
 	val += (data & 0x40) ? 0x3e : 0;
-	dac_signed_data_w (0, val);
+	dac_signed_data_w (devtag_get_device(device->machine, "dac"), val);
 
 	/* cassette motor on/off */
 	if (svi318_cassette_present(device->machine, 0))
 	{
 		cassette_change_state(
-			device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ),
+			devtag_get_device(device->machine, "cassette"),
 			(data & 0x10) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED,
 			CASSETTE_MOTOR_DISABLED);
 	}
 
 	/* cassette signal write */
-	cassette_output(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ), (data & 0x20) ? -1.0 : +1.0);
+	cassette_output(devtag_get_device(device->machine, "cassette"), (data & 0x20) ? -1.0 : +1.0);
 
 	svi.keyboard_row = data & 0x0F;
 }
 
 const ppi8255_interface svi318_ppi8255_interface =
 {
-	svi318_ppi_port_a_r,
-	svi318_ppi_port_b_r,
-	NULL,
-	NULL,
-	NULL,
-	svi318_ppi_port_c_w
+	DEVCB_HANDLER(svi318_ppi_port_a_r),
+	DEVCB_HANDLER(svi318_ppi_port_b_r),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(svi318_ppi_port_c_w)
 };
 
 READ8_DEVICE_HANDLER( svi318_ppi_r )
@@ -257,30 +253,6 @@ WRITE8_DEVICE_HANDLER( svi318_ppi_w )
 	ppi8255_w(device, offset + 2, data);
 }
 
-/* Printer port */
-
-static const device_config *printer_image(running_machine *machine)
-{
-	return device_list_find_by_tag(machine->config->devicelist, PRINTER, "printer");
-}
-
-static WRITE8_HANDLER( svi318_printer_w )
-{
-	if (!offset)
-		svi.prn_data = data;
-	else
-	{
-		if ( (svi.prn_strobe & 1) && !(data & 1) )
-			printer_output(printer_image(space->machine), svi.prn_data);
-
-		svi.prn_strobe = data;
-	}
-}
-
-static READ8_HANDLER( svi318_printer_r )
-{
-	return printer_is_ready(printer_image(space->machine)) ? 0xfe:0xff;		/* 0xfe if printer is ready to work */
-}
 
 /* PSG */
 
@@ -361,7 +333,7 @@ const wd17xx_interface svi_wd17xx_interface = { svi_fdc_callback, NULL };
 
 static WRITE8_HANDLER( svi318_fdc_drive_motor_w )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
 	switch (data & 3)
 	{
 	case 1:
@@ -378,7 +350,7 @@ static WRITE8_HANDLER( svi318_fdc_drive_motor_w )
 static WRITE8_HANDLER( svi318_fdc_density_side_w )
 {
 	const device_config *image;
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
 
 	wd17xx_set_density(fdc, data & 0x01 ? DEN_FM_LO:DEN_MFM_LO);
 
@@ -501,13 +473,13 @@ VIDEO_START( svi328_806 )
 
 VIDEO_UPDATE( svi328_806 )
 {
-	if (!strcmp(screen->tag, "main"))
+	if (!strcmp(screen->tag, "maincpu"))
 	{
 		VIDEO_UPDATE_CALL(tms9928a);
 	}
 	else if (!strcmp(screen->tag, "svi806"))
 	{
-		const device_config *mc6845 = device_list_find_by_tag(screen->machine->config->devicelist, MC6845, "crtc");
+		const device_config *mc6845 = devtag_get_device(screen->machine, "crtc");
 		mc6845_update(mc6845, bitmap, cliprect);
 	}
 	else
@@ -689,7 +661,7 @@ static void svi318_set_banks(running_machine *machine)
 
 	switch( svi.bankLow ) {
 	case SVI_INTERNAL:
-		svi.bankLow_ptr = memory_region(machine, "main");
+		svi.bankLow_ptr = memory_region(machine, "maincpu");
 		break;
 	case SVI_CART:
 		if ( pcart ) {
@@ -775,7 +747,7 @@ static void svi318_set_banks(running_machine *machine)
 
 int svi318_cassette_present(running_machine *machine, int id)
 {
-	const device_config *img = device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
+	const device_config *img = devtag_get_device(machine, "cassette");
 
 	if ( img == NULL )
 		return FALSE;
@@ -787,15 +759,17 @@ int svi318_cassette_present(running_machine *machine, int id)
 READ8_HANDLER( svi318_io_ext_r )
 {
 	UINT8 data = 0xff;
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
+	const device_config *printer = devtag_get_device(space->machine, "centronics");
 
 	if (svi.bankLow == SVI_CART) {
 		return 0xff;
 	}
 
-	switch( offset ) {
+	switch( offset )
+	{
 	case 0x12:
-		data = svi318_printer_r(space, 0);
+		data = 0xfe | centronics_busy_r(printer);
 		break;
 
 	case 0x20:
@@ -806,7 +780,7 @@ READ8_HANDLER( svi318_io_ext_r )
 	case 0x25:
 	case 0x26:
 	case 0x27:
-		data = ins8250_r(device_list_find_by_tag( space->machine->config->devicelist, INS8250, "ins8250_0" ), offset & 7);
+		data = ins8250_r(devtag_get_device(space->machine, "ins8250_0"), offset & 7);
 		break;
 
 	case 0x28:
@@ -817,7 +791,7 @@ READ8_HANDLER( svi318_io_ext_r )
 	case 0x2D:
 	case 0x2E:
 	case 0x2F:
-		data = ins8250_r(device_list_find_by_tag( space->machine->config->devicelist, INS8250, "ins8250_1" ), offset & 7);
+		data = ins8250_r(devtag_get_device(space->machine, "ins8250_1"), offset & 7);
 		break;
 
 	case 0x30:
@@ -836,7 +810,7 @@ READ8_HANDLER( svi318_io_ext_r )
 		data = svi318_fdc_irqdrq_r(space, 0);
 		break;
 	case 0x51: {
-		device_config *devconf = (device_config *) device_list_find_by_tag( space->machine->config->devicelist, MC6845, "crtc");
+		const device_config *devconf = devtag_get_device(space->machine, "crtc");
 		data = mc6845_register_r(devconf, 0);
 		}
 		break;
@@ -847,16 +821,21 @@ READ8_HANDLER( svi318_io_ext_r )
 
 WRITE8_HANDLER( svi318_io_ext_w )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
-	
+	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
+	const device_config *printer = devtag_get_device(space->machine, "centronics");
+
 	if (svi.bankLow == SVI_CART) {
 		return;
 	}
 
-	switch( offset ) {
+	switch( offset )
+	{
 	case 0x10:
+		centronics_data_w(printer, 0, data);
+		break;
+
 	case 0x11:
-		svi318_printer_w(space, offset & 1, data);
+		centronics_strobe_w(printer, BIT(data, 0));
 		break;
 
 	case 0x20:
@@ -867,7 +846,7 @@ WRITE8_HANDLER( svi318_io_ext_w )
 	case 0x25:
 	case 0x26:
 	case 0x27:
-		ins8250_w(device_list_find_by_tag( space->machine->config->devicelist, INS8250, "ins8250_0" ), offset & 7, data);
+		ins8250_w(devtag_get_device(space->machine, "ins8250_0"), offset & 7, data);
 		break;
 
 	case 0x28:
@@ -878,7 +857,7 @@ WRITE8_HANDLER( svi318_io_ext_w )
 	case 0x2D:
 	case 0x2E:
 	case 0x2F:
-		ins8250_w(device_list_find_by_tag( space->machine->config->devicelist, INS8250, "ins8250_1" ), offset & 7, data);
+		ins8250_w(devtag_get_device(space->machine, "ins8250_1"), offset & 7, data);
 		break;
 
 	case 0x30:
@@ -901,12 +880,12 @@ WRITE8_HANDLER( svi318_io_ext_w )
 		break;
 
 	case 0x50: {
-		device_config *devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, "crtc");
+		const device_config *devconf = devtag_get_device(space->machine, "crtc");
 		mc6845_address_w(devconf, 0, data);
 		}
 		break;
 	case 0x51: {
-		device_config *devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, "crtc");
+		const device_config *devconf = devtag_get_device(space->machine, "crtc");
 		mc6845_register_w(devconf, 0, data);
 		}
 		break;

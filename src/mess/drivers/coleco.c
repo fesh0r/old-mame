@@ -190,7 +190,7 @@ static ADDRESS_MAP_START( coleco_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xa0, 0xa0) AM_MIRROR(0x1e) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0xa1, 0xa1) AM_MIRROR(0x1e) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
 	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x1f) AM_WRITE(paddle_on_w)
-	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x1f) AM_WRITE(sn76496_0_w)
+	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x1f) AM_DEVWRITE("sn76489a", sn76496_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x1d) AM_READ(paddle_1_r)
 	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x1d) AM_READ(paddle_2_r)
 ADDRESS_MAP_END
@@ -207,7 +207,7 @@ static ADDRESS_MAP_START( czz50_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xa0, 0xa0) AM_MIRROR(0x1e) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0xa1, 0xa1) AM_MIRROR(0x1e) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
 	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x1f) AM_WRITE(paddle_on_w)
-	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x1f) AM_WRITE(sn76496_0_w)
+	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x1f) AM_DEVWRITE("sn76489a", sn76496_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x1d) AM_READ(paddle_1_r)
 	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x1d) AM_READ(paddle_2_r)
 ADDRESS_MAP_END
@@ -398,7 +398,7 @@ static MACHINE_START( coleco )
 static MACHINE_RESET( coleco )
 {
     cpu_set_input_line_vector(machine->cpu[0], INPUT_LINE_IRQ0, 0xff);
-	memset(&memory_region(machine, "main")[0x6000], 0xff, 0x400);	// initialize RAM
+	memset(&memory_region(machine, "maincpu")[0x6000], 0xff, 0x400);	// initialize RAM
     timer_pulse(machine, ATTOTIME_IN_MSEC(20), NULL, 0, paddle_callback);
 }
 
@@ -418,7 +418,7 @@ static MACHINE_RESET( coleco )
 static DEVICE_IMAGE_LOAD( czz50_cart )
 {
 	int size = image_length(image);
-	UINT8 *ptr = memory_region(image->machine, "main") + 0x8000;
+	UINT8 *ptr = memory_region(image->machine, "maincpu") + 0x8000;
 
 	if (image_fread(image, ptr, size ) != size)
 	{
@@ -432,17 +432,17 @@ static DEVICE_IMAGE_LOAD( czz50_cart )
 
 static MACHINE_DRIVER_START( coleco )
 	// basic machine hardware
-	MDRV_CPU_ADD("main", Z80, XTAL_7_15909MHz/2)	// 3.579545 MHz
+	MDRV_CPU_ADD("maincpu", Z80, XTAL_7_15909MHz/2)	// 3.579545 MHz
 	MDRV_CPU_PROGRAM_MAP(coleco_map, 0)
 	MDRV_CPU_IO_MAP(coleco_io_map, 0)
-	MDRV_CPU_VBLANK_INT("main", coleco_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", coleco_interrupt)
 
 	MDRV_MACHINE_START(coleco)
 	MDRV_MACHINE_RESET(coleco)
 
     // video hardware
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE((float)XTAL_10_738635MHz/2/342/262)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
@@ -459,17 +459,17 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( czz50 )
 	// basic machine hardware
-	MDRV_CPU_ADD("main", Z80, XTAL_7_15909MHz/2)	// ???
+	MDRV_CPU_ADD("maincpu", Z80, XTAL_7_15909MHz/2)	// ???
 	MDRV_CPU_PROGRAM_MAP(czz50_map, 0)
 	MDRV_CPU_IO_MAP(czz50_io_map, 0)
-	MDRV_CPU_VBLANK_INT("main", coleco_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", coleco_interrupt)
 
 	MDRV_MACHINE_START(coleco)
 	MDRV_MACHINE_RESET(coleco)
 
     // video hardware
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE((float)XTAL_10_738635MHz/2/342/262)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
@@ -487,33 +487,33 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( dina )
 	MDRV_IMPORT_FROM(czz50)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE((float)XTAL_10_738635MHz/2/342/313)
 MACHINE_DRIVER_END
 
 /* ROMs */
 
 ROM_START (coleco)
-    ROM_REGION( 0x10000, "main", 0 )
+    ROM_REGION( 0x10000, "maincpu", 0 )
     ROM_LOAD( "coleco.rom", 0x0000, 0x2000, CRC(3aa93ef3) SHA1(45bedc4cbdeac66c7df59e9e599195c778d86a92) )
 	ROM_CART_LOAD("cart", 0x8000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START (colecoa)
     // differences to 0x3aa93ef3 modified characters, added a pad 2 related fix
-    ROM_REGION( 0x10000, "main", 0 )
+    ROM_REGION( 0x10000, "maincpu", 0 )
     ROM_LOAD( "colecoa.rom", 0x0000, 0x2000, CRC(39bb16fc) SHA1(99ba9be24ada3e86e5c17aeecb7a2d68c5edfe59) )
 	ROM_CART_LOAD("cart", 0x8000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START (colecob)
-    ROM_REGION( 0x10000, "main", 0 )
+    ROM_REGION( 0x10000, "maincpu", 0 )
     ROM_LOAD( "svi603.rom", 0x0000, 0x2000, CRC(19e91b82) SHA1(8a30abe5ffef810b0f99b86db38b1b3c9d259b78) )
 	ROM_CART_LOAD("cart", 0x8000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START( czz50 )
-    ROM_REGION( 0x10000, "main", 0 )
+    ROM_REGION( 0x10000, "maincpu", 0 )
     ROM_LOAD( "czz50.rom", 0x0000, 0x2000, CRC(4999abc6) SHA1(96aecec3712c94517103d894405bc98a7dafa440) )
     ROM_CONTINUE(		  0x8000, 0x2000 )
 ROM_END

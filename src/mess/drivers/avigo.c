@@ -408,8 +408,8 @@ static MACHINE_RESET( avigo )
 	memset(avigo_banked_opbase, 0, sizeof(avigo_banked_opbase));
 
 	/* initialise flash memory */
-	intelflash_init(machine, 0, FLASH_INTEL_E28F008SA, memory_region(machine, "main")+0x10000);
-	intelflash_init(machine, 1, FLASH_INTEL_E28F008SA, memory_region(machine, "main")+0x110000);
+	intelflash_init(machine, 0, FLASH_INTEL_E28F008SA, memory_region(machine, "maincpu")+0x10000);
+	intelflash_init(machine, 1, FLASH_INTEL_E28F008SA, memory_region(machine, "maincpu")+0x110000);
 	intelflash_init(machine, 2, FLASH_INTEL_E28F008SA, NULL);
 
 	stylus_marker_x = AVIGO_SCREEN_WIDTH>>1;
@@ -764,6 +764,7 @@ static  READ8_HANDLER(avigo_ad_data_r)
 
 static WRITE8_HANDLER(avigo_speaker_w)
 {
+	const device_config *speaker = devtag_get_device(space->machine, "speaker");
 	UINT8 previous_speaker;
 
 	previous_speaker = avigo_speaker_data;
@@ -773,7 +774,7 @@ static WRITE8_HANDLER(avigo_speaker_w)
 	if (((data^avigo_speaker_data) & (1<<3))!=0)
 	{
 		/* DAC output state */
-		speaker_level_w(0,(data>>3) & 0x01);
+		speaker_level_w(speaker,(data>>3) & 0x01);
 	}
 }
 
@@ -811,12 +812,12 @@ static ADDRESS_MAP_START( avigo_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x008, 0x008) AM_READWRITE( avigo_ram_bank_h_r, avigo_ram_bank_h_w )
 	AM_RANGE(0x009, 0x009) AM_READWRITE( avigo_ad_control_status_r, avigo_ad_control_status_w )
 	AM_RANGE(0x00a, 0x00f) AM_READ( avigo_unmapped_r)
-	AM_RANGE(0x010, 0x01f) AM_DEVREADWRITE( TC8521, "rtc", tc8521_r, tc8521_w )
+	AM_RANGE(0x010, 0x01f) AM_DEVREADWRITE("rtc", tc8521_r, tc8521_w )
 	AM_RANGE(0x020, 0x02c) AM_READ( avigo_unmapped_r)
 	AM_RANGE(0x028, 0x028) AM_WRITE( avigo_speaker_w)
 	AM_RANGE(0x02d, 0x02d) AM_READ( avigo_ad_data_r)
 	AM_RANGE(0x02e, 0x02f) AM_READ( avigo_unmapped_r)
-	AM_RANGE(0x030, 0x037) AM_DEVREADWRITE( NS16550, "ns16550", ins8250_r, ins8250_w )
+	AM_RANGE(0x030, 0x037) AM_DEVREADWRITE("ns16550", ins8250_r, ins8250_w )
 	AM_RANGE(0x038, 0x0ff) AM_READ( avigo_unmapped_r)
 ADDRESS_MAP_END
 
@@ -857,7 +858,7 @@ INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( avigo )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 4000000)
+	MDRV_CPU_ADD("maincpu", Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(avigo_mem, 0)
 	MDRV_CPU_IO_MAP(avigo_io, 0)
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -869,7 +870,7 @@ static MACHINE_DRIVER_START( avigo )
 	MDRV_NS16550_ADD( "ns16550", avigo_com_interface )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", LCD)
+	MDRV_SCREEN_ADD("screen", LCD)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -899,7 +900,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START(avigo)
-	ROM_REGION(0x210000, "main",0)
+	ROM_REGION(0x210000, "maincpu",0)
 	ROM_LOAD("avigo.rom", 0x010000, 0x0150000, CRC(160ee4a6) SHA1(4d09201a3876de16808bd92989f3d8d7182d72b3))
 ROM_END
 

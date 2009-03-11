@@ -39,18 +39,10 @@ INPUT_PORTS_END
 
 static PALETTE_INIT( pokemini )
 {
-	static const unsigned char pokemini_pal[4][3] =
-	{
-		{ 0xFF, 0xFB, 0x87 },
-		{ 0xB1, 0xAE, 0x4E },
-		{ 0x84, 0x80, 0x4E },
-		{ 0x4E, 0x4E, 0x4E }
-	};
-	int i;
-	for( i = 0; i < 4; i++ )
-	{
-		palette_set_color_rgb( machine, i, pokemini_pal[i][0], pokemini_pal[i][1], pokemini_pal[i][2] );
-	}
+	palette_set_color(machine, 0, MAKE_RGB(0xff, 0xfb, 0x87));
+	palette_set_color(machine, 1, MAKE_RGB(0xb1, 0xae, 0x4e));
+	palette_set_color(machine, 2, MAKE_RGB(0x84, 0x80, 0x4e));
+	palette_set_color(machine, 3, MAKE_RGB(0x4e, 0x4e, 0x4e));
 }
 
 
@@ -62,7 +54,7 @@ static const speaker_interface pokemini_speaker_interface =
 
 static MACHINE_DRIVER_START( pokemini )
 	/* basic machine hardware */
-	MDRV_CPU_ADD( "main", MINX, 4000000 )
+	MDRV_CPU_ADD( "maincpu", MINX, 4000000 )
 	MDRV_CPU_PROGRAM_MAP( pokemini_mem_map, 0 )
 
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -76,7 +68,7 @@ static MACHINE_DRIVER_START( pokemini )
 	MDRV_VIDEO_UPDATE( generic_bitmapped )
 
 	/* This still needs to be improved to actually match the hardware */
-	MDRV_SCREEN_ADD("main", LCD)
+	MDRV_SCREEN_ADD("screen", LCD)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( 96, 64 )
 	MDRV_SCREEN_VISIBLE_AREA( 0, 95, 0, 63 )
@@ -106,7 +98,7 @@ static DRIVER_INIT( pokemini )
 }
 
 ROM_START( pokemini )
-	ROM_REGION( 0x200000, "main", 0 )
+	ROM_REGION( 0x200000, "maincpu", 0 )
 	ROM_LOAD( "bios.min", 0x0000, 0x1000, CRC(aed3c14d) SHA1(daad4113713ed776fbd47727762bca81ba74915f) )
 ROM_END
 

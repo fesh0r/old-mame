@@ -4,8 +4,8 @@
  *
  ****************************************************************************/
 
-#ifndef MSX_H_
-#define MSX_H_
+#ifndef __MSX_H__
+#define __MSX_H__
 
 #include "machine/wd17xx.h"
 
@@ -15,8 +15,6 @@ typedef struct {
 	/* PSG */
 	int psg_b;
 	int opll_active;
-	/* printer */
-	UINT8 prn_data, prn_strobe;
 	/* mouse */
 	UINT16 mouse[2];
 	int mouse_stat[2];
@@ -66,16 +64,16 @@ DEVICE_IMAGE_UNLOAD( msx_cart );
 void msx_vdp_interrupt(running_machine *machine, int i);
 
 /* I/O functions */
-WRITE8_HANDLER ( msx_printer_w );
- READ8_HANDLER ( msx_printer_r );
-WRITE8_HANDLER ( msx_psg_w );
- READ8_HANDLER ( msx_psg_r );
+READ8_DEVICE_HANDLER( msx_printer_status_r );
+WRITE8_DEVICE_HANDLER( msx_printer_strobe_w );
+WRITE8_DEVICE_HANDLER( msx_printer_data_w );
+
 WRITE8_HANDLER ( msx_psg_port_a_w );
- READ8_HANDLER ( msx_psg_port_a_r );
+READ8_HANDLER ( msx_psg_port_a_r );
 WRITE8_HANDLER ( msx_psg_port_b_w );
- READ8_HANDLER ( msx_psg_port_b_r );
+READ8_HANDLER ( msx_psg_port_b_r );
 WRITE8_HANDLER ( msx_fmpac_w );
- READ8_HANDLER ( msx_rtc_reg_r );
+READ8_HANDLER ( msx_rtc_reg_r );
 WRITE8_HANDLER ( msx_rtc_reg_w );
 WRITE8_HANDLER ( msx_rtc_latch_w );
 WRITE8_HANDLER ( msx_90in1_w );
@@ -103,4 +101,4 @@ void msx_memory_set_carts (void);
 void msx_memory_reset (running_machine *machine);
 
 
-#endif /* MSX_H_ */
+#endif /* __MSX_H__ */

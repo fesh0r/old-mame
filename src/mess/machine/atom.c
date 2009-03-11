@@ -18,12 +18,12 @@
 #include "driver.h"
 #include "machine/8255ppi.h"
 #include "video/m6847.h"
+#include "machine/ctronics.h"
 #include "machine/i8271.h"
 #include "machine/6522via.h"
 #include "devices/basicdsk.h"
 #include "devices/flopdrv.h"
 #include "devices/cassette.h"
-#include "devices/printer.h"
 #include "devices/snapquik.h"
 #include "includes/atom.h"
 #include "sound/speaker.h"
@@ -33,105 +33,61 @@ UINT8 atom_8255_porta;
 static UINT8 atom_8255_portb;
 UINT8 atom_8255_portc;
 
-/* printer data written */
-static char atom_printer_data = 0x07f;
 
 /* I am not sure if this is correct, the atom appears to have a 2.4 kHz timer used for reading tapes?? */
 static int	timer_state = 0;
 
-static void atom_via_irq_func(const device_config *device, int state)
-{
-	if (state)
-	{
-		cpu_set_input_line(device->machine->cpu[0], 0, HOLD_LINE);
-	}
-	else
-	{
-		cpu_set_input_line(device->machine->cpu[0], 0, CLEAR_LINE);
-	}
-}
-
 static const device_config *cassette_device_image(running_machine *machine)
 {
-	return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
+	return devtag_get_device(machine, "cassette");
 }
 
-static const device_config *printer_image(running_machine *machine)
+
+
+/***************************************************************************
+    PRINTER INTERFACE
+***************************************************************************/
+
+/* BUSY from the centronics interface is connected to PA7 of the via */
+static READ8_DEVICE_HANDLER( atom_printer_busy )
 {
-	return device_list_find_by_tag(machine->config->devicelist, PRINTER, "printer");
+	return centronics_busy_r(device) << 7;
 }
 
-/* printer status */
-static READ8_DEVICE_HANDLER(atom_via_in_a_func)
+/* DATA lines 0 to 6 are connected to PA0 to PA6 of the via */
+static WRITE8_DEVICE_HANDLER( atom_printer_data )
 {
-	unsigned char data;
-
-	data = atom_printer_data;
-
-	if (!printer_is_ready(printer_image(device->machine)))
-	{
-		/* offline */
-		data |=0x080;
-	}
-
-	return data;
-}
-
-/* printer data */
-static WRITE8_DEVICE_HANDLER(atom_via_out_a_func)
-{
-	/* data is written to port, this causes a pulse on ca2 (printer /strobe input),
-	and data is written */
-	/* atom has a 7-bit printer port */
-	atom_printer_data = data & 0x07f;
-}
-
-static unsigned char previous_ca2_data = 0;
-
-/* one of these is pulsed! */
-static WRITE8_DEVICE_HANDLER(atom_via_out_ca2_func)
-{
-	/* change in state of ca2 output? */
-	if (((previous_ca2_data^data)&0x01)!=0)
-	{
-		/* only look for one transition state */
-		if (data & 0x01)
-		{
-			/* output data to printer */
-			printer_output(printer_image(device->machine), atom_printer_data);
-		}
-	}
-
-	previous_ca2_data = data;
+	centronics_data_w(device, 0, data & 0x7f);
 }
 
 const via6522_interface atom_6522_interface =
 {
-	atom_via_in_a_func,		/* printer status */
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	atom_via_out_a_func,	/* printer data */
-	NULL,
-	NULL,
-	NULL,
-	atom_via_out_ca2_func,	/* printer strobe */
-	NULL,
-	atom_via_irq_func,
+	DEVCB_DEVICE_HANDLER("centronics", atom_printer_busy),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_DEVICE_HANDLER("centronics", atom_printer_data),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	/* the CA2 output is connected to the STROBE signal on the centronics */
+	DEVCB_DEVICE_LINE("centronics", centronics_strobe_w),
+	DEVCB_NULL,
+	DEVCB_CPU_INPUT_LINE("maincpu", 0)
 };
 
 
 
 const ppi8255_interface atom_8255_int =
 {
-	atom_8255_porta_r,
-	atom_8255_portb_r,
-	atom_8255_portc_r,
-	atom_8255_porta_w,
-	atom_8255_portb_w,
-	atom_8255_portc_w,
+	DEVCB_HANDLER(atom_8255_porta_r),
+	DEVCB_HANDLER(atom_8255_portb_r),
+	DEVCB_HANDLER(atom_8255_portc_r),
+	DEVCB_HANDLER(atom_8255_porta_w),
+	DEVCB_HANDLER(atom_8255_portb_w),
+	DEVCB_DEVICE_HANDLER("speaker", atom_8255_portc_w),
 };
 
 static int previous_i8271_int_state = 0;
@@ -218,25 +174,6 @@ static TIMER_CALLBACK(atom_timer_callback)
 	}
 }
 
-
-static DIRECT_UPDATE_HANDLER(atom_opbase_handler)
-{
-	/* clear op base override */
-	memory_set_direct_update_handler(space, NULL);
-
-	/* this is temporary */
-	/* Kees van Oss mentions that address 8-b are used for the random number
-	generator. I don't know if this is hardware, or random data because the
-	ram chips are not cleared at start-up. So at this time, these numbers
-	are poked into the memory to simulate it. When I have more details I will fix it */
-	memory_region(space->machine, "main")[0x08] = mame_rand(space->machine) & 0x0ff;
-	memory_region(space->machine, "main")[0x09] = mame_rand(space->machine) & 0x0ff;
-	memory_region(space->machine, "main")[0x0a] = mame_rand(space->machine) & 0x0ff;
-	memory_region(space->machine, "main")[0x0b] = mame_rand(space->machine) & 0x0ff;
-
-	return cpu_get_pc( space->cpu ) & 0x0ffff;
-}
-
 MACHINE_RESET( atom )
 {
 	atom_8255_porta = 0xff;
@@ -246,7 +183,15 @@ MACHINE_RESET( atom )
 	timer_state = 0;
 	timer_pulse(machine, ATTOTIME_IN_HZ(2400*2), NULL, 0, atom_timer_callback);
 
-	memory_set_direct_update_handler(cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM ),atom_opbase_handler);
+	/* this is temporary */
+	/* Kees van Oss mentions that address 8-b are used for the random number
+	generator. I don't know if this is hardware, or random data because the
+	ram chips are not cleared at start-up. So at this time, these numbers
+	are poked into the memory to simulate it. When I have more details I will fix it */
+	memory_region(machine, "maincpu")[0x08] = mame_rand(machine) & 0x0ff;
+	memory_region(machine, "maincpu")[0x09] = mame_rand(machine) & 0x0ff;
+	memory_region(machine, "maincpu")[0x0a] = mame_rand(machine) & 0x0ff;
+	memory_region(machine, "maincpu")[0x0b] = mame_rand(machine) & 0x0ff;
 }
 
 struct atm
@@ -349,11 +294,11 @@ READ8_DEVICE_HANDLER (atom_8255_porta_r )
 READ8_DEVICE_HANDLER ( atom_8255_portb_r )
 {
 	int row;
-	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", 
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5",
 										"KEY6", "KEY7", "KEY8", "KEY9", "KEY10", "KEY11" };
-	
+
 	row = atom_8255_porta & 0x0f;
-	/* logerror("8255: Read port b: %02X %02X\n", input_port_read(machine, port), 
+	/* logerror("8255: Read port b: %02X %02X\n", input_port_read(machine, port),
 									input_port_read(machine, "KEY10") & 0xc0); */
 	return ((input_port_read(device->machine, keynames[row]) & 0x3f) | (input_port_read(device->machine, "KEY10") & 0xc0));
 }
@@ -404,54 +349,10 @@ WRITE8_DEVICE_HANDLER ( atom_8255_portb_w )
 	atom_8255_portb = data;
 }
 
-WRITE8_DEVICE_HANDLER (atom_8255_portc_w)
+WRITE8_DEVICE_HANDLER(atom_8255_portc_w)
 {
 	atom_8255_portc = data;
-	speaker_level_w(0, (data & 0x04) >> 2);
-}
-
-
-/* KT- I've assumed that the atom 8271 is linked in exactly the same way as on the bbc */
-READ8_HANDLER(atom_8271_r)
-{
-	device_config *i8271 = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, I8271, "i8271" );
-
-	switch (offset)
-	{
-		case 0:
-		case 1:
-		case 2:
-		case 3:
-			/* 8271 registers */
-			return i8271_r(i8271, offset);
-		case 4:
-			return i8271_data_r(i8271, offset);
-		default:
-			break;
-	}
-
-	return 0x0ff;
-}
-
-WRITE8_HANDLER(atom_8271_w)
-{
-	device_config *i8271 = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, I8271, "i8271" );
-
-	switch (offset)
-	{
-		case 0:
-		case 1:
-		case 2:
-		case 3:
-			/* 8271 registers */
-			i8271_w(i8271, offset, data);
-			return;
-		case 4:
-			i8271_data_w(i8271, offset, data);
-			return;
-		default:
-			break;
-	}
+	speaker_level_w(device, BIT(data, 2));
 }
 
 
@@ -464,7 +365,7 @@ static void atom_eprom_box_refresh(running_machine *machine)
     unsigned char *eprom_data;
 
 	/* get address of eprom data */
-	eprom_data = memory_region(machine, "main") + 0x010000 + (selected_eprom<<12);
+	eprom_data = memory_region(machine, "maincpu") + 0x010000 + (selected_eprom<<12);
 	/* set bank address */
 	memory_set_bankptr(machine, 1, eprom_data);
 }

@@ -29,10 +29,11 @@
  *
  *************************************/
 
-ATTR_CONST UINT8 coco_get_attributes(UINT8 c)
+ATTR_CONST UINT8 coco_get_attributes(running_machine *machine, UINT8 c)
 {
+	coco_state *state = machine->driver_data;
 	UINT8 result = 0x00;
-	UINT8 pia1_pb = pia_get_output_b(1);
+	UINT8 pia1_pb = pia6821_get_output_b(state->pia_1);
 
 	if (c & 0x40)		result |= M6847_INV;
 	if (c & 0x80)		result |= M6847_AS;
@@ -48,24 +49,22 @@ ATTR_CONST UINT8 coco_get_attributes(UINT8 c)
 
 static void coco_horizontal_sync_callback(running_machine *machine, int data)
 {
-	const address_space *space = cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM );
-
-	pia_0_ca1_w(space, 0, data);
+	coco_state *state = machine->driver_data;
+	pia6821_ca1_w(state->pia_0, 0, data);
 }
 
 
 
 static void coco_field_sync_callback(running_machine *machine, int data)
 {
-	const address_space *space = cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM );
-
-	pia_0_cb1_w(space, 0, data);
+	coco_state *state = machine->driver_data;
+	pia6821_cb1_w(state->pia_0, 0, data);
 }
 
-const UINT8 *get_video_ram_coco(running_machine *machine,int scanline)
+static const UINT8 *get_video_ram_coco(running_machine *machine,int scanline)
 {
-	device_config *sam = (device_config*)device_list_find_by_tag( machine->config->devicelist, SAM6883, "sam");
-	return sam_m6847_get_video_ram(sam,scanline);
+	coco_state *state = machine->driver_data;
+	return sam_m6847_get_video_ram(state->sam, scanline);
 }
 
 static void internal_video_start_coco(running_machine *machine, m6847_type type)

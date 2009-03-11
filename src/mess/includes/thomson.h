@@ -17,9 +17,8 @@
 #include "machine/6551.h"
 #include "sound/dac.h"
 #include "audio/mea8000.h"
+#include "machine/ctronics.h"
 #include "devices/cartslot.h"
-#include "machine/centroni.h"
-#include "devices/printer.h"
 #include "includes/serial.h"
 #include "devices/cassette.h"
 #include "machine/wd17xx.h"
@@ -36,10 +35,10 @@
 /*************************** common ********************************/
 
 /* 6821 PIAs */
-#define THOM_PIA_SYS    0  /* system PIA */
-#define THOM_PIA_GAME   1  /* music & game PIA (joypad + sound) */
-#define THOM_PIA_IO     2  /* CC 90-232 I/O extension (parallel & RS-232) */
-#define THOM_PIA_MODEM  3  /* MD 90-120 MODEM extension */
+#define THOM_PIA_SYS    "pia_0"  /* system PIA */
+#define THOM_PIA_GAME   "pia_1"  /* music & game PIA (joypad + sound) */
+#define THOM_PIA_IO     "pia_2"  /* CC 90-232 I/O extension (parallel & RS-232) */
+#define THOM_PIA_MODEM  "pia_3"  /* MD 90-120 MODEM extension */
 
 /* sound ports */
 #define THOM_SOUND_BUZ    0 /* 1-bit buzzer */
@@ -63,6 +62,20 @@ extern DEVICE_START( thom_serial );
 extern DEVICE_IMAGE_LOAD( thom_serial );
 extern DEVICE_IMAGE_UNLOAD( thom_serial );
 
+extern const pia6821_interface to7_pia6821_sys;
+extern const pia6821_interface to7_pia6821_io;
+extern const pia6821_interface to7_pia6821_modem;
+extern const pia6821_interface to7_pia6821_game;
+extern const pia6821_interface to770_pia6821_sys;
+extern const pia6821_interface mo5_pia6821_sys;
+extern const pia6821_interface to9_pia6821_sys;
+extern const pia6821_interface to8_pia6821_sys;
+extern const pia6821_interface to9p_pia6821_sys;
+extern const pia6821_interface mo6_pia6821_game;
+extern const pia6821_interface mo6_pia6821_sys;
+extern const pia6821_interface mo5nr_pia6821_sys;
+extern const pia6821_interface mo5nr_pia6821_game;
+
 /***************************** TO7 / T9000 *************************/
 
 /* cartridge bank-switching */
@@ -81,18 +94,22 @@ extern WRITE8_HANDLER ( to7_midi_w );
 extern MACHINE_START ( to7 );
 extern MACHINE_RESET ( to7 );
 
+/* centronics */
+extern const centronics_interface to7_centronics_config;
+extern const centronics_interface mo6_centronics_config;
+
 /* timer */
-extern mc6846_interface to7_timer;
+extern const mc6846_interface to7_timer;
 
 /* speech synthesis */
-extern mea8000_interface to7_speech;
+extern const mea8000_interface to7_speech;
 
 /* floppy */
-extern mc6843_interface to7_6843_itf;
-extern mc6854_interface to7_network_iface;
+extern const mc6843_interface to7_6843_itf;
+extern const mc6854_interface to7_network_iface;
 
 /* modem */
-extern acia6850_interface to7_modem;
+extern const acia6850_interface to7_modem;
 
 
 /***************************** TO7/70 ******************************/
@@ -104,7 +121,7 @@ extern WRITE8_HANDLER ( to770_gatearray_w );
 extern MACHINE_START ( to770 );
 extern MACHINE_RESET ( to770 );
 
-extern mc6846_interface to770_timer;
+extern const mc6846_interface to770_timer;
 
 /***************************** MO5 ******************************/
 
@@ -147,7 +164,7 @@ extern WRITE8_HANDLER ( to9_kbd_w );
 extern MACHINE_START ( to9 );
 extern MACHINE_RESET ( to9 );
 
-extern mc6846_interface to9_timer;
+extern const mc6846_interface to9_timer;
 
 
 /***************************** TO8 ******************************/
@@ -180,7 +197,7 @@ extern WRITE8_HANDLER ( to8_floppy_w );
 extern MACHINE_START ( to8 );
 extern MACHINE_RESET ( to8 );
 
-extern mc6846_interface to8_timer;
+extern const mc6846_interface to8_timer;
 
 
 /***************************** TO9+ ******************************/
@@ -188,7 +205,7 @@ extern mc6846_interface to8_timer;
 extern MACHINE_START ( to9p );
 extern MACHINE_RESET ( to9p );
 
-extern mc6846_interface to9p_timer;
+extern const mc6846_interface to9p_timer;
 
 
 /***************************** MO6 ******************************/

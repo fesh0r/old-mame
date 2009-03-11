@@ -199,6 +199,7 @@
 
 #include "driver.h"
 #include "cpu/tms9900/tms9900.h"
+#include "sound/sn76496.h"
 #include "deprecat.h"
 #include "video/v9938.h"
 #include "includes/geneve.h"
@@ -236,14 +237,14 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(writecru, ADDRESS_SPACE_IO, 8)
 
-	AM_RANGE(0x0000, 0x07ff) AM_DEVWRITE(TMS9901, "tms9901", tms9901_cru_w)
+	AM_RANGE(0x0000, 0x07ff) AM_DEVWRITE("tms9901", tms9901_cru_w)
 	AM_RANGE(0x0800, 0x0fff) AM_WRITE(geneve_peb_mode_cru_w)
 
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(readcru, ADDRESS_SPACE_IO, 8)
 
-	AM_RANGE(0x0000, 0x00ff) AM_DEVREAD(TMS9901, "tms9901", tms9901_cru_r)
+	AM_RANGE(0x0000, 0x00ff) AM_DEVREAD("tms9901", tms9901_cru_r)
 	AM_RANGE(0x0100, 0x01ff) AM_READ(geneve_peb_cru_r)
 
 ADDRESS_MAP_END
@@ -469,7 +470,7 @@ static const mm58274c_interface floppy_mm58274c_interface =
 static MACHINE_DRIVER_START(geneve_60hz)
 	/* basic machine hardware */
 	/* TMS9995 CPU @ 12.0 MHz */
-	MDRV_CPU_ADD("main", TMS9995, 12000000)
+	MDRV_CPU_ADD("maincpu", TMS9995, 12000000)
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
 	MDRV_CPU_IO_MAP(readcru, writecru)
 	MDRV_CPU_VBLANK_INT_HACK(geneve_hblank_interrupt, 262)	/* 262.5 in 60Hz, 312.5 in 50Hz */
@@ -478,7 +479,7 @@ static MACHINE_DRIVER_START(geneve_60hz)
 	MDRV_MACHINE_RESET( geneve )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)	/* or 50Hz */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -528,7 +529,7 @@ MACHINE_DRIVER_END
 
 ROM_START(geneve)
 	/*CPU memory space*/
-	ROM_REGION(region_cpu1_len_geneve, "main", 0)
+	ROM_REGION(region_cpu1_len_geneve, "maincpu", 0)
 	ROM_LOAD("genbt100.bin", offset_rom_geneve, 0x4000, CRC(8001e386) SHA1(b44618b54dabac3882543e18555d482b299e0109)) /* CPU ROMs */
 	ROM_LOAD_OPTIONAL("genbt090.bin", offset_altrom_geneve, 0x4000, CRC(b2e20df9) SHA1(2d5d09177afe97d63ceb3ad59b498b1c9e2153f7)) /* CPU ROMs */
 
@@ -549,7 +550,7 @@ ROM_END
 
 ROM_START(genmod)
 	/*CPU memory space*/
-	ROM_REGION(region_cpu1_len_geneve, "main", 0)
+	ROM_REGION(region_cpu1_len_geneve, "maincpu", 0)
 	ROM_LOAD("gnmbt100.bin", offset_rom_geneve, 0x4000, CRC(19b89479) SHA1(6ef297eda78dc705946f6494e9d7e95e5216ec47)) /* CPU ROMs */
 
 	/*DSR ROM space*/

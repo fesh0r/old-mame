@@ -21,7 +21,7 @@
 #include "video/tms9928a.h"
 #include "cpu/z80/z80.h"
 #include "video/v9938.h"
-#include "devices/printer.h"
+#include "machine/ctronics.h"
 #include "devices/cassette.h"
 #include "utils.h"
 #include "osdepend.h"
@@ -99,7 +99,7 @@ DEVICE_IMAGE_LOAD (msx_cart)
 	if (strcmp(image->tag,"cart2")==0) {
 		id = 1;
 	}
-	
+
 	if( id == -1 ) {
 		logerror ("error: invalid cart tag '%s'\n", image->tag);
 		return INIT_FAIL;
@@ -285,12 +285,12 @@ DEVICE_IMAGE_UNLOAD (msx_cart)
 	if (strcmp(image->tag,"cart2")==0) {
 		id = 1;
 	}
-	
+
 	if( id == -1 ) {
 		logerror ("error: invalid cart tag '%s'\n", image->tag);
 		return;
 	}
-	
+
 	if (msx_slot_list[msx1.cart_state[id]->type].savesram)
 	{
 		msx_slot_list[msx1.cart_state[id]->type].savesram (msx1.cart_state[id]);
@@ -325,7 +325,7 @@ MACHINE_START( msx )
 
 MACHINE_START( msx2 )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( machine->config->devicelist, WD179X, "wd179x");
+	const device_config *fdc = devtag_get_device(machine, "wd179x");
 	wd17xx_set_density (fdc,DEN_FM_HI);
 	msx1.dsk_stat = 0x7f;
 }
@@ -348,12 +348,12 @@ static READ8_DEVICE_HANDLER (msx_ppi_port_b_r );
 
 const ppi8255_interface msx_ppi8255_interface =
 {
-	NULL,
-	msx_ppi_port_b_r,
-	NULL,
-	msx_ppi_port_a_w,
-	NULL,
-	msx_ppi_port_c_w
+	DEVCB_NULL,
+	DEVCB_HANDLER(msx_ppi_port_b_r),
+	DEVCB_NULL,
+	DEVCB_HANDLER(msx_ppi_port_a_w),
+	DEVCB_NULL,
+	DEVCB_HANDLER(msx_ppi_port_c_w)
 };
 
 DRIVER_INIT( msx )
@@ -417,7 +417,7 @@ INTERRUPT_GEN( msx2_interrupt )
 INTERRUPT_GEN( msx_interrupt )
 {
 	int i;
-	
+
 	for (i=0; i<2; i++)
 	{
 		msx1.mouse[i] = input_port_read(device->machine, i ? "MOUSE1" : "MOUSE0");
@@ -432,27 +432,9 @@ INTERRUPT_GEN( msx_interrupt )
 ** The I/O funtions
 */
 
-READ8_HANDLER ( msx_psg_r )
-{
-	return ay8910_read_port_0_r (space, offset);
-}
-
-WRITE8_HANDLER ( msx_psg_w )
-{
-	if (offset & 0x01)
-		ay8910_write_port_0_w (space, offset, data);
-	else
-		ay8910_control_port_0_w (space, offset, data);
-}
-
 static const device_config *cassette_device_image(running_machine *machine)
 {
-	return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
-}
-
-static const device_config *printer_image(running_machine *machine)
-{
-	return device_list_find_by_tag(machine->config->devicelist, PRINTER, "printer");
+	return devtag_get_device(machine, "cassette");
 }
 
 READ8_HANDLER ( msx_psg_port_a_r )
@@ -542,51 +524,46 @@ WRITE8_HANDLER ( msx_psg_port_b_w )
 	msx1.psg_b = data;
 }
 
-WRITE8_HANDLER ( msx_printer_w )
+WRITE8_DEVICE_HANDLER( msx_printer_strobe_w )
 {
-	if (input_port_read(space->machine, "DSW") & 0x80) 
+	centronics_strobe_w(device, BIT(data, 1));
+}
+
+WRITE8_DEVICE_HANDLER( msx_printer_data_w )
+{
+	if (input_port_read(device->machine, "DSW") & 0x80)
 	{
 		/* SIMPL emulation */
-		if (offset == 1)
-			dac_signed_data_w (0, data);
+		dac_signed_data_w(devtag_get_device(device->machine, "dac"), data);
 	}
-	else {
-
-		if (offset == 1)
-		{
-			msx1.prn_data = data;
-		}
-		else
-		{
-			if ((msx1.prn_strobe & 2) && !(data & 2))
-			{
-				printer_output(printer_image(space->machine), msx1.prn_data);
-			}
-
-			msx1.prn_strobe = data;
-		}
+	else
+	{
+		centronics_data_w(device, 0, data);
 	}
 }
 
-READ8_HANDLER ( msx_printer_r )
+READ8_DEVICE_HANDLER( msx_printer_status_r )
 {
-	if (offset == 0 && ! (input_port_read(space->machine, "DSW") & 0x80) &&
-			printer_is_ready(printer_image(space->machine)) )
-		return 253;
+	UINT8 result = 0xfd;
 
-	return 0xff;
+	if (input_port_read(device->machine, "DSW") & 0x80)
+		return 0xff;
+
+	result |= centronics_busy_r(device) << 1;
+
+	return result;
 }
 
 WRITE8_HANDLER (msx_fmpac_w)
 {
-	if (msx1.opll_active) {
+	if (msx1.opll_active)
+	{
+		const device_config *ym = devtag_get_device(space->machine, "ym2413");
 
-		if (offset == 1) {
-			ym2413_data_port_0_w (space, 0, data);
-		}
-		else {
-			ym2413_register_port_0_w (space, 0, data);
-		}
+		if (offset == 1)
+			ym2413_w (ym, 1, data);
+		else
+			ym2413_w (ym, 0, data);
 	}
 }
 
@@ -601,19 +578,19 @@ WRITE8_HANDLER (msx_rtc_latch_w)
 
 WRITE8_HANDLER (msx_rtc_reg_w)
 {
-	const device_config *rtc = device_list_find_by_tag(space->machine->config->devicelist, TC8521, "rtc");
+	const device_config *rtc = devtag_get_device(space->machine, "rtc");
 	tc8521_w(rtc, msx1.rtc_latch, data);
 }
 
 READ8_HANDLER (msx_rtc_reg_r)
 {
-	const device_config *rtc = device_list_find_by_tag(space->machine->config->devicelist, TC8521, "rtc");
+	const device_config *rtc = devtag_get_device(space->machine, "rtc");
 	return tc8521_r(rtc, msx1.rtc_latch);
 }
 
 NVRAM_HANDLER( msx2 )
 {
-	const device_config *rtc = device_list_find_by_tag(machine->config->devicelist, TC8521, "rtc");
+	const device_config *rtc = devtag_get_device(machine, "rtc");
 	if (file)
 	{
 		if (read_or_write)
@@ -719,7 +696,7 @@ static WRITE8_DEVICE_HANDLER ( msx_ppi_port_c_w )
 
 	/* key click */
 	if ( (old_val ^ data) & 0x80)
-		dac_signed_data_w (0, (data & 0x80 ? 0x7f : 0));
+		dac_signed_data_w (devtag_get_device(device->machine, "dac"), (data & 0x80 ? 0x7f : 0));
 
 	/* cassette motor on/off */
 	if ( (old_val ^ data) & 0x10)
@@ -836,8 +813,8 @@ void msx_memory_init (running_machine *machine)
 					/* Check whether the optional FM-PAC rom is present */
 					option = 0x10000;
 					size = 0x10000;
-					mem = memory_region(machine, "main") + option;
-					if (memory_region_length(machine, "main") >= size + option && mem[0] == 'A' && mem[1] == 'B') {
+					mem = memory_region(machine, "maincpu") + option;
+					if (memory_region_length(machine, "maincpu") >= size + option && mem[0] == 'A' && mem[1] == 'B') {
 						slot = &msx_slot_list[SLOT_FMPAC];
 					}
 					else {
@@ -851,7 +828,7 @@ void msx_memory_init (running_machine *machine)
 
 				case MSX_MEM_HANDLER:
 				case MSX_MEM_ROM:
-					mem = memory_region(machine, "main") + option;
+					mem = memory_region(machine, "maincpu") + option;
 					break;
 				case MSX_MEM_RAM:
 					mem = NULL;
@@ -876,7 +853,7 @@ void msx_memory_init (running_machine *machine)
 			}
 			break;
 		case MSX_LAYOUT_KANJI_ENTRY:
-			msx1.kanji_mem = memory_region(machine, "main") + layout->option;
+			msx1.kanji_mem = memory_region(machine, "maincpu") + layout->option;
 			break;
 		case MSX_LAYOUT_RAMIO_SET_BITS_ENTRY:
 			msx1.ramio_set_bits = (UINT8)layout->option;

@@ -7,29 +7,20 @@
 
 /* Telmac 1800 */
 
-static CDP1861_ON_INT_CHANGED( tmc1800_int_w )
+static WRITE_LINE_DEVICE_HANDLER( tmc1800_efx_w )
 {
-	cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_INT, level);
-}
+	tmc1800_state *driver_state = device->machine->driver_data;
 
-static CDP1861_ON_DMAO_CHANGED( tmc1800_dmao_w )
-{
-	cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_DMAOUT, level);
-}
-
-static CDP1861_ON_EFX_CHANGED( tmc1800_efx_w )
-{
-	tmc1800_state *state = device->machine->driver_data;
-
-	state->cdp1861_efx = level;
+	driver_state->cdp1861_efx = state;
 }
 
 static CDP1861_INTERFACE( tmc1800_cdp1861_intf )
 {
+	CDP1802_TAG,
 	SCREEN_TAG,
-	tmc1800_int_w,
-	tmc1800_dmao_w,
-	tmc1800_efx_w
+	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, CDP1802_INPUT_LINE_INT),
+	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, CDP1802_INPUT_LINE_DMAOUT),
+	DEVCB_LINE(tmc1800_efx_w)
 };
 
 static VIDEO_UPDATE( tmc1800 )
@@ -43,30 +34,21 @@ static VIDEO_UPDATE( tmc1800 )
 
 /* Telmac 2000 */
 
-static CDP1864_ON_INT_CHANGED( tmc2000_int_w )
+static WRITE_LINE_DEVICE_HANDLER( tmc2000_efx_w )
 {
-	cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_INT, level);
-}
+	tmc2000_state *driver_state = device->machine->driver_data;
 
-static CDP1864_ON_DMAO_CHANGED( tmc2000_dmao_w )
-{
-	cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_DMAOUT, level);
-}
-
-static CDP1864_ON_EFX_CHANGED( tmc2000_efx_w )
-{
-	tmc2000_state *state = device->machine->driver_data;
-
-	state->cdp1864_efx = level;
+	driver_state->cdp1864_efx = state;
 }
 
 static CDP1864_INTERFACE( tmc2000_cdp1864_intf )
 {
+	CDP1802_TAG,
 	SCREEN_TAG,
 	CDP1864_INTERLACED,
-	tmc2000_int_w,
-	tmc2000_dmao_w,
-	tmc2000_efx_w,
+	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, CDP1802_INPUT_LINE_INT),
+	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, CDP1802_INPUT_LINE_DMAOUT),
+	DEVCB_LINE(tmc2000_efx_w),
 	RES_K(1.21),	// RL64
 	RES_K(2.05),	// RL63
 	RES_K(2.26),	// RL61
@@ -84,30 +66,21 @@ static VIDEO_UPDATE( tmc2000 )
 
 /* OSCOM Nano */
 
-static CDP1864_ON_INT_CHANGED( oscnano_int_w )
+static WRITE_LINE_DEVICE_HANDLER( oscnano_efx_w )
 {
-	cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_INT, level);
-}
+	oscnano_state *driver_state = device->machine->driver_data;
 
-static CDP1864_ON_DMAO_CHANGED( oscnano_dmao_w )
-{
-	cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_DMAOUT, level);
-}
-
-static CDP1864_ON_EFX_CHANGED( oscnano_efx_w )
-{
-	oscnano_state *state = device->machine->driver_data;
-
-	state->cdp1864_efx = level;
+	driver_state->cdp1864_efx = state;
 }
 
 static CDP1864_INTERFACE( oscnano_cdp1864_intf )
 {
+	CDP1802_TAG,
 	SCREEN_TAG,
 	CDP1864_INTERLACED,
-	oscnano_int_w,
-	oscnano_dmao_w,
-	oscnano_efx_w,
+	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, CDP1802_INPUT_LINE_INT),
+	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, CDP1802_INPUT_LINE_DMAOUT),
+	DEVCB_LINE(oscnano_efx_w),
 	RES_K(1.21), // R18 unconfirmed
 	0, // not connected
 	0, // not connected

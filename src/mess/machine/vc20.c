@@ -96,12 +96,12 @@ static WRITE8_DEVICE_HANDLER( vc20_via0_write_ca2 )
 
 	if(via0_ca2)
 	{
-		cassette_change_state(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ),CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
+		cassette_change_state(devtag_get_device(device->machine, "cassette"),CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
 		timer_adjust_periodic(datasette_timer, attotime_zero, 0, ATTOTIME_IN_HZ(44100));
 	}
 	else
 	{
-		cassette_change_state(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ),CASSETTE_MOTOR_DISABLED ,CASSETTE_MASK_MOTOR);
+		cassette_change_state(devtag_get_device(device->machine, "cassette"),CASSETTE_MOTOR_DISABLED ,CASSETTE_MASK_MOTOR);
 		timer_reset(datasette_timer, attotime_never);
 	}
 }
@@ -121,7 +121,7 @@ static READ8_DEVICE_HANDLER( vc20_via0_read_porta )
 	if (!serial_data || !cbm_serial_data_read (device->machine))
 		value &= ~0x02;
 
-	if ((cassette_get_state(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" )) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
+	if ((cassette_get_state(devtag_get_device(device->machine, "cassette")) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
 		value &= ~0x40;
 	else
 		value |=  0x40;
@@ -185,7 +185,7 @@ static READ8_DEVICE_HANDLER( vc20_via1_read_porta )
 
 static READ8_DEVICE_HANDLER( vc20_via1_read_ca1 )
 {
-	UINT8 data = (cassette_input(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" )) > +0.0) ? 1 : 0;
+	UINT8 data = (cassette_input(devtag_get_device(device->machine, "cassette")) > +0.0) ? 1 : 0;
 	return data;
 }
 
@@ -324,7 +324,7 @@ static WRITE8_DEVICE_HANDLER( vc20_via1_write_porta )
 static WRITE8_DEVICE_HANDLER( vc20_via1_write_portb )
 {
 /*  logerror("via1_write_portb: $%02X\n", data); */
-	cassette_output(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ), (data & 0x08) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
+	cassette_output(devtag_get_device(device->machine, "cassette"), (data & 0x08) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
 	via1_portb = data;
 }
 
@@ -403,66 +403,66 @@ static WRITE8_DEVICE_HANDLER( vc20_via5_write_cb2 )
 
 const via6522_interface vc20_via0 =
 {
-	vc20_via0_read_porta,
-	0,								   /*via0_read_portb, */
-	vc20_via0_read_ca1,
-	0,								   /*via0_read_cb1, */
-	vc20_via0_read_ca2,
-	0,								   /*via0_read_cb2, */
-	vc20_via0_write_porta,
-	0,								   /*via0_write_portb, */
-	0,                                 /*via0_write_ca1, */
-	0,                                 /*via0_write_cb1, */
-	vc20_via0_write_ca2,
-	0,								   /*via0_write_cb2, */
-	vc20_via0_irq
+	DEVCB_HANDLER(vc20_via0_read_porta),
+	DEVCB_NULL,								   /*via0_read_portb, */
+	DEVCB_HANDLER(vc20_via0_read_ca1),
+	DEVCB_NULL,								   /*via0_read_cb1, */
+	DEVCB_HANDLER(vc20_via0_read_ca2),
+	DEVCB_NULL,								   /*via0_read_cb2, */
+	DEVCB_HANDLER(vc20_via0_write_porta),
+	DEVCB_NULL,								   /*via0_write_portb, */
+	DEVCB_NULL,                                 /*via0_write_ca1, */
+	DEVCB_NULL,                                 /*via0_write_cb1, */
+	DEVCB_HANDLER(vc20_via0_write_ca2),
+	DEVCB_NULL,								   /*via0_write_cb2, */
+	DEVCB_LINE(vc20_via0_irq)
 }, vc20_via1 =
 {
-	vc20_via1_read_porta,
-	vc20_via1_read_portb,
-	vc20_via1_read_ca1,
-	vc20_via1_read_cb1,
-	0,								   /*via1_read_ca2, */
-	0,								   /*via1_read_cb2, */
-	vc20_via1_write_porta,								   /*via1_write_porta, */
-	vc20_via1_write_portb,
-	0,                                 /*via1_write_ca1, */
-	0,                                 /*via1_write_cb1, */
-	vc20_via1_write_ca2,
-	vc20_via1_write_cb2,
-	vc20_via1_irq
+	DEVCB_HANDLER(vc20_via1_read_porta),
+	DEVCB_HANDLER(vc20_via1_read_portb),
+	DEVCB_HANDLER(vc20_via1_read_ca1),
+	DEVCB_HANDLER(vc20_via1_read_cb1),
+	DEVCB_NULL,								   /*via1_read_ca2, */
+	DEVCB_NULL,								   /*via1_read_cb2, */
+	DEVCB_HANDLER(vc20_via1_write_porta),								   /*via1_write_porta, */
+	DEVCB_HANDLER(vc20_via1_write_portb),
+	DEVCB_NULL,                                 /*via1_write_ca1, */
+	DEVCB_NULL,                                 /*via1_write_cb1, */
+	DEVCB_HANDLER(vc20_via1_write_ca2),
+	DEVCB_HANDLER(vc20_via1_write_cb2),
+	DEVCB_LINE(vc20_via1_irq)
 },
 /* via2,3 used by vc1541 and 2031 disk drives */
 vc20_via4 =
 {
-	0, /*vc20_via4_read_porta, */
-	vc20_via4_read_portb,
-	0, /*vc20_via4_read_ca1, */
-	0, /*vc20_via5_read_cb1, */
-	0, /* via1_read_ca2 */
-	0,								   /*via1_read_cb2, */
-	0,								   /*via1_write_porta, */
-	vc20_via4_write_portb,
-	0,                                 /*via0_write_ca1, */
-	0,                                 /*via0_write_cb1, */
-	0, /*vc20_via5_write_ca2, */
-	0, /*vc20_via5_write_cb2, */
-	vc20_via1_irq
+	DEVCB_NULL, /*vc20_via4_read_porta, */
+	DEVCB_HANDLER(vc20_via4_read_portb),
+	DEVCB_NULL, /*vc20_via4_read_ca1, */
+	DEVCB_NULL, /*vc20_via5_read_cb1, */
+	DEVCB_NULL, /* via1_read_ca2 */
+	DEVCB_NULL,								   /*via1_read_cb2, */
+	DEVCB_NULL,								   /*via1_write_porta, */
+	DEVCB_HANDLER(vc20_via4_write_portb),
+	DEVCB_NULL,                                 /*via0_write_ca1, */
+	DEVCB_NULL,                                 /*via0_write_cb1, */
+	DEVCB_NULL, /*vc20_via5_write_ca2, */
+	DEVCB_NULL, /*vc20_via5_write_cb2, */
+	DEVCB_LINE(vc20_via1_irq)
 }, vc20_via5 =
 {
-	0,/*vc20_via5_read_porta, */
-	vc20_via5_read_portb,
-	0, /*vc20_via5_read_ca1, */
-	vc20_via5_read_cb1,
-	0,								   /*via1_read_ca2, */
-	0,								   /*via1_read_cb2, */
-	vc20_via5_write_porta,
-	0,/*vc20_via5_write_portb, */
-	0,                                 /*via0_write_ca1, */
-	0,                                 /*via0_write_cb1, */
-	vc20_via5_write_ca2,
-	vc20_via5_write_cb2,
-	vc20_via1_irq
+	DEVCB_NULL,/*vc20_via5_read_porta, */
+	DEVCB_HANDLER(vc20_via5_read_portb),
+	DEVCB_NULL, /*vc20_via5_read_ca1, */
+	DEVCB_HANDLER(vc20_via5_read_cb1),
+	DEVCB_NULL,								   /*via1_read_ca2, */
+	DEVCB_NULL,								   /*via1_read_cb2, */
+	DEVCB_HANDLER(vc20_via5_write_porta),
+	DEVCB_NULL,/*vc20_via5_write_portb, */
+	DEVCB_NULL,                                 /*via0_write_ca1, */
+	DEVCB_NULL,                                 /*via0_write_cb1, */
+	DEVCB_HANDLER(vc20_via5_write_ca2),
+	DEVCB_HANDLER(vc20_via5_write_cb2),
+	DEVCB_LINE(vc20_via1_irq)
 };
 
 WRITE8_HANDLER ( vc20_write_9400 )
@@ -478,7 +478,7 @@ int vic6560_dma_read_color (running_machine *machine, int offset)
 
 int vic6560_dma_read (running_machine *machine, int offset)
 {
-	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	/* should read real system bus between 0x9000 and 0xa000 */
 	return memory_read_byte(space, VIC6560ADDR2VC20ADDR (offset));
 }
@@ -519,7 +519,7 @@ WRITE8_HANDLER( vc20_6000_w )
 static void vc20_memory_init(running_machine *machine)
 {
 	static int inited = 0;
-	UINT8 *memory = memory_region (machine, "main");
+	UINT8 *memory = memory_region (machine, "maincpu");
 
 	if (inited) return;
 	/* power up values are random (more likely bit set)
@@ -556,8 +556,8 @@ static void vc20_memory_init(running_machine *machine)
 
 static TIMER_CALLBACK( vic20_tape_timer )
 {
-	const device_config *via_1 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_1");
-	UINT8 data = (cassette_input(device_list_find_by_tag(machine->config->devicelist, CASSETTE, "cassette" )) > +0.0) ? 1 : 0;
+	const device_config *via_1 = devtag_get_device(machine, "via6522_1");
+	UINT8 data = (cassette_input(devtag_get_device(machine, "cassette")) > +0.0) ? 1 : 0;
 	via_ca1_w(via_1, 0, data);
 }
 
@@ -612,16 +612,16 @@ DRIVER_INIT( vic20i )
 
 MACHINE_RESET( vic20 )
 {
-	const device_config *via_0 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
+	const device_config *via_0 = devtag_get_device(machine, "via6522_0");
 
 	if (has_vc1541)
 	{
-		serial_config(machine, &fake_drive_interface);
+		cbm_serial_config(machine, &cbm_fake_drive_interface);
 		drive_reset ();
 	}
 	else
 	{
-		serial_config(machine, &sim_drive_interface);
+		cbm_serial_config(machine, &cbm_sim_drive_interface);
 		cbm_serial_reset_write (machine, 0);
 
 		if (ieee) 
@@ -639,11 +639,11 @@ MACHINE_RESET( vic20 )
 	via_ca1_w(via_0, 0, vc20_via0_read_ca1(via_0, 0));
 
 	/* Set up memory banks */
-	memory_set_bankptr (machine,  1, ( ( mess_ram_size >=  8 * 1024 ) ? mess_ram : memory_region(machine, "main") ) + 0x0400 );
-	memory_set_bankptr (machine,  2, vc20_rom_2000 ? vc20_rom_2000 : ( ( ( mess_ram_size >= 16 * 1024 ) ? mess_ram : memory_region(machine, "main") ) + 0x2000 ) );
-	memory_set_bankptr (machine,  3, vc20_rom_4000 ? vc20_rom_4000 : ( ( ( mess_ram_size >= 24 * 1024 ) ? mess_ram : memory_region(machine, "main") ) + 0x4000 ) );
-	memory_set_bankptr (machine,  4, vc20_rom_6000 ? vc20_rom_6000 : ( ( ( mess_ram_size >= 32 * 1024 ) ? mess_ram : memory_region(machine, "main") ) + 0x6000 ) );
-	memory_set_bankptr (machine,  5, vc20_rom_a000 ? vc20_rom_a000 : ( memory_region(machine, "main") + 0xa000 ) );
+	memory_set_bankptr (machine,  1, ( ( mess_ram_size >=  8 * 1024 ) ? mess_ram : memory_region(machine, "maincpu") ) + 0x0400 );
+	memory_set_bankptr (machine,  2, vc20_rom_2000 ? vc20_rom_2000 : ( ( ( mess_ram_size >= 16 * 1024 ) ? mess_ram : memory_region(machine, "maincpu") ) + 0x2000 ) );
+	memory_set_bankptr (machine,  3, vc20_rom_4000 ? vc20_rom_4000 : ( ( ( mess_ram_size >= 24 * 1024 ) ? mess_ram : memory_region(machine, "maincpu") ) + 0x4000 ) );
+	memory_set_bankptr (machine,  4, vc20_rom_6000 ? vc20_rom_6000 : ( ( ( mess_ram_size >= 32 * 1024 ) ? mess_ram : memory_region(machine, "maincpu") ) + 0x6000 ) );
+	memory_set_bankptr (machine,  5, vc20_rom_a000 ? vc20_rom_a000 : ( memory_region(machine, "maincpu") + 0xa000 ) );
 }
 
 
@@ -663,7 +663,7 @@ static TIMER_CALLBACK( lightpen_tick )
 
 INTERRUPT_GEN( vic20_frame_interrupt )
 {
-	const device_config *via_0 = device_list_find_by_tag(device->machine->config->devicelist, VIA6522, "via6522_0");
+	const device_config *via_0 = devtag_get_device(device->machine, "via6522_0");
 
 	via_ca1_w(via_0, 0, vc20_via0_read_ca1(via_0, 0));
 	keyboard[0] = input_port_read(device->machine, "ROW0");
@@ -695,7 +695,6 @@ static DEVICE_START(vic20_cart)
 	vc20_rom_4000 = NULL;
 	vc20_rom_6000 = NULL;
 	vc20_rom_a000 = NULL;
-	return DEVICE_START_OK;
 }
 
 static DEVICE_IMAGE_LOAD(vic20_cart)

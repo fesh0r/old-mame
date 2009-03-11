@@ -19,8 +19,8 @@
 
 
 #define AYWriteReg(chip,port,value) \
-	ay8910_control_port_0_w(space, 0,port);  \
-	ay8910_write_port_0_w(space, 0,value)
+	ay8910_address_w(ay8910, 0,port);  \
+	ay8910_data_w(ay8910, 0,value)
 
 #define TAPE_HEADER "Colour Genie - Virtual Tape File"
 
@@ -83,7 +83,7 @@ static UINT8 cass_bit;
 
 static TIMER_CALLBACK( handle_cassette_input )
 {
-	UINT8 new_level = ( cassette_input( device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ) ) > 0.0 ) ? 1 : 0;
+	UINT8 new_level = ( cassette_input( devtag_get_device(machine, "cassette") ) > 0.0 ) ? 1 : 0;
 
 	if ( new_level != cass_level )
 	{
@@ -96,7 +96,8 @@ static TIMER_CALLBACK( handle_cassette_input )
 MACHINE_RESET( cgenie )
 {
 	const address_space *space = cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM );
-	UINT8 *ROM = memory_region(machine, "main");
+	const device_config *ay8910 = devtag_get_device(machine, "ay8910");
+	UINT8 *ROM = memory_region(machine, "maincpu");
 
 	/* reset the AY8910 to be quiet, since the cgenie BIOS doesn't */
 	AYWriteReg(0, 0, 0);
@@ -149,7 +150,7 @@ MACHINE_RESET( cgenie )
 		memory_install_read8_handler(space, 0xc000, 0xdfff, 0, 0, SMH_NOP);
 		memory_install_write8_handler(space, 0xc000, 0xdfff, 0, 0, SMH_NOP);
 		logerror("cgenie DOS disabled\n");
-		memset(&memory_region(machine, "main")[0x0c000], 0x00, 0x2000);
+		memset(&memory_region(machine, "maincpu")[0x0c000], 0x00, 0x2000);
 	}
 
 	/* copy EXT ROM, if enabled or wipe out that memory area */
@@ -158,15 +159,15 @@ MACHINE_RESET( cgenie )
 		memory_install_read8_handler(space, 0xe000, 0xefff, 0, 0, SMH_ROM);
 		memory_install_write8_handler(space, 0xe000, 0xefff, 0, 0, SMH_ROM);
 		logerror("cgenie EXT enabled\n");
-		memcpy(&memory_region(machine, "main")[0x0e000],
-			   &memory_region(machine, "main")[0x12000], 0x1000);
+		memcpy(&memory_region(machine, "maincpu")[0x0e000],
+			   &memory_region(machine, "maincpu")[0x12000], 0x1000);
 	}
 	else
 	{
 		memory_install_read8_handler(space, 0xe000, 0xefff, 0, 0, SMH_NOP);
 		memory_install_write8_handler(space, 0xe000, 0xefff, 0, 0, SMH_NOP);
 		logerror("cgenie EXT disabled\n");
-		memset(&memory_region(machine, "main")[0x0e000], 0x00, 0x1000);
+		memset(&memory_region(machine, "maincpu")[0x0e000], 0x00, 0x1000);
 	}
 
 	cass_level = 0;
@@ -256,7 +257,7 @@ DEVICE_IMAGE_LOAD( cgenie_floppy )
 				spt = pd_list[i].SPT / heads;
 				dir_sector = pd_list[i].DDSL * pd_list[i].GATM * pd_list[i].GPL + pd_list[i].SPT;
 				dir_length = pd_list[i].DDGA * pd_list[i].GPL;
-				memcpy(memory_region(image->machine, "main") + 0x5A71 + image_index_in_device(image) * sizeof(PDRIVE), &pd_list[i], sizeof(PDRIVE));
+				memcpy(memory_region(image->machine, "maincpu") + 0x5A71 + image_index_in_device(image) * sizeof(PDRIVE), &pd_list[i], sizeof(PDRIVE));
 				break;
 			}
 		}
@@ -321,7 +322,7 @@ WRITE8_HANDLER( cgenie_port_ff_w )
 {
 	int port_ff_changed = port_ff ^ data;
 
-	cassette_output ( device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ), data & 0x01 ? -1.0 : 1.0 );
+	cassette_output ( devtag_get_device(space->machine, "cassette"), data & 0x01 ? -1.0 : 1.0 );
 
 	/* background bits changed ? */
 	if( port_ff_changed & FF_BGD )
@@ -414,12 +415,12 @@ static UINT8 psg_b_out = 0x00;
 static UINT8 psg_a_inp = 0x00;
 static UINT8 psg_b_inp = 0x00;
 
- READ8_HANDLER( cgenie_psg_port_a_r )
+READ8_HANDLER( cgenie_psg_port_a_r )
 {
 	return psg_a_inp;
 }
 
- READ8_HANDLER( cgenie_psg_port_b_r )
+READ8_HANDLER( cgenie_psg_port_b_r )
 {
 	if( psg_a_out < 0xd0 )
 	{
@@ -476,7 +477,7 @@ WRITE8_HANDLER( cgenie_psg_port_b_w )
 
  READ8_HANDLER( cgenie_status_r )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
 	/* If the floppy isn't emulated, return 0 */
 	if( (input_port_read(space->machine, "DSW0") & 0x80) == 0 )
 		return 0;
@@ -485,7 +486,7 @@ WRITE8_HANDLER( cgenie_psg_port_b_w )
 
  READ8_HANDLER( cgenie_track_r )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
 	/* If the floppy isn't emulated, return 0xff */
 	if( (input_port_read(space->machine, "DSW0") & 0x80) == 0 )
 		return 0xff;
@@ -494,7 +495,7 @@ WRITE8_HANDLER( cgenie_psg_port_b_w )
 
  READ8_HANDLER( cgenie_sector_r )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
 	/* If the floppy isn't emulated, return 0xff */
 	if( (input_port_read(space->machine, "DSW0") & 0x80) == 0 )
 		return 0xff;
@@ -503,7 +504,7 @@ WRITE8_HANDLER( cgenie_psg_port_b_w )
 
  READ8_HANDLER(cgenie_data_r )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
 	/* If the floppy isn't emulated, return 0xff */
 	if( (input_port_read(space->machine, "DSW0") & 0x80) == 0 )
 		return 0xff;
@@ -512,7 +513,7 @@ WRITE8_HANDLER( cgenie_psg_port_b_w )
 
 WRITE8_HANDLER( cgenie_command_w )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
 	/* If the floppy isn't emulated, return immediately */
 	if( (input_port_read(space->machine, "DSW0") & 0x80) == 0 )
 		return;
@@ -521,7 +522,7 @@ WRITE8_HANDLER( cgenie_command_w )
 
 WRITE8_HANDLER( cgenie_track_w )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
 	/* If the floppy isn't emulated, ignore the write */
 	if( (input_port_read(space->machine, "DSW0") & 0x80) == 0 )
 		return;
@@ -530,7 +531,7 @@ WRITE8_HANDLER( cgenie_track_w )
 
 WRITE8_HANDLER( cgenie_sector_w )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
 	/* If the floppy isn't emulated, ignore the write */
 	if( (input_port_read(space->machine, "DSW0") & 0x80) == 0 )
 		return;
@@ -539,7 +540,7 @@ WRITE8_HANDLER( cgenie_sector_w )
 
 WRITE8_HANDLER( cgenie_data_w )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
 	/* If the floppy isn't emulated, ignore the write */
 	if( (input_port_read(space->machine, "DSW0") & 0x80) == 0 )
 		return;
@@ -592,7 +593,7 @@ const wd17xx_interface cgenie_wd17xx_interface = { cgenie_fdc_callback, NULL };
 
 WRITE8_HANDLER( cgenie_motor_w )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
 	UINT8 drive = 255;
 
 	logerror("cgenie motor_w $%02X\n", data);

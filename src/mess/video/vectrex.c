@@ -64,11 +64,11 @@ static WRITE8_DEVICE_HANDLER (v_via_cb2_w);
 
 const via6522_interface vectrex_via6522_interface =
 {
-	v_via_pa_r, v_via_pb_r,         /* read PA/B */
-	0, 0, 0, 0,                     /* read ca1, cb1, ca2, cb2 */
-	v_via_pa_w, v_via_pb_w,         /* write PA/B */
-	0, 0, v_via_ca2_w, v_via_cb2_w, /* write ca1, cb1, ca2, cb2 */
-	v_via_irq,                      /* IRQ */
+	DEVCB_HANDLER(v_via_pa_r), DEVCB_HANDLER(v_via_pb_r),         /* read PA/B */
+	DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL,                     /* read ca1, cb1, ca2, cb2 */
+	DEVCB_HANDLER(v_via_pa_w), DEVCB_HANDLER(v_via_pb_w),         /* write PA/B */
+	DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(v_via_ca2_w), DEVCB_HANDLER(v_via_cb2_w), /* write ca1, cb1, ca2, cb2 */
+	DEVCB_LINE(v_via_irq),                      /* IRQ */
 };
 
 static int x_center, y_center, x_max, y_max;
@@ -98,7 +98,7 @@ static TIMER_CALLBACK(lightpen_trigger)
 {
 	if (vectrex_lightpen_port & 1)
 	{
-		const device_config *via_0 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
+		const device_config *via_0 = devtag_get_device(machine, "via6522_0");
 		via_ca1_w(via_0, 0, 1);
 		via_ca1_w(via_0, 0, 0);
 	}
@@ -131,13 +131,13 @@ static TIMER_CALLBACK(lightpen_trigger)
 
 READ8_HANDLER(vectrex_via_r)
 {
-	const device_config *via = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_0");
+	const device_config *via = devtag_get_device(space->machine, "via6522_0");
 	return via_r(via, offset);
 }
 
 WRITE8_HANDLER(vectrex_via_w) 
 { 
-	const device_config *via = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_0");
+	const device_config *via = devtag_get_device(space->machine, "via6522_0");
 	attotime period;
 
 	switch (offset)
@@ -303,13 +303,13 @@ VIDEO_START(vectrex)
 	x_max = visarea->max_x << 16;
 	y_max = visarea->max_y << 16;
 
-	imager_freq = 1;
+	vectrex_imager_freq = 1;
 
-	imager_timer = timer_alloc(machine, vectrex_imager_eye, NULL);
-	timer_adjust_periodic(imager_timer, 
-						  ATTOTIME_IN_HZ(imager_freq),
+	vectrex_imager_timer = timer_alloc(machine, vectrex_imager_eye, NULL);
+	timer_adjust_periodic(vectrex_imager_timer, 
+						  ATTOTIME_IN_HZ(vectrex_imager_freq),
 						  2,
-						  ATTOTIME_IN_HZ(imager_freq));
+						  ATTOTIME_IN_HZ(vectrex_imager_freq));
 
 	lp_t = timer_alloc(machine, lightpen_trigger, NULL);
 
@@ -330,10 +330,12 @@ VIDEO_START(vectrex)
 
 static void vectrex_multiplexer(running_machine *machine, int mux)
 {
+	const device_config *dac_device = devtag_get_device(machine, "dac");
+
 	timer_set(machine, ATTOTIME_IN_NSEC(ANALOG_DELAY), &analog[mux], vectrex_via_out[PORTA], update_signal);
 
 	if (mux == A_AUDIO)
-		dac_data_w(0, vectrex_via_out[PORTA]);
+		dac_data_w(dac_device, vectrex_via_out[PORTA]);
 }
 
 
@@ -402,12 +404,12 @@ static WRITE8_DEVICE_HANDLER(v_via_pb_w)
 	/* Sound */
 	if (data & 0x10)
 	{
-		const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+		const device_config *ay8912 = devtag_get_device(device->machine, "ay8912");
 
 		if (data & 0x08) /* BC1 (do we select a reg or write it ?) */
-			ay8910_control_port_0_w(space, 0, vectrex_via_out[PORTA]);
+			ay8910_address_w(ay8912, 0, vectrex_via_out[PORTA]);
 		else
-			ay8910_write_port_0_w(space, 0, vectrex_via_out[PORTA]);
+			ay8910_data_w(ay8912, 0, vectrex_via_out[PORTA]);
 	}
 
 	if (!(data & 0x1) && (vectrex_via_out[PORTB] & 0x1))
@@ -475,9 +477,9 @@ static WRITE8_DEVICE_HANDLER(v_via_cb2_w)
 
 const via6522_interface spectrum1_via6522_interface =
 {
-	/*inputs : A/B,CA/B1,CA/B2 */ v_via_pa_r, s1_via_pb_r, 0, 0, 0, 0,
-	/*outputs: A/B,CA/B1,CA/B2 */ v_via_pa_w, v_via_pb_w, 0, 0, v_via_ca2_w, v_via_cb2_w,
-	/*irq                      */ v_via_irq,
+	/*inputs : A/B,CA/B1,CA/B2 */ DEVCB_HANDLER(v_via_pa_r), DEVCB_HANDLER(s1_via_pb_r), DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL,
+	/*outputs: A/B,CA/B1,CA/B2 */ DEVCB_HANDLER(v_via_pa_w), DEVCB_HANDLER(v_via_pb_w), DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(v_via_ca2_w), DEVCB_HANDLER(v_via_cb2_w),
+	/*irq                      */ DEVCB_LINE(v_via_irq),
 };
 
 

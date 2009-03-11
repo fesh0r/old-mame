@@ -21,8 +21,8 @@
 #include "machine/pit8253.h"
 #include "machine/nec765.h"
 #include "machine/msm8251.h"
+#include "machine/ctronics.h"
 #include "devices/basicdsk.h"
-#include "devices/printer.h"
 
 
 /*-------------------------------------------------------------------------*/
@@ -92,8 +92,8 @@ static struct i186_state
 } i186;
 
 static struct {
-	device_config	*pic8259_master;
-	device_config	*pic8259_slave;
+	const device_config	*pic8259_master;
+	const device_config	*pic8259_slave;
 } compis_devices;
 
 /* Keyboard */
@@ -207,16 +207,6 @@ static void compis_osp_pic_irq(UINT8 irq)
 	}
 }
 
-READ16_DEVICE_HANDLER ( compis_osp_pic_r )
-{
-	return pic8259_r(device, offset);
-}
-
-WRITE16_DEVICE_HANDLER ( compis_osp_pic_w )
-{
-	pic8259_w(device, offset, data);
-}
-
 /*-------------------------------------------------------------------------*/
 /*  Keyboard                                                               */
 /*-------------------------------------------------------------------------*/
@@ -229,7 +219,7 @@ static void compis_keyb_update(running_machine *machine)
 	UINT16 data;
 	UINT16 ibit;
 	static const char *const rownames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5" };
-	
+
 	key_code = 0;
 	key_status = 0x80;
 
@@ -288,8 +278,8 @@ static void compis_keyb_init(void)
 /*-------------------------------------------------------------------------*/
 static void compis_fdc_reset(running_machine *machine)
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( machine->config->devicelist, NEC765A, "nec765");		
-	
+	const device_config *fdc = devtag_get_device(machine, "nec765");
+
 	nec765_reset(fdc, 0);
 
 	/* set FDC at reset */
@@ -298,7 +288,7 @@ static void compis_fdc_reset(running_machine *machine)
 
 static void compis_fdc_tc(running_machine *machine, int state)
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( machine->config->devicelist, NEC765A, "nec765");
+	const device_config *fdc = devtag_get_device(machine, "nec765");
 	/* Terminal count if iSBX-218A has DMA enabled */
   	if (input_port_read(machine, "DSW1"))
 	{
@@ -334,9 +324,9 @@ const nec765_interface compis_fdc_interface =
 
 READ16_HANDLER (compis_fdc_dack_r)
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, NEC765A, "nec765");
+	const device_config *fdc = devtag_get_device(space->machine, "nec765");
 	UINT16 data;
-	data = 0xffff;	
+	data = 0xffff;
 	/* DMA acknowledge if iSBX-218A has DMA enabled */
   	if (input_port_read(space->machine, "DSW1"))
   	{
@@ -348,7 +338,7 @@ READ16_HANDLER (compis_fdc_dack_r)
 
 WRITE16_HANDLER (compis_fdc_w)
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, NEC765A, "nec765");
+	const device_config *fdc = devtag_get_device(space->machine, "nec765");
 	switch(offset)
 	{
 		case 2:
@@ -362,7 +352,7 @@ WRITE16_HANDLER (compis_fdc_w)
 
 READ16_HANDLER (compis_fdc_r)
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, NEC765A, "nec765");
+	const device_config *fdc = devtag_get_device(space->machine, "nec765");
 	UINT16 data;
 	data = 0xffff;
 	switch(offset)
@@ -384,29 +374,6 @@ READ16_HANDLER (compis_fdc_r)
 
 
 /*-------------------------------------------------------------------------*/
-/*  PPI 8255                                                               */
-/*-------------------------------------------------------------------------*/
-
-static const device_config *printer_device(running_machine *machine)
-{
-	return device_list_find_by_tag(machine->config->devicelist, PRINTER, "printer");
-}
-
-/*-------------------------------------------------------------------------*/
-/* Bit 0: J7-2 Centronics D0           		                           */
-/* Bit 1: J7-3 Centronics D1           		                           */
-/* Bit 2: J7-4 Centronics D2           		                           */
-/* Bit 3: J7-5 Centronics D3          		                           */
-/* Bit 4: J7-6 Centronics D4          		                           */
-/* Bit 5: J7-7 Centronics D5           		                           */
-/* Bit 6: J7-8 Centronics D6           		                           */
-/* Bit 7: J7-9 Centronics D7          		                           */
-/*-------------------------------------------------------------------------*/
-static WRITE8_DEVICE_HANDLER ( compis_ppi_port_a_w )
-{
-	compis.printer.data = data;
-}
-/*-------------------------------------------------------------------------*/
 /* Bit 0: J5-4                                                             */
 /* Bit 1: J5-5          		                                   */
 /* Bit 2: J6-3 Cassette read                                               */
@@ -416,7 +383,7 @@ static WRITE8_DEVICE_HANDLER ( compis_ppi_port_a_w )
 /* Bit 6: J7-13 Centronics SELECT			                   */
 /* Bit 7: Tmr0			      	                                   */
 /*-------------------------------------------------------------------------*/
-static READ8_DEVICE_HANDLER ( compis_ppi_port_b_r )
+static READ8_DEVICE_HANDLER( compis_ppi_port_b_r )
 {
 	UINT8 data;
 
@@ -424,11 +391,12 @@ static READ8_DEVICE_HANDLER ( compis_ppi_port_b_r )
 	data = input_port_read(device->machine, "DSW0");
 
 	/* Centronics busy */
-	if (!printer_is_ready(printer_device(device->machine)))
-		data |= 0x20;
+	data |= centronics_busy_r(device) << 5;
+	data |= centronics_vcc_r(device) << 6;
 
-	return 	data;
+	return data;
 }
+
 /*-------------------------------------------------------------------------*/
 /* Bit 0: J5-1                       		                           */
 /* Bit 1: J5-2                         		                           */
@@ -439,40 +407,29 @@ static READ8_DEVICE_HANDLER ( compis_ppi_port_b_r )
 /* Bit 6: V2-4 Floppy Soft reset   			                   */
 /* Bit 7: V2-3 Floppy Terminal count      	                           */
 /*-------------------------------------------------------------------------*/
-static WRITE8_DEVICE_HANDLER ( compis_ppi_port_c_w )
+static WRITE8_DEVICE_HANDLER( compis_ppi_port_c_w )
 {
 	/* Centronics Strobe */
-	if ((compis.printer.strobe) && !(data & 0x20))
-		printer_output(printer_device(device->machine), compis.printer.data);
-	compis.printer.strobe = ((data & 0x20)?1:0);
+	centronics_strobe_w(device, BIT(data, 5));
 
 	/* FDC Reset */
-	if (data & 0x40)
+	if (BIT(data, 6))
 		compis_fdc_reset(device->machine);
 
 	/* FDC Terminal count */
-	compis_fdc_tc(device->machine, (data & 0x80)?1:0);
+	compis_fdc_tc(device->machine, BIT(data, 7));
 }
 
 const ppi8255_interface compis_ppi_interface =
 {
-    NULL,
-    compis_ppi_port_b_r,
-    NULL,
-    compis_ppi_port_a_w,
-    NULL,
-    compis_ppi_port_c_w
+	DEVCB_NULL,
+	DEVCB_DEVICE_HANDLER("centronics", compis_ppi_port_b_r),
+	DEVCB_NULL,
+	DEVCB_DEVICE_HANDLER("centronics", centronics_data_w),
+	DEVCB_NULL,
+	DEVCB_DEVICE_HANDLER("centronics", compis_ppi_port_c_w)
 };
 
-READ16_DEVICE_HANDLER ( compis_ppi_r )
-{
-	return ppi8255_r(device, offset);
-}
-
-WRITE16_DEVICE_HANDLER ( compis_ppi_w )
-{
-	ppi8255_w(device, offset, data);
-}
 
 /*-------------------------------------------------------------------------*/
 /*  PIT 8253                                                               */
@@ -502,16 +459,6 @@ const struct pit8253_config compis_pit8254_config =
 	}
 };
 
-READ16_DEVICE_HANDLER ( compis_pit_r )
-{
-	return pit8253_r(device, offset);
-}
-
-WRITE16_DEVICE_HANDLER ( compis_pit_w )
-{
-	pit8253_w(device, offset , data);
-}
-
 /*-------------------------------------------------------------------------*/
 /*  OSP PIT 8254                                                           */
 /*-------------------------------------------------------------------------*/
@@ -526,19 +473,6 @@ WRITE16_DEVICE_HANDLER ( compis_osp_pit_w )
 	pit8253_w(device, offset, data);
 }
 
-/*-------------------------------------------------------------------------*/
-/*  RTC 58174                                                              */
-/*-------------------------------------------------------------------------*/
-
-READ16_HANDLER ( compis_rtc_r )
-{
-	return mm58274c_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, MM58274C, "mm58274c"), offset);
-}
-
-WRITE16_HANDLER ( compis_rtc_w )
-{
-	mm58274c_w((device_config*)device_list_find_by_tag( space->machine->config->devicelist, MM58274C, "mm58274c"), offset, data);
-}
 
 /*-------------------------------------------------------------------------*/
 /*  USART 8251                                                             */
@@ -560,13 +494,13 @@ const msm8251_interface compis_usart_interface=
 
 READ16_HANDLER ( compis_usart_r )
 {
-	const device_config *uart = device_list_find_by_tag(space->machine->config->devicelist, MSM8251, "uart");
+	const device_config *uart = devtag_get_device(space->machine, "uart");
 	return msm8251_data_r(uart, offset);
 }
 
 WRITE16_HANDLER ( compis_usart_w )
 {
-	const device_config *uart = device_list_find_by_tag(space->machine->config->devicelist, MSM8251, "uart");
+	const device_config *uart = devtag_get_device(space->machine, "uart");
 	switch (offset)
 	{
 		case 0x00:
@@ -1499,7 +1433,7 @@ static void compis_cpu_init(running_machine *machine)
  * pic8259 configuration
  *
  *************************************************************/
- 
+
 static PIC8259_SET_INT_LINE( compis_pic8259_master_set_int_line ) {
 	cpu_set_input_line(device->machine->cpu[0], 0, interrupt ? HOLD_LINE : CLEAR_LINE);
 }
@@ -1559,8 +1493,8 @@ MACHINE_RESET( compis )
 	/* OSP PIC 8259 */
 	cpu_set_irq_callback(machine->cpu[0], compis_irq_callback);
 
-	compis_devices.pic8259_master = (device_config*)device_list_find_by_tag( machine->config->devicelist, PIC8259, "pic8259_master" );
-	compis_devices.pic8259_slave = (device_config*)device_list_find_by_tag( machine->config->devicelist, PIC8259, "pic8259_slave" );
+	compis_devices.pic8259_master = devtag_get_device(machine, "pic8259_master");
+	compis_devices.pic8259_slave = devtag_get_device(machine, "pic8259_slave");
 }
 
 /*-------------------------------------------------------------------------*/

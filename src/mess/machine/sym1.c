@@ -33,37 +33,37 @@ static emu_timer *led_update;
 ******************************************************************************/
 
 
-TTL74145_OUTPUT_LINE(sym1_74145_output_0_w)
+static WRITE_LINE_DEVICE_HANDLER( sym1_74145_output_0_w )
 {
 	if (state) timer_adjust_oneshot(led_update, LED_REFRESH_DELAY, 0);
 }
 
 
-TTL74145_OUTPUT_LINE(sym1_74145_output_1_w)
+static WRITE_LINE_DEVICE_HANDLER( sym1_74145_output_1_w )
 {
 	if (state) timer_adjust_oneshot(led_update, LED_REFRESH_DELAY, 1);
 }
 
 
-TTL74145_OUTPUT_LINE(sym1_74145_output_2_w)
+static WRITE_LINE_DEVICE_HANDLER( sym1_74145_output_2_w )
 {
 	if (state) timer_adjust_oneshot(led_update, LED_REFRESH_DELAY, 2);
 }
 
 
-TTL74145_OUTPUT_LINE(sym1_74145_output_3_w)
+static WRITE_LINE_DEVICE_HANDLER( sym1_74145_output_3_w )
 {
 	if (state) timer_adjust_oneshot(led_update, LED_REFRESH_DELAY, 3);
 }
 
 
-TTL74145_OUTPUT_LINE(sym1_74145_output_4_w)
+static WRITE_LINE_DEVICE_HANDLER( sym1_74145_output_4_w )
 {
 	if (state) timer_adjust_oneshot(led_update, LED_REFRESH_DELAY, 4);
 }
 
 
-TTL74145_OUTPUT_LINE(sym1_74145_output_5_w)
+static WRITE_LINE_DEVICE_HANDLER( sym1_74145_output_5_w )
 {
 	if (state) timer_adjust_oneshot(led_update, LED_REFRESH_DELAY, 5);
 }
@@ -72,13 +72,6 @@ TTL74145_OUTPUT_LINE(sym1_74145_output_5_w)
 static TIMER_CALLBACK( led_refresh )
 {
 	output_set_digit_value(param, riot_port_a);
-}
-
-
-/* The speaker is connected to output 6 of the 74145 */
-TTL74145_OUTPUT_LINE(sym1_74145_output_6_w)
-{
-	speaker_level_w(0, state);
 }
 
 
@@ -137,7 +130,7 @@ static void sym1_riot_b_w(const device_config *device, UINT8 newdata, UINT8 data
 	riot_port_b = data;
 
 	/* first 4 pins are connected to the 74145 */
-	ttl74145_w( (device_config*)device_list_find_by_tag( device->machine->config->devicelist, TTL74145, "ttl74145" ), 0, data & 0x0f);
+	ttl74145_w(devtag_get_device(device->machine, "ttl74145"), 0, data & 0x0f);
 }
 
 
@@ -152,16 +145,16 @@ const riot6532_interface sym1_r6532_interface =
 
 const ttl74145_interface sym1_ttl74145_intf =
 {
-	sym1_74145_output_0_w,  /* connected to DS0 */
-	sym1_74145_output_1_w,  /* connected to DS1 */
-	sym1_74145_output_2_w,  /* connected to DS2 */
-	sym1_74145_output_3_w,  /* connected to DS3 */
-	sym1_74145_output_4_w,  /* connected to DS4 */
-	sym1_74145_output_5_w,  /* connected to DS5 */
-	sym1_74145_output_6_w,  /* connected to the speaker */
-	NULL,                   /* not connected */
-	NULL,                   /* not connected */
-	NULL                    /* not connected */
+	DEVCB_LINE(sym1_74145_output_0_w),  /* connected to DS0 */
+	DEVCB_LINE(sym1_74145_output_1_w),  /* connected to DS1 */
+	DEVCB_LINE(sym1_74145_output_2_w),  /* connected to DS2 */
+	DEVCB_LINE(sym1_74145_output_3_w),  /* connected to DS3 */
+	DEVCB_LINE(sym1_74145_output_4_w),  /* connected to DS4 */
+	DEVCB_LINE(sym1_74145_output_5_w),  /* connected to DS5 */
+	DEVCB_DEVICE_LINE("speaker", speaker_level_w),
+	DEVCB_NULL,	/* not connected */
+	DEVCB_NULL,	/* not connected */
+	DEVCB_NULL	/* not connected */
 };
 
 
@@ -215,55 +208,55 @@ static WRITE8_DEVICE_HANDLER( sym1_via2_a_w )
 
 const via6522_interface sym1_via0 =
 {
-	NULL,           /* VIA Port A Input */
-	sym1_via0_b_r,  /* VIA Port B Input */
-	NULL,           /* VIA Port CA1 Input */
-	NULL,           /* VIA Port CB1 Input */
-	NULL,           /* VIA Port CA2 Input */
-	NULL,           /* VIA Port CB2 Input */
-	NULL,           /* VIA Port A Output */
-	sym1_via0_b_w,  /* VIA Port B Output */
-	NULL,           /* VIA Port CA1 Output */
-	NULL,           /* VIA Port CB1 Output */
-	NULL,           /* VIA Port CA2 Output */
-	NULL,           /* VIA Port CB2 Output */
-	sym1_irq        /* VIA IRQ Callback */
+	DEVCB_NULL,           /* VIA Port A Input */
+	DEVCB_HANDLER(sym1_via0_b_r),  /* VIA Port B Input */
+	DEVCB_NULL,           /* VIA Port CA1 Input */
+	DEVCB_NULL,           /* VIA Port CB1 Input */
+	DEVCB_NULL,           /* VIA Port CA2 Input */
+	DEVCB_NULL,           /* VIA Port CB2 Input */
+	DEVCB_NULL,           /* VIA Port A Output */
+	DEVCB_HANDLER(sym1_via0_b_w),  /* VIA Port B Output */
+	DEVCB_NULL,           /* VIA Port CA1 Output */
+	DEVCB_NULL,           /* VIA Port CB1 Output */
+	DEVCB_NULL,           /* VIA Port CA2 Output */
+	DEVCB_NULL,           /* VIA Port CB2 Output */
+	DEVCB_LINE(sym1_irq)        /* VIA IRQ Callback */
 };
 
 
 const via6522_interface sym1_via1 =
 {
-	NULL,           /* VIA Port A Input */
-	NULL,           /* VIA Port B Input */
-	NULL,           /* VIA Port CA1 Input */
-	NULL,           /* VIA Port CB1 Input */
-	NULL,           /* VIA Port CA2 Input */
-	NULL,           /* VIA Port CB2 Input */
-	NULL,           /* VIA Port A Output */
-	NULL,           /* VIA Port B Output */
-	NULL,           /* VIA Port CA1 Output */
-	NULL,           /* VIA Port CB1 Output */
-	NULL,           /* VIA Port CA2 Output */
-	NULL,           /* VIA Port CB2 Output */
-	sym1_irq        /* VIA IRQ Callback */
+	DEVCB_NULL,           /* VIA Port A Input */
+	DEVCB_NULL,           /* VIA Port B Input */
+	DEVCB_NULL,           /* VIA Port CA1 Input */
+	DEVCB_NULL,           /* VIA Port CB1 Input */
+	DEVCB_NULL,           /* VIA Port CA2 Input */
+	DEVCB_NULL,           /* VIA Port CB2 Input */
+	DEVCB_NULL,           /* VIA Port A Output */
+	DEVCB_NULL,           /* VIA Port B Output */
+	DEVCB_NULL,           /* VIA Port CA1 Output */
+	DEVCB_NULL,           /* VIA Port CB1 Output */
+	DEVCB_NULL,           /* VIA Port CA2 Output */
+	DEVCB_NULL,           /* VIA Port CB2 Output */
+	DEVCB_LINE(sym1_irq)        /* VIA IRQ Callback */
 };
 
 
 const via6522_interface sym1_via2 =
 {
-	NULL,           /* VIA Port A Input */
-	NULL,           /* VIA Port B Input */
-	NULL,           /* VIA Port CA1 Input */
-	NULL,           /* VIA Port CB1 Input */
-	NULL,           /* VIA Port CA2 Input */
-	NULL,           /* VIA Port CB2 Input */
-	sym1_via2_a_w,  /* VIA Port A Output */
-	NULL,           /* VIA Port B Output */
-	NULL,           /* VIA Port CA1 Output */
-	NULL,           /* VIA Port CB1 Output */
-	NULL,           /* VIA Port CA2 Output */
-	NULL,           /* VIA Port CB2 Output */
-	sym1_irq        /* VIA IRQ Callback */
+	DEVCB_NULL,           /* VIA Port A Input */
+	DEVCB_NULL,           /* VIA Port B Input */
+	DEVCB_NULL,           /* VIA Port CA1 Input */
+	DEVCB_NULL,           /* VIA Port CB1 Input */
+	DEVCB_NULL,           /* VIA Port CA2 Input */
+	DEVCB_NULL,           /* VIA Port CB2 Input */
+	DEVCB_HANDLER(sym1_via2_a_w),  /* VIA Port A Output */
+	DEVCB_NULL,           /* VIA Port B Output */
+	DEVCB_NULL,           /* VIA Port CA1 Output */
+	DEVCB_NULL,           /* VIA Port CB1 Output */
+	DEVCB_NULL,           /* VIA Port CA2 Output */
+	DEVCB_NULL,           /* VIA Port CB2 Output */
+	DEVCB_LINE(sym1_irq)        /* VIA IRQ Callback */
 };
 
 
@@ -294,5 +287,5 @@ MACHINE_RESET( sym1 )
 	memory_install_readwrite8_handler(cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM ),
 			0xf800, 0xffff, 0, 0, SMH_BANK1, SMH_NOP);
 	memory_set_bankptr(machine, 1, sym1_monitor + 0x800);
-	device_reset(cputag_get_cpu(machine, "main"));
+	device_reset(cputag_get_cpu(machine, "maincpu"));
 }

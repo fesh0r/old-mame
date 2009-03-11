@@ -8,7 +8,7 @@
 
 #include "driver.h"
 #include "cpu/cdp1802/cdp1802.h"
-#include "video/cdp1869.h"
+#include "sound/cdp1869.h"
 #include "devices/cassette.h"
 #include "includes/pecom.h"
  
@@ -36,7 +36,7 @@ MACHINE_START( pecom )
 
 MACHINE_RESET( pecom )
 {
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(machine, "maincpu");
 	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	
 	pecom_state *state = machine->driver_data;
@@ -62,9 +62,9 @@ MACHINE_RESET( pecom )
 
 WRITE8_HANDLER( pecom_bank_w )
 {
-	const device_config *cdp1869 = device_list_find_by_tag(space->machine->config->devicelist, CDP1869_VIDEO, CDP1869_TAG);
+	const device_config *cdp1869 = devtag_get_device(space->machine, CDP1869_TAG);
 	const address_space *space2 = cpu_get_address_space(space->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
-	UINT8 *rom = memory_region(space->machine, "main");
+	UINT8 *rom = memory_region(space->machine, "maincpu");
 	memory_install_write8_handler(cpu_get_address_space(space->machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0, SMH_BANK1);
 	memory_set_bankptr(space->machine, 1, mess_ram + 0x0000);
 		
@@ -110,7 +110,7 @@ static CDP1802_MODE_READ( pecom64_mode_r )
 
 static const device_config *cassette_device_image(running_machine *machine)
 {
-	return devtag_get_device(machine, CASSETTE, "cassette");
+	return devtag_get_device(machine, "cassette");
 }
 
 static CDP1802_EF_READ( pecom64_ef_r )

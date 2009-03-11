@@ -229,30 +229,25 @@ void cbmb_irq(const device_config *device, int level)
   pb7 .. 4 gameport 2
   pb3 .. 0 gameport 1
  */
-static UINT8 cbmb_cia_port_a_r(const device_config *device)
+static READ8_DEVICE_HANDLER( cbmb_cia_port_a_r )
 {
 	return cbm_ieee_data_r(device->machine);
 }
 
-static void cbmb_cia_port_a_w(const device_config *device, UINT8 data)
+static WRITE8_DEVICE_HANDLER( cbmb_cia_port_a_w )
 {
 	cbm_ieee_data_w(device->machine, 0, data);
 }
 
-static void cbmb_tpi6525_0_irq2_level( const device_config *device, int level )
-{
-	const device_config *tpi_0 = devtag_get_device(device->machine, TPI6525, "tpi6525_0");
-	tpi6525_irq2_level(tpi_0, level);
-}
-
 const cia6526_interface cbmb_cia =
 {
-	cbmb_tpi6525_0_irq2_level,
+	DEVCB_DEVICE_LINE("tpi6525_0", tpi6525_irq2_level),
+	DEVCB_NULL,	/* pc_func */
 	60,
 
 	{
-		{ cbmb_cia_port_a_r, cbmb_cia_port_a_w },
-		{ 0, 0 }
+		{ DEVCB_HANDLER(cbmb_cia_port_a_r), DEVCB_HANDLER(cbmb_cia_port_a_w) },
+		{ DEVCB_NULL, DEVCB_NULL }
 	}
 };
 
@@ -282,7 +277,7 @@ WRITE8_DEVICE_HANDLER( cbmb_change_font )
 static void cbmb_common_driver_init(running_machine *machine)
 {
 	cbmb_state *state = machine->driver_data;
-	cbmb_chargen=memory_region(machine, "main") + 0x100000;
+	cbmb_chargen=memory_region(machine, "maincpu") + 0x100000;
 	/*    memset(c64_memory, 0, 0xfd00); */
 
 	timer_pulse(machine, ATTOTIME_IN_MSEC(10), NULL, 0, cbmb_frame_interrupt);
@@ -335,8 +330,6 @@ DRIVER_INIT( p500 )
 
 MACHINE_RESET( cbmb )
 {
-	sndti_reset(SOUND_SID6581, 0);
-
 	cbm_drive_0_config (IEEE8ON ? IEEE : 0, 8);
 	cbm_drive_1_config (IEEE9ON ? IEEE : 0, 9);
 }
@@ -345,7 +338,7 @@ MACHINE_RESET( cbmb )
 static TIMER_CALLBACK(cbmb_frame_interrupt)
 {
 	static int level = 0;
-	const device_config *tpi_0 = devtag_get_device(machine, TPI6525, "tpi6525_0");
+	const device_config *tpi_0 = devtag_get_device(machine, "tpi6525_0");
 
 #if 0
 	int controller1 = input_port_read(machine, "CTRLSEL") & 0x07;

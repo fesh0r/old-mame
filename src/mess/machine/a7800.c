@@ -21,15 +21,14 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "includes/a7800.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/tiasound.h"
-#include "hash.h"
-#include "image.h"
 #include "machine/6532riot.h"
 #include "sound/pokey.h"
 #include "sound/tiaintf.h"
+#include "hash.h"
 
-#include "includes/a7800.h"
 
 int a7800_lines;
 int a7800_ispal;
@@ -48,44 +47,37 @@ static unsigned char a7800_stick_type;
 static UINT8 *ROM;
 
 
-/****** RIOT ****************************************/
+/***************************************************************************
+    6532 RIOT
+***************************************************************************/
 
-/* TODO: Convert the definitions into a syntax accepting input_port_read */
-
-static UINT8 riot_input_port_0_r(const device_config *device, UINT8 olddata)
-{	
-	return input_port_0_r(cpu_get_address_space(device->machine->cpu[0],ADDRESS_SPACE_PROGRAM), 0);
+static UINT8 riot_joystick_r(const device_config *device, UINT8 olddata)
+{
+	return input_port_read(device->machine, "joysticks");
 }
 
-static UINT8 riot_input_port_3_r(const device_config *device, UINT8 olddata)
+static UINT8 riot_console_button_r(const device_config *device, UINT8 olddata)
 {
-	return input_port_3_r(cpu_get_address_space(device->machine->cpu[0],ADDRESS_SPACE_PROGRAM), 0);
+	return input_port_read(device->machine, "console_buttons");
 }
 
-const riot6532_interface r6532_interface_ntsc =
+const riot6532_interface a7800_r6532_interface =
 {
-	riot_input_port_0_r,
-	riot_input_port_3_r,
+	riot_joystick_r,
+	riot_console_button_r,
 	NULL,
 	NULL
 };
 
-const riot6532_interface r6532_interface_pal =
-{
-	riot_input_port_0_r,
-	riot_input_port_3_r,
-	NULL,
-	NULL
-};
 
-/* -----------------------------------------------------------------------
- * Driver/Machine Init
- * ----------------------------------------------------------------------- */
+/***************************************************************************
+    DRIVER INIT
+***************************************************************************/
 
 static void a7800_driver_init(running_machine *machine, int ispal, int lines)
 {
 	const address_space* space = cpu_get_address_space(machine->cpu[0],ADDRESS_SPACE_PROGRAM);
-	ROM = memory_region(machine, "main");
+	ROM = memory_region(machine, "maincpu");
 	a7800_ispal = ispal;
 	a7800_lines = lines;
 
@@ -104,19 +96,16 @@ static void a7800_driver_init(running_machine *machine, int ispal, int lines)
 }
 
 
-
 DRIVER_INIT( a7800_ntsc )
 {
 	a7800_driver_init(machine, FALSE, 262);
 }
 
 
-
 DRIVER_INIT( a7800_pal )
 {
 	a7800_driver_init(machine, TRUE, 312);
 }
-
 
 
 MACHINE_RESET( a7800 )
@@ -129,7 +118,7 @@ MACHINE_RESET( a7800 )
 	maria_flag = 0;
 
 	/* set banks to default states */
-	memory = memory_region(machine, "main");
+	memory = memory_region(machine, "maincpu");
 	memory_set_bankptr(machine,  1, memory + 0x4000 );
 	memory_set_bankptr(machine,  2, memory + 0x8000 );
 	memory_set_bankptr(machine,  3, memory + 0xA000 );
@@ -138,14 +127,16 @@ MACHINE_RESET( a7800 )
 	/* pokey cartridge */
 	if (a7800_cart_type & 0x01)
 	{
-		memory_install_read8_handler(space, 0x4000, 0x7FFF, 0, 0, pokey1_r);
-		memory_install_write8_handler(space, 0x4000, 0x7FFF, 0, 0, pokey1_w);
+		const device_config *pokey = devtag_get_device(machine, "pokey");
+		memory_install_read8_device_handler(space, pokey, 0x4000, 0x7FFF, 0, 0, pokey_r);
+		memory_install_write8_device_handler(space, pokey, 0x4000, 0x7FFF, 0, 0, pokey_w);
 	}
 }
 
 
-
-/* ----------------------------------------------------------------------- */
+/***************************************************************************
+    CARTRIDGE HANDLING
+***************************************************************************/
 
 #define MBANK_TYPE_ATARI 0x0000
 #define MBANK_TYPE_ACTIVISION 0x0100
@@ -192,7 +183,6 @@ void a7800_partialhash(char *dest, const unsigned char *data,
 }
 
 
-
 static int a7800_verify_cart(char header[128])
 {
 	const char* tag = "ATARI7800";
@@ -207,11 +197,12 @@ static int a7800_verify_cart(char header[128])
 	return IMAGE_VERIFY_PASS;
 }
 
+
 DEVICE_START( a7800_cart )
 {
 	UINT8	*memory;
 
-	memory = memory_region(device->machine, "main");
+	memory = memory_region(device->machine, "maincpu");
 	a7800_bios_bkup = NULL;
 	a7800_cart_bkup = NULL;
 
@@ -225,8 +216,8 @@ DEVICE_START( a7800_cart )
 	/* defaults for PAL bios without cart */
 	a7800_cart_type = 0;
 	a7800_stick_type = 1;
-	return DEVICE_START_OK;
 }
+
 
 DEVICE_IMAGE_LOAD( a7800_cart )
 {
@@ -234,7 +225,7 @@ DEVICE_IMAGE_LOAD( a7800_cart )
 	unsigned char header[128];
 	UINT8 *memory;
 
-	memory = memory_region(image->machine, "main");
+	memory = memory_region(image->machine, "maincpu");
 
 	/* Load and decode the header */
 	image_fread( image, header, 128 );
@@ -340,74 +331,16 @@ DEVICE_IMAGE_LOAD( a7800_cart )
 }
 
 
-/******  TIA  *****************************************/
-
- READ8_HANDLER( a7800_TIA_r )
-{
-	switch(offset)
-	{
-		case 0x08:
-			  return((input_port_read(space->machine, "buttons") & 0x02) << 6);
-		case 0x09:
-			  return((input_port_read(space->machine, "buttons") & 0x08) << 4);
-		case 0x0A:
-			  return((input_port_read(space->machine, "buttons") & 0x01) << 7);
-		case 0x0B:
-			  return((input_port_read(space->machine, "buttons") & 0x04) << 5);
-		case 0x0c:
-			if((input_port_read(space->machine, "buttons") & 0x08) ||(input_port_read(space->machine, "buttons") & 0x02))
-				return 0x00;
-			else
-				return 0x80;
-		case 0x0d:
-			if((input_port_read(space->machine, "buttons") & 0x01) ||(input_port_read(space->machine, "buttons") & 0x04))
-				return 0x00;
-			else
-				return 0x80;
-		default:
-			logerror("undefined TIA read %x\n",offset);
-
-	}
-	return 0xFF;
-}
-
-WRITE8_HANDLER( a7800_TIA_w )
-{
-	switch(offset) {
-	case 0x01:
-		if(data & 0x01)
-		{
-			maria_flag=1;
-		}
-		if(!a7800_ctrl_lock)
-		{
-			a7800_ctrl_lock = data & 0x01;
-			a7800_ctrl_reg = data;
-
-			if (data & 0x04)
-				memcpy( ROM + 0xC000, a7800_cart_bkup, 0x4000 );
-			else
-				memcpy( ROM + 0xC000, a7800_bios_bkup, 0x4000 );
-		}
-		break;
-	}
-	tia_sound_w(space, offset,data);
-	ROM[offset] = data;
-}
-
-
-
-/****** RAM Mirroring ******************************/
-
 WRITE8_HANDLER( a7800_RAM0_w )
 {
 	ROM[0x2040 + offset] = data;
 	ROM[0x40 + offset] = data;
 }
 
+
 WRITE8_HANDLER( a7800_cart_w )
 {
-	UINT8 *memory = memory_region(space->machine, "main");
+	UINT8 *memory = memory_region(space->machine, "maincpu");
 
 	if(offset < 0x4000)
 	{
@@ -417,7 +350,8 @@ WRITE8_HANDLER( a7800_cart_w )
 		}
 		else if(a7800_cart_type & 0x01)
 		{
-			pokey1_w(space, offset,data);
+			const device_config *pokey = devtag_get_device(space->machine, "pokey");
+			pokey_w(pokey, offset, data);
 		}
 		else
 		{
@@ -466,3 +400,60 @@ WRITE8_HANDLER( a7800_cart_w )
 }
 
 
+/***************************************************************************
+    TIA
+***************************************************************************/
+
+READ8_HANDLER( a7800_TIA_r )
+{
+	switch(offset)
+	{
+		case 0x08:
+			  return((input_port_read(space->machine, "buttons") & 0x02) << 6);
+		case 0x09:
+			  return((input_port_read(space->machine, "buttons") & 0x08) << 4);
+		case 0x0A:
+			  return((input_port_read(space->machine, "buttons") & 0x01) << 7);
+		case 0x0B:
+			  return((input_port_read(space->machine, "buttons") & 0x04) << 5);
+		case 0x0c:
+			if((input_port_read(space->machine, "buttons") & 0x08) ||(input_port_read(space->machine, "buttons") & 0x02))
+				return 0x00;
+			else
+				return 0x80;
+		case 0x0d:
+			if((input_port_read(space->machine, "buttons") & 0x01) ||(input_port_read(space->machine, "buttons") & 0x04))
+				return 0x00;
+			else
+				return 0x80;
+		default:
+			logerror("undefined TIA read %x\n",offset);
+
+	}
+	return 0xFF;
+}
+
+
+WRITE8_HANDLER( a7800_TIA_w )
+{
+	switch(offset) {
+	case 0x01:
+		if(data & 0x01)
+		{
+			maria_flag=1;
+		}
+		if(!a7800_ctrl_lock)
+		{
+			a7800_ctrl_lock = data & 0x01;
+			a7800_ctrl_reg = data;
+
+			if (data & 0x04)
+				memcpy( ROM + 0xC000, a7800_cart_bkup, 0x4000 );
+			else
+				memcpy( ROM + 0xC000, a7800_bios_bkup, 0x4000 );
+		}
+		break;
+	}
+	tia_sound_w(devtag_get_device(space->machine, "tia"), offset, data);
+	ROM[offset] = data;
+}

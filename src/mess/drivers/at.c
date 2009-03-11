@@ -19,7 +19,6 @@
 #include "machine/mc146818.h"
 #include "machine/pic8259.h"
 #include "machine/i82439tx.h"
-#include "devices/printer.h"
 
 #include "machine/pit8253.h"
 #include "video/pc_vga.h"
@@ -34,7 +33,7 @@
 #include "machine/pc_fdc.h"
 #include "machine/pc_joy.h"
 #include "machine/pckeybrd.h"
-#include "includes/pclpt.h"
+#include "machine/pc_lpt.h"
 #include "audio/sblaster.h"
 #include "includes/pc_mouse.h"
 
@@ -51,6 +50,10 @@
 #include "machine/8237dma.h"
 #include "machine/pci.h"
 #include "machine/kb_keytro.h"
+
+#include "sound/dac.h"
+#include "sound/speaker.h"
+#include "sound/saa1099.h"
 
 /* window resizing with dirtybuffering traping in xmess window */
 
@@ -85,7 +88,7 @@ static ADDRESS_MAP_START( at16_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x0c8000, 0x0cffff) AM_ROM
 	AM_RANGE(0x0d0000, 0x0effff) AM_RAM
 	AM_RANGE(0x0f0000, 0x0fffff) AM_ROM
-	AM_RANGE(0xff0000, 0xffffff) AM_ROM AM_REGION("main", 0x0f0000)
+	AM_RANGE(0xff0000, 0xffffff) AM_ROM AM_REGION("maincpu", 0x0f0000)
 ADDRESS_MAP_END
 
 
@@ -97,8 +100,8 @@ static ADDRESS_MAP_START( at386_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x000c0000, 0x000c7fff) AM_ROM
 	AM_RANGE(0x000c8000, 0x000cffff) AM_ROM
 	AM_RANGE(0x000d0000, 0x000effff) AM_ROM
-	AM_RANGE(0x000f0000, 0x000fffff) AM_ROM AM_REGION("main", 0x0f0000)
-	AM_RANGE(0x00ff0000, 0x00ffffff) AM_ROM AM_REGION("main", 0x0f0000)
+	AM_RANGE(0x000f0000, 0x000fffff) AM_ROM AM_REGION("maincpu", 0x0f0000)
+	AM_RANGE(0x00ff0000, 0x00ffffff) AM_ROM AM_REGION("maincpu", 0x0f0000)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( at586_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -120,94 +123,100 @@ static WRITE8_DEVICE_HANDLER(at_dma8237_1_w)
 	dma8237_w( device, offset / 2, data);
 }
 
-
-#ifdef ADLIB
-static READ8_HANDLER(at_adlib_r)
+static READ16_DEVICE_HANDLER( at16_388_r )
 {
-	if ( offset )
+	if ( ACCESSING_BITS_0_7 )
+	{
 		return 0xFF;
+	}
 	else
-		return ym3812_status_port_0_r( space, 0 );
+	{
+		return ym3812_status_port_r( device, offset );
+	}
 }
 
-static WRITE8_HANDLER(at_adlib_w)
+
+static WRITE16_DEVICE_HANDLER( at16_388_w )
 {
-	if ( offset )
-		ym3812_write_port_0_w( space, 0, data );
+	if ( ACCESSING_BITS_0_7 )
+	{
+		ym3812_write_port_w( device, offset, data );
+	}
 	else
-		ym3812_control_port_0_w( space, 0, data );
+	{
+		ym3812_control_port_w( device, offset, data );
+	}
 }
-#endif
 
 static ADDRESS_MAP_START(at16_io, ADDRESS_SPACE_IO, 16)
-	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8(DMA8237, "dma8237_1", dma8237_r, dma8237_w, 0xffff)
-	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8(PIC8259, "pic8259_master", pic8259_r, pic8259_w, 0xffff)
-	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8(PIT8254, "pit8254", pit8253_r, pit8253_w, 0xffff)
+	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", dma8237_r, dma8237_w, 0xffff)
+	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_r, pic8259_w, 0xffff)
+	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x006f) AM_READWRITE8(at_kbdc8042_r,            at_kbdc8042_w, 0xffff)
 	AM_RANGE(0x0070, 0x007f) AM_READWRITE8(mc146818_port_r,          mc146818_port_w, 0xffff)
 	AM_RANGE(0x0080, 0x009f) AM_READWRITE8(at_page8_r,               at_page8_w, 0xffff)
-	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE8(PIC8259, "pic8259_slave", pic8259_r, pic8259_w, 0xffff)
-	AM_RANGE(0x00c0, 0x00df) AM_DEVREADWRITE8(DMA8237, "dma8237_2", at_dma8237_1_r, at_dma8237_1_w, 0xffff)
+	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE8("pic8259_slave", pic8259_r, pic8259_w, 0xffff)
+	AM_RANGE(0x00c0, 0x00df) AM_DEVREADWRITE8("dma8237_2", at_dma8237_1_r, at_dma8237_1_w, 0xffff)
 	AM_RANGE(0x01f0, 0x01f7) AM_READWRITE8(at_mfm_0_r,               at_mfm_0_w, 0xffff)
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE8(pc_JOY_r,                 pc_JOY_w, 0xffff)
 	AM_RANGE(0x0220, 0x022f) AM_READWRITE8(soundblaster_r,           soundblaster_w, 0xffff)
-	AM_RANGE(0x0278, 0x027f) AM_READWRITE8(pc_parallelport2_r,       pc_parallelport2_w, 0xffff)
-	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8(NS16450, "ns16450_3", ins8250_r, ins8250_w, 0xffff)
-	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8(NS16450, "ns16450_1", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x0278, 0x027f) AM_DEVREADWRITE8("lpt_2", pc_lpt_r, pc_lpt_w, 0x00ff)
+	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8("ns16450_3", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ns16450_1", ins8250_r, ins8250_w, 0xffff)
 //	AM_RANGE(0x0320, 0x0323) AM_READWRITE8(pc_HDC1_r,                pc_HDC1_w, 0xffff)
 //	AM_RANGE(0x0324, 0x0327) AM_READWRITE8(pc_HDC2_r,                pc_HDC2_w, 0xffff)
-	AM_RANGE(0x0378, 0x037f) AM_READWRITE8(pc_parallelport1_r,       pc_parallelport1_w, 0xffff)
+	AM_RANGE(0x0378, 0x037f) AM_DEVREADWRITE8("lpt_1", pc_lpt_r, pc_lpt_w, 0x00ff)
 #ifdef ADLIB
-	AM_RANGE(0x0388, 0x0389) AM_READWRITE8(at_adlib_r,               at_adlib_w, 0xffff)
+	AM_RANGE(0x0388, 0x0389) AM_DEVREADWRITE("ym3812", at16_388_r, at16_388_w )
 #endif
-	AM_RANGE(0x03bc, 0x03bf) AM_READWRITE8(pc_parallelport0_r,       pc_parallelport0_w, 0xffff)
-	AM_RANGE(0x03e8, 0x03ef) AM_DEVREADWRITE8(NS16450, "ns16450_2", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x03bc, 0x03bf) AM_DEVREADWRITE8("lpt_0", pc_lpt_r, pc_lpt_w, 0x00ff)
+	AM_RANGE(0x03e8, 0x03ef) AM_DEVREADWRITE8("ns16450_2", ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE8(pc_fdc_r,                 pc_fdc_w, 0xffff)
-	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8(NS16450, "ns16450_0", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8("ns16450_0", ins8250_r, ins8250_w, 0xffff)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(at386_io, ADDRESS_SPACE_IO, 32)
-	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8(DMA8237, "dma8237_1", dma8237_r, dma8237_w, 0xffffffff)
-	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8(PIC8259, "pic8259_master", pic8259_r, pic8259_w, 0xffffffff)
-	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8(PIT8254, "pit8254", pit8253_r, pit8253_w, 0xffffffff)
+	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", dma8237_r, dma8237_w, 0xffffffff)
+	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_r, pic8259_w, 0xffffffff)
+	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8253_r, pit8253_w, 0xffffffff)
 	AM_RANGE(0x0060, 0x006f) AM_READWRITE(kbdc8042_32le_r,			kbdc8042_32le_w)
 	AM_RANGE(0x0070, 0x007f) AM_READWRITE(mc146818_port32le_r,		mc146818_port32le_w)
 	AM_RANGE(0x0080, 0x009f) AM_READWRITE8(at_page8_r,				at_page8_w, 0xffffffff)
-	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE8(PIC8259, "pic8259_slave", pic8259_r, pic8259_w, 0xffffffff)
-	AM_RANGE(0x00c0, 0x00df) AM_DEVREADWRITE8(DMA8237, "dma8237_2", at_dma8237_1_r, at_dma8237_1_w, 0xffffffff)
-	AM_RANGE(0x0278, 0x027f) AM_READWRITE(pc32le_parallelport2_r,	pc32le_parallelport2_w)
-	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8(NS16450, "ns16450_3", ins8250_r, ins8250_w, 0xffffffff)
-	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8(NS16450, "ns16450_1", ins8250_r, ins8250_w, 0xffffffff)
+	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE8("pic8259_slave", pic8259_r, pic8259_w, 0xffffffff)
+	AM_RANGE(0x00c0, 0x00df) AM_DEVREADWRITE8("dma8237_2", at_dma8237_1_r, at_dma8237_1_w, 0xffffffff)
+	AM_RANGE(0x0278, 0x027f) AM_DEVREADWRITE8("lpt_2", pc_lpt_r, pc_lpt_w, 0x000000ff)
+	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8("ns16450_3", ins8250_r, ins8250_w, 0xffffffff)
+	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ns16450_1", ins8250_r, ins8250_w, 0xffffffff)
 	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc32le_HDC1_r,			pc32le_HDC1_w)
 	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc32le_HDC2_r,			pc32le_HDC2_w)
-	AM_RANGE(0x0378, 0x037f) AM_READWRITE(pc32le_parallelport1_r,	pc32le_parallelport1_w)
+	AM_RANGE(0x0378, 0x037f) AM_DEVREADWRITE8("lpt_1", pc_lpt_r, pc_lpt_w, 0x000000ff)
 	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE8(pc_fdc_r,				pc_fdc_w, 0xffffffff)
-	AM_RANGE(0x03bc, 0x03bf) AM_READWRITE(pc32le_parallelport0_r,	pc32le_parallelport0_w)
-	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8(NS16450, "ns16450_0", ins8250_r, ins8250_w, 0xffffffff)
+	AM_RANGE(0x03bc, 0x03bf) AM_DEVREADWRITE8("lpt_0", pc_lpt_r, pc_lpt_w, 0x000000ff)
+	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8("ns16450_0", ins8250_r, ins8250_w, 0xffffffff)
 ADDRESS_MAP_END
 
 
 
 static ADDRESS_MAP_START(at586_io, ADDRESS_SPACE_IO, 32)
-	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8(DMA8237, "dma8237_1", dma8237_r, dma8237_w, 0xffffffff)
-	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8(PIC8259, "pic8259_master", pic8259_r, pic8259_w, 0xffffffff)
-	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8(PIT8254, "pit8254", pit8253_r, pit8253_w, 0xffffffff)
+	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", dma8237_r, dma8237_w, 0xffffffff)
+	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_r, pic8259_w, 0xffffffff)
+	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8253_r, pit8253_w, 0xffffffff)
 	AM_RANGE(0x0060, 0x006f) AM_READWRITE(kbdc8042_32le_r,			kbdc8042_32le_w)
 	AM_RANGE(0x0070, 0x007f) AM_READWRITE(mc146818_port32le_r,		mc146818_port32le_w)
 	AM_RANGE(0x0080, 0x009f) AM_READWRITE8(at_page8_r,				at_page8_w, 0xffffffff)
-	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE8(PIC8259, "pic8259_slave", pic8259_r, pic8259_w, 0xffffffff)
-	AM_RANGE(0x00c0, 0x00df) AM_DEVREADWRITE8(DMA8237, "dma8237_2", at_dma8237_1_r, at_dma8237_1_w, 0xffffffff)
-	AM_RANGE(0x0278, 0x027f) AM_READWRITE(pc32le_parallelport2_r,		pc32le_parallelport2_w)
-	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8(NS16450, "ns16450_3", ins8250_r, ins8250_w, 0xffffffff)
-	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8(NS16450, "ns16450_1", ins8250_r, ins8250_w, 0xffffffff)
+	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE8("pic8259_slave", pic8259_r, pic8259_w, 0xffffffff)
+	AM_RANGE(0x00c0, 0x00df) AM_DEVREADWRITE8("dma8237_2", at_dma8237_1_r, at_dma8237_1_w, 0xffffffff)
+	AM_RANGE(0x0278, 0x027f) AM_DEVREADWRITE8("lpt_2", pc_lpt_r, pc_lpt_w, 0x000000ff)
+	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8("ns16450_3", ins8250_r, ins8250_w, 0xffffffff)
+	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ns16450_1", ins8250_r, ins8250_w, 0xffffffff)
 	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc32le_HDC1_r,				pc32le_HDC1_w)
 	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc32le_HDC2_r,				pc32le_HDC2_w)
-	AM_RANGE(0x0378, 0x037f) AM_READWRITE(pc32le_parallelport1_r,		pc32le_parallelport1_w)
+	AM_RANGE(0x0378, 0x037f) AM_DEVREADWRITE8("lpt_1", pc_lpt_r, pc_lpt_w, 0x000000ff)
 	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE8(pc_fdc_r,				pc_fdc_w, 0xffffffff)
-	AM_RANGE(0x03bc, 0x03bf) AM_READWRITE(pc32le_parallelport0_r,		pc32le_parallelport0_w)
-	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8(NS16450, "ns16450_0", ins8250_r, ins8250_w, 0xffffffff)
-	AM_RANGE(0x0cf8, 0x0cff) AM_DEVREADWRITE(PCI_BUS, "pcibus", pci_32le_r,				pci_32le_w)
+	AM_RANGE(0x03bc, 0x03bf) AM_DEVREADWRITE8("lpt_0", pc_lpt_r, pc_lpt_w, 0x000000ff)
+	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8("ns16450_0", ins8250_r, ins8250_w, 0xffffffff)
+	AM_RANGE(0x0cf8, 0x0cff) AM_DEVREADWRITE("pcibus", pci_32le_r,				pci_32le_w)
 ADDRESS_MAP_END
 
 
@@ -232,8 +241,8 @@ static ADDRESS_MAP_START(ps2m30286_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc_HDC2_r,				pc_HDC2_w)
 	AM_RANGE(0x0378, 0x037f) AM_READWRITE(pc_parallelport1_r,		pc_parallelport1_w)
 #ifdef ADLIB
-	AM_RANGE(0x0388, 0x0388) AM_READWRITE(ym3812_status_port_0_r,	ym3812_control_port_0_w)
-	AM_RANGE(0x0389, 0x0389) AM_WRITE(								ym3812_write_port_0_w)
+	AM_RANGE(0x0388, 0x0388) AM_DEVREADWRITE("ym3812", ym3812_status_port_r,ym3812_control_port_w)
+	AM_RANGE(0x0389, 0x0389) AM_DEVWRITE("ym3812", ym3812_write_port_w)
 #endif
 	AM_RANGE(0x03bc, 0x03be) AM_READWRITE(pc_parallelport0_r,		pc_parallelport0_w)
 	AM_RANGE(0x03e8, 0x03ef) AM_READWRITE(uart8250_2_r,				uart8250_2_w)
@@ -408,19 +417,22 @@ static const unsigned i286_address_mask = 0x00ffffff;
 
 
 #if defined(ADLIB)
-/* irq line not connected to pc on adlib cards (and compatibles) */
-static void irqhandler(running_machine *machine, int linestate) {}
-
 static const ym3812_interface at_ym3812_interface =
 {
-	irqhandler
+	/* irq line not connected to pc on adlib cards (and compatibles) */
+	NULL
 };
 #endif
+
+static const pc_lpt_interface at_lpt_config =
+{
+	DEVCB_CPU_INPUT_LINE("maincpu", 0)
+};
 
 
 static MACHINE_DRIVER_START( ibm5170 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", I80286, 6000000 /*6000000*/)
+	MDRV_CPU_ADD("maincpu", I80286, 6000000 /*6000000*/)
 	MDRV_CPU_PROGRAM_MAP(at16_map, 0)
 	MDRV_CPU_IO_MAP(at16_io, 0)
 	MDRV_CPU_CONFIG(i286_address_mask)
@@ -452,7 +464,7 @@ static MACHINE_DRIVER_START( ibm5170 )
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 #ifdef ADLIB
-	MDRV_SOUND_ADD("ym3813", YM3812, ym3812_StdClock)
+	MDRV_SOUND_ADD("ym3812", YM3812, ym3812_StdClock)
 	MDRV_SOUND_CONFIG(at_ym3812_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 #endif
@@ -469,26 +481,26 @@ static MACHINE_DRIVER_START( ibm5170 )
 	MDRV_NVRAM_HANDLER( mc146818 )
 
 	/* printers */
-	MDRV_PRINTER_ADD("printer1")
-	MDRV_PRINTER_ADD("printer2")
-	MDRV_PRINTER_ADD("printer3")
+	MDRV_PC_LPT_ADD("lpt_0", at_lpt_config)
+	MDRV_PC_LPT_ADD("lpt_1", at_lpt_config)
+	MDRV_PC_LPT_ADD("lpt_2", at_lpt_config)
 
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
-	
+
 	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( ibm5170a )
 	MDRV_IMPORT_FROM( ibm5170 )
-	MDRV_CPU_REPLACE("main", I80286, 8000000)
+	MDRV_CPU_REPLACE("maincpu", I80286, 8000000)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( ibm5162 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", I80286, 6000000 /*6000000*/)
+	MDRV_CPU_ADD("maincpu", I80286, 6000000 /*6000000*/)
 	MDRV_CPU_PROGRAM_MAP(at16_map, 0)
 	MDRV_CPU_IO_MAP(at16_io, 0)
 	MDRV_CPU_CONFIG(i286_address_mask)
@@ -519,6 +531,11 @@ static MACHINE_DRIVER_START( ibm5162 )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+#ifdef ADLIB
+	MDRV_SOUND_ADD("ym3812", YM3812, ym3812_StdClock)
+	MDRV_SOUND_CONFIG(at_ym3812_interface)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+#endif
 
 	MDRV_IMPORT_FROM( at_kbdc8042 )
 
@@ -527,20 +544,20 @@ static MACHINE_DRIVER_START( ibm5162 )
 	MDRV_NVRAM_HANDLER( mc146818 )
 
 	/* printers */
-	MDRV_PRINTER_ADD("printer1")
-	MDRV_PRINTER_ADD("printer2")
-	MDRV_PRINTER_ADD("printer3")
+	MDRV_PC_LPT_ADD("lpt_0", at_lpt_config)
+	MDRV_PC_LPT_ADD("lpt_1", at_lpt_config)
+	MDRV_PC_LPT_ADD("lpt_2", at_lpt_config)
 
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
-	
+
 	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( ps2m30286 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", I80286, 12000000)
+	MDRV_CPU_ADD("maincpu", I80286, 12000000)
 	MDRV_CPU_PROGRAM_MAP(at16_map, 0)
 	MDRV_CPU_IO_MAP(at16_io, 0)
 	MDRV_CPU_CONFIG(i286_address_mask)
@@ -565,7 +582,7 @@ static MACHINE_DRIVER_START( ps2m30286 )
 
 	MDRV_IMPORT_FROM( pcvideo_vga )
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
@@ -592,20 +609,20 @@ static MACHINE_DRIVER_START( ps2m30286 )
 	MDRV_NVRAM_HANDLER( mc146818 )
 
 	/* printers */
-	MDRV_PRINTER_ADD("printer1")
-	MDRV_PRINTER_ADD("printer2")
-	MDRV_PRINTER_ADD("printer3")
+	MDRV_PC_LPT_ADD("lpt_0", at_lpt_config)
+	MDRV_PC_LPT_ADD("lpt_1", at_lpt_config)
+	MDRV_PC_LPT_ADD("lpt_2", at_lpt_config)
 
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
-	
+
 	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( atvga )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", I80286, 12000000)
+	MDRV_CPU_ADD("maincpu", I80286, 12000000)
 	MDRV_CPU_PROGRAM_MAP(at16_map, 0)
 	MDRV_CPU_IO_MAP(at16_io, 0)
 	MDRV_CPU_CONFIG(i286_address_mask)
@@ -627,7 +644,7 @@ static MACHINE_DRIVER_START( atvga )
 
 	MDRV_IMPORT_FROM( pcvideo_vga )
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
@@ -659,13 +676,13 @@ static MACHINE_DRIVER_START( atvga )
 	MDRV_NVRAM_HANDLER( mc146818 )
 
 	/* printers */
-	MDRV_PRINTER_ADD("printer1")
-	MDRV_PRINTER_ADD("printer2")
-	MDRV_PRINTER_ADD("printer3")
+	MDRV_PC_LPT_ADD("lpt_0", at_lpt_config)
+	MDRV_PC_LPT_ADD("lpt_1", at_lpt_config)
+	MDRV_PC_LPT_ADD("lpt_2", at_lpt_config)
 
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
-	
+
 	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
 MACHINE_DRIVER_END
 
@@ -673,7 +690,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( at386 )
     /* basic machine hardware */
 	/* original at 6 MHz, at03 8 megahertz */
-	MDRV_CPU_ADD("main", I386, 12000000)
+	MDRV_CPU_ADD("maincpu", I386, 12000000)
 	MDRV_CPU_PROGRAM_MAP(at386_map, 0)
 	MDRV_CPU_IO_MAP(at386_io, 0)
 	MDRV_CPU_CONFIG(i286_address_mask)
@@ -723,13 +740,13 @@ static MACHINE_DRIVER_START( at386 )
 	MDRV_NVRAM_HANDLER( mc146818 )
 
 	/* printers */
-	MDRV_PRINTER_ADD("printer1")
-	MDRV_PRINTER_ADD("printer2")
-	MDRV_PRINTER_ADD("printer3")
+	MDRV_PC_LPT_ADD("lpt_0", at_lpt_config)
+	MDRV_PC_LPT_ADD("lpt_1", at_lpt_config)
+	MDRV_PC_LPT_ADD("lpt_2", at_lpt_config)
 
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
-	
+
 	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
 MACHINE_DRIVER_END
 
@@ -737,18 +754,18 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( at486 )
 	MDRV_IMPORT_FROM( at386 )
 
-	MDRV_CPU_REPLACE("main", I486, 12000000)
+	MDRV_CPU_REPLACE("maincpu", I486, 12000000)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( at586 )
 	MDRV_IMPORT_FROM( at386 )
 
-	MDRV_CPU_REPLACE("main", PENTIUM, 60000000)
+	MDRV_CPU_REPLACE("maincpu", PENTIUM, 60000000)
 	MDRV_CPU_PROGRAM_MAP(at586_map, 0)
 	MDRV_CPU_IO_MAP(at586_io, 0)
 
 	MDRV_PCI_BUS_ADD("pcibus", 0)
-	MDRV_PCI_BUS_DEVICE(0, NULL, NULL, intel82439tx_pci_read, intel82439tx_pci_write)
+	MDRV_PCI_BUS_DEVICE(0, NULL, intel82439tx_pci_read, intel82439tx_pci_write)
 MACHINE_DRIVER_END
 
 
@@ -783,7 +800,7 @@ MACHINE_DRIVER_END
 #endif
 
 ROM_START( ibm5170 )
-	ROM_REGION(0x100000,"main", 0)
+	ROM_REGION(0x100000,"maincpu", 0)
 
 	ROM_SYSTEM_BIOS( 0, "rev1", "IBM PC/AT 5170 01/10/84")
 	ROMX_LOAD("t6181028.u27", 0xf0000, 0x8000, CRC(f6573f2a) SHA1(3e52cfa6a6a62b4e8576f4fe076c858c220e6c1a), ROM_SKIP(1) | ROM_BIOS(1))
@@ -827,7 +844,7 @@ ROM_END
 
 
 ROM_START( ibm5170a )
-	ROM_REGION(0x100000,"main", 0)
+	ROM_REGION(0x100000,"maincpu", 0)
 //    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
 	ROM_SYSTEM_BIOS( 0, "rev3", "IBM PC/AT 5170 11/15/85")
 	ROMX_LOAD("61x9266.u27", 0xf0000, 0x8000, CRC(4995be7a) SHA1(8e8e5c863ae3b8c55fd394e345d8cca48b6e575c), ROM_SKIP(1) | ROM_BIOS(1))
@@ -867,7 +884,7 @@ ROM_END
 
 
 ROM_START( ibm5162 )
-	ROM_REGION16_LE(0x1000000,"main", 0)
+	ROM_REGION16_LE(0x1000000,"maincpu", 0)
 	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
 
 	ROM_LOAD16_BYTE("78x7460.u34", 0xf0000, 0x8000, CRC(1db4bd8f) SHA1(7be669fbb998d8b4626fefa7cd1208d3b2a88c31))
@@ -888,7 +905,7 @@ ROM_END
 
 
 ROM_START( i8530286 )
-    ROM_REGION(0x1000000,"main", 0)
+    ROM_REGION(0x1000000,"maincpu", 0)
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
 	// saved from running machine
     ROM_LOAD16_BYTE("ps2m30.0", 0xe0000, 0x10000, CRC(9965a634) SHA1(c237b1760f8a4561ec47dc70fe2e9df664e56596))
@@ -907,7 +924,7 @@ ROM_END
 
 
 ROM_START( at )
-    ROM_REGION(0x1000000,"main", 0)
+    ROM_REGION(0x1000000,"maincpu", 0)
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
     ROM_LOAD16_BYTE("at110387.1", 0xf0001, 0x8000, CRC(679296a7) SHA1(ae891314cac614dfece686d8e1d74f4763cf40e3))
 	ROM_RELOAD(0xff0001,0x8000)
@@ -929,7 +946,7 @@ ROM_END
 
 
 ROM_START( atvga )
-    ROM_REGION(0x1000000,"main", 0)
+    ROM_REGION(0x1000000,"maincpu", 0)
     ROM_LOAD("et4000.bin", 0xc0000, 0x8000, CRC(f01e4be0) SHA1(95d75ff41bcb765e50bd87a8da01835fd0aa01d5))
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
     ROM_LOAD16_BYTE("at110387.1", 0xf0001, 0x8000, CRC(679296a7) SHA1(ae891314cac614dfece686d8e1d74f4763cf40e3))
@@ -948,7 +965,7 @@ ROM_END
 
 
 ROM_START( neat )
-    ROM_REGION(0x1000000,"main", 0)
+    ROM_REGION(0x1000000,"maincpu", 0)
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
     ROM_LOAD16_BYTE("at030389.0", 0xf0000, 0x8000, CRC(4c36e61d) SHA1(094e8d5e6819889163cb22a2cf559186de782582))
 	ROM_RELOAD(0xff0000,0x8000)
@@ -970,7 +987,7 @@ ROM_END
 
 
 ROM_START( at386 )
-    ROM_REGION(0x1000000,"main", 0)
+    ROM_REGION(0x1000000,"maincpu", 0)
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
     ROM_LOAD("at386.bin", 0xf0000, 0x10000, CRC(3df9732a) SHA1(def71567dee373dc67063f204ef44ffab9453ead))
 	ROM_RELOAD(0xff0000,0x10000)
@@ -988,7 +1005,7 @@ ROM_END
 
 
 ROM_START( at486 )
-	ROM_REGION(0x1000000, "main", 0)
+	ROM_REGION(0x1000000, "maincpu", 0)
 	ROM_LOAD("wdbios.rom", 0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
 
 	ROM_SYSTEM_BIOS(0, "at486", "PC/AT 486")	\
@@ -997,7 +1014,7 @@ ROM_START( at486 )
 	ROMX_LOAD("mg48602.bin", 0x0f0000, 0x10000, CRC(45797823) SHA1(a5fab258aecabde615e1e97af5911d6cf9938c11), ROM_BIOS(2))
 	ROM_SYSTEM_BIOS(2, "ft01232", "Free Tech 01-232")	\
 	ROMX_LOAD("ft01232.bin", 0x0f0000, 0x10000, CRC(30efaf92) SHA1(665c8ef05ca052dcc06bb473c9539546bfef1e86), ROM_BIOS(3))
-	ROM_COPY("main", 0, 0xff0000, 0x10000)
+	ROM_COPY("maincpu", 0, 0xff0000, 0x10000)
 
 	ROM_REGION(0x08100, "gfx1", 0)
 	ROM_LOAD("cga.chr", 0x01000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))

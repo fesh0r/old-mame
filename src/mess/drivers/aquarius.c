@@ -29,7 +29,7 @@
 
 static const device_config *cassette_device_image(running_machine *machine)
 {
-	return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
+	return devtag_get_device(machine, "cassette");
 }
 
 /* Read/Write Handlers */
@@ -66,7 +66,8 @@ static WRITE8_HANDLER( cassette_w )
 
 	*/
 
-	speaker_level_w(0, data & 0x01);
+	const device_config *speaker = devtag_get_device(space->machine, "speaker");
+	speaker_level_w(speaker, data & 0x01);
 
 	cassette_output(cassette_device_image(space->machine), (data & 0x01) ? +1.0 : -1.0);
 }
@@ -181,7 +182,7 @@ static WRITE8_HANDLER( scrambler_w )
 
 	*/
 
-	UINT8 *ROM = memory_region(space->machine, "main") + 0xc000;
+	UINT8 *ROM = memory_region(space->machine, "maincpu") + 0xc000;
 	UINT16 addr;
 
 	scrambler = data;
@@ -206,8 +207,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( aquarius_io, ADDRESS_SPACE_IO, 8)
 //	AM_RANGE(0x7e, 0x7f) AM_MIRROR(0xff00) AM_READWRITE(modem_r, modem_w)
 //	AM_RANGE(0xe0, 0xef) AM_MIRROR(0xff00) AM_READWRITE(floppy_r, floppy_w)
-	AM_RANGE(0xf6, 0xf6) AM_MIRROR(0xff00) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0xf7, 0xf7) AM_MIRROR(0xff00) AM_WRITE(ay8910_control_port_0_w)
+	AM_RANGE(0xf6, 0xf6) AM_MIRROR(0xff00) AM_DEVREADWRITE("ay8910", ay8910_r, ay8910_data_w)
+	AM_RANGE(0xf7, 0xf7) AM_MIRROR(0xff00) AM_DEVWRITE("ay8910", ay8910_address_w)
 	AM_RANGE(0xfc, 0xfc) AM_MIRROR(0xff00) AM_READWRITE(cassette_r, cassette_w)
 	AM_RANGE(0xfd, 0xfd) AM_MIRROR(0xff00) AM_READWRITE(vsync_r, mapper_w)
 	AM_RANGE(0xfe, 0xfe) AM_MIRROR(0xff00) AM_READWRITE(printer_r, printer_w)
@@ -333,24 +334,14 @@ static INTERRUPT_GEN( aquarius_interrupt )
 
 /* Sound Interface */
 
-static READ8_HANDLER( aquarius_ay8910_port_a_r )
-{
-	return input_port_read(space->machine, "RIGHT");
-}
-
-static READ8_HANDLER( aquarius_ay8910_port_b_r )
-{
-	return input_port_read(space->machine, "LEFT");
-}
-
 static const ay8910_interface aquarius_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	aquarius_ay8910_port_a_r,
-	aquarius_ay8910_port_b_r,
-	NULL,
-	NULL
+	DEVCB_INPUT_PORT("RIGHT"),
+	DEVCB_INPUT_PORT("LEFT"),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 /* Machine Initialization */
@@ -397,7 +388,7 @@ static MACHINE_RESET( aquarius )
 static DEVICE_IMAGE_LOAD( aquarius_cart )
 {
 	int size = image_length(image);
-	UINT8 *ptr = memory_region(image->machine, "main") + 0xc000;
+	UINT8 *ptr = memory_region(image->machine, "maincpu") + 0xc000;
 
 	if (image_fread(image, ptr, size) != size)
 	{
@@ -428,21 +419,21 @@ static const cassette_config aquarius_cassette_config =
 
 static MACHINE_DRIVER_START( aquarius )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_3_579545MHz) // ???
+	MDRV_CPU_ADD("maincpu", Z80, XTAL_3_579545MHz) // ???
 	MDRV_CPU_PROGRAM_MAP(aquarius_mem, 0)
 	MDRV_CPU_IO_MAP(aquarius_io, 0)
-	MDRV_CPU_VBLANK_INT("main", aquarius_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", aquarius_interrupt)
 
 	MDRV_MACHINE_START( aquarius )
 	MDRV_MACHINE_RESET( aquarius )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(40 * 8, 24 * 8)
-	MDRV_SCREEN_VISIBLE_AREA(0, 40 * 8 - 1, 0, 24 * 8 - 1)
+	MDRV_SCREEN_SIZE(40 * 8, 25 * 8)
+	MDRV_SCREEN_VISIBLE_AREA(0, 40 * 8 - 1, 0 * 8, 25 * 8 - 1)
 	MDRV_GFXDECODE( aquarius )
 	MDRV_PALETTE_LENGTH(512)
 	MDRV_PALETTE_INIT( aquarius )
@@ -475,7 +466,7 @@ MACHINE_DRIVER_END
 /* ROMs */
 
 ROM_START( aquarius )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 //	ROM_LOAD( "aquarius.u2", 0x0000, 0x2000, CRC(5cfa5b42) SHA1(02c8ee11e911d1aa346812492d14284b6870cb3e) )
 	ROM_LOAD( "aq2.u2", 0x0000, 0x2000, CRC(a2d15bcf) SHA1(ca6ef55e9ead41453efbf5062d6a60285e9661a6) )
 	

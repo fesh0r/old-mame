@@ -480,21 +480,16 @@ static MACHINE_RESET( tvlink )
 	tvlink.palette[3] = MAKE24_RGB15(svisionp_palette[(PALETTE_START+3)*3+0], svisionp_palette[(PALETTE_START+3)*3+1], svisionp_palette[(PALETTE_START+3)*3+2]);
 }
 
-static const custom_sound_interface svision_sound_interface =
-{
-	svision_custom_start
-};
-
 static MACHINE_DRIVER_START( svision )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M65C02, 4000000)        /* ? stz used! speed? */
+	MDRV_CPU_ADD("maincpu", M65C02, 4000000)        /* ? stz used! speed? */
 	MDRV_CPU_PROGRAM_MAP(svision_mem, 0)
-	MDRV_CPU_VBLANK_INT("main", svision_frame_int)
+	MDRV_CPU_VBLANK_INT("screen", svision_frame_int)
 
 	MDRV_MACHINE_RESET( svision )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", LCD)
+	MDRV_SCREEN_ADD("screen", LCD)
 	MDRV_SCREEN_REFRESH_RATE(61)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(3+160+3, 160)
@@ -506,11 +501,10 @@ static MACHINE_DRIVER_START( svision )
 	MDRV_DEFAULT_LAYOUT(layout_svision)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD("custom", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(svision_sound_interface)
-	MDRV_SOUND_ROUTE(0, "left", 0.50)
-	MDRV_SOUND_ROUTE(1, "right", 0.50)
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
+	MDRV_SOUND_ADD("custom", SVISION, 0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.50)
 	
 	/* cartridge */
 	MDRV_CARTSLOT_ADD("cart")
@@ -520,28 +514,28 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( svisionp )
 	MDRV_IMPORT_FROM( svision )
-	MDRV_CPU_REPLACE( "main", M65C02, 4430000)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_CPU_REPLACE( "maincpu", M65C02, 4430000)
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_PALETTE_INIT( svisionp )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( svisionn )
 	MDRV_IMPORT_FROM( svision )
-	MDRV_CPU_REPLACE( "main", M65C02, 3560000/*?*/)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_CPU_REPLACE( "maincpu", M65C02, 3560000/*?*/)
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_PALETTE_INIT( svisionn )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( tvlinkp )
 	MDRV_IMPORT_FROM( svisionp )
-	 MDRV_CPU_MODIFY("main")
+	 MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(tvlink_mem, 0)
 
 	MDRV_MACHINE_RESET( tvlink )
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_VIDEO_UPDATE( tvlink )
 

@@ -60,28 +60,18 @@ static PALETTE_INIT( lynx )
 	}
 }
 
-static const custom_sound_interface lynx_sound_interface =
-{
-	lynx_custom_start
-};
-
-static const custom_sound_interface lynx2_sound_interface =
-{
-	lynx2_custom_start
-};
-
 
 static MACHINE_DRIVER_START( lynx )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M65SC02, 4000000)        /* vti core, integrated in vlsi, stz, but not bbr bbs */
+	MDRV_CPU_ADD("maincpu", M65SC02, 4000000)        /* vti core, integrated in vlsi, stz, but not bbr bbs */
 	MDRV_CPU_PROGRAM_MAP(lynx_mem, 0)
-	MDRV_CPU_VBLANK_INT("main", lynx_frame_int)
+	MDRV_CPU_VBLANK_INT("screen", lynx_frame_int)
 	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( lynx )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", LCD)
+	MDRV_SCREEN_ADD("screen", LCD)
 	MDRV_SCREEN_REFRESH_RATE(LCD_FRAMES_PER_SECOND)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -96,12 +86,11 @@ static MACHINE_DRIVER_START( lynx )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("lynx", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(lynx_sound_interface)
+	MDRV_SOUND_ADD("lynx", LYNX, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
-	MDRV_QUICKLOAD_ADD(lynx, "o,lnx", 0)
+	MDRV_QUICKLOAD_ADD("quickload", lynx, "o,lnx", 0)
 	
 	MDRV_IMPORT_FROM(lynx_cartslot)
 MACHINE_DRIVER_END
@@ -112,12 +101,11 @@ static MACHINE_DRIVER_START( lynx2 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_REMOVE("mono")
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 	MDRV_SOUND_REMOVE("lynx")
-	MDRV_SOUND_ADD("lynx2", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(lynx2_sound_interface)
-	MDRV_SOUND_ROUTE(0, "left", 0.50)
-	MDRV_SOUND_ROUTE(1, "right", 0.50)
+	MDRV_SOUND_ADD("lynx2", LYNX2, 0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.50)
 MACHINE_DRIVER_END
 
 
@@ -128,7 +116,7 @@ MACHINE_DRIVER_END
 */
 
 ROM_START(lynx)
-	ROM_REGION(0x200,"main", 0)
+	ROM_REGION(0x200,"maincpu", 0)
 	ROM_SYSTEM_BIOS( 0, "default",   "rom save" )
 	ROMX_LOAD( "lynx.bin",  0x00000, 0x200, CRC(e1ffecb6) SHA1(de60f2263851bbe10e5801ef8f6c357a4bc077e6), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS( 1, "a", "alternate rom save" )
@@ -140,7 +128,7 @@ ROM_START(lynx)
 ROM_END
 
 ROM_START(lynx2)
-	ROM_REGION(0x200,"main", 0)
+	ROM_REGION(0x200,"maincpu", 0)
 	ROM_LOAD("lynx2.bin", 0, 0x200, NO_DUMP)
 
 	ROM_REGION(0x100,"gfx1", ROMREGION_ERASE00)
@@ -152,7 +140,7 @@ ROM_END
 static QUICKLOAD_LOAD( lynx )
 {
 	UINT8 *data = NULL;
-	UINT8 *rom = memory_region(image->machine, "main");
+	UINT8 *rom = memory_region(image->machine, "maincpu");
 	UINT8 header[10]; // 80 08 dw Start dw Len B S 9 3
 	UINT16 start, length;
 	int i;
@@ -174,12 +162,12 @@ static QUICKLOAD_LOAD( lynx )
 		return INIT_FAIL;
 
 	for (i = 0; i < length; i++)
-		memory_write_byte(cputag_get_address_space(image->machine,"main",ADDRESS_SPACE_PROGRAM), start + i, data[i]);
+		memory_write_byte(cputag_get_address_space(image->machine,"maincpu",ADDRESS_SPACE_PROGRAM), start + i, data[i]);
 
 	rom[0x1fc] = start & 0xff;
 	rom[0x1fd] = start >> 8;
 
-	lynx_crc_keyword(device_list_find_by_tag( image->machine->config->devicelist, QUICKLOAD, TAG_QUICKLOAD )); 
+	lynx_crc_keyword(devtag_get_device(image->machine, "quickload")); 
 
 	return INIT_PASS;
 }

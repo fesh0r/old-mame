@@ -12,13 +12,15 @@
 
 /* Core includes */
 #include "driver.h"
+#include "sound/speaker.h"
 #include "includes/cybiko.h"
 
 /* Components */
 //#include "cpu/h8s2xxx/h8s2xxx.h"
 #include "video/hd66421.h"
 #include "machine/pcf8593.h"
-
+#include "machine/at45dbxx.h"
+#include "machine/sst39vfx.h"
 /* Layout */
 #include "cybiko.lh"
 
@@ -220,17 +222,17 @@ INPUT_PORTS_END
 /////////
 
 ROM_START( cybikov1 )
-	ROM_REGION( 0x8000, "main", 0)
+	ROM_REGION( 0x8000, "maincpu", 0)
 	ROM_LOAD( "cyrom112.bin", 0, 0x8000, CRC(9E1F1A0F) SHA1(6FC08DE6B2C67D884EC78F748E4A4BAD27EE8045))
 ROM_END
 
 ROM_START( cybikov2 )
-	ROM_REGION( 0x8000, "main", 0)
+	ROM_REGION( 0x8000, "maincpu", 0)
 	ROM_LOAD( "cyrom117.bin", 0, 0x8000, CRC(268DA7BF) SHA1(135EAF9E3905E69582AABD9B06BC4DE0A66780D5))
 ROM_END
 
 ROM_START( cybikoxt )
-	ROM_REGION( 0x8000, "main", 0)
+	ROM_REGION( 0x8000, "maincpu", 0)
 	ROM_LOAD( "cyrom150.bin", 0, 0x8000, CRC(18B9B21F) SHA1(28868D6174EB198A6CEC6C3C70B6E494517229B9))
 ROM_END
 
@@ -259,11 +261,11 @@ SYSTEM_CONFIG_END
 
 static MACHINE_DRIVER_START( cybikov1 )
 	// cpu
-	//MDRV_CPU_ADD( "main", H8S2241, 11059200)
+	//MDRV_CPU_ADD( "maincpu", H8S2241, 11059200)
 	//MDRV_CPU_PROGRAM_MAP( cybikov1_mem, 0)
 	//MDRV_CPU_IO_MAP( cybikov1_io, 0)
 	// screen
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE( 60)
 	MDRV_SCREEN_FORMAT( BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( HD66421_WIDTH, HD66421_HEIGHT)
@@ -285,13 +287,14 @@ static MACHINE_DRIVER_START( cybikov1 )
 //  MDRV_NVRAM_HANDLER( cybikov1)
 	/* rtc */
 	MDRV_PCF8593_ADD("rtc")
+	MDRV_AT45DB041_ADD("flash1")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( cybikov2 )
 	// import
 	MDRV_IMPORT_FROM( cybikov1)
 	// cpu
-	//MDRV_CPU_REPLACE( "main", H8S2246, 11059200)
+	//MDRV_CPU_REPLACE( "maincpu", H8S2246, 11059200)
 	//MDRV_CPU_PROGRAM_MAP( cybikov2_mem, 0)
 	//MDRV_CPU_IO_MAP( cybikov2_io, 0)
 	// machine
@@ -299,13 +302,14 @@ static MACHINE_DRIVER_START( cybikov2 )
 	MDRV_MACHINE_RESET( cybikov2)
 	// non-volatile ram
 //  MDRV_NVRAM_HANDLER( cybikov2)
+	MDRV_SST39VF020_ADD("flash2",16, ENDIANNESS_BIG)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( cybikoxt )
 	// import
 	MDRV_IMPORT_FROM( cybikov1)
 	// cpu
-	//MDRV_CPU_REPLACE( "main", H8S2323, 18432000)
+	//MDRV_CPU_REPLACE( "maincpu", H8S2323, 18432000)
 	//MDRV_CPU_PROGRAM_MAP( cybikoxt_mem, 0)
 	//MDRV_CPU_IO_MAP( cybikoxt_io, 0)
 	// sound
@@ -316,6 +320,8 @@ static MACHINE_DRIVER_START( cybikoxt )
 	MDRV_MACHINE_RESET( cybikoxt)
 	// non-volatile ram
 //  MDRV_NVRAM_HANDLER( cybikoxt)
+	MDRV_AT45DB041_REMOVE("flash1")
+	MDRV_SST39VF020_ADD("flash2",16, ENDIANNESS_BIG)
 MACHINE_DRIVER_END
 
 //////////////

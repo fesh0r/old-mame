@@ -132,7 +132,7 @@ static TIMER_CALLBACK(ti85_timer_callback)
 
 static void update_ti85_memory (running_machine *machine)
 {
-	memory_set_bankptr(machine, 2,memory_region(machine, "main") + 0x010000 + 0x004000*ti85_memory_page_0x4000);
+	memory_set_bankptr(machine, 2,memory_region(machine, "maincpu") + 0x010000 + 0x004000*ti85_memory_page_0x4000);
 }
 
 static void update_ti86_memory (running_machine *machine)
@@ -148,7 +148,7 @@ static void update_ti86_memory (running_machine *machine)
 	}
 	else
 	{
-		memory_set_bankptr(machine, 2, memory_region(machine, "main") + 0x010000 + 0x004000*(ti85_memory_page_0x4000&0x0f));
+		memory_set_bankptr(machine, 2, memory_region(machine, "maincpu") + 0x010000 + 0x004000*(ti85_memory_page_0x4000&0x0f));
 		wh = SMH_UNMAP;
 	}
 	memory_install_write8_handler(space, 0x4000, 0x7fff, 0, 0, wh);
@@ -161,7 +161,7 @@ static void update_ti86_memory (running_machine *machine)
 	}
 	else
 	{
-		memory_set_bankptr(machine, 3, memory_region(machine, "main") + 0x010000 + 0x004000*(ti86_memory_page_0x8000&0x0f));
+		memory_set_bankptr(machine, 3, memory_region(machine, "maincpu") + 0x010000 + 0x004000*(ti86_memory_page_0x8000&0x0f));
 		wh = SMH_UNMAP;
 	}
 	memory_install_write8_handler(space, 0x8000, 0xbfff, 0, 0, wh);
@@ -174,7 +174,7 @@ static void update_ti86_memory (running_machine *machine)
 MACHINE_START( ti81 )
 {
 	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
-	UINT8 *mem = memory_region(machine, "main");
+	UINT8 *mem = memory_region(machine, "maincpu");
 
 	ti85_timer_interrupt_mask = 0;
 	ti85_timer_interrupt_status = 0;
@@ -208,7 +208,7 @@ MACHINE_START( ti81 )
 MACHINE_START( ti85 )
 {
 	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
-	UINT8 *mem = memory_region(machine, "main");
+	UINT8 *mem = memory_region(machine, "maincpu");
 
 	ti85_timer_interrupt_mask = 0;
 	ti85_timer_interrupt_status = 0;
@@ -244,7 +244,7 @@ MACHINE_START( ti85 )
 MACHINE_START( ti86 )
 {
 	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
-	UINT8 *mem = memory_region(machine, "main");
+	UINT8 *mem = memory_region(machine, "maincpu");
 
 	ti85_timer_interrupt_mask = 0;
 	ti85_timer_interrupt_status = 0;
@@ -419,7 +419,8 @@ WRITE8_HANDLER ( ti85_port_0006_w )
 
 WRITE8_HANDLER ( ti85_port_0007_w )
 {
-	speaker_level_w(0,( (data>>2)|(data>>3) )&0x01 );
+	const device_config *speaker = devtag_get_device(space->machine, "speaker");
+	speaker_level_w(speaker,( (data>>2)|(data>>3) )&0x01 );
         ti85_red_out=(data>>2)&0x01;
         ti85_white_out=(data>>3)&0x01;
 	ti85_update_serial(space->machine);
@@ -442,7 +443,7 @@ WRITE8_HANDLER ( ti86_port_0006_w )
 /* NVRAM functions */
 NVRAM_HANDLER( ti81 )
 {
-	UINT8 *mem = memory_region(machine, "main");
+	UINT8 *mem = memory_region(machine, "maincpu");
 
 	if (read_or_write)
 		mame_fwrite(file, mem+0x8000, sizeof(unsigned char)*0x8000);
@@ -460,7 +461,7 @@ NVRAM_HANDLER( ti81 )
 
 NVRAM_HANDLER( ti85 )
 {
-	UINT8 *mem = memory_region(machine, "main");
+	UINT8 *mem = memory_region(machine, "maincpu");
 
 	if (read_or_write)
 		mame_fwrite(file, mem+0x8000, sizeof(unsigned char)*0x8000);
@@ -674,7 +675,6 @@ DEVICE_START( ti85_serial )
 {
 	ti85_free_serial_data_memory(device->machine);
 	ti85_receive_serial (NULL,0);
-	return DEVICE_START_OK;
 }
 
 DEVICE_IMAGE_LOAD( ti85_serial )

@@ -96,7 +96,8 @@ static ADDRESS_MAP_START( sms_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x3e) AM_WRITE(sms_bios_w)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x3e) AM_WRITE(sms_version_w)
-	AM_RANGE(0x40, 0x7F)                 AM_READWRITE(sms_count_r, sn76496_0_w)
+	AM_RANGE(0x40, 0x7F)                 AM_READ(sms_count_r)
+	AM_RANGE(0x40, 0x7F)                 AM_DEVWRITE("smsiii", sn76496_w)
 	AM_RANGE(0x80, 0x80) AM_MIRROR(0x3e) AM_READWRITE(sms_vdp_data_r, sms_vdp_data_w)
 	AM_RANGE(0x80, 0x81) AM_MIRROR(0x3e) AM_READWRITE(sms_vdp_ctrl_r, sms_vdp_ctrl_w)
 	AM_RANGE(0xC0, 0xC0) AM_MIRROR(0x1e) AM_READ(sms_input_port_0_r)
@@ -126,7 +127,8 @@ static ADDRESS_MAP_START( gg_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x11, 0x11) AM_MIRROR(0x0e) AM_WRITE(sms_version_w)
 	AM_RANGE(0x20, 0x20) AM_MIRROR(0x1e) AM_WRITE(sms_bios_w)
 	AM_RANGE(0x21, 0x21) AM_MIRROR(0x1e) AM_WRITE(sms_version_w)
-	AM_RANGE(0x40, 0x7F)                 AM_READWRITE(sms_count_r, sn76496_0_w)
+	AM_RANGE(0x40, 0x7F)                 AM_READ(sms_count_r)
+	AM_RANGE(0x40, 0x7F)                 AM_DEVWRITE("gamegear", sn76496_w)
 	AM_RANGE(0x80, 0x80) AM_MIRROR(0x3e) AM_READWRITE(sms_vdp_data_r, sms_vdp_data_w)
 	AM_RANGE(0x80, 0x81) AM_MIRROR(0x3e) AM_READWRITE(sms_vdp_ctrl_r, sms_vdp_ctrl_w)
 	AM_RANGE(0xC0, 0xC0)				 AM_READ_PORT("PORT_DC")
@@ -324,7 +326,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(sms1ntsc)
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_53_693175MHz/15)
+	MDRV_CPU_ADD("maincpu", Z80, XTAL_53_693175MHz/15)
 	MDRV_CPU_PROGRAM_MAP(sms_mem, 0)
 	MDRV_CPU_IO_MAP(sms_io, 0)
 
@@ -334,7 +336,7 @@ static MACHINE_DRIVER_START(sms1ntsc)
 	MDRV_MACHINE_RESET(sms)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(XTAL_53_693175MHz/10, SMS_X_PIXELS, LBORDER_START + LBORDER_X_PIXELS - 2, LBORDER_START + LBORDER_X_PIXELS + 256 + 10, NTSC_Y_PIXELS, TBORDER_START + NTSC_224_TBORDER_Y_PIXELS, TBORDER_START + NTSC_224_TBORDER_Y_PIXELS + 224)
 
@@ -396,7 +398,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(sms1pal)
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, MASTER_CLOCK_PAL/15)
+	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK_PAL/15)
 	MDRV_CPU_PROGRAM_MAP(sms_mem, 0)
 	MDRV_CPU_IO_MAP(sms_io, 0)
 
@@ -406,7 +408,7 @@ static MACHINE_DRIVER_START(sms1pal)
 	MDRV_MACHINE_RESET(sms)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK_PAL/10, SMS_X_PIXELS, LBORDER_START + LBORDER_X_PIXELS - 2, LBORDER_START + LBORDER_X_PIXELS + 256 + 10, PAL_Y_PIXELS, TBORDER_START + PAL_240_TBORDER_Y_PIXELS, TBORDER_START + PAL_240_TBORDER_Y_PIXELS + 240)
 
@@ -455,7 +457,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(gamegear)
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_53_693175MHz/15)
+	MDRV_CPU_ADD("maincpu", Z80, XTAL_53_693175MHz/15)
 	MDRV_CPU_PROGRAM_MAP(sms_mem, 0)
 	MDRV_CPU_IO_MAP(gg_io, 0)
 
@@ -465,7 +467,7 @@ static MACHINE_DRIVER_START(gamegear)
 	MDRV_MACHINE_RESET(sms)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", LCD)
+	MDRV_SCREEN_ADD("screen", LCD)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(XTAL_53_693175MHz/10, SMS_X_PIXELS, LBORDER_START + LBORDER_X_PIXELS + 6*8, LBORDER_START + LBORDER_X_PIXELS + 26*8, NTSC_Y_PIXELS, TBORDER_START + NTSC_192_TBORDER_Y_PIXELS + 3*8, TBORDER_START + NTSC_192_TBORDER_Y_PIXELS + 21*8 )
 	MDRV_PALETTE_LENGTH(4096)
@@ -488,7 +490,7 @@ static MACHINE_DRIVER_START(gamegear)
 MACHINE_DRIVER_END
 
 ROM_START(sms1)
-	ROM_REGION(0x4000, "main", 0)
+	ROM_REGION(0x4000, "maincpu", 0)
 	ROM_FILL(0x0000,0x4000,0xFF)
 	ROM_REGION(0x20000, "user1", 0)
 	ROM_SYSTEM_BIOS( 0, "bios13", "US/European BIOS v1.3 (1986)" )
@@ -504,7 +506,7 @@ ROM_START(sms1)
 ROM_END
 
 ROM_START(sms)
-	ROM_REGION(0x4000, "main", 0)
+	ROM_REGION(0x4000, "maincpu", 0)
 	ROM_FILL(0x0000,0x4000,0xFF)
 	ROM_REGION(0x20000, "user1", 0)
 	ROM_SYSTEM_BIOS( 0, "alexkidd", "US/European BIOS with Alex Kidd in Miracle World (1990)" )
@@ -512,7 +514,7 @@ ROM_START(sms)
 ROM_END
 
 ROM_START(smssdisp)
-	ROM_REGION(0x4000, "main", 0)
+	ROM_REGION(0x4000, "maincpu", 0)
 	ROM_FILL(0x0000,0x4000,0xFF)
 	ROM_REGION(0x4000, "user1", 0)
 	ROM_FILL(0x0000,0x4000,0xFF)
@@ -521,7 +523,7 @@ ROM_START(smssdisp)
 ROM_END
 
 ROM_START(sms1pal)
-	ROM_REGION(0x4000, "main", 0)
+	ROM_REGION(0x4000, "maincpu", 0)
 	ROM_FILL(0x0000,0x4000,0xFF)
 	ROM_REGION(0x20000, "user1", 0)
     ROM_SYSTEM_BIOS( 0, "bios13", "US/European BIOS v1.3 (1986)" )
@@ -535,7 +537,7 @@ ROM_START(sms1pal)
 ROM_END
 
 ROM_START(smspal)
-	ROM_REGION(0x4000, "main", 0)
+	ROM_REGION(0x4000, "maincpu", 0)
 	ROM_FILL(0x0000,0x4000,0xFF)
 	ROM_REGION(0x40000, "user1", 0)
 	ROM_SYSTEM_BIOS( 0, "alexkidd", "US/European BIOS with Alex Kidd in Miracle World (1990)" )
@@ -545,12 +547,12 @@ ROM_START(smspal)
 ROM_END
 
 ROM_START(sg1000m3)
-	ROM_REGION(0x4000, "main", 0)
+	ROM_REGION(0x4000, "maincpu", 0)
 	ROM_FILL(0x0000,0x4000,0x00)
 ROM_END
 
 ROM_START(smsj)
-	ROM_REGION(0x4000, "main", 0)
+	ROM_REGION(0x4000, "maincpu", 0)
 	ROM_FILL(0x0000,0x4000,0xFF)
 	ROM_REGION(0x4000, "user1", 0)
     ROM_SYSTEM_BIOS( 0, "jbios21", "Japanese BIOS v2.1 (1987)" )
@@ -558,7 +560,7 @@ ROM_START(smsj)
 ROM_END
 
 ROM_START(sms2kr)
-	ROM_REGION(0x4000, "main", 0)
+	ROM_REGION(0x4000, "maincpu", 0)
 	ROM_FILL(0x0000,0x4000,0xFF)
 	ROM_REGION(0x20000, "user1", 0)
 	ROM_SYSTEM_BIOS( 0, "akbioskr", "Samsung Gam*Boy II with Alex Kidd in Miracle World (1990)" )
@@ -566,7 +568,7 @@ ROM_START(sms2kr)
 ROM_END
 
 ROM_START(gamegear)
-	ROM_REGION(0x4000, "main",0)
+	ROM_REGION(0x4000, "maincpu",0)
 	ROM_FILL(0x0000,0x4000,0x00)
 	ROM_REGION(0x0400, "user1", 0)
 	ROM_SYSTEM_BIOS( 0, "none", "No BIOS" ) /* gamegear */

@@ -55,7 +55,6 @@ typedef enum
 } TIMEX_CART_TYPE;
 
 /*----------- defined in machine/spectrum.c -----------*/
-
 extern TIMEX_CART_TYPE timex_cart_type;
 extern UINT8 timex_cart_chunks;
 extern UINT8 * timex_cart_data;
@@ -70,21 +69,21 @@ extern QUICKLOAD_LOAD( spectrum );
 
 
 /*----------- defined in drivers/spectrum.c -----------*/
+extern unsigned char *spectrum_screen_location;
+
 INPUT_PORTS_EXTERN( spectrum );
 MACHINE_DRIVER_EXTERN( spectrum );
-SYSTEM_CONFIG_EXTERN(spectrum)
 
 extern READ8_HANDLER(spectrum_port_1f_r);
 extern READ8_HANDLER(spectrum_port_7f_r);
 extern READ8_HANDLER(spectrum_port_df_r);
 extern READ8_HANDLER(spectrum_port_fe_r);
 extern WRITE8_HANDLER(spectrum_port_fe_w);
-extern int PreviousFE;
+extern int spectrum_PreviousFE;
 
 /*----------- defined in drivers/spec128.c -----------*/
 MACHINE_DRIVER_EXTERN( spectrum_128 );
 
-extern unsigned char *spectrum_128_screen_location;
 extern void spectrum_128_update_memory(running_machine *machine);
 extern int spectrum_128_port_7ffd_data;
 
@@ -98,26 +97,18 @@ extern int ts2068_port_ff_data;
 extern int ts2068_port_f4_data;
 
 /*----------- defined in video/spectrum.c -----------*/
-extern int frame_number;    /* Used for handling FLASH 1 */
-extern int flash_invert;
+extern int spectrum_frame_number;    /* Used for handling FLASH 1 */
+extern int spectrum_flash_invert;
 
 extern PALETTE_INIT( spectrum );
 
 extern VIDEO_START( spectrum );
+extern VIDEO_START( spectrum_128 );
+
 extern VIDEO_UPDATE( spectrum );
 extern VIDEO_EOF( spectrum );
 
-extern unsigned char *spectrum_characterram;
-extern unsigned char *spectrum_colorram;
-
-extern const gfx_layout spectrum_charlayout;
-
-/*----------- defined in video/spec128.c -----------*/
-extern PALETTE_INIT( spectrum_128 );
-
-extern VIDEO_START( spectrum_128 );
-extern VIDEO_UPDATE( spectrum_128 );
-
+extern unsigned char *spectrum_video_ram;
 
 /*----------- defined in video/timex.c -----------*/
 extern VIDEO_EOF( ts2068 );

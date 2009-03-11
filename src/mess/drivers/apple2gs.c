@@ -56,6 +56,7 @@
 #include "machine/mockngbd.h"
 #include "machine/8530scc.h"
 #include "sound/ay8910.h"
+#include "sound/dac.h"
 
 static const gfx_layout apple2gs_text_layout =
 {
@@ -136,7 +137,7 @@ static PALETTE_INIT( apple2gs )
 	}
 }
 
-static READ8_HANDLER( apple2gs_adc_read )
+static READ8_DEVICE_HANDLER( apple2gs_adc_read )
 {
 	return 0x80;
 }
@@ -150,9 +151,9 @@ static const es5503_interface apple2gs_es5503_interface =
 
 static MACHINE_DRIVER_START( apple2gs )
 	MDRV_IMPORT_FROM( apple2e )
-	MDRV_CPU_REPLACE("main", G65816, APPLE2GS_14M/5)
+	MDRV_CPU_REPLACE("maincpu", G65816, APPLE2GS_14M/5)
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_SIZE(704, 262)	// 640+32+32 for the borders
 	MDRV_SCREEN_VISIBLE_AREA(0,703,0,230)
 	MDRV_PALETTE_LENGTH( 16+256 )
@@ -169,11 +170,11 @@ static MACHINE_DRIVER_START( apple2gs )
 
 	MDRV_SOUND_REPLACE("a2dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 	MDRV_SOUND_ADD("es5503", ES5503, APPLE2GS_7M)
 	MDRV_SOUND_CONFIG(apple2gs_es5503_interface)
-	MDRV_SOUND_ROUTE(0, "left", 1.0)
-	MDRV_SOUND_ROUTE(1, "right", 1.0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	/* replace the old-style FDC with an IWM */
 	MDRV_APPLEFDC_REMOVE("fdc")
@@ -194,7 +195,7 @@ ROM_START(apple2gs)
 	ROM_REGION(0x1000,"gfx1",0)
 	ROM_LOAD ( "apple2gs.chr", 0x0000, 0x1000, CRC(91e53cd8) SHA1(34e2443e2ef960a36c047a09ed5a93f471797f89))
 
-	ROM_REGION(0x40000,"main",0)
+	ROM_REGION(0x40000,"maincpu",0)
 	ROM_LOAD("rom03", 0x0000, 0x40000, CRC(de7ddf29) SHA1(bc32bc0e8902946663998f56aea52be597d9e361))
 ROM_END
 
@@ -202,7 +203,7 @@ ROM_START(apple2g1)
 	ROM_REGION(0x1000,"gfx1",0)
 	ROM_LOAD ( "apple2gs.chr", 0x0000, 0x1000, CRC(91e53cd8) SHA1(34e2443e2ef960a36c047a09ed5a93f471797f89))
 
-	ROM_REGION(0x20000,"main",0)
+	ROM_REGION(0x20000,"maincpu",0)
 	ROM_LOAD("rom01", 0x0000, 0x20000, CRC(42f124b0) SHA1(e4fc7560b69d062cb2da5b1ffbe11cd1ca03cc37))
 ROM_END
 
@@ -210,7 +211,7 @@ ROM_START(apple2g0)
 	ROM_REGION(0x1000,"gfx1",0)
 	ROM_LOAD ( "apple2gs.chr", 0x0000, 0x1000, CRC(91e53cd8) SHA1(34e2443e2ef960a36c047a09ed5a93f471797f89))
 
-	ROM_REGION(0x20000,"main",0)
+	ROM_REGION(0x20000,"maincpu",0)
 	ROM_LOAD("rom0a.bin", 0x0000,  0x8000, CRC(9cc78238) SHA1(0ea82e10720a01b68722ab7d9f66efec672a44d3))
 	ROM_LOAD("rom0b.bin", 0x8000,  0x8000, CRC(8baf2a79) SHA1(91beeb11827932fe10475252d8036a63a2edbb1c))
 	ROM_LOAD("rom0c.bin", 0x10000, 0x8000, CRC(94c32caa) SHA1(4806d50d676b06f5213b181693fc1585956b98bb))

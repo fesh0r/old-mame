@@ -31,7 +31,7 @@ PCB Layout
 
 Notes:
     All IC's shown.
-	
+
 	Z80		- NEC D780C-1 / Zilog Z8400A (REV.A) Z80A CPU @ 3.579545
 	TMS9918A- Texas Instruments TMS9918ANL Video Display Processor @ 10.738635MHz
 	MB8118	- Fujitsu MB8118-12 16K x 1 Dynamic RAM
@@ -55,7 +55,7 @@ Notes:
 
 	- OMV keyboard
 	- SC-3000 return instruction referenced by R when reading ports 60-7f,e0-ff
-	- connect the PSG /READY signal 
+	- connect the PSG /READY signal
 	- accurate video timing
     - SP-400 serial printer
 	- SH-400 racing controller
@@ -70,7 +70,7 @@ Notes:
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
 #include "devices/printer.h"
-#include "machine/centroni.h"
+#include "machine/ctronics.h"
 #include "includes/serial.h"
 #include "machine/msm8251.h"
 #include "machine/8255ppi.h"
@@ -80,7 +80,7 @@ Notes:
 
 static const device_config *cassette_device_image(running_machine *machine)
 {
-	return devtag_get_device(machine, CASSETTE, "cassette");
+	return devtag_get_device(machine, "cassette");
 }
 
 /* Terebi Oekaki (TV Draw) */
@@ -146,7 +146,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sg1000_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x7f, 0x7f) AM_WRITE(sn76496_0_w)
+	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE(SN76489A_TAG, sn76496_w)
 	AM_RANGE(0xbe, 0xbe) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0xbf, 0xbf) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
 	AM_RANGE(0xdc, 0xdc) AM_READ_PORT("PA7")
@@ -165,16 +165,16 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sc3000_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x7f, 0x7f) AM_WRITE(sn76496_0_w)
+	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE(SN76489A_TAG, sn76496_w)
 	AM_RANGE(0xbe, 0xbe) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0xbf, 0xbf) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
-	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w)
 ADDRESS_MAP_END
 
 /* This is how the I/O ports are really mapped, but MAME does not support overlapping ranges
 static ADDRESS_MAP_START( sc3000_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_MIRROR(0xdf) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x00, 0x00) AM_MIRROR(0xdf) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w)
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x7f) AM_WRITE(sn76496_0_w)
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0xae) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0xae) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
@@ -191,22 +191,22 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sf7000_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x7f, 0x7f) AM_WRITE(sn76496_0_w)
+	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE(SN76489A_TAG, sn76496_w)
 	AM_RANGE(0xbe, 0xbe) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0xbf, 0xbf) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
-	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
-	AM_RANGE(0xe0, 0xe0) AM_DEVREAD(NEC765A, "nec765", nec765_status_r)
-	AM_RANGE(0xe1, 0xe1) AM_DEVREADWRITE(NEC765A, "nec765", nec765_data_r, nec765_data_w)
-	AM_RANGE(0xe4, 0xe7) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
-	AM_RANGE(0xe8, 0xe8) AM_DEVREADWRITE(MSM8251, "uart", msm8251_data_r, msm8251_data_w)
-	AM_RANGE(0xe9, 0xe9) AM_DEVREADWRITE(MSM8251, "uart", msm8251_status_r, msm8251_control_w)
+	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE("ppi8255_0", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xe0, 0xe0) AM_DEVREAD(NEC765_TAG, nec765_status_r)
+	AM_RANGE(0xe1, 0xe1) AM_DEVREADWRITE(NEC765_TAG, nec765_data_r, nec765_data_w)
+	AM_RANGE(0xe4, 0xe7) AM_DEVREADWRITE("ppi8255_1", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xe8, 0xe8) AM_DEVREADWRITE("uart", msm8251_data_r, msm8251_data_w)
+	AM_RANGE(0xe9, 0xe9) AM_DEVREADWRITE("uart", msm8251_status_r, msm8251_control_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
 
 static INPUT_CHANGED( trigger_nmi )
 {
-	cputag_set_input_line(field->port->machine, "main", INPUT_LINE_NMI, (input_port_read(field->port->machine, "NMI") ? CLEAR_LINE : ASSERT_LINE));
+	cputag_set_input_line(field->port->machine, Z80_TAG, INPUT_LINE_NMI, (input_port_read(field->port->machine, "NMI") ? CLEAR_LINE : ASSERT_LINE));
 }
 
 static INPUT_PORTS_START( tvdraw )
@@ -421,7 +421,7 @@ static INPUT_PORTS_START( omv )
 	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F) PORT_CHAR('F')
 	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_G) PORT_CHAR('G')
 	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_H) PORT_CHAR('H')
-	
+
 	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("S-1") PORT_CODE(KEYCODE_LCONTROL) PORT_CHAR(UCHAR_MAMEKEY(LCONTROL))
 	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("S-1") PORT_CODE(KEYCODE_RCONTROL) PORT_CHAR(UCHAR_MAMEKEY(RCONTROL))
 */
@@ -442,7 +442,7 @@ static INTERRUPT_GEN( sg1000_int )
 
 static void sg1000_vdp_interrupt(running_machine *machine, int state)
 {
-	cputag_set_input_line(machine, "main", INPUT_LINE_IRQ0, state);
+	cputag_set_input_line(machine, Z80_TAG, INPUT_LINE_IRQ0, state);
 }
 
 static const TMS9928a_interface tms9928a_interface =
@@ -455,7 +455,7 @@ static const TMS9928a_interface tms9928a_interface =
 
 static TIMER_CALLBACK( lightgun_tick )
 {
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(machine, Z80_TAG);
 
 	if (IS_CARTRIDGE_TV_DRAW(rom))
 	{
@@ -531,7 +531,7 @@ static READ8_DEVICE_HANDLER( sc3000_ppi8255_b_r )
 
 	/* cartridge contact */
 	data |= 0x10;
-	
+
 	/* printer */
 	data |= 0x60;
 
@@ -569,12 +569,12 @@ static WRITE8_DEVICE_HANDLER( sc3000_ppi8255_c_w )
 
 static const ppi8255_interface sc3000_ppi8255_intf =
 {
-	sc3000_ppi8255_a_r,	// Port A read
-	sc3000_ppi8255_b_r,	// Port B read
-	NULL,				// Port C read
-	NULL,				// Port A write
-	NULL,				// Port B write
-	sc3000_ppi8255_c_w,	// Port C write
+	DEVCB_HANDLER(sc3000_ppi8255_a_r),	// Port A read
+	DEVCB_HANDLER(sc3000_ppi8255_b_r),	// Port B read
+	DEVCB_NULL,							// Port C read
+	DEVCB_NULL,							// Port A write
+	DEVCB_NULL,							// Port B write
+	DEVCB_HANDLER(sc3000_ppi8255_c_w),	// Port C write
 };
 
 static MACHINE_START( sc3000 )
@@ -609,40 +609,21 @@ static READ8_DEVICE_HANDLER( sf7000_ppi8255_a_r )
         PA7
     */
 
+	const device_config *printer = devtag_get_device(device->machine, "centronics");
 	sg1000_state *state = device->machine->driver_data;
+	UINT8 result = 0;
 
-	int centronics_handshake = centronics_read_handshake(device->machine,1);
-	int busy = 0;
+	result |= state->fdc_irq;
+	result |= centronics_busy_r(printer) << 1;
+	result |= state->fdc_index << 2;
 
-	if ((centronics_handshake & CENTRONICS_NOT_BUSY) == 0)
-	{
-		busy = 0x02;
-	}
-
-	return (state->fdc_index << 2) | busy | state->fdc_irq;
-}
-
-static WRITE8_DEVICE_HANDLER( sf7000_ppi8255_b_w )
-{
-	/*
-        Signal  Description
-
-        PB0     Data output to Centronics printer
-        PB1     Data output to Centronics printer
-        PB2     Data output to Centronics printer
-        PB3     Data output to Centronics printer
-        PB4     Data output to Centronics printer
-        PB5     Data output to Centronics printer
-        PB6     Data output to Centronics printer
-        PB7     Data output to Centronics printer
-    */
-
-	centronics_write_data(device->machine, 1, data);
+	return result;
 }
 
 static WRITE8_DEVICE_HANDLER( sf7000_ppi8255_c_w )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( device->machine->config->devicelist, NEC765A, "nec765");
+	const device_config *fdc = devtag_get_device(device->machine, NEC765_TAG);
+	const device_config *printer = devtag_get_device(device->machine, "centronics");
 	/*
         Signal  Description
 
@@ -670,29 +651,29 @@ static WRITE8_DEVICE_HANDLER( sf7000_ppi8255_c_w )
 	}
 
 	/* ROM selection */
-	memory_set_bank(device->machine, 1, (data & 0x40) >> 6);
+	memory_set_bank(device->machine, 1, BIT(data, 6));
 
 	/* printer strobe */
-	centronics_write_handshake(device->machine, 1, (data & 0x80) ? 0 : CENTRONICS_STROBE, CENTRONICS_STROBE);
+	centronics_strobe_w(printer, BIT(data, 7));
 }
 
 static const ppi8255_interface sf7000_ppi8255_intf[2] =
 {
 	{
-		sc3000_ppi8255_a_r,		// Port A read
-		sc3000_ppi8255_b_r,		// Port B read
-		NULL,					// Port C read
-		NULL,					// Port A write
-		NULL,					// Port B write
-		sc3000_ppi8255_c_w		// Port C write
+		DEVCB_HANDLER(sc3000_ppi8255_a_r),		// Port A read
+		DEVCB_HANDLER(sc3000_ppi8255_b_r),		// Port B read
+		DEVCB_NULL,								// Port C read
+		DEVCB_NULL,								// Port A write
+		DEVCB_NULL,								// Port B write
+		DEVCB_HANDLER(sc3000_ppi8255_c_w)		// Port C write
 	},
 	{
-		sf7000_ppi8255_a_r,		// Port A read
-		NULL,					// Port B read
-		NULL,					// Port C read
-		NULL,					// Port A write
-		sf7000_ppi8255_b_w,		// Port B write
-		sf7000_ppi8255_c_w		// Port C write
+		DEVCB_HANDLER(sf7000_ppi8255_a_r),		// Port A read
+		DEVCB_NULL,								// Port B read
+		DEVCB_NULL,								// Port C read
+		DEVCB_NULL,								// Port A write
+		DEVCB_DEVICE_HANDLER("centronics", centronics_data_w),	// Port B write
+		DEVCB_HANDLER(sf7000_ppi8255_c_w)		// Port C write
 	}
 };
 
@@ -719,12 +700,6 @@ static const struct nec765_interface sf7000_nec765_interface =
 	NEC765_RDY_PIN_CONNECTED
 };
 
-static const CENTRONICS_CONFIG sf7000_centronics_config[1] = {
-	{
-		PRINTER_IBM,
-		NULL
-	}
-};
 
 static MACHINE_START( sf7000 )
 {
@@ -736,11 +711,8 @@ static MACHINE_START( sf7000 )
 	/* configure FDC */
 	floppy_drive_set_index_pulse_callback(image_from_devtype_and_index(machine, IO_FLOPPY, 0), sf7000_fdc_index_callback);
 
-	/* configure PPI */
-	centronics_config(machine, 1, sf7000_centronics_config);
-
 	/* configure memory banking */
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, "main"), 0);
+	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, Z80_TAG), 0);
 	memory_configure_bank(machine, 1, 1, 1, mess_ram, 0);
 	memory_configure_bank(machine, 2, 0, 1, mess_ram, 0);
 
@@ -758,19 +730,19 @@ static MACHINE_RESET( sf7000 )
 
 static void sg1000_map_cartridge_memory(running_machine *machine, UINT8 *ptr, int size)
 {
-	const address_space *program = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
+	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 
 	switch (size)
 	{
 	case 40 * 1024:
 		memory_install_readwrite8_handler(program, 0x8000, 0x9fff, 0, 0, SMH_BANK1, SMH_UNMAP);
-		memory_configure_bank(machine, 1, 0, 1, memory_region(machine, "main") + 0x8000, 0);
+		memory_configure_bank(machine, 1, 0, 1, memory_region(machine, Z80_TAG) + 0x8000, 0);
 		memory_set_bank(machine, 1, 0);
 		break;
 
 	case 48 * 1024:
 		memory_install_readwrite8_handler(program, 0x8000, 0xbfff, 0, 0, SMH_BANK1, SMH_UNMAP);
-		memory_configure_bank(machine, 1, 0, 1, memory_region(machine, "main") + 0x8000, 0);
+		memory_configure_bank(machine, 1, 0, 1, memory_region(machine, Z80_TAG) + 0x8000, 0);
 		memory_set_bank(machine, 1, 0);
 		break;
 
@@ -791,9 +763,9 @@ static void sg1000_map_cartridge_memory(running_machine *machine, UINT8 *ptr, in
 
 static DEVICE_IMAGE_LOAD( sg1000_cart )
 {
-	const address_space *program = cputag_get_address_space(image->machine, "main", ADDRESS_SPACE_PROGRAM);
+	const address_space *program = cputag_get_address_space(image->machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 	int size = image_length(image);
-	UINT8 *ptr = memory_region(image->machine, "main");
+	UINT8 *ptr = memory_region(image->machine, Z80_TAG);
 
 	if (image_fread(image, ptr, size ) != size)
 	{
@@ -811,7 +783,7 @@ static DEVICE_IMAGE_LOAD( sg1000_cart )
 
 static void sc3000_map_cartridge_memory(running_machine *machine, UINT8 *ptr, int size)
 {
-	const address_space *program = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
+	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 
 	/* include SG-1000 mapping */
 	sg1000_map_cartridge_memory(machine, ptr, size);
@@ -835,9 +807,9 @@ static void sc3000_map_cartridge_memory(running_machine *machine, UINT8 *ptr, in
 
 static DEVICE_IMAGE_LOAD( sc3000_cart )
 {
-//	const address_space *program = cputag_get_address_space(image->machine, "main", ADDRESS_SPACE_PROGRAM);
+//	const address_space *program = cputag_get_address_space(image->machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 	int size = image_length(image);
-	UINT8 *ptr = memory_region(image->machine, "main");
+	UINT8 *ptr = memory_region(image->machine, Z80_TAG);
 
 	if (image_fread(image, ptr, size ) != size)
 	{
@@ -856,22 +828,22 @@ static MACHINE_DRIVER_START( sg1000 )
 	MDRV_DRIVER_DATA(sg1000_state)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_10_738635MHz/3)
+	MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_10_738635MHz/3)
 	MDRV_CPU_PROGRAM_MAP(sg1000_map, 0)
 	MDRV_CPU_IO_MAP(sg1000_io_map, 0)
-	MDRV_CPU_VBLANK_INT("main", sg1000_int)
+	MDRV_CPU_VBLANK_INT(SCREEN_TAG, sg1000_int)
 
 	MDRV_MACHINE_START( sg1000 )
 
     /* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY(SCREEN_TAG)
 	MDRV_SCREEN_REFRESH_RATE((float)XTAL_10_738635MHz/2/342/262)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sn76489an", SN76489A, XTAL_10_738635MHz/3)
+	MDRV_SOUND_ADD(SN76489A_TAG, SN76489A, XTAL_10_738635MHz/3)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* cartridge */
@@ -883,7 +855,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( omv )
 	MDRV_IMPORT_FROM(sg1000)
-	
+
 	MDRV_CARTSLOT_MODIFY("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("sg,bin")
 	MDRV_CARTSLOT_NOT_MANDATORY
@@ -901,10 +873,10 @@ static MACHINE_DRIVER_START( sc3000 )
 	MDRV_DRIVER_DATA(sg1000_state)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_10_738635MHz/3) // LH0080A
+	MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_10_738635MHz/3) // LH0080A
 	MDRV_CPU_PROGRAM_MAP(sc3000_map, 0)
 	MDRV_CPU_IO_MAP(sc3000_io_map, 0)
-	MDRV_CPU_VBLANK_INT("main", sg1000_int)
+	MDRV_CPU_VBLANK_INT(SCREEN_TAG, sg1000_int)
 
 	MDRV_MACHINE_START( sc3000 )
 
@@ -912,17 +884,17 @@ static MACHINE_DRIVER_START( sc3000 )
 
     /* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY(SCREEN_TAG)
 	MDRV_SCREEN_REFRESH_RATE((float)XTAL_10_738635MHz/2/342/262)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sn76489an", SN76489A, XTAL_10_738635MHz/3)
+	MDRV_SOUND_ADD(SN76489A_TAG, SN76489A, XTAL_10_738635MHz/3)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* printer */
-	MDRV_PRINTER_ADD("printer")
+	MDRV_PRINTER_ADD("sp400") /* serial printer */
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", sc3000_cassette_config )
@@ -938,72 +910,71 @@ static MACHINE_DRIVER_START( sf7000 )
 	MDRV_DRIVER_DATA(sg1000_state)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_10_738635MHz/3)
+	MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_10_738635MHz/3)
 	MDRV_CPU_PROGRAM_MAP(sf7000_map, 0)
 	MDRV_CPU_IO_MAP(sf7000_io_map, 0)
-	MDRV_CPU_VBLANK_INT("main", sg1000_int)
+	MDRV_CPU_VBLANK_INT(SCREEN_TAG, sg1000_int)
 
 	MDRV_MACHINE_START( sf7000 )
 	MDRV_MACHINE_RESET( sf7000 )
 
 	MDRV_PPI8255_ADD("ppi8255_0", sf7000_ppi8255_intf[0])
-
 	MDRV_PPI8255_ADD("ppi8255_1", sf7000_ppi8255_intf[1])
 
     /* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY(SCREEN_TAG)
 	MDRV_SCREEN_REFRESH_RATE((float)XTAL_10_738635MHz/2/342/262)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sn76489an", SN76489A, XTAL_10_738635MHz/3)
+	MDRV_SOUND_ADD(SN76489A_TAG, SN76489A, XTAL_10_738635MHz/3)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* printer */
-	MDRV_PRINTER_ADD("printer")
-	MDRV_PRINTER_ADD("sp400")
+	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+	MDRV_PRINTER_ADD("sp400") /* serial printer */
 
 	/* cassette */
 	MDRV_CASSETTE_ADD("cassette", sc3000_cassette_config)
 
 	/* uart */
 	MDRV_MSM8251_ADD("uart", default_msm8251_interface)
-	
-	MDRV_NEC765A_ADD("nec765", sf7000_nec765_interface)		
+
+	MDRV_NEC765A_ADD(NEC765_TAG, sf7000_nec765_interface)
 MACHINE_DRIVER_END
 
 /* ROMs */
 
 ROM_START( sg1000 )
-    ROM_REGION( 0x10000, "main", ROMREGION_ERASE00 )
+    ROM_REGION( 0x10000, Z80_TAG, ROMREGION_ERASE00 )
 ROM_END
 
 ROM_START( sg1000m2 )
-    ROM_REGION( 0x10000, "main", ROMREGION_ERASE00 )
+    ROM_REGION( 0x10000, Z80_TAG, ROMREGION_ERASE00 )
 ROM_END
 
 ROM_START( omv1000 )
-    ROM_REGION( 0x10000, "main", ROMREGION_ERASE00 )
+    ROM_REGION( 0x10000, Z80_TAG, ROMREGION_ERASE00 )
 	ROM_LOAD( "omvbios.bin", 0x0000, 0x8000, NO_DUMP )
 ROM_END
 
 ROM_START( omv2000 )
-    ROM_REGION( 0x10000, "main", ROMREGION_ERASE00 )
+    ROM_REGION( 0x10000, Z80_TAG, ROMREGION_ERASE00 )
 	ROM_LOAD( "omvbios.bin", 0x0000, 0x8000, NO_DUMP )
 ROM_END
 
 ROM_START( sc3000 )
-    ROM_REGION( 0x10000, "main", ROMREGION_ERASE00 )
+    ROM_REGION( 0x10000, Z80_TAG, ROMREGION_ERASE00 )
 ROM_END
 
 ROM_START( sc3000h )
-    ROM_REGION( 0x10000, "main", ROMREGION_ERASE00 )
+    ROM_REGION( 0x10000, Z80_TAG, ROMREGION_ERASE00 )
 ROM_END
 
 ROM_START( sf7000 )
-    ROM_REGION( 0x10000, "main", 0 )
+    ROM_REGION( 0x10000, Z80_TAG, 0 )
     ROM_LOAD( "ipl.rom", 0x0000, 0x2000, CRC(d76810b8) SHA1(77339a6db2593aadc638bed77b8e9bed5d9d87e3) )
 ROM_END
 

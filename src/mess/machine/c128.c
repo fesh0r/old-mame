@@ -93,8 +93,9 @@ static READ8_HANDLER(c128_dma8726_port_r)
 WRITE8_HANDLER( c128_write_d000 )
 {
 	running_machine *machine = space->machine;
-	const device_config *cia_0 = device_list_find_by_tag(space->machine->config->devicelist, CIA6526R1, "cia_0");
-	const device_config *cia_1 = device_list_find_by_tag(space->machine->config->devicelist, CIA6526R1, "cia_1");
+	const device_config *cia_0 = devtag_get_device(space->machine, "cia_0");
+	const device_config *cia_1 = devtag_get_device(space->machine, "cia_1");
+	const device_config *sid = devtag_get_device(space->machine, "sid6581");
 
 	UINT8 c64_port6510 = (UINT8) device_get_info_int(space->machine->cpu[0], CPUINFO_INT_M6510_PORT);
 
@@ -113,7 +114,7 @@ WRITE8_HANDLER( c128_write_d000 )
 			vic2_port_w (space, offset & 0x3ff, data);
 			break;
 		case 4:
-			sid6581_0_port_w (space, offset & 0x3f, data);
+			sid6581_w(sid, offset & 0x3f, data);
 			break;
 		case 5:
 			c128_mmu8722_port_w (space, offset & 0xff, data);
@@ -148,13 +149,14 @@ WRITE8_HANDLER( c128_write_d000 )
 static READ8_HANDLER( c128_read_io )
 {
 	running_machine *machine = space->machine;
-	const device_config *cia_0 = device_list_find_by_tag(space->machine->config->devicelist, CIA6526R1, "cia_0");
-	const device_config *cia_1 = device_list_find_by_tag(space->machine->config->devicelist, CIA6526R1, "cia_1");
+	const device_config *cia_0 = devtag_get_device(space->machine, "cia_0");
+	const device_config *cia_1 = devtag_get_device(space->machine, "cia_1");
+	const device_config *sid = devtag_get_device(space->machine, "sid6581");
 
 	if (offset < 0x400)
 		return vic2_port_r (space, offset & 0x3ff);
 	else if (offset < 0x500)
-		return sid6581_0_port_r (space, offset & 0xff);
+		return sid6581_r (sid, offset & 0xff);
 	else if (offset < 0x600)
 		return c128_mmu8722_port_r (space, offset & 0xff);
 	else if (offset < 0x800)
@@ -840,19 +842,19 @@ static void c128_m6510_port_write(const device_config *device, UINT8 direction, 
 	{
 		if (direction & 0x08) 
 		{
-			cassette_output(device_list_find_by_tag(device->machine->config->devicelist, CASSETTE, "cassette" ), (data & 0x08) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
+			cassette_output(devtag_get_device(device->machine, "cassette"), (data & 0x08) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
 		}
 
 		if (direction & 0x20)
 		{
 			if(!(data & 0x20))
 			{
-				cassette_change_state(device_list_find_by_tag(device->machine->config->devicelist, CASSETTE, "cassette" ),CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
+				cassette_change_state(devtag_get_device(device->machine, "cassette"),CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
 				timer_adjust_periodic(datasette_timer, attotime_zero, 0, ATTOTIME_IN_HZ(44100));
 			}
 			else
 			{
-				cassette_change_state(device_list_find_by_tag(device->machine->config->devicelist, CASSETTE, "cassette" ),CASSETTE_MOTOR_DISABLED ,CASSETTE_MASK_MOTOR);
+				cassette_change_state(devtag_get_device(device->machine, "cassette"),CASSETTE_MOTOR_DISABLED ,CASSETTE_MASK_MOTOR);
 				timer_reset(datasette_timer, attotime_never);
 			}
 		}
@@ -868,7 +870,7 @@ static UINT8 c128_m6510_port_read(const device_config *device, UINT8 direction)
 {
 	UINT8 data = c64_port_data;
 
-	if ((cassette_get_state(device_list_find_by_tag(device->machine->config->devicelist, CASSETTE, "cassette" )) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
+	if ((cassette_get_state(devtag_get_device(device->machine, "cassette")) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
 		data &= ~0x10;
 	else
 		data |=  0x10;
@@ -886,7 +888,7 @@ static UINT8 c128_m6510_port_read(const device_config *device, UINT8 direction)
 static void c128_common_driver_init(running_machine *machine)
 {
 	UINT8 *gfx=memory_region(machine, "gfx1");
-	UINT8 *ram = memory_region(machine, "main");
+	UINT8 *ram = memory_region(machine, "maincpu");
 	int i;
 
 	/* configure the M6510 port */
@@ -955,9 +957,6 @@ MACHINE_RESET( c128 )
 {
 	c64_common_init_machine(machine);
 	c128_vicaddr = c64_vicaddr = c64_memory;
-
-	sndti_reset(SOUND_SID6581, 0);
-
 	c64mode = 0;
 	c128_mmu8722_reset (machine);
 	cpu_set_input_line(machine->cpu[0], INPUT_LINE_HALT, CLEAR_LINE);

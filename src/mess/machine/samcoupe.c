@@ -62,7 +62,7 @@ void samcoupe_update_memory(const address_space *space)
 {
 	coupe_asic *asic = space->machine->driver_data;
 	const int PAGE_MASK = ((mess_ram_size & 0xfffff) / 0x4000) - 1;
-	UINT8 *rom = memory_region(space->machine, "main");
+	UINT8 *rom = memory_region(space->machine, "maincpu");
 	UINT8 *memory;
 	int is_readonly;
 
@@ -132,7 +132,7 @@ void samcoupe_update_memory(const address_space *space)
 
 WRITE8_HANDLER( samcoupe_ext_mem_w )
 {
-	const address_space *space_program = cpu_get_address_space(space->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space_program = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	coupe_asic *asic = space->machine->driver_data;
 
 	if (offset & 1)
@@ -150,14 +150,14 @@ WRITE8_HANDLER( samcoupe_ext_mem_w )
 
 static READ8_HANDLER( samcoupe_rtc_r )
 {
-	const device_config *rtc = device_list_find_by_tag(space->machine->config->devicelist, MSM6242, "sambus_clock");
+	const device_config *rtc = devtag_get_device(space->machine, "sambus_clock");
 	return msm6242_r(rtc, offset >> 12);
 }
 
 
 static WRITE8_HANDLER( samcoupe_rtc_w )
 {
-	const device_config *rtc = device_list_find_by_tag(space->machine->config->devicelist, MSM6242, "sambus_clock");
+	const device_config *rtc = devtag_get_device(space->machine, "sambus_clock");
 	msm6242_w(rtc, offset >> 12, data);
 }
 
@@ -187,4 +187,3 @@ MACHINE_RESET( samcoupe )
 
 	samcoupe_update_memory(space);
 }
-

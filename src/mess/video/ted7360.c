@@ -356,7 +356,6 @@ Video part
 #include <stdio.h>
 #include "driver.h"
 #include "utils.h"
-#include "sound/custom.h"
 
 #include "includes/c16.h"
 
@@ -486,11 +485,6 @@ const unsigned char ted7360_palette[] =
 	0xff, 0xe9, 0xff, 0xdb, 0xff, 0xd3, 0xfd, 0xff, 0xff, 0xff, 0xff, 0xa3,
 	0xff, 0xff, 0xc1, 0xff, 0xff, 0xb2, 0xfc, 0xff, 0xa2, 0xff, 0xee, 0xff,
 	0xd1, 0xff, 0xff, 0xeb, 0xff, 0xff, 0xff, 0xf8, 0xff, 0xed, 0xff, 0xbc
-};
-
-const custom_sound_interface ted7360_sound_interface =
-{
-	ted7360_custom_start
 };
 
 UINT8 ted7360[0x20] =
@@ -951,25 +945,18 @@ READ8_HANDLER ( ted7360_port_r )
 	return val;
 }
 
-static void ted7360_video_stop(running_machine *machine)
-{
-	freegfx(cursorelement);
-}
-
 VIDEO_START( ted7360 )
 {
 	const device_config *screen = video_screen_first(machine->config);
 	int width = video_screen_get_width(screen);
 	int height = video_screen_get_height(screen);
 
-	cursorelement = allocgfx(machine, &cursorlayout);
-	decodegfx(cursorelement, cursormask, 0, 1);
+	cursorelement = gfx_element_alloc(machine, &cursorlayout, cursormask, machine->config->total_colors / 16, 0);
 	/* 7-Sep-2007 - After 0.118u5, you cannot revector the color table */
 	/* cursorelement->colortable = cursorcolortable; */
 	cursorcolortable[1] = 1;
 	cursorelement->total_colors = 2;
 	ted7360_bitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
-	add_exit_callback(machine, ted7360_video_stop);
 }
 
 static void ted7360_draw_character (running_machine *machine, int ybegin, int yend, int ch, int yoff, int xoff,
@@ -980,9 +967,9 @@ static void ted7360_draw_character (running_machine *machine, int ybegin, int ye
 	for (y = ybegin; y <= yend; y++)
 	{
 		if (INROM)
-			code = vic_dma_read_rom (cputag_get_address_space(machine,"main",ADDRESS_SPACE_PROGRAM), chargenaddr + ch * 8 + y);
+			code = vic_dma_read_rom (cputag_get_address_space(machine,"maincpu",ADDRESS_SPACE_PROGRAM), chargenaddr + ch * 8 + y);
 		else
-			code = vic_dma_read (cputag_get_address_space(machine,"main",ADDRESS_SPACE_PROGRAM), chargenaddr + ch * 8 + y);
+			code = vic_dma_read (cputag_get_address_space(machine,"maincpu",ADDRESS_SPACE_PROGRAM), chargenaddr + ch * 8 + y);
 		*BITMAP_ADDR16(ted7360_bitmap, y + yoff, 0 + xoff) = color[code >> 7];
 		*BITMAP_ADDR16(ted7360_bitmap, y + yoff, 1 + xoff) = color[(code >> 6) & 1];
 		*BITMAP_ADDR16(ted7360_bitmap, y + yoff, 2 + xoff) = color[(code >> 5) & 1];
@@ -1002,9 +989,9 @@ static void ted7360_draw_character_multi (running_machine *machine, int ybegin, 
 	for (y = ybegin; y <= yend; y++)
 	{
 		if (INROM)
-			code = vic_dma_read_rom (cputag_get_address_space(machine,"main",ADDRESS_SPACE_PROGRAM), chargenaddr + ch * 8 + y);
+			code = vic_dma_read_rom (cputag_get_address_space(machine,"maincpu",ADDRESS_SPACE_PROGRAM), chargenaddr + ch * 8 + y);
 		else
-			code = vic_dma_read (cputag_get_address_space(machine,"main",ADDRESS_SPACE_PROGRAM), chargenaddr + ch * 8 + y);
+			code = vic_dma_read (cputag_get_address_space(machine,"maincpu",ADDRESS_SPACE_PROGRAM), chargenaddr + ch * 8 + y);
 		*BITMAP_ADDR16(ted7360_bitmap, y + yoff, 0 + xoff) =
 			*BITMAP_ADDR16(ted7360_bitmap, y + yoff, 1 + xoff) = multi[code >> 6];
 		*BITMAP_ADDR16(ted7360_bitmap, y + yoff, 2 + xoff) =
@@ -1023,7 +1010,7 @@ static void ted7360_draw_bitmap (running_machine *machine, int ybegin, int yend,
 
 	for (y = ybegin; y <= yend; y++)
 	{
-		code = vic_dma_read (cputag_get_address_space(machine,"main",ADDRESS_SPACE_PROGRAM), bitmapaddr + ch * 8 + y);
+		code = vic_dma_read (cputag_get_address_space(machine,"maincpu",ADDRESS_SPACE_PROGRAM), bitmapaddr + ch * 8 + y);
 		*BITMAP_ADDR16(ted7360_bitmap, y + yoff, 0 + xoff) = c16_bitmap[code >> 7];
 		*BITMAP_ADDR16(ted7360_bitmap, y + yoff, 1 + xoff) = c16_bitmap[(code >> 6) & 1];
 		*BITMAP_ADDR16(ted7360_bitmap, y + yoff, 2 + xoff) = c16_bitmap[(code >> 5) & 1];
@@ -1042,7 +1029,7 @@ static void ted7360_draw_bitmap_multi (running_machine *machine, int ybegin, int
 
 	for (y = ybegin; y <= yend; y++)
 	{
-		code = vic_dma_read (cputag_get_address_space(machine,"main",ADDRESS_SPACE_PROGRAM), bitmapaddr + ch * 8 + y);
+		code = vic_dma_read (cputag_get_address_space(machine,"maincpu",ADDRESS_SPACE_PROGRAM), bitmapaddr + ch * 8 + y);
 		*BITMAP_ADDR16(ted7360_bitmap, y + yoff, 0 + xoff) =
 			*BITMAP_ADDR16(ted7360_bitmap, y + yoff, 1 + xoff) = bitmapmulti[code >> 6];
 		*BITMAP_ADDR16(ted7360_bitmap, y + yoff, 2 + xoff) =
@@ -1131,8 +1118,8 @@ static void ted7360_drawlines (running_machine *machine, int first, int last)
 		{
 			if (HIRESON)
 			{
-				ch = vic_dma_read (cputag_get_address_space(machine,"main",ADDRESS_SPACE_PROGRAM), (videoaddr | 0x400) + offs);
-				attr = vic_dma_read (cputag_get_address_space(machine,"main",ADDRESS_SPACE_PROGRAM), ((videoaddr) + offs));
+				ch = vic_dma_read (cputag_get_address_space(machine,"maincpu",ADDRESS_SPACE_PROGRAM), (videoaddr | 0x400) + offs);
+				attr = vic_dma_read (cputag_get_address_space(machine,"maincpu",ADDRESS_SPACE_PROGRAM), ((videoaddr) + offs));
 				c1 = ((ch >> 4) & 0xf) | (attr << 4);
 				c2 = (ch & 0xf) | (attr & 0x70);
 				bitmapmulti[1] = c16_bitmap[1] = c1 & 0x7f;
@@ -1148,8 +1135,8 @@ static void ted7360_drawlines (running_machine *machine, int first, int last)
 			}
 			else
 			{
-				ch = vic_dma_read (cputag_get_address_space(machine,"main",ADDRESS_SPACE_PROGRAM), (videoaddr | 0x400) + offs);
-				attr = vic_dma_read (cputag_get_address_space(machine,"main",ADDRESS_SPACE_PROGRAM), ((videoaddr) + offs));
+				ch = vic_dma_read (cputag_get_address_space(machine,"maincpu",ADDRESS_SPACE_PROGRAM), (videoaddr | 0x400) + offs);
+				attr = vic_dma_read (cputag_get_address_space(machine,"maincpu",ADDRESS_SPACE_PROGRAM), ((videoaddr) + offs));
 				// levente harsfalvi's docu says cursor off in ecm and multicolor
 				if (ECMON)
 				{

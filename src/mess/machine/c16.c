@@ -135,19 +135,19 @@ UINT8 c16_m7501_port_read(const device_config *device, UINT8 direction)
 
 //	data &= ~0x20; // port bit not in pinout
 
-	if (cassette_input(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" )) > +0.0)
+	if (cassette_input(devtag_get_device(device->machine, "cassette")) > +0.0)
 		data |=  0x10;
 	else
 		data &= ~0x10;
 
-	cassette_change_state(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ), (c16_port7501 & 0x08) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
+	cassette_change_state(devtag_get_device(device->machine, "cassette"), (c16_port7501 & 0x08) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
 
 	return data;
 }
 
 static void c16_bankswitch (running_machine *machine)
 {
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(machine, "maincpu");
 	memory_set_bankptr (machine, 9, mess_ram);
 
 	switch (lowrom)
@@ -303,7 +303,7 @@ READ8_HANDLER(plus4_6529_port_r)
 {
 	int data = 0x00;
 
-	if (!((cassette_get_state(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" )) & CASSETTE_MASK_UISTATE) == CASSETTE_PLAY))
+	if (!((cassette_get_state(devtag_get_device(space->machine, "cassette")) & CASSETTE_MASK_UISTATE) == CASSETTE_PLAY))
 		data |= 0x04;
 	return data;
 }
@@ -312,7 +312,7 @@ READ8_HANDLER(c16_fd1x_r)
 {
 	int data = 0x00;
 
-	if (!((cassette_get_state(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" )) & CASSETTE_MASK_UISTATE) == CASSETTE_PLAY))
+	if (!((cassette_get_state(devtag_get_device(space->machine, "cassette")) & CASSETTE_MASK_UISTATE) == CASSETTE_PLAY))
 		data |= 0x04;
 	return data;
 }
@@ -435,10 +435,10 @@ static void c16_common_driver_init (running_machine *machine)
 	device_set_info_fct(machine->cpu[0], CPUINFO_FCT_M6510_PORTREAD, (genf *) c16_m7501_port_read);
 	device_set_info_fct(machine->cpu[0], CPUINFO_FCT_M6510_PORTWRITE, (genf *) c16_m7501_port_write);
 
-	c16_select_roms (cputag_get_address_space(machine,"main",ADDRESS_SPACE_PROGRAM), 0, 0);
-	c16_switch_to_rom (cputag_get_address_space(machine,"main",ADDRESS_SPACE_PROGRAM), 0, 0);
+	c16_select_roms (cputag_get_address_space(machine,"maincpu",ADDRESS_SPACE_PROGRAM), 0, 0);
+	c16_switch_to_rom (cputag_get_address_space(machine,"maincpu",ADDRESS_SPACE_PROGRAM), 0, 0);
 
-	rom = memory_region(machine, "main");
+	rom = memory_region(machine, "maincpu");
 
 	c16_memory_10000 = rom + 0x10000;
 	c16_memory_14000 = rom + 0x14000;
@@ -490,17 +490,16 @@ DRIVER_INIT( c16v )
 MACHINE_RESET( c16 )
 {
 	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const device_config *sid = devtag_get_device(space->machine, "sid6581");
 	
 	c364_speech_init(machine);
 
-	sndti_reset(SOUND_SID8580, 0);
-
 	if (read_cfg1(machine) & 0x80)  /* SID card present */
 	{
-		memory_install_read8_handler(space, 0xfd40, 0xfd5f, 0, 0, sid6581_0_port_r);
-		memory_install_write8_handler(space,  0xfd40, 0xfd5f, 0, 0, sid6581_0_port_w);
-		memory_install_read8_handler(space, 0xfe80, 0xfe9f, 0, 0, sid6581_0_port_r);
-		memory_install_write8_handler(space,  0xfe80, 0xfe9f, 0, 0, sid6581_0_port_w);
+		memory_install_read8_device_handler(space, sid, 0xfd40, 0xfd5f, 0, 0, sid6581_r);
+		memory_install_write8_device_handler(space,  sid, 0xfd40, 0xfd5f, 0, 0, sid6581_w);
+		memory_install_read8_device_handler(space, sid, 0xfe80, 0xfe9f, 0, 0, sid6581_r);
+		memory_install_write8_device_handler(space,  sid, 0xfe80, 0xfe9f, 0, 0, sid6581_w);
 	}
 	else
 	{
@@ -539,7 +538,7 @@ MACHINE_RESET( c16 )
 
 	if (has_c1551 || has_iec8)		/* IEC8 on || C1551 */
 	{
-		const device_config *tpi = devtag_get_device(machine, TPI6525, "tpi6535_tpi_2");
+		const device_config *tpi = devtag_get_device(machine, "tpi6535_tpi_2");
 		memory_install_write8_device_handler(space, tpi, 0xfee0, 0xfeff, 0, 0, tpi6525_w);
 		memory_install_read8_device_handler(space, tpi, 0xfee0, 0xfeff, 0, 0, tpi6525_r);
 	}
@@ -550,7 +549,7 @@ MACHINE_RESET( c16 )
 	}
 	if (has_iec9)					/* IEC9 on */
 	{
-		const device_config *tpi = devtag_get_device(machine, TPI6525, "tpi6535_tpi_3");
+		const device_config *tpi = devtag_get_device(machine, "tpi6535_tpi_3");
 		memory_install_write8_device_handler(space, tpi, 0xfec0, 0xfedf, 0, 0, tpi6525_w);
 		memory_install_read8_device_handler(space, tpi, 0xfec0, 0xfedf, 0, 0, tpi6525_r);
 	}
@@ -562,12 +561,12 @@ MACHINE_RESET( c16 )
 
 	if (has_c1551 || has_vc1541)		/* c1551 or vc1541 */
 	{
-		serial_config(machine, &fake_drive_interface);
+		cbm_serial_config(machine, &cbm_fake_drive_interface);
 		drive_reset();
 	}
 	else								/* simulated drives */
 	{
-		serial_config(machine, &sim_drive_interface);
+		cbm_serial_config(machine, &cbm_sim_drive_interface);
 		cbm_serial_reset_write(machine, 0);
 		cbm_drive_0_config(SERIAL, 8);
 		cbm_drive_1_config(SERIAL, 9);
@@ -646,7 +645,7 @@ INTERRUPT_GEN( c16_frame_interrupt )
 
 static DEVICE_IMAGE_LOAD(c16_cart)
 {
-	UINT8 *mem = memory_region(image->machine, "main");
+	UINT8 *mem = memory_region(image->machine, "maincpu");
 	int size = image_length (image), test;
 	const char *filetype;
 	int address = 0;

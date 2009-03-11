@@ -88,7 +88,7 @@ void cdp1862_dma_w(const device_config *device, UINT8 data, int color_on, int rd
 		/* enable color data input latch */
 		cdp1862->con = ASSERT_LINE;
 	}
-	
+
 	if (cdp1862->con == CLEAR_LINE)
 	{
 		/* latch white dot color */
@@ -131,7 +131,6 @@ static DEVICE_START( cdp1862 )
 	/* validate arguments */
 	assert(device != NULL);
 	assert(device->tag != NULL);
-	assert(strlen(device->tag) < 20);
 	assert(device->clock > 0);
 
 	cdp1862->intf = device->static_config;
@@ -139,7 +138,7 @@ static DEVICE_START( cdp1862 )
 	assert(cdp1862->intf != NULL);
 
 	/* get the screen device */
-	cdp1862->screen = device_list_find_by_tag(device->machine->config->devicelist, VIDEO_SCREEN, cdp1862->intf->screen_tag);
+	cdp1862->screen = devtag_get_device(device->machine, cdp1862->intf->screen_tag);
 	assert(cdp1862->screen != NULL);
 
 	/* allocate the temporary bitmap */
@@ -152,8 +151,6 @@ static DEVICE_START( cdp1862 )
 	state_save_register_device_item(device, 0, cdp1862->bgcolor);
 	state_save_register_device_item(device, 0, cdp1862->con);
 	state_save_register_device_item_bitmap(device, 0, cdp1862->bitmap);
-
-	return DEVICE_START_OK;
 }
 
 static DEVICE_RESET( cdp1862 )

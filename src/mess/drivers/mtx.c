@@ -16,19 +16,15 @@
 **************************************************************************/
 
 
-/* Core includes */
 #include "driver.h"
 #include "includes/mtx.h"
-
-/* Components */
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
 #include "machine/z80ctc.h"
+#include "machine/z80dart.h"
 #include "video/tms9928a.h"
 #include "sound/sn76496.h"
-
-/* Devices */
-#include "devices/printer.h"
+#include "machine/ctronics.h"
 #include "devices/snapquik.h"
 
 
@@ -60,14 +56,15 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mtx_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READWRITE(mtx_strobe_r, mtx_bankswitch_w)
+	AM_RANGE(0x00, 0x00) AM_DEVREAD("centronics", mtx_strobe_r) AM_WRITE(mtx_bankswitch_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0x02, 0x02) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
 	AM_RANGE(0x03, 0x03) AM_READWRITE(mtx_cst_r, mtx_cst_w)
-	AM_RANGE(0x04, 0x04) AM_READWRITE(mtx_prt_r, mtx_prt_w)
+	AM_RANGE(0x04, 0x04) AM_DEVREADWRITE("centronics", mtx_prt_r, centronics_data_w)
 	AM_RANGE(0x05, 0x05) AM_READWRITE(mtx_key_lo_r, mtx_sense_w)
-	AM_RANGE(0x06, 0x06) AM_READWRITE(mtx_key_hi_r, sn76496_0_w)
-	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE(Z80CTC, "z80ctc", mtx_ctc_r, mtx_ctc_w)
+	AM_RANGE(0x06, 0x06) AM_READ(mtx_key_hi_r)
+	AM_RANGE(0x06, 0x06) AM_DEVWRITE("sn76489a", sn76496_w)
+	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("z80ctc", z80ctc_r, z80ctc_w)
 ADDRESS_MAP_END
 
 
@@ -219,9 +216,32 @@ INPUT_PORTS_END
 
 static const z80_daisy_chain mtx_daisy_chain[] =
 {
-	{ Z80CTC, "z80ctc" },
+	{ "z80ctc" },
 	{ NULL }
 };
+
+static TIMER_DEVICE_CALLBACK( ctc_c0_tick )
+{
+	const device_config *z80ctc = devtag_get_device(timer->machine, "z80ctc");
+
+	z80ctc_trg_w(z80ctc, 0, 1);
+	z80ctc_trg_w(z80ctc, 0, 0);
+}
+
+static TIMER_DEVICE_CALLBACK( ctc_c1_c2_tick )
+{
+	const device_config *z80ctc = devtag_get_device(timer->machine, "z80ctc");
+
+	z80ctc_trg_w(z80ctc, 1, 1);
+	z80ctc_trg_w(z80ctc, 1, 0);
+	z80ctc_trg_w(z80ctc, 2, 1);
+	z80ctc_trg_w(z80ctc, 2, 0);
+}
+
+static void mtx_ctc_interrupt(const device_config *device, int state)
+{
+	cpu_set_input_line(device->machine->cpu[0], 0, state);
+}
 
 
 
@@ -231,17 +251,47 @@ static const z80_daisy_chain mtx_daisy_chain[] =
  *
  *************************************/
 
+static const z80ctc_interface mtx_ctc_intf =
+{
+	0,
+	mtx_ctc_interrupt,
+	0,
+	0,
+	0
+};
+
+static Z80DART_INTERFACE( mtx_dart_intf )
+{
+	0,
+	0,
+	0,
+
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+
+	DEVCB_NULL,
+};
+
 static MACHINE_DRIVER_START( mtx512 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, MTX_SYSTEM_CLOCK)
+	MDRV_CPU_ADD("maincpu", Z80, MTX_SYSTEM_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(mtx_mem, 0)
 	MDRV_CPU_IO_MAP(mtx_io, 0)
-	MDRV_CPU_VBLANK_INT("main", mtx_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", mtx_interrupt)
 	MDRV_CPU_CONFIG(mtx_daisy_chain)
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
@@ -251,20 +301,21 @@ static MACHINE_DRIVER_START( mtx512 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_Z80CTC_ADD( "z80ctc", MTX_SYSTEM_CLOCK, mtx_ctc_intf )
+	MDRV_TIMER_ADD_PERIODIC("z80ctc_c0", ctc_c0_tick, HZ(50))
+	MDRV_TIMER_ADD_PERIODIC("z80ctc_c1c2", ctc_c1_c2_tick, HZ(MTX_SYSTEM_CLOCK/13))
 
 	/* printer */
-	MDRV_PRINTER_ADD("printer")
+	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 
 	/* snapshot */
-	MDRV_SNAPSHOT_ADD(mtx, "mtb", 0.5)
+	MDRV_SNAPSHOT_ADD("snapshot", mtx, "mtb", 0.5)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( rs128 )
 	MDRV_IMPORT_FROM(mtx512)
-	MDRV_MACHINE_RESET(rs128)
 
-	MDRV_Z80DART_ADD( "z80dart", mtx_dart_intf )
+	MDRV_Z80DART_ADD("z80dart", MTX_SYSTEM_CLOCK, mtx_dart_intf)
 MACHINE_DRIVER_END
 
 

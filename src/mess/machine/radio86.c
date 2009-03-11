@@ -30,7 +30,7 @@ void radio86_init_keyboard()
 DRIVER_INIT(radio86)
 {
 	/* set initialy ROM to be visible on first bank */
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 	memset(RAM,0x0000,0x1000); // make frist page empty by default
   	memory_configure_bank(machine, 1, 1, 2, RAM, 0x0000);
 	memory_configure_bank(machine, 1, 0, 2, RAM, 0xf800);
@@ -59,7 +59,7 @@ static READ8_DEVICE_HANDLER (radio86_8255_portb_r2 )
 
 static READ8_DEVICE_HANDLER (radio86_8255_portc_r2 )
 {
-	double level = cassette_input(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ));	 									 					
+	double level = cassette_input(devtag_get_device(device->machine, "cassette"));	 									 					
 	UINT8 dat = input_port_read(device->machine, "LINE8");
 	if (level <  0) { 
 		dat ^= radio86_tape_value;
@@ -74,35 +74,35 @@ static WRITE8_DEVICE_HANDLER (radio86_8255_porta_w2 )
 
 static WRITE8_DEVICE_HANDLER (radio86_8255_portc_w2 )
 {
-	cassette_output(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ),data & 0x01 ? 1 : -1);	
+	cassette_output(devtag_get_device(device->machine, "cassette"),data & 0x01 ? 1 : -1);	
 }
 
 
 const ppi8255_interface radio86_ppi8255_interface_1 =
 {
-	NULL,
-	radio86_8255_portb_r2,
-	radio86_8255_portc_r2,
-	radio86_8255_porta_w2,
-	NULL,
-	radio86_8255_portc_w2,
+	DEVCB_NULL,
+	DEVCB_HANDLER(radio86_8255_portb_r2),
+	DEVCB_HANDLER(radio86_8255_portc_r2),
+	DEVCB_HANDLER(radio86_8255_porta_w2),
+	DEVCB_NULL,
+	DEVCB_HANDLER(radio86_8255_portc_w2),
 };
 
 const ppi8255_interface mikrosha_ppi8255_interface_1 =
 {
-	radio86_8255_portb_r2,
-	NULL,
-	radio86_8255_portc_r2,
-	NULL,
-	radio86_8255_porta_w2,
-	NULL,
+	DEVCB_HANDLER(radio86_8255_portb_r2),
+	DEVCB_NULL,
+	DEVCB_HANDLER(radio86_8255_portc_r2),
+	DEVCB_NULL,
+	DEVCB_HANDLER(radio86_8255_porta_w2),
+	DEVCB_NULL,
 };
 
 
 
 static READ8_DEVICE_HANDLER (rk7007_8255_portc_r )
 {
-	double level = cassette_input(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ));	 									 					
+	double level = cassette_input(devtag_get_device(device->machine, "cassette"));	 									 					
 	UINT8 key = 0xff;
 	if ((radio86_keyboard_mask & 0x01)!=0) { key &= input_port_read(device->machine,"CLINE0"); }
 	if ((radio86_keyboard_mask & 0x02)!=0) { key &= input_port_read(device->machine,"CLINE1"); }
@@ -121,16 +121,16 @@ static READ8_DEVICE_HANDLER (rk7007_8255_portc_r )
 
 const ppi8255_interface rk7007_ppi8255_interface =
 {
-	NULL,
-	radio86_8255_portb_r2,
-	rk7007_8255_portc_r,
-	radio86_8255_porta_w2,
-	NULL,
-	radio86_8255_portc_w2,
+	DEVCB_NULL,
+	DEVCB_HANDLER(radio86_8255_portb_r2),
+	DEVCB_HANDLER(rk7007_8255_portc_r),
+	DEVCB_HANDLER(radio86_8255_porta_w2),
+	DEVCB_NULL,
+	DEVCB_HANDLER(radio86_8255_portc_w2),
 };
 
 static I8275_DMA_REQUEST(radio86_video_dma_request) {
-	const device_config *dma8257 = device_list_find_by_tag(device->machine->config->devicelist, DMA8257, "dma8257");
+	const device_config *dma8257 = devtag_get_device(device->machine, "dma8257");
 	dma8257_drq_w(dma8257, 2, state);
 }
 
@@ -143,7 +143,7 @@ READ8_DEVICE_HANDLER(radio86_dma_read_byte)
 
 WRITE8_DEVICE_HANDLER(radio86_write_video)
 {
-	i8275_dack_set_data((device_config*)device_list_find_by_tag( device->machine->config->devicelist, I8275, "i8275" ),data);
+	i8275_dack_set_data((device_config*)devtag_get_device(device->machine, "i8275"),data);
 }
 
 const dma8257_interface radio86_dma =
@@ -172,12 +172,12 @@ READ8_HANDLER (radio_cpu_state_r )
 
 READ8_HANDLER (radio_io_r )
 {
-	return memory_read_byte(space,(offset << 8) + offset);
+	return memory_read_byte(cpu_get_address_space(space->machine->cpu[0], ADDRESS_SPACE_PROGRAM),(offset << 8) + offset);
 }
 
 WRITE8_HANDLER(radio_io_w )
 {
-	memory_write_byte(space,(offset << 8) + offset,data);
+	memory_write_byte(cpu_get_address_space(space->machine->cpu[0], ADDRESS_SPACE_PROGRAM),(offset << 8) + offset,data);
 }
 
 MACHINE_RESET( radio86 )
@@ -197,7 +197,7 @@ WRITE8_HANDLER ( radio86_pagesel )
 
 static READ8_DEVICE_HANDLER (radio86_romdisk_porta_r )
 {
-	UINT8 *romdisk = memory_region(device->machine, "main") + 0x10000;	
+	UINT8 *romdisk = memory_region(device->machine, "maincpu") + 0x10000;	
 	if ((disk_sel & 0x0f) ==0) {
 		return romdisk[romdisk_msb*256+romdisk_lsb];	
 	} else {
@@ -221,12 +221,12 @@ static WRITE8_DEVICE_HANDLER (radio86_romdisk_portc_w )
 
 const ppi8255_interface radio86_ppi8255_interface_2 =
 {
-	radio86_romdisk_porta_r,
-	NULL,
-	NULL,
-	NULL,
-	radio86_romdisk_portb_w,
-	radio86_romdisk_portc_w
+	DEVCB_HANDLER(radio86_romdisk_porta_r),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(radio86_romdisk_portb_w),
+	DEVCB_HANDLER(radio86_romdisk_portc_w)
 };
 
 static WRITE8_DEVICE_HANDLER (mikrosha_8255_font_page_w )
@@ -236,16 +236,16 @@ static WRITE8_DEVICE_HANDLER (mikrosha_8255_font_page_w )
 
 const ppi8255_interface mikrosha_ppi8255_interface_2 =
 {
-	NULL,
-	NULL,
-	NULL,
-	NULL,	
-	mikrosha_8255_font_page_w,
-	NULL
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,	
+	DEVCB_HANDLER(mikrosha_8255_font_page_w),
+	DEVCB_NULL
 };
 
 const i8275_interface radio86_i8275_interface = {
-	"main",
+	"screen",
 	6,
 	0,
 	radio86_video_dma_request,
@@ -254,7 +254,7 @@ const i8275_interface radio86_i8275_interface = {
 };
 
 const i8275_interface mikrosha_i8275_interface = {
-	"main",
+	"screen",
 	6,
 	0,
 	radio86_video_dma_request,
@@ -263,7 +263,7 @@ const i8275_interface mikrosha_i8275_interface = {
 };
 
 const i8275_interface apogee_i8275_interface = {
-	"main",
+	"screen",
 	6,
 	0,
 	radio86_video_dma_request,
@@ -272,7 +272,7 @@ const i8275_interface apogee_i8275_interface = {
 };
 
 const i8275_interface partner_i8275_interface = {
-	"main",
+	"screen",
 	6,
 	1,
 	radio86_video_dma_request,

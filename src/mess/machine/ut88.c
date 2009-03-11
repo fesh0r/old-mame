@@ -20,7 +20,7 @@ static int ut88_keyboard_mask;
 DRIVER_INIT(ut88)
 {
 	/* set initialy ROM to be visible on first bank */
-	UINT8 *RAM = memory_region(machine, "main");	
+	UINT8 *RAM = memory_region(machine, "maincpu");	
 	memset(RAM,0x0000,0x0800); // make frist page empty by default
   	memory_configure_bank(machine, 1, 1, 2, RAM, 0x0000);
 	memory_configure_bank(machine, 1, 0, 2, RAM, 0xf800);
@@ -52,12 +52,12 @@ static WRITE8_DEVICE_HANDLER (ut88_8255_porta_w )
 
 const ppi8255_interface ut88_ppi8255_interface =
 {
-	NULL,
-	ut88_8255_portb_r,
-	ut88_8255_portc_r,
-	ut88_8255_porta_w,
-	NULL,
-	NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(ut88_8255_portb_r),
+	DEVCB_HANDLER(ut88_8255_portc_r),
+	DEVCB_HANDLER(ut88_8255_porta_w),
+	DEVCB_NULL,
+	DEVCB_NULL,
 };
 
 static TIMER_CALLBACK( ut88_reset )
@@ -86,14 +86,15 @@ WRITE8_DEVICE_HANDLER( ut88_keyboard_w )
 
 WRITE8_HANDLER( ut88_sound_w )
 {
-	dac_data_w(0,data); //beeper
-	cassette_output(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ),data & 0x01 ? 1 : -1);	
+	const device_config *dac_device = devtag_get_device(space->machine, "dac");
+	dac_data_w(dac_device, data); //beeper
+	cassette_output(devtag_get_device(space->machine, "cassette"),data & 0x01 ? 1 : -1);	
 }
 
 
 READ8_HANDLER( ut88_tape_r )
 {
-	double level = cassette_input(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ));	 									 					
+	double level = cassette_input(devtag_get_device(space->machine, "cassette"));	 									 					
 	if (level <  0) { 
 		 	return 0x00; 
  	}
@@ -103,8 +104,8 @@ READ8_HANDLER( ut88_tape_r )
 READ8_HANDLER( ut88mini_keyboard_r )
 {
 	// This is real keyboard implementation
-	UINT8 *keyrom1 = memory_region(space->machine, "main")+ 0x10000;
-	UINT8 *keyrom2 = memory_region(space->machine, "main")+ 0x10100;
+	UINT8 *keyrom1 = memory_region(space->machine, "maincpu")+ 0x10000;
+	UINT8 *keyrom2 = memory_region(space->machine, "maincpu")+ 0x10100;
 	
 	UINT8 key = keyrom2[input_port_read(space->machine, "LINE1")];
 	// if keyboard 2nd part returned 0 on 4th bit output from 

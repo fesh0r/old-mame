@@ -203,7 +203,7 @@ WRITE8_HANDLER(kc85_disc_interface_latch_w)
 
 WRITE8_HANDLER(kc85_disc_hw_terminal_count_w)
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, NEC765A, "nec765");
+	const device_config *fdc = devtag_get_device(space->machine, "nec765");
 	logerror("kc85 disc hw tc w: %02x\n",data);
 	nec765_set_tc_state(fdc, data & 0x01);
 }
@@ -405,7 +405,7 @@ static TIMER_CALLBACK(kc_cassette_timer_callback)
 	bit = 0;
 
 	/* get data from cassette */
-	if (cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) > 0.0038)
+	if (cassette_input(devtag_get_device(machine, "cassette")) > 0.0038)
 		bit = 1;
 
 	/* update astb with bit */
@@ -423,7 +423,7 @@ static void	kc_cassette_set_motor(running_machine *machine, int motor_state)
 	if (((kc_cassette_motor_state^motor_state)&0x01)!=0)
 	{
 		/* set new motor state in cassette device */
-		cassette_change_state(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ),
+		cassette_change_state(devtag_get_device(machine, "cassette"),
 			motor_state ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,
 			CASSETTE_MASK_MOTOR);
 
@@ -1234,7 +1234,7 @@ static void kc85_4_update_0x00000(running_machine *machine)
 	{
 		LOG(("no memory at ram0!\n"));
 
-//		memory_set_bankptr(machine, 1,memory_region(machine, "main") + 0x013000);
+//		memory_set_bankptr(machine, 1,memory_region(machine, "maincpu") + 0x013000);
 		/* ram is disabled */
 		memory_install_read8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_NOP);
 		memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_NOP);
@@ -1303,7 +1303,7 @@ static void kc85_4_update_0x0c000(running_machine *machine)
 		/* CAOS rom takes priority */
 		LOG(("CAOS rom 0x0c000\n"));
 
-		memory_set_bankptr(machine, 5,memory_region(machine, "main") + 0x012000);
+		memory_set_bankptr(machine, 5,memory_region(machine, "maincpu") + 0x012000);
 		rh = SMH_BANK5;
 	}
 	else if (kc85_pio_data[0] & (1<<7))
@@ -1311,7 +1311,7 @@ static void kc85_4_update_0x0c000(running_machine *machine)
 		/* BASIC takes next priority */
         	LOG(("BASIC rom 0x0c000\n"));
 
-        memory_set_bankptr(machine, 5, memory_region(machine, "main") + 0x010000);
+        memory_set_bankptr(machine, 5, memory_region(machine, "maincpu") + 0x010000);
 		rh = SMH_BANK5;
 	}
 	else
@@ -1345,7 +1345,7 @@ static void kc85_4_update_0x0e000(running_machine *machine)
 		/* enable CAOS rom in memory range 0x0e000-0x0ffff */
 		LOG(("CAOS rom 0x0e000\n"));
 		/* read will access the rom */
-		memory_set_bankptr(machine, 6,memory_region(machine, "main") + 0x013000);
+		memory_set_bankptr(machine, 6,memory_region(machine, "maincpu") + 0x013000);
 		rh = SMH_BANK6;
 	}
 	else
@@ -1381,6 +1381,7 @@ bit 0: TRUCK */
 
 WRITE8_HANDLER ( kc85_4_pio_data_w )
 {
+	const device_config *speaker = devtag_get_device(space->machine, "speaker");
 	kc85_pio_data[offset] = data;
 	z80pio_d_w(kc85_z80pio, offset, data);
 
@@ -1409,7 +1410,7 @@ WRITE8_HANDLER ( kc85_4_pio_data_w )
 
 			/* this might not be correct, the range might
 			be logarithmic and not linear! */
-			speaker_level_w(0, (speaker_level<<4));
+			speaker_level_w(speaker, (speaker_level<<4));
 		}
 		break;
 	}
@@ -1460,7 +1461,7 @@ static void kc85_3_update_0x0c000(running_machine *machine)
 		/* BASIC takes next priority */
 		LOG(("BASIC rom 0x0c000\n"));
 
-		memory_set_bankptr(machine, 4, memory_region(machine, "main") + 0x010000);
+		memory_set_bankptr(machine, 4, memory_region(machine, "maincpu") + 0x010000);
 		rh = SMH_BANK4;
 	}
 	else
@@ -1483,7 +1484,7 @@ static void kc85_3_update_0x0e000(running_machine *machine)
 		/* enable CAOS rom in memory range 0x0e000-0x0ffff */
 		LOG(("CAOS rom 0x0e000\n"));
 
-		memory_set_bankptr(machine, 5,memory_region(machine, "main") + 0x012000);
+		memory_set_bankptr(machine, 5,memory_region(machine, "maincpu") + 0x012000);
         rh = SMH_BANK5;
 	}
 	else
@@ -1627,11 +1628,12 @@ bit 0: TRUCK */
 
 WRITE8_HANDLER ( kc85_3_pio_data_w )
 {
-   kc85_pio_data[offset] = data;
-   z80pio_d_w(kc85_z80pio, offset, data);
+	const device_config *speaker = devtag_get_device(space->machine, "speaker");
+	kc85_pio_data[offset] = data;
+	z80pio_d_w(kc85_z80pio, offset, data);
 
-   switch (offset)
-   {
+	switch (offset)
+	{
 
 		case 0:
 		{
@@ -1654,10 +1656,10 @@ WRITE8_HANDLER ( kc85_3_pio_data_w )
 
 			/* this might not be correct, the range might
 			be logarithmic and not linear! */
-			speaker_level_w(0, (speaker_level<<4));
+			speaker_level_w(speaker, (speaker_level<<4));
 		}
 		break;
-   }
+	}
 }
 
 
@@ -1853,7 +1855,7 @@ static void	kc85_common_init(running_machine *machine)
 	kc85_50hz_state = 0;
 	kc85_15khz_state = 0;
 	kc85_15khz_count = 0;
-	timer_pulse(machine, ATTOTIME_IN_HZ(15625), (void *)device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), 0, kc85_15khz_timer_callback);
+	timer_pulse(machine, ATTOTIME_IN_HZ(15625), (void *)devtag_get_device(machine, "z80ctc"), 0, kc85_15khz_timer_callback);
 	timer_set(machine, attotime_zero, NULL, 0, kc85_reset_timer_callback);
 	kc85_module_system_init();
 }
@@ -1869,7 +1871,7 @@ MACHINE_RESET( kc85_4 )
 	kc85_pio_data[0] = 0x0f;
 	kc85_pio_data[1] = 0x0f1;
 
-	kc85_z80pio = device_list_find_by_tag( machine->config->devicelist, Z80PIO, "z80pio" );
+	kc85_z80pio = devtag_get_device(machine, "z80pio");
 
 	kc85_4_update_0x04000(machine);
 	kc85_4_update_0x08000(machine);
@@ -1905,7 +1907,7 @@ MACHINE_RESET( kc85_3 )
 	memory_set_bankptr(machine, 2,mess_ram+0x0c000);
 	memory_set_bankptr(machine, 7,mess_ram+0x0c000);
 
-	kc85_z80pio = device_list_find_by_tag( machine->config->devicelist, Z80PIO, "z80pio" );
+	kc85_z80pio = devtag_get_device(machine, "z80pio");
 
 	kc85_3_update_0x08000(machine);
 	kc85_3_update_0x0c000(machine);

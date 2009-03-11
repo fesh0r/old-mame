@@ -23,11 +23,11 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( irisha_io , ADDRESS_SPACE_IO, 8)
 	AM_RANGE( 0x04, 0x05) AM_READ(irisha_keyboard_r)
-	AM_RANGE( 0x06, 0x06) AM_DEVREADWRITE(MSM8251, "uart", msm8251_data_r, msm8251_data_w)
-	AM_RANGE( 0x07, 0x07) AM_DEVREADWRITE(MSM8251, "uart", msm8251_status_r, msm8251_control_w)
-	AM_RANGE( 0x08, 0x0B) AM_DEVREADWRITE(PIT8253, "pit8253", pit8253_r, pit8253_w )
-	AM_RANGE( 0x0C, 0x0F) AM_DEVREADWRITE(PIC8259, "pic8259", pic8259_r, pic8259_w ) AM_MASK( 0x01 )
-	AM_RANGE( 0x10, 0x13) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w )
+	AM_RANGE( 0x06, 0x06) AM_DEVREADWRITE("uart", msm8251_data_r, msm8251_data_w)
+	AM_RANGE( 0x07, 0x07) AM_DEVREADWRITE("uart", msm8251_status_r, msm8251_control_w)
+	AM_RANGE( 0x08, 0x0B) AM_DEVREADWRITE("pit8253", pit8253_r, pit8253_w )
+	AM_RANGE( 0x0C, 0x0F) AM_DEVREADWRITE("pic8259", pic8259_r, pic8259_w ) AM_MASK( 0x01 )
+	AM_RANGE( 0x10, 0x13) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w )
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -129,7 +129,7 @@ INPUT_PORTS_END
 /* Machine driver */
 static MACHINE_DRIVER_START( irisha )
     /* basic machine hardware */
-    MDRV_CPU_ADD("main", 8080, XTAL_16MHz / 9)
+    MDRV_CPU_ADD("maincpu", 8080, XTAL_16MHz / 9)
     MDRV_CPU_PROGRAM_MAP(irisha_mem, 0)
    	MDRV_CPU_IO_MAP(irisha_io, 0)
 
@@ -142,7 +142,7 @@ static MACHINE_DRIVER_START( irisha )
 	MDRV_PIC8259_ADD( "pic8259", irisha_pic8259_config )
 
     /* video hardware */
-		MDRV_SCREEN_ADD("main", RASTER)
+		MDRV_SCREEN_ADD("screen", RASTER)
 		MDRV_SCREEN_REFRESH_RATE(50)
 		MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 		MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -161,7 +161,7 @@ MACHINE_DRIVER_END
 /* ROM definition */
 
 ROM_START( irisha )
-    ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
     ROM_LOAD( "irisha.rom", 0x0000, 0x4000, BAD_DUMP CRC(B3CC0BB4) )
 ROM_END
 

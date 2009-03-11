@@ -13,6 +13,7 @@
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/dac.h"
+#include "sound/wave.h"
 #include "includes/orao.h"
 #include "devices/cassette.h"
 #include "formats/orao_cas.h"
@@ -152,12 +153,12 @@ static const cassette_config orao_cassette_config =
 
 static MACHINE_DRIVER_START( orao )
     /* basic machine hardware */
-    MDRV_CPU_ADD("main", M6502, 1000000)
+    MDRV_CPU_ADD("maincpu", M6502, 1000000)
     MDRV_CPU_PROGRAM_MAP(orao_mem, 0)
     MDRV_MACHINE_RESET( orao )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -173,7 +174,7 @@ static MACHINE_DRIVER_START( orao )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 8.00)
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", orao_cassette_config )
@@ -181,13 +182,13 @@ MACHINE_DRIVER_END
 
 /* ROM definition */
 ROM_START( orao )
-    ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
     ROM_LOAD( "bas12.rom", 0xc000, 0x2000, CRC(42ae6f69) SHA1(b9d4a544fae13a9c492af027545178addd557111) )
     ROM_LOAD( "crt12.rom", 0xe000, 0x2000, CRC(94ebdc94) SHA1(3959d717f96558823ccc806c842d2fb5ab0c3890) )
 ROM_END
 
 ROM_START( orao103 )
-    ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
     ROM_LOAD( "bas13.rom", 0xc000, 0x2000, CRC(35daf5da) SHA1(499c5a4bd930c26ec6226623c2793b4c7f771658) )
     ROM_LOAD( "crt13.rom", 0xe000, 0x2000, CRC(e7076014) SHA1(0e213287b0b520440af6a2a6297788a9356818c2) )
 ROM_END

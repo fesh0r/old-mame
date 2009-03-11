@@ -19,19 +19,19 @@
 #include "sound/nes_apu.h"
 
 
-static READ8_HANDLER( psg_4015_r )
+static READ8_DEVICE_HANDLER( psg_4015_r )
 {
-	return nes_psg_0_r(space, 0x15);
+	return nes_psg_r(device, 0x15);
 }
 
-static WRITE8_HANDLER( psg_4015_w )
+static WRITE8_DEVICE_HANDLER( psg_4015_w )
 {
-	nes_psg_0_w(space, 0x15, data);
+	nes_psg_w(device, 0x15, data);
 }
 
-static WRITE8_HANDLER( psg_4017_w )
+static WRITE8_DEVICE_HANDLER( psg_4017_w )
 {
-	nes_psg_0_w(space, 0x17, data);
+	nes_psg_w(device, 0x17, data);
 }
 
 static WRITE8_HANDLER(nes_vh_sprite_dma_w)
@@ -42,11 +42,12 @@ static WRITE8_HANDLER(nes_vh_sprite_dma_w)
 static ADDRESS_MAP_START( nes_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_MIRROR(0x1800)					/* RAM */
 	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(ppu2c0x_0_r, ppu2c0x_0_w)		/* PPU registers */
-	AM_RANGE(0x4000, 0x4013) AM_READWRITE(nes_psg_0_r, nes_psg_0_w)		/* PSG primary registers */
+	AM_RANGE(0x4000, 0x4013) AM_DEVREADWRITE("nessound", nes_psg_r, nes_psg_w)		/* PSG primary registers */
 	AM_RANGE(0x4014, 0x4014) AM_WRITE(nes_vh_sprite_dma_w)				/* stupid address space hole */
-	AM_RANGE(0x4015, 0x4015) AM_READWRITE(psg_4015_r, psg_4015_w)		/* PSG status / first control register */
+	AM_RANGE(0x4015, 0x4015) AM_DEVREADWRITE("nessound", psg_4015_r, psg_4015_w)		/* PSG status / first control register */
 	AM_RANGE(0x4016, 0x4016) AM_READWRITE(nes_IN0_r, nes_IN0_w)			/* IN0 - input port 1 */
-	AM_RANGE(0x4017, 0x4017) AM_READWRITE(nes_IN1_r, psg_4017_w)		/* IN1 - input port 2 / PSG second control register */
+	AM_RANGE(0x4017, 0x4017) AM_READ(nes_IN1_r)							/* IN1 - input port 2 */
+	AM_RANGE(0x4017, 0x4017) AM_DEVWRITE("nessound", psg_4017_w)		/* PSG second control register */
 	AM_RANGE(0x4100, 0x5fff) AM_READWRITE(nes_low_mapper_r, nes_low_mapper_w)	/* Perform unholy acts on the machine */
 ADDRESS_MAP_END
 
@@ -162,12 +163,12 @@ gfx_layout nes_vram_charlayout =
 
 static const nes_interface nes_apu_interface =
 {
-	"main"
+	"maincpu"
 };
 
 
 ROM_START( nes )
-    ROM_REGION( 0x10000, "main",0 )  /* Main RAM + program banks */
+    ROM_REGION( 0x10000, "maincpu",0 )  /* Main RAM + program banks */
 	ROM_FILL( 0x0000, 0x10000, 0x00 )
     ROM_REGION( 0x2000,  "gfx1",0 )  /* VROM */
 	ROM_FILL( 0x0000, 0x2000, 0x00 )
@@ -178,7 +179,7 @@ ROM_START( nes )
 ROM_END
 
 ROM_START( nespal )
-    ROM_REGION( 0x10000, "main",0 )  /* Main RAM + program banks */
+    ROM_REGION( 0x10000, "maincpu",0 )  /* Main RAM + program banks */
 	ROM_FILL( 0x0000, 0x10000, 0x00 )
     ROM_REGION( 0x2000,  "gfx1",0 )  /* VROM */
 	ROM_FILL( 0x0000, 0x2000, 0x00 )
@@ -189,7 +190,7 @@ ROM_START( nespal )
 ROM_END
 
 ROM_START( famicom )
-    ROM_REGION( 0x10000, "main",0 )  /* Main RAM + program banks */
+    ROM_REGION( 0x10000, "maincpu",0 )  /* Main RAM + program banks */
     ROM_LOAD_OPTIONAL ("disksys.rom", 0xe000, 0x2000, CRC(5e607dcf) SHA1(57fe1bdee955bb48d357e463ccbf129496930b62))
 
     ROM_REGION( 0x2000,  "gfx1",0 )  /* VROM */
@@ -201,7 +202,7 @@ ROM_START( famicom )
 ROM_END
 
 ROM_START( famitwin )
-    ROM_REGION( 0x10000, "main",0 )  /* Main RAM + program banks */
+    ROM_REGION( 0x10000, "maincpu",0 )  /* Main RAM + program banks */
     ROM_LOAD_OPTIONAL ("disksyst.rom", 0xe000, 0x2000, CRC(4df24a6c) SHA1(e4e41472c454f928e53eb10e0509bf7d1146ecc1))
 
     ROM_REGION( 0x2000,  "gfx1",0 )  /* VROM */
@@ -214,9 +215,9 @@ ROM_END
 
 static MACHINE_DRIVER_START( nes )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", N2A03, NTSC_CLOCK)
+	MDRV_CPU_ADD("maincpu", N2A03, NTSC_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(nes_map, 0)
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60.098)
 	// This isn't used so much to calulate the vblank duration (the PPU code tracks that manually) but to determine
 	// the number of cycles in each scanline for the PPU scanline timer. Since the PPU has 20 vblank scanlines + 2
@@ -253,10 +254,10 @@ static MACHINE_DRIVER_START( nespal )
 	MDRV_IMPORT_FROM( nes )
 
 	/* basic machine hardware */
-	MDRV_CPU_REPLACE("main", N2A03, PAL_CLOCK)
+	MDRV_CPU_REPLACE("maincpu", N2A03, PAL_CLOCK)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(53.355)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC((106.53/(PAL_CLOCK/1000000)) * (PPU_VBLANK_LAST_SCANLINE_PAL-PPU_VBLANK_FIRST_SCANLINE+1+2)))
 	MDRV_VIDEO_START(nes_pal)
@@ -310,7 +311,7 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*     YEAR  NAME      PARENT    COMPAT MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */
-CONS( 1983, famicom,   0,        0,		nes,      famicom,  0,	      famicom,	"Nintendo", "Famicom" , 0)
-CONS( 1986, famitwin,  famicom,  0,		nes,      famicom,  0,	      famicom,	"Sharp", "Famicom Twin" , 0)
-CONS( 1985, nes,       0,        0,		nes,      nes,      0,        0,		"Nintendo", "Nintendo Entertainment System (NTSC)" , 0)
-CONS( 1987, nespal,    nes,      0,		nespal,   nes,      0,	      0,		"Nintendo", "Nintendo Entertainment System (PAL)" , 0)
+CONS( 1983, famicom,   0,        0,		famicom,  famicom,  0,	      famicom,	"Nintendo",	"Famicom" , 0)
+CONS( 1986, famitwin,  famicom,  0,		famicom,  famicom,  0,	      famicom,	"Sharp",	"Famicom Twin" , 0)
+CONS( 1985, nes,       0,        0,		nes,      nes,      0,        0,		"Nintendo",	"Nintendo Entertainment System (NTSC)" , 0)
+CONS( 1987, nespal,    nes,      0,		nespal,   nes,      0,	      0,		"Nintendo",	"Nintendo Entertainment System (PAL)" , 0)

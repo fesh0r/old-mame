@@ -28,18 +28,18 @@ struct _uPD7002_t
 		D7 0 = conversion completed, 1 = conversion not completed  (~EOC)
 	*/
 	int status;
-	
+
 	/* High data byte
 		This byte contains the 8 most significant bits of the analogue to digital conversion. */
 	int data1;
-	
+
 	/* Low data byte
 		In 12 bit mode: Bits 7 to 4 define the four low order bits of the conversion.
 		In  8 bit mode. All bits 7 to 4 are inaccurate.
 		Bits 3 to 0 are always set to low. */
 	int data0;
-	
-	
+
+
 	/* temporary store of the next A to D conversion */
 	int digitalvalue;
 
@@ -47,7 +47,7 @@ struct _uPD7002_t
 	if the uPD7002 is half way through one conversion and a new conversion is requested
 	the counter at the end of the first conversion will not match and not be processed
 	only then at the end of the second conversion will the conversion complete function run */
-	int conversion_counter;	
+	int conversion_counter;
 };
 
 
@@ -101,15 +101,12 @@ READ8_DEVICE_HANDLER ( uPD7002_r )
 	{
 		case 0:
 			return uPD7002->status;
-			break;
 
 		case 1:
 			return uPD7002->data1;
-			break;
 
 		case 2: case 3:
 			return uPD7002->data0;
-			break;
 	}
 	return 0;
 }
@@ -185,7 +182,6 @@ static DEVICE_START( uPD7002 )
 
 	assert(device != NULL);
 	assert(device->tag != NULL);
-	assert(strlen(device->tag) < 20);
 	assert(device->static_config != NULL);
 
 	uPD7002->intf = device->static_config;
@@ -194,14 +190,13 @@ static DEVICE_START( uPD7002 )
 	uPD7002->data0 = 0;
 	uPD7002->digitalvalue = 0;
 	uPD7002->conversion_counter = 0;
-	
+
 	// register for state saving
 	state_save_register_item(device->machine, "uPD7002", device->tag, 0, uPD7002->status);
 	state_save_register_item(device->machine, "uPD7002", device->tag, 0, uPD7002->data1);
 	state_save_register_item(device->machine, "uPD7002", device->tag, 0, uPD7002->data0);
 	state_save_register_item(device->machine, "uPD7002", device->tag, 0, uPD7002->digitalvalue);
 	state_save_register_item(device->machine, "uPD7002", device->tag, 0, uPD7002->conversion_counter);
-	return DEVICE_START_OK;
 }
 
 static DEVICE_RESET( uPD7002 )

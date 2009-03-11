@@ -131,7 +131,7 @@ static unsigned char *z88_convert_address(running_machine *machine, unsigned lon
 	else
 	{
 		offset = offset & 0x01FFFF;
-		return memory_region(machine, "main") + 0x010000 + offset;
+		return memory_region(machine, "maincpu") + 0x010000 + offset;
 	}
 }
 
@@ -156,7 +156,7 @@ VIDEO_EOF( z88 )
 VIDEO_UPDATE( z88 )
 {
 	int x,y;
-	unsigned char *ptr = z88_convert_address(screen->machine, blink.sbf);
+	unsigned char *ptr = z88_convert_address(screen->machine, z88_blink.sbf);
 	unsigned char *stored_ptr = ptr;
 	int pen0, pen1;
 
@@ -221,12 +221,12 @@ VIDEO_UPDATE( z88 )
 					if (ch & 0x0100)
 					{
 						ch_index =ch & 0x0ff;	//(~0x0100);
-						pCharGfx = z88_convert_address(screen->machine, blink.hires1);
+						pCharGfx = z88_convert_address(screen->machine, z88_blink.hires1);
 					}
 					else
 					{
 						ch_index = ch & 0x0ff;
-						pCharGfx = z88_convert_address(screen->machine, blink.hires0);
+						pCharGfx = z88_convert_address(screen->machine, z88_blink.hires0);
 					}
 
 					pCharGfx += (ch_index<<3);
@@ -244,13 +244,13 @@ VIDEO_UPDATE( z88 )
 				{
 				   ch_index = ch & (~0x01c0);
 
-				   pCharGfx = z88_convert_address(screen->machine, blink.lores0);
+				   pCharGfx = z88_convert_address(screen->machine, z88_blink.lores0);
 				}
 				else
 				{
 				   ch_index = ch;
 
-				   pCharGfx = z88_convert_address(screen->machine, blink.lores1);
+				   pCharGfx = z88_convert_address(screen->machine, z88_blink.lores1);
 				}
 
 				pCharGfx += (ch_index<<3);

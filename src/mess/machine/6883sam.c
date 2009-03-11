@@ -117,7 +117,7 @@ INLINE sam6883_t *get_safe_token(const device_config *device)
 static void update_sam(const device_config *device)
 {
 	sam6883_t *sam = get_safe_token(device);
-	UINT16 xorval;	
+	UINT16 xorval;
 
 	xorval = sam->old_state ^ sam->state;
 	sam->old_state = sam->state;
@@ -159,7 +159,7 @@ WRITE8_DEVICE_HANDLER(sam6883_w)
 {
 	UINT16 mask;
 	sam6883_t *sam = get_safe_token(device);
-	
+
 	if (offset < 32)
 	{
 		mask = 1 << (offset / 2);
@@ -234,37 +234,35 @@ UINT8 get_sam_maptype(const device_config *device)
 }
 
 /* Device Interface */
-static device_start_err common_start(const device_config *device, SAM6883_VERSION device_type)
-{	
+static void common_start(const device_config *device, SAM6883_VERSION device_type)
+{
 	sam6883_t *sam = get_safe_token(device);
 	// validate arguments
 	assert(device != NULL);
 	assert(device->tag != NULL);
-	assert(strlen(device->tag) < 20);
 	assert(device->static_config != NULL);
 
 	sam->intf = device->static_config;
 
 	sam->type = device_type;
-	
+
 	sam->state = 0;
 	sam->old_state = ~0;
-	
+
 	/* save state registration */
 	state_save_register_item(device->machine, "6883sam", NULL, 0, sam->state);
 	state_save_register_item(device->machine, "6883sam", NULL, 0, sam->video_position);
 	state_save_register_postload(device->machine, update_sam_postload, (void*)device);
-	return DEVICE_START_OK;
 }
 
 static DEVICE_START( sam6883 )
 {
-	return common_start(device, TYPE_SAM6883);
+	common_start(device, TYPE_SAM6883);
 }
 
 static DEVICE_START( sam6883_gime )
 {
-	return common_start(device, TYPE_SAM6883_GIME);
+	common_start(device, TYPE_SAM6883_GIME);
 }
 
 static DEVICE_RESET( sam6883 )

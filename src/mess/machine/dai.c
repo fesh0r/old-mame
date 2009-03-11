@@ -89,29 +89,29 @@ const tms5501_interface dai_tms5501_interface =
 
 const ppi8255_interface dai_ppi82555_intf =
 {
-	NULL,	/* Port A read */
-	NULL,	/* Port B read */
-	NULL,	/* Port C read */
-	NULL,	/* Port A write */
-	NULL,	/* Port B write */
-	NULL	/* Port C write */
+	DEVCB_NULL,	/* Port A read */
+	DEVCB_NULL,	/* Port B read */
+	DEVCB_NULL,	/* Port C read */
+	DEVCB_NULL,	/* Port A write */
+	DEVCB_NULL,	/* Port B write */
+	DEVCB_NULL	/* Port C write */
 };
 
 static PIT8253_OUTPUT_CHANGED(dai_pit_out0)
 {
-	dai_set_input(0, state);
+	dai_set_input(device->machine, 0, state);
 }
 
 
 static PIT8253_OUTPUT_CHANGED(dai_pit_out1)
 {
-	dai_set_input(1, state);
+	dai_set_input(device->machine, 1, state);
 }
 
 
 static PIT8253_OUTPUT_CHANGED(dai_pit_out2)
 {
-	dai_set_input(2, state);
+	dai_set_input(device->machine, 2, state);
 }
 
 
@@ -140,9 +140,9 @@ static TIMER_CALLBACK( dai_timer )
 
 MACHINE_START( dai )
 {
-	dai_tms5501 = device_list_find_by_tag( machine->config->devicelist, TMS5501, "tms5501" );
+	dai_tms5501 = devtag_get_device(machine, "tms5501");
 
-	memory_configure_bank(machine, 2, 0, 4, memory_region(machine, "main") + 0x010000, 0x1000);
+	memory_configure_bank(machine, 2, 0, 4, memory_region(machine, "maincpu") + 0x010000, 0x1000);
 }
 
 MACHINE_RESET( dai )
@@ -191,7 +191,7 @@ READ8_HANDLER( dai_io_discrete_devices_r )
 		data |= 0x08;			// serial ready
 		if (mame_rand(space->machine)&0x01)
 			data |= 0x40;		// random number generator
-		if (cassette_input(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" )) > 0.01)
+		if (cassette_input(devtag_get_device(space->machine, "cassette")) > 0.01)
 			data |= 0x80;		// tape input
 		break;
 
@@ -226,8 +226,8 @@ WRITE8_HANDLER( dai_io_discrete_devices_w )
 		dai_paddle_enable = (data&0x08)>>3;
 		dai_cassette_motor[0] = (data&0x10)>>4;
 		dai_cassette_motor[1] = (data&0x20)>>5;
-		cassette_change_state(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ), dai_cassette_motor[0]?CASSETTE_MOTOR_DISABLED:CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
-		cassette_output(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ), (data & 0x01) ? -1.0 : 1.0);
+		cassette_change_state(devtag_get_device(space->machine, "cassette"), dai_cassette_motor[0]?CASSETTE_MOTOR_DISABLED:CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
+		cassette_output(devtag_get_device(space->machine, "cassette"), (data & 0x01) ? -1.0 : 1.0);
 		dai_update_memory (space->machine, (data&0xc0)>>6);
 		LOG_DAI_PORT_W (offset, (data&0x06)>>2, "discrete devices - paddle select");
 		LOG_DAI_PORT_W (offset, (data&0x08)>>3, "discrete devices - paddle enable");

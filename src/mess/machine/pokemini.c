@@ -204,10 +204,11 @@ static void pokemini_check_irqs( running_machine *machine )
 
 static void pokemini_update_sound( running_machine *machine )
 {
+	const device_config *speaker = devtag_get_device(machine, "speaker");
 	/* Check if sound should be muted */
 	if ( pm_reg[0x70] & 0x03 )
 	{
-		speaker_level_w( 0, 0 );
+		speaker_level_w( speaker, 0 );
 	}
 	else
 	{
@@ -220,7 +221,7 @@ static void pokemini_update_sound( running_machine *machine )
 			level = 0;
 //		}
 
-		speaker_level_w( 0, level );
+		speaker_level_w( speaker, level );
 	}
 }
 
@@ -1400,7 +1401,6 @@ READ8_HANDLER( pokemini_hwreg_r )
 
 DEVICE_START( pokemini_cart )
 {
-	return DEVICE_START_OK;
 }
 
 DEVICE_IMAGE_LOAD( pokemini_cart )
@@ -1425,7 +1425,7 @@ DEVICE_IMAGE_LOAD( pokemini_cart )
 	image_fseek( image, 0x2100, SEEK_SET );
 	size -= 0x2100;
 
-	if ( size != image_fread( image, memory_region(image->machine, "main") + 0x2100, size ) )
+	if ( size != image_fread( image, memory_region(image->machine, "maincpu") + 0x2100, size ) )
 	{
 		image_seterror( image, IMAGE_ERROR_UNSPECIFIED, "Error occured while reading ROM image" );
 		return INIT_FAIL;

@@ -365,7 +365,7 @@ static void pcw_update_mem(running_machine *machine, int block, int data)
 	{
 		unsigned char *FakeROM;
 
-		FakeROM = &memory_region(machine, "main")[0x010000];
+		FakeROM = &memory_region(machine, "maincpu")[0x010000];
 
 		memory_set_bankptr(machine, 1, FakeROM);
 	}
@@ -434,7 +434,8 @@ static WRITE8_HANDLER(pcw_vdu_video_control_register_w)
 
 static WRITE8_HANDLER(pcw_system_control_w)
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, NEC765A, "nec765");
+	const device_config *fdc = devtag_get_device(space->machine, "nec765");
+	const device_config *speaker = devtag_get_device(space->machine, "beep");
 	LOG(("SYSTEM CONTROL: %d\n",data));
 
 	switch (data)
@@ -569,14 +570,14 @@ static WRITE8_HANDLER(pcw_system_control_w)
 		/* beep on */
 		case 11:
 		{
-			beep_set_state(0,1);
+			beep_set_state(speaker,1);
 		}
 		break;
 
 		/* beep off */
 		case 12:
 		{
-			beep_set_state(0,0);
+			beep_set_state(speaker,0);
 		}
 		break;
 
@@ -654,7 +655,7 @@ static WRITE8_HANDLER(pcw_expansion_w)
 
 static READ8_HANDLER(pcw_fdc_r)
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, NEC765A, "nec765");
+	const device_config *fdc = devtag_get_device(space->machine, "nec765");
 	/* from Jacob Nevins docs. FDC I/O is not fully decoded */
 	if (offset & 1)
 	{
@@ -666,7 +667,7 @@ static READ8_HANDLER(pcw_fdc_r)
 
 static WRITE8_HANDLER(pcw_fdc_w)
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, NEC765A, "nec765");
+	const device_config *fdc = devtag_get_device(space->machine, "nec765");
 	/* from Jacob Nevins docs. FDC I/O is not fully decoded */
 	if (offset & 1)
 	{
@@ -743,8 +744,9 @@ ADDRESS_MAP_END
 
 static TIMER_CALLBACK(setup_beep)
 {
-	beep_set_state(0, 0);
-	beep_set_frequency(0, 3750);
+	const device_config *speaker = devtag_get_device(machine, "beep");
+	beep_set_state(speaker, 0);
+	beep_set_frequency(speaker, 3750);
 }
 
 
@@ -984,7 +986,7 @@ INPUT_PORTS_END
 /* PCW8256, PCW8512, PCW9256 */
 static MACHINE_DRIVER_START( pcw )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 4000000)       /* clock supplied to chip, but in reality it is 3.4 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, 4000000)       /* clock supplied to chip, but in reality it is 3.4 MHz */
 	MDRV_CPU_PROGRAM_MAP(pcw_map, 0)
 	MDRV_CPU_IO_MAP(pcw_io, 0)
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -992,7 +994,7 @@ static MACHINE_DRIVER_START( pcw )
 	MDRV_MACHINE_START(pcw)
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1016,7 +1018,7 @@ MACHINE_DRIVER_END
 /* PCW9512, PCW9512+, PCW10 */
 static MACHINE_DRIVER_START( pcw9512 )
 	MDRV_IMPORT_FROM( pcw )
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_IO_MAP(pcw9512_io, 0)
 MACHINE_DRIVER_END
 
@@ -1033,7 +1035,7 @@ is banked. */
 // for now all models use the same rom
 #define ROM_PCW(model)												\
 	ROM_START(model)												\
-		ROM_REGION(0x014000, "main",0)							\
+		ROM_REGION(0x014000, "maincpu",0)							\
 		ROM_LOAD("pcwboot.bin", 0x010000, 608, BAD_DUMP CRC(679b0287) SHA1(5dde974304e3376ace00850d6b4c8ec3b674199e))	\
 	ROM_END															\
 

@@ -132,21 +132,22 @@ We emulate the use of two cassette units. An option allows you to hear the sound
 of the tape during playback.
 
 The sorcerer has a UART device used by the serial interface and the cassette system.
-So far, it has been tested to work at 300 baud.
+
 
 ********************************************************************************/
+
 #include "driver.h"
-#include "includes/exidy.h"
-#include "machine/centroni.h"
 #include "cpu/z80/z80.h"
+#include "sound/speaker.h"
+#include "sound/wave.h"
+#include "includes/exidy.h"
+#include "machine/ctronics.h"
 #include "machine/wd17xx.h"
 #include "devices/basicdsk.h"
 #include "devices/cassette.h"
 #include "devices/snapquik.h"
 #include "devices/cartslot.h"
-#include "devices/printer.h"
 #include "devices/z80bin.h"
-#include "sound/speaker.h"
 #include "machine/ay31015.h"
 
 
@@ -201,9 +202,9 @@ static emu_timer *cassette_timer;
 static const device_config *cassette_device_image(running_machine *machine)
 {
 	if (exidy_fe & 0x20)
-		return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette2" );
+		return devtag_get_device(machine, "cassette2");
 	else
-		return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette1" );
+		return devtag_get_device(machine, "cassette1");
 }
 
 
@@ -309,23 +310,6 @@ static TIMER_CALLBACK(exidy_cassette_tc)
 	}
 }
 
-static void exidy_printer_handshake_in(running_machine *machine,int number, int data, int mask)
-{
-	if (mask & CENTRONICS_ACKNOWLEDGE)
-	{
-		if (data & CENTRONICS_ACKNOWLEDGE)
-		{
-		}
-	}
-}
-
-static const CENTRONICS_CONFIG exidy_cent_config[1]={
-	{
-		PRINTER_CENTRONICS,
-		exidy_printer_handshake_in
-	},
-};
-
 
 /* after the first 4 bytes have been read from ROM, switch the ram back in */
 static TIMER_CALLBACK( exidy_reset )
@@ -346,7 +330,7 @@ static MACHINE_START( exidy )
 
 static MACHINE_RESET( exidyd )
 {
-	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	/* Initialize cassette interface */
 	cass_data.output.length = 0;
@@ -354,11 +338,8 @@ static MACHINE_RESET( exidyd )
 	cass_data.input.length = 0;
 	cass_data.input.bit = 1;
 
-	exidy_ay31015 = device_list_find_by_tag( machine->config->devicelist, AY31015, "ay_3_1015" );
+	exidy_ay31015 = devtag_get_device(machine, "ay_3_1015");
 
-	centronics_config(machine, 0, exidy_cent_config);
-	/* assumption: select is tied low */
-	centronics_write_handshake(machine, 0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
 	exidy_fe_port_w(space, 0, 0);
 
 	timer_set(machine, ATTOTIME_IN_USEC(10), NULL, 0, exidy_reset);
@@ -374,7 +355,7 @@ static MACHINE_RESET( exidy )
 
 static  READ8_HANDLER ( exidy_wd179x_r )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
 	switch (offset & 0x03)
 	{
 	case 0:
@@ -392,7 +373,7 @@ static  READ8_HANDLER ( exidy_wd179x_r )
 
 static WRITE8_HANDLER ( exidy_wd179x_w )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
 	switch (offset & 0x03)
 	{
 	case 0:
@@ -451,27 +432,27 @@ static WRITE8_HANDLER(exidy_fe_port_w)
 	{
 		if (data & 0x20)
 		{
-			cassette_change_state(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette1" ), CASSETTE_SPEAKER_MUTED, CASSETTE_MASK_SPEAKER);
-			cassette_change_state(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette2" ), CASSETTE_SPEAKER_ENABLED, CASSETTE_MASK_SPEAKER);
+			cassette_change_state(devtag_get_device(space->machine, "cassette1"), CASSETTE_SPEAKER_MUTED, CASSETTE_MASK_SPEAKER);
+			cassette_change_state(devtag_get_device(space->machine, "cassette2"), CASSETTE_SPEAKER_ENABLED, CASSETTE_MASK_SPEAKER);
 		}
 		else
 		{
-			cassette_change_state(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette2" ), CASSETTE_SPEAKER_MUTED, CASSETTE_MASK_SPEAKER);
-			cassette_change_state(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette1" ), CASSETTE_SPEAKER_ENABLED, CASSETTE_MASK_SPEAKER);
+			cassette_change_state(devtag_get_device(space->machine, "cassette2"), CASSETTE_SPEAKER_MUTED, CASSETTE_MASK_SPEAKER);
+			cassette_change_state(devtag_get_device(space->machine, "cassette1"), CASSETTE_SPEAKER_ENABLED, CASSETTE_MASK_SPEAKER);
 		}
 	}
 	else
 	{
-		cassette_change_state(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette2" ), CASSETTE_SPEAKER_MUTED, CASSETTE_MASK_SPEAKER);
-		cassette_change_state(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette1" ), CASSETTE_SPEAKER_MUTED, CASSETTE_MASK_SPEAKER);
+		cassette_change_state(devtag_get_device(space->machine, "cassette2"), CASSETTE_SPEAKER_MUTED, CASSETTE_MASK_SPEAKER);
+		cassette_change_state(devtag_get_device(space->machine, "cassette1"), CASSETTE_SPEAKER_MUTED, CASSETTE_MASK_SPEAKER);
 	}
 
 	/* cassette 1 motor */
-	cassette_change_state(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette1" ),
+	cassette_change_state(devtag_get_device(space->machine, "cassette1"),
 		(data & 0x10) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 
 	/* cassette 2 motor */
-	cassette_change_state(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette2" ),
+	cassette_change_state(devtag_get_device(space->machine, "cassette2"),
 		(data & 0x20) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 
 	if ((data & EXIDY_CASSETTE_MOTOR_MASK) && (~data & 0x80))
@@ -504,26 +485,26 @@ static WRITE8_HANDLER(exidy_fe_port_w)
 
 static WRITE8_HANDLER(exidy_ff_port_w)
 {
+	const device_config *printer = devtag_get_device(space->machine, "centronics");
+	const device_config *speaker = devtag_get_device(space->machine, "speaker");
 	/* reading the config switch */
 	switch (input_port_read(space->machine, "CONFIG") & 0x06)
 	{
 		case 0: /* speaker */
-			speaker_level_w(0, (data) ? 1 : 0);
+			speaker_level_w(speaker, (data) ? 1 : 0);
 			break;
 
 		case 2: /* Centronics 7-bit printer */
 			/* bit 7 = strobe, bit 6..0 = data */
-			centronics_write_handshake(space->machine, 0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
-			centronics_write_handshake(space->machine, 0, (~data>>7) & 0x01, CENTRONICS_STROBE);
-			centronics_write_data(space->machine, 0, data & 0x7f);
+			centronics_strobe_w(printer, (~data>>7) & 0x01);
+			centronics_data_w(printer, 0, data & 0x7f);
 			break;
 
 		case 4: /* 8-bit parallel output */
 			/* hardware strobe driven from port select, bit 7..0 = data */
-			centronics_write_handshake(space->machine, 0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
-			centronics_write_handshake(space->machine, 0, 1, CENTRONICS_STROBE);
-			centronics_write_data(space->machine, 0, data);
-			centronics_write_handshake(space->machine, 0, 0, CENTRONICS_STROBE);
+			centronics_strobe_w(printer, 1);
+			centronics_data_w(printer, 0, data);
+			centronics_strobe_w(printer, 0);
 			break;
 	}
 }
@@ -560,7 +541,7 @@ static READ8_HANDLER(exidy_fe_port_r)
      - tied high, allowing PARIN and PAROUT bios routines to run */
 
 	UINT8 data = 0xc0;
-	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7", 
+	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7",
 										"LINE8", "LINE9", "LINE10", "LINE11", "LINE12", "LINE13", "LINE14", "LINE15" };
 
 	/* bit 5 - vsync (inverted) */
@@ -572,11 +553,6 @@ static READ8_HANDLER(exidy_fe_port_r)
 	return data;
 }
 
-static const device_config *printer_device(running_machine *machine)
-{
-	return device_list_find_by_tag(machine->config->devicelist, PRINTER, "printer");
-}
-
 static READ8_HANDLER(exidy_ff_port_r)
 {
 	/* The use of the parallel port as a general purpose port is not emulated.
@@ -584,13 +560,13 @@ static READ8_HANDLER(exidy_ff_port_r)
 	This uses bit 7. The other bits have been set high (=nothing plugged in).
 	This fixes those games that use a joystick. */
 
+	const device_config *printer = devtag_get_device(space->machine, "centronics");
 	UINT8 data=0x7f;
 
 	/* bit 7 = printer busy
 	0 = printer is not busy */
 
-	if (printer_is_ready(printer_device(space->machine))==0 )
-		data |= 0x80;
+	data |= centronics_busy_r(printer) << 7;
 
 	return data;
 }
@@ -787,7 +763,7 @@ static const cassette_config exidy_cassette_config =
 
 static MACHINE_DRIVER_START( exidy )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 12638000/6)
+	MDRV_CPU_ADD("maincpu", Z80, 12638000/6)
 	MDRV_CPU_PROGRAM_MAP(exidy_mem, 0)
 	MDRV_CPU_IO_MAP(exidy_io, 0)
 
@@ -795,7 +771,7 @@ static MACHINE_DRIVER_START( exidy )
 	MDRV_MACHINE_RESET( exidy )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(200))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -808,9 +784,9 @@ static MACHINE_DRIVER_START( exidy )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette1", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave.1", "cassette1")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)	// cass1 speaker
-	MDRV_SOUND_ADD("cassette2", WAVE, 1)
+	MDRV_SOUND_WAVE_ADD("wave.2", "cassette2")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)	// cass2 speaker
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)	// speaker on parallel port
@@ -818,14 +794,14 @@ static MACHINE_DRIVER_START( exidy )
 	MDRV_AY31015_ADD( "ay_3_1015", exidy_ay31015_config )
 
 	/* printer */
-	MDRV_PRINTER_ADD("printer")
+	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 
 	/* quickload */
-	MDRV_Z80BIN_QUICKLOAD_ADD(exidy, 2)
+	MDRV_Z80BIN_QUICKLOAD_ADD("quickload", exidy, 2)
 
 	MDRV_CASSETTE_ADD( "cassette1", exidy_cassette_config )
 	MDRV_CASSETTE_ADD( "cassette2", exidy_cassette_config )
-	
+
 	MDRV_WD179X_ADD("wd179x", default_wd17xx_interface )
 
 	/* cartridge */
@@ -837,7 +813,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( exidyd )
 	MDRV_IMPORT_FROM( exidy )
 
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(exidyd_mem, 0)
 
 	MDRV_MACHINE_START( exidyd )
@@ -846,7 +822,7 @@ MACHINE_DRIVER_END
 
 static DRIVER_INIT( exidy )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 	memory_configure_bank(machine, 1, 0, 2, &RAM[0x0000], 0xe000);
 }
 
@@ -857,7 +833,7 @@ static DRIVER_INIT( exidy )
 ***************************************************************************/
 
 ROM_START(exidy)
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD("exmo1-1.dat", 0xe000, 0x0800, CRC(ac924f67) SHA1(72fcad6dd1ed5ec0527f967604401284d0e4b6a1) ) /* monitor roms */
 	ROM_LOAD("exmo1-2.dat", 0xe800, 0x0800, CRC(ead1d0f6) SHA1(c68bed7344091bca135e427b4793cc7d49ca01be) )
 	ROM_LOAD("exchr-1.dat", 0xf800, 0x0400, CRC(4a7e1cdd) SHA1(2bf07a59c506b6e0c01ec721fb7b747b20f5dced) ) /* char rom */
@@ -869,7 +845,7 @@ ROM_START(exidy)
 ROM_END
 
 ROM_START(exidyd)
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD("exmo1-1.dat", 0xe000, 0x0800, CRC(ac924f67) SHA1(72fcad6dd1ed5ec0527f967604401284d0e4b6a1) ) /* monitor roms */
 	ROM_LOAD("exmo1-2.dat", 0xe800, 0x0800, CRC(ead1d0f6) SHA1(c68bed7344091bca135e427b4793cc7d49ca01be) )
 	ROM_LOAD("exchr-1.dat", 0xf800, 0x0400, CRC(4a7e1cdd) SHA1(2bf07a59c506b6e0c01ec721fb7b747b20f5dced) ) /* char rom */
@@ -881,7 +857,7 @@ ROM_END
 
 static Z80BIN_EXECUTE( exidy )
 {
-	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	if ((execute_address >= 0xc000) && (execute_address <= 0xdfff) && (memory_read_byte(space, 0xdffa) != 0xc3))
 		return;					/* can't run a program if the cartridge isn't in */
@@ -915,12 +891,12 @@ static Z80BIN_EXECUTE( exidy )
 		if ((execute_address != 0xc858) && autorun)
 			memory_write_word_16le(space, 0xf028, execute_address);
 
-		cpu_set_reg(cputag_get_cpu(machine, "main"), REG_GENPC, 0xf01f);
+		cpu_set_reg(cputag_get_cpu(machine, "maincpu"), REG_GENPC, 0xf01f);
 	}
 	else
 	{
 		if (autorun)
-			cpu_set_reg(cputag_get_cpu(machine, "main"), REG_GENPC, execute_address);
+			cpu_set_reg(cputag_get_cpu(machine, "maincpu"), REG_GENPC, execute_address);
 	}
 }
 

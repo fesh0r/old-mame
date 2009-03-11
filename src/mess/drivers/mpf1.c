@@ -107,14 +107,14 @@ static ADDRESS_MAP_START( mpf1_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 
 	// The 16 I/O port combinations for the 8255 (P8255A-5, 8628LLP, (c) 1981 AMD)
-	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w) AM_MIRROR(0x3C)
+	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w) AM_MIRROR(0x3C)
 
 //  TODO: create drivers to emulate the following two chips
 //  The 16 I/O port combinations for the CTC (Zilog, Z0843004PSC, Z80 CTC, 8644)
 //  AM_RANGE(0x40, 0x43) AM_WRITE(ctc_enable_w) AM_MIRROR(0x7C)
 
 	/* The 16 I/O port combinations for the PIO (Zilog, Z0842004PSC, Z80 PIO, 8735) */
-	AM_RANGE(0x80, 0x83) AM_DEVREADWRITE(Z80PIO, "z80pio", z80pio_r, z80pio_w) AM_MIRROR(0xBF)
+	AM_RANGE(0x80, 0x83) AM_DEVREADWRITE("z80pio", z80pio_r, z80pio_w) AM_MIRROR(0xBF)
 
 ADDRESS_MAP_END
 
@@ -389,6 +389,8 @@ static WRITE8_DEVICE_HANDLER( mpf1_portb_w )
 
 static WRITE8_DEVICE_HANDLER( mpf1_portc_w )
 {
+	const device_config *dac_device = devtag_get_device(device->machine, "dac");
+
 	kbdlatch = ~data;
 
 	if (data & 0x3f)
@@ -412,7 +414,7 @@ static WRITE8_DEVICE_HANDLER( mpf1_portc_w )
 	set_led_status(0, led_tone);
 
 	// speaker
-	dac_data_w(0, 0xFF * led_tone);
+	dac_data_w(dac_device, 0xFF * led_tone);
 
 	verboselog( 1, "PPI port C (LED/Kbd Col select) write: %02x\n", data );
 }
@@ -421,12 +423,12 @@ static WRITE8_DEVICE_HANDLER( mpf1_portc_w )
 
 static const ppi8255_interface ppi8255_intf =
 {
-	mpf1_porta_r,	/* Port A read */
-	mpf1_portb_r,	/* Port B read */
-	mpf1_portc_r,	/* Port C read */
-	mpf1_porta_w,	/* Port A write */
-	mpf1_portb_w,	/* Port B write */
-	mpf1_portc_w,	/* Port C write */
+	DEVCB_HANDLER(mpf1_porta_r),	/* Port A read */
+	DEVCB_HANDLER(mpf1_portb_r),	/* Port B read */
+	DEVCB_HANDLER(mpf1_portc_r),	/* Port C read */
+	DEVCB_HANDLER(mpf1_porta_w),	/* Port A write */
+	DEVCB_HANDLER(mpf1_portb_w),	/* Port B write */
+	DEVCB_HANDLER(mpf1_portc_w),	/* Port C write */
 };
 
 /* Machine Initialization */
@@ -448,7 +450,7 @@ static MACHINE_RESET( mpf1 )
 
 static MACHINE_DRIVER_START( mpf1 )
 	// basic machine hardware
-	MDRV_CPU_ADD("main", Z80, 3579500/2)	// 1.79 MHz
+	MDRV_CPU_ADD("maincpu", Z80, 3579500/2)	// 1.79 MHz
 	MDRV_CPU_PROGRAM_MAP(mpf1_map, 0)
 	MDRV_CPU_IO_MAP(mpf1_io_map, 0)
 
@@ -469,12 +471,12 @@ MACHINE_DRIVER_END
 /* ROMs */
 
 ROM_START( mpf1 )
-    ROM_REGION( 0x10000, "main", 0 )
+    ROM_REGION( 0x10000, "maincpu", 0 )
     ROM_LOAD( "mpf.u6", 0x0000, 0x1000, CRC(b60249ce) SHA1(78e0e8874d1497fabfdd6378266d041175e3797f) )
 ROM_END
 
 ROM_START( mpf1b )
-    ROM_REGION( 0x10000, "main", 0 )
+    ROM_REGION( 0x10000, "maincpu", 0 )
     ROM_LOAD( "c55167.u6", 0x0000, 0x1000, CRC(28b06dac) SHA1(99cfbab739d71a914c39302d384d77bddc4b705b) )
     ROM_LOAD( "basic.u7",  0x2000, 0x1000, CRC(d276ed6b) SHA1(a45fb98961be5e5396988498c6ed589a35398dcf) )
 ROM_END

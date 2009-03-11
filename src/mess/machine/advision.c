@@ -30,8 +30,8 @@ MACHINE_START( advision )
 {
 	/* configure EA banking */
 	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, "bios"), 0);
-	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "main"), 0);
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM), 0x0000, 0x03ff, 0, 0, SMH_BANK1, SMH_BANK1);
+	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, I8048_TAG), 0);
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, I8048_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x03ff, 0, 0, SMH_BANK1, SMH_BANK1);
 	memory_set_bank(machine, 1, 0);
 }
 
@@ -43,11 +43,11 @@ MACHINE_RESET( advision )
 	state->extram = auto_malloc(0x400);
 
 	/* enable internal ROM */
-	cputag_set_input_line(machine, "main", MCS48_INPUT_EA, CLEAR_LINE);
+	cputag_set_input_line(machine, I8048_TAG, MCS48_INPUT_EA, CLEAR_LINE);
 	memory_set_bank(machine, 1, 0);
 
 	/* reset sound CPU */
-	cputag_set_input_line(machine, "sound", INPUT_LINE_RESET, ASSERT_LINE);
+	cputag_set_input_line(machine, COP411_TAG, INPUT_LINE_RESET, ASSERT_LINE);
 
 	state->rambank = 0x300;
 	state->frame_start = 0;
@@ -63,7 +63,7 @@ WRITE8_HANDLER( advision_bankswitch_w )
 
 	int ea = BIT(data, 2);
 
-	cputag_set_input_line(space->machine, "main", MCS48_INPUT_EA, ea ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(space->machine, I8048_TAG, MCS48_INPUT_EA, ea ? ASSERT_LINE : CLEAR_LINE);
 
 	memory_set_bank(space->machine, 1, ea);
 
@@ -86,7 +86,7 @@ READ8_HANDLER( advision_extram_r )
 
 	if (state->video_bank == 0x06)
 	{
-		cputag_set_input_line(space->machine, "sound", INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
+		cputag_set_input_line(space->machine, COP411_TAG, INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
 	}
 
 	return data;
@@ -110,14 +110,15 @@ READ8_HANDLER( advision_sound_cmd_r )
 
 static void update_dac(running_machine *machine)
 {
+	const device_config *dac_device = devtag_get_device(machine, "dac");
 	advision_state *state = machine->driver_data;
 
 	if (state->sound_g == 0 && state->sound_d == 0)
-		dac_data_w(0, 0xff);
+		dac_data_w(dac_device, 0xff);
 	else if (state->sound_g == 1 && state->sound_d == 1)
-		dac_data_w(0, 0x80);
+		dac_data_w(dac_device, 0x80);
 	else
-		dac_data_w(0, 0x00);
+		dac_data_w(dac_device, 0x00);
 }
 
 WRITE8_HANDLER( advision_sound_g_w )

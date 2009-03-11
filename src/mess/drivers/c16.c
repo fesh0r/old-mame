@@ -192,7 +192,7 @@ static ADDRESS_MAP_START(c16_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x4000, 0x7fff) AM_WRITE( c16_write_4000)  /*configured in c16_common_init */
 	AM_RANGE(0x8000, 0xbfff) AM_WRITE( c16_write_8000)  /*configured in c16_common_init */
 	AM_RANGE(0xc000, 0xfcff) AM_WRITE( c16_write_c000)  /*configured in c16_common_init */
-	AM_RANGE(0xfd40, 0xfd5f) AM_READWRITE(sid6581_0_port_r, sid6581_0_port_w)	/* sidcard, eoroidpro ... */
+	AM_RANGE(0xfd40, 0xfd5f) AM_DEVREADWRITE("sid6581", sid6581_r, sid6581_w)	/* sidcard, eoroidpro ... */
 	AM_RANGE(0xfec0, 0xfedf) AM_READWRITE(c16_iec9_port_r, c16_iec9_port_w)		/*configured in c16_common_init */
 	AM_RANGE(0xfee0, 0xfeff) AM_READWRITE(c16_iec8_port_r, c16_iec8_port_w)		/*configured in c16_common_init */
 	AM_RANGE(0xff20, 0xff3d) AM_WRITE( c16_write_ff20)  /*configure in c16_common_init */
@@ -211,7 +211,7 @@ static ADDRESS_MAP_START(plus4_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfd30, 0xfd3f) AM_READWRITE(c16_6529_port_r, c16_6529_port_w) /* 6529 keyboard matrix */
 	AM_RANGE(0xfdd0, 0xfddf) AM_WRITE( c16_select_roms) /* rom chips selection */
 #if 0
-	AM_RANGE(0xfd40, 0xfd5f) AM_READWRITE(sid6581_0_port_r, sid6581_0_port_w)	/* sidcard, eoroidpro ... */
+	AM_RANGE(0xfd40, 0xfd5f) AM_DEVREADWRITE("sid6581", sid6581_r, sid6581_w)	/* sidcard, eoroidpro ... */
 	AM_RANGE(0xfec0, 0xfedf) AM_READWRITE(c16_iec9_port_r, c16_iec9_port_w)		/*configured in c16_common_init */
 	AM_RANGE(0xfee0, 0xfeff) AM_READWRITE(c16_iec8_port_r, c16_iec8_port_w)		/*configured in c16_common_init */
 #endif
@@ -235,7 +235,7 @@ static ADDRESS_MAP_START(c364_map , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfd30, 0xfd3f) AM_READWRITE(c16_6529_port_r, c16_6529_port_w) /* 6529 keyboard matrix */
 	AM_RANGE(0xfdd0, 0xfddf) AM_WRITE( c16_select_roms) /* rom chips selection */
 #if 0
-	AM_RANGE(0xfd40, 0xfd5f) AM_READWRITE(sid6581_0_port_r, sid6581_0_port_w)	/* sidcard, eoroidpro ... */
+	AM_RANGE(0xfd40, 0xfd5f) AM_DEVREADWRITE("sid6581", sid6581_r, sid6581_w)	/* sidcard, eoroidpro ... */
 	AM_RANGE(0xfec0, 0xfedf) AM_READWRITE(c16_iec9_port_r, c16_iec9_port_w)		/*configured in c16_common_init */
 	AM_RANGE(0xfee0, 0xfeff) AM_READWRITE(c16_iec8_port_r, c16_iec8_port_w)		/*configured in c16_common_init */
 #endif
@@ -363,7 +363,7 @@ static PALETTE_INIT( c16 )
  *
  *************************************/
 
-const tpi6525_interface c16_tpi6525_tpi_2_intf =
+static const tpi6525_interface c16_tpi6525_tpi_2_intf =
 {
 	c1551_0_read_data,
 	c1551_0_read_status,
@@ -376,7 +376,7 @@ const tpi6525_interface c16_tpi6525_tpi_2_intf =
 	NULL	
 };
 
-const tpi6525_interface c16_tpi6525_tpi_2_c1551_intf =
+static const tpi6525_interface c16_tpi6525_tpi_2_c1551_intf =
 {
 	c1551x_read_data,
 	c1551x_read_status,
@@ -389,7 +389,7 @@ const tpi6525_interface c16_tpi6525_tpi_2_c1551_intf =
 	NULL
 };
 
-const tpi6525_interface c16_tpi6525_tpi_3_intf =
+static const tpi6525_interface c16_tpi6525_tpi_3_intf =
 {
 	c1551_1_read_data,
 	c1551_1_read_status,
@@ -405,16 +405,16 @@ const tpi6525_interface c16_tpi6525_tpi_3_intf =
 
 static MACHINE_DRIVER_START( c16 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M7501, 1400000)        /* 7.8336 MHz */
+	MDRV_CPU_ADD("maincpu", M7501, 1400000)        /* 7.8336 MHz */
 	MDRV_CPU_PROGRAM_MAP(c16_map, 0)
-	MDRV_CPU_VBLANK_INT("main", c16_frame_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", c16_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(ted7360_raster_interrupt, TED7360_HRETRACERATE)
 	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_RESET( c16 )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(TED7360PAL_VRETRACERATE)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -428,14 +428,13 @@ static MACHINE_DRIVER_START( c16 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("ted7360", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(ted7360_sound_interface)
+	MDRV_SOUND_ADD("ted7360", TED7360, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD("sid", SID8580, TED7360PAL_CLOCK/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
-	MDRV_QUICKLOAD_ADD(cbm_c16, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
+	MDRV_QUICKLOAD_ADD("quickload", cbm_c16, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", cbm_cassette_config )
@@ -480,9 +479,9 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( plus4 )
 	MDRV_IMPORT_FROM( c16 )
-	MDRV_CPU_REPLACE( "main", M7501, 1200000)
+	MDRV_CPU_REPLACE( "maincpu", M7501, 1200000)
 	MDRV_CPU_PROGRAM_MAP(plus4_map, 0)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(TED7360NTSC_VRETRACERATE)
 
 	MDRV_SOUND_REPLACE("sid", SID8580, TED7360NTSC_CLOCK/4)
@@ -492,7 +491,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( plus4c )
 	MDRV_IMPORT_FROM( plus4 )
 	MDRV_IMPORT_FROM( cpu_c1551 )
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 #ifdef CPU_SYNC
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -506,7 +505,7 @@ static MACHINE_DRIVER_START( plus4v )
 	MDRV_IMPORT_FROM( plus4 )
 	MDRV_IMPORT_FROM( cpu_vc1541 )
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 #ifdef CPU_SYNC
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -518,9 +517,9 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( c364 )
 	MDRV_IMPORT_FROM( plus4 )
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP(c364_map, 0)
 MACHINE_DRIVER_END
 
@@ -534,19 +533,19 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( c232 )
-	ROM_REGION (0x40000, "main", 0)
+	ROM_REGION (0x40000, "maincpu", 0)
 	ROM_LOAD( "318006-01.bin", 0x10000, 0x4000, CRC(74eaae87) SHA1(161c96b4ad20f3a4f2321808e37a5ded26a135dd) )
 	ROM_LOAD( "318004-01.bin", 0x14000, 0x4000, CRC(dbdc3319) SHA1(3c77caf72914c1c0a0875b3a7f6935cd30c54201) )
 ROM_END
 
 ROM_START( c264 )
-	ROM_REGION (0x40000, "main", 0)
+	ROM_REGION (0x40000, "maincpu", 0)
 	ROM_LOAD( "basic-264.bin", 0x10000, 0x4000, CRC(6a2fc8e3) SHA1(473fce23afa07000cdca899fbcffd6961b36a8a0) )
 	ROM_LOAD( "kernal-264.bin", 0x14000, 0x4000, CRC(8f32abe7) SHA1(d481faf5fcbb331878dc7851c642d04f26a32873) )
 ROM_END
 
 ROM_START( c364 )
-	ROM_REGION (0x40000, "main", 0)
+	ROM_REGION (0x40000, "maincpu", 0)
 	ROM_LOAD( "318006.01", 0x10000, 0x4000, CRC(74eaae87) SHA1(161c96b4ad20f3a4f2321808e37a5ded26a135dd) )
 	ROM_LOAD( "kern364p.bin", 0x14000, 0x4000, CRC(84fd4f7a) SHA1(b9a5b5dacd57ca117ef0b3af29e91998bf4d7e5f) )
 	ROM_LOAD( "317053-01.bin", 0x18000, 0x4000, CRC(4fd1d8cb) SHA1(3b69f6e7cb4c18bb08e203fb18b7dabfa853390f) )
@@ -557,7 +556,7 @@ ROM_END
 
 
 ROM_START( c16 )
-	ROM_REGION (0x40000, "main", 0)
+	ROM_REGION (0x40000, "maincpu", 0)
 	ROM_LOAD( "318006-01.bin", 0x10000, 0x4000, CRC(74eaae87) SHA1(161c96b4ad20f3a4f2321808e37a5ded26a135dd) )
 	ROM_SYSTEM_BIOS( 0, "default", "rev. 5" )
 	ROMX_LOAD( "318004-05.bin", 0x14000, 0x4000, CRC(71c07bd4) SHA1(7c7e07f016391174a557e790c4ef1cbe33512cdb), ROM_BIOS(1) )
@@ -568,7 +567,7 @@ ROM_START( c16 )
 ROM_END
 
 ROM_START( c16c )
-	ROM_REGION (0x40000, "main", 0)
+	ROM_REGION (0x40000, "maincpu", 0)
 	ROM_LOAD( "318006-01.bin", 0x10000, 0x4000, CRC(74eaae87) SHA1(161c96b4ad20f3a4f2321808e37a5ded26a135dd) )
 	ROM_SYSTEM_BIOS( 0, "default", "rev. 5" )
 	ROMX_LOAD( "318004-05.bin", 0x14000, 0x4000, CRC(71c07bd4) SHA1(7c7e07f016391174a557e790c4ef1cbe33512cdb), ROM_BIOS(1) )
@@ -581,7 +580,7 @@ ROM_START( c16c )
 ROM_END
 
 ROM_START( c16v )
-	ROM_REGION (0x40000, "main", 0)
+	ROM_REGION (0x40000, "maincpu", 0)
 	ROM_LOAD( "318006-01.bin", 0x10000, 0x4000, CRC(74eaae87) SHA1(161c96b4ad20f3a4f2321808e37a5ded26a135dd) )
 	ROM_SYSTEM_BIOS( 0, "default", "rev. 5" )
 	ROMX_LOAD( "318004-05.bin", 0x14000, 0x4000, CRC(71c07bd4) SHA1(7c7e07f016391174a557e790c4ef1cbe33512cdb), ROM_BIOS(1) )
@@ -598,13 +597,13 @@ ROM_END
 #define rom_c116v		rom_c16v
 
 ROM_START( c16hun )
-	ROM_REGION (0x40000, "main", 0)
+	ROM_REGION (0x40000, "maincpu", 0)
 	ROM_LOAD( "318006-01.bin", 0x10000, 0x4000, CRC(74eaae87) SHA1(161c96b4ad20f3a4f2321808e37a5ded26a135dd) )
 	ROM_LOAD( "hungary.bin", 0x14000, 0x4000, CRC(775f60c5) SHA1(20cf3c4bf6c54ef09799af41887218933f2e27ee) )
 ROM_END
 
 ROM_START( plus4 )
-	ROM_REGION (0x40000, "main", 0)
+	ROM_REGION (0x40000, "maincpu", 0)
 	ROM_LOAD( "318006-01.bin", 0x10000, 0x4000, CRC(74eaae87) SHA1(161c96b4ad20f3a4f2321808e37a5ded26a135dd) )
 	ROM_SYSTEM_BIOS( 0, "default", "rev. 5" )
 	ROMX_LOAD( "318005-05.bin", 0x14000, 0x4000, CRC(70295038) SHA1(a3d9e5be091b98de39a046ab167fb7632d053682), ROM_BIOS(1) )
@@ -616,7 +615,7 @@ ROM_START( plus4 )
 ROM_END
 
 ROM_START( plus4c )
-	ROM_REGION (0x40000, "main", 0)
+	ROM_REGION (0x40000, "maincpu", 0)
 	ROM_LOAD( "318006-01.bin", 0x10000, 0x4000, CRC(74eaae87) SHA1(161c96b4ad20f3a4f2321808e37a5ded26a135dd) )
 	ROM_SYSTEM_BIOS( 0, "default", "rev. 5" )
 	ROMX_LOAD( "318005-05.bin", 0x14000, 0x4000, CRC(70295038) SHA1(a3d9e5be091b98de39a046ab167fb7632d053682), ROM_BIOS(1) )
@@ -630,7 +629,7 @@ ROM_START( plus4c )
 ROM_END
 
 ROM_START( plus4v )
-	ROM_REGION (0x40000, "main", 0)
+	ROM_REGION (0x40000, "maincpu", 0)
 	ROM_LOAD( "318006-01.bin", 0x10000, 0x4000, CRC(74eaae87) SHA1(161c96b4ad20f3a4f2321808e37a5ded26a135dd) )
 	ROM_SYSTEM_BIOS( 0, "default", "rev. 5" )
 	ROMX_LOAD( "318005-05.bin", 0x14000, 0x4000, CRC(70295038) SHA1(a3d9e5be091b98de39a046ab167fb7632d053682), ROM_BIOS(1) )

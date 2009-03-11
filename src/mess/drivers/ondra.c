@@ -9,6 +9,7 @@
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
+#include "sound/wave.h"
 #include "devices/cassette.h"
 #include "includes/ondra.h"
 
@@ -103,7 +104,7 @@ static INPUT_PORTS_START( ondra )
 		PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("NMI") PORT_CODE(KEYCODE_ESC)		
 INPUT_PORTS_END
 
-INTERRUPT_GEN( ondra_interrupt )
+static INTERRUPT_GEN( ondra_interrupt )
 {
 	cpu_set_input_line(device, 0, HOLD_LINE);
 }
@@ -118,16 +119,16 @@ static const cassette_config ondra_cassette_config =
 /* Machine driver */
 static MACHINE_DRIVER_START( ondra )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 2000000)
+	MDRV_CPU_ADD("maincpu", Z80, 2000000)
 	MDRV_CPU_PROGRAM_MAP(ondra_mem, 0)
 	MDRV_CPU_IO_MAP(ondra_io, 0)
-	MDRV_CPU_VBLANK_INT("main", ondra_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", ondra_interrupt)
 	
 	MDRV_MACHINE_START( ondra )
 	MDRV_MACHINE_RESET( ondra )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -141,7 +142,7 @@ static MACHINE_DRIVER_START( ondra )
     
 	// sound hardware	
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	
 	MDRV_CASSETTE_ADD( "cassette", ondra_cassette_config )    
@@ -154,27 +155,27 @@ SYSTEM_CONFIG_END
 /* ROM definition */
 
 ROM_START( ondrat )
-    ROM_REGION( 0x14000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x14000, "maincpu", ROMREGION_ERASEFF )
     ROM_LOAD( "tesla_a.rom", 0x10000, 0x0800, CRC(6d56b815) SHA1(7feb4071d5142e4c2f891747b75fa4d48ccad262) )
-    ROM_COPY( "main", 0x10000, 0x10800, 0x0800 )
-    ROM_COPY( "main", 0x10000, 0x11000, 0x0800 )
-    ROM_COPY( "main", 0x10000, 0x11800, 0x0800 )
+    ROM_COPY( "maincpu", 0x10000, 0x10800, 0x0800 )
+    ROM_COPY( "maincpu", 0x10000, 0x11000, 0x0800 )
+    ROM_COPY( "maincpu", 0x10000, 0x11800, 0x0800 )
 	ROM_LOAD( "tesla_b.rom", 0x12000, 0x0800, CRC(5f145eaa) SHA1(c1eac68b13fedc4d0d6f98b15e2a5397f0139dc3) )
-    ROM_COPY( "main", 0x10000, 0x12800, 0x0800 )
-    ROM_COPY( "main", 0x10000, 0x13000, 0x0800 )
-    ROM_COPY( "main", 0x10000, 0x13800, 0x0800 )
+    ROM_COPY( "maincpu", 0x10000, 0x12800, 0x0800 )
+    ROM_COPY( "maincpu", 0x10000, 0x13000, 0x0800 )
+    ROM_COPY( "maincpu", 0x10000, 0x13800, 0x0800 )
 ROM_END
 
 ROM_START( ondrav )
-    ROM_REGION( 0x14000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x14000, "maincpu", ROMREGION_ERASEFF )
     ROM_LOAD( "vili_a.rom", 0x10000, 0x0800, CRC(76932657) SHA1(1f3700f670f158e4bed256aed751e2c1331a28e8) )
-    ROM_COPY( "main", 0x10000, 0x10800, 0x0800 )
-    ROM_COPY( "main", 0x10000, 0x11000, 0x0800 )
-    ROM_COPY( "main", 0x10000, 0x11800, 0x0800 )
+    ROM_COPY( "maincpu", 0x10000, 0x10800, 0x0800 )
+    ROM_COPY( "maincpu", 0x10000, 0x11000, 0x0800 )
+    ROM_COPY( "maincpu", 0x10000, 0x11800, 0x0800 )
     ROM_LOAD( "vili_b.rom", 0x12000, 0x0800, CRC(03a6073f) SHA1(66f198e63f473e09350bcdbb10fe0cf440111bec) )
-    ROM_COPY( "main", 0x10000, 0x12800, 0x0800 )
-    ROM_COPY( "main", 0x10000, 0x13000, 0x0800 )
-    ROM_COPY( "main", 0x10000, 0x13800, 0x0800 )
+    ROM_COPY( "maincpu", 0x10000, 0x12800, 0x0800 )
+    ROM_COPY( "maincpu", 0x10000, 0x13000, 0x0800 )
+    ROM_COPY( "maincpu", 0x10000, 0x13800, 0x0800 )
 ROM_END
 
 /* Driver */

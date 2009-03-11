@@ -22,7 +22,6 @@ would commence ($C00000).
 #include "includes/amiga.h"
 
 /* Components */
-#include "sound/custom.h"
 #include "machine/6525tpi.h"
 #include "machine/6526cia.h"
 #include "machine/amigafdc.h"
@@ -30,15 +29,17 @@ would commence ($C00000).
 #include "machine/amigacd.h"
 #include "machine/amigacrt.h"
 #include "machine/msm6242.h"
+#include "machine/ctronics.h"
+#include "sound/cdda.h"
 
 /* Devices */
 #include "devices/chd_cd.h"
 #include "devices/cartslot.h"
 
 
-static UINT8 amiga_cia_0_portA_r(const device_config *device);
-static UINT8 amiga_cia_0_cdtv_portA_r(const device_config *device);
-static void amiga_cia_0_portA_w(const device_config *device, UINT8 data);
+static READ8_DEVICE_HANDLER( amiga_cia_0_portA_r );
+static READ8_DEVICE_HANDLER( amiga_cia_0_cdtv_portA_r );
+static WRITE8_DEVICE_HANDLER( amiga_cia_0_portA_w );
 
 /***************************************************************************
   Battery Backed-Up Clock (MSM6264)
@@ -46,16 +47,50 @@ static void amiga_cia_0_portA_w(const device_config *device, UINT8 data);
 
 static READ16_HANDLER( amiga_clock_r )
 {
-	const device_config *rtc = device_list_find_by_tag(space->machine->config->devicelist, MSM6242, "rtc");
+	const device_config *rtc = devtag_get_device(space->machine, "rtc");
 	return msm6242_r(rtc, offset / 2);
 }
 
 
 static WRITE16_HANDLER( amiga_clock_w )
 {
-	const device_config *rtc = device_list_find_by_tag(space->machine->config->devicelist, MSM6242, "rtc");
+	const device_config *rtc = devtag_get_device(space->machine, "rtc");
 	msm6242_w(rtc, offset / 2, data);
 }
+
+
+/***************************************************************************
+    CENTRONICS PORT
+***************************************************************************/
+
+static WRITE_LINE_DEVICE_HANDLER( amiga_centronics_ack_w )
+{
+	if (state == FALSE)
+		cia_issue_index(device);
+}
+
+static READ8_DEVICE_HANDLER( amiga_cia_1_porta_r )
+{
+	UINT8 result = 0;
+
+	/* centronics status is stored in PA0 to PA2 */
+	result |= centronics_busy_r(device) << 0;
+	result |= !centronics_pe_r(device) << 1;
+	result |= centronics_vcc_r(device) << 2;
+
+	/* PA3 to PA7 store the serial line status (not emulated) */
+
+	return result;
+}
+
+static const centronics_interface amiga_centronics_config =
+{
+	FALSE,
+	DEVCB_DEVICE_LINE("cia_0", amiga_centronics_ack_w),
+	DEVCB_NULL,
+	DEVCB_NULL
+};
+
 
 /***************************************************************************
   Address maps
@@ -215,59 +250,58 @@ static MACHINE_RESET( cdtv )
 	MACHINE_RESET_CALL( amigacd );
 }
 
-
-static const custom_sound_interface amiga_custom_interface =
-{
-	amiga_sh_start
-};
-
 static const cia6526_interface cia_0_ntsc_intf =
 {
-	amiga_cia_0_irq,									/* irq_func */
+	DEVCB_LINE(amiga_cia_0_irq),									/* irq_func */
+	DEVCB_DEVICE_LINE("centronics", centronics_strobe_w),	/* pc_func */
 	60,													/* tod_clock */
 	{
-		{ amiga_cia_0_portA_r, amiga_cia_0_portA_w },	/* port A */
-		{ NULL, NULL }									/* port B */
+		{ DEVCB_HANDLER(amiga_cia_0_portA_r), DEVCB_HANDLER(amiga_cia_0_portA_w) },			/* port A */
+		{ DEVCB_NULL, DEVCB_DEVICE_HANDLER("centronics", centronics_data_w) }	/* port B */
 	}
 };
 
 static const cia6526_interface cia_0_pal_intf =
 {
-	amiga_cia_0_irq,									/* irq_func */
+	DEVCB_LINE(amiga_cia_0_irq),									/* irq_func */
+	DEVCB_DEVICE_LINE("centronics", centronics_strobe_w),	/* pc_func */
 	50,													/* tod_clock */
 	{
-		{ amiga_cia_0_portA_r, amiga_cia_0_portA_w },	/* port A */
-		{ NULL, NULL }									/* port B */
+		{ DEVCB_HANDLER(amiga_cia_0_portA_r), DEVCB_HANDLER(amiga_cia_0_portA_w) },			/* port A */
+		{ DEVCB_NULL, DEVCB_DEVICE_HANDLER("centronics", centronics_data_w) }	/* port B */
 	}
 };
 
 static const cia6526_interface cia_1_intf =
 {
-	amiga_cia_1_irq,									/* irq_func */
+	DEVCB_LINE(amiga_cia_1_irq),									/* irq_func */
+	DEVCB_NULL,	/* pc_func */
 	0,													/* tod_clock */
 	{
-		{ NULL, NULL, },								/* port A */
-		{ NULL, amiga_fdc_control_w }					/* port B */
+		{ DEVCB_DEVICE_HANDLER("centronics", amiga_cia_1_porta_r), DEVCB_NULL },	/* port A */
+		{ DEVCB_NULL, DEVCB_HANDLER(amiga_fdc_control_w) }					/* port B */
 	}
 };
 
 static const cia6526_interface cia_0_cdtv_intf =
 {
-	amiga_cia_0_irq,									/* irq_func */
+	DEVCB_LINE(amiga_cia_0_irq),									/* irq_func */
+	DEVCB_DEVICE_LINE("centronics", centronics_strobe_w),	/* pc_func */
 	0,													/* tod_clock */
 	{
-		{ amiga_cia_0_cdtv_portA_r, amiga_cia_0_portA_w },	/* port A */
-		{ NULL, NULL }									/* port B */
+		{ DEVCB_HANDLER(amiga_cia_0_cdtv_portA_r), DEVCB_HANDLER(amiga_cia_0_portA_w) },	/* port A */
+		{ DEVCB_NULL, DEVCB_DEVICE_HANDLER("centronics", centronics_data_w) }	/* port B */
 	}
 };
 
 static const cia6526_interface cia_1_cdtv_intf =
 {
-	amiga_cia_1_irq,									/* irq_func */
+	DEVCB_LINE(amiga_cia_1_irq),									/* irq_func */
+	DEVCB_NULL,	/* pc_func */
 	0,													/* tod_clock */
 	{
-		{ NULL, NULL, },								/* port A */
-		{ NULL, NULL }					/* port B */
+		{ DEVCB_DEVICE_HANDLER("centronics", amiga_cia_1_porta_r), DEVCB_NULL, },	/* port A */
+		{ DEVCB_NULL, DEVCB_NULL }					/* port B */
 	}
 };
 
@@ -293,10 +327,10 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ntsc )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, AMIGA_68000_NTSC_CLOCK)
+	MDRV_CPU_ADD("maincpu", M68000, AMIGA_68000_NTSC_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(amiga_mem, 0)
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(59.997)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 
@@ -315,16 +349,16 @@ static MACHINE_DRIVER_START( ntsc )
 
 	/* devices */
 	MDRV_MSM6242_ADD("rtc")
+	MDRV_CENTRONICS_ADD("centronics", amiga_centronics_config)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MDRV_SOUND_ADD("custom", CUSTOM, 3579545)
-	MDRV_SOUND_CONFIG(amiga_custom_interface)
-	MDRV_SOUND_ROUTE(0, "left", 0.50)
-	MDRV_SOUND_ROUTE(1, "right", 0.50)
-	MDRV_SOUND_ROUTE(2, "right", 0.50)
-	MDRV_SOUND_ROUTE(3, "left", 0.50)
+	MDRV_SOUND_ADD("amiga", AMIGA, 3579545)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.50)
+	MDRV_SOUND_ROUTE(2, "rspeaker", 0.50)
+	MDRV_SOUND_ROUTE(3, "lspeaker", 0.50)
 
 	/* cia */
 	MDRV_CIA8520_ADD("cia_0", AMIGA_68000_NTSC_CLOCK / 10, cia_0_ntsc_intf)
@@ -333,7 +367,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( a1000n )
 	MDRV_IMPORT_FROM(ntsc)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(a1000_mem, 0)
 MACHINE_DRIVER_END
 
@@ -345,7 +379,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( cdtv )
 	MDRV_IMPORT_FROM(ntsc)
-	MDRV_CPU_REPLACE("main", M68000, CDTV_CLOCK_X1 / 4)
+	MDRV_CPU_REPLACE("maincpu", M68000, CDTV_CLOCK_X1 / 4)
 	MDRV_CPU_PROGRAM_MAP(cdtv_mem, 0)
 
 	MDRV_MACHINE_START( cdtv )
@@ -354,8 +388,8 @@ static MACHINE_DRIVER_START( cdtv )
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	MDRV_SOUND_ADD( "cdda", CDDA, 0 )
-	MDRV_SOUND_ROUTE( 0, "left", 1.0 )
-	MDRV_SOUND_ROUTE( 1, "right", 1.0 )
+	MDRV_SOUND_ROUTE( 0, "lspeaker", 1.0 )
+	MDRV_SOUND_ROUTE( 1, "rspeaker", 1.0 )
 
 	/* cdrom */
 	MDRV_CDROM_ADD( "cdrom" )
@@ -373,9 +407,9 @@ static MACHINE_DRIVER_START( pal )
 	MDRV_IMPORT_FROM(ntsc)
 
 	/* adjust for PAL specs */
-	MDRV_CPU_REPLACE("main", M68000, AMIGA_68000_PAL_CLOCK)
+	MDRV_CPU_REPLACE("maincpu", M68000, AMIGA_68000_PAL_CLOCK)
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_SIZE(228*4, 312)
 	MDRV_SCREEN_VISIBLE_AREA(214, (228*4)-1, 34, 312-1)
@@ -392,7 +426,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( a1000p )
 	MDRV_IMPORT_FROM(pal)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(a1000_mem, 0)
 MACHINE_DRIVER_END
 
@@ -403,7 +437,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 
-static UINT8 amiga_cia_0_portA_r(const device_config *device)
+static READ8_DEVICE_HANDLER( amiga_cia_0_portA_r )
 {
 	UINT8 ret = input_port_read(device->machine, "CIA0PORTA") & 0xc0;	/* Gameport 1 and 0 buttons */
 	ret |= amiga_fdc_status_r();
@@ -411,13 +445,13 @@ static UINT8 amiga_cia_0_portA_r(const device_config *device)
 }
 
 
-static UINT8 amiga_cia_0_cdtv_portA_r(const device_config *device)
+static READ8_DEVICE_HANDLER( amiga_cia_0_cdtv_portA_r )
 {
 	return input_port_read(device->machine, "CIA0PORTA") & 0xc0;	/* Gameport 1 and 0 buttons */
 }
 
 
-static void amiga_cia_0_portA_w(const device_config *device, UINT8 data)
+static WRITE8_DEVICE_HANDLER( amiga_cia_0_portA_w )
 {
 	/* switch banks as appropriate */
 	memory_set_bank(device->machine, 1, data & 1);

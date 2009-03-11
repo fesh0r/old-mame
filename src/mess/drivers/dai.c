@@ -60,6 +60,7 @@ Timings:
 
 #include "driver.h"
 #include "cpu/i8085/i8085.h"
+#include "sound/wave.h"
 #include "machine/8255ppi.h"
 #include "includes/dai.h"
 #include "machine/pit8253.h"
@@ -79,10 +80,10 @@ static ADDRESS_MAP_START( dai_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0xf000, 0xf7ff) AM_WRITE( dai_stack_interrupt_circuit_w )
 	AM_RANGE( 0xf800, 0xf8ff) AM_RAM
 	AM_RANGE( 0xfb00, 0xfbff) AM_READWRITE( amd9511_r, amd9511_w )
-	AM_RANGE( 0xfc00, 0xfcff) AM_DEVREADWRITE( PIT8253, "pit8253", pit8253_r, pit8253_w )
+	AM_RANGE( 0xfc00, 0xfcff) AM_DEVREADWRITE("pit8253", pit8253_r, pit8253_w )
 	AM_RANGE( 0xfd00, 0xfdff) AM_READWRITE( dai_io_discrete_devices_r, dai_io_discrete_devices_w )
-	AM_RANGE( 0xfe00, 0xfeff) AM_DEVREADWRITE( PPI8255, "ppi8255", ppi8255_r, ppi8255_w )
-	AM_RANGE( 0xff00, 0xffff) AM_DEVREADWRITE( TMS5501, "tms5501", tms5501_r, tms5501_w )
+	AM_RANGE( 0xfe00, 0xfeff) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w )
+	AM_RANGE( 0xff00, 0xffff) AM_DEVREADWRITE("tms5501", tms5501_r, tms5501_w )
 ADDRESS_MAP_END
 
 
@@ -183,7 +184,7 @@ static const cassette_config dai_cassette_config =
 /* machine definition */
 static MACHINE_DRIVER_START( dai )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", 8080, 2000000)
+	MDRV_CPU_ADD("maincpu", 8080, 2000000)
 	MDRV_CPU_PROGRAM_MAP(dai_mem, 0)
 	MDRV_CPU_IO_MAP(dai_io, 0)
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -196,7 +197,7 @@ static MACHINE_DRIVER_START( dai )
 	MDRV_PPI8255_ADD( "ppi8255", dai_ppi82555_intf )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -210,13 +211,12 @@ static MACHINE_DRIVER_START( dai )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD("custom", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(dai_sound_interface)
-	MDRV_SOUND_ROUTE(0, "left", 0.50)
-	MDRV_SOUND_ROUTE(1, "right", 0.50)
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
+	MDRV_SOUND_ADD("custom", DAI, 0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.50)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", dai_cassette_config )
@@ -228,7 +228,7 @@ MACHINE_DRIVER_END
 #define io_dai		io_NULL
 
 ROM_START(dai)
-	ROM_REGION(0x14000,"main",0)
+	ROM_REGION(0x14000,"maincpu",0)
 	ROM_LOAD("dai.bin", 0xc000, 0x2000, CRC(ca71a7d5) SHA1(6bbe2336c717354beab2ae201debeb4fd055bdcb))
 	ROM_LOAD("dai00.bin", 0x10000, 0x1000, CRC(fa7d39ac) SHA1(3d1824a1f273882f934249ef3cb1b38ef99de7b9))
 	ROM_LOAD("dai01.bin", 0x11000, 0x1000, CRC(cb5809f2) SHA1(523656f0a9d98888cd3e2bd66886c589e9ae75b4))

@@ -721,7 +721,7 @@ static const sc61860_cpu_core config =
 
 static MACHINE_DRIVER_START( pc1401 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", SC61860, 192000)        /* 7.8336 MHz */
+	MDRV_CPU_ADD("maincpu", SC61860, 192000)        /* 7.8336 MHz */
 	MDRV_CPU_PROGRAM_MAP(pc1401_mem, 0)
 	MDRV_CPU_CONFIG(config)
 
@@ -735,7 +735,7 @@ static MACHINE_DRIVER_START( pc1401 )
        (lcd dot displayed as 2x3 pixel)
        it seams to have 3/4 ratio in the real pc1401 */
     /* video hardware */
-	MDRV_SCREEN_ADD("main", LCD)
+	MDRV_SCREEN_ADD("screen", LCD)
 	MDRV_SCREEN_REFRESH_RATE(20)	/* very early and slow lcd */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -765,14 +765,14 @@ static const sc61860_cpu_core pc1251_config =
 
 static MACHINE_DRIVER_START( pc1251 )
 	MDRV_IMPORT_FROM( pc1401 )
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( pc1251_mem, 0 )
 	MDRV_CPU_CONFIG( pc1251_config )
 
 	MDRV_NVRAM_HANDLER( pc1251 )
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_SIZE(608, 300)
 	MDRV_SCREEN_VISIBLE_AREA(0, 608-1, 0, 300-1)
 //  MDRV_SCREEN_SIZE(640, 334)
@@ -793,7 +793,7 @@ static const sc61860_cpu_core pc1350_config =
 
 static MACHINE_DRIVER_START( pc1350 )
 	MDRV_IMPORT_FROM( pc1401 )
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( pc1350_mem, 0 )
 	MDRV_CPU_CONFIG( pc1350_config )
 
@@ -805,7 +805,7 @@ static MACHINE_DRIVER_START( pc1350 )
        resolution depends on the dots of the lcd
        (lcd dot displayed as 2x2 pixel) */
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_SIZE(640, 252)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 252-1)
 
@@ -823,7 +823,7 @@ static const sc61860_cpu_core pc1403_config =
 
 static MACHINE_DRIVER_START( pc1403 )
 	MDRV_IMPORT_FROM( pc1401 )
-	MDRV_CPU_REPLACE( "main", SC61860, 256000 )
+	MDRV_CPU_REPLACE( "maincpu", SC61860, 256000 )
 	MDRV_CPU_PROGRAM_MAP( pc1403_mem, 0 )
 	MDRV_CPU_CONFIG( pc1403_config )
 
@@ -834,7 +834,7 @@ static MACHINE_DRIVER_START( pc1403 )
        resolution depends on the dots of the lcd
        (lcd dot displayed as 2x2 pixel) */
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_SIZE(848, 320)
 	MDRV_SCREEN_VISIBLE_AREA(0, 848-1, 0, 320-1)
 //  MDRV_SCREEN_SIZE(848, 361)
@@ -846,7 +846,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START(pc1401)
-	ROM_REGION(0x10000,"main",0)
+	ROM_REGION(0x10000,"maincpu",0)
 	/* SC61860A08 5H 13LD cpu with integrated rom*/
 	ROM_LOAD("sc61860.a08", 0x0000, 0x2000, CRC(44bee438) SHA1(c5106bc8d848be1b49494ace30a26eeb1cc5e504))
 /* 5S1 SC613256 D30
@@ -858,7 +858,7 @@ ROM_END
 #define rom_pc1402 rom_pc1401
 
 ROM_START(pc1251)
-	ROM_REGION(0x10000,"main",0)
+	ROM_REGION(0x10000,"maincpu",0)
 	/* sc61860a13 6c 13 ld */
 	ROM_LOAD("cpu1251.rom", 0x0000, 0x2000, CRC(f7287aca) SHA1(19bfa778e3e05ea06bdca15cd9dfbba9b971340e))
 	ROM_LOAD("bas1251.rom", 0x4000, 0x4000, CRC(93ecb629) SHA1(0fe0ad419053ee7814600b0be320dd2e8eb2ec92))
@@ -868,7 +868,7 @@ ROM_END
 #define rom_trs80pc3 rom_pc1251
 
 ROM_START(pc1350)
-	ROM_REGION(0x10000,"main",0)
+	ROM_REGION(0x10000,"maincpu",0)
 	/* sc61860a13 6c 13 ld */
 	ROM_LOAD("cpu.rom", 0x0000, 0x2000, CRC(79a924bc) SHA1(2eaef0d53d85863ca70a41c8e1eddc5915136b99))
 	ROM_LOAD("basic.rom", 0x8000, 0x8000, CRC(158b28e2) SHA1(b63b37dd510b3c4d9f16d224f87ae2efb3bcc51f))
@@ -876,7 +876,7 @@ ROM_START(pc1350)
 ROM_END
 
 ROM_START(pc1403)
-	ROM_REGION(0x10000,"main",0)
+	ROM_REGION(0x10000,"maincpu",0)
     ROM_LOAD("introm.bin", 0x0000, 0x2000, CRC(588c500b) SHA1(2fed9ebede27e20a8ee4b4b03b9f8cd7808ada5c))
 	ROM_REGION(0x10000,"user1",0)
     ROM_LOAD("extrom08.bin", 0x0000, 0x4000, CRC(1fa65140) SHA1(f22a9f114486f69733fc43dfec26fb210643aeff))

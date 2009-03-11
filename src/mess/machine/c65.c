@@ -473,6 +473,9 @@ static WRITE8_HANDLER(c65_ram_expansion_w)
 static WRITE8_HANDLER ( c65_write_io )
 {
 	running_machine *machine = space->machine;
+	const device_config *sid_0 = devtag_get_device(space->machine, "sid_r");
+	const device_config *sid_1 = devtag_get_device(space->machine, "sid_l");
+
 	switch(offset&0xf00) {
 	case 0x000:
 		if (offset < 0x80)
@@ -489,9 +492,9 @@ static WRITE8_HANDLER ( c65_write_io )
 		break;
 	case 0x400:
 		if (offset<0x420) /* maybe 0x20 */
-			sid6581_0_port_w (space, offset & 0x3f, data);
+			sid6581_w(sid_0, offset & 0x3f, data);
 		else if (offset<0x440)
-			sid6581_1_port_w(space, offset&0x3f, data);
+			sid6581_w(sid_1, offset & 0x3f, data);
 		else
 			DBG_LOG (1, "io write", ("%.3x %.2x\n", offset, data));
 		break;
@@ -510,8 +513,8 @@ static WRITE8_HANDLER ( c65_write_io )
 static WRITE8_HANDLER ( c65_write_io_dc00 )
 {
 	running_machine *machine = space->machine;
-	const device_config *cia_0 = device_list_find_by_tag(space->machine->config->devicelist, CIA6526R1, "cia_0");
-	const device_config *cia_1 = device_list_find_by_tag(space->machine->config->devicelist, CIA6526R1, "cia_1");
+	const device_config *cia_0 = devtag_get_device(space->machine, "cia_0");
+	const device_config *cia_1 = devtag_get_device(space->machine, "cia_1");
 
 	switch(offset&0xf00) {
 	case 0x000:
@@ -530,6 +533,9 @@ static WRITE8_HANDLER ( c65_write_io_dc00 )
 static READ8_HANDLER ( c65_read_io )
 {
 	running_machine *machine = space->machine;
+	const device_config *sid_0 = devtag_get_device(space->machine, "sid_r");
+	const device_config *sid_1 = devtag_get_device(space->machine, "sid_l");
+
 	switch(offset&0xf00) {
 	case 0x000:
 		if (offset < 0x80)
@@ -547,9 +553,9 @@ static READ8_HANDLER ( c65_read_io )
 		break;
 	case 0x400:
 		if (offset<0x420)
-			return sid6581_0_port_r(space, offset & 0x3f);
+			return sid6581_r(sid_0, offset & 0x3f);
 		if (offset<0x440)
-			return sid6581_1_port_r(space, offset&0x3f);
+			return sid6581_r(sid_1, offset & 0x3f);
 		DBG_LOG (1, "io read", ("%.3x\n", offset));
 		break;
 	case 0x500:
@@ -566,8 +572,8 @@ static READ8_HANDLER ( c65_read_io )
 static READ8_HANDLER ( c65_read_io_dc00 )
 {
 	running_machine *machine = space->machine;
-	const device_config *cia_0 = device_list_find_by_tag(space->machine->config->devicelist, CIA6526R1, "cia_0");
-	const device_config *cia_1 = device_list_find_by_tag(space->machine->config->devicelist, CIA6526R1, "cia_1");
+	const device_config *cia_0 = devtag_get_device(space->machine, "cia_0");
+	const device_config *cia_1 = devtag_get_device(space->machine, "cia_1");
 
 	switch(offset&0x300) {
 	case 0x000:
@@ -834,7 +840,7 @@ MACHINE_START( c65 )
 	/* clear upper memory */
 	memset(mess_ram + 128*1024, 0xff, mess_ram_size -  128*1024);
 
-	serial_config(machine, &sim_drive_interface);
+	cbm_serial_config(machine, &cbm_sim_drive_interface);
 	cbm_serial_reset_write (machine, 0);
 	cbm_drive_0_config (SERIAL, 10);
 	cbm_drive_1_config (SERIAL, 11);

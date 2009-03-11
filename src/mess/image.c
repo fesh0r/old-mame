@@ -69,10 +69,15 @@ struct _image_slot_data
 	char *manufacturer;
 	char *year;
 	char *playable;
+	char *pcb;
 	char *extrainfo;
 
 	/* working directory; persists across mounts */
 	astring *working_directory;
+
+	/* special - used when creating */
+	int create_format;
+	option_resolution *create_args;
 
 	/* pointer */
 	void *ptr;
@@ -92,7 +97,6 @@ struct _images_private
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-static void image_exit(running_machine *machine);
 static void image_clear(image_slot_data *image);
 static void image_clear_error(image_slot_data *image);
 static void image_unload_internal(image_slot_data *slot);
@@ -203,6 +207,9 @@ void image_init(running_machine *machine)
 		slot->name = astring_alloc();
 		slot->working_directory = astring_alloc();
 
+		/* clear error message */
+		slot->err_message = NULL;
+
 		/* setup the device */
 		slot->dev = dev;
 		slot->info = image_device_getinfo(machine->config, dev);
@@ -239,18 +246,16 @@ void image_init(running_machine *machine)
 
 		indx++;
 	}
-
-	/* add a callback for when we shut down */
-	add_exit_callback(machine, image_exit);
 }
 
 
 
 /*-------------------------------------------------
-    image_exit - shut down the core image system
+    image_unload_all - unload all images and
+	extract options
 -------------------------------------------------*/
 
-static void image_exit(running_machine *machine)
+void image_unload_all(running_machine *machine)
 {
 	int i;
 	image_slot_data *slot;
@@ -790,11 +795,14 @@ static int image_load_internal(const device_config *image, const char *path,
 	assert_always(image != NULL, "image_load(): image is NULL");
 	assert_always(path != NULL, "image_load(): path is NULL");
 
-	/* we are now loading */
-	slot->is_loading = 1;
-
 	/* first unload the image */
 	image_unload(image);
+
+	/* clear any possible error messages */
+	image_clear_error(slot);
+
+	/* we are now loading */
+	slot->is_loading = 1;
 
 	/* record the filename */
 	slot->err = set_image_filename(slot, path);
@@ -845,26 +853,14 @@ static int image_load_internal(const device_config *image, const char *path,
 	}
 
 	/* call device load or create */
-	if (image_has_been_created(image) && (slot->create != NULL))
+	if (image->token != NULL)
 	{
-		err = slot->create(image, create_format, create_args);
+		slot->create_format = create_format;
+		slot->create_args = create_args;
+
+		err = image_finish_load(image);
 		if (err)
-		{
-			if (!slot->err)
-				slot->err = IMAGE_ERROR_UNSPECIFIED;
 			goto done;
-		}
-	}
-	else if (slot->load != NULL)
-	{
-		/* using device load */
-		err = slot->load(image);
-		if (err)
-		{
-			if (!slot->err)
-				slot->err = IMAGE_ERROR_UNSPECIFIED;
-			goto done;
-		}
 	}
 
 	/* success! */
@@ -872,7 +868,6 @@ static int image_load_internal(const device_config *image, const char *path,
 done:
 	if (slot->err)
 		image_clear(slot);
-	slot->is_loading = 1;
 	return slot->err ? INIT_FAIL : INIT_PASS;
 }
 
@@ -885,6 +880,48 @@ done:
 int image_load(const device_config *image, const char *path)
 {
 	return image_load_internal(image, path, FALSE, 0, NULL);
+}
+
+
+
+/*-------------------------------------------------
+    image_finish_load - special call - only use
+	from core
+-------------------------------------------------*/
+
+int image_finish_load(const device_config *device)
+{
+	int err = INIT_PASS;
+
+	image_slot_data *slot = find_image_slot(device);
+
+	if (slot->is_loading)
+	{
+		if (image_has_been_created(device) && (slot->create != NULL))
+		{
+			err = (*slot->create)(device, slot->create_format, slot->create_args);
+			if (err)
+			{
+				if (!slot->err)
+					slot->err = IMAGE_ERROR_UNSPECIFIED;
+			}
+		}
+		else if (slot->load != NULL)
+		{
+			/* using device load */
+			err = (*slot->load)(device);
+			if (err)
+			{
+				if (!slot->err)
+					slot->err = IMAGE_ERROR_UNSPECIFIED;
+			}
+		}
+	}
+
+	slot->is_loading = 0;
+	slot->create_format = 0;
+	slot->create_args = NULL;
+	return err;
 }
 
 
@@ -918,6 +955,7 @@ static void image_clear(image_slot_data *image)
 
 	image->writeable = 0;
 	image->created = 0;
+	image->is_loading = 0;
 	image->dir = NULL;
 	image->hash = NULL;
 	image->longname = NULL;
@@ -926,7 +964,6 @@ static void image_clear(image_slot_data *image)
 	image->playable = NULL;
 	image->extrainfo = NULL;
 	image->basename_noext = NULL;
-	image->err_message = NULL;
 	image->ptr = NULL;
 }
 
@@ -945,10 +982,10 @@ static void image_unload_internal(image_slot_data *slot)
 		/* call the unload function */
 		if (slot->unload != NULL)
 			slot->unload(slot->dev);
-
-		image_clear(slot);
-		image_clear_error(slot);
 	}
+
+	image_clear(slot);
+	image_clear_error(slot);
 }
 
 
@@ -1084,6 +1121,7 @@ static int read_hash_config(const char *sysname, image_slot_data *image)
 	image->manufacturer	= info->manufacturer	? image_strdup(image->dev, info->manufacturer)	: NULL;
 	image->year			= info->year			? image_strdup(image->dev, info->year)			: NULL;
 	image->playable		= info->playable		? image_strdup(image->dev, info->playable)		: NULL;
+	image->pcb			= info->pcb				? image_strdup(image->dev, info->pcb)			: NULL;
 	image->extrainfo	= info->extrainfo		? image_strdup(image->dev, info->extrainfo)		: NULL;
 
 done:
@@ -1629,45 +1667,78 @@ void image_freeptr(const device_config *image, void *ptr)
   pertaining to that image in the CRC database
 ****************************************************************************/
 
-const char *image_longname(const device_config *image)
+/*-------------------------------------------------
+    image_longname
+-------------------------------------------------*/
+
+const char *image_longname(const device_config *device)
 {
-	image_slot_data *slot = find_image_slot(image);
+	image_slot_data *slot = find_image_slot(device);
 	image_checkhash(slot);
 	return slot->longname;
 }
 
 
 
-const char *image_manufacturer(const device_config *image)
+/*-------------------------------------------------
+    image_manufacturer
+-------------------------------------------------*/
+
+const char *image_manufacturer(const device_config *device)
 {
-	image_slot_data *slot = find_image_slot(image);
+	image_slot_data *slot = find_image_slot(device);
 	image_checkhash(slot);
 	return slot->manufacturer;
 }
 
 
 
-const char *image_year(const device_config *image)
+/*-------------------------------------------------
+    image_year
+-------------------------------------------------*/
+
+const char *image_year(const device_config *device)
 {
-	image_slot_data *slot = find_image_slot(image);
+	image_slot_data *slot = find_image_slot(device);
 	image_checkhash(slot);
 	return slot->year;
 }
 
 
 
-const char *image_playable(const device_config *image)
+/*-------------------------------------------------
+    image_playable
+-------------------------------------------------*/
+
+const char *image_playable(const device_config *device)
 {
-	image_slot_data *slot = find_image_slot(image);
+	image_slot_data *slot = find_image_slot(device);
 	image_checkhash(slot);
 	return slot->playable;
 }
 
 
 
-const char *image_extrainfo(const device_config *image)
+/*-------------------------------------------------
+    image_pcb
+-------------------------------------------------*/
+
+const char *image_pcb(const device_config *device)
 {
-	image_slot_data *slot = find_image_slot(image);
+	image_slot_data *slot = find_image_slot(device);
+	image_checkhash(slot);
+	return slot->pcb;
+}
+
+
+
+/*-------------------------------------------------
+    image_extrainfo
+-------------------------------------------------*/
+
+const char *image_extrainfo(const device_config *device)
+{
+	image_slot_data *slot = find_image_slot(device);
 	image_checkhash(slot);
 	return slot->extrainfo;
 }

@@ -82,9 +82,9 @@ static void aim65_printer_cr(void) {
 	flag_a=flag_b=0;
 }
 
-TIMER_CALLBACK(aim65_printer_timer)
+static TIMER_CALLBACK(aim65_printer_timer)
 {
-	const device_config *via_0 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
+	const device_config *via_0 = devtag_get_device(machine, "via6522_0");
 
 	via_cb1_w(via_0, 0, printer_level);
 	via_ca1_w(via_0, 0, !printer_level);
@@ -95,13 +95,11 @@ TIMER_CALLBACK(aim65_printer_timer)
 
 WRITE8_DEVICE_HANDLER( aim65_printer_on )
 {
-	const device_config *via_0 = device_list_find_by_tag(device->machine->config->devicelist, VIA6522, "via6522_0");
-
 	if (!data)
 	{
 		aim65_printer_cr();
 		timer_adjust_periodic(print_timer, attotime_zero, 0, ATTOTIME_IN_USEC(10));
-		via_cb1_w(via_0, 0, 0);
+		via_cb1_w(device, 0, 0);
 		printer_level = 1;
 	}
 	else
@@ -109,14 +107,16 @@ WRITE8_DEVICE_HANDLER( aim65_printer_on )
 }
 
 
-void aim65_printer_data_a(UINT8 data) {
+WRITE8_DEVICE_HANDLER( aim65_printer_data_a )
+{
 /*  if (flag_a == 0) {
         printerRAM[(printer_y * 20) + printer_x] |= data;
         flag_a = 1;
     }*/
 }
 
-void aim65_printer_data_b(UINT8 data) {
+WRITE8_DEVICE_HANDLER( aim65_printer_data_b )
+{
 /*  data &= 0x03;
 
     if (flag_b == 0) {

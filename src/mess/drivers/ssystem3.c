@@ -38,7 +38,7 @@ backup of playfield rom and picture/description of its board
 #include "includes/ssystem3.h"
 #include "machine/6522via.h"
 #include "cpu/m6502/m6502.h"
-//#include "attotime.h"
+#include "sound/dac.h"
 
 static struct {
   UINT8 porta;
@@ -216,7 +216,7 @@ static READ8_DEVICE_HANDLER(ssystem3_via_read_b)
 
 static WRITE8_DEVICE_HANDLER(ssystem3_via_write_b)
 {
-	const device_config *via_0 = device_list_find_by_tag(device->machine->config->devicelist, VIA6522, "via6522_0");
+	const device_config *via_0 = devtag_get_device(device->machine, "via6522_0");
 	UINT8 d;
 
 	ssystem3_playfield_write(device->machine, data&1, data&8);
@@ -230,17 +230,17 @@ static WRITE8_DEVICE_HANDLER(ssystem3_via_write_b)
 
 static const via6522_interface ssystem3_via_config=
 {
-	ssystem3_via_read_a,//read8_machine_func in_a_func;
-	ssystem3_via_read_b,//read8_machine_func in_b_func;
-	0,//read8_machine_func in_ca1_func;
-	0,//read8_machine_func in_cb1_func;
-	0,//read8_machine_func in_ca2_func;
-	0,//read8_machine_func in_cb2_func;
-	ssystem3_via_write_a,//write8_machine_func out_a_func;
-	ssystem3_via_write_b,//write8_machine_func out_b_func;
-	0,//write8_machine_func out_ca2_func;
-	0,//write8_machine_func out_cb2_func;
-	0,//void (*irq_func)(int state);
+	DEVCB_HANDLER(ssystem3_via_read_a),//read8_machine_func in_a_func;
+	DEVCB_HANDLER(ssystem3_via_read_b),//read8_machine_func in_b_func;
+	DEVCB_NULL,//read8_machine_func in_ca1_func;
+	DEVCB_NULL,//read8_machine_func in_cb1_func;
+	DEVCB_NULL,//read8_machine_func in_ca2_func;
+	DEVCB_NULL,//read8_machine_func in_cb2_func;
+	DEVCB_HANDLER(ssystem3_via_write_a),//write8_machine_func out_a_func;
+	DEVCB_HANDLER(ssystem3_via_write_b),//write8_machine_func out_b_func;
+	DEVCB_NULL,//write8_machine_func out_ca2_func;
+	DEVCB_NULL,//write8_machine_func out_cb2_func;
+	DEVCB_NULL,//void (*irq_func)(int state);
 };
 
 static DRIVER_INIT( ssystem3 )
@@ -259,7 +259,7 @@ static ADDRESS_MAP_START( ssystem3_map , ADDRESS_SPACE_PROGRAM, 8)
   probably zusatzgerät memory (battery powered ram 256x4? at 0x4000)
   $40ff low nibble ram if playfield module (else init with normal playfield)
  */
-	AM_RANGE( 0x6000, 0x600f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
+	AM_RANGE( 0x6000, 0x600f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
 #if 1
 	AM_RANGE( 0xc000, 0xdfff) AM_ROM
 	AM_RANGE( 0xf000, 0xffff) AM_ROM
@@ -318,12 +318,12 @@ INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( ssystem3 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 1000000)
+	MDRV_CPU_ADD("maincpu", M6502, 1000000)
 	MDRV_CPU_PROGRAM_MAP(ssystem3_map, 0)
 	MDRV_QUANTUM_TIME(HZ(60))
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", LCD)
+	MDRV_SCREEN_ADD("screen", LCD)
 	MDRV_SCREEN_REFRESH_RATE(LCD_FRAMES_PER_SECOND)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -346,7 +346,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START(ssystem3)
-	ROM_REGION(0x10000,"main",0)
+	ROM_REGION(0x10000,"maincpu",0)
 	ROM_LOAD("ss3lrom", 0xc000, 0x1000, CRC(9ea46ed3) SHA1(34eef85b356efbea6ddac1d1705b104fc8e2731a) )
 //	ROM_RELOAD(0xe000, 0x1000)
 	ROM_LOAD("ss3hrom", 0xf000, 0x1000, CRC(52741e0b) SHA1(2a7b950f9810c5a14a1b9d5e6b2bd93da621662e) )

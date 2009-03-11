@@ -49,6 +49,7 @@
 #include "includes/jaguar.h"
 #include "devices/cartslot.h"
 #include "devices/snapquik.h"
+#include "sound/dac.h"
 
 #define JAGUAR_CLOCK		XTAL_52MHz
 #define R3000_CLOCK			XTAL_40MHz
@@ -454,7 +455,7 @@ static const jaguar_cpu_config dsp_config =
 static MACHINE_DRIVER_START( jaguar )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68EC020, M68K_CLOCK/2)
+	MDRV_CPU_ADD("maincpu", M68EC020, M68K_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(jaguar_map,0)
 
 	MDRV_CPU_ADD("gpu", JAGUARGPU, JAGUAR_CLOCK/2)
@@ -469,7 +470,7 @@ static MACHINE_DRIVER_START( jaguar )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_RAW_PARAMS(COJAG_PIXEL_CLOCK/2, 456, 42, 402, 262, 17, 257)
@@ -479,14 +480,14 @@ static MACHINE_DRIVER_START( jaguar )
 	MDRV_VIDEO_UPDATE(cojag)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD("dac.l", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 1.0)
-	MDRV_SOUND_ADD("dac.r", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 1.0)
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
+	MDRV_SOUND_ADD("dac1", DAC, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ADD("dac2", DAC, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 	/* quickload */
-	MDRV_QUICKLOAD_ADD(jaguar, "bin", 0)
+	MDRV_QUICKLOAD_ADD("quickload", jaguar, "bin", 0)
 
 	/* cartridge */
 	MDRV_CARTSLOT_ADD("cart")
@@ -503,7 +504,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START( jaguar )
-	ROM_REGION( 0xe20000, "main", 0 )  /* 4MB for RAM at 0 */
+	ROM_REGION( 0xe20000, "maincpu", 0 )  /* 4MB for RAM at 0 */
 	ROM_LOAD16_WORD( "jagboot.rom",          0xe00000, 0x020000, CRC(fb731aaa) SHA1(f8991b0c385f4e5002fa2a7e2f5e61e8c5213356))
 	ROM_CART_LOAD("cart", 0x800000, 0x600000, ROM_NOMIRROR)
 ROM_END
@@ -527,7 +528,7 @@ static QUICKLOAD_LOAD( jaguar )
 {
 	offs_t quickload_begin = 0x4000;
 	quickload_size = MIN(quickload_size, 0x200000 - quickload_begin);
-	image_fread(image, &memory_region(image->machine, "main")[quickload_begin], quickload_size);
+	image_fread(image, &memory_region(image->machine, "maincpu")[quickload_begin], quickload_size);
 	cpu_set_reg(image->machine->cpu[0], REG_GENPC, quickload_begin);
 	return INIT_PASS;
 }
@@ -540,4 +541,4 @@ static QUICKLOAD_LOAD( jaguar )
  *************************************/
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      CONFIG    COMPANY     FULLNAME */
-CONS(1993,	jaguar,   0,        0,		jaguar,   jaguar,   jaguar,   0,	"Atari",	"Atari Jaguar", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND)
+CONS(1993,	jaguar,   0,        0,		jaguar,   jaguar,   jaguar,   0,	"Atari",	"Atari Jaguar", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING)

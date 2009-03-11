@@ -11,16 +11,13 @@
 
 /*----------- defined in machine/vectrex.c -----------*/
 
-extern const via6522_interface vectrex_via6522_interface;
-extern const via6522_interface spectrum1_via6522_interface;
-
 DEVICE_IMAGE_LOAD( vectrex_cart );
 
 extern int vectrex_imager_status;
 extern UINT32 vectrex_beam_color;
 extern unsigned char vectrex_via_out[2];
-extern double imager_freq;
-extern emu_timer *imager_timer;
+extern double vectrex_imager_freq;
+extern emu_timer *vectrex_imager_timer;
 extern int vectrex_lightpen_port;
 extern int vectrex_reset_refresh;
 
@@ -38,6 +35,9 @@ READ8_DEVICE_HANDLER( s1_via_pb_r );
 
 
 /*----------- defined in video/vectrex.c -----------*/
+
+extern const via6522_interface vectrex_via6522_interface;
+extern const via6522_interface spectrum1_via6522_interface;
 
 VIDEO_START( vectrex );
 VIDEO_UPDATE( vectrex );

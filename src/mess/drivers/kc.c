@@ -21,6 +21,8 @@
 #include "machine/z80sio.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
+#include "sound/speaker.h"
+#include "sound/wave.h"
 #include "machine/nec765.h"
 
 /* Devices */
@@ -58,7 +60,7 @@ static READ8_HANDLER(kc85_4_port_r)
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			return kc85_ctc_r(device_list_find_by_tag(space->machine->config->devicelist, Z80CTC, "z80ctc"), port&3);
+			return kc85_ctc_r(devtag_get_device(space->machine, "z80ctc"), port&3);
 
 	}
 
@@ -102,7 +104,7 @@ static WRITE8_HANDLER(kc85_4_port_w)
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			kc85_ctc_w(device_list_find_by_tag(space->machine->config->devicelist, Z80CTC, "z80ctc"), port&3, data);
+			kc85_ctc_w(devtag_get_device(space->machine, "z80ctc"), port&3, data);
 			return;
 	}
 
@@ -154,7 +156,7 @@ static READ8_HANDLER(kc85_3_port_r)
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			return kc85_ctc_r(device_list_find_by_tag(space->machine->config->devicelist, Z80CTC, "z80ctc"), port&3);
+			return kc85_ctc_r(devtag_get_device(space->machine, "z80ctc"), port&3);
 	}
 
 	logerror("unhandled port r: %04x\n",offset);
@@ -187,7 +189,7 @@ static WRITE8_HANDLER(kc85_3_port_w)
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			kc85_ctc_w(device_list_find_by_tag(space->machine->config->devicelist, Z80CTC, "z80ctc"), port&3, data);
+			kc85_ctc_w(devtag_get_device(space->machine, "z80ctc"), port&3, data);
 			return;
 	}
 
@@ -307,8 +309,8 @@ INPUT_PORTS_END
 
 static const z80_daisy_chain kc85_daisy_chain[] =
 {
-	{ Z80PIO, "z80pio" },
-	{ Z80CTC, "z80ctc" },
+	{ "z80pio" },
+	{ "z80ctc" },
 	{ NULL }
 };
 
@@ -331,13 +333,13 @@ static ADDRESS_MAP_START(kc85_disc_hw_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(kc85_disc_hw_io, ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x0f0, 0x0f0) AM_DEVREAD( NEC765A, "nec765", nec765_status_r)
-	AM_RANGE(0x0f1, 0x0f1) AM_DEVREADWRITE( NEC765A, "nec765", nec765_data_r, nec765_data_w)
-	AM_RANGE(0x0f2, 0x0f3) AM_DEVREADWRITE( NEC765A, "nec765", nec765_dack_r, nec765_dack_w)
+	AM_RANGE(0x0f0, 0x0f0) AM_DEVREAD("nec765", nec765_status_r)
+	AM_RANGE(0x0f1, 0x0f1) AM_DEVREADWRITE("nec765", nec765_data_r, nec765_data_w)
+	AM_RANGE(0x0f2, 0x0f3) AM_DEVREADWRITE("nec765", nec765_dack_r, nec765_dack_w)
 	AM_RANGE(0x0f4, 0x0f5) AM_READ(kc85_disc_hw_input_gate_r)
 	/*{0x0f6, 0x0f7, SMH_NOP},*/		/* for controller */
 	AM_RANGE(0x0f8, 0x0f9) AM_WRITE( kc85_disc_hw_terminal_count_w) /* terminal count */
-	AM_RANGE(0x0fc, 0x0ff) AM_DEVREADWRITE(Z80CTC, "z80ctc_1", kc85_disk_hw_ctc_r, kc85_disk_hw_ctc_w)
+	AM_RANGE(0x0fc, 0x0ff) AM_DEVREADWRITE("z80ctc_1", kc85_disk_hw_ctc_r, kc85_disk_hw_ctc_w)
 ADDRESS_MAP_END
 
 static MACHINE_DRIVER_START( cpu_kc_disc )
@@ -355,7 +357,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( kc85_3 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, KC85_3_CLOCK)
+	MDRV_CPU_ADD("maincpu", Z80, KC85_3_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(kc85_3_mem, 0)
 	MDRV_CPU_IO_MAP(kc85_3_io, 0)
 	MDRV_CPU_CONFIG(kc85_daisy_chain)
@@ -367,7 +369,7 @@ static MACHINE_DRIVER_START( kc85_3 )
 	MDRV_Z80CTC_ADD( "z80ctc", 1379310.344828, kc85_ctc_intf )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -381,13 +383,13 @@ static MACHINE_DRIVER_START( kc85_3 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
-	MDRV_QUICKLOAD_ADD(kc, "kcc", 0)
+	MDRV_QUICKLOAD_ADD("quickload", kc, "kcc", 0)
 
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 MACHINE_DRIVER_END
@@ -396,7 +398,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( kc85_4 )
 	MDRV_IMPORT_FROM( kc85_3 )
 
-	MDRV_CPU_REPLACE("main", Z80, KC85_4_CLOCK)
+	MDRV_CPU_REPLACE("maincpu", Z80, KC85_4_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(kc85_4_mem, 0)
 	MDRV_CPU_IO_MAP(kc85_4_io, 0)
 
@@ -415,7 +417,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START(kc85_4)
-	ROM_REGION(0x015000, "main",0)
+	ROM_REGION(0x015000, "maincpu",0)
 
     ROM_LOAD("basic_c0.854", 0x10000, 0x2000, CRC(dfe34b08) SHA1(c2e3af55c79e049e811607364f88c703b0285e2e))
     ROM_LOAD("caos__c0.854", 0x12000, 0x1000, CRC(57d9ab02) SHA1(774fc2496a59b77c7c392eb5aa46420e7722797e))
@@ -424,7 +426,7 @@ ROM_END
 
 
 ROM_START(kc85_4d)
-	ROM_REGION(0x015000, "main",0)
+	ROM_REGION(0x015000, "maincpu",0)
 
     ROM_LOAD("basic_c0.854", 0x10000, 0x2000, CRC(dfe34b08) SHA1(c2e3af55c79e049e811607364f88c703b0285e2e))
     ROM_LOAD("caos__c0.854", 0x12000, 0x1000, CRC(57d9ab02) SHA1(774fc2496a59b77c7c392eb5aa46420e7722797e))
@@ -434,7 +436,7 @@ ROM_START(kc85_4d)
 ROM_END
 
 ROM_START(kc85_3)
-	ROM_REGION(0x014000, "main",0)
+	ROM_REGION(0x014000, "maincpu",0)
 
     ROM_LOAD("basic_c0.854", 0x10000, 0x2000, CRC(dfe34b08) SHA1(c2e3af55c79e049e811607364f88c703b0285e2e))
 	ROM_LOAD("caos__e0.853", 0x12000, 0x2000, CRC(52bc2199) SHA1(207d3e1c4ebf82ac7553ed0a0850b627b9796d4b))

@@ -93,7 +93,7 @@ static ADDRESS_MAP_START( apple1_map, ADDRESS_SPACE_PROGRAM, 8 )
        and PIA registers are addressed with address bits 0-1.  All
        other address bits are ignored.  Thus $D010-$D013 is mirrored
        at all $Dxxx addresses with bit 4 high. */
-	AM_RANGE(0xd010, 0xd013) AM_MIRROR(0x0fec) AM_READWRITE(pia_0_r, pia_0_w)
+	AM_RANGE(0xd010, 0xd013) AM_MIRROR(0x0fec) AM_DEVREADWRITE("pia", pia6821_r, pia6821_w)
 	/* $Dxxx addresses with bit 4 low are NOPs. */
 	AM_RANGE(0xd000, 0xd00f) AM_NOP AM_MIRROR(0xfe0)
 
@@ -111,7 +111,7 @@ ADDRESS_MAP_END
 
 const gfx_layout apple1_charlayout =
 {
-	8, 8,				/* character cell is 7 pixels wide by 8 pixels high */
+	7, 8,				/* character cell is 7 pixels wide by 8 pixels high */
 	64,					/* 64 characters in 2513 character generator ROM */
 	1,					/* 1 bitplane */
 	{ 0 },
@@ -221,9 +221,9 @@ static MACHINE_DRIVER_START( apple1 )
 	/* basic machine hardware */
 	/* Actual CPU speed is 1.023 MHz, but RAM refresh effectively
        slows it to 960 kHz. */
-	MDRV_CPU_ADD("main", M6502, 960000)        /* 1.023 MHz */
+	MDRV_CPU_ADD("maincpu", M6502, 960000)        /* 1.023 MHz */
 	MDRV_CPU_PROGRAM_MAP(apple1_map, 0)
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	/* Video is blanked for 70 out of 262 scanlines per refresh cycle.
        Each scanline is composed of 65 character times, 40 of which
@@ -247,14 +247,16 @@ static MACHINE_DRIVER_START( apple1 )
 	MDRV_VIDEO_START(apple1)
 	MDRV_VIDEO_UPDATE(apple1)
 
+	MDRV_PIA6821_ADD( "pia", apple1_pia0 )
+
 	/* snapshot */
-	MDRV_SNAPSHOT_ADD(apple1, "snp", 0)
+	MDRV_SNAPSHOT_ADD("snapshot", apple1, "snp", 0)
 
 	MDRV_CASSETTE_ADD( "cassette", apple1_cassette_config )
 MACHINE_DRIVER_END
 
 ROM_START(apple1)
-	ROM_REGION(0x10000, "main",0)
+	ROM_REGION(0x10000, "maincpu",0)
 	ROM_LOAD("apple1.rom", 0xff00, 0x0100, CRC(a30b6af5) SHA1(224767aa499dc98767e042f375ced1359be8a35f))
 	/* 256-byte cassette interface ROM: */
 	ROM_LOAD("cassette.rom", 0xc100, 0x0100, CRC(11da1692) SHA1(2c536977bd85797453dba0646e3e94e9ff4f9236))

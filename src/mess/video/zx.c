@@ -83,7 +83,6 @@ void zx_ula_bkgnd(running_machine *machine, int color)
 		old_x = (new_x + 1) % width;
 		old_y = new_y;
 		old_c = color;
-		dac_data_w(0, color ? 255 : 0);
 	}
 }
 
@@ -134,11 +133,11 @@ static TIMER_CALLBACK(zx_ula_irq)
 	}
 }
 
-void zx_ula_r(running_machine *machine, int offs, const char *region)
+void zx_ula_r(running_machine *machine, int offs, const char *region, const UINT8 param)
 {
 	const device_config *screen = video_screen_first(machine->config);
 	int offs0 = offs & 0x7fff;
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(machine, "maincpu");
 	UINT8 chr = rom[offs0];
 
 	if ((!ula_irq_active) && (chr == 0x76))
@@ -146,8 +145,13 @@ void zx_ula_r(running_machine *machine, int offs, const char *region)
 		bitmap_t *bitmap = tmpbitmap;
 		UINT16 y, *scanline;
 		UINT16 ireg = cpu_get_reg(machine->cpu[0], Z80_I) << 8;
-		UINT8 creg = cpu_get_reg(machine->cpu[0], Z80_C);
-		UINT8 data, *chrgen;
+		UINT8 data, *chrgen, creg;
+
+		if (param)
+			creg = cpu_get_reg(machine->cpu[0], Z80_B);
+		else
+			creg = cpu_get_reg(machine->cpu[0], Z80_C);
+
 		chrgen = memory_region(machine, region);
 
 		if ((++ula_scanline_count == video_screen_get_height(screen)) || (creg == 32))

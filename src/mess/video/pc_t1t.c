@@ -165,7 +165,7 @@ static VIDEO_START( pc_pcjr )
 
 static VIDEO_UPDATE( mc6845_t1000 )
 {
-	device_config	*devconf = (device_config *) device_list_find_by_tag(screen->machine->config->devicelist, MC6845, T1000_MC6845_NAME);
+	const device_config	*devconf = devtag_get_device(screen->machine, T1000_MC6845_NAME);
 	mc6845_update( devconf, bitmap, cliprect);
 	return 0;
 }
@@ -665,7 +665,7 @@ static void pc_t1t_bank_w(running_machine *machine, int data)
 {
 	if (pcjr.bank != data)
 	{
-		UINT8 *ram = memory_region(machine, "main");
+		UINT8 *ram = memory_region(machine, "maincpu");
 		int dram, vram;
 		pcjr.bank = data;
 	/* it seems the video ram is mapped to the last 128K of main memory */
@@ -713,8 +713,8 @@ static void pc_pcjr_bank_w(running_machine *machine, int data)
 		dram = (data & 0x07) << 14;
 		vram = (data & 0x38) << (14-3);
 #endif
-		videoram = &memory_region(machine, "main")[vram];
-		pcjr.displayram = &memory_region(machine, "main")[dram];
+		videoram = &memory_region(machine, "maincpu")[vram];
+		pcjr.displayram = &memory_region(machine, "maincpu")[dram];
 	}
 	pc_pcjr_mode_switch();
 }
@@ -739,11 +739,11 @@ WRITE8_HANDLER ( pc_T1T_w )
 	switch( offset )
 	{
 		case 0: case 2: case 4: case 6:
-			devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, T1000_MC6845_NAME);
+			devconf = (device_config *) devtag_get_device(space->machine, T1000_MC6845_NAME);
 			mc6845_address_w( devconf, offset, data );
 			break;
 		case 1: case 3: case 5: case 7:
-			devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, T1000_MC6845_NAME);
+			devconf = (device_config *) devtag_get_device(space->machine, T1000_MC6845_NAME);
 			mc6845_register_w( devconf, offset, data );
 			break;
 		case 8:
@@ -774,16 +774,16 @@ WRITE8_HANDLER ( pc_T1T_w )
 
 WRITE8_HANDLER( pc_pcjr_w )
 {
-	device_config	*devconf;
+	const device_config	*devconf;
 
 	switch( offset )
 	{
 		case 0: case 4: 
-			devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, T1000_MC6845_NAME);
+			devconf = devtag_get_device(space->machine, T1000_MC6845_NAME);
 			mc6845_address_w( devconf, offset, data );
 			break;
 		case 1: case 5:
-			devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, T1000_MC6845_NAME);
+			devconf = devtag_get_device(space->machine, T1000_MC6845_NAME);
 			mc6845_register_w( devconf, offset, data );
 			break;
 		case 10:
@@ -824,7 +824,7 @@ WRITE8_HANDLER( pc_pcjr_w )
 			break;
 
 		case 1: case 3: case 5: case 7:
-			devconf = (device_config *) device_list_find_by_tag(space->machine->config->devicelist, MC6845, T1000_MC6845_NAME);
+			devconf = (device_config *) devtag_get_device(space->machine, T1000_MC6845_NAME);
 			data = mc6845_register_r( devconf, offset );
 			break;
 
@@ -884,6 +884,6 @@ static MC6845_ON_VSYNC_CHANGED( pcjr_vsync_changed )
 	{
 		pcjr.pc_framecnt++;
 	}
-	pic8259_set_irq_line(device_list_find_by_tag( device->machine->config->devicelist, PIC8259, "pic8259_master" ), 5, vsync);
+	pic8259_set_irq_line(devtag_get_device(device->machine, "pic8259_master"), 5, vsync);
 }
 

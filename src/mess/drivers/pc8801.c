@@ -2,10 +2,13 @@
 
   $Id: pc8801.c,v 1.51 2007/01/19 03:28:56 npwoods Exp $
 
+	Note: These emulations take a long time to start. Be patient!
+
 ***************************************************************************/
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
+#include "sound/beep.h"
 #include "machine/8255ppi.h"
 #include "includes/pc8801.h"
 #include "machine/nec765.h"
@@ -416,8 +419,7 @@ static ADDRESS_MAP_START( pc88sr_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x32, 0x32) AM_READWRITE( pc88sr_inport_32, pc88sr_outport_32 )
 	AM_RANGE(0x34, 0x35) AM_WRITE( pc88sr_ALU )
 	AM_RANGE(0x40, 0x40) AM_READWRITE( pc88sr_inport_40, pc88sr_outport_40 )
-	AM_RANGE(0x44, 0x44) AM_READWRITE( ym2203_status_port_0_r, ym2203_control_port_0_w )
-	AM_RANGE(0x45, 0x45) AM_READWRITE( ym2203_read_port_0_r, ym2203_write_port_0_w )
+	AM_RANGE(0x44, 0x45) AM_DEVREAD( "ym2203", ym2203_r )
 	AM_RANGE(0x46, 0x47) AM_NOP										/* OPNA extra port (not yet) */
 	AM_RANGE(0x50, 0x51) AM_READWRITE( pc8801_crtc_read, pc8801_crtc_write )
 	AM_RANGE(0x52, 0x5b) AM_WRITE( pc8801_palette_out )
@@ -448,7 +450,7 @@ static ADDRESS_MAP_START( pc88sr_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0xf3, 0xf3) AM_NOP 									/* DMA floppy (unknown -- not yet) */
 	AM_RANGE(0xf4, 0xf7) AM_NOP										/* DMA 5'floppy (may be not released) */
 	AM_RANGE(0xf8, 0xfb) AM_NOP 									/* DMA 8'floppy (unknown -- not yet) */
-	AM_RANGE(0xfc, 0xff) AM_DEVREADWRITE( PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w )
+	AM_RANGE(0xfc, 0xff) AM_DEVREADWRITE("ppi8255_0", ppi8255_r, ppi8255_w )
 ADDRESS_MAP_END
 
 static INTERRUPT_GEN( pc8801fd_interrupt )
@@ -463,13 +465,13 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( pc8801fd_io , ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xf8, 0xf8) AM_READ( pc8801fd_nec765_tc )
-	AM_RANGE(0xfa, 0xfa) AM_DEVREAD(NEC765A, "nec765", nec765_status_r )
-	AM_RANGE(0xfb, 0xfb) AM_DEVREADWRITE(NEC765A, "nec765", nec765_data_r, nec765_data_w )
-	AM_RANGE(0xfc, 0xff) AM_DEVREADWRITE( PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w )
+	AM_RANGE(0xfa, 0xfa) AM_DEVREAD("nec765", nec765_status_r )
+	AM_RANGE(0xfb, 0xfb) AM_DEVREADWRITE("nec765", nec765_data_r, nec765_data_w )
+	AM_RANGE(0xfc, 0xff) AM_DEVREADWRITE("ppi8255_1", ppi8255_r, ppi8255_w )
 ADDRESS_MAP_END
 
 ROM_START (pc88srl)
-	ROM_REGION(0x18000,"main",0)
+	ROM_REGION(0x18000,"maincpu",0)
 	ROM_LOAD ("n80.rom", 0x00000, 0x8000, CRC(27e1857d) SHA1(5b922ed9de07d2a729bdf1da7b57c50ddf08809a))
 	ROM_LOAD ("n88.rom", 0x08000, 0x8000, CRC(a0fc0473) SHA1(3b31fc68fa7f47b21c1a1cb027b86b9e87afbfff))
 	ROM_LOAD ("n88_0.rom", 0x10000, 0x2000, CRC(710a63ec) SHA1(d239c26ad7ac5efac6e947b0e9549b1534aa970d))
@@ -484,7 +486,7 @@ ROM_START (pc88srl)
 ROM_END
 
 ROM_START (pc88srh)
-	ROM_REGION(0x18000,"main",0)
+	ROM_REGION(0x18000,"maincpu",0)
 	ROM_LOAD ("n80.rom", 0x00000, 0x8000, CRC(27e1857d) SHA1(5b922ed9de07d2a729bdf1da7b57c50ddf08809a))
 	ROM_LOAD ("n88.rom", 0x08000, 0x8000, CRC(a0fc0473) SHA1(3b31fc68fa7f47b21c1a1cb027b86b9e87afbfff))
 	ROM_LOAD ("n88_0.rom", 0x10000, 0x2000, CRC(710a63ec) SHA1(d239c26ad7ac5efac6e947b0e9549b1534aa970d))
@@ -498,17 +500,17 @@ ROM_START (pc88srh)
 	ROM_LOAD ("kanji2.rom", 0x20000, 0x20000, CRC(154803cc) SHA1(7e6591cd465cbb35d6d3446c5a83b46d30fafe95))
 ROM_END
 
-static  READ8_HANDLER(opn_dummy_input){return 0xff;}
+static READ8_DEVICE_HANDLER(opn_dummy_input) { return 0xff; }
 
 static const ym2203_interface pc8801_ym2203_interface =
 {
 	{
 		AY8910_LEGACY_OUTPUT,
 		AY8910_DEFAULT_LOADS,
-		opn_dummy_input,
-		opn_dummy_input,
-		0,
-		0
+		DEVCB_HANDLER(opn_dummy_input),
+		DEVCB_HANDLER(opn_dummy_input),
+		DEVCB_NULL,
+		DEVCB_NULL
 	},
 	pc88sr_sound_interupt
 };
@@ -518,16 +520,16 @@ static MACHINE_DRIVER_START( pc88srl )
 	/* basic machine hardware */
 
 	/* main CPU */
-	MDRV_CPU_ADD("main", Z80, 4000000)        /* 4 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, 4000000)        /* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(pc8801_mem, 0)
 	MDRV_CPU_IO_MAP(pc88sr_io, 0)
-	MDRV_CPU_VBLANK_INT("main", pc8801_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", pc8801_interrupt)
 
 	/* sub CPU(5 inch floppy drive) */
 	MDRV_CPU_ADD("sub", Z80, 4000000)		/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(pc8801fd_mem, 0)
 	MDRV_CPU_IO_MAP(pc8801fd_io, 0)
-	MDRV_CPU_VBLANK_INT("main", pc8801fd_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", pc8801fd_interrupt)
 
 	MDRV_QUANTUM_TIME(HZ(300000))
 
@@ -538,7 +540,7 @@ static MACHINE_DRIVER_START( pc88srl )
 	MDRV_PPI8255_ADD( "ppi8255_1", pc8801_8255_config_1 )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -570,7 +572,7 @@ static MACHINE_DRIVER_START( pc88srh )
 
 	MDRV_MACHINE_RESET( pc88srh )
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	/*MDRV_ASPECT_RATIO(8, 5)*/

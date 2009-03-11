@@ -24,7 +24,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( bbcbc_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE(Z80PIO, "z80pio", z80pio_r, z80pio_w)
+	AM_RANGE(0x40, 0x43) AM_DEVREADWRITE("z80pio", z80pio_r, z80pio_w)
 	AM_RANGE(0x80, 0x80) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0x81, 0x81) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
 ADDRESS_MAP_END
@@ -61,7 +61,7 @@ static const z80pio_interface bbcbc_z80pio_intf =
 
 static const z80_daisy_chain bbcbc_daisy_chain[] =
 {
-	{ Z80PIO, "z80pio" },
+	{ "z80pio" },
 	{ NULL }
 };
 
@@ -76,11 +76,11 @@ static MACHINE_RESET( bbcbc )
 
 
 static MACHINE_DRIVER_START( bbcbc )
-	MDRV_CPU_ADD( "main", Z80, 4000000 )
+	MDRV_CPU_ADD( "maincpu", Z80, 4000000 )
 	MDRV_CPU_PROGRAM_MAP( bbcbc_prg, 0 )
 	MDRV_CPU_IO_MAP( bbcbc_io, 0 )
 	MDRV_CPU_CONFIG(bbcbc_daisy_chain)
-	MDRV_CPU_VBLANK_INT("main", bbcbc_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", bbcbc_interrupt)
 
 	MDRV_MACHINE_START( bbcbc )
 	MDRV_MACHINE_RESET( bbcbc )
@@ -88,7 +88,7 @@ static MACHINE_DRIVER_START( bbcbc )
 	MDRV_Z80PIO_ADD( "z80pio", bbcbc_z80pio_intf )
 
 	MDRV_IMPORT_FROM( tms9928a )
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE( 50 )
 	
 	MDRV_CARTSLOT_ADD("cart")
@@ -96,7 +96,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( bbcbc )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD("br_4_1.ic3", 0x0000, 0x2000, CRC(7c880d75) SHA1(954db096bd9e8edfef72946637a12f1083841fb0))
 	ROM_LOAD("br_4_2.ic4", 0x2000, 0x2000, CRC(16a33aef) SHA1(9529f9f792718a3715af2063b91a5fb18f741226))
 	ROM_CART_LOAD("cart", 0x4000, 0xBFFF, ROM_NOMIRROR | ROM_OPTIONAL)

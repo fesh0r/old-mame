@@ -40,15 +40,16 @@
 
 #include "driver.h"
 #include "cpu/mips/mips3.h"
+#include "sound/cdda.h"
 #include "machine/sgi.h"
 #include "machine/pckeybrd.h"
 #include "includes/pc_mouse.h"
+#include "machine/pc_lpt.h"
 #include "includes/at.h"
 #include "machine/8042kbdc.h"
 #include "machine/pit8253.h"
 #include "includes/ps2.h"
-#include "machine/pcshare.h"			
-#include "includes/pclpt.h"
+#include "machine/pcshare.h"
 #include "video/newport.h"
 #include "machine/wd33c93.h"
 #include "devices/harddriv.h"
@@ -182,17 +183,18 @@ static void int3_lower_local1_irq(UINT8 source_mask)
 
 static READ32_HANDLER( hpc3_pbus6_r )
 {
+	const device_config *lpt = devtag_get_device(space->machine, "lpt_0");
 	UINT8 ret8;
 	running_machine *machine = space->machine;
 
 	switch( offset )
 	{
 	case 0x004/4:
-		ret8 = pc_parallelport0_r(space, 2) ^ 0x0d;
+		ret8 = pc_lpt_control_r(lpt, 0) ^ 0x0d;
 		verboselog( machine, 0, "Parallel Control Read: %02x\n", ret8 );
 		return ret8;
 	case 0x008/4:
-		ret8 = pc_parallelport0_r(space, 1) ^ 0x80;
+		ret8 = pc_lpt_status_r(lpt, 0) ^ 0x80;
 		verboselog( machine, 0, "Parallel Status Read: %02x\n", ret8 );
 		return ret8;
 	case 0x030/4:
@@ -232,19 +234,19 @@ static READ32_HANDLER( hpc3_pbus6_r )
 //      mame_printf_info("INT3: r @ %x mask %08x (PC=%x)\n", offset*4, mem_mask, activecpu_get_pc());
 		return int3_regs[offset-0x80/4];
 	case 0xb0/4:
-		ret8 = pit8253_r((device_config*)device_list_find_by_tag( machine->config->devicelist, PIT8254, "pit8254" ), 0);
+		ret8 = pit8253_r(devtag_get_device(machine, "pit8254"), 0);
 		verboselog( machine, 0, "HPC PBUS6 IOC4 Timer Counter 0 Register Read: 0x%02x (%08x)\n", ret8, mem_mask );
 		return ret8;
 	case 0xb4/4:
-		ret8 = pit8253_r((device_config*)device_list_find_by_tag( machine->config->devicelist, PIT8254, "pit8254" ), 1);
+		ret8 = pit8253_r(devtag_get_device(machine, "pit8254"), 1);
 		verboselog( machine, 0, "HPC PBUS6 IOC4 Timer Counter 1 Register Read: 0x%02x (%08x)\n", ret8, mem_mask );
 		return ret8;
 	case 0xb8/4:
-		ret8 = pit8253_r((device_config*)device_list_find_by_tag( machine->config->devicelist, PIT8254, "pit8254" ), 2);
+		ret8 = pit8253_r(devtag_get_device(machine, "pit8254"), 2);
 		verboselog( machine, 0, "HPC PBUS6 IOC4 Timer Counter 2 Register Read: 0x%02x (%08x)\n", ret8, mem_mask );
 		return ret8;
 	case 0xbc/4:
-		ret8 = pit8253_r((device_config*)device_list_find_by_tag( machine->config->devicelist, PIT8254, "pit8254" ), 3);
+		ret8 = pit8253_r(devtag_get_device(machine, "pit8254"), 3);
 		verboselog( machine, 0, "HPC PBUS6 IOC4 Timer Control Word Register Read: 0x%02x (%08x)\n", ret8, mem_mask );
 		return ret8;
 	default:
@@ -256,6 +258,7 @@ static READ32_HANDLER( hpc3_pbus6_r )
 
 static WRITE32_HANDLER( hpc3_pbus6_w )
 {
+	const device_config *lpt = devtag_get_device(space->machine, "lpt_0");
 	char cChar;
 	running_machine *machine = space->machine;
 
@@ -263,7 +266,7 @@ static WRITE32_HANDLER( hpc3_pbus6_w )
 	{
 	case 0x004/4:
 		verboselog( machine, 0, "Parallel Control Write: %08x\n", data );
-		pc_parallelport0_w(space, 2, data ^ 0x0d);
+		pc_lpt_control_w(lpt, 0, data ^ 0x0d);
 //      nIOC_ParCntl = data;
 		break;
 	case 0x030/4:
@@ -337,19 +340,19 @@ static WRITE32_HANDLER( hpc3_pbus6_w )
 		break;
 	case 0xb0/4:
 		verboselog( machine, 0, "HPC PBUS6 IOC4 Timer Counter 0 Register Write: 0x%08x (%08x)\n", data, mem_mask );
-		pit8253_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PIT8254, "pit8254" ), 0, data & 0x000000ff);
+		pit8253_w(devtag_get_device(machine, "pit8254"), 0, data & 0x000000ff);
 		return;
 	case 0xb4/4:
 		verboselog( machine, 0, "HPC PBUS6 IOC4 Timer Counter 1 Register Write: 0x%08x (%08x)\n", data, mem_mask );
-		pit8253_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PIT8254, "pit8254" ), 1, data & 0x000000ff);
+		pit8253_w(devtag_get_device(machine, "pit8254"), 1, data & 0x000000ff);
 		return;
 	case 0xb8/4:
 		verboselog( machine, 0, "HPC PBUS6 IOC4 Timer Counter 2 Register Write: 0x%08x (%08x)\n", data, mem_mask );
-		pit8253_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PIT8254, "pit8254" ), 2, data & 0x000000ff);
+		pit8253_w(devtag_get_device(machine, "pit8254"), 2, data & 0x000000ff);
 		return;
 	case 0xbc/4:
 		verboselog( machine, 0, "HPC PBUS6 IOC4 Timer Control Word Register Write: 0x%08x (%08x)\n", data, mem_mask );
-		pit8253_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PIT8254, "pit8254" ), 3, data & 0x000000ff);
+		pit8253_w(devtag_get_device(machine, "pit8254"), 3, data & 0x000000ff);
 		return;
 	default:
 		verboselog( machine, 0, "Unknown HPC PBUS6 Write: 0x%08x: 0x%08x (%08x)\n", 0x1fbd9800 + ( offset << 2 ), data, mem_mask );
@@ -1022,8 +1025,11 @@ static UINT32 nPBUS_DMA_DescPtr;
 static UINT32 nPBUS_DMA_NextPtr;
 static UINT32 nPBUS_DMA_WordsLeft;
 
+static const device_config *dmadac[1];
+
 static TIMER_CALLBACK(ip22_dma)
 {
+	dmadac[0] = devtag_get_device(machine, "dmadac");
 	if( nPBUS_DMA_Active )
 	{
 		INT16 temp16;
@@ -1031,7 +1037,7 @@ static TIMER_CALLBACK(ip22_dma)
 //      verboselog(machine, 0, "nPBUS_DMA_CurPtr - 0x08000000/4 = %08x\n", (nPBUS_DMA_CurPtr - 0x08000000)/4 );
 		temp16 = ( ip22_mainram[(nPBUS_DMA_CurPtr - 0x08000000)/4] & 0xffff0000 ) >> 16;
 		temp16 = ( ( temp16 & 0xff00 ) >> 8 ) | ( ( temp16 & 0x00ff ) << 8 );
-		dmadac_transfer(0, 1, 1, 1, 1, &temp16);
+		dmadac_transfer(&dmadac[0], 1, 1, 1, 1, &temp16);
 		nPBUS_DMA_CurPtr += 4;
 		nPBUS_DMA_WordsLeft -= 4;
 
@@ -1064,7 +1070,7 @@ static READ32_HANDLER( hpc3_pbusdma_r )
 static WRITE32_HANDLER( hpc3_pbusdma_w )
 {
 	UINT32 channel = offset / (0x2000/4);
-	running_machine *machine = space->machine;	
+	running_machine *machine = space->machine;
 
 	switch( offset & 0x07ff )
 	{
@@ -1156,6 +1162,7 @@ static TIMER_CALLBACK(ip22_timer)
 
 static MACHINE_RESET( ip225015 )
 {
+	dmadac[0] = devtag_get_device(machine, "dmadac");
 	mc_init(machine);
 	nHPC3_enetr_nbdp = 0x80000000;
 	nHPC3_enetr_cbp = 0x80000000;
@@ -1170,8 +1177,8 @@ static MACHINE_RESET( ip225015 )
 
 	nPBUS_DMA_Active = 0;
 
-	dmadac_set_frequency(0, 1, 44100);
-	dmadac_enable(0, 1, 1);
+	dmadac_set_frequency(&dmadac[0], 1, 44100);
+	dmadac_enable(&dmadac[0], 1, 1);
 }
 
 static void dump_chain(const address_space *space, UINT32 ch_base)
@@ -1363,7 +1370,7 @@ static void ip225015_exit(running_machine *machine)
 }
 
 static int ip22_get_out2(running_machine *machine) {
-	return pit8253_get_output((device_config*)device_list_find_by_tag( machine->config->devicelist, PIT8254, "pit8254" ), 2 );
+	return pit8253_get_output(devtag_get_device(machine, "pit8254"), 2 );
 }
 
 static MACHINE_START( ip22 )
@@ -1491,11 +1498,16 @@ static void ip22_harddisk_getinfo(const mess_device_class *devclass, UINT32 stat
 }
 #endif
 
+static const pc_lpt_interface ip22_lpt_config =
+{
+	DEVCB_NULL /* no idea if the lpt irq is connected and where */
+};
+
 static MACHINE_DRIVER_START( ip225015 )
-	MDRV_CPU_ADD( "main", R5000BE, 50000000*3 )
+	MDRV_CPU_ADD( "maincpu", R5000BE, 50000000*3 )
 	MDRV_CPU_CONFIG( config )
 	MDRV_CPU_PROGRAM_MAP( ip225015_map, 0 )
-	MDRV_CPU_VBLANK_INT("main", ip22_vbl)
+	MDRV_CPU_VBLANK_INT("screen", ip22_vbl)
 
 	MDRV_MACHINE_RESET( ip225015 )
 	MDRV_NVRAM_HANDLER( ip22 )
@@ -1503,7 +1515,7 @@ static MACHINE_DRIVER_START( ip225015 )
 	MDRV_PIT8254_ADD( "pit8254", ip22_pit8254_config )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE( 60 )
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
@@ -1515,6 +1527,8 @@ static MACHINE_DRIVER_START( ip225015 )
 
 	MDRV_VIDEO_START( newport )
 	MDRV_VIDEO_UPDATE( newport )
+
+	MDRV_PC_LPT_ADD("lpt_0", ip22_lpt_config)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
@@ -1528,12 +1542,12 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ip224613 )
 	MDRV_IMPORT_FROM( ip225015 )
-	MDRV_CPU_REPLACE( "main", R4600BE, 133333333 )
+	MDRV_CPU_REPLACE( "maincpu", R4600BE, 133333333 )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ip244415 )
 	MDRV_IMPORT_FROM( ip225015 )
-	MDRV_CPU_REPLACE( "main", R4600BE, 150000000 )
+	MDRV_CPU_REPLACE( "maincpu", R4600BE, 150000000 )
 MACHINE_DRIVER_END
 
 ROM_START( ip225015 )

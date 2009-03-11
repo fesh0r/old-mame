@@ -466,9 +466,9 @@ static ADDRESS_MAP_START(gb_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xc000, 0xfdff) AM_RAM						/* 8k low RAM, echo RAM */
 	AM_RANGE(0xfe00, 0xfeff) AM_READWRITE( gb_oam_r, gb_oam_w )	/* OAM RAM */
 	AM_RANGE(0xff00, 0xff0f) AM_READWRITE( gb_io_r, gb_io_w )		/* I/O */
-	AM_RANGE(0xff10, 0xff26) AM_READWRITE( gb_sound_r, gb_sound_w )		/* sound registers */
+	AM_RANGE(0xff10, 0xff26) AM_DEVREADWRITE("custom", gb_sound_r, gb_sound_w )		/* sound registers */
 	AM_RANGE(0xff27, 0xff2f) AM_NOP						/* unused */
-	AM_RANGE(0xff30, 0xff3f) AM_READWRITE( gb_wave_r, gb_wave_w )		/* Wave ram */
+	AM_RANGE(0xff30, 0xff3f) AM_DEVREADWRITE("custom", gb_wave_r, gb_wave_w )		/* Wave ram */
 	AM_RANGE(0xff40, 0xff7f) AM_READWRITE( gb_video_r, gb_io2_w)		/* Video controller & BIOS flip-flop */
 	AM_RANGE(0xff80, 0xfffe) AM_RAM						/* High RAM */
 	AM_RANGE(0xffff, 0xffff) AM_READWRITE( gb_ie_r, gb_ie_w )		/* Interrupt enable register */
@@ -485,9 +485,9 @@ static ADDRESS_MAP_START(sgb_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xc000, 0xfdff) AM_RAM						/* 8k low RAM, echo RAM */
 	AM_RANGE(0xfe00, 0xfeff) AM_READWRITE( gb_oam_r, gb_oam_w )	/* OAM RAM */
 	AM_RANGE(0xff00, 0xff0f) AM_READWRITE( gb_io_r, sgb_io_w )		/* I/O */
-	AM_RANGE(0xff10, 0xff26) AM_READWRITE( gb_sound_r, gb_sound_w )		/* sound registers */
+	AM_RANGE(0xff10, 0xff26) AM_DEVREADWRITE("custom", gb_sound_r, gb_sound_w )		/* sound registers */
 	AM_RANGE(0xff27, 0xff2f) AM_NOP						/* unused */
-	AM_RANGE(0xff30, 0xff3f) AM_READWRITE( gb_wave_r, gb_wave_w )		/* Wave RAM */
+	AM_RANGE(0xff30, 0xff3f) AM_DEVREADWRITE("custom", gb_wave_r, gb_wave_w )		/* Wave RAM */
 	AM_RANGE(0xff40, 0xff7f) AM_READWRITE( gb_video_r, gb_io2_w )		/* Video controller & BIOS flip-flop */
 	AM_RANGE(0xff80, 0xfffe) AM_RAM						/* High RAM */
 	AM_RANGE(0xffff, 0xffff) AM_READWRITE( gb_ie_r, gb_ie_w )		/* Interrupt enable register */
@@ -506,9 +506,9 @@ static ADDRESS_MAP_START(gbc_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xe000, 0xfdff) AM_RAM						/* echo RAM */
 	AM_RANGE(0xfe00, 0xfeff) AM_READWRITE( gb_oam_r, gb_oam_w )	/* OAM RAM */
 	AM_RANGE(0xff00, 0xff0f) AM_READWRITE( gb_io_r, gb_io_w )		/* I/O */
-	AM_RANGE(0xff10, 0xff26) AM_READWRITE( gb_sound_r, gb_sound_w )		/* sound controller */
+	AM_RANGE(0xff10, 0xff26) AM_DEVREADWRITE("custom", gb_sound_r, gb_sound_w )		/* sound controller */
 	AM_RANGE(0xff27, 0xff2f) AM_NOP						/* unused */
-	AM_RANGE(0xff30, 0xff3f) AM_READWRITE( gb_wave_r, gb_wave_w )		/* Wave RAM */
+	AM_RANGE(0xff30, 0xff3f) AM_DEVREADWRITE("custom", gb_wave_r, gb_wave_w )		/* Wave RAM */
 	AM_RANGE(0xff40, 0xff7f) AM_READWRITE( gbc_io2_r, gbc_io2_w )		/* Other I/O and video controller */
 	AM_RANGE(0xff80, 0xfffe) AM_RAM						/* high RAM */
 	AM_RANGE(0xffff, 0xffff) AM_READWRITE( gb_ie_r, gb_ie_w )		/* Interrupt enable register */
@@ -525,7 +525,7 @@ static ADDRESS_MAP_START(megaduck_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xff00, 0xff0f) AM_READWRITE( gb_io_r, gb_io_w )			/* I/O */
 	AM_RANGE(0xff10, 0xff1f) AM_READWRITE( megaduck_video_r, megaduck_video_w )	/* video controller */
 	AM_RANGE(0xff20, 0xff2f) AM_READWRITE( megaduck_sound_r1, megaduck_sound_w1)	/* sound controller pt1 */
-	AM_RANGE(0xff30, 0xff3f) AM_READWRITE( gb_wave_r, gb_wave_w )			/* wave ram */
+	AM_RANGE(0xff30, 0xff3f) AM_DEVREADWRITE("custom", gb_wave_r, gb_wave_w )			/* wave ram */
 	AM_RANGE(0xff40, 0xff46) AM_READWRITE( megaduck_sound_r2, megaduck_sound_w2)	/* sound controller pt2 */
 	AM_RANGE(0xff47, 0xff7f) AM_NOP							/* unused */
 	AM_RANGE(0xff80, 0xfffe) AM_RAM							/* high RAM */
@@ -547,19 +547,14 @@ static INPUT_PORTS_START( gameboy )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SELECT) PORT_NAME("Select")
 INPUT_PORTS_END
 
-static const custom_sound_interface gameboy_sound_interface =
-{
-	gameboy_sh_start, 0, 0
-};
-
 static MACHINE_DRIVER_START( gameboy )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", LR35902, 4194304)			/* 4.194304 MHz */
+	MDRV_CPU_ADD("maincpu", LR35902, 4194304)			/* 4.194304 MHz */
 	MDRV_CPU_PROGRAM_MAP(gb_map, 0)
 	MDRV_CPU_CONFIG(dmg_cpu_reset)
-	MDRV_CPU_VBLANK_INT("main", gb_scanline_interrupt)	/* 1 dummy int each frame */
+	MDRV_CPU_VBLANK_INT("screen", gb_scanline_interrupt)	/* 1 dummy int each frame */
 
-	MDRV_SCREEN_ADD("main", LCD)
+	MDRV_SCREEN_ADD("screen", LCD)
 	MDRV_SCREEN_REFRESH_RATE(DMG_FRAMES_PER_SECOND)
 	MDRV_SCREEN_VBLANK_TIME(0)
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -580,11 +575,10 @@ static MACHINE_DRIVER_START( gameboy )
 	MDRV_PALETTE_INIT(gb)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD("custom", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(gameboy_sound_interface)
-	MDRV_SOUND_ROUTE(0, "left", 0.50)
-	MDRV_SOUND_ROUTE(1, "right", 0.50)
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
+	MDRV_SOUND_ADD("custom", GAMEBOY, 0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.50)
 	
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("gb,gmb,cgb,gbc,sgb,bin")
@@ -595,29 +589,29 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( supergb )
 	MDRV_IMPORT_FROM(gameboy)
-	MDRV_CPU_REPLACE("main", LR35902, 4295454)	/* 4.295454 MHz */
+	MDRV_CPU_REPLACE("maincpu", LR35902, 4295454)	/* 4.295454 MHz */
 	MDRV_CPU_PROGRAM_MAP(sgb_map, 0)
 
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_CONFIG(sgb_cpu_reset)
 
 	MDRV_MACHINE_RESET( sgb )
 
 	MDRV_DEFAULT_LAYOUT(layout_horizont)	/* runs on a TV, not an LCD */
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_SIZE(32*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 28*8-1)
 	MDRV_PALETTE_LENGTH(32768)
 	MDRV_PALETTE_INIT(sgb)
-	
+
 	MDRV_CARTSLOT_MODIFY("cart")
 	MDRV_CARTSLOT_MANDATORY
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( gbpocket )
 	MDRV_IMPORT_FROM(gameboy)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_CONFIG(mgb_cpu_reset)
 	MDRV_MACHINE_RESET( gbpocket )
 	MDRV_PALETTE_INIT(gbp)
@@ -628,7 +622,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( gbcolor )
 	MDRV_IMPORT_FROM(gameboy)
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP( gbc_map, 0 )
 	MDRV_CPU_CONFIG(cgb_cpu_reset)
 
@@ -636,7 +630,7 @@ static MACHINE_DRIVER_START( gbcolor )
 
 	MDRV_PALETTE_LENGTH(32768)
 	MDRV_PALETTE_INIT(gbc)
-	
+
 	MDRV_CARTSLOT_MODIFY("cart")
 	MDRV_CARTSLOT_MANDATORY
 MACHINE_DRIVER_END
@@ -647,12 +641,12 @@ SYSTEM_CONFIG_END
 
 static MACHINE_DRIVER_START( megaduck )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", LR35902, 4194304)			/* 4.194304 MHz */
+	MDRV_CPU_ADD("maincpu", LR35902, 4194304)			/* 4.194304 MHz */
 	MDRV_CPU_PROGRAM_MAP( megaduck_map, 0 )
-	MDRV_CPU_VBLANK_INT("main", gb_scanline_interrupt)	/* 1 int each scanline ! */
+	MDRV_CPU_VBLANK_INT("screen", gb_scanline_interrupt)	/* 1 int each scanline ! */
 	MDRV_CPU_CONFIG(megaduck_cpu_reset)
 
-	MDRV_SCREEN_ADD("main", LCD)
+	MDRV_SCREEN_ADD("screen", LCD)
 	MDRV_SCREEN_REFRESH_RATE(DMG_FRAMES_PER_SECOND)
 	MDRV_SCREEN_VBLANK_TIME(0)
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -670,11 +664,10 @@ static MACHINE_DRIVER_START( megaduck )
 	MDRV_PALETTE_LENGTH(4)
 	MDRV_PALETTE_INIT(megaduck)
 
-	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
-	MDRV_SOUND_ADD("custom", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(gameboy_sound_interface)
-	MDRV_SOUND_ROUTE(0, "left", 0.50)
-	MDRV_SOUND_ROUTE(1, "right", 0.50)
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
+	MDRV_SOUND_ADD("custom", GAMEBOY, 0)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 0.50)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 0.50)
 	
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("bin")
@@ -689,38 +682,38 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( gameboy )
-	ROM_REGION( 0x0100, "main", 0 )
+	ROM_REGION( 0x0100, "maincpu", 0 )
 	ROM_LOAD( "dmg_boot.bin", 0x0000, 0x0100, CRC(59c8598e) SHA1(4ed31ec6b0b175bb109c0eb5fd3d193da823339f) )
 ROM_END
 
 ROM_START( supergb )
-	ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 /*  ROM_LOAD( "sgb_boot.bin", 0x0000, 0x0100, NO_DUMP ) */
 ROM_END
 
 ROM_START( gbpocket )
-	ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 /*  ROM_LOAD( "gbp_boot.bin", 0x0000, 0x0100, NO_DUMP ) */
 ROM_END
 
 ROM_START( gbcolor )
-	ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 /*  ROM_LOAD( "gbc_boot.bin", 0x0000, 0x0100, NO_DUMP ) */
 ROM_END
 
 
 ROM_START( megaduck )
-	ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 ROM_END
 
 /*    YEAR  NAME      PARENT   COMPAT   MACHINE   INPUT    INIT  CONFIG   COMPANY     FULLNAME */
-CONS( 1990, gameboy,  0,       0,		gameboy,  gameboy, 0,    0, "Nintendo", "Game Boy"  , 0)
-CONS( 1994, supergb,  0,       gameboy,	supergb,  gameboy, 0,    0, "Nintendo", "Super Game Boy" , 0)
-CONS( 1996, gbpocket, gameboy, 0,		gbpocket, gameboy, 0,    0, "Nintendo", "Game Boy Pocket" , 0)
-CONS( 1998, gbcolor,  0,       gameboy,	gbcolor,  gameboy, 0,    gb_cgb, "Nintendo", "Game Boy Color" , 0)
+CONS( 1990, gameboy,  0,       0,	gameboy,  gameboy, 0,    0,	 "Nintendo", "Game Boy"  , 0)
+CONS( 1994, supergb,  0,       gameboy,	supergb,  gameboy, 0,    0,	 "Nintendo", "Super Game Boy" , 0)
+CONS( 1996, gbpocket, gameboy, 0,	gbpocket, gameboy, 0,    0,	 "Nintendo", "Game Boy Pocket" , 0)
+CONS( 1998, gbcolor,  0,       gameboy,	gbcolor,  gameboy, 0,    gb_cgb, "Nintendo", "Game Boy Color" , GAME_NOT_WORKING)
 
 /* Sound is not 100% yet, it generates some sounds which could be ok. Since we're lacking a real
    system there's no way to verify. Same goes for the colors of the LCD. We are no using the default
    Game Boy green colors */
-CONS( 1993, megaduck, 0,       0,       megaduck, gameboy, 0,    0,"Creatronic/Videojet/Timlex/Cougar",  "MegaDuck/Cougar Boy" , 0)
+CONS( 1993, megaduck, 0,       0,       megaduck, gameboy, 0,    0,	 "Creatronic/Videojet/Timlex/Cougar",  "MegaDuck/Cougar Boy" , 0)
 

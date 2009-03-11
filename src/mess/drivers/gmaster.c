@@ -30,7 +30,7 @@ static READ8_HANDLER( gmaster_io_r )
 {
     UINT8 data=0;
     if (gmaster.ports[2]&1) {
-	data=memory_region(space->machine, "main")[0x4000+offset];
+	data=memory_region(space->machine, "maincpu")[0x4000+offset];
 	logerror("%.4x external memory %.4x read %.2x\n",(int)cpu_get_reg(space->cpu, CPUINFO_INT_PC), 0x4000+offset,data);
     } else {
 	switch (offset) {
@@ -52,7 +52,7 @@ static READ8_HANDLER( gmaster_io_r )
 static WRITE8_HANDLER( gmaster_io_w )
 {
     if (gmaster.ports[2]&1) {
-	memory_region(space->machine, "main")[0x4000+offset]=data;
+	memory_region(space->machine, "maincpu")[0x4000+offset]=data;
 	logerror("%.4x external memory %.4x written %.2x\n",(int)cpu_get_reg(space->cpu, CPUINFO_INT_PC), 0x4000+offset, data);
     } else {
 	switch (offset) {
@@ -149,7 +149,7 @@ static INPUT_PORTS_START( gmaster )
 INPUT_PORTS_END
 
 /* palette in red, green, blue tribles */
-static unsigned char gmaster_palette[2][3] =
+static const unsigned char gmaster_palette[2][3] =
 {
 #if 1
     { 130, 159, 166 },
@@ -203,45 +203,39 @@ static INTERRUPT_GEN( gmaster_interrupt )
   cpu_set_input_line(device->machine->cpu[0], UPD7810_INTFE1, ASSERT_LINE);
 }
 
-static UPD7810_CONFIG config={
+static const UPD7810_CONFIG config={
   //    TYPE_78C10, // 78c11 in handheld
     TYPE_7801, // temporarily until 7810 core fixes synchronized
     gmaster_io_callback
 };
 
-static const custom_sound_interface gmaster_sound_interface =
-{
-	gmaster_custom_start
-};
-
 static MACHINE_DRIVER_START( gmaster )
-     MDRV_CPU_ADD("main", UPD7810, MAIN_XTAL/2/*?*/)
-MDRV_CPU_PROGRAM_MAP(gmaster_mem, 0)
-MDRV_CPU_IO_MAP( gmaster_io, 0 )
-MDRV_CPU_CONFIG( config )
-MDRV_CPU_VBLANK_INT("main", gmaster_interrupt)
+	MDRV_CPU_ADD("maincpu", UPD7810, MAIN_XTAL/2/*?*/)
+	MDRV_CPU_PROGRAM_MAP(gmaster_mem, 0)
+	MDRV_CPU_IO_MAP( gmaster_io, 0 )
+	MDRV_CPU_CONFIG( config )
+	MDRV_CPU_VBLANK_INT("screen", gmaster_interrupt)
 
-     MDRV_SCREEN_ADD("main", LCD)
-     MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-     MDRV_SCREEN_REFRESH_RATE(60)
-     MDRV_SCREEN_SIZE(64, 64)
-     MDRV_SCREEN_VISIBLE_AREA(0, 64-1-3, 0, 64-1)
-  MDRV_PALETTE_LENGTH(sizeof(gmaster_palette)/sizeof(gmaster_palette[0]))
-  MDRV_VIDEO_UPDATE(gmaster)
-     MDRV_PALETTE_INIT(gmaster)
-     MDRV_DEFAULT_LAYOUT(layout_gmaster)
+	MDRV_SCREEN_ADD("screen", LCD)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_SIZE(64, 64)
+	MDRV_SCREEN_VISIBLE_AREA(0, 64-1-3, 0, 64-1)
+	MDRV_PALETTE_LENGTH(sizeof(gmaster_palette)/sizeof(gmaster_palette[0]))
+	MDRV_VIDEO_UPDATE(gmaster)
+	MDRV_PALETTE_INIT(gmaster)
+	MDRV_DEFAULT_LAYOUT(layout_gmaster)
 
-     MDRV_SPEAKER_STANDARD_MONO("gmaster")
-     MDRV_SOUND_ADD("custom", CUSTOM, 0)
-     MDRV_SOUND_CONFIG(gmaster_sound_interface)
-     MDRV_SOUND_ROUTE(0, "gmaster", 0.50)
-     
-     MDRV_CARTSLOT_ADD("cart")
+	MDRV_SPEAKER_STANDARD_MONO("speaker")
+	MDRV_SOUND_ADD("custom", GMASTER, 0)
+	MDRV_SOUND_ROUTE(0, "speaker", 0.50)
+
+	MDRV_CARTSLOT_ADD("cart")
 MACHINE_DRIVER_END
 
 
 ROM_START(gmaster)
-	ROM_REGION(0x10000,"main", 0)
+	ROM_REGION(0x10000,"maincpu", 0)
      ROM_LOAD("gmaster.bin", 0x0000, 0x1000, CRC(05cc45e5) SHA1(05d73638dea9657ccc2791c0202d9074a4782c1e) )
 //     ROM_CART_LOAD(0, "bin", 0x8000, 0x7f00, 0)
      ROM_CART_LOAD("cart", 0x8000, 0x8000, 0)
@@ -257,7 +251,7 @@ static DRIVER_INIT( gmaster )
 static int gmaster_load_rom(running_machine *machine, int id)
 {
 	FILE *cartfile;
-	UINT8 *rom = memory_region(machine, "main");
+	UINT8 *rom = memory_region(machine, "maincpu");
 	int size;
 
 	if (device_filename(IO_CARTSLOT, id) == NULL)

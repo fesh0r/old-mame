@@ -38,7 +38,7 @@
     0000|-------|
 
 
-    Bank "main"       Contents
+    Bank "maincpu"       Contents
     0    0x00000 - 0x03fff ROM 1st half
     1    0x04000 - 0x07fff ROM 2nd half
     2           n/a        I/O 2KB area (mirrored 8 times?)
@@ -65,6 +65,8 @@
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
+#include "sound/speaker.h"
+#include "sound/wave.h"
 #include "includes/vtech2.h"
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
@@ -408,11 +410,11 @@ static const cassette_config laser_cassette_config =
 
 static MACHINE_DRIVER_START( laser350 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 3694700)        /* 3.694700 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, 3694700)        /* 3.694700 MHz */
 	MDRV_CPU_PROGRAM_MAP(vtech2_mem, 0)
 	MDRV_CPU_IO_MAP(vtech2_io, 0)
-	MDRV_CPU_VBLANK_INT("main", vtech2_interrupt)
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_CPU_VBLANK_INT("screen", vtech2_interrupt)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(0)
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -432,7 +434,7 @@ static MACHINE_DRIVER_START( laser350 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
@@ -461,7 +463,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START(laser350)
-	ROM_REGION(0x40000,"main",0)
+	ROM_REGION(0x40000,"maincpu",0)
 	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, CRC(9bed01f7) SHA1(3210fddfab2f4c7855fa902fb8e2fc18d10d48f1))
 	ROM_REGION(0x00800,"gfx1",0)
 	ROM_LOAD("laser.fnt",   0x00000, 0x00800, CRC(ed6bfb2a) SHA1(95e247021a10167b9de1d6ffc91ec4ba83b0ec87))
@@ -471,7 +473,7 @@ ROM_END
 
 
 ROM_START(laser500)
-	ROM_REGION(0x40000,"main",0)
+	ROM_REGION(0x40000,"maincpu",0)
 	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, CRC(9bed01f7) SHA1(3210fddfab2f4c7855fa902fb8e2fc18d10d48f1))
 	ROM_REGION(0x00800,"gfx1",0)
 	ROM_LOAD("laser.fnt",   0x00000, 0x00800, CRC(ed6bfb2a) SHA1(95e247021a10167b9de1d6ffc91ec4ba83b0ec87))
@@ -480,7 +482,7 @@ ROM_START(laser500)
 ROM_END
 
 ROM_START(laser700)
-	ROM_REGION(0x40000,"main",0)
+	ROM_REGION(0x40000,"maincpu",0)
 	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, CRC(9bed01f7) SHA1(3210fddfab2f4c7855fa902fb8e2fc18d10d48f1))
 	ROM_REGION(0x00800,"gfx1",0)
 	ROM_LOAD("laser.fnt",   0x00000, 0x00800, CRC(ed6bfb2a) SHA1(95e247021a10167b9de1d6ffc91ec4ba83b0ec87))

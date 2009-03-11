@@ -14,6 +14,7 @@
 #include "sound/pokey.h"
 #include "machine/6821pia.h"
 #include "video/gtia.h"
+#include "sound/dac.h"
 
 /******************************************************************************
     Atari 800 memory map (preliminary)
@@ -210,8 +211,8 @@ static ADDRESS_MAP_START(a400_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xc000, 0xcfff) AM_ROM
 	AM_RANGE(0xd000, 0xd0ff) AM_READWRITE(atari_gtia_r, atari_gtia_w)
 	AM_RANGE(0xd100, 0xd1ff) AM_NOP
-	AM_RANGE(0xd200, 0xd2ff) AM_READWRITE(pokey1_r, pokey1_w)
-	AM_RANGE(0xd300, 0xd3ff) AM_READWRITE(pia_0_alt_r, pia_0_alt_w)
+	AM_RANGE(0xd200, 0xd2ff) AM_DEVREADWRITE("pokey", pokey_r, pokey_w)
+	AM_RANGE(0xd300, 0xd3ff) AM_DEVREADWRITE("pia", pia6821_alt_r, pia6821_alt_w)
 	AM_RANGE(0xd400, 0xd4ff) AM_READWRITE(atari_antic_r, atari_antic_w)
 	AM_RANGE(0xd500, 0xd7ff) AM_NOP
 	AM_RANGE(0xd800, 0xffff) AM_ROM
@@ -224,8 +225,8 @@ static ADDRESS_MAP_START(a800_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xc000, 0xcfff) AM_ROM
 	AM_RANGE(0xd000, 0xd0ff) AM_READWRITE(atari_gtia_r, atari_gtia_w)
 	AM_RANGE(0xd100, 0xd1ff) AM_NOP
-	AM_RANGE(0xd200, 0xd2ff) AM_READWRITE(pokey1_r, pokey1_w)
-	AM_RANGE(0xd300, 0xd3ff) AM_READWRITE(pia_0_alt_r, pia_0_alt_w)
+	AM_RANGE(0xd200, 0xd2ff) AM_DEVREADWRITE("pokey", pokey_r, pokey_w)
+	AM_RANGE(0xd300, 0xd3ff) AM_DEVREADWRITE("pia", pia6821_alt_r, pia6821_alt_w)
 	AM_RANGE(0xd400, 0xd4ff) AM_READWRITE(atari_antic_r, atari_antic_w)
 	AM_RANGE(0xd500, 0xd7ff) AM_NOP
 	AM_RANGE(0xd800, 0xffff) AM_ROM
@@ -240,8 +241,8 @@ static ADDRESS_MAP_START(a800xl_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xc000, 0xcfff) AM_READWRITE(SMH_BANK3, SMH_BANK3)
 	AM_RANGE(0xd000, 0xd0ff) AM_READWRITE(atari_gtia_r, atari_gtia_w)
 	AM_RANGE(0xd100, 0xd1ff) AM_NOP
-	AM_RANGE(0xd200, 0xd2ff) AM_READWRITE(pokey1_r, pokey1_w)
-	AM_RANGE(0xd300, 0xd3ff) AM_READWRITE(pia_0_alt_r, pia_0_alt_w)
+	AM_RANGE(0xd200, 0xd2ff) AM_DEVREADWRITE("pokey", pokey_r, pokey_w)
+	AM_RANGE(0xd300, 0xd3ff) AM_DEVREADWRITE("pia", pia6821_alt_r, pia6821_alt_w)
 	AM_RANGE(0xd400, 0xd4ff) AM_READWRITE(atari_antic_r, atari_antic_w)
 	AM_RANGE(0xd500, 0xd7ff) AM_NOP
 	AM_RANGE(0xd800, 0xffff) AM_READWRITE(SMH_BANK4, SMH_BANK4)
@@ -253,7 +254,7 @@ static ADDRESS_MAP_START(a5200_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x4000, 0xbfff) AM_ROM
 	AM_RANGE(0xc000, 0xc0ff) AM_READWRITE(atari_gtia_r, atari_gtia_w)
 	AM_RANGE(0xd400, 0xd5ff) AM_READWRITE(atari_antic_r, atari_antic_w)
-	AM_RANGE(0xe800, 0xe8ff) AM_READWRITE(pokey1_r, pokey1_w)
+	AM_RANGE(0xe800, 0xe8ff) AM_DEVREADWRITE("pokey", pokey_r, pokey_w)
 	AM_RANGE(0xf800, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -653,34 +654,39 @@ static PALETTE_INIT( atari )
 }
 
 
-
-static READ8_HANDLER( analog_0_r ) { return (UINT8) input_port_read(space->machine, "analog_0"); }
-static READ8_HANDLER( analog_1_r ) { return (UINT8) input_port_read(space->machine, "analog_1"); }
-static READ8_HANDLER( analog_2_r ) { return (UINT8) input_port_read(space->machine, "analog_2"); }
-static READ8_HANDLER( analog_3_r ) { return (UINT8) input_port_read(space->machine, "analog_3"); }
-static READ8_HANDLER( analog_4_r ) { return (UINT8) input_port_read(space->machine, "analog_4"); }
-static READ8_HANDLER( analog_5_r ) { return (UINT8) input_port_read(space->machine, "analog_5"); }
-static READ8_HANDLER( analog_6_r ) { return (UINT8) input_port_read(space->machine, "analog_6"); }
-static READ8_HANDLER( analog_7_r ) { return (UINT8) input_port_read(space->machine, "analog_7"); }
-
-
-
 static const pokey_interface atari_pokey_interface =
 {
 	{
-		analog_0_r,
-		analog_1_r,
-		analog_2_r,
-		analog_3_r,
-		analog_4_r,
-		analog_5_r,
-		analog_6_r,
-		analog_7_r
+		DEVCB_INPUT_PORT("analog_0"),
+		DEVCB_INPUT_PORT("analog_1"),
+		DEVCB_INPUT_PORT("analog_2"),
+		DEVCB_INPUT_PORT("analog_3"),
+		DEVCB_INPUT_PORT("analog_4"),
+		DEVCB_INPUT_PORT("analog_5"),
+		DEVCB_INPUT_PORT("analog_6"),
+		DEVCB_INPUT_PORT("analog_7")
 	},
-	0,
-	atari_serin_r,
-	atari_serout_w,
+	DEVCB_NULL,
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, atari_serin_r),
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, atari_serout_w),
 	atari_interrupt_cb,
+};
+
+
+static const pia6821_interface pia_dummy_intf =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -708,10 +714,10 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( atari_common_nodac )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6510, FREQ_17_EXACT)
+	MDRV_CPU_ADD("maincpu", M6510, FREQ_17_EXACT)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_VISIBLE_AREA(MIN_X, MAX_X, MIN_Y, MAX_Y)
@@ -720,6 +726,8 @@ static MACHINE_DRIVER_START( atari_common_nodac )
 
 	MDRV_VIDEO_START(atari)
 	MDRV_VIDEO_UPDATE(atari)
+
+	MDRV_PIA6821_ADD( "pia", pia_dummy_intf )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -739,13 +747,13 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( a400 )
 	MDRV_IMPORT_FROM( atari_common )
 
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP(a400_mem, 0)
 	MDRV_CPU_VBLANK_INT_HACK(a400_interrupt, TOTAL_LINES_60HZ)
 
 	MDRV_MACHINE_START( a400 )
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
 	
@@ -756,13 +764,13 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( a400pal )
 	MDRV_IMPORT_FROM( atari_common )
 
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP(a400_mem, 0)
 	MDRV_CPU_VBLANK_INT_HACK(a400_interrupt, TOTAL_LINES_50HZ)
 
 	MDRV_MACHINE_START( a400 )
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_50HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_50HZ)
 	
@@ -773,13 +781,13 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( a800 )
 	MDRV_IMPORT_FROM( atari_common )
 
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP(a800_mem, 0)
 	MDRV_CPU_VBLANK_INT_HACK(a800_interrupt, TOTAL_LINES_60HZ)
 
 	MDRV_MACHINE_START( a800 )
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
 	
@@ -790,13 +798,13 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( a800pal )
 	MDRV_IMPORT_FROM( atari_common )
 
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP(a800_mem, 0)
 	MDRV_CPU_VBLANK_INT_HACK(a800_interrupt, TOTAL_LINES_50HZ)
 
 	MDRV_MACHINE_START( a800 )
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_50HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_50HZ)
 
@@ -807,13 +815,13 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( a800xl )
 	MDRV_IMPORT_FROM( atari_common )
 
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP(a800xl_mem, 0)
 	MDRV_CPU_VBLANK_INT_HACK(a800xl_interrupt, TOTAL_LINES_60HZ)
 
 	MDRV_MACHINE_START( a800xl )
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
 	
@@ -824,13 +832,13 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( a5200 )
 	MDRV_IMPORT_FROM( atari_common_nodac )
 
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP(a5200_mem, 0)
 	MDRV_CPU_VBLANK_INT_HACK(a5200_interrupt, TOTAL_LINES_60HZ)
 
 	MDRV_MACHINE_START( a5200 )
 
-	MDRV_SCREEN_MODIFY( "main" )
+	MDRV_SCREEN_MODIFY( "screen" )
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
 	
@@ -843,42 +851,42 @@ MACHINE_DRIVER_END
 
 
 ROM_START(a400)
-	ROM_REGION(0x14000,"main",0) /* 64K for the CPU + 2 * 8K for cartridges */
+	ROM_REGION(0x14000,"maincpu",0) /* 64K for the CPU + 2 * 8K for cartridges */
 	ROM_LOAD("floatpnt.rom", 0xd800, 0x0800, CRC(6a5d766e) SHA1(01a6044f7a81d409c938e7dfde0a1af5832229d2))
 	ROM_LOAD("atari400.rom", 0xe000, 0x2000, CRC(cb4db9af) SHA1(4e784f4e2530110366f7e5d257d0f050de4201b2))
 ROM_END
 
 ROM_START(a400pal)
-	ROM_REGION(0x14000,"main",0) /* 64K for the CPU + 2 * 8K for cartridges */
+	ROM_REGION(0x14000,"maincpu",0) /* 64K for the CPU + 2 * 8K for cartridges */
 	ROM_LOAD("floatpnt.rom", 0xd800, 0x0800, CRC(6a5d766e) SHA1(01a6044f7a81d409c938e7dfde0a1af5832229d2))
 	ROM_LOAD("atari400.rom", 0xe000, 0x2000, CRC(cb4db9af) SHA1(4e784f4e2530110366f7e5d257d0f050de4201b2))
 ROM_END
 
 ROM_START(a800)
-	ROM_REGION(0x14000,"main",0) /* 64K for the CPU + 2 * 8K for cartridges */
+	ROM_REGION(0x14000,"maincpu",0) /* 64K for the CPU + 2 * 8K for cartridges */
 	ROM_LOAD("floatpnt.rom", 0xd800, 0x0800, CRC(6a5d766e) SHA1(01a6044f7a81d409c938e7dfde0a1af5832229d2))
 	ROM_LOAD("atari800.rom", 0xe000, 0x2000, CRC(cb4db9af) SHA1(4e784f4e2530110366f7e5d257d0f050de4201b2))
 ROM_END
 
 ROM_START(a800pal)
-	ROM_REGION(0x14000,"main",0) /* 64K for the CPU + 2 * 8K for cartridges */
+	ROM_REGION(0x14000,"maincpu",0) /* 64K for the CPU + 2 * 8K for cartridges */
 	ROM_LOAD("floatpnt.rom", 0xd800, 0x0800, CRC(6a5d766e) SHA1(01a6044f7a81d409c938e7dfde0a1af5832229d2))
 	ROM_LOAD("atari800.rom", 0xe000, 0x2000, CRC(cb4db9af) SHA1(4e784f4e2530110366f7e5d257d0f050de4201b2))
 ROM_END
 
 ROM_START(a800xl)
-	ROM_REGION(0x18000,"main",0) /* 64K for the CPU + 16K + 2 * 8K for cartridges */
+	ROM_REGION(0x18000,"maincpu",0) /* 64K for the CPU + 16K + 2 * 8K for cartridges */
 	ROM_LOAD("basic.rom",   0x10000, 0x2000, CRC(7d684184) SHA1(3693c9cb9bf3b41bae1150f7a8264992468fc8c0))
 	ROM_LOAD("atarixl.rom", 0x14000, 0x4000, CRC(1f9cd270) SHA1(ae4f523ba08b6fd59f3cae515a2b2410bbd98f55))
 ROM_END
 
 ROM_START(a5200)
-	ROM_REGION(0x14000,"main",0) /* 64K for the CPU + 16K for cartridges */
+	ROM_REGION(0x14000,"maincpu",0) /* 64K for the CPU + 16K for cartridges */
 	ROM_LOAD("5200.rom", 0xf800, 0x0800, CRC(4248d3e3) SHA1(6ad7a1e8c9fad486fbec9498cb48bf5bc3adc530))
 ROM_END
 
 ROM_START(a5200a)
-	ROM_REGION(0x14000,"main",0) /* 64K for the CPU + 16K for cartridges */
+	ROM_REGION(0x14000,"maincpu",0) /* 64K for the CPU + 16K for cartridges */
 	ROM_LOAD("5200a.rom", 0xf800, 0x0800, CRC(c2ba2613) SHA1(1d2a3f00109d75d2d79fecb565775eb95b7d04d5))
 ROM_END
 

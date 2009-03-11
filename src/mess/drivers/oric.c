@@ -18,9 +18,9 @@
 
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
+#include "sound/wave.h"
 #include "includes/oric.h"
-#include "machine/centroni.h"
-#include "devices/printer.h"
+#include "machine/ctronics.h"
 #include "devices/mflopimg.h"
 #include "devices/cassette.h"
 #include "formats/ap2_dsk.h"
@@ -68,10 +68,10 @@ The telestrat has the memory regions split into 16k blocks.
 Memory region &c000-&ffff can be ram or rom. */
 static ADDRESS_MAP_START(telestrat_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x02ff) AM_RAM
-	AM_RANGE( 0x0300, 0x030f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
+	AM_RANGE( 0x0300, 0x030f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
 	AM_RANGE( 0x0310, 0x031b) AM_READWRITE( oric_microdisc_r, oric_microdisc_w )
-	AM_RANGE( 0x031c, 0x031f) AM_DEVREADWRITE(ACIA6551, "acia",  acia_6551_r, acia_6551_w )
-	AM_RANGE( 0x0320, 0x032f) AM_DEVREADWRITE(VIA6522, "via6522_1", via_r, via_w)
+	AM_RANGE( 0x031c, 0x031f) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
+	AM_RANGE( 0x0320, 0x032f) AM_DEVREADWRITE("via6522_1", via_r, via_w)
 	AM_RANGE( 0x0400, 0xbfff) AM_RAM
 	AM_RANGE( 0xc000, 0xffff) AM_READWRITE( SMH_BANK1, SMH_BANK2 )
 ADDRESS_MAP_END
@@ -337,10 +337,10 @@ static const ay8910_interface oric_ay_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	0,
-	0,
-	oric_psg_porta_write,
-	0
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, oric_psg_porta_write),
+	DEVCB_NULL,
 };
 
 
@@ -351,9 +351,17 @@ static const cassette_config oric_cassette_config =
 	CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED
 };
 
+static const centronics_interface oric_centronics_config =
+{
+	FALSE,
+	DEVCB_DEVICE_HANDLER("via6522_0", via_ca1_w),
+	DEVCB_NULL,
+	DEVCB_NULL
+};
+
 static MACHINE_DRIVER_START( oric )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 1000000)
+	MDRV_CPU_ADD("maincpu", M6502, 1000000)
 	MDRV_CPU_PROGRAM_MAP(oric_mem, 0)
 	MDRV_QUANTUM_TIME(HZ(60))
 
@@ -361,7 +369,7 @@ static MACHINE_DRIVER_START( oric )
 	MDRV_MACHINE_RESET( oric )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -375,28 +383,28 @@ static MACHINE_DRIVER_START( oric )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD("ay8912", AY8912, 1000000)
 	MDRV_SOUND_CONFIG(oric_ay_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* printer */
-	MDRV_PRINTER_ADD("printer")
+	MDRV_CENTRONICS_ADD("centronics", oric_centronics_config)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", oric_cassette_config )
 
 	/* via */
 	MDRV_VIA6522_ADD( "via6522_0", 1000000, oric_6522_interface )
-	
+
 	MDRV_WD179X_ADD("wd179x", oric_wd17xx_interface )
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( telstrat)
 	MDRV_IMPORT_FROM( oric )
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( telestrat_mem, 0 )
 
 	MDRV_MACHINE_START( telestrat )
@@ -411,21 +419,21 @@ MACHINE_DRIVER_END
 
 
 ROM_START(oric1)
-	ROM_REGION(0x10000+0x04000+0x02000+0x0800,"main",0)
+	ROM_REGION(0x10000+0x04000+0x02000+0x0800,"maincpu",0)
 	ROM_LOAD ("basic10.rom", 0x10000, 0x4000, CRC(f18710b4) SHA1(333116e6884d85aaa4dfc7578a91cceeea66d016))
 	ROM_LOAD_OPTIONAL ("microdis.rom",0x014000, 0x02000, CRC(a9664a9c) SHA1(0d2ef6e67322f48f4b7e08d8bbe68827e2074561))
 	ROM_LOAD_OPTIONAL ("jasmin.rom", 0x016000, 0x800, CRC(37220e89) SHA1(70e59b8abd67092f050462abc6cb5271e4c15f01))
 ROM_END
 
 ROM_START(orica)
-	ROM_REGION(0x10000+0x04000+0x02000+0x0800,"main",0)
+	ROM_REGION(0x10000+0x04000+0x02000+0x0800,"maincpu",0)
 	ROM_LOAD ("basic11b.rom", 0x10000, 0x4000, CRC(c3a92bef) SHA1(9451a1a09d8f75944dbd6f91193fc360f1de80ac))
 	ROM_LOAD_OPTIONAL ("microdis.rom",0x014000, 0x02000, CRC(a9664a9c) SHA1(0d2ef6e67322f48f4b7e08d8bbe68827e2074561))
 	ROM_LOAD_OPTIONAL ("jasmin.rom", 0x016000, 0x800, CRC(37220e89) SHA1(70e59b8abd67092f050462abc6cb5271e4c15f01))
 ROM_END
 
 ROM_START(telstrat)
-	ROM_REGION(0x010000+(0x04000*4), "main",0)
+	ROM_REGION(0x010000+(0x04000*4), "maincpu",0)
 	ROM_LOAD ("telmatic.rom", 0x010000, 0x02000, CRC(94358dc6) SHA1(35f92a0477a88f5cf564971125047ffcfa02ec10))
 	ROM_LOAD ("teleass.rom", 0x014000, 0x04000, CRC(68b0fde6) SHA1(9e9af51dae3199cccf49ab3f0d47e2b9be4ba97d))
 	ROM_LOAD ("hyperbas.rom", 0x018000, 0x04000, CRC(1d96ab50) SHA1(f5f70a0eb59f8cd6c261e179ae78ef906f68ed63))
@@ -433,14 +441,14 @@ ROM_START(telstrat)
 ROM_END
 
 ROM_START(prav8d)
-    ROM_REGION( 0x10000+0x4000+0x0100+0x0200, "main", 0 )
+    ROM_REGION( 0x10000+0x4000+0x0100+0x0200, "maincpu", 0 )
     ROM_LOAD( "pravetzt.rom", 0x10000, 0x4000, CRC(58079502) SHA1(7afc276cb118adff72e4f16698f94bf3b2c64146) )
 	ROM_LOAD_OPTIONAL( "8ddoslo.rom", 0x014000, 0x0100, CRC(0c82f636) SHA1(b29d151a0dfa3c7cd50439b51d0a8f95559bc2b6) )
     ROM_LOAD_OPTIONAL( "8ddoshi.rom", 0x014100, 0x0200, CRC(66309641) SHA1(9c2e82b3c4d385ade6215fcb89f8b92e6fd2bf4b) )
 ROM_END
 
 ROM_START(prav8dd)
-    ROM_REGION( 0x10000+0x4000+0x0100+0x0200, "main", 0 )
+    ROM_REGION( 0x10000+0x4000+0x0100+0x0200, "maincpu", 0 )
 	ROM_SYSTEM_BIOS( 0, "default", "Disk ROM, 1989")
 	ROMX_LOAD( "8d.rom",       0x10000, 0x4000, CRC(b48973ef) SHA1(fd47c977fc215a3b577596a7483df53e8a1e9c83), ROM_BIOS(1) )
 	ROM_SYSTEM_BIOS( 1, "radosoft", "RadoSoft Disk ROM, 1992")

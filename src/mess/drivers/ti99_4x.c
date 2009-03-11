@@ -19,8 +19,10 @@ Historical notes: TI made several last minute design changes.
 */
 
 #include "driver.h"
-#include "cpu/tms9900/tms9900.h"
 #include "deprecat.h"
+#include "cpu/tms9900/tms9900.h"
+#include "sound/sn76496.h"
+#include "sound/wave.h"
 #include "video/v9938.h"
 #include "machine/ti99_4x.h"
 #include "machine/tms9901.h"
@@ -87,14 +89,14 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(writecru, ADDRESS_SPACE_IO, 8)
 
-	AM_RANGE(0x0000, 0x07ff) AM_DEVWRITE(TMS9901, "tms9901", tms9901_cru_w)
+	AM_RANGE(0x0000, 0x07ff) AM_DEVWRITE("tms9901", tms9901_cru_w)
 	AM_RANGE(0x0800, 0x0fff) AM_WRITE(ti99_4x_peb_cru_w)
 
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(readcru, ADDRESS_SPACE_IO, 8)
 
-	AM_RANGE(0x0000, 0x00ff) AM_DEVREAD(TMS9901, "tms9901", tms9901_cru_r)
+	AM_RANGE(0x0000, 0x00ff) AM_DEVREAD("tms9901", tms9901_cru_r)
 	AM_RANGE(0x0100, 0x01ff) AM_READ(ti99_4x_peb_cru_r)
 
 ADDRESS_MAP_END
@@ -508,7 +510,7 @@ static const mm58274c_interface floppy_mm58274c_interface =
 	0   /*  first day of week */
 };
 
-MACHINE_DRIVER_START(ti99_4_cartslot)
+static MACHINE_DRIVER_START(ti99_4_cartslot)
  	MDRV_CARTSLOT_ADD("cart1")
 	MDRV_CARTSLOT_EXTENSION_LIST("bin,c,d,g,m,crom,drom,grom,mrom")
 	MDRV_CARTSLOT_NOT_MANDATORY
@@ -534,25 +536,25 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START(ti99_4_60hz)
 	/* basic machine hardware */
 	/* TMS9900 CPU @ 3.0 MHz */
-	MDRV_CPU_ADD("main", TMS9900, 3000000)
+	MDRV_CPU_ADD("maincpu", TMS9900, 3000000)
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
 	MDRV_CPU_IO_MAP(readcru, writecru)
-	MDRV_CPU_VBLANK_INT("main", ti99_vblank_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", ti99_vblank_interrupt)
 
 	MDRV_MACHINE_START( ti99_4_60hz )
 	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette1", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave.1", "cassette1")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
-	MDRV_SOUND_ADD("cassette2", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave.2", "cassette2")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 	MDRV_SOUND_ADD("sn76496", SN76496, 3579545)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
@@ -586,17 +588,17 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START(ti99_4_50hz)
 	/* basic machine hardware */
 	/* TMS9900 CPU @ 3.0 MHz */
-	MDRV_CPU_ADD("main", TMS9900, 3000000)
+	MDRV_CPU_ADD("maincpu", TMS9900, 3000000)
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
 	MDRV_CPU_IO_MAP(readcru, writecru)
-	MDRV_CPU_VBLANK_INT("main", ti99_vblank_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", ti99_vblank_interrupt)
 
 	MDRV_MACHINE_START( ti99_4_50hz )
 	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
@@ -607,7 +609,7 @@ static MACHINE_DRIVER_START(ti99_4_50hz)
 	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(ti99_4x_tms5220interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	MDRV_SOUND_ADD("cassette1", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave.1", "cassette1")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
 	/* devices */
@@ -636,17 +638,17 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START(ti99_4a_60hz)
 	/* basic machine hardware */
 	/* TMS9900 CPU @ 3.0 MHz */
-	MDRV_CPU_ADD("main", TMS9900, 3000000)
+	MDRV_CPU_ADD("maincpu", TMS9900, 3000000)
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
 	MDRV_CPU_IO_MAP(readcru, writecru)
-	MDRV_CPU_VBLANK_INT("main", ti99_vblank_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", ti99_vblank_interrupt)
 
 	MDRV_MACHINE_START( ti99_4a_60hz )
 	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
@@ -657,7 +659,7 @@ static MACHINE_DRIVER_START(ti99_4a_60hz)
 	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(ti99_4x_tms5220interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	MDRV_SOUND_ADD("cassette1", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave.1", "cassette1")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
 	/* devices */
@@ -688,17 +690,17 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START(ti99_4a_50hz)
 	/* basic machine hardware */
 	/* TMS9900 CPU @ 3.0 MHz */
-	MDRV_CPU_ADD("main", TMS9900, 3000000)
+	MDRV_CPU_ADD("maincpu", TMS9900, 3000000)
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
 	MDRV_CPU_IO_MAP(readcru, writecru)
-	MDRV_CPU_VBLANK_INT("main", ti99_vblank_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", ti99_vblank_interrupt)
 
 	MDRV_MACHINE_START( ti99_4a_50hz )
 	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
@@ -709,7 +711,7 @@ static MACHINE_DRIVER_START(ti99_4a_50hz)
 	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(ti99_4x_tms5220interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	MDRV_SOUND_ADD("cassette1", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave.1", "cassette1")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
 	/* devices */
@@ -739,7 +741,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START(ti99_4ev_60hz)
 	/* basic machine hardware */
 	/* TMS9900 CPU @ 3.0 MHz */
-	MDRV_CPU_ADD("main", TMS9900, 3000000)
+	MDRV_CPU_ADD("maincpu", TMS9900, 3000000)
 	MDRV_CPU_PROGRAM_MAP(memmap_4ev, 0)
 	MDRV_CPU_IO_MAP(readcru, writecru)
 	MDRV_CPU_VBLANK_INT_HACK(ti99_4ev_hblank_interrupt, 263)	/* 262.5 in 60Hz, 312.5 in 50Hz */
@@ -748,7 +750,7 @@ static MACHINE_DRIVER_START(ti99_4ev_60hz)
 	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)	/* or 50Hz */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -768,7 +770,7 @@ static MACHINE_DRIVER_START(ti99_4ev_60hz)
 	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(ti99_4x_tms5220interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	MDRV_SOUND_ADD("cassette1", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave.1", "cassette1")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
 	/* devices */
@@ -803,7 +805,7 @@ MACHINE_DRIVER_END
 
 ROM_START(ti99_4)
 	/*CPU memory space*/
-	ROM_REGION16_BE(region_cpu1_len, "main", 0)
+	ROM_REGION16_BE(region_cpu1_len, "maincpu", 0)
 	ROM_LOAD16_BYTE("u610.bin", 0x0000, 0x1000, CRC(6fcf4b15) SHA1(d085213c64701d429ae535f9a4ac8a50427a8343)) /* CPU ROMs high */
 	ROM_LOAD16_BYTE("u611.bin", 0x0001, 0x1000, CRC(491c21d1) SHA1(7741ae9294c51a44a78033d1b77c01568a6bbfb9)) /* CPU ROMs low */
 
@@ -833,7 +835,7 @@ ROM_END
 
 ROM_START(ti99_4a)
 	/*CPU memory space*/
-	ROM_REGION16_BE(region_cpu1_len, "main", 0)
+	ROM_REGION16_BE(region_cpu1_len, "maincpu", 0)
 	ROM_LOAD16_WORD("994arom.bin", 0x0000, 0x2000, CRC(db8f33e5) SHA1(6541705116598ab462ea9403c00656d6353ceb85)) /* system ROMs */
 
 	/*GROM memory space*/
@@ -860,7 +862,7 @@ ROM_END
 
 ROM_START(ti99_4ev)
 	/*CPU memory space*/
-	ROM_REGION16_BE(region_cpu1_len, "main", 0)
+	ROM_REGION16_BE(region_cpu1_len, "maincpu", 0)
 	ROM_LOAD16_WORD("994arom.bin", 0x0000, 0x2000, CRC(db8f33e5) SHA1(6541705116598ab462ea9403c00656d6353ceb85)) /* system ROMs */
 
 	/*GROM memory space*/

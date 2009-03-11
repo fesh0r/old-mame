@@ -86,11 +86,10 @@
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
 #include "machine/wd17xx.h"
-#include "machine/centroni.h"
+#include "machine/ctronics.h"
 #include "machine/msm8251.h"
 #include "devices/dsk.h"
 #include "devices/basicdsk.h"
-#include "devices/printer.h"
 #include "sound/ay8910.h"
 #include "video/mc6845.h"
 
@@ -230,7 +229,7 @@ static int Einstein_scr_y = 0;
 static MC6845_UPDATE_ROW( einstein_6845_update_row )
 {
 	/* TODO: Verify implementation */
-	unsigned char *data = memory_region(device->machine, "main") + 0x012000;
+	unsigned char *data = memory_region(device->machine, "maincpu") + 0x012000;
 	unsigned char data_byte;
 	int char_code;
 	int i, x;
@@ -257,7 +256,7 @@ static MC6845_ON_DE_CHANGED( einstein_6845_display_enable_changed )
 }
 
 static const mc6845_interface einstein_crtc6845_interface = {
-	"main",
+	"screen",
 	8 /*?*/,
 	NULL,
 	einstein_6845_update_row,
@@ -300,7 +299,7 @@ static  READ8_HANDLER(einstein_80col_r)
 
 static WRITE8_HANDLER(einstein_80col_w)
 {
-	const device_config *mc6845 = devtag_get_device(space->machine, MC6845, "crtc");
+	const device_config *mc6845 = devtag_get_device(space->machine, "crtc");
 
 	switch (offset & 0x0f)
 	{
@@ -419,13 +418,13 @@ static void einstein_pio_interrupt(const device_config *device, int state)
 
 static WRITE8_DEVICE_HANDLER(einstein_serial_transmit_clock)
 {
-	const device_config *uart = device_list_find_by_tag(device->machine->config->devicelist, MSM8251, "uart");
+	const device_config *uart = devtag_get_device(device->machine, "uart");
 	msm8251_transmit_clock(uart);
 }
 
 static WRITE8_DEVICE_HANDLER(einstein_serial_receive_clock)
 {
-	const device_config *uart = device_list_find_by_tag(device->machine->config->devicelist, MSM8251, "uart");
+	const device_config *uart = devtag_get_device(device->machine, "uart");
 	msm8251_receive_clock(uart);
 }
 
@@ -438,24 +437,17 @@ static const z80ctc_interface einstein_ctc_intf =
 	z80ctc_trg3_w
 };
 
+
 static void einstein_pio_ardy(const device_config *device, int state)
 {
-	int handshake;
-
-	handshake = 0;
-
-	/* strobe is inverted state of ardy */
-	if (state != 0)
-		handshake = CENTRONICS_STROBE;
-
-	/* ardy is connected to strobe */
-	centronics_write_handshake(device->machine,0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
-	centronics_write_handshake(device->machine,0, handshake, CENTRONICS_STROBE);
+	const device_config *printer = devtag_get_device(device->machine, "centronics");
+	centronics_strobe_w(printer, state);
 }
 
 static WRITE8_DEVICE_HANDLER( einstein_pio_port_a_w )
 {
-	centronics_write_data(device->machine,0,data);
+	const device_config *printer = devtag_get_device(device->machine, "centronics");
+	centronics_data_w(printer, 0, data);
 }
 
 
@@ -488,7 +480,6 @@ static void einstein_daisy_irq_reti(const device_config *device)
 
 static DEVICE_START( einstein_daisy )
 {
-	return DEVICE_START_OK;
 }
 
 
@@ -555,12 +546,12 @@ static void einstein_fire_reti(int which)
 
 static const z80_daisy_chain einstein_daisy_chain[] =
 {
-	{ DEVICE_GET_INFO_NAME( einstein_daisy ), "keyboard_daisy" },
+	{ "keyboard_daisy" },
 //	{einstein_keyboard_int_reset, einstein_keyboard_interrupt, 0, einstein_keyboard_reti, 0},
-	{ Z80CTC, "z80ctc" },
-	{ DEVICE_GET_INFO_NAME( einstein_daisy ), "adc_daisy" },
+	{ "z80ctc" },
+	{ "adc_daisy" },
 //	{einstein_adc_int_reset,einstein_adc_interrupt, 0, einstein_adc_reti, 0},
-	{ Z80PIO, "z80pio" },
+	{ "z80pio" },
 //  {einstein_fire_int_reset,einstein_fire_interrupt, einstein_fire_reti, 0},
 	{ NULL }
 };
@@ -593,7 +584,7 @@ static WRITE8_HANDLER(einstein_vdp_w)
 static WRITE8_HANDLER(einstein_fdc_w)
 {
 	int reg = offset & 0x03;
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD177X, "wd177x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd177x");
 
 	logerror("fdc w: PC: %04x %04x %02x\n",cpu_get_pc(space->machine->cpu[0]),offset,data);
 
@@ -629,7 +620,7 @@ static WRITE8_HANDLER(einstein_fdc_w)
 static  READ8_HANDLER(einstein_fdc_r)
 {
 	int reg = offset & 0x03;
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD177X, "wd177x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd177x");
 
 	logerror("fdc r: PC: %04x %04x\n",cpu_get_pc(space->machine->cpu[0]),offset);
 
@@ -693,7 +684,7 @@ static WRITE8_DEVICE_HANDLER(einstein_ctc_w)
 
 static WRITE8_HANDLER(einstein_serial_w)
 {
-	const device_config *uart = device_list_find_by_tag(space->machine->config->devicelist, MSM8251, "uart");
+	const device_config *uart = devtag_get_device(space->machine, "uart");
 	int reg = offset & 0x01;
 
 	/* logerror("serial w: %04x %02x\n",offset,data); */
@@ -710,7 +701,7 @@ static WRITE8_HANDLER(einstein_serial_w)
 
 static READ8_HANDLER(einstein_serial_r)
 {
-	const device_config *uart = device_list_find_by_tag(space->machine->config->devicelist, MSM8251, "uart");
+	const device_config *uart = devtag_get_device(space->machine, "uart");
 	int reg = offset & 0x01;
 
 	/* logerror("serial r: %04x\n",offset); */
@@ -750,6 +741,7 @@ static READ8_HANDLER(einstein_serial_r)
 
 static WRITE8_HANDLER(einstein_psg_w)
 {
+	const device_config *ay8910 = devtag_get_device(space->machine, "ay8910");
 	int reg = offset & 0x03;
 
 	/*logerror("psg w: %04x %02x\n",offset,data); */
@@ -759,13 +751,13 @@ static WRITE8_HANDLER(einstein_psg_w)
 		/* case 0 and 1 are not handled */
 		case 2:
 		{
-			ay8910_control_port_0_w(space, 0, data);
+			ay8910_address_w(ay8910, 0, data);
 		}
 		break;
 
 		case 3:
 		{
-			ay8910_write_port_0_w(space, 0, data);
+			ay8910_data_w(ay8910, 0, data);
 		}
 		break;
 
@@ -774,15 +766,16 @@ static WRITE8_HANDLER(einstein_psg_w)
 	}
 }
 
-static  READ8_HANDLER(einstein_psg_r)
+static READ8_HANDLER(einstein_psg_r)
 {
+	const device_config *ay8910 = devtag_get_device(space->machine, "ay8910");
 	int reg = offset & 0x03;
 
 	switch (reg)
 	{
 		/* case 0 and 1 are not handled */
 		case 2:
-			return ay8910_read_port_0_r(space, 0);
+			return ay8910_r(ay8910, 0);
 
 		default:
 			break;
@@ -807,7 +800,7 @@ static void einstein_page_rom(running_machine *machine)
 {
 	if (einstein_rom_enabled)
 	{
-		memory_set_bankptr(machine, 1, memory_region(machine, "main")+0x010000);
+		memory_set_bankptr(machine, 1, memory_region(machine, "maincpu")+0x010000);
 	}
 	else
 	{
@@ -820,7 +813,7 @@ static void einstein_page_rom(running_machine *machine)
 
 static WRITE8_HANDLER(einstein_drive_w)
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD177X, "wd177x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd177x");
 
 	/* bit 4: side select */
 	/* bit 3: select drive 3 */
@@ -861,16 +854,13 @@ static WRITE8_HANDLER(einstein_rom_w)
 
 static READ8_HANDLER(einstein_key_int_r)
 {
-	int centronics_handshake;
+	const device_config *printer = devtag_get_device(space->machine, "centronics");
 	int data;
 
 	/* clear key int. a read of this I/O port will do this or a reset */
 	einstein_int &= ~EINSTEIN_KEY_INT;
 
 	einstein_update_interrupts(space->machine);
-
-	centronics_write_handshake(space->machine,0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
-	centronics_handshake = centronics_read_handshake(space->machine,0);
 
 	/* bit 7: 0=shift pressed */
 	/* bit 6: 0=control pressed */
@@ -882,31 +872,9 @@ static READ8_HANDLER(einstein_key_int_r)
 	/* bit 0: fire 0 */
 	data = ((input_port_read(space->machine, "EXTRA") & 0x07)<<5) | (input_port_read(space->machine, "BUTTONS") & 0x03) | 0x01c;
 
-	/* error? */
-	if (centronics_handshake & CENTRONICS_NO_ERROR)
-	{
-		/* if CENTRONICS_NO_ERROR flag set there is no error */
-
-		/* no error */
-		data |= (1<<4);
-	}
-
-	/* no paper? */
-	if ((centronics_handshake & CENTRONICS_NO_PAPER)==0)
-	{
-		/* if CENTRONICS_NO_PAPER flag set there is no paper */
-
-		/* has paper */
-		data |= (1<<3);
-	}
-
-	if ((centronics_handshake & CENTRONICS_NOT_BUSY)==0)
-	{
-		/*  if CENTRONICS_NOT_BUSY flag set then not busy */
-
-		/* busy */
-		data |= (1<<2);
-	}
+	data |= centronics_fault_r(printer) << 4;
+	data |= centronics_pe_r(printer) << 3;
+	data |= centronics_busy_r(printer) << 2;
 
 	logerror("key int r: %02x\n",data);
 
@@ -1025,7 +993,7 @@ static READ8_HANDLER(einstein2_port_r)
 		case 0x2d:
 		case 0x2e:
 		case 0x2f:
-			return einstein_ctc_r( device_list_find_by_tag(space->machine->config->devicelist, Z80CTC, "z80ctc"), offset);
+			return einstein_ctc_r( devtag_get_device(space->machine, "z80ctc"), offset);
 		case 0x30:
 		case 0x31:
 		case 0x32:
@@ -1129,7 +1097,7 @@ static WRITE8_HANDLER(einstein2_port_w)
 		case 0x2d:
 		case 0x2e:
 		case 0x2f:
-			einstein_ctc_w( device_list_find_by_tag(space->machine->config->devicelist, Z80CTC, "z80ctc"), offset,data);
+			einstein_ctc_w( devtag_get_device(space->machine, "z80ctc"), offset,data);
 			return;
 		case 0x30:
 		case 0x31:
@@ -1218,7 +1186,7 @@ static  READ8_HANDLER(einstein_port_r)
 		case 0x2d:
 		case 0x2e:
 		case 0x2f:
-			return einstein_ctc_r( device_list_find_by_tag(space->machine->config->devicelist, Z80CTC, "z80ctc"), offset);
+			return einstein_ctc_r( devtag_get_device(space->machine, "z80ctc"), offset);
 		case 0x30:
 		case 0x31:
 		case 0x32:
@@ -1305,7 +1273,7 @@ static WRITE8_HANDLER(einstein_port_w)
 		case 0x2d:
 		case 0x2e:
 		case 0x2f:
-			einstein_ctc_w( device_list_find_by_tag(space->machine->config->devicelist, Z80CTC, "z80ctc"), offset,data);
+			einstein_ctc_w( devtag_get_device(space->machine, "z80ctc"), offset,data);
 			return;
 		case 0x30:
 		case 0x31:
@@ -1361,31 +1329,6 @@ ADDRESS_MAP_END
 
 
 
-
-static void einstein_printer_handshake_in(running_machine *machine,int number, int data, int mask)
-{
-	if (mask & CENTRONICS_ACKNOWLEDGE)
-	{
-		if (data & CENTRONICS_ACKNOWLEDGE)
-		{
-			/* /ack into /astb */
-			z80pio_astb_w( einstein_z80pio, 0);
-		}
-		else
-		{
-			z80pio_astb_w( einstein_z80pio, 1);
-		}
-	}
-}
-
-static const CENTRONICS_CONFIG einstein_cent_config[1]={
-	{
-		PRINTER_CENTRONICS,
-		einstein_printer_handshake_in
-	},
-};
-
-
 /* when Z80 acknowledges int, /IORQ and /M1 will be low */
 /* this allows I057 octal latch to output data onto the bus */
 static IRQ_CALLBACK(einstein_cpu_acknowledge_int)
@@ -1426,7 +1369,7 @@ static MACHINE_START( einstein )
 {
 	TMS9928A_configure(&tms9928a_interface);
 
-	einstein_z80pio = device_list_find_by_tag( machine->config->devicelist, Z80PIO, "z80pio" );
+	einstein_z80pio = devtag_get_device(machine, "z80pio");
 }
 
 static MACHINE_RESET( einstein )
@@ -1457,12 +1400,7 @@ static MACHINE_RESET( einstein )
 
 	/* the input to channel 0 and 1 of the ctc is a 2 MHz clock */
 	einstein_ctc_trigger = 0;
-	timer_pulse(machine, ATTOTIME_IN_HZ(2000000), (void *)device_list_find_by_tag(machine->config->devicelist, Z80CTC, "z80ctc"), 0, einstein_ctc_trigger_callback);
-
-	centronics_config(machine, 0, einstein_cent_config);
-	/* assumption: select is tied low */
-	centronics_write_handshake(machine, 0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
-
+	timer_pulse(machine, ATTOTIME_IN_HZ(2000000), (void *)devtag_get_device(machine, "z80ctc"), 0, einstein_ctc_trigger_callback);
 }
 
 static MACHINE_RESET( einstein2 )
@@ -1604,10 +1542,18 @@ static const ay8910_interface einstein_ay_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL,
-	einstein_port_b_read,
-	einstein_port_a_write,
-	NULL
+	DEVCB_NULL,
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, einstein_port_b_read),
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, einstein_port_a_write),
+	DEVCB_NULL
+};
+
+static const centronics_interface einstein_centronics_config =
+{
+	FALSE,
+	DEVCB_DEVICE_LINE("z80pio", z80pio_astb_w),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 /*
@@ -1634,7 +1580,7 @@ static const ay8910_interface einstein_ay_interface =
 //  if (Einstein_DE)
 //  {
 //
-//      unsigned char *data = memory_region(machine, "main")+0x012000;
+//      unsigned char *data = memory_region(machine, "maincpu")+0x012000;
 //      unsigned char data_byte;
 //      int char_code;
 //
@@ -1703,7 +1649,7 @@ static const ay8910_interface einstein_ay_interface =
 
 static VIDEO_UPDATE( einstein2 )
 {
-	const device_config *mc6845 = devtag_get_device(screen->machine, MC6845, "crtc");
+	const device_config *mc6845 = devtag_get_device(screen->machine, "crtc");
 
 	VIDEO_UPDATE_CALL(tms9928a);
 	mc6845_update(mc6845, bitmap, cliprect);
@@ -1713,7 +1659,7 @@ static VIDEO_UPDATE( einstein2 )
 
 static MACHINE_DRIVER_START( einstein )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, EINSTEIN_SYSTEM_CLOCK)
+	MDRV_CPU_ADD("maincpu", Z80, EINSTEIN_SYSTEM_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(einstein_mem, 0)
 	MDRV_CPU_IO_MAP(einstein_io, 0)
 	MDRV_CPU_CONFIG(einstein_daisy_chain)
@@ -1729,7 +1675,7 @@ static MACHINE_DRIVER_START( einstein )
 
     /* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
@@ -1740,11 +1686,11 @@ static MACHINE_DRIVER_START( einstein )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
 	/* printer */
-	MDRV_PRINTER_ADD("printer")
+	MDRV_CENTRONICS_ADD("centronics", einstein_centronics_config)
 
 	/* uart */
 	MDRV_MSM8251_ADD("uart", default_msm8251_interface)
-	
+
 	MDRV_WD177X_ADD("wd177x", default_wd17xx_interface )
 MACHINE_DRIVER_END
 
@@ -1752,12 +1698,12 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( einstei2 )
 	MDRV_IMPORT_FROM( einstein )
 
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_IO_MAP(einstein2_io, 0)
 	MDRV_MACHINE_RESET( einstein2 )
 
     /* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_SIZE(640, 400)
 	MDRV_SCREEN_VISIBLE_AREA(0,640-1, 0, 400-1)
 
@@ -1774,12 +1720,12 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START(einstein)
-	ROM_REGION(0x010000+0x02000, "main",0)
+	ROM_REGION(0x010000+0x02000, "maincpu",0)
 	ROM_LOAD("einstein.rom",0x10000, 0x02000, CRC(ec134953) SHA1(a02125d8ebcda48aa784adbb42a8b2d7ef3a4b77))
 ROM_END
 
 ROM_START(einstei2)
-	ROM_REGION(0x010000+0x02000+0x0800, "main",0)
+	ROM_REGION(0x010000+0x02000+0x0800, "maincpu",0)
 	ROM_LOAD("einstein.rom",0x10000, 0x02000, CRC(ec134953) SHA1(a02125d8ebcda48aa784adbb42a8b2d7ef3a4b77))
 	ROM_LOAD("charrom.rom",0x012000, 0x0800, NO_DUMP)
 ROM_END

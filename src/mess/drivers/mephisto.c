@@ -174,11 +174,10 @@ INPUT_PORTS_END
 
 static TIMER_CALLBACK( update_nmi )
 {
-
+	const device_config *speaker = devtag_get_device(machine, "beep");
 	cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI,PULSE_LINE);
 	// dac_data_w(0,led_status&64?128:0);
-	beep_set_state(0,led_status&64?1:0);
-
+	beep_set_state(speaker,led_status&64?1:0);
 }
 
 static MACHINE_START( mephisto )
@@ -199,7 +198,7 @@ static MACHINE_RESET( mephisto )
 
 static MACHINE_DRIVER_START( mephisto )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main",M65C02,4915200)        /* 65C02 */
+	MDRV_CPU_ADD("maincpu",M65C02,4915200)        /* 65C02 */
 	MDRV_CPU_PROGRAM_MAP(mephisto_mem, 0)
 	MDRV_QUANTUM_TIME(HZ(60))
 	MDRV_MACHINE_START( mephisto )
@@ -217,18 +216,18 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( rebel5 )
 	MDRV_IMPORT_FROM( mephisto )
 	/* basic machine hardware */
-	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(rebel5_mem, 0)
 	//beep_set_frequency(0, 4000);
 MACHINE_DRIVER_END
 
 ROM_START(rebel5)
-	ROM_REGION(0x10000,"main",0)
+	ROM_REGION(0x10000,"maincpu",0)
 	ROM_LOAD("rebel5.rom", 0x8000, 0x8000, CRC(8d02e1ef) SHA1(9972c75936613bd68cfd3fe62bd222e90e8b1083))
 ROM_END
 
 ROM_START(mm4)
-	ROM_REGION(0x10000,"main",0)
+	ROM_REGION(0x10000,"maincpu",0)
 	ROM_LOAD("mephisto4.rom", 0x8000, 0x8000, CRC(f68a4124) SHA1(d1d03a9aacc291d5cb720d2ee2a209eeba13a36c))
 	ROM_SYSTEM_BIOS( 0, "none", "No Opening Library" )
 	ROM_SYSTEM_BIOS( 1, "hg440", "HG440 Opening Library" )
@@ -236,7 +235,7 @@ ROM_START(mm4)
 ROM_END
 
 ROM_START(mm5)
-	ROM_REGION(0x10000,"main",0)
+	ROM_REGION(0x10000,"maincpu",0)
 	ROM_LOAD("mephisto5.rom", 0x8000, 0x8000, CRC(89c3d9d2) SHA1(77cd6f8eeb03c713249db140d2541e3264328048))
 	ROM_SYSTEM_BIOS( 0, "none", "No Opening Library" )
 	ROM_SYSTEM_BIOS( 1, "hg550", "HG550 Opening Library" )
@@ -244,7 +243,7 @@ ROM_START(mm5)
 ROM_END
 
 ROM_START(mm50)
-	ROM_REGION(0x10000,"main",0)
+	ROM_REGION(0x10000,"maincpu",0)
 	ROM_LOAD("mm50.rom", 0x8000, 0x8000, CRC(fcfa7e6e) SHA1(afeac3a8c957ba58cefaa27b11df974f6f2066da))
 	ROM_SYSTEM_BIOS( 0, "none", "No Opening Library" )
 	ROM_SYSTEM_BIOS( 1, "hg550", "HG550 Opening Library" )

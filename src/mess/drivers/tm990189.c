@@ -44,6 +44,7 @@
 #include "video/tms9928a.h"
 #include "devices/cassette.h"
 #include "sound/speaker.h"
+#include "sound/wave.h"
 
 
 static int load_state;
@@ -283,7 +284,7 @@ static TMS9901_INT_CALLBACK( sys9901_interrupt_callback )
 {
 	(void)ic;
 
-	tms9901_set_single_int(device_list_find_by_tag(device->machine->config->devicelist, TMS9901, "tms9901_0"), 5, intreq);
+	tms9901_set_single_int(devtag_get_device(device->machine, "tms9901_0"), 5, intreq);
 }
 
 static READ8_DEVICE_HANDLER( sys9901_r0 )
@@ -296,7 +297,7 @@ static READ8_DEVICE_HANDLER( sys9901_r0 )
 		reply |= input_port_read(device->machine, keynames[digitsel]) << 1;
 
 	/* tape input */
-	if (cassette_input(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" )) > 0.0)
+	if (cassette_input(devtag_get_device(device->machine, "cassette")) > 0.0)
 		reply |= 0x40;
 
 	return reply;
@@ -341,12 +342,13 @@ static WRITE8_DEVICE_HANDLER( sys9901_shiftlight_w )
 
 static WRITE8_DEVICE_HANDLER( sys9901_spkrdrive_w )
 {
-	speaker_level_w(0, data);
+	const device_config *speaker = devtag_get_device(device->machine, "speaker");
+	speaker_level_w(speaker, data);
 }
 
 static WRITE8_DEVICE_HANDLER( sys9901_tapewdata_w )
 {
-	cassette_output(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ), data ? +1.0 : -1.0);
+	cassette_output(devtag_get_device(device->machine, "cassette"), data ? +1.0 : -1.0);
 }
 
 /*
@@ -360,7 +362,7 @@ static TIMER_CALLBACK(rs232_input_callback)
 	if (/*rs232_rts &&*/ /*(mame_ftell(rs232_fp) < mame_fsize(rs232_fp))*/1)
 	{
 		if (image_fread(rs232_fp, &buf, 1) == 1)
-			tms9902_push_data(device_list_find_by_tag(machine->config->devicelist, TMS9902, "tms9902"), buf);
+			tms9902_push_data(devtag_get_device(machine, "tms9902"), buf);
 	}
 }
 
@@ -376,7 +378,7 @@ static DEVICE_IMAGE_LOAD( tm990_189_rs232 )
 
 	rs232_fp = image;
 
-	tms9902_set_dsr(device_list_find_by_tag(image->machine->config->devicelist, TMS9902, "tms9902"), 1);
+	tms9902_set_dsr(devtag_get_device(image->machine, "tms9902"), 1);
 	rs232_input_timer = timer_alloc(image->machine, rs232_input_callback, NULL);
 	timer_adjust_periodic(rs232_input_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(10));
 
@@ -395,7 +397,7 @@ static DEVICE_IMAGE_UNLOAD( tm990_189_rs232 )
 
 	rs232_fp = NULL;
 
-	tms9902_set_dsr(device_list_find_by_tag(image->machine->config->devicelist, TMS9902, "tms9902"), 0);
+	tms9902_set_dsr(devtag_get_device(image->machine, "tms9902"), 0);
 
 	timer_reset(rs232_input_timer, attotime_never);	/* FIXME - timers should only be allocated once */
 }
@@ -436,7 +438,7 @@ static WRITE8_HANDLER(ext_instr_decode)
 	case 5: /* CKON: set DECKCONTROL */
 		LED_state |= 0x20;
 		{
-			const device_config *img = device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" );
+			const device_config *img = devtag_get_device(space->machine, "cassette");
 			cassette_change_state(img, CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
 		}
 		break;
@@ -444,7 +446,7 @@ static WRITE8_HANDLER(ext_instr_decode)
 	case 6: /* CKOF: clear DECKCONTROL */
 		LED_state &= ~0x20;
 		{
-			const device_config *img = device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" );
+			const device_config *img = devtag_get_device(space->machine, "cassette");
 			cassette_change_state(img, CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 		}
 		break;
@@ -729,23 +731,23 @@ ADDRESS_MAP_END
 */
 
 static ADDRESS_MAP_START(tm990_189_writecru, ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x000, 0x1ff) AM_DEVWRITE(TMS9901, "tms9901_0", tms9901_cru_w)	/* user I/O tms9901 */
-	AM_RANGE(0x200, 0x3ff) AM_DEVWRITE(TMS9901, "tms9901_1", tms9901_cru_w)	/* system I/O tms9901 */
-	AM_RANGE(0x400, 0x5ff) AM_DEVWRITE(TMS9902, "tms9902", tms9902_cru_w)	/* optional tms9902 */
+	AM_RANGE(0x000, 0x1ff) AM_DEVWRITE("tms9901_0", tms9901_cru_w)	/* user I/O tms9901 */
+	AM_RANGE(0x200, 0x3ff) AM_DEVWRITE("tms9901_1", tms9901_cru_w)	/* system I/O tms9901 */
+	AM_RANGE(0x400, 0x5ff) AM_DEVWRITE("tms9902", tms9902_cru_w)	/* optional tms9902 */
 
 	AM_RANGE(0x0800,0x1fff)AM_WRITE(ext_instr_decode)	/* external instruction decoding (IDLE, RSET, CKON, CKOF, LREX) */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(tm990_189_readcru, ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x00, 0x3f) AM_DEVREAD(TMS9901, "tms9901_0", tms9901_cru_r)		/* user I/O tms9901 */
-	AM_RANGE(0x40, 0x6f) AM_DEVREAD(TMS9901, "tms9901_1", tms9901_cru_r)		/* system I/O tms9901 */
-	AM_RANGE(0x80, 0xcf) AM_DEVREAD(TMS9902, "tms9902", tms9902_cru_r)		/* optional tms9902 */
+	AM_RANGE(0x00, 0x3f) AM_DEVREAD("tms9901_0", tms9901_cru_r)		/* user I/O tms9901 */
+	AM_RANGE(0x40, 0x6f) AM_DEVREAD("tms9901_1", tms9901_cru_r)		/* system I/O tms9901 */
+	AM_RANGE(0x80, 0xcf) AM_DEVREAD("tms9902", tms9902_cru_r)		/* optional tms9902 */
 
 ADDRESS_MAP_END
 
 
 
-static tms9980areset_param reset_params =
+static const tms9980areset_param reset_params =
 {
 	idle_callback
 };
@@ -753,7 +755,7 @@ static tms9980areset_param reset_params =
 static MACHINE_DRIVER_START(tm990_189)
 	/* basic machine hardware */
 	/* TMS9980 CPU @ 2.0 MHz */
-	MDRV_CPU_ADD("main", TMS9980, 2000000)
+	MDRV_CPU_ADD("maincpu", TMS9980, 2000000)
 	MDRV_CPU_CONFIG(reset_params)
 	MDRV_CPU_PROGRAM_MAP(tm990_189_memmap, 0)
 	MDRV_CPU_IO_MAP(tm990_189_readcru, tm990_189_writecru)
@@ -761,7 +763,7 @@ static MACHINE_DRIVER_START(tm990_189)
 	MDRV_MACHINE_RESET( tm990_189 )
 
 	/* video hardware - we emulate a 8-segment LED display */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(75)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -779,7 +781,7 @@ static MACHINE_DRIVER_START(tm990_189)
 	/* sound hardware */
 	/* one two-level buzzer */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
@@ -801,7 +803,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START(tm990_189_v)
 	/* basic machine hardware */
 	/* TMS9980 CPU @ 2.0 MHz */
-	MDRV_CPU_ADD("main", TMS9980, 2000000)
+	MDRV_CPU_ADD("maincpu", TMS9980, 2000000)
 	MDRV_CPU_CONFIG(reset_params)
 	MDRV_CPU_PROGRAM_MAP(tm990_189_v_memmap, 0)
 	MDRV_CPU_IO_MAP(tm990_189_readcru, tm990_189_writecru)
@@ -811,7 +813,7 @@ static MACHINE_DRIVER_START(tm990_189_v)
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_SIZE(LEFT_BORDER+32*8+RIGHT_BORDER, TOP_BORDER_60HZ+24*8+BOTTOM_BORDER_60HZ + 32)
@@ -823,7 +825,7 @@ static MACHINE_DRIVER_START(tm990_189_v)
 	/* sound hardware */
 	/* one two-level buzzer */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
@@ -843,7 +845,7 @@ MACHINE_DRIVER_END
 */
 ROM_START(990189)
 	/*CPU memory space*/
-	ROM_REGION(0x4000, "main",0)
+	ROM_REGION(0x4000, "maincpu",0)
 
 	/* extra ROM */
 	ROM_LOAD("990-469.u32", 0x0800, 0x0800, CRC(08df7edb) SHA1(fa9751fd2e3e5d7ae03819fc9c7099e2ddd9fb53))
@@ -856,7 +858,7 @@ ROM_END
 
 ROM_START(990189v)
 	/*CPU memory space*/
-	ROM_REGION(0x4000, "main",0)
+	ROM_REGION(0x4000, "maincpu",0)
 
 	/* extra ROM */
 	ROM_LOAD("990-469.u32", 0x0800, 0x0800, CRC(08df7edb) SHA1(fa9751fd2e3e5d7ae03819fc9c7099e2ddd9fb53))

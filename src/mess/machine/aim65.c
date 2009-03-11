@@ -34,12 +34,6 @@ static UINT8 riot_port_a;
  Interrupt handling
 ******************************************************************************/
 
-
-void aim65_via_irq_func(const device_config *device, int state)
-{
-	cpu_set_input_line(device->machine->cpu[0], M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
-}
-
 /* STEP/RUN
  *
  * Switch S2 (STEP/RUN) causes AIM 65 to operate either in the RUN mode or the
@@ -79,43 +73,26 @@ static void dl1416_update(const device_config *device, int index)
 
 static void aim65_pia(running_machine *machine)
 {
-	dl1416_update(devtag_get_device(machine, DL1416, "ds1"), 0);
-	dl1416_update(devtag_get_device(machine, DL1416, "ds2"), 1);
-	dl1416_update(devtag_get_device(machine, DL1416, "ds3"), 2);
-	dl1416_update(devtag_get_device(machine, DL1416, "ds4"), 3);
-	dl1416_update(devtag_get_device(machine, DL1416, "ds5"), 4);
+	dl1416_update(devtag_get_device(machine, "ds1"), 0);
+	dl1416_update(devtag_get_device(machine, "ds2"), 1);
+	dl1416_update(devtag_get_device(machine, "ds3"), 2);
+	dl1416_update(devtag_get_device(machine, "ds4"), 3);
+	dl1416_update(devtag_get_device(machine, "ds5"), 4);
 }
 
 
-static WRITE8_HANDLER( aim65_pia_a_w )
+WRITE8_DEVICE_HANDLER(aim65_pia_a_w)
 {
 	pia_a = data;
-	aim65_pia(space->machine);
+	aim65_pia(device->machine);
 }
 
 
-static WRITE8_HANDLER( aim65_pia_b_w )
+WRITE8_DEVICE_HANDLER(aim65_pia_b_w)
 {
 	pia_b = data;
-	aim65_pia(space->machine);
+	aim65_pia(device->machine);
 }
-
-
-static const pia6821_interface pia =
-{
-	NULL, // read8_machine_func in_a_func,
-	NULL, // read8_machine_func in_b_func,
-	NULL, // read8_machine_func in_ca1_func,
-	NULL, // read8_machine_func in_cb1_func,
-	NULL, // read8_machine_func in_ca2_func,
-	NULL, // read8_machine_func in_cb2_func,
-	aim65_pia_a_w,
-	aim65_pia_b_w,
-	NULL, // write8_machine_func out_ca2_func,
-	NULL, // write8_machine_func out_cb2_func,
-	NULL, // void (*irq_a_func)(int state),
-	NULL, // void (*irq_b_func)(int state),
-};
 
 
 void aim65_update_ds1(const device_config *device, int digit, int data)
@@ -184,36 +161,13 @@ void aim65_riot_irq(const device_config *device, int state)
 
 
 
-/******************************************************************************
- 6522 VIA
-******************************************************************************/
-
-
-WRITE8_DEVICE_HANDLER( aim65_via0_a_w )
-{
-	 aim65_printer_data_a(data);
-}
-
-
-WRITE8_DEVICE_HANDLER( aim65_via0_b_w )
-{
-	aim65_printer_data_b(data);
-}
-
-
-READ8_DEVICE_HANDLER( aim65_via0_b_r )
-{
-	return input_port_read(device->machine, "switches");
-}
-
-
 /***************************************************************************
     DRIVER INIT
 ***************************************************************************/
 
 MACHINE_START( aim65 )
 {
-	const device_config *via_0 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
+	const device_config *via_0 = devtag_get_device(machine, "via6522_0");
 	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 
 	/* Init RAM */
@@ -222,8 +176,6 @@ MACHINE_START( aim65 )
 
 	if (mess_ram_size < 4 * 1024)
 		memory_install_readwrite8_handler(space, mess_ram_size, 0x0fff, 0, 0, SMH_NOP, SMH_NOP);
-
-	pia_config(machine, 0, &pia);
 
 	via_cb1_w(via_0, 1, 1);
 	via_ca1_w(via_0, 1, 0);

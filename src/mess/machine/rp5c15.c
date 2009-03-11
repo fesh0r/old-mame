@@ -119,7 +119,7 @@ TIMER_CALLBACK(rtc_alarm_pulse)
 {
 	const device_config* device = ptr;
 	rp5c15_t* rtc = device->token;
-	
+
 	if(rtc->pulse16_state == 0)  // low
 	{
 		rtc->pulse16_state = 1;  // make high
@@ -142,13 +142,12 @@ TIMER_CALLBACK(rtc_alarm_pulse)
 	}
 }
 
-DEVICE_START( rp5c15 )
+static DEVICE_START( rp5c15 )
 {
 	rp5c15_t* rtc = device->token;
 	mame_system_time systm;
 	mame_system_tm time;
 
-	assert(device->machine != NULL);
 	rtc->intf = device->static_config;
 
 	rtc->alarm_callback = rtc->intf->alarm_irq_callback;
@@ -186,8 +185,6 @@ DEVICE_START( rp5c15 )
 
 	rtc_timer = timer_alloc(device->machine, rtc_alarm_pulse, (void*)device);
 	timer_adjust_periodic(rtc_timer, attotime_zero, 0, ATTOTIME_IN_HZ(32));
-	
-	return DEVICE_START_OK;
 }
 
 static int rp5c15_read(const device_config* device, int offset, UINT16 mem_mask)
@@ -360,7 +357,7 @@ static void rp5c15_write(const device_config* device, int offset, int data, UINT
 void rtc_add_second(const device_config* device)  // add one second to current time
 {
 	rp5c15_t* rtc = device->token;
-	
+
 	if((rtc->mode & 0x08) == 0x00) // if timer is not enabled
 		return;
 	rtc->systime.sec_1++;
@@ -377,7 +374,7 @@ void rtc_add_second(const device_config* device)  // add one second to current t
 void rtc_add_minute(const device_config* device)
 {
 	rp5c15_t* rtc = device->token;
-	
+
 	rtc->systime.min_1++;
 	if(rtc->systime.min_1 < 10)
 		return;
@@ -470,7 +467,7 @@ void rtc_add_day(const device_config* device)
 void rtc_add_month(const device_config* device)
 {
 	rp5c15_t* rtc = device->token;
-	
+
 	rtc->systime.month_1++;
 	if(rtc->systime.month_1 < 10 && rtc->systime.month_10 < 1)
 		return;

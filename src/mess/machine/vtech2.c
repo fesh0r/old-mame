@@ -44,13 +44,13 @@ static int laser_fdc_offs = 0;
 static int laser_fdc_latch = 0;
 
 /* write to banked memory (handle memory mapped i/o and videoram) */
-static void mwa_bank(int bank, int offs, int data);
+static void mwa_bank(running_machine *machine, int bank, int offs, int data);
 
 /* wrappers for bank #1 to #4 */
-static WRITE8_HANDLER ( mwa_bank1 ) { mwa_bank(0,offset,data); }
-static WRITE8_HANDLER ( mwa_bank2 ) { mwa_bank(1,offset,data); }
-static WRITE8_HANDLER ( mwa_bank3 ) { mwa_bank(2,offset,data); }
-static WRITE8_HANDLER ( mwa_bank4 ) { mwa_bank(3,offset,data); }
+static WRITE8_HANDLER ( mwa_bank1 ) { mwa_bank(space->machine, 0,offset,data); }
+static WRITE8_HANDLER ( mwa_bank2 ) { mwa_bank(space->machine, 1,offset,data); }
+static WRITE8_HANDLER ( mwa_bank3 ) { mwa_bank(space->machine, 2,offset,data); }
+static WRITE8_HANDLER ( mwa_bank4 ) { mwa_bank(space->machine, 3,offset,data); }
 
 /* read from banked memory (handle memory mapped i/o) */
 static int mra_bank(running_machine *machine, int bank, int offs);
@@ -106,7 +106,7 @@ DRIVER_INIT(laser)
         gfx[i] = i;
 
 	laser_latch = -1;
-    mem = memory_region(machine, "main");
+    mem = memory_region(machine, "maincpu");
 
 	for (i = 0; i < sizeof(laser_bank) / sizeof(laser_bank[0]); i++)
 		laser_bank[i] = -1;
@@ -124,7 +124,7 @@ static void laser_machine_init(running_machine *machine, int bank_mask, int vide
 	logerror("laser_machine_init(): bank mask $%04X, video %d [$%05X]\n", laser_bank_mask, laser_video_bank, laser_video_bank * 0x04000);
 
 	for (i = 0; i < sizeof(laser_bank) / sizeof(laser_bank[0]); i++)
-		laser_bank_select_w(cputag_get_address_space(machine,"main",ADDRESS_SPACE_PROGRAM), i, 0);
+		laser_bank_select_w(cputag_get_address_space(machine,"maincpu",ADDRESS_SPACE_PROGRAM), i, 0);
 }
 
 MACHINE_RESET( laser350 )
@@ -198,7 +198,7 @@ WRITE8_HANDLER( laser_bank_select_w )
 
 static const device_config *vtech2_cassette_image(running_machine *machine)
 {
-	return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
+	return devtag_get_device(machine, "cassette");
 }
 
 /*************************************************
@@ -301,8 +301,9 @@ static int mra_bank(running_machine *machine, int bank, int offs)
  * 1    cassette out (LSB)
  * 0    speaker A
  ************************************************/
-static void mwa_bank(int bank, int offs, int data)
+static void mwa_bank(running_machine *machine, int bank, int offs, int data)
 {
+	const device_config *speaker = devtag_get_device(machine, "speaker");
 	offs += 0x4000 * laser_bank[bank];
     switch (laser_bank[bank])
     {
@@ -316,7 +317,7 @@ static void mwa_bank(int bank, int offs, int data)
             logerror("bank #%d write to I/O [$%05X] $%02X\n", bank+1, offs, data);
             /* Toggle between graphics and text modes? */
 			if ((data ^ laser_latch) & 0x01)
-				speaker_level_w(0, data & 1);
+				speaker_level_w(speaker, data & 1);
             laser_latch = data;
         }
         break;

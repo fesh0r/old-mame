@@ -28,7 +28,6 @@
 #include <math.h>
 
 #include "driver.h"
-#include "machine/6821pia.h"
 #include "machine/6883sam.h"
 #include "video/m6847.h"
 #include "includes/coco.h"
@@ -141,7 +140,7 @@ static void color_batch(UINT32 *results, const UINT8 *indexes, int count)
 			UINT32 red   = ((c & 0xFF0000) >> 16);
 			UINT32 green = ((c & 0x00FF00) >>  8);
 			UINT32 blue  = ((c & 0x0000FF) >>  0);
-			c = (red + green + blue) / 3;
+			c = ((red + green + blue) / 3) * 0x010101;
 		}
 
 		results[i] = c;
@@ -790,9 +789,9 @@ static STATE_POSTLOAD( coco3_video_postload )
 }
 
 
-const UINT8 *get_video_ram_coco3(running_machine *machine,int scanline)
+static const UINT8 *get_video_ram_coco3(running_machine *machine,int scanline)
 {
-	device_config *sam = (device_config*)device_list_find_by_tag( machine->config->devicelist, SAM6883_GIME, "sam");
+	const device_config *sam = devtag_get_device(machine, "sam");
 	return sam_m6847_get_video_ram(sam,scanline);
 }
 
@@ -819,7 +818,7 @@ static void internal_video_start_coco3(running_machine *machine, m6847_type type
 	memory_set_bankptr(machine, 10, paletteram);
 
 	/* font */
-	rom = memory_region(machine, "main");
+	rom = memory_region(machine, "maincpu");
 	for (i = 0; i < 32; i++)
 	{
 		/* characters 0-31 are at $FA10 - $FB0F */

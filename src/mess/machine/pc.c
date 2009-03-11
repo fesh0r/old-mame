@@ -30,10 +30,7 @@
 
 #include "includes/pc_mouse.h"
 #include "machine/pckeybrd.h"
-
-#include "includes/pclpt.h"
-#include "machine/centroni.h"
-
+#include "machine/pc_lpt.h"
 #include "machine/pc_fdc.h"
 #include "machine/pc_hdc.h"
 #include "machine/nec765.h"
@@ -246,23 +243,25 @@ const struct pic8259_interface pcjr_pic8259_master_config =
 static UINT8 pc_spkrdata = 0;
 static UINT8 pc_input = 0;
 
-UINT8 pc_speaker_get_spk(void) 
+UINT8 pc_speaker_get_spk(void)
 {
 	return pc_spkrdata & pc_input;
 }
 
 
-void pc_speaker_set_spkrdata(UINT8 data)
+void pc_speaker_set_spkrdata(running_machine *machine, UINT8 data)
 {
+	const device_config *speaker = devtag_get_device(machine, "speaker");
 	pc_spkrdata = data ? 1 : 0;
-	speaker_level_w( 0, pc_speaker_get_spk() );
+	speaker_level_w( speaker, pc_speaker_get_spk() );
 }
 
 
-void pc_speaker_set_input(UINT8 data)
+void pc_speaker_set_input(running_machine *machine, UINT8 data)
 {
+	const device_config *speaker = devtag_get_device(machine, "speaker");
 	pc_input = data ? 1 : 0;
-	speaker_level_w( 0, pc_speaker_get_spk() );
+	speaker_level_w( speaker, pc_speaker_get_spk() );
 }
 
 
@@ -276,7 +275,7 @@ static PIT8253_OUTPUT_CHANGED( ibm5150_timer0_w )
 {
 	pic8259_set_irq_line(pc_devices.pic8259_master, 0, state);
 }
- 
+
 
 static PIT8253_OUTPUT_CHANGED( ibm5150_pit8253_out1_changed )
 {
@@ -286,7 +285,7 @@ static PIT8253_OUTPUT_CHANGED( ibm5150_pit8253_out1_changed )
 
 static PIT8253_OUTPUT_CHANGED( ibm5150_pit8253_out2_changed )
 {
-	pc_speaker_set_input( state );
+	pc_speaker_set_input( device->machine, state );
 }
 
 
@@ -393,49 +392,6 @@ const ins8250_interface ibm5150_com_interface[4]=
 		NULL
 	}
 };
-
-
-/**********************************************************
- *
- * LPT interface
- *
- **********************************************************/
-
-static const PC_LPT_CONFIG lpt_config[3]=
-{
-	{
-		1,
-		LPT_UNIDIRECTIONAL,
-		NULL
-	},
-	{
-		1,
-		LPT_UNIDIRECTIONAL,
-		NULL
-	},
-	{
-		1,
-		LPT_UNIDIRECTIONAL,
-		NULL
-	}
-};
-
-static const CENTRONICS_CONFIG cent_config[3]=
-{
-	{
-		PRINTER_IBM,
-		pc_lpt_handshake_in
-	},
-	{
-		PRINTER_IBM,
-		pc_lpt_handshake_in
-	},
-	{
-		PRINTER_IBM,
-		pc_lpt_handshake_in
-	}
-};
-
 
 
 /**********************************************************
@@ -750,7 +706,7 @@ static READ8_DEVICE_HANDLER ( ibm5150_ppi_portc_r )
 
 	if ( ! ( pc_ppi.portb & 0x08 ) )
 	{
-		double tap_val = cassette_input( device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ) );
+		double tap_val = cassette_input( devtag_get_device(device->machine, "cassette") );
 
 		if ( tap_val < 0 )
 		{
@@ -791,9 +747,9 @@ static WRITE8_DEVICE_HANDLER ( ibm5150_ppi_portb_w )
 	pc_ppi.keyboard_clear = data & 0x80;
 	pc_ppi.keyb_clock = data & 0x40;
 	pit8253_gate_w( pc_devices.pit8253, 2, data & 1);
-	pc_speaker_set_spkrdata( data & 0x02 );
+	pc_speaker_set_spkrdata( device->machine, data & 0x02 );
 
-	cassette_change_state( device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ), ( data & 0x08 ) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
+	cassette_change_state( devtag_get_device(device->machine, "cassette"), ( data & 0x08 ) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
 
 	pc_ppi.clock_signal = ( pc_ppi.keyb_clock ) ? 1 : 0;
 
@@ -868,12 +824,12 @@ static void ibm5150_set_keyboard_interface( running_machine *machine, write8_spa
 status information */
 const ppi8255_interface ibm5150_ppi8255_interface =
 {
-	ibm5150_ppi_porta_r,
-	ibm5150_ppi_portb_r,
-	ibm5150_ppi_portc_r,
-	ibm5150_ppi_porta_w,
-	ibm5150_ppi_portb_w,
-	ibm5150_ppi_portc_w
+	DEVCB_HANDLER(ibm5150_ppi_porta_r),
+	DEVCB_HANDLER(ibm5150_ppi_portb_r),
+	DEVCB_HANDLER(ibm5150_ppi_portc_r),
+	DEVCB_HANDLER(ibm5150_ppi_porta_w),
+	DEVCB_HANDLER(ibm5150_ppi_portb_w),
+	DEVCB_HANDLER(ibm5150_ppi_portc_w)
 };
 
 
@@ -946,7 +902,7 @@ static WRITE8_DEVICE_HANDLER( ibm5160_ppi_portb_w )
 	pc_ppi.keyboard_clear = data & 0x80;
 	pc_ppi.keyb_clock = data & 0x40;
 	pit8253_gate_w( pc_devices.pit8253, 2, data & 0x01 );
-	pc_speaker_set_spkrdata( data & 0x02 );
+	pc_speaker_set_spkrdata( device->machine, data & 0x02 );
 
 	pc_ppi.clock_signal = ( pc_ppi.keyb_clock ) ? 1 : 0;
 	pc_ppi.clock_callback( cpu_get_address_space( device->machine->cpu[0], ADDRESS_SPACE_PROGRAM ), 0, pc_ppi.clock_signal );
@@ -963,12 +919,12 @@ static WRITE8_DEVICE_HANDLER( ibm5160_ppi_portb_w )
 
 const ppi8255_interface ibm5160_ppi8255_interface =
 {
-	ibm5160_ppi_porta_r,
-	ibm5150_ppi_portb_r,
-	ibm5160_ppi_portc_r,
-	ibm5150_ppi_porta_w,
-	ibm5160_ppi_portb_w,
-	ibm5150_ppi_portc_w
+	DEVCB_HANDLER(ibm5160_ppi_porta_r),
+	DEVCB_HANDLER(ibm5150_ppi_portb_r),
+	DEVCB_HANDLER(ibm5160_ppi_portc_r),
+	DEVCB_HANDLER(ibm5150_ppi_porta_w),
+	DEVCB_HANDLER(ibm5160_ppi_portb_w),
+	DEVCB_HANDLER(ibm5150_ppi_portc_w)
 };
 
 
@@ -1008,7 +964,7 @@ static WRITE8_DEVICE_HANDLER( pc_ppi_portb_w )
 	pc_ppi.keyboard_clear = data & 0x80;
 	pc_ppi.keyb_clock = data & 0x40;
 	pit8253_gate_w( pc_devices.pit8253, 2, data & 0x01 );
-	pc_speaker_set_spkrdata( data & 0x02 );
+	pc_speaker_set_spkrdata( device->machine, data & 0x02 );
 	pc_keyb_set_clock( pc_ppi.keyb_clock );
 
 	if ( pc_ppi.keyboard_clear )
@@ -1018,12 +974,12 @@ static WRITE8_DEVICE_HANDLER( pc_ppi_portb_w )
 
 const ppi8255_interface pc_ppi8255_interface =
 {
-	pc_ppi_porta_r,
-	ibm5150_ppi_portb_r,
-	ibm5160_ppi_portc_r,
-	ibm5150_ppi_porta_w,
-	pc_ppi_portb_w,
-	ibm5150_ppi_portc_w
+	DEVCB_HANDLER(pc_ppi_porta_r),
+	DEVCB_HANDLER(ibm5150_ppi_portb_r),
+	DEVCB_HANDLER(ibm5160_ppi_portc_r),
+	DEVCB_HANDLER(ibm5150_ppi_porta_w),
+	DEVCB_HANDLER(pc_ppi_portb_w),
+	DEVCB_HANDLER(ibm5150_ppi_portc_w)
 };
 
 
@@ -1032,10 +988,10 @@ static WRITE8_DEVICE_HANDLER ( pcjr_ppi_portb_w )
 	/* KB controller port B */
 	pc_ppi.portb = data;
 	pc_ppi.portc_switch_high = data & 0x08;
-	pit8253_gate_w( device_list_find_by_tag( device->machine->config->devicelist, PIT8253, "pit8253" ), 2, data & 1);
-	pc_speaker_set_spkrdata( data & 0x02 );
+	pit8253_gate_w( devtag_get_device(device->machine, "pit8253"), 2, data & 1);
+	pc_speaker_set_spkrdata( device->machine, data & 0x02 );
 
-	cassette_change_state( device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ), ( data & 0x08 ) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
+	cassette_change_state( devtag_get_device(device->machine, "cassette"), ( data & 0x08 ) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
 }
 
 
@@ -1066,7 +1022,7 @@ static READ8_DEVICE_HANDLER (pcjr_ppi_porta_r )
  */
 static READ8_DEVICE_HANDLER ( pcjr_ppi_portc_r )
 {
-	int timer2_output = pit8253_get_output( device_list_find_by_tag( device->machine->config->devicelist, PIT8253, "pit8253" ), 2 );
+	int timer2_output = pit8253_get_output( devtag_get_device(device->machine, "pit8253"), 2 );
 	int data=0xff;
 
 	data&=~0x80;
@@ -1074,7 +1030,7 @@ static READ8_DEVICE_HANDLER ( pcjr_ppi_portc_r )
 	data = ( data & ~0x01 ) | ( pcjr_keyb.latch ? 0x01: 0x00 );
 	if ( ! ( pc_ppi.portb & 0x08 ) )
 	{
-		double tap_val = cassette_input( device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ) );
+		double tap_val = cassette_input( devtag_get_device(device->machine, "cassette") );
 
 		if ( tap_val < 0 )
 		{
@@ -1101,12 +1057,12 @@ static READ8_DEVICE_HANDLER ( pcjr_ppi_portc_r )
 
 const ppi8255_interface pcjr_ppi8255_interface =
 {
-	pcjr_ppi_porta_r,
-	ibm5150_ppi_portb_r,
-	pcjr_ppi_portc_r,
-	ibm5150_ppi_porta_w,
-	pcjr_ppi_portb_w,
-	ibm5150_ppi_portc_w
+	DEVCB_HANDLER(pcjr_ppi_porta_r),
+	DEVCB_HANDLER(ibm5150_ppi_portb_r),
+	DEVCB_HANDLER(pcjr_ppi_portc_r),
+	DEVCB_HANDLER(ibm5150_ppi_porta_w),
+	DEVCB_HANDLER(pcjr_ppi_portb_w),
+	DEVCB_HANDLER(ibm5150_ppi_portc_w)
 };
 
 
@@ -1132,7 +1088,7 @@ static void pc_fdc_dma_drq(running_machine *machine, int state, int read_)
 
 static device_config * pc_get_device(running_machine *machine )
 {
-	return (device_config*)device_list_find_by_tag( machine->config->devicelist, NEC765A, "nec765");	
+	return (device_config*)devtag_get_device(machine, "nec765");
 }
 
 static const struct pc_fdc_interface fdc_interface_nc =
@@ -1159,7 +1115,7 @@ static void pc_set_keyb_int(running_machine *machine, int state)
  *
  **********************************************************/
 
-void mess_init_pc_common(running_machine *machine, UINT32 flags, void (*set_keyb_int_func)(running_machine *, int), void (*set_hdc_int_func)(int,int)) 
+void mess_init_pc_common(running_machine *machine, UINT32 flags, void (*set_keyb_int_func)(running_machine *, int), void (*set_hdc_int_func)(int,int))
 {
 	if ( set_keyb_int_func != NULL )
 		init_pc_common(machine, flags, set_keyb_int_func);
@@ -1170,16 +1126,6 @@ void mess_init_pc_common(running_machine *machine, UINT32 flags, void (*set_keyb
 
 	/* FDC/HDC hardware */
 	pc_hdc_setup(machine, set_hdc_int_func);
-
-	pc_lpt_config(0, lpt_config);
-	centronics_config(machine, 0, cent_config);
-	pc_lpt_set_device(0, &CENTRONICS_PRINTER_DEVICE);
-	pc_lpt_config(1, lpt_config+1);
-	centronics_config(machine, 1, cent_config+1);
-	pc_lpt_set_device(1, &CENTRONICS_PRINTER_DEVICE);
-	pc_lpt_config(2, lpt_config+2);
-	centronics_config(machine, 2, cent_config+2);
-	pc_lpt_set_device(2, &CENTRONICS_PRINTER_DEVICE);
 
 	/* serial mouse */
 	pc_mouse_initialise(machine);
@@ -1226,7 +1172,7 @@ DRIVER_INIT( pcmda )
 DRIVER_INIT( europc )
 {
 	UINT8 *gfx = &memory_region(machine, "gfx1")[0x8000];
-	UINT8 *rom = &memory_region(machine, "main")[0];
+	UINT8 *rom = &memory_region(machine, "maincpu")[0];
 	int i;
 
     /* just a plain bit pattern for graphics data generation */
@@ -1270,7 +1216,7 @@ DRIVER_INIT( pc200 )
 	memory_install_read16_handler( space, 0xb0000, 0xbffff, 0, 0, pc200_videoram16le_r );
 	memory_install_write16_handler( space, 0xb0000, 0xbffff, 0, 0, pc200_videoram16le_w );
 	videoram_size=0x10000;
-	videoram=memory_region(machine, "main")+0xb0000;
+	videoram=memory_region(machine, "maincpu")+0xb0000;
 	memory_install_read16_handler( io_space, 0x278, 0x27b, 0, 0, pc200_16le_port378_r );
 
 	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
@@ -1292,9 +1238,6 @@ DRIVER_INIT( pc1512 )
 
 	memory_install_read16_handler( io_space, 0x3d0, 0x3df, 0, 0, pc1512_16le_r );
 	memory_install_write16_handler( io_space, 0x3d0, 0x3df, 0, 0, pc1512_16le_w );
-
-	memory_install_read16_handler( io_space, 0x278, 0x27b, 0, 0, pc16le_parallelport2_r );
-
 
 	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
 	mc146818_init(machine, MC146818_IGNORE_CENTURY);
@@ -1330,6 +1273,7 @@ static void pc_map_vga_memory(running_machine *machine, offs_t begin, offs_t end
 }
 
 
+static READ8_HANDLER( input_port_0_r ) { return input_port_read(space->machine, "IN0"); }
 
 static const struct pc_vga_interface vga_interface =
 {
@@ -1377,15 +1321,16 @@ MACHINE_START( pc )
 
 MACHINE_RESET( pc )
 {
+	const device_config *speaker = devtag_get_device(machine, "speaker");
 	cpu_set_irq_callback(machine->cpu[0], pc_irq_callback);
 
-	pc_devices.pic8259_master = device_list_find_by_tag( machine->config->devicelist, PIC8259, "pic8259_master" );
-	pc_devices.pic8259_slave = device_list_find_by_tag( machine->config->devicelist, PIC8259, "pic8259_slave" );
-	pc_devices.dma8237 = device_list_find_by_tag( machine->config->devicelist, DMA8237, "dma8237" );
-	pc_devices.pit8253 = device_list_find_by_tag( machine->config->devicelist, PIT8253, "pit8253" );
-	pc_mouse_set_serial_port( device_list_find_by_tag( machine->config->devicelist, INS8250, "ins8250_0" ) );
+	pc_devices.pic8259_master = devtag_get_device(machine, "pic8259_master");
+	pc_devices.pic8259_slave = devtag_get_device(machine, "pic8259_slave");
+	pc_devices.dma8237 = devtag_get_device(machine, "dma8237");
+	pc_devices.pit8253 = devtag_get_device(machine, "pit8253");
+	pc_mouse_set_serial_port( devtag_get_device(machine, "ins8250_0") );
 	pc_hdc_set_dma8237_device( pc_devices.dma8237 );
-	speaker_level_w( 0, 0 );
+	speaker_level_w( speaker, 0 );
 }
 
 
@@ -1432,7 +1377,7 @@ DEVICE_IMAGE_LOAD( pcjr_cartridge )
 	}
 
 	/* Read the cartridge contents */
-	if ( ( size - 0x200 ) != image_fread( image, memory_region(image->machine, "main") + address, size - 0x200 ) )
+	if ( ( size - 0x200 ) != image_fread( image, memory_region(image->machine, "maincpu") + address, size - 0x200 ) )
 	{
 		image_seterror( image, IMAGE_ERROR_UNSUPPORTED, "Unable to read cartridge contents" );
 		return 1;

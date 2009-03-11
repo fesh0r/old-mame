@@ -89,17 +89,19 @@ static UINT8 at_speaker_get_spk(void)
 }
 
 
-static void at_speaker_set_spkrdata(UINT8 data)
+static void at_speaker_set_spkrdata(running_machine *machine, UINT8 data)
 {
+	const device_config *speaker = devtag_get_device(machine, "speaker");
 	at_spkrdata = data ? 1 : 0;
-	speaker_level_w( 0, at_speaker_get_spk() );
+	speaker_level_w( speaker, at_speaker_get_spk() );
 }
 
 
-static void at_speaker_set_input(UINT8 data)
+static void at_speaker_set_input(running_machine *machine, UINT8 data)
 {
+	const device_config *speaker = devtag_get_device(machine, "speaker");
 	at_speaker_input = data ? 1 : 0;
-	speaker_level_w( 0, at_speaker_get_spk() );
+	speaker_level_w( speaker, at_speaker_get_spk() );
 }
 
 
@@ -120,7 +122,7 @@ static PIT8253_OUTPUT_CHANGED( at_pit8254_out0_changed )
 
 static PIT8253_OUTPUT_CHANGED( at_pit8254_out2_changed )
 {
-	at_speaker_set_input( state ? 1 : 0 );
+	at_speaker_set_input( device->machine, state ? 1 : 0 );
 }
 
 
@@ -405,7 +407,7 @@ static void at_fdc_dma_drq(running_machine *machine, int state, int read_)
 
 static device_config * at_get_device(running_machine *machine )
 {
-	return (device_config*)device_list_find_by_tag( machine->config->devicelist, NEC765A, "nec765");	
+	return (device_config*)devtag_get_device(machine, "nec765");
 }
 
 static const struct pc_fdc_interface fdc_interface =
@@ -602,7 +604,7 @@ WRITE8_HANDLER(at_kbdc8042_w)
 	case 1:
 		at_kbdc8042.speaker = data;
 		pit8253_gate_w( at_devices.pit8254, 2, data & 1);
-		at_speaker_set_spkrdata( data & 0x02 );
+		at_speaker_set_spkrdata( space->machine, data & 0x02 );
 		break;
 
 	case 4:		/* A2 is wired to 8042 A0 */
@@ -639,7 +641,7 @@ DRIVER_INIT( atega )
 	{
 		KBDC8042_STANDARD, at_set_gate_a20, at_keyboard_interrupt, at_get_out2
 	};
-	UINT8	*dst = memory_region( machine, "main" ) + 0xc0000;
+	UINT8	*dst = memory_region( machine, "maincpu" ) + 0xc0000;
 	UINT8	*src = memory_region( machine, "user1" ) + 0x3fff;
 	int		i;
 
@@ -699,6 +701,8 @@ static void at_map_vga_memory(running_machine *machine, offs_t begin, offs_t end
 }
 
 
+
+static READ8_HANDLER( input_port_0_r ) { return input_port_read(space->machine, "IN0"); }
 
 static const struct pc_vga_interface vga_interface =
 {
@@ -765,11 +769,11 @@ MACHINE_START( at )
 
 MACHINE_RESET( at )
 {
-	at_devices.pic8259_master = device_list_find_by_tag( machine->config->devicelist, PIC8259, "pic8259_master" );
-	at_devices.pic8259_slave = device_list_find_by_tag( machine->config->devicelist, PIC8259, "pic8259_slave" );
-	at_devices.dma8237_1 = device_list_find_by_tag( machine->config->devicelist, DMA8237, "dma8237_1" );
-	at_devices.dma8237_2 = device_list_find_by_tag( machine->config->devicelist, DMA8237, "dma8237_2" );
-	at_devices.pit8254 = device_list_find_by_tag( machine->config->devicelist, PIT8254, "pit8254" );
-	pc_mouse_set_serial_port( device_list_find_by_tag( machine->config->devicelist, NS16450, "ns16450_0" ) );
+	at_devices.pic8259_master = devtag_get_device(machine, "pic8259_master");
+	at_devices.pic8259_slave = devtag_get_device(machine, "pic8259_slave");
+	at_devices.dma8237_1 = devtag_get_device(machine, "dma8237_1");
+	at_devices.dma8237_2 = devtag_get_device(machine, "dma8237_2");
+	at_devices.pit8254 = devtag_get_device(machine, "pit8254");
+	pc_mouse_set_serial_port( devtag_get_device(machine, "ns16450_0") );
 }
 

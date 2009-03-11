@@ -45,7 +45,7 @@ static int m6545_video_bank = 0;
 static int mbee_pcg_color_latch = 0;
 
 int mbee_frame_counter;
-UINT8 *pcgram;
+UINT8 *mbee_pcgram;
 
 static UINT8 mc6845_cursor[16];				// cursor shape
 static void mc6845_cursor_configure(void);
@@ -72,27 +72,13 @@ WRITE8_HANDLER ( mbee_videoram_w )
 
 WRITE8_HANDLER ( mbee_pcg_w )
 {
-	if( pcgram[0x0800+offset] != data )
-	{
-		int chr = 0x80 + offset / 16;
-		pcgram[0x0800+offset] = data;
-		/* decode character graphics again */
-		decodechar(space->machine->gfx[0], chr, pcgram);
-	}
+	mbee_pcgram[0x0800 | offset] = data;
 }
 
 WRITE8_HANDLER ( mbee_pcg_color_w )
 {
 	if( (m6545_video_bank & 0x01) || (mbee_pcg_color_latch & 0x40) == 0 )
-	{
-		if( pcgram[0x0800+offset] != data )
-		{
-			int chr = 0x80 + offset / 16;
-			pcgram[0x0800+offset] = data;
-			/* decode character graphics again */
-			decodechar(space->machine->gfx[0], chr, pcgram);
-		}
-	}
+		mbee_pcgram[0x0800 | offset] = data;
 	else
 		colorram[offset] = data;
 }
@@ -350,9 +336,9 @@ WRITE8_HANDLER ( m6545_data_w )
 			break;
 		crt.screen_address_hi = data;
 		addr = 0x17000+((data & 32) << 6);
-		memcpy(pcgram, memory_region(space->machine, "main")+addr, 0x800);
+		memcpy(mbee_pcgram, memory_region(space->machine, "maincpu")+addr, 0x800);
 		for (i = 0; i < 128; i++)
-			decodechar(space->machine->gfx[0],i, pcgram);
+			gfx_element_mark_dirty(space->machine->gfx[0], i);
 		break;
 	case 13:
 		crt.screen_address_lo = data;
@@ -446,22 +432,23 @@ static void mc6845_screen_configure(running_machine *machine)
 
 VIDEO_START( mbee )
 {
-	UINT8 *ram = memory_region(machine, "main");
+	UINT8 *ram = memory_region(machine, "maincpu");
 	videoram = ram+0x15000;
-	pcgram = ram+0x11000;
+	mbee_pcgram = ram+0x11000;
 }
 
 VIDEO_START( mbeeic )
 {
-	UINT8 *ram = memory_region(machine, "main");
+	UINT8 *ram = memory_region(machine, "maincpu");
 	videoram = ram+0x15000;
 	colorram = ram+0x15800;
-	pcgram = ram+0x11000;
+	mbee_pcgram = ram+0x11000;
 }
 
 VIDEO_UPDATE( mbee )
 {
-	UINT16 i, bytes = crt.horizontal_displayed*crt.vertical_displayed;
+	UINT8 y,z,chr,gfx;
+	UINT16 mem,sy=0,sx=0,x,i;
 	UINT8 speed = crt.cursor_top&0x20, flash = crt.cursor_top&0x40;				// cursor modes
 	UINT16 cursor = (crt.cursor_address_hi<<8) | crt.cursor_address_lo;			// get cursor position
 	UINT16 screen_home = (crt.screen_address_hi<<8) | crt.screen_address_lo;		// screen home offset (usually zero)
@@ -470,39 +457,48 @@ VIDEO_UPDATE( mbee )
 
 	framecnt++;
 
-	/* Get the graphics of the character under the cursor, xor with the visible cursor scan lines,
-	   and store as character number 256. */
-	for ( i = 0; i < ARRAY_LENGTH(mc6845_cursor); i++)
-		pcgram[0x1000+i] = pcgram[(videoram[cursor]<<4) + i] ^ mc6845_cursor[i];
-
-	decodechar(screen->machine->gfx[0],256, pcgram);			// and into machine graphics
-
-	for( i = 0; i < bytes; i++ )
+	for (y = 0; y < crt.vertical_displayed; y++)						// for each row of chars
 	{
-		int mem = (i + screen_home) & 0x7ff;
-		int sy = (i / crt.horizontal_displayed) * (crt.scan_lines + 1);
-		int sx = (i % crt.horizontal_displayed) << 3;
-		int chr = videoram[mem];
+		for (z = 0; z < crt.scan_lines+1; z++)						// for each scanline
+		{
+			UINT16  *p = BITMAP_ADDR16(bitmap, sy++, 0);
 
-		/* if cursor is on and we are at cursor position, show it */
-		/* NOTE: flash rates obtained from real hardware */
+			for (x = sx; x < sx + crt.horizontal_displayed; x++)			// for each character
+			{
+				UINT8 inv=0;
+				mem = (x + screen_home) & 0x7ff;
+				chr = videoram[mem];
 
-		if ((((!flash) && (!speed)) ||					// (5,6)=(0,0) = cursor on always
-			((flash) && (speed) && (framecnt & 0x10)) ||		// (5,6)=(1,1) = cycle per 32 frames
-			((flash) && (!speed) && (framecnt & 8))) &&		// (5,6)=(0,1) = cycle per 16 frames
-			(mem == cursor))					// displaying at cursor position?
-				chr = 256;					// 256 = cursor character
+				/* process cursor */
+				if ((((!flash) && (!speed)) ||					// (5,6)=(0,0) = cursor on always
+					((flash) && (speed) && (framecnt & 0x10)) ||		// (5,6)=(1,1) = cycle per 32 frames
+					((flash) && (!speed) && (framecnt & 8))) &&		// (5,6)=(0,1) = cycle per 16 frames
+					(mem == cursor))					// displaying at cursor position?
+						inv ^= mc6845_cursor[z];			// cursor scan row
 
-		drawgfx( bitmap, screen->machine->gfx[0],chr,0,0,0,sx,sy,
-			NULL,TRANSPARENCY_NONE,0);	// put character on the screen
+				/* get pattern of pixels for that character scanline */
+				gfx = mbee_pcgram[(chr<<4) | z] ^ inv;
+
+				/* Display a scanline of a character (8 pixels) */
+				*p = ( gfx & 0x80 ) ? 1 : 0; p++;
+				*p = ( gfx & 0x40 ) ? 1 : 0; p++;
+				*p = ( gfx & 0x20 ) ? 1 : 0; p++;
+				*p = ( gfx & 0x10 ) ? 1 : 0; p++;
+				*p = ( gfx & 0x08 ) ? 1 : 0; p++;
+				*p = ( gfx & 0x04 ) ? 1 : 0; p++;
+				*p = ( gfx & 0x02 ) ? 1 : 0; p++;
+				*p = ( gfx & 0x01 ) ? 1 : 0; p++;
+			}
+		}
+		sx+=crt.horizontal_displayed;
 	}
-		
 	return 0;
 }
 
 VIDEO_UPDATE( mbeeic )
 {
-	UINT16 i, bytes = crt.horizontal_displayed*crt.vertical_displayed;
+	UINT8 y,z,chr,gfx,fg,bg;
+	UINT16 mem,sy=0,sx=0,x,i,col;
 	UINT8 speed = crt.cursor_top&0x20, flash = crt.cursor_top&0x40;				// cursor modes
 	UINT16 cursor = (crt.cursor_address_hi<<8) | crt.cursor_address_lo;			// get cursor position
 	UINT16 screen_home = (crt.screen_address_hi<<8) | crt.screen_address_lo;		// screen home offset (usually zero)
@@ -512,34 +508,43 @@ VIDEO_UPDATE( mbeeic )
 
 	framecnt++;
 
-	/* Get the graphics of the character under the cursor, xor with the visible cursor scan lines,
-	   and store as character number 256. */
-	for ( i = 0; i < ARRAY_LENGTH(mc6845_cursor); i++)
-		pcgram[0x1000+i] = pcgram[(videoram[cursor]<<4) + i] ^ mc6845_cursor[i];
-
-	decodechar(screen->machine->gfx[0],256, pcgram);			// and into machine graphics
-
-	for( i = 0; i < bytes; i++ )
+	for (y = 0; y < crt.vertical_displayed; y++)						// for each row of chars
 	{
-		int mem = (i + screen_home) & 0x7ff;
-		int sy = (i / crt.horizontal_displayed) * (crt.scan_lines + 1);
-		int sx = (i % crt.horizontal_displayed) << 3;
-		int chr = videoram[mem];
-		int col = colorram[mem] | colourm;						// read a byte of colour
+		for (z = 0; z < crt.scan_lines+1; z++)						// for each scanline
+		{
+			UINT16  *p = BITMAP_ADDR16(bitmap, sy++, 0);
 
-		/* if cursor is on and we are at cursor position, show it */
-		/* NOTE: flash rates obtained from real hardware */
+			for (x = sx; x < sx + crt.horizontal_displayed; x++)			// for each character
+			{
+				UINT8 inv=0;
+				mem = (x + screen_home) & 0x7ff;
+				chr = videoram[mem];
+				col = colorram[mem] | colourm;					// read a byte of colour
 
-		if ((((!flash) && (!speed)) ||					// (5,6)=(0,0) = cursor on always
-			((flash) && (speed) && (framecnt & 0x10)) ||		// (5,6)=(1,1) = cycle per 32 frames
-			((flash) && (!speed) && (framecnt & 8))) &&		// (5,6)=(0,1) = cycle per 16 frames
-			(mem == cursor))					// displaying at cursor position?
-				chr = 256;					// 256 = cursor character
+				/* process cursor */
+				if ((((!flash) && (!speed)) ||					// (5,6)=(0,0) = cursor on always
+					((flash) && (speed) && (framecnt & 0x10)) ||		// (5,6)=(1,1) = cycle per 32 frames
+					((flash) && (!speed) && (framecnt & 8))) &&		// (5,6)=(0,1) = cycle per 16 frames
+					(mem == cursor))					// displaying at cursor position?
+						inv ^= mc6845_cursor[z];			// cursor scan row
 
-		drawgfx( bitmap, screen->machine->gfx[0],chr,col,0,0,sx,sy,
-			cliprect,TRANSPARENCY_NONE,0);	// put character on the screen
+				/* get pattern of pixels for that character scanline */
+				gfx = mbee_pcgram[(chr<<4) | z] ^ inv;
+				fg = (col & 0x001f) | 64;					// map to foreground palette
+				bg = (col & 0x07e0) >> 5;					// and background palette
 
+				/* Display a scanline of a character (8 pixels) */
+				*p = ( gfx & 0x80 ) ? fg : bg; p++;
+				*p = ( gfx & 0x40 ) ? fg : bg; p++;
+				*p = ( gfx & 0x20 ) ? fg : bg; p++;
+				*p = ( gfx & 0x10 ) ? fg : bg; p++;
+				*p = ( gfx & 0x08 ) ? fg : bg; p++;
+				*p = ( gfx & 0x04 ) ? fg : bg; p++;
+				*p = ( gfx & 0x02 ) ? fg : bg; p++;
+				*p = ( gfx & 0x01 ) ? fg : bg; p++;
+			}
+		}
+		sx+=crt.horizontal_displayed;
 	}
-
 	return 0;
 }

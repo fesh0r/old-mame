@@ -7,6 +7,7 @@
 #include "driver.h"
 #include "machine/6532riot.h"
 #include "cpu/m6502/m6502.h"
+#include "sound/wave.h"
 #include "sound/tiaintf.h"
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
@@ -542,7 +543,6 @@ static int detect_super_chip(running_machine *machine)
 static DEVICE_START( a2600_cart )
 {
 	banking_mode = 0xFF;
-	return DEVICE_START_OK;
 }
 
 
@@ -738,9 +738,9 @@ static DIRECT_UPDATE_HANDLER( modeF6_opbase )
 static DIRECT_UPDATE_HANDLER( modeSS_opbase )
 {
 	if ( address & 0x1000 ) {
-		direct->mask = 0x7ff;
-		direct->min = ( address & 0xf800 );
-		direct->max = ( address & 0xf800 ) | 0x7ff;
+		direct->bytemask = 0x7ff;
+		direct->bytestart = ( address & 0xf800 );
+		direct->byteend = ( address & 0xf800 ) | 0x7ff;
 		if ( address & 0x800 ) {
 			direct->decrypted = bank_base[2];
 			direct->raw = bank_base[2];
@@ -766,12 +766,12 @@ static READ8_HANDLER(modeSS_r)
 		switch ( modeSS_byte & 0x1C ) {
 		case 0x00:
 			bank_base[1] = extra_RAM + 2 * 0x800;
-			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(space->machine, "main") + 0x1800 : memory_region(space->machine, "user1");
+			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(space->machine, "maincpu") + 0x1800 : memory_region(space->machine, "user1");
 			modeSS_high_ram_enabled = 0;
 			break;
 		case 0x04:
 			bank_base[1] = extra_RAM;
-			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(space->machine, "main") + 0x1800 : memory_region(space->machine, "user1");
+			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(space->machine, "maincpu") + 0x1800 : memory_region(space->machine, "user1");
 			modeSS_high_ram_enabled = 0;
 			break;
 		case 0x08:
@@ -786,12 +786,12 @@ static READ8_HANDLER(modeSS_r)
 			break;
 		case 0x10:
 			bank_base[1] = extra_RAM + 2 * 0x800;
-			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(space->machine, "main") + 0x1800 : memory_region(space->machine, "user1");
+			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(space->machine, "maincpu") + 0x1800 : memory_region(space->machine, "user1");
 			modeSS_high_ram_enabled = 0;
 			break;
 		case 0x14:
 			bank_base[1] = extra_RAM + 0x800;
-			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(space->machine, "main") + 0x1800 : memory_region(space->machine, "user1");
+			bank_base[2] = ( modeSS_byte & 0x01 ) ? memory_region(space->machine, "maincpu") + 0x1800 : memory_region(space->machine, "user1");
 			modeSS_high_ram_enabled = 0;
 			break;
 		case 0x18:
@@ -810,14 +810,14 @@ static READ8_HANDLER(modeSS_r)
 
 		/* Check if we should stop the tape */
 		if ( cpu_get_pc(space->machine->cpu[0]) == 0x00FD ) {
-			const device_config *img = device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" );
+			const device_config *img = devtag_get_device(space->machine, "cassette");
 			if ( img ) {
 				cassette_change_state(img, CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 			}
 		}
 	} else if ( offset == 0xFF9 ) {
 		/* Cassette port read */
-		double tap_val = cassette_input( device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ) );
+		double tap_val = cassette_input( devtag_get_device(space->machine, "cassette") );
 		//logerror("%04X: Cassette port read, tap_val = %f\n", cpu_get_pc(machine->cpu[0]), tap_val);
 		if ( tap_val < 0 ) {
 			data = 0x00;
@@ -1083,7 +1083,7 @@ static ADDRESS_MAP_START(a2600_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x007F) AM_MIRROR(0x0F00) AM_READWRITE(tia_r, tia_w)
 	AM_RANGE(0x0080, 0x00FF) AM_MIRROR(0x0D00) AM_RAM AM_BASE(&riot_ram)
-	AM_RANGE(0x0280, 0x029F) AM_MIRROR(0x0D00) AM_DEVREADWRITE(RIOT6532, "riot", riot6532_r, riot6532_w)
+	AM_RANGE(0x0280, 0x029F) AM_MIRROR(0x0D00) AM_DEVREADWRITE("riot", riot6532_r, riot6532_w)
 	AM_RANGE(0x1000, 0x1FFF)                   AM_ROMBANK(1)
 ADDRESS_MAP_END
 
@@ -1102,7 +1102,7 @@ static void switch_A_w(const device_config *device, UINT8 olddata, UINT8 data)
 		keypad_right_column = data & 0x0F;
 		break;
 	case 0x0a:	/* KidVid voice module */
-		cassette_change_state( device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ), ( data & 0x02 ) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED | CASSETTE_PLAY, CASSETTE_MOTOR_DISABLED );
+		cassette_change_state( devtag_get_device(machine, "cassette"), ( data & 0x02 ) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED | CASSETTE_PLAY, CASSETTE_MOTOR_DISABLED );
 		break;
 	}
 }
@@ -1168,7 +1168,7 @@ static void irq_callback(const device_config *device, int state)
 
 static UINT8 riot_input_port_8_r(const device_config *device, UINT8 olddata)
 {
-	return input_port_8_r(cpu_get_address_space(device->machine->cpu[0],ADDRESS_SPACE_PROGRAM), 0);
+	return input_port_read(device->machine, "SWB");
 }
 
 static const riot6532_interface r6532_interface =
@@ -1748,7 +1748,7 @@ static MACHINE_RESET( a2600 )
 		modeSS_byte_started = 0;
 		memory_set_direct_update_handler(space, modeSS_opbase );
 		/* Already start the motor of the cassette for the user */
-		cassette_change_state( device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ), CASSETTE_MOTOR_ENABLED, CASSETTE_MOTOR_DISABLED );
+		cassette_change_state( devtag_get_device(machine, "cassette"), CASSETTE_MOTOR_ENABLED, CASSETTE_MOTOR_DISABLED );
 		break;
 
 	case modeFV:
@@ -1810,6 +1810,9 @@ static MACHINE_RESET( a2600 )
 
 		memory_set_bankptr(machine,9, extra_RAM);
 	}
+
+	/* Banks may have changed, reset the cpu so it uses the correct reset vector */
+	device_reset( machine->cpu[0] );
 }
 
 
@@ -1982,14 +1985,14 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( a2600 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, MASTER_CLOCK_NTSC / 3)	/* actually M6507 */
+	MDRV_CPU_ADD("maincpu", M6502, MASTER_CLOCK_NTSC / 3)	/* actually M6507 */
 	MDRV_CPU_PROGRAM_MAP(a2600_mem, 0)
 
 	MDRV_MACHINE_START(a2600)
 	MDRV_MACHINE_RESET(a2600)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS( MASTER_CLOCK_NTSC, 228, 26, 26 + 160 + 16, 262, 24 , 24 + 192 + 31 )
 	MDRV_PALETTE_LENGTH( TIA_PALETTE_LENGTH )
@@ -2002,28 +2005,26 @@ static MACHINE_DRIVER_START( a2600 )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("tia", TIA, MASTER_CLOCK_NTSC/114)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.90)
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
 	/* devices */
 	MDRV_RIOT6532_ADD("riot", MASTER_CLOCK_NTSC / 3, r6532_interface)
-
-	MDRV_CASSETTE_ADD( "cassette", a2600_cassette_config )
-	
 	MDRV_IMPORT_FROM(a2600_cartslot)
+	MDRV_CASSETTE_ADD( "cassette", a2600_cassette_config )
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( a2600p )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, MASTER_CLOCK_PAL / 3)    /* actually M6507 */
+	MDRV_CPU_ADD("maincpu", M6502, MASTER_CLOCK_PAL / 3)    /* actually M6507 */
 	MDRV_CPU_PROGRAM_MAP(a2600_mem, 0)
 
 	MDRV_MACHINE_START(a2600p)
 	MDRV_MACHINE_RESET(a2600)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS( MASTER_CLOCK_PAL, 228, 26, 26 + 160 + 16, 312, 32, 32 + 228 + 31 )
 	MDRV_PALETTE_LENGTH( TIA_PALETTE_LENGTH )
@@ -2036,20 +2037,18 @@ static MACHINE_DRIVER_START( a2600p )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("tia", TIA, MASTER_CLOCK_PAL/114)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.90)
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
 	/* devices */
 	MDRV_RIOT6532_ADD("riot", MASTER_CLOCK_PAL / 3, r6532_interface)
-
-	MDRV_CASSETTE_ADD( "cassette", a2600_cassette_config )
-	
 	MDRV_IMPORT_FROM(a2600_cartslot)
+	MDRV_CASSETTE_ADD( "cassette", a2600_cassette_config )
 MACHINE_DRIVER_END
 
 
 ROM_START( a2600 )
-	ROM_REGION( 0x2000, "main", 0 )
+	ROM_REGION( 0x2000, "maincpu", 0 )
 	ROM_FILL( 0x0000, 0x2000, 0xFF )
 	ROM_REGION( 0x80000, "user1", 0 )
 	ROM_FILL( 0x00000, 0x80000, 0xFF )

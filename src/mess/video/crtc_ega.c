@@ -723,7 +723,6 @@ static void common_start(const device_config *device, int device_type)
 	/* validate arguments */
 	assert(device != NULL);
 	assert(device->tag != NULL);
-	assert(strlen(device->tag) < 20);
 	assert(device->clock > 0);
 
 	crtc_ega->intf = device->static_config;
@@ -738,7 +737,7 @@ static void common_start(const device_config *device, int device_type)
 		crtc_ega->hpixels_per_column = crtc_ega->intf->hpixels_per_column;
 
 		/* get the screen device */
-		crtc_ega->screen = device_list_find_by_tag(device->machine->config->devicelist, VIDEO_SCREEN, crtc_ega->intf->screen_tag);
+		crtc_ega->screen = devtag_get_device(device->machine, crtc_ega->intf->screen_tag);
 		assert(crtc_ega->screen != NULL);
 
 		/* create the timers */
@@ -814,7 +813,6 @@ static void common_start(const device_config *device, int device_type)
 static DEVICE_START( crtc_ega )
 {
 	common_start(device, TYPE_CRTC_EGA);
-	return DEVICE_START_OK;
 }
 
 

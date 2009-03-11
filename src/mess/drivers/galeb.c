@@ -20,11 +20,13 @@ static GFXDECODE_START( galeb )
 	GFXDECODE_ENTRY( "gfx1", 0x0000, galeb_charlayout, 0, 1 )
 GFXDECODE_END
 
+static WRITE8_DEVICE_HANDLER( galeb_dac_data_w ) { dac_data_w(device, data); }
+
 /* Address maps */
 static ADDRESS_MAP_START(galeb_mem, ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE( 0x0000, 0x1fff ) AM_RAM  // RAM
     AM_RANGE( 0xbfe0, 0xbfe7 ) AM_READ ( galeb_keyboard_r )
-    AM_RANGE( 0xbfe0, 0xbfe0 ) AM_WRITE( galeb_speaker_w  )
+    AM_RANGE( 0xbfe0, 0xbfe0 ) AM_DEVWRITE("dac", galeb_dac_data_w )
     AM_RANGE( 0xb000, 0xb3ff ) AM_RAM  AM_BASE(&galeb_video_ram) // video ram
     AM_RANGE( 0xc000, 0xc7ff ) AM_ROM  // BASIC 01 ROM
     AM_RANGE( 0xc800, 0xcfff ) AM_ROM  // BASIC 02 ROM
@@ -113,12 +115,12 @@ INPUT_PORTS_END
 /* Machine driver */
 static MACHINE_DRIVER_START( galeb )
     /* basic machine hardware */
-    MDRV_CPU_ADD("main", M6502, 1000000)
+    MDRV_CPU_ADD("maincpu", M6502, 1000000)
     MDRV_CPU_PROGRAM_MAP(galeb_mem, 0)
     MDRV_MACHINE_RESET( galeb )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -140,7 +142,7 @@ MACHINE_DRIVER_END
 
 /* ROM definition */
 ROM_START( galeb )
-    ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
     ROM_LOAD( "bas01.rom", 0xc000, 0x0800, CRC(9b19ed58) SHA1(ebfc27af8dbabfb233f9888e6a0a0dfc87ae1691) )
     ROM_LOAD( "bas02.rom", 0xc800, 0x0800, CRC(3f320a84) SHA1(4ea082b4269dca6152426b1f720c7508122d3cb7) )
     ROM_LOAD( "bas03.rom", 0xd000, 0x0800, CRC(f122ad10) SHA1(3c7c1dd67268230d179a00b0f8b35be80c2b7035) )

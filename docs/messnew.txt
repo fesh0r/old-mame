@@ -1,3 +1,164 @@
+0.130
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Intelligent Software Enterprise 64  [Dirk Best]
+- Hegener & Glaser Mephisto PHC 64  [Dirk Best]
+- Amateurcomputer AC1 [Miodrag Milanovic]
+- Pilot 1000, Pilot 5000, PalmPilot Personal, PalmPilot Pro, Palm III
+  [MooglyGuy, R. Belmont]
+- Hewlett Packard HP 48 S/SX/G/GX/G+ [Antoine Miné]
+- Epson PX-4  [Dirk Best]
+- Various Channel F clones [Fredric QJ Blåholtz]
+- Radionic [Incog, Robbbert]
+
+
+
+System Driver Changes:
+----------------------
+- [AMIGA] Added centronics printer support.  [Dirk Best]
+
+- [AMSTRAD] Updated to use the new centronics interface, connected
+  data bit 8 for the CPC Plus machines.  [Dirk Best]
+
+- [APPLE1] Fixed character layout.  [rhester72]
+
+- [AT] Updated to use the new centronics interface.  [Dirk Best]
+
+- [ATARIST] Updated to use the new centronics interface.  [Dirk Best]
+
+- [ATOM] Rewrote printer interface.  [Dirk Best]
+
+- [BBCB] Added centronics printer support.  [Dirk Best]
+
+- [BW2] Updated to use the new centronics interface.  [Dirk Best]
+
+- [CHANNELF] Added support for "new" sound, fixed PAL clock.  [Fredric QJ
+  Blåholtz]
+
+- [COCO] Cleanups  [Nathan Woods]
+
+- [COCO] Fixed "Cartridge Auto-Start" setting.  (bug #1772) [Nathan Woods]
+
+- [COCO] Added "unwired" (i.e. - can't connect to anything) support for the
+  RS-232 PAK.  This is merely a curiosity for now.  (bug #1772) [Nathan Woods]
+
+- [COCO3] Fixed Composite Monochrome bit.  (bug #1767)  [Nathan Woods]
+
+- [COMPIS] Updated to use the new centronics interface.  [Dirk Best]
+
+- [CPC family] Updated all drivers to use the mc6845 device.  [Wilbert Pol]
+
+- [CPS CHANGER] Added "Tenchi Wo Kurau II". [Robbbert]
+
+- [EINSTEIN] Updated to use the new centronics interface.  [Dirk Best]
+
+- [EXIDY] Updated to use the new centronics support.  [Robbbert]
+
+- [FAMICOM] Fixed 0.129 regression; once again allows you to run with only a
+  floppy image and no cart.  (bug #1760) [Fabio Priuli]
+
+- [GAMEPOCK] Fixed 128u3 regression.  (bug #1752) [Wilbert Pol]
+
+- [IP22] Updated to use the centronics interface.  [Dirk Best]
+
+- [MSX] Updated to use the centronics interface.  [Dirk Best]
+
+- [MTX512] Connected CTC channels 0-2 to clock sources. (bug #781) [Curt Coder]
+
+- [MTX512] Updated to use the new centronics interface.  [Dirk Best]
+
+- [MZ700] Updated to use raw video parameters, fixed cursor blinking,
+  various cleanups.  [Dirk Best]
+
+- [NC100/NC200] Updated to use the new centronics interface and fixed
+  printing.  [Dirk Best]
+
+- [ORIC] Updated to use the new centronics interface.  [Dirk Best]
+
+- [SAMCOUPE] Added centronics printer support.  [Dirk Best]
+
+- [SF7000] Updated to use the new centronics support.  [Dirk Best]
+ 
+- [SMS/GG] Fixed scrolling for 8 rightmost columns.  (bug #1497) [Enik Land]
+
+- [SORDM5] Updated to use the new centronics support.  [Dirk Best]
+
+- [SUPER80] Updated to use the new centronics support.  [Robbbert]
+
+- [SVI318] Updated to use the new centronics support.  [Dirk Best]
+
+- [THOMSON] Updated to use the new centronics support.  [Dirk Best]
+
+- [TI81, TI85, TI86] Added the new ROM_DEFAULT_BIOS feature to select the most
+  recent rom versions.  [Hobie Troxell]
+
+- [VC4000] Various improvements.  [Robbbert]
+
+- [TMC600] Updated to use the new centronics support.  [Dirk Best]
+
+- [VTECH1] Updated to use the new centronics support.  [Dirk Best]
+
+- [X68000] Added better implementation of 1024x1024 graphic layer.  [Barry Rodewald]
+
+- [XT/PC] Updated to use the new centronics support.  [Dirk Best]
+
+- [ZX] Fixed access violation when mounting a .O tape file;
+       Implemented cassette save (only .wav is supported);
+       Implemented sound; Fixed cassette loading; Added the NTSC/PAL diode;
+       Fixed keyboard labels and layouts; Improved video output;
+       Improved memory handling; Added notes. Bugs #159, #739, #1057, #1061 [Robbbert]
+
+
+
+User Interface Changes:
+-----------------------
+(none)
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.130.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Made major changes to allow Cartridge slots to encapsulate hardware as
+  devices.  Updated the CoCo driver to use this standard system.  [Nathan
+  Woods]
+
+- Changed the DS1315 implementation to be a device.  [Nathan Woods]
+
+- Changed the AT45DBxx and SST39VFxx to be a device. [Miodrag Milanovic]
+
+- Fixed a bug that overwrote specific error messages with a generic error
+  message when mounting an image.  [Wilbert Pol]
+
+- Fixed a bug that caused the day of the week to not be properly returned by
+  the DS1315.  (bug #1755) [Nathan Woods]
+  
+- Global symbol, const/static cleanups.  [Atari Ace]
+
+- Fixed image loading related memory leaks. [Curt Coder]
+
+- Refactored the following devices to use devcb callbacks: ABC77, CDP1861,
+  CDP1864, CDP1871, MC68901, Z80DART, ZX8301, ZX8302 [Curt Coder]
+
+- New centronics printer interface.  [Dirk Best]
+
+- New PC-LPT device.  [Dirk Best]
+
+- Replaced all generic tags. [Curt Coder]
+
+- Added /PC pin output support to the CIA emulation.  [Dirk Best]
+
+
+
 0.129
 
 New System Drivers Supported (in no particular order):

@@ -9,6 +9,7 @@
 
 #include "driver.h"
 #include "cpu/t11/t11.h"
+#include "sound/wave.h"
 #include "includes/bk.h"
 #include "devices/cassette.h"
 #include "formats/rk_cas.h"
@@ -158,13 +159,13 @@ static const cassette_config bk0010_cassette_config =
 
 static MACHINE_DRIVER_START( bk0010 )
     /* basic machine hardware */
-    MDRV_CPU_ADD("main", T11, 3000000)
+    MDRV_CPU_ADD("maincpu", T11, 3000000)
 	MDRV_CPU_CONFIG(t11_data)
     MDRV_CPU_PROGRAM_MAP(bk0010_mem, 0)
     MDRV_MACHINE_RESET( bk0010 )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -177,7 +178,7 @@ static MACHINE_DRIVER_START( bk0010 )
     MDRV_VIDEO_UPDATE(bk0010)
 
  	MDRV_SPEAKER_STANDARD_MONO("mono")
-   	MDRV_SOUND_ADD("cassette", WAVE, 0)
+   	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", bk0010_cassette_config )
@@ -185,13 +186,13 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( bk0010fd )
     /* basic machine hardware */
-    MDRV_CPU_ADD("main", T11, 3000000)
+    MDRV_CPU_ADD("maincpu", T11, 3000000)
 	MDRV_CPU_CONFIG(t11_data)
     MDRV_CPU_PROGRAM_MAP(bk0010fd_mem, 0)
     MDRV_MACHINE_RESET( bk0010 )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -204,7 +205,7 @@ static MACHINE_DRIVER_START( bk0010fd )
     MDRV_VIDEO_UPDATE(bk0010)
 
  	MDRV_SPEAKER_STANDARD_MONO("mono")
-   	MDRV_SOUND_ADD("cassette", WAVE, 0)
+   	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", bk0010_cassette_config )
@@ -214,14 +215,14 @@ MACHINE_DRIVER_END
 /* ROM definition */
 
 ROM_START( bk0010 )
-    ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
     ROM_LOAD( "monit10.rom", 0x8000, 0x2000, CRC(26c6e8a0) SHA1(4e83a94ae5155bbea14d7331a5a8db82457bd5ae) )
     ROM_LOAD( "focal.rom",   0xa000, 0x2000, CRC(717149b7) SHA1(75df26f81ebd281bcb5c55ba81a7d97f31e388b2) )
     ROM_LOAD( "tests.rom",   0xe000, 0x1f80, CRC(91aecb4d) SHA1(6b14d552045194a3004bb6b795a2538110921519) )
 ROM_END
 
 ROM_START( bk001001 )
-    ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
     ROM_LOAD( "monit10.rom",   0x8000, 0x2000, CRC(26c6e8a0) SHA1(4e83a94ae5155bbea14d7331a5a8db82457bd5ae) )
     ROM_LOAD( "basic10-1.rom", 0xa000, 0x2000, CRC(5e3ff5da) SHA1(5ea4db1eaac87bd0ac96e52a608bc783709f5042) )
     ROM_LOAD( "basic10-2.rom", 0xc000, 0x2000, CRC(ea63863c) SHA1(acf068925e4052989b05dd5cf736a1dab5438011) )
@@ -229,7 +230,7 @@ ROM_START( bk001001 )
 ROM_END
 
 ROM_START( bk0010fd )
-    ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
     ROM_LOAD( "monit10.rom",  0x8000, 0x2000, CRC(26c6e8a0) SHA1(4e83a94ae5155bbea14d7331a5a8db82457bd5ae) )
     ROM_LOAD( "disk_327.rom", 0xe000, 0x1000, CRC(ed8a43ae) SHA1(28eefbb63047b26e4aec104aeeca74e2f9d0276c) )
 ROM_END

@@ -36,9 +36,11 @@ TODO:
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
+#include "cpu/z80/z80daisy.h"
+#include "sound/beep.h"
 #include "devices/basicdsk.h"
 #include "machine/wd17xx.h"
-#include "cpu/z80/z80daisy.h"
+#include "machine/6821pia.h"
 #include "includes/osborne1.h"
 
 
@@ -158,13 +160,13 @@ static PALETTE_INIT( osborne1 )
 static const z80_daisy_chain osborne1_daisy_chain[] =
 {
 /*	{ osborne1_z80_reset, osborne1_z80_irq_state, osborne1_z80_irq_ack, osborne1_z80_irq_reti, 0 }, */
-	{ OSBORNE1_DAISY, "osborne1_daisy" },
+	{ "osborne1_daisy" },
 	{ NULL }
 };
 
 
 static MACHINE_DRIVER_START( osborne1 )
-	MDRV_CPU_ADD( "main", Z80, MAIN_CLOCK/4 )
+	MDRV_CPU_ADD( "maincpu", Z80, MAIN_CLOCK/4 )
 	MDRV_CPU_PROGRAM_MAP( osborne1_mem, 0 )
 	MDRV_CPU_IO_MAP( osborne1_io, 0 )
 	MDRV_CPU_CONFIG( osborne1_daisy_chain )
@@ -173,7 +175,7 @@ static MACHINE_DRIVER_START( osborne1 )
 
 	MDRV_DEVICE_ADD( "osborne1_daisy", OSBORNE1_DAISY, 0 )
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT( BITMAP_FORMAT_INDEXED16 )
 	MDRV_SCREEN_RAW_PARAMS( MAIN_CLOCK/2, 512, 0, 416, 260, 0, 240 )
 	MDRV_VIDEO_START( generic_bitmapped )
@@ -185,13 +187,16 @@ static MACHINE_DRIVER_START( osborne1 )
 	MDRV_SOUND_ADD( "beep", BEEP, 0 )
 	MDRV_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.00 )
 	
+	MDRV_PIA6821_ADD( "pia_0", osborne1_ieee_pia_config )
+	MDRV_PIA6821_ADD( "pia_1", osborne1_video_pia_config )
+
 	MDRV_MB8877_ADD("mb8877", default_wd17xx_interface )
 	
 MACHINE_DRIVER_END
 
 
 ROM_START( osborne1 )
-	ROM_REGION(0x1000, "main", 0)
+	ROM_REGION(0x1000, "maincpu", 0)
 	ROM_SYSTEM_BIOS( 0, "ver144", "BIOS version 1.44" )
 	ROMX_LOAD( "osb144.bin", 0x0000, 0x1000, CRC(c0596b14) SHA1(ee6a9cc9be3ddc5949d3379351c1d58a175ce9ac), ROM_BIOS(1) )
 	ROM_SYSTEM_BIOS( 1, "verA", "BIOS version A" )

@@ -41,7 +41,7 @@ static READ8_DEVICE_HANDLER (vector06_8255_portb_r )
 
 static READ8_DEVICE_HANDLER (vector06_8255_portc_r )
 {	
-	double level = cassette_input(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ));
+	double level = cassette_input(devtag_get_device(device->machine, "cassette"));
 	UINT8 retVal = input_port_read(device->machine, "LINE8");
 	if (level >  0) { 
 		retVal |= 0x10; 
@@ -82,12 +82,12 @@ WRITE8_HANDLER(vector06_color_set)
 	palette_set_color( space->machine, vector_color_index, MAKE_RGB(r,g,b) );
 }
 
-UINT8 romdisk_msb;
-UINT8 romdisk_lsb;
+static UINT8 romdisk_msb;
+static UINT8 romdisk_lsb;
 
 static READ8_DEVICE_HANDLER (vector06_romdisk_portb_r )
 {
-	UINT8 *romdisk = memory_region(device->machine, "main") + 0x18000;		
+	UINT8 *romdisk = memory_region(device->machine, "maincpu") + 0x18000;		
 	UINT16 addr = (romdisk_msb*256+romdisk_lsb) & 0x7fff;
 	return romdisk[addr];	
 }
@@ -104,44 +104,44 @@ static WRITE8_DEVICE_HANDLER (vector06_romdisk_portc_w )
 
 const ppi8255_interface vector06_ppi8255_2_interface =
 {
-	NULL,
-	vector06_romdisk_portb_r,
-	NULL,
-	vector06_romdisk_porta_w,
-	NULL,
-	vector06_romdisk_portc_w
+	DEVCB_NULL,
+	DEVCB_HANDLER(vector06_romdisk_portb_r),
+	DEVCB_NULL,
+	DEVCB_HANDLER(vector06_romdisk_porta_w),
+	DEVCB_NULL,
+	DEVCB_HANDLER(vector06_romdisk_portc_w)
 };
 
 
 const ppi8255_interface vector06_ppi8255_interface =
 {
-	NULL,
-	vector06_8255_portb_r,
-	vector06_8255_portc_r,
-	vector06_8255_porta_w,
-	vector06_8255_portb_w,
-	NULL
+	DEVCB_NULL,
+	DEVCB_HANDLER(vector06_8255_portb_r),
+	DEVCB_HANDLER(vector06_8255_portc_r),
+	DEVCB_HANDLER(vector06_8255_porta_w),
+	DEVCB_HANDLER(vector06_8255_portb_w),
+	DEVCB_NULL
 };
 
 READ8_HANDLER(vector_8255_1_r) {
-	return ppi8255_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, PPI8255, "ppi8255" ), (offset ^ 0x03));
+	return ppi8255_r((device_config*)devtag_get_device(space->machine, "ppi8255"), (offset ^ 0x03));
 }
 
 WRITE8_HANDLER(vector_8255_1_w) {
-	ppi8255_w((device_config*)device_list_find_by_tag( space->machine->config->devicelist, PPI8255, "ppi8255" ), (offset ^0x03) , data );
+	ppi8255_w((device_config*)devtag_get_device(space->machine, "ppi8255"), (offset ^0x03) , data );
 
 }
 
 READ8_HANDLER(vector_8255_2_r) {
-	return ppi8255_r((device_config*)device_list_find_by_tag( space->machine->config->devicelist, PPI8255, "ppi8255_2" ), (offset ^ 0x03));
+	return ppi8255_r((device_config*)devtag_get_device(space->machine, "ppi8255_2"), (offset ^ 0x03));
 }
 
 WRITE8_HANDLER(vector_8255_2_w) {
-	ppi8255_w((device_config*)device_list_find_by_tag( space->machine->config->devicelist, PPI8255, "ppi8255_2" ), (offset ^0x03) , data );
+	ppi8255_w((device_config*)devtag_get_device(space->machine, "ppi8255_2"), (offset ^0x03) , data );
 
 }
 
-UINT8 vblank_state = 0;
+static UINT8 vblank_state = 0;
 INTERRUPT_GEN( vector06_interrupt )
 {
 	vblank_state++;
@@ -160,7 +160,7 @@ static TIMER_CALLBACK(reset_check_callback)
 {
 	UINT8 val = input_port_read(machine, "RESET");
 	if ((val & 1)==1) {
-		memory_set_bankptr(machine, 1, memory_region(machine, "main") + 0x10000);
+		memory_set_bankptr(machine, 1, memory_region(machine, "maincpu") + 0x10000);
 		device_reset(machine->cpu[0]);
 	}
 	if ((val & 2)==2) {
@@ -171,7 +171,7 @@ static TIMER_CALLBACK(reset_check_callback)
 
 WRITE8_HANDLER(vector_disc_w)
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD1793, "wd1793");
+	const device_config *fdc = devtag_get_device(space->machine, "wd1793");
 	wd17xx_set_side (fdc,((data & 4) >> 2) ^ 1);
  	wd17xx_set_drive(fdc,data & 1);					
 }
@@ -205,7 +205,7 @@ DEVICE_IMAGE_LOAD( vector_floppy )
 
 MACHINE_START( vector06 )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( machine->config->devicelist, WD1793, "wd1793");
+	const device_config *fdc = devtag_get_device(machine, "wd1793");
 	wd17xx_set_density (fdc, DEN_FM_HI);
 }
 
@@ -219,7 +219,7 @@ MACHINE_RESET( vector06 )
 	memory_install_read8_handler (space, 0x8000, 0xffff, 0, 0, SMH_BANK3);
 	memory_install_write8_handler(space, 0x8000, 0xffff, 0, 0, SMH_BANK4);
 
-	memory_set_bankptr(machine, 1, memory_region(machine, "main") + 0x10000);
+	memory_set_bankptr(machine, 1, memory_region(machine, "maincpu") + 0x10000);
 	memory_set_bankptr(machine, 2, mess_ram + 0x0000);
 	memory_set_bankptr(machine, 3, mess_ram + 0x8000);
 	memory_set_bankptr(machine, 4, mess_ram + 0x8000);

@@ -81,7 +81,7 @@ const wd17xx_interface mbee_wd17xx_interface = { mbee_fdc_callback, NULL };
 
 WRITE8_HANDLER ( mbee_fdc_motor_w )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD179X, "wd179x");
+	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
 	logerror("mbee fdc_motor_w $%02X\n", data);
 	/* Controller latch bits
 	 * 0-1	driver select
@@ -115,7 +115,7 @@ DEVICE_IMAGE_LOAD( mbee_cart )
 	{
 		if( image_fread(image, mem, size) == size )
 		{
-			memcpy(memory_region(image->machine, "main")+0x8000, mem, size);
+			memcpy(memory_region(image->machine, "maincpu")+0x8000, mem, size);
 		}
 		free(mem);
 	}

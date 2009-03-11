@@ -9,7 +9,6 @@
 #ifndef MAC_H_
 #define MAC_H_
 
-#include "sound/custom.h"
 #include "machine/8530scc.h"
 #include "machine/6522via.h"
 
@@ -67,13 +66,15 @@ void mac_set_screen_buffer( int buffer );
 
 /*----------- defined in audio/mac.c -----------*/
 
-CUSTOM_START( mac_sh_start );
+#define SOUND_MAC_SOUND DEVICE_GET_INFO_NAME(mac_sound)
 
-void mac_enable_sound( int on );
-void mac_set_sound_buffer( int buffer );
-void mac_set_volume( int volume );
+DEVICE_GET_INFO( mac_sound );
 
-void mac_sh_updatebuffer(void);
+void mac_enable_sound( const device_config *device, int on );
+void mac_set_sound_buffer( const device_config *device, int buffer );
+void mac_set_volume( const device_config *device, int volume );
+
+void mac_sh_updatebuffer(const device_config *device);
 
 
 #endif /* MAC_H_ */

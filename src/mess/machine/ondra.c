@@ -21,13 +21,13 @@ DRIVER_INIT(ondra)
 
 static const device_config *cassette_device_image(running_machine *machine)
 {
-	return devtag_get_device(machine, CASSETTE, "cassette");
+	return devtag_get_device(machine, "cassette");
 }
 
 static UINT8 ondra_bank1_status;
 static UINT8 ondra_bank2_status;
 
-READ8_HANDLER( ondra_keyboard_r )
+static READ8_HANDLER( ondra_keyboard_r )
 {
 	UINT8 retVal = 0x00;
 	UINT8 ondra_keyboard_line = offset & 0x000f;	
@@ -46,7 +46,7 @@ READ8_HANDLER( ondra_keyboard_r )
 
 static void ondra_update_banks(running_machine *machine)
 {
-	UINT8 *mem = memory_region(machine, "main");
+	UINT8 *mem = memory_region(machine, "maincpu");
 	if (ondra_bank1_status==0) {
 		memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
 		memory_set_bankptr(machine, 1, mem + 0x010000);

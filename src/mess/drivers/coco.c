@@ -13,9 +13,11 @@
 #include "driver.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/hd6309/hd6309.h"
+#include "sound/wave.h"
 #include "machine/6821pia.h"
 #include "video/m6847.h"
 #include "machine/msm6242.h"
+#include "machine/ds1315.h"
 #include "machine/6883sam.h"
 #include "includes/coco.h"
 #include "devices/basicdsk.h"
@@ -29,8 +31,10 @@
 #include "devices/bitbngr.h"
 #include "devices/snapquik.h"
 #include "devices/cartslot.h"
+#include "devices/cococart.h"
 #include "devices/coco_vhd.h"
 #include "sound/ay8910.h"
+#include "sound/dac.h"
 #include "coco3.lh"
 
 #define SHOW_FULL_AREA			0
@@ -54,15 +58,41 @@ static ADDRESS_MAP_START( coco_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xD000, 0xDFFF) AM_RAMBANK(14)
 	AM_RANGE(0xE000, 0xEFFF) AM_RAMBANK(15)
 	AM_RANGE(0xF000, 0xFEFF) AM_RAMBANK(16)
-	AM_RANGE(0xff00, 0xff1f) AM_READWRITE(pia_0_r,			pia_0_w)
-	AM_RANGE(0xff20, 0xff3f) AM_READWRITE(pia_1_r,			coco_pia_1_w)
-	AM_RANGE(0xff40, 0xff8f) AM_READWRITE(coco_cartridge_r,	coco_cartridge_w)
+	AM_RANGE(0xff00, 0xff1f) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
+	AM_RANGE(0xff20, 0xff3f) AM_DEVREADWRITE("pia_1", pia6821_r, coco_pia_1_w)
+	AM_RANGE(0xff40, 0xff7f) AM_DEVREADWRITE("coco_cartslot", coco_cartridge_r, coco_cartridge_w)
 	AM_RANGE(0xff90, 0xffbf) AM_NOP
-	AM_RANGE(0xffc0, 0xffdf) AM_DEVWRITE(SAM6883, "sam", sam6883_w)
+	AM_RANGE(0xffc0, 0xffdf) AM_DEVWRITE("sam", sam6883_w)
 	AM_RANGE(0xffe0, 0xffef) AM_NOP
-	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION("main", 0x3ff0)
+	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION("maincpu", 0x3ff0)
 ADDRESS_MAP_END
 
+
+static ADDRESS_MAP_START( dragon_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x0FFF) AM_RAMBANK(1)
+	AM_RANGE(0x1000, 0x1FFF) AM_RAMBANK(2)
+	AM_RANGE(0x2000, 0x2FFF) AM_RAMBANK(3)
+	AM_RANGE(0x3000, 0x3FFF) AM_RAMBANK(4)
+	AM_RANGE(0x4000, 0x4FFF) AM_RAMBANK(5)
+	AM_RANGE(0x5000, 0x5FFF) AM_RAMBANK(6)
+	AM_RANGE(0x6000, 0x6FFF) AM_RAMBANK(7)
+	AM_RANGE(0x7000, 0x7FFF) AM_RAMBANK(8)
+	AM_RANGE(0x8000, 0x8FFF) AM_RAMBANK(9)
+	AM_RANGE(0x9000, 0x9FFF) AM_RAMBANK(10)
+	AM_RANGE(0xA000, 0xAFFF) AM_RAMBANK(11)
+	AM_RANGE(0xB000, 0xBFFF) AM_RAMBANK(12)
+	AM_RANGE(0xC000, 0xCFFF) AM_RAMBANK(13)
+	AM_RANGE(0xD000, 0xDFFF) AM_RAMBANK(14)
+	AM_RANGE(0xE000, 0xEFFF) AM_RAMBANK(15)
+	AM_RANGE(0xF000, 0xFEFF) AM_RAMBANK(16)
+	AM_RANGE(0xff00, 0xff1f) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
+	AM_RANGE(0xff20, 0xff3f) AM_DEVREADWRITE("pia_1", pia6821_r, coco_pia_1_w)
+	AM_RANGE(0xff40, 0xff7f) AM_DEVREADWRITE("coco_cartslot", coco_cartridge_r, coco_cartridge_w)
+	AM_RANGE(0xff90, 0xffbf) AM_NOP
+	AM_RANGE(0xffc0, 0xffdf) AM_DEVWRITE("sam", sam6883_w)
+	AM_RANGE(0xffe0, 0xffef) AM_NOP
+	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION("maincpu", 0x3ff0)
+ADDRESS_MAP_END
 
 
 /* Note that the CoCo 3 doesn't use the SAM VDG mode registers
@@ -83,15 +113,16 @@ static ADDRESS_MAP_START( coco3_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xdfff) AM_RAMBANK(7)
 	AM_RANGE(0xe000, 0xfdff) AM_RAMBANK(8)
 	AM_RANGE(0xfe00, 0xfeff) AM_RAMBANK(9)
-	AM_RANGE(0xff00, 0xff1f) AM_READWRITE(pia_0_r,				pia_0_w)
-	AM_RANGE(0xff20, 0xff3f) AM_READWRITE(pia_1_r,				coco_pia_1_w)
-	AM_RANGE(0xff40, 0xff8f) AM_READWRITE(coco_cartridge_r,		coco_cartridge_w)
+	AM_RANGE(0xff00, 0xff1f) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
+	AM_RANGE(0xff20, 0xff3f) AM_DEVREADWRITE("pia_1", pia6821_r, coco_pia_1_w)
+	AM_RANGE(0xff40, 0xff7f) AM_DEVREADWRITE("coco_cartslot", coco_cartridge_r, coco_cartridge_w)
+	AM_RANGE(0xff80, 0xff85) AM_DEVREADWRITE("vhd", coco_vhd_io_r, coco_vhd_io_w)
 	AM_RANGE(0xff90, 0xff9f) AM_READWRITE(coco3_gime_r,			coco3_gime_w)
 	AM_RANGE(0xffa0, 0xffaf) AM_READWRITE(coco3_mmu_r,			coco3_mmu_w)
 	AM_RANGE(0xffb0, 0xffbf) AM_READWRITE(SMH_BANK10,			coco3_palette_w)
-	AM_RANGE(0xffc0, 0xffdf) AM_DEVWRITE(SAM6883_GIME, "sam", sam6883_w)
+	AM_RANGE(0xffc0, 0xffdf) AM_DEVWRITE("sam", sam6883_w)
 	AM_RANGE(0xffe0, 0xffef) AM_NOP
-	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION("main", 0x7ff0)
+	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION("maincpu", 0x7ff0)
 ADDRESS_MAP_END
 
 
@@ -113,14 +144,14 @@ static ADDRESS_MAP_START( d64_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xD000, 0xDFFF) AM_RAMBANK(14)
 	AM_RANGE(0xE000, 0xEFFF) AM_RAMBANK(15)
 	AM_RANGE(0xF000, 0xFEFF) AM_RAMBANK(16)
-	AM_RANGE(0xff00, 0xff03) AM_READWRITE(pia_0_r,				pia_0_w)		AM_MIRROR(0x0018)
-	AM_RANGE(0xff04, 0xff07) AM_DEVREADWRITE(ACIA6551, "acia", acia_6551_r,			acia_6551_w)	AM_MIRROR(0x0018)
-	AM_RANGE(0xff20, 0xff3f) AM_READWRITE(pia_1_r,				coco_pia_1_w)
-	AM_RANGE(0xff40, 0xff8f) AM_READWRITE(coco_cartridge_r,		coco_cartridge_w)
+	AM_RANGE(0xff00, 0xff03) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)		AM_MIRROR(0x0018)
+	AM_RANGE(0xff04, 0xff07) AM_DEVREADWRITE("acia", acia_6551_r,			acia_6551_w)	AM_MIRROR(0x0018)
+	AM_RANGE(0xff20, 0xff3f) AM_DEVREADWRITE("pia_1", pia6821_r, coco_pia_1_w)
+	AM_RANGE(0xff40, 0xff7f) AM_DEVREADWRITE("coco_cartslot", coco_cartridge_r, coco_cartridge_w)
 	AM_RANGE(0xff90, 0xffbf) AM_NOP
-	AM_RANGE(0xffc0, 0xffdf) AM_DEVWRITE(SAM6883, "sam", sam6883_w)
+	AM_RANGE(0xffc0, 0xffdf) AM_DEVWRITE("sam", sam6883_w)
 	AM_RANGE(0xffe0, 0xffef) AM_NOP
-	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION("main", 0x3ff0)
+	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION("maincpu", 0x3ff0)
 ADDRESS_MAP_END
 
 /*
@@ -147,16 +178,16 @@ static ADDRESS_MAP_START( d64_plus_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xD000, 0xDFFF) AM_RAMBANK(14)
 	AM_RANGE(0xE000, 0xEFFF) AM_RAMBANK(15)
 	AM_RANGE(0xF000, 0xFEFF) AM_RAMBANK(16)
-	AM_RANGE(0xff00, 0xff03) AM_READWRITE(pia_0_r,pia_0_w)		AM_MIRROR(0x0018)
-	AM_RANGE(0xff04, 0xff07) AM_DEVREADWRITE(ACIA6551, "acia", acia_6551_r,acia_6551_w)	AM_MIRROR(0x0018)
-	AM_RANGE(0xff20, 0xff3f) AM_READWRITE(pia_1_r,coco_pia_1_w)
-	AM_RANGE(0xff40, 0xff8f) AM_READWRITE(coco_cartridge_r,	coco_cartridge_w)
+	AM_RANGE(0xff00, 0xff03) AM_DEVREADWRITE("pia_0", pia6821_r,pia6821_w)		AM_MIRROR(0x0018)
+	AM_RANGE(0xff04, 0xff07) AM_DEVREADWRITE("acia", acia_6551_r,acia_6551_w)	AM_MIRROR(0x0018)
+	AM_RANGE(0xff20, 0xff3f) AM_DEVREADWRITE("pia_1", pia6821_r, coco_pia_1_w)
+	AM_RANGE(0xff40, 0xff7f) AM_DEVREADWRITE("coco_cartslot", coco_cartridge_r, coco_cartridge_w)
 	AM_RANGE(0xff90, 0xffbf) AM_NOP
-	AM_RANGE(0xffc0, 0xffdf) AM_DEVWRITE(SAM6883, "sam", sam6883_w)
+	AM_RANGE(0xffc0, 0xffdf) AM_DEVWRITE("sam", sam6883_w)
 	AM_RANGE(0xffe0, 0xffe1) AM_NOP
 	AM_RANGE(0xffe2, 0xffe2) AM_READWRITE(plus_reg_r,plus_reg_w)	/* Dragon plus control / status reg */
 	AM_RANGE(0xffe3, 0xffef) AM_NOP
-	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION("main", 0x3ff0)
+	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION("maincpu", 0x3ff0)
 ADDRESS_MAP_END
 
 /*
@@ -225,15 +256,15 @@ static ADDRESS_MAP_START( dgnalpha_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xD000, 0xDFFF) AM_RAMBANK(14)
 	AM_RANGE(0xE000, 0xEFFF) AM_RAMBANK(15)
 	AM_RANGE(0xF000, 0xFEFF) AM_RAMBANK(16)
-	AM_RANGE(0xff00, 0xff03) AM_READWRITE(pia_0_r,			pia_0_w)
-	AM_RANGE(0xff04, 0xff07) AM_DEVREADWRITE(ACIA6551, "acia", acia_6551_r,		acia_6551_w)
-	AM_RANGE(0xff20, 0xff23) AM_READWRITE(pia_1_r,			coco_pia_1_w)
-	AM_RANGE(0xff24, 0xff27) AM_READWRITE(pia_2_r,			pia_2_w) 	/* Third PIA on Dragon Alpha */
+	AM_RANGE(0xff00, 0xff03) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
+	AM_RANGE(0xff04, 0xff07) AM_DEVREADWRITE("acia", acia_6551_r,		acia_6551_w)
+	AM_RANGE(0xff20, 0xff23) AM_DEVREADWRITE("pia_1", pia6821_r, coco_pia_1_w)
+	AM_RANGE(0xff24, 0xff27) AM_DEVREADWRITE("pia_2", pia6821_r, pia6821_w) 	/* Third PIA on Dragon Alpha */
 	AM_RANGE(0Xff28, 0xff2b) AM_READWRITE(alpha_modem_r,	alpha_modem_w)	/* Modem, dummy to stop eror log ! */
 	AM_RANGE(0xff2c, 0xff2f) AM_READWRITE(wd2797_r,			wd2797_w)	/* Alpha onboard disk interface */
-	AM_RANGE(0xff40, 0xff8f) AM_READWRITE(coco_cartridge_r,	coco_cartridge_w)
+	AM_RANGE(0xff40, 0xff7f) AM_DEVREADWRITE("coco_cartslot", coco_cartridge_r, coco_cartridge_w)
 	AM_RANGE(0xff90, 0xffbf) AM_NOP
-	AM_RANGE(0xffc0, 0xffdf) AM_DEVWRITE(SAM6883, "sam", sam6883_w)
+	AM_RANGE(0xffc0, 0xffdf) AM_DEVWRITE("sam", sam6883_w)
 	AM_RANGE(0xffe0, 0xffef) AM_NOP
 	AM_RANGE(0xfff0, 0xffff) AM_READ(dragon_alpha_mapped_irq_r)
 ADDRESS_MAP_END
@@ -617,10 +648,10 @@ static const ay8910_interface ay8912_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	dgnalpha_psg_porta_read,	/* portA read */
-	NULL,    					/* portB read */
-	dgnalpha_psg_porta_write,	/* portA write */
-	NULL						/* portB write */
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, dgnalpha_psg_porta_read),	/* portA read */
+	DEVCB_NULL,    					/* portB read */
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, dgnalpha_psg_porta_write),	/* portA write */
+	DEVCB_NULL						/* portB write */
 };
 
 
@@ -628,7 +659,7 @@ static MACHINE_DRIVER_START( coco_sound )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
 
@@ -639,22 +670,15 @@ static const cassette_config coco_cassette_config =
 	CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_MUTED
 };
 
-static MACHINE_DRIVER_START( coco_cartslot )
-	MDRV_CARTSLOT_ADD("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("ccc,rom")
-	MDRV_CARTSLOT_NOT_MANDATORY
-	MDRV_CARTSLOT_LOAD(coco_rom)
-	MDRV_CARTSLOT_UNLOAD(coco_rom)
-MACHINE_DRIVER_END
-
 static MACHINE_DRIVER_START( dragon32 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
-	MDRV_CPU_PROGRAM_MAP(coco_map, 0)
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
+	MDRV_CPU_PROGRAM_MAP(dragon_map, 0)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
 
 	MDRV_MACHINE_START( dragon32 )
+	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
 	MDRV_VIDEO_START(dragon)
@@ -670,28 +694,33 @@ static MACHINE_DRIVER_START( dragon32 )
 	MDRV_PRINTER_ADD("printer")
 
 	/* snapshot/quickload */
-	MDRV_SNAPSHOT_ADD(coco_pak, "pak", 0)
+	MDRV_SNAPSHOT_ADD("snapshot", coco_pak, "pak", 0)
 
 	MDRV_CASSETTE_ADD( "cassette", coco_cassette_config )
 	
-	MDRV_WD179X_ADD("wd179x", dragon_wd17xx_interface )
-	
+	MDRV_PIA6821_ADD( "pia_0", dragon32_pia_intf_0 )
+	MDRV_PIA6821_ADD( "pia_1", dragon32_pia_intf_1 )
+
 	MDRV_SAM6883_ADD("sam", coco_sam_intf)
 	
-	MDRV_IMPORT_FROM(coco_cartslot)
+	MDRV_DRAGON_CARTRIDGE_ADD("coco_cartslot")
+	MDRV_DRAGON_CARTRIDGE_CART_CALLBACK(coco_cart_w)
+	MDRV_DRAGON_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
+	MDRV_DRAGON_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( dragon64 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
+	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(d64_map, 0)
 
 	MDRV_MACHINE_START( dragon64 )
+	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
 	MDRV_VIDEO_START(dragon)
 	MDRV_VIDEO_UPDATE(m6847)
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(320, 25+192+26)
@@ -704,7 +733,7 @@ static MACHINE_DRIVER_START( dragon64 )
 	MDRV_PRINTER_ADD("printer")
 
 	/* snapshot/quickload */
-	MDRV_SNAPSHOT_ADD(coco_pak, "pak", 0)
+	MDRV_SNAPSHOT_ADD("snapshot", coco_pak, "pak", 0)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", coco_cassette_config )
@@ -712,24 +741,29 @@ static MACHINE_DRIVER_START( dragon64 )
 	/* acia */
 	MDRV_ACIA6551_ADD("acia")
 	
-	MDRV_WD179X_ADD("wd179x", dragon_wd17xx_interface )
-	
+	MDRV_PIA6821_ADD( "pia_0", dragon64_pia_intf_0 )
+	MDRV_PIA6821_ADD( "pia_1", dragon64_pia_intf_1 )
+
 	MDRV_SAM6883_ADD("sam", coco_sam_intf)
 	
-	MDRV_IMPORT_FROM(coco_cartslot)
+	MDRV_DRAGON_CARTRIDGE_ADD("coco_cartslot")
+	MDRV_DRAGON_CARTRIDGE_CART_CALLBACK(coco_cart_w)
+	MDRV_DRAGON_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
+	MDRV_DRAGON_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( d64plus )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
+	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(d64_plus_map, 0)
 
 	MDRV_MACHINE_START( dragon64 )
+	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
 	MDRV_VIDEO_START(dragon)
 	MDRV_VIDEO_UPDATE(m6847)
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(320, 25+192+26)
@@ -742,7 +776,7 @@ static MACHINE_DRIVER_START( d64plus )
 	MDRV_PRINTER_ADD("printer")
 
 	/* snapshot/quickload */
-	MDRV_SNAPSHOT_ADD(coco_pak, "pak", 0)
+	MDRV_SNAPSHOT_ADD("snapshot", coco_pak, "pak", 0)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", coco_cassette_config )
@@ -750,24 +784,29 @@ static MACHINE_DRIVER_START( d64plus )
 	/* acia */
 	MDRV_ACIA6551_ADD("acia")
 	
-	MDRV_WD179X_ADD("wd179x", dragon_wd17xx_interface )
-	
+	MDRV_PIA6821_ADD( "pia_0", dragon64_pia_intf_0 )
+	MDRV_PIA6821_ADD( "pia_1", dragon64_pia_intf_1 )
+
 	MDRV_SAM6883_ADD("sam", coco_sam_intf)
 	
-	MDRV_IMPORT_FROM(coco_cartslot)
+	MDRV_DRAGON_CARTRIDGE_ADD("coco_cartslot")
+	MDRV_DRAGON_CARTRIDGE_CART_CALLBACK(coco_cart_w)
+	MDRV_DRAGON_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
+	MDRV_DRAGON_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( dgnalpha )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
+	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(dgnalpha_map, 0)
 
 	MDRV_MACHINE_START( dgnalpha )
+	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
 	MDRV_VIDEO_START(dragon)
 	MDRV_VIDEO_UPDATE(m6847)
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(320, 25+192+26)
@@ -779,11 +818,14 @@ static MACHINE_DRIVER_START( dgnalpha )
 	MDRV_SOUND_CONFIG(ay8912_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
+	/* onboard fdc */
+	MDRV_WD179X_ADD("wd2797", dgnalpha_wd17xx_interface)
+
 	/* printer */
 	MDRV_PRINTER_ADD("printer")
 
 	/* snapshot/quickload */
-	MDRV_SNAPSHOT_ADD(coco_pak, "pak", 0)
+	MDRV_SNAPSHOT_ADD("snapshot", coco_pak, "pak", 0)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", coco_cassette_config )
@@ -791,24 +833,30 @@ static MACHINE_DRIVER_START( dgnalpha )
 	/* acia */
 	MDRV_ACIA6551_ADD("acia")
 	
-	MDRV_WD179X_ADD("wd179x", dgnalpha_wd17xx_interface )
-	
+	MDRV_PIA6821_ADD( "pia_0", dgnalpha_pia_intf_0 )
+	MDRV_PIA6821_ADD( "pia_1", dgnalpha_pia_intf_1 )
+	MDRV_PIA6821_ADD( "pia_2", dgnalpha_pia_intf_2 )
+
 	MDRV_SAM6883_ADD("sam", coco_sam_intf)
 	
-	MDRV_IMPORT_FROM(coco_cartslot)
+	MDRV_DRAGON_CARTRIDGE_ADD("coco_cartslot")
+	MDRV_DRAGON_CARTRIDGE_CART_CALLBACK(coco_cart_w)
+	MDRV_DRAGON_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
+	MDRV_DRAGON_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( tanodr64 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
+	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(d64_map, 0)
 
 	MDRV_MACHINE_START( tanodr64 )
+	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
 	MDRV_VIDEO_START(dragon)
 	MDRV_VIDEO_UPDATE(m6847)
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(COCO_FRAMES_PER_SECOND)			/* Tano Dragon 64 is NTSC */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(320, 25+192+26)
@@ -821,7 +869,7 @@ static MACHINE_DRIVER_START( tanodr64 )
 	MDRV_PRINTER_ADD("printer")
 
 	/* snapshot/quickload */
-	MDRV_SNAPSHOT_ADD(coco_pak, "pak", 0)
+	MDRV_SNAPSHOT_ADD("snapshot", coco_pak, "pak", 0)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", coco_cassette_config )
@@ -829,22 +877,27 @@ static MACHINE_DRIVER_START( tanodr64 )
 	/* acia */
 	MDRV_ACIA6551_ADD("acia")
 	
-	MDRV_WD1773_ADD("wd1773", coco_wd17xx_interface )	
-	
+	MDRV_PIA6821_ADD( "pia_0", dragon64_pia_intf_0 )
+	MDRV_PIA6821_ADD( "pia_1", dragon64_pia_intf_1 )
+
 	MDRV_SAM6883_ADD("sam", coco_sam_intf)
 	
-	MDRV_IMPORT_FROM(coco_cartslot)
+	MDRV_DRAGON_CARTRIDGE_ADD("coco_cartslot")
+	MDRV_DRAGON_CARTRIDGE_CART_CALLBACK(coco_cart_w)
+	MDRV_DRAGON_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
+	MDRV_DRAGON_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( coco )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
+	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(coco_map, 0)
 
 	MDRV_MACHINE_START( coco )
+	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_NTSC_FRAMES_PER_SECOND)
 	MDRV_VIDEO_START(coco)
 	MDRV_VIDEO_UPDATE(m6847)
@@ -859,31 +912,33 @@ static MACHINE_DRIVER_START( coco )
 	MDRV_BITBANGER_ADD("bitbanger", coco_bitbanger_config)
 
 	/* snapshot/quickload */
-	MDRV_SNAPSHOT_ADD(coco_pak, "pak", 0)
-	MDRV_QUICKLOAD_ADD(coco, "bin", 0.5)
-
-	/* devices */
-	MDRV_MSM6242_ADD("disto")
+	MDRV_SNAPSHOT_ADD("snapshot", coco_pak, "pak", 0)
+	MDRV_QUICKLOAD_ADD("quickload", coco, "bin", 0.5)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", coco_cassette_config )
 	
-	MDRV_WD1773_ADD("wd1773", coco_wd17xx_interface )	
-	
+	MDRV_PIA6821_ADD( "pia_0", coco_pia_intf_0 )
+	MDRV_PIA6821_ADD( "pia_1", coco_pia_intf_1 )
+
 	MDRV_SAM6883_ADD("sam", coco_sam_intf)
 	
-	MDRV_IMPORT_FROM(coco_cartslot)
+	MDRV_COCO_CARTRIDGE_ADD("coco_cartslot")
+	MDRV_COCO_CARTRIDGE_CART_CALLBACK(coco_cart_w)
+	MDRV_COCO_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
+	MDRV_COCO_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( coco2 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
+	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(coco_map, 0)
 
 	MDRV_MACHINE_START( coco2 )
+	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_NTSC_FRAMES_PER_SECOND)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(320, 25+192+26)
@@ -898,31 +953,33 @@ static MACHINE_DRIVER_START( coco2 )
 	MDRV_BITBANGER_ADD("bitbanger", coco_bitbanger_config)
 
 	/* snapshot/quickload */
-	MDRV_SNAPSHOT_ADD(coco_pak, "pak", 0)
-	MDRV_QUICKLOAD_ADD(coco, "bin", 0.5)
-
-	/* devices */
-	MDRV_MSM6242_ADD("disto")
+	MDRV_SNAPSHOT_ADD("snapshot", coco_pak, "pak", 0)
+	MDRV_QUICKLOAD_ADD("quickload", coco, "bin", 0.5)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", coco_cassette_config )
 	
-	MDRV_WD1773_ADD("wd1773", coco_wd17xx_interface )	
-	
+	MDRV_PIA6821_ADD( "pia_0", coco2_pia_intf_0 )
+	MDRV_PIA6821_ADD( "pia_1", coco2_pia_intf_1 )
+
 	MDRV_SAM6883_ADD("sam", coco_sam_intf)
 	
-	MDRV_IMPORT_FROM(coco_cartslot)
+	MDRV_COCO_CARTRIDGE_ADD("coco_cartslot")
+	MDRV_COCO_CARTRIDGE_CART_CALLBACK(coco_cart_w)
+	MDRV_COCO_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
+	MDRV_COCO_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( coco2b )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
+	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(coco_map, 0)
 
 	MDRV_MACHINE_START( coco2 )
+	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_NTSC_FRAMES_PER_SECOND)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(320, 25+192+26)
@@ -937,29 +994,31 @@ static MACHINE_DRIVER_START( coco2b )
 	MDRV_BITBANGER_ADD("bitbanger", coco_bitbanger_config)
 
 	/* snapshot/quickload */
-	MDRV_SNAPSHOT_ADD(coco_pak, "pak", 0)
-	MDRV_QUICKLOAD_ADD(coco, "bin", 0.5)
-
-	/* devices */
-	MDRV_MSM6242_ADD("disto")
+	MDRV_SNAPSHOT_ADD("snapshot", coco_pak, "pak", 0)
+	MDRV_QUICKLOAD_ADD("quickload", coco, "bin", 0.5)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", coco_cassette_config )
 	
-	MDRV_WD1773_ADD("wd1773", coco_wd17xx_interface )	
-	
+	MDRV_PIA6821_ADD( "pia_0", coco2_pia_intf_0 )
+	MDRV_PIA6821_ADD( "pia_1", coco2_pia_intf_1 )
+
 	MDRV_SAM6883_ADD("sam", coco_sam_intf)
 	
-	MDRV_IMPORT_FROM(coco_cartslot)
+	MDRV_COCO_CARTRIDGE_ADD("coco_cartslot")
+	MDRV_COCO_CARTRIDGE_CART_CALLBACK(coco_cart_w)
+	MDRV_COCO_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
+	MDRV_COCO_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( coco3 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
+	MDRV_CPU_ADD("maincpu", M6809E, COCO_CPU_SPEED_HZ * 4)        /* 0,894886 MHz */
 	MDRV_CPU_PROGRAM_MAP(coco3_map, 0)
 
 	MDRV_MACHINE_START( coco3 )
 	MDRV_MACHINE_RESET( coco3 )
+	MDRV_DRIVER_DATA( coco_state )
 
 	/* video hardware */
 	MDRV_VIDEO_START(coco3)
@@ -978,6 +1037,9 @@ static MACHINE_DRIVER_START( coco3 )
 	MDRV_SCREEN_SIZE(640, 25+192+26)
 	MDRV_SCREEN_VISIBLE_AREA(0, 639, 0, 239)
 
+	MDRV_PIA6821_ADD( "pia_0", coco3_pia_intf_0 )
+	MDRV_PIA6821_ADD( "pia_1", coco3_pia_intf_1 )
+
 	/* sound hardware */
 	MDRV_IMPORT_FROM( coco_sound )
 
@@ -985,21 +1047,21 @@ static MACHINE_DRIVER_START( coco3 )
 	MDRV_BITBANGER_ADD("bitbanger", coco_bitbanger_config)
 
 	/* snapshot/quickload */
-	MDRV_SNAPSHOT_ADD(coco3_pak, "pak", 0)
-	MDRV_QUICKLOAD_ADD(coco, "bin", 0.5)
+	MDRV_SNAPSHOT_ADD("snapshot", coco3_pak, "pak", 0)
+	MDRV_QUICKLOAD_ADD("quickload", coco, "bin", 0.5)
 
 	/* devices */
 	MDRV_COCO_VHD_ADD("vhd")
-	MDRV_MSM6242_ADD("disto")
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", coco_cassette_config )
 	
-	MDRV_WD1773_ADD("wd1773", coco_wd17xx_interface )	
-	
 	MDRV_SAM6883_GIME_ADD("sam", coco3_sam_intf)
 	
-	MDRV_IMPORT_FROM(coco_cartslot)
+	MDRV_COCO_CARTRIDGE_ADD("coco_cartslot")
+	MDRV_COCO_CARTRIDGE_CART_CALLBACK(coco3_cart_w)
+	MDRV_COCO_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
+	MDRV_COCO_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( coco3p )
@@ -1016,7 +1078,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( coco3h )
 	MDRV_IMPORT_FROM( coco3 )
-	MDRV_CPU_REPLACE( "main", HD6309, COCO_CPU_SPEED_HZ)
+	MDRV_CPU_REPLACE( "maincpu", HD6309, COCO_CPU_SPEED_HZ)
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -1026,86 +1088,96 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START(dragon32)
-	ROM_REGION(0xC000, "main",0)
+	ROM_REGION(0xC000, "maincpu",0)
 	ROM_LOAD(           "d32.rom",      0x0000,  0x4000, CRC(e3879310) SHA1(f2dab125673e653995a83bf6b793e3390ec7f65a))
 
-	ROM_REGION(0x2000,"cart",0)
+	ROM_REGION(0x4000,"cart",0)
 	ROM_LOAD_OPTIONAL(  "ddos10.rom",   0x0000,  0x2000, CRC(b44536f6) SHA1(a8918c71d319237c1e3155bb38620acb114a80bc))
+	ROM_CART_LOAD("coco_cartslot:cart", 0x0000, 0x4000, ROM_OPTIONAL | ROM_MIRROR)
 ROM_END
 
 ROM_START(dragon64)
-	ROM_REGION(0x10000,"main",0)
+	ROM_REGION(0x10000,"maincpu",0)
 	ROM_LOAD(           "d64_1.rom",    0x0000,  0x4000, CRC(60a4634c) SHA1(f119506eaa3b4b70b9aa0dd83761e8cbe043d042))
 	ROM_LOAD(           "d64_2.rom",    0x8000,  0x4000, CRC(17893a42) SHA1(e3c8986bb1d44269c4587b04f1ca27a70b0aaa2e))
 
-	ROM_REGION(0x2000,"cart",0)
+	ROM_REGION(0x4000,"cart",0)
 	ROM_LOAD_OPTIONAL(  "ddos10.rom",   0x0000,  0x2000, CRC(b44536f6) SHA1(a8918c71d319237c1e3155bb38620acb114a80bc))
+	ROM_CART_LOAD("coco_cartslot:cart", 0x0000, 0x4000, ROM_OPTIONAL | ROM_MIRROR)
 ROM_END
 
 ROM_START(d64plus)
-	ROM_REGION(0x10000,"main",0)
+	ROM_REGION(0x10000,"maincpu",0)
 	ROM_LOAD(           "d64_1.rom",    0x0000,  0x4000, CRC(60a4634c) SHA1(f119506eaa3b4b70b9aa0dd83761e8cbe043d042))
 	ROM_LOAD(           "d64_2.rom",    0x8000,  0x4000, CRC(17893a42) SHA1(e3c8986bb1d44269c4587b04f1ca27a70b0aaa2e))
 
-	ROM_REGION(0x2000,"cart",0)
+	ROM_REGION(0x4000,"cart",0)
 	ROM_LOAD_OPTIONAL(  "ddos10.rom",   0x0000,  0x2000, CRC(b44536f6) SHA1(a8918c71d319237c1e3155bb38620acb114a80bc))
+	ROM_CART_LOAD("coco_cartslot:cart", 0x0000, 0x4000, ROM_OPTIONAL | ROM_MIRROR)
 ROM_END
 
 ROM_START(tanodr64)
-	ROM_REGION(0x10000,"main",0)
+	ROM_REGION(0x10000,"maincpu",0)
 	ROM_LOAD(           "d64_1.rom",    0x0000,  0x4000, CRC(60a4634c) SHA1(f119506eaa3b4b70b9aa0dd83761e8cbe043d042))
 	ROM_LOAD(           "d64_2.rom",    0x8000,  0x4000, CRC(17893a42) SHA1(e3c8986bb1d44269c4587b04f1ca27a70b0aaa2e))
 
-	ROM_REGION(0x2000,"cart",0)
+	ROM_REGION(0x4000,"cart",0)
 	ROM_LOAD_OPTIONAL(  "sdtandy.rom",   0x0000,  0x2000, CRC(5d7779b7) SHA1(ca03942118f2deab2f6c8a89b8a4f41f2d0b94f1))
+	ROM_CART_LOAD("coco_cartslot:cart", 0x0000, 0x4000, ROM_OPTIONAL | ROM_MIRROR)
 ROM_END
 
 ROM_START(dgnalpha)
-	ROM_REGION(0xC000,"main",1)
+	ROM_REGION(0xC000,"maincpu",1)
 	ROM_LOAD(           "alpha_bt.rom",    0x2000,  0x2000, CRC(c3dab585) SHA1(4a5851aa66eb426e9bb0bba196f1e02d48156068))
 	ROM_LOAD(           "alpha_ba.rom",    0x8000,  0x4000, CRC(84f68bf9) SHA1(1983b4fb398e3dd9668d424c666c5a0b3f1e2b69))
 
-	ROM_REGION(0x2000,"cart",0)
-	ROM_FILL( 0x0000, 0x2000, 0x00 )
+	//ROM_REGION(0x4000,"coco_cartslot:cart",0)
+	ROM_REGION(0x4000,"cart",0)
+	ROM_FILL( 0x0000, 0x4000, 0x00 )
+	ROM_CART_LOAD("coco_cartslot:cart", 0x0000, 0x4000, ROM_OPTIONAL | ROM_MIRROR)
 ROM_END
 
 ROM_START(coco)
-	ROM_REGION(0x8000,"main",0)
+	ROM_REGION(0x8000,"maincpu",0)
 	ROM_LOAD(			"bas10.rom",	0x2000, 0x2000, CRC(00b50aaa) SHA1(1f08455cd48ce6a06132aea15c4778f264e19539))
 
-	ROM_REGION(0x2000,"cart",0)
-	ROM_FILL( 0x0000, 0x2000, 0x00 )
+	ROM_REGION(0x4000,"cart",0)
+	ROM_FILL( 0x0000, 0x4000, 0x00 )
+	ROM_CART_LOAD("coco_cartslot:cart", 0x0000, 0x4000, ROM_OPTIONAL | ROM_MIRROR)
 ROM_END
 
 ROM_START(cocoe)
-	ROM_REGION(0x8000,"main",0)
+	ROM_REGION(0x8000,"maincpu",0)
 	ROM_LOAD(			"bas11.rom",	0x2000, 0x2000, CRC(6270955a) SHA1(cecb7c24ff1e0ab5836e4a7a8eb1b8e01f1fded3))
 	ROM_LOAD(	        "extbas10.rom",	0x0000, 0x2000, CRC(6111a086) SHA1(8aa58f2eb3e8bcfd5470e3e35e2b359e9a72848e))
 
-	ROM_REGION(0x2000,"cart",0)
+	ROM_REGION(0x4000,"cart",0)
 	ROM_LOAD_OPTIONAL(	"disk10.rom",	0x0000, 0x2000, CRC(b4f9968e) SHA1(04115be3f97952b9d9310b52f806d04f80b40d03))
+	ROM_CART_LOAD("coco_cartslot:cart", 0x0000, 0x4000, ROM_OPTIONAL | ROM_MIRROR)
 ROM_END
 
 ROM_START(coco2)
-	ROM_REGION(0x8000,"main",0)
+	ROM_REGION(0x8000,"maincpu",0)
 	ROM_LOAD(			"bas12.rom",	0x2000, 0x2000, CRC(54368805) SHA1(0f14dc46c647510eb0b7bd3f53e33da07907d04f))
 	ROM_LOAD(      	"extbas11.rom",	0x0000, 0x2000, CRC(a82a6254) SHA1(ad927fb4f30746d820cb8b860ebb585e7f095dea))
 
-	ROM_REGION(0x2000,"cart",0)
+	ROM_REGION(0x4000,"cart",0)
 	ROM_LOAD_OPTIONAL(	"disk11.rom",	0x0000, 0x2000, CRC(0b9c5415) SHA1(10bdc5aa2d7d7f205f67b47b19003a4bd89defd1))
+	ROM_CART_LOAD("coco_cartslot:cart", 0x0000, 0x4000, ROM_OPTIONAL | ROM_MIRROR)
 ROM_END
 
 ROM_START(coco2b)
-	ROM_REGION(0x8000,"main",0)
+	ROM_REGION(0x8000,"maincpu",0)
 	ROM_LOAD(			"bas13.rom",	0x2000, 0x2000, CRC(d8f4d15e) SHA1(28b92bebe35fa4f026a084416d6ea3b1552b63d3))
 	ROM_LOAD(      	"extbas11.rom",	0x0000, 0x2000, CRC(a82a6254) SHA1(ad927fb4f30746d820cb8b860ebb585e7f095dea))
 
-	ROM_REGION(0x2000,"cart",0)
+	ROM_REGION(0x4000,"cart",0)
 	ROM_LOAD_OPTIONAL(	"disk11.rom",	0x0000, 0x2000, CRC(0b9c5415) SHA1(10bdc5aa2d7d7f205f67b47b19003a4bd89defd1))
+	ROM_CART_LOAD("coco_cartslot:cart", 0x0000, 0x4000, ROM_OPTIONAL | ROM_MIRROR)
 ROM_END
 
 ROM_START(coco3)
-	ROM_REGION(0x8000,"main",0)
+	ROM_REGION(0x8000,"maincpu",0)
 	ROM_LOAD(			"coco3.rom",	0x0000, 0x8000, CRC(b4c88d6c) SHA1(e0d82953fb6fd03768604933df1ce8bc51fc427d))
 
 	ROM_REGION(0x8000,"cart",0)
@@ -1113,10 +1185,11 @@ ROM_START(coco3)
 	ROM_RELOAD(0x2000, 0x2000)
 	ROM_RELOAD(0x4000, 0x2000)
 	ROM_RELOAD(0x6000, 0x2000)
+	ROM_CART_LOAD("coco_cartslot:cart", 0x0000, 0x8000, ROM_OPTIONAL | ROM_MIRROR)
 ROM_END
 
 ROM_START(coco3p)
-	ROM_REGION(0x8000,"main",0)
+	ROM_REGION(0x8000,"maincpu",0)
 	ROM_LOAD(			"coco3p.rom",	0x0000, 0x8000, CRC(ff050d80) SHA1(631e383068b1f52a8f419f4114b69501b21cf379))
 
 	ROM_REGION(0x8000,"cart",0)
@@ -1124,14 +1197,16 @@ ROM_START(coco3p)
 	ROM_RELOAD(0x2000, 0x2000)
 	ROM_RELOAD(0x4000, 0x2000)
 	ROM_RELOAD(0x6000, 0x2000)
+	ROM_CART_LOAD("coco_cartslot:cart", 0x0000, 0x8000, ROM_OPTIONAL | ROM_MIRROR)
 ROM_END
 
 ROM_START(cp400)
-	ROM_REGION(0x8000,"main",0)
+	ROM_REGION(0x8000,"maincpu",0)
 	ROM_LOAD("cp400bas.rom",  0x0000, 0x4000, CRC(878396a5) SHA1(292c545da3c77978e043b00a3dbc317201d18c3b))
 
-	ROM_REGION(0x2000,"cart",0)
+	ROM_REGION(0x4000,"cart",0)
 	ROM_LOAD("cp400dsk.rom",  0x0000, 0x2000, CRC(e9ad60a0) SHA1(827697fa5b755f5dc1efb054cdbbeb04e405405b))
+	ROM_CART_LOAD("coco_cartslot:cart", 0x0000, 0x4000, ROM_OPTIONAL | ROM_MIRROR)
 ROM_END
 
 #define rom_coco3h	rom_coco3

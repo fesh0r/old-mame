@@ -73,6 +73,8 @@
 */
 
 #include "includes/thomson.h"
+#include "machine/6821pia.h"
+#include "machine/ctronics.h"
 
 
 /**************************** common *******************************/
@@ -371,14 +373,14 @@ static ADDRESS_MAP_START ( to7, ADDRESS_SPACE_PROGRAM, 8 )
      AM_RANGE ( 0x8000, 0xbfff ) AM_NOP       /* 16 KB (for extension) */
      AM_RANGE ( 0xc000, 0xdfff ) AM_NOP       /*  8 KB (for extension) */
      AM_RANGE ( 0xe000, 0xe7bf ) AM_ROMBANK   ( THOM_FLOP_BANK )
-     AM_RANGE ( 0xe7c0, 0xe7c7 ) AM_DEVREADWRITE(MC6846, "mc6846", mc6846_r, mc6846_w)
-     AM_RANGE ( 0xe7c8, 0xe7cb ) AM_READWRITE ( pia_0_alt_r,  pia_0_alt_w )
-     AM_RANGE ( 0xe7cc, 0xe7cf ) AM_READWRITE ( pia_1_alt_r,  pia_1_alt_w )
+     AM_RANGE ( 0xe7c0, 0xe7c7 ) AM_DEVREADWRITE("mc6846", mc6846_r, mc6846_w)
+     AM_RANGE ( 0xe7c8, 0xe7cb ) AM_DEVREADWRITE ( "pia_0", pia6821_alt_r,  pia6821_alt_w )
+     AM_RANGE ( 0xe7cc, 0xe7cf ) AM_DEVREADWRITE ( "pia_1", pia6821_alt_r,  pia6821_alt_w )
      AM_RANGE ( 0xe7d0, 0xe7df ) AM_READWRITE ( to7_floppy_r, to7_floppy_w )
-     AM_RANGE ( 0xe7e0, 0xe7e3 ) AM_READWRITE ( pia_2_alt_r, pia_2_alt_w )
-     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE(ACIA6551, "acia",  acia_6551_r, acia_6551_w )
+     AM_RANGE ( 0xe7e0, 0xe7e3 ) AM_DEVREADWRITE ( "pia_2", pia6821_alt_r, pia6821_alt_w )
+     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
      AM_RANGE ( 0xe7f2, 0xe7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
-     AM_RANGE ( 0xe7f8, 0xe7fb ) AM_READWRITE ( pia_3_alt_r, pia_3_alt_w )
+     AM_RANGE ( 0xe7f8, 0xe7fb ) AM_DEVREADWRITE ( "pia_3", pia6821_alt_r, pia6821_alt_w )
      AM_RANGE ( 0xe7fe, 0xe7ff ) AM_READWRITE ( to7_modem_mea8000_r,
 						to7_modem_mea8000_w )
      AM_RANGE ( 0xe800, 0xffff ) AM_ROM       /* system bios  */
@@ -452,7 +454,7 @@ ADDRESS_MAP_END
 
 
 ROM_START ( to7 )
-     ROM_REGION ( 0x24800, "main", 0 )
+     ROM_REGION ( 0x24800, "maincpu", 0 )
      ROM_LOAD ( "to7.rom", 0xe800, 0x1800,
 		CRC(0e7826da)
 		MD5(5bf18521bf35293de942645f690b2845)
@@ -462,7 +464,7 @@ ROM_START ( to7 )
 ROM_END
 
 ROM_START ( t9000 )
-     ROM_REGION ( 0x24800, "main", 0 )
+     ROM_REGION ( 0x24800, "maincpu", 0 )
      ROM_LOAD ( "t9000.rom", 0xe800, 0x1800,
 		CRC(daa8cfbf)
 		MD5(b3007f26e7b621c1a4f0fd2c287f80b9)
@@ -671,11 +673,11 @@ static MACHINE_DRIVER_START ( to7 )
      MDRV_MACHINE_RESET ( to7 )
 
 /* cpu */
-     MDRV_CPU_ADD ( "main", M6809, 1000000 )
+     MDRV_CPU_ADD ( "maincpu", M6809, 1000000 )
      MDRV_CPU_PROGRAM_MAP ( to7, 0 )
 
 /* video */
-     MDRV_SCREEN_ADD("main", RASTER)
+     MDRV_SCREEN_ADD("screen", RASTER)
      MDRV_SCREEN_REFRESH_RATE ( /*50*/ 1./0.019968 )
      MDRV_SCREEN_FORMAT( BITMAP_FORMAT_INDEXED16 )
      MDRV_SCREEN_SIZE ( THOM_TOTAL_WIDTH * 2, THOM_TOTAL_HEIGHT )
@@ -698,7 +700,7 @@ static MACHINE_DRIVER_START ( to7 )
      MDRV_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.) /* speech synthesis */
 
 /* printer */
-     MDRV_PRINTER_ADD("printer")
+     MDRV_CENTRONICS_ADD("centronics", to7_centronics_config)
 
 /* cassette */
      MDRV_CASSETTE_ADD( "cassette", to7_cassette_config )
@@ -715,14 +717,20 @@ static MACHINE_DRIVER_START ( to7 )
 /* network */
      MDRV_MC6854_ADD( "mc6854", to7_network_iface )
 
+	/* pia */
+	MDRV_PIA6821_ADD( THOM_PIA_SYS, to7_pia6821_sys )
+	MDRV_PIA6821_ADD( THOM_PIA_IO, to7_pia6821_io )
+	MDRV_PIA6821_ADD( THOM_PIA_GAME, to7_pia6821_game )
+	MDRV_PIA6821_ADD( THOM_PIA_MODEM, to7_pia6821_modem )
+
 /* acia */
      MDRV_ACIA6551_ADD("acia")
 
 /* modem */
      MDRV_ACIA6850_ADD( "acia6850", to7_modem )
-     
+
      MDRV_WD2793_ADD("wd2793", default_wd17xx_interface )
-    
+
 	/* cartridge */
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("m7,rom")
@@ -796,16 +804,16 @@ static ADDRESS_MAP_START ( to770, ADDRESS_SPACE_PROGRAM, 8 )
      AM_RANGE ( 0x6000, 0x9fff ) AM_RAMBANK   ( THOM_BASE_BANK ) /* 16 KB */
      AM_RANGE ( 0xa000, 0xdfff ) AM_RAMBANK   ( THOM_RAM_BANK )  /* 6 * 16 KB */
      AM_RANGE ( 0xe000, 0xe7bf ) AM_ROMBANK   ( THOM_FLOP_BANK )
-     AM_RANGE ( 0xe7c0, 0xe7c7 ) AM_DEVREADWRITE(MC6846, "mc6846", mc6846_r, mc6846_w)
-     AM_RANGE ( 0xe7c8, 0xe7cb ) AM_READWRITE ( pia_0_alt_r,  pia_0_alt_w )
-     AM_RANGE ( 0xe7cc, 0xe7cf ) AM_READWRITE ( pia_1_alt_r,  pia_1_alt_w )
+     AM_RANGE ( 0xe7c0, 0xe7c7 ) AM_DEVREADWRITE("mc6846", mc6846_r, mc6846_w)
+     AM_RANGE ( 0xe7c8, 0xe7cb ) AM_DEVREADWRITE ( "pia_0", pia6821_alt_r,  pia6821_alt_w )
+     AM_RANGE ( 0xe7cc, 0xe7cf ) AM_DEVREADWRITE ( "pia_1", pia6821_alt_r,  pia6821_alt_w )
      AM_RANGE ( 0xe7d0, 0xe7df ) AM_READWRITE ( to7_floppy_r, to7_floppy_w )
-     AM_RANGE ( 0xe7e0, 0xe7e3 ) AM_READWRITE ( pia_2_alt_r, pia_2_alt_w )
+     AM_RANGE ( 0xe7e0, 0xe7e3 ) AM_DEVREADWRITE ( "pia_2", pia6821_alt_r, pia6821_alt_w )
      AM_RANGE ( 0xe7e4, 0xe7e7 ) AM_READWRITE ( to770_gatearray_r,
                                                 to770_gatearray_w )
-     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE(ACIA6551, "acia",  acia_6551_r, acia_6551_w )
+     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
      AM_RANGE ( 0xe7f2, 0xe7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
-     AM_RANGE ( 0xe7f8, 0xe7fb ) AM_READWRITE ( pia_3_alt_r, pia_3_alt_w )
+     AM_RANGE ( 0xe7f8, 0xe7fb ) AM_DEVREADWRITE ( "pia_3", pia6821_alt_r, pia6821_alt_w )
      AM_RANGE ( 0xe7fe, 0xe7ff ) AM_READWRITE ( to7_modem_mea8000_r,
 						to7_modem_mea8000_w )
      AM_RANGE ( 0xe800, 0xffff ) AM_ROM       /* system bios  */
@@ -826,7 +834,7 @@ ADDRESS_MAP_END
 /* ------------ ROMS ------------ */
 
 ROM_START ( to770 )
-     ROM_REGION ( 0x24800, "main", 0 )
+     ROM_REGION ( 0x24800, "maincpu", 0 )
      ROM_LOAD ( "to770.rom", 0xe800, 0x1800, /* BIOS */
 		CRC(89518862)
 		MD5(61402c35b75faeb4b74b815f323fff3d)
@@ -836,7 +844,7 @@ ROM_START ( to770 )
 ROM_END
 
 ROM_START ( to770a )
-     ROM_REGION ( 0x24800, "main", 0 )
+     ROM_REGION ( 0x24800, "maincpu", 0 )
      ROM_LOAD ( "to770a.rom", 0xe800, 0x1800,
 		CRC(378ea808)
 		MD5(6b63aa135107beee243967a2da0e5453)
@@ -915,8 +923,10 @@ static MACHINE_DRIVER_START ( to770 )
      MDRV_MACHINE_START ( to770 )
      MDRV_MACHINE_RESET ( to770 )
 
-     MDRV_CPU_MODIFY( "main" )
+     MDRV_CPU_MODIFY( "maincpu" )
      MDRV_CPU_PROGRAM_MAP ( to770, 0 )
+
+	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, to770_pia6821_sys )
 
      MDRV_MC6846_MODIFY( "mc6846", to770_timer )
 MACHINE_DRIVER_END
@@ -994,16 +1004,16 @@ static ADDRESS_MAP_START ( mo5, ADDRESS_SPACE_PROGRAM, 8 )
      AM_RANGE ( 0x0000, 0x1fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to770_vram_w )
      AM_RANGE ( 0x2000, 0x9fff ) AM_RAMBANK   ( THOM_BASE_BANK )
      AM_RANGE ( 0xa000, 0xa7bf ) AM_ROMBANK   ( THOM_FLOP_BANK )
-     AM_RANGE ( 0xa7c0, 0xa7c3 ) AM_READWRITE ( pia_0_alt_r,  pia_0_alt_w )
+     AM_RANGE ( 0xa7c0, 0xa7c3 ) AM_DEVREADWRITE ( "pia_0", pia6821_alt_r,  pia6821_alt_w )
      AM_RANGE ( 0xa7cb, 0xa7cb ) AM_WRITE     ( mo5_ext_w )
-     AM_RANGE ( 0xa7cc, 0xa7cf ) AM_READWRITE ( pia_1_alt_r,  pia_1_alt_w )
+     AM_RANGE ( 0xa7cc, 0xa7cf ) AM_DEVREADWRITE ( "pia_1", pia6821_alt_r,  pia6821_alt_w )
      AM_RANGE ( 0xa7d0, 0xa7df ) AM_READWRITE ( to7_floppy_r, to7_floppy_w )
-     AM_RANGE ( 0xa7e0, 0xa7e3 ) AM_READWRITE ( pia_2_alt_r, pia_2_alt_w )
+     AM_RANGE ( 0xa7e0, 0xa7e3 ) AM_DEVREADWRITE ( "pia_2", pia6821_alt_r, pia6821_alt_w )
      AM_RANGE ( 0xa7e4, 0xa7e7 ) AM_READWRITE ( mo5_gatearray_r,
 						mo5_gatearray_w )
-     AM_RANGE ( 0xa7e8, 0xa7eb ) AM_DEVREADWRITE(ACIA6551, "acia",  acia_6551_r, acia_6551_w )
+     AM_RANGE ( 0xa7e8, 0xa7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
      AM_RANGE ( 0xa7f2, 0xa7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
-     AM_RANGE ( 0xa7fe, 0xa7ff ) AM_DEVREADWRITE(MEA8000, "mea8000", mea8000_r, mea8000_w)
+     AM_RANGE ( 0xa7fe, 0xa7ff ) AM_DEVREADWRITE("mea8000", mea8000_r, mea8000_w)
      AM_RANGE ( 0xb000, 0xefff ) AM_READWRITE ( SMH_BANK(THOM_CART_BANK), mo5_cartridge_w )
      AM_RANGE ( 0xf000, 0xffff ) AM_ROM       /* system bios */
 
@@ -1023,7 +1033,7 @@ ADDRESS_MAP_END
 /* ------------ ROMS ------------ */
 
 ROM_START ( mo5 )
-     ROM_REGION ( 0x24800, "main", 0 )
+     ROM_REGION ( 0x24800, "maincpu", 0 )
      ROM_LOAD ( "mo5.rom", 0xf000, 0x1000,
 		CRC(f0ea9140)
 		MD5(ab3533a7132f90933acce80e256ae459)
@@ -1036,7 +1046,7 @@ ROM_START ( mo5 )
 ROM_END
 
 ROM_START ( mo5e )
-     ROM_REGION ( 0x24800, "main", 0 )
+     ROM_REGION ( 0x24800, "maincpu", 0 )
      ROM_LOAD ( "mo5e.rom", 0xf000, 0x1000,
 		CRC(6520213a)
 		MD5(434c42b96c31a341e13085048cdc8eae)
@@ -1112,13 +1122,15 @@ static MACHINE_DRIVER_START ( mo5 )
      MDRV_MACHINE_START ( mo5 )
      MDRV_MACHINE_RESET ( mo5 )
 
-     MDRV_CPU_MODIFY( "main" )
+     MDRV_CPU_MODIFY( "maincpu" )
      MDRV_CPU_PROGRAM_MAP ( mo5, 0 )
 
      MDRV_CASSETTE_MODIFY( "cassette", mo5_cassette_config )
 
      MDRV_MC6846_REMOVE( "mc6846" )
-     
+
+	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, mo5_pia6821_sys )
+
 	MDRV_CARTSLOT_MODIFY("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("m5,rom")
 	MDRV_CARTSLOT_LOAD(mo5_cartridge)
@@ -1213,18 +1225,18 @@ static ADDRESS_MAP_START ( to9, ADDRESS_SPACE_PROGRAM, 8 )
      AM_RANGE ( 0x6000, 0x9fff ) AM_RAMBANK   ( THOM_BASE_BANK ) /* 16 KB */
      AM_RANGE ( 0xa000, 0xdfff ) AM_RAMBANK   ( THOM_RAM_BANK )  /* 10 * 16 KB */
      AM_RANGE ( 0xe000, 0xe7bf ) AM_ROMBANK   ( THOM_FLOP_BANK )
-     AM_RANGE ( 0xe7c0, 0xe7c7 ) AM_DEVREADWRITE(MC6846, "mc6846", mc6846_r, mc6846_w)
-     AM_RANGE ( 0xe7c8, 0xe7cb ) AM_READWRITE ( pia_0_alt_r,  pia_0_alt_w )
-     AM_RANGE ( 0xe7cc, 0xe7cf ) AM_READWRITE ( pia_1_alt_r,  pia_1_alt_w )
+     AM_RANGE ( 0xe7c0, 0xe7c7 ) AM_DEVREADWRITE("mc6846", mc6846_r, mc6846_w)
+     AM_RANGE ( 0xe7c8, 0xe7cb ) AM_DEVREADWRITE ( "pia_0", pia6821_alt_r,  pia6821_alt_w )
+     AM_RANGE ( 0xe7cc, 0xe7cf ) AM_DEVREADWRITE ( "pia_1", pia6821_alt_r,  pia6821_alt_w )
      AM_RANGE ( 0xe7d0, 0xe7d9 ) AM_READWRITE ( to9_floppy_r, to9_floppy_w )
      AM_RANGE ( 0xe7da, 0xe7dd ) AM_READWRITE ( to9_vreg_r, to9_vreg_w )
      AM_RANGE ( 0xe7de, 0xe7df ) AM_READWRITE ( to9_kbd_r, to9_kbd_w )
      AM_RANGE ( 0xe7e4, 0xe7e7 ) AM_READWRITE ( to9_gatearray_r,
 						to9_gatearray_w )
-     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE(ACIA6551, "acia",  acia_6551_r, acia_6551_w )
+     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
 /*   AM_RANGE ( 0xe7f0, 0xe7f7 ) AM_READWRITE ( to9_ieee_r, to9_ieee_w ) */
      AM_RANGE ( 0xe7f2, 0xe7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
-     AM_RANGE ( 0xe7f8, 0xe7fb ) AM_READWRITE ( pia_3_alt_r, pia_3_alt_w )
+     AM_RANGE ( 0xe7f8, 0xe7fb ) AM_DEVREADWRITE ( "pia_3", pia6821_alt_r, pia6821_alt_w )
      AM_RANGE ( 0xe7fe, 0xe7ff ) AM_READWRITE ( to7_modem_mea8000_r,
 						to7_modem_mea8000_w )
      AM_RANGE ( 0xe800, 0xffff ) AM_ROM       /* system bios  */
@@ -1251,7 +1263,7 @@ ADDRESS_MAP_END
  */
 
 ROM_START ( to9 )
-     ROM_REGION ( 0x44800, "main", 0 )
+     ROM_REGION ( 0x44800, "maincpu", 0 )
      ROM_LOAD ( "to9.rom", 0xe000, 0x2000, /* BIOS & floppy controller */
 		CRC(f9278bf7)
 		MD5(507f0c482462b70b816fd23cf6791179)
@@ -1466,8 +1478,14 @@ static MACHINE_DRIVER_START ( to9 )
      MDRV_MACHINE_START ( to9 )
      MDRV_MACHINE_RESET ( to9 )
 
-     MDRV_CPU_MODIFY( "main" )
+     MDRV_CPU_MODIFY( "maincpu" )
      MDRV_CPU_PROGRAM_MAP ( to9, 0 )
+
+	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, to9_pia6821_sys )
+	MDRV_PIA6821_REMOVE( THOM_PIA_IO )
+
+	MDRV_CENTRONICS_REMOVE("centronics")
+	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 
      MDRV_MC6846_MODIFY( "mc6846", to9_timer )
 MACHINE_DRIVER_END
@@ -1548,17 +1566,17 @@ static ADDRESS_MAP_START ( to8, ADDRESS_SPACE_PROGRAM, 8 )
      AM_RANGE ( 0xa000, 0xbfff ) AM_READWRITE ( SMH_BANK(TO8_DATA_LO), to8_data_lo_w )
      AM_RANGE ( 0xc000, 0xdfff ) AM_READWRITE ( SMH_BANK(TO8_DATA_HI), to8_data_hi_w )
      AM_RANGE ( 0xe000, 0xe7bf ) AM_ROMBANK   ( THOM_FLOP_BANK ) /* 2 * 2 KB */
-     AM_RANGE ( 0xe7c0, 0xe7c7 ) AM_DEVREADWRITE(MC6846, "mc6846", mc6846_r, mc6846_w)
-     AM_RANGE ( 0xe7c8, 0xe7cb ) AM_READWRITE ( pia_0_alt_r,  pia_0_alt_w )
-     AM_RANGE ( 0xe7cc, 0xe7cf ) AM_READWRITE ( pia_1_alt_r,  pia_1_alt_w )
+     AM_RANGE ( 0xe7c0, 0xe7c7 ) AM_DEVREADWRITE("mc6846", mc6846_r, mc6846_w)
+     AM_RANGE ( 0xe7c8, 0xe7cb ) AM_DEVREADWRITE ( "pia_0", pia6821_alt_r,  pia6821_alt_w )
+     AM_RANGE ( 0xe7cc, 0xe7cf ) AM_DEVREADWRITE ( "pia_1", pia6821_alt_r,  pia6821_alt_w )
      AM_RANGE ( 0xe7d0, 0xe7d9 ) AM_READWRITE ( to8_floppy_r, to8_floppy_w )
      AM_RANGE ( 0xe7da, 0xe7dd ) AM_READWRITE ( to8_vreg_r, to8_vreg_w )
      AM_RANGE ( 0xe7e4, 0xe7e7 ) AM_READWRITE ( to8_gatearray_r,
 						to8_gatearray_w )
-     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE(ACIA6551, "acia",  acia_6551_r, acia_6551_w )
+     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
 /*   AM_RANGE ( 0xe7f0, 0xe7f7 ) AM_READWRITE ( to9_ieee_r, to9_ieee_w ) */
      AM_RANGE ( 0xe7f2, 0xe7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
-     AM_RANGE ( 0xe7f8, 0xe7fb ) AM_READWRITE ( pia_3_alt_r, pia_3_alt_w )
+     AM_RANGE ( 0xe7f8, 0xe7fb ) AM_DEVREADWRITE ( "pia_3", pia6821_alt_r, pia6821_alt_w )
      AM_RANGE ( 0xe7fe, 0xe7ff ) AM_READWRITE ( to7_modem_mea8000_r,
 						to7_modem_mea8000_w )
      AM_RANGE ( 0xe800, 0xffff ) AM_ROMBANK   ( TO8_BIOS_BANK ) /* 2 * 6 KB */
@@ -1576,7 +1594,7 @@ ADDRESS_MAP_END
 /* ------------ ROMS ------------ */
 
 ROM_START ( to8 )
-     ROM_REGION ( 0x38800, "main", 0 )
+     ROM_REGION ( 0x38800, "maincpu", 0 )
 
      /* BIOS & floppy */
      ROM_LOAD ( "to8-0.rom", 0x30000, 0x2000,
@@ -1612,7 +1630,7 @@ ROM_START ( to8 )
 ROM_END
 
 ROM_START ( to8d )
-     ROM_REGION ( 0x38800, "main", 0 )
+     ROM_REGION ( 0x38800, "maincpu", 0 )
 
      /* BIOS & floppy */
      ROM_LOAD ( "to8d-0.rom", 0x30000, 0x2000,
@@ -1700,8 +1718,14 @@ static MACHINE_DRIVER_START ( to8 )
      MDRV_MACHINE_START ( to8 )
      MDRV_MACHINE_RESET ( to8 )
 
-     MDRV_CPU_MODIFY( "main" )
+     MDRV_CPU_MODIFY( "maincpu" )
      MDRV_CPU_PROGRAM_MAP ( to8, 0 )
+
+	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, to8_pia6821_sys )
+	MDRV_PIA6821_REMOVE( THOM_PIA_IO )
+
+	MDRV_CENTRONICS_REMOVE("centronics")
+	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 
      MDRV_MC6846_MODIFY( "mc6846", to8_timer )
 MACHINE_DRIVER_END
@@ -1762,18 +1786,18 @@ static ADDRESS_MAP_START ( to9p, ADDRESS_SPACE_PROGRAM, 8 )
      AM_RANGE ( 0xa000, 0xbfff ) AM_READWRITE ( SMH_BANK(TO8_DATA_LO), to8_data_lo_w )
      AM_RANGE ( 0xc000, 0xdfff ) AM_READWRITE ( SMH_BANK(TO8_DATA_HI), to8_data_hi_w )
      AM_RANGE ( 0xe000, 0xe7bf ) AM_ROMBANK   ( THOM_FLOP_BANK ) /* 2 * 2 KB */
-     AM_RANGE ( 0xe7c0, 0xe7c7 ) AM_DEVREADWRITE(MC6846, "mc6846", mc6846_r, mc6846_w)
-     AM_RANGE ( 0xe7c8, 0xe7cb ) AM_READWRITE ( pia_0_alt_r,  pia_0_alt_w )
-     AM_RANGE ( 0xe7cc, 0xe7cf ) AM_READWRITE ( pia_1_alt_r,  pia_1_alt_w )
+     AM_RANGE ( 0xe7c0, 0xe7c7 ) AM_DEVREADWRITE("mc6846", mc6846_r, mc6846_w)
+     AM_RANGE ( 0xe7c8, 0xe7cb ) AM_DEVREADWRITE ( "pia_0", pia6821_alt_r,  pia6821_alt_w )
+     AM_RANGE ( 0xe7cc, 0xe7cf ) AM_DEVREADWRITE ( "pia_1", pia6821_alt_r,  pia6821_alt_w )
      AM_RANGE ( 0xe7d0, 0xe7d9 ) AM_READWRITE ( to8_floppy_r, to8_floppy_w )
      AM_RANGE ( 0xe7da, 0xe7dd ) AM_READWRITE ( to8_vreg_r, to8_vreg_w )
      AM_RANGE ( 0xe7de, 0xe7df ) AM_READWRITE ( to9_kbd_r, to9_kbd_w )
      AM_RANGE ( 0xe7e4, 0xe7e7 ) AM_READWRITE ( to8_gatearray_r,
 						to8_gatearray_w )
-     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE(ACIA6551, "acia",  acia_6551_r, acia_6551_w )
+     AM_RANGE ( 0xe7e8, 0xe7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
 /*   AM_RANGE ( 0xe7f0, 0xe7f7 ) AM_READWRITE ( to9_ieee_r, to9_ieee_w ) */
      AM_RANGE ( 0xe7f2, 0xe7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
-     AM_RANGE ( 0xe7f8, 0xe7fb ) AM_READWRITE ( pia_3_alt_r, pia_3_alt_w )
+     AM_RANGE ( 0xe7f8, 0xe7fb ) AM_DEVREADWRITE ( "pia_3", pia6821_alt_r, pia6821_alt_w )
      AM_RANGE ( 0xe7fe, 0xe7ff ) AM_READWRITE ( to7_modem_mea8000_r,
 						to7_modem_mea8000_w )
      AM_RANGE ( 0xe800, 0xffff ) AM_ROMBANK   ( TO8_BIOS_BANK ) /* 2 * 6 KB */
@@ -1791,7 +1815,7 @@ ADDRESS_MAP_END
 /* ------------ ROMS ------------ */
 
 ROM_START ( to9p )
-     ROM_REGION ( 0x38800, "main", 0 )
+     ROM_REGION ( 0x38800, "maincpu", 0 )
 
      /* BIOS & floppy */
      ROM_LOAD ( "to9p-0.rom", 0x30000, 0x2000,
@@ -1855,8 +1879,14 @@ static MACHINE_DRIVER_START ( to9p )
      MDRV_MACHINE_START ( to9p )
      MDRV_MACHINE_RESET ( to9p )
 
-     MDRV_CPU_MODIFY( "main" )
+     MDRV_CPU_MODIFY( "maincpu" )
      MDRV_CPU_PROGRAM_MAP ( to9p, 0 )
+
+	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, to9p_pia6821_sys )
+	MDRV_PIA6821_REMOVE( THOM_PIA_IO )
+
+	MDRV_CENTRONICS_REMOVE("centronics")
+	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 
      MDRV_MC6846_MODIFY( "mc6846", to9p_timer )
 MACHINE_DRIVER_END
@@ -1931,17 +1961,17 @@ static ADDRESS_MAP_START ( mo6, ADDRESS_SPACE_PROGRAM, 8 )
      AM_RANGE ( 0x6000, 0x7fff ) AM_READWRITE ( SMH_BANK(TO8_DATA_LO), to8_data_lo_w )
      AM_RANGE ( 0x8000, 0x9fff ) AM_READWRITE ( SMH_BANK(TO8_DATA_HI), to8_data_hi_w )
      AM_RANGE ( 0xa000, 0xa7bf ) AM_ROMBANK   ( THOM_FLOP_BANK )
-     AM_RANGE ( 0xa7c0, 0xa7c3 ) AM_READWRITE ( pia_0_alt_r,  pia_0_alt_w )
+     AM_RANGE ( 0xa7c0, 0xa7c3 ) AM_DEVREADWRITE ( "pia_0", pia6821_alt_r,  pia6821_alt_w )
      AM_RANGE ( 0xa7cb, 0xa7cb ) AM_WRITE     ( mo6_ext_w )
-     AM_RANGE ( 0xa7cc, 0xa7cf ) AM_READWRITE ( pia_1_alt_r,  pia_1_alt_w )
+     AM_RANGE ( 0xa7cc, 0xa7cf ) AM_DEVREADWRITE ( "pia_1", pia6821_alt_r,  pia6821_alt_w )
      AM_RANGE ( 0xa7d0, 0xa7d9 ) AM_READWRITE ( to7_floppy_r, to7_floppy_w )
      AM_RANGE ( 0xa7da, 0xa7dd ) AM_READWRITE ( mo6_vreg_r, mo6_vreg_w )
      AM_RANGE ( 0xa7e4, 0xa7e7 ) AM_READWRITE ( mo6_gatearray_r,
 						mo6_gatearray_w )
-     AM_RANGE ( 0xa7e8, 0xa7eb ) AM_DEVREADWRITE(ACIA6551, "acia",  acia_6551_r, acia_6551_w )
+     AM_RANGE ( 0xa7e8, 0xa7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
 /*   AM_RANGE ( 0xa7f0, 0xa7f7 ) AM_READWRITE ( to9_ieee_r, to9_ieee_w )*/
      AM_RANGE ( 0xa7f2, 0xa7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
-     AM_RANGE ( 0xa7fe, 0xa7ff ) AM_DEVREADWRITE(MEA8000, "mea8000", mea8000_r, mea8000_w)
+     AM_RANGE ( 0xa7fe, 0xa7ff ) AM_DEVREADWRITE("mea8000", mea8000_r, mea8000_w)
      AM_RANGE ( 0xb000, 0xefff ) AM_ROMBANK   ( THOM_CART_BANK )
                                  AM_WRITE     ( mo6_cartridge_w )
      AM_RANGE ( 0xf000, 0xffff ) AM_ROMBANK   ( TO8_BIOS_BANK )
@@ -1958,7 +1988,7 @@ ADDRESS_MAP_END
 /* ------------ ROMS ------------ */
 
 ROM_START ( mo6 )
-     ROM_REGION ( 0x34800, "main", 0 )
+     ROM_REGION ( 0x34800, "maincpu", 0 )
 
      /* BIOS */
      ROM_LOAD ( "mo6-0.rom", 0x23000, 0x1000,
@@ -1993,7 +2023,7 @@ ROM_START ( mo6 )
 ROM_END
 
 ROM_START ( pro128 )
-     ROM_REGION ( 0x34800, "main", 0 )
+     ROM_REGION ( 0x34800, "maincpu", 0 )
 
      /* BIOS */
      ROM_LOAD ( "pro128-0.rom", 0x23000, 0x1000,
@@ -2201,11 +2231,18 @@ static MACHINE_DRIVER_START ( mo6 )
      MDRV_MACHINE_START ( mo6 )
      MDRV_MACHINE_RESET ( mo6 )
 
-     MDRV_CPU_MODIFY( "main" )
+     MDRV_CPU_MODIFY( "maincpu" )
      MDRV_CPU_PROGRAM_MAP ( mo6, 0 )
 
      MDRV_MC6846_REMOVE( "mc6846" )
-     
+
+	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, mo6_pia6821_sys )
+	MDRV_PIA6821_REMOVE( THOM_PIA_IO )
+	MDRV_PIA6821_MODIFY( THOM_PIA_GAME, mo6_pia6821_game )
+
+	MDRV_CENTRONICS_REMOVE("centronics")
+	MDRV_CENTRONICS_ADD("centronics", mo6_centronics_config)
+
 	MDRV_CARTSLOT_MODIFY("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("m5,rom")
 	MDRV_CARTSLOT_LOAD(mo5_cartridge)
@@ -2258,19 +2295,20 @@ static ADDRESS_MAP_START ( mo5nr, ADDRESS_SPACE_PROGRAM, 8 )
      AM_RANGE ( 0x6000, 0x7fff ) AM_READWRITE ( SMH_BANK(TO8_DATA_LO), to8_data_lo_w )
      AM_RANGE ( 0x8000, 0x9fff ) AM_READWRITE ( SMH_BANK(TO8_DATA_HI), to8_data_hi_w )
      AM_RANGE ( 0xa000, 0xa7bf ) AM_ROMBANK   ( THOM_FLOP_BANK )
-     AM_RANGE ( 0xa7c0, 0xa7c3 ) AM_READWRITE ( pia_0_alt_r,  pia_0_alt_w )
+     AM_RANGE ( 0xa7c0, 0xa7c3 ) AM_DEVREADWRITE ( "pia_0", pia6821_alt_r,  pia6821_alt_w )
      AM_RANGE ( 0xa7cb, 0xa7cb ) AM_WRITE     ( mo6_ext_w )
-     AM_RANGE ( 0xa7cc, 0xa7cf ) AM_READWRITE ( pia_1_alt_r,  pia_1_alt_w )
+     AM_RANGE ( 0xa7cc, 0xa7cf ) AM_DEVREADWRITE ( "pia_1", pia6821_alt_r,  pia6821_alt_w )
      AM_RANGE ( 0xa7d0, 0xa7d9 ) AM_READWRITE ( mo5nr_net_r, mo5nr_net_w )
      AM_RANGE ( 0xa7da, 0xa7dd ) AM_READWRITE ( mo6_vreg_r, mo6_vreg_w )
-     AM_RANGE ( 0xa7e0, 0xa7e3 ) AM_READWRITE ( mo5nr_prn_r, mo5nr_prn_w )
+     AM_RANGE ( 0xa7e1, 0xa7e1 ) AM_DEVREADWRITE("centronics", centronics_data_r, centronics_data_w)
+     AM_RANGE ( 0xa7e3, 0xa7e3 ) AM_READWRITE ( mo5nr_prn_r, mo5nr_prn_w )
      AM_RANGE ( 0xa7e4, 0xa7e7 ) AM_READWRITE ( mo6_gatearray_r,
 						mo6_gatearray_w )
-     AM_RANGE ( 0xa7e8, 0xa7eb ) AM_DEVREADWRITE(ACIA6551, "acia",  acia_6551_r, acia_6551_w )
+     AM_RANGE ( 0xa7e8, 0xa7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
 /*   AM_RANGE ( 0xa7f0, 0xa7f7 ) AM_READWRITE ( to9_ieee_r, to9_ieee_w ) */
      AM_RANGE ( 0xa7f2, 0xa7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
-     AM_RANGE ( 0xa7f8, 0xa7fb ) AM_READWRITE ( pia_3_alt_r, pia_3_alt_w )
-     AM_RANGE ( 0xa7fe, 0xa7ff ) AM_DEVREADWRITE(MEA8000, "mea8000", mea8000_r, mea8000_w)
+     AM_RANGE ( 0xa7f8, 0xa7fb ) AM_DEVREADWRITE ( "pia_3", pia6821_alt_r, pia6821_alt_w )
+     AM_RANGE ( 0xa7fe, 0xa7ff ) AM_DEVREADWRITE("mea8000", mea8000_r, mea8000_w)
      AM_RANGE ( 0xb000, 0xefff ) AM_READWRITE ( SMH_BANK(THOM_CART_BANK), mo6_cartridge_w ) /* 4 * 16 KB */
      AM_RANGE ( 0xf000, 0xffff ) AM_ROMBANK   ( TO8_BIOS_BANK )
 
@@ -2286,7 +2324,7 @@ ADDRESS_MAP_END
 /* ------------ ROMS ------------ */
 
 ROM_START ( mo5nr )
-     ROM_REGION ( 0x34800, "main", 0 )
+     ROM_REGION ( 0x34800, "maincpu", 0 )
 
      /* BIOS */
      ROM_LOAD ( "mo5nr-0.rom", 0x23000, 0x1000,
@@ -2431,11 +2469,18 @@ static MACHINE_DRIVER_START ( mo5nr )
      MDRV_MACHINE_START ( mo5nr )
      MDRV_MACHINE_RESET ( mo5nr )
 
-     MDRV_CPU_MODIFY( "main" )
+     MDRV_CPU_MODIFY( "maincpu" )
      MDRV_CPU_PROGRAM_MAP ( mo5nr, 0 )
 
      MDRV_MC6846_REMOVE( "mc6846" )
-     
+
+	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, mo5nr_pia6821_sys )
+	MDRV_PIA6821_REMOVE( THOM_PIA_IO )
+	MDRV_PIA6821_MODIFY( THOM_PIA_GAME, mo5nr_pia6821_game )
+
+	MDRV_CENTRONICS_REMOVE("centronics")
+	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+
 	MDRV_CARTSLOT_MODIFY("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("m5,rom")
 	MDRV_CARTSLOT_LOAD(mo5_cartridge)

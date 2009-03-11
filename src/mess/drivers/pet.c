@@ -405,9 +405,9 @@ normal keyboards?
 static ADDRESS_MAP_START(pet_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size )
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
-	AM_RANGE(0xe810, 0xe813) AM_READWRITE(pia_0_r, pia_0_w)
-	AM_RANGE(0xe820, 0xe823) AM_READWRITE(pia_1_r, pia_1_w)
-	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
+	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
+	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
+	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
 /*  AM_RANGE(0xe900, 0xe91f) AM_READ(cbm_ieee_state)    // for debugging */
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -415,11 +415,11 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( pet40_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size )
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
-	AM_RANGE(0xe810, 0xe813) AM_READWRITE(pia_0_r, pia_0_w)
-	AM_RANGE(0xe820, 0xe823) AM_READWRITE(pia_1_r, pia_1_w)
-	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
-	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
+	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
+	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
+	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
+	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE("crtc", mc6845_address_w)
+	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE("crtc", mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -432,11 +432,11 @@ static ADDRESS_MAP_START( pet80_mem , ADDRESS_SPACE_PROGRAM, 8)
 #if 1
 	AM_RANGE(0xe800, 0xefff) AM_RAMBANK(7)
 #else
-	AM_RANGE(0xe810, 0xe813) AM_READWRITE(pia_0_r, pia_0_w)
-	AM_RANGE(0xe820, 0xe823) AM_READWRITE(pia_1_r, pia_1_w)
-	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
-	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
+	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
+	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
+	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
+	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE("crtc", mc6845_address_w)
+	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE("crtc", mc6845_register_r, mc6845_register_w)
 #endif
 	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_BANK8)
 	AM_RANGE(0xf000, 0xffef) AM_WRITE(SMH_BANK8)
@@ -463,11 +463,11 @@ static ADDRESS_MAP_START( superpet_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_SHARE(1) AM_BASE(&pet_memory)
 	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_SHARE(2) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
-	AM_RANGE(0xe810, 0xe813) AM_READWRITE(pia_0_r, pia_0_w)
-	AM_RANGE(0xe820, 0xe823) AM_READWRITE(pia_1_r, pia_1_w)
-	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
-	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
+	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
+	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
+	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
+	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE("crtc", mc6845_address_w)
+	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE("crtc", mc6845_register_r, mc6845_register_w)
 	/* 0xefe0, 0xefe3, mos 6702 */
 	/* 0xeff0, 0xeff3, acia6551 */
 	AM_RANGE(0xeff8, 0xefff) AM_READWRITE(superpet_r, superpet_w)
@@ -479,11 +479,11 @@ static ADDRESS_MAP_START( superpet_m6809_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_SHARE(2)	/* same memory as m6502 */
     AM_RANGE(0x9000, 0x9fff) AM_RAMBANK(1)	/* 64 kbyte ram turned in */
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
-	AM_RANGE(0xe810, 0xe813) AM_READWRITE(pia_0_r, pia_0_w)
-	AM_RANGE(0xe820, 0xe823) AM_READWRITE(pia_1_r, pia_1_w)
-	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
-	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
+	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
+	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
+	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
+	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE("crtc", mc6845_address_w)
+	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE("crtc", mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0xeff8, 0xefff) AM_READWRITE(superpet_r, superpet_w)
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -600,7 +600,7 @@ static GFXDECODE_START( superpet )
 GFXDECODE_END
 
 static const mc6845_interface crtc_pet40 = {
-	"main",
+	"screen",
 	8,
 	NULL,
 	pet40_update_row,
@@ -611,7 +611,7 @@ static const mc6845_interface crtc_pet40 = {
 };
 
 static const mc6845_interface crtc_pet80 = {
-	"main",
+	"screen",
 	16,
 	NULL,
 	pet80_update_row,
@@ -636,7 +636,7 @@ static VIDEO_START( pet_crtc )
 
 static VIDEO_UPDATE( pet_crtc )
 {
-	const device_config *mc6845 = device_list_find_by_tag(screen->machine->config->devicelist, MC6845, "crtc");
+	const device_config *mc6845 = devtag_get_device(screen->machine, "crtc");
 	mc6845_update(mc6845, bitmap, cliprect);
 	return 0;
 }
@@ -651,14 +651,14 @@ static VIDEO_UPDATE( pet_crtc )
 static MACHINE_DRIVER_START( pet_general )
 	MDRV_DRIVER_DATA(pet_state)
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 7833600)        /* 7.8336 MHz */
+	MDRV_CPU_ADD("maincpu", M6502, 7833600)        /* 7.8336 MHz */
 	MDRV_CPU_PROGRAM_MAP(pet_mem, 0)
-	MDRV_CPU_VBLANK_INT("main", pet_frame_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", pet_frame_interrupt)
 
 	MDRV_MACHINE_RESET( pet )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -676,26 +676,37 @@ static MACHINE_DRIVER_START( pet_general )
 
 	/* via */
 	MDRV_VIA6522_ADD( "via6522_0", 0, pet_via)
+
+	/* pias */
+	MDRV_PIA6821_ADD( "pia_0", pet_pia0)
+	MDRV_PIA6821_ADD( "pia_1", pet_pia1)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( pet )
 	MDRV_IMPORT_FROM( pet_general )
-	MDRV_QUICKLOAD_ADD(cbm_pet, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
+	MDRV_QUICKLOAD_ADD("quickload", cbm_pet, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 	MDRV_IMPORT_FROM(pet_cartslot)
 MACHINE_DRIVER_END
 
 
+static MACHINE_DRIVER_START( petb )
+	MDRV_IMPORT_FROM( pet )
+	MDRV_PIA6821_MODIFY( "pia_0", petb_pia0 )
+MACHINE_DRIVER_END
+
+
+
 static MACHINE_DRIVER_START( pet2001 )
 	MDRV_IMPORT_FROM( pet_general )
-	MDRV_QUICKLOAD_ADD(cbm_pet1, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
+	MDRV_QUICKLOAD_ADD("quickload", cbm_pet1, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 	MDRV_IMPORT_FROM(pet_cartslot)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( pet40 )
 	MDRV_IMPORT_FROM( pet )
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( pet40_mem, 0 )
 
 	MDRV_MC6845_ADD("crtc", MC6845, XTAL_17_73447MHz/3	/* This is a wild guess and mostly likely incorrect */, crtc_pet40)
@@ -710,18 +721,18 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( pet40pal )
 	MDRV_IMPORT_FROM( pet40 )
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( pet80 )
 	MDRV_IMPORT_FROM( pet )
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( pet80_mem, 0 )
 
     /* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(640, 250)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640 - 1, 0, 250 - 1)
@@ -732,30 +743,34 @@ static MACHINE_DRIVER_START( pet80 )
 	MDRV_VIDEO_START( pet_crtc )
 	MDRV_VIDEO_UPDATE( pet_crtc )
 
+	MDRV_PIA6821_MODIFY( "pia_0", petb_pia0 )
+
 	MDRV_IMPORT_FROM(pet4_cartslot)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( pet80pal )
 	MDRV_IMPORT_FROM( pet80 )
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( superpet )
 	MDRV_IMPORT_FROM( pet80 )
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( superpet_mem, 0 )
 
 	/* m6809 cpu */
 	MDRV_CPU_ADD("m6809", M6809, 1000000)
 	MDRV_CPU_PROGRAM_MAP(superpet_m6809_mem, 0)
-	MDRV_CPU_VBLANK_INT("main", pet_frame_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", pet_frame_interrupt)
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_GFXDECODE( superpet )
+
+	MDRV_PIA6821_MODIFY( "pia_0", petb_pia0 )
 MACHINE_DRIVER_END
 
 
@@ -790,7 +805,7 @@ h4 <-> h7
 */
 
 ROM_START( pet2001 )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_SYSTEM_BIOS( 0, "basic1", "BASIC 1r" )
 	ROMX_LOAD( "901447-09.h1", 0xc000, 0x800, CRC(03cf16d0) SHA1(1330580c0614d3556a389da4649488ba04a60908), ROM_BIOS(1) )
 	ROM_SYSTEM_BIOS( 1, "basic1o", "BASIC 1" )
@@ -814,7 +829,7 @@ ROM_END
 
 /* BASIC 2 */
 ROM_START( pet2001n )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "901465-01.ud6", 0xc000, 0x1000, CRC(63a7fe4a) SHA1(3622111f486d0e137022523657394befa92bde44) )	// BASIC 2
 	ROM_LOAD( "901465-02.ud7", 0xd000, 0x1000, CRC(ae4cb035) SHA1(1bc0ebf27c9bb62ad71bca40313e874234cab6ac) )	// BASIC 2
 	ROM_LOAD( "901447-24.ud8", 0xe000, 0x800,  CRC(e459ab32) SHA1(5e5502ce32f5a7e387d65efe058916282041e54b) )	// Screen Editor (40 columns, no CRTC, Normal Keyb)
@@ -826,7 +841,7 @@ ROM_END
 
 /* BASIC 2 - Business Keyboard (Number keys, etc.) */
 ROM_START( pet2001b )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "901465-01.ud6", 0xc000, 0x1000, CRC(63a7fe4a) SHA1(3622111f486d0e137022523657394befa92bde44) )	// BASIC 2
 	ROM_LOAD( "901465-02.ud7", 0xd000, 0x1000, CRC(ae4cb035) SHA1(1bc0ebf27c9bb62ad71bca40313e874234cab6ac) )	// BASIC 2
 	ROM_LOAD( "901474-01.ud8", 0xe000, 0x800,  CRC(05db957e) SHA1(174ace3a8c0348cd21d39cc864e2adc58b0101a9) )	// Screen Editor (40 columns, no CRTC, Business Keyb)
@@ -841,7 +856,7 @@ ROM_END
 
 /* BASIC 4, but 40 columns only and no CRTC */
 ROM_START( pet40on )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_SYSTEM_BIOS( 0, "basic4", "BASIC 4r" )
 	ROMX_LOAD( "901465-23.ud5", 0xb000, 0x1000, CRC(ae3deac0) SHA1(975ee25e28ff302879424587e5fb4ba19f403adc), ROM_BIOS(1) )	// BASIC 4
 	ROM_SYSTEM_BIOS( 1, "basic4o", "BASIC 4" )
@@ -857,7 +872,7 @@ ROM_END
 
 /* BASIC 4, but 40 columns only and no CRTC - Business Keyboard (Number keys, etc.) */
 ROM_START( pet40ob )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_SYSTEM_BIOS( 0, "basic4", "BASIC 4r" )
 	ROMX_LOAD( "901465-23.ud5", 0xb000, 0x1000, CRC(ae3deac0) SHA1(975ee25e28ff302879424587e5fb4ba19f403adc), ROM_BIOS(1) )
 	ROM_SYSTEM_BIOS( 1, "basic4o", "BASIC 4" )
@@ -880,7 +895,7 @@ ROM_END
 
 /* 40 columns - 60 Hz */
 ROM_START( pet40n )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "901465-23.ud10", 0xb000, 0x1000, CRC(ae3deac0) SHA1(975ee25e28ff302879424587e5fb4ba19f403adc) )	// BASIC 4
 	ROM_LOAD( "901465-20.ud9", 0xc000, 0x1000, CRC(0fc17b9c) SHA1(242f98298931d21eaacb55fe635e44b7fc192b0a) )	// BASIC 4
 	ROM_LOAD( "901465-21.ud8", 0xd000, 0x1000, CRC(36d91855) SHA1(1bb236c72c726e8fb029c68f9bfa5ee803faf0a8) )	// BASIC 4
@@ -893,7 +908,7 @@ ROM_END
 
 /* 40 columns - 50 Hz */
 ROM_START( cbm40n )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "901465-23.ud10", 0xb000, 0x1000, CRC(ae3deac0) SHA1(975ee25e28ff302879424587e5fb4ba19f403adc) )	// BASIC 4
 	ROM_LOAD( "901465-20.ud9", 0xc000, 0x1000, CRC(0fc17b9c) SHA1(242f98298931d21eaacb55fe635e44b7fc192b0a) )	// BASIC 4
 	ROM_LOAD( "901465-21.ud8", 0xd000, 0x1000, CRC(36d91855) SHA1(1bb236c72c726e8fb029c68f9bfa5ee803faf0a8) )	// BASIC 4
@@ -906,7 +921,7 @@ ROM_END
 
 /* 80 columns - 60 Hz */
 ROM_START( pet40b )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "901465-23.ud10", 0xb000, 0x1000, CRC(ae3deac0) SHA1(975ee25e28ff302879424587e5fb4ba19f403adc) )	// BASIC 4
 	ROM_LOAD( "901465-20.ud9", 0xc000, 0x1000, CRC(0fc17b9c) SHA1(242f98298931d21eaacb55fe635e44b7fc192b0a) )	// BASIC 4
 	ROM_LOAD( "901465-21.ud8", 0xd000, 0x1000, CRC(36d91855) SHA1(1bb236c72c726e8fb029c68f9bfa5ee803faf0a8) )	// BASIC 4
@@ -919,7 +934,7 @@ ROM_END
 
 /* 80 columns - 50 Hz */
 ROM_START( cbm40b )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "901465-23.ud10", 0xb000, 0x1000, CRC(ae3deac0) SHA1(975ee25e28ff302879424587e5fb4ba19f403adc) )	// BASIC 4
 	ROM_LOAD( "901465-20.ud9", 0xc000, 0x1000, CRC(0fc17b9c) SHA1(242f98298931d21eaacb55fe635e44b7fc192b0a) )	// BASIC 4
 	ROM_LOAD( "901465-21.ud8", 0xd000, 0x1000, CRC(36d91855) SHA1(1bb236c72c726e8fb029c68f9bfa5ee803faf0a8) )	// BASIC 4
@@ -937,7 +952,7 @@ ROM_END
 
 /* 80 columns - 60 Hz - can be expanded to 96k RAM */
 ROM_START( pet80 )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "901465-23.ud10", 0xb000, 0x1000, CRC(ae3deac0) SHA1(975ee25e28ff302879424587e5fb4ba19f403adc) )	// BASIC 4
 	ROM_LOAD( "901465-20.ud9", 0xc000, 0x1000, CRC(0fc17b9c) SHA1(242f98298931d21eaacb55fe635e44b7fc192b0a) )	// BASIC 4
 	ROM_LOAD( "901465-21.ud8", 0xd000, 0x1000, CRC(36d91855) SHA1(1bb236c72c726e8fb029c68f9bfa5ee803faf0a8) )	// BASIC 4
@@ -950,7 +965,7 @@ ROM_END
 
 /* 80 columns - 50 Hz - can be expanded to 96k RAM */
 ROM_START( cbm80 )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "901465-23.ud10", 0xb000, 0x1000, CRC(ae3deac0) SHA1(975ee25e28ff302879424587e5fb4ba19f403adc) )	// BASIC 4
 	ROM_LOAD( "901465-20.ud9", 0xc000, 0x1000, CRC(0fc17b9c) SHA1(242f98298931d21eaacb55fe635e44b7fc192b0a) )	// BASIC 4
 	ROM_LOAD( "901465-21.ud8", 0xd000, 0x1000, CRC(36d91855) SHA1(1bb236c72c726e8fb029c68f9bfa5ee803faf0a8) )	// BASIC 4
@@ -978,7 +993,7 @@ In this case the labels would have been as follows
 */
 
 ROM_START( superpet )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "901465-23.ud10", 0xb000, 0x1000, CRC(ae3deac0) SHA1(975ee25e28ff302879424587e5fb4ba19f403adc) )	// BASIC 4
 	ROM_LOAD( "901465-20.ud9", 0xc000, 0x1000, CRC(0fc17b9c) SHA1(242f98298931d21eaacb55fe635e44b7fc192b0a) )	// BASIC 4
 	ROM_LOAD( "901465-21.ud8", 0xd000, 0x1000, CRC(36d91855) SHA1(1bb236c72c726e8fb029c68f9bfa5ee803faf0a8) )	// BASIC 4
@@ -1002,7 +1017,7 @@ ROM_END
 
 /* CBM 8296 / 8296D - only ROM loading added */
 ROM_START( cbm8296 )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "324746-01.ue7", 0xb000, 0x3000, CRC(7935b528) SHA1(5ab17ee70467152bf2130e3f48a2aa81e9df93c9) )	// BASIC 4 // FIX ME!!
 	ROM_CONTINUE(			   0xf000, 0x1000 )
 	ROM_LOAD( "901474-04.ue8", 0xe000, 0x800,  CRC(c1ffca3a) SHA1(7040b283ba39e9630e3d147f7d076b7abc39bc70) )	// Dated 0384, coincides with 3681 above according to Andr? Fachat's notes
@@ -1017,7 +1032,7 @@ ROM_END
 /* PAL regional variants */
 
 ROM_START( cbm80ger )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "901465-23.ud10", 0xb000, 0x1000, CRC(ae3deac0) SHA1(975ee25e28ff302879424587e5fb4ba19f403adc) )	// BASIC 4
 	ROM_LOAD( "901465-20.ud9", 0xc000, 0x1000, CRC(0fc17b9c) SHA1(242f98298931d21eaacb55fe635e44b7fc192b0a) )	// BASIC 4
 	ROM_LOAD( "901465-21.ud8", 0xd000, 0x1000, CRC(36d91855) SHA1(1bb236c72c726e8fb029c68f9bfa5ee803faf0a8) )	// BASIC 4
@@ -1029,7 +1044,7 @@ ROM_START( cbm80ger )
 ROM_END
 
 ROM_START( cbm80swe )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "901465-23.ud10", 0xb000, 0x1000, CRC(ae3deac0) SHA1(975ee25e28ff302879424587e5fb4ba19f403adc) )	// BASIC 4
 	ROM_LOAD( "901465-20.ud9", 0xc000, 0x1000, CRC(0fc17b9c) SHA1(242f98298931d21eaacb55fe635e44b7fc192b0a) )	// BASIC 4
 	ROM_LOAD( "901465-21.ud8", 0xd000, 0x1000, CRC(36d91855) SHA1(1bb236c72c726e8fb029c68f9bfa5ee803faf0a8) )	// BASIC 4
@@ -1042,7 +1057,7 @@ ROM_END
 
 /* This had only the CharGen dumped, the editor needs to be dumped as well (and the other ones verified)!!  */
 ROM_START( cbm30nor )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "901465-01.ud6", 0xc000, 0x1000, CRC(63a7fe4a) SHA1(3622111f486d0e137022523657394befa92bde44) )	// BASIC 2
 	ROM_LOAD( "901465-02.ud7", 0xd000, 0x1000, CRC(ae4cb035) SHA1(1bc0ebf27c9bb62ad71bca40313e874234cab6ac) )	// BASIC 2
 	ROM_LOAD( "901474-01.ud8", 0xe000, 0x800,  BAD_DUMP CRC(05db957e) SHA1(174ace3a8c0348cd21d39cc864e2adc58b0101a9) )	// Screen Editor to be redumped
@@ -1054,7 +1069,7 @@ ROM_END
 
 /* This had only the CharGen dumped, the editor needs to be dumped as well (and the other ones verified)!!  */
 ROM_START( cbm80hun )
-	ROM_REGION( 0x20000, "main", 0 )
+	ROM_REGION( 0x20000, "maincpu", 0 )
 	ROM_LOAD( "901465-23.ud10", 0xb000, 0x1000, CRC(ae3deac0) SHA1(975ee25e28ff302879424587e5fb4ba19f403adc) )	// BASIC 4
 	ROM_LOAD( "901465-20.ud9", 0xc000, 0x1000, CRC(0fc17b9c) SHA1(242f98298931d21eaacb55fe635e44b7fc192b0a) )	// BASIC 4
 	ROM_LOAD( "901465-21.ud8", 0xd000, 0x1000, CRC(36d91855) SHA1(1bb236c72c726e8fb029c68f9bfa5ee803faf0a8) )	// BASIC 4
@@ -1067,7 +1082,7 @@ ROM_END
 
 /* Swedish M6809 roms needed */
 ROM_START( mmf9000s )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "901465-23.ud10", 0xb000, 0x1000, CRC(ae3deac0) SHA1(975ee25e28ff302879424587e5fb4ba19f403adc) )	// BASIC 4
 	ROM_LOAD( "901465-20.ud9", 0xc000, 0x1000, CRC(0fc17b9c) SHA1(242f98298931d21eaacb55fe635e44b7fc192b0a) )	// BASIC 4
 	ROM_LOAD( "901465-21.ud8", 0xd000, 0x1000, CRC(36d91855) SHA1(1bb236c72c726e8fb029c68f9bfa5ee803faf0a8) )	// BASIC 4
@@ -1136,16 +1151,16 @@ SYSTEM_CONFIG_END
 
 COMP(1977, pet2001,  0,        0,        pet2001,  pet,      pet2001,  pet2001,   "Commodore Business Machines Co.",  "PET 2001", GAME_NO_SOUND)
 COMP(1979, pet2001n, pet2001,  0,        pet,      pet,      pet,      pet2,      "Commodore Business Machines Co.",  "PET 2001-N", GAME_NO_SOUND)
-COMP(1979, pet2001b, pet2001,  0,        pet,      petb,     petb,     pet2,      "Commodore Business Machines Co.",  "PET 2001-B", GAME_NO_SOUND)
+COMP(1979, pet2001b, pet2001,  0,        petb,     petb,     pet,      pet2,      "Commodore Business Machines Co.",  "PET 2001-B", GAME_NO_SOUND)
 COMP(1979, cbm30,    pet2001,  0,        pet,      pet,      pet,      pet2,      "Commodore Business Machines Co.",  "CBM 30xx", GAME_NO_SOUND)
-COMP(1979, cbm30b,   pet2001,  0,        pet,      petb,     petb,     pet2,      "Commodore Business Machines Co.",  "CBM 30xx (Business keyboard)", GAME_NO_SOUND)
-COMP(1979, cbm30nor, pet2001,  0,        pet,      petb,     petb,     pet2,      "Commodore Business Machines Co.",  "CBM 30xx (Norway, Business keyboard)", GAME_NO_SOUND)
+COMP(1979, cbm30b,   pet2001,  0,        petb,     petb,     pet,      pet2,      "Commodore Business Machines Co.",  "CBM 30xx (Business keyboard)", GAME_NO_SOUND)
+COMP(1979, cbm30nor, pet2001,  0,        petb,     petb,     pet,      pet2,      "Commodore Business Machines Co.",  "CBM 30xx (Norway, Business keyboard)", GAME_NO_SOUND)
 
 /* So called, THIN-40 */
 COMP(1980, pet40on,  pet2001,  0,        pet,      pet,      pet,      pet2,      "Commodore Business Machines Co.",  "PET 40xx (Basic 4, no CRTC, Normal keyboard)", GAME_NO_SOUND)
-COMP(1980, pet40ob,  pet2001,  0,        pet,      petb,     petb,     pet2,      "Commodore Business Machines Co.",  "PET 40xx (Basic 4, no CRTC, Business keyboard)", GAME_NO_SOUND)
+COMP(1980, pet40ob,  pet2001,  0,        petb,     petb,     pet,      pet2,      "Commodore Business Machines Co.",  "PET 40xx (Basic 4, no CRTC, Business keyboard)", GAME_NO_SOUND)
 COMP(1980, cbm40o,   pet2001,  0,        pet,      pet,      pet,      pet2,      "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, no CRTC, Normal keyboard)", GAME_NO_SOUND)
-COMP(1980, cbm40ob,  pet2001,  0,        pet,      petb,     petb,     pet2,      "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, no CRTC, Business keyboard)", GAME_NO_SOUND)
+COMP(1980, cbm40ob,  pet2001,  0,        petb,     petb,     pet,      pet2,      "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, no CRTC, Business keyboard)", GAME_NO_SOUND)
 
 COMP(1981, pet80,    0,        0,        pet80,    cbm8096,  pet80,    pet4,      "Commodore Business Machines Co.",  "PET 80xx (Basic 4, CRTC 60Hz, 80 columns)", GAME_NO_SOUND)
 COMP(1981, cbm80,    pet80,    0,        pet80pal, cbm8096,  pet80,    pet4,      "Commodore Business Machines Co.",  "CBM 80xx (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
@@ -1155,9 +1170,9 @@ COMP(1981, cbm80swe, pet80,    0,        pet80pal, cbm8096,  pet80,    pet4,    
 
 /* So called, FAT-40 */
 COMP(1981, pet40b,   pet80,    0,        pet80,    cbm8096,  pet80,    pet4,      "Commodore Business Machines Co.",  "PET 40xx (Basic 4, CRTC 60Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, pet40n,   pet2001,  0,        pet40,    pet,      pet40,    pet4o,     "Commodore Business Machines Co.",  "PET 40xx (Basic 4, CRTC 60Hz, 40 columns)", GAME_NO_SOUND)
+COMP(1981, pet40n,   pet2001,  0,        pet40,    pet,      pet,      pet4o,     "Commodore Business Machines Co.",  "PET 40xx (Basic 4, CRTC 60Hz, 40 columns)", GAME_NO_SOUND)
 COMP(1981, cbm40b,   pet80,    0,        pet80pal, cbm8096,  pet80,    pet4,      "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, cbm40n,   pet2001,  0,        pet40pal, pet,      pet40,    pet4o,     "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, CRTC 50Hz, 40 columns)", GAME_NO_SOUND)
+COMP(1981, cbm40n,   pet2001,  0,        pet40pal, pet,      pet,      pet4o,     "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, CRTC 50Hz, 40 columns)", GAME_NO_SOUND)
 
 COMP(1981, superpet, 0,        0,        superpet, superpet, superpet, pet4,      "Commodore Business Machines Co.",  "SuperPET (CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
 COMP(1981, sp9000,   superpet, 0,        superpet, superpet, superpet, pet4,      "Commodore Business Machines Co.",  "CBM SP9000 / MicroMainFrame 9000 (CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)

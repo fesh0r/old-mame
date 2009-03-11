@@ -104,7 +104,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mk1_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x0, 0x1 ) AM_READWRITE( mk1_f8_r, mk1_f8_w )
-	AM_RANGE( 0xc, 0xf ) AM_DEVREADWRITE( F3853, "f3853", f3853_r, f3853_w )
+	AM_RANGE( 0xc, 0xf ) AM_DEVREADWRITE("f3853", f3853_r, f3853_w )
 ADDRESS_MAP_END
 
 
@@ -177,7 +177,7 @@ static const f3853_config mk1_config =
 
 static MACHINE_DRIVER_START( mk1 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD( "main", F8, MAIN_CLOCK )        /* MK3850 */
+	MDRV_CPU_ADD( "maincpu", F8, MAIN_CLOCK )        /* MK3850 */
 	MDRV_CPU_PROGRAM_MAP( mk1_mem, 0 )
 	MDRV_CPU_IO_MAP( mk1_io, 0 )
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -192,7 +192,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( mk1 )
-	ROM_REGION(0x10000,"main",0)
+	ROM_REGION(0x10000,"maincpu",0)
 	ROM_LOAD("82c210-1", 0x0000, 0x800, CRC(278f7bf3) SHA1(b384c95ba691d52dfdddd35987a71e9746a46170))
 ROM_END
 

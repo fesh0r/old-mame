@@ -85,7 +85,6 @@ static int *shift_mask;
 static int *shift_xor;
 
 typedef struct {
-    int nr;
     union {
 	UINT8 data[8];
 	struct {
@@ -105,12 +104,7 @@ typedef struct {
     int ticks;
     int count;
 } LYNX_AUDIO;
-static LYNX_AUDIO lynx_audio[4]= {
-	{ 0 },
-	{ 1 },
-	{ 2 },
-	{ 3 }
-};
+static LYNX_AUDIO lynx_audio[4];
 
 static void lynx_audio_reset_channel(LYNX_AUDIO *This)
 {
@@ -127,6 +121,7 @@ void lynx_audio_count_down(running_machine *machine, int nr)
 
 static void lynx_audio_shift(running_machine *machine, LYNX_AUDIO *channel)
 {
+    int nr = (int)(channel - lynx_audio);
     channel->shifter=((channel->shifter<<1)&0x3ff)
 	|shift_xor[channel->shifter&channel->mask];
 
@@ -137,7 +132,7 @@ static void lynx_audio_shift(running_machine *machine, LYNX_AUDIO *channel)
 	    channel->reg.n.output-=channel->reg.n.volume;
 	}
     }
-    switch (channel->nr) {
+    switch (nr) {
     case 0: lynx_audio_count_down(machine, 1); break;
     case 1: lynx_audio_count_down(machine, 2); break;
     case 2: lynx_audio_count_down(machine, 3); break;
@@ -360,23 +355,49 @@ void lynx_audio_reset(void)
 /* Sound handler start              */
 /************************************/
 
-CUSTOM_START( lynx_custom_start )
+static DEVICE_START(lynx_sound)
 {
 	mixer_channel = stream_create(device, 0, 1, device->machine->sample_rate, 0, lynx_update);
 
 	usec_per_sample = 1000000 / device->machine->sample_rate;
 
 	lynx_audio_init();
-	return (void *) ~0;
 }
 
 
-CUSTOM_START( lynx2_custom_start )
+static DEVICE_START(lynx2_sound)
 {
     mixer_channel = stream_create(device, 0, 2, device->machine->sample_rate, 0, lynx2_update);
 
     usec_per_sample = 1000000 / device->machine->sample_rate;
 
     lynx_audio_init();
-	return (void *) ~0;
+}
+
+
+DEVICE_GET_INFO( lynx_sound )
+{
+	switch (state)
+	{
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(lynx_sound);	break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Lynx Sound");				break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
+	}
+}
+
+
+DEVICE_GET_INFO( lynx2_sound )
+{
+	switch (state)
+	{
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(lynx2_sound);	break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Lynx2 Sound");				break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
+	}
 }

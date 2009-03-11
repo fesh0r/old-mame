@@ -2,7 +2,7 @@
 
   Copyright (C) Antoine Mine' 2008
 
-   Hewlett Packard HP48 S/SX & G/GX
+   Hewlett Packard HP48 S/SX & G/GX/G+
 
 **********************************************************************/
 
@@ -137,7 +137,7 @@ PALETTE_INIT ( hp48 )
 
 VIDEO_UPDATE ( hp48 )
 {
-	const address_space *space = cpu_get_address_space( cputag_get_cpu(screen->machine, "main"), ADDRESS_SPACE_PROGRAM );
+	const address_space *space = cpu_get_address_space( cputag_get_cpu(screen->machine, "maincpu"), ADDRESS_SPACE_PROGRAM );
 	int x, y, xp, i, addr;
 	int display       = HP48_IO_4(0) >> 3;           /* 1=on, 0=off */
 	int left_margin   = HP48_IO_4(0) & 7;            /* 0..7 pixels for main bitmap */
@@ -147,7 +147,7 @@ VIDEO_UPDATE ( hp48 )
 	int right_margin  = HP48_IO_12(0x25) & ~1;       /* -2048..2046 nibbles for main bitmap */
 	int last_line     = HP48_IO_8(0x28) & 0x3f;      /* 2..63 lines of main bitmap before menu */
 	int menu_start    = HP48_IO_20(0x30) & ~1;       /* menu bitmap address */
-	int fg = contrast + 1;
+	int fg = contrast + 2;
 
 	LOG(( "%f hp48 video_update called: ", attotime_to_double(timer_get_time(screen->machine)) ));
 

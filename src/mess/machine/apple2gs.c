@@ -335,15 +335,15 @@ static void apple2gs_remove_irq(running_machine *machine, UINT8 irq_mask)
 	}
 }
 
-void apple2gs_doc_irq(running_machine *machine, int state)
+void apple2gs_doc_irq(const device_config *device, int state)
 {
 	if (state)
 	{
-		apple2gs_add_irq(machine, IRQ_DOC);
+		apple2gs_add_irq(device->machine, IRQ_DOC);
 	}
 	else
 	{
-		apple2gs_remove_irq(machine, IRQ_DOC);
+		apple2gs_remove_irq(device->machine, IRQ_DOC);
 	}
 }
 
@@ -605,7 +605,7 @@ static void adb_write_datareg(running_machine *machine, UINT8 data)
 					break;
 
 				case 0x07:	/* synchronize */
-					if (memory_region_length(machine, "main") == 0x40000)	/* HACK */
+					if (memory_region_length(machine, "maincpu") == 0x40000)	/* HACK */
 						adb_command_length = 8;
 					else
 						adb_command_length = 4;
@@ -861,7 +861,8 @@ static READ8_HANDLER( gssnd_r )
 			}
 			else
 			{
-				sndglu_dummy_read = es5503_reg_0_r(space, sndglu_addr);
+				const device_config *es5503 = devtag_get_device(space->machine, "es5503");
+				sndglu_dummy_read = es5503_r(es5503, sndglu_addr);
 			}
 
 			if (sndglu_ctrl & 0x20)	// auto-increment
@@ -900,7 +901,8 @@ static WRITE8_HANDLER( gssnd_w )
 			}
 			else
 			{
-				es5503_reg_0_w(space, sndglu_addr, data);
+				const device_config *es5503 = devtag_get_device(space->machine, "es5503");
+				es5503_w(es5503, sndglu_addr, data);
 			}
 
 			if (sndglu_ctrl & 0x20)	// auto-increment
@@ -1041,7 +1043,7 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 		case 0x39:	/* C039 - SCCAREG */
 		case 0x3A:	/* C03A - SCCBDATA */
 		case 0x3B:	/* C03B - SCCADATA */
-			scc = device_list_find_by_tag(space->machine->config->devicelist, SCC8530, "scc");
+			scc = devtag_get_device(space->machine, "scc");
 			result = scc_r(scc, offset & 0x03);
 			break;
 
@@ -1074,8 +1076,8 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 		case 0x74: case 0x75: case 0x76: case 0x77:
 		case 0x78: case 0x79: case 0x7a: case 0x7b:
 		case 0x7c: case 0x7d: case 0x7e: case 0x7f:
-			offset |= (memory_region_length(space->machine, "main") - 1) & ~0x3FFF;
-			result = memory_region(space->machine, "main")[offset];
+			offset |= (memory_region_length(space->machine, "maincpu") - 1) & ~0x3FFF;
+			result = memory_region(space->machine, "maincpu")[offset];
 			break;
 
 		case 0x21:	/* C021 - MONOCOLOR */
@@ -1181,7 +1183,7 @@ static WRITE8_HANDLER( apple2gs_c0xx_w )
 		case 0x39:	/* C039 - SCCAREG */
 		case 0x3A:	/* C03A - SCCBDATA */
 		case 0x3B:	/* C03B - SCCADATA */
-			scc = device_list_find_by_tag(space->machine->config->devicelist, SCC8530, "scc");
+			scc = devtag_get_device(space->machine, "scc");
 			scc_w(scc, offset & 0x03, data);
 			break;
 
@@ -1518,8 +1520,8 @@ static UINT8 *apple2gs_getslotmem(running_machine *machine, offs_t address)
 	assert(address >= 0xC000);
 	assert(address <= 0xCFFF);
 
-	rom = memory_region(machine, "main");
-	rom += 0x030000 % memory_region_length(machine, "main");
+	rom = memory_region(machine, "maincpu");
+	rom += 0x030000 % memory_region_length(machine, "maincpu");
 	return &rom[address];
 }
 
@@ -1601,10 +1603,10 @@ static DIRECT_UPDATE_HANDLER( apple2gs_opbase )
 
 		if (opptr != NULL)
 		{
-			direct->mask = ~0;
+			direct->bytemask = ~0;
 			direct->raw = direct->decrypted = opptr - address;
-			direct->min = address;
-			direct->max = address;
+			direct->bytestart = address;
+			direct->byteend = address;
 			address = ~0;
 		}
 	}
@@ -1676,10 +1678,10 @@ static void apple2gs_setup_memory(running_machine *machine)
 	memory_set_bankptr(machine,2, apple2gs_slowmem);
 
 	/* install alternate ROM bank */
-	begin = 0x1000000 - memory_region_length(machine, "main");
+	begin = 0x1000000 - memory_region_length(machine, "maincpu");
 	end = 0xffffff;
 	memory_install_read8_handler(space, begin, end, 0, 0, SMH_BANK3);
-	memory_set_bankptr(machine,3, memory_region(machine, "main"));
+	memory_set_bankptr(machine,3, memory_region(machine, "maincpu"));
 
 	/* install new xxC000-xxCFFF handlers */
 	memory_install_read8_handler(space, 0x00c000, 0x00cfff, 0, 0, apple2gs_00Cxxx_r);

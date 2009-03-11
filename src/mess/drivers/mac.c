@@ -119,13 +119,6 @@ ADDRESS_MAP_END
     DEVICE CONFIG
 ***************************************************************************/
 
-static const custom_sound_interface custom_interface =
-{
-	mac_sh_start
-};
-
-
-
 static const applefdc_interface mac_iwm_interface =
 {
 	sony_set_lines,
@@ -144,9 +137,9 @@ static const applefdc_interface mac_iwm_interface =
 
 static MACHINE_DRIVER_START( mac512ke )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M68000, 7833600)        /* 7.8336 MHz */
+	MDRV_CPU_ADD("maincpu", M68000, 7833600)        /* 7.8336 MHz */
 	MDRV_CPU_PROGRAM_MAP(mac512ke_map, 0)
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60.15)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1260))
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -166,8 +159,7 @@ static MACHINE_DRIVER_START( mac512ke )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("custom", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(custom_interface)
+	MDRV_SOUND_ADD("custom", MAC_SOUND, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* nvram */
@@ -182,7 +174,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( macplus )
 	MDRV_IMPORT_FROM( mac512ke )
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP(macplus_map, 0)
 
 	MDRV_MACHINE_START(macscsi)
@@ -202,7 +194,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( maclc )
 	MDRV_IMPORT_FROM( macplus )
 
-	MDRV_CPU_REPLACE("main", M68020, 7833600*2)
+	MDRV_CPU_REPLACE("maincpu", M68020, 7833600*2)
 	MDRV_CPU_PROGRAM_MAP(maclc_map, 0)
 
 	MDRV_VIA6522_REMOVE("via6522_0")

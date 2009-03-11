@@ -9,6 +9,7 @@
 
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
+#include "sound/speaker.h"
 #include "includes/sym1.h"
 
 /* Peripheral chips */
@@ -41,11 +42,11 @@ static ADDRESS_MAP_START( sym1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0800, 0x0bff) AM_RAMBANK(3) AM_BASE(&sym1_ram_2k)
 	AM_RANGE(0x0c00, 0x0fff) AM_RAMBANK(4) AM_BASE(&sym1_ram_3k)
 	AM_RANGE(0x8000, 0x8fff) AM_ROM AM_BASE(&sym1_monitor)       /* U20 Monitor ROM */
-	AM_RANGE(0xa000, 0xa00f) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)      /* U25 VIA #1 */
-	AM_RANGE(0xa400, 0xa40f) AM_DEVREADWRITE(RIOT6532, "riot", riot6532_r, riot6532_w)  /* U27 RIOT */
+	AM_RANGE(0xa000, 0xa00f) AM_DEVREADWRITE("via6522_0", via_r, via_w)      /* U25 VIA #1 */
+	AM_RANGE(0xa400, 0xa40f) AM_DEVREADWRITE("riot", riot6532_r, riot6532_w)  /* U27 RIOT */
 	AM_RANGE(0xa600, 0xa67f) AM_RAMBANK(5) AM_BASE(&sym1_riot_ram)  /* U27 RIOT RAM */
-	AM_RANGE(0xa800, 0xa80f) AM_DEVREADWRITE(VIA6522, "via6522_1", via_r, via_w)      /* U28 VIA #2 */
-	AM_RANGE(0xac00, 0xac0f) AM_DEVREADWRITE(VIA6522, "via6522_2", via_r, via_w)      /* U29 VIA #3 */
+	AM_RANGE(0xa800, 0xa80f) AM_DEVREADWRITE("via6522_1", via_r, via_w)      /* U28 VIA #2 */
+	AM_RANGE(0xac00, 0xac0f) AM_DEVREADWRITE("via6522_2", via_r, via_w)      /* U29 VIA #3 */
 ADDRESS_MAP_END
 
 
@@ -121,7 +122,7 @@ INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( sym1 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, SYM1_CLOCK)  /* 1 MHz */
+	MDRV_CPU_ADD("maincpu", M6502, SYM1_CLOCK)  /* 1 MHz */
 	MDRV_CPU_PROGRAM_MAP(sym1_map, 0)
 	MDRV_MACHINE_RESET(sym1)
 
@@ -148,7 +149,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( sym1 )
-	ROM_REGION(0x10000, "main", 0)
+	ROM_REGION(0x10000, "maincpu", 0)
 //  ROM_LOAD("basicv11", 0xc000, 0x2000, CRC(075b0bbd))
 	ROM_LOAD("sym1", 0x8000, 0x1000, CRC(7a4b1e12) SHA1(cebdf815105592658cfb7af262f2101d2aeab786) )
 ROM_END

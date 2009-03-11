@@ -70,10 +70,97 @@ TODO :
     seem to be used: triggering these seems to cause a soft reset.  XOPs are
     not used at all: the ROM area where these vectors should be defined is used
     by a ROM branch table.
+
+**** Added by Robbbert, Jan 2009 ****
+
+Memory Map found at http://www.floodgap.com/retrobits/tomy/mmap.html
+
+                   *** $0000-$7FFF is the 32K BIOS ***
+ it is also possible to replace the BIOS with an external ROM (see $E000 range)
+
+0000                            
+                                reset vector (level 0)
+                                0000-0001: WP   0002-0003: PC (%)
+0004
+                                level 1 and 2 IRQ vectors (%)
+                                idem. These just seem to reset the system.
+000C
+                                additional vectors
+0040
+                                XOP vectors (%)
+				The BIOS doesn't seem to use these for XOPs.
+				Instead, this is a branch table.
+0080
+				BIOS code
+				(CRU only: $1EE0-FE: 9995 flag register;
+					$1FDA: MID flag)
+4000
+				GBASIC
+				(on the American v2.3 firmware, the GPL
+					interpreter and VDP RAMLUT co-exist
+					with GBASIC in this range)
+
+              *** $8000-$BFFF is the 16K option ROM area ***
+
+8000
+				BASIC (Tutor only) and/or cartridge ROM
+					(controlled by $E100)
+				To be recognized, a cartridge must have a
+				$55, $66 or $aa header sequence.
+
+                         *** end ROM ***
+C000
+				unmapped (possible use in 24K cartridges)
+E000
+				I/O range
+				---------
+				9918A VDP data/register ports: $E000, E002
+				"MMU" banking controls: $E100-E1FF
+					$E100 write: enable cartridge, disable
+						BIOS at $0000 (???) -- magic
+						required at $E110 for this
+					$E108 write: enable BASIC ROM, disable
+						cartridge at $8000
+					$E10C write: enable cartridge, disable
+						BASIC ROM at $8000
+					$E110 must be $42 to enable $E100
+						and to replace the BIOS with
+						an installed cartridge ROM.
+						BLWP assumed at $0000 (??).
+				SN76489AN sound data port: $E200
+				Device handshaking: $E600
+					Unknown purpose, disk drive maybe?
+				Printer handshaking: $E800
+				This is a standard Centronics port.
+					$E810 write: parallel data bus
+					$E820 read: parallel port busy
+					$E840 write: port handshake output
+				Keyboard lines: $EC00-$EC7E (*CRU*)
+					(CRU physical address $7600-$763F)
+				Cassette lines: $ED00-$EEFF
+					$ED00 (*CRU*): input level
+						(physical address $7680)
+					$EE00 write: tape output zero
+					$EE20 write: tape output one
+					$EE40 write: tape IRQ on
+					$EE60 write: tape IRQ off
+					$EE80, A0, C0, E0: ???
+					
+F000
+                                TMS9995 RAM (*)
+F0FC
+                                ??
+FFFA
+                                decrementer (*)
+FFFC
+                                NMI vector (*)
+FFFF
+
 */
 
 #include "driver.h"
 #include "cpu/tms9900/tms9900.h"
+#include "sound/wave.h"
 #include "video/tms9928a.h"
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
@@ -104,8 +191,8 @@ static DRIVER_INIT(tutor)
 {
 	tape_interrupt_timer = timer_alloc(machine, tape_interrupt_handler, NULL);
 
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, "main") + basic_base, 0);
-	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "main") + cartridge_base, 0);
+	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, "maincpu") + basic_base, 0);
+	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "maincpu") + cartridge_base, 0);
 	memory_set_bank(machine, 1, 0);
 }
 
@@ -178,13 +265,13 @@ static READ8_HANDLER(read_keyboard)
 
 static DEVICE_IMAGE_LOAD( tutor_cart )
 {
-	image_fread(image, memory_region(image->machine, "main") + cartridge_base, 0x6000);
+	image_fread(image, memory_region(image->machine, "maincpu") + cartridge_base, 0x6000);
 	return INIT_PASS;
 }
 
 static DEVICE_IMAGE_UNLOAD( tutor_cart )
 {
-	memset(memory_region(image->machine, "main") + cartridge_base, 0, 0x6000);
+	memset(memory_region(image->machine, "maincpu") + cartridge_base, 0, 0x6000);
 }
 
 /*
@@ -270,13 +357,13 @@ static WRITE8_HANDLER(tutor_mapper_w)
 static TIMER_CALLBACK(tape_interrupt_handler)
 {
 	//assert(tape_interrupt_enable);
-	cpu_set_input_line(machine->cpu[0], 1, (cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) > 0.0) ? ASSERT_LINE : CLEAR_LINE);
+	cpu_set_input_line(machine->cpu[0], 1, (cassette_input(devtag_get_device(machine, "cassette")) > 0.0) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /* CRU handler */
 static  READ8_HANDLER(tutor_cassette_r)
 {
-	return (cassette_input(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" )) > 0.0) ? 1 : 0;
+	return (cassette_input(devtag_get_device(space->machine, "cassette")) > 0.0) ? 1 : 0;
 }
 
 /* memory handler */
@@ -293,7 +380,7 @@ static WRITE8_HANDLER(tutor_cassette_w)
 		{
 		case 0:
 			/* data out */
-			cassette_output(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ), (data) ? +1.0 : -1.0);
+			cassette_output(devtag_get_device(space->machine, "cassette"), (data) ? +1.0 : -1.0);
 			break;
 		case 1:
 			/* interrupt control??? */
@@ -417,13 +504,13 @@ static WRITE8_HANDLER(tutor_printer_w)
 static ADDRESS_MAP_START(tutor_memmap, ADDRESS_SPACE_PROGRAM, 8)
 
 	AM_RANGE(0x0000, 0x7fff) AM_ROM	/*system ROM*/
-	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(1)	/*BASIC ROM & cartridge ROM*/
+	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(1)	AM_WRITENOP/*BASIC ROM & cartridge ROM*/
 	AM_RANGE(0xc000, 0xdfff) AM_NOP	/*free for expansion, or cartridge ROM?*/
 
 	AM_RANGE(0xe000, 0xe000) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)	/*VDP data*/
 	AM_RANGE(0xe002, 0xe002) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)/*VDP status*/
 	AM_RANGE(0xe100, 0xe1ff) AM_READWRITE(tutor_mapper_r, tutor_mapper_w)	/*cartridge mapper*/
-	AM_RANGE(0xe200, 0xe200) AM_READWRITE(SMH_NOP, sn76496_0_w)			/*sound chip*/
+	AM_RANGE(0xe200, 0xe200) AM_DEVWRITE("sn76489a", sn76496_w)	/*sound chip*/
 	AM_RANGE(0xe800, 0xe8ff) AM_READWRITE(tutor_printer_r, tutor_printer_w)	/*printer*/
 	AM_RANGE(0xee00, 0xeeff) AM_READWRITE(SMH_NOP, tutor_cassette_w)		/*cassette interface*/
 
@@ -561,7 +648,7 @@ INPUT_PORTS_END
 static const struct tms9995reset_param tutor_processor_config =
 {
 #if 0
-	"main",/* region for processor RAM */
+	"maincpu",/* region for processor RAM */
 	0xf000,     /* offset : this area is unused in our region, and matches the processor address */
 	0xf0fc,		/* offset for the LOAD vector */
 	1,          /* use fast IDLE */
@@ -573,18 +660,18 @@ static const struct tms9995reset_param tutor_processor_config =
 static MACHINE_DRIVER_START(tutor)
 	/* basic machine hardware */
 	/* TMS9995 CPU @ 10.7 MHz */
-	MDRV_CPU_ADD("main", TMS9995, 10700000)
+	MDRV_CPU_ADD("maincpu", TMS9995, 10700000)
 	MDRV_CPU_CONFIG(tutor_processor_config)
 	MDRV_CPU_PROGRAM_MAP(tutor_memmap, 0)
 	MDRV_CPU_IO_MAP(tutor_io, 0)
-	MDRV_CPU_VBLANK_INT("main", tutor_vblank_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", tutor_vblank_interrupt)
 
 	MDRV_MACHINE_START( tutor )
 	MDRV_MACHINE_RESET( tutor )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
@@ -592,7 +679,7 @@ static MACHINE_DRIVER_START(tutor)
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("sn76489a", SN76489A, 3579545)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
@@ -610,7 +697,7 @@ MACHINE_DRIVER_END
 */
 ROM_START(tutor)
 	/*CPU memory space*/
-	ROM_REGION(0x14000,"main",0)
+	ROM_REGION(0x14000,"maincpu",0)
 	ROM_LOAD("tutor1.bin", 0x0000, 0x8000, CRC(702c38ba) SHA1(ce60607c3038895e31915d41bb5cf71cb8522d7a))      /* system ROM */
 	ROM_LOAD("tutor2.bin", 0x8000, 0x4000, CRC(05f228f5) SHA1(46a14a45f6f9e2c30663a2b87ce60c42768a78d0))      /* BASIC ROM */
 ROM_END

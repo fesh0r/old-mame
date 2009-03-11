@@ -309,7 +309,7 @@ DRIVER_INIT( ti99_4 )
 	has_evpc = FALSE;
 
 	/* set up memory pointers */
-	xRAM_ptr = (UINT16 *) (memory_region(machine, "main") + offset_xram);
+	xRAM_ptr = (UINT16 *) (memory_region(machine, "maincpu") + offset_xram);
 	console_GROMs.data_ptr = memory_region(machine, region_grom);
 
 	/* Generate missing chunk of each console GROMs */
@@ -327,13 +327,13 @@ DRIVER_INIT( ti99_4a )
 	has_evpc = FALSE;
 
 	/* set up memory pointers */
-	xRAM_ptr = (UINT16 *) (memory_region(machine, "main") + offset_xram);
+	xRAM_ptr = (UINT16 *) (memory_region(machine, "maincpu") + offset_xram);
 	console_GROMs.data_ptr = memory_region(machine, region_grom);
 }
 
 DRIVER_INIT( ti99_4ev )
 {
-	UINT8 *mem = memory_region(machine, "main");
+	UINT8 *mem = memory_region(machine, "maincpu");
 	ti99_model = model_99_4a;
 	has_evpc = TRUE;
 
@@ -346,7 +346,7 @@ DRIVER_INIT( ti99_4ev )
 
 DRIVER_INIT( ti99_8 )
 {
-	UINT8 *mem = memory_region(machine, "main");
+	UINT8 *mem = memory_region(machine, "maincpu");
 	ti99_model = model_99_8;
 	has_evpc = FALSE;
 
@@ -369,7 +369,7 @@ DRIVER_INIT( ti99_4p )
 	has_evpc = TRUE;
 
 	/* set up memory pointers */
-	xRAM_ptr = (UINT16 *) (memory_region(machine, "main") + offset_xram_4p);
+	xRAM_ptr = (UINT16 *) (memory_region(machine, "maincpu") + offset_xram_4p);
 	/*console_GROMs.data_ptr = memory_region(machine, region_grom);*/
 }
 
@@ -386,8 +386,7 @@ DEVICE_START( ti99_cart )
 		id = 2;
 	}
 	
-	cartridge_pages[id] = (UINT16 *) (memory_region(device->machine, "main") + offset_cart + (id * 0x2000));
-	return DEVICE_START_OK;
+	cartridge_pages[id] = (UINT16 *) (memory_region(device->machine, "maincpu") + offset_cart + (id * 0x2000));
 }
 
 /*
@@ -714,7 +713,7 @@ MACHINE_RESET( ti99 )
 	}
 	else if (ti99_model == model_99_4p)
 	{
-		UINT8* mem = memory_region(machine, "main");
+		UINT8* mem = memory_region(machine, "maincpu");
 
 		/* set up system ROM and scratch pad pointers */
 		memory_set_bankptr(machine, 1, mem + offset_rom0_4p);	/* system ROM */
@@ -724,7 +723,7 @@ MACHINE_RESET( ti99 )
 	else
 	{
 		/* set up scratch pad pointer */
-		memory_set_bankptr(machine, 1, memory_region(machine, "main") + offset_sram);
+		memory_set_bankptr(machine, 1, memory_region(machine, "maincpu") + offset_sram);
 	}
 
 	if (ti99_model != model_99_4p)
@@ -747,7 +746,7 @@ MACHINE_RESET( ti99 )
 	handset_buflen = 0;
 	handset_clock = 0;
 	handset_ack = 0;
-	tms9901_set_single_int(device_list_find_by_tag(machine->config->devicelist, TMS9901, "tms9901"), 12, 0);
+	tms9901_set_single_int(devtag_get_device(machine, "tms9901"), 12, 0);
 
 	/* read config */
 	if (ti99_model == model_99_8)
@@ -786,8 +785,6 @@ MACHINE_RESET( ti99 )
 		{
 			memory_install_read16_handler(space, 0x9000, 0x93ff, 0, 0, ti99_rspeech_r);
 			memory_install_write16_handler(space, 0x9400, 0x97ff, 0, 0, ti99_wspeech_w);
-
-			sndti_set_info_int(SOUND_TMS5220, 0, SNDINFO_INT_TMS5220_VARIANT, variant_tmc0285);
 		}
 	}
 	else
@@ -1037,7 +1034,7 @@ WRITE16_HANDLER ( ti99_4p_cart_w )
 {
 	if (ti99_4p_internal_rom6_enable)
 	{
-		ti99_4p_internal_ROM6 = (UINT16 *) (memory_region(space->machine, "main") + (FPTR)((offset & 1) ? offset_rom6b_4p : offset_rom6_4p));
+		ti99_4p_internal_ROM6 = (UINT16 *) (memory_region(space->machine, "maincpu") + (FPTR)((offset & 1) ? offset_rom6b_4p : offset_rom6_4p));
 		return;
 	}
 
@@ -1085,7 +1082,7 @@ WRITE16_HANDLER ( ti99_wsnd_w )
 {
 	cpu_adjust_icount(space->machine->cpu[0],-4);
 
-	sn76496_0_w(space, offset, (data >> 8) & 0xff);
+	sn76496_w(devtag_get_device(space->machine, "sn76496"), offset, (data >> 8) & 0xff);
 }
 
 /*
@@ -1174,7 +1171,7 @@ static READ16_HANDLER ( ti99_rspeech_r )
 {
 	cpu_adjust_icount(space->machine->cpu[0],-(18+3));		/* this is just a minimum, it can be more */
 
-	return ((int) tms5220_status_r(space, offset)) << 8;
+	return ((int) tms5220_status_r(devtag_get_device(space->machine, "tms5220"), offset)) << 8;
 }
 
 #if 0
@@ -1205,9 +1202,9 @@ static WRITE16_HANDLER ( ti99_wspeech_w )
 	there are 15 bytes in FIFO.  It should be 16.  Of course, if it were the
 	case, we would need to store the value on the bus, which would be more
 	complex. */
-	if (! tms5220_ready_r())
+	if (! tms5220_ready_r(devtag_get_device(space->machine, "tms5220")))
 	{
-		attotime time_to_ready = double_to_attotime(tms5220_time_to_ready());
+		attotime time_to_ready = double_to_attotime(tms5220_time_to_ready(devtag_get_device(space->machine, "tms5220")));
 		int cycles_to_ready = cpu_attotime_to_clocks(space->machine->cpu[0], time_to_ready);
 
 		logerror("time to ready: %f -> %d\n", attotime_to_double(time_to_ready), (int) cycles_to_ready);
@@ -1217,7 +1214,7 @@ static WRITE16_HANDLER ( ti99_wspeech_w )
 	}
 #endif
 
-	tms5220_data_w(space, offset, (data >> 8) & 0xff);
+	tms5220_data_w(devtag_get_device(space->machine, "tms5220"), offset, (data >> 8) & 0xff);
 }
 
 /*
@@ -1397,7 +1394,7 @@ WRITE16_HANDLER ( ti99_4p_wgpl_w )
 				if (! (offset & 1))
 				{
 					cpu_adjust_icount(space->machine->cpu[0],-16*4);		/* this is just a minimum, it can be more */
-					reply = tms5220_status_r(space, 0);
+					reply = tms5220_status_r(devtag_get_device(space->machine, "tms5220"), 0);
 				}
 				break;
 
@@ -1508,7 +1505,7 @@ WRITE8_HANDLER ( ti99_8_w )
 			case 1:
 				/* sound write + RAM */
 				if (offset < 0x8410)
-					sn76496_0_w(space, offset, data);
+					sn76496_w(devtag_get_device(space->machine, "sn76496"), offset, data);
 				else
 					sRAM_ptr_8[offset & 0x1fff] = data;
 				break;
@@ -1566,9 +1563,9 @@ WRITE8_HANDLER ( ti99_8_w )
 					there are 15 bytes in FIFO.  It should be 16.  Of course, if it were the
 					case, we would need to store the value on the bus, which would be more
 					complex. */
-					if (! tms5220_ready_r())
+					if (! tms5220_ready_r(devtag_get_device(space->machine, "tms5220")))
 					{
-						attotime time_to_ready = double_to_attotime(tms5220_time_to_ready());
+						attotime time_to_ready = double_to_attotime(tms5220_time_to_ready(devtag_get_device(space->machine, "tms5220")));
 						double d = ceil(cpu_attotime_to_clocks(space->machine->cpu[0], time_to_ready));
 						int cycles_to_ready = ((int) (d + 3)) & ~3;
 
@@ -1579,7 +1576,7 @@ WRITE8_HANDLER ( ti99_8_w )
 						timer_set(space->machine, attotime_zero, NULL, 0, /*speech_kludge_callback*/NULL);
 					}
 
-					tms5220_data_w(space, offset, data);
+					tms5220_data_w(devtag_get_device(space->machine, "tms5220"), offset, data);
 				}
 				break;
 
@@ -1715,7 +1712,7 @@ static TIMER_CALLBACK(ti99_handset_ack_callback)
 	handset_clock = ! handset_clock;
 	handset_buf >>= 4;
 	handset_buflen--;
-	tms9901_set_single_int(device_list_find_by_tag(machine->config->devicelist, TMS9901, "tms9901"), 12, 0);
+	tms9901_set_single_int(devtag_get_device(machine, "tms9901"), 12, 0);
 
 	if (handset_buflen == 1)
 	{
@@ -1737,7 +1734,7 @@ static TIMER_CALLBACK(ti99_handset_ack_callback)
 
 	Handler for tms9901 P0 pin (handset data acknowledge)
 */
-WRITE8_DEVICE_HANDLER( ti99_handset_set_ack )
+static WRITE8_DEVICE_HANDLER( ti99_handset_set_ack )
 {
 	if (has_handset && handset_buflen && (data != handset_ack))
 	{
@@ -1763,7 +1760,7 @@ static void ti99_handset_post_message(running_machine *machine, int message)
 	handset_clock = 1;
 	handset_buf = ~ message;
 	handset_buflen = 3;
-	tms9901_set_single_int(device_list_find_by_tag(machine->config->devicelist, TMS9901, "tms9901"), 12, 1);
+	tms9901_set_single_int(devtag_get_device(machine, "tms9901"), 12, 1);
 }
 
 /*
@@ -2146,7 +2143,7 @@ nota:
 */
 static void tms9901_set_int1(running_machine *machine, int state)
 {
-	tms9901_set_single_int(device_list_find_by_tag(machine->config->devicelist, TMS9901, "tms9901"), 1, state);
+	tms9901_set_single_int(devtag_get_device(machine, "tms9901"), 1, state);
 }
 
 /*
@@ -2154,7 +2151,7 @@ static void tms9901_set_int1(running_machine *machine, int state)
 */
 void tms9901_set_int2(running_machine *machine, int state)
 {
-	tms9901_set_single_int(device_list_find_by_tag(machine->config->devicelist, TMS9901, "tms9901"), 2, state);
+	tms9901_set_single_int(devtag_get_device(machine, "tms9901"), 2, state);
 }
 
 /*
@@ -2238,7 +2235,7 @@ static READ8_DEVICE_HANDLER( ti99_R9901_1 )
 	}
 	
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
-	/*if (cassette_input(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette1" )) > 0)
+	/*if (cassette_input(devtag_get_device(device->machine, "cassette1")) > 0)
 		answer |= 8;*/
 
 	return answer;
@@ -2272,12 +2269,12 @@ static READ8_DEVICE_HANDLER( ti99_R9901_3 )
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
 	if ( ti99_model != model_99_8 )
 	{
-		if (cassette_input(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette1" )) > 0)
+		if (cassette_input(devtag_get_device(device->machine, "cassette1")) > 0)
 			answer |= 8;
 	}
 	else
 	{
-		if (cassette_input(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" )) > 0)
+		if (cassette_input(devtag_get_device(device->machine, "cassette")) > 0)
 			answer |= 8;
 	}
 
@@ -2374,7 +2371,7 @@ static READ8_DEVICE_HANDLER( ti99_8_R9901_1 )
 	}
 	
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
-	/*if (cassette_input(device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" )) > 0)
+	/*if (cassette_input(devtag_get_device(machine, "cassette")) > 0)
 		answer |= 8;*/
 
 	return answer;
@@ -2413,11 +2410,11 @@ static WRITE8_DEVICE_HANDLER( ti99_CS_motor )
 
 	if ( ti99_model != model_99_8 )
 	{
-		img = device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, ( offset-6 ) ? "cassette2" :  "cassette1" );
+		img = devtag_get_device(device->machine, (offset-6 ) ? "cassette2" :  "cassette1" );
 	}
 	else
 	{
-		img = device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" );
+		img = devtag_get_device(device->machine, "cassette");
 	}
 	cassette_change_state(img, data ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 }
@@ -2443,12 +2440,12 @@ static WRITE8_DEVICE_HANDLER( ti99_CS_output )
 {
 	if (ti99_model != model_99_8)	/* 99/8 only has one tape port!!! */
 	{
-		cassette_output(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette1" ), data ? +1 : -1);
-		cassette_output(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette2" ), data ? +1 : -1);
+		cassette_output(devtag_get_device(device->machine, "cassette1"), data ? +1 : -1);
+		cassette_output(devtag_get_device(device->machine, "cassette2"), data ? +1 : -1);
 	}
 	else
 	{
-		cassette_output(device_list_find_by_tag( device->machine->config->devicelist, CASSETTE, "cassette" ), data ? +1 : -1);
+		cassette_output(devtag_get_device(device->machine, "cassette"), data ? +1 : -1);
 	}
 }
 
@@ -2485,7 +2482,7 @@ static UINT8 *ti99_8_internal_DSR;
 /* set up handlers, and set initial state */
 static void ti99_8_internal_dsr_reset(running_machine *machine)
 {
-	ti99_8_internal_DSR = memory_region(machine, "main") + offset_rom0_8 + 0x4000;
+	ti99_8_internal_DSR = memory_region(machine, "maincpu") + offset_rom0_8 + 0x4000;
 
 	ti99_peb_set_card_handlers(0x2700, & ti99_8_internal_dsr_handlers);
 }
@@ -2542,7 +2539,7 @@ static UINT16 *ti99_4p_internal_DSR;
 /* set up handlers, and set initial state */
 static void ti99_4p_internal_dsr_reset(running_machine *machine)
 {
-	UINT8* mem = memory_region(machine, "main");
+	UINT8* mem = memory_region(machine, "maincpu");
 
 	ti99_4p_internal_DSR = (UINT16 *) (mem + offset_rom4_4p);
 	ti99_4p_internal_ROM6 = (UINT16 *) (mem + offset_rom6_4p);

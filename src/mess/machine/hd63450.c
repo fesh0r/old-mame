@@ -46,13 +46,13 @@ static TIMER_CALLBACK(dma_transfer_timer);
 static void dma_transfer_abort(const device_config* device, int channel);
 static void dma_transfer_halt(const device_config* device, int channel);
 static void dma_transfer_continue(const device_config* device, int channel);
+static void dma_transfer_start(const device_config* device, int channel, int dir);
 
-DEVICE_START(hd63450)
+static DEVICE_START(hd63450)
 {
 	hd63450_t* dmac = device->token;
 	int x;
 
-	assert(device->machine != NULL);
 	dmac->intf = device->static_config;
 
 	// Initialise timers and registers
@@ -64,7 +64,6 @@ DEVICE_START(hd63450)
 		dmac->clock[x] = dmac->intf->clock[x];
 		dmac->burst_clock[x] = dmac->intf->burst_clock[x];
 	}
-	return DEVICE_START_OK;
 }
 
 int hd63450_read(const device_config* device, int offset, UINT16 mem_mask)
@@ -230,7 +229,7 @@ void hd63450_write(const device_config* device, int offset, int data, UINT16 mem
 	}
 }
 
-void dma_transfer_start(const device_config* device, int channel, int dir)
+static void dma_transfer_start(const device_config* device, int channel, int dir)
 {
 	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
 	hd63450_t* dmac = device->token;

@@ -325,6 +325,7 @@ the Edu64-1 used the full C64 BIOS. Confirmations are needed, anyway.
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/sid6581.h"
+#include "sound/dac.h"
 #include "machine/6526cia.h"
 
 #include "machine/cbmipt.h"
@@ -348,9 +349,9 @@ static ADDRESS_MAP_START(ultimax_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_BASE(&c64_memory)
 	AM_RANGE(0x8000, 0x9fff) AM_ROM AM_BASE(&c64_roml)
 	AM_RANGE(0xd000, 0xd3ff) AM_READWRITE(vic2_port_r, vic2_port_w)
-	AM_RANGE(0xd400, 0xd7ff) AM_READWRITE(sid6581_0_port_r, sid6581_0_port_w)
+	AM_RANGE(0xd400, 0xd7ff) AM_DEVREADWRITE("sid6581", sid6581_r, sid6581_w)
 	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(SMH_RAM, c64_colorram_write) AM_BASE(&c64_colorram) /* colorram  */
-	AM_RANGE(0xdc00, 0xdcff) AM_DEVREADWRITE(CIA6526R1, "cia_0", cia_r, cia_w)
+	AM_RANGE(0xdc00, 0xdcff) AM_DEVREADWRITE("cia_0", cia_r, cia_w)
 	AM_RANGE(0xe000, 0xffff) AM_ROM AM_BASE(&c64_romh)				/* ram or kernel rom */
 ADDRESS_MAP_END
 
@@ -476,9 +477,9 @@ static const sid6581_interface c64_sound_interface =
 
 static MACHINE_DRIVER_START( c64 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6510, VIC6567_CLOCK)
+	MDRV_CPU_ADD("maincpu", M6510, VIC6567_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(c64_mem, 0)
-	MDRV_CPU_VBLANK_INT("main", c64_frame_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", c64_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC6567_HRETRACERATE)
 	MDRV_QUANTUM_TIME(HZ(60))
 
@@ -486,20 +487,20 @@ static MACHINE_DRIVER_START( c64 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( vh_vic2 )
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sid", SID6581, VIC6567_CLOCK)
+	MDRV_SOUND_ADD("sid6581", SID6581, VIC6567_CLOCK)
 	MDRV_SOUND_CONFIG(c64_sound_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* quickload */
-	MDRV_QUICKLOAD_ADD(cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
+	MDRV_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", cbm_cassette_config )
@@ -516,9 +517,9 @@ static MACHINE_DRIVER_START( c64 )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( c64pal )
-	MDRV_CPU_ADD( "main", M6510, VIC6569_CLOCK)
+	MDRV_CPU_ADD( "maincpu", M6510, VIC6569_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(c64_mem, 0)
-	MDRV_CPU_VBLANK_INT("main", c64_frame_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", c64_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC6569_HRETRACERATE)
 	MDRV_QUANTUM_TIME(HZ(50))
 
@@ -526,20 +527,20 @@ static MACHINE_DRIVER_START( c64pal )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( vh_vic2_pal )
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0)) /* 2500 not accurate */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sid", SID6581, VIC6569_CLOCK)
+	MDRV_SOUND_ADD("sid6581", SID6581, VIC6569_CLOCK)
 	MDRV_SOUND_CONFIG(c64_sound_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* quickload */
-	MDRV_QUICKLOAD_ADD(cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
+	MDRV_QUICKLOAD_ADD("quickload", cbm_c64, "p00,prg,t64", CBM_QUICKLOAD_DELAY_SECONDS)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", cbm_cassette_config )
@@ -553,10 +554,10 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ultimax )
 	MDRV_IMPORT_FROM( c64 )
-	MDRV_CPU_REPLACE( "main", M6510, VIC6567_CLOCK)
+	MDRV_CPU_REPLACE( "maincpu", M6510, VIC6567_CLOCK)
 	MDRV_CPU_PROGRAM_MAP( ultimax_mem, 0 )
 
-	MDRV_SOUND_REPLACE("sid", SID6581, VIC6567_CLOCK)
+	MDRV_SOUND_REPLACE("sid6581", SID6581, VIC6567_CLOCK)
 	MDRV_SOUND_CONFIG(c64_sound_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	
@@ -575,7 +576,7 @@ static MACHINE_DRIVER_START( c64gs )
 	MDRV_IMPORT_FROM( c64pal )
 	MDRV_SOUND_REMOVE( "dac" )
 	MDRV_CASSETTE_REMOVE( "cassette" )
-	MDRV_QUICKLOAD_REMOVE
+	MDRV_QUICKLOAD_REMOVE( "quickload" )
 MACHINE_DRIVER_END
 
 
@@ -602,11 +603,11 @@ MACHINE_DRIVER_END
 
 
 ROM_START( max )
-	ROM_REGION( 0x10000, "main", ROMREGION_ERASEFF )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 ROM_END
 
 ROM_START( c64 )
-	ROM_REGION( 0x19400, "main", 0 )
+	ROM_REGION( 0x19400, "maincpu", 0 )
 	ROM_LOAD( "901226-01.bin", 0x10000, 0x2000, CRC(f833d117) SHA1(79015323128650c742a3694c9429aa91f355905e) )	// BASIC
 	ROM_SYSTEM_BIOS(0, "default", "Kernal rev. 3" )
 	ROMX_LOAD( "901227-03.bin", 0x12000, 0x2000, CRC(dbe3e7c7) SHA1(1d503e56df85a62fee696e7618dc5b4e781df1bb), ROM_BIOS(1) )	// Kernal
@@ -620,7 +621,7 @@ ROM_END
 #define rom_c64pal	rom_c64
 
 ROM_START( c64jpn )
-	ROM_REGION( 0x19400, "main", 0 )
+	ROM_REGION( 0x19400, "maincpu", 0 )
 	ROM_LOAD( "901226-01.bin", 0x10000, 0x2000, CRC(f833d117) SHA1(79015323128650c742a3694c9429aa91f355905e) )
 	ROM_LOAD( "906145-02.bin", 0x12000, 0x2000, CRC(3a9ef6f1) SHA1(4ff0f11e80f4b57430d8f0c3799ed0f0e0f4565d) )
 	ROM_LOAD( "906143-02.bin", 0x14000, 0x1000, CRC(1604f6c1) SHA1(0fad19dbcdb12461c99657b2979dbb5c2e47b527) )
@@ -628,7 +629,7 @@ ROM_END
 
 
 ROM_START( vic64s )
-	ROM_REGION( 0x19400, "main", 0 )
+	ROM_REGION( 0x19400, "maincpu", 0 )
 	ROM_LOAD( "901226-01.bin",	0x10000, 0x2000, CRC(f833d117) SHA1(79015323128650c742a3694c9429aa91f355905e) )
 	ROM_LOAD( "kernel.swe",	0x12000, 0x2000, CRC(f10c2c25) SHA1(e4f52d9b36c030eb94524eb49f6f0774c1d02e5e) )
 	ROM_SYSTEM_BIOS(0, "default", "Swedish Characters" )
@@ -640,7 +641,7 @@ ROM_END
 #define rom_c64swe	rom_vic64s
 
 ROM_START( pet64 )
-	ROM_REGION( 0x19400, "main", 0 )
+	ROM_REGION( 0x19400, "maincpu", 0 )
 	ROM_LOAD( "901226-01.bin", 0x10000, 0x2000, CRC(f833d117) SHA1(79015323128650c742a3694c9429aa91f355905e) )
 	ROM_LOAD( "901246-01.bin", 0x12000, 0x2000, CRC(789c8cc5) SHA1(6c4fa9465f6091b174df27dfe679499df447503c) )
 	ROM_LOAD( "901225-01.bin", 0x14000, 0x1000, CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa) )
@@ -650,7 +651,7 @@ ROM_END
 #define rom_edu64	rom_c64
 
 ROM_START( sx64 )
-	ROM_REGION( 0x19400, "main", 0 )
+	ROM_REGION( 0x19400, "maincpu", 0 )
 	ROM_LOAD( "901226-01.bin", 0x10000, 0x2000, CRC(f833d117) SHA1(79015323128650c742a3694c9429aa91f355905e) )
 	ROM_LOAD( "251104-04.bin", 0x12000, 0x2000, CRC(2c5965d4) SHA1(aa136e91ecf3c5ac64f696b3dbcbfc5ba0871c98) )
 	ROM_LOAD( "901225-01.bin", 0x14000, 0x1000, CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa) )
@@ -659,7 +660,7 @@ ROM_START( sx64 )
 ROM_END
 
 ROM_START( dx64 )
-	ROM_REGION( 0x19400, "main", 0 )
+	ROM_REGION( 0x19400, "maincpu", 0 )
     ROM_LOAD( "901226-01.bin", 0x10000, 0x2000, CRC(f833d117) SHA1(79015323128650c742a3694c9429aa91f355905e) )
     ROM_LOAD( "dx64kern.bin",     0x12000, 0x2000, CRC(58065128) )
 
@@ -669,7 +670,7 @@ ROM_START( dx64 )
 ROM_END
 
 ROM_START( vip64 )
-	ROM_REGION( 0x19400, "main", 0 )
+	ROM_REGION( 0x19400, "maincpu", 0 )
 	ROM_LOAD( "901226-01.bin", 0x10000, 0x2000, CRC(f833d117) SHA1(79015323128650c742a3694c9429aa91f355905e) )
 	ROM_LOAD( "kernelsx.swe",   0x12000, 0x2000, CRC(7858d3d7) SHA1(097cda60469492a8916c2677b7cce4e12a944bc0) )
 	ROM_LOAD( "charswe.bin", 0x14000, 0x1000, CRC(bee9b3fd) SHA1(446ae58f7110d74d434301491209299f66798d8a) )
@@ -679,7 +680,7 @@ ROM_END
 
 
 ROM_START( c64c )
-	ROM_REGION( 0x19400, "main", 0 )
+	ROM_REGION( 0x19400, "maincpu", 0 )
 	/* standard basic, modified kernel */
 	ROM_LOAD( "251913-01.bin", 0x10000, 0x4000, CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88) )
 	ROM_LOAD( "901225-01.bin", 0x14000, 0x1000, CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa) )
@@ -689,7 +690,7 @@ ROM_END
 #define rom_c64g		rom_c64c
 
 ROM_START( c64gs )
-	ROM_REGION( 0x19400, "main", 0 )
+	ROM_REGION( 0x19400, "maincpu", 0 )
 	/* standard basic, modified kernel */
 	ROM_LOAD( "390852-01.bin", 0x10000, 0x4000, CRC(b0a9c2da) SHA1(21940ef5f1bfe67d7537164f7ca130a1095b067a) )
 	ROM_LOAD( "901225-01.bin", 0x14000, 0x1000, CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa) )

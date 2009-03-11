@@ -88,7 +88,7 @@ static ADDRESS_MAP_START( nascom1_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_READWRITE(nascom1_port_00_r, nascom1_port_00_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(nascom1_port_01_r, nascom1_port_01_w)
 	AM_RANGE(0x02, 0x02) AM_READ(nascom1_port_02_r)
-	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE( Z80PIO, "z80pio", z80pio_r, z80pio_w )
+	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE("z80pio", z80pio_r, z80pio_w )
 ADDRESS_MAP_END
 
 
@@ -97,8 +97,8 @@ static ADDRESS_MAP_START( nascom2_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_READWRITE(nascom1_port_00_r, nascom1_port_00_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(nascom1_port_01_r, nascom1_port_01_w)
 	AM_RANGE(0x02, 0x02) AM_READ(nascom1_port_02_r)
-	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE( Z80PIO, "z80pio", z80pio_r, z80pio_w )
-	AM_RANGE(0xe0, 0xe3) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_r, wd17xx_w)
+	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE("z80pio", z80pio_r, z80pio_w )
+	AM_RANGE(0xe0, 0xe3) AM_DEVREADWRITE("wd1793", wd17xx_r, wd17xx_w)
 	AM_RANGE(0xe4, 0xe4) AM_READWRITE(nascom2_fdc_select_r, nascom2_fdc_select_w)
 	AM_RANGE(0xe5, 0xe5) AM_READ(nascom2_fdc_status_r)
 ADDRESS_MAP_END
@@ -276,14 +276,14 @@ static const z80pio_interface nascom1_z80pio_intf =
 
 static MACHINE_DRIVER_START( nascom1 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_16MHz/8)
+	MDRV_CPU_ADD("maincpu", Z80, XTAL_16MHz/8)
 	MDRV_CPU_PROGRAM_MAP(nascom1_mem, 0)
 	MDRV_CPU_IO_MAP(nascom1_io, 0)
 
 	MDRV_MACHINE_RESET( nascom1 )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -300,7 +300,7 @@ static MACHINE_DRIVER_START( nascom1 )
 	MDRV_Z80PIO_ADD( "z80pio", nascom1_z80pio_intf )
 
 	/* devices */
-	MDRV_SNAPSHOT_ADD(nascom1, "nas", 0.5)
+	MDRV_SNAPSHOT_ADD("snapshot", nascom1, "nas", 0.5)
 
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 MACHINE_DRIVER_END
@@ -308,11 +308,11 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( nascom2 )
 	MDRV_IMPORT_FROM(nascom1)
-	MDRV_CPU_REPLACE("main", Z80, XTAL_16MHz/8)
+	MDRV_CPU_REPLACE("maincpu", Z80, XTAL_16MHz/8)
 	MDRV_CPU_IO_MAP(nascom2_io, 0)
 
 	/* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_SIZE(48 * 8, 16 * 14)
 	MDRV_SCREEN_VISIBLE_AREA(0, 48 * 8 - 1, 0, 16 * 14 - 1)
 	MDRV_GFXDECODE(nascom2)
@@ -330,7 +330,7 @@ MACHINE_DRIVER_END
  *************************************/
 
 ROM_START(nascom1)
-	ROM_REGION(0x10000, "main",0)
+	ROM_REGION(0x10000, "maincpu",0)
 	ROM_SYSTEM_BIOS(0, "T4", "NasBug T4")
 	ROMX_LOAD("nasbugt4.rom", 0x0000, 0x0800, CRC(f391df68) SHA1(00218652927afc6360c57e77d6a4fd32d4e34566), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "T1", "NasBug T1")
@@ -343,7 +343,7 @@ ROM_END
 
 
 ROM_START(nascom2)
-	ROM_REGION(0x10000, "main",0)
+	ROM_REGION(0x10000, "maincpu",0)
 	ROM_SYSTEM_BIOS( 0, "NS3", "NasSys 3")
 	ROMX_LOAD("nassys3.rom", 0x0000, 0x0800, CRC(3da17373) SHA1(5fbda15765f04e4cd08cf95c8d82ce217889f240), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS( 1, "NS1", "NasSys 1")

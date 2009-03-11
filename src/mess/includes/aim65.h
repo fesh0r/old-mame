@@ -29,14 +29,12 @@ void aim65_update_ds3(const device_config *device, int digit, int data);
 void aim65_update_ds4(const device_config *device, int digit, int data);
 void aim65_update_ds5(const device_config *device, int digit, int data);
 
+WRITE8_DEVICE_HANDLER(aim65_pia_a_w);
+WRITE8_DEVICE_HANDLER(aim65_pia_b_w);
+
 UINT8 aim65_riot_b_r(const device_config *device, UINT8 olddata);
 void aim65_riot_a_w(const device_config *device, UINT8 data, UINT8 olddata);
 void aim65_riot_irq(const device_config *device, int state);
-
-void aim65_via_irq_func(const device_config *device, int state);
-WRITE8_DEVICE_HANDLER( aim65_via0_a_w );
-WRITE8_DEVICE_HANDLER( aim65_via0_b_w );
-READ8_DEVICE_HANDLER( aim65_via0_b_r );
 
 MACHINE_START( aim65 );
 
@@ -46,10 +44,8 @@ MACHINE_START( aim65 );
 VIDEO_START( aim65 );
 
 /* Printer */
-void aim65_printer_data_a(UINT8 data);
-void aim65_printer_data_b(UINT8 data);
-
-TIMER_CALLBACK(aim65_printer_timer);
+WRITE8_DEVICE_HANDLER( aim65_printer_data_a );
+WRITE8_DEVICE_HANDLER( aim65_printer_data_b );
 WRITE8_DEVICE_HANDLER( aim65_printer_on );
 
 

@@ -10,6 +10,7 @@
 #include "driver.h"
 #include "cpu/z80/z80.h"
 #include "cpu/i8085/i8085.h"
+#include "sound/wave.h"
 #include "machine/8255ppi.h"
 #include "machine/wd17xx.h"
 #include "devices/cassette.h"
@@ -29,10 +30,10 @@ static ADDRESS_MAP_START( vector06_io , ADDRESS_SPACE_IO, 8)
 	AM_RANGE( 0x00, 0x03) AM_READWRITE(vector_8255_1_r, vector_8255_1_w )
 	AM_RANGE( 0x04, 0x07) AM_READWRITE(vector_8255_2_r, vector_8255_2_w )
 	AM_RANGE( 0x0C, 0x0C) AM_WRITE ( vector06_color_set )
-	AM_RANGE( 0x18, 0x18) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_data_r,wd17xx_data_w) 		
-	AM_RANGE( 0x19, 0x19) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_sector_r,wd17xx_sector_w) 
-	AM_RANGE( 0x1A, 0x1A) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_track_r,wd17xx_track_w) 
-  	AM_RANGE( 0x1B, 0x1B) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_status_r,wd17xx_command_w) 
+	AM_RANGE( 0x18, 0x18) AM_DEVREADWRITE("wd1793", wd17xx_data_r,wd17xx_data_w) 		
+	AM_RANGE( 0x19, 0x19) AM_DEVREADWRITE("wd1793", wd17xx_sector_r,wd17xx_sector_w) 
+	AM_RANGE( 0x1A, 0x1A) AM_DEVREADWRITE("wd1793", wd17xx_track_r,wd17xx_track_w) 
+  	AM_RANGE( 0x1B, 0x1B) AM_DEVREADWRITE("wd1793", wd17xx_status_r,wd17xx_command_w) 
   	AM_RANGE( 0x1C, 0x1C) AM_WRITE(vector_disc_w)
 ADDRESS_MAP_END
 
@@ -154,11 +155,11 @@ static void vector_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
 /* Machine driver */
 static MACHINE_DRIVER_START( vector06 )
   /* basic machine hardware */
-  	MDRV_CPU_ADD("main", 8080, 3000000)
-//	MDRV_CPU_ADD("main", Z80, 3000000)
+  	MDRV_CPU_ADD("maincpu", 8080, 3000000)
+//	MDRV_CPU_ADD("maincpu", Z80, 3000000)
   	MDRV_CPU_PROGRAM_MAP(vector06_mem, 0)
   	MDRV_CPU_IO_MAP(vector06_io, 0)
-  	MDRV_CPU_VBLANK_INT("main", vector06_interrupt)
+  	MDRV_CPU_VBLANK_INT("screen", vector06_interrupt)
 
 	MDRV_MACHINE_START( vector06 )
   	MDRV_MACHINE_RESET( vector06 )
@@ -168,7 +169,7 @@ static MACHINE_DRIVER_START( vector06 )
 	MDRV_PPI8255_ADD( "ppi8255_2", vector06_ppi8255_2_interface )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -181,7 +182,7 @@ static MACHINE_DRIVER_START( vector06 )
   	MDRV_VIDEO_UPDATE(vector06)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MDRV_CASSETTE_ADD( "cassette", vector_cassette_config )
@@ -197,7 +198,7 @@ MACHINE_DRIVER_END
 /* ROM definition */
 
 ROM_START( vector06 )
-    ROM_REGION( 0x20000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x20000, "maincpu", ROMREGION_ERASEFF )
     ROM_SYSTEM_BIOS(0, "unboot32k", "Universal Boot 32K")
     ROMX_LOAD( "unboot32k.rt", 0x10000, 0x8000, CRC(28c9b5cd) SHA1(8cd7fb658896a7066ae93b10eaafa0f12139ad81), ROM_BIOS(1))
     ROM_SYSTEM_BIOS(1, "unboot2k", "Universal Boot 2K")

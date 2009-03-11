@@ -16,7 +16,6 @@
 #include "machine/wd17xx.h"
 #include "machine/pic8259.h"
 #include "machine/msm8251.h"
-#include "sound/custom.h"
 #include "streams.h"
 #include "includes/b2m.h"
 
@@ -70,7 +69,7 @@ static void b2m_set_bank(running_machine *machine,int bank)
 	memory_install_write8_handler(space, 0x7000, 0xdfff, 0, 0, SMH_BANK4);
 	memory_install_write8_handler(space, 0xe000, 0xffff, 0, 0, SMH_BANK5);
 
-	rom = memory_region(machine, "main");
+	rom = memory_region(machine, "maincpu");
 	switch(bank) {
 		case 0 :
 		case 1 :
@@ -161,7 +160,7 @@ static void b2m_set_bank(running_machine *machine,int bank)
 
 static PIT8253_OUTPUT_CHANGED(bm2_pit_out0)
 {
-	pic8259_set_irq_line((device_config*)device_list_find_by_tag( device->machine->config->devicelist, PIC8259, "pic8259"),1,state);		
+	pic8259_set_irq_line((device_config*)devtag_get_device(device->machine, "pic8259"),1,state);		
 }
 
 
@@ -220,12 +219,12 @@ static READ8_DEVICE_HANDLER (b2m_8255_portb_r )
 
 const ppi8255_interface b2m_ppi8255_interface_1 =
 {
-	NULL,
-	b2m_8255_portb_r,
-	NULL,
-	b2m_8255_porta_w,
-	b2m_8255_portb_w,
-	b2m_8255_portc_w
+	DEVCB_NULL,
+	DEVCB_HANDLER(b2m_8255_portb_r),
+	DEVCB_NULL,
+	DEVCB_HANDLER(b2m_8255_porta_w),
+	DEVCB_HANDLER(b2m_8255_portb_w),
+	DEVCB_HANDLER(b2m_8255_portc_w)
 };
 
 
@@ -234,7 +233,7 @@ static WRITE8_DEVICE_HANDLER (b2m_ext_8255_portc_w )
 {		
 	UINT8 drive = ((data >> 1) & 1) ^ 1;
 	UINT8 side  = (data  & 1) ^ 1;	
-	device_config *fdc = (device_config*)device_list_find_by_tag( device->machine->config->devicelist, WD1793, "wd1793");
+	const device_config *fdc = devtag_get_device(device->machine, "wd1793");
 	
 	if (b2m_drive!=drive) {
 		wd17xx_set_drive(fdc,drive);
@@ -248,17 +247,17 @@ static WRITE8_DEVICE_HANDLER (b2m_ext_8255_portc_w )
 
 const ppi8255_interface b2m_ppi8255_interface_2 =
 {
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	b2m_ext_8255_portc_w
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(b2m_ext_8255_portc_w)
 };
 
 static READ8_DEVICE_HANDLER (b2m_romdisk_porta_r )
 {
-	UINT8 *romdisk = memory_region(device->machine, "main") + 0x12000;		
+	UINT8 *romdisk = memory_region(device->machine, "maincpu") + 0x12000;		
 	return romdisk[b2m_romdisk_msb*256+b2m_romdisk_lsb];	
 }
 
@@ -274,12 +273,12 @@ static WRITE8_DEVICE_HANDLER (b2m_romdisk_portc_w )
 
 const ppi8255_interface b2m_ppi8255_interface_3 =
 {
-	b2m_romdisk_porta_r,
-	NULL,
-	NULL,
-	NULL,
-	b2m_romdisk_portb_w,
-	b2m_romdisk_portc_w
+	DEVCB_HANDLER(b2m_romdisk_porta_r),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(b2m_romdisk_portb_w),
+	DEVCB_HANDLER(b2m_romdisk_portc_w)
 };
 
 static PIC8259_SET_INT_LINE( b2m_pic_set_int_line )
@@ -330,12 +329,12 @@ READ8_HANDLER ( b2m_localmachine_r )
 
 MACHINE_START(b2m)
 {
-	wd17xx_set_pause_time((device_config*)device_list_find_by_tag( machine->config->devicelist, WD1793, "wd1793"),10);
+	wd17xx_set_pause_time((device_config*)devtag_get_device(machine, "wd1793"),10);
 }
 
 static IRQ_CALLBACK(b2m_irq_callback)
 {	
-	return pic8259_acknowledge((device_config*)device_list_find_by_tag( device->machine->config->devicelist, PIC8259, "pic8259"));	
+	return pic8259_acknowledge((device_config*)devtag_get_device(device->machine, "pic8259"));
 } 
 
 
@@ -347,7 +346,7 @@ INTERRUPT_GEN (b2m_vblank_interrupt)
 {	
 	vblank_state++;
 	if (vblank_state>1) vblank_state=0;
-	pic8259_set_irq_line((device_config*)device_list_find_by_tag( device->machine->config->devicelist, PIC8259, "pic8259"),0,vblank_state);		
+	pic8259_set_irq_line((device_config*)devtag_get_device(device->machine, "pic8259"),0,vblank_state);		
 }
 
 MACHINE_RESET(b2m)
@@ -403,16 +402,22 @@ static STREAM_UPDATE( b2m_sh_update )
 	}
 }
 
-static CUSTOM_START( b2m_sh_start )
+static DEVICE_START(b2m_sound)
 {
 	b2m_sound_input = 0;
 	mixer_channel = stream_create(device, 0, 1, device->machine->sample_rate, 0, b2m_sh_update);
-	return (void *) ~0;
 }
 
-const custom_sound_interface b2m_sound_interface =
+
+DEVICE_GET_INFO( b2m_sound )
 {
-	b2m_sh_start,
-	NULL,
-	NULL
-};
+	switch (state)
+	{
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(b2m_sound);	break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_NAME:							strcpy(info->s, "B2M Sound");				break;
+		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
+	}
+}

@@ -95,7 +95,6 @@ static DEVICE_START(amiga_fdc)
 	fdc_side = 1;
 	fdc_step = 1;
 	fdc_rdy = 0;
-	return DEVICE_START_OK;
 }
 
 static void check_extended_image( int id )
@@ -606,7 +605,7 @@ static TIMER_CALLBACK(fdc_rev_proc)
 	const device_config *cia;
 
 	/* Issue a index pulse when a disk revolution completes */
-	cia = device_list_find_by_tag(machine->config->devicelist, CIA8520, "cia_1");
+	cia = devtag_get_device(machine, "cia_1");
 	cia_issue_index(cia);
 
 	timer_adjust_oneshot(fdc_status[drive].rev_timer, ATTOTIME_IN_MSEC( ONE_REV_TIME ), drive);
@@ -692,7 +691,8 @@ static void fdc_motor( int drive, int off ) {
 	fdc_status[drive].motor_on = on;
 }
 
-void amiga_fdc_control_w( const device_config *device, UINT8 data ) {
+WRITE8_DEVICE_HANDLER( amiga_fdc_control_w )
+{
 	int step_pulse;
 	int drive;
 

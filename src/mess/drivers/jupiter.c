@@ -134,6 +134,7 @@ INPUT_PORTS_END
 
 static READ8_HANDLER( jupiter_io_r )
 {
+	const device_config *speaker = devtag_get_device(space->machine, "speaker");
 	UINT8 data = 0xff;
 
 	if ( ( offset & 0xff ) != 0xfe )
@@ -169,11 +170,11 @@ static READ8_HANDLER( jupiter_io_r )
 	}
 	if ( ! ( offset & 0x8000 ) )
 	{
-//		cassette_output( device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ), -1 );
-		speaker_level_w(0,0);
+//		cassette_output( devtag_get_device(space->machine, "cassette"), -1 );
+		speaker_level_w(speaker,0);
 		data = ( data & 0xe0 ) | ( data & input_port_read( space->machine, "KEY7" ) );;
 	}
-	if ( cassette_input(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" )) > 0 )
+	if ( cassette_input(devtag_get_device(space->machine, "cassette")) > 0 )
 	{
 		data &= ~0x20;
 	}
@@ -183,8 +184,9 @@ static READ8_HANDLER( jupiter_io_r )
 
 static WRITE8_HANDLER( jupiter_port_fe_w )
 {
-//	cassette_output( device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" ), 1 );
-	speaker_level_w(0,1);
+	const device_config *speaker = devtag_get_device(space->machine, "speaker");
+//	cassette_output( devtag_get_device(machine, "cassette"), 1 );
+	speaker_level_w(speaker,1);
 }
 
 
@@ -227,8 +229,8 @@ static const gfx_layout jupiter_charlayout =
 
 
 static GFXDECODE_START( jupiter )
-	GFXDECODE_ENTRY( "main", 0x2c00, jupiter_charlayout, 0, 1 )
-	GFXDECODE_ENTRY( "main", 0x2c00, jupiter_charlayout, 2, 1 )
+	GFXDECODE_ENTRY( "maincpu", 0x2c00, jupiter_charlayout, 0, 1 )
+	GFXDECODE_ENTRY( "maincpu", 0x2c00, jupiter_charlayout, 2, 1 )
 GFXDECODE_END
 
 
@@ -240,8 +242,9 @@ static WRITE8_HANDLER( jupiter_vh_charram_w )
 	jupiter_charram[offset] = data;
 
 	/* decode character graphics again */
-	decodechar(space->machine->gfx[0], offset / 8, jupiter_charram);
-	decodechar(space->machine->gfx[1], offset / 8, jupiter_charram);
+	offset >>= 3;
+	gfx_element_mark_dirty(space->machine->gfx[0], offset);
+	gfx_element_mark_dirty(space->machine->gfx[1], offset);
 }
 
 
@@ -281,8 +284,8 @@ static VIDEO_UPDATE( jupiter )
 		int code = videoram[offs];
 		int sx, sy;
 
-		sy = (offs / 32) * 8;
-		sx = (offs % 32) * 8;
+		sy = (offs / 32) << 3;
+		sx = (offs % 32) << 3;
 
 		drawgfx(bitmap, ( code & 0x80 ) ? screen->machine->gfx[1] : screen->machine->gfx[0],
 			code & 0x7f, 0, 0,0, sx,sy, NULL, TRANSPARENCY_NONE, 0);
@@ -291,6 +294,10 @@ static VIDEO_UPDATE( jupiter )
 	return 0;
 }
 
+static DRIVER_INIT( jupiter )
+{
+	jupiter_charram = memory_region(machine, "maincpu")+0x2c00;
+}
 
 static const cassette_config jupiter_cassette_config =
 {
@@ -302,7 +309,7 @@ static const cassette_config jupiter_cassette_config =
 /* machine definition */
 static MACHINE_DRIVER_START( jupiter )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_6_5MHz/2)        /* 3.25 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, XTAL_6_5MHz/2)        /* 3.25 MHz */
 	MDRV_CPU_PROGRAM_MAP(jupiter_mem, 0)
 	MDRV_CPU_IO_MAP(jupiter_io, 0)
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -310,7 +317,7 @@ static MACHINE_DRIVER_START( jupiter )
 	MDRV_MACHINE_START( jupiter )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS( XTAL_6_5MHz, 416, 0, 256, 264, 0, 192 )
 
@@ -336,10 +343,10 @@ MACHINE_DRIVER_END
 
 
 ROM_START (jupiter)
-	ROM_REGION (0x10000, "main",0)
+	ROM_REGION (0x10000, "maincpu",0)
 	ROM_LOAD ("jupiter.lo", 0x0000, 0x1000, CRC(dc8438a5) SHA1(8fa97eb71e5dd17c7d190c6587ee3840f839347c))
 	ROM_LOAD ("jupiter.hi", 0x1000, 0x1000, CRC(4009f636) SHA1(98c5d4bcd74bcf014268cf4c00b2007ea5cc21f3))
 ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */
-COMP( 1981, jupiter,  0,		0,		jupiter,  jupiter,	0,		  0,		"Cantab",  "Jupiter Ace" , 0)
+COMP( 1981, jupiter,  0,	0,	jupiter,  jupiter,  jupiter,  0,	"Cantab",  "Jupiter Ace" , 0)

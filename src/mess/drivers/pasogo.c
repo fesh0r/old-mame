@@ -145,7 +145,7 @@ static READ8_HANDLER( vg230_io_r )
 
 		if (log)
 			logerror("%.5x vg230 %02x read %.2x\n",(int) cpu_get_pc(space->cpu),vg230.index,data);
-      //	data=memory_region(machine, "main")[0x4000+offset];
+      //	data=memory_region(machine, "maincpu")[0x4000+offset];
 	} 
 	else 
 	{      
@@ -159,7 +159,7 @@ static WRITE8_HANDLER( vg230_io_w )
 	int log=TRUE;
 	if (offset&1) 
 	{
-		//	memory_region(machine, "main")[0x4000+offset]=data;
+		//	memory_region(machine, "maincpu")[0x4000+offset]=data;
 		vg230.data[vg230.index]=data;
 		switch (vg230.index) 
 		{
@@ -269,7 +269,7 @@ static WRITE8_HANDLER( ems_w )
 		{
 		case 0: /*external*/ 
 		case 1: /*ram*/
-		memory_set_bankptr( space->machine, ems.index+1, memory_region(space->machine, "main") + (ems.mapper[ems.index].address&0xfffff) );
+		memory_set_bankptr( space->machine, ems.index+1, memory_region(space->machine, "maincpu") + (ems.mapper[ems.index].address&0xfffff) );
 		break;
 		case 3: /* rom 1 */
 		case 4: /* pc card a */
@@ -323,9 +323,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(pasogo_io, ADDRESS_SPACE_IO, 8)
 //	ADDRESS_MAP_GLOBAL_MASK(0xfFFF)
-	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE(PIC8259, "pic8259", pic8259_r, pic8259_w)
+	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE("pic8259", pic8259_r, pic8259_w)
 	AM_RANGE(0x26, 0x27) AM_READWRITE(vg230_io_r, vg230_io_w )
-	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE(PIT8254, "pit8254", pit8253_r, pit8253_w)
+	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE("pit8254", pit8253_r, pit8253_w)
 	AM_RANGE(0x6c, 0x6f) AM_READWRITE(ems_r, ems_w )
 ADDRESS_MAP_END
 
@@ -365,7 +365,7 @@ static PALETTE_INIT( pasogo )
 static VIDEO_UPDATE( pasogo )
 {
 	static int width=-1, height=-1;
-	UINT8 *rom = memory_region(screen->machine, "main")+0xb8000;
+	UINT8 *rom = memory_region(screen->machine, "maincpu")+0xb8000;
 	UINT16 c[]={ 3, 0 };
 	int x,y;
 //	plot_box(bitmap, 0, 0, 64/*bitmap->width*/, bitmap->height, 0);
@@ -423,16 +423,9 @@ static INTERRUPT_GEN( pasogo_interrupt )
 //	cpu_set_input_line(machine->cpu[0], UPD7810_INTFE1, PULSE_LINE);
 }
 
-#if 0
-static const custom_sound_interface gmaster_sound_interface =
-{
-	gmaster_custom_start
-};
-#endif
-
 static IRQ_CALLBACK(pasogo_irq_callback)
 {
-	return pic8259_acknowledge( (device_config*)device_list_find_by_tag( device->machine->config->devicelist, PIC8259, "pic8259"));
+	return pic8259_acknowledge( devtag_get_device(device->machine, "pic8259"));
 }
 
 static MACHINE_RESET( pasogo )
@@ -444,7 +437,7 @@ static MACHINE_RESET( pasogo )
 
 static PIT8253_OUTPUT_CHANGED( pc_timer0_w )
 {
-	pic8259_set_irq_line((device_config*)device_list_find_by_tag( device->machine->config->devicelist, PIC8259, "pic8259"), 0, state);
+	pic8259_set_irq_line(devtag_get_device(device->machine, "pic8259"), 0, state);
 }
 
 static const struct pit8253_config pc_pit8254_config =
@@ -490,10 +483,10 @@ static DEVICE_IMAGE_LOAD( pasogo_cart )
 }
 
 static MACHINE_DRIVER_START( pasogo )
-	MDRV_CPU_ADD("main", I80188/*V30HL in vadem vg230*/, 10000000/*?*/)
+	MDRV_CPU_ADD("maincpu", I80188/*V30HL in vadem vg230*/, 10000000/*?*/)
 	MDRV_CPU_PROGRAM_MAP(pasogo_mem, 0)
 	MDRV_CPU_IO_MAP( pasogo_io, 0 )
-	MDRV_CPU_VBLANK_INT("main", pasogo_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", pasogo_interrupt)
 //	MDRV_CPU_CONFIG(i86_address_mask)
 	MDRV_MACHINE_RESET( pasogo )
 
@@ -501,7 +494,7 @@ static MACHINE_DRIVER_START( pasogo )
 
 	MDRV_PIC8259_ADD( "pic8259", pasogo_pic8259_config )
 
-	MDRV_SCREEN_ADD("main", LCD)
+	MDRV_SCREEN_ADD("screen", LCD)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_SIZE(640, 400)
@@ -524,7 +517,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START(pasogo)
-	ROM_REGION(0x100000,"main", ROMREGION_ERASEFF) // 1 megabyte dram?
+	ROM_REGION(0x100000,"maincpu", ROMREGION_ERASEFF) // 1 megabyte dram?
 //	ROM_LOAD("gmaster.bin", 0x0000, 0x1000, CRC(05cc45e5) SHA1(05d73638dea9657ccc2791c0202d9074a4782c1e) )
 //	ROM_CART_LOAD(0, "bin", 0x8000, 0x8000, 0)
 	ROM_REGION(0x100000,"user1", ROMREGION_ERASEFF)
@@ -536,7 +529,7 @@ static DRIVER_INIT( pasogo )
 	vg230_init(machine);
 	memset(&ems, 0, sizeof(ems));
 	memory_set_bankptr( machine, 27, memory_region(machine, "user1") + 0x00000 );
-	memory_set_bankptr( machine, 28, memory_region(machine, "main") + 0xb8000/*?*/ );
+	memory_set_bankptr( machine, 28, memory_region(machine, "maincpu") + 0xb8000/*?*/ );
 }
 
 /*    YEAR      NAME            PARENT  MACHINE   INPUT     INIT                

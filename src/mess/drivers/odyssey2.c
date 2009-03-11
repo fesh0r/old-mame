@@ -160,9 +160,10 @@ static GFXDECODE_START( odyssey2 )
 	GFXDECODE_ENTRY( "gfx1", 0x0000, odyssey2_spritelayout, 0, 2 )
 GFXDECODE_END
 
-static const sp0256_interface the_voice_sp0256 = {
-	the_voice_lrq_callback,
-	0
+static const sp0256_interface the_voice_sp0256 =
+{
+	DEVCB_LINE(the_voice_lrq_callback),
+	DEVCB_NULL
 };
 
 static MACHINE_DRIVER_START( odyssey2_cartslot )
@@ -173,7 +174,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( odyssey2 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", I8048, ( ( XTAL_7_15909MHz * 3 ) / 4 ) )
+	MDRV_CPU_ADD("maincpu", I8048, ( ( XTAL_7_15909MHz * 3 ) / 4 ) )
 	MDRV_CPU_PROGRAM_MAP(odyssey2_mem, 0)
 	MDRV_CPU_IO_MAP(odyssey2_io, 0)
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -181,7 +182,7 @@ static MACHINE_DRIVER_START( odyssey2 )
 	MDRV_MACHINE_RESET( odyssey2 )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS( XTAL_7_15909MHz/2, I824X_LINE_CLOCKS, I824X_START_ACTIVE_SCAN, I824X_END_ACTIVE_SCAN, 262, I824X_START_Y, I824X_START_Y + I824X_SCREEN_HEIGHT )
 
@@ -194,8 +195,7 @@ static MACHINE_DRIVER_START( odyssey2 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("custom", CUSTOM, XTAL_7_15909MHz/2)
-	MDRV_SOUND_CONFIG(odyssey2_sound_interface)
+	MDRV_SOUND_ADD("custom", ODYSSEY2, XTAL_7_15909MHz/2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 
 	MDRV_SOUND_ADD("sp0256_speech", SP0256, 3120000)
@@ -208,7 +208,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( videopac )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", I8048, ( XTAL_17_73447MHz / 3 ) )
+	MDRV_CPU_ADD("maincpu", I8048, ( XTAL_17_73447MHz / 3 ) )
 	MDRV_CPU_PROGRAM_MAP(odyssey2_mem, 0)
 	MDRV_CPU_IO_MAP(odyssey2_io, 0)
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -216,7 +216,7 @@ static MACHINE_DRIVER_START( videopac )
 	MDRV_MACHINE_RESET( odyssey2 )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS( XTAL_17_73447MHz/5, I824X_LINE_CLOCKS, I824X_START_ACTIVE_SCAN, I824X_END_ACTIVE_SCAN, 312, I824X_START_Y, I824X_START_Y + I824X_SCREEN_HEIGHT )
 
@@ -229,8 +229,7 @@ static MACHINE_DRIVER_START( videopac )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("custom", CUSTOM, XTAL_17_73447MHz/5)
-	MDRV_SOUND_CONFIG(odyssey2_sound_interface)
+	MDRV_SOUND_ADD("custom", ODYSSEY2, XTAL_17_73447MHz/5)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 
 	MDRV_SOUND_ADD("sp0256_speech", SP0256, 3120000)
@@ -242,7 +241,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( g7400 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", I8048, 5911000 )
+	MDRV_CPU_ADD("maincpu", I8048, 5911000 )
 	MDRV_CPU_PROGRAM_MAP(odyssey2_mem, 0)
 	MDRV_CPU_IO_MAP(g7400_io, 0)
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -250,7 +249,7 @@ static MACHINE_DRIVER_START( g7400 )
 	MDRV_MACHINE_RESET( odyssey2 )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS( 3547000*2, 448, 96, 416, 312, 39, 289 )	/* EF9340 doubles the input clock into dot clocks internally */
 
@@ -263,15 +262,14 @@ static MACHINE_DRIVER_START( g7400 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("custom", CUSTOM, 3547000)
-	MDRV_SOUND_CONFIG(odyssey2_sound_interface)
+	MDRV_SOUND_ADD("custom", ODYSSEY2, 3547000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 	
 	MDRV_IMPORT_FROM(odyssey2_cartslot)
 MACHINE_DRIVER_END
 
 ROM_START (odyssey2)
-    ROM_REGION(0x10000,"main",0)    /* safer for the memory handler/bankswitching??? */
+    ROM_REGION(0x10000,"maincpu",0)    /* safer for the memory handler/bankswitching??? */
     ROM_LOAD ("o2bios.rom", 0x0000, 0x0400, CRC(8016a315) SHA1(b2e1955d957a475de2411770452eff4ea19f4cee))
     ROM_REGION(0x100, "gfx1", ROMREGION_ERASEFF)
 
@@ -297,7 +295,7 @@ ROM_START (odyssey2)
 ROM_END
 
 ROM_START (videopac)
-	ROM_REGION(0x10000,"main",0)    /* safer for the memory handler/bankswitching??? */
+	ROM_REGION(0x10000,"maincpu",0)    /* safer for the memory handler/bankswitching??? */
 	ROM_SYSTEM_BIOS( 0, "g7000", "g7000" )
 	ROMX_LOAD ("o2bios.rom", 0x0000, 0x0400, CRC(8016a315) SHA1(b2e1955d957a475de2411770452eff4ea19f4cee), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS( 1, "c52", "c52" )
@@ -317,7 +315,7 @@ ROM_START (videopac)
 ROM_END
 
 ROM_START (g7400)
-	ROM_REGION(0x10000,"main",0)    /* safer for the memory handler/bankswitching??? */
+	ROM_REGION(0x10000,"maincpu",0)    /* safer for the memory handler/bankswitching??? */
 	ROM_LOAD ("g7400.bin", 0x0000, 0x0400, CRC(e20a9f41) SHA1(5130243429b40b01a14e1304d0394b8459a6fbae))
 	ROM_REGION(0x100, "gfx1", ROMREGION_ERASEFF)
 

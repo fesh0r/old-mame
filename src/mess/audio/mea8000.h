@@ -17,7 +17,7 @@ typedef struct _mea8000_interface mea8000_interface;
 struct _mea8000_interface
 {
   /* output channel */
-  int                channel;
+  const char *           channel;
 
   /* 1-bit 'ready' output, not negated */
   write8_device_func req_out_func;
@@ -29,7 +29,7 @@ struct _mea8000_interface
   MDRV_DEVICE_CONFIG(_intrf)
 
 #define MDRV_MEA8000_REMOVE(_tag)		\
-  MDRV_DEVICE_REMOVE(_tag, MEA8000)
+  MDRV_DEVICE_REMOVE(_tag)
 
 
 /* ---------- functions ------------ */

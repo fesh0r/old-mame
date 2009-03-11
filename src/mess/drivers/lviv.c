@@ -282,6 +282,8 @@ Timings:
 
 #include "driver.h"
 #include "cpu/i8085/i8085.h"
+#include "sound/speaker.h"
+#include "sound/wave.h"
 #include "machine/8255ppi.h"
 #include "includes/lviv.h"
 #include "devices/snapquik.h"
@@ -423,7 +425,7 @@ static const cassette_config lviv_cassette_config =
 /* machine definition */
 static MACHINE_DRIVER_START( lviv )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", 8080, 2500000)
+	MDRV_CPU_ADD("maincpu", 8080, 2500000)
 	MDRV_CPU_PROGRAM_MAP(lviv_mem, 0)
 	MDRV_CPU_IO_MAP(io_map, 0)
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -434,7 +436,7 @@ static MACHINE_DRIVER_START( lviv )
 
 	MDRV_PPI8255_ADD( "ppi8255_1", lviv_ppi8255_interface_1 )
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(0)
 
@@ -450,20 +452,20 @@ static MACHINE_DRIVER_START( lviv )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* snapshot */
-	MDRV_SNAPSHOT_ADD(lviv, "sav", 0)
+	MDRV_SNAPSHOT_ADD("snapshot", lviv, "sav", 0)
 
 	MDRV_CASSETTE_ADD( "cassette", lviv_cassette_config )
 MACHINE_DRIVER_END
 
 
 ROM_START(lviv)
-	ROM_REGION(0x14000,"main",0)
+	ROM_REGION(0x14000,"maincpu",0)
 	ROM_SYSTEM_BIOS( 0, "lviv", "Lviv/L'vov" )
 	ROMX_LOAD("lviv.bin", 0x10000, 0x4000, CRC(44a347d9) SHA1(74e067493b2b7d9ab17333202009a1a4f5e460fd), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS( 1, "lviva", "Lviv/L'vov (alternate)" )

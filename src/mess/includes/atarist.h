@@ -1,9 +1,15 @@
 #ifndef __ATARI_ST__
 #define __ATARI_ST__
 
-#define SCREEN_TAG	"main"
+#define SCREEN_TAG	"screen"
+#define M68000_TAG	"m68000"
+#define HD6301_TAG	"hd6301"
+#define COP888_TAG	"u703"
+#define YM3439_TAG	"ym3439"
 #define MC68901_TAG	"mc68901"
 #define LMC1992_TAG "lmc1992"
+#define WD1772_TAG	"wd1772"
+#define CENTRONICS_TAG	"centronics"
 
 // Atari ST
 
@@ -49,6 +55,10 @@ struct _atarist_state
 	UINT8 ikbd_mouse_px;
 	UINT8 ikbd_mouse_py;
 	UINT8 ikbd_mouse_pc;
+	int ikbd_rx;
+	int ikbd_tx;
+	int midi_rx;
+	int midi_tx;
 	int acia_irq;
 
 	/* floppy state */
@@ -121,6 +131,8 @@ struct _atarist_state
 	/* devices */
 	const device_config *mc68901;
 	const device_config *lmc1992;
+	const device_config *wd1772;
+	const device_config *centronics;
 
 	/* timers */
 	emu_timer *glue_timer;

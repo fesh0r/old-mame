@@ -136,7 +136,6 @@ static DEVICE_START( cdp1863 )
 	/* validate arguments */
 	assert(device != NULL);
 	assert(device->tag != NULL);
-	assert(strlen(device->tag) < 20);
 
 	cdp1863->intf = device->static_config;
 
@@ -150,8 +149,6 @@ static DEVICE_START( cdp1863 )
 	state_save_register_device_item(device, 0, cdp1863->latch);
 	state_save_register_device_item(device, 0, cdp1863->signal);
 	state_save_register_device_item(device, 0, cdp1863->incr);
-
-	return DEVICE_START_OK;
 }
 
 static DEVICE_RESET( cdp1863 )

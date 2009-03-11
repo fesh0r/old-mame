@@ -159,14 +159,13 @@ static const ay8910_interface spectrum_ay_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	NULL
+	DEVCB_NULL
 };
 
 /****************************************************************************************************/
 /* Spectrum 128 specific functions */
 
 int spectrum_128_port_7ffd_data = -1;
-unsigned char *spectrum_128_screen_location = NULL;
 
 static WRITE8_HANDLER(spectrum_128_port_7ffd_w)
 {
@@ -194,12 +193,12 @@ void spectrum_128_update_memory(running_machine *machine)
 	if (spectrum_128_port_7ffd_data & 8)
 	{
 			logerror("SCREEN 1: BLOCK 7\n");
-			spectrum_128_screen_location = mess_ram + (7<<14);
+			spectrum_screen_location = mess_ram + (7<<14);
 	}
 	else
 	{
 			logerror("SCREEN 0: BLOCK 5\n");
-			spectrum_128_screen_location = mess_ram + (5<<14);
+			spectrum_screen_location = mess_ram + (5<<14);
 	}
 
 	/* select ram at 0x0c000-0x0ffff */
@@ -220,7 +219,7 @@ void spectrum_128_update_memory(running_machine *machine)
 
 	/* rom 0 is 128K rom, rom 1 is 48 BASIC */
 
-	ChosenROM = memory_region(machine, "main") + 0x010000 + (ROMSelection<<14);
+	ChosenROM = memory_region(machine, "maincpu") + 0x010000 + (ROMSelection<<14);
 
 	memory_set_bankptr(machine, 1, ChosenROM);
 
@@ -229,7 +228,7 @@ void spectrum_128_update_memory(running_machine *machine)
 
 static  READ8_HANDLER ( spectrum_128_ula_r )
 {
-	return video_screen_get_vpos(space->machine->primary_screen)<193 ? spectrum_128_screen_location[0x1800|(video_screen_get_vpos(space->machine->primary_screen)&0xf8)<<2]:0xff;
+	return video_screen_get_vpos(space->machine->primary_screen)<193 ? spectrum_screen_location[0x1800|(video_screen_get_vpos(space->machine->primary_screen)&0xf8)<<2]:0xff;
 }
 
 static ADDRESS_MAP_START (spectrum_128_io, ADDRESS_SPACE_IO, 8)
@@ -238,8 +237,8 @@ static ADDRESS_MAP_START (spectrum_128_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x007f, 0x007f) AM_READ(spectrum_port_7f_r) AM_MIRROR(0xff00)
 	AM_RANGE(0x00df, 0x00df) AM_READ(spectrum_port_df_r) AM_MIRROR(0xff00)
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(spectrum_128_port_7ffd_w) AM_MIRROR(0x3ffd)
-	AM_RANGE(0x8000, 0x8000) AM_WRITE(ay8910_write_port_0_w) AM_MIRROR(0x3ffd)
-	AM_RANGE(0xc000, 0xc000) AM_READWRITE(ay8910_read_port_0_r,ay8910_control_port_0_w) AM_MIRROR(0x3ffd)
+	AM_RANGE(0x8000, 0x8000) AM_DEVWRITE("ay8912", ay8910_data_w) AM_MIRROR(0x3ffd)
+	AM_RANGE(0xc000, 0xc000) AM_DEVREADWRITE("ay8912", ay8910_r, ay8910_address_w) AM_MIRROR(0x3ffd)
 	AM_RANGE(0x0001, 0x0001) AM_READ(spectrum_128_ula_r) AM_MIRROR(0xfffe)	
 ADDRESS_MAP_END
 
@@ -271,19 +270,18 @@ static MACHINE_RESET( spectrum_128 )
 MACHINE_DRIVER_START( spectrum_128 )
 	MDRV_IMPORT_FROM( spectrum )
 
-	MDRV_CPU_REPLACE("main", Z80, 3500000)        /* 3.5 MHz */
+	MDRV_CPU_REPLACE("maincpu", Z80, 3500000)        /* 3.5 MHz */
 	MDRV_CPU_PROGRAM_MAP(spectrum_128_mem, 0)
 	MDRV_CPU_IO_MAP(spectrum_128_io, 0)
 
 	MDRV_MACHINE_RESET( spectrum_128 )
 
     /* video hardware */
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_PALETTE_LENGTH(16)
-	MDRV_PALETTE_INIT( spectrum_128 )
+	MDRV_PALETTE_INIT( spectrum )
 	MDRV_SCREEN_REFRESH_RATE(50.021)
 	MDRV_VIDEO_START( spectrum_128 )
-	MDRV_VIDEO_UPDATE( spectrum_128 )
 
 	/* sound hardware */
 	MDRV_SOUND_ADD("ay8912", AY8912, 1773400)
@@ -302,7 +300,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START(spec128)
-	ROM_REGION(0x18000,"main",0)
+	ROM_REGION(0x18000,"maincpu",0)
 	ROM_SYSTEM_BIOS( 0, "en", "English" )
 	ROMX_LOAD("zx128_0.rom",0x10000,0x4000, CRC(e76799d2) SHA1(4f4b11ec22326280bdb96e3baf9db4b4cb1d02c5), ROM_BIOS(1))
 	ROMX_LOAD("zx128_1.rom",0x14000,0x4000, CRC(b96a36be) SHA1(80080644289ed93d71a1103992a154cc9802b2fa), ROM_BIOS(1))	
@@ -313,7 +311,7 @@ ROM_START(spec128)
 ROM_END
 
 ROM_START(specpls2)
-	ROM_REGION(0x18000,"main",0)
+	ROM_REGION(0x18000,"maincpu",0)
 	ROM_SYSTEM_BIOS( 0, "en", "English" )
 	ROMX_LOAD("zxp2_0.rom",0x10000,0x4000, CRC(5d2e8c66) SHA1(72703f9a3e734f3c23ec34c0727aae4ccbef9a91), ROM_BIOS(1))
 	ROMX_LOAD("zxp2_1.rom",0x14000,0x4000, CRC(98b1320b) SHA1(de8b0d2d0379cfe7c39322a086ca6da68c7f23cb), ROM_BIOS(1))
@@ -332,14 +330,14 @@ ROM_START(specpls2)
 ROM_END
 
 ROM_START(hc128)
-	ROM_REGION(0x18000,"main",0)
+	ROM_REGION(0x18000,"maincpu",0)
 	ROM_LOAD("zx128_0.rom",0x10000,0x4000, CRC(e76799d2) SHA1(4f4b11ec22326280bdb96e3baf9db4b4cb1d02c5))
 	ROM_LOAD("hc128.rom",  0x14000,0x4000, CRC(0241e960) SHA1(cea0d14391b9e571460a816088a1c00ecb24afa3))	
 	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 ROM_START(hc2000)
-	ROM_REGION(0x18000,"main",0)
+	ROM_REGION(0x18000,"maincpu",0)
 	ROM_SYSTEM_BIOS( 0, "v1", "Version 1" )
 	ROMX_LOAD("zx128_0.rom",0x10000,0x4000, CRC(e76799d2) SHA1(4f4b11ec22326280bdb96e3baf9db4b4cb1d02c5), ROM_BIOS(1))
 	ROMX_LOAD("hc2000.v1",  0x14000,0x4000, CRC(453c1a5a) SHA1(f8139fc38478691cf44944dc83fd6e70b0f002fb), ROM_BIOS(1))	

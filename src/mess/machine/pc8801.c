@@ -179,38 +179,38 @@ static void pc8801_init_interrupt(running_machine *machine)
 
 WRITE8_HANDLER(pc88sr_outport_30)
 {
-  /* bit 1-5 not implemented yet */
-  pc88sr_disp_30(space, offset,data);
+	/* bit 1-5 not implemented yet */
+	pc88sr_disp_30(space, offset,data);
 }
 
 WRITE8_HANDLER(pc88sr_outport_40)
      /* bit 3,4,6 not implemented */
      /* bit 7 incorrect behavior */
 {
-  static int port_save;
+	const device_config *speaker = devtag_get_device(space->machine, "beep");
+	static int port_save;
 
-  if((port_save&0x02) == 0x00 && (data&0x02) != 0x00) calender_strobe(space->machine);
-  if((port_save&0x04) == 0x00 && (data&0x04) != 0x00) calender_shift();
-  port_save=data;
+	if((port_save&0x02) == 0x00 && (data&0x02) != 0x00) calender_strobe(space->machine);
+	if((port_save&0x04) == 0x00 && (data&0x04) != 0x00) calender_shift();
+	port_save=data;
 
-  if((input_port_read(space->machine, "DSW1") & 0x40) == 0x00) 
-  {
-    data&=0x7f;
-  }
-  switch(data&0xa0) {
-  case 0x00:
-    beep_set_state(0, 0);
-    break;
-  case 0x20:
-    beep_set_frequency(0, 2400);
-    beep_set_state(0, 1);
-    break;
-  case 0x80:
-  case 0xa0:
-    beep_set_frequency(0, 0);
-    beep_set_state(0, 1);
-    break;
-  }
+	if((input_port_read(space->machine, "DSW1") & 0x40) == 0x00) data&=0x7f;
+
+	switch(data&0xa0)
+	{
+		case 0x00:
+			beep_set_state(speaker, 0);
+			break;
+		case 0x20:
+			beep_set_frequency(speaker, 2400);
+			beep_set_state(speaker, 1);
+			break;
+		case 0x80:
+		case 0xa0:
+			beep_set_frequency(speaker, 0);
+			beep_set_state(speaker, 1);
+			break;
+	}
 }
 
 READ8_HANDLER(pc88sr_inport_40)
@@ -564,7 +564,7 @@ static void pc8801_init_bank(running_machine *machine, int hireso)
 	no4throm2=0;
 	port71_save=0xff;
 	port32_save=0x80;
-	mainROM = memory_region(machine, "main");
+	mainROM = memory_region(machine, "maincpu");
 	pc8801_mainRAM = (UINT8 *) auto_malloc (0x10000);
 	memset(pc8801_mainRAM, 0, 0x10000);
 
@@ -693,25 +693,26 @@ static void fix_V1V2(void)
 
 static void pc88sr_ch_reset (running_machine *machine, int hireso)
 {
-  int a;
+	const device_config *speaker = devtag_get_device(machine, "beep");
+	int a;
 
-  a=input_port_read(machine, "CFG");
-  is_Nbasic = ((a&0x01)==0x00);
-  is_V2mode = ((a&0x02)==0x00);
-  pc88sr_is_highspeed = ((a&0x04)!=0x00);
-  is_8MHz = ((a&0x08)!=0x00);
-  fix_V1V2();
-  pc8801_init_bank(machine, hireso);
-  pc8801_init_5fd(machine);
-  pc8801_init_interrupt(machine);
-  beep_set_state(0, 0);
-  beep_set_frequency(0, 2400);
-  pc88sr_init_fmsound();
+	a=input_port_read(machine, "CFG");
+	is_Nbasic = ((a&0x01)==0x00);
+	is_V2mode = ((a&0x02)==0x00);
+	pc88sr_is_highspeed = ((a&0x04)!=0x00);
+	is_8MHz = ((a&0x08)!=0x00);
+	fix_V1V2();
+	pc8801_init_bank(machine, hireso);
+	pc8801_init_5fd(machine);
+	pc8801_init_interrupt(machine);
+	beep_set_state(speaker, 0);
+	beep_set_frequency(speaker, 2400);
+	pc88sr_init_fmsound();
 }
 
 MACHINE_RESET( pc88srl )
 {
-  pc88sr_ch_reset(machine, 0);
+	pc88sr_ch_reset(machine, 0);
 }
 
 MACHINE_RESET( pc88srh )
@@ -723,12 +724,12 @@ MACHINE_RESET( pc88srh )
 
 static UINT8 load_8255_A(running_machine *machine, int chip)
 {
-	return use_5FD ? ppi8255_get_port_b((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, chip ? "ppi8255_0" : "ppi8255_1" ) ) : 0xff;
+	return use_5FD ? ppi8255_get_port_b((device_config*)devtag_get_device(machine, chip? "ppi8255_0" : "ppi8255_1" ) ) : 0xff;
 }
 
 static UINT8 load_8255_B(running_machine *machine, int chip)
 {
-	return use_5FD ? ppi8255_get_port_a((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, chip ? "ppi8255_0" : "ppi8255_1" ) ) : 0xff;
+	return use_5FD ? ppi8255_get_port_a((device_config*)devtag_get_device(machine, chip? "ppi8255_0" : "ppi8255_1" ) ) : 0xff;
 }
 
 static UINT8 load_8255_C(running_machine *machine, int chip)
@@ -738,7 +739,7 @@ static UINT8 load_8255_C(running_machine *machine, int chip)
 
 	if (use_5FD)
 	{
-		port_c = ppi8255_get_port_c((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, chip ? "ppi8255_0" : "ppi8255_1" ) );
+		port_c = ppi8255_get_port_c((device_config*)devtag_get_device(machine, chip? "ppi8255_0" : "ppi8255_1" ) );
 		result = ((port_c >> 4) & 0x0F) | ((port_c << 4) & 0xF0);
 	}
 
@@ -775,27 +776,27 @@ static READ8_DEVICE_HANDLER( load_8255_chip1_C )	{ return load_8255_C(device->ma
 
 const ppi8255_interface pc8801_8255_config_0 =
 {
-	load_8255_chip0_A,
-	load_8255_chip0_B,
-	load_8255_chip0_C,
-	NULL,
-	NULL,
-	NULL
+	DEVCB_HANDLER(load_8255_chip0_A),
+	DEVCB_HANDLER(load_8255_chip0_B),
+	DEVCB_HANDLER(load_8255_chip0_C),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 const ppi8255_interface pc8801_8255_config_1 =
 {
-    load_8255_chip1_A,
-    load_8255_chip1_B,
-    load_8255_chip1_C,
-    NULL,
-    NULL,
-    NULL
+	DEVCB_HANDLER(load_8255_chip1_A),
+	DEVCB_HANDLER(load_8255_chip1_B),
+	DEVCB_HANDLER(load_8255_chip1_C),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 READ8_HANDLER(pc8801fd_nec765_tc)
 {
-  device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, NEC765A, "nec765");
+  const device_config *fdc = devtag_get_device(space->machine, "nec765");
   nec765_set_tc_state(fdc, 1);
   nec765_set_tc_state(fdc, 0);
   return 0;
@@ -844,10 +845,11 @@ static void pc88sr_init_fmsound(void)
   FM_IRQ_save=0;
 }
 
-void pc88sr_sound_interupt(running_machine *machine, int irq)
+void pc88sr_sound_interupt(const device_config *device, int irq)
 {
 	FM_IRQ_save=irq;
-	if(FM_IRQ_save && enable_FM_IRQ) pc8801_raise_interrupt(machine, FM_IRQ_LEVEL);
+	if(FM_IRQ_save && enable_FM_IRQ)
+		pc8801_raise_interrupt(device->machine, FM_IRQ_LEVEL);
 }
 
 /*

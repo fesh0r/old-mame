@@ -84,7 +84,7 @@ static void acia_6551_in_callback(running_machine *machine, int id, unsigned lon
 	acia6551_t *acia;
 
 	/* NPW 29-Nov-2008 - These two lines are a hack and indicate why our "serial" infrastructure needs to be updated */
-	device = device_list_find_by_tag(machine->config->devicelist, ACIA6551, "acia");
+	device = devtag_get_device(machine, "acia");
 	acia = get_token(device);
 
 	acia->connection.input_state = state;
@@ -139,7 +139,7 @@ static TIMER_CALLBACK(acia_6551_timer_callback)
     DEVICE_START( acia6551 )
 -------------------------------------------------*/
 
-DEVICE_START( acia6551 )
+static DEVICE_START( acia6551 )
 {
 	acia6551_t *acia = get_token(device);
 
@@ -154,7 +154,6 @@ DEVICE_START( acia6551 )
 	serial_connection_set_in_callback(device->machine, &acia->connection, acia_6551_in_callback);
 	transmit_register_reset(&acia->transmit_reg);
 	receive_register_reset(&acia->receive_reg);
-	return DEVICE_START_OK;
 }
 
 

@@ -120,7 +120,7 @@ static int internal_load_mess_hd(const device_config *image, const char *metadat
 	/* if we created the image and hence, have metadata to set, set the metadata */
 	if (metadata)
 	{
-		err = chd_set_metadata(harddisk->chd, HARD_DISK_METADATA_TAG, 0, metadata, strlen(metadata) + 1);
+		err = chd_set_metadata(harddisk->chd, HARD_DISK_METADATA_TAG, 0, metadata, strlen(metadata) + 1, 0);
 		if (err != CHDERR_NONE)
 			goto done;
 	}
@@ -273,7 +273,6 @@ static DEVICE_START(mess_hd)
 	harddisk->config = device->static_config;
 	harddisk->chd = NULL;
 	harddisk->hard_disk_handle = NULL;
-	return DEVICE_START_OK;
 }
 
 
@@ -333,8 +332,6 @@ static DEVICE_START(mess_ide)
 	/* FIXME IDE */
 	/* ide_controller_init_custom(which_bus, intf, NULL); */
 #endif
-
-	return DEVICE_START_CALL(mess_hd);
 }
 
 

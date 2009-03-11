@@ -1,11 +1,12 @@
-#ifndef __GMASTER_H_
-#define __GMASTER_H_
+#ifndef __GMASTER_H__
+#define __GMASTER_H__
 
-#include "sound/custom.h"
 
 /*----------- defined in audio/gmaster.c -----------*/
 
-int gmaster_io_callback(const device_config *device, int ioline, int state);
-CUSTOM_START( gmaster_custom_start );
+#define SOUND_GMASTER	DEVICE_GET_INFO_NAME( gmaster_sound )
 
-#endif
+int gmaster_io_callback(const device_config *device, int ioline, int state);
+DEVICE_GET_INFO( gmaster_sound );
+
+#endif /* __GMASTER_H__ */

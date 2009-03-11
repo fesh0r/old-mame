@@ -8,10 +8,11 @@
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
+#include "sound/speaker.h"
+#include "sound/wave.h"
 #include "machine/8255ppi.h"
 #include "machine/pit8253.h"
 #include "devices/cassette.h"
-#include "sound/speaker.h"
 #include "includes/mz80.h"
  
 static INPUT_PORTS_START( mz80k )
@@ -112,8 +113,8 @@ static ADDRESS_MAP_START( mz80k_mem , ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE(0x0000, 0x0fff) AM_ROM
     AM_RANGE(0x1000, 0xcfff) AM_RAM // 48 KB of RAM
     AM_RANGE(0xd000, 0xd3ff) AM_RAM // Video RAM
-    AM_RANGE(0xe000, 0xe003) AM_DEVREADWRITE( PPI8255, "ppi8255", ppi8255_r, ppi8255_w) /* PPIA 8255 */
-    AM_RANGE(0xe004, 0xe007) AM_DEVREADWRITE( PIT8253, "pit8253", pit8253_r,pit8253_w)  /* PIT 8253  */
+    AM_RANGE(0xe000, 0xe003) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w) /* PPIA 8255 */
+    AM_RANGE(0xe004, 0xe007) AM_DEVREADWRITE("pit8253", pit8253_r,pit8253_w)  /* PIT 8253  */
     AM_RANGE(0xe008, 0xe008) AM_READWRITE( mz80k_strobe_r, mz80k_strobe_w)
     AM_RANGE(0xf000, 0xf3ff) AM_ROM
 ADDRESS_MAP_END
@@ -124,7 +125,7 @@ static ADDRESS_MAP_START( mz80k_io, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 ROM_START (mz80k)
-	ROM_REGION(0x10000,"main",0)
+	ROM_REGION(0x10000,"maincpu",0)
 	ROM_SYSTEM_BIOS(0, "sp1002", "sp1002")
 	ROMX_LOAD("sp1002.rom",    0x0000, 0x1000, CRC(2223e677) SHA1(518ffbe2333582ab36e6d76d1e03879a246ffa1c), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "tc", "tc")
@@ -135,7 +136,7 @@ ROM_START (mz80k)
 ROM_END
 
 ROM_START (mz80kj)
-	ROM_REGION(0x10000,"main",0)
+	ROM_REGION(0x10000,"maincpu",0)
 	ROM_LOAD ("sp1002.rom",    0x0000, 0x1000, CRC(2223e677) SHA1(518ffbe2333582ab36e6d76d1e03879a246ffa1c))
 	// TC monitor not possible to be used on japanese version since chargen doesn't have upcase/lowecase, but japanese letters
 	ROM_LOAD ("mz80kfdif.rom", 0xf000, 0x0400, CRC(d36505e0) SHA1(1f60027e8739313962a37edbf98172df7062df49))
@@ -162,7 +163,7 @@ static MACHINE_DRIVER_START( mz80k )
 	/* basic machine hardware */
 
 	/* main CPU */
-	MDRV_CPU_ADD("main", Z80, 2000000)        /* 2 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, 2000000)        /* 2 MHz */
 	MDRV_CPU_PROGRAM_MAP(mz80k_mem, 0)
 	MDRV_CPU_IO_MAP(mz80k_io, 0)
 
@@ -173,7 +174,7 @@ static MACHINE_DRIVER_START( mz80k )
 	MDRV_PIT8253_ADD( "pit8253", mz80k_pit8253_config )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 
 	MDRV_VIDEO_START(mz80k)
@@ -187,7 +188,7 @@ static MACHINE_DRIVER_START( mz80k )
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 0, 199)
 	
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)

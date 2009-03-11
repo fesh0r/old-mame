@@ -53,7 +53,7 @@
 static UINT8 *lisa_ram_ptr;
 static UINT8 *lisa_rom_ptr;
 
-/* offsets in "main" */
+/* offsets in "maincpu" */
 #define RAM_OFFSET 0x004000
 #define ROM_OFFSET 0x000000
 
@@ -138,24 +138,24 @@ static int KBIR;	/* COPS VIA interrupt pending */
 const via6522_interface lisa_via6522_0_intf =
 {
 	/* COPS via */
-	NULL, COPS_via_in_b,
-	NULL, NULL,
-	NULL, NULL,
-	COPS_via_out_a, COPS_via_out_b,
-	COPS_via_out_ca2, COPS_via_out_cb2,
-	NULL, NULL,
-	COPS_via_irq_func,
+	DEVCB_NULL, DEVCB_HANDLER(COPS_via_in_b),
+	DEVCB_NULL, DEVCB_NULL,
+	DEVCB_NULL, DEVCB_NULL,
+	DEVCB_HANDLER(COPS_via_out_a), DEVCB_HANDLER(COPS_via_out_b),
+	DEVCB_HANDLER(COPS_via_out_ca2), DEVCB_HANDLER(COPS_via_out_cb2),
+	DEVCB_NULL, DEVCB_NULL,
+	DEVCB_LINE(COPS_via_irq_func),
 };
 
 const via6522_interface lisa_via6522_1_intf =
 {
 	/* parallel interface via - incomplete */
-	NULL, parallel_via_in_b,
-	NULL, NULL,
-	NULL, NULL,
-	NULL, NULL,
-	NULL, NULL,
-	NULL, NULL,
+	DEVCB_NULL, DEVCB_HANDLER(parallel_via_in_b),
+	DEVCB_NULL, DEVCB_NULL,
+	DEVCB_NULL, DEVCB_NULL,
+	DEVCB_NULL, DEVCB_NULL,
+	DEVCB_NULL, DEVCB_NULL,
+	DEVCB_NULL, DEVCB_NULL,
 };
 
 /*
@@ -337,7 +337,7 @@ static struct
 
 INLINE void COPS_send_data_if_possible(running_machine *machine)
 {
-	const device_config *via_0 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
+	const device_config *via_0 = devtag_get_device(machine, "via6522_0");
 
 	if ((! hold_COPS_data) && fifo_size && (! COPS_Ready))
 	{
@@ -523,7 +523,7 @@ static TIMER_CALLBACK(handle_mouse)
 static TIMER_CALLBACK(read_COPS_command)
 {
 	int command;
-	const device_config *via_0 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
+	const device_config *via_0 = devtag_get_device(machine, "via6522_0");
 
 	COPS_Ready = 0;
 
@@ -818,7 +818,7 @@ static READ8_DEVICE_HANDLER(COPS_via_in_b)
 
 static WRITE8_DEVICE_HANDLER(COPS_via_out_b)
 {
-	const device_config *via_0 = device_list_find_by_tag(device->machine->config->devicelist, VIA6522, "via6522_0");
+	const device_config *via_0 = devtag_get_device(device->machine, "via6522_0");
 
 	/* pull-up */
 	data |= (~ via_r(via_0, VIA_DDRA)) & 0x01;
@@ -844,7 +844,8 @@ static WRITE8_DEVICE_HANDLER(COPS_via_out_b)
 
 static WRITE8_DEVICE_HANDLER(COPS_via_out_cb2)
 {
-	speaker_level_w(0, data);
+	const device_config *speaker = devtag_get_device(device->machine, "speaker");
+	speaker_level_w(speaker, data);
 }
 
 static void COPS_via_irq_func(const device_config *device, int val)
@@ -925,7 +926,7 @@ VIDEO_UPDATE( lisa )
 		for (x = 0; x < resx; x++)
 //			line_buffer[x] = (v[(x+y*resx)>>4] & (0x8000 >> ((x+y*resx) & 0xf))) ? 0 : 1;
 			line_buffer[x] = (v[(x+y*resx)>>4] & (0x8000 >> (x & 0xf))) ? 0 : 1;
-		draw_scanline8(bitmap, 0, y, resx, line_buffer, screen->machine->pens, -1);
+		draw_scanline8(bitmap, 0, y, resx, line_buffer, screen->machine->pens);
 	}
 	return 0;
 }
@@ -956,10 +957,10 @@ static DIRECT_UPDATE_HANDLER (lisa_OPbaseoverride)
 			}
 			else
 			{	/* system ROMs */
-				direct->mask = 0xffffff;
+				direct->bytemask = 0xffffff;
 				direct->raw = direct->decrypted = lisa_rom_ptr - (address & 0xffc000);
-				direct->min = (address & 0xffc000);
-				direct->max = (address & 0xffc000) + 0x003fff;
+				direct->bytestart = (address & 0xffc000);
+				direct->byteend = (address & 0xffc000) + 0x003fff;
 				/*logerror("ROM (setup mode)\n");*/
 			}
 
@@ -988,10 +989,10 @@ static DIRECT_UPDATE_HANDLER (lisa_OPbaseoverride)
 				/* out of segment limits : bus error */
 				logerror("illegal opbase address%lX\n", (long) address);
 			}
-			direct->mask = 0xffffff;
+			direct->bytemask = 0xffffff;
 			direct->raw = direct->decrypted = lisa_ram_ptr + mapped_address - address;
-			direct->min = (address & 0xffc000);
-			direct->max = (address & 0xffc000) + 0x003fff;
+			direct->bytestart = (address & 0xffc000);
+			direct->byteend = (address & 0xffc000) + 0x003fff;
 			/*logerror("RAM\n");*/
 			break;
 
@@ -1004,10 +1005,10 @@ static DIRECT_UPDATE_HANDLER (lisa_OPbaseoverride)
 			break;
 
 		case special_IO:
-			direct->mask = 0xffffff;
+			direct->bytemask = 0xffffff;
 			direct->raw = direct->decrypted = lisa_rom_ptr + (mapped_address & 0x003fff) - address;
-			direct->min = (address & 0xffc000);
-			direct->max = (address & 0xffc000) + 0x003fff;
+			direct->bytestart = (address & 0xffc000);
+			direct->byteend = (address & 0xffc000) + 0x003fff;
 			/*logerror("ROM\n");*/
 			break;
 		}
@@ -1092,8 +1093,8 @@ NVRAM_HANDLER(lisa)
 
 DRIVER_INIT( lisa2 )
 {
-	lisa_ram_ptr = memory_region(machine, "main") + RAM_OFFSET;
-	lisa_rom_ptr = memory_region(machine, "main") + ROM_OFFSET;
+	lisa_ram_ptr = memory_region(machine, "maincpu") + RAM_OFFSET;
+	lisa_rom_ptr = memory_region(machine, "maincpu") + ROM_OFFSET;
 	lisa_model = lisa2;
 	lisa_features.has_fast_timers = 0;
 	lisa_features.floppy_hardware = sony_lisa2;
@@ -1105,8 +1106,8 @@ DRIVER_INIT( lisa2 )
 
 DRIVER_INIT( lisa210 )
 {
-	lisa_ram_ptr = memory_region(machine, "main") + RAM_OFFSET;
-	lisa_rom_ptr = memory_region(machine, "main") + ROM_OFFSET;
+	lisa_ram_ptr = memory_region(machine, "maincpu") + RAM_OFFSET;
+	lisa_rom_ptr = memory_region(machine, "maincpu") + ROM_OFFSET;
 	lisa_model = lisa210;
 	lisa_features.has_fast_timers = 1;
 	lisa_features.floppy_hardware = sony_lisa210;
@@ -1118,8 +1119,8 @@ DRIVER_INIT( lisa210 )
 
 DRIVER_INIT( mac_xl )
 {
-	lisa_ram_ptr = memory_region(machine, "main") + RAM_OFFSET;
-	lisa_rom_ptr = memory_region(machine, "main") + ROM_OFFSET;
+	lisa_ram_ptr = memory_region(machine, "maincpu") + RAM_OFFSET;
+	lisa_rom_ptr = memory_region(machine, "maincpu") + ROM_OFFSET;
 	lisa_model = mac_xl;
 	lisa_features.has_fast_timers = 1;
 	lisa_features.floppy_hardware = sony_lisa210;
@@ -1133,8 +1134,8 @@ MACHINE_RESET( lisa )
 {
 	mouse_timer = timer_alloc(machine, handle_mouse, NULL);
 
-	lisa_ram_ptr = memory_region(machine, "main") + RAM_OFFSET;
-	lisa_rom_ptr = memory_region(machine, "main") + ROM_OFFSET;
+	lisa_ram_ptr = memory_region(machine, "maincpu") + RAM_OFFSET;
+	lisa_rom_ptr = memory_region(machine, "maincpu") + ROM_OFFSET;
 
 	videoROM_ptr = memory_region(machine, "gfx1");
 
@@ -1170,14 +1171,14 @@ MACHINE_RESET( lisa )
 	init_COPS(machine);
 
 	{
-		const device_config *via_0 = device_list_find_by_tag(machine->config->devicelist, VIA6522, "via6522_0");
+		const device_config *via_0 = devtag_get_device(machine, "via6522_0");
 		COPS_via_out_ca2(via_0, 0, 0);	/* VIA core forgets to do so */
 	}
 
 	/* initialize floppy */
 	{
 		if (lisa_features.floppy_hardware == sony_lisa2)
-			sony_set_enable_lines((device_config*)device_list_find_by_tag( machine->config->devicelist,APPLEFDC,"fdc"),1);	/* on lisa2, drive unit 1 is always selected (?) */
+			sony_set_enable_lines((device_config*)devtag_get_device(machine, "fdc"),1);	/* on lisa2, drive unit 1 is always selected (?) */
 	}
 }
 
@@ -1307,9 +1308,7 @@ INLINE void lisa_fdc_ttl_glue_access(running_machine *machine, offs_t offset)
 			MT1 = offset & 1;
 			if (MT1 && ! oldMT1)
 			{
-				const device_config *fdc = device_list_find_by_tag(machine->config->devicelist,
-					IWM,
-					"fdc");
+				const device_config *fdc = devtag_get_device(machine, "fdc");
 
 				PWM_floppy_motor_speed = (PWM_floppy_motor_speed << 1) & 0xff;
 				if (applefdc_get_lines(fdc) & APPLEFDC_PH0)
@@ -1328,7 +1327,7 @@ INLINE void lisa_fdc_ttl_glue_access(running_machine *machine, offs_t offset)
 		/*if (lisa_features.floppy_hardware == twiggy)
 			twiggy_set_head_line(offset & 1);
 		else*/ if (lisa_features.floppy_hardware == sony_lisa210)
-			sony_set_sel_line((device_config*)device_list_find_by_tag( machine->config->devicelist,APPLEFDC,"fdc"), offset & 1);
+			sony_set_sel_line((device_config*)devtag_get_device(machine, "fdc"), offset & 1);
 		break;
 	case 6:
 		DISK_DIAG = offset & 1;
@@ -1343,9 +1342,7 @@ INLINE void lisa_fdc_ttl_glue_access(running_machine *machine, offs_t offset)
 READ8_HANDLER ( lisa_fdc_io_r )
 {
 	int answer=0;
-	const device_config *fdc = device_list_find_by_tag(space->machine->config->devicelist,
-		IWM,
-		"fdc");
+	const device_config *fdc = devtag_get_device(space->machine, "fdc");
 
 	switch ((offset & 0x0030) >> 4)
 	{
@@ -1372,9 +1369,7 @@ READ8_HANDLER ( lisa_fdc_io_r )
 
 WRITE8_HANDLER ( lisa_fdc_io_w )
 {
-	const device_config *fdc = device_list_find_by_tag(space->machine->config->devicelist,
-		IWM,
-		"fdc");
+	const device_config *fdc = devtag_get_device(space->machine, "fdc");
 
 	switch ((offset & 0x0030) >> 4)
 	{
@@ -1905,8 +1900,8 @@ INLINE void cpu_board_control_access(running_machine *machine, offs_t offset)
 
 static READ16_HANDLER ( lisa_IO_r )
 {
-	const device_config *via_0 = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_0");
-	const device_config *via_1 = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_1");
+	const device_config *via_0 = devtag_get_device(space->machine, "via6522_0");
+	const device_config *via_1 = devtag_get_device(space->machine, "via6522_1");
 	int answer=0;
 
 	switch ((offset & 0x7000) >> 12)
@@ -2034,8 +2029,8 @@ static READ16_HANDLER ( lisa_IO_r )
 
 static WRITE16_HANDLER ( lisa_IO_w )
 {
-	const device_config *via_0 = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_0");
-	const device_config *via_1 = device_list_find_by_tag(space->machine->config->devicelist, VIA6522, "via6522_1");
+	const device_config *via_0 = devtag_get_device(space->machine, "via6522_0");
+	const device_config *via_1 = devtag_get_device(space->machine, "via6522_1");
 
 	switch ((offset & 0x7000) >> 12)
 	{

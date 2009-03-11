@@ -13,18 +13,19 @@
 #include "driver.h"
 #include "includes/comx35.h"
 #include "cpu/cdp1802/cdp1802.h"
+#include "sound/cdp1869.h"
+#include "sound/wave.h"
 #include "devices/basicdsk.h"
 #include "devices/cassette.h"
 #include "devices/printer.h"
 #include "devices/snapquik.h"
 #include "machine/cdp1871.h"
 #include "machine/wd17xx.h"
-#include "video/cdp1869.h"
 #include "video/mc6845.h"
 
 static const device_config *cassette_device_image(running_machine *machine)
 {
-	return devtag_get_device(machine, CASSETTE, "cassette");
+	return devtag_get_device(machine, CASSETTE_TAG);
 }
 
 /* Memory Maps */
@@ -37,19 +38,19 @@ static ADDRESS_MAP_START( comx35_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4000, 0xbfff) AM_RAM
 	AM_RANGE(0xc000, 0xdfff) AM_RAMBANK(1)
 	AM_RANGE(0xe000, 0xefff) AM_ROMBANK(3)
-	AM_RANGE(0xf400, 0xf7ff) AM_DEVREADWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_charram_r, cdp1869_charram_w)
-	AM_RANGE(0xf800, 0xffff) AM_DEVREADWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_pageram_r, cdp1869_pageram_w)
+	AM_RANGE(0xf400, 0xf7ff) AM_DEVREADWRITE(CDP1869_TAG, cdp1869_charram_r, cdp1869_charram_w)
+	AM_RANGE(0xf800, 0xffff) AM_DEVREADWRITE(CDP1869_TAG, cdp1869_pageram_r, cdp1869_pageram_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( comx35_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x01, 0x01) AM_WRITE(comx35_bank_select_w)
 	AM_RANGE(0x02, 0x02) AM_READWRITE(comx35_io_r, comx35_io_w)
-	AM_RANGE(0x03, 0x03) AM_DEVREAD(CDP1871, CDP1871_TAG, cdp1871_data_r) AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out3_w)
-	AM_RANGE(0x04, 0x04) AM_READ(comx35_io2_r) AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out4_w)
-	AM_RANGE(0x05, 0x05) AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out5_w)
-	AM_RANGE(0x06, 0x06) AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out6_w)
-	AM_RANGE(0x07, 0x07) AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out7_w)
+	AM_RANGE(0x03, 0x03) AM_DEVREAD(CDP1871_TAG, cdp1871_data_r) AM_DEVWRITE(CDP1869_TAG, cdp1869_out3_w)
+	AM_RANGE(0x04, 0x04) AM_READ(comx35_io2_r) AM_DEVWRITE(CDP1869_TAG, cdp1869_out4_w)
+	AM_RANGE(0x05, 0x05) AM_DEVWRITE(CDP1869_TAG, cdp1869_out5_w)
+	AM_RANGE(0x06, 0x06) AM_DEVWRITE(CDP1869_TAG, cdp1869_out6_w)
+	AM_RANGE(0x07, 0x07) AM_DEVWRITE(CDP1869_TAG, cdp1869_out7_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -185,7 +186,7 @@ static INPUT_PORTS_START( comx35 )
 	COMX35_DEVICES
 
 	PORT_START("SLOT3")
-	PORT_CONFNAME( 0x0f, 0x06, "Expansion Box Slot 3")
+	PORT_CONFNAME( 0x0f, 0x07, "Expansion Box Slot 3")
 	COMX35_DEVICES
 
 	PORT_START("SLOT4")
@@ -312,32 +313,48 @@ static CDP1802_INTERFACE( comx35_cdp1802_config )
 
 /* CDP1871 Interface */
 
-static CDP1871_ON_DA_CHANGED( comx35_da_w )
+static WRITE_LINE_DEVICE_HANDLER( comx35_da_w )
 {
-	comx35_state *state = device->machine->driver_data;
+	comx35_state *driver_state = device->machine->driver_data;
 
-	state->cdp1871_efxa = level;
+	driver_state->cdp1871_efxa = state;
 }
 
-static CDP1871_ON_RPT_CHANGED( comx35_rpt_w )
+static WRITE_LINE_DEVICE_HANDLER( comx35_rpt_w )
 {
-	comx35_state *state = device->machine->driver_data;
+	comx35_state *driver_state = device->machine->driver_data;
 
-	state->cdp1871_efxb = level;
+	driver_state->cdp1871_efxb = state;
 }
 
-static CDP1871_INTERFACE( comx35n_cdp1871_intf )
+static READ_LINE_DEVICE_HANDLER( comx35_shift_r )
 {
-	CDP1869_CPU_CLK_PAL / 8,
-	comx35_da_w,
-	comx35_rpt_w
-};
+	return BIT(input_port_read(device->machine, "MODIFIERS"), 0);
+}
 
-static CDP1871_INTERFACE( comx35p_cdp1871_intf )
+static READ_LINE_DEVICE_HANDLER( comx35_control_r )
 {
-	CDP1869_CPU_CLK_NTSC / 8,
-	comx35_da_w,
-	comx35_rpt_w
+	return BIT(input_port_read(device->machine, "MODIFIERS"), 1);
+}
+
+static CDP1871_INTERFACE( comx35_cdp1871_intf )
+{
+	DEVCB_INPUT_PORT("D1"),
+	DEVCB_INPUT_PORT("D2"),
+	DEVCB_INPUT_PORT("D3"),
+	DEVCB_INPUT_PORT("D4"),
+	DEVCB_INPUT_PORT("D5"),
+	DEVCB_INPUT_PORT("D6"),
+	DEVCB_INPUT_PORT("D7"),
+	DEVCB_INPUT_PORT("D8"),
+	DEVCB_INPUT_PORT("D9"),
+	DEVCB_INPUT_PORT("D10"),
+	DEVCB_INPUT_PORT("D11"),
+	DEVCB_LINE(comx35_shift_r),
+	DEVCB_LINE(comx35_control_r),
+	DEVCB_NULL,
+	DEVCB_LINE(comx35_da_w),
+	DEVCB_LINE(comx35_rpt_w)
 };
 
 /* Machine Drivers */
@@ -349,11 +366,10 @@ static const cassette_config comx35_cassette_config =
 	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED
 };
 
-static MACHINE_DRIVER_START( comx35p )
+static MACHINE_DRIVER_START( comx35_pal )
 	MDRV_DRIVER_DATA(comx35_state)
 
-	// basic system hardware
-
+	/* basic system hardware */
 	MDRV_CPU_ADD(CDP1802_TAG, CDP1802, CDP1869_CPU_CLK_PAL)
 	MDRV_CPU_PROGRAM_MAP(comx35_map, 0)
 	MDRV_CPU_IO_MAP(comx35_io_map, 0)
@@ -362,41 +378,21 @@ static MACHINE_DRIVER_START( comx35p )
 	MDRV_MACHINE_START(comx35p)
 	MDRV_MACHINE_RESET(comx35)
 
-	// keyboard encoder
-	MDRV_CDP1871_ADD(CDP1871_TAG, comx35p_cdp1871_intf)
-	
-	// video hardware
+	/* sound and video hardware */
+	MDRV_IMPORT_FROM(comx35_pal_video)
 
-	MDRV_IMPORT_FROM(comx35p_video)
-
-	// sound hardware
-
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-
-	MDRV_SOUND_ADD("cdp1869", CDP1869, CDP1869_DOT_CLK_PAL)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-
-	// printer
-
+	/* peripheral hardware */
+	MDRV_CDP1871_ADD(CDP1871_TAG, comx35_cdp1871_intf, CDP1869_CPU_CLK_PAL / 8)
+	MDRV_WD1770_ADD(WD1770_TAG, comx35_wd17xx_interface )	
+	MDRV_QUICKLOAD_ADD("quickload", comx35, "comx", 0)
+	MDRV_CASSETTE_ADD(CASSETTE_TAG, comx35_cassette_config)
 	MDRV_PRINTER_ADD("printer")
-
-	// quickload
-
-	MDRV_QUICKLOAD_ADD(comx35, "comx", 0)
-
-	MDRV_CASSETTE_ADD( "cassette", comx35_cassette_config )
-
-	MDRV_WD1770_ADD("wd1770", comx35_wd17xx_interface )	
 MACHINE_DRIVER_END
 
-static MACHINE_DRIVER_START( comx35n )
+static MACHINE_DRIVER_START( comx35_ntsc )
 	MDRV_DRIVER_DATA(comx35_state)
 
-	// basic system hardware
-
+	/* basic system hardware */
 	MDRV_CPU_ADD(CDP1802_TAG, CDP1802, CDP1869_CPU_CLK_NTSC)
 	MDRV_CPU_PROGRAM_MAP(comx35_map, 0)
 	MDRV_CPU_IO_MAP(comx35_io_map, 0)
@@ -405,38 +401,23 @@ static MACHINE_DRIVER_START( comx35n )
 	MDRV_MACHINE_START(comx35n)
 	MDRV_MACHINE_RESET(comx35)
 
-	// keyboard encoder
-	MDRV_CDP1871_ADD(CDP1871_TAG, comx35n_cdp1871_intf)
+	/* sound and video hardware */
+	MDRV_IMPORT_FROM(comx35_ntsc_video)
 
-	// video hardware
-
-	MDRV_IMPORT_FROM(comx35n_video)
-
-	// sound hardware
-
-	MDRV_SPEAKER_STANDARD_MONO("mono")
-
-	MDRV_SOUND_ADD("cdp1869", CDP1869, CDP1869_DOT_CLK_NTSC)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-
-	// printer
-
+	/* peripheral hardware */
+	MDRV_CDP1871_ADD(CDP1871_TAG, comx35_cdp1871_intf, CDP1869_CPU_CLK_NTSC / 8)
+	MDRV_WD1770_ADD(WD1770_TAG, comx35_wd17xx_interface )	
+	MDRV_QUICKLOAD_ADD("quickload", comx35, "comx", 0)
+	MDRV_CASSETTE_ADD(CASSETTE_TAG, comx35_cassette_config)
 	MDRV_PRINTER_ADD("printer")
-
-	// quickload
-
-	MDRV_QUICKLOAD_ADD(comx35, "comx", 0)
-
-	MDRV_CASSETTE_ADD( "cassette", comx35_cassette_config )
 MACHINE_DRIVER_END
 
 /* ROMs */
 
 ROM_START( comx35p )
 	ROM_REGION( 0x10000, CDP1802_TAG, 0 )
+	ROM_DEFAULT_BIOS( "basic100e" )
+
 	ROM_SYSTEM_BIOS( 0, "basic100", "COMX BASIC V1.00" )
 	ROMX_LOAD( "comx_10.u21",			0x0000, 0x4000, CRC(68d0db2d) SHA1(062328361629019ceed9375afac18e2b7849ce47), ROM_BIOS(1) )
 	ROM_SYSTEM_BIOS( 1, "basic100e", "COMX BASIC V1.00 with Expansion Box" )
@@ -500,5 +481,5 @@ SYSTEM_CONFIG_END
 /* System Drivers */
 
 //    YEAR  NAME		PARENT  COMPAT	MACHINE		INPUT     INIT	CONFIG    COMPANY						FULLNAME			FLAGS
-COMP( 1983, comx35p,	0,		0,		comx35p,	comx35,   0, 	comx35,   "Comx World Operations Ltd",	"COMX 35 (PAL)",	GAME_IMPERFECT_SOUND )
-COMP( 1983, comx35n,	comx35p,0,		comx35n,	comx35,   0, 	comx35,   "Comx World Operations Ltd",	"COMX 35 (NTSC)",	GAME_IMPERFECT_SOUND )
+COMP( 1983, comx35p,	0,		0,		comx35_pal,	comx35,   0, 	comx35,   "Comx World Operations Ltd",	"COMX 35 (PAL)",	GAME_IMPERFECT_SOUND )
+COMP( 1983, comx35n,	comx35p,0,		comx35_ntsc,comx35,   0, 	comx35,   "Comx World Operations Ltd",	"COMX 35 (NTSC)",	GAME_IMPERFECT_SOUND )

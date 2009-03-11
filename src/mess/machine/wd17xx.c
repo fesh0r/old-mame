@@ -1634,13 +1634,12 @@ WRITE8_DEVICE_HANDLER( wd17xx_w )
 const wd17xx_interface default_wd17xx_interface = { NULL, NULL };
 
 /* device interface */
-static device_start_err common_start(const device_config *device, wd17xx_type_t device_type)
+static void common_start(const device_config *device, wd17xx_type_t device_type)
 {
 	wd17xx_t *w = get_safe_token(device);
 
 	assert(device != NULL);
 	assert(device->tag != NULL);
-	assert(strlen(device->tag) < 20);
 	assert(device->static_config != NULL);
 
 	w->intf = device->static_config;
@@ -1653,9 +1652,6 @@ static device_start_err common_start(const device_config *device, wd17xx_type_t 
 	w->timer_rs = timer_alloc(device->machine, wd17xx_read_sector_callback, (void*)device);
 	w->timer_ws = timer_alloc(device->machine, wd17xx_write_sector_callback, (void*)device);
 	w->pause_time = 40;
-		
-	return DEVICE_START_OK;
-
 }
 
 static DEVICE_RESET( wd17xx )
@@ -1684,35 +1680,35 @@ void wd17xx_reset(const device_config *device)
 
 static DEVICE_START( wd1770 )
 {
-	return common_start(device, WD_TYPE_1770);
+	common_start(device, WD_TYPE_1770);
 }
 static DEVICE_START( wd1772 )
 {
-	return common_start(device, WD_TYPE_1772);
+	common_start(device, WD_TYPE_1772);
 }
 static DEVICE_START( wd1773 )
 {
-	return common_start(device, WD_TYPE_1773);
+	common_start(device, WD_TYPE_1773);
 }
 static DEVICE_START( wd179x )
 {
-	return common_start(device, WD_TYPE_179X);
+	common_start(device, WD_TYPE_179X);
 }
 static DEVICE_START( wd1793 )
 {
-	return common_start(device, WD_TYPE_1793);
+	common_start(device, WD_TYPE_1793);
 }
 static DEVICE_START( wd2793 )
 {
-	return common_start(device, WD_TYPE_2793);
+	common_start(device, WD_TYPE_2793);
 }
 static DEVICE_START( wd177x )
 {
-	return common_start(device, WD_TYPE_177X);
+	common_start(device, WD_TYPE_177X);
 }
 static DEVICE_START( mb8877 )
 {
-	return common_start(device, WD_TYPE_MB8877);
+	common_start(device, WD_TYPE_MB8877);
 }
 
 static DEVICE_SET_INFO( wd17xx )

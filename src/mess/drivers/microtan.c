@@ -42,6 +42,8 @@
 
 /* Components */
 #include "sound/ay8910.h"
+#include "sound/dac.h"
+#include "sound/wave.h"
 #include "machine/6522via.h"
 #include "machine/6551.h"
 
@@ -52,13 +54,13 @@
 static ADDRESS_MAP_START( microtan_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_RAM
 	AM_RANGE(0x0200, 0x03ff) AM_RAM_WRITE(microtan_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0xbc00, 0xbc00) AM_WRITE(ay8910_control_port_0_w)
-	AM_RANGE(0xbc01, 0xbc01) AM_READWRITE(ay8910_read_port_0_r, ay8910_write_port_0_w)
-	AM_RANGE(0xbc02, 0xbc02) AM_WRITE(ay8910_control_port_1_w)
-	AM_RANGE(0xbc03, 0xbc03) AM_READWRITE(ay8910_read_port_1_r, ay8910_write_port_1_w)
-	AM_RANGE(0xbfc0, 0xbfcf) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)
-	AM_RANGE(0xbfd0, 0xbfd3) AM_DEVREADWRITE(ACIA6551, "acia", acia_6551_r, acia_6551_w)
-	AM_RANGE(0xbfe0, 0xbfef) AM_DEVREADWRITE(VIA6522, "via6522_1", via_r, via_w)
+	AM_RANGE(0xbc00, 0xbc00) AM_DEVWRITE("ay8910.1", ay8910_address_w)
+	AM_RANGE(0xbc01, 0xbc01) AM_DEVREADWRITE("ay8910.1", ay8910_r, ay8910_data_w)
+	AM_RANGE(0xbc02, 0xbc02) AM_DEVWRITE("ay8910.2", ay8910_address_w)
+	AM_RANGE(0xbc03, 0xbc03) AM_DEVREADWRITE("ay8910.2", ay8910_r, ay8910_data_w)
+	AM_RANGE(0xbfc0, 0xbfcf) AM_DEVREADWRITE("via6522_0", via_r, via_w)
+	AM_RANGE(0xbfd0, 0xbfd3) AM_DEVREADWRITE("acia", acia_6551_r, acia_6551_w)
+	AM_RANGE(0xbfe0, 0xbfef) AM_DEVREADWRITE("via6522_1", via_r, via_w)
 	AM_RANGE(0xbff0, 0xbfff) AM_READWRITE(microtan_bffx_r, microtan_bffx_w)
 	AM_RANGE(0xc000, 0xe7ff) AM_ROM
 	AM_RANGE(0xf000, 0xffff) AM_ROM
@@ -206,22 +208,22 @@ static const ay8910_interface microtan_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	0,
-	0,
-	0,
-	0
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static MACHINE_DRIVER_START( microtan )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6502, 750000)	// 750 kHz
+	MDRV_CPU_ADD("maincpu", M6502, 750000)	// 750 kHz
 	MDRV_CPU_PROGRAM_MAP(microtan_map, 0)
-	MDRV_CPU_VBLANK_INT("main", microtan_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", microtan_interrupt)
 
 	MDRV_MACHINE_RESET(microtan)
 
     /* video hardware - include overscan */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -238,7 +240,7 @@ static MACHINE_DRIVER_START( microtan )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD("ay8910.1", AY8910, 1000000)
 	MDRV_SOUND_CONFIG(microtan_ay8910_interface)
@@ -248,8 +250,8 @@ static MACHINE_DRIVER_START( microtan )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* snapshot/quickload */
-	MDRV_SNAPSHOT_ADD(microtan, "m65", 0.5)
-	MDRV_QUICKLOAD_ADD(microtan_hexfile, "hex", 0.5)
+	MDRV_SNAPSHOT_ADD("snapshot", microtan, "m65", 0.5)
+	MDRV_QUICKLOAD_ADD("quickload", microtan_hexfile, "hex", 0.5)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
@@ -263,7 +265,7 @@ static MACHINE_DRIVER_START( microtan )
 MACHINE_DRIVER_END
 
 ROM_START( microtan )
-    ROM_REGION( 0x10000, "main", 0 )
+    ROM_REGION( 0x10000, "maincpu", 0 )
     ROM_LOAD( "tanex_j2.rom", 0xc000, 0x1000, CRC(3e09d384) SHA1(15a98941a672ff16242cc73f1dcf1d81fccd8910) )
     ROM_LOAD( "tanex_h2.rom", 0xd000, 0x1000, CRC(75105113) SHA1(c6fea4d65b7c52f43aa1589cace9467349a0f290) )
     ROM_LOAD( "tanex_d3.rom", 0xe000, 0x0800, CRC(ee6e8412) SHA1(7e1bca84bab79d94a4ab8554d23e2bc28ccd0384) )

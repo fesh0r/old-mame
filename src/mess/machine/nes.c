@@ -40,7 +40,7 @@ struct _nes_input
     GLOBAL VARIABLES
 ***************************************************************************/
 
-unsigned char *battery_ram;
+unsigned char *nes_battery_ram;
 static UINT8 battery_data[BATTERY_SIZE];
 
 struct nes_struct nes;
@@ -66,7 +66,7 @@ static void nes_machine_stop(running_machine *machine);
 
 static const device_config *cartslot_image(running_machine *machine)
 {
-	return device_list_find_by_tag(machine->config->devicelist, CARTSLOT, "cart");
+	return devtag_get_device(machine, "cart");
 }
 
 static void init_nes_core (running_machine *machine)
@@ -74,7 +74,7 @@ static void init_nes_core (running_machine *machine)
 	const address_space *space = cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM );
 
 	/* We set these here in case they weren't set in the cart loader */
-	nes.rom = memory_region(machine, "main");
+	nes.rom = memory_region(machine, "maincpu");
 	nes.vrom = memory_region(machine, "gfx1");
 	nes.vram = memory_region(machine, "gfx2");
 	nes.wram = memory_region(machine, "user1");
@@ -85,7 +85,7 @@ static void init_nes_core (running_machine *machine)
 	memory_install_write8_handler(space, 0x0000, 0x07ff, 0, 0x1800, SMH_BANK10);
 	memory_set_bankptr(machine, 10, nes.rom);
 
-	battery_ram = nes.wram;
+	nes_battery_ram = nes.wram;
 
 	/* Set up the memory handlers for the mapper */
 	switch (nes.mapper)
@@ -159,7 +159,7 @@ static void init_nes_core (running_machine *machine)
 	/* memory subsystem is set up. When this routine is called */
 	/* everything is ready, so we can just copy over the data */
 	/* we loaded before. */
-	memcpy (battery_ram, battery_data, BATTERY_SIZE);
+	memcpy (nes_battery_ram, battery_data, BATTERY_SIZE);
 }
 
 int nes_ppu_vidaccess( running_machine *machine, int num, int address, int data )
@@ -198,7 +198,7 @@ static void nes_machine_stop(running_machine *machine)
 {
 	/* Write out the battery file if necessary */
 	if (nes.battery)
-		image_battery_save(cartslot_image(machine), battery_ram, BATTERY_SIZE);
+		image_battery_save(cartslot_image(machine), nes_battery_ram, BATTERY_SIZE);
 }
 
 
@@ -503,15 +503,15 @@ DEVICE_IMAGE_LOAD( nes_cart )
 	if (nes.four_screen_vram) logerror("-- 4-screen VRAM\n");
 
 	/* Free the regions that were allocated by the ROM loader */
-	memory_region_free (image->machine, "main");
+	memory_region_free (image->machine, "maincpu");
 	memory_region_free (image->machine, "gfx1");
 
 	/* Allocate them again with the proper size */
-	memory_region_alloc(image->machine, "main", 0x10000 + (nes.prg_chunks + 1) * 0x4000,0);
+	memory_region_alloc(image->machine, "maincpu", 0x10000 + (nes.prg_chunks + 1) * 0x4000,0);
 	if (nes.chr_chunks)
 		memory_region_alloc(image->machine, "gfx1", nes.chr_chunks * 0x2000,0);
 
-	nes.rom = memory_region(image->machine, "main");
+	nes.rom = memory_region(image->machine, "maincpu");
 	nes.vrom = memory_region(image->machine, "gfx1");
 	nes.vram = memory_region(image->machine, "gfx2");
 	nes.wram = memory_region(image->machine, "user1");
@@ -600,7 +600,6 @@ DEVICE_START(nes_disk)
 
 	nes_fds.sides = 0;
 	nes_fds.data = NULL;
-	return DEVICE_START_OK;
 }
 
 

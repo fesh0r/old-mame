@@ -11,13 +11,14 @@
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
+#include "sound/wave.h"
 #include "video/mc6845.h"
 #include "includes/svi318.h"
 #include "video/tms9928a.h"
 #include "machine/8255ppi.h"
 #include "machine/wd17xx.h"
+#include "machine/ctronics.h"
 #include "devices/basicdsk.h"
-#include "devices/printer.h"
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
 #include "formats/svi_cas.h"
@@ -46,11 +47,11 @@ static ADDRESS_MAP_START( svi318_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x81, 0x81) AM_WRITE( TMS9928A_register_w )
 	AM_RANGE( 0x84, 0x84) AM_READ( TMS9928A_vram_r )
 	AM_RANGE( 0x85, 0x85) AM_READ( TMS9928A_register_r )
-	AM_RANGE( 0x88, 0x88) AM_WRITE( ay8910_control_port_0_w )
-	AM_RANGE( 0x8c, 0x8c) AM_WRITE( ay8910_write_port_0_w )
-	AM_RANGE( 0x90, 0x90) AM_READ( ay8910_read_port_0_r )
-	AM_RANGE( 0x96, 0x97) AM_DEVWRITE( PPI8255, "ppi8255", svi318_ppi_w )
-	AM_RANGE( 0x98, 0x9a) AM_DEVREAD( PPI8255, "ppi8255", svi318_ppi_r )
+	AM_RANGE( 0x88, 0x88) AM_DEVWRITE("ay8910", ay8910_address_w )
+	AM_RANGE( 0x8c, 0x8c) AM_DEVWRITE("ay8910", ay8910_data_w )
+	AM_RANGE( 0x90, 0x90) AM_DEVREAD("ay8910", ay8910_r )
+	AM_RANGE( 0x96, 0x97) AM_DEVWRITE("ppi8255", svi318_ppi_w )
+	AM_RANGE( 0x98, 0x9a) AM_DEVREAD("ppi8255", svi318_ppi_r )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( svi328_806_io, ADDRESS_SPACE_IO, 8 )
@@ -61,11 +62,11 @@ static ADDRESS_MAP_START( svi328_806_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x81, 0x81) AM_WRITE( TMS9928A_register_w )
 	AM_RANGE( 0x84, 0x84) AM_READ( TMS9928A_vram_r )
 	AM_RANGE( 0x85, 0x85) AM_READ( TMS9928A_register_r )
-	AM_RANGE( 0x88, 0x88) AM_WRITE( ay8910_control_port_0_w )
-	AM_RANGE( 0x8c, 0x8c) AM_WRITE( ay8910_write_port_0_w )
-	AM_RANGE( 0x90, 0x90) AM_READ( ay8910_read_port_0_r )
-	AM_RANGE( 0x96, 0x97) AM_DEVWRITE( PPI8255, "ppi8255", svi318_ppi_w )
-	AM_RANGE( 0x98, 0x9a) AM_DEVREAD( PPI8255, "ppi8255", svi318_ppi_r )
+	AM_RANGE( 0x88, 0x88) AM_DEVWRITE("ay8910", ay8910_address_w )
+	AM_RANGE( 0x8c, 0x8c) AM_DEVWRITE("ay8910", ay8910_data_w )
+	AM_RANGE( 0x90, 0x90) AM_DEVREAD("ay8910", ay8910_r )
+	AM_RANGE( 0x96, 0x97) AM_DEVWRITE("ppi8255", svi318_ppi_w )
+	AM_RANGE( 0x98, 0x9a) AM_DEVREAD("ppi8255", svi318_ppi_r )
 ADDRESS_MAP_END
 
 /*
@@ -105,7 +106,7 @@ Small note about natural keyboard: currently,
 - "Stop" is mapped to 'End'
 - "Select" is mapped to 'F11'
 - "CLS/HM" is mapped to 'Home'
-TODO: How are multiple keys (Copy, Cut, Paste, CLS/HM) expected to 
+TODO: How are multiple keys (Copy, Cut, Paste, CLS/HM) expected to
 behave? Do they need multiple mapping in natural keyboard?
 */
 
@@ -256,10 +257,10 @@ static const ay8910_interface svi318_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	svi318_psg_port_a_r,
-	NULL,
-	NULL,
-	svi318_psg_port_b_w
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, svi318_psg_port_a_r),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, svi318_psg_port_b_w)
 };
 
 static const cassette_config svi318_cassette_config =
@@ -280,10 +281,10 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( svi318 )
 	/* Basic machine hardware */
-	MDRV_CPU_ADD( "main", Z80, 3579545 )	/* 3.579545 MHz */
+	MDRV_CPU_ADD( "maincpu", Z80, 3579545 )	/* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP( svi318_mem, 0 )
 	MDRV_CPU_IO_MAP( svi318_io, 0 )
-	MDRV_CPU_VBLANK_INT("main", svi318_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", svi318_interrupt)
 	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( svi318_pal )
@@ -296,7 +297,7 @@ static MACHINE_DRIVER_START( svi318 )
 
 	/* Video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
@@ -304,26 +305,26 @@ static MACHINE_DRIVER_START( svi318 )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD("ay8910", AY8910, 1789773)
 	MDRV_SOUND_CONFIG(svi318_ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
 	/* printer */
-	MDRV_PRINTER_ADD("printer")
+	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 
 	MDRV_CASSETTE_ADD( "cassette", svi318_cassette_config )
-		
+
 	MDRV_WD179X_ADD("wd179x", svi_wd17xx_interface )
-	
+
 	MDRV_IMPORT_FROM( svi318_cartslot )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( svi318n )
 	MDRV_IMPORT_FROM( svi318 )
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 
 	MDRV_MACHINE_START( svi318_ntsc )
@@ -344,10 +345,10 @@ static const mc6845_interface svi806_crtc6845_interface =
 
 static MACHINE_DRIVER_START( svi328_806 )
 	/* Basic machine hardware */
-	MDRV_CPU_ADD( "main", Z80, 3579545 )	/* 3.579545 MHz */
+	MDRV_CPU_ADD( "maincpu", Z80, 3579545 )	/* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP( svi328_806_mem, 0 )
 	MDRV_CPU_IO_MAP( svi328_806_io, 0 )
-	MDRV_CPU_VBLANK_INT("main", svi318_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", svi318_interrupt)
 	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( svi318_pal )
@@ -362,7 +363,7 @@ static MACHINE_DRIVER_START( svi328_806 )
 	MDRV_DEFAULT_LAYOUT( layout_sv328806 )
 
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_PALETTE_LENGTH(TMS9928A_PALETTE_SIZE + 2)	/* 2 additional entries for monochrome svi806 output */
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
@@ -383,19 +384,19 @@ static MACHINE_DRIVER_START( svi328_806 )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD("ay8910", AY8910, 1789773)
 	MDRV_SOUND_CONFIG(svi318_ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
 	/* printer */
-	MDRV_PRINTER_ADD("printer")
+	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 
 	MDRV_CASSETTE_ADD( "cassette", svi318_cassette_config )
-	
+
 	MDRV_WD179X_ADD("wd179x", svi_wd17xx_interface )
-	
+
 	MDRV_IMPORT_FROM( svi318_cartslot )
 MACHINE_DRIVER_END
 
@@ -404,7 +405,7 @@ static MACHINE_DRIVER_START( svi328n_806 )
 
 	MDRV_MACHINE_START( svi318_ntsc)
 
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 MACHINE_DRIVER_END
 
@@ -415,7 +416,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START( svi318 )
-	ROM_REGION(0x10000, "main", 0)
+	ROM_REGION(0x10000, "maincpu", 0)
 	ROM_SYSTEM_BIOS(0, "111", "SV BASIC v1.11")
 	ROMX_LOAD("svi111.rom", 0x0000, 0x8000, CRC(bc433df6) SHA1(10349ce675f6d6d47f0976e39cb7188eba858d89), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "110", "SV BASIC v1.1")
@@ -425,7 +426,7 @@ ROM_START( svi318 )
 ROM_END
 
 ROM_START( svi318n  )
-	ROM_REGION(0x10000, "main", 0)
+	ROM_REGION(0x10000, "maincpu", 0)
 	ROM_SYSTEM_BIOS(0, "111", "SV BASIC v1.11")
 	ROMX_LOAD("svi111.rom", 0x0000, 0x8000, CRC(bc433df6) SHA1(10349ce675f6d6d47f0976e39cb7188eba858d89), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "110", "SV BASIC v1.1")
@@ -435,7 +436,7 @@ ROM_START( svi318n  )
 ROM_END
 
 ROM_START( svi328 )
-	ROM_REGION(0x10000, "main", 0)
+	ROM_REGION(0x10000, "maincpu", 0)
 	ROM_SYSTEM_BIOS(0, "111", "SV BASIC v1.11")
 	ROMX_LOAD("svi111.rom", 0x0000, 0x8000, CRC(bc433df6) SHA1(10349ce675f6d6d47f0976e39cb7188eba858d89), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "110", "SV BASIC v1.1")
@@ -445,7 +446,7 @@ ROM_START( svi328 )
 ROM_END
 
 ROM_START( svi328n )
-	ROM_REGION(0x10000, "main", 0)
+	ROM_REGION(0x10000, "maincpu", 0)
 	ROM_SYSTEM_BIOS(0, "111", "SV BASIC v1.11")
 	ROMX_LOAD("svi111.rom", 0x0000, 0x8000, CRC(bc433df6) SHA1(10349ce675f6d6d47f0976e39cb7188eba858d89), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "110", "SV BASIC v1.1")
@@ -455,7 +456,7 @@ ROM_START( svi328n )
 ROM_END
 
 ROM_START( sv328p80 )
-	ROM_REGION (0x10000, "main",0)
+	ROM_REGION (0x10000, "maincpu",0)
 	ROM_LOAD ("svi111.rom", 0x0000, 0x8000, CRC(bc433df6) SHA1(10349ce675f6d6d47f0976e39cb7188eba858d89))
 	ROM_REGION( 0x1000, "gfx1", 0)
 	ROM_SYSTEM_BIOS(0, "english", "English Character Set")
@@ -465,7 +466,7 @@ ROM_START( sv328p80 )
 ROM_END
 
 ROM_START( sv328n80 )
-	ROM_REGION (0x10000, "main",0)
+	ROM_REGION (0x10000, "maincpu",0)
 	ROM_LOAD ("svi111.rom", 0x0000, 0x8000, CRC(bc433df6) SHA1(10349ce675f6d6d47f0976e39cb7188eba858d89))
 	ROM_REGION( 0x1000, "gfx1", 0)
 	ROM_SYSTEM_BIOS(0, "english", "English Character Set")

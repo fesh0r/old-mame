@@ -109,7 +109,7 @@ static void msm8251_in_callback(running_machine *machine, int id, unsigned long 
 	int changed;
 
 	/* NPW 29-Nov-2008 - These two lines are a hack and indicate why our "serial" infrastructure needs to be updated */
-	device = device_list_find_by_tag(machine->config->devicelist, MSM8251, "uart");
+	device = devtag_get_device(machine, "uart");
 	uart = get_token(device);
 
 	changed = uart->connection.input_state^state;
@@ -141,7 +141,6 @@ static DEVICE_START( msm8251 )
 	serial_connection_init(device->machine,&uart->connection);
 	serial_connection_set_in_callback(device->machine,&uart->connection, msm8251_in_callback);
 	uart->connection.input_state = 0;
-	return DEVICE_START_OK;
 }
 
 

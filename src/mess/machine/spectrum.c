@@ -253,7 +253,7 @@ void spectrum_setup_sp(running_machine *machine, unsigned char *pSnapshot, unsig
 		logerror("Unknown meaning of word on position 32: %04x.\n", (hi << 8) | lo);
 
 	/* Set border colour */
-	PreviousFE = (PreviousFE & 0xf8) | (pSnapshot[34] & 0x07);
+	spectrum_PreviousFE = (spectrum_PreviousFE & 0xf8) | (pSnapshot[34] & 0x07);
 	EventList_Reset();
 	set_last_border_color(pSnapshot[34] & 0x07);
 	force_border_redraw();
@@ -382,7 +382,7 @@ void spectrum_setup_sna(running_machine *machine, unsigned char *pSnapshot, unsi
 	cpu_set_reg(machine->cpu[0], Z80_IM, data);
 
 	/* Set border colour */
-	PreviousFE = (PreviousFE & 0xf8) | (pSnapshot[26] & 0x07);
+	spectrum_PreviousFE = (spectrum_PreviousFE & 0xf8) | (pSnapshot[26] & 0x07);
 	EventList_Reset();
 	set_last_border_color(pSnapshot[26] & 0x07);
 	force_border_redraw();
@@ -652,7 +652,7 @@ void spectrum_setup_z80(running_machine *machine, unsigned char *pSnapshot, unsi
 	cpu_set_reg(machine->cpu[0], Z80_R, data);
 
 	/* Set border colour */
-	PreviousFE = (PreviousFE & 0xf8) | ((pSnapshot[12] & 0x0e) >> 1);
+	spectrum_PreviousFE = (spectrum_PreviousFE & 0xf8) | ((pSnapshot[12] & 0x0e) >> 1);
 	EventList_Reset();
 	set_last_border_color((pSnapshot[12] & 0x0e) >> 1);
 	force_border_redraw();
@@ -748,13 +748,15 @@ void spectrum_setup_z80(running_machine *machine, unsigned char *pSnapshot, unsi
 
 		if ((z80_type == SPECTRUM_Z80_SNAPSHOT_128K) || ((z80_type == SPECTRUM_Z80_SNAPSHOT_TS2068) && !strcmp(machine->gamedrv->name,"ts2068")))
 		{
+			const device_config *ay8912 = devtag_get_device(machine, "ay8912");
+
 			/* Only set up sound registers for 128K machine or TS2068! */
 			for (i = 0; i < 16; i++)
 			{
-				ay8910_control_port_0_w(space, 0, i);
-				ay8910_write_port_0_w(space, 0, pSnapshot[39 + i]);
+				ay8910_address_w(ay8912, 0, i);
+				ay8910_data_w(ay8912, 0, pSnapshot[39 + i]);
 			}
-			ay8910_control_port_0_w(space, 0, pSnapshot[38]);
+			ay8910_address_w(ay8912, 0, pSnapshot[38]);
 		}
 
 		pSource = pSnapshot + header_size;

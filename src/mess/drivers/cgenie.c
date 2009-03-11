@@ -33,6 +33,7 @@ NMI
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
 #include "sound/ay8910.h"
+#include "sound/dac.h"
 #include "formats/cgen_cas.h"
 
 
@@ -58,8 +59,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START (cgenie_io, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0xf8, 0xf8) AM_READWRITE( cgenie_sh_control_port_r, cgenie_sh_control_port_w )
-	AM_RANGE(0xf9, 0xf9) AM_READWRITE( cgenie_sh_data_port_r, cgenie_sh_data_port_w )
+	AM_RANGE(0xf8, 0xf8) AM_DEVREADWRITE("ay8910", cgenie_sh_control_port_r, cgenie_sh_control_port_w )
+	AM_RANGE(0xf9, 0xf9) AM_DEVREADWRITE("ay8910", ay8910_r, ay8910_data_w )
 	AM_RANGE(0xfa, 0xfa) AM_READWRITE( cgenie_index_r, cgenie_index_w )
 	AM_RANGE(0xfb, 0xfb) AM_READWRITE( cgenie_register_r, cgenie_register_w )
 	AM_RANGE(0xff, 0xff) AM_READWRITE( cgenie_port_ff_r, cgenie_port_ff_w )
@@ -383,10 +384,10 @@ static const ay8910_interface cgenie_ay8910_interface =
 {
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
-	cgenie_psg_port_a_r,
-	cgenie_psg_port_b_r,
-	cgenie_psg_port_a_w,
-	cgenie_psg_port_b_w
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, cgenie_psg_port_a_r),
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, cgenie_psg_port_b_r),
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, cgenie_psg_port_a_w),
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, cgenie_psg_port_b_w)
 };
 
 
@@ -399,10 +400,10 @@ static const cassette_config cgenie_cassette_config =
 
 static MACHINE_DRIVER_START( cgenie )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 2216800)        /* 2,2168 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, 2216800)        /* 2,2168 MHz */
 	MDRV_CPU_PROGRAM_MAP(cgenie_mem, 0)
 	MDRV_CPU_IO_MAP(cgenie_io, 0)
-	MDRV_CPU_VBLANK_INT("main", cgenie_frame_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", cgenie_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(cgenie_timer_interrupt, 40)
 	MDRV_QUANTUM_TIME(HZ(240))
 
@@ -410,7 +411,7 @@ static MACHINE_DRIVER_START( cgenie )
 	MDRV_MACHINE_RESET( cgenie )
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -448,7 +449,7 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 ROM_START (cgenie)
-	ROM_REGION(0x13000,"main",0)
+	ROM_REGION(0x13000,"maincpu",0)
 	ROM_LOAD ("cgenie.rom",  0x00000, 0x4000, CRC(d359ead7) SHA1(d8c2fc389ad38c45fba0ed556a7d91abac5463f4))
 	ROM_LOAD ("cgdos.rom",   0x10000, 0x2000, CRC(2a96cf74) SHA1(6dcac110f87897e1ee7521aefbb3d77a14815893))
 	ROM_CART_LOAD("cart", 0x12000, 0x1000, ROM_NOMIRROR | ROM_OPTIONAL)

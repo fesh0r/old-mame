@@ -1,5 +1,6 @@
 #include "driver.h"
 #include "cpu/upd7810/upd7810.h"
+#include "sound/speaker.h"
 #include "devices/cartslot.h"
 #include "includes/gamepock.h"
 #include "gamepock.lh"
@@ -37,9 +38,9 @@ INPUT_PORTS_END
 
 static const UPD7810_CONFIG gamepock_cpu_config = { TYPE_78C06, gamepock_io_callback };
 
-static DEVICE_START(gamepock_cart) {
+static DEVICE_START(gamepock_cart)
+{
 	memory_set_bankptr( device->machine, 1, memory_region(device->machine,  "user1" ) );
-	return DEVICE_START_OK;
 }
 
 static DEVICE_IMAGE_LOAD(gamepock_cart) {
@@ -57,14 +58,14 @@ static DEVICE_IMAGE_LOAD(gamepock_cart) {
 }
 
 static MACHINE_DRIVER_START( gamepock )
-	MDRV_CPU_ADD("main", UPD78C06, XTAL_6MHz)	/* uPD78C06AG */
+	MDRV_CPU_ADD("maincpu", UPD78C06, XTAL_6MHz)	/* uPD78C06AG */
 	MDRV_CPU_PROGRAM_MAP( gamepock_mem, 0 )
 	MDRV_CPU_IO_MAP( gamepock_io, 0 )
 	MDRV_CPU_CONFIG( gamepock_cpu_config )
 
 	MDRV_MACHINE_RESET( gamepock )
 
-	MDRV_SCREEN_ADD("main", LCD)
+	MDRV_SCREEN_ADD("screen", LCD)
 	MDRV_SCREEN_REFRESH_RATE( 60 )
 	MDRV_SCREEN_FORMAT( BITMAP_FORMAT_INDEXED16 )
 	MDRV_SCREEN_SIZE( 75, 64 )
@@ -89,10 +90,10 @@ static MACHINE_DRIVER_START( gamepock )
 MACHINE_DRIVER_END
 
 ROM_START( gamepock )
-	ROM_REGION( 0x1000, "main", ROMREGION_ERASEFF )
+	ROM_REGION( 0x1000, "maincpu", ROMREGION_ERASEFF )
 	ROM_LOAD( "egpcboot.bin", 0x0000, 0x1000, CRC(ee1ea65d) SHA1(9c7731b5ead721d2cc7f7e2655c5fed9e56db8b0) )
 	ROM_REGION( 0x8000, "user1", ROMREGION_ERASEFF )
 ROM_END
 
-CONS( 1984, gamepock, 0, 0, gamepock, gamepock, 0, 0, "Epoch", "Game Pocket Computer", GAME_NOT_WORKING ) // cpu broken, in or about 0.128u3
+CONS( 1984, gamepock, 0, 0, gamepock, gamepock, 0, 0, "Epoch", "Game Pocket Computer", 0 )
 

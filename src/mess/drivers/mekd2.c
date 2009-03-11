@@ -28,6 +28,7 @@
 
 #include "driver.h"
 #include "cpu/m6800/m6800.h"
+#include "sound/dac.h"
 #include "devices/cartslot.h"
 #include "includes/mekd2.h"
 
@@ -197,12 +198,12 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( mekd2 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M6800, 614400)        /* 614.4 kHz */
+	MDRV_CPU_ADD("maincpu", M6800, 614400)        /* 614.4 kHz */
 	MDRV_CPU_PROGRAM_MAP(mekd2_mem, 0)
 	MDRV_QUANTUM_TIME(HZ(60))
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -229,7 +230,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START(mekd2)
-	ROM_REGION(0x10000,"main",0)
+	ROM_REGION(0x10000,"maincpu",0)
 		ROM_LOAD("jbug.rom",    0xe000, 0x0400, CRC(a2a56502) SHA1(60b6e48f35fe4899e29166641bac3e81e3b9d220))
 	ROM_REGION(128 * 24 * 3,"gfx1",ROMREGION_ERASEFF)
 		/* space filled with 7segement graphics by mekd2_init_driver */

@@ -62,7 +62,7 @@ Hardware:   PPIA 8255
 #include "cpu/m6502/m6502.h"
 
 /* Components */
-#include "machine/centroni.h"
+#include "machine/ctronics.h"
 #include "machine/i8271.h"
 #include "machine/8255ppi.h"
 #include "machine/6522via.h"
@@ -71,9 +71,9 @@ Hardware:   PPIA 8255
 /* Devices */
 #include "devices/basicdsk.h"
 #include "devices/flopdrv.h"
-#include "devices/printer.h"
 #include "devices/cassette.h"
 #include "devices/snapquik.h"
+#include "sound/speaker.h"
 
 #include "includes/atom.h"
 
@@ -84,14 +84,15 @@ Hardware:   PPIA 8255
 
 /* memory w/r functions */
 
-static ADDRESS_MAP_START( atom_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( atom_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x09ff) AM_RAM
-	AM_RANGE(0x0a00, 0x0a04) AM_READWRITE(atom_8271_r, atom_8271_w)
+	AM_RANGE(0x0a00, 0x0a03) AM_DEVREADWRITE("i8271", i8271_r, i8271_w)
+	AM_RANGE(0x0a04, 0x0a04) AM_DEVREADWRITE("i8271", i8271_data_r, i8271_data_w)
 	AM_RANGE(0x0a05, 0x7fff) AM_RAM
 	AM_RANGE(0x8000, 0x97ff) AM_RAM AM_BASE(&videoram) /* VDG 6847 */
 	AM_RANGE(0x9800, 0x9fff) AM_RAM
-	AM_RANGE(0xb000, 0xb003) AM_DEVREADWRITE( PPI8255, "ppi8255", ppi8255_r, ppi8255_w) /* PPIA 8255 */
-	AM_RANGE(0xb800, 0xbbff) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)			/* VIA 6522 */
+	AM_RANGE(0xb000, 0xb003) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xb800, 0xbbff) AM_DEVREADWRITE("via6522_0", via_r, via_w)
 	AM_RANGE(0xc000, 0xcfff) AM_ROM
 	AM_RANGE(0xd000, 0xdfff) AM_ROM
 	AM_RANGE(0xe000, 0xefff) AM_ROM
@@ -99,15 +100,16 @@ static ADDRESS_MAP_START( atom_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START( atomeb_mem, ADDRESS_SPACE_PROGRAM, 8)
+static ADDRESS_MAP_START( atomeb_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x09ff) AM_RAM
-	AM_RANGE(0x0a00, 0x0a04) AM_READWRITE(atom_8271_r, atom_8271_w)
+	AM_RANGE(0x0a00, 0x0a03) AM_DEVREADWRITE("i8271", i8271_r, i8271_w)
+	AM_RANGE(0x0a04, 0x0a04) AM_DEVREADWRITE("i8271", i8271_data_r, i8271_data_w)
 	AM_RANGE(0x0a05, 0x7fff) AM_RAM
 	AM_RANGE(0x8000, 0x97ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size) /* VDG 6847 */
 	AM_RANGE(0x9800, 0x9fff) AM_RAM
 	AM_RANGE(0xa000, 0xafff) AM_READ(SMH_BANK1)	/* eprom data from eprom box */
-	AM_RANGE(0xb000, 0xb003) AM_DEVREADWRITE( PPI8255, "ppi8255", ppi8255_r, ppi8255_w) /* PPIA 8255 */
-	AM_RANGE(0xb800, 0xbbff) AM_DEVREADWRITE(VIA6522, "via6522_0", via_r, via_w)			/* VIA 6522 */
+	AM_RANGE(0xb000, 0xb003) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xb800, 0xbbff) AM_DEVREADWRITE("via6522_0", via_r, via_w)
 	AM_RANGE(0xbfff, 0xbfff) AM_READWRITE(atom_eprom_box_r, atom_eprom_box_w)
 	AM_RANGE(0xc000, 0xcfff) AM_ROM
 	AM_RANGE(0xd000, 0xdfff) AM_ROM
@@ -122,10 +124,7 @@ ADDRESS_MAP_END
 
 /* Not implemented: BREAK */
 
-static INPUT_PORTS_START (atom)
-	PORT_START("vblank") /* VBLANK */
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )
-
+static INPUT_PORTS_START( atom )
 	PORT_START("KEY0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD)                           PORT_CODE(KEYCODE_3)          PORT_CHAR('3') PORT_CHAR('#')
@@ -247,12 +246,21 @@ static INPUT_PORTS_START (atom)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED)
 INPUT_PORTS_END
 
-/* sound output */
+
+/* centronics interface */
+static const centronics_interface atom_centronics_config =
+{
+	FALSE,
+	DEVCB_DEVICE_HANDLER("via6522_0", via_ca1_w),
+	DEVCB_NULL,
+	DEVCB_NULL
+};
+
 
 /* machine definition */
 static MACHINE_DRIVER_START( atom )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", M65C02, 1000000)        /* 0,894886 MHz */
+	MDRV_CPU_ADD("maincpu", M65C02, X2 / 4)
 	MDRV_CPU_PROGRAM_MAP(atom_mem, 0)
 
 	MDRV_MACHINE_RESET( atom )
@@ -260,7 +268,7 @@ static MACHINE_DRIVER_START( atom )
 	MDRV_PPI8255_ADD( "ppi8255", atom_8255_int )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
 
 	MDRV_VIDEO_START(atom)
@@ -275,16 +283,16 @@ static MACHINE_DRIVER_START( atom )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* printer */
-	MDRV_PRINTER_ADD("printer")
+	MDRV_CENTRONICS_ADD("centronics", atom_centronics_config)
 
 	/* quickload */
-	MDRV_QUICKLOAD_ADD(atom, "atm", 0)
+	MDRV_QUICKLOAD_ADD("quickload", atom, "atm", 0)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 
 	/* via */
-	MDRV_VIA6522_ADD("via6522_0", 1000000, atom_6522_interface)
+	MDRV_VIA6522_ADD("via6522_0", X2 / 4, atom_6522_interface)
 
 	/* i8271 */
 	MDRV_I8271_ADD("i8271", atom_8271_interface)
@@ -293,7 +301,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( atomeb )
 	MDRV_IMPORT_FROM( atom )
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP(atomeb_mem, 0 )
 
 	MDRV_MACHINE_RESET( atomeb )
@@ -301,7 +309,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START (atom)
-	ROM_REGION (0x10000, "main",0)
+	ROM_REGION (0x10000, "maincpu",0)
 	ROM_LOAD ("akernel.rom", 0xf000, 0x1000, CRC(c604db3d) SHA1(2621f27d652d4673e0a79aa669e729b8c3051ab6))
 	ROM_LOAD ("dosrom.rom", 0xe000, 0x1000, CRC(c431a9b7) SHA1(71ea0a4b8d9c3caf9718fc7cc279f4306a23b39c))
 	ROM_LOAD ("afloat.rom", 0xd000, 0x1000, CRC(81d86af7) SHA1(ebcde5b36cb3a3344567cbba4c7b9fde015f4802))
@@ -309,7 +317,7 @@ ROM_START (atom)
 ROM_END
 
 ROM_START (atomeb)
-	ROM_REGION (0x10000+0x09000, "main",0)
+	ROM_REGION (0x10000+0x09000, "maincpu",0)
 	ROM_LOAD ("akernel.rom", 0xf000, 0x1000, CRC(c604db3d) SHA1(2621f27d652d4673e0a79aa669e729b8c3051ab6))
 	ROM_LOAD ("dosrom.rom", 0xe000, 0x1000, CRC(c431a9b7) SHA1(71ea0a4b8d9c3caf9718fc7cc279f4306a23b39c))
 	ROM_LOAD ("afloat.rom", 0xd000, 0x1000, CRC(81d86af7) SHA1(ebcde5b36cb3a3344567cbba4c7b9fde015f4802))

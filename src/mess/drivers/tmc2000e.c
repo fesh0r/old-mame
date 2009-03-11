@@ -41,7 +41,7 @@
 
 static const device_config *cassette_device_image(running_machine *machine)
 {
-	return devtag_get_device(machine, CASSETTE, "cassette");
+	return devtag_get_device(machine, "cassette");
 }
 
 /* Read/Write Handlers */
@@ -98,8 +98,8 @@ static ADDRESS_MAP_START( tmc2000e_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tmc2000e_io_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x01, 0x01) AM_DEVWRITE(CDP1864, CDP1864_TAG, cdp1864_tone_latch_w)
-	AM_RANGE(0x02, 0x02) AM_DEVWRITE(CDP1864, CDP1864_TAG, cdp1864_step_bgcolor_w)
+	AM_RANGE(0x01, 0x01) AM_DEVWRITE(CDP1864_TAG, cdp1864_tone_latch_w)
+	AM_RANGE(0x02, 0x02) AM_DEVWRITE(CDP1864_TAG, cdp1864_step_bgcolor_w)
 	AM_RANGE(0x03, 0x03) AM_READWRITE(ascii_keyboard_r, keyboard_latch_w)
 	AM_RANGE(0x04, 0x04) AM_READWRITE(io_r, io_w)
 	AM_RANGE(0x05, 0x05) AM_READWRITE(vismac_r, vismac_w)
@@ -130,30 +130,21 @@ INPUT_PORTS_END
 
 /* Video */
 
-static CDP1864_ON_INT_CHANGED( tmc2000e_int_w )
+static WRITE_LINE_DEVICE_HANDLER( tmc2000e_efx_w )
 {
-	cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_INT, level);
-}
+	tmc2000e_state *driver_state = device->machine->driver_data;
 
-static CDP1864_ON_DMAO_CHANGED( tmc2000e_dmao_w )
-{
-	cpu_set_input_line(device->machine->cpu[0], CDP1802_INPUT_LINE_DMAOUT, level);
-}
-
-static CDP1864_ON_EFX_CHANGED( tmc2000e_efx_w )
-{
-	tmc2000e_state *state = device->machine->driver_data;
-
-	state->cdp1864_efx = level;
+	driver_state->cdp1864_efx = state;
 }
 
 static CDP1864_INTERFACE( tmc2000e_cdp1864_intf )
 {
+	CDP1802_TAG,
 	SCREEN_TAG,
 	CDP1864_INTERLACED,
-	tmc2000e_int_w,
-	tmc2000e_dmao_w,
-	tmc2000e_efx_w,
+	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, CDP1802_INPUT_LINE_INT),
+	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, CDP1802_INPUT_LINE_DMAOUT),
+	DEVCB_LINE(tmc2000e_efx_w),
 	RES_K(2.2),	// unverified
 	RES_K(1),	// unverified
 	RES_K(5.1),	// unverified
@@ -266,7 +257,7 @@ static MACHINE_START( tmc2000e )
 
 	/* find devices */
 
-	state->cdp1864 = devtag_get_device(machine, CDP1864, CDP1864_TAG);
+	state->cdp1864 = devtag_get_device(machine, CDP1864_TAG);
 
 	/* register for state saving */
 
@@ -300,7 +291,7 @@ static MACHINE_DRIVER_START( tmc2000e )
 
 	// basic system hardware
 
-	MDRV_CPU_ADD("main", CDP1802, XTAL_1_75MHz)
+	MDRV_CPU_ADD(CDP1802_TAG, CDP1802, XTAL_1_75MHz)
 	MDRV_CPU_PROGRAM_MAP(tmc2000e_map, 0)
 	MDRV_CPU_IO_MAP(tmc2000e_io_map, 0)
 	MDRV_CPU_CONFIG(tmc2000e_config)
@@ -328,13 +319,13 @@ static MACHINE_DRIVER_START( tmc2000e )
 	/* printer */
 	MDRV_PRINTER_ADD("printer")
 
-	MDRV_CASSETTE_ADD( "cassette", tmc2000_cassette_config )
+	MDRV_CASSETTE_ADD("cassette", tmc2000_cassette_config)
 MACHINE_DRIVER_END
 
 /* ROMs */
 
 ROM_START( tmc2000e )
-	ROM_REGION( 0x10000, "main", 0 )
+	ROM_REGION( 0x10000, CDP1802_TAG, 0 )
 	ROM_LOAD( "1", 0xc000, 0x0800, NO_DUMP )
 	ROM_LOAD( "2", 0xc800, 0x0800, NO_DUMP )
 	ROM_LOAD( "3", 0xd000, 0x0800, NO_DUMP )
@@ -371,8 +362,9 @@ SYSTEM_CONFIG_END
 
 static TIMER_CALLBACK(setup_beep)
 {
-	beep_set_state(0, 0);
-	beep_set_frequency( 0, 0 );
+	const device_config *speaker = devtag_get_device(machine, "beep");
+	beep_set_state(speaker, 0);
+	beep_set_frequency( speaker, 0 );
 }
 
 static DRIVER_INIT( tmc2000e )

@@ -46,8 +46,10 @@
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
-#include "machine/z80pio.h"
 #include "cpu/z80/z80daisy.h"
+#include "sound/speaker.h"
+#include "sound/wave.h"
+#include "machine/z80pio.h"
 #include "machine/wd17xx.h"
 #include "includes/mbee.h"
 #include "devices/snapquik.h"
@@ -55,11 +57,10 @@
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
 #include "devices/z80bin.h"
-#include "sound/speaker.h"
 
 static const device_config *cassette_device_image(running_machine *machine)
 {
-	return device_list_find_by_tag( machine->config->devicelist, CASSETTE, "cassette" );
+	return devtag_get_device(machine, "cassette");
 }
 
 static READ8_DEVICE_HANDLER(z80pio_alt_r)
@@ -117,7 +118,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(mbee_ports, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_DEVREADWRITE(Z80PIO, "z80pio", z80pio_alt_r, z80pio_alt_w)
+	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_DEVREADWRITE("z80pio", z80pio_alt_r, z80pio_alt_w)
 	AM_RANGE(0x0b, 0x0b) AM_MIRROR(0x10) AM_READWRITE(mbee_video_bank_r, mbee_video_bank_w)
 	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0x10) AM_READWRITE(m6545_status_r, m6545_index_w)
 	AM_RANGE(0x0d, 0x0d) AM_MIRROR(0x10) AM_READWRITE(m6545_data_r, m6545_data_w)
@@ -126,17 +127,17 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(mbeeic_ports, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_DEVREADWRITE(Z80PIO, "z80pio", z80pio_alt_r, z80pio_alt_w)
+	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_DEVREADWRITE("z80pio", z80pio_alt_r, z80pio_alt_w)
 	AM_RANGE(0x08, 0x08) AM_MIRROR(0x10) AM_READWRITE(mbee_pcg_color_latch_r, mbee_pcg_color_latch_w)
 	// AM_RANGE(0x09, 0x09) AM_MIRROR(0x10)  Listed as "Colour Wait Off" or "USART 2651" but doesn't appear in the schematics
 	AM_RANGE(0x0a, 0x0a) AM_MIRROR(0x10) AM_READWRITE(mbee_color_bank_r, mbee_color_bank_w)
 	AM_RANGE(0x0b, 0x0b) AM_MIRROR(0x10) AM_READWRITE(mbee_video_bank_r, mbee_video_bank_w)
 	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0x10) AM_READWRITE(m6545_status_r, m6545_index_w)
 	AM_RANGE(0x0d, 0x0d) AM_MIRROR(0x10) AM_READWRITE(m6545_data_r, m6545_data_w)
-	AM_RANGE(0x44, 0x44) AM_DEVREADWRITE(WD179X, "wd179x", wd17xx_status_r, wd17xx_command_w)
-	AM_RANGE(0x45, 0x45) AM_DEVREADWRITE(WD179X, "wd179x", wd17xx_track_r, wd17xx_track_w)
-	AM_RANGE(0x46, 0x46) AM_DEVREADWRITE(WD179X, "wd179x", wd17xx_sector_r, wd17xx_sector_w)
-	AM_RANGE(0x47, 0x47) AM_DEVREADWRITE(WD179X, "wd179x", wd17xx_data_r, wd17xx_data_w)
+	AM_RANGE(0x44, 0x44) AM_DEVREADWRITE("wd179x", wd17xx_status_r, wd17xx_command_w)
+	AM_RANGE(0x45, 0x45) AM_DEVREADWRITE("wd179x", wd17xx_track_r, wd17xx_track_w)
+	AM_RANGE(0x46, 0x46) AM_DEVREADWRITE("wd179x", wd17xx_sector_r, wd17xx_sector_w)
+	AM_RANGE(0x47, 0x47) AM_DEVREADWRITE("wd179x", wd17xx_data_r, wd17xx_data_w)
 	AM_RANGE(0x48, 0x48) AM_READWRITE(mbee_fdc_status_r, mbee_fdc_motor_w)
 ADDRESS_MAP_END
 
@@ -241,6 +242,7 @@ static INPUT_PORTS_START( mbee )
 //	PORT_CONFSETTING(    0x00, DEF_STR(Off))
 INPUT_PORTS_END
 
+/* GFX not used by video update - for documentation only */
 static const gfx_layout mbee_charlayout =
 {
     8,16,                   /* 8 x 16 characters */
@@ -256,11 +258,11 @@ static const gfx_layout mbee_charlayout =
 };
 
 static GFXDECODE_START( mbee )
-	GFXDECODE_ENTRY( "main", 0x11000, mbee_charlayout, 0, 1 )
+	GFXDECODE_ENTRY( "maincpu", 0x11000, mbee_charlayout, 0, 1 )
 GFXDECODE_END
 
 static GFXDECODE_START( mbeeic )
-	GFXDECODE_ENTRY( "main", 0x11000, mbee_charlayout, 0, 4096 )
+	GFXDECODE_ENTRY( "maincpu", 0x11000, mbee_charlayout, 0, 48 )
 GFXDECODE_END
 
 static PALETTE_INIT( mbeeic )
@@ -269,39 +271,25 @@ static PALETTE_INIT( mbeeic )
 	UINT8 r, b, g, k; 
 	UINT8 level[] = { 0, 0x80, 0xff, 0xff };	/* off, half, full intensity */
 
-	/* space for colortable (64 background and 32 foreground) */
-	machine->colortable = colortable_alloc(machine, 96);
-
-	/* set up background colortable */
+	/* set up background palette (00-63) */
 	for (i = 0; i < 64; i++)
 	{
 		r = level[((i>>0)&1)|((i>>2)&2)];
 		g = level[((i>>1)&1)|((i>>3)&2)];
 		b = level[((i>>2)&1)|((i>>4)&2)];
-		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
+		palette_set_color(machine, i, MAKE_RGB(r, g, b));
 	}
 
-	/* set up foreground colortable by reading the prom */
+	/* set up foreground palette (64-95) by reading the prom */
 	for (i = 0; i < 32; i++)
 	{
 		k = color_prom[i];
 		r = level[((k>>2)&1)|((k>>4)&2)];
 		g = level[((k>>1)&1)|((k>>3)&2)];
 		b = level[((k>>0)&1)|((k>>2)&2)];
-		colortable_palette_set_color(machine->colortable, i|64, MAKE_RGB(r, g, b));
+		palette_set_color(machine, i|64, MAKE_RGB(r, g, b));
 	}
-
-	/* set up background palette */
-	for (i = 0; i < 64; i++)
-		for (r = 0; r < 32; r++)
-			colortable_entry_set_value(machine->colortable, ((i<<5)|r)<<1, i);
-
-	/* set up foreground palette */
-	for (i = 0; i < 64; i++)
-		for (r = 0; r < 32; r++)
-			colortable_entry_set_value(machine->colortable, (((i<<5)|r)<<1)|1, r|64);
 }
-
 
 static int mbee_vsync;
 
@@ -347,10 +335,11 @@ static WRITE8_DEVICE_HANDLER( pio_port_b_w )
 	 * 6	speaker
 	 * 7	network interrupt
 	 */
+	const device_config *speaker = devtag_get_device(device->machine, "speaker");
 
 	cassette_output(cassette_device_image(device->machine), (data & 0x02) ? -1.0 : +1.0);
 
-	speaker_level_w(0, (data & 0x40) ? 1 : 0);
+	speaker_level_w(speaker, (data & 0x40) ? 1 : 0);
 };
 
 static const z80pio_interface mbee_z80pio_intf =
@@ -366,7 +355,7 @@ static const z80pio_interface mbee_z80pio_intf =
 
 static const z80_daisy_chain mbee_daisy_chain[] =
 {
-	{ Z80PIO, "z80pio" },
+	{ "z80pio" },
 	{ NULL }
 };
 
@@ -385,23 +374,23 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( mbee )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, XTAL_12MHz / 6)         /* 2 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, XTAL_12MHz / 6)         /* 2 MHz */
 	MDRV_CPU_PROGRAM_MAP(mbee_mem, 0)
 	MDRV_CPU_IO_MAP(mbee_ports, 0)
 	MDRV_CPU_CONFIG(mbee_daisy_chain)
-	MDRV_CPU_VBLANK_INT("main", mbee_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", mbee_interrupt)
 
 	MDRV_MACHINE_RESET( mbee )
 
 	MDRV_Z80PIO_ADD( "z80pio", mbee_z80pio_intf )
 
 	MDRV_GFXDECODE(mbee)
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(250)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(64*8, 16*16)
-	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0, 16*16-1)
+	MDRV_SCREEN_SIZE(64*8, 19*16)			/* need at least 17 lines for NET */
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0, 19*16-1)
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(black_and_white)
 
@@ -410,14 +399,14 @@ static MACHINE_DRIVER_START( mbee )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
-	MDRV_QUICKLOAD_ADD(mbee, "mwb,com", 2)
-	MDRV_Z80BIN_QUICKLOAD_ADD(mbee, 2)
+	MDRV_QUICKLOAD_ADD("quickload", mbee, "mwb,com", 2)
+	MDRV_Z80BIN_QUICKLOAD_ADD("quickload2", mbee, 2)
 
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 	
@@ -428,24 +417,24 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( mbeeic )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, 3375000)         /* 3.37500 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, 3375000)         /* 3.37500 MHz */
 	MDRV_CPU_PROGRAM_MAP(mbeeic_mem, 0)
 	MDRV_CPU_IO_MAP(mbeeic_ports, 0)
 	MDRV_CPU_CONFIG(mbee_daisy_chain)
-	MDRV_CPU_VBLANK_INT("main", mbee_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", mbee_interrupt)
 
 	MDRV_MACHINE_RESET( mbee )
 
 	MDRV_Z80PIO_ADD( "z80pio", mbee_z80pio_intf )
 
 	MDRV_GFXDECODE(mbeeic)
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(250)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(70*8, 310)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 70*8-1, 0, 19*16-1)
-	MDRV_PALETTE_LENGTH(0x1000)
+	MDRV_PALETTE_LENGTH(96)
 	MDRV_PALETTE_INIT(mbeeic)
 
 	MDRV_VIDEO_START(mbeeic)
@@ -453,14 +442,14 @@ static MACHINE_DRIVER_START( mbeeic )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
-	MDRV_QUICKLOAD_ADD(mbee, "mwb,com", 2)
-	MDRV_Z80BIN_QUICKLOAD_ADD(mbee, 2)
+	MDRV_QUICKLOAD_ADD("quickload", mbee, "mwb,com", 2)
+	MDRV_Z80BIN_QUICKLOAD_ADD("quickload2", mbee, 2)
 
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 	
@@ -473,13 +462,13 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( mbee56 )
 	MDRV_IMPORT_FROM( mbeeic )
-	MDRV_CPU_MODIFY( "main" )
+	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP(mbee56_mem, 0)
 MACHINE_DRIVER_END
 
 static DRIVER_INIT( mbee )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 	memory_configure_bank(machine, 1, 0, 2, &RAM[0x0000], 0x8000);
 	memory_configure_bank(machine, 2, 0, 2, &RAM[0x11000], 0x4000);
 	memory_configure_bank(machine, 3, 0, 2, &RAM[0x11800], 0x4000);
@@ -489,7 +478,7 @@ static DRIVER_INIT( mbee )
 
 static DRIVER_INIT( mbee56 )
 {
-	UINT8 *RAM = memory_region(machine, "main");
+	UINT8 *RAM = memory_region(machine, "maincpu");
 	memory_configure_bank(machine, 1, 0, 2, &RAM[0x0000], 0xe000);
 	memory_configure_bank(machine, 2, 0, 2, &RAM[0x11000], 0x4000);
 	memory_configure_bank(machine, 3, 0, 2, &RAM[0x11800], 0x4000);
@@ -498,7 +487,7 @@ static DRIVER_INIT( mbee56 )
 }
 
 ROM_START( mbee )
-	ROM_REGION(0x18000,"main",0)
+	ROM_REGION(0x18000,"maincpu",0)
 	ROM_LOAD("bas510a.ic25",  0x8000, 0x1000, CRC(2ca47c36) SHA1(f36fd0afb3f1df26edc67919e78000b762b6cbcb) )
 	ROM_LOAD("bas510b.ic27",  0x9000, 0x1000, CRC(a07a0c51) SHA1(dcbdd9df78b4b6b2972de2e4050dabb8ae9c3f5a) )
 	ROM_LOAD("bas510c.ic28",  0xa000, 0x1000, CRC(906ac00f) SHA1(9b46458e5755e2c16cdb191a6a70df6de9fe0271) )
@@ -515,7 +504,7 @@ ROM_START( mbee )
 ROM_END
 
 ROM_START( mbeeic )
-	ROM_REGION(0x18000,"main",0)
+	ROM_REGION(0x18000,"maincpu",0)
 	ROM_LOAD("bas522a.rom",   0x8000, 0x2000, CRC(7896a696) SHA1(a158f7803296766160e1f258dfc46134735a9477))
 	ROM_LOAD("bas522b.rom",   0xa000, 0x2000, CRC(b21d9679) SHA1(332844433763331e9483409cd7da3f90ac58259d))
 	ROM_LOAD("edasm.rom",     0xc000, 0x2000, CRC(1af1b3a9) SHA1(d035a997c2dbbb3918b3395a3a5a1076aa203ee5))
@@ -529,7 +518,7 @@ ROM_START( mbeeic )
 ROM_END
 
 ROM_START( mbeepc85 )
-	ROM_REGION(0x18000,"main",0)
+	ROM_REGION(0x18000,"maincpu",0)
 	ROM_LOAD("bas522a.rom",   0x8000, 0x2000, CRC(7896a696) SHA1(a158f7803296766160e1f258dfc46134735a9477))
 	ROM_LOAD("bas522b.rom",   0xa000, 0x2000, CRC(b21d9679) SHA1(332844433763331e9483409cd7da3f90ac58259d))
 	ROM_LOAD("wbee12.rom",    0xc000, 0x2000, CRC(0fc21cb5) SHA1(33b3995988fc51ddef1568e160dfe699867adbd5))
@@ -542,7 +531,7 @@ ROM_START( mbeepc85 )
 ROM_END
 
 ROM_START( mbeepc )
-	ROM_REGION(0x18000,"main",0)
+	ROM_REGION(0x18000,"maincpu",0)
 	ROM_LOAD("bas522a.rom",   0x8000, 0x2000, CRC(7896a696) SHA1(a158f7803296766160e1f258dfc46134735a9477))
 	ROM_LOAD("bas522b.rom",   0xa000, 0x2000, CRC(b21d9679) SHA1(332844433763331e9483409cd7da3f90ac58259d))
 	/* This telcom rom is banked between its 2 halves, hooked to port 0A -  not emulated yet */
@@ -556,7 +545,7 @@ ROM_START( mbeepc )
 ROM_END
 
 ROM_START( mbee56 )
-	ROM_REGION(0x18000,"main",0)
+	ROM_REGION(0x18000,"maincpu",0)
 	ROM_LOAD("56kb.rom",      0xe000, 0x1000, CRC(28211224) SHA1(b6056339402a6b2677b0e6c57bd9b78a62d20e4f))
 	ROM_LOAD("charrom.bin",   0x11000, 0x1000, CRC(1f9fcee4) SHA1(e57ac94e03638075dde68a0a8c834a4f84ba47b0))
 	ROM_RELOAD( 0x17000, 0x1000 )
@@ -574,8 +563,8 @@ ROM_END
 
 static Z80BIN_EXECUTE( mbee )
 {
-	const device_config *cpu = cputag_get_cpu(machine, "main");
-	const address_space *space = cputag_get_address_space(machine, "main", ADDRESS_SPACE_PROGRAM);
+	const device_config *cpu = cputag_get_cpu(machine, "maincpu");
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	memory_write_word_16le(space, 0xa6, execute_address);			/* fix the EXEC command */
 
@@ -592,8 +581,8 @@ static Z80BIN_EXECUTE( mbee )
 
 static QUICKLOAD_LOAD( mbee )
 {
-	const device_config *cpu = cputag_get_cpu(image->machine, "main");
-	const address_space *space = cputag_get_address_space(image->machine, "main", ADDRESS_SPACE_PROGRAM);
+	const device_config *cpu = cputag_get_cpu(image->machine, "maincpu");
+	const address_space *space = cputag_get_address_space(image->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT16 i, j;
 	UINT8 data, sw = input_port_read(image->machine, "CONFIG") & 1;	/* reading the dipswitch: 1 = autorun */
 

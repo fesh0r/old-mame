@@ -382,7 +382,6 @@ static DEVICE_START( miot6530 )
 	/* validate arguments */
 	assert(device != NULL);
 	assert(device->tag != NULL);
-	assert(strlen(device->tag) < 20);
 
 	/* set static values */
 	miot->intf = device->static_config;
@@ -410,8 +409,6 @@ static DEVICE_START( miot6530 )
 
 	state_save_register_device_item(device, 0, miot->timershift);
 	state_save_register_device_item(device, 0, miot->timerstate);
-
-	return DEVICE_START_OK;
 }
 
 

@@ -54,14 +54,15 @@ Note on the bioses:
 
 /* core includes */
 #include "driver.h"
-#include "cpu/z80/z80.h"
 #include "includes/samcoupe.h"
 
 /* components */
+#include "cpu/z80/z80.h"
 #include "machine/wd17xx.h"
+#include "machine/msm6242.h"
+#include "machine/ctronics.h"
 #include "sound/saa1099.h"
 #include "sound/speaker.h"
-#include "machine/msm6242.h"
 
 /* devices */
 #include "devices/mflopimg.h"
@@ -81,11 +82,11 @@ Note on the bioses:
 
 static READ8_HANDLER( samcoupe_disk_r )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD1772, "wd1772");
-	
+	const device_config *fdc = devtag_get_device(space->machine, "wd1772");
+
 	/* drive and side is encoded into bit 5 and 3 */
-	wd17xx_set_drive(fdc,(offset >> 4) & 1);
-	wd17xx_set_side(fdc,(offset >> 2) & 1);
+	wd17xx_set_drive(fdc, (offset >> 4) & 1);
+	wd17xx_set_side(fdc, (offset >> 2) & 1);
 
 	/* bit 1 and 2 select the controller register */
 	switch (offset & 0x03)
@@ -102,11 +103,11 @@ static READ8_HANDLER( samcoupe_disk_r )
 
 static WRITE8_HANDLER( samcoupe_disk_w )
 {
-	device_config *fdc = (device_config*)device_list_find_by_tag( space->machine->config->devicelist, WD1772, "wd1772");
+	const device_config *fdc = devtag_get_device(space->machine, "wd1772");
 
 	/* drive and side is encoded into bit 5 and 3 */
-	wd17xx_set_drive(fdc,(offset >> 4) & 1);
-	wd17xx_set_side(fdc,(offset >> 2) & 1);
+	wd17xx_set_drive(fdc, (offset >> 4) & 1);
+	wd17xx_set_side(fdc, (offset >> 2) & 1);
 
 	/* bit 1 and 2 select the controller register */
 	switch (offset & 0x03)
@@ -121,17 +122,18 @@ static WRITE8_HANDLER( samcoupe_disk_w )
 
 static READ8_HANDLER( samcoupe_pen_r )
 {
+	const device_config *scr = space->machine->primary_screen;
 	UINT8 data;
 
 	if (offset & 0x100)
 	{
 		/* return either the current line or 192 for the vblank area */
-		data = video_screen_get_vblank(space->machine->primary_screen) ? 192 : video_screen_get_vpos(space->machine->primary_screen);
+		data = video_screen_get_vblank(scr) ? 192 : video_screen_get_vpos(scr);
 	}
 	else
 	{
 		/* horizontal position is encoded into bits 3 to 8 */
-		data = video_screen_get_hpos(space->machine->primary_screen) & 0xfc;
+		data = video_screen_get_hpos(scr) & 0xfc;
 	}
 
 	return data;
@@ -180,8 +182,9 @@ static READ8_HANDLER( samcoupe_lmpr_r )
 
 static WRITE8_HANDLER( samcoupe_lmpr_w )
 {
-	const address_space *space_program = cpu_get_address_space(space->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space_program = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	coupe_asic *asic = space->machine->driver_data;
+
 	asic->lmpr = data;
 	samcoupe_update_memory(space_program);
 }
@@ -196,8 +199,9 @@ static READ8_HANDLER( samcoupe_hmpr_r )
 
 static WRITE8_HANDLER( samcoupe_hmpr_w )
 {
-	const address_space *space_program = cpu_get_address_space(space->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space_program = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	coupe_asic *asic = space->machine->driver_data;
+
 	asic->hmpr = data;
 	samcoupe_update_memory(space_program);
 }
@@ -212,8 +216,9 @@ static READ8_HANDLER( samcoupe_vmpr_r )
 
 static WRITE8_HANDLER( samcoupe_vmpr_w )
 {
-	const address_space *space_program = cpu_get_address_space(space->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space_program = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	coupe_asic *asic = space->machine->driver_data;
+
 	asic->vmpr = data;
 	samcoupe_update_memory(space_program);
 }
@@ -221,14 +226,14 @@ static WRITE8_HANDLER( samcoupe_vmpr_w )
 
 static READ8_HANDLER( samcoupe_midi_r )
 {
-	logerror("Read from midi port\n");
+	logerror("%s: read from midi port\n", cpuexec_describe_context(space->machine));
 	return 0xff;
 }
 
 
 static WRITE8_HANDLER( samcoupe_midi_w )
 {
-	logerror("Write to midi port: 0x%02x\n", data);
+	logerror("%s: write to midi port: 0x%02x\n", cpuexec_describe_context(space->machine), data);
 }
 
 
@@ -259,11 +264,12 @@ static READ8_HANDLER( samcoupe_keyboard_r )
 
 static WRITE8_HANDLER( samcoupe_border_w )
 {
+	const device_config *speaker = devtag_get_device(space->machine, "speaker");
 	coupe_asic *asic = space->machine->driver_data;
 	asic->border = data;
 
 	/* DAC output state */
-	speaker_level_w(0,(data >> 4) & 0x01);
+	speaker_level_w(speaker, (data >> 4) & 0x01);
 }
 
 
@@ -283,12 +289,31 @@ static READ8_HANDLER( samcoupe_attributes_r )
 }
 
 
-static WRITE8_HANDLER( samcoupe_sound_w )
+static READ8_HANDLER( samcoupe_lpt1_busy_r )
 {
-	if (offset & 0x100)
-		saa1099_control_port_0_w(space, 0, data);
-	else
-		saa1099_write_port_0_w(space, 0, data);
+	const device_config *printer = devtag_get_device(space->machine, "lpt1");
+	return centronics_busy_r(printer);
+}
+
+
+static WRITE8_HANDLER( samcoupe_lpt1_strobe_w )
+{
+	const device_config *printer = devtag_get_device(space->machine, "lpt1");
+	centronics_strobe_w(printer, data);
+}
+
+
+static READ8_HANDLER( samcoupe_lpt2_busy_r )
+{
+	const device_config *printer = devtag_get_device(space->machine, "lpt2");
+	return centronics_busy_r(printer);
+}
+
+
+static WRITE8_HANDLER( samcoupe_lpt2_strobe_w )
+{
+	const device_config *printer = devtag_get_device(space->machine, "lpt2");
+	centronics_strobe_w(printer, data);
 }
 
 
@@ -310,6 +335,10 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( samcoupe_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x80, 0x81) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_WRITE(samcoupe_ext_mem_w)
 	AM_RANGE(0xe0, 0xe7) AM_MIRROR(0xff10) AM_MASK(0xffff) AM_READWRITE(samcoupe_disk_r, samcoupe_disk_w)
+	AM_RANGE(0xe8, 0xe8) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_DEVWRITE("lpt1", centronics_data_w)
+	AM_RANGE(0xe9, 0xe9) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(samcoupe_lpt1_busy_r, samcoupe_lpt1_strobe_w)
+	AM_RANGE(0xea, 0xea) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_DEVWRITE("lpt2", centronics_data_w)
+	AM_RANGE(0xeb, 0xeb) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(samcoupe_lpt2_busy_r, samcoupe_lpt2_strobe_w)
 	AM_RANGE(0xf8, 0xf8) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(samcoupe_pen_r, samcoupe_clut_w)
 	AM_RANGE(0xf9, 0xf9) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(samcoupe_status_r, samcoupe_line_int_w)
 	AM_RANGE(0xfa, 0xfa) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(samcoupe_lmpr_r, samcoupe_lmpr_w)
@@ -317,7 +346,9 @@ static ADDRESS_MAP_START( samcoupe_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xfc, 0xfc) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(samcoupe_vmpr_r, samcoupe_vmpr_w)
 	AM_RANGE(0xfd, 0xfd) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(samcoupe_midi_r, samcoupe_midi_w)
 	AM_RANGE(0xfe, 0xfe) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(samcoupe_keyboard_r, samcoupe_border_w)
-	AM_RANGE(0xff, 0xff) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READWRITE(samcoupe_attributes_r, samcoupe_sound_w)
+	AM_RANGE(0xff, 0xff) AM_MIRROR(0xff00) AM_MASK(0xffff) AM_READ(samcoupe_attributes_r)
+	AM_RANGE(0xff, 0xff) AM_MIRROR(0xfe00) AM_MASK(0xffff) AM_DEVWRITE("saa1099", saa1099_data_w)
+	AM_RANGE(0x1ff, 0x1ff) AM_MIRROR(0xfe00) AM_MASK(0xffff) AM_DEVWRITE("saa1099", saa1099_control_w)
 ADDRESS_MAP_END
 
 
@@ -333,7 +364,7 @@ static TIMER_CALLBACK( irq_off )
 	coupe_asic *asic = machine->driver_data;
 
 	/* clear interrupt */
-	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 0, CLEAR_LINE);
 
 	/* adjust STATUS register */
 	asic->status |= param;
@@ -344,8 +375,8 @@ void samcoupe_irq(const device_config *device, UINT8 src)
 {
 	coupe_asic *asic = device->machine->driver_data;
 
-	/* set irq and a timer to set it off again */
-	cpu_set_input_line(device, 0, HOLD_LINE);
+	/* assert irq and a timer to set it off again */
+	cpu_set_input_line(device, 0, ASSERT_LINE);
 	timer_set(device->machine, ATTOTIME_IN_USEC(20), NULL, src, irq_off);
 
 	/* adjust STATUS register */
@@ -516,15 +547,15 @@ static PALETTE_INIT( samcoupe )
 
 static MACHINE_DRIVER_START( samcoupe )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", Z80, SAMCOUPE_XTAL_X1/4) /* 6 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, SAMCOUPE_XTAL_X1/4) /* 6 MHz */
 	MDRV_CPU_PROGRAM_MAP(samcoupe_mem, 0)
 	MDRV_CPU_IO_MAP(samcoupe_io, 0)
-	MDRV_CPU_VBLANK_INT("main", samcoupe_frame_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", samcoupe_frame_interrupt)
 
 	MDRV_MACHINE_RESET(samcoupe)
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_RAW_PARAMS(SAMCOUPE_XTAL_X1/2, 768, 0, 512, 312, 0, 192) /* border area? */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_PALETTE_LENGTH(128)
@@ -535,6 +566,8 @@ static MACHINE_DRIVER_START( samcoupe )
 
 	/* devices */
 	MDRV_DRIVER_DATA(coupe_asic)
+	MDRV_CENTRONICS_ADD("lpt1", standard_centronics)
+	MDRV_CENTRONICS_ADD("lpt2", standard_centronics)
 	MDRV_MSM6242_ADD("sambus_clock")
 
 	/* sound hardware */
@@ -543,8 +576,8 @@ static MACHINE_DRIVER_START( samcoupe )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD("saa1099", SAA1099, SAMCOUPE_XTAL_X1/3) /* 8 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	
-	MDRV_WD1772_ADD("wd1772", default_wd17xx_interface )	
+
+	MDRV_WD1772_ADD("wd1772", default_wd17xx_interface )
 MACHINE_DRIVER_END
 
 
@@ -560,7 +593,7 @@ MACHINE_DRIVER_END
     and in the second half, the case of the "plc" in the company string differs.
 */
 ROM_START( samcoupe )
-	ROM_REGION( 0x8000, "main", 0 )
+	ROM_REGION( 0x8000, "maincpu", 0 )
 	ROM_SYSTEM_BIOS( 0,  "31",  "v3.1" )
 	ROMX_LOAD( "rom31.z5",  0x0000, 0x8000, CRC(0b7e3585) SHA1(c86601633fb61a8c517f7657aad9af4e6870f2ee), ROM_BIOS(1) )
 	ROM_SYSTEM_BIOS( 1,  "30",  "v3.0" )
@@ -609,14 +642,6 @@ static void samcoupe_floppy_getinfo(const mess_device_class *devclass, UINT32 st
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:	info->p = (void *) floppyoptions_coupe; break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_NAME+0:			strcpy(info->s = device_temp_str(), "floppydisk0"); break;
-		case MESS_DEVINFO_STR_NAME+1:			strcpy(info->s = device_temp_str(), "floppydisk1"); break;
-		case MESS_DEVINFO_STR_SHORT_NAME+0:		strcpy(info->s = device_temp_str(), "flop0"); break;
-		case MESS_DEVINFO_STR_SHORT_NAME+1:		strcpy(info->s = device_temp_str(), "flop1"); break;
-		case MESS_DEVINFO_STR_DESCRIPTION+0:	strcpy(info->s = device_temp_str(), "Floppy #0"); break;
-		case MESS_DEVINFO_STR_DESCRIPTION+1:	strcpy(info->s = device_temp_str(), "Floppy #1"); break;
 
 		default:								floppy_device_getinfo(devclass, state, info); break;
 	}

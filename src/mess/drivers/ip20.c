@@ -18,6 +18,7 @@
 
 #include "driver.h"
 #include "cpu/mips/mips3.h"
+#include "sound/cdda.h"
 #include "machine/8530scc.h"
 #include "machine/sgi.h"
 #include "machine/eeprom.h"
@@ -171,7 +172,7 @@ static READ32_HANDLER( hpc_r )
 	case 0x0d04:
 		verboselog(machine, 2, "HPC DUART0 Channel B Data Read\n" );
 //      return 0;
-		scc = device_list_find_by_tag(space->machine->config->devicelist, SCC8530, "scc");
+		scc = devtag_get_device(space->machine, "scc");
 		return scc_r(scc, 2);
 	case 0x0d08:
 		verboselog(machine, 2, "HPC DUART0 Channel A Control Read (%08x)\n", mem_mask	 );
@@ -180,7 +181,7 @@ static READ32_HANDLER( hpc_r )
 	case 0x0d0c:
 		verboselog(machine, 2, "HPC DUART0 Channel A Data Read\n" );
 //      return 0;
-		scc = device_list_find_by_tag(space->machine->config->devicelist, SCC8530, "scc");
+		scc = devtag_get_device(space->machine, "scc");
 		return scc_r(scc, 3);
 	case 0x0d10:
 //      verboselog(machine, 2, "HPC DUART1 Channel B Control Read\n" );
@@ -362,22 +363,22 @@ static WRITE32_HANDLER( hpc_w )
 		break;
 	case 0x0d00:
 		verboselog(machine, 2, "HPC DUART0 Channel B Control Write: %08x (%08x)\n", data, mem_mask );
-		scc = device_list_find_by_tag(space->machine->config->devicelist, SCC8530, "scc");
+		scc = devtag_get_device(space->machine, "scc");
 		scc_w(scc, 0, data);
 		break;
 	case 0x0d04:
 		verboselog(machine, 2, "HPC DUART0 Channel B Data Write: %08x (%08x)\n", data, mem_mask );
-		scc = device_list_find_by_tag(space->machine->config->devicelist, SCC8530, "scc");
+		scc = devtag_get_device(space->machine, "scc");
 		scc_w(scc, 2, data);
 		break;
 	case 0x0d08:
 		verboselog(machine, 2, "HPC DUART0 Channel A Control Write: %08x (%08x)\n", data, mem_mask );
-		scc = device_list_find_by_tag(space->machine->config->devicelist, SCC8530, "scc");
+		scc = devtag_get_device(space->machine, "scc");
 		scc_w(scc, 1, data);
 		break;
 	case 0x0d0c:
 		verboselog(machine, 2, "HPC DUART0 Channel A Data Write: %08x (%08x)\n", data, mem_mask );
-		scc = device_list_find_by_tag(space->machine->config->devicelist, SCC8530, "scc");
+		scc = devtag_get_device(space->machine, "scc");
 		scc_w(scc, 3, data);
 		break;
 	case 0x0d10:
@@ -593,7 +594,7 @@ static const mips3_config config =
 };
 
 static MACHINE_DRIVER_START( ip204415 )
-	MDRV_CPU_ADD( "main", R4600BE, 50000000*3 )
+	MDRV_CPU_ADD( "maincpu", R4600BE, 50000000*3 )
 	MDRV_CPU_CONFIG( config )
 	MDRV_CPU_PROGRAM_MAP( ip204415_map, 0 )
 
@@ -601,7 +602,7 @@ static MACHINE_DRIVER_START( ip204415 )
 	MDRV_NVRAM_HANDLER(93C56)
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE( 60 )
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)

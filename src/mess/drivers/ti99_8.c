@@ -161,6 +161,8 @@ Keyboard interface:
 #include "devices/cartslot.h"
 #include "machine/smartmed.h"
 #include "sound/5220intf.h"
+#include "sound/sn76496.h"
+#include "sound/wave.h"
 #include "devices/harddriv.h"
 #include "machine/idectrl.h"
 
@@ -181,14 +183,14 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(ti99_8_writecru, ADDRESS_SPACE_IO, 8)
 
-	AM_RANGE(0x0000, 0x07ff) AM_DEVWRITE(TMS9901, "tms9901", tms9901_cru_w)
+	AM_RANGE(0x0000, 0x07ff) AM_DEVWRITE("tms9901", tms9901_cru_w)
 	AM_RANGE(0x0800, 0x17ff) AM_WRITE(ti99_8_peb_cru_w)
 
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(ti99_8_readcru, ADDRESS_SPACE_IO, 8)
 
-	AM_RANGE(0x0000, 0x00ff) AM_DEVREAD(TMS9901, "tms9901", tms9901_cru_r)
+	AM_RANGE(0x0000, 0x00ff) AM_DEVREAD("tms9901", tms9901_cru_r)
 	AM_RANGE(0x0100, 0x02ff) AM_READ(ti99_8_peb_cru_r)
 
 ADDRESS_MAP_END
@@ -398,7 +400,7 @@ static const struct tms9995reset_param ti99_8_processor_config =
 	1				/* MP9537 mask */
 };
 
-MACHINE_DRIVER_START(ti99_8_cartslot)
+static MACHINE_DRIVER_START(ti99_8_cartslot)
  	MDRV_CARTSLOT_ADD("cart1")
 	MDRV_CARTSLOT_EXTENSION_LIST("bin,c,d,g,m,crom,drom,grom,mrom")
 	MDRV_CARTSLOT_NOT_MANDATORY
@@ -424,24 +426,24 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START(ti99_8_60hz)
 	/* basic machine hardware */
 	/* TMS9995-MP9537 CPU @ 10.7 MHz */
-	MDRV_CPU_ADD("main", TMS9995, 10738635)
+	MDRV_CPU_ADD("maincpu", TMS9995, 10738635)
 	MDRV_CPU_CONFIG(ti99_8_processor_config)
 	MDRV_CPU_PROGRAM_MAP(ti99_8_memmap, 0)
 	MDRV_CPU_IO_MAP(ti99_8_readcru, ti99_8_writecru)
-	MDRV_CPU_VBLANK_INT("main", ti99_vblank_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", ti99_vblank_interrupt)
 
 	MDRV_MACHINE_START( ti99_8_60hz )
 	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 	MDRV_SOUND_ADD("sn76496", SN76496, 3579545)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
@@ -470,18 +472,18 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START(ti99_8_50hz)
 	/* basic machine hardware */
 	/* TMS9995-MP9537 CPU @ 10.7 MHz */
-	MDRV_CPU_ADD("main", TMS9995, 10738635)
+	MDRV_CPU_ADD("maincpu", TMS9995, 10738635)
 	MDRV_CPU_CONFIG(ti99_8_processor_config)
 	MDRV_CPU_PROGRAM_MAP(ti99_8_memmap, 0)
 	MDRV_CPU_IO_MAP(ti99_8_readcru, ti99_8_writecru)
-	MDRV_CPU_VBLANK_INT("main", ti99_vblank_interrupt)
+	MDRV_CPU_VBLANK_INT("screen", ti99_vblank_interrupt)
 
 	MDRV_MACHINE_START( ti99_8_50hz )
 	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
-	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
@@ -492,7 +494,7 @@ static MACHINE_DRIVER_START(ti99_8_50hz)
 	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(ti99_8_tms5220interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-	MDRV_SOUND_ADD("cassette", WAVE, 0)
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
 	/* devices */
@@ -517,7 +519,7 @@ MACHINE_DRIVER_END
 */
 ROM_START(ti99_8)
 	/*CPU memory space*/
-	ROM_REGION(region_cpu1_len_8,"main",0)
+	ROM_REGION(region_cpu1_len_8,"maincpu",0)
 	ROM_LOAD("998rom.bin", 0x0000, 0x8000, NO_DUMP)		/* system ROMs */
 
 	/*GROM memory space*/

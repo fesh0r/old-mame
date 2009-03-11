@@ -121,9 +121,9 @@ void apple2_update_memory(running_machine *machine)
 	}
 
 	/* get critical info */
-	rom = memory_region(machine, "main");
-	rom_length = memory_region_length(machine, "main") & ~0xFFF;
-	slot_length = memory_region_length(machine, "main") - rom_length;
+	rom = memory_region(machine, "maincpu");
+	rom_length = memory_region_length(machine, "maincpu") & ~0xFFF;
+	slot_length = memory_region_length(machine, "maincpu") - rom_length;
 	slot_ram = (slot_length > 0) ? &rom[rom_length] : NULL;
 
 	/* loop through the entire memory map */
@@ -962,11 +962,13 @@ READ8_HANDLER ( apple2_c03x_r )
 {
 	if (!offset)
 	{
+		const device_config *dac_device = devtag_get_device(space->machine, "a2dac");
+
 		if (a2_speaker_state == 0xFF)
 			a2_speaker_state = 0;
 		else
 			a2_speaker_state = 0xFF;
-		dac_data_w(0, a2_speaker_state);
+		dac_data_w(dac_device, a2_speaker_state);
 	}
 	return apple2_getfloatingbusvalue(space->machine);
 }
@@ -1056,7 +1058,6 @@ READ8_HANDLER ( apple2_c06x_r )
 			 * and any other non joystick c06 port returns this according to applewin
 			 */
 			return apple2_getfloatingbusvalue(space->machine);
-			break;
 	}
 	return result ? 0x80 : 0x00;
 }
@@ -1234,7 +1235,7 @@ void apple2_iwm_setdiskreg(running_machine *machine, UINT8 data)
 {
 	apple2_fdc_diskreg = data & 0xC0;
 	if (apple2_fdc_has_35(machine))
-		sony_set_sel_line( (device_config*)device_list_find_by_tag( machine->config->devicelist,APPLEFDC,"fdc"),apple2_fdc_diskreg & 0x80);
+		sony_set_sel_line( (device_config*)devtag_get_device(machine, "fdc"),apple2_fdc_diskreg & 0x80);
 }
 
 
@@ -1285,7 +1286,7 @@ void apple2_init_common(running_machine *machine)
 	a2_set = 0;
 
 	/* disable VAR_ROMSWITCH if the ROM is only 16k */
-	if (memory_region_length(machine, "main") < 0x8000)
+	if (memory_region_length(machine, "maincpu") < 0x8000)
 		a2_mask &= ~VAR_ROMSWITCH;
 
 	if (mess_ram_size <= 64*1024)

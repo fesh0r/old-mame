@@ -12,6 +12,15 @@
 #include "machine/8255ppi.h"
 #include "machine/i8271.h"
 
+/* Motherboard crystals
+  
+Source: http://acorn.chriswhy.co.uk/docs/Acorn/Manuals/Acorn_AtomTechnicalManual.pdf
+
+*/
+
+#define X1	XTAL_3_579545MHz	// MC6847 Clock
+#define X2	XTAL_4MHz		// CPU Clock - a divider reduces it to 1MHz
+
 /*----------- defined in machine/atom.c -----------*/
 
 extern UINT8 atom_8255_porta;
@@ -29,10 +38,6 @@ READ8_DEVICE_HANDLER (atom_8255_portc_r);
 WRITE8_DEVICE_HANDLER (atom_8255_porta_w );
 WRITE8_DEVICE_HANDLER (atom_8255_portb_w );
 WRITE8_DEVICE_HANDLER (atom_8255_portc_w );
-
-/* for floppy disc interface */
-READ8_HANDLER (atom_8271_r);
-WRITE8_HANDLER (atom_8271_w);
 
 DEVICE_IMAGE_LOAD( atom_floppy );
 

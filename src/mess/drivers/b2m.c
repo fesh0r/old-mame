@@ -30,30 +30,30 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( b2m_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1f)
-	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE(PIT8253, "pit8253", pit8253_r,pit8253_w)
-	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE(PPI8255, "ppi8255_2", ppi8255_r, ppi8255_w)
-  	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE("pit8253", pit8253_r,pit8253_w)
+	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE("ppi8255_2", ppi8255_r, ppi8255_w)
+  	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("ppi8255_1", ppi8255_r, ppi8255_w)
     AM_RANGE(0x0c, 0x0c) AM_READWRITE(b2m_localmachine_r,b2m_localmachine_w) 
 	AM_RANGE(0x10, 0x13) AM_READWRITE(b2m_palette_r,b2m_palette_w) 	
-	AM_RANGE(0x14, 0x15) AM_DEVREADWRITE(PIC8259, "pic8259", pic8259_r, pic8259_w )
-	AM_RANGE(0x18, 0x18) AM_DEVREADWRITE(MSM8251, "uart", msm8251_data_r,msm8251_data_w)
-	AM_RANGE(0x19, 0x19) AM_DEVREADWRITE(MSM8251, "uart", msm8251_status_r,msm8251_control_w)
-  	AM_RANGE(0x1c, 0x1c) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_status_r,wd17xx_command_w) 
-  	AM_RANGE(0x1d, 0x1d) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_track_r,wd17xx_track_w) 
-  	AM_RANGE(0x1e, 0x1e) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_sector_r,wd17xx_sector_w) 
-  	AM_RANGE(0x1f, 0x1f) AM_DEVREADWRITE(WD1793, "wd1793", wd17xx_data_r,wd17xx_data_w) 	
+	AM_RANGE(0x14, 0x15) AM_DEVREADWRITE("pic8259", pic8259_r, pic8259_w )
+	AM_RANGE(0x18, 0x18) AM_DEVREADWRITE("uart", msm8251_data_r,msm8251_data_w)
+	AM_RANGE(0x19, 0x19) AM_DEVREADWRITE("uart", msm8251_status_r,msm8251_control_w)
+  	AM_RANGE(0x1c, 0x1c) AM_DEVREADWRITE("wd1793", wd17xx_status_r,wd17xx_command_w) 
+  	AM_RANGE(0x1d, 0x1d) AM_DEVREADWRITE("wd1793", wd17xx_track_r,wd17xx_track_w) 
+  	AM_RANGE(0x1e, 0x1e) AM_DEVREADWRITE("wd1793", wd17xx_sector_r,wd17xx_sector_w) 
+  	AM_RANGE(0x1f, 0x1f) AM_DEVREADWRITE("wd1793", wd17xx_data_r,wd17xx_data_w) 	
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( b2m_rom_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1f)
-	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE(PIT8253, "pit8253", pit8253_r,pit8253_w)
-	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE(PPI8255, "ppi8255_3", ppi8255_r, ppi8255_w)
-  	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE("pit8253", pit8253_r,pit8253_w)
+	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE("ppi8255_3", ppi8255_r, ppi8255_w)
+  	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("ppi8255_1", ppi8255_r, ppi8255_w)
     AM_RANGE(0x0c, 0x0c) AM_READWRITE(b2m_localmachine_r,b2m_localmachine_w) 
 	AM_RANGE(0x10, 0x13) AM_READWRITE(b2m_palette_r,b2m_palette_w) 	
-	AM_RANGE(0x14, 0x15) AM_DEVREADWRITE(PIC8259, "pic8259", pic8259_r, pic8259_w )
-	AM_RANGE(0x18, 0x18) AM_DEVREADWRITE(MSM8251, "uart", msm8251_data_r, msm8251_data_w)
-	AM_RANGE(0x19, 0x19) AM_DEVREADWRITE(MSM8251, "uart", msm8251_status_r, msm8251_control_w)
+	AM_RANGE(0x14, 0x15) AM_DEVREADWRITE("pic8259", pic8259_r, pic8259_w )
+	AM_RANGE(0x18, 0x18) AM_DEVREADWRITE("uart", msm8251_data_r, msm8251_data_w)
+	AM_RANGE(0x19, 0x19) AM_DEVREADWRITE("uart", msm8251_status_r, msm8251_control_w)
 ADDRESS_MAP_END
 
 
@@ -166,16 +166,16 @@ INPUT_PORTS_END
 /* Machine driver */
 static MACHINE_DRIVER_START( b2m )
     /* basic machine hardware */
-    MDRV_CPU_ADD("main", 8080, 2000000)
+    MDRV_CPU_ADD("maincpu", 8080, 2000000)
     MDRV_CPU_PROGRAM_MAP(b2m_mem, 0) 
     MDRV_CPU_IO_MAP(b2m_io, 0)
-    MDRV_CPU_VBLANK_INT("main", b2m_vblank_interrupt)
+    MDRV_CPU_VBLANK_INT("screen", b2m_vblank_interrupt)
 	                             
     MDRV_MACHINE_START( b2m )
     MDRV_MACHINE_RESET( b2m )
  		
     /* video hardware */    	
-	MDRV_SCREEN_ADD("main", RASTER)      	
+	MDRV_SCREEN_ADD("screen", RASTER)      	
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -199,8 +199,7 @@ static MACHINE_DRIVER_START( b2m )
     
 	/* sound */
     MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("custom", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(b2m_sound_interface)
+	MDRV_SOUND_ADD("custom", B2M, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)	
 
 	/* uart */
@@ -211,7 +210,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( b2mrom )
     MDRV_IMPORT_FROM(b2m)
-    MDRV_CPU_MODIFY("main")        
+    MDRV_CPU_MODIFY("maincpu")        
   	MDRV_CPU_IO_MAP(b2m_rom_io, 0)
 MACHINE_DRIVER_END
  
@@ -235,12 +234,12 @@ MACHINE_DRIVER_END
 /* ROM definition */
 
 ROM_START( b2m )
-    ROM_REGION( 0x12000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x12000, "maincpu", ROMREGION_ERASEFF )
     ROM_LOAD( "b2m.rom", 0x10000, 0x2000, CRC(3f3214d6) SHA1(dd93e7fbabf14d1aed6777fe1ccfe0a3ca8fcaf2) )
 ROM_END
 
 ROM_START( b2mrom )
-    ROM_REGION( 0x22000, "main", ROMREGION_ERASEFF )
+    ROM_REGION( 0x22000, "maincpu", ROMREGION_ERASEFF )
     ROM_LOAD( "bios2.rom",  0x10000, 0x2000, CRC(c22a98b7) SHA1(7de91e653bf4b191ded62cf21532578268e4a2c1) )
     ROM_LOAD( "ramdos.sys", 0x12000, 0x60c0, CRC(91ed6df0) SHA1(4fd040f2647a6b7930c330c75560a035027d0606) )
 ROM_END

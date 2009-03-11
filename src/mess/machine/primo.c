@@ -54,19 +54,19 @@ static void primo_update_memory(running_machine *machine)
 	{
 		case 0x00:	/* Original ROM */
 			memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
-			memory_set_bankptr(machine,1, memory_region(machine, "main")+0x10000);
+			memory_set_bankptr(machine,1, memory_region(machine, "maincpu")+0x10000);
 			break;
 		case 0x01:	/* EPROM extension 1 */
 			memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
-			memory_set_bankptr(machine,1, memory_region(machine, "main")+0x14000);
+			memory_set_bankptr(machine,1, memory_region(machine, "maincpu")+0x14000);
 			break;
 		case 0x02:	/* RAM */
 			memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_BANK1);
-			memory_set_bankptr(machine,1, memory_region(machine, "main"));
+			memory_set_bankptr(machine,1, memory_region(machine, "maincpu"));
 			break;
 		case 0x03:	/* EPROM extension 2 */
 			memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
-			memory_set_bankptr(machine,1, memory_region(machine, "main")+0x18000);
+			memory_set_bankptr(machine,1, memory_region(machine, "maincpu")+0x18000);
 			break;
 	}
 	logerror ("Memory update: %02x\n", primo_port_FD);
@@ -93,7 +93,7 @@ READ8_HANDLER( primo_be_1_r )
 	// bit 3 - I3 (external bus)
 
 	// bit 2 - cassette
-	data |= (cassette_input(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" )) < 0.1) ? 0x04 : 0x00;
+	data |= (cassette_input(devtag_get_device(space->machine, "cassette")) < 0.1) ? 0x04 : 0x00;
 
 	// bit 1 - reset button
 	data |= (input_port_read(space->machine, "RESET")) ? 0x02 : 0x00;
@@ -135,6 +135,7 @@ READ8_HANDLER( primo_be_2_r )
 
 WRITE8_HANDLER( primo_ki_1_w )
 {
+	const device_config *speaker = devtag_get_device(space->machine, "speaker");
 	// bit 7 - NMI generator enable/disable
 	primo_nmi = (data & 0x80) ? 1 : 0;
 
@@ -143,7 +144,7 @@ WRITE8_HANDLER( primo_ki_1_w )
 	// bit 5 - V.24 (2) / tape control (not emulated)
 
 	// bit 4 - speaker
-	speaker_level_w(0, (data&0x10)>>4);
+	speaker_level_w(speaker, (data&0x10)>>4);
 
 	// bit 3 - display buffer
 	if (data & 0x08)
@@ -157,14 +158,14 @@ WRITE8_HANDLER( primo_ki_1_w )
 	switch (data & 0x03)
 	{
 		case 0:
-			cassette_output(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ), -1.0);
+			cassette_output(devtag_get_device(space->machine, "cassette"), -1.0);
 			break;
 		case 1:
 		case 2:
-			cassette_output(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ), 0.0);
+			cassette_output(devtag_get_device(space->machine, "cassette"), 0.0);
 			break;
 		case 3:
-			cassette_output(device_list_find_by_tag( space->machine->config->devicelist, CASSETTE, "cassette" ), 1.0);
+			cassette_output(devtag_get_device(space->machine, "cassette"), 1.0);
 			break;
 	}
 }
@@ -258,7 +259,7 @@ MACHINE_RESET( primob )
 {
 	primo_common_machine_init(machine);
 
-	serial_config(machine, &sim_drive_interface);	
+	cbm_serial_config(machine, &cbm_sim_drive_interface);	
 	cbm_serial_reset_write (machine, 0);
 	cbm_drive_0_config (SERIAL, 8);
 	cbm_drive_1_config (SERIAL, 9);
@@ -270,9 +271,10 @@ MACHINE_RESET( primob )
 
 *******************************************************************************/
 
-static void primo_setup_pss (running_machine *machine,UINT8* snapshot_data, UINT32 snapshot_size)
+static void primo_setup_pss (running_machine *machine, UINT8* snapshot_data, UINT32 snapshot_size)
 {
 	int i;
+	const device_config *speaker = devtag_get_device(machine, "speaker");
 
 	/* Z80 registers */
 
@@ -298,7 +300,7 @@ static void primo_setup_pss (running_machine *machine,UINT8* snapshot_data, UINT
 	primo_nmi = (snapshot_data[30] & 0x80) ? 1 : 0;
 
 	// KI-1 bit 4 - speaker
-	speaker_level_w(0, (snapshot_data[30]&0x10)>>4);
+	speaker_level_w(speaker, (snapshot_data[30]&0x10)>>4);
 
 
 	/* memory */

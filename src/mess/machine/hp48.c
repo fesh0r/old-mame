@@ -2,7 +2,7 @@
 
   Copyright (C) Antoine Mine' 2008
 
-   Hewlett Packard HP48 S/SX & G/GX
+   Hewlett Packard HP48 S/SX & G/GX/G+
 
 **********************************************************************/
 
@@ -42,6 +42,7 @@ typedef enum {
 	HP48_SX,
 	HP48_G,
 	HP48_GX,
+	HP48_GP,
 } hp48_models;
 
 /* memory module configuration */
@@ -87,10 +88,10 @@ struct hp48_port_config
 /* current HP48 model */
 static hp48_models hp48_model;
 
-#define HP48_G_SERIES ((hp48_model==HP48_G) || (hp48_model==HP48_GX))
+#define HP48_G_SERIES ((hp48_model==HP48_G) || (hp48_model==HP48_GX) || (hp48_model==HP48_GP))
 #define HP48_S_SERIES ((hp48_model==HP48_S) || (hp48_model==HP48_SX))
 #define HP48_X_SERIES ((hp48_model==HP48_SX) || (hp48_model==HP48_GX))
-#define HP48_GX_MODEL (hp48_model==HP48_GX)
+#define HP48_GX_MODEL ((hp48_model==HP48_GX) || (hp48_model==HP48_GP))
 
 /* OUT register from SATURN (actually 12-bit) */
 static UINT16 hp48_out;
@@ -142,6 +143,13 @@ static chardev* hp48_chardev;
 static void hp48_apply_modules( running_machine *machine, void* param );
 
 
+static void hp48_pulse_irq( running_machine *machine, int irq_line)
+{
+	cpu_set_input_line( machine->cpu[0], irq_line, ASSERT_LINE );
+	cpu_set_input_line( machine->cpu[0], irq_line, CLEAR_LINE );	
+}
+
+
 /* ---------------- serial --------------------- */
 
 #define RS232_DELAY ATTOTIME_IN_USEC( 300 )
@@ -160,7 +168,7 @@ static TIMER_CALLBACK( hp48_rs232_byte_recv_cb )
 	/* interrupt */
 	if ( hp48_io[0x10] & 2 )
 	{
-		cpu_set_input_line( machine->cpu[0], SATURN_IRQ_LINE, ASSERT_LINE );
+		hp48_pulse_irq( machine, SATURN_IRQ_LINE );
 	}
 }
 
@@ -175,7 +183,7 @@ void hp48_rs232_start_recv_byte( running_machine *machine, UINT8 data )
 	/* interrupt */
 	if ( hp48_io[0x10] & 1 )
 	{
-		cpu_set_input_line( machine->cpu[0], SATURN_IRQ_LINE, ASSERT_LINE );
+		hp48_pulse_irq( machine, SATURN_IRQ_LINE );
 	}
 
 	/* schedule end of reception */
@@ -186,8 +194,8 @@ void hp48_rs232_start_recv_byte( running_machine *machine, UINT8 data )
 /* end of send event */
 static TIMER_CALLBACK( hp48_rs232_byte_sent_cb )
 {	
-	const device_config *xmodem = device_list_find_by_tag( machine->config->devicelist, XMODEM, "rs232_x" );
-	const device_config *kermit = device_list_find_by_tag( machine->config->devicelist, KERMIT, "rs232_k" );
+	const device_config *xmodem = devtag_get_device(machine, "rs232_x");
+	const device_config *kermit = devtag_get_device(machine, "rs232_k");
 
 	LOG_SERIAL(( "%f hp48_rs232_byte_sent_cb: end of send, data=%02x\n", 
 		     attotime_to_double(timer_get_time(machine)), param ));
@@ -197,7 +205,7 @@ static TIMER_CALLBACK( hp48_rs232_byte_sent_cb )
 	/* interrupt */
 	if ( hp48_io[0x10] & 4 )
 	{
-		cpu_set_input_line( machine->cpu[0], SATURN_IRQ_LINE, ASSERT_LINE );
+		hp48_pulse_irq( machine, SATURN_IRQ_LINE );
 	}
 
 	/* protocol action */
@@ -211,26 +219,16 @@ static TIMER_CALLBACK( hp48_rs232_byte_sent_cb )
 /* CPU initiates a send event */
 static void hp48_rs232_send_byte( running_machine *machine )
 {
-	const device_config *xmodem = device_list_find_by_tag( machine->config->devicelist, XMODEM, "rs232_x" );
-	const device_config *kermit = device_list_find_by_tag( machine->config->devicelist, KERMIT, "rs232_k" );	
 	UINT8 data = HP48_IO_8(0x16); /* byte to send */
 
 	LOG_SERIAL(( "%05x %f hp48_rs232_send_byte: start sending, data=%02x\n", 
 		     cpu_get_previouspc(machine->cpu[0]), attotime_to_double(timer_get_time(machine)), data ));
 
-	hp48_io[0x12] |= 3;           /* set byte sending and send buffer full */
+	/* set byte sending and send buffer full */
+	hp48_io[0x12] |= 3;
 
 	/* schedule transmission */
-	if ( (xmodem && image_exists( xmodem )) || (kermit && image_exists( kermit )) )
-	{
-		timer_set( machine, RS232_DELAY, NULL, data, hp48_rs232_byte_sent_cb );
-	}
-#ifdef CHARDEV
-	else
-	{
-		chardev_out( hp48_chardev, data );
-	}
-#endif
+	timer_set( machine, RS232_DELAY, NULL, data, hp48_rs232_byte_sent_cb );
 }
 
 
@@ -251,7 +249,7 @@ static TIMER_CALLBACK( hp48_chardev_byte_recv_cb )
 	/* interrupt */
 	if ( hp48_io[0x10] & 2 )
 	{
-		cpu_set_input_line( machine->cpu[0], SATURN_IRQ_LINE, ASSERT_LINE );
+		hp48_pulse_irq( machine, SATURN_IRQ_LINE );
 	}
 }
 
@@ -267,7 +265,7 @@ static void hp48_chardev_start_recv_byte( running_machine *machine, chardev_err 
 	/* interrupt */
 	if ( hp48_io[0x10] & 1 )
 	{
-		cpu_set_input_line( machine->cpu[0], SATURN_IRQ_LINE, ASSERT_LINE );
+		hp48_pulse_irq( machine, SATURN_IRQ_LINE );
 	}
 
 	/* schedule end of reception */
@@ -281,7 +279,7 @@ static void hp48_chardev_ready_to_send( running_machine *machine )
 	/* interrupt */
 	if ( hp48_io[0x10] & 4 )
 	{
-		cpu_set_input_line( machine->cpu[0], SATURN_IRQ_LINE, ASSERT_LINE );
+		hp48_pulse_irq( machine, SATURN_IRQ_LINE );
 	}
 }
 
@@ -306,7 +304,7 @@ void hp48_reg_out( const device_config *device, int out )
 	/* bits 9-10: unused */
 	
 	/* bit 11: beeper */
-	dac_data_w( 0, (out & 0x800) ? 0x80 : 00 );
+	dac_data_w( devtag_get_device(device->machine, "dac"), (out & 0x800) ? 0x80 : 00 );
 }
 
 static int hp48_get_in( running_machine *machine )
@@ -349,8 +347,8 @@ static void hp48_update_kdn( running_machine *machine )
 	{
 		LOG(( "%f hp48_update_kdn: interrupt\n", attotime_to_double(timer_get_time(machine)) ));
 		hp48_io[0x19] |= 8;                                              /* service request */
-		cpu_set_input_line( machine->cpu[0], SATURN_WAKEUP_LINE, ASSERT_LINE );     /* wake-up */
-		cpu_set_input_line( machine->cpu[0], SATURN_IRQ_LINE, ASSERT_LINE );      /* interrupt */
+		hp48_pulse_irq( machine, SATURN_WAKEUP_LINE );
+		hp48_pulse_irq( machine, SATURN_IRQ_LINE );
 	}
 
 	hp48_kdn = (in!=0);
@@ -365,8 +363,8 @@ static TIMER_CALLBACK( hp48_kbd_cb )
 		LOG(( "%f hp48_kbd_cb: keyboard interrupt, on key\n", 
 		      attotime_to_double(timer_get_time(machine)) ));	
 		hp48_io[0x19] |= 8;                                          /* set service request */
-		cpu_set_input_line( machine->cpu[0], SATURN_WAKEUP_LINE, ASSERT_LINE );     /* wake-up */
-		cpu_set_input_line( machine->cpu[0], SATURN_NMI_LINE, ASSERT_LINE );      /* interrupt */
+		hp48_pulse_irq( machine, SATURN_WAKEUP_LINE );
+		hp48_pulse_irq( machine, SATURN_NMI_LINE );
 		return;
 	}
 
@@ -469,7 +467,7 @@ static WRITE8_HANDLER ( hp48_io_w )
 		{
 			LOG(( "%f hp48_io_w: software interrupt requested\n", 
 			      attotime_to_double(timer_get_time(space->machine)) ));
-			cpu_set_input_line( space->machine->cpu[0], SATURN_IRQ_LINE, ASSERT_LINE );
+			hp48_pulse_irq( space->machine, SATURN_IRQ_LINE );
 			data &= ~1;
 		}
 
@@ -571,7 +569,7 @@ static READ8_HANDLER ( hp48_io_r )
 		if ( offset == 0x29 )
 		{
 			data >>= 4;
-			data |= HP48_IO_8(0x29) & 0xc0;
+			data |= HP48_IO_4(0x29) & 0xc;
 		}
 		else
 		{
@@ -596,8 +594,8 @@ static READ8_HANDLER ( hp48_io_r )
 	{
                 /* second nibble of received data */
 
-		const device_config *xmodem = device_list_find_by_tag( space->machine->config->devicelist, XMODEM, "rs232_x" );
-		const device_config *kermit = device_list_find_by_tag( space->machine->config->devicelist, KERMIT, "rs232_k" );	
+		const device_config *xmodem = devtag_get_device(space->machine, "rs232_x");
+		const device_config *kermit = devtag_get_device(space->machine, "rs232_k");	
 
 		hp48_io[0x11] &= ~1;  /* clear byte received */
 		data = hp48_io[offset];
@@ -672,7 +670,7 @@ static TIMER_CALLBACK( hp48_timer1_cb )
 		LOG(( "wake-up on timer1\n" ));
 		hp48_io[0x2e] |= 8;                                      /* set service request */
 		hp48_io[0x18] |= 4;                                      /* set service request */
-		cpu_set_input_line( machine->cpu[0], SATURN_WAKEUP_LINE, ASSERT_LINE ); /* wake-up */
+		hp48_pulse_irq( machine, SATURN_WAKEUP_LINE );
 	}
 	/* interrupt on carry */
 	if ( (hp48_io[0x2e] & 2) && (hp48_timer1 == 0xf) )
@@ -680,7 +678,7 @@ static TIMER_CALLBACK( hp48_timer1_cb )
 		LOG(( "generate timer1 interrupt\n" ));
 		hp48_io[0x2e] |= 8; /* set service request */
 		hp48_io[0x18] |= 4; /* set service request */
-		cpu_set_input_line(machine->cpu[0], SATURN_NMI_LINE, ASSERT_LINE);
+		hp48_pulse_irq( machine, SATURN_NMI_LINE );
 	}
 }
 
@@ -696,7 +694,7 @@ static TIMER_CALLBACK( hp48_timer2_cb )
 		LOG(( "wake-up on timer2\n" ));
 		hp48_io[0x2f] |= 8;                                      /* set service request */
 		hp48_io[0x18] |= 4;                                      /* set service request */
-		cpu_set_input_line( machine->cpu[0], SATURN_WAKEUP_LINE, ASSERT_LINE ); /* wake-up */
+		hp48_pulse_irq( machine, SATURN_WAKEUP_LINE );
 	}
 	/* interrupt on carry */
 	if ( (hp48_io[0x2f] & 2) && (hp48_timer2 == 0xffffffff) )
@@ -704,7 +702,7 @@ static TIMER_CALLBACK( hp48_timer2_cb )
 		LOG(( "generate timer2 interrupt\n" ));
 		hp48_io[0x2f] |= 8;                                      /* set service request */
 		hp48_io[0x18] |= 4;                                      /* set service request */
-		cpu_set_input_line(machine->cpu[0], SATURN_NMI_LINE, ASSERT_LINE);
+		hp48_pulse_irq( machine, SATURN_NMI_LINE );
 	}
 }
 
@@ -771,7 +769,7 @@ static void hp48_apply_modules( running_machine *machine, void* param )
 		if ( hp48_io[0x29] & 8 )
 		{
 			/* A19 */
-			hp48_modules[5].off_mask = 0xfffff;
+		        hp48_modules[5].off_mask = 0xfffff;
 			nce2_enable = 0;
 		}
 		else
@@ -809,16 +807,16 @@ static void hp48_apply_modules( running_machine *machine, void* param )
 		/* our code assumes that the 20-bit select_mask is all 1s followed by all 0s */
 		if ( nselect_mask & (nselect_mask+1) )
 		{
-			logerror( "hp48_mem_config: invalid mask %05x for module %s\n",
+			logerror( "hp48_apply_modules: invalid mask %05x for module %s\n",
 				  select_mask, hp48_module_names[i] );
 			continue;
 		}
 		memory_install_read8_handler( space, base, end, 0, mirror, hp48_modules[i].read );
 		memory_install_write8_handler( space, base, end, 0, mirror, hp48_modules[i].write );
 
-		LOG(( "hp48_mem_config: module %s configured at %05x-%05x, mirror %05x\n",
+		LOG(( "hp48_apply_modules: module %s configured at %05x-%05x, mirror %05x\n",
 		      hp48_module_names[i], base, end, mirror ));
-
+		
 		if ( hp48_modules[i].data )
 		{
 			memory_set_bankptr( space->machine, i, hp48_modules[i].data );
@@ -964,7 +962,7 @@ void hp48_mem_crc( const device_config *device, int addr, int data )
 /* ------ utilities ------- */
 
 
-/* decodes size bytes into 2*size nibbles (lowest significant first) */
+/* decodes size bytes into 2*size nibbles (least significant first) */
 static void hp48_decode_nibble( UINT8* dst, UINT8* src, int size )
 {
 	int i;
@@ -1081,7 +1079,6 @@ static DEVICE_IMAGE_UNLOAD( hp48_port )
 static DEVICE_START( hp48_port )
 {
 	hp48_unfill_port( device );
-	return DEVICE_START_OK;
 }
 
 DEVICE_GET_INFO( hp48_port )
@@ -1156,7 +1153,7 @@ static void hp48_machine_start( running_machine *machine, hp48_models model )
 	/* ROM load */
 	rom_size = HP48_S_SERIES ? (256 * 1024) : (512 * 1024);
 	rom = auto_malloc( 2 * rom_size );
-	hp48_decode_nibble( rom, memory_region( machine, "main" ), rom_size );
+	hp48_decode_nibble( rom, memory_region( machine, "maincpu" ), rom_size );
 
 	/* init state */
 	memset( generic_nvram, 0, generic_nvram_size );
@@ -1249,4 +1246,9 @@ MACHINE_START( hp48g )
 MACHINE_START( hp48gx )
 {
 	hp48_machine_start( machine, HP48_GX );
+}
+
+MACHINE_START( hp48gp )
+{
+	hp48_machine_start( machine, HP48_GP );
 }

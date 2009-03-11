@@ -443,14 +443,14 @@ static PALETTE_INIT( arcadia )
 
 static DEVICE_IMAGE_LOAD( arcadia_cart )
 {
-	UINT8 *rom = memory_region(image->machine, "main");
+	UINT8 *rom = memory_region(image->machine, "maincpu");
 	int size;
 
 	memset(rom, 0, 0x8000);
 	size = image_length(image);
 
-	if (size > memory_region_length(image->machine, "main"))
-		size = memory_region_length(image->machine, "main");
+	if (size > memory_region_length(image->machine, "maincpu"))
+		size = memory_region_length(image->machine, "maincpu");
 
 	if (image_fread(image, rom, size) != size)
 		return INIT_FAIL;
@@ -504,14 +504,14 @@ static DEVICE_IMAGE_LOAD( arcadia_cart )
 
 static MACHINE_DRIVER_START( arcadia )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("main", S2650, 3580000/4)        /* 0.895 MHz */
+	MDRV_CPU_ADD("maincpu", S2650, 3580000/4)        /* 0.895 MHz */
 	MDRV_CPU_PROGRAM_MAP(arcadia_mem, 0)
 	MDRV_CPU_IO_MAP(arcadia_io, 0)
 	MDRV_CPU_PERIODIC_INT(arcadia_video_line, 262*60)
 	MDRV_QUANTUM_TIME(HZ(60))
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -526,8 +526,7 @@ static MACHINE_DRIVER_START( arcadia )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("custom", CUSTOM, 0)
-	MDRV_SOUND_CONFIG(arcadia_sound_interface)
+	MDRV_SOUND_ADD("custom", ARCADIA, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* cartridge */
@@ -539,12 +538,12 @@ MACHINE_DRIVER_END
 
 
 ROM_START(arcadia)
-	ROM_REGION(0x8000,"main", ROMREGION_ERASEFF)
+	ROM_REGION(0x8000,"maincpu", ROMREGION_ERASEFF)
 	ROM_REGION(0x100,"gfx1", ROMREGION_ERASEFF)
 ROM_END
 
 ROM_START(vcg)
-	ROM_REGION(0x8000,"main", ROMREGION_ERASEFF)
+	ROM_REGION(0x8000,"maincpu", ROMREGION_ERASEFF)
 	ROM_REGION(0x100,"gfx1", ROMREGION_ERASEFF)
 ROM_END
 
@@ -564,7 +563,7 @@ static DRIVER_INIT( arcadia )
 	// this is here to allow developement of some simple testroutines
 	// for a real console
 	{
-	    UINT8 *rom=memory_region(machine, "main");
+	    UINT8 *rom=memory_region(machine, "maincpu");
 	    /* this is a simple routine to display all rom characters
            on the display for a snapshot */
 	    static const UINT8 prog[]={ // address 0 of course

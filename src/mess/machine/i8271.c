@@ -1554,7 +1554,6 @@ static DEVICE_START( i8271 )
 
 	assert(device != NULL);
 	assert(device->tag != NULL);
-	assert(strlen(device->tag) < 20);
 	assert(device->static_config != NULL);
 
 	i8271->intf = device->static_config;
@@ -1566,7 +1565,6 @@ static DEVICE_START( i8271 )
 
 	// register for state saving
 	//state_save_register_item(device->machine, "i8271", device->tag, 0, i8271->number);
-	return DEVICE_START_OK;
 }
 
 static DEVICE_RESET( i8271 )
