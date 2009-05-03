@@ -249,19 +249,6 @@ static DEVICE_START(fdc)
 
 
 /*-------------------------------------------------
-    DEVICE_SET_INFO( fdc ) - general FDC set info func
--------------------------------------------------*/
-
-static DEVICE_SET_INFO( fdc )
-{
-	switch (state)
-	{
-	}
-}
-
-
-
-/*-------------------------------------------------
     DEVICE_GET_INFO( fdc ) - general FDC get info func
 -------------------------------------------------*/
 
@@ -280,7 +267,6 @@ static void general_fdc_get_info(const device_config *device, UINT32 state, devi
 		case FDCINFO_PTR_HWTYPE:						info->p = (void *) hwtype;					break;
 
 		/* --- the following bits of info are returned as pointers to functions --- */
-		case DEVINFO_FCT_SET_INFO:						info->set_info = DEVICE_SET_INFO_NAME(fdc); break;
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(fdc);		break;
 		case DEVINFO_FCT_STOP:							/* Nothing */								break;
 		case DEVINFO_FCT_RESET:							/* Nothing */								break;
@@ -315,15 +301,15 @@ static void fdc_coco_update_lines(const device_config *device)
 		fdc->dskreg &= ~0x80;	/* clear halt enable */
 
 	/* set the NMI line */
-	device_set_info_int(
+	coco_cartridge_set_line(
 		fdc->cococart,
-		COCOCARTINFO_INT_LINE_NMI,
+		COCOCART_LINE_NMI,
 		((fdc->intrq != 0) && (fdc->dskreg & 0x20)) ? COCOCART_LINE_VALUE_ASSERT : COCOCART_LINE_VALUE_CLEAR);
 
 	/* set the HALT line */
-	device_set_info_int(
+	coco_cartridge_set_line(
 		fdc->cococart,
-		COCOCARTINFO_INT_LINE_HALT,
+		COCOCART_LINE_HALT,
 		((fdc->drq == 0) && (fdc->dskreg & 0x80)) ? COCOCART_LINE_VALUE_ASSERT : COCOCART_LINE_VALUE_CLEAR);
 }
 
@@ -522,15 +508,15 @@ static void fdc_dragon_update_lines(const device_config *device)
 	fdc_t *fdc = get_token(device);
 
 	/* set the NMI line */
-	device_set_info_int(
+	coco_cartridge_set_line(
 		fdc->cococart,
-		COCOCARTINFO_INT_LINE_NMI,
+		COCOCART_LINE_NMI,
 		((fdc->intrq != 0) && (fdc->dskreg & 0x20)) ? COCOCART_LINE_VALUE_ASSERT : COCOCART_LINE_VALUE_CLEAR);
 
 	/* set the CART line */
-	device_set_info_int(
+	coco_cartridge_set_line(
 		fdc->cococart,
-		COCOCARTINFO_INT_LINE_CART,
+		COCOCART_LINE_CART,
 		(fdc->drq != 0) ? COCOCART_LINE_VALUE_ASSERT : COCOCART_LINE_VALUE_CLEAR);
 }
 

@@ -1,879 +1,328 @@
-/******************************************************************************
- *	kaypro.c
- *
- *	KAYPRO terminal emulation for CP/M
- *
- *	from Juergen Buchmueller's VT52 emulation, July 1998
- *	Benjamin C. W. Sittler, July 1998
- *
- ******************************************************************************/
-
-/*
- * The Kaypro 2/II, 4 and 10 emulate the Lear-Siegler ADM-3A terminal.
- * Here are the commands they accept:
- *
- * Control Characters
- *
- * 0x00 - Ignored
- * 0x09 - Horizontal tab (stops every 8 columns)
- * 0x07 - Ring Bell (translated to 0x04 and sent to keyboard)
- * 0x08 - Cursor Left (non-destructive backspace)
- * 0x0c - Cursor Right
- * 0x0a - Cursor Down (linefeed)
- * 0x0b - Cursor Up
- * 0x0d - Cursor to beginning of line (carriage return)
- * 0x17 - Clear to end of screen
- * 0x18 - Clear to end of line
- * 0x1a - Clear screen, home cursor
- * 0x1b - ESCape sequence prefix
- * 0x1e - Home cursor
- *
- * ESCape Sequences
- *
- * ESCape,A - Display lower case [0]
- * ESCape,G - Display greek [0]
- * ESCape,E - Insert line [1]
- * ESCape,R - Delete line [1]
- * ESCape,=,row+32,col+32 - Cursor address
- *
- * Additionally, the following codes apply to: KAYPRO 2/84, 2X, 4/84, 4X, 10,
- * ROBIE, and 1 (KAYPRO computers with graphic capability):
- *
- * ESCape,B,0 - Reverse video start
- * ESCape,C,0 - Reverse video stop
- * ESCape,B,1 - Half intensity start
- * ESCape,C,1 - Half intensity stop
- * ESCape,B,2 - Blinking start
- * ESCape,C,2 - Blinking stop
- * ESCape,B,3 - Underline start
- * ESCape,C,3 - Underline stop
- * ESCape,B,4 - Cursor on, 1/16 sec blink
- * ESCape,C,4 - Cursor off
- * ESCape,B,5 - Video mode on [2]
- * ESCape,C,5 - Video mode off [2]
- * ESCape,B,6 - Remember current cursor position
- * ESCape,C,6 - Return to last remembered cursor position
- * ESCape,B,7 - Status line preservation on
- * ESCape,C,7 - Status line preservation off
- * ESCape,*,y+32,x+32 - Set pixel
- * ESCape, ,y+32,x+32 - Clear pixel
- * ESCape,L,y+32,x+32,y2+32,x2+32 - Set line
- * ESCape,D,y+32,x+32,y2+32,x2+32 - Delete line
- *
- * Illegal escape sequences are ignored.
- *
- * [0] - These sequences were used by the Kaypro 2/II. They are ignored
- *		 on later machines.
- *
- * [1] - These sequences are reversed in the KAYPRO documentation;
- *		 this is how they're actually implemented by the ROM console
- *		 driver.
- *
- * [2] - In video mode, block graphics (characters in the range 0x80 - 0xff)
- *		 are treated specially. Every GB1 block graphic (the 1st, 3rd, etc.
- *		 after starting video mode) is not printed; rather, its low bit is
- *		 used to set the lower-left block of the next (GB2) block graphic (by
- *		 inverting the low 7 bits and setting the reverse video bit,)
- *		 without affecting the reverse video mode for normal characters.
- */
 
 #include "driver.h"
-#include "cpu/z80/z80.h"
 #include "includes/kaypro.h"
-#include "mscommon.h"
 
+static UINT8 mc6845_cursor[16];				// cursor shape
+static UINT8 mc6845_reg[32];				/* registers */
+static UINT8 mc6845_ind;				/* register index */
+static const UINT8 mc6845_mask[32]={0xff,0xff,0xff,0x0f,0x7f,0x1f,0x7f,0x7f,3,0x1f,0x7f,0x1f,0x3f,0xff,0x3f,0xff,0,0};
 
-enum state {
-	ST_NORMAL,
-	ST_ESCAPE,
-	ST_CURPOS_ROW,
-	ST_CURPOS_COL,
-	ST_SET_ATTRIB,
-	ST_CLR_ATTRIB,
-	ST_SET_LINE,
-	ST_CLR_LINE,
-	ST_SET_PIXEL,
-	ST_CLR_PIXEL
+static const device_config *mc6845;
+static const UINT8 *FNT;
+static UINT8 chr,gfx,fg,bg,attr,speed,flash,framecnt=0;
+static UINT16 mem,x,cursor,mc6845_video_address;
 
-};
+/***********************************************************
 
-/* visible character attributes */
-#define AT_MASK 		  0x0f00 /* visible attributes */
-#define AT_REVERSE		  0x0200 /* reverse video */
-#define AT_HALF_INTENSITY 0x0400 /* half intensity */
-#define AT_BLINK		  0x0800 /* blinking */
-#define AT_UNDERLINE	  0x0100 /* underline */
+	Video
 
-/* dummy character attributes */
-#define AT_VIDEO		  0x1000 /* video mode */
-#define AT_VIDEO_GB1	  0x4000 /* video GB1 mode */
+************************************************************/
 
-static int cur_x = 0, cur_y = 0; /* cursor position */
-static int old_x = 0, old_y = 0; /* remembered cursor position */
-static int scroll_lines = 0; /* number of lines to scroll */
-static int state = ST_NORMAL; /* command state */
-static int attrib = 0; /* current attributes */
-static int gb1 = 0; /* 0, AT_REVERSE or AT_VIDEO_GB1 */
-static int cursor = 1; /* cursor visibility */
-
-/* console keyboard buffer */
-static UINT8 kbd_buff[16];
-static int kbd_head = 0;
-static int kbd_tail = 0;
-
-static struct terminal *kaypro_terminal;
-
-static void kaypro_putstr(running_machine *machine, const char * src)
+PALETTE_INIT( kaypro )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
-	while (*src)
-		kaypro_conout_w(space, 0, *src++);
+	palette_set_color(machine, 0, RGB_BLACK); /* black */
+	palette_set_color(machine, 1, MAKE_RGB(0, 220, 0)); /* green */	
+	palette_set_color(machine, 2, MAKE_RGB(0, 110, 0)); /* low intensity green */	
 }
 
-static int kaypro_getcursorcode(int code)
+VIDEO_UPDATE( kayproii )
 {
-	return code ^ 0x200;
+/* The display consists of 80 columns and 24 rows. Each row is allocated 128 bytes of ram,
+	but only the first 80 are used. The total video ram therefore is 0x0c00 bytes.
+	There is one video attribute: bit 7 causes blinking. The first half of the
+	character generator is blank, with the visible characters in the 2nd half.
+	During the "off" period of blanking, the first half is used. Only 5 pixels are
+	connected from the rom to the shift register, the remaining pixels are held high.
+	A high pixel is black and a low pixel is green. */
+
+	static UINT8 framecnt=0;
+	UINT8 y,ra,chr,gfx;
+	UINT16 sy=0,ma=0,x;
+
+	framecnt++;
+
+	for (y = 0; y < 24; y++)
+	{
+		for (ra = 0; ra < 10; ra++)
+		{
+			UINT16  *p = BITMAP_ADDR16(bitmap, sy++, 0);
+
+			for (x = ma; x < ma + 80; x++)
+			{
+				if (ra < 8)
+				{
+					chr = videoram[x]^0x80;
+
+					/* Take care of flashing characters */
+					if ((chr < 0x80) && (framecnt & 0x08))
+						chr |= 0x80;
+
+					/* get pattern of pixels for that character scanline */
+					gfx = FNT[(chr<<3) | ra ];
+				}
+				else
+					gfx = 0xff;
+
+				/* Display a scanline of a character (7 pixels) */
+				*p = 0; p++;
+				*p = ( gfx & 0x10 ) ? 0 : 1; p++;
+				*p = ( gfx & 0x08 ) ? 0 : 1; p++;
+				*p = ( gfx & 0x04 ) ? 0 : 1; p++;
+				*p = ( gfx & 0x02 ) ? 0 : 1; p++;
+				*p = ( gfx & 0x01 ) ? 0 : 1; p++;
+				*p = 0; p++;
+			}
+		}
+		ma+=128;
+	}
+	return 0;
+}
+
+VIDEO_UPDATE( omni2 )
+{
+	static UINT8 framecnt=0;
+	UINT8 y,ra,chr,gfx;
+	UINT16 sy=0,ma=0,x;
+
+	framecnt++;
+
+	for (y = 0; y < 24; y++)
+	{
+		for (ra = 0; ra < 10; ra++)
+		{
+			UINT16  *p = BITMAP_ADDR16(bitmap, sy++, 0);
+
+			for (x = ma; x < ma + 80; x++)
+			{
+				if (ra < 8)
+				{
+					chr = videoram[x];
+
+					/* Take care of flashing characters */
+					if ((chr > 0x7f) && (framecnt & 0x08))
+						chr |= 0x80;
+
+					/* get pattern of pixels for that character scanline */
+					gfx = FNT[(chr<<3) | ra ];
+				}
+				else
+					gfx = 0xff;
+
+				/* Display a scanline of a character (7 pixels) */
+				*p = ( gfx & 0x40 ) ? 0 : 1; p++;
+				*p = ( gfx & 0x20 ) ? 0 : 1; p++;
+				*p = ( gfx & 0x10 ) ? 0 : 1; p++;
+				*p = ( gfx & 0x08 ) ? 0 : 1; p++;
+				*p = ( gfx & 0x04 ) ? 0 : 1; p++;
+				*p = ( gfx & 0x02 ) ? 0 : 1; p++;
+				*p = ( gfx & 0x01 ) ? 0 : 1; p++;
+			}
+		}
+		ma+=128;
+	}
+	return 0;
+}
+
+VIDEO_UPDATE( kaypro2x )
+{
+	framecnt++;
+	speed = mc6845_reg[10]&0x20, flash = mc6845_reg[10]&0x40;				// cursor modes
+	cursor = (mc6845_reg[14]<<8) | mc6845_reg[15];					// get cursor position
+	mc6845_update(mc6845, bitmap, cliprect);
+	return 0;
+}
+
+/* bit 6 of kaypro2x_system_port selects alternate characters (A12 on character generator rom).
+	The diagram specifies a 2732 with 28 pins, and more address pins. Possibly a 2764 or 27128.
+	Since our dump only goes up to A11, the alternate character set doesn't exist.
+
+	0000-07FF of videoram is memory-mapped characters; 0800-0FFF is equivalent attribute bytes.
+	d3 Underline
+	d2 blinking (at unknown rate)
+	d1 low intensity
+	d0 reverse video
+
+	Not sure how the attributes interact, for example does an underline blink? */
+
+
+MC6845_UPDATE_ROW( kaypro2x_update_row )
+{
+	UINT16  *p = BITMAP_ADDR16(bitmap, y, 0);
+
+	for (x = 0; x < x_count; x++)				// for each character
+	{
+		UINT8 inv=0;
+		//		if (x == cursor_x) inv=0xff;	/* uncomment when mame fixed */
+		mem = (ma + x) & 0x7ff;
+		chr = videoram[mem];
+		attr = videoram[mem | 0x800];
+
+		if ((attr & 3) == 3)
+		{
+			fg = 0;
+			bg = 2;
+		}
+		else
+		if ((attr & 3) == 2)
+		{
+			fg = 2;
+			bg = 0;
+		}
+		else
+		if ((attr & 3) == 1)
+		{
+			fg = 0;
+			bg = 1;
+		}
+		else
+		{
+			fg = 1;
+			bg = 0;
+		}
+
+		/* Take care of flashing characters */
+		if ((attr & 4) && (framecnt & 8))
+			fg = bg;
+
+		/* process cursor - remove when mame fixed */
+		if ((((!flash) && (!speed)) ||
+			((flash) && (speed) && (framecnt & 0x10)) ||
+			((flash) && (!speed) && (framecnt & 8))) &&
+			(mem == cursor))
+				inv ^= mc6845_cursor[ra];
+
+		/* get pattern of pixels for that character scanline */
+		if ((ra == 15) && (attr & 8))	/* underline */
+			gfx = 0xff;
+		else
+			gfx = FNT[(chr<<4) | ra ];
+
+		/* Display a scanline of a character (8 pixels) */
+		*p = ( gfx & 0x80 ) ? fg : bg; p++;
+		*p = ( gfx & 0x40 ) ? fg : bg; p++;
+		*p = ( gfx & 0x20 ) ? fg : bg; p++;
+		*p = ( gfx & 0x10 ) ? fg : bg; p++;
+		*p = ( gfx & 0x08 ) ? fg : bg; p++;
+		*p = ( gfx & 0x04 ) ? fg : bg; p++;
+		*p = ( gfx & 0x02 ) ? fg : bg; p++;
+		*p = ( gfx & 0x01 ) ? fg : bg; p++;
+	}
+}
+
+/************************************* MC6845 SUPPORT ROUTINES ***************************************/
+
+/* The 6845 can produce a variety of cursor shapes - all are emulated here - remove when mame fixed */
+static void mc6845_cursor_configure(void)
+{
+	UINT8 i,curs_type=0,r9,r10,r11;
+
+	/* curs_type holds the general cursor shape to be created
+		0 = no cursor
+		1 = partial cursor (only shows on a block of scan lines)
+		2 = full cursor
+		3 = two-part cursor (has a part at the top and bottom with the middle blank) */
+
+	for ( i = 0; i < ARRAY_LENGTH(mc6845_cursor); i++) mc6845_cursor[i] = 0;		// prepare cursor by erasing old one
+
+	r9  = mc6845_reg[9];					// number of scan lines - 1
+	r10 = mc6845_reg[10] & 0x1f;				// cursor start line = last 5 bits
+	r11 = mc6845_reg[11]+1;					// cursor end line incremented to suit for-loops below
+
+	/* decide the curs_type by examining the registers */
+	if (r10 < r11) curs_type=1;				// start less than end, show start to end
+	else
+	if (r10 == r11) curs_type=2;				// if equal, show full cursor
+	else curs_type=3;					// if start greater than end, it's a two-part cursor
+
+	if ((r11 - 1) > r9) curs_type=2;			// if end greater than scan-lines, show full cursor
+	if (r10 > r9) curs_type=0;				// if start greater than scan-lines, then no cursor
+	if (r11 > 16) r11=16;					// truncate 5-bit register to fit our 4-bit hardware
+
+	/* create the new cursor */
+	if (curs_type > 1) for (i = 0;i < ARRAY_LENGTH(mc6845_cursor);i++) mc6845_cursor[i]=0xff; // turn on full cursor
+
+	if (curs_type == 1) for (i = r10;i < r11;i++) mc6845_cursor[i]=0xff; // for each line that should show, turn on that scan line
+
+	if (curs_type == 3) for (i = r11; i < r10;i++) mc6845_cursor[i]=0; // now take a bite out of the middle
+}
+
+/* Resize the screen within the limits of the hardware. Expand the image to fill the screen area.
+	Standard screen is 640 x 400 = 0x7d0 bytes. */
+
+static void mc6845_screen_configure(running_machine *machine)
+{
+	rectangle visarea;
+
+	UINT16 width = mc6845_reg[1]*8-1;							// width in pixels
+	UINT16 height = mc6845_reg[6]*(mc6845_reg[9]+1)-1;					// height in pixels
+	UINT16 bytes = mc6845_reg[1]*mc6845_reg[6]-1;						// video ram needed -1
+
+	/* Resize the screen */
+	visarea.min_x = 0;
+	visarea.max_x = width-1;
+	visarea.min_y = 0;
+	visarea.max_y = height-1;
+	if ((width < 640) && (height < 400) && (bytes < 0x800))	/* bounds checking to prevent an assert or violation */
+		video_screen_set_visarea(machine->primary_screen, 0, width, 0, height);
+}
+
+
+/**************************** I/O PORTS *****************************************************************/
+
+READ8_HANDLER( kaypro2x_status_r )
+{
+/* Need bit 7 high or computer hangs */
+
+	return 0x80 | mc6845_register_r( mc6845, 0);
+}
+
+WRITE8_HANDLER( kaypro2x_index_w )
+{
+	mc6845_ind = data & 0x1f;
+	mc6845_address_w( mc6845, 0, data );
+}
+
+WRITE8_HANDLER( kaypro2x_register_w )
+{
+	if (mc6845_ind < 16)
+		mc6845_reg[mc6845_ind] = data & mc6845_mask[mc6845_ind];	/* save data in register */
+	else
+		mc6845_reg[mc6845_ind] = data;
+
+	if ((mc6845_ind == 1) || (mc6845_ind == 6) || (mc6845_ind == 9))
+		mc6845_screen_configure(space->machine);			/* adjust screen size */
+
+	if ((mc6845_ind > 8) && (mc6845_ind < 12))
+		mc6845_cursor_configure();		/* adjust cursor shape - remove when mame fixed */
+
+	if ((mc6845_ind > 17) && (mc6845_ind < 20))
+		mc6845_video_address = mc6845_reg[19] | ((mc6845_reg[18] & 0x3f) << 8);	/* internal ULA address */
+
+	mc6845_register_w( mc6845, 0, data );
+}
+
+READ8_HANDLER( kaypro_videoram_r )
+{
+	return videoram[offset];
+}
+
+WRITE8_HANDLER( kaypro_videoram_w )
+{
+	videoram[offset] = data;
+}
+
+READ8_HANDLER( kaypro2x_videoram_r )
+{
+	return videoram[mc6845_video_address];
+}
+
+WRITE8_HANDLER( kaypro2x_videoram_w )
+{
+	videoram[mc6845_video_address] = data;
 }
 
 VIDEO_START( kaypro )
 {
-	scroll_lines = KAYPRO_SCREEN_H;
-	videoram_size = KAYPRO_SCREEN_W * KAYPRO_SCREEN_H;
-
-	kaypro_terminal = terminal_create(machine, 0, ' ', 10, kaypro_getcursorcode, KAYPRO_SCREEN_W, KAYPRO_SCREEN_H);
-
-	kaypro_putstr(machine,
-	/* a test of GB1/GB2 video mode graphics */ \
-		"\033B5" /* start video mode */ \
-		"MESS KAYPRO Terminal Emulator          \200\220\200\263" \
-		"\200\263\200\202\200\260\200\263\200\263\200\243\200\203" \
-		"\200\260\200\263\200\263\200\263\200\221\200\263\200\263 " \
-		"\200\220\200\261\200\263\200\243\200\262\200\263\200\263" \
-		"\200\263\200\262\200\223\200\263\200\263\200\263\200\263" \
-		"\200\262\200\220\200\260\200\261\200\263\200\263\200\263" \
-		"\200\262\200\240\r\n" \
-		"                                      \200\220\200\263" \
-		"\200\263\200\262\200\263\200\263\200\203 \200\220\200\261" \
-		"\200\263\200\223\200\263\200\263 \200\263\200\263\200\260" \
-		"\200\263\200\243\200\222\200\263\200\263\200\260\200\261" \
-		"\200\263\200\243\200\261\200\262\200\260\200\261\200\263" \
-		"\200\223\200\261\200\263\200\202  \200\263\200\263\200\242\r\n" \
-		"\200\263\200\263\200\263\200\263\200\263\200\263\200\263" \
-		"\200\263\200\263\200\263\200\263\200\263\200\263\200\263" \
-		"\200\263\200\263\200\263\200\263\200\263\200\263\200\263" \
-		"\200\263\200\263\200\263\200\263\200\263\200\263\200\263" \
-		"\200\263\200\263\200\263\200\263\200\263\200\263\200\263" \
-		"\200\263\200\263\200\222\200\263\200\263\200\243\200\223" \
-		"\200\263\200\263\200\240\200\260\200\263\200\263\200\262" \
-		"\200\261\200\263\200\263\200\220\200\263\200\263\200\243" \
-		"\200\202\200\261\200\263\200\263\200\203\200\203\200\223" \
-		"\200\261\200\263\200\243\200\223\200\263\200\263\200\240" \
-		"\200\263\200\263\200\242  \200\261\200\263\200\243\r\n" \
-		"\200\263\200\263\200\263\200\263\200\263\200\263\200\263" \
-		"\200\263\200\263\200\263\200\263\200\263\200\263\200\263" \
-		"\200\263\200\263\200\263\200\263\200\263\200\263\200\263" \
-		"\200\263\200\263\200\263\200\263\200\263\200\263\200\263" \
-		"\200\263\200\263\200\263\200\263\200\263\200\263\200\263" \
-		"\200\263\200\222\200\263\200\263\200\243  \200\223\200\263" \
-		"\200\263\200\241\200\243\200\203\200\203\200\223\200\263" \
-		"\200\263\200\221\200\263\200\243 \200\261\200\263\200\263" \
-		"\200\202 \200\220\200\263\200\263\200\243 \200\221\200\263" \
-		"\200\263\200\242\200\203\200\263\200\263\200\263\200\263" \
-		"\200\203\200\203\r\n" \
-		"\033C5"); /* end video mode */
+	mc6845 = devtag_get_device(machine, "crtc");
+	FNT = memory_region(machine, "gfx1");
 }
-
-VIDEO_UPDATE( kaypro )
-{
-	static int blink_count = 0;
-	static int cursor_count = 0;
-
-	blink_count++;
-	if (!(blink_count & 15))
-	{
-		if (blink_count & 16)
-		{
-			palette_set_color_rgb(screen->machine, 3, 0,240,	0);
-			palette_set_color_rgb(screen->machine, 4, 0,120,	0);
-		}
-		else
-		{
-			palette_set_color_rgb(screen->machine, 3, 0,	0,	0);
-			palette_set_color_rgb(screen->machine, 4, 0,	0,	0);
-		}
-	}
-
-	cursor_count++;
-
-	if (cursor && (cursor_count & 16))
-		terminal_showcursor(kaypro_terminal);
-	else
-		terminal_hidecursor(kaypro_terminal);
-	terminal_setcursor(kaypro_terminal, cur_x, cur_y);
-	terminal_draw(bitmap, NULL, kaypro_terminal);
-	return 0;
-}
-
-/******************************************************
- *	kaypro_vgbout
- *	output a character code to the given offset
- *	the given attributes are combined to the code
- *	and the dirty flag is set if the code changed
- ******************************************************/
-static void kaypro_vgbout(int offset, int data, short attr)
-{
-	data |= attr & AT_MASK;
-	terminal_putchar(kaypro_terminal, offset % KAYPRO_SCREEN_W, offset / KAYPRO_SCREEN_W, data);
-}
-
-/******************************************************
- *	kaypro_out
- *	output a character code to the given offset
- *	the current attributes are combined to the code
- *	and the dirty flag is set if the code changed
- ******************************************************/
-static void kaypro_out(int offset, int data)
-{
-	kaypro_vgbout(offset, data, attrib);
-}
-
-/******************************************************
- * kaypro_const_r (read console status)
- * 00  no key available
- * ff  key(s) available
- ******************************************************/
- READ8_HANDLER (	kaypro_const_r )
-{
-	int data = 0x00;
-	if( kbd_head != kbd_tail )
-		data = 0xff;
-	return data;
-}
-
-/******************************************************
- *	kaypro_const_w (write console status ;)
- *	bit
- *	0	flush keyboard buffer
- ******************************************************/
-WRITE8_HANDLER ( kaypro_const_w )
-{
-	if (data & 1)
-		kbd_head = kbd_tail = 0;
-}
-
-/******************************************************
- *	kaypro_conin_r (read console input, ie. keyboard)
- *	returns next character from the keyboard buffer
- *	suspends CPU if no key is available
- ******************************************************/
- READ8_HANDLER (	kaypro_conin_r )
-{
-	int data = 0;
-
-	if (kbd_tail != kbd_head)
-	{
-		data = kbd_buff[kbd_tail];
-		kbd_tail = (kbd_tail + 1) % sizeof(kbd_buff);
-	}
-	return data;
-}
-
-/******************************************************
- *	kaypro_conin_w
- *	stuff character into the keyboard buffer
- *	releases CPU if it was waiting for a key
- *	sounds bell if buffer would overflow
- ******************************************************/
-WRITE8_HANDLER ( kaypro_conin_w )
-{
-	int kbd_head_old;
-
-	kaypro_click();
-
-	kbd_head_old = kbd_head;
-	kbd_buff[kbd_head] = data;
-	kbd_head = (kbd_head + 1) % sizeof(kbd_buff);
-	/* will the buffer overflow ? */
-	if (kbd_head == kbd_tail)
-	{
-		kbd_head = kbd_head_old;
-		kaypro_bell();
-	}
-}
-
-/******************************************************************************
- *	kaypro_scroll
- *	scroll the screen buffer from line top to line scroll_lines-1
- *	either up or down. scroll up if lines > 0, down if lines < 0
- *	repeat lines times and mark changes in dirtybuffer
- ******************************************************************************/
-static void kaypro_scroll(int top, int lines)
-{
-	int x, y;
-	short attr;
-	while (lines)
-	{
-		if (lines > 0)
-		{
-			for( y = top; y < scroll_lines - 1; y++ )
-			{
-				for( x = 0; x < KAYPRO_SCREEN_W; x++ )
-				{
-					terminal_putchar(kaypro_terminal, x, y, terminal_getchar(kaypro_terminal, x, y+1));
-				}
-			}
-			attr = ' ';
-			for (x = 0; x < KAYPRO_SCREEN_W; x++)
-			{
-				terminal_putchar(kaypro_terminal, x, scroll_lines - 1, attr);
-			}
-			lines--;
-		}
-		else
-		{
-			for (y = scroll_lines - 1; y > top; y--)
-			{
-				for (x = 0; x < KAYPRO_SCREEN_W; x++)
-				{
-					terminal_putchar(kaypro_terminal, x, y, terminal_getchar(kaypro_terminal, x, y-1));
-				}
-			}
-			attr = ' ';
-			for (x = 0; x < KAYPRO_SCREEN_W; x++)
-			{
-				terminal_putchar(kaypro_terminal, x, top, attr);
-			}
-			lines++;
-		}
-	}
-}
-
-static void kaypro_cursor_home(void)
-{
-	cur_x = 0;
-	cur_y = 0;
-}
-
-static void kaypro_carriage_return(void)
-{
-	cur_x = 0;
-}
-
-static void kaypro_cursor_left(int count)
-{
-	while( count-- )
-	{
-		if( cur_x )
-			cur_x--;
-	}
-}
-
-static void kaypro_cursor_right(int count)
-{
-	while( count-- )
-	{
-		if( cur_x < KAYPRO_SCREEN_W )
-			cur_x++;
-	}
-}
-
-static void kaypro_line_feed(int count)
-{
-	/* don't scroll if beyond last line already (protected line 25) */
-	if( cur_y >= scroll_lines )
-		return;
-	while( count-- )
-	{
-		if( ++cur_y >= scroll_lines )
-		{
-			cur_y = scroll_lines - 1;
-			kaypro_scroll(0, +1);
-		}
-	}
-}
-
-static void kaypro_reverse_line_feed(int count)
-{
-	while( count-- )
-	{
-		if( --cur_y < 0 )
-		{
-			cur_y = 0;
-			kaypro_scroll(0, -1);
-		}
-	}
-}
-
-static void kaypro_advance(void)
-{
-
-	kaypro_cursor_right(1);
-	if (cur_x >= KAYPRO_SCREEN_W)
-	{
-		kaypro_carriage_return();
-		kaypro_line_feed(1);
-	}
-}
-
-static void kaypro_erase_end_of_line(void)
-{
-	int x, attr;
-	attr = ' ';
-
-	for (x = cur_x; x < KAYPRO_SCREEN_W; x++)
-		terminal_putchar(kaypro_terminal, x, cur_y, attr);
-}
-
-static void kaypro_erase_end_of_screen(void)
-{
-	int x, y, attr;
-
-	attr = ' ';
-	kaypro_erase_end_of_line();
-
-	for (y = cur_y + 1; y < scroll_lines; y++)
-	{
-		for (x = 0; x < KAYPRO_SCREEN_W; x++)
-			terminal_putchar(kaypro_terminal, x, y, attr);
-	}
-}
-
-static void kaypro_clear_screen(void)
-{
-	attrib &= ~ AT_MASK; /* clear visible attributes */
-	kaypro_cursor_home();
-	kaypro_erase_end_of_screen();
-}
-
-static void kaypro_tab(void)
-{
-	do
-	{
-		kaypro_out(cur_y * KAYPRO_SCREEN_W + cur_x, ' ');
-		kaypro_advance();
-	} while (cur_x & 7);
-}
-
-static void kaypro_pixel(int x, int y, int set)
-{
-	static const int attr_bits[4][2] = {
-		{	  0x002, 0x001},
-		{	  0x008, 0x004},
-		{	  0x020, 0x010},
-		{AT_REVERSE, 0x040}
-	};
-	int cx, cy, /*offs,*/ bits;
-	short attr;
-
-	/* The Kaypro 2x font has a 2x4 pattern block graphics */
-	cx = x / 2;
-	cy = y / 4;
-	//offs = cy * KAYPRO_SCREEN_W + cx;
-	attr = terminal_getchar(kaypro_terminal, cx, cy);
-
-	/* if it is a space, we change it to a graphic space */
-	if ((attr & 0xff) == ' ')
-		attr = (attr & 0xff00) | 0x80;
-
-	/* if it is non graphics, we do nothing */
-	if (! (attr & 0x80))
-		return;
-
-	/* reverse video (lower-left pixel) inverts all the other pixels */
-	if (attr & AT_REVERSE)
-		attr ^= 0x7f;
-
-	/* get the bit mask for the pixel */
-	bits = attr_bits[y % 4][x % 2];
-
-	/* set it ? */
-	if (set)
-		attr |= bits;
-	else
-		attr &= ~ bits;
-
-	/* reverse video (lower-left pixel) inverts all the other pixels */
-	if (attr & AT_REVERSE)
-		attr ^= 0x7f;
-
-	terminal_putchar(kaypro_terminal, cx, cy, attr);
-}
-
-static void kaypro_line(int x0, int y0, int x1, int y1, int set)
-{
-	int dx, dy, sx, sy, c;
-
-	/* delta x and direction */
-	dx = x1 - x0;
-	if (dx < 0)
-	{
-		sx = -1;
-		dx = -dx;
-	}
-	else
-	{
-		sx = +1;
-	}
-	/* delta y and direction */
-	dy = y1 - y0;
-	if (dy < 0)
-	{
-		sy = -1;
-		dy = -dy;
-	}
-	else
-	{
-		sy = +1;
-	}
-	/* The standard Bresenham algorithm ;) */
-	if (dx > dy)
-	{
-		c = dx / 2;
-		for ( ; ; )
-		{
-			kaypro_pixel(x0, y0, set);
-			if (x0 == x1)
-				break;
-			x0 += sx;
-			if ((c -= dy) <= 0)
-			{
-				c += dx;
-				y0 += sy;
-			}
-		}
-	}
-	else
-	{
-		c = dy / 2;
-		for ( ; ; )
-		{
-			kaypro_pixel(x0, y0, set);
-			if (y0 == y1)
-				break;
-			y0 += sy;
-			if ((c -= dx) <= 0)
-			{
-				c += dy;
-				x0 += sx;
-			}
-		}
-	}
-}
-
-
- READ8_HANDLER ( kaypro_conout_r )
-{
-	return 0xFF;
-}
-
-WRITE8_HANDLER ( kaypro_conout_w )
-{
-	static int argcnt = 0;
-	static int argval[4];
-
-	data &= 0xff;
-	switch (state)
-	{
-	case ST_NORMAL:
-		switch (data)
-		{
-		case 0x00: /* NUL is ignored */
-			break;
-		case 0x07: /* ring my bell ;) */
-			logerror("KAYPRO <007>     bell\n");
-			kaypro_bell();
-			break;
-		case 0x08: /* cursor left */
-			kaypro_cursor_left(1);
-			break;
-		case 0x09: /* tabulator */
-			kaypro_tab();
-			break;
-		case 0x0a: /* line feed */
-			kaypro_line_feed(1);
-			break;
-		case 0x0b: /* reverse line feed */
-			kaypro_reverse_line_feed(1);
-			break;
-		case 0x0d: /* carriage return */
-			kaypro_carriage_return();
-			break;
-		case 0x17: /* clear to end of screen */
-			logerror("KAYPRO <027>     clear to end of screen\n");
-			kaypro_erase_end_of_screen();
-			break;
-		case 0x18: /* clear to end of line */
-			logerror("KAYPRO <030>     clear to end of line\n");
-			kaypro_erase_end_of_line();
-			break;
-		case 0x1a: /* clear screen */
-			logerror("KAYPRO <032>     clear screen, home cursor\n");
-			kaypro_clear_screen();
-			break;
-		case 0x1b: /* ESCape sequence prefix */
-			state = ST_ESCAPE;
-			break;
-		case 0x1e: /* kaypro cursor home */
-			logerror("KAYPRO <036>     cursor home\n");
-			kaypro_cursor_home();
-			break;
-		default:
-			if( (attrib & AT_VIDEO) && (data & 0x80) )
-			{
-				if (gb1 & AT_VIDEO_GB1)
-				{
-					gb1 = (data & 1) ? AT_REVERSE : 0;
-				}
-				else
-				{
-					if (gb1)
-						data ^= 0x7f;
-					kaypro_vgbout(cur_y * KAYPRO_SCREEN_W + cur_x, data, gb1 | attrib);
-					kaypro_advance();
-					gb1 = AT_VIDEO_GB1;
-				}
-			}
-			else
-			{
-				kaypro_out(cur_y * KAYPRO_SCREEN_W + cur_x, data);
-				kaypro_advance();
-			}
-		}
-		break;
-
-	case ST_ESCAPE:
-		state = ST_NORMAL;
-		switch (data)
-		{
-		case ' ': /* clear dot */
-			argcnt = 2;
-			state = ST_CLR_PIXEL;
-			break;
-		case '=': /* cursor positioning */
-			logerror("KAYPRO <ESC>=    cursor position\n");
-			state = ST_CURPOS_ROW;
-			break;
-		case '*': /* set dot */
-			argcnt = 2;
-			state = ST_SET_PIXEL;
-			break;
-		case 'A': /* Display lower case */
-			logerror("KAYPRO <ESC>A    display lower case (ignored)\n");
-			break;
-		case 'B': /* enable attribute */
-			logerror("KAYPRO <ESC>B    enable attribute\n");
-			state = ST_SET_ATTRIB;
-			break;
-		case 'C': /* disable attribute */
-			logerror("KAYPRO <ESC>C    disable attribute\n");
-			state = ST_CLR_ATTRIB;
-			break;
-		case 'D': /* delete line of dots */
-			argcnt = 4;
-			state = ST_CLR_LINE;
-			break;
-		case 'E': /* insert line */
-			logerror("KAYPRO <ESC>E    insert line\n");
-			kaypro_scroll(cur_y, -1);
-			break;
-		case 'G': /* Display greek */
-			logerror("KAYPRO <ESC>G    display greek (ignored)\n");
-			break;
-		case 'H': /* cursor home */
-			logerror("KAYPRO <ESC>H    cursor home\n");
-			kaypro_cursor_home();
-			break;
-		case 'L': /* set line of dots */
-			argcnt = 4;
-			state = ST_SET_LINE;
-			break;
-		case 'R': /* delete line */
-			logerror("KAYPRO <ESC>R    delete line\n");
-			kaypro_scroll(cur_y, +1);
-			break;
-		default:  /* some other escape sequence? */
-			logerror("KAYPRO <ESC>%c    unknown\n", data);
-		}
-		break;
-
-	case ST_CURPOS_ROW:
-		cur_y = data - ' ';
-		logerror("KAYPRO cursor y  %d\n", cur_y);
-		if( cur_y < 0 )
-			cur_y = 0;
-		if( cur_y >= KAYPRO_SCREEN_H )
-			cur_y = KAYPRO_SCREEN_H - 1;
-		state = ST_CURPOS_COL;
-		break;
-
-	case ST_CURPOS_COL:
-		cur_x = data - ' ';
-		logerror("KAYPRO cursor x  %d\n", cur_x);
-		if( cur_x < 0 )
-			cur_x = 0;
-		if( cur_x >= KAYPRO_SCREEN_W )
-			cur_x = KAYPRO_SCREEN_W - 1;
-		state = ST_NORMAL;
-		break;
-
-	case ST_SET_ATTRIB:
-		state = ST_NORMAL;
-		switch (data)
-		{
-		case '0': /* reverse video */
-			logerror("KAYPRO <ESC>B0   reverse on\n");
-			attrib |= AT_REVERSE;
-			break;
-		case '1': /* half intensity */
-			logerror("KAYPRO <ESC>B1   half intensity\n");
-			attrib |= AT_HALF_INTENSITY;
-			break;
-		case '2': /* start blinking */
-			logerror("KAYPRO <ESC>B2   start blinking\n");
-			attrib |= AT_BLINK;
-			break;
-		case '3': /* start underlining */
-			logerror("KAYPRO <ESC>B3   start underlining\n");
-			attrib |= AT_UNDERLINE;
-			break;
-		case '4': /* cursor on */
-			logerror("KAYPRO <ESC>B4   cursor on\n");
-			cursor = 1;
-			break;
-		case '5': /* video mode on */
-			logerror("KAYPRO <ESC>B5   video mode on\n");
-			attrib |= AT_VIDEO;
-			gb1 = AT_VIDEO_GB1;
-			break;
-		case '6': /* remember cursor position */
-			logerror("KAYPRO <ESC>B6   save cursor (%d,%d)\n", cur_x, cur_y);
-			old_x = cur_x;
-			old_y = cur_y;
-			break;
-		case '7': /* preserve status line */
-			logerror("KAYPRO <ESC>B7   preserve status line\n");
-			scroll_lines = KAYPRO_SCREEN_H - 1;
-			break;
-		default:
-			logerror("KAYPRO <ESC>B%c   unknown\n", data);
-			break;
-		}
-		break;
-
-	case ST_CLR_ATTRIB:
-		state = ST_NORMAL;
-		switch (data)
-		{
-		case '0': /* stop reverse video */
-			logerror("KAYPRO <ESC>C0   reverse off\n");
-			attrib &= ~ AT_REVERSE;
-			break;
-		case '1': /* normal intensity */
-			logerror("KAYPRO <ESC>C1   normal intensity\n");
-			attrib &= ~ AT_HALF_INTENSITY;
-			break;
-		case '2': /* stop blinking */
-			logerror("KAYPRO <ESC>C2   stop blinking\n");
-			attrib &= ~ AT_BLINK;
-			break;
-		case '3': /* stop underlining */
-			logerror("KAYPRO <ESC>C3   stop underlining\n");
-			attrib &= ~ AT_UNDERLINE;
-			break;
-		case '4': /* cursor off */
-			logerror("KAYPRO <ESC>C4   cursor off\n");
-			cursor = 0;
-			break;
-		case '5': /* video mode off */
-			logerror("KAYPRO <ESC>C5   video mode off\n");
-			attrib &= ~ AT_VIDEO;
-			break;
-		case '6': /* restore cursor position */
-			logerror("KAYPRO <ESC>C6   restore cursor (%d,%d)\n", old_x, old_y);
-			cur_x = old_x;
-			cur_y = old_y;
-			break;
-		case '7': /* don't preserve status line */
-			logerror("KAYPRO <ESC>C7   don't preserve status line\n");
-			scroll_lines = KAYPRO_SCREEN_H;
-			break;
-		default:
-			logerror("KAYPRO <ESC>C%c   unknown\n", data);
-			break;
-		}
-		break;
-
-	case ST_SET_LINE:
-		if( argcnt > 0 )
-		{
-			argval[--argcnt] = data - ' ';
-			if( !argcnt )
-			{
-				int x0, y0, x1, y1;
-				x1 = argval[0];
-				y1 = argval[1];
-				x0 = argval[2];
-				y0 = argval[3];
-				logerror("KAYPRO <ESC>L    set line %d,%d - %d,%d\n", x0,y0,x1,y1);
-				kaypro_line(x0,y0,x1,y1, 1);
-				argcnt = 0;
-				state = ST_NORMAL;
-			}
-		}
-		break;
-
-	case ST_CLR_LINE:
-		if( argcnt > 0 )
-		{
-			argval[--argcnt] = data - ' ';
-			if( !argcnt )
-			{
-				int x0, y0, x1, y1;
-				x1 = argval[0];
-				y1 = argval[1];
-				x0 = argval[2];
-				y0 = argval[3];
-				logerror("KAYPRO <ESC>D    clr line %d,%d - %d,%d\n", x0,y0,x1,y1);
-				kaypro_line(x0,y0,x1,y1, 0);
-				argcnt = 0;
-				state = ST_NORMAL;
-			}
-		}
-		break;
-
-	case ST_SET_PIXEL:
-		if( argcnt > 0 )
-		{
-			argval[--argcnt] = data - ' ';
-			if( !argcnt )
-			{
-				int x0, y0;
-				x0 = argval[0];
-				y0 = argval[1];
-				logerror("KAYPRO <ESC>*    set pixel %d,%d\n", x0, y0);
-				kaypro_pixel(x0,y0, 1);
-				argcnt = 0;
-				state = ST_NORMAL;
-			}
-		}
-		break;
-
-	case ST_CLR_PIXEL:
-		if( argcnt > 0 )
-		{
-			argval[--argcnt] = data - ' ';
-			if( !argcnt )
-			{
-				int x0, y0;
-				x0 = argval[0];
-				y0 = argval[1];
-				logerror("KAYPRO <ESC>     clr pixel %d,%d\n", x0, y0);
-				kaypro_pixel(x0,y0, 0);
-				argcnt = 0;
-				state = ST_NORMAL;
-			}
-		}
-		break;
-	}
-}
-

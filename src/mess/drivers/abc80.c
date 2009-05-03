@@ -364,7 +364,7 @@ static const sn76477_interface abc80_sn76477_interface =
 
 static INTERRUPT_GEN( abc80_nmi_interrupt )
 {
-	cpu_set_input_line(device->machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
+	cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 /* Z80 PIO */
@@ -381,7 +381,7 @@ static TIMER_DEVICE_CALLBACK( z80pio_astb_tick )
 
 static void abc80_pio_interrupt(const device_config *device, int state)
 {
-	cpu_set_input_line(device->machine->cpu[0], INPUT_LINE_IRQ0, state);
+	cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_IRQ0, state);
 }
 
 static READ8_DEVICE_HANDLER( abc80_pio_port_a_r )
@@ -457,13 +457,13 @@ static WRITE8_DEVICE_HANDLER( abc80_pio_port_b_w )
 
 static const z80pio_interface abc80_pio_intf =
 {
-	abc80_pio_interrupt,		/* callback when change interrupt status */
-	abc80_pio_port_a_r,			/* port A read callback */
-	abc80_pio_port_b_r,			/* port B read callback */
-	NULL,						/* port A write callback */
-	abc80_pio_port_b_w,			/* port B write callback */
-	NULL,						/* portA ready active callback */
-	NULL						/* portB ready active callback */
+	DEVCB_LINE(abc80_pio_interrupt),		/* callback when change interrupt status */
+	DEVCB_HANDLER(abc80_pio_port_a_r),			/* port A read callback */
+	DEVCB_HANDLER(abc80_pio_port_b_r),			/* port B read callback */
+	DEVCB_NULL,						/* port A write callback */
+	DEVCB_HANDLER(abc80_pio_port_b_w),			/* port B write callback */
+	DEVCB_NULL,						/* portA ready active callback */
+	DEVCB_NULL						/* portB ready active callback */
 };
 
 static const z80_daisy_chain abc80_daisy_chain[] =
@@ -494,11 +494,11 @@ static MACHINE_START( abc80 )
 	switch (mess_ram_size)
 	{
 	case 16*1024:
-		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case 32*1024:
-		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8000, 0xbfff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0xbfff, 0, 0, SMH_BANK1, SMH_BANK1);
 		break;
 	}
 

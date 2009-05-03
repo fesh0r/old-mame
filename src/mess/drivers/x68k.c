@@ -213,7 +213,7 @@ TIMER_CALLBACK(mfp_update_irq)
 //              if(x68k_sys.mfp.iera & (1 << x))
                 {
                     current_vector[6] = (x68k_sys.mfp.vr & 0xf0) | (x+8);
-                    cpu_set_input_line_and_vector(machine->cpu[0],x68k_sys.mfp.irqline,ASSERT_LINE,(x68k_sys.mfp.vr & 0xf0) | (x + 8));
+                    cputag_set_input_line_and_vector(machine, "maincpu",x68k_sys.mfp.irqline,ASSERT_LINE,(x68k_sys.mfp.vr & 0xf0) | (x + 8));
 //                  logerror("MFP: Sent IRQ vector 0x%02x (IRQ line %i)\n",(x68k_sys.mfp.vr & 0xf0) | (x+8),x68k_sys.mfp.irqline);
                     return;  // one at a time only
                 }
@@ -232,7 +232,7 @@ TIMER_CALLBACK(mfp_update_irq)
 //              if(x68k_sys.mfp.ierb & (1 << x))
                 {
                     current_vector[6] = (x68k_sys.mfp.vr & 0xf0) | x;
-                    cpu_set_input_line_and_vector(machine->cpu[0],x68k_sys.mfp.irqline,ASSERT_LINE,(x68k_sys.mfp.vr & 0xf0) | x);
+                    cputag_set_input_line_and_vector(machine, "maincpu",x68k_sys.mfp.irqline,ASSERT_LINE,(x68k_sys.mfp.vr & 0xf0) | x);
 //                  logerror("MFP: Sent IRQ vector 0x%02x (IRQ line %i)\n",(x68k_sys.mfp.vr & 0xf0) | x,x68k_sys.mfp.irqline);
                     return;  // one at a time only
                 }
@@ -453,7 +453,7 @@ static void x68k_keyboard_push_scancode(running_machine* machine,unsigned char c
 			if(input_port_read(machine,"options") & 0x01)
 			{
 				current_vector[6] = 0x4c;
-				cpu_set_input_line_and_vector(machine->cpu[0],6,ASSERT_LINE,0x4c);
+				cputag_set_input_line_and_vector(machine, "maincpu",6,ASSERT_LINE,0x4c);
 				logerror("MFP: Receive buffer full IRQ sent\n");
 			}
 		}
@@ -464,7 +464,7 @@ static void x68k_keyboard_push_scancode(running_machine* machine,unsigned char c
 		x68k_sys.keyboard.headpos = 0;
 //      mfp_trigger_irq(MFP_IRQ_RX_ERROR);
 		current_vector[6] = 0x4b;
-//		cpu_set_input_line_and_vector(machine->cpu[0],6,ASSERT_LINE,0x4b);
+//		cputag_set_input_line_and_vector(machine, "maincpu",6,ASSERT_LINE,0x4b);
 	}
 }
 
@@ -648,7 +648,7 @@ static TIMER_CALLBACK(x68k_scc_ack)
 				x68k_sys.mouse.irqactive = 1;
 				current_vector[5] = 0x54;
 				current_irq_line = 5;
-				cpu_set_input_line_and_vector(machine->cpu[0],5,ASSERT_LINE,0x54);
+				cputag_set_input_line_and_vector(machine, "maincpu",5,ASSERT_LINE,0x54);
 			}
 		}
 	}
@@ -679,24 +679,172 @@ static void x68k_set_adpcm(running_machine* machine)
 	hd63450_set_timer(dev,3,ATTOTIME_IN_HZ(rate));
 }
 
+// Megadrive 3 button gamepad
+// According to XM6, bits 4 and 7 are always 1 (is this correct?)
+// Bits 4 and 5 of PPI port C control each controller's multiplexer
+// Button inputs (Start, A, B and C) are read in bits 5 and 6 (rather than 4
+// and 5 like on a Megadrive)
+
+static UINT8 md_3button_r(const device_config* device, int port)
+{
+	if(port == 1)
+	{
+		if(x68k_sys.mdctrl.mux1 & 0x10)
+		{	
+			return input_port_read(device->machine,"md3b_0") | 0x90;
+		}
+		else
+		{	
+			return (input_port_read(device->machine,"md3b_1") & 0x60) |
+				 (input_port_read(device->machine,"md3b_0") & 0x03) | 0x90;
+		}
+	}
+	if(port == 2)
+	{
+		if(x68k_sys.mdctrl.mux2 & 0x20)
+		{	
+			return input_port_read(device->machine,"md3b_2") | 0x90;
+		}
+		else
+		{	
+			return (input_port_read(device->machine,"md3b_3") & 0x60) |
+				 (input_port_read(device->machine,"md3b_2") & 0x03) | 0x90;
+		}
+	}
+	return 0xff;
+}
+
+// Megadrive 6 button gamepad
+static TIMER_CALLBACK(md_6button_port1_timeout)
+{
+	x68k_sys.mdctrl.seq1 = 0;
+}
+
+static TIMER_CALLBACK(md_6button_port2_timeout)
+{
+	x68k_sys.mdctrl.seq2 = 0;
+}
+
+static void md_6button_init(running_machine* machine)
+{
+	x68k_sys.mdctrl.io_timeout1 = timer_alloc(machine,md_6button_port1_timeout,NULL);
+	x68k_sys.mdctrl.io_timeout2 = timer_alloc(machine,md_6button_port2_timeout,NULL);
+}
+
+static UINT8 md_6button_r(const device_config* device, int port)
+{
+	if(port == 1)
+	{
+		switch(x68k_sys.mdctrl.seq1)
+		{
+			case 1:
+			default:
+				if(x68k_sys.mdctrl.mux1 & 0x10)
+				{	
+					return input_port_read(device->machine,"md6b_0") | 0x90;
+				}
+				else
+				{	
+					return (input_port_read(device->machine,"md6b_1") & 0x60) |
+						 (input_port_read(device->machine,"md6b_0") & 0x03) | 0x90;
+				}
+			case 2:
+				if(x68k_sys.mdctrl.mux1 & 0x10)
+				{	
+					return input_port_read(device->machine,"md6b_0") | 0x90;
+				}
+				else
+				{	
+					return (input_port_read(device->machine,"md6b_1") & 0x60) | 0x90;
+				}
+			case 3:
+				if(x68k_sys.mdctrl.mux1 & 0x10)
+				{	
+					return (input_port_read(device->machine,"md6b_0") & 0x60) | (input_port_read(device->machine,"md6b_4") & 0x0f) | 0x90;
+				}
+				else
+				{	
+					return (input_port_read(device->machine,"md6b_1") & 0x60) | 0x9f;
+				}
+		}
+	}
+	if(port == 2)
+	{
+		switch(x68k_sys.mdctrl.seq2)
+		{
+			case 1:
+			default:
+				if(x68k_sys.mdctrl.mux2 & 0x20)
+				{	
+					return input_port_read(device->machine,"md6b_2") | 0x90;
+				}
+				else
+				{	
+					return (input_port_read(device->machine,"md6b_3") & 0x60) |
+						 (input_port_read(device->machine,"md6b_2") & 0x03) | 0x90;
+				}
+			case 2:
+				if(x68k_sys.mdctrl.mux2 & 0x20)
+				{	
+					return input_port_read(device->machine,"md6b_2") | 0x90;
+				}
+				else
+				{	
+					return (input_port_read(device->machine,"md6b_3") & 0x60) | 0x90;
+				}
+			case 3:
+				if(x68k_sys.mdctrl.mux2 & 0x20)
+				{	
+					return (input_port_read(device->machine,"md6b_2") & 0x60) | (input_port_read(device->machine,"md6b_5") & 0x0f) | 0x90;
+				}
+				else
+				{	
+					return (input_port_read(device->machine,"md6b_3") & 0x60) | 0x9f;
+				}
+		}
+	}
+	return 0xff;
+}
 
 // Judging from the XM6 source code, PPI ports A and B are joystick inputs
 static READ8_DEVICE_HANDLER( ppi_port_a_r )
 {
-	// Joystick 1
-	if(x68k_sys.joy.joy1_enable == 0)
-		return input_port_read(device->machine, "joy1");
-	else
-		return 0xff;
+	int ctrl = input_port_read(device->machine,"ctrltype") & 0x0f;
+	
+	switch(ctrl)
+	{
+		case 0x00:  // standard MSX/FM-Towns joystick
+			if(x68k_sys.joy.joy1_enable == 0)
+				return input_port_read(device->machine, "joy1");
+			else
+				return 0xff;
+		case 0x01:  // 3-button Megadrive gamepad
+			return md_3button_r(device,1);
+		case 0x02:  // 6-button Megadrive gamepad
+			return md_6button_r(device,1);
+	}
+	
+	return 0xff;
 }
 
 static READ8_DEVICE_HANDLER( ppi_port_b_r )
 {
-	// Joystick 2
-	if(x68k_sys.joy.joy2_enable == 0)
-		return input_port_read(device->machine, "joy2");
-	else
-		return 0xff;
+	int ctrl = input_port_read(device->machine,"ctrltype") & 0xf0;
+	
+	switch(ctrl)
+	{
+		case 0x00:  // standard MSX/FM-Towns joystick
+			if(x68k_sys.joy.joy2_enable == 0)
+				return input_port_read(device->machine, "joy2");
+			else
+				return 0xff;
+		case 0x10:  // 3-button Megadrive gamepad
+			return md_3button_r(device,2);
+		case 0x20:  // 6-button Megadrive gamepad
+			return md_6button_r(device,2);
+	}
+	
+	return 0xff;
 }
 
 static READ8_DEVICE_HANDLER( ppi_port_c_r )
@@ -716,17 +864,42 @@ static WRITE8_DEVICE_HANDLER( ppi_port_c_w )
 {
 	// ADPCM / Joystick control
 	const device_config *oki = devtag_get_device(device->machine, "okim6258");
+	static UINT16 prev1;
+	static UINT16 prev2;
+	static UINT16 prevA;
 	
 	ppi_port[2] = data;
-	x68k_sys.adpcm.pan = data & 0x03;
-	x68k_sys.adpcm.rate = data & 0x0c;
-	x68k_set_adpcm(device->machine);
-	okim6258_set_divider(oki, (data >> 2) & 3);
-
+	if((data & 0x0f) != (prevA & 0x0f))
+	{
+		x68k_sys.adpcm.pan = data & 0x03;
+		x68k_sys.adpcm.rate = data & 0x0c;
+		x68k_set_adpcm(device->machine);
+		okim6258_set_divider(oki, (data >> 2) & 3);
+	}
+	prevA = data & 0x0f;
+	
+	// The joystick enable bits also handle the multiplexer for various controllers
 	x68k_sys.joy.joy1_enable = data & 0x10;
+	x68k_sys.mdctrl.mux1 = data & 0x10;
+	if((prev1 & 0x10) == 0x00 && (data & 0x10) == 0x10)
+	{
+		x68k_sys.mdctrl.seq1++;
+		timer_adjust_oneshot(x68k_sys.mdctrl.io_timeout1,cputag_clocks_to_attotime(device->machine, "maincpu", 8192),0);
+	}
+	prev1 = data;
+
 	x68k_sys.joy.joy2_enable = data & 0x20;
+	x68k_sys.mdctrl.mux2 = data & 0x20;
+	if((prev2 & 0x20) == 0x00 && (data & 0x20) == 0x20)
+	{
+		x68k_sys.mdctrl.seq2++;
+		timer_adjust_oneshot(x68k_sys.mdctrl.io_timeout2,cputag_clocks_to_attotime(device->machine, "maincpu", 8192),0);
+	}
+	prev2 = data;
+
 	x68k_sys.joy.ioc6 = data & 0x40;
 	x68k_sys.joy.ioc7 = data & 0x80;
+
 }
 
 
@@ -853,7 +1026,7 @@ static NEC765_INTERRUPT( fdc_irq )
 		x68k_sys.ioc.irqstatus |= 0x80;
 		current_irq_line = 1;
 		logerror("FDC: IRQ triggered\n");
-		cpu_set_input_line_and_vector(device->machine->cpu[0],1,ASSERT_LINE,current_vector[1]);
+		cputag_set_input_line_and_vector(device->machine, "maincpu", 1, ASSERT_LINE, current_vector[1]);
 	}
 }
 
@@ -1398,11 +1571,11 @@ static TIMER_CALLBACK(x68k_fake_bus_error)
 	if(mess_ram[0x09] != 0x02)  // normal vector for bus errors points to 02FF0540
 	{
 		int addr = (mess_ram[0x09] << 24) | (mess_ram[0x08] << 16) |(mess_ram[0x0b] << 8) | mess_ram[0x0a];
-		int sp = cpu_get_reg(machine->cpu[0],REG_GENSP);
-		int pc = cpu_get_reg(machine->cpu[0],REG_GENPC);
-		int sr = cpu_get_reg(machine->cpu[0],M68K_SR);
-		//int pda = cpu_get_reg(machine->cpu[0],M68K_PREF_DATA);
-		cpu_set_reg(machine->cpu[0],REG_GENSP,sp-14);
+		int sp = cpu_get_reg(cputag_get_cpu(machine, "maincpu"), REG_GENSP);
+		int pc = cpu_get_reg(cputag_get_cpu(machine, "maincpu"), REG_GENPC);
+		int sr = cpu_get_reg(cputag_get_cpu(machine, "maincpu"), M68K_SR);
+		//int pda = cpu_get_reg(cputag_get_cpu(machine, "maincpu"), M68K_PREF_DATA);
+		cpu_set_reg(cputag_get_cpu(machine, "maincpu"), REG_GENSP, sp - 14);
 		mess_ram[sp-11] = (val & 0xff000000) >> 24;
 		mess_ram[sp-12] = (val & 0x00ff0000) >> 16;
 		mess_ram[sp-9] = (val & 0x0000ff00) >> 8;
@@ -1413,8 +1586,8 @@ static TIMER_CALLBACK(x68k_fake_bus_error)
 		mess_ram[sp-2] = (pc & 0x000000ff);  // place PC onto the stack
 		mess_ram[sp-5] = (sr & 0xff00) >> 8;
 		mess_ram[sp-6] = (sr & 0x00ff);  // place SR onto the stack
-		cpu_set_reg(machine->cpu[0],REG_GENPC,addr);  // real exceptions seem to take too long to be acknowledged
-		popmessage("Expansion access [%08x]: PC jump to %08x",val,addr);
+		cpu_set_reg(cputag_get_cpu(machine, "maincpu"), REG_GENPC, addr);  // real exceptions seem to take too long to be acknowledged
+		popmessage("Expansion access [%08x]: PC jump to %08x", val, addr);
 	}
 }
 
@@ -1424,13 +1597,13 @@ static READ16_HANDLER( x68k_rom0_r )
        then access causes a bus error */
 	current_vector[2] = 0x02;  // bus error
 	current_irq_line = 2;
-//	cpu_set_input_line_and_vector(space->machine->cpu[0],2,ASSERT_LINE,current_vector[2]);
+//	cputag_set_input_line_and_vector(space->machine, "maincpu",2,ASSERT_LINE,current_vector[2]);
 	if(input_port_read(space->machine, "options") & 0x02)
 	{
 		offset *= 2;
 		if(ACCESSING_BITS_0_7)
 			offset++;
-		timer_set(space->machine, cpu_clocks_to_attotime(space->machine->cpu[0], 4), NULL, 0xbffffc+offset,x68k_fake_bus_error);
+		timer_set(space->machine, cputag_clocks_to_attotime(space->machine, "maincpu", 4), NULL, 0xbffffc+offset,x68k_fake_bus_error);
 	}
 	return 0xff;
 }
@@ -1441,13 +1614,13 @@ static WRITE16_HANDLER( x68k_rom0_w )
        then access causes a bus error */
 	current_vector[2] = 0x02;  // bus error
 	current_irq_line = 2;
-//	cpu_set_input_line_and_vector(space->machine->cpu[0],2,ASSERT_LINE,current_vector[2]);
+//	cputag_set_input_line_and_vector(space->machine, "maincpu",2,ASSERT_LINE,current_vector[2]);
 	if(input_port_read(space->machine, "options") & 0x02)
 	{
 		offset *= 2;
 		if(ACCESSING_BITS_0_7)
 			offset++;
-		timer_set(space->machine, cpu_clocks_to_attotime(space->machine->cpu[0], 4), NULL, 0xbffffc+offset,x68k_fake_bus_error);
+		timer_set(space->machine, cputag_clocks_to_attotime(space->machine, "maincpu", 4), NULL, 0xbffffc+offset,x68k_fake_bus_error);
 	}
 }
 
@@ -1461,8 +1634,8 @@ static READ16_HANDLER( x68k_exp_r )
 		offset *= 2;
 		if(ACCESSING_BITS_0_7)
 			offset++;
-		timer_set(space->machine, cpu_clocks_to_attotime(space->machine->cpu[0], 16), NULL, 0xeafa00+offset,x68k_fake_bus_error);
-//      cpu_set_input_line_and_vector(machine->cpu[0],2,ASSERT_LINE,current_vector[2]);
+		timer_set(space->machine, cputag_clocks_to_attotime(space->machine, "maincpu", 16), NULL, 0xeafa00+offset,x68k_fake_bus_error);
+//      cputag_set_input_line_and_vector(machine, "maincpu",2,ASSERT_LINE,current_vector[2]);
 	}
 	return 0xffff;
 }
@@ -1477,8 +1650,8 @@ static WRITE16_HANDLER( x68k_exp_w )
 		offset *= 2;
 		if(ACCESSING_BITS_0_7)
 			offset++;
-		timer_set(space->machine, cpu_clocks_to_attotime(space->machine->cpu[0], 16), NULL, 0xeafa00+offset,x68k_fake_bus_error);
-//      cpu_set_input_line_and_vector(machine->cpu[0],2,ASSERT_LINE,current_vector[2]);
+		timer_set(space->machine, cputag_clocks_to_attotime(space->machine, "maincpu", 16), NULL, 0xeafa00+offset,x68k_fake_bus_error);
+//      cputag_set_input_line_and_vector(machine, "maincpu",2,ASSERT_LINE,current_vector[2]);
 	}
 }
 
@@ -1488,7 +1661,7 @@ static void x68k_dma_irq(running_machine *machine, int channel)
 	current_vector[3] = hd63450_get_vector(device, channel);
 	current_irq_line = 3;
 	logerror("DMA#%i: DMA End (vector 0x%02x)\n",channel,current_vector[3]);
-	cpu_set_input_line_and_vector(machine->cpu[0],3,ASSERT_LINE,current_vector[3]);
+	cputag_set_input_line_and_vector(machine, "maincpu",3,ASSERT_LINE,current_vector[3]);
 }
 
 static void x68k_dma_end(running_machine *machine, int channel,int irq)
@@ -1506,7 +1679,7 @@ static void x68k_dma_error(running_machine *machine, int channel, int irq)
 	{
 		current_vector[3] = hd63450_get_error_vector(device,channel);
 		current_irq_line = 3;
-		cpu_set_input_line_and_vector(machine->cpu[0],3,ASSERT_LINE,current_vector[3]);
+		cputag_set_input_line_and_vector(machine, "maincpu",3,ASSERT_LINE,current_vector[3]);
 	}
 }
 
@@ -1542,7 +1715,7 @@ static WRITE_LINE_DEVICE_HANDLER( mfp_irq_callback )
 		return;
 //	if((x68k_sys.ioc.irqstatus & 0xc0) != 0)  // if the FDC is busy, then we don't want to miss that IRQ
 //		return;
-	cpu_set_input_line(device->machine->cpu[0], 6, state);
+	cputag_set_input_line(device->machine, "maincpu", 6, state);
 	current_vector[6] = 0;
 	prev = state;
 }
@@ -1573,12 +1746,12 @@ static IRQ_CALLBACK(x68k_int_ack)
 		if(current_vector[6] != 0x4b && current_vector[6] != 0x4c)
 			current_vector[6] = mc68901_get_vector(x68k_mfp);
 		else
-			cpu_set_input_line_and_vector(device->machine->cpu[0],irqline,CLEAR_LINE,current_vector[irqline]);
+			cputag_set_input_line_and_vector(device->machine, "maincpu",irqline,CLEAR_LINE,current_vector[irqline]);
 		logerror("SYS: IRQ acknowledged (vector=0x%02x, line = %i)\n",current_vector[6],irqline);
 		return current_vector[6];
 	}
 	
-	cpu_set_input_line_and_vector(device->machine->cpu[0],irqline,CLEAR_LINE,current_vector[irqline]);
+	cputag_set_input_line_and_vector(device->machine, "maincpu",irqline,CLEAR_LINE,current_vector[irqline]);
 	if(irqline == 1)  // IOSC
 	{
 		x68k_sys.ioc.irqstatus &= ~0xf0;
@@ -1698,25 +1871,36 @@ static const struct rp5c15_interface rtc_intf =
 };
 
 static INPUT_PORTS_START( x68000 )
+	PORT_START("ctrltype")
+	PORT_CATEGORY_CLASS(0x0f,0x00,"Joystick Port 1")
+	PORT_CATEGORY_ITEM(0x00,"Standard 2-button MSX/FM-Towns joystick",10)
+	PORT_CATEGORY_ITEM(0x01,"3-button Megadrive gamepad",11)
+	PORT_CATEGORY_ITEM(0x02,"6-button Megadrive gamepad",12)
+	PORT_CATEGORY_CLASS(0xf0,0x00,"Joystick Port 2")
+	PORT_CATEGORY_ITEM(0x00,"Standard 2-button MSX/FM-Towns joystick",20)
+	PORT_CATEGORY_ITEM(0x10,"3-button Megadrive gamepad",21)
+	PORT_CATEGORY_ITEM(0x20,"6-button Megadrive gamepad",22)
+// TODO: Sharp Cyber Stick (CZ-8NJ2) support
+
 	PORT_START( "joy1" )
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_CODE(JOYCODE_Y_UP_SWITCH)	 PORT_PLAYER(1)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_CODE(JOYCODE_Y_DOWN_SWITCH)	 PORT_PLAYER(1)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_CODE(JOYCODE_X_LEFT_SWITCH)	 PORT_PLAYER(1)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_CODE(JOYCODE_X_RIGHT_SWITCH)	 PORT_PLAYER(1)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_CODE(JOYCODE_BUTTON1)	 PORT_PLAYER(1)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_CODE(JOYCODE_BUTTON2)	 PORT_PLAYER(1)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_CODE(JOYCODE_Y_UP_SWITCH)	 PORT_PLAYER(1) PORT_CATEGORY(10)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_CODE(JOYCODE_Y_DOWN_SWITCH)	 PORT_PLAYER(1) PORT_CATEGORY(10)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_CODE(JOYCODE_X_LEFT_SWITCH)	 PORT_PLAYER(1) PORT_CATEGORY(10)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_CODE(JOYCODE_X_RIGHT_SWITCH)	 PORT_PLAYER(1) PORT_CATEGORY(10)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(10)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_CODE(JOYCODE_BUTTON1)	 PORT_PLAYER(1) PORT_CATEGORY(10)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_CODE(JOYCODE_BUTTON2)	 PORT_PLAYER(1) PORT_CATEGORY(10)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(10)
 
 	PORT_START( "joy2" )
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_CODE(JOYCODE_Y_UP_SWITCH)	 PORT_PLAYER(2)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_CODE(JOYCODE_Y_DOWN_SWITCH)	 PORT_PLAYER(2)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_CODE(JOYCODE_X_LEFT_SWITCH)	 PORT_PLAYER(2)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_CODE(JOYCODE_X_RIGHT_SWITCH)	 PORT_PLAYER(2)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_CODE(JOYCODE_BUTTON1)	 PORT_PLAYER(2)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_CODE(JOYCODE_BUTTON2)	 PORT_PLAYER(2)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_CODE(JOYCODE_Y_UP_SWITCH)	 PORT_PLAYER(2) PORT_CATEGORY(20)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_CODE(JOYCODE_Y_DOWN_SWITCH)	 PORT_PLAYER(2) PORT_CATEGORY(20)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_CODE(JOYCODE_X_LEFT_SWITCH)	 PORT_PLAYER(2) PORT_CATEGORY(20)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_CODE(JOYCODE_X_RIGHT_SWITCH)	 PORT_PLAYER(2) PORT_CATEGORY(20)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(20)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_CODE(JOYCODE_BUTTON1)	 PORT_PLAYER(2) PORT_CATEGORY(20)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_CODE(JOYCODE_BUTTON2)	 PORT_PLAYER(2) PORT_CATEGORY(20)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(20)
 
 	PORT_START( "key1" )
 	PORT_BIT( 0x00000001, IP_ACTIVE_HIGH, IPT_UNUSED) // unused
@@ -1862,6 +2046,99 @@ static INPUT_PORTS_START( x68000 )
 
 	PORT_START("mouse3")  // Y-axis
 	PORT_BIT( 0xff, 0x00, IPT_MOUSE_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
+	
+	PORT_START("md3b_0")
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_NAME("MD Pad 1 Up") PORT_8WAY PORT_PLAYER(1) PORT_CATEGORY(11)
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_NAME("MD Pad 1 Down") PORT_8WAY PORT_PLAYER(1) PORT_CATEGORY(11)
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_NAME("MD Pad 1 Left") PORT_8WAY PORT_PLAYER(1) PORT_CATEGORY(11)
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_NAME("MD Pad 1 Right") PORT_8WAY PORT_PLAYER(1) PORT_CATEGORY(11)
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(11)
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) PORT_NAME("MD Pad 1 B Button") PORT_CATEGORY(11)
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1) PORT_NAME("MD Pad 1 C Button") PORT_CATEGORY(11)
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(11)
+
+	PORT_START("md3b_1")
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(11)
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(11)
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(11)
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(11)
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(11)
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) PORT_NAME("MD Pad 1 A Button") PORT_CATEGORY(11)
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_START ) PORT_PLAYER(1) PORT_NAME("MD Pad 1 Start Button") PORT_CATEGORY(11)
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(11)
+
+	PORT_START("md3b_2")
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_NAME("MD Pad 2 Up") PORT_8WAY PORT_PLAYER(2) PORT_CATEGORY(21)
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_NAME("MD Pad 2 Down") PORT_8WAY PORT_PLAYER(2) PORT_CATEGORY(21)
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_NAME("MD Pad 2 Left") PORT_8WAY PORT_PLAYER(2) PORT_CATEGORY(21)
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_NAME("MD Pad 2 Right") PORT_8WAY PORT_PLAYER(2) PORT_CATEGORY(21)
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(21)
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) PORT_NAME("MD Pad 2 B Button") PORT_CATEGORY(21)
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2) PORT_NAME("MD Pad 2 C Button") PORT_CATEGORY(21)
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(21)
+
+	PORT_START("md3b_3")
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(21)
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(21)
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(21)
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(21)
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(21)
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) PORT_NAME("MD Pad 2 A Button") PORT_CATEGORY(21)
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_START ) PORT_PLAYER(2) PORT_NAME("MD Pad 2 Start Button") PORT_CATEGORY(21)
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(21)
+	
+	PORT_START("md6b_0")
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_NAME("MD Pad 1 Up") PORT_8WAY PORT_PLAYER(1) PORT_CATEGORY(12)
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_NAME("MD Pad 1 Down") PORT_8WAY PORT_PLAYER(1) PORT_CATEGORY(12)
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_NAME("MD Pad 1 Left") PORT_8WAY PORT_PLAYER(1) PORT_CATEGORY(12)
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_NAME("MD Pad 1 Right") PORT_8WAY PORT_PLAYER(1) PORT_CATEGORY(12)
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(12)
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) PORT_NAME("MD Pad 1 B Button") PORT_CATEGORY(12)
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1) PORT_NAME("MD Pad 1 C Button") PORT_CATEGORY(12)
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(12)
+
+	PORT_START("md6b_1")
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(12)
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(12)
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(12)
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(12)
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(12)
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) PORT_NAME("MD Pad 1 A Button") PORT_CATEGORY(12)
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_START ) PORT_PLAYER(1) PORT_NAME("MD Pad 1 Start Button") PORT_CATEGORY(12)
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(12)
+
+	PORT_START("md6b_2")
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_NAME("MD Pad 2 Up") PORT_8WAY PORT_PLAYER(2) PORT_CATEGORY(22)
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_NAME("MD Pad 2 Down") PORT_8WAY PORT_PLAYER(2) PORT_CATEGORY(22)
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_NAME("MD Pad 2 Left") PORT_8WAY PORT_PLAYER(2) PORT_CATEGORY(22)
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_NAME("MD Pad 2 Right") PORT_8WAY PORT_PLAYER(2) PORT_CATEGORY(22)
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(22)
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) PORT_NAME("MD Pad 2 B Button") PORT_CATEGORY(22)
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2) PORT_NAME("MD Pad 2 C Button") PORT_CATEGORY(22)
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(22)
+
+	PORT_START("md6b_3")
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(22)
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(22)
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(22)
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(22)
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(22)
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) PORT_NAME("MD Pad 2 A Button") PORT_CATEGORY(22)
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_START ) PORT_PLAYER(2) PORT_NAME("MD Pad 2 Start Button") PORT_CATEGORY(22)
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(22)
+
+	// extra inputs
+	PORT_START("md6b_4")
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_PLAYER(1) PORT_NAME("MD Pad 1 Z Button") PORT_CATEGORY(12)
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(1) PORT_NAME("MD Pad 1 Y Button") PORT_CATEGORY(12)
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1) PORT_NAME("MD Pad 1 X Button") PORT_CATEGORY(12)
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_PLAYER(1) PORT_NAME("MD Pad 1 Mode Button") PORT_CATEGORY(12)
+
+	PORT_START("md6b_5")
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_PLAYER(2) PORT_NAME("MD Pad 2 Z Button") PORT_CATEGORY(22)
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(2) PORT_NAME("MD Pad 2 Y Button") PORT_CATEGORY(22)
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2) PORT_NAME("MD Pad 2 X Button") PORT_CATEGORY(22)
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_PLAYER(2) PORT_NAME("MD Pad 2 Mode Button") PORT_CATEGORY(22)
 
 INPUT_PORTS_END
 
@@ -1940,7 +2217,7 @@ static DEVICE_IMAGE_LOAD( x68k_floppy )
 			current_vector[1] = 0x61;
 			x68k_sys.ioc.irqstatus |= 0x40;
 			current_irq_line = 1;
-			cpu_set_input_line_and_vector(image->machine->cpu[0],1,ASSERT_LINE,current_vector[1]);  // Disk insert/eject interrupt
+			cputag_set_input_line_and_vector(image->machine, "maincpu",1,ASSERT_LINE,current_vector[1]);  // Disk insert/eject interrupt
 			logerror("IOC: Disk image inserted\n");
 		}
 		x68k_sys.fdc.disk_inserted[image_index_in_device(image)] = 1;
@@ -1957,7 +2234,7 @@ static DEVICE_IMAGE_UNLOAD( x68k_floppy )
 		current_vector[1] = 0x61;
 		x68k_sys.ioc.irqstatus |= 0x40;
 		current_irq_line = 1;
-		cpu_set_input_line_and_vector(image->machine->cpu[0],1,ASSERT_LINE,current_vector[1]);  // Disk insert/eject interrupt
+		cputag_set_input_line_and_vector(image->machine, "maincpu",1,ASSERT_LINE,current_vector[1]);  // Disk insert/eject interrupt
 	}
 	x68k_sys.fdc.disk_inserted[image_index_in_device(image)] = 0;
 }
@@ -2060,12 +2337,12 @@ static MACHINE_RESET( x68000 )
 	}
 	
 	// reset CPU
-	device_reset(machine->cpu[0]);
+	device_reset(cputag_get_cpu(machine, "maincpu"));
 }
 
 static MACHINE_START( x68000 )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	/*  Install RAM handlers  */
 	x68k_spriteram = (UINT16*)memory_region(machine, "user1");
 	memory_install_read16_handler(space,0x000000,mess_ram_size-1,mess_ram_size-1,0,(read16_space_func)1);
@@ -2120,7 +2397,7 @@ static DRIVER_INIT( x68000 )
 
 	mfp_init();
 
-	cpu_set_irq_callback(machine->cpu[0], x68k_int_ack);
+	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), x68k_int_ack);
 
 	// init keyboard
 	x68k_sys.keyboard.delay = 500;  // 3*100+200
@@ -2131,6 +2408,9 @@ static DRIVER_INIT( x68000 )
 	x68k_vblank_irq = timer_alloc(machine, x68k_crtc_vblank_irq,NULL);
 	mouse_timer = timer_alloc(machine, x68k_scc_ack,NULL);
 	led_timer = timer_alloc(machine, x68k_led_callback,NULL);
+	
+	// Initialise timers for 6-button MD controllers
+	md_6button_init(machine);
 }
 
 static MACHINE_DRIVER_START( x68000 )

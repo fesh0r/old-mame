@@ -39,12 +39,11 @@ typedef struct {		 // CRTC 6545
 } CRTC6545;
 
 static CRTC6545 crt;
-static int framecnt = 0;
-static int m6545_color_bank = 0;
-static int m6545_video_bank = 0;
-static int mbee_pcg_color_latch = 0;
+static UINT8 framecnt = 0;
+static UINT8 m6545_color_bank = 0;
+static UINT8 m6545_video_bank = 0;
+static UINT8 mbee_pcg_color_latch = 0;
 
-int mbee_frame_counter;
 UINT8 *mbee_pcgram;
 
 static UINT8 mc6845_cursor[16];				// cursor shape
@@ -83,14 +82,15 @@ WRITE8_HANDLER ( mbee_pcg_color_w )
 		colorram[offset] = data;
 }
 
+static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7" };
+
+/* The direction keys are used by the pc85 menu. Do not know what uses the "insert" key. */
 static int keyboard_matrix_r(running_machine *machine, int offs)
 {
 	int port = (offs >> 7) & 7;
 	int bit = (offs >> 4) & 7;
 	int extra = input_port_read(machine, "EXTRA");
 	int data = 0;
-	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7" };
-
 
 	data = (input_port_read(machine, keynames[port]) >> bit) & 1;
 
@@ -119,6 +119,7 @@ static int keyboard_matrix_r(running_machine *machine, int offs)
 		if( port == 7 && bit == 1 ) data = 1;	/* Control */
 		if( port == 2 && bit == 6 ) data = 1;	/* V */
 	}
+
 	if( data )
 	{
 		crt.lpen_lo = offs & 0xff;
@@ -129,17 +130,27 @@ static int keyboard_matrix_r(running_machine *machine, int offs)
 	return data;
 }
 
- READ8_HANDLER ( mbee_color_bank_r )
+READ8_HANDLER ( mbee_color_bank_r )
 {
+/* Read of port 0A - set Telcom rom to first half */
+	memory_set_bank(space->machine, 5, 0);
 	return m6545_color_bank;
 }
 
 WRITE8_HANDLER ( mbee_color_bank_w )
 {
 	m6545_color_bank = data;
+	memory_set_bank(space->machine, 4, data & 7);
 }
 
- READ8_HANDLER ( mbee_video_bank_r )
+READ8_HANDLER ( mbee_bank_netrom_r )
+{
+/* Read of port 10A - set Telcom rom to 2nd half */
+	memory_set_bank(space->machine, 5, 1);
+	return m6545_color_bank;
+}
+
+READ8_HANDLER ( mbee_video_bank_r )
 {
 	return m6545_video_bank;
 }
@@ -375,7 +386,8 @@ WRITE8_HANDLER ( m6545_data_w )
 	}
 }
 
-/* The 6845 can produce a variety of cursor shapes - all are emulated here */
+/* The 6845 can produce a variety of cursor shapes - all are emulated here
+	Need to find out if the 6545 works the same way */
 static void mc6845_cursor_configure(void)
 {
 	UINT8 i,curs_type=0,r9,r10,r11;
@@ -419,8 +431,8 @@ static void mc6845_screen_configure(running_machine *machine)
 	UINT16 height = crt.vertical_displayed*(crt.scan_lines+1)-1;					// height in pixels
 	UINT16 bytes = crt.horizontal_displayed*crt.vertical_displayed-1;				// video ram needed
 
-	if (width > 511) width=511;	
-	if (height > 255) height=255;
+	if (width > 0x27f) width=0x27f;	
+	if (height > 0x10f) height=0x10f;
 
 	/* Resize the screen */
 	visarea.min_x = 0;
@@ -447,37 +459,35 @@ VIDEO_START( mbeeic )
 
 VIDEO_UPDATE( mbee )
 {
-	UINT8 y,z,chr,gfx;
-	UINT16 mem,sy=0,sx=0,x,i;
+	UINT8 y,ra,chr,gfx;
+	UINT16 mem,sy=0,ma=0,x;
 	UINT8 speed = crt.cursor_top&0x20, flash = crt.cursor_top&0x40;				// cursor modes
 	UINT16 cursor = (crt.cursor_address_hi<<8) | crt.cursor_address_lo;			// get cursor position
 	UINT16 screen_home = (crt.screen_address_hi<<8) | crt.screen_address_lo;		// screen home offset (usually zero)
-
-	for( i = 0; i < 0x380; i += 0x10 ) keyboard_matrix_r(screen->machine, i);
 
 	framecnt++;
 
 	for (y = 0; y < crt.vertical_displayed; y++)						// for each row of chars
 	{
-		for (z = 0; z < crt.scan_lines+1; z++)						// for each scanline
+		for (ra = 0; ra < (crt.scan_lines&15)+1; ra++)					// for each scanline - RA4 is used as an update strobe for the keyboard
 		{
 			UINT16  *p = BITMAP_ADDR16(bitmap, sy++, 0);
 
-			for (x = sx; x < sx + crt.horizontal_displayed; x++)			// for each character
+			for (x = ma; x < ma + crt.horizontal_displayed; x++)			// for each character
 			{
 				UINT8 inv=0;
 				mem = (x + screen_home) & 0x7ff;
 				chr = videoram[mem];
-
+				if ((x & 15) == 0) keyboard_matrix_r(screen->machine, x);	// actually happens for every scanline of every character, but imposes too much unnecessary overhead */
 				/* process cursor */
 				if ((((!flash) && (!speed)) ||					// (5,6)=(0,0) = cursor on always
 					((flash) && (speed) && (framecnt & 0x10)) ||		// (5,6)=(1,1) = cycle per 32 frames
 					((flash) && (!speed) && (framecnt & 8))) &&		// (5,6)=(0,1) = cycle per 16 frames
 					(mem == cursor))					// displaying at cursor position?
-						inv ^= mc6845_cursor[z];			// cursor scan row
+						inv ^= mc6845_cursor[ra];			// cursor scan row
 
 				/* get pattern of pixels for that character scanline */
-				gfx = mbee_pcgram[(chr<<4) | z] ^ inv;
+				gfx = mbee_pcgram[(chr<<4) | ra] ^ inv;
 
 				/* Display a scanline of a character (8 pixels) */
 				*p = ( gfx & 0x80 ) ? 1 : 0; p++;
@@ -490,46 +500,45 @@ VIDEO_UPDATE( mbee )
 				*p = ( gfx & 0x01 ) ? 1 : 0; p++;
 			}
 		}
-		sx+=crt.horizontal_displayed;
+		ma+=crt.horizontal_displayed;
 	}
 	return 0;
 }
 
 VIDEO_UPDATE( mbeeic )
 {
-	UINT8 y,z,chr,gfx,fg,bg;
-	UINT16 mem,sy=0,sx=0,x,i,col;
+	UINT8 y,ra,chr,gfx,fg,bg;
+	UINT16 mem,sy=0,ma=0,x,col;
 	UINT8 speed = crt.cursor_top&0x20, flash = crt.cursor_top&0x40;				// cursor modes
 	UINT16 cursor = (crt.cursor_address_hi<<8) | crt.cursor_address_lo;			// get cursor position
 	UINT16 screen_home = (crt.screen_address_hi<<8) | crt.screen_address_lo;		// screen home offset (usually zero)
 	UINT16 colourm = (mbee_pcg_color_latch & 0x0e) << 7;
 
-	for( i = 0; i < 0x380; i += 0x10 ) keyboard_matrix_r(screen->machine, i);
-
 	framecnt++;
 
 	for (y = 0; y < crt.vertical_displayed; y++)						// for each row of chars
 	{
-		for (z = 0; z < crt.scan_lines+1; z++)						// for each scanline
+		for (ra = 0; ra < (crt.scan_lines&15)+1; ra++)					// for each scanline - RA4 is used as an update strobe for the keyboard
 		{
 			UINT16  *p = BITMAP_ADDR16(bitmap, sy++, 0);
 
-			for (x = sx; x < sx + crt.horizontal_displayed; x++)			// for each character
+			for (x = ma; x < ma + crt.horizontal_displayed; x++)			// for each character
 			{
 				UINT8 inv=0;
 				mem = (x + screen_home) & 0x7ff;
 				chr = videoram[mem];
 				col = colorram[mem] | colourm;					// read a byte of colour
+				if ((x & 15) == 0) keyboard_matrix_r(screen->machine, x);	// actually happens for every scanline of every character, but imposes too much unnecessary overhead */
 
 				/* process cursor */
 				if ((((!flash) && (!speed)) ||					// (5,6)=(0,0) = cursor on always
 					((flash) && (speed) && (framecnt & 0x10)) ||		// (5,6)=(1,1) = cycle per 32 frames
 					((flash) && (!speed) && (framecnt & 8))) &&		// (5,6)=(0,1) = cycle per 16 frames
 					(mem == cursor))					// displaying at cursor position?
-						inv ^= mc6845_cursor[z];			// cursor scan row
+						inv ^= mc6845_cursor[ra];			// cursor scan row
 
 				/* get pattern of pixels for that character scanline */
-				gfx = mbee_pcgram[(chr<<4) | z] ^ inv;
+				gfx = mbee_pcgram[(chr<<4) | ra] ^ inv;
 				fg = (col & 0x001f) | 64;					// map to foreground palette
 				bg = (col & 0x07e0) >> 5;					// and background palette
 
@@ -544,7 +553,7 @@ VIDEO_UPDATE( mbeeic )
 				*p = ( gfx & 0x01 ) ? fg : bg; p++;
 			}
 		}
-		sx+=crt.horizontal_displayed;
+		ma+=crt.horizontal_displayed;
 	}
 	return 0;
 }

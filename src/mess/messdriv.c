@@ -44,23 +44,11 @@ const game_driver * const drivers[] =
 	DRIVER( a2600 )		/* Atari 2600										*/
 	DRIVER( a2600p )	/* Atari 2600 PAL									*/
 	DRIVER( a5200 )		/* Atari 5200										*/
-	DRIVER( a5200a )	/* Atari 5200 alt									*/
 	DRIVER( a7800 )		/* Atari 7800 NTSC									*/
 	DRIVER( a7800p )	/* Atari 7800 PAL									*/
 	DRIVER( lynx )		/* Atari Lynx Handheld								*/
 	DRIVER( lynx2 )		/* Atari Lynx II Handheld redesigned, no additions	*/
 	DRIVER( jaguar )	/* Atari Jaguar										*/
-	DRIVER( atarist )	/* Atari ST											*/
-	DRIVER( megast )	/* Atari Mega ST									*/
-//	DRIVER( stacy )		/* Atari STacy										*/
-	DRIVER( atariste )	/* Atari STe										*/
-	DRIVER( stbook )	/* Atari STBook										*/
-	DRIVER( megaste )	/* Atari Mega STe									*/
-//	DRIVER( stpad )		/* Atari STPad (prototype)							*/
-//	DRIVER( tt030 )		/* Atari TT030										*/
-//	DRIVER( fx1 )		/* Atari FX-1 (prototype)							*/
-//	DRIVER( falcon )	/* Atari Falcon030									*/
-//	DRIVER( falcon40 )	/* Atari Falcon040 (prototype)						*/
 
 	/* NINTENDO */
 	DRIVER( nes )		/* Nintendo Entertainment System					*/
@@ -203,6 +191,9 @@ const game_driver * const drivers[] =
 	/* KOEI */
 	DRIVER( pasogo )	/* KOEI PasoGo										*/
 
+	/* SNK */
+	DRIVER( ngp )		/* NeoGeo Pocket									*/
+	DRIVER( ngpc )		/* NeoGeo Pocket Color								*/
 
 /****************COMPUTERS***************************************************/
     /* ACORN */
@@ -238,8 +229,8 @@ const game_driver * const drivers[] =
 	DRIVER( pcw9512 )	/* 198? PCW9512 (+)									*/
 	DRIVER( pcw10 ) 	/* 198? PCW10										*/
 	DRIVER( pcw16 )		/* 1995 PCW16										*/
-	DRIVER( nc100 )		/* 19?? NC100										*/
-	DRIVER( nc200 )		/* 19?? NC200										*/
+	DRIVER( nc100 )		/* 1992 NC100										*/
+	DRIVER( nc200 )		/* 1993 NC200										*/
 
 	/* APPLE */
 	DRIVER( apple1 )	/* Jul 1976 Apple 1									*/
@@ -289,27 +280,29 @@ const game_driver * const drivers[] =
 	DRIVER( macclasc )	/* 1990 Apple Macintosh Classic						*/
 
 	/* ATARI */
-/*
-400/800 10kB OS roms
-A    NTSC  (?)         (?)         (?)
-A    PAL   (?)         0x72b3fed4  CO15199, CO15299, CO12399B
-B    NTSC  (?)         0x0e86d61d  CO12499B, CO14599B, 12399B
-B    PAL   (?)         (?)         (?)
-
-XL/XE 16kB OS roms
-10   1200XL  10/26/1982  0xc5c11546  CO60616A, CO60617A
-11   1200XL  12/23/1982  (?)         CO60616B, CO60617B
-1    600XL   03/11/1983  0x643bcc98  CO62024
-2    XL/XE   05/10/1983  0x1f9cd270  CO61598B
-3    800XE   03/01/1985  0x29f133f7  C300717
-4    XEGS    05/07/1987  0x1eaf4002  C101687
-*/
-
 	DRIVER( a400 )		/* 1979 Atari 400									*/
 	DRIVER( a400pal )	/* 1979 Atari 400 PAL								*/
 	DRIVER( a800 )		/* 1979 Atari 800									*/
 	DRIVER( a800pal )	/* 1979 Atari 800 PAL								*/
+	DRIVER( a1200xl )	/* 1982 Atari 1200 XL								*/
+	DRIVER( a600xl )	/* 1983 Atari 600 XL								*/
 	DRIVER( a800xl )	/* 1983 Atari 800 XL								*/
+	DRIVER( a65xe )		/* 1986 Atari 65 XE (XL Extended)					*/
+	DRIVER( a65xea )	/* 1986? Atari 65 XE Arabic							*/
+	DRIVER( a130xe )	/* 1986 Atari 130 XE								*/
+	DRIVER( a800xe )	/* 1986 Atari 800 XE								*/
+	DRIVER( xegs )		/* 1987 Atari XE Game System						*/
+	DRIVER( atarist )	/* Atari ST											*/
+	DRIVER( megast )	/* Atari Mega ST									*/
+//	DRIVER( stacy )		/* Atari STacy										*/
+	DRIVER( atariste )	/* Atari STe										*/
+	DRIVER( stbook )	/* Atari STBook										*/
+	DRIVER( megaste )	/* Atari Mega STe									*/
+//	DRIVER( stpad )		/* Atari STPad (prototype)							*/
+//	DRIVER( tt030 )		/* Atari TT030										*/
+//	DRIVER( fx1 )		/* Atari FX-1 (prototype)							*/
+//	DRIVER( falcon )	/* Atari Falcon030									*/
+//	DRIVER( falcon40 )	/* Atari Falcon040 (prototype)						*/
 
 	/* COMMODORE */
 	DRIVER( kim1 )		/* Commodore (MOS) KIM-1 1975						*/
@@ -597,7 +590,11 @@ XL/XE 16kB OS roms
 	DRIVER( phc64 )		/* Hegener & Glaser Mephisto PHC 64					*/
 
 	/* NON LINEAR SYSTEMS */
-	DRIVER( kaypro )	/* Kaypro 2X										*/
+	DRIVER( kaypro2x )	/* Kaypro 2 - 2/84 */
+	DRIVER( kayproii )	/* Kaypro II - 2/83 */
+	DRIVER( kaypro4 )	/* Kaypro 4 - 4/83 */
+	DRIVER( kaypro10 )	/* Kaypro 10 */
+	DRIVER( omni2 )		/* Omni II */
 
 	/* VEB MIKROELEKTRONIK */
 	/* KC compact is partial CPC compatible */
@@ -619,6 +616,7 @@ XL/XE 16kB OS roms
 	DRIVER( lnw80 )		/* LNW Research LNW-80								*/
 	DRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy				*/
 	DRIVER( trs80m4 )
+	DRIVER( trs80m4p )
 	DRIVER( ht1080z ) /* Hradstechnika Szvetkezet HT-1080Z */
 	DRIVER( ht1080z2 ) /* Hradstechnika Szvetkezet HT-1080Z Series II */
 	DRIVER( ht108064 ) /* Hradstechnika Szvetkezet HT-1080Z/64 */
@@ -648,6 +646,11 @@ XL/XE 16kB OS roms
 	/* VIDEO TECHNOLOGY */
 	DRIVER( crvision )	/* 1981 creatiVision								*/
 	DRIVER( fnvision )	/* 1983 FunVision									*/
+	DRIVER( crvisiop )
+	DRIVER( wizzard )
+	DRIVER( rameses )
+	DRIVER( vz2000 )
+	DRIVER( crvisio2 )
 	DRIVER( laser110 )	/* 1983 Laser 110									*/
 	DRIVER( las110de )	/* 1983 Sanyo Laser 110 (Germany)					*/
 	DRIVER( laser200 )	/* 1983 Laser 200 (color version of 110)			*/
@@ -1043,6 +1046,14 @@ XL/XE 16kB OS roms
 	/* Robotron 1715 */
 	DRIVER (rt1715)
 	DRIVER (rt1715w)
+	
+	/* Z1013 */
+	DRIVER (z1013)
+	DRIVER (z1013a2)
+	
+	/* LLC */
+	DRIVER (llc1)
+	DRIVER (llc2)
 
 	/* PP-01 */
 	DRIVER (pp01)
@@ -1092,6 +1103,9 @@ XL/XE 16kB OS roms
 	DRIVER(ac1) 	/* 1984 Amateurcomputer AC1				*/
 	DRIVER(ac1_32) 	/* 1984 Amateurcomputer AC1 (32 lines)	*/
 
+	/* DEC VT100 */
+	DRIVER(vt100)
+	
 	/* Ei Nis */
 	DRIVER(pecom64)
 
@@ -1112,6 +1126,31 @@ XL/XE 16kB OS roms
 	DRIVER( newbraie )
 	DRIVER( newbraia )
 	DRIVER( newbraim )
+
+	/* Nokia Data */
+	DRIVER( mm1m6 )
+	DRIVER( mm1m7 )
+
+	/* Nuova Elettronica */
+	DRIVER( z80ne )			/* 1980 - Z80NE */
+	DRIVER( z80net )		/* 1980 - Z80NE + LX388 Video Interface */
+	DRIVER( z80netb )		/* 1980 - Z80NE + LX388 Video Interface + 16Kb BASIC */
+
+	/* Talking Electronics Magazine */
+	DRIVER( tec1 )			/* Talking Electronics Computer */
+
+	/* Kyocera (and clones) */
+	DRIVER( kyo85 )
+	DRIVER( olivm10 )	
+	DRIVER( trsm100 )
+	DRIVER( trsm102 )
+	DRIVER( trsm200 )
+	DRIVER( npc8201 )
+
+	/* Nakajima manufactured eletronic typewriters */
+	DRIVER( drwrt400 )	/* 199? NTS DreamWriter T400                         */
+	DRIVER( wales210 )	/* 199? Walther ES-210 (German)                      */
+	DRIVER( dator3k )	/* 199? Dator 3000 (Spanish)                        */
 
 	/* Votrax */
 //	DRIVER( votrtnt ) /* Votrax Type-N-Talk */

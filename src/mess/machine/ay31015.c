@@ -305,10 +305,10 @@ static TIMER_CALLBACK( ay31015_rx_process )
 				ay31015->rx_pulses = 16;
 				ay31015->rx_state = FIRST_STOP_BIT;
 
-				if ((ay31015->control_reg & CONTROL_EPS) && (ay31015->rx_parity))
+				if ((!(ay31015->control_reg & CONTROL_EPS)) && (ay31015->rx_parity))
 					ay31015->rx_parity = 0;			// odd parity, ok
 				else
-				if ((!(ay31015->control_reg & CONTROL_EPS)) && (!ay31015->rx_parity))
+				if ((ay31015->control_reg & CONTROL_EPS) && (!ay31015->rx_parity))
 					ay31015->rx_parity = 0;			// even parity, ok
 				else
 					ay31015->rx_parity = 1;			// parity error
@@ -735,15 +735,6 @@ static DEVICE_RESET( ay31015 )
 }
 
 
-static DEVICE_SET_INFO( ay31015 )
-{
-	switch ( state )
-	{
-		/* no parameters to set */
-	}
-}
-
-
 /*-------------------------------------------------
     DEVICE_GET_INFO(ay31015) - device getinfo
 	function
@@ -759,7 +750,6 @@ DEVICE_GET_INFO( ay31015 )
 		case DEVINFO_INT_CLASS:					info->i = DEVICE_CLASS_PERIPHERAL;				break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_SET_INFO:				info->set_info = DEVICE_SET_INFO_NAME(ay31015);	break;
 		case DEVINFO_FCT_START:					info->start = DEVICE_START_NAME(ay31015);		break;
 		case DEVINFO_FCT_STOP:					/* nothing */									break;
 		case DEVINFO_FCT_RESET:					info->reset = DEVICE_RESET_NAME( ay31015 );		break;

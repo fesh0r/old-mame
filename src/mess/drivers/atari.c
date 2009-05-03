@@ -4,12 +4,37 @@
     MESS Driver
 
     Juergen Buchmueller, June 1998
+
+	2009-05 FP changes:
+	 Factored out MESS specific code from MAME
+	 Added skeleton support for other XL/XE machines (VERY preliminary):
+	 - a600xl based on maxaflex emulation in MAME
+	 - a1200xl sharing a800xl code without BASIC
+	 - a65xe, a130xe, a800xe, xegs sharing a800xl code (and this is wrong at least 
+	  for xegs)
+	 - a65xea as placeholder (I think it needs a different memory map, among other 
+	  things)
+
+	 To Do:
+	 - Find out exact checksums for OS Roms split as in the original machines
+	 - Find out why a600xl and a800xl don't work (xe machines should then follow)
+	 - Investigate supported RAM sizes and OS versions in different models 
+	 - Implement differences between various models (currently most of the
+	  XL/XE are exactly an a800xl, but this will change as soon as emulation 
+	  starts to work)
+	 - Investigate 65 XE Arabic dump: is it correct?
+	 - Fix various keyboard differences
+	 - Freddy emulation for 800XLF?
+	 - Add support for proto boards and expansions (a1400xl, C/PM board, etc.)
+	 - Clean up the whole driver + cart + floppy structure
+
 ******************************************************************************/
 
 #include "driver.h"
 #include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "includes/atari.h"
+#include "machine/ataridev.h"
 #include "devices/cartslot.h"
 #include "sound/pokey.h"
 #include "machine/6821pia.h"
@@ -205,9 +230,16 @@
     E000-FFFF ROM     BIOS ROM
 ******************************************************************************/
 
+/**************************************************************
+ *
+ * Memory maps
+ *
+ **************************************************************/
+
+
 static ADDRESS_MAP_START(a400_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x9fff) AM_NOP	/* RAM installed at runtime */
-	AM_RANGE(0xa000, 0xbfff) AM_READWRITE(SMH_BANK1, SMH_BANK1)
+	AM_RANGE(0xa000, 0xbfff) AM_RAMBANK(1)
 	AM_RANGE(0xc000, 0xcfff) AM_ROM
 	AM_RANGE(0xd000, 0xd0ff) AM_READWRITE(atari_gtia_r, atari_gtia_w)
 	AM_RANGE(0xd100, 0xd1ff) AM_NOP
@@ -221,7 +253,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(a800_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x9fff) AM_NOP	/* RAM installed at runtime */
-	AM_RANGE(0xa000, 0xbfff) AM_READWRITE(SMH_BANK1, SMH_BANK1)
+	AM_RANGE(0xa000, 0xbfff) AM_RAMBANK(1)
 	AM_RANGE(0xc000, 0xcfff) AM_ROM
 	AM_RANGE(0xd000, 0xd0ff) AM_READWRITE(atari_gtia_r, atari_gtia_w)
 	AM_RANGE(0xd100, 0xd1ff) AM_NOP
@@ -233,19 +265,34 @@ static ADDRESS_MAP_START(a800_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 
+static ADDRESS_MAP_START(a600xl_mem, ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x0000, 0x3fff) AM_RAM
+	AM_RANGE(0x5000, 0x57ff) AM_ROM AM_REGION("maincpu", 0x5000)	/* self test */
+	AM_RANGE(0xa000, 0xbfff) AM_ROM	/* BASIC */
+	AM_RANGE(0xc000, 0xcfff) AM_ROM /* OS */
+	AM_RANGE(0xd000, 0xd0ff) AM_READWRITE(atari_gtia_r, atari_gtia_w)
+	AM_RANGE(0xd100, 0xd1ff) AM_NOP
+	AM_RANGE(0xd200, 0xd2ff) AM_DEVREADWRITE("pokey", pokey_r, pokey_w)
+    AM_RANGE(0xd300, 0xd3ff) AM_DEVREADWRITE("pia", pia6821_alt_r, pia6821_alt_w)
+	AM_RANGE(0xd400, 0xd4ff) AM_READWRITE(atari_antic_r, atari_antic_w)
+	AM_RANGE(0xd500, 0xd7ff) AM_NOP
+	AM_RANGE(0xd800, 0xffff) AM_ROM /* OS */
+ADDRESS_MAP_END
+
+
 static ADDRESS_MAP_START(a800xl_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x4fff) AM_RAM
-	AM_RANGE(0x5000, 0x57ff) AM_READWRITE(SMH_BANK2, SMH_BANK2)
+	AM_RANGE(0x5000, 0x57ff) AM_RAMBANK(2)
 	AM_RANGE(0x5800, 0x9fff) AM_RAM
-	AM_RANGE(0xa000, 0xbfff) AM_READWRITE(SMH_BANK1, SMH_BANK1)
-	AM_RANGE(0xc000, 0xcfff) AM_READWRITE(SMH_BANK3, SMH_BANK3)
+	AM_RANGE(0xa000, 0xbfff) AM_RAMBANK(1)
+	AM_RANGE(0xc000, 0xcfff) AM_RAMBANK(3)
 	AM_RANGE(0xd000, 0xd0ff) AM_READWRITE(atari_gtia_r, atari_gtia_w)
 	AM_RANGE(0xd100, 0xd1ff) AM_NOP
 	AM_RANGE(0xd200, 0xd2ff) AM_DEVREADWRITE("pokey", pokey_r, pokey_w)
 	AM_RANGE(0xd300, 0xd3ff) AM_DEVREADWRITE("pia", pia6821_alt_r, pia6821_alt_w)
 	AM_RANGE(0xd400, 0xd4ff) AM_READWRITE(atari_antic_r, atari_antic_w)
 	AM_RANGE(0xd500, 0xd7ff) AM_NOP
-	AM_RANGE(0xd800, 0xffff) AM_READWRITE(SMH_BANK4, SMH_BANK4)
+	AM_RANGE(0xd800, 0xffff) AM_RAMBANK(4)
 ADDRESS_MAP_END
 
 
@@ -265,6 +312,12 @@ int atari_input_disabled(void)
 	return 0;
 }
 
+
+/**************************************************************
+ *
+ * Input ports
+ *
+ **************************************************************/
 
 
 #define JOYSTICK_DELTA			10
@@ -356,80 +409,97 @@ INPUT_PORTS_END
 
 
 
+/* 2009-04 FP:
+Small note about natural keyboard support: currently,
+- "Break" is mapped to 'F1'
+- "Clear" is mapped to 'F2'
+- "Atari" is mapped to 'F3'							*/
+
 static INPUT_PORTS_START( atari_keyboard )
 	PORT_START("keyboard_0")
-	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD)
-	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Escape") PORT_CODE(KEYCODE_ESC)
-	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1 !") PORT_CODE(KEYCODE_1)
-	PORT_BIT(0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2 \"") PORT_CODE(KEYCODE_2)
-	PORT_BIT(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("3 #") PORT_CODE(KEYCODE_3)
-	PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("4 $") PORT_CODE(KEYCODE_4)
-	PORT_BIT(0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("5 %") PORT_CODE(KEYCODE_5)
-	PORT_BIT(0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("6 ^") PORT_CODE(KEYCODE_6)
-	PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("7 &") PORT_CODE(KEYCODE_7)
-	PORT_BIT(0x0200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("8 *") PORT_CODE(KEYCODE_8)
-	PORT_BIT(0x0400, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("9 (") PORT_CODE(KEYCODE_9)
-	PORT_BIT(0x0800, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("0 )") PORT_CODE(KEYCODE_0)
-	PORT_BIT(0x1000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("- _") PORT_CODE(KEYCODE_MINUS)
-	PORT_BIT(0x2000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("= +") PORT_CODE(KEYCODE_EQUALS)
-	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Backsp") PORT_CODE(KEYCODE_BACKSPACE)
-	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Tab") PORT_CODE(KEYCODE_TAB)
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_L) PORT_CHAR('l') PORT_CHAR('L')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_J) PORT_CHAR('j') PORT_CHAR('J')
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_COLON) PORT_CHAR(';') PORT_CHAR(':')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Break") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(UCHAR_MAMEKEY(F1))
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_UNUSED) 
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_K) PORT_CHAR('k') PORT_CHAR('K')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR('+') PORT_CHAR('\\')
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_BACKSLASH) PORT_CHAR('*') PORT_CHAR('^')
 
 	PORT_START("keyboard_1")
-	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("q Q") PORT_CODE(KEYCODE_Q)
-	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("w W") PORT_CODE(KEYCODE_W)
-	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("e E") PORT_CODE(KEYCODE_E)
-	PORT_BIT(0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("r R") PORT_CODE(KEYCODE_R)
-	PORT_BIT(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("t T") PORT_CODE(KEYCODE_T)
-	PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("y Y") PORT_CODE(KEYCODE_Y)
-	PORT_BIT(0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("u U") PORT_CODE(KEYCODE_U)
-	PORT_BIT(0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("i I") PORT_CODE(KEYCODE_I)
-	PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("o O") PORT_CODE(KEYCODE_O)
-	PORT_BIT(0x0200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("p P") PORT_CODE(KEYCODE_P)
-	PORT_BIT(0x0400, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[ {") PORT_CODE(KEYCODE_OPENBRACE)
-	PORT_BIT(0x0800, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("] }") PORT_CODE(KEYCODE_CLOSEBRACE)
-	PORT_BIT(0x1000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Enter") PORT_CODE(KEYCODE_ENTER)
-	PORT_BIT(0x2000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("a A") PORT_CODE(KEYCODE_A)
-	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("s S") PORT_CODE(KEYCODE_S)
-	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("d D") PORT_CODE(KEYCODE_D)
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_O) PORT_CHAR('o') PORT_CHAR('O')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) // None!
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_P) PORT_CHAR('p') PORT_CHAR('P')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_U) PORT_CHAR('u') PORT_CHAR('U')
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Return") PORT_CODE(KEYCODE_ENTER) PORT_CHAR(13)
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_I) PORT_CHAR('i') PORT_CHAR('I')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR('-') PORT_CHAR('_')
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR('=') PORT_CHAR('|')
 
 	PORT_START("keyboard_2")
-	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("f F") PORT_CODE(KEYCODE_F)
-	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("g G") PORT_CODE(KEYCODE_G)
-	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("h H") PORT_CODE(KEYCODE_H)
-	PORT_BIT(0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("j J") PORT_CODE(KEYCODE_J)
-	PORT_BIT(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("k K") PORT_CODE(KEYCODE_K)
-	PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("l L") PORT_CODE(KEYCODE_L)
-	PORT_BIT(0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("; :") PORT_CODE(KEYCODE_COLON)
-	PORT_BIT(0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("+ \\") PORT_CODE(KEYCODE_QUOTE)
-	PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("* ^") PORT_CODE(KEYCODE_TILDE)
-	PORT_BIT(0x0200, IP_ACTIVE_HIGH, IPT_KEYBOARD)
-	PORT_BIT(0x0400, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("z Z") PORT_CODE(KEYCODE_Z)
-	PORT_BIT(0x0800, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("x X") PORT_CODE(KEYCODE_X)
-	PORT_BIT(0x1000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("c C") PORT_CODE(KEYCODE_C)
-	PORT_BIT(0x2000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("v V") PORT_CODE(KEYCODE_V)
-	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("b B") PORT_CODE(KEYCODE_B)
-	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("n N") PORT_CODE(KEYCODE_N)
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_V) PORT_CHAR('v') PORT_CHAR('V')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_UNUSED)
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_C) PORT_CHAR('c') PORT_CHAR('C')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_UNUSED)
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_UNUSED)
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_B) PORT_CHAR('b') PORT_CHAR('B')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_X) PORT_CHAR('x') PORT_CHAR('X')
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Z) PORT_CHAR('z') PORT_CHAR('Z')
 
 	PORT_START("keyboard_3")
-	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("m M") PORT_CODE(KEYCODE_M)
-	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(", [") PORT_CODE(KEYCODE_COMMA)
-	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(". ]") PORT_CODE(KEYCODE_STOP)
-	PORT_BIT(0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("/ ?") PORT_CODE(KEYCODE_SLASH)
-	PORT_BIT(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("\\ |") PORT_CODE(KEYCODE_BACKSLASH2)
-	PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Atari") PORT_CODE(KEYCODE_LALT)
-	PORT_BIT(0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Space") PORT_CODE(KEYCODE_SPACE)
-	PORT_BIT(0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Caps") PORT_CODE(KEYCODE_CAPSLOCK)
-	PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Clear") PORT_CODE(KEYCODE_HOME)
-	PORT_BIT(0x0200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Insert") PORT_CODE(KEYCODE_INSERT)
-	PORT_BIT(0x0400, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Delete") PORT_CODE(KEYCODE_DEL)
-	PORT_BIT(0x0800, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Break") PORT_CODE(KEYCODE_PGUP)
-	PORT_BIT(0x1000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(Left)") PORT_CODE(KEYCODE_LEFT)
-	PORT_BIT(0x2000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(Right)") PORT_CODE(KEYCODE_RIGHT)
-	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(Up)") PORT_CODE(KEYCODE_UP)
-	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(Down)") PORT_CODE(KEYCODE_DOWN)
-INPUT_PORTS_END
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_4) PORT_CHAR('4') PORT_CHAR('$')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_UNUSED)
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_3) PORT_CHAR('3') PORT_CHAR('#')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_6) PORT_CHAR('6') PORT_CHAR('&')
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Escape") PORT_CODE(KEYCODE_ESC) PORT_CHAR(27)
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_5) PORT_CHAR('5') PORT_CHAR('%')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_2) PORT_CHAR('2') PORT_CHAR('\"')
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHAR('!')
 
+	PORT_START("keyboard_4")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_COMMA) PORT_CHAR(',') PORT_CHAR('[')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ')
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_STOP) PORT_CHAR('.') PORT_CHAR(']')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_N) PORT_CHAR('n') PORT_CHAR('N')
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_UNUSED)
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_M) PORT_CHAR('m') PORT_CHAR('M')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_SLASH) PORT_CHAR('/') PORT_CHAR('?')
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Atari") PORT_CODE(KEYCODE_RCONTROL) PORT_CHAR(UCHAR_MAMEKEY(F3))
+
+	PORT_START("keyboard_5")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_R) PORT_CHAR('r') PORT_CHAR('R')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_UNUSED)
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_E) PORT_CHAR('e') PORT_CHAR('E')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Y) PORT_CHAR('y') PORT_CHAR('Y')
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_TAB) PORT_CHAR(UCHAR_MAMEKEY(TAB))
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_T) PORT_CHAR('t') PORT_CHAR('T')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_W) PORT_CHAR('w') PORT_CHAR('W')
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Q) PORT_CHAR('q') PORT_CHAR('Q')
+
+	PORT_START("keyboard_6")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_9) PORT_CHAR('9') PORT_CHAR('(')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_UNUSED)
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_0) PORT_CHAR('0') PORT_CHAR(')')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_7) PORT_CHAR('7') PORT_CHAR('\'')
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("BackS  Delete") PORT_CODE(KEYCODE_BACKSLASH2) PORT_CHAR(8) PORT_CHAR(UCHAR_MAMEKEY(DEL)) 
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_8) PORT_CHAR('8') PORT_CHAR('@')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("<  Clear") PORT_CODE(KEYCODE_MINUS) PORT_CHAR('<') PORT_CHAR(UCHAR_MAMEKEY(F2))
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(">  Insert") PORT_CODE(KEYCODE_EQUALS) PORT_CHAR('>') PORT_CHAR(UCHAR_MAMEKEY(INSERT))
+
+	PORT_START("keyboard_7")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F) PORT_CHAR('f') PORT_CHAR('F')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_H) PORT_CHAR('h') PORT_CHAR('H')
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_D) PORT_CHAR('d') PORT_CHAR('D')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_UNUSED)
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Caps") PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE PORT_CHAR(UCHAR_MAMEKEY(CAPSLOCK))
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_G) PORT_CHAR('g') PORT_CHAR('G')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_S) PORT_CHAR('s') PORT_CHAR('S')
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_A) PORT_CHAR('a') PORT_CHAR('A')
+
+	PORT_START("fake")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Shift") PORT_CODE(KEYCODE_LSHIFT) PORT_CODE(KEYCODE_RSHIFT) PORT_CHAR(UCHAR_SHIFT_1)
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Ctrl") PORT_CODE(KEYCODE_LCONTROL) PORT_CHAR(UCHAR_SHIFT_2)
+INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( atari_analog_paddles )
@@ -493,43 +563,33 @@ static INPUT_PORTS_START( a5200 )
 	PORT_BIT(0x40, 0x40, IPT_BUTTON2) PORT_PLAYER(3)
     PORT_BIT(0x80, 0x80, IPT_BUTTON2) PORT_PLAYER(4)
 
-	/* KBCODE                          */
-	/* Key     bits    Keypad code     */
-	/* -------------------             */
-	/* none    0000    $FF             */
-	/* #       0001    $0B             */
-	/* 0       0010    $00             */
-	/* *       0011    $0A             */
-	/* Reset   0100    $0E             */
-	/* 9       0101    $09             */
-	/* 8       0110    $08             */
-	/* 7       0111    $07             */
-	/* Pause   1000    $0D             */
-	/* 6       1001    $06             */
-	/* 5       1010    $05             */
-	/* 4       1011    $04             */
-	/* Start   1100    $0C             */
-	/* 3       1101    $03             */
-	/* 2       1110    $02             */
-	/* 1       1111    $01             */
+    PORT_START("keypad_0")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(Break)") PORT_CODE(KEYCODE_PAUSE)	// is this correct?
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[#]") PORT_CODE(KEYCODE_ENTER_PAD)
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[0]") PORT_CODE(KEYCODE_0_PAD)
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[*]") PORT_CODE(KEYCODE_PLUS_PAD)
+    PORT_BIT(0xf0, IP_ACTIVE_HIGH, IPT_UNUSED)
 
-    PORT_START("keypad")
-	PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(Break)") PORT_CODE(KEYCODE_PAUSE)
-	PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[#]") PORT_CODE(KEYCODE_ENTER_PAD)
-	PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[0]") PORT_CODE(KEYCODE_0_PAD)
-	PORT_BIT(0x0008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[*]") PORT_CODE(KEYCODE_PLUS_PAD)
-	PORT_BIT(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Reset") PORT_CODE(KEYCODE_F3)
-	PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[9]") PORT_CODE(KEYCODE_9_PAD)
-	PORT_BIT(0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[8]") PORT_CODE(KEYCODE_8_PAD)
-	PORT_BIT(0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[7]") PORT_CODE(KEYCODE_7_PAD)
-	PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(DEF_STR(Pause)) PORT_CODE(KEYCODE_F2)
-	PORT_BIT(0x0200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[6]") PORT_CODE(KEYCODE_6_PAD)
-	PORT_BIT(0x0400, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[5]") PORT_CODE(KEYCODE_5_PAD)
-	PORT_BIT(0x0800, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[4]") PORT_CODE(KEYCODE_4_PAD)
-	PORT_BIT(0x1000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Start") PORT_CODE(KEYCODE_F1)
-	PORT_BIT(0x2000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[3]") PORT_CODE(KEYCODE_3_PAD)
-	PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[2]") PORT_CODE(KEYCODE_2_PAD)
-	PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[1]") PORT_CODE(KEYCODE_1_PAD)
+    PORT_START("keypad_1")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Reset") PORT_CODE(KEYCODE_F3)
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[9]") PORT_CODE(KEYCODE_9_PAD)
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[8]") PORT_CODE(KEYCODE_8_PAD)
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[7]") PORT_CODE(KEYCODE_7_PAD)
+    PORT_BIT(0xf0, IP_ACTIVE_HIGH, IPT_UNUSED)
+
+    PORT_START("keypad_2")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(DEF_STR(Pause)) PORT_CODE(KEYCODE_F2)
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[6]") PORT_CODE(KEYCODE_6_PAD)
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[5]") PORT_CODE(KEYCODE_5_PAD)
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[4]") PORT_CODE(KEYCODE_4_PAD)
+    PORT_BIT(0xf0, IP_ACTIVE_HIGH, IPT_UNUSED)
+
+    PORT_START("keypad_3")
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Start") PORT_CODE(KEYCODE_F1)
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[3]") PORT_CODE(KEYCODE_3_PAD)
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[2]") PORT_CODE(KEYCODE_2_PAD)
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[1]") PORT_CODE(KEYCODE_1_PAD)
+    PORT_BIT(0xf0, IP_ACTIVE_HIGH, IPT_UNUSED)
 
     PORT_START("analog_0")
 	PORT_BIT(0xff, 0x72, IPT_AD_STICK_X) PORT_SENSITIVITY(JOYSTICK_SENSITIVITY) PORT_KEYDELTA(JOYSTICK_DELTA) PORT_MINMAX(0x00,0xe4) PORT_PLAYER(1)
@@ -557,6 +617,12 @@ static INPUT_PORTS_START( a5200 )
 
 INPUT_PORTS_END
 
+
+/**************************************************************
+ *
+ * Palette
+ *
+ **************************************************************/
 
 static const UINT8 atari_palette[256*3] =
 {
@@ -648,11 +714,147 @@ static PALETTE_INIT( atari )
 {
 	int i;
 
-	for ( i = 0; i < sizeof(atari_palette) / 3; i++ ) {
+	for ( i = 0; i < sizeof(atari_palette) / 3; i++ ) 
+	{
 		palette_set_color_rgb(machine, i, atari_palette[i*3], atari_palette[i*3+1], atari_palette[i*3+2]);
 	}
 }
 
+/**************************************************************
+ *
+ * Memory banking
+ *
+ **************************************************************/
+
+void a800xl_mmu(running_machine *machine, UINT8 new_mmu)
+{
+	read8_space_func rbank1, rbank2, rbank3, rbank4;
+	write8_space_func wbank1, wbank2, wbank3, wbank4;
+	UINT8 *base1, *base2, *base3, *base4;
+
+	/* check if memory C000-FFFF changed */
+	if( new_mmu & 0x01 )
+	{
+		logerror("%s MMU BIOS ROM\n", machine->gamedrv->name);
+		rbank3 = SMH_BANK3;
+		wbank3 = SMH_UNMAP;
+		base3 = memory_region(machine, "maincpu") + 0x14000;  /* 8K lo BIOS */
+		rbank4 = SMH_BANK4;
+		wbank4 = SMH_UNMAP;
+		base4 = memory_region(machine, "maincpu") + 0x15800;  /* 4K FP ROM + 8K hi BIOS */
+	}
+	else
+	{
+		logerror("%s MMU BIOS RAM\n", machine->gamedrv->name);
+		rbank3 = SMH_BANK3;
+		wbank3 = SMH_BANK3;
+		base3 = memory_region(machine, "maincpu") + 0x0c000;  /* 8K RAM */
+		rbank4 = SMH_BANK4;
+		wbank4 = SMH_BANK4;
+		base4 = memory_region(machine, "maincpu") + 0x0d800;  /* 4K RAM + 8K RAM */
+	}
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc000, 0xcfff, 0, 0, rbank3, wbank3);
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd800, 0xffff, 0, 0, rbank4, wbank4);
+	memory_set_bankptr(machine, 3, base3);
+	memory_set_bankptr(machine, 4, base4);
+
+	/* check if BASIC changed */
+	if( new_mmu & 0x02 )
+	{
+		logerror("%s MMU BASIC RAM\n", machine->gamedrv->name);
+		rbank1 = SMH_BANK1;
+		wbank1 = SMH_BANK1;
+		base1 = memory_region(machine, "maincpu") + 0x0a000;  /* 8K RAM */
+	}
+	else
+	{
+		logerror("%s MMU BASIC ROM\n", machine->gamedrv->name);
+		rbank1 = SMH_BANK1;
+		wbank1 = SMH_UNMAP;
+		base1 = memory_region(machine, "maincpu") + 0x10000;  /* 8K BASIC */
+	}
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xa000, 0xbfff, 0, 0, rbank1, wbank1);
+	memory_set_bankptr(machine, 1, base1);
+
+	/* check if self-test ROM changed */
+	if( new_mmu & 0x80 )
+	{
+		logerror("%s MMU SELFTEST RAM\n", machine->gamedrv->name);
+		rbank2 = SMH_BANK2;
+		wbank2 = SMH_BANK2;
+		base2 = memory_region(machine, "maincpu") + 0x05000;  /* 0x0800 bytes */
+	}
+	else
+	{
+		logerror("%s MMU SELFTEST ROM\n", machine->gamedrv->name);
+		rbank2 = SMH_BANK2;
+		wbank2 = SMH_UNMAP;
+		base2 = memory_region(machine, "maincpu") + 0x15000;  /* 0x0800 bytes */
+	}
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x5000, 0x57ff, 0, 0, rbank2, wbank2);
+	memory_set_bankptr(machine, 2, base2);	
+}
+
+/* BASIC was available in a separate cart, so we don't test it */
+void a1200xl_mmu(running_machine *machine, UINT8 new_mmu)
+{
+	read8_space_func rbank2, rbank3, rbank4;
+	write8_space_func wbank2, wbank3, wbank4;
+	UINT8 *base2, *base3, *base4;
+
+	/* check if memory C000-FFFF changed */
+	if( new_mmu & 0x01 )
+	{
+		logerror("%s MMU BIOS ROM\n", machine->gamedrv->name);
+		rbank3 = SMH_BANK3;
+		wbank3 = SMH_UNMAP;
+		base3 = memory_region(machine, "maincpu") + 0x14000;  /* 8K lo BIOS */
+		rbank4 = SMH_BANK4;
+		wbank4 = SMH_UNMAP;
+		base4 = memory_region(machine, "maincpu") + 0x15800;  /* 4K FP ROM + 8K hi BIOS */
+	}
+	else
+	{
+		logerror("%s MMU BIOS RAM\n", machine->gamedrv->name);
+		rbank3 = SMH_BANK3;
+		wbank3 = SMH_BANK3;
+		base3 = memory_region(machine, "maincpu") + 0x0c000;  /* 8K RAM */
+		rbank4 = SMH_BANK4;
+		wbank4 = SMH_BANK4;
+		base4 = memory_region(machine, "maincpu") + 0x0d800;  /* 4K RAM + 8K RAM */
+	}
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc000, 0xcfff, 0, 0, rbank3, wbank3);
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd800, 0xffff, 0, 0, rbank4, wbank4);
+	memory_set_bankptr(machine, 3, base3);
+	memory_set_bankptr(machine, 4, base4);
+
+	/* check if self-test ROM changed */
+	if( new_mmu & 0x80 )
+	{
+		logerror("%s MMU SELFTEST RAM\n", machine->gamedrv->name);
+		rbank2 = SMH_BANK2;
+		wbank2 = SMH_BANK2;
+		base2 = memory_region(machine, "maincpu") + 0x05000;  /* 0x0800 bytes */
+	}
+	else
+	{
+		logerror("%s MMU SELFTEST ROM\n", machine->gamedrv->name);
+		rbank2 = SMH_BANK2;
+		wbank2 = SMH_UNMAP;
+		base2 = memory_region(machine, "maincpu") + 0x15000;  /* 0x0800 bytes */
+	}
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x5000, 0x57ff, 0, 0, rbank2, wbank2);
+	memory_set_bankptr(machine, 2, base2);	
+}
+
+/**************************************************************
+ *
+ * PIA interface
+ *
+ **************************************************************/
+
+static WRITE8_DEVICE_HANDLER(a1200xl_pia_pb_w) { a1200xl_mmu(device->machine, data); }
+static WRITE8_DEVICE_HANDLER(a800xl_pia_pb_w) { a800xl_mmu(device->machine, data); }
 
 static const pokey_interface atari_pokey_interface =
 {
@@ -673,22 +875,76 @@ static const pokey_interface atari_pokey_interface =
 };
 
 
-static const pia6821_interface pia_dummy_intf =
+const pia6821_interface atari_pia_interface =
 {
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL
+	DEVCB_HANDLER(atari_pia_pa_r),		/* port A in */
+	DEVCB_HANDLER(atari_pia_pb_r),	/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_NULL,		/* port A out */
+	DEVCB_NULL,		/* port B out */
+	DEVCB_NULL,		/* line CA2 out */
+	DEVCB_LINE(atarifdc_pia_cb2_w),		/* port CB2 out */
+	DEVCB_NULL,		/* IRQA */
+	DEVCB_NULL		/* IRQB */
 };
 
+const pia6821_interface a600xl_pia_interface =
+{
+	DEVCB_HANDLER(atari_pia_pa_r),		/* port A in */
+	DEVCB_HANDLER(atari_pia_pb_r),	/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_NULL,		/* port A out */
+	DEVCB_HANDLER(a600xl_pia_pb_w),		/* port B out */
+	DEVCB_NULL,		/* line CA2 out */
+	DEVCB_LINE(atarifdc_pia_cb2_w),		/* port CB2 out */
+	DEVCB_NULL,		/* IRQA */
+	DEVCB_NULL		/* IRQB */
+};
+
+const pia6821_interface a1200xl_pia_interface =
+{
+	DEVCB_HANDLER(atari_pia_pa_r),		/* port A in */
+	DEVCB_HANDLER(atari_pia_pb_r),	/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_NULL,		/* port A out */
+	DEVCB_HANDLER(a1200xl_pia_pb_w),		/* port B out */
+	DEVCB_NULL,		/* line CA2 out */
+	DEVCB_LINE(atarifdc_pia_cb2_w),		/* port CB2 out */
+	DEVCB_NULL,		/* IRQA */
+	DEVCB_NULL		/* IRQB */
+};
+
+const pia6821_interface a800xl_pia_interface =
+{
+	DEVCB_HANDLER(atari_pia_pa_r),		/* port A in */
+	DEVCB_HANDLER(atari_pia_pb_r),	/* port B in */
+	DEVCB_NULL,		/* line CA1 in */
+	DEVCB_NULL,		/* line CB1 in */
+	DEVCB_NULL,		/* line CA2 in */
+	DEVCB_NULL,		/* line CB2 in */
+	DEVCB_NULL,		/* port A out */
+	DEVCB_HANDLER(a800xl_pia_pb_w),		/* port B out */
+	DEVCB_NULL,		/* line CA2 out */
+	DEVCB_LINE(atarifdc_pia_cb2_w),		/* port CB2 out */
+	DEVCB_NULL,		/* IRQA */
+	DEVCB_NULL		/* IRQB */
+};
+
+
+/**************************************************************
+ *
+ * Machine drivers
+ *
+ **************************************************************/
 
 static MACHINE_DRIVER_START( a400_cartslot )
 	MDRV_CARTSLOT_ADD("cart1")
@@ -727,7 +983,7 @@ static MACHINE_DRIVER_START( atari_common_nodac )
 	MDRV_VIDEO_START(atari)
 	MDRV_VIDEO_UPDATE(atari)
 
-	MDRV_PIA6821_ADD( "pia", pia_dummy_intf )
+	MDRV_PIA6821_ADD( "pia", atari_pia_interface )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -812,6 +1068,25 @@ static MACHINE_DRIVER_START( a800pal )
 MACHINE_DRIVER_END
 
 
+static MACHINE_DRIVER_START( a600xl )
+	MDRV_IMPORT_FROM( atari_common )
+
+	MDRV_CPU_MODIFY( "maincpu" )
+	MDRV_CPU_PROGRAM_MAP(a600xl_mem, 0)	// FIXME
+	MDRV_CPU_VBLANK_INT_HACK(a800xl_interrupt, TOTAL_LINES_60HZ)
+
+	MDRV_PIA6821_MODIFY( "pia", a600xl_pia_interface )
+
+	MDRV_MACHINE_START( a800xl )	// FIXME?
+
+	MDRV_SCREEN_MODIFY("screen")
+	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
+	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
+	
+	MDRV_IMPORT_FROM(a400_cartslot)
+MACHINE_DRIVER_END
+
+
 static MACHINE_DRIVER_START( a800xl )
 	MDRV_IMPORT_FROM( atari_common )
 
@@ -819,13 +1094,22 @@ static MACHINE_DRIVER_START( a800xl )
 	MDRV_CPU_PROGRAM_MAP(a800xl_mem, 0)
 	MDRV_CPU_VBLANK_INT_HACK(a800xl_interrupt, TOTAL_LINES_60HZ)
 
+	MDRV_PIA6821_MODIFY( "pia", a800xl_pia_interface )
+
 	MDRV_MACHINE_START( a800xl )
 
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
 	
-	MDRV_IMPORT_FROM(a800_cartslot)
+	MDRV_IMPORT_FROM(a400_cartslot)
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( a1200xl )
+	MDRV_IMPORT_FROM( a800xl )
+
+	MDRV_PIA6821_MODIFY( "pia", a1200xl_pia_interface )
 MACHINE_DRIVER_END
 
 
@@ -850,45 +1134,111 @@ static MACHINE_DRIVER_START( a5200 )
 MACHINE_DRIVER_END
 
 
+/**************************************************************
+ *
+ * ROM loading
+ *
+ **************************************************************/
+
 ROM_START(a400)
 	ROM_REGION(0x14000,"maincpu",0) /* 64K for the CPU + 2 * 8K for cartridges */
-	ROM_LOAD("floatpnt.rom", 0xd800, 0x0800, CRC(6a5d766e) SHA1(01a6044f7a81d409c938e7dfde0a1af5832229d2))
-	ROM_LOAD("atari400.rom", 0xe000, 0x2000, CRC(cb4db9af) SHA1(4e784f4e2530110366f7e5d257d0f050de4201b2))
+	ROM_SYSTEM_BIOS(0, "default", "OS Rev. B")
+	ROMX_LOAD("co12399b.rom", 0xd800, 0x0800, CRC(6a5d766e) SHA1(01a6044f7a81d409c938e7dfde0a1af5832229d2), ROM_BIOS(1))
+	ROMX_LOAD("os_revb.rom",  0xe000, 0x2000, BAD_DUMP CRC(fbe3ce4c) SHA1(44d9ff3279a97557ade60255366f7b6a563242c9), ROM_BIOS(1))	// It should be split in two
+	ROM_SYSTEM_BIOS(1, "reva", "OS Rev. A")
+	ROMX_LOAD("co12399b.rom", 0xd800, 0x0800, CRC(6a5d766e) SHA1(01a6044f7a81d409c938e7dfde0a1af5832229d2), ROM_BIOS(2))
+	ROMX_LOAD("os_reva.rom",  0xe000, 0x2000, BAD_DUMP CRC(34d6a353) SHA1(db010853dc4039bf91e3446903f14e1a802fe933), ROM_BIOS(2))	// It should be split in two
 ROM_END
 
 ROM_START(a400pal)
 	ROM_REGION(0x14000,"maincpu",0) /* 64K for the CPU + 2 * 8K for cartridges */
-	ROM_LOAD("floatpnt.rom", 0xd800, 0x0800, CRC(6a5d766e) SHA1(01a6044f7a81d409c938e7dfde0a1af5832229d2))
-	ROM_LOAD("atari400.rom", 0xe000, 0x2000, CRC(cb4db9af) SHA1(4e784f4e2530110366f7e5d257d0f050de4201b2))
+	ROM_LOAD("co12399b.rom", 0xd800, 0x0800, CRC(6a5d766e) SHA1(01a6044f7a81d409c938e7dfde0a1af5832229d2))
+	ROM_LOAD("os_revap.rom", 0xe000, 0x2000, BAD_DUMP CRC(87d6e685) SHA1(4abbde82ec4077cfbd8d7e7b835107414f366862))	// Rev. A - It should be split in two
 ROM_END
 
 ROM_START(a800)
 	ROM_REGION(0x14000,"maincpu",0) /* 64K for the CPU + 2 * 8K for cartridges */
-	ROM_LOAD("floatpnt.rom", 0xd800, 0x0800, CRC(6a5d766e) SHA1(01a6044f7a81d409c938e7dfde0a1af5832229d2))
-	ROM_LOAD("atari800.rom", 0xe000, 0x2000, CRC(cb4db9af) SHA1(4e784f4e2530110366f7e5d257d0f050de4201b2))
+	ROM_SYSTEM_BIOS(0, "default", "OS Rev. B")
+	ROMX_LOAD("co12399b.rom", 0xd800, 0x0800, CRC(6a5d766e) SHA1(01a6044f7a81d409c938e7dfde0a1af5832229d2), ROM_BIOS(1))
+	ROMX_LOAD("os_revb.rom",  0xe000, 0x2000, BAD_DUMP CRC(fbe3ce4c) SHA1(44d9ff3279a97557ade60255366f7b6a563242c9), ROM_BIOS(1))	// It should be split in two
+	ROM_SYSTEM_BIOS(1, "reva", "OS Rev. A")
+	ROMX_LOAD("co12399b.rom", 0xd800, 0x0800, CRC(6a5d766e) SHA1(01a6044f7a81d409c938e7dfde0a1af5832229d2), ROM_BIOS(2))
+	ROMX_LOAD("os_reva.rom",  0xe000, 0x2000, BAD_DUMP CRC(34d6a353) SHA1(db010853dc4039bf91e3446903f14e1a802fe933), ROM_BIOS(2))	// It should be split in two
 ROM_END
 
 ROM_START(a800pal)
 	ROM_REGION(0x14000,"maincpu",0) /* 64K for the CPU + 2 * 8K for cartridges */
-	ROM_LOAD("floatpnt.rom", 0xd800, 0x0800, CRC(6a5d766e) SHA1(01a6044f7a81d409c938e7dfde0a1af5832229d2))
-	ROM_LOAD("atari800.rom", 0xe000, 0x2000, CRC(cb4db9af) SHA1(4e784f4e2530110366f7e5d257d0f050de4201b2))
+	ROM_LOAD("co12399b.rom", 0xd800, 0x0800, CRC(6a5d766e) SHA1(01a6044f7a81d409c938e7dfde0a1af5832229d2))
+	ROM_LOAD("os_revap.rom", 0xe000, 0x2000, BAD_DUMP CRC(87d6e685) SHA1(4abbde82ec4077cfbd8d7e7b835107414f366862))	// Rev. A - It should be split in two
+ROM_END
+
+ROM_START(a1200xl)
+	ROM_REGION(0x18000,"maincpu",0)
+	ROM_SYSTEM_BIOS(0, "default", "OS Rev. 11")
+	ROMX_LOAD("co60616b.rom", 0x14000, 0x4000, BAD_DUMP CRC(1a1d7b1b) SHA1(5833e3a51d3a966a42baea37c40c01186e8a89cc), ROM_BIOS(1))	// It should be split in two
+	ROM_SYSTEM_BIOS(1, "rev10", "OS Rev. 10")
+	ROMX_LOAD("co60616a.rom", 0x14000, 0x4000, BAD_DUMP CRC(c5c11546) SHA1(83c9afee8828a4026c55f10f920c42f76ad9ff65), ROM_BIOS(2))	// It should be split in two
+ROM_END
+
+ROM_START(a600xl)
+	ROM_REGION(0x10000,"maincpu",0)
+	ROM_LOAD("co60302a.rom", 0xa000, 0x2000, CRC(f0202fb3) SHA1(7ad88dd99ff4a6ee66f6d162074db6f8bef7a9b6))	// Rev. B
+	ROM_LOAD("co62024.rom",  0xc000, 0x4000, CRC(643bcc98) SHA1(881d030656b40bbe48f15a696b28f22c0b752ab0))	// Rev. 1
 ROM_END
 
 ROM_START(a800xl)
-	ROM_REGION(0x18000,"maincpu",0) /* 64K for the CPU + 16K + 2 * 8K for cartridges */
-	ROM_LOAD("basic.rom",   0x10000, 0x2000, CRC(7d684184) SHA1(3693c9cb9bf3b41bae1150f7a8264992468fc8c0))
-	ROM_LOAD("atarixl.rom", 0x14000, 0x4000, CRC(1f9cd270) SHA1(ae4f523ba08b6fd59f3cae515a2b2410bbd98f55))
+	ROM_REGION(0x18000,"maincpu",0)
+	ROM_LOAD("co60302a.rom", 0x10000, 0x2000, CRC(f0202fb3) SHA1(7ad88dd99ff4a6ee66f6d162074db6f8bef7a9b6))	// Rev. B
+	ROM_LOAD("co61598b.rom", 0x14000, 0x4000, CRC(1f9cd270) SHA1(ae4f523ba08b6fd59f3cae515a2b2410bbd98f55))	// Rev. 2
 ROM_END
+
+ROM_START(a65xe)
+	ROM_REGION(0x18000,"maincpu",0)
+	ROM_LOAD("co24947a.rom", 0x10000, 0x2000, CRC(7d684184) SHA1(3693c9cb9bf3b41bae1150f7a8264992468fc8c0))	// Rev. C
+	ROM_LOAD("co61598b.rom", 0x14000, 0x4000, CRC(1f9cd270) SHA1(ae4f523ba08b6fd59f3cae515a2b2410bbd98f55))	// Rev. 2
+ROM_END
+
+ROM_START(a65xea)
+	ROM_REGION(0x18000,"maincpu",0)
+	ROM_LOAD("basic_ar.rom", 0x10000, 0x2000, CRC(c899f4d6) SHA1(043df191d1fe402e792266a108e147ffcda35130))
+	ROM_LOAD("c101700.rom",  0x14000, 0x4000, CRC(7f9a76c8) SHA1(57eb6d87850a763f11767f53d4eaede186f831a2))	// Rev. 3B ?
+	// According to Freddy Offenga's doc OS rom should have been CRC 0xf0a236d3. Is this an alt version?
+ROM_END
+
+ROM_START(a130xe)
+	ROM_REGION(0x18000,"maincpu",0)
+	ROM_LOAD("co24947a.rom", 0x10000, 0x2000, CRC(7d684184) SHA1(3693c9cb9bf3b41bae1150f7a8264992468fc8c0))	// Rev. C
+	ROM_LOAD("co61598b.rom", 0x14000, 0x4000, CRC(1f9cd270) SHA1(ae4f523ba08b6fd59f3cae515a2b2410bbd98f55))	// Rev. 2
+ROM_END
+
+ROM_START(a800xe)
+	ROM_REGION(0x18000,"maincpu",0)
+	ROM_LOAD("co24947a.rom", 0x10000, 0x2000, CRC(7d684184) SHA1(3693c9cb9bf3b41bae1150f7a8264992468fc8c0))	// Rev. C
+	ROM_LOAD("c300717.rom",  0x14000, 0x4000, CRC(29f133f7) SHA1(f03b9b93000ee84abb9cf8d6367241006f172182))	// Rev. 3
+ROM_END
+
+ROM_START(xegs)
+	ROM_REGION(0x1a000,"maincpu",0)
+	/* These should be in a unique 32kb block! */
+	ROM_LOAD("basic.rom",   0x10000, 0x2000, BAD_DUMP CRC(7d684184) SHA1(3693c9cb9bf3b41bae1150f7a8264992468fc8c0))	// Rev. C
+	ROM_LOAD("xegs.rom",    0x14000, 0x4000, BAD_DUMP CRC(1eaf4002) SHA1(decde89fbae90adb591ad2fc553d35f49030c129))	// Rev. 4
+	ROM_LOAD("mcommand.rom",   0x18000, 0x2000, NO_DUMP)
+ROM_END
+
 
 ROM_START(a5200)
 	ROM_REGION(0x14000,"maincpu",0) /* 64K for the CPU + 16K for cartridges */
-	ROM_LOAD("5200.rom", 0xf800, 0x0800, CRC(4248d3e3) SHA1(6ad7a1e8c9fad486fbec9498cb48bf5bc3adc530))
+	ROM_SYSTEM_BIOS(0, "default", "a5200")
+	ROMX_LOAD("5200.rom",  0xf800, 0x0800, CRC(4248d3e3) SHA1(6ad7a1e8c9fad486fbec9498cb48bf5bc3adc530), ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "alt", "a5200 (alt)")
+	ROMX_LOAD("5200a.rom", 0xf800, 0x0800, CRC(c2ba2613) SHA1(1d2a3f00109d75d2d79fecb565775eb95b7d04d5), ROM_BIOS(2))
 ROM_END
 
-ROM_START(a5200a)
-	ROM_REGION(0x14000,"maincpu",0) /* 64K for the CPU + 16K for cartridges */
-	ROM_LOAD("5200a.rom", 0xf800, 0x0800, CRC(c2ba2613) SHA1(1d2a3f00109d75d2d79fecb565775eb95b7d04d5))
-ROM_END
+/**************************************************************
+ *
+ * Configs
+ *
+ **************************************************************/
 
 static void atari_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -930,17 +1280,52 @@ static SYSTEM_CONFIG_START(a5200)
 	CONFIG_RAM_DEFAULT(16 * 1024)
 SYSTEM_CONFIG_END
 
-/***************************************************************************
 
-  Game driver(s)
+/**************************************************************
+ *
+ * Driver initializations
+ *
+ **************************************************************/
 
-***************************************************************************/
+// VERY WIP code to load OS at start and, hopefully, go on with the implementation...
+static DRIVER_INIT( a800xl )
+{
+	UINT8 *rom = memory_region(machine, "maincpu");
 
-/*     YEAR  NAME      PARENT    COMPAT MACHINE     INPUT    INIT   CONFIG  COMPANY   FULLNAME */
-COMP ( 1979, a400,	   0,		 0,		a400,		a800,	 0,		a400,	"Atari",  "Atari 400 (NTSC)" , 0)
-COMP ( 1979, a400pal,  a400,	 0,		a400pal,	a800,	 0,		a400,	"Atari",  "Atari 400 (PAL)" , 0)
-COMP ( 1979, a800,	   0,		 0,		a800,		a800,	 0,		a800,	"Atari",  "Atari 800 (NTSC)" , 0)
-COMP ( 1979, a800pal,  a800,	 0,		a800pal,	a800,	 0,		a800,	"Atari",  "Atari 800 (PAL)" , 0)
-COMP ( 1983, a800xl,   a800,	 0,		a800xl,		a800xl,	 0,		a800,	"Atari",  "Atari 800XL", GAME_NOT_WORKING )
-CONS ( 1982, a5200,    0,		 0,		a5200,		a5200,	 0,		a5200,	"Atari",  "Atari 5200", 0)
-CONS ( 1982, a5200a,   a5200,    0,		a5200,		a5200,	 0,		a5200,	"Atari",  "Atari 5200 (alt)", 0)
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xa000, 0xbfff, 0, 0, SMH_BANK1, SMH_UNMAP);
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x5000, 0x57ff, 0, 0, SMH_BANK2, SMH_UNMAP);
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc000, 0xcfff, 0, 0, SMH_BANK3, SMH_UNMAP);
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd800, 0xffff, 0, 0, SMH_BANK4, SMH_UNMAP);
+	memory_set_bankptr(machine, 1, rom + 0x10000);
+	memory_set_bankptr(machine, 2, rom + 0x15000);
+	memory_set_bankptr(machine, 3, rom + 0x14000);
+	memory_set_bankptr(machine, 4, rom + 0x15800);
+}
+
+static DRIVER_INIT( a600xl )
+{
+	UINT8 *rom = memory_region(machine, "maincpu");
+	memcpy( rom + 0x5000, rom + 0xd000, 0x800 );
+}
+
+/**************************************************************
+ *
+ * Game driver(s)
+ *
+ **************************************************************/
+
+/*     YEAR  NAME      PARENT    COMPAT MACHINE     INPUT    INIT    CONFIG   COMPANY    FULLNAME */
+COMP ( 1979, a400,     0,        0,     a400,       a800,    0,      a400,    "Atari",   "Atari 400 (NTSC)", 0)
+COMP ( 1979, a400pal,  a400,     0,     a400pal,    a800,    0,      a400,    "Atari",   "Atari 400 (PAL)",  0)
+COMP ( 1979, a800,     0,        0,     a800,       a800,    0,      a800,    "Atari",   "Atari 800 (NTSC)", 0)
+COMP ( 1979, a800pal,  a800,     0,     a800pal,    a800,    0,      a800,    "Atari",   "Atari 800 (PAL)",  0)
+COMP ( 1982, a1200xl,  a800,     0,     a1200xl,    a800xl,  a800xl, a800,    "Atari",   "Atari 1200XL",     GAME_NOT_WORKING )		// 64k RAM
+COMP ( 1983, a600xl,   a800,     0,     a600xl,     a800xl,  a600xl, a5200,   "Atari",   "Atari 600XL",      GAME_NOT_WORKING )		// 16k RAM
+COMP ( 1983, a800xl,   a800,     0,     a800xl,     a800xl,  a800xl, a800,    "Atari",   "Atari 800XL",      GAME_NOT_WORKING )		// 64k RAM
+COMP ( 1986, a65xe,    0,        0,     a800xl,     a800xl,  a800xl, a800,    "Atari",   "Atari 65XE",       GAME_NOT_WORKING )		// 64k RAM
+COMP ( 1986, a65xea,   a65xe,    0,     a800xl,     a800xl,  a800xl, a800,    "Atari",   "Atari 65XE (Arabic)", GAME_NOT_WORKING )
+COMP ( 1986, a130xe,   a65xe,    0,     a800xl,     a800xl,  a800xl, a800,    "Atari",   "Atari 130XE",      GAME_NOT_WORKING )		// 128k RAM
+COMP ( 1986, a800xe,   a65xe,    0,     a800xl,     a800xl,  a800xl, a800,    "Atari",   "Atari 800XE",      GAME_NOT_WORKING )		// 64k RAM
+COMP ( 1987, xegs,     0,        0,     a800xl,     a800xl,  a800xl, a800,    "Atari",   "Atari XE Game System", GAME_NOT_WORKING )	// 64k RAM
+
+CONS ( 1982, a5200,    0,        0,     a5200,      a5200,   0,      a5200,    "Atari",   "Atari 5200",       0)

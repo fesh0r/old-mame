@@ -218,7 +218,7 @@ static WRITE8_HANDLER(ts2068_port_ff_w)
  *******************************************************************/
 void ts2068_update_memory(running_machine *machine)
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	unsigned char *ChosenROM, *ExROM, *DOCK;
 	read8_space_func rh;
 	write8_space_func wh;
@@ -699,6 +699,6 @@ static SYSTEM_CONFIG_START(tc2048)
 SYSTEM_CONFIG_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY     FULLNAME */
-COMP( 1984, tc2048,   spectrum, 0,		tc2048,			spectrum,	0,		tc2048,		"Timex of Portugal",	"TC-2048" , 0)
-COMP( 1983, ts2068,   spectrum, 0,		ts2068,			spectrum,	0,		ts2068,		"Timex Sinclair",	"TS-2068" , 0)
-COMP( 1986, uk2086,   spectrum, 0,		uk2086,			spectrum,	0,		ts2068,		"Unipolbrit",	"UK-2086 ver. 1.2" , 0)
+COMP( 1984, tc2048,   spectrum, 0,		tc2048,		spectrum,	0,		tc2048,		"Timex of Portugal",	"TC-2048" , 0)
+COMP( 1983, ts2068,   spectrum, 0,		ts2068,		spectrum,	0,		ts2068,		"Timex Sinclair",		"TS-2068" , 0)
+COMP( 1986, uk2086,   spectrum, 0,		uk2086,		spectrum,	0,		ts2068,		"Unipolbrit",			"UK-2086 ver. 1.2" , 0)

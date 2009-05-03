@@ -234,6 +234,7 @@ static MACHINE_DRIVER_START( sgx )
 	MDRV_NVRAM_HANDLER( pce )
 	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 	MDRV_SOUND_ADD(C6280_TAG, C6280, MAIN_CLOCK/6)
+	MDRV_SOUND_CONFIG(c6280_config)
 	MDRV_SOUND_ROUTE(0, "lspeaker", 1.00)
 	MDRV_SOUND_ROUTE(1, "rspeaker", 1.00)
 
@@ -267,4 +268,3 @@ ROM_END
 CONS( 1987, pce,    0,      0,      pce,    pce,     pce,   0,	"Nippon Electronic Company", "PC Engine", GAME_IMPERFECT_SOUND )
 CONS( 1989, tg16,   pce,    0,      pce,    pce,     tg16,  0,	"Nippon Electronic Company", "TurboGrafx 16", GAME_IMPERFECT_SOUND )
 CONS( 1989, sgx,    pce,    0,      sgx,    pce,     sgx,   0,	"Nippon Electronic Company", "SuperGrafx", GAME_IMPERFECT_SOUND )
-

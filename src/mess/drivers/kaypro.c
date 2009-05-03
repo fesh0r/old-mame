@@ -1,298 +1,291 @@
-/******************************************************************************
- *
- *  kaypro.c
- *
- *  Driver for Kaypro 2x
- *
- *  Juergen Buchmueller, July 1998
- *  Benjamin C. W. Sittler, July 1998 (new keyboard)
- *
- ******************************************************************************/
+/*************************************************************************************************
+
+
+	Kaypro 2/83 computer - the very first Kaypro II - 2 full size floppy drives.
+	Each disk was single sided, and could hold 191k. The computer had 2x pio
+	and 1x sio. One of the sio ports communicated with the keyboard with a coiled
+	telephone cord, complete with modular plug on each end. The keyboard carries
+	its own Intel 8748 processor and is an intelligent device.
+
+	There are 2 major problems preventing this driver from working
+
+	- MESS is not capable of conducting realtime serial communications between devices
+
+	- MAME's z80sio implementation is lacking important deatures:
+	-- cannot change baud rate on the fly
+	-- cannot specify different rates for each channel
+	-- cannot specify different rates for Receive and Transmit
+	-- the callback doesn't appear to support channel B ??
+
+
+	Things that need doing:
+	- Floppy disks (I have no knowledge of how to set these up)
+
+
+**************************************************************************************************/
+
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
+#include "cpu/z80/z80daisy.h"
+#include "machine/ctronics.h"
+#include "machine/kay_kbd.h"
+#include "sound/beep.h"
 #include "includes/kaypro.h"
 
-#include "machine/wd17xx.h"
-#include "machine/cpm_bios.h"
-#include "devices/basicdsk.h"
 
 
-static ADDRESS_MAP_START( kaypro_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x0000, 0xffff) AM_RAM
+/***********************************************************
+
+	Address Maps
+
+************************************************************/
+
+static ADDRESS_MAP_START( kaypro_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x0fff) AM_ROM AM_REGION("maincpu", 0x0000)
+	AM_RANGE(0x3000, 0x3fff) AM_RAM AM_REGION("maincpu", 0x3000) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x4000, 0xffff) AM_RAM AM_REGION("rambank", 0x4000)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( kaypro_io , ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START( kayproii_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE( BIOS_CONST,  BIOS_CONST)  AM_READWRITE( kaypro_const_r, kaypro_const_w )
-	AM_RANGE( BIOS_CONIN,  BIOS_CONIN)  AM_READWRITE( kaypro_conin_r, kaypro_conin_w )
-	AM_RANGE( BIOS_CONOUT, BIOS_CONOUT) AM_READWRITE( kaypro_conout_r, kaypro_conout_w )
-	AM_RANGE( BIOS_CMD,    BIOS_CMD)    AM_READWRITE( cpm_bios_command_r, cpm_bios_command_w )
+	ADDRESS_MAP_UNMAP_HIGH
+	AM_RANGE(0x00, 0x03) AM_WRITE(kaypro_baud_a_w)
+	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE("z80sio", kaypro_sio_r, kaypro_sio_w)
+	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("z80pio_g", kayproii_pio_r, kayproii_pio_w)
+	AM_RANGE(0x0c, 0x0f) AM_WRITE(kayproii_baud_b_w)
+	AM_RANGE(0x10, 0x10) AM_DEVREADWRITE("wd1793", wd17xx_status_r, wd17xx_command_w)
+	AM_RANGE(0x11, 0x11) AM_DEVREADWRITE("wd1793", wd17xx_track_r, wd17xx_track_w)
+	AM_RANGE(0x12, 0x12) AM_DEVREADWRITE("wd1793", wd17xx_sector_r, wd17xx_sector_w)
+	AM_RANGE(0x13, 0x13) AM_DEVREADWRITE("wd1793", wd17xx_data_r, wd17xx_data_w)
+	AM_RANGE(0x1c, 0x1f) AM_DEVREADWRITE("z80pio_s", kayproii_pio_r, kayproii_pio_w)
 ADDRESS_MAP_END
 
-/*
- * The KAYPRO keyboard has roughly the following layout:
- *
- *                                                                  [up] [down] [left] [right]
- *         [ESC] [1!] [2@] [3#] [4$] [5%] [6^] [7&] [8*] [9(] [0)] [-_] [=+] [`~] [BACK SPACE]
- *           [TAB] [qQ] [wW] [eE] [rR] [tT] [yY] [uU] [iI] [oO] [pP] [[{] []}]       [DEL]
- *[CTRL] [CAPS LOCK] [aA] [sS] [dD] [fF] [gG] [hH] [jJ] [kK] [lL] [;:] ['"] [RETURN] [\|]
- *            [SHIFT] [zZ] [xX] [cC] [vV] [bB] [nN] [mM] [,<] [.>] [/?] [SHIFT] [LINE FEED]
- *                      [                 SPACE                     ]
- *
- * [7] [8] [9] [-]
- * [4] [5] [6] [,]
- * [1] [2] [3]
- * [  0  ] [.] [ENTER]
- *
- * Notes on Appearance
- * -------------------
- * The RETURN key is shaped like a backwards "L". The keypad ENTER key is actually
- * oriented vertically, not horizontally. The alpha keys are marked with the uppercase letters
- * only. Other keys with two symbols have the shifted symbol printed above the unshifted symbol.
- * The keypad is actually located to the right of the main keyboard; it is shown separately here
- * as a convenience to users of narrow listing windows. The arrow keys are actually marked with
- * arrow graphics pointing in the appropriate directions. The F and J keys are specially shaped,
- * since they are the "home keys" for touch-typing. The CAPS LOCK key has a build-in red indicator
- * which is lit when CAPS LOCK is pressed once, and extinguished when the key is pressed again.
- *
- * Technical Notes
- * ---------------
- * The keyboard interfaces to the computer using a serial protocol. Modifier keys are handled
- * inside the keyboards, as is the CAPS LOCK key. The arrow keys and the numeric keypad send
- * non-ASCII codes which are not affected by the modifier keys. The remaining keys send the
- * appropriate ASCII values.
- *
- * The keyboard has a built-in buzzer which is activated briefly by a non-modifier keypress,
- * producing a "clicking" sound for user feedback. Additionally, this buzzer can be activated
- * for a longer period by sending a 0x04 byte to the keyboard. This is used by the ROM soft
- * terminal to alert the user in case of a BEL.
-*
- * 2008-05 FP:
- * Small note about natural keyboard support: currently,
- * - "Line Feed" is mapped to the 'End' key
- * - "Keypad ," is not mapped
- */
+static ADDRESS_MAP_START( kaypro2x_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	ADDRESS_MAP_UNMAP_HIGH
+	AM_RANGE(0x00, 0x03) AM_WRITE(kaypro_baud_a_w)
+	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE("z80sio", kaypro_sio_r, kaypro_sio_w)
+	AM_RANGE(0x08, 0x0b) AM_WRITE(kaypro2x_baud_a_w)
+	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE("z80sio_2x", kaypro2x_sio_r, kaypro2x_sio_w)
+	AM_RANGE(0x10, 0x10) AM_DEVREADWRITE("wd1793", wd17xx_status_r, wd17xx_command_w)
+	AM_RANGE(0x11, 0x11) AM_DEVREADWRITE("wd1793", wd17xx_track_r, wd17xx_track_w)
+	AM_RANGE(0x12, 0x12) AM_DEVREADWRITE("wd1793", wd17xx_sector_r, wd17xx_sector_w)
+	AM_RANGE(0x13, 0x13) AM_DEVREADWRITE("wd1793", wd17xx_data_r, wd17xx_data_w)
+	AM_RANGE(0x14, 0x17) AM_READWRITE(kaypro2x_system_port_r,kaypro2x_system_port_w)
+	AM_RANGE(0x18, 0x1b) AM_DEVWRITE("centronics", centronics_data_w)
+	AM_RANGE(0x1c, 0x1c) AM_READWRITE(kaypro2x_status_r,kaypro2x_index_w)
+	AM_RANGE(0x1d, 0x1d) AM_DEVREAD("crtc", mc6845_register_r) AM_WRITE(kaypro2x_register_w)
+	AM_RANGE(0x1f, 0x1f) AM_READWRITE(kaypro2x_videoram_r,kaypro2x_videoram_w)
 
-static INPUT_PORTS_START( kaypro )
-	PORT_START("IN0") /* IN0 */ /* 2008-05: Is there any reason to keep this? */
-	PORT_BIT(0xff, 0xff, IPT_UNUSED)
+	/* The below are not emulated */
+/*	AM_RANGE(0x20, 0x23) AM_DEVREADWRITE("z80pio", kaypro2x_pio_r, kaypro2x_pio_w) - for RTC and Modem
+	AM_RANGE(0x24, 0x27) communicate with MM58167A RTC. Modem uses TMS99531 and TMS99532 chips.
+	AM_RANGE(0x80, 0x80) Hard drive controller card I/O port - 10MB hard drive only fitted to the Kaypro 10
+	AM_RANGE(0x81, 0x81) Hard Drive READ error register, WRITE precomp
+	AM_RANGE(0x82, 0x82) Hard Drive Sector register count I/O
+	AM_RANGE(0x83, 0x83) Hard Drive Sector register number I/O
+	AM_RANGE(0x84, 0x84) Hard Drive Cylinder low register I/O
+	AM_RANGE(0x85, 0x85) Hard Drive Cylinder high register I/O
+	AM_RANGE(0x86, 0x86) Hard Drive Size / Drive / Head register I/O
+	AM_RANGE(0x87, 0x87) Hard Drive READ status register, WRITE command register */
+	AM_RANGE(0x20, 0x87) AM_NOP
+ADDRESS_MAP_END
 
-	PORT_START("ROW0")
-	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_ESC) 			PORT_CHAR(UCHAR_MAMEKEY(ESC))
-	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_1) 			PORT_CHAR('1') PORT_CHAR('!')
-	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_2) 			PORT_CHAR('2') PORT_CHAR('@')
-	PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_3) 			PORT_CHAR('3') PORT_CHAR('#')
-	PORT_BIT(0x10, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_4) 			PORT_CHAR('4') PORT_CHAR('$')
-	PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_5) 			PORT_CHAR('5') PORT_CHAR('%')
-	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_6) 			PORT_CHAR('6') PORT_CHAR('^')
-	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_7) 			PORT_CHAR('7') PORT_CHAR('&')
 
-	PORT_START("ROW1")
-	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_8) 			PORT_CHAR('8') PORT_CHAR('*')
-	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_9) 			PORT_CHAR('9') PORT_CHAR('(')
-	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_0) 			PORT_CHAR('0') PORT_CHAR(')')
-	PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_MINUS) 		PORT_CHAR('-') PORT_CHAR('_')
-	PORT_BIT(0x10, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_EQUALS) 		PORT_CHAR('=') PORT_CHAR('+')
-	PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_TILDE) 		PORT_CHAR('`') PORT_CHAR('~')
-	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_NAME("BACK SPACE") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(8)
-	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_TAB) 			PORT_CHAR('\t')
+/***************************************************************
 
-	PORT_START("ROW2")
-	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_Q) 			PORT_CHAR('q') PORT_CHAR('Q')
-	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_W) 			PORT_CHAR('w') PORT_CHAR('W')
-	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_E) 			PORT_CHAR('e') PORT_CHAR('E')
-	PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_R) 			PORT_CHAR('r') PORT_CHAR('R')
-	PORT_BIT(0x10, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_T) 			PORT_CHAR('t') PORT_CHAR('T')
-	PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_Y) 			PORT_CHAR('y') PORT_CHAR('Y')
-	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_U) 			PORT_CHAR('u') PORT_CHAR('U')
-	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_I) 			PORT_CHAR('i') PORT_CHAR('I')
+	Interfaces
 
-	PORT_START("ROW3")
-	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_O) 			PORT_CHAR('o') PORT_CHAR('O')
-	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_P) 			PORT_CHAR('p') PORT_CHAR('P')
-	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_OPENBRACE)		PORT_CHAR('[') PORT_CHAR('{')
-	PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_CLOSEBRACE)	PORT_CHAR(']') PORT_CHAR('}')
-	PORT_BIT(0x10, 0x00, IPT_KEYBOARD) PORT_NAME("RETURN") PORT_CODE(KEYCODE_ENTER) PORT_CHAR(13)
-	PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_NAME("DEL") PORT_CODE(KEYCODE_DEL) PORT_CHAR(UCHAR_MAMEKEY(DEL)) 
-	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_LCONTROL)		PORT_CHAR(UCHAR_SHIFT_2)
-	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE PORT_CHAR(UCHAR_MAMEKEY(CAPSLOCK))
+****************************************************************/
 
-	PORT_START("ROW4")
-	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_A) 			PORT_CHAR('a') PORT_CHAR('A')
-	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_S) 			PORT_CHAR('s') PORT_CHAR('S')
-	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_D) 			PORT_CHAR('d') PORT_CHAR('D')
-	PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_F) 			PORT_CHAR('f') PORT_CHAR('F')
-	PORT_BIT(0x10, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_G) 			PORT_CHAR('g') PORT_CHAR('G')
-	PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_H) 			PORT_CHAR('h') PORT_CHAR('H')
-	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_J) 			PORT_CHAR('j') PORT_CHAR('J')
-	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_K) 			PORT_CHAR('k') PORT_CHAR('K')
-
-	PORT_START("ROW5")
-	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_L) 			PORT_CHAR('l') PORT_CHAR('L')
-	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_COLON)			PORT_CHAR(';') PORT_CHAR(':')
-	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_QUOTE)			PORT_CHAR('\'') PORT_CHAR('"')
-	PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_BACKSLASH)		PORT_CHAR('\\') PORT_CHAR('|')
-	PORT_BIT(0x10, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_LSHIFT)		PORT_CHAR(UCHAR_MAMEKEY(LSHIFT))
-	PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_Z) 			PORT_CHAR('z') PORT_CHAR('Z')
-	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_X) 			PORT_CHAR('x') PORT_CHAR('X')
-	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_C) 			PORT_CHAR('c') PORT_CHAR('C')
-
-	PORT_START("ROW6")
-	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_V) 			PORT_CHAR('v') PORT_CHAR('V')
-	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_B) 			PORT_CHAR('b') PORT_CHAR('B')
-	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_N) 			PORT_CHAR('n') PORT_CHAR('N')
-	PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_M)				PORT_CHAR('m') PORT_CHAR('M')
-	PORT_BIT(0x10, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_COMMA)			PORT_CHAR(',') PORT_CHAR('<')
-	PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_STOP)			PORT_CHAR('.') PORT_CHAR('>')
-	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_SLASH)			PORT_CHAR('/') PORT_CHAR('?')
-	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_RSHIFT)		PORT_CHAR(UCHAR_MAMEKEY(RSHIFT))
-
-	PORT_START("ROW7")
-	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_NAME("LINE FEED") PORT_CODE(KEYCODE_END) PORT_CHAR(UCHAR_MAMEKEY(END))
-	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_SPACE)			PORT_CHAR(' ')
-	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_MINUS_PAD) 	PORT_CHAR(UCHAR_MAMEKEY(MINUS_PAD))
-	PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_NAME("Keypad ,") PORT_CODE(KEYCODE_PLUS_PAD)
-	PORT_BIT(0x10, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_ENTER_PAD)		PORT_CHAR(UCHAR_MAMEKEY(ENTER_PAD))
-	PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_DEL_PAD) 		PORT_CHAR(UCHAR_MAMEKEY(DEL_PAD))
-	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_0_PAD) 		PORT_CHAR(UCHAR_MAMEKEY(0_PAD))
-	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_1_PAD) 		PORT_CHAR(UCHAR_MAMEKEY(1_PAD))
-
-	PORT_START("ROW8")
-	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_2_PAD) 		PORT_CHAR(UCHAR_MAMEKEY(2_PAD))
-	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_3_PAD) 		PORT_CHAR(UCHAR_MAMEKEY(3_PAD))
-	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_4_PAD) 		PORT_CHAR(UCHAR_MAMEKEY(4_PAD))
-	PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_5_PAD) 		PORT_CHAR(UCHAR_MAMEKEY(5_PAD))
-	PORT_BIT(0x10, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_6_PAD) 		PORT_CHAR(UCHAR_MAMEKEY(6_PAD))
-	PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_7_PAD) 		PORT_CHAR(UCHAR_MAMEKEY(7_PAD))
-	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_8_PAD) 		PORT_CHAR(UCHAR_MAMEKEY(8_PAD))
-	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_9_PAD)			PORT_CHAR(UCHAR_MAMEKEY(9_PAD))
-
-	PORT_START("ROW9")
-	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x91") PORT_CODE(KEYCODE_UP) PORT_CHAR(UCHAR_MAMEKEY(UP))
-	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x93") PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
-	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x90") PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
-	PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_NAME("\xE2\x86\x92") PORT_CODE(KEYCODE_RIGHT) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
-	PORT_BIT(0xf0, 0x00, IPT_UNUSED)
-INPUT_PORTS_END
-
-#define FW  ((KAYPRO_FONT_W+7)/8)*8
-#define FH  KAYPRO_FONT_H
-
-static const gfx_layout charlayout =
+static const z80_daisy_chain kayproii_daisy_chain[] =
 {
-	FW, FH,         /* 8*16 characters */
-	4 * 256,        /* 4 * 256 characters */
-	1,              /* 1 bits per pixel */
-	{ 0 },          /* no bitplanes; 1 bit per pixel */
-	/* x offsets */
-	{ 0, 1, 2, 3, 4, 5, 6, 7,
-		8, 9,10,11,12,13,14,15,
-		16,17,18,19,20,21,22,23,
-		24,25,26,27,28,29,30,31 },
-	/* y offsets */
-	{ 0*FW, 1*FW, 2*FW, 3*FW, 4*FW, 5*FW, 6*FW, 7*FW,
-		8*FW, 9*FW,10*FW,11*FW,12*FW,13*FW,14*FW,15*FW,
-		16*FW,17*FW,18*FW,19*FW,20*FW,21*FW,22*FW,23*FW,
-		24*FW,25*FW,26*FW,27*FW,28*FW,29*FW,30*FW,31*FW },
-	FW * FH         /* every char takes 16 bytes */
+	{ "z80sio" },		/* sio */
+	{ "z80pio_s" },		/* System pio */
+	{ "z80pio_g" },		/* General purpose pio */
+	{ NULL }
 };
 
-static GFXDECODE_START( kaypro )
-	GFXDECODE_ENTRY( "gfx1", 0, charlayout, 0, 4 )
-GFXDECODE_END
-
-static const unsigned char kaypro_palette[] =
+static const z80_daisy_chain kaypro2x_daisy_chain[] =
 {
-      0,  0,  0,    /* black */
-      0,240,  0,    /* green */
-      0,120,  0,    /* dim green */
-      0,240,  0,    /* flashing green */
-      0,120,  0,    /* flashing dim green */
-
-    240,  0,  0,    /* just to keep the frontend happy */
-      0,  0,240,
-    120,120,120,
-    240,240,240,
+	{ "z80sio" },		/* sio for RS232C and keyboard */
+	{ "z80sio_2x" },	/* sio for serial printer and inbuilt modem */
+	{ NULL }
 };
 
-static const unsigned short kaypro_colortable[] =
-{
-    0,  1,      /* green on black */
-    0,  2,      /* dim green on black */
-    0,  3,      /* flashing green on black */
-    0,  4,      /* flashing dim green on black */
+static const mc6845_interface kaypro2x_crtc = {
+	"screen",			/* name of screen */
+	7,				/* number of dots per character */
+	NULL,
+	kaypro2x_update_row,		/* handler to display a scanline */
+	NULL,
+	NULL,
+	NULL,
+	NULL
 };
 
 
-/* Initialise the palette */
-static PALETTE_INIT( kaypro )
-{
-	int i;
+/***********************************************************
 
-	for ( i = 0; i < sizeof(kaypro_palette) / 3; i++ ) {
-		palette_set_color_rgb(machine, i, kaypro_palette[i*3], kaypro_palette[i*3+1], kaypro_palette[i*3+2]);
-	}
-}
+	Machine Driver
 
-static MACHINE_DRIVER_START( kaypro )
+************************************************************/
+
+static MACHINE_DRIVER_START( kayproii )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", Z80, 4000000)        /* 4 MHz */
-	MDRV_CPU_PROGRAM_MAP(kaypro_mem, 0)
-	MDRV_CPU_IO_MAP(kaypro_io, 0)
-	MDRV_CPU_VBLANK_INT("screen", kaypro_interrupt)
-	MDRV_QUANTUM_TIME(HZ(240))
+	MDRV_CPU_ADD("maincpu", Z80, 2500000)	/* 2.5 MHz */
+	MDRV_CPU_PROGRAM_MAP(kaypro_map, 0)
+	MDRV_CPU_IO_MAP(kayproii_io, 0)
+	MDRV_CPU_VBLANK_INT("screen", kay_kbd_interrupt)	/* this doesn't actually exist, it is to run the keyboard */
+	MDRV_CPU_CONFIG(kayproii_daisy_chain)
 
-	MDRV_MACHINE_RESET( kaypro )
+	MDRV_MACHINE_RESET( kayproii )
 
-    /* video hardware */
+	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(80*KAYPRO_FONT_W, 25*KAYPRO_FONT_H)
-	MDRV_SCREEN_VISIBLE_AREA(0*KAYPRO_FONT_W, 80*KAYPRO_FONT_W-1, 0*KAYPRO_FONT_H, 25*KAYPRO_FONT_H-1)
-	MDRV_GFXDECODE( kaypro )
-	MDRV_PALETTE_LENGTH(sizeof(kaypro_palette) / 3)
-	MDRV_PALETTE_INIT( kaypro )
+	MDRV_SCREEN_SIZE(80*7, 24*10)
+	MDRV_SCREEN_VISIBLE_AREA(0,80*7-1,0,24*10-1)
+	MDRV_PALETTE_LENGTH(2)
+	MDRV_PALETTE_INIT(kaypro)
 
 	MDRV_VIDEO_START( kaypro )
-	MDRV_VIDEO_UPDATE( kaypro )
+	MDRV_VIDEO_UPDATE( kayproii )
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD("beep", BEEP, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	/* devices */
+	MDRV_WD179X_ADD("wd1793", kaypro_wd1793_interface )
+	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+	MDRV_Z80PIO_ADD( "z80pio_g", kayproii_pio_g_intf )
+	MDRV_Z80PIO_ADD( "z80pio_s", kayproii_pio_s_intf )
+	MDRV_Z80SIO_ADD( "z80sio", 4800, kaypro_sio_intf )	/* start at 300 baud */
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( omni2 )
+	MDRV_IMPORT_FROM( kayproii )
+	MDRV_VIDEO_UPDATE( omni2 )
+MACHINE_DRIVER_END
 
-ROM_START (kaypro)
-    ROM_REGION(0x10000,"maincpu",ROMREGION_ERASEFF) /* 64K for the Z80 */
-    /* totally empty :) */
+static MACHINE_DRIVER_START( kaypro2x )
+	/* basic machine hardware */
+	MDRV_CPU_ADD("maincpu", Z80, 4000000)	/* 4 MHz */
+	MDRV_CPU_PROGRAM_MAP(kaypro_map, 0)
+	MDRV_CPU_IO_MAP(kaypro2x_io, 0)
+	MDRV_CPU_VBLANK_INT("screen", kay_kbd_interrupt)
+	MDRV_CPU_CONFIG(kaypro2x_daisy_chain)
 
-    ROM_REGION(0x04000,"gfx1",0)  /* 4 * 4K font ram */
-    ROM_LOAD ("kaypro2x.fnt", 0x0000, 0x1000, CRC(5f72da5b) SHA1(8a597000cce1a7e184abfb7bebcb564c6bf24fb7))
+	MDRV_MACHINE_RESET( kaypro2x )
 
-    ROM_REGION(0x01600,"cpu1",0)  /* 5,5K for CCP and BDOS buffer */
-    ROM_LOAD ("cpm62k.sys",   0x0000, 0x1600, CRC(d10cd036) SHA1(68c04701711fcb5ac1586eb8f060f3f0e02ba3dd))
+	/* video hardware */
+	MDRV_SCREEN_ADD("screen", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_SIZE(80*8, 25*16)
+	MDRV_SCREEN_VISIBLE_AREA(0,80*8-1,0,25*16-1)
+	MDRV_PALETTE_LENGTH(3)
+	MDRV_PALETTE_INIT(kaypro)
+
+	MDRV_MC6845_ADD("crtc", MC6845, 1500000, kaypro2x_crtc) /* comes out of ULA - needs to be measured */
+
+	MDRV_VIDEO_START( kaypro )
+	MDRV_VIDEO_UPDATE( kaypro2x )
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD("beep", BEEP, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	/* devices */
+	MDRV_WD179X_ADD("wd1793", kaypro_wd1793_interface )
+	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+	MDRV_Z80SIO_ADD( "z80sio", 4800, kaypro_sio_intf )
+	MDRV_Z80SIO_ADD( "z80sio_2x", 4800, kaypro_sio_intf )	/* extra sio for modem and printer */
+MACHINE_DRIVER_END
+
+/***********************************************************
+
+	Game driver
+
+************************************************************/
+
+/* The detested bios "universal rom" is part number 81-478 */
+
+ROM_START(kayproii)
+	/* The board could take a 2716 or 2732 */
+	ROM_REGION(0x4000, "maincpu",0)
+	ROM_LOAD("81-149.u47",   0x0000, 0x0800, CRC(28264bc1) SHA1(a12afb11a538fc0217e569bc29633d5270dfa51b) )
+
+	ROM_REGION(0x10000, "rambank",0)
+	ROM_FILL( 0, 0x10000, 0xff)
+
+	ROM_REGION(0x0800, "gfx1",0)
+	ROM_LOAD("81-146.u43",   0x0000, 0x0800, CRC(4cc7d206) SHA1(5cb880083b94bd8220aac1f87d537db7cfeb9013) )
 ROM_END
 
-static void kaypro_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
+ROM_START(kaypro4)
+	ROM_REGION(0x4000, "maincpu",0)
+	ROM_LOAD("81-232.u47",   0x0000, 0x1000, CRC(4918fb91) SHA1(cd9f45cc3546bcaad7254b92c5d501c40e2ef0b2) )
 
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(cpm_floppy); break;
+	ROM_REGION(0x10000, "rambank",0)
+	ROM_FILL( 0, 0x10000, 0xff)
 
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+	ROM_REGION(0x0800, "gfx1",0)
+	ROM_LOAD("81-146.u43",   0x0000, 0x0800, CRC(4cc7d206) SHA1(5cb880083b94bd8220aac1f87d537db7cfeb9013) )
+ROM_END
 
-		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
-	}
-}
+ROM_START(omni2)
+	ROM_REGION(0x4000, "maincpu",0)
+	ROM_LOAD("omni2.u47",    0x0000, 0x1000, CRC(2883f9e0) SHA1(d98c784e62853582d298bf7ca84c75872847ac9b) )
 
-static SYSTEM_CONFIG_START(kaypro)
-	CONFIG_DEVICE(kaypro_floppy_getinfo)
+	ROM_REGION(0x10000, "rambank",0)
+	ROM_FILL( 0, 0x10000, 0xff)
+
+	ROM_REGION(0x0800, "gfx1",0)
+	ROM_LOAD("omni2.u43",    0x0000, 0x0800, CRC(049b3381) SHA1(46f1d4f038747ba9048b075dc617361be088f82a) )
+ROM_END
+
+ROM_START(kaypro2x)
+	ROM_REGION(0x4000, "maincpu",0)
+	ROM_LOAD("81-292.u34",   0x0000, 0x2000, CRC(5eb69aec) SHA1(525f955ca002976e2e30ac7ee37e4a54f279fe96) )
+
+	ROM_REGION(0x10000, "rambank",0)
+	ROM_FILL( 0, 0x10000, 0xff)
+
+	ROM_REGION(0x1000, "gfx1",0)
+	ROM_LOAD("81-817.u9",    0x0000, 0x1000, CRC(5f72da5b) SHA1(8a597000cce1a7e184abfb7bebcb564c6bf24fb7) )
+ROM_END
+
+ROM_START(kaypro10)
+	ROM_REGION(0x4000, "maincpu",0)
+	ROM_LOAD("81-302.u42",   0x0000, 0x1000, CRC(3f9bee20) SHA1(b29114a199e70afe46511119b77a662e97b093a0) )
+
+	ROM_REGION(0x10000, "rambank",0)
+	ROM_FILL( 0, 0x10000, 0xff)
+
+	ROM_REGION(0x1000, "gfx1",0)
+	ROM_LOAD("81-817.u31",   0x0000, 0x1000, CRC(5f72da5b) SHA1(8a597000cce1a7e184abfb7bebcb564c6bf24fb7) )
+ROM_END
+
+
+static SYSTEM_CONFIG_START(kayproii)
+	CONFIG_DEVICE(kayproii_floppy_getinfo)
 SYSTEM_CONFIG_END
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */
-COMP( 1982, kaypro,   0,		0,		kaypro,   kaypro,   kaypro,   kaypro,   "Non Linear Systems",  "Kaypro 2x" , 0)
+static SYSTEM_CONFIG_START(kaypro2x)
+	CONFIG_DEVICE(kaypro2x_floppy_getinfo)
+SYSTEM_CONFIG_END
+
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE	  INPUT    INIT      CONFIG       COMPANY  FULLNAME */
+COMP( 1983, kayproii, 0,        0,      kayproii, kay_kbd, 0,        kayproii,	  "Non Linear Systems",  "Kaypro II - 2/83" , GAME_NOT_WORKING )
+COMP( 198?, kaypro4,  kayproii, 0,      kayproii, kay_kbd, 0,        kayproii,	  "Non Linear Systems",  "Kaypro 4 - 4/83" , GAME_NOT_WORKING )
+COMP( 198?, omni2,    kayproii, 0,      omni2,    kay_kbd, 0,        kayproii,	  "Unknown",  "Omni II" , GAME_NOT_WORKING )
+COMP( 1984, kaypro2x, 0,        0,      kaypro2x, kay_kbd, 0,        kayproii,	  "Non Linear Systems",  "Kaypro 2x" , GAME_NOT_WORKING )
+COMP( 198?, kaypro10, 0,        0,      kaypro2x, kay_kbd, 0,        kaypro2x,	  "Non Linear Systems",  "Kaypro 10" , GAME_NOT_WORKING )

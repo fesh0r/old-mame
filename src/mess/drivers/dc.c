@@ -121,7 +121,7 @@ static MACHINE_RESET( dc_console )
 
 static void aica_irq(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1], ARM7_FIRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "soundcpu", ARM7_FIRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const aica_interface dc_aica_interface =
@@ -152,9 +152,17 @@ static MACHINE_DRIVER_START( dc )
 	MDRV_MACHINE_RESET( dc_console )
 
 	/* video hardware */
+//	MDRV_SCREEN_ADD("screen", RASTER)
+//	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
+//	MDRV_SCREEN_RAW_PARAMS((524*857*59.94), 857, 0xa4, 640+0xa4, 524, 0x12, 480+0x12)
 	MDRV_SCREEN_ADD("screen", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MDRV_SCREEN_RAW_PARAMS((524*857*59.94), 857, 0xa4, 640+0xa4, 524, 0x12, 480+0x12)
+	MDRV_SCREEN_SIZE(640, 480)
+	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+
+	MDRV_PALETTE_LENGTH(0x1000)
 	
 	MDRV_VIDEO_START(dc)
 	MDRV_VIDEO_UPDATE(dc)

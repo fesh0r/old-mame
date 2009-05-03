@@ -36,12 +36,13 @@ Historical notes: TI made several last minute design changes.
 #include "devices/mflopimg.h"
 #include "devices/harddriv.h"
 #include "devices/cassette.h"
-#include "devices/cartslot.h"
 #include "machine/smartmed.h"
 #include "sound/5220intf.h"
 #include "machine/idectrl.h"
 #include "machine/smc92x4.h"
 #include "machine/mm58274c.h"
+
+#include "devices/ti99cart.h"
 
 /*
     memory map
@@ -52,17 +53,17 @@ static ADDRESS_MAP_START(memmap, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM										/*system ROM*/
 	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*lower 8kb of RAM extension - installed dynamically*/
 	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(ti99_4x_peb_r, ti99_4x_peb_w)	/*DSR ROM space*/
-	AM_RANGE(0x6000, 0x7fff) AM_READWRITE(ti99_cart_r, ti99_cart_w)		/*cartridge memory*/
+//	AM_RANGE(0x6000, 0x7fff) AM_READWRITE(ti99_cart_r, ti99_cart_w)		/*cartridge memory*/
+	AM_RANGE(0x6000, 0x7fff) AM_DEVREADWRITE("ti99_multicart", ti99_multicart_r, ti99_multicart_w)
 	AM_RANGE(0x8000, 0x80ff) AM_MIRROR(0x0300) AM_RAMBANK(1)			/*RAM PAD, mirrored 4 times*/
 	AM_RANGE(0x8400, 0x87ff) AM_READWRITE(ti99_nop_8_r, ti99_wsnd_w)	/*soundchip write*/
 	AM_RANGE(0x8800, 0x8bff) AM_READWRITE(ti99_rvdp_r, ti99_nop_8_w)	/*vdp read*/
 	AM_RANGE(0x8C00, 0x8fff) AM_READWRITE(ti99_nop_8_r, ti99_wvdp_w)	/*vdp write*/
 	AM_RANGE(0x9000, 0x93ff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*speech read - installed dynamically*/
 	AM_RANGE(0x9400, 0x97ff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*speech write - installed dynamically*/
-	AM_RANGE(0x9800, 0x9bff) AM_READWRITE(ti99_rgpl_r, ti99_nop_8_w)	/*GPL read*/
-	AM_RANGE(0x9c00, 0x9fff) AM_READWRITE(ti99_nop_8_r, ti99_wgpl_w)	/*GPL write*/
+	AM_RANGE(0x9800, 0x9bff) AM_READWRITE(ti99_grom_r, ti99_nop_8_w)	/*GPL read*/
+	AM_RANGE(0x9c00, 0x9fff) AM_READWRITE(ti99_nop_8_r, ti99_grom_w)	/*GPL write*/
 	AM_RANGE(0xa000, 0xffff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*upper 24kb of RAM extension - installed dynamically*/
-
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(memmap_4ev, ADDRESS_SPACE_PROGRAM, 16)
@@ -70,37 +71,31 @@ static ADDRESS_MAP_START(memmap_4ev, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM										/*system ROM*/
 	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*lower 8kb of RAM extension - installed dynamically*/
 	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(ti99_4x_peb_r, ti99_4x_peb_w)	/*DSR ROM space*/
-	AM_RANGE(0x6000, 0x7fff) AM_READWRITE(ti99_cart_r, ti99_cart_w)		/*cartridge memory*/
+	AM_RANGE(0x6000, 0x7fff) AM_DEVREADWRITE("ti99_multicart", ti99_multicart_r, ti99_multicart_w)
 	AM_RANGE(0x8000, 0x80ff) AM_MIRROR(0x0300) AM_RAMBANK(1)			/*RAM PAD, mirrored 4 times*/
 	AM_RANGE(0x8400, 0x87ff) AM_READWRITE(ti99_nop_8_r, ti99_wsnd_w)	/*soundchip write*/
 	AM_RANGE(0x8800, 0x8bff) AM_READWRITE(ti99_rv38_r, ti99_nop_8_w)	/*vdp read*/
 	AM_RANGE(0x8C00, 0x8fff) AM_READWRITE(ti99_nop_8_r, ti99_wv38_w)	/*vdp write*/
 	AM_RANGE(0x9000, 0x93ff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*speech read - installed dynamically*/
 	AM_RANGE(0x9400, 0x97ff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*speech write - installed dynamically*/
-	AM_RANGE(0x9800, 0x9bff) AM_READWRITE(ti99_rgpl_r, ti99_nop_8_w)	/*GPL read*/
-	AM_RANGE(0x9c00, 0x9fff) AM_READWRITE(ti99_nop_8_r, ti99_wgpl_w)	/*GPL write*/
+	AM_RANGE(0x9800, 0x9bff) AM_READWRITE(ti99_grom_r, ti99_nop_8_w)	/*GPL read*/
+	AM_RANGE(0x9c00, 0x9fff) AM_READWRITE(ti99_nop_8_r, ti99_grom_w)	/*GPL write*/
 	AM_RANGE(0xa000, 0xffff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*upper 24kb of RAM extension - installed dynamically*/
-
 ADDRESS_MAP_END
 
 /*
     CRU map
 */
 
-static ADDRESS_MAP_START(writecru, ADDRESS_SPACE_IO, 8)
+static ADDRESS_MAP_START(cru_map, ADDRESS_SPACE_IO, 8)
+        AM_RANGE(0x0000, 0x007f) AM_DEVREAD("tms9901", tms9901_cru_r)
+        AM_RANGE(0x0080, 0x00ff) AM_DEVREAD("ti99_multicart", ti99_multicart_cru_r)	/* SuperSpace */
+        AM_RANGE(0x0100, 0x01ff) AM_READ(ti99_4x_peb_cru_r)
 
-	AM_RANGE(0x0000, 0x07ff) AM_DEVWRITE("tms9901", tms9901_cru_w)
-	AM_RANGE(0x0800, 0x0fff) AM_WRITE(ti99_4x_peb_cru_w)
-
+	AM_RANGE(0x0000, 0x03ff) AM_DEVWRITE("tms9901", tms9901_cru_w)
+        AM_RANGE(0x0400, 0x07ff) AM_DEVWRITE("ti99_multicart", ti99_multicart_cru_w)	/* SuperSpace */
+        AM_RANGE(0x0800, 0x0fff) AM_WRITE(ti99_4x_peb_cru_w)
 ADDRESS_MAP_END
-
-static ADDRESS_MAP_START(readcru, ADDRESS_SPACE_IO, 8)
-
-	AM_RANGE(0x0000, 0x00ff) AM_DEVREAD("tms9901", tms9901_cru_r)
-	AM_RANGE(0x0100, 0x01ff) AM_READ(ti99_4x_peb_cru_r)
-
-ADDRESS_MAP_END
-
 
 /*
     Input ports, used by machine code for TI keyboard and joystick emulation.
@@ -146,6 +141,12 @@ static INPUT_PORTS_START(ti99_4a)
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_usbsm_bit, DEF_STR( On ) )
 
+		PORT_DIPNAME( config_cartslot_mask << config_cartslot_bit, 0, "Active cartridge slot")                
+			PORT_DIPSETTING( 0, "auto" )
+			PORT_DIPSETTING( 1 << config_cartslot_bit, "Slot 1" )
+			PORT_DIPSETTING( 2 << config_cartslot_bit, "Slot 2" )
+			PORT_DIPSETTING( 3 << config_cartslot_bit, "Slot 3" )
+			PORT_DIPSETTING( 4 << config_cartslot_bit, "Slot 4" )
 
 	/* 3 ports for mouse */
 	PORT_START("MOUSEX") /* Mouse - X AXIS */
@@ -510,35 +511,12 @@ static const mm58274c_interface floppy_mm58274c_interface =
 	0   /*  first day of week */
 };
 
-static MACHINE_DRIVER_START(ti99_4_cartslot)
- 	MDRV_CARTSLOT_ADD("cart1")
-	MDRV_CARTSLOT_EXTENSION_LIST("bin,c,d,g,m,crom,drom,grom,mrom")
-	MDRV_CARTSLOT_NOT_MANDATORY
-	MDRV_CARTSLOT_START(ti99_cart)
-	MDRV_CARTSLOT_LOAD(ti99_cart)
-	MDRV_CARTSLOT_UNLOAD(ti99_cart)
-
- 	MDRV_CARTSLOT_ADD("cart2")
-	MDRV_CARTSLOT_EXTENSION_LIST("bin,c,d,g,m,crom,drom,grom,mrom")
-	MDRV_CARTSLOT_NOT_MANDATORY
-	MDRV_CARTSLOT_START(ti99_cart)
-	MDRV_CARTSLOT_LOAD(ti99_cart)
-	MDRV_CARTSLOT_UNLOAD(ti99_cart)
-
- 	MDRV_CARTSLOT_ADD("cart3")
-	MDRV_CARTSLOT_EXTENSION_LIST("bin,c,d,g,m,crom,drom,grom,mrom")
-	MDRV_CARTSLOT_NOT_MANDATORY
-	MDRV_CARTSLOT_START(ti99_cart)
-	MDRV_CARTSLOT_LOAD(ti99_cart)
-	MDRV_CARTSLOT_UNLOAD(ti99_cart)
-MACHINE_DRIVER_END
-
 static MACHINE_DRIVER_START(ti99_4_60hz)
 	/* basic machine hardware */
 	/* TMS9900 CPU @ 3.0 MHz */
 	MDRV_CPU_ADD("maincpu", TMS9900, 3000000)
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
-	MDRV_CPU_IO_MAP(readcru, writecru)
+	MDRV_CPU_IO_MAP(cru_map, 0)
 	MDRV_CPU_VBLANK_INT("screen", ti99_vblank_interrupt)
 
 	MDRV_MACHINE_START( ti99_4_60hz )
@@ -582,7 +560,8 @@ static MACHINE_DRIVER_START(ti99_4_60hz)
 	
 	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )
 	
-	MDRV_IMPORT_FROM(ti99_4_cartslot)
+	MDRV_TI99_CARTRIDGE_ADD("ti99_multicart")
+	
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(ti99_4_50hz)
@@ -590,7 +569,7 @@ static MACHINE_DRIVER_START(ti99_4_50hz)
 	/* TMS9900 CPU @ 3.0 MHz */
 	MDRV_CPU_ADD("maincpu", TMS9900, 3000000)
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
-	MDRV_CPU_IO_MAP(readcru, writecru)
+	MDRV_CPU_IO_MAP(cru_map, 0)
 	MDRV_CPU_VBLANK_INT("screen", ti99_vblank_interrupt)
 
 	MDRV_MACHINE_START( ti99_4_50hz )
@@ -631,8 +610,8 @@ static MACHINE_DRIVER_START(ti99_4_50hz)
 	MDRV_TMS9902_ADD("tms9902_1", tms9902_params_1)		
 	
 	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )
+	MDRV_TI99_CARTRIDGE_ADD("ti99_multicart")
 	
-	MDRV_IMPORT_FROM(ti99_4_cartslot)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(ti99_4a_60hz)
@@ -640,7 +619,7 @@ static MACHINE_DRIVER_START(ti99_4a_60hz)
 	/* TMS9900 CPU @ 3.0 MHz */
 	MDRV_CPU_ADD("maincpu", TMS9900, 3000000)
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
-	MDRV_CPU_IO_MAP(readcru, writecru)
+	MDRV_CPU_IO_MAP(cru_map, 0)
 	MDRV_CPU_VBLANK_INT("screen", ti99_vblank_interrupt)
 
 	MDRV_MACHINE_START( ti99_4a_60hz )
@@ -683,7 +662,7 @@ static MACHINE_DRIVER_START(ti99_4a_60hz)
 	
 	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )	
 	
-	MDRV_IMPORT_FROM(ti99_4_cartslot)
+	MDRV_TI99_CARTRIDGE_ADD("ti99_multicart")
 MACHINE_DRIVER_END
 
 
@@ -692,7 +671,7 @@ static MACHINE_DRIVER_START(ti99_4a_50hz)
 	/* TMS9900 CPU @ 3.0 MHz */
 	MDRV_CPU_ADD("maincpu", TMS9900, 3000000)
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
-	MDRV_CPU_IO_MAP(readcru, writecru)
+	MDRV_CPU_IO_MAP(cru_map, 0)
 	MDRV_CPU_VBLANK_INT("screen", ti99_vblank_interrupt)
 
 	MDRV_MACHINE_START( ti99_4a_50hz )
@@ -715,7 +694,7 @@ static MACHINE_DRIVER_START(ti99_4a_50hz)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
 	/* devices */
-	MDRV_IDE_CONTROLLER_ADD( "ide", ti99_ide_interrupt )	/* FIXME */
+	MDRV_IDE_CONTROLLER_ADD( "ide", ti99_ide_interrupt )
 
 	MDRV_IMPORT_FROM( smc92x4_hd )
 
@@ -734,7 +713,7 @@ static MACHINE_DRIVER_START(ti99_4a_50hz)
 	
 	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )
 	
-	MDRV_IMPORT_FROM(ti99_4_cartslot)
+	MDRV_TI99_CARTRIDGE_ADD("ti99_multicart")
 MACHINE_DRIVER_END
 
 
@@ -743,7 +722,7 @@ static MACHINE_DRIVER_START(ti99_4ev_60hz)
 	/* TMS9900 CPU @ 3.0 MHz */
 	MDRV_CPU_ADD("maincpu", TMS9900, 3000000)
 	MDRV_CPU_PROGRAM_MAP(memmap_4ev, 0)
-	MDRV_CPU_IO_MAP(readcru, writecru)
+	MDRV_CPU_IO_MAP(cru_map, 0)
 	MDRV_CPU_VBLANK_INT_HACK(ti99_4ev_hblank_interrupt, 263)	/* 262.5 in 60Hz, 312.5 in 50Hz */
 
 	MDRV_MACHINE_START( ti99_4ev_60hz )
@@ -792,8 +771,8 @@ static MACHINE_DRIVER_START(ti99_4ev_60hz)
 	MDRV_TMS9902_ADD("tms9902_1", tms9902_params_1)
 	
 	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )	
+	MDRV_TI99_CARTRIDGE_ADD("ti99_multicart")
 	
-	MDRV_IMPORT_FROM(ti99_4_cartslot)	
 MACHINE_DRIVER_END
 
 
@@ -891,14 +870,6 @@ ROM_END
 #define rom_ti99_4e rom_ti99_4
 #define rom_ti99_4ae rom_ti99_4a
 
-/* a TI99 console only had one cartridge slot, but cutting the ROMs
- * in 3 files seems to be the only way to handle cartridges until I use
- * a headered format.
- * Note that there sometimes was a speech ROM slot in the speech synthesizer,
- * and you could plug quite a lot of GROMs in the side port.  Neither of these
- * are emulated.
- */
-	
 static void ti99_4_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */

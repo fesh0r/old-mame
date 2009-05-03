@@ -235,7 +235,7 @@ static ABCBUS_CARD_SELECT( luxor_55_10828 )
 
 	if (data == 0x2d) // TODO: bit 0 of this is configurable with S1
 	{
-		const address_space *io = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_IO);
+		const address_space *io = cputag_get_address_space(device->machine, Z80_TAG, ADDRESS_SPACE_IO);
 
 		memory_install_readwrite8_handler(io, ABCBUS_INP, ABCBUS_OUT, 0x18, 0, slow_bus_data_r, slow_bus_data_w);
 		memory_install_read8_handler(io, ABCBUS_STAT, ABCBUS_STAT, 0x18, 0, slow_bus_stat_r);
@@ -366,7 +366,7 @@ static ABCBUS_CARD_SELECT( luxor_55_21046 )
 
 	if (data == input_port_read(device->machine, "SW3"))
 	{
-		const address_space *io = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_IO);
+		const address_space *io = cputag_get_address_space(device->machine, Z80_TAG, ADDRESS_SPACE_IO);
 
 		memory_install_readwrite8_handler(io, ABCBUS_INP, ABCBUS_OUT, 0x18, 0, fast_bus_data_r, fast_bus_data_w);
 		memory_install_read8_handler(io, ABCBUS_STAT, ABCBUS_STAT, 0x18, 0, fast_bus_stat_r);
@@ -583,13 +583,13 @@ static void conkort_pio_ardy_w(const device_config *device, int state)
 
 static const z80pio_interface conkort_pio_intf =
 {
-	conkort_pio_interrupt,				/* interrupt callback */
-	conkort_pio_port_a_r,				/* port A read callback */
-	conkort_pio_port_b_r,				/* port B read callback */
-	conkort_pio_port_a_w,				/* port A write callback */
-	conkort_pio_port_b_w,				/* port B write callback */
-	conkort_pio_ardy_w,					/* port A ready callback */
-	NULL						/* port B ready callback */
+	DEVCB_LINE(conkort_pio_interrupt),				/* interrupt callback */
+	DEVCB_HANDLER(conkort_pio_port_a_r),				/* port A read callback */
+	DEVCB_HANDLER(conkort_pio_port_b_r),				/* port B read callback */
+	DEVCB_HANDLER(conkort_pio_port_a_w),				/* port A write callback */
+	DEVCB_HANDLER(conkort_pio_port_b_w),				/* port B write callback */
+	DEVCB_LINE(conkort_pio_ardy_w),					/* port A ready callback */
+	DEVCB_NULL						/* port B ready callback */
 };
 
 static const z80_daisy_chain slow_daisy_chain[] =
@@ -873,18 +873,6 @@ static DEVICE_RESET( luxor_55_10828 )
 }
 
 /*-------------------------------------------------
-    DEVICE_SET_INFO( luxor_55_10828 )
--------------------------------------------------*/
-
-static DEVICE_SET_INFO( luxor_55_10828 )
-{
-	switch (state)
-	{
-		/* no parameters to set */
-	}
-}
-
-/*-------------------------------------------------
     DEVICE_GET_INFO( luxor_55_10828 )
 -------------------------------------------------*/
 
@@ -902,7 +890,6 @@ DEVICE_GET_INFO( luxor_55_10828 )
 		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_DRIVER_NAME(luxor_55_10828);	break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_SET_INFO:						info->set_info = DEVICE_SET_INFO_NAME(luxor_55_10828);		break;
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(luxor_55_10828);			break;
 		case DEVINFO_FCT_STOP:							/* Nothing */												break;
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(luxor_55_10828);			break;
@@ -956,18 +943,6 @@ static DEVICE_RESET( luxor_55_21046 )
 }
 
 /*-------------------------------------------------
-    DEVICE_SET_INFO( luxor_55_21046 )
--------------------------------------------------*/
-
-static DEVICE_SET_INFO( luxor_55_21046 )
-{
-	switch (state)
-	{
-		/* no parameters to set */
-	}
-}
-
-/*-------------------------------------------------
     DEVICE_GET_INFO( luxor_55_21046 )
 -------------------------------------------------*/
 
@@ -985,7 +960,6 @@ DEVICE_GET_INFO( luxor_55_21046 )
 		case DEVINFO_PTR_MACHINE_CONFIG:				info->machine_config = MACHINE_DRIVER_NAME(luxor_55_21046);	break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_SET_INFO:						info->set_info = DEVICE_SET_INFO_NAME(luxor_55_21046);		break;
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(luxor_55_21046);			break;
 		case DEVINFO_FCT_STOP:							/* Nothing */												break;
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(luxor_55_21046);			break;

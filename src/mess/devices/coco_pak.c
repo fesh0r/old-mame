@@ -67,9 +67,9 @@ static DEVICE_RESET(coco_pak)
 		: COCOCART_LINE_VALUE_CLEAR;
 
 	/* normal CoCo PAKs tie their CART line to Q - the system clock */
-	device_set_info_int(
+	coco_cartridge_set_line(
 		pak_pcb->cococart,
-		COCOCARTINFO_INT_LINE_CART,
+		COCOCART_LINE_CART,
 		cart_line);
 }
 
@@ -89,7 +89,6 @@ DEVICE_GET_INFO(coco_cartridge_pcb_pak)
 		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;			break;
 
 		/* --- the following bits of info are returned as pointers to functions --- */
-		case DEVINFO_FCT_SET_INFO:						/* Nothing */								break;
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(coco_pak);	break;
 		case DEVINFO_FCT_STOP:							/* Nothing */								break;
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(coco_pak);	break;
