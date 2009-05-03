@@ -66,6 +66,17 @@ typedef struct
 	int		nmi_state;
 } m6805_Regs;
 
+INLINE m6805_Regs *get_safe_token(const device_config *device)
+{
+	assert(device != NULL);
+	assert(device->token != NULL);
+	assert(device->type == CPU);
+	assert(cpu_get_type(device) == CPU_M6805 ||
+		   cpu_get_type(device) == CPU_M68705 ||
+		   cpu_get_type(device) == CPU_HD63705);
+	return (m6805_Regs *)device->token;
+}
+
 /****************************************************************************/
 /* Read a byte from given memory location                                   */
 /****************************************************************************/
@@ -299,7 +310,6 @@ INLINE void WM16( m6805_Regs *cpustate, UINT32 Addr, PAIR *p )
 }
 #endif
 
-#if (HAS_M68705)
 
 /* Generate interrupt - m68705 version */
 static void m68705_Interrupt( m6805_Regs *cpustate )
@@ -330,7 +340,6 @@ static void m68705_Interrupt( m6805_Regs *cpustate )
 		cpustate->iCount -= 11;
 	}
 }
-#endif
 
 /* Generate interrupts */
 static void Interrupt( m6805_Regs *cpustate )
@@ -339,7 +348,6 @@ static void Interrupt( m6805_Regs *cpustate )
 	/* pending_interrupts until the interrupt is taken, no matter what the */
 	/* external IRQ pin does. */
 
-#if (HAS_HD63705)
 	if( (cpustate->pending_interrupts & (1<<HD63705_INT_NMI)) != 0)
 	{
 		PUSHWORD(cpustate->pc);
@@ -359,10 +367,6 @@ static void Interrupt( m6805_Regs *cpustate )
 	}
 	else if( (cpustate->pending_interrupts & ((1<<M6805_IRQ_LINE)|HD63705_INT_MASK)) != 0 ) {
 		if ( (CC & IFLAG) == 0 ) {
-#else
-	if( (cpustate->pending_interrupts & (1<<M6805_IRQ_LINE)) != 0 ) {
-		if ( (CC & IFLAG) == 0 ) {
-#endif
 	{
         /* standard IRQ */
 //#if (HAS_HD63705)
@@ -379,7 +383,6 @@ static void Interrupt( m6805_Regs *cpustate )
 			(*cpustate->irq_callback)(cpustate->device, 0);
 
 
-#if (HAS_HD63705)
 		if(SUBTYPE==SUBTYPE_HD63705)
 		{
 			/* Need to add emulation of other interrupt sources here KW-2/4/99 */
@@ -427,7 +430,6 @@ static void Interrupt( m6805_Regs *cpustate )
 			}
 		}
 		else
-#endif
 		{
 			RM16( cpustate, 0xffff - 5, &pPC );
 		}
@@ -452,7 +454,7 @@ static void state_register(m6805_Regs *cpustate, const char *type, const device_
 
 static CPU_INIT( m6805 )
 {
-	m6805_Regs *cpustate = device->token;
+	m6805_Regs *cpustate = get_safe_token(device);
 
 	state_register(cpustate, "m6805", device);
 	cpustate->irq_callback = irqcallback;
@@ -462,7 +464,7 @@ static CPU_INIT( m6805 )
 
 static CPU_RESET( m6805 )
 {
-	m6805_Regs *cpustate = device->token;
+	m6805_Regs *cpustate = get_safe_token(device);
 
 	cpu_irq_callback save_irqcallback = cpustate->irq_callback;
 	memset(cpustate, 0, sizeof(m6805_Regs));
@@ -509,7 +511,7 @@ static void set_irq_line( m6805_Regs *cpustate,	int irqline, int state )
 static CPU_EXECUTE( m6805 )
 {
 	UINT8 ireg;
-	m6805_Regs *cpustate = device->token;
+	m6805_Regs *cpustate = get_safe_token(device);
 
 	S = SP_ADJUST( S );		/* Taken from CPU_SET_CONTEXT when pointer'afying */
 	cpustate->iCount = cycles;
@@ -518,13 +520,11 @@ static CPU_EXECUTE( m6805 )
 	{
 		if (cpustate->pending_interrupts != 0)
 		{
-#if (HAS_M68705)
 			if (SUBTYPE==SUBTYPE_M68705)
 			{
 				m68705_Interrupt(cpustate);
 			}
 			else
-#endif
 			{
 				Interrupt(cpustate);
 			}
@@ -806,10 +806,9 @@ static CPU_EXECUTE( m6805 )
 /****************************************************************************
  * M68705 section
  ****************************************************************************/
-#if (HAS_M68705)
 static CPU_INIT( m68705 )
 {
-	m6805_Regs *cpustate = device->token;
+	m6805_Regs *cpustate = get_safe_token(device);
 	state_register(cpustate, "m68705", device);
 	cpustate->irq_callback = irqcallback;
 	cpustate->device = device;
@@ -817,7 +816,7 @@ static CPU_INIT( m68705 )
 
 static CPU_RESET( m68705 )
 {
-	m6805_Regs *cpustate = device->token;
+	m6805_Regs *cpustate = get_safe_token(device);
 	CPU_RESET_CALL(m6805);
 
 	/* Overide default 6805 type */
@@ -832,15 +831,13 @@ static void m68705_set_irq_line(m6805_Regs *cpustate, int irqline, int state)
 	if (state != CLEAR_LINE) cpustate->pending_interrupts |= 1<<irqline;
 }
 
-#endif
 
 /****************************************************************************
  * HD63705 section
  ****************************************************************************/
-#if (HAS_HD63705)
 static CPU_INIT( hd63705 )
 {
-	m6805_Regs *cpustate = device->token;
+	m6805_Regs *cpustate = get_safe_token(device);
 	state_register(cpustate, "hd63705", device);
 	cpustate->irq_callback = irqcallback;
 	cpustate->device = device;
@@ -848,7 +845,7 @@ static CPU_INIT( hd63705 )
 
 static CPU_RESET( hd63705 )
 {
-	m6805_Regs *cpustate = device->token;
+	m6805_Regs *cpustate = get_safe_token(device);
 	CPU_RESET_CALL(m6805);
 
 	/* Overide default 6805 types */
@@ -876,7 +873,6 @@ static void hd63705_set_irq_line(m6805_Regs *cpustate, int irqline, int state)
 		if (state != CLEAR_LINE) cpustate->pending_interrupts |= 1<<irqline;
 	}
 }
-#endif
 
 
 
@@ -886,7 +882,7 @@ static void hd63705_set_irq_line(m6805_Regs *cpustate, int irqline, int state)
 
 static CPU_SET_INFO( m6805 )
 {
-	m6805_Regs *cpustate = device->token;
+	m6805_Regs *cpustate = get_safe_token(device);
 
 	switch (state)
 	{
@@ -911,7 +907,7 @@ static CPU_SET_INFO( m6805 )
 
 CPU_GET_INFO( m6805 )
 {
-	m6805_Regs *cpustate = (device != NULL) ? device->token : NULL;
+	m6805_Regs *cpustate = (device != NULL && device->token != NULL) ? get_safe_token(device) : NULL;
 
 	switch (state)
 	{
@@ -987,13 +983,12 @@ CPU_GET_INFO( m6805 )
 }
 
 
-#if (HAS_M68705)
 /**************************************************************************
  * CPU-specific set_info
  **************************************************************************/
 static CPU_SET_INFO( m68705 )
 {
-	m6805_Regs *cpustate = device->token;
+	m6805_Regs *cpustate = get_safe_token(device);
 
 	switch(state)
 	{
@@ -1006,7 +1001,7 @@ static CPU_SET_INFO( m68705 )
 
 CPU_GET_INFO( m68705 )
 {
-	m6805_Regs *cpustate = (device != NULL) ? device->token : NULL;
+	m6805_Regs *cpustate = (device != NULL && device->token != NULL) ? get_safe_token(device) : NULL;
 
 	switch (state)
 	{
@@ -1024,17 +1019,15 @@ CPU_GET_INFO( m68705 )
 		default:											CPU_GET_INFO_CALL(m6805);	break;
 	}
 }
-#endif
 
 
-#if (HAS_HD63705)
 /**************************************************************************
  * CPU-specific set_info
  **************************************************************************/
 
 static CPU_SET_INFO( hd63705 )
 {
-	m6805_Regs *cpustate = device->token;
+	m6805_Regs *cpustate = get_safe_token(device);
 
 	switch (state)
 	{
@@ -1055,7 +1048,7 @@ static CPU_SET_INFO( hd63705 )
 
 CPU_GET_INFO( hd63705 )
 {
-	m6805_Regs *cpustate = (device != NULL) ? device->token : NULL;
+	m6805_Regs *cpustate = (device != NULL && device->token != NULL) ? get_safe_token(device) : NULL;
 
 	switch (state)
 	{
@@ -1085,4 +1078,3 @@ CPU_GET_INFO( hd63705 )
 		default:										CPU_GET_INFO_CALL(m6805);	break;
 	}
 }
-#endif

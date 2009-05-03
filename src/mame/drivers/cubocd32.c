@@ -1,5 +1,8 @@
 /* Cubo CD32 (Original hardware by Commodore, additional hardware and games by CD Express, Milan, Italy)
 
+   Preliminary driver by Mariusz Wojcieszek
+   CD-ROM controller by Ernesto Corvi
+
    This is basically a CD32 (Amiga 68020, AGA based games system) hacked up to run arcade games.
    see http://ninjaw.ifrance.com/cd32/cubo/ for a brief overview.
 
@@ -21,11 +24,7 @@
 
 
    ToDo:
-
-   Everything - This is a skeleton driver.
-      Add full AGA (68020 based systems, Amiga 1200 / CD32) support to Amiga driver
-      Add CD Controller emulation for CD32.
-      ... work from there
+      Inputs
 
 
    Known Games:
@@ -50,6 +49,8 @@
 #include "includes/amiga.h"
 #include "includes/cubocd32.h"
 #include "machine/6526cia.h"
+
+static void handle_cd32_joystick_cia(UINT8 pra, UINT8 dra);
 
 static WRITE32_HANDLER( aga_overlay_w )
 {
@@ -92,6 +93,8 @@ static WRITE8_DEVICE_HANDLER( cd32_cia_0_porta_w )
 
 	/* bit 2 = Power Led on Amiga */
 	set_led_status(0, (data & 2) ? 0 : 1);
+
+	handle_cd32_joystick_cia(data, cia_r(device, 2));
 }
 
 /*************************************
@@ -135,6 +138,97 @@ static ADDRESS_MAP_START( cd32_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xf80000, 0xffffff) AM_ROM AM_REGION("user1", 0x0)		/* Kickstart */
 ADDRESS_MAP_END
 
+int cubo_input_port_val = 0;
+int cubo_input_select = 0;
+UINT16 potgo_value = 0;
+int cd32_shifter[2];
+
+static void cubocd32_potgo_w(running_machine *machine, UINT16 data)
+{
+	int i;
+
+	potgo_value = potgo_value & 0x5500;
+	potgo_value |= data & 0xaa00;
+
+    for (i = 0; i < 8; i += 2)
+	{
+		UINT16 dir = 0x0200 << i;
+		if (data & dir)
+		{
+			UINT16 d = 0x0100 << i;
+			potgo_value &= ~d;
+			potgo_value |= data & d;
+		}
+    }
+    for (i = 0; i < 2; i++)
+	{
+	    UINT16 p5dir = 0x0200 << (i * 4); /* output enable P5 */
+	    UINT16 p5dat = 0x0100 << (i * 4); /* data P5 */
+	    if ((potgo_value & p5dir) && (potgo_value & p5dat))
+		cd32_shifter[i] = 8;
+    }
+
+}
+
+static void handle_cd32_joystick_cia(UINT8 pra, UINT8 dra)
+{
+    static int oldstate[2];
+    int i;
+
+    for (i = 0; i < 2; i++)
+	{
+		UINT8 but = 0x40 << i;
+		UINT16 p5dir = 0x0200 << (i * 4); /* output enable P5 */
+		UINT16 p5dat = 0x0100 << (i * 4); /* data P5 */
+		if (!(potgo_value & p5dir) || !(potgo_value & p5dat))
+		{
+			if ((dra & but) && (pra & but) != oldstate[i])
+			{
+				if (!(pra & but))
+				{
+					cd32_shifter[i]--;
+					if (cd32_shifter[i] < 0)
+						cd32_shifter[i] = 0;
+				}
+			}
+		}
+		oldstate[i] = pra & but;
+    }
+}
+
+static UINT16 handle_joystick_potgor (running_machine *machine, UINT16 potgor)
+{
+    int i;
+
+    for (i = 0; i < 2; i++)
+	{
+		UINT16 p9dir = 0x0800 << (i * 4); /* output enable P9 */
+		UINT16 p9dat = 0x0400 << (i * 4); /* data P9 */
+		UINT16 p5dir = 0x0200 << (i * 4); /* output enable P5 */
+		UINT16 p5dat = 0x0100 << (i * 4); /* data P5 */
+
+	    /* p5 is floating in input-mode */
+	    potgor &= ~p5dat;
+	    potgor |= potgo_value & p5dat;
+	    if (!(potgo_value & p9dir))
+			potgor |= p9dat;
+	    /* P5 output and 1 -> shift register is kept reset (Blue button) */
+	    if ((potgo_value & p5dir) && (potgo_value & p5dat))
+			cd32_shifter[i] = 8;
+	    /* shift at 1 == return one, >1 = return button states */
+	    if (cd32_shifter[i] == 0)
+			potgor &= ~p9dat; /* shift at zero == return zero */
+		if (i == 0)
+			if (cd32_shifter[i] >= 2 && (input_port_read(machine, "IN0") & (1 << (cd32_shifter[i] - 2))))
+				potgor &= ~p9dat;
+    }
+    return potgor;
+}
+
+static CUSTOM_INPUT(cubo_input)
+{
+	return handle_joystick_potgor(field->port->machine, potgo_value) >> 10;
+}
 
 
 static INPUT_PORTS_START( cd32 )
@@ -156,11 +250,8 @@ static INPUT_PORTS_START( cd32 )
 	PORT_BIT( 0xfcfc, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START("POTGO")
-	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON2 )
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
-	PORT_BIT( 0xaaff, IP_ACTIVE_HIGH, IPT_UNUSED )
+	PORT_BIT( 0x4400, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_CUSTOM(cubo_input, 0)
+	PORT_BIT( 0xaaff, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("P1JOY")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
@@ -201,6 +292,18 @@ static INPUT_PORTS_START( cd32 )
 	PORT_DIPNAME( 0x80, 0x80, "DSW1 8" )
 	PORT_DIPSETTING(    0x80, "Reset" )
 	PORT_DIPSETTING(    0x00, "Set" )
+
+	PORT_START("IN0")
+	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_BUTTON1 )
+	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_BUTTON2 )
+	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_BUTTON3 )
+	PORT_BIT( 0x0008, IP_ACTIVE_HIGH, IPT_BUTTON4 )
+	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_BUTTON5 )
+	PORT_BIT( 0x0020, IP_ACTIVE_HIGH, IPT_BUTTON6 )
+	PORT_BIT( 0x0040, IP_ACTIVE_HIGH, IPT_BUTTON7 )
+	PORT_BIT( 0x0080, IP_ACTIVE_HIGH, IPT_UNUSED )
+	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_UNUSED )
+
 INPUT_PORTS_END
 
 /*************************************
@@ -246,15 +349,15 @@ static MACHINE_DRIVER_START( cd32 )
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(59.997)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(512*2, 312)
 	MDRV_SCREEN_VISIBLE_AREA((129-8)*2, (449+8-1)*2, 44-8, 300+8-1)
 
 	MDRV_PALETTE_LENGTH(4096)
-	MDRV_PALETTE_INIT(amiga)
+	MDRV_PALETTE_INIT(amiga_aga)
 
-	MDRV_VIDEO_START(amiga)
-	MDRV_VIDEO_UPDATE(amiga)
+	MDRV_VIDEO_START(amiga_aga)
+	MDRV_VIDEO_UPDATE(amiga_aga)
 
 	/* sound hardware */
     MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
@@ -292,42 +395,49 @@ ROM_START( cndypuzl )
 	CD32_BIOS
 
 	DISK_REGION( "cdrom" )
-	DISK_IMAGE_READONLY( "cndypuzl", 0, SHA1(21093753a1875dc4fb97f23232ed3d8776b48c06) MD5(dcb6cdd7d81d5468c1290a3baf4265cb) )
+	DISK_IMAGE_READONLY( "cndypuzl", 0, SHA1(5f41ed3521b3e05d233ac1245b78cb0b118b2b90) )
 ROM_END
 
 ROM_START( haremchl )
 	CD32_BIOS
 
 	DISK_REGION( "cdrom" )
-	DISK_IMAGE_READONLY( "haremchl", 0, SHA1(4d5df2b64b376e8d0574100110f3471d3190765c) MD5(00adbd944c05747e9445446306f904be) )
+	DISK_IMAGE_READONLY( "haremchl", 0, SHA1(abbab347c0d7c5eef0465d0eee770754a452e874) )
 ROM_END
 
 ROM_START( lsrquiz )
 	CD32_BIOS
 
 	DISK_REGION( "cdrom" )
-	DISK_IMAGE_READONLY( "lsrquiz", 0, SHA1(4250c94ab77504104005229b28f24cfabe7c9e48) MD5(12a94f573fe5d218db510166b86fdda5) )
+	DISK_IMAGE_READONLY( "lsrquiz", 0, SHA1(41fb6cd0c9d36bd77e9c3db69d36801edc791e96) )
 ROM_END
 
 ROM_START( lsrquiz2 )
 	CD32_BIOS
 
 	DISK_REGION( "cdrom" )
-	DISK_IMAGE_READONLY( "lsrquiz2", 0, SHA1(ea92df0e53bf36bb86d99ad19fca21c6129e61d7) MD5(df63c32aca815f6c97889e08c10b77bc) )
+	DISK_IMAGE_READONLY( "lsrquiz2", 0, SHA1(78e261df1c548fa492e6cf37a9469640bb8816bf) )
 ROM_END
 
 ROM_START( mgprem11 )
 	CD32_BIOS
 
 	DISK_REGION( "cdrom" )
-	DISK_IMAGE_READONLY( "mgprem11", 0, SHA1(a8a32d10148ba968b57b8186fdf4d4cd378fb0d5) MD5(e0e4d00c6f981c19a1d20d5e7090b0db) )
+	DISK_IMAGE_READONLY( "mgprem11", 0, SHA1(7808db33d5949f6c86d12b32bc388c12377e7038) )
 ROM_END
 
 ROM_START( lasstixx )
 	CD32_BIOS
 
 	DISK_REGION( "cdrom" )
-	DISK_IMAGE_READONLY( "lasstixx", 0, SHA1(29c2525d43a696da54648caffac9952cec85fd37) MD5(6242dd8a3c0b15ef9eafb930b7a7e87f) )
+	DISK_IMAGE_READONLY( "lasstixx", 0, SHA1(b8f6138e1f1840c193e786c56dab03c512f3e21f) )
+ROM_END
+
+ROM_START( mgnumber )
+	CD32_BIOS
+
+	DISK_REGION( "cdrom" )
+	DISK_IMAGE_READONLY( "magicnumber", 0, SHA1(60e1fadc42694742d19cc0ac2b6e99e9e33faa3d) )
 ROM_END
 
 /***************************************************************************************************/
@@ -337,7 +447,7 @@ static DRIVER_INIT( cd32 )
 	static const amiga_machine_interface cubocd32_intf =
 	{
 		AGA_CHIP_RAM_MASK,
-		NULL, NULL, NULL,
+		NULL, NULL, cubocd32_potgo_w,
 		NULL, NULL, NULL,
 		NULL, NULL,
 		NULL,
@@ -366,3 +476,4 @@ GAME( 1995, lsrquiz,  cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Laser Quiz
 GAME( 1995, lsrquiz2, cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Laser Quiz '2' Italy (v1.0)", GAME_NOT_WORKING|GAME_NO_SOUND )
 GAME( 1996, mgprem11, cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Magic Premium (v1.1)", GAME_NOT_WORKING|GAME_NO_SOUND )
 GAME( 1995, lasstixx, cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Laser Strixx", GAME_NOT_WORKING|GAME_NO_SOUND )
+GAME( 1995, mgnumber, cd32, cd32, cd32, cd32,	   ROT0, "CD Express", "Magic Number", GAME_NOT_WORKING|GAME_NO_SOUND )

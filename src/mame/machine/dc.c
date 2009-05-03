@@ -10,6 +10,7 @@
 #include "cpu/sh4/sh4.h"
 #include "sound/aica.h"
 #include "naomibd.h"
+#include "naomi.h"
 
 #define DEBUG_REGISTERS	(1)
 
@@ -18,6 +19,8 @@
 #define DEBUG_SYSCTRL	(0)
 #define DEBUG_MAPLE	(0)
 #define DEBUG_MAPLE_REGS	(0)
+
+#define ENABLE_MAPLE_IRQ (0)
 
 #if DEBUG_SYSCTRL
 static const char *const sysctrl_names[] =
@@ -124,9 +127,11 @@ UINT32 dc_coin_counts[2];
 static UINT32 maple_regs[0x100/4];
 static UINT32 dc_rtcregister[4];
 static UINT32 g1bus_regs[0x100/4];
-static UINT8 maple0x86data1[0x80];
+static UINT32 g2bus_regs[0x100/4];
+UINT8 maple0x86data1[0x80];
 static UINT8 maple0x86data2[0x400];
 static emu_timer *dc_rtc_timer;
+extern int jvsboard_type;
 
 static const UINT32 maple0x82answer[]=
 {
@@ -240,6 +245,89 @@ int level;
 	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH4_IRLn_INPUT, 15-level);
 }
 
+static int jvsboard_init(int pos)
+{
+	// four bytes for every available function
+	// first function
+	maple0x86data2[pos+10]=1;
+	maple0x86data2[pos+11]=2; // number of players
+	maple0x86data2[pos+12]=9+4; // switches per player (27 = mahjong)
+	maple0x86data2[pos+13]=0;
+	// second function
+	maple0x86data2[pos+14]=2;
+	maple0x86data2[pos+15]=2; // number of coin slots
+	maple0x86data2[pos+16]=0;
+	maple0x86data2[pos+17]=0;
+	// third function
+	maple0x86data2[pos+18]=3;
+	maple0x86data2[pos+19]=2; // analog channels
+	maple0x86data2[pos+20]=8; // bits per channel
+	maple0x86data2[pos+21]=0;
+	// no more functions
+	maple0x86data2[pos+22]=0;
+	maple0x86data2[pos+7]=13+2;
+	return 13;
+}
+
+static void jvsboard_indirect_read(running_machine *machine, int pos)
+{
+	// report1,jvsbytes repeated for each function
+	// first function
+	maple0x86data2[pos+ 9]=1; // report
+	maple0x86data2[pos+10]=0; // bits TEST TILT1 TILT2 TILT3 ? ? ? ?
+	maple0x86data2[pos+11]=input_port_read(machine, "IN1"); // bits 1Pstart 1Pservice 1Pup 1Pdown 1Pleft 1Pright 1Ppush1 1Ppush2
+	maple0x86data2[pos+12]=input_port_read(machine, "IN2"); // bits 1Ppush3 1Ppush4 1Ppush5 1Ppush6 1Ppush7 1Ppush8 ...
+	maple0x86data2[pos+13]=input_port_read(machine, "IN3"); // bits 2Pstart 2Pservice 2Pup 2Pdown 2Pleft 2Pright 2Ppush1 2Ppush2
+	maple0x86data2[pos+14]=input_port_read(machine, "IN4"); // bits 2Ppush3 2Ppush4 2Ppush5 2Ppush6 2Ppush7 2Ppush8 ...
+	// second function
+	maple0x86data2[pos+15]=1; // report
+	maple0x86data2[pos+16]=(dc_coin_counts[0] >> 8) & 0xff; // 1CONDITION, 1SLOT COIN(bit13-8)
+	maple0x86data2[pos+17]=dc_coin_counts[0] & 0xff; // 1SLOT COIN(bit7-0)
+	maple0x86data2[pos+18]=(dc_coin_counts[1] >> 8) & 0xff; // 2CONDITION, 2SLOT COIN(bit13-8)
+	maple0x86data2[pos+19]=dc_coin_counts[1] & 0xff; // 2SLOT COIN(bit7-0)
+	// third function
+	maple0x86data2[pos+20]=1; // report
+	maple0x86data2[pos+21]=0xff; // channel 1 bits 7-0
+	maple0x86data2[pos+22]=0; // channel 1
+	maple0x86data2[pos+23]=0; // channel 2 bits 7-0
+	maple0x86data2[pos+24]=0xff; // channel 2
+}
+
+static int jvsboard_direct_read(running_machine *machine)
+{
+	/* valid data check*/
+	maple0x86data2[0x11] = 0x00;
+	maple0x86data2[0x12] = 0x8e;
+	maple0x86data2[0x13] = 0x01;
+	maple0x86data2[0x14] = 0x00;
+	maple0x86data2[0x15] = 0xff;
+	maple0x86data2[0x16] = 0xe0;
+	maple0x86data2[0x19] = 0x01;
+
+	/* read the inputs */
+	maple0x86data2[0x1a]=1;
+	maple0x86data2[0x1b]=2; //number of players
+	maple0x86data2[0x1c]=input_port_read(machine, "IN1");
+	maple0x86data2[0x1d]=input_port_read(machine, "IN2");
+	maple0x86data2[0x1e]=input_port_read(machine, "IN3");
+	maple0x86data2[0x1f]=input_port_read(machine, "IN4");
+	maple0x86data2[0x20]=1;
+	maple0x86data2[0x21]=(dc_coin_counts[0] >> 8) & 0xff; //coin counter read-back hi byte
+	maple0x86data2[0x22]=dc_coin_counts[0] & 0xff; //coin counter read-back lo byte
+	maple0x86data2[0x23]=(dc_coin_counts[1] >> 8) & 0xff;
+	maple0x86data2[0x24]=dc_coin_counts[1] & 0xff;
+	maple0x86data2[0x25]=1;
+	maple0x86data2[0x26]=1;
+	maple0x86data2[0x27]=0;
+	maple0x86data2[0x28]=0;
+	maple0x86data2[0x29]=0;
+	maple0x86data2[0x2a]=0;
+	/*0x2b-0x2f rotary inputs */
+	//...
+
+	return 8+0x11+16;
+}
+
 READ64_HANDLER( dc_sysctrl_r )
 {
 	int reg;
@@ -274,6 +362,8 @@ WRITE64_HANDLER( dc_sysctrl_w )
 		case SB_C2DST:
 			address=dc_sysctrl_regs[SB_C2DSTAT];
 			ddtdata.destination=address;
+			/* 0 rounding size = 16 Mbytes */
+			if(dc_sysctrl_regs[SB_C2DLEN] == 0) { dc_sysctrl_regs[SB_C2DLEN] = 0x1000000; }
 			ddtdata.length=dc_sysctrl_regs[SB_C2DLEN];
 			ddtdata.size=1;
 			ddtdata.direction=0;
@@ -371,12 +461,14 @@ WRITE64_HANDLER( dc_maple_w )
 	{
 	case SB_MDST:
 		maple_regs[reg] = old;
-		if (!(old & 1) && (dat & 1)) // 0 -> 1
+		if (!(old & 1) && (dat & 1) && maple_regs[SB_MDEN] & 1) // 0 -> 1
 		{
 			if (!(maple_regs[SB_MDTSEL] & 1))
 			{
 				maple_regs[reg] = 1;
 				dat=maple_regs[SB_MDSTAR];
+				//printf("Maple DMA: %08x %08x %08x %08x\n",maple_regs[SB_MDSTAR],maple_regs[SB_MDTSEL],maple_regs[SB_MDEN],maple_regs[SB_MDST]);
+				//printf("           %08x %08x %08x %08x\n",maple_regs[SB_MSYS],maple_regs[SB_MST],maple_regs[SB_MSHTCL],maple_regs[SB_MMSEL]);
 				while (1) // do transfers
 				{
 					ddtdata.source=dat;		// source address
@@ -410,7 +502,7 @@ WRITE64_HANDLER( dc_maple_w )
 							case 3:
 								ddtdata.length=1;
 								#if DEBUG_MAPLE
-								mame_printf_verbose("MAPLE: transfer command %d port %d\n", command, port);
+								printf("MAPLE: transfer command %x port %x\n", command, port);
 								#endif
 								break;
 							case 0x80: // get data and compute checksum
@@ -450,7 +542,7 @@ WRITE64_HANDLER( dc_maple_w )
 
 								subcommand = buff[0] & 0xff;
 								#if DEBUG_MAPLE
-								mame_printf_verbose("MAPLE: transfer command %d port %d subcommand %d\n", command, port, subcommand);
+								printf("MAPLE: transfer command %x port %x subcommand %x\n", command, port, subcommand);
 								#endif
 								if (subcommand == 3) // read data
 								{
@@ -482,7 +574,7 @@ WRITE64_HANDLER( dc_maple_w )
 									jvs_address = (buff[1] >> 16) & 0xff; // slave address
 									jvs_command = buff[2] & 0xff; // jvs command
 									#if DEBUG_MAPLE
-									mame_printf_verbose("MAPLE: sent jvs command %d\n", jvs_command);
+									printf("MAPLE: sent jvs command %x\n", jvs_command);
 									#endif
 									buff[1] = 0xe4e3e2e1;
 									ddtdata.length = 2;
@@ -541,57 +633,23 @@ WRITE64_HANDLER( dc_maple_w )
 												tocopy += 1;
 												break;
 											case 0x14:
-												// four bytes for every available function
-												// first function
-												maple0x86data2[pos+10]=1;
-												maple0x86data2[pos+11]=2; // number of players
-												maple0x86data2[pos+12]=9+4; // switches per player (27 = mahjong)
-												maple0x86data2[pos+13]=0;
-												// second function
-												maple0x86data2[pos+14]=2;
-												maple0x86data2[pos+15]=2; // number of coin slots
-												maple0x86data2[pos+16]=0;
-												maple0x86data2[pos+17]=0;
-												// third function
-												maple0x86data2[pos+18]=3;
-												maple0x86data2[pos+19]=2; // analog channels
-												maple0x86data2[pos+20]=8; // bits per channel
-												maple0x86data2[pos+21]=0;
-												// no more functions
-												maple0x86data2[pos+22]=0;
-												maple0x86data2[pos+7]=13+2;
-												tocopy += 13;
+												{
+													static int dma_bytes;
+													dma_bytes = jvsboard_init(pos);
+													tocopy += dma_bytes;
+												}
 												break;
 											case 0x21:
-												maple0x86data2[pos+10]=0; // bits 7-6 status bits 5-0 higer bits of coin count
-												maple0x86data2[pos+11]=0; // lower bits of coin count
-												maple0x86data2[pos+12]=0; // like previuos two but for second coin slot
-												maple0x86data2[pos+13]=0;
+												maple0x86data2[pos+10]=(dc_coin_counts[0] >> 8) & 0xff; // bits 7-6 status bits 5-0 higer bits of coin count
+												maple0x86data2[pos+11]=dc_coin_counts[0] & 0xff; // lower bits of coin count
+												maple0x86data2[pos+12]=(dc_coin_counts[1] >> 8) & 0xff; // like previuos two but for second coin slot
+												maple0x86data2[pos+13]=dc_coin_counts[1] & 0xff;
 												maple0x86data2[pos+7]=4+2;
 												tocopy += 4;
 												break;
 											case -1: // special case to read controls
 											case -2:
-												// report1,jvsbytes repeated for each function
-												// first function
-												maple0x86data2[pos+ 9]=1; // report
-												maple0x86data2[pos+10]=0; // bits TEST TILT1 TILT2 TILT3 ? ? ? ?
-												maple0x86data2[pos+11]=input_port_read(space->machine, "IN1"); // bits 1Pstart 1Pservice 1Pup 1Pdown 1Pleft 1Pright 1Ppush1 1Ppush2
-												maple0x86data2[pos+12]=input_port_read(space->machine, "IN2"); // bits 1Ppush3 1Ppush4 1Ppush5 1Ppush6 1Ppush7 1Ppush8 ...
-												maple0x86data2[pos+13]=input_port_read(space->machine, "IN3"); // bits 2Pstart 2Pservice 2Pup 2Pdown 2Pleft 2Pright 2Ppush1 2Ppush2
-												maple0x86data2[pos+14]=input_port_read(space->machine, "IN4"); // bits 2Ppush3 2Ppush4 2Ppush5 2Ppush6 2Ppush7 2Ppush8 ...
-												// second function
-												maple0x86data2[pos+15]=1; // report
-												maple0x86data2[pos+16]=(dc_coin_counts[0] >> 8) & 0xff; // 1CONDITION, 1SLOT COIN(bit13-8)
-												maple0x86data2[pos+17]=dc_coin_counts[0] & 0xff; // 1SLOT COIN(bit7-0)
-												maple0x86data2[pos+18]=(dc_coin_counts[1] >> 8) & 0xff; // 2CONDITION, 2SLOT COIN(bit13-8)
-												maple0x86data2[pos+19]=dc_coin_counts[1] & 0xff; // 2SLOT COIN(bit7-0)
-												// third function
-												maple0x86data2[pos+20]=1; // report
-												maple0x86data2[pos+21]=0xff; // channel 1 bits 7-0
-												maple0x86data2[pos+22]=0; // channel 1
-												maple0x86data2[pos+23]=0; // channel 2 bits 7-0
-												maple0x86data2[pos+24]=0xff; // channel 2
+												jvsboard_indirect_read(space->machine,pos);
 												if (jvs_command == -1)
 												{
 													// ?
@@ -625,6 +683,31 @@ WRITE64_HANDLER( dc_maple_w )
 									jvs_command=0;
 									ddtdata.length = (tocopy+7)/4;
 								}
+								else if (subcommand == 0x33) // "direct mode" input port reading
+								{
+									int tocopy;
+
+									maple0x86data2[0] = 0xa0;
+									for (a=1;a < 32;a++)
+										maple0x86data2[a] = maple0x86data2[a-1] + 1;
+									maple0x86data2[3] = maple0x86data2[3] | 0x0c;
+									maple0x86data2[6] = maple0x86data2[6] & 0xcf;
+
+									a = input_port_read(space->machine, "IN0"); // put keys here
+									maple0x86data2[6] = maple0x86data2[6] | (a << 4);
+
+									tocopy = jvsboard_direct_read(space->machine);
+
+									// command end flag
+									maple0x86data2[0x18] = (jvs_command == -1) ? 19 : 17;
+									maple0x86data2[0x15] = (jvs_command == -1) ? 24 : 16;
+
+									for (a=0;a < tocopy;a=a+4)
+										buff[1+a/4] = maple0x86data2[a] | (maple0x86data2[a+1] << 8) | (maple0x86data2[a+2] << 16) | (maple0x86data2[a+3] << 24);
+
+									//jvs_command=0;
+									ddtdata.length = (tocopy+7)/4;
+								}
 								else if (subcommand == 0x21)
 								{
 									// 21,*c295407 (77),*c295404,*c295405,*c295406,0,1,0
@@ -646,7 +729,7 @@ WRITE64_HANDLER( dc_maple_w )
 								break;
 							default:
 								#if DEBUG_MAPLE
-								mame_printf_verbose("MAPLE: unknown transfer command %d port %d\n", command, port);
+								printf("MAPLE: unknown transfer command %x port %x\n", command, port);
 								#endif
 								ddtdata.length=1;
 								buff[0]=0xffffffff;
@@ -660,6 +743,11 @@ WRITE64_HANDLER( dc_maple_w )
 
 					if (endflag)
 					{
+						#if ENABLE_MAPLE_IRQ
+						/*TODO: this fixes moeru but breaks other games, understand why.*/
+						dc_sysctrl_regs[SB_ISTNRM] |= IST_DMA_MAPLE;
+						dc_update_interrupt_status(space->machine);
+						#endif
 						break;
 					}
 					// skip fixed packet header
@@ -672,7 +760,7 @@ WRITE64_HANDLER( dc_maple_w )
 			else
 			{
 				#if DEBUG_MAPLE
-				mame_printf_verbose("MAPLE: hardware trigger not supported yet\n");
+				printf("MAPLE: hardware trigger not supported yet\n");
 				#endif
 			}
 		}
@@ -751,14 +839,14 @@ WRITE64_HANDLER( dc_g1_ctrl_w )
 	dat = (UINT32)(data >> shift);
 	old = g1bus_regs[reg];
 
-	g1bus_regs[reg] = dat; // 5f6c00+reg*4=dat
+	g1bus_regs[reg] = dat; // 5f7400+reg*4=dat
 	mame_printf_verbose("G1CTRL: [%08x=%x] write %llx to %x, mask %llx\n", 0x5f7400+reg*4, dat, data, offset, mem_mask);
 	switch (reg)
 	{
 	case SB_GDST:
-		if (!(old & 1) && (dat & 1)) // 0 -> 1
+		if (dat & 1 && g1bus_regs[SB_GDEN] == 1) // 0 -> 1
 		{
-			if ((g1bus_regs[SB_GDEN] == 0) || (g1bus_regs[SB_GDDIR] == 0))
+			if (g1bus_regs[SB_GDDIR] == 0)
 			{
 				mame_printf_verbose("G1CTRL: unsupported transfer\n");
 				return;
@@ -776,6 +864,7 @@ WRITE64_HANDLER( dc_g1_ctrl_w )
 			device_set_info_ptr(space->machine->cpu[0], CPUINFO_PTR_SH4_EXTERNAL_DDT_DMA, &ddtdata);
 			g1bus_regs[SB_GDST]=0;
 			dc_sysctrl_regs[SB_ISTNRM] |= IST_DMA_GDROM;
+			dc_update_interrupt_status(space->machine);
 		}
 		break;
 	}
@@ -788,25 +877,93 @@ READ64_HANDLER( dc_g2_ctrl_r )
 
 	reg = decode_reg32_64(space->machine, offset, mem_mask, &shift);
 	mame_printf_verbose("G2CTRL:  Unmapped read %08x\n", 0x5f7800+reg*4);
-	return 0;
+	return (UINT64)g2bus_regs[reg] << shift;
 }
 
 WRITE64_HANDLER( dc_g2_ctrl_w )
 {
 	int reg;
 	UINT64 shift;
-	UINT32 dat;
+	UINT32 dat,old;
+	static struct {
+		UINT32 aica_addr;
+		UINT32 root_addr;
+		UINT32 size;
+		UINT8 dir;
+		UINT8 flag;
+		UINT8 indirect;
+		UINT8 start;
+	}wave_dma;
 
 	reg = decode_reg32_64(space->machine, offset, mem_mask, &shift);
 	dat = (UINT32)(data >> shift);
+	old = g2bus_regs[reg];
+
+	g2bus_regs[reg] = dat; // 5f7800+reg*4=dat
+
 	switch (reg)
 	{
-	case SB_ADTSEL:
-		mame_printf_verbose("G2CTRL: initiation mode %d\n",dat);
-		break;
-	case SB_ADST:
-		mame_printf_verbose("G2CTRL: AICA:G2-DMA start\n");
-		break;
+		/*AICA Address register*/
+		case SB_ADSTAG: wave_dma.aica_addr = dat; break;
+		/*Root address (work ram)*/
+		case SB_ADSTAR:	wave_dma.root_addr = dat; break;
+		/*DMA size (in dword units, bit 31 is "set dma initiation enable setting to 0"*/
+		case SB_ADLEN:
+			wave_dma.size = dat & 0x7fffffff;
+			wave_dma.indirect = (dat & 0x80000000)>>31;
+			break;
+		/*0 = root memory to aica / 1 = aica to root memory*/
+		case SB_ADDIR: wave_dma.dir = (dat & 1); break;
+		/*dma flag (active HIGH, bug in docs)*/
+		case SB_ADEN: wave_dma.flag = (dat & 1); break;
+		case SB_ADTSEL:
+			mame_printf_verbose("G2CTRL: initiation mode %d\n",dat);
+			//mame_printf_verbose("SB_ADTSEL data %08x\n",dat);
+			break;
+		/*ready for dma'ing*/
+		case SB_ADST:
+			mame_printf_verbose("G2CTRL: AICA:G2-DMA start\n");
+			//mame_printf_verbose("AICA: G2-DMA start\n");
+			//mame_printf_verbose("%08x %08x %08x %02x\n",wave_dma.aica_addr,wave_dma.root_addr,wave_dma.size,wave_dma.indirect);
+			wave_dma.start = dat & 1;
+			//mame_printf_verbose("SB_ADST data %08x\n",dat);
+			if(wave_dma.flag && wave_dma.start)
+			{
+				UINT32 src,dst,size;
+				dst = wave_dma.aica_addr;
+				src = wave_dma.root_addr;
+				size = 0;
+				/* 0 rounding size = 32 Mbytes */
+				if(wave_dma.size == 0) { wave_dma.size = 0x200000; }
+
+				if(wave_dma.dir == 0)
+				{
+					for(;size<wave_dma.size;size+=4)
+					{
+						memory_write_dword_64le(space,dst,memory_read_dword(space,src));
+						src+=4;
+						dst+=4;
+					}
+				}
+				else
+				{
+					for(;size<wave_dma.size;size+=4)
+					{
+						memory_write_dword_64le(space,src,memory_read_dword(space,dst));
+						src+=4;
+						dst+=4;
+					}
+				}
+				/* update the params*/
+				wave_dma.aica_addr = g2bus_regs[SB_ADSTAG] = dst;
+				wave_dma.root_addr = g2bus_regs[SB_ADSTAR] = src;
+				wave_dma.size = g2bus_regs[SB_ADLEN] = 0;
+				wave_dma.flag = (wave_dma.indirect & 1) ? 1 : 0;
+				wave_dma.start = g2bus_regs[SB_ADST] = 0;
+				dc_sysctrl_regs[SB_ISTNRM] |= IST_DMA_AICA;
+				dc_update_interrupt_status(space->machine);
+			}
+			break;
 	}
 	mame_printf_verbose("G2CTRL: [%08x=%x] write %llx to %x, mask %llx\n", 0x5f7800+reg*4, dat, data, offset, mem_mask);
 }
@@ -894,8 +1051,6 @@ MACHINE_START( dc )
 
 MACHINE_RESET( dc )
 {
-	int a;
-
 	/* halt the ARM7 */
 	cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
 
@@ -908,14 +1063,6 @@ MACHINE_RESET( dc )
 	timer_adjust_periodic(dc_rtc_timer, attotime_zero, 0, ATTOTIME_IN_SEC(1));
 
 	dc_sysctrl_regs[SB_SBREV] = 0x0b;
-	for (a=0;a < 0x80;a++)
-		maple0x86data1[a]=0x11+a;
-
-	// checksums
-	maple0x86data1[0]=0xb9;
-	maple0x86data1[1]=0xb1;
-	maple0x86data1[18]=0xb8;
-	maple0x86data1[19]=0x8a;
 }
 
 READ64_DEVICE_HANDLER( dc_aica_reg_r )
@@ -951,7 +1098,7 @@ WRITE64_DEVICE_HANDLER( dc_aica_reg_w )
 			/* it's alive ! */
 			cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
 		}
-        }
+    }
 
 	aica_w(device, offset*2, dat, shift ? ((mem_mask>>32)&0xffff) : (mem_mask & 0xffff));
 

@@ -1343,8 +1343,11 @@ static const discrete_mixer_desc btime_sound_mixer_desc =
 
 /* R49 has 4.7k in schematics, but listed as 47k in bill of material
  * 47k gives proper low pass filtering
+ *
+ * Anoid measured R49 to R52 on a Burger Time pcb. These are
+ * listed below
  */
-#define BTIME_R49	RES_K(47)
+#define BTIME_R49	RES_K(47)	/* pcb: 47.4k */
 
 /* The input divider R51 R50 is not independant of R52, which
  * also depends on ay internal resistance.
@@ -1353,7 +1356,7 @@ static const discrete_mixer_desc btime_sound_mixer_desc =
  * With R51 being 1K, the gain is way to high (23.5). Therefore R51
  * is set to 5k, but this is a hack. With the modification,
  * sound levels are in line with observations.
- * FIXME: Verify R51,R50,R52 and R49 on real pcb
+ * R51,R50,R52 and R49 verified on real pcb by Anoid.
  *
  * http://www.coinopvideogames.com/videogames01.php
  * There are two recordings from 1982 where the filtered sound is way louder
@@ -1363,9 +1366,9 @@ static const discrete_mixer_desc btime_sound_mixer_desc =
  *
  */
 
-#define BTIME_R52	RES_K(1)
-#define BTIME_R51	RES_K(5) 	/* schematics 1k */
-#define BTIME_R50	RES_K(10)
+#define BTIME_R52	RES_K(1)	/* pcb: .912k = 1K || 11k */
+#define BTIME_R51	RES_K(5) 	/* pcb: .923k = 1k || 11k schematics 1k */
+#define BTIME_R50	RES_K(10)	/* pcb: 1.667k = 10k || 2k */
 
 static const discrete_op_amp_filt_info btime_opamp_desc =
 	{BTIME_R51, 0, BTIME_R50, 0, BTIME_R49, CAP_U(0.068), CAP_U(0.068), 0, 0, 5.0, -5.0};
@@ -2113,7 +2116,7 @@ GAME( 1981, tisland,  0,       tisland,  btime,    tisland,  ROT270, "Data East 
 GAME( 1981, lnc,      0,       lnc,      lnc,      lnc,      ROT270, "Data East Corporation", "Lock'n'Chase", 0 )
 GAME( 1982, protennb, 0,       disco,    disco,    protennb, ROT270, "bootleg", "Tennis (bootleg of Pro Tennis)", 0 )
 GAME( 1982, wtennis,  0,       wtennis,  wtennis,  wtennis,  ROT270, "bootleg", "World Tennis", 0 )
-GAME( 1982, mmonkey,  0,       mmonkey,  mmonkey,  lnc,      ROT270, "Technos + Roller Tron", "Minky Monkey", 0 )
+GAME( 1982, mmonkey,  0,       mmonkey,  mmonkey,  lnc,      ROT270, "Technos Japan + Roller Tron", "Minky Monkey", 0 )
 GAME( 1982, brubber,  0,       bnj,      bnj,      bnj,      ROT270, "Data East", "Burnin' Rubber", 0 )
 GAME( 1982, bnj,      brubber, bnj,      bnj,      bnj,      ROT270, "Data East USA (Bally Midway license)", "Bump 'n' Jump", 0 )
 GAME( 1982, caractn,  brubber, bnj,      bnj,      bnj,      ROT270, "bootleg", "Car Action", 0 )

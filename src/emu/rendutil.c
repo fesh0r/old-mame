@@ -83,9 +83,9 @@ void render_resample_argb_bitmap_hq(void *dest, UINT32 drowpixels, UINT32 dwidth
 
 	/* if the source is higher res than the target, use full averaging */
 	if (dx > 0x1000 || dy > 0x1000)
-		resample_argb_bitmap_average(dest, drowpixels, dwidth, dheight, sbase, source->rowpixels, swidth, sheight, color, dx, dy);
+		resample_argb_bitmap_average((UINT32 *)dest, drowpixels, dwidth, dheight, sbase, source->rowpixels, swidth, sheight, color, dx, dy);
 	else
-		resample_argb_bitmap_bilinear(dest, drowpixels, dwidth, dheight, sbase, source->rowpixels, swidth, sheight, color, dx, dy);
+		resample_argb_bitmap_bilinear((UINT32 *)dest, drowpixels, dwidth, dheight, sbase, source->rowpixels, swidth, sheight, color, dx, dy);
 }
 
 
@@ -559,7 +559,7 @@ void render_line_to_quad(const render_bounds *bounds, float width, render_bounds
     bitmap_t
 -------------------------------------------------*/
 
-bitmap_t *render_load_png(const char *dirname, const char *filename, bitmap_t *alphadest, int *hasalpha)
+bitmap_t *render_load_png(const char *path, const char *dirname, const char *filename, bitmap_t *alphadest, int *hasalpha)
 {
 	bitmap_t *bitmap = NULL;
 	file_error filerr;
@@ -573,7 +573,7 @@ bitmap_t *render_load_png(const char *dirname, const char *filename, bitmap_t *a
 		fname = astring_dupc(filename);
 	else
 		fname = astring_assemble_3(astring_alloc(), dirname, PATH_SEPARATOR, filename);
-	filerr = mame_fopen(SEARCHPATH_ARTWORK, astring_c(fname), OPEN_FLAG_READ, &file);
+	filerr = mame_fopen(path, astring_c(fname), OPEN_FLAG_READ, &file);
 	astring_free(fname);
 	if (filerr != FILERR_NONE)
 		return NULL;

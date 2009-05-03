@@ -209,8 +209,8 @@ static ADDRESS_MAP_START( opwolf_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x200000, 0x200fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x380000, 0x380003) AM_READ(opwolf_dsw_r)	/* dip switches */
 	AM_RANGE(0x3a0000, 0x3a0003) AM_READ(opwolf_lightgun_r)	/* lightgun, read at $11e0/6 */
-	AM_RANGE(0x3e0000, 0x3e0001) AM_READ(SMH_NOP)
-	AM_RANGE(0x3e0002, 0x3e0003) AM_READ(taitosound_comm16_msb_r)
+	AM_RANGE(0x3e0000, 0x3e0001) AM_READNOP
+	AM_RANGE(0x3e0002, 0x3e0003) AM_READ8(taitosound_comm_r, 0xff00)
 	AM_RANGE(0xc00000, 0xc0ffff) AM_READ(PC080SN_word_0_r)
 	AM_RANGE(0xd00000, 0xd03fff) AM_READ(PC090OJ_word_0_r)	/* sprite ram */
 ADDRESS_MAP_END
@@ -223,9 +223,9 @@ static ADDRESS_MAP_START( opwolf_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x107fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x200000, 0x200fff) AM_WRITE(paletteram16_xxxxRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x380000, 0x380003) AM_WRITE(rainbow_spritectrl_w)	// usually 0x4, changes when you fire
-	AM_RANGE(0x3c0000, 0x3c0001) AM_WRITE(SMH_NOP)	/* watchdog ?? */
-	AM_RANGE(0x3e0000, 0x3e0001) AM_WRITE(taitosound_port16_msb_w)
-	AM_RANGE(0x3e0002, 0x3e0003) AM_WRITE(taitosound_comm16_msb_w)
+	AM_RANGE(0x3c0000, 0x3c0001) AM_WRITENOP	/* watchdog ?? */
+	AM_RANGE(0x3e0000, 0x3e0001) AM_WRITE8(taitosound_port_w, 0xff00)
+	AM_RANGE(0x3e0002, 0x3e0003) AM_WRITE8(taitosound_comm_w, 0xff00)
 	AM_RANGE(0xc00000, 0xc0ffff) AM_WRITE(PC080SN_word_0_w)
 	AM_RANGE(0xc10000, 0xc1ffff) AM_WRITE(SMH_RAM)	/* error in init code (?) */
 	AM_RANGE(0xc20000, 0xc20003) AM_WRITE(PC080SN_yscroll_word_0_w)
@@ -243,8 +243,8 @@ static ADDRESS_MAP_START( opwolfb_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x200000, 0x200fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x380000, 0x380003) AM_READ(opwolf_dsw_r)	/* dip switches */
 	AM_RANGE(0x3a0000, 0x3a0003) AM_READ(opwolf_lightgun_r)	/* lightgun, read at $11e0/6 */
-	AM_RANGE(0x3e0000, 0x3e0001) AM_READ(SMH_NOP)
-	AM_RANGE(0x3e0002, 0x3e0003) AM_READ(taitosound_comm16_msb_r)
+	AM_RANGE(0x3e0000, 0x3e0001) AM_READNOP
+	AM_RANGE(0x3e0002, 0x3e0003) AM_READ8(taitosound_comm_r, 0xff00)
 	AM_RANGE(0xc00000, 0xc0ffff) AM_READ(PC080SN_word_0_r)
 	AM_RANGE(0xd00000, 0xd03fff) AM_READ(PC090OJ_word_0_r)	/* sprite ram */
 ADDRESS_MAP_END
@@ -255,9 +255,9 @@ static ADDRESS_MAP_START( opwolfb_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x107fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x200000, 0x200fff) AM_WRITE(paletteram16_xxxxRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x380000, 0x380003) AM_WRITE(rainbow_spritectrl_w)	// usually 0x4, changes when you fire
-	AM_RANGE(0x3c0000, 0x3c0001) AM_WRITE(SMH_NOP)	/* watchdog ?? */
-	AM_RANGE(0x3e0000, 0x3e0001) AM_WRITE(taitosound_port16_msb_w)
-	AM_RANGE(0x3e0002, 0x3e0003) AM_WRITE(taitosound_comm16_msb_w)
+	AM_RANGE(0x3c0000, 0x3c0001) AM_WRITENOP	/* watchdog ?? */
+	AM_RANGE(0x3e0000, 0x3e0001) AM_WRITE8(taitosound_port_w, 0xff00)
+	AM_RANGE(0x3e0002, 0x3e0003) AM_WRITE8(taitosound_comm_w, 0xff00)
 	AM_RANGE(0xc00000, 0xc0ffff) AM_WRITE(PC080SN_word_0_w)
 	AM_RANGE(0xc10000, 0xc1ffff) AM_WRITE(SMH_RAM)	/* error in init code (?) */
 	AM_RANGE(0xc20000, 0xc20003) AM_WRITE(PC080SN_yscroll_word_0_w)
@@ -279,8 +279,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sub_z80_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x9000, 0x9000) AM_WRITE(SMH_NOP)	/* unknown write, 0 then 1 each interrupt */
-	AM_RANGE(0xa000, 0xa000) AM_WRITE(SMH_NOP)	/* IRQ acknowledge (unimplemented) */
+	AM_RANGE(0x9000, 0x9000) AM_WRITENOP	/* unknown write, 0 then 1 each interrupt */
+	AM_RANGE(0xa000, 0xa000) AM_WRITENOP	/* IRQ acknowledge (unimplemented) */
 	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM) AM_BASE(&cchip_ram)
 ADDRESS_MAP_END
 
@@ -727,6 +727,26 @@ ROM_START( opwolfa )
 	ROM_LOAD( "b20-08.21",  0x00000, 0x80000, CRC(f3e19c64) SHA1(39d48645f776c9c2ade537d959ecc6f9dc6dfa1b) )
 ROM_END
 
+ROM_START( opwolfj )
+	ROM_REGION( 0x40000, "maincpu", 0 )     /* 256k for 68000 code */
+	ROM_LOAD16_BYTE( "b20-05-02.40",  0x00000, 0x10000, CRC(3ffbfe3a) SHA1(e41257e6af18bab4e36267a0c25a6aaa742972d2) )
+	ROM_LOAD16_BYTE( "b20-03-02.30",  0x00001, 0x10000, CRC(fdabd8a5) SHA1(866ec6168489024b8d157f2d5b1553d7f6e3d9b7) )
+	ROM_LOAD16_BYTE( "b20-04.39",     0x20000, 0x10000, CRC(216b4838) SHA1(2851cae00bb3e32e20f35fdab8ed6f149e658363) )
+	ROM_LOAD16_BYTE( "b20-18.29",     0x20001, 0x10000, CRC(fd202470) SHA1(3108c14953d2f50d861946e9f646813b7050b58a) )
+
+	ROM_REGION( 0x20000, "audiocpu", 0 )      /* sound cpu */
+	ROM_LOAD( "b20-07.10",  0x00000, 0x04000, CRC(45c7ace3) SHA1(06f7393f6b973b7735c27e8380cb4148650cfc16) )
+	ROM_CONTINUE(           0x10000, 0x0c000 ) /* banked stuff */
+
+	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
+	ROM_LOAD( "b20-13.13",  0x00000, 0x80000, CRC(f6acdab1) SHA1(716b94ab3fa330ecf22df576f6a9f47a49c7554a) )	/* SCR tiles (8 x 8) */
+
+	ROM_REGION( 0x80000, "gfx2", ROMREGION_DISPOSE )
+	ROM_LOAD( "b20-14.72",  0x00000, 0x80000, CRC(89f889e5) SHA1(1592f6ce4fbb75e33d6ab957e5b90242a7a7a8c4) )	/* Sprites (16 x 16) */
+
+	ROM_REGION( 0x80000, "adpcm", 0 )	/* ADPCM samples */
+	ROM_LOAD( "b20-08.21",  0x00000, 0x80000, CRC(f3e19c64) SHA1(39d48645f776c9c2ade537d959ecc6f9dc6dfa1b) )
+ROM_END
 
 ROM_START( opwolfu ) /* Taito TC0030 C-Chip labeled B20-18 (yes, it has a specific label on it) */
 	ROM_REGION( 0x40000, "maincpu", 0 )     /* 256k for 68000 code */
@@ -828,5 +848,6 @@ static DRIVER_INIT( opwolfb )
 /*    year  rom       parent    machine   inp       init */
 GAME( 1987, opwolf,   0,        opwolf,   opwolf,   opwolf,   ROT0, "Taito Corporation Japan", "Operation Wolf (World, set 1)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
 GAME( 1987, opwolfa,  opwolf,   opwolf,   opwolf,   opwolf,   ROT0, "Taito Corporation Japan", "Operation Wolf (World, set 2)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1987, opwolfj,  opwolf,   opwolf,   opwolf,   opwolf,   ROT0, "Taito Corporation", "Operation Wolf (Japan)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
 GAME( 1987, opwolfu,  opwolf,   opwolf,   opwolfu,  opwolf,   ROT0, "Taito America Corporation", "Operation Wolf (US)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
 GAME( 1987, opwolfb,  opwolf,   opwolfb,  opwolfb,  opwolfb,  ROT0, "[Taito] (Bear Corporation Korea bootleg)", "Operation Bear (bootleg of Operation Wolf)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )

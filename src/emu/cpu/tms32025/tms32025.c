@@ -58,7 +58,7 @@
  #  Support for the built in Serial Port
  #  Support for the Global memory register
  #  Support for the switch for RAM block 0 banking between RAM and ROM space
- #  Correct the mulit-cycle instruction cycle counts
+ #  Correct the multi-cycle instruction cycle counts
  #  Add support to set ROM & RAM as Internal/External in order to correctly
     compute cycle timings
  #  Check (read) Hold signal level during execution loop ?
@@ -170,6 +170,7 @@ struct _tms32025_state
 	UINT32	memaccess;
 	int		icount;
 	int		mHackIgnoreARP;			 /* special handling for lst, lst1 instructions */
+	int		waiting_for_serial_frame;
 
 	const device_config *device;
 	const address_space *program;
@@ -180,6 +181,15 @@ struct _tms32025_state
 	UINT16 *datamap[0x200];
 };
 
+INLINE tms32025_state *get_safe_token(const device_config *device)
+{
+	assert(device != NULL);
+	assert(device->token != NULL);
+	assert(device->type == CPU);
+	assert(cpu_get_type(device) == CPU_TMS32025 ||
+		   cpu_get_type(device) == CPU_TMS32026);
+	return (tms32025_state *)device->token;
+}
 
 /* opcode table entry */
 typedef struct _tms32025_opcode tms32025_opcode;
@@ -341,7 +351,15 @@ INLINE void M_WRTRAM(tms32025_state *cpustate, offs_t addr, UINT16 data)
 	UINT16 *ram;
 	addr &= 0xffff;
 	ram = cpustate->datamap[addr >> 7];
-	if (ram) { ram[addr & 0x7f] = data; }
+	if (ram) {
+		ram[addr & 0x7f] = data;
+		if(addr == 1 && ram == cpustate->intRAM && TXM) {
+			if(FSM)
+				cpustate->waiting_for_serial_frame = 1;
+			else
+				cpustate->IFR |= 0x20;
+		}
+	}
 	else memory_write_word_16be(cpustate->data, addr << 1, data);
 }
 
@@ -643,7 +661,7 @@ static void adrk(tms32025_state *cpustate)
 {
 	cpustate->AR[ARP] += cpustate->opcode.b.l;
 }
-static void and(tms32025_state *cpustate)
+static void and_(tms32025_state *cpustate)
 {
 	GETDATA(cpustate, 0, 0);
 	cpustate->ACC.d &= cpustate->ALU.d;
@@ -1223,7 +1241,7 @@ static void norm(tms32025_state *cpustate)
 		MODIFY_AR_ARP(cpustate);
 	}
 }
-static void or(tms32025_state *cpustate)
+static void or_(tms32025_state *cpustate)
 {
 	GETDATA(cpustate, 0, 0);
 	cpustate->ACC.w.l |= cpustate->ALU.w.l;
@@ -1577,7 +1595,7 @@ static void trap(tms32025_state *cpustate)
 	PUSH_STACK(cpustate, cpustate->PC);
 	SET_PC(0x001E);		/* Trap vector */
 }
-static void xor(tms32025_state *cpustate)
+static void xor_(tms32025_state *cpustate)
 {
 	GETDATA(cpustate, 0, 0);
 	cpustate->ACC.w.l ^= cpustate->ALU.w.l;
@@ -1626,7 +1644,7 @@ static const tms32025_opcode opcode_main[256]=
 /*30*/ {1*CLK, lar_ar0	},{1*CLK, lar_ar1	},{1*CLK, lar_ar2	},{1*CLK, lar_ar3	},{1*CLK, lar_ar4	},{1*CLK, lar_ar5	},{1*CLK, lar_ar6	},{1*CLK, lar_ar7	},
 /*38*/ {1*CLK, mpy		},{1*CLK, sqra		},{1*CLK, mpya		},{1*CLK, mpys		},{1*CLK, lt		},{1*CLK, lta		},{1*CLK, ltp		},{1*CLK, ltd		},
 /*40*/ {1*CLK, zalh		},{1*CLK, zals		},{1*CLK, lact		},{1*CLK, addc		},{1*CLK, subh		},{1*CLK, subs		},{1*CLK, subt		},{1*CLK, subc		},
-/*48*/ {1*CLK, addh		},{1*CLK, adds		},{1*CLK, addt		},{1*CLK, rpt		},{1*CLK, xor		},{1*CLK, or		},{1*CLK, and		},{1*CLK, subb		},
+/*48*/ {1*CLK, addh		},{1*CLK, adds		},{1*CLK, addt		},{1*CLK, rpt		},{1*CLK, xor_		},{1*CLK, or_		},{1*CLK, and_		},{1*CLK, subb		},
 /*50*/ {1*CLK, lst		},{1*CLK, lst1		},{1*CLK, ldp		},{1*CLK, lph		},{1*CLK, pshd		},{1*CLK, mar		},{1*CLK, dmov		},{1*CLK, bitt		},
 /*58*/ {3*CLK, tblr		},{2*CLK, tblw		},{1*CLK, sqrs		},{1*CLK, lts		},{2*CLK, macd		},{2*CLK, mac		},{2*CLK, bc		},{2*CLK, bnc		},
 /*60*/ {1*CLK, sacl		},{1*CLK, sacl		},{1*CLK, sacl		},{1*CLK, sacl		},{1*CLK, sacl		},{1*CLK, sacl		},{1*CLK, sacl		},{1*CLK, sacl		},
@@ -1699,9 +1717,9 @@ static const tms32025_opcode_Dx opcode_Dx_subset[8]=	/* Instructions living unde
  ****************************************************************************/
 static CPU_INIT( tms32025 )
 {
-	tms32025_state *cpustate = device->token;
+	tms32025_state *cpustate = get_safe_token(device);
 
-	cpustate->intRAM = auto_malloc(0x800*2);
+	cpustate->intRAM = (UINT16 *)auto_malloc(0x800*2);
 	cpustate->irq_callback = irqcallback;
 	cpustate->device = device;
 	cpustate->program = memory_find_address_space(device, ADDRESS_SPACE_PROGRAM);
@@ -1754,7 +1772,7 @@ static CPU_INIT( tms32025 )
  ****************************************************************************/
 static CPU_RESET( tms32025 )
 {
-	tms32025_state *cpustate = device->token;
+	tms32025_state *cpustate = get_safe_token(device);
 
 	SET_PC(0);			/* Starting address on a reset */
 	cpustate->STR0 |= 0x0600;	/* INTM and unused bit set to 1 */
@@ -1787,10 +1805,9 @@ static CPU_RESET( tms32025 )
 	cpustate->datamap[7] = &cpustate->intRAM[0x380];			/* B1 */
 }
 
-#if (HAS_TMS32026)
 static CPU_RESET( tms32026 )
 {
-	tms32025_state *cpustate = device->token;
+	tms32025_state *cpustate = get_safe_token(device);
 
 	CPU_RESET_CALL(tms32025);
 
@@ -1812,7 +1829,6 @@ static CPU_RESET( tms32026 )
 	cpustate->datamap[14] = &cpustate->intRAM[0x700];			/* B3 */
 	cpustate->datamap[15] = &cpustate->intRAM[0x780];			/* B3 */
 }
-#endif
 
 
 /****************************************************************************
@@ -1899,6 +1915,15 @@ static int process_IRQs(tms32025_state *cpustate)
 	return cpustate->tms32025_irq_cycles;
 }
 
+void set_fsx_line(tms32025_state *cpustate, int state)
+{
+	if (state != CLEAR_LINE && cpustate->waiting_for_serial_frame)
+	{
+		cpustate->waiting_for_serial_frame = 0;
+		cpustate->IFR = 0x20;
+	}
+}
+
 INLINE void process_timer(tms32025_state *cpustate, int clocks)
 {
 	int preclocks, ticks;
@@ -1941,7 +1966,7 @@ again:
  ****************************************************************************/
 static CPU_EXECUTE( tms32025 )
 {
-	tms32025_state *cpustate = device->token;
+	tms32025_state *cpustate = get_safe_token(device);
 	cpustate->icount = cycles;
 
 
@@ -1968,7 +1993,10 @@ static CPU_EXECUTE( tms32025 )
 		cpustate->hold = 0;
 	}
 
-	/**** If idling, update timer and/or exit execution */
+	/**** If idling, update timer and/or exit execution, but test for irqs first */
+	if (cpustate->idle && cpustate->IFR && cpustate->icount > 0)
+		cpustate->icount -= process_IRQs(cpustate);
+
 	while (cpustate->idle && cpustate->icount > 0)
 		process_timer(cpustate, cpustate->icount);
 
@@ -1977,7 +2005,7 @@ static CPU_EXECUTE( tms32025 )
 
 	while (cpustate->icount > 0)
 	{
-		cpustate->tms32025_dec_cycles = (1*CLK);
+	  cpustate->tms32025_dec_cycles = 0;
 
 		if (cpustate->IFR) {	/* Check IRQ Flag Register for pending IRQs */
 			cpustate->tms32025_dec_cycles += process_IRQs(cpustate);
@@ -1992,17 +2020,17 @@ static CPU_EXECUTE( tms32025 )
 
 		if (cpustate->opcode.b.h == 0xCE)	/* Opcode 0xCExx has many sub-opcodes in its minor byte */
 		{
-			cpustate->tms32025_dec_cycles = opcode_CE_subset[cpustate->opcode.b.l].cycles;
+			cpustate->tms32025_dec_cycles += opcode_CE_subset[cpustate->opcode.b.l].cycles;
 			(*opcode_CE_subset[cpustate->opcode.b.l].function)(cpustate);
 		}
 		else if ((cpustate->opcode.w.l & 0xf0f8) == 0xd000)	/* Opcode 0xDxxx has many sub-opcodes in its minor byte */
 		{
-			cpustate->tms32025_dec_cycles = opcode_Dx_subset[cpustate->opcode.b.l].cycles;
+			cpustate->tms32025_dec_cycles += opcode_Dx_subset[cpustate->opcode.b.l].cycles;
 			(*opcode_Dx_subset[cpustate->opcode.b.l].function)(cpustate);
 		}
 		else			/* Do all opcodes except the CExx and Dxxx ones */
 		{
-			cpustate->tms32025_dec_cycles = opcode_main[cpustate->opcode.b.h].cycles;
+			cpustate->tms32025_dec_cycles += opcode_main[cpustate->opcode.b.h].cycles;
 			(*opcode_main[cpustate->opcode.b.h].function)(cpustate);
 		}
 
@@ -2097,7 +2125,7 @@ static void set_irq_line(tms32025_state *cpustate, int irqline, int state)
  ****************************************************************************/
 static CPU_READOP( tms32025 )
 {
-	tms32025_state *cpustate = device->token;
+	tms32025_state *cpustate = get_safe_token(device);
 
 	void *ptr;
 
@@ -2122,7 +2150,7 @@ static CPU_READOP( tms32025 )
  ****************************************************************************/
 static CPU_READ( tms32025 )
 {
-	tms32025_state *cpustate = device->token;
+	tms32025_state *cpustate = get_safe_token(device);
 
 	void *ptr = NULL;
 	UINT64 temp = 0;
@@ -2175,7 +2203,7 @@ static CPU_READ( tms32025 )
  ****************************************************************************/
 static CPU_WRITE( tms32025 )
 {
-	tms32025_state *cpustate = device->token;
+	tms32025_state *cpustate = get_safe_token(device);
 
 	void *ptr = NULL;
 
@@ -2214,6 +2242,7 @@ static CPU_WRITE( tms32025 )
 			CPU_WRITE_NAME(tms32025)(device, space, offset + 4, 4, value);
 			break;
 	}
+
 	return 1;
 }
 
@@ -2224,7 +2253,7 @@ static CPU_WRITE( tms32025 )
 
 static CPU_SET_INFO( tms32025 )
 {
-	tms32025_state *cpustate = device->token;
+	tms32025_state *cpustate = get_safe_token(device);
 
 	switch (state)
 	{
@@ -2235,6 +2264,7 @@ static CPU_SET_INFO( tms32025 )
 		case CPUINFO_INT_INPUT_STATE + TMS32025_TINT:		set_irq_line(cpustate, TMS32025_TINT, info->i);	break;
 		case CPUINFO_INT_INPUT_STATE + TMS32025_RINT:		set_irq_line(cpustate, TMS32025_RINT, info->i);	break;
 		case CPUINFO_INT_INPUT_STATE + TMS32025_XINT:		set_irq_line(cpustate, TMS32025_XINT, info->i);	break;
+		case CPUINFO_INT_INPUT_STATE + TMS32025_FSX:		set_fsx_line(cpustate, info->i); break;
 
 		case CPUINFO_INT_PC:
 		case CPUINFO_INT_REGISTER + TMS32025_PC:		cpustate->PC = info->i;							break;
@@ -2280,7 +2310,7 @@ static CPU_SET_INFO( tms32025 )
 
 CPU_GET_INFO( tms32025 )
 {
-	tms32025_state *cpustate = (device != NULL) ? device->token : NULL;
+	tms32025_state *cpustate = (device != NULL && device->token != NULL) ? get_safe_token(device) : NULL;
 
 	switch (state)
 	{
@@ -2427,7 +2457,6 @@ CPU_GET_INFO( tms32025 )
 }
 
 
-#if (HAS_TMS32026)
 /**************************************************************************
  * CPU-specific set_info
  **************************************************************************/
@@ -2445,4 +2474,3 @@ CPU_GET_INFO( tms32026 )
 		default:										CPU_GET_INFO_CALL(tms32025);			break;
 	}
 }
-#endif

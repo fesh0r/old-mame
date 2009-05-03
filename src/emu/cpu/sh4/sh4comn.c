@@ -30,6 +30,15 @@ static const UINT16 tcnt[] = { TCNT0, TCNT1, TCNT2 };
 static const UINT16 tcor[] = { TCOR0, TCOR1, TCOR2 };
 static const UINT16 tcr[] = { TCR0, TCR1, TCR2 };
 
+INLINE SH4 *get_safe_token(const device_config *device)
+{
+	assert(device != NULL);
+	assert(device->token != NULL);
+	assert(device->type == CPU);
+	assert(cpu_get_type(device) == CPU_SH4);
+	return (SH4 *)device->token;
+}
+
 void sh4_change_register_bank(SH4 *sh4, int to)
 {
 int s;
@@ -203,6 +212,8 @@ void sh4_exception(SH4 *sh4, const char *message, int exception) // handle excep
 
 	/* fetch PC */
 	sh4->pc = sh4->vbr + vector;
+	/* wake up if a sleep opcode is triggered */
+	if(sh4->sleep_mode == 1) { sh4->sleep_mode = 2; }
 }
 
 static UINT32 compute_ticks_refresh_timer(emu_timer *timer, int hertz, int base, int divisor)
@@ -254,7 +265,7 @@ static void sh4_timer_recompute(SH4 *sh4, int which)
 
 static TIMER_CALLBACK( sh4_refresh_timer_callback )
 {
-	SH4 *sh4 = ptr;
+	SH4 *sh4 = (SH4 *)ptr;
 
 	sh4->m[RTCNT] = 0;
 	sh4_refresh_timer_recompute(sh4);
@@ -365,7 +376,7 @@ static void increment_rtc_time(SH4 *sh4, int mode)
 
 static TIMER_CALLBACK( sh4_rtc_timer_callback )
 {
-	SH4 *sh4 = ptr;
+	SH4 *sh4 = (SH4 *)ptr;
 
 	timer_adjust_oneshot(sh4->rtc_timer, ATTOTIME_IN_HZ(128), 0);
 	sh4->m[R64CNT] = (sh4->m[R64CNT]+1) & 0x7f;
@@ -380,7 +391,7 @@ static TIMER_CALLBACK( sh4_rtc_timer_callback )
 static TIMER_CALLBACK( sh4_timer_callback )
 {
 	static const UINT16 tuni[] = { SH4_INTC_TUNI0, SH4_INTC_TUNI1, SH4_INTC_TUNI2 };
-	SH4 *sh4 = ptr;
+	SH4 *sh4 = (SH4 *)ptr;
 	int which = param;
 	int idx = tcr[which];
 
@@ -393,7 +404,7 @@ static TIMER_CALLBACK( sh4_timer_callback )
 
 static TIMER_CALLBACK( sh4_dmac_callback )
 {
-	SH4 *sh4 = ptr;
+	SH4 *sh4 = (SH4 *)ptr;
 	int channel = param;
 
 	LOG(("SH4 '%s': DMA %d complete\n", sh4->device->tag, channel));
@@ -623,7 +634,7 @@ int s;
 
 WRITE32_HANDLER( sh4_internal_w )
 {
-	SH4 *sh4 = space->cpu->token;
+	SH4 *sh4 = get_safe_token(space->cpu);
 	int a;
 	UINT32 old = sh4->m[offset];
 	COMBINE_DATA(sh4->m+offset);
@@ -632,6 +643,32 @@ WRITE32_HANDLER( sh4_internal_w )
 
 	switch( offset )
 	{
+	case MMUCR: // MMU Control
+		if (data & 1)
+		{
+			printf("SH4 MMU Enabled\n");
+			printf("If you're seeing this, but running something other than a Naomi GD-ROM game then chances are it won't work\n");
+			printf("The MMU emulation is a hack specific to that system\n");
+			sh4->sh4_mmu_enabled = 1;
+
+			// should be a different bit!
+			{
+				int i;
+				for (i=0;i<64;i++)
+				{
+					sh4->sh4_tlb_address[i] = 0;
+					sh4->sh4_tlb_data[i] = 0;
+				}
+
+			}
+		}
+		else
+		{
+			sh4->sh4_mmu_enabled = 0;
+		}
+
+		break;
+
 		// Memory refresh
 	case RTCSR:
 		sh4->m[RTCSR] &= 255;
@@ -909,7 +946,7 @@ WRITE32_HANDLER( sh4_internal_w )
 
 READ32_HANDLER( sh4_internal_r )
 {
-	SH4 *sh4 = space->cpu->token;
+	SH4 *sh4 = get_safe_token(space->cpu);
 	//  logerror("sh4_internal_r:  Read %08x (%x) @ %08x\n", 0xfe000000+((offset & 0x3fc0) << 11)+((offset & 0x3f) << 2), offset, mem_mask);
 	switch( offset )
 	{
@@ -958,7 +995,7 @@ READ32_HANDLER( sh4_internal_r )
 
 void sh4_set_frt_input(const device_config *device, int state)
 {
-	SH4 *sh4 = device->token;
+	SH4 *sh4 = get_safe_token(device);
 
 	if(state == PULSE_LINE)
 	{
@@ -994,7 +1031,7 @@ void sh4_set_frt_input(const device_config *device, int state)
 
 void sh4_set_irln_input(const device_config *device, int value)
 {
-	SH4 *sh4 = device->token;
+	SH4 *sh4 = get_safe_token(device);
 
 	if (sh4->irln == value)
 		return;
@@ -1123,7 +1160,7 @@ void sh4_parse_configuration(SH4 *sh4, const struct sh4_config *conf)
 
 void sh4_common_init(const device_config *device)
 {
-	SH4 *sh4 = device->token;
+	SH4 *sh4 = get_safe_token(device);
 	int i;
 
 	for (i=0; i<3; i++)
@@ -1145,7 +1182,7 @@ void sh4_common_init(const device_config *device)
 	sh4->rtc_timer = timer_alloc(device->machine, sh4_rtc_timer_callback, sh4);
 	timer_adjust_oneshot(sh4->rtc_timer, attotime_never, 0);
 
-	sh4->m = auto_malloc(16384*4);
+	sh4->m = (UINT32 *)auto_malloc(16384*4);
 }
 
 void sh4_dma_ddt(SH4 *sh4, struct sh4_ddt_dma *s)

@@ -351,10 +351,10 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x280000, 0x280fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x300000, 0x30003f) AM_WRITE(K056832_word_w)		/* video reg */
 	AM_RANGE(0x320000, 0x32001f) AM_WRITE(K053252_word_w)		/* ccu */
-	AM_RANGE(0x350000, 0x350001) AM_WRITE(SMH_NOP)			/* unknown */
-	AM_RANGE(0x360000, 0x360001) AM_WRITE(SMH_NOP)			/* unknown */
+	AM_RANGE(0x350000, 0x350001) AM_WRITENOP			/* unknown */
+	AM_RANGE(0x360000, 0x360001) AM_WRITENOP			/* unknown */
 	AM_RANGE(0x370000, 0x370001) AM_WRITE(gp_control_w)			/* control reg */
-	AM_RANGE(0x380000, 0x380001) AM_WRITE(SMH_NOP)			/* Watchdog */
+	AM_RANGE(0x380000, 0x380001) AM_WRITENOP			/* Watchdog */
 	AM_RANGE(0x800000, 0x80045f) AM_DEVWRITE8("konami", k054539_w, 0x00ff)		/* sound regs */
 	AM_RANGE(0x880000, 0x881fff) AM_WRITE(K056832_ram_word_w)	/* vram */
 	AM_RANGE(0x882000, 0x883fff) AM_WRITE(K056832_ram_word_w)	/* vram (mirror) */
@@ -388,10 +388,10 @@ static ADDRESS_MAP_START( gp2_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x280000, 0x280fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x300000, 0x30003f) AM_WRITE(K056832_word_w)		/* video reg */
 	AM_RANGE(0x320000, 0x32001f) AM_WRITE(K053252_word_w)		/* ccu */
-	AM_RANGE(0x350000, 0x350001) AM_WRITE(SMH_NOP)			/* unknown */
-	AM_RANGE(0x360000, 0x360001) AM_WRITE(SMH_NOP)			/* unknown */
+	AM_RANGE(0x350000, 0x350001) AM_WRITENOP			/* unknown */
+	AM_RANGE(0x360000, 0x360001) AM_WRITENOP			/* unknown */
 	AM_RANGE(0x370000, 0x370001) AM_WRITE(gp2_control_w)		/* control reg */
-	AM_RANGE(0x380000, 0x380001) AM_WRITE(SMH_NOP)			/* Watchdog */
+	AM_RANGE(0x380000, 0x380001) AM_WRITENOP			/* Watchdog */
 	AM_RANGE(0x800000, 0x80045f) AM_DEVWRITE8("konami", k054539_w, 0x00ff)		/* sound regs */
 	AM_RANGE(0x880000, 0x881fff) AM_WRITE(gp2_vram_w)			/* vram */
 	AM_RANGE(0x89f000, 0x8a0fff) AM_WRITE(gp2_vram_mirror_w)	/* vram (mirror) */
@@ -732,7 +732,7 @@ ROM_START( qdrmfgp )
 	ROM_LOAD( "gq_460_a06.12h", 0x080000, 0x80000, CRC(97ed5a77) SHA1(68600fd8d914451284cf181fb4bd5872860fb9ad) )
 
 	DISK_REGION( "ide" )			/* IDE HARD DRIVE */
-	DISK_IMAGE( "gq460a08", 0, MD5(b79eebad38782e6713ab0bd7560817a2) SHA1(0cae7769fbb603d3c3e3627dde84a6c5a9b1062d) )
+	DISK_IMAGE( "gq460a08", 0, SHA1(2f142f986fa3c79d5c4102e800980d1706c35f75) )
 ROM_END
 
 ROM_START( qdrmfgp2 )
@@ -749,7 +749,7 @@ ROM_START( qdrmfgp2 )
 	ROM_LOAD( "ge_557_a08.19k", 0x080000, 0x80000, CRC(3da2b20c) SHA1(fdc2cdc27f3299f541944a78ce36ed33a7926056) )
 
 	DISK_REGION( "ide" )			/* IDE HARD DRIVE */
-	DISK_IMAGE( "ge557a09", 0, MD5(df5039dc4e9dbb1f02ec408d839a42db) SHA1(5e836dbace34c9c1b107cce6a50071a4205a1534) )
+	DISK_IMAGE( "ge557a09", 0, SHA1(1ef8093b542fe0bf8240a5fd64e5af3839b6a04c) )
 ROM_END
 
 

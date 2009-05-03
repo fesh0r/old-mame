@@ -29,15 +29,9 @@
 
 #include "debugger.h"
 #include "m6502.h"
-#if (HAS_M65CE02)
 #include "m65ce02.h"
-#endif
-#if (HAS_M6509)
 #include "m6509.h"
-#endif
-#if (HAS_M4510)
 #include "m4510.h"
-#endif
 
 enum addr_mode {
 	non,	/* no additional arguments */
@@ -66,7 +60,7 @@ enum addr_mode {
 };
 
 enum opcodes {
-	adc,  and, asl,  bcc,  bcs,  beq,  bit,  bmi,
+	adc,  and_,asl,  bcc,  bcs,  beq,  bit,  bmi,
 	bne,  bpl, m6502_brk,  bvc,  bvs,  clc,  cld,  cli,
 	clv,  cmp, cpx,  cpy,  dec,  dex,  dey,  eor,
 	inc,  inx, iny,  jmp,  jsr,  lda,  ldx,  ldy,
@@ -148,14 +142,14 @@ static const struct op6502_info op6502[256] = {
 	{nop,zpx},{ora,zpx},{asl,zpx},{slo,zpx},
 	{clc,imp},{ora,aby},{nop,imp},{slo,aby},
 	{nop,abx},{ora,abx},{asl,abx},{slo,abx},
-	{jsr,adr},{and,idx},{kil,non},{rla,idx},/* 20 */
-	{bit,zpg},{and,zpg},{rol,zpg},{rla,zpg},
-	{plp,imp},{and,imm},{rol,acc},{anc,imm},
-	{bit,aba},{and,aba},{rol,aba},{rla,aba},
-	{bmi,rel},{and,idy},{kil,non},{rla,idy},/* 30 */
-	{nop,zpx},{and,zpx},{rol,zpx},{rla,zpx},
-	{sec,imp},{and,aby},{nop,imp},{rla,aby},
-	{nop,abx},{and,abx},{rol,abx},{rla,abx},
+	{jsr,adr},{and_,idx},{kil,non},{rla,idx},/* 20 */
+	{bit,zpg},{and_,zpg},{rol,zpg},{rla,zpg},
+	{plp,imp},{and_,imm},{rol,acc},{anc,imm},
+	{bit,aba},{and_,aba},{rol,aba},{rla,aba},
+	{bmi,rel},{and_,idy},{kil,non},{rla,idy},/* 30 */
+	{nop,zpx},{and_,zpx},{rol,zpx},{rla,zpx},
+	{sec,imp},{and_,aby},{nop,imp},{rla,aby},
+	{nop,abx},{and_,abx},{rol,abx},{rla,abx},
 	{rti,imp},{eor,idx},{kil,non},{sre,idx},/* 40 */
 	{nop,zpg},{eor,zpg},{lsr,zpg},{sre,zpg},
 	{pha,imp},{eor,imm},{lsr,acc},{asr,imm},
@@ -215,14 +209,14 @@ static const struct op6502_info op65c02[256] = {
 	{trb,zpg},{ora,zpx},{asl,zpx},{rmb,zpg},
 	{clc,imp},{ora,aby},{ina,imp},{ill,non},
 	{trb,aba},{ora,abx},{asl,abx},{bbr,zpb},
-	{jsr,adr},{and,idx},{ill,non},{ill,non},/* 20 */
-	{bit,zpg},{and,zpg},{rol,zpg},{rmb,zpg},
-	{plp,imp},{and,imm},{rol,acc},{ill,non},
-	{bit,aba},{and,aba},{rol,aba},{bbr,zpb},
-	{bmi,rel},{and,idy},{and,zpi},{ill,non},/* 30 */
-	{bit,zpx},{and,zpx},{rol,zpx},{rmb,zpg},
-	{sec,imp},{and,aby},{dea,imp},{ill,non},
-	{bit,abx},{and,abx},{rol,abx},{bbr,zpb},
+	{jsr,adr},{and_,idx},{ill,non},{ill,non},/* 20 */
+	{bit,zpg},{and_,zpg},{rol,zpg},{rmb,zpg},
+	{plp,imp},{and_,imm},{rol,acc},{ill,non},
+	{bit,aba},{and_,aba},{rol,aba},{bbr,zpb},
+	{bmi,rel},{and_,idy},{and_,zpi},{ill,non},/* 30 */
+	{bit,zpx},{and_,zpx},{rol,zpx},{rmb,zpg},
+	{sec,imp},{and_,aby},{dea,imp},{ill,non},
+	{bit,abx},{and_,abx},{rol,abx},{bbr,zpb},
 	{rti,imp},{eor,idx},{ill,non},{ill,non},/* 40 */
 	{ill,non},{eor,zpg},{lsr,zpg},{rmb,zpg},
 	{pha,imp},{eor,imm},{lsr,acc},{ill,non},
@@ -283,14 +277,14 @@ static const struct op6502_info op65sc02[256] = {
 	{trb,zpg},{ora,zpx},{asl,zpx},{rmb,zpg},
 	{clc,imp},{ora,aby},{ina,imp},{ill,non},
 	{trb,aba},{ora,abx},{asl,abx},{bbr,zpb},
-	{jsr,adr},{and,idx},{ill,non},{ill,non},/* 20 */
-	{bit,zpg},{and,zpg},{rol,zpg},{rmb,zpg},
-	{plp,imp},{and,imm},{rol,acc},{ill,non},
-	{bit,aba},{and,aba},{rol,aba},{bbr,zpb},
-	{bmi,rel},{and,idy},{and,zpi},{ill,non},/* 30 */
-	{bit,zpx},{and,zpx},{rol,zpx},{rmb,zpg},
-	{sec,imp},{and,aby},{dea,imp},{ill,non},
-	{bit,abx},{and,abx},{rol,abx},{bbr,zpb},
+	{jsr,adr},{and_,idx},{ill,non},{ill,non},/* 20 */
+	{bit,zpg},{and_,zpg},{rol,zpg},{rmb,zpg},
+	{plp,imp},{and_,imm},{rol,acc},{ill,non},
+	{bit,aba},{and_,aba},{rol,aba},{bbr,zpb},
+	{bmi,rel},{and_,idy},{and_,zpi},{ill,non},/* 30 */
+	{bit,zpx},{and_,zpx},{rol,zpx},{rmb,zpg},
+	{sec,imp},{and_,aby},{dea,imp},{ill,non},
+	{bit,abx},{and_,abx},{rol,abx},{bbr,zpb},
 	{rti,imp},{eor,idx},{ill,non},{ill,non},/* 40 */
 	{ill,non},{eor,zpg},{lsr,zpg},{rmb,zpg},
 	{pha,imp},{eor,imm},{lsr,acc},{ill,non},
@@ -341,7 +335,6 @@ static const struct op6502_info op65sc02[256] = {
 	{ill,non},{sbc,abx},{inc,abx},{bbs,zpb}
 };
 
-#if (HAS_M65CE02)
 static const struct op6502_info op65ce02[256] = {
 	{m6502_brk,imm},{ora,idx},{cle,imp},{see,imp},/* 00 */
 	{tsb,zpg},{ora,zpg},{asl,zpg},{rmb,zpg},
@@ -351,14 +344,14 @@ static const struct op6502_info op65ce02[256] = {
 	{trb,zpg},{ora,zpx},{asl,zpx},{rmb,zpg},
 	{clc,imp},{ora,aby},{ina,imp},{inz,imp},
 	{trb,aba},{ora,abx},{asl,abx},{bbr,zpb},
-	{jsr,adr},{and,idx},{jsr,ind},{jsr,iax},/* 20 */
-	{bit,zpg},{and,zpg},{rol,zpg},{rmb,zpg},
-	{plp,imp},{and,imm},{rol,acc},{tys,imp},
-	{bit,aba},{and,aba},{rol,aba},{bbr,zpb},
-	{bmi,rel},{and,idz},{and,zpi},{bmi,rw2},/* 30 */
-	{bit,zpx},{and,zpx},{rol,zpx},{rmb,zpg},
-	{sec,imp},{and,aby},{dea,imp},{dez,imp},
-	{bit,abx},{and,abx},{rol,abx},{bbr,zpb},
+	{jsr,adr},{and_,idx},{jsr,ind},{jsr,iax},/* 20 */
+	{bit,zpg},{and_,zpg},{rol,zpg},{rmb,zpg},
+	{plp,imp},{and_,imm},{rol,acc},{tys,imp},
+	{bit,aba},{and_,aba},{rol,aba},{bbr,zpb},
+	{bmi,rel},{and_,idz},{and_,zpi},{bmi,rw2},/* 30 */
+	{bit,zpx},{and_,zpx},{rol,zpx},{rmb,zpg},
+	{sec,imp},{and_,aby},{dea,imp},{dez,imp},
+	{bit,abx},{and_,abx},{rol,abx},{bbr,zpb},
 	{rti,imp},{eor,idx},{neg,imp},{asr2,imp},/* 40 */
 	{asr2,zpg},{eor,zpg},{lsr,zpg},{rmb,zpg},
 	{pha,imp},{eor,imm},{lsr,acc},{taz,imp},
@@ -408,9 +401,7 @@ static const struct op6502_info op65ce02[256] = {
 	{sed,imp},{sbc,aby},{plx,imp},{plz,imp},
 	{phw,aba},{sbc,abx},{inc,abx},{bbs,zpb}
 };
-#endif
 
-#if (HAS_M4510)
 // only map instead of aug and 20 bit memory management
 static const struct op6502_info op4510[256] = {
 	{m6502_brk,imm},{ora,idx},{cle,imp},{see,imp},/* 00 */
@@ -421,14 +412,14 @@ static const struct op6502_info op4510[256] = {
 	{trb,zpg},{ora,zpx},{asl,zpx},{rmb,zpg},
 	{clc,imp},{ora,aby},{ina,imp},{inz,imp},
 	{trb,aba},{ora,abx},{asl,abx},{bbr,zpb},
-	{jsr,adr},{and,idx},{jsr,ind},{jsr,iax},/* 20 */
-	{bit,zpg},{and,zpg},{rol,zpg},{rmb,zpg},
-	{plp,imp},{and,imm},{rol,acc},{tys,imp},
-	{bit,aba},{and,aba},{rol,aba},{bbr,zpb},
-	{bmi,rel},{and,idz},{and,zpi},{bmi,rw2},/* 30 */
-	{bit,zpx},{and,zpx},{rol,zpx},{rmb,zpg},
-	{sec,imp},{and,aby},{dea,imp},{dez,imp},
-	{bit,abx},{and,abx},{rol,abx},{bbr,zpb},
+	{jsr,adr},{and_,idx},{jsr,ind},{jsr,iax},/* 20 */
+	{bit,zpg},{and_,zpg},{rol,zpg},{rmb,zpg},
+	{plp,imp},{and_,imm},{rol,acc},{tys,imp},
+	{bit,aba},{and_,aba},{rol,aba},{bbr,zpb},
+	{bmi,rel},{and_,idz},{and_,zpi},{bmi,rw2},/* 30 */
+	{bit,zpx},{and_,zpx},{rol,zpx},{rmb,zpg},
+	{sec,imp},{and_,aby},{dea,imp},{dez,imp},
+	{bit,abx},{and_,abx},{rol,abx},{bbr,zpb},
 	{rti,imp},{eor,idx},{neg,imp},{asr2,imp},/* 40 */
 	{asr2,zpg},{eor,zpg},{lsr,zpg},{rmb,zpg},
 	{pha,imp},{eor,imm},{lsr,acc},{taz,imp},
@@ -478,9 +469,7 @@ static const struct op6502_info op4510[256] = {
 	{sed,imp},{sbc,aby},{plx,imp},{plz,imp},
 	{phw,aba},{sbc,abx},{inc,abx},{bbs,zpb}
 };
-#endif
 
-#if (HAS_DECO16)
 static const struct op6502_info opdeco16[256] =
 {
 	{m6502_brk,imp},{ora,idx},{ill,non},{ill,non},/* 00 */
@@ -491,14 +480,14 @@ static const struct op6502_info opdeco16[256] =
 	{ill,non},{ora,zpx},{asl,zpx},{ill,non},
 	{clc,imp},{ora,aby},{ill,non},{ill,non},
 	{ill,non},{ora,abx},{asl,abx},{ill,non},
-	{jsr,adr},{and,idx},{ill,non},{u23,zpg},/* 20 */
-	{bit,zpg},{and,zpg},{rol,zpg},{ill,non},
-	{plp,imp},{and,imm},{rol,acc},{ill,non},
-	{bit,aba},{and,aba},{rol,aba},{ill,non},
-	{bmi,rel},{and,idy},{ill,non},{ill,non},/* 30 */
-	{ill,non},{and,zpx},{rol,zpx},{ill,non},
-	{sec,imp},{and,aby},{ill,non},{ill,non},
-	{ill,non},{and,abx},{rol,abx},{u3F,zpg},
+	{jsr,adr},{and_,idx},{ill,non},{u23,zpg},/* 20 */
+	{bit,zpg},{and_,zpg},{rol,zpg},{ill,non},
+	{plp,imp},{and_,imm},{rol,acc},{ill,non},
+	{bit,aba},{and_,aba},{rol,aba},{ill,non},
+	{bmi,rel},{and_,idy},{ill,non},{ill,non},/* 30 */
+	{ill,non},{and_,zpx},{rol,zpx},{ill,non},
+	{sec,imp},{and_,aby},{ill,non},{ill,non},
+	{ill,non},{and_,abx},{rol,abx},{u3F,zpg},
 	{rti,imp},{eor,idx},{ill,non},{ill,non},/* 40 */
 	{ill,non},{eor,zpg},{lsr,zpg},{ill,non},
 	{pha,imp},{eor,imm},{lsr,acc},{u4B,zpg},
@@ -548,7 +537,6 @@ static const struct op6502_info opdeco16[256] =
 	{sed,imp},{sbc,aby},{ill,non},{ill,non},
 	{ill,non},{sbc,abx},{inc,abx},{ill,non}
 };
-#endif
 
 /*****************************************************************************
  * Disassemble a single opcode starting at pc
@@ -747,44 +735,32 @@ CPU_DISASSEMBLE( m6502 )
 	return internal_m6502_dasm(op6502, buffer, pc, oprom, opram);
 }
 
-#if (HAS_M65SC02)
 CPU_DISASSEMBLE( m65sc02 )
 {
 	return internal_m6502_dasm(op65sc02, buffer, pc, oprom, opram);
 }
-#endif
 
-#if (HAS_M65C02||HAS_M65SC02||HAS_DECO16)
 CPU_DISASSEMBLE( m65c02 )
 {
 	return internal_m6502_dasm(op65c02, buffer, pc, oprom, opram);
 }
-#endif
 
-#if (HAS_M65CE02)
 CPU_DISASSEMBLE( m65ce02 )
 {
 	return internal_m6502_dasm(op65ce02, buffer, pc, oprom, opram);
 }
-#endif
 
-#if (HAS_M6510)
 CPU_DISASSEMBLE( m6510 )
 {
 	return internal_m6502_dasm(op6502, buffer, pc, oprom, opram);
 }
-#endif
 
-#if (HAS_DECO16)
 CPU_DISASSEMBLE( deco16 )
 {
 	return internal_m6502_dasm(opdeco16, buffer, pc, oprom, opram);
 }
-#endif
 
-#if (HAS_M4510)
 CPU_DISASSEMBLE( m4510 )
 {
 	return internal_m6502_dasm(op4510, buffer, pc, oprom, opram);
 }
-#endif

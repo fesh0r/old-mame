@@ -15,10 +15,6 @@ Credits:
 
 - 8255 emulation (ports 0x30..0x3f) could be better abstracted
 
-- TMS9927 VTAC: do we need to emulate this?
-    The video controller registers effect screen size (currently
-    hard-coded on a per-game basis).
-
 - minor blitting glitches in playfield of Thief (XOR vs copy?)
 
 - Nato Defense gfx ROMs may be hooked up wrong;
@@ -30,6 +26,10 @@ Credits:
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/samples.h"
+#include "video/tms9927.h"
+
+#define MASTER_CLOCK	XTAL_20MHz
+
 
 static UINT8 thief_input_select;
 
@@ -188,7 +188,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(SMH_NOP) /* watchdog */
+	AM_RANGE(0x00, 0x00) AM_WRITENOP /* watchdog */
 	AM_RANGE(0x10, 0x10) AM_WRITE(thief_video_control_w)
 	AM_RANGE(0x30, 0x30) AM_WRITE(thief_input_select_w) /* 8255 */
 	AM_RANGE(0x31, 0x31) AM_READ(thief_io_r) 	/* 8255 */
@@ -198,7 +198,7 @@ static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x42, 0x43) AM_DEVWRITE("ay2", ay8910_address_data_w)
 	AM_RANGE(0x43, 0x43) AM_DEVREAD("ay2", ay8910_r)
 	AM_RANGE(0x50, 0x50) AM_WRITE(thief_color_plane_w)
-	AM_RANGE(0x60, 0x6f) AM_WRITE(thief_vtcsel_w)
+	AM_RANGE(0x60, 0x6f) AM_DEVREADWRITE("tms", tms9927_r, tms9927_w)
 	AM_RANGE(0x70, 0x7f) AM_WRITE(thief_color_map_w)
 ADDRESS_MAP_END
 
@@ -443,6 +443,11 @@ static const samples_interface natodef_samples_interface =
 	natodef_sample_names
 };
 
+static const tms9927_interface tms9927_intf =
+{
+	"screen",
+	8
+};
 
 
 static MACHINE_DRIVER_START( sharkatt )
@@ -460,6 +465,8 @@ static MACHINE_DRIVER_START( sharkatt )
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 24*8-1)
+
+	MDRV_TMS9927_ADD("tms", MASTER_CLOCK/4, tms9927_intf)
 
 	MDRV_PALETTE_LENGTH(16)
 
@@ -497,6 +504,8 @@ static MACHINE_DRIVER_START( thief )
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
 
+	MDRV_TMS9927_ADD("tms", MASTER_CLOCK/4, tms9927_intf)
+
 	MDRV_PALETTE_LENGTH(16)
 
 	MDRV_VIDEO_START(thief)
@@ -532,6 +541,8 @@ static MACHINE_DRIVER_START( natodef )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+
+	MDRV_TMS9927_ADD("tms", MASTER_CLOCK/4, tms9927_intf)
 
 	MDRV_PALETTE_LENGTH(16)
 

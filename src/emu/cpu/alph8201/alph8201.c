@@ -223,6 +223,16 @@ typedef struct {
 #define LP1				lp1
 #define LP2				lp2
 
+INLINE alpha8201_state *get_safe_token(const device_config *device)
+{
+	assert(device != NULL);
+	assert(device->token != NULL);
+	assert(device->type == CPU);
+	assert(cpu_get_type(device) == CPU_ALPHA8201 ||
+		   cpu_get_type(device) == CPU_ALPHA8301);
+	return (alpha8201_state *)device->token;
+}
+
 /* Get next opcode argument and increment program counter */
 INLINE unsigned M_RDMEM_OPCODE (alpha8201_state *cpustate)
 {
@@ -515,7 +525,6 @@ static void jz(alpha8201_state *cpustate)	{ UINT8 i=M_RDMEM_OPCODE(cpustate); if
 static void jc(alpha8201_state *cpustate)	{ UINT8 i=M_RDMEM_OPCODE(cpustate); if ( cpustate->cf) M_JMP(cpustate, i);}
 static void jmp(alpha8201_state *cpustate)	{ M_JMP(cpustate,  M_RDMEM_OPCODE(cpustate) ); }
 
-#if (HAS_ALPHA8201)
 static const s_opcode opcode_8201[256]=
 {
 	{C1, nop        },{C1,rora      },{C1, rola      },{C1,inc_b     },{C1,dec_b     },{C1, inc_a    },{C1, dec_a    },{C1, cpl      },
@@ -556,9 +565,7 @@ static const s_opcode opcode_8201[256]=
 	{C1, undefined	},{C1, undefined},{C1, undefined},{C1, undefined},{C1, undefined},{C1, undefined},{C1, undefined},{C1, undefined},
 	{C1, undefined	},{C1, undefined},{C1, undefined},{C1, undefined},{C1, undefined},{C1, undefined},{C1, undefined},{C1, undefined }
 };
-#endif
 
-#if (HAS_ALPHA8301)
 
 /* ALPHA 8301 : added instruction */
 static void exg_a_ix0(alpha8201_state *cpustate)  { UINT8 t=cpustate->A; cpustate->A = cpustate->IX0; cpustate->IX0 = t; }
@@ -653,14 +660,13 @@ static const s_opcode opcode_8301[256]=
 	{C1,exg_ix0_ix1},{C1,exg_ix0_ix2},{C1,op_rep_ld_ix2_b},{C1, op_rep_ld_b_ix0},{C1, save_zc},{C1, rest_zc},{C1, ld_rxb_a },{C1, ld_a_rxb },
 	{C1, cmp_a_rxb },{C1, xor_a_rxb},{C1, add_a_cf },{C1, sub_a_cf },{C1, tst_a    },{C1, clr_a    },{C1, ld_a_ix0_a},{C1, ret     }
 };
-#endif
 
 /****************************************************************************
  * Initialize emulation
  ****************************************************************************/
 static CPU_INIT( alpha8201 )
 {
-	alpha8201_state *cpustate = device->token;
+	alpha8201_state *cpustate = get_safe_token(device);
 
 	cpustate->device = device;
 	cpustate->program = memory_find_address_space(device, ADDRESS_SPACE_PROGRAM);
@@ -692,7 +698,7 @@ static CPU_INIT( alpha8201 )
  ****************************************************************************/
 static CPU_RESET( alpha8201 )
 {
-	alpha8201_state *cpustate = device->token;
+	alpha8201_state *cpustate = get_safe_token(device);
 	cpustate->PC     = 0;
 	cpustate->regPtr = 0;
 	cpustate->zf     = 0;
@@ -725,7 +731,7 @@ static CPU_EXIT( alpha8201 )
 
 static int alpha8xxx_execute(const device_config *device,const s_opcode *op_map,int cycles)
 {
-	alpha8201_state *cpustate = device->token;
+	alpha8201_state *cpustate = get_safe_token(device);
 	unsigned opcode;
 	UINT8 pcptr;
 
@@ -804,13 +810,9 @@ mame_printf_debug("alpha8201:  cpustate->PC = %03x,  opcode = %02x\n", cpustate-
 	return cycles - cpustate->icount;
 }
 
-#if (HAS_ALPHA8201)
 static CPU_EXECUTE( alpha8201 ) { return alpha8xxx_execute(device,opcode_8201,cycles); }
-#endif
 
-#if (HAS_ALPHA8301)
 static CPU_EXECUTE( ALPHA8301 ) { return alpha8xxx_execute(device,opcode_8301,cycles); }
-#endif
 
 /****************************************************************************
  * Set IRQ line state
@@ -832,7 +834,7 @@ static void set_irq_line(alpha8201_state *cpustate, int irqline, int state)
 
 static CPU_SET_INFO( alpha8201 )
 {
-	alpha8201_state *cpustate = device->token;
+	alpha8201_state *cpustate = get_safe_token(device);
 	switch (state)
 	{
 #if HANDLE_HALT_LINE
@@ -876,7 +878,7 @@ static CPU_SET_INFO( alpha8201 )
 /* 8201 and 8301 */
 static CPU_GET_INFO( alpha8xxx )
 {
-	alpha8201_state *cpustate = (device != NULL) ? device->token : NULL;
+	alpha8201_state *cpustate = (device != NULL && device->token != NULL) ? get_safe_token(device) : NULL;
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
@@ -970,7 +972,6 @@ static CPU_GET_INFO( alpha8xxx )
 		case CPUINFO_STR_REGISTER + ALPHA8201_R7:		sprintf(info->s, "R7:%02X", RD_REG(7));		break;
 	}
 }
-#if (HAS_ALPHA8201)
 CPU_GET_INFO( alpha8201 )
 {
 	switch (state)
@@ -982,9 +983,7 @@ CPU_GET_INFO( alpha8201 )
 		CPU_GET_INFO_CALL(alpha8xxx);
 	}
 }
-#endif
 
-#if (HAS_ALPHA8301)
 CPU_GET_INFO( alpha8301 )
 {
 	switch (state)
@@ -996,4 +995,3 @@ CPU_GET_INFO( alpha8301 )
 		CPU_GET_INFO_CALL(alpha8xxx);
 	}
 }
-#endif

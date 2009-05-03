@@ -132,10 +132,12 @@ EMUMACHINEOBJS = \
 	$(EMUMACHINE)/ds2401.o \
 	$(EMUMACHINE)/ds2404.o \
 	$(EMUMACHINE)/eeprom.o \
+	$(EMUMACHINE)/eepromdev.o \
 	$(EMUMACHINE)/f3853.o \
 	$(EMUMACHINE)/generic.o \
 	$(EMUMACHINE)/i8243.o \
 	$(EMUMACHINE)/i2cmem.o \
+	$(EMUMACHINE)/i2cmemdev.o \
  	$(EMUMACHINE)/idectrl.o \
  	$(EMUMACHINE)/intelfsh.o \
 	$(EMUMACHINE)/latch8.o \
@@ -179,9 +181,11 @@ EMUVIDEOOBJS = \
  	$(EMUVIDEO)/mc6845.o \
 	$(EMUVIDEO)/poly.o \
 	$(EMUVIDEO)/resnet.o \
+	$(EMUVIDEO)/rgbutil.o \
 	$(EMUVIDEO)/s2636.o \
 	$(EMUVIDEO)/tlc34076.o \
 	$(EMUVIDEO)/tms34061.o \
+ 	$(EMUVIDEO)/tms9927.o \
  	$(EMUVIDEO)/tms9928a.o \
 	$(EMUVIDEO)/v9938.o \
  	$(EMUVIDEO)/vector.o \

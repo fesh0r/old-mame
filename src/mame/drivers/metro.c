@@ -1971,7 +1971,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( blzntrnd_sound_writeport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(blzntrnd_sh_bankswitch_w)
-	AM_RANGE(0x40, 0x40) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x40, 0x40) AM_WRITENOP
 	AM_RANGE(0x80, 0x83) AM_DEVWRITE("ym", ym2610_w)
 ADDRESS_MAP_END
 
@@ -2015,7 +2015,7 @@ static ADDRESS_MAP_START( blzntrnd_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x400000, 0x43ffff) AM_WRITE(metro_K053936_w) AM_BASE(&metro_K053936_ram	)	// 053936
 	AM_RANGE(0x500000, 0x500fff) AM_WRITE(SMH_RAM) AM_BASE(&K053936_0_linectrl)	// 053936 line control
 	AM_RANGE(0x600000, 0x60001f) AM_WRITE(SMH_RAM) AM_BASE(&K053936_0_ctrl	)	// 053936 control
-	AM_RANGE(0xe00000, 0xe00001) AM_WRITE(SMH_NOP)
+	AM_RANGE(0xe00000, 0xe00001) AM_WRITENOP
 	AM_RANGE(0xe00002, 0xe00003) AM_WRITE(blzntrnd_sound_w)
 	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(SMH_RAM						)	// RAM
 ADDRESS_MAP_END
@@ -2028,7 +2028,7 @@ ADDRESS_MAP_END
 static WRITE16_DEVICE_HANDLER( mouja_sound_rombank_w )
 {
 	if (ACCESSING_BITS_0_7)
-		okim6295_set_bank_base(device, ((data >> 3) & 0x07) * 0x40000);
+		okim6295_set_bank_base(devtag_get_device(device->machine, "oki"), ((data >> 3) & 0x07) * 0x40000);
 }
 
 static ADDRESS_MAP_START( mouja_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -2069,12 +2069,11 @@ static ADDRESS_MAP_START( mouja_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x478836, 0x478837) AM_WRITE(watchdog_reset16_w			)	// Watchdog
 	AM_RANGE(0x478860, 0x47886b) AM_WRITE(metro_window_w) AM_BASE(&metro_window	)	// Tilemap Window
 	AM_RANGE(0x478850, 0x47885b) AM_WRITE(SMH_RAM) AM_BASE(&metro_scroll		)	// Scroll Regs
-	AM_RANGE(0x478888, 0x478889) AM_WRITE(SMH_NOP)								// ??
+	AM_RANGE(0x478888, 0x478889) AM_WRITENOP								// ??
 	AM_RANGE(0x479700, 0x479713) AM_WRITE(SMH_RAM) AM_BASE(&metro_videoregs	)	// Video Registers
 	AM_RANGE(0xc00000, 0xc00003) AM_DEVWRITE8("ym", ym2413_w, 0x00ff)
-	AM_RANGE(0x800000, 0x800001) AM_DEVWRITE("oki", mouja_sound_rombank_w			)
-	AM_RANGE(0xd00000, 0xd00001) AM_DEVWRITE8("oki", okim6295_w, 0x00ff  		)
-
+	AM_RANGE(0x800000, 0x800001) AM_DEVWRITE("oki", mouja_sound_rombank_w)
+	AM_RANGE(0xd00000, 0xd00001) AM_DEVWRITE8("oki", okim6295_w, 0xff00)
 #if 0
 	AM_RANGE(0x478840, 0x47884d) AM_WRITE(metro_blitter_w) AM_BASE(&metro_blitter_regs	)	// Tiles Blitter
 	AM_RANGE(0x47883a, 0x47883b) AM_WRITE(SMH_RAM) AM_BASE(&metro_rombank		)	// Rom Bank

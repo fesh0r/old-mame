@@ -940,8 +940,8 @@ static ADDRESS_MAP_START( slave_dsp_io, ADDRESS_SPACE_IO, 16 )
 	AM_RANGE(0x02,0x02) AM_READ(slave_port2_r)
 	AM_RANGE(0x03,0x03) AM_READ(slave_port3_r) AM_WRITE(slave_port3_w)
 	AM_RANGE(0x0f,0x0f) AM_READ(slave_portf_r)
-	AM_RANGE(TMS32025_HOLD,  TMS32025_HOLD)  AM_READ(SMH_NOP)
-	AM_RANGE(TMS32025_HOLDA, TMS32025_HOLDA) AM_WRITE(SMH_NOP)
+	AM_RANGE(TMS32025_HOLD,  TMS32025_HOLD)  AM_READNOP
+	AM_RANGE(TMS32025_HOLDA, TMS32025_HOLDA) AM_WRITENOP
 	AM_RANGE(TMS32025_XF,    TMS32025_XF)    AM_WRITE(slave_XF_output_w)
 ADDRESS_MAP_END
 
@@ -1120,10 +1120,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( namcos21_68k_common, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x200000, 0x20ffff) AM_READ(dspram16_r) AM_WRITE(dspram16_w) AM_BASE(&namcos21_dspram16)
-	AM_RANGE(0x280000, 0x280001) AM_WRITE(SMH_NOP) /* written once on startup */
+	AM_RANGE(0x280000, 0x280001) AM_WRITENOP /* written once on startup */
 	AM_RANGE(0x400000, 0x400001) AM_WRITE(pointram_control_w)
 	AM_RANGE(0x440000, 0x440001) AM_READ(pointram_data_r) AM_WRITE(pointram_data_w)
-	AM_RANGE(0x440002, 0x47ffff) AM_WRITE(SMH_NOP) /* (?) Air Combat */
+	AM_RANGE(0x440002, 0x47ffff) AM_WRITENOP /* (?) Air Combat */
 	AM_RANGE(0x480000, 0x4807ff) AM_WRITE(namcos21_depthcue_w) AM_READ(namcos21_depthcue_r) /* Air Combat */
 	AM_RANGE(0x700000, 0x71ffff) AM_READ(namco_obj16_r) AM_WRITE(namco_obj16_w)
 	AM_RANGE(0x720000, 0x720007) AM_READ(namco_spritepos16_r) AM_WRITE(namco_spritepos16_w)
@@ -1288,7 +1288,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( winrun_dsp_io, ADDRESS_SPACE_IO, 16 )
 	AM_RANGE(0x08,0x09) AM_WRITE(winrun_dsp_pointrom_addr_w) AM_READ(winrun_dsp_pointrom_data_r)
 	AM_RANGE(0x0a,0x0a) AM_WRITE(winrun_dsp_render_w)
-	AM_RANGE(0x0b,0x0b) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x0b,0x0b) AM_WRITENOP
 	AM_RANGE(0x0c,0x0c) AM_WRITE(winrun_dsp_complete_w)
 	AM_RANGE(TMS32025_BIO,   TMS32025_BIO)   AM_READ( winrun_poly_reset_r )
 	AM_RANGE(TMS32025_HOLD,  TMS32025_HOLD)  AM_READ( SMH_NOP )
@@ -1411,17 +1411,17 @@ static ADDRESS_MAP_START( readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x3000, 0x3003) AM_WRITE(SMH_NOP) /* ? */
+	AM_RANGE(0x3000, 0x3003) AM_WRITENOP /* ? */
 	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x4000, 0x4001) AM_DEVWRITE("ym", ym2151_w)
 	AM_RANGE(0x5000, 0x6fff) AM_DEVWRITE("c140", c140_w)
 	AM_RANGE(0x7000, 0x77ff) AM_WRITE(namcos2_dualportram_byte_w) AM_BASE(&mpDualPortRAM)
 	AM_RANGE(0x7800, 0x7fff) AM_WRITE(namcos2_dualportram_byte_w) /* mirror */
 	AM_RANGE(0x8000, 0x9fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xa000, 0xbfff) AM_WRITE(SMH_NOP) /* amplifier enable on 1st write */
+	AM_RANGE(0xa000, 0xbfff) AM_WRITENOP /* amplifier enable on 1st write */
 	AM_RANGE(0xc000, 0xc001) AM_WRITE(namcos2_sound_bankselect_w)
-	AM_RANGE(0xd001, 0xd001) AM_WRITE(SMH_NOP) /* watchdog */
-	AM_RANGE(0xc000, 0xffff) AM_WRITE(SMH_NOP) /* avoid debug log noise; games write frequently to 0xe000 */
+	AM_RANGE(0xd001, 0xd001) AM_WRITENOP /* watchdog */
+	AM_RANGE(0xc000, 0xffff) AM_WRITENOP /* avoid debug log noise; games write frequently to 0xe000 */
 ADDRESS_MAP_END
 
 /*************************************************************/
@@ -1429,7 +1429,7 @@ ADDRESS_MAP_END
 /*************************************************************/
 
 static ADDRESS_MAP_START( readmem_mcu, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0000) AM_READ(SMH_NOP)
+	AM_RANGE(0x0000, 0x0000) AM_READNOP
 	AM_RANGE(0x0001, 0x0001) AM_READ_PORT("PORTB")			/* p1,p2 start */
 	AM_RANGE(0x0002, 0x0002) AM_READ_PORT("PORTC")			/* coins */
 	AM_RANGE(0x0003, 0x0003) AM_READ(namcos2_mcu_port_d_r)
@@ -1445,7 +1445,7 @@ static ADDRESS_MAP_START( readmem_mcu, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x3002, 0x3002) AM_READ_PORT("DIAL2")
 	AM_RANGE(0x3003, 0x3003) AM_READ_PORT("DIAL3")
 	AM_RANGE(0x5000, 0x57ff) AM_READ(namcos2_dualportram_byte_r)
-	AM_RANGE(0x6000, 0x6fff) AM_READ(SMH_NOP)				/* watchdog */
+	AM_RANGE(0x6000, 0x6fff) AM_READNOP				/* watchdog */
 	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
@@ -1997,11 +1997,11 @@ We load the "r" set, then load set2's sound CPU code over it to keep the "r" rom
 	ROM_LOAD16_BYTE( "de1-pt2-u.5n",  0x80000, 0x20000, CRC(10e83d81) SHA1(446fedc3b1e258a39fb9467e5327c9f9a9f1ac3f) )
 	ROM_LOAD16_BYTE( "de1-pt2-l.7n",  0x80001, 0x20000, CRC(3339a976) SHA1(c9eb9c04f7b3f2a85e5ab64ffb2fe4fcfb6c494b) )
 
-	ROM_REGION( 0x100000, "c140", 0 ) /* sound samples */
-	ROM_LOAD("de1-voi0.12b",  0x00000, 0x40000, CRC(fc44adbd) SHA1(4268bb1f025e47a94212351d1c1cfd0e5029221f) )
-	ROM_LOAD("de1-voi1.12c",  0x40000, 0x40000, CRC(a71dc55a) SHA1(5e746184db9144ab4e3a97b20195b92b0f56c8cc) )
-	ROM_LOAD("de1-voi2.12d",  0x80000, 0x40000, CRC(4d32879a) SHA1(eae65f4b98cee9efe4e5dad7298c3717cfb1e6bf) )
-	ROM_LOAD("de1-voi3.12e",  0xc0000, 0x40000, CRC(e4832d18) SHA1(0460c79d3942aab89a765b0bd8bbddaf19a6d682) )
+	ROM_REGION( 0x200000, "c140", 0 ) /* sound samples */
+	ROM_LOAD("de1-voi0.12b",  0x040000, 0x40000, CRC(fc44adbd) SHA1(4268bb1f025e47a94212351d1c1cfd0e5029221f) )
+	ROM_LOAD("de1-voi1.12c",  0x0c0000, 0x40000, CRC(a71dc55a) SHA1(5e746184db9144ab4e3a97b20195b92b0f56c8cc) )
+	ROM_LOAD("de1-voi2.12d",  0x140000, 0x40000, CRC(4d32879a) SHA1(eae65f4b98cee9efe4e5dad7298c3717cfb1e6bf) )
+	ROM_LOAD("de1-voi3.12e",  0x1c0000, 0x40000, CRC(e4832d18) SHA1(0460c79d3942aab89a765b0bd8bbddaf19a6d682) )
 ROM_END
 
 ROM_START( starblad )
@@ -2146,8 +2146,8 @@ ROM_START( winrun )
 	ROM_LOAD16_BYTE( "sg1-gd1-l.3s",  0x80001, 0x40000, CRC(a6c4da96) SHA1(377dbf21a1bede01de16708c96c112abab4417ce) )
 
 	ROM_REGION( 0x200000, "c140", 0 ) /* sound samples */
-	ROM_LOAD("sg-voi-1.11c",0x000000,0x80000,CRC(7dcccb31) SHA1(4441b37691434b13eae5dee2d04dc12a56b04d2a) )
-	ROM_LOAD("sg-voi-3.11e",0x080000,0x80000,CRC(a198141c) SHA1(b4ca352e6aedd9d7a7e5e39e840f1d3a7145900e) )
+	ROM_LOAD("sg-voi-1.11c",0x080000,0x80000,CRC(7dcccb31) SHA1(4441b37691434b13eae5dee2d04dc12a56b04d2a) )
+	ROM_LOAD("sg-voi-3.11e",0x180000,0x80000,CRC(a198141c) SHA1(b4ca352e6aedd9d7a7e5e39e840f1d3a7145900e) )
 ROM_END
 
 ROM_START( winrun91 )
@@ -2195,8 +2195,8 @@ ROM_START( winrun91 )
 	ROM_LOAD16_BYTE( "gd1l.3s",  0x80001, 0x40000, CRC(64df59a2) SHA1(1e9d0945b94780bb0be16803e767466d2cda07e8) )
 
 	ROM_REGION( 0x200000, "c140", 0 ) /* sound samples */
-	ROM_LOAD("avo1.11c",0x000000,0x80000,CRC(9fb33af3) SHA1(666630a8e5766ca4c3275961963c3e713dfdda2d) )
-	ROM_LOAD("avo3.11e",0x080000,0x80000,CRC(76e22f92) SHA1(0e1b8d35a5b9c20cc3192d935f0c9da1e69679d2) )
+	ROM_LOAD("avo1.11c",0x080000,0x80000,CRC(9fb33af3) SHA1(666630a8e5766ca4c3275961963c3e713dfdda2d) )
+	ROM_LOAD("avo3.11e",0x180000,0x80000,CRC(76e22f92) SHA1(0e1b8d35a5b9c20cc3192d935f0c9da1e69679d2) )
 ROM_END
 
 static void namcos21_init( running_machine *machine, int game_type )
@@ -2595,8 +2595,8 @@ GAME( 1993, cybsled,  0,       poly_c140_typeA,   cybsled,      cybsled,  ROT0, 
 GAME( 1993, cybsledj, cybsled, poly_c140_typeA,   cybsled,      cybsled,  ROT0,    "Namco", "Cyber Sled (Japan)",            GAME_IMPERFECT_GRAPHICS )
 /* 1992, ShimDrive */
 GAME( 1991, solvalou, 0,       poly_c140_typeA,   s21default,   solvalou, ROT0,    "Namco", "Solvalou (Japan)",              GAME_IMPERFECT_GRAPHICS )
-GAME( 1991, starblad, 0,       poly_c140_typeA,   s21default,   starblad, ROT0,    "Namco", "Starblade",                     GAME_IMPERFECT_GRAPHICS )
-GAME( 1991, winrun91, 0,       winrun_c140_typeB, winrun,       winrun,   ROT0,    "Namco", "Winning Run 91",                GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
-GAME( 1989, winrun,   0,       winrun_c140_typeB, winrun,       winrun,   ROT0,    "Namco", "Winning Run Suzuka Grand Prix", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
+GAME( 1991, starblad, 0,       poly_c140_typeA,   s21default,   starblad, ROT0,    "Namco", "Starblade (Japan)",                     GAME_IMPERFECT_GRAPHICS )
+GAME( 1991, winrun91, 0,       winrun_c140_typeB, winrun,       winrun,   ROT0,    "Namco", "Winning Run 91 (Japan)",                GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
+GAME( 1989, winrun,   0,       winrun_c140_typeB, winrun,       winrun,   ROT0,    "Namco", "Winning Run Suzuka Grand Prix (Japan)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
 /* 1988, Winning Run */
-GAME( 1991, driveyes, 0,       driveyes,          winrun,       driveyes, ROT0,    "Namco", "Driver's Eyes",                 GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
+GAME( 1991, driveyes, 0,       driveyes,          winrun,       driveyes, ROT0,    "Namco", "Driver's Eyes (US)",                 GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )

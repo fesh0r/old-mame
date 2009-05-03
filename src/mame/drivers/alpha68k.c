@@ -289,10 +289,10 @@ static READ16_HANDLER( control_1_r )
 static READ16_HANDLER( control_2_r )
 {
 	if (invert_controls)
-		return ~(input_port_read(space->machine, "IN3") + ((~(1 << (input_port_read(space->machine, "IN5") * 12 / 256))) << 8));
+		return ~(input_port_read(space->machine, "IN3") + ((~(1 << input_port_read(space->machine, "IN5"))) << 8));
 
 	return input_port_read(space->machine, "IN3") + /* Low byte of CN1 */
-		((~(1 << (input_port_read(space->machine, "IN5") * 12 / 256))) << 8);
+		((~(1 << input_port_read(space->machine, "IN5"))) << 8);
 }
 
 static READ16_HANDLER( control_2_V_r )
@@ -303,20 +303,20 @@ static READ16_HANDLER( control_2_V_r )
 static READ16_HANDLER( control_3_r )
 {
 	if (invert_controls)
-		return ~((( ~(1 << (input_port_read(space->machine, "IN6") * 12 / 256)) )<<8) & 0xff00);
+		return ~((( ~(1 << input_port_read(space->machine, "IN6")) )<<8) & 0xff00);
 
-	return (( ~(1 << (input_port_read(space->machine, "IN6") * 12 / 256)) )<<8) & 0xff00;
+	return (( ~(1 << input_port_read(space->machine, "IN6")) )<<8) & 0xff00;
 }
 
 /* High 4 bits of CN1 & CN2 */
 static READ16_HANDLER( control_4_r )
 {
 	if (invert_controls)
-		return ~(((( ~(1 << (input_port_read(space->machine, "IN6") * 12 / 256))  ) <<4) & 0xf000)
-		 + ((( ~(1 << (input_port_read(space->machine, "IN5") * 12 / 256))  )    ) & 0x0f00));
+		return ~(((( ~(1 << input_port_read(space->machine, "IN6"))  ) <<4) & 0xf000)
+		 + ((( ~(1 << input_port_read(space->machine, "IN5"))  )    ) & 0x0f00));
 
-	return ((( ~(1 << (input_port_read(space->machine, "IN6") * 12 / 256))  ) <<4) & 0xf000)
-		 + ((( ~(1 << (input_port_read(space->machine, "IN5") * 12 / 256))  )    ) & 0x0f00);
+	return ((( ~(1 << input_port_read(space->machine, "IN6"))  ) <<4) & 0xf000)
+		 + ((( ~(1 << input_port_read(space->machine, "IN5"))  )    ) & 0x0f00);
 }
 
 static READ16_HANDLER( jongbou_inputs_r )
@@ -717,7 +717,7 @@ static ADDRESS_MAP_START( alpha68k_I_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM							// main program
 	AM_RANGE(0x080000, 0x083fff) AM_RAM							// work RAM
 	AM_RANGE(0x100000, 0x103fff) AM_RAM AM_BASE(&spriteram16)	// video RAM
-	AM_RANGE(0x180000, 0x180001) AM_READ_PORT("IN3") AM_WRITE(SMH_NOP) // LSB: DSW0, MSB: watchdog(?)
+	AM_RANGE(0x180000, 0x180001) AM_READ_PORT("IN3") AM_WRITENOP // LSB: DSW0, MSB: watchdog(?)
 	AM_RANGE(0x180008, 0x180009) AM_READ_PORT("IN4")			// LSB: DSW1
 	AM_RANGE(0x300000, 0x300001) AM_READ_PORT("IN0")			// joy1, joy2
 	AM_RANGE(0x340000, 0x340001) AM_READ_PORT("IN1")			// coin, start, service
@@ -733,9 +733,9 @@ static ADDRESS_MAP_START( alpha68k_II_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x0c0000, 0x0c00ff) AM_WRITE(alpha68k_II_video_bank_w)
 	AM_RANGE(0x0c8000, 0x0c8001) AM_READ(control_3_r) /* Bottom of CN2 */
 	AM_RANGE(0x0d0000, 0x0d0001) AM_READ(control_4_r) /* Top of CN1 & CN2 */
-	AM_RANGE(0x0d8000, 0x0d8001) AM_READ(SMH_NOP) /* IRQ ack? */
-	AM_RANGE(0x0e0000, 0x0e0001) AM_READ(SMH_NOP) /* IRQ ack? */
-	AM_RANGE(0x0e8000, 0x0e8001) AM_READ(SMH_NOP) /* watchdog? */
+	AM_RANGE(0x0d8000, 0x0d8001) AM_READNOP /* IRQ ack? */
+	AM_RANGE(0x0e0000, 0x0e0001) AM_READNOP /* IRQ ack? */
+	AM_RANGE(0x0e8000, 0x0e8001) AM_READNOP /* watchdog? */
 	AM_RANGE(0x100000, 0x100fff) AM_RAM_WRITE(alpha68k_videoram_w) AM_BASE(&videoram16)
 	AM_RANGE(0x200000, 0x207fff) AM_RAM AM_BASE(&spriteram16)
 	AM_RANGE(0x300000, 0x3001ff) AM_READWRITE(alpha_II_trigger_r, alpha_microcontroller_w)
@@ -804,13 +804,13 @@ static ADDRESS_MAP_START( kyros_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe000, 0xe000) AM_READ(soundlatch_r)
 	AM_RANGE(0xe002, 0xe002) AM_WRITE(soundlatch_clear_w)
 	AM_RANGE(0xe004, 0xe004) AM_DEVWRITE("dac", dac_signed_w)
-	AM_RANGE(0xe006, 0xe00e) AM_WRITE(SMH_NOP) // soundboard I/O's, ignored
+	AM_RANGE(0xe006, 0xe00e) AM_WRITENOP // soundboard I/O's, ignored
 /* reference only
-    AM_RANGE(0xe006, 0xe006) AM_WRITE(SMH_NOP) // NMI: diminishing saw-tooth
-    AM_RANGE(0xe008, 0xe008) AM_WRITE(SMH_NOP) // NMI: 00
-    AM_RANGE(0xe00a, 0xe00a) AM_WRITE(SMH_NOP) // RST38: 20
-    AM_RANGE(0xe00c, 0xe00c) AM_WRITE(SMH_NOP) // RST30: 00 on entry
-    AM_RANGE(0xe00e, 0xe00e) AM_WRITE(SMH_NOP) // RST30: 00,02,ff on exit(0x1d88)
+    AM_RANGE(0xe006, 0xe006) AM_WRITENOP // NMI: diminishing saw-tooth
+    AM_RANGE(0xe008, 0xe008) AM_WRITENOP // NMI: 00
+    AM_RANGE(0xe00a, 0xe00a) AM_WRITENOP // RST38: 20
+    AM_RANGE(0xe00c, 0xe00c) AM_WRITENOP // RST30: 00 on entry
+    AM_RANGE(0xe00e, 0xe00e) AM_WRITENOP // RST30: 00,02,ff on exit(0x1d88)
 */
 ADDRESS_MAP_END
 
@@ -865,7 +865,7 @@ static ADDRESS_MAP_START( jongbou_sound_portmap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_DEVWRITE("ay", ay8910_address_w)
 	AM_RANGE(0x01, 0x01) AM_DEVREADWRITE("ay", ay8910_r, ay8910_data_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(soundlatch_clear_w)
-	AM_RANGE(0x06, 0x06) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x06, 0x06) AM_WRITENOP
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tnexspce_sound_portmap, ADDRESS_SPACE_IO, 8 )
@@ -1175,10 +1175,10 @@ static INPUT_PORTS_START( timesold )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("IN5")  /* player 1 12-way rotary control - converted in controls_r() */
-	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(8) PORT_CODE_DEC(KEYCODE_Z) PORT_CODE_INC(KEYCODE_X) PORT_REVERSE
+	PORT_BIT( 0x0f, 0x00, IPT_POSITIONAL ) PORT_POSITIONS(12) PORT_WRAPS PORT_SENSITIVITY(15) PORT_KEYDELTA(1) PORT_CODE_DEC(KEYCODE_Z) PORT_CODE_INC(KEYCODE_X) PORT_REVERSE PORT_FULL_TURN_COUNT(12)
 
 	PORT_START("IN6")  /* player 2 12-way rotary control - converted in controls_r() */
-	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(8) PORT_CODE_DEC(KEYCODE_N) PORT_CODE_INC(KEYCODE_M) PORT_REVERSE PORT_PLAYER(2)
+	PORT_BIT( 0x0f, 0x00, IPT_POSITIONAL ) PORT_POSITIONS(12) PORT_WRAPS PORT_SENSITIVITY(15) PORT_KEYDELTA(1) PORT_CODE_DEC(KEYCODE_N) PORT_CODE_INC(KEYCODE_M) PORT_PLAYER(2) PORT_REVERSE PORT_FULL_TURN_COUNT(12)
 INPUT_PORTS_END
 
 /* Same as 'timesold' but different default settings for the "Language" Dip Switch */

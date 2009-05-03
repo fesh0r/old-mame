@@ -193,6 +193,16 @@ struct _psxcpu_state
 	UINT32 bad_word_address_mask;
 };
 
+INLINE psxcpu_state *get_safe_token(const device_config *device)
+{
+	assert(device != NULL);
+	assert(device->token != NULL);
+	assert(device->type == CPU);
+	assert(cpu_get_type(device) == CPU_PSXCPU ||
+		   cpu_get_type(device) == CPU_CXD8661R);
+	return (psxcpu_state *)device->token;
+}
+
 static const UINT32 mips_mtc0_writemask[]=
 {
 	0x00000000, /* !INDEX */
@@ -1278,7 +1288,7 @@ static void mips_update_address_masks( psxcpu_state *psxcpu )
 
 static READ32_HANDLER( psx_berr_r )
 {
-	psxcpu_state *psxcpu = space->cpu->token;
+	psxcpu_state *psxcpu = get_safe_token(space->cpu);
 
 	psxcpu->berr = 1;
 
@@ -1287,14 +1297,14 @@ static READ32_HANDLER( psx_berr_r )
 
 static WRITE32_HANDLER( psx_berr_w )
 {
-	psxcpu_state *psxcpu = space->cpu->token;
+	psxcpu_state *psxcpu = get_safe_token(space->cpu);
 
 	psxcpu->berr = 1;
 }
 
 static void mips_update_scratchpad( const address_space *space )
 {
-	psxcpu_state *psxcpu = space->cpu->token;
+	psxcpu_state *psxcpu = get_safe_token(space->cpu);
 
 	if( ( psxcpu->biu & BIU_RAM ) == 0 )
 	{
@@ -1302,11 +1312,11 @@ static void mips_update_scratchpad( const address_space *space )
 	}
 	else if( ( psxcpu->biu & BIU_DS ) == 0 )
 	{
-		memory_install_readwrite32_handler( space, 0x1f800000, 0x1f8003ff, 0, 0, psx_berr_r, SMH_NOP );
+		memory_install_readwrite32_handler( space, 0x1f800000, 0x1f8003ff, 0, 0, psx_berr_r, (write32_space_func)SMH_NOP );
 	}
 	else
 	{
-		memory_install_readwrite32_handler( space, 0x1f800000, 0x1f8003ff, 0, 0, SMH_BANK32, SMH_BANK32 );
+		memory_install_readwrite32_handler( space, 0x1f800000, 0x1f8003ff, 0, 0, (read32_space_func)SMH_BANK32, (write32_space_func)SMH_BANK32 );
 
 		memory_set_bankptr(space->machine,  32, psxcpu->dcache );
 	}
@@ -1590,7 +1600,7 @@ INLINE int mips_store_data_address_breakpoint( psxcpu_state *psxcpu, UINT32 addr
 
 static STATE_POSTLOAD( mips_postload )
 {
-	psxcpu_state *psxcpu = param;
+	psxcpu_state *psxcpu = (psxcpu_state *)param;
 
 	mips_update_memory_handlers( psxcpu );
 	mips_update_address_masks( psxcpu );
@@ -1599,7 +1609,7 @@ static STATE_POSTLOAD( mips_postload )
 
 static void mips_state_register( const char *type, const device_config *device )
 {
-	psxcpu_state *psxcpu = device->token;
+	psxcpu_state *psxcpu = get_safe_token(device);
 
 	state_save_register_device_item( device, 0, psxcpu->op );
 	state_save_register_device_item( device, 0, psxcpu->pc );
@@ -1623,7 +1633,7 @@ static void mips_state_register( const char *type, const device_config *device )
 
 static CPU_INIT( psxcpu )
 {
-	psxcpu_state *psxcpu = device->token;
+	psxcpu_state *psxcpu = get_safe_token(device);
 //  psxcpu->intf = (psxcpu_interface *) device->static_config;
 
 	psxcpu->irq_callback = irqcallback;
@@ -1635,7 +1645,7 @@ static CPU_INIT( psxcpu )
 
 static CPU_RESET( psxcpu )
 {
-	psxcpu_state *psxcpu = device->token;
+	psxcpu_state *psxcpu = get_safe_token(device);
 
 	psxcpu->delayr = 0;
 	psxcpu->delayv = 0;
@@ -1838,7 +1848,7 @@ static void mips_bc( psxcpu_state *psxcpu, int cop, int sr_cu, int condition )
 
 static CPU_EXECUTE( psxcpu )
 {
-	psxcpu_state *psxcpu = device->token;
+	psxcpu_state *psxcpu = get_safe_token(device);
 
 	psxcpu->icount = cycles;
 
@@ -2896,14 +2906,14 @@ static void set_irq_line( psxcpu_state *psxcpu, int irqline, int state )
 
 static READ32_HANDLER( psx_biu_r )
 {
-	psxcpu_state *psxcpu = space->cpu->token;
+	psxcpu_state *psxcpu = get_safe_token(space->cpu);
 
 	return psxcpu->biu;
 }
 
 static WRITE32_HANDLER( psx_biu_w )
 {
-	psxcpu_state *psxcpu = space->cpu->token;
+	psxcpu_state *psxcpu = get_safe_token(space->cpu);
 	UINT32 old = psxcpu->biu;
 
 	COMBINE_DATA( &psxcpu->biu );
@@ -2941,7 +2951,7 @@ ADDRESS_MAP_END
 
 static CPU_DISASSEMBLE( psxcpu )
 {
-	psxcpu_state *psxcpu = device->token;
+	psxcpu_state *psxcpu = get_safe_token(device);
 	DasmPSXCPU_state state;
 
 	state.pc = psxcpu->pc;
@@ -5960,7 +5970,7 @@ static void docop2( psxcpu_state *psxcpu, int gteop )
 
 static CPU_SET_INFO( psxcpu )
 {
-	psxcpu_state *psxcpu = device->token;
+	psxcpu_state *psxcpu = get_safe_token(device);
 	switch (state)
 	{
 		/* --- the following bits of info are set as 64-bit signed integers --- */
@@ -6102,7 +6112,7 @@ static CPU_SET_INFO( psxcpu )
 
 CPU_GET_INFO( psxcpu )
 {
-	psxcpu_state *psxcpu = (device != NULL) ? device->token : NULL;
+	psxcpu_state *psxcpu = (device != NULL && device->token != NULL) ? get_safe_token(device) : NULL;
 	switch (state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
@@ -6406,7 +6416,6 @@ CPU_GET_INFO( psxcpu )
 }
 
 
-#if (HAS_CXD8661R)
 
 CPU_GET_INFO( cxd8661r )
 {
@@ -6423,4 +6432,3 @@ CPU_GET_INFO( cxd8661r )
 	}
 }
 
-#endif

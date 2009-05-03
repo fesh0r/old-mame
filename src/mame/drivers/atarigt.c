@@ -278,6 +278,14 @@ static void tmek_update_mode(offs_t offset)
 
 static void tmek_protection_w(const address_space *space, offs_t offset, UINT16 data)
 {
+/*
+    T-Mek init:
+        ($387C0) = $0001
+        Read ($38010), add to memory
+        Write $3C0 bytes to low half of words from $38000-$3877E
+        Read ($38488)
+*/
+
 	if (LOG_PROTECTION) logerror("%06X:Protection W@%06X = %04X\n", cpu_get_previouspc(space->cpu), offset, data);
 
 	/* track accesses */
@@ -607,7 +615,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xe08000, 0xe08003) AM_WRITE(latch_w)
 	AM_RANGE(0xe0a000, 0xe0a003) AM_WRITE(atarigen_scanline_int_ack32_w)
 	AM_RANGE(0xe0c000, 0xe0c003) AM_WRITE(atarigen_video_int_ack32_w)
-	AM_RANGE(0xe0e000, 0xe0e003) AM_WRITE(SMH_NOP)//watchdog_reset_w },
+	AM_RANGE(0xe0e000, 0xe0e003) AM_WRITENOP//watchdog_reset_w },
 	AM_RANGE(0xe80000, 0xe80003) AM_READ_PORT("P1_P2")
 	AM_RANGE(0xe82000, 0xe82003) AM_READ(special_port2_r)
 	AM_RANGE(0xe82004, 0xe82007) AM_READ(special_port3_r)
@@ -987,7 +995,7 @@ ROM_START( tmek44 )
 	ROM_LOAD32_BYTE( "0041b", 0x00003, 0x20000, CRC(b71ec759) SHA1(d4bed4bbab2c3bd278da4cd0f53580d7f66d8152) )
 
 	ROM_REGION32_LE( 0x200000, "cageboot", 0 )	/* TMS320C31 boot ROM */
-	ROM_LOAD32_BYTE( "0078a", 0x000000, 0x080000, NO_DUMP CRC(a952771c) SHA1(49982ea864a99c07f45886ada7e2c9427a75f775) )
+	ROM_LOAD32_BYTE( "0078a", 0x000000, 0x080000, CRC(314d736f) SHA1(b23946fde6ea47d6a6e3430a9df4b06d453a94c8) )
 
 	ROM_REGION32_LE( 0x1000000, "cage", 0 )	/* TMS320C31 sound ROMs */
 	ROM_LOAD32_WORD( "0077",  0x400000, 0x200000, CRC(8f650f8b) SHA1(e3b48ff4e2093d709134b6bf62cecd101ab5cef4) )
@@ -1042,7 +1050,7 @@ ROM_START( tmek20 )
 	ROM_LOAD32_BYTE( "pgm3", 0x00003, 0x20000, CRC(28b0e210) SHA1(7567671beecc7d30e9d4b61cf7d3448bb1dbb072) )
 
 	ROM_REGION32_LE( 0x200000, "cageboot", 0 )	/* TMS320C31 boot ROM */
-	ROM_LOAD32_BYTE( "0078a", 0x000000, 0x080000, NO_DUMP CRC(a952771c) SHA1(49982ea864a99c07f45886ada7e2c9427a75f775) )
+	ROM_LOAD32_BYTE( "0078", 0x000000, 0x080000, NO_DUMP CRC(314d736f) SHA1(b23946fde6ea47d6a6e3430a9df4b06d453a94c8) )
 
 	ROM_REGION32_LE( 0x1000000, "cage", 0 )	/* TMS320C31 sound ROMs */
 	ROM_LOAD32_WORD( "0077",  0x400000, 0x200000, CRC(8f650f8b) SHA1(e3b48ff4e2093d709134b6bf62cecd101ab5cef4) )

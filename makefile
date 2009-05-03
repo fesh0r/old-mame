@@ -402,11 +402,6 @@ ifdef MAP
 LDFLAGSEMULATOR += -Wl,-Map,$(FULLNAME).map
 endif
 
-# any reason why this doesn't work for all cases?
-ifeq ($(TARGETOS),macosx)
-LDFLAGSEMULATOR += -Xlinker -all_load
-endif
-
 
 
 #-------------------------------------------------
@@ -497,7 +492,7 @@ include $(SRC)/build/build.mak
 include $(SRC)/tools/tools.mak
 
 # combine the various definitions to one
-CDEFS = $(DEFS) $(COREDEFS) $(CPUDEFS) $(SOUNDDEFS)
+CDEFS = $(DEFS) $(COREDEFS) $(SOUNDDEFS)
 
 
 

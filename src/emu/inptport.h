@@ -59,6 +59,7 @@ enum _input_seq_type
 	SEQ_TYPE_TOTAL
 };
 typedef enum _input_seq_type input_seq_type;
+DECLARE_ENUM_OPERATORS(input_seq_type)
 
 
 /* conditions for DIP switches */
@@ -286,7 +287,6 @@ enum
 	IPT_UI_PASTE,
 	IPT_UI_SAVE_STATE,
 	IPT_UI_LOAD_STATE,
-	IPT_UI_TOGGLE_CROSSHAIR,
 
 	/* additional OSD-specified UI port types (up to 16) */
 	IPT_OSD_1,

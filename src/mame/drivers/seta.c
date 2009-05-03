@@ -1659,8 +1659,8 @@ ADDRESS_MAP_END
 
 static READ16_HANDLER ( calibr50_ip_r )
 {
-	int dir1 = input_port_read(space->machine, "ROT1") & 0xfff;	// analog port
-	int dir2 = input_port_read(space->machine, "ROT2") & 0xfff;	// analog port
+	int dir1 = input_port_read(space->machine, "ROT1");	// analog port
+	int dir2 = input_port_read(space->machine, "ROT2");	// analog port
 
 	switch (offset)
 	{
@@ -1669,10 +1669,10 @@ static READ16_HANDLER ( calibr50_ip_r )
 
 		case 0x08/2:	return input_port_read(space->machine, "COINS");	// Coins
 
-		case 0x10/2:	return (dir1&0xff);			// lower 8 bits of p1 rotation
-		case 0x12/2:	return (dir1>>8);			// upper 4 bits of p1 rotation
-		case 0x14/2:	return (dir2&0xff);			// lower 8 bits of p2 rotation
-		case 0x16/2:	return (dir2>>8);			// upper 4 bits of p2 rotation
+		case 0x10/2:	return (dir1 & 0xff);		// lower 8 bits of p1 rotation
+		case 0x12/2:	return (dir1 >> 8);			// upper 4 bits of p1 rotation
+		case 0x14/2:	return (dir2 & 0xff);		// lower 8 bits of p2 rotation
+		case 0x16/2:	return (dir2 >> 8);			// upper 4 bits of p2 rotation
 		case 0x18/2:	return 0xffff;				// ? (value's read but not used)
 		default:
 			logerror("PC %06X - Read input %02X !\n", cpu_get_pc(space->cpu), offset*2);
@@ -2914,7 +2914,7 @@ static ADDRESS_MAP_START( tndrcade_sub_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x01ff) AM_WRITE(SMH_RAM					)	// RAM
 	AM_RANGE(0x1000, 0x1000) AM_WRITE(sub_bankswitch_lockout_w	)	// ROM Bank + Coin Lockout
 	AM_RANGE(0x2000, 0x2001) AM_DEVWRITE("ym1", ym2203_w	)
-	AM_RANGE(0x3000, 0x3000) AM_DEVWRITE("ym2", ym3812_w	)
+	AM_RANGE(0x3000, 0x3001) AM_DEVWRITE("ym2", ym3812_w	)
 	AM_RANGE(0x5000, 0x57ff) AM_WRITE(SMH_RAM) AM_BASE(&sharedram		)	// Shared RAM
 	AM_RANGE(0x6000, 0xffff) AM_WRITE(SMH_ROM					)	// ROM
 ADDRESS_MAP_END
@@ -2954,8 +2954,8 @@ static READ8_HANDLER( downtown_ip_r )
 	int dir1 = input_port_read(space->machine, "ROT1");	// analog port
 	int dir2 = input_port_read(space->machine, "ROT2");	// analog port
 
-	dir1 = (~ (0x800 >> ((dir1 * 12)/0x100)) ) & 0xfff;
-	dir2 = (~ (0x800 >> ((dir2 * 12)/0x100)) ) & 0xfff;
+	dir1 = (~ (0x800 >> dir1)) & 0xfff;
+	dir2 = (~ (0x800 >> dir2)) & 0xfff;
 
 	switch (offset)
 	{
@@ -3067,7 +3067,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( utoukond_sound_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE("ym", ym3438_r, ym3438_w)
-	AM_RANGE(0x80, 0x80) AM_WRITE(SMH_NOP) //?
+	AM_RANGE(0x80, 0x80) AM_WRITENOP //?
 	AM_RANGE(0xc0, 0xc0) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
@@ -3192,10 +3192,10 @@ static ADDRESS_MAP_START( inttoote_map, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE(0x300000, 0x300001) AM_WRITE(watchdog_reset16_w)	// Watchdog
 
-	AM_RANGE(0x300010, 0x300011) AM_WRITE(SMH_NOP)	// lev1 ack
-	AM_RANGE(0x300020, 0x300021) AM_WRITE(SMH_NOP)	// lev2 ack
-	AM_RANGE(0x300040, 0x300041) AM_WRITE(SMH_NOP)	// lev4 ack
-	AM_RANGE(0x300060, 0x300061) AM_WRITE(SMH_NOP)	// lev6 ack
+	AM_RANGE(0x300010, 0x300011) AM_WRITENOP	// lev1 ack
+	AM_RANGE(0x300020, 0x300021) AM_WRITENOP	// lev2 ack
+	AM_RANGE(0x300040, 0x300041) AM_WRITENOP	// lev4 ack
+	AM_RANGE(0x300060, 0x300061) AM_WRITENOP	// lev6 ack
 
 	AM_RANGE(0x500000, 0x500003) AM_READ(inttoote_dsw_r)	// DSW x 3
 
@@ -3644,10 +3644,10 @@ static INPUT_PORTS_START( calibr50 )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
 	PORT_START("ROT1")	// Rotation Player 1
-	JOY_ROTATION(1, Z, X)
+	PORT_BIT( 0xfff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(15) PORT_KEYDELTA(15) PORT_CODE_DEC(KEYCODE_Z) PORT_CODE_INC(KEYCODE_X)
 
 	PORT_START("ROT2")	// Rotation Player 2
-	JOY_ROTATION(2, N, M)
+	PORT_BIT( 0xfff, 0x00, IPT_DIAL ) PORT_PLAYER(2) PORT_SENSITIVITY(15) PORT_KEYDELTA(15) PORT_CODE_DEC(KEYCODE_N) PORT_CODE_INC(KEYCODE_M)
 INPUT_PORTS_END
 
 /***************************************************************************
@@ -3887,10 +3887,10 @@ static INPUT_PORTS_START( downtown )
 	PORT_DIPSETTING(      0x0000, "2" )
 
 	PORT_START("ROT1")	//Rotation Player 1
-	JOY_ROTATION(1, Z, X)
+	PORT_BIT( 0xff, 0x00, IPT_POSITIONAL ) PORT_POSITIONS(12) PORT_WRAPS PORT_SENSITIVITY(15) PORT_KEYDELTA(1) PORT_CODE_DEC(KEYCODE_Z) PORT_CODE_INC(KEYCODE_X) PORT_FULL_TURN_COUNT(12)
 
 	PORT_START("ROT2")	//Rotation Player 2
-	JOY_ROTATION(2, N, M)
+	PORT_BIT( 0xff, 0x00, IPT_POSITIONAL ) PORT_POSITIONS(12) PORT_WRAPS PORT_SENSITIVITY(15) PORT_KEYDELTA(1) PORT_CODE_DEC(KEYCODE_N) PORT_CODE_INC(KEYCODE_M) PORT_PLAYER(2) PORT_FULL_TURN_COUNT(12)
 INPUT_PORTS_END
 
 

@@ -27,7 +27,7 @@ static const gfx_layout tiles8x8_layout =
 	8,8,
 	RGN_FRAC(1,1),
 	4,
-	{ 0, 8, 16, 24 },
+	{ 16, 24, 0, 8 },
 	{ 7, 6, 5, 4, 3, 2, 1, 0 },
 	{ 0*32, 1*32, 2*32, 3*32, 4*32, 5*32, 6*32, 7*32 },
 	32*8
@@ -121,8 +121,8 @@ static ADDRESS_MAP_START( mlanding_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x1d0000, 0x1d0001) AM_WRITENOP
 	AM_RANGE(0x1d0002, 0x1d0003) AM_NOP //sound reset ??
 
-	AM_RANGE(0x2d0000, 0x2d0001) AM_READ(SMH_NOP) AM_WRITE(taitosound_port16_lsb_w)
-	AM_RANGE(0x2d0002, 0x2d0003) AM_READ(taitosound_comm16_msb_r) AM_WRITE(taitosound_comm16_lsb_w)
+	AM_RANGE(0x2d0000, 0x2d0001) AM_READNOP AM_WRITE8(taitosound_port_w, 0x00ff)
+	AM_RANGE(0x2d0002, 0x2d0003) AM_READ8(taitosound_comm_r, 0xff00) AM_WRITE8(taitosound_comm_w, 0x00ff)
 
 	AM_RANGE(0x200000, 0x20ffff) AM_RAM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)//AM_SHARE(2)
 	AM_RANGE(0x280000, 0x2807ff) AM_RAM // is it shared with mecha ? tested around $940

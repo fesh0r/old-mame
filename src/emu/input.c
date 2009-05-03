@@ -422,6 +422,7 @@ static INT32 convert_switch_value(input_code code, input_device_item *item);
 static INT32 apply_deadzone_and_saturation(input_code code, INT32 result);
 static int joystick_map_parse(const char *mapstring, joystick_map *map);
 static void joystick_map_print(const char *header, const char *origstring, const joystick_map *map);
+static void input_code_reset_axes(void);
 
 
 
@@ -677,7 +678,7 @@ static void input_frame(running_machine *machine)
 			int changed = FALSE;
 
 			/* update the state of all the keys and see if any changed state */
-			for (itemid = ITEM_ID_INVALID + 1; itemid <= device->maxitem; itemid++)
+			for (itemid = ITEM_ID_FIRST_VALID; itemid <= device->maxitem; itemid++)
 			{
 				input_device_item *item = device->item[itemid];
 				if (item != NULL && item->itemclass == ITEM_CLASS_SWITCH)
@@ -695,7 +696,7 @@ static void input_frame(running_machine *machine)
 			}
 
 			/* if the keyboard state is stable, copy it over */
-			for (itemid = ITEM_ID_INVALID + 1; itemid <= device->maxitem; itemid++)
+			for (itemid = ITEM_ID_FIRST_VALID; itemid <= device->maxitem; itemid++)
 			{
 				input_device_item *item = device->item[itemid];
 				if (item != NULL && item->itemclass == ITEM_CLASS_SWITCH)
@@ -729,7 +730,7 @@ input_device *input_device_add(running_machine *machine, input_device_class devc
 	assert(devclass != DEVICE_CLASS_INVALID && devclass < DEVICE_CLASS_MAXIMUM);
 
 	/* allocate a new device */
-	devlist->list = auto_realloc(devlist->list, (devlist->count + 1) * sizeof(devlist->list[0]));
+	devlist->list = (input_device *)auto_realloc(devlist->list, (devlist->count + 1) * sizeof(devlist->list[0]));
 	device = &devlist->list[devlist->count++];
 	memset(device, 0, sizeof(*device));
 
@@ -769,7 +770,7 @@ void input_device_item_add(input_device *device, const char *name, void *interna
 
 	/* if we have a generic ID, pick a new internal one */
 	if (itemid >= ITEM_ID_OTHER_SWITCH && itemid <= ITEM_ID_OTHER_AXIS_RELATIVE)
-		for (itemid = ITEM_ID_MAXIMUM + 1; itemid <= ITEM_ID_ABSOLUTE_MAXIMUM; itemid++)
+		for (itemid = (input_item_id)(ITEM_ID_MAXIMUM + 1); itemid <= ITEM_ID_ABSOLUTE_MAXIMUM; itemid++)
 			if (device->item[itemid] == NULL)
 				break;
 	assert(itemid <= ITEM_ID_ABSOLUTE_MAXIMUM);
@@ -778,7 +779,7 @@ void input_device_item_add(input_device *device, const char *name, void *interna
 	assert(device->item[itemid] == NULL);
 
 	/* allocate a new item and copy data into it */
-	item = auto_malloc(sizeof(*item));
+	item = (input_device_item *)auto_malloc(sizeof(*item));
 	memset(item, 0, sizeof(*item));
 	device->item[itemid] = item;
 	device->maxitem = MAX(device->maxitem, itemid);
@@ -947,7 +948,7 @@ input_code input_code_from_input_item_id(input_item_id itemid)
 	input_device_class devclass;
 
 	/* iterate over device classes and devices */
-	for (devclass = DEVICE_CLASS_INVALID + 1; devclass < DEVICE_CLASS_MAXIMUM; devclass++)
+	for (devclass = DEVICE_CLASS_FIRST_VALID; devclass < DEVICE_CLASS_MAXIMUM; devclass++)
 	{
 		input_device_list *devlist = &device_list[devclass];
 		int devnum;
@@ -974,10 +975,13 @@ input_code input_code_poll_switches(int reset)
 
 	/* if resetting memory, do it now */
 	if (reset)
+	{
 		code_pressed_memory_reset();
+		input_code_reset_axes();
+	}
 
 	/* iterate over device classes and devices */
-	for (devclass = DEVICE_CLASS_INVALID + 1; devclass < DEVICE_CLASS_MAXIMUM; devclass++)
+	for (devclass = DEVICE_CLASS_FIRST_VALID; devclass < DEVICE_CLASS_MAXIMUM; devclass++)
 	{
 		input_device_list *devlist = &device_list[devclass];
 		int devnum;
@@ -989,57 +993,87 @@ input_code input_code_poll_switches(int reset)
 			input_item_id itemid;
 
 			/* iterate over items within each device */
-			for (itemid = ITEM_ID_INVALID + 1; itemid <= device->maxitem; itemid++)
+			for (itemid = ITEM_ID_FIRST_VALID; itemid <= device->maxitem; itemid++)
 			{
 				input_device_item *item = device->item[itemid];
 				if (item != NULL)
 				{
 					input_code code = device_item_to_code(device, itemid);
+					INT32 curval, diff;
 
 					/* if the item is natively a switch, poll it */
 					if (item->itemclass == ITEM_CLASS_SWITCH)
 					{
 						if (input_code_pressed_once(code))
 							return code;
+						else
+						    continue;
+					}
+
+					/* poll the current value */
+					curval = input_code_value(code);
+
+					/* if we've already reported this one, don't bother */
+					if (item->memory == INVALID_AXIS_VALUE)
+						continue;
+
+					/* compute the diff against memory */
+					diff = curval - item->memory;
+					if (diff < 0)
+						diff = -diff;
+
+					/* for absolute axes, look for 25% of maximum */
+					if (item->itemclass == ITEM_CLASS_ABSOLUTE)
+					{
+					    if (diff > (INPUT_ABSOLUTE_MAX - INPUT_ABSOLUTE_MIN) / 4)
+    						item->memory = INVALID_AXIS_VALUE;
+    					else
+    					    continue;
+					}
+
+					/* for relative axes, look for ~20 pixels movement */
+					else if (item->itemclass == ITEM_CLASS_RELATIVE)
+					{
+					    if (diff > 20 * INPUT_RELATIVE_PER_PIXEL)
+						    item->memory = INVALID_AXIS_VALUE;
+						else
+						    continue;
 					}
 
 					/* otherwise, poll axes digitally */
+					code = INPUT_CODE_SET_ITEMCLASS(code, ITEM_CLASS_SWITCH);
+
+					/* if this is a joystick X axis, check with left/right modifiers */
+					if (devclass == DEVICE_CLASS_JOYSTICK && INPUT_CODE_ITEMID(code) == ITEM_ID_XAXIS)
+					{
+						code = INPUT_CODE_SET_MODIFIER(code, ITEM_MODIFIER_LEFT);
+						if (input_code_pressed_once(code))
+							return code;
+						code = INPUT_CODE_SET_MODIFIER(code, ITEM_MODIFIER_RIGHT);
+						if (input_code_pressed_once(code))
+							return code;
+					}
+
+					/* if this is a joystick Y axis, check with up/down modifiers */
+					else if (devclass == DEVICE_CLASS_JOYSTICK && INPUT_CODE_ITEMID(code) == ITEM_ID_YAXIS)
+					{
+						code = INPUT_CODE_SET_MODIFIER(code, ITEM_MODIFIER_UP);
+						if (input_code_pressed_once(code))
+							return code;
+						code = INPUT_CODE_SET_MODIFIER(code, ITEM_MODIFIER_DOWN);
+						if (input_code_pressed_once(code))
+							return code;
+					}
+
+					/* any other axis, check with pos/neg modifiers */
 					else
 					{
-						code = INPUT_CODE_SET_ITEMCLASS(code, ITEM_CLASS_SWITCH);
-
-						/* if this is a joystick X axis, check with left/right modifiers */
-						if (devclass == DEVICE_CLASS_JOYSTICK && INPUT_CODE_ITEMID(code) == ITEM_ID_XAXIS)
-						{
-							code = INPUT_CODE_SET_MODIFIER(code, ITEM_MODIFIER_LEFT);
-							if (input_code_pressed_once(code))
-								return code;
-							code = INPUT_CODE_SET_MODIFIER(code, ITEM_MODIFIER_RIGHT);
-							if (input_code_pressed_once(code))
-								return code;
-						}
-
-						/* if this is a joystick Y axis, check with up/down modifiers */
-						else if (devclass == DEVICE_CLASS_JOYSTICK && INPUT_CODE_ITEMID(code) == ITEM_ID_YAXIS)
-						{
-							code = INPUT_CODE_SET_MODIFIER(code, ITEM_MODIFIER_UP);
-							if (input_code_pressed_once(code))
-								return code;
-							code = INPUT_CODE_SET_MODIFIER(code, ITEM_MODIFIER_DOWN);
-							if (input_code_pressed_once(code))
-								return code;
-						}
-
-						/* any other axis, check with pos/neg modifiers */
-						else
-						{
-							code = INPUT_CODE_SET_MODIFIER(code, ITEM_MODIFIER_POS);
-							if (input_code_pressed_once(code))
-								return code;
-							code = INPUT_CODE_SET_MODIFIER(code, ITEM_MODIFIER_NEG);
-							if (input_code_pressed_once(code))
-								return code;
-						}
+						code = INPUT_CODE_SET_MODIFIER(code, ITEM_MODIFIER_POS);
+						if (input_code_pressed_once(code))
+							return code;
+						code = INPUT_CODE_SET_MODIFIER(code, ITEM_MODIFIER_NEG);
+						if (input_code_pressed_once(code))
+							return code;
 					}
 				}
 			}
@@ -1072,7 +1106,7 @@ input_code input_code_poll_keyboard_switches(int reset)
 		input_item_id itemid;
 
 		/* iterate over items within each device */
-		for (itemid = ITEM_ID_INVALID + 1; itemid <= device->maxitem; itemid++)
+		for (itemid = ITEM_ID_FIRST_VALID; itemid <= device->maxitem; itemid++)
 		{
 			input_device_item *item = device->item[itemid];
 			if (item != NULL && item->itemclass == ITEM_CLASS_SWITCH)
@@ -1090,15 +1124,15 @@ input_code input_code_poll_keyboard_switches(int reset)
 
 
 /*-------------------------------------------------
-    input_code_poll_axes - poll for any input
+    input_code_reset_axes - reset axes memory
 -------------------------------------------------*/
 
-input_code input_code_poll_axes(int reset)
+static void input_code_reset_axes(void)
 {
 	input_device_class devclass;
 
 	/* iterate over device classes and devices */
-	for (devclass = DEVICE_CLASS_INVALID + 1; devclass < DEVICE_CLASS_MAXIMUM; devclass++)
+	for (devclass = DEVICE_CLASS_FIRST_VALID; devclass < DEVICE_CLASS_MAXIMUM; devclass++)
 	{
 		input_device_list *devlist = &device_list[devclass];
 		int devnum;
@@ -1110,7 +1144,52 @@ input_code input_code_poll_axes(int reset)
 			input_item_id itemid;
 
 			/* iterate over items within each device */
-			for (itemid = ITEM_ID_INVALID + 1; itemid <= device->maxitem; itemid++)
+			for (itemid = ITEM_ID_FIRST_VALID; itemid <= device->maxitem; itemid++)
+			{
+				input_device_item *item = device->item[itemid];
+				if (item != NULL)
+				{
+					input_code code = device_item_to_code(device, itemid);
+
+					/* skip any switches */
+					if (item->itemclass == ITEM_CLASS_SWITCH)
+						continue;
+
+					/* poll the current value and reset the memory */
+					item->memory = input_code_value(code);
+				}
+			}
+		}
+	}
+}
+
+
+/*-------------------------------------------------
+    input_code_poll_axes - poll for any input
+-------------------------------------------------*/
+
+input_code input_code_poll_axes(int reset)
+{
+	input_device_class devclass;
+
+	/* if resetting memory, do it now */
+	if (reset)
+		input_code_reset_axes();
+
+	/* iterate over device classes and devices */
+	for (devclass = DEVICE_CLASS_FIRST_VALID; devclass < DEVICE_CLASS_MAXIMUM; devclass++)
+	{
+		input_device_list *devlist = &device_list[devclass];
+		int devnum;
+
+		/* iterate over devices within each class */
+		for (devnum = 0; devnum < devlist->count; devnum++)
+		{
+			input_device *device = &devlist->list[devnum];
+			input_item_id itemid;
+
+			/* iterate over items within each device */
+			for (itemid = ITEM_ID_FIRST_VALID; itemid <= device->maxitem; itemid++)
 			{
 				input_device_item *item = device->item[itemid];
 				if (item != NULL)
@@ -1122,10 +1201,8 @@ input_code input_code_poll_axes(int reset)
 					if (item->itemclass == ITEM_CLASS_SWITCH)
 						continue;
 
-					/* poll the current value and reset the memory */
+					/* poll the current value */
 					curval = input_code_value(code);
-					if (reset)
-						item->memory = curval;
 
 					/* if we've already reported this one, don't bother */
 					if (item->memory == INVALID_AXIS_VALUE)
@@ -1292,7 +1369,7 @@ input_code input_code_from_token(const char *_token)
 	for (numtokens = 0; numtokens < ARRAY_LENGTH(token); )
 	{
 		/* make a token up to the next underscore */
-		char *score = strchr(_token, '_');
+		char *score = (char *)strchr(_token, '_');
 		token[numtokens++] = astring_dupch(_token, (score == NULL) ? strlen(_token) : (score - _token));
 
 		/* if we hit the end, we're done, else advance our pointer */
@@ -1323,7 +1400,7 @@ input_code input_code_from_token(const char *_token)
 
 	/* if we're a standard code, default the itemclass based on it */
 	if (standard)
-		itemclass = input_item_standard_class(devclass, itemid);
+		itemclass = input_item_standard_class((input_device_class)devclass, (input_item_id)itemid);
 
 	/* otherwise, keep parsing */
 	else
@@ -1336,7 +1413,7 @@ input_code input_code_from_token(const char *_token)
 		device = &device_list[devclass].list[devindex];
 
 		/* if not a standard code, look it up in the device specific codes */
-		for (itemid = ITEM_ID_INVALID + 1; itemid <= device->maxitem; itemid++)
+		for (itemid = ITEM_ID_FIRST_VALID; itemid <= device->maxitem; itemid++)
 		{
 			input_device_item *item = device->item[itemid];
 			if (item != NULL && item->token != NULL && astring_cmp(token[curtok], item->token) == 0)

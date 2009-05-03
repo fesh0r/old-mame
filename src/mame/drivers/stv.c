@@ -45,7 +45,7 @@ Memory map:
 
 0x00000000, 0x0007ffff  BIOS ROM
 0x00080000, 0x000fffff  Unused
-0x00100000, 0x00100080  SMPC
+0x00100000, 0x0010007f  SMPC
 0x00100080, 0x0017ffff  Unused
 0x00180000, 0x0018ffff  Back Up Ram
 0x00190000, 0x001fffff  Unused
@@ -114,6 +114,7 @@ ToDo / Notes:
 -Video emulation bugs: check stvvdp2.c file.
 
 (per-game issues)
+-stress: accesses the Sound Memory Expansion Area (0x05a00000-0x05afffff), unknown purpose;
 -groovef: hangs soon after loaded,caused by two memory addresses in the Work RAM-H range.
  Kludged for now to work.
 -smleague / finlarch: it randomly hangs / crashes,it works if you use a ridiculous MDRV_INTERLEAVE number,might need strict
@@ -1990,7 +1991,7 @@ static ADDRESS_MAP_START( stv_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x02000000, 0x04ffffff) AM_ROM AM_SHARE(7) AM_REGION("user1", 0) // cartridge
 	AM_RANGE(0x05800000, 0x0589ffff) AM_READWRITE(stvcd_r, stvcd_w)
 	/* Sound */
-	AM_RANGE(0x05a00000, 0x05a7ffff) AM_READWRITE(stv_sh2_soundram_r, stv_sh2_soundram_w)
+	AM_RANGE(0x05a00000, 0x05afffff) AM_READWRITE(stv_sh2_soundram_r, stv_sh2_soundram_w)
 	//AM_RANGE(0x05a80000, 0x05afffff) AM_READ(stv_sh2_random_r)
 	AM_RANGE(0x05b00000, 0x05b00fff) AM_DEVREADWRITE16("scsp", scsp_r, scsp_w, 0xffffffff)
 	/* VDP1 */
@@ -2007,7 +2008,7 @@ static ADDRESS_MAP_START( stv_mem, ADDRESS_SPACE_PROGRAM, 32 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_mem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_RAM AM_BASE(&sound_ram)
+	AM_RANGE(0x000000, 0x0fffff) AM_RAM AM_BASE(&sound_ram)
 	AM_RANGE(0x100000, 0x100fff) AM_DEVREADWRITE("scsp", scsp_r, scsp_w)
 ADDRESS_MAP_END
 
@@ -3642,7 +3643,7 @@ ROM_START( sfish2 )
 	ROM_LOAD16_WORD_SWAP( "mpr18275.ic4",      0x0c00000, 0x0200000, NO_DUMP )
 
 	DISK_REGION( "cdrom" )
-	DISK_IMAGE( "sfish2", 0, MD5(3c95f7e19c5475d0ffa0d89cc45a36e5) SHA1(d07e0aa09a0858b308cc2218996b2242885a2609) )
+	DISK_IMAGE( "sfish2", 0, SHA1(a10073d83bbbe16e16f69ad48565821576557d61) )
 ROM_END
 
 ROM_START( sfish2j )
@@ -3660,7 +3661,7 @@ ROM_START( sfish2j )
 	ROM_LOAD16_WORD_SWAP( "mpr18274.ic3",      0x0800000, 0x0200000, NO_DUMP )
 
 	DISK_REGION( "cdrom" )
-	DISK_IMAGE( "sfish2", 0, MD5(3c95f7e19c5475d0ffa0d89cc45a36e5) SHA1(d07e0aa09a0858b308cc2218996b2242885a2609) )
+	DISK_IMAGE( "sfish2", 0, SHA1(a10073d83bbbe16e16f69ad48565821576557d61) )
 ROM_END
 
 
@@ -3801,17 +3802,19 @@ GAME( 1995, suikoenb,  stvbios, stv, stv,  		suikoenb,  	ROT0,   "Data East",   
 GAME( 1996, vfkids,    stvbios, stv, stv,  		stv,       	ROT0,   "Sega", 	 				  	"Virtua Fighter Kids (JUET 960319 V0.000)", GAME_IMPERFECT_SOUND )
 GAME( 1997, winterht,  stvbios, stv, stv,  		winterht,  	ROT0,   "Sega", 	 				  	"Winter Heat (JUET 971012 V1.000)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
 GAME( 1997, znpwfv,    stvbios, stv, stv,  		znpwfv,    	ROT0,   "Sega", 	     			  	"Zen Nippon Pro-Wrestling Featuring Virtua (J 971123 V1.000)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
-GAME( 1997, nclubv3,   stvbios, stv, stv,  		nameclv3,  	ROT0,   "Sega", 	     			  	"Name Club Ver.3 (J 970723 V1.000)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS ) // seems to work, although it could do with speedups, and the printer isn't emulated..
 
 /* Almost */
 GAME( 1997, vmahjong,  stvbios, stv, stvmp,		stv,       	ROT0,   "Micronet",                 	"Virtual Mahjong (J 961214 V1.000)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
 GAME( 1998, twcup98,   stvbios, stv, stv,  		twcup98,   	ROT0,   "Tecmo",                    	"Tecmo World Cup '98 (JUET 980410 V1.000)", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS|GAME_NOT_WORKING ) // player movement
-GAME( 1998, stress,    stvbios, stv, stv,  		stv,       	ROT0,   "Sega", 	     			  	"Stress Busters (J 981020 V1.000)", GAME_NOT_WORKING ) // needs printer
 GAME( 1995, smleague,  stvbios, stv, stv,  		smleague,  	ROT0,   "Sega", 	     			  	"Super Major League (U 960108 V1.000)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
 GAME( 1995, finlarch,  smleague,stv, stv,  		finlarch,  	ROT0,   "Sega", 	     			  	"Final Arch (J 950714 V1.001)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
-GAME( 1998, elandore,  stvbios, stv, stv,  		elandore,  	ROT0,   "Sai-Mate",   			  		"Touryuu Densetsu Elan-Doree / Elan Doree - Legend of Dragoon (JUET 980922 V1.006)", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1998, elandore,  stvbios, stv, stv,  		elandore,  	ROT0,   "Sai-Mate",   			  		"Touryuu Densetsu Elan-Doree / Elan Doree - Legend of Dragoon (JUET 980922 V1.006)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
 
-/* Doing Something.. but not enough yet */
+/* Unemulated printer device */
+GAME( 1998, stress,    stvbios, stv, stv,  		stv,       	ROT0,   "Sega", 	     			  	"Stress Busters (J 981020 V1.000)", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1997, nclubv3,   stvbios, stv, stv,  		nameclv3,  	ROT0,   "Sega", 	     			  	"Name Club Ver.3 (J 970723 V1.000)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )
+
+/* Doing something.. but not enough yet */
 GAME( 1995, vfremix,   stvbios, stv, stv,  		vfremix,   	ROT0,   "Sega", 	     			  	"Virtua Fighter Remix (JUETBKAL 950428 V1.000)", GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
 GAME( 1997, findlove,  stvbios, stv, stv,  		stv,  		ROT0,   "Daiki / FCF",    	      		"Find Love (J 971212 V1.000)", GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
 GAME( 1996, decathlt,  stvbios, stv, stv,  		decathlt,  	ROT0,   "Sega", 	     			  	"Decathlete (JUET 960709 V1.001)", GAME_NO_SOUND | GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION )

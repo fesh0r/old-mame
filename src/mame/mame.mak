@@ -37,138 +37,52 @@ CPUS += Z80
 CPUS += Z180
 CPUS += I8085
 CPUS += M6502
-CPUS += M65C02
-CPUS += M65SC02
-CPUS += M65CE02
-CPUS += M6509
-CPUS += M6510
-CPUS += M6510T
-CPUS += M7501
-CPUS += M8502
-CPUS += N2A03
-CPUS += DECO16
-CPUS += M4510
 CPUS += H6280
-CPUS += I8086
-CPUS += I8088
-CPUS += I80186
-CPUS += I80188
-CPUS += I80286
+CPUS += I86
 CPUS += I386
-CPUS += I486
-CPUS += PENTIUM
-CPUS += MEDIAGX
-CPUS += V20
-CPUS += V25
-CPUS += V30
+CPUS += NEC
 CPUS += V30MZ
-CPUS += V33
-CPUS += V35
 CPUS += V60
-CPUS += V70
 CPUS += MCS48
-CPUS += I8031
-CPUS += I8032
-CPUS += I8051
-CPUS += I8052
-CPUS += I8751
-CPUS += I8752
-CPUS += I80C31
-CPUS += I80C32
-CPUS += I80C51
-CPUS += I80C52
-CPUS += I87C51
-CPUS += I87C52
-CPUS += AT89C4051
-CPUS += DS5002FP
+CPUS += MCS51
 CPUS += M6800
-CPUS += M6801
-CPUS += M6802
-CPUS += M6803
-CPUS += M6808
-CPUS += HD63701
-CPUS += NSC8105
 CPUS += M6805
-CPUS += M68705
-CPUS += HD63705
 CPUS += HD6309
 CPUS += M6809
-CPUS += M6809E
 CPUS += KONAMI
 CPUS += M680X0
 CPUS += T11
 CPUS += S2650
 CPUS += TMS340X0
 CPUS += TMS9900
-CPUS += TMS9940
-CPUS += TMS9980
-CPUS += TMS9985
-CPUS += TMS9989
-CPUS += TMS9995
-CPUS += TMS99105A
-CPUS += TMS99110A
-CPUS += TMS99000
-CPUS += TMS99010
 CPUS += Z8000
 CPUS += TMS32010
 CPUS += TMS32025
-CPUS += TMS32026
 CPUS += TMS32031
-CPUS += TMS32032
 CPUS += TMS32051
 CPUS += TMS57002
 CPUS += CCPU
 CPUS += ADSP21XX
-CPUS += PSXCPU
-CPUS += CXD8661R
 CPUS += ASAP
 CPUS += UPD7810
-CPUS += UPD7807
-CPUS += UPD7801
 CPUS += ARM
 CPUS += ARM7
 CPUS += JAGUAR
 CPUS += CUBEQCPU
 CPUS += ESRIP
-CPUS += R3000
-CPUS += R3041
-CPUS += R4600
-CPUS += R4650
-CPUS += R4700
-CPUS += R5000
-CPUS += QED5271
-CPUS += RM7000
-CPUS += SH1
+CPUS += MIPS
 CPUS += SH2
 CPUS += SH4
 CPUS += DSP32C
-CPUS += PIC16C54
-CPUS += PIC16C55
-CPUS += PIC16C56
-CPUS += PIC16C57
-CPUS += PIC16C58
+CPUS += PIC16C5X
 CPUS += G65816
 CPUS += SPC700
-CPUS += E116T
-CPUS += E116XT
-CPUS += E116XS
-CPUS += E116XSR
-CPUS += E132N
-CPUS += E132T
-CPUS += E132XN
-CPUS += E132XT
-CPUS += E132XS
-CPUS += E132XSR
-CPUS += GMS30C2116
-CPUS += GMS30C2132
-CPUS += GMS30C2216
-CPUS += GMS30C2232
+CPUS += E1
 CPUS += I860
 CPUS += I960
 CPUS += H83002
 CPUS += H83334
 CPUS += V810
-CPUS += M37702
 CPUS += M37710
 CPUS += POWERPC
 CPUS += SE3208
@@ -177,14 +91,11 @@ CPUS += ADSP21062
 CPUS += DSP56156
 CPUS += RSP
 CPUS += ALPHA8201
-CPUS += ALPHA8301
 CPUS += CDP1802
 CPUS += COP400
 CPUS += TLCS90
-CPUS += MB8841
-CPUS += MB8842
-CPUS += MB8843
-CPUS += MB8844
+CPUS += TLCS900
+CPUS += MB88XX
 CPUS += MB86233
 CPUS += SSP1601
 CPUS += APEXC
@@ -194,10 +105,8 @@ CPUS += LH5801
 CPUS += PDP1
 CPUS += SATURN
 CPUS += SC61860
-CPUS += TX0
 CPUS += LR35902
 CPUS += TMS7000
-CPUS += TMS7000_EXL
 CPUS += SM8500
 CPUS += MINX
 
@@ -242,6 +151,7 @@ SOUNDS += NAMCO_15XX
 SOUNDS += NAMCO_CUS30
 SOUNDS += NAMCO_52XX
 SOUNDS += NAMCO_63701X
+SOUNDS += T6W28
 SOUNDS += SNKWAVE
 SOUNDS += C140
 SOUNDS += C352
@@ -448,7 +358,7 @@ $(MAMEOBJ)/alpha.a: \
 
 $(MAMEOBJ)/amiga.a: \
 	$(DRIVERS)/alg.o \
-	$(MACHINE)/amiga.o $(AUDIO)/amiga.o $(VIDEO)/amiga.o \
+	$(MACHINE)/amiga.o $(AUDIO)/amiga.o $(VIDEO)/amiga.o $(VIDEO)/amigaaga.o\
 	$(DRIVERS)/arcadia.o \
 	$(DRIVERS)/cubocd32.o $(MACHINE)/cubocd32.o \
 	$(DRIVERS)/mquake.o \
@@ -598,6 +508,7 @@ $(MAMEOBJ)/capcom.a: \
 	$(DRIVERS)/vulgus.o $(VIDEO)/vulgus.o \
 	$(DRIVERS)/tigeroad.o $(VIDEO)/tigeroad.o \
 	$(DRIVERS)/zn.o $(MACHINE)/znsec.o \
+	$(DRIVERS)/taitogn.o \
 	$(MACHINE)/cps2crpt.o \
 	$(MACHINE)/kabuki.o \
 
@@ -684,7 +595,6 @@ $(MAMEOBJ)/dynax.a: \
 	$(DRIVERS)/ddenlovr.o \
 	$(DRIVERS)/dynax.o $(VIDEO)/dynax.o \
 	$(DRIVERS)/hnayayoi.o $(VIDEO)/hnayayoi.o \
-	$(DRIVERS)/rcasino.o \
 	$(DRIVERS)/realbrk.o $(VIDEO)/realbrk.o \
 	$(DRIVERS)/royalmah.o \
 
@@ -740,6 +650,7 @@ $(MAMEOBJ)/gaelco.a: \
 	$(DRIVERS)/thoop2.o $(VIDEO)/thoop2.o \
 	$(DRIVERS)/xorworld.o $(VIDEO)/xorworld.o \
 	$(DRIVERS)/wrally.o $(MACHINE)/wrally.o $(VIDEO)/wrally.o \
+	$(DRIVERS)/tokyocop.o \
 
 $(MAMEOBJ)/gameplan.a: \
 	$(DRIVERS)/enigma2.o \
@@ -778,7 +689,6 @@ $(MAMEOBJ)/igs.a: \
 	$(DRIVERS)/tarzan.o \
 	$(MACHINE)/pgmcrypt.o \
 	$(MACHINE)/pgmprot.o \
-	$(MACHINE)/pgmy2ks.o \
 
 $(MAMEOBJ)/irem.a: \
 	$(DRIVERS)/m10.o $(VIDEO)/m10.o \
@@ -1191,7 +1101,8 @@ $(MAMEOBJ)/sega.a: \
 	$(DRIVERS)/model1.o $(MACHINE)/model1.o $(VIDEO)/model1.o \
 	$(DRIVERS)/model2.o $(VIDEO)/model2.o \
 	$(DRIVERS)/model3.o $(VIDEO)/model3.o $(MACHINE)/model3.o \
-	$(DRIVERS)/naomi.o $(MACHINE)/dc.o $(VIDEO)/dc.o $(MACHINE)/gdcrypt.o $(MACHINE)/naomibd.o \
+	$(DRIVERS)/naomi.o $(MACHINE)/dc.o $(VIDEO)/dc.o $(MACHINE)/gdcrypt.o $(MACHINE)/naomibd.o $(MACHINE)/naomi.o \
+	$(DRIVERS)/triforce.o $(DRIVERS)/chihiro.o \
 	$(DRIVERS)/puckpkmn.o \
 	$(DRIVERS)/segac2.o \
 	$(DRIVERS)/segag80r.o $(MACHINE)/segag80.o $(AUDIO)/segag80r.o $(VIDEO)/segag80r.o \
@@ -1556,9 +1467,11 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/big10.o \
 	$(DRIVERS)/blackt96.o \
 	$(DRIVERS)/buster.o \
+	$(DRIVERS)/calchase.o \
 	$(DRIVERS)/calomega.o $(VIDEO)/calomega.o \
 	$(DRIVERS)/carrera.o \
 	$(DRIVERS)/cave.o $(VIDEO)/cave.o \
+	$(DRIVERS)/chsuper.o \
 	$(DRIVERS)/cidelsa.o $(VIDEO)/cidelsa.o \
 	$(DRIVERS)/coinmstr.o \
 	$(DRIVERS)/comebaby.o \
@@ -1637,6 +1550,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/mosaic.o $(VIDEO)/mosaic.o \
 	$(DRIVERS)/mrjong.o $(VIDEO)/mrjong.o \
 	$(DRIVERS)/murogem.o \
+	$(DRIVERS)/murogmbl.o \
 	$(DRIVERS)/news.o $(VIDEO)/news.o \
 	$(DRIVERS)/norautp.o \
 	$(DRIVERS)/oneshot.o $(VIDEO)/oneshot.o \
@@ -1646,6 +1560,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/pangofun.o \
 	$(DRIVERS)/pasha2.o \
 	$(DRIVERS)/pass.o $(VIDEO)/pass.o \
+	$(DRIVERS)/pcat_nit.o \
 	$(DRIVERS)/pcxt.o \
 	$(DRIVERS)/peplus.o \
 	$(DRIVERS)/pipeline.o \
@@ -1698,6 +1613,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/cb2001.o \
 	$(DRIVERS)/sfbonus.o \
 	$(DRIVERS)/multfish.o \
+	$(DRIVERS)/roul.o \
 
 #-------------------------------------------------
 # layout dependencies
@@ -1824,7 +1740,9 @@ $(DRIVERS)/polepos.o:	$(LAYOUT)/polepos.lh
 
 $(DRIVERS)/qix.o:		$(LAYOUT)/elecyoyo.lh
 
-$(DRIVERS)/re900.o:		$(LAYOUT)/re900.lh
+$(DRIVERS)/re900.o:	$(LAYOUT)/re900.lh
+
+$(DRIVERS)/roul.o:	$(LAYOUT)/roul.lh
 
 $(DRIVERS)/sbrkout.o:	$(LAYOUT)/sbrkout.lh
 
@@ -1847,6 +1765,8 @@ $(DRIVERS)/stactics.o:	$(LAYOUT)/stactics.lh
 $(DRIVERS)/stepstag.o:	$(LAYOUT)/stepstag.lh
 
 $(DRIVERS)/superchs.o:	$(LAYOUT)/superchs.lh
+
+$(DRIVERS)/sfbonus.o:	$(LAYOUT)/pirpok2.lh
 
 $(DRIVERS)/taito_z.o:	$(LAYOUT)/contcirc.lh \
 						$(LAYOUT)/dblaxle.lh
@@ -1888,7 +1808,6 @@ $(DRIVERS)/warpwarp.o:	$(LAYOUT)/geebee.lh \
 $(DRIVERS)/wecleman.o:	$(LAYOUT)/wecleman.lh
 
 $(DRIVERS)/zac2650.o:	$(LAYOUT)/tinv2650.lh
-
 
 
 #-------------------------------------------------

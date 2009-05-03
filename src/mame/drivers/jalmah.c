@@ -3,8 +3,9 @@
 MJ-8956 HW games (c) 1989 Jaleco / NMK / UPL
 
 driver by Angelo Salese, based on early work by David Haywood
+Special thanks to Uki and Yasu for the priority system explaination.
 
-Similar to the NMK16 board but without sprites.
+Similar to the NMK16 / Jaleco Mega System 1 boards but without sprites.
 
 Notes(general):
 -I think that the 0xf0000-0xfffff area is shared with the MCU because:
@@ -18,20 +19,22 @@ Notes(general):
   adding a value to these RAM areas according to what button is pressed.
 
 TODO:
--Fully understand priorities,chances are that it just uses a mix between the priority
- number,1+ prom(s) and the color number inside the video ram.Might need a test with the proper hardware;
--In all the games there are square gaps during gameplay,caused by the imperfect priority system (see above);
+-Back layer pens looks ugly in some circumstances (i.e. suchipi when you win, mjzoomin when coined up),
+ static or controlled by something else?
+-daireika: the ranking screen on the original pcb shows some hearts instead of the "0".
+ Some investigation indicates that the game reads area "fe100" onwards for these to be filled.
+ These are likely to be provided by one of the mcu snippets...
+-kakumei/kakumei2:has weird text layer strings in test mode (like "#p control panel"),
+ unsure if this one is somehow related to the above daireika bug, it's a BTANB or something else.
 -Check if urashima has a "mode 3" for the layer 0 tilemap;
--Complete the dip-switches in the first version of this board;
+-Complete the dip-switches for all the games;
 -There could be timing issues caused by MCU simulation at $80004;
--Fix the sound banking in the first version of the MCU.Protection-related (should be somewhere on the work ram/shared ram)
--Fix kakumei2 GFX3 rom region,maybe it's a bad dump (half length)?
+-Fix the sound banking, protection-related for the first version of the MCU
+ (should be somewhere on the work ram/shared ram)
 -urashima: might use three/four layers instead of two.It can be checked when you win
  a match in particular circumstances because there's a write in the 94000-9bfff region;
--kakumei: inserting two credits will give an "informaion" with A-E button choices and nothing appears
- to work,protection?
--Fix the sound banking in urashima/mjzoomin/daireika;
--Massive clean-ups needed for the MCU snippet programs and the input-ports;
+-Massive clean-ups needed for the MCU snippet programs and the input-ports, also check if
+ the programs are actually into the m68k program itself (like hachamf/tdragon/ddealer);
 
 Notes (1st MCU ver.):
 -$f000e is bogus,maybe the program snippets can modify this value,or the MCU itself can
@@ -62,6 +65,8 @@ $f06a6-$f06c0: Your tiles
 $f06c6-$f06e0: COM tiles
 ---- ---- --xx ----: Defines kind
 ---- ---- ---- xxxx: Defines number
+*
+$f0434: priority number
 
 ============================================================================================
 daireika 68k irq table vectors
@@ -98,6 +103,10 @@ CPU:    68000-8
 Sound:  M6295
 OSC:    12.000MHz
         4.000MHz
+
+
+2009-04: Verified DipLocations and Default settings with manual (thanks to Uki)
+
 *******************************************************************************************/
 
 #include "driver.h"
@@ -259,104 +268,87 @@ static VIDEO_START( urashima )
 
 static UINT8 sc0_prin,sc1_prin,sc2_prin,sc3_prin;
 
-static void jalmah_priority_system(void)
+/***************************************************************************************
+The priority system is a combination between one prom and the priority number.
+The priority number is a pointer to an array of 16 bytes of the prom ( addresses bits 4-7
+0x*0-0x*f). These 16 bytes are read and added and every number is directly hooked up
+to the equivalent layer (i.e. read 0 == +1 for the layer 0, read 1 == +1 for the layer 1
+etc.)
+In the end the final results always are one bit assigned to each priority (i.e. most
+priority = 8, then 4, 2 and finally 1).
+***************************************************************************************/
+static void jalmah_priority_system(running_machine *machine)
 {
-//  UINT8 *pri_rom = memory_region(Machine, "user1");
-	/*
-    Case by case priorities:
-    kakumei: title screen     = 0/23  (0-1 unused)
-             attract mode     = 0/0123 (?)
-             card table       = 0/013 (2 unused)
-             gameplay         = 0/0123
-    kakumei2:title screen     = 0/0123
-             attract mode     = 4/013 (2 unused) also 4/0213
-             card table       = 9/013 (2 unused)
-             character screen = 9/013 (2 unused)
-             gameplay         = 2/03  (1-2 unused) also 2/013 (2 unused)
-             continue screen  = 9/013 (2 unused)
-    suchipi: title screen     = 0/03  (1-2 unused)
-             attract mode     = 6/103 (2 unused) also 6/1023
-             card table       = 1/013 (2 unused)
-             character screen = 4/0213
-             victory screen   = 6/0123 also 6/1023
-             gameplay         = d/0123
-    mjzoomin doesn't seem to use the priority number (0/0123)
-    daireika/urashima uses priority number with the protection device
-    daireika: gameplay        = x/103 (2 unused),might be 6
-    good results:
-    0/0123
-    4/0213
-    6/1023
-    */
-	static const UINT16 pri_scheme[0x10] = { 0x0123, 0x0123, 0x0123, 0x0123, 0x0213, 0x0123, 0x1023, 0x0123,
-											 0x0123, 0x1203, 0x0123, 0x0123, 0x0123, 0x0123, 0x0123, 0x0123    };
-//  UINT8 prinum[0x10];
+    UINT8 *pri_rom = memory_region(machine, "user1");
+    UINT8 i;
+    UINT8 prinum[0x10];
 
-//  for(i=0;i<0x10;i++)
-//      prinum[i] = pri_rom[i+pri*0x10];
-	sc0_prin = (pri_scheme[pri] & 0xf000) >> 12;
-	sc1_prin = (pri_scheme[pri] & 0x0f00) >> 8;
-	sc2_prin = (pri_scheme[pri] & 0x00f0) >> 4;
-	sc3_prin = (pri_scheme[pri] & 0x000f) >> 0;
+	sc0_prin = 0;
+	sc1_prin = 0;
+	sc2_prin = 0;
+	sc3_prin = 0;
 
-//  popmessage("%04x",pri);
-	/*
-    popmessage("%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x %02x"
-    ,prinum[0x00],prinum[0x01],prinum[0x02],prinum[0x03]
-    ,prinum[0x04],prinum[0x05],prinum[0x06],prinum[0x07]
-    ,prinum[0x08],prinum[0x09],prinum[0x0a],prinum[0x0b]
-    ,prinum[0x0c],prinum[0x0d],prinum[0x0e],prinum[0x0f],pri);
-    */
+    for(i=0;i<0x10;i++)
+    {
+        prinum[i] = pri_rom[i+pri*0x10];
+
+        if(prinum[i] == 0) { sc0_prin++; }
+        if(prinum[i] == 1) { sc1_prin++; }
+        if(prinum[i] == 2) { sc2_prin++; }
+        if(prinum[i] == 3) { sc3_prin++; }
+	}
+
+	//popmessage("%02x %02x %02x %02x",sc0_prin,sc1_prin,sc2_prin,sc3_prin);
 }
 
-static void draw_sc0_layer(bitmap_t *bitmap, const rectangle *cliprect,int trans)
+static void draw_sc0_layer(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	switch(jm_vregs[0] & 3)
 	{
-		case 0: tilemap_draw(bitmap,cliprect,sc0_tilemap_0,(trans > 0) ? 0 : TILEMAP_DRAW_OPAQUE,0); break;
-		case 1: tilemap_draw(bitmap,cliprect,sc0_tilemap_1,(trans > 0) ? 0 : TILEMAP_DRAW_OPAQUE,0); break;
-		case 2: tilemap_draw(bitmap,cliprect,sc0_tilemap_2,(trans > 0) ? 0 : TILEMAP_DRAW_OPAQUE,0); break;
-		case 3: tilemap_draw(bitmap,cliprect,sc0_tilemap_3,(trans > 0) ? 0 : TILEMAP_DRAW_OPAQUE,0); break;
+		case 0: tilemap_draw(bitmap,cliprect,sc0_tilemap_0,0,0); break;
+		case 1: tilemap_draw(bitmap,cliprect,sc0_tilemap_1,0,0); break;
+		case 2: tilemap_draw(bitmap,cliprect,sc0_tilemap_2,0,0); break;
+		case 3: tilemap_draw(bitmap,cliprect,sc0_tilemap_3,0,0); break;
 	}
 }
 
-static void draw_sc1_layer(bitmap_t *bitmap, const rectangle *cliprect,int trans)
+static void draw_sc1_layer(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	switch(jm_vregs[1] & 3)
 	{
-		case 0: tilemap_draw(bitmap,cliprect,sc1_tilemap_0,(trans > 0) ? 0 : TILEMAP_DRAW_OPAQUE,0); break;
-		case 1: tilemap_draw(bitmap,cliprect,sc1_tilemap_1,(trans > 0) ? 0 : TILEMAP_DRAW_OPAQUE,0); break;
-		case 2: tilemap_draw(bitmap,cliprect,sc1_tilemap_2,(trans > 0) ? 0 : TILEMAP_DRAW_OPAQUE,0); break;
-		case 3: tilemap_draw(bitmap,cliprect,sc1_tilemap_3,(trans > 0) ? 0 : TILEMAP_DRAW_OPAQUE,0); break;
+		case 0: tilemap_draw(bitmap,cliprect,sc1_tilemap_0,0,0); break;
+		case 1: tilemap_draw(bitmap,cliprect,sc1_tilemap_1,0,0); break;
+		case 2: tilemap_draw(bitmap,cliprect,sc1_tilemap_2,0,0); break;
+		case 3: tilemap_draw(bitmap,cliprect,sc1_tilemap_3,0,0); break;
 	}
 }
 
-static void draw_sc2_layer(bitmap_t *bitmap, const rectangle *cliprect,int trans)
+static void draw_sc2_layer(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	switch(jm_vregs[2] & 3)
 	{
-		case 0: tilemap_draw(bitmap,cliprect,sc2_tilemap_0,(trans > 0) ? 0 : TILEMAP_DRAW_OPAQUE,0); break;
-		case 1: tilemap_draw(bitmap,cliprect,sc2_tilemap_1,(trans > 0) ? 0 : TILEMAP_DRAW_OPAQUE,0); break;
-		case 2: tilemap_draw(bitmap,cliprect,sc2_tilemap_2,(trans > 0) ? 0 : TILEMAP_DRAW_OPAQUE,0); break;
-		case 3: tilemap_draw(bitmap,cliprect,sc2_tilemap_3,(trans > 0) ? 0 : TILEMAP_DRAW_OPAQUE,0); break;
+		case 0: tilemap_draw(bitmap,cliprect,sc2_tilemap_0,0,0); break;
+		case 1: tilemap_draw(bitmap,cliprect,sc2_tilemap_1,0,0); break;
+		case 2: tilemap_draw(bitmap,cliprect,sc2_tilemap_2,0,0); break;
+		case 3: tilemap_draw(bitmap,cliprect,sc2_tilemap_3,0,0); break;
 	}
 }
 
-static void draw_sc3_layer(bitmap_t *bitmap, const rectangle *cliprect,int trans)
+static void draw_sc3_layer(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	switch(jm_vregs[3] & 3)
 	{
 		case 0:
-		case 1: tilemap_draw(bitmap,cliprect,sc3_tilemap_0,(trans > 0) ? 0 : TILEMAP_DRAW_OPAQUE,0); break;
-		case 2: tilemap_draw(bitmap,cliprect,sc3_tilemap_2,(trans > 0) ? 0 : TILEMAP_DRAW_OPAQUE,0); break;
-		case 3: tilemap_draw(bitmap,cliprect,sc3_tilemap_3,(trans > 0) ? 0 : TILEMAP_DRAW_OPAQUE,0); break;
+		case 1: tilemap_draw(bitmap,cliprect,sc3_tilemap_0,0,0); break;
+		case 2: tilemap_draw(bitmap,cliprect,sc3_tilemap_2,0,0); break;
+		case 3: tilemap_draw(bitmap,cliprect,sc3_tilemap_3,0,0); break;
 	}
 }
 
 static VIDEO_UPDATE( jalmah )
 {
 	static UINT8 cur_prin;
-	jalmah_priority_system();
+	jalmah_priority_system(screen->machine);
 
 	tilemap_set_scrollx( sc0_tilemap_0, 0, jm_scrollram[0] & 0xfff);
 	tilemap_set_scrollx( sc0_tilemap_1, 0, jm_scrollram[0] & 0x7ff);
@@ -399,14 +391,14 @@ static VIDEO_UPDATE( jalmah )
 	tilemap_set_scrolly( sc3_tilemap_2, 0, jm_scrollram[7] & 0x1ff);
 	tilemap_set_scrolly( sc3_tilemap_3, 0, jm_scrollram[7] & 0x3ff);
 
-    bitmap_fill(bitmap, cliprect, screen->machine->pens[0x10f]);//selectable by a ram address?
+    bitmap_fill(bitmap, cliprect, screen->machine->pens[0xff]); //selectable by a ram address?
 
-	for(cur_prin=0;cur_prin<4;cur_prin++)
+	for(cur_prin=1;cur_prin<=0x8;cur_prin<<=1)
 	{
-		if(cur_prin==sc0_prin) { draw_sc0_layer(bitmap,cliprect,sc0_prin); }
-		if(cur_prin==sc1_prin) { draw_sc1_layer(bitmap,cliprect,sc1_prin); }
-		if(cur_prin==sc2_prin) { draw_sc2_layer(bitmap,cliprect,sc2_prin); }
-		if(cur_prin==sc3_prin) { draw_sc3_layer(bitmap,cliprect,sc3_prin); }
+		if(cur_prin==sc0_prin) { draw_sc0_layer(bitmap,cliprect); }
+		if(cur_prin==sc1_prin) { draw_sc1_layer(bitmap,cliprect); }
+		if(cur_prin==sc2_prin) { draw_sc2_layer(bitmap,cliprect); }
+		if(cur_prin==sc3_prin) { draw_sc3_layer(bitmap,cliprect); }
 	}
 
 	return 0;
@@ -505,7 +497,7 @@ static WRITE16_HANDLER( jalmah_scroll_w )
 	{
 		/*These 4 are just video regs,see mjzoomin test*/
 		/*
-            ---x ---- Always on,8x8 tiles switch?
+            ---x ---- Always on with layer 3, 8x8 tiles switch?
             ---- --xx RANGE registers
         */
 		case (0x24/2): jm_vregs[0] = data; break;
@@ -621,6 +613,7 @@ static UINT8 mcu_prg;
 #define SUCHIPI_MCU  (0x23)
 
 static int respcount;
+static UINT8 test_mode;
 
 #define MCU_READ(tag, _bit_, _offset_, _retval_) \
 if((0xffff - input_port_read(machine, tag)) & _bit_) { jm_shared_ram[_offset_] = _retval_; }
@@ -670,7 +663,7 @@ static void daireika_mcu_run(running_machine *machine)
 		daireika_palette_dma(machine,((jm_shared_ram[0x540/2] & 0x0f00) >> 8));
 	}
 
-	if((0xffff - input_port_read(machine, "SYSTEM")) & 0x0008)	//service_mode
+	if(test_mode)	//service_mode
 	{
 		jm_shared_ram[0x000/2] = input_port_read(machine, "KEY0");
 		jm_shared_ram[0x002/2] = input_port_read(machine, "KEY1");
@@ -713,7 +706,7 @@ static void mjzoomin_mcu_run(running_machine *machine)
 {
 	static UINT16 prg_prot;
 
-	if((0xffff - input_port_read(machine, "SYSTEM")) & 0x0008)	//service_mode
+	if(test_mode)	//service_mode
 	{
 		jm_shared_ram[0x000/2] = input_port_read(machine, "KEY0");
 		jm_shared_ram[0x002/2] = input_port_read(machine, "KEY1");
@@ -757,7 +750,7 @@ static void urashima_mcu_run(running_machine *machine)
 {
 	static UINT16 prg_prot;
 
-	if((0xffff - input_port_read(machine, "SYSTEM")) & 0x0008)	//service_mode
+	if(test_mode)	//service_mode
 	{
 		jm_shared_ram[0x300/2] = input_port_read(machine, "KEY0");
 		jm_shared_ram[0x302/2] = input_port_read(machine, "KEY1");
@@ -799,7 +792,7 @@ static void urashima_mcu_run(running_machine *machine)
 
 static void second_mcu_run(running_machine *machine)
 {
-	if((0xffff - input_port_read(machine, "DSW")) & 0x0004)	//service_mode
+	if(test_mode)	//service_mode
 	{
 		jm_shared_ram[0x200/2] = input_port_read(machine, "KEY0");
 		jm_shared_ram[0x202/2] = input_port_read(machine, "KEY1");
@@ -905,10 +898,10 @@ static ADDRESS_MAP_START( jalmah, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x080010, 0x080011) AM_WRITE(jalmah_flip_screen_w)
 	//       0x080012, 0x080013  MCU write related,same for each game
 	//       0x080014, 0x080015  MCU write related,same for each game
-/**/AM_RANGE(0x080016, 0x080017) AM_READ(SMH_RAM) AM_WRITE(jalmah_tilebank_w)
+/**/AM_RANGE(0x080016, 0x080017) AM_RAM_WRITE(jalmah_tilebank_w)
 	AM_RANGE(0x080018, 0x080019) AM_WRITE(jalmah_okibank_w)
 	AM_RANGE(0x08001a, 0x08001b) AM_WRITE(jalmah_okirom_w)
-/**/AM_RANGE(0x080020, 0x08003f) AM_READ(SMH_RAM) AM_WRITE(jalmah_scroll_w)
+/**/AM_RANGE(0x080020, 0x08003f) AM_RAM_WRITE(jalmah_scroll_w)
 	AM_RANGE(0x080040, 0x080041) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff)
 	//       0x084000, 0x084001  ?
 	AM_RANGE(0x088000, 0x0887ff) AM_RAM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16) /* Palette RAM */
@@ -952,99 +945,14 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( common )
 	PORT_START("SYSTEM")
-	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0002, 0x0002, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0002, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0004, 0x0004, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0008, 0x0008, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_BIT( 0x001f, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0100, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0200, 0x0200, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0200, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0400, 0x0400, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0400, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0800, 0x0800, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0800, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x1000, 0x1000, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x1000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x2000, 0x2000, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x2000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x4000, 0x4000, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x4000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNKNOWN )
+INPUT_PORTS_END
 
-	PORT_START("DSW")
-	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) )    // Coin2 is always 1C/1C.
-	PORT_DIPSETTING(      0x0001, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(      0x0002, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(      0x0003, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(      0x0007, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(      0x0006, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(      0x0005, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(      0x0004, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0x0008, 0x0008, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0100, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0200, 0x0200, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0200, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0400, 0x0400, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0400, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0800, 0x0800, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0800, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x1000, 0x1000, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x1000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x2000, 0x2000, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x2000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x4000, 0x4000, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x4000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-
+static INPUT_PORTS_START( ctrl_mj1 )
 	PORT_START("KEY0")
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_MAHJONG_RON )
@@ -1076,12 +984,7 @@ static INPUT_PORTS_START( common )
 	PORT_BIT( 0xe1e1, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-static INPUT_PORTS_START( jalmah )
-	PORT_INCLUDE( common )
-
-	PORT_MODIFY("SYSTEM")
-	PORT_SERVICE( 0x0008, IP_ACTIVE_LOW )
-
+static INPUT_PORTS_START( ctrl_mj2 )
 	PORT_START("KEY3")
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_MAHJONG_RON ) PORT_PLAYER(2)
@@ -1113,68 +1016,223 @@ static INPUT_PORTS_START( jalmah )
 	PORT_BIT( 0xe1e1, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
-
-static INPUT_PORTS_START( jalmah2 )
+static INPUT_PORTS_START( urashima )
 	PORT_INCLUDE( common )
+	PORT_INCLUDE( ctrl_mj1 )
+	PORT_INCLUDE( ctrl_mj2 )
 
-	PORT_MODIFY("DSW")
-	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0002, 0x0002, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0002, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_SERVICE( 0x0004, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Unknown ) )
+	PORT_MODIFY("SYSTEM")
+	PORT_SERVICE( 0x0008, IP_ACTIVE_LOW )
+
+	PORT_START("DSW")
+	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW2:8,7,6")
+	PORT_DIPSETTING(      0x0001, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(      0x0002, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x0003, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x0007, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x0006, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0005, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x0004, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
+	PORT_DIPNAME( 0x0018, 0x0018, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW2:5,4")
+	PORT_DIPSETTING(      0x0018, DEF_STR( Normal ) )
+	PORT_DIPSETTING(      0x0010, DEF_STR( Hard ) )
+	PORT_DIPSETTING(      0x0008, DEF_STR( Harder ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
+	PORT_DIPNAME( 0x0020, 0x0020, "Display Tenpai/Noten" ) PORT_DIPLOCATION("SW2:3")
+	PORT_DIPSETTING(      0x0020, DEF_STR( No ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Yes ) )
+	PORT_DIPNAME( 0x0040, 0x0040, "Pinfu with Tsumo" ) PORT_DIPLOCATION("SW2:2")
+	PORT_DIPSETTING(      0x0000, DEF_STR( No ) )
+	PORT_DIPSETTING(      0x0040, DEF_STR( Yes ) )
+	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW2:1")
 	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0700, 0x0700, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(      0x0100, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(      0x0200, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(      0x0300, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(      0x0700, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(      0x0600, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(      0x0500, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(      0x0400, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(      0x0000, "1 Coin / 99 Credits" )
-
-	PORT_MODIFY("KEY1")
-	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_MAHJONG_FLIP_FLOP ) PORT_NAME("P1 Mahjong Flip Flop?")	PORT_CODE(KEYCODE_2) //? seems a button,affects continue countdown
-INPUT_PORTS_END
-
-
-static INPUT_PORTS_START( jalmah2a )
-	PORT_INCLUDE( common )
-
-	PORT_MODIFY("DSW")
-	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0002, 0x0002, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0002, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_SERVICE( 0x0004, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x0010, 0x0000, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0700, 0x0700, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(      0x0100, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(      0x0200, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(      0x0300, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(      0x0700, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(      0x0600, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(      0x0500, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(      0x0400, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(      0x0000, "1 Coin / 99 Credits" )
-	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Flip_Screen ) )
+	PORT_DIPNAME( 0x0300, 0x0300, "Number of Chips (Start - Continue)" ) PORT_DIPLOCATION("SW1:8,7")
+	PORT_DIPSETTING(      0x0300, "1 - 1" )
+	PORT_DIPSETTING(      0x0200, "1 - 2" )
+	PORT_DIPSETTING(      0x0100, "2 - 1" )
+	PORT_DIPSETTING(      0x0000, "2 - 2" )
+	PORT_DIPNAME( 0x0c00, 0x0c00, "Number of Players" ) PORT_DIPLOCATION("SW1:6,5")
+	PORT_DIPSETTING(      0x0800, "0" )
+	PORT_DIPSETTING(      0x0c00, "1" )
+	PORT_DIPSETTING(      0x0400, "2" )
+	PORT_DIPSETTING(      0x0000, "4" )
+	PORT_DIPNAME( 0x1000, 0x1000, "Chip Added After Win" ) PORT_DIPLOCATION("SW1:4")
+	PORT_DIPSETTING(      0x1000, "Less" )
+	PORT_DIPSETTING(      0x0000, "More" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x2000, 0x2000, "SW1:3" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x4000, 0x4000, "SW1:2" )	// Unused according to the manual
+	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Service_Mode ) ) PORT_DIPLOCATION("SW1:1")
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( daireika )
+	PORT_INCLUDE( common )
+	PORT_INCLUDE( ctrl_mj1 )
+	PORT_INCLUDE( ctrl_mj2 )
+
+	PORT_MODIFY("SYSTEM")
+	PORT_SERVICE( 0x0008, IP_ACTIVE_LOW )
+
+	PORT_START("DSW")
+	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW2:1,2,3")
+	PORT_DIPSETTING(      0x0001, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(      0x0002, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x0003, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x0007, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x0006, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0005, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x0004, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
+	PORT_DIPNAME( 0x0018, 0x0018, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW2:4,5")
+	PORT_DIPSETTING(      0x0018, DEF_STR( Normal ) )
+	PORT_DIPSETTING(      0x0010, DEF_STR( Hard ) )
+	PORT_DIPSETTING(      0x0008, DEF_STR( Harder ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
+	PORT_DIPUNKNOWN_DIPLOC( 0x0020, 0x0020, "SW2:6" )	// Unused according to the manual
+	PORT_DIPNAME( 0x0040, 0x0040, "Pinfu with Tsumo" ) PORT_DIPLOCATION("SW2:7")
+	PORT_DIPSETTING(      0x0000, DEF_STR( No ) )
+	PORT_DIPSETTING(      0x0040, DEF_STR( Yes ) )
+	PORT_DIPUNKNOWN_DIPLOC( 0x0080, 0x0080, "SW2:8" )	// Unused according to the manual
+	PORT_DIPNAME( 0x0300, 0x0300, "Number of Chips (Start - Continue)" ) PORT_DIPLOCATION("SW1:1,2")
+	PORT_DIPSETTING(      0x0300, "1 - 1" )
+	PORT_DIPSETTING(      0x0200, "1 - 2" )
+	PORT_DIPSETTING(      0x0100, "2 - 1" )
+	PORT_DIPSETTING(      0x0000, "2 - 2" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x0400, 0x0400, "SW1:3" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x0800, 0x0800, "SW1:4" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x1000, 0x1000, "SW1:5" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x2000, 0x2000, "SW1:6" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x4000, 0x4000, "SW1:7" )	// Unused according to the manual
+	/* SW1:8 should be "Switch Control Panel" off: no - on : yes -> likely to be controlled by the MCU. */
+	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW1:8")
+	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( mjzoomin )
+	PORT_INCLUDE( daireika )
+
+	PORT_MODIFY("DSW")
+	PORT_DIPNAME( 0x0038, 0x0038, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW2:4,5,6")
+	PORT_DIPSETTING(      0x0010, "0 (Easy)" )
+	PORT_DIPSETTING(      0x0008, "1 (Easier)" )
+	PORT_DIPSETTING(      0x0000, "2 (Easiest)" )
+	PORT_DIPSETTING(      0x0038, "3 (Normal)" )
+	PORT_DIPSETTING(      0x0030, "4 (Little Hard)" )
+	PORT_DIPSETTING(      0x0028, "5 (Hard)" )
+	PORT_DIPSETTING(      0x0020, "6 (Harder)" )
+	PORT_DIPSETTING(      0x0018, "7 (Hardest)" )
+	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW2:8")
+	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0300, 0x0300, "Start Score Type" ) PORT_DIPLOCATION("SW1:1,2")
+	PORT_DIPSETTING(      0x0300, "1" )
+	PORT_DIPSETTING(      0x0200, "2" )
+	PORT_DIPSETTING(      0x0100, "3" )
+	PORT_DIPSETTING(      0x0000, "4" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x0400, 0x0400, "SW1:3" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x0800, 0x0800, "SW1:4" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x1000, 0x1000, "SW1:5" )	// Unused according to the manual
+	PORT_DIPNAME( 0x2000, 0x2000, "Item Availability" ) PORT_DIPLOCATION("SW1:6")
+	PORT_DIPSETTING(      0x2000, DEF_STR( Normal ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( High ) )
+	PORT_DIPUNKNOWN_DIPLOC( 0x4000, 0x4000, "SW1:7" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x8000, 0x8000, "SW1:8" )	// Unused according to the manual
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( kakumei )
+	PORT_INCLUDE( common )
+	PORT_INCLUDE( ctrl_mj1 )
 
 	PORT_MODIFY("KEY1")
-	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_MAHJONG_FLIP_FLOP ) PORT_NAME("P1 Mahjong Flip Flop?")	PORT_CODE(KEYCODE_2) //? seems a button,affects continue countdown
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_MAHJONG_FLIP_FLOP ) PORT_NAME("P1 Mahjong Flip Flop")	PORT_CODE(KEYCODE_2)
+
+	PORT_START("DSW")
+	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW2:1")
+	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPUNKNOWN_DIPLOC( 0x0002, 0x0002, "SW2:2" )	// Unused according to the manual
+	PORT_SERVICE_DIPLOC( 0x0004, IP_ACTIVE_LOW, "SW2:3" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x0008, 0x0008, "SW2:4" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x0010, 0x0010, "SW2:5" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x0020, 0x0020, "SW2:6" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x0040, 0x0040, "SW2:7" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x0080, 0x0080, "SW2:8" )	// Unused according to the manual
+	PORT_DIPNAME( 0x0700, 0x0700, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW1:1,2,3")
+	PORT_DIPSETTING(      0x0100, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(      0x0200, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x0300, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x0700, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x0600, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0500, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x0400, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(      0x0000, "1 Coin / 99 Credits" )	// Free Play according to the manual
+	PORT_DIPNAME( 0x1800, 0x1800, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:4,5")
+	PORT_DIPSETTING(      0x1800, DEF_STR( Easy ) )
+	PORT_DIPSETTING(      0x1000, DEF_STR( Normal ) )
+	PORT_DIPSETTING(      0x0800, DEF_STR( Hard ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
+	PORT_DIPUNKNOWN_DIPLOC( 0x2000, 0x2000, "SW1:6" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x4000, 0x4000, "SW1:7" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x8000, 0x8000, "SW1:8" )	// Unused according to the manual
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( kakumei2 )
+	PORT_INCLUDE( common )
+	PORT_INCLUDE( ctrl_mj1 )
+
+	PORT_MODIFY("KEY1")
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_MAHJONG_FLIP_FLOP ) PORT_NAME("P1 Mahjong Flip Flop")	PORT_CODE(KEYCODE_2)
+
+	PORT_START("DSW")
+	PORT_DIPUNKNOWN_DIPLOC( 0x0001, 0x0001, "SW2:1" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x0002, 0x0002, "SW2:2" )	// Unused according to the manual
+	PORT_SERVICE_DIPLOC( 0x0004, IP_ACTIVE_LOW, "SW2:3" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x0008, 0x0008, "SW2:4" )	// Unused according to the manual
+	PORT_DIPNAME( 0x0010, 0x0000, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW2:5")	// Should default to OFF according to manual
+	PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPUNKNOWN_DIPLOC( 0x0020, 0x0020, "SW2:6" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x0040, 0x0040, "SW2:7" )	// Unused according to the manual
+	PORT_DIPUNKNOWN_DIPLOC( 0x0080, 0x0080, "SW2:8" )	// Unused according to the manual
+	PORT_DIPNAME( 0x0700, 0x0700, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW1:1,2,3")
+	PORT_DIPSETTING(      0x0100, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(      0x0200, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x0300, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x0700, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x0600, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0500, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x0400, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(      0x0000, "1 Coin / 99 Credits" )	// Free Play according to the manual
+	PORT_DIPNAME( 0x1800, 0x1800, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:4,5")
+	PORT_DIPSETTING(      0x1000, DEF_STR( Easy ) )
+	PORT_DIPSETTING(      0x1800, DEF_STR( Normal ) )
+	PORT_DIPSETTING(      0x0800, DEF_STR( Hard ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
+	PORT_DIPUNKNOWN_DIPLOC( 0x2000, 0x2000, "SW1:6" )	// Unused according to the manual
+	PORT_DIPNAME( 0x4000, 0x4000, "Pinfu with Tsumo" ) PORT_DIPLOCATION("SW1:7")
+	PORT_DIPSETTING(      0x0000, DEF_STR( No ) )
+	PORT_DIPSETTING(      0x4000, DEF_STR( Yes ) )
+	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW1:8")
+	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( suchipi )
+	PORT_INCLUDE( kakumei2 )
+
+	PORT_MODIFY("DSW")
+	PORT_DIPNAME( 0x1800, 0x1800, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:4,5")
+	PORT_DIPSETTING(      0x1800, DEF_STR( Easy ) )
+	PORT_DIPSETTING(      0x1000, DEF_STR( Normal ) )
+	PORT_DIPSETTING(      0x0800, DEF_STR( Hard ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
+	PORT_DIPNAME( 0x2000, 0x2000, "Campaign Mode" ) PORT_DIPLOCATION("SW1:6")
+	PORT_DIPSETTING(      0x0000, DEF_STR( No ) )
+	PORT_DIPSETTING(      0x2000, DEF_STR( Yes ) )
 INPUT_PORTS_END
 
 static const gfx_layout charlayout =
@@ -1219,6 +1277,22 @@ GFXDECODE_END
 static MACHINE_RESET ( jalmah )
 {
 	respcount = 0;
+	/*check if we are into service or normal mode*/
+	switch(mcu_prg)
+	{
+		case MJZOOMIN_MCU:
+		case DAIREIKA_MCU:
+			test_mode = (~(input_port_read(machine, "SYSTEM")) & 0x0008) ? (1) : (0);
+			break;
+		case URASHIMA_MCU:
+			test_mode = ((~(input_port_read(machine, "SYSTEM")) & 0x0008) || (~(input_port_read(machine, "DSW")) & 0x8000)) ? (1) : (0);
+			break;
+		case KAKUMEI_MCU:
+		case KAKUMEI2_MCU:
+		case SUCHIPI_MCU:
+			test_mode = (~(input_port_read(machine, "DSW")) & 0x0004) ? (1) : (0);
+			break;
+	}
 }
 
 static MACHINE_DRIVER_START( jalmah )
@@ -1458,12 +1532,7 @@ ROM_START( kakumei2 )
 	ROM_LOAD( "mj-8956.13", 0x00000, 0x20000, CRC(afe93cf4) SHA1(1973dc5821c6df68e20f8a84b5c9ae281dd3f85f) )
 
 	ROM_REGION( 0x40000, "gfx3", 0 ) /* BG2 */
-	ROM_LOAD( "mj-8956.12", 0x00000, 0x20000, BAD_DUMP CRC(43f7853d) SHA1(54fb523b27e79aa295900c478f09cc080fea0adf) )
-	/*0x20000-0x40000 used,above rom is likely to be bad (half length) */
-	ROM_COPY( "gfx3", 	  	0x00000, 0x20000, 0x08000 )/*mj-8956.12*/
-	ROM_COPY( "gfx3", 	  	0x08000, 0x28000, 0x08000 )/*mj-8956.12*/
-	ROM_COPY( "gfx3", 	  	0x10000, 0x30000, 0x08000 )/*mj-8956.12*/
-	ROM_COPY( "gfx3", 	  	0x18000, 0x38000, 0x08000 )/*mj-8956.12*/
+	ROM_LOAD( "mj-8956.12", 0x00000, 0x40000, CRC(4a088f69) SHA1(468c446d1f345dfd628cdd66ca71cf82e02abe6f) )
 
 	ROM_REGION( 0x80000, "gfx4", 0 ) /* BG3 */
 	ROM_LOAD( "92000-02.10", 0x00000, 0x80000, CRC(338fa9b2) SHA1(05ba4b3c44249cf92be238bf53d6345dc49b0881) )
@@ -1549,7 +1618,7 @@ ROM_START( suchipi )
 	ROM_REGION( 0x220, "user1", 0 ) /* Proms */
 	ROM_LOAD( "mj15.bpr", 0x000, 0x100, CRC(ebac41f9) SHA1(9d1629d977849663392cbf03a3ddf76665f88608) )
 	ROM_LOAD( "mj16.bpr", 0x100, 0x100, CRC(8d5dc1f6) SHA1(9f723e7cd44f8c09ec30b04725644346484ec753) )
-	ROM_LOAD( "mj17.bpr", 0x200, 0x020, CRC(a17c3e8a) SHA1(d7969fad7cec9c792c53aa457f4ad764a727e0a5) )
+	ROM_LOAD( "pr93035.17", 0x200, 0x020, CRC(ab28ae42) SHA1(e05652c4bd5db4c7d7a1bfdeb63841e8b019f24c) )
 ROM_END
 
 
@@ -1806,6 +1875,7 @@ static const UINT16 dai_mcu_code[0x11] = { 0x33c5, 0x0010, 0x07fe, 0x3a39,0x000f
 static WRITE16_HANDLER( daireika_mcu_w )
 {
 	static UINT16 i;
+
 	if(ACCESSING_BITS_0_7 && data)
 	{
 		/*******************************************************
@@ -1884,7 +1954,7 @@ static WRITE16_HANDLER( daireika_mcu_w )
 		jm_mcu_code[0x8806/2] = 0x323c;
 		jm_mcu_code[0x8808/2] = 0x1fff; //move.w #$1fff,D1
 		jm_mcu_code[0x880a/2] = 0x3cbc;
-		jm_mcu_code[0x880c/2] = 0x0000; //move.w #$0000,(A6)
+		jm_mcu_code[0x880c/2] = 0x00ff; //move.w #$0000,(A6)
 		jm_mcu_code[0x880e/2] = 0xdcfc;
 		jm_mcu_code[0x8810/2] = 0x0002; //adda.w #$0002,A6
 		jm_mcu_code[0x8812/2] = 0x51c9;
@@ -1907,7 +1977,7 @@ static WRITE16_HANDLER( daireika_mcu_w )
 		jm_mcu_code[0x8886/2] = 0x323c;
 		jm_mcu_code[0x8888/2] = 0x1fff; //move.w #$1fff,D1
 		jm_mcu_code[0x888a/2] = 0x3cbc;
-		jm_mcu_code[0x888c/2] = 0x0000; //move.w #$0000,(A6)
+		jm_mcu_code[0x888c/2] = 0x00ff; //move.w #$0000,(A6)
 		jm_mcu_code[0x888e/2] = 0xdcfc;
 		jm_mcu_code[0x8890/2] = 0x0002; //adda.w #$0002,A6
 		jm_mcu_code[0x8892/2] = 0x51c9;
@@ -2274,10 +2344,10 @@ static DRIVER_INIT( suchipi )
 }
 
 /*First version of the MCU*/
-GAME( 1989, urashima, 0, urashima,	jalmah,  	urashima, ROT0, "UPL",	      	"Otogizoushi Urashima Mahjong",			GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-GAME( 1989, daireika, 0, jalmah,	jalmah,  	daireika, ROT0, "Jaleco / NMK", "Mahjong Daireikai",					GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-GAME( 1990, mjzoomin, 0, jalmah,	jalmah,  	mjzoomin, ROT0, "Jaleco",       "Mahjong Channel Zoom In",				GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1989, urashima, 0, urashima,  urashima,   urashima, ROT0, "UPL",          "Otogizoushi Urashima Mahjong",         GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1989, daireika, 0, jalmah,    daireika,   daireika, ROT0, "Jaleco / NMK", "Mahjong Daireikai",                    GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1990, mjzoomin, 0, jalmah,    mjzoomin,   mjzoomin, ROT0, "Jaleco",       "Mahjong Channel Zoom In",              GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 /*Second version of the MCU*/
-GAME( 1990, kakumei,  0, jalmah,	jalmah2, 	kakumei,  ROT0, "Jaleco",       "Mahjong Kakumei",						GAME_IMPERFECT_GRAPHICS )
-GAME( 1992, kakumei2, 0, jalmah,	jalmah2a,	kakumei2, ROT0, "Jaleco",       "Mahjong Kakumei 2 - Princess League",	GAME_IMPERFECT_GRAPHICS )
-GAME( 1993, suchipi,  0, jalmah,	jalmah2a,	suchipi,  ROT0, "Jaleco",       "Idol Janshi Su-Chi-Pie Special",		GAME_IMPERFECT_GRAPHICS )
+GAME( 1990, kakumei,  0, jalmah,    kakumei,    kakumei,  ROT0, "Jaleco",       "Mahjong Kakumei",                      GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, kakumei2, 0, jalmah,    kakumei2,   kakumei2, ROT0, "Jaleco",       "Mahjong Kakumei 2 - Princess League",  GAME_IMPERFECT_GRAPHICS )
+GAME( 1993, suchipi,  0, jalmah,    suchipi,    suchipi,  ROT0, "Jaleco",       "Idol Janshi Suchie-Pai Special",       GAME_IMPERFECT_GRAPHICS )
