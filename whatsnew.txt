@@ -1,3 +1,96 @@
+0.132
+-----
+
+
+MAMETesters Bugs Fixed
+----------------------
+- 03013: [Misc.] [debug] "Error: free a non-existant block" on 
+         TMS57002 source generation (Atari Ace)
+- 03241: [DIP/Input] aladbl: Unable to "Press Start" (Fabio Priuli)
+- 03238: [Crash/Freeze] gtmr and clones: Access Violation (Tafoid)
+
+
+
+Source Changes
+--------------
+Fixed colors in the Aristocrat Mark-IV driver. [Angelo Salese]
+
+Hooked up 2nd player mahjong panel in mjkjidai. [Angelo Salese]
+
+Watchdog hooked up in twinkle.c so test mode exits. [smf]
+
+Fixed for good the colors in 86 Lions. [Angelo Salese]
+
+Fixed address line swapping in Mirax. [Olivier Galibert]
+
+Fixed rom 2 decryption in Mirax. [Tomasz Slanina]
+
+Improved the video emulation in Mirax. [Angelo Salese]
+
+Fixed a minor typo in the SSEM debugging features. [MooglyGuy]
+
+Fixed a number of year listings known to be unknown or incorrect the 
+current MAME source. The source for these changes come from the book:
+Arcade TV Game List (Edition: Domestic and Overseas, 1971 - 2005).
+[Tafoid, Fujix]
+
+Update ghosteo driver with information out of eolith.c about QS1000 
+and added the sample rom, with a note about it NOT being dumped from 
+this PCB but is a common sample rom used by Eolith. [Brian Troha]
+
+Fixed minor cycle counting inaccuracy in Z80 core. [Marshmellow]
+
+Added the concept of device contracts. A contract is a well-defined
+set of interfaces supported by a device, and identified by a unique
+string identifier. A device may support any number of contracts,
+described in a list via the DEVICE_CONTRACT_LIST* macros. The purpose 
+of contracts is to provide a means for devices to expose a standard 
+set of interfaces to other parts of the system. For example, the PCI 
+device should expose a contract that includes functions for 
+configuration register access, and 32-bit I/O. Then any device with 
+a PCI interface should implement the PCI contract, so that the PCI 
+bus device can route things appropriately. [Aaron Giles]
+
+Removed the MDRV_<devtype>_REMOVE macros. A simple DEVICE_REMOVE
+works now that device types are not needed. [Aaron Giles]
+
+Verified clocks on Samurai Aces pcb. [Corrado Tomaselli]
+
+Added missing static and const qualifiers throughout the source.
+[Atari Ace]
+
+Changed several internal interfaces to be more consistent, namely
+(1) passing device_config as a const always, (2) passing
+running_machine as a non-const always, (3) eliminating running_machine
+where possible, (4) passing machine/device first, and (5) preferring
+(screen, bitmap, cliprect) over (machine, bitmap, cliprect) when all
+are needed for rendering. [Atari Ace]
+
+
+
+New games added or promoted from NOT_WORKING status
+---------------------------------------------------
+Mirax [Olivier Galibert, Angelo Salese, Tomasz Slanina]
+Super Crowns Golf [Angelo Salese, Tomasz Slanina]
+Jockey Club [Andrew Welburn, Dumping Union]
+
+
+
+New clones added
+----------------
+Shadow Force (Japan Version 3) [Guru]
+
+
+
+New games marked as GAME_NOT_WORKING
+------------------------------------
+Enchanted Forest [Palindrome]
+Janputer [alien_mame, Dumping Union]
+Dolphin Treasure [AGEMAME]
+
+
+
+
 0.131u4
 -------
 
