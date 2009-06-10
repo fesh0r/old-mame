@@ -31,12 +31,12 @@
 
 
 #define VERBOSE_LEVEL 0
-#define DBG_LOG(N,M,A) \
+#define DBG_LOG(MACHINE, N, M, A) \
 	do { \
 		if(VERBOSE_LEVEL >= N) \
 		{ \
 			if( M ) \
-				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(machine)), (char*) M ); \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(MACHINE)), (char*) M ); \
 			logerror A; \
 		} \
 	} while (0)
@@ -80,13 +80,12 @@ static void vc20_via0_irq (const device_config *device, int level)
 
 static READ8_DEVICE_HANDLER( vc20_via0_read_ca1 )
 {
-	return !( input_port_read(device->machine, "SPECIAL") & 0x02 );
+	return !(input_port_read(device->machine, "SPECIAL") & 0x02);
 }
 
 static READ8_DEVICE_HANDLER( vc20_via0_read_ca2 )
 {
-	running_machine *machine = device->machine;
-	DBG_LOG (1, "tape", ("motor read %d\n", via0_ca2));
+	DBG_LOG(device->machine, 1, "tape", ("motor read %d\n", via0_ca2));
 	return via0_ca2;
 }
 
@@ -109,6 +108,7 @@ static WRITE8_DEVICE_HANDLER( vc20_via0_write_ca2 )
 static READ8_DEVICE_HANDLER( vc20_via0_read_porta )
 {
 	UINT8 value = 0xff;
+	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
 
 	value &= ~(input_port_read(device->machine, "JOY") & 0x3c);
 
@@ -116,9 +116,9 @@ static READ8_DEVICE_HANDLER( vc20_via0_read_porta )
 	/* should be reduced to about 1 or 2 microseconds */
 	/*  if ((input_port_read(space->machine, "CTRLSEL") & 0x20 ) && (input_port_read(space->machine, "JOY") & 0x40) )  // i.e. LIGHTPEN_BUTTON
 		value &= ~0x20; */
-	if (!serial_clock || !cbm_serial_clock_read (device->machine))
+	if (!serial_clock || !cbm_serial_clock_read(serbus, 0))
 		value &= ~0x01;
-	if (!serial_data || !cbm_serial_data_read (device->machine))
+	if (!serial_data || !cbm_serial_data_read(serbus, 0))
 		value &= ~0x02;
 
 	if ((cassette_get_state(devtag_get_device(device->machine, "cassette")) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
@@ -131,9 +131,10 @@ static READ8_DEVICE_HANDLER( vc20_via0_read_porta )
 
 static WRITE8_DEVICE_HANDLER( vc20_via0_write_porta )
 {
-	running_machine *machine = device->machine;
-	cbm_serial_atn_write (machine, serial_atn = !(data & 0x80));
-	DBG_LOG (1, "serial out", ("atn %s\n", serial_atn ? "high" : "low"));
+	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
+
+	cbm_serial_atn_write(serbus, 0, serial_atn = !(data & 0x80));
+	DBG_LOG(device->machine, 1, "serial out", ("atn %s\n", serial_atn ? "high" : "low"));
 }
 
 /* via 1 addr 0x9120
@@ -191,7 +192,9 @@ static READ8_DEVICE_HANDLER( vc20_via1_read_ca1 )
 
 static WRITE8_DEVICE_HANDLER( vc20_via1_write_ca2 )
 {
-	cbm_serial_clock_write (device->machine, serial_clock = !data);
+	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
+
+	cbm_serial_clock_write(serbus, 0, serial_clock = !data);
 }
 
 static READ8_DEVICE_HANDLER( vc20_via1_read_portb )
@@ -330,14 +333,16 @@ static WRITE8_DEVICE_HANDLER( vc20_via1_write_portb )
 
 static READ8_DEVICE_HANDLER( vc20_via1_read_cb1 )
 {
-	running_machine *machine = device->machine;
-	DBG_LOG (1, "serial in", ("request read\n"));
-	return cbm_serial_request_read (device->machine);
+	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
+
+	DBG_LOG(device->machine, 1, "serial in", ("request read\n"));
+	return cbm_serial_request_read(serbus, 0);
 }
 
 static WRITE8_DEVICE_HANDLER( vc20_via1_write_cb2 )
 {
-	cbm_serial_data_write (device->machine, serial_data = !data);
+	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
+	cbm_serial_data_write(serbus, 0, serial_data = !data);
 }
 
 /* ieee 6522 number 1 (via4)
@@ -351,22 +356,36 @@ static WRITE8_DEVICE_HANDLER( vc20_via1_write_cb2 )
   6 ndac in
   7 atn in
  */
-static READ8_DEVICE_HANDLER( vc20_via4_read_portb )
+static READ8_DEVICE_HANDLER( vc20_via2_read_portb )
 {
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
 	UINT8 data = 0;
-	if (cbm_ieee_eoi_r(device->machine)) data |= 0x08;
-	if (cbm_ieee_dav_r(device->machine)) data |= 0x10;
-	if (cbm_ieee_nrfd_r(device->machine)) data |= 0x20;
-	if (cbm_ieee_ndac_r(device->machine)) data |= 0x40;
-	if (cbm_ieee_atn_r(device->machine)) data |= 0x80;
+
+	if (cbm_ieee_eoi_r(ieeebus, 0)) 
+		data |= 0x08;
+
+	if (cbm_ieee_dav_r(ieeebus, 0)) 
+		data |= 0x10;
+
+	if (cbm_ieee_nrfd_r(ieeebus, 0)) 
+		data |= 0x20;
+
+	if (cbm_ieee_ndac_r(ieeebus, 0)) 
+		data |= 0x40;
+
+	if (cbm_ieee_atn_r(ieeebus, 0)) 
+		data |= 0x80;
+
 	return data;
 }
 
-static WRITE8_DEVICE_HANDLER( vc20_via4_write_portb )
+static WRITE8_DEVICE_HANDLER( vc20_via2_write_portb )
 {
-	cbm_ieee_dav_w(device->machine, 0, data & 0x01);
-	cbm_ieee_nrfd_w(device->machine, 0, data & 0x02);
-	cbm_ieee_ndac_w(device->machine, 0, data & 0x04);
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+
+	cbm_ieee_dav_write(ieeebus, 0, data & 0x01);
+	cbm_ieee_nrfd_write(ieeebus, 0, data & 0x02);
+	cbm_ieee_ndac_write(ieeebus, 0, data & 0x04);
 }
 
 /* ieee 6522 number 2 (via5)
@@ -376,29 +395,34 @@ static WRITE8_DEVICE_HANDLER( vc20_via4_write_portb )
    cb2 eoi out
    ca2 atn out
 */
-static WRITE8_DEVICE_HANDLER( vc20_via5_write_porta )
+static WRITE8_DEVICE_HANDLER( vc20_via3_write_porta )
 {
-	cbm_ieee_data_w(device->machine, 0, data);
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	cbm_ieee_data_write(ieeebus, 0, data);
 }
 
-static READ8_DEVICE_HANDLER( vc20_via5_read_portb )
+static READ8_DEVICE_HANDLER( vc20_via3_read_portb )
 {
-	return cbm_ieee_data_r(device->machine);
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	return cbm_ieee_data_r(ieeebus, 0);
 }
 
-static WRITE8_DEVICE_HANDLER( vc20_via5_write_ca2 )
+static WRITE8_DEVICE_HANDLER( vc20_via3_write_ca2 )
 {
-	cbm_ieee_atn_w(device->machine, 0, data);
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	cbm_ieee_atn_write(ieeebus, 0, data);
 }
 
-static READ8_DEVICE_HANDLER( vc20_via5_read_cb1 )
+static READ8_DEVICE_HANDLER( vc20_via3_read_cb1 )
 {
-	return cbm_ieee_srq_r(device->machine);
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	return cbm_ieee_srq_r(ieeebus, 0);
 }
 
-static WRITE8_DEVICE_HANDLER( vc20_via5_write_cb2 )
+static WRITE8_DEVICE_HANDLER( vc20_via3_write_cb2 )
 {
-	cbm_ieee_eoi_w(device->machine, 0, data);
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	cbm_ieee_eoi_write(ieeebus, 0, data);
 }
 
 const via6522_interface vc20_via0 =
@@ -416,7 +440,9 @@ const via6522_interface vc20_via0 =
 	DEVCB_HANDLER(vc20_via0_write_ca2),
 	DEVCB_NULL,								   /*via0_write_cb2, */
 	DEVCB_LINE(vc20_via0_irq)
-}, vc20_via1 =
+}, 
+
+vc20_via1 =
 {
 	DEVCB_HANDLER(vc20_via1_read_porta),
 	DEVCB_HANDLER(vc20_via1_read_portb),
@@ -432,36 +458,38 @@ const via6522_interface vc20_via0 =
 	DEVCB_HANDLER(vc20_via1_write_cb2),
 	DEVCB_LINE(vc20_via1_irq)
 },
-/* via2,3 used by vc1541 and 2031 disk drives */
-vc20_via4 =
+
+vc20_via2 =
 {
-	DEVCB_NULL, /*vc20_via4_read_porta, */
-	DEVCB_HANDLER(vc20_via4_read_portb),
-	DEVCB_NULL, /*vc20_via4_read_ca1, */
-	DEVCB_NULL, /*vc20_via5_read_cb1, */
+	DEVCB_NULL, /*vc20_via2_read_porta, */
+	DEVCB_HANDLER(vc20_via2_read_portb),
+	DEVCB_NULL, /*vc20_via2_read_ca1, */
+	DEVCB_NULL, /*vc20_via2_read_cb1, */
 	DEVCB_NULL, /* via1_read_ca2 */
 	DEVCB_NULL,								   /*via1_read_cb2, */
 	DEVCB_NULL,								   /*via1_write_porta, */
-	DEVCB_HANDLER(vc20_via4_write_portb),
+	DEVCB_HANDLER(vc20_via2_write_portb),
 	DEVCB_NULL,                                 /*via0_write_ca1, */
 	DEVCB_NULL,                                 /*via0_write_cb1, */
-	DEVCB_NULL, /*vc20_via5_write_ca2, */
-	DEVCB_NULL, /*vc20_via5_write_cb2, */
+	DEVCB_NULL, /*vc20_via2_write_ca2, */
+	DEVCB_NULL, /*vc20_via2_write_cb2, */
 	DEVCB_LINE(vc20_via1_irq)
-}, vc20_via5 =
+}, 
+
+vc20_via3 =
 {
-	DEVCB_NULL,/*vc20_via5_read_porta, */
-	DEVCB_HANDLER(vc20_via5_read_portb),
-	DEVCB_NULL, /*vc20_via5_read_ca1, */
-	DEVCB_HANDLER(vc20_via5_read_cb1),
+	DEVCB_NULL,/*vc20_via3_read_porta, */
+	DEVCB_HANDLER(vc20_via3_read_portb),
+	DEVCB_NULL, /*vc20_via3_read_ca1, */
+	DEVCB_HANDLER(vc20_via3_read_cb1),
 	DEVCB_NULL,								   /*via1_read_ca2, */
 	DEVCB_NULL,								   /*via1_read_cb2, */
-	DEVCB_HANDLER(vc20_via5_write_porta),
-	DEVCB_NULL,/*vc20_via5_write_portb, */
+	DEVCB_HANDLER(vc20_via3_write_porta),
+	DEVCB_NULL,/*vc20_via3_write_portb, */
 	DEVCB_NULL,                                 /*via0_write_ca1, */
 	DEVCB_NULL,                                 /*via0_write_cb1, */
-	DEVCB_HANDLER(vc20_via5_write_ca2),
-	DEVCB_HANDLER(vc20_via5_write_cb2),
+	DEVCB_HANDLER(vc20_via3_write_ca2),
+	DEVCB_HANDLER(vc20_via3_write_cb2),
 	DEVCB_LINE(vc20_via1_irq)
 };
 
@@ -485,33 +513,33 @@ int vic6560_dma_read (running_machine *machine, int offset)
 
 WRITE8_HANDLER( vc20_0400_w ) 
 {
-	if ( mess_ram_size >= 8 * 1024 ) 
+	if (mess_ram_size >= 8 * 1024) 
 	{
-		mess_ram[ 0x0400 + offset ] = data;
+		mess_ram[0x0400 + offset] = data;
 	}
 }
 
 WRITE8_HANDLER( vc20_2000_w ) 
 {
-	if ( ( mess_ram_size >= 16 * 1024 ) && vc20_rom_2000 == NULL ) 
+	if ((mess_ram_size >= 16 * 1024) && vc20_rom_2000 == NULL)
 	{
-		mess_ram[ 0x2000 + offset ] = data;
+		mess_ram[0x2000 + offset] = data;
 	}
 }
 
 WRITE8_HANDLER( vc20_4000_w ) 
 {
-	if ( ( mess_ram_size >= 24 * 1024 ) && vc20_rom_4000 == NULL ) 
+	if ((mess_ram_size >= 24 * 1024) && vc20_rom_4000 == NULL) 
 	{
-		mess_ram[ 0x4000 + offset ] = data;
+		mess_ram[0x4000 + offset] = data;
 	}
 }
 
 WRITE8_HANDLER( vc20_6000_w ) 
 {
-	if ( ( mess_ram_size >= 32 * 1024 ) && vc20_rom_6000 == NULL ) 
+	if ((mess_ram_size >= 32 * 1024) && vc20_rom_6000 == NULL) 
 	{
-		mess_ram[ 0x6000 + offset ] = data;
+		mess_ram[0x6000 + offset] = data;
 	}
 }
 
@@ -538,8 +566,8 @@ static void vc20_memory_init(running_machine *machine)
 	/* 2114 poweron ? 64 x 0xff, 64x 0, and so on */
 	for (i = 0; i < 0x400; i += 0x40)
 	{
-		memset (memory + i, i & 0x40 ? 0 : 0xff, 0x40);
-		memset (memory + 0x9400 + i, 0xf0 | (i & 0x40 ? 0 : 0xf), 0x40);
+		memset(memory + i, i & 0x40 ? 0 : 0xff, 0x40);
+		memset(memory + 0x9400 + i, 0xf0 | (i & 0x40 ? 0 : 0xf), 0x40);
 	}
 	// this would be the straight forward memory init for
 	// non cost reduced vic20 (2114 rams)
@@ -548,7 +576,7 @@ static void vc20_memory_init(running_machine *machine)
 #endif
 
 	/* clears ieee cartrige rom */
-	/* memset (memory + 0xa000, 0xff, 0x2000); */
+	/* memset(memory + 0xa000, 0xff, 0x2000); */
 
 	inited = 1;
 }
@@ -561,26 +589,26 @@ static TIMER_CALLBACK( vic20_tape_timer )
 	via_ca1_w(via_1, 0, data);
 }
 
-static void vc20_common_driver_init (running_machine *machine)
+static void vc20_common_driver_init( running_machine *machine )
 {
 	vc20_memory_init(machine);
 
 	datasette_timer = timer_alloc(machine, vic20_tape_timer, NULL);
 
 	if (has_vc1541)
-		drive_config (machine, type_1541, 0, 0, 1, 8);
+		drive_config(machine, type_1541, 0, 0, "cpu_vc1540", 8);
 }
 
 DRIVER_INIT( vc20 )
 {
-	vc20_common_driver_init (machine);
-	vic6561_init (vic6560_dma_read, vic6560_dma_read_color);
+	vc20_common_driver_init(machine);
+	vic6561_init(vic6560_dma_read, vic6560_dma_read_color);
 }
 
 DRIVER_INIT( vic20 )
 {
-	vc20_common_driver_init (machine);
-	vic6560_init (vic6560_dma_read, vic6560_dma_read_color);
+	vc20_common_driver_init(machine);
+	vic6560_init(vic6560_dma_read, vic6560_dma_read_color);
 }
 
 DRIVER_INIT( vic1001 )
@@ -591,23 +619,23 @@ DRIVER_INIT( vic1001 )
 DRIVER_INIT( vc20v )
 {
 	has_vc1541 = 1;
-	vc20_common_driver_init (machine);
-	vic6561_init (vic6560_dma_read, vic6560_dma_read_color);
+	vc20_common_driver_init(machine);
+	vic6561_init(vic6560_dma_read, vic6560_dma_read_color);
 }
 
 DRIVER_INIT( vic20v )
 {
 	has_vc1541 = 1;
-	vc20_common_driver_init (machine);
-	vic6560_init (vic6560_dma_read, vic6560_dma_read_color);
+	vc20_common_driver_init(machine);
+	vic6560_init(vic6560_dma_read, vic6560_dma_read_color);
+	drive_config(machine, type_1541, 0, 0, "cpu_vc1540", 8);
 }
 
 DRIVER_INIT( vic20i )
 {
 	ieee = 1;
-	vc20_common_driver_init (machine);
-	vic6560_init (vic6560_dma_read, vic6560_dma_read_color);
-	cbm_ieee_open();
+	vc20_common_driver_init(machine);
+	vic6560_init(vic6560_dma_read, vic6560_dma_read_color);
 }
 
 MACHINE_RESET( vic20 )
@@ -616,23 +644,19 @@ MACHINE_RESET( vic20 )
 
 	if (has_vc1541)
 	{
-		cbm_serial_config(machine, &cbm_fake_drive_interface);
-		drive_reset ();
+		drive_reset();
 	}
 	else
 	{
-		cbm_serial_config(machine, &cbm_sim_drive_interface);
-		cbm_serial_reset_write (machine, 0);
-
 		if (ieee) 
 		{
-			cbm_drive_0_config (IEEE, 8);
-			cbm_drive_1_config (IEEE, 9);
+			cbm_drive_0_config(IEEE, 8);
+			cbm_drive_1_config(IEEE, 9);
 		} 
 		else 
 		{
-			cbm_drive_0_config (SERIAL, 8);
-			cbm_drive_1_config (SERIAL, 9);
+			cbm_drive_0_config(SERIAL, 8);
+			cbm_drive_1_config(SERIAL, 9);
 		}
 	}
 

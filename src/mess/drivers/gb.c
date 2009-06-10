@@ -550,7 +550,7 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( gameboy )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", LR35902, 4194304)			/* 4.194304 MHz */
-	MDRV_CPU_PROGRAM_MAP(gb_map, 0)
+	MDRV_CPU_PROGRAM_MAP(gb_map)
 	MDRV_CPU_CONFIG(dmg_cpu_reset)
 	MDRV_CPU_VBLANK_INT("screen", gb_scanline_interrupt)	/* 1 dummy int each frame */
 
@@ -590,7 +590,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( supergb )
 	MDRV_IMPORT_FROM(gameboy)
 	MDRV_CPU_REPLACE("maincpu", LR35902, 4295454)	/* 4.295454 MHz */
-	MDRV_CPU_PROGRAM_MAP(sgb_map, 0)
+	MDRV_CPU_PROGRAM_MAP(sgb_map)
 
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_CONFIG(sgb_cpu_reset)
@@ -623,7 +623,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( gbcolor )
 	MDRV_IMPORT_FROM(gameboy)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP( gbc_map, 0 )
+	MDRV_CPU_PROGRAM_MAP( gbc_map)
 	MDRV_CPU_CONFIG(cgb_cpu_reset)
 
 	MDRV_MACHINE_RESET(gbc)
@@ -642,7 +642,7 @@ SYSTEM_CONFIG_END
 static MACHINE_DRIVER_START( megaduck )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", LR35902, 4194304)			/* 4.194304 MHz */
-	MDRV_CPU_PROGRAM_MAP( megaduck_map, 0 )
+	MDRV_CPU_PROGRAM_MAP( megaduck_map)
 	MDRV_CPU_VBLANK_INT("screen", gb_scanline_interrupt)	/* 1 int each scanline ! */
 	MDRV_CPU_CONFIG(megaduck_cpu_reset)
 
@@ -696,6 +696,11 @@ ROM_START( gbpocket )
 /*  ROM_LOAD( "gbp_boot.bin", 0x0000, 0x0100, NO_DUMP ) */
 ROM_END
 
+ROM_START( gblight )
+	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
+/*  ROM_LOAD( "gbl_boot.bin", 0x0000, 0x0100, NO_DUMP ) */
+ROM_END
+
 ROM_START( gbcolor )
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 /*  ROM_LOAD( "gbc_boot.bin", 0x0000, 0x0100, NO_DUMP ) */
@@ -710,6 +715,7 @@ ROM_END
 CONS( 1990, gameboy,  0,       0,	gameboy,  gameboy, 0,    0,	 "Nintendo", "Game Boy"  , 0)
 CONS( 1994, supergb,  0,       gameboy,	supergb,  gameboy, 0,    0,	 "Nintendo", "Super Game Boy" , 0)
 CONS( 1996, gbpocket, gameboy, 0,	gbpocket, gameboy, 0,    0,	 "Nintendo", "Game Boy Pocket" , 0)
+CONS( 1997, gblight,  gameboy, 0,	gbpocket, gameboy, 0,    0,	 "Nintendo", "Game Boy Light" , 0)
 CONS( 1998, gbcolor,  0,       gameboy,	gbcolor,  gameboy, 0,    gb_cgb, "Nintendo", "Game Boy Color" , GAME_NOT_WORKING)
 
 /* Sound is not 100% yet, it generates some sounds which could be ok. Since we're lacking a real

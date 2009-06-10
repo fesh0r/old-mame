@@ -663,7 +663,7 @@ static MACHINE_DRIVER_START ( to7 )
 
 /* cpu */
      MDRV_CPU_ADD ( "maincpu", M6809, 1000000 )
-     MDRV_CPU_PROGRAM_MAP ( to7, 0 )
+     MDRV_CPU_PROGRAM_MAP ( to7)
 
 /* video */
      MDRV_SCREEN_ADD("screen", RASTER)
@@ -911,7 +911,7 @@ static MACHINE_DRIVER_START ( to770 )
      MDRV_MACHINE_RESET ( to770 )
 
      MDRV_CPU_MODIFY( "maincpu" )
-     MDRV_CPU_PROGRAM_MAP ( to770, 0 )
+     MDRV_CPU_PROGRAM_MAP ( to770)
 
 	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, to770_pia6821_sys )
 
@@ -1106,11 +1106,11 @@ static MACHINE_DRIVER_START ( mo5 )
      MDRV_MACHINE_RESET ( mo5 )
 
      MDRV_CPU_MODIFY( "maincpu" )
-     MDRV_CPU_PROGRAM_MAP ( mo5, 0 )
+     MDRV_CPU_PROGRAM_MAP ( mo5)
 
      MDRV_CASSETTE_MODIFY( "cassette", mo5_cassette_config )
 
-     MDRV_MC6846_REMOVE( "mc6846" )
+     MDRV_DEVICE_REMOVE( "mc6846" )
 
 	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, mo5_pia6821_sys )
 
@@ -1453,12 +1453,12 @@ static MACHINE_DRIVER_START ( to9 )
      MDRV_MACHINE_RESET ( to9 )
 
      MDRV_CPU_MODIFY( "maincpu" )
-     MDRV_CPU_PROGRAM_MAP ( to9, 0 )
+     MDRV_CPU_PROGRAM_MAP ( to9)
 
 	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, to9_pia6821_sys )
-	MDRV_PIA6821_REMOVE( THOM_PIA_IO )
+	MDRV_DEVICE_REMOVE( THOM_PIA_IO )
 
-	MDRV_CENTRONICS_REMOVE("centronics")
+	MDRV_DEVICE_REMOVE("centronics")
 	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 
      MDRV_MC6846_MODIFY( "mc6846", to9_timer )
@@ -1681,12 +1681,12 @@ static MACHINE_DRIVER_START ( to8 )
      MDRV_MACHINE_RESET ( to8 )
 
      MDRV_CPU_MODIFY( "maincpu" )
-     MDRV_CPU_PROGRAM_MAP ( to8, 0 )
+     MDRV_CPU_PROGRAM_MAP ( to8)
 
 	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, to8_pia6821_sys )
-	MDRV_PIA6821_REMOVE( THOM_PIA_IO )
+	MDRV_DEVICE_REMOVE( THOM_PIA_IO )
 
-	MDRV_CENTRONICS_REMOVE("centronics")
+	MDRV_DEVICE_REMOVE("centronics")
 	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 
      MDRV_MC6846_MODIFY( "mc6846", to8_timer )
@@ -1836,12 +1836,12 @@ static MACHINE_DRIVER_START ( to9p )
      MDRV_MACHINE_RESET ( to9p )
 
      MDRV_CPU_MODIFY( "maincpu" )
-     MDRV_CPU_PROGRAM_MAP ( to9p, 0 )
+     MDRV_CPU_PROGRAM_MAP ( to9p)
 
 	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, to9p_pia6821_sys )
-	MDRV_PIA6821_REMOVE( THOM_PIA_IO )
+	MDRV_DEVICE_REMOVE( THOM_PIA_IO )
 
-	MDRV_CENTRONICS_REMOVE("centronics")
+	MDRV_DEVICE_REMOVE("centronics")
 	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 
      MDRV_MC6846_MODIFY( "mc6846", to9p_timer )
@@ -2176,15 +2176,15 @@ static MACHINE_DRIVER_START ( mo6 )
      MDRV_MACHINE_RESET ( mo6 )
 
      MDRV_CPU_MODIFY( "maincpu" )
-     MDRV_CPU_PROGRAM_MAP ( mo6, 0 )
+     MDRV_CPU_PROGRAM_MAP ( mo6)
 
-     MDRV_MC6846_REMOVE( "mc6846" )
+     MDRV_DEVICE_REMOVE( "mc6846" )
 
 	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, mo6_pia6821_sys )
-	MDRV_PIA6821_REMOVE( THOM_PIA_IO )
+	MDRV_DEVICE_REMOVE( THOM_PIA_IO )
 	MDRV_PIA6821_MODIFY( THOM_PIA_GAME, mo6_pia6821_game )
 
-	MDRV_CENTRONICS_REMOVE("centronics")
+	MDRV_DEVICE_REMOVE("centronics")
 	MDRV_CENTRONICS_ADD("centronics", mo6_centronics_config)
 
 	MDRV_CARTSLOT_MODIFY("cart")
@@ -2408,15 +2408,15 @@ static MACHINE_DRIVER_START ( mo5nr )
      MDRV_MACHINE_RESET ( mo5nr )
 
      MDRV_CPU_MODIFY( "maincpu" )
-     MDRV_CPU_PROGRAM_MAP ( mo5nr, 0 )
+     MDRV_CPU_PROGRAM_MAP ( mo5nr)
 
-     MDRV_MC6846_REMOVE( "mc6846" )
+     MDRV_DEVICE_REMOVE( "mc6846" )
 
 	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, mo5nr_pia6821_sys )
-	MDRV_PIA6821_REMOVE( THOM_PIA_IO )
+	MDRV_DEVICE_REMOVE( THOM_PIA_IO )
 	MDRV_PIA6821_MODIFY( THOM_PIA_GAME, mo5nr_pia6821_game )
 
-	MDRV_CENTRONICS_REMOVE("centronics")
+	MDRV_DEVICE_REMOVE("centronics")
 	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 
 	MDRV_CARTSLOT_MODIFY("cart")

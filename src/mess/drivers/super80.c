@@ -4,26 +4,16 @@
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
 #include "sound/wave.h"
-#include "machine/z80pio.h"
 #include "devices/snapquik.h"
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
 #include "devices/z80bin.h"
 #include "sound/speaker.h"
 #include "machine/ctronics.h"
-#include "video/mc6845.h"
+#include "super80.lh"
 #include "super80.h"
 
-
-static const device_config *super80_z80pio;
-static const device_config *super80_speaker;
-static const device_config *super80_cassette;
-static const device_config *super80_printer;
-
 UINT8 *pcgram;
-UINT8 super80v_vid_col=1;			// 0 = color ram ; 1 = video ram
-UINT8 super80v_rom_pcg=1;			// 0 = prom ; 1 = pcg
-UINT8 super80_mhz=2;	/* state of bit 2 of port F0 */
 
 #define MASTER_CLOCK			(XTAL_12MHz)
 #define PIXEL_CLOCK			(MASTER_CLOCK/2)
@@ -38,201 +28,6 @@ UINT8 super80_mhz=2;	/* state of bit 2 of port F0 */
 #define SUPER80V_SCREEN_HEIGHT		(300)
 #define SUPER80V_DOTS			(7)
 
-
-/**************************** PIO ******************************************************************************/
-
-static UINT8 keylatch;
-
-/* This activates when Control + C + 4 pressed */
-static void super80_pio_interrupt(const device_config *device, int state)
-{
-	cputag_set_input_line(device->machine, "maincpu", 0, state );
-}
-
-static WRITE8_DEVICE_HANDLER( pio_port_a_w )
-{
-	keylatch = data;
-};
-
-static READ8_DEVICE_HANDLER( pio_port_b_r )
-{
-	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7" };
-
-	int bit;
-	UINT8 data = 0xff;
-
-	for (bit = 0; bit < 8; bit++)
-	{
-		if (!BIT(keylatch, bit)) data &= input_port_read(device->machine, keynames[bit]);
-	}
-
-	return data;
-};
-
-static const z80pio_interface super80_pio_intf =
-{
-	DEVCB_LINE(super80_pio_interrupt),		/* callback when change interrupt status */
-	DEVCB_NULL,
-	DEVCB_HANDLER(pio_port_b_r),
-	DEVCB_HANDLER(pio_port_a_w),
-	DEVCB_NULL,
-	DEVCB_NULL,			/* portA ready active callback (not used in super80) */
-	DEVCB_NULL			/* portB ready active callback (not used in super80) */
-};
-
-
-static const z80_daisy_chain super80_daisy_chain[] =
-{
-	{ "z80pio" },
-	{ NULL }
-};
-
-/**************************** CASSETTE ROUTINES *****************************************************************/
-
-static void super80_cassette_motor( running_machine *machine, UINT8 data )
-{
-	if (data)
-		cassette_change_state(super80_cassette, CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
-	else
-		cassette_change_state(super80_cassette, CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
-
-	/* does user want to hear the sound? */
-	if (input_port_read(machine, "CONFIG") & 8)
-		cassette_change_state(super80_cassette, CASSETTE_SPEAKER_ENABLED, CASSETTE_MASK_SPEAKER);
-	else
-		cassette_change_state(super80_cassette, CASSETTE_SPEAKER_MUTED, CASSETTE_MASK_SPEAKER);
-}
-
-/********************************************* TIMER ************************************************/
-
-static UINT8 cass_data[]={ 0, 0, 0, 0 };
-
-	/* this timer runs at 200khz and does 2 jobs:  
-	1. Scan the keyboard and present the results to the pio  
-	2. Emulate the 2 chips in the cassette input circuit  
-
-	Reasons why it is necessary:  
-	1. The real z80pio is driven by the cpu clock and is capable of independent actions.  
-	MAME does not support this at all. If the interrupt key sequence is entered, the  
-	computer can be reset out of a hung state by the operator.  
-	2. This "emulates" U79 CD4046BCN PLL chip and U1 LM311P op-amp. U79 converts a frequency to a voltage,  
-	and U1 amplifies that voltage to digital levels. U1 has a trimpot connected, to set the midpoint.
-
-	The MDS homebrew input circuit consists of 2 op-amps followed by a D-flipflop.
-	My "read-any-system" cassette circuit was a CA3140 op-amp, the smarts being done in software.
-
-	bit 0 = original system (U79 and U1)
-	bit 1 = MDS fast system
-	bit 2 = CA3140 */
-
-static TIMER_CALLBACK( super80_timer )
-{
-	UINT8 cass_ws=0;
-
-	cass_data[1]++;
-	cass_ws = (cassette_input(super80_cassette) > +0.03) ? 4 : 0;
-
-	if (cass_ws != cass_data[0])
-	{
-		if (cass_ws) cass_data[3] ^= 2;						// the MDS flipflop
-		cass_data[0] = cass_ws;
-		cass_data[2] = ((cass_data[1] < 0x40) ? 1 : 0) | cass_ws | cass_data[3];
-		cass_data[1] = 0;
-	}
-
-	z80pio_p_w(super80_z80pio,1,pio_port_b_r(super80_z80pio,0));
-}
-
-/*************************************** PRINTER ********************************************************/
-
-/* The Super80 had an optional I/O card that plugged into the S-100 slot. The card had facility for running
-	an 8-bit Centronics printer, and a serial device at 300, 600, or 1200 baud. The I/O address range
-	was selectable via 4 dipswitches. The serial parameters (baud rate, parity, stop bits, etc) was
-	chosen with more dipswitches. Regretably, no parameters could be set by software. Currently, the
-	Centronics printer is emulated; the serial side of things may be done later, as will the dipswitches.
-
-	The most commonly used I/O range is DC-DE (DC = centronics, DD = serial data, DE = serial control
-	All the home-brew roms use this, except for super80e which uses BC-BE (which we don't support yet). */
-
-/**************************** I/O PORTS *****************************************************************/
-
-static READ8_HANDLER( super80_dc_r )
-{
-	UINT8 data=0x7f;
-
-	/* bit 7 = printer busy
-	0 = printer is not busy */
-
-	data |= centronics_busy_r(super80_printer) << 7;
-
-	return data;
-}
-
-static READ8_HANDLER( super80_f2_r )
-{
-	UINT8 data = input_port_read(space->machine, "DSW") & 0xf0;	// dip switches on pcb
-	data |= cass_data[2];			// bit 0 = output of U1, bit 1 = MDS cass state, bit 2 = current wave_state
-	data |= 0x08;				// bit 3 - not used
-	return data;
-}
-
-static WRITE8_HANDLER( super80_dc_w )
-{
-	/* hardware strobe driven from port select, bit 7..0 = data */
-	centronics_strobe_w(super80_printer, 1);
-	centronics_data_w(super80_printer, 0, data);
-	centronics_strobe_w(super80_printer, 0);
-}
-
-static UINT8 last_data;
-
-static WRITE8_HANDLER( super80_f0_w )
-{
-	UINT8 bits = data ^ last_data;
-
-	if (bits & 0x20) set_led_status(2,(data & 32) ? 0 : 1);		/* bit 5 - LED - scroll lock led is used */
-	speaker_level_w(super80_speaker, (data & 8) ? 0 : 1);				/* bit 3 - speaker */
-	super80_mhz = (data & 4) ? 1 : 2;				/* bit 2 - video on/off */
-	if (bits & 2) super80_cassette_motor(space->machine, data & 2 ? 1 : 0);	/* bit 1 - cassette motor */
-	if (bits & 1) cassette_output(super80_cassette, (data & 1) ? -1.0 : +1.0);	/* bit 0 - cass out */
-
-	last_data = data;
-}
-
-static WRITE8_HANDLER( super80r_f0_w )
-{
-	UINT8 bits = data ^ last_data;
-
-	if (bits & 0x20) set_led_status(2,(data & 32) ? 0 : 1);		/* bit 5 - LED - scroll lock led is used */
-	speaker_level_w(super80_speaker, (data & 8) ? 0 : 1);				/* bit 3 - speaker */
-	if (bits & 2) super80_cassette_motor(space->machine, data & 2 ? 1 : 0);	/* bit 1 - cassette motor */
-	if (bits & 1) cassette_output(super80_cassette, (data & 1) ? -1.0 : +1.0);	/* bit 0 - cass out */
-
-	last_data = data;
-}
-
-static WRITE8_HANDLER( super80v_f0_w )
-{
-	UINT8 bits = data ^ last_data;
-
-	if (bits & 0x20) set_led_status(2,(data & 32) ? 0 : 1);		/* bit 5 - LED - scroll lock led is used */
-	super80v_rom_pcg = data & 0x10;					/* bit 4 - bankswitch gfx rom or pcg */
-	speaker_level_w(super80_speaker, (data & 8) ? 0 : 1);				/* bit 3 - speaker */
-	super80v_vid_col = data & 4;					/* bit 2 - bankswitch video or colour ram */
-	if (bits & 2) super80_cassette_motor(space->machine, data & 2 ? 1 : 0);	/* bit 1 - cassette motor */
-	if (bits & 1) cassette_output(super80_cassette, (data & 1) ? -1.0 : +1.0);	/* bit 0 - cass out */
-
-	last_data = data;
-}
-
-static READ8_HANDLER( super80_f8_r ) { return z80pio_d_r (super80_z80pio,0); }
-static READ8_HANDLER( super80_f9_r ) { return z80pio_c_r (super80_z80pio,0); }
-static READ8_HANDLER( super80_fa_r ) { return z80pio_d_r (super80_z80pio,1); }
-static READ8_HANDLER( super80_fb_r ) { return z80pio_c_r (super80_z80pio,1); }
-static WRITE8_HANDLER( super80_f8_w ) { z80pio_d_w(super80_z80pio,0, data); }
-static WRITE8_HANDLER( super80_f9_w ) { z80pio_c_w(super80_z80pio,0, data); }
-static WRITE8_HANDLER( super80_fa_w ) { z80pio_d_w(super80_z80pio,1, data); }
-static WRITE8_HANDLER( super80_fb_w ) { z80pio_c_w(super80_z80pio,1, data); }
 
 /**************************** MEMORY AND I/O MAPPINGS *****************************************************************/
 
@@ -269,10 +64,7 @@ static ADDRESS_MAP_START( super80_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x14) AM_WRITE(super80_f0_w)
 	AM_RANGE(0xe1, 0xe1) AM_MIRROR(0x14) AM_WRITE(super80_f1_w)
 	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x14) AM_READ(super80_f2_r)
-	AM_RANGE(0xf8, 0xf8) AM_MIRROR(0x04) AM_READWRITE(super80_f8_r,super80_f8_w)
-	AM_RANGE(0xf9, 0xf9) AM_MIRROR(0x04) AM_READWRITE(super80_f9_r,super80_f9_w)
-	AM_RANGE(0xfa, 0xfa) AM_MIRROR(0x04) AM_READWRITE(super80_fa_r,super80_fa_w)
-	AM_RANGE(0xfb, 0xfb) AM_MIRROR(0x04) AM_READWRITE(super80_fb_r,super80_fb_w)
+	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE("z80pio",super80_pio_r,super80_pio_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( super80r_io, ADDRESS_SPACE_IO, 8 )
@@ -284,10 +76,7 @@ static ADDRESS_MAP_START( super80r_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xdc, 0xdc) AM_READWRITE(super80_dc_r, super80_dc_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x14) AM_WRITE(super80r_f0_w)
 	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x14) AM_READ(super80_f2_r)
-	AM_RANGE(0xf8, 0xf8) AM_MIRROR(0x04) AM_READWRITE(super80_f8_r,super80_f8_w)
-	AM_RANGE(0xf9, 0xf9) AM_MIRROR(0x04) AM_READWRITE(super80_f9_r,super80_f9_w)
-	AM_RANGE(0xfa, 0xfa) AM_MIRROR(0x04) AM_READWRITE(super80_fa_r,super80_fa_w)
-	AM_RANGE(0xfb, 0xfb) AM_MIRROR(0x04) AM_READWRITE(super80_fb_r,super80_fb_w)
+	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE("z80pio",super80_pio_r,super80_pio_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( super80v_io, ADDRESS_SPACE_IO, 8 )
@@ -297,12 +86,9 @@ static ADDRESS_MAP_START( super80v_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x11, 0x11) AM_DEVREAD("crtc", mc6845_register_r)
 	AM_RANGE(0x11, 0x11) AM_WRITE(super80v_11_w)
 	AM_RANGE(0xdc, 0xdc) AM_READWRITE(super80_dc_r, super80_dc_w)
-	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x14) AM_WRITE(super80v_f0_w)
+	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x14) AM_WRITE(super80_f0_w)
 	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x14) AM_READ(super80_f2_r)
-	AM_RANGE(0xf8, 0xf8) AM_MIRROR(0x04) AM_READWRITE(super80_f8_r,super80_f8_w)
-	AM_RANGE(0xf9, 0xf9) AM_MIRROR(0x04) AM_READWRITE(super80_f9_r,super80_f9_w)
-	AM_RANGE(0xfa, 0xfa) AM_MIRROR(0x04) AM_READWRITE(super80_fa_r,super80_fa_w)
-	AM_RANGE(0xfb, 0xfb) AM_MIRROR(0x04) AM_READWRITE(super80_fb_r,super80_fb_w)
+	AM_RANGE(0xf8, 0xfb) AM_MIRROR(0x04) AM_DEVREADWRITE("z80pio",super80_pio_r,super80_pio_w)
 ADDRESS_MAP_END
 
 /**************************** DIPSWITCHES, KEYBOARD, HARDWARE CONFIGURATION ****************************************/
@@ -550,116 +336,15 @@ static INPUT_PORTS_START( super80r )
 	PORT_CONFSETTING(    0x40, "Green")
 INPUT_PORTS_END
 
-/**************************** GRAPHICS DECODE *****************************************************************/
-
-static const gfx_layout super80_charlayout =
-{
-	8,10,					/* 8 x 10 characters */
-	64,					/* 64 characters */
-	1,						/* 1 bits per pixel */
-	{ 0 },					/* no bitplanes; 1 bit per pixel */
-	/* x offsets */
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	/* y offsets */
-	{  0*8,  2*8,  4*8,  6*8,  8*8, 10*8, 12*8, 14*8,
-	   1*8,  3*8,  5*8,  7*8,  9*8, 11*8, 13*8, 15*8 },
-	8*16					/* every char takes 16 bytes */
-};
-
-static const gfx_layout super80d_charlayout =
-{
-	8,10,					/* 8 x 10 characters */
-	256,					/* 256 characters */
-	1,						/* 1 bits per pixel */
-	{ 0 },					/* no bitplanes; 1 bit per pixel */
-	/* x offsets */
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	/* y offsets */
-	{  0*8,  2*8,  4*8,  6*8,  8*8, 10*8, 12*8, 14*8,
-	   1*8,  3*8,  5*8,  7*8,  9*8, 11*8, 13*8, 15*8 },
-	8*16					/* every char takes 16 bytes */
-};
-
-/* for documentation only - not needed by video update */
-static const gfx_layout super80v_charlayout =
-{
-	8,16,					/* 8 x 16 characters */
-	257,					/* 256 characters + cursor character */
-	1,					/* 1 bits per pixel */
-	{ 0 },					/* no bitplanes; 1 bit per pixel */
-	/* x offsets */
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	/* y offsets triple height: use each line three times */
-	{  0*8,  1*8,  2*8,  3*8,  4*8,  5*8,  6*8,  7*8,
-	   8*8,  9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
-	   8*16					/* every char takes 16 bytes */
-};
-
-static GFXDECODE_START( super80 )
-	GFXDECODE_ENTRY( "gfx1", 0x0000, super80_charlayout, 0, 1 )
-GFXDECODE_END
-
-static GFXDECODE_START( super80d )
-	GFXDECODE_ENTRY( "gfx1", 0x0000, super80d_charlayout, 0, 1 )
-GFXDECODE_END
-
-static GFXDECODE_START( super80m )
-	GFXDECODE_ENTRY( "gfx1", 0x0000, super80d_charlayout, 0, 256 )
-	GFXDECODE_ENTRY( "gfx2", 0x0000, super80d_charlayout, 0, 256 )
-GFXDECODE_END
-
-static GFXDECODE_START( super80v )
-	GFXDECODE_ENTRY( "maincpu", 0xf000, super80v_charlayout, 0, 256 )
-GFXDECODE_END
 
 /**************************** BASIC MACHINE CONSTRUCTION ***********************************************************/
 
-static TIMER_CALLBACK( super80_halfspeed )
+
+static const z80_daisy_chain super80_daisy_chain[] =
 {
-	static UINT8 int_sw=0;
-	UINT8 go_fast = 0;
-	if ((super80_mhz == 2) || (!(input_port_read(machine, "CONFIG") & 2)))	/* bit 2 of port F0 is low, OR user turned on config switch */
-		go_fast++;
-
-	/* code to slow down computer to 1 MHz by halting cpu on every second frame */
-	if (!go_fast)
-	{
-		if (!int_sw)
-			cputag_set_input_line(machine, "maincpu", INPUT_LINE_HALT, ASSERT_LINE);	// if going, stop it
-
-		int_sw++;
-		if (int_sw > 1)
-		{
-			cputag_set_input_line(machine, "maincpu", INPUT_LINE_HALT, CLEAR_LINE);		// if stopped, start it
-			int_sw = 0;
-		}
-	}
-	else
-	{
-		if (int_sw < 8)								// @2MHz, reset just once
-		{
-			cputag_set_input_line(machine, "maincpu", INPUT_LINE_HALT, CLEAR_LINE);
-			int_sw = 8;							// ...not every time
-		}
-	}
-}
-
-
-/* after the first 4 bytes have been read from ROM, switch the ram back in */
-static TIMER_CALLBACK( super80_reset )
-{
-	memory_set_bank(machine, 1, 0);
-}
-
-static MACHINE_RESET( super80 )
-{
-	timer_set(machine, ATTOTIME_IN_USEC(10), NULL, 0, super80_reset);
-	memory_set_bank(machine, 1, 1);
-	super80_z80pio = devtag_get_device(machine, "z80pio");
-	super80_speaker = devtag_get_device(machine, "speaker");
-	super80_cassette = devtag_get_device(machine, "cassette");
-	super80_printer = devtag_get_device(machine, "centronics");
-}
+	{ "z80pio" },
+	{ NULL }
+};
 
 static const cassette_config super80_cassette_config =
 {
@@ -697,15 +382,14 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( super80 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK/6)		/* 2 MHz */
-	MDRV_CPU_PROGRAM_MAP(super80_map, 0)
-	MDRV_CPU_IO_MAP(super80_io, 0)
+	MDRV_CPU_PROGRAM_MAP(super80_map)
+	MDRV_CPU_IO_MAP(super80_io)
 	MDRV_CPU_CONFIG(super80_daisy_chain)
 
 	MDRV_MACHINE_RESET( super80 )
 
 	MDRV_Z80PIO_ADD( "z80pio", super80_pio_intf )
 
-	MDRV_GFXDECODE(super80)
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(48.8)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -713,6 +397,8 @@ static MACHINE_DRIVER_START( super80 )
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(black_and_white)
 
+	MDRV_DEFAULT_LAYOUT( layout_super80 )
+	MDRV_VIDEO_START(super80)
 	MDRV_VIDEO_UPDATE(super80)
 
 	/* sound hardware */
@@ -737,16 +423,20 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( super80d )
 	MDRV_IMPORT_FROM(super80)
-	MDRV_GFXDECODE(super80d)
+	MDRV_VIDEO_UPDATE(super80d)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( super80e )
+	MDRV_IMPORT_FROM(super80)
+	MDRV_VIDEO_UPDATE(super80e)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( super80m )
 	MDRV_IMPORT_FROM(super80)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(super80m_map, 0)
+	MDRV_CPU_PROGRAM_MAP(super80m_map)
 
-	MDRV_GFXDECODE(super80m)
-	MDRV_PALETTE_LENGTH(256*2)
+	MDRV_PALETTE_LENGTH(16)
 	MDRV_PALETTE_INIT(super80m)
 	MDRV_VIDEO_EOF(super80m)
 	MDRV_VIDEO_UPDATE(super80m)
@@ -755,25 +445,25 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( super80v )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK/6)		/* 2 MHz */
-	MDRV_CPU_PROGRAM_MAP(super80v_map, 0)
-	MDRV_CPU_IO_MAP(super80v_io, 0)
+	MDRV_CPU_PROGRAM_MAP(super80v_map)
+	MDRV_CPU_IO_MAP(super80v_io)
 	MDRV_CPU_CONFIG(super80_daisy_chain)
 
 	MDRV_MACHINE_RESET( super80 )
 
 	MDRV_Z80PIO_ADD( "z80pio", super80_pio_intf )
 
-	MDRV_GFXDECODE(super80v)
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(SUPER80V_SCREEN_WIDTH, SUPER80V_SCREEN_HEIGHT)
 	MDRV_SCREEN_VISIBLE_AREA(0, SUPER80V_SCREEN_WIDTH-1, 0, SUPER80V_SCREEN_HEIGHT-1)
-	MDRV_PALETTE_LENGTH(256*2)
+	MDRV_PALETTE_LENGTH(16)
 	MDRV_PALETTE_INIT(super80m)
 
 	MDRV_MC6845_ADD("crtc", MC6845, MASTER_CLOCK / SUPER80V_DOTS, super80v_crtc)
 
+	MDRV_DEFAULT_LAYOUT( layout_super80 )
 	MDRV_VIDEO_START(super80v)
 	MDRV_VIDEO_EOF(super80m)
 	MDRV_VIDEO_UPDATE(super80v)
@@ -801,38 +491,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( super80r )
 	MDRV_IMPORT_FROM(super80v)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(super80r_io, 0)
+	MDRV_CPU_IO_MAP(super80r_io)
 MACHINE_DRIVER_END
-
-static void driver_init_common( running_machine *machine )
-{
-	UINT8 *RAM = memory_region(machine, "maincpu");
-	memory_configure_bank(machine, 1, 0, 2, &RAM[0x0000], 0xc000);
-	timer_pulse(machine, ATTOTIME_IN_HZ(200000),NULL,0,super80_timer);	/* timer for keyboard and cassette */
-}
-
-static DRIVER_INIT( super80 )
-{
-	timer_pulse(machine, ATTOTIME_IN_HZ(100),NULL,0,super80_halfspeed);	/* timer for 1MHz slowdown */
-	driver_init_common(machine);
-}
-
-static DRIVER_INIT( super80d )
-{
-	UINT8 *RAM = memory_region(machine, "gfx1");
-	UINT16 i;	/* create inverse characters */
-	for (i = 0x0800; i < 0x1000; i++) RAM[i] = ~RAM[i];
-	DRIVER_INIT_CALL( super80 );
-}
-
-static DRIVER_INIT( super80v )
-{
-	pcgram = memory_region(machine, "maincpu")+0xf000;
-	videoram = memory_region(machine, "maincpu")+0x18000;
-	colorram = memory_region(machine, "maincpu")+0x1C000;
-	driver_init_common(machine);
-}
-
 
 /**************************** ROMS *****************************************************************/
 
@@ -843,7 +503,7 @@ ROM_START( super80 )
 	ROM_LOAD("super80.u42",   0xe000, 0x1000, CRC(a1c6cb75) SHA1(d644ca3b399c1a8902f365c6095e0bbdcea6733b) )
 	ROM_FILL( 0xf000, 0x1000, 0xff)	/* This makes the screen show the FF character when O F1 F0 entered */
 
-	ROM_REGION(0x0400, "gfx1", ROMREGION_DISPOSE)
+	ROM_REGION(0x0400, "gfx1", 0)	// 2513 prom
 	ROM_LOAD("super80.u27",   0x0000, 0x0400, CRC(d1e4b3c6) SHA1(3667b97c6136da4761937958f281609690af4081) )
 ROM_END
 
@@ -859,9 +519,8 @@ ROM_START( super80d )
 	ROM_LOAD("super80.u42",	  0xe000, 0x1000, CRC(a1c6cb75) SHA1(d644ca3b399c1a8902f365c6095e0bbdcea6733b) )
 	ROM_FILL( 0xf000, 0x1000, 0xff)
 
-	ROM_REGION(0x1000, "gfx1", ROMREGION_DISPOSE)
+	ROM_REGION(0x0800, "gfx1", 0)	// 2716 eprom
 	ROM_LOAD("super80d.u27",  0x0000, 0x0800, CRC(cb4c81e2) SHA1(8096f21c914fa76df5d23f74b1f7f83bd8645783) )
-	ROM_RELOAD(               0x0800, 0x0800 )
 ROM_END
 
 ROM_START( super80e )
@@ -871,7 +530,7 @@ ROM_START( super80e )
 	ROM_LOAD("super80.u42",	  0xe000, 0x1000, CRC(a1c6cb75) SHA1(d644ca3b399c1a8902f365c6095e0bbdcea6733b) )
 	ROM_FILL( 0xf000, 0x1000, 0xff)
 
-	ROM_REGION(0x1000, "gfx1", ROMREGION_DISPOSE)
+	ROM_REGION(0x1000, "gfx1", 0)	// 2732 eprom
 	ROM_LOAD("super80e.u27",  0x0000, 0x1000, CRC(ebe763a7) SHA1(ffaa6d6a2c5dacc5a6651514e6707175a32e83e8) )
 ROM_END
 
@@ -880,13 +539,24 @@ ROM_START( super80m )
 	ROM_LOAD("s80-8r0.u26",	  0xc000, 0x1000, CRC(48d410d8) SHA1(750d984abc013a3344628300288f6d1ba140a95f) )
 	ROM_LOAD("s80-8r0.u33",   0xd000, 0x1000, CRC(9765793e) SHA1(4951b127888c1f3153004cc9fb386099b408f52c) )
 	ROM_LOAD("s80-8r0.u42",   0xe000, 0x1000, CRC(5f65d94b) SHA1(fe26b54dec14e1c4911d996c9ebd084a38dcb691) )
-
-	ROM_REGION(0x1000, "gfx1", ROMREGION_DISPOSE)
-	ROM_LOAD("super80d.u27",  0x0000, 0x0800, CRC(cb4c81e2) SHA1(8096f21c914fa76df5d23f74b1f7f83bd8645783) )
-	ROM_RELOAD(               0x0800, 0x0800 )
-
-	ROM_REGION(0x1000, "gfx2", ROMREGION_DISPOSE)
+#if 0
+	/* Temporary patch to fix crash when lprinting a tab */
+	ROM_FILL(0xcc44,1,0x46)
+	ROM_FILL(0xcc45,1,0xc5)
+	ROM_FILL(0xcc46,1,0x06)
+	ROM_FILL(0xcc47,1,0x20)
+	ROM_FILL(0xcc48,1,0xcd)
+	ROM_FILL(0xcc49,1,0xc7)
+	ROM_FILL(0xcc4a,1,0xcb)
+	ROM_FILL(0xcc4b,1,0xc1)
+	ROM_FILL(0xcc4c,1,0x10)
+	ROM_FILL(0xcc4d,1,0xf7)
+	ROM_FILL(0xcc4e,1,0x00)
+	ROM_FILL(0xcc4f,1,0x00)
+#endif
+	ROM_REGION(0x1800, "gfx1", 0)
 	ROM_LOAD("super80e.u27",  0x0000, 0x1000, CRC(ebe763a7) SHA1(ffaa6d6a2c5dacc5a6651514e6707175a32e83e8) )
+	ROM_LOAD("super80d.u27",  0x1000, 0x0800, CRC(cb4c81e2) SHA1(8096f21c914fa76df5d23f74b1f7f83bd8645783) )
 ROM_END
 
 ROM_START( super80r )
@@ -911,8 +581,8 @@ ROM_END
 
 /*    YEAR  NAME      PARENT COMPAT MACHINE INPUT     INIT       CONFIG   COMPANY       FULLNAME */
 COMP( 1981, super80,  0,       0, super80,  super80,  super80,  0, "Dick Smith Electronics","Super-80 (V1.2)" , 0)
-COMP( 1981, super80d, super80, 0, super80d, super80d, super80d, 0, "Dick Smith Electronics","Super-80 (V2.2)" , 0)
-COMP( 1981, super80e, super80, 0, super80d, super80d, super80,  0, "Dick Smith Electronics","Super-80 (El Graphix 4)" , 0)
-COMP( 1981, super80m, super80, 0, super80m, super80m, super80d, 0, "Dick Smith Electronics","Super-80 (8R0)" , 0)
+COMP( 1981, super80d, super80, 0, super80d, super80d, super80,  0, "Dick Smith Electronics","Super-80 (V2.2)" , 0)
+COMP( 1981, super80e, super80, 0, super80e, super80d, super80,  0, "Dick Smith Electronics","Super-80 (El Graphix 4)" , 0)
+COMP( 1981, super80m, super80, 0, super80m, super80m, super80,  0, "Dick Smith Electronics","Super-80 (8R0)" , 0)
 COMP( 1981, super80r, super80, 0, super80r, super80r, super80v, 0, "Dick Smith Electronics","Super-80 (with VDUEB)" , 0)
 COMP( 1981, super80v, super80, 0, super80v, super80v, super80v, 0, "Dick Smith Electronics","Super-80 (with enhanced VDUEB)" , 0)

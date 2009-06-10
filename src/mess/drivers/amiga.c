@@ -18,10 +18,11 @@ would commence ($C00000).
 
 /* Core includes */
 #include "driver.h"
-#include "cpu/m68000/m68000.h"
 #include "includes/amiga.h"
 
 /* Components */
+#include "cpu/m68000/m68000.h"
+#include "cpu/m6502/m6502.h"
 #include "machine/6525tpi.h"
 #include "machine/6526cia.h"
 #include "machine/amigafdc.h"
@@ -107,6 +108,25 @@ static ADDRESS_MAP_START(amiga_mem, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0xf80000, 0xffffff) AM_ROM AM_REGION("user1", 0)	/* System ROM - mirror */
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START(keyboard_mem, ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x0000, 0x003f) AM_RAM /* internal user ram */
+	AM_RANGE(0x0040, 0x007f) AM_NOP /* unassigned */
+	AM_RANGE(0x0080, 0x0080) AM_NOP /* port a */
+	AM_RANGE(0x0081, 0x0081) AM_NOP /* port b */
+	AM_RANGE(0x0082, 0x0082) AM_NOP /* port c */
+	AM_RANGE(0x0083, 0x0083) AM_NOP /* port d */
+	AM_RANGE(0x0084, 0x0085) AM_NOP /* latch */
+	AM_RANGE(0x0086, 0x0087) AM_NOP /* count */
+	AM_RANGE(0x0088, 0x0088) AM_NOP /* upper latch & transfer latch to counter */
+	AM_RANGE(0x0089, 0x0089) AM_NOP /* clear pa0 pos edge detected */
+	AM_RANGE(0x008a, 0x008a) AM_NOP /* clear pa1 neg edge detected */
+	AM_RANGE(0x008b, 0x008e) AM_NOP /* unassigned */
+	AM_RANGE(0x008f, 0x008f) AM_NOP /* control register */
+	AM_RANGE(0x0090, 0x07ff) AM_NOP /* unassigned */
+	AM_RANGE(0x0800, 0x0fff) AM_ROM AM_REGION("keyboard", 0) /* internal mask rom */
+ADDRESS_MAP_END
+
+
 /*
  * CDTV memory map (source: http://www.l8r.net/technical/cdtv-technical.html)
  *
@@ -132,7 +152,6 @@ ADDRESS_MAP_END
  *
  */
 
-
 static ADDRESS_MAP_START(cdtv_mem, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x000000, 0x0fffff) AM_RAMBANK(1) AM_BASE(&amiga_chip_ram) AM_SIZE(&amiga_chip_ram_size)
 	AM_RANGE(0xbfd000, 0xbfefff) AM_READWRITE(amiga_cia_r, amiga_cia_w)
@@ -143,6 +162,23 @@ static ADDRESS_MAP_START(cdtv_mem, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0xf00000, 0xffffff) AM_ROM AM_REGION("user1", 0)	/* CDTV & System ROM */
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START(cdtv_rcmcu_mem, ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x0000, 0x003f) AM_RAM /* internal user ram */
+	AM_RANGE(0x0040, 0x007f) AM_NOP /* unassigned */
+	AM_RANGE(0x0080, 0x0080) AM_NOP /* port a */
+	AM_RANGE(0x0081, 0x0081) AM_NOP /* port b */
+	AM_RANGE(0x0082, 0x0082) AM_NOP /* port c */
+	AM_RANGE(0x0083, 0x0083) AM_NOP /* port d */
+	AM_RANGE(0x0084, 0x0085) AM_NOP /* latch */
+	AM_RANGE(0x0086, 0x0087) AM_NOP /* count */
+	AM_RANGE(0x0088, 0x0088) AM_NOP /* upper latch & transfer latch to counter */
+	AM_RANGE(0x0089, 0x0089) AM_NOP /* clear pa0 pos edge detected */
+	AM_RANGE(0x008a, 0x008a) AM_NOP /* clear pa1 neg edge detected */
+	AM_RANGE(0x008b, 0x008e) AM_NOP /* unassigned */
+	AM_RANGE(0x008f, 0x008f) AM_NOP /* control register */
+	AM_RANGE(0x0090, 0x07ff) AM_NOP /* unassigned */
+	AM_RANGE(0x0800, 0x0fff) AM_ROM AM_REGION("rcmcu", 0) /* internal mask rom */
+ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(a1000_mem, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x000000, 0x03ffff) AM_MIRROR(0xc0000) AM_RAMBANK(1) AM_BASE(&amiga_chip_ram) AM_SIZE(&amiga_chip_ram_size)
@@ -328,7 +364,10 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( ntsc )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, AMIGA_68000_NTSC_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(amiga_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(amiga_mem)
+
+	MDRV_CPU_ADD("keyboard", M6502, XTAL_1MHz) /* 1 MHz? */
+	MDRV_CPU_PROGRAM_MAP(keyboard_mem)
 
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(59.997)
@@ -368,7 +407,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( a1000n )
 	MDRV_IMPORT_FROM(ntsc)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(a1000_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(a1000_mem)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( a500n )
@@ -380,7 +419,15 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( cdtv )
 	MDRV_IMPORT_FROM(ntsc)
 	MDRV_CPU_REPLACE("maincpu", M68000, CDTV_CLOCK_X1 / 4)
-	MDRV_CPU_PROGRAM_MAP(cdtv_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(cdtv_mem)
+
+	MDRV_DEVICE_REMOVE("keyboard")
+
+	MDRV_CPU_ADD("rcmcu", M6502, XTAL_1MHz) /* 1 MHz? */
+	MDRV_CPU_PROGRAM_MAP(cdtv_rcmcu_mem)
+
+//	MDRV_CPU_ADD("lcd", LC6554, XTAL_4MHz) /* 4 MHz? */
+//	MDRV_CPU_PROGRAM_MAP(cdtv_lcd_mem)
 
 	MDRV_MACHINE_START( cdtv )
 	MDRV_MACHINE_RESET( cdtv )
@@ -396,8 +443,8 @@ static MACHINE_DRIVER_START( cdtv )
 	MDRV_TPI6525_ADD("tpi6525", cdtv_tpi_intf)
 
 	/* cia */
-	MDRV_CIA8520_REMOVE("cia_0")
-	MDRV_CIA8520_REMOVE("cia_1")
+	MDRV_DEVICE_REMOVE("cia_0")
+	MDRV_DEVICE_REMOVE("cia_1")
 	MDRV_CIA8520_ADD("cia_0", CDTV_CLOCK_X1 / 40, cia_0_cdtv_intf)
 	MDRV_CIA8520_ADD("cia_1", CDTV_CLOCK_X1 / 4, cia_1_cdtv_intf)
 MACHINE_DRIVER_END
@@ -415,7 +462,7 @@ static MACHINE_DRIVER_START( pal )
 	MDRV_SCREEN_VISIBLE_AREA(214, (228*4)-1, 34, 312-1)
 
 	/* cia */
-	MDRV_CIA8520_REMOVE("cia_0")
+	MDRV_DEVICE_REMOVE("cia_0")
 	MDRV_CIA8520_ADD("cia_0", AMIGA_68000_PAL_CLOCK / 10, cia_0_pal_intf)
 MACHINE_DRIVER_END
 
@@ -427,7 +474,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( a1000p )
 	MDRV_IMPORT_FROM(pal)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(a1000_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(a1000_mem)
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -465,7 +512,7 @@ static WRITE8_DEVICE_HANDLER( amiga_cia_0_portA_w )
 		}
 
 		/* overlay disabled, map RAM on 0x000000 */
-		memory_install_write16_handler(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x000000, amiga_chip_ram_size - 1, 0, mirror_mask, SMH_BANK1);
+		memory_install_write16_handler(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x000000, amiga_chip_ram_size - 1, 0, mirror_mask, SMH_BANK(1));
 
 		amiga_cart_check_overlay(device->machine);
 	}
@@ -620,65 +667,78 @@ static DRIVER_INIT( cdtv )
 	amigakbd_init(machine);
 }
 
+
 /***************************************************************************
-  ROM definitions
+    ROM DEFINITIONS
 ***************************************************************************/
 
-#define AMIGA_BIOS			\
-	ROM_REGION16_BE(0x080000, "user1", 0)	\
-	ROM_SYSTEM_BIOS(0, "kick13",  "Kickstart 1.3 (34.5)")	\
-	ROMX_LOAD("315093-02.u6", 0x000000, 0x040000, CRC(c4f0f55f) SHA1(891e9a547772fe0c6c19b610baf8bc4ea7fcb785), ROM_GROUPWORD | ROM_BIOS(1))	\
-	ROM_SYSTEM_BIOS(1, "kick12",  "Kickstart 1.2 (33.180)")	\
-	ROMX_LOAD("315093-01.u6", 0x000000, 0x040000, CRC(a6ce1636) SHA1(11f9e62cf299f72184835b7b2a70a16333fc0d88), ROM_GROUPWORD | ROM_BIOS(2))	\
-	ROM_COPY("user1", 0x000000, 0x040000, 0x040000)	\
-	ROM_SYSTEM_BIOS(2, "kick204", "Kickstart 2.04 (37.175)")	\
-	ROMX_LOAD("390979-01.u6", 0x000000, 0x080000, CRC(c3bdb240) SHA1(c5839f5cb98a7a8947065c3ed2f14f5f42e334a1), ROM_GROUPWORD | ROM_BIOS(3))	/* identical to 363968.01 */	\
-	ROM_SYSTEM_BIOS(3, "kick31",  "Kickstart 3.1 (40.63)")	\
-	ROMX_LOAD("kick40063.u6", 0x000000, 0x080000, CRC(fc24ae0d) SHA1(3b7f1493b27e212830f989f26ca76c02049f09ca), ROM_GROUPWORD | ROM_BIOS(4))	/* part number? */	\
+ROM_START( a500n )
+	ROM_REGION16_BE(0x080000, "user1", 0)
+	ROM_DEFAULT_BIOS("kick13")
+	ROM_SYSTEM_BIOS(0, "kick12",  "Kickstart 1.2 (33.180)")
+	ROMX_LOAD("315093-01.u6", 0x000000, 0x040000, CRC(a6ce1636) SHA1(11f9e62cf299f72184835b7b2a70a16333fc0d88), ROM_GROUPWORD | ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "kick13",  "Kickstart 1.3 (34.5)")
+	ROMX_LOAD("315093-02.u6", 0x000000, 0x040000, CRC(c4f0f55f) SHA1(891e9a547772fe0c6c19b610baf8bc4ea7fcb785), ROM_GROUPWORD | ROM_BIOS(2))
+	ROM_COPY("user1", 0x000000, 0x040000, 0x040000)
+	ROM_SYSTEM_BIOS(2, "kick204", "Kickstart 2.04 (37.175)")
+	ROMX_LOAD("390979-01.u6", 0x000000, 0x080000, CRC(c3bdb240) SHA1(c5839f5cb98a7a8947065c3ed2f14f5f42e334a1), ROM_GROUPWORD | ROM_BIOS(3))	/* identical to 363968.01 */
+	ROM_SYSTEM_BIOS(3, "kick31",  "Kickstart 3.1 (40.63)")
+	ROMX_LOAD("kick40063.u6", 0x000000, 0x080000, CRC(fc24ae0d) SHA1(3b7f1493b27e212830f989f26ca76c02049f09ca), ROM_GROUPWORD | ROM_BIOS(4))	/* part number? */
 
+	/* action replay cartridge */
+	ROM_REGION16_BE(0x080000, "user2", 0)
+	ROM_CART_LOAD("cart", 0x0000, 0x080000, ROM_NOMIRROR | ROM_FILL_FF | ROM_OPTIONAL)
 
-#define AMIGA_CART			\
-	ROM_REGION16_BE(0x080000, "user2", 0)	\
-	ROM_CART_LOAD("cart", 0x0000, 0x080000, ROM_NOMIRROR | ROM_FILL_FF | ROM_OPTIONAL)	\
-
-
-
-ROM_START(a500n)
-	AMIGA_BIOS
-	AMIGA_CART
+	/* keyboard controller, mos 6500/1 mcu */
+	ROM_REGION(0x800, "keyboard", 0)
+	ROM_LOAD("328191-02.ic1", 0x000, 0x800, NO_DUMP)
 ROM_END
 
 #define rom_a500p    rom_a500n
 
-ROM_START(a1000n)
+
+ROM_START( a1000n )
 	ROM_REGION16_BE(0x080000, "user1", 0)
 	ROM_LOAD16_BYTE("252179-01.u5n", 0x000000, 0x001000, CRC(42553bc4) SHA1(8855a97f7a44e3f62d1c88d938fee1f4c606af5b))
 	ROM_LOAD16_BYTE("252180-01.u5p", 0x000001, 0x001000, CRC(8e5b9a37) SHA1(d10f1564b99f5ffe108fa042362e877f569de2c3))
+
+	/* keyboard controller, mos 6500/1 mcu */
+	ROM_REGION(0x800, "keyboard", 0)
+	ROM_LOAD("328191-01.bin", 0x000, 0x800, NO_DUMP)
 ROM_END
 
 #define rom_a1000p    rom_a1000n
 
-ROM_START(cdtv)
+
+ROM_START( cdtv )
 	ROM_REGION16_BE(0x100000, "user1", 0)
 	ROM_LOAD16_BYTE("391008-01.u34", 0x000000, 0x020000, CRC(791cb14b) SHA1(277a1778924496353ffe56be68063d2a334360e4))
 	ROM_LOAD16_BYTE("391009-01.u35", 0x000001, 0x020000, CRC(accbbc2e) SHA1(41b06d1679c6e6933c3378b7626025f7641ebc5c))
 	ROM_COPY("user1", 0x000000, 0x040000, 0x040000)
 	ROMX_LOAD(      "315093-02.u13", 0x080000, 0x040000, CRC(c4f0f55f) SHA1(891e9a547772fe0c6c19b610baf8bc4ea7fcb785), ROM_GROUPWORD)
 	ROM_COPY("user1", 0x080000, 0x0c0000, 0x040000)
+
+	/* remote control input converter, mos 6500/1 mcu */
+	ROM_REGION(0x800, "rcmcu", 0)
+	ROM_LOAD("252609-02.u75", 0x000, 0x800, NO_DUMP)
+
+	/* lcd controller, sanyo lc6554h */
+	ROM_REGION(0x1000, "lcd", 0)
+	ROM_LOAD("252608-01.u62", 0x000, 0x1000, NO_DUMP)
 ROM_END
 
 
 /***************************************************************************
-  System config
+    SYSTEM CONFIG
 ***************************************************************************/
 
-static SYSTEM_CONFIG_START(amiga)
+static SYSTEM_CONFIG_START( amiga )
 	CONFIG_DEVICE(amiga_floppy_getinfo)
 SYSTEM_CONFIG_END
 
 
 /***************************************************************************
-  Game drivers
+    GAME DRIVERS
 ***************************************************************************/
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY                             FULLNAME                 FLAGS */

@@ -104,6 +104,7 @@ Keyboard: Full-sized 102 key QWERTY (19 key numeric keypad!; 4 direction
 
 #include "includes/cbm.h"
 #include "includes/cbmb.h"
+#include "includes/cbmieeeb.h"
 #include "machine/cbmipt.h"
 #include "video/vic6567.h"
 #include "video/mc6845.h"
@@ -343,7 +344,7 @@ static MACHINE_DRIVER_START( cbm600 )
 	MDRV_DRIVER_DATA(cbmb_state)
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6509, 7833600)        /* 7.8336 MHz */
-	MDRV_CPU_PROGRAM_MAP(cbmb_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(cbmb_mem)
 
 	MDRV_MACHINE_RESET( cbmb )
 
@@ -378,6 +379,9 @@ static MACHINE_DRIVER_START( cbm600 )
 	MDRV_TPI6525_ADD("tpi6525_0", cbmb_tpi_0_intf)
 	MDRV_TPI6525_ADD("tpi6525_1", cbmb_tpi_1_intf)
 
+	/* IEEE bus */
+	MDRV_CBM_IEEEBUS_ADD("ieee_bus")
+
 	MDRV_IMPORT_FROM(cbmb_cartslot)
 MACHINE_DRIVER_END
 
@@ -396,7 +400,7 @@ static MACHINE_DRIVER_START( cbm700 )
 	MDRV_SCREEN_VISIBLE_AREA(0, 720 - 1, 0, 350 - 1)
 	MDRV_GFXDECODE( cbm700 )
 
-	MDRV_MC6845_REMOVE("crtc")
+	MDRV_DEVICE_REMOVE("crtc")
 	MDRV_MC6845_ADD("crtc", MC6845, XTAL_18MHz / 8 /*? I do not know if this is correct, please verify */, cbm700_crtc)
 
 	MDRV_VIDEO_START( cbm700 )
@@ -421,7 +425,7 @@ static MACHINE_DRIVER_START( p500 )
 	MDRV_DRIVER_DATA(cbmb_state)
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6509, VIC6567_CLOCK)        /* 7.8336 MHz */
-	MDRV_CPU_PROGRAM_MAP(p500_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(p500_mem)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC6567_HRETRACERATE)
 
 	MDRV_MACHINE_RESET( cbmb )
@@ -446,6 +450,9 @@ static MACHINE_DRIVER_START( p500 )
 	/* tpi */
 	MDRV_TPI6525_ADD("tpi6525_0", cbmb_tpi_0_intf)
 	MDRV_TPI6525_ADD("tpi6525_1", cbmb_tpi_1_intf)
+
+	/* IEEE bus */
+	MDRV_CBM_IEEEBUS_ADD("ieee_bus")
 
 	MDRV_IMPORT_FROM(cbmb_cartslot)
 MACHINE_DRIVER_END

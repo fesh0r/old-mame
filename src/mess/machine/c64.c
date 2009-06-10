@@ -28,40 +28,27 @@
 #include "includes/vc1541.h"
 
 #include "includes/c64.h"
-#include "includes/c128.h"      /* we need c128_bankswitch_64 in MACHINE_START */
 
 #include "devices/cassette.h"
 #include "devices/cartslot.h"
 
 #define VERBOSE_LEVEL 0
-#define DBG_LOG(N,M,A) \
+#define DBG_LOG( MACHINE, N, M, A ) \
 	do { \
 		if(VERBOSE_LEVEL >= N) \
 		{ \
 			if( M ) \
-				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(machine)), (char*) M ); \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(MACHINE)), (char*) M ); \
 			logerror A; \
 		} \
 	} while (0)
 
-unsigned char c65_keyline = { 0xff };
-UINT8 c65_6511_port=0xff;
-
-UINT8 c128_keyline[3] = {0xff, 0xff, 0xff};
-
-
-/* keyboard lines */
-UINT8 c64_keyline[10] =
-{
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
-};
 
 /* expansion port lines input */
 int c64_pal = 0;
 UINT8 c64_game = 1, c64_exrom = 1;
 
 /* cpu port */
-int c128_va1617;
 UINT8 *c64_vicaddr, *c128_vicaddr;
 UINT8 *c64_memory;
 UINT8 *c64_colorram;
@@ -84,22 +71,6 @@ static int is_sx64 = 0;	// temporary workaround until we implement full vc1541 e
 static UINT8 serial_clock, serial_data, serial_atn;
 static UINT8 vicirq = 0;
 
-static int is_c65(running_machine *machine)
-{
-	return !strncmp(machine->gamedrv->name, "c65", 3);
-}
-
-static int is_c128(running_machine *machine)
-{
-	return !strncmp(machine->gamedrv->name, "c128", 4);
-}
-
-/* Needed to initialize correctly the floppy drive emulation */
-/*static int is_c128d(running_machine *machine)
-{
-	return !strncmp(machine->gamedrv->name, "c128d", 5);
-}*/
-
 static void c64_nmi(running_machine *machine)
 {
 	static int nmilevel = 0;
@@ -108,210 +79,46 @@ static void c64_nmi(running_machine *machine)
 
 	if (nmilevel != (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq)	/* KEY_RESTORE */
 	{
-		if (is_c128(machine))
-		{
-			if (1) // this was never valid, there is no active CPU during a timer firing!  cpu_getactivecpu() == 0)
-			{
-				/* z80 */
-				cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq);
-			}
-			else
-			{
-				cputag_set_input_line(machine, "m8502", INPUT_LINE_NMI, (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq);
-			}
-		}
-
-		else
-		{
-			cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq);
-		}
+		cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq);
 
 		nmilevel = (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq;
 	}
 }
 
 
+/***********************************************
+
+	CIA Interfaces
+
+***********************************************/
+
 /*
- * cia 0
- * port a
- * 7-0 keyboard line select
- * 7,6: paddle select( 01 port a, 10 port b)
- * 4: joystick a fire button
- * 3,2: Paddles port a fire button
- * 3-0: joystick a direction
- * port b
- * 7-0: keyboard raw values
- * 4: joystick b fire button, lightpen select
- * 3,2: paddle b fire buttons (left,right)
- * 3-0: joystick b direction
- * flag cassette read input, serial request in
- * irq to irq connected
+ *	CIA 0 - Port A keyboard line select
+ *	CIA 0 - Port B keyboard line read
+ *
+ *	flag cassette read input, serial request in
+ *	irq to irq connected
+ *
+ *	see machine/cbm.c
  */
+
 static READ8_DEVICE_HANDLER( c64_cia0_port_a_r )
 {
-	UINT8 value = 0xff;
 	UINT8 cia0portb = cia_get_output_b(devtag_get_device(device->machine, "cia_0"));
 
-	if (!(cia0portb & 0x80))
-	{
-		UINT8 t = 0xff;
-		if (!(c64_keyline[7] & 0x80)) t &= ~0x80;
-		if (!(c64_keyline[6] & 0x80)) t &= ~0x40;
-		if (!(c64_keyline[5] & 0x80)) t &= ~0x20;
-		if (!(c64_keyline[4] & 0x80)) t &= ~0x10;
-		if (!(c64_keyline[3] & 0x80)) t &= ~0x08;
-		if (!(c64_keyline[2] & 0x80)) t &= ~0x04;
-		if (!(c64_keyline[1] & 0x80)) t &= ~0x02;
-		if (!(c64_keyline[0] & 0x80)) t &= ~0x01;
-		value &= t;
-	}
-
-	if (!(cia0portb & 0x40))
-	{
-		UINT8 t = 0xff;
-		if (!(c64_keyline[7] & 0x40)) t &= ~0x80;
-		if (!(c64_keyline[6] & 0x40)) t &= ~0x40;
-		if (!(c64_keyline[5] & 0x40)) t &= ~0x20;
-		if (!(c64_keyline[4] & 0x40)) t &= ~0x10;
-		if (!(c64_keyline[3] & 0x40)) t &= ~0x08;
-		if (!(c64_keyline[2] & 0x40)) t &= ~0x04;
-		if (!(c64_keyline[1] & 0x40)) t &= ~0x02;
-		if (!(c64_keyline[0] & 0x40)) t &= ~0x01;
-		value &= t;
-	}
-
-	if (!(cia0portb & 0x20))
-	{
-		UINT8 t = 0xff;
-		if (!(c64_keyline[7] & 0x20)) t &= ~0x80;
-		if (!(c64_keyline[6] & 0x20)) t &= ~0x40;
-		if (!(c64_keyline[5] & 0x20)) t &= ~0x20;
-		if (!(c64_keyline[4] & 0x20)) t &= ~0x10;
-		if (!(c64_keyline[3] & 0x20)) t &= ~0x08;
-		if (!(c64_keyline[2] & 0x20)) t &= ~0x04;
-		if (!(c64_keyline[1] & 0x20)) t &= ~0x02;
-		if (!(c64_keyline[0] & 0x20)) t &= ~0x01;
-		value &= t;
-	}
-
-	if (!(cia0portb & 0x10))
-	{
-		UINT8 t = 0xff;
-		if (!(c64_keyline[7] & 0x10)) t &= ~0x80;
-		if (!(c64_keyline[6] & 0x10)) t &= ~0x40;
-		if (!(c64_keyline[5] & 0x10)) t &= ~0x20;
-		if (!(c64_keyline[4] & 0x10)) t &= ~0x10;
-		if (!(c64_keyline[3] & 0x10)) t &= ~0x08;
-		if (!(c64_keyline[2] & 0x10)) t &= ~0x04;
-		if (!(c64_keyline[1] & 0x10)) t &= ~0x02;
-		if (!(c64_keyline[0] & 0x10)) t &= ~0x01;
-		value &= t;
-	}
-
-	if (!(cia0portb & 0x08))
-	{
-		UINT8 t = 0xff;
-		if (!(c64_keyline[7] & 0x08)) t &= ~0x80;
-		if (!(c64_keyline[6] & 0x08)) t &= ~0x40;
-		if (!(c64_keyline[5] & 0x08)) t &= ~0x20;
-		if (!(c64_keyline[4] & 0x08)) t &= ~0x10;
-		if (!(c64_keyline[3] & 0x08)) t &= ~0x08;
-		if (!(c64_keyline[2] & 0x08)) t &= ~0x04;
-		if (!(c64_keyline[1] & 0x08)) t &= ~0x02;
-		if (!(c64_keyline[0] & 0x08)) t &= ~0x01;
-		value &= t;
-	}
-
-	if (!(cia0portb & 0x04))
-	{
-		UINT8 t = 0xff;
-		if (!(c64_keyline[7] & 0x04)) t &= ~0x80;
-		if (!(c64_keyline[6] & 0x04)) t &= ~0x40;
-		if (!(c64_keyline[5] & 0x04)) t &= ~0x20;
-		if (!(c64_keyline[4] & 0x04)) t &= ~0x10;
-		if (!(c64_keyline[3] & 0x04)) t &= ~0x08;
-		if (!(c64_keyline[2] & 0x04)) t &= ~0x04;
-		if (!(c64_keyline[1] & 0x04)) t &= ~0x02;
-		if (!(c64_keyline[0] & 0x04)) t &= ~0x01;
-		value &= t;
-	}
-
-	if (!(cia0portb & 0x02))
-	{
-		UINT8 t = 0xff;
-		if (!(c64_keyline[7] & 0x02)) t &= ~0x80;
-		if (!(c64_keyline[6] & 0x02)) t &= ~0x40;
-		if (!(c64_keyline[5] & 0x02)) t &= ~0x20;
-		if (!(c64_keyline[4] & 0x02)) t &= ~0x10;
-		if (!(c64_keyline[3] & 0x02)) t &= ~0x08;
-		if (!(c64_keyline[2] & 0x02)) t &= ~0x04;
-		if (!(c64_keyline[1] & 0x02)) t &= ~0x02;
-		if (!(c64_keyline[0] & 0x02)) t &= ~0x01;
-		value &= t;
-	}
-
-	if (!(cia0portb & 0x01))
-	{
-		UINT8 t = 0xff;
-		if (!(c64_keyline[7] & 0x01)) t &= ~0x80;
-		if (!(c64_keyline[6] & 0x01)) t &= ~0x40;
-		if (!(c64_keyline[5] & 0x01)) t &= ~0x20;
-		if (!(c64_keyline[4] & 0x01)) t &= ~0x10;
-		if (!(c64_keyline[3] & 0x01)) t &= ~0x08;
-		if (!(c64_keyline[2] & 0x01)) t &= ~0x04;
-		if (!(c64_keyline[1] & 0x01)) t &= ~0x02;
-		if (!(c64_keyline[0] & 0x01)) t &= ~0x01;
-		value &= t;
-	}
-
-	if ( input_port_read(device->machine, "CTRLSEL") & 0x80 )
-		value &= c64_keyline[8];
-	else
-		value &= c64_keyline[9];
-
-	return value;
+	return common_cia0_port_a_r(device, cia0portb);
 }
 
 static READ8_DEVICE_HANDLER( c64_cia0_port_b_r )
 {
-    UINT8 value = 0xff;
 	UINT8 cia0porta = cia_get_output_a(devtag_get_device(device->machine, "cia_0"));
 
-    if (!(cia0porta & 0x80)) value &= c64_keyline[7];
-    if (!(cia0porta & 0x40)) value &= c64_keyline[6];
-    if (!(cia0porta & 0x20)) value &= c64_keyline[5];
-    if (!(cia0porta & 0x10)) value &= c64_keyline[4];
-    if (!(cia0porta & 0x08)) value &= c64_keyline[3];
-    if (!(cia0porta & 0x04)) value &= c64_keyline[2];
-    if (!(cia0porta & 0x02)) value &= c64_keyline[1];
-    if (!(cia0porta & 0x01)) value &= c64_keyline[0];
-
-	if ( input_port_read(device->machine, "CTRLSEL") & 0x80 )
-		value &= c64_keyline[9];
-    else
-		value &= c64_keyline[8];
-
-    if (is_c128(device->machine))
-    {
-		if (!vic2e_k0_r ())
-			value &= c128_keyline[0];
-		if (!vic2e_k1_r ())
-			value &= c128_keyline[1];
-		if (!vic2e_k2_r ())
-			value &= c128_keyline[2];
-    }
-    if (is_c65(device->machine))
-	{
-		if (!(c65_6511_port & 0x02))
-			value &= c65_keyline;
-    }
-
-    return value;
+	return common_cia0_port_b_r(device, cia0porta);
 }
 
 static WRITE8_DEVICE_HANDLER( c64_cia0_port_b_w )
 {
-    vic2_lightpen_write (data & 0x10);
+    vic2_lightpen_write(data & 0x10);
 }
 
 static void c64_irq (running_machine *machine, int level)
@@ -320,22 +127,8 @@ static void c64_irq (running_machine *machine, int level)
 
 	if (level != old_level)
 	{
-		DBG_LOG (3, "mos6510", ("irq %s\n", level ? "start" : "end"));
-		if (is_c128(machine))
-		{
-			if (0) // && (cpu_getactivecpu() == 0))
-			{
-				cputag_set_input_line(machine, "maincpu", 0, level);
-			}
-			else
-			{
-				cputag_set_input_line(machine, "m8502", M6510_IRQ_LINE, level);
-			}
-		}
-		else
-		{
-			cputag_set_input_line(machine, "maincpu", M6510_IRQ_LINE, level);
-		}
+		DBG_LOG(machine, 3, "mos6510", ("irq %s\n", level ? "start" : "end"));
+		cputag_set_input_line(machine, "maincpu", M6510_IRQ_LINE, level);
 		old_level = level;
 	}
 }
@@ -355,61 +148,6 @@ void c64_vic_interrupt (running_machine *machine, int level)
 		vicirq = level;
 	}
 #endif
-}
-
-/*
- * cia 1
- * port a
- * 7 serial bus data input
- * 6 serial bus clock input
- * 5 serial bus data output
- * 4 serial bus clock output
- * 3 serial bus atn output
- * 2 rs232 data output
- * 1-0 vic-chip system memory bank select
- *
- * port b
- * 7 user rs232 data set ready
- * 6 user rs232 clear to send
- * 5 user
- * 4 user rs232 carrier detect
- * 3 user rs232 ring indicator
- * 2 user rs232 data terminal ready
- * 1 user rs232 request to send
- * 0 user rs232 received data
- * flag restore key or rs232 received data input
- * irq to nmi connected ?
- */
-static READ8_DEVICE_HANDLER( c64_cia1_port_a_r )
-{
-	UINT8 value = 0xff;
-
-	if (!serial_clock || !cbm_serial_clock_read (device->machine))
-		value &= ~0x40;
-
-	if (!serial_data || !cbm_serial_data_read (device->machine))
-		value &= ~0x80;
-
-	return value;
-}
-
-static WRITE8_DEVICE_HANDLER( c64_cia1_port_a_w )
-{
-	static const int helper[4] = {0xc000, 0x8000, 0x4000, 0x0000};
-
-	cbm_serial_clock_write (device->machine, serial_clock = !(data & 0x10));
-	cbm_serial_data_write (device->machine, serial_data = !(data & 0x20));
-	cbm_serial_atn_write (device->machine, serial_atn = !(data & 0x08));
-	c64_vicaddr = c64_memory + helper[data & 0x03];
-	if (is_c128(device->machine))
-	{
-		c128_vicaddr = c64_memory + helper[data & 0x03] + c128_va1617;
-	}
-}
-
-static void c64_cia1_interrupt (const device_config *device, int level)
-{
-	c64_nmi(device->machine);
 }
 
 const cia6526_interface c64_ntsc_cia0 =
@@ -436,6 +174,60 @@ const cia6526_interface c64_pal_cia0 =
 	}
 };
 
+
+/*
+ * CIA 1 - Port A
+ * bit 7 serial bus data input
+ * bit 6 serial bus clock input
+ * bit 5 serial bus data output
+ * bit 4 serial bus clock output
+ * bit 3 serial bus atn output
+ * bit 2 rs232 data output
+ * bits 1-0 vic-chip system memory bank select
+ *
+ * CIA 1 - Port B
+ * bit 7 user rs232 data set ready
+ * bit 6 user rs232 clear to send
+ * bit 5 user
+ * bit 4 user rs232 carrier detect
+ * bit 3 user rs232 ring indicator
+ * bit 2 user rs232 data terminal ready
+ * bit 1 user rs232 request to send
+ * bit 0 user rs232 received data
+ *
+ * flag restore key or rs232 received data input
+ * irq to nmi connected ?
+ */
+static READ8_DEVICE_HANDLER( c64_cia1_port_a_r )
+{
+	UINT8 value = 0xff;
+	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
+
+	if (!serial_clock || !cbm_serial_clock_read(serbus, 0))
+		value &= ~0x40;
+
+	if (!serial_data || !cbm_serial_data_read(serbus, 0))
+		value &= ~0x80;
+
+	return value;
+}
+
+static WRITE8_DEVICE_HANDLER( c64_cia1_port_a_w )
+{
+	static const int helper[4] = {0xc000, 0x8000, 0x4000, 0x0000};
+	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
+
+	cbm_serial_clock_write(serbus, 0, serial_clock = !(data & 0x10));
+	cbm_serial_data_write(serbus, 0, serial_data = !(data & 0x20));
+	cbm_serial_atn_write(serbus, 0, serial_atn = !(data & 0x08));
+	c64_vicaddr = c64_memory + helper[data & 0x03];
+}
+
+static void c64_cia1_interrupt (const device_config *device, int level)
+{
+	c64_nmi(device->machine);
+}
+
 const cia6526_interface c64_ntsc_cia1 =
 {
 	DEVCB_LINE(c64_cia1_interrupt),
@@ -460,12 +252,17 @@ const cia6526_interface c64_pal_cia1 =
 	}
 };
 
+/***********************************************
+
+	Memory Handlers
+
+***********************************************/
+
 static UINT8 *c64_io_ram_w_ptr;
 static UINT8 *c64_io_ram_r_ptr;
 
 WRITE8_HANDLER( c64_write_io )
 {
-	running_machine *machine = space->machine;
 	const device_config *cia_0 = devtag_get_device(space->machine, "cia_0");
 	const device_config *cia_1 = devtag_get_device(space->machine, "cia_1");
 	const device_config *sid = devtag_get_device(space->machine, "sid6581");
@@ -484,17 +281,17 @@ WRITE8_HANDLER( c64_write_io )
 		if (c64_cia1_on)
 			cia_w(cia_1, offset, data);
 		else
-			DBG_LOG (1, "io write", ("%.3x %.2x\n", offset, data));
+			DBG_LOG(space->machine, 1, "io write", ("%.3x %.2x\n", offset, data));
 	}
 	else if (offset < 0xf00)
 	{
 		/* i/o 1 */
-			DBG_LOG (1, "io write", ("%.3x %.2x\n", offset, data));
+			DBG_LOG(space->machine, 1, "io write", ("%.3x %.2x\n", offset, data));
 	}
 	else
 	{
 		/* i/o 2 */
-			DBG_LOG (1, "io write", ("%.3x %.2x\n", offset, data));
+			DBG_LOG(space->machine, 1, "io write", ("%.3x %.2x\n", offset, data));
 	}
 }
 
@@ -512,7 +309,6 @@ WRITE8_HANDLER(c64_ioarea_w)
 
 READ8_HANDLER( c64_read_io )
 {
-	running_machine *machine = space->machine;
 	const device_config *cia_0 = devtag_get_device(space->machine, "cia_0");
 	const device_config *cia_1 = devtag_get_device(space->machine, "cia_1");
 	const device_config *sid = devtag_get_device(space->machine, "sid6581");
@@ -544,7 +340,7 @@ READ8_HANDLER( c64_read_io )
 	else if (c64_cia1_on && (offset < 0xe00))
 		return cia_r(cia_1, offset);
 
-	DBG_LOG (1, "io read", ("%.3x\n", offset));
+	DBG_LOG(space->machine, 1, "io read", ("%.3x\n", offset));
 
 	return 0xff;
 }
@@ -683,7 +479,7 @@ static void c64_bankswitch(running_machine *machine, int reset)
 	if (!c64_game && c64_exrom)
 		ultimax_mode = 1;
 
-	DBG_LOG (1, "bankswitch", ("%d\n", data & 7));
+	DBG_LOG(machine, 1, "bankswitch", ("%d\n", data & 7));
 	loram  = (data & 1) ? 1 : 0;
 	hiram  = (data & 2) ? 1 : 0;
 	charen = (data & 4) ? 1 : 0;
@@ -819,12 +615,6 @@ void c64_m6510_port_write(const device_config *device, UINT8 direction, UINT8 da
 		}
 	}
 
-	if (is_c65(device->machine))
-	{
-		// NPW 8-Feb-2004 - Don't know why I have to do this
-		//c65_bankswitch(machine);
-	}
-
 	else if (!ultimax)
 		c64_bankswitch(device->machine, 0);
 
@@ -842,15 +632,6 @@ UINT8 c64_m6510_port_read(const device_config *device, UINT8 direction)
 			data &= ~0x10;
 		else
 			data |=  0x10;
-	}
-
-	if (is_c65(device->machine))
-	{
-		if (input_port_read(device->machine, "SPECIAL") & 0x20)		/* Check Caps Lock */
-			data &= ~0x40;
-
-		else
-			data |=  0x40;
 	}
 
 	return data;
@@ -1018,10 +799,6 @@ TIMER_CALLBACK( c64_tape_timer )
 
 static void c64_common_driver_init (running_machine *machine)
 {
-	/* configure the M6510 port */
-	devtag_set_info_fct(machine, "maincpu", CPUINFO_FCT_M6510_PORTREAD, (genf *) c64_m6510_port_read);
-	devtag_set_info_fct(machine, "maincpu", CPUINFO_FCT_M6510_PORTWRITE, (genf *) c64_m6510_port_write);
-
 	if (!ultimax)
 	{
 		UINT8 *mem = memory_region(machine, "maincpu");
@@ -1037,27 +814,27 @@ static void c64_common_driver_init (running_machine *machine)
 		datasette_timer = timer_alloc(machine, c64_tape_timer, NULL);
 
 	if (ultimax)
-		vic6567_init (0, c64_pal, c64_dma_read_ultimax, c64_dma_read_color, c64_vic_interrupt);
+		vic6567_init(0, c64_pal, c64_dma_read_ultimax, c64_dma_read_color, c64_vic_interrupt);
 	else
-		vic6567_init (0, c64_pal, c64_dma_read, c64_dma_read_color, c64_vic_interrupt);
+		vic6567_init(0, c64_pal, c64_dma_read, c64_dma_read_color, c64_vic_interrupt);
 }
 
 DRIVER_INIT( c64 )
 {
-	c64_common_driver_init (machine);
+	c64_common_driver_init(machine);
 }
 
 DRIVER_INIT( c64pal )
 {
 	c64_pal = 1;
-	c64_common_driver_init (machine);
+	c64_common_driver_init(machine);
 }
 
 DRIVER_INIT( ultimax )
 {
 	ultimax = 1;
     c64_cia1_on = 0;
-	c64_common_driver_init (machine);
+	c64_common_driver_init(machine);
 }
 
 DRIVER_INIT( c64gs )
@@ -1065,7 +842,7 @@ DRIVER_INIT( c64gs )
 	c64_pal = 1;
 	c64_tape_on = 0;
     c64_cia1_on = 1;
-	c64_common_driver_init (machine);
+	c64_common_driver_init(machine);
 }
 
 DRIVER_INIT( sx64 )
@@ -1073,24 +850,21 @@ DRIVER_INIT( sx64 )
 	is_sx64 = 1;
 	c64_tape_on = 0;
 	c64_pal = 1;
-	c64_common_driver_init (machine);
-	drive_config (machine, type_1541, 0, 0, 1, 8);
+	c64_common_driver_init(machine);
+	drive_config(machine, type_1541, 0, 0, "cpu_vc1540", 8);
 }
 
-void c64_common_init_machine (running_machine *machine)
+static void c64_common_init_machine (running_machine *machine)
 {
-	if (is_sx64 /* || is_c128d(machine) */)
+	if (is_sx64)
 	{
-		cbm_serial_config(machine, &cbm_fake_drive_interface);
-		drive_reset ();
+		drive_reset();
 	}
 
 	else if (c64_cia1_on)
 	{
-		cbm_serial_config(machine, &cbm_sim_drive_interface);
-		cbm_serial_reset_write (machine, 0);
-		cbm_drive_0_config (SERIAL, 8);
-		cbm_drive_1_config (SERIAL, 9);
+		cbm_drive_0_config(SERIAL, 8);
+		cbm_drive_1_config(SERIAL, 9);
 		serial_clock = serial_data = serial_atn = 1;
 	}
 
@@ -1102,190 +876,21 @@ MACHINE_START( c64 )
 {
 	c64_port_data = 0x17;
 
-	c64_io_mirror = auto_malloc( 0x1000 );
-	c64_common_init_machine (machine);
-
-	if (is_c128(machine))
-		c128_bankswitch_64(machine, 1);
+	c64_io_mirror = auto_alloc_array(machine, UINT8, 0x1000);
+	c64_common_init_machine(machine);
 
 	if (!ultimax)
 		c64_bankswitch(machine, 1);
 }
 
-
-static TIMER_CALLBACK( lightpen_tick )
+MACHINE_RESET( c64 )
 {
-	if ((input_port_read(machine, "CTRLSEL") & 0x07) == 0x04)
-	{
-		/* enable lightpen crosshair */
-		crosshair_set_screen(machine, 0, CROSSHAIR_SCREEN_ALL);
-	}
-	else
-	{
-		/* disable lightpen crosshair */
-		crosshair_set_screen(machine, 0, CROSSHAIR_SCREEN_NONE);
-	}
 }
 
 INTERRUPT_GEN( c64_frame_interrupt )
 {
-	static int monitor = -1;
-	int value, i;
-	int controller1 = input_port_read(device->machine, "CTRLSEL") & 0x07;
-	int controller2 = input_port_read(device->machine, "CTRLSEL") & 0x70;
-	static const char *const c64ports[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7" };
-	static const char *const c128ports[] = { "KP0", "KP1", "KP2" };
-
 	c64_nmi(device->machine);
-
-	 if (is_c128(device->machine))
-	 {
-	 	if ((input_port_read(device->machine, "SPECIAL") & 0x08) != monitor)
-		{
-			if (input_port_read(device->machine, "SPECIAL") & 0x08)
-			{
-				vic2_set_rastering(0);
-				vdc8563_set_rastering(1);
-				video_screen_set_visarea(device->machine->primary_screen, 0, 655, 0, 215);
-			}
-			else
-			{
-				vic2_set_rastering(1);
-				vdc8563_set_rastering(0);
-				if (c64_pal)
-					video_screen_set_visarea(device->machine->primary_screen, VIC6569_STARTVISIBLECOLUMNS, VIC6569_STARTVISIBLECOLUMNS + VIC6569_VISIBLECOLUMNS - 1, VIC6569_STARTVISIBLELINES, VIC6569_STARTVISIBLELINES + VIC6569_VISIBLELINES - 1);
-				else
-					video_screen_set_visarea(device->machine->primary_screen, VIC6567_STARTVISIBLECOLUMNS, VIC6567_STARTVISIBLECOLUMNS + VIC6567_VISIBLECOLUMNS - 1, VIC6567_STARTVISIBLELINES, VIC6567_STARTVISIBLELINES + VIC6567_VISIBLELINES - 1);
-			}
-			monitor = input_port_read(device->machine, "SPECIAL") & 0x08;
-		}
-	}
-
-	/* Lines 0-7 : common keyboard */
-	for (i = 0; i < 8; i++)
-	{
-		value = 0xff;
-		value &= ~input_port_read(device->machine, c64ports[i]);
-
-		/* Shift Lock is mapped on Left Shift */
-		if ((i == 1) && (input_port_read(device->machine, "SPECIAL") & 0x40) && !is_c128(device->machine))	// Fix Me! Currently, neither left Shift nor Shift Lock works in c128, but reading this in c128 produces a bug!
-			value &= ~0x80;
-
-		c64_keyline[i] = value;
-	}
-
-
-	value = 0xff;
-	switch(controller1)
-	{
-		case 0x00:
-			value &= ~input_port_read(device->machine, "JOY1_1B");			/* Joy1 Directions + Button 1 */
-			break;
-
-		case 0x01:
-			if (input_port_read(device->machine, "OTHER") & 0x40)			/* Paddle2 Button */
-				value &= ~0x08;
-			if (input_port_read(device->machine, "OTHER") & 0x80)			/* Paddle1 Button */
-				value &= ~0x04;
-			break;
-
-		case 0x02:
-			if (input_port_read(device->machine, "OTHER") & 0x02)			/* Mouse Button Left */
-				value &= ~0x10;
-			if (input_port_read(device->machine, "OTHER") & 0x01)			/* Mouse Button Right */
-				value &= ~0x01;
-			break;
-
-		case 0x03:
-			value &= ~(input_port_read(device->machine, "JOY1_2B") & 0x1f);	/* Joy1 Directions + Button 1 */
-			break;
-
-		case 0x04:
-/* was there any input on the lightpen? where is it mapped? */
-//			if (input_port_read(device->machine, "OTHER") & 0x04)			/* Lightpen Signal */
-//				value &= ?? ;
-			break;
-
-		case 0x07:
-			break;
-
-		default:
-			logerror("Invalid Controller 1 Setting %d\n", controller1);
-			break;
-	}
-
-	c64_keyline[8] = value;
-
-
-	value = 0xff;
-	switch(controller2)
-	{
-		case 0x00:
-			value &= ~input_port_read(device->machine, "JOY2_1B");			/* Joy2 Directions + Button 1 */
-			break;
-
-		case 0x10:
-			if (input_port_read(device->machine, "OTHER") & 0x10)			/* Paddle4 Button */
-				value &= ~0x08;
-			if (input_port_read(device->machine, "OTHER") & 0x20)			/* Paddle3 Button */
-				value &= ~0x04;
-			break;
-
-		case 0x20:
-			if (input_port_read(device->machine, "OTHER") & 0x02)			/* Mouse Button Left */
-				value &= ~0x10;
-			if (input_port_read(device->machine, "OTHER") & 0x01)			/* Mouse Button Right */
-				value &= ~0x01;
-			break;
-
-		case 0x30:
-			value &= ~(input_port_read(device->machine, "JOY2_2B") & 0x1f);	/* Joy2 Directions + Button 1 */
-			break;
-
-		case 0x40:
-/* was there any input on the lightpen? where is it mapped? */
-//			if (input_port_read(device->machine, "OTHER") & 0x04)			/* Lightpen Signal */
-//				value &= ?? ;
-			break;
-
-		case 0x70:
-			break;
-
-		default:
-			logerror("Invalid Controller 2 Setting %d\n", controller2);
-			break;
-	}
-
-	c64_keyline[9] = value;
-
-	/* C128 only : keypad input ports */
-	if (is_c128(device->machine))
-	{
-		for (i = 0; i < 3; i++)
-		{
-			value = 0xff;
-			value &= ~input_port_read(device->machine, c128ports[i]);
-			c128_keyline[i] = value;
-		}
-	}
-
-	/* C65 only : function keys input ports */
-	if (is_c65(device->machine))
-	{
-		value = 0xff;
-
-		value &= ~input_port_read(device->machine, "FUNCT");
-		c65_keyline = value;
-	}
-
-// vic2_frame_interrupt does nothing so this is not necessary
-//	vic2_frame_interrupt (device);
-
-	/* check if lightpen has been chosen as input: if so, enable crosshair */
-	timer_set(device->machine, attotime_zero, NULL, 0, lightpen_tick);
-
-	set_led_status (1, input_port_read(device->machine, "SPECIAL") & 0x40 ? 1 : 0);		/* Shift Lock */
-	set_led_status (0, input_port_read(device->machine, "CTRLSEL") & 0x80 ? 1 : 0);		/* Joystick Swap */
+	cbm_common_interrupt(device);
 }
 
 

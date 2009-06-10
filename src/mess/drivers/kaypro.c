@@ -19,7 +19,16 @@
 
 
 	Things that need doing:
-	- Floppy disks (I have no knowledge of how to set these up)
+
+	- Need schematics of 2x and kaypro10 (used 2-84 which doesn't seem to be the same).
+	  They currently are not reading any data from disk.
+
+	- omni2 and kaypro4 would (I believe) boot up if we had a proper boot disk. The IMD
+	  conversions seem to have the tracks scrambled (e.g reading side 0 track 1 gives us
+	  side 1 track 0).
+
+	- Kaypro2x and Kaypro10 don't centre the display at boot, but a soft reset fixes it.
+	  Perhaps the guesswork emulation of the video ULA is incomplete.
 
 
 **************************************************************************************************/
@@ -31,6 +40,7 @@
 #include "machine/ctronics.h"
 #include "machine/kay_kbd.h"
 #include "sound/beep.h"
+#include "devices/snapquik.h"
 #include "includes/kaypro.h"
 
 
@@ -54,10 +64,7 @@ static ADDRESS_MAP_START( kayproii_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE("z80sio", kaypro_sio_r, kaypro_sio_w)
 	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("z80pio_g", kayproii_pio_r, kayproii_pio_w)
 	AM_RANGE(0x0c, 0x0f) AM_WRITE(kayproii_baud_b_w)
-	AM_RANGE(0x10, 0x10) AM_DEVREADWRITE("wd1793", wd17xx_status_r, wd17xx_command_w)
-	AM_RANGE(0x11, 0x11) AM_DEVREADWRITE("wd1793", wd17xx_track_r, wd17xx_track_w)
-	AM_RANGE(0x12, 0x12) AM_DEVREADWRITE("wd1793", wd17xx_sector_r, wd17xx_sector_w)
-	AM_RANGE(0x13, 0x13) AM_DEVREADWRITE("wd1793", wd17xx_data_r, wd17xx_data_w)
+	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE("wd1793", wd17xx_r, wd17xx_w)
 	AM_RANGE(0x1c, 0x1f) AM_DEVREADWRITE("z80pio_s", kayproii_pio_r, kayproii_pio_w)
 ADDRESS_MAP_END
 
@@ -68,10 +75,7 @@ static ADDRESS_MAP_START( kaypro2x_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE("z80sio", kaypro_sio_r, kaypro_sio_w)
 	AM_RANGE(0x08, 0x0b) AM_WRITE(kaypro2x_baud_a_w)
 	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE("z80sio_2x", kaypro2x_sio_r, kaypro2x_sio_w)
-	AM_RANGE(0x10, 0x10) AM_DEVREADWRITE("wd1793", wd17xx_status_r, wd17xx_command_w)
-	AM_RANGE(0x11, 0x11) AM_DEVREADWRITE("wd1793", wd17xx_track_r, wd17xx_track_w)
-	AM_RANGE(0x12, 0x12) AM_DEVREADWRITE("wd1793", wd17xx_sector_r, wd17xx_sector_w)
-	AM_RANGE(0x13, 0x13) AM_DEVREADWRITE("wd1793", wd17xx_data_r, wd17xx_data_w)
+	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE("wd1793", wd17xx_r, wd17xx_w)
 	AM_RANGE(0x14, 0x17) AM_READWRITE(kaypro2x_system_port_r,kaypro2x_system_port_w)
 	AM_RANGE(0x18, 0x1b) AM_DEVWRITE("centronics", centronics_data_w)
 	AM_RANGE(0x1c, 0x1c) AM_READWRITE(kaypro2x_status_r,kaypro2x_index_w)
@@ -135,8 +139,8 @@ static const mc6845_interface kaypro2x_crtc = {
 static MACHINE_DRIVER_START( kayproii )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 2500000)	/* 2.5 MHz */
-	MDRV_CPU_PROGRAM_MAP(kaypro_map, 0)
-	MDRV_CPU_IO_MAP(kayproii_io, 0)
+	MDRV_CPU_PROGRAM_MAP(kaypro_map)
+	MDRV_CPU_IO_MAP(kayproii_io)
 	MDRV_CPU_VBLANK_INT("screen", kay_kbd_interrupt)	/* this doesn't actually exist, it is to run the keyboard */
 	MDRV_CPU_CONFIG(kayproii_daisy_chain)
 
@@ -161,23 +165,19 @@ static MACHINE_DRIVER_START( kayproii )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* devices */
-	MDRV_WD179X_ADD("wd1793", kaypro_wd1793_interface )
+	MDRV_QUICKLOAD_ADD("quickload", kayproii, "com,cpm", 3)
+	MDRV_WD1793_ADD("wd1793", kaypro_wd1793_interface )
 	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 	MDRV_Z80PIO_ADD( "z80pio_g", kayproii_pio_g_intf )
 	MDRV_Z80PIO_ADD( "z80pio_s", kayproii_pio_s_intf )
 	MDRV_Z80SIO_ADD( "z80sio", 4800, kaypro_sio_intf )	/* start at 300 baud */
 MACHINE_DRIVER_END
 
-static MACHINE_DRIVER_START( omni2 )
-	MDRV_IMPORT_FROM( kayproii )
-	MDRV_VIDEO_UPDATE( omni2 )
-MACHINE_DRIVER_END
-
 static MACHINE_DRIVER_START( kaypro2x )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 4000000)	/* 4 MHz */
-	MDRV_CPU_PROGRAM_MAP(kaypro_map, 0)
-	MDRV_CPU_IO_MAP(kaypro2x_io, 0)
+	MDRV_CPU_PROGRAM_MAP(kaypro_map)
+	MDRV_CPU_IO_MAP(kaypro2x_io)
 	MDRV_CPU_VBLANK_INT("screen", kay_kbd_interrupt)
 	MDRV_CPU_CONFIG(kaypro2x_daisy_chain)
 
@@ -204,10 +204,16 @@ static MACHINE_DRIVER_START( kaypro2x )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* devices */
+	MDRV_QUICKLOAD_ADD("quickload", kaypro2x, "com,cpm", 3)
 	MDRV_WD179X_ADD("wd1793", kaypro_wd1793_interface )
 	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 	MDRV_Z80SIO_ADD( "z80sio", 4800, kaypro_sio_intf )
 	MDRV_Z80SIO_ADD( "z80sio_2x", 4800, kaypro_sio_intf )	/* extra sio for modem and printer */
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( omni2 )
+	MDRV_IMPORT_FROM( kayproii )
+	MDRV_VIDEO_UPDATE( omni2 )
 MACHINE_DRIVER_END
 
 /***********************************************************
@@ -284,8 +290,8 @@ static SYSTEM_CONFIG_START(kaypro2x)
 SYSTEM_CONFIG_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE	  INPUT    INIT      CONFIG       COMPANY  FULLNAME */
-COMP( 1983, kayproii, 0,        0,      kayproii, kay_kbd, 0,        kayproii,	  "Non Linear Systems",  "Kaypro II - 2/83" , GAME_NOT_WORKING )
-COMP( 198?, kaypro4,  kayproii, 0,      kayproii, kay_kbd, 0,        kayproii,	  "Non Linear Systems",  "Kaypro 4 - 4/83" , GAME_NOT_WORKING )
-COMP( 198?, omni2,    kayproii, 0,      omni2,    kay_kbd, 0,        kayproii,	  "Unknown",  "Omni II" , GAME_NOT_WORKING )
-COMP( 1984, kaypro2x, 0,        0,      kaypro2x, kay_kbd, 0,        kayproii,	  "Non Linear Systems",  "Kaypro 2x" , GAME_NOT_WORKING )
+COMP( 1983, kayproii, 0,        0,      kayproii, kay_kbd, 0,        kayproii,	  "Non Linear Systems",  "Kaypro II - 2/83" , 0 )
+COMP( 198?, kaypro4,  kayproii, 0,      kayproii, kay_kbd, 0,        kaypro2x,	  "Non Linear Systems",  "Kaypro 4 - 4/83" , GAME_NOT_WORKING )
+COMP( 198?, omni2,    kayproii, 0,      omni2,    kay_kbd, 0,        kaypro2x,	  "Non Linear Systems",  "Omni II" , GAME_NOT_WORKING )
+COMP( 1984, kaypro2x, 0,        0,      kaypro2x, kay_kbd, 0,        kaypro2x,	  "Non Linear Systems",  "Kaypro 2x" , GAME_NOT_WORKING )
 COMP( 198?, kaypro10, 0,        0,      kaypro2x, kay_kbd, 0,        kaypro2x,	  "Non Linear Systems",  "Kaypro 10" , GAME_NOT_WORKING )

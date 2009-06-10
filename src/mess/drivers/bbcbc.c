@@ -4,13 +4,8 @@
 
   BBC Bridge Companion
 
-  TODO:
-  Inputs
-  Find correct clock frequencies
-
-	Inputs hooked up - 2009-03-14 - Robbbert
-	There are considerable debounce issues which can be solved by
-	 slowing down the processor. 400khz works nicely.
+  Inputs hooked up - 2009-03-14 - Robbbert
+  Clock Freq added - 2009-05-18 - incog
 
 ***************************************************************************/
 #include "driver.h"
@@ -19,6 +14,8 @@
 #include "machine/z80pio.h"
 #include "cpu/z80/z80daisy.h"
 #include "devices/cartslot.h"
+
+#define MAIN_CLOCK XTAL_4_433619MHz
 
 	
 static ADDRESS_MAP_START( bbcbc_prg, ADDRESS_SPACE_PROGRAM, 8 )
@@ -132,9 +129,9 @@ static MACHINE_RESET( bbcbc )
 
 
 static MACHINE_DRIVER_START( bbcbc )
-	MDRV_CPU_ADD( "maincpu", Z80, 4000000 )
-	MDRV_CPU_PROGRAM_MAP( bbcbc_prg, 0 )
-	MDRV_CPU_IO_MAP( bbcbc_io, 0 )
+	MDRV_CPU_ADD( "maincpu", Z80, MAIN_CLOCK / 8 )
+	MDRV_CPU_PROGRAM_MAP( bbcbc_prg)
+	MDRV_CPU_IO_MAP( bbcbc_io)
 	MDRV_CPU_CONFIG(bbcbc_daisy_chain)
 	MDRV_CPU_VBLANK_INT("screen", bbcbc_interrupt)
 
@@ -165,4 +162,4 @@ ROM_END
 ***************************************************************************/
 
 /*   YEAR  NAME  PARENT  COMPAT  MACHINE INPUT  INIT  CONFIG  COMPANY  FULLNAME  FLAGS */
-CONS(1985, bbcbc,     0, 0,      bbcbc,  bbcbc, 0,    0,  "BBC",   "Bridge Companion", GAME_NOT_WORKING )
+CONS(1985, bbcbc,     0, 0,      bbcbc,  bbcbc, 0,    0,  "BBC",   "Bridge Companion", 0 )

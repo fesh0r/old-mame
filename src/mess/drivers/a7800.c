@@ -33,7 +33,7 @@
 static ADDRESS_MAP_START( a7800_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x001f) AM_MIRROR(0x300) AM_READWRITE(a7800_TIA_r, a7800_TIA_w)
 	AM_RANGE(0x0020, 0x003f) AM_MIRROR(0x300) AM_READWRITE(a7800_MARIA_r, a7800_MARIA_w)
-	AM_RANGE(0x0040, 0x00ff) AM_READWRITE(SMH_BANK5, a7800_RAM0_w)	/* RAM (6116 block 0) */
+	AM_RANGE(0x0040, 0x00ff) AM_READWRITE(SMH_BANK(5), a7800_RAM0_w)	/* RAM (6116 block 0) */
 	AM_RANGE(0x0140, 0x01ff) AM_RAMBANK(6)	/* RAM (6116 block 1) */
 	AM_RANGE(0x0280, 0x02ff) AM_DEVREADWRITE("riot", riot6532_r, riot6532_w)
 	AM_RANGE(0x0480, 0x04ff) AM_MIRROR(0x100) AM_RAM	/* RIOT RAM */
@@ -253,7 +253,7 @@ static PALETTE_INIT(a7800p)
 static MACHINE_DRIVER_START( a7800_ntsc )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, A7800_NTSC_Y1/8)	/* 1.79 MHz (switches to 1.19 MHz on TIA or RIOT access) */
-	MDRV_CPU_PROGRAM_MAP(a7800_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(a7800_mem)
 	MDRV_CPU_VBLANK_INT_HACK(a7800_interrupt, 262)
 
 	MDRV_MACHINE_RESET(a7800)
@@ -308,7 +308,7 @@ static MACHINE_DRIVER_START( a7800_pal )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* devices */
-	MDRV_RIOT6532_REMOVE("riot")
+	MDRV_DEVICE_REMOVE("riot")
 	MDRV_RIOT6532_ADD("riot", 3546894/3, a7800_r6532_interface)
 MACHINE_DRIVER_END
 
@@ -338,5 +338,5 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT     INIT          CONFIG      COMPANY   FULLNAME */
-CONS( 1986, a7800,    0,        0,		a7800_ntsc,	a7800,    a7800_ntsc,	0,		"Atari",  "Atari 7800 NTSC" , 0)
-CONS( 1986, a7800p,   a7800,    0,		a7800_pal,	a7800,    a7800_pal,	0,		"Atari",  "Atari 7800 PAL" , 0)
+CONS( 1986, a7800,    0,        0,		a7800_ntsc,	a7800,    a7800_ntsc,	0,		"Atari",  "Atari 7800 (NTSC)" , 0)
+CONS( 1986, a7800p,   a7800,    0,		a7800_pal,	a7800,    a7800_pal,	0,		"Atari",  "Atari 7800 (PAL)" , 0)

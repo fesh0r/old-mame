@@ -15,6 +15,14 @@
 
 /*----------- defined in machine/cbm.c -----------*/
 
+/* keyboard lines */
+extern UINT8 c64_keyline[10];
+void cbm_common_interrupt( const device_config *device );
+
+UINT8 common_cia0_port_a_r( const device_config *device, UINT8 output_b );
+UINT8 common_cia0_port_b_r( const device_config *device, UINT8 output_a );
+
+
 /***********************************************
 
 	CBM Quickloads
@@ -45,7 +53,7 @@ QUICKLOAD_LOAD( cbm_c65 );
 #define CBM_ROM_ADDR_HI -2
 
 typedef struct {
-	int addr, size /*, bank*/;	// mi serve prob questo per implementare il corretto caricamento delle cart tipo >0!
+	int addr, size, index, start;
 	UINT8 *chip;
 } CBM_ROM;
 

@@ -16,6 +16,7 @@
 
     PCLKs = 26917135 (NTSC 480 @ 59.94), 26944080 (VGA 480 @ 60.0), 13458568 (NTSC 240 @ 59.94),
             25925600 (PAL 480 @ 50.00), 13462800 (PAL 240 @ 50.00)
+
 */
 
 #include "driver.h"
@@ -27,46 +28,39 @@
 
 #define CPU_CLOCK (200000000)
 
-#define DC_VIDEO_TYPE	(3<<8)		// composite
-
 static UINT32 *dc_sound_ram;
 
-//UINT32 dma_offset;
+int jvsboard_type;
 
-static UINT64 portA = 0x3, PDTRA, latched_PDTRA = 0, w;
-static int state = 0;
-
+static UINT64 PDTRA, PCTRA;
 static READ64_HANDLER( dc_pdtra_r )
 {
-	w = portA;
-	if (!state)
+	UINT64 out = PCTRA<<32;
+
+	out |= PDTRA & ~3;
+
+	// if both bits are inputs
+	if (!(PCTRA & 0x5))
 	{
-		if ((latched_PDTRA == 1) || (latched_PDTRA == 2))
+		out |= 3;
+	}
+
+	// one's input one's output, always pull up both bits
+	if (((PCTRA & 5) == 1) || ((PCTRA & 5) == 4))
+	{
+		if (PDTRA & 3)
 		{
-			w &= ~3;
+			out |= 3;
 		}
 	}
 
-	return w;
+	return out;
 }
 
 static WRITE64_HANDLER( dc_pdtra_w )
 {
-	if ((data) && (!PDTRA))
-	{
-		latched_PDTRA = data;
-		state = 1;
-	}
-	else if ((!data) && (!PDTRA))
-	{
-		latched_PDTRA = 0;
-	}
-	else
-	{
-		state = 0;
-	}
-
-	COMBINE_DATA(&PDTRA);
+	PCTRA = (data>>16) & 0xffff;
+	PDTRA = (data & 0xffff);
 }
 
 static READ64_HANDLER( dc_arm_r )
@@ -78,6 +72,36 @@ static WRITE64_HANDLER( dc_arm_w )
 {
 	COMBINE_DATA((UINT64 *)dc_sound_ram + offset);
 }
+
+ // SB_LMMODE0
+ static WRITE64_HANDLER( ta_texture_directpath0_w )
+ {
+	int mode = pvrctrl_regs[SB_LMMODE0]&1;
+	if (mode&1)
+	{
+		printf("ta_texture_directpath0_w 32-bit access!\n");
+		COMBINE_DATA(&dc_framebuffer_ram[offset]);
+	}
+	else
+	{
+		COMBINE_DATA(&dc_texture_ram[offset]);
+	}
+ }
+
+ // SB_LMMODE1
+ static WRITE64_HANDLER( ta_texture_directpath1_w )
+ {
+ 	int mode = pvrctrl_regs[SB_LMMODE1]&1;
+	if (mode&1)
+	{
+		printf("ta_texture_directpath0_w 32-bit access!\n");
+		COMBINE_DATA(&dc_framebuffer_ram[offset]);
+	}
+	else
+	{
+		COMBINE_DATA(&dc_texture_ram[offset]);
+	}
+ }
 
 static ADDRESS_MAP_START( dc_map, ADDRESS_SPACE_PROGRAM, 64 )
 	AM_RANGE(0x00000000, 0x001fffff) AM_ROM	AM_WRITENOP				// BIOS
@@ -93,13 +117,26 @@ static ADDRESS_MAP_START( dc_map, ADDRESS_SPACE_PROGRAM, 64 )
 	AM_RANGE(0x00700000, 0x00707fff) AM_DEVREADWRITE("aica", dc_aica_reg_r, dc_aica_reg_w )
 	AM_RANGE(0x00710000, 0x0071000f) AM_READWRITE( dc_rtc_r, dc_rtc_w )
 	AM_RANGE(0x00800000, 0x009fffff) AM_READWRITE( dc_arm_r, dc_arm_w )
-	AM_RANGE(0x04000000, 0x04ffffff) AM_RAM	AM_SHARE(2)	// texture memory
-	AM_RANGE(0x05000000, 0x05ffffff) AM_RAM AM_SHARE(2)	// mirror of texture RAM
-	AM_RANGE(0x0c000000, 0x0cffffff) AM_RAM AM_SHARE(1)
-	AM_RANGE(0x0d000000, 0x0dffffff) AM_RAM AM_SHARE(1)	// mirror of main RAM
+
+	/* Area 1 */
+	AM_RANGE(0x04000000, 0x04ffffff) AM_RAM	AM_BASE( &dc_texture_ram )      // texture memory 64 bit access
+	AM_RANGE(0x05000000, 0x05ffffff) AM_RAM AM_BASE( &dc_framebuffer_ram ) // apparently this actually accesses the same memory as the 64-bit texture memory access, but in a different format, keep it apart for now
+
+	/* Area 3 */
+	AM_RANGE(0x0c000000, 0x0cffffff) AM_RAM AM_SHARE(4)
+	AM_RANGE(0x0d000000, 0x0dffffff) AM_RAM AM_SHARE(4)// extra ram on Naomi (mirror on DC)
+	AM_RANGE(0x0e000000, 0x0effffff) AM_RAM AM_SHARE(4)// mirror
+	AM_RANGE(0x0f000000, 0x0fffffff) AM_RAM AM_SHARE(4)// mirror
+
+	/* Area 4 */
 	AM_RANGE(0x10000000, 0x107fffff) AM_WRITE( ta_fifo_poly_w )
 	AM_RANGE(0x10800000, 0x10ffffff) AM_WRITE( ta_fifo_yuv_w )
-	AM_RANGE(0x11000000, 0x11ffffff) AM_RAM AM_SHARE(2)	// another mirror of texture memory
+	AM_RANGE(0x11000000, 0x117fffff) AM_WRITE( ta_texture_directpath0_w ) AM_MIRROR(0x00800000)  // access to texture / fraembfufer memory (either 32-bit or 64-bit area depending on SB_LMMODE0 register - cannot be written directly, only through dma / store queue
+
+	AM_RANGE(0x12000000, 0x127fffff) AM_WRITE( ta_fifo_poly_w )
+	AM_RANGE(0x12800000, 0x12ffffff) AM_WRITE( ta_fifo_yuv_w )
+	AM_RANGE(0x13000000, 0x137fffff) AM_WRITE( ta_texture_directpath1_w ) AM_MIRROR(0x00800000) // access to texture / fraembfufer memory (either 32-bit or 64-bit area depending on SB_LMMODE1 register - cannot be written directly, only through dma / store queue
+
 	AM_RANGE(0xa0000000, 0xa01fffff) AM_ROM AM_REGION("maincpu", 0)
 ADDRESS_MAP_END
 
@@ -142,19 +179,16 @@ static MACHINE_DRIVER_START( dc )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", SH4, CPU_CLOCK)
 	MDRV_CPU_CONFIG(sh4cpu_config)
-	MDRV_CPU_PROGRAM_MAP(dc_map,0)
-	MDRV_CPU_IO_MAP(dc_port,0)
+	MDRV_CPU_PROGRAM_MAP(dc_map)
+	MDRV_CPU_IO_MAP(dc_port)
 	MDRV_CPU_VBLANK_INT("screen", dc_dispatch_vblank)
 
 	MDRV_CPU_ADD("soundcpu", ARM7, ((XTAL_33_8688MHz*2)/3)/8)	// AICA bus clock is 2/3rds * 33.8688.  ARM7 gets 1 bus cycle out of each 8.
-	MDRV_CPU_PROGRAM_MAP(dc_audio_map, 0)
+	MDRV_CPU_PROGRAM_MAP(dc_audio_map)
 
 	MDRV_MACHINE_RESET( dc_console )
 
 	/* video hardware */
-//	MDRV_SCREEN_ADD("screen", RASTER)
-//	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-//	MDRV_SCREEN_RAW_PARAMS((524*857*59.94), 857, 0xa4, 640+0xa4, 524, 0x12, 480+0x12)
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
@@ -202,9 +236,46 @@ ROM_END
 static SYSTEM_CONFIG_START(dc)
 SYSTEM_CONFIG_END
 
+static INPUT_PORTS_START( dc )
+	PORT_START("IN0")
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("Service")
+	PORT_SERVICE_NO_TOGGLE( 0x01, IP_ACTIVE_LOW )
+	PORT_START("IN1")
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START1 )
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 )
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 )
+	PORT_START("IN2")
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON6 )
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON5 )
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON4 )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON3 )
+	PORT_START("IN3")
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START2 )
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_START("IN4")
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON6 ) PORT_PLAYER(2)
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON5 ) PORT_PLAYER(2)
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_PLAYER(2)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(2)
+	PORT_START("MAMEDEBUG") \
+	PORT_DIPNAME( 0x01, 0x00, "Bilinear Filtering" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
+INPUT_PORTS_END
+
+
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY FULLNAME */
-CONS( 1999, dc, 	dcjp, 	0, 		dc, 	0, 		0, 	dc, 	"Sega", "Dreamcast (US NTSC)", GAME_NOT_WORKING )
-CONS( 1998, dcjp, 	0, 		0, 		dc, 	0, 		0, 	dc, 	"Sega", "Dreamcast (Japan NTSC)", GAME_NOT_WORKING )
-CONS( 1999, dceu, 	dcjp, 	0, 		dc, 	0, 		0, 	dc, 	"Sega", "Dreamcast (European PAL)", GAME_NOT_WORKING )
-CONS( 1998, dcdev, 	dcjp, 	0, 		dc, 	0, 		0, 	dc, 	"Sega", "HKT-0120 Sega Dreamcast Development Box", GAME_NOT_WORKING )
+CONS( 1999, dc,		dcjp,	0,	dc,	dc,	0,	dc, 	"Sega", "Dreamcast (US NTSC)", GAME_NOT_WORKING )
+CONS( 1998, dcjp,	0,	0,	dc,	dc,	0,	dc, 	"Sega", "Dreamcast (Japan NTSC)", GAME_NOT_WORKING )
+CONS( 1999, dceu,	dcjp,	0,	dc,	dc,	0,	dc, 	"Sega", "Dreamcast (European PAL)", GAME_NOT_WORKING )
+CONS( 1998, dcdev,	dcjp,	0,	dc,	dc,	0,	dc, 	"Sega", "HKT-0120 Sega Dreamcast Development Box", GAME_NOT_WORKING )
 

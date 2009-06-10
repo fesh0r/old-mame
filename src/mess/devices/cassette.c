@@ -259,7 +259,7 @@ static DEVICE_IMAGE_LOAD( cassette )
 	{
 		/* creating an image */
 		create_opts = cassette->config->create_opts;
-		err = cassette_create((void *) image, &mess_ioprocs, &wavfile_format, create_opts, CASSETTE_FLAG_READWRITE|CASSETTE_FLAG_SAVEONEXIT, &cassette->cassette);
+		err = cassette_create(image->machine, (void *) image, &mess_ioprocs, &wavfile_format, create_opts, CASSETTE_FLAG_READWRITE|CASSETTE_FLAG_SAVEONEXIT, &cassette->cassette);
 		if (err)
 			goto error;
 	}
@@ -271,7 +271,7 @@ static DEVICE_IMAGE_LOAD( cassette )
 			is_writable = image_is_writable(image);
 			cassette_flags = is_writable ? (CASSETTE_FLAG_READWRITE|CASSETTE_FLAG_SAVEONEXIT) : CASSETTE_FLAG_READONLY;
 			extension = image_filetype(image);
-			err = cassette_open_choices((void *) image, &mess_ioprocs, extension, formats, cassette_flags, &cassette->cassette);
+			err = cassette_open_choices(image->machine,(void *) image, &mess_ioprocs, extension, formats, cassette_flags, &cassette->cassette);
 
 			/* this is kind of a hack */
 			if (err && is_writable)
@@ -327,6 +327,7 @@ static void device_display_cassette(const device_config *image)
 	double position, length;
 	cassette_state uistate;
 	const device_config *device;
+	UINT8 shapes[8] = { 0x2d, 0x5c, 0x7c, 0x2f, 0x2d, 0x20, 0x20, 0x20 };
 
 	/* abort if we should not be showing the image */
 	if (!image_exists(image))
@@ -354,12 +355,20 @@ static void device_display_cassette(const device_config *image)
 	y *= ui_get_line_height();
 	/* choose which frame of the animation we are at */
 	n = ((int) position / ANIMATION_FPS) % ANIMATION_FRAMES;
-
+#if 0
+	/* THE ANIMATION HASN'T WORKED SINCE 0.114 - LEFT HERE FOR REFERENCE */
+	/* NEVER SEEN THE PLAY / RECORD ICONS */
 	/* character pairs 2-3, 4-5, 6-7, 8-9 form little tape cassette images */
 	snprintf(buf, sizeof(buf) / sizeof(buf[0]), "%c%c %c %02d:%02d (%04d) [%02d:%02d (%04d)]",
 		n * 2 + 2,								/* cassette icon left */
 		n * 2 + 3,								/* cassette icon right */
 		(uistate == CASSETTE_PLAY) ? 16 : 14,	/* play or record icon */
+#endif
+	/* Since you can have anything in a BDF file, we will use crude ascii characters instead */
+	snprintf(buf, sizeof(buf) / sizeof(buf[0]), "%c%c %c %02d:%02d (%04d) [%02d:%02d (%04d)]",
+		shapes[n],					/* cassette icon left */
+		shapes[n|4],					/* cassette icon right */
+		(uistate == CASSETTE_PLAY) ? 0x50 : 0x52,	/* play (P) or record (R) */
 		((int) position / 60),
 		((int) position % 60),
 		(int) position,

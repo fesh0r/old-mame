@@ -15,10 +15,13 @@
 #include "sound/sid6581.h"
 #include "machine/6526cia.h"
 
+#include "includes/cbm.h"
 #include "includes/cbmserb.h"
+#include "includes/cbmdrive.h"
 #include "includes/vc1541.h"
 #include "video/vic6567.h"
 #include "video/vdc8563.h"
+
 
 #include "includes/c128.h"
 #include "includes/c64.h"
@@ -27,12 +30,12 @@
 
 
 #define VERBOSE_LEVEL 0
-#define DBG_LOG(N,M,A) \
+#define DBG_LOG( MACHINE, N, M, A ) \
 	do { \
 		if(VERBOSE_LEVEL >= N) \
 		{ \
 			if( M ) \
-				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(machine)), (char*) M ); \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(MACHINE)), (char*) M ); \
 			logerror A; \
 		} \
 	} while (0)
@@ -70,6 +73,228 @@ static UINT8 *c128_ram;
 
 static UINT8 c64_port_data;
 
+static UINT8 c128_keyline[3] = {0xff, 0xff, 0xff};
+
+static int c128_va1617;
+static int c128_cia1_on = 1;
+static UINT8 serial_clock, serial_data, serial_atn;
+static UINT8 vicirq = 0;
+static int emulated_drive = 0;
+
+static void c128_nmi(running_machine *machine)
+{
+	static int nmilevel = 0;
+	const device_config *cia_1 = devtag_get_device(machine, "cia_1");
+	int cia1irq = cia_get_irq(cia_1);
+
+	if (nmilevel != (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq)	/* KEY_RESTORE */
+	{
+		if (1) // this was never valid, there is no active CPU during a timer firing!  cpu_getactivecpu() == 0)
+		{
+			/* z80 */
+			cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq);
+		}
+		else
+		{
+			cputag_set_input_line(machine, "m8502", INPUT_LINE_NMI, (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq);
+		}
+
+		nmilevel = (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq;
+	}
+}
+
+/***********************************************
+
+	CIA Interfaces
+
+***********************************************/
+
+/*
+ *	CIA 0 - Port A keyboard line select
+ *	CIA 0 - Port B keyboard line read
+ *
+ *	flag cassette read input, serial request in
+ *	irq to irq connected
+ *
+ *	see machine/cbm.c
+ */
+
+static READ8_DEVICE_HANDLER( c128_cia0_port_a_r )
+{
+	UINT8 cia0portb = cia_get_output_b(devtag_get_device(device->machine, "cia_0"));
+
+	return common_cia0_port_a_r(device, cia0portb);
+}
+
+static READ8_DEVICE_HANDLER( c128_cia0_port_b_r )
+{
+    UINT8 value = 0xff;
+	UINT8 cia0porta = cia_get_output_a(devtag_get_device(device->machine, "cia_0"));
+
+	value &= common_cia0_port_b_r(device, cia0porta);
+
+	if (!vic2e_k0_r())
+		value &= c128_keyline[0];
+	if (!vic2e_k1_r())
+		value &= c128_keyline[1];
+	if (!vic2e_k2_r())
+		value &= c128_keyline[2];
+
+    return value;
+}
+
+static WRITE8_DEVICE_HANDLER( c128_cia0_port_b_w )
+{
+    vic2_lightpen_write(data & 0x10);
+}
+
+static void c128_irq (running_machine *machine, int level)
+{
+	static int old_level = 0;
+
+	if (level != old_level)
+	{
+		DBG_LOG(machine, 3, "mos6510", ("irq %s\n", level ? "start" : "end"));
+
+		if (0) // && (cpu_getactivecpu() == 0))
+		{
+			cputag_set_input_line(machine, "maincpu", 0, level);
+		}
+		else
+		{
+			cputag_set_input_line(machine, "m8502", M6510_IRQ_LINE, level);
+		}
+
+		old_level = level;
+	}
+}
+
+static void c128_cia0_interrupt (const device_config *device, int level)
+{
+	c128_irq (device->machine, level || vicirq);
+}
+
+void c128_vic_interrupt (running_machine *machine, int level)
+{
+	const device_config *cia_0 = devtag_get_device(machine, "cia_0");
+#if 1
+	if (level != vicirq)
+	{
+		c128_irq (machine, level || cia_get_irq(cia_0));
+		vicirq = level;
+	}
+#endif
+}
+
+const cia6526_interface c128_ntsc_cia0 =
+{
+	DEVCB_LINE(c128_cia0_interrupt),
+	DEVCB_NULL,	/* pc_func */
+	60,
+
+	{
+		{ DEVCB_HANDLER(c128_cia0_port_a_r), DEVCB_NULL },
+		{ DEVCB_HANDLER(c128_cia0_port_b_r), DEVCB_HANDLER(c128_cia0_port_b_w) }
+	}
+};
+
+const cia6526_interface c128_pal_cia0 =
+{
+	DEVCB_LINE(c128_cia0_interrupt),
+	DEVCB_NULL,	/* pc_func */
+	50,
+
+	{
+		{ DEVCB_HANDLER(c128_cia0_port_a_r), DEVCB_NULL },
+		{ DEVCB_HANDLER(c128_cia0_port_b_r), DEVCB_HANDLER(c128_cia0_port_b_w) }
+	}
+};
+
+
+/*
+ * CIA 1 - Port A
+ * bit 7 serial bus data input
+ * bit 6 serial bus clock input
+ * bit 5 serial bus data output
+ * bit 4 serial bus clock output
+ * bit 3 serial bus atn output
+ * bit 2 rs232 data output
+ * bits 1-0 vic-chip system memory bank select
+ *
+ * CIA 1 - Port B
+ * bit 7 user rs232 data set ready
+ * bit 6 user rs232 clear to send
+ * bit 5 user
+ * bit 4 user rs232 carrier detect
+ * bit 3 user rs232 ring indicator
+ * bit 2 user rs232 data terminal ready
+ * bit 1 user rs232 request to send
+ * bit 0 user rs232 received data
+ *
+ * flag restore key or rs232 received data input
+ * irq to nmi connected ?
+ */
+static READ8_DEVICE_HANDLER( c128_cia1_port_a_r )
+{
+	UINT8 value = 0xff;
+	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
+
+	if (!serial_clock || !cbm_serial_clock_read(serbus, 0))
+		value &= ~0x40;
+
+	if (!serial_data || !cbm_serial_data_read(serbus, 0))
+		value &= ~0x80;
+
+	return value;
+}
+
+static WRITE8_DEVICE_HANDLER( c128_cia1_port_a_w )
+{
+	static const int helper[4] = {0xc000, 0x8000, 0x4000, 0x0000};
+	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
+
+	cbm_serial_clock_write(serbus, 0, serial_clock = !(data & 0x10));
+	cbm_serial_data_write(serbus, 0, serial_data = !(data & 0x20));
+	cbm_serial_atn_write(serbus, 0, serial_atn = !(data & 0x08));
+	c64_vicaddr = c64_memory + helper[data & 0x03];
+	c128_vicaddr = c64_memory + helper[data & 0x03] + c128_va1617;
+}
+
+static void c128_cia1_interrupt (const device_config *device, int level)
+{
+	c128_nmi(device->machine);
+}
+
+const cia6526_interface c128_ntsc_cia1 =
+{
+	DEVCB_LINE(c128_cia1_interrupt),
+	DEVCB_NULL,	/* pc_func */
+	60,
+
+	{
+		{ DEVCB_HANDLER(c128_cia1_port_a_r), DEVCB_HANDLER(c128_cia1_port_a_w) },
+		{ DEVCB_NULL, DEVCB_NULL }
+	}
+};
+
+const cia6526_interface c128_pal_cia1 =
+{
+	DEVCB_LINE(c128_cia1_interrupt),
+	DEVCB_NULL,	/* pc_func */
+	50,
+
+	{
+		{ DEVCB_HANDLER(c128_cia1_port_a_r), DEVCB_HANDLER(c128_cia1_port_a_w) },
+		{ DEVCB_NULL, DEVCB_NULL }
+	}
+};
+
+/***********************************************
+
+	Memory Handlers
+
+***********************************************/
+
 static void c128_set_m8502_read_handler(running_machine *machine, UINT16 start, UINT16 end, read8_space_func rh)
 {
 	const device_config *cpu;
@@ -79,20 +304,17 @@ static void c128_set_m8502_read_handler(running_machine *machine, UINT16 start, 
 
 static WRITE8_HANDLER(c128_dma8726_port_w)
 {
-	running_machine *machine = space->machine;
-	DBG_LOG(1,"dma write",("%.3x %.2x\n",offset,data));
+	DBG_LOG(space->machine, 1, "dma write", ("%.3x %.2x\n",offset,data));
 }
 
 static READ8_HANDLER(c128_dma8726_port_r)
 {
-	running_machine *machine = space->machine;
-	DBG_LOG(1,"dma read",("%.3x\n",offset));
+	DBG_LOG(space->machine, 1, "dma read", ("%.3x\n",offset));
 	return 0xff;
 }
 
 WRITE8_HANDLER( c128_write_d000 )
 {
-	running_machine *machine = space->machine;
 	const device_config *cia_0 = devtag_get_device(space->machine, "cia_0");
 	const device_config *cia_1 = devtag_get_device(space->machine, "cia_1");
 	const device_config *sid = devtag_get_device(space->machine, "sid6581");
@@ -111,16 +333,16 @@ WRITE8_HANDLER( c128_write_d000 )
 		switch ((offset&0xf00)>>8)
 		{
 		case 0:case 1: case 2: case 3:
-			vic2_port_w (space, offset & 0x3ff, data);
+			vic2_port_w(space, offset & 0x3ff, data);
 			break;
 		case 4:
 			sid6581_w(sid, offset & 0x3f, data);
 			break;
 		case 5:
-			c128_mmu8722_port_w (space, offset & 0xff, data);
+			c128_mmu8722_port_w(space, offset & 0xff, data);
 			break;
 		case 6:case 7:
-			vdc8563_port_w (space, offset & 0xff, data);
+			vdc8563_port_w(space, offset & 0xff, data);
 			break;
 		case 8: case 9: case 0xa: case 0xb:
 		    if (c64mode)
@@ -138,7 +360,7 @@ WRITE8_HANDLER( c128_write_d000 )
 			c128_dma8726_port_w(space, offset&0xff,data);
 			break;
 		case 0xe:
-			DBG_LOG (1, "io write", ("%.3x %.2x\n", offset, data));
+			DBG_LOG(space->machine, 1, "io write", ("%.3x %.2x\n", offset, data));
 			break;
 		}
 	}
@@ -148,19 +370,18 @@ WRITE8_HANDLER( c128_write_d000 )
 
 static READ8_HANDLER( c128_read_io )
 {
-	running_machine *machine = space->machine;
 	const device_config *cia_0 = devtag_get_device(space->machine, "cia_0");
 	const device_config *cia_1 = devtag_get_device(space->machine, "cia_1");
 	const device_config *sid = devtag_get_device(space->machine, "sid6581");
 
 	if (offset < 0x400)
-		return vic2_port_r (space, offset & 0x3ff);
+		return vic2_port_r(space, offset & 0x3ff);
 	else if (offset < 0x500)
-		return sid6581_r (sid, offset & 0xff);
+		return sid6581_r(sid, offset & 0xff);
 	else if (offset < 0x600)
-		return c128_mmu8722_port_r (space, offset & 0xff);
+		return c128_mmu8722_port_r(space, offset & 0xff);
 	else if (offset < 0x800)
-		return vdc8563_port_r (space, offset & 0xff);
+		return vdc8563_port_r(space, offset & 0xff);
 	else if (offset < 0xc00)
 		return c64_colorram[offset & 0x3ff];
 	else if (offset == 0xc00)
@@ -179,7 +400,7 @@ static READ8_HANDLER( c128_read_io )
 		return cia_r(cia_1, offset);
 	else if ((offset >= 0xf00) & (offset <= 0xfff))
 		return c128_dma8726_port_r(space, offset&0xff);
-	DBG_LOG (1, "io read", ("%.3x\n", offset));
+	DBG_LOG(space->machine, 1, "io read", ("%.3x\n", offset));
 	return 0xff;
 }
 
@@ -193,10 +414,10 @@ void c128_bankswitch_64(running_machine *machine, int reset)
 		return;
 
 	data = (UINT8) devtag_get_info_int(machine, "maincpu", CPUINFO_INT_M6510_PORT) & 0x07;
-	if ((data == old)&&(exrom==c64_exrom)&&(game==c64_game)&&!reset)
+	if ((data == old) && (exrom == c64_exrom) && (game == c64_game) && !reset)
 		return;
 
-	DBG_LOG (1, "bankswitch", ("%d\n", data & 7));
+	DBG_LOG(machine, 1, "bankswitch", ("%d\n", data & 7));
 	loram = (data & 1) ? 1 : 0;
 	hiram = (data & 2) ? 1 : 0;
 	charen = (data & 4) ? 1 : 0;
@@ -233,7 +454,7 @@ void c128_bankswitch_64(running_machine *machine, int reset)
 	}
 	else
 	{
-		rh = SMH_BANK5;
+		rh = SMH_BANK(5);
 		c128_write_io = 0;
 		if ((!charen && (loram || hiram)))
 			memory_set_bankptr (machine, 13, c64_chargen);
@@ -476,7 +697,7 @@ static void c128_bankswitch_128 (running_machine *machine, int reset)
 		else
 		{
 			c128_write_io = 0;
-			rh = SMH_BANK13;
+			rh = SMH_BANK(13);
 		}
 		c128_set_m8502_read_handler(machine, 0xd000, 0xdfff, rh);
 
@@ -560,7 +781,7 @@ static void c128_bankswitch (running_machine *machine, int reset)
 	{
 		if (!MMU_CPU8502)
 		{
-//			DBG_LOG (1, "switching to z80", ("active %d\n",cpu_getactivecpu()) );
+//			DBG_LOG(machine, 1, "switching to z80", ("active %d\n",cpu_getactivecpu()) );
 //			memory_set_context(machine, 0);
 			c128_bankswitch_z80(machine);
 //			memory_set_context(machine, 1);
@@ -569,7 +790,7 @@ static void c128_bankswitch (running_machine *machine, int reset)
 		}
 		else
 		{
-//			DBG_LOG (1, "switching to m6502", ("active %d\n",cpu_getactivecpu()) );
+//			DBG_LOG(machine, 1, "switching to m6502", ("active %d\n",cpu_getactivecpu()) );
 //			memory_set_context(machine, 1);
 			c128_bankswitch_128(machine, reset);
 //			memory_set_context(machine, 0);
@@ -821,7 +1042,7 @@ static int c128_dma_read_color(running_machine *machine, int offset)
 
 static emu_timer *datasette_timer;
 
-static void c128_m6510_port_write(const device_config *device, UINT8 direction, UINT8 data)
+void c128_m6510_port_write(const device_config *device, UINT8 direction, UINT8 data)
 {
 	/* if line is marked as input then keep current value */
 	data = (c64_port_data & ~direction) | (data & direction);
@@ -866,7 +1087,7 @@ static void c128_m6510_port_write(const device_config *device, UINT8 direction, 
 	c64_memory[0x001] = memory_read_byte( cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM), 1 );
 }
 
-static UINT8 c128_m6510_port_read(const device_config *device, UINT8 direction)
+UINT8 c128_m6510_port_read(const device_config *device, UINT8 direction)
 {
 	UINT8 data = c64_port_data;
 
@@ -876,11 +1097,9 @@ static UINT8 c128_m6510_port_read(const device_config *device, UINT8 direction)
 		data |=  0x10;
 
 	if (input_port_read(device->machine, "SPECIAL") & 0x20)		/* Check Caps Lock */
-	{
 		data &= ~0x40;
-	} else {
+	else
 		data |=  0x40;
-	}
 
 	return data;
 }
@@ -890,10 +1109,6 @@ static void c128_common_driver_init(running_machine *machine)
 	UINT8 *gfx=memory_region(machine, "gfx1");
 	UINT8 *ram = memory_region(machine, "maincpu");
 	int i;
-
-	/* configure the M6510 port */
-	devtag_set_info_fct(machine, "m8502", CPUINFO_FCT_M6510_PORTREAD, (genf *) c128_m6510_port_read);
-	devtag_set_info_fct(machine, "m8502", CPUINFO_FCT_M6510_PORTWRITE, (genf *) c128_m6510_port_write);
 
 	c64_memory = ram;
 
@@ -921,8 +1136,7 @@ DRIVER_INIT( c128 )
 {
 	c64_tape_on = 1;
 	c128_common_driver_init(machine);
-	vic6567_init (1, c64_pal,
-				  c128_dma_read, c128_dma_read_color, c64_vic_interrupt);
+	vic6567_init(1, c64_pal, c128_dma_read, c128_dma_read_color, c128_vic_interrupt);
 	vic2_set_rastering(0);
 	vdc8563_init(0);
 	vdc8563_set_rastering(1);
@@ -933,8 +1147,7 @@ DRIVER_INIT( c128pal )
 	c64_tape_on = 1;
 	c64_pal = 1;
 	c128_common_driver_init(machine);
-	vic6567_init (1, c64_pal,
-				  c128_dma_read, c128_dma_read_color, c64_vic_interrupt);
+	vic6567_init(1, c64_pal, c128_dma_read, c128_dma_read_color, c128_vic_interrupt);
 	vic2_set_rastering(1);
 	vdc8563_init(0);
 	vdc8563_set_rastering(0);
@@ -943,25 +1156,113 @@ DRIVER_INIT( c128pal )
 DRIVER_INIT( c128d )
 {
 	DRIVER_INIT_CALL( c128 );
-//	drive_config (machine, type_1541, 0, 0, 1, 8);
+	emulated_drive = 1;
+	drive_config(machine, type_1571, 0, 0, "cpu_vc1571", 8);
 }
 
 DRIVER_INIT( c128dpal )
 {
-	DRIVER_INIT_CALL( c128d );
-//	drive_config (machine, type_1541, 0, 0, 1, 8);
+	DRIVER_INIT_CALL( c128pal );
+	emulated_drive = 1;
+	drive_config(machine, type_1571, 0, 0, "cpu_vc1571", 8);
 }
 
+DRIVER_INIT( c128dcr )
+{
+	DRIVER_INIT_CALL( c128 );
+	emulated_drive = 1;
+	drive_config(machine, type_1571cr, 0, 0, "cpu_vc1571", 8);
+}
+
+DRIVER_INIT( c128dcrp )
+{
+	DRIVER_INIT_CALL( c128pal );
+	emulated_drive = 1;
+	drive_config(machine, type_1571cr, 0, 0, "cpu_vc1571", 8);
+}
+
+DRIVER_INIT( c128d81 )
+{
+	DRIVER_INIT_CALL( c128 );
+	emulated_drive = 1;
+	drive_config(machine, type_1581, 0, 0, "cpu_vc1571", 8);
+}
+
+MACHINE_START( c128 )
+{
+	if (emulated_drive)
+	{
+		drive_reset();
+	}
+	else if (c128_cia1_on)
+	{
+		cbm_drive_0_config(SERIAL, 8);
+		cbm_drive_1_config(SERIAL, 9);
+		serial_clock = serial_data = serial_atn = 1;
+	}
+
+// This was in MACHINE_START( c64 ), but never called
+// TO DO: find its correct use, when fixing c64 mode
+	if (c64mode)
+		c128_bankswitch_64(machine, 1);
+}
 
 MACHINE_RESET( c128 )
 {
-	c64_common_init_machine(machine);
 	c128_vicaddr = c64_vicaddr = c64_memory;
 	c64mode = 0;
 	c128_mmu8722_reset (machine);
 	cputag_set_input_line(machine, "maincpu", INPUT_LINE_HALT, CLEAR_LINE);
 	cputag_set_input_line(machine, "m8502", INPUT_LINE_HALT, ASSERT_LINE);
 }
+
+
+INTERRUPT_GEN( c128_frame_interrupt )
+{
+	static int monitor = -1;
+	static const char *const c128ports[] = { "KP0", "KP1", "KP2" };
+	int i, value;
+
+	c128_nmi(device->machine);
+
+	if ((input_port_read(device->machine, "SPECIAL") & 0x08) != monitor)
+	{
+		if (input_port_read(device->machine, "SPECIAL") & 0x08)
+		{
+			vic2_set_rastering(0);
+			vdc8563_set_rastering(1);
+			video_screen_set_visarea(device->machine->primary_screen, 0, 655, 0, 215);
+		}
+		else
+		{
+			vic2_set_rastering(1);
+			vdc8563_set_rastering(0);
+			if (c64_pal)
+				video_screen_set_visarea(device->machine->primary_screen, VIC6569_STARTVISIBLECOLUMNS, VIC6569_STARTVISIBLECOLUMNS + VIC6569_VISIBLECOLUMNS - 1, VIC6569_STARTVISIBLELINES, VIC6569_STARTVISIBLELINES + VIC6569_VISIBLELINES - 1);
+			else
+				video_screen_set_visarea(device->machine->primary_screen, VIC6567_STARTVISIBLECOLUMNS, VIC6567_STARTVISIBLECOLUMNS + VIC6567_VISIBLECOLUMNS - 1, VIC6567_STARTVISIBLELINES, VIC6567_STARTVISIBLELINES + VIC6567_VISIBLELINES - 1);
+		}
+		monitor = input_port_read(device->machine, "SPECIAL") & 0x08;
+	}
+
+
+	/* common keys input ports */
+	cbm_common_interrupt(device);
+
+	/* Fix Me! Currently, neither left Shift nor Shift Lock work in c128, but reading the correspondent input produces a bug!
+	Hence, we overwrite the actual reading as it never happens */
+	if ((input_port_read(device->machine, "SPECIAL") & 0x40))	// 
+		c64_keyline[1] |= 0x80;
+
+	/* c128 specific: keypad input ports */
+	for (i = 0; i < 3; i++)
+	{
+		value = 0xff;
+		value &= ~input_port_read(device->machine, c128ports[i]);
+		c128_keyline[i] = value;
+	}
+}
+
 
 VIDEO_START( c128 )
 {

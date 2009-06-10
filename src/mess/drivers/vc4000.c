@@ -193,17 +193,17 @@ static DEVICE_IMAGE_LOAD( vc4000_cart )
 
 	if (size > 0x1000)	/* 6k rom + 1k ram - Chess2 only */
 	{
-		memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1000, 0x15ff, 0, 0, SMH_BANK1);	/* extra rom */
+		memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1000, 0x15ff, 0, 0, SMH_BANK(1));	/* extra rom */
 		memory_set_bankptr(machine, 1, memory_region(machine, "maincpu") + 0x1000);
 
-		memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1800, 0x1bff, 0, 0, SMH_BANK3, SMH_BANK4);	/* ram */
+		memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1800, 0x1bff, 0, 0, SMH_BANK(3), SMH_BANK(4));	/* ram */
 		memory_set_bankptr(machine, 3, memory_region(machine, "maincpu") + 0x1800);
 		memory_set_bankptr(machine, 4, memory_region(machine, "maincpu") + 0x1800);
 	}
 	else
 	if (size > 0x0800)	/* some 4k roms have 1k of mirrored ram */
 	{
-		memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1000, 0x15ff, 0, 0x800, SMH_BANK1, SMH_BANK2); /* ram */
+		memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1000, 0x15ff, 0, 0x800, SMH_BANK(1), SMH_BANK(2)); /* ram */
 		memory_set_bankptr(machine, 1, memory_region(machine, "maincpu") + 0x1000);
 		memory_set_bankptr(machine, 2, memory_region(machine, "maincpu") + 0x1000);
 	}
@@ -220,8 +220,8 @@ static MACHINE_DRIVER_START( vc4000 )
 	/* basic machine hardware */
 //	MDRV_CPU_ADD("maincpu", S2650, 865000)        /* 3550000/4, 3580000/3, 4430000/3 */
 	MDRV_CPU_ADD("maincpu", S2650, 3546875/4)
-	MDRV_CPU_PROGRAM_MAP(vc4000_mem, 0)
-	MDRV_CPU_IO_MAP(vc4000_io, 0)
+	MDRV_CPU_PROGRAM_MAP(vc4000_mem)
+	MDRV_CPU_IO_MAP(vc4000_io)
 	MDRV_CPU_PERIODIC_INT(vc4000_video_line, 312*53)	// GOLF needs this exact value
 
 	/* video hardware */
@@ -297,7 +297,7 @@ QUICKLOAD_LOAD(vc4000)
 
 
 /*   YEAR	NAME	PARENT	COMPAT	MACHINE	INPUT	INIT	CONFIG	COMPANY		FULLNAME */
-CONS(1978,	vc4000,	0,	0,	vc4000,	vc4000,	0,	0,	"Interton",	"VC4000", GAME_IMPERFECT_GRAPHICS )
+CONS(1978,	vc4000,	0,	0,	vc4000,	vc4000,	0,	0,	"Interton",	"VC 4000", GAME_IMPERFECT_GRAPHICS )
 
 /*	Game List and Emulation Status
 

@@ -331,10 +331,10 @@ static TIMER_CALLBACK(nc_keyboard_timer_callback)
 
 
 static const read8_space_func nc_bankhandler_r[]={
-SMH_BANK1, SMH_BANK2, SMH_BANK3, SMH_BANK4};
+SMH_BANK(1), SMH_BANK(2), SMH_BANK(3), SMH_BANK(4)};
 
 static const write8_space_func nc_bankhandler_w[]={
-SMH_BANK5, SMH_BANK6, SMH_BANK7, SMH_BANK8};
+SMH_BANK(5), SMH_BANK(6), SMH_BANK(7), SMH_BANK(8)};
 
 static void nc_refresh_memory_bank_config(running_machine *machine, int bank)
 {
@@ -605,10 +605,10 @@ static void nc_common_init_machine(running_machine *machine)
 }
 
 static ADDRESS_MAP_START(nc_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK1, SMH_BANK5)
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK2, SMH_BANK6)
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK3, SMH_BANK7)
-	AM_RANGE(0xc000, 0xffff) AM_READWRITE(SMH_BANK4, SMH_BANK8)
+	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK(1), SMH_BANK(5))
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK(2), SMH_BANK(6))
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK(3), SMH_BANK(7))
+	AM_RANGE(0xc000, 0xffff) AM_READWRITE(SMH_BANK(4), SMH_BANK(8))
 ADDRESS_MAP_END
 
 
@@ -1628,8 +1628,8 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( nc100 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, /*6000000*/ 4606000)        /* Russell Marks says this is more accurate */
-	MDRV_CPU_PROGRAM_MAP(nc_map, 0)
-	MDRV_CPU_IO_MAP(nc100_io, 0)
+	MDRV_CPU_PROGRAM_MAP(nc_map)
+	MDRV_CPU_IO_MAP(nc100_io)
 	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( nc100 )
@@ -1678,7 +1678,7 @@ static MACHINE_DRIVER_START( nc200 )
 	MDRV_IMPORT_FROM( nc100 )
 
 	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_IO_MAP(nc200_io, 0)
+	MDRV_CPU_IO_MAP(nc200_io)
 
 	MDRV_MACHINE_START( nc200 )
 	MDRV_MACHINE_RESET( nc200 )
@@ -1691,15 +1691,15 @@ static MACHINE_DRIVER_START( nc200 )
 	MDRV_DEFAULT_LAYOUT(layout_nc200)
 
 	/* printer */
-	MDRV_CENTRONICS_REMOVE("centronics")
+	MDRV_DEVICE_REMOVE("centronics")
 	MDRV_CENTRONICS_ADD("centronics", nc200_centronics_config)
 
 	/* uart */
-	MDRV_MSM8251_REMOVE("uart")
+	MDRV_DEVICE_REMOVE("uart")
 	MDRV_MSM8251_ADD("uart", nc200_uart_interface)
 
 	/* no rtc */
-	MDRV_TC8521_REMOVE("rtc")
+	MDRV_DEVICE_REMOVE("rtc")
 
 	MDRV_NEC765A_ADD("nec765", nc200_nec765_interface)
 MACHINE_DRIVER_END
@@ -1718,6 +1718,13 @@ ROM_START(nc100)
 	ROM_SYSTEM_BIOS(1, "100", "ROM v1.00")
 	ROMX_LOAD("nc100.rom",  0x010000, 0x040000, CRC(a699eca3) SHA1(ce217d5a298b959ccc3d7bc5c93b1dba043f1339), ROM_BIOS(2))
 ROM_END
+
+
+ROM_START(nc150)
+	ROM_REGION(((64*1024)+(512*1024)), "maincpu",0)
+	ROM_LOAD("nc150_fr_b2.rom", 0x010000, 0x080000, CRC(be442d14) SHA1(f141d409dc72dc1e6662c21a147231c4df3be6b8))	/* French */
+ROM_END
+
 
 ROM_START(nc200)
         ROM_REGION(((64*1024)+(512*1024)), "maincpu",0)
@@ -1778,4 +1785,6 @@ SYSTEM_CONFIG_END
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY         FULLNAME    FLAGS */
 COMP( 1992, nc100,  0,      0,      nc100,  nc100,  0,      nc100,  "Amstrad plc",  "NC100",    0 )
+COMP( 1992, nc150,  nc100,  0,      nc100,  nc100,  0,      nc100,  "Amstrad plc",  "NC150",    0 )
 COMP( 1993, nc200,  0,      0,      nc200,  nc200,  0,      nc200,  "Amstrad plc",  "NC200",    0 )
+

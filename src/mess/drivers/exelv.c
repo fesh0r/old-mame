@@ -64,7 +64,7 @@ static void io_reset(void);
 static VIDEO_START( exelv )
 {
 	VIDEO_START_CALL( generic_bitmapped );
-	tms3556_init(/*0x8000*/0x10000);	/* tms3556 with 32 kb of video RAM */
+	tms3556_init(machine, /*0x8000*/0x10000);	/* tms3556 with 32 kb of video RAM */
 }
 
 static MACHINE_RESET( exelv )
@@ -562,13 +562,13 @@ static MACHINE_DRIVER_START(exelv)
 	/* basic machine hardware */
 	/* TMS7020 CPU @ 4.91(?) MHz */
 	MDRV_CPU_ADD("maincpu", TMS7000_EXL, 4910000)
-	MDRV_CPU_PROGRAM_MAP(exelv_memmap, 0)
-	MDRV_CPU_IO_MAP(exelv_portmap, 0)
+	MDRV_CPU_PROGRAM_MAP(exelv_memmap)
+	MDRV_CPU_IO_MAP(exelv_portmap)
 	MDRV_CPU_VBLANK_INT_HACK(exelv_hblank_interrupt, 363)
 
 	MDRV_CPU_ADD("tms7040", TMS7000, 4910000)
-	MDRV_CPU_PROGRAM_MAP(exelv_tms7040_map, 0)
-	MDRV_CPU_IO_MAP(exelv_tms7040_port, 0)
+	MDRV_CPU_PROGRAM_MAP(exelv_tms7040_map)
+	MDRV_CPU_IO_MAP(exelv_tms7040_port)
 
 	MDRV_QUANTUM_TIME(HZ(60))
 

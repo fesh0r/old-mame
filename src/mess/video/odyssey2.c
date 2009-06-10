@@ -614,7 +614,7 @@ VIDEO_START( odyssey2 )
 	control_status = 0;
 	iff = 0;
 
-	tmp_bitmap = auto_bitmap_alloc( width, height, video_screen_get_format(screen) );
+	tmp_bitmap = auto_bitmap_alloc( machine, width, height, video_screen_get_format(screen) );
 
 	i824x_line_timer = timer_alloc(machine,  i824x_scanline_callback, NULL );
 	timer_adjust_periodic( i824x_line_timer, video_screen_get_time_until_pos(machine->primary_screen, 1, I824X_START_ACTIVE_SCAN ), 0, video_screen_get_scan_period( machine->primary_screen ) );
@@ -650,7 +650,7 @@ DEVICE_GET_INFO( odyssey2_sound )
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(odyssey2_sound);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Odyssey2 Sound");				break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Odyssey 2 Custom");				break;
 		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
 	}
 }

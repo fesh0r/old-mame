@@ -18,10 +18,10 @@ static ADDRESS_MAP_START( lynx_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0xfbff) AM_RAM AM_BASE(&lynx_mem_0000)
 	AM_RANGE(0xfc00, 0xfcff) AM_RAM AM_BASE(&lynx_mem_fc00)
 	AM_RANGE(0xfd00, 0xfdff) AM_RAM AM_BASE(&lynx_mem_fd00)
-	AM_RANGE(0xfe00, 0xfff7) AM_READWRITE(SMH_BANK3, SMH_RAM) AM_BASE(&lynx_mem_fe00) AM_SIZE(&lynx_mem_fe00_size)
+	AM_RANGE(0xfe00, 0xfff7) AM_READWRITE(SMH_BANK(3), SMH_RAM) AM_BASE(&lynx_mem_fe00) AM_SIZE(&lynx_mem_fe00_size)
 	AM_RANGE(0xfff8, 0xfff8) AM_RAM
 	AM_RANGE(0xfff9, 0xfff9) AM_READWRITE(lynx_memory_config_r, lynx_memory_config_w)
-	AM_RANGE(0xfffa, 0xffff) AM_READWRITE(SMH_BANK4, SMH_RAM) AM_BASE(&lynx_mem_fffa)
+	AM_RANGE(0xfffa, 0xffff) AM_READWRITE(SMH_BANK(4), SMH_RAM) AM_BASE(&lynx_mem_fffa)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( lynx )
@@ -64,7 +64,7 @@ static PALETTE_INIT( lynx )
 static MACHINE_DRIVER_START( lynx )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M65SC02, 4000000)        /* vti core, integrated in vlsi, stz, but not bbr bbs */
-	MDRV_CPU_PROGRAM_MAP(lynx_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(lynx_mem)
 	MDRV_CPU_VBLANK_INT("screen", lynx_frame_int)
 	MDRV_QUANTUM_TIME(HZ(60))
 
@@ -100,9 +100,9 @@ static MACHINE_DRIVER_START( lynx2 )
 	MDRV_IMPORT_FROM( lynx )
 
 	/* sound hardware */
-	MDRV_SPEAKER_REMOVE("mono")
+	MDRV_DEVICE_REMOVE("mono")
 	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
-	MDRV_SOUND_REMOVE("lynx")
+	MDRV_DEVICE_REMOVE("lynx")
 	MDRV_SOUND_ADD("lynx2", LYNX2, 0)
 	MDRV_SOUND_ROUTE(0, "lspeaker", 0.50)
 	MDRV_SOUND_ROUTE(1, "rspeaker", 0.50)

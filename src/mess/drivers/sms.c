@@ -74,8 +74,8 @@ static ADDRESS_MAP_START( sms_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03FF) AM_ROMBANK(1)					/* First 0x0400 part always points to first page */
 	AM_RANGE(0x0400, 0x3FFF) AM_ROMBANK(2)					/* switchable rom bank */
 	AM_RANGE(0x4000, 0x7FFF) AM_ROMBANK(3)					/* switchable rom bank */
-	AM_RANGE(0x8000, 0x9FFF) AM_READWRITE(SMH_BANK4, sms_cartram_w)	/* ROM bank / on-cart RAM */
-	AM_RANGE(0xA000, 0xBFFF) AM_READWRITE(SMH_BANK5, sms_cartram2_w)	/* ROM bank / on-cart RAM */
+	AM_RANGE(0x8000, 0x9FFF) AM_READWRITE(SMH_BANK(4), sms_cartram_w)	/* ROM bank / on-cart RAM */
+	AM_RANGE(0xA000, 0xBFFF) AM_READWRITE(SMH_BANK(5), sms_cartram2_w)	/* ROM bank / on-cart RAM */
 	AM_RANGE(0xC000, 0xDFFB) AM_MIRROR(0x2000) AM_RAM			/* RAM (mirror at 0xE000) */
 	AM_RANGE(0xDFFC, 0xDFFF) AM_RAM						/* RAM "underneath" frame registers */
 	AM_RANGE(0xFFFC, 0xFFFF) AM_READWRITE(sms_mapper_r, sms_mapper_w)	/* Bankswitch control */
@@ -323,8 +323,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START(sms1ntsc)
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_53_693175MHz/15)
-	MDRV_CPU_PROGRAM_MAP(sms_mem, 0)
-	MDRV_CPU_IO_MAP(sms_io, 0)
+	MDRV_CPU_PROGRAM_MAP(sms_mem)
+	MDRV_CPU_IO_MAP(sms_io)
 
 	MDRV_QUANTUM_TIME(HZ(60))
 
@@ -361,9 +361,9 @@ static MACHINE_DRIVER_START(smssdisp)
 	MDRV_VIDEO_START(sega_store_315_5124)
 
 	MDRV_CPU_ADD("control", Z80, XTAL_53_693175MHz/15)
-	MDRV_CPU_PROGRAM_MAP(sms_store_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(sms_store_mem)
 	/* Both CPUs seem to communicate with the VDP etc? */
-	MDRV_CPU_IO_MAP(sms_io, 0)
+	MDRV_CPU_IO_MAP(sms_io)
 
 	MDRV_CARTSLOT_MODIFY("cart1")
 	MDRV_CARTSLOT_EXTENSION_LIST("sms,bin")
@@ -390,8 +390,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START(sms1pal)
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK_PAL/15)
-	MDRV_CPU_PROGRAM_MAP(sms_mem, 0)
-	MDRV_CPU_IO_MAP(sms_io, 0)
+	MDRV_CPU_PROGRAM_MAP(sms_mem)
+	MDRV_CPU_IO_MAP(sms_io)
 
 	MDRV_QUANTUM_TIME(HZ(60))
 
@@ -449,8 +449,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START(gamegear)
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_53_693175MHz/15)
-	MDRV_CPU_PROGRAM_MAP(sms_mem, 0)
-	MDRV_CPU_IO_MAP(gg_io, 0)
+	MDRV_CPU_PROGRAM_MAP(sms_mem)
+	MDRV_CPU_IO_MAP(gg_io)
 
 	MDRV_QUANTUM_TIME(HZ(60))
 

@@ -405,23 +405,6 @@ static WRITE8_HANDLER( fast_status_w )
 	conkort->status = data;
 }
 
-static READ8_DEVICE_HANDLER(z80pio_alt_r)
-{
-	int channel = BIT(offset, 1);
-
-	return (offset & 1) ? z80pio_c_r(device, channel) : z80pio_d_r(device, channel);
-}
-
-static WRITE8_DEVICE_HANDLER(z80pio_alt_w)
-{
-	int channel = BIT(offset, 1);
-
-	if (offset & 1)
-		z80pio_c_w(device, channel, data);
-	else
-		z80pio_d_w(device, channel, data);
-}
-
 /* Memory Maps */
 
 // Slow Controller
@@ -767,8 +750,8 @@ static const wd17xx_interface fast_wd17xx_interface =
 
 static MACHINE_DRIVER_START( luxor_55_10828 )
 	MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_4MHz/2)
-	MDRV_CPU_PROGRAM_MAP(slow_map, 0)
-	MDRV_CPU_IO_MAP(slow_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(slow_map)
+	MDRV_CPU_IO_MAP(slow_io_map)
 	MDRV_CPU_CONFIG(slow_daisy_chain)
 
 	MDRV_Z80PIO_ADD(Z80PIO_TAG, conkort_pio_intf)
@@ -777,8 +760,8 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( luxor_55_21046 )
 	MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_16MHz/4)
-	MDRV_CPU_PROGRAM_MAP(fast_map, 0)
-	MDRV_CPU_IO_MAP(fast_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(fast_map)
+	MDRV_CPU_IO_MAP(fast_io_map)
 	MDRV_CPU_CONFIG(fast_daisy_chain)
 
 	MDRV_Z80DMA_ADD(Z80DMA_TAG, XTAL_16MHz/4, dma_intf)

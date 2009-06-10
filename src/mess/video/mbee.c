@@ -59,7 +59,7 @@ WRITE8_HANDLER ( mbee_pcg_color_latch_w )
 		memory_set_bank(space->machine, 3, 0);
 }
 
- READ8_HANDLER ( mbee_pcg_color_latch_r )
+READ8_HANDLER ( mbee_pcg_color_latch_r )
 {
 	return mbee_pcg_color_latch;
 }
@@ -143,11 +143,27 @@ WRITE8_HANDLER ( mbee_color_bank_w )
 	memory_set_bank(space->machine, 4, data & 7);
 }
 
+WRITE8_HANDLER ( mbee_0a_w )
+{
+	m6545_color_bank = data;
+	memory_set_bank(space->machine, 4, (data&15) >> 1);
+}
+
 READ8_HANDLER ( mbee_bank_netrom_r )
 {
 /* Read of port 10A - set Telcom rom to 2nd half */
 	memory_set_bank(space->machine, 5, 1);
 	return m6545_color_bank;
+}
+
+WRITE8_HANDLER( mbee_1c_w )
+{
+/*	d7 extended graphics - not emulated
+	d5 bankswitch basic rom
+	d4 select attribute ram - not emulated
+	d3..d0 select videoram bank - not emulated */
+
+	memory_set_bank(space->machine, 6, (data & 0x20) ? 1 : 0);
 }
 
 READ8_HANDLER ( mbee_video_bank_r )
@@ -272,7 +288,7 @@ WRITE8_HANDLER ( m6545_index_w )
 
 WRITE8_HANDLER ( m6545_data_w )
 {
-	int addr, i;
+	int addr;
 
 	switch( crt.idx )
 	{
@@ -348,8 +364,6 @@ WRITE8_HANDLER ( m6545_data_w )
 		crt.screen_address_hi = data;
 		addr = 0x17000+((data & 32) << 6);
 		memcpy(mbee_pcgram, memory_region(space->machine, "maincpu")+addr, 0x800);
-		for (i = 0; i < 128; i++)
-			gfx_element_mark_dirty(space->machine->gfx[0], i);
 		break;
 	case 13:
 		crt.screen_address_lo = data;
@@ -556,4 +570,30 @@ VIDEO_UPDATE( mbeeic )
 		ma+=crt.horizontal_displayed;
 	}
 	return 0;
+}
+
+PALETTE_INIT( mbeeic )
+{
+	UINT16 i;
+	UINT8 r, b, g, k; 
+	UINT8 level[] = { 0, 0x80, 0xff, 0xff };	/* off, half, full intensity */
+
+	/* set up background palette (00-63) */
+	for (i = 0; i < 64; i++)
+	{
+		r = level[((i>>0)&1)|((i>>2)&2)];
+		g = level[((i>>1)&1)|((i>>3)&2)];
+		b = level[((i>>2)&1)|((i>>4)&2)];
+		palette_set_color(machine, i, MAKE_RGB(r, g, b));
+	}
+
+	/* set up foreground palette (64-95) by reading the prom */
+	for (i = 0; i < 32; i++)
+	{
+		k = color_prom[i];
+		r = level[((k>>2)&1)|((k>>4)&2)];
+		g = level[((k>>1)&1)|((k>>3)&2)];
+		b = level[((k>>0)&1)|((k>>2)&2)];
+		palette_set_color(machine, i|64, MAKE_RGB(r, g, b));
+	}
 }

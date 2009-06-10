@@ -154,6 +154,8 @@ http://www.z88forever.org.uk/zxplus3e/
 #include "sound/speaker.h"
 #include "sound/ay8910.h"
 #include "formats/tzx_cas.h"
+#include "machine/beta.h"
+
 
 static const ay8910_interface spectrum_ay_interface =
 {
@@ -231,7 +233,7 @@ void ts2068_update_memory(running_machine *machine)
 	{
 		if (ts2068_port_ff_data & 0x80)
 		{
-				rh = SMH_BANK1;
+				rh = SMH_BANK(1);
 				wh = SMH_UNMAP;
 				memory_set_bankptr(machine, 1, ExROM);
 				logerror("0000-1fff EXROM\n");
@@ -241,9 +243,9 @@ void ts2068_update_memory(running_machine *machine)
 			if (timex_cart_type == TIMEX_CART_DOCK)
 			{
 				memory_set_bankptr(machine, 1, DOCK);
-				rh = SMH_BANK1;
+				rh = SMH_BANK(1);
 				if (timex_cart_chunks&0x01)
-					wh = SMH_BANK9;
+					wh = SMH_BANK(9);
 				else
 					wh = SMH_UNMAP;
 			}
@@ -259,7 +261,7 @@ void ts2068_update_memory(running_machine *machine)
 	{
 		ChosenROM = memory_region(machine, "maincpu") + 0x010000;
 		memory_set_bankptr(machine, 1, ChosenROM);
-		rh = SMH_BANK1;
+		rh = SMH_BANK(1);
 		wh = SMH_UNMAP;
 		logerror("0000-1fff HOME\n");
 	}
@@ -271,7 +273,7 @@ void ts2068_update_memory(running_machine *machine)
 		if (ts2068_port_ff_data & 0x80)
 		{
 			memory_set_bankptr(machine, 2, ExROM);
-			rh = SMH_BANK2;
+			rh = SMH_BANK(2);
 			wh = SMH_UNMAP;
 			logerror("2000-3fff EXROM\n");
 		}
@@ -280,9 +282,9 @@ void ts2068_update_memory(running_machine *machine)
 			if (timex_cart_type == TIMEX_CART_DOCK)
 			{
 				memory_set_bankptr(machine, 2, DOCK+0x2000);
-				rh = SMH_BANK2;
+				rh = SMH_BANK(2);
 				if (timex_cart_chunks&0x02)
-					wh = SMH_BANK10;
+					wh = SMH_BANK(10);
 				else
 					wh = SMH_UNMAP;
 			}
@@ -298,7 +300,7 @@ void ts2068_update_memory(running_machine *machine)
 	{
 		ChosenROM = memory_region(machine, "maincpu") + 0x012000;
 		memory_set_bankptr(machine, 2, ChosenROM);
-		rh = SMH_BANK2;
+		rh = SMH_BANK(2);
 		wh = SMH_UNMAP;
 		logerror("2000-3fff HOME\n");
 	}
@@ -310,7 +312,7 @@ void ts2068_update_memory(running_machine *machine)
 		if (ts2068_port_ff_data & 0x80)
 		{
 			memory_set_bankptr(machine, 3, ExROM);
-			rh = SMH_BANK3;
+			rh = SMH_BANK(3);
 			wh = SMH_UNMAP;
 			logerror("4000-5fff EXROM\n");
 		}
@@ -319,9 +321,9 @@ void ts2068_update_memory(running_machine *machine)
 			if (timex_cart_type == TIMEX_CART_DOCK)
 			{
 				memory_set_bankptr(machine, 3, DOCK+0x4000);
-				rh = SMH_BANK3;
+				rh = SMH_BANK(3);
 				if (timex_cart_chunks&0x04)
-					wh = SMH_BANK11;
+					wh = SMH_BANK(11);
 				else
 					wh = SMH_UNMAP;
 			}
@@ -337,8 +339,8 @@ void ts2068_update_memory(running_machine *machine)
 	{
 		memory_set_bankptr(machine, 3, mess_ram);
 		memory_set_bankptr(machine, 11, mess_ram);
-		rh = SMH_BANK3;
-		wh = SMH_BANK11;
+		rh = SMH_BANK(3);
+		wh = SMH_BANK(11);
 		logerror("4000-5fff RAM\n");
 	}
 	memory_install_read8_handler(space, 0x4000, 0x5fff, 0, 0, rh);
@@ -349,7 +351,7 @@ void ts2068_update_memory(running_machine *machine)
 		if (ts2068_port_ff_data & 0x80)
 		{
 			memory_set_bankptr(machine, 4, ExROM);
-			rh = SMH_BANK4;
+			rh = SMH_BANK(4);
 			wh = SMH_UNMAP;
 			logerror("6000-7fff EXROM\n");
 		}
@@ -358,9 +360,9 @@ void ts2068_update_memory(running_machine *machine)
 				if (timex_cart_type == TIMEX_CART_DOCK)
 				{
 					memory_set_bankptr(machine, 4, DOCK+0x6000);
-					rh = SMH_BANK4;
+					rh = SMH_BANK(4);
 					if (timex_cart_chunks&0x08)
-						wh = SMH_BANK12;
+						wh = SMH_BANK(12);
 					else
 						wh = SMH_UNMAP;
 				}
@@ -376,8 +378,8 @@ void ts2068_update_memory(running_machine *machine)
 	{
 		memory_set_bankptr(machine, 4, mess_ram + 0x2000);
 		memory_set_bankptr(machine, 12, mess_ram + 0x2000);
-		rh = SMH_BANK4;
-		wh = SMH_BANK12;
+		rh = SMH_BANK(4);
+		wh = SMH_BANK(12);
 		logerror("6000-7fff RAM\n");
 	}
 	memory_install_read8_handler(space, 0x6000, 0x7fff, 0, 0, rh);
@@ -388,7 +390,7 @@ void ts2068_update_memory(running_machine *machine)
 		if (ts2068_port_ff_data & 0x80)
 		{
 			memory_set_bankptr(machine, 5, ExROM);
-			rh = SMH_BANK5;
+			rh = SMH_BANK(5);
 			wh = SMH_UNMAP;
 			logerror("8000-9fff EXROM\n");
 		}
@@ -397,9 +399,9 @@ void ts2068_update_memory(running_machine *machine)
 			if (timex_cart_type == TIMEX_CART_DOCK)
 			{
 				memory_set_bankptr(machine, 5, DOCK+0x8000);
-				rh = SMH_BANK5;
+				rh = SMH_BANK(5);
 				if (timex_cart_chunks&0x10)
-					wh = SMH_BANK13;
+					wh = SMH_BANK(13);
 				else
 					wh = SMH_UNMAP;
 			}
@@ -415,8 +417,8 @@ void ts2068_update_memory(running_machine *machine)
 	{
 		memory_set_bankptr(machine, 5, mess_ram + 0x4000);
 		memory_set_bankptr(machine, 13, mess_ram + 0x4000);
-		rh = SMH_BANK5;
-		wh = SMH_BANK13;
+		rh = SMH_BANK(5);
+		wh = SMH_BANK(13);
 		logerror("8000-9fff RAM\n");
 	}
 	memory_install_read8_handler(space, 0x8000, 0x9fff, 0, 0,rh);
@@ -427,7 +429,7 @@ void ts2068_update_memory(running_machine *machine)
 		if (ts2068_port_ff_data & 0x80)
 		{
 			memory_set_bankptr(machine, 6, ExROM);
-			rh = SMH_BANK6;
+			rh = SMH_BANK(6);
 			wh = SMH_UNMAP;
 			logerror("a000-bfff EXROM\n");
 		}
@@ -436,9 +438,9 @@ void ts2068_update_memory(running_machine *machine)
 			if (timex_cart_type == TIMEX_CART_DOCK)
 			{
 				memory_set_bankptr(machine, 6, DOCK+0xa000);
-				rh = SMH_BANK6;
+				rh = SMH_BANK(6);
 				if (timex_cart_chunks&0x20)
-					wh = SMH_BANK14;
+					wh = SMH_BANK(14);
 				else
 					wh = SMH_UNMAP;
 			}
@@ -454,8 +456,8 @@ void ts2068_update_memory(running_machine *machine)
 	{
 		memory_set_bankptr(machine, 6, mess_ram + 0x6000);
 		memory_set_bankptr(machine, 14, mess_ram + 0x6000);
-		rh = SMH_BANK6;
-		wh = SMH_BANK14;
+		rh = SMH_BANK(6);
+		wh = SMH_BANK(14);
 		logerror("a000-bfff RAM\n");
 	}
 	memory_install_read8_handler(space, 0xa000, 0xbfff, 0, 0, rh);
@@ -466,7 +468,7 @@ void ts2068_update_memory(running_machine *machine)
 		if (ts2068_port_ff_data & 0x80)
 		{
 			memory_set_bankptr(machine, 7, ExROM);
-			rh = SMH_BANK7;
+			rh = SMH_BANK(7);
 			wh = SMH_UNMAP;
 			logerror("c000-dfff EXROM\n");
 		}
@@ -475,9 +477,9 @@ void ts2068_update_memory(running_machine *machine)
 			if (timex_cart_type == TIMEX_CART_DOCK)
 			{
 				memory_set_bankptr(machine, 7, DOCK+0xc000);
-				rh = SMH_BANK7;
+				rh = SMH_BANK(7);
 				if (timex_cart_chunks&0x40)
-					wh = SMH_BANK15;
+					wh = SMH_BANK(15);
 				else
 					wh = SMH_UNMAP;
 			}
@@ -493,8 +495,8 @@ void ts2068_update_memory(running_machine *machine)
 	{
 		memory_set_bankptr(machine, 7, mess_ram + 0x8000);
 		memory_set_bankptr(machine, 15, mess_ram + 0x8000);
-		rh = SMH_BANK7;
-		wh = SMH_BANK15;
+		rh = SMH_BANK(7);
+		wh = SMH_BANK(15);
 		logerror("c000-dfff RAM\n");
 	}
 	memory_install_read8_handler(space, 0xc000, 0xdfff, 0, 0, rh);
@@ -505,7 +507,7 @@ void ts2068_update_memory(running_machine *machine)
 		if (ts2068_port_ff_data & 0x80)
 		{
 			memory_set_bankptr(machine, 8, ExROM);
-			rh = SMH_BANK8;
+			rh = SMH_BANK(8);
 			wh = SMH_UNMAP;
 			logerror("e000-ffff EXROM\n");
 		}
@@ -514,9 +516,9 @@ void ts2068_update_memory(running_machine *machine)
 			if (timex_cart_type == TIMEX_CART_DOCK)
 			{
 				memory_set_bankptr(machine, 8, DOCK+0xe000);
-				rh = SMH_BANK8;
+				rh = SMH_BANK(8);
 				if (timex_cart_chunks&0x80)
-					wh = SMH_BANK16;
+					wh = SMH_BANK(16);
 				else
 					wh = SMH_UNMAP;
 			}
@@ -532,8 +534,8 @@ void ts2068_update_memory(running_machine *machine)
 	{
 		memory_set_bankptr(machine, 8, mess_ram + 0xa000);
 		memory_set_bankptr(machine, 16, mess_ram + 0xa000);
-		rh = SMH_BANK8;
-		wh = SMH_BANK16;
+		rh = SMH_BANK(8);
+		wh = SMH_BANK(16);
 		logerror("e000-ffff RAM\n");
 	}
 	memory_install_read8_handler(space, 0xe000, 0xffff, 0, 0, rh);
@@ -552,14 +554,14 @@ static ADDRESS_MAP_START (ts2068_io, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START (ts2068_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x1fff) AM_READWRITE( SMH_BANK1, SMH_BANK9 )
-	AM_RANGE(0x2000, 0x3fff) AM_READWRITE( SMH_BANK2, SMH_BANK10 )
-	AM_RANGE(0x4000, 0x5fff) AM_READWRITE( SMH_BANK3, SMH_BANK11 )
-	AM_RANGE(0x6000, 0x7fff) AM_READWRITE( SMH_BANK4, SMH_BANK12 )
-	AM_RANGE(0x8000, 0x9fff) AM_READWRITE( SMH_BANK5, SMH_BANK13 )
-	AM_RANGE(0xa000, 0xbfff) AM_READWRITE( SMH_BANK6, SMH_BANK14 )
-	AM_RANGE(0xc000, 0xdfff) AM_READWRITE( SMH_BANK7, SMH_BANK15 )
-	AM_RANGE(0xe000, 0xffff) AM_READWRITE( SMH_BANK8, SMH_BANK16 )
+	AM_RANGE(0x0000, 0x1fff) AM_READWRITE( SMH_BANK(1), SMH_BANK(9) )
+	AM_RANGE(0x2000, 0x3fff) AM_READWRITE( SMH_BANK(2), SMH_BANK(10) )
+	AM_RANGE(0x4000, 0x5fff) AM_READWRITE( SMH_BANK(3), SMH_BANK(11) )
+	AM_RANGE(0x6000, 0x7fff) AM_READWRITE( SMH_BANK(4), SMH_BANK(12) )
+	AM_RANGE(0x8000, 0x9fff) AM_READWRITE( SMH_BANK(5), SMH_BANK(13) )
+	AM_RANGE(0xa000, 0xbfff) AM_READWRITE( SMH_BANK(6), SMH_BANK(14) )
+	AM_RANGE(0xc000, 0xdfff) AM_READWRITE( SMH_BANK(7), SMH_BANK(15) )
+	AM_RANGE(0xe000, 0xffff) AM_READWRITE( SMH_BANK(8), SMH_BANK(16) )
 ADDRESS_MAP_END
 
 
@@ -593,7 +595,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START (tc2048_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x3fff) AM_ROM
-	AM_RANGE( 0x4000, 0xffff) AM_READWRITE( SMH_BANK1, SMH_BANK2 )
+	AM_RANGE( 0x4000, 0xffff) AM_READWRITE( SMH_BANK(1), SMH_BANK(2) )
 ADDRESS_MAP_END
 
 static MACHINE_RESET( tc2048 )
@@ -608,8 +610,8 @@ static MACHINE_RESET( tc2048 )
 static MACHINE_DRIVER_START( ts2068 )
 	MDRV_IMPORT_FROM( spectrum_128 )
 	MDRV_CPU_REPLACE("maincpu", Z80, XTAL_14_112MHz/4)        /* From Schematic; 3.528 MHz */
-	MDRV_CPU_PROGRAM_MAP(ts2068_mem, 0)
-	MDRV_CPU_IO_MAP(ts2068_io, 0)
+	MDRV_CPU_PROGRAM_MAP(ts2068_mem)
+	MDRV_CPU_IO_MAP(ts2068_io)
 
 	MDRV_MACHINE_RESET( ts2068 )
 
@@ -634,6 +636,8 @@ static MACHINE_DRIVER_START( ts2068 )
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(timex_cart)
 	MDRV_CARTSLOT_UNLOAD(timex_cart)
+	
+	MDRV_DEVICE_REMOVE(BETA_DISK_TAG)
 MACHINE_DRIVER_END
 
 
@@ -647,8 +651,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( tc2048 )
 	MDRV_IMPORT_FROM( spectrum )
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(tc2048_mem, 0)
-	MDRV_CPU_IO_MAP(tc2048_io, 0)
+	MDRV_CPU_PROGRAM_MAP(tc2048_mem)
+	MDRV_CPU_IO_MAP(tc2048_io)
 
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)

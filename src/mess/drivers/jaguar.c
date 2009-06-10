@@ -108,6 +108,7 @@ static MACHINE_RESET( jaguar )
 	memset(jaguar_shared_ram, 0, 0x200000);
 	memcpy(jaguar_shared_ram, rom_base, 0x10);
 	rom_base[0x53c / 4] = 0x67000002;
+	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), REG_GENPC, rom_base[1]);
 
 #if 0
 	/* set up main CPU RAM/ROM banks */
@@ -137,7 +138,6 @@ static MACHINE_RESET( jaguar )
 
 	joystick_data = 0xffffffff;
 }
-
 
 
 /*************************************
@@ -456,15 +456,15 @@ static MACHINE_DRIVER_START( jaguar )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68EC020, M68K_CLOCK/2)
-	MDRV_CPU_PROGRAM_MAP(jaguar_map,0)
+	MDRV_CPU_PROGRAM_MAP(jaguar_map)
 
 	MDRV_CPU_ADD("gpu", JAGUARGPU, JAGUAR_CLOCK/2)
 	MDRV_CPU_CONFIG(gpu_config)
-	MDRV_CPU_PROGRAM_MAP(gpu_map,0)
+	MDRV_CPU_PROGRAM_MAP(gpu_map)
 
 	MDRV_CPU_ADD("audiocpu", JAGUARDSP, JAGUAR_CLOCK/2)
 	MDRV_CPU_CONFIG(dsp_config)
-	MDRV_CPU_PROGRAM_MAP(dsp_map,0)
+	MDRV_CPU_PROGRAM_MAP(dsp_map)
 
 	MDRV_MACHINE_RESET(jaguar)
 
@@ -505,7 +505,17 @@ MACHINE_DRIVER_END
 
 ROM_START( jaguar )
 	ROM_REGION( 0xe20000, "maincpu", 0 )  /* 4MB for RAM at 0 */
-	ROM_LOAD16_WORD( "jagboot.rom",          0xe00000, 0x020000, CRC(fb731aaa) SHA1(f8991b0c385f4e5002fa2a7e2f5e61e8c5213356))
+	ROM_LOAD16_WORD( "jagboot.rom", 0xe00000, 0x020000, CRC(fb731aaa) SHA1(f8991b0c385f4e5002fa2a7e2f5e61e8c5213356) )
+	ROM_CART_LOAD("cart", 0x800000, 0x600000, ROM_NOMIRROR)
+ROM_END
+
+ROM_START( jaguarcd )
+	ROM_REGION( 0xe40000, "maincpu", 0 )
+	ROM_SYSTEM_BIOS( 0, "default", "Jaguar CD" )
+	ROMX_LOAD( "jag_cd.bin", 0xe00000, 0x040000, CRC(687068d5) SHA1(73883e7a6e9b132452436f7ab1aeaeb0776428e5), ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS( 1, "dev", "Jaguar Developer CD" )
+	ROMX_LOAD( "jagdevcd.bin", 0xe00000, 0x040000, CRC(55a0669c) SHA1(d61b7b5912118f114ef00cf44966a5ef62e455a5), ROM_BIOS(2) )
+
 	ROM_CART_LOAD("cart", 0x800000, 0x600000, ROM_NOMIRROR)
 ROM_END
 
@@ -540,5 +550,7 @@ static QUICKLOAD_LOAD( jaguar )
  *
  *************************************/
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      CONFIG    COMPANY     FULLNAME */
-CONS(1993,	jaguar,   0,        0,		jaguar,   jaguar,   jaguar,   0,	"Atari",	"Atari Jaguar", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING)
+/*    YEAR   NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      CONFIG  COMPANY    FULLNAME */
+CONS( 1993,  jaguar,   0,        0,      jaguar,   jaguar,   jaguar,   0,      "Atari",   "Atari Jaguar", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING)
+CONS( 1995,  jaguarcd, jaguar,   0,      jaguar,   jaguar,   jaguar,   0,      "Atari",   "Atari Jaguar CD", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GA\
+ME_NOT_WORKING)

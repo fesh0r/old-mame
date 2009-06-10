@@ -281,17 +281,17 @@ static MACHINE_START( tmc600 )
 	switch (mess_ram_size)
 	{
 	case 8*1024:
-		memory_install_readwrite8_handler(program, 0x6000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(program, 0x6000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
 		memory_install_readwrite8_handler(program, 0x8000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case 16*1024:
-		memory_install_readwrite8_handler(program, 0x6000, 0x9fff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(program, 0x6000, 0x9fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
 		memory_install_readwrite8_handler(program, 0xa000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 
 	case 24*1024:
-		memory_install_readwrite8_handler(program, 0x6000, 0xbfff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(program, 0x6000, 0xbfff, 0, 0, SMH_BANK(1), SMH_BANK(1));
 		break;
 	}
 
@@ -320,8 +320,8 @@ static MACHINE_DRIVER_START( tmc600 )
 	// basic system hardware
 
 	MDRV_CPU_ADD(CDP1802_TAG, CDP1802, 3579545)	// ???
-	MDRV_CPU_PROGRAM_MAP(tmc600_map, 0)
-	MDRV_CPU_IO_MAP(tmc600_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(tmc600_map)
+	MDRV_CPU_IO_MAP(tmc600_io_map)
 	MDRV_CPU_CONFIG(tmc600_cdp1802_config)
 
 	MDRV_MACHINE_START(tmc600)

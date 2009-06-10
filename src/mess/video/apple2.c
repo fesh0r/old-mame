@@ -382,10 +382,10 @@ void apple2_video_start(running_machine *machine, const UINT8 *vram, size_t vram
 	a2_videoram = vram;
 
 	/* 2^3 dependent pixels * 2 color sets * 2 offsets */
-	hires_artifact_map = auto_malloc(sizeof(UINT16) * 8 * 2 * 2);
+	hires_artifact_map = auto_alloc_array(machine, UINT16, 8 * 2 * 2);
 
 	/* 2^4 dependent pixels */
-	dhires_artifact_map = auto_malloc(sizeof(UINT16) * 16);
+	dhires_artifact_map = auto_alloc_array(machine, UINT16, 16);
 
 	/* build hires artifact map */
 	for (i = 0; i < 8; i++)
@@ -423,6 +423,8 @@ void apple2_video_start(running_machine *machine, const UINT8 *vram, size_t vram
 	/* do we need to flip the gfx? */
 	if (!strcmp(machine->gamedrv->name, "apple2")
 		|| !strcmp(machine->gamedrv->name, "apple2p")
+		|| !strcmp(machine->gamedrv->name, "prav82")
+		|| !strcmp(machine->gamedrv->name, "prav8m")
 		|| !strcmp(machine->gamedrv->name, "ace100")
 		|| !strcmp(machine->gamedrv->name, "apple2jp"))
 	{		

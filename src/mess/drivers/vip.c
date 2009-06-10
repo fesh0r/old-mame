@@ -281,21 +281,35 @@ static WRITE8_HANDLER( bankswitch_w )
 	switch (mess_ram_size)
 	{
 	case 1 * 1024:
-		memory_install_readwrite8_handler(program, 0x0000, 0x03ff, 0, 0x7c00, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(program, 0x0000, 0x03ff, 0, 0x7c00, SMH_BANK(1), SMH_BANK(1));
 		break;
 
 	case 2 * 1024:
-		memory_install_readwrite8_handler(program, 0x0000, 0x07ff, 0, 0x7800, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(program, 0x0000, 0x07ff, 0, 0x7800, SMH_BANK(1), SMH_BANK(1));
 		break;
 
 	case 4 * 1024:
-		memory_install_readwrite8_handler(program, 0x0000, 0x0fff, 0, 0x7000, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(program, 0x0000, 0x0fff, 0, 0x7000, SMH_BANK(1), SMH_BANK(1));
 		break;
 
 	case 32 * 1024:
-		memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
 		break;
 	}
+}
+
+static READ8_DEVICE_HANDLER( vip_cdp1861_dispon_r )
+{
+	cdp1861_dispon_w(device, 1);
+	cdp1861_dispon_w(device, 0);
+
+	return 0xff;
+}
+
+static WRITE8_DEVICE_HANDLER( vip_cdp1861_dispoff_w )
+{
+	cdp1861_dispoff_w(device, 1);
+	cdp1861_dispoff_w(device, 0);
 }
 
 /* Memory Maps */
@@ -307,7 +321,7 @@ static ADDRESS_MAP_START( vip_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( vip_io_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x01, 0x01) AM_DEVREADWRITE(CDP1861_TAG, cdp1861_dispon_r, cdp1861_dispoff_w)
+	AM_RANGE(0x01, 0x01) AM_DEVREADWRITE(CDP1861_TAG, vip_cdp1861_dispon_r, vip_cdp1861_dispoff_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(keylatch_w)
 //	AM_RANGE(0x03, 0x03) AM_DEVWRITE(CDP1863_TAG, cdp1863_str_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(bankswitch_w)
@@ -568,7 +582,7 @@ static MACHINE_START( vip )
 
 	/* ROM banking */
 
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00, SMH_BANK2, SMH_UNMAP);
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00, SMH_BANK(2), SMH_UNMAP);
 	memory_configure_bank(machine, 2, 0, 1, memory_region(machine, CDP1802_TAG) + 0x8000, 0);
 	memory_set_bank(machine, 2, 0);
 
@@ -581,7 +595,7 @@ static MACHINE_START( vip )
 
 	/* allocate color RAM */
 	
-	state->colorram = auto_malloc(VP590_COLOR_RAM_SIZE);
+	state->colorram = auto_alloc_array(machine, UINT8, VP590_COLOR_RAM_SIZE);
 
 	/* enable power LED */
 
@@ -648,7 +662,7 @@ static MACHINE_RESET( vip )
 
 	/* enable ROM mirror at 0x0000 */
 
-	memory_install_readwrite8_handler(program, 0x0000, 0x01ff, 0, 0x7e00, SMH_BANK1, SMH_UNMAP);
+	memory_install_readwrite8_handler(program, 0x0000, 0x01ff, 0, 0x7e00, SMH_BANK(1), SMH_UNMAP);
 	memory_set_bank(machine, 1, VIP_BANK_ROM);
 }
 
@@ -666,8 +680,8 @@ static MACHINE_DRIVER_START( vip )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(CDP1802_TAG, CDP1802, XTAL_3_52128MHz/2)
-	MDRV_CPU_PROGRAM_MAP(vip_map, 0)
-	MDRV_CPU_IO_MAP(vip_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(vip_map)
+	MDRV_CPU_IO_MAP(vip_io_map)
 	MDRV_CPU_CONFIG(vip_config)
 
 	MDRV_MACHINE_START(vip)

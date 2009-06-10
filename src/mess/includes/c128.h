@@ -14,6 +14,7 @@
 #ifndef C128_H_
 #define C128_H_
 
+#include "machine/6526cia.h"
 
 /*----------- defined in machine/c128.c -----------*/
 
@@ -41,16 +42,32 @@ WRITE8_HANDLER(c128_write_e000);
 WRITE8_HANDLER(c128_write_ff00);
 WRITE8_HANDLER(c128_write_ff05);
 
+
+void c128_m6510_port_write(const device_config *device, UINT8 direction, UINT8 data);
+UINT8 c128_m6510_port_read(const device_config *device, UINT8 direction);
+
+
 extern DRIVER_INIT( c128 );
 extern DRIVER_INIT( c128pal );
 extern DRIVER_INIT( c128d );
 extern DRIVER_INIT( c128dpal );
+extern DRIVER_INIT( c128dcr );
+extern DRIVER_INIT( c128dcrp );
+extern DRIVER_INIT( c128d81 );
+extern MACHINE_START( c128 );
 extern MACHINE_RESET( c128 );
+extern INTERRUPT_GEN( c128_frame_interrupt );
 
 extern VIDEO_START( c128 );
 extern VIDEO_UPDATE( c128 );
 
 void c128_bankswitch_64 (running_machine *machine, int reset);
+
+UINT8 c128_m6510_port_read(const device_config *device, UINT8 direction);
+void c128_m6510_port_write(const device_config *device, UINT8 direction, UINT8 data);
+
+extern const cia6526_interface c128_ntsc_cia0, c128_pal_cia0;
+extern const cia6526_interface c128_ntsc_cia1, c128_pal_cia1;
 
 
 #endif /* C128_H_ */

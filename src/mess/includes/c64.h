@@ -19,11 +19,6 @@
 /*----------- defined in machine/c64.c -----------*/
 
 /* private area */
-extern UINT8 c65_keyline;
-extern UINT8 c65_6511_port;
-
-extern UINT8 c128_keyline[3];
-
 extern UINT8 *c64_colorram;
 extern UINT8 *c64_basic;
 extern UINT8 *c64_kernal;
@@ -41,9 +36,9 @@ DRIVER_INIT( c64pal );
 DRIVER_INIT( ultimax );
 DRIVER_INIT( c64gs );
 DRIVER_INIT( sx64 );
-void c64_common_init_machine (running_machine *machine);
 
 MACHINE_START( c64 );
+MACHINE_RESET( c64 );
 INTERRUPT_GEN( c64_frame_interrupt );
 TIMER_CALLBACK( c64_tape_timer );
 
@@ -60,8 +55,6 @@ extern int c64_pal;
 extern int c64_tape_on;
 extern UINT8 *c64_roml;
 extern UINT8 *c64_romh;
-extern UINT8 c64_keyline[10];
-extern int c128_va1617;
 extern UINT8 *c64_vicaddr, *c128_vicaddr;
 extern UINT8 c64_game, c64_exrom;
 extern const cia6526_interface c64_ntsc_cia0, c64_pal_cia0;

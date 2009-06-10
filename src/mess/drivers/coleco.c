@@ -113,7 +113,7 @@ static READ8_HANDLER( paddle_1_r )
 				if (!(ipt1 & 0x2000)) data &= 0x08; /* Purple Action Button */
 			}
 
-			return ((ipt1 & 0x4000) >> 2) | 0x30 | (data);
+			return ((ipt1 & 0x4000) >> 8) | 0x30 | (data);
 		}
 		/* Joystick and fire 2 (SAC Red Button) */
 		else
@@ -176,7 +176,7 @@ static READ8_HANDLER( paddle_2_r )
 			if (!(ipt2 & 0x1000)) data &= 0x04; /* Blue Action Button */
 			if (!(ipt2 & 0x2000)) data &= 0x08; /* Purple Action Button */
 
-			return ((ipt2 & 0x4000) >> 2) | 0x30 | (data);
+			return ((ipt2 & 0x4000) >> 8) | 0x30 | (data);
 		}
 		/* Joystick and fire 2*/
 		else
@@ -574,8 +574,8 @@ static DEVICE_IMAGE_LOAD( czz50_cart )
 static MACHINE_DRIVER_START( coleco )
 	// basic machine hardware
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_7_15909MHz/2)	// 3.579545 MHz
-	MDRV_CPU_PROGRAM_MAP(coleco_map, 0)
-	MDRV_CPU_IO_MAP(coleco_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(coleco_map)
+	MDRV_CPU_IO_MAP(coleco_io_map)
 	MDRV_CPU_VBLANK_INT("screen", coleco_interrupt)
 
 	MDRV_MACHINE_START(coleco)
@@ -601,8 +601,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( czz50 )
 	// basic machine hardware
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_7_15909MHz/2)	// ???
-	MDRV_CPU_PROGRAM_MAP(czz50_map, 0)
-	MDRV_CPU_IO_MAP(czz50_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(czz50_map)
+	MDRV_CPU_IO_MAP(czz50_io_map)
 	MDRV_CPU_VBLANK_INT("screen", coleco_interrupt)
 
 	MDRV_MACHINE_START(coleco)

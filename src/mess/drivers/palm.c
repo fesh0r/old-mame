@@ -178,7 +178,7 @@ static MACHINE_DRIVER_START( palm )
 
     /* basic machine hardware */
     MDRV_CPU_ADD( "maincpu", M68000, 32768*506 )        /* 16.580608 MHz */
-    MDRV_CPU_PROGRAM_MAP( palm_map, 0 )
+    MDRV_CPU_PROGRAM_MAP( palm_map)
     MDRV_SCREEN_ADD( "screen", RASTER )
     MDRV_SCREEN_REFRESH_RATE( 60 )
     MDRV_SCREEN_VBLANK_TIME( ATTOSECONDS_IN_USEC(1260) )
@@ -269,7 +269,7 @@ INPUT_PORTS_END
     ROM_RELOAD(0x000000, 0x004000)	\
     ROM_SYSTEM_BIOS( 11, "3.3g", "Palm OS 3.3 (German)" ) \
     ROMX_LOAD( "palmos33-de-iii.rom", 0x008000, 0x200000, CRC(a5a99c45) SHA1(209b0154942dab80b56d5e6e68fa20b9eb75f5fe), ROM_GROUPWORD | ROM_BIOS(12) ) \
-    ROM_RELOAD(0x000000, 0x004000)
+    ROM_RELOAD(0x000000, 0x004000)  
 
 ROM_START( pilot1k )
     PALM_68328_BIOS
@@ -294,6 +294,130 @@ ROM_END
 ROM_START( palmiii )
     PALM_68328_BIOS
     ROM_DEFAULT_BIOS( "3.0e" )
+ROM_END
+
+ROM_START( palmv )
+	ROM_REGION16_BE( 0x208000, "bios", 0 )
+    ROM_SYSTEM_BIOS( 0, "3.1e", "Palm OS 3.1 (English)" ) 
+    ROMX_LOAD( "palmv31-en.rom", 0x008000, 0x200000, CRC(4656b2ae) SHA1(ec66a93441fbccfd8e0c946baa5d79c478c83e85), ROM_GROUPWORD | ROM_BIOS(1) ) 
+    ROM_RELOAD(0x000000, 0x004000) 
+    ROM_SYSTEM_BIOS( 1, "3.1g", "Palm OS 3.1 (German)" ) 
+    ROMX_LOAD( "palmv31-de.rom", 0x008000, 0x200000, CRC(a9631dcf) SHA1(63b44d4d3fc2f2196c96d3b9b95da526df0fac77), ROM_GROUPWORD | ROM_BIOS(2) ) 
+    ROM_RELOAD(0x000000, 0x004000) 
+    ROM_SYSTEM_BIOS( 2, "3.1f", "Palm OS 3.1 (French)" ) 
+    ROMX_LOAD( "palmv31-fr.rom", 0x008000, 0x200000, CRC(0d933a1c) SHA1(d0454f1159705d0886f8a68e1b8a5e96d2ca48f6), ROM_GROUPWORD | ROM_BIOS(3) ) 
+    ROM_RELOAD(0x000000, 0x004000) 
+    ROM_SYSTEM_BIOS( 3, "3.1s", "Palm OS 3.1 (Spanish)" ) 
+    ROMX_LOAD( "palmv31-sp.rom", 0x008000, 0x200000, CRC(cc46ca1f) SHA1(93bc78ca84d34916d7e122b745adec1068230fcd), ROM_GROUPWORD | ROM_BIOS(4) ) 
+    ROM_RELOAD(0x000000, 0x004000) 
+    ROM_SYSTEM_BIOS( 4, "3.1j", "Palm OS 3.1 (Japanese)" ) 
+	ROMX_LOAD( "palmv31-jp.rom", 0x008000, 0x200000, CRC(c786db12) SHA1(4975ff2af76892370c5d4d7d6fa87a84480e79d6), ROM_GROUPWORD | ROM_BIOS(5) ) 
+    ROM_RELOAD(0x000000, 0x004000)
+	ROM_SYSTEM_BIOS( 5, "3.1e2", "Palm OS 3.1 (English) v2" ) 
+    ROMX_LOAD( "palmv31-en-2.rom", 0x008000, 0x200000, CRC(caced2bd) SHA1(95970080601f72a77a4c338203ed8809fab17abf), ROM_GROUPWORD | ROM_BIOS(6) ) 
+	ROM_RELOAD(0x000000, 0x004000) 
+    ROM_DEFAULT_BIOS( "3.1e2" )
+ROM_END
+
+ROM_START( palmvx )
+	ROM_REGION16_BE( 0x208000, "bios", 0 )
+    ROM_SYSTEM_BIOS( 0, "3.3e", "Palm OS 3.3 (English)" ) 
+    ROMX_LOAD( "palmvx33-en.rom", 0x000000, 0x200000, CRC(3fc0cc6d) SHA1(6873d5fa99ac372f9587c769940c9b3ac1745a0a), ROM_GROUPWORD | ROM_BIOS(1) ) 
+    ROM_SYSTEM_BIOS( 1, "4.0e", "Palm OS 4.0 (English)" ) 
+    ROMX_LOAD( "palmvx40-en.rom", 0x000000, 0x200000, CRC(488e4638) SHA1(10a10fc8617743ebd5df19c1e99ca040ac1da4f5), ROM_GROUPWORD | ROM_BIOS(2) ) 
+    ROM_SYSTEM_BIOS( 2, "4.1e", "Palm OS 4.1 (English)" ) 
+    ROMX_LOAD( "palmvx41-en.rom", 0x000000, 0x200000, CRC(e59f4dff) SHA1(5e3000db318eeb8cd1f4d9729d0c9ebca560fa4a), ROM_GROUPWORD | ROM_BIOS(3) ) 
+    ROM_DEFAULT_BIOS( "4.1e" )
+ROM_END  
+
+ROM_START( palmiiic )
+	ROM_REGION16_BE( 0x208000, "bios", 0 )
+	ROM_SYSTEM_BIOS( 0, "3.5eb", "Palm OS 3.5 (English) beta" ) 
+	ROMX_LOAD( "palmiiic350-en-beta.rom", 0x008000, 0x200000, CRC(d58521a4) SHA1(508742ea1e078737666abd4283cf5e6985401c9e), ROM_GROUPWORD | ROM_BIOS(1) ) 
+	ROM_RELOAD(0x000000, 0x004000) 
+	ROM_SYSTEM_BIOS( 1, "3.5eb", "Palm OS 3.5 (Chinese)" ) 
+    ROMX_LOAD( "palmiiic350-ch.rom", 0x008000, 0x200000, CRC(a9779f3a) SHA1(1541102cd5234665233072afe8f0e052134a5334), ROM_GROUPWORD | ROM_BIOS(2) ) 
+    ROM_RELOAD(0x000000, 0x004000) 
+    ROM_SYSTEM_BIOS( 2, "4.0e", "Palm OS 4.0 (English)" ) 
+    ROMX_LOAD( "palmiiic40-en.rom", 0x008000, 0x200000, CRC(6b2a5ad2) SHA1(54321dcaedcc80de57a819cfd599d8d1b2e26eeb), ROM_GROUPWORD | ROM_BIOS(3) ) 
+    ROM_RELOAD(0x000000, 0x004000) 
+    ROM_DEFAULT_BIOS( "4.0e" )
+ROM_END
+
+ROM_START( palmm100 )
+	ROM_REGION16_BE( 0x208000, "bios", 0 )
+    ROM_SYSTEM_BIOS( 0, "3.51e", "Palm OS 3.5.1 (English)" ) 
+    ROMX_LOAD( "palmm100-351-en.rom", 0x008000, 0x200000, CRC(ae8dda60) SHA1(c46248d6f05cb2f4337985610cedfbdc12ac47cf), ROM_GROUPWORD | ROM_BIOS(1) ) 
+    ROM_RELOAD(0x000000, 0x004000) 
+    ROM_DEFAULT_BIOS( "3.51e" )
+ROM_END
+
+ROM_START( palmm130 )
+	ROM_REGION16_BE( 0x408000, "bios", 0 )
+    ROM_SYSTEM_BIOS( 0, "4.0e", "Palm OS 4.0 (English)" ) 
+    ROMX_LOAD( "palmm130-40-en.rom", 0x008000, 0x400000, CRC(58046b7e) SHA1(986057010d62d5881fba4dede2aba0d4d5008b16), ROM_GROUPWORD | ROM_BIOS(1) ) 
+    ROM_RELOAD(0x000000, 0x004000) 
+    ROM_DEFAULT_BIOS( "4.0e" )
+ROM_END
+
+ROM_START( palmm505 )
+	ROM_REGION16_BE( 0x408000, "bios", 0 )
+    ROM_SYSTEM_BIOS( 0, "4.0e", "Palm OS 4.0 (English)" ) 
+    ROMX_LOAD( "palmos40-en-m505.rom", 0x008000, 0x400000, CRC(822a4679) SHA1(a4f5e9f7edb1926647ea07969200c5c5e1521bdf), ROM_GROUPWORD | ROM_BIOS(1) ) 
+    ROM_RELOAD(0x000000, 0x004000) 
+    ROM_SYSTEM_BIOS( 1, "4.1e", "Palm OS 4.1 (English)" ) 
+    ROMX_LOAD( "palmos41-en-m505.rom", 0x008000, 0x400000, CRC(d248202a) SHA1(65e1bd08b244c589b4cd10fe573e0376aba90e5f), ROM_GROUPWORD | ROM_BIOS(2) ) 
+    ROM_RELOAD(0x000000, 0x004000) 
+    ROM_DEFAULT_BIOS( "4.1e" )
+ROM_END
+
+ROM_START( palmm515 )
+	ROM_REGION16_BE( 0x408000, "bios", 0 )
+    ROM_SYSTEM_BIOS( 0, "4.1e", "Palm OS 4.1 (English)" ) 
+    ROMX_LOAD( "palmos41-en-m515.rom", 0x008000, 0x400000, CRC(6e143436) SHA1(a0767ea26cc493a3f687525d173903fef89f1acb), ROM_GROUPWORD | ROM_BIOS(1) ) 
+    ROM_RELOAD(0x000000, 0x004000) 
+    ROM_DEFAULT_BIOS( "4.0e" )
+ROM_END
+
+ROM_START( visor )
+	ROM_REGION16_BE( 0x208000, "bios", 0 )
+    ROM_SYSTEM_BIOS( 0, "3.52e", "Palm OS 3.5.2 (English)" ) 
+    ROMX_LOAD( "visor-352-en.rom", 0x008000, 0x200000, CRC(c9e55271) SHA1(749e9142f4480114c5e0d7f21ea354df7273ac5b), ROM_GROUPWORD | ROM_BIOS(1) ) 
+    ROM_RELOAD(0x000000, 0x004000) 
+    ROM_DEFAULT_BIOS( "3.52e" )
+ROM_END
+
+ROM_START( spt1500 )
+	ROM_REGION16_BE( 0x208000, "bios", 0 )
+    ROM_SYSTEM_BIOS( 0, "4.1pim", "Version 4.1 (pim)" ) 
+  	ROMX_LOAD( "spt1500v41-pim.rom",      0x008000, 0x200000, CRC(29e50eaf) SHA1(3e920887bdf74f8f83935977b02f22d5217723eb), ROM_GROUPWORD | ROM_BIOS(1) )
+  	ROM_RELOAD(0x000000, 0x004000) 
+  	ROM_SYSTEM_BIOS( 1, "4.1pim", "Version 4.1 (pimnoft)" ) 
+  	ROMX_LOAD( "spt1500v41-pimnoft.rom",  0x008000, 0x200000, CRC(4b44f284) SHA1(4412e946444706628b94d2303b02580817e1d370), ROM_GROUPWORD | ROM_BIOS(2) )
+  	ROM_RELOAD(0x000000, 0x004000) 
+  	ROM_SYSTEM_BIOS( 2, "4.1pim", "Version 4.1 (nopimnoft)" ) 
+  	ROMX_LOAD( "spt1500v41-nopimnoft.rom",0x008000, 0x200000, CRC(4ba19190) SHA1(d713c1390b82eb4e5fbb39aa10433757c5c49e02), ROM_GROUPWORD | ROM_BIOS(3) )
+  	ROM_RELOAD(0x000000, 0x004000) 
+ROM_END
+  
+ROM_START( spt1700 )
+	ROM_REGION16_BE( 0x208000, "bios", 0 )
+	ROM_SYSTEM_BIOS( 0, "1.03pim", "Version 1.03 (pim)" ) 
+	ROMX_LOAD( "spt1700v103-pim.rom",     0x008000, 0x200000, CRC(9df4ee50) SHA1(243a19796f15219cbd73e116f7dfb236b3d238cd), ROM_GROUPWORD | ROM_BIOS(1) )
+	ROM_RELOAD(0x000000, 0x004000) 
+ROM_END
+	
+ROM_START( spt1740 )
+	ROM_REGION16_BE( 0x208000, "bios", 0 )
+	ROM_SYSTEM_BIOS( 0, "1.03pim", "Version 1.03 (pim)" ) 
+	ROMX_LOAD( "spt1740v103-pim.rom",     0x008000, 0x200000, CRC(c29f341c) SHA1(b56d7f8a0c15b1105972e24ed52c846b5e27b195), ROM_GROUPWORD | ROM_BIOS(1) )
+	ROM_RELOAD(0x000000, 0x004000) 
+	ROM_SYSTEM_BIOS( 1, "1.03pim", "Version 1.03 (pimnoft)" ) 
+	ROMX_LOAD( "spt1740v103-pimnoft.rom", 0x008000, 0x200000, CRC(b2d49d5c) SHA1(c133dc021b6797cdb93b666c5b315b00b5bb0917), ROM_GROUPWORD | ROM_BIOS(2) )
+	ROM_RELOAD(0x000000, 0x004000) 
+	ROM_SYSTEM_BIOS( 2, "1.03pim", "Version 1.03 (nopim)" ) 
+	ROMX_LOAD( "spt1740v103-nopim.rom",   0x008000, 0x200000, CRC(8ea7e652) SHA1(2a4b5d6a426e627b3cb82c47109cfe2497eba29a), ROM_GROUPWORD | ROM_BIOS(3) )
+	ROM_RELOAD(0x000000, 0x004000) 
 ROM_END
 
 static SYSTEM_CONFIG_START( pilot1k )
@@ -326,13 +450,33 @@ static SYSTEM_CONFIG_START( palmiii )
     CONFIG_RAM      (0x800000)      // 8M
 SYSTEM_CONFIG_END
 
+static SYSTEM_CONFIG_START( palmv )
+    CONFIG_RAM_DEFAULT  (0x200000)      // 2M
+    CONFIG_RAM      (0x400000)      // 4M
+    CONFIG_RAM      (0x800000)      // 8M
+SYSTEM_CONFIG_END
+
+static SYSTEM_CONFIG_START( palmvx )
+    CONFIG_RAM_DEFAULT  (0x800000)      // 8M
+SYSTEM_CONFIG_END
+
 /*    YEAR  NAME      PARENT    COMPAT   MACHINE   INPUT     INIT      CONFIG    COMPANY FULLNAME */
 COMP( 1996, pilot1k,  0,        0,       palm,     palm,     palm,     pilot1k,  "U.S. Robotics", "Pilot 1000", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
 COMP( 1996, pilot5k,  pilot1k,  0,       palm,     palm,     palm,     pilot5k,  "U.S. Robotics", "Pilot 5000", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
 COMP( 1997, palmpers, pilot1k,  0,       palm,     palm,     palm,     pilot5k,  "U.S. Robotics", "Palm Pilot Personal", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
 COMP( 1997, palmpro,  pilot1k,  0,       palm,     palm,     palm,     palmpro,  "U.S. Robotics", "Palm Pilot Pro", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
 COMP( 1998, palmiii,  pilot1k,  0,       palm,     palm,     palm,     palmiii,  "3Com", "Palm III", GAME_SUPPORTS_SAVE | GAME_NO_SOUND )
-
+COMP( 1998, palmiiic, pilot1k,  0,       palm,     palm,     palm,     palmiii,  "Palm Inc.", "Palm IIIc", GAME_NOT_WORKING )
+COMP( 2000, palmm100, pilot1k,  0,       palm,     palm,     palm,     palmiii,  "Palm Inc.", "Palm m100", GAME_NOT_WORKING )
+COMP( 2000, palmm130, pilot1k,  0,       palm,     palm,     palm,     palmiii,  "Palm Inc.", "Palm m130", GAME_NOT_WORKING )
+COMP( 2001, palmm505, pilot1k,  0,       palm,     palm,     palm,     palmiii,  "Palm Inc.", "Palm m505", GAME_NOT_WORKING )
+COMP( 2001, palmm515, pilot1k,  0,       palm,     palm,     palm,     palmiii,  "Palm Inc.", "Palm m515", GAME_NOT_WORKING )
+COMP( 1999, palmv,    pilot1k,  0,       palm,     palm,     palm,     palmv,  	 "3Com", "Palm V", GAME_NOT_WORKING )
+COMP( 1999, palmvx,   pilot1k,  0,       palm,     palm,     palm,     palmvx,   "Palm Inc.", "Palm Vx", GAME_NOT_WORKING )
+COMP( 2001, visor,    pilot1k,  0,       palm,     palm,     palm,     palmvx,   "Handspring", "Visor Edge", GAME_NOT_WORKING )
+COMP( 19??, spt1500,  pilot1k,  0,       palm,     palm,     palm,     palmvx,   "Symbol", "SPT 1500", GAME_NOT_WORKING )
+COMP( 19??, spt1700,  pilot1k,  0,       palm,     palm,     palm,     palmvx,   "Symbol", "SPT 1700", GAME_NOT_WORKING )
+COMP( 19??, spt1740,  pilot1k,  0,       palm,     palm,     palm,     palmvx,   "Symbol", "SPT 1740", GAME_NOT_WORKING )
 static const char *lookup_trap(UINT16 opcode)
 {
     static const struct

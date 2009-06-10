@@ -8,926 +8,1532 @@
 	Comments about bit usage from Tech References and Virtual T source.
 
 	Supported systems:
-	  - Kyocera Kyotronic 85
-	  - Olivetti M10 (slightly diff hw, the whole bios is shifted by 1 word)
+	  - Kyosei Kyotronic 85
+	  - Olivetti M10 (slightly diff hw, BIOS is shifted by 2 words)
 	  - NEC PC-8201A (slightly diff hw)
-	  - Tandy Model 100
+	  - TRS-80 Model 100
 	  - Tandy Model 102 (slightly diff hw)
 	  - Tandy Model 200 (diff video & rtc)
 	
 	To Do:
-	  - Basically everything:
-	    * rtc (which also controls input reads)
-		* inputs (keyboards are different)
-		* sound
-		* cassettes
-		* optional ROM & RAM
-		* additional hardware
-		* what are the differences between available BIOSes for trsm100 and olivm10?
-		* Tandy Model 200 support (video emulation completely different, but also 
-		  memory map & IO have to be adapted)
-		* PIO8155 might be made an independent device
-		* clean up driver and split machine & video parts
-
 	  - Find dumps of systems which could easily be added:
-		* Olivetti M10 US (diff BIOS than the European version, it might be the alt BIOS)
+		* Olivetti M10 Modem (US) (diff BIOS than the European version)
 		* NEC PC-8201 (original Japanese version of PC-8201A)
-
-	  - Investigate other similar machines:
-		* NEC PC-8300 (similar hardware?)
-		* Tandy Model 600 (possibly different?)
+		* NEC PC-8300 (similar hardware to PC-8201)
+		* NEC PC-8300 w/BradyWriter II ROMs
 
 ******************************************************************************************/
 
-/* Core includes */
+/*
+
+	TODO:
+
+	-	--- memory leak warning ---
+		allocation #004834, 256 bytes (src/lib/util/astring.c:127)
+		a total of 256 bytes were not free()'d
+	- un-Y2K-hack tandy200
+	- keyboard is unresponsive for couple of seconds after boot
+	- soft power on/off
+	- IM6042 UART
+	- pc8201 48K RAM option
+	- pc8201 NEC PC-8241A video interface (TMS9918, 16K videoRAM, 8K ROM)
+	- pc8201 128K ROM cartridge
+	- pc8201 NEC PC-8233 floppy controller
+	- pc8201 NEC floppy disc drives (PC-8031-1W, PC-8031-2W, PC-80S31)
+	- trsm100 Tandy Portable Disk Drive (TPDD: 100k 3½", TPDD2: 200k 3½") (undumped HD63A01V1 MCU + full custom uPD65002, serial comms via the missing IM6042, not going to happen anytime soon)
+	- trsm100 Chipmunk disk drive (384k 3½") (full custom logic, not going to happen)
+	- trsm100 RS232/modem select
+	- tandy200 UART8251
+	- tandy200 RTC alarm
+	- tandy200 TCM5089 sound
+	- international keyboard option ROMs
+
+*/
+
+/*
+
+						  * PC-8201/8300 HARDWARE PORT DEFINITIONS *
+
+				-Port-
+	Name       Hex  Dec   Notes
+	--------   ---  ---   -----------------------------------------
+	A8255      070  112   Video interface port A (8255)
+	B8255      071  113   Video interface port B (8255)
+	C8255      072  114   Video interface port C (8255)
+	CW8255     073  115   Video interface command/mode port (8255)
+	ROMAH      080  128   128k ROM select and MSBIT of address
+	ROMAL      084  132   Lowest 8 bits of extended ROM address
+	ROMAM      088  136   Middle eight bits of 128k ROM address
+	ROMRD      08C  140   Read data port for 128k ROM
+
+*/
+
 #include "driver.h"
+#include "includes/kyocera.h"
 #include "cpu/i8085/i8085.h"
+#include "devices/cartslot.h"
+#include "devices/cassette.h"
+#include "machine/ctronics.h"
 #include "machine/upd1990a.h"
+#include "machine/8155pio.h"
+#include "machine/rp5c01a.h"
+#include "machine/msm8251.h"
+#include "video/hd61830.h"
+#include "sound/speaker.h"
 
-static UINT8 rom_page, ram_page;
-static UINT8 port_a, port_b, port_c;
-static UINT8 timer_lsb, timer_msb;
-static UINT8 io_E8, io_A1, io_90, io_D0;
-
-int pc8201_lcd_bank = 0;
-
-void lcd_bank_update( UINT16 bank )
+static const device_config *cassette_device_image(running_machine *machine)
 {
-	switch ( bank ) 
-	{
-			case 0x000:	pc8201_lcd_bank = 0; break;
-			case 0x001:	pc8201_lcd_bank = 1; break;
-			case 0x002:	pc8201_lcd_bank = 2; break;
-			case 0x004:	pc8201_lcd_bank = 3; break;
-			case 0x008:	pc8201_lcd_bank = 4; break;
-			case 0x010:	pc8201_lcd_bank = 5; break;
-			case 0x020:	pc8201_lcd_bank = 6; break;
-			case 0x040:	pc8201_lcd_bank = 7; break;
-			case 0x080:	pc8201_lcd_bank = 8; break;
-			case 0x100:	pc8201_lcd_bank = 9; break;
-			case 0x200:	pc8201_lcd_bank = 10; break;
-			default: /*logerror("pc8201: bank update with unk bank = %d\n", bank);*/ break;
-	}
-
-//	logerror("pc8201: _lcd_bank = %i\n",pc8201_lcd_bank);
+	return devtag_get_device(machine, "cassette");
 }
 
-/*  WRITE HANDLERS  */
+/* Read/Write Handlers */
 
-// 0x90 PC-8201 only
-static WRITE8_HANDLER( pc8201_io90_write )
+static READ8_HANDLER( pc8201_bank_r )
 {
-	if ((data & 0x10) != (io_90 & 0x10))
-	{
-		const device_config *rtc = devtag_get_device(space->machine, "rtc");
-		upd1990a_w(rtc, offset, port_a);
-		logerror("RTC write: %d\n", port_a);
-	}
-
-	/* printer */
-//	if ((data & 0x20) != (io_90 & 0x20))
-//		WRITE port_a;
-
-	io_90 = data;		// io_90 & 0xc0 is read in 0xa0!
-}
-
-// 0x90 T200 only
-//static WRITE8_HANDLER( trs200_clock_mode_write )
-//{
-//}
-
-// 0xA0
-static WRITE8_HANDLER( modem_control_port_write )
-{
-}
-
-// 0xA1 PC-8201 only
-static WRITE8_HANDLER( pc8201_bank_write )
-{
-	UINT8 *rom = memory_region(space->machine, "maincpu");
-	const address_space *space_program = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	
-	if ((data & 0x03) != rom_page)
-	{
-		UINT8 read_only = 0;
-		UINT8 optional_rom = 0;
-		rom_page = data & 0x03;
+	/*
 		
-		/* Test for a change to the ROM bank (0x0000 - 0x7FFF) */
-		switch (rom_page)
+		bit		signal		description
+
+		0		LADR1		select address 0 to 7fff
+		1		LADR2		select address 0 to 7fff
+		2		HADR1		select address 8000 to ffff
+		3		HADR2		select address 8000 to ffff
+		4		
+		5		
+		6		SELB		serial interface status bit 1
+		7		SELA		serial interface status bit 0
+
+	*/
+
+	kc85_state *state = space->machine->driver_data;
+
+	return (state->iosel << 5) | state->bank;
+}
+
+static void pc8201_bankswitch(running_machine *machine, UINT8 data)
+{
+	kc85_state *state = machine->driver_data;
+
+	const address_space *program = cputag_get_address_space(machine, I8085_TAG, ADDRESS_SPACE_PROGRAM);
+
+	int rom_bank = data & 0x03;
+	int ram_bank = (data >> 2) & 0x03;
+
+	state->bank = data & 0x0f;
+
+	if (rom_bank > 1)
+	{
+		/* RAM */
+		memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+	}
+	else
+	{
+		/* ROM */
+		memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
+	}
+
+	memory_set_bank(machine, 1, rom_bank);
+
+	switch (ram_bank)
+	{
+	case 0:
+		if (mess_ram_size > 16 * 1024)
 		{
-			case 0:
-				memory_set_bankptr(space_program->machine, 1, rom + 0x10000);
-				read_only = 1;
-				break;
-			case 1:
-				optional_rom = 1;	/* Not implemented yet */
-				break;
-			case 2:
-			case 3:
-				memory_set_bankptr(space_program->machine, 1, mess_ram + (rom_page - 1) * 0x8000);
-				break;
+			memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
 		}
-
-		if (!optional_rom)
-			memory_install_readwrite8_handler(space_program, 0x0000, 0x7fff, 0, 0, SMH_BANK1, read_only ? SMH_UNMAP : SMH_BANK1);
-	}
-
-	if (((data >> 2) & 0x03) != ram_page)
-	{
-		ram_page = (data >> 2) & 0x03;
-
-		/* Test for a change to the RAM bank (0x8000 - 0xFFFF) */
-		/* According to the PC-8200 Tech Notes, only 0,2,3 are admissible values here */
-		switch (ram_page)
+		else
 		{
-			case 0:
-			case 1:		/* However, we treat 1 as 0*/
-				if (ram_page == 1)
-					logerror("PC-8201 Illegal RAM Bank value\n");
-
-				memory_set_bankptr(space_program->machine, 2, mess_ram);
-				break;
-			case 2:
-			case 3:
-				memory_set_bankptr(space_program->machine, 2, mess_ram + (ram_page - 1) * 0x8000);
-				break;
+			memory_install_readwrite8_handler(program, 0x8000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+			memory_install_readwrite8_handler(program, 0xc000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
 		}
+		break;
+
+	case 1:
+		memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		break;
+
+	case 2:
+		if (mess_ram_size > 32 * 1024)
+			memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		else
+			memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		break;
+
+	case 3:
+		if (mess_ram_size > 64 * 1024)
+			memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		else
+			memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		break;
 	}
-			
-	io_A1 = data & 0x0f;
+
+	memory_set_bank(machine, 2, ram_bank);
 }
 
-// 0xB8
-static WRITE8_HANDLER( pio8155_status_write )
+static WRITE8_HANDLER( pc8201_bank_w )
 {
-// enable-disable
-			/*
-			Bit:
-			    0 - Direction of Port A (0-input, 1-output)
-			    1 - Direction of Port B (0-input, 1-output)
-			2 & 3 - Port C definition (00 - All input, 11 - All output, 
-				01 - Alt 3, 10 - Alt 4 (see Intel technical sheets 
-				for more information))
-			    4 - Enable Port A interrupt (1 - enable)
-			    5 - Enable Port B interrupt (1 - enable)
-			6 & 7 - Timer mode (00 - No effect on counter, 01 - Stop 
-				counter immediately, 10 - Stop counter after TC, 11 
-				- Start counter) */
-}
-
-// 0xB9
-static WRITE8_HANDLER( pio8155_portA_write )
-{
-	port_a = data;
-	lcd_bank_update( port_a | ((port_b & 3) << 8) );
-
-			/*
-			The first 5 bits of this port is used to control the 1990 real time clock chip.  
-			The configuration of these five bits are:
-			Bit:
-			    0 -  C0
-			    1 -  C1
-			    2 -  C2
-			    3 -  Clock
-			    4 -  Serial data into clock chip */
-	if ((data & 0x08) != (port_a & 0x08))
-	{
-		const device_config *rtc = devtag_get_device(space->machine, "rtc");
-		upd1990a_clk_w(rtc, offset, data);
-		logerror("CLK write %d\n", data);
-	}
-}
-
-// 0xBA
-static WRITE8_HANDLER( pio8155_portB_write )
-{
-			/*
-			Bit:
-			    0 - Column 9 select line for keyboard.  This line is
-				also used for the CS-28 line of the LCD.
-			    1 - CS 29 line of LCD
-			    2 - Beep toggle (1-Data from bit 5, 0-Data from 8155 
-				timer)
-			    3 - Serial toggle (1-Modem, 0-RS232)
-			    4 - Software on/off switch for computer
-			    5 - Data to beeper if bit 2 set.  Set if bit 2 low.
-			    6 - DTR (not) line for RS232
-			    7 - RTS (not) line for RS232 */
-	port_b = data;
-	lcd_bank_update( port_a | ((port_b & 3) << 8) );
-}
-
-// 0xBB
-static WRITE8_HANDLER( pio8155_portC_write )
-{
-	port_c = data;
-}
-
-// 0xBC
-static WRITE8_HANDLER( pio8155_timer_lsb_write )
-{
-	timer_lsb = data;
-}
-
-// 0xBD
-static WRITE8_HANDLER( pio8155_timer_msb_write )
-{
-	UINT8 timer_counter = 0;
-
-	timer_msb = data;
-	timer_counter = (timer_lsb | (timer_msb & 0x3f) << 8);
-	
-	// set serial baud
-}
-
-
-// 0xC0->0xCF
-// serial write byet
-
-// 0xC0->0xCE T200 only
-// serial write byte
-
-// 0xCF T200 only
-// set serial through UART
- 
-// 0xD0... T200 only
-static WRITE8_HANDLER( trs200_bank_write )	
-{
-	UINT8 *rom = memory_region(space->machine, "maincpu");
-	const address_space *space_program = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	
-	if ((data & 0x03) != rom_page)
-	{
-		rom_page = data & 0x03;
+	/*
 		
-		/* Test for a change to the ROM bank (0x0000 - 0x7FFF) */
-		switch (rom_page)
-		{
-			case 0:
-				memory_set_bankptr(space_program->machine, 1, rom + 0x10000);
-				memory_install_readwrite8_handler(space_program, 0x0000, 0x7fff, 0, 0, SMH_BANK1, SMH_UNMAP);
-				memory_install_readwrite8_handler(space_program, 0x8000, 0x9fff, 0, 0, SMH_BANK2, SMH_UNMAP);
-				break;
-			case 1:
-				memory_set_bankptr(space_program->machine, 1, rom + 0x1a000);	/* Multiplan */
-				memory_install_readwrite8_handler(space_program, 0x0000, 0x7fff, 0, 0, SMH_BANK1, SMH_UNMAP);
-				memory_install_readwrite8_handler(space_program, 0x8000, 0x9fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
-				break;
-			case 2: /* Optional ROM, not implemented yet */
-				break;
-			case 3:
-				logerror("Model 200 Illegal ROM Bank value\n");				
-				break;
-		}
-	}
+		bit		signal		description
 
-	if (((data >> 2) & 0x03) != ram_page)
-	{
-		ram_page = (data >> 2) & 0x03;
+		0		LADR1		select address 0 to 7fff
+		1		LADR2		select address 0 to 7fff
+		2		HADR1		select address 8000 to ffff
+		3		HADR2		select address 8000 to ffff
+		4		
+		5		
+		6		
+		7		
 
-		/* Test for a change to the RAM bank (0x8000 - 0xFFFF) */
-		/* According to the PC-8200 Tech Notes, only 0,2,3 are admissible values here */
-		switch (ram_page)
-		{
-			case 0:
-			case 1:		/* However, we treat 1 as 0*/
-				if (ram_page == 1)
-					logerror("Model 200 Illegal RAM Bank value\n");
+	*/
 
-				memory_set_bankptr(space_program->machine, 2, mess_ram);
-				break;
-			case 2:
-			case 3:
-				memory_set_bankptr(space_program->machine, 2, mess_ram + (ram_page - 1) * 0x8000);
-				break;
-		}
-	}
-			
-	io_D0 = data;
+	pc8201_bankswitch(space->machine, data & 0x0f);
 }
 
-// 0xD0... all systems but T200 - set serial
-				/*
-				Bits:
-					0 - Stop Bits (1-1.5, 0-2)
-					1 - Parity (1-even, 0-odd)
-					2 - Parity Enable (1-no parity, 0-parity enabled)
-					3 - Data length (00-5 bits, 10-6 bits, 01-7 bits, 11-8 
-					bits)
-					4 - Data length (see bit 3) */
-
-
-// 0xE0... all systems but T200
-			/*
-			Bits:
-			    0 - ROM select (0-Standard ROM, 1-Option ROM)
-			    1 - STROBE (not) signal to printer
-			    2 - STROBE for Clock chip (1990)
-			    3 - Remote plug control signal */
-static WRITE8_HANDLER( ioE8_write )
+static WRITE8_HANDLER( pc8201_ctrl_w )
 {
-	/* Check for Clock Chip strobe */
-	if ((data & 0x04) != (io_E8 & 0x04))
-	{
-		const device_config *rtc = devtag_get_device(space->machine, "rtc");
-		upd1990a_w(rtc, offset, port_a);
-		logerror("RTC write: %d\n", port_a);
-	}
+	/*
+		
+		bit		signal		description
 
-	/* printer */
-//	if ((data & 0x02) != (io_E8 & 0x02))
-//		WRITE port_a;
+		0		
+		1		
+		2
+		3		REMOTE		cassette motor
+		4		TSTB		RTC strobe
+		5		PSTB		printer strobe
+		6		SELB		serial interface select bit 1
+		7		SELA		serial interface select bit 0
 
-	io_E8 = data;
+	*/
+
+	kc85_state *state = space->machine->driver_data;
+	
+	/* cassette motor */
+	cassette_change_state(cassette_device_image(space->machine), BIT(data, 3) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
+
+	/* RTC strobe */
+	upd1990a_stb_w(state->upd1990a, BIT(data, 4));
+
+	/* printer strobe */
+	centronics_strobe_w(state->centronics, BIT(data, 5));
+
+	/* serial interface select */
+	state->iosel = data >> 5;
 }
 
-
-// 0xE0... T200 only
-//static WRITE8_HANDLER( trs200_ioE8_write )
-//{
-	// T200 Printer port STROBE is on Bit 0, not Bit 1
-//	if ((data & 0x01) != (io_E8 & 0x01))
-//		WRITE port_a;
-
-//	io_E8 = data;
-//}
-
-
-UINT8 pc8201_lcd[11][256];
-UINT8 pc8201_lcd_addr[10];
-
-// 0xF0...
-static WRITE8_HANDLER( lcd_command_write )
+static WRITE8_HANDLER( uart_ctrl_w )
 {
-	pc8201_lcd_addr[pc8201_lcd_bank] = data;
-	/* logerror("pc8201: LCDCM = 0x%02x\n",data); */
+	/*
+
+		bit		signal		description
+
+		0		SBS			stop bit select
+		1		EPE			even parity enable
+		2		PI			parity inhibit
+		3		CLS1		character length select bit 1
+		4		CLS2		character length select bit 2
+		5		
+		6		
+		7		
+
+	*/
+/*
+	kc85_state *state = space->machine->driver_data;
+
+	im6402_sbs_w(state->im6402, BIT(data, 0));
+	im6402_epe_w(state->im6402, BIT(data, 1));
+	im6402_pi_w(state->im6402, BIT(data, 2));
+	im6402_cls1_w(state->im6402, BIT(data, 3));
+	im6402_cls2_w(state->im6402, BIT(data, 4));
+*/
 }
 
-// 0xFF
-static WRITE8_HANDLER( lcd_data_write )
+static READ8_HANDLER( uart_status_r )
 {
-	UINT8 addr = pc8201_lcd_addr[pc8201_lcd_bank]++;
-	pc8201_lcd[pc8201_lcd_bank][addr] = data;
-	/* logerror("pc8201: LCD [%i][%02x] = 0x%02x\n",pc8201_lcd_bank,addr,data); */
+	/*
+
+		bit		signal		description
+
+		0		CD			carrier detect
+		1		OE			overrun error
+		2		FE			framing error
+		3		PE			parity error
+		4		TBRE		transmit buffer register empty
+		5		RP			
+		6		+5V			
+		7		_LPS		low power sensor
+
+	*/
+/*
+	kc85_state *state = space->machine->driver_data;
+
+	UINT8 data = 0;
+
+	int cd = im6402_cd_r(state->im6402);
+	int oe = im6402_oe_r(state->im6402);
+	int fe = im6402_fe_r(state->im6402);
+	int pe = im6402_pe_r(state->im6402);
+	int tbre = im6402_tbre_r(state->im6402);
+
+	data = (tbre << 4) | (pe << 3) | (fe << 2) | (oe << 1) | cd;
+
+	return data;
+*/
+
+	return 0xf0;
 }
 
-static WRITE8_HANDLER( unk_write )
+static READ8_HANDLER( pc8201_uart_status_r )
 {
-	logerror("pc8201 IO port w: %04x %02x\n", offset, data);
+	/*
+
+		bit		signal		description
+
+		0		_DCD/_RD	data carrier detect / ring detect
+		1		OE			overrun error
+		2		FE			framing error
+		3		PE			parity error
+		4		TBRE		transmit buffer register empty
+		5		RP			
+		6		+5V			
+		7		_LPS		low power signal
+
+	*/
+/*
+	kc85_state *state = space->machine->driver_data;
+
+	UINT8 data = 0;
+
+	int cd = im6402_cd_r(state->im6402);
+	int oe = im6402_oe_r(state->im6402);
+	int fe = im6402_fe_r(state->im6402);
+	int pe = im6402_pe_r(state->im6402);
+	int tbre = im6402_tbre_r(state->im6402);
+
+	data = (tbre << 4) | (pe << 3) | (fe << 2) | (oe << 1) | cd;
+
+	return data;
+*/
+
+	return 0xf0;
 }
 
-
-/*  READ HANDLERS  */
-
-// 0x82
-static READ8_HANDLER( io82_read )
+static WRITE8_HANDLER( modem_w )
 {
-	return 0xa2;	/* FIXME */
+	/*
+
+		bit		signal		description
+
+		0					telephone line signal selection relay output		
+		1		EN			MC14412 enable output
+		2		
+		3		
+		4		
+		5		
+		6		
+		7		
+
+	*/
+/*
+	kc85_state *state = space->machine->driver_data;
+
+	mc14412_en_w(state->mc14412, BIT(data, 1));
+*/
 }
 
-// 0x90... T200 only
-//static READ8_HANDLER( trs200_clock_mode_read )
-//{
-//}
-
-// 0xA0 all systems but PC8201
-// Modem control port
-static READ8_HANDLER( modem_control_port_read )
+static WRITE8_HANDLER( kc85_ctrl_w )
 {
-	return 0;	// FIXME
+	/*
+
+		bit		signal		description
+
+		0		_STROM		ROM selection (0=standard, 1=option)
+		1		_STROBE		printer strobe output
+		2		STB			RTC strobe output
+		3		_REMOTE		cassette motor
+		4		
+		5		
+		6		
+		7		
+
+	*/
+
+	kc85_state *state = space->machine->driver_data;
+
+	/* ROM bank selection */
+	memory_set_bank(space->machine, 1, BIT(data, 0));
+
+	/* printer strobe */
+	centronics_strobe_w(state->centronics, BIT(data, 1));
+
+	/* RTC strobe */
+	upd1990a_stb_w(state->upd1990a, BIT(data, 2));
+
+	/* cassette motor */
+	cassette_change_state(cassette_device_image(space->machine), BIT(data, 3) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 }
 
-// 0xA0 PC8201 only
-static READ8_HANDLER( pc8201_ioa0_read )
+static UINT8 read_keyboard(running_machine *machine, UINT16 keylatch)
 {
-	return (io_A1 & 0x3f) | (io_90 & 0xc0);
-}
+	UINT8 data = 0xff;
 
-// 0xA1 PC-8201 only
-static READ8_HANDLER( pc8201_bank_read )
-{
-	return io_A1;
-}
+	if (!BIT(keylatch, 0)) data &= input_port_read(machine, "KEY0");
+	if (!BIT(keylatch, 1)) data &= input_port_read(machine, "KEY1");
+	if (!BIT(keylatch, 2)) data &= input_port_read(machine, "KEY2");
+	if (!BIT(keylatch, 3)) data &= input_port_read(machine, "KEY3");
+	if (!BIT(keylatch, 4)) data &= input_port_read(machine, "KEY4");
+	if (!BIT(keylatch, 5)) data &= input_port_read(machine, "KEY5");
+	if (!BIT(keylatch, 6)) data &= input_port_read(machine, "KEY6");
+	if (!BIT(keylatch, 7)) data &= input_port_read(machine, "KEY7");
+	if (!BIT(keylatch, 8)) data &= input_port_read(machine, "KEY8");
 
-// 0xB8
-static READ8_HANDLER( pio8155_status_read )
-{
-			/*
-			Bit:
-			    0 - Port A interrupt request
-			    1 - Port A buffer full/empty (input/output)
-			    2 - Port A interrupt enabled
-			    3 - Port B interrupt request
-			    4 - Port B buffer full/empty (input/output)
-			    5 - Port B interrupt enabled
-			    6 - Timer interrupt (status of TC pin)
-			    7 - Not used */
-
-	/* Force TC high */
-	return 0x89;
-}
-
-// 0xB9
-static READ8_HANDLER( pio8155_portA_read )
-{
-	return port_a;
-}
-
-// 0xBA
-static READ8_HANDLER( pio8155_portB_read )
-{
-	return port_b;
-}
-
-// 0xBB
-static READ8_HANDLER( pio8155_portC_read )
-{
-	const device_config *rtc = devtag_get_device(space->machine, "rtc");
-	port_c = (port_c & ~0x01) | upd1990a_data_out_r(rtc, offset);
-
-	return port_c;
-			/*
-			Bits:
-			    0 - Serial data input from clock chip
-			    1 - Busy (not) signal from printer
-			    2 - Busy signal from printer
-			    3 - Data from BCR
-			    4 - CTS (not) line from RS232
-			    5 - DSR (not) line from RS232
-			    6-7 - Not avaiable on 8155 */
-}
-
-// 0xBC
-// 0xBD
-static READ8_HANDLER( pio8155_timer_read )
-{
-	logerror("kyocera timer r: %04x\n", offset);
-	return 0;
-}
-
-// 0xC0->0xCF all systems but T200
-// serial read byte
-
-// 0xC0->0xCE T200 only
-// serial read byte
-
-// 0xCF T200 only
-// serial flag
-
-// 0xD0->0xDF T200 only
-static READ8_HANDLER( trs200_bank_read )
-{
-	return io_D0;
-}
-				/*
-				Bits:
-					0 - Data on telephone line (used to detect carrier)
-					1 - Overrun error from UART
-					2 - Framing error from UART
-					3 - Parity error from UART
-					4 - Transmit buffer empty from UART
-					5 - Ring line on modem connector
-					6 - Not used
-					7 - Low Power signal from power supply (LPS not) */
-
-
-// 0xD8?!?!
-static READ8_HANDLER( uart_read )
-{
-	return 0xff;	/* FIXME */
-}
-
-// 0xE0...
-static READ8_HANDLER( keyboard_read )
-{
-	UINT8 data = 0xff, col;
-	UINT16 strobe = (port_b << 8) | port_a;
-	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4",	"KEY5", "KEY6", "KEY7", "KEY8" };
-
-	for (col = 0; col < 9; col++) 
-	{
-		if ((strobe & (1 << col)) == 0) 
-			data &= input_port_read(space->machine, keynames[col]);
-	}
-
-	logerror("CALL to %d and RETURN %d\n", offset, data);
 	return data;
 }
 
-// 0xF0...
-static READ8_HANDLER( lcd_status_read )
+static READ8_HANDLER( keyboard_r )
 {
-	/* logerror("pc8201: LCDST = 0\n"); */
-	return 0;	/* currently we are always ready */
+	kc85_state *state = space->machine->driver_data;
+
+	return read_keyboard(space->machine, state->keylatch);
 }
 
-// 0xFF
-static READ8_HANDLER( lcd_data_read )
+static READ8_HANDLER( tandy200_bank_r )
 {
-	UINT8 addr = pc8201_lcd_addr[pc8201_lcd_bank]++;
-	return pc8201_lcd[pc8201_lcd_bank][addr];
+	tandy200_state *state = space->machine->driver_data;
+
+	return state->bank;
 }
 
-static READ8_HANDLER( unk_read )
+static WRITE8_HANDLER( tandy200_bank_w )
 {
-	logerror("pc8201 IO port r: %04x\n", offset);
-	return 0;
+	tandy200_state *state = space->machine->driver_data;
+
+	const address_space *program = cputag_get_address_space(space->machine, I8085_TAG, ADDRESS_SPACE_PROGRAM);
+
+	int rom_bank = data & 0x03;
+	int ram_bank = (data >> 2) & 0x03;
+
+	state->bank = data & 0x0f;
+
+	if (rom_bank == 3)
+	{
+		/* invalid ROM bank */
+		memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+	}
+	else
+	{
+		memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
+		memory_set_bank(space->machine, 1, rom_bank);
+	}
+
+	if (mess_ram_size < ((ram_bank + 1) * 24 * 1024))
+	{
+		/* invalid RAM bank */
+		memory_install_readwrite8_handler(program, 0xa000, 0xffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+	}
+	else
+	{
+		memory_install_readwrite8_handler(program, 0xa000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		memory_set_bank(space->machine, 2, ram_bank);
+	}
 }
 
-static ADDRESS_MAP_START( kyo85_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_RAM
-	AM_RANGE(0xc000, 0xffff) AM_RAM
+static READ8_HANDLER( tandy200_stbk_r )
+{
+	tandy200_state *state = space->machine->driver_data;
+
+	return read_keyboard(space->machine, state->keylatch);
+}
+
+static WRITE8_HANDLER( tandy200_stbk_w )
+{
+	/*
+		
+		bit		signal	description
+
+		0		_PSTB	printer strobe output
+		1		REMOTE	cassette motor
+		2
+		3
+		4
+		5
+		6
+		7
+
+	*/
+
+	tandy200_state *state = space->machine->driver_data;
+
+	/* printer strobe */
+	centronics_strobe_w(state->centronics, BIT(data, 0));
+
+	/* cassette motor */
+	cassette_change_state(cassette_device_image(space->machine), BIT(data, 1) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
+}
+
+/* Memory Maps */
+
+static ADDRESS_MAP_START( kc85_mem, ADDRESS_SPACE_PROGRAM, 8 )
+	ADDRESS_MAP_UNMAP_HIGH
+	AM_RANGE(0x0000, 0x7fff) AM_ROMBANK(1)
+	AM_RANGE(0x8000, 0xffff) AM_RAMBANK(2)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( npc8201_mem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( pc8201_mem, ADDRESS_SPACE_PROGRAM, 8 )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK(1)
 	AM_RANGE(0x8000, 0xffff) AM_RAMBANK(2)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( trs200_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK(1)
-	AM_RANGE(0x8000, 0x9fff) AM_RAMBANK(2)
-	AM_RANGE(0xa000, 0xffff) AM_RAMBANK(3)
+static ADDRESS_MAP_START( tandy200_mem, ADDRESS_SPACE_PROGRAM, 8 )
+	ADDRESS_MAP_UNMAP_HIGH
+	AM_RANGE(0x0000, 0x7fff) AM_ROMBANK(1)
+	AM_RANGE(0x8000, 0x9fff) AM_ROM
+	AM_RANGE(0xa000, 0xffff) AM_RAMBANK(2)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( kyo85_io, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x00, 0x81) AM_READWRITE( unk_read, unk_write )
-	AM_RANGE(0x82, 0x82) AM_READ( io82_read )
-	AM_RANGE(0x83, 0x9f) AM_READWRITE( unk_read, unk_write )
-	AM_RANGE(0xa0, 0xa0) AM_READWRITE( modem_control_port_read, modem_control_port_write )
-	AM_RANGE(0xb9, 0xb9) AM_READWRITE( pio8155_portA_read, pio8155_portA_write )
-	AM_RANGE(0xba, 0xba) AM_READWRITE( pio8155_portB_read, pio8155_portB_write )
-	AM_RANGE(0xbb, 0xbb) AM_READWRITE( pio8155_portC_read, pio8155_portC_write )
-	AM_RANGE(0xbc, 0xbd) AM_READ( pio8155_timer_read )			// currently, this only logs read attempts
-	AM_RANGE(0xbc, 0xbc) AM_WRITE( pio8155_timer_lsb_write )	// these should set serial comms but it's not yet implemented
-	AM_RANGE(0xbd, 0xbd) AM_WRITE( pio8155_timer_msb_write )
-	AM_RANGE(0xd8, 0xd8) AM_READ( uart_read )
-	AM_RANGE(0xe0, 0xe8) AM_READ( keyboard_read )
-	AM_RANGE(0xe0, 0xe8) AM_READWRITE( keyboard_read, ioE8_write )
-	AM_RANGE(0xfe, 0xfe) AM_READWRITE( lcd_status_read, lcd_command_write ) /* LCD status / command */
-	AM_RANGE(0xff, 0xff) AM_READWRITE( lcd_data_read, lcd_data_write )		/* LCD data */
+static ADDRESS_MAP_START( kc85_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_UNMAP_HIGH
+//	AM_RANGE(0x70, 0x70) AM_MIRROR(0x0f) optional RAM unit
+//	AM_RANGE(0x80, 0x80) AM_MIRROR(0x0f) optional I/O controller unit
+//	AM_RANGE(0x90, 0x90) AM_MIRROR(0x0f) optional answering telephone unit
+//	AM_RANGE(0xa0, 0xa0) AM_MIRROR(0x0f) optional modem
+	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE(PIO8155_TAG, pio8155_r, pio8155_w)
+//	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x0f) AM_DEVREADWRITE(IM6402_TAG, im6402_data_r, im6402_data_w)
+	AM_RANGE(0xd0, 0xd0) AM_MIRROR(0x0f) AM_READWRITE(uart_status_r, uart_ctrl_w)
+	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x0f) AM_READWRITE(keyboard_r, kc85_ctrl_w)
+	AM_RANGE(0xf0, 0xf0) AM_MIRROR(0x0e) AM_READWRITE(kc85_lcd_status_r, kc85_lcd_command_w)
+	AM_RANGE(0xf1, 0xf1) AM_MIRROR(0x0e) AM_READWRITE(kc85_lcd_data_r, kc85_lcd_data_w)
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( trsm100_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_UNMAP_HIGH
+//	AM_RANGE(0x70, 0x70) AM_MIRROR(0x0f) optional RAM unit
+//	AM_RANGE(0x80, 0x80) AM_MIRROR(0x0f) optional I/O controller unit
+//	AM_RANGE(0x90, 0x90) AM_MIRROR(0x0f) optional answering telephone unit
+	AM_RANGE(0xa0, 0xa0) AM_MIRROR(0x0f) AM_WRITE(modem_w)
+	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE(PIO8155_TAG, pio8155_r, pio8155_w)
+//	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x0f) AM_DEVREADWRITE(IM6402_TAG, im6402_data_r, im6402_data_w)
+	AM_RANGE(0xd0, 0xd0) AM_MIRROR(0x0f) AM_READWRITE(uart_status_r, uart_ctrl_w)
+	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x0f) AM_READWRITE(keyboard_r, kc85_ctrl_w)
+	AM_RANGE(0xf0, 0xf0) AM_MIRROR(0x0e) AM_READWRITE(kc85_lcd_status_r, kc85_lcd_command_w)
+	AM_RANGE(0xf1, 0xf1) AM_MIRROR(0x0e) AM_READWRITE(kc85_lcd_data_r, kc85_lcd_data_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pc8201_io, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x82, 0x82) AM_READ( io82_read )
-	AM_RANGE(0x90, 0x90) AM_WRITE( pc8201_io90_write )
-	AM_RANGE(0xa0, 0xa0) AM_READWRITE( pc8201_ioa0_read, modem_control_port_write )
-	AM_RANGE(0xa1, 0xa1) AM_READWRITE( pc8201_bank_read, pc8201_bank_write )
-	AM_RANGE(0xb8, 0xb8) AM_READWRITE( pio8155_status_read, pio8155_status_write )
-	AM_RANGE(0xb9, 0xb9) AM_READWRITE( pio8155_portA_read, pio8155_portA_write )
-	AM_RANGE(0xba, 0xba) AM_READWRITE( pio8155_portB_read, pio8155_portB_write )
-	AM_RANGE(0xbb, 0xbb) AM_READWRITE( pio8155_portC_read, pio8155_portC_write )
-	AM_RANGE(0xbc, 0xbd) AM_READ( pio8155_timer_read )			// currently, this only logs read attempts
-	AM_RANGE(0xbc, 0xbc) AM_WRITE( pio8155_timer_lsb_write )	// these should set serial comms but it's not yet implemented
-	AM_RANGE(0xbd, 0xbd) AM_WRITE( pio8155_timer_msb_write )
-	AM_RANGE(0xd8, 0xd8) AM_READ( uart_read )
-	AM_RANGE(0xe0, 0xe8) AM_READ( keyboard_read )
-//	AM_RANGE(0xe0, 0xe8) AM_READWRITE( keyboard_read, ioE8_write )
-	AM_RANGE(0xfe, 0xfe) AM_READWRITE( lcd_status_read, lcd_command_write ) /* LCD status / command */
-	AM_RANGE(0xff, 0xff) AM_READWRITE( lcd_data_read, lcd_data_write )		/* LCD data */
+	ADDRESS_MAP_UNMAP_HIGH
+//	AM_RANGE(0x70, 0x70) AM_MIRROR(0x0f) optional video interface 8255
+//	AM_RANGE(0x80, 0x80) AM_MIRROR(0x0f) optional 128K ROM cartridge
+	AM_RANGE(0x90, 0x90) AM_MIRROR(0x0f) AM_WRITE(pc8201_ctrl_w)
+	AM_RANGE(0xa0, 0xa0) AM_MIRROR(0x0f) AM_READWRITE(pc8201_bank_r, pc8201_bank_w)
+	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE(PIO8155_TAG, pio8155_r, pio8155_w )
+//	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x0f) AM_DEVREADWRITE(IM6402_TAG, im6402_data_r, im6402_data_w)
+	AM_RANGE(0xd0, 0xd0) AM_MIRROR(0x0f) AM_READWRITE(pc8201_uart_status_r, uart_ctrl_w)
+	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x0f) AM_READ(keyboard_r)
+	AM_RANGE(0xf0, 0xf0) AM_MIRROR(0x0e) AM_READWRITE(kc85_lcd_status_r, kc85_lcd_command_w)
+	AM_RANGE(0xf1, 0xf1) AM_MIRROR(0x0e) AM_READWRITE(kc85_lcd_data_r, kc85_lcd_data_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( trs200_io, ADDRESS_SPACE_IO, 8 )
-//	AM_RANGE(0x00, 0x81) AM_READWRITE( unk_read, unk_write )
-	AM_RANGE(0x82, 0x82) AM_READ( io82_read )
-//	AM_RANGE(0x83, 0x8f) AM_READWRITE( unk_read, unk_write )
-//	AM_RANGE(0x90, 0x90) AM_WRITE( trs200_clock_mode_write )
-//	AM_RANGE(0x91, 0x9f) AM_READWRITE( unk_read, unk_write )
-	AM_RANGE(0xa0, 0xa0) AM_READWRITE( modem_control_port_read, modem_control_port_write )
-	AM_RANGE(0xb9, 0xb9) AM_READWRITE( pio8155_portA_read, pio8155_portA_write )
-	AM_RANGE(0xba, 0xba) AM_READWRITE( pio8155_portB_read, pio8155_portB_write )
-	AM_RANGE(0xbb, 0xbb) AM_READWRITE( pio8155_portC_read, pio8155_portC_write )
-	AM_RANGE(0xbc, 0xbd) AM_READ( pio8155_timer_read )			// currently, this only logs read attempts
-	AM_RANGE(0xbc, 0xbc) AM_WRITE( pio8155_timer_lsb_write )	// these should set serial comms but it's not yet implemented
-	AM_RANGE(0xbd, 0xbd) AM_WRITE( pio8155_timer_msb_write )
-	AM_RANGE(0xd0, 0xdf) AM_READWRITE( trs200_bank_read, trs200_bank_write )
-	AM_RANGE(0xe0, 0xe8) AM_READ( keyboard_read )
-//	AM_RANGE(0xe0, 0xe8) AM_READWRITE( keyboard_read, ioE8_write )
-	AM_RANGE(0xfe, 0xfe) AM_READWRITE( lcd_status_read, lcd_command_write ) /* LCD status / command */
-	AM_RANGE(0xff, 0xff) AM_READWRITE( lcd_data_read, lcd_data_write )		/* LCD data */
+static ADDRESS_MAP_START( tandy200_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_UNMAP_HIGH
+	AM_RANGE(0x90, 0x9f) AM_DEVREADWRITE(RP5C01A_TAG, rp5c01a_r, rp5c01a_w)
+//	AM_RANGE(0xa0, 0xa0) AM_MIRROR(0x0f) AM_DEVWRITE(TCM5089_TAG, tcm5089_w)
+	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE(PIO8155_TAG, pio8155_r, pio8155_w)
+	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x0e) AM_DEVREADWRITE(MSM8251_TAG, msm8251_data_r, msm8251_data_w)
+	AM_RANGE(0xc1, 0xc1) AM_MIRROR(0x0e) AM_DEVREADWRITE(MSM8251_TAG, msm8251_status_r, msm8251_control_w)
+	AM_RANGE(0xd0, 0xd0) AM_MIRROR(0x0f) AM_READWRITE(tandy200_bank_r, tandy200_bank_w)
+	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x0f) AM_READWRITE(tandy200_stbk_r, tandy200_stbk_w)
+	AM_RANGE(0xf0, 0xf0) AM_MIRROR(0x0e) AM_DEVREADWRITE(HD61830_TAG, hd61830_data_r, hd61830_data_w)
+	AM_RANGE(0xf1, 0xf1) AM_MIRROR(0x0e) AM_DEVREADWRITE(HD61830_TAG, hd61830_status_r, hd61830_control_w)
 ADDRESS_MAP_END
 
+/* Input Ports */
 
-// pasted from PX-4. to be fixed!!
-static PALETTE_INIT( kyo85 )
-{
-	palette_set_color(machine, 0, MAKE_RGB(138, 146, 148));
-	palette_set_color(machine, 1, MAKE_RGB(92, 83, 88));
-}
-
-static VIDEO_UPDATE( kyo85 )
-{
-	int x,y;
-	int bank;
-	int row,col;
-	int addr;
-	int yoff;
-	unsigned char b;
-
-	int pen1,pen0;
-
-	pen0 = screen->machine->pens[0];
-	pen1 = screen->machine->pens[1];
-
-	for (y=0;y<64;y+=8) 
-	{
-		for (x=0;x<240;x++) 
-		{
-			bank = x/50;
-			row = x%50;
-			col = y/8;
-			if (col>3) 
-			{
-				col -= 4;
-				bank+= 5;
-			}
-
-		addr = col*64 + row;
-
-		b = pc8201_lcd[bank+1][addr];
-
-		/*logerror("pc8201: vid [%i][%02x] = 0x%02x (%i,%i)\n",bank,addr,b,x,y); */
-
-	for (yoff = 0; yoff < 8; yoff++)
-	{
-		*BITMAP_ADDR16(bitmap, y+yoff, x ) = ((b & (1 << yoff)) == (1 << yoff)) ? pen0 : pen1;
-	}
-	
-		}
-	}
-
-	return 0;
-}
-
-
-/**************************************************************************
-
-	Keyboard
-
-***************************************************************************/
-
-/*
-
-"Model 100" - must be changed for pc8201 and others
-Data
-(@ E0)	7 | L  A  I  ?  *  -> Ent f8   Brk
-	6 | M  S  U  >  & <-  Prt f7
-	5 | N  D  Y  <  ^  Up Lbl f6   Cap
-	4 | B  F  T  "  % Dwn Pst f5   Num
-	3 | V  G  R  :  $    Esc f4   Cde
-	2 | C  H  E  ]  #  -  Tab f3   Gph
-	1 | X  J  W  P  @  )  Del f2   Ctl
-	0 | Z  K  Q  O  !  (  Spc f1   Sft
---------------------------------------------------
-Strobe      0  1  2  3  4  5  6  7  |  0  Strobe
-(from				    |     (from B2)
- B1)
-*/
-static INPUT_PORTS_START( kyo85 )
+static INPUT_PORTS_START( kc85 )
 	PORT_START("KEY0")
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("L") PORT_CODE(KEYCODE_L)
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("M") PORT_CODE(KEYCODE_M)
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("N") PORT_CODE(KEYCODE_N)
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("B") PORT_CODE(KEYCODE_B)
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("V") PORT_CODE(KEYCODE_V)
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("C") PORT_CODE(KEYCODE_C)
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("X") PORT_CODE(KEYCODE_X)
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Z") PORT_CODE(KEYCODE_Z)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_L) PORT_CHAR('l') PORT_CHAR('L')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_M) PORT_CHAR('m') PORT_CHAR('M')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_N) PORT_CHAR('n') PORT_CHAR('N')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_B) PORT_CHAR('b') PORT_CHAR('B')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_V) PORT_CHAR('v') PORT_CHAR('V')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_C) PORT_CHAR('c') PORT_CHAR('C')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_X) PORT_CHAR('x') PORT_CHAR('X')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Z) PORT_CHAR('z') PORT_CHAR('Z')
 
 	PORT_START("KEY1")
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("A") PORT_CODE(KEYCODE_A)
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("S") PORT_CODE(KEYCODE_S)
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("D") PORT_CODE(KEYCODE_D)
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F") PORT_CODE(KEYCODE_F)
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("G") PORT_CODE(KEYCODE_G)
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("H") PORT_CODE(KEYCODE_H)
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("J") PORT_CODE(KEYCODE_J)
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("K") PORT_CODE(KEYCODE_K)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_K) PORT_CHAR('k') PORT_CHAR('K')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_J) PORT_CHAR('j') PORT_CHAR('J')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_H) PORT_CHAR('h') PORT_CHAR('H')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_G) PORT_CHAR('g') PORT_CHAR('G')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F) PORT_CHAR('f') PORT_CHAR('F')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_D) PORT_CHAR('d') PORT_CHAR('D')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_S) PORT_CHAR('s') PORT_CHAR('S')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_A) PORT_CHAR('a') PORT_CHAR('A')
 
 	PORT_START("KEY2")
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("I") PORT_CODE(KEYCODE_I)
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("U") PORT_CODE(KEYCODE_U)
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Y") PORT_CODE(KEYCODE_Y)
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("T") PORT_CODE(KEYCODE_T)
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("R") PORT_CODE(KEYCODE_R)
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("E") PORT_CODE(KEYCODE_E)
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("W") PORT_CODE(KEYCODE_W)
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Q") PORT_CODE(KEYCODE_Q)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_I) PORT_CHAR('i') PORT_CHAR('I')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_U) PORT_CHAR('u') PORT_CHAR('U')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Y) PORT_CHAR('y') PORT_CHAR('Y')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_T) PORT_CHAR('t') PORT_CHAR('T')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_R) PORT_CHAR('r') PORT_CHAR('R')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_E) PORT_CHAR('e') PORT_CHAR('E')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_W) PORT_CHAR('w') PORT_CHAR('W')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Q) PORT_CHAR('q') PORT_CHAR('Q')
 
 	PORT_START("KEY3")
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("?") PORT_CODE(KEYCODE_SLASH)
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(">") PORT_CODE(KEYCODE_STOP)
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("<") PORT_CODE(KEYCODE_COMMA)
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("\"") PORT_CODE(KEYCODE_QUOTE)
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(":") PORT_CODE(KEYCODE_COLON)
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("]") PORT_CODE(KEYCODE_CLOSEBRACE)
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("P") PORT_CODE(KEYCODE_P)
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("O") PORT_CODE(KEYCODE_O)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_SLASH) PORT_CHAR('/') PORT_CHAR('?')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_STOP) PORT_CHAR('.') PORT_CHAR('>')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COMMA) PORT_CHAR(',') PORT_CHAR('<')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR('\'') PORT_CHAR('"')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COLON) PORT_CHAR(';') PORT_CHAR(':')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR('[') PORT_CHAR(']')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_P) PORT_CHAR('p') PORT_CHAR('P')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_O) PORT_CHAR('o') PORT_CHAR('O')
 
 	PORT_START("KEY4")
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("*") PORT_CODE(KEYCODE_8)
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("&") PORT_CODE(KEYCODE_7)
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("^") PORT_CODE(KEYCODE_6)
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("%") PORT_CODE(KEYCODE_5)
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("$") PORT_CODE(KEYCODE_4)
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("#") PORT_CODE(KEYCODE_3)
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("@") PORT_CODE(KEYCODE_2)
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("!") PORT_CODE(KEYCODE_1)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_8) PORT_CHAR('8') PORT_CHAR('*')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_7) PORT_CHAR('7') PORT_CHAR('&')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_6) PORT_CHAR('6') PORT_CHAR('^')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_5) PORT_CHAR('5') PORT_CHAR('%')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_4) PORT_CHAR('4') PORT_CHAR('$')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_3) PORT_CHAR('3') PORT_CHAR('#')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_2) PORT_CHAR('2') PORT_CHAR('@')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHAR('!')
 
 	PORT_START("KEY5")
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("RIGHT") PORT_CODE(KEYCODE_RIGHT)
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("LEFT") PORT_CODE(KEYCODE_LEFT)
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("UP") PORT_CODE(KEYCODE_UP)
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("DOWN") PORT_CODE(KEYCODE_DOWN)
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("+") PORT_CODE(KEYCODE_EQUALS)
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("-") PORT_CODE(KEYCODE_MINUS)
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(")") PORT_CODE(KEYCODE_0)
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(") PORT_CODE(KEYCODE_9)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x93") PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x91") PORT_CODE(KEYCODE_UP) PORT_CHAR(UCHAR_MAMEKEY(UP))
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x92") PORT_CODE(KEYCODE_RIGHT) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x90") PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_EQUALS) PORT_CHAR('=') PORT_CHAR('+')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_MINUS) PORT_CHAR('-') PORT_CHAR('_')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_0) PORT_CHAR('0') PORT_CHAR(')')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_9) PORT_CHAR('9') PORT_CHAR('(')
 
 	PORT_START("KEY6")
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ENT") PORT_CODE(KEYCODE_ENTER)
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("PRT")
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("LBL")
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("PST") PORT_CODE(KEYCODE_INSERT)
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ESC") PORT_CODE(KEYCODE_ESC)
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("TAB") PORT_CODE(KEYCODE_TAB)
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("DEL") PORT_CODE(KEYCODE_DEL)
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("SPACE") PORT_CODE(KEYCODE_SPACE) 
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("ENTER") PORT_CODE(KEYCODE_ENTER) PORT_CHAR(13)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("PRINT") PORT_CODE(KEYCODE_F11) PORT_CHAR(UCHAR_MAMEKEY(F11))
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("LABEL") PORT_CODE(KEYCODE_F10) PORT_CHAR(UCHAR_MAMEKEY(F10))
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("PASTE") PORT_CODE(KEYCODE_F9) PORT_CHAR(UCHAR_MAMEKEY(F9))
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("ESC") PORT_CODE(KEYCODE_ESC) PORT_CHAR(UCHAR_MAMEKEY(ESC))
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x92|") PORT_CODE(KEYCODE_TAB) PORT_CHAR('\t')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("DEL BKSP") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(8)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("SPACE") PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ')
 
 	PORT_START("KEY7")
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F8")
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F7")
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F6")
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F5") PORT_CODE(KEYCODE_F5)
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F4") PORT_CODE(KEYCODE_F4)
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F3") PORT_CODE(KEYCODE_F3)
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F2") PORT_CODE(KEYCODE_F2)
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F1") PORT_CODE(KEYCODE_F1)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("F8") PORT_CODE(KEYCODE_F8) PORT_CHAR(UCHAR_MAMEKEY(F8))
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("F7") PORT_CODE(KEYCODE_F7) PORT_CHAR(UCHAR_MAMEKEY(F7))
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("F6") PORT_CODE(KEYCODE_F6) PORT_CHAR(UCHAR_MAMEKEY(F6))
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("F5") PORT_CODE(KEYCODE_F5) PORT_CHAR(UCHAR_MAMEKEY(F5))
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("F4") PORT_CODE(KEYCODE_F4) PORT_CHAR(UCHAR_MAMEKEY(F4))
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("F3") PORT_CODE(KEYCODE_F3) PORT_CHAR(UCHAR_MAMEKEY(F3))
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("F2") PORT_CODE(KEYCODE_F2) PORT_CHAR(UCHAR_MAMEKEY(F2))
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("F1") PORT_CODE(KEYCODE_F1) PORT_CHAR(UCHAR_MAMEKEY(F1))
 
 	PORT_START("KEY8")
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("BRK")
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("CAP") PORT_CODE(KEYCODE_CAPSLOCK)
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("NUM")
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("CDE")
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("GPH") PORT_CODE(KEYCODE_LALT)
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("CTL") PORT_CODE(KEYCODE_LCONTROL)
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("SFT") PORT_CODE(KEYCODE_LSHIFT)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("PAUSE BREAK") PORT_CODE(KEYCODE_F12) PORT_CHAR(UCHAR_MAMEKEY(F12))
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("CAPS LOCK") PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("NUM") PORT_CODE(KEYCODE_RCONTROL) PORT_CHAR(UCHAR_MAMEKEY(RCONTROL))
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("CODE") PORT_CODE(KEYCODE_RALT) PORT_CHAR(UCHAR_MAMEKEY(RALT))
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("GRAPH") PORT_CODE(KEYCODE_LALT) PORT_CHAR(UCHAR_MAMEKEY(LALT))
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("CTRL") PORT_CODE(KEYCODE_LCONTROL) PORT_CHAR(UCHAR_MAMEKEY(LCONTROL))
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("SHIFT") PORT_CODE(KEYCODE_LSHIFT) PORT_CODE(KEYCODE_RSHIFT) PORT_CHAR(UCHAR_SHIFT_1)
 INPUT_PORTS_END
 
+static INPUT_PORTS_START( pc8201a )
+	PORT_INCLUDE( kc85 )
 
-static MACHINE_START( kyo85 )
+	PORT_MODIFY("KEY3")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_RCONTROL) PORT_CHAR(']') PORT_CHAR('}')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_SLASH) PORT_CHAR('/') PORT_CHAR('?')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_STOP) PORT_CHAR('.') PORT_CHAR('>')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COMMA) PORT_CHAR(',') PORT_CHAR('<')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR('\\') PORT_CHAR('|')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR('@') PORT_CHAR('^')
+
+	PORT_MODIFY("KEY4")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_8) PORT_CHAR('8') PORT_CHAR('(')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_7) PORT_CHAR('7') PORT_CHAR('\'')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_6) PORT_CHAR('6') PORT_CHAR('&')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_2) PORT_CHAR('2') PORT_CHAR('"')
+
+	PORT_MODIFY("KEY5")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("PAST INS") PORT_CODE(KEYCODE_INSERT) PORT_CHAR(UCHAR_MAMEKEY(INSERT))
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("SPACE") PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_RALT) PORT_CHAR('[') PORT_CHAR('{')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_MINUS) PORT_CHAR('-') PORT_CHAR('=')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR(':') PORT_CHAR('*')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COLON) PORT_CHAR(';') PORT_CHAR('+')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_0) PORT_CHAR('0') PORT_CHAR('_')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_9) PORT_CHAR('9') PORT_CHAR(')')
+
+	PORT_MODIFY("KEY6")
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("ESC") PORT_CODE(KEYCODE_ESC)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x92|") PORT_CODE(KEYCODE_TAB)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x92") PORT_CODE(KEYCODE_RIGHT) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x90") PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x93") PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x91") PORT_CODE(KEYCODE_UP) PORT_CHAR(UCHAR_MAMEKEY(UP))
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("DEL BKSP") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(8)
+	
+	PORT_MODIFY("KEY7")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("STOP") PORT_CODE(KEYCODE_F8) PORT_CHAR(UCHAR_MAMEKEY(F8))
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED ) 
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED ) 
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("f.5") PORT_CODE(KEYCODE_F5) PORT_CHAR(UCHAR_MAMEKEY(F5))
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("f.4") PORT_CODE(KEYCODE_F4) PORT_CHAR(UCHAR_MAMEKEY(F4))
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("f.3") PORT_CODE(KEYCODE_F3) PORT_CHAR(UCHAR_MAMEKEY(F3))
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("f.2") PORT_CODE(KEYCODE_F2) PORT_CHAR(UCHAR_MAMEKEY(F2))
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("f.1") PORT_CODE(KEYCODE_F1) PORT_CHAR(UCHAR_MAMEKEY(F1))
+
+	PORT_MODIFY("KEY8")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("CAPS LOCK") PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( olivm10 )
+	PORT_START("KEY0")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_5) PORT_CHAR('5') PORT_CHAR('%')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_4) PORT_CHAR('4') PORT_CHAR('$')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_3) PORT_CHAR('3') PORT_CHAR('#')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_2) PORT_CHAR('2') PORT_CHAR('"')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHAR('!')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_TILDE) PORT_CHAR('[') PORT_CHAR('{')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_W) PORT_CHAR('w') PORT_CHAR('W')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Q) PORT_CHAR('q') PORT_CHAR('Q')
+
+	PORT_START("KEY1")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_EQUALS) PORT_CHAR('^') PORT_CHAR('~')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_MINUS) PORT_CHAR('-') PORT_CHAR('=')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_0) PORT_CHAR('0') PORT_CHAR('_')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_9) PORT_CHAR('9') PORT_CHAR(')')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_8) PORT_CHAR('8') PORT_CHAR('(')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_7) PORT_CHAR('7') PORT_CHAR('\'')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_6) PORT_CHAR('6') PORT_CHAR('&')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Y) PORT_CHAR('y') PORT_CHAR('Y')
+
+	PORT_START("KEY2")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_M) PORT_CHAR('m') PORT_CHAR('M')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COMMA) PORT_CHAR(',') PORT_CHAR('<')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_STOP) PORT_CHAR('.') PORT_CHAR('>')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_SLASH) PORT_CHAR('/') PORT_CHAR('?')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR(':') PORT_CHAR('*')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COLON) PORT_CHAR(';') PORT_CHAR('+')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR('@') PORT_CHAR('`')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR(']') PORT_CHAR('}')
+
+	PORT_START("KEY3")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_N) PORT_CHAR('n') PORT_CHAR('N')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_B) PORT_CHAR('b') PORT_CHAR('B')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_V) PORT_CHAR('v') PORT_CHAR('V')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_C) PORT_CHAR('c') PORT_CHAR('C')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_X) PORT_CHAR('x') PORT_CHAR('X')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Z) PORT_CHAR('z') PORT_CHAR('Z')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_BACKSLASH2) PORT_CHAR('\\') PORT_CHAR('|')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_A) PORT_CHAR('a') PORT_CHAR('A')
+
+	PORT_START("KEY4")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_L) PORT_CHAR('l') PORT_CHAR('L')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_K) PORT_CHAR('k') PORT_CHAR('K')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_J) PORT_CHAR('j') PORT_CHAR('J')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_H) PORT_CHAR('h') PORT_CHAR('H')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_G) PORT_CHAR('g') PORT_CHAR('G')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F) PORT_CHAR('f') PORT_CHAR('F')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_D) PORT_CHAR('d') PORT_CHAR('D')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_S) PORT_CHAR('s') PORT_CHAR('S')
+
+	PORT_START("KEY5")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("SPACE") PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_P) PORT_CHAR('p') PORT_CHAR('P')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_O) PORT_CHAR('o') PORT_CHAR('O')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_I) PORT_CHAR('i') PORT_CHAR('I')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_U) PORT_CHAR('u') PORT_CHAR('U')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_T) PORT_CHAR('t') PORT_CHAR('T')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_R) PORT_CHAR('r') PORT_CHAR('R')
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_E) PORT_CHAR('e') PORT_CHAR('E')
+
+	PORT_START("KEY6")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("PASTE") PORT_CODE(KEYCODE_F9) PORT_CHAR(UCHAR_MAMEKEY(F9))
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("ENTER") PORT_CODE(KEYCODE_ENTER) PORT_CHAR(13)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x92|") PORT_CODE(KEYCODE_TAB) PORT_CHAR('\t')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("DEL BS") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(8)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x93") PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x91") PORT_CODE(KEYCODE_UP) PORT_CHAR(UCHAR_MAMEKEY(UP))
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x92") PORT_CODE(KEYCODE_RIGHT) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x90") PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
+
+	PORT_START("KEY7")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("F8") PORT_CODE(KEYCODE_F8) PORT_CHAR(UCHAR_MAMEKEY(F8))
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("F7") PORT_CODE(KEYCODE_F7) PORT_CHAR(UCHAR_MAMEKEY(F7))
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("F6") PORT_CODE(KEYCODE_F6) PORT_CHAR(UCHAR_MAMEKEY(F6))
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("F5") PORT_CODE(KEYCODE_F5) PORT_CHAR(UCHAR_MAMEKEY(F5))
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("F4") PORT_CODE(KEYCODE_F4) PORT_CHAR(UCHAR_MAMEKEY(F4))
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("F3") PORT_CODE(KEYCODE_F3) PORT_CHAR(UCHAR_MAMEKEY(F3))
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("F2") PORT_CODE(KEYCODE_F2) PORT_CHAR(UCHAR_MAMEKEY(F2))
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("F1") PORT_CODE(KEYCODE_F1) PORT_CHAR(UCHAR_MAMEKEY(F1))
+
+	PORT_START("KEY8")
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("PAUSE BREAK") PORT_CODE(KEYCODE_F12) PORT_CHAR(UCHAR_MAMEKEY(F12))
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("CAPS LOCK") PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("NUM") PORT_CODE(KEYCODE_RALT) PORT_CHAR(UCHAR_MAMEKEY(RALT))
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("GRAPH") PORT_CODE(KEYCODE_LALT) PORT_CHAR(UCHAR_MAMEKEY(LALT))
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("CTRL") PORT_CODE(KEYCODE_LCONTROL) PORT_CHAR(UCHAR_MAMEKEY(LCONTROL))
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("SHIFT") PORT_CODE(KEYCODE_LSHIFT) PORT_CODE(KEYCODE_RSHIFT) PORT_CHAR(UCHAR_SHIFT_1)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("PRINT") PORT_CODE(KEYCODE_F11) PORT_CHAR(UCHAR_MAMEKEY(F11))
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("LABEL") PORT_CODE(KEYCODE_F10) PORT_CHAR(UCHAR_MAMEKEY(F10))
+INPUT_PORTS_END
+
+/* uPD1990A Interface */
+
+static WRITE_LINE_DEVICE_HANDLER( kc85_upd1990a_data_w )
 {
+	kc85_state *driver_state = device->machine->driver_data;
+
+	driver_state->upd1990a_data = state;
 }
 
-static MACHINE_RESET( kyo85 )
+static UPD1990A_INTERFACE( kc85_upd1990a_intf )
 {
-	rom_page = -1;
-	ram_page = -1;
-	port_a = 0;
-	port_b = 0;
-	port_c = 0;
-	timer_lsb = 0;
-	timer_msb = 0;
-	io_E8 = 0;
-	io_D0 = 0;
-	io_A1 = 0;
-	io_90 = 0;
+	DEVCB_LINE(kc85_upd1990a_data_w),
+	DEVCB_CPU_INPUT_LINE(I8085_TAG, I8085_RST75_LINE)
+};
+
+/* RP5C01A Interface */
+
+static RP5C01A_INTERFACE( tandy200_rp5c01a_intf )
+{
+	DEVCB_NULL								/* alarm */
+};
+
+/* 8155 Interface */
+
+static READ8_DEVICE_HANDLER( kc85_8155_port_c_r )
+{
+	/*
+	
+		bit		description
+
+		0		serial data input from clock chip
+		1		_BUSY signal from printer
+		2		BUSY signal from printer
+		3		data from BCR
+		4		_CTS from RS232
+		5		_DSR from RS232
+
+	*/
+
+	kc85_state *state = device->machine->driver_data;
+
+	UINT8 data = 0;
+
+	data |= state->upd1990a_data;
+	data |= centronics_not_busy_r(state->centronics) << 1;
+	data |= centronics_busy_r(state->centronics) << 2;
+
+	return data;
 }
 
+static WRITE8_DEVICE_HANDLER( kc85_8155_port_a_w )
+{
+	/*
 
-static MACHINE_DRIVER_START( kyo85 )
+		bit		description
+
+		0		LCD chip select 0, key scan 0, RTC C0
+		1		LCD chip select 1, key scan 1, RTC C1
+		2		LCD chip select 2, key scan 2, RTC C2
+		3		LCD chip select 3, key scan 3, RTC CLK
+		4		LCD chip select 4, key scan 4, RTC DATA IN
+		5		LCD chip select 5, key scan 5
+		6		LCD chip select 6, key scan 6
+		7		LCD chip select 7, key scan 7
+
+	*/
+
+	kc85_state *state = device->machine->driver_data;
+
+	/* keyboard */
+	state->keylatch = (state->keylatch & 0x100) | data;
+
+	/* LCD */
+	state->lcd_cs2[0] = BIT(data, 0);
+	state->lcd_cs2[1] = BIT(data, 1);
+	state->lcd_cs2[2] = BIT(data, 2);
+	state->lcd_cs2[3] = BIT(data, 3);
+	state->lcd_cs2[4] = BIT(data, 4);
+	state->lcd_cs2[5] = BIT(data, 5);
+	state->lcd_cs2[6] = BIT(data, 6);
+	state->lcd_cs2[7] = BIT(data, 7);
+
+	/* RTC */
+	upd1990a_c0_w(state->upd1990a, BIT(data, 0));
+	upd1990a_c1_w(state->upd1990a, BIT(data, 1));
+	upd1990a_c2_w(state->upd1990a, BIT(data, 2));
+	upd1990a_clk_w(state->upd1990a, BIT(data, 3));
+	upd1990a_data_w(state->upd1990a, BIT(data, 4));
+}
+
+static WRITE8_DEVICE_HANDLER( kc85_8155_port_b_w )
+{
+	/*
+
+		bit		signal		description
+
+		0					LCD chip select 8, key scan 8
+		1					LCD chip select 9
+		2					beeper data output
+		3		_RS232		modem select (0=RS232, 1=modem)
+		4		PCS			soft power off
+		5					beeper data input select (0=data from 8155 TO, 1=data from PB2)
+		6		_DTR		RS232 data terminal ready output
+		7		_RTS		RS232 request to send output
+
+	*/
+
+	kc85_state *state = device->machine->driver_data;
+
+	/* keyboard */
+	state->keylatch = (BIT(data, 0) << 8) | (state->keylatch & 0xff);
+
+	/* LCD */
+	state->lcd_cs2[8] = BIT(data, 0);
+	state->lcd_cs2[9] = BIT(data, 1);
+
+	/* beeper */
+	state->buzzer = BIT(data, 2);
+	state->bell = BIT(data, 5);
+
+	if (state->buzzer) speaker_level_w(state->speaker, state->bell);
+}
+
+static WRITE_LINE_DEVICE_HANDLER( kc85_8155_to_w )
+{
+	kc85_state *driver_state = device->machine->driver_data;
+
+	if (!driver_state->buzzer && driver_state->bell)
+	{
+		speaker_level_w(driver_state->speaker, state);
+	}
+}
+
+static PIO8155_INTERFACE( kc85_8155_intf )
+{
+	DEVCB_NULL,								/* port A read */
+	DEVCB_NULL,								/* port B read */
+	DEVCB_HANDLER(kc85_8155_port_c_r),		/* port C read */
+	DEVCB_HANDLER(kc85_8155_port_a_w),		/* port A write */
+	DEVCB_HANDLER(kc85_8155_port_b_w),		/* port B write */
+	DEVCB_NULL,								/* port C write */
+	DEVCB_LINE(kc85_8155_to_w)				/* timer output */
+};
+
+static READ8_DEVICE_HANDLER( pc8201_8155_port_c_r )
+{
+	/*
+	
+		bit		signal		description
+
+		0		CDI			clock data input
+		1		SLCT		_BUSY signal from printer
+		2		BUSY		BUSY signal from printer
+		3		BCR			bar code reader data input
+		4		_CTS		RS232 clear to send input
+		5		_DSR		RS232 DSR input
+
+	*/
+
+	kc85_state *state = device->machine->driver_data;
+
+	UINT8 data = 0;
+
+	data |= state->upd1990a_data;
+	data |= centronics_not_busy_r(state->centronics) << 1;
+	data |= centronics_busy_r(state->centronics) << 2;
+
+	return data;
+}
+
+static WRITE8_DEVICE_HANDLER( pc8201_8155_port_b_w )
+{
+	/*
+
+		bit		signal		description
+
+		0					LCD chip select 8, key scan 8
+		1					LCD chip select 9
+		2		_MC			melody control output
+		3		DCD/_RD		RS232 DCD/_RD select
+		4		APO			auto power off output
+		5		BELL		buzzer output (0=ring, 1=not ring)
+		6		_DTR		RS232 data terminal ready output
+		7		_RTS		RS232 request to send output
+
+	*/
+
+	kc85_state *state = device->machine->driver_data;
+
+	/* keyboard */
+	state->keylatch = (BIT(data, 0) << 8) | (state->keylatch & 0xff);
+
+	/* LCD */
+	state->lcd_cs2[8] = BIT(data, 0);
+	state->lcd_cs2[9] = BIT(data, 1);
+
+	/* beeper */
+	state->buzzer = BIT(data, 2);
+	state->bell = BIT(data, 5);
+
+	if (state->buzzer) speaker_level_w(state->speaker, state->bell);
+}
+
+static PIO8155_INTERFACE( pc8201_8155_intf )
+{
+	DEVCB_NULL,								/* port A read */
+	DEVCB_NULL,								/* port B read */
+	DEVCB_HANDLER(pc8201_8155_port_c_r),	/* port C read */
+	DEVCB_HANDLER(kc85_8155_port_a_w),		/* port A write */
+	DEVCB_HANDLER(pc8201_8155_port_b_w),	/* port B write */
+	DEVCB_NULL,								/* port C write */
+	DEVCB_LINE(kc85_8155_to_w)				/* timer output */
+};
+
+static READ8_DEVICE_HANDLER( tandy200_8155_port_c_r )
+{
+	/*
+	
+		bit		signal	description
+
+		0		_LPS	low power sense input
+		1		_BUSY	not busy input
+		2		BUSY	busy input
+		3		BCR		bar code reader data input
+		4		CD		carrier detect input
+		5		CDBD	carrier detect break down input
+
+	*/
+
+	tandy200_state *state = device->machine->driver_data;
+
+	UINT8 data = 0x01;
+
+	data |= centronics_not_busy_r(state->centronics) << 1;
+	data |= centronics_busy_r(state->centronics) << 2;
+
+	return data;
+}
+
+static WRITE8_DEVICE_HANDLER( tandy200_8155_port_a_w )
+{
+	/*
+
+		bit		description
+
+		0		print data 0, key scan 0
+		1		print data 1, key scan 1
+		2		print data 2, key scan 2
+		3		print data 3, key scan 3
+		4		print data 4, key scan 4
+		5		print data 5, key scan 5
+		6		print data 6, key scan 6
+		7		print data 7, key scan 7
+
+	*/
+
+	tandy200_state *state = device->machine->driver_data;
+
+	centronics_data_w(state->centronics, 0, data);
+
+	state->keylatch = (state->keylatch & 0x100) | data;
+}
+
+static WRITE8_DEVICE_HANDLER( tandy200_8155_port_b_w )
+{
+	/*
+
+		bit		signal		description
+
+		0					key scan 8
+		1		ORIG/ANS	(1=ORIG, 0=ANS)
+		2		_BUZZER		(0=data from 8155 TO, 1=data from PB2)
+		3		_RS232C		(1=modem, 0=RS-232)
+		4		PCS			power cut signal
+		5		BELL		buzzer data output
+		6		MEN			modem enable output
+		7		CALL		connects and disconnects the phone line
+
+	*/
+
+	tandy200_state *state = device->machine->driver_data;
+
+	/* keyboard */
+	state->keylatch = (BIT(data, 0) << 8) | (state->keylatch & 0xff);
+
+	/* beeper */
+	state->buzzer = BIT(data, 2);
+	state->bell = BIT(data, 5);
+
+	if (state->buzzer) speaker_level_w(state->speaker, state->bell);
+}
+
+static WRITE_LINE_DEVICE_HANDLER( tandy200_8155_to_w )
+{
+	tandy200_state *driver_state = device->machine->driver_data;
+
+	if (!driver_state->buzzer && driver_state->bell)
+	{
+		speaker_level_w(driver_state->speaker, state);
+	}
+}
+
+static PIO8155_INTERFACE( tandy200_8155_intf )
+{
+	DEVCB_NULL,								/* port A read */
+	DEVCB_NULL,								/* port B read */
+	DEVCB_HANDLER(tandy200_8155_port_c_r),	/* port C read */
+	DEVCB_HANDLER(tandy200_8155_port_a_w),	/* port A write */
+	DEVCB_HANDLER(tandy200_8155_port_b_w),	/* port B write */
+	DEVCB_NULL,								/* port C write */
+	DEVCB_LINE(tandy200_8155_to_w)			/* timer output */
+};
+
+/* MSM8251 Interface */
+
+static msm8251_interface tandy200_msm8251_interface = {
+	NULL,
+	NULL,
+	NULL
+};
+
+/* Machine Drivers */
+
+static MACHINE_START( kc85 )
+{
+	kc85_state *state = machine->driver_data;
+
+	const address_space *program = cputag_get_address_space(machine, I8085_TAG, ADDRESS_SPACE_PROGRAM);
+
+	/* find devices */
+	state->upd1990a = devtag_get_device(machine, UPD1990A_TAG);
+	state->centronics = devtag_get_device(machine, "centronics");
+	state->speaker = devtag_get_device(machine, "speaker");
+
+	/* initialize RTC */
+	upd1990a_cs_w(state->upd1990a, 1);
+	upd1990a_oe_w(state->upd1990a, 1);
+
+	/* configure ROM banking */
+	memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
+	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, I8085_TAG), 0);
+	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "option"), 0);
+	memory_set_bank(machine, 1, 0);
+
+	/* configure RAM banking */
+	switch (mess_ram_size)
+	{
+	case 16 * 1024:
+		memory_install_readwrite8_handler(program, 0x8000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0xc000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		break;
+
+	case 32 * 1024:
+		memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		break;
+	}
+
+	memory_configure_bank(machine, 2, 0, 1, mess_ram, 0);
+	memory_set_bank(machine, 2, 0);
+
+	/* register for state saving */
+	state_save_register_global(machine, state->bank);
+	state_save_register_global(machine, state->upd1990a_data);
+	state_save_register_global(machine, state->keylatch);
+	state_save_register_global(machine, state->buzzer);
+	state_save_register_global(machine, state->bell);
+}
+
+static MACHINE_START( pc8201 )
+{
+	kc85_state *state = machine->driver_data;
+
+	/* find devices */
+	state->upd1990a = devtag_get_device(machine, UPD1990A_TAG);
+	state->centronics = devtag_get_device(machine, "centronics");
+	state->speaker = devtag_get_device(machine, "speaker");
+
+	/* initialize RTC */
+	upd1990a_cs_w(state->upd1990a, 1);
+	upd1990a_oe_w(state->upd1990a, 1);
+
+	/* configure ROM banking */
+	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, I8085_TAG), 0);
+	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "option"), 0);
+	memory_configure_bank(machine, 1, 2, 2, mess_ram + 0x8000, 0x8000);
+	memory_set_bank(machine, 1, 0);
+
+	/* configure RAM banking */
+	memory_configure_bank(machine, 2, 0, 1, mess_ram, 0);
+	memory_configure_bank(machine, 2, 2, 2, mess_ram + 0x8000, 0x8000);
+	memory_set_bank(machine, 2, 0);
+
+	pc8201_bankswitch(machine, 0);
+
+	/* register for state saving */
+	state_save_register_global(machine, state->bank);
+	state_save_register_global(machine, state->upd1990a_data);
+	state_save_register_global(machine, state->keylatch);
+	state_save_register_global(machine, state->buzzer);
+	state_save_register_global(machine, state->bell);
+	state_save_register_global(machine, state->iosel);
+}
+
+static MACHINE_START( trsm100 )
+{
+	kc85_state *state = machine->driver_data;
+
+	const address_space *program = cputag_get_address_space(machine, I8085_TAG, ADDRESS_SPACE_PROGRAM);
+	
+	/* find devices */
+	state->upd1990a = devtag_get_device(machine, UPD1990A_TAG);
+	state->centronics = devtag_get_device(machine, "centronics");
+	state->speaker = devtag_get_device(machine, "speaker");
+
+	/* initialize RTC */
+	upd1990a_cs_w(state->upd1990a, 1);
+	upd1990a_oe_w(state->upd1990a, 1);
+
+	/* configure ROM banking */
+	memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
+	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, I8085_TAG), 0);
+	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "option"), 0);
+	memory_set_bank(machine, 1, 0);
+
+	/* configure RAM banking */
+	switch (mess_ram_size)
+	{
+	case 8 * 1024:
+		memory_install_readwrite8_handler(program, 0x8000, 0xcfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0xe000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		break;
+
+	case 16 * 1024:
+		memory_install_readwrite8_handler(program, 0x8000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0xc000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		break;
+
+	case 24 * 1024:
+		memory_install_readwrite8_handler(program, 0x8000, 0x9fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite8_handler(program, 0xa000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		break;
+
+	case 32 * 1024:
+		memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		break;
+	}
+
+	memory_configure_bank(machine, 2, 0, 1, mess_ram, 0);
+	memory_set_bank(machine, 2, 0);
+
+	/* register for state saving */
+	state_save_register_global(machine, state->bank);
+	state_save_register_global(machine, state->upd1990a_data);
+	state_save_register_global(machine, state->keylatch);
+	state_save_register_global(machine, state->buzzer);
+	state_save_register_global(machine, state->bell);
+}
+
+static MACHINE_START( tandy200 )
+{
+	tandy200_state *state = machine->driver_data;
+
+	/* find devices */
+	state->centronics = devtag_get_device(machine, "centronics");
+	state->speaker = devtag_get_device(machine, "speaker");
+
+	/* configure ROM banking */
+	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, I8085_TAG), 0);
+	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, I8085_TAG) + 0x10000, 0);
+	memory_configure_bank(machine, 1, 2, 1, memory_region(machine, "option"), 0);
+	memory_set_bank(machine, 1, 0);
+
+	/* configure RAM banking */
+	memory_configure_bank(machine, 2, 0, 3, mess_ram, 0x6000);
+	memory_set_bank(machine, 2, 0);
+
+	/* register for state saving */
+	state_save_register_global(machine, state->bank);
+	state_save_register_global(machine, state->tp);
+	state_save_register_global(machine, state->keylatch);
+	state_save_register_global(machine, state->buzzer);
+	state_save_register_global(machine, state->bell);
+}
+
+static const cassette_config kc85_cassette_config =
+{
+	cassette_default_formats,
+	NULL,
+	CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED
+};
+
+static void kc85_sod_w(const device_config *device, int state)
+{
+	cassette_output(cassette_device_image(device->machine), state ? +1.0 : -1.0);
+}
+
+static int kc85_sid_r(const device_config *device)
+{
+	return cassette_input(cassette_device_image(device->machine)) > 0.0;
+}
+
+static const i8085_config kc85_i8085_config =
+{
+	NULL,				/* INTE changed callback */
+	NULL,				/* STATUS changed callback */
+	kc85_sod_w,			/* SOD changed callback (8085A only) */
+	kc85_sid_r			/* SID changed callback (8085A only) */
+};
+
+static TIMER_DEVICE_CALLBACK( tandy200_tp_tick )
+{
+	tandy200_state *state = timer->machine->driver_data;
+
+	cputag_set_input_line(timer->machine, I8085_TAG, I8085_RST75_LINE, state->tp);
+
+	state->tp = !state->tp;
+}
+
+static MACHINE_DRIVER_START( kc85 )
+	MDRV_DRIVER_DATA(kc85_state)
+
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", 8085A, 2400000)
-	MDRV_CPU_PROGRAM_MAP(kyo85_mem, 0)
-	MDRV_CPU_IO_MAP(kyo85_io, 0)
+	MDRV_CPU_ADD(I8085_TAG, 8085A, XTAL_4_9152MHz)
+	MDRV_CPU_PROGRAM_MAP(kc85_mem)
+	MDRV_CPU_IO_MAP(kc85_io)
+	MDRV_CPU_CONFIG(kc85_i8085_config)
 
-	MDRV_MACHINE_START( kyo85 )
-	MDRV_MACHINE_RESET( kyo85 )
+	MDRV_MACHINE_START( kc85 )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("screen", LCD)
-	MDRV_SCREEN_REFRESH_RATE(44)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(240, 64)
-	MDRV_SCREEN_VISIBLE_AREA(0, 240-1, 0, 64-1)
-
-//	MDRV_DEFAULT_LAYOUT(layout_kyo85)
-
-	MDRV_PALETTE_LENGTH(2)
-	MDRV_PALETTE_INIT(kyo85)
-
-	MDRV_VIDEO_UPDATE(kyo85)
+	MDRV_IMPORT_FROM(kc85_video)
 
 	/* sound hardware */
-//	MDRV_SPEAKER_STANDARD_MONO("mono")
-//	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
-//	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
-	MDRV_UPD1990A_ADD("rtc")
+	MDRV_PIO8155_ADD(PIO8155_TAG, XTAL_4_9152MHz/2, kc85_8155_intf)
+	MDRV_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, kc85_upd1990a_intf)
+
+	/* printer */
+	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+
+	/* cassette */
+	MDRV_CASSETTE_ADD("cassette", kc85_cassette_config)
+
+	/* option ROM cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("rom,bin")
+	MDRV_CARTSLOT_NOT_MANDATORY
 MACHINE_DRIVER_END
 
-static MACHINE_DRIVER_START( npc8201 )
-	MDRV_IMPORT_FROM(kyo85)
+static MACHINE_DRIVER_START( pc8201 )
+	MDRV_DRIVER_DATA(kc85_state)
 
-	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(npc8201_mem, 0)
-	MDRV_CPU_IO_MAP(pc8201_io, 0)
-MACHINE_DRIVER_END
+	/* basic machine hardware */
+	MDRV_CPU_ADD(I8085_TAG, 8085A, XTAL_4_9152MHz)
+	MDRV_CPU_PROGRAM_MAP(pc8201_mem)
+	MDRV_CPU_IO_MAP(pc8201_io)
+	MDRV_CPU_CONFIG(kc85_i8085_config)
 
-static MACHINE_DRIVER_START( trs200 )
-	MDRV_IMPORT_FROM(kyo85)
+	MDRV_MACHINE_START(pc8201)
 
-	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(trs200_mem, 0)
-	MDRV_CPU_IO_MAP(trs200_io, 0)
+	/* video hardware */
+	MDRV_IMPORT_FROM(kc85_video)
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
-	MDRV_UPD1990A_REMOVE("rtc")
+	MDRV_PIO8155_ADD(PIO8155_TAG, XTAL_4_9152MHz/2, pc8201_8155_intf)
+	MDRV_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, kc85_upd1990a_intf)
+
+	/* printer */
+	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+
+	/* cassette */
+	MDRV_CASSETTE_ADD("cassette", kc85_cassette_config)
+
+	/* option ROM cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("rom,bin")
+	MDRV_CARTSLOT_NOT_MANDATORY
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( trsm100 )
+	MDRV_IMPORT_FROM(kc85)
 
-/***************************************************************************
+	/* basic machine hardware */
+	MDRV_CPU_MODIFY(I8085_TAG)
+	MDRV_CPU_IO_MAP(trsm100_io)
 
-  Game driver(s)
+	MDRV_MACHINE_START(trsm100)
 
-***************************************************************************/
+	/* devices */
+//	MDRV_MC14412_ADD(MC14412_TAG, XTAL_1MHz)
+MACHINE_DRIVER_END
 
-ROM_START(trsm100)
-	ROM_REGION( 0x8000, "maincpu", 0 )
-	ROM_SYSTEM_BIOS(0, "default", "Model 100")
-	ROMX_LOAD( "m100rom.bin",  0x0000, 0x8000, CRC(730a3611) SHA1(094dbc4ac5a4ea5cdf51a1ac581a40a9622bb25d), ROM_BIOS(1) )
-	ROM_SYSTEM_BIOS(1, "alt", "Model 100 (alt)")
-	ROMX_LOAD( "m100arom.bin", 0x0000, 0x8000, CRC(75ac39b7) SHA1(824e730ae45babf886023151504fcd6191bbed10), ROM_BIOS(2) )
-ROM_END
+static MACHINE_DRIVER_START( tandy200 )
+	MDRV_DRIVER_DATA(tandy200_state)
 
-ROM_START(olivm10)
-	ROM_REGION( 0x8010, "maincpu", 0 )
-	ROM_SYSTEM_BIOS(0, "default", "M10")
-	ROMX_LOAD( "m10rom.bin", 0x0000, 0x8010, CRC(0be02b58) SHA1(56f2087a658efd0323663d15afcd4f5f27c68664), ROM_BIOS(1) )
-	ROM_SYSTEM_BIOS(1, "alt", "M10 (alt)")
-	ROMX_LOAD( "m10arom.bin", 0x0000, 0x8010, CRC(afd5a43d) SHA1(b8362f7f248692de13128a47c6c116172e38da10), ROM_BIOS(2) )
-ROM_END
+	/* basic machine hardware */
+	MDRV_CPU_ADD(I8085_TAG, 8085A, XTAL_4_9152MHz)
+	MDRV_CPU_PROGRAM_MAP(tandy200_mem)
+	MDRV_CPU_IO_MAP(tandy200_io)
+	MDRV_CPU_CONFIG(kc85_i8085_config)
 
-ROM_START(kyo85)
-	ROM_REGION( 0x8000, "maincpu", 0 )
+	MDRV_MACHINE_START( tandy200 )
+
+	/* video hardware */
+	MDRV_IMPORT_FROM(tandy200_video)
+
+	/* TP timer */
+	MDRV_TIMER_ADD_PERIODIC("tp", tandy200_tp_tick, HZ(XTAL_4_9152MHz/2/8192))
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+//	MDRV_TCM5089_ADD(TCM5089_TAG, XTAL_3_579545MHz)
+
+	/* devices */
+	MDRV_PIO8155_ADD(PIO8155_TAG, XTAL_4_9152MHz/2, tandy200_8155_intf)
+	MDRV_RP5C01A_ADD(RP5C01A_TAG, XTAL_32_768kHz, tandy200_rp5c01a_intf)
+	MDRV_MSM8251_ADD(MSM8251_TAG, /*XTAL_4_9152MHz/2,*/ tandy200_msm8251_interface)
+//	MDRV_MC14412_ADD(MC14412_TAG, XTAL_1MHz)
+
+	/* printer */
+	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+
+	/* cassette */
+	MDRV_CASSETTE_ADD("cassette", kc85_cassette_config)
+
+	/* option ROM cartridge */
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("rom,bin")
+	MDRV_CARTSLOT_NOT_MANDATORY
+MACHINE_DRIVER_END
+
+/* ROMs */
+
+ROM_START( kc85 )
+	ROM_REGION( 0x8000, I8085_TAG, 0 )
 	ROM_LOAD( "kc85rom.bin", 0x0000, 0x8000, CRC(8a9ddd6b) SHA1(9d18cb525580c9e071e23bc3c472380aa46356c0) )
+
+	ROM_REGION( 0x8000, "option", ROMREGION_ERASEFF )
+	ROM_CART_LOAD("cart", 0x0000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
-ROM_START(trsm102)
-	ROM_REGION( 0x8000, "maincpu", 0 )
-	ROM_LOAD( "m102rom.bin", 0x0000, 0x8000, CRC(0e4ff73a) SHA1(d91f4f412fb78c131ccd710e8158642de47355e2) )
+ROM_START( npc8201a )
+	ROM_REGION( 0x10000, I8085_TAG, 0 )
+	ROM_LOAD( "pc8201rom.rom0", 0x0000, 0x8000, CRC(30555035) SHA1(96f33ff235db3028bf5296052acedbc94437c596) )
+
+	ROM_REGION( 0x8000, "option", ROMREGION_ERASEFF )
+	ROM_CART_LOAD("cart", 0x0000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
-ROM_START(npc8201)
-	ROM_REGION( 0x18000, "maincpu", 0 )
-	ROM_LOAD( "pc8201rom.bin", 0x10000, 0x8000, CRC(4c534662) SHA1(758fefbba251513e7f9d86f7e9016ad8817188d8) )
+ROM_START( trsm100 )
+	/*
+		Board Code	ROM type			ROM Code			Comment
+		-------------------------------------------------------------------
+		PLX110CH1X	custom				LH535618			early North America
+		PLX110EH1X	27C256 compatible	3256C07-3J1/11US	late North America
+		PLX120CH1X	27C256 compatible	3256C05-3E1/11EP	European/Italian
+	*/
+	ROM_REGION( 0x8000, I8085_TAG, 0 )
+	ROM_LOAD( "m100rom.m12",  0x0000, 0x8000, CRC(730a3611) SHA1(094dbc4ac5a4ea5cdf51a1ac581a40a9622bb25d) )
+
+	ROM_REGION( 0x8000, "option", ROMREGION_ERASEFF )
+	ROM_CART_LOAD("cart", 0x0000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
-ROM_START(trsm200)
-	ROM_REGION( 0x22000, "maincpu", 0 )
-	ROM_LOAD( "t200rom.bin", 0x10000, 0x12000, CRC(e3358b38) SHA1(35d4e6a5fb8fc584419f57ec12b423f6021c0991) )
+ROM_START( olivm10 )
+	// 3256C02-4B3/I		Italian
+	ROM_REGION( 0x8010, I8085_TAG, 0 )
+	ROM_LOAD( "m10rom.m12", 0x0000, 0x8000, CRC(f0e8447a) SHA1(d58867276213116a79f7074109b7d7ce02e8a3af) )
+
+	ROM_REGION( 0x8000, "option", ROMREGION_ERASEFF )
+	ROM_CART_LOAD("cart", 0x0000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
-static DRIVER_INIT( npc8201 )
-{
-	UINT8 *rom = memory_region(machine, "maincpu");
+ROM_START( tandy102 )
+	ROM_REGION( 0x8000, I8085_TAG, 0 )
+	ROM_LOAD( "m102rom.m12", 0x0000, 0x8000, CRC(08e9f89c) SHA1(b6ede7735a361c80419f4c9c0e36e7d480c36d11) )
 
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, SMH_BANK1, SMH_UNMAP);
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x8000, 0xffff, 0, 0, SMH_BANK2, SMH_BANK2);
+	ROM_REGION( 0x8000, "option", ROMREGION_ERASEFF )
+	ROM_CART_LOAD("cart", 0x0000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
 
-	memory_set_bankptr(machine, 1, rom + 0x10000);
-	memory_set_bankptr(machine, 2, mess_ram);
-}
+ROM_START( tandy200 )
+	ROM_REGION( 0x18000, I8085_TAG, 0 )
+	ROM_LOAD( "rom #1-1.m15", 0x00000, 0x8000, NO_DUMP )
+	ROM_LOAD( "rom #1-2.m13", 0x08000, 0x2000, NO_DUMP )
+	ROM_LOAD( "rom #2.m14",	  0x10000, 0x8000, NO_DUMP )
+	ROM_LOAD( "t200rom.bin", 0x0000, 0xa000, BAD_DUMP CRC(e3358b38) SHA1(35d4e6a5fb8fc584419f57ec12b423f6021c0991) ) /* Y2K hacked */
+	ROM_CONTINUE(			0x10000, 0x8000 )
 
-static DRIVER_INIT( trs200 )
-{
-	UINT8 *rom = memory_region(machine, "maincpu");
+	ROM_REGION( 0x8000, "option", ROMREGION_ERASEFF )
+	ROM_CART_LOAD("cart", 0x0000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
 
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, SMH_BANK1, SMH_UNMAP);
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x8000, 0x9fff, 0, 0, SMH_BANK2, SMH_UNMAP);
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xa000, 0xffff, 0, 0, SMH_BANK3, SMH_BANK3);
+/* System Configurations */
 
-	memory_set_bankptr(machine, 1, rom + 0x10000);
-	memory_set_bankptr(machine, 2, rom + 0x18000);
-	memory_set_bankptr(machine, 3, mess_ram);
-}
-
-static SYSTEM_CONFIG_START(npc8201)
-	CONFIG_RAM_DEFAULT(96 * 1024)
+static SYSTEM_CONFIG_START( kc85 )
+	CONFIG_RAM_DEFAULT	(16 * 1024)
+	CONFIG_RAM			(32 * 1024)
 SYSTEM_CONFIG_END
 
-static SYSTEM_CONFIG_START(trs200)
-	CONFIG_RAM_DEFAULT(72 * 1024)
+static SYSTEM_CONFIG_START( pc8201 )
+	CONFIG_RAM_DEFAULT	(16 * 1024)
+	CONFIG_RAM			(32 * 1024)
+//	CONFIG_RAM			(48 * 1024)
+	CONFIG_RAM			(64 * 1024)
+	CONFIG_RAM			(96 * 1024)
 SYSTEM_CONFIG_END
 
+static SYSTEM_CONFIG_START( trsm100 )
+	CONFIG_RAM_DEFAULT	( 8 * 1024)
+	CONFIG_RAM			(16 * 1024)
+	CONFIG_RAM			(24 * 1024)
+	CONFIG_RAM			(32 * 1024)
+SYSTEM_CONFIG_END
 
-/*    YEAR  NAME      PARENT   COMPAT  MACHINE     INPUT    INIT      CONFIG       COMPANY  FULLNAME */
-COMP( 1983, kyo85,    0,       0,      kyo85,      kyo85,   0,        0,          "Kyocera",            "Kyotronic 85", GAME_NOT_WORKING )
-COMP( 1983, olivm10,  0,       0,      kyo85,      kyo85,   0,        0,          "Olivetti",           "M10",       GAME_NOT_WORKING )
-COMP( 1983, npc8201,  0,       0,      npc8201,    kyo85,   npc8201,  npc8201,    "NEC",                "PC-8201A", GAME_NOT_WORKING )
-COMP( 1983, trsm100,  0,       0,      kyo85,      kyo85,   0,        0,          "Tandy Radio Shack",  "TRS-80 Model 100", GAME_NOT_WORKING )
-COMP( 1984, trsm200,  0,       0,      trs200,     kyo85,   trs200,   trs200,     "Tandy Radio Shack",  "TRS-80 Model 200", GAME_NOT_WORKING )
-COMP( 1986, trsm102,  0,       0,      kyo85,      kyo85,   0,        0,          "Tandy Radio Shack",  "TRS-80 Model 102", GAME_NOT_WORKING )
+static SYSTEM_CONFIG_START( tandy102 )
+	CONFIG_RAM_DEFAULT	(24 * 1024)
+	CONFIG_RAM			(32 * 1024)
+SYSTEM_CONFIG_END
+
+static SYSTEM_CONFIG_START( tandy200 )
+	CONFIG_RAM_DEFAULT	(24 * 1024)
+	CONFIG_RAM			(48 * 1024)
+	CONFIG_RAM			(72 * 1024)
+SYSTEM_CONFIG_END
+
+/* System Drivers */
+
+/*    YEAR  NAME		PARENT	COMPAT	MACHINE		INPUT		INIT	CONFIG		COMPANY					FULLNAME */
+COMP( 1983,	kc85,		0,		0,		kc85,		kc85,		0,		kc85,		"Kyosei",				"Kyotronic 85 (Japan)", 0 )
+COMP( 1983, olivm10,	kc85,	0,		kc85,		olivm10,	0,		kc85,		"Olivetti",				"M-10", 0 )
+//COMP( 1983, olivm10m,	kc85,	0,		kc85,		olivm10,	0,		kc85,		"Olivetti",				"M-10 Modem (US)", 0 )
+COMP( 1983, trsm100,	0,		0,		trsm100,	kc85,		0,		trsm100,	"Tandy Radio Shack",	"TRS-80 Model 100", 0 )
+COMP( 1986, tandy102,	trsm100,0,		trsm100,	kc85,		0,		tandy102,	"Tandy Radio Shack",	"Tandy 102", 0 )
+//COMP( 1983, npc8201,	0,		0,		pc8201,		pc8201a,	0,		pc8201,		"NEC",					"PC-8201 (Japan)", 0 )
+COMP( 1983, npc8201a,	0,		0,		pc8201,		pc8201a,	0,		pc8201,		"NEC",					"PC-8201A", 0 )
+//COMP( 1987, npc8300,	npc8201,0,		pc8300,		pc8300,		0,		pc8300,		"NEC",					"PC-8300", 0 )
+COMP( 1984, tandy200,	0,		0,		tandy200,	kc85,		0,		tandy200,	"Tandy Radio Shack",	"Tandy 200", 0 )

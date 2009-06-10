@@ -1448,24 +1448,24 @@ static void atarist_configure_memory(running_machine *machine)
 	switch (mess_ram_size)
 	{
 	case 256 * 1024:
-		memory_install_readwrite16_handler(program, 0x000008, 0x03ffff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite16_handler(program, 0x000008, 0x03ffff, 0, 0, SMH_BANK(1), SMH_BANK(1));
 		memory_install_readwrite16_handler(program, 0x040000, 0x3fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 	case 512 * 1024:
-		memory_install_readwrite16_handler(program, 0x000008, 0x07ffff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite16_handler(program, 0x000008, 0x07ffff, 0, 0, SMH_BANK(1), SMH_BANK(1));
 		memory_install_readwrite16_handler(program, 0x080000, 0x3fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 	case 1024 * 1024:
-		memory_install_readwrite16_handler(program, 0x000008, 0x0fffff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite16_handler(program, 0x000008, 0x0fffff, 0, 0, SMH_BANK(1), SMH_BANK(1));
 		memory_install_readwrite16_handler(program, 0x100000, 0x3fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 	case 2048 * 1024:
-		memory_install_readwrite16_handler(program, 0x000008, 0x1fffff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite16_handler(program, 0x000008, 0x1fffff, 0, 0, SMH_BANK(1), SMH_BANK(1));
 		memory_install_readwrite16_handler(program, 0x200000, 0x3fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 	case 4096 * 1024:
-		memory_install_readwrite16_handler(program, 0x000008, 0x1fffff, 0, 0, SMH_BANK1, SMH_BANK1);
-		memory_install_readwrite16_handler(program, 0x200000, 0x3fffff, 0, 0, SMH_BANK2, SMH_BANK2);
+		memory_install_readwrite16_handler(program, 0x000008, 0x1fffff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite16_handler(program, 0x200000, 0x3fffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
 		break;
 	}
 
@@ -1642,12 +1642,12 @@ static void stbook_configure_memory(running_machine *machine)
 	switch (mess_ram_size)
 	{
 	case 1024 * 1024:
-		memory_install_readwrite16_handler(program, 0x000008, 0x07ffff, 0, 0x080000, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite16_handler(program, 0x000008, 0x07ffff, 0, 0x080000, SMH_BANK(1), SMH_BANK(1));
 		memory_install_readwrite16_handler(program, 0x100000, 0x3fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 		break;
 	case 4096 * 1024:
-		memory_install_readwrite16_handler(program, 0x000008, 0x1fffff, 0, 0, SMH_BANK1, SMH_BANK1);
-		memory_install_readwrite16_handler(program, 0x200000, 0x3fffff, 0, 0, SMH_BANK2, SMH_BANK2);
+		memory_install_readwrite16_handler(program, 0x000008, 0x1fffff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite16_handler(program, 0x200000, 0x3fffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
 		break;
 	}
 
@@ -1782,7 +1782,7 @@ static DEVICE_IMAGE_LOAD( atarist_cart )
 	{
 		if (image_fread(image, ptr, filesize) == filesize)
 		{
-			memory_install_readwrite16_handler(cputag_get_address_space(image->machine, M68000_TAG, ADDRESS_SPACE_PROGRAM), 0xfa0000, 0xfbffff, 0, 0, SMH_BANK3, SMH_BANK3);
+			memory_install_readwrite16_handler(cputag_get_address_space(image->machine, M68000_TAG, ADDRESS_SPACE_PROGRAM), 0xfa0000, 0xfbffff, 0, 0, SMH_BANK(3), SMH_BANK(3));
 
 			return INIT_PASS;
 		}
@@ -1803,11 +1803,11 @@ static MACHINE_DRIVER_START( atarist )
 
 	// basic machine hardware
 	MDRV_CPU_ADD(M68000_TAG, M68000, Y2/4)
-	MDRV_CPU_PROGRAM_MAP(st_map, 0)
+	MDRV_CPU_PROGRAM_MAP(st_map)
 
 	MDRV_CPU_ADD(HD6301_TAG, HD63701, XTAL_4MHz)  /* HD6301 */
-	MDRV_CPU_PROGRAM_MAP(ikbd_map, 0)
-	MDRV_CPU_IO_MAP(ikbd_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(ikbd_map)
+	MDRV_CPU_IO_MAP(ikbd_io_map)
 
 	MDRV_MACHINE_START(atarist)
 
@@ -1846,7 +1846,7 @@ static MACHINE_DRIVER_START( megast )
 	MDRV_IMPORT_FROM(atarist)
 
 	MDRV_CPU_MODIFY(M68000_TAG)
-	MDRV_CPU_PROGRAM_MAP(megast_map, 0)
+	MDRV_CPU_PROGRAM_MAP(megast_map)
 	MDRV_RP5C15_ADD("rp5c15", rtc_intf)
 
 	MDRV_MACHINE_START(megast)
@@ -1857,11 +1857,11 @@ static MACHINE_DRIVER_START( atariste )
 
 	// basic machine hardware
 	MDRV_CPU_ADD(M68000_TAG, M68000, Y2/4)
-	MDRV_CPU_PROGRAM_MAP(ste_map, 0)
+	MDRV_CPU_PROGRAM_MAP(ste_map)
 
 	MDRV_CPU_ADD(HD6301_TAG, HD63701, XTAL_4MHz)  /* HD6301 */
-	MDRV_CPU_PROGRAM_MAP(ikbd_map, 0)
-	MDRV_CPU_IO_MAP(ikbd_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(ikbd_map)
+	MDRV_CPU_IO_MAP(ikbd_io_map)
 
 	MDRV_MACHINE_START(atariste)
 
@@ -1908,7 +1908,7 @@ static MACHINE_DRIVER_START( megaste )
 	MDRV_IMPORT_FROM(atariste)
 
 	MDRV_CPU_MODIFY(M68000_TAG)
-	MDRV_CPU_PROGRAM_MAP(megaste_map, 0)
+	MDRV_CPU_PROGRAM_MAP(megaste_map)
 	MDRV_RP5C15_ADD("rp5c15", rtc_intf)
 
 	MDRV_MACHINE_START(megaste)
@@ -1919,7 +1919,7 @@ static MACHINE_DRIVER_START( stbook )
 
 	// basic machine hardware
 	MDRV_CPU_ADD(M68000_TAG, M68000, U517/2)
-	MDRV_CPU_PROGRAM_MAP(stbook_map, 0)
+	MDRV_CPU_PROGRAM_MAP(stbook_map)
 
 	//MDRV_CPU_ADD(COP888_TAG, COP888, Y700)
 
@@ -2248,18 +2248,18 @@ SYSTEM_CONFIG_END
 /* System Drivers */
 
 /*     YEAR  NAME    PARENT    COMPAT   MACHINE   INPUT     INIT    CONFIG   COMPANY    FULLNAME */
-COMP( 1985, atarist,  0,        0,		atarist,  atarist,  0,     atarist,  "Atari", "ST", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1987, megast,   atarist,  0,		megast,   atarist,  0,     megast,   "Atari", "Mega ST", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE  )
+COMP( 1985, atarist,  0,        0,		atarist,  atarist,  0,     atarist,  "Atari", "Atari ST", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1987, megast,   atarist,  0,		megast,   atarist,  0,     megast,   "Atari", "Atari Mega ST", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE  )
 /*
-COMP( 1989, stacy,    atarist,  0,      stacy,    stacy,    0,     stacy,    "Atari", "Stacy", GAME_NOT_WORKING )
+COMP( 1989, stacy,    atarist,  0,      stacy,    stacy,    0,     stacy,    "Atari", "Atari Stacy", GAME_NOT_WORKING )
 */
-COMP( 1989, atariste, 0,		0,		atariste, atariste, 0,     atariste, "Atari", "STE", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE  )
-COMP( 1990, stbook,   atariste, 0,		stbook,   stbook,   0,     stbook,	 "Atari", "STBook", GAME_NOT_WORKING )
-COMP( 1991, megaste,  atariste, 0,		megaste,  atarist,  0,     megaste,  "Atari", "Mega STE", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE  )
+COMP( 1989, atariste, 0,		0,		atariste, atariste, 0,     atariste, "Atari", "Atari STE", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE  )
+COMP( 1990, stbook,   atariste, 0,		stbook,   stbook,   0,     stbook,	 "Atari", "Atari STBook", GAME_NOT_WORKING )
+COMP( 1991, megaste,  atariste, 0,		megaste,  atarist,  0,     megaste,  "Atari", "Atari Mega STE", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE  )
 /*
-COMP( 1991, stpad,    atariste, 0,      stpad,    stpad,    0,     stpad,    "Atari", "STPad (prototype)", GAME_NOT_WORKING )
-COMP( 1990, tt030,    0,        0,      tt030,    tt030,    0,     tt030,    "Atari", "TT030", GAME_NOT_WORKING )
-COMP( 1992, fx1,      0,        0,      falcon,   falcon,   0,     falcon,   "Atari", "FX-1 (prototype)", GAME_NOT_WORKING )
-COMP( 1992, falcon,   0,        0,      falcon,   falcon,   0,     falcon,   "Atari", "Falcon030", GAME_NOT_WORKING )
-COMP( 1992, falcon40, falcon,   0,      falcon40, falcon,   0,     falcon,   "Atari", "Falcon040 (prototype)", GAME_NOT_WORKING )
+COMP( 1991, stpad,    atariste, 0,      stpad,    stpad,    0,     stpad,    "Atari", "Atari STPad (prototype)", GAME_NOT_WORKING )
+COMP( 1990, tt030,    0,        0,      tt030,    tt030,    0,     tt030,    "Atari", "Atari TT030", GAME_NOT_WORKING )
+COMP( 1992, fx1,      0,        0,      falcon,   falcon,   0,     falcon,   "Atari", "Atari FX-1 (prototype)", GAME_NOT_WORKING )
+COMP( 1992, falcon,   0,        0,      falcon,   falcon,   0,     falcon,   "Atari", "Atari Falcon030", GAME_NOT_WORKING )
+COMP( 1992, falcon40, falcon,   0,      falcon40, falcon,   0,     falcon,   "Atari", "Atari Falcon040 (prototype)", GAME_NOT_WORKING )
 */

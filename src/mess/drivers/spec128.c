@@ -154,6 +154,7 @@ http://www.z88forever.org.uk/zxplus3e/
 #include "sound/ay8910.h"
 #include "sound/speaker.h"
 #include "formats/tzx_cas.h"
+#include "machine/beta.h"
 
 static const ay8910_interface spectrum_ay_interface =
 {
@@ -192,12 +193,10 @@ void spectrum_128_update_memory(running_machine *machine)
 
 	if (spectrum_128_port_7ffd_data & 8)
 	{
-			logerror("SCREEN 1: BLOCK 7\n");
 			spectrum_screen_location = mess_ram + (7<<14);
 	}
 	else
 	{
-			logerror("SCREEN 0: BLOCK 5\n");
 			spectrum_screen_location = mess_ram + (5<<14);
 	}
 
@@ -210,8 +209,6 @@ void spectrum_128_update_memory(running_machine *machine)
 			ram_data = mess_ram + (ram_page<<14);
 
 			memory_set_bankptr(machine, 4, ram_data);
-
-			logerror("RAM at 0xc000: %02x\n",ram_page);
 	}
 
 	/* ROM switching */
@@ -222,8 +219,6 @@ void spectrum_128_update_memory(running_machine *machine)
 	ChosenROM = memory_region(machine, "maincpu") + 0x010000 + (ROMSelection<<14);
 
 	memory_set_bankptr(machine, 1, ChosenROM);
-
-	logerror("rom switch: %02x\n", ROMSelection);
 }
 
 static  READ8_HANDLER ( spectrum_128_ula_r )
@@ -271,8 +266,8 @@ MACHINE_DRIVER_START( spectrum_128 )
 	MDRV_IMPORT_FROM( spectrum )
 
 	MDRV_CPU_REPLACE("maincpu", Z80, 3500000)        /* 3.5 MHz */
-	MDRV_CPU_PROGRAM_MAP(spectrum_128_mem, 0)
-	MDRV_CPU_IO_MAP(spectrum_128_io, 0)
+	MDRV_CPU_PROGRAM_MAP(spectrum_128_mem)
+	MDRV_CPU_IO_MAP(spectrum_128_io)
 
 	MDRV_MACHINE_RESET( spectrum_128 )
 
@@ -287,6 +282,8 @@ MACHINE_DRIVER_START( spectrum_128 )
 	MDRV_SOUND_ADD("ay8912", AY8912, 1773400)
 	MDRV_SOUND_CONFIG(spectrum_ay_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+	
+	MDRV_BETA_DISK_ADD(BETA_DISK_TAG)
 MACHINE_DRIVER_END
 
 

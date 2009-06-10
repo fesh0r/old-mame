@@ -111,6 +111,8 @@ Interrupts:
 #include "devices/cartslot.h"
 #include "formats/primoptp.h"
 
+#include "includes/cbmdrive.h"
+
 static ADDRESS_MAP_START( primoa_port, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x00, 0x3f ) AM_READWRITE( primo_be_1_r, primo_ki_1_w )
@@ -244,8 +246,8 @@ static const cassette_config primo_cassette_config =
 static MACHINE_DRIVER_START( primoa32 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD( "maincpu", Z80, 2500000 )
-	MDRV_CPU_PROGRAM_MAP( primo32_mem, 0 )
-	MDRV_CPU_IO_MAP( primoa_port, 0 )
+	MDRV_CPU_PROGRAM_MAP( primo32_mem)
+	MDRV_CPU_IO_MAP( primoa_port)
 	MDRV_CPU_VBLANK_INT("screen", primo_vblank_interrupt)
 
 	MDRV_MACHINE_RESET( primoa )
@@ -275,6 +277,11 @@ static MACHINE_DRIVER_START( primoa32 )
 
 	MDRV_CASSETTE_ADD( "cassette", primo_cassette_config )
 
+	/* floppy from serial bus */
+	/* for some reason machine/primo.c sets up the serial bus
+	but no floppy drive has been apparently added... incomplete driver? */
+	MDRV_IMPORT_FROM(simulated_drive)
+
 	/* cartridge */
 	MDRV_CARTSLOT_ADD("cart1")
 	MDRV_CARTSLOT_EXTENSION_LIST("rom")
@@ -287,19 +294,19 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( primoa48 )
 	MDRV_IMPORT_FROM( primoa32 )
 	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP( primo48_mem, 0 )
+	MDRV_CPU_PROGRAM_MAP( primo48_mem)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( primoa64 )
 	MDRV_IMPORT_FROM( primoa32 )
 	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP( primo64_mem, 0 )
+	MDRV_CPU_PROGRAM_MAP( primo64_mem)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( primob32 )
 	MDRV_IMPORT_FROM( primoa32 )
 	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_IO_MAP( primob_port, 0 )
+	MDRV_CPU_IO_MAP( primob_port)
 
 	MDRV_MACHINE_RESET( primob )
 MACHINE_DRIVER_END
@@ -307,7 +314,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( primob48 )
 	MDRV_IMPORT_FROM( primoa48 )
 	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_IO_MAP( primob_port, 0 )
+	MDRV_CPU_IO_MAP( primob_port)
 
 	MDRV_MACHINE_RESET( primob )
 MACHINE_DRIVER_END
@@ -315,7 +322,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( primob64 )
 	MDRV_IMPORT_FROM( primoa64 )
 	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_IO_MAP( primob_port, 0 )
+	MDRV_CPU_IO_MAP( primob_port)
 
 	MDRV_MACHINE_RESET( primob )
 MACHINE_DRIVER_END
@@ -323,7 +330,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( primoc64 )
 	MDRV_IMPORT_FROM( primoa64 )
 	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_IO_MAP( primob_port, 0 )
+	MDRV_CPU_IO_MAP( primob_port)
 
 	MDRV_MACHINE_RESET( primob )
 MACHINE_DRIVER_END

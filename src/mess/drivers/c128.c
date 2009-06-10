@@ -180,11 +180,12 @@ to use an EEPROM reader, in order to obtain a dump of the whole content.
 #include "machine/cbmipt.h"
 #include "video/vic6567.h"
 #include "video/vdc8563.h"
-#include "includes/vc1541.h"
 
 /* devices config */
 #include "includes/cbm.h"
+#include "includes/cbmserb.h"
 #include "includes/cbmdrive.h"
+#include "includes/vc1541.h"
 
 #include "includes/c128.h"
 #include "includes/c64.h"
@@ -212,13 +213,13 @@ to use an EEPROM reader, in order to obtain a dump of the whole content.
  */
 static ADDRESS_MAP_START(c128_z80_mem , ADDRESS_SPACE_PROGRAM, 8)
 #if 1
-	AM_RANGE(0x0000, 0x0fff) AM_READWRITE(SMH_BANK10, c128_write_0000)
-	AM_RANGE(0x1000, 0xbfff) AM_READWRITE(SMH_BANK11, c128_write_1000)
+	AM_RANGE(0x0000, 0x0fff) AM_READWRITE(SMH_BANK(10), c128_write_0000)
+	AM_RANGE(0x1000, 0xbfff) AM_READWRITE(SMH_BANK(11), c128_write_1000)
 	AM_RANGE(0xc000, 0xffff) AM_RAM
 #else
 	/* best to do reuse bankswitching numbers */
-	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(SMH_BANK10, SMH_BANK1)
-	AM_RANGE(0x0400, 0x0fff) AM_READWRITE(SMH_BANK11, SMH_BANK2)
+	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(SMH_BANK(10), SMH_BANK(1))
+	AM_RANGE(0x0400, 0x0fff) AM_READWRITE(SMH_BANK(11), SMH_BANK(2))
 	AM_RANGE(0x1000, 0x1fff) AM_RAMBANK(3)
 	AM_RANGE(0x2000, 0x3fff) AM_RAMBANK(4)
 	AM_RANGE(0x4000, 0xbfff) AM_RAMBANK(5)
@@ -267,15 +268,15 @@ static ADDRESS_MAP_START( c128_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x1000, 0x1fff) AM_RAMBANK(5)
 	AM_RANGE(0x2000, 0x3fff) AM_RAMBANK(6)
 
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE( SMH_BANK7, c128_write_4000 )
-	AM_RANGE(0x8000, 0x9fff) AM_READWRITE( SMH_BANK8, c128_write_8000 )
-	AM_RANGE(0xa000, 0xbfff) AM_READWRITE( SMH_BANK9, c128_write_a000 )
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE( SMH_BANK(7), c128_write_4000 )
+	AM_RANGE(0x8000, 0x9fff) AM_READWRITE( SMH_BANK(8), c128_write_8000 )
+	AM_RANGE(0xa000, 0xbfff) AM_READWRITE( SMH_BANK(9), c128_write_a000 )
 
-	AM_RANGE(0xc000, 0xcfff) AM_READWRITE( SMH_BANK12, c128_write_c000 )
-	AM_RANGE(0xd000, 0xdfff) AM_READWRITE( SMH_BANK13, c128_write_d000 )
-	AM_RANGE(0xe000, 0xfeff) AM_READWRITE( SMH_BANK14, c128_write_e000 )
-	AM_RANGE(0xff00, 0xff04) AM_READWRITE( SMH_BANK15, c128_write_ff00 )	   /* mmu c128 modus */
-	AM_RANGE(0xff05, 0xffff) AM_READWRITE( SMH_BANK16, c128_write_ff05 )
+	AM_RANGE(0xc000, 0xcfff) AM_READWRITE( SMH_BANK(12), c128_write_c000 )
+	AM_RANGE(0xd000, 0xdfff) AM_READWRITE( SMH_BANK(13), c128_write_d000 )
+	AM_RANGE(0xe000, 0xfeff) AM_READWRITE( SMH_BANK(14), c128_write_e000 )
+	AM_RANGE(0xff00, 0xff04) AM_READWRITE( SMH_BANK(15), c128_write_ff00 )	   /* mmu c128 modus */
+	AM_RANGE(0xff05, 0xffff) AM_READWRITE( SMH_BANK(16), c128_write_ff05 )
 ADDRESS_MAP_END
 
 
@@ -569,6 +570,14 @@ static const sid6581_interface c128_sound_interface =
 };
 
 
+static const m6502_interface c128_m8502_interface =
+{
+	NULL,					/* read_indexed_func */
+	NULL,					/* write_indexed_func */
+	c128_m6510_port_read,	/* port_read_func */
+	c128_m6510_port_write,	/* port_write_func */
+};
+
 
 /*************************************
  *
@@ -576,20 +585,21 @@ static const sid6581_interface c128_sound_interface =
  *
  *************************************/
 
-
 static MACHINE_DRIVER_START( c128 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, VIC6567_CLOCK)
-	MDRV_CPU_PROGRAM_MAP( c128_z80_mem, 0 )
-	MDRV_CPU_IO_MAP( c128_z80_io, 0 )
-	MDRV_CPU_VBLANK_INT("screen", c64_frame_interrupt)
+	MDRV_CPU_PROGRAM_MAP( c128_z80_mem)
+	MDRV_CPU_IO_MAP( c128_z80_io)
+	MDRV_CPU_VBLANK_INT("screen", c128_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC6567_HRETRACERATE)
 
 	MDRV_CPU_ADD("m8502", M8502, VIC6567_CLOCK)
-	MDRV_CPU_PROGRAM_MAP( c128_mem, 0 )
-	MDRV_CPU_VBLANK_INT("screen", c64_frame_interrupt)
+	MDRV_CPU_PROGRAM_MAP( c128_mem)
+	MDRV_CPU_CONFIG( c128_m8502_interface )
+	MDRV_CPU_VBLANK_INT("screen", c128_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC6567_HRETRACERATE)
 
+	MDRV_MACHINE_START( c128 )
 	MDRV_MACHINE_RESET( c128 )
 
     /* video hardware */
@@ -622,16 +632,35 @@ static MACHINE_DRIVER_START( c128 )
 	MDRV_CASSETTE_ADD( "cassette", cbm_cassette_config )
 
 	/* cia */
-	MDRV_CIA6526_ADD("cia_0", CIA6526R1, VIC6567_CLOCK, c64_ntsc_cia0)
-	MDRV_CIA6526_ADD("cia_1", CIA6526R1, VIC6567_CLOCK, c64_ntsc_cia1)
+	MDRV_CIA6526_ADD("cia_0", CIA6526R1, VIC6567_CLOCK, c128_ntsc_cia0)
+	MDRV_CIA6526_ADD("cia_1", CIA6526R1, VIC6567_CLOCK, c128_ntsc_cia1)
 	
+	/* floppy from serial bus */
+	MDRV_IMPORT_FROM(simulated_drive)
+
 	MDRV_IMPORT_FROM(c64_cartslot)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( c128d )
 	MDRV_IMPORT_FROM( c128 )
-//	MDRV_IMPORT_FROM( cpu_c1571 )
+
+	MDRV_DEVICE_REMOVE("serial_bus")	// in the current code, serial bus device is tied to the floppy drive
+	MDRV_IMPORT_FROM( cpu_c1571 )
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( c128dcr )
+	MDRV_IMPORT_FROM( c128 )
+
+	MDRV_DEVICE_REMOVE("serial_bus")	// in the current code, serial bus device is tied to the floppy drive
+	MDRV_IMPORT_FROM( cpu_c1571cr )
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( c128d81 )
+	MDRV_IMPORT_FROM( c128 )
+
+	MDRV_DEVICE_REMOVE("serial_bus")	// in the current code, serial bus device is tied to the floppy drive
+	MDRV_IMPORT_FROM( cpu_c1581 )
 MACHINE_DRIVER_END
 
 
@@ -639,6 +668,7 @@ static MACHINE_DRIVER_START( c128pal )
 	MDRV_IMPORT_FROM( c128 )
 	MDRV_CPU_REPLACE( "maincpu", Z80, VIC6569_CLOCK )
 	MDRV_CPU_REPLACE( "m8502", M8502, VIC6569_CLOCK )
+	MDRV_CPU_CONFIG( c128_m8502_interface )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE)
 	MDRV_SCREEN_SIZE(VIC6569_COLUMNS * 2, VIC6569_LINES)
@@ -649,15 +679,24 @@ static MACHINE_DRIVER_START( c128pal )
 	MDRV_SOUND_CONFIG(c128_sound_interface)
 
 	/* cia */
-	MDRV_CIA6526_REMOVE("cia_0")
-	MDRV_CIA6526_REMOVE("cia_1")
-	MDRV_CIA6526_ADD("cia_0", CIA6526R1, VIC6569_CLOCK, c64_pal_cia0)
-	MDRV_CIA6526_ADD("cia_1", CIA6526R1, VIC6569_CLOCK, c64_pal_cia1)
+	MDRV_DEVICE_REMOVE("cia_0")
+	MDRV_DEVICE_REMOVE("cia_1")
+	MDRV_CIA6526_ADD("cia_0", CIA6526R1, VIC6569_CLOCK, c128_pal_cia0)
+	MDRV_CIA6526_ADD("cia_1", CIA6526R1, VIC6569_CLOCK, c128_pal_cia1)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( c128dpal )
 	MDRV_IMPORT_FROM( c128pal )
-//	MDRV_IMPORT_FROM( cpu_c1571 )
+
+	MDRV_DEVICE_REMOVE("serial_bus")	// in the current code, serial bus device is tied to the floppy drive
+	MDRV_IMPORT_FROM( cpu_c1571 )
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( c128dcrp )
+	MDRV_IMPORT_FROM( c128pal )
+
+	MDRV_DEVICE_REMOVE("serial_bus")	// in the current code, serial bus device is tied to the floppy drive
+	MDRV_IMPORT_FROM( cpu_c1571cr )
 MACHINE_DRIVER_END
 
 
@@ -729,7 +768,22 @@ ROM_START( c128ger )
 	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
 ROM_END
 
-ROM_START( c128fin )
+ROM_START( c128sfi )
+	ROM_REGION( 0x132800, "maincpu", 0 )
+	ROM_LOAD( "318018-0x.u33", 0x100000, 0x4000, CRC(2ee6e2fa) SHA1(60e1491e1d5782e3cf109f518eb73427609badc6) )		// labels not available
+	ROM_LOAD( "318019-0x.u34", 0x104000, 0x4000, CRC(d551fce0) SHA1(4d223883e866645328f86a904b221464682edc4f) )		// labels not available
+	ROM_LOAD( "251913-0x.u32", 0x108000, 0x4000, CRC(2aff27d3) SHA1(267654823c4fdf2167050f41faa118218d2569ce) )		// labels not available
+	ROM_LOAD( "318020-0x.u35", 0x10c000, 0x4000, CRC(9526fac4) SHA1(a01dd871241c801db51e8ebc30fedfafd8cc506b) )		// labels not available
+
+	/* This was not included in the submission, unfortunately */
+	ROM_LOAD( "325181-01.bin", 0x120000, 0x2000, BAD_DUMP CRC(7a70d9b8) SHA1(aca3f7321ee7e6152f1f0afad646ae41964de4fb) )
+
+	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
+	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
+ROM_END
+
+ROM_START( c128fino )
 	ROM_REGION( 0x132800, "maincpu", 0 )
 	ROM_LOAD( "318018-04.bin", 0x100000, 0x4000, BAD_DUMP CRC(9f9c355b) SHA1(d53a7884404f7d18ebd60dd3080c8f8d71067441) )			// BASIC lo
 	ROM_LOAD( "318019-04.bin", 0x104000, 0x4000, BAD_DUMP CRC(6e2c91a7) SHA1(c4fb4a714e48a7bf6c28659de0302183a0e0d6c0) )			// BASIC hi
@@ -793,7 +847,7 @@ ROM_START( c128d )
 	ROM_LOAD( "390059-01.bin", 0x120000, 0x2000, CRC(6aaaafe6) SHA1(29ed066d513f2d5c09ff26d9166ba23c2afb2b3f) )
 
 	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
-	C1571_ROM("cpu_vc1540")
+	C1571_ROM("cpu_vc1571")
 	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
 	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
 ROM_END
@@ -808,7 +862,7 @@ ROM_START( c128dcr )
 	ROM_LOAD( "390059-01.bin", 0x120000, 0x2000, CRC(6aaaafe6) SHA1(29ed066d513f2d5c09ff26d9166ba23c2afb2b3f) )			// Character
 
 	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
-	C1571_ROM("cpu_vc1540")
+	C1571CR_ROM("cpu_vc1571")
 	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
 	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
 ROM_END
@@ -823,7 +877,7 @@ ROM_START( c128drde )
 	ROM_LOAD( "315079-01.bin", 0x120000, 0x2000, CRC(fe5a2db1) SHA1(638f8aff51c2ac4f99a55b12c4f8c985ef4bebd3) )
 
 	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
-	C1571_ROM("cpu_vc1540")
+	C1571CR_ROM("cpu_vc1571")
 	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
 	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
 ROM_END
@@ -836,7 +890,7 @@ ROM_START( c128drsw )
 	ROM_LOAD( "325181-01.bin", 0x120000, 0x2000, CRC(7a70d9b8) SHA1(aca3f7321ee7e6152f1f0afad646ae41964de4fb) )
 
 	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
-	C1571_ROM("cpu_vc1540")
+	C1571CR_ROM("cpu_vc1571")
 	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
 	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
 ROM_END
@@ -852,7 +906,22 @@ ROM_START( c128drit )
 	ROM_LOAD( "325167-01.bin", 0x120000, 0x2000, BAD_DUMP CRC(bad36b88) SHA1(9119b27a1bf885fa4c76fff5d858c74c194dd2b8) )
 
 	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
-	C1571_ROM("cpu_vc1540")
+	C1571CR_ROM("cpu_vc1571")
+	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
+	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
+ROM_END
+
+
+ROM_START( c128d81 )
+	ROM_REGION( 0x132800, "maincpu", 0 )
+	ROM_LOAD( "318018-04.bin", 0x100000, 0x4000, CRC(9f9c355b) SHA1(d53a7884404f7d18ebd60dd3080c8f8d71067441) )			// BASIC lo
+	ROM_LOAD( "318019-04.bin", 0x104000, 0x4000, CRC(6e2c91a7) SHA1(c4fb4a714e48a7bf6c28659de0302183a0e0d6c0) )			// BASIC hi
+	ROM_LOAD( "251913-01.bin", 0x108000, 0x4000, CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88) )			// C64 OS ROM
+	ROM_LOAD( "318020-05.bin", 0x10c000, 0x4000, CRC(ba456b8e) SHA1(ceb6e1a1bf7e08eb9cbc651afa29e26adccf38ab) )			// Kernal
+	ROM_LOAD( "390059-01.bin", 0x120000, 0x2000, CRC(6aaaafe6) SHA1(29ed066d513f2d5c09ff26d9166ba23c2afb2b3f) )
+
+	ROM_REGION( 0x10000, "m8502", ROMREGION_ERASEFF )
+	C1581_ROM("cpu_vc1571")
 	ROM_REGION( 0x2000, "gfx1", ROMREGION_ERASEFF )
 	ROM_REGION( 0x100, "gfx2", ROMREGION_ERASEFF )
 ROM_END
@@ -874,6 +943,10 @@ static SYSTEM_CONFIG_START(c128d)
 	CONFIG_DEVICE(c1571_device_getinfo)
 SYSTEM_CONFIG_END
 
+static SYSTEM_CONFIG_START(c128d81)
+	CONFIG_DEVICE(c1581_device_getinfo)
+SYSTEM_CONFIG_END
+
 
 /***************************************************************************
 
@@ -883,20 +956,25 @@ SYSTEM_CONFIG_END
 
 /*    YEAR  NAME     PARENT COMPAT MACHINE   INPUT    INIT      CONFIG COMPANY                             FULLNAME            FLAGS */
 
-COMP( 1985, c128,      0,     0,   c128,     c128,    c128,     c128,  "Commodore Business Machines Co.", "Commodore 128 NTSC", 0)
+COMP( 1985, c128,      0,     0,   c128,     c128,    c128,     c128,  "Commodore Business Machines Co.", "Commodore 128 (NTSC)", 0)
 COMP( 1985, c128cr,    c128,  0,   c128,     c128,    c128,     c128,  "Commodore Business Machines Co.", "Commodore 128CR (NTSC, proto?)", 0)
 
-COMP( 1985, c128fin,   c128,  0,   c128pal,  c128swe, c128pal,  c128,  "Commodore Business Machines Co.", "Commodore 128 (PAL, Finland)", 0)
+COMP( 1985, c128sfi,   c128,  0,   c128pal,  c128fra, c128pal,  c128,  "Commodore Business Machines Co.", "Commodore 128 (PAL, Swedish / Finnish)", 0)
+COMP( 1985, c128fino,  c128,  0,   c128pal,  c128swe, c128pal,  c128,  "Commodore Business Machines Co.", "Commodore 128 (PAL, Finland, Unconfirmed Dumps)", 0)
 COMP( 1985, c128fra,   c128,  0,   c128pal,  c128fra, c128pal,  c128,  "Commodore Business Machines Co.", "Commodore 128 (PAL, France)", 0)
 COMP( 1985, c128ger,   c128,  0,   c128pal,  c128ger, c128pal,  c128,  "Commodore Business Machines Co.", "Commodore 128 (PAL, Germany)", 0)
 COMP( 1985, c128nor,   c128,  0,   c128pal,  c128ita, c128pal,  c128,  "Commodore Business Machines Co.", "Commodore 128 (PAL, Norway)", 0)
-/* other countries spain, belgium, ... */
+// we miss other countries: Spain, Belgium, etc.
 
+// the following drivers use a 1571 floppy drive
 COMP( 1985, c128dpr,   c128,  0,   c128d,    c128,    c128d,    c128d, "Commodore Business Machines Co.", "Commodore 128D (NTSC, proto)", GAME_NOT_WORKING)
-COMP( 1985, c128d,     c128,  0,   c128dpal, c128,    c128dpal, c128d, "Commodore Business Machines Co.", "Commodore 128D PAL", GAME_NOT_WORKING)
+COMP( 1985, c128d,     c128,  0,   c128dpal, c128,    c128dpal, c128d, "Commodore Business Machines Co.", "Commodore 128D (PAL)", GAME_NOT_WORKING)
 
-COMP( 1986, c128dcr,   c128,  0,   c128d,    c128,    c128d,    c128d, "Commodore Business Machines Co.", "Commodore 128DCR NTSC", GAME_NOT_WORKING)
-COMP( 1986, c128drde,  c128,  0,   c128dpal, c128ger, c128dpal, c128d, "Commodore Business Machines Co.", "Commodore 128DCR (PAL, Germany)", GAME_NOT_WORKING)
-COMP( 1986, c128drit,  c128,  0,   c128dpal, c128ita, c128dpal, c128d, "Commodore Business Machines Co.", "Commodore 128DCR (PAL, Italy)", GAME_NOT_WORKING)
-COMP( 1986, c128drsw,  c128,  0,   c128dpal, c128swe, c128dpal, c128d, "Commodore Business Machines Co.", "Commodore 128DCR (PAL, Sweden)", GAME_NOT_WORKING)
-//COMP( 1986, c128d81,   c128,  0,   c128d,    c128,    c128d,    c128d, "Commodore Business Machines Co.", "Commodore "128D/81" NTSC", GAME_NOT_WORKING) // no floppy drive emulation makes this useless atm
+// the following drivers use a 1571CR floppy drive
+COMP( 1986, c128dcr,   c128,  0,   c128dcr,  c128,    c128dcr,  c128d, "Commodore Business Machines Co.", "Commodore 128DCR (NTSC)", GAME_NOT_WORKING)
+COMP( 1986, c128drde,  c128,  0,   c128dcrp, c128ger, c128dcrp, c128d, "Commodore Business Machines Co.", "Commodore 128DCR (PAL, Germany)", GAME_NOT_WORKING)
+COMP( 1986, c128drit,  c128,  0,   c128dcrp, c128ita, c128dcrp, c128d, "Commodore Business Machines Co.", "Commodore 128DCR (PAL, Italy)", GAME_NOT_WORKING)
+COMP( 1986, c128drsw,  c128,  0,   c128dcrp, c128swe, c128dcrp, c128d, "Commodore Business Machines Co.", "Commodore 128DCR (PAL, Sweden)", GAME_NOT_WORKING)
+
+// the following driver is a c128 with 1581 floppy drive. it allows us to document 1581 firmware dumps, but it does not do much more
+COMP( 1986, c128d81,   c128,  0,   c128d81,  c128,    c128d81,  c128d81, "Commodore Business Machines Co.", "Commodore 128D/81 (NTSC, proto)", GAME_NOT_WORKING)

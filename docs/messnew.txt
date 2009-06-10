@@ -1,3 +1,229 @@
+0.132
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- AC1 SCCH [Miodrag Milanovic]
+- Amiga 1200 NTSC & PAL (not working)  [incog nito, Dirk Best, Fabio Priuli]
+- Amiga CD32 (not working)  [incog nito, Fabio Priuli]
+- Amstrad NC150  [Roberto Carlos Fernandez Gerhardt, Wilbert Pol]
+- Brailab 4 (not working) [Miodrag Milanovic]
+- BOB-85 [Miodrag Milanovic]
+- CD-I (not working)  [incog nito]
+- CIP-01 [Miodrag Milanovic]
+- Frael Bruc 100-1 [Miodrag Milanovic]
+- HP38G, HP39G, HP49G (partialy working) [Miodrag Milanovic]
+- MC80.21/22 (not working) [Miodrag Milanovic]
+- MC80.30/31 (not working) [Miodrag Milanovic]
+- Microbee Premium PC85 (not working) [Robbbert]
+- Microbee 64k (not working) [Robbbert]
+- Microprofessor III [Miodrag Milanovic]
+- NEC PC-8001, PC-8001MkII, PC-8801, PC-8801MkII (all not working),
+  PC-8801MkIIFR,  PC-8801MkIIMR, PC-8801MH, PC-8801FA, PC-8801MA,
+  PC-8801MA2, PC-8801MC [Fabio Priuli]
+- Nintendo M82 Display Unit (not working) [Andy Welburn, Fabio Priuli]
+- NTS DreamWriter T200 (not working)  [Roberto Carlos
+  Fernandez Gerhardt, Wilbert Pol]
+- Palm IIIc,Palm m100,Palm m130,Palm m505,Palm m515 
+  Palm V, Palm Vx,Visor Edge,Symbol SPT1500,
+  Symbol SPT1700, Symbol SPT1740 (not working) [Miodrag Milanovic]
+- PC/M Mugler [Miodrag Milanovic]
+- PolyMorphic Systems Poly-88 [Miodrag Milanovic]
+- PolyMorphic Systems Poly-8813 (not working) [Miodrag Milanovic]
+- Pravetz 82, 8M and 8C [Miodrag Milanovic]
+- Ringo 470 (not working) [Miodrag Milanovic]
+- Samsung SPC-1000 [Miodrag Milanovic]
+- Sharp MZ-1500, MZ-80A (not working) [Fabio Priuli]
+- Sharp Pocket Computer 1245,1250,1255,1260,1261/1262 [Miodrag Milanovic]
+- SNK NeoGeo AES [R. Belmont, Fabio Priuli]
+- Steepler Dendy Classic (not working) [incog nito]
+- TK85 [Robbbert, Miodrag Milanovic]
+- Timex Sinclair 1500 [Robbbert, Miodrag Milanovic]
+- Votrax Type-'N-Talk (not working) [Lord Nightmare, Kevtris]
+- Xerox 820 [Robbbert, Curt Coder]
+- ZX97 (not working) [Miodrag Milanovic]
+
+
+
+Skeleton drivers : 
+------------------
+- Agat-7
+- Agat-9
+- Acorn 6809
+- BIC A5105
+- BCS-3
+- Beehive DM3270
+- BK-0011M
+- Bung Doctor PC Jr
+- C-80
+- Camputers Lynx 48
+- Camputers Lynx 96
+- Camputers Lynx 128
+- Canon X-07
+- CCE MC-1000
+- Chess-Master	
+- DEC VK-100
+- Dunfield 6809 Portable
+- Elektronika MK-85
+- Elektronika MK-90
+- Elwro 800 Junior
+- Epson PX-8
+- Epson QX-10
+- FK-1
+- Fujitsu FM7
+- Fujitsu FM77AV
+- Fujitsu FM77AV40SX
+- Heathkit ET-3400
+- Hubler/Everts MC
+- Interact Family Computer
+- IQ-151
+- Kay 1024
+- KC 85/2
+- KC 85/5
+- SC-80
+- LC-80
+- National JR200
+- Heathkit H8
+- Heathkit H19
+- Heathkit H89
+- Hector 2HR+
+- Hector 2HRX
+- Hector 1
+- Jaguar CD
+- MicroArt ATM
+- MicroArt ATM 2 Turbo
+- Nanos
+- NEC PC-6001
+- NEC PC-6001A
+- NEC PC-6001mkII
+- NEC PC-6001mkIISR
+- NEC PC-6600
+- NEC PC-6600SR
+- NEC PC-8500
+- NEC PC-88 VA
+- NEC PC-9801
+- NEC PC-9821
+- Nintendo Super Famicom Box
+- Olivetti L1 M20
+- Olivetti L1 M40
+- Philips VG-5000
+- Philips VG-8000
+- Philips VG-8010
+- Philips VG-8010F
+- Plydin-601 
+- Plydin-601A
+- PK8000 Vesta
+- PK8000 Sura/Hobby
+- PK6812c
+- Profi
+- PROF-80
+- Poly-Computer 880
+- Quorum
+- Robotron A5120
+- Robotron A5130
+- Schachcomputer SC1
+- Schachcomputer SC2
+- Sega 32X
+- Sega CD
+- Sega Mega-CD
+- Sharp MZ-80B
+- Sharp MZ-2500
+- Sharp X1
+- Sharp X1 Turbo
+- Sharp X1 Turbo Z
+- SNK NeoGeo CD
+- SNK NeoGeo CDZ
+- Sony PocketStation
+- Sperry Univac UTS-20
+- System 2900
+- Tesla PMI-80
+- TI-73
+- TI-83 Plus Silver Edition
+- TI-84 Plus Silver Edition
+- TI-89
+- TI-92
+- TI-92 Plus
+- Tiki 100
+- Unior
+- UKNC
+- VCS-80
+- Visual 1050
+- Videotone TVC64,TVC64+,TVC64+ russian
+- Vector 1200
+- V-Tech Socrates 
+- XOR-100-12
+
+
+
+System Driver Changes:
+----------------------
+- [ATARI] Added proper labels and dumps to Atari 400, 800 and XE/XL. A
+  few are still marked as BAD_DUMP while waiting for confirmation. [Freddy 
+  Offenga, Fabio Priuli]
+
+- [C128] Added verified Swedish / Finnish dump [Iggy Drougge, Fabio Priuli]
+
+- [CBM] Added floppy drive firmwares and enabled floppy emulation code 
+  (with some fix) in sx64, c16c, c16v, vic20v, c128d, c128dcr, c128d81. 
+  The code is still not working, but it can be enabled since it does 
+  not crash MESS anymore. [Fabio Priuli]
+
+- [COLECO] Fixed controller bug introduced in 0.131. [Fabio Priuli]
+
+- [CRVISION] Added support for stereo tapes. [Curt Coder]
+
+- [GLASGOW] Fixed blinking LEDs. This allows basic usage of this system. [Fabio Priuli]
+
+- [JAGUAR] Fixed 0.129 regression in cart starting address. (bug #1766)
+  [Robbbert]
+
+- [KAYPRO] Kayproii now works. [Robbbert]
+
+- [KYOCERA] All systems are now working. [Curt Coder, Fabio Priuli]
+
+- [ORIC] Various bioses added for different languages. [Miodrag Milanovic]
+
+- [PP01] 16 roms of 1K instead of one 16KB, as in real machine [Miodrag Milanovic]
+
+- [VISICOM] Toshiba Visicom is now working and playable, but the
+  graphics emulation is not perfect yet. [Curt Coder]
+
+- [X68000] Added support for the XPD-1LR dual D-pad controller.  [Barry Rodewald]
+
+- [Z88] Added version 3.0 and 4.01 finnish version of roms [Miodrag Milanovic]
+
+- [SYM1] Added BASIC and Assembler ROM's, and version 1.0 monitor [Miodrag Milanovic]
+
+- [TI85] Bug 1711 fixed, and TI-82 progress in emulation [Xander]
+
+
+
+User Interface Changes:
+-----------------------
+(none)
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.132.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Converted the WAVE sound device to stereo. [Curt Coder]
+
+- Implemented following devices: PIO8155, RP5C01A, HD44102, HD61830. [Curt Coder]
+
+- Changed the Commodore Serial Bus and IEEE Bus implementations to be devices. 
+  More work is needed to make the code flexible enough to support all the possible 
+  devices which could have been connected to the real thing. [Fabio Priuli]
+
+
+
 0.131
 
 New System Drivers Supported (in no particular order):

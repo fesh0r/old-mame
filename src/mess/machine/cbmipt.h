@@ -49,4 +49,3 @@ INPUT_PORTS_EXTERN( vic_expansion );
 
 
 #endif /* CBMIPT_H_ */
-

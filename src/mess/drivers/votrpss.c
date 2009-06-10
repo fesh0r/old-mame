@@ -75,8 +75,6 @@
  Address Maps
 ******************************************************************************/
 
-/* Note: Expansion memory is dynamically mapped in machine/vtech1.c */
-
 static ADDRESS_MAP_START(z80_mem, ADDRESS_SPACE_PROGRAM, 8)
     ADDRESS_MAP_UNMAP_HIGH
     AM_RANGE(0x0000, 0x3fff) AM_ROM /* main roms (in potted module) */
@@ -137,8 +135,8 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START(votrpss)
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu", Z80, XTAL_8MHz/2)  /* 4.000 MHz, verified */
-    MDRV_CPU_PROGRAM_MAP(z80_mem, 0)
-    MDRV_CPU_IO_MAP(z80_io, 0)
+    MDRV_CPU_PROGRAM_MAP(z80_mem)
+    MDRV_CPU_IO_MAP(z80_io)
     MDRV_QUANTUM_TIME(HZ(60))
 
     /* video hardware */
@@ -196,5 +194,5 @@ SYSTEM_CONFIG_END
 ******************************************************************************/
 
 /*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT CONFIG      COMPANY                     FULLNAME                            FLAGS */
-COMP( 1983, votrpss,   0,          0,      votrpss,   votrpss, 0,   votrpss,   "Votrax",        "Personal Speech System",                        GAME_NOT_WORKING )
+COMP( 1982, votrpss,   0,          0,      votrpss,   votrpss, 0,   votrpss,   "Votrax",        "Personal Speech System",                        GAME_NOT_WORKING )
 

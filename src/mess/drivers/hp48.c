@@ -873,6 +873,31 @@ ROM_END
 
 #define rom_hp48s rom_hp48sx
 
+ROM_START ( hp38g )
+	ROM_REGION( 0x80000, "maincpu", 0 )
+	ROM_LOAD( "hp38g.rom", 0x00000, 0x80000, CRC(31d9affc) SHA1(bab3f5907a16cbb087943fd77230514af8fd5ac0))
+ROM_END
+
+ROM_START ( hp39g )
+	ROM_REGION( 0x100000, "maincpu", 0 )
+	ROM_LOAD( "hp39g.rom", 0x00000, 0x100000, CRC(28268fdc) SHA1(57a2b19075fe60307a9affa79d8e7cb550c621c3))
+ROM_END
+
+ROM_START ( hp49g )
+	ROM_REGION( 0x200000, "maincpu", 0 )
+    ROM_SYSTEM_BIOS( 0, "1.00", "Version C-1.00" )
+    ROMX_LOAD( "hp49gv100.rom", 0x00000, 0x200000, CRC(64c9826a) SHA1(da25371b97d439fc0003cb786dba143ee2be9160), ROM_BIOS(1))
+    ROM_SYSTEM_BIOS( 1, "1.05", "Version C-1.05" )
+    ROMX_LOAD( "hp49gv105.rom", 0x00000, 0x200000, CRC(cf777cac) SHA1(b1d063b6e95083799aa990e4a2718214a38a372f), ROM_BIOS(2))
+    ROM_SYSTEM_BIOS( 2, "1.10", "Version C-1.10" )
+    ROMX_LOAD( "hp49gv110.rom", 0x00000, 0x200000, CRC(e391efbd) SHA1(d4abad60f38faf4cb2d2d97804a24f54589dfa10), ROM_BIOS(3))
+    ROM_SYSTEM_BIOS( 3, "1.16", "Version C-1.16" )
+    ROMX_LOAD( "hp49gv116.rom", 0x00000, 0x200000, CRC(dcc0b39c) SHA1(46f64b4731f5964eb114060b733aab2b23b4180c), ROM_BIOS(4))
+    ROM_SYSTEM_BIOS( 4, "1.18", "Version C-1.18" )
+    ROMX_LOAD( "hp49gv118.rom", 0x00000, 0x200000, CRC(73a6a195) SHA1(3f283fe15a64c5cbc8c1b1254e10965957f58a84), ROM_BIOS(5))
+    ROM_SYSTEM_BIOS( 5, "1.19", "Version B-1.19-6" )
+    ROMX_LOAD( "hp49gv119.rom", 0x00000, 0x200000, CRC(75218a18) SHA1(ec0f661f0aa7158d1f6df61f24410260b5324fa9), ROM_BIOS(6))
+ROM_END
 
 /**************************** memory *******************************/
 
@@ -922,7 +947,7 @@ static MACHINE_DRIVER_START ( hp48_common )
 
 	/* cpu */
 	MDRV_CPU_ADD ( "maincpu", SATURN, 3937007 ) /* almost 4 MHz */
-	MDRV_CPU_PROGRAM_MAP ( hp48, 0 )
+	MDRV_CPU_PROGRAM_MAP ( hp48)
 	MDRV_CPU_CONFIG( hp48_config )
  
 	/* memory */
@@ -1006,10 +1031,13 @@ static MACHINE_DRIVER_START ( hp48s )
 MACHINE_DRIVER_END
 
 
-
-
 COMP ( 1990, hp48sx, 0     , 0, hp48sx, hp48sx, hp48, NULL, "Hewlett Packard", "HP48SX", 0 )
 COMP ( 1991, hp48s , hp48sx, 0, hp48s,  hp48sx, hp48, NULL, "Hewlett Packard", "HP48S", 0 )
 COMP ( 1993, hp48gx, 0     , 0, hp48gx, hp48gx, hp48, NULL, "Hewlett Packard", "HP48GX", 0 )
 COMP ( 1993, hp48g , hp48gx, 0, hp48g,  hp48gx, hp48, NULL, "Hewlett Packard", "HP48G", 0 )
 COMP ( 1998, hp48gp, hp48gx, 0, hp48gp, hp48gx, hp48, NULL, "Hewlett Packard", "HP48G+", 0 )
+
+COMP ( 1995, hp38g , hp48gx, 0, hp48g,  hp48gx, hp48, NULL, "Hewlett Packard", "HP38G", 0 )
+COMP ( 2000, hp39g , hp48gx, 0, hp48g,  hp48gx, hp48, NULL, "Hewlett Packard", "HP39G", GAME_NOT_WORKING )
+COMP ( 1999, hp49g , hp48gx, 0, hp48g,  hp48gx, hp48, NULL, "Hewlett Packard", "HP49G", 0 )
+

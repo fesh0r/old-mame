@@ -389,11 +389,11 @@ normal keyboards?
 #include "includes/pet.h"
 #include "machine/cbmipt.h"
 #include "video/mc6845.h"
-#include "includes/cbmieeeb.h"
 
 /* devices config */
 #include "includes/cbm.h"
 #include "includes/cbmdrive.h"
+#include "includes/cbmieeeb.h"
 
 
 /*************************************
@@ -408,7 +408,7 @@ static ADDRESS_MAP_START(pet_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
 	AM_RANGE(0xe840, 0xe84f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
-/*  AM_RANGE(0xe900, 0xe91f) AM_READ(cbm_ieee_state)    // for debugging */
+/*  AM_RANGE(0xe900, 0xe91f) AM_DEVREAD("ieee_bus", cbm_ieee_state)    // for debugging */
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -438,9 +438,9 @@ static ADDRESS_MAP_START( pet80_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE("crtc", mc6845_address_w)
 	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE("crtc", mc6845_register_r, mc6845_register_w)
 #endif
-	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_BANK8)
-	AM_RANGE(0xf000, 0xffef) AM_WRITE(SMH_BANK8)
-	AM_RANGE(0xfff1, 0xffff) AM_WRITE(SMH_BANK9)
+	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_BANK(8))
+	AM_RANGE(0xf000, 0xffef) AM_WRITE(SMH_BANK(8))
+	AM_RANGE(0xfff1, 0xffff) AM_WRITE(SMH_BANK(9))
 ADDRESS_MAP_END
 
 
@@ -652,7 +652,7 @@ static MACHINE_DRIVER_START( pet_general )
 	MDRV_DRIVER_DATA(pet_state)
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, 7833600)        /* 7.8336 MHz */
-	MDRV_CPU_PROGRAM_MAP(pet_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(pet_mem)
 	MDRV_CPU_VBLANK_INT("screen", pet_frame_interrupt)
 
 	MDRV_MACHINE_RESET( pet )
@@ -680,6 +680,9 @@ static MACHINE_DRIVER_START( pet_general )
 	/* pias */
 	MDRV_PIA6821_ADD( "pia_0", pet_pia0)
 	MDRV_PIA6821_ADD( "pia_1", pet_pia1)
+
+	/* IEEE bus */
+	MDRV_CBM_IEEEBUS_ADD("ieee_bus")
 MACHINE_DRIVER_END
 
 
@@ -707,7 +710,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( pet40 )
 	MDRV_IMPORT_FROM( pet )
 	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP( pet40_mem, 0 )
+	MDRV_CPU_PROGRAM_MAP( pet40_mem)
 
 	MDRV_MC6845_ADD("crtc", MC6845, XTAL_17_73447MHz/3	/* This is a wild guess and mostly likely incorrect */, crtc_pet40)
 
@@ -729,7 +732,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( pet80 )
 	MDRV_IMPORT_FROM( pet )
 	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP( pet80_mem, 0 )
+	MDRV_CPU_PROGRAM_MAP( pet80_mem)
 
     /* video hardware */
 	MDRV_SCREEN_MODIFY("screen")
@@ -759,11 +762,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( superpet )
 	MDRV_IMPORT_FROM( pet80 )
 	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP( superpet_mem, 0 )
+	MDRV_CPU_PROGRAM_MAP( superpet_mem)
 
 	/* m6809 cpu */
 	MDRV_CPU_ADD("m6809", M6809, 1000000)
-	MDRV_CPU_PROGRAM_MAP(superpet_m6809_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(superpet_m6809_mem)
 	MDRV_CPU_VBLANK_INT("screen", pet_frame_interrupt)
 
 	MDRV_SCREEN_MODIFY("screen")

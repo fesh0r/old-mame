@@ -27,6 +27,16 @@
 			-               wd17xx_complete_command(device, DELAY_DATADONE);
 			+               wd17xx_set_data_request();
 
+	2009-May-10 Robbbert:
+		Further change to get the Kaypro II to work
+		- When wd17xx_read_id has generated the 6 data bytes, it should make
+		  an IRQ and turn off the busy status. The timing for Osborne is
+		  critical, it must be between 300 and 700 usec, I've settled on 400.
+		  The Kaypro doesn't care timewise, but the busy flag must turn off
+		  sometime or it hangs.
+			-		w->status |= STA_2_BUSY;
+			+		wd17xx_set_busy(device, ATTOTIME_IN_USEC(400));
+
 	TODO:
 		- Multiple record write
 		- What happens if a track is read that doesn't have any id's on it?
@@ -200,7 +210,7 @@ struct _wd17xx_t
 	/* this is the head currently selected */
 	UINT8 hd;
 
-	/* pause time when writeing/reading sector */
+	/* pause time when writing/reading sector */
 	int pause_time;
 	
 	/* Pointer to interface */
@@ -623,8 +633,7 @@ static void wd17xx_read_id(const device_config *device)
 		w->buffer[5] = crc & 255;
 
 		w->sector = id.C;
-
-		w->status |= STA_2_BUSY;
+		wd17xx_set_busy(device, ATTOTIME_IN_USEC(400));
 		w->busy_count = 0;
 
 		wd17xx_set_data_request(device);
@@ -1184,14 +1193,18 @@ READ8_DEVICE_HANDLER ( wd17xx_sector_r )
 
 					w->status |= STA_2_BUSY;
 					w->busy_count = 0;
-				} else {
+				}
+				else
+				{
 					wd17xx_complete_command(device, DELAY_DATADONE);
 
 					if (VERBOSE)
 						logerror("wd17xx_data_r(): multi data read completed\n");
 				}
-			} else {
-				/* Delay the INTRQ 3 byte times becuase we need to read two CRC bytes and
+			}
+			else
+			{
+				/* Delay the INTRQ 3 byte times because we need to read two CRC bytes and
 				   compare them with a calculated CRC */
 				wd17xx_complete_command(device, DELAY_DATADONE);
 
@@ -1234,7 +1247,7 @@ WRITE8_DEVICE_HANDLER ( wd17xx_command_w )
 
 		w->data_count = 0;
 		w->data_offset = 0;
-		w->status &= ~(STA_2_BUSY);
+		w->status &= ~STA_2_BUSY;
 
 		wd17xx_clear_data_request(device);
 
@@ -1251,7 +1264,7 @@ WRITE8_DEVICE_HANDLER ( wd17xx_command_w )
 
 		w->busy_count = 0;
 		w->command_type = TYPE_IV;
-        return;
+		return;
 	}
 
 	if (data & 0x80)
@@ -1319,32 +1332,31 @@ WRITE8_DEVICE_HANDLER ( wd17xx_command_w )
 			wd17xx_clear_data_request(device);
 
 			if (!floppy_drive_get_flag_state(wd17xx_current_image(device), FLOPPY_DRIVE_READY))
-            {
+			{
 				wd17xx_complete_command(device, DELAY_NOTREADY);
-            }
-            else
-            {
+			}
+			else
+			{
 
-                /* drive write protected? */
-                if (floppy_drive_get_flag_state(wd17xx_current_image(device),FLOPPY_DRIVE_DISK_WRITE_PROTECTED))
-                {
-                    /* yes */
-                    w->status |= STA_2_WRITE_PRO;
-                    /* quit command */
-                    wd17xx_complete_command(device, DELAY_ERROR);
-                }
-                else
-                {
-                    w->command = data & ~FDC_MASK_TYPE_III;
-                    w->data_offset = 0;
-                    w->data_count = (w->density) ? TRKSIZE_DD : TRKSIZE_SD;
-                    wd17xx_set_data_request(device);
-
-                    w->status |= STA_2_BUSY;
-                    w->busy_count = 0;
-                }
-            }
-            return;
+				/* drive write protected? */
+				if (floppy_drive_get_flag_state(wd17xx_current_image(device),FLOPPY_DRIVE_DISK_WRITE_PROTECTED))
+				{
+				/* yes */
+					w->status |= STA_2_WRITE_PRO;
+				/* quit command */
+					wd17xx_complete_command(device, DELAY_ERROR);
+				}
+				else
+				{
+				w->command = data & ~FDC_MASK_TYPE_III;
+				w->data_offset = 0;
+				w->data_count = (w->density) ? TRKSIZE_DD : TRKSIZE_SD;
+				wd17xx_set_data_request(device);
+				w->status |= STA_2_BUSY;
+				w->busy_count = 0;
+				}
+			}
+			return;
 		}
 
 		if ((data & ~FDC_MASK_TYPE_III) == FDC_READ_DAM)
@@ -1356,14 +1368,11 @@ WRITE8_DEVICE_HANDLER ( wd17xx_command_w )
 			w->status &= ~STA_2_LOST_DAT;
   			wd17xx_clear_data_request(device);
 
-			if (!floppy_drive_get_flag_state(wd17xx_current_image(device), FLOPPY_DRIVE_READY))
-            {
+			if (floppy_drive_get_flag_state(wd17xx_current_image(device), FLOPPY_DRIVE_READY))
+				wd17xx_read_id(device);
+			else
 				wd17xx_complete_command(device, DELAY_NOTREADY);
-            }
-            else
-            {
-                wd17xx_read_id(device);
-            }
+
 			return;
 		}
 
@@ -1403,7 +1412,7 @@ WRITE8_DEVICE_HANDLER ( wd17xx_command_w )
 			w->direction = 1;
 		}
 		else if (w->track_reg > w->data)
-        {
+		{
 			if (VERBOSE)
 				logerror("direction: -1\n");
 
@@ -1467,7 +1476,7 @@ WRITE8_DEVICE_HANDLER ( wd17xx_command_w )
 			logerror("wd17xx_command_w $%02X STEP_IN\n", data);
 
 		w->command_type = TYPE_I;
-        w->direction = +1;
+		w->direction = +1;
 		/* simulate seek time busy signal */
 		w->busy_count = 0;	//((data & FDC_STEP_RATE) + 1);
 
@@ -1488,7 +1497,7 @@ WRITE8_DEVICE_HANDLER ( wd17xx_command_w )
 			logerror("wd17xx_command_w $%02X STEP_OUT\n", data);
 
 		w->command_type = TYPE_I;
-        w->direction = -1;
+		w->direction = -1;
 		/* simulate seek time busy signal */
 		w->busy_count = 0;	//((data & FDC_STEP_RATE) + 1);
 

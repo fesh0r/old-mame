@@ -162,7 +162,7 @@ static DEVICE_START(ted7360_sound)
 	/* buffer for fastest played sample for 5 second
 	 * so we have enough data for min 5 second */
 	noisesize = NOISE_FREQUENCY_MAX * NOISE_BUFFER_SIZE_SEC;
-	noise = (UINT8*) auto_malloc (noisesize * sizeof (noise[0]));
+	noise = auto_alloc_array(device->machine, UINT8, noisesize);
 
 	{
 		int noiseshift = 0x7ffff8;
@@ -205,7 +205,7 @@ DEVICE_GET_INFO( ted7360_sound )
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(ted7360_sound);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Ted7360 Sound");				break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "7360 TED");				break;
 		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
 	}
 }

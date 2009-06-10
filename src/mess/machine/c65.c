@@ -12,6 +12,7 @@
 #include "machine/6526cia.h"
 #include "video/vic4567.h"
 
+#include "includes/cbm.h"
 #include "includes/cbmserb.h"
 #include "includes/cbmdrive.h"
 
@@ -19,19 +20,25 @@
 #include "includes/c64.h"
 
 #define VERBOSE_LEVEL 0
-#define DBG_LOG(N,M,A) \
+#define DBG_LOG( MACHINE, N, M, A ) \
 	do { \
 		if(VERBOSE_LEVEL >= N) \
 		{ \
 			if( M ) \
-				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(machine)), (char*) M ); \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(MACHINE)), (char*) M ); \
 			logerror A; \
 		} \
 	} while (0)
 
-static int c65_charset_select=0;
+static int c65_charset_select = 0;
 
-static int c64mode=0;
+static int c64mode = 0;
+
+static UINT8 c65_6511_port = 0xff;
+static UINT8 c65_keyline = { 0xff };
+
+static UINT8 serial_clock, serial_data, serial_atn;
+static UINT8 vicirq = 0;
 
 /*UINT8 *c65_basic; */
 /*UINT8 *c65_kernal; */
@@ -40,6 +47,203 @@ UINT8 *c65_chargen;
 /*UINT8 *c65_monitor; */
 UINT8 *c65_interface;
 /*UINT8 *c65_graphics; */
+
+
+static void c65_nmi(running_machine *machine)
+{
+	static int nmilevel = 0;
+	const device_config *cia_1 = devtag_get_device(machine, "cia_1");
+	int cia1irq = cia_get_irq(cia_1);
+
+	if (nmilevel != (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq)	/* KEY_RESTORE */
+	{
+		cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq);
+
+		nmilevel = (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq;
+	}
+}
+
+
+/***********************************************
+
+	CIA Interfaces
+
+***********************************************/
+
+/*
+ *	CIA 0 - Port A keyboard line select
+ *	CIA 0 - Port B keyboard line read
+ *
+ *	flag cassette read input, serial request in
+ *	irq to irq connected
+ *
+ *	see machine/cbm.c
+ */
+
+static READ8_DEVICE_HANDLER( c65_cia0_port_a_r )
+{
+	UINT8 cia0portb = cia_get_output_b(devtag_get_device(device->machine, "cia_0"));
+
+	return common_cia0_port_a_r(device, cia0portb);
+}
+
+static READ8_DEVICE_HANDLER( c65_cia0_port_b_r )
+{
+    UINT8 value = 0xff;
+	UINT8 cia0porta = cia_get_output_a(devtag_get_device(device->machine, "cia_0"));
+
+	value &= common_cia0_port_b_r(device, cia0porta);
+
+	if (!(c65_6511_port & 0x02))
+		value &= c65_keyline;
+
+    return value;
+}
+
+static WRITE8_DEVICE_HANDLER( c65_cia0_port_b_w )
+{
+//	was there lightpen support in c65 video chip?
+//	vic2_lightpen_write(data & 0x10);
+}
+
+static void c65_irq (running_machine *machine, int level)
+{
+	static int old_level = 0;
+
+	if (level != old_level)
+	{
+		DBG_LOG(machine, 3, "mos6510", ("irq %s\n", level ? "start" : "end"));
+		cputag_set_input_line(machine, "maincpu", M6510_IRQ_LINE, level);
+		old_level = level;
+	}
+}
+
+/* is this correct for c65 as well as c64? */
+static void c65_cia0_interrupt (const device_config *device, int level)
+{
+	c65_irq (device->machine, level || vicirq);
+}
+
+/* is this correct for c65 as well as c64? */
+void c65_vic_interrupt (running_machine *machine, int level)
+{
+	const device_config *cia_0 = devtag_get_device(machine, "cia_0");
+#if 1
+	if (level != vicirq)
+	{
+		c65_irq (machine, level || cia_get_irq(cia_0));
+		vicirq = level;
+	}
+#endif
+}
+
+const cia6526_interface c65_ntsc_cia0 =
+{
+	DEVCB_LINE(c65_cia0_interrupt),
+	DEVCB_NULL,	/* pc_func */
+	60,
+
+	{
+		{ DEVCB_HANDLER(c65_cia0_port_a_r), DEVCB_NULL },
+		{ DEVCB_HANDLER(c65_cia0_port_b_r), DEVCB_HANDLER(c65_cia0_port_b_w) }
+	}
+};
+
+const cia6526_interface c65_pal_cia0 =
+{
+	DEVCB_LINE(c65_cia0_interrupt),
+	DEVCB_NULL,	/* pc_func */
+	50,
+
+	{
+		{ DEVCB_HANDLER(c65_cia0_port_a_r), DEVCB_NULL },
+		{ DEVCB_HANDLER(c65_cia0_port_b_r), DEVCB_HANDLER(c65_cia0_port_b_w) }
+	}
+};
+
+/*
+ * CIA 1 - Port A
+ * bit 7 serial bus data input
+ * bit 6 serial bus clock input
+ * bit 5 serial bus data output
+ * bit 4 serial bus clock output
+ * bit 3 serial bus atn output
+ * bit 2 rs232 data output
+ * bits 1-0 vic-chip system memory bank select
+ *
+ * CIA 1 - Port B
+ * bit 7 user rs232 data set ready
+ * bit 6 user rs232 clear to send
+ * bit 5 user
+ * bit 4 user rs232 carrier detect
+ * bit 3 user rs232 ring indicator
+ * bit 2 user rs232 data terminal ready
+ * bit 1 user rs232 request to send
+ * bit 0 user rs232 received data
+ *
+ * flag restore key or rs232 received data input
+ * irq to nmi connected ?
+ */
+static READ8_DEVICE_HANDLER( c65_cia1_port_a_r )
+{
+	UINT8 value = 0xff;
+	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
+
+	if (!serial_clock || !cbm_serial_clock_read(serbus, 0))
+		value &= ~0x40;
+
+	if (!serial_data || !cbm_serial_data_read(serbus, 0))
+		value &= ~0x80;
+
+	return value;
+}
+
+static WRITE8_DEVICE_HANDLER( c65_cia1_port_a_w )
+{
+	static const int helper[4] = {0xc000, 0x8000, 0x4000, 0x0000};
+	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
+
+	cbm_serial_clock_write(serbus, 0, serial_clock = !(data & 0x10));
+	cbm_serial_data_write(serbus, 0, serial_data = !(data & 0x20));
+	cbm_serial_atn_write(serbus, 0, serial_atn = !(data & 0x08));
+	c64_vicaddr = c64_memory + helper[data & 0x03];
+}
+
+static void c65_cia1_interrupt (const device_config *device, int level)
+{
+	c65_nmi(device->machine);
+}
+
+
+const cia6526_interface c65_ntsc_cia1 =
+{
+	DEVCB_LINE(c65_cia1_interrupt),
+	DEVCB_NULL,	/* pc_func */
+	60,
+
+	{
+		{ DEVCB_HANDLER(c65_cia1_port_a_r), DEVCB_HANDLER(c65_cia1_port_a_w) },
+		{ DEVCB_NULL, DEVCB_NULL }
+	}
+};
+
+const cia6526_interface c65_pal_cia1 =
+{
+	DEVCB_LINE(c65_cia1_interrupt),
+	DEVCB_NULL,	/* pc_func */
+	50,
+
+	{
+		{ DEVCB_HANDLER(c65_cia1_port_a_r), DEVCB_HANDLER(c65_cia1_port_a_w) },
+		{ DEVCB_NULL, DEVCB_NULL }
+	}
+};
+
+/***********************************************
+
+	Memory Handlers
+
+***********************************************/
 
 /* processor has only 1 mega address space !? */
 /* and system 8 megabyte */
@@ -93,89 +297,99 @@ static struct {
 */
 static void c65_dma_port_w(running_machine *machine, int offset, int value)
 {
-	static int dump=0;
+	static int dump = 0;
 	PAIR pair, src, dst, len;
 	UINT8 cmd, fill;
 	int i;
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
-	switch (offset&3) {
+	switch (offset & 3) 
+	{
 	case 2:
 	case 1:
-		dma.data[offset&3]=value;
+		dma.data[offset & 3] = value;
 		break;
 	case 0:
-		pair.b.h3=0;
-		pair.b.h2=dma.data[2];
-		pair.b.h=dma.data[1];
-		pair.b.l=dma.data[0]=value;
-		cmd=c65_read_mem(space, pair.d++);
-		len.w.h=0;
-		len.b.l=c65_read_mem(space, pair.d++);
-		len.b.h=c65_read_mem(space, pair.d++);
-		src.b.h3=0;
-		fill=src.b.l=c65_read_mem(space, pair.d++);
-		src.b.h=c65_read_mem(space, pair.d++);
-		src.b.h2=c65_read_mem(space, pair.d++);
-		dst.b.h3=0;
-		dst.b.l=c65_read_mem(space, pair.d++);
-		dst.b.h=c65_read_mem(space, pair.d++);
-		dst.b.h2=c65_read_mem(space, pair.d++);
+		pair.b.h3 = 0;
+		pair.b.h2 = dma.data[2];
+		pair.b.h = dma.data[1];
+		pair.b.l = dma.data[0]=value;
+		cmd = c65_read_mem(space, pair.d++);
+		len.w.h = 0;
+		len.b.l = c65_read_mem(space, pair.d++);
+		len.b.h = c65_read_mem(space, pair.d++);
+		src.b.h3 = 0;
+		fill = src.b.l = c65_read_mem(space, pair.d++);
+		src.b.h = c65_read_mem(space, pair.d++);
+		src.b.h2 = c65_read_mem(space, pair.d++);
+		dst.b.h3 = 0;
+		dst.b.l = c65_read_mem(space, pair.d++);
+		dst.b.h = c65_read_mem(space, pair.d++);
+		dst.b.h2 = c65_read_mem(space, pair.d++);
 
-		switch (cmd) {
+		switch (cmd) 
+		{
 		case 0:
-			if (src.d==0x3ffff) dump=1;
+			if (src.d == 0x3ffff) dump = 1;
 			if (dump)
-				DBG_LOG(1,"dma copy job",
+				DBG_LOG(space->machine, 1,"dma copy job",
 						("len:%.4x src:%.6x dst:%.6x sub:%.2x modrm:%.2x\n",
 						 len.w.l, src.d, dst.d, c65_read_mem(space, pair.d),
-						 c65_read_mem(space, pair.d+1) ) );
-			if ( (dma.version==1)
-				 &&( (src.d&0x400000)||(dst.d&0x400000)) ) {
-				if ( !(src.d&0x400000) ) {
-					dst.d&=~0x400000;
-					for (i=0; i<len.w.l; i++)
-						c65_write_mem(space, dst.d--,c65_read_mem(space, src.d++));
-				} else if ( !(dst.d&0x400000) ) {
-					src.d&=~0x400000;
-					for (i=0; i<len.w.l; i++)
-						c65_write_mem(space, dst.d++,c65_read_mem(space, src.d--));
-				} else {
-					src.d&=~0x400000;
-					dst.d&=~0x400000;
-					for (i=0; i<len.w.l; i++)
-						c65_write_mem(space, --dst.d,c65_read_mem(space, --src.d));
+						 c65_read_mem(space, pair.d + 1) ) );
+			if ((dma.version == 1)
+				 && ( (src.d&0x400000) || (dst.d & 0x400000))) 
+			{
+				if (!(src.d & 0x400000)) 
+				{
+					dst.d &= ~0x400000;
+					for (i = 0; i < len.w.l; i++)
+						c65_write_mem(space, dst.d--, c65_read_mem(space, src.d++));
 				}
-			} else {
-				for (i=0; i<len.w.l; i++)
-					c65_write_mem(space, dst.d++,c65_read_mem(space, src.d++));
+				else if (!(dst.d & 0x400000)) 
+				{
+					src.d &= ~0x400000;
+					for (i = 0; i < len.w.l; i++)
+						c65_write_mem(space, dst.d++, c65_read_mem(space, src.d--));
+				} 
+				else 
+				{
+					src.d &= ~0x400000;
+					dst.d &= ~0x400000;
+					for (i = 0; i < len.w.l; i++)
+						c65_write_mem(space, --dst.d, c65_read_mem(space, --src.d));
+				}
+			} 
+			else 
+			{
+				for (i = 0; i < len.w.l; i++)
+					c65_write_mem(space, dst.d++, c65_read_mem(space, src.d++));
 			}
 			break;
 		case 3:
-			DBG_LOG(3,"dma fill job",
+			DBG_LOG(space->machine, 3,"dma fill job",
 					("len:%.4x value:%.2x dst:%.6x sub:%.2x modrm:%.2x\n",
 					 len.w.l, fill, dst.d, c65_read_mem(space, pair.d),
-					 c65_read_mem(space, pair.d+1)));
-				for (i=0; i<len.w.l; i++)
-					c65_write_mem(space, dst.d++,fill);
+					 c65_read_mem(space, pair.d + 1)));
+				for (i = 0; i < len.w.l; i++)
+					c65_write_mem(space, dst.d++, fill);
 				break;
 		case 0x30:
-			DBG_LOG(1,"dma copy down",
+			DBG_LOG(space->machine, 1,"dma copy down",
 					("len:%.4x src:%.6x dst:%.6x sub:%.2x modrm:%.2x\n",
 					 len.w.l, src.d, dst.d, c65_read_mem(space, pair.d),
-					 c65_read_mem(space, pair.d+1) ) );
-			for (i=0; i<len.w.l; i++)
+					 c65_read_mem(space, pair.d + 1) ) );
+			for (i = 0; i < len.w.l; i++)
 				c65_write_mem(space, dst.d--,c65_read_mem(space, src.d--));
 			break;
 		default:
-			DBG_LOG(1,"dma job",
+			DBG_LOG(space->machine, 1,"dma job",
 					("cmd:%.2x len:%.4x src:%.6x dst:%.6x sub:%.2x modrm:%.2x\n",
 					 cmd,len.w.l, src.d, dst.d, c65_read_mem(space, pair.d),
-					 c65_read_mem(space, pair.d+1)));
+					 c65_read_mem(space, pair.d + 1)));
 		}
 		break;
 	default:
-		DBG_LOG (1, "dma chip write", ("%.3x %.2x\n", offset,value));
+		DBG_LOG(space->machine, 1, "dma chip write", ("%.3x %.2x\n", offset, value));
 		break;
 	}
 }
@@ -183,29 +397,29 @@ static void c65_dma_port_w(running_machine *machine, int offset, int value)
 static int c65_dma_port_r(running_machine *machine, int offset)
 {
 	/* offset 3 bit 7 in progress ? */
-	DBG_LOG (2, "dma chip read", ("%.3x\n", offset));
+	DBG_LOG(machine, 2, "dma chip read", ("%.3x\n", offset));
     return 0x7f;
 }
 
 static void c65_6511_port_w(running_machine *machine, int offset, int value)
 {
-	if (offset==7) 
+	if (offset == 7) 
 	{
-		c65_6511_port=value;
+		c65_6511_port = value;
 	}
-	DBG_LOG (2, "r6511 write", ("%.2x %.2x\n", offset, value));
+	DBG_LOG(machine, 2, "r6511 write", ("%.2x %.2x\n", offset, value));
 }
 
 static int c65_6511_port_r(running_machine *machine, int offset)
 {
-	int data=0xff;
+	int data = 0xff;
 
-	if (offset==7) 
+	if (offset == 7) 
 	{
 		if (input_port_read(machine, "SPECIAL") & 0x20) 
 			data &= ~1;
 	}
-	DBG_LOG (2, "r6511 read", ("%.2x\n", offset));
+	DBG_LOG(machine, 2, "r6511 read", ("%.2x\n", offset));
 
 	return data;
 }
@@ -310,7 +524,7 @@ static struct {
 
 	attotime time;
 	int head,track,sector;
-} c65_fdc= { 0 };
+} c65_fdc = { 0 };
 
 #define FDC_LOST 4
 #define FDC_CRC 8
@@ -323,36 +537,40 @@ static struct {
 #if 0
 static void c65_fdc_state(void)
 {
-	switch (c65_fdc.state) {
+	switch (c65_fdc.state) 
+	{
 	case FDC_CMD_MOTOR_SPIN_UP:
-		if (timer_get_time(machine)-c65_fdc.time) {
-			c65_fdc.state=0;
-			c65_fdc.status&=~FDC_BUSY;
+		if (timer_get_time(machine) - c65_fdc.time) 
+		{
+			c65_fdc.state = 0;
+			c65_fdc.status &= ~FDC_BUSY;
 		}
 		break;
 	}
 }
 #endif
 
-static void c65_fdc_w(running_machine *machine, int offset, int data)
+static void c65_fdc_w( running_machine *machine, int offset, int data )
 {
-	DBG_LOG (1, "fdc write", ("%.5x %.2x %.2x\n", cpu_get_pc(cputag_get_cpu(machine, "maincpu")), offset, data));
-	switch (offset&0xf) {
+	DBG_LOG(machine, 1, "fdc write", ("%.5x %.2x %.2x\n", cpu_get_pc(cputag_get_cpu(machine, "maincpu")), offset, data));
+	switch (offset & 0xf) 
+	{
 	case 0:
-		c65_fdc.reg[0]=data;
+		c65_fdc.reg[0] = data;
 		break;
 	case 1:
-		c65_fdc.reg[1]=data;
-		switch (data&0xf9) {
+		c65_fdc.reg[1] = data;
+		switch (data & 0xf9) 
+		{
 		case 0x20: // wait for motor spin up
-			c65_fdc.status&=~(FDC_IRQ|FDC_LOST|FDC_CRC|FDC_RNF);
-			c65_fdc.status|=FDC_BUSY;
-			c65_fdc.time=timer_get_time(machine);
-			c65_fdc.state=FDC_CMD_MOTOR_SPIN_UP;
+			c65_fdc.status &= ~(FDC_IRQ|FDC_LOST|FDC_CRC|FDC_RNF);
+			c65_fdc.status |= FDC_BUSY;
+			c65_fdc.time = timer_get_time(machine);
+			c65_fdc.state = FDC_CMD_MOTOR_SPIN_UP;
 			break;
 		case 0: // cancel
-			c65_fdc.status&=~(FDC_BUSY);
-			c65_fdc.state=0;
+			c65_fdc.status &= ~(FDC_BUSY);
+			c65_fdc.state = 0;
 			break;
 		case 0x80: // buffered write
 		case 0x40: // buffered read
@@ -365,59 +583,60 @@ static void c65_fdc_w(running_machine *machine, int offset, int data)
 	case 2: case 3: // read only
 		break;
 	case 4:
-		c65_fdc.reg[offset&0xf]=data;
-		c65_fdc.track=data;
+		c65_fdc.reg[offset & 0xf] = data;
+		c65_fdc.track = data;
 		break;
 	case 5:
-		c65_fdc.reg[offset&0xf]=data;
-		c65_fdc.sector=data;
+		c65_fdc.reg[offset & 0xf] = data;
+		c65_fdc.sector = data;
 		break;
 	case 6:
-		c65_fdc.reg[offset&0xf]=data;
-		c65_fdc.head=data;
+		c65_fdc.reg[offset & 0xf] = data;
+		c65_fdc.head = data;
 		break;
 	case 7:
-		c65_fdc.buffer[c65_fdc.cpu_pos++]=data;
+		c65_fdc.buffer[c65_fdc.cpu_pos++] = data;
 		break;
 	default:
-		c65_fdc.reg[offset&0xf]=data;
+		c65_fdc.reg[offset & 0xf] = data;
 		break;
 	}
 }
 
-static int c65_fdc_r(running_machine *machine, int offset)
+static int c65_fdc_r( running_machine *machine, int offset )
 {
-	UINT8 data=0;
-	switch (offset&0xf) {
+	UINT8 data = 0;
+	switch (offset & 0xf) 
+	{
 	case 0:
-		data=c65_fdc.reg[0];
+		data = c65_fdc.reg[0];
 		break;
 	case 1:
-		data=c65_fdc.reg[1];
+		data = c65_fdc.reg[1];
 		break;
 	case 2:
-		data=c65_fdc.status;
+		data = c65_fdc.status;
 		break;
 	case 3:
-		data=c65_fdc.status>>8;
+		data = c65_fdc.status >> 8;
 		break;
 	case 4:
-		data=c65_fdc.track;
+		data = c65_fdc.track;
 		break;
 	case 5:
-		data=c65_fdc.sector;
+		data = c65_fdc.sector;
 		break;
 	case 6:
-		data=c65_fdc.head;
+		data = c65_fdc.head;
 		break;
 	case 7:
-		data=c65_fdc.buffer[c65_fdc.cpu_pos++];
+		data = c65_fdc.buffer[c65_fdc.cpu_pos++];
 		break;
 	default:
-		data=c65_fdc.reg[offset&0xf];
+		data = c65_fdc.reg[offset & 0xf];
 		break;
 	}
-	DBG_LOG (1, "fdc read", ("%.5x %.2x %.2x\n", cpu_get_pc(cputag_get_cpu(machine, "maincpu")), offset, data));
+	DBG_LOG(machine, 1, "fdc read", ("%.5x %.2x %.2x\n", cpu_get_pc(cputag_get_cpu(machine, "maincpu")), offset, data));
 	return data;
 }
 
@@ -461,9 +680,9 @@ static WRITE8_HANDLER(c65_ram_expansion_w)
 		expansion_ram_end = 0x80000 + (mess_ram_size - 128*1024) - 1;
 
 		memory_install_read8_handler(space, expansion_ram_begin, expansion_ram_end,
-			0, 0, (data == 0x00) ? SMH_BANK16 : SMH_NOP);
+			0, 0, (data == 0x00) ? SMH_BANK(16) : SMH_NOP);
 		memory_install_write8_handler(space, expansion_ram_begin, expansion_ram_end,
-			0, 0, (data == 0x00) ? SMH_BANK16 : SMH_NOP);
+			0, 0, (data == 0x00) ? SMH_BANK(16) : SMH_NOP);
 
 		if (data == 0x00)
 			memory_set_bankptr(space->machine, 16, mess_ram + 128*1024);
@@ -472,7 +691,6 @@ static WRITE8_HANDLER(c65_ram_expansion_w)
 
 static WRITE8_HANDLER ( c65_write_io )
 {
-	running_machine *machine = space->machine;
 	const device_config *sid_0 = devtag_get_device(space->machine, "sid_r");
 	const device_config *sid_1 = devtag_get_device(space->machine, "sid_l");
 
@@ -496,10 +714,10 @@ static WRITE8_HANDLER ( c65_write_io )
 		else if (offset<0x440)
 			sid6581_w(sid_1, offset & 0x3f, data);
 		else
-			DBG_LOG (1, "io write", ("%.3x %.2x\n", offset, data));
+			DBG_LOG(space->machine, 1, "io write", ("%.3x %.2x\n", offset, data));
 		break;
 	case 0x500:
-		DBG_LOG (1, "io write", ("%.3x %.2x\n", offset, data));
+		DBG_LOG(space->machine, 1, "io write", ("%.3x %.2x\n", offset, data));
 		break;
 	case 0x600:
 		c65_6511_port_w(space->machine, offset&0xff,data);
@@ -512,11 +730,11 @@ static WRITE8_HANDLER ( c65_write_io )
 
 static WRITE8_HANDLER ( c65_write_io_dc00 )
 {
-	running_machine *machine = space->machine;
 	const device_config *cia_0 = devtag_get_device(space->machine, "cia_0");
 	const device_config *cia_1 = devtag_get_device(space->machine, "cia_1");
 
-	switch(offset&0xf00) {
+	switch(offset & 0xf00) 
+	{
 	case 0x000:
 		cia_w(cia_0, offset, data);
 		break;
@@ -525,41 +743,46 @@ static WRITE8_HANDLER ( c65_write_io_dc00 )
 		break;
 	case 0x200:
 	case 0x300:
-		DBG_LOG (1, "io write", ("%.3x %.2x\n", offset+0xc00, data));
+		DBG_LOG(space->machine, 1, "io write", ("%.3x %.2x\n", offset+0xc00, data));
 		break;
 	}
 }
 
 static READ8_HANDLER ( c65_read_io )
 {
-	running_machine *machine = space->machine;
 	const device_config *sid_0 = devtag_get_device(space->machine, "sid_r");
 	const device_config *sid_1 = devtag_get_device(space->machine, "sid_l");
 
-	switch(offset&0xf00) {
+	switch(offset & 0xf00) 
+	{
 	case 0x000:
 		if (offset < 0x80)
 			return vic3_port_r (space, offset & 0x7f);
-		if (offset < 0xa0) {
+		if (offset < 0xa0) 
+		{
 			return c65_fdc_r(space->machine, offset&0x1f);
-		} else {
+		} 
+		else 
+		{
 			return c65_ram_expansion_r(space, offset&0x1f);
 			/*return; ram expansion crtl optional */
 		}
 		break;
-	case 0x100:case 0x200: case 0x300:
+	case 0x100:
+	case 0x200: 
+	case 0x300:
 	/* read only !? */
-		DBG_LOG (1, "io read", ("%.3x\n", offset));
+		DBG_LOG(space->machine, 1, "io read", ("%.3x\n", offset));
 		break;
 	case 0x400:
-		if (offset<0x420)
+		if (offset < 0x420)
 			return sid6581_r(sid_0, offset & 0x3f);
-		if (offset<0x440)
+		if (offset < 0x440)
 			return sid6581_r(sid_1, offset & 0x3f);
-		DBG_LOG (1, "io read", ("%.3x\n", offset));
+		DBG_LOG(space->machine, 1, "io read", ("%.3x\n", offset));
 		break;
 	case 0x500:
-		DBG_LOG (1, "io read", ("%.3x\n", offset));
+		DBG_LOG(space->machine, 1, "io read", ("%.3x\n", offset));
 		break;
 	case 0x600:
 		return c65_6511_port_r(space->machine, offset&0xff);
@@ -571,18 +794,18 @@ static READ8_HANDLER ( c65_read_io )
 
 static READ8_HANDLER ( c65_read_io_dc00 )
 {
-	running_machine *machine = space->machine;
 	const device_config *cia_0 = devtag_get_device(space->machine, "cia_0");
 	const device_config *cia_1 = devtag_get_device(space->machine, "cia_1");
 
-	switch(offset&0x300) {
+	switch(offset & 0x300) 
+	{
 	case 0x000:
 		return cia_r(cia_0, offset);
 	case 0x100:
 		return cia_r(cia_1, offset);
 	case 0x200:
 	case 0x300:
-		DBG_LOG (1, "io read", ("%.3x\n", offset+0xc00));
+		DBG_LOG(space->machine, 1, "io read", ("%.3x\n", offset+0xc00));
 		break;
 	}
 	return 0xff;
@@ -601,20 +824,20 @@ static int c65_io_on=0, c65_io_dc00_on=0;
    bit 6 vic3 c65 character set */
 static void c65_bankswitch_interface(running_machine *machine, int value)
 {
-	static int old=0;
+	static int old = 0;
 	read8_space_func rh;
 	write8_space_func wh;
 
-	DBG_LOG (2, "c65 bankswitch", ("%.2x\n",value));
+	DBG_LOG(machine, 2, "c65 bankswitch", ("%.2x\n",value));
 
 	if (c65_io_on)
 	{
-		if (value&1)
+		if (value & 1)
 		{
-			memory_set_bankptr (machine, 8, c64_colorram + 0x400);
-			memory_set_bankptr (machine, 9, c64_colorram + 0x400);
-			rh = SMH_BANK8;
-			wh = SMH_BANK9;
+			memory_set_bankptr(machine, 8, c64_colorram + 0x400);
+			memory_set_bankptr(machine, 9, c64_colorram + 0x400);
+			rh = SMH_BANK(8);
+			wh = SMH_BANK(9);
 		}
 		else
 		{
@@ -625,7 +848,7 @@ static void c65_bankswitch_interface(running_machine *machine, int value)
 		memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0dc00, 0x0dfff, 0, 0, wh);
 	}
 
-	c65_io_dc00_on=!(value&1);
+	c65_io_dc00_on =! (value & 1);
 #if 0
 	/* cartridge roms !?*/
 	if (value & 0x08)
@@ -668,7 +891,7 @@ void c65_bankswitch (running_machine *machine)
 	if (data == old)
 		return;
 
-	DBG_LOG (1, "bankswitch", ("%d\n", data & 7));
+	DBG_LOG(machine, 1, "bankswitch", ("%d\n", data & 7));
 	loram = (data & 1) ? 1 : 0;
 	hiram = (data & 2) ? 1 : 0;
 	charen = (data & 4) ? 1 : 0;
@@ -713,8 +936,8 @@ void c65_bankswitch (running_machine *machine)
 		}
 		else
 		{
-			rh8 = SMH_BANK8;
-			wh9 = SMH_BANK9;
+			rh8 = SMH_BANK(8);
+			wh9 = SMH_BANK(9);
 			memory_set_bankptr (machine, 8, c64_colorram+0x400);
 			memory_set_bankptr (machine, 9, c64_colorram+0x400);
 		}
@@ -724,8 +947,8 @@ void c65_bankswitch (running_machine *machine)
 	else
 	{
 		c65_io_on = 0;
-		rh4 = SMH_BANK4;
-		wh5 = SMH_BANK5;
+		rh4 = SMH_BANK(4);
+		wh5 = SMH_BANK(5);
 		memory_set_bankptr(machine, 5, c64_memory+0xd000);
 		memory_set_bankptr(machine, 7, c64_memory+0xd800);
 		memory_set_bankptr(machine, 9, c64_memory+0xdc00);
@@ -804,8 +1027,7 @@ static int c65_dma_read_color(running_machine *machine, int offset)
 
 static void c65_common_driver_init (running_machine *machine)
 {
-	c64_memory = auto_malloc(0x10000);
-	memset(c64_memory, 0, 0x10000);
+	c64_memory = auto_alloc_array_clear(machine, UINT8, 0x10000);
 	memory_set_bankptr(machine, 11, c64_memory + 0x00000);
 	memory_set_bankptr(machine, 12, c64_memory + 0x08000);
 	memory_set_bankptr(machine, 13, c64_memory + 0x0a000);
@@ -817,8 +1039,7 @@ static void c65_common_driver_init (running_machine *machine)
 
 	/*memset(c64_memory+0x40000, 0, 0x800000-0x40000); */
 
-	vic4567_init(machine, c64_pal, c65_dma_read, c65_dma_read_color,
-				  c64_vic_interrupt, c65_bankswitch_interface);
+	vic4567_init(machine, c64_pal, c65_dma_read, c65_dma_read_color, c65_vic_interrupt, c65_bankswitch_interface);
 }
 
 DRIVER_INIT( c65 )
@@ -840,8 +1061,6 @@ MACHINE_START( c65 )
 	/* clear upper memory */
 	memset(mess_ram + 128*1024, 0xff, mess_ram_size -  128*1024);
 
-	cbm_serial_config(machine, &cbm_sim_drive_interface);
-	cbm_serial_reset_write (machine, 0);
 	cbm_drive_0_config (SERIAL, 10);
 	cbm_drive_1_config (SERIAL, 11);
 	c64_vicaddr = c64_memory;
@@ -850,4 +1069,21 @@ MACHINE_START( c65 )
 
 	c65_bankswitch_interface(machine, 0xff);
 	c65_bankswitch (machine);
+}
+
+
+INTERRUPT_GEN( c65_frame_interrupt )
+{
+	int value;
+
+	c65_nmi(device->machine);
+
+	/* common keys input ports */
+	cbm_common_interrupt(device);
+
+	/* c65 specific: function keys input ports */
+	value = 0xff;
+
+	value &= ~input_port_read(device->machine, "FUNCT");
+	c65_keyline = value;
 }

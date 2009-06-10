@@ -23,7 +23,9 @@ struct _cdp1861_t
 	const device_config *screen;	/* screen */
 	bitmap_t *bitmap;				/* bitmap */
 
-	int disp;						/* display on */
+	int disp;						/* display enabled */
+	int dispon;						/* display on latch */
+	int dispoff;					/* display off latch */
 	int dmaout;						/* DMA request active */
 
 	/* timers */
@@ -165,27 +167,29 @@ static TIMER_CALLBACK( cdp1861_dma_tick )
 }
 
 /*-------------------------------------------------
-    cdp1861_dispon_r - turn display on
+    cdp1861_dispon_w - turn display on
 -------------------------------------------------*/
 
-READ8_DEVICE_HANDLER( cdp1861_dispon_r )
+WRITE_LINE_DEVICE_HANDLER( cdp1861_dispon_w )
 {
 	cdp1861_t *cdp1861 = get_safe_token(device);
 
-	cdp1861->disp = 1;
+	if (!cdp1861->dispon && state) cdp1861->disp = 1;
 
-	return 0xff;
+	cdp1861->dispon = state;
 }
 
 /*-------------------------------------------------
     cdp1861_dispoff_r - turn display off
 -------------------------------------------------*/
 
-WRITE8_DEVICE_HANDLER( cdp1861_dispoff_w )
+WRITE_LINE_DEVICE_HANDLER( cdp1861_dispoff_w )
 {
 	cdp1861_t *cdp1861 = get_safe_token(device);
 
-	cdp1861->disp = 0;
+	if (!cdp1861->dispon && !cdp1861->dispoff && state) cdp1861->disp = 0;
+
+	cdp1861->dispoff = state;
 
 	devcb_call_write_line(&cdp1861->out_int_func, CLEAR_LINE);
 	devcb_call_write_line(&cdp1861->out_dmao_func, CLEAR_LINE);
@@ -251,7 +255,7 @@ static DEVICE_START( cdp1861 )
 	assert(cdp1861->screen != NULL);
 
 	/* allocate the temporary bitmap */
-	cdp1861->bitmap = auto_bitmap_alloc(video_screen_get_width(cdp1861->screen), video_screen_get_height(cdp1861->screen), video_screen_get_format(cdp1861->screen));
+	cdp1861->bitmap = auto_bitmap_alloc(device->machine, video_screen_get_width(cdp1861->screen), video_screen_get_height(cdp1861->screen), video_screen_get_format(cdp1861->screen));
 
 	/* create the timers */
 	cdp1861->int_timer = timer_alloc(device->machine, cdp1861_int_tick, (void *)device);
@@ -260,6 +264,8 @@ static DEVICE_START( cdp1861 )
 
 	/* register for state saving */
 	state_save_register_device_item(device, 0, cdp1861->disp);
+	state_save_register_device_item(device, 0, cdp1861->dispon);
+	state_save_register_device_item(device, 0, cdp1861->dispoff);
 	state_save_register_device_item(device, 0, cdp1861->dmaout);
 	state_save_register_device_item_bitmap(device, 0, cdp1861->bitmap);
 }

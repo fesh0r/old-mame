@@ -253,7 +253,7 @@ static MACHINE_START( tmc2000e )
 
 	/* allocate color RAM */
 
-	state->colorram = auto_malloc(TMC2000E_COLORRAM_SIZE);
+	state->colorram = auto_alloc_array(machine, UINT8, TMC2000E_COLORRAM_SIZE);
 
 	/* find devices */
 
@@ -292,8 +292,8 @@ static MACHINE_DRIVER_START( tmc2000e )
 	// basic system hardware
 
 	MDRV_CPU_ADD(CDP1802_TAG, CDP1802, XTAL_1_75MHz)
-	MDRV_CPU_PROGRAM_MAP(tmc2000e_map, 0)
-	MDRV_CPU_IO_MAP(tmc2000e_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(tmc2000e_map)
+	MDRV_CPU_IO_MAP(tmc2000e_io_map)
 	MDRV_CPU_CONFIG(tmc2000e_config)
 
 	MDRV_MACHINE_START(tmc2000e)

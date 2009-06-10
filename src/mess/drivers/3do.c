@@ -143,7 +143,7 @@ static MACHINE_RESET( 3do )
 static MACHINE_DRIVER_START( 3do )
 	/* Basic machine hardware */
 	MDRV_CPU_ADD( "maincpu", ARM6, XTAL_50MHz/4 )
-	MDRV_CPU_PROGRAM_MAP( 3do_mem, 0 )
+	MDRV_CPU_PROGRAM_MAP( 3do_mem)
 
 	MDRV_MACHINE_RESET( 3do )
 
@@ -163,7 +163,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( 3do_pal )
 	/* Basic machine hardware */
 	MDRV_CPU_ADD("maincpu", ARM6, XTAL_50MHz/4 )
-	MDRV_CPU_PROGRAM_MAP( 3do_mem, 0 )
+	MDRV_CPU_PROGRAM_MAP( 3do_mem)
 
 	MDRV_MACHINE_RESET( 3do )
 
@@ -213,5 +213,5 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT   INIT    CONFIG  COMPANY FULLNAME        FLAGS */
-CONS( 1991, 3do,        0,      0,      3do,        0,    	0,      0,      "3DO",  "3DO",          GAME_NOT_WORKING )
+CONS( 1991, 3do,        0,      0,      3do,        0,    	0,      0,      "3DO",  "3DO (NTSC)",   GAME_NOT_WORKING )
 CONS( 1991, 3do_pal,    3do,    0,      3do_pal,    0,    	0,      0,      "3DO",  "3DO (PAL)",    GAME_NOT_WORKING )

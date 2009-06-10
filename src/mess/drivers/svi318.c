@@ -27,16 +27,16 @@
 #include "sv328806.lh"
 
 static ADDRESS_MAP_START( svi318_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x7fff) AM_READWRITE( SMH_BANK1, svi318_writemem1 )
-	AM_RANGE( 0x8000, 0xbfff) AM_READWRITE( SMH_BANK2, svi318_writemem2 )
-	AM_RANGE( 0xc000, 0xffff) AM_READWRITE( SMH_BANK3, svi318_writemem3 )
+	AM_RANGE( 0x0000, 0x7fff) AM_READWRITE( SMH_BANK(1), svi318_writemem1 )
+	AM_RANGE( 0x8000, 0xbfff) AM_READWRITE( SMH_BANK(2), svi318_writemem2 )
+	AM_RANGE( 0xc000, 0xffff) AM_READWRITE( SMH_BANK(3), svi318_writemem3 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( svi328_806_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x7fff) AM_READWRITE( SMH_BANK1, svi318_writemem1 )
-	AM_RANGE( 0x8000, 0xbfff) AM_READWRITE( SMH_BANK2, svi318_writemem2 )
-	AM_RANGE( 0xc000, 0xefff) AM_READWRITE( SMH_BANK3, svi318_writemem3 )
-	AM_RANGE( 0xf000, 0xffff) AM_READWRITE( SMH_BANK4, svi318_writemem4 )
+	AM_RANGE( 0x0000, 0x7fff) AM_READWRITE( SMH_BANK(1), svi318_writemem1 )
+	AM_RANGE( 0x8000, 0xbfff) AM_READWRITE( SMH_BANK(2), svi318_writemem2 )
+	AM_RANGE( 0xc000, 0xefff) AM_READWRITE( SMH_BANK(3), svi318_writemem3 )
+	AM_RANGE( 0xf000, 0xffff) AM_READWRITE( SMH_BANK(4), svi318_writemem4 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( svi318_io, ADDRESS_SPACE_IO, 8 )
@@ -282,8 +282,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( svi318 )
 	/* Basic machine hardware */
 	MDRV_CPU_ADD( "maincpu", Z80, 3579545 )	/* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP( svi318_mem, 0 )
-	MDRV_CPU_IO_MAP( svi318_io, 0 )
+	MDRV_CPU_PROGRAM_MAP( svi318_mem)
+	MDRV_CPU_IO_MAP( svi318_io)
 	MDRV_CPU_VBLANK_INT("screen", svi318_interrupt)
 	MDRV_QUANTUM_TIME(HZ(60))
 
@@ -346,8 +346,8 @@ static const mc6845_interface svi806_crtc6845_interface =
 static MACHINE_DRIVER_START( svi328_806 )
 	/* Basic machine hardware */
 	MDRV_CPU_ADD( "maincpu", Z80, 3579545 )	/* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP( svi328_806_mem, 0 )
-	MDRV_CPU_IO_MAP( svi328_806_io, 0 )
+	MDRV_CPU_PROGRAM_MAP( svi328_806_mem)
+	MDRV_CPU_IO_MAP( svi328_806_io)
 	MDRV_CPU_VBLANK_INT("screen", svi318_interrupt)
 	MDRV_QUANTUM_TIME(HZ(60))
 

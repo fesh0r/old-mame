@@ -216,21 +216,6 @@ static TIMER_DEVICE_CALLBACK( abc80_keyboard_tick )
 	abc80_keyboard_scan(timer->machine);
 }
 
-static READ8_DEVICE_HANDLER(z80pio_alt_r)
-{
-	int channel = BIT(offset, 1);
-	return (offset & 1) ? z80pio_c_r(device, channel) : z80pio_d_r(device, channel);
-}
-
-static WRITE8_DEVICE_HANDLER(z80pio_alt_w)
-{
-	int channel = BIT(offset, 1);
-	if (offset & 1)
-		z80pio_c_w(device, channel, data);
-	else
-		z80pio_d_w(device, channel, data);
-}
-
 /* Memory Maps */
 
 static ADDRESS_MAP_START( abc80_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -498,7 +483,7 @@ static MACHINE_START( abc80 )
 		break;
 
 	case 32*1024:
-		memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0xbfff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0xbfff, 0, 0, SMH_BANK(1), SMH_BANK(1));
 		break;
 	}
 
@@ -524,8 +509,8 @@ static MACHINE_DRIVER_START( abc80 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80_TAG, Z80, ABC80_XTAL/2/2)	// 2.9952 MHz
-	MDRV_CPU_PROGRAM_MAP(abc80_map, 0)
-	MDRV_CPU_IO_MAP(abc80_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(abc80_map)
+	MDRV_CPU_IO_MAP(abc80_io_map)
 	MDRV_CPU_CONFIG(abc80_daisy_chain)
 	MDRV_CPU_VBLANK_INT(SCREEN_TAG, abc80_nmi_interrupt)
 

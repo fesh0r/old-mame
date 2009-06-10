@@ -21,12 +21,12 @@
 #include "devices/cassette.h"
 
 #define VERBOSE_LEVEL 0
-#define DBG_LOG(N,M,A) \
+#define DBG_LOG( MACHINE, N, M, A ) \
 	do { \
 		if(VERBOSE_LEVEL >= N) \
 		{ \
 			if( M ) \
-				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(machine)), (char*) M ); \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(MACHINE)), (char*) M ); \
 			logerror A; \
 		} \
 	} while (0)
@@ -76,6 +76,7 @@ static WRITE8_HANDLER( pet_mc6845_address_w )
 */
 static READ8_DEVICE_HANDLER ( pet_pia0_port_a_read )
 {
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
 	int data = 0xf0 | pet_keyline_select;
 
 	if ((cassette_get_state(devtag_get_device(device->machine, "cassette1")) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
@@ -84,7 +85,7 @@ static READ8_DEVICE_HANDLER ( pet_pia0_port_a_read )
 	if ((cassette_get_state(devtag_get_device(device->machine, "cassette2")) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
 		data &= ~0x20;
 
-	if (!cbm_ieee_eoi_r(device->machine))
+	if (!cbm_ieee_eoi_r(ieeebus, 0))
 		data &= ~0x40;
 
 	return data;
@@ -150,7 +151,8 @@ static READ8_DEVICE_HANDLER( pet_pia0_ca1_in )
 
 static WRITE8_DEVICE_HANDLER( pet_pia0_ca2_out )
 {
-	cbm_ieee_eoi_w(device->machine, 0, data);
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	cbm_ieee_eoi_write(ieeebus, 0, data);
 }
 
 static WRITE8_DEVICE_HANDLER( pet_pia0_cb2_out )
@@ -172,14 +174,13 @@ static WRITE_LINE_DEVICE_HANDLER( pet_irq )
 {
 	int level = state ? 1 : 0;
 	static int old_level = 0;
-	running_machine *machine = device->machine;
-	pet_state *driver_state = machine->driver_data;
+	pet_state *driver_state = device->machine->driver_data;
 	if (level != old_level)
 	{
-		DBG_LOG (3, "mos6502", ("irq %s\n", level ? "start" : "end"));
+		DBG_LOG(device->machine, 3, "mos6502", ("irq %s\n", level ? "start" : "end"));
 		if (driver_state->superpet)
-			cputag_set_input_line(machine, "m6809", M6809_IRQ_LINE, level);
-		cputag_set_input_line(machine, "maincpu", M6502_IRQ_LINE, level);
+			cputag_set_input_line(device->machine, "m6809", M6809_IRQ_LINE, level);
+		cputag_set_input_line(device->machine, "maincpu", M6502_IRQ_LINE, level);
 		old_level = level;
 	}
 }
@@ -194,32 +195,38 @@ static WRITE_LINE_DEVICE_HANDLER( pet_irq )
  */
 static READ8_DEVICE_HANDLER ( pet_pia1_port_a_read )
 {
-	return cbm_ieee_data_r(device->machine);
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	return cbm_ieee_data_r(ieeebus, 0);
 }
 
 static WRITE8_DEVICE_HANDLER ( pet_pia1_port_b_write )
 {
-	cbm_ieee_data_w(device->machine, 0, data);
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	cbm_ieee_data_write(ieeebus, 0, data);
 }
 
 static READ8_DEVICE_HANDLER ( pet_pia1_ca1_read )
 {
-	return cbm_ieee_atn_r(device->machine);
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	return cbm_ieee_atn_r(ieeebus,0 );
 }
 
 static WRITE8_DEVICE_HANDLER ( pet_pia1_ca2_write )
 {
-	cbm_ieee_ndac_w(device->machine, 0, data);
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	cbm_ieee_ndac_write(ieeebus, 0, data);
 }
 
 static WRITE8_DEVICE_HANDLER ( pet_pia1_cb2_write )
 {
-	cbm_ieee_dav_w(device->machine, 0, data);
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	cbm_ieee_dav_write(ieeebus, 0, data);
 }
 
 static READ8_DEVICE_HANDLER ( pet_pia1_cb1_read )
 {
-	return cbm_ieee_srq_r(device->machine);
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	return cbm_ieee_srq_r(ieeebus, 0);
 }
 
 const pia6821_interface pet_pia0 =
@@ -272,8 +279,7 @@ const pia6821_interface pet_pia1 =
 
 static WRITE8_DEVICE_HANDLER( pet_address_line_11 )
 {
-	running_machine *machine = device->machine;
-	DBG_LOG (1, "address line", ("%d\n", data));
+	DBG_LOG(device->machine, 1, "address line", ("%d\n", data));
 	if (data) pet_font |= 1;
 	else pet_font &= ~1;
 }
@@ -297,9 +303,11 @@ static WRITE8_DEVICE_HANDLER( pet_address_line_11 )
  */
 static READ8_DEVICE_HANDLER( pet_via_port_b_r )
 {
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
 	UINT8 data = 0;
 
-	if (cbm_ieee_ndac_r(device->machine)) data |= 0x01;
+	if (cbm_ieee_ndac_r(ieeebus, 0)) 
+		data |= 0x01;
 
 	//  data & 0x08 -> cassette write (it seems to BOTH cassettes from schematics)
 
@@ -314,9 +322,11 @@ static READ8_DEVICE_HANDLER( pet_via_port_b_r )
 		timer_reset(datasette2_timer, attotime_never);
 	}
 
-	if (cbm_ieee_nrfd_r(device->machine)) data |= 0x40;
+	if (cbm_ieee_nrfd_r(ieeebus, 0)) 
+		data |= 0x40;
 
-	if (cbm_ieee_dav_r(device->machine)) data |= 0x80;
+	if (cbm_ieee_dav_r(ieeebus, 0)) 
+		data |= 0x80;
 
 	return data;
 }
@@ -331,8 +341,9 @@ static READ8_DEVICE_HANDLER( pet_via_cb1_r )
 
 static WRITE8_DEVICE_HANDLER( pet_via_port_b_w )
 {
-	cbm_ieee_nrfd_w(device->machine, 0, data & 2);
-	cbm_ieee_atn_w(device->machine, 0, data & 4);
+	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	cbm_ieee_nrfd_write(ieeebus, 0, data & 2);
+	cbm_ieee_atn_write(ieeebus, 0, data & 4);
 }
 
 
@@ -418,18 +429,18 @@ WRITE8_HANDLER(cbm8096_w)
 		}
 		else
 		{
-			rh = SMH_BANK7;
+			rh = SMH_BANK(7);
 			if (!(data & 2))
-				wh = SMH_BANK7;
+				wh = SMH_BANK(7);
 			else
 				wh = SMH_NOP;
 		}
 		memory_install_read8_handler(space, 0xe800, 0xefff, 0, 0, rh);
 		memory_install_write8_handler(space, 0xe800, 0xefff, 0, 0, wh);
 
-		memory_install_write8_handler(space, 0xc000, 0xe7ff, 0, 0, (data & 2) == 0 ? SMH_BANK6 : SMH_NOP);
-		memory_install_write8_handler(space, 0xf000, 0xffef, 0, 0, (data & 2) == 0 ? SMH_BANK8 : SMH_NOP);
-		memory_install_write8_handler(space, 0xfff1, 0xffff, 0, 0, (data & 2) == 0 ? SMH_BANK9 : SMH_NOP);
+		memory_install_write8_handler(space, 0xc000, 0xe7ff, 0, 0, (data & 2) == 0 ? SMH_BANK(6) : SMH_NOP);
+		memory_install_write8_handler(space, 0xf000, 0xffef, 0, 0, (data & 2) == 0 ? SMH_BANK(8) : SMH_NOP);
+		memory_install_write8_handler(space, 0xfff1, 0xffff, 0, 0, (data & 2) == 0 ? SMH_BANK(9) : SMH_NOP);
 
 		if (data & 0x20)
 		{
@@ -440,15 +451,15 @@ WRITE8_HANDLER(cbm8096_w)
 		else
 		{
 			if (!(data & 1))
-				wh = SMH_BANK1;
+				wh = SMH_BANK(1);
 			else
 				wh = SMH_NOP;
 		}
 		memory_install_write8_handler(space, 0x8000, 0x8fff, 0, 0, wh);
 
-		memory_install_write8_handler(space, 0x9000, 0x9fff, 0, 0, (data & 1) == 0 ? SMH_BANK2 : SMH_NOP);
-		memory_install_write8_handler(space, 0xa000, 0xafff, 0, 0, (data & 1) == 0 ? SMH_BANK3 : SMH_NOP);
-		memory_install_write8_handler(space, 0xb000, 0xbfff, 0, 0, (data & 1) == 0 ? SMH_BANK4 : SMH_NOP);
+		memory_install_write8_handler(space, 0x9000, 0x9fff, 0, 0, (data & 1) == 0 ? SMH_BANK(2) : SMH_NOP);
+		memory_install_write8_handler(space, 0xa000, 0xafff, 0, 0, (data & 1) == 0 ? SMH_BANK(3) : SMH_NOP);
+		memory_install_write8_handler(space, 0xb000, 0xbfff, 0, 0, (data & 1) == 0 ? SMH_BANK(4) : SMH_NOP);
 
 
 		if (data & 4)
@@ -595,8 +606,8 @@ static void pet_common_driver_init(running_machine *machine)
 	state->superpet = 0;
 	state->cbm8096 = 0;
 
-	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, mess_ram_size - 1, 0, 0, SMH_BANK10);
-	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, mess_ram_size - 1, 0, 0, SMH_BANK10);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, mess_ram_size - 1, 0, 0, SMH_BANK(10));
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, mess_ram_size - 1, 0, 0, SMH_BANK(10));
 	memory_set_bankptr (machine, 10, pet_memory);
 
 	if (mess_ram_size < 0x8000)
@@ -617,8 +628,6 @@ static void pet_common_driver_init(running_machine *machine)
 	/* datasette */
 	datasette1_timer = timer_alloc(machine, pet_tape1_timer, NULL);
 	datasette2_timer = timer_alloc(machine, pet_tape2_timer, NULL);
-
-	cbm_ieee_open();
 }
 
 
@@ -658,7 +667,7 @@ DRIVER_INIT( superpet )
 	pet_common_driver_init(machine);
 	state->superpet = 1;
 
-	superpet_memory = auto_malloc(0x10000);
+	superpet_memory = auto_alloc_array(machine, UINT8, 0x10000);
 
 	memory_configure_bank(machine, 1, 0, 16, superpet_memory, 0x1000);
 	memory_set_bank(machine, 1, 0);

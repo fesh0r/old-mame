@@ -26,12 +26,12 @@
 
 
 #define VERBOSE_LEVEL 0
-#define DBG_LOG(N,M,A) \
+#define DBG_LOG( MACHINE, N, M, A ) \
 	do { \
 		if(VERBOSE_LEVEL >= N) \
 		{ \
 			if( M ) \
-				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(machine)), (char*) M ); \
+				logerror("%11.6f: %-24s", attotime_to_double(timer_get_time(MACHINE)), (char*) M ); \
 			logerror A; \
 		} \
 	} while (0)
@@ -112,25 +112,29 @@ static UINT8 read_cfg1(running_machine *machine)
 
 void c16_m7501_port_write(const device_config *device, UINT8 direction, UINT8 data)
 {
+	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
 	int dat, atn, clk;
 
 	/* bit zero then output 0 */
-	cbm_serial_atn_write (device->machine, atn = !(data & 0x04));
-	cbm_serial_clock_write (device->machine, clk = !(data & 0x02));
-	cbm_serial_data_write (device->machine, dat = !(data & 0x01));
+	cbm_serial_atn_write(serbus, 0, atn = !(data & 0x04));
+	cbm_serial_clock_write(serbus, 0, clk = !(data & 0x02));
+	cbm_serial_data_write(serbus, 0, dat = !(data & 0x01));
 
-//	vc20_tape_write (!(data & 0x02));		// CASSETTE_RECORD not implemented yet
+	cassette_output(devtag_get_device(device->machine, "cassette"), !(data & 0x02) ? -(0x5a9e >> 1) : +(0x5a9e >> 1));
+	
+	cassette_change_state(devtag_get_device(device->machine, "cassette"), (data & 0x08) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
 }
 
 UINT8 c16_m7501_port_read(const device_config *device, UINT8 direction)
 {
 	UINT8 data = 0xff;
 	UINT8 c16_port7501 = (UINT8) devtag_get_info_int(device->machine, "maincpu", CPUINFO_INT_M6510_PORT);
+	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
 
-	if ((c16_port7501 & 0x01) || !cbm_serial_data_read(device->machine))
+	if ((c16_port7501 & 0x01) || !cbm_serial_data_read(serbus, 0))
 		data &= ~0x80;
 
-	if ((c16_port7501 & 0x02) || !cbm_serial_clock_read(device->machine))
+	if ((c16_port7501 & 0x02) || !cbm_serial_clock_read(serbus, 0))
 		data &= ~0x40;
 
 //	data &= ~0x20; // port bit not in pinout
@@ -139,8 +143,6 @@ UINT8 c16_m7501_port_read(const device_config *device, UINT8 direction)
 		data |=  0x10;
 	else
 		data &= ~0x10;
-
-	cassette_change_state(devtag_get_device(device->machine, "cassette"), (c16_port7501 & 0x08) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
 
 	return data;
 }
@@ -303,8 +305,11 @@ READ8_HANDLER(plus4_6529_port_r)
 {
 	int data = 0x00;
 
-	if (!((cassette_get_state(devtag_get_device(space->machine, "cassette")) & CASSETTE_MASK_UISTATE) == CASSETTE_PLAY))
-		data |= 0x04;
+	if ((cassette_get_state(devtag_get_device(space->machine, "cassette")) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
+		data &= ~0x04;
+	else
+		data |=  0x04;
+
 	return data;
 }
 
@@ -312,8 +317,11 @@ READ8_HANDLER(c16_fd1x_r)
 {
 	int data = 0x00;
 
-	if (!((cassette_get_state(devtag_get_device(space->machine, "cassette")) & CASSETTE_MASK_UISTATE) == CASSETTE_PLAY))
-		data |= 0x04;
+	if ((cassette_get_state(devtag_get_device(space->machine, "cassette")) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
+		data &= ~0x04;
+	else
+		data |=  0x04;
+
 	return data;
 }
 
@@ -356,19 +364,17 @@ READ8_HANDLER(c16_fd1x_r)
   */
 WRITE8_HANDLER(c16_6551_port_w)
 {
-	running_machine *machine = space->machine;
 	offset &= 0x03;
-	DBG_LOG (3, "6551", ("port write %.2x %.2x\n", offset, data));
+	DBG_LOG(space->machine, 3, "6551", ("port write %.2x %.2x\n", offset, data));
 	port6529 = data;
 }
 
 READ8_HANDLER(c16_6551_port_r)
 {
-	running_machine *machine = space->machine;
 	int data = 0x00;
 
 	offset &= 0x03;
-	DBG_LOG (3, "6551", ("port read %.2x %.2x\n", offset, data));
+	DBG_LOG(space->machine, 3, "6551", ("port read %.2x %.2x\n", offset, data));
 	return data;
 }
 
@@ -421,7 +427,7 @@ void c16_interrupt (running_machine *machine, int level)
 
 	if (level != old_level)
 	{
-		DBG_LOG (3, "mos7501", ("irq %s\n", level ? "start" : "end"));
+		DBG_LOG(machine, 3, "mos7501", ("irq %s\n", level ? "start" : "end"));
 		cputag_set_input_line(machine, "maincpu", M6510_IRQ_LINE, level);
 		old_level = level;
 	}
@@ -430,10 +436,6 @@ void c16_interrupt (running_machine *machine, int level)
 static void c16_common_driver_init (running_machine *machine)
 {
 	UINT8 *rom;
-
-	/* configure the M7501 port */
-	devtag_set_info_fct(machine, "maincpu", CPUINFO_FCT_M6510_PORTREAD, (genf *) c16_m7501_port_read);
-	devtag_set_info_fct(machine, "maincpu", CPUINFO_FCT_M6510_PORTWRITE, (genf *) c16_m7501_port_write);
 
 	c16_select_roms (cputag_get_address_space(machine,"maincpu",ADDRESS_SPACE_PROGRAM), 0, 0);
 	c16_switch_to_rom (cputag_get_address_space(machine,"maincpu",ADDRESS_SPACE_PROGRAM), 0, 0);
@@ -455,17 +457,17 @@ static void c16_common_driver_init (running_machine *machine)
 	memset(mess_ram + (0xfd40 % mess_ram_size), 0xff, 0x20);
 	
 	if (has_c1551)		/* C1551 */
-		drive_config(machine, type_1551, 0, 0, 1, 8);
+		c1551_config(machine, "cpu_c1551");
 
 	if (has_vc1541)		/* VC1541 */
-		drive_config(machine, type_1541, 0, 0, 1, 8);
+		drive_config(machine, type_1541, 0, 0, "cpu_vc1540", 8);
 }
 
 static void c16_driver_init(running_machine *machine)
 {
-	c16_common_driver_init (machine);
-	ted7360_init (machine, (read_cfg1(machine) & 0x10 ) == 0x00);		/* is it PAL? */
-	ted7360_set_dma (ted7360_dma_read, ted7360_dma_read_rom);
+	c16_common_driver_init(machine);
+	ted7360_init(machine, (read_cfg1(machine) & 0x10 ) == 0x00);		/* is it PAL? */
+	ted7360_set_dma(ted7360_dma_read, ted7360_dma_read_rom);
 }
 
 
@@ -490,7 +492,7 @@ DRIVER_INIT( c16v )
 MACHINE_RESET( c16 )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	const device_config *sid = devtag_get_device(space->machine, "sid6581");
+	const device_config *sid = devtag_get_device(space->machine, "sid");
 	
 	c364_speech_init(machine);
 
@@ -521,8 +523,8 @@ MACHINE_RESET( c16 )
 		memory_set_bankptr (machine, 6, mess_ram + (0x8000 % mess_ram_size));
 		memory_set_bankptr (machine, 7, mess_ram + (0xc000 % mess_ram_size));
 
-		memory_install_write8_handler(space, 0xff20, 0xff3d, 0, 0, SMH_BANK10);
-		memory_install_write8_handler(space, 0xff40, 0xffff, 0, 0, SMH_BANK11);
+		memory_install_write8_handler(space, 0xff20, 0xff3d, 0, 0, SMH_BANK(10));
+		memory_install_write8_handler(space, 0xff40, 0xffff, 0, 0, SMH_BANK(11));
 		memory_set_bankptr (machine, 10, mess_ram + (0xff20 % mess_ram_size));
 		memory_set_bankptr (machine, 11, mess_ram + (0xff40 % mess_ram_size));
 
@@ -530,7 +532,7 @@ MACHINE_RESET( c16 )
 	}
 	else
 	{
-		memory_install_write8_handler(space, 0x4000, 0xfcff, 0, 0, SMH_BANK10);
+		memory_install_write8_handler(space, 0x4000, 0xfcff, 0, 0, SMH_BANK(10));
 		memory_set_bankptr (machine, 10, mess_ram + (0x4000 % mess_ram_size));
 
 		ted7360_set_dma (ted7360_dma_read, ted7360_dma_read_rom);
@@ -558,16 +560,16 @@ MACHINE_RESET( c16 )
 		memory_install_write8_handler(space, 0xfec0, 0xfedf, 0, 0, SMH_NOP);
 		memory_install_read8_handler(space, 0xfec0, 0xfedf, 0, 0, SMH_NOP);
 	}
-
-	if (has_c1551 || has_vc1541)		/* c1551 or vc1541 */
+	if (has_c1551)		/* c1551 */
 	{
-		cbm_serial_config(machine, &cbm_fake_drive_interface);
+		c1551_drive_reset();
+	}
+	if (has_vc1541)		/* vc1541 */
+	{
 		drive_reset();
 	}
 	else								/* simulated drives */
 	{
-		cbm_serial_config(machine, &cbm_sim_drive_interface);
-		cbm_serial_reset_write(machine, 0);
 		cbm_drive_0_config(SERIAL, 8);
 		cbm_drive_1_config(SERIAL, 9);
 	}

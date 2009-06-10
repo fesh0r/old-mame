@@ -87,13 +87,15 @@ interface; no special expansion modules like ieee488 interface
 #include "sound/dac.h"
 
 #include "machine/6522via.h"
-#include "includes/vc1541.h"
 #include "machine/cbmipt.h"
 #include "video/vic6560.h"
 
 /* devices config */
 #include "includes/cbm.h"
+#include "includes/cbmserb.h"	// needed for MDRV_DEVICE_REMOVE
 #include "includes/cbmdrive.h"
+#include "includes/vc1541.h"
+#include "includes/cbmieeeb.h"
 
 #include "includes/vc20.h"
 
@@ -137,8 +139,8 @@ static ADDRESS_MAP_START( vc20i_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x9110, 0x911f) AM_DEVREADWRITE("via6522_0", via_r, via_w)
 	AM_RANGE(0x9120, 0x912f) AM_DEVREADWRITE("via6522_1", via_r, via_w)
 	AM_RANGE(0x9400, 0x97ff) AM_READWRITE( SMH_RAM, vc20_write_9400) AM_BASE(&vc20_memory_9400)	/* color ram 4 bit */
-	AM_RANGE(0x9800, 0x980f) AM_DEVREADWRITE("via6522_4", via_r, via_w)
-	AM_RANGE(0x9810, 0x981f) AM_DEVREADWRITE("via6522_5", via_r, via_w)
+	AM_RANGE(0x9800, 0x980f) AM_DEVREADWRITE("via6522_2", via_r, via_w)
+	AM_RANGE(0x9810, 0x981f) AM_DEVREADWRITE("via6522_3", via_r, via_w)
 	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK(5)
 	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -255,7 +257,7 @@ static PALETTE_INIT( vc20 )
 static MACHINE_DRIVER_START( vic20 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, VIC6560_CLOCK)        /* 7.8336 MHz */
-	MDRV_CPU_PROGRAM_MAP(vc20_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(vc20_mem)
 	MDRV_CPU_VBLANK_INT("screen", vic20_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic656x_raster_interrupt, VIC656X_HRETRACERATE)
 
@@ -287,13 +289,17 @@ static MACHINE_DRIVER_START( vic20 )
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", cbm_cassette_config )
 
+	/* floppy from serial bus */
+	MDRV_IMPORT_FROM(simulated_drive)
+
+	/* IEEE bus */
+	MDRV_CBM_IEEEBUS_ADD("ieee_bus")
+
 	/* via */
 	MDRV_VIA6522_ADD("via6522_0", 0, vc20_via0)
 	MDRV_VIA6522_ADD("via6522_1", 0, vc20_via1)
-	MDRV_VIA6522_ADD("via6522_2", 0, vc1541_via2)
-	MDRV_VIA6522_ADD("via6522_3", 0, vc1541_via3)
-	MDRV_VIA6522_ADD("via6522_4", 0, vc20_via4)
-	MDRV_VIA6522_ADD("via6522_5", 0, vc20_via5)
+	MDRV_VIA6522_ADD("via6522_2", 0, vc20_via2)
+	MDRV_VIA6522_ADD("via6522_3", 0, vc20_via3)
 	
 	MDRV_IMPORT_FROM(vic20_cartslot)
 MACHINE_DRIVER_END
@@ -301,6 +307,8 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( vic20v )
 	MDRV_IMPORT_FROM( vic20 )
+
+	MDRV_DEVICE_REMOVE("serial_bus")	// in the current code, serial bus device is tied to the floppy drive
 	MDRV_IMPORT_FROM( cpu_vc1540 )
 #ifdef CPU_SYNC
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -312,7 +320,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( vic20i )
 	MDRV_IMPORT_FROM( vic20 )
-	/*MDRV_IMPORT_FROM( cpu_c2031 )*/
+	/* MDRV_IMPORT_FROM( cpu_c2031 ) */ // not emulated yet, we only include the firmware below
 #if 1 || CPU_SYNC
 	MDRV_QUANTUM_TIME(HZ(60))
 #else
@@ -320,7 +328,7 @@ static MACHINE_DRIVER_START( vic20i )
 #endif
 
 	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP( vc20i_mem, 0 )
+	MDRV_CPU_PROGRAM_MAP(vc20i_mem)
 MACHINE_DRIVER_END
 
 
@@ -328,7 +336,7 @@ static MACHINE_DRIVER_START( vc20 )
 	MDRV_IMPORT_FROM( vic20 )
 
 	MDRV_CPU_REPLACE( "maincpu", M6502, VIC6561_CLOCK )
-	MDRV_CPU_PROGRAM_MAP( vc20i_mem, 0 )
+	MDRV_CPU_PROGRAM_MAP(vc20i_mem)
 
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(VIC6561_VRETRACERATE)
@@ -339,6 +347,8 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( vc20v )
 	MDRV_IMPORT_FROM( vc20 )
+
+	MDRV_DEVICE_REMOVE("serial_bus")	// in the current code, serial bus device is tied to the floppy drive
 	MDRV_IMPORT_FROM( cpu_vc1540 )
 #ifdef CPU_SYNC
 	MDRV_QUANTUM_TIME(HZ(60))
@@ -356,7 +366,7 @@ MACHINE_DRIVER_END
 
 
 ROM_START( vic1001 )
-	ROM_REGION (0x10000, "maincpu", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_FILL( 0x0000, 0x8000, 0xff )
 	ROM_LOAD( "901460.02", 0x8000, 0x1000, CRC(fcfd8a4b) SHA1(dae61ac03065aa2904af5c123ce821855898c555) )
 	ROM_FILL( 0x9000, 0x3000, 0xff )
@@ -366,7 +376,7 @@ ROM_END
 
 
 ROM_START( vic20 )
-	ROM_REGION (0x10000, "maincpu", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_FILL( 0x0000, 0x8000, 0xff )
 	ROM_LOAD( "901460.03", 0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4) )
 	ROM_FILL( 0x9000, 0x3000, 0xff )
@@ -375,7 +385,7 @@ ROM_START( vic20 )
 ROM_END
 
 ROM_START( vic20pal )
-	ROM_REGION (0x10000, "maincpu", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_FILL( 0x0000, 0x8000, 0xff )
 	ROM_LOAD( "901460.03", 0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4) )
 	ROM_FILL( 0x9000, 0x3000, 0xff )
@@ -391,7 +401,7 @@ ROM_END
 ROM_START( vic20swe )
 	/* patched pal system for swedish/finish keyboard and chars */
 	/* but in rom? (maybe patched means in this case nec version) */
-	ROM_REGION (0x10000, "maincpu", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_FILL( 0x0000, 0x8000, 0xff )
 	ROM_LOAD( "nec22101.207", 0x8000, 0x1000, CRC(d808551d) SHA1(f403f0b0ce5922bd61bbd768bdd6f0b38e648c9f) )
 	ROM_FILL( 0x9000, 0x3000, 0xff )
@@ -401,7 +411,7 @@ ROM_END
 
 
 ROM_START( vic20i )
-	ROM_REGION (0x10000, "maincpu", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_FILL( 0x0000, 0x8000, 0xff )
 	ROM_LOAD( "901460.03", 0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4) )
 	ROM_FILL( 0x9000, 0x2000, 0xff )
@@ -409,29 +419,29 @@ ROM_START( vic20i )
 	ROM_LOAD( "901486.01", 0xc000, 0x2000, CRC(db4c43c1) SHA1(587d1e90950675ab6b12d91248a3f0d640d02e8d) )
 	ROM_LOAD( "901486.06", 0xe000, 0x2000, CRC(e5e7c174) SHA1(06de7ec017a5e78bd6746d89c2ecebb646efeb19) )
 
-/*	C2031_ROM ("cpu_vc1540") */
+	C2031_ROM("cpu_vc1540")	// this is not currently emulated, but we document here the firmware
 ROM_END
 
 ROM_START( vic20v )
-	ROM_REGION (0x10000, "maincpu", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_FILL( 0x0000, 0x8000, 0xff )
 	ROM_LOAD( "901460.03", 0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4) )
 	ROM_FILL( 0x9000, 0x3000, 0xff )
 	ROM_LOAD( "901486.01", 0xc000, 0x2000, CRC(db4c43c1) SHA1(587d1e90950675ab6b12d91248a3f0d640d02e8d) )
 	ROM_LOAD( "901486.06", 0xe000, 0x2000, CRC(e5e7c174) SHA1(06de7ec017a5e78bd6746d89c2ecebb646efeb19) )
 
-	VC1540_ROM ("cpu_vc1540")
+	VC1540_ROM("cpu_vc1540")
 ROM_END
 
 ROM_START( vic20plv )
-	ROM_REGION (0x10000, "maincpu", 0 )
+	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_FILL( 0x0000, 0x8000, 0xff )
 	ROM_LOAD( "901460.03", 0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4) )
 	ROM_FILL( 0x9000, 0x3000, 0xff )
 	ROM_LOAD( "901486.01", 0xc000, 0x2000, CRC(db4c43c1) SHA1(587d1e90950675ab6b12d91248a3f0d640d02e8d) )
 	ROM_LOAD( "901486.07", 0xe000, 0x2000, CRC(4be07cb4) SHA1(ce0137ed69f003a299f43538fa9eee27898e621e) )
 
-	VC1541_ROM("cpu_vc1540")
+	VC1540_ROM("cpu_vc1540")
 ROM_END
 
 #define rom_vc20v		rom_vic20plv
@@ -480,8 +490,8 @@ COMP( 1981, vic20v,    vic20,  0,   vic20v, vic20,    vic20v, vic20v,    "Commod
 
 COMP( 1981, vic20pal,  vic20,  0,   vc20,   vc20,     vc20,   vic20,     "Commodore Business Machines Co.",  "VC 20 (PAL)", GAME_IMPERFECT_SOUND)
 COMP( 1981, vic20crp,  vic20,  0,   vc20,   vc20,     vc20,   vic20,     "Commodore Business Machines Co.",  "VC 20CR (PAL)", GAME_IMPERFECT_SOUND)
-COMP( 1981, vic20plv,  vic20,  0,   vc20v,  vic20,    vc20v,  vic20v,    "Commodore Business Machines Co.",  "VC 20 (PAL, VC1541)", GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
+COMP( 1981, vic20plv,  vic20,  0,   vc20v,  vic20,    vc20v,  vic20v,    "Commodore Business Machines Co.",  "VC 20 (PAL, VC1540)", GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
 COMP( 1981, vc20,      vic20,  0,   vc20,   vc20,     vc20,   vic20,     "Commodore Business Machines Co.",  "VIC 20 (PAL, Germany)", GAME_IMPERFECT_SOUND)
-COMP( 1981, vc20v,     vic20,  0,   vc20v,  vic20,    vc20v,  vic20v,    "Commodore Business Machines Co.",  "VIC 20 (PAL, Germany, VC1541)", GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
+COMP( 1981, vc20v,     vic20,  0,   vc20v,  vic20,    vc20v,  vic20v,    "Commodore Business Machines Co.",  "VIC 20 (PAL, Germany, VC1540)", GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
 
 COMP( 1981, vic20swe,  vic20,  0,   vc20,   vic20swe, vc20,   vic20,     "Commodore Business Machines Co.",  "VIC 20 (PAL, Swedish Expansion Kit)", GAME_IMPERFECT_SOUND)

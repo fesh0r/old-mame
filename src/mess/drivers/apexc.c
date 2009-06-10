@@ -491,7 +491,7 @@ static VIDEO_START( apexc )
 	const device_config *screen = video_screen_first(machine->config);
 	int width = video_screen_get_width(screen);
 	int height = video_screen_get_height(screen);
-	apexc_bitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
+	apexc_bitmap = auto_bitmap_alloc(machine, width, height, BITMAP_FORMAT_INDEXED16);
 	bitmap_fill(apexc_bitmap, &/*machine->visible_area*/teletyper_window, 0);
 }
 
@@ -797,8 +797,8 @@ static MACHINE_DRIVER_START(apexc)
 	/* APEXC CPU @ 2.0 kHz (memory word clock frequency) */
 	MDRV_CPU_ADD("maincpu", APEXC, 2000)
 	/*MDRV_CPU_CONFIG(NULL)*/
-	MDRV_CPU_PROGRAM_MAP(apexc_mem_map, 0)
-	MDRV_CPU_IO_MAP(apexc_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(apexc_mem_map)
+	MDRV_CPU_IO_MAP(apexc_io_map)
 	/* dummy interrupt: handles the control panel */
 	MDRV_CPU_VBLANK_INT("screen", apexc_interrupt)
 	/*MDRV_CPU_PERIODIC_INT(func, rate)*/

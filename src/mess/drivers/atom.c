@@ -107,7 +107,7 @@ static ADDRESS_MAP_START( atomeb_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0a05, 0x7fff) AM_RAM
 	AM_RANGE(0x8000, 0x97ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size) /* VDG 6847 */
 	AM_RANGE(0x9800, 0x9fff) AM_RAM
-	AM_RANGE(0xa000, 0xafff) AM_READ(SMH_BANK1)	/* eprom data from eprom box */
+	AM_RANGE(0xa000, 0xafff) AM_READ(SMH_BANK(1))	/* eprom data from eprom box */
 	AM_RANGE(0xb000, 0xb003) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w)
 	AM_RANGE(0xb800, 0xbbff) AM_DEVREADWRITE("via6522_0", via_r, via_w)
 	AM_RANGE(0xbfff, 0xbfff) AM_READWRITE(atom_eprom_box_r, atom_eprom_box_w)
@@ -261,7 +261,7 @@ static const centronics_interface atom_centronics_config =
 static MACHINE_DRIVER_START( atom )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M65C02, X2 / 4)
-	MDRV_CPU_PROGRAM_MAP(atom_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(atom_mem)
 
 	MDRV_MACHINE_RESET( atom )
 
@@ -302,7 +302,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( atomeb )
 	MDRV_IMPORT_FROM( atom )
 	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP(atomeb_mem, 0 )
+	MDRV_CPU_PROGRAM_MAP(atomeb_mem)
 
 	MDRV_MACHINE_RESET( atomeb )
 MACHINE_DRIVER_END
@@ -323,15 +323,15 @@ ROM_START (atomeb)
 	ROM_LOAD ("afloat.rom", 0xd000, 0x1000, CRC(81d86af7) SHA1(ebcde5b36cb3a3344567cbba4c7b9fde015f4802))
 	ROM_LOAD ("abasic.rom", 0xc000, 0x1000, CRC(43798b9b) SHA1(a8ea19f10d4c98fbc1b666e5968f06d46af9a84c))
 	/* roms from another oric emulator */
-	ROM_LOAD ("axr1.rom",0x010000,0x1000, CRC(868fda8b) SHA1(f8417787c28818a7646b9b59d706ef890255049f))
-	ROM_LOAD ("pcharme.rom",0x011000,0x1000, CRC(9e8bd79f) SHA1(66c57622448b448aa6080911dccb03456d0e3b81))
-	ROM_LOAD ("gags.rom",0x012000,0x1000, CRC(35e1d713) SHA1(94cc2887ad9fea1849d1d53c64d0668e77696ef4))
-	ROM_LOAD ("werom.rom",0x013000,0x1000, CRC(dfcb3bf8) SHA1(85a19146844da2d6f03e1cde37ee17429eedeb0d))
-	ROM_LOAD ("unknown.rom",0x014000,0x1000, CRC(013b8f93) SHA1(b4341f116a6d1e0cbcd39d64e0b5d14a90dc0356))
-	ROM_LOAD ("combox.rom",0x015000,0x1000, CRC(9c8210ab) SHA1(ea293f49a98721cdbdf985d6f2fe636290ef0e75))
-	ROM_LOAD ("salfaa.rom",0x016000,0x1000, CRC(ef857b25) SHA1(b3812427233060972fa01faf3ce381a21576a5ed))
-	ROM_LOAD ("mousebox.rom",0x017000,0x01000, CRC(0dff30e4) SHA1(b7c0b9c23fcc5cfdc06cb2d2a9e7c2658e248ef7))
-	ROM_LOAD ("atomicw.rom",0x018000,0x1000, CRC(a3fd737d) SHA1(d418d9322c69c49106ed2c268ad0864c0f2c4c1b))
+	ROM_LOAD ("axr1.rom",0x010000,0x1000, CRC(868fda8b) SHA1(f8417787c28818a7646b9b59d706ef890255049f))       // Atom Externsion ROM AXR1
+	ROM_LOAD ("pcharme.rom",0x011000,0x1000, CRC(9e8bd79f) SHA1(66c57622448b448aa6080911dccb03456d0e3b81))    // P-Charme
+	ROM_LOAD ("gags.rom",0x012000,0x1000, CRC(35e1d713) SHA1(94cc2887ad9fea1849d1d53c64d0668e77696ef4))       // GAGS
+	ROM_LOAD ("werom.rom",0x013000,0x1000, CRC(dfcb3bf8) SHA1(85a19146844da2d6f03e1cde37ee17429eedeb0d))      // WE-ROM
+	ROM_LOAD ("utilikit.rom",0x014000,0x1000, CRC(013b8f93) SHA1(b4341f116a6d1e0cbcd39d64e0b5d14a90dc0356))   // A&F Utility Kit
+	ROM_LOAD ("combox.rom",0x015000,0x1000, CRC(9c8210ab) SHA1(ea293f49a98721cdbdf985d6f2fe636290ef0e75))     // ComBox
+	ROM_LOAD ("salfaa.rom",0x016000,0x1000, CRC(ef857b25) SHA1(b3812427233060972fa01faf3ce381a21576a5ed))     // SALFAA
+	ROM_LOAD ("mousebox.rom",0x017000,0x01000, CRC(0dff30e4) SHA1(b7c0b9c23fcc5cfdc06cb2d2a9e7c2658e248ef7))  // Mouse-Dos Box
+	ROM_LOAD ("atomicw.rom",0x018000,0x1000, CRC(a3fd737d) SHA1(d418d9322c69c49106ed2c268ad0864c0f2c4c1b))    // Atomic Windows
 ROM_END
 
 

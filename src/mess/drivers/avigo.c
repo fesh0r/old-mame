@@ -333,7 +333,7 @@ static void avigo_refresh_memory(running_machine *machine)
 		/* ram */
 		case 0x01:
 			addr = mess_ram + ((avigo_ram_bank_l & 0x07)<<14);
-			avigo_setbank(machine, 2, addr, SMH_BANK3, SMH_BANK7);
+			avigo_setbank(machine, 2, addr, SMH_BANK(3), SMH_BANK(7));
 			break;
 
 		/* %111 */
@@ -455,10 +455,10 @@ static MACHINE_START( avigo )
 
 
 static ADDRESS_MAP_START( avigo_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE( SMH_BANK1, SMH_BANK5 )
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE( SMH_BANK2, SMH_BANK6 )
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE( SMH_BANK3, SMH_BANK7 )
-	AM_RANGE(0xc000, 0xffff) AM_READWRITE( SMH_BANK4, SMH_BANK8 )
+	AM_RANGE(0x0000, 0x3fff) AM_READWRITE( SMH_BANK(1), SMH_BANK(5) )
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE( SMH_BANK(2), SMH_BANK(6) )
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE( SMH_BANK(3), SMH_BANK(7) )
+	AM_RANGE(0xc000, 0xffff) AM_READWRITE( SMH_BANK(4), SMH_BANK(8) )
 ADDRESS_MAP_END
 
 
@@ -859,8 +859,8 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( avigo )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 4000000)
-	MDRV_CPU_PROGRAM_MAP(avigo_mem, 0)
-	MDRV_CPU_IO_MAP(avigo_io, 0)
+	MDRV_CPU_PROGRAM_MAP(avigo_mem)
+	MDRV_CPU_IO_MAP(avigo_io)
 	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( avigo )

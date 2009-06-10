@@ -306,13 +306,13 @@ static STREAM_UPDATE( lynx2_update )
 	}
 }
 
-static void lynx_audio_init(void)
+static void lynx_audio_init(running_machine *machine)
 {
 	int i;
-	shift_mask = (int *) auto_malloc(512 * sizeof(int));
+	shift_mask = auto_alloc_array(machine, int, 512);
 	assert(shift_mask);
 
-	shift_xor = (int *) auto_malloc(4096 * sizeof(int));
+	shift_xor = auto_alloc_array(machine, int, 4096);
 	assert(shift_xor);
 
 	for (i=0; i<512; i++)
@@ -361,7 +361,7 @@ static DEVICE_START(lynx_sound)
 
 	usec_per_sample = 1000000 / device->machine->sample_rate;
 
-	lynx_audio_init();
+	lynx_audio_init(device->machine);
 }
 
 
@@ -371,7 +371,7 @@ static DEVICE_START(lynx2_sound)
 
     usec_per_sample = 1000000 / device->machine->sample_rate;
 
-    lynx_audio_init();
+    lynx_audio_init(device->machine);
 }
 
 
@@ -383,7 +383,7 @@ DEVICE_GET_INFO( lynx_sound )
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(lynx_sound);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Lynx Sound");				break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Mikey");				break;
 		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
 	}
 }
@@ -397,7 +397,7 @@ DEVICE_GET_INFO( lynx2_sound )
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(lynx2_sound);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:							strcpy(info->s, "Lynx2 Sound");				break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "Mikey (Lynx II)");				break;
 		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);						break;
 	}
 }

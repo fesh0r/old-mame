@@ -330,11 +330,12 @@ the Edu64-1 used the full C64 BIOS. Confirmations are needed, anyway.
 
 #include "machine/cbmipt.h"
 #include "video/vic6567.h"
-#include "includes/vc1541.h"
 
 /* devices config */
 #include "includes/cbm.h"
+#include "includes/cbmserb.h"	// needed for MDRV_DEVICE_REMOVE
 #include "includes/cbmdrive.h"
+#include "includes/vc1541.h"
 
 #include "includes/c64.h"
 
@@ -357,11 +358,11 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(c64_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_BASE(&c64_memory)
-	AM_RANGE(0x8000, 0x9fff) AM_READWRITE(SMH_BANK1, SMH_BANK2)		/* ram or external roml */
+	AM_RANGE(0x8000, 0x9fff) AM_READWRITE(SMH_BANK(1), SMH_BANK(2))		/* ram or external roml */
 	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK(3) AM_WRITEONLY				/* ram or basic rom or external romh */
 	AM_RANGE(0xc000, 0xcfff) AM_RAM
 	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(c64_ioarea_r, c64_ioarea_w)
-	AM_RANGE(0xe000, 0xffff) AM_READWRITE(SMH_BANK4, SMH_BANK5)	   /* ram or kernel rom or external romh */
+	AM_RANGE(0xe000, 0xffff) AM_READWRITE(SMH_BANK(4), SMH_BANK(5))	   /* ram or kernel rom or external romh */
 ADDRESS_MAP_END
 
 
@@ -469,6 +470,15 @@ static const sid6581_interface c64_sound_interface =
 };
 
 
+static const m6502_interface c64_m6510_interface =
+{
+	NULL,
+	NULL,
+	c64_m6510_port_read,
+	c64_m6510_port_write
+};
+
+
 /*************************************
  *
  *  Machine driver
@@ -478,12 +488,14 @@ static const sid6581_interface c64_sound_interface =
 static MACHINE_DRIVER_START( c64 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6510, VIC6567_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(c64_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(c64_mem)
+	MDRV_CPU_CONFIG( c64_m6510_interface )
 	MDRV_CPU_VBLANK_INT("screen", c64_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC6567_HRETRACERATE)
 	MDRV_QUANTUM_TIME(HZ(60))
 
 	MDRV_MACHINE_START( c64 )
+	MDRV_MACHINE_RESET( c64 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( vh_vic2 )
@@ -509,21 +521,22 @@ static MACHINE_DRIVER_START( c64 )
 	MDRV_CIA6526_ADD("cia_0", CIA6526R1, VIC6567_CLOCK, c64_ntsc_cia0)
 	MDRV_CIA6526_ADD("cia_1", CIA6526R1, VIC6567_CLOCK, c64_ntsc_cia1)
 
-	/* via */
-	MDRV_VIA6522_ADD("via6522_2", 0, vc1541_via2)
-	MDRV_VIA6522_ADD("via6522_3", 0, vc1541_via3)
-	
+	/* floppy from serial bus */
+	MDRV_IMPORT_FROM(simulated_drive)
+
 	MDRV_IMPORT_FROM(c64_cartslot)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( c64pal )
 	MDRV_CPU_ADD( "maincpu", M6510, VIC6569_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(c64_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(c64_mem)
+	MDRV_CPU_CONFIG( c64_m6510_interface )
 	MDRV_CPU_VBLANK_INT("screen", c64_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC6569_HRETRACERATE)
 	MDRV_QUANTUM_TIME(HZ(50))
 
 	MDRV_MACHINE_START( c64 )
+	MDRV_MACHINE_RESET( c64 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( vh_vic2_pal )
@@ -549,20 +562,26 @@ static MACHINE_DRIVER_START( c64pal )
 	MDRV_CIA6526_ADD("cia_0", CIA6526R1, VIC6569_CLOCK, c64_pal_cia0)
 	MDRV_CIA6526_ADD("cia_1", CIA6526R1, VIC6569_CLOCK, c64_pal_cia1)
 	
+	/* floppy from serial bus */
+	MDRV_IMPORT_FROM(simulated_drive)
+
 	MDRV_IMPORT_FROM(c64_cartslot)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ultimax )
 	MDRV_IMPORT_FROM( c64 )
 	MDRV_CPU_REPLACE( "maincpu", M6510, VIC6567_CLOCK)
-	MDRV_CPU_PROGRAM_MAP( ultimax_mem, 0 )
+	MDRV_CPU_PROGRAM_MAP( ultimax_mem)
+	MDRV_CPU_CONFIG( c64_m6510_interface )
 
 	MDRV_SOUND_REPLACE("sid6581", SID6581, VIC6567_CLOCK)
 	MDRV_SOUND_CONFIG(c64_sound_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	
-	MDRV_CARTSLOT_REMOVE("cart1")
-	MDRV_CARTSLOT_REMOVE("cart2")
+	MDRV_DEVICE_REMOVE("serial_bus")	// in the current code, serial bus device is tied to the floppy drive
+	MDRV_DEVICE_REMOVE("cart1")
+	MDRV_DEVICE_REMOVE("cart2")
+
 	MDRV_IMPORT_FROM(ultimax_cartslot)
 MACHINE_DRIVER_END
 
@@ -574,24 +593,25 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( c64gs )
 	MDRV_IMPORT_FROM( c64pal )
-	MDRV_SOUND_REMOVE( "dac" )
-	MDRV_CASSETTE_REMOVE( "cassette" )
-	MDRV_QUICKLOAD_REMOVE( "quickload" )
+	MDRV_DEVICE_REMOVE( "dac" )
+	MDRV_DEVICE_REMOVE( "cassette" )
+	MDRV_DEVICE_REMOVE( "quickload" )
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( sx64 )
 	MDRV_IMPORT_FROM( c64pal )
-	MDRV_IMPORT_FROM( cpu_vc1541 )
-	MDRV_SOUND_REMOVE( "dac" )
-	MDRV_CASSETTE_REMOVE( "cassette" )
+
+	MDRV_DEVICE_REMOVE("serial_bus")	// in the current code, serial bus device is tied to the floppy drive
+	MDRV_IMPORT_FROM( cpu_vc1541 )			// so we need to remove the one from MDRV_IMPORT_FROM(simulated_drive)!
+
+	MDRV_DEVICE_REMOVE( "dac" )
+	MDRV_DEVICE_REMOVE( "cassette" )
 #ifdef CPU_SYNC
 	MDRV_QUANTUM_TIME(HZ(60))
 #else
 	MDRV_QUANTUM_TIME(HZ(180000))
 #endif
-	MDRV_VIA6522_ADD("via6522_2", 0, vc1541_via2)
-	MDRV_VIA6522_ADD("via6522_3", 0, vc1541_via3)
 MACHINE_DRIVER_END
 
 
@@ -604,6 +624,7 @@ MACHINE_DRIVER_END
 
 ROM_START( max )
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
+	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
 ROM_END
 
 ROM_START( c64 )
@@ -616,6 +637,8 @@ ROM_START( c64 )
 	ROM_SYSTEM_BIOS(2, "rev2", "Kernal rev. 2" )
 	ROMX_LOAD( "901227-02.bin", 0x12000, 0x2000, CRC(a5c687b3) SHA1(0e2e4ee3f2d41f00bed72f9ab588b83e306fdb13), ROM_BIOS(3) )	// Kernal
 	ROM_LOAD( "901225-01.bin", 0x14000, 0x1000, CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa) )	// Character
+
+	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
 ROM_END
 
 #define rom_c64pal	rom_c64
@@ -625,6 +648,8 @@ ROM_START( c64jpn )
 	ROM_LOAD( "901226-01.bin", 0x10000, 0x2000, CRC(f833d117) SHA1(79015323128650c742a3694c9429aa91f355905e) )
 	ROM_LOAD( "906145-02.bin", 0x12000, 0x2000, CRC(3a9ef6f1) SHA1(4ff0f11e80f4b57430d8f0c3799ed0f0e0f4565d) )
 	ROM_LOAD( "906143-02.bin", 0x14000, 0x1000, CRC(1604f6c1) SHA1(0fad19dbcdb12461c99657b2979dbb5c2e47b527) )
+
+	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
 ROM_END
 
 
@@ -636,6 +661,8 @@ ROM_START( vic64s )
 	ROMX_LOAD( "charswe.bin",0x14000, 0x1000, CRC(bee9b3fd) SHA1(446ae58f7110d74d434301491209299f66798d8a), ROM_BIOS(1) )
 	ROM_SYSTEM_BIOS(1, "alt", "Swedish Characters (Alt)" )
 	ROMX_LOAD( "charswe2.bin",0x14000, 0x1000, CRC(377a382b) SHA1(20df25e0ba1c88f31689c1521397c96968967fac), ROM_BIOS(2) )
+
+	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
 ROM_END
 
 #define rom_c64swe	rom_vic64s
@@ -645,6 +672,8 @@ ROM_START( pet64 )
 	ROM_LOAD( "901226-01.bin", 0x10000, 0x2000, CRC(f833d117) SHA1(79015323128650c742a3694c9429aa91f355905e) )
 	ROM_LOAD( "901246-01.bin", 0x12000, 0x2000, CRC(789c8cc5) SHA1(6c4fa9465f6091b174df27dfe679499df447503c) )
 	ROM_LOAD( "901225-01.bin", 0x14000, 0x1000, CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa) )
+
+	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
 ROM_END
 
 #define rom_cbm4064 rom_pet64
@@ -656,17 +685,20 @@ ROM_START( sx64 )
 	ROM_LOAD( "251104-04.bin", 0x12000, 0x2000, CRC(2c5965d4) SHA1(aa136e91ecf3c5ac64f696b3dbcbfc5ba0871c98) )
 	ROM_LOAD( "901225-01.bin", 0x14000, 0x1000, CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa) )
 
-	VC1541_ROM( "cpu_vc1540" )
+	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
+
+	VC1541_ROM("cpu_vc1540")
 ROM_END
 
 ROM_START( dx64 )
 	ROM_REGION( 0x19400, "maincpu", 0 )
     ROM_LOAD( "901226-01.bin", 0x10000, 0x2000, CRC(f833d117) SHA1(79015323128650c742a3694c9429aa91f355905e) )
-    ROM_LOAD( "dx64kern.bin",     0x12000, 0x2000, CRC(58065128) )
+    ROM_LOAD( "dx64kern.bin",  0x12000, 0x2000, CRC(58065128) )
 
-    // vc1541 roms were not included in submission
-    VC1541_ROM ("cpu_vc1540")
-//	VC1541_ROM (" ")
+	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
+
+    // correct vc1541 roms were not included in submission
+    VC1541_ROM("cpu_vc1540")
 ROM_END
 
 ROM_START( vip64 )
@@ -675,7 +707,9 @@ ROM_START( vip64 )
 	ROM_LOAD( "kernelsx.swe",   0x12000, 0x2000, CRC(7858d3d7) SHA1(097cda60469492a8916c2677b7cce4e12a944bc0) )
 	ROM_LOAD( "charswe.bin", 0x14000, 0x1000, CRC(bee9b3fd) SHA1(446ae58f7110d74d434301491209299f66798d8a) )
 
-	VC1541_ROM( "cpu_vc1540" )
+	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
+
+	VC1541_ROM("cpu_vc1540")
 ROM_END
 
 
@@ -684,6 +718,8 @@ ROM_START( c64c )
 	/* standard basic, modified kernel */
 	ROM_LOAD( "251913-01.bin", 0x10000, 0x4000, CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88) )
 	ROM_LOAD( "901225-01.bin", 0x14000, 0x1000, CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa) )
+
+	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
 ROM_END
 
 #define rom_c64cpal		rom_c64c
@@ -694,6 +730,8 @@ ROM_START( c64gs )
 	/* standard basic, modified kernel */
 	ROM_LOAD( "390852-01.bin", 0x10000, 0x4000, CRC(b0a9c2da) SHA1(21940ef5f1bfe67d7537164f7ca130a1095b067a) )
 	ROM_LOAD( "901225-01.bin", 0x14000, 0x1000, CRC(ec4272ee) SHA1(adc7c31e18c7c7413d54802ef2f4193da14711aa) )
+
+	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
 ROM_END
 
 

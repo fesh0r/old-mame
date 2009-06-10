@@ -483,7 +483,7 @@ static MACHINE_RESET( tvlink )
 static MACHINE_DRIVER_START( svision )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M65C02, 4000000)        /* ? stz used! speed? */
-	MDRV_CPU_PROGRAM_MAP(svision_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(svision_mem)
 	MDRV_CPU_VBLANK_INT("screen", svision_frame_int)
 
 	MDRV_MACHINE_RESET( svision )
@@ -531,7 +531,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( tvlinkp )
 	MDRV_IMPORT_FROM( svisionp )
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(tvlink_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(tvlink_mem)
 
 	MDRV_MACHINE_RESET( tvlink )
 
@@ -560,7 +560,7 @@ ROM_END
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY     FULLNAME */
 // marketed under a ton of firms and names
-CONS(1992,	svision,	0,	0,	svision,	svision,	svision,	0,	"Watara",	"Supervision", 0)
+CONS(1992,	svision,	0,	0,	svision,	svision,	svision,	0,	"Watara",	"Super Vision", 0)
 // svdual 2 connected via communication port
 CONS( 1992, svisions,      svision,          0,svision,  svisions,    svisions,   0, "Watara", "Super Vision (PeT Communication Simulation)", 0 )
 

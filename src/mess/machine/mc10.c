@@ -43,7 +43,7 @@ MACHINE_START( mc10 )
 	mc10_keyboard_strobe = 0x00;
 
 	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM),
-			0x4000,	0x4000 + mess_ram_size - 1,	0, 0, SMH_BANK1, SMH_BANK1);
+			0x4000,	0x4000 + mess_ram_size - 1,	0, 0, SMH_BANK(1), SMH_BANK(1));
 	memory_set_bankptr(machine, 1, mess_ram);
 
 	state_save_register_global(machine, mc10_bfff);
@@ -167,7 +167,7 @@ WRITE8_HANDLER ( mc10_port2_w )
 *****************************************************************************/
 
 
-static ATTR_CONST UINT8 mc10_get_attributes(running_machine *machine, UINT8 c)
+static ATTR_CONST UINT8 mc10_get_attributes(running_machine *machine, UINT8 c, int scanline, int pos)
 {
 	UINT8 result = 0x00;
 	if (c & 0x40)			result |= M6847_INV;

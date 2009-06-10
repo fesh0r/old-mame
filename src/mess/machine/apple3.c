@@ -390,11 +390,11 @@ static void apple3_update_memory(running_machine *machine)
 	}
 	else
 	{
-		memory_install_read8_handler(space, 0xC000, 0xC0FF, 0, 0, SMH_BANK8);
+		memory_install_read8_handler(space, 0xC000, 0xC0FF, 0, 0, SMH_BANK(8));
 		if (via_0_a & 0x08)
 			memory_install_write8_handler(space, 0xC000, 0xC0FF, 0, 0, SMH_UNMAP);
 		else
-			memory_install_write8_handler(space, 0xC000, 0xC0FF, 0, 0, SMH_BANK8);
+			memory_install_write8_handler(space, 0xC000, 0xC0FF, 0, 0, SMH_BANK(8));
 		apple3_setbank(machine,8, ~0, 0x4000);
 	}
 
@@ -406,20 +406,20 @@ static void apple3_update_memory(running_machine *machine)
 	}
 	else
 	{
-		memory_install_read8_handler(space, 0xC100, 0xC4FF, 0, 0, SMH_BANK9);
+		memory_install_read8_handler(space, 0xC100, 0xC4FF, 0, 0, SMH_BANK(9));
 		if (via_0_a & 0x08)
 			memory_install_write8_handler(space, 0xC100, 0xC4FF, 0, 0, SMH_UNMAP);
 		else
-			memory_install_write8_handler(space, 0xC100, 0xC4FF, 0, 0, SMH_BANK9);
+			memory_install_write8_handler(space, 0xC100, 0xC4FF, 0, 0, SMH_BANK(9));
 		apple3_setbank(machine,9, ~0, 0x4100);
 	}
 
 	/* install bank 10 (C500-C7FF) */
-	memory_install_read8_handler(space, 0xC500, 0xC7FF, 0, 0, SMH_BANK10);
+	memory_install_read8_handler(space, 0xC500, 0xC7FF, 0, 0, SMH_BANK(10));
 	if (via_0_a & 0x08)
 		memory_install_write8_handler(space, 0xC500, 0xC7FF, 0, 0, SMH_UNMAP);
 	else
-		memory_install_write8_handler(space, 0xC500, 0xC7FF, 0, 0, SMH_BANK10);
+		memory_install_write8_handler(space, 0xC500, 0xC7FF, 0, 0, SMH_BANK(10));
 	apple3_setbank(machine,10, ~0, 0x4500);
 
 	/* install bank 11 (C800-CFFF) */
@@ -430,28 +430,28 @@ static void apple3_update_memory(running_machine *machine)
 	}
 	else
 	{
-		memory_install_read8_handler(space, 0xC800, 0xCFFF, 0, 0, SMH_BANK11);
+		memory_install_read8_handler(space, 0xC800, 0xCFFF, 0, 0, SMH_BANK(11));
 		if (via_0_a & 0x08)
 			memory_install_write8_handler(space, 0xC800, 0xCFFF, 0, 0, SMH_UNMAP);
 		else
-			memory_install_write8_handler(space, 0xC800, 0xCFFF, 0, 0, SMH_BANK11);
+			memory_install_write8_handler(space, 0xC800, 0xCFFF, 0, 0, SMH_BANK(11));
 		apple3_setbank(machine,11, ~0, 0x4800);
 	}
 
 	/* install bank 6 (D000-EFFF) */
-	memory_install_read8_handler(space, 0xD000, 0xEFFF, 0, 0, SMH_BANK6);
+	memory_install_read8_handler(space, 0xD000, 0xEFFF, 0, 0, SMH_BANK(6));
 	if (via_0_a & 0x08)
 		memory_install_write8_handler(space, 0xD000, 0xEFFF, 0, 0, SMH_UNMAP);
 	else
-		memory_install_write8_handler(space, 0xD000, 0xEFFF, 0, 0, SMH_BANK6);
+		memory_install_write8_handler(space, 0xD000, 0xEFFF, 0, 0, SMH_BANK(6));
 	apple3_setbank(machine,6, ~0, 0x5000);
 
 	/* install bank 7 (F000-FFFF) */
-	memory_install_read8_handler(space, 0xF000, 0xFFFF, 0, 0, SMH_BANK7);
+	memory_install_read8_handler(space, 0xF000, 0xFFFF, 0, 0, SMH_BANK(7));
 	if (via_0_a & 0x09)
 		memory_install_write8_handler(space, 0xF000, 0xFFFF, 0, 0, SMH_UNMAP);
 	else
-		memory_install_write8_handler(space, 0xF000, 0xFFFF, 0, 0, SMH_BANK7);
+		memory_install_write8_handler(space, 0xF000, 0xFFFF, 0, 0, SMH_BANK(7));
 	if (via_0_a & 0x01)
 		memory_set_bankptr(machine,7, memory_region(machine, "maincpu"));
 	else
@@ -617,7 +617,7 @@ static UINT8 *apple3_get_indexed_addr(offs_t offset)
 
 
 
-static READ8_HANDLER( apple3_indexed_read )
+READ8_HANDLER( apple3_indexed_read )
 {
 	UINT8 result;
 	UINT8 *addr;
@@ -634,7 +634,7 @@ static READ8_HANDLER( apple3_indexed_read )
 
 
 
-static WRITE8_HANDLER( apple3_indexed_write )
+WRITE8_HANDLER( apple3_indexed_write )
 {
 	UINT8 *addr;
 
@@ -717,7 +717,7 @@ DRIVER_INIT( apple3 )
 	memory_region(machine, "maincpu")[0x0685] = 0x00;
 
 	apple3_enable_mask = 0;
-	apple3_update_drives((device_config*)devtag_get_device(machine, "fdc"));
+	apple3_update_drives(devtag_get_device(machine, "fdc"));
 
 	AY3600_init(machine);
 
@@ -730,10 +730,4 @@ DRIVER_INIT( apple3 )
 	apple3_update_memory(machine);
 
 	memory_set_direct_update_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), apple3_opbase);
-
-	/* the Apple /// does some weird tricks whereby it monitors the SYNC pin
-	 * on the CPU to check for indexed instructions and directs them to
-	 * different memory locations */
-	device_set_info_fct(cputag_get_cpu(machine, "maincpu"), CPUINFO_FCT_M6502_READINDEXED_CALLBACK, (genf *) apple3_indexed_read);
-	device_set_info_fct(cputag_get_cpu(machine, "maincpu"), CPUINFO_FCT_M6502_WRITEINDEXED_CALLBACK, (genf *) apple3_indexed_write);
 }
