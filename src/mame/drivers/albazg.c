@@ -1,12 +1,12 @@
 /*******************************************************************************************
 
-Yumefuda (c) 1991 Alba
+ZG board (c) 1991 Alba
 
 driver by Angelo Salese
 
 Notes:
--I think the name of this hardware is "Alba ZG board",a newer revision of the
- "Alba ZC board" used by Hanaroku (hanaroku.c driver).Test mode says clearly that this is
+-The name of this hardware is "Alba ZG board",a newer revision of the
+ "Alba ZC board" used by Hanaroku (albazc.c driver). Test mode says clearly that this is
  from 1991.
 
 TODO:
@@ -224,7 +224,7 @@ static const ay8910_interface ay8910_config =
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0x9fff) AM_READWRITE(SMH_BANK1, SMH_ROM)
+	AM_RANGE(0x8000, 0x9fff) AM_ROMBANK(1)
 	AM_RANGE(0xa7fc, 0xa7fc) AM_WRITE(prot_lock_w)
 	AM_RANGE(0xa7ff, 0xa7ff) AM_WRITE(eeprom_w)
 	AM_RANGE(0xaf80, 0xafff) AM_READWRITE(custom_ram_r, custom_ram_w) AM_BASE(&cus_ram)
@@ -257,8 +257,8 @@ static MACHINE_DRIVER_START( yumefuda )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80 , 6000000) /*???*/
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_IO_MAP(port_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
+	MDRV_CPU_IO_MAP(port_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_MACHINE_RESET(yumefuda)

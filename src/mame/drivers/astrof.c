@@ -86,7 +86,7 @@ static UINT16 abattle_count;
 
 static READ8_HANDLER( irq_clear_r )
 {
-	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 
 	return 0;
 }
@@ -94,7 +94,7 @@ static READ8_HANDLER( irq_clear_r )
 
 static TIMER_DEVICE_CALLBACK( irq_callback )
 {
-	cpu_set_input_line(timer->machine->cpu[0], 0, ASSERT_LINE);
+	cputag_set_input_line(timer->machine, "maincpu", 0, ASSERT_LINE);
 }
 
 
@@ -108,7 +108,7 @@ static TIMER_DEVICE_CALLBACK( irq_callback )
 static INPUT_CHANGED( coin_inserted )
 {
 	/* coin insertion causes an NMI */
-	cpu_set_input_line(field->port->machine->cpu[0], INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(field->port->machine, "maincpu", INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
 	coin_counter_w(0, newval);
 }
 
@@ -116,7 +116,7 @@ static INPUT_CHANGED( coin_inserted )
 static INPUT_CHANGED( service_coin_inserted )
 {
 	/* service coin insertion causes an NMI */
-	cpu_set_input_line(field->port->machine->cpu[0], INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(field->port->machine, "maincpu", INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -173,7 +173,7 @@ static CUSTOM_INPUT( tomahawk_controls_r )
 static VIDEO_START( astrof )
 {
 	/* allocate the color RAM -- half the size of the video RAM as A0 is not connected */
-	astrof_colorram = auto_malloc(astrof_videoram_size / 2);
+	astrof_colorram = auto_alloc_array(machine, UINT8, astrof_videoram_size / 2);
 	state_save_register_global_pointer(machine, astrof_colorram, astrof_videoram_size / 2);
 }
 
@@ -498,14 +498,14 @@ static ADDRESS_MAP_START( astrof_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4000, 0x5fff) AM_RAM_WRITE(astrof_videoram_w) AM_BASE(&astrof_videoram) AM_SIZE(&astrof_videoram_size)
 	AM_RANGE(0x6000, 0x7fff) AM_NOP
 	AM_RANGE(0x8000, 0x8002) AM_MIRROR(0x1ff8) AM_NOP
-	AM_RANGE(0x8003, 0x8003) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, SMH_RAM) AM_BASE(&astrof_color)
-	AM_RANGE(0x8004, 0x8004) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, video_control_1_w)
-	AM_RANGE(0x8005, 0x8005) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, astrof_video_control_2_w)
-	AM_RANGE(0x8006, 0x8006) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, astrof_audio_1_w)
-	AM_RANGE(0x8007, 0x8007) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, astrof_audio_2_w)
+	AM_RANGE(0x8003, 0x8003) AM_MIRROR(0x1ff8) AM_READNOP AM_WRITEONLY AM_BASE(&astrof_color)
+	AM_RANGE(0x8004, 0x8004) AM_MIRROR(0x1ff8) AM_READNOP AM_WRITE(video_control_1_w)
+	AM_RANGE(0x8005, 0x8005) AM_MIRROR(0x1ff8) AM_READNOP AM_WRITE(astrof_video_control_2_w)
+	AM_RANGE(0x8006, 0x8006) AM_MIRROR(0x1ff8) AM_READNOP AM_WRITE(astrof_audio_1_w)
+	AM_RANGE(0x8007, 0x8007) AM_MIRROR(0x1ff8) AM_READNOP AM_WRITE(astrof_audio_2_w)
 	AM_RANGE(0xa000, 0xa000) AM_MIRROR(0x1ff8) AM_READ_PORT("IN") AM_WRITENOP
 	AM_RANGE(0xa001, 0xa001) AM_MIRROR(0x1ff8) AM_READ_PORT("DSW") AM_WRITENOP
-	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ff8) AM_READWRITE(irq_clear_r, SMH_NOP)
+	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ff8) AM_READ(irq_clear_r) AM_WRITENOP
 	AM_RANGE(0xa003, 0xa007) AM_MIRROR(0x1ff8) AM_NOP
 	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -517,14 +517,14 @@ static ADDRESS_MAP_START( spfghmk2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4000, 0x5fff) AM_RAM_WRITE(astrof_videoram_w) AM_BASE(&astrof_videoram) AM_SIZE(&astrof_videoram_size)
 	AM_RANGE(0x6000, 0x7fff) AM_NOP
 	AM_RANGE(0x8000, 0x8002) AM_MIRROR(0x1ff8) AM_NOP
-	AM_RANGE(0x8003, 0x8003) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, SMH_RAM) AM_BASE(&astrof_color)
-	AM_RANGE(0x8004, 0x8004) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, video_control_1_w)
-	AM_RANGE(0x8005, 0x8005) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, spfghmk2_video_control_2_w)
-	AM_RANGE(0x8006, 0x8006) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, spfghmk2_audio_w)
+	AM_RANGE(0x8003, 0x8003) AM_MIRROR(0x1ff8) AM_READNOP AM_WRITEONLY AM_BASE(&astrof_color)
+	AM_RANGE(0x8004, 0x8004) AM_MIRROR(0x1ff8) AM_READNOP AM_WRITE(video_control_1_w)
+	AM_RANGE(0x8005, 0x8005) AM_MIRROR(0x1ff8) AM_READNOP AM_WRITE(spfghmk2_video_control_2_w)
+	AM_RANGE(0x8006, 0x8006) AM_MIRROR(0x1ff8) AM_READNOP AM_WRITE(spfghmk2_audio_w)
 	AM_RANGE(0x8007, 0x8007) AM_MIRROR(0x1ff8) AM_NOP
 	AM_RANGE(0xa000, 0xa000) AM_MIRROR(0x1ff8) AM_READ_PORT("IN") AM_WRITENOP
 	AM_RANGE(0xa001, 0xa001) AM_MIRROR(0x1ff8) AM_READ_PORT("DSW") AM_WRITENOP
-	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ff8) AM_READWRITE(irq_clear_r, SMH_NOP)
+	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ff8) AM_READ(irq_clear_r) AM_WRITENOP
 	AM_RANGE(0xa003, 0xa007) AM_MIRROR(0x1ff8) AM_NOP
 	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -536,15 +536,15 @@ static ADDRESS_MAP_START( tomahawk_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4000, 0x5fff) AM_RAM_WRITE(tomahawk_videoram_w) AM_BASE(&astrof_videoram) AM_SIZE(&astrof_videoram_size)
 	AM_RANGE(0x6000, 0x7fff) AM_NOP
 	AM_RANGE(0x8000, 0x8002) AM_MIRROR(0x1ff8) AM_NOP
-	AM_RANGE(0x8003, 0x8003) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, SMH_RAM) AM_BASE(&astrof_color)
-	AM_RANGE(0x8004, 0x8004) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, video_control_1_w)
-	AM_RANGE(0x8005, 0x8005) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, tomahawk_video_control_2_w)
-	AM_RANGE(0x8006, 0x8006) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, tomahawk_audio_w)
-	AM_RANGE(0x8007, 0x8007) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, SMH_RAM) AM_BASE(&tomahawk_protection)
+	AM_RANGE(0x8003, 0x8003) AM_MIRROR(0x1ff8) AM_READNOP AM_WRITEONLY AM_BASE(&astrof_color)
+	AM_RANGE(0x8004, 0x8004) AM_MIRROR(0x1ff8) AM_READNOP AM_WRITE(video_control_1_w)
+	AM_RANGE(0x8005, 0x8005) AM_MIRROR(0x1ff8) AM_READNOP AM_WRITE(tomahawk_video_control_2_w)
+	AM_RANGE(0x8006, 0x8006) AM_MIRROR(0x1ff8) AM_READNOP AM_WRITE(tomahawk_audio_w)
+	AM_RANGE(0x8007, 0x8007) AM_MIRROR(0x1ff8) AM_READNOP AM_WRITEONLY AM_BASE(&tomahawk_protection)
 	AM_RANGE(0xa000, 0xa000) AM_MIRROR(0x1ff8) AM_READ_PORT("IN") AM_WRITENOP
 	AM_RANGE(0xa001, 0xa001) AM_MIRROR(0x1ff8) AM_READ_PORT("DSW") AM_WRITENOP
-	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ff8) AM_READWRITE(irq_clear_r, SMH_NOP)
-	AM_RANGE(0xa003, 0xa003) AM_MIRROR(0x1ff8) AM_READWRITE(tomahawk_protection_r, SMH_NOP)
+	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ff8) AM_READ(irq_clear_r) AM_WRITENOP
+	AM_RANGE(0xa003, 0xa003) AM_MIRROR(0x1ff8) AM_READ(tomahawk_protection_r) AM_WRITENOP
 	AM_RANGE(0xa004, 0xa007) AM_MIRROR(0x1ff8) AM_NOP
 	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -862,7 +862,7 @@ static MACHINE_DRIVER_START( astrof )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(base)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(astrof_map,0)
+	MDRV_CPU_PROGRAM_MAP(astrof_map)
 
 	MDRV_MACHINE_START(astrof)
 
@@ -889,7 +889,7 @@ static MACHINE_DRIVER_START( spfghmk2 )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(base)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(spfghmk2_map,0)
+	MDRV_CPU_PROGRAM_MAP(spfghmk2_map)
 
 	MDRV_MACHINE_START(spfghmk2)
 
@@ -906,7 +906,7 @@ static MACHINE_DRIVER_START( tomahawk )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(base)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(tomahawk_map,0)
+	MDRV_CPU_PROGRAM_MAP(tomahawk_map)
 
 	MDRV_MACHINE_START(tomahawk)
 
@@ -1191,8 +1191,8 @@ static DRIVER_INIT( abattle )
 		rom[i] = prom[rom[i]];
 
 	/* set up protection handlers */
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa003, 0xa003, 0, 0, shoot_r);
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa004, 0xa004, 0, 0, abattle_coin_prot_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xa003, 0xa003, 0, 0, shoot_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xa004, 0xa004, 0, 0, abattle_coin_prot_r);
 }
 
 
@@ -1205,8 +1205,8 @@ static DRIVER_INIT( afire )
 		rom[i] = ~rom[i];
 
 	/* set up protection handlers */
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa003, 0xa003, 0, 0, shoot_r);
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa004, 0xa004, 0, 0, afire_coin_prot_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xa003, 0xa003, 0, 0, shoot_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xa004, 0xa004, 0, 0, afire_coin_prot_r);
 }
 
 
@@ -1219,8 +1219,8 @@ static DRIVER_INIT( sstarbtl )
 		rom[i] = ~rom[i];
 
 	/* set up protection handlers */
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa003, 0xa003, 0, 0, shoot_r);
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa004, 0xa004, 0, 0, abattle_coin_prot_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xa003, 0xa003, 0, 0, shoot_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xa004, 0xa004, 0, 0, abattle_coin_prot_r);
 }
 
 

@@ -156,7 +156,7 @@ static WRITE16_HANDLER(tomcat_mresh_w)
 static WRITE16_HANDLER(tomcat_irqclr_w)
 {
 	// Clear IRQ Latch          (Address Strobe)
-	cpu_set_input_line(space->machine->cpu[0], 1, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", 1, CLEAR_LINE);
 }
 
 static READ16_HANDLER(tomcat_inputs2_r)
@@ -177,7 +177,7 @@ static READ16_HANDLER(tomcat_inputs2_r)
 static READ16_HANDLER(tomcat_320bio_r)
 {
 	dsp_BIO = 1;
-	cpu_suspend(space->machine->cpu[0], SUSPEND_REASON_SPIN, 1);
+	cputag_suspend(space->machine, "maincpu", SUSPEND_REASON_SPIN, 1);
 	return 0;
 }
 
@@ -198,7 +198,7 @@ static READ16_HANDLER(dsp_BIO_r)
 		{
 			dsp_idle = 0;
 			dsp_BIO = 0;
-			cpu_resume(space->machine->cpu[0], SUSPEND_REASON_SPIN );
+			cputag_resume(space->machine, "maincpu", SUSPEND_REASON_SPIN );
 			return 0;
 		}
 		else
@@ -331,7 +331,7 @@ static MACHINE_START(tomcat)
 	((UINT16*)tomcat_shared_ram)[0x0002] = 0xf600;
 	((UINT16*)tomcat_shared_ram)[0x0003] = 0x0000;
 
-	tomcat_nvram = auto_malloc(0x800);
+	tomcat_nvram = auto_alloc_array(machine, UINT8, 0x800);
 
 	state_save_register_global_pointer(machine, tomcat_nvram, 0x800);
 	state_save_register_global(machine, tomcat_control_num);
@@ -375,17 +375,17 @@ static const riot6532_interface tomcat_riot6532_intf =
 
 static MACHINE_DRIVER_START(tomcat)
 	MDRV_CPU_ADD("maincpu", M68010, XTAL_12MHz / 2)
-	MDRV_CPU_PROGRAM_MAP(tomcat_map, 0)
+	MDRV_CPU_PROGRAM_MAP(tomcat_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq1_line_assert, 5)
 	//MDRV_CPU_PERIODIC_INT(irq1_line_assert, (double)XTAL_12MHz / 16 / 16 / 16 / 12)
 
 	MDRV_CPU_ADD("dsp", TMS32010, XTAL_16MHz)
-	MDRV_CPU_PROGRAM_MAP( dsp_map, 0 )
-	MDRV_CPU_IO_MAP( dsp_io_map, 0 )
+	MDRV_CPU_PROGRAM_MAP( dsp_map)
+	MDRV_CPU_IO_MAP( dsp_io_map)
 
 	MDRV_CPU_ADD("soundcpu", M6502, XTAL_14_31818MHz / 8 )
 	MDRV_CPU_FLAGS( CPU_DISABLE )
-	MDRV_CPU_PROGRAM_MAP( sound_map, 0 )
+	MDRV_CPU_PROGRAM_MAP( sound_map)
 
 	MDRV_RIOT6532_ADD("riot", XTAL_14_31818MHz / 8, tomcat_riot6532_intf)
 

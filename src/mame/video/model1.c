@@ -731,7 +731,9 @@ static void push_object(running_machine *machine, UINT32 tex_adr, UINT32 poly_ad
 	struct point *old_p0, *old_p1, *p0, *p1;
 	struct vector vn;
 	int link, type;
+#if 0
 	int dump;
+#endif
 	int lightmode;
 	float old_z;
 	struct quad cquad;
@@ -743,8 +745,10 @@ static void push_object(running_machine *machine, UINT32 tex_adr, UINT32 poly_ad
 		poly_data=(float *) poly_rom;
 
 	poly_adr &= 0x7fffff;
+#if 0
 	dump = poly_adr == 0x944ea;
 	dump = 0;
+#endif
 
 #if 0
 	if(poly_adr < 0x10000 || poly_adr >= 0x80000)
@@ -1438,16 +1442,11 @@ VIDEO_START(model1)
 	sys24_tile_vh_start(machine, 0x3fff);
 
 	poly_rom = (UINT32 *)memory_region(machine, "user1");
-	poly_ram = auto_malloc(0x400000*4);
-	memset(poly_ram, 0, 0x400000*4);
-	tgp_ram = auto_malloc((0x100000-0x40000)*2);
-	memset(tgp_ram, 0, (0x100000-0x40000)*2);
-	pointdb = auto_malloc(1000000*2*sizeof(struct point));
-	memset(pointdb, 0, 1000000*2*sizeof(struct point));
-	quaddb  = auto_malloc(1000000*sizeof(struct quad));
-	memset(quaddb, 0, 1000000*sizeof(struct quad));
-	quadind = auto_malloc(1000000*sizeof(struct quad *));
-	memset(quadind, 0, 1000000*sizeof(struct quad *));
+	poly_ram = auto_alloc_array_clear(machine, UINT32, 0x400000);
+	tgp_ram = auto_alloc_array_clear(machine, UINT16, 0x100000-0x40000);
+	pointdb = auto_alloc_array_clear(machine, struct point, 1000000*2);
+	quaddb  = auto_alloc_array_clear(machine, struct quad, 1000000);
+	quadind = auto_alloc_array_clear(machine, struct quad *, 1000000);
 
 	pointpt = pointdb;
 	quadpt = quaddb;

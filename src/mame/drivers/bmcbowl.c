@@ -496,7 +496,7 @@ static INTERRUPT_GEN( bmc_interrupt )
 
 static MACHINE_DRIVER_START( bmcbowl )
 	MDRV_CPU_ADD("maincpu", M68000, 21477270/2 )
-	MDRV_CPU_PROGRAM_MAP(bmcbowl_mem,0)
+	MDRV_CPU_PROGRAM_MAP(bmcbowl_mem)
 	MDRV_CPU_VBLANK_INT_HACK(bmc_interrupt,2)
 
 
@@ -551,7 +551,7 @@ ROM_END
 
 static DRIVER_INIT(bmcbowl)
 {
-	colorram=auto_malloc(768);
+	colorram = auto_alloc_array(machine, UINT8, 768);
 }
 
 GAME( 1994, bmcbowl,    0, bmcbowl,    bmcbowl,    bmcbowl, ROT0,  "BMC", "BMC Bowling", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )

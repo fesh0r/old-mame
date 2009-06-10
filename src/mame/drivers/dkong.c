@@ -390,7 +390,7 @@ static INTERRUPT_GEN( s2650_interrupt )
 
 static MACHINE_START( dkong2b )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = (dkong_state *)machine->driver_data;
 
 	state->hardware_type = HARDWARE_TKG04;
 
@@ -401,7 +401,7 @@ static MACHINE_START( dkong2b )
 
 static MACHINE_START( s2650 )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = (dkong_state *)machine->driver_data;
 	UINT8	*p = memory_region(machine, "user1");
 	const char *game_name = machine->gamedrv->name;
 	int i;
@@ -433,7 +433,7 @@ static MACHINE_START( s2650 )
 
 static MACHINE_START( radarscp )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = (dkong_state *)machine->driver_data;
 
 	MACHINE_START_CALL(dkong2b);
 	state->hardware_type = HARDWARE_TRS02;
@@ -441,7 +441,7 @@ static MACHINE_START( radarscp )
 
 static MACHINE_START( radarsc1 )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = (dkong_state *)machine->driver_data;
 
 	MACHINE_START_CALL(dkong2b);
 	state->hardware_type = HARDWARE_TRS01;
@@ -449,7 +449,7 @@ static MACHINE_START( radarsc1 )
 
 static MACHINE_START( dkong3 )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = (dkong_state *)machine->driver_data;
 
 	state->hardware_type = HARDWARE_TKG04;
 }
@@ -461,7 +461,7 @@ static MACHINE_RESET( dkong )
 
 static MACHINE_RESET( strtheat )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = (dkong_state *)machine->driver_data;
 	UINT8 *ROM = memory_region(machine, "maincpu");
 
 	MACHINE_RESET_CALL(dkong);
@@ -474,7 +474,7 @@ static MACHINE_RESET( strtheat )
 
 static MACHINE_RESET( drakton )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = (dkong_state *)machine->driver_data;
 	UINT8 *ROM = memory_region(machine, "maincpu");
 
 	MACHINE_RESET_CALL(dkong);
@@ -494,20 +494,20 @@ static MACHINE_RESET( drakton )
 
 static READ8_DEVICE_HANDLER( dk_dma_read_byte )
 {
-	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	return memory_read_byte(space, offset);
 }
 
 static WRITE8_DEVICE_HANDLER( dk_dma_write_byte )
 {
-	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	memory_write_byte(space, offset, data);
 }
 
 static READ8_DEVICE_HANDLER( hb_dma_read_byte )
 {
-	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
-	dkong_state *state = device->machine->driver_data;
+	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	dkong_state *state = (dkong_state *)device->machine->driver_data;
 	int	  bucket = state->rev_map[(offset>>10) & 0x1ff];
 	int   addr;
 
@@ -521,8 +521,8 @@ static READ8_DEVICE_HANDLER( hb_dma_read_byte )
 
 static WRITE8_DEVICE_HANDLER( hb_dma_write_byte )
 {
-	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
-	dkong_state *state = device->machine->driver_data;
+	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	dkong_state *state = (dkong_state *)device->machine->driver_data;
 	int	  bucket = state->rev_map[(offset>>10) & 0x1ff];
 	int   addr;
 
@@ -536,13 +536,13 @@ static WRITE8_DEVICE_HANDLER( hb_dma_write_byte )
 
 static READ8_DEVICE_HANDLER( p8257_ctl_r )
 {
-	dkong_state *state = device->machine->driver_data;
+	dkong_state *state = (dkong_state *)device->machine->driver_data;
 	return state->dma_latch;
 }
 
 static WRITE8_DEVICE_HANDLER( p8257_ctl_w )
 {
-	dkong_state *state = device->machine->driver_data;
+	dkong_state *state = (dkong_state *)device->machine->driver_data;
 	state->dma_latch = data;
 }
 
@@ -606,7 +606,7 @@ static WRITE8_HANDLER( s2650_mirror_w )
 
 static READ8_HANDLER( epos_decrypt_rom )
 {
-	dkong_state *state = space->machine->driver_data;
+	dkong_state *state = (dkong_state *)space->machine->driver_data;
 
 	if (offset & 0x01)
 	{
@@ -636,7 +636,7 @@ static READ8_HANDLER( epos_decrypt_rom )
 
 static WRITE8_HANDLER( s2650_data_w )
 {
-	dkong_state *state = space->machine->driver_data;
+	dkong_state *state = (dkong_state *)space->machine->driver_data;
 #if DEBUG_PROTECTION
 	logerror("write : pc = %04x, loopback = %02x\n",cpu_get_pc(space->cpu), data);
 #endif
@@ -646,7 +646,7 @@ static WRITE8_HANDLER( s2650_data_w )
 
 static READ8_HANDLER( s2650_port0_r )
 {
-	dkong_state *state = space->machine->driver_data;
+	dkong_state *state = (dkong_state *)space->machine->driver_data;
 #if DEBUG_PROTECTION
 	logerror("port 0 : pc = %04x, loopback = %02x\n",cpu_get_pc(space->cpu), state->hunchloopback);
 #endif
@@ -673,7 +673,7 @@ static READ8_HANDLER( s2650_port0_r )
 
 static READ8_HANDLER( s2650_port1_r )
 {
-	dkong_state *state = space->machine->driver_data;
+	dkong_state *state = (dkong_state *)space->machine->driver_data;
 #if DEBUG_PROTECTION
 	logerror("port 1 : pc = %04x, loopback = %02x\n",cpu_get_pc(space->cpu), state->hunchloopback);
 #endif
@@ -699,13 +699,13 @@ static WRITE8_HANDLER( dkong3_2a03_reset_w )
 {
 	if (data & 1)
 	{
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
-		cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "n2a03a", INPUT_LINE_RESET, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "n2a03b", INPUT_LINE_RESET, CLEAR_LINE);
 	}
 	else
 	{
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
-		cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, ASSERT_LINE);
+		cputag_set_input_line(space->machine, "n2a03a", INPUT_LINE_RESET, ASSERT_LINE);
+		cputag_set_input_line(space->machine, "n2a03b", INPUT_LINE_RESET, ASSERT_LINE);
 	}
 }
 
@@ -1575,7 +1575,7 @@ static MACHINE_DRIVER_START( dkong_base )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, CLOCK_1H)
-	MDRV_CPU_PROGRAM_MAP(dkong_map, 0)
+	MDRV_CPU_PROGRAM_MAP(dkong_map)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	MDRV_MACHINE_START(dkong2b)
@@ -1643,8 +1643,8 @@ static MACHINE_DRIVER_START( dkong3 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_8MHz / 2)	/* verified in schematics */
-	MDRV_CPU_PROGRAM_MAP(dkong3_map, 0)
-	MDRV_CPU_IO_MAP(dkong3_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(dkong3_map)
+	MDRV_CPU_IO_MAP(dkong3_io_map)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	MDRV_MACHINE_START(dkong3)
@@ -1672,7 +1672,7 @@ static MACHINE_DRIVER_START( dkongjr )
 	MDRV_IMPORT_FROM(dkong_base)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(dkongjr_map, 0)
+	MDRV_CPU_PROGRAM_MAP(dkongjr_map)
 
 	/* sound hardware */
 	MDRV_IMPORT_FROM(dkongjr_audio)
@@ -1709,8 +1709,8 @@ static MACHINE_DRIVER_START( s2650 )
 
 	/* basic machine hardware */
 	MDRV_CPU_REPLACE("maincpu", S2650, CLOCK_1H / 2)	/* ??? */
-	MDRV_CPU_PROGRAM_MAP(s2650_map, 0)
-	MDRV_CPU_IO_MAP(s2650_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(s2650_map)
+	MDRV_CPU_IO_MAP(s2650_io_map)
 	MDRV_CPU_VBLANK_INT("screen", s2650_interrupt)
 
 	MDRV_DEVICE_MODIFY("dma8257")
@@ -1724,7 +1724,7 @@ static MACHINE_DRIVER_START( spclforc )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(s2650)
-	MDRV_CPU_REMOVE("soundcpu")
+	MDRV_DEVICE_REMOVE("soundcpu")
 
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(spclforc)
@@ -1742,7 +1742,7 @@ static MACHINE_DRIVER_START( strtheat )
 	MDRV_IMPORT_FROM(dkong2b)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(epos_readport,0)
+	MDRV_CPU_IO_MAP(epos_readport)
 
 	MDRV_MACHINE_RESET(strtheat)
 MACHINE_DRIVER_END
@@ -1752,7 +1752,7 @@ static MACHINE_DRIVER_START( drakton )
 	MDRV_IMPORT_FROM(dkong2b)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(epos_readport,0)
+	MDRV_CPU_IO_MAP(epos_readport)
 
 	MDRV_MACHINE_RESET(drakton)
 MACHINE_DRIVER_END
@@ -1762,7 +1762,7 @@ static MACHINE_DRIVER_START( drktnjr )
 	MDRV_IMPORT_FROM(dkongjr)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(epos_readport,0)
+	MDRV_CPU_IO_MAP(epos_readport)
 
 	MDRV_MACHINE_RESET(drakton)
 MACHINE_DRIVER_END
@@ -2899,7 +2899,7 @@ static DRIVER_INIT( drakton )
 			{7,1,4,0,3,6,2,5},
 	};
 
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0, SMH_BANK1 );
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0, (read8_space_func)SMH_BANK(1) );
 
 	/* While the PAL supports up to 16 decryption methods, only four
         are actually used in the PAL.  Therefore, we'll take a little
@@ -2921,7 +2921,7 @@ static DRIVER_INIT( strtheat )
 			{6,3,4,1,0,7,2,5},
 	};
 
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0, SMH_BANK1 );
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0, (read8_space_func)SMH_BANK(1) );
 
 	/* While the PAL supports up to 16 decryption methods, only four
         are actually used in the PAL.  Therefore, we'll take a little
@@ -2932,8 +2932,8 @@ static DRIVER_INIT( strtheat )
 	drakton_decrypt_rom(machine, 0x88, 0x1c000, bs[3]);
 
 	/* custom handlers supporting Joystick or Steering Wheel */
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x7c00, 0x7c00, 0, 0, strtheat_inputport_0_r);
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x7c80, 0x7c80, 0, 0, strtheat_inputport_1_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x7c00, 0x7c00, 0, 0, strtheat_inputport_0_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x7c80, 0x7c80, 0, 0, strtheat_inputport_1_r);
 }
 
 /*************************************

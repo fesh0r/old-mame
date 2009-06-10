@@ -101,13 +101,13 @@ static WRITE16_HANDLER( ultraman_K051960_w )
 static WRITE16_HANDLER( sound_cmd_w )
 {
 	if (ACCESSING_BITS_0_7)
-		soundlatch_w(space,0,data & 0xff);
+		soundlatch_w(space, 0, data & 0xff);
 }
 
 static WRITE16_HANDLER( sound_irq_trigger_w )
 {
 	if (ACCESSING_BITS_0_7)
-		cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
+		cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -245,12 +245,12 @@ static MACHINE_DRIVER_START( ultraman )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,24000000/2)		/* 12 MHz? */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,24000000/6)	/* 4 MHz? */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_io_map)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 

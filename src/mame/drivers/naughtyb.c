@@ -367,7 +367,7 @@ static MACHINE_DRIVER_START( naughtyb )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, CLOCK_XTAL / 4) /* 12 MHz clock, divided by 4. CPU is a Z80A */
-	MDRV_CPU_PROGRAM_MAP(naughtyb_map,0)
+	MDRV_CPU_PROGRAM_MAP(naughtyb_map)
 	MDRV_CPU_VBLANK_INT("screen", naughtyb_interrupt)
 
 	/* video hardware */
@@ -398,12 +398,12 @@ static MACHINE_DRIVER_START( naughtyb )
 MACHINE_DRIVER_END
 
 
-/* Exactly the same but for the writemem handler */
+/* Exactly the same but for certain address writes */
 static MACHINE_DRIVER_START( popflame )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, CLOCK_XTAL / 4) /* 12 MHz clock, divided by 4. CPU is a Z80A */
-	MDRV_CPU_PROGRAM_MAP(popflame_map,0)
+	MDRV_CPU_PROGRAM_MAP(popflame_map)
 	MDRV_CPU_VBLANK_INT("screen", naughtyb_interrupt)
 
 	/* video hardware */
@@ -784,7 +784,7 @@ ROM_END
 static DRIVER_INIT( popflame )
 {
 	/* install a handler to catch protection checks */
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x9000, 0x9000, 0, 0, popflame_protection_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x9000, 0x9000, 0, 0, popflame_protection_r);
 }
 
 static int question_offset = 0;
@@ -813,7 +813,7 @@ static WRITE8_HANDLER( trvmstr_questions_w )
 static DRIVER_INIT( trvmstr )
 {
 	/* install questions' handlers  */
-	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc000, 0xc002, 0, 0, trvmstr_questions_r, trvmstr_questions_w);
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc000, 0xc002, 0, 0, trvmstr_questions_r, trvmstr_questions_w);
 }
 
 

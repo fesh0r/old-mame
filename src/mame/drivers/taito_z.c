@@ -903,20 +903,11 @@ static void parse_control(running_machine *machine)
 	/* bit 0 enables cpu B */
 	/* however this fails when recovering from a save state
        if cpu B is disabled !! */
-	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(machine, "sub", INPUT_LINE_RESET, (cpua_ctrl & 0x1) ? CLEAR_LINE : ASSERT_LINE);
 
 }
 
-static void parse_control_noz80(running_machine *machine)
-{
-	/* bit 0 enables cpu B */
-	/* however this fails when recovering from a save state
-       if cpu B is disabled !! */
-	cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
-
-}
-
-static WRITE16_HANDLER( cpua_ctrl_w )	/* assumes Z80 sandwiched between 68Ks */
+static WRITE16_HANDLER( cpua_ctrl_w )
 {
 	if ((data &0xff00) && ((data &0xff) == 0))
 		data = data >> 8;	/* for Wgp */
@@ -927,22 +918,11 @@ static WRITE16_HANDLER( cpua_ctrl_w )	/* assumes Z80 sandwiched between 68Ks */
 	// Chase HQ: handle the lights
 	if ((!strcmp(space->machine->gamedrv->name, "chasehq")) || (!strcmp(space->machine->gamedrv->name, "chasehqj")))
 	{
-		output_set_lamp_value(0, (data&0x20) ? 1 : 0);
-		output_set_lamp_value(1, (data&0x40) ? 1 : 0);
+		output_set_lamp_value(0, (data & 0x20) ? 1 : 0);
+		output_set_lamp_value(1, (data & 0x40) ? 1 : 0);
 	}
 
-	logerror("CPU #0 PC %06x: write %04x to cpu control\n",cpu_get_pc(space->cpu),data);
-}
-
-static WRITE16_HANDLER( cpua_noz80_ctrl_w )	/* assumes no Z80 */
-{
-	if ((data &0xff00) && ((data &0xff) == 0))
-		data = data >> 8;	/* for Wgp */
-	cpua_ctrl = data;
-
-	parse_control_noz80(space->machine);
-
-	logerror("CPU #0 PC %06x: write %04x to cpu control\n",cpu_get_pc(space->cpu),data);
+	logerror("CPU #0 PC %06x: write %04x to cpu control\n", cpu_get_pc(space->cpu), data);
 }
 
 
@@ -954,27 +934,20 @@ static WRITE16_HANDLER( cpua_noz80_ctrl_w )	/* assumes no Z80 */
 
 static TIMER_CALLBACK( taitoz_interrupt6 )
 {
-	cpu_set_input_line(machine->cpu[0],6,HOLD_LINE);
+	cputag_set_input_line(machine, "maincpu", 6, HOLD_LINE);
 }
 
 /* 68000 B */
 
-#if 0
 static TIMER_CALLBACK( taitoz_cpub_interrupt5 )
 {
-	cpu_set_input_line(machine->cpu[2],5,HOLD_LINE);	/* assumes Z80 sandwiched between the 68Ks */
-}
-#endif
-
-static TIMER_CALLBACK( taitoz_sg_cpub_interrupt5 )
-{
-	cpu_set_input_line(machine->cpu[1],5,HOLD_LINE);	/* assumes no Z80 */
+	cputag_set_input_line(machine, "sub", 5, HOLD_LINE);
 }
 
 #if 0
 static TIMER_CALLBACK( taitoz_cpub_interrupt6 )
 {
-	cpu_set_input_line(machine->cpu[2],6,HOLD_LINE);	/* assumes Z80 sandwiched between the 68Ks */
+	cputag_set_input_line(machine, "sub", 6, HOLD_LINE);
 }
 #endif
 
@@ -1330,7 +1303,7 @@ static WRITE16_HANDLER( spacegun_lightgun_w )
        Four lightgun interrupts happen before the collected coords
        are moved to shared ram where CPUA can use them. */
 
-	timer_set(space->machine, cpu_clocks_to_attotime(space->cpu,10000), NULL, 0, taitoz_sg_cpub_interrupt5);
+	timer_set(space->machine, cpu_clocks_to_attotime(space->cpu,10000), NULL, 0, taitoz_cpub_interrupt5);
 }
 
 
@@ -1407,7 +1380,7 @@ static READ16_HANDLER( aquajack_unknown_r )
 
 static INT32 banknum;
 
-static void reset_sound_region(running_machine *machine)	/* assumes Z80 sandwiched between 68Ks */
+static void reset_sound_region(running_machine *machine)
 {
 	memory_set_bankptr(machine,  10, memory_region(machine, "audiocpu") + (banknum * 0x4000) + 0x10000 );
 }
@@ -1474,7 +1447,7 @@ static READ16_HANDLER( taitoz_msb_sound_r )
 /**** sound pan control ****/
 static WRITE8_HANDLER( taitoz_pancontrol )
 {
-	static const char *fltname[] = { "2610.1.r", "2610.1.l", "2610.2.r", "2610.2.l" };
+	static const char *const fltname[] = { "2610.1.r", "2610.1.l", "2610.2.r", "2610.2.l" };
 
 //  static UINT8 taitoz_pandata[4];
 
@@ -1601,7 +1574,7 @@ static ADDRESS_MAP_START( bshark_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x10ffff) AM_RAM
 	AM_RANGE(0x110000, 0x113fff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x400000, 0x40000f) AM_READWRITE8(TC0220IOC_r, TC0220IOC_w, 0x00ff)
-	AM_RANGE(0x600000, 0x600001) AM_WRITE(cpua_noz80_ctrl_w)
+	AM_RANGE(0x600000, 0x600001) AM_WRITE(cpua_ctrl_w)
 	AM_RANGE(0x800000, 0x800007) AM_READWRITE(bshark_stick_r, bshark_stick_w)
 	AM_RANGE(0xa00000, 0xa01fff) AM_RAM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xc00000, 0xc00fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
@@ -2806,16 +2779,16 @@ Interface B is for games which lack a Z80 (Spacegun, Bshark).
 **************************************************************/
 
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
-static void irqhandler(const device_config *device, int irq)	// assumes Z80 sandwiched between 68Ks
+static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irqhandlerb(const device_config *device, int irq)
 {
 	// DG: this is probably specific to Z80 and wrong?
-//  cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+//  cpu_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -2899,14 +2872,14 @@ static MACHINE_DRIVER_START( contcirc )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 12000000)	/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(contcirc_map,0)
+	MDRV_CPU_PROGRAM_MAP(contcirc_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,16000000/4)	/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(z80_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(z80_sound_map)
 
 	MDRV_CPU_ADD("sub", M68000, 12000000)	/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(contcirc_cpub_map,0)
+	MDRV_CPU_PROGRAM_MAP(contcirc_cpub_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_MACHINE_START(taitoz)
@@ -2955,14 +2928,14 @@ static MACHINE_DRIVER_START( chasehq )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 12000000)	/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(chasehq_map,0)
+	MDRV_CPU_PROGRAM_MAP(chasehq_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,16000000/4)	/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(z80_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(z80_sound_map)
 
 	MDRV_CPU_ADD("sub", M68000, 12000000)	/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(chq_cpub_map,0)
+	MDRV_CPU_PROGRAM_MAP(chq_cpub_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_MACHINE_START(taitoz)
@@ -3009,14 +2982,14 @@ static MACHINE_DRIVER_START( enforce )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 12000000)	/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(enforce_map,0)
+	MDRV_CPU_PROGRAM_MAP(enforce_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,16000000/4)	/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(z80_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(z80_sound_map)
 
 	MDRV_CPU_ADD("sub", M68000, 12000000)	/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(enforce_cpub_map,0)
+	MDRV_CPU_PROGRAM_MAP(enforce_cpub_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_MACHINE_START(taitoz)
@@ -3066,11 +3039,11 @@ static MACHINE_DRIVER_START( bshark )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 12000000)	/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(bshark_map,0)
+	MDRV_CPU_PROGRAM_MAP(bshark_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_CPU_ADD("sub", M68000, 12000000)	/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(bshark_cpub_map,0)
+	MDRV_CPU_PROGRAM_MAP(bshark_cpub_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_MACHINE_START(taitoz)
@@ -3118,14 +3091,14 @@ static MACHINE_DRIVER_START( sci )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 12000000)	/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(sci_map,0)
+	MDRV_CPU_PROGRAM_MAP(sci_map)
 	MDRV_CPU_VBLANK_INT("screen", sci_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80,16000000/4)	/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(z80_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(z80_sound_map)
 
 	MDRV_CPU_ADD("sub", M68000, 12000000)	/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(sci_cpub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sci_cpub_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_MACHINE_START(taitoz)
@@ -3173,14 +3146,14 @@ static MACHINE_DRIVER_START( nightstr )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 12000000)	/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(nightstr_map,0)
+	MDRV_CPU_PROGRAM_MAP(nightstr_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,16000000/4)	/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(z80_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(z80_sound_map)
 
 	MDRV_CPU_ADD("sub", M68000, 12000000)	/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(nightstr_cpub_map,0)
+	MDRV_CPU_PROGRAM_MAP(nightstr_cpub_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_MACHINE_START(taitoz)
@@ -3229,14 +3202,14 @@ static MACHINE_DRIVER_START( aquajack )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 12000000)	/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(aquajack_map,0)
+	MDRV_CPU_PROGRAM_MAP(aquajack_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,16000000/4)	/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(z80_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(z80_sound_map)
 
 	MDRV_CPU_ADD("sub", M68000, 12000000)	/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(aquajack_cpub_map,0)
+	MDRV_CPU_PROGRAM_MAP(aquajack_cpub_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_MACHINE_START(taitoz)
@@ -3284,11 +3257,11 @@ static MACHINE_DRIVER_START( spacegun )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 16000000)	/* 16 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(spacegun_map,0)
+	MDRV_CPU_PROGRAM_MAP(spacegun_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_CPU_ADD("sub", M68000, 16000000)	/* 16 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(spacegun_cpub_map,0)
+	MDRV_CPU_PROGRAM_MAP(spacegun_cpub_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_MACHINE_START(taitoz)
@@ -3336,14 +3309,14 @@ static MACHINE_DRIVER_START( dblaxle )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 16000000)	/* 16 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(dblaxle_map,0)
+	MDRV_CPU_PROGRAM_MAP(dblaxle_map)
 	MDRV_CPU_VBLANK_INT("screen", dblaxle_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80,16000000/4)	/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(z80_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(z80_sound_map)
 
 	MDRV_CPU_ADD("sub", M68000, 16000000)	/* 16 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(dblaxle_cpub_map,0)
+	MDRV_CPU_PROGRAM_MAP(dblaxle_cpub_map)
 	MDRV_CPU_VBLANK_INT("screen", dblaxle_cpub_interrupt)
 
 	MDRV_MACHINE_START(taitoz)
@@ -3391,14 +3364,14 @@ static MACHINE_DRIVER_START( racingb )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 16000000)	/* 16 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(racingb_map,0)
+	MDRV_CPU_PROGRAM_MAP(racingb_map)
 	MDRV_CPU_VBLANK_INT("screen", dblaxle_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80,16000000/4)	/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(z80_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(z80_sound_map)
 
 	MDRV_CPU_ADD("sub", M68000, 16000000)	/* 16 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(racingb_cpub_map,0)
+	MDRV_CPU_PROGRAM_MAP(racingb_cpub_map)
 	MDRV_CPU_VBLANK_INT("screen", dblaxle_cpub_interrupt)
 
 	MDRV_MACHINE_START(taitoz)
@@ -4193,6 +4166,51 @@ ROM_START( sciu )
 	ROM_LOAD( "c09-23.14", 0x00000, 0x00100, CRC(fbf81f30) SHA1(c868452c334792345dcced075f6df69cff9e31ca) )	// road A/B internal priority
 ROM_END
 
+ROM_START( scin )
+	ROM_REGION( 0x80000, "maincpu", 0 )	/* 512K for 68000 code (CPU A) */
+	ROM_LOAD16_BYTE( "ic37.37", 0x00000, 0x20000, CRC(33fb159c) SHA1(b004a5249414f69768d8a951ded3c104ea107b32) )
+	ROM_LOAD16_BYTE( "ic40.38", 0x00001, 0x20000, CRC(657df3f2) SHA1(80e30961e2cdcb834d2cbd48803ace68acaab422) )
+	ROM_LOAD16_BYTE( "ic38.42", 0x40000, 0x20000, CRC(0a09b90b) SHA1(0970644a0d79ab3898187849bec6c7cf598652f3) )
+	ROM_LOAD16_BYTE( "ic41.39", 0x40001, 0x20000, CRC(43167b2a) SHA1(1e6f2a113deb57df869ec2ceb99d6a7ecfa5d7e5) )
+
+	ROM_REGION( 0x20000, "sub", 0 )	/* 128K for 68000 code (CPU B) */
+	ROM_LOAD16_BYTE( "c09-33.6", 0x00000, 0x10000, CRC(cf4e6c5b) SHA1(8d6720b605b8e0c7f0473ba452c79bf5efc2615d) ) /* Actual label is "C09 33*" */
+	ROM_LOAD16_BYTE( "c09-32.5", 0x00001, 0x10000, CRC(a4713719) SHA1(b1110e397d3407ec63975cdd92a23cbb16348200) ) /* Actual label is "C09 32*" */
+
+	ROM_REGION( 0x2c000, "audiocpu", 0 )	/* Z80 sound cpu */
+	ROM_LOAD( "c09-34.31",   0x00000, 0x04000, CRC(a21b3151) SHA1(f59c7b1ba5edf97d72670ee194ce9fdc5c5b9a58) )
+	ROM_CONTINUE(            0x10000, 0x1c000 )	/* banked stuff */
+
+	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
+	ROM_LOAD( "c09-05.16", 0x00000, 0x80000, CRC(890b38f0) SHA1(b478c96214ce027926346a4653250c8ee8a98bdc) )	/* SCR 8x8 */
+
+	ROM_REGION( 0x200000, "gfx2", ROMREGION_DISPOSE )
+	ROM_LOAD32_BYTE( "c09-04.52", 0x000000, 0x080000, CRC(2cbb3c9b) SHA1(9e3d95f76f5f5d385b6a9516af781aefef1eb0ca) )	/* OBJ 16x8 */
+	ROM_LOAD32_BYTE( "c09-02.53", 0x000001, 0x080000, CRC(a83a0389) SHA1(932788b5b5f01326d0fbb2b9fdb94a8c7c004db3) )
+	ROM_LOAD32_BYTE( "c09-03.54", 0x000002, 0x080000, CRC(a31d0e80) SHA1(dfeff1b89dd7b3f19b26e77f2d66f6448cb00553) )
+	ROM_LOAD32_BYTE( "c09-01.55", 0x000003, 0x080000, CRC(64bfea10) SHA1(15ea43092027b1717d0f24fbe6ac2cdf11a7ddc6) )
+
+	ROM_REGION( 0x80000, "gfx3", 0 )	/* don't dispose */
+	ROM_LOAD( "c09-07.15", 0x00000, 0x80000, CRC(963bc82b) SHA1(e3558aecd1b82ddbf10ab2b71843a3664705f1f1) )	/* ROD, road lines */
+
+	ROM_REGION16_LE( 0x80000, "user1", 0 )
+	ROM_LOAD16_WORD( "c09-06.37", 0x00000, 0x80000, CRC(12df6d7b) SHA1(8ce742eb3f7eb6283b5ca32bb520d1cc7684d515) )	/* STY spritemap */
+
+	ROM_REGION( 0x180000, "ym", 0 )	/* ADPCM samples */
+	ROM_LOAD( "c09-14.42", 0x000000, 0x080000, CRC(ad78bf46) SHA1(4020744bbdc4b9ec3dee1a9d7b5ffa8def43d7b2) )
+	ROM_LOAD( "c09-13.43", 0x080000, 0x080000, CRC(d57c41d3) SHA1(3375a1fc6389840544b9fdb96b2fafbc8e3276e2) )
+	ROM_LOAD( "c09-12.44", 0x100000, 0x080000, CRC(56c99fa5) SHA1(3f9a6bc89d847cc4c99d35f98157ea3f187c0f98) )
+
+	ROM_REGION( 0x80000, "ym.deltat", 0 )	/* Delta-T samples */
+	ROM_LOAD( "c09-15.29", 0x00000, 0x80000, CRC(e63b9095) SHA1(c6ea670b5a90ab39429259ec1fefb2bde5d0213f) )
+
+	ROM_REGION( 0x10000, "user2", 0 )	/* unused ROMs */
+	ROM_LOAD( "c09-16.17", 0x00000, 0x10000, CRC(7245a6f6) SHA1(5bdde4e3bcde8c59dc84478c3cc079d7ef8ee9c5) )
+	ROM_LOAD( "c09-20.71", 0x00000, 0x00100, CRC(cd8ffd80) SHA1(133bcd291a3751bce5293cb6b685f87258e8db19) )	// road/sprite priority and palette select
+	ROM_LOAD( "c09-23.14", 0x00000, 0x00100, CRC(fbf81f30) SHA1(c868452c334792345dcced075f6df69cff9e31ca) )	// road A/B internal priority
+
+ROM_END
+
 ROM_START( nightstr )
 	ROM_REGION( 0x80000, "maincpu", 0 )	/* 512K for 68000 code (CPU A) */
 	ROM_LOAD16_BYTE( "b91-45.bin", 0x00000, 0x20000, CRC(7ad63421) SHA1(4ecfc3c8cd691d878e5d9212ccff0d225bb06bd9) )
@@ -4621,7 +4639,7 @@ static DRIVER_INIT( taitoz )
 
 static STATE_POSTLOAD( bshark_postload )
 {
-	parse_control_noz80(machine);
+	parse_control(machine);
 }
 
 static DRIVER_INIT( bshark )
@@ -4647,6 +4665,7 @@ GAMEL(1989, sci,      0,        sci,      sci,      taitoz,   ROT0,             
 GAMEL(1989, scia,     sci,      sci,      sci,      taitoz,   ROT0,               "Taito Corporation Japan", "Special Criminal Investigation (World set 2)", GAME_IMPERFECT_GRAPHICS, layout_contcirc )
 GAMEL(1989, scij,     sci,      sci,      scij,     taitoz,   ROT0,               "Taito Corporation", "Special Criminal Investigation (Japan)", GAME_IMPERFECT_GRAPHICS, layout_contcirc )
 GAMEL(1989, sciu,     sci,      sci,      sciu,     taitoz,   ROT0,               "Taito America Corporation", "Special Criminal Investigation (US)", GAME_IMPERFECT_GRAPHICS, layout_contcirc )
+GAMEL(1991, scin,     sci,      sci,      sci,      taitoz,   ROT0,               "Taito Corporation Japan", "Super Special Criminal Investigation (Negro Torino hack)", GAME_IMPERFECT_GRAPHICS, layout_contcirc )
 GAME( 1989, nightstr, 0,        nightstr, nightstr, taitoz,   ROT0,               "Taito Corporation Japan", "Night Striker (World)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1989, nghtstrj, nightstr, nightstr, nghtstrj, taitoz,   ROT0,               "Taito Corporation", "Night Striker (Japan)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1989, nghtstru, nightstr, nightstr, nghtstru, taitoz,   ROT0,               "Taito America Corporation", "Night Striker (US)", GAME_IMPERFECT_GRAPHICS )

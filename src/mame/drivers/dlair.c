@@ -84,7 +84,7 @@ static const UINT8 led_map[16] =
 
 static void dleuro_interrupt(const device_config *device, int state)
 {
-	cpu_set_input_line(device->machine->cpu[0], 0, state);
+	cputag_set_input_line(device->machine, "maincpu", 0, state);
 }
 
 
@@ -194,7 +194,7 @@ static MACHINE_RESET( dlair )
 	if (laserdisc_type == LASERDISC_TYPE_VARIABLE)
 	{
 		int newtype = (input_port_read(machine, "DSW2") & 0x08) ? LASERDISC_TYPE_PIONEER_LDV1000 : LASERDISC_TYPE_PIONEER_PR7820;
-		device_set_info_int(laserdisc, LDINFO_INT_TYPE, newtype);
+		laserdisc_set_type(laserdisc, newtype);
 	}
 }
 
@@ -297,7 +297,7 @@ static WRITE8_HANDLER( led_den2_w )
 
 static CUSTOM_INPUT( laserdisc_status_r )
 {
-	switch (device_get_info_int(laserdisc, LDINFO_INT_TYPE))
+	switch (laserdisc_get_type(laserdisc))
 	{
 		case LASERDISC_TYPE_PIONEER_PR7820:
 			return 0;
@@ -314,7 +314,7 @@ static CUSTOM_INPUT( laserdisc_status_r )
 
 static CUSTOM_INPUT( laserdisc_command_r )
 {
-	switch (device_get_info_int(laserdisc, LDINFO_INT_TYPE))
+	switch (laserdisc_get_type(laserdisc))
 	{
 		case LASERDISC_TYPE_PIONEER_PR7820:
 			return (laserdisc_line_r(laserdisc, LASERDISC_LINE_READY) == ASSERT_LINE) ? 0 : 1;
@@ -695,7 +695,7 @@ static MACHINE_DRIVER_START( dlair_base )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK_US/4)
-	MDRV_CPU_PROGRAM_MAP(dlus_map,0)
+	MDRV_CPU_PROGRAM_MAP(dlus_map)
 	MDRV_CPU_VBLANK_INT("screen", vblank_callback)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, (double)MASTER_CLOCK_US/8/16/16/16/16)
 
@@ -735,8 +735,8 @@ static MACHINE_DRIVER_START( dleuro )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK_EURO/4)
 	MDRV_CPU_CONFIG(dleuro_daisy_chain)
-	MDRV_CPU_PROGRAM_MAP(dleuro_map,0)
-	MDRV_CPU_IO_MAP(dleuro_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(dleuro_map)
+	MDRV_CPU_IO_MAP(dleuro_io_map)
 	MDRV_CPU_VBLANK_INT("screen", vblank_callback)
 
 	MDRV_Z80CTC_ADD("ctc", MASTER_CLOCK_EURO/4 /* same as "maincpu" */, ctc_intf)

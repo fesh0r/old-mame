@@ -292,7 +292,8 @@ Notes:
 #include "includes/pgm.h"
 
 
-UINT16 *pgm_mainram, *pgm_bg_videoram, *pgm_tx_videoram, *pgm_videoregs, *pgm_rowscrollram, *pgm_videoram;
+UINT16 *pgm_mainram, *pgm_bg_videoram, *pgm_tx_videoram, *pgm_videoregs, *pgm_rowscrollram;
+static UINT16 *pgm_videoram;
 static UINT8 *z80_mainram;
 static UINT32 *arm7_shareram;
 static UINT32 *svg_shareram[2];	//for 5585G MACHINE
@@ -349,9 +350,9 @@ static WRITE16_HANDLER( arm7_latch_68k_w )
 	if (PGMARM7LOGERROR) logerror("M68K: Latch write: %04x (%04x) (%06x)\n", data & 0x0000ffff, mem_mask, cpu_get_pc(space->cpu) );
 	COMBINE_DATA(&kov2_latchdata_68k_w);
 
-	generic_pulse_irq_line(space->machine->cpu[2], ARM7_FIRQ_LINE);
+	generic_pulse_irq_line(cputag_get_cpu(space->machine, "prot"), ARM7_FIRQ_LINE);
 	cpuexec_boost_interleave(space->machine, attotime_zero, ATTOTIME_IN_USEC(200));
-	cpu_spinuntil_time(space->cpu, cpu_clocks_to_attotime(space->machine->cpu[2], 200)); // give the arm time to respond (just boosting the interleave doesn't help)
+	cpu_spinuntil_time(space->cpu, cputag_clocks_to_attotime(space->machine, "prot", 200)); // give the arm time to respond (just boosting the interleave doesn't help)
 }
 
 static READ16_HANDLER( arm7_ram_r )
@@ -385,11 +386,13 @@ static WRITE16_HANDLER ( z80_reset_w )
 {
 	if (PGMLOGERROR) logerror("Z80: reset %04x @ %04x (%06x)\n", data, mem_mask, cpu_get_pc(space->cpu));
 
-	if(data == 0x5050) {
+	if(data == 0x5050)
+	{
 		devtag_reset(space->machine, "ics");
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_HALT, CLEAR_LINE);
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, PULSE_LINE);
-		if(0) {
+		cputag_set_input_line(space->machine, "soundcpu", INPUT_LINE_HALT, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "soundcpu", INPUT_LINE_RESET, PULSE_LINE);
+		if(0)
+		{
 			FILE *out;
 			out = fopen("z80ram.bin", "wb");
 			fwrite(z80_mainram, 1, 65536, out);
@@ -400,7 +403,7 @@ static WRITE16_HANDLER ( z80_reset_w )
 	{
 		/* this might not be 100% correct, but several of the games (ddp2, puzzli2 etc. expect the z80 to be turned
            off during data uploads, they write here before the upload */
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE);
+		cputag_set_input_line(space->machine, "soundcpu", INPUT_LINE_HALT, ASSERT_LINE);
 	}
 }
 
@@ -411,10 +414,11 @@ static WRITE16_HANDLER ( z80_ctrl_w )
 
 static WRITE16_HANDLER ( m68k_l1_w )
 {
-	if(ACCESSING_BITS_0_7) {
+	if(ACCESSING_BITS_0_7)
+	{
 		if (PGMLOGERROR) logerror("SL 1 m68.w %02x (%06x) IRQ\n", data & 0xff, cpu_get_pc(space->cpu));
 		soundlatch_w(space, 0, data);
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE );
+		cputag_set_input_line(space->machine, "soundcpu", INPUT_LINE_NMI, PULSE_LINE );
 	}
 }
 
@@ -426,7 +430,7 @@ static WRITE8_HANDLER( z80_l3_w )
 
 static void sound_irq(const device_config *device, int level)
 {
-	cpu_set_input_line(device->machine->cpu[1], 0, level);
+	cputag_set_input_line(device->machine, "soundcpu", 0, level);
 }
 
 static const ics2115_interface pgm_ics2115_interface = {
@@ -844,7 +848,7 @@ ADDRESS_MAP_END
 
 
 //5585G
-unsigned char svg_ram_sel;
+static unsigned char svg_ram_sel;
 
 static WRITE32_HANDLER( svg_arm7_ram_sel_w )
 {
@@ -885,9 +889,9 @@ static READ16_HANDLER( svg_68k_nmi_r )
 
 static WRITE16_HANDLER( svg_68k_nmi_w )
 {
-	generic_pulse_irq_line(space->machine->cpu[2], ARM7_FIRQ_LINE);
+	generic_pulse_irq_line(cputag_get_cpu(space->machine, "prot"), ARM7_FIRQ_LINE);
 	cpuexec_boost_interleave(space->machine, attotime_zero, ATTOTIME_IN_USEC(200));
-	cpu_spinuntil_time(space->cpu, cpu_clocks_to_attotime(space->machine->cpu[2], 200)); // give the arm time to respond (just boosting the interleave doesn't help)
+	cpu_spinuntil_time(space->cpu, cputag_clocks_to_attotime(space->machine, "prot", 200)); // give the arm time to respond (just boosting the interleave doesn't help)
 }
 
 static WRITE16_HANDLER( svg_latch_68k_w )
@@ -1259,7 +1263,8 @@ GFXDECODE_END
 
 /* only dragon world 2 NEEDs irq4, Puzzli 2 explicitly doesn't want it, what
    is the source? maybe the protection device? */
-static INTERRUPT_GEN( drgw_interrupt ) {
+static INTERRUPT_GEN( drgw_interrupt )
+{
 	if( cpu_getiloops(device) == 0 )
 		cpu_set_input_line(device, 6, HOLD_LINE);
 	else
@@ -1268,19 +1273,19 @@ static INTERRUPT_GEN( drgw_interrupt ) {
 
 static MACHINE_RESET ( pgm )
 {
-	cpu_set_input_line(machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE);
+	cputag_set_input_line(machine, "soundcpu", INPUT_LINE_HALT, ASSERT_LINE);
 }
 
 static MACHINE_DRIVER_START( pgm )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 20000000) /* 20 mhz! verified on real board */
-	MDRV_CPU_PROGRAM_MAP(pgm_mem,0)
+	MDRV_CPU_PROGRAM_MAP(pgm_mem)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_CPU_ADD("soundcpu", Z80, 8468000)
-	MDRV_CPU_PROGRAM_MAP(z80_mem, 0)
-	MDRV_CPU_IO_MAP(z80_io, 0)
+	MDRV_CPU_PROGRAM_MAP(z80_mem)
+	MDRV_CPU_IO_MAP(z80_io)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("ics", ICS2115, 0)
@@ -1318,7 +1323,7 @@ static MACHINE_DRIVER_START( killbld )
 	MDRV_IMPORT_FROM(pgm)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(killbld_mem,0)
+	MDRV_CPU_PROGRAM_MAP(killbld_mem)
 
 	MDRV_MACHINE_RESET(killbld)
 
@@ -1330,7 +1335,7 @@ static MACHINE_DRIVER_START( olds )
 	MDRV_IMPORT_FROM(pgm)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(olds_mem,0)
+	MDRV_CPU_PROGRAM_MAP(olds_mem)
 
 	MDRV_MACHINE_RESET(olds)
 
@@ -1340,33 +1345,33 @@ static MACHINE_DRIVER_START( kov )
 	MDRV_IMPORT_FROM(pgm)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(kovsh_mem,0)
+	MDRV_CPU_PROGRAM_MAP(kovsh_mem)
 
 	/* protection CPU */
 	MDRV_CPU_ADD("prot", ARM7, 20000000)	// 5585E/F/G
-	MDRV_CPU_PROGRAM_MAP(kovsh_arm7_map, 0)
+	MDRV_CPU_PROGRAM_MAP(kovsh_arm7_map)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( kov2 )
 	MDRV_IMPORT_FROM(pgm)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(kov2_mem,0)
+	MDRV_CPU_PROGRAM_MAP(kov2_mem)
 
 	/* protection CPU */
 	MDRV_CPU_ADD("prot", ARM7, 20000000)	// 5585F
-	MDRV_CPU_PROGRAM_MAP(arm7_map, 0)
+	MDRV_CPU_PROGRAM_MAP(arm7_map)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( svg )
 	MDRV_IMPORT_FROM(pgm)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(svg_68k_mem,0)
+	MDRV_CPU_PROGRAM_MAP(svg_68k_mem)
 
 	/* protection CPU */
 	MDRV_CPU_ADD("prot", ARM7, 20000000)	// 5585G
-	MDRV_CPU_PROGRAM_MAP(svg_arm7_map, 0)
+	MDRV_CPU_PROGRAM_MAP(svg_arm7_map)
 MACHINE_DRIVER_END
 
 #if 0
@@ -1374,11 +1379,11 @@ static MACHINE_DRIVER_START( cavepgm )
 	MDRV_IMPORT_FROM(pgm)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(cavepgm_mem,0)
+	MDRV_CPU_PROGRAM_MAP(cavepgm_mem)
 
 	/* protection CPU */
 //  MDRV_CPU_ADD("prot", ARM7, 20000000)    // ???
-//  MDRV_CPU_PROGRAM_MAP(arm7_map, 0)
+//  MDRV_CPU_PROGRAM_MAP(arm7_map)
 MACHINE_DRIVER_END
 #endif
 
@@ -1427,7 +1432,7 @@ static void expand_colourdata(running_machine *machine)
 	while (pgm_sprite_a_region_allocate < needed)
 		pgm_sprite_a_region_allocate = pgm_sprite_a_region_allocate <<1;
 
-	pgm_sprite_a_region = auto_malloc (pgm_sprite_a_region_allocate);
+	pgm_sprite_a_region = auto_alloc_array(machine, UINT8, pgm_sprite_a_region_allocate);
 
 
 	for (cnt = 0 ; cnt < srcsize/2 ; cnt++)
@@ -1465,8 +1470,8 @@ static DRIVER_INIT( orlegend )
 {
 	pgm_basic_init(machine);
 
-	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xC0400e, 0xC0400f, 0, 0, pgm_asic3_r, pgm_asic3_w);
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xC04000, 0xC04001, 0, 0, pgm_asic3_reg_w);
+	memory_install_readwrite16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xC0400e, 0xC0400f, 0, 0, pgm_asic3_r, pgm_asic3_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xC04000, 0xC04001, 0, 0, pgm_asic3_reg_w);
 }
 
 static void drgwld2_common_init(running_machine *machine)
@@ -1479,7 +1484,7 @@ static void drgwld2_common_init(running_machine *machine)
     select and after failing in the 2nd stage (probably there are other checks
     out there).
     */
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd80000, 0xd80003, 0, 0, dw2_d80000_r);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd80000, 0xd80003, 0, 0, dw2_d80000_r);
 }
 
 static DRIVER_INIT( drgw2 )
@@ -1581,8 +1586,8 @@ static DRIVER_INIT( ddp2 )
 static void svg_basic_init(running_machine *machine)
 {
 	pgm_basic_init(machine);
-	svg_shareram[0]=auto_malloc(0x10000);
-	svg_shareram[1]=auto_malloc(0x10000);
+	svg_shareram[0]=auto_alloc_array(machine, UINT32, 0x10000/4);
+	svg_shareram[1]=auto_alloc_array(machine, UINT32, 0x10000/4);
 	svg_ram_sel=0;
 }
 
@@ -1614,7 +1619,7 @@ static DRIVER_INIT( dw3 )
 {
 	pgm_basic_init(machine);
 
-//  memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xda0000, 0xdaffff, 0, 0, dw3_prot_r, dw3_prot_w);
+//  memory_install_readwrite16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xda0000, 0xdaffff, 0, 0, dw3_prot_r, dw3_prot_w);
 
  	pgm_dw3_decrypt(machine);
 }
@@ -1857,7 +1862,7 @@ static DRIVER_INIT( killbld )
 	mem16[0x108a42/2]=0x5202;
 	mem16[0x108a44/2]=0x0c02;
 
-	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd40000, 0xd40003, 0, 0, killbld_prot_r, killbld_prot_w);
+	memory_install_readwrite16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd40000, 0xd40003, 0, 0, killbld_prot_r, killbld_prot_w);
 }
 
 static DRIVER_INIT( puzzli2 )
@@ -1870,11 +1875,11 @@ static DRIVER_INIT( puzzli2 )
 
 	pgm_basic_init(machine);
 
-	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x500000, 0x500003, 0, 0, ASIC28_r16, ASIC28_w16);
+	memory_install_readwrite16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x500000, 0x500003, 0, 0, ASIC28_r16, ASIC28_w16);
 
 	/* 0x4f0000 - ? is actually ram shared with the protection device,
       the protection device provides the region code */
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x4f0000, 0x4fffff, 0, 0, sango_protram_r);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x4f0000, 0x4fffff, 0, 0, sango_protram_r);
 
  	pgm_puzzli2_decrypt(machine);
 
@@ -2072,8 +2077,8 @@ static DRIVER_INIT( olds )
 {
 	pgm_basic_init(machine);
 
-	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xdcb400, 0xdcb403, 0, 0, olds_r16, olds_w16);
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x8178f4, 0x8178f5, 0, 0, olds_prot_swap_r16);
+	memory_install_readwrite16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xdcb400, 0xdcb403, 0, 0, olds_r16, olds_w16);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x8178f4, 0x8178f5, 0, 0, olds_prot_swap_r16);
 }
 
 /*** Rom Loading *************************************************************/

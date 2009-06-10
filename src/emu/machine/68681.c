@@ -399,10 +399,10 @@ READ8_DEVICE_HANDLER(duart68681_r)
 			{
 				case 0x07: /* Timer, CLK/16 */
 					{
-						double hz;
+						//double hz;
 						//attotime rate = attotime_mul(ATTOTIME_IN_HZ(duart68681->clock), 16*duart68681->CTR.w.l);
 						attotime rate = ATTOTIME_IN_HZ(2*device->clock/(2*16*16*duart68681->CTR.w.l));
-						hz = ATTOSECONDS_TO_HZ(rate.attoseconds);
+						//hz = ATTOSECONDS_TO_HZ(rate.attoseconds);
 						timer_adjust_periodic(duart68681->duart_timer, rate, 0, rate);
 					}
 					break;
@@ -607,18 +607,6 @@ static DEVICE_RESET(duart68681)
 }
 
 /*-------------------------------------------------
-    device set info callback
--------------------------------------------------*/
-
-static DEVICE_SET_INFO(duart68681)
-{
-	switch (state)
-	{
-		/* no parameters to set */
-	}
-}
-
-/*-------------------------------------------------
     device get info callback
 -------------------------------------------------*/
 
@@ -632,7 +620,6 @@ DEVICE_GET_INFO(duart68681)
 		case DEVINFO_INT_CLASS:					info->i = DEVICE_CLASS_PERIPHERAL;		break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_SET_INFO:				info->set_info = DEVICE_SET_INFO_NAME(duart68681); break;
 		case DEVINFO_FCT_START:					info->start = DEVICE_START_NAME(duart68681); break;
 		case DEVINFO_FCT_STOP:					/* nothing */ break;
 		case DEVINFO_FCT_RESET:					info->reset = DEVICE_RESET_NAME(duart68681);break;

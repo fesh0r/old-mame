@@ -51,7 +51,7 @@ static WRITE8_HANDLER( mikie_sh_irqtrigger_w )
 	if (last == 0 && data == 1)
 	{
 		// setting bit 0 low then high triggers IRQ on the sound CPU
-		cpu_set_input_line_and_vector(space->machine->cpu[1], 0, HOLD_LINE, 0xff);
+		cputag_set_input_line_and_vector(space->machine, "audiocpu", 0, HOLD_LINE, 0xff);
 	}
 
 	last = data;
@@ -194,11 +194,11 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( mikie )
 	// basic machine hardware
 	MDRV_CPU_ADD("maincpu", M6809, 1250000)	// ??? MC68A09E
-	MDRV_CPU_PROGRAM_MAP(mikie_map, 0)
+	MDRV_CPU_PROGRAM_MAP(mikie_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, CLK)	// 3.58 MHz
-	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	// video hardware
 

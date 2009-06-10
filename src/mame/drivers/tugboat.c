@@ -186,7 +186,7 @@ static const pia6821_interface pia1_intf =
 
 static TIMER_CALLBACK( interrupt_gen )
 {
-	cpu_set_input_line(machine->cpu[0], 0, HOLD_LINE);
+	cputag_set_input_line(machine, "maincpu", 0, HOLD_LINE);
 	timer_set(machine, video_screen_get_frame_period(machine->primary_screen), NULL, 0, interrupt_gen);
 }
 
@@ -315,7 +315,7 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( tugboat )
 	MDRV_CPU_ADD("maincpu", M6502, 2000000)	/* 2 MHz ???? */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	MDRV_MACHINE_RESET(tugboat)

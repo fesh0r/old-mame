@@ -113,24 +113,11 @@ if ((data & 0xdc) != 0x10) popmessage("coincntr %02x",data);
 
 
 
-static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x8000, 0x9fff) AM_READ(SMH_BANK1)
-	AM_RANGE(0xa000, 0xbfff) AM_READ(SMH_RAM)
-	AM_RANGE(0xc000, 0xdffe) AM_READ(hexion_bankedram_r)
-	AM_RANGE(0xf400, 0xf400) AM_READ_PORT("DSW1")
-	AM_RANGE(0xf401, 0xf401) AM_READ_PORT("DSW2")
-	AM_RANGE(0xf402, 0xf402) AM_READ_PORT("P1")
-	AM_RANGE(0xf403, 0xf403) AM_READ_PORT("P2")
-	AM_RANGE(0xf440, 0xf440) AM_READ_PORT("DSW3")
-	AM_RANGE(0xf441, 0xf441) AM_READ_PORT("SYSTEM")
-	AM_RANGE(0xf540, 0xf540) AM_READ(watchdog_reset_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0xa000, 0xbfff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xc000, 0xdffe) AM_WRITE(hexion_bankedram_w)
+static ADDRESS_MAP_START( hexion_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0x9fff) AM_ROMBANK(1)
+	AM_RANGE(0xa000, 0xbfff) AM_RAM
+	AM_RANGE(0xc000, 0xdffe) AM_READWRITE(hexion_bankedram_r, hexion_bankedram_w)
 	AM_RANGE(0xdfff, 0xdfff) AM_WRITE(hexion_bankctrl_w)
 	AM_RANGE(0xe800, 0xe87f) AM_DEVWRITE("konami", k051649_waveform_w)
 	AM_RANGE(0xe880, 0xe889) AM_DEVWRITE("konami", k051649_frequency_w)
@@ -138,9 +125,16 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe88f, 0xe88f) AM_DEVWRITE("konami", k051649_keyonoff_w)
 	AM_RANGE(0xf000, 0xf00f) AM_WRITENOP	/* 053252? f00e = IRQ ack, f00f = NMI ack */
 	AM_RANGE(0xf200, 0xf200) AM_DEVWRITE("oki", okim6295_w)
+	AM_RANGE(0xf400, 0xf400) AM_READ_PORT("DSW1")
+	AM_RANGE(0xf401, 0xf401) AM_READ_PORT("DSW2")
+	AM_RANGE(0xf402, 0xf402) AM_READ_PORT("P1")
+	AM_RANGE(0xf403, 0xf403) AM_READ_PORT("P2")
+	AM_RANGE(0xf440, 0xf440) AM_READ_PORT("DSW3")
+	AM_RANGE(0xf441, 0xf441) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0xf480, 0xf480) AM_WRITE(hexion_bankswitch_w)
 	AM_RANGE(0xf4c0, 0xf4c0) AM_WRITE(coincntr_w)
 	AM_RANGE(0xf500, 0xf500) AM_WRITE(hexion_gfxrom_select_w)
+	AM_RANGE(0xf540, 0xf540) AM_READ(watchdog_reset_r)
 ADDRESS_MAP_END
 
 
@@ -167,7 +161,7 @@ static INPUT_PORTS_START( hexion )
 	PORT_DIPSETTING(    0x60, DEF_STR( Very_Easy) )
 	PORT_DIPSETTING(    0x50, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Medium ) )
-	PORT_DIPSETTING(    0x30, "Medium Hard" )
+	PORT_DIPSETTING(    0x30, DEF_STR( Medium_Hard ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Hard ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Very_Hard ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
@@ -237,7 +231,7 @@ static MACHINE_DRIVER_START( hexion )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,24000000/4)	/* Z80B 6 MHz */
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
+	MDRV_CPU_PROGRAM_MAP(hexion_map)
 	MDRV_CPU_VBLANK_INT_HACK(hexion_interrupt,3)	/* both IRQ and NMI are used */
 
 	/* video hardware */

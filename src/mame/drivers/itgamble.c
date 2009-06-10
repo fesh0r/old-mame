@@ -171,7 +171,7 @@ GFXDECODE_END
 static MACHINE_RESET( itgamble )
 {
 	/* stop the CPU, we have no code for it anyway */
-	cpu_set_input_line(machine->cpu[0], INPUT_LINE_HALT, ASSERT_LINE);
+	cputag_set_input_line(machine, "maincpu", INPUT_LINE_HALT, ASSERT_LINE);
 }
 
 
@@ -183,7 +183,7 @@ static MACHINE_DRIVER_START( itgamble )
 
     /* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", H83044, MAIN_CLOCK/2)	/* probably the wrong CPU */
-	MDRV_CPU_PROGRAM_MAP(itgamble_map,0)
+	MDRV_CPU_PROGRAM_MAP(itgamble_map)
 
     /* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)

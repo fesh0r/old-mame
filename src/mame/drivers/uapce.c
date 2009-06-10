@@ -42,7 +42,7 @@ static WRITE8_HANDLER( jamma_if_control_latch_w )
 
 	if ( diff & 0x40 )
 	{
-		cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_RESET, (data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
+		cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_RESET, (data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
 	}
 
 	// bit 3 - enable 752 Hz (D-3) square wave output
@@ -186,12 +186,12 @@ static const c6280_interface c6280_config =
 static MACHINE_DRIVER_START( uapce )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", H6280, PCE_MAIN_CLOCK/3)
-	MDRV_CPU_PROGRAM_MAP(pce_mem, 0)
-	MDRV_CPU_IO_MAP(pce_io, 0)
+	MDRV_CPU_PROGRAM_MAP(pce_mem)
+	MDRV_CPU_IO_MAP(pce_io)
 	MDRV_CPU_VBLANK_INT_HACK(pce_interrupt, VDC_LPF)
 
 	MDRV_CPU_ADD("sub", Z80, 1400000)
-	MDRV_CPU_PROGRAM_MAP(z80_map, 0)
+	MDRV_CPU_PROGRAM_MAP(z80_map)
 
 	MDRV_QUANTUM_TIME(HZ(60))
 

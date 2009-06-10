@@ -18,7 +18,9 @@ extern enum namcos22_gametype
 	NAMCOS22_VICTORY_LAP,
 	NAMCOS22_ACE_DRIVER,
 	NAMCOS22_ALPINE_RACER_2,
-	NAMCOS22_ALPINE_SURFER
+	NAMCOS22_ALPINE_SURFER,
+	NAMCOS22_TOKYO_WARS,
+	NAMCOS22_AQUA_JET
 } namcos22_gametype;
 
 #define NAMCOS22_NUM_ROWS 30
@@ -72,6 +74,6 @@ VIDEO_UPDATE( namcos22 );
 VIDEO_START( namcos22s );
 VIDEO_UPDATE( namcos22s );
 
-void namcos22_draw_direct_poly( const UINT16 *pSource );
+void namcos22_draw_direct_poly( running_machine *machine, const UINT16 *pSource );
 extern UINT32 namcos22_point_rom_r( offs_t offs );
 extern void namcos22_enable_slave_simulation( void );

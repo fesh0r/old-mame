@@ -117,7 +117,7 @@ ADDRESS_MAP_END
 
 static VIDEO_START(hotblock)
 {
-	hotblock_pal=auto_malloc(0x10000);
+	hotblock_pal=auto_alloc_array(machine, UINT8, 0x10000);
 }
 
 static VIDEO_UPDATE(hotblock)
@@ -191,8 +191,8 @@ static const ay8910_interface ay8910_config =
 static MACHINE_DRIVER_START( hotblock )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", I8088, 10000000)
-	MDRV_CPU_PROGRAM_MAP(hotblock_map, 0)
-	MDRV_CPU_IO_MAP(hotblock_io,0)
+	MDRV_CPU_PROGRAM_MAP(hotblock_map)
+	MDRV_CPU_IO_MAP(hotblock_io)
 	MDRV_CPU_VBLANK_INT("screen", hotblocks_irq)
 
 	/* video hardware */

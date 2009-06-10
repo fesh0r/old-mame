@@ -166,7 +166,7 @@ static struct
 
 static void duart_irq_handler(const device_config *device, UINT8 vector)
 {
-	cpu_set_input_line_and_vector(device->machine->cpu[0], 4, HOLD_LINE, vector);
+	cputag_set_input_line_and_vector(device->machine, "maincpu", 4, HOLD_LINE, vector);
 };
 
 static void duart_tx(const device_config *device, int channel, UINT8 data)
@@ -241,7 +241,7 @@ static VIDEO_START(adp)
 //  UINT32 i;
 //  UINT16 *prgrom = (UINT16*)memory_region(machine, "maincpu");
 
-	HD63484_start();
+	HD63484_start(machine);
 
 //  for (i = 0; i < 0x70000; i++)
 //      HD63484_ram[0x90000 + i] = prgrom[i];
@@ -363,8 +363,9 @@ static READ16_HANDLER(t2_r)
  vblank ^=0x40;
  hblank ^=0x20;
 
-return mame_rand(space->machine) & 0x00f0;
+ return mame_rand(space->machine) & 0x00f0;
 
+// FIXME: this code is never executed
 // popmessage("%08x",cpu_get_pc(space->cpu));
 // return 0x0000;
  return 0xff9f | vblank | hblank;
@@ -506,17 +507,15 @@ static INPUT_PORTS_START( skattv )
 	PORT_DIPSETTING(     0x0000, DEF_STR( On ) )
 	PORT_BIT( 0xfffb, IP_ACTIVE_LOW,  IPT_UNUSED  )
 INPUT_PORTS_END
-
 /*
 static INTERRUPT_GEN( adp_int )
 {
     cpu_set_input_line(device, 1, HOLD_LINE); // ??? All irqs have the same vector, and the mask used is 0 or 7
 }
 */
-
 static MACHINE_DRIVER_START( quickjac )
 	MDRV_CPU_ADD("maincpu", M68000, 8000000)
-	MDRV_CPU_PROGRAM_MAP(quickjac_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(quickjac_mem)
 //  MDRV_CPU_VBLANK_INT("screen", adp_int)
 
 	MDRV_MACHINE_START(skattv)
@@ -538,13 +537,13 @@ static MACHINE_DRIVER_START( quickjac )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("ay", AY8910, 3686400/2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( skattv )
 	MDRV_CPU_ADD("maincpu", M68000, 8000000)
-	MDRV_CPU_PROGRAM_MAP(skattv_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(skattv_mem)
 //  MDRV_CPU_VBLANK_INT("screen", adp_int)
 
 	MDRV_MACHINE_START(skattv)
@@ -566,13 +565,13 @@ static MACHINE_DRIVER_START( skattv )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("ay", AY8910, 3686400/2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( backgamn )
 	MDRV_CPU_ADD("maincpu", M68000, 8000000)
-	MDRV_CPU_PROGRAM_MAP(backgamn_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(backgamn_mem)
 
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
@@ -588,14 +587,14 @@ static MACHINE_DRIVER_START( backgamn )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("ay", AY8910, 3686400/2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( funland )
 	MDRV_IMPORT_FROM( skattv )
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(funland_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(funland_mem)
 MACHINE_DRIVER_END
 
 ROM_START( quickjac )

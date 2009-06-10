@@ -209,14 +209,14 @@ static void vendetta_video_banking( running_machine *machine, int select )
 {
 	if ( select & 1 )
 	{
-		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), video_banking_base + 0x2000, video_banking_base + 0x2fff, 0, 0, SMH_BANK4, paletteram_xBBBBBGGGGGRRRRR_be_w );
-		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), video_banking_base + 0x0000, video_banking_base + 0x0fff, 0, 0, K053247_r, K053247_w );
+		memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), video_banking_base + 0x2000, video_banking_base + 0x2fff, 0, 0, (read8_space_func)SMH_BANK(4), paletteram_xBBBBBGGGGGRRRRR_be_w );
+		memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), video_banking_base + 0x0000, video_banking_base + 0x0fff, 0, 0, K053247_r, K053247_w );
 		memory_set_bankptr(machine, 4, paletteram);
 	}
 	else
 	{
-		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), video_banking_base + 0x2000, video_banking_base + 0x2fff, 0, 0, vendetta_K052109_r, vendetta_K052109_w );
-		memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), video_banking_base + 0x0000, video_banking_base + 0x0fff, 0, 0, K052109_r, K052109_w );
+		memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), video_banking_base + 0x2000, video_banking_base + 0x2fff, 0, 0, vendetta_K052109_r, vendetta_K052109_w );
+		memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), video_banking_base + 0x0000, video_banking_base + 0x0fff, 0, 0, K052109_r, K052109_w );
 	}
 }
 
@@ -239,24 +239,24 @@ static WRITE8_HANDLER( vendetta_5fe0_w )
 
 static TIMER_CALLBACK( z80_nmi_callback )
 {
-	cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, ASSERT_LINE );
+	cputag_set_input_line(machine, "audiocpu", INPUT_LINE_NMI, ASSERT_LINE );
 }
 
 static WRITE8_HANDLER( z80_arm_nmi_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, CLEAR_LINE );
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, CLEAR_LINE );
 
 	timer_set( space->machine, ATTOTIME_IN_USEC( 25 ), NULL, 0, z80_nmi_callback );
 }
 
 static WRITE8_HANDLER( z80_irq_w )
 {
-	cpu_set_input_line_and_vector(space->machine->cpu[1], 0, HOLD_LINE, 0xff );
+	cputag_set_input_line_and_vector(space->machine, "audiocpu", 0, HOLD_LINE, 0xff );
 }
 
 static READ8_HANDLER( vendetta_sound_interrupt_r )
 {
-	cpu_set_input_line_and_vector(space->machine->cpu[1], 0, HOLD_LINE, 0xff );
+	cputag_set_input_line_and_vector(space->machine, "audiocpu", 0, HOLD_LINE, 0xff );
 	return 0x00;
 }
 
@@ -442,11 +442,11 @@ static MACHINE_DRIVER_START( vendetta )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", KONAMI, 6000000)	/* this is strange, seems an overclock but */
 //  MDRV_CPU_ADD("maincpu", KONAMI, 3000000)   /* is needed to have correct music speed */
-	MDRV_CPU_PROGRAM_MAP(main_map, 0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", vendetta_irq)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3579545)	/* verified with PCB */
-	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
                             /* interrupts are triggered by the main CPU */
 
 	MDRV_MACHINE_RESET(vendetta)
@@ -485,7 +485,7 @@ static MACHINE_DRIVER_START( esckids )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(vendetta)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(esckids_map, 0)
+	MDRV_CPU_PROGRAM_MAP(esckids_map)
 
 	MDRV_SCREEN_MODIFY("screen")
 //MDRV_SCREEN_VISIBLE_AREA(13*8, (64-13)*8-1, 2*8, 30*8-1 )    /* black areas on the edges */
@@ -701,7 +701,7 @@ static KONAMI_SETLINES_CALLBACK( vendetta_banking )
 
 static MACHINE_RESET( vendetta )
 {
-	konami_configure_set_lines(machine->cpu[0], vendetta_banking);
+	konami_configure_set_lines(cputag_get_cpu(machine, "maincpu"), vendetta_banking);
 
 	paletteram = &memory_region(machine, "maincpu")[0x48000];
 	irq_enabled = 0;

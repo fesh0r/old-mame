@@ -185,24 +185,24 @@ static STATE_POSTLOAD( bankselect_postload );
 static void update_interrupts(running_machine *machine)
 {
 	if (atarigen_video_int_state)
-		cpu_set_input_line(machine->cpu[0], 3, ASSERT_LINE);
+		cputag_set_input_line(machine, "maincpu", 3, ASSERT_LINE);
 	else
-		cpu_set_input_line(machine->cpu[0], 3, CLEAR_LINE);
+		cputag_set_input_line(machine, "maincpu", 3, CLEAR_LINE);
 
 	if (atarigen_scanline_int_state)
-		cpu_set_input_line(machine->cpu[0], 2, ASSERT_LINE);
+		cputag_set_input_line(machine, "maincpu", 2, ASSERT_LINE);
 	else
-		cpu_set_input_line(machine->cpu[0], 2, CLEAR_LINE);
+		cputag_set_input_line(machine, "maincpu", 2, CLEAR_LINE);
 
 	if (p2portwr_state)
-		cpu_set_input_line(machine->cpu[0], 1, ASSERT_LINE);
+		cputag_set_input_line(machine, "maincpu", 1, ASSERT_LINE);
 	else
-		cpu_set_input_line(machine->cpu[0], 1, CLEAR_LINE);
+		cputag_set_input_line(machine, "maincpu", 1, CLEAR_LINE);
 
 	if (p2portrd_state)
-		cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
+		cputag_set_input_line(machine, "maincpu", 0, ASSERT_LINE);
 	else
-		cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
+		cputag_set_input_line(machine, "maincpu", 0, CLEAR_LINE);
 }
 
 
@@ -220,7 +220,7 @@ static void scanline_update(const device_config *screen, int scanline)
 		/* generate the 32V interrupt (IRQ 2) */
 		if ((scanline % 64) == 0)
 			if (interrupt_enable & 4)
-				atarigen_scanline_int_gen(screen->machine->cpu[0]);
+				atarigen_scanline_int_gen(cputag_get_cpu(screen->machine, "maincpu"));
 	}
 }
 
@@ -262,9 +262,9 @@ static MACHINE_RESET( atarisy2 )
 	atarigen_eeprom_reset();
 	slapstic_reset();
 	atarigen_interrupt_reset(update_interrupts);
-	atarigen_sound_io_reset(machine->cpu[1]);
+	atarigen_sound_io_reset(cputag_get_cpu(machine, "soundcpu"));
 	atarigen_scanline_timer_reset(machine->primary_screen, scanline_update, 64);
-	memory_set_direct_update_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), atarisy2_direct_handler);
+	memory_set_direct_update_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), atarisy2_direct_handler);
 
 	tms5220_data_strobe = 1;
 
@@ -302,7 +302,7 @@ static WRITE16_HANDLER( int1_ack_w )
 {
 	/* reset sound CPU */
 	if (ACCESSING_BITS_0_7)
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data & 1) ? ASSERT_LINE : CLEAR_LINE);
+		cputag_set_input_line(space->machine, "soundcpu", INPUT_LINE_RESET, (data & 1) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -361,7 +361,7 @@ static WRITE16_HANDLER( bankselect_w )
 
 static STATE_POSTLOAD( bankselect_postload )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	bankselect_w(space, 0, bankselect[0], 0xffff);
 	bankselect_w(space, 1, bankselect[1], 0xffff);
@@ -457,7 +457,7 @@ static READ8_HANDLER( leta_r )
 				/* if the joystick is centered, leave the rest of this alone */
 				angle = last_angle;
 				if (analogx < -32 || analogx > 32 || analogy < -32 || analogy > 32)
-					angle = atan2(analogx, analogy) * 360 / (2 * M_PI);
+					angle = atan2((double)analogx, (double)analogy) * 360 / (2 * M_PI);
 
 				/* detect when we pass the 0 point in either direction */
 				if (last_angle < -90 && angle > 90)
@@ -630,7 +630,7 @@ static WRITE8_HANDLER( sound_reset_w )
 		return;
 
 	/* a large number of signals are reset when this happens */
-	atarigen_sound_io_reset(space->machine->cpu[1]);
+	atarigen_sound_io_reset(cputag_get_cpu(space->machine, "soundcpu"));
 	devtag_reset(space->machine, "ym");
 	mixer_w(space, 0, 0);
 	tms5220_data = 0;
@@ -853,7 +853,7 @@ static INPUT_PORTS_START( paperboy )
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("5/6A:!8,!7")
 	PORT_DIPSETTING(    0x01, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Medium ) )
-	PORT_DIPSETTING(    0x00, "Med. Hard" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Medium_Hard ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Hard ) )
 	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Bonus_Life ) )	PORT_DIPLOCATION("5/6A:!6,!5")
 	PORT_DIPSETTING(    0x08, "10000" )
@@ -956,12 +956,12 @@ static INPUT_PORTS_START( ssprint )
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("5/6A:!8,!7")
 	PORT_DIPSETTING(    0x01, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Medium ) )
-	PORT_DIPSETTING(    0x02, "Med. Hard" )
+	PORT_DIPSETTING(    0x02, DEF_STR( Medium_Hard ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Hard ) )
 	PORT_DIPNAME( 0x0c, 0x00, "Obstacles" )				PORT_DIPLOCATION("5/6A:!6,!5")
 	PORT_DIPSETTING(    0x04, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Medium ) )
-	PORT_DIPSETTING(    0x08, "Med. Hard" )
+	PORT_DIPSETTING(    0x08, DEF_STR( Medium_Hard ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( Hard ) )
 	PORT_DIPNAME( 0x30, 0x00, "Wrenches" )				PORT_DIPLOCATION("5/6A:!4,!3")
 	PORT_DIPSETTING(    0x10, "2" )
@@ -1044,8 +1044,8 @@ static INPUT_PORTS_START( apb )
 	PORT_DIPSETTING(    0x38, DEF_STR( Easiest ) )											/* 11                       5000                    Yes                 */
 	PORT_DIPSETTING(    0x30, DEF_STR( Very_Easy ) )										/* 10                       6000                    Yes                 */
 	PORT_DIPSETTING(    0x28, DEF_STR( Easy ) )												/* 9                        8000                    Yes                 */
-	PORT_DIPSETTING(    0x00, "Medium Easy" )												/* 8                        10000                   Yes                 */
-	PORT_DIPSETTING(    0x20, "Medium Hard" )												/* 7                        11000                   Yes                 */
+	PORT_DIPSETTING(    0x00, DEF_STR( Medium_Easy ) )												/* 8                        10000                   Yes                 */
+	PORT_DIPSETTING(    0x20, DEF_STR( Medium_Hard ) )												/* 7                        11000                   Yes                 */
 	PORT_DIPSETTING(    0x10, DEF_STR( Hard ) )												/* 6                        13000                   Yes                 */
 	PORT_DIPSETTING(    0x08, DEF_STR( Very_Hard ) )										/* 5                        15000                   No                  */
 	PORT_DIPSETTING(    0x18, DEF_STR( Hardest ) )											/* 4                        18000                   No                  */
@@ -1145,11 +1145,11 @@ static MACHINE_DRIVER_START( atarisy2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", T11, MASTER_CLOCK/2)
 	MDRV_CPU_CONFIG(t11_data)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", vblank_int)
 
 	MDRV_CPU_ADD("soundcpu", M6502, SOUND_CLOCK/8)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	MDRV_CPU_PERIODIC_INT(atarigen_6502_irq_gen, (double)MASTER_CLOCK/2/16/16/16/10)
 
 	MDRV_MACHINE_START(atarisy2)
@@ -1194,7 +1194,7 @@ static MACHINE_DRIVER_START( sprint )
 	MDRV_IMPORT_FROM(atarisy2)
 
 	/* sound hardware */
-	MDRV_SOUND_REMOVE("tms")
+	MDRV_DEVICE_REMOVE("tms")
 MACHINE_DRIVER_END
 
 

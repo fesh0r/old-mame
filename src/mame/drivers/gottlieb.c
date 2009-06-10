@@ -257,16 +257,16 @@ static MACHINE_START( gottlieb )
 	if (laserdisc != NULL)
 	{
 		/* attach to the I/O ports */
-		memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x05805, 0x05807, 0, 0x07f8, laserdisc_status_r);
-		memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x05805, 0x05805, 0, 0x07f8, laserdisc_command_w);	/* command for the player */
-		memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x05806, 0x05806, 0, 0x07f8, laserdisc_select_w);
+		memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x05805, 0x05807, 0, 0x07f8, laserdisc_status_r);
+		memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x05805, 0x05805, 0, 0x07f8, laserdisc_command_w);	/* command for the player */
+		memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x05806, 0x05806, 0, 0x07f8, laserdisc_select_w);
 
 		/* allocate a timer for serial transmission, and one for philips code processing */
 		laserdisc_bit_timer = timer_alloc(machine, laserdisc_bit_callback, NULL);
 		laserdisc_philips_timer = timer_alloc(machine, laserdisc_philips_callback, NULL);
 
 		/* create some audio RAM */
-		laserdisc_audio_buffer = auto_malloc(AUDIORAM_SIZE);
+		laserdisc_audio_buffer = auto_alloc_array(machine, UINT8, AUDIORAM_SIZE);
 		laserdisc_status = 0x38;
 
 		/* more save state registration */
@@ -305,7 +305,7 @@ static MACHINE_RESET( gottlieb )
 
 static CUSTOM_INPUT( analog_delta_r )
 {
-	const char *string = param;
+	const char *string = (const char *)param;
 	int which = string[0] - '0';
 
 	return input_port_read(field->port->machine, &string[1]) - track[which];
@@ -664,7 +664,7 @@ static void laserdisc_audio_process(const device_config *device, int samplerate,
 
 static TIMER_CALLBACK( nmi_clear )
 {
-	cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 
@@ -1847,7 +1847,7 @@ static MACHINE_DRIVER_START( gottlieb_core )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", I8088, CPU_CLOCK/3)
-	MDRV_CPU_PROGRAM_MAP(gottlieb_map,0)
+	MDRV_CPU_PROGRAM_MAP(gottlieb_map)
 	MDRV_CPU_VBLANK_INT("screen", gottlieb_interrupt)
 
 	MDRV_MACHINE_START(gottlieb)
@@ -1892,7 +1892,7 @@ static MACHINE_DRIVER_START( g2laser )
 	MDRV_LASERDISC_OVERLAY(gottlieb, GOTTLIEB_VIDEO_HCOUNT, GOTTLIEB_VIDEO_VCOUNT, BITMAP_FORMAT_INDEXED16)
 	MDRV_LASERDISC_OVERLAY_CLIP(0, GOTTLIEB_VIDEO_HBLANK-1, 0, GOTTLIEB_VIDEO_VBLANK-8)
 
-	MDRV_SCREEN_REMOVE("screen")
+	MDRV_DEVICE_REMOVE("screen")
 	MDRV_LASERDISC_SCREEN_ADD_NTSC("screen", BITMAP_FORMAT_INDEXED16)
 
 	MDRV_SOUND_ADD("ldsound", LASERDISC, 0)
@@ -1913,7 +1913,7 @@ static MACHINE_DRIVER_START( reactor )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(reactor_map,0)
+	MDRV_CPU_PROGRAM_MAP(reactor_map)
 
 	MDRV_NVRAM_HANDLER(NULL)
 
@@ -1933,6 +1933,11 @@ static MACHINE_DRIVER_START( qbert )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( screwloo )
+	MDRV_IMPORT_FROM(gottlieb2)
+
+	MDRV_VIDEO_START(screwloo)
+MACHINE_DRIVER_END
 
 
 /*************************************
@@ -2540,17 +2545,20 @@ static DRIVER_INIT( romtiles )
 static DRIVER_INIT( stooges )
 {
 	DRIVER_INIT_CALL(ramtiles);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x05803, 0x05803, 0, 0x07f8, stooges_output_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x05803, 0x05803, 0, 0x07f8, stooges_output_w);
 }
 
+static DRIVER_INIT( screwloo )
+{
+	gottlieb_gfxcharlo = 0;
+	gottlieb_gfxcharhi = 1;
+}
 
 static DRIVER_INIT( vidvince )
 {
 	gottlieb_gfxcharlo = 1;
 	gottlieb_gfxcharhi = 0;
 }
-
-
 
 /*************************************
  *
@@ -2578,7 +2586,7 @@ GAME( 1983, qbertqub, 0,        qbert,     qbertqub, romtiles, ROT270, "Mylstar"
 GAME( 1984, curvebal, 0,        gottlieb1, curvebal, romtiles, ROT270, "Mylstar", "Curve Ball", 0 )
 
 /* games using rev 2 sound board */
-GAME( 1983, screwloo, 0,        gottlieb2, screwloo, romtiles, ROT0,   "Mylstar", "Screw Loose (prototype)", 0 )
+GAME( 1983, screwloo, 0,        screwloo,  screwloo, screwloo, ROT0,   "Mylstar", "Screw Loose (prototype)", 0 )
 GAME( 1983, mach3,    0,        g2laser,   mach3,    romtiles, ROT0,   "Mylstar", "M.A.C.H. 3", 0 )
 GAME( 1984, cobram3,  0,        g2laser,   mach3,    romtiles, ROT0,   "Data East","Cobra Command (M.A.C.H. 3 hardware)", GAME_NOT_WORKING )
 GAME( 1984, usvsthem, 0,        g2laser,   usvsthem, romtiles, ROT0,   "Mylstar", "Us vs. Them", 0 )

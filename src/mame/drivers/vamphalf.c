@@ -669,7 +669,7 @@ ADDRESS_MAP_END
 
 static MACHINE_DRIVER_START( common )
 	MDRV_CPU_ADD("maincpu", E116T, 50000000)	/* 50 MHz */
-	MDRV_CPU_PROGRAM_MAP(common_map,0)
+	MDRV_CPU_PROGRAM_MAP(common_map)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
 	MDRV_NVRAM_HANDLER(93C46_vamphalf)
@@ -716,15 +716,15 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( sound_qs1000 )
 	MDRV_CPU_ADD("audiocpu", I8052, 24000000/4)	/* 6 MHz? */
-	MDRV_CPU_PROGRAM_MAP(qs1000_prg_map, 0)
-	MDRV_CPU_IO_MAP( qs1000_io_map, 0 )
+	MDRV_CPU_PROGRAM_MAP(qs1000_prg_map)
+	MDRV_CPU_IO_MAP( qs1000_io_map)
 
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( vamphalf )
 	MDRV_IMPORT_FROM(common)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(vamphalf_io,0)
+	MDRV_CPU_IO_MAP(vamphalf_io)
 
 	MDRV_IMPORT_FROM(sound_ym_oki)
 MACHINE_DRIVER_END
@@ -732,7 +732,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( misncrft )
 	MDRV_IMPORT_FROM(common)
 	MDRV_CPU_REPLACE("maincpu", GMS30C2116, 50000000)	/* 50 MHz */
-	MDRV_CPU_IO_MAP(misncrft_io,0)
+	MDRV_CPU_IO_MAP(misncrft_io)
 
 	MDRV_IMPORT_FROM(sound_qs1000)
 MACHINE_DRIVER_END
@@ -740,7 +740,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( coolmini )
 	MDRV_IMPORT_FROM(common)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(coolmini_io,0)
+	MDRV_CPU_IO_MAP(coolmini_io)
 
 	MDRV_IMPORT_FROM(sound_ym_oki)
 MACHINE_DRIVER_END
@@ -748,7 +748,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( suplup )
 	MDRV_IMPORT_FROM(common)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(suplup_io,0)
+	MDRV_CPU_IO_MAP(suplup_io)
 
 	MDRV_IMPORT_FROM(sound_suplup)
 MACHINE_DRIVER_END
@@ -756,7 +756,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( jmpbreak )
 	MDRV_IMPORT_FROM(common)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(jmpbreak_io,0)
+	MDRV_CPU_IO_MAP(jmpbreak_io)
 
 	MDRV_IMPORT_FROM(sound_ym_oki)
 MACHINE_DRIVER_END
@@ -764,8 +764,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( wyvernwg )
 	MDRV_IMPORT_FROM(common)
 	MDRV_CPU_REPLACE("maincpu", E132T, 50000000)	/* 50 MHz */
-	MDRV_CPU_PROGRAM_MAP(common_32bit_map,0)
-	MDRV_CPU_IO_MAP(wyvernwg_io,0)
+	MDRV_CPU_PROGRAM_MAP(common_32bit_map)
+	MDRV_CPU_IO_MAP(wyvernwg_io)
 
 	MDRV_IMPORT_FROM(sound_qs1000)
 MACHINE_DRIVER_END
@@ -773,8 +773,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( finalgdr )
 	MDRV_IMPORT_FROM(common)
 	MDRV_CPU_REPLACE("maincpu", E132T, 50000000)	/* 50 MHz */
-	MDRV_CPU_PROGRAM_MAP(common_32bit_map,0)
-	MDRV_CPU_IO_MAP(finalgdr_io,0)
+	MDRV_CPU_PROGRAM_MAP(common_32bit_map)
+	MDRV_CPU_IO_MAP(finalgdr_io)
 
 	MDRV_NVRAM_HANDLER(finalgdr)
 
@@ -783,8 +783,8 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( aoh )
 	MDRV_CPU_ADD("maincpu", E132XN, 20000000*4)	/* 4x internal multiplier */
-	MDRV_CPU_PROGRAM_MAP(aoh_map,0)
-	MDRV_CPU_IO_MAP(aoh_io,0)
+	MDRV_CPU_PROGRAM_MAP(aoh_map)
+	MDRV_CPU_IO_MAP(aoh_io)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
 	MDRV_NVRAM_HANDLER(93C46)
@@ -1627,12 +1627,12 @@ static READ16_HANDLER( jmpbreak_speedup_r )
 			cpu_eat_cycles(space->cpu, 50);
 	}
 
-	return wram[(0x00906fc/2)+offset];
+	return wram[(0x00906fc / 2)+offset];
 }
 
 static DRIVER_INIT( vamphalf )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0004a840, 0x0004a843, 0, 0, vamphalf_speedup_r );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0004a840, 0x0004a843, 0, 0, vamphalf_speedup_r );
 
 	palshift = 0;
 	flip_bit = 0x80;
@@ -1640,7 +1640,7 @@ static DRIVER_INIT( vamphalf )
 
 static DRIVER_INIT( vamphafk )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0004a6d0, 0x0004a6d3, 0, 0, vamphafk_speedup_r );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0004a6d0, 0x0004a6d3, 0, 0, vamphafk_speedup_r );
 
 	palshift = 0;
 	flip_bit = 0x80;
@@ -1648,7 +1648,7 @@ static DRIVER_INIT( vamphafk )
 
 static DRIVER_INIT( misncrft )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00072eb4, 0x00072eb7, 0, 0, misncrft_speedup_r );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x00072eb4, 0x00072eb7, 0, 0, misncrft_speedup_r );
 
 	palshift = 0;
 	flip_bit = 1;
@@ -1656,7 +1656,7 @@ static DRIVER_INIT( misncrft )
 
 static DRIVER_INIT( coolmini )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x000d2e80, 0x000d2e83, 0, 0, coolmini_speedup_r );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x000d2e80, 0x000d2e83, 0, 0, coolmini_speedup_r );
 
 	palshift = 0;
 	flip_bit = 1;
@@ -1664,7 +1664,7 @@ static DRIVER_INIT( coolmini )
 
 static DRIVER_INIT( suplup )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0011605c, 0x0011605f, 0, 0, suplup_speedup_r );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0011605c, 0x0011605f, 0, 0, suplup_speedup_r );
 
 	palshift = 8;
 	/* no flipscreen */
@@ -1672,7 +1672,7 @@ static DRIVER_INIT( suplup )
 
 static DRIVER_INIT( luplup )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00115e84, 0x00115e87, 0, 0, luplup_speedup_r );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x00115e84, 0x00115e87, 0, 0, luplup_speedup_r );
 
 	palshift = 8;
 	/* no flipscreen */
@@ -1680,7 +1680,7 @@ static DRIVER_INIT( luplup )
 
 static DRIVER_INIT( luplup29 )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00113f08, 0x00113f0b, 0, 0, luplup29_speedup_r );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x00113f08, 0x00113f0b, 0, 0, luplup29_speedup_r );
 
 	palshift = 8;
 	/* no flipscreen */
@@ -1688,7 +1688,7 @@ static DRIVER_INIT( luplup29 )
 
 static DRIVER_INIT( puzlbang )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00113ecc, 0x00113ecf, 0, 0, puzlbang_speedup_r );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x00113ecc, 0x00113ecf, 0, 0, puzlbang_speedup_r );
 
 	palshift = 8;
 	/* no flipscreen */
@@ -1696,7 +1696,7 @@ static DRIVER_INIT( puzlbang )
 
 static DRIVER_INIT( wyvernwg )
 {
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00b56fc, 0x00b56ff, 0, 0, wyvernwg_speedup_r );
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x00b56fc, 0x00b56ff, 0, 0, wyvernwg_speedup_r );
 
 	palshift = 0;
 	flip_bit = 1;
@@ -1707,8 +1707,8 @@ static DRIVER_INIT( wyvernwg )
 
 static DRIVER_INIT( finalgdr )
 {
-	finalgdr_backupram = auto_malloc(0x80*0x100);
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x005e874, 0x005e877, 0, 0, finalgdr_speedup_r );
+	finalgdr_backupram = auto_alloc_array(machine, UINT8, 0x80*0x100);
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x005e874, 0x005e877, 0, 0, finalgdr_speedup_r );
 
 	palshift = 0;
 	flip_bit = 1; //?
@@ -1719,7 +1719,7 @@ static DRIVER_INIT( finalgdr )
 
 static DRIVER_INIT( dquizgo2 )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00cde70, 0x00cde73, 0, 0, dquizgo2_speedup_r );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x00cde70, 0x00cde73, 0, 0, dquizgo2_speedup_r );
 
 	palshift = 0;
 	flip_bit = 1;
@@ -1727,7 +1727,7 @@ static DRIVER_INIT( dquizgo2 )
 
 static DRIVER_INIT( aoh )
 {
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x028a09c, 0x028a09f, 0, 0, aoh_speedup_r );
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x028a09c, 0x028a09f, 0, 0, aoh_speedup_r );
 
 	palshift = 0;
 	/* no flipscreen */
@@ -1735,8 +1735,8 @@ static DRIVER_INIT( aoh )
 
 static DRIVER_INIT( jmpbreak )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00906fc, 0x00906ff, 0, 0, jmpbreak_speedup_r );
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xe0000000, 0xe0000003, 0, 0, jmpbreak_flipscreen_w );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x00906fc, 0x00906ff, 0, 0, jmpbreak_speedup_r );
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xe0000000, 0xe0000003, 0, 0, jmpbreak_flipscreen_w );
 
 	palshift = 0;
 }

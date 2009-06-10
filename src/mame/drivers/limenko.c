@@ -432,8 +432,8 @@ static VIDEO_START( limenko )
 	tilemap_set_transparent_pen(md_tilemap,0);
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
-	sprites_bitmap     = auto_bitmap_alloc(384,240,BITMAP_FORMAT_INDEXED16);
-	sprites_bitmap_pri = auto_bitmap_alloc(384,240,BITMAP_FORMAT_INDEXED8);
+	sprites_bitmap     = auto_bitmap_alloc(machine,384,240,BITMAP_FORMAT_INDEXED16);
+	sprites_bitmap_pri = auto_bitmap_alloc(machine,384,240,BITMAP_FORMAT_INDEXED8);
 }
 
 static VIDEO_UPDATE( limenko )
@@ -633,8 +633,8 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( limenko )
 	MDRV_CPU_ADD("maincpu", E132XN, 20000000*4)	/* 4x internal multiplier */
-	MDRV_CPU_PROGRAM_MAP(limenko_map,0)
-	MDRV_CPU_IO_MAP(limenko_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(limenko_map)
+	MDRV_CPU_IO_MAP(limenko_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_NVRAM_HANDLER(93C46)
@@ -658,12 +658,12 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( spotty )
 	MDRV_CPU_ADD("maincpu", GMS30C2232, 20000000)	/* 20 MHz, no internal multiplier */
-	MDRV_CPU_PROGRAM_MAP(spotty_map,0)
-	MDRV_CPU_IO_MAP(spotty_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(spotty_map)
+	MDRV_CPU_IO_MAP(spotty_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", AT89C4051, 4000000)	/* 4 MHz */
-	MDRV_CPU_IO_MAP(spotty_sound_io_map,0)
+	MDRV_CPU_IO_MAP(spotty_sound_io_map)
 
 	MDRV_NVRAM_HANDLER(93C46)
 
@@ -999,21 +999,21 @@ static READ32_HANDLER( spotty_speedup_r )
 
 static DRIVER_INIT( dynabomb )
 {
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xe2784, 0xe2787, 0, 0, dynabomb_speedup_r );
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xe2784, 0xe2787, 0, 0, dynabomb_speedup_r );
 
 	spriteram_bit = 1;
 }
 
 static DRIVER_INIT( legendoh )
 {
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x32ab0, 0x32ab3, 0, 0, legendoh_speedup_r );
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x32ab0, 0x32ab3, 0, 0, legendoh_speedup_r );
 
 	spriteram_bit = 1;
 }
 
 static DRIVER_INIT( sb2003 )
 {
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x135800, 0x135803, 0, 0, sb2003_speedup_r );
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x135800, 0x135803, 0, 0, sb2003_speedup_r );
 
 	spriteram_bit = 1;
 }
@@ -1033,7 +1033,7 @@ static DRIVER_INIT( spotty )
 		dst[x+2] = (src[x+1]&0x0f) >> 0;
 	}
 
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x6626c, 0x6626f, 0, 0, spotty_speedup_r );
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x6626c, 0x6626f, 0, 0, spotty_speedup_r );
 
 	spriteram_bit = 1;
 }

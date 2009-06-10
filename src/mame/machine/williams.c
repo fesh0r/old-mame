@@ -50,6 +50,7 @@ static void tshoot_main_irq(const device_config *device, int state);
 
 /* Lotto Fun-specific code */
 static READ8_DEVICE_HANDLER( lottofun_input_port_0_r );
+static WRITE8_DEVICE_HANDLER( lottofun_coin_lock_w );
 
 /* Turkey Shoot-specific code */
 static READ8_DEVICE_HANDLER( tshoot_input_port_0_3_r );
@@ -142,7 +143,7 @@ const pia6821_interface williams_snd_pia_intf =
 const pia6821_interface lottofun_pia_0_intf =
 {
 	/*inputs : A/B,CA/B1,CA/B2 */ DEVCB_HANDLER(lottofun_input_port_0_r), DEVCB_HANDLER(input_port_1_device_r), DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL,
-	/*outputs: A/B,CA/B2       */ DEVCB_NULL, DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, ticket_dispenser_w), DEVCB_NULL, DEVCB_NULL,
+	/*outputs: A/B,CA/B2       */ DEVCB_NULL, DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, ticket_dispenser_w), DEVCB_HANDLER(lottofun_coin_lock_w), DEVCB_NULL,
 	/*irqs   : A/B             */ DEVCB_NULL, DEVCB_NULL
 };
 
@@ -311,14 +312,14 @@ static void williams_main_irq(const device_config *device, int state)
 	int combined_state = pia6821_get_irq_a(pia_1) | pia6821_get_irq_b(pia_1);
 
 	/* IRQ to the main CPU */
-	cpu_set_input_line(device->machine->cpu[0], M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "maincpu", M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static void williams_main_firq(const device_config *device, int state)
 {
 	/* FIRQ to the main CPU */
-	cpu_set_input_line(device->machine->cpu[0], M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "maincpu", M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -328,7 +329,7 @@ static void williams_snd_irq(const device_config *device, int state)
 	int combined_state = pia6821_get_irq_a(pia_2) | pia6821_get_irq_b(pia_2);
 
 	/* IRQ to the sound CPU */
-	cpu_set_input_line(device->machine->cpu[1], M6800_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "soundcpu", M6800_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -346,7 +347,7 @@ static void mysticm_main_irq(const device_config *device, int state)
 	int combined_state = pia6821_get_irq_b(pia_0) | pia6821_get_irq_a(pia_1) | pia6821_get_irq_b(pia_1);
 
 	/* IRQ to the main CPU */
-	cpu_set_input_line(device->machine->cpu[0], M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "maincpu", M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -357,7 +358,7 @@ static void tshoot_main_irq(const device_config *device, int state)
 	int combined_state = pia6821_get_irq_a(pia_0) | pia6821_get_irq_b(pia_0) | pia6821_get_irq_a(pia_1) | pia6821_get_irq_b(pia_1);
 
 	/* IRQ to the main CPU */
-	cpu_set_input_line(device->machine->cpu[0], M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "maincpu", M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -452,14 +453,14 @@ static TIMER_CALLBACK( williams2_endscreen_callback )
 
 static STATE_POSTLOAD( williams2_postload )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	williams2_bank_select_w(space, 0, vram_bank);
 }
 
 
 MACHINE_RESET( williams2 )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	/* configure memory banks */
 	memory_configure_bank(machine, 1, 0, 1, williams_videoram, 0);
@@ -508,8 +509,8 @@ WRITE8_HANDLER( williams2_bank_select_w )
 	{
 		/* page 0 is video ram */
 		case 0:
-			memory_install_read8_handler(space, 0x0000, 0x8fff, 0, 0, SMH_BANK1);
-			memory_install_write8_handler(space, 0x8000, 0x87ff, 0, 0, SMH_BANK4);
+			memory_install_read8_handler(space, 0x0000, 0x8fff, 0, 0, (read8_space_func)SMH_BANK(1));
+			memory_install_write8_handler(space, 0x8000, 0x87ff, 0, 0, (write8_space_func)SMH_BANK(4));
 			memory_set_bank(space->machine, 1, 0);
 			memory_set_bankptr(space->machine, 4, &williams_videoram[0x8000]);
 			break;
@@ -517,15 +518,15 @@ WRITE8_HANDLER( williams2_bank_select_w )
 		/* pages 1 and 2 are ROM */
 		case 1:
 		case 2:
-			memory_install_read8_handler(space, 0x0000, 0x8fff, 0, 0, SMH_BANK1);
-			memory_install_write8_handler(space, 0x8000, 0x87ff, 0, 0, SMH_BANK4);
+			memory_install_read8_handler(space, 0x0000, 0x8fff, 0, 0, (read8_space_func)(read8_space_func)(read8_space_func)(read8_space_func)(read8_space_func)(read8_space_func)(read8_space_func)(read8_space_func)(read8_space_func)(read8_space_func)(read8_space_func)(read8_space_func)(read8_space_func)(read8_space_func)(read8_space_func)(read8_space_func)(read8_space_func)SMH_BANK(1));
+			memory_install_write8_handler(space, 0x8000, 0x87ff, 0, 0, (write8_space_func)(write8_space_func)(write8_space_func)(write8_space_func)(write8_space_func)(write8_space_func)(write8_space_func)(write8_space_func)(write8_space_func)(write8_space_func)(write8_space_func)(write8_space_func)(write8_space_func)(write8_space_func)(write8_space_func)(write8_space_func)(write8_space_func)SMH_BANK(4));
 			memory_set_bank(space->machine, 1, 1 + ((vram_bank & 6) >> 1));
 			memory_set_bankptr(space->machine, 4, &williams_videoram[0x8000]);
 			break;
 
 		/* page 3 accesses palette RAM; the remaining areas are as if page 1 ROM was selected */
 		case 3:
-			memory_install_readwrite8_handler(space, 0x8000, 0x87ff, 0, 0, SMH_BANK4, williams2_paletteram_w);
+			memory_install_readwrite8_handler(space, 0x8000, 0x87ff, 0, 0, (read8_space_func)SMH_BANK(4), williams2_paletteram_w);
 			memory_set_bank(space->machine, 1, 1 + ((vram_bank & 4) >> 1));
 			memory_set_bankptr(space->machine, 4, paletteram);
 			break;
@@ -587,7 +588,7 @@ WRITE8_DEVICE_HANDLER( williams_port_select_w )
 
 CUSTOM_INPUT( williams_mux_r )
 {
-	const char *tag = param;
+	const char *tag = (const char *)param;
 
 	if (port_select != 0)
 		tag += strlen(tag) + 1;
@@ -730,14 +731,14 @@ WRITE8_HANDLER( williams2_7segment_w )
 
 static STATE_POSTLOAD( defender_postload )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	defender_bank_select_w(space, 0, vram_bank);
 }
 
 
 MACHINE_RESET( defender )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	MACHINE_RESET_CALL(williams_common);
 
@@ -777,13 +778,13 @@ WRITE8_HANDLER( defender_bank_select_w )
 		case 7:
 		case 8:
 		case 9:
-			memory_install_readwrite8_handler(space, 0xc000, 0xcfff, 0, 0, SMH_BANK1, SMH_UNMAP);
+			memory_install_readwrite8_handler(space, 0xc000, 0xcfff, 0, 0, (read8_space_func)SMH_BANK(1), (write8_space_func)SMH_UNMAP);
 			memory_set_bank(space->machine, 1, vram_bank - 1);
 			break;
 
 		/* pages A-F are not connected */
 		default:
-			memory_install_readwrite8_handler(space, 0xc000, 0xcfff, 0, 0, SMH_NOP, SMH_NOP);
+			memory_install_readwrite8_handler(space, 0xc000, 0xcfff, 0, 0, (read8_space_func)SMH_NOP, (write8_space_func)SMH_NOP);
 			break;
 	}
 }
@@ -883,13 +884,16 @@ WRITE8_HANDLER( blaster_bank_select_w )
 
 static READ8_DEVICE_HANDLER( lottofun_input_port_0_r )
 {
-	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	/* merge in the ticket dispenser status */
-	return input_port_read(device->machine, "IN0") | ticket_dispenser_r(space,offset);
+	return input_port_read(device->machine, "IN0") | ticket_dispenser_r(space, offset);
 }
 
-
+static WRITE8_DEVICE_HANDLER( lottofun_coin_lock_w )
+{
+	coin_lockout_global_w(data & 1); /* bit 5 of PIC control port A */
+}
 
 /*************************************
  *

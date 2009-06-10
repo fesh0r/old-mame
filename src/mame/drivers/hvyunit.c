@@ -310,19 +310,19 @@ static VIDEO_EOF(hvyunit)
 
 static WRITE8_HANDLER( trigger_nmi_on_sound_cpu2 )
 {
-	soundlatch_w(space,0,data);
-	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(space, 0, data);
+	cputag_set_input_line(space->machine, "soundcpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
-static WRITE8_HANDLER( trigger_nmi_on_sub_cpu)
+static WRITE8_HANDLER( trigger_nmi_on_slave_cpu)
 {
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	cputag_set_input_line(space->machine, "slave", INPUT_LINE_NMI, PULSE_LINE);
 }
 
-static WRITE8_HANDLER( main_bankswitch_w )
+static WRITE8_HANDLER( master_bankswitch_w )
 {
-	unsigned char *ROM = memory_region(space->machine, "maincpu");
+	unsigned char *ROM = memory_region(space->machine, "master");
 	int bank=data&7;
 
 	ROM = &ROM[0x4000 * bank];
@@ -331,37 +331,37 @@ static WRITE8_HANDLER( main_bankswitch_w )
 }
 
 
-WRITE8_HANDLER( hu_videoram_w )
+static WRITE8_HANDLER( hu_videoram_w )
 {
 	videoram[offset] = data;
 	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
-WRITE8_HANDLER( hu_colorram_w )
+static WRITE8_HANDLER( hu_colorram_w )
 {
 	colorram[offset] = data;
 	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
-static ADDRESS_MAP_START( main_memory, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( master_memory, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
+	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(1)
 	AM_RANGE(0xc000, 0xcfff) AM_READWRITE( pandora_spriteram_r, pandora_spriteram_w )
 	AM_RANGE(0xd000, 0xdfff) AM_RAM
 	AM_RANGE(0xe000, 0xefff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0xf000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(main_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START(master_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(main_bankswitch_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(main_bankswitch_w)
-	AM_RANGE(0x02, 0x02) AM_WRITE(trigger_nmi_on_sub_cpu)
+	AM_RANGE(0x00, 0x00) AM_WRITE(master_bankswitch_w)
+	AM_RANGE(0x01, 0x01) AM_WRITE(master_bankswitch_w) // correct?
+	AM_RANGE(0x02, 0x02) AM_WRITE(trigger_nmi_on_slave_cpu)
 ADDRESS_MAP_END
 
-static WRITE8_HANDLER( sub_bankswitch_w )
+static WRITE8_HANDLER( slave_bankswitch_w )
 {
-	unsigned char *ROM = memory_region(space->machine, "sub");
+	unsigned char *ROM = memory_region(space->machine, "slave");
 	int bank=(data&0x03);
 	port0_data=data;
 	ROM = &ROM[0x4000 * bank];
@@ -379,9 +379,9 @@ static WRITE8_HANDLER( hu_scrolly_w)
 	hu_scrolly=data;
 }
 
-static ADDRESS_MAP_START( sub_memory, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( slave_memory, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK2)
+	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(2)
 	AM_RANGE(0xc000, 0xc3ff) AM_RAM_WRITE(hu_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xc400, 0xc7ff) AM_RAM_WRITE(hu_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xd000, 0xd1ff) AM_RAM_WRITE(paletteram_xxxxRRRRGGGGBBBB_split2_w) AM_BASE(&paletteram_2)
@@ -391,15 +391,15 @@ static ADDRESS_MAP_START( sub_memory, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START(sub_io, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START(slave_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_WRITE(sub_bankswitch_w)
+	AM_RANGE(0x00, 0x00) AM_WRITE(slave_bankswitch_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(trigger_nmi_on_sound_cpu2)
-	AM_RANGE(0x04, 0x04) AM_READ(mermaid_data_r) AM_WRITE(mermaid_data_w)
+	AM_RANGE(0x04, 0x04) AM_READWRITE(mermaid_data_r,mermaid_data_w)
 	AM_RANGE(0x06, 0x06) AM_WRITE(hu_scrolly_w)
 	AM_RANGE(0x08, 0x08) AM_WRITE(hu_scrollx_w)
 	AM_RANGE(0x0c, 0x0c) AM_READ(mermaid_status_r)
-	AM_RANGE(0x0e, 0x0e) AM_RAM
+	AM_RANGE(0x0e, 0x0e) AM_RAM //should be coin info, see djoy.c
 
 //  AM_RANGE(0x22, 0x22) AM_READ(hu_scrolly_hi_reset) //22/a2 taken from ram $f065
 //  AM_RANGE(0xa2, 0xa2) AM_READ(hu_scrolly_hi_set)
@@ -418,7 +418,7 @@ static WRITE8_HANDLER( sound_bankswitch_w )
 
 static ADDRESS_MAP_START( sound_memory, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK3)
+	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(3)
 	AM_RANGE(0xc000, 0xc7ff) AM_RAM
 ADDRESS_MAP_END
 
@@ -458,50 +458,113 @@ static INPUT_PORTS_START( hvyunit )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	/*copied from DJ Boy, might be wrong */
+	/*copied from DJ Boy, WRONG
+
+HEAVY UNIT
+Manufacturer: Taito
+Year: 1988 - Genre: Shooter
+Orientation: Horizontal
+Conversion Class: JAMMA
+DIP Switch Settings:
+SW#1
+--------------------------------------------------------------------
+DESCRIPTION                           1   2   3   4   5   6   7   8
+--------------------------------------------------------------------
+CABINET TYPE       TABLE             OFF
+                   UPRIGHT           ON
+--------------------------------------------------------------------
+VIDEO SCREEN       NORMAL                OFF
+                   FLIP                  ON
+--------------------------------------------------------------------
+TEST MODE          NORMAL                    OFF
+                   TEST                      ON
+--------------------------------------------------------------------
+COIN/CREDIT
+COIN #1            1C/1P                             OFF OFF
+                   1C/2P                             ON  OFF
+                   2C/1P                             OFF ON
+                   2C/3P                             ON  ON
+
+COIN #2            1C/1P                                     OFF OFF
+                   1C/2P                                     ON  OFF
+                   2C/1P                                     OFF ON
+                   2C/3P                                     ON  ON
+--------------------------------------------------------------------
+NOT USED           SW#4 ALWAYS OFF
+--------------------------------------------------------------------
+
+
+SW#2
+--------------------------------------------------------------------
+DESCRIPTION                           1   2   3   4   5   6   7   8
+--------------------------------------------------------------------
+DIFFICULTY         NORMAL            OFF OFF
+                   EASY              ON  OFF
+                   HARD              OFF ON
+                   HARDEST           ON  ON
+--------------------------------------------------------------------
+CONTINUE           YES                       OFF
+                   NO                        ON
+--------------------------------------------------------------------
+BONUS              NO                            OFF
+                   YES                           ON
+--------------------------------------------------------------------
+# LIVES            3                                 OFF OFF
+                   4                                 ON  OFF
+                   5                                 OFF ON
+                   7                                 ON  ON
+--------------------------------------------------------------------
+DEMO SOUND         YES                                       OFF
+                   NO                                        ON
+--------------------------------------------------------------------
+NOT USED           SW#8 ALWAYS OFF
+--------------------------------------------------------------------
+
+*/
 	PORT_START("DSW1")
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( On ) )
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Service_Mode ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( On ) )
 	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x30, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0xc0, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( 1C_2C ) )
+	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x30, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( 1C_2C ) )
+	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Coin_B ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )
 	PORT_START("DSW2")
-	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Easy ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Hard ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( Hardest ) )
-	PORT_DIPNAME( 0x0c, 0x00, "Bonus" )
-	PORT_DIPSETTING(    0x00, "10,30,50,70,90" )
-	PORT_DIPSETTING(    0x04, "10,20,30,40,50,60,70,80,90" )
-	PORT_DIPSETTING(    0x08, "20,50" )
-	PORT_DIPSETTING(    0x0c, DEF_STR( None ) )
-	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x10, "3" )
-	PORT_DIPSETTING(    0x00, "5" )
-	PORT_DIPSETTING(    0x20, "7" )
-	PORT_DIPSETTING(    0x30, "9" )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, "Stereo Sound" )
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Easy ) )
+	PORT_DIPSETTING(    0x03, DEF_STR( Normal ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Hard ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Allow_Continue ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x08, "Bonus" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
+	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Lives ) )
+	PORT_DIPSETTING(    0x30, "3" )
+	PORT_DIPSETTING(    0x20, "4" )
+	PORT_DIPSETTING(    0x10, "5" )
+	PORT_DIPSETTING(    0x00, "7" )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_START("TEST")
@@ -568,19 +631,19 @@ static INTERRUPT_GEN( hvyunit_interrupt )
 
 static MACHINE_DRIVER_START( hvyunit )
 
-	MDRV_CPU_ADD("maincpu", Z80,6000000)
-	MDRV_CPU_PROGRAM_MAP(main_memory,0)
-	MDRV_CPU_IO_MAP(main_io,0)
+	MDRV_CPU_ADD("master", Z80,6000000)
+	MDRV_CPU_PROGRAM_MAP(master_memory)
+	MDRV_CPU_IO_MAP(master_io)
 	MDRV_CPU_VBLANK_INT_HACK(hvyunit_interrupt,2)
 
-	MDRV_CPU_ADD("sub", Z80,6000000)
-	MDRV_CPU_PROGRAM_MAP(sub_memory,0)
-	MDRV_CPU_IO_MAP(sub_io,0)
+	MDRV_CPU_ADD("slave", Z80,6000000)
+	MDRV_CPU_PROGRAM_MAP(slave_memory)
+	MDRV_CPU_IO_MAP(slave_io)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("soundcpu", Z80, 6000000)
-	MDRV_CPU_PROGRAM_MAP(sound_memory,0)
-	MDRV_CPU_IO_MAP(sound_io,0)
+	MDRV_CPU_PROGRAM_MAP(sound_memory)
+	MDRV_CPU_IO_MAP(sound_io)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
@@ -610,17 +673,17 @@ MACHINE_DRIVER_END
 
 
 ROM_START( hvyunit )
-	ROM_REGION( 0x20000, "maincpu", 0 )
+	ROM_REGION( 0x20000, "master", 0 )
 	ROM_LOAD( "b73_10.5c",  0x00000, 0x20000, CRC(ca52210f) SHA1(346951962aa5bbad641117dbd66f035dddc7c0bf) )
 
-	ROM_REGION( 0x10000, "sub", 0 )
+	ROM_REGION( 0x10000, "slave", 0 )
 	ROM_LOAD( "b73_11.5p",  0x00000, 0x10000, CRC(cb451695) SHA1(116fd59f96a54c22fae65eea9ee5e58cb9ce5074) )
 
 	ROM_REGION( 0x10000, "soundcpu", 0 )
 	ROM_LOAD( "b73_12.7e",  0x000000, 0x010000, CRC(d1d24fab) SHA1(ed0312535d0b136d79aa885b9e6eea19ebde6409) )
 
-	ROM_REGION( 0x02000, "mermaid", 0 )
-	ROM_LOAD( "mermaid.i8751_mcu",  0x000000, 0x02000, NO_DUMP )
+	ROM_REGION( 0x1000, "mcu", 0 )
+	ROM_LOAD( "i8751_mermaid",  0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x200000, "gfx1", 0 ) // loading only verified for roms marked 'ok'
 	ROM_LOAD( "b73_08.2f",  0x000000, 0x080000, CRC(f83dd808) SHA1(09d5f1e86fad3a0d2d3ac1845103d3f2833c6793) ) // attract ok
@@ -637,17 +700,17 @@ ROM_START( hvyunit )
 ROM_END
 
 ROM_START( hvyunitj )
-	ROM_REGION( 0x20000, "maincpu", 0 )
+	ROM_REGION( 0x20000, "master", 0 )
 	ROM_LOAD( "b73_30.5c",  0x00000, 0x20000, CRC(600af545) SHA1(c52b9be2bae28848ad0818c296f000a1bda4fa4f) )
 
-	ROM_REGION( 0x10000, "sub", 0 )
+	ROM_REGION( 0x10000, "slave", 0 )
 	ROM_LOAD( "b73_14.5p",  0x00000, 0x10000, CRC(0dfb51d4) SHA1(0e6f3b3d4558f12fe1b1620f57a0f4ac2065fd1a) )
 
 	ROM_REGION( 0x10000, "soundcpu", 0 )
 	ROM_LOAD( "b73_12.7e",  0x000000, 0x010000, CRC(d1d24fab) SHA1(ed0312535d0b136d79aa885b9e6eea19ebde6409) )
 
-	ROM_REGION( 0x02000, "mermaid", 0 )
-	ROM_LOAD( "mermaid.i8751_mcu",  0x000000, 0x02000, NO_DUMP )
+	ROM_REGION( 0x1000, "mcu", 0 )
+	ROM_LOAD( "i8751_mermaid",  0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x200000, "gfx1", 0 ) // loading only verified for roms marked 'ok'
 	ROM_LOAD( "b73_08.2f",  0x000000, 0x080000, CRC(f83dd808) SHA1(09d5f1e86fad3a0d2d3ac1845103d3f2833c6793) ) // attract ok
@@ -664,17 +727,17 @@ ROM_START( hvyunitj )
 ROM_END
 
 ROM_START( hvyunito )
-	ROM_REGION( 0x20000, "maincpu", 0 )
+	ROM_REGION( 0x20000, "master", 0 )
 	ROM_LOAD( "b73_13.5c",  0x00000, 0x20000, CRC(e2874601) SHA1(7f7f3287113b8622eb365d04135d2d9c35d70554) )
 
-	ROM_REGION( 0x10000, "sub", 0 )
+	ROM_REGION( 0x10000, "slave", 0 )
 	ROM_LOAD( "b73_14.5p",  0x00000, 0x10000, CRC(0dfb51d4) SHA1(0e6f3b3d4558f12fe1b1620f57a0f4ac2065fd1a) )
 
 	ROM_REGION( 0x10000, "soundcpu", 0 )
 	ROM_LOAD( "b73_12.7e",  0x000000, 0x010000, CRC(d1d24fab) SHA1(ed0312535d0b136d79aa885b9e6eea19ebde6409) )
 
-	ROM_REGION( 0x02000, "mermaid", 0 )
-	ROM_LOAD( "mermaid.i8751_mcu",  0x000000, 0x02000, NO_DUMP )
+	ROM_REGION( 0x1000, "mcu", 0 )
+	ROM_LOAD( "i8751_mermaid",  0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x200000, "gfx1", 0 ) // loading only verified for roms marked 'ok'
 	ROM_LOAD( "b73_08.2f",  0x000000, 0x080000, CRC(f83dd808) SHA1(09d5f1e86fad3a0d2d3ac1845103d3f2833c6793) ) // attract ok
@@ -693,5 +756,3 @@ ROM_END
 GAME( 1988, hvyunit, 0,        hvyunit, hvyunit, 0, ROT0, "Kaneko / Taito", "Heavy Unit (World)" ,GAME_NOT_WORKING )
 GAME( 1988, hvyunitj, hvyunit, hvyunit, hvyunit, 0, ROT0, "Kaneko / Taito", "Heavy Unit (Japan, Newer)" ,GAME_NOT_WORKING )
 GAME( 1988, hvyunito, hvyunit, hvyunit, hvyunit, 0, ROT0, "Kaneko / Taito", "Heavy Unit (Japan, Older)" ,GAME_NOT_WORKING )
-
-

@@ -367,7 +367,7 @@ equal to the size of normal spriteram.
 
     Spriteram size _must_ be declared in the memory map:
 
-    { 0x120000, 0x1207ff, SMH_BANK2, &spriteram, &spriteram_size },
+    { 0x120000, 0x1207ff, SMH_BANK(2), &spriteram, &spriteram_size },
 
     Then the video driver must draw the sprites from the buffered_spriteram
 pointer.  The function buffer_spriteram_w() is used to simulate hardware
@@ -570,6 +570,21 @@ int flip_screen_y_get(running_machine *machine)
 ***************************************************************************/
 
 /*-------------------------------------------------
+    black - completely black pelette
+-------------------------------------------------*/
+
+PALETTE_INIT( all_black )
+{
+	int i;
+
+	for (i = 0; i < machine->config->total_colors; i++)
+	{
+		palette_set_color(machine,i,RGB_BLACK); /* black */
+	}
+}
+
+
+/*-------------------------------------------------
     black_and_white - basic 2-color black & white
 -------------------------------------------------*/
 
@@ -704,6 +719,20 @@ WRITE8_HANDLER( paletteram_BBGGRRII_w )
 	palette_set_color_rgb(space->machine, offset, pal4bit(((data >> 0) & 0x0c) | i),
 	                                   pal4bit(((data >> 2) & 0x0c) | i),
 	                                   pal4bit(((data >> 4) & 0x0c) | i));
+}
+
+/*-------------------------------------------------
+    II-BB-GG-RR writes
+-------------------------------------------------*/
+
+WRITE8_HANDLER( paletteram_IIBBGGRR_w )
+{
+	int i = (data >> 6) & 3;
+
+	paletteram[offset] = data;
+	palette_set_color_rgb(space->machine, offset, pal4bit(((data << 2) & 0x0c) | i),
+	                                   pal4bit(((data >> 0) & 0x0c) | i),
+	                                   pal4bit(((data >> 2) & 0x0c) | i));
 }
 
 

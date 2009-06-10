@@ -65,6 +65,59 @@ static void print_game_switches(FILE *out, const game_driver *game, const input_
 			}
 }
 
+/*-------------------------------------------------
+    print_game_configs - print the Configuration
+    settings for a game
+-------------------------------------------------*/
+
+static void print_game_configs(FILE *out, const game_driver *game, const input_port_config *portlist)
+{
+	const input_port_config *port;
+	const input_field_config *field;
+
+	/* iterate looking for configurations */
+	for (port = portlist; port != NULL; port = port->next)
+		for (field = port->fieldlist; field != NULL; field = field->next)
+			if (field->type == IPT_CONFIG)
+			{
+				const input_setting_config *setting;
+
+				/* output the configuration name information */
+				fprintf(out, "\t\t<configuration name=\"%s\">\n", xml_normalize_string(input_field_name(field)));
+
+				/* loop over settings */
+				for (setting = field->settinglist; setting != NULL; setting = setting->next)
+				{
+					fprintf(out, "\t\t\t<confsetting name=\"%s\"", xml_normalize_string(setting->name));
+					if (setting->value == field->defvalue)
+						fprintf(out, " default=\"yes\"");
+					fprintf(out, "/>\n");
+				}
+
+				/* terminate the configuration entry */
+				fprintf(out, "\t\t</configuration>\n");
+			}
+}
+
+/*-------------------------------------------------
+    print_game_adjusters - print the Analog
+    Adjusters for a game
+-------------------------------------------------*/
+
+static void print_game_adjusters(FILE *out, const game_driver *game, const input_port_config *portlist)
+{
+	const input_port_config *port;
+	const input_field_config *field;
+
+	/* iterate looking for Adjusters */
+	for (port = portlist; port != NULL; port = port->next)
+		for (field = port->fieldlist; field != NULL; field = field->next)
+			if (field->type == IPT_ADJUSTER)
+			{
+				/* output the adjuster information */
+				fprintf(out, "\t\t<adjuster name=\"%s\" default=\"%d\"/>\n", xml_normalize_string(input_field_name(field)), field->defvalue);
+			}
+}
 
 /*-------------------------------------------------
     print_game_input - print a summary of a game's
@@ -79,7 +132,7 @@ enum {cjoy, cdoublejoy, cAD_stick, cdial, ctrackball, cpaddle, clightgun, cpedal
 	int nplayer = 0;
 	int nbutton = 0;
 	int ncoin = 0;
-	int controlsyes = 0;
+	//int controlsyes = 0;
 	int analogcontrol = 0;
 	int i;
 	const char* service = 0;
@@ -135,7 +188,7 @@ enum {cjoy, cdoublejoy, cAD_stick, cdial, ctrackball, cpaddle, clightgun, cpedal
 						else
 							control[cjoy].Xway = "joy8way";
 					}
-					controlsyes = 1;
+					//controlsyes = 1;
 					break;
 
 				case IPT_JOYSTICK_UP:
@@ -154,7 +207,7 @@ enum {cjoy, cdoublejoy, cAD_stick, cdial, ctrackball, cpaddle, clightgun, cpedal
 						else
 							control[cjoy].Xway = "joy8way";
 					}
-					controlsyes = 1;
+					//controlsyes = 1;
 					break;
 
 				case IPT_JOYSTICKRIGHT_UP:
@@ -175,7 +228,7 @@ enum {cjoy, cdoublejoy, cAD_stick, cdial, ctrackball, cpaddle, clightgun, cpedal
 						else
 							control[cdoublejoy].Xway = "doublejoy8way";
 					}
-					controlsyes = 1;
+					//controlsyes = 1;
 					break;
 
 				case IPT_JOYSTICKRIGHT_LEFT:
@@ -196,7 +249,7 @@ enum {cjoy, cdoublejoy, cAD_stick, cdial, ctrackball, cpaddle, clightgun, cpedal
 						else
 							control[cdoublejoy].Xway = "doublejoy8way";
 					}
-					controlsyes = 1;
+					//controlsyes = 1;
 					break;
 
 				/* mark as an analog input, and get analog stats after switch */
@@ -265,7 +318,7 @@ enum {cjoy, cdoublejoy, cAD_stick, cdial, ctrackball, cpaddle, clightgun, cpedal
 			/* get the analog stats */
 			if (analogcontrol)
 			{
-				controlsyes = 1;
+				//controlsyes = 1;
 				control[analogcontrol].analog = 1;
 
 				if (field->min)
@@ -361,6 +414,7 @@ static void print_game_rom(FILE *out, const game_driver *game, const machine_con
 {
 	const game_driver *clone_of = driver_get_clone(game);
 	int rom_type;
+	machine_config *pconfig = (clone_of != NULL) ? machine_config_alloc(clone_of->machine_config) : NULL;
 
 	/* iterate over 3 different ROM "types": BIOS, ROMs, DISKs */
 	for (rom_type = 0; rom_type < 3; rom_type++)
@@ -395,16 +449,18 @@ static void print_game_rom(FILE *out, const game_driver *game, const machine_con
 					/* if we have a valid ROM and we are a clone, see if we can find the parent ROM */
 					if (!ROM_NOGOODDUMP(rom) && clone_of != NULL)
 					{
+						const rom_source *psource;
 						const rom_entry *pregion, *prom;
 
 						/* scan the clone_of ROM for a matching ROM entry */
-						for (pregion = rom_first_region(clone_of, NULL); pregion != NULL; pregion = rom_next_region(pregion))
-							for (prom = rom_first_file(pregion); prom != NULL; prom = rom_next_file(prom))
-								if (hash_data_is_equal(ROM_GETHASHDATA(rom), ROM_GETHASHDATA(prom), 0))
-								{
-									parent_rom = prom;
-									break;
-								}
+						for (psource = rom_first_source(clone_of, pconfig); psource != NULL; psource = rom_next_source(clone_of, pconfig, psource))
+							for (pregion = rom_first_region(clone_of, psource); pregion != NULL; pregion = rom_next_region(pregion))
+								for (prom = rom_first_file(pregion); prom != NULL; prom = rom_next_file(prom))
+									if (hash_data_is_equal(ROM_GETHASHDATA(rom), ROM_GETHASHDATA(prom), 0))
+									{
+										parent_rom = prom;
+										break;
+									}
 					}
 
 					/* scan for a BIOS name */
@@ -474,6 +530,9 @@ static void print_game_rom(FILE *out, const game_driver *game, const machine_con
 				}
 			}
 	}
+
+	if (pconfig != NULL)
+		machine_config_free(pconfig);
 }
 
 
@@ -829,6 +888,11 @@ static void print_game_info(FILE *out, const game_driver *game)
 	print_game_sound(out, game, config);
 	print_game_input(out, game, portconfig);
 	print_game_switches(out, game, portconfig);
+	print_game_configs(out, game, portconfig);
+#ifdef MESS
+	print_game_categories(out, game, portconfig);
+#endif /* MESS */
+	print_game_adjusters(out, game, portconfig);
 	print_game_driver(out, game, config);
 #ifdef MESS
 	print_game_device(out, game, config);
@@ -859,9 +923,9 @@ void print_mame_xml(FILE *out, const game_driver *const games[], const char *gam
 		"\t<!ATTLIST " XML_ROOT " build CDATA #IMPLIED>\n"
 		"\t<!ATTLIST " XML_ROOT " debug (yes|no) \"no\">\n"
 #ifdef MESS
-		"\t<!ELEMENT " XML_TOP " (description, year?, manufacturer, biosset*, rom*, disk*, sample*, chip*, display*, sound?, input?, dipswitch*, driver?, device*, ramoption*)>\n"
+		"\t<!ELEMENT " XML_TOP " (description, year?, manufacturer, biosset*, rom*, disk*, sample*, chip*, display*, sound?, input?, dipswitch*, configuration*, category*, adjuster*, driver?, device*, ramoption*)>\n"
 #else
-		"\t<!ELEMENT " XML_TOP " (description, year?, manufacturer, biosset*, rom*, disk*, sample*, chip*, display*, sound?, input?, dipswitch*, driver?)>\n"
+		"\t<!ELEMENT " XML_TOP " (description, year?, manufacturer, biosset*, rom*, disk*, sample*, chip*, display*, sound?, input?, dipswitch*, configuration*, adjuster*, driver?)>\n"
 #endif
 		"\t\t<!ATTLIST " XML_TOP " name CDATA #REQUIRED>\n"
 		"\t\t<!ATTLIST " XML_TOP " sourcefile CDATA #IMPLIED>\n"
@@ -938,6 +1002,21 @@ void print_mame_xml(FILE *out, const game_driver *const games[], const char *gam
 		"\t\t\t<!ELEMENT dipvalue EMPTY>\n"
 		"\t\t\t\t<!ATTLIST dipvalue name CDATA #REQUIRED>\n"
 		"\t\t\t\t<!ATTLIST dipvalue default (yes|no) \"no\">\n"
+		"\t\t<!ELEMENT configuration (confsetting*)>\n"
+		"\t\t\t<!ATTLIST configuration name CDATA #REQUIRED>\n"
+		"\t\t\t<!ELEMENT confsetting EMPTY>\n"
+		"\t\t\t\t<!ATTLIST confsetting name CDATA #REQUIRED>\n"
+		"\t\t\t\t<!ATTLIST confsetting default (yes|no) \"no\">\n"
+#ifdef MESS
+		"\t\t<!ELEMENT category (item*)>\n"
+		"\t\t\t<!ATTLIST category name CDATA #REQUIRED>\n"
+		"\t\t\t<!ELEMENT item EMPTY>\n"
+		"\t\t\t\t<!ATTLIST item name CDATA #REQUIRED>\n"
+		"\t\t\t\t<!ATTLIST item default (yes|no) \"no\">\n"
+#endif
+		"\t\t<!ELEMENT adjuster EMPTY>\n"
+		"\t\t\t<!ATTLIST adjuster name CDATA #REQUIRED>\n"
+		"\t\t\t<!ATTLIST adjuster default CDATA #REQUIRED>\n"
 		"\t\t<!ELEMENT driver EMPTY>\n"
 		"\t\t\t<!ATTLIST driver status (good|imperfect|preliminary) #REQUIRED>\n"
 		"\t\t\t<!ATTLIST driver emulation (good|imperfect|preliminary) #REQUIRED>\n"

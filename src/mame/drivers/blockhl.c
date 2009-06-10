@@ -62,7 +62,7 @@ static WRITE8_HANDLER( bankedram_w )
 
 static WRITE8_HANDLER( blockhl_sh_irqtrigger_w )
 {
-	cpu_set_input_line_and_vector(space->machine->cpu[1], 0, HOLD_LINE, 0xff);
+	cputag_set_input_line_and_vector(space->machine, "audiocpu", 0, HOLD_LINE, 0xff);
 }
 
 
@@ -79,7 +79,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(K052109_051960_r, K052109_051960_w)
 	AM_RANGE(0x4000, 0x57ff) AM_RAM
 	AM_RANGE(0x5800, 0x5fff) AM_READWRITE(bankedram_r, bankedram_w) AM_BASE(&ram)
-	AM_RANGE(0x6000, 0x7fff) AM_READWRITE(SMH_BANK1, SMH_ROM)
+	AM_RANGE(0x6000, 0x7fff) AM_ROMBANK(1)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -120,8 +120,8 @@ static INPUT_PORTS_START( blockhl )
 	PORT_DIPNAME( 0x60, 0x40, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("SW2:6,7")
 	PORT_DIPSETTING(    0x60, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x20, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )	PORT_DIPLOCATION("SW2:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -150,11 +150,11 @@ static MACHINE_DRIVER_START( blockhl )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", KONAMI,3000000)		/* Konami custom 052526 */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", blockhl_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3579545)
-	MDRV_CPU_PROGRAM_MAP(audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(audio_map)
 
 	MDRV_MACHINE_RESET(blockhl)
 
@@ -274,7 +274,7 @@ static MACHINE_RESET( blockhl )
 {
 	UINT8 *RAM = memory_region(machine, "maincpu");
 
-	konami_configure_set_lines(machine->cpu[0], blockhl_banking);
+	konami_configure_set_lines(cputag_get_cpu(machine, "maincpu"), blockhl_banking);
 
 	paletteram = &RAM[0x18000];
 }

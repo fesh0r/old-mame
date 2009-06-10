@@ -186,8 +186,8 @@ static INPUT_PORTS_START( gunsmoke )
 	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x30, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x10, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x10, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x40, 0x40, "Freeze" )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -286,11 +286,11 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( gunsmoke )
 	// basic machine hardware
 	MDRV_CPU_ADD("maincpu", Z80, 4000000)	// 4 MHz
-	MDRV_CPU_PROGRAM_MAP(gunsmoke_map, 0)
+	MDRV_CPU_PROGRAM_MAP(gunsmoke_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3000000)	// 3 MHz
-	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 4)
 
 	// video hardware

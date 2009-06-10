@@ -96,8 +96,8 @@ static INPUT_PORTS_START( ssrj )
 	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Difficulty ) ) /* ??? code @ $62c */
 	PORT_DIPSETTING(	0x10, DEF_STR( Easy ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( Normal ) )
-	PORT_DIPSETTING(	0x20, "Difficult" )
-	PORT_DIPSETTING(	0x30, "Very Difficult" )
+	PORT_DIPSETTING(	0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(	0x30, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Free_Play ) )
 	PORT_DIPSETTING(	0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
@@ -155,7 +155,7 @@ static MACHINE_DRIVER_START( ssrj )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,8000000/2)
-	MDRV_CPU_PROGRAM_MAP(ssrj_map,0)
+	MDRV_CPU_PROGRAM_MAP(ssrj_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */

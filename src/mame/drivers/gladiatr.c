@@ -10,7 +10,7 @@ Credits:
           Golden Castle Rom Set Support
 - Phil Stroffolino: palette, sprites, misc video driver fixes
 - Tatsuyuki Satoh: YM2203 sound improvements, NEC 8741 simulation,ADPCM with MC6809
-- Tomasz Slanina   preliminary Ping POng King driver
+- Tomasz Slanina   preliminary Ping Pong King driver
 - Nicola Salmoria  clean up
 
 special thanks to:
@@ -272,7 +272,7 @@ static MACHINE_RESET( gladiator )
 	{
 		UINT8 *rom = memory_region(machine, "audiocpu") + 0x10000;
 		memory_set_bankptr(machine, 2,rom);
-		device_reset(machine->cpu[2]);
+		device_reset(cputag_get_cpu(machine, "audiocpu"));
 	}
 }
 
@@ -287,7 +287,7 @@ static WRITE8_DEVICE_HANDLER( gladiator_int_control_w )
 static void gladiator_ym_irq(const device_config *device, int irq)
 {
 	/* NMI IRQ is not used by gladiator sound program */
-	cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "sub", INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /*Sound Functions*/
@@ -306,12 +306,12 @@ static WRITE8_DEVICE_HANDLER( glad_adpcm_w )
 static WRITE8_HANDLER( glad_cpu_sound_command_w )
 {
 	soundlatch_w(space,0,data);
-	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_NMI, ASSERT_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 static READ8_HANDLER( glad_cpu_sound_command_r )
 {
-	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_NMI, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, CLEAR_LINE);
 	return soundlatch_r(space,0);
 }
 
@@ -325,7 +325,7 @@ static WRITE8_HANDLER( gladiatr_flipscreen_w )
 /* !!!!! patch to IRQ timming for 2nd CPU !!!!! */
 static WRITE8_HANDLER( gladiatr_irq_patch_w )
 {
-	cpu_set_input_line(space->machine->cpu[1],0,HOLD_LINE);
+	cputag_set_input_line(space->machine, "sub", 0, HOLD_LINE);
 }
 #endif
 
@@ -686,17 +686,17 @@ static MACHINE_DRIVER_START( ppking )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_12MHz/2) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(ppking_cpu1_map,0)
-	MDRV_CPU_IO_MAP(ppking_cpu1_io,0)
+	MDRV_CPU_PROGRAM_MAP(ppking_cpu1_map)
+	MDRV_CPU_IO_MAP(ppking_cpu1_io)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, XTAL_12MHz/4) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(cpu2_map,0)
-	MDRV_CPU_IO_MAP(ppking_cpu2_io,0)
+	MDRV_CPU_PROGRAM_MAP(cpu2_map)
+	MDRV_CPU_IO_MAP(ppking_cpu2_io)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", M6809, XTAL_12MHz/16) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(ppking_cpu3_map,0)
+	MDRV_CPU_PROGRAM_MAP(ppking_cpu3_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 
@@ -736,16 +736,16 @@ static MACHINE_DRIVER_START( gladiatr )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_12MHz/2) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(gladiatr_cpu1_map,0)
-	MDRV_CPU_IO_MAP(gladiatr_cpu1_io,0)
+	MDRV_CPU_PROGRAM_MAP(gladiatr_cpu1_map)
+	MDRV_CPU_IO_MAP(gladiatr_cpu1_io)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, XTAL_12MHz/4) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(cpu2_map,0)
-	MDRV_CPU_IO_MAP(gladiatr_cpu2_io,0)
+	MDRV_CPU_PROGRAM_MAP(cpu2_map)
+	MDRV_CPU_IO_MAP(gladiatr_cpu2_io)
 
 	MDRV_CPU_ADD("audiocpu", M6809, XTAL_12MHz/16) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(gladiatr_cpu3_map,0)
+	MDRV_CPU_PROGRAM_MAP(gladiatr_cpu3_map)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 
@@ -1047,7 +1047,7 @@ static DRIVER_INIT(ppking)
 		}
 	}
 
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf6a3,0xf6a3,0,0, f6a3_r );
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf6a3,0xf6a3,0,0, f6a3_r );
 }
 
 

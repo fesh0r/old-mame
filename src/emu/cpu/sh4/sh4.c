@@ -2078,7 +2078,7 @@ INLINE void LDCSPC(SH4 *sh4, UINT32 m)
 	sh4->spc = sh4->r[m];
 }
 
-UINT32 sh4_getsqremap(SH4 *sh4, UINT32 address)
+static UINT32 sh4_getsqremap(SH4 *sh4, UINT32 address)
 {
 	if (!sh4->sh4_mmu_enabled)
 		return address;
@@ -3646,15 +3646,15 @@ static CPU_SET_INFO( sh4 )
 		case CPUINFO_STR_REGISTER + SH4_XF14:			sh4->xf[14] = info->i; break;
 		case CPUINFO_STR_REGISTER + SH4_XF15:			sh4->xf[15] = info->i; break;
 #endif
-
-		case CPUINFO_INT_SH4_IRLn_INPUT:				sh4_set_irln_input(device, info->i); break;
-		case CPUINFO_INT_SH4_FRT_INPUT:					sh4_set_frt_input(device, info->i); break;
-
-		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_FCT_SH4_FTCSR_READ_CALLBACK:		sh4->ftcsr_read_callback = (void (*) (UINT32 ))info->f; break;
-		case CPUINFO_PTR_SH4_EXTERNAL_DDT_DMA:			sh4_dma_ddt(sh4, (struct sh4_ddt_dma *)info->f); break;
 	}
 }
+
+void sh4_set_ftcsr_callback(const device_config *device, sh4_ftcsr_callback callback)
+{
+	SH4 *sh4 = get_safe_token(device);
+	sh4->ftcsr_read_callback = callback;
+}
+
 
 #if 0
 /*When OC index mode is off (CCR.OIX = 0)*/
@@ -3666,7 +3666,7 @@ ADDRESS_MAP_END
 #endif
 
 
-READ64_HANDLER( sh4_tlb_r )
+static READ64_HANDLER( sh4_tlb_r )
 {
 	SH4 *sh4 = get_safe_token(space->cpu);
 
@@ -3684,7 +3684,7 @@ READ64_HANDLER( sh4_tlb_r )
 	}
 }
 
-WRITE64_HANDLER( sh4_tlb_w )
+static WRITE64_HANDLER( sh4_tlb_w )
 {
 	SH4 *sh4 = get_safe_token(space->cpu);
 
@@ -3923,7 +3923,5 @@ CPU_GET_INFO( sh4 )
 		case CPUINFO_STR_REGISTER + SH4_XF14:			sprintf(info->s, "XF14 :%08X %f", FP_XS(14),(double)FP_XFS(14)); break;
 		case CPUINFO_STR_REGISTER + SH4_XF15:			sprintf(info->s, "XF15 :%08X %f", FP_XS(15),(double)FP_XFS(15)); break; //%01.2e
 #endif
-		case CPUINFO_FCT_SH4_FTCSR_READ_CALLBACK:		info->f = (genf*)sh4->ftcsr_read_callback; break;
-
 	}
 }

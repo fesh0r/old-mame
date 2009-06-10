@@ -12,7 +12,11 @@ enum {
 	JVSBD_KEYBOARD
 };
 
+/*----------- defined in machine/naomi.c -----------*/
+
 extern DRIVER_INIT( naomi );
+extern DRIVER_INIT( naomi_mp );
+
 extern DRIVER_INIT( ggxxsla );
 extern DRIVER_INIT( ggxxrl );
 extern DRIVER_INIT( ggxx );

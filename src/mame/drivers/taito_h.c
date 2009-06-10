@@ -162,7 +162,7 @@ VIDEO_UPDATE( dleague );
 /* Handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -528,11 +528,11 @@ static MACHINE_DRIVER_START( syvalion )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,24000000 / 2)		/* 12 MHz */
-	MDRV_CPU_PROGRAM_MAP(syvalion_map,0)
+	MDRV_CPU_PROGRAM_MAP(syvalion_map)
 	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,8000000 / 2)		/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	MDRV_MACHINE_START(taitoh)
 	MDRV_MACHINE_RESET(taitoh)
@@ -568,11 +568,11 @@ static MACHINE_DRIVER_START( recordbr )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,24000000 / 2)		/* 12 MHz */
-	MDRV_CPU_PROGRAM_MAP(recordbr_map,0)
+	MDRV_CPU_PROGRAM_MAP(recordbr_map)
 	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,8000000 / 2)		/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	MDRV_MACHINE_START(taitoh)
 	MDRV_MACHINE_RESET(taitoh)
@@ -608,11 +608,11 @@ static MACHINE_DRIVER_START( dleague )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,24000000 / 2)		/* 12 MHz */
-	MDRV_CPU_PROGRAM_MAP(dleague_map,0)
+	MDRV_CPU_PROGRAM_MAP(dleague_map)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,8000000 / 2)		/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	MDRV_MACHINE_START(taitoh)
 	MDRV_MACHINE_RESET(taitoh)

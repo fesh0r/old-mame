@@ -280,7 +280,7 @@ static READ8_HANDLER( qb3_frame_r )
 
 static WRITE8_HANDLER( qb3_ram_bank_w )
 {
-	memory_set_bank(space->machine, 1, cpu_get_reg(space->machine->cpu[0], CCPU_P) & 3);
+	memory_set_bank(space->machine, 1, cpu_get_reg(cputag_get_cpu(space->machine, "maincpu"), CCPU_P) & 3);
 }
 
 
@@ -981,9 +981,9 @@ static MACHINE_DRIVER_START( cinemat_nojmi_4k )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", CCPU, MASTER_CLOCK/4)
 	MDRV_CPU_CONFIG(config_nojmi)
-	MDRV_CPU_PROGRAM_MAP(program_map_4k,0)
-	MDRV_CPU_DATA_MAP(data_map,0)
-	MDRV_CPU_IO_MAP(io_map,0)
+	MDRV_CPU_PROGRAM_MAP(program_map_4k)
+	MDRV_CPU_DATA_MAP(data_map)
+	MDRV_CPU_IO_MAP(io_map)
 
 	MDRV_MACHINE_START(cinemat)
 	MDRV_MACHINE_RESET(cinemat)
@@ -1011,28 +1011,28 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( cinemat_nojmi_8k )
 	MDRV_IMPORT_FROM(cinemat_nojmi_4k)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(program_map_8k,0)
+	MDRV_CPU_PROGRAM_MAP(program_map_8k)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( cinemat_jmi_8k )
 	MDRV_IMPORT_FROM(cinemat_jmi_4k)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(program_map_8k,0)
+	MDRV_CPU_PROGRAM_MAP(program_map_8k)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( cinemat_jmi_16k )
 	MDRV_IMPORT_FROM(cinemat_jmi_4k)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(program_map_16k,0)
+	MDRV_CPU_PROGRAM_MAP(program_map_16k)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( cinemat_jmi_32k )
 	MDRV_IMPORT_FROM(cinemat_jmi_4k)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(program_map_32k,0)
+	MDRV_CPU_PROGRAM_MAP(program_map_32k)
 MACHINE_DRIVER_END
 
 
@@ -1149,7 +1149,7 @@ static MACHINE_DRIVER_START( qb3 )
 	MDRV_IMPORT_FROM(cinemat_jmi_32k)
 	MDRV_IMPORT_FROM(qb3_sound)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_DATA_MAP(data_map_qb3,0)
+	MDRV_CPU_DATA_MAP(data_map_qb3)
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 1120, 0, 780)
 	MDRV_VIDEO_START(cinemat_qb3color)
@@ -1437,34 +1437,34 @@ ROM_END
 
 static DRIVER_INIT( speedfrk )
 {
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x00, 0x03, 0, 0, speedfrk_wheel_r);
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x04, 0x06, 0, 0, speedfrk_gear_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x00, 0x03, 0, 0, speedfrk_wheel_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x04, 0x06, 0, 0, speedfrk_gear_r);
 }
 
 
 static DRIVER_INIT( sundance )
 {
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x00, 0x0f, 0, 0, sundance_inputs_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x00, 0x0f, 0, 0, sundance_inputs_r);
 }
 
 
 static DRIVER_INIT( tailg )
 {
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x07, 0x07, 0, 0, mux_select_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x07, 0x07, 0, 0, mux_select_w);
 }
 
 
 static DRIVER_INIT( boxingb )
 {
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x0c, 0x0f, 0, 0, boxingb_dial_r);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x07, 0x07, 0, 0, mux_select_w);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x0c, 0x0f, 0, 0, boxingb_dial_r);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x07, 0x07, 0, 0, mux_select_w);
 }
 
 
 static DRIVER_INIT( qb3 )
 {
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x0f, 0x0f, 0, 0, qb3_frame_r);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x00, 0x00, 0, 0, qb3_ram_bank_w);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x0f, 0x0f, 0, 0, qb3_frame_r);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x00, 0x00, 0, 0, qb3_ram_bank_w);
 
 	memory_configure_bank(machine, 1, 0, 4, rambase, 0x100*2);
 }

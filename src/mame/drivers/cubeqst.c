@@ -35,14 +35,6 @@
 #define CUBEQST_HBLANK		320
 #define CUBEQST_VCOUNT		280
 
-enum cpu_indices
-{
-	MAIN_CPU   = 0,
-	ROTATE_CPU = 1,
-	LINE_CPU   = 2,
-	SOUND_CPU  = 3,
-};
-
 
 /*************************************
  *
@@ -72,7 +64,7 @@ static const rectangle overlay_clip = { 0, 320-1, 0, 256-8 };
 static VIDEO_START( cubeqst )
 {
 	video_field = 0;
-	depth_buffer = auto_malloc(512);
+	depth_buffer = auto_alloc_array(machine, UINT8, 512);
 }
 
 /* TODO: Use resistor values */
@@ -80,7 +72,7 @@ static PALETTE_INIT( cubeqst )
 {
 	int i;
 
-	colormap = auto_malloc(65536 * sizeof(colormap[0]));
+	colormap = auto_alloc_array(machine, rgb_t, 65536);
 	for (i = 0; i < 65536; ++i)
 	{
 		UINT8 a, r, g, b, y;
@@ -118,8 +110,8 @@ static VIDEO_UPDATE( cubeqst )
 	for (y = cliprect->min_y; y <= cliprect->max_y; ++y)
 	{
 		int i;
-		int num_entries = cubeqcpu_get_ptr_ram_val(screen->machine->cpu[LINE_CPU], y);
-		UINT32 *stk_ram = cubeqcpu_get_stack_ram(screen->machine->cpu[LINE_CPU]);
+		int num_entries = cubeqcpu_get_ptr_ram_val(cputag_get_cpu(screen->machine, "line_cpu"), y);
+		UINT32 *stk_ram = cubeqcpu_get_stack_ram(cputag_get_cpu(screen->machine, "line_cpu"));
 		UINT32 *dest = BITMAP_ADDR32(bitmap, y, 0);
 		UINT32 pen;
 
@@ -248,10 +240,10 @@ static WRITE16_HANDLER( control_w )
 
 static TIMER_CALLBACK( delayed_bank_swap )
 {
-	cubeqcpu_swap_line_banks(machine->cpu[LINE_CPU]);
+	cubeqcpu_swap_line_banks(cputag_get_cpu(machine, "line_cpu"));
 
 	/* TODO: This is a little dubious */
-	cubeqcpu_clear_stack(machine->cpu[LINE_CPU]);
+	cubeqcpu_clear_stack(cputag_get_cpu(machine, "line_cpu"));
 }
 
 
@@ -383,22 +375,22 @@ INPUT_PORTS_END
 
 static READ16_HANDLER( read_rotram )
 {
-	return cubeqcpu_rotram_r(space->machine->cpu[ROTATE_CPU], offset, mem_mask);
+	return cubeqcpu_rotram_r(cputag_get_cpu(space->machine, "rotate_cpu"), offset, mem_mask);
 }
 
 static WRITE16_HANDLER( write_rotram )
 {
-	cubeqcpu_rotram_w(space->machine->cpu[ROTATE_CPU], offset, data, mem_mask);
+	cubeqcpu_rotram_w(cputag_get_cpu(space->machine, "rotate_cpu"), offset, data, mem_mask);
 }
 
 static READ16_HANDLER( read_sndram )
 {
-	return cubeqcpu_sndram_r(space->machine->cpu[SOUND_CPU], offset, mem_mask);
+	return cubeqcpu_sndram_r(cputag_get_cpu(space->machine, "sound_cpu"), offset, mem_mask);
 }
 
 static WRITE16_HANDLER( write_sndram )
 {
-	cubeqcpu_sndram_w(space->machine->cpu[SOUND_CPU], offset, data, mem_mask);
+	cubeqcpu_sndram_w(cputag_get_cpu(space->machine, "sound_cpu"), offset, data, mem_mask);
 }
 
 static ADDRESS_MAP_START( m68k_program_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -464,7 +456,7 @@ static MACHINE_RESET( cubeqst )
 /* Called by the sound CPU emulation */
 static void sound_dac_w(const device_config *device, UINT16 data)
 {
-	static const char *dacs[] =
+	static const char *const dacs[] =
 	{
 		"rdac0", "ldac0",
 		"rdac1", "ldac1",
@@ -503,19 +495,19 @@ static const cubeqst_lin_config lin_config =
 
 static MACHINE_DRIVER_START( cubeqst )
 	MDRV_CPU_ADD("main_cpu", M68000, XTAL_16MHz / 2)
-	MDRV_CPU_PROGRAM_MAP(m68k_program_map, 0)
+	MDRV_CPU_PROGRAM_MAP(m68k_program_map)
 	MDRV_CPU_VBLANK_INT("screen", vblank)
 
 	MDRV_CPU_ADD("rotate_cpu", CQUESTROT, XTAL_10MHz / 2)
-	MDRV_CPU_PROGRAM_MAP(rotate_map, 0)
+	MDRV_CPU_PROGRAM_MAP(rotate_map)
 	MDRV_CPU_CONFIG(rot_config)
 
 	MDRV_CPU_ADD("line_cpu", CQUESTLIN, XTAL_10MHz / 2)
-	MDRV_CPU_PROGRAM_MAP(line_sound_map, 0)
+	MDRV_CPU_PROGRAM_MAP(line_sound_map)
 	MDRV_CPU_CONFIG(lin_config)
 
 	MDRV_CPU_ADD("sound_cpu", CQUESTSND, XTAL_10MHz / 2)
-	MDRV_CPU_PROGRAM_MAP(line_sound_map, 0)
+	MDRV_CPU_PROGRAM_MAP(line_sound_map)
 	MDRV_CPU_CONFIG(snd_config)
 
 	MDRV_QUANTUM_TIME(HZ(48000))

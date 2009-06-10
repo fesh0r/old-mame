@@ -26,7 +26,7 @@ static void acefruit_update_irq(running_machine *machine, int vpos )
 		switch( color )
 		{
 		case 0x0c:
-			cpu_set_input_line(machine->cpu[0], 0, HOLD_LINE );
+			cputag_set_input_line(machine, "maincpu", 0, HOLD_LINE );
 			break;
 		}
 	}
@@ -548,8 +548,8 @@ static MACHINE_DRIVER_START( acefruit )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 2500000) /* 2.5MHz */
-	MDRV_CPU_PROGRAM_MAP(acefruit_map,0)
-	MDRV_CPU_IO_MAP(acefruit_io,0)
+	MDRV_CPU_PROGRAM_MAP(acefruit_map)
+	MDRV_CPU_IO_MAP(acefruit_io)
 	MDRV_GFXDECODE(acefruit)
 	MDRV_CPU_VBLANK_INT("screen", acefruit_vblank)
 

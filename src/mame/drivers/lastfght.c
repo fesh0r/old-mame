@@ -80,7 +80,7 @@ static VIDEO_START( lastfght )
 	for (i = 0; i < 2; i++)
 		lastfght_bitmap[i] = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
-	colorram = auto_malloc(256*3);
+	colorram = auto_alloc_array(machine, UINT8, 256*3);
 }
 
 
@@ -455,14 +455,14 @@ static INTERRUPT_GEN( unknown_interrupt )
 			generic_pulse_irq_line(device, 0);
 			break;
 		default:
-			cpu_set_input_line(device->machine->cpu[0], H8_METRO_TIMER_HACK, HOLD_LINE);
+			cputag_set_input_line(device->machine, "maincpu", H8_METRO_TIMER_HACK, HOLD_LINE);
 			break;
 	}
 }
 
 static MACHINE_DRIVER_START( lastfght )
 	MDRV_CPU_ADD("maincpu", H83044, 32000000/2)
-	MDRV_CPU_PROGRAM_MAP( lastfght_map, 0 )
+	MDRV_CPU_PROGRAM_MAP( lastfght_map)
 	MDRV_CPU_VBLANK_INT_HACK(unknown_interrupt,2)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)

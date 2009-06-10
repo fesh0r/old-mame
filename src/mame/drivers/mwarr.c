@@ -318,7 +318,7 @@ static VIDEO_START( mwarr )
 	mhigh_tilemap = tilemap_create(machine, get_mhigh_tile_info,tilemap_scan_cols, 16, 16,64,16);
 	tx_tilemap    = tilemap_create(machine, get_tx_tile_info,   tilemap_scan_rows,  8,  8,64,32);
 
-	sprites_buffer = auto_malloc(sizeof(UINT16) * 0x800);
+	sprites_buffer = auto_alloc_array(machine, UINT16, 0x800);
 
 	tilemap_set_transparent_pen(mlow_tilemap,0);
 	tilemap_set_transparent_pen(mhigh_tilemap,0);
@@ -455,7 +455,7 @@ static VIDEO_UPDATE( mwarr )
 
 static MACHINE_DRIVER_START( mwarr )
 	MDRV_CPU_ADD("maincpu", M68000, MASTER_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(mwarr_map,0)
+	MDRV_CPU_PROGRAM_MAP(mwarr_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_GFXDECODE(mwarr)

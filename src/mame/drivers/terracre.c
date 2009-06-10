@@ -541,12 +541,12 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( amazon )
 	MDRV_CPU_ADD("maincpu", M68000, 8000000 )
-	MDRV_CPU_PROGRAM_MAP(amazon_map,0)
+	MDRV_CPU_PROGRAM_MAP(amazon_map)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	/* 4 MHz???? */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_3526_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_3526_io_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,128)	/* ??? */
 
 	MDRV_MACHINE_START(amazon)
@@ -580,12 +580,12 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ym3526 )
 	MDRV_CPU_ADD("maincpu", M68000, 8000000 )
-	MDRV_CPU_PROGRAM_MAP(terracre_map,0)
+	MDRV_CPU_PROGRAM_MAP(terracre_map)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	/* 4 MHz???? */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_3526_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_3526_io_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,128)	/* ??? */
 
 
@@ -617,12 +617,12 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ym2203 )
 	MDRV_CPU_ADD("maincpu", M68000, 8000000) /* 8 MHz?? */
-	MDRV_CPU_PROGRAM_MAP(terracre_map,0)
+	MDRV_CPU_PROGRAM_MAP(terracre_map)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	/* 4 MHz???? */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_2203_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_2203_io_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,128)	/* ??? */
 
 
@@ -999,7 +999,7 @@ static DRIVER_INIT( amatelas )
 static DRIVER_INIT( horekid )
 {
 	mpProtData = mHoreKidProtData;
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x44004, 0x44005, 0, 0, horekid_IN2_r);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x44004, 0x44005, 0, 0, horekid_IN2_r);
 }
 
 /*    YEAR, NAME,   PARENT,     MACHINE, INPUT,    INIT,     MONITOR,  COMPANY,      FULLNAME, FLAGS */
@@ -1011,4 +1011,3 @@ GAME( 1986, amatelas, amazon,   amazon,  amazon,   amatelas, ROT270,  "Nichibuts
 GAME( 1987, horekid,  0,        amazon,  horekid,  horekid,  ROT270,  "Nichibutsu", "Kid no Hore Hore Daisakusen", GAME_SUPPORTS_SAVE )
 GAME( 1987, horekidb, horekid,  amazon,  horekid,  horekid,  ROT270,  "bootleg", "Kid no Hore Hore Daisakusen (bootleg)", GAME_SUPPORTS_SAVE )
 GAME( 1987, boobhack, horekid,  amazon,  horekid,  horekid,  ROT270,  "bootleg", "Booby Kids (Italian manufactured graphic hack / bootleg of Kid no Hore Hore Daisakusen (bootleg))", GAME_SUPPORTS_SAVE )
-

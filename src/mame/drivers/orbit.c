@@ -40,13 +40,13 @@ static TIMER_DEVICE_CALLBACK( nmi_32v )
 {
 	int scanline = param;
 	int nmistate = (scanline & 32) && (orbit_misc_flags & 4);
-	cpu_set_input_line(timer->machine->cpu[0], INPUT_LINE_NMI, nmistate ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(timer->machine, "maincpu", INPUT_LINE_NMI, nmistate ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static TIMER_CALLBACK( irq_off )
 {
-	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 0, CLEAR_LINE);
 }
 
 
@@ -291,7 +291,7 @@ static MACHINE_DRIVER_START( orbit )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6800, MASTER_CLOCK / 16)
-	MDRV_CPU_PROGRAM_MAP(orbit_map, 0)
+	MDRV_CPU_PROGRAM_MAP(orbit_map)
 	MDRV_CPU_VBLANK_INT("screen", orbit_interrupt)
 
 	MDRV_TIMER_ADD_SCANLINE("32v", nmi_32v, "screen", 0, 32)

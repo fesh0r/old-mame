@@ -90,7 +90,7 @@ static TILE_GET_INFO( get_tile_info2 )
 
 static VIDEO_START ( pipeline )
 {
-	palram=auto_malloc(0x1000);
+	palram=auto_alloc_array(machine, UINT8, 0x1000);
 	tilemap1 = tilemap_create( machine, get_tile_info,tilemap_scan_rows,8,8,64,32 );
 	tilemap2 = tilemap_create( machine, get_tile_info2,tilemap_scan_rows,8,8,64,32 );
 	tilemap_set_transparent_pen(tilemap2,0);
@@ -367,16 +367,16 @@ static MACHINE_DRIVER_START( pipeline )
 	/* basic machine hardware */
 
 	MDRV_CPU_ADD("maincpu", Z80, 7372800/2)
-	MDRV_CPU_PROGRAM_MAP(cpu0_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(cpu0_mem)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 7372800/2)
 	MDRV_CPU_CONFIG(daisy_chain_sound)
-	MDRV_CPU_PROGRAM_MAP(cpu1_mem, 0)
-	MDRV_CPU_IO_MAP(sound_port, 0)
+	MDRV_CPU_PROGRAM_MAP(cpu1_mem)
+	MDRV_CPU_IO_MAP(sound_port)
 
 	MDRV_CPU_ADD("mcu", M68705, 7372800/2)
-	MDRV_CPU_PROGRAM_MAP(mcu_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(mcu_mem)
 
 	MDRV_Z80CTC_ADD( "ctc", 7372800/2 /* same as "audiocpu" */, ctc_intf )
 

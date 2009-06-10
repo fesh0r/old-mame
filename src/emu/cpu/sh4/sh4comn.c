@@ -989,6 +989,10 @@ READ32_HANDLER( sh4_internal_r )
 		if (sh4->m[BCR2] & 1)
 			return (memory_read_dword_64le(sh4->io, SH4_IOPORT_4) & ~sh4->ioport4_direction) | (sh4->m[PDTRB] & sh4->ioport4_direction);
 		break;
+
+		// SCIF (UART with FIFO)
+	case SCFSR2:
+		return 0x60; //read-only status register
 	}
 	return sh4->m[offset];
 }
@@ -1182,15 +1186,16 @@ void sh4_common_init(const device_config *device)
 	sh4->rtc_timer = timer_alloc(device->machine, sh4_rtc_timer_callback, sh4);
 	timer_adjust_oneshot(sh4->rtc_timer, attotime_never, 0);
 
-	sh4->m = (UINT32 *)auto_malloc(16384*4);
+	sh4->m = auto_alloc_array(device->machine, UINT32, 16384);
 }
 
-void sh4_dma_ddt(SH4 *sh4, struct sh4_ddt_dma *s)
+void sh4_dma_ddt(const device_config *device, struct sh4_ddt_dma *s)
 {
-UINT32 chcr;
-UINT32 *p32bits;
-UINT64 *p32bytes;
-UINT32 pos,len,siz;
+	SH4 *sh4 = get_safe_token(device);
+	UINT32 chcr;
+	UINT32 *p32bits;
+	UINT64 *p32bytes;
+	UINT32 pos,len,siz;
 
 	if (sh4->dma_timer_active[s->channel])
 		return;

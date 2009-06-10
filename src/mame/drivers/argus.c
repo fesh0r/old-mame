@@ -110,7 +110,7 @@ static INTERRUPT_GEN( argus_interrupt )
 /* Handler called by the YM2203 emulator when the internal timers cause an IRQ */
 static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1], 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =
@@ -511,15 +511,15 @@ static MACHINE_DRIVER_START( argus )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 5000000)			/* 4 MHz */
-	MDRV_CPU_PROGRAM_MAP(argus_map,0)
+	MDRV_CPU_PROGRAM_MAP(argus_map)
 	MDRV_CPU_VBLANK_INT_HACK(argus_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 5000000)
-	MDRV_CPU_PROGRAM_MAP(sound_map_a,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map_a)
 #if 0
-	MDRV_CPU_IO_MAP(sound_portmap_1,0)
+	MDRV_CPU_IO_MAP(sound_portmap_1)
 #else
-	MDRV_CPU_IO_MAP(sound_portmap_2,0)
+	MDRV_CPU_IO_MAP(sound_portmap_2)
 #endif
 
 	MDRV_QUANTUM_TIME(HZ(600))
@@ -569,12 +569,12 @@ static MACHINE_DRIVER_START( valtric )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 5000000)			/* 5 MHz */
-	MDRV_CPU_PROGRAM_MAP(valtric_map,0)
+	MDRV_CPU_PROGRAM_MAP(valtric_map)
 	MDRV_CPU_VBLANK_INT_HACK(argus_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 5000000)
-	MDRV_CPU_PROGRAM_MAP(sound_map_a,0)
-	MDRV_CPU_IO_MAP(sound_portmap_2,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map_a)
+	MDRV_CPU_IO_MAP(sound_portmap_2)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 
@@ -614,12 +614,12 @@ static MACHINE_DRIVER_START( butasan )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 5000000)			/* 5 MHz */
-	MDRV_CPU_PROGRAM_MAP(butasan_map,0)
+	MDRV_CPU_PROGRAM_MAP(butasan_map)
 	MDRV_CPU_VBLANK_INT_HACK(argus_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 5000000)
-	MDRV_CPU_PROGRAM_MAP(sound_map_b,0)
-	MDRV_CPU_IO_MAP(sound_portmap_2,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map_b)
+	MDRV_CPU_IO_MAP(sound_portmap_2)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 

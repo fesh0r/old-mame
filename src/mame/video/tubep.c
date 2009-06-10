@@ -183,7 +183,7 @@ PALETTE_INIT( tubep )
 	double weights_g[3*6];
 	double weights_b[2*6];
 
-	double output_scaler;
+	//double output_scaler;
 
 	/* text palette variables */
 
@@ -251,10 +251,12 @@ PALETTE_INIT( tubep )
 	for (i=0; i<6; i++) active_resistors_b[ 6+i] = resistors_2[i];
 
 	/* calculate and store the scaler */
-	output_scaler = compute_resistor_weights(0,	255,	-1.0,
-				3*6,	active_resistors_r,	weights_r,	470,	0,
-				3*6,	active_resistors_g,	weights_g,	470,	0,
-				2*6,	active_resistors_b,	weights_b,	470,	0);
+/*
+    output_scaler = compute_resistor_weights(0, 255,    -1.0,
+                3*6,    active_resistors_r, weights_r,  470,    0,
+                3*6,    active_resistors_g, weights_g,  470,    0,
+                2*6,    active_resistors_b, weights_b,  470,    0);
+*/
 
 /*  compute_resistor_weights(0, 255,    output_scaler,
                 3*6,    active_resistors_r, weights_r,  470,    0,
@@ -278,9 +280,9 @@ PALETTE_INIT( tubep )
 			double out;
 			int c;
 
-			int active_r = 3*6;
-			int active_g = 3*6;
-			int active_b = 2*6;
+			//int active_r = 3*6;
+			//int active_g = 3*6;
+			//int active_b = 2*6;
 
 			for (c=0; c<6; c++)
 			{
@@ -302,46 +304,46 @@ PALETTE_INIT( tubep )
 			if ((j >> 0) & 0x01)	/* if LS368 @E9  is disabled */
 			{
 				for (c=0; c<6; c++) bits_r[0 +c] = 0;
-				active_r-=6;
+				//active_r-=6;
 			}
 			if ((j >> 1) & 0x01)	/* if LS368 @E10 is disabled */
 			{
 				for (c=0; c<6; c++) bits_r[6 +c] = 0;
-				active_r-=6;
+				//active_r-=6;
 			}
 			if ((j >> 2) & 0x01)	/* if LS368 @E11 is disabled */
 			{
 				for (c=0; c<6; c++) bits_r[12 +c] = 0;
-				active_r-=6;
+				//active_r-=6;
 			}
 
 			/* green component */
 			if ((j >> 3) & 0x01)	/* if LS368 @E12 is disabled */
 			{
 				for (c=0; c<6; c++) bits_g[0 +c] = 0;
-				active_g-=6;
+				//active_g-=6;
 			}
 			if ((j >> 4) & 0x01)	/* if LS368 @E13 is disabled */
 			{
 				for (c=0; c<6; c++) bits_g[6 +c] = 0;
-				active_g-=6;
+				//active_g-=6;
 			}
 			if ((j >> 5) & 0x01)	/* if LS368 @E14 is disabled */
 			{
 				for (c=0; c<6; c++) bits_g[12+c] = 0;
-				active_g-=6;
+				//active_g-=6;
 			}
 
 			/* blue component */
 			if ((j >> 6) & 0x01)	/* if LS368 @E15 is disabled */
 			{
 				for (c=0; c<6; c++) bits_b[0 +c] = 0;
-				active_b-=6;
+				//active_b-=6;
 			}
 			if ((j >> 7) & 0x01)	/* if LS368 @E16 is disabled */
 			{
 				for (c=0; c<6; c++) bits_b[6 +c] = 0;
-				active_b-=6;
+				//active_b-=6;
 			}
 
 			out = 0.0;
@@ -367,7 +369,7 @@ PALETTE_INIT( tubep )
 
 VIDEO_START( tubep )
 {
-	spritemap = auto_malloc(256*256*2);
+	spritemap = auto_alloc_array(machine, UINT8, 256*256*2);
 
 	/* Set up save state */
 	state_save_register_global(machine, romD_addr);
@@ -442,19 +444,19 @@ WRITE8_HANDLER( tubep_colorproms_A4_line_w )
 
 WRITE8_HANDLER( tubep_background_a000_w )
 {
-	ls175_b7 = ((data&0x0f)^0x0f) | 0xf0;
+	ls175_b7 = ((data & 0x0f) ^ 0x0f) | 0xf0;
 }
 
 
 WRITE8_HANDLER( tubep_background_c000_w )
 {
-	ls175_e8 = ((data&0x0f)^0x0f);
+	ls175_e8 = ((data & 0x0f) ^ 0x0f);
 }
 
 
 static TIMER_CALLBACK( sprite_timer_callback )
 {
-	cpu_set_input_line(machine->cpu[3],0,ASSERT_LINE);
+	cputag_set_input_line(machine, "mcu", 0, ASSERT_LINE);
 }
 
 
@@ -583,7 +585,7 @@ WRITE8_HANDLER( tubep_sprite_control_w )
             /SINT line will be reasserted in XSize * YSize cycles (RH0 signal cycles)
             */
 			/* 1.clear the /SINT interrupt line */
-			cpu_set_input_line(space->machine->cpu[3],0,CLEAR_LINE);
+			cputag_set_input_line(space->machine, "mcu", 0, CLEAR_LINE);
 
 			/* 2.assert /SINT again after this time */
 			timer_set( space->machine, attotime_mul(ATTOTIME_IN_HZ(19968000/8), (XSize+1)*(YSize+1)), NULL, 0, sprite_timer_callback);
@@ -875,4 +877,3 @@ VIDEO_UPDATE( rjammer )
 
 	return 0;
 }
-

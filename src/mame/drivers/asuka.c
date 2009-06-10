@@ -243,7 +243,7 @@ static int adpcm_data;
 
 static TIMER_CALLBACK( cadash_interrupt5 )
 {
-	cpu_set_input_line(machine->cpu[0], 5, HOLD_LINE);
+	cputag_set_input_line(machine, "maincpu", 5, HOLD_LINE);
 }
 
 static INTERRUPT_GEN( cadash_interrupt )
@@ -408,7 +408,7 @@ static ADDRESS_MAP_START( z80_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK(1)
 	AM_RANGE(0x8000, 0x8fff) AM_RAM
 	AM_RANGE(0x9000, 0x9001) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
-//  AM_RANGE(0x9002, 0x9100) AM_READ(SMH_RAM)
+//  AM_RANGE(0x9002, 0x9100) AM_READNOP
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(taitosound_slave_port_w)
 	AM_RANGE(0xa001, 0xa001) AM_READWRITE(taitosound_slave_comm_r, taitosound_slave_comm_w)
 	AM_RANGE(0xb000, 0xb000) AM_WRITE(asuka_msm5205_address_w)
@@ -755,7 +755,7 @@ GFXDECODE_END
 
 static void irq_handler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -791,11 +791,11 @@ static MACHINE_DRIVER_START( bonzeadv )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 8000000)    /* checked on PCB */
-	MDRV_CPU_PROGRAM_MAP(bonzeadv_map,0)
+	MDRV_CPU_PROGRAM_MAP(bonzeadv_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,4000000)    /* sound CPU, also required for test mode */
-	MDRV_CPU_PROGRAM_MAP(bonzeadv_z80_map,0)
+	MDRV_CPU_PROGRAM_MAP(bonzeadv_z80_map)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 
@@ -830,11 +830,11 @@ static MACHINE_DRIVER_START( asuka )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_16MHz/2)	/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(asuka_map,0)
+	MDRV_CPU_PROGRAM_MAP(asuka_map)
 	MDRV_CPU_VBLANK_INT("screen", irq5_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_16MHz/4)	/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(z80_map,0)
+	MDRV_CPU_PROGRAM_MAP(z80_map)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 
@@ -872,11 +872,11 @@ static MACHINE_DRIVER_START( cadash )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_32MHz/2)	/* 68000p12 running at 16Mhz, verified on pcb  */
-	MDRV_CPU_PROGRAM_MAP(cadash_map,0)
+	MDRV_CPU_PROGRAM_MAP(cadash_map)
 	MDRV_CPU_VBLANK_INT("screen", cadash_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_8MHz/2)	/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(cadash_z80_map,0)
+	MDRV_CPU_PROGRAM_MAP(cadash_z80_map)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 
@@ -910,11 +910,11 @@ static MACHINE_DRIVER_START( mofflott )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 8000000)	/* 8 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(asuka_map,0)
+	MDRV_CPU_PROGRAM_MAP(asuka_map)
 	MDRV_CPU_VBLANK_INT("screen", irq5_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(z80_map,0)
+	MDRV_CPU_PROGRAM_MAP(z80_map)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 
@@ -952,11 +952,11 @@ static MACHINE_DRIVER_START( galmedes )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 8000000)	/* 8 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(asuka_map,0)
+	MDRV_CPU_PROGRAM_MAP(asuka_map)
 	MDRV_CPU_VBLANK_INT("screen", irq5_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(cadash_z80_map,0)
+	MDRV_CPU_PROGRAM_MAP(cadash_z80_map)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 
@@ -990,11 +990,11 @@ static MACHINE_DRIVER_START( eto )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 8000000)	/* 8 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(eto_map,0)
+	MDRV_CPU_PROGRAM_MAP(eto_map)
 	MDRV_CPU_VBLANK_INT("screen", irq5_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(cadash_z80_map,0)
+	MDRV_CPU_PROGRAM_MAP(cadash_z80_map)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 

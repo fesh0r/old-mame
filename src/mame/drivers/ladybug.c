@@ -150,14 +150,14 @@ ADDRESS_MAP_END
 static INPUT_CHANGED( coin1_inserted )
 {
 	/* left coin insertion causes an NMI */
-	cpu_set_input_line(field->port->machine->cpu[0], INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(field->port->machine, "maincpu", INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static INPUT_CHANGED( coin2_inserted )
 {
 	/* right coin insertion causes an IRQ */
 	if (newval)
-		cpu_set_input_line(field->port->machine->cpu[0], 0, HOLD_LINE);
+		cputag_set_input_line(field->port->machine, "maincpu", 0, HOLD_LINE);
 }
 
 
@@ -682,7 +682,7 @@ static MACHINE_DRIVER_START( ladybug )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 4000000)	/* 4 MHz */
-	MDRV_CPU_PROGRAM_MAP(ladybug_map,0)
+	MDRV_CPU_PROGRAM_MAP(ladybug_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -714,12 +714,12 @@ static MACHINE_DRIVER_START( sraider )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 4000000)	/* 4 MHz */
-	MDRV_CPU_PROGRAM_MAP(sraider_cpu1_map,0)
+	MDRV_CPU_PROGRAM_MAP(sraider_cpu1_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, 4000000)	/* 4 MHz */
-	MDRV_CPU_PROGRAM_MAP(sraider_cpu2_map,0)
-	MDRV_CPU_IO_MAP(sraider_cpu2_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(sraider_cpu2_map)
+	MDRV_CPU_IO_MAP(sraider_cpu2_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
@@ -963,7 +963,7 @@ static DRIVER_INIT( dorodon )
 
 	offs_t i;
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	UINT8 *decrypted = auto_malloc(0x6000);
+	UINT8 *decrypted = auto_alloc_array(machine, UINT8, 0x6000);
 	UINT8 *rom = memory_region(machine, "maincpu");
 	UINT8 *table = memory_region(machine, "user1");
 

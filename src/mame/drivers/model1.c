@@ -690,7 +690,7 @@ static void irq_raise(running_machine *machine, int level)
 	//  logerror("irq: raising %d\n", level);
 	//  irq_status |= (1 << level);
 	last_irq = level;
-	cpu_set_input_line(machine->cpu[0], 0, HOLD_LINE);
+	cputag_set_input_line(machine, "maincpu", 0, HOLD_LINE);
 }
 
 static IRQ_CALLBACK(irq_callback)
@@ -713,8 +713,8 @@ static IRQ_CALLBACK(irq_callback)
 
 static void irq_init(running_machine *machine)
 {
-	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
-	cpu_set_irq_callback(machine->cpu[0], irq_callback);
+	cputag_set_input_line(machine, "maincpu", 0, CLEAR_LINE);
+	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), irq_callback);
 }
 
 static INTERRUPT_GEN(model1_interrupt)
@@ -730,7 +730,7 @@ static INTERRUPT_GEN(model1_interrupt)
 		// if the FIFO has something in it, signal the 68k too
 		if (fifo_rptr != fifo_wptr)
 		{
-			cpu_set_input_line(device->machine->cpu[1], 2, HOLD_LINE);
+			cputag_set_input_line(device->machine, "audiocpu", 2, HOLD_LINE);
 		}
 	}
 }
@@ -758,7 +758,7 @@ static MACHINE_RESET(model1_vr)
 {
 	memory_set_bankptr(machine, 1, memory_region(machine, "maincpu") + 0x1000000);
 	irq_init(machine);
-	model1_vr_tgp_reset();
+	model1_vr_tgp_reset(machine);
 	model1_sound_irq = 3;
 
 	// init the sound FIFO
@@ -839,7 +839,7 @@ static WRITE16_HANDLER(mr2_w)
 
 static READ16_HANDLER( snd_68k_ready_r )
 {
-	int sr = cpu_get_reg(space->machine->cpu[1], M68K_SR);
+	int sr = cpu_get_reg(cputag_get_cpu(space->machine, "audiocpu"), M68K_SR);
 
 	if ((sr & 0x0700) > 0x0100)
 	{
@@ -857,7 +857,7 @@ static WRITE16_HANDLER( snd_latch_to_68k_w )
 	if (fifo_wptr >= FIFO_SIZE) fifo_wptr = 0;
 
 	// signal the 68000 that there's data waiting
-	cpu_set_input_line(space->machine->cpu[1], 2, HOLD_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", 2, HOLD_LINE);
 	// give the 68k time to reply
 	cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(40));
 }
@@ -1450,12 +1450,12 @@ ROM_END
 
 static MACHINE_DRIVER_START( model1 )
 	MDRV_CPU_ADD("maincpu", V60, 16000000)
-	MDRV_CPU_PROGRAM_MAP(model1_mem, 0)
-	MDRV_CPU_IO_MAP(model1_io, 0)
+	MDRV_CPU_PROGRAM_MAP(model1_mem)
+	MDRV_CPU_IO_MAP(model1_io)
 	MDRV_CPU_VBLANK_INT_HACK(model1_interrupt, 2)
 
 	MDRV_CPU_ADD("audiocpu", M68000, 10000000)	// verified on real h/w
-	MDRV_CPU_PROGRAM_MAP(model1_snd, 0)
+	MDRV_CPU_PROGRAM_MAP(model1_snd)
 
 	MDRV_MACHINE_RESET(model1)
 	MDRV_NVRAM_HANDLER(generic_0fill)
@@ -1489,16 +1489,16 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( model1_vr )
 	MDRV_CPU_ADD("maincpu", V60, 16000000)
-	MDRV_CPU_PROGRAM_MAP(model1_vr_mem, 0)
-	MDRV_CPU_IO_MAP(model1_vr_io, 0)
+	MDRV_CPU_PROGRAM_MAP(model1_vr_mem)
+	MDRV_CPU_IO_MAP(model1_vr_io)
 	MDRV_CPU_VBLANK_INT_HACK(model1_interrupt, 2)
 
 	MDRV_CPU_ADD("audiocpu", M68000, 10000000)	// verified on real h/w
-	MDRV_CPU_PROGRAM_MAP(model1_snd, 0)
+	MDRV_CPU_PROGRAM_MAP(model1_snd)
 
 	MDRV_CPU_ADD("tgp", MB86233, 16000000)
 	MDRV_CPU_CONFIG(model1_vr_tgp_config)
-	MDRV_CPU_PROGRAM_MAP(model1_vr_tgp_map, 0)
+	MDRV_CPU_PROGRAM_MAP(model1_vr_tgp_map)
 
 	MDRV_MACHINE_RESET(model1_vr)
 	MDRV_NVRAM_HANDLER(generic_0fill)

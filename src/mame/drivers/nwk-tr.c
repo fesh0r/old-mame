@@ -417,11 +417,11 @@ int K001604_vh_start(running_machine *machine, int chip)
 		return 1;
 	}
 
-	K001604_char_ram[chip] = auto_malloc(0x200000);
+	K001604_char_ram[chip] = auto_alloc_array(machine, UINT32, 0x200000/4);
 
-	K001604_tile_ram[chip] = auto_malloc(0x20000);
+	K001604_tile_ram[chip] = auto_alloc_array(machine, UINT32, 0x20000/4);
 
-	K001604_reg[chip] = auto_malloc(0x400);
+	K001604_reg[chip] = auto_alloc_array(machine, UINT32, 0x400/4);
 
 	if (chip == 0)
 	{
@@ -649,7 +649,7 @@ READ32_HANDLER(K001604_reg_r)
 
 static void voodoo_vblank_0(const device_config *device, int param)
 {
-	cpu_set_input_line(device->machine->cpu[0], INPUT_LINE_IRQ0, ASSERT_LINE);
+	cputag_set_input_line(device->machine, "maincpu", INPUT_LINE_IRQ0, ASSERT_LINE);
 }
 
 static VIDEO_START( nwktr )
@@ -675,23 +675,9 @@ static VIDEO_UPDATE( nwktr )
 
 /*****************************************************************************/
 
-static double adc12138_input_callback(running_machine *machine, int input)
-{
-	int value = 0;
-	switch (input)
-	{
-		case 0:		value = input_port_read(machine, "ANALOG1") - 0x800; break;
-		case 1:		value = input_port_read(machine, "ANALOG2"); break;
-		case 2:		value = input_port_read(machine, "ANALOG3"); break;
-		case 3:		value = input_port_read(machine, "ANALOG4"); break;
-		case 4:		value = input_port_read(machine, "ANALOG5"); break;
-	}
-
-	return (double)(value) / 2047.0;
-}
-
 static READ32_HANDLER( sysreg_r )
 {
+	const device_config *adc12138 = devtag_get_device(space->machine, "adc12138");
 	UINT32 r = 0;
 	if (offset == 0)
 	{
@@ -709,7 +695,7 @@ static READ32_HANDLER( sysreg_r )
 		}
 		if (ACCESSING_BITS_0_7)
 		{
-			r |= (adc1213x_do_r(0)) | (adc1213x_eoc_r(0) << 2);
+			r |= adc1213x_do_r(adc12138, 0) | (adc1213x_eoc_r(adc12138, 0) << 2);
 		}
 	}
 	else if (offset == 1)
@@ -724,6 +710,7 @@ static READ32_HANDLER( sysreg_r )
 
 static WRITE32_HANDLER( sysreg_w )
 {
+	const device_config *adc12138 = devtag_get_device(space->machine, "adc12138");
 	if( offset == 0 )
 	{
 		if (ACCESSING_BITS_24_31)
@@ -745,20 +732,20 @@ static WRITE32_HANDLER( sysreg_w )
 			int di = (data >> 25) & 0x1;
 			int sclk = (data >> 24) & 0x1;
 
-			adc1213x_cs_w(space->machine, 0, cs);
-			adc1213x_conv_w(0, conv);
-			adc1213x_di_w(0, di);
-			adc1213x_sclk_w(0, sclk);
+			adc1213x_cs_w(adc12138, 0, cs);
+			adc1213x_conv_w(adc12138, 0, conv);
+			adc1213x_di_w(adc12138, 0, di);
+			adc1213x_sclk_w(adc12138, 0, sclk);
 		}
 		if (ACCESSING_BITS_0_7)
 		{
 			if (data & 0x80)	// CG Board 1 IRQ Ack
 			{
-				//cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ1, CLEAR_LINE);
+				//cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_IRQ1, CLEAR_LINE);
 			}
 			if (data & 0x40)	// CG Board 0 IRQ Ack
 			{
-				//cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ0, CLEAR_LINE);
+				//cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_IRQ0, CLEAR_LINE);
 			}
 		}
 		return;
@@ -770,12 +757,12 @@ static int lanc2_ram_r = 0;
 static int lanc2_ram_w = 0;
 static UINT8 *lanc2_ram;
 
-static void lanc2_init(void)
+static void lanc2_init(running_machine *machine)
 {
 	fpga_uploaded = 0;
 	lanc2_ram_r = 0;
 	lanc2_ram_w = 0;
-	lanc2_ram = auto_malloc(0x8000);
+	lanc2_ram = auto_alloc_array(machine, UINT8, 0x8000);
 }
 
 static READ32_HANDLER( lanc1_r )
@@ -890,10 +877,10 @@ static WRITE32_HANDLER( lanc2_w )
 static MACHINE_START( nwktr )
 {
 	/* set conservative DRC options */
-	ppcdrc_set_options(machine->cpu[0], PPCDRC_COMPATIBLE_OPTIONS);
+	ppcdrc_set_options(cputag_get_cpu(machine, "maincpu"), PPCDRC_COMPATIBLE_OPTIONS);
 
 	/* configure fast RAM regions for DRC */
-	ppcdrc_add_fastram(machine->cpu[0], 0x00000000, 0x003fffff, FALSE, work_ram);
+	ppcdrc_add_fastram(cputag_get_cpu(machine, "maincpu"), 0x00000000, 0x003fffff, FALSE, work_ram);
 }
 
 static ADDRESS_MAP_START( nwktr_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -1022,23 +1009,44 @@ static const sharc_config sharc_cfg =
 	BOOT_MODE_EPROM
 };
 
+
+static double adc12138_input_callback( const device_config *device, UINT8 input )
+{
+	int value = 0;
+	switch (input)
+	{
+		case 0:		value = input_port_read(device->machine, "ANALOG1") - 0x800; break;
+		case 1:		value = input_port_read(device->machine, "ANALOG2"); break;
+		case 2:		value = input_port_read(device->machine, "ANALOG3"); break;
+		case 3:		value = input_port_read(device->machine, "ANALOG4"); break;
+		case 4:		value = input_port_read(device->machine, "ANALOG5"); break;
+	}
+
+	return (double)(value) / 2047.0;
+}
+
+static const adc12138_interface nwktr_adc_interface = {
+	adc12138_input_callback
+};
+
+
 static MACHINE_RESET( nwktr )
 {
-	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, ASSERT_LINE);
+	cputag_set_input_line(machine, "dsp", INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static MACHINE_DRIVER_START( nwktr )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
-	MDRV_CPU_PROGRAM_MAP(nwktr_map, 0)
+	MDRV_CPU_PROGRAM_MAP(nwktr_map)
 
 	MDRV_CPU_ADD("audiocpu", M68000, 64000000/4)	/* 16MHz */
-	MDRV_CPU_PROGRAM_MAP(sound_memmap, 0)
+	MDRV_CPU_PROGRAM_MAP(sound_memmap)
 
 	MDRV_CPU_ADD("dsp", ADSP21062, 36000000)
 	MDRV_CPU_CONFIG(sharc_cfg)
-	MDRV_CPU_DATA_MAP(sharc_map, 0)
+	MDRV_CPU_DATA_MAP(sharc_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 
@@ -1070,6 +1078,8 @@ static MACHINE_DRIVER_START( nwktr )
 	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	MDRV_M48T58_ADD( "m48t58" )
+
+	MDRV_ADC12138_ADD( "adc12138", nwktr_adc_interface )
 MACHINE_DRIVER_END
 
 /*****************************************************************************/
@@ -1077,9 +1087,9 @@ MACHINE_DRIVER_END
 static void sound_irq_callback(running_machine *machine, int irq)
 {
 	if (irq == 0)
-		generic_pulse_irq_line(machine->cpu[1], INPUT_LINE_IRQ1);
+		generic_pulse_irq_line(cputag_get_cpu(machine, "audiocpu"), INPUT_LINE_IRQ1);
 	else
-		generic_pulse_irq_line(machine->cpu[1], INPUT_LINE_IRQ2);
+		generic_pulse_irq_line(cputag_get_cpu(machine, "audiocpu"), INPUT_LINE_IRQ2);
 }
 
 static DRIVER_INIT(nwktr)
@@ -1087,17 +1097,13 @@ static DRIVER_INIT(nwktr)
 	init_konami_cgboard(machine, 1, CGBOARD_TYPE_NWKTR);
 	set_cgboard_texture_bank(machine, 0, 5, memory_region(machine, "user5"));
 
-	sharc_dataram = auto_malloc(0x100000);
+	sharc_dataram = auto_alloc_array(machine, UINT32, 0x100000/4);
 	led_reg0 = led_reg1 = 0x7f;
 
 	K056800_init(machine, sound_irq_callback);
 	K033906_init(machine);
 
-//  device_set_info_fct(machine->cpu[0], CPUINFO_FCT_SPU_TX_HANDLER, (genf *)jamma_jvs_w);
-//  device_set_info_fct(machine->cpu[0], CPUINFO_FCT_SPU_RX_HANDLER, (genf *)jamma_jvs_r);
-
-	adc1213x_init(0, adc12138_input_callback);
-	lanc2_init();
+	lanc2_init(machine);
 }
 
 

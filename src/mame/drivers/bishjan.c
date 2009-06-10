@@ -213,21 +213,21 @@ static VIDEO_START(bishjan)
 	tilemap_set_scrolldy( tmap_1, -1, +1 );
 	tilemap_set_scrolldy( tmap_2, -1, +1 );
 
-	bishjan_videoram_1_lo = auto_malloc(0x80 * 0x40);
-	bishjan_videoram_1_hi = auto_malloc(0x80 * 0x40);
+	bishjan_videoram_1_lo = auto_alloc_array(machine, UINT8, 0x80 * 0x40);
+	bishjan_videoram_1_hi = auto_alloc_array(machine, UINT8, 0x80 * 0x40);
 
-	bishjan_videoram_2_lo = auto_malloc(0x80 * 0x40);
-	bishjan_videoram_2_hi = auto_malloc(0x80 * 0x40);
+	bishjan_videoram_2_lo = auto_alloc_array(machine, UINT8, 0x80 * 0x40);
+	bishjan_videoram_2_hi = auto_alloc_array(machine, UINT8, 0x80 * 0x40);
 
-	bishjan_scrollram_1_lo = auto_malloc(0x200);
-	bishjan_scrollram_1_hi = auto_malloc(0x200);
+	bishjan_scrollram_1_lo = auto_alloc_array(machine, UINT8, 0x200);
+	bishjan_scrollram_1_hi = auto_alloc_array(machine, UINT8, 0x200);
 
-	bishjan_scrollram_2_lo = auto_malloc(0x200);
-	bishjan_scrollram_2_hi = auto_malloc(0x200);
+	bishjan_scrollram_2_lo = auto_alloc_array(machine, UINT8, 0x200);
+	bishjan_scrollram_2_hi = auto_alloc_array(machine, UINT8, 0x200);
 
-	bishjan_videoram_2_hi = auto_malloc(0x80 * 0x40);
+	bishjan_videoram_2_hi = auto_alloc_array(machine, UINT8, 0x80 * 0x40);
 
-	colorram = auto_malloc(256*3);
+	colorram = auto_alloc_array(machine, UINT8, 256*3);
 }
 
 static VIDEO_UPDATE( bishjan )
@@ -394,7 +394,7 @@ static ADDRESS_MAP_START( bishjan_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE( 0x437000, 0x4371ff ) AM_WRITE( bishjan_scrollram_1_hi_lo_word_w )
 
 
-	AM_RANGE( 0x600000, 0x600001 ) AM_READWRITE( SMH_NOP, bishjan_sel_w )
+	AM_RANGE( 0x600000, 0x600001 ) AM_READNOP AM_WRITE( bishjan_sel_w )
 	AM_RANGE( 0x600060, 0x600063 ) AM_WRITE( colordac_word_w )
 	AM_RANGE( 0x6000a0, 0x6000a1 ) AM_WRITE( bishjan_byte_lo_msb_w )
 
@@ -818,14 +818,14 @@ static INTERRUPT_GEN( bishjan_interrupt )
 			generic_pulse_irq_line(device, 0);
 			break;
 		default:
-			cpu_set_input_line(device->machine->cpu[0], H8_METRO_TIMER_HACK, HOLD_LINE);
+			cputag_set_input_line(device->machine, "maincpu", H8_METRO_TIMER_HACK, HOLD_LINE);
 			break;
 	}
 }
 
 static MACHINE_DRIVER_START( bishjan )
 	MDRV_CPU_ADD("maincpu", H83044, XTAL_44_1MHz / 3)
-	MDRV_CPU_PROGRAM_MAP( bishjan_map, 0 )
+	MDRV_CPU_PROGRAM_MAP( bishjan_map)
 	MDRV_CPU_VBLANK_INT_HACK(bishjan_interrupt,2)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
@@ -856,8 +856,8 @@ static INTERRUPT_GEN( saklove_interrupt )
 
 static MACHINE_DRIVER_START( saklove )
 	MDRV_CPU_ADD("maincpu", I80188, XTAL_20MHz )	// !! AMD AM188-EM !!
-	MDRV_CPU_PROGRAM_MAP( saklove_map, 0 )
-	MDRV_CPU_IO_MAP( saklove_io, 0 )
+	MDRV_CPU_PROGRAM_MAP( saklove_map)
+	MDRV_CPU_IO_MAP( saklove_io)
 	MDRV_CPU_VBLANK_INT( "screen", saklove_interrupt )
 
 	MDRV_MACHINE_RESET(saklove)

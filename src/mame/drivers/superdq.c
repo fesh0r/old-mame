@@ -133,7 +133,7 @@ static WRITE8_HANDLER( superdq_io_w )
 	static const UINT8 black_color_entries[] = {7,15,16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
 
 	if ( data & 0x40 ) /* bit 6 = irqack */
-		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 
 	coin_counter_w( 0, data & 0x08 );
 	coin_counter_w( 1, data & 0x04 );
@@ -300,8 +300,8 @@ static MACHINE_DRIVER_START( superdq )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK/8)
-	MDRV_CPU_PROGRAM_MAP(superdq_map,0)
-	MDRV_CPU_IO_MAP(superdq_io,0)
+	MDRV_CPU_PROGRAM_MAP(superdq_map)
+	MDRV_CPU_IO_MAP(superdq_io)
 	MDRV_CPU_VBLANK_INT("screen", superdq_vblank)
 
 	MDRV_MACHINE_START(superdq)

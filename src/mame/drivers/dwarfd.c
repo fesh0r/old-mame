@@ -698,8 +698,8 @@ static MACHINE_DRIVER_START( dwarfd )
 	/* FIXME: The 8085A had a max clock of 6MHz, internally divided by 2! */
 	MDRV_CPU_ADD("maincpu", 8085A, 10595000/3*2)        /* ? MHz */
 	MDRV_CPU_CONFIG(dwarfd_i8085_config)
-	MDRV_CPU_PROGRAM_MAP(mem_map, 0)
-	MDRV_CPU_IO_MAP(io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(mem_map)
+	MDRV_CPU_IO_MAP(io_map)
 
 	MDRV_CPU_VBLANK_INT_HACK(dwarfd_interrupt,NUM_LINES+4) //16 +vblank + 1 unused
 
@@ -784,8 +784,8 @@ static DRIVER_INIT(dwarfd)
 	//      src[i] = src[i]&0xe0;
 	}
 
-	videobuf=auto_malloc(0x8000);
-	dwarfd_ram=auto_malloc(0x1000);
+	videobuf=auto_alloc_array(machine, UINT8, 0x8000);
+	dwarfd_ram=auto_alloc_array(machine, UINT8, 0x1000);
 	memset(videobuf,0,0x8000);
 	memset(dwarfd_ram,0,0x1000);
 

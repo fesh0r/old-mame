@@ -8,6 +8,47 @@ TODO:
 - main->sound cpu communication is completely wrong, commands don't play the
   intended sound.
 
+============================================================================
+PSG table:
+data0 |data1   |sample            | possible data trigger
+----------------------------------------------------------
+0x80  |0x00    | coin             |
+0x08  |0x00    | opening melody   |
+0x40  |0x00    | bgm              |
+0x04  |0x00    | hi-score melody  |
+0x02  |0x00    | ending melody    |
+0x01  |0x00    | spot melody      |
+0x10  |0x00    | clear melody     |
+0x20  |0x00    | race trap melody |
+0x00  |0x80    | extend sound     |
+0x00  |0x40    | oli paralyze     |
+0x00  |0x04    | chu out          |
+0x00  |0x08    | mystery sound    |
+0x00  |0x01    | oli out          |
+0x00  |0x10    | chu has food     |
+0x00  |0x00    | <stop playing>   |
+-----------------------------------------------------------
+       0x02?                        *0xb doesn't do nothing
+       0x20?                        *0xc doesn't do nothing
+
+$7004 writes, related to $7000 reads
+0x00-0x0f <don't care (retains previous value>
+0x10-0x1f 0x28
+0x20-0x2f 0x00
+0x30-0x3f 0x48
+0x40-0x4f 0x00
+0x50-0x5f 0x80
+0x60-0x6f 0x3a
+0x70-0x7f 0x70
+0x80-0x8f 0x0f
+0x90-0x9f 0x0a
+0xa0-0xaf 0x3a
+0xb0-0xbf 0x61
+0xc0-0xcf 0xca
+0xd0-0xdf 0x01
+0xe0-0xef 0x14
+0xf0-0xff 0x32
+
 ***************************************************************************/
 
 #include "driver.h"
@@ -167,7 +208,6 @@ static WRITE8_HANDLER( sound_command_w )
 	static int cmd;
 	int c;
 
-
 	if (offset == 0) cmd = (cmd & 0x00ff) | (data << 8);
 	else cmd = (cmd & 0xff00) | data;
 
@@ -178,41 +218,33 @@ static WRITE8_HANDLER( sound_command_w )
 }
 
 
-static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
+static ADDRESS_MAP_START( olibochu_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0x83ff) AM_RAM_WRITE(olibochu_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x8400, 0x87ff) AM_RAM_WRITE(olibochu_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0x9000, 0x903f) AM_RAM //???
+	AM_RANGE(0x9800, 0x983f) AM_RAM //???
 	AM_RANGE(0xa000, 0xa000) AM_READ_PORT("IN0")
 	AM_RANGE(0xa001, 0xa001) AM_READ_PORT("IN1")
 	AM_RANGE(0xa002, 0xa002) AM_READ_PORT("IN2")
 	AM_RANGE(0xa003, 0xa003) AM_READ_PORT("DSW0")
 	AM_RANGE(0xa004, 0xa004) AM_READ_PORT("DSW1")
 	AM_RANGE(0xa005, 0xa005) AM_READ_PORT("DSW2")
-	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_RAM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x8000, 0x83ff) AM_WRITE(olibochu_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x8400, 0x87ff) AM_WRITE(olibochu_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xa800, 0xa801) AM_WRITE(sound_command_w)
 	AM_RANGE(0xa802, 0xa802) AM_WRITE(olibochu_flipscreen_w)	/* bit 6 = enable sound? */
-	AM_RANGE(0xf000, 0xffff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xf400, 0xf41f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xf440, 0xf47f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram_2) AM_SIZE(&spriteram_2_size)
+	AM_RANGE(0xf400, 0xf41f) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xf440, 0xf47f) AM_RAM AM_BASE(&spriteram_2) AM_SIZE(&spriteram_2_size)
+	AM_RANGE(0xf000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x6000, 0x63ff) AM_READ(SMH_RAM)
+static ADDRESS_MAP_START( olibochu_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x1fff) AM_ROM
+	AM_RANGE(0x6000, 0x63ff) AM_RAM
 	AM_RANGE(0x7000, 0x7000) AM_READ(soundlatch_r)	/* likely ay8910 input port, not direct */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x6000, 0x63ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x7000, 0x7001) AM_DEVWRITE("ay", ay8910_address_data_w)
+	AM_RANGE(0x7004, 0x7004) AM_WRITENOP //sound filter?
+	AM_RANGE(0x7006, 0x7006) AM_WRITENOP //irq ack?
 ADDRESS_MAP_END
-
 
 
 static INPUT_PORTS_START( olibochu )
@@ -367,12 +399,14 @@ static MACHINE_DRIVER_START( olibochu )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 4000000)	/* 4 MHz ?? */
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
+	MDRV_CPU_PROGRAM_MAP(olibochu_map)
 	MDRV_CPU_VBLANK_INT_HACK(olibochu_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	/* 4 MHz ?? */
-	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
+	MDRV_CPU_PROGRAM_MAP(olibochu_sound_map)
+	MDRV_CPU_PERIODIC_INT(irq0_line_hold,60) //???
+
+//  MDRV_QUANTUM_PERFECT_CPU("maincpu")
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)

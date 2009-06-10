@@ -308,7 +308,7 @@ static MACHINE_DRIVER_START( travrusa )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 4000000)	/* 4 MHz (?) */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
@@ -462,7 +462,7 @@ static DRIVER_INIT( motorace )
 {
 	int A,j;
 	UINT8 *rom = memory_region(machine, "maincpu");
-	UINT8 *buffer = malloc_or_die(0x2000);
+	UINT8 *buffer = alloc_array_or_die(UINT8, 0x2000);
 
 		memcpy(buffer,rom,0x2000);
 

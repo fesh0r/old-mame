@@ -70,7 +70,7 @@ static WRITE8_HANDLER( bking_soundlatch_w )
 		if (data & (1 << i)) code |= 0x80 >> i;
 
 	soundlatch_w(space,offset,code);
-	if (sndnmi_enable) cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	if (sndnmi_enable) cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static WRITE8_HANDLER( bking3_addr_l_w )
@@ -199,7 +199,7 @@ static WRITE8_HANDLER( bking3_68705_portB_w )
 	if (~data & 0x02)
 	{
 		portA_in = from_main;
-		if (main_sent) cpu_set_input_line(space->machine->cpu[2],0,CLEAR_LINE);
+		if (main_sent) cputag_set_input_line(space->machine, "mcu", 0, CLEAR_LINE);
 		main_sent = 0;
 	}
 
@@ -432,12 +432,12 @@ static MACHINE_DRIVER_START( bking )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("main_cpu", Z80, XTAL_12MHz/4)	/* 3 MHz */
-	MDRV_CPU_PROGRAM_MAP(bking_map,0)
-	MDRV_CPU_IO_MAP(bking_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(bking_map)
+	MDRV_CPU_IO_MAP(bking_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_6MHz/2)	/* 3 MHz */
-	MDRV_CPU_PROGRAM_MAP(bking_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(bking_audio_map)
 	/* interrupts (from Jungle King hardware, might be wrong): */
 	/* - no interrupts synced with vblank */
 	/* - NMI triggered by the main CPU */
@@ -477,10 +477,10 @@ static MACHINE_DRIVER_START( bking3 )
 	MDRV_IMPORT_FROM(bking)
 
 	MDRV_CPU_MODIFY("main_cpu")
-	MDRV_CPU_IO_MAP(bking3_io_map,0)
+	MDRV_CPU_IO_MAP(bking3_io_map)
 
 	MDRV_CPU_ADD("mcu", M68705, XTAL_3MHz)      /* xtal is 3MHz, divided by 4 internally */
-	MDRV_CPU_PROGRAM_MAP(m68705_map,0)
+	MDRV_CPU_PROGRAM_MAP(m68705_map)
 
 	MDRV_MACHINE_RESET(buggychl)
 

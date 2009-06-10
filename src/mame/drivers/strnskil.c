@@ -325,11 +325,11 @@ static MACHINE_DRIVER_START( strnskil )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,8000000/2) /* 4.000MHz */
-	MDRV_CPU_PROGRAM_MAP(strnskil_map1,0)
+	MDRV_CPU_PROGRAM_MAP(strnskil_map1)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)
 
 	MDRV_CPU_ADD("sub", Z80,8000000/2) /* 4.000MHz */
-	MDRV_CPU_PROGRAM_MAP(strnskil_map2,0)
+	MDRV_CPU_PROGRAM_MAP(strnskil_map2)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
@@ -504,16 +504,16 @@ static DRIVER_INIT( pettanp )
 //  AM_RANGE(0xd806, 0xd806) AM_READ(protection_r) /* protection data read (pettanp) */
 
 	/* Fujitsu MB8841 4-Bit MCU */
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd806, 0xd806, 0, 0, pettanp_protection_r);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd80d, 0xd80d, 0, 0, protection_w);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd806, 0xd806, 0, 0, pettanp_protection_r);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd80d, 0xd80d, 0, 0, protection_w);
 
 }
 
 static DRIVER_INIT( banbam )
 {
 	/* Fujitsu MB8841 4-Bit MCU */
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd806, 0xd806, 0, 0, banbam_protection_r);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd80d, 0xd80d, 0, 0, protection_w);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd806, 0xd806, 0, 0, banbam_protection_r);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd80d, 0xd80d, 0, 0, protection_w);
 }
 
 GAME( 1984, strnskil, 0,        strnskil, strnskil, 0,       ROT0, "Sun Electronics", "Strength & Skill", 0 )

@@ -574,24 +574,24 @@ static TIMER_CALLBACK( scanline_timer_callback )
 {
 	timer_call_after_resynch(machine, NULL, 0, 0);
 
-	if (scanline_counter!=(total_scanlines-1))
+	if (scanline_counter != (total_scanlines - 1))
 	{
 		scanline_counter++;
-		cpu_set_input_line(machine->cpu[0], 5, HOLD_LINE); // raster IRQ, changes scroll values for road
+		cputag_set_input_line(machine, "maincpu", 5, HOLD_LINE); // raster IRQ, changes scroll values for road
 		timer_adjust_oneshot(scanline_timer, attotime_div(ATTOTIME_IN_HZ(60), total_scanlines), 0);
 
-		if (scanline_counter<256)
+		if (scanline_counter < 256)
 		{
 			render_background_to_render_buffer(scanline_counter);
 		}
 
-		if (scanline_counter==256)
+		if (scanline_counter == 256)
 		{
-			cpu_set_input_line(machine->cpu[0], 3, HOLD_LINE); // vblank IRQ?
+			cputag_set_input_line(machine, "maincpu", 3, HOLD_LINE); // vblank IRQ?
 			toggle_bit = 0x8000; // must toggle..
 		}
 
-		if (scanline_counter==0)
+		if (scanline_counter == 0)
 		{
 			toggle_bit = 0x0000; // must toggle..
 		}
@@ -631,11 +631,11 @@ static INTERRUPT_GEN( wheelfir_irq )
 
 static MACHINE_DRIVER_START( wheelfir )
 	MDRV_CPU_ADD("maincpu", M68000, 32000000)
-	MDRV_CPU_PROGRAM_MAP(wheelfir_main, 0)
+	MDRV_CPU_PROGRAM_MAP(wheelfir_main)
 	MDRV_CPU_VBLANK_INT_HACK(wheelfir_irq,256)  // 1,3,5 valid
 
 	MDRV_CPU_ADD("sub", M68000, 32000000/2)
-	MDRV_CPU_PROGRAM_MAP(wheelfir_sub, 0)
+	MDRV_CPU_PROGRAM_MAP(wheelfir_sub)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold) // 1 valid
 
 	MDRV_MACHINE_RESET (wheelfir)

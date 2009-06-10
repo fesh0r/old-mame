@@ -441,7 +441,7 @@ static WRITE32_HANDLER( esc_w )
 		if (konamigx_wrport1_1 & 0x10)
 		{
 			gx_rdport1_3 &= ~8;
-			cpu_set_input_line(space->machine->cpu[0], 4, HOLD_LINE);
+			cputag_set_input_line(space->machine, "maincpu", 4, HOLD_LINE);
 		}
 	}
 	else
@@ -553,13 +553,13 @@ static WRITE32_HANDLER( control_w )
 		{
 			// enable 68k
 			// clear the halt condition and reset the 68000
-			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_HALT, CLEAR_LINE);
-			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, PULSE_LINE);
+			cputag_set_input_line(space->machine, "soundcpu", INPUT_LINE_HALT, CLEAR_LINE);
+			cputag_set_input_line(space->machine, "soundcpu", INPUT_LINE_RESET, PULSE_LINE);
 		}
 		else
 		{
 			// disable 68k
-			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE);
+			cputag_set_input_line(space->machine, "soundcpu", INPUT_LINE_HALT, ASSERT_LINE);
 		}
 
 		K053246_set_OBJCHA_line((data&0x100000) ? ASSERT_LINE : CLEAR_LINE);
@@ -622,14 +622,14 @@ static WRITE32_HANDLER( ccu_w )
 		// vblank interrupt ACK
 		if (ACCESSING_BITS_24_31)
 		{
-			cpu_set_input_line(space->machine->cpu[0], 1, CLEAR_LINE);
+			cputag_set_input_line(space->machine, "maincpu", 1, CLEAR_LINE);
 			gx_syncen |= 0x20;
 		}
 
 		// hblank interrupt ACK
 		if (ACCESSING_BITS_8_15)
 		{
-			cpu_set_input_line(space->machine->cpu[0], 2, CLEAR_LINE);
+			cputag_set_input_line(space->machine, "maincpu", 2, CLEAR_LINE);
 			gx_syncen |= 0x40;
 		}
 	}
@@ -659,7 +659,7 @@ static TIMER_CALLBACK( dmaend_callback )
 
 		// lower OBJINT-REQ flag and trigger interrupt
 		gx_rdport1_3 &= ~0x80;
-		cpu_set_input_line(machine->cpu[0], 3, HOLD_LINE);
+		cputag_set_input_line(machine, "maincpu", 3, HOLD_LINE);
 	}
 }
 
@@ -817,7 +817,7 @@ INLINE void write_snd_020(running_machine *machine, int reg, int val)
 
 	if (reg == 7)
 	{
-		cpu_set_input_line(machine->cpu[1], 1, HOLD_LINE);
+		cputag_set_input_line(machine, "soundcpu", 1, HOLD_LINE);
 	}
 }
 
@@ -848,30 +848,36 @@ static WRITE32_HANDLER( sound020_w )
 
 static READ32_HANDLER( adc0834_r )
 {
-	return adc083x_do_read( space->machine, 0 ) << 24;
+	const device_config *adc0834 = devtag_get_device(space->machine, "adc0834");
+	return adc083x_do_read(adc0834, 0) << 24;
 }
 
 static WRITE32_HANDLER( adc0834_w )
 {
-	running_machine *machine = space->machine;
-	adc083x_clk_write( machine, 0, ( data >> 24 ) & 1 );
-	adc083x_di_write( machine, 0, ( data >> 25 ) & 1 );
-	adc083x_cs_write( machine, 0, ( data >> 26 ) & 1 );
+	const device_config *adc0834 = devtag_get_device(space->machine, "adc0834");
+	adc083x_clk_write(adc0834, 0, (data >> 24) & 1);
+	adc083x_di_write(adc0834, 0, (data >> 25) & 1);
+	adc083x_cs_write(adc0834, 0, (data >> 26) & 1);
 }
 
-static double adc0834_callback( running_machine *machine, int input )
+static double adc0834_callback( const device_config *device, UINT8 input )
 {
-	switch( input )
+	switch (input)
 	{
 	case ADC083X_CH0:
-		return ( (double)5 * input_port_read(machine,  "AN0" ) ) / 255; // steer
+		return (double)(5 * input_port_read(device->machine, "AN0")) / 255.0; // steer
 	case ADC083X_CH1:
-		return ( (double)5 * input_port_read(machine,  "AN1" ) ) / 255; // gas
+		return (double)(5 * input_port_read(device->machine, "AN1")) / 255.0; // gas
 	case ADC083X_VREF:
 		return 5;
 	}
 	return 0;
 }
+
+static const adc0831_interface konamigx_adc_interface = {
+	adc0834_callback
+};
+
 
 static READ32_HANDLER( le2_gun_H_r )
 {
@@ -1090,7 +1096,7 @@ static WRITE32_HANDLER( type4_prot_w )
 				if (konamigx_wrport1_1 & 0x10)
 				{
 					gx_rdport1_3 &= ~8;
-					cpu_set_input_line(space->machine->cpu[0], 4, HOLD_LINE);
+					cputag_set_input_line(space->machine, "maincpu", 4, HOLD_LINE);
 				}
 
 				// don't accidentally do a phony command
@@ -1160,11 +1166,13 @@ static ADDRESS_MAP_START( gx_type1_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xf40000, 0xf7ffff) AM_READ(type1_roz_r2)	// ROM readback
 	AM_RANGE(0xf80000, 0xf80fff) AM_RAM	// chip 21Q / S
 	AM_RANGE(0xfc0000, 0xfc00ff) AM_RAM	// chip 22N / S
+	AM_IMPORT_FROM(gx_base_memmap)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gx_type2_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xcc0000, 0xcc0003) AM_WRITE(esc_w)
 	AM_RANGE(0xd90000, 0xd97fff) AM_RAM_WRITE(konamigx_palette_w) AM_BASE(&paletteram32)
+	AM_IMPORT_FROM(gx_base_memmap)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gx_type3_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -1178,6 +1186,7 @@ static ADDRESS_MAP_START( gx_type3_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xea0000, 0xea3fff) AM_RAM_WRITE(konamigx_555_palette2_w) AM_BASE(&gx_subpaletteram32) // sub monitor palette
 	AM_RANGE(0xec0000, 0xec0003) AM_READ(type3_sync_r)
 	AM_RANGE(0xf00000, 0xf07fff) AM_RAM
+	AM_IMPORT_FROM(gx_base_memmap)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gx_type4_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -1191,6 +1200,7 @@ static ADDRESS_MAP_START( gx_type4_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xea0000, 0xea7fff) AM_RAM_WRITE(konamigx_palette2_w) AM_BASE(&gx_subpaletteram32) // 5G/7G/9G (sub screen palette RAM)
 	AM_RANGE(0xec0000, 0xec0003) AM_READ(type3_sync_r)		// type 4 polls this too
 	AM_RANGE(0xf00000, 0xf07fff) AM_RAM_WRITE(konamigx_t4_psacmap_w) AM_BASE(&gx_psacram)	// PSAC2 tilemap
+	AM_IMPORT_FROM(gx_base_memmap)
 ADDRESS_MAP_END
 
 /**********************************************************************************/
@@ -1234,28 +1244,28 @@ static INTERRUPT_GEN(tms_sync)
 
 static READ16_HANDLER(tms57002_data_word_r)
 {
-	return tms57002_data_r(space->machine->cpu[2], 0);
+	return tms57002_data_r(cputag_get_cpu(space->machine, "dasp"), 0);
 }
 
 static WRITE16_HANDLER(tms57002_data_word_w)
 {
 	if (ACCESSING_BITS_0_7)
-		tms57002_data_w(space->machine->cpu[2], 0, data);
+		tms57002_data_w(cputag_get_cpu(space->machine, "dasp"), 0, data);
 }
 
 static READ16_HANDLER(tms57002_status_word_r)
 {
-	return (tms57002_dready_r(space->machine->cpu[2], 0) ? 4 : 0) |
-		(tms57002_empty_r(space->machine->cpu[2], 0) ? 1 : 0);
+	return (tms57002_dready_r(cputag_get_cpu(space->machine, "dasp"), 0) ? 4 : 0) |
+		(tms57002_empty_r(cputag_get_cpu(space->machine, "dasp"), 0) ? 1 : 0);
 }
 
 static WRITE16_HANDLER(tms57002_control_word_w)
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		tms57002_pload_w(space->machine->cpu[2], 0, data & 4);
-		tms57002_cload_w(space->machine->cpu[2], 0, data & 8);
-		cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, !(data & 16) ? ASSERT_LINE : CLEAR_LINE);
+		tms57002_pload_w(cputag_get_cpu(space->machine, "dasp"), 0, data & 4);
+		tms57002_cload_w(cputag_get_cpu(space->machine, "dasp"), 0, data & 8);
+		cputag_set_input_line(space->machine, "dasp", INPUT_LINE_RESET, !(data & 16) ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -1341,15 +1351,15 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( konamigx )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68EC020, 24000000)
-	MDRV_CPU_PROGRAM_MAP(gx_base_memmap, gx_type2_map)
+	MDRV_CPU_PROGRAM_MAP(gx_type2_map)
 	MDRV_CPU_VBLANK_INT("screen", konamigx_vbinterrupt)
 
 	MDRV_CPU_ADD("soundcpu", M68000, 8000000)
-	MDRV_CPU_PROGRAM_MAP(gxsndmap, 0)
+	MDRV_CPU_PROGRAM_MAP(gxsndmap)
 	MDRV_CPU_PERIODIC_INT(irq2_line_hold, 480)
 
 	MDRV_CPU_ADD("dasp", TMS57002, 12500000)
-	MDRV_CPU_DATA_MAP(gxtmsmap, 0)
+	MDRV_CPU_DATA_MAP(gxtmsmap)
 	MDRV_CPU_PERIODIC_INT(tms_sync, 48000)
 
 	MDRV_QUANTUM_TIME(HZ(1920))
@@ -1388,6 +1398,8 @@ static MACHINE_DRIVER_START( konamigx )
 	MDRV_SOUND_CONFIG(k054539_config)
 	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
 	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
+
+	MDRV_ADC0834_ADD( "adc0834", konamigx_adc_interface )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( dragoonj )
@@ -1422,7 +1434,7 @@ static MACHINE_DRIVER_START( opengolf )
 	MDRV_VIDEO_START(opengolf)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(gx_base_memmap, gx_type1_map)
+	MDRV_CPU_PROGRAM_MAP(gx_type1_map)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( racinfrc )
@@ -1434,14 +1446,14 @@ static MACHINE_DRIVER_START( racinfrc )
 	MDRV_VIDEO_START(racinfrc)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(gx_base_memmap, gx_type1_map)
+	MDRV_CPU_PROGRAM_MAP(gx_type1_map)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( gxtype3 )
 	MDRV_IMPORT_FROM(konamigx)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(gx_base_memmap, gx_type3_map)
+	MDRV_CPU_PROGRAM_MAP(gx_type3_map)
 	MDRV_CPU_VBLANK_INT_HACK(konamigx_hbinterrupt, 262)
 
 	MDRV_VIDEO_START(konamigx_type3)
@@ -1456,7 +1468,7 @@ static MACHINE_DRIVER_START( gxtype4 )
 	MDRV_IMPORT_FROM(konamigx)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(gx_base_memmap, gx_type4_map)
+	MDRV_CPU_PROGRAM_MAP(gx_type4_map)
 	MDRV_CPU_VBLANK_INT_HACK(konamigx_hbinterrupt, 262)
 
 	MDRV_SCREEN_MODIFY("screen")
@@ -3332,8 +3344,8 @@ static MACHINE_RESET(konamigx)
 	memset(sndto020, 0, 16);
 
 	// sound CPU initially disabled?
-	cpu_set_input_line(machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE);
-	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, ASSERT_LINE);
+	cputag_set_input_line(machine, "soundcpu", INPUT_LINE_HALT, ASSERT_LINE);
+	cputag_set_input_line(machine, "dasp", INPUT_LINE_RESET, ASSERT_LINE);
 
 	if (!strcmp(machine->gamedrv->name, "tkmmpzdm"))
 	{
@@ -3406,8 +3418,6 @@ static DRIVER_INIT(konamigx)
 	int i, match;
 	int readback = 0;
 
-	adc083x_init( machine, 0, ADC0834, adc0834_callback );
-
 	konamigx_cfgport = -1;
 	last_prot_op = -1;
 	last_prot_clk = 0;
@@ -3431,8 +3441,8 @@ static DRIVER_INIT(konamigx)
 			switch (gameDefs[i].special)
 	{
 				case 1:	// LE2 guns
-					memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd44000, 0xd44003, 0, 0, le2_gun_H_r );
-					memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd44004, 0xd44007, 0, 0, le2_gun_V_r );
+					memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd44000, 0xd44003, 0, 0, le2_gun_H_r );
+					memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd44004, 0xd44007, 0, 0, le2_gun_V_r );
 					break;
 
 				case 2:	// tkmmpzdm hack
@@ -3468,7 +3478,7 @@ static DRIVER_INIT(konamigx)
 					break;
 
 				case 7:	// install type 4 Xilinx protection for non-type 3/4 games
-		memory_install_write32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xcc0000, 0xcc0007, 0, 0, type4_prot_w );
+		memory_install_write32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xcc0000, 0xcc0007, 0, 0, type4_prot_w );
 					break;
 
 				case 8: // tbyahhoo
@@ -3488,14 +3498,14 @@ static DRIVER_INIT(konamigx)
 	switch (readback)
 	{
 		case BPP5:
-			memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd4a000, 0xd4a00f, 0, 0, gx5bppspr_r);
+			memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd4a000, 0xd4a00f, 0, 0, gx5bppspr_r);
 		break;
 
 		case BPP66:
-			memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd00000, 0xd01fff, 0, 0, K056832_6bpp_rom_long_r);
+			memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd00000, 0xd01fff, 0, 0, K056832_6bpp_rom_long_r);
 
 		case BPP6:
-			memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd4a000, 0xd4a00f, 0, 0, gx6bppspr_r);
+			memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd4a000, 0xd4a00f, 0, 0, gx6bppspr_r);
 		break;
 	}
 

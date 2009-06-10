@@ -77,7 +77,7 @@ static READ8_HANDLER( sound_test_r )
 static WRITE16_HANDLER( main_sound_latch_w )
 {
 	soundlatch_w(space,0,data&0xff);
-	cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
+	cputag_set_input_line(space->machine, "soundcpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 #endif
 
@@ -128,12 +128,12 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( bingoc )
 
 	MDRV_CPU_ADD("maincpu", M68000,8000000)		 /* ? MHz */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
 	MDRV_CPU_ADD("soundcpu", Z80,4000000)		 /* ? MHz */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_io,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_io)
 #if SOUND_TEST
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 #endif
@@ -180,4 +180,3 @@ ROM_START( bingoc )
 ROM_END
 
 GAME( 1989, bingoc,  0,    bingoc, bingoc,  0, ROT0, "Sega", "Bingo Circus (Rev. A 891001)", GAME_NOT_WORKING )
-

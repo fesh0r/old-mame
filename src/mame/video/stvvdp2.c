@@ -2959,7 +2959,7 @@ static void stv_vdp2_draw_basic_bitmap(running_machine *machine, bitmap_t *bitma
 		case 1:
 			if ( stv2_current_tilemap.incx == 0x10000 && stv2_current_tilemap.incy == 0x10000 )
 			{
-				int gfx_wraparound = -1;
+				//int gfx_wraparound = -1;
 
 				gfxdata += xlinesize*cliprect->min_y;
 
@@ -2985,7 +2985,7 @@ static void stv_vdp2_draw_basic_bitmap(running_machine *machine, bitmap_t *bitma
 						}
 						if ( (gfxdata + xs) >= gfxdatahigh )
 						{
-							gfx_wraparound = (ycnt << 16) | xcnt;
+							//gfx_wraparound = (ycnt << 16) | xcnt;
 							gfxdata = gfxdatalow - xs;
 						}
 					}
@@ -4860,7 +4860,7 @@ static void stv_vdp2_draw_rotation_screen(running_machine *machine, bitmap_t *bi
 	else
 	{
 		if ( stv_vdp2_roz_bitmap[iRP-1] == NULL )
-			stv_vdp2_roz_bitmap[iRP-1] = auto_bitmap_alloc(4096, 4096, video_screen_get_format(machine->primary_screen));
+			stv_vdp2_roz_bitmap[iRP-1] = auto_bitmap_alloc(machine, 4096, 4096, video_screen_get_format(machine->primary_screen));
 
 		roz_clip_rect.min_x = roz_clip_rect.min_y = 0;
 		if ( (iRP == 1 && STV_VDP2_RAOVR == 3) ||
@@ -5256,12 +5256,18 @@ READ32_HANDLER ( stv_vdp2_cram_r )
 WRITE32_HANDLER ( stv_vdp2_regs_w )
 {
 	static UINT8 old_crmd;
+	static UINT16 old_tvmd;
 	COMBINE_DATA(&stv_vdp2_regs[offset]);
 
 	if(old_crmd != STV_VDP2_CRMD)
 	{
 		old_crmd = STV_VDP2_CRMD;
 		refresh_palette_data(space->machine);
+	}
+	if(old_tvmd != STV_VDP2_TVMD)
+	{
+		old_tvmd = STV_VDP2_TVMD;
+		stv_vdp2_dynamic_res_change(space->machine);
 	}
 }
 
@@ -5296,21 +5302,26 @@ UINT8 stv_get_vblank(running_machine *machine)
 /*some vblank lines measurements (according to Charles MacDonald)*/
 static int get_vblank_duration(running_machine *machine)
 {
+	/* TODO: +64 is probably due of missing pixel clock/screen raw params hook-up.
+             Problem is, I don't know if it's possible to handle that in MAME with
+             all this dynamic resolution babblecrap...
+             */
+
 	if(STV_VDP2_HRES & 4)
 	{
 		switch(STV_VDP2_HRES & 1)
 		{
-			case 0: return 45; //31kHz Monitor
-			case 1: return 82; //Hi-Vision Monitor
+			case 0: return 45+64; //31kHz Monitor
+			case 1: return 82+64; //Hi-Vision Monitor
 		}
 	}
 
 	switch(STV_VDP2_VRES & 3)
 	{
-		case 0: return 39; //263-224
-		case 1: return 23; //263-240
-		case 2: return 7; //263-256
-		case 3: return 7; //263-256
+		case 0: return 39+64; //263-224
+		case 1: return 23+64; //263-240
+		case 2: return 7+64; //263-256
+		case 3: return 7+64; //263-256
 	}
 
 	return 0;
@@ -5349,11 +5360,15 @@ READ32_HANDLER ( stv_vdp2_regs_r )
 		}
 		case 0x8/4:
 		/*H/V Counter Register*/
-								     /*H-Counter                               V-Counter                                         */
-			stv_vdp2_regs[offset] = (((video_screen_get_visible_area(space->machine->primary_screen)->max_x - 1)<<16)&0x3ff0000)|(((video_screen_get_visible_area(space->machine->primary_screen)->max_y - 1)<<0)& ((STV_VDP2_LSMD == 3) ? 0x7ff : 0x3ff));
+		{
+			static UINT16 h_count,v_count;
+			/* TODO: handle various h/v settings. */
+			h_count = video_screen_get_hpos(space->machine->primary_screen) & 0x3ff;
+			v_count = video_screen_get_vpos(space->machine->primary_screen) & (STV_VDP2_LSMD == 3 ? 0x7ff : 0x3ff);
+			stv_vdp2_regs[offset] = (h_count<<16)|(v_count);
 			if(LOG_VDP2) logerror("CPU %s PC(%08x) = VDP2: H/V counter read : %08x\n", space->cpu->tag, cpu_get_pc(space->cpu),stv_vdp2_regs[offset]);
-			stv_vdp2_regs[offset] = 0;
-		break;
+			break;
+		}
 	}
 	return stv_vdp2_regs[offset];
 }
@@ -5383,14 +5398,10 @@ static STATE_POSTLOAD( stv_vdp2_state_save_postload )
 
 static int stv_vdp2_start (running_machine *machine)
 {
-	stv_vdp2_regs = auto_malloc ( 0x040000 );
-	stv_vdp2_vram = auto_malloc ( 0x100000 ); // actually we only need half of it since we don't emulate extra 4mbit ram cart.
-	stv_vdp2_cram = auto_malloc ( 0x080000 );
-	stv_vdp2_gfx_decode = auto_malloc ( 0x100000 );
-
-	memset(stv_vdp2_regs, 0, 0x040000);
-	memset(stv_vdp2_vram, 0, 0x100000);
-	memset(stv_vdp2_cram, 0, 0x080000);
+	stv_vdp2_regs = auto_alloc_array_clear(machine, UINT32, 0x040000/4 );
+	stv_vdp2_vram = auto_alloc_array_clear(machine, UINT32, 0x100000/4 ); // actually we only need half of it since we don't emulate extra 4mbit ram cart.
+	stv_vdp2_cram = auto_alloc_array_clear(machine, UINT32, 0x080000/4 );
+	stv_vdp2_gfx_decode = auto_alloc_array(machine, UINT8, 0x100000 );
 
 	stv_vdp2_render_rbg0 = 1;
 //  machine->gfx[0]->color_granularity=4;
@@ -6208,8 +6219,6 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 VIDEO_UPDATE( stv_vdp2 )
 {
 	static UINT8 pri;
-	stv_vdp2_dynamic_res_change(screen->machine);
-
 	video_update_vdp1(screen->machine);
 
 	stv_vdp2_fade_effects(screen->machine);

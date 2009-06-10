@@ -289,7 +289,7 @@ static MACHINE_DRIVER_START( silkroad )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68EC020, 16000000)
-	MDRV_CPU_PROGRAM_MAP(cpu_map,0)
+	MDRV_CPU_PROGRAM_MAP(cpu_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	/* video hardware */
@@ -345,7 +345,7 @@ static DRIVER_INIT( silkroad )
 
 	src += tileoffset; len -=tileoffset;
 
-	buffer = malloc_or_die(len);
+	buffer = alloc_array_or_die(UINT8, len);
 	{
 		int i;
 		for (i = 0;i < len; i++)

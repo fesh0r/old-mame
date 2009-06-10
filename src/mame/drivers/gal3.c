@@ -106,25 +106,25 @@ ADDRESS_MAP_END
 
 static MACHINE_DRIVER_START( gal3 )
 	MDRV_CPU_ADD("cpumst", M68020, 24000000) // ??
-	MDRV_CPU_PROGRAM_MAP(cpu_mst_map,0)
+	MDRV_CPU_PROGRAM_MAP(cpu_mst_map)
 
 	MDRV_CPU_ADD("cpuslv", M68020, 24000000) // ??
-	MDRV_CPU_PROGRAM_MAP(cpu_slv_map,0)
+	MDRV_CPU_PROGRAM_MAP(cpu_slv_map)
 
 	MDRV_CPU_ADD("psn_b1_cpu", M68000, 12000000) // ??
-	MDRV_CPU_PROGRAM_MAP(psn_b1_cpu_map,0)
+	MDRV_CPU_PROGRAM_MAP(psn_b1_cpu_map)
 
 	MDRV_CPU_ADD("psn_b2_cpu", M68000, 12000000) // ??
-	MDRV_CPU_PROGRAM_MAP(psn_b1_cpu_map,0)
+	MDRV_CPU_PROGRAM_MAP(psn_b1_cpu_map)
 
 	MDRV_CPU_ADD("psn_b3_cpu", M68000, 12000000) // ??
-	MDRV_CPU_PROGRAM_MAP(psn_b1_cpu_map,0)
+	MDRV_CPU_PROGRAM_MAP(psn_b1_cpu_map)
 
 	MDRV_CPU_ADD("rs_cpu", M68000, 12000000) // ??
-	MDRV_CPU_PROGRAM_MAP(rs_cpu_map,0)
+	MDRV_CPU_PROGRAM_MAP(rs_cpu_map)
 
 	MDRV_CPU_ADD("sound_cpu", M68000, 12000000) // ??
-	MDRV_CPU_PROGRAM_MAP(sound_cpu_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_cpu_map)
 
 
 
@@ -353,4 +353,4 @@ ROM_START( gal3 )
 	DISK_IMAGE_READONLY( "gal3_ld2", 0, NO_DUMP )
 ROM_END
 
-GAME( 199?, gal3,    0,        gal3,    gal3,    0, ROT0,  "Namco", "Galaxian 3 - Theater 6 : Project Dragoon", GAME_NOT_WORKING | GAME_NO_SOUND )
+GAME( 1992, gal3,    0,        gal3,    gal3,    0, ROT0,  "Namco", "Galaxian 3 - Theater 6 : Project Dragoon", GAME_NOT_WORKING | GAME_NO_SOUND )

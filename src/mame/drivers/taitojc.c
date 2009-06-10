@@ -775,13 +775,13 @@ static WRITE32_HANDLER(dsp_shared_w)
 		{
 			if (!first_dsp_reset)
 			{
-				cpu_set_input_line(space->machine->cpu[3], INPUT_LINE_RESET, CLEAR_LINE);
+				cputag_set_input_line(space->machine, "dsp", INPUT_LINE_RESET, CLEAR_LINE);
 			}
 			first_dsp_reset = 0;
 		}
 		else
 		{
-			cpu_set_input_line(space->machine->cpu[3], INPUT_LINE_RESET, ASSERT_LINE);
+			cputag_set_input_line(space->machine, "dsp", INPUT_LINE_RESET, ASSERT_LINE);
 		}
 	}
 }
@@ -1280,7 +1280,7 @@ static MACHINE_RESET( taitojc )
 	f3_68681_reset(machine);
 
 	// hold the TMS in reset until we have code
-	cpu_set_input_line(machine->cpu[3], INPUT_LINE_RESET, ASSERT_LINE);
+	cputag_set_input_line(machine, "dsp", INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static INTERRUPT_GEN( taitojc_vblank )
@@ -1295,19 +1295,19 @@ static INTERRUPT_GEN( taitojc_int6 )
 
 static MACHINE_DRIVER_START( taitojc )
 	MDRV_CPU_ADD("maincpu", M68040, 25000000)
-	MDRV_CPU_PROGRAM_MAP(taitojc_map, 0)
+	MDRV_CPU_PROGRAM_MAP(taitojc_map)
 	MDRV_CPU_VBLANK_INT("screen", taitojc_vblank)
 	MDRV_CPU_PERIODIC_INT(taitojc_int6, 1000)
 
 	TAITO_F3_SOUND_SYSTEM_CPU(16000000)
 
 	MDRV_CPU_ADD("sub", MC68HC11, 4000000)
-	MDRV_CPU_PROGRAM_MAP(hc11_pgm_map, 0)
-	MDRV_CPU_IO_MAP(hc11_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(hc11_pgm_map)
+	MDRV_CPU_IO_MAP(hc11_io_map)
 
 	MDRV_CPU_ADD("dsp", TMS32051, 50000000)
-	MDRV_CPU_PROGRAM_MAP(tms_program_map, 0)
-	MDRV_CPU_DATA_MAP(tms_data_map, 0)
+	MDRV_CPU_PROGRAM_MAP(tms_program_map)
+	MDRV_CPU_DATA_MAP(tms_data_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 
@@ -1333,9 +1333,9 @@ MACHINE_DRIVER_END
 
 static DRIVER_INIT( taitojc )
 {
-	f3_shared_ram = auto_malloc(0x800);
+	f3_shared_ram = auto_alloc_array(machine, UINT32, 0x800/4);
 
-	polygon_fifo = auto_malloc(POLYGON_FIFO_SIZE * sizeof(UINT16));
+	polygon_fifo = auto_alloc_array(machine, UINT16, POLYGON_FIFO_SIZE);
 }
 
 ROM_START( sidebs )

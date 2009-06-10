@@ -53,8 +53,8 @@ not handled commands with reg[3] & 0xc0 == 0x00
 
 #define VIDEOBUF_SIZE 256*256
 
-UINT8 reg[0x10];
-UINT8 *videobuf;
+static UINT8 reg[0x10];
+static UINT8 *videobuf;
 
 static UINT8 lamp_old = 0;
 
@@ -139,7 +139,7 @@ static WRITE8_HANDLER( blitter_cmd_w )
 static WRITE8_HANDLER( sound_latch_w )
 {
  	soundlatch_w(space, 0, data & 0xff);
- 	cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE);
+ 	cputag_set_input_line(space->machine, "soundcpu", 0, HOLD_LINE);
 }
 
 static WRITE8_HANDLER( ball_w )
@@ -180,8 +180,7 @@ ADDRESS_MAP_END
 
 static VIDEO_START(roul)
 {
-	videobuf = auto_malloc(VIDEOBUF_SIZE * sizeof(*videobuf));
-	memset(videobuf, 0, VIDEOBUF_SIZE * sizeof(*videobuf));
+	videobuf = auto_alloc_array_clear(machine, UINT8, VIDEOBUF_SIZE);
 }
 
 static VIDEO_UPDATE(roul)
@@ -244,13 +243,13 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( roul )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 4000000)
-	MDRV_CPU_PROGRAM_MAP(roul_map, 0)
-	MDRV_CPU_IO_MAP(roul_cpu_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(roul_map)
+	MDRV_CPU_IO_MAP(roul_cpu_io_map)
 	MDRV_CPU_VBLANK_INT("screen",nmi_line_pulse)
 
 	MDRV_CPU_ADD("soundcpu", Z80, 4000000)
-	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
-	MDRV_CPU_IO_MAP(sound_cpu_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_cpu_io_map)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 

@@ -124,7 +124,7 @@ static void expand_sprites(running_machine *machine)
 	int i;
 
 	sprites_gfx_size	=	size / 2 * 3;
-	sprites_gfx			=	auto_malloc(sprites_gfx_size);
+	sprites_gfx			=	auto_alloc_array(machine, UINT8, sprites_gfx_size);
 
 	for (i = 0; i < size / 2 ; i++)
 	{
@@ -296,7 +296,7 @@ static void decrypt_program_rom(running_machine *machine, int mask, int a7, int 
 {
 	int length = memory_region_length(machine, "maincpu");
 	UINT8 *rom = memory_region(machine, "maincpu");
-	UINT8 *tmp = auto_malloc(length);
+	UINT8 *tmp = auto_alloc_array(machine, UINT8, length);
 	int i;
 
 	// decrypt the program ROM
@@ -394,7 +394,7 @@ static void tjsb_decrypt_sprites(running_machine *machine)
 {
 	int length = memory_region_length(machine, "sprites");
 	UINT8 *rom = memory_region(machine, "sprites");
-	UINT8 *tmp = auto_malloc(length);
+	UINT8 *tmp = auto_alloc_array(machine, UINT8, length);
 	int i;
 
 	// address lines swap (to do: collapse into one bitswap)
@@ -491,7 +491,7 @@ static void mgcs_decrypt_tiles(running_machine *machine)
 {
 	int length = memory_region_length(machine, "tilemaps");
 	UINT8 *rom = memory_region(machine, "tilemaps");
-	UINT8 *tmp = malloc_or_die(length);
+	UINT8 *tmp = alloc_array_or_die(UINT8, length);
 	int i;
 
 	memcpy(tmp,rom,length);
@@ -1084,8 +1084,8 @@ static MACHINE_DRIVER_START( iqblocka )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z180, XTAL_16MHz / 2)
-	MDRV_CPU_PROGRAM_MAP(iqblocka_map,0)
-	MDRV_CPU_IO_MAP(iqblocka_io,0)
+	MDRV_CPU_PROGRAM_MAP(iqblocka_map)
+	MDRV_CPU_IO_MAP(iqblocka_io)
 	MDRV_CPU_VBLANK_INT_HACK(iqblocka_interrupt,2)
 
 	MDRV_PPI8255_ADD( "ppi8255", iqblocka_ppi8255_intf )
@@ -1153,7 +1153,7 @@ static const ppi8255_interface mgcs_ppi8255_intf =
 
 static MACHINE_DRIVER_START( mgcs )
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_22MHz / 2)
-	MDRV_CPU_PROGRAM_MAP(mgcs,0)
+	MDRV_CPU_PROGRAM_MAP(mgcs)
 	MDRV_CPU_VBLANK_INT_HACK(mgcs_interrupt,2)
 
 	MDRV_MACHINE_RESET(mgcs)

@@ -201,7 +201,7 @@ static void spacefev_sound_pins_changed(running_machine *machine)
 	}
 	if (changes & ((1 << 0x2) | (1 << 0x3) | (1 << 0x5)))
 	{
-		generic_pulse_irq_line(machine->cpu[1], 0);
+		generic_pulse_irq_line(cputag_get_cpu(machine, "audiocpu"), 0);
 	}
 }
 
@@ -225,7 +225,7 @@ static void sheriff_sound_pins_changed(running_machine *machine)
 	}
 	if (changes & ((1 << 0x2) | (1 << 0x3) | (1 << 0x5)))
 	{
-		generic_pulse_irq_line(machine->cpu[1], 0);
+		generic_pulse_irq_line(cputag_get_cpu(machine, "audiocpu"), 0);
 	}
 }
 
@@ -240,7 +240,7 @@ static void helifire_sound_pins_changed(running_machine *machine)
 
 	if (changes & (1 << 6))
 	{
-		generic_pulse_irq_line(machine->cpu[1], 0);
+		generic_pulse_irq_line(cputag_get_cpu(machine, "audiocpu"), 0);
 	}
 }
 
@@ -550,8 +550,8 @@ MACHINE_DRIVER_START( spacefev_sound )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("audiocpu", I8035, 6000000)
-	MDRV_CPU_PROGRAM_MAP(n8080_sound_cpu_map, 0)
-	MDRV_CPU_IO_MAP(n8080_sound_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(n8080_sound_cpu_map)
+	MDRV_CPU_IO_MAP(n8080_sound_io_map)
 
 	MDRV_MACHINE_RESET(spacefev_sound)
 
@@ -571,8 +571,8 @@ MACHINE_DRIVER_START( sheriff_sound )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("audiocpu", I8035, 6000000)
-	MDRV_CPU_PROGRAM_MAP(n8080_sound_cpu_map, 0)
-	MDRV_CPU_IO_MAP(n8080_sound_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(n8080_sound_cpu_map)
+	MDRV_CPU_IO_MAP(n8080_sound_io_map)
 
 	MDRV_MACHINE_RESET(sheriff_sound)
 
@@ -592,8 +592,8 @@ MACHINE_DRIVER_START( helifire_sound )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("audiocpu", I8035, 6000000)
-	MDRV_CPU_PROGRAM_MAP(n8080_sound_cpu_map, 0)
-	MDRV_CPU_IO_MAP(helifire_sound_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(n8080_sound_cpu_map)
+	MDRV_CPU_IO_MAP(helifire_sound_io_map)
 
 	MDRV_MACHINE_RESET(helifire_sound)
 

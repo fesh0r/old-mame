@@ -226,7 +226,7 @@ static WRITE8_HANDLER( mmtr_w )
 	for (i=0; i<8; i++)
 	if ( changed & (1 << i) )	Mechmtr_update(i, cycles, data & (1 << i) );
 
-	if ( data ) generic_pulse_irq_line(space->machine->cpu[0], M6809_FIRQ_LINE);
+	if ( data ) generic_pulse_irq_line(cputag_get_cpu(space->machine, "maincpu"), M6809_FIRQ_LINE);
 }
 ///////////////////////////////////////////////////////////////////////////
 
@@ -426,7 +426,7 @@ static ADDRESS_MAP_START( memmap, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x3600, 0x3600) AM_WRITE(mux_enable_w)		// mux enable
 
-	AM_RANGE(0x4000, 0xffff) AM_READ(SMH_ROM)			// 48K ROM
+	AM_RANGE(0x4000, 0xffff) AM_ROM						// 48K ROM
 	AM_RANGE(0x8000, 0xFFFF) AM_WRITE(watchdog_w)		// kick watchdog
 
 ADDRESS_MAP_END
@@ -437,7 +437,7 @@ static MACHINE_DRIVER_START( bfmsys85 )
 	MDRV_MACHINE_START(bfm_sys85)						// main system85 board initialisation
 	MDRV_MACHINE_RESET(bfm_sys85)
 	MDRV_CPU_ADD("maincpu", M6809, MASTER_CLOCK/4)			// 6809 CPU at 1 Mhz
-	MDRV_CPU_PROGRAM_MAP(memmap,0)						// setup read and write memorymap
+	MDRV_CPU_PROGRAM_MAP(memmap)						// setup read and write memorymap
 	MDRV_CPU_PERIODIC_INT(timer_irq, 1000 )				// generate 1000 IRQ's per second
 
 	MDRV_ACIA6850_ADD("acia6850_0", m6809_acia_if)

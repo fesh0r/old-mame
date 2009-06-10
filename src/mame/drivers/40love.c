@@ -246,7 +246,7 @@ static int sound_nmi_enable,pending_nmi;
 
 static TIMER_CALLBACK( nmi_callback )
 {
-	if (sound_nmi_enable) cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	if (sound_nmi_enable) cputag_set_input_line(machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 	else pending_nmi = 1;
 }
 
@@ -266,7 +266,7 @@ static WRITE8_HANDLER( nmi_enable_w )
 	sound_nmi_enable = 1;
 	if (pending_nmi)
 	{
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+		cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 		pending_nmi = 0;
 	}
 }
@@ -1042,15 +1042,15 @@ static MACHINE_DRIVER_START( 40love )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",Z80,8000000/2) /* OK */
-	MDRV_CPU_PROGRAM_MAP(40love_map,0)
+	MDRV_CPU_PROGRAM_MAP(40love_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu",Z80,8000000/2) /* OK */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)	/* source/number of IRQs is unknown */
 
 	MDRV_CPU_ADD("mcu",M68705,18432000/6) /* OK */
-	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
+	MDRV_CPU_PROGRAM_MAP(mcu_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000))	/* high interleave to ensure proper synchronization of CPUs */
 	MDRV_MACHINE_RESET(ta7630)	/* init machine */
@@ -1100,15 +1100,15 @@ static MACHINE_DRIVER_START( undoukai )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",Z80,8000000/2)
-	MDRV_CPU_PROGRAM_MAP(undoukai_map,0)
+	MDRV_CPU_PROGRAM_MAP(undoukai_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu",Z80,8000000/2)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)	/* source/number of IRQs is unknown */
 
 //  MDRV_CPU_ADD("mcu",M68705,18432000/6)
-//  MDRV_CPU_PROGRAM_MAP(mcu_map,0)
+//  MDRV_CPU_PROGRAM_MAP(mcu_map)
 
 	MDRV_MACHINE_RESET(ta7630)	/* init machine */
 

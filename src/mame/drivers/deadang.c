@@ -229,11 +229,11 @@ static MACHINE_DRIVER_START( deadang )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V30,XTAL_16MHz/2) /* Sony 8623h9 CXQ70116D-8 (V30 compatible) */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT_HACK(deadang_interrupt,2)
 
 	MDRV_CPU_ADD("sub", V30,XTAL_16MHz/2) /* Sony 8623h9 CXQ70116D-8 (V30 compatible) */
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
 	MDRV_CPU_VBLANK_INT_HACK(deadang_interrupt,2)
 
 	SEIBU3A_SOUND_SYSTEM_CPU(XTAL_14_31818MHz/4)
@@ -411,8 +411,8 @@ static DRIVER_INIT( ghunter )
 	seibu_sound_decrypt(machine, "audiocpu", 0x2000);
 	seibu_adpcm_decrypt(machine, "adpcm");
 
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x80000, 0x80001, 0, 0, ghunter_trackball_low_r);
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xb0000, 0xb0001, 0, 0, ghunter_trackball_high_r);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x80000, 0x80001, 0, 0, ghunter_trackball_low_r);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xb0000, 0xb0001, 0, 0, ghunter_trackball_high_r);
 }
 
 /* Game Drivers */

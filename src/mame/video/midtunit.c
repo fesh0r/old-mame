@@ -86,7 +86,7 @@ static struct
 VIDEO_START( midtunit )
 {
 	/* allocate memory */
-	local_videoram = auto_malloc(0x100000);
+	local_videoram = auto_alloc_array(machine, UINT16, 0x100000/2);
 
 	/* reset all the globals */
 	gfxbank_offset[0] = 0x000000;
@@ -293,10 +293,10 @@ READ16_HANDLER( midwunit_control_r )
 
 WRITE16_HANDLER( midtunit_paletteram_w )
 {
-	int newword;
+	//int newword;
 
 	COMBINE_DATA(&paletteram16[offset]);
-	newword = paletteram16[offset];
+	//newword = paletteram16[offset];
 	palette_set_color_rgb(space->machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
@@ -593,7 +593,7 @@ DECLARE_BLITTER_SET(dma_draw_noskip_noscale,   dma_state.bpp, EXTRACTGEN,   SKIP
 static TIMER_CALLBACK( dma_callback )
 {
 	dma_register[DMA_COMMAND] &= ~0x8000; /* tell the cpu we're done */
-	cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
+	cputag_set_input_line(machine, "maincpu", 0, ASSERT_LINE);
 }
 
 
@@ -683,7 +683,7 @@ WRITE16_HANDLER( midtunit_dma_w )
 
 	/* high bit triggers action */
 	command = dma_register[DMA_COMMAND];
-	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 	if (!(command & 0x8000))
 		return;
 

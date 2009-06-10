@@ -30,7 +30,7 @@ static WRITE16_HANDLER( vaportra_sound_w )
 	/* Force synchronisation between CPUs with fake timer */
 	timer_call_after_resynch(space->machine, NULL, 0, NULL);
 	soundlatch_w(space,0,data & 0xff);
-	cpu_set_input_line(space->machine->cpu[1],0,ASSERT_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", 0, ASSERT_LINE);
 }
 
 static READ16_HANDLER( vaportra_control_r )
@@ -75,7 +75,7 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( vaportra_soundlatch_r )
 {
-	cpu_set_input_line(space->machine->cpu[1],0,CLEAR_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", 0, CLEAR_LINE);
 	return soundlatch_r(space, offset);
 }
 
@@ -86,7 +86,7 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x120000, 0x120001) AM_DEVREADWRITE("oki1", okim6295_r, okim6295_w)
 	AM_RANGE(0x130000, 0x130001) AM_DEVREADWRITE("oki2", okim6295_r, okim6295_w)
 	AM_RANGE(0x140000, 0x140001) AM_READ(vaportra_soundlatch_r)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_READWRITE(SMH_BANK8,SMH_BANK8)  /* ??? LOOKUP ??? */
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_READWRITE(SMH_BANK(8),SMH_BANK(8))  /* ??? LOOKUP ??? */
 	AM_RANGE(0x1fec00, 0x1fec01) AM_WRITE(h6280_timer_w)
 	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(h6280_irq_status_w)
 ADDRESS_MAP_END
@@ -206,7 +206,7 @@ GFXDECODE_END
 
 static void sound_irq(const device_config *device, int state)
 {
-	cpu_set_input_line(device->machine->cpu[1],1,state); /* IRQ 2 */
+	cputag_set_input_line(device->machine, "audiocpu", 1, state); /* IRQ 2 */
 }
 
 static const ym2151_interface ym2151_config =
@@ -220,11 +220,11 @@ static MACHINE_DRIVER_START( vaportra )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,12000000) /* Custom chip 59 */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", H6280, 32220000/4) /* Custom chip 45; Audio section crystal is 32.220 MHz */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)

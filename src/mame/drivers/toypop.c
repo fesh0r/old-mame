@@ -110,16 +110,16 @@ static const struct namcoio_interface intf2 =
 
 static DRIVER_INIT( 58c_56_56 )
 {
-	namcoio_init(machine, 0, NAMCOIO_58XX, &intf0_coin);
-	namcoio_init(machine, 1, NAMCOIO_56XX, &intf1);
-	namcoio_init(machine, 2, NAMCOIO_56XX, &intf2);
+	namcoio_init(machine, 0, NAMCOIO_58XX, &intf0_coin, NULL);
+	namcoio_init(machine, 1, NAMCOIO_56XX, &intf1, NULL);
+	namcoio_init(machine, 2, NAMCOIO_56XX, &intf2, NULL);
 }
 
 static DRIVER_INIT( 58_56_56 )
 {
-	namcoio_init(machine, 0, NAMCOIO_58XX, &intf0);
-	namcoio_init(machine, 1, NAMCOIO_56XX, &intf1);
-	namcoio_init(machine, 2, NAMCOIO_56XX, &intf2);
+	namcoio_init(machine, 0, NAMCOIO_58XX, &intf0, NULL);
+	namcoio_init(machine, 1, NAMCOIO_56XX, &intf1, NULL);
+	namcoio_init(machine, 2, NAMCOIO_56XX, &intf2, NULL);
 }
 
 
@@ -156,68 +156,68 @@ static WRITE16_HANDLER( toypop_m68000_sharedram_w )
 
 static READ8_HANDLER( toypop_main_interrupt_enable_r )
 {
-	cpu_interrupt_enable(space->machine->cpu[0],1);
+	cpu_interrupt_enable(cputag_get_cpu(space->machine, "maincpu"), 1);
 	return 0;
 }
 
 static WRITE8_HANDLER( toypop_main_interrupt_enable_w )
 {
-	cpu_interrupt_enable(space->machine->cpu[0],1);
-	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+	cpu_interrupt_enable(cputag_get_cpu(space->machine, "maincpu"), 1);
+	cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( toypop_main_interrupt_disable_w )
 {
-	cpu_interrupt_enable(space->machine->cpu[0],0);
+	cpu_interrupt_enable(cputag_get_cpu(space->machine, "maincpu"), 0);
 }
 
 static WRITE8_HANDLER( toypop_sound_interrupt_enable_acknowledge_w )
 {
-	cpu_interrupt_enable(space->machine->cpu[1],1);
-	cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
+	cpu_interrupt_enable(cputag_get_cpu(space->machine, "audiocpu"), 1);
+	cputag_set_input_line(space->machine, "audiocpu", 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( toypop_sound_interrupt_disable_w )
 {
-	cpu_interrupt_enable(space->machine->cpu[1],0);
+	cpu_interrupt_enable(cputag_get_cpu(space->machine, "audiocpu"), 0);
 }
 
 static INTERRUPT_GEN( toypop_main_interrupt )
 {
 	irq0_line_assert(device);	// this also checks if irq is enabled - IMPORTANT!
-						// so don't replace with cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
+								// so don't replace with cputag_set_input_line(machine, "maincpu", 0, ASSERT_LINE);
 
-	namcoio_set_irq_line(device->machine,0,PULSE_LINE);
-	namcoio_set_irq_line(device->machine,1,PULSE_LINE);
-	namcoio_set_irq_line(device->machine,2,PULSE_LINE);
+	namcoio_set_irq_line(device->machine, 0, PULSE_LINE);
+	namcoio_set_irq_line(device->machine, 1, PULSE_LINE);
+	namcoio_set_irq_line(device->machine, 2, PULSE_LINE);
 }
 
 static WRITE8_HANDLER( toypop_sound_clear_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_RESET, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( toypop_sound_assert_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( toypop_m68000_clear_w )
 {
-	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "sub", INPUT_LINE_RESET, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( toypop_m68000_assert_w )
 {
-	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, ASSERT_LINE);
+	cputag_set_input_line(space->machine, "sub", INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static TIMER_CALLBACK( disable_interrupts )
 {
-	cpu_interrupt_enable(machine->cpu[0],0);
-	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
-	cpu_interrupt_enable(machine->cpu[1],0);
-	cpu_set_input_line(machine->cpu[1], 0, CLEAR_LINE);
+	cpu_interrupt_enable(cputag_get_cpu(machine, "maincpu"), 0);
+	cputag_set_input_line(machine, "maincpu", 0, CLEAR_LINE);
+	cpu_interrupt_enable(cputag_get_cpu(machine, "audiocpu"), 0);
+	cputag_set_input_line(machine, "audiocpu", 0, CLEAR_LINE);
 	interrupt_enable_68k = 0;
 }
 
@@ -542,15 +542,15 @@ static MACHINE_DRIVER_START( liblrabl )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809, 1536000)	/* 1.536 MHz (measured on Libble Rabble board) */
-	MDRV_CPU_PROGRAM_MAP(liblrabl_map,0)
+	MDRV_CPU_PROGRAM_MAP(liblrabl_map)
 	MDRV_CPU_VBLANK_INT("screen", toypop_main_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", M6809, 1536000)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_assert)
 
 	MDRV_CPU_ADD("sub", M68000, 6144000)	/* 6.144 MHz (measured on Libble Rabble board) */
-	MDRV_CPU_PROGRAM_MAP(m68k_map,0)
+	MDRV_CPU_PROGRAM_MAP(m68k_map)
 	MDRV_CPU_VBLANK_INT("screen", toypop_m68000_interrupt)
 
 	MDRV_QUANTUM_TIME(HZ(6000))    /* 100 CPU slices per frame - an high value to ensure proper */
@@ -585,7 +585,7 @@ static MACHINE_DRIVER_START( toypop )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(liblrabl)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(toypop_map,0)
+	MDRV_CPU_PROGRAM_MAP(toypop_map)
 MACHINE_DRIVER_END
 
 

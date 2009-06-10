@@ -187,7 +187,7 @@ static MACHINE_START( kangaroo )
 static MACHINE_START( kangaroo_mcu )
 {
 	MACHINE_START_CALL(kangaroo);
-	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xef00, 0xefff, 0, 0, mcu_sim_r, mcu_sim_w);
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xef00, 0xefff, 0, 0, mcu_sim_r, mcu_sim_w);
 	kangaroo_clock = 0;
 }
 
@@ -205,7 +205,7 @@ static MACHINE_RESET( kangaroo )
 	/* the copy protection. */
 	/* Anyway, what I do here is just immediately generate the NMI, so the game */
 	/* properly starts. */
-	cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
+	cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -287,18 +287,6 @@ static ADDRESS_MAP_START( sound_portmap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x6000, 0x6000) AM_MIRROR(0x0fff) AM_READ(soundlatch_r)
 	AM_RANGE(0x7000, 0x7000) AM_MIRROR(0x0fff) AM_DEVWRITE("ay", ay8910_data_w)
 	AM_RANGE(0x8000, 0x8000) AM_MIRROR(0x0fff) AM_DEVWRITE("ay", ay8910_address_w)
-ADDRESS_MAP_END
-
-
-
-/*************************************
- *
- *  Microcontroller memory handlers
- *
- *************************************/
-
-static ADDRESS_MAP_START( mcu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_ROM
 ADDRESS_MAP_END
 
 
@@ -442,12 +430,12 @@ static MACHINE_DRIVER_START( nomcu )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK/4)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, MASTER_CLOCK/8)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_portmap)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_MACHINE_START(kangaroo)
@@ -475,9 +463,8 @@ static MACHINE_DRIVER_START( mcu )
 
 	MDRV_MACHINE_START(kangaroo_mcu)
 
-	MDRV_CPU_ADD("mcu", MB8841, MASTER_CLOCK/4/12)
+	MDRV_CPU_ADD("mcu", MB8841, MASTER_CLOCK/4/2)
 	MDRV_CPU_FLAGS(CPU_DISABLE)
-	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 MACHINE_DRIVER_END
 
 

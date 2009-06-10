@@ -407,7 +407,7 @@ INPUT_PORTS_END
 
 static TIMER_CALLBACK( irq_stop )
 {
-	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 0, CLEAR_LINE);
 }
 
 static INTERRUPT_GEN( vblank_callback_gpworld )
@@ -445,8 +445,8 @@ static MACHINE_DRIVER_START( gpworld )
 
 	/* main cpu */
 	MDRV_CPU_ADD("maincpu", Z80, GUESSED_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(mainmem,0)
-	MDRV_CPU_IO_MAP(mainport,0)
+	MDRV_CPU_PROGRAM_MAP(mainmem)
+	MDRV_CPU_IO_MAP(mainport)
 	MDRV_CPU_VBLANK_INT("screen", vblank_callback_gpworld)
 
 	MDRV_MACHINE_START(gpworld)

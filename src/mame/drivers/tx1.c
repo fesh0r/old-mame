@@ -73,23 +73,23 @@ static UINT32 ts;
 /* Main CPU and Z80 synchronisation */
 static WRITE16_HANDLER( z80_busreq_w )
 {
-	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_HALT, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(space->machine, "audio_cpu", INPUT_LINE_HALT, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE16_HANDLER( resume_math_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_TEST, ASSERT_LINE);
+	cputag_set_input_line(space->machine, "math_cpu", INPUT_LINE_TEST, ASSERT_LINE);
 }
 
 static WRITE16_HANDLER( halt_math_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_TEST, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "math_cpu", INPUT_LINE_TEST, CLEAR_LINE);
 }
 
 /* Z80 can trigger its own interrupts */
 static WRITE8_HANDLER( z80_intreq_w )
 {
-	cpu_set_input_line(space->machine->cpu[2], 0, HOLD_LINE);
+	cputag_set_input_line(space->machine, "audio_cpu", 0, HOLD_LINE);
 }
 
 /* Periodic Z80 interrupt */
@@ -100,13 +100,13 @@ static INTERRUPT_GEN( z80_irq )
 
 static READ16_HANDLER( z80_shared_r )
 {
-	const address_space *cpu2space = cpu_get_address_space(space->machine->cpu[2], ADDRESS_SPACE_PROGRAM);
+	const address_space *cpu2space = cputag_get_address_space(space->machine, "audio_cpu", ADDRESS_SPACE_PROGRAM);
 	return memory_read_byte(cpu2space, offset);
 }
 
 static WRITE16_HANDLER( z80_shared_w )
 {
-	const address_space *cpu2space = cpu_get_address_space(space->machine->cpu[2], ADDRESS_SPACE_PROGRAM);
+	const address_space *cpu2space = cputag_get_address_space(space->machine, "audio_cpu", ADDRESS_SPACE_PROGRAM);
 	memory_write_byte(cpu2space, offset, data & 0xff);
 }
 
@@ -702,15 +702,15 @@ static const ay8910_interface buggybjr_ym2149_interface_2 =
 
 static MACHINE_DRIVER_START( tx1 )
 	MDRV_CPU_ADD("main_cpu", I8086, CPU_MASTER_CLOCK / 3)
-	MDRV_CPU_PROGRAM_MAP(tx1_main, 0)
+	MDRV_CPU_PROGRAM_MAP(tx1_main)
 //  MDRV_WATCHDOG_TIME_INIT(5)
 
 	MDRV_CPU_ADD("math_cpu", I8086, CPU_MASTER_CLOCK / 3)
-	MDRV_CPU_PROGRAM_MAP(tx1_math, 0)
+	MDRV_CPU_PROGRAM_MAP(tx1_math)
 
 	MDRV_CPU_ADD("audio_cpu", Z80, TX1_PIXEL_CLOCK / 2)
-	MDRV_CPU_PROGRAM_MAP(tx1_sound_prg, 0)
-	MDRV_CPU_IO_MAP(tx1_sound_io, 0)
+	MDRV_CPU_PROGRAM_MAP(tx1_sound_prg)
+	MDRV_CPU_IO_MAP(tx1_sound_io)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, TX1_PIXEL_CLOCK / 4 / 2048 / 2)
 
 	MDRV_MACHINE_RESET(tx1)
@@ -755,16 +755,16 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( buggyboy )
 	MDRV_CPU_ADD("main_cpu", I8086, CPU_MASTER_CLOCK / 3)
-	MDRV_CPU_PROGRAM_MAP(buggyboy_main, 0)
+	MDRV_CPU_PROGRAM_MAP(buggyboy_main)
 //  MDRV_WATCHDOG_TIME_INIT(5)
 
 	MDRV_CPU_ADD("math_cpu", I8086, CPU_MASTER_CLOCK / 3)
-	MDRV_CPU_PROGRAM_MAP(buggyboy_math, 0)
+	MDRV_CPU_PROGRAM_MAP(buggyboy_math)
 
 	MDRV_CPU_ADD("audio_cpu", Z80, BUGGYBOY_ZCLK / 2)
-	MDRV_CPU_PROGRAM_MAP(buggyboy_sound_prg, 0)
+	MDRV_CPU_PROGRAM_MAP(buggyboy_sound_prg)
 	MDRV_CPU_PERIODIC_INT(z80_irq, BUGGYBOY_ZCLK / 2 / 4 / 2048)
-	MDRV_CPU_IO_MAP(buggyboy_sound_io, 0)
+	MDRV_CPU_IO_MAP(buggyboy_sound_io)
 
 	MDRV_MACHINE_RESET(buggyboy)
 	MDRV_NVRAM_HANDLER(generic_0fill)
@@ -810,15 +810,15 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( buggybjr )
 	MDRV_CPU_ADD("main_cpu", I8086, CPU_MASTER_CLOCK / 3)
-	MDRV_CPU_PROGRAM_MAP(buggybjr_main, 0)
+	MDRV_CPU_PROGRAM_MAP(buggybjr_main)
 //  MDRV_WATCHDOG_TIME_INIT(5)
 
 	MDRV_CPU_ADD("math_cpu", I8086, CPU_MASTER_CLOCK / 3)
-	MDRV_CPU_PROGRAM_MAP(buggyboy_math, 0)
+	MDRV_CPU_PROGRAM_MAP(buggyboy_math)
 
 	MDRV_CPU_ADD("audio_cpu", Z80, BUGGYBOY_ZCLK / 2)
-	MDRV_CPU_PROGRAM_MAP(buggybjr_sound_prg, 0)
-	MDRV_CPU_IO_MAP(buggyboy_sound_io, 0)
+	MDRV_CPU_PROGRAM_MAP(buggybjr_sound_prg)
+	MDRV_CPU_IO_MAP(buggyboy_sound_io)
 	MDRV_CPU_PERIODIC_INT(z80_irq, BUGGYBOY_ZCLK / 2 / 4 / 2048)
 
 	MDRV_MACHINE_RESET(buggybjr)

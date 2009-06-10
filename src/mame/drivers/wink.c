@@ -56,7 +56,7 @@ static READ8_HANDLER( player_inputs_r )
 
 static WRITE8_HANDLER( sound_irq_w )
 {
-	cpu_set_input_line(space->machine->cpu[1],0,HOLD_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", 0, HOLD_LINE);
 	//sync with sound cpu (but it still loses some soundlatches...)
 	//timer_call_after_resynch(space->machine, NULL, 0, NULL);
 }
@@ -323,13 +323,13 @@ static MACHINE_RESET( wink )
 static MACHINE_DRIVER_START( wink )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 12000000 / 4)
-	MDRV_CPU_PROGRAM_MAP(wink_map,0)
-	MDRV_CPU_IO_MAP(wink_io,0)
+	MDRV_CPU_PROGRAM_MAP(wink_map)
+	MDRV_CPU_IO_MAP(wink_io)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 12000000 / 8)
-	MDRV_CPU_PROGRAM_MAP(wink_sound_map,0)
-	MDRV_CPU_IO_MAP(wink_sound_io,0)
+	MDRV_CPU_PROGRAM_MAP(wink_sound_map)
+	MDRV_CPU_IO_MAP(wink_sound_io)
 	MDRV_CPU_PERIODIC_INT(wink_sound, 15625)
 
 	MDRV_NVRAM_HANDLER(generic_1fill)
@@ -394,7 +394,7 @@ static DRIVER_INIT( wink )
 {
 	UINT32 i;
 	UINT8 *ROM = memory_region(machine, "maincpu");
-	UINT8 *buffer = malloc_or_die(0x8000);
+	UINT8 *buffer = alloc_array_or_die(UINT8, 0x8000);
 
 	// protection module reverse engineered by HIGHWAYMAN
 

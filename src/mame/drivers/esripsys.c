@@ -76,17 +76,17 @@ static int _fbsel = 1;
  *
  *************************************/
 
-static void ptm_irq(running_machine *machine, int state)
+static WRITE_LINE_DEVICE_HANDLER( ptm_irq )
 {
-	cpu_set_input_line(machine->cpu[ESRIPSYS_SOUND_CPU], M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "sound_cpu", M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ptm6840_interface ptm_intf =
 {
 	XTAL_8MHz / 4,
 	{ 0, 0, 0 },
-	{ NULL, NULL, NULL },
-	ptm_irq
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL },
+	DEVCB_LINE(ptm_irq)
 };
 
 
@@ -130,7 +130,7 @@ static READ8_HANDLER( uart_r )
 
 static READ8_HANDLER( g_status_r )
 {
-	int bank4 = BIT(get_rip_status(space->machine->cpu[ESRIPSYS_VIDEO_CPU]), 2);
+	int bank4 = BIT(get_rip_status(cputag_get_cpu(space->machine, "video_cpu")), 2);
 	int vblank = video_screen_get_vblank(space->machine->primary_screen);
 
 	return (!vblank << 7) | (bank4 << 6) | (f_status & 0x2f);
@@ -146,14 +146,14 @@ static WRITE8_HANDLER( g_status_w )
 	bankaddress = 0x10000 + (data & 0x03) * 0x10000;
 	memory_set_bankptr(space->machine, 1, &rom[bankaddress]);
 
-	cpu_set_input_line(space->machine->cpu[ESRIPSYS_FRAME_CPU], M6809_FIRQ_LINE, data & 0x10 ? CLEAR_LINE : ASSERT_LINE);
-	cpu_set_input_line(space->machine->cpu[ESRIPSYS_FRAME_CPU], INPUT_LINE_NMI,  data & 0x80 ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(space->machine, "frame_cpu", M6809_FIRQ_LINE, data & 0x10 ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(space->machine, "frame_cpu", INPUT_LINE_NMI,  data & 0x80 ? CLEAR_LINE : ASSERT_LINE);
 
-	cpu_set_input_line(space->machine->cpu[ESRIPSYS_VIDEO_CPU], INPUT_LINE_RESET, data & 0x40 ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(space->machine, "video_cpu", INPUT_LINE_RESET, data & 0x40 ? CLEAR_LINE : ASSERT_LINE);
 
 	/* /VBLANK IRQ acknowledge */
 	if (!(data & 0x20))
-		cpu_set_input_line(space->machine->cpu[ESRIPSYS_GAME_CPU], M6809_IRQ_LINE, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "game_cpu", M6809_IRQ_LINE, CLEAR_LINE);
 }
 
 
@@ -179,7 +179,7 @@ static WRITE8_HANDLER( g_status_w )
 static READ8_HANDLER( f_status_r )
 {
 	int vblank = video_screen_get_vblank(space->machine->primary_screen);
-	UINT8 rip_status = get_rip_status(space->machine->cpu[ESRIPSYS_VIDEO_CPU]);
+	UINT8 rip_status = get_rip_status(cputag_get_cpu(space->machine, "video_cpu"));
 
 	rip_status = (rip_status & 0x18) | (BIT(rip_status, 6) << 1) |  BIT(rip_status, 7);
 
@@ -378,7 +378,7 @@ static WRITE8_HANDLER( g_ioadd_w )
 			}
 			case 0x02:
 			{
-				cpu_set_input_line(space->machine->cpu[ESRIPSYS_SOUND_CPU], INPUT_LINE_NMI, g_iodata & 4 ? CLEAR_LINE : ASSERT_LINE);
+				cputag_set_input_line(space->machine, "sound_cpu", INPUT_LINE_NMI, g_iodata & 4 ? CLEAR_LINE : ASSERT_LINE);
 
 				if (!(g_to_s_latch2 & 1) && (g_iodata & 1))
 				{
@@ -386,7 +386,7 @@ static WRITE8_HANDLER( g_ioadd_w )
 					u56a = 1;
 
 					/*...causing a sound CPU /IRQ */
-					cpu_set_input_line(space->machine->cpu[ESRIPSYS_SOUND_CPU], M6809_IRQ_LINE, ASSERT_LINE);
+					cputag_set_input_line(space->machine, "sound_cpu", M6809_IRQ_LINE, ASSERT_LINE);
 				}
 
 				if (g_iodata & 2)
@@ -439,7 +439,7 @@ static INPUT_CHANGED( keypad_interrupt )
 	{
 		io_firq_status |= 2;
 		keypad_status |= 0x20;
-		cpu_set_input_line(field->port->machine->cpu[ESRIPSYS_GAME_CPU], M6809_FIRQ_LINE, HOLD_LINE);
+		cputag_set_input_line(field->port->machine, "game_cpu", M6809_FIRQ_LINE, HOLD_LINE);
 	}
 }
 
@@ -449,7 +449,7 @@ static INPUT_CHANGED( coin_interrupt )
 	{
 		io_firq_status |= 2;
 		coin_latch = input_port_read(field->port->machine, "COINS") << 2;
-		cpu_set_input_line(field->port->machine->cpu[ESRIPSYS_GAME_CPU], M6809_FIRQ_LINE, HOLD_LINE);
+		cputag_set_input_line(field->port->machine, "game_cpu", M6809_FIRQ_LINE, HOLD_LINE);
 	}
 }
 
@@ -530,7 +530,7 @@ static WRITE8_HANDLER( s_200f_w )
 	if (s_to_g_latch2 & 0x40)
 	{
 		u56a = 0;
-		cpu_set_input_line(space->machine->cpu[ESRIPSYS_SOUND_CPU], M6809_IRQ_LINE, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "sound_cpu", M6809_IRQ_LINE, CLEAR_LINE);
 	}
 
 	if (!(s_to_g_latch2 & 0x80) && (data & 0x80))
@@ -653,7 +653,7 @@ static ADDRESS_MAP_START( sound_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x200d, 0x200d) AM_WRITE(control_w)
 	AM_RANGE(0x200e, 0x200e) AM_READWRITE(s_200e_r, s_200e_w)
 	AM_RANGE(0x200f, 0x200f) AM_READWRITE(s_200f_r, s_200f_w)
-	AM_RANGE(0x2020, 0x2027) AM_READWRITE(ptm6840_0_r, ptm6840_0_w)
+	AM_RANGE(0x2020, 0x2027) AM_DEVREADWRITE("6840ptm", ptm6840_read, ptm6840_write)
 	AM_RANGE(0x8000, 0x9fff) AM_ROMBANK(2)
 	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK(3)
 	AM_RANGE(0xc000, 0xdfff) AM_ROMBANK(4)
@@ -676,11 +676,9 @@ static DRIVER_INIT( esripsys )
 {
 	UINT8 *rom = memory_region(machine, "sound_data");
 
-	fdt_a = auto_malloc(FDT_RAM_SIZE);
-	fdt_b = auto_malloc(FDT_RAM_SIZE);
-	cmos_ram = auto_malloc(CMOS_RAM_SIZE);
-
-	ptm6840_config(machine, 0, &ptm_intf);
+	fdt_a = auto_alloc_array(machine, UINT8, FDT_RAM_SIZE);
+	fdt_b = auto_alloc_array(machine, UINT8, FDT_RAM_SIZE);
+	cmos_ram = auto_alloc_array(machine, UINT8, CMOS_RAM_SIZE);
 
 	memory_set_bankptr(machine, 2, &rom[0x0000]);
 	memory_set_bankptr(machine, 3, &rom[0x4000]);
@@ -736,18 +734,18 @@ static const esrip_config rip_config =
 
 static MACHINE_DRIVER_START( esripsys )
 	MDRV_CPU_ADD("game_cpu", M6809E, XTAL_8MHz)
-	MDRV_CPU_PROGRAM_MAP(game_cpu_map, 0)
+	MDRV_CPU_PROGRAM_MAP(game_cpu_map)
 	MDRV_CPU_VBLANK_INT("screen", esripsys_vblank_irq)
 
 	MDRV_CPU_ADD("frame_cpu", M6809E, XTAL_8MHz)
-	MDRV_CPU_PROGRAM_MAP(frame_cpu_map, 0)
+	MDRV_CPU_PROGRAM_MAP(frame_cpu_map)
 
 	MDRV_CPU_ADD("video_cpu", ESRIP, XTAL_40MHz / 4)
-	MDRV_CPU_PROGRAM_MAP(video_cpu_map, 0)
+	MDRV_CPU_PROGRAM_MAP(video_cpu_map)
 	MDRV_CPU_CONFIG(rip_config)
 
 	MDRV_CPU_ADD("sound_cpu", M6809E, XTAL_8MHz)
-	MDRV_CPU_PROGRAM_MAP(sound_cpu_map, 0)
+	MDRV_CPU_PROGRAM_MAP(sound_cpu_map)
 
 	MDRV_NVRAM_HANDLER(esripsys)
 
@@ -768,6 +766,9 @@ static MACHINE_DRIVER_START( esripsys )
 
 	MDRV_SOUND_ADD("tms5220nl", TMS5220, 640000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	/* 6840 PTM */
+	MDRV_PTM6840_ADD("6840ptm", ptm_intf)
 MACHINE_DRIVER_END
 
 

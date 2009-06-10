@@ -544,8 +544,8 @@ static MACHINE_DRIVER_START( paradise )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_12MHz/2)			/* Z8400B - 6mhz Verified */
-	MDRV_CPU_PROGRAM_MAP(paradise_map,0)
-	MDRV_CPU_IO_MAP(paradise_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(paradise_map)
+	MDRV_CPU_IO_MAP(paradise_io_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)	/* No nmi routine */
 
 	/* video hardware */
@@ -578,35 +578,35 @@ static MACHINE_DRIVER_START( tgtball )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(paradise)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(tgtball_map,0)
+	MDRV_CPU_PROGRAM_MAP(tgtball_map)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( torus )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(paradise)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(torus_map,0)
-	MDRV_CPU_IO_MAP(torus_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(torus_map)
+	MDRV_CPU_IO_MAP(torus_io_map)
 
 	MDRV_GFXDECODE(torus)
 
 	MDRV_VIDEO_UPDATE(torus)
 
-	MDRV_SOUND_REMOVE("oki2")
+	MDRV_DEVICE_REMOVE("oki2")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( madball )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(paradise)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(torus_map,0)
-	MDRV_CPU_IO_MAP(torus_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(torus_map)
+	MDRV_CPU_IO_MAP(torus_io_map)
 
 	MDRV_GFXDECODE(madball)
 
 	MDRV_VIDEO_UPDATE(madball)
 
-	MDRV_SOUND_REMOVE("oki2")
+	MDRV_DEVICE_REMOVE("oki2")
 MACHINE_DRIVER_END
 
 
@@ -1024,13 +1024,13 @@ static DRIVER_INIT (paradise)
 static DRIVER_INIT (tgtball)
 {
 	paradise_sprite_inc = 4;
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x2001, 0x2001, 0, 0, tgtball_flipscreen_w );
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x2001, 0x2001, 0, 0, tgtball_flipscreen_w );
 }
 
 static DRIVER_INIT (torus)
 {
 	paradise_sprite_inc = 4;
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x2070, 0x2070, 0, 0, torus_coin_counter_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x2070, 0x2070, 0, 0, torus_coin_counter_w);
 }
 
 
@@ -1048,4 +1048,3 @@ GAME( 1995,  tgtballa, tgtball, tgtball,  tgtball,  tgtball,  ROT0,  "Yun Sung",
 GAME( 1996,  torus,    0,       torus,    torus,    torus,    ROT90, "Yun Sung", "Torus", 0 )
 GAME( 1998,  madball,  0,       madball,  madball,  tgtball,  ROT0,  "Yun Sung", "Mad Ball V2.0", 0 )
 GAME( 1997,  madballn, madball, madball,  madball,  tgtball,  ROT0,  "Yun Sung", "Mad Ball V2.0 (With Nudity)", 0 )
-

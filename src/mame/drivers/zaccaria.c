@@ -103,8 +103,8 @@ static WRITE8_DEVICE_HANDLER( ay8910_port0a_w )
 }
 
 
-static WRITE_LINE_DEVICE_HANDLER( zaccaria_irq0a ) { cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE); }
-static WRITE_LINE_DEVICE_HANDLER( zaccaria_irq0b ) { cpu_set_input_line(device->machine->cpu[1],0,state ? ASSERT_LINE : CLEAR_LINE); }
+static WRITE_LINE_DEVICE_HANDLER( zaccaria_irq0a ) { cputag_set_input_line(device->machine, "audiocpu", INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE); }
+static WRITE_LINE_DEVICE_HANDLER( zaccaria_irq0b ) { cputag_set_input_line(device->machine, "audiocpu", 0, state ? ASSERT_LINE : CLEAR_LINE); }
 
 static int active_8910, port0a, acs;
 
@@ -259,20 +259,20 @@ static const ppi8255_interface ppi8255_intf =
 
 static WRITE8_HANDLER( sound_command_w )
 {
-	soundlatch_w(space,0,data);
-	cpu_set_input_line(space->machine->cpu[2],0,(data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+	soundlatch_w(space, 0, data);
+	cputag_set_input_line(space->machine, "audio2", 0, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( sound1_command_w )
 {
 	const device_config *pia0 = devtag_get_device(space->machine, "pia0");
-	pia6821_ca1_w(pia0,0,data & 0x80);
-	soundlatch2_w(space,0,data);
+	pia6821_ca1_w(pia0, 0, data & 0x80);
+	soundlatch2_w(space, 0, data);
 }
 
 static WRITE8_DEVICE_HANDLER( mc1408_data_w )
 {
-	dac_data_w(device,data);
+	dac_data_w(device, data);
 }
 
 
@@ -571,15 +571,15 @@ static MACHINE_DRIVER_START( zaccaria )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,XTAL_18_432MHz/6)	/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	MDRV_CPU_ADD("audiocpu", M6802,XTAL_3_579545MHz) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(sound_map_1,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map_1)
 	MDRV_CPU_PERIODIC_INT(zaccaria_cb1_toggle,(double)3580000/4096)
 
 	MDRV_CPU_ADD("audio2", M6802,XTAL_3_579545MHz) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(sound_map_2,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map_2)
 
 	MDRV_PPI8255_ADD( "ppi8255", ppi8255_intf )
 	MDRV_PIA6821_ADD( "pia0", pia_0_intf )

@@ -514,13 +514,13 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( srmp5 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",Z80,8000000)
-	MDRV_CPU_PROGRAM_MAP(st0016_mem,0)
-	MDRV_CPU_IO_MAP(st0016_io,0)
+	MDRV_CPU_PROGRAM_MAP(st0016_mem)
+	MDRV_CPU_IO_MAP(st0016_io)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", R3000LE, 25000000)
 	MDRV_CPU_CONFIG(config)
-	MDRV_CPU_PROGRAM_MAP(srmp5_mem,0)
+	MDRV_CPU_PROGRAM_MAP(srmp5_mem)
 	//256???K??
 	MDRV_CPU_VBLANK_INT_HACK(irq4_gen, 256)
 
@@ -577,9 +577,9 @@ ROM_END
 static DRIVER_INIT(srmp5)
 {
 	st0016_game=9;
-	tileram = (UINT16 *)auto_malloc(0x100000);
-	sprram  = (UINT16 *)auto_malloc(0x080000);
-	palram  = (UINT16 *)auto_malloc(0x040000);
+	tileram = auto_alloc_array(machine, UINT16, 0x100000/2);
+	sprram  = auto_alloc_array(machine, UINT16, 0x080000/2);
+	palram  = auto_alloc_array(machine, UINT16, 0x040000/2);
 #ifdef DEBUG_CHAR
 	memset(tileduty, 1, 0x2000);
 #endif

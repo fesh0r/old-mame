@@ -95,7 +95,7 @@ static PALETTE_INIT( jangou )
 
 static VIDEO_START( jangou )
 {
-	blit_buffer = auto_malloc(256*256);
+	blit_buffer = auto_alloc_array(machine, UINT8, 256*256);
 }
 
 static VIDEO_UPDATE( jangou )
@@ -269,12 +269,12 @@ static READ8_DEVICE_HANDLER( input_system_r )
 static WRITE8_HANDLER( sound_latch_w )
 {
 	soundlatch_w(space, 0, data & 0xff);
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, ASSERT_LINE);
+	cputag_set_input_line(space->machine, "cpu1", INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 static READ8_HANDLER( sound_latch_r )
 {
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "cpu1", INPUT_LINE_NMI, CLEAR_LINE);
 	return soundlatch_r(space, 0);
 }
 
@@ -292,7 +292,7 @@ static TIMER_CALLBACK( cvsd_bit_timer_callback )
 
 	/* Trigger an IRQ for every 8 shifted bits */
 	if ((++cvsd_shift_cnt & 7) == 0)
-		cpu_set_input_line(machine->cpu[1], 0, HOLD_LINE);
+		cputag_set_input_line(machine, "cpu1", 0, HOLD_LINE);
 }
 
 
@@ -311,7 +311,7 @@ static void jngolady_vclk_cb(const device_config *device)
 	else
 	{
 		msm5205_data_w(device, adpcm_byte & 0xf);
-		cpu_set_input_line(device->machine->cpu[1], 0, HOLD_LINE);
+		cputag_set_input_line(device->machine, "cpu1", 0, HOLD_LINE);
 	}
 
 	msm5205_vclk_toggle ^= 1;
@@ -333,7 +333,7 @@ static READ8_HANDLER( master_com_r )
 
 static WRITE8_HANDLER( master_com_w )
 {
-	cpu_set_input_line(space->machine->cpu[2], 0, HOLD_LINE);
+	cputag_set_input_line(space->machine, "nsc", 0, HOLD_LINE);
 	nsc_latch = data;
 }
 
@@ -760,13 +760,13 @@ static SOUND_START( jangou )
 static MACHINE_DRIVER_START( jangou )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("cpu0", Z80, MASTER_CLOCK / 8)
-	MDRV_CPU_PROGRAM_MAP(0, cpu0_map)
-	MDRV_CPU_IO_MAP(0, cpu0_io)
+	MDRV_CPU_PROGRAM_MAP(cpu0_map)
+	MDRV_CPU_IO_MAP(cpu0_io)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("cpu1", Z80, MASTER_CLOCK / 8)
-	MDRV_CPU_PROGRAM_MAP(0, cpu1_map)
-	MDRV_CPU_IO_MAP(0, cpu1_io)
+	MDRV_CPU_PROGRAM_MAP(cpu1_map)
+	MDRV_CPU_IO_MAP(cpu1_io)
 
 	/* video hardware */
 	MDRV_PALETTE_INIT(jangou)
@@ -801,18 +801,18 @@ static MACHINE_DRIVER_START( jngolady )
 	MDRV_IMPORT_FROM(jangou)
 
 	MDRV_CPU_MODIFY("cpu0")
-	MDRV_CPU_PROGRAM_MAP(0, jngolady_cpu0_map)
+	MDRV_CPU_PROGRAM_MAP(jngolady_cpu0_map)
 
 	MDRV_CPU_MODIFY("cpu1")
-	MDRV_CPU_PROGRAM_MAP(0, jngolady_cpu1_map)
-	MDRV_CPU_IO_MAP(0, jngolady_cpu1_io)
+	MDRV_CPU_PROGRAM_MAP(jngolady_cpu1_map)
+	MDRV_CPU_IO_MAP(jngolady_cpu1_io)
 
 	MDRV_CPU_ADD("nsc", NSC8105, MASTER_CLOCK / 8)
-	MDRV_CPU_PROGRAM_MAP(nsc_map, 0)
+	MDRV_CPU_PROGRAM_MAP(nsc_map)
 
 	/* sound hardware */
 	MDRV_SOUND_START(NULL)
-	MDRV_SOUND_REMOVE("cvsd")
+	MDRV_DEVICE_REMOVE("cvsd")
 
 	MDRV_SOUND_ADD("msm", MSM5205, XTAL_400kHz)
 	MDRV_SOUND_CONFIG(msm5205_config)
@@ -824,14 +824,14 @@ static MACHINE_DRIVER_START( cntrygrl )
 	MDRV_IMPORT_FROM(jangou)
 
 	MDRV_CPU_MODIFY("cpu0")
-	MDRV_CPU_PROGRAM_MAP(0, cntrygrl_cpu0_map )
-	MDRV_CPU_IO_MAP(0,cntrygrl_cpu0_io )
+	MDRV_CPU_PROGRAM_MAP(cntrygrl_cpu0_map )
+	MDRV_CPU_IO_MAP(cntrygrl_cpu0_io )
 
-	MDRV_CPU_REMOVE("cpu1")
+	MDRV_DEVICE_REMOVE("cpu1")
 
 	/* sound hardware */
 	MDRV_SOUND_START(NULL)
-	MDRV_SOUND_REMOVE("cvsd")
+	MDRV_DEVICE_REMOVE("cvsd")
 MACHINE_DRIVER_END
 
 /*
@@ -1026,7 +1026,7 @@ static READ8_HANDLER( jngolady_rng_r )
 
 static DRIVER_INIT( jngolady )
 {
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[2], ADDRESS_SPACE_PROGRAM), 0x08, 0x08, 0, 0, jngolady_rng_r );
+	memory_install_read8_handler(cputag_get_address_space(machine, "nsc", ADDRESS_SPACE_PROGRAM), 0x08, 0x08, 0, 0, jngolady_rng_r );
 }
 
 static DRIVER_INIT (luckygrl)

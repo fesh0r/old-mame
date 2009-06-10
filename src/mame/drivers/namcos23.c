@@ -23,7 +23,7 @@
     TODO:
     - Palette is not right.
 
-    - H8/3002 does not handshake.  Looks like it needs to speak serially with the I/O board.
+    - H8/3002 now communicates with the H8/3334 on the I/O board, but it's not reliable yet.
 
     - Hook up actual inputs (?) via the 2 serial latches at d00004 and d00006.
       Works like this: write to d00004, then read d00004 12 times.  Ditto at
@@ -38,6 +38,7 @@
 
     - Serial number data is at offset 0x201 in the BIOS.  Until the games are running
       and displaying it I'm not going to meddle with it though.
+
 */
 
 /*
@@ -52,7 +53,7 @@ This document covers all the known Namco System 23 / Super System 23 games, incl
 *Final Furlong    Namco, 1997    System 22.5/Gorgon
 Gunmen Wars       Namco, 1998    System 23 [not dumped, but have]
 Motocross Go!     Namco, 1997    System 23
-*Panic Park       Namco, 1998    System 23
+Panic Park        Namco, 1998    System 23
 Rapid River       Namco, 1997    System 22.5/Gorgon
 Time Crisis II    Namco, 1997    System 23
 *Underground King Namco, 1998    System 23
@@ -744,6 +745,7 @@ static int ss23_vstat = 0, hstat = 0, vstate = 0;
 static tilemap *bgtilemap;
 static UINT32 *namcos23_textram, *namcos23_shared_ram;
 static UINT32 *namcos23_charram;
+static UINT8 namcos23_jvssense;
 
 static UINT16 nthword( const UINT32 *pSource, int offs )
 {
@@ -993,9 +995,16 @@ static WRITE32_HANDLER( namcos23_paletteram_w )
 }
 
 // must return this magic number
+static UINT32 s23_vbl = 0;
+
+static INTERRUPT_GEN(s23_interrupt)
+{
+	s23_vbl ^= 0x80008000;
+}
+
 static READ32_HANDLER(s23_unk_r)
 {
-	return 0x008e008e;
+	return 0x008e008e | s23_vbl;
 }
 
 // this & 8 and this & 4 are checked
@@ -1016,12 +1025,12 @@ static WRITE32_HANDLER( s23_mcuen_w )
 		if (data)
 		{
 			logerror("S23: booting H8/3002\n");
-			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
+			cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_RESET, CLEAR_LINE);
 		}
 		else
 		{
 			logerror("S23: stopping H8/3002\n");
-			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
+			cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_RESET, ASSERT_LINE);
 		}
 	}
 }
@@ -1067,6 +1076,12 @@ static WRITE16_HANDLER( sharedram_sub_w )
 {
 	UINT16 *shared16 = (UINT16 *)namcos23_shared_ram;
 
+	// fake that an I/O board is connected
+	if ((offset == 0x4052/2) && (data == 0x78))
+	{
+		data = 0;
+	}
+
 	COMBINE_DATA(&shared16[BYTE_XOR_BE(offset)]);
 }
 
@@ -1077,15 +1092,6 @@ static READ16_HANDLER( sharedram_sub_r )
 	return shared16[BYTE_XOR_BE(offset)];
 }
 
-#if 1
-static WRITE16_HANDLER(cause_sync_w)
-{
-	UINT16 *shared16 = (UINT16 *)namcos23_shared_ram;
-
-	shared16[BYTE_XOR_BE(0x4052/2)] = 0;
-}
-#endif
-
 /* H8/3002 MCU stuff */
 static ADDRESS_MAP_START( s23h8rwmap, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)
@@ -1094,7 +1100,7 @@ static ADDRESS_MAP_START( s23h8rwmap, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x300000, 0x300001) AM_READNOP //AM_READ_PORT("IN1")
 	AM_RANGE(0x300002, 0x300003) AM_READNOP //AM_READ_PORT("IN2")
 	AM_RANGE(0x300010, 0x300011) AM_NOP
-	AM_RANGE(0x300030, 0x300031) AM_WRITE(cause_sync_w)	// cheats comms with I/O board and makes SUBCPU TEST pass
+	AM_RANGE(0x300030, 0x300031) AM_WRITENOP	// timecrs2 writes this when writing to the sync shared ram location, motoxgo doesn't
 ADDRESS_MAP_END
 
 static READ8_HANDLER( s23_mcu_p8_r )
@@ -1214,16 +1220,74 @@ static WRITE8_HANDLER( s23_mcu_settings_w )
 	s23_setstate ^= 1;
 }
 
+static UINT8 maintoio[64], mi_rd, mi_wr;
+static UINT8 iotomain[64], im_rd, im_wr;
+
+static READ8_HANDLER( s23_mcu_iob_r )
+{
+	UINT8 ret = iotomain[im_rd];
+
+	im_rd++;
+	im_rd &= 0x3f;
+
+	if (im_rd == im_wr)
+	{
+		cputag_set_input_line(space->machine, "audiocpu", H8_SCI_0_RX, CLEAR_LINE);
+	}
+	else
+	{
+		cputag_set_input_line(space->machine, "audiocpu", H8_SCI_0_RX, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "audiocpu", H8_SCI_0_RX, ASSERT_LINE);
+	}
+
+	return ret;
+}
+
+static WRITE8_HANDLER( s23_mcu_iob_w )
+{
+	maintoio[mi_wr++] = data;
+	mi_wr &= 0x3f;
+
+	cputag_set_input_line(space->machine, "ioboard", H8_SCI_0_RX, ASSERT_LINE);
+}
+
 static INPUT_PORTS_START( ss23 )
 	PORT_START("H8PORT")
 INPUT_PORTS_END
 
+
+static READ8_HANDLER(s23_mcu_p6_r)
+{
+	// bit 1 = JVS cable present sense (1 = I/O board plugged in)
+		return (namcos23_jvssense << 1) | 0xfd;
+}
+
+static WRITE8_HANDLER(s23_mcu_p6_w)
+{
+//  printf("%02x to port 6\n", data);
+}
+
 static ADDRESS_MAP_START( s23h8iomap, ADDRESS_SPACE_IO, 8 )
+	AM_RANGE(H8_PORT_6, H8_PORT_6) AM_READWRITE( s23_mcu_p6_r, s23_mcu_p6_w )
 	AM_RANGE(H8_PORT_7, H8_PORT_7) AM_READ_PORT( "H8PORT" )
 	AM_RANGE(H8_PORT_8, H8_PORT_8) AM_READ( s23_mcu_p8_r ) AM_WRITENOP
 	AM_RANGE(H8_PORT_A, H8_PORT_A) AM_READWRITE( s23_mcu_pa_r, s23_mcu_pa_w )
 	AM_RANGE(H8_PORT_B, H8_PORT_B) AM_READWRITE( s23_mcu_portB_r, s23_mcu_portB_w )
-	AM_RANGE(H8_SERIAL_1, H8_SERIAL_1) AM_READ( s23_mcu_rtc_r ) AM_WRITE( s23_mcu_settings_w )
+	AM_RANGE(H8_SERIAL_0, H8_SERIAL_0) AM_READWRITE( s23_mcu_iob_r, s23_mcu_iob_w )
+	AM_RANGE(H8_SERIAL_1, H8_SERIAL_1) AM_READWRITE( s23_mcu_rtc_r, s23_mcu_settings_w )
+	AM_RANGE(H8_ADC_0_H, H8_ADC_0_L) AM_NOP
+	AM_RANGE(H8_ADC_1_H, H8_ADC_1_L) AM_NOP
+	AM_RANGE(H8_ADC_2_H, H8_ADC_2_L) AM_NOP
+	AM_RANGE(H8_ADC_3_H, H8_ADC_3_L) AM_NOP
+ADDRESS_MAP_END
+
+// version without serial hookup to I/O board for games where the PIC isn't dumped
+static ADDRESS_MAP_START( s23h8ionoiobmap, ADDRESS_SPACE_IO, 8 )
+	AM_RANGE(H8_PORT_7, H8_PORT_7) AM_READ_PORT( "H8PORT" )
+	AM_RANGE(H8_PORT_8, H8_PORT_8) AM_READ( s23_mcu_p8_r ) AM_WRITENOP
+	AM_RANGE(H8_PORT_A, H8_PORT_A) AM_READWRITE( s23_mcu_pa_r, s23_mcu_pa_w )
+	AM_RANGE(H8_PORT_B, H8_PORT_B) AM_READWRITE( s23_mcu_portB_r, s23_mcu_portB_w )
+	AM_RANGE(H8_SERIAL_1, H8_SERIAL_1) AM_READWRITE( s23_mcu_rtc_r, s23_mcu_settings_w )
 	AM_RANGE(H8_ADC_0_H, H8_ADC_0_L) AM_NOP
 	AM_RANGE(H8_ADC_1_H, H8_ADC_1_L) AM_NOP
 	AM_RANGE(H8_ADC_2_H, H8_ADC_2_L) AM_NOP
@@ -1231,17 +1295,62 @@ static ADDRESS_MAP_START( s23h8iomap, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
+static READ8_HANDLER( s23_iob_mcu_r )
+{
+	UINT8 ret = maintoio[mi_rd];
+
+	mi_rd++;
+	mi_rd &= 0x3f;
+
+	if (mi_rd == mi_wr)
+	{
+		cputag_set_input_line(space->machine, "ioboard", H8_SCI_0_RX, CLEAR_LINE);
+	}
+
+	return ret;
+}
+
+static WRITE8_HANDLER( s23_iob_mcu_w )
+{
+	iotomain[im_wr++] = data;
+	im_wr &= 0x3f;
+
+	cputag_set_input_line(space->machine, "audiocpu", H8_SCI_0_RX, ASSERT_LINE);
+}
+
+static UINT8 s23_tssio_port_4 = 0;
+
+static READ8_HANDLER( s23_iob_p4_r )
+{
+	return s23_tssio_port_4;
+}
+
+static WRITE8_HANDLER( s23_iob_p4_w )
+{
+	s23_tssio_port_4 = data;
+
+	namcos23_jvssense = (data & 0x04) ? 0 : 1;
+ }
+
 /* H8/3334 (Namco C78) I/O board MCU */
 static ADDRESS_MAP_START( s23iobrdmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_READ(SMH_ROM)
 	AM_RANGE(0xc000, 0xdfff) AM_RAM
 ADDRESS_MAP_END
 
+/*
+    port 5 bit 2 = LED to indicate transmitting packet to main
+    port 4 bit 2 = SENSE line back to main (0 = asserted, 1 = dropped)
+*/
 static ADDRESS_MAP_START( s23iobrdiomap, ADDRESS_SPACE_IO, 8 )
+	AM_RANGE(H8_PORT_4, H8_PORT_4) AM_READWRITE( s23_iob_p4_r, s23_iob_p4_w )
+	AM_RANGE(H8_SERIAL_0, H8_SERIAL_0) AM_READWRITE( s23_iob_mcu_r, s23_iob_mcu_w )
 ADDRESS_MAP_END
 
 static DRIVER_INIT(ss23)
 {
+	mi_rd = mi_wr = im_rd = im_wr = 0;
+	namcos23_jvssense = 1;
 }
 
 static const gfx_layout namcos23_cg_layout =
@@ -1299,11 +1408,11 @@ static MACHINE_DRIVER_START( gorgon )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", R4650BE, 133000000)
 	MDRV_CPU_CONFIG(config)
-	MDRV_CPU_PROGRAM_MAP(gorgon_map, 0)
+	MDRV_CPU_PROGRAM_MAP(gorgon_map)
 
 	MDRV_CPU_ADD("audiocpu", H83002, 14745600 )
-	MDRV_CPU_PROGRAM_MAP( s23h8rwmap, 0 )
-	MDRV_CPU_IO_MAP( s23h8iomap, 0 )
+	MDRV_CPU_PROGRAM_MAP( s23h8rwmap)
+	MDRV_CPU_IO_MAP( s23h8ionoiobmap)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_pulse)
 
 	MDRV_QUANTUM_TIME(HZ(60000))
@@ -1337,20 +1446,19 @@ static MACHINE_DRIVER_START( s23 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", R4650BE, 166000000)
 	MDRV_CPU_CONFIG(config)
-	MDRV_CPU_PROGRAM_MAP(ss23_map, 0)
+	MDRV_CPU_PROGRAM_MAP(ss23_map)
+	MDRV_CPU_VBLANK_INT("screen", s23_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", H83002, 14745600 )
-	MDRV_CPU_PROGRAM_MAP( s23h8rwmap, 0 )
-	MDRV_CPU_IO_MAP( s23h8iomap, 0 )
+	MDRV_CPU_PROGRAM_MAP( s23h8rwmap)
+	MDRV_CPU_IO_MAP( s23h8iomap)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_pulse)
 
 	MDRV_CPU_ADD("ioboard", H83334, 14745600 )
-	MDRV_CPU_PROGRAM_MAP( s23iobrdmap, 0 )
-	MDRV_CPU_IO_MAP( s23iobrdiomap, 0 )
-	MDRV_CPU_VBLANK_INT("screen", irq1_line_pulse)
+	MDRV_CPU_PROGRAM_MAP( s23iobrdmap)
+	MDRV_CPU_IO_MAP( s23iobrdiomap)
 
-
-	MDRV_QUANTUM_TIME(HZ(60000))
+	MDRV_QUANTUM_TIME(HZ(60*4000))
 
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
@@ -1381,12 +1489,12 @@ static MACHINE_DRIVER_START( ss23 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", R4650BE, 166000000)
 	MDRV_CPU_CONFIG(config)
-	MDRV_CPU_PROGRAM_MAP(ss23_map, 0)
+	MDRV_CPU_PROGRAM_MAP(ss23_map)
 	MDRV_CPU_VBLANK_INT("screen", namcos23_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", H83002, 14745600 )
-	MDRV_CPU_PROGRAM_MAP( s23h8rwmap, 0 )
-	MDRV_CPU_IO_MAP( s23h8iomap, 0 )
+	MDRV_CPU_PROGRAM_MAP( s23h8rwmap)
+	MDRV_CPU_IO_MAP( s23h8ionoiobmap)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_pulse)
 
 	MDRV_QUANTUM_TIME(HZ(60000))
@@ -1723,11 +1831,52 @@ ROM_START( finfrl2j )
         ROM_LOAD( "ffs1waveh.2a", 0x800000, 0x800000, CRC(178e8bd3) SHA1(8ab1a97003914f70b09e96c5924f3a839fe634c7) )
 ROM_END
 
+ROM_START( panicprk )
+	ROM_REGION32_BE( 0x400000, "user1", 0 ) /* 4 megs for main R4650 code */
+        ROM_LOAD16_BYTE( "pnp2ver-a.ic2", 0x000000, 0x200000, CRC(cd528597) SHA1(cf390e78228eb10d5f50ff7e7e37063a2d87f469) )
+        ROM_LOAD16_BYTE( "pnp2ver-a.ic1", 0x000001, 0x200000, CRC(80fea853) SHA1(b18003bde060ebb3c892a6d7fa4abf868cadc777) )
+
+	ROM_REGION( 0x80000, "audiocpu", 0 )	/* Hitachi H8/3002 MCU code */
+        ROM_LOAD16_WORD_SWAP( "pnp2ver-a.ic3", 0x000000, 0x080000, CRC(fe4bc6f4) SHA1(2114dc4bc63d589e6c3b26a73dbc60924f3b1765) )
+
+	ROM_REGION( 0x2000000, "sprite", 0 )	/* sprite? tilemap? tiles */
+        ROM_LOAD16_BYTE( "pnp1mtal.2h",  0x000000, 0x800000, CRC(6490faaa) SHA1(03443746009b434e5d4074ea6314910418907360) )
+        ROM_LOAD16_BYTE( "pnp1mtah.2j",  0x000001, 0x800000, CRC(37addddd) SHA1(3032989653304417df80606bc3fde6e9425d8cbb) )
+
+	ROM_REGION( 0x4000000, "textile", 0 )	/* texture tiles */
+        ROM_LOAD( "pnp1cguu.5f",  0x000000, 0x800000, CRC(cd64f57f) SHA1(8780270298e0823db1acbbf79396788df0c3c19c) )
+        ROM_LOAD( "pnp1cgum.4j",  0x800000, 0x800000, CRC(206217ca) SHA1(9c095bba7764f3405c3fab10513b9b78981ec44d) )
+        ROM_LOAD( "pnp1cgll.4m",  0x1000000, 0x800000, CRC(d03932cf) SHA1(49240e44923cc6e815e9457b6290fd18466658af) )
+        ROM_LOAD( "pnp1cglm.5k",  0x180000, 0x800000, CRC(abf4ccf2) SHA1(3848e26d0ba6c872bbc6d5e0eb23a9d4b34152d5) )
+        ROM_LOAD( "pnp1cguu.4f",  0x2000000, 0x800000, CRC(cd64f57f) SHA1(8780270298e0823db1acbbf79396788df0c3c19c) )
+        ROM_LOAD( "pnp1cgum.5j",  0x2800000, 0x800000, CRC(206217ca) SHA1(9c095bba7764f3405c3fab10513b9b78981ec44d) )
+        ROM_LOAD( "pnp1cgll.5m",  0x3000000, 0x800000, CRC(d03932cf) SHA1(49240e44923cc6e815e9457b6290fd18466658af) )
+        ROM_LOAD( "pnp1cglm.4k",  0x3800000, 0x800000, CRC(abf4ccf2) SHA1(3848e26d0ba6c872bbc6d5e0eb23a9d4b34152d5) )
+
+	ROM_REGION( 0x800000, "textilemap", 0 )	/* texture tilemap */
+        ROM_LOAD( "pnp1ccrl.7f",  0x000000, 0x200000, CRC(b7bc43c2) SHA1(f4b470540194486ca6822f438fc1d4700cfb2ab1) )
+        ROM_LOAD( "pnp1ccrh.7e",  0x200000, 0x200000, CRC(caaf1b73) SHA1(b436992817ab4e4dad05e7429eb102d4fb57fa6a) )
+        ROM_LOAD( "pnp1ccrl.7m",  0x400000, 0x200000, CRC(b7bc43c2) SHA1(f4b470540194486ca6822f438fc1d4700cfb2ab1) )
+        ROM_LOAD( "pnp1ccrh.7k",  0x600000, 0x200000, CRC(caaf1b73) SHA1(b436992817ab4e4dad05e7429eb102d4fb57fa6a) )
+
+	ROM_REGION32_LE( 0x2000000, "pointrom", 0 )	/* 3D model data */
+        ROM_LOAD32_WORD( "pnp1pt0l.7c",  0x000000, 0x400000, CRC(26af5fa1) SHA1(12fcf98c2a59643e0fdfdd7186f9f16baf54a9cf) )
+        ROM_LOAD32_WORD( "pnp1pt0h.7a",  0x000002, 0x400000, CRC(43fc2246) SHA1(301d321cd4a01ebd7ccfa6f295d6c3daf0a19efe) )
+        ROM_LOAD32_WORD( "pnp1pt1l.5c",  0x800000, 0x400000, CRC(15c6f236) SHA1(e8c393359a91cdce6e9110a48c0a80708f8fc132) )
+        ROM_LOAD32_WORD( "pnp1pt1h.5a",  0x800002, 0x400000, CRC(1ff470c0) SHA1(ca8fad90743589744939d681b0ce94f368337b3f) )
+
+	ROM_REGION( 0x1000000, "c352", 0 ) /* C352 PCM samples */
+        ROM_LOAD( "pnp1wavel.2c", 0x000000, 0x800000, CRC(35c6a9bd) SHA1(4b56fdc37525c15e57d93091e6609d6a6905fc5c) )
+        ROM_LOAD( "pnp1waveh.2a", 0x800000, 0x800000, CRC(6fa1826a) SHA1(20a5af49e65ae2bc57c016b5cd9bafa5a5220d35) )
+ROM_END
+
+
 /* Games */
 GAME( 1997, rapidrvr, 0,      gorgon, ss23, ss23, ROT0, "Namco", "Rapid River (RD3 Ver. C)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND )
 GAME( 1997, motoxgo,  0,         s23, ss23, ss23, ROT0, "Namco", "Motocross Go! (MG3 Ver. A)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND )
 GAME( 1997, timecrs2, 0,         s23, ss23, ss23, ROT0, "Namco", "Time Crisis 2 (TSS3 Ver. B)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND )
 GAME( 1997, timcrs2b, timecrs2,  s23, ss23, ss23, ROT0, "Namco", "Time Crisis 2 (TSS2 Ver. B)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND )
+GAME( 1998, panicprk, 0,        ss23, ss23, ss23, ROT0, "Namco", "Panic Park (PNP2 Ver. A)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND )
 GAME( 1999, 500gp,    0,        ss23, ss23, ss23, ROT0, "Namco", "500GP", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND )
 GAME( 1999, finfurl2, 0,        ss23, ss23, ss23, ROT0, "Namco", "Final Furlong 2 (World)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND )
 GAME( 1999, finfrl2j, finfurl2, ss23, ss23, ss23, ROT0, "Namco", "Final Furlong 2 (Japan)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_SOUND )

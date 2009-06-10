@@ -149,13 +149,13 @@ static INPUT_PORTS_START( speedbal )
 	PORT_DIPNAME( 0x30, 0x30, "Difficulty 1" )
 	PORT_DIPSETTING(    0x30, DEF_STR( Very_Easy) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Easy ) )
-	PORT_DIPSETTING(    0x10, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x10, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0xc0, 0xc0, "Difficulty 2" )
 	PORT_DIPSETTING(    0xc0, DEF_STR( Very_Easy) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Easy ) )
-	PORT_DIPSETTING(    0x40, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x40, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 
 	PORT_START("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW , IPT_BUTTON1 )
@@ -229,13 +229,13 @@ static MACHINE_DRIVER_START( speedbal )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 4000000)	/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(main_cpu_map,0)
-	MDRV_CPU_IO_MAP(main_cpu_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_cpu_map)
+	MDRV_CPU_IO_MAP(main_cpu_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 2660000)	/* 2.66 MHz ???  Maybe yes */
-	MDRV_CPU_PROGRAM_MAP(sound_cpu_map,0)
-	MDRV_CPU_IO_MAP(sound_cpu_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_cpu_map)
+	MDRV_CPU_IO_MAP(sound_cpu_io_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,8)
 
 	/* video hardware */

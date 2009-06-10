@@ -153,11 +153,11 @@ static TIMER_DEVICE_CALLBACK( ddragon_scanline )
 
 	/* on the rising edge of VBLK (vcount == F8), signal an NMI */
 	if (vcount == 0xf8)
-		cpu_set_input_line(timer->machine->cpu[0], INPUT_LINE_NMI, ASSERT_LINE);
+		cputag_set_input_line(timer->machine, "maincpu", INPUT_LINE_NMI, ASSERT_LINE);
 
 	/* set 1ms signal on rising edge of vcount & 8 */
 	if (!(vcount_old & 8) && (vcount & 8))
-		cpu_set_input_line(timer->machine->cpu[0], M6809_FIRQ_LINE, ASSERT_LINE);
+		cputag_set_input_line(timer->machine, "maincpu", M6809_FIRQ_LINE, ASSERT_LINE);
 }
 
 
@@ -212,7 +212,7 @@ static WRITE8_HANDLER( ddragon_bankswitch_w )
 	if (data & 0x10)
 		dd_sub_cpu_busy = 0;
 	else if (dd_sub_cpu_busy == 0)
-		cpu_set_input_line(space->machine->cpu[1], sprite_irq, (sprite_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE);
+		cputag_set_input_line(space->machine, "sub", sprite_irq, (sprite_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE);
 
 	memory_set_bank(space->machine, 1, (data & 0xe0) >> 5);
 }
@@ -287,13 +287,13 @@ static WRITE8_HANDLER( darktowr_bankswitch_w )
 	if (data & 0x10)
 		dd_sub_cpu_busy = 0;
 	else if (dd_sub_cpu_busy == 0)
-		cpu_set_input_line(space->machine->cpu[1], sprite_irq, (sprite_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE);
+		cputag_set_input_line(space->machine, "sub", sprite_irq, (sprite_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE);
 
 	memory_set_bank(space->machine, 1, newbank);
 	if (newbank == 4 && oldbank != 4)
 		memory_install_readwrite8_handler(space, 0x4000, 0x7fff, 0, 0, darktowr_mcu_bank_r, darktowr_mcu_bank_w);
 	else if (newbank != 4 && oldbank == 4)
-		memory_install_readwrite8_handler(space, 0x4000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1);
+		memory_install_readwrite8_handler(space, 0x4000, 0x7fff, 0, 0, (read8_space_func)SMH_BANK(1), (write8_space_func)SMH_BANK(1));
 }
 
 
@@ -309,15 +309,15 @@ static WRITE8_HANDLER( ddragon_interrupt_w )
 	switch (offset)
 	{
 		case 0: /* 380b - NMI ack */
-			cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
+			cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_NMI, CLEAR_LINE);
 			break;
 
 		case 1: /* 380c - FIRQ ack */
-			cpu_set_input_line(space->machine->cpu[0], M6809_FIRQ_LINE, CLEAR_LINE);
+			cputag_set_input_line(space->machine, "maincpu", M6809_FIRQ_LINE, CLEAR_LINE);
 			break;
 
 		case 2: /* 380d - IRQ ack */
-			cpu_set_input_line(space->machine->cpu[0], M6809_IRQ_LINE, CLEAR_LINE);
+			cputag_set_input_line(space->machine, "maincpu", M6809_IRQ_LINE, CLEAR_LINE);
 			break;
 
 		case 3: /* 380e - SND irq */
@@ -334,13 +334,13 @@ static WRITE8_HANDLER( ddragon_interrupt_w )
 
 static WRITE8_HANDLER( ddragon2_sub_irq_ack_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], sprite_irq, CLEAR_LINE );
+	cputag_set_input_line(space->machine, "sub", sprite_irq, CLEAR_LINE );
 }
 
 
 static WRITE8_HANDLER( ddragon2_sub_irq_w )
 {
-	cpu_set_input_line(space->machine->cpu[0], M6809_IRQ_LINE, ASSERT_LINE);
+	cputag_set_input_line(space->machine, "maincpu", M6809_IRQ_LINE, ASSERT_LINE);
 }
 
 
@@ -387,8 +387,8 @@ static WRITE8_HANDLER( ddragon_hd63701_internal_registers_w )
         it's quite obvious from the Double Dragon 2 code, below). */
 		if (data & 3)
 		{
-			cpu_set_input_line(space->machine->cpu[0], M6809_IRQ_LINE, ASSERT_LINE);
-			cpu_set_input_line(space->machine->cpu[1], sprite_irq, CLEAR_LINE);
+			cputag_set_input_line(space->machine, "maincpu", M6809_IRQ_LINE, ASSERT_LINE);
+			cputag_set_input_line(space->machine, "sub", sprite_irq, CLEAR_LINE);
 		}
 	}
 }
@@ -413,7 +413,7 @@ static READ8_HANDLER( ddragon_spriteram_r )
 
 static WRITE8_HANDLER( ddragon_spriteram_w )
 {
-	if (space->cpu == space->machine->cpu[1] && offset == 0)
+	if (space->cpu == cputag_get_cpu(space->machine, "sub") && offset == 0)
 		dd_sub_cpu_busy = 1;
 
 	ddragon_spriteram[offset] = data;
@@ -566,8 +566,8 @@ ADDRESS_MAP_END
 /* might not be 100% accurate, check bits written */
 static WRITE8_HANDLER( ddragnba_port_w )
 {
-	cpu_set_input_line(space->machine->cpu[0],M6809_IRQ_LINE,ASSERT_LINE);
-	cpu_set_input_line(space->machine->cpu[1],sprite_irq, CLEAR_LINE );
+	cputag_set_input_line(space->machine, "maincpu", M6809_IRQ_LINE, ASSERT_LINE);
+	cputag_set_input_line(space->machine, "sub", sprite_irq, CLEAR_LINE );
 }
 
 static ADDRESS_MAP_START( ddragnba_sub_portmap, ADDRESS_SPACE_IO, 8 )
@@ -967,14 +967,14 @@ static MACHINE_DRIVER_START( ddragon )
 
 	/* basic machine hardware */
  	MDRV_CPU_ADD("maincpu", HD6309, MAIN_CLOCK)		/* 12 MHz / 4 internally */
-	MDRV_CPU_PROGRAM_MAP(ddragon_map,0)
+	MDRV_CPU_PROGRAM_MAP(ddragon_map)
 	MDRV_TIMER_ADD_SCANLINE("scantimer", ddragon_scanline, "screen", 0, 1)
 
 	MDRV_CPU_ADD("sub", HD63701, MAIN_CLOCK / 2)	/* 6 MHz / 4 internally */
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
 
  	MDRV_CPU_ADD("soundcpu", M6809, MAIN_CLOCK / 8)	/* 1.5 MHz */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	MDRV_QUANTUM_TIME(HZ(60000))	/* heavy interleaving to sync up sprite<->main cpu's */
 
@@ -1015,7 +1015,7 @@ static MACHINE_DRIVER_START( ddragonb )
 
 	/* basic machine hardware */
 	MDRV_CPU_REPLACE("sub", M6809, MAIN_CLOCK / 8)	/* 1.5Mhz */
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
 MACHINE_DRIVER_END
 
 
@@ -1024,8 +1024,8 @@ static MACHINE_DRIVER_START( ddragnba )
 
 	/* basic machine hardware */
  	MDRV_CPU_REPLACE("sub", M6803, MAIN_CLOCK / 2)	/* 6Mhz / 4 internally */
-	MDRV_CPU_PROGRAM_MAP(ddragnba_sub_map,0)
-	MDRV_CPU_IO_MAP(ddragnba_sub_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(ddragnba_sub_map)
+	MDRV_CPU_IO_MAP(ddragnba_sub_portmap)
 MACHINE_DRIVER_END
 
 
@@ -1033,14 +1033,14 @@ static MACHINE_DRIVER_START( ddgn6809 )
 
 	/* basic machine hardware */
  	MDRV_CPU_ADD("maincpu", M6809, MAIN_CLOCK / 8)	/* 1.5 MHz */
-	MDRV_CPU_PROGRAM_MAP(ddragon_map,0)
+	MDRV_CPU_PROGRAM_MAP(ddragon_map)
 	MDRV_TIMER_ADD_SCANLINE("scantimer", ddragon_scanline, "screen", 0, 1)
 
 	MDRV_CPU_ADD("sub", M6809, MAIN_CLOCK / 8)	/* 1.5 Mhz */
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
 
  	MDRV_CPU_ADD("soundcpu", M6809, MAIN_CLOCK / 8)	/* 1.5 MHz */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	MDRV_QUANTUM_TIME(HZ(60000)) /* heavy interleaving to sync up sprite<->main cpu's */
 
@@ -1080,14 +1080,14 @@ static MACHINE_DRIVER_START( ddragon2 )
 
 	/* basic machine hardware */
  	MDRV_CPU_ADD("maincpu", HD6309, MAIN_CLOCK)		/* 12 MHz / 4 internally */
-	MDRV_CPU_PROGRAM_MAP(dd2_map,0)
+	MDRV_CPU_PROGRAM_MAP(dd2_map)
 	MDRV_TIMER_ADD_SCANLINE("scantimer", ddragon_scanline, "screen", 0, 1)
 
 	MDRV_CPU_ADD("sub", Z80, MAIN_CLOCK / 3)		/* 4 MHz */
-	MDRV_CPU_PROGRAM_MAP(dd2_sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(dd2_sub_map)
 
 	MDRV_CPU_ADD("soundcpu", Z80, 3579545)
-	MDRV_CPU_PROGRAM_MAP(dd2_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(dd2_sound_map)
 
 	MDRV_QUANTUM_TIME(HZ(60000)) /* heavy interleaving to sync up sprite<->main cpu's */
 
@@ -1124,7 +1124,7 @@ static MACHINE_DRIVER_START( darktowr )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("mcu", M68705,XTAL_4MHz)
-	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
+	MDRV_CPU_PROGRAM_MAP(mcu_map)
 
 	/* video hardware */
 MACHINE_DRIVER_END
@@ -1134,11 +1134,11 @@ static MACHINE_DRIVER_START( toffy )
 	MDRV_IMPORT_FROM(ddragon)
 
 	/* basic machine hardware */
-	MDRV_CPU_REMOVE("sub")
+	MDRV_DEVICE_REMOVE("sub")
 
 	/* sound hardware */
-	MDRV_SOUND_REMOVE("adpcm1")
-	MDRV_SOUND_REMOVE("adpcm2")
+	MDRV_DEVICE_REMOVE("adpcm1")
+	MDRV_DEVICE_REMOVE("adpcm2")
 MACHINE_DRIVER_END
 
 
@@ -1965,7 +1965,7 @@ static DRIVER_INIT( darktowr )
 	sound_irq = M6809_IRQ_LINE;
 	ym_irq = M6809_FIRQ_LINE;
 	technos_video_hw = 0;
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x3808, 0x3808, 0, 0, darktowr_bankswitch_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x3808, 0x3808, 0, 0, darktowr_bankswitch_w);
 }
 
 
@@ -1977,7 +1977,7 @@ static DRIVER_INIT( toffy )
 	sound_irq = M6809_IRQ_LINE;
 	ym_irq = M6809_FIRQ_LINE;
 	technos_video_hw = 0;
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x3808, 0x3808, 0, 0, toffy_bankswitch_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x3808, 0x3808, 0, 0, toffy_bankswitch_w);
 
 	/* the program rom has a simple bitswap encryption */
 	rom = memory_region(machine, "maincpu");

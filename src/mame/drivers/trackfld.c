@@ -212,7 +212,7 @@ static ADDRESS_MAP_START( wizzquiz_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x3000, 0x37ff) AM_READ(SMH_RAM) AM_WRITE(trackfld_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x3800, 0x3fff) AM_READ(SMH_RAM) AM_WRITE(trackfld_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xc000, 0xc000) AM_WRITE(questions_bank_w)
-	AM_RANGE(0x6000, 0xdfff) AM_READ(SMH_BANK1)
+	AM_RANGE(0x6000, 0xdfff) AM_READ(SMH_BANK(1))
 	AM_RANGE(0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -356,7 +356,7 @@ static INPUT_PORTS_START( trackfld )
 	PORT_DIPSETTING(    0x60, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Hard ) )
-	PORT_DIPSETTING(    0x00, "Difficult" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Difficult ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -505,7 +505,7 @@ static INPUT_PORTS_START( wizzquiz )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START("DSW1")
-	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
+	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )	PORT_DIPLOCATION("SW1:1,2,3,4")
 	PORT_DIPSETTING(    0x02, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 2C_1C ) )
@@ -523,7 +523,7 @@ static INPUT_PORTS_START( wizzquiz )
 	PORT_DIPSETTING(    0x09, DEF_STR( 1C_7C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )	PORT_CONDITION("DSW1", 0xf0, PORTCOND_EQUALS, 0x00)
 	PORT_DIPSETTING(    0x00, "No Coin A" )				PORT_CONDITION("DSW1", 0xf0, PORTCOND_NOTEQUALS, 0x00)
-	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_B ) )
+	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_B ) )	PORT_DIPLOCATION("SW1:5,6,7,8")
 	PORT_DIPSETTING(    0x20, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x50, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( 2C_1C ) )
@@ -544,29 +544,23 @@ static INPUT_PORTS_START( wizzquiz )
 	/* No Coin X = coin slot X open (coins produce sound), but no effect on coin counter */
 
 	PORT_START("DSW2")
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )	PORT_DIPLOCATION("SW2:1,2")
 	PORT_DIPSETTING(    0x03, "3" )
 	PORT_DIPSETTING(    0x02, "4" )
 	PORT_DIPSETTING(    0x01, "5" )
 	PORT_DIPSETTING(    0x00, "6" )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, "Show Correct Answer" )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Bonus_Life ) )	PORT_DIPLOCATION("SW2:3")
+	PORT_DIPSETTING(    0x00, "8,000 Points" )
+	PORT_DIPSETTING(    0x04, "10,000 Points" )
+	PORT_DIPUNUSED_DIPLOC( 0x0008, 0x0008, "SW2:4" ) /* Listed as "not used" */
+	PORT_DIPUNUSED_DIPLOC( 0x0010, 0x0010, "SW2:5" ) /* Listed as "not used" */
+	PORT_DIPUNUSED_DIPLOC( 0x0020, 0x0020, "SW2:6" ) /* Listed as "not used" */
+	PORT_DIPNAME( 0x40, 0x40, "Show Correct Answer" )	PORT_DIPLOCATION("SW2:7")
 	PORT_DIPSETTING(    0x40, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, "Credit Limit" )	PORT_DIPLOCATION("SW2:8")
+	PORT_DIPSETTING(    0x80, "99 Credits" )
+	PORT_DIPSETTING(    0x00, "9 Credits" )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( reaktor )
@@ -700,11 +694,11 @@ static MACHINE_DRIVER_START( trackfld )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809, MASTER_CLOCK/6/2)	/* a guess for now */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, SOUND_CLOCK/4)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
@@ -742,13 +736,13 @@ static MACHINE_DRIVER_START( hyprolyb )
 	MDRV_IMPORT_FROM(trackfld)
 
 	MDRV_CPU_MODIFY("audiocpu")
-	MDRV_CPU_PROGRAM_MAP(hyprolyb_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(hyprolyb_sound_map)
 
 	MDRV_CPU_ADD("adpcm", M6802, SOUND_CLOCK/8)	/* unknown clock */
-	MDRV_CPU_PROGRAM_MAP(hyprolyb_adpcm_map,0)
+	MDRV_CPU_PROGRAM_MAP(hyprolyb_adpcm_map)
 
 	/* sound hardware */
-	MDRV_SOUND_REMOVE("vlm")
+	MDRV_DEVICE_REMOVE("vlm")
 
 	MDRV_SOUND_ADD("msm", MSM5205, 384000)
 	MDRV_SOUND_CONFIG(msm5205_config)
@@ -761,7 +755,7 @@ static MACHINE_DRIVER_START( mastkin )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(trackfld)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(mastkin_map,0)
+	MDRV_CPU_PROGRAM_MAP(mastkin_map)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( wizzquiz )
@@ -770,7 +764,7 @@ static MACHINE_DRIVER_START( wizzquiz )
 	MDRV_IMPORT_FROM(trackfld)
 	// right cpu?
 	MDRV_CPU_REPLACE("maincpu",M6800,2048000)		/* 1.400 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(wizzquiz_map,0)
+	MDRV_CPU_PROGRAM_MAP(wizzquiz_map)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 MACHINE_DRIVER_END
 
@@ -779,8 +773,8 @@ static MACHINE_DRIVER_START( reaktor )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(trackfld)
 	MDRV_CPU_REPLACE("maincpu",Z80,MASTER_CLOCK/6)
-	MDRV_CPU_PROGRAM_MAP(reaktor_map,0)
-	MDRV_CPU_IO_MAP(reaktor_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(reaktor_map)
+	MDRV_CPU_IO_MAP(reaktor_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 MACHINE_DRIVER_END
 
@@ -1132,13 +1126,13 @@ static DRIVER_INIT( atlantol )
 	memory_set_decrypted_region(space, 0x0000, 0xffff, decrypt);
 
 	memory_install_write8_handler(space, 0x0800, 0x0800, 0, 0, atlantol_gfxbank_w);
-	memory_install_write8_handler(space, 0x1000, 0x1000, 0, 0, SMH_NOP);
+	memory_install_write8_handler(space, 0x1000, 0x1000, 0, 0, (write8_space_func)SMH_NOP);
 
 	/* unmapped areas read as ROM */
-	memory_install_read8_handler(space, 0x0000, 0x11ff, 0, 0, SMH_BANK10);
-	memory_install_read8_handler(space, 0x1380, 0x17ff, 0, 0, SMH_BANK11);
-	memory_install_read8_handler(space, 0x2000, 0x27ff, 0, 0, SMH_BANK12);
-	memory_install_read8_handler(space, 0x4000, 0x5fff, 0, 0, SMH_BANK13);
+	memory_install_read8_handler(space, 0x0000, 0x11ff, 0, 0, (read8_space_func)SMH_BANK(10));
+	memory_install_read8_handler(space, 0x1380, 0x17ff, 0, 0, (read8_space_func)SMH_BANK(11));
+	memory_install_read8_handler(space, 0x2000, 0x27ff, 0, 0, (read8_space_func)SMH_BANK(12));
+	memory_install_read8_handler(space, 0x4000, 0x5fff, 0, 0, (read8_space_func)SMH_BANK(13));
 	memory_set_bankptr(machine, 10, &rom[0x0000]);
 	memory_set_bankptr(machine, 11, &rom[0x1380]);
 	memory_set_bankptr(machine, 12, &rom[0x2000]);

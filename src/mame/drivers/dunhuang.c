@@ -103,13 +103,13 @@ static VIDEO_START(dunhuang)
 	tilemap_set_transparent_pen(tmap,   0);
 	tilemap_set_transparent_pen(tmap2,  0);
 
-	dunhuang_videoram = (UINT16*)auto_malloc(sizeof(UINT16) * 0x40 * 0x20);
-	dunhuang_colorram = (UINT8*) auto_malloc(sizeof(UINT8)  * 0x40 * 0x20);
+	dunhuang_videoram = auto_alloc_array(machine, UINT16, 0x40 * 0x20);
+	dunhuang_colorram = auto_alloc_array(machine, UINT8, 0x40 * 0x20);
 
-	dunhuang_videoram2 = (UINT16*)auto_malloc(sizeof(UINT16) * 0x40 * 0x8);
-	dunhuang_colorram2 = (UINT8*) auto_malloc(sizeof(UINT8)  * 0x40 * 0x8);
+	dunhuang_videoram2 = auto_alloc_array(machine, UINT16, 0x40 * 0x8);
+	dunhuang_colorram2 = auto_alloc_array(machine, UINT8, 0x40 * 0x8);
 
-	dunhuang_paldata  = (UINT8*)auto_malloc(sizeof(UINT8) * 3 * 256);
+	dunhuang_paldata  = auto_alloc_array(machine, UINT8, 3 * 256);
 }
 
 static VIDEO_UPDATE( dunhuang )
@@ -334,7 +334,7 @@ static WRITE8_HANDLER( dunhuang_layers_w )
 static ADDRESS_MAP_START( dunhuang_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x0000, 0x5fff ) AM_ROM
 	AM_RANGE( 0x6000, 0x7fff ) AM_RAM
-	AM_RANGE( 0x8000, 0xffff ) AM_READ( SMH_BANK1 )
+	AM_RANGE( 0x8000, 0xffff ) AM_READ( SMH_BANK(1) )
 ADDRESS_MAP_END
 
 // Inputs
@@ -676,8 +676,8 @@ static const ay8910_interface dunhuang_ay8910_interface =
 static MACHINE_DRIVER_START( dunhuang )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,12000000/2)
-	MDRV_CPU_PROGRAM_MAP(dunhuang_map,0)
-	MDRV_CPU_IO_MAP(dunhuang_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(dunhuang_map)
+	MDRV_CPU_IO_MAP(dunhuang_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_WATCHDOG_TIME_INIT(SEC(5))

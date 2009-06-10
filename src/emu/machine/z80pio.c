@@ -532,6 +532,20 @@ WRITE8_DEVICE_HANDLER(z80pio_w)
 		z80pio_d_w(device, offset & 1, data);
 }
 
+READ8_DEVICE_HANDLER(z80pio_alt_r)
+{
+	int channel = BIT(offset, 1);
+	return (offset & 1) ? z80pio_c_r(device, channel) : z80pio_d_r(device, channel);
+}
+
+WRITE8_DEVICE_HANDLER(z80pio_alt_w)
+{
+	int channel = BIT(offset, 1);
+	if (offset & 1)
+		z80pio_c_w(device, channel, data);
+	else
+		z80pio_d_w(device, channel, data);
+}
 
 static DEVICE_START( z80pio )
 {
@@ -580,15 +594,6 @@ static DEVICE_RESET( z80pio )
 }
 
 
-static DEVICE_SET_INFO( z80pio )
-{
-	switch (state)
-	{
-		/* no parameters to set */
-	}
-}
-
-
 DEVICE_GET_INFO( z80pio )
 {
 	switch (state)
@@ -599,7 +604,6 @@ DEVICE_GET_INFO( z80pio )
 		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;		break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_SET_INFO:						info->set_info = DEVICE_SET_INFO_NAME(z80pio); break;
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(z80pio);break;
 		case DEVINFO_FCT_STOP:							/* Nothing */							break;
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(z80pio);break;

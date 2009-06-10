@@ -195,7 +195,7 @@ static WRITE8_HANDLER( unknown_w )
 static ADDRESS_MAP_START( jongkyo_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM) AM_WRITE(videoram2_w) // wrong, this doesn't seem to be video ram on write..
 	AM_RANGE(0x4000, 0x6bff) AM_READ(SMH_ROM) // fixed rom
-	AM_RANGE(0x6c00, 0x6fff) AM_READ(SMH_BANK1)	// banked (8 banks)
+	AM_RANGE(0x6c00, 0x6fff) AM_READ(SMH_BANK(1))	// banked (8 banks)
 	AM_RANGE(0x7000, 0x77ff) AM_RAM
 	AM_RANGE(0x8000, 0xffff) AM_RAM AM_BASE(&videoram)
 ADDRESS_MAP_END
@@ -418,8 +418,8 @@ static const ay8910_interface ay8910_config =
 static MACHINE_DRIVER_START( jongkyo )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,JONGKYO_CLOCK/4)
-	MDRV_CPU_PROGRAM_MAP(jongkyo_memmap,0)
-	MDRV_CPU_IO_MAP(jongkyo_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(jongkyo_memmap)
+	MDRV_CPU_IO_MAP(jongkyo_portmap)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
@@ -476,7 +476,7 @@ static DRIVER_INIT( jongkyo )
 	/* then do the standard Sega decryption */
 	jongkyo_decode(machine, "maincpu");
 
-	videoram2 = auto_malloc(0x4000);
+	videoram2 = auto_alloc_array(machine, UINT8, 0x4000);
 	state_save_register_global_pointer(machine, videoram2, 0x4000);
 
 }

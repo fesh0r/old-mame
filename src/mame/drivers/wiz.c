@@ -699,11 +699,11 @@ static MACHINE_DRIVER_START( wiz )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 18432000/6)	/* 3.072 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 14318000/8)	/* ? */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,4)	/* ??? */
 
 	MDRV_MACHINE_RESET( wiz )
@@ -743,7 +743,7 @@ static MACHINE_DRIVER_START( stinger )
 	MDRV_IMPORT_FROM(wiz)
 
 	MDRV_CPU_MODIFY("audiocpu")
-	MDRV_CPU_PROGRAM_MAP(stinger_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(stinger_sound_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(stinger)
@@ -756,7 +756,7 @@ static MACHINE_DRIVER_START( stinger )
 	MDRV_SOUND_MODIFY("8910.2")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.12)
 
-	MDRV_SOUND_REMOVE("8910.3")
+	MDRV_DEVICE_REMOVE("8910.3")
 
 	MDRV_SOUND_ADD("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(stinger)
@@ -1052,7 +1052,7 @@ static DRIVER_INIT( stinger )
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 *rom = memory_region(machine, "maincpu");
 	int size = memory_region_length(machine, "maincpu");
-	UINT8 *decrypt = auto_malloc(size);
+	UINT8 *decrypt = auto_alloc_array(machine, UINT8, size);
 	int A;
 	const UINT8 *tbl;
 
@@ -1086,13 +1086,13 @@ static DRIVER_INIT( stinger )
 
 static DRIVER_INIT( scion )
 {
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x4000, 0x4001, 0, 0, SMH_NOP);
+	memory_install_write8_handler(cputag_get_address_space(machine, "audiocpu", ADDRESS_SPACE_PROGRAM), 0x4000, 0x4001, 0, 0, (write8_space_func)SMH_NOP);
 }
 
 
 static DRIVER_INIT( wiz )
 {
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd400, 0xd400, 0, 0, wiz_protection_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd400, 0xd400, 0, 0, wiz_protection_r);
 }
 
 

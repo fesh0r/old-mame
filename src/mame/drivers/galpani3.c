@@ -124,13 +124,13 @@ static INTERRUPT_GEN( galpani3_vblank ) // 2, 3, 5 ?
 static VIDEO_START(galpani3)
 {
 	/* so we can use suprnova.c */
-	galpani3_spriteram32 = auto_malloc ( 0x4000 );
+	galpani3_spriteram32 = auto_alloc_array(machine, UINT32, 0x4000/4);
 	spriteram_size = 0x4000;
-	galpani3_spc_regs = auto_malloc (0x40);
+	galpani3_spc_regs = auto_alloc_array(machine, UINT32, 0x40/4);
 	suprnova_alt_enable_sprites = 1;
 
 
-	sprite_bitmap_1 = auto_bitmap_alloc(1024,1024,BITMAP_FORMAT_INDEXED16);
+	sprite_bitmap_1 = auto_bitmap_alloc(machine,1024,1024,BITMAP_FORMAT_INDEXED16);
 
 }
 
@@ -902,7 +902,7 @@ static const ymz280b_interface ymz280b_intf =
 
 static MACHINE_DRIVER_START( galpani3 )
 	MDRV_CPU_ADD("maincpu", M68000, 16000000)	 // ? (from which clock?)
-	MDRV_CPU_PROGRAM_MAP(galpani3_map,0)
+	MDRV_CPU_PROGRAM_MAP(galpani3_map)
 	MDRV_CPU_VBLANK_INT_HACK(galpani3_vblank, 3)
 
 

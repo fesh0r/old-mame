@@ -39,7 +39,7 @@ static READ8_HANDLER( exerion_port01_r )
 static INPUT_CHANGED( coin_inserted )
 {
 	/* coin insertion causes an NMI */
-	cpu_set_input_line(field->port->machine->cpu[0], INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(field->port->machine, "maincpu", INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -278,10 +278,10 @@ static const ay8910_interface ay8910_config =
 static MACHINE_DRIVER_START( exerion )
 
 	MDRV_CPU_ADD("maincpu", Z80, EXERION_CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 
 	MDRV_CPU_ADD("sub", Z80, EXERION_CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -417,7 +417,7 @@ static DRIVER_INIT( exerion )
 	UINT8 *src, *dst, *temp;
 
 	/* allocate some temporary space */
-	temp = malloc_or_die(0x10000);
+	temp = alloc_array_or_die(UINT8, 0x10000);
 
 	/* make a temporary copy of the character data */
 	src = temp;

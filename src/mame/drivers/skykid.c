@@ -80,7 +80,7 @@ static WRITE8_HANDLER( skykid_led_w )
 static WRITE8_HANDLER( skykid_subreset_w )
 {
 	int bit = !BIT(offset,11);
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(space->machine, "mcu", INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( skykid_bankswitch_w )
@@ -91,17 +91,17 @@ static WRITE8_HANDLER( skykid_bankswitch_w )
 static WRITE8_HANDLER( skykid_irq_1_ctrl_w )
 {
 	int bit = !BIT(offset,11);
-	cpu_interrupt_enable(space->machine->cpu[0],bit);
+	cpu_interrupt_enable(cputag_get_cpu(space->machine, "maincpu"), bit);
 	if (!bit)
-		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( skykid_irq_2_ctrl_w )
 {
 	int bit = !BIT(offset,13);
-	cpu_interrupt_enable(space->machine->cpu[1],bit);
+	cpu_interrupt_enable(cputag_get_cpu(space->machine, "mcu"), bit);
 	if (!bit)
-		cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "mcu", 0, CLEAR_LINE);
 }
 
 static MACHINE_START( skykid )
@@ -115,7 +115,7 @@ static MACHINE_START( skykid )
 
 
 static ADDRESS_MAP_START( skykid_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_BANK1)				/* banked ROM */
+	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_BANK(1))				/* banked ROM */
 	AM_RANGE(0x2000, 0x2fff) AM_READWRITE(skykid_videoram_r,skykid_videoram_w) AM_BASE(&skykid_videoram)/* Video RAM (background) */
 	AM_RANGE(0x4000, 0x47ff) AM_READWRITE(skykid_textram_r,skykid_textram_w) AM_BASE(&skykid_textram)	/* video RAM (text layer) */
 	AM_RANGE(0x4800, 0x5fff) AM_RAM AM_BASE(&skykid_spriteram)	/* RAM + Sprite RAM */
@@ -332,10 +332,10 @@ static INPUT_PORTS_START( drgnbstr )
 	PORT_START("DSWB")	/* DSW B */
 	PORT_DIPNAME( 0x80, 0x80, "Spurt Time" ) PORT_DIPLOCATION("SWB:1")
 	PORT_DIPSETTING(    0x80, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x00, "Difficult" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Difficult ) )
 	PORT_DIPNAME( 0x40, 0x40, "Level of Monster" ) PORT_DIPLOCATION("SWB:2")
 	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x00, "Difficult" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Difficult ) )
 	PORT_DIPNAME( 0x30, 0x30, "Starting Vitality" ) PORT_DIPLOCATION("SWB:4,3")
 	PORT_DIPSETTING(    0x00, "160" )
 	PORT_DIPSETTING(    0x30, "128" )
@@ -444,12 +444,12 @@ static MACHINE_DRIVER_START( skykid )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809,49152000/32)
-	MDRV_CPU_PROGRAM_MAP(skykid_map,0)
+	MDRV_CPU_PROGRAM_MAP(skykid_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_assert)
 
 	MDRV_CPU_ADD("mcu", HD63701,49152000/8)	/* or compatible 6808 with extra instructions */
-	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
-	MDRV_CPU_IO_MAP(mcu_port_map,0)
+	MDRV_CPU_PROGRAM_MAP(mcu_map)
+	MDRV_CPU_IO_MAP(mcu_port_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_assert)
 
 	MDRV_QUANTUM_TIME(HZ(6000))	/* we need heavy synch */

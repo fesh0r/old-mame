@@ -212,8 +212,8 @@ static INPUT_PORTS_START( 1942 )
 	PORT_DIPNAME( 0x60, 0x60, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("SWB:3,2")
 	PORT_DIPSETTING(    0x40, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x60, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x20, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x80, 0x80, "Screen Stop" )			PORT_DIPLOCATION("SWB:1")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -270,11 +270,11 @@ static MACHINE_DRIVER_START( 1942 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MAIN_CPU_CLOCK)	/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(c1942_map, 0)
+	MDRV_CPU_PROGRAM_MAP(c1942_map)
 	MDRV_CPU_VBLANK_INT_HACK(c1942_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", Z80, SOUND_CPU_CLOCK)	/* 3 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)
 
 	/* video hardware */

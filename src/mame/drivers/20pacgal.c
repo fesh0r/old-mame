@@ -66,10 +66,10 @@ static WRITE8_HANDLER( irqack_w )
 {
 	int bit = data & 1;
 
-	cpu_interrupt_enable(space->machine->cpu[0], bit);
+	cpu_interrupt_enable(cputag_get_cpu(space->machine, "maincpu"), bit);
 
 	if (!bit)
-		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE );
+		cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE );
 }
 
 
@@ -160,7 +160,7 @@ static WRITE8_HANDLER( _20pacgal_coin_counter_w )
 
 static WRITE8_HANDLER( rom_bank_select_w )
 {
-	_20pacgal_state *state = space->machine->driver_data;
+	_20pacgal_state *state = (_20pacgal_state *)space->machine->driver_data;
 
 	state->game_selected = data & 1;
 
@@ -174,7 +174,7 @@ static WRITE8_HANDLER( rom_bank_select_w )
 
 static WRITE8_HANDLER( rom_48000_w )
 {
-	_20pacgal_state *state = space->machine->driver_data;
+	_20pacgal_state *state = (_20pacgal_state *)space->machine->driver_data;
 
 	if (state->game_selected)
 	{
@@ -202,9 +202,9 @@ static ADDRESS_MAP_START( 20pacgal_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x45040, 0x4505f) AM_DEVWRITE("namco", pacman_sound_w) AM_BASE(&namco_soundregs)
 	AM_RANGE(0x44800, 0x45eff) AM_RAM
 	AM_RANGE(0x45f00, 0x45fff) AM_DEVWRITE("namco", _20pacgal_wavedata_w) AM_BASE(&namco_wavedata)
-	AM_RANGE(0x46000, 0x46fff) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(_20pacgal_state, char_gfx_ram)
+	AM_RANGE(0x46000, 0x46fff) AM_WRITEONLY AM_BASE_MEMBER(_20pacgal_state, char_gfx_ram)
 	AM_RANGE(0x47100, 0x47100) AM_RAM	/* leftover from original Galaga code */
-	AM_RANGE(0x48000, 0x49fff) AM_READWRITE(SMH_ROM, rom_48000_w)	/* this should be a mirror of 08000-09ffff */
+	AM_RANGE(0x48000, 0x49fff) AM_ROM AM_WRITE(rom_48000_w)	/* this should be a mirror of 08000-09ffff */
 	AM_RANGE(0x4c000, 0x4dfff) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(_20pacgal_state, sprite_gfx_ram)
 	AM_RANGE(0x4e000, 0x4e17f) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(_20pacgal_state, sprite_ram)
 	AM_RANGE(0x4ff00, 0x4ffff) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(_20pacgal_state, sprite_color_lookup)
@@ -291,8 +291,8 @@ static MACHINE_DRIVER_START( 20pacgal )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z180, MAIN_CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(20pacgal_map,0)
-	MDRV_CPU_IO_MAP(20pacgal_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(20pacgal_map)
+	MDRV_CPU_IO_MAP(20pacgal_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_assert)
 
 	MDRV_NVRAM_HANDLER(eeprom)

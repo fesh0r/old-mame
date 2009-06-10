@@ -327,14 +327,14 @@ static MACHINE_RESET( kungfur )
 
 static INTERRUPT_GEN( kungfur_irq )
 {
-	cpu_set_input_line(device->machine->cpu[0], M6809_IRQ_LINE, HOLD_LINE);
+	cputag_set_input_line(device->machine, "maincpu", M6809_IRQ_LINE, HOLD_LINE);
 }
 
 static MACHINE_DRIVER_START( kungfur )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",M6809,8000000/2)
-	MDRV_CPU_PROGRAM_MAP(kungfur_map,0)
+	MDRV_CPU_PROGRAM_MAP(kungfur_map)
 	MDRV_CPU_VBLANK_INT("screen",kungfur_irq)
 
 	MDRV_PPI8255_ADD( "ppi8255_0", ppi8255_intf[0] )

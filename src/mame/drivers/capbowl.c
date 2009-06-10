@@ -191,7 +191,7 @@ static WRITE8_HANDLER( track_reset_w )
 
 static WRITE8_HANDLER( capbowl_sndcmd_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], M6809_IRQ_LINE, HOLD_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", M6809_IRQ_LINE, HOLD_LINE);
 	soundlatch_w(space, offset, data);
 }
 
@@ -206,7 +206,7 @@ static WRITE8_HANDLER( capbowl_sndcmd_w )
 
 static void firqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1], 1, irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 1, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -353,11 +353,11 @@ static MACHINE_DRIVER_START( capbowl )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809E, MASTER_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(capbowl_map,0)
+	MDRV_CPU_PROGRAM_MAP(capbowl_map)
 	MDRV_CPU_VBLANK_INT("screen", capbowl_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", M6809E, MASTER_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	MDRV_MACHINE_RESET(capbowl)
 	MDRV_NVRAM_HANDLER(capbowl)
@@ -393,7 +393,7 @@ static MACHINE_DRIVER_START( bowlrama )
 	MDRV_IMPORT_FROM(capbowl)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(bowlrama_map,0)
+	MDRV_CPU_PROGRAM_MAP(bowlrama_map)
 
 	/* video hardware */
 	MDRV_SCREEN_MODIFY("screen")

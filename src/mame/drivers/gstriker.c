@@ -202,8 +202,8 @@ static WRITE16_HANDLER( sound_command_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		pending_command = 1;
-		soundlatch_w(space,offset,data & 0xff);
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w(space, offset, data & 0xff);
+		cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -270,9 +270,9 @@ GFXDECODE_END
 static void gs_ym2610_irq(const device_config *device, int irq)
 {
 	if (irq)
-		cpu_set_input_line(device->machine->cpu[1], 0, ASSERT_LINE);
+		cputag_set_input_line(device->machine, "audiocpu", 0, ASSERT_LINE);
 	else
-		cpu_set_input_line(device->machine->cpu[1], 0, CLEAR_LINE);
+		cputag_set_input_line(device->machine, "audiocpu", 0, CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -286,46 +286,32 @@ static UINT16 *work_ram;
 UINT16 *gstriker_lineram;
 
 
-static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
-	AM_RANGE(0x100000, 0x103fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x140000, 0x141fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x180000, 0x181fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x1c0000, 0x1c0fff) AM_READ(SMH_RAM)
-	AM_RANGE(0xffc000, 0xffffff) AM_READ(SMH_RAM)
+static ADDRESS_MAP_START( gstriker_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x0fffff) AM_ROM
+	AM_RANGE(0x100000, 0x103fff) AM_RAM_WRITE(MB60553_0_vram_w) AM_BASE(&MB60553_0_vram)
+	AM_RANGE(0x140000, 0x141fff) AM_RAM AM_BASE(&CG10103_0_vram)
+	AM_RANGE(0x180000, 0x180fff) AM_RAM_WRITE(VS920A_0_vram_w) AM_BASE(&VS920A_0_vram)
+	AM_RANGE(0x181000, 0x181fff) AM_RAM AM_BASE(&gstriker_lineram)
+	AM_RANGE(0x1c0000, 0x1c0fff) AM_RAM_WRITE(paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
 
-  	AM_RANGE(0x200000, 0x20007f) AM_READ(SMH_RAM)
+	AM_RANGE(0x200000, 0x20000f) AM_RAM_WRITE(MB60553_0_regs_w)
+	AM_RANGE(0x200040, 0x20005f) AM_RAM AM_BASE(&gs_mixer_regs)
+	AM_RANGE(0x200060, 0x20007f) AM_RAM
 	AM_RANGE(0x200080, 0x200081) AM_READ_PORT("P1")
 	AM_RANGE(0x200082, 0x200083) AM_READ_PORT("P2")
 	AM_RANGE(0x200084, 0x200085) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0x200086, 0x200087) AM_READ_PORT("DSW1")
 	AM_RANGE(0x200088, 0x200089) AM_READ_PORT("DSW2")
 	AM_RANGE(0x20008e, 0x20008f) AM_READ(dmmy_8f)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x100000, 0x103fff) AM_WRITE(MB60553_0_vram_w) AM_BASE(&MB60553_0_vram)
-	AM_RANGE(0x140000, 0x141fff) AM_WRITE(SMH_RAM) AM_BASE(&CG10103_0_vram)
-	AM_RANGE(0x180000, 0x180fff) AM_WRITE(VS920A_0_vram_w) AM_BASE(&VS920A_0_vram)
-	AM_RANGE(0x181000, 0x181fff) AM_WRITE(SMH_RAM) AM_BASE(&gstriker_lineram)
-	AM_RANGE(0x1c0000, 0x1c0fff) AM_WRITE(paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x200000, 0x20000f) AM_WRITE(MB60553_0_regs_w)
-	AM_RANGE(0x200040, 0x20005f) AM_WRITE(SMH_RAM) AM_BASE(&gs_mixer_regs)
 	AM_RANGE(0x2000a0, 0x2000a1) AM_WRITE(sound_command_w)
-	AM_RANGE(0xffc000, 0xffffff) AM_WRITE(SMH_RAM) AM_BASE(&work_ram)
+
+	AM_RANGE(0xffc000, 0xffffff) AM_RAM AM_BASE(&work_ram)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x77ff) AM_READ(SMH_ROM)
-	AM_RANGE(0x7800, 0x7fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_BANK1)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x77ff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x7800, 0x7fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
+static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x77ff) AM_ROM
+	AM_RANGE(0x7800, 0x7fff) AM_RAM
+	AM_RANGE(0x8000, 0xffff) AM_ROMBANK(1)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
@@ -344,7 +330,7 @@ static ADDRESS_MAP_START( vgoal_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x180000, 0x180fff) AM_RAM_WRITE(VS920A_0_vram_w) AM_BASE(&VS920A_0_vram)
 	AM_RANGE(0x181000, 0x181fff) AM_RAM AM_BASE(&gstriker_lineram)
 	AM_RANGE(0x1c0000, 0x1c4fff) AM_RAM_WRITE(paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x200000, 0x20000f) AM_WRITE(MB60553_0_regs_w)
+	AM_RANGE(0x200000, 0x20000f) AM_RAM_WRITE(MB60553_0_regs_w)
 	AM_RANGE(0x200040, 0x20005f) AM_RAM AM_BASE(&gs_mixer_regs)
 
 	AM_RANGE(0x200080, 0x200081) AM_READ_PORT("P1")
@@ -565,12 +551,12 @@ INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( gstriker )
 	MDRV_CPU_ADD("maincpu", M68000, 10000000)
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
+	MDRV_CPU_PROGRAM_MAP(gstriker_map)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,8000000/2)	/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_IO_MAP(sound_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_io_map)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
 
@@ -605,12 +591,12 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( vgoal )
 	MDRV_CPU_ADD("maincpu", M68000, 16000000)
-	MDRV_CPU_PROGRAM_MAP(vgoal_map,0)
+	MDRV_CPU_PROGRAM_MAP(vgoal_map)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,8000000/2)	/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_IO_MAP(sound_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_io_map)
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
 
@@ -685,6 +671,9 @@ ROM_START( vgoalsoc )
 	ROM_REGION( 0x40000, "audiocpu", 0 )
 	ROM_LOAD( "c16_u65.u65",  0x000000, 0x040000, CRC(2f7bf23c) SHA1(1a1a06f57bbac59807679e3762cb2f23ab1ad35e) )
 
+	ROM_REGION( 0x20000, "mcu", 0 )
+	ROM_LOAD( "vgoalsoc_hd6473258p10", 0x00000, 0x20000, NO_DUMP )
+
 	ROM_REGION( 0x20000, "gfx1", 0 ) // score tilemap
 	ROM_LOAD( "c16_u48.u48",  0x000000, 0x020000, CRC(ca059e7f) SHA1(2fa48b0fec1210575f3a1ecee7d2aec0af3fa9c4) )
 
@@ -710,6 +699,9 @@ ROM_START( vgoalsca )
 	ROM_REGION( 0x40000, "audiocpu", 0 )
 	ROM_LOAD( "c16_u65.u65",  0x000000, 0x040000, CRC(2f7bf23c) SHA1(1a1a06f57bbac59807679e3762cb2f23ab1ad35e) )
 
+	ROM_REGION( 0x20000, "mcu", 0 )
+	ROM_LOAD( "vgoalsoc_hd6473258p10", 0x00000, 0x20000, NO_DUMP )
+
 	ROM_REGION( 0x20000, "gfx1", 0 ) // fixed tile
 	ROM_LOAD( "c16_u48.u48",  0x000000, 0x020000, CRC(ca059e7f) SHA1(2fa48b0fec1210575f3a1ecee7d2aec0af3fa9c4) )
 
@@ -734,6 +726,9 @@ ROM_START( twrldc94 )
 
 	ROM_REGION( 0x40000, "audiocpu", 0 )
 	ROM_LOAD( "12.u65",           0x000000, 0x040000, CRC(f316e7fc) SHA1(a2215605518e7293774735371c65abcead99bd88) )
+
+	ROM_REGION( 0x20000, "mcu", 0 )
+	ROM_LOAD( "twcup94_hd6473258p10", 0x00000, 0x20000, NO_DUMP )
 
 	ROM_REGION( 0x20000, "gfx1", 0 ) // fixed tile
 	ROM_LOAD( "11.u48",           0x000000, 0x020000, CRC(37d6dcb6) SHA1(679dd8b615497fff23c4638d413b5d4a724d3f2a) )
@@ -761,6 +756,9 @@ ROM_START( twrdc94a )
 
 	ROM_REGION( 0x40000, "audiocpu", 0 )
 	ROM_LOAD( "twrdc94a_12.u65",           0x000000, 0x040000, CRC(c131f5a4) SHA1(d8cc7c463ad628f6f052489a73b97f998532738d) )
+
+	ROM_REGION( 0x20000, "mcu", 0 )
+	ROM_LOAD( "twcup94_hd6473258p10", 0x00000, 0x20000, NO_DUMP )
 
 	ROM_REGION( 0x20000, "gfx1", 0 ) // fixed tile
 	ROM_LOAD( "twrdc94a_11.u48",           0x000000, 0x020000, CRC(37d6dcb6) SHA1(679dd8b615497fff23c4638d413b5d4a724d3f2a) )
@@ -989,11 +987,11 @@ static void mcu_init( running_machine *machine )
 	pending_command = 0;
 	mcu_data = 0;
 
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x20008a, 0x20008b, 0, 0, twrldc94_mcu_w);
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x20008a, 0x20008b, 0, 0, twrldc94_mcu_r);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x20008a, 0x20008b, 0, 0, twrldc94_mcu_w);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x20008a, 0x20008b, 0, 0, twrldc94_mcu_r);
 
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x20008e, 0x20008f, 0, 0, twrldc94_prot_reg_w);
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x20008e, 0x20008f, 0, 0, twrldc94_prot_reg_r);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x20008e, 0x20008f, 0, 0, twrldc94_prot_reg_w);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x20008e, 0x20008f, 0, 0, twrldc94_prot_reg_r);
 }
 
 static DRIVER_INIT( twrldc94 )
@@ -1013,8 +1011,8 @@ static DRIVER_INIT( vgoalsoc )
 	gametype = 3;
 	mcu_init( machine );
 
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x200090, 0x200091, 0, 0, vbl_toggle_w); // vblank toggle
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x200090, 0x200091, 0, 0, vbl_toggle_r);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x200090, 0x200091, 0, 0, vbl_toggle_w); // vblank toggle
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x200090, 0x200091, 0, 0, vbl_toggle_r);
 }
 
 /*** GAME DRIVERS ************************************************************/
@@ -1026,4 +1024,3 @@ GAME( 1994, vgoalsoc, 0,        vgoal,    vgoalsoc, vgoalsoc,   ROT0, "Tecmo", "
 GAME( 1994, vgoalsca, vgoalsoc, vgoal,    vgoalsoc, vgoalsoc,   ROT0, "Tecmo", "V Goal Soccer (set 2)", GAME_NOT_WORKING )
 GAME( 1994, twrldc94, 0,        twrldc94, twrldc94, twrldc94,   ROT0, "Tecmo", "Tecmo World Cup '94 (set 1)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS )
 GAME( 1994, twrdc94a, twrldc94, twrldc94, twrldc94, twrldc94a,  ROT0, "Tecmo", "Tecmo World Cup '94 (set 2)", GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS )
-

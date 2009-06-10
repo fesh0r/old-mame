@@ -118,7 +118,7 @@ static INTERRUPT_GEN( main_nmi_gen )
 static TIMER_CALLBACK( delayed_sound_w )
 {
 	sound_data = param;
-	cpu_set_input_line(machine->cpu[1], 0, ASSERT_LINE);
+	cputag_set_input_line(machine, "audiocpu", 0, ASSERT_LINE);
 }
 
 
@@ -136,7 +136,7 @@ static READ8_DEVICE_HANDLER( sound_data_r )
 
 static WRITE8_HANDLER( sound_irq_ack_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", 0, CLEAR_LINE);
 }
 
 
@@ -358,13 +358,13 @@ static MACHINE_DRIVER_START( suprridr )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_49_152MHz/16)		/* 3 MHz */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_IO_MAP(main_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
+	MDRV_CPU_IO_MAP(main_portmap)
 	MDRV_CPU_VBLANK_INT("screen", main_nmi_gen)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 10000000/4)		/* 2.5 MHz */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_portmap)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)

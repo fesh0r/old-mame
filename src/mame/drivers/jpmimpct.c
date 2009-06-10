@@ -155,8 +155,8 @@ static struct
 
 static void update_irqs(running_machine *machine)
 {
-	cpu_set_input_line(machine->cpu[0], 2, tms_irq ? ASSERT_LINE : CLEAR_LINE);
-	cpu_set_input_line(machine->cpu[0], 5, duart_1_irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 2, tms_irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 5, duart_1_irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -197,12 +197,12 @@ static MACHINE_RESET( jpmimpct )
 
 static WRITE16_HANDLER( m68k_tms_w )
 {
-	tms34010_host_w(space->machine->cpu[1], offset, data);
+	tms34010_host_w(cputag_get_cpu(space->machine, "dsp"), offset, data);
 }
 
 static READ16_HANDLER( m68k_tms_r )
 {
-	return tms34010_host_r(space->machine->cpu[1], offset);
+	return tms34010_host_r(cputag_get_cpu(space->machine, "dsp"), offset);
 }
 
 
@@ -308,7 +308,7 @@ static READ16_HANDLER( duart_1_r )
 
 static WRITE16_HANDLER( duart_1_w )
 {
-	int old_val;
+	//int old_val;
 	switch (offset)
 	{
 		case 0x1:
@@ -364,7 +364,7 @@ static WRITE16_HANDLER( duart_1_w )
 		}
 		case 0xe:
 		{
-		    old_val = duart_1.OPR;
+		    //old_val = duart_1.OPR;
 		    duart_1.OPR = duart_1.OPR | data;
 		    duart_1.OP = ~duart_1.OPR;
 			/* Output port bit set */
@@ -372,7 +372,7 @@ static WRITE16_HANDLER( duart_1_w )
 		}
 		case 0xf:
 		{
-		    old_val = duart_1.OPR;
+		    //old_val = duart_1.OPR;
 		    duart_1.OPR = duart_1.OPR &~data;
 		    duart_1.OP = ~duart_1.OPR;
 			/* Output port bit reset */
@@ -845,11 +845,11 @@ static const tms34010_config tms_config =
 
 static MACHINE_DRIVER_START( jpmimpct )
 	MDRV_CPU_ADD("maincpu", M68000, 8000000)
-	MDRV_CPU_PROGRAM_MAP(m68k_program_map, 0)
+	MDRV_CPU_PROGRAM_MAP(m68k_program_map)
 
  	MDRV_CPU_ADD("dsp", TMS34010, 40000000)
 	MDRV_CPU_CONFIG(tms_config)
-	MDRV_CPU_PROGRAM_MAP(tms_program_map, 0)
+	MDRV_CPU_PROGRAM_MAP(tms_program_map)
 
 	MDRV_QUANTUM_TIME(HZ(30000))
 	MDRV_MACHINE_RESET(jpmimpct)
@@ -1316,7 +1316,7 @@ ADDRESS_MAP_END
 
 static MACHINE_DRIVER_START( impctawp )
 	MDRV_CPU_ADD("maincpu",M68000, 8000000)
-	MDRV_CPU_PROGRAM_MAP(awp68k_program_map, 0)
+	MDRV_CPU_PROGRAM_MAP(awp68k_program_map)
 
 	MDRV_QUANTUM_TIME(HZ(30000))
 

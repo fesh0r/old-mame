@@ -274,8 +274,8 @@ static VIDEO_UPDATE( bigfghtr )
 
 static VIDEO_EOF( bigfghtr )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
-	buffer_spriteram16_w(space,0,0,0xffff);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	buffer_spriteram16_w(space, 0, 0, 0xffff);
 }
 
 
@@ -332,10 +332,10 @@ static ADDRESS_MAP_START( mainmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x080000, 0x0805ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x080600, 0x080fff) AM_READ(sharedram_r) AM_WRITE(sharedram_w) AM_BASE(&sharedram16)
 	AM_RANGE(0x081000, 0x085fff) AM_RAM //??
-	AM_RANGE(0x086000, 0x086fff) AM_READ(SMH_RAM) AM_WRITE(bg_videoram_w) AM_BASE(&bg_videoram)
-	AM_RANGE(0x087000, 0x087fff) AM_READ(SMH_RAM) AM_WRITE(fg_videoram_w) AM_BASE(&fg_videoram)
-	AM_RANGE(0x088000, 0x089fff) AM_READ(SMH_RAM) AM_WRITE(text_videoram_w) AM_BASE(&text_videoram)
-	AM_RANGE(0x08a000, 0x08afff) AM_READ(SMH_RAM) AM_WRITE(paletteram16_xxxxRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x086000, 0x086fff) AM_RAM_WRITE(bg_videoram_w) AM_BASE(&bg_videoram)
+	AM_RANGE(0x087000, 0x087fff) AM_RAM_WRITE(fg_videoram_w) AM_BASE(&fg_videoram)
+	AM_RANGE(0x088000, 0x089fff) AM_RAM_WRITE(text_videoram_w) AM_BASE(&text_videoram)
+	AM_RANGE(0x08a000, 0x08afff) AM_RAM_WRITE(paletteram16_xxxxRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x08b000, 0x08bfff) AM_RAM //??
 	AM_RANGE(0x08c000, 0x08c001) AM_READ_PORT("P1")
 	AM_RANGE(0x08c002, 0x08c003) AM_READ_PORT("P2")
@@ -421,13 +421,13 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( bigfghtr )
 	MDRV_CPU_ADD("maincpu", M68000, 8000000) /* 8 MHz?? */
-	MDRV_CPU_PROGRAM_MAP(mainmem,0)
+	MDRV_CPU_PROGRAM_MAP(mainmem)
 
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3072000)	/* 3.072 MHz???? */
-	MDRV_CPU_PROGRAM_MAP(soundmem,0)
-	MDRV_CPU_IO_MAP(soundport,0)
+	MDRV_CPU_PROGRAM_MAP(soundmem)
+	MDRV_CPU_IO_MAP(soundport)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,128)
 
 	/* video hardware */
@@ -568,7 +568,7 @@ ROM_START( skyrobo )
 	ROM_REGION( 0x10000, "audiocpu", 0 )	/* Z80 code (sound) */
 	ROM_LOAD( "8.17k", 0x00000, 0x10000, CRC(0aeab61e) SHA1(165e0ad58542b65383fef714578da21f62df7b74) )
 
-	ROM_REGION( 0x10000, "cpu2", 0 )	/* Intel C8751 read protected MCU */
+	ROM_REGION( 0x10000, "mcu", 0 )	/* Intel C8751 read protected MCU */
 	ROM_LOAD( "i8751.mcu", 0x00000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )
@@ -600,7 +600,7 @@ ROM_START( bigfghtr )
 	ROM_REGION( 0x10000, "audiocpu", 0 )	/* Z80 code (sound) */
 	ROM_LOAD( "8.17k", 0x00000, 0x10000, CRC(0aeab61e) SHA1(165e0ad58542b65383fef714578da21f62df7b74) )
 
-	ROM_REGION( 0x10000, "cpu2", 0 )	/* Intel C8751 read protected MCU */
+	ROM_REGION( 0x10000, "mcu", 0 )	/* Intel C8751 read protected MCU */
 	ROM_LOAD( "i8751.mcu", 0x00000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x08000, "gfx1", ROMREGION_DISPOSE )
@@ -624,4 +624,3 @@ ROM_END
 
 GAME( 1989, skyrobo,        0, bigfghtr, bigfghtr, skyrobo,  ROT0, "Nichibutsu", "Sky Robo",GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION)
 GAME( 1989, bigfghtr, skyrobo, bigfghtr, bigfghtr, bigfghtr, ROT0, "Nichibutsu", "Tatakae! Big Fighter",GAME_NOT_WORKING | GAME_UNEMULATED_PROTECTION)
-

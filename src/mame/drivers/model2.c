@@ -190,11 +190,11 @@ static UINT32 copro_fifoout_pop(const address_space *space)
 	{
 		if (copro_fifoout_num == COPRO_FIFOOUT_SIZE)
 		{
-			sharc_set_flag_input(space->machine->cpu[2], 1, ASSERT_LINE);
+			sharc_set_flag_input(cputag_get_cpu(space->machine, "dsp"), 1, ASSERT_LINE);
 		}
 		else
 		{
-			sharc_set_flag_input(space->machine->cpu[2], 1, CLEAR_LINE);
+			sharc_set_flag_input(cputag_get_cpu(space->machine, "dsp"), 1, CLEAR_LINE);
 		}
 	}
 
@@ -302,7 +302,7 @@ static TIMER_CALLBACK( model2_timer_cb )
 	model2_intreq |= (1<<bit);
 	if (model2_intena & (1<<bit))
 	{
-		cpu_set_input_line(machine->cpu[0], I960_IRQ2, ASSERT_LINE);
+		cputag_set_input_line(machine, "maincpu", I960_IRQ2, ASSERT_LINE);
 	}
 
 	model2_timervals[tnum] = 0;
@@ -341,7 +341,7 @@ static MACHINE_RESET(model2o)
 	MACHINE_RESET_CALL(model2_common);
 
 	// hold TGP in halt until we have code
-	cpu_set_input_line(machine->cpu[2], INPUT_LINE_HALT, ASSERT_LINE);
+	cputag_set_input_line(machine, "tgp", INPUT_LINE_HALT, ASSERT_LINE);
 
 	dsp_type = DSP_TYPE_TGP;
 }
@@ -352,7 +352,7 @@ static MACHINE_RESET(model2_scsp)
 	memory_set_bankptr(machine, 5, memory_region(machine, "scsp") + 0x600000);
 
 	// copy the 68k vector table into RAM
-	memcpy(model2_soundram, memory_region(machine, "audiocpu")+0x80000, 16);
+	memcpy(model2_soundram, memory_region(machine, "audiocpu") + 0x80000, 16);
 	device_reset(cputag_get_cpu(machine, "audiocpu"));
 }
 
@@ -362,7 +362,7 @@ static MACHINE_RESET(model2)
 	MACHINE_RESET_CALL(model2_scsp);
 
 	// hold TGP in halt until we have code
-	cpu_set_input_line(machine->cpu[2], INPUT_LINE_HALT, ASSERT_LINE);
+	cputag_set_input_line(machine, "tgp", INPUT_LINE_HALT, ASSERT_LINE);
 
 	dsp_type = DSP_TYPE_TGP;
 }
@@ -372,12 +372,12 @@ static MACHINE_RESET(model2b)
 	MACHINE_RESET_CALL(model2_common);
 	MACHINE_RESET_CALL(model2_scsp);
 
-	cpu_set_input_line(machine->cpu[2], INPUT_LINE_HALT, ASSERT_LINE);
+	cputag_set_input_line(machine, "dsp", INPUT_LINE_HALT, ASSERT_LINE);
 
 	// set FIFOIN empty flag on SHARC
-	cpu_set_input_line(machine->cpu[2], SHARC_INPUT_FLAG0, ASSERT_LINE);
+	cputag_set_input_line(machine, "dsp", SHARC_INPUT_FLAG0, ASSERT_LINE);
 	// clear FIFOOUT buffer full flag on SHARC
-	cpu_set_input_line(machine->cpu[2], SHARC_INPUT_FLAG1, CLEAR_LINE);
+	cputag_set_input_line(machine, "dsp", SHARC_INPUT_FLAG1, CLEAR_LINE);
 
 	dsp_type = DSP_TYPE_SHARC;
 }
@@ -503,7 +503,10 @@ static WRITE32_HANDLER( copro_ctl1_w )
 			logerror("Boot copro, %d dwords\n", model2_coprocnt);
 			if (dsp_type != DSP_TYPE_TGPX4)
 			{
-				cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_HALT, CLEAR_LINE);
+				if (dsp_type == DSP_TYPE_SHARC)
+					cputag_set_input_line(space->machine, "dsp", INPUT_LINE_HALT, CLEAR_LINE);
+				else
+					cputag_set_input_line(space->machine, "tgp", INPUT_LINE_HALT, CLEAR_LINE);
 			}
 		}
 	}
@@ -518,7 +521,10 @@ static WRITE32_HANDLER(copro_function_port_w)
 	d |= a << 23;
 
 	//logerror("copro_function_port_w: %08X, %08X, %08X\n", data, offset, mem_mask);
-	copro_fifoin_push(space->machine->cpu[2], d);
+	if (dsp_type == DSP_TYPE_SHARC)
+		copro_fifoin_push(cputag_get_cpu(space->machine, "dsp"), d);
+	else
+		copro_fifoin_push(cputag_get_cpu(space->machine, "tgp"), d);
 }
 
 static READ32_HANDLER(copro_fifo_r)
@@ -533,7 +539,7 @@ static WRITE32_HANDLER(copro_fifo_w)
 	{
 		if (dsp_type == DSP_TYPE_SHARC)
 		{
-			sharc_external_dma_write(space->machine->cpu[2], model2_coprocnt, data & 0xffff);
+			sharc_external_dma_write(cputag_get_cpu(space->machine, "dsp"), model2_coprocnt, data & 0xffff);
 		}
 		else if (dsp_type == DSP_TYPE_TGP)
 		{
@@ -545,7 +551,10 @@ static WRITE32_HANDLER(copro_fifo_w)
 	else
 	{
 		//mame_printf_debug("copro_fifo_w: %08X, %08X, %08X at %08X\n", data, offset, mem_mask, cpu_get_pc(space->cpu));
-		copro_fifoin_push(space->machine->cpu[2], data);
+		if (dsp_type == DSP_TYPE_SHARC)
+			copro_fifoin_push(cputag_get_cpu(space->machine, "dsp"), data);
+		else
+			copro_fifoin_push(cputag_get_cpu(space->machine, "tgp"), data);
 	}
 }
 
@@ -558,7 +567,7 @@ static WRITE32_HANDLER(copro_sharc_iop_w)
 		(strcmp(space->machine->gamedrv->name, "vstriker" ) == 0) ||
 		(strcmp(space->machine->gamedrv->name, "gunblade" ) == 0))
 	{
-		sharc_external_iop_write(space->machine->cpu[2], offset, data);
+		sharc_external_iop_write(cputag_get_cpu(space->machine, "dsp"), offset, data);
 	}
 	else
 	{
@@ -569,7 +578,7 @@ static WRITE32_HANDLER(copro_sharc_iop_w)
 		else
 		{
 			iop_data |= (data & 0xffff) << 16;
-			sharc_external_iop_write(space->machine->cpu[2], offset, iop_data);
+			sharc_external_iop_write(cputag_get_cpu(space->machine, "dsp"), offset, iop_data);
 		}
 		iop_write_num++;
 	}
@@ -619,7 +628,7 @@ static WRITE32_HANDLER( geo_sharc_ctl1_w )
         else
         {
             logerror("Boot geo, %d dwords\n", model2_geocnt);
-            cpu_set_input_line(space->machine->cpu[3], INPUT_LINE_HALT, CLEAR_LINE);
+            cputag_set_input_line(space->machine, "dsp2", INPUT_LINE_HALT, CLEAR_LINE);
             //cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(1000));       // Give the SHARC enough time to boot itself
         }
     }
@@ -644,7 +653,7 @@ static WRITE32_HANDLER(geo_sharc_fifo_w)
 {
     if (model2_geoctl & 0x80000000)
     {
-        sharc_external_dma_write(space->machine->cpu[3], model2_geocnt, data & 0xffff);
+        sharc_external_dma_write(cputag_get_cpu(space->machine, "dsp2"), model2_geocnt, data & 0xffff);
 
         model2_geocnt++;
     }
@@ -660,7 +669,7 @@ static WRITE32_HANDLER(geo_sharc_iop_w)
 {
     if ((strcmp(space->machine->gamedrv->name, "schamp" ) == 0))
     {
-        sharc_external_iop_write(space->machine->cpu[3], offset, data);
+        sharc_external_iop_write(cputag_get_cpu(space->machine, "dsp2"), offset, data);
     }
     else
     {
@@ -671,7 +680,7 @@ static WRITE32_HANDLER(geo_sharc_iop_w)
         else
         {
             geo_iop_data |= (data & 0xffff) << 16;
-            sharc_external_iop_write(space->machine->cpu[3], offset, geo_iop_data);
+            sharc_external_iop_write(cputag_get_cpu(space->machine, "dsp2"), offset, geo_iop_data);
         }
         geo_iop_write_num++;
     }
@@ -848,7 +857,7 @@ static int to_68k;
 
 static int snd_68k_ready_r(const address_space *space)
 {
-	int sr = cpu_get_reg(space->machine->cpu[1], M68K_SR);
+	int sr = cpu_get_reg(cputag_get_cpu(space->machine, "audiocpu"), M68K_SR);
 
 	if ((sr & 0x0700) > 0x0100)
 	{
@@ -868,7 +877,7 @@ static void snd_latch_to_68k_w(const address_space *space, int data)
 
 	to_68k = data;
 
-	cpu_set_input_line(space->machine->cpu[1], 2, HOLD_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", 2, HOLD_LINE);
 
 	// give the 68k time to notice
 	cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(40));
@@ -1275,6 +1284,8 @@ static ADDRESS_MAP_START( model2o_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x01c00040, 0x01c00043) AM_READ( daytona_unk_r )
 	AM_RANGE(0x01c00200, 0x01c002ff) AM_RAM AM_BASE( &model2_backup2 )
 	AM_RANGE(0x01c80000, 0x01c80003) AM_READWRITE( model2_serial_r, model2o_serial_w )
+
+	AM_IMPORT_FROM(model2_base_mem)
 ADDRESS_MAP_END
 
 /* 2A-CRX overrides */
@@ -1302,6 +1313,8 @@ static ADDRESS_MAP_START( model2a_crx_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x01c00018, 0x01c0001b) AM_READ( hotd_unk_r )
 	AM_RANGE(0x01c0001c, 0x01c0001f) AM_READ_PORT("1c0001c") AM_WRITE( analog_2b_w )
 	AM_RANGE(0x01c80000, 0x01c80003) AM_READWRITE( model2_serial_r, model2_serial_w )
+
+	AM_IMPORT_FROM(model2_base_mem)
 ADDRESS_MAP_END
 
 /* 2B-CRX overrides */
@@ -1335,6 +1348,8 @@ static ADDRESS_MAP_START( model2b_crx_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x01c00018, 0x01c0001b) AM_READ( hotd_unk_r )
 	AM_RANGE(0x01c0001c, 0x01c0001f) AM_READ_PORT("1c0001c") AM_WRITE( analog_2b_w )
 	AM_RANGE(0x01c80000, 0x01c80003) AM_READWRITE( model2_serial_r, model2_serial_w )
+
+	AM_IMPORT_FROM(model2_base_mem)
 ADDRESS_MAP_END
 
 /* 2C-CRX overrides */
@@ -1359,6 +1374,8 @@ static ADDRESS_MAP_START( model2c_crx_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x01c00018, 0x01c0001b) AM_READ( hotd_unk_r )
 	AM_RANGE(0x01c0001c, 0x01c0001f) AM_READ_PORT("1c0001c") AM_WRITE( analog_2b_w )
 	AM_RANGE(0x01c80000, 0x01c80003) AM_READWRITE( model2_serial_r, model2_serial_w )
+
+	AM_IMPORT_FROM(model2_base_mem)
 ADDRESS_MAP_END
 
 /* Input definitions */
@@ -1713,8 +1730,8 @@ static ADDRESS_MAP_START( model2_snd, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x400000, 0x400001) AM_WRITE(model2snd_ctrl)
 	AM_RANGE(0x600000, 0x67ffff) AM_ROM AM_REGION("audiocpu", 0x80000)
 	AM_RANGE(0x800000, 0x9fffff) AM_ROM AM_REGION("scsp", 0)
-	AM_RANGE(0xa00000, 0xdfffff) AM_READ(SMH_BANK4)
-	AM_RANGE(0xe00000, 0xffffff) AM_READ(SMH_BANK5)
+	AM_RANGE(0xa00000, 0xdfffff) AM_READ(SMH_BANK(4))
+	AM_RANGE(0xe00000, 0xffffff) AM_READ(SMH_BANK(5))
 ADDRESS_MAP_END
 
 static int scsp_last_line = 0;
@@ -1724,10 +1741,10 @@ static void scsp_irq(const device_config *device, int irq)
 	if (irq > 0)
 	{
 		scsp_last_line = irq;
-		cpu_set_input_line(device->machine->cpu[1], irq, ASSERT_LINE);
+		cputag_set_input_line(device->machine, "audiocpu", irq, ASSERT_LINE);
 	}
 	else
-		cpu_set_input_line(device->machine->cpu[1], -irq, CLEAR_LINE);
+		cputag_set_input_line(device->machine, "audiocpu", -irq, CLEAR_LINE);
 }
 
 static const scsp_interface scsp_config =
@@ -1746,14 +1763,14 @@ static READ32_HANDLER(copro_sharc_input_fifo_r)
 	UINT32 result = 0;
 	//mame_printf_debug("SHARC FIFOIN pop at %08X\n", cpu_get_pc(space->cpu));
 
-	copro_fifoin_pop(space->machine->cpu[2], &result);
+	copro_fifoin_pop(cputag_get_cpu(space->machine, "dsp"), &result);
 	return result;
 }
 
 static WRITE32_HANDLER(copro_sharc_output_fifo_w)
 {
 	//mame_printf_debug("SHARC FIFOOUT push %08X\n", data);
-	copro_fifoout_push(space->machine->cpu[2], data);
+	copro_fifoout_push(cputag_get_cpu(space->machine, "dsp"), data);
 }
 
 static READ32_HANDLER(copro_sharc_buffer_r)
@@ -1812,15 +1829,15 @@ static const mb86233_cpu_core tgp_config =
 /* original Model 2 */
 static MACHINE_DRIVER_START( model2o )
 	MDRV_CPU_ADD("maincpu", I960, 25000000)
-	MDRV_CPU_PROGRAM_MAP(model2_base_mem, model2o_mem)
+	MDRV_CPU_PROGRAM_MAP(model2o_mem)
  	MDRV_CPU_VBLANK_INT_HACK(model2_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", M68000, 10000000)
-	MDRV_CPU_PROGRAM_MAP(model1_snd, 0)
+	MDRV_CPU_PROGRAM_MAP(model1_snd)
 
 	MDRV_CPU_ADD("tgp", MB86233, 16000000)
 	MDRV_CPU_CONFIG(tgp_config)
-	MDRV_CPU_PROGRAM_MAP(copro_tgp_map, 0)
+	MDRV_CPU_PROGRAM_MAP(copro_tgp_map)
 
 	MDRV_MACHINE_RESET(model2o)
 	MDRV_NVRAM_HANDLER( model2 )
@@ -1857,15 +1874,15 @@ MACHINE_DRIVER_END
 /* 2A-CRX */
 static MACHINE_DRIVER_START( model2a )
 	MDRV_CPU_ADD("maincpu", I960, 25000000)
-	MDRV_CPU_PROGRAM_MAP(model2_base_mem, model2a_crx_mem)
+	MDRV_CPU_PROGRAM_MAP(model2a_crx_mem)
  	MDRV_CPU_VBLANK_INT_HACK(model2_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", M68000, 12000000)
-	MDRV_CPU_PROGRAM_MAP(model2_snd, 0)
+	MDRV_CPU_PROGRAM_MAP(model2_snd)
 
 	MDRV_CPU_ADD("tgp", MB86233, 16000000)
 	MDRV_CPU_CONFIG(tgp_config)
-	MDRV_CPU_PROGRAM_MAP(copro_tgp_map, 0)
+	MDRV_CPU_PROGRAM_MAP(copro_tgp_map)
 
 	MDRV_MACHINE_RESET(model2)
 	MDRV_NVRAM_HANDLER( model2 )
@@ -1901,19 +1918,19 @@ static const sharc_config sharc_cfg =
 /* 2B-CRX */
 static MACHINE_DRIVER_START( model2b )
 	MDRV_CPU_ADD("maincpu", I960, 25000000)
-	MDRV_CPU_PROGRAM_MAP(model2_base_mem, model2b_crx_mem)
+	MDRV_CPU_PROGRAM_MAP(model2b_crx_mem)
  	MDRV_CPU_VBLANK_INT_HACK(model2_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", M68000, 12000000)
-	MDRV_CPU_PROGRAM_MAP(model2_snd, 0)
+	MDRV_CPU_PROGRAM_MAP(model2_snd)
 
 	MDRV_CPU_ADD("dsp", ADSP21062, 40000000)
 	MDRV_CPU_CONFIG(sharc_cfg)
-	MDRV_CPU_DATA_MAP(copro_sharc_map, 0)
+	MDRV_CPU_DATA_MAP(copro_sharc_map)
 
 	//MDRV_CPU_ADD("dsp2", ADSP21062, 40000000)
 	//MDRV_CPU_CONFIG(sharc_cfg)
-	//MDRV_CPU_DATA_MAP(geo_sharc_map, 0)
+	//MDRV_CPU_DATA_MAP(geo_sharc_map)
 
 	MDRV_QUANTUM_TIME(HZ(18000))
 
@@ -1945,11 +1962,11 @@ MACHINE_DRIVER_END
 /* 2C-CRX */
 static MACHINE_DRIVER_START( model2c )
 	MDRV_CPU_ADD("maincpu", I960, 25000000)
-	MDRV_CPU_PROGRAM_MAP(model2_base_mem, model2c_crx_mem)
+	MDRV_CPU_PROGRAM_MAP(model2c_crx_mem)
  	MDRV_CPU_VBLANK_INT_HACK(model2c_interrupt,3)
 
 	MDRV_CPU_ADD("audiocpu", M68000, 12000000)
-	MDRV_CPU_PROGRAM_MAP(model2_snd, 0)
+	MDRV_CPU_PROGRAM_MAP(model2_snd)
 
 	MDRV_MACHINE_RESET(model2c)
 	MDRV_NVRAM_HANDLER( model2 )
@@ -4407,7 +4424,7 @@ ROM_END
 
 static DRIVER_INIT( genprot )
 {
-	memory_install_readwrite32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r, model2_prot_w);
+	memory_install_readwrite32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r, model2_prot_w);
 	protstate = protpos = 0;
 }
 
@@ -4415,7 +4432,7 @@ static DRIVER_INIT( pltkids )
 {
 	UINT32 *ROM = (UINT32 *)memory_region(machine, "maincpu");
 
-	memory_install_readwrite32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r, model2_prot_w);
+	memory_install_readwrite32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r, model2_prot_w);
 	protstate = protpos = 0;
 
 	// fix bug in program: it destroys the interrupt table and never fixes it
@@ -4426,7 +4443,7 @@ static DRIVER_INIT( zerogun )
 {
 	UINT32 *ROM = (UINT32 *)memory_region(machine, "maincpu");
 
-	memory_install_readwrite32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r, model2_prot_w);
+	memory_install_readwrite32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r, model2_prot_w);
 	protstate = protpos = 0;
 
 	// fix bug in program: it destroys the interrupt table and never fixes it
@@ -4435,14 +4452,14 @@ static DRIVER_INIT( zerogun )
 
 static DRIVER_INIT( daytonam )
 {
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x240000, 0x24ffff, 0, 0, maxx_r );
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x240000, 0x24ffff, 0, 0, maxx_r );
 }
 
 static DRIVER_INIT( sgt24h )
 {
 	UINT32 *ROM = (UINT32 *)memory_region(machine, "maincpu");
 
-	memory_install_readwrite32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r, model2_prot_w);
+	memory_install_readwrite32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r, model2_prot_w);
 	protstate = protpos = 0;
 
 	ROM[0x56578/4] = 0x08000004;
@@ -4453,7 +4470,7 @@ static DRIVER_INIT( doa )
 {
 	UINT32 *ROM = (UINT32 *)memory_region(machine, "maincpu");
 
-	memory_install_readwrite32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r, model2_prot_w);
+	memory_install_readwrite32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r, model2_prot_w);
 	protstate = protpos = 0;
 
 	ROM[0x630/4] = 0x08000004;
@@ -4505,7 +4522,7 @@ GAME( 1997, zerogunj,  zerogun, model2b, model2, zerogun, ROT0, "Psikyo", "Zero 
 GAME( 1998, dynmcopb, dynamcop, model2b, model2, genprot, ROT0, "Sega", "Dynamite Cop (Export, Model 2B)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
 GAME( 1998, dyndek2b, dynamcop, model2b, model2, genprot, ROT0, "Sega", "Dynamite Deka 2 (Japan, Model 2B)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
 GAME( 1998, pltkids,         0, model2b, model2, pltkids, ROT0, "Psikyo", "Pilot Kids (Model 2B, Revision A)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
-GAME( 199?, rchase2,         0, model2b, model2, 0,       ROT0, "Sega", "Rail Chase 2 (Revision A)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
+GAME( 1995, rchase2,         0, model2b, model2, 0,       ROT0, "Sega", "Rail Chase 2 (Revision A)", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )
 
 // Model 2C-CRX (TGPx4, SCSP sound board)
 GAME( 1996, skisuprg,        0, model2c, model2, 0, ROT0, "Sega", "Sega Ski Super G", GAME_NOT_WORKING|GAME_IMPERFECT_GRAPHICS )

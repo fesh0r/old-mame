@@ -56,7 +56,7 @@ static TIMER_CALLBACK( interrupt_callback )
 {
 	int scanline = param;
 
-	generic_pulse_irq_line(machine->cpu[0], 0);
+	generic_pulse_irq_line(cputag_get_cpu(machine, "maincpu"), 0);
 
 	scanline = scanline + 32;
 
@@ -200,7 +200,7 @@ static MACHINE_DRIVER_START( cball )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6800, 12096000 / 16) /* ? */
-	MDRV_CPU_PROGRAM_MAP(cpu_map, 0)
+	MDRV_CPU_PROGRAM_MAP(cpu_map)
 
 	MDRV_MACHINE_RESET(cball)
 

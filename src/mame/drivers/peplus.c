@@ -659,9 +659,9 @@ static TILE_GET_INFO( get_bg_tile_info )
 static VIDEO_START( peplus )
 {
 	bg_tilemap = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows, 8, 8, 40, 25);
-	palette_ram = auto_malloc(0x3000);
+	palette_ram = auto_alloc_array(machine, UINT8, 0x3000);
 	memset(palette_ram, 0, 0x3000);
-	palette_ram2 = auto_malloc(0x3000);
+	palette_ram2 = auto_alloc_array(machine, UINT8, 0x3000);
 	memset(palette_ram2, 0, 0x3000);
 }
 
@@ -791,7 +791,7 @@ ADDRESS_MAP_END
 static CUSTOM_INPUT( peplus_input_r )
 {
 	UINT8 inp_ret = 0x00;
-	UINT8 inp_read = input_port_read(field->port->machine, param);
+	UINT8 inp_read = input_port_read(field->port->machine, (const char *)param);
 
 	if (inp_read & 0x01) inp_ret = 0x01;
 	if (inp_read & 0x02) inp_ret = 0x02;
@@ -1020,8 +1020,8 @@ static MACHINE_RESET( peplus )
 static MACHINE_DRIVER_START( peplus )
 	// basic machine hardware
 	MDRV_CPU_ADD("maincpu", I80C32, CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(peplus_map, 0)
-	MDRV_CPU_IO_MAP(peplus_iomap, 0)
+	MDRV_CPU_PROGRAM_MAP(peplus_map)
+	MDRV_CPU_IO_MAP(peplus_iomap)
 
 	MDRV_MACHINE_RESET(peplus)
 	MDRV_NVRAM_HANDLER(peplus)

@@ -186,8 +186,8 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( quizo )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,XTAL1/2)
-	MDRV_CPU_PROGRAM_MAP(memmap, 0)
-	MDRV_CPU_IO_MAP(portmap, 0)
+	MDRV_CPU_PROGRAM_MAP(memmap)
+	MDRV_CPU_IO_MAP(portmap)
 
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
@@ -244,7 +244,7 @@ ROM_END
 
 static DRIVER_INIT(quizo)
 {
-	videoram=auto_malloc(0x4000*2);
+	videoram=auto_alloc_array(machine, UINT8, 0x4000*2);
 }
 
 GAME( 1985, quizo,  0,       quizo,  quizo,  quizo, ROT0, "Seoul Coin Corp.", "Quiz Olympic (set 1)", 0 )

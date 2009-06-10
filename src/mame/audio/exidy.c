@@ -114,7 +114,7 @@ static double freq_to_step;
 static WRITE_LINE_DEVICE_HANDLER( update_irq_state )
 {
 	const device_config *pia = devtag_get_device(device->machine, "pia1");
-	cpu_set_input_line(device->machine->cpu[1], M6502_IRQ_LINE, (pia6821_get_irq_b(pia) | riot_irq_state) ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", M6502_IRQ_LINE, (pia6821_get_irq_b(pia) | riot_irq_state) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -462,7 +462,7 @@ static void r6532_irq(const device_config *device, int state)
 static void r6532_porta_w(const device_config *device, UINT8 newdata, UINT8 olddata)
 {
 	if (has_mc3417)
-		cpu_set_input_line(device->machine->cpu[2], INPUT_LINE_RESET, (newdata & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+		cputag_set_input_line(device->machine, "cvsdcpu", INPUT_LINE_RESET, (newdata & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -811,7 +811,7 @@ ADDRESS_MAP_END
 MACHINE_DRIVER_START( venture_audio )
 
 	MDRV_CPU_ADD("audiocpu", M6502, 3579545/4)
-	MDRV_CPU_PROGRAM_MAP(venture_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(venture_audio_map)
 
 	MDRV_RIOT6532_ADD("riot", SH6532_CLOCK, r6532_interface)
 
@@ -875,8 +875,8 @@ ADDRESS_MAP_END
 MACHINE_DRIVER_START( mtrap_cvsd_audio )
 
 	MDRV_CPU_ADD("cvsdcpu", Z80, CVSD_Z80_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(cvsd_map,0)
-	MDRV_CPU_IO_MAP(cvsd_iomap,0)
+	MDRV_CPU_PROGRAM_MAP(cvsd_map)
+	MDRV_CPU_IO_MAP(cvsd_iomap)
 
 	/* audio hardware */
 	MDRV_SOUND_ADD("cvsd", MC3417, CVSD_CLOCK)
@@ -1037,7 +1037,7 @@ ADDRESS_MAP_END
 MACHINE_DRIVER_START( victory_audio )
 
 	MDRV_CPU_ADD("audiocpu", M6502, VICTORY_AUDIO_CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(victory_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(victory_audio_map)
 
 	MDRV_RIOT6532_ADD("riot", SH6532_CLOCK, r6532_interface)
 	MDRV_PIA6821_ADD("pia1", victory_pia1_intf)

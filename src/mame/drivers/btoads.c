@@ -68,7 +68,7 @@ static TIMER_CALLBACK( delayed_sound_w )
 {
 	main_to_sound_data = param;
 	main_to_sound_ready = 1;
-	cpu_triggerint(machine->cpu[1]);
+	cpu_triggerint(cputag_get_cpu(machine, "audiocpu"));
 
 	/* use a timer to make long transfers faster */
 	timer_set(machine, ATTOTIME_IN_USEC(50), NULL, 0, 0);
@@ -149,7 +149,7 @@ static WRITE8_HANDLER( sound_int_state_w )
 		devtag_reset(space->machine, "bsmt");
 
 	/* also clears interrupts */
-	cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", 0, CLEAR_LINE);
 	sound_int_state = data;
 }
 
@@ -190,8 +190,8 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x20000180, 0x200001ff) AM_READ_PORT("UNK")
 	AM_RANGE(0x20000200, 0x2000027f) AM_READ_PORT("SPECIAL")
 	AM_RANGE(0x20000280, 0x200002ff) AM_READ_PORT("SW1")
-	AM_RANGE(0x20000000, 0x200000ff) AM_WRITE(SMH_RAM) AM_BASE(&btoads_sprite_scale)
-	AM_RANGE(0x20000100, 0x2000017f) AM_WRITE(SMH_RAM) AM_BASE(&btoads_sprite_control)
+	AM_RANGE(0x20000000, 0x200000ff) AM_WRITEONLY AM_BASE(&btoads_sprite_scale)
+	AM_RANGE(0x20000100, 0x2000017f) AM_WRITEONLY AM_BASE(&btoads_sprite_control)
 	AM_RANGE(0x20000180, 0x200001ff) AM_WRITE(btoads_display_control_w)
 	AM_RANGE(0x20000200, 0x2000027f) AM_WRITE(btoads_scroll0_w)
 	AM_RANGE(0x20000280, 0x200002ff) AM_WRITE(btoads_scroll1_w)
@@ -341,11 +341,11 @@ static MACHINE_DRIVER_START( btoads )
 
 	MDRV_CPU_ADD("maincpu", TMS34020, CPU_CLOCK/2)
 	MDRV_CPU_CONFIG(tms_config)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 
 	MDRV_CPU_ADD("audiocpu", Z80, SOUND_CLOCK/4)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_io_map)
 	MDRV_CPU_PERIODIC_INT(irq0_line_assert, 183)
 
 	MDRV_MACHINE_START(btoads)

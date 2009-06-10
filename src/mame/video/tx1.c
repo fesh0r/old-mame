@@ -34,7 +34,7 @@ static emu_timer *interrupt_timer;
 */
 static TIMER_CALLBACK( interrupt_callback )
 {
-	cpu_set_input_line_and_vector(machine->cpu[0], 0, HOLD_LINE, 0xff);
+	cputag_set_input_line_and_vector(machine, "main_cpu", 0, HOLD_LINE, 0xff);
 	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, CURSOR_YPOS, CURSOR_XPOS), 0);
 }
 
@@ -338,11 +338,10 @@ static void tx1_draw_char(running_machine *machine, UINT8 *bitmap)
 	pix[NUM][3][0] = prom_a[0];			pix[NUM][3][1] = prom_b[0];			pix[NUM][3][2] = prom_c[0]; \
 }
 
-INLINE void tx1_draw_road_pixel(int screen, UINT8 *bmpaddr,
+INLINE void tx1_draw_road_pixel(running_machine *machine, int screen, UINT8 *bmpaddr,
 								UINT8 apix[3], UINT8 bpix[3], UINT32 pixnuma, UINT32 pixnumb,
 								UINT8 stl, UINT8 sld, UINT8 selb,
-								UINT8 bnk, UINT8 rorev, UINT8 eb, UINT8 r, UINT8 delr,
-								running_machine *machine)
+								UINT8 bnk, UINT8 rorev, UINT8 eb, UINT8 r, UINT8 delr)
 {
 	UINT8 a0 = BIT(apix[0], pixnuma);
 	UINT8 a1 = BIT(apix[1], pixnuma);
@@ -784,10 +783,10 @@ static void tx1_draw_road(running_machine *machine, UINT8 *bitmap)
 				else
 					b = 3;
 
-				tx1_draw_road_pixel(0, bmpaddr,
+				tx1_draw_road_pixel(machine, 0, bmpaddr,
 						 &pix[0][a][0], &pix[1][b][0],
 						 pixnum0, pixnum1,
-						 stl, sld, selb, bnkls, rorevls, ebls, rl, delrl, machine);
+						 stl, sld, selb, bnkls, rorevls, ebls, rl, delrl);
 			}
 			else
 				*(bmpaddr) = (bnkls << 6) | (rl << 5);
@@ -806,10 +805,10 @@ static void tx1_draw_road(running_machine *machine, UINT8 *bitmap)
 				else
 					b = 3;
 
-				tx1_draw_road_pixel(1, bmpaddr,
+				tx1_draw_road_pixel(machine, 1, bmpaddr,
 						 &pix[0][a][0], &pix[1][b][0],
 						 pixnum0, pixnum1,
-						 stl, sld, selb, bnkcs, rorevcs, ebcs, rc, delrc, machine);
+						 stl, sld, selb, bnkcs, rorevcs, ebcs, rc, delrc);
 			}
 			else
 				*(bmpaddr + 256) = (bnkcs << 6) | (rc << 5);
@@ -828,10 +827,10 @@ static void tx1_draw_road(running_machine *machine, UINT8 *bitmap)
 				else
 					b = 3;
 
-				tx1_draw_road_pixel(2, bmpaddr,
+				tx1_draw_road_pixel(machine, 2, bmpaddr,
 						 &pix[0][a][0], &pix[1][b][0],
 						 pixnum0, pixnum1,
-						 stl, sld, selb, bnkrs, rorevrs, ebrs, rr, delrr, machine);
+						 stl, sld, selb, bnkrs, rorevrs, ebrs, rr, delrr);
 			}
 			else
 				*(bmpaddr + 512) = (bnkrs << 6) | (rr << 5);
@@ -1122,13 +1121,13 @@ static void tx1_draw_objects(running_machine *machine, UINT8 *bitmap)
 VIDEO_START( tx1 )
 {
 	/* Allocate a large bitmap that covers the three screens */
-	tx1_bitmap = auto_bitmap_alloc(768, 256, BITMAP_FORMAT_INDEXED16);
+	tx1_bitmap = auto_bitmap_alloc(machine, 768, 256, BITMAP_FORMAT_INDEXED16);
 	tx1_texture = render_texture_alloc(NULL, NULL);
 
 	/* Allocate some bitmaps */
-	tx1_chr_bmp = auto_malloc(sizeof(UINT8) * 256 * 3 * 240);
-	tx1_obj_bmp = auto_malloc(sizeof(UINT8) * 256 * 3 * 240);
-	tx1_rod_bmp = auto_malloc(sizeof(UINT8) * 256 * 3 * 240);
+	tx1_chr_bmp = auto_alloc_array(machine, UINT8, 256 * 3 * 240);
+	tx1_obj_bmp = auto_alloc_array(machine, UINT8, 256 * 3 * 240);
+	tx1_rod_bmp = auto_alloc_array(machine, UINT8, 256 * 3 * 240);
 
 	/* Set a timer to run the interrupts */
 	interrupt_timer = timer_alloc(machine, interrupt_callback, NULL);
@@ -1478,7 +1477,7 @@ static void buggyboy_draw_char(running_machine *machine, UINT8 *bitmap, int wide
 
 ***************************************************************************/
 
-void buggyboy_get_roadpix(int screen, int ls161, UINT8 rva0_6, UINT8 sld, UINT32 *_rorev,
+static void buggyboy_get_roadpix(int screen, int ls161, UINT8 rva0_6, UINT8 sld, UINT32 *_rorev,
 						  UINT8 *rc0, UINT8 *rc1, UINT8 *rc2, UINT8 *rc3,
 						  const UINT8 *rom, const UINT8 *prom0, const UINT8 *prom1, const UINT8 *prom2)
 {
@@ -2939,7 +2938,7 @@ WRITE16_HANDLER( buggyboy_gas_w )
 		}
 		case 0xe0:
 		{
-			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_TEST, CLEAR_LINE);
+			cputag_set_input_line(space->machine, "math_cpu", INPUT_LINE_TEST, CLEAR_LINE);
 			vregs.flags = data;
 			break;
 		}
@@ -3045,9 +3044,9 @@ static void bb_combine_layers(running_machine *machine, bitmap_t *bitmap, int sc
 VIDEO_START( buggyboy )
 {
 	/* Allocate some bitmaps */
-	bb_chr_bmp = auto_malloc(sizeof(UINT8) * 3 * 256 * 240);
-	bb_obj_bmp = auto_malloc(sizeof(UINT8) * 3 * 256 * 240);
-	bb_rod_bmp = auto_malloc(sizeof(UINT8) * 3 * 256 * 240);
+	bb_chr_bmp = auto_alloc_array(machine, UINT8, 3 * 256 * 240);
+	bb_obj_bmp = auto_alloc_array(machine, UINT8, 3 * 256 * 240);
+	bb_rod_bmp = auto_alloc_array(machine, UINT8, 3 * 256 * 240);
 
 	/* Set a timer to run the interrupts */
 	interrupt_timer = timer_alloc(machine, interrupt_callback, NULL);
@@ -3059,9 +3058,9 @@ VIDEO_START( buggyboy )
 VIDEO_START( buggybjr )
 {
 	/* Allocate some bitmaps */
-	bb_chr_bmp = auto_malloc(sizeof(UINT8) * 256 * 240);
-	bb_obj_bmp = auto_malloc(sizeof(UINT8) * 256 * 240);
-	bb_rod_bmp = auto_malloc(sizeof(UINT8) * 256 * 240);
+	bb_chr_bmp = auto_alloc_array(machine, UINT8, 256 * 240);
+	bb_obj_bmp = auto_alloc_array(machine, UINT8, 256 * 240);
+	bb_rod_bmp = auto_alloc_array(machine, UINT8, 256 * 240);
 
 	/* Set a timer to run the interrupts */
 	interrupt_timer = timer_alloc(machine, interrupt_callback, NULL);

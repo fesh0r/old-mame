@@ -6,9 +6,15 @@ Ernesto Corvi
 ernesto@imagina.com
 
 Notes:
-- 4 players mode is not emulated. This involves some shared RAM and a subboard.
-  There is additional code for a third Z80 in the bootleg version, I don't
-  know if it's related or if its just a replacement for the 68705.
+- master/slave 4 players mode is not emulated at all.
+  To set it up, enable the Master/Slave Mode and set the two boards IDs with
+  different settings. Do NOT enable the Single board 4p mode, I don't think
+  that the main board is supposed to be still connected to the sub board.
+
+- Single board 4 players mode actually works but I'm not sure how the reset /
+  halt line is truly connected on the sub cpu.
+  To set it up, just enable the single board 4p mode and keep the master/slave
+  mode to off and the board ID to master.
 
 - kicknrun does a PS4 STOP ERROR shortly after boot, but works afterwards.
   PS4 is the MC6801U4 mcu.
@@ -61,80 +67,58 @@ static READ8_DEVICE_HANDLER( kiki_ym2203_r )
 }
 //ZT
 
-static UINT8 *shared;
-
-static READ8_HANDLER( shared_r )
-{
-	return shared[offset];
-}
-
-static WRITE8_HANDLER( shared_w )
-{
-	shared[offset] = data;
-}
-
-
-
-static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)  /* banked roms */
-	AM_RANGE(0xc000, 0xe7ff) AM_READ(shared_r)   /* shared with sound cpu */
-	AM_RANGE(0xe800, 0xe8ff) AM_READ(SMH_RAM)    /* protection ram */
-	AM_RANGE(0xe900, 0xefff) AM_READ(SMH_RAM)
+static ADDRESS_MAP_START( mexico86_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(1)  	 				/* banked roms */
+	AM_RANGE(0xc000, 0xe7ff) AM_RAM AM_SHARE(1)  				/* shared with sound cpu */
+	AM_RANGE(0xd500, 0xd7ff) AM_RAM AM_BASE(&mexico86_objectram) AM_SIZE(&mexico86_objectram_size)
+	AM_RANGE(0xe800, 0xe8ff) AM_RAM AM_BASE(&mexico86_protection_ram)  /* shared with mcu */
+	AM_RANGE(0xe900, 0xefff) AM_RAM
+	AM_RANGE(0xc000, 0xd4ff) AM_RAM AM_BASE(&mexico86_videoram) //AT: corrected size
+	AM_RANGE(0xf000, 0xf000) AM_WRITE(mexico86_bankswitch_w)  	/* program and gfx ROM banks */
+	AM_RANGE(0xf008, 0xf008) AM_WRITE(mexico86_f008_w)    	  	/* cpu reset lines + other unknown stuff */
 	AM_RANGE(0xf010, 0xf010) AM_READ_PORT("IN3")
-	AM_RANGE(0xf800, 0xffff) AM_READ(SMH_RAM)    /* communication ram - to connect 4 players's subboard */
+	AM_RANGE(0xf018, 0xf018) AM_WRITENOP						/* watchdog? */
+	AM_RANGE(0xf800, 0xffff) AM_RAM AM_SHARE(2)					/* communication ram - to connect 4 players's subboard */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0xc000, 0xe7ff) AM_WRITE(shared_w) AM_BASE(&shared)  /* shared with sound cpu */
-	AM_RANGE(0xc000, 0xd4ff) AM_WRITE(SMH_RAM) AM_BASE(&mexico86_videoram) //AT: corrected size
-	AM_RANGE(0xd500, 0xd7ff) AM_WRITE(SMH_RAM) AM_BASE(&mexico86_objectram) AM_SIZE(&mexico86_objectram_size)
-	AM_RANGE(0xe800, 0xe8ff) AM_WRITE(SMH_RAM) AM_BASE(&mexico86_protection_ram)  /* shared with mcu */
-	AM_RANGE(0xe900, 0xefff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xf000, 0xf000) AM_WRITE(mexico86_bankswitch_w)  /* program and gfx ROM banks */
-	AM_RANGE(0xf008, 0xf008) AM_WRITE(mexico86_f008_w)    /* cpu reset lines + other unknown stuff */
-	AM_RANGE(0xf018, 0xf018) AM_WRITENOP    // watchdog_reset_w },
-	AM_RANGE(0xf800, 0xffff) AM_WRITE(SMH_RAM)    /* communication ram */
+static ADDRESS_MAP_START( mexico86_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0xa7ff) AM_RAM AM_SHARE(1)
+	AM_RANGE(0xa800, 0xbfff) AM_RAM
+	AM_RANGE(0xc000, 0xc001) AM_DEVREADWRITE("ym", kiki_ym2203_r,ym2203_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x8000, 0xa7ff) AM_READ(shared_r)
-	AM_RANGE(0xa800, 0xbfff) AM_READ(SMH_RAM)
-	AM_RANGE(0xc000, 0xc001) AM_DEVREAD("ym", kiki_ym2203_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x8000, 0xa7ff) AM_WRITE(shared_w)
-	AM_RANGE(0xa800, 0xbfff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xc000, 0xc001) AM_DEVWRITE("ym", ym2203_w)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( m68705_readmem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( mexico86_m68705_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x7ff)
-	AM_RANGE(0x0000, 0x0000) AM_READ(mexico86_68705_portA_r)
-	AM_RANGE(0x0001, 0x0001) AM_READ(mexico86_68705_portB_r)
+	AM_RANGE(0x0000, 0x0000) AM_READWRITE(mexico86_68705_portA_r,mexico86_68705_portA_w)
+	AM_RANGE(0x0001, 0x0001) AM_READWRITE(mexico86_68705_portB_r,mexico86_68705_portB_w)
 	AM_RANGE(0x0002, 0x0002) AM_READ_PORT("IN0") /* COIN */
-	AM_RANGE(0x0010, 0x007f) AM_READ(SMH_RAM)
-	AM_RANGE(0x0080, 0x07ff) AM_READ(SMH_ROM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( m68705_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0x7ff)
-	AM_RANGE(0x0000, 0x0000) AM_WRITE(mexico86_68705_portA_w)
-	AM_RANGE(0x0001, 0x0001) AM_WRITE(mexico86_68705_portB_w)
 	AM_RANGE(0x0004, 0x0004) AM_WRITE(mexico86_68705_ddrA_w)
 	AM_RANGE(0x0005, 0x0005) AM_WRITE(mexico86_68705_ddrB_w)
 	AM_RANGE(0x000a, 0x000a) AM_WRITENOP    /* looks like a bug in the code, writes to */
-									/* 0x0a (=10dec) instead of 0x10 */
-	AM_RANGE(0x0010, 0x007f) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x0080, 0x07ff) AM_WRITE(SMH_ROM)
+											/* 0x0a (=10dec) instead of 0x10 */
+	AM_RANGE(0x0010, 0x007f) AM_RAM
+	AM_RANGE(0x0080, 0x07ff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sub_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
+static WRITE8_HANDLER( mexico86_sub_output_w )
+{
+	/*--x- ---- coin lockout 2*/
+	/*---x ---- coin lockout 1*/
+	/*---- -x-- coin counter*/
+	/*---- --x- <unknown, always high, irq ack?>*/
+}
+
+static ADDRESS_MAP_START( mexico86_sub_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
+	AM_RANGE(0x4000, 0x47ff) AM_RAM /* sub cpu ram */
+	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_SHARE(2)  /* shared with main */
+	AM_RANGE(0xc000, 0xc000) AM_READ_PORT("IN4")
+	AM_RANGE(0xc001, 0xc001) AM_READ_PORT("IN5")
+	AM_RANGE(0xc002, 0xc002) AM_READ_PORT("IN6")
+	AM_RANGE(0xc003, 0xc003) AM_READ_PORT("IN7")
+	AM_RANGE(0xc004, 0xc004) AM_WRITE(mexico86_sub_output_w)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( mexico86 )
@@ -171,56 +155,56 @@ static INPUT_PORTS_START( mexico86 )
 	PORT_START("DSW0")
 	/* When Bit 1 is On, the machine waits a signal from another one */
 	/* Seems like if you can join two cabinets, one as master */
-	/* and the other as slave, probably to play four players */
-	PORT_DIPNAME( 0x01, 0x01, "System Selection" )
+	/* and the other as slave, probably to play four players. */
+	PORT_DIPNAME( 0x01, 0x01, "Master/Slave Mode" ) PORT_DIPLOCATION("SW1:1")
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) ) // Screen ?
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW1:2") // Screen ?
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_SERVICE( 0x04, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) ) // this should be Demo Sounds, but doesn't work?
+	PORT_SERVICE( 0x04, IP_ACTIVE_LOW ) PORT_DIPLOCATION("SW1:3")
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )  PORT_DIPLOCATION("SW1:4")// this should be Demo Sounds, but doesn't work?
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) )
+	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SW1:5,6")
 	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x30, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Coin_B ) )
+	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Coin_B ) ) PORT_DIPLOCATION("SW1:7,8")
 	PORT_DIPSETTING(    0x40, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )
 
 	PORT_START("DSW1")
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW2:1,2")
 	PORT_DIPSETTING(    0x03, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Medium ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
-	PORT_DIPNAME( 0x0c, 0x08, "Playing Time" )
+	PORT_DIPSETTING(    0x01, DEF_STR( Hard ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
+	PORT_DIPNAME( 0x0c, 0x08, "Playing Time" ) PORT_DIPLOCATION("SW2:3,4")
 	PORT_DIPSETTING(    0x00, "40 Seconds" )
 	PORT_DIPSETTING(    0x0c, "One Minute" )
 	PORT_DIPSETTING(    0x08, "One Minute and 20 Sec." )
 	PORT_DIPSETTING(    0x04, "One Minute and 40 Sec." )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ) ) PORT_DIPLOCATION("SW2:5")
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	/* The following dip seems to be related with the first one */
-	PORT_DIPNAME( 0x20, 0x20, "System Selection" )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x00, "Number of Matches" )
+	PORT_DIPNAME( 0x20, 0x20, "Board ID" ) PORT_DIPLOCATION("SW2:6")
+	PORT_DIPSETTING(    0x20, "Master" )
+	PORT_DIPSETTING(    0x00, "Slave" )
+	PORT_DIPNAME( 0x40, 0x40, "Number of Matches" ) PORT_DIPLOCATION("SW2:7")
 	PORT_DIPSETTING(    0x00, "2" )
 	PORT_DIPSETTING(    0x40, "6" )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Players ) )
-	PORT_DIPSETTING(    0x80, "2" )
-	PORT_DIPSETTING(    0x00, "4" )
+	PORT_DIPNAME( 0x80, 0x80, "Single board 4 Players Mode" ) PORT_DIPLOCATION("SW2:8")
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_START("IN3")
 	/* the following is actually service coin 1 */
-	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Advance") PORT_CODE(KEYCODE_F1)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Advance") PORT_CODE(KEYCODE_F1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )
@@ -228,6 +212,38 @@ static INPUT_PORTS_START( mexico86 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START("IN4")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(3)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(3)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(3)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(3)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(3)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN ) //p3 service
+
+	PORT_START("IN5")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(4)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(4)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(4)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(4)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(4)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(4)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN ) //p4 service
+
+	PORT_START("IN6")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH,IPT_COIN3 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START3 )
+	PORT_BIT( 0xf8, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START("IN7")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH,IPT_COIN4 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START4 )
+	PORT_BIT( 0xf8, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( kikikai )
@@ -263,14 +279,14 @@ static INPUT_PORTS_START( kikikai )
 
 //AT
 	PORT_START("DSW0")	/* DSW0 */
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("SW1:1")
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW1:2")
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_SERVICE( 0x04, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unused ) )
+	PORT_SERVICE( 0x04, IP_ACTIVE_LOW ) PORT_DIPLOCATION("SW1:3")
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unused ) ) PORT_DIPLOCATION("SW1:4")
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
@@ -288,37 +304,37 @@ static INPUT_PORTS_START( kikikai )
 #endif
 
 	// coinage copied from Japanese manual but type B doesn't work
-	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) )
+	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SW1:5,6")
 	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x30, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Coin_B ) )
+	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Coin_B ) ) PORT_DIPLOCATION("SW1:7,8")
 	PORT_DIPSETTING(    0x40, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )
 
 	PORT_START("DSW1")	/* DSW1 */
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )  PORT_DIPLOCATION("SW2:1,2")
 	PORT_DIPSETTING(    0x02, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Hard ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )  PORT_DIPLOCATION("SW2:3,4")
 	PORT_DIPSETTING(    0x00, "50000 100000" )
 	PORT_DIPSETTING(    0x0c, "70000 150000" )
 	PORT_DIPSETTING(    0x08, "70000 200000" )
 	PORT_DIPSETTING(    0x04, "100000 300000" )
-	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Lives ) )
+	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Lives ) )  PORT_DIPLOCATION("SW2:5,6")
 	PORT_DIPSETTING(    0x00, "2" )
 	PORT_DIPSETTING(    0x30, "3" )
 	PORT_DIPSETTING(    0x20, "4" )
 	PORT_DIPSETTING(    0x10, "5" )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Coinage ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Coinage ) )  PORT_DIPLOCATION("SW2:7")
 	PORT_DIPSETTING(    0x40, "A" )
 	PORT_DIPSETTING(    0x00, "B" )
-	PORT_DIPNAME( 0x80, 0x00, "Number Match" )
+	PORT_DIPNAME( 0x80, 0x00, "Number Match" )  PORT_DIPLOCATION("SW2:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 //ZT
@@ -367,27 +383,35 @@ static const ym2203_interface ym2203_config =
 };
 
 
+static MACHINE_RESET( mexico86 )
+{
+	/*TODO: check the PCB and see how the halt / reset lines are connected. */
+	if (cputag_get_cpu(machine, "sub") != NULL)
+		cputag_set_input_line(machine, "sub", INPUT_LINE_RESET, (input_port_read(machine, "DSW1") & 0x80) ? ASSERT_LINE : CLEAR_LINE);
+}
 
 static MACHINE_DRIVER_START( mexico86 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",Z80, 24000000/4)      /* 6 MHz, Uses clock divided 24MHz OSC */
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
+	MDRV_CPU_PROGRAM_MAP(mexico86_map)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 24000000/4)      /* 6 MHz, Uses clock divided 24MHz OSC */
-	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
+	MDRV_CPU_PROGRAM_MAP(mexico86_sound_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("mcu", M68705, 4000000) /* xtal is 4MHz, divided by 4 internally */
-	MDRV_CPU_PROGRAM_MAP(m68705_readmem,m68705_writemem)
+	MDRV_CPU_PROGRAM_MAP(mexico86_m68705_map)
 	MDRV_CPU_VBLANK_INT_HACK(mexico86_m68705_interrupt,2)
 
 	MDRV_CPU_ADD("sub", Z80, 8000000/2)      /* 4 MHz, Uses 8Mhz OSC */
-	MDRV_CPU_PROGRAM_MAP(sub_cpu_map,0)
+	MDRV_CPU_PROGRAM_MAP(mexico86_sub_cpu_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_TIME(HZ(6000))    /* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
+
+	MDRV_MACHINE_RESET(mexico86)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -419,7 +443,8 @@ static MACHINE_DRIVER_START( knightb )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mexico86)
-	MDRV_CPU_REMOVE("sub")
+
+	MDRV_DEVICE_REMOVE("sub")
 
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(kikikai)
@@ -434,7 +459,7 @@ static MACHINE_DRIVER_START( kikikai )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_VBLANK_INT("screen", kikikai_interrupt) // IRQs should be triggered by the MCU, but we don't have it
 
-	MDRV_CPU_REMOVE("mcu")	// we don't have code for the MC6801U4
+	MDRV_DEVICE_REMOVE("mcu")	// we don't have code for the MC6801U4
 
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(kikikai)

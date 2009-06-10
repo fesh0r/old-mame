@@ -69,7 +69,7 @@ static READ8_HANDLER( triothep_control_r )
 static WRITE8_HANDLER( actfancr_sound_w )
 {
 	soundlatch_w(space,0,data & 0xff);
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 /******************************************************************************/
@@ -99,7 +99,7 @@ static ADDRESS_MAP_START( triothep_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x046400, 0x0467ff) AM_WRITENOP /* Pf2 rowscroll - is it used? */
 	AM_RANGE(0x060000, 0x06001f) AM_WRITE(actfancr_pf1_control_w)
 	AM_RANGE(0x064000, 0x0647ff) AM_READWRITE(actfancr_pf1_data_r, actfancr_pf1_data_w) AM_BASE(&actfancr_pf1_data)
-	AM_RANGE(0x066400, 0x0667ff) AM_WRITE(SMH_RAM) AM_BASE(&actfancr_pf1_rowscroll_data)
+	AM_RANGE(0x066400, 0x0667ff) AM_WRITEONLY AM_BASE(&actfancr_pf1_rowscroll_data)
 	AM_RANGE(0x100000, 0x100001) AM_WRITE(actfancr_sound_w)
 	AM_RANGE(0x110000, 0x110001) AM_WRITE(buffer_spriteram_w)
 	AM_RANGE(0x120000, 0x1207ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
@@ -276,7 +276,7 @@ GFXDECODE_END
 
 static void sound_irq(const device_config *device, int linestate)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,linestate); /* IRQ */
+	cputag_set_input_line(device->machine, "audiocpu", 0, linestate); /* IRQ */
 }
 
 static const ym3812_interface ym3812_config =
@@ -297,11 +297,11 @@ static MACHINE_DRIVER_START( actfancr )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",H6280,21477200/3) /* Should be accurate */
-	MDRV_CPU_PROGRAM_MAP(actfan_map,0)
+	MDRV_CPU_PROGRAM_MAP(actfan_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold) /* VBL */
 
 	MDRV_CPU_ADD("audiocpu",M6502, 1500000) /* Should be accurate */
-	MDRV_CPU_PROGRAM_MAP(dec0_s_map,0)
+	MDRV_CPU_PROGRAM_MAP(dec0_s_map)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
@@ -340,11 +340,11 @@ static MACHINE_DRIVER_START( triothep )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",H6280,XTAL_21_4772MHz/3) /* XIN=21.4772Mhz, verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(triothep_map,0)
+	MDRV_CPU_PROGRAM_MAP(triothep_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold) /* VBL */
 
 	MDRV_CPU_ADD("audiocpu",M6502, XTAL_12MHz/8) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(dec0_s_map,0)
+	MDRV_CPU_PROGRAM_MAP(dec0_s_map)
 
     MDRV_MACHINE_START(triothep)
 
@@ -583,12 +583,12 @@ static READ8_HANDLER( cyclej_r )
 
 static DRIVER_INIT( actfancr )
 {
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f0026, 0x1f0027, 0, 0, cycle_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f0026, 0x1f0027, 0, 0, cycle_r);
 }
 
 static DRIVER_INIT( actfancj )
 {
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f0026, 0x1f0027, 0, 0, cyclej_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f0026, 0x1f0027, 0, 0, cyclej_r);
 }
 
 

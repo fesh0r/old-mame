@@ -441,8 +441,8 @@ static VIDEO_UPDATE(gstream)
 
 static MACHINE_DRIVER_START( gstream )
 	MDRV_CPU_ADD("maincpu", E132XT, 16000000*4)	/* 4x internal multiplier */
-	MDRV_CPU_PROGRAM_MAP(gstream_32bit_map,0)
-	MDRV_CPU_IO_MAP(gstream_io,0)
+	MDRV_CPU_PROGRAM_MAP(gstream_32bit_map)
+	MDRV_CPU_IO_MAP(gstream_io)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
@@ -519,7 +519,7 @@ static READ32_HANDLER( gstream_speedup_r )
 
 static DRIVER_INIT( gstream )
 {
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd1ee0, 0xd1ee3, 0, 0, gstream_speedup_r );
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd1ee0, 0xd1ee3, 0, 0, gstream_speedup_r );
 
 }
 

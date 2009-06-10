@@ -489,23 +489,23 @@ static PALETTE_INIT( dmnderby )
 /*Main Z80 is IM 0,HW-latched irqs. */
 static INTERRUPT_GEN( dderby_irq )
 {
-	cpu_set_input_line_and_vector(cputag_get_cpu(device->machine, "maincpu"), 0, HOLD_LINE, 0xd7); /* RST 10h */
+	cputag_set_input_line_and_vector(device->machine, "maincpu", 0, HOLD_LINE, 0xd7); /* RST 10h */
 }
 
 static INTERRUPT_GEN( dderby_timer_irq )
 {
-	cpu_set_input_line_and_vector(cputag_get_cpu(device->machine, "maincpu"), 0, HOLD_LINE, 0xcf); /* RST 08h */
+	cputag_set_input_line_and_vector(device->machine, "maincpu", 0, HOLD_LINE, 0xcf); /* RST 08h */
 }
 
 static MACHINE_DRIVER_START( dderby )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,4000000)		 /* ? MHz */
-	MDRV_CPU_PROGRAM_MAP(memmap,0)
+	MDRV_CPU_PROGRAM_MAP(memmap)
 	MDRV_CPU_VBLANK_INT("screen", dderby_irq)
 	MDRV_CPU_PERIODIC_INT(dderby_timer_irq, 244/2)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	/* verified on schematics */
-	MDRV_CPU_PROGRAM_MAP(dderby_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(dderby_sound_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 	MDRV_NVRAM_HANDLER(dderby)

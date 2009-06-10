@@ -123,8 +123,8 @@ static READ16_HANDLER( peno_rand2 )
 static ADDRESS_MAP_START( ttchamp_map, ADDRESS_SPACE_PROGRAM, 16 )
     AM_RANGE(0x00000, 0x0ffff) AM_RAM
     AM_RANGE(0x10000, 0x1ffff) AM_RAM AM_BASE(&peno_vram)
-    AM_RANGE(0x20000, 0x7ffff) AM_READ(SMH_BANK1) // ?
-    AM_RANGE(0x80000, 0xfffff) AM_READ(SMH_BANK2) // ?
+    AM_RANGE(0x20000, 0x7ffff) AM_READ(SMH_BANK(1)) // ?
+    AM_RANGE(0x80000, 0xfffff) AM_READ(SMH_BANK(2)) // ?
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ttchamp_io, ADDRESS_SPACE_IO, 16 )
@@ -225,8 +225,8 @@ static INTERRUPT_GEN( ttchamp_irq ) /* right? */
 static MACHINE_DRIVER_START( ttchamp )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V30, 8000000)
-	MDRV_CPU_PROGRAM_MAP(ttchamp_map, 0)
-	MDRV_CPU_IO_MAP(ttchamp_io,0)
+	MDRV_CPU_PROGRAM_MAP(ttchamp_map)
+	MDRV_CPU_IO_MAP(ttchamp_io)
 	MDRV_CPU_VBLANK_INT("screen", ttchamp_irq)
 
 	/* video hardware */

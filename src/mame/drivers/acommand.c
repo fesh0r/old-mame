@@ -4,7 +4,7 @@ Alien Command (c) 1993 Jaleco
 
 driver by Angelo Salese
 
-Similar (same?) to the Cisco Heat board type.
+Actually same HW as the Cisco Heat ones.
 
 TODO:
 -Understand what "devices" area needs to make this working.It's likely that the upper switches
@@ -14,7 +14,7 @@ controls the UFO's and the lower switches the astronauts.
 -Merge to the Cisco Heat driver.
 
 Notes:
--The real HW is a redemption machine with two guns,similar to the "Cosmo Gang the Video"
+-The real HW is a redemption machine with two guns, similar to the "Cosmo Gang the Video"
 (Namco) bonus games.
 
 m68k irq table vectors
@@ -103,8 +103,6 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			int color = spriteram16[offs+7];
 			int w = (spriteram16[offs+0] & 0x0f);
 			int h = ((spriteram16[offs+0] & 0xf0) >> 4);
-			/*Unlike NMK16,the given Y offset is where the sprite must end instead
-            of where it starts.*/
 			int sy = (spriteram16[offs+4] & 0x0ff) - ((h+1)*0x10);
 /**/		int pri = spriteram16[offs+5];
 /**/		int flipy = ((spriteram16[offs+1] & 0x0200) >> 9);
@@ -155,7 +153,7 @@ static VIDEO_START( acommand )
 	tx_tilemap = tilemap_create(machine, ac_get_tx_tile_info,tilemap_scan_cols,8,8,512,32);
 	bg_tilemap = tilemap_create(machine, ac_get_bg_tile_info,bg_scan,16,16,256,16);
 
-	ac_vregs = auto_malloc(0x80);
+	ac_vregs = auto_alloc_array(machine, UINT16, 0x80/2);
 
 	tilemap_set_transparent_pen(tx_tilemap,15);
 }
@@ -545,7 +543,7 @@ static const gfx_layout tilelayout =
 
 static GFXDECODE_START( acommand )
 	GFXDECODE_ENTRY( "gfx1", 0, charlayout, 0x2700, 16 ) /*???*/
-	GFXDECODE_ENTRY( "gfx2", 0, tilelayout, 0x1800, 256 )
+	GFXDECODE_ENTRY( "gfx2", 0, tilelayout, 0x0f00, 256 )
 	GFXDECODE_ENTRY( "gfx3", 0, tilelayout, 0x1800, 256 )
 GFXDECODE_END
 
@@ -562,7 +560,7 @@ static MACHINE_DRIVER_START( acommand )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",M68000,12000000)
-	MDRV_CPU_PROGRAM_MAP(acommand_map,0)
+	MDRV_CPU_PROGRAM_MAP(acommand_map)
 	MDRV_CPU_VBLANK_INT_HACK(acommand_irq,2)
 
 	/* video hardware */

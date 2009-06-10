@@ -54,7 +54,7 @@ void archimedes_request_irq_a(running_machine *machine, int mask)
 
 	if (ioc_regs[6] & mask)
 	{
-		cpu_set_input_line(machine->cpu[0], ARM_IRQ_LINE, ASSERT_LINE);
+		cputag_set_input_line(machine, "maincpu", ARM_IRQ_LINE, ASSERT_LINE);
 	}
 }
 
@@ -64,7 +64,7 @@ void archimedes_request_irq_b(running_machine *machine, int mask)
 
 	if (ioc_regs[10] & mask)
 	{
-		cpu_set_input_line(machine->cpu[0], ARM_IRQ_LINE, PULSE_LINE);
+		cputag_set_input_line(machine, "maincpu", ARM_IRQ_LINE, PULSE_LINE);
 	}
 }
 
@@ -74,7 +74,7 @@ void archimedes_request_fiq(running_machine *machine, int mask)
 
 	if (ioc_regs[14] & mask)
 	{
-		cpu_set_input_line(machine->cpu[0], ARM_FIRQ_LINE, PULSE_LINE);
+		cputag_set_input_line(machine, "maincpu", ARM_FIRQ_LINE, PULSE_LINE);
 	}
 }
 
@@ -265,7 +265,7 @@ static DIRECT_UPDATE_HANDLER( a310_setopbase )
 
 void archimedes_driver_init(running_machine *machine)
 {
-	memory_set_direct_update_handler( cpu_get_address_space( machine->cpu[0], ADDRESS_SPACE_PROGRAM ), a310_setopbase);
+	memory_set_direct_update_handler( cputag_get_address_space( machine, "maincpu", ADDRESS_SPACE_PROGRAM ), a310_setopbase);
 }
 
 static const char *const ioc_regnames[] =
@@ -314,7 +314,7 @@ static void latch_timer_cnt(int tmr)
 READ32_HANDLER(ioc_r)
 {
 	#ifdef MESS
-	device_config *fdc = (device_config*)devtag_get_device(space->machine, "wd1772");
+	const device_config *fdc = (const device_config *)devtag_get_device(space->machine, "wd1772");
 	#endif
 	if (offset >= 0x80000 && offset < 0xc0000)
 	{
@@ -364,7 +364,7 @@ READ32_HANDLER(ioc_r)
 WRITE32_HANDLER(ioc_w)
 {
 	#ifdef MESS
-	device_config *fdc = (device_config*)devtag_get_device(space->machine, "wd1772");
+	const device_config *fdc = (const device_config *)devtag_get_device(space->machine, "wd1772");
 	#endif
 	if (offset >= 0x80000 && offset < 0xc0000)
 	{
@@ -382,7 +382,7 @@ WRITE32_HANDLER(ioc_w)
 				// if that did it, clear the IRQ
 				if (ioc_regs[4] == 0)
 				{
-					cpu_set_input_line(space->machine->cpu[0], ARM_IRQ_LINE, CLEAR_LINE);
+					cputag_set_input_line(space->machine, "maincpu", ARM_IRQ_LINE, CLEAR_LINE);
 				}
 				break;
 

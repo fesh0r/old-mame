@@ -101,7 +101,7 @@ static const ay8910_interface ay8910_config =
 
 static ADDRESS_MAP_START( fortecar_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_ROM
-	AM_RANGE(0xc000, 0xc7ff) AM_READWRITE(SMH_BANK1, SMH_ROM) //bank
+	AM_RANGE(0xc000, 0xc7ff) AM_READWRITE(SMH_BANK(1), SMH_ROM) //bank
 	AM_RANGE(0xd000, 0xd7ff) AM_RAM
 	AM_RANGE(0xd800, 0xffff) AM_RAM AM_BASE(&fortecar_ram)
 ADDRESS_MAP_END
@@ -273,8 +273,8 @@ static MACHINE_RESET(fortecar)
 static MACHINE_DRIVER_START( fortecar )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,6000000)		 /* ? MHz */
-	MDRV_CPU_PROGRAM_MAP(fortecar_map,0)
-	MDRV_CPU_IO_MAP(fortecar_ports,0)
+	MDRV_CPU_PROGRAM_MAP(fortecar_map)
+	MDRV_CPU_IO_MAP(fortecar_ports)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	/* video hardware */

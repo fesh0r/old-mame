@@ -57,8 +57,8 @@ static void (*protection_handler)(running_machine *);
 
 static void update_irq_state(running_machine *machine)
 {
-	cpu_set_input_line(machine->cpu[0], 4, tms_irq  ? ASSERT_LINE : CLEAR_LINE);
-	cpu_set_input_line(machine->cpu[0], 5, hack_irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 4, tms_irq  ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 5, hack_irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -76,11 +76,25 @@ static void m68k_gen_int(const device_config *device, int state)
  *
  *************************************/
 
+static MACHINE_START( artmagic )
+{
+	state_save_register_global(machine, tms_irq);
+	state_save_register_global(machine, hack_irq);
+	state_save_register_global(machine, prot_input_index);
+	state_save_register_global(machine, prot_output_index);
+	state_save_register_global(machine, prot_output_bit);
+	state_save_register_global(machine, prot_bit_index);
+	state_save_register_global(machine, prot_save);
+	state_save_register_global_array(machine, prot_input);
+	state_save_register_global_array(machine, prot_output);
+}
+
 static MACHINE_RESET( artmagic )
 {
 	tms_irq = hack_irq = 0;
 	update_irq_state(machine);
 	tlc34076_reset(6);
+	tlc34076_state_save(machine);
 }
 
 
@@ -93,13 +107,13 @@ static MACHINE_RESET( artmagic )
 
 static READ16_HANDLER( tms_host_r )
 {
-	return tms34010_host_r(space->machine->cpu[1], offset);
+	return tms34010_host_r(cputag_get_cpu(space->machine, "tms"), offset);
 }
 
 
 static WRITE16_HANDLER( tms_host_w )
 {
-	tms34010_host_w(space->machine->cpu[1], offset, data);
+	tms34010_host_w(cputag_get_cpu(space->machine, "tms"), offset, data);
 }
 
 
@@ -693,12 +707,13 @@ static MACHINE_DRIVER_START( artmagic )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, MASTER_CLOCK_25MHz/2)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 
 	MDRV_CPU_ADD("tms", TMS34010, MASTER_CLOCK_40MHz)
 	MDRV_CPU_CONFIG(tms_config)
-	MDRV_CPU_PROGRAM_MAP(tms_map,0)
+	MDRV_CPU_PROGRAM_MAP(tms_map)
 
+	MDRV_MACHINE_START(artmagic)
 	MDRV_MACHINE_RESET(artmagic)
 	MDRV_QUANTUM_TIME(HZ(6000))
 	MDRV_NVRAM_HANDLER(generic_1fill)
@@ -732,10 +747,10 @@ static MACHINE_DRIVER_START( stonebal )
 	MDRV_IMPORT_FROM(artmagic)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(stonebal_map,0)
+	MDRV_CPU_PROGRAM_MAP(stonebal_map)
 
 	MDRV_CPU_MODIFY("tms")
-	MDRV_CPU_PROGRAM_MAP(stonebal_tms_map,0)
+	MDRV_CPU_PROGRAM_MAP(stonebal_tms_map)
 
 	MDRV_SOUND_MODIFY("oki")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.45)
@@ -890,7 +905,7 @@ static DRIVER_INIT( ultennis )
 	protection_handler = ultennis_protection;
 
 	/* additional (protection?) hack */
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x300000, 0x300001, 0, 0, ultennis_hack_r);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x300000, 0x300001, 0, 0, ultennis_hack_r);
 }
 
 
@@ -917,7 +932,7 @@ static DRIVER_INIT( stonebal )
  *
  *************************************/
 
-GAME( 1993, ultennis, 0,        artmagic, ultennis, ultennis, ROT0, "Art & Magic", "Ultimate Tennis",		 0 )
-GAME( 1994, cheesech, 0,        cheesech, cheesech, cheesech, ROT0, "Art & Magic", "Cheese Chase",			 0 )
-GAME( 1994, stonebal, 0,        stonebal, stonebal, stonebal, ROT0, "Art & Magic", "Stone Ball (4 Players)", 0 )
-GAME( 1994, stoneba2, stonebal, stonebal, stoneba2, stonebal, ROT0, "Art & Magic", "Stone Ball (2 Players)", 0 )
+GAME( 1993, ultennis, 0,        artmagic, ultennis, ultennis, ROT0, "Art & Magic", "Ultimate Tennis",		 GAME_SUPPORTS_SAVE )
+GAME( 1994, cheesech, 0,        cheesech, cheesech, cheesech, ROT0, "Art & Magic", "Cheese Chase",			 GAME_SUPPORTS_SAVE )
+GAME( 1994, stonebal, 0,        stonebal, stonebal, stonebal, ROT0, "Art & Magic", "Stone Ball (4 Players)", GAME_SUPPORTS_SAVE )
+GAME( 1994, stoneba2, stonebal, stonebal, stoneba2, stonebal, ROT0, "Art & Magic", "Stone Ball (2 Players)", GAME_SUPPORTS_SAVE )

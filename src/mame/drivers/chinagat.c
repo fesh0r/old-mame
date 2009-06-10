@@ -150,13 +150,13 @@ static TIMER_DEVICE_CALLBACK( chinagat_scanline )
 	/* on the rising edge of VBLK (vcount == F8), signal an NMI */
 	if (vcount == 0xf8)
 	{
-		cpu_set_input_line(timer->machine->cpu[0], INPUT_LINE_NMI, ASSERT_LINE);
+		cputag_set_input_line(timer->machine, "maincpu", INPUT_LINE_NMI, ASSERT_LINE);
 	}
 
 	/* set 1ms signal on rising edge of vcount & 8 */
 	if (!(vcount_old & 8) && (vcount & 8))
 	{
-		cpu_set_input_line(timer->machine->cpu[0], M6809_FIRQ_LINE, ASSERT_LINE);
+		cputag_set_input_line(timer->machine, "maincpu", M6809_FIRQ_LINE, ASSERT_LINE);
 	}
 
 	/* adjust for next scanline */
@@ -172,23 +172,23 @@ static WRITE8_HANDLER( chinagat_interrupt_w )
 	{
 		case 0: /* 3e00 - SND irq */
 			soundlatch_w( space, 0, data );
-			cpu_set_input_line(space->machine->cpu[2], sound_irq, (sound_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE );
+			cputag_set_input_line(space->machine, "audiocpu", sound_irq, (sound_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE );
 			break;
 
 		case 1: /* 3e01 - NMI ack */
-			cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
+			cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_NMI, CLEAR_LINE);
 			break;
 
 		case 2: /* 3e02 - FIRQ ack */
-			cpu_set_input_line(space->machine->cpu[0], M6809_FIRQ_LINE, CLEAR_LINE);
+			cputag_set_input_line(space->machine, "maincpu", M6809_FIRQ_LINE, CLEAR_LINE);
 			break;
 
 		case 3: /* 3e03 - IRQ ack */
-			cpu_set_input_line(space->machine->cpu[0], M6809_IRQ_LINE, CLEAR_LINE);
+			cputag_set_input_line(space->machine, "maincpu", M6809_IRQ_LINE, CLEAR_LINE);
 			break;
 
 		case 4: /* 3e04 - sub CPU IRQ ack */
-			cpu_set_input_line(space->machine->cpu[1], sprite_irq, (sprite_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE );
+			cputag_set_input_line(space->machine, "sub", sprite_irq, (sprite_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE );
 			break;
 	}
 }
@@ -225,7 +225,7 @@ static READ8_HANDLER( saiyugb1_mcu_command_r )
 #if 0
 	if (saiyugb1_mcu_command == 0x78)
 	{
-		cpu_suspend(space->machine->cpu[3], SUSPEND_REASON_HALT, 1);	/* Suspend (speed up) */
+		cputag_suspend(space->machine, "mcu", SUSPEND_REASON_HALT, 1);	/* Suspend (speed up) */
 	}
 #endif
 	return saiyugb1_mcu_command;
@@ -237,7 +237,7 @@ static WRITE8_HANDLER( saiyugb1_mcu_command_w )
 #if 0
 	if (data != 0x78)
 	{
-		cpu_resume(space->machine->cpu[3], SUSPEND_REASON_HALT);	/* Wake up */
+		cputag_resume(space->machine, "mcu", SUSPEND_REASON_HALT);	/* Wake up */
 	}
 #endif
 }
@@ -337,7 +337,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2800, 0x2fff) AM_RAM_WRITE(ddragon_bgvideoram_w) AM_BASE(&ddragon_bgvideoram)
 	AM_RANGE(0x3000, 0x317f) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_split1_w) AM_BASE(&paletteram)
 	AM_RANGE(0x3400, 0x357f) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_split2_w) AM_BASE(&paletteram_2)
-	AM_RANGE(0x3800, 0x397f) AM_WRITE(SMH_BANK3) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x3800, 0x397f) AM_WRITE(SMH_BANK(3)) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x3e00, 0x3e04) AM_WRITE(chinagat_interrupt_w)
 	AM_RANGE(0x3e06, 0x3e06) AM_WRITE(SMH_RAM) AM_BASE(&ddragon_scrolly_lo)
 	AM_RANGE(0x3e07, 0x3e07) AM_WRITE(SMH_RAM) AM_BASE(&ddragon_scrollx_lo)
@@ -520,7 +520,7 @@ GFXDECODE_END
 
 static void chinagat_irq_handler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[2], 0, irq ? ASSERT_LINE : CLEAR_LINE );
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
 static const ym2151_interface ym2151_config =
@@ -550,14 +550,14 @@ static MACHINE_DRIVER_START( chinagat )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", HD6309, MAIN_CLOCK / 2)		/* 1.5 MHz (12MHz oscillator / 4 internally) */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_TIMER_ADD_SCANLINE("scantimer", chinagat_scanline, "screen", 0, 1)
 
 	MDRV_CPU_ADD("sub", HD6309, MAIN_CLOCK / 2)		/* 1.5 MHz (12MHz oscillator / 4 internally) */
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz)		/* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000)) /* heavy interleaving to sync up sprite<->main cpu's */
 
@@ -589,18 +589,18 @@ static MACHINE_DRIVER_START( saiyugb1 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809, MAIN_CLOCK / 8)		/* 68B09EP 1.5 MHz (12MHz oscillator) */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_TIMER_ADD_SCANLINE("scantimer", chinagat_scanline, "screen", 0, 1)
 
 	MDRV_CPU_ADD("sub", M6809, MAIN_CLOCK / 8)		/* 68B09EP 1.5 MHz (12MHz oscillator) */
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz)		/* 3.579545 MHz oscillator */
-	MDRV_CPU_PROGRAM_MAP(saiyugb1_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(saiyugb1_sound_map)
 
 	MDRV_CPU_ADD("mcu", I8748, 9263750)		/* 9.263750 MHz oscillator, divided by 3*5 internally */
-	MDRV_CPU_PROGRAM_MAP(i8748_map,0)
-	MDRV_CPU_IO_MAP(i8748_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(i8748_map)
+	MDRV_CPU_IO_MAP(i8748_portmap)
 
 	MDRV_QUANTUM_TIME(HZ(6000))	/* heavy interleaving to sync up sprite<->main cpu's */
 
@@ -632,14 +632,14 @@ static MACHINE_DRIVER_START( saiyugb2 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809, MAIN_CLOCK / 8)		/* 1.5 MHz (12MHz oscillator) */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_TIMER_ADD_SCANLINE("scantimer", chinagat_scanline, "screen", 0, 1)
 
 	MDRV_CPU_ADD("sub", M6809, MAIN_CLOCK / 8)		/* 1.5 MHz (12MHz oscillator) */
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz)		/* 3.579545 MHz oscillator */
-	MDRV_CPU_PROGRAM_MAP(ym2203c_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(ym2203c_sound_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000)) /* heavy interleaving to sync up sprite<->main cpu's */
 

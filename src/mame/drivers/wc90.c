@@ -57,18 +57,6 @@ Press one of the start buttons to exit.
 #include "includes/wc90.h"
 
 
-static UINT8 *wc90_shared;
-
-static READ8_HANDLER( wc90_shared_r )
-{
-	return wc90_shared[offset];
-}
-
-static WRITE8_HANDLER( wc90_shared_w )
-{
-	wc90_shared[offset] = data;
-}
-
 static WRITE8_HANDLER( wc90_bankswitch_w )
 {
 	int bankaddress;
@@ -76,7 +64,7 @@ static WRITE8_HANDLER( wc90_bankswitch_w )
 
 
 	bankaddress = 0x10000 + ( ( data & 0xf8 ) << 8 );
-	memory_set_bankptr(space->machine,  1,&RAM[bankaddress] );
+	memory_set_bankptr(space->machine, 1, &RAM[bankaddress] );
 }
 
 static WRITE8_HANDLER( wc90_bankswitch1_w )
@@ -86,13 +74,13 @@ static WRITE8_HANDLER( wc90_bankswitch1_w )
 
 
 	bankaddress = 0x10000 + ( ( data & 0xf8 ) << 8 );
-	memory_set_bankptr(space->machine,  2,&RAM[bankaddress] );
+	memory_set_bankptr(space->machine, 2, &RAM[bankaddress] );
 }
 
 static WRITE8_HANDLER( wc90_sound_command_w )
 {
-	soundlatch_w(space,offset,data);
-	cpu_set_input_line(space->machine->cpu[2],INPUT_LINE_NMI,PULSE_LINE);
+	soundlatch_w(space, offset, data);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -105,25 +93,25 @@ static ADDRESS_MAP_START( wc90_map_1, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xcfff) AM_RAM_WRITE(wc90_bgvideoram_w) AM_BASE(&wc90_bgvideoram)
 	AM_RANGE(0xd000, 0xdfff) AM_RAM
 	AM_RANGE(0xe000, 0xefff) AM_RAM_WRITE(wc90_txvideoram_w) AM_BASE(&wc90_txvideoram)	/* tx video ram */
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_BANK1, SMH_ROM)
-	AM_RANGE(0xf800, 0xfbff) AM_READWRITE(wc90_shared_r, wc90_shared_w) AM_BASE(&wc90_shared)
+	AM_RANGE(0xf000, 0xf7ff) AM_ROMBANK(1)
+	AM_RANGE(0xf800, 0xfbff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0xfc00, 0xfc00) AM_READ_PORT("P1")
 	AM_RANGE(0xfc02, 0xfc02) AM_READ_PORT("P2")
 	AM_RANGE(0xfc05, 0xfc05) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0xfc06, 0xfc06) AM_READ_PORT("DSW1")
 	AM_RANGE(0xfc07, 0xfc07) AM_READ_PORT("DSW2")
-	AM_RANGE(0xfc02, 0xfc02) AM_WRITE(SMH_RAM) AM_BASE(&wc90_scroll0ylo)
-	AM_RANGE(0xfc03, 0xfc03) AM_WRITE(SMH_RAM) AM_BASE(&wc90_scroll0yhi)
-	AM_RANGE(0xfc06, 0xfc06) AM_WRITE(SMH_RAM) AM_BASE(&wc90_scroll0xlo)
-	AM_RANGE(0xfc07, 0xfc07) AM_WRITE(SMH_RAM) AM_BASE(&wc90_scroll0xhi)
-	AM_RANGE(0xfc22, 0xfc22) AM_WRITE(SMH_RAM) AM_BASE(&wc90_scroll1ylo)
-	AM_RANGE(0xfc23, 0xfc23) AM_WRITE(SMH_RAM) AM_BASE(&wc90_scroll1yhi)
-	AM_RANGE(0xfc26, 0xfc26) AM_WRITE(SMH_RAM) AM_BASE(&wc90_scroll1xlo)
-	AM_RANGE(0xfc27, 0xfc27) AM_WRITE(SMH_RAM) AM_BASE(&wc90_scroll1xhi)
-	AM_RANGE(0xfc42, 0xfc42) AM_WRITE(SMH_RAM) AM_BASE(&wc90_scroll2ylo)
-	AM_RANGE(0xfc43, 0xfc43) AM_WRITE(SMH_RAM) AM_BASE(&wc90_scroll2yhi)
-	AM_RANGE(0xfc46, 0xfc46) AM_WRITE(SMH_RAM) AM_BASE(&wc90_scroll2xlo)
-	AM_RANGE(0xfc47, 0xfc47) AM_WRITE(SMH_RAM) AM_BASE(&wc90_scroll2xhi)
+	AM_RANGE(0xfc02, 0xfc02) AM_WRITEONLY AM_BASE(&wc90_scroll0ylo)
+	AM_RANGE(0xfc03, 0xfc03) AM_WRITEONLY AM_BASE(&wc90_scroll0yhi)
+	AM_RANGE(0xfc06, 0xfc06) AM_WRITEONLY AM_BASE(&wc90_scroll0xlo)
+	AM_RANGE(0xfc07, 0xfc07) AM_WRITEONLY AM_BASE(&wc90_scroll0xhi)
+	AM_RANGE(0xfc22, 0xfc22) AM_WRITEONLY AM_BASE(&wc90_scroll1ylo)
+	AM_RANGE(0xfc23, 0xfc23) AM_WRITEONLY AM_BASE(&wc90_scroll1yhi)
+	AM_RANGE(0xfc26, 0xfc26) AM_WRITEONLY AM_BASE(&wc90_scroll1xlo)
+	AM_RANGE(0xfc27, 0xfc27) AM_WRITEONLY AM_BASE(&wc90_scroll1xhi)
+	AM_RANGE(0xfc42, 0xfc42) AM_WRITEONLY AM_BASE(&wc90_scroll2ylo)
+	AM_RANGE(0xfc43, 0xfc43) AM_WRITEONLY AM_BASE(&wc90_scroll2yhi)
+	AM_RANGE(0xfc46, 0xfc46) AM_WRITEONLY AM_BASE(&wc90_scroll2xlo)
+	AM_RANGE(0xfc47, 0xfc47) AM_WRITEONLY AM_BASE(&wc90_scroll2xhi)
 	AM_RANGE(0xfcc0, 0xfcc0) AM_WRITE(wc90_sound_command_w)
 	AM_RANGE(0xfcd0, 0xfcd0) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0xfce0, 0xfce0) AM_WRITE(wc90_bankswitch_w)
@@ -132,11 +120,11 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( wc90_map_2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_ROM
 	AM_RANGE(0xc000, 0xcfff) AM_RAM
-	AM_RANGE(0xd000, 0xd7ff) AM_RAM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xd000, 0xd7ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xd800, 0xdfff) AM_RAM
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM_WRITE(paletteram_xxxxBBBBRRRRGGGG_be_w) AM_BASE(&paletteram)
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_BANK2, SMH_ROM)
-	AM_RANGE(0xf800, 0xfbff) AM_READWRITE(wc90_shared_r, wc90_shared_w)
+	AM_RANGE(0xf000, 0xf7ff) AM_ROMBANK(2)
+	AM_RANGE(0xf800, 0xfbff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(wc90_bankswitch1_w)
 	AM_RANGE(0xfc01, 0xfc01) AM_WRITE(watchdog_reset_w)
 ADDRESS_MAP_END
@@ -282,7 +270,7 @@ GFXDECODE_END
 /* handler called by the 2608 emulator when the internal timers cause an IRQ */
 static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[2],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2608_interface ym2608_config =
@@ -299,15 +287,15 @@ static MACHINE_DRIVER_START( wc90 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 6000000)	/* 6.0 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(wc90_map_1,0)
+	MDRV_CPU_PROGRAM_MAP(wc90_map_1)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, 6000000)	/* 6.0 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(wc90_map_2,0)
+	MDRV_CPU_PROGRAM_MAP(wc90_map_2)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	/* 4 MHz ???? */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	/* NMIs are triggered by the main CPU */
 
 	/* video hardware */

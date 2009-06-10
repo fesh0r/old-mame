@@ -864,7 +864,7 @@ static TIMER_CALLBACK(sound_t1_callback)
 
 		if (dc_40103 == 0)
 		{
-			cpu_set_input_line(machine->cpu[1], 0, ASSERT_LINE);
+			cputag_set_input_line(machine, "soundcpu", 0, ASSERT_LINE);
 		}
 	}
 }
@@ -1159,14 +1159,14 @@ static MACHINE_DRIVER_START( videopkr )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", I8039, CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(i8039_map, 0)
-	MDRV_CPU_IO_MAP(i8039_io_port, 0)
+	MDRV_CPU_PROGRAM_MAP(i8039_map)
+	MDRV_CPU_IO_MAP(i8039_io_port)
 
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_assert)
 
 	MDRV_CPU_ADD("soundcpu", I8039, SOUND_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(i8039_sound_mem, 0)
-	MDRV_CPU_IO_MAP(i8039_sound_port, 0)
+	MDRV_CPU_PROGRAM_MAP(i8039_sound_mem)
+	MDRV_CPU_IO_MAP(i8039_sound_port)
 	MDRV_MACHINE_START(videopkr)
 	MDRV_NVRAM_HANDLER(videopkr)
 
@@ -1227,8 +1227,8 @@ static MACHINE_DRIVER_START( babypkr )
 	MDRV_CPU_REPLACE("maincpu", I8039, CPU_CLOCK_ALT)
 	/* most likely romless or eprom */
 	MDRV_CPU_REPLACE("soundcpu", I8031, CPU_CLOCK )
-	MDRV_CPU_PROGRAM_MAP(i8051_sound_mem, 0)
-	MDRV_CPU_IO_MAP(i8051_sound_port, 0)
+	MDRV_CPU_PROGRAM_MAP(i8051_sound_mem)
+	MDRV_CPU_IO_MAP(i8051_sound_port)
 
 	/* video hardware */
 	MDRV_SCREEN_MODIFY("screen")

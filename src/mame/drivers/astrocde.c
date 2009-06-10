@@ -427,7 +427,7 @@ static WRITE8_HANDLER( profpac_banksw_w )
 	profpac_bank = data;
 
 	/* set the main banking */
-	memory_install_read8_handler(space, 0x4000, 0xbfff, 0, 0, SMH_BANK1);
+	memory_install_read8_handler(space, 0x4000, 0xbfff, 0, 0, (read8_space_func)SMH_BANK(1));
 	memory_set_bankptr(space->machine, 1, memory_region(space->machine, "user1") + 0x8000 * bank);
 
 	/* bank 0 reads video RAM in the 4000-7FFF range */
@@ -443,18 +443,18 @@ static WRITE8_HANDLER( profpac_banksw_w )
 		/* if the bank is in range, map the appropriate bank */
 		if (bank < 0x28)
 		{
-			memory_install_read8_handler(space, 0x4000, 0x7fff, 0, 0, SMH_BANK2);
+			memory_install_read8_handler(space, 0x4000, 0x7fff, 0, 0, (read8_space_func)SMH_BANK(2));
 			memory_set_bankptr(space->machine, 2, memory_region(space->machine, "user2") + 0x4000 * bank);
 		}
 		else
-			memory_install_read8_handler(space, 0x4000, 0x7fff, 0, 0, SMH_UNMAP);
+			memory_install_read8_handler(space, 0x4000, 0x7fff, 0, 0, (read8_space_func)SMH_UNMAP);
 	}
 }
 
 
 static STATE_POSTLOAD( profbank_banksw_restore )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO);
 
 	profpac_banksw_w(space, 0, profpac_bank);
 }
@@ -1327,8 +1327,8 @@ static MACHINE_DRIVER_START( seawolf2 )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(seawolf2_map,0)
-	MDRV_CPU_IO_MAP(port_map,0)
+	MDRV_CPU_PROGRAM_MAP(seawolf2_map)
+	MDRV_CPU_IO_MAP(port_map)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
@@ -1354,8 +1354,8 @@ static MACHINE_DRIVER_START( ebases )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(ebases_map,0)
-	MDRV_CPU_IO_MAP(port_map,0)
+	MDRV_CPU_PROGRAM_MAP(ebases_map)
+	MDRV_CPU_IO_MAP(port_map)
 MACHINE_DRIVER_END
 
 
@@ -1365,8 +1365,8 @@ static MACHINE_DRIVER_START( spacezap )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(spacezap_map,0)
-	MDRV_CPU_IO_MAP(port_map_mono_pattern,0)
+	MDRV_CPU_PROGRAM_MAP(spacezap_map)
+	MDRV_CPU_IO_MAP(port_map_mono_pattern)
 MACHINE_DRIVER_END
 
 
@@ -1376,8 +1376,8 @@ static MACHINE_DRIVER_START( wow )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(wow_map,0)
-	MDRV_CPU_IO_MAP(port_map_stereo_pattern,0)
+	MDRV_CPU_PROGRAM_MAP(wow_map)
+	MDRV_CPU_IO_MAP(port_map_stereo_pattern)
 
 	/* video hardware */
 	MDRV_SCREEN_MODIFY("screen")
@@ -1398,8 +1398,8 @@ static MACHINE_DRIVER_START( gorf )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(wow_map,0)
-	MDRV_CPU_IO_MAP(port_map_stereo_pattern,0)
+	MDRV_CPU_PROGRAM_MAP(wow_map)
+	MDRV_CPU_IO_MAP(port_map_stereo_pattern)
 
 	/* video hardware */
 	MDRV_SCREEN_MODIFY("screen")
@@ -1427,8 +1427,8 @@ static MACHINE_DRIVER_START( robby )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(robby_map,0)
-	MDRV_CPU_IO_MAP(port_map_stereo_pattern,0)
+	MDRV_CPU_PROGRAM_MAP(robby_map)
+	MDRV_CPU_IO_MAP(port_map_stereo_pattern)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 MACHINE_DRIVER_END
@@ -1440,8 +1440,8 @@ static MACHINE_DRIVER_START( profpac )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(profpac_map,0)
-	MDRV_CPU_IO_MAP(port_map_16col_pattern,0)
+	MDRV_CPU_PROGRAM_MAP(profpac_map)
+	MDRV_CPU_IO_MAP(port_map_16col_pattern)
 MACHINE_DRIVER_END
 
 
@@ -1450,8 +1450,8 @@ static MACHINE_DRIVER_START( demndrgn )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(demndrgn_map,0)
-	MDRV_CPU_IO_MAP(port_map_16col_pattern_nosound,0)
+	MDRV_CPU_PROGRAM_MAP(demndrgn_map)
+	MDRV_CPU_IO_MAP(port_map_16col_pattern_nosound)
 MACHINE_DRIVER_END
 
 
@@ -1460,13 +1460,13 @@ static MACHINE_DRIVER_START( tenpindx )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(profpac_map,0)
-	MDRV_CPU_IO_MAP(port_map_16col_pattern_nosound,0)
+	MDRV_CPU_PROGRAM_MAP(profpac_map)
+	MDRV_CPU_IO_MAP(port_map_16col_pattern_nosound)
 
 	MDRV_CPU_ADD("sub", Z80, ASTROCADE_CLOCK/4)	/* real clock unknown */
 	MDRV_CPU_CONFIG(tenpin_daisy_chain)
-	MDRV_CPU_PROGRAM_MAP(tenpin_sub_map,0)
-	MDRV_CPU_IO_MAP(tenpin_sub_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(tenpin_sub_map)
+	MDRV_CPU_IO_MAP(tenpin_sub_io_map)
 
 	MDRV_Z80CTC_ADD("ctc", ASTROCADE_CLOCK/4 /* same as "sub" */, ctc_intf)
 
@@ -1676,54 +1676,54 @@ ROM_END
 static DRIVER_INIT( seawolf2 )
 {
 	astrocade_video_config = 0x00;
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x40, 0x40, 0, 0xff18, seawolf2_sound_1_w);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x41, 0x41, 0, 0xff18, seawolf2_sound_2_w);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x42, 0x43, 0, 0xff18, seawolf2_lamps_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x40, 0x40, 0, 0xff18, seawolf2_sound_1_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x41, 0x41, 0, 0xff18, seawolf2_sound_2_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x42, 0x43, 0, 0xff18, seawolf2_lamps_w);
 }
 
 
 static DRIVER_INIT( ebases )
 {
 	astrocade_video_config = AC_SOUND_PRESENT;
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x20, 0x20, 0, 0xff07, ebases_coin_w);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x28, 0x28, 0, 0xff07, ebases_trackball_select_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x20, 0x20, 0, 0xff07, ebases_coin_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x28, 0x28, 0, 0xff07, ebases_trackball_select_w);
 }
 
 
 static DRIVER_INIT( spacezap )
 {
 	astrocade_video_config = AC_SOUND_PRESENT;
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x13, 0x13, 0x03ff, 0xff00, spacezap_io_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x13, 0x13, 0x03ff, 0xff00, spacezap_io_r);
 }
 
 
 static DRIVER_INIT( wow )
 {
 	astrocade_video_config = AC_SOUND_PRESENT | AC_LIGHTPEN_INTS | AC_STARS;
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x15, 0x15, 0x0fff, 0xff00, wow_io_r);
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x17, 0x17, 0xffff, 0xff00, wow_speech_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x15, 0x15, 0x0fff, 0xff00, wow_io_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x17, 0x17, 0xffff, 0xff00, wow_speech_r);
 }
 
 
 static DRIVER_INIT( gorf )
 {
 	astrocade_video_config = AC_SOUND_PRESENT | AC_LIGHTPEN_INTS | AC_STARS;
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x15, 0x15, 0x0fff, 0xff00, gorf_io_1_r);
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x16, 0x16, 0x0fff, 0xff00, gorf_io_2_r);
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x17, 0x17, 0xffff, 0xff00, gorf_speech_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x15, 0x15, 0x0fff, 0xff00, gorf_io_1_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x16, 0x16, 0x0fff, 0xff00, gorf_io_2_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x17, 0x17, 0xffff, 0xff00, gorf_speech_r);
 }
 
 
 static DRIVER_INIT( robby )
 {
 	astrocade_video_config = AC_SOUND_PRESENT;
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x15, 0x15, 0x0fff, 0xff00, robby_io_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x15, 0x15, 0x0fff, 0xff00, robby_io_r);
 }
 
 
 static DRIVER_INIT( profpac )
 {
-	const address_space *iospace = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO);
+	const address_space *iospace = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO);
 
 	astrocade_video_config = AC_SOUND_PRESENT;
 	memory_install_read8_handler(iospace, 0x14, 0x14, 0x0fff, 0xff00, profpac_io_1_r);
@@ -1737,7 +1737,7 @@ static DRIVER_INIT( profpac )
 
 static DRIVER_INIT( demndrgn )
 {
-	const address_space *iospace = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO);
+	const address_space *iospace = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO);
 
 	astrocade_video_config = 0x00;
 	memory_install_read8_handler(iospace, 0x14, 0x14, 0x1fff, 0xff00, demndrgn_io_r);
@@ -1753,7 +1753,7 @@ static DRIVER_INIT( demndrgn )
 
 static DRIVER_INIT( tenpindx )
 {
-	const address_space *iospace = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO);
+	const address_space *iospace = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO);
 
 	astrocade_video_config = 0x00;
 	memory_install_read_port_handler(iospace, 0x60, 0x60, 0x0000, 0xff00, "P60");

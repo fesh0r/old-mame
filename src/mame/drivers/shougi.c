@@ -221,13 +221,13 @@ static WRITE8_HANDLER( shougi_watchdog_reset_w )
 static WRITE8_HANDLER( shougi_mcu_halt_off_w )
 {
 	/* logerror("mcu HALT OFF"); */
-	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_HALT, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "mcu", INPUT_LINE_HALT, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( shougi_mcu_halt_on_w )
 {
 	/* logerror("mcu HALT ON"); */
-	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_HALT,ASSERT_LINE);
+	cputag_set_input_line(space->machine, "mcu", INPUT_LINE_HALT,ASSERT_LINE);
 }
 
 
@@ -238,8 +238,8 @@ static WRITE8_HANDLER( nmi_disable_and_clear_line_w )
 	nmi_enabled = 0; /* disable NMIs */
 
 	/* NMI lines are tied together on both CPUs and connected to the LS74 /Q output */
-	cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_NMI, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "sub", INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( nmi_enable_w )
@@ -252,8 +252,8 @@ static INTERRUPT_GEN( shougi_vblank_nmi )
 	if ( nmi_enabled == 1 )
 	{
 		/* NMI lines are tied together on both CPUs and connected to the LS74 /Q output */
-		cpu_set_input_line(device->machine->cpu[0], INPUT_LINE_NMI, ASSERT_LINE);
-		cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, ASSERT_LINE);
+		cputag_set_input_line(device->machine, "maincpu", INPUT_LINE_NMI, ASSERT_LINE);
+		cputag_set_input_line(device->machine, "sub", INPUT_LINE_NMI, ASSERT_LINE);
 	}
 }
 
@@ -376,17 +376,17 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( shougi )
 
 	MDRV_CPU_ADD("maincpu", Z80,10000000/4)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", shougi_vblank_nmi)
 
 	MDRV_CPU_ADD("sub", Z80,10000000/4)
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
-	MDRV_CPU_IO_MAP(readport_sub,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
+	MDRV_CPU_IO_MAP(readport_sub)
 	/* NMIs triggered in shougi_vblank_nmi() */
 
 	/* MCU */
 	MDRV_CPU_ADD("mcu", ALPHA8201, 10000000/4/8)
-	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
+	MDRV_CPU_PROGRAM_MAP(mcu_map)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 	MDRV_WATCHDOG_VBLANK_INIT(16)	// assuming it's the same as champbas
@@ -459,5 +459,5 @@ ROM_END
 
 
 
-GAME( 1982?, shougi,  0,      shougi, shougi,  0, ROT0, "Alpha Denshi Co.", "Shougi", 0 )
-GAME( 1982?, shougi2, shougi, shougi, shougi2, 0, ROT0, "Alpha Denshi Co.", "Shougi 2", 0 )
+GAME( 1982, shougi,  0,      shougi, shougi,  0, ROT0, "Alpha Denshi Co.", "Shougi", 0 )
+GAME( 1982, shougi2, shougi, shougi, shougi2, 0, ROT0, "Alpha Denshi Co.", "Shougi 2", 0 )

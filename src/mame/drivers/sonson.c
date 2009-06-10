@@ -71,7 +71,7 @@ static WRITE8_HANDLER( sonson_sh_irqtrigger_w )
 	if (last == 0 && data == 1)
 	{
 		/* setting bit 0 low then high triggers IRQ on the sound CPU */
-		cpu_set_input_line(space->machine->cpu[1],M6809_FIRQ_LINE,HOLD_LINE);
+		cputag_set_input_line(space->machine, "audiocpu", M6809_FIRQ_LINE, HOLD_LINE);
 	}
 
 	last = data;
@@ -227,11 +227,11 @@ static MACHINE_DRIVER_START( sonson )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809,12000000/6)	/* 2 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", M6809,12000000/6)	/* 2 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)	/* FIRQs are triggered by the main CPU */
 
 

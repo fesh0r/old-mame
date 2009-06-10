@@ -844,7 +844,7 @@ MACHINE_DRIVER_START( monsterb_sound_board )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("audiocpu", N7751, 6000000)
-	MDRV_CPU_IO_MAP(monsterb_7751_portmap,0)
+	MDRV_CPU_IO_MAP(monsterb_7751_portmap)
 
 	MDRV_I8243_ADD("audio_8243", NULL, n7751_rom_control_w)
 
@@ -946,7 +946,7 @@ static WRITE8_DEVICE_HANDLER( n7751_command_w )
         D3    = /INT line
     */
 	n7751_command = data & 0x07;
-	cpu_set_input_line(device->machine->cpu[1], 0, ((data & 0x08) == 0) ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, ((data & 0x08) == 0) ? ASSERT_LINE : CLEAR_LINE);
 	cpuexec_boost_interleave(device->machine, attotime_zero, ATTOTIME_IN_USEC(100));
 }
 

@@ -54,7 +54,7 @@ static int cur_dac_address_index = 0;
 
 static TIMER_CALLBACK( dac_irq )
 {
-	cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE );
+	cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE );
 }
 
 static WRITE8_DEVICE_HANDLER( audio_dac_w)
@@ -137,7 +137,7 @@ static INTERRUPT_GEN( trucocl_interrupt )
 static MACHINE_DRIVER_START( trucocl )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 18432000/6)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", trucocl_interrupt)
 
 	/* video hardware */

@@ -356,7 +356,7 @@ static WRITE16_HANDLER( paddlema_soundlatch_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch_w(space, 0, data);
-		cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE);
+		cputag_set_input_line(space->machine, "audiocpu", 0, HOLD_LINE);
 	}
 }
 
@@ -365,7 +365,7 @@ static WRITE16_HANDLER( tnexspce_soundlatch_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch_w(space, 0, data);
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+		cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 //ZT
@@ -1888,7 +1888,7 @@ static const ym2203_interface ym2203_config =
 
 static void YM3812_irq(const device_config *device, int param)
 {
-	cpu_set_input_line(device->machine->cpu[1], 0, (param) ? HOLD_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, (param) ? HOLD_LINE : CLEAR_LINE);
 }
 
 static const ym3812_interface ym3812_config =
@@ -1912,12 +1912,12 @@ static MACHINE_DRIVER_START( sstingry )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 6000000) /* 24MHz/4? */
-	MDRV_CPU_PROGRAM_MAP(kyros_map,0)
+	MDRV_CPU_PROGRAM_MAP(kyros_map)
 	MDRV_CPU_VBLANK_INT_HACK(alpha68k_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3579545)
-	MDRV_CPU_PROGRAM_MAP(sstingry_sound_map,0)
-	MDRV_CPU_IO_MAP(kyros_sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sstingry_sound_map)
+	MDRV_CPU_IO_MAP(kyros_sound_portmap)
 //AT
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 2)
 	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, 4000)
@@ -1963,12 +1963,12 @@ static MACHINE_DRIVER_START( kyros )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 6000000) /* 24MHz/4? */
-	MDRV_CPU_PROGRAM_MAP(kyros_map,0)
+	MDRV_CPU_PROGRAM_MAP(kyros_map)
 	MDRV_CPU_VBLANK_INT_HACK(alpha68k_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3579545)
-	MDRV_CPU_PROGRAM_MAP(kyros_sound_map,0)
-	MDRV_CPU_IO_MAP(kyros_sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(kyros_sound_map)
+	MDRV_CPU_IO_MAP(kyros_sound_portmap)
 //AT
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 2)
 	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, 4000)
@@ -2013,12 +2013,12 @@ static MACHINE_DRIVER_START( jongbou )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 8000000)
-	MDRV_CPU_PROGRAM_MAP(kyros_map,0)
+	MDRV_CPU_PROGRAM_MAP(kyros_map)
 	MDRV_CPU_VBLANK_INT_HACK(alpha68k_interrupt,17) // must be at least 4 for the controls to be smooth
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)
-	MDRV_CPU_PROGRAM_MAP(jongbou_sound_map,0)
-	MDRV_CPU_IO_MAP(jongbou_sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(jongbou_sound_map)
+	MDRV_CPU_IO_MAP(jongbou_sound_portmap)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 160) // guess, controls sound speed
 
     MDRV_MACHINE_START(kyros)
@@ -2050,11 +2050,11 @@ static MACHINE_DRIVER_START( alpha68k_I )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 6000000) /* 24MHz/4? */
-	MDRV_CPU_PROGRAM_MAP(alpha68k_I_map,0)
+	MDRV_CPU_PROGRAM_MAP(alpha68k_I_map)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)/* VBL */
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000) // 4Mhz seems to yield the correct tone
-	MDRV_CPU_PROGRAM_MAP(alpha68k_I_s_map,0)
+	MDRV_CPU_PROGRAM_MAP(alpha68k_I_s_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -2083,12 +2083,12 @@ static MACHINE_DRIVER_START( alpha68k_II )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 8000000) /* Correct */
-	MDRV_CPU_PROGRAM_MAP(alpha68k_II_map,0)
+	MDRV_CPU_PROGRAM_MAP(alpha68k_II_map)
 	MDRV_CPU_VBLANK_INT("screen", irq3_line_hold)/* VBL */
 
 	MDRV_CPU_ADD("audiocpu", Z80, /*3579545*/3579545*2) /* Unlikely but needed to stop nested NMI's */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_portmap)
 	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, 7500) //AT
 
 	MDRV_MACHINE_RESET(common)
@@ -2131,12 +2131,12 @@ static MACHINE_DRIVER_START( alpha68k_II_gm )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 8000000)
-	MDRV_CPU_PROGRAM_MAP(alpha68k_II_map, 0)
+	MDRV_CPU_PROGRAM_MAP(alpha68k_II_map)
 	MDRV_CPU_VBLANK_INT_HACK(alpha68k_interrupt, 4)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000*2)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_portmap)
 	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, 7500)
 
 	MDRV_MACHINE_RESET(common)
@@ -2173,12 +2173,12 @@ static MACHINE_DRIVER_START( alpha68k_V )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 10000000) /* ? */
-	MDRV_CPU_PROGRAM_MAP(alpha68k_V_map,0)
+	MDRV_CPU_PROGRAM_MAP(alpha68k_V_map)
 	MDRV_CPU_VBLANK_INT("screen", irq3_line_hold)/* VBL */
 
 	MDRV_CPU_ADD("audiocpu", Z80, /*3579545*/3579545*2) /* Unlikely but needed to stop nested NMI's */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_portmap)
 	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, 8500) //AT
 
 	MDRV_MACHINE_RESET(common)
@@ -2214,12 +2214,12 @@ static MACHINE_DRIVER_START( alpha68k_V_sb )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 10000000) /* ? */
-	MDRV_CPU_PROGRAM_MAP(alpha68k_V_map,0)
+	MDRV_CPU_PROGRAM_MAP(alpha68k_V_map)
 	MDRV_CPU_VBLANK_INT("screen", irq3_line_hold)/* VBL */
 
 	MDRV_CPU_ADD("audiocpu", Z80, /*3579545*/3579545*2) /* Unlikely but needed to stop nested NMI's */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_portmap)
 	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, 8500) //AT
 
 	MDRV_MACHINE_RESET(common)
@@ -2255,12 +2255,12 @@ static MACHINE_DRIVER_START( tnexspce )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 9000000) /* Confirmed 18 MHz/2 */
-	MDRV_CPU_PROGRAM_MAP(tnexspce_map,0)
+	MDRV_CPU_PROGRAM_MAP(tnexspce_map)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)/* VBL */
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)
-	MDRV_CPU_PROGRAM_MAP(tnexspce_sound_map,0)
-	MDRV_CPU_IO_MAP(tnexspce_sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(tnexspce_sound_map)
+	MDRV_CPU_IO_MAP(tnexspce_sound_portmap)
 
 	MDRV_MACHINE_RESET(tnexspce)
 
@@ -3133,124 +3133,124 @@ static READ16_HANDLER( gangwarb_cycle_r )
 
 static DRIVER_INIT( sstingry )
 {
-	invert_controls=0;
-	microcontroller_id=0x00ff;
-	coin_id=0x22|(0x22<<8);
+	invert_controls = 0;
+	microcontroller_id = 0x00ff;
+	coin_id = 0x22 | (0x22 << 8);
 }
 
 static DRIVER_INIT( kyros )
 {
-	invert_controls=0;
-	microcontroller_id=0x0012;
-	coin_id=0x22|(0x22<<8);
+	invert_controls = 0;
+	microcontroller_id = 0x0012;
+	coin_id = 0x22 | (0x22 << 8);
 
 	alpha68k_video_banking = kyros_video_banking;
 }
 
 static DRIVER_INIT( jongbou )
 {
-	invert_controls=0;
-	microcontroller_id=0x00ff;
-	coin_id=0x23|(0x24<<8);
+	invert_controls = 0;
+	microcontroller_id = 0x00ff;
+	coin_id = 0x23 | (0x24 << 8);
 
 	alpha68k_video_banking = jongbou_video_banking;
 
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0c0000, 0x0c0001, 0, 0, jongbou_inputs_r);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0c0000, 0x0c0001, 0, 0, jongbou_inputs_r);
 }
 
 static DRIVER_INIT( paddlema )
 {
-	microcontroller_id=0;
-	coin_id=0;				// Not needed !
+	microcontroller_id = 0;
+	coin_id = 0;				// Not needed !
 }
 
 static DRIVER_INIT( timesold )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x40008, 0x40009, 0, 0, timesold_cycle_r);
-	invert_controls=0;
-	microcontroller_id=0;
-	coin_id=0x22|(0x22<<8);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x40008, 0x40009, 0, 0, timesold_cycle_r);
+	invert_controls = 0;
+	microcontroller_id = 0;
+	coin_id = 0x22 | (0x22 << 8);
 }
 
 static DRIVER_INIT( timesol1 )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x40008, 0x40009, 0, 0, timesol1_cycle_r);
-	invert_controls=1;
-	microcontroller_id=0;
-	coin_id=0x22|(0x22<<8);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x40008, 0x40009, 0, 0, timesol1_cycle_r);
+	invert_controls = 1;
+	microcontroller_id = 0;
+	coin_id = 0x22 | (0x22 << 8);
 }
 
 static DRIVER_INIT( btlfield )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x40008, 0x40009, 0, 0, btlfield_cycle_r);
-	invert_controls=1;
-	microcontroller_id=0;
-	coin_id=0x22|(0x22<<8);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x40008, 0x40009, 0, 0, btlfield_cycle_r);
+	invert_controls = 1;
+	microcontroller_id = 0;
+	coin_id = 0x22 | (0x22 << 8);
 }
 
 static DRIVER_INIT( btlfildb )
 {
-	invert_controls=1;
-	microcontroller_id=0;
-	coin_id=0x22|(0x22<<8); //not checked
+	invert_controls = 1;
+	microcontroller_id = 0;
+	coin_id = 0x22 | (0x22 << 8); //not checked
 }
 
 static DRIVER_INIT( skysoldr )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x40008, 0x40009, 0, 0, skysoldr_cycle_r);
-	memory_set_bankptr(machine, 8, (memory_region(machine, "user1"))+0x40000);
-	invert_controls=0;
-	microcontroller_id=0;
-	coin_id=0x22|(0x22<<8);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x40008, 0x40009, 0, 0, skysoldr_cycle_r);
+	memory_set_bankptr(machine, 8, (memory_region(machine, "user1")) + 0x40000);
+	invert_controls = 0;
+	microcontroller_id = 0;
+	coin_id = 0x22 | (0x22 << 8);
 }
 
 static DRIVER_INIT( goldmedl )
 {
-	invert_controls=0;
-	microcontroller_id=0x8803; //AT
-	coin_id=0x23|(0x24<<8);
+	invert_controls = 0;
+	microcontroller_id = 0x8803; //AT
+	coin_id = 0x23 | (0x24 << 8);
 }
 
 static DRIVER_INIT( goldmeda )
 {
 	memory_set_bankptr(machine, 8, memory_region(machine, "maincpu") + 0x20000);
-	invert_controls=0;
-	microcontroller_id=0x8803; //Guess - routine to handle coinage is the same as in 'goldmedl'
-	coin_id=0x23|(0x24<<8);
+	invert_controls = 0;
+	microcontroller_id = 0x8803; //Guess - routine to handle coinage is the same as in 'goldmedl'
+	coin_id = 0x23 | (0x24 << 8);
 }
 
 static DRIVER_INIT( skyadvnt )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x40008, 0x40009, 0, 0, skyadvnt_cycle_r);
-	invert_controls=0;
-	microcontroller_id=0x8814;
-	coin_id=0x22|(0x22<<8);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x40008, 0x40009, 0, 0, skyadvnt_cycle_r);
+	invert_controls = 0;
+	microcontroller_id = 0x8814;
+	coin_id = 0x22 | (0x22 << 8);
 }
 
 static DRIVER_INIT( skyadvnu )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x40008, 0x40009, 0, 0, skyadvnt_cycle_r);
-	invert_controls=0;
-	microcontroller_id=0x8814;
-	coin_id=0x23|(0x24<<8);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x40008, 0x40009, 0, 0, skyadvnt_cycle_r);
+	invert_controls = 0;
+	microcontroller_id = 0x8814;
+	coin_id = 0x23 | (0x24 << 8);
 }
 
 static DRIVER_INIT( gangwars )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x40206, 0x40207, 0, 0, gangwars_cycle_r);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x40206, 0x40207, 0, 0, gangwars_cycle_r);
 	memory_set_bankptr(machine, 8, memory_region(machine, "user1"));
-	invert_controls=0;
-	microcontroller_id=0x8512;
-	coin_id=0x23|(0x24<<8);
+	invert_controls = 0;
+	microcontroller_id = 0x8512;
+	coin_id = 0x23 | (0x24 << 8);
 }
 
 static DRIVER_INIT( gangwarb )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x40206, 0x40207, 0, 0, gangwarb_cycle_r);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x40206, 0x40207, 0, 0, gangwarb_cycle_r);
 	memory_set_bankptr(machine, 8, memory_region(machine, "user1"));
-	invert_controls=0;
-	microcontroller_id=0x8512;
-	coin_id=0x23|(0x24<<8);
+	invert_controls = 0;
+	microcontroller_id = 0x8512;
+	coin_id = 0x23 | (0x24 << 8);
 }
 
 static DRIVER_INIT( sbasebal )
@@ -3271,16 +3271,16 @@ static DRIVER_INIT( sbasebal )
 	rom[0x2b6/2] = 0x4e71;
 #endif
 
-	invert_controls=0;
-	microcontroller_id=0x8512;	// Same as 'gangwars' ?
-	coin_id=0x23|(0x24<<8);
+	invert_controls = 0;
+	microcontroller_id = 0x8512;	// Same as 'gangwars' ?
+	coin_id = 0x23 | (0x24 << 8);
 }
 
 static DRIVER_INIT( tnexspce )
 {
-	invert_controls=0;
-	microcontroller_id=0x890a;
-	coin_id=0;				// Not needed !
+	invert_controls = 0;
+	microcontroller_id = 0x890a;
+	coin_id = 0;				// Not needed !
 }
 
 /******************************************************************************/

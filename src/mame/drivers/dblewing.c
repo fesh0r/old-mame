@@ -364,9 +364,9 @@ static WRITE16_HANDLER( dblewing_prot_w )
 			//printf("%04x\n",dblwings_280_data);
 			return;
 		case 0x380: // sound write
-			soundlatch_w(space,0,data&0xff);
+			soundlatch_w(space, 0, data & 0xff);
 			dblewing_sound_irq |= 0x02;
-		 	cpu_set_input_line(space->machine->cpu[1],0,(dblewing_sound_irq != 0) ? ASSERT_LINE : CLEAR_LINE);
+		 	cputag_set_input_line(space->machine, "audiocpu", 0, (dblewing_sound_irq != 0) ? ASSERT_LINE : CLEAR_LINE);
 			return;
 		case 0x384:
 			dblwings_384_data = data;
@@ -461,7 +461,7 @@ static READ8_HANDLER(irq_latch_r)
 {
 	/* bit 1 of dblewing_sound_irq specifies IRQ command writes */
 	dblewing_sound_irq &= ~0x02;
-	cpu_set_input_line(space->machine->cpu[1], 0, (dblewing_sound_irq != 0) ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", 0, (dblewing_sound_irq != 0) ? ASSERT_LINE : CLEAR_LINE);
 	return dblewing_sound_irq;
 }
 
@@ -654,7 +654,7 @@ static void sound_irq(const device_config *device, int state)
 		dblewing_sound_irq |= 0x01;
 	else
 		dblewing_sound_irq &= ~0x01;
-	cpu_set_input_line(device->machine->cpu[1], 0, (dblewing_sound_irq != 0) ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, (dblewing_sound_irq != 0) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2151_interface ym2151_config =
@@ -665,12 +665,12 @@ static const ym2151_interface ym2151_config =
 static MACHINE_DRIVER_START( dblewing )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 14000000)	/* DE102 */
-	MDRV_CPU_PROGRAM_MAP(dblewing_map,0)
+	MDRV_CPU_PROGRAM_MAP(dblewing_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_io,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_io)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 

@@ -49,7 +49,7 @@ static WRITE8_HANDLER( sound_cmd_w )
 	if ((data & 0x80) == 0)
 		soundlatch_w(space, 0, data & 0x7f);
 	else
-		cpu_set_input_line(space->machine->cpu[1], 0, ASSERT_LINE);
+		cputag_set_input_line(space->machine, "soundcpu", 0, ASSERT_LINE);
 }
 
 
@@ -104,7 +104,7 @@ static READ8_DEVICE_HANDLER( m6803_port2_r )
 
 static WRITE8_HANDLER( sound_irq_ack_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "soundcpu", 0, CLEAR_LINE);
 }
 
 static WRITE8_DEVICE_HANDLER(unused_w)
@@ -257,12 +257,12 @@ static MACHINE_DRIVER_START( kncljoe )
 	/* basic machine hardware */
 
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_6MHz)  /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("soundcpu", M6803, XTAL_3_579545MHz) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_portmap)
 	MDRV_CPU_PERIODIC_INT(sound_nmi, (double)3970) //measured 3.970 kHz
 
 

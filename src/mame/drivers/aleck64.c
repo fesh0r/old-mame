@@ -202,7 +202,7 @@ static ADDRESS_MAP_START( n64_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x1fc00000, 0x1fc007bf) AM_ROM AM_REGION("user1", 0)	// PIF ROM
 	AM_RANGE(0x1fc007c0, 0x1fc007ff) AM_READWRITE(n64_pif_ram_r, n64_pif_ram_w)
 
-	AM_RANGE(0xc0800000, 0xc08fffff) AM_READWRITE(aleck_dips_r, SMH_NOP)
+	AM_RANGE(0xc0800000, 0xc08fffff) AM_READ(aleck_dips_r) AM_WRITENOP
 	AM_RANGE(0xd0000000, 0xd0000fff) AM_RAM
 	AM_RANGE(0xd0010000, 0xd00109ff) AM_RAM
 ADDRESS_MAP_END
@@ -425,12 +425,12 @@ static MACHINE_DRIVER_START( aleck64 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", VR4300BE, 93750000)
 	MDRV_CPU_CONFIG(config)
-	MDRV_CPU_PROGRAM_MAP(n64_map, 0)
+	MDRV_CPU_PROGRAM_MAP(n64_map)
 	MDRV_CPU_VBLANK_INT("screen", n64_vblank)
 
 	MDRV_CPU_ADD("rsp", RSP, 62500000)
 	MDRV_CPU_CONFIG(n64_rsp_config)
-	MDRV_CPU_PROGRAM_MAP(rsp_map, 0)
+	MDRV_CPU_PROGRAM_MAP(rsp_map)
 
 	MDRV_MACHINE_START( n64 )
 	MDRV_MACHINE_RESET( n64 )
@@ -627,8 +627,8 @@ GAME( 1998, starsldr, aleck64,  aleck64, starsldr, aleck64, ROT0, "Hudson/Seta",
 GAME( 1998, vivdolls, aleck64,  aleck64, aleck64,  aleck64, ROT0, "Visco", "Vivid Dolls", GAME_IMPERFECT_GRAPHICS )
 GAME( 1999, srmvs,    aleck64,  aleck64, aleck64,  aleck64, ROT0, "Seta", "Super Real Mahjong VS", GAME_NOT_WORKING|GAME_NO_SOUND )
 GAME( 2003, twrshaft, aleck64,  aleck64, aleck64,  aleck64, ROT0, "Aruze", "Tower & Shaft", GAME_NOT_WORKING|GAME_NO_SOUND )
-GAME( 200?, hipai,    aleck64,  aleck64, aleck64,  aleck64, ROT0, "Aruze?", "Hi Pai Paradise", GAME_NOT_WORKING|GAME_NO_SOUND )
-GAME( 200?, doncdoon, aleck64,  aleck64, aleck64,  aleck64, ROT0, "Aruze?", "Donchan no Hanabi de Doon", GAME_NOT_WORKING|GAME_NO_SOUND )
-GAME( 200?, kurufev,  aleck64,  aleck64, aleck64,  aleck64, ROT0, "Aruze?", "Kurukuru Fever", GAME_NOT_WORKING|GAME_NO_SOUND )
-GAME( 200?, mayjin3,  aleck64,  aleck64, aleck64,  aleck64, ROT0, "Seta?", "Mayjinsen 3", GAME_NOT_WORKING|GAME_NO_SOUND )
+GAME( 2003, hipai,    aleck64,  aleck64, aleck64,  aleck64, ROT0, "Aruze/Seta", "Hi Pai Paradise", GAME_NOT_WORKING|GAME_NO_SOUND )
+GAME( 2003, doncdoon, aleck64,  aleck64, aleck64,  aleck64, ROT0, "Aruze/Takumi", "Donchan no Hanabi de Doon", GAME_NOT_WORKING|GAME_NO_SOUND )
+GAME( 2003, kurufev,  aleck64,  aleck64, aleck64,  aleck64, ROT0, "Aruze/Takumi", "Kurukuru Fever", GAME_NOT_WORKING|GAME_NO_SOUND )
+GAME( 2000, mayjin3,  aleck64,  aleck64, aleck64,  aleck64, ROT0, "Seta/Able Corporation", "Mayjinsen 3", GAME_NOT_WORKING|GAME_NO_SOUND )
 

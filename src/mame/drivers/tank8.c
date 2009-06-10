@@ -14,7 +14,7 @@ static int collision_index;
 
 void tank8_set_collision(running_machine *machine, int index)
 {
-	cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
+	cputag_set_input_line(machine, "maincpu", 0, ASSERT_LINE);
 
 	collision_index = index;
 }
@@ -41,7 +41,7 @@ static WRITE8_HANDLER( tank8_int_reset_w )
 {
 	collision_index &= ~0x3f;
 
-	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 }
 
 static WRITE8_DEVICE_HANDLER( tank8_crash_w )
@@ -328,7 +328,7 @@ static MACHINE_DRIVER_START( tank8 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6800, 11055000 / 10) /* ? */
-	MDRV_CPU_PROGRAM_MAP(tank8_cpu_map, 0)
+	MDRV_CPU_PROGRAM_MAP(tank8_cpu_map)
 
 	MDRV_MACHINE_RESET(tank8)
 

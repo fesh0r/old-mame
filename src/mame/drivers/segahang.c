@@ -264,7 +264,7 @@ static WRITE16_HANDLER( sharrier_io_w )
 
 static WRITE8_DEVICE_HANDLER( sound_latch_w )
 {
-	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	soundlatch_w(space, offset, data);
 }
 
@@ -301,7 +301,7 @@ static WRITE8_DEVICE_HANDLER( tilemap_sound_w )
 	/* D2 : SCONT1 - Tilemap origin bit 1 */
 	/* D1 : SCONT0 - Tilemap origin bit 0 */
 	/* D0 : MUTE (1= audio on, 0= audio off) */
-	cpu_set_input_line(device->machine->cpu[2], INPUT_LINE_NMI, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(device->machine, "soundcpu", INPUT_LINE_NMI, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 	segaic16_tilemap_set_colscroll(device->machine, 0, ~data & 0x04);
 	segaic16_tilemap_set_rowscroll(device->machine, 0, ~data & 0x02);
 	sound_global_enable(data & 0x01);
@@ -314,8 +314,8 @@ static WRITE8_DEVICE_HANDLER( sub_control_adc_w )
 	/* D6 : INTR line on second CPU */
 	/* D5 : RESET line on second CPU */
 	/* D3-D2 : ADC_SELECT */
-	cpu_set_input_line(device->machine->cpu[1], 4, (data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
-	cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_RESET, (data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "sub", 4, (data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(device->machine, "sub", INPUT_LINE_RESET, (data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
 	adc_select = (data >> 2) & 3;
 }
 
@@ -368,7 +368,7 @@ static void sharrier_i8751_sim(running_machine *machine)
 
 static void sound_irq(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[2], 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "soundcpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -871,11 +871,11 @@ static MACHINE_DRIVER_START( hangon_base )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, MASTER_CLOCK_25MHz/4)
-	MDRV_CPU_PROGRAM_MAP(hangon_map,0)
+	MDRV_CPU_PROGRAM_MAP(hangon_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_CPU_ADD("sub", M68000, MASTER_CLOCK_25MHz/4)
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
 
 	MDRV_MACHINE_RESET(hangon)
 	MDRV_QUANTUM_TIME(HZ(6000))
@@ -901,7 +901,7 @@ static MACHINE_DRIVER_START( sharrier_base )
 
 	/* basic machine hardware */
 	MDRV_CPU_REPLACE("maincpu", M68000, MASTER_CLOCK_10MHz)
-	MDRV_CPU_PROGRAM_MAP(sharrier_map,0)
+	MDRV_CPU_PROGRAM_MAP(sharrier_map)
 	MDRV_CPU_VBLANK_INT("screen", i8751_main_cpu_vblank)
 
 	MDRV_CPU_REPLACE("sub", M68000, MASTER_CLOCK_10MHz)
@@ -915,8 +915,8 @@ static MACHINE_DRIVER_START( sound_board_2203 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("soundcpu", Z80, MASTER_CLOCK_8MHz/2)
-	MDRV_CPU_PROGRAM_MAP(sound_map_2203,0)
-	MDRV_CPU_IO_MAP(sound_portmap_2203,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map_2203)
+	MDRV_CPU_IO_MAP(sound_portmap_2203)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
@@ -943,8 +943,8 @@ static MACHINE_DRIVER_START( sound_board_2203x2 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("soundcpu", Z80, MASTER_CLOCK_8MHz/2)
-	MDRV_CPU_PROGRAM_MAP(sound_map_2151,0)
-	MDRV_CPU_IO_MAP(sound_portmap_2203x2,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map_2151)
+	MDRV_CPU_IO_MAP(sound_portmap_2203x2)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
@@ -981,8 +981,8 @@ static MACHINE_DRIVER_START( sound_board_2151 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("soundcpu", Z80, MASTER_CLOCK_8MHz/2)
-	MDRV_CPU_PROGRAM_MAP(sound_map_2151,0)
-	MDRV_CPU_IO_MAP(sound_portmap_2151,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map_2151)
+	MDRV_CPU_IO_MAP(sound_portmap_2151)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
@@ -1027,7 +1027,7 @@ static MACHINE_DRIVER_START( sharrier )
 	MDRV_IMPORT_FROM(sound_board_2203)
 
 	MDRV_CPU_ADD("mcu", I8751, 8000000)
-	MDRV_CPU_IO_MAP(mcu_io_map,0)
+	MDRV_CPU_IO_MAP(mcu_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_pulse)
 MACHINE_DRIVER_END
 
@@ -1733,7 +1733,7 @@ static DRIVER_INIT( endurobl )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT16 *rom = (UINT16 *)memory_region(machine, "maincpu");
-	UINT16 *decrypt = (UINT16 *)auto_malloc(0x40000);
+	UINT16 *decrypt = auto_alloc_array(machine, UINT16, 0x40000/2);
 
 	hangon_generic_init();
 	memory_set_decrypted_region(space, 0x000000, 0x03ffff, decrypt);
@@ -1747,7 +1747,7 @@ static DRIVER_INIT( endurob2 )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT16 *rom = (UINT16 *)memory_region(machine, "maincpu");
-	UINT16 *decrypt = (UINT16 *)auto_malloc(0x40000);
+	UINT16 *decrypt = auto_alloc_array(machine, UINT16, 0x40000/2);
 
 	hangon_generic_init();
 	memory_set_decrypted_region(space, 0x000000, 0x03ffff, decrypt);

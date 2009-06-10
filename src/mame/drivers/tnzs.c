@@ -629,7 +629,7 @@ Driver by Takahiro Nogi (nogi@kt.rim.or.jp) 1999/11/06
 #include "includes/tnzs.h"
 #include "sound/2151intf.h"
 
-UINT8 *tnzs_objram, *tnzs_sharedram;
+UINT8 *tnzs_objram;
 UINT8 *tnzs_vdcram, *tnzs_scrollram, *tnzs_objctrl, *tnzs_bg_flag;
 
 
@@ -664,7 +664,7 @@ static SAMPLES_START( kageki_init_samples )
 				size++;
 			}
 		}
-		sampledata[i] = auto_malloc(size * sizeof(sampledata[0]));
+		sampledata[i] = auto_alloc_array(machine, INT16, size);
 		samplesize[i] = size;
 
 		if (start < 0x100) start = size = 0;
@@ -810,8 +810,8 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( tnzsb_sound_command_w )
 {
-	soundlatch_w(space,offset,data);
-	cpu_set_input_line_and_vector(space->machine->cpu[2],0,HOLD_LINE,0xff);
+	soundlatch_w(space, offset, data);
+	cputag_set_input_line_and_vector(space->machine, "audiocpu", 0, HOLD_LINE, 0xff);
 }
 
 static ADDRESS_MAP_START( tnzsb_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -890,7 +890,7 @@ static WRITE8_HANDLER( jpopnics_palette_w )
 
 static ADDRESS_MAP_START( jpopnics_main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK1, SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK(1), SMH_ROM)
 	AM_RANGE(0xc000, 0xdfff) AM_RAM AM_BASE(&tnzs_objram)
 	AM_RANGE(0xe000, 0xefff) AM_RAM AM_SHARE(1) /* WORK RAM (shared by the 2 z80's) */
 	AM_RANGE(0xf000, 0xf1ff) AM_RAM AM_BASE(&tnzs_vdcram) 	/* VDC RAM */
@@ -911,7 +911,7 @@ static WRITE8_HANDLER( jpopnics_subbankswitch_w )
 
 static ADDRESS_MAP_START( jpopnics_sub_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0x9fff) AM_READWRITE(SMH_BANK2, SMH_ROM)
+	AM_RANGE(0x8000, 0x9fff) AM_READWRITE(SMH_BANK(2), SMH_ROM)
 
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(jpopnics_subbankswitch_w)
 	AM_RANGE(0xb000, 0xb001) AM_DEVREADWRITE("ym", ym2151_r, ym2151_w)
@@ -1560,7 +1560,7 @@ static const ym2203_interface ym2203_config =
 /* handler called by the 2203 emulator when the internal timers cause an IRQ */
 static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[2], INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface kageki_ym2203_interface =
@@ -1609,11 +1609,11 @@ static MACHINE_DRIVER_START( arknoid2 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_12MHz/2)	/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", arknoid2_interrupt)
 
 	MDRV_CPU_ADD("sub", Z80, XTAL_12MHz/2)	/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_PERFECT_CPU("maincpu")
@@ -1648,11 +1648,11 @@ static MACHINE_DRIVER_START( drtoppel )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,XTAL_12MHz/2)		/* 6.0 MHz ??? - Main board Crystal is 12MHz */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", arknoid2_interrupt)
 
 	MDRV_CPU_ADD("sub", Z80,XTAL_12MHz/2)		/* 6.0 MHz ??? - Main board Crystal is 12MHz */
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_PERFECT_CPU("maincpu")
@@ -1687,15 +1687,15 @@ static MACHINE_DRIVER_START( tnzs )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,XTAL_12MHz/2)		/* 6.0 MHz ??? - Main board Crystal is 12MHz */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80,XTAL_12MHz/2)		/* 6.0 MHz ??? - Main board Crystal is 12MHz */
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("mcu", I8742 ,12000000/2)	/* 400KHz ??? - Main board Crystal is 12MHz */
-	MDRV_CPU_IO_MAP(i8742_io_map,0)
+	MDRV_CPU_IO_MAP(i8742_io_map)
 
 	MDRV_QUANTUM_PERFECT_CPU("maincpu")
 
@@ -1728,11 +1728,11 @@ static MACHINE_DRIVER_START( insectx )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_12MHz/2)	/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, XTAL_12MHz/2)	/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_PERFECT_CPU("maincpu")
@@ -1766,11 +1766,11 @@ static MACHINE_DRIVER_START( kageki )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_12MHz/2) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, XTAL_12MHz/2) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(kageki_sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(kageki_sub_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_PERFECT_CPU("maincpu")
@@ -1811,16 +1811,16 @@ static MACHINE_DRIVER_START( tnzsb )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_12MHz/2) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(cpu0_type2,0)
+	MDRV_CPU_PROGRAM_MAP(cpu0_type2)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, XTAL_12MHz/2) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(tnzsb_cpu1_map,0)
+	MDRV_CPU_PROGRAM_MAP(tnzsb_cpu1_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_12MHz/2) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(tnzsb_cpu2_map,0)
-	MDRV_CPU_IO_MAP(tnzsb_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(tnzsb_cpu2_map)
+	MDRV_CPU_IO_MAP(tnzsb_io_map)
 
 	MDRV_QUANTUM_PERFECT_CPU("maincpu")
 
@@ -1858,10 +1858,10 @@ static MACHINE_DRIVER_START( kabukiz )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("sub")
-	MDRV_CPU_PROGRAM_MAP(kabukiz_cpu1_map,0)
+	MDRV_CPU_PROGRAM_MAP(kabukiz_cpu1_map)
 
 	MDRV_CPU_MODIFY("audiocpu")
-	MDRV_CPU_PROGRAM_MAP(kabukiz_cpu2_map,0)
+	MDRV_CPU_PROGRAM_MAP(kabukiz_cpu2_map)
 
 	MDRV_SOUND_MODIFY("ym")
 	MDRV_SOUND_CONFIG(kabukiz_ym2203_interface)
@@ -1879,11 +1879,11 @@ static MACHINE_DRIVER_START( jpopnics )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,XTAL_12MHz/2) /* Not verified - Main board Crystal is 12MHz */
-	MDRV_CPU_PROGRAM_MAP(jpopnics_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(jpopnics_main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80,XTAL_12MHz/2)	/* Not verified - Main board Crystal is 12MHz */
-	MDRV_CPU_PROGRAM_MAP(jpopnics_sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(jpopnics_sub_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_PERFECT_CPU("maincpu")

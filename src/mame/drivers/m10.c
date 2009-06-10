@@ -131,7 +131,7 @@ Notes (couriersud)
 static WRITE8_DEVICE_HANDLER(ic8j1_output_changed)
 {
 	LOG(("ic8j1: %d %d\n", data, video_screen_get_vpos(device->machine->primary_screen)));
-	cpu_set_input_line(device->machine->cpu[0], 0, !data ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(device->machine, "maincpu", 0, !data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_DEVICE_HANDLER(ic8j2_output_changed)
@@ -191,7 +191,7 @@ static PALETTE_INIT( m10 )
 
 static MACHINE_RESET( irem )
 {
-	m10_state *state = machine->driver_data;
+	m10_state *state = (m10_state *)machine->driver_data;
 
 	state_save_register_global(machine, state->bottomline);
 	state_save_register_global(machine, state->flip);
@@ -225,7 +225,7 @@ static MACHINE_RESET( irem )
 static WRITE8_HANDLER( m10_ctrl_w )
 {
 	const device_config *samples = devtag_get_device(space->machine, "samples");
-	m10_state *state = space->machine->driver_data;
+	m10_state *state = (m10_state *)space->machine->driver_data;
 
 #if DEBUG
 	if (data & 0x40)
@@ -302,7 +302,7 @@ static WRITE8_HANDLER( m10_ctrl_w )
 
 static WRITE8_HANDLER( m11_ctrl_w )
 {
-	m10_state *state = space->machine->driver_data;
+	m10_state *state = (m10_state *)space->machine->driver_data;
 
 #if DEBUG
 	if (data & 0x4C)
@@ -335,7 +335,7 @@ static WRITE8_HANDLER( m11_ctrl_w )
 
 static WRITE8_HANDLER( m15_ctrl_w )
 {
-	m10_state *state = space->machine->driver_data;
+	m10_state *state = (m10_state *)space->machine->driver_data;
 
 #if DEBUG
 	if (data & 0xF0)
@@ -475,7 +475,7 @@ static READ8_HANDLER( m10_a700_r )
 static READ8_HANDLER( m11_a700_r )
 {
    	//LOG(("rd:%d\n",video_screen_get_vpos(space->machine->primary_screen)));
-	//cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+	//cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 	LOG(("clear\n"));
 	ttl74123_clear_w(devtag_get_device(space->machine, "ic8j1"), 0, 0);
 	ttl74123_clear_w(devtag_get_device(space->machine, "ic8j1"), 0, 1);
@@ -491,7 +491,7 @@ static READ8_HANDLER( m11_a700_r )
 static INPUT_CHANGED( coin_inserted )
 {
 	/* coin insertion causes an NMI */
-	cpu_set_input_line(field->port->machine->cpu[0], INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(field->port->machine, "maincpu", INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -499,16 +499,16 @@ static TIMER_CALLBACK( interrupt_callback )
 {
     if (param==0)
     {
-	    cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
+	    cputag_set_input_line(machine, "maincpu", 0, ASSERT_LINE);
 	    timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, IREMM10_VBSTART+16, 0), NULL, 1,interrupt_callback);
     }
     if (param==1)
     {
-	    cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
+	    cputag_set_input_line(machine, "maincpu", 0, ASSERT_LINE);
     	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, IREMM10_VBSTART+24, 0), NULL, 2,interrupt_callback);
     }
     if (param==-1)
-	    cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
+	    cputag_set_input_line(machine, "maincpu", 0, CLEAR_LINE);
 
 }
 
@@ -819,7 +819,7 @@ static MACHINE_DRIVER_START( m10 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502,IREMM10_CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(m10_main,0)
+	MDRV_CPU_PROGRAM_MAP(m10_main)
 
 	MDRV_MACHINE_RESET(irem)
 
@@ -859,7 +859,7 @@ static MACHINE_DRIVER_START( m11 )
 	MDRV_IMPORT_FROM(m10)
 	MDRV_CPU_REPLACE("maincpu", M6502,IREMM10_CPU_CLOCK)
 	//MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(m11_main,0)
+	MDRV_CPU_PROGRAM_MAP(m11_main)
 	//MDRV_CPU_VBLANK_INT("screen", m11_interrupt)
 
 	/* sound hardware */
@@ -871,7 +871,7 @@ static MACHINE_DRIVER_START( m15 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502,IREMM15_CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(m15_main,0)
+	MDRV_CPU_PROGRAM_MAP(m15_main)
 
 	MDRV_MACHINE_RESET(irem)
 
@@ -916,7 +916,7 @@ MACHINE_DRIVER_END
 static DRIVER_INIT( andromed )
 {
 	int i;
-	m10_state *state = machine->driver_data;
+	m10_state *state = (m10_state *)machine->driver_data;
 
 	for (i=0x1c00;i<0x2000;i++)
 		state->rom[i]=0x60;
@@ -925,7 +925,7 @@ static DRIVER_INIT( andromed )
 static DRIVER_INIT( ipminva1 )
 {
 	int i;
-	m10_state *state = machine->driver_data;
+	m10_state *state = (m10_state *)machine->driver_data;
 
 	for (i=0x1400;i<0x17ff;i++)
 		state->rom[i]=0x60;
@@ -1040,9 +1040,9 @@ ROM_START( greenber )
 ROM_END
 
 GAME( 1979, andromed, 0, m11,     skychut,  andromed, ROT270, "Irem", "Andromeda (Japan?)", GAME_NO_COCKTAIL | GAME_NO_SOUND | GAME_IMPERFECT_COLORS | GAME_NOT_WORKING )
-GAME( 1979?,ipminvad, 0, m10,     ipminvad, 0,        ROT270, "Irem", "I P M Invader", GAME_NO_COCKTAIL | GAME_IMPERFECT_COLORS )
-GAME( ????, ipminva1, 0, m10,     ipminvad, ipminva1, ROT270, "Irem", "I P M Invader (Incomplete Dump)", GAME_NOT_WORKING )
+GAME( 1979, ipminvad, 0, m10,     ipminvad, 0,        ROT270, "Irem", "I P M Invader", GAME_NO_COCKTAIL | GAME_IMPERFECT_COLORS )
+GAME( 1979, ipminva1, 0, m10,     ipminvad, ipminva1, ROT270, "Irem", "I P M Invader (Incomplete Dump)", GAME_NOT_WORKING )
 GAME( 1980, skychut,  0, m11,     skychut,  0,        ROT270, "Irem", "Sky Chuter", GAME_NO_COCKTAIL | GAME_NO_SOUND | GAME_IMPERFECT_COLORS )
 GAME( 1979, spacbeam, 0, m15,     spacbeam, 0,        ROT270, "Irem", "Space Beam", GAME_NO_COCKTAIL | GAME_NO_SOUND | GAME_IMPERFECT_COLORS )
-GAME( 1979?,headoni,  0, headoni, headoni,  0,        ROT270, "Irem", "Head On (Irem, M-15 Hardware)", GAME_NO_COCKTAIL | GAME_NO_SOUND | GAME_IMPERFECT_COLORS )
+GAME( 1979, headoni,  0, headoni, headoni,  0,        ROT270, "Irem", "Head On (Irem, M-15 Hardware)", GAME_NO_COCKTAIL | GAME_NO_SOUND | GAME_IMPERFECT_COLORS )
 GAME( 1980, greenber, 0, m15,     spacbeam, 0,        ROT270, "Irem", "Green Beret (Irem)", GAME_NO_COCKTAIL | GAME_NO_SOUND | GAME_IMPERFECT_COLORS | GAME_NOT_WORKING )

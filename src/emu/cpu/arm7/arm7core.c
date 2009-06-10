@@ -507,7 +507,7 @@ static int storeDec(arm_state *cpustate, UINT32 pat, UINT32 rbv)
  ***************************************************************************/
 
 // CPU INIT
-static void arm7_core_init(const char *cpuname, const device_config *device)
+static void arm7_core_init(const device_config *device, const char *cpuname)
 {
     arm_state *cpustate = get_safe_token(device);
 
@@ -1486,7 +1486,7 @@ static void HandleUMulLong(arm_state *cpustate, UINT32 insn)
     rlo = (insn >> 12) & 0xf;
 
 #if ARM7_DEBUG_CORE
-        if (((insn & 0xf) == 15) || (((insn >> 8) & 0xf) == 15) || (((insn >> 16) & 0xf) == 15) || (((insn >> 12) & 0xf) == 15)
+        if (((insn & 0xf) == 15) || (((insn >> 8) & 0xf) == 15) || (((insn >> 16) & 0xf) == 15) || (((insn >> 12) & 0xf) == 15))
             LOG(("%08x: Illegal use of PC as a register in SMULL opcode\n", R15));
 #endif
 

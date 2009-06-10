@@ -319,7 +319,7 @@ ADDRESS_MAP_END
 static CUSTOM_INPUT( clock_r )
 {
 	/* 2.4kHz (divide 2.5MHz by 1024) */
-	return (cpu_get_total_cycles(field->port->machine->cpu[0]) & 0x400) ? 0 : 1;
+	return (cputag_get_total_cycles(field->port->machine, "alpha") & 0x400) ? 0 : 1;
 }
 
 
@@ -475,10 +475,10 @@ static MACHINE_DRIVER_START( mhavoc )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("alpha", M6502, MHAVOC_CLOCK_2_5M)		/* 2.5 MHz */
-	MDRV_CPU_PROGRAM_MAP(alpha_map, 0)
+	MDRV_CPU_PROGRAM_MAP(alpha_map)
 
 	MDRV_CPU_ADD("gamma", M6502, MHAVOC_CLOCK_1_25M)	/* 1.25 MHz */
-	MDRV_CPU_PROGRAM_MAP(gamma_map, 0)
+	MDRV_CPU_PROGRAM_MAP(gamma_map)
 
 	MDRV_MACHINE_RESET(mhavoc)
 	MDRV_NVRAM_HANDLER(generic_1fill)
@@ -523,8 +523,8 @@ static MACHINE_DRIVER_START( alphaone )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mhavoc)
 	MDRV_CPU_MODIFY("alpha")
-	MDRV_CPU_PROGRAM_MAP(alphaone_map, 0)
-	MDRV_CPU_REMOVE("gamma")
+	MDRV_CPU_PROGRAM_MAP(alphaone_map)
+	MDRV_DEVICE_REMOVE("gamma")
 
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VISIBLE_AREA(0, 580, 0, 500)
@@ -536,8 +536,8 @@ static MACHINE_DRIVER_START( alphaone )
 	MDRV_SOUND_REPLACE("pokey2", POKEY, MHAVOC_CLOCK_1_25M)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
-	MDRV_SOUND_REMOVE("pokey3")
-	MDRV_SOUND_REMOVE("pokey4")
+	MDRV_DEVICE_REMOVE("pokey3")
+	MDRV_DEVICE_REMOVE("pokey4")
 MACHINE_DRIVER_END
 
 

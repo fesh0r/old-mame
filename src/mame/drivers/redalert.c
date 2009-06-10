@@ -115,7 +115,7 @@ static INTERRUPT_GEN( redalert_vblank_interrupt )
 
 static READ8_HANDLER( redalert_interrupt_clear_r )
 {
-	cpu_set_input_line(space->machine->cpu[0], M6502_IRQ_LINE, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", M6502_IRQ_LINE, CLEAR_LINE);
 
 	/* the result never seems to be actually used */
 	return video_screen_get_vpos(space->machine->primary_screen);
@@ -308,7 +308,7 @@ static MACHINE_DRIVER_START( redalert )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, MAIN_CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(redalert_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(redalert_main_map)
 	MDRV_CPU_VBLANK_INT("screen", redalert_vblank_interrupt)
 
 	/* video hardware */
@@ -322,7 +322,7 @@ static MACHINE_DRIVER_START( ww3 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, MAIN_CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(ww3_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(ww3_main_map)
 	MDRV_CPU_VBLANK_INT("screen", redalert_vblank_interrupt)
 
 	/* video hardware */
@@ -336,7 +336,7 @@ static MACHINE_DRIVER_START( demoneye )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, MAIN_CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(demoneye_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(demoneye_main_map)
 	MDRV_CPU_VBLANK_INT("screen", redalert_vblank_interrupt)
 
 	/* video hardware */

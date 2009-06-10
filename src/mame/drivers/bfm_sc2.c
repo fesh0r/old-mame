@@ -266,7 +266,7 @@ static void send_to_adder(running_machine *machine, int data)
 	adder2_sc2data       = data;
 
 	adder2_acia_triggered = 1;
-	cpu_set_input_line(machine->cpu[1], M6809_IRQ_LINE, HOLD_LINE );
+	cputag_set_input_line(machine, "adder2", M6809_IRQ_LINE, HOLD_LINE );
 
 	LOG_SERIAL(("sadder  %02X  (%c)\n",data, data ));
 }
@@ -614,7 +614,7 @@ static WRITE8_HANDLER( mmtr_w )
 			}
  		}
  	}
-	if ( data & 0x1F ) cpu_set_input_line(space->machine->cpu[0], M6809_FIRQ_LINE, ASSERT_LINE );
+	if ( data & 0x1F ) cputag_set_input_line(space->machine, "maincpu", M6809_FIRQ_LINE, ASSERT_LINE );
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1434,7 +1434,7 @@ static void decode_mainrom(running_machine *machine, const char *rom_region)
 
 	rom = memory_region(machine, rom_region);
 
-	tmp = malloc_or_die(0x10000);
+	tmp = alloc_array_or_die(UINT8, 0x10000);
 	{
 		int i;
 		long address;
@@ -1556,7 +1556,7 @@ static ADDRESS_MAP_START( memmap_vid, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x3FFF, 0x3FFF) AM_READ(coin_input_r)
 	AM_RANGE(0x4000, 0x5fff) AM_ROM							// 8k  fixed ROM
 	AM_RANGE(0x4000, 0xFFFF) AM_WRITE(unknown_w)			// contains unknown I/O registers
-	AM_RANGE(0x6000, 0x7FFF) AM_READ(SMH_BANK1)			// 8k  paged ROM (4 pages)
+	AM_RANGE(0x6000, 0x7FFF) AM_ROMBANK(1)					// 8k  paged ROM (4 pages)
 	AM_RANGE(0x8000, 0xFFFF) AM_ROM							// 32k ROM
 
 ADDRESS_MAP_END
@@ -2220,7 +2220,7 @@ static MACHINE_DRIVER_START( scorpion2_vid )
 	MDRV_MACHINE_RESET( init )							// main scorpion2 board initialisation
 	MDRV_QUANTUM_TIME(HZ(960))									// needed for serial communication !!
 	MDRV_CPU_ADD("maincpu", M6809, MASTER_CLOCK/4 )	// 6809 CPU at 2 Mhz
-	MDRV_CPU_PROGRAM_MAP(memmap_vid,0)					// setup scorpion2 board memorymap
+	MDRV_CPU_PROGRAM_MAP(memmap_vid)					// setup scorpion2 board memorymap
 	MDRV_CPU_PERIODIC_INT(timer_irq, 1000)				// generate 1000 IRQ's per second
 
 	MDRV_NVRAM_HANDLER(bfm_sc2)
@@ -2241,7 +2241,7 @@ static MACHINE_DRIVER_START( scorpion2_vid )
 	MDRV_GFXDECODE(adder2)
 
 	MDRV_CPU_ADD("adder2", M6809, MASTER_CLOCK/4 )	// adder2 board 6809 CPU at 2 Mhz
-	MDRV_CPU_PROGRAM_MAP(adder2_memmap,0)				// setup adder2 board memorymap
+	MDRV_CPU_PROGRAM_MAP(adder2_memmap)				// setup adder2 board memorymap
 	MDRV_CPU_VBLANK_INT("adder", adder2_vbl)			// board has a VBL IRQ
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -2790,7 +2790,7 @@ static ADDRESS_MAP_START( sc2_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x3FFF, 0x3FFF) AM_READ( coin_input_r)
 	AM_RANGE(0x4000, 0x5FFF) AM_ROM									/* 8k  fixed ROM */
-	AM_RANGE(0x6000, 0x7FFF) AM_READ(SMH_BANK1)						/* 8k  paged ROM (4 pages) */
+	AM_RANGE(0x6000, 0x7FFF) AM_ROMBANK(1)							/* 8k  paged ROM (4 pages) */
 	AM_RANGE(0x8000, 0xFFFF) AM_ROM									/* 32k ROM */
 ADDRESS_MAP_END
 
@@ -2839,7 +2839,7 @@ static ADDRESS_MAP_START( sc3_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x3FFF, 0x3FFF) AM_READ( coin_input_r)
 	AM_RANGE(0x4000, 0x5FFF) AM_ROM
 //  AM_RANGE(0x4000, 0xFFFF) AM_WRITE(unknown_w)
-	AM_RANGE(0x6000, 0x7FFF) AM_READ(SMH_BANK1)
+	AM_RANGE(0x6000, 0x7FFF) AM_ROMBANK(1)
 	AM_RANGE(0x8000, 0xFFFF) AM_ROM
 ADDRESS_MAP_END
 
@@ -2889,7 +2889,7 @@ static ADDRESS_MAP_START( memmap_sc2_dm01, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x3FFF, 0x3FFF) AM_READ( coin_input_r)
 	AM_RANGE(0x4000, 0x5FFF) AM_ROM
 //  AM_RANGE(0x4000, 0xFFFF) AM_WRITE(unknown_w)
-	AM_RANGE(0x6000, 0x7FFF) AM_READ(SMH_BANK1)
+	AM_RANGE(0x6000, 0x7FFF) AM_ROMBANK(1)
 	AM_RANGE(0x8000, 0xFFFF) AM_ROM
 ADDRESS_MAP_END
 
@@ -3827,7 +3827,7 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( scorpion2 )
 	MDRV_MACHINE_RESET(awp_init)
 	MDRV_CPU_ADD("maincpu", M6809, MASTER_CLOCK/4 )
-	MDRV_CPU_PROGRAM_MAP(sc2_memmap,0)
+	MDRV_CPU_PROGRAM_MAP(sc2_memmap)
 	MDRV_CPU_PERIODIC_INT(timer_irq, 1000 )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -3848,7 +3848,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( scorpion3 )
 	MDRV_IMPORT_FROM( scorpion2 )
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(sc3_memmap,0)
+	MDRV_CPU_PROGRAM_MAP(sc3_memmap)
 MACHINE_DRIVER_END
 
 
@@ -3857,7 +3857,7 @@ static MACHINE_DRIVER_START( scorpion2_dm01 )
 	MDRV_MACHINE_RESET(dm01_init)
 	MDRV_QUANTUM_TIME(HZ(960))									// needed for serial communication !!
 	MDRV_CPU_ADD("maincpu", M6809, MASTER_CLOCK/4 )
-	MDRV_CPU_PROGRAM_MAP(memmap_sc2_dm01,0)
+	MDRV_CPU_PROGRAM_MAP(memmap_sc2_dm01)
 	MDRV_CPU_PERIODIC_INT(timer_irq, 1000 )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -3883,7 +3883,7 @@ static MACHINE_DRIVER_START( scorpion2_dm01 )
 	MDRV_PALETTE_INIT(bfm_dm01)
 
 	MDRV_CPU_ADD("matrix", M6809, 2000000 )				/* matrix board 6809 CPU at 2 Mhz ?? I don't know the exact freq.*/
-	MDRV_CPU_PROGRAM_MAP(bfm_dm01_memmap,0)
+	MDRV_CPU_PROGRAM_MAP(bfm_dm01_memmap)
 	MDRV_CPU_PERIODIC_INT(bfm_dm01_vbl, 1500 )			/* generate 1500 NMI's per second ?? what is the exact freq?? */
 MACHINE_DRIVER_END
 

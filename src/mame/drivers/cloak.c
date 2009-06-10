@@ -144,12 +144,12 @@ static WRITE8_HANDLER( cloak_custom_w )
 
 static WRITE8_HANDLER( cloak_irq_reset_0_w )
 {
-	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( cloak_irq_reset_1_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "slave", 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( cloak_nvram_enable_w )
@@ -334,11 +334,11 @@ static MACHINE_DRIVER_START( cloak )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, 1000000)		/* 1 MHz ???? */
-	MDRV_CPU_PROGRAM_MAP(master_map, 0)
+	MDRV_CPU_PROGRAM_MAP(master_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 4)
 
 	MDRV_CPU_ADD("slave", M6502, 1250000)		/* 1.25 MHz ???? */
-	MDRV_CPU_PROGRAM_MAP(slave_map, 0)
+	MDRV_CPU_PROGRAM_MAP(slave_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 2)
 
 	MDRV_QUANTUM_TIME(HZ(1000))

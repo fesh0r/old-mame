@@ -30,7 +30,7 @@ static INTERRUPT_GEN( battlnts_interrupt )
 
 static WRITE8_HANDLER( battlnts_sh_irqtrigger_w )
 {
-	cpu_set_input_line_and_vector(space->machine->cpu[1], 0, HOLD_LINE, 0xff);
+	cputag_set_input_line_and_vector(space->machine, "audiocpu", 0, HOLD_LINE, 0xff);
 }
 
 static WRITE8_HANDLER( battlnts_bankswitch_w )
@@ -105,8 +105,8 @@ static INPUT_PORTS_START( battlnts )
 	PORT_DIPNAME( 0x60, 0x40, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("SW2:6,7")
 	PORT_DIPSETTING(	0x60, DEF_STR( Easy ) )
 	PORT_DIPSETTING(	0x40, DEF_STR( Normal ) )
-	PORT_DIPSETTING(	0x20, "Difficult" )
-	PORT_DIPSETTING(	0x00, "Very Difficult" )
+	PORT_DIPSETTING(	0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )	PORT_DIPLOCATION("SW2:8")
 	PORT_DIPSETTING(	0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
@@ -196,11 +196,11 @@ static MACHINE_DRIVER_START( battlnts )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", HD6309, 3000000*4)		/* ? */
-	MDRV_CPU_PROGRAM_MAP(battlnts_map,0)
+	MDRV_CPU_PROGRAM_MAP(battlnts_map)
 	MDRV_CPU_VBLANK_INT("screen", battlnts_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3579545)
-	MDRV_CPU_PROGRAM_MAP(battlnts_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(battlnts_sound_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)

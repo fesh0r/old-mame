@@ -1233,8 +1233,8 @@ static const struct gfx_range mapper_cps2_table[] =
 static const struct CPS1config cps1_config_table[]=
 {
 	/* name       CPSB         gfx mapper   in2  in3  out2   kludge */
-	{"forgottn", CPS_B_01,     mapper_LWCHR },
-	{"forgott1", CPS_B_01,     mapper_LW621 },
+	{"forgottn", CPS_B_01,     mapper_LW621 },
+	{"forgottu", CPS_B_01,     mapper_LWCHR },
 	{"lostwrld", CPS_B_01,     mapper_LWCHR },
 	{"ghouls",   CPS_B_01,     mapper_DM620 },
 	{"ghoulsu",  CPS_B_01,     mapper_DM620 },
@@ -1279,6 +1279,7 @@ static const struct CPS1config cps1_config_table[]=
 	{"cawingj",  CPS_B_16,     mapper_CA22B },	// equivalent to CA24B
 	{"sf2",      CPS_B_11,     mapper_STF29,  0x36 },
 	{"sf2eb",    CPS_B_17,     mapper_STF29,  0x36 },
+	{"sf2ebbl",  CPS_B_17,     mapper_STF29,  0x36, 0, 0, 1  },
 	{"sf2ua",    CPS_B_17,     mapper_STF29,  0x36 },
 	{"sf2ub",    CPS_B_17,     mapper_STF29,  0x36 },
 	{"sf2ud",    CPS_B_05,     mapper_STF29,  0x36 },
@@ -2055,13 +2056,11 @@ static VIDEO_START( cps )
 		palette_set_color(machine,i,MAKE_RGB(0,0,0));
 	}
 
-    cps1_buffered_obj = auto_malloc (cps1_obj_size);
-    memset(cps1_buffered_obj, 0x00, cps1_obj_size);
+    cps1_buffered_obj = auto_alloc_array_clear(machine, UINT16, cps1_obj_size/2);
 
 	if (cps_version==2)
 	{
-		cps2_buffered_obj = auto_malloc (cps2_obj_size);
-		memset(cps2_buffered_obj, 0x00, cps2_obj_size);
+		cps2_buffered_obj = auto_alloc_array_clear(machine, UINT16, cps2_obj_size/2);
 	}
 
 	memset(cps1_gfxram, 0, cps1_gfxram_size);   /* Clear GFX RAM */

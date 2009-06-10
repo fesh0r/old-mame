@@ -83,7 +83,7 @@ static int irqAen,irqBmask;
 static MACHINE_RESET( gradius3 )
 {
 	/* start with cpu B halted */
-	cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
+	cputag_set_input_line(machine, "sub", INPUT_LINE_RESET, ASSERT_LINE);
 	irqAen = 0;
 	irqBmask = 0;
 }
@@ -102,7 +102,7 @@ static WRITE16_HANDLER( cpuA_ctrl_w )
 		gradius3_priority = data & 0x04;
 
 		/* bit 3 enables cpu B */
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
+		cputag_set_input_line(space->machine, "sub", INPUT_LINE_RESET, (data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
 
 		/* bit 5 enables irq */
 		irqAen = data & 0x20;
@@ -143,7 +143,7 @@ static WRITE16_HANDLER( cpuB_irqtrigger_w )
 	if (irqBmask & 4)
 	{
 logerror("%04x trigger cpu B irq 4 %02x\n",cpu_get_pc(space->cpu),data);
-		cpu_set_input_line(space->machine->cpu[1],4,HOLD_LINE);
+		cputag_set_input_line(space->machine, "sub", 4, HOLD_LINE);
 	}
 	else
 logerror("%04x MISSED cpu B irq 4 %02x\n",cpu_get_pc(space->cpu),data);
@@ -157,7 +157,7 @@ static WRITE16_HANDLER( sound_command_w )
 
 static WRITE16_HANDLER( sound_irq_w )
 {
-	cpu_set_input_line_and_vector(space->machine->cpu[2],0,HOLD_LINE,0xff);
+	cputag_set_input_line_and_vector(space->machine, "audiocpu", 0, HOLD_LINE, 0xff);
 }
 
 static WRITE8_DEVICE_HANDLER( sound_bank_w )
@@ -292,16 +292,16 @@ static MACHINE_DRIVER_START( gradius3 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 10000000)	/* 10 MHz */
-	MDRV_CPU_PROGRAM_MAP(gradius3_map,0)
+	MDRV_CPU_PROGRAM_MAP(gradius3_map)
 	MDRV_CPU_VBLANK_INT("screen", cpuA_interrupt)
 
 	MDRV_CPU_ADD("sub", M68000, 10000000)	/* 10 MHz */
-	MDRV_CPU_PROGRAM_MAP(gradius3_map2,0)
+	MDRV_CPU_PROGRAM_MAP(gradius3_map2)
 	MDRV_CPU_VBLANK_INT_HACK(cpuB_interrupt,2)	/* has three interrupt vectors, 1 2 and 4 */
 								/* 4 is triggered by cpu A, the others are unknown but */
 								/* required for the game to run. */
 	MDRV_CPU_ADD("audiocpu", Z80, 3579545)
-	MDRV_CPU_PROGRAM_MAP(gradius3_s_map,0)
+	MDRV_CPU_PROGRAM_MAP(gradius3_s_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 

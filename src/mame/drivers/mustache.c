@@ -176,7 +176,7 @@ GFXDECODE_END
 
 static TIMER_CALLBACK( clear_irq_cb )
 {
-	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 0, CLEAR_LINE);
 }
 
 static INTERRUPT_GEN( assert_irq )
@@ -198,12 +198,12 @@ static MACHINE_DRIVER_START( mustache )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(memmap, 0)
+	MDRV_CPU_PROGRAM_MAP(memmap)
 	MDRV_CPU_VBLANK_INT("screen", assert_irq)
 
 	MDRV_CPU_ADD(CPUTAG_T5182,Z80, T5182_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(t5182_map, 0)
-	MDRV_CPU_IO_MAP(t5182_io, 0)
+	MDRV_CPU_PROGRAM_MAP(t5182_map)
+	MDRV_CPU_IO_MAP(t5182_io)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -265,7 +265,7 @@ static DRIVER_INIT( mustache )
 	int G2 = memory_region_length(machine, "gfx2")/2;
 	UINT8 *gfx1 = memory_region(machine, "gfx1");
 	UINT8 *gfx2 = memory_region(machine, "gfx2");
-	UINT8 *buf=malloc_or_die(G2*2);
+	UINT8 *buf=alloc_array_or_die(UINT8, G2*2);
 
 	/* BG data lines */
 	for (i=0;i<G1; i++)

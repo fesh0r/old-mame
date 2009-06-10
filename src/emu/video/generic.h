@@ -131,6 +131,7 @@ int flip_screen_y_get(running_machine *machine);
 
 /* ----- generic palette init routines ----- */
 
+PALETTE_INIT( all_black );
 PALETTE_INIT( black_and_white );
 PALETTE_INIT( RRRR_GGGG_BBBB );
 PALETTE_INIT( RRRRR_GGGGG_BBBBB );
@@ -145,6 +146,7 @@ PALETTE_INIT( RRRRR_GGGGGG_BBBBB );
 WRITE8_HANDLER( paletteram_BBGGGRRR_w );
 WRITE8_HANDLER( paletteram_RRRGGGBB_w );
 WRITE8_HANDLER( paletteram_BBGGRRII_w );
+WRITE8_HANDLER( paletteram_IIBBGGRR_w );
 
 /* 4-4-4 RGB palette write handlers */
 WRITE8_HANDLER( paletteram_xxxxBBBBGGGGRRRR_le_w );

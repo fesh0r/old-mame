@@ -114,7 +114,7 @@ static void update_outputs(i8279_state *chip, UINT16 which)
 static READ8_HANDLER( m1_8279_r )
 {
 	i8279_state *chip = i8279 + 0;
-	static const char *portnames[] = { "SW1","STROBE5","STROBE7","STROBE3","SW2","STROBE4","STROBE6","STROBE2" };
+	static const char *const portnames[] = { "SW1","STROBE5","STROBE7","STROBE3","SW2","STROBE4","STROBE6","STROBE2" };
 	UINT8 result = 0xff;
 	UINT8 addr;
 
@@ -465,7 +465,7 @@ static MACHINE_RESET( m1 )
 
 static void duart_irq_handler(const device_config *device, UINT8 state)
 {
-	cpu_set_input_line(device->machine->cpu[0], M6809_IRQ_LINE, state?ASSERT_LINE:CLEAR_LINE);
+	cputag_set_input_line(device->machine, "maincpu", M6809_IRQ_LINE, state?ASSERT_LINE:CLEAR_LINE);
 	LOG(("6809 irq%d \n",state));
 }
 
@@ -707,7 +707,7 @@ static UINT8 m1_duart_r (const device_config *device)
 static WRITE8_DEVICE_HANDLER( m1_meter_w )
 {
 	int i;
-	UINT64 cycles  = cpu_get_total_cycles(device->machine->cpu[0]);
+	UINT64 cycles  = cputag_get_total_cycles(device->machine, "maincpu");
 
 	for (i=0; i<8; i++)
 	if ( data & (1 << i) )	Mechmtr_update(i, cycles, data & (1 << i) );
@@ -798,7 +798,7 @@ static MACHINE_DRIVER_START( m1 )
 	MDRV_MACHINE_START(m1)
 	MDRV_MACHINE_RESET(m1)
 	MDRV_CPU_ADD("maincpu", M6809, M1_MASTER_CLOCK/2)
-	MDRV_CPU_PROGRAM_MAP(m1_memmap,0)
+	MDRV_CPU_PROGRAM_MAP(m1_memmap)
 
 	MDRV_DUART68681_ADD("duart68681", M1_DUART_CLOCK, maygaym1_duart68681_config)
 	MDRV_PIA6821_ADD("pia", m1_pia_intf)

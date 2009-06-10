@@ -305,7 +305,7 @@ static READ8_HANDLER( spacduel_IN3_r )
 
 static CUSTOM_INPUT( clock_r )
 {
-	return (cpu_get_total_cycles(field->port->machine->cpu[0]) & 0x100) ? 1 : 0;
+	return (cputag_get_total_cycles(field->port->machine, "maincpu") & 0x100) ? 1 : 0;
 }
 
 
@@ -341,7 +341,7 @@ static WRITE8_HANDLER( bwidow_misc_w )
 
 static WRITE8_HANDLER( irq_ack_w )
 {
-	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 }
 
 
@@ -713,7 +713,7 @@ static MACHINE_DRIVER_START( bwidow )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, MASTER_CLOCK / 8)
-	MDRV_CPU_PROGRAM_MAP(bwidow_map,0)
+	MDRV_CPU_PROGRAM_MAP(bwidow_map)
 	MDRV_CPU_PERIODIC_INT(irq0_line_assert, (double)MASTER_CLOCK / 4096 / 12)
 
 	MDRV_ATARIVGEAROM_ADD("earom")
@@ -756,7 +756,7 @@ static MACHINE_DRIVER_START( lunarbat )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gravitar)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(spacduel_map,0)
+	MDRV_CPU_PROGRAM_MAP(spacduel_map)
 
 	/* video hardware */
 	MDRV_SCREEN_MODIFY("screen")
@@ -770,7 +770,7 @@ static MACHINE_DRIVER_START( spacduel )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gravitar)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(spacduel_map,0)
+	MDRV_CPU_PROGRAM_MAP(spacduel_map)
 
 	/* video hardware */
 	MDRV_SCREEN_MODIFY("screen")

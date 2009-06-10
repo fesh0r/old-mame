@@ -309,8 +309,9 @@ static int has_delay_slot(UINT32 insn)
 
 /* This is the external interface for asserting/deasserting pins on
    the i860.  */
-void i860_set_pin (i860s *cpustate, int pin, int val)
+void i860_set_pin (const device_config *device, int pin, int val)
 {
+	i860s *cpustate = get_safe_token(device);
 	if (pin == DEC_PIN_BUS_HOLD)
 		cpustate->pin_bus_hold = val;
 	else if (pin == DEC_PIN_RESET)
@@ -2960,7 +2961,7 @@ enum {
    So we only represent the PFAM table and use a special flag on any entry
    where the PFMAM table would use the M pipe rather than the A pipe.
    Also, entry 16 is not valid for PFMAM.  */
-static struct
+static const struct
 {
 	int M_unit_op1;
 	int M_unit_op2;
@@ -4082,7 +4083,7 @@ typedef struct {
 
 
 /* First-level decode table (i.e., for the 6 primary opcode bits).  */
-static decode_tbl_t decode_tbl[64] = {
+static const decode_tbl_t decode_tbl[64] = {
 	/* A slight bit of decoding for loads and stores is done in the
        execution routines (operand size and addressing mode), which
        is why their respective entries are identical.  */
@@ -4154,7 +4155,7 @@ static decode_tbl_t decode_tbl[64] = {
 
 
 /* Second-level decode table (i.e., for the 3 core escape opcode bits).  */
-static decode_tbl_t core_esc_decode_tbl[8] = {
+static const decode_tbl_t core_esc_decode_tbl[8] = {
 	{ 0,                0},
 	{ 0,                0},	/* lock  (FIXME: unimplemented).  */
 	{ insn_calli,       DEC_DECODED}, /* calli isrc1ni.                 */
@@ -4167,7 +4168,7 @@ static decode_tbl_t core_esc_decode_tbl[8] = {
 
 
 /* Second-level decode table (i.e., for the 7 FP extended opcode bits).  */
-static decode_tbl_t fp_decode_tbl[128] = {
+static const decode_tbl_t fp_decode_tbl[128] = {
 	/* Floating point instructions.  The least significant 7 bits are
        the (extended) opcode and bits 10:7 are P,D,S,R respectively
        ([p]ipelined, [d]ual, [s]ource prec., [r]esult prec.).

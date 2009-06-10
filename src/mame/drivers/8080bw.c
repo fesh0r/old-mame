@@ -243,7 +243,7 @@ static MACHINE_DRIVER_START( invadpt2 )
     /* basic machine hardware */
     MDRV_IMPORT_FROM(mw8080bw_root)
     MDRV_CPU_MODIFY("maincpu")
-    MDRV_CPU_IO_MAP(invadpt2_io_map,0)
+    MDRV_CPU_IO_MAP(invadpt2_io_map)
     MDRV_MACHINE_START(extra_8080bw)
 
     /* 60 Hz signal clocks two LS161. Ripple carry will */
@@ -299,7 +299,7 @@ static MACHINE_DRIVER_START( spcewars )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(spcewars_io_map,0)
+	MDRV_CPU_IO_MAP(spcewars_io_map)
     MDRV_MACHINE_START(extra_8080bw)
 
 	/* sound hardware */
@@ -371,7 +371,7 @@ static MACHINE_DRIVER_START( astropal )
     /* basic machine hardware */
     MDRV_IMPORT_FROM(invaders)
     MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(astropal_io_map, 0)
+	MDRV_CPU_IO_MAP(astropal_io_map)
 
 MACHINE_DRIVER_END
 
@@ -421,8 +421,8 @@ static MACHINE_DRIVER_START( cosmo )
     /* basic machine hardware */
     MDRV_IMPORT_FROM(mw8080bw_root)
     MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(cosmo_map, 0)
-	MDRV_CPU_IO_MAP(cosmo_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(cosmo_map)
+	MDRV_CPU_IO_MAP(cosmo_io_map)
     MDRV_MACHINE_START(extra_8080bw)
 
     /* video hardware */
@@ -544,7 +544,7 @@ static MACHINE_DRIVER_START( invrvnge )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(invrvnge_io_map,0)
+	MDRV_CPU_IO_MAP(invrvnge_io_map)
 
 	/* sound hardware */
 	MDRV_IMPORT_FROM(invaders_samples_audio)
@@ -647,7 +647,7 @@ static MACHINE_DRIVER_START( lrescue )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(lrescue_io_map,0)
+	MDRV_CPU_IO_MAP(lrescue_io_map)
     MDRV_MACHINE_START(extra_8080bw)
 
 	/* video hardware */
@@ -792,8 +792,8 @@ static MACHINE_DRIVER_START( rollingc )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(rollingc_map,0)
-	MDRV_CPU_IO_MAP(rollingc_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(rollingc_map)
+	MDRV_CPU_IO_MAP(rollingc_io_map)
 
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(rollingc)
@@ -891,8 +891,8 @@ static MACHINE_DRIVER_START( schaser )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_REPLACE("maincpu",8080,1996800)        /* 19.968MHz / 10 */
-	MDRV_CPU_PROGRAM_MAP(schaser_map,0)
-	MDRV_CPU_IO_MAP(schaser_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(schaser_map)
+	MDRV_CPU_IO_MAP(schaser_io_map)
 	MDRV_WATCHDOG_VBLANK_INIT(255)
 	MDRV_MACHINE_START(schaser)
 	MDRV_MACHINE_RESET(schaser)
@@ -959,8 +959,8 @@ static MACHINE_DRIVER_START( schasrcv )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(schaser_map,0)
-	MDRV_CPU_IO_MAP(schasrcv_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(schaser_map)
+	MDRV_CPU_IO_MAP(schasrcv_io_map)
     MDRV_MACHINE_START(extra_8080bw)
 
 	/* video hardware */
@@ -1018,7 +1018,7 @@ static MACHINE_DRIVER_START( sflush )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_REPLACE("maincpu",M6800,2000000)        /* ?? */
-	MDRV_CPU_PROGRAM_MAP(sflush_map,0)
+	MDRV_CPU_PROGRAM_MAP(sflush_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_pulse,2)
     MDRV_MACHINE_START(sflush)
 
@@ -1120,8 +1120,8 @@ static MACHINE_DRIVER_START( lupin3 )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(schaser_map,0)
-	MDRV_CPU_IO_MAP(lupin3_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(schaser_map)
+	MDRV_CPU_IO_MAP(lupin3_io_map)
     MDRV_MACHINE_START(extra_8080bw)
 
 	/* video hardware */
@@ -1245,8 +1245,8 @@ static MACHINE_DRIVER_START( polaris )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_REPLACE("maincpu",8080,1996800)        /* 19.968MHz / 10 */
-	MDRV_CPU_PROGRAM_MAP(schaser_map,0)
-	MDRV_CPU_IO_MAP(polaris_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(schaser_map)
+	MDRV_CPU_IO_MAP(polaris_io_map)
 	MDRV_WATCHDOG_VBLANK_INIT(255)
 	MDRV_CPU_VBLANK_INT("screen", polaris_interrupt)
     MDRV_MACHINE_START(polaris)
@@ -1371,7 +1371,7 @@ static MACHINE_DRIVER_START( ballbomb )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(ballbomb_io_map,0)
+	MDRV_CPU_IO_MAP(ballbomb_io_map)
     MDRV_MACHINE_START(extra_8080bw)
 
 	/* video hardware */
@@ -1445,8 +1445,8 @@ static MACHINE_DRIVER_START( yosakdon )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(yosakdon_map,0)
-	MDRV_CPU_IO_MAP(yosakdon_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(yosakdon_map)
+	MDRV_CPU_IO_MAP(yosakdon_io_map)
     MDRV_MACHINE_START(extra_8080bw)
 
 	/* sound hardware */
@@ -1543,7 +1543,7 @@ static MACHINE_DRIVER_START( indianbt )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(indianbt_io_map,0)
+	MDRV_CPU_IO_MAP(indianbt_io_map)
     MDRV_MACHINE_START(extra_8080bw)
 
 	/* video hardware */
@@ -1640,8 +1640,8 @@ static MACHINE_DRIVER_START( shuttlei )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(shuttlei_map,0)
-	MDRV_CPU_IO_MAP(shuttlei_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(shuttlei_map)
+	MDRV_CPU_IO_MAP(shuttlei_io_map)
     MDRV_MACHINE_START(extra_8080bw)
 
 	/* video hardware */
@@ -1750,8 +1750,8 @@ static MACHINE_DRIVER_START( darthvdr )
     /* basic machine hardware */
 	MDRV_IMPORT_FROM(mw8080bw_root)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(darthvdr_map,0)
-	MDRV_CPU_IO_MAP(darthvdr_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(darthvdr_map)
+	MDRV_CPU_IO_MAP(darthvdr_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_MACHINE_START(darthvdr)
@@ -1981,20 +1981,20 @@ ROM_END
 
 ROM_START( moonbase )
 	ROM_REGION( 0x10000, "maincpu", 0 )
-	ROM_LOAD( "ze3-1.bin",    0x0000, 0x0400, CRC(82dbf2c7) SHA1(c767d8b866db4a5059bd79f962a90ce3a962e1e6) )
-	ROM_LOAD( "ze3-2.bin",    0x0400, 0x0400, CRC(c867f5b4) SHA1(686318fda6edde297aecaf33f480bfa075fa6eca) )
-	ROM_LOAD( "ze3-3.bin",    0x0800, 0x0400, CRC(cb23ccc1) SHA1(86be2d14d52b3404e1a25c573bd25b97729d82a1) )
-	ROM_LOAD( "ze3-4.bin",    0x0c00, 0x0400, CRC(9a11abe2) SHA1(f5337183c7f279d75ddeeab24f4f132aa2ee103b) )
-	ROM_LOAD( "ze3-5.bin",    0x1000, 0x0400, CRC(2b105ed3) SHA1(fa0767089b3aaec25be39e950e7163ecbdc2f39f) )
-	ROM_LOAD( "ze3-6.bin",    0x1400, 0x0400, CRC(cb3d6dcb) SHA1(b4923b12a141c76b7d50274f19a3224db26a5669) )
-	ROM_LOAD( "ze3-7.bin",    0x1800, 0x0400, CRC(774b52c9) SHA1(ddbbba874ac069fb930b364a890c45675ec389f7) )
-	ROM_LOAD( "ze3-8.bin",    0x1c00, 0x0400, CRC(e88ea83b) SHA1(ef05be4783c860369ee5ecd4844837207e99ad9f) )
-	ROM_LOAD( "ze3-9.bin",    0x4000, 0x0400, CRC(2dd5adfa) SHA1(62cb98cad1e48de0e0cbf30392d35834b38dadbd) )
-	ROM_LOAD( "ze3-10.bin",   0x4400, 0x0400, CRC(1e7c22a4) SHA1(b34173375494ffbf5400dd4014a683a9807f4f08) )
+	ROM_LOAD( "ze3-1.a4",     0x0000, 0x0400, CRC(82dbf2c7) SHA1(c767d8b866db4a5059bd79f962a90ce3a962e1e6) )
+	ROM_LOAD( "ze3-2.c4",     0x0400, 0x0400, CRC(c867f5b4) SHA1(686318fda6edde297aecaf33f480bfa075fa6eca) )
+	ROM_LOAD( "ze3-3.e4",     0x0800, 0x0400, CRC(cb23ccc1) SHA1(86be2d14d52b3404e1a25c573bd25b97729d82a1) )
+	ROM_LOAD( "ze3-4.f4",     0x0c00, 0x0400, CRC(9a11abe2) SHA1(f5337183c7f279d75ddeeab24f4f132aa2ee103b) )
+	ROM_LOAD( "ze3-5.h4",     0x1000, 0x0400, CRC(2b105ed3) SHA1(fa0767089b3aaec25be39e950e7163ecbdc2f39f) )
+	ROM_LOAD( "ze3-6.l4",     0x1400, 0x0400, CRC(cb3d6dcb) SHA1(b4923b12a141c76b7d50274f19a3224db26a5669) )
+	ROM_LOAD( "ze3-7.a5",     0x1800, 0x0400, CRC(774b52c9) SHA1(ddbbba874ac069fb930b364a890c45675ec389f7) )
+	ROM_LOAD( "ze3-8.c5",     0x1c00, 0x0400, CRC(e88ea83b) SHA1(ef05be4783c860369ee5ecd4844837207e99ad9f) )
+	ROM_LOAD( "ze3-9.e5",     0x4000, 0x0400, CRC(2dd5adfa) SHA1(62cb98cad1e48de0e0cbf30392d35834b38dadbd) )
+	ROM_LOAD( "ze3-10.f5",    0x4400, 0x0400, CRC(1e7c22a4) SHA1(b34173375494ffbf5400dd4014a683a9807f4f08) )
 
 	ROM_REGION( 0x0800, "proms", 0 )		/* color maps player 1/player 2 */
-	ROM_LOAD( "n02prm.6a",    0x0000, 0x0400, CRC(2bdf83a0) SHA1(01ffbd43964c41987e7d44816271308f9a70802b) )
-	ROM_LOAD( "n01prm.6b",    0x0400, 0x0400, CRC(aac24f34) SHA1(ad110e776547fb48baac568bb50d61854537ca34) )
+	ROM_LOAD( "cv02.h7",      0x0000, 0x0400, CRC(2bdf83a0) SHA1(01ffbd43964c41987e7d44816271308f9a70802b) ) /* NEC B406 or compatible BPROM, like the 82S137 */
+	ROM_LOAD( "cv01.g7",      0x0400, 0x0400, CRC(aac24f34) SHA1(ad110e776547fb48baac568bb50d61854537ca34) ) /* NEC B406 or compatible BPROM, like the 82S137 */
 ROM_END
 
 ROM_START( invrvnge )
@@ -2019,6 +2019,14 @@ ROM_START( spclaser )
 	ROM_LOAD( "spcewarl.2",   0x0800, 0x0800, CRC(43bc65c5) SHA1(5f9827c02c2d221e1607359c840374ff7fb92fbf) )
 	ROM_LOAD( "la03",         0x1000, 0x0800, CRC(1083e9cc) SHA1(7ad45c6230c9e02fcf51e3414c15e2237eebbd7a) )
 	ROM_LOAD( "la04",         0x1800, 0x0800, CRC(5116b234) SHA1(b165b2574cbcb26a5bb43f91df5f8be5f111f486) )
+ROM_END
+
+ROM_START( intruder )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "la01-1.36",    0x0000, 0x0800, CRC(bedc0078) SHA1(a5bb0cbbb8e3f27d03beb8101b2be1111d73689d) )
+	ROM_LOAD( "la02-1.35",    0x0800, 0x0800, CRC(43bc65c5) SHA1(5f9827c02c2d221e1607359c840374ff7fb92fbf) )
+	ROM_LOAD( "la03-1.34",    0x1000, 0x0800, CRC(278ef9cf) SHA1(74a9c1d3500ea28e50d07363a547c381999c84fa) )
+	ROM_LOAD( "la04-1.33",    0x1800, 0x0800, CRC(5116b234) SHA1(b165b2574cbcb26a5bb43f91df5f8be5f111f486) )
 ROM_END
 
 ROM_START( laser )
@@ -2584,7 +2592,8 @@ GAME( 19??, darthvdr, invaders, darthvdr, darthvdr, 0, ROT270, "bootleg", "Darth
 GAME( 1979, moonbase, invadpt2, invadpt2, invadpt2, 0, ROT270, "Nichibutsu", "Moon Base", GAME_SUPPORTS_SAVE )
 GAMEL(19??, invrvnge, 0,        invrvnge, invrvnge, 0, ROT270, "Zenitone-Microsec Ltd.", "Invader's Revenge",  GAME_SUPPORTS_SAVE | GAME_IMPERFECT_SOUND, layout_invrvnge )
 GAMEL(19??, invrvnga, invrvnge, invrvnge, invrvnge, 0, ROT270, "Zenitone-Microsec Ltd. (Dutchford license)", "Invader's Revenge (Dutchford)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_SOUND, layout_invrvnge )
-GAME( 1980, spclaser, 0,        invaders, spclaser, 0, ROT270, "GamePlan (Taito)", "Space Laser", GAME_SUPPORTS_SAVE )
+GAME( 1980, spclaser, 0,        invaders, spclaser, 0, ROT270, "Taito", "Space Laser", GAME_SUPPORTS_SAVE )
+GAME( 1980, intruder, spclaser, invaders, spclaser, 0, ROT270, "GamePlan (Taito)", "Intruder", GAME_SUPPORTS_SAVE )
 GAME( 1980, laser,    spclaser, invaders, spclaser, 0, ROT270, "Leisure Time Electronics Inc.", "Astro Laser", GAME_SUPPORTS_SAVE )
 GAME( 1979, spcewarl, spclaser, invaders, spclaser, 0, ROT270, "Leijac Corporation (Konami)","Space War (Leijac Corporation)", GAME_SUPPORTS_SAVE )
 GAME( 1979, rollingc, 0,        rollingc, rollingc, 0, ROT270, "Nichibutsu", "Rolling Crash / Moon Base", GAME_SUPPORTS_SAVE )
@@ -2595,3 +2604,4 @@ GAME( 1979, spaceph,  ozmawars, invaders, spaceph,  0, ROT270, "Zilec Games", "S
 GAME( 1979, yosakdon, 0,        yosakdon, yosakdon, 0, ROT270, "Wing", "Yosaku To Donbei (set 1)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_SOUND ) /* bootleg? */
 GAME( 1979, yosakdoa, yosakdon, yosakdon, yosakdon, 0, ROT270, "Wing", "Yosaku To Donbei (set 2)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_SOUND ) /* bootleg? */
 GAMEL(1979, shuttlei, 0,        shuttlei, shuttlei, 0, ROT270, "Omori", "Shuttle Invader", GAME_SUPPORTS_SAVE | GAME_NO_COCKTAIL, layout_shuttlei )
+

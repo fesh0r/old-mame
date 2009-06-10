@@ -46,7 +46,7 @@ static INTERRUPT_GEN( ironhors_interrupt )
 
 static WRITE8_HANDLER( ironhors_sh_irqtrigger_w )
 {
-	cpu_set_input_line_and_vector(space->machine->cpu[1],0,HOLD_LINE,0xff);
+	cputag_set_input_line_and_vector(space->machine, "soundcpu", 0, HOLD_LINE, 0xff);
 }
 
 static WRITE8_DEVICE_HANDLER( ironhors_filter_w )
@@ -335,12 +335,12 @@ static MACHINE_DRIVER_START( ironhors )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809,18432000/6)        /* 3.072 MHz??? mod by Shingo Suzuki 1999/10/15 */
-	MDRV_CPU_PROGRAM_MAP(master_map, 0)
+	MDRV_CPU_PROGRAM_MAP(master_map)
 	MDRV_CPU_VBLANK_INT_HACK(ironhors_interrupt,8)
 
 	MDRV_CPU_ADD("soundcpu",Z80,18432000/6)		 /* 3.072 MHz */
-	MDRV_CPU_PROGRAM_MAP(slave_map, 0)
-	MDRV_CPU_IO_MAP(slave_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(slave_map)
+	MDRV_CPU_IO_MAP(slave_io_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -390,7 +390,7 @@ static INTERRUPT_GEN( farwest_interrupt )
 
 static READ8_DEVICE_HANDLER( farwest_soundlatch_r )
 {
-	return soundlatch_r(cpu_get_address_space(device->machine->cpu[1], ADDRESS_SPACE_PROGRAM),0);
+	return soundlatch_r(cputag_get_address_space(device->machine, "soundcpu", ADDRESS_SPACE_PROGRAM),0);
 }
 
 static const ym2203_interface farwest_ym2203_config =
@@ -412,12 +412,12 @@ static MACHINE_DRIVER_START( farwest )
 	MDRV_IMPORT_FROM(ironhors)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(farwest_master_map, 0)
+	MDRV_CPU_PROGRAM_MAP(farwest_master_map)
 	MDRV_CPU_VBLANK_INT_HACK(farwest_interrupt,255)
 
 	MDRV_CPU_MODIFY("soundcpu")
-	MDRV_CPU_PROGRAM_MAP(farwest_slave_map, 0)
-	MDRV_CPU_IO_MAP(0, 0)
+	MDRV_CPU_PROGRAM_MAP(farwest_slave_map)
+	MDRV_CPU_IO_MAP(0)
 
 	MDRV_GFXDECODE(farwest)
 	MDRV_VIDEO_START(farwest)

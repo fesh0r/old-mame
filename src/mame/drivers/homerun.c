@@ -81,7 +81,7 @@ GFXDECODE_END
 
 static ADDRESS_MAP_START( homerun_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
-	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK1)
+	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK(1))
 	AM_RANGE(0x8000, 0x9fff) AM_RAM_WRITE(homerun_videoram_w) AM_BASE(&homerun_videoram)
 	AM_RANGE(0xa000, 0xa0ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xb000, 0xb0ff) AM_WRITE(homerun_color_w)
@@ -188,8 +188,8 @@ INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( homerun )
 	MDRV_CPU_ADD("maincpu", Z80, 5000000)
-	MDRV_CPU_PROGRAM_MAP(homerun_memmap, 0)
-	MDRV_CPU_IO_MAP(homerun_iomap, 0)
+	MDRV_CPU_PROGRAM_MAP(homerun_memmap)
+	MDRV_CPU_IO_MAP(homerun_iomap)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_MACHINE_RESET(homerun)

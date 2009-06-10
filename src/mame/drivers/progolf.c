@@ -183,11 +183,11 @@ static INTERRUPT_GEN( progolf_interrupt )
 static MACHINE_DRIVER_START( progolf )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, 2000000)		 /* ? */
-	MDRV_CPU_PROGRAM_MAP(main_cpu,0)
+	MDRV_CPU_PROGRAM_MAP(main_cpu)
 //  MDRV_CPU_VBLANK_INT("screen", progolf_interrupt)
 
   	MDRV_CPU_ADD("audiocpu", M6502, 500000)
-	MDRV_CPU_PROGRAM_MAP(sound_cpu,0)
+	MDRV_CPU_PROGRAM_MAP(sound_cpu)
 //  MDRV_CPU_VBLANK_INT("screen",nmi_line_pulse)
 
 	/* video hardware */
@@ -267,7 +267,7 @@ static DRIVER_INIT( progolf )
 	int A;
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 *rom = memory_region(machine, "maincpu");
-	UINT8* decrypted = auto_malloc(0x10000);
+	UINT8* decrypted = auto_alloc_array(machine, UINT8, 0x10000);
 
 	memory_set_decrypted_region(space,0x0000,0xffff, decrypted);
 

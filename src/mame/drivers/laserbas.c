@@ -25,8 +25,8 @@ static int vrambank=0;
 
 static VIDEO_START(laserbas)
 {
-	vram1=auto_malloc(0x8000);
-	vram2=auto_malloc(0x8000);
+	vram1=auto_alloc_array(machine, UINT8, 0x8000);
+	vram2=auto_alloc_array(machine, UINT8, 0x8000);
 }
 
 static VIDEO_UPDATE(laserbas)
@@ -130,8 +130,8 @@ static INTERRUPT_GEN( laserbas_interrupt )
 
 static MACHINE_DRIVER_START( laserbas )
 	MDRV_CPU_ADD("maincpu", Z80, 4000000)
-	MDRV_CPU_PROGRAM_MAP(laserbas_memory,0)
-	MDRV_CPU_IO_MAP(laserbas_io,0)
+	MDRV_CPU_PROGRAM_MAP(laserbas_memory)
+	MDRV_CPU_IO_MAP(laserbas_io)
 	MDRV_CPU_VBLANK_INT_HACK(laserbas_interrupt,2)
 
 
@@ -238,4 +238,4 @@ ROM_END
 
 GAME( 1981, laserbas, 0,        laserbas, laserbas, 0, ROT270, "Amstar/HOEI", "Laser Base (set 1)", GAME_NO_SOUND | GAME_NOT_WORKING)
 GAME( 1981, laserbsa, laserbas, laserbas, laserbas, 0, ROT270, "Amstar/HOEI", "Laser Base (set 2)", GAME_NO_SOUND | GAME_NOT_WORKING )
-GAME( 19??, futflash, laserbas, laserbas, laserbas, 0, ROT270, "HOEI",        "Future Flash",       GAME_NO_SOUND | GAME_NOT_WORKING)
+GAME( 1981, futflash, laserbas, laserbas, laserbas, 0, ROT270, "HOEI",        "Future Flash",       GAME_NO_SOUND | GAME_NOT_WORKING)

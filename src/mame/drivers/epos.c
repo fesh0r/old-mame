@@ -60,29 +60,18 @@ static WRITE8_HANDLER( dealer_decrypt_rom )
  *
  *************************************/
 
-static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x77ff) AM_READ(SMH_ROM)
-	AM_RANGE(0x7800, 0xffff) AM_READ(SMH_RAM)
+static ADDRESS_MAP_START( epos_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x77ff) AM_ROM
+	AM_RANGE(0x7800, 0x7fff) AM_RAM
+	AM_RANGE(0x8000, 0xffff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x77ff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x7800, 0x7fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-ADDRESS_MAP_END
-
-
-static ADDRESS_MAP_START( dealer_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x5fff) AM_READ(SMH_BANK1)
-	AM_RANGE(0x6000, 0x6fff) AM_READ(SMH_BANK2)
-	AM_RANGE(0x7000, 0xffff) AM_READ(SMH_RAM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( dealer_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x6fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x7000, 0x7fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+static ADDRESS_MAP_START( dealer_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x5fff) AM_ROMBANK(1)
+	AM_RANGE(0x6000, 0x6fff) AM_ROMBANK(2)
+	AM_RANGE(0x7000, 0x7fff) AM_RAM
+	AM_RANGE(0x8000, 0xffff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
 ADDRESS_MAP_END
 
 /*************************************
@@ -382,8 +371,8 @@ static MACHINE_DRIVER_START( epos )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 11000000/4)	/* 2.75 MHz (see notes) */
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_IO_MAP(io_map,0)
+	MDRV_CPU_PROGRAM_MAP(epos_map)
+	MDRV_CPU_IO_MAP(io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
@@ -406,8 +395,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( dealer )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 11000000/4)	/* 2.75 MHz (see notes) */
-	MDRV_CPU_PROGRAM_MAP(dealer_readmem,dealer_writemem)
-	MDRV_CPU_IO_MAP(dealer_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(dealer_map)
+	MDRV_CPU_IO_MAP(dealer_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_PPI8255_ADD( "ppi8255", ppi8255_intf )

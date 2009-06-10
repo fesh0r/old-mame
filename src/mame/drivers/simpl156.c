@@ -176,9 +176,9 @@ static READ32_HANDLER(  simpl156_system_r )
 
 static WRITE32_HANDLER( simpl156_eeprom_w )
 {
-	int okibank;
+	//int okibank;
 
-	okibank = data & 0x07;
+	//okibank = data & 0x07;
 
 	okim6295_set_bank_base(devtag_get_device(space->machine, "okimusic"), 0x40000 * (data & 0x7) );
 
@@ -460,7 +460,7 @@ static MACHINE_DRIVER_START( chainrec )
 	/* basic machine hardware */
 
 	MDRV_CPU_ADD("maincpu", ARM, 28000000 /* /4 */)	/*DE156*/ /* 7.000 MHz */ /* measured at 7.. seems to need 28? */
-	MDRV_CPU_PROGRAM_MAP(chainrec_map,0)
+	MDRV_CPU_PROGRAM_MAP(chainrec_map)
 	MDRV_CPU_VBLANK_INT("screen", simpl156_vbl_interrupt)
 
 	MDRV_NVRAM_HANDLER(simpl156) // 93C45
@@ -496,28 +496,28 @@ static MACHINE_DRIVER_START( magdrop )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(chainrec)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(magdrop_map,0)
+	MDRV_CPU_PROGRAM_MAP(magdrop_map)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( magdropp )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(chainrec)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(magdropp_map,0)
+	MDRV_CPU_PROGRAM_MAP(magdropp_map)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( joemacr )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(chainrec)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(joemacr_map,0)
+	MDRV_CPU_PROGRAM_MAP(joemacr_map)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( mitchell156 )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(chainrec)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(mitchell156_map,0)
+	MDRV_CPU_PROGRAM_MAP(mitchell156_map)
 
 	MDRV_SOUND_REPLACE("okimusic", OKIM6295, 32220000/32)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high)
@@ -530,7 +530,7 @@ static DRIVER_INIT(simpl156)
 {
 	UINT8 *rom = memory_region(machine, "okimusic");
 	int length = memory_region_length(machine, "okimusic");
-	UINT8 *buf1 = malloc_or_die(length);
+	UINT8 *buf1 = alloc_array_or_die(UINT8, length);
 
 	UINT32 x;
 
@@ -1138,7 +1138,7 @@ static READ32_HANDLER( joemacr_speedup_r )
 
 static DRIVER_INIT (joemacr)
 {
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0201018, 0x020101b, 0, 0, joemacr_speedup_r );
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0201018, 0x020101b, 0, 0, joemacr_speedup_r );
 	DRIVER_INIT_CALL(simpl156);
 }
 
@@ -1150,7 +1150,7 @@ static READ32_HANDLER( chainrec_speedup_r )
 
 static DRIVER_INIT (chainrec)
 {
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0201018, 0x020101b, 0, 0, chainrec_speedup_r );
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0201018, 0x020101b, 0, 0, chainrec_speedup_r );
 	DRIVER_INIT_CALL(simpl156);
 	simpl156_default_eeprom = chainrec_eeprom;
 }
@@ -1163,14 +1163,14 @@ static READ32_HANDLER( prtytime_speedup_r )
 
 static DRIVER_INIT (prtytime)
 {
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0201ae0, 0x0201ae3, 0, 0, prtytime_speedup_r );
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0201ae0, 0x0201ae3, 0, 0, prtytime_speedup_r );
 	DRIVER_INIT_CALL(simpl156);
 	simpl156_default_eeprom = prtytime_eeprom;
 }
 
 static DRIVER_INIT (gangonta)
 {
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0201ae0, 0x0201ae3, 0, 0, prtytime_speedup_r );
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0201ae0, 0x0201ae3, 0, 0, prtytime_speedup_r );
 	DRIVER_INIT_CALL(simpl156);
 	simpl156_default_eeprom = gangonta_eeprom;
 }
@@ -1184,7 +1184,7 @@ static READ32_HANDLER( charlien_speedup_r )
 
 static DRIVER_INIT (charlien)
 {
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0201010, 0x0201013, 0, 0, charlien_speedup_r );
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0201010, 0x0201013, 0, 0, charlien_speedup_r );
 	DRIVER_INIT_CALL(simpl156);
 }
 
@@ -1196,7 +1196,7 @@ static READ32_HANDLER( osman_speedup_r )
 
 static DRIVER_INIT (osman)
 {
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0201010, 0x0201013, 0, 0, osman_speedup_r );
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0201010, 0x0201013, 0, 0, osman_speedup_r );
 	DRIVER_INIT_CALL(simpl156);
 	simpl156_default_eeprom = osman_eeprom;
 
@@ -1204,7 +1204,7 @@ static DRIVER_INIT (osman)
 
 static DRIVER_INIT (candance)
 {
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x0201010, 0x0201013, 0, 0, osman_speedup_r );
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0201010, 0x0201013, 0, 0, osman_speedup_r );
 	DRIVER_INIT_CALL(simpl156);
 	simpl156_default_eeprom = candance_eeprom;
 }

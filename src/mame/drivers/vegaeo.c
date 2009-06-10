@@ -130,7 +130,7 @@ INPUT_PORTS_END
 
 static VIDEO_START( vega )
 {
-	vega_vram = auto_malloc(0x14000*2);
+	vega_vram = auto_alloc_array(machine, UINT32, 0x14000*2/4);
 }
 
 static VIDEO_UPDATE( vega )
@@ -164,7 +164,7 @@ static VIDEO_UPDATE( vega )
 
 static MACHINE_DRIVER_START( vega )
 	MDRV_CPU_ADD("cpu", GMS30C2132, 55000000)	/* 55 MHz */
-	MDRV_CPU_PROGRAM_MAP(vega_map,0)
+	MDRV_CPU_PROGRAM_MAP(vega_map)
 	MDRV_CPU_VBLANK_INT_HACK(eolith_speedup,262)
 
 	/* sound cpu */

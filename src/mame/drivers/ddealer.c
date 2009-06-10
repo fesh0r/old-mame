@@ -575,7 +575,7 @@ static INTERRUPT_GEN( ddealer_interrupt )
 
 static MACHINE_DRIVER_START( ddealer )
 	MDRV_CPU_ADD("maincpu" , M68000, 10000000)
-	MDRV_CPU_PROGRAM_MAP(ddealer,0)
+	MDRV_CPU_PROGRAM_MAP(ddealer)
 	MDRV_CPU_VBLANK_INT("screen", ddealer_interrupt)
 	MDRV_CPU_PERIODIC_INT(irq1_line_hold, 90)//guess,controls music tempo,112 is way too fast
 
@@ -627,7 +627,7 @@ static READ16_HANDLER( ddealer_mcu_r )
 
 static DRIVER_INIT( ddealer )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xfe01c, 0xfe01d, 0, 0, ddealer_mcu_r );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xfe01c, 0xfe01d, 0, 0, ddealer_mcu_r );
 }
 
 ROM_START( ddealer )

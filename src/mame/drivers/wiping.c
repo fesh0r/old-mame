@@ -35,18 +35,7 @@ dip: 6.7 7.7
 ***************************************************************************/
 #include "driver.h"
 #include "cpu/z80/z80.h"
-
-
-WRITE8_HANDLER( wiping_flipscreen_w );
-PALETTE_INIT( wiping );
-VIDEO_UPDATE( wiping );
-
-extern UINT8 *wiping_soundregs;
-
-DEVICE_GET_INFO( wiping_sound );
-#define SOUND_WIPING DEVICE_GET_INFO_NAME(wiping_sound)
-
-WRITE8_HANDLER( wiping_sound_w );
+#include "includes/wiping.h"
 
 
 static UINT8 *sharedram1,*sharedram2;
@@ -88,9 +77,9 @@ static READ8_HANDLER( ports_r )
 static WRITE8_HANDLER( subcpu_reset_w )
 {
 	if (data & 1)
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_RESET, CLEAR_LINE);
 	else
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
+		cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 
@@ -293,11 +282,11 @@ static MACHINE_DRIVER_START( wiping )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,18432000/6)	/* 3.072 MHz */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,18432000/6)	/* 3.072 MHz */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold,120)	/* periodic interrupt, don't know about the frequency */
 
 	/* video hardware */

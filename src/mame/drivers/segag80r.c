@@ -160,7 +160,7 @@ static INPUT_CHANGED( service_switch )
 {
 	/* pressing the service switch sends an NMI */
 	if (newval)
-		cpu_set_input_line(field->port->machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
+		cputag_set_input_line(field->port->machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -296,9 +296,9 @@ static WRITE8_HANDLER( coin_count_w )
 
 static WRITE8_DEVICE_HANDLER( sindbadm_soundport_w )
 {
-	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
-	soundlatch_w(space,0,data);
-	cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	soundlatch_w(space, 0, data);
+	cputag_set_input_line(device->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 	cpuexec_boost_interleave(device->machine, attotime_zero, ATTOTIME_IN_USEC(50));
 }
 
@@ -834,8 +834,8 @@ static MACHINE_DRIVER_START( g80r_base )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, VIDEO_CLOCK/4)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_IO_MAP(main_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
+	MDRV_CPU_IO_MAP(main_portmap)
 	MDRV_CPU_VBLANK_INT("screen", segag80r_vblank_start)
 
 	MDRV_MACHINE_START(g80r)
@@ -873,7 +873,7 @@ static MACHINE_DRIVER_START( 005 )
 	MDRV_IMPORT_FROM(g80r_base)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(main_ppi8255_portmap,0)
+	MDRV_CPU_IO_MAP(main_ppi8255_portmap)
 
 	/* sound boards */
 	MDRV_IMPORT_FROM(005_sound_board)
@@ -903,7 +903,7 @@ static MACHINE_DRIVER_START( monsterb )
 	MDRV_IMPORT_FROM(g80r_base)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(main_ppi8255_portmap,0)
+	MDRV_CPU_IO_MAP(main_ppi8255_portmap)
 
 	/* background board changes */
 	MDRV_GFXDECODE(monsterb)
@@ -934,7 +934,7 @@ static MACHINE_DRIVER_START( sindbadm )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(g80r_base)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(sindbadm_portmap,0)
+	MDRV_CPU_IO_MAP(sindbadm_portmap)
 	MDRV_CPU_VBLANK_INT("screen", sindbadm_vblank_start)
 
 	MDRV_PPI8255_ADD( "ppi8255", sindbadm_ppi_intf )
@@ -946,7 +946,7 @@ static MACHINE_DRIVER_START( sindbadm )
 	/* sound boards */
 
 	MDRV_CPU_ADD("audiocpu", Z80, SINDBADM_SOUND_CLOCK/2)
-	MDRV_CPU_PROGRAM_MAP(sindbadm_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sindbadm_sound_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)
 
 	/* sound hardware */
@@ -1396,7 +1396,7 @@ static void monsterb_expand_gfx(running_machine *machine, const char *region)
 	/* expand the background ROMs; A11/A12 of each ROM is independently controlled via */
 	/* banking */
 	dest = memory_region(machine, region);
-	temp = malloc_or_die(0x4000);
+	temp = alloc_array_or_die(UINT8, 0x4000);
 	memcpy(temp, dest, 0x4000);
 
 	/* 16 effective total banks */
@@ -1425,11 +1425,11 @@ static DRIVER_INIT( astrob )
 	segag80r_background_pcb = G80_BACKGROUND_NONE;
 
 	/* install speech board */
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x38, 0x38, 0, 0, sega_speech_data_w);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x3b, 0x3b, 0, 0, sega_speech_control_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x38, 0x38, 0, 0, sega_speech_data_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x3b, 0x3b, 0, 0, sega_speech_control_w);
 
 	/* install Astro Blaster sound board */
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x3e, 0x3f, 0, 0, astrob_sound_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x3e, 0x3f, 0, 0, astrob_sound_w);
 }
 
 
@@ -1452,14 +1452,14 @@ static DRIVER_INIT( spaceod )
 	segag80r_background_pcb = G80_BACKGROUND_SPACEOD;
 
 	/* configure ports for the background board */
-	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x08, 0x0f, 0, 0, spaceod_back_port_r, spaceod_back_port_w);
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x08, 0x0f, 0, 0, spaceod_back_port_r, spaceod_back_port_w);
 
 	/* install Space Odyssey sound board */
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x0e, 0x0f, 0, 0, spaceod_sound_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x0e, 0x0f, 0, 0, spaceod_sound_w);
 
 	/* install our wacky mangled ports */
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xf8, 0xfb, 0, 0, spaceod_mangled_ports_r);
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xfc, 0xfc, 0, 0, spaceod_port_fc_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xf8, 0xfb, 0, 0, spaceod_mangled_ports_r);
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xfc, 0xfc, 0, 0, spaceod_port_fc_r);
 }
 
 
@@ -1473,8 +1473,8 @@ static DRIVER_INIT( monsterb )
 	monsterb_expand_gfx(machine, "gfx1");
 
 	/* install background board handlers */
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xb8, 0xbd, 0, 0, monsterb_back_port_w);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xe000, 0xffff, 0, 0, monsterb_vidram_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xb8, 0xbd, 0, 0, monsterb_back_port_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xe000, 0xffff, 0, 0, monsterb_vidram_w);
 }
 
 
@@ -1489,9 +1489,9 @@ static DRIVER_INIT( monster2 )
 	monsterb_expand_gfx(machine, "gfx1");
 
 	/* install background board handlers */
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xb4, 0xb5, 0, 0, pignewt_back_color_w);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xb8, 0xbd, 0, 0, pignewt_back_port_w);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xe000, 0xffff, 0, 0, pignewt_vidram_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xb4, 0xb5, 0, 0, pignewt_back_color_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xb8, 0xbd, 0, 0, pignewt_back_port_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xe000, 0xffff, 0, 0, pignewt_vidram_w);
 }
 
 
@@ -1505,13 +1505,13 @@ static DRIVER_INIT( pignewt )
 	monsterb_expand_gfx(machine, "gfx1");
 
 	/* install background board handlers */
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xb4, 0xb5, 0, 0, pignewt_back_color_w);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xb8, 0xbd, 0, 0, pignewt_back_port_w);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xe000, 0xffff, 0, 0, pignewt_vidram_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xb4, 0xb5, 0, 0, pignewt_back_color_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xb8, 0xbd, 0, 0, pignewt_back_port_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xe000, 0xffff, 0, 0, pignewt_vidram_w);
 
 	/* install Universal sound board */
-	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x3f, 0x3f, 0, 0, sega_usb_status_r, sega_usb_data_w);
-	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd000, 0xdfff, 0, 0, sega_usb_ram_r, usb_ram_w);
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x3f, 0x3f, 0, 0, sega_usb_status_r, sega_usb_data_w);
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd000, 0xdfff, 0, 0, sega_usb_ram_r, usb_ram_w);
 }
 
 
@@ -1525,8 +1525,8 @@ static DRIVER_INIT( sindbadm )
 	segag80r_background_pcb = G80_BACKGROUND_SINDBADM;
 
 	/* install background board handlers */
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0x40, 0x41, 0, 0, sindbadm_back_port_w);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xe000, 0xffff, 0, 0, sindbadm_vidram_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0x40, 0x41, 0, 0, sindbadm_back_port_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xe000, 0xffff, 0, 0, sindbadm_vidram_w);
 }
 
 

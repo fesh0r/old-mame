@@ -98,7 +98,7 @@ static UINT8 *brickzn_decrypt(running_machine *machine)
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8	*RAM	=	memory_region(machine, "maincpu");
 	size_t	size	=	memory_region_length(machine, "maincpu");
-	UINT8   *decrypt = auto_malloc(size);
+	UINT8   *decrypt = auto_alloc_array(machine, UINT8, size);
 	int i;
 
 	memory_set_decrypted_region(space, 0x0000, 0x7fff, decrypt);
@@ -208,7 +208,7 @@ static DRIVER_INIT( hardhea2 )
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8	*RAM	=	memory_region(machine, "maincpu");
 	size_t	size	=	memory_region_length(machine, "maincpu");
-	UINT8   *decrypt = 	auto_malloc(size);
+	UINT8   *decrypt = 	auto_alloc_array(machine, UINT8, size);
 	UINT8 x;
 	int i;
 
@@ -282,7 +282,7 @@ rom13:  0?, 1y, 2n, 3n      ?,?,?,? (palettes)
 	}
 
 	memory_configure_bank(machine, 1, 0, 16, memory_region(machine, "maincpu") + 0x10000, 0x4000);
-	memory_configure_bank(machine, 2, 0, 2, auto_malloc(0x2000 * 2), 0x2000);
+	memory_configure_bank(machine, 2, 0, 2, auto_alloc_array(machine, UINT8, 0x2000 * 2), 0x2000);
 }
 
 
@@ -295,7 +295,7 @@ static DRIVER_INIT( starfigh )
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8	*RAM	=	memory_region(machine, "maincpu");
 	size_t	size	=	memory_region_length(machine, "maincpu");
-	UINT8   *decrypt = 	auto_malloc(size);
+	UINT8   *decrypt = 	auto_alloc_array(machine, UINT8, size);
 	UINT8 x;
 	int i;
 
@@ -363,7 +363,7 @@ static DRIVER_INIT( sparkman )
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8	*RAM	=	memory_region(machine, "maincpu");
 	size_t	size	=	memory_region_length(machine, "maincpu");
-	UINT8   *decrypt = 	auto_malloc(size);
+	UINT8   *decrypt = 	auto_alloc_array(machine, UINT8, size);
 	UINT8 x;
 	int i;
 
@@ -963,7 +963,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( brickzn_pcm_w )
 {
-	static const char *dacs[] = { "dac1", "dac2", "dac3", "dac4" };
+	static const char *const dacs[] = { "dac1", "dac2", "dac3", "dac4" };
 	dac_signed_data_w( devtag_get_device(space->machine, dacs[offset & 3]), (data & 0xf) * 0x11 );
 }
 
@@ -1378,7 +1378,7 @@ GFXDECODE_END
 
 static void soundirq(const device_config *device, int state)
 {
-	cpu_set_input_line(device->machine->cpu[1], 0, state);
+	cputag_set_input_line(device->machine, "audiocpu", 0, state);
 }
 
 /* In games with only 2 CPUs, port A&B of the AY8910 are used
@@ -1411,13 +1411,13 @@ static MACHINE_DRIVER_START( hardhead )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, SUNA8_MASTER_CLOCK / 4)			/* ? */
-	MDRV_CPU_PROGRAM_MAP(hardhead_map,0)
-	MDRV_CPU_IO_MAP(hardhead_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(hardhead_map)
+	MDRV_CPU_IO_MAP(hardhead_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)	/* No NMI */
 
 	MDRV_CPU_ADD("audiocpu", Z80, SUNA8_MASTER_CLOCK / 4)					/* ? */
-	MDRV_CPU_PROGRAM_MAP(hardhead_sound_map,0)
-	MDRV_CPU_IO_MAP(hardhead_sound_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(hardhead_sound_map)
+	MDRV_CPU_IO_MAP(hardhead_sound_io_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)	/* No NMI */
 
 	/* video hardware */
@@ -1477,12 +1477,12 @@ static MACHINE_DRIVER_START( rranger )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, SUNA8_MASTER_CLOCK / 4)					/* ? */
-	MDRV_CPU_PROGRAM_MAP(rranger_map,0)
-	MDRV_CPU_IO_MAP(rranger_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(rranger_map)
+	MDRV_CPU_IO_MAP(rranger_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)	/* IRQ & NMI ! */
 
 	MDRV_CPU_ADD("audiocpu", Z80, SUNA8_MASTER_CLOCK / 4)					/* ? */
-	MDRV_CPU_PROGRAM_MAP(rranger_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(rranger_sound_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)	/* NMI = retn */
 
 	/* video hardware */
@@ -1539,16 +1539,16 @@ static MACHINE_DRIVER_START( brickzn )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, SUNA8_MASTER_CLOCK / 4)		/* SUNA PROTECTION BLOCK */
-	MDRV_CPU_PROGRAM_MAP(brickzn_map,0)
+	MDRV_CPU_PROGRAM_MAP(brickzn_map)
 //  MDRV_CPU_VBLANK_INT_HACK(brickzn_interrupt, 2)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)	// nmi breaks ramtest but is needed!
 
-	MDRV_CPU_ADD("soundcpu", Z80, SUNA8_MASTER_CLOCK / 4)	/* Z0840006PSC */
-	MDRV_CPU_PROGRAM_MAP(brickzn_sound_map,0)
+	MDRV_CPU_ADD("audiocpu", Z80, SUNA8_MASTER_CLOCK / 4)	/* Z0840006PSC */
+	MDRV_CPU_PROGRAM_MAP(brickzn_sound_map)
 
 	MDRV_CPU_ADD("pcm", Z80, SUNA8_MASTER_CLOCK / 4)	/* Z0840006PSC */
-	MDRV_CPU_PROGRAM_MAP(brickzn_pcm_map,0)
-	MDRV_CPU_IO_MAP(brickzn_pcm_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(brickzn_pcm_map)
+	MDRV_CPU_IO_MAP(brickzn_pcm_io_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -1607,7 +1607,7 @@ static INTERRUPT_GEN( hardhea2_interrupt )
 
 static MACHINE_RESET( hardhea2 )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	hardhea2_rambank_0_w(space,0,0);
 }
 
@@ -1615,7 +1615,7 @@ static MACHINE_DRIVER_START( hardhea2 )
 
 	MDRV_IMPORT_FROM( brickzn )
 	MDRV_CPU_MODIFY("maincpu")			/* SUNA T568009 */
-	MDRV_CPU_PROGRAM_MAP(hardhea2_map,0)
+	MDRV_CPU_PROGRAM_MAP(hardhea2_map)
 	MDRV_CPU_VBLANK_INT_HACK(hardhea2_interrupt,2)	/* IRQ & NMI */
 
 	MDRV_MACHINE_RESET(hardhea2)
@@ -1641,13 +1641,13 @@ static MACHINE_DRIVER_START( starfigh )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, SUNA8_MASTER_CLOCK / 4)					/* ? */
-	MDRV_CPU_PROGRAM_MAP(starfigh_map,0)
+	MDRV_CPU_PROGRAM_MAP(starfigh_map)
 	MDRV_CPU_VBLANK_INT_HACK(brickzn_interrupt,2)	/* IRQ & NMI */
 
 	/* The sound section is identical to that of hardhead */
 	MDRV_CPU_ADD("audiocpu", Z80, SUNA8_MASTER_CLOCK / 4)					/* ? */
-	MDRV_CPU_PROGRAM_MAP(hardhead_sound_map,0)
-	MDRV_CPU_IO_MAP(hardhead_sound_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(hardhead_sound_map)
+	MDRV_CPU_IO_MAP(hardhead_sound_io_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)	/* No NMI */
 
 	/* video hardware */
@@ -1700,12 +1700,12 @@ static MACHINE_DRIVER_START( sparkman )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, SUNA8_MASTER_CLOCK / 4)					/* ? */
-	MDRV_CPU_PROGRAM_MAP(sparkman_map,0)
+	MDRV_CPU_PROGRAM_MAP(sparkman_map)
 	MDRV_CPU_VBLANK_INT_HACK(sparkman_interrupt,2)	/* IRQ & NMI */
 
 	MDRV_CPU_ADD("audiocpu", Z80, SUNA8_MASTER_CLOCK / 4)				/* ? */
-	MDRV_CPU_PROGRAM_MAP(hardhead_sound_map,0)
-	MDRV_CPU_IO_MAP(hardhead_sound_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(hardhead_sound_map)
+	MDRV_CPU_IO_MAP(hardhead_sound_io_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)	/* No NMI */
 
 	/* video hardware */
@@ -2073,7 +2073,7 @@ ROM_START( brickzn )
 	ROM_LOAD( "brickzon.008", 0x10000, 0x20000, CRC(c61540ba) SHA1(08c0ede591b229427b910ca6bb904a6146110be8) )
 	ROM_LOAD( "brickzon.007", 0x30000, 0x20000, CRC(ceed12f1) SHA1(9006726b75a65455afb1194298bade8fa2207b4a) )
 
-	ROM_REGION( 0x10000, "soundcpu", 0 )		/* Music Z80 Code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )		/* Music Z80 Code */
 	ROM_LOAD( "brickzon.010", 0x00000, 0x10000, CRC(4eba8178) SHA1(9a214a1acacdc124529bc9dde73a8e884fc70293) )
 
 	ROM_REGION( 0x10000, "pcm", 0 )		/* PCM Z80 Code */
@@ -2094,7 +2094,7 @@ ROM_START( brickzn3 )
 	ROM_LOAD( "38",           0x10000, 0x20000, CRC(e16216e8) SHA1(e88ae97e8a632823d5f1fe500954b6f6542407d5) )
 	ROM_LOAD( "brickzon.007", 0x30000, 0x20000, CRC(ceed12f1) SHA1(9006726b75a65455afb1194298bade8fa2207b4a) )
 
-	ROM_REGION( 0x10000, "soundcpu", 0 )		/* Music Z80 Code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )		/* Music Z80 Code */
 	ROM_LOAD( "brickzon.010", 0x00000, 0x10000, CRC(4eba8178) SHA1(9a214a1acacdc124529bc9dde73a8e884fc70293) )
 
 	ROM_REGION( 0x10000, "pcm", 0 )		/* PCM Z80 Code */
@@ -2155,7 +2155,7 @@ ROM_START( hardhea2 )
 	ROM_LOAD( "hrd-hd12", 0x30000, 0x10000, CRC(35d13212) SHA1(2fd03077b89ec9e55d2758b7f9cada970f0bdd91) )
 	ROM_LOAD( "hrd-hd13", 0x40000, 0x10000, CRC(3225e7d7) SHA1(2da9d1ce182dab8d9e09772e6899676b84c7458c) )
 
-	ROM_REGION( 0x10000, "soundcpu", 0 )		/* Music Z80 Code */
+	ROM_REGION( 0x10000, "audiocpu", 0 )		/* Music Z80 Code */
 	ROM_LOAD( "hrd-hd14", 0x00000, 0x08000, CRC(79a3be51) SHA1(30bc67cd3a936615c6931f8e15953425dff59611) )
 
 	ROM_REGION( 0x10000, "pcm", 0 )		/* PCM Z80 Code */

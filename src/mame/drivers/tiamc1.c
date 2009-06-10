@@ -120,7 +120,7 @@
 
 static MACHINE_RESET( tiamc1 )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	tiamc1_bankswitch_w(space, 0, 0);
 }
 
@@ -221,8 +221,8 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( tiamc1 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", 8080,16000000/9)		 /* 16 MHz */
-	MDRV_CPU_PROGRAM_MAP(tiamc1_map,0)
-	MDRV_CPU_IO_MAP(tiamc1_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(tiamc1_map)
+	MDRV_CPU_IO_MAP(tiamc1_io_map)
 
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 

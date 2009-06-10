@@ -15,20 +15,6 @@ static int sshangha_pf1_bank,sshangha_pf2_bank,sshangha_video_control;
 
 /******************************************************************************/
 
-WRITE16_HANDLER( sshangha_palette_24bit_w )
-{
-	int r,g,b;
-
-	COMBINE_DATA(&paletteram16[offset]);
-	if (offset&1) offset--;
-
-	b = (paletteram16[offset] >> 0) & 0xff;
-	g = (paletteram16[offset+1] >> 8) & 0xff;
-	r = (paletteram16[offset+1] >> 0) & 0xff;
-
-	palette_set_color(space->machine,offset/2,MAKE_RGB(r,g,b));
-}
-
 static void sshangha_tilemap_draw(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	const bitmap_t *bitmap0 = tilemap_get_pixmap(pf1_16x16_tilemap);
@@ -232,8 +218,8 @@ VIDEO_UPDATE( sshangha )
 	tilemap_set_scrolly( pf1_8x8_tilemap,0, sshangha_control_0[2] );
 	tilemap_set_scrolly( pf1_16x16_tilemap,0, sshangha_control_0[2] );
 
-	if ((sshangha_control_0[5]&0x8000)==0)
-		bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
+	//if ((sshangha_control_0[5]&0x8000)==0) /* <- used on hot-b logo and girl presentation screens */
+	bitmap_fill(bitmap,cliprect,get_black_pen(screen->machine));
 
 	/* Super Shanghai has a mode where the two tilemaps are combined to
     produce a 6bpp tilemap.  We can't precompute this as any tiles can be

@@ -13,8 +13,8 @@
   OSC  : 28.0000MHz 16.0000MHz
 
   The original uses a protection chip which isn't fully worked out yet.
-  Sound doesn't work.  The bootleg never seems to write to a sound latch
-  (Not sure the bootleg even has the same sound hardware as the original).
+  Sound doesn't work for the original set, probably the sound ports are inside
+  the protection area.
 
   Emulation by Bryan McPhail, mish@tendril.co.uk
 
@@ -65,14 +65,15 @@ VIDEO_UPDATE( sshangha );
 WRITE16_HANDLER( sshangha_pf2_data_w );
 WRITE16_HANDLER( sshangha_pf1_data_w );
 WRITE16_HANDLER( sshangha_control_0_w );
-WRITE16_HANDLER( sshangha_palette_24bit_w );
-WRITE16_HANDLER (sshangha_video_w);
+WRITE16_HANDLER( sshangha_video_w );
 
 extern UINT16 *sshangha_pf1_data;
 extern UINT16 *sshangha_pf2_data;
 extern UINT16 *sshangha_pf1_rowscroll, *sshangha_pf2_rowscroll;
 
 static UINT16 *sshangha_prot_data;
+
+static UINT16 *sshangha_sound_shared_ram;
 
 /******************************************************************************/
 
@@ -81,17 +82,6 @@ static WRITE16_HANDLER( sshangha_protection16_w )
 	COMBINE_DATA(&sshangha_prot_data[offset]);
 
 	logerror("CPU #0 PC %06x: warning - write unmapped control address %06x %04x\n",cpu_get_pc(space->cpu),offset<<1,data);
-
-	if (offset == (0x260 >> 1)) {
-		//soundlatch_w(0,data&0xff);
-		//cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
-	}
-}
-
-static WRITE16_HANDLER( sshangha_sound_w )
-{
-	soundlatch_w(space,0,data&0xff);
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
 }
 
 /* Protection/IO chip 146 */
@@ -124,6 +114,7 @@ static READ16_HANDLER( sshanghb_protection16_r )
 		case 0x0ac >> 1:
 			return input_port_read(space->machine, "DSW");
 	}
+
 	return sshangha_prot_data[offset];
 }
 
@@ -137,7 +128,7 @@ static READ16_HANDLER( deco_71_r )
 
 static MACHINE_RESET( sshangha )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	/* Such thing is needed as there is no code to turn the screen
        to normal orientation when the game is reset.
        I'm using the value that forces the screen to be in normal
@@ -149,56 +140,80 @@ static MACHINE_RESET( sshangha )
 
 /******************************************************************************/
 
-static ADDRESS_MAP_START( sshangha_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+static ADDRESS_MAP_START( sshangha_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x03ffff) AM_ROM
+	AM_RANGE(0x100000, 0x10000f) AM_RAM AM_BASE(&sshangha_sound_shared_ram)
 
-	AM_RANGE(0x084000, 0x0847ff) AM_READ(sshanghb_protection16_r)
-	AM_RANGE(0x101000, 0x101001) AM_READ(deco_71_r)//bootleg hack
-
-	AM_RANGE(0x200000, 0x207fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x340000, 0x340fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x350000, 0x350001) AM_READ(deco_71_r)
-	AM_RANGE(0x360000, 0x360fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x370000, 0x370001) AM_READ(deco_71_r)
-	AM_RANGE(0x380000, 0x383fff) AM_READ(SMH_RAM)
-	AM_RANGE(0xfec000, 0xff3fff) AM_READ(SMH_RAM)
-	AM_RANGE(0xff4000, 0xff47ff) AM_READ(sshangha_protection16_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( sshangha_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x10000c, 0x10000d) AM_WRITE(sshangha_sound_w)
-	AM_RANGE(0x10100c, 0x10100d) AM_WRITE(sshangha_sound_w)	/* the bootleg writes here */
-	AM_RANGE(0x200000, 0x201fff) AM_WRITE(sshangha_pf1_data_w) AM_BASE(&sshangha_pf1_data)
-	AM_RANGE(0x202000, 0x203fff) AM_WRITE(sshangha_pf2_data_w) AM_BASE(&sshangha_pf2_data)
-	AM_RANGE(0x204000, 0x2047ff) AM_WRITE(SMH_RAM) AM_BASE(&sshangha_pf1_rowscroll)
-	AM_RANGE(0x206000, 0x2067ff) AM_WRITE(SMH_RAM) AM_BASE(&sshangha_pf2_rowscroll)
+	AM_RANGE(0x200000, 0x201fff) AM_RAM_WRITE(sshangha_pf1_data_w) AM_BASE(&sshangha_pf1_data)
+	AM_RANGE(0x202000, 0x203fff) AM_RAM_WRITE(sshangha_pf2_data_w) AM_BASE(&sshangha_pf2_data)
+	AM_RANGE(0x204000, 0x2047ff) AM_RAM AM_BASE(&sshangha_pf1_rowscroll)
+	AM_RANGE(0x206000, 0x2067ff) AM_RAM AM_BASE(&sshangha_pf2_rowscroll)
+	AM_RANGE(0x206800, 0x207fff) AM_RAM
 	AM_RANGE(0x300000, 0x30000f) AM_WRITE(sshangha_control_0_w)
 	AM_RANGE(0x320000, 0x320001) AM_WRITE(sshangha_video_w)
 	AM_RANGE(0x320002, 0x320005) AM_WRITENOP
-	AM_RANGE(0x340000, 0x340fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16)
+	AM_RANGE(0x320006, 0x320007) AM_READNOP //irq ack
+
+	AM_RANGE(0x340000, 0x340fff) AM_RAM AM_BASE(&spriteram16)
+	AM_RANGE(0x350000, 0x350001) AM_READ(deco_71_r)
 	AM_RANGE(0x350000, 0x350007) AM_WRITENOP
-	AM_RANGE(0x360000, 0x360fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16_2)
+	AM_RANGE(0x360000, 0x360fff) AM_RAM AM_BASE(&spriteram16_2)
+	AM_RANGE(0x370000, 0x370001) AM_READ(deco_71_r)
 	AM_RANGE(0x370000, 0x370007) AM_WRITENOP
-	AM_RANGE(0x380000, 0x383fff) AM_WRITE(sshangha_palette_24bit_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x3c0000, 0x3c0fff) AM_WRITE(SMH_RAM)	/* Sprite ram buffer on bootleg only?? */
-	AM_RANGE(0xfec000, 0xff3fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xff4000, 0xff47ff) AM_WRITE(sshangha_protection16_w) AM_BASE(&sshangha_prot_data)
+	AM_RANGE(0x380000, 0x383fff) AM_RAM_WRITE(paletteram16_xbgr_word_be_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x3c0000, 0x3c0fff) AM_RAM	/* Sprite ram buffer on bootleg only?? */
+	AM_RANGE(0xfec000, 0xff3fff) AM_RAM
+	AM_RANGE(0xff4000, 0xff47ff) AM_READWRITE(sshangha_protection16_r,sshangha_protection16_w) AM_BASE(&sshangha_prot_data)
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( sshanghb_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x03ffff) AM_ROM
+	AM_RANGE(0x084000, 0x0847ff) AM_READ(sshanghb_protection16_r)
+	AM_RANGE(0x101000, 0x10100f) AM_RAM AM_BASE(&sshangha_sound_shared_ram) /* the bootleg writes here */
+
+	AM_RANGE(0x200000, 0x201fff) AM_RAM_WRITE(sshangha_pf1_data_w) AM_BASE(&sshangha_pf1_data)
+	AM_RANGE(0x202000, 0x203fff) AM_RAM_WRITE(sshangha_pf2_data_w) AM_BASE(&sshangha_pf2_data)
+	AM_RANGE(0x204000, 0x2047ff) AM_RAM AM_BASE(&sshangha_pf1_rowscroll)
+	AM_RANGE(0x206000, 0x2067ff) AM_RAM AM_BASE(&sshangha_pf2_rowscroll)
+	AM_RANGE(0x206800, 0x207fff) AM_RAM
+	AM_RANGE(0x300000, 0x30000f) AM_WRITE(sshangha_control_0_w)
+	AM_RANGE(0x320000, 0x320001) AM_WRITE(sshangha_video_w)
+	AM_RANGE(0x320002, 0x320005) AM_WRITENOP
+	AM_RANGE(0x320006, 0x320007) AM_READNOP //irq ack
+
+	AM_RANGE(0x340000, 0x340fff) AM_RAM AM_BASE(&spriteram16)
+	AM_RANGE(0x350000, 0x350001) AM_READ(deco_71_r)
+	AM_RANGE(0x350000, 0x350007) AM_WRITENOP
+	AM_RANGE(0x360000, 0x360fff) AM_RAM AM_BASE(&spriteram16_2)
+	AM_RANGE(0x370000, 0x370001) AM_READ(deco_71_r)
+	AM_RANGE(0x370000, 0x370007) AM_WRITENOP
+	AM_RANGE(0x380000, 0x383fff) AM_RAM_WRITE(paletteram16_xbgr_word_be_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x3c0000, 0x3c0fff) AM_RAM	/* Sprite ram buffer on bootleg only?? */
+	AM_RANGE(0xfec000, 0xff3fff) AM_RAM
+	AM_RANGE(0xff4000, 0xff47ff) AM_RAM
 ADDRESS_MAP_END
 
 /******************************************************************************/
 
-static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
-	AM_RANGE(0xc000, 0xc001) AM_DEVREAD("ym", ym2203_r)
-	AM_RANGE(0xf800, 0xffff) AM_READ(SMH_RAM)
-//  AM_RANGE(0xf800, 0xf800) AM_READ(soundlatch_r)
-ADDRESS_MAP_END
+/* 8 "sound latches" shared between main and sound cpus. */
 
-static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0xc000, 0xc001) AM_DEVWRITE("ym", ym2203_w)
-	AM_RANGE(0xf800, 0xffff) AM_WRITE(SMH_RAM)
+static READ8_HANDLER(sshangha_sound_shared_r)
+{
+	return sshangha_sound_shared_ram[offset] & 0xff;
+}
+
+static WRITE8_HANDLER(sshangha_sound_shared_w)
+{
+	sshangha_sound_shared_ram[offset] = data & 0xff;
+}
+
+/* Note: there's rom data after 0x8000 but the game never seem to call a rom bank, left-over? */
+static ADDRESS_MAP_START( sshangha_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0xc000, 0xc001) AM_DEVREADWRITE("ym", ym2203_r,ym2203_w)
+	AM_RANGE(0xc200, 0xc201) AM_DEVREADWRITE("oki",okim6295_r,okim6295_w)
+	AM_RANGE(0xf800, 0xf807) AM_READWRITE(sshangha_sound_shared_r,sshangha_sound_shared_w)
+	AM_RANGE(0xf808, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 /******************************************************************************/
@@ -325,7 +340,7 @@ GFXDECODE_END
 
 static void irqhandler(const device_config *device, int state)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,state);
+	cputag_set_input_line(device->machine, "audiocpu", 0, state);
 }
 
 static const ym2203_interface ym2203_config =
@@ -342,11 +357,13 @@ static MACHINE_DRIVER_START( sshangha )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 28000000/2)
-	MDRV_CPU_PROGRAM_MAP(sshangha_readmem,sshangha_writemem)
+	MDRV_CPU_PROGRAM_MAP(sshangha_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 16000000/4)
-	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
+	MDRV_CPU_PROGRAM_MAP(sshangha_sound_map)
+
+	MDRV_QUANTUM_TIME(HZ(6000))
 
 	MDRV_MACHINE_RESET(sshangha)	/* init machine */
 
@@ -367,7 +384,7 @@ static MACHINE_DRIVER_START( sshangha )
 	MDRV_VIDEO_UPDATE(sshangha)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker") /* sure it's stereo? */
 
 	MDRV_SOUND_ADD("ym", YM2203, 16000000/4)
 	MDRV_SOUND_CONFIG(ym2203_config)
@@ -378,6 +395,13 @@ static MACHINE_DRIVER_START( sshangha )
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7high) // clock frequency & pin 7 not verified
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.27)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.27)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( sshanghb )
+	MDRV_IMPORT_FROM( sshangha )
+
+	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_PROGRAM_MAP(sshanghb_map)
 MACHINE_DRIVER_END
 
 /******************************************************************************/
@@ -440,5 +464,5 @@ static DRIVER_INIT( sshangha )
 }
 
 
-GAME( 1992, sshangha, 0,        sshangha, sshangha, sshangha, ROT0, "Hot-B.",  "Super Shanghai Dragon's Eye (Japan)", GAME_UNEMULATED_PROTECTION | GAME_NO_SOUND )
-GAME( 1992, sshanghb, sshangha, sshangha, sshangha, sshangha, ROT0, "bootleg", "Super Shanghai Dragon's Eye (World, bootleg)", GAME_NO_SOUND )
+GAME( 1992, sshangha, 0,        sshangha, sshangha, sshangha, ROT0, "Hot-B.",  "Super Shanghai Dragon's Eye (Japan)", GAME_UNEMULATED_PROTECTION | GAME_NOT_WORKING )
+GAME( 1992, sshanghb, sshangha, sshanghb, sshangha, sshangha, ROT0, "bootleg", "Super Shanghai Dragon's Eye (World, bootleg)", 0 )

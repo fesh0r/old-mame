@@ -128,7 +128,7 @@ static WRITE8_HANDLER( sound_command_w )
 {
 	sound_cpu_busy = 1;
 	soundlatch_w(space, 0, data);
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static READ8_HANDLER( sound_command_r )
@@ -397,12 +397,12 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( mainsnk )
 	MDRV_CPU_ADD("maincpu", Z80, 3360000)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,4000000)
- 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
- 	MDRV_CPU_IO_MAP(sound_portmap,0)
+ 	MDRV_CPU_PROGRAM_MAP(sound_map)
+ 	MDRV_CPU_IO_MAP(sound_portmap)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, 244)
 
 	/* video hardware */

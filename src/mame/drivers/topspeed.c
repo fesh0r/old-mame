@@ -276,7 +276,7 @@ static void parse_control(running_machine *machine)	/* assumes Z80 sandwiched be
 	/* bit 0 enables cpu B */
 	/* however this fails when recovering from a save state
        if cpu B is disabled !! */
-	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(machine, "sub", INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
 
 }
 
@@ -300,14 +300,14 @@ static WRITE16_HANDLER( cpua_ctrl_w )
 
 static TIMER_CALLBACK( topspeed_interrupt6  )
 {
-	cpu_set_input_line(machine->cpu[0],6,HOLD_LINE);
+	cputag_set_input_line(machine, "maincpu", 6, HOLD_LINE);
 }
 
 /* 68000 B */
 
 static TIMER_CALLBACK( topspeed_cpub_interrupt6 )
 {
-	cpu_set_input_line(machine->cpu[2],6,HOLD_LINE);	/* assumes Z80 sandwiched between the 68Ks */
+	cputag_set_input_line(machine, "sub", 6, HOLD_LINE);	/* assumes Z80 sandwiched between the 68Ks */
 }
 
 
@@ -628,7 +628,7 @@ GFXDECODE_END
 
 static void irq_handler(const device_config *device, int irq)	/* assumes Z80 sandwiched between 68Ks */
 {
-	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2151_interface ym2151_config =
@@ -675,14 +675,14 @@ static MACHINE_DRIVER_START( topspeed )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 12000000)	/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(topspeed_map,0)
+	MDRV_CPU_PROGRAM_MAP(topspeed_map)
 	MDRV_CPU_VBLANK_INT("screen", topspeed_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80,16000000/4)	/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(z80_map,0)
+	MDRV_CPU_PROGRAM_MAP(z80_map)
 
 	MDRV_CPU_ADD("sub", M68000, 12000000)	/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(topspeed_cpub_map,0)
+	MDRV_CPU_PROGRAM_MAP(topspeed_cpub_map)
 	MDRV_CPU_VBLANK_INT("screen", topspeed_cpub_interrupt)
 
 	MDRV_MACHINE_START(topspeed)

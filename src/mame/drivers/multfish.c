@@ -80,11 +80,11 @@ static TILE_GET_INFO( get_multfish_reel_tile_info )
 
 static VIDEO_START(multfish)
 {
-	multfish_vid = auto_malloc(multfish_VIDRAM_SIZE);
+	multfish_vid = auto_alloc_array(machine, UINT8, multfish_VIDRAM_SIZE);
 	memset(multfish_vid,0x00,multfish_VIDRAM_SIZE);
 	state_save_register_global_pointer(machine, multfish_vid, multfish_VIDRAM_SIZE);
 
-	multfish_bram = auto_malloc(multfish_BRAM_SIZE);
+	multfish_bram = auto_alloc_array(machine, UINT8, multfish_BRAM_SIZE);
 	memset(multfish_bram,0x00,multfish_BRAM_SIZE);
 	state_save_register_global_pointer(machine, multfish_bram, multfish_BRAM_SIZE);
 
@@ -210,7 +210,7 @@ static READ8_HANDLER( ray_r )
 
 static ADDRESS_MAP_START( multfish_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READWRITE(SMH_ROM, multfish_vid_w)
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK1, SMH_ROM )
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK(1), SMH_ROM )
 	AM_RANGE(0xc000, 0xdfff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xe000, 0xffff) AM_READWRITE(bankedram_r, bankedram_w)
 ADDRESS_MAP_END
@@ -428,8 +428,8 @@ static const ay8910_interface ay8910_config =
 static MACHINE_DRIVER_START( multfish )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,6000000) /* 6 MHz? */
-	MDRV_CPU_PROGRAM_MAP(multfish_map,0)
-	MDRV_CPU_IO_MAP(multfish_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(multfish_map)
+	MDRV_CPU_IO_MAP(multfish_portmap)
 	MDRV_CPU_VBLANK_INT("screen",irq0_line_hold)
 
 	MDRV_MACHINE_RESET( multfish )

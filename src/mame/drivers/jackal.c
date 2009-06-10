@@ -148,8 +148,8 @@ static INPUT_PORTS_START( jackal )
 	PORT_DIPNAME( 0x60, 0x40, DEF_STR( Difficulty ) ) PORT_DIPLOCATION( "SW2:6,7" )
 	PORT_DIPSETTING(    0x60, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x20, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION( "SW2:8" )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -243,7 +243,7 @@ static INTERRUPT_GEN( jackal_interrupt )
 	if (irq_enable)
 	{
 		cpu_set_input_line(device, 0, HOLD_LINE);
-		cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+		cputag_set_input_line(device->machine, "slave", INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -252,11 +252,11 @@ static INTERRUPT_GEN( jackal_interrupt )
 static MACHINE_DRIVER_START( jackal )
 	// basic machine hardware
 	MDRV_CPU_ADD("master", M6809, MASTER_CLOCK/12) // verified on pcb
-	MDRV_CPU_PROGRAM_MAP(master_map, 0)
+	MDRV_CPU_PROGRAM_MAP(master_map)
 	MDRV_CPU_VBLANK_INT("screen", jackal_interrupt)
 
 	MDRV_CPU_ADD("slave", M6809, MASTER_CLOCK/12) // verified on pcb
-	MDRV_CPU_PROGRAM_MAP(slave_map, 0)
+	MDRV_CPU_PROGRAM_MAP(slave_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 

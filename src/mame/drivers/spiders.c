@@ -238,19 +238,19 @@ static WRITE_LINE_DEVICE_HANDLER( main_cpu_irq )
 						 					      pia6821_get_irq_b(pia2) |
 						 pia6821_get_irq_a(pia3) | pia6821_get_irq_b(pia3);
 
-	cpu_set_input_line(device->machine->cpu[0], M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "maincpu", M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static WRITE_LINE_DEVICE_HANDLER( main_cpu_firq )
 {
-	cpu_set_input_line(device->machine->cpu[0], M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "maincpu", M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static WRITE_LINE_DEVICE_HANDLER( audio_cpu_irq )
 {
-	cpu_set_input_line(device->machine->cpu[1], M6800_IRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", M6800_IRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -707,11 +707,11 @@ static MACHINE_DRIVER_START( spiders )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809, 2800000)
-	MDRV_CPU_PROGRAM_MAP(spiders_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(spiders_main_map)
 	MDRV_CPU_PERIODIC_INT(update_pia_1, 25)
 
 	MDRV_CPU_ADD("audiocpu", M6802, 3000000)
-	MDRV_CPU_PROGRAM_MAP(spiders_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(spiders_audio_map)
 
 	MDRV_MACHINE_START(spiders)
 	MDRV_NVRAM_HANDLER(generic_0fill)

@@ -554,7 +554,7 @@ static MACHINE_DRIVER_START( qix_base )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809, MAIN_CLOCK_OSC/4/4)	/* 1.25 MHz */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_CONFIG(encryption_config)	// for kram3
 
 	/* high interleave needed to ensure correct text in service mode */
@@ -585,7 +585,7 @@ static MACHINE_DRIVER_START( mcu )
 	MDRV_IMPORT_FROM(qix)
 
 	MDRV_CPU_ADD("mcu", M68705, COIN_CLOCK_OSC)	/* 1.00 MHz */
-	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
+	MDRV_CPU_PROGRAM_MAP(mcu_map)
 
 	MDRV_MACHINE_START(qixmcu)
 
@@ -600,7 +600,7 @@ static MACHINE_DRIVER_START( zookeep )
 	MDRV_IMPORT_FROM(mcu)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(zoo_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(zoo_main_map)
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(zookeep_video)
@@ -1188,23 +1188,23 @@ static int kram3_permut1(int idx, int value)
 
 static int kram3_permut2(int tbl_index, int idx, const UINT8 *xor_table)
 {
-	int xor = 0;
+	int xorval = 0;
 
 	if (idx == 0 || idx == 3)
 	{
-		xor = xor_table[tbl_index];
+		xorval = xor_table[tbl_index];
 
 		// handle missing values in table
-		if (xor == 99)
-			return xor;
+		if (xorval == 99)
+			return xorval;
 	}
 
-	xor ^= 0x02;
+	xorval ^= 0x02;
 
 	if (idx == 3)
-		xor = BITSWAP8(xor, 7,6,5,4, 0,2,3,1);
+		xorval = BITSWAP8(xorval, 7,6,5,4, 0,2,3,1);
 
-	return xor;
+	return xorval;
 }
 
 static int kram3_decrypt(int address, int value)
@@ -1258,7 +1258,7 @@ static DRIVER_INIT( kram3 )
 	i = 0;
 	patch = memory_region(machine, "user1");
 	rom = memory_region(machine, "maincpu");
-	decrypted = auto_malloc(0x6000);
+	decrypted = auto_alloc_array(machine, UINT8, 0x6000);
 
 	memory_set_decrypted_region(mainspace, 0xa000, 0xffff, decrypted);
 
@@ -1272,7 +1272,7 @@ static DRIVER_INIT( kram3 )
 	patch = memory_region(machine, "user2");
 	size = memory_region_length(machine, "user2");
 	rom = memory_region(machine, "videocpu");
-	decrypted = auto_malloc(0x6000);
+	decrypted = auto_alloc_array(machine, UINT8, 0x6000);
 
 	memory_set_decrypted_region(videospace, 0xa000, 0xffff, decrypted);
 

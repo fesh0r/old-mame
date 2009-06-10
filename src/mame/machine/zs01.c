@@ -81,7 +81,7 @@ void zs01_init( running_machine *machine, int chip, UINT8 *data, zs01_write_hand
 
 	if( data == NULL )
 	{
-		data = auto_malloc(
+		data = auto_alloc_array(machine, UINT8,
 			SIZE_RESPONSE_TO_RESET +
 			SIZE_KEY +
 			SIZE_KEY +
@@ -90,7 +90,7 @@ void zs01_init( running_machine *machine, int chip, UINT8 *data, zs01_write_hand
 
 	if( ds2401 == NULL )
 	{
-		ds2401 = auto_malloc( SIZE_DATA_BUFFER );
+		ds2401 = auto_alloc_array(machine, UINT8,  SIZE_DATA_BUFFER );
 	}
 
 	c->cs = 0;
@@ -664,7 +664,7 @@ int zs01_sda_read( running_machine *machine, int chip )
 	return c->sdar;
 }
 
-static void nvram_handler_zs01( int chip, running_machine *machine, mame_file *file, int read_or_write )
+static void nvram_handler_zs01( running_machine *machine, mame_file *file, int read_or_write, int chip )
 {
 	struct zs01_chip *c;
 
@@ -686,5 +686,5 @@ static void nvram_handler_zs01( int chip, running_machine *machine, mame_file *f
 	}
 }
 
-NVRAM_HANDLER( zs01_0 ) { nvram_handler_zs01( 0, machine, file, read_or_write ); }
-NVRAM_HANDLER( zs01_1 ) { nvram_handler_zs01( 1, machine, file, read_or_write ); }
+NVRAM_HANDLER( zs01_0 ) { nvram_handler_zs01( machine, file, read_or_write, 0 ); }
+NVRAM_HANDLER( zs01_1 ) { nvram_handler_zs01( machine, file, read_or_write, 1 ); }

@@ -39,16 +39,16 @@ static UINT8 *shared_ram;
 
 MACHINE_RESET( kyugo )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	// must start with interrupts and sub CPU disabled
-	cpu_interrupt_enable(machine->cpu[0], 0);
+	cpu_interrupt_enable(cputag_get_cpu(machine, "maincpu"), 0);
 	kyugo_sub_cpu_control_w(space, 0, 0);
 }
 
 
 WRITE8_HANDLER( kyugo_sub_cpu_control_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_HALT, data ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(space->machine, "sub", INPUT_LINE_HALT, data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -462,13 +462,13 @@ static MACHINE_DRIVER_START( gyrodine )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_18_432MHz/6)	/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_IO_MAP(gyrodine_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
+	MDRV_CPU_IO_MAP(gyrodine_portmap)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	MDRV_CPU_ADD("sub", Z80, XTAL_18_432MHz/6)	/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(gyrodine_sub_map,0)
-	MDRV_CPU_IO_MAP(gyrodine_sub_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(gyrodine_sub_map)
+	MDRV_CPU_IO_MAP(gyrodine_sub_portmap)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
@@ -506,8 +506,8 @@ static MACHINE_DRIVER_START( sonofphx )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gyrodine)
 	MDRV_CPU_MODIFY("sub")
-	MDRV_CPU_PROGRAM_MAP(sonofphx_sub_map,0)
-	MDRV_CPU_IO_MAP(sonofphx_sub_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sonofphx_sub_map)
+	MDRV_CPU_IO_MAP(sonofphx_sub_portmap)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( srdmissn )
@@ -515,11 +515,11 @@ static MACHINE_DRIVER_START( srdmissn )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gyrodine)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(srdmissn_portmap,0)
+	MDRV_CPU_IO_MAP(srdmissn_portmap)
 
 	MDRV_CPU_MODIFY("sub")
-	MDRV_CPU_PROGRAM_MAP(srdmissn_sub_map,0)
-	MDRV_CPU_IO_MAP(srdmissn_sub_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(srdmissn_sub_map)
+	MDRV_CPU_IO_MAP(srdmissn_sub_portmap)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( flashgal )
@@ -527,7 +527,7 @@ static MACHINE_DRIVER_START( flashgal )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(sonofphx)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(flashgal_portmap,0)
+	MDRV_CPU_IO_MAP(flashgal_portmap)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( flashgla )
@@ -535,11 +535,11 @@ static MACHINE_DRIVER_START( flashgla )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gyrodine)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_IO_MAP(flashgla_portmap,0)
+	MDRV_CPU_IO_MAP(flashgla_portmap)
 
 	MDRV_CPU_MODIFY("sub")
-	MDRV_CPU_PROGRAM_MAP(flashgla_sub_map,0)
-	MDRV_CPU_IO_MAP(flashgla_sub_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(flashgla_sub_map)
+	MDRV_CPU_IO_MAP(flashgla_sub_portmap)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( legend )
@@ -547,8 +547,8 @@ static MACHINE_DRIVER_START( legend )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(gyrodine)
 	MDRV_CPU_MODIFY("sub")
-	MDRV_CPU_PROGRAM_MAP(legend_sub_map,0)
-	MDRV_CPU_IO_MAP(srdmissn_sub_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(legend_sub_map)
+	MDRV_CPU_IO_MAP(srdmissn_sub_portmap)
 MACHINE_DRIVER_END
 
 
@@ -1204,19 +1204,19 @@ ROM_END
 static DRIVER_INIT( gyrodine )
 {
 	/* add watchdog */
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xe000, 0xe000, 0, 0, watchdog_reset_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xe000, 0xe000, 0, 0, watchdog_reset_w);
 }
 
 
 static DRIVER_INIT( srdmissn )
 {
 	/* shared RAM is mapped at 0xe000 as well  */
-	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xe000, 0xe7ff, 0, 0, SMH_BANK1, SMH_BANK1);
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xe000, 0xe7ff, 0, 0, (read8_space_func)SMH_BANK(1), (write8_space_func)SMH_BANK(1));
 	memory_set_bankptr(machine, 1, shared_ram);
 
 	/* extra RAM on sub CPU  */
-	memory_install_readwrite8_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x8800, 0x8fff, 0, 0, SMH_BANK2, SMH_BANK2);
-	memory_set_bankptr(machine, 2, auto_malloc(0x800));
+	memory_install_readwrite8_handler(cputag_get_address_space(machine, "sub", ADDRESS_SPACE_PROGRAM), 0x8800, 0x8fff, 0, 0, (read8_space_func)SMH_BANK(2), (write8_space_func)SMH_BANK(2));
+	memory_set_bankptr(machine, 2, auto_alloc_array(machine, UINT8, 0x800));
 }
 
 
@@ -1239,7 +1239,7 @@ GAME( 1985, flashgal, 0,        flashgal, flashgal, 0,        ROT0,  "Sega", "Fl
 GAME( 1985, flashgla, flashgal, flashgla, flashgal, 0,        ROT0,  "Sega", "Flashgal (set 2)", 0 )
 GAME( 1986, srdmissn, 0,        srdmissn, srdmissn, srdmissn, ROT90, "Taito Corporation", "S.R.D. Mission", 0 )
 GAME( 1986, fx,       srdmissn, srdmissn, srdmissn, srdmissn, ROT90, "bootleg", "F-X", 0 )
-GAME( 1986?,legend,   0,        legend,   legend,   srdmissn, ROT0,  "Sega / Coreland ?", "Legend", 0 )
+GAME( 1986, legend,   0,        legend,   legend,   srdmissn, ROT0,  "Sega / Coreland", "Legend", 0 )
 GAME( 1987, airwolf,  0,        srdmissn, airwolf,  srdmissn, ROT0,  "Kyugo", "Airwolf", 0 )
 GAME( 1987, airwolfa, airwolf,  srdmissn, airwolf,  srdmissn, ROT0,  "Kyugo (UA Theatre license)", "Airwolf (US)", 0 )
 GAME( 1987, skywolf,  airwolf,  srdmissn, skywolf,  srdmissn, ROT0,  "bootleg", "Sky Wolf (set 1)", 0 )

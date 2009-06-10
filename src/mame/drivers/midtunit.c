@@ -605,7 +605,7 @@ static MACHINE_DRIVER_START( tunit_core )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", TMS34010, CPU_CLOCK)
 	MDRV_CPU_CONFIG(tms_config)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 
 	MDRV_MACHINE_RESET(midtunit)
 	MDRV_NVRAM_HANDLER(generic_0fill)
@@ -1292,7 +1292,7 @@ GAME( 1993, jdreddp,  0,       tunit_adpcm, jdreddp,  jdreddp,  ROT0, "Midway", 
 GAME( 1993, nbajam,   0,       tunit_adpcm, nbajam,   nbajam,   ROT0, "Midway",   "NBA Jam (rev 3.01 04/07/93)", GAME_SUPPORTS_SAVE )
 GAME( 1993, nbajamr2, nbajam,  tunit_adpcm, nbajam,   nbajam,   ROT0, "Midway",   "NBA Jam (rev 2.00 02/10/93)", GAME_SUPPORTS_SAVE )
 
-GAME( 1994, nbajamte, 0,  tunit_adpcm, nbajamte, nbajamte, ROT0, "Midway",   "NBA Jam TE (rev 4.0 03/23/94)", GAME_SUPPORTS_SAVE )
+GAME( 1994, nbajamte, 0,         tunit_adpcm, nbajamte, nbajamte, ROT0, "Midway",   "NBA Jam TE (rev 4.0 03/23/94)", GAME_SUPPORTS_SAVE )
 GAME( 1994, nbajamt1, nbajamte,  tunit_adpcm, nbajamte, nbajamte, ROT0, "Midway",   "NBA Jam TE (rev 1.0 01/17/94)", GAME_SUPPORTS_SAVE )
 GAME( 1994, nbajamt2, nbajamte,  tunit_adpcm, nbajamte, nbajamte, ROT0, "Midway",   "NBA Jam TE (rev 2.0 01/28/94)", GAME_SUPPORTS_SAVE )
 GAME( 1994, nbajamt3, nbajamte,  tunit_adpcm, nbajamte, nbajamte, ROT0, "Midway",   "NBA Jam TE (rev 3.0 03/04/94)", GAME_SUPPORTS_SAVE )

@@ -1241,8 +1241,8 @@ static INPUT_PORTS_START( blkpnthr )
 	PORT_DIPNAME( 0x60, 0x40, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:6,7")
 	PORT_DIPSETTING(    0x60, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x20, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW1:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1284,8 +1284,8 @@ static INPUT_PORTS_START( citybomb )
 	PORT_DIPNAME( 0x60, 0x40, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:4,5")
 	PORT_DIPSETTING(    0x60, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x20, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW1:6")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1326,8 +1326,8 @@ static INPUT_PORTS_START( nyanpani )
 	PORT_DIPNAME( 0x60, 0x40, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:3,4")
 	PORT_DIPSETTING(    0x60, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x20, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW1:5")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1404,8 +1404,8 @@ static INPUT_PORTS_START( hcrash )
 	PORT_DIPNAME( 0x60, 0x60, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:6,7")
 	PORT_DIPSETTING(    0x60, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x20, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW1:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1601,7 +1601,7 @@ static const ay8910_interface ay8910_interface_2 =
 static void sound_irq(const device_config *device, int state)
 {
 /* Interrupts _are_ generated, I wonder where they go.. */
-/*cpu_set_input_line(device->machine->cpu[1],0,HOLD_LINE);*/
+/*cputag_set_input_line(device->machine, "audiocpu", 0, HOLD_LINE);*/
 }
 
 static const ym2151_interface ym2151_config =
@@ -1632,11 +1632,11 @@ static MACHINE_DRIVER_START( nemesis )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,18432000/2)         /* 9.216 MHz? */
 //          14318180/2, /* From schematics, should be accurate */
-	MDRV_CPU_PROGRAM_MAP(nemesis_map,0)
+	MDRV_CPU_PROGRAM_MAP(nemesis_map)
 	MDRV_CPU_VBLANK_INT("screen", nemesis_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80,14318180/4) /* From schematics, should be accurate */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)	/* fixed */
+	MDRV_CPU_PROGRAM_MAP(sound_map)	/* fixed */
 
 	MDRV_MACHINE_RESET(nemesis)
 
@@ -1677,11 +1677,11 @@ static MACHINE_DRIVER_START( gx400 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,18432000/2)     /* 9.216MHz */
-	MDRV_CPU_PROGRAM_MAP(gx400_map,0)
+	MDRV_CPU_PROGRAM_MAP(gx400_map)
 	MDRV_CPU_VBLANK_INT_HACK(gx400_interrupt,3)
 
 	MDRV_CPU_ADD("audiocpu", Z80,14318180/4)        /* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(gx400_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(gx400_sound_map)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)	/* interrupts are triggered by the main CPU */
 
 	MDRV_MACHINE_RESET(nemesis)
@@ -1723,11 +1723,11 @@ static MACHINE_DRIVER_START( konamigt )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,18432000/2)         /* 9.216 MHz? */
-	MDRV_CPU_PROGRAM_MAP(konamigt_map,0)
+	MDRV_CPU_PROGRAM_MAP(konamigt_map)
 	MDRV_CPU_VBLANK_INT_HACK(konamigt_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", Z80,14318180/4)        /* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	MDRV_MACHINE_RESET(nemesis)
 
@@ -1765,11 +1765,11 @@ static MACHINE_DRIVER_START( rf2_gx400 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,18432000/2)     /* 9.216MHz */
-	MDRV_CPU_PROGRAM_MAP(rf2_gx400_map,0)
+	MDRV_CPU_PROGRAM_MAP(rf2_gx400_map)
 	MDRV_CPU_VBLANK_INT_HACK(gx400_interrupt,3)
 
 	MDRV_CPU_ADD("audiocpu", Z80,14318180/4)        /* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(gx400_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(gx400_sound_map)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)	/* interrupts are triggered by the main CPU */
 
 	MDRV_MACHINE_RESET(nemesis)
@@ -1811,11 +1811,11 @@ static MACHINE_DRIVER_START( salamand )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,18432000/2)       /* 9.216MHz */
-	MDRV_CPU_PROGRAM_MAP(salamand_map,0)
+	MDRV_CPU_PROGRAM_MAP(salamand_map)
 	MDRV_CPU_VBLANK_INT("screen", salamand_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3579545)         /* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(sal_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sal_sound_map)
 
 	MDRV_MACHINE_RESET(nemesis)
 
@@ -1860,11 +1860,11 @@ static MACHINE_DRIVER_START( blkpnthr )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,18432000/2)         /* 9.216 MHz? */
-	MDRV_CPU_PROGRAM_MAP(blkpnthr_map,0)
+	MDRV_CPU_PROGRAM_MAP(blkpnthr_map)
 	MDRV_CPU_VBLANK_INT("screen", blkpnthr_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3579545)        /* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(blkpnthr_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(blkpnthr_sound_map)
 
 	MDRV_MACHINE_RESET(nemesis)
 
@@ -1905,11 +1905,11 @@ static MACHINE_DRIVER_START( citybomb )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,18432000/2)         /* 9.216 MHz? */
-	MDRV_CPU_PROGRAM_MAP(citybomb_map,0)
+	MDRV_CPU_PROGRAM_MAP(citybomb_map)
 	MDRV_CPU_VBLANK_INT("screen", salamand_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3579545)        /* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(city_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(city_sound_map)
 
 	MDRV_MACHINE_RESET(nemesis)
 
@@ -1954,11 +1954,11 @@ static MACHINE_DRIVER_START( nyanpani )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,18432000/2)         /* 9.216 MHz? */
-	MDRV_CPU_PROGRAM_MAP(nyanpani_map,0)
+	MDRV_CPU_PROGRAM_MAP(nyanpani_map)
 	MDRV_CPU_VBLANK_INT("screen", salamand_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3579545)        /* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(city_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(city_sound_map)
 
 	MDRV_MACHINE_RESET(nemesis)
 
@@ -2003,11 +2003,11 @@ static MACHINE_DRIVER_START( hcrash )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,18432000/3)         /* 6.144MHz */
-	MDRV_CPU_PROGRAM_MAP(hcrash_map,0)
+	MDRV_CPU_PROGRAM_MAP(hcrash_map)
 	MDRV_CPU_VBLANK_INT_HACK(konamigt_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", Z80,14318180/4)       /* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(sal_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sal_sound_map)
 
 	MDRV_MACHINE_RESET(nemesis)
 

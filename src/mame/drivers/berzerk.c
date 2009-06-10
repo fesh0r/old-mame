@@ -160,7 +160,7 @@ static TIMER_CALLBACK( irq_callback )
 
 	/* set the IRQ line if enabled */
 	if (irq_enabled)
-		cpu_set_input_line_and_vector(machine->cpu[0], 0, HOLD_LINE, 0xfc);
+		cputag_set_input_line_and_vector(machine, "maincpu", 0, HOLD_LINE, 0xfc);
 
 	/* set up for next interrupt */
 	next_irq_number = (irq_number + 1) % IRQS_PER_FRAME;
@@ -237,7 +237,7 @@ static TIMER_CALLBACK( nmi_callback )
 
 	/* pulse the NMI line if enabled */
 	if (nmi_enabled)
-		cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
+		cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE);
 
 	/* set up for next interrupt */
 	next_nmi_number = (nmi_number + 1) % NMIS_PER_FRAME;
@@ -533,7 +533,7 @@ static READ8_HANDLER( berzerk_audio_r )
 
 static SOUND_RESET(berzerk)
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO);
 	/* clears the flip-flop controlling the volume and freq on the speech chip */
 	berzerk_audio_w(space, 4, 0x40);
 }
@@ -581,11 +581,11 @@ static ADDRESS_MAP_START( berzerk_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x48, 0x48) AM_READ_PORT("P1") AM_WRITENOP
 	AM_RANGE(0x49, 0x49) AM_READ_PORT("SYSTEM") AM_WRITENOP
 	AM_RANGE(0x4a, 0x4a) AM_READ_PORT("P2") AM_WRITENOP
-	AM_RANGE(0x4b, 0x4b) AM_READWRITE(SMH_NOP, magicram_control_w)
+	AM_RANGE(0x4b, 0x4b) AM_READNOP AM_WRITE(magicram_control_w)
 	AM_RANGE(0x4c, 0x4c) AM_READWRITE(nmi_enable_r, nmi_enable_w)
 	AM_RANGE(0x4d, 0x4d) AM_READWRITE(nmi_disable_r, nmi_disable_w)
-	AM_RANGE(0x4e, 0x4e) AM_READWRITE(intercept_v256_r, SMH_NOP)
-	AM_RANGE(0x4f, 0x4f) AM_READWRITE(SMH_NOP, irq_enable_w)
+	AM_RANGE(0x4e, 0x4e) AM_READ(intercept_v256_r) AM_WRITENOP
+	AM_RANGE(0x4f, 0x4f) AM_READNOP AM_WRITE(irq_enable_w)
 	AM_RANGE(0x50, 0x57) AM_NOP /* second sound board, but not used */
 	AM_RANGE(0x58, 0x5f) AM_NOP
 	AM_RANGE(0x60, 0x60) AM_MIRROR(0x18) AM_READ_PORT("F3") AM_WRITENOP
@@ -833,8 +833,8 @@ static MACHINE_DRIVER_START( berzerk )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MAIN_CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(berzerk_map,0)
-	MDRV_CPU_IO_MAP(berzerk_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(berzerk_map)
+	MDRV_CPU_IO_MAP(berzerk_io_map)
 
 	MDRV_MACHINE_START(berzerk)
 	MDRV_MACHINE_RESET(berzerk)
@@ -867,7 +867,7 @@ static MACHINE_DRIVER_START( frenzy )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(berzerk)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(frenzy_map,0)
+	MDRV_CPU_PROGRAM_MAP(frenzy_map)
 MACHINE_DRIVER_END
 
 

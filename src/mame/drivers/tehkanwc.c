@@ -113,9 +113,9 @@ extern VIDEO_UPDATE( tehkanwc );
 static WRITE8_HANDLER( sub_cpu_halt_w )
 {
 	if (data)
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "sub", INPUT_LINE_RESET, CLEAR_LINE);
 	else
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
+		cputag_set_input_line(space->machine, "sub", INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 
@@ -158,22 +158,22 @@ static WRITE8_HANDLER( tehkanwc_track_1_reset_w )
 
 static WRITE8_HANDLER( sound_command_w )
 {
-	soundlatch_w(space,offset,data);
-	cpu_set_input_line(space->machine->cpu[2],INPUT_LINE_NMI,PULSE_LINE);
+	soundlatch_w(space, offset, data);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static TIMER_CALLBACK( reset_callback )
 {
-	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, PULSE_LINE);
+	cputag_set_input_line(machine, "audiocpu", INPUT_LINE_RESET, PULSE_LINE);
 }
 
 static WRITE8_HANDLER( sound_answer_w )
 {
-	soundlatch2_w(space,0,data);
+	soundlatch2_w(space, 0, data);
 
 	/* in Gridiron, the sound CPU goes in a tight loop after the self test, */
 	/* probably waiting to be reset by a watchdog */
-	if (cpu_get_pc(space->cpu) == 0x08bc) timer_set(space->machine, ATTOTIME_IN_SEC(1), NULL,0,reset_callback);
+	if (cpu_get_pc(space->cpu) == 0x08bc) timer_set(space->machine, ATTOTIME_IN_SEC(1), NULL, 0, reset_callback);
 }
 
 
@@ -659,16 +659,16 @@ static MACHINE_DRIVER_START( tehkanwc )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 18432000/4)	/* 18.432000 / 4 */
-	MDRV_CPU_PROGRAM_MAP(main_mem,0)
+	MDRV_CPU_PROGRAM_MAP(main_mem)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, 18432000/4)
-	MDRV_CPU_PROGRAM_MAP(sub_mem,0)
+	MDRV_CPU_PROGRAM_MAP(sub_mem)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 18432000/4)
-	MDRV_CPU_PROGRAM_MAP(sound_mem,0)
-	MDRV_CPU_IO_MAP(sound_port,0)
+	MDRV_CPU_PROGRAM_MAP(sound_mem)
+	MDRV_CPU_IO_MAP(sound_port)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - seems enough to keep the CPUs in sync */

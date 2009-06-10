@@ -280,8 +280,8 @@ static MACHINE_DRIVER_START( polyplay )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 9830400/4)
-	MDRV_CPU_PROGRAM_MAP(polyplay_map,0)
-	MDRV_CPU_IO_MAP(polyplay_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(polyplay_map)
+	MDRV_CPU_IO_MAP(polyplay_io_map)
 	MDRV_CPU_PERIODIC_INT(periodic_interrupt,75)
 	MDRV_CPU_VBLANK_INT("screen", coin_interrupt)
 
@@ -356,7 +356,7 @@ ROM_END
 
 static TIMER_CALLBACK( polyplay_timer_callback )
 {
-	cpu_set_input_line_and_vector(machine->cpu[0], 0, HOLD_LINE, 0x4c);
+	cputag_set_input_line_and_vector(machine, "audiocpu", 0, HOLD_LINE, 0x4c);
 }
 
 /* game driver */

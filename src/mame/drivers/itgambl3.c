@@ -210,7 +210,7 @@ GFXDECODE_END
 static MACHINE_RESET( itgambl3 )
 {
 	/* stop the CPU, we have no code for it anyway */
-	cpu_set_input_line(machine->cpu[0], INPUT_LINE_HALT, ASSERT_LINE);
+	cputag_set_input_line(machine, "maincpu", INPUT_LINE_HALT, ASSERT_LINE);
 }
 
 /* default 444 palette for debug purpose*/
@@ -236,7 +236,7 @@ static MACHINE_DRIVER_START( itgambl3 )
 
     /* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", H83044, MAIN_CLOCK)	/* wrong CPU, but we have not a M16C core ATM */
-	MDRV_CPU_PROGRAM_MAP(itgambl3_map,0)
+	MDRV_CPU_PROGRAM_MAP(itgambl3_map)
 
     /* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)

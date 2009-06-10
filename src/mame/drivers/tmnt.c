@@ -195,14 +195,14 @@ static INTERRUPT_GEN( lgtnfght_interrupt )
 static WRITE16_HANDLER( tmnt_sound_command_w )
 {
 	if (ACCESSING_BITS_0_7)
-		soundlatch_w(space,0,data & 0xff);
+		soundlatch_w(space, 0, data & 0xff);
 }
 
 static READ8_DEVICE_HANDLER( punkshot_sound_r )
 {
 	/* If the sound CPU is running, read the status, otherwise
        just make it pass the test */
-	return k053260_r(device,2 + offset);
+	return k053260_r(device, 2 + offset);
 }
 
 static WRITE8_DEVICE_HANDLER( glfgreat_sound_w )
@@ -210,7 +210,7 @@ static WRITE8_DEVICE_HANDLER( glfgreat_sound_w )
 	k053260_w(device, offset, data);
 
 	if (offset)
-		cpu_set_input_line_and_vector(device->machine->cpu[1],0,HOLD_LINE,0xff);
+		cputag_set_input_line_and_vector(device->machine, "audiocpu", 0, HOLD_LINE, 0xff);
 }
 
 static READ16_HANDLER( prmrsocr_sound_r )
@@ -223,14 +223,14 @@ static WRITE16_HANDLER( prmrsocr_sound_cmd_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		data &= 0xff;
-		if (offset == 0) soundlatch_w(space,0,data);
-		else soundlatch2_w(space,0,data);
+		if (offset == 0) soundlatch_w(space, 0, data);
+		else soundlatch2_w(space, 0, data);
 	}
 }
 
 static WRITE16_HANDLER( prmrsocr_sound_irq_w )
 {
-	cpu_set_input_line_and_vector(space->machine->cpu[1],0,HOLD_LINE,0xff);
+	cputag_set_input_line_and_vector(space->machine, "audiocpu", 0, HOLD_LINE, 0xff);
 }
 
 static WRITE8_HANDLER( prmrsocr_audio_bankswitch_w )
@@ -280,7 +280,7 @@ static SAMPLES_START( tmnt_decode_sample )
 	int i;
 	UINT8 *source = memory_region(machine, "title");
 
-	sampledata = auto_malloc(0x40000*sizeof(sampledata[0]));
+	sampledata = auto_alloc_array(machine, INT16, 0x40000);
 
 	/*  Sound sample for TMNT.D05 is stored in the following mode (ym3012 format):
      *
@@ -309,7 +309,7 @@ static int sound_nmi_enabled;
 
 static void sound_nmi_callback( int param )
 {
-	cpu_set_input_line(Machine->cpu[1], INPUT_LINE_NMI, ( sound_nmi_enabled ) ? CLEAR_LINE : ASSERT_LINE );
+	cputag_set_input_line(machine, "audiocpu", INPUT_LINE_NMI, ( sound_nmi_enabled ) ? CLEAR_LINE : ASSERT_LINE );
 
 	sound_nmi_enabled = 0;
 }
@@ -317,13 +317,13 @@ static void sound_nmi_callback( int param )
 
 static TIMER_CALLBACK( nmi_callback )
 {
-	cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, ASSERT_LINE);
+	cputag_set_input_line(machine, "audiocpu", INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( sound_arm_nmi_w )
 {
 //  sound_nmi_enabled = 1;
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, CLEAR_LINE);
 	timer_set(space->machine, ATTOTIME_IN_USEC(50), NULL,0,nmi_callback);	/* kludge until the K053260 is emulated correctly */
 }
 
@@ -591,7 +591,7 @@ static WRITE16_HANDLER( thndrx2_eeprom_w )
 
 		/* bit 5 triggers IRQ on sound cpu */
 		if (last == 0 && (data & 0x20) != 0)
-			cpu_set_input_line_and_vector(space->machine->cpu[1],0,HOLD_LINE,0xff);
+			cputag_set_input_line_and_vector(space->machine, "audiocpu", 0, HOLD_LINE, 0xff);
 		last = data & 0x20;
 
 		/* bit 6 = enable char ROM reading through the video RAM */
@@ -755,7 +755,7 @@ ADDRESS_MAP_END
 static WRITE16_HANDLER( ssriders_soundkludge_w )
 {
 	/* I think this is more than just a trigger */
-	cpu_set_input_line_and_vector(space->machine->cpu[1],0,HOLD_LINE,0xff);
+	cputag_set_input_line_and_vector(space->machine, "audiocpu", 0, HOLD_LINE, 0xff);
 }
 
 static ADDRESS_MAP_START( blswhstl_main_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -1229,7 +1229,7 @@ static WRITE8_DEVICE_HANDLER( k054539_ctrl_w )
 
 static ADDRESS_MAP_START( prmrsocr_audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK1, SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK(1), SMH_ROM)
 	AM_RANGE(0xc000, 0xdfff) AM_RAM
 	AM_RANGE(0xe000, 0xe0ff) AM_DEVREADWRITE("konami", k054539_r, k054539_w)
 	AM_RANGE(0xe100, 0xe12f) AM_DEVREADWRITE("konami", k054539_ctrl_r, k054539_ctrl_w)
@@ -1272,8 +1272,8 @@ static INPUT_PORTS_START( cuebrick )
 	PORT_DIPNAME( 0x60, 0x40, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x60, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x20, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1329,8 +1329,8 @@ static INPUT_PORTS_START( mia )
 	PORT_DIPNAME( 0x60, 0x40, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x60, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x20, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1406,8 +1406,8 @@ static INPUT_PORTS_START( tmnt )
 	PORT_DIPNAME( 0x60, 0x40, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x60, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x20, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1471,8 +1471,8 @@ static INPUT_PORTS_START( tmnt2p )
 	PORT_DIPNAME( 0x60, 0x40, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x60, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x20, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2076,7 +2076,7 @@ static MACHINE_DRIVER_START( cuebrick )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 8000000)	/* 8 MHz */
-	MDRV_CPU_PROGRAM_MAP(cuebrick_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(cuebrick_main_map)
 	MDRV_CPU_VBLANK_INT_HACK(cuebrick_interrupt,10)
 
 	/* video hardware */
@@ -2109,11 +2109,11 @@ static MACHINE_DRIVER_START( mia )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_24MHz/3)
-	MDRV_CPU_PROGRAM_MAP(mia_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(mia_main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq5_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz)
-	MDRV_CPU_PROGRAM_MAP(mia_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(mia_audio_map)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS)
@@ -2156,11 +2156,11 @@ static MACHINE_DRIVER_START( tmnt )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_24MHz/3)
-	MDRV_CPU_PROGRAM_MAP(tmnt_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(tmnt_main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq5_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz)
-	MDRV_CPU_PROGRAM_MAP(tmnt_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(tmnt_audio_map)
 
 	MDRV_MACHINE_RESET(tmnt)
 
@@ -2204,11 +2204,11 @@ static MACHINE_DRIVER_START( punkshot )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_24MHz/2)
-	MDRV_CPU_PROGRAM_MAP(punkshot_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(punkshot_main_map)
 	MDRV_CPU_VBLANK_INT("screen", punkshot_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz)
-	MDRV_CPU_PROGRAM_MAP(punkshot_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(punkshot_audio_map)
 								/* NMIs are generated by the 053260 */
 
 	/* video hardware */
@@ -2242,11 +2242,11 @@ static MACHINE_DRIVER_START( lgtnfght )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_24MHz/2)
-	MDRV_CPU_PROGRAM_MAP(lgtnfght_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(lgtnfght_main_map)
 	MDRV_CPU_VBLANK_INT("screen", lgtnfght_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz)
-	MDRV_CPU_PROGRAM_MAP(lgtnfght_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(lgtnfght_audio_map)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
@@ -2280,11 +2280,11 @@ static MACHINE_DRIVER_START( blswhstl )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 16000000)	/* 16 MHz */
-	MDRV_CPU_PROGRAM_MAP(blswhstl_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(blswhstl_main_map)
 	MDRV_CPU_VBLANK_INT("screen", punkshot_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz)
-	MDRV_CPU_PROGRAM_MAP(ssriders_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(ssriders_audio_map)
 								/* NMIs are generated by the 053260 */
 
 	MDRV_NVRAM_HANDLER(eeprom)
@@ -2339,11 +2339,11 @@ static MACHINE_DRIVER_START( glfgreat )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 12000000)	/* ? */
-	MDRV_CPU_PROGRAM_MAP(glfgreat_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(glfgreat_main_map)
 	MDRV_CPU_VBLANK_INT("screen", lgtnfght_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz)
-	MDRV_CPU_PROGRAM_MAP(glfgreat_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(glfgreat_audio_map)
 								/* NMIs are generated by the 053260 */
 
 	/* video hardware */
@@ -2373,7 +2373,7 @@ MACHINE_DRIVER_END
 
 static void sound_nmi(const device_config *device)
 {
-	cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static const k054539_interface k054539_config =
@@ -2387,11 +2387,11 @@ static MACHINE_DRIVER_START( prmrsocr )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 12000000)	/* ? */
-	MDRV_CPU_PROGRAM_MAP(prmrsocr_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(prmrsocr_main_map)
 	MDRV_CPU_VBLANK_INT("screen", lgtnfght_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 8000000)	/* ? */
-	MDRV_CPU_PROGRAM_MAP(prmrsocr_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(prmrsocr_audio_map)
 								/* NMIs are generated by the 054539 */
 
 	MDRV_NVRAM_HANDLER(thndrx2)
@@ -2426,7 +2426,7 @@ static MACHINE_DRIVER_START( tmnt2 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_32MHz/2)
-	MDRV_CPU_PROGRAM_MAP(tmnt2_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(tmnt2_main_map)
 	MDRV_CPU_VBLANK_INT("screen", punkshot_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 8000000)	/* 8 MHz; clock is correct, but there's 1 cycle wait for ROM/RAM */
@@ -2434,7 +2434,7 @@ static MACHINE_DRIVER_START( tmnt2 )
 						/* without the wait, they cannot run on 8MHz.                    */
 						/* We are not emulating the wait state, so the ROM test ends at  */
 						/* 02 instead of 00. */
-	MDRV_CPU_PROGRAM_MAP(ssriders_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(ssriders_audio_map)
 								/* NMIs are generated by the 053260 */
 
 	MDRV_NVRAM_HANDLER(eeprom)
@@ -2471,11 +2471,11 @@ static MACHINE_DRIVER_START( ssriders )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_32MHz/2)
-	MDRV_CPU_PROGRAM_MAP(ssriders_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(ssriders_main_map)
 	MDRV_CPU_VBLANK_INT("screen", punkshot_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	/* ????? makes the ROM test sync */
-	MDRV_CPU_PROGRAM_MAP(ssriders_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(ssriders_audio_map)
 								/* NMIs are generated by the 053260 */
 
 	MDRV_NVRAM_HANDLER(eeprom)
@@ -2512,7 +2512,7 @@ static MACHINE_DRIVER_START( sunsetbl )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 16000000)	/* 16 MHz */
-	MDRV_CPU_PROGRAM_MAP(sunsetbl_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(sunsetbl_main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_NVRAM_HANDLER(eeprom)
@@ -2545,11 +2545,11 @@ static MACHINE_DRIVER_START( thndrx2 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 12000000)	/* 12 MHz */
-	MDRV_CPU_PROGRAM_MAP(thndrx2_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(thndrx2_main_map)
 	MDRV_CPU_VBLANK_INT("screen", punkshot_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz)
-	MDRV_CPU_PROGRAM_MAP(thndrx2_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(thndrx2_audio_map)
 								/* NMIs are generated by the 053260 */
 
 	MDRV_NVRAM_HANDLER(thndrx2)
@@ -3749,7 +3749,7 @@ static DRIVER_INIT( mia )
 		}
 	}
 
-	temp = malloc_or_die(len);
+	temp = alloc_array_or_die(UINT8, len);
 	memcpy(temp,gfxdata,len);
 	for (A = 0;A < len/4;A++)
 	{
@@ -3845,7 +3845,7 @@ static DRIVER_INIT( tmnt )
 		}
 	}
 
-	temp = malloc_or_die(len);
+	temp = alloc_array_or_die(UINT8, len);
 	memcpy(temp,gfxdata,len);
 	code_conv_table = &memory_region(machine, "proms")[0x0000];
 	for (A = 0;A < len/4;A++)

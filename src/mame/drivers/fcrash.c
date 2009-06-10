@@ -48,7 +48,7 @@ static WRITE16_HANDLER( fcrash_soundlatch_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch_w(space,0,data & 0xff);
-		cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE);
+		cputag_set_input_line(space->machine, "soundcpu", 0, HOLD_LINE);
 	}
 }
 
@@ -70,7 +70,7 @@ static void m5205_int1(const device_config *device)
 	sample_buffer1 >>= 4;
 	sample_select1 ^= 1;
 	if (sample_select1 == 0)
-		cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+		cputag_set_input_line(device->machine, "soundcpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static void m5205_int2(const device_config *device)
@@ -662,11 +662,11 @@ static MACHINE_DRIVER_START( fcrash )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 10000000)
-	MDRV_CPU_PROGRAM_MAP(fcrash_map,0)
+	MDRV_CPU_PROGRAM_MAP(fcrash_map)
 	MDRV_CPU_VBLANK_INT("screen", cps1_interrupt)
 
 	MDRV_CPU_ADD("soundcpu", Z80, 24000000/6) /* ? */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -711,11 +711,11 @@ static MACHINE_DRIVER_START( kodb )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 10000000)
-	MDRV_CPU_PROGRAM_MAP(kodb_map,0)
+	MDRV_CPU_PROGRAM_MAP(kodb_map)
 	MDRV_CPU_VBLANK_INT("screen", cps1_interrupt)
 
 //  MDRV_CPU_ADD("audiocpu", Z80, 3579545)
-//  MDRV_CPU_PROGRAM_MAP(sub_map,0)
+//  MDRV_CPU_PROGRAM_MAP(sub_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)

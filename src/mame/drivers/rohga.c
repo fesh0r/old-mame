@@ -127,221 +127,145 @@ WRITE16_HANDLER( rohga_buffer_spriteram16_w );
 
 /**********************************************************************************/
 
-static ADDRESS_MAP_START( rohga_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_READ(SMH_ROM)
-	AM_RANGE(0x280000, 0x2807ff) AM_MIRROR(0x800) AM_READ(deco16_104_rohga_prot_r) /* Protection device */
-	AM_RANGE(0x2c0000, 0x2c0001) AM_READ_PORT("DSW3")
-	AM_RANGE(0x321100, 0x321101) AM_READNOP /* Irq ack?  Value not used */
-	AM_RANGE(0x3c0000, 0x3c1fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x3c2000, 0x3c2fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x3c4000, 0x3c4fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x3c6000, 0x3c6fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x3c8000, 0x3c8fff) AM_MIRROR(0x1000) AM_READ(SMH_RAM)
-	AM_RANGE(0x3ca000, 0x3cafff) AM_MIRROR(0x1000) AM_READ(SMH_RAM)
-	AM_RANGE(0x3cc000, 0x3ccfff) AM_MIRROR(0x1000) AM_READ(SMH_RAM)
-	AM_RANGE(0x3ce000, 0x3cefff) AM_MIRROR(0x1000) AM_READ(SMH_RAM)
-	AM_RANGE(0x3d0000, 0x3d0fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x3e0000, 0x3e1fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x3f0000, 0x3f3fff) AM_READ(SMH_RAM)
-ADDRESS_MAP_END
+static ADDRESS_MAP_START( rohga_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x1fffff) AM_ROM
 
-static ADDRESS_MAP_START( rohga_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x200000, 0x20000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf12_control)
-	AM_RANGE(0x240000, 0x24000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf34_control)
-	AM_RANGE(0x280000, 0x2807ff) AM_MIRROR(0x800) AM_WRITE(deco16_104_rohga_prot_w) AM_BASE(&deco16_prot_ram) /* Protection writes */
+	AM_RANGE(0x200000, 0x20000f) AM_WRITEONLY AM_BASE(&deco16_pf12_control)
+	AM_RANGE(0x240000, 0x24000f) AM_WRITEONLY AM_BASE(&deco16_pf34_control)
+
+	AM_RANGE(0x280000, 0x2807ff) AM_MIRROR(0x800) AM_READWRITE(deco16_104_rohga_prot_r,deco16_104_rohga_prot_w)  AM_BASE(&deco16_prot_ram) /* Protection device */
+
+	AM_RANGE(0x2c0000, 0x2c0001) AM_READ_PORT("DSW3")
 
 	AM_RANGE(0x300000, 0x300001) AM_WRITE(rohga_buffer_spriteram16_w) /* write 1 for sprite dma */
 	AM_RANGE(0x310000, 0x310009) AM_WRITENOP /* Palette control? */
 	AM_RANGE(0x31000a, 0x31000b) AM_WRITE(deco16_palette_dma_w) /* Write 1111 for dma?  (Or any value?) */
 	AM_RANGE(0x320000, 0x320001) AM_WRITENOP /* ? */
 	AM_RANGE(0x322000, 0x322001) AM_WRITE(deco16_priority_w)
+	AM_RANGE(0x321100, 0x321101) AM_READNOP /* Irq ack?  Value not used */
 
-	AM_RANGE(0x3c0000, 0x3c1fff) AM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
-	AM_RANGE(0x3c2000, 0x3c2fff) AM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
-	AM_RANGE(0x3c4000, 0x3c4fff) AM_WRITE(deco16_pf3_data_w) AM_BASE(&deco16_pf3_data)
-	AM_RANGE(0x3c6000, 0x3c6fff) AM_WRITE(deco16_pf4_data_w) AM_BASE(&deco16_pf4_data)
-	AM_RANGE(0x3c8000, 0x3c8fff) AM_MIRROR(0x1000) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf1_rowscroll)
-	AM_RANGE(0x3ca000, 0x3cafff) AM_MIRROR(0x1000) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf2_rowscroll)
-	AM_RANGE(0x3cc000, 0x3ccfff) AM_MIRROR(0x1000) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf3_rowscroll)
-	AM_RANGE(0x3ce000, 0x3cefff) AM_MIRROR(0x1000) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf4_rowscroll)
-	AM_RANGE(0x3d0000, 0x3d07ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x3e0000, 0x3e1fff) AM_WRITE(deco16_buffered_palette_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x3f0000, 0x3f3fff) AM_WRITE(SMH_RAM) /* Main ram */
+	AM_RANGE(0x3c0000, 0x3c1fff) AM_RAM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
+	AM_RANGE(0x3c2000, 0x3c2fff) AM_RAM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
+	AM_RANGE(0x3c4000, 0x3c4fff) AM_RAM_WRITE(deco16_pf3_data_w) AM_BASE(&deco16_pf3_data)
+	AM_RANGE(0x3c6000, 0x3c6fff) AM_RAM_WRITE(deco16_pf4_data_w) AM_BASE(&deco16_pf4_data)
+
+	AM_RANGE(0x3c8000, 0x3c8fff) AM_MIRROR(0x1000) AM_RAM AM_BASE(&deco16_pf1_rowscroll)
+	AM_RANGE(0x3ca000, 0x3cafff) AM_MIRROR(0x1000) AM_RAM AM_BASE(&deco16_pf2_rowscroll)
+	AM_RANGE(0x3cc000, 0x3ccfff) AM_MIRROR(0x1000) AM_RAM AM_BASE(&deco16_pf3_rowscroll)
+	AM_RANGE(0x3ce000, 0x3cefff) AM_MIRROR(0x1000) AM_RAM AM_BASE(&deco16_pf4_rowscroll)
+
+	AM_RANGE(0x3d0000, 0x3d07ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x3e0000, 0x3e1fff) AM_RAM_WRITE(deco16_buffered_palette_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x3f0000, 0x3f3fff) AM_RAM /* Main ram */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( wizdfire_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_READ(SMH_ROM)
-	AM_RANGE(0x200000, 0x200fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x202000, 0x202fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x208000, 0x208fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x20a000, 0x20afff) AM_READ(SMH_RAM)
-	AM_RANGE(0x20c000, 0x20cfff) AM_READ(SMH_RAM)
-	AM_RANGE(0x20e000, 0x20efff) AM_READ(SMH_RAM)
-	AM_RANGE(0x340000, 0x3407ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x360000, 0x3607ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x380000, 0x381fff) AM_READ(SMH_RAM)
-	AM_RANGE(0xfdc000, 0xfe3fff) AM_READ(SMH_RAM)
-	AM_RANGE(0xfe4000, 0xfe47ff) AM_READ(deco16_104_prot_r) /* Protection device */
-	AM_RANGE(0xfe5000, 0xfeffff) AM_READ(SMH_RAM)
-ADDRESS_MAP_END
+static ADDRESS_MAP_START( wizdfire_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x1fffff) AM_ROM
 
-static ADDRESS_MAP_START( wizdfire_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x200000, 0x200fff) AM_RAM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
+	AM_RANGE(0x202000, 0x202fff) AM_RAM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
+	AM_RANGE(0x208000, 0x208fff) AM_RAM_WRITE(deco16_pf3_data_w) AM_BASE(&deco16_pf3_data)
+	AM_RANGE(0x20a000, 0x20afff) AM_RAM_WRITE(deco16_pf4_data_w) AM_BASE(&deco16_pf4_data)
 
-	AM_RANGE(0x200000, 0x200fff) AM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
-	AM_RANGE(0x202000, 0x202fff) AM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
-	AM_RANGE(0x208000, 0x208fff) AM_WRITE(deco16_pf3_data_w) AM_BASE(&deco16_pf3_data)
-	AM_RANGE(0x20a000, 0x20afff) AM_WRITE(deco16_pf4_data_w) AM_BASE(&deco16_pf4_data)
+	AM_RANGE(0x20b000, 0x20b3ff) AM_WRITEONLY /* ? Always 0 written */
+	AM_RANGE(0x20c000, 0x20c7ff) AM_RAM AM_BASE(&deco16_pf3_rowscroll)
+	AM_RANGE(0x20e000, 0x20e7ff) AM_RAM AM_BASE(&deco16_pf4_rowscroll)
 
-	AM_RANGE(0x20b000, 0x20b3ff) AM_WRITE(SMH_RAM) /* ? Always 0 written */
-	AM_RANGE(0x20c000, 0x20c7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf3_rowscroll)
-	AM_RANGE(0x20e000, 0x20e7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf4_rowscroll)
-
-	AM_RANGE(0x300000, 0x30000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf12_control)
-	AM_RANGE(0x310000, 0x31000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf34_control)
+	AM_RANGE(0x300000, 0x30000f) AM_WRITEONLY AM_BASE(&deco16_pf12_control)
+	AM_RANGE(0x310000, 0x31000f) AM_WRITEONLY AM_BASE(&deco16_pf34_control)
 
 	AM_RANGE(0x320000, 0x320001) AM_WRITE(deco16_priority_w) /* Priority */
 	AM_RANGE(0x320002, 0x320003) AM_WRITENOP /* ? */
 	AM_RANGE(0x320004, 0x320005) AM_WRITENOP /* VBL IRQ ack */
 
-	AM_RANGE(0x340000, 0x3407ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x340000, 0x3407ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x350000, 0x350001) AM_WRITE(buffer_spriteram16_w) /* Triggers DMA for spriteram */
-	AM_RANGE(0x360000, 0x3607ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16_2) AM_SIZE(&spriteram_2_size)
+	AM_RANGE(0x360000, 0x3607ff) AM_RAM AM_BASE(&spriteram16_2) AM_SIZE(&spriteram_2_size)
 	AM_RANGE(0x370000, 0x370001) AM_WRITE(buffer_spriteram16_2_w) /* Triggers DMA for spriteram */
 
-	AM_RANGE(0x380000, 0x381fff) AM_WRITE(deco16_buffered_palette_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x380000, 0x381fff) AM_RAM_WRITE(deco16_buffered_palette_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x390008, 0x390009) AM_WRITE(deco16_palette_dma_w)
 
-	AM_RANGE(0xfe4000, 0xfe47ff) AM_WRITE(deco16_104_prot_w) AM_BASE(&deco16_prot_ram) /* Protection writes */
-	AM_RANGE(0xfdc000, 0xfeffff) AM_WRITE(SMH_RAM) /* Main ram */
+	AM_RANGE(0xfe4000, 0xfe47ff) AM_READWRITE(deco16_104_prot_r,deco16_104_prot_w) AM_BASE(&deco16_prot_ram) /* Protection device */
+	AM_RANGE(0xfdc000, 0xffffff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( nitrobal_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_READ(SMH_ROM)
+static ADDRESS_MAP_START( nitrobal_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x1fffff) AM_ROM
 
-	AM_RANGE(0x200000, 0x200fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x202000, 0x202fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x204000, 0x2047ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x206000, 0x2067ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x208000, 0x208fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x20a000, 0x20afff) AM_READ(SMH_RAM)
-	AM_RANGE(0x20c000, 0x20c7ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x20e000, 0x20e7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x200000, 0x200fff) AM_MIRROR(0x1000) AM_RAM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
+	AM_RANGE(0x202000, 0x2027ff) AM_MIRROR(0x800) AM_RAM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
+	AM_RANGE(0x208000, 0x2087ff) AM_MIRROR(0x800) AM_RAM_WRITE(deco16_pf3_data_w) AM_BASE(&deco16_pf3_data)
+	AM_RANGE(0x20a000, 0x20a7ff) AM_MIRROR(0x800) AM_RAM_WRITE(deco16_pf4_data_w) AM_BASE(&deco16_pf4_data)
 
-	AM_RANGE(0x300000, 0x30000f) AM_READ(SMH_RAM)
-	AM_RANGE(0x310000, 0x31000f) AM_READ(SMH_RAM)
-	AM_RANGE(0x320000, 0x320001) AM_READ_PORT("DSW3")
+	AM_RANGE(0x204000, 0x2047ff) AM_RAM AM_BASE(&deco16_pf1_rowscroll)
+	AM_RANGE(0x206000, 0x2067ff) AM_RAM AM_BASE(&deco16_pf2_rowscroll)
+	AM_RANGE(0x20c000, 0x20c7ff) AM_RAM AM_BASE(&deco16_pf3_rowscroll)
+	AM_RANGE(0x20e000, 0x20e7ff) AM_RAM AM_BASE(&deco16_pf4_rowscroll)
 
-	AM_RANGE(0x340000, 0x3407ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x360000, 0x3607ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x380000, 0x381fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x300000, 0x30000f) AM_WRITEONLY AM_BASE(&deco16_pf12_control)
+	AM_RANGE(0x310000, 0x31000f) AM_WRITEONLY AM_BASE(&deco16_pf34_control)
 
-	AM_RANGE(0xfec000, 0xff3fff) AM_READ(SMH_RAM)
-	AM_RANGE(0xff4000, 0xff47ff) AM_READ(deco16_146_nitroball_prot_r) /* Protection device */
-	AM_RANGE(0xff8000, 0xffffff) AM_READ(SMH_RAM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( nitrobal_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)
-
-	AM_RANGE(0x200000, 0x200fff) AM_MIRROR(0x1000) AM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
-	AM_RANGE(0x202000, 0x2027ff) AM_MIRROR(0x800) AM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
-	AM_RANGE(0x208000, 0x2087ff) AM_MIRROR(0x800) AM_WRITE(deco16_pf3_data_w) AM_BASE(&deco16_pf3_data)
-	AM_RANGE(0x20a000, 0x20a7ff) AM_MIRROR(0x800) AM_WRITE(deco16_pf4_data_w) AM_BASE(&deco16_pf4_data)
-
-	AM_RANGE(0x204000, 0x2047ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf1_rowscroll)
-	AM_RANGE(0x206000, 0x2067ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf2_rowscroll)
-	AM_RANGE(0x20c000, 0x20c7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf3_rowscroll)
-	AM_RANGE(0x20e000, 0x20e7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf4_rowscroll)
-
-	AM_RANGE(0x300000, 0x30000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf12_control)
-	AM_RANGE(0x310000, 0x31000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf34_control)
-
-	AM_RANGE(0x320000, 0x320001) AM_WRITE(deco16_priority_w) /* Priority */
+	AM_RANGE(0x320000, 0x320001) AM_READ_PORT("DSW3") AM_WRITE(deco16_priority_w) /* Priority */
 	AM_RANGE(0x320002, 0x320003) AM_WRITENOP /* ? */
 	AM_RANGE(0x320004, 0x320005) AM_WRITENOP /* VBL IRQ ack */
 
-	AM_RANGE(0x340000, 0x3407ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x340000, 0x3407ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x350000, 0x350001) AM_WRITE(buffer_spriteram16_w) /* Triggers DMA for spriteram */
-	AM_RANGE(0x360000, 0x3607ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16_2) AM_SIZE(&spriteram_2_size)
+	AM_RANGE(0x360000, 0x3607ff) AM_RAM AM_BASE(&spriteram16_2) AM_SIZE(&spriteram_2_size)
 	AM_RANGE(0x370000, 0x370001) AM_WRITE(buffer_spriteram16_2_w) /* Triggers DMA for spriteram */
 
-	AM_RANGE(0x380000, 0x381fff) AM_WRITE(deco16_buffered_palette_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x380000, 0x381fff) AM_RAM_WRITE(deco16_buffered_palette_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x390008, 0x390009) AM_WRITE(deco16_palette_dma_w)
 
-	AM_RANGE(0xfec000, 0xff3fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xff4000, 0xff47ff) AM_MIRROR(0x800) AM_WRITE(deco16_146_nitroball_prot_w) AM_BASE(&deco16_prot_ram) /* Protection writes */
-	AM_RANGE(0xff8000, 0xffffff) AM_WRITE(SMH_RAM) /* Main ram */
+	AM_RANGE(0xfec000, 0xffffff) AM_RAM
+	AM_RANGE(0xff4000, 0xff47ff) AM_MIRROR(0x800) AM_READWRITE(deco16_146_nitroball_prot_r,deco16_146_nitroball_prot_w) AM_BASE(&deco16_prot_ram) /* Protection device */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( schmeisr_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
-	AM_RANGE(0x280000, 0x2807ff) AM_READ(deco16_104_rohga_prot_r) /* Protection device */
+static ADDRESS_MAP_START( schmeisr_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x0fffff) AM_ROM
+	AM_RANGE(0x200000, 0x20000f) AM_WRITEONLY AM_BASE(&deco16_pf12_control)
+	AM_RANGE(0x240000, 0x24000f) AM_WRITEONLY AM_BASE(&deco16_pf34_control)
+	AM_RANGE(0x280000, 0x2807ff) AM_MIRROR(0x800) AM_READWRITE(deco16_104_rohga_prot_r,deco16_104_rohga_prot_w) AM_BASE(&deco16_prot_ram) /* Protection device */
+
 	AM_RANGE(0x2c0000, 0x2c0001) AM_READ_PORT("DSW3")
-	AM_RANGE(0x300000, 0x300001) AM_READ_PORT("DSW3")
+	AM_RANGE(0x300000, 0x300001) AM_READ_PORT("DSW3")  AM_WRITE(rohga_buffer_spriteram16_w) /* write 1 for sprite dma */
 	AM_RANGE(0x310002, 0x310003) AM_READ_PORT("IN1")
-	AM_RANGE(0x321100, 0x321101) AM_READNOP /* Irq ack?  Value not used */
-	AM_RANGE(0x3c0000, 0x3c1fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x3c2000, 0x3c2fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x3c4000, 0x3c4fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x3c6000, 0x3c6fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x3c8000, 0x3c8fff) AM_MIRROR(0x1000) AM_READ(SMH_RAM)
-	AM_RANGE(0x3ca000, 0x3cafff) AM_MIRROR(0x1000) AM_READ(SMH_RAM)
-	AM_RANGE(0x3cc000, 0x3ccfff) AM_MIRROR(0x1000) AM_READ(SMH_RAM)
-	AM_RANGE(0x3ce000, 0x3cefff) AM_MIRROR(0x1000) AM_READ(SMH_RAM)
-	AM_RANGE(0x3d0000, 0x3d07ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x3e0000, 0x3e1fff) AM_MIRROR(0x2000) AM_READ(SMH_RAM)
-	AM_RANGE(0xff0000, 0xff7fff) AM_READ(SMH_RAM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( schmeisr_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x200000, 0x20000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf12_control)
-	AM_RANGE(0x240000, 0x24000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf34_control)
-	AM_RANGE(0x280000, 0x2807ff) AM_MIRROR(0x800) AM_WRITE(deco16_104_rohga_prot_w) AM_BASE(&deco16_prot_ram) /* Protection writes */
-
-	AM_RANGE(0x300000, 0x300001) AM_WRITE(rohga_buffer_spriteram16_w) /* write 1 for sprite dma */
 	AM_RANGE(0x310000, 0x310009) AM_WRITENOP /* Palette control? */
 	AM_RANGE(0x31000a, 0x31000b) AM_WRITE(deco16_palette_dma_w) /* Write 1111 for dma?  (Or any value?) */
 	AM_RANGE(0x320000, 0x320001) AM_WRITENOP /* ? */
 	AM_RANGE(0x322000, 0x322001) AM_WRITE(deco16_priority_w)
+	AM_RANGE(0x321100, 0x321101) AM_READNOP /* Irq ack?  Value not used */
 
-	AM_RANGE(0x3c0000, 0x3c1fff) AM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
-	AM_RANGE(0x3c2000, 0x3c2fff) AM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
-	AM_RANGE(0x3c4000, 0x3c4fff) AM_WRITE(deco16_pf3_data_w) AM_BASE(&deco16_pf3_data)
-	AM_RANGE(0x3c6000, 0x3c6fff) AM_WRITE(deco16_pf4_data_w) AM_BASE(&deco16_pf4_data)
-	AM_RANGE(0x3c8000, 0x3c8fff) AM_MIRROR(0x1000) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf1_rowscroll)
-	AM_RANGE(0x3ca000, 0x3cafff) AM_MIRROR(0x1000) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf2_rowscroll)
-	AM_RANGE(0x3cc000, 0x3ccfff) AM_MIRROR(0x1000) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf3_rowscroll)
-	AM_RANGE(0x3ce000, 0x3cefff) AM_MIRROR(0x1000) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf4_rowscroll)
-	AM_RANGE(0x3d0000, 0x3d07ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x3e0000, 0x3e1fff) AM_MIRROR(0x2000) AM_WRITE(deco16_buffered_palette_w) AM_BASE(&paletteram16)
-	AM_RANGE(0xff0000, 0xff7fff) AM_WRITE(SMH_RAM) /* Main ram */
+	AM_RANGE(0x3c0000, 0x3c1fff) AM_RAM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
+	AM_RANGE(0x3c2000, 0x3c2fff) AM_RAM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
+	AM_RANGE(0x3c4000, 0x3c4fff) AM_RAM_WRITE(deco16_pf3_data_w) AM_BASE(&deco16_pf3_data)
+	AM_RANGE(0x3c6000, 0x3c6fff) AM_RAM_WRITE(deco16_pf4_data_w) AM_BASE(&deco16_pf4_data)
+	AM_RANGE(0x3c8000, 0x3c8fff) AM_MIRROR(0x1000) AM_RAM AM_BASE(&deco16_pf1_rowscroll)
+	AM_RANGE(0x3ca000, 0x3cafff) AM_MIRROR(0x1000) AM_RAM AM_BASE(&deco16_pf2_rowscroll)
+	AM_RANGE(0x3cc000, 0x3ccfff) AM_MIRROR(0x1000) AM_RAM AM_BASE(&deco16_pf3_rowscroll)
+	AM_RANGE(0x3ce000, 0x3cefff) AM_MIRROR(0x1000) AM_RAM AM_BASE(&deco16_pf4_rowscroll)
+
+	AM_RANGE(0x3d0000, 0x3d07ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x3e0000, 0x3e1fff) AM_MIRROR(0x2000) AM_RAM_WRITE(deco16_buffered_palette_w) AM_BASE(&paletteram16)
+	AM_RANGE(0xff0000, 0xff7fff) AM_RAM /* Main ram */
 ADDRESS_MAP_END
+
 
 /******************************************************************************/
 
-static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x00ffff) AM_READ(SMH_ROM)
-	AM_RANGE(0x100000, 0x100001) AM_READNOP
-	AM_RANGE(0x110000, 0x110001) AM_DEVREAD("ym", ym2151_r)
-	AM_RANGE(0x120000, 0x120001) AM_DEVREAD("oki1", okim6295_r)
-	AM_RANGE(0x130000, 0x130001) AM_DEVREAD("oki2", okim6295_r)
+static ADDRESS_MAP_START( rohga_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x000000, 0x00ffff) AM_ROM
+	AM_RANGE(0x100000, 0x100001) AM_NOP
+	AM_RANGE(0x110000, 0x110001) AM_DEVREADWRITE("ym", ym2151_r,ym2151_w)
+	AM_RANGE(0x120000, 0x120001) AM_DEVREADWRITE("oki1", okim6295_r,okim6295_w)
+	AM_RANGE(0x130000, 0x130001) AM_DEVREADWRITE("oki2", okim6295_r,okim6295_w)
 	AM_RANGE(0x140000, 0x140001) AM_READ(soundlatch_r)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(SMH_BANK8)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x100000, 0x100001) AM_WRITENOP
-	AM_RANGE(0x110000, 0x110001) AM_DEVWRITE("ym", ym2151_w)
-	AM_RANGE(0x120000, 0x120001) AM_DEVWRITE("oki1", okim6295_w)
-	AM_RANGE(0x130000, 0x130001) AM_DEVWRITE("oki2", okim6295_w)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(SMH_BANK8)
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_RAMBANK(8)
 	AM_RANGE(0x1fec00, 0x1fec01) AM_WRITE(h6280_timer_w)
 	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(h6280_irq_status_w)
 ADDRESS_MAP_END
+
 
 /**********************************************************************************/
 
@@ -791,7 +715,7 @@ GFXDECODE_END
 
 static void sound_irq(const device_config *device, int state)
 {
-	cpu_set_input_line(device->machine->cpu[1],1,state); /* IRQ 2 */
+	cputag_set_input_line(device->machine, "audiocpu", 1, state); /* IRQ 2 */
 }
 
 static WRITE8_DEVICE_HANDLER( sound_bankswitch_w )
@@ -812,11 +736,11 @@ static MACHINE_DRIVER_START( rohga )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 14000000)
-	MDRV_CPU_PROGRAM_MAP(rohga_readmem,rohga_writemem)
+	MDRV_CPU_PROGRAM_MAP(rohga_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", H6280,32220000/4/3) /* verified on pcb (8.050Mhz is XIN on pin 10 of H6280 */
-	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
+	MDRV_CPU_PROGRAM_MAP(rohga_sound_map)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
@@ -857,11 +781,11 @@ static MACHINE_DRIVER_START( wizdfire )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 14000000)
-	MDRV_CPU_PROGRAM_MAP(wizdfire_readmem,wizdfire_writemem)
+	MDRV_CPU_PROGRAM_MAP(wizdfire_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", H6280,32220000/4/3) /* verified on pcb (8.050Mhz is XIN on pin 10 of H6280 */
-	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
+	MDRV_CPU_PROGRAM_MAP(rohga_sound_map)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM )
@@ -902,11 +826,11 @@ static MACHINE_DRIVER_START( nitrobal )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 14000000)
-	MDRV_CPU_PROGRAM_MAP(nitrobal_readmem,nitrobal_writemem)
+	MDRV_CPU_PROGRAM_MAP(nitrobal_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", H6280,32220000/4/3) /* verified on pcb (8.050Mhz is XIN on pin 10 of H6280 */
-	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
+	MDRV_CPU_PROGRAM_MAP(rohga_sound_map)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM )
@@ -947,11 +871,11 @@ static MACHINE_DRIVER_START( schmeisr )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 14000000)
-	MDRV_CPU_PROGRAM_MAP(schmeisr_readmem,schmeisr_writemem)
+	MDRV_CPU_PROGRAM_MAP(schmeisr_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", H6280,32220000/4/3) /* verified on pcb (8.050Mhz is XIN on pin 10 of H6280 */
-	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
+	MDRV_CPU_PROGRAM_MAP(rohga_sound_map)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
@@ -1258,12 +1182,56 @@ ROM_END
 
 ROM_START( wizdfire )
 	ROM_REGION(0x200000, "maincpu", 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "jf-01.3d",   0x000000, 0x20000, CRC(bde42a41) SHA1(0379de9c4cdcce35554b5dc15241ed2c4f0d7611) )
-	ROM_LOAD16_BYTE( "jf-00.3a",   0x000001, 0x20000, CRC(bca3c995) SHA1(dbebc9e301c04ee82ca4b658d3ab870790d1605b) )
-	ROM_LOAD16_BYTE( "jf-03.5d",   0x040000, 0x20000, CRC(5217d404) SHA1(7cfcdb9e2c812bf0d4ac8306834242876ac47844) )
-	ROM_LOAD16_BYTE( "jf-02.5a",   0x040001, 0x20000, CRC(36a1ce28) SHA1(62d52d720c89022de97759777230c45c460d8fb6) )
-	ROM_LOAD16_BYTE( "mas13",   0x080000, 0x80000, CRC(7e5256ce) SHA1(431d78ad185ba0216097f131fb2583a1a067e4f0) )
-	ROM_LOAD16_BYTE( "mas12",   0x080001, 0x80000, CRC(005bd499) SHA1(862079022f97bd11f2f33677dce55bd3b144a81b) )
+	ROM_LOAD16_BYTE( "je-01.3d", 0x000000, 0x20000, CRC(b6d62367) SHA1(e9521b28660f62b70e6e33c3e9cf345fc106eff6) ) /* Version 2.1 Over Sea */
+	ROM_LOAD16_BYTE( "je-00.3a", 0x000001, 0x20000, CRC(f33de278) SHA1(9407a73f578ec312944fc69f247e83704d713174) )
+	ROM_LOAD16_BYTE( "je-03.5d", 0x040000, 0x20000, CRC(5217d404) SHA1(7cfcdb9e2c812bf0d4ac8306834242876ac47844) )
+	ROM_LOAD16_BYTE( "je-02.5a", 0x040001, 0x20000, CRC(36a1ce28) SHA1(62d52d720c89022de97759777230c45c460d8fb6) )
+	ROM_LOAD16_BYTE( "mas13",    0x080000, 0x80000, CRC(7e5256ce) SHA1(431d78ad185ba0216097f131fb2583a1a067e4f0) )
+	ROM_LOAD16_BYTE( "mas12",    0x080001, 0x80000, CRC(005bd499) SHA1(862079022f97bd11f2f33677dce55bd3b144a81b) )
+
+	ROM_REGION(0x10000, "audiocpu", 0 ) /* Sound CPU */
+	ROM_LOAD( "je-06.20r",  0x00000,  0x10000,  CRC(79042546) SHA1(231561df9415a289756a533709f610894fb9176e) )
+
+	ROM_REGION( 0x020000, "gfx1", ROMREGION_DISPOSE )
+	ROM_LOAD16_BYTE( "je-04.10d",  0x00000,  0x10000,  CRC(73cba800) SHA1(dd7612fe1482713fcee5960b7db158be872d7fda) ) /* Chars */
+	ROM_LOAD16_BYTE( "je-05.12d",  0x00001,  0x10000,  CRC(22e2c49d) SHA1(06cc2d0476156d1f521c4c57621ce3922a23aa04) )
+
+	ROM_REGION( 0x200000, "gfx2", ROMREGION_DISPOSE )
+	ROM_LOAD( "mas00", 0x000000, 0x100000,  CRC(3d011034) SHA1(167d6d088d51a41f196be104d795ffe24297c96a) ) /* Tiles */
+	ROM_LOAD( "mas01", 0x100000, 0x100000,  CRC(6d0c9d0b) SHA1(63e19dfd6451810637664b08e880aef139ca6ed5) )
+
+	ROM_REGION( 0x100000, "gfx3", ROMREGION_DISPOSE )
+	ROM_LOAD( "mas02", 0x000000, 0x080000,  CRC(af00e620) SHA1(43f4680b22ac6baf840274462c07fee68a2fbdfb) )
+	ROM_LOAD( "mas03", 0x080000, 0x080000,  CRC(2fe61ea2) SHA1(0909e6c689c3e10225d7c074bd654ff2ada96983) )
+
+	ROM_REGION( 0x400000, "gfx4", ROMREGION_DISPOSE )
+	ROM_LOAD16_BYTE( "mas04", 0x000001, 0x100000,  CRC(1e56953b) SHA1(0655ac7f3c5030a80c2d6bad5c3a79b2cb1ae4a2) ) /* Sprites #1 */
+	ROM_LOAD16_BYTE( "mas05", 0x000000, 0x100000,  CRC(3826b8f8) SHA1(d59197b4e0525b86876f9cce6fbf80caba976851) )
+	ROM_LOAD16_BYTE( "mas06", 0x200001, 0x100000,  CRC(3b8bbd45) SHA1(c9f9d4daf9c0cba5385af26f3762b29c291ff62b) )
+	ROM_LOAD16_BYTE( "mas07", 0x200000, 0x100000,  CRC(31303769) SHA1(509604be06ec8e0c1b56a81a8ffccdf0f79e9fd7) )
+
+	ROM_REGION( 0x100000, "gfx5", ROMREGION_DISPOSE )
+	ROM_LOAD16_BYTE( "mas08", 0x000001, 0x080000,  CRC(e224fb7a) SHA1(9aa92fb98bddff313db2077c4db102e94c7af09b) ) /* Sprites #2 */
+	ROM_LOAD16_BYTE( "mas09", 0x000000, 0x080000,  CRC(5f6deb41) SHA1(850d0e157b4355e866ec770a2012293b2c55648f) )
+
+	ROM_REGION(0x80000, "oki1", 0 ) /* Oki samples */
+	ROM_LOAD( "mas10",  0x00000,  0x80000,  CRC(6edc06a7) SHA1(8ab92cca9d4a5d4fed3d99737c6f023f3f606db2) )
+
+	ROM_REGION(0x80000, "oki2", 0 ) /* Oki samples */
+	ROM_LOAD( "mas11",  0x00000,  0x80000,  CRC(c2f0a4f2) SHA1(af71d649aea273c17d7fbcf8693e8a1d4b31f7f8) )
+
+	ROM_REGION( 1024, "proms", 0 )
+	ROM_LOAD( "mb7122h.16l", 0x00000,  0x400,  CRC(2bee57cc) SHA1(bc48670aa7c39f6ff7fae4c819eab22ed2db875b) )	/* Priority (unused) */
+ROM_END
+
+ROM_START( wizdfiru )
+	ROM_REGION(0x200000, "maincpu", 0 ) /* 68000 code */
+	ROM_LOAD16_BYTE( "jf-01.3d", 0x000000, 0x20000, CRC(bde42a41) SHA1(0379de9c4cdcce35554b5dc15241ed2c4f0d7611) ) /* Version 1.1 US */
+	ROM_LOAD16_BYTE( "jf-00.3a", 0x000001, 0x20000, CRC(bca3c995) SHA1(dbebc9e301c04ee82ca4b658d3ab870790d1605b) )
+	ROM_LOAD16_BYTE( "jf-03.5d", 0x040000, 0x20000, CRC(5217d404) SHA1(7cfcdb9e2c812bf0d4ac8306834242876ac47844) )
+	ROM_LOAD16_BYTE( "jf-02.5a", 0x040001, 0x20000, CRC(36a1ce28) SHA1(62d52d720c89022de97759777230c45c460d8fb6) )
+	ROM_LOAD16_BYTE( "mas13",    0x080000, 0x80000, CRC(7e5256ce) SHA1(431d78ad185ba0216097f131fb2583a1a067e4f0) )
+	ROM_LOAD16_BYTE( "mas12",    0x080001, 0x80000, CRC(005bd499) SHA1(862079022f97bd11f2f33677dce55bd3b144a81b) )
 
 	ROM_REGION(0x10000, "audiocpu", 0 ) /* Sound CPU */
 	ROM_LOAD( "jf-06.20r",  0x00000,  0x10000,  CRC(79042546) SHA1(231561df9415a289756a533709f610894fb9176e) )
@@ -1302,19 +1270,19 @@ ROM_END
 
 ROM_START( darksel2 )
 	ROM_REGION(0x200000, "maincpu", 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "jb01-3",  0x000000, 0x20000, CRC(82308c01) SHA1(aa0733e244f14f2c84b6929236771cbc99532bb2) )
-	ROM_LOAD16_BYTE( "jb00-3",  0x000001, 0x20000, CRC(1d38113a) SHA1(69dc5a4dbe9d9737df198240f3db6f2115e311a5) )
-	ROM_LOAD16_BYTE( "jf-03.5d",0x040000, 0x20000, CRC(5217d404) SHA1(7cfcdb9e2c812bf0d4ac8306834242876ac47844) )
-	ROM_LOAD16_BYTE( "jf-02.5a",0x040001, 0x20000, CRC(36a1ce28) SHA1(62d52d720c89022de97759777230c45c460d8fb6) )
-	ROM_LOAD16_BYTE( "mas13",   0x080000, 0x80000, CRC(7e5256ce) SHA1(431d78ad185ba0216097f131fb2583a1a067e4f0) )
-	ROM_LOAD16_BYTE( "mas12",   0x080001, 0x80000, CRC(005bd499) SHA1(862079022f97bd11f2f33677dce55bd3b144a81b) )
+	ROM_LOAD16_BYTE( "jb-01-3.3d", 0x000000, 0x20000, CRC(82308c01) SHA1(aa0733e244f14f2c84b6929236771cbc99532bb2) ) /* Version 2.1 Japan */
+	ROM_LOAD16_BYTE( "jb-00-3.3a", 0x000001, 0x20000, CRC(1d38113a) SHA1(69dc5a4dbe9d9737df198240f3db6f2115e311a5) )
+	ROM_LOAD16_BYTE( "jb-03.5d",   0x040000, 0x20000, CRC(5217d404) SHA1(7cfcdb9e2c812bf0d4ac8306834242876ac47844) )
+	ROM_LOAD16_BYTE( "jb-02.5a",   0x040001, 0x20000, CRC(36a1ce28) SHA1(62d52d720c89022de97759777230c45c460d8fb6) )
+	ROM_LOAD16_BYTE( "mas13",      0x080000, 0x80000, CRC(7e5256ce) SHA1(431d78ad185ba0216097f131fb2583a1a067e4f0) )
+	ROM_LOAD16_BYTE( "mas12",      0x080001, 0x80000, CRC(005bd499) SHA1(862079022f97bd11f2f33677dce55bd3b144a81b) )
 
 	ROM_REGION(0x10000, "audiocpu", 0 ) /* Sound CPU */
-	ROM_LOAD( "jb06",  0x00000,  0x10000,  CRC(2066a1dd) SHA1(a0d136e90825fa9c089894a6852c634676d64579) )
+	ROM_LOAD( "jb-06.20r",  0x00000,  0x10000,  CRC(2066a1dd) SHA1(a0d136e90825fa9c089894a6852c634676d64579) )
 
 	ROM_REGION( 0x020000, "gfx1", ROMREGION_DISPOSE )
-	ROM_LOAD16_BYTE( "jf-04.10d",  0x00000,  0x10000,  CRC(73cba800) SHA1(dd7612fe1482713fcee5960b7db158be872d7fda) ) /* Chars */
-	ROM_LOAD16_BYTE( "jf-05.12d",  0x00001,  0x10000,  CRC(22e2c49d) SHA1(06cc2d0476156d1f521c4c57621ce3922a23aa04) )
+	ROM_LOAD16_BYTE( "jb-04.10d",  0x00000,  0x10000,  CRC(73cba800) SHA1(dd7612fe1482713fcee5960b7db158be872d7fda) ) /* Chars */
+	ROM_LOAD16_BYTE( "jb-05.12d",  0x00001,  0x10000,  CRC(22e2c49d) SHA1(06cc2d0476156d1f521c4c57621ce3922a23aa04) )
 
 	ROM_REGION( 0x200000, "gfx2", ROMREGION_DISPOSE )
 	ROM_LOAD( "mas00", 0x000000, 0x100000,  CRC(3d011034) SHA1(167d6d088d51a41f196be104d795ffe24297c96a) ) /* Tiles */
@@ -1515,7 +1483,8 @@ GAME( 1991, rohga2,   rohga,   rohga,    rohga,    rohga,    ROT0,   "Data East 
 GAME( 1991, rohgah,   rohga,   rohga,    rohga,    rohga,    ROT0,   "Data East Corporation", "Rohga Armor Force (Hong Kong v3.0)", 0 )
 GAME( 1991, rohgau,   rohga,   rohga,    rohga,    rohga,    ROT0,   "Data East Corporation", "Rohga Armor Force (US v1.0)", 0 )
 GAME( 1991, wolffang, rohga,   rohga,    rohga,    rohga,    ROT0,   "Data East Corporation", "Wolf Fang -Kuhga 2001- (Japan)", 0 )
-GAME( 1992, wizdfire, 0,       wizdfire, wizdfire, wizdfire, ROT0,   "Data East Corporation", "Wizard Fire (US v1.1)", 0 )
+GAME( 1992, wizdfire, 0,       wizdfire, wizdfire, wizdfire, ROT0,   "Data East Corporation", "Wizard Fire (Over Sea v2.1)", 0 )
+GAME( 1992, wizdfiru, wizdfire,wizdfire, wizdfire, wizdfire, ROT0,   "Data East Corporation", "Wizard Fire (US v1.1)", 0 )
 GAME( 1992, darksel2, wizdfire,wizdfire, wizdfire, wizdfire, ROT0,   "Data East Corporation", "Dark Seal 2 (Japan v2.1)", 0 )
 GAME( 1992, nitrobal, 0,       nitrobal, nitrobal, nitrobal, ROT270, "Data East Corporation", "Nitro Ball (US)", 0 )
 GAME( 1992, gunball,  nitrobal,nitrobal, nitrobal, nitrobal, ROT270, "Data East Corporation", "Gun Ball (Japan)", 0 )

@@ -36,7 +36,7 @@ static INTERRUPT_GEN( scontra_interrupt )
 
 static TIMER_CALLBACK( thunderx_firq_callback )
 {
-	cpu_set_input_line(machine->cpu[0], KONAMI_FIRQ_LINE, HOLD_LINE);
+	cputag_set_input_line(machine, "maincpu", KONAMI_FIRQ_LINE, HOLD_LINE);
 }
 
 
@@ -356,7 +356,7 @@ static WRITE8_HANDLER( thunderx_videobank_w )
 
 static WRITE8_HANDLER( thunderx_sh_irqtrigger_w )
 {
-	cpu_set_input_line_and_vector(space->machine->cpu[1],0,HOLD_LINE,0xff);
+	cputag_set_input_line_and_vector(space->machine, "audiocpu", 0, HOLD_LINE, 0xff);
 }
 
 static WRITE8_DEVICE_HANDLER( scontra_snd_bankswitch_w )
@@ -448,39 +448,36 @@ static INPUT_PORTS_START( scontra )
 	/* "No Coin B" = coins produce sound, but no effect on coin counter */
 
 	PORT_START("DSW2")
-	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Lives ) )
+	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Lives ) )		PORT_DIPLOCATION("SW2:1,2")
 	PORT_DIPSETTING(	0x03, "2" )
-	PORT_DIPSETTING(	0x02, "3" )
+	PORT_DIPSETTING(	0x02, "3" ) // factory default
 	PORT_DIPSETTING(	0x01, "5" )
 	PORT_DIPSETTING(	0x00, "7" )
-	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Unknown ) )	/* test mode calls it cabinet type, */
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )		/* but this is a 2 players game */
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x18, 0x18, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(	0x18, "30000 200000" )
-	PORT_DIPSETTING(	0x10, "50000 300000" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x04, 0x00, "SW2:3" )  // test mode calls it cabinet type, but this is a 2 players game
+	                                               // US manual default = "ON : Upright" / Japanese manual default = "OFF : Table" , but not work?
+	PORT_DIPNAME( 0x18, 0x18, DEF_STR( Bonus_Life ) )	PORT_DIPLOCATION("SW2:4,5")
+	PORT_DIPSETTING(	0x18, "30000 200000" ) // factory default. Japanese manual has typo "30000 300000"
+	PORT_DIPSETTING(	0x10, "50000 300000" ) //                                           "50000 200000"
 	PORT_DIPSETTING(	0x08, "30000" )
 	PORT_DIPSETTING(	0x00, "50000" )
-	PORT_DIPNAME( 0x60, 0x40, DEF_STR( Difficulty ) )
+	PORT_DIPNAME( 0x60, 0x40, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("SW2:6,7")
 	PORT_DIPSETTING(	0x60, DEF_STR( Easy ) )
-	PORT_DIPSETTING(	0x40, DEF_STR( Normal ) )
-	PORT_DIPSETTING(	0x20, "Difficult" )
-	PORT_DIPSETTING(	0x00, "Very Difficult" )
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(	0x40, DEF_STR( Normal ) ) // factory default
+	PORT_DIPSETTING(	0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Very_Difficult ) )
+	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )	PORT_DIPLOCATION("SW2:8")
 	PORT_DIPSETTING(	0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) ) // factory default
 
 	PORT_START("DSW3")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(	0x01, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )	PORT_DIPLOCATION("SW3:1")
+	PORT_DIPSETTING(	0x01, DEF_STR( Off ) ) // factory default
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_SERVICE( 0x04, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x08, 0x08, "Continue Limit" )
-	PORT_DIPSETTING(    0x08, "3" )
-	PORT_DIPSETTING(    0x00, "5" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x02, 0x02, "SW3:2" )
+	PORT_SERVICE_DIPLOC( 0x04, IP_ACTIVE_LOW, "SW3:3" )  // TYPO on US manual "OFF : Game mode / ON : Game mode"
+	PORT_DIPNAME( 0x08, 0x00, "Continue Limit (1Player/2Players)" )	PORT_DIPLOCATION("SW3:4")
+	PORT_DIPSETTING(    0x08, "3times / Twice altogether" )
+	PORT_DIPSETTING(    0x00, "5times / 4times altogether" ) // factory default
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -502,42 +499,60 @@ static INPUT_PORTS_START( thunderx )
 	/* "No Coin B" = coins produce sound, but no effect on coin counter */
 
  	PORT_START("DSW2")
-	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Lives ) )
+	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Lives ) )		PORT_DIPLOCATION("SW2:1,2")
 	PORT_DIPSETTING(    0x03, "2" )
-	PORT_DIPSETTING(    0x02, "3" )
+	PORT_DIPSETTING(    0x02, "3" ) // factory default
 	PORT_DIPSETTING(    0x01, "5" )
 	PORT_DIPSETTING(    0x00, "7" )
-	PORT_DIPNAME( 0x04, 0x00, "Award Bonus Life" )
-	PORT_DIPSETTING(    0x04, DEF_STR( No ) )
+	PORT_DIPNAME( 0x04, 0x00, "Award Bonus Life" )		PORT_DIPLOCATION("SW2:3")
+	PORT_DIPSETTING(    0x04, DEF_STR( No ) ) // factory default
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x18, 0x18, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x18, "30000 200000" )
-	PORT_DIPSETTING(    0x10, "50000 300000" )
+	PORT_DIPNAME( 0x18, 0x18, DEF_STR( Bonus_Life ) )	PORT_DIPLOCATION("SW2:4,5")
+	PORT_DIPSETTING(    0x18, "30000 200000" ) // Japanese default
+	PORT_DIPSETTING(    0x10, "50000 300000" ) // US default
 	PORT_DIPSETTING(    0x08, "30000" )
 	PORT_DIPSETTING(    0x00, "50000" )
-	PORT_DIPNAME( 0x60, 0x60, DEF_STR( Difficulty ) )
+	PORT_DIPNAME( 0x60, 0x60, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("SW2:6,7")
 	PORT_DIPSETTING(    0x60, DEF_STR( Easy ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x20, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) ) // factory default
+	PORT_DIPSETTING(    0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
+	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )	PORT_DIPLOCATION("SW2:8")
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) ) // factory default
 
 	PORT_START("DSW3")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) )	PORT_DIPLOCATION("SW3:1")
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) ) // factory default
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_SERVICE( 0x04, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPUNKNOWN_DIPLOC( 0x02, 0x02, "SW3:2" )
+	PORT_SERVICE_DIPLOC( 0x04, IP_ACTIVE_LOW, "SW3:3" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x08, 0x08, "SW3:4" )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
+static INPUT_PORTS_START( thnderxj )
+	PORT_INCLUDE( thunderx )
+
+	PORT_MODIFY("DSW2")
+	PORT_DIPUNKNOWN_DIPLOC( 0x04, 0x04, "SW2:3" )  // manual says "OFF=Table On=Upright", but not work?
+	PORT_DIPNAME( 0x18, 0x18, DEF_STR( Bonus_Life ) )	PORT_DIPLOCATION("SW2:4,5")
+	PORT_DIPSETTING(    0x18, "30000 200000" )  // Japanese MS
+	PORT_DIPSETTING(    0x10, "50000 300000" )  // US MS
+	PORT_DIPSETTING(    0x08, "30000" )
+	PORT_DIPSETTING(    0x00, "50000" )
+INPUT_PORTS_END
+
+/*
+static INPUT_PORTS_START( thndrxja ) // for Japanese later revision (not dumped yet)
+    PORT_INCLUDE( thnderxj )
+
+    PORT_MODIFY("DSW3")
+    PORT_DIPNAME( 0x08, 0x08, "All Stage Clear Loop" )  PORT_DIPLOCATION("SW3:4")
+    PORT_DIPSETTING(    0x08, "Game ends after 3 loops" )  // factory default
+    PORT_DIPSETTING(    0x00, "Endless" )
+INPUT_PORTS_END
+*/
 
 
 /***************************************************************************
@@ -563,11 +578,11 @@ static MACHINE_DRIVER_START( scontra )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", KONAMI, 3000000)	/* 052001 */
-	MDRV_CPU_PROGRAM_MAP(scontra_map,0)
+	MDRV_CPU_PROGRAM_MAP(scontra_map)
 	MDRV_CPU_VBLANK_INT("screen", scontra_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3579545)		/* ? */
-	MDRV_CPU_PROGRAM_MAP(scontra_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(scontra_sound_map)
 
 	MDRV_MACHINE_RESET(scontra)
 
@@ -604,11 +619,11 @@ static MACHINE_DRIVER_START( thunderx )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", KONAMI, 3000000)		/* ? */
-	MDRV_CPU_PROGRAM_MAP(thunderx_map,0)
+	MDRV_CPU_PROGRAM_MAP(thunderx_map)
 	MDRV_CPU_VBLANK_INT("screen", scontra_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3579545)		/* ? */
-	MDRV_CPU_PROGRAM_MAP(thunderx_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(thunderx_sound_map)
 
 	MDRV_MACHINE_RESET(thunderx)
 
@@ -909,8 +924,8 @@ static MACHINE_RESET( thunderx )
 {
 	UINT8 *RAM = memory_region(machine, "maincpu");
 
-	konami_configure_set_lines(machine->cpu[0], thunderx_banking);
-	memory_set_bankptr(machine,  1, &RAM[0x10000] ); /* init the default bank */
+	konami_configure_set_lines(cputag_get_cpu(machine, "maincpu"), thunderx_banking);
+	memory_set_bankptr(machine, 1, &RAM[0x10000] ); /* init the default bank */
 
 	paletteram = &RAM[0x28000];
 	pmcram = &RAM[0x28800];
@@ -929,4 +944,7 @@ GAME( 1988, scontraj, scontra,  scontra,  scontra,  scontra, ROT90, "Konami", "S
 GAME( 1988, thunderx, 0,        thunderx, thunderx, scontra, ROT0,  "Konami", "Thunder Cross (set 1)", 0 )
 GAME( 1988, thnderxa, thunderx, thunderx, thunderx, scontra, ROT0,  "Konami", "Thunder Cross (set 2)", 0 )
 GAME( 1988, thnderxb, thunderx, thunderx, thunderx, scontra, ROT0,  "Konami", "Thunder Cross (set 3)", 0 )
-GAME( 1988, thnderxj, thunderx, thunderx, thunderx, scontra, ROT0,  "Konami", "Thunder Cross (Japan)", 0 )
+GAME( 1988, thnderxj, thunderx, thunderx, thnderxj, scontra, ROT0,  "Konami", "Thunder Cross (Japan)", 0 )
+/*
+GAME( 1988, thndrxja, thunderx, thunderx, thndrxja, scontra, ROT0,  "Konami", "Thunder Cross (Japan, newer revision)", 0 )
+*/

@@ -293,7 +293,7 @@ static void DebugMeshInit( running_machine *machine )
 	m_debug.b_clear = 1;
 	m_debug.n_coord = 0;
 	m_debug.n_skip = 0;
-	m_debug.mesh = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16 );
+	m_debug.mesh = auto_bitmap_alloc(machine, width, height, BITMAP_FORMAT_INDEXED16 );
 	m_debug.machine = machine;
 }
 
@@ -640,8 +640,7 @@ static void psx_gpu_init( running_machine *machine )
 	m_n_lightgun_y = 0;
 
 	m_n_vram_size = width * height;
-	m_p_vram = auto_malloc( m_n_vram_size * 2 );
-	memset( m_p_vram, 0x00, m_n_vram_size * 2 );
+	m_p_vram = auto_alloc_array_clear(machine, UINT16, m_n_vram_size );
 
 	for( n_line = 0; n_line < 1024; n_line++ )
 	{
@@ -3922,7 +3921,7 @@ INTERRUPT_GEN( psx_vblank )
 
 void psx_gpu_reset( running_machine *machine )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	psx_gpu_w(space, 1, 0, 0xffffffff );
 }

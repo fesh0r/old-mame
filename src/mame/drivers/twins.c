@@ -94,7 +94,7 @@ ADDRESS_MAP_END
 
 static VIDEO_START(twins)
 {
-	twins_pal = auto_malloc(0x100*2);
+	twins_pal = auto_alloc_array(machine, UINT16, 0x100);
 }
 
 static VIDEO_UPDATE(twins)
@@ -169,8 +169,8 @@ static const ay8910_interface ay8910_config =
 static MACHINE_DRIVER_START( twins )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V30, 8000000)
-	MDRV_CPU_PROGRAM_MAP(twins_map, 0)
-	MDRV_CPU_IO_MAP(twins_io,0)
+	MDRV_CPU_PROGRAM_MAP(twins_map)
+	MDRV_CPU_IO_MAP(twins_io)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	/* video hardware */
@@ -199,7 +199,7 @@ MACHINE_DRIVER_END
 
 static VIDEO_START(twinsa)
 {
-	twins_pal = auto_malloc(0x1000*2);
+	twins_pal = auto_alloc_array(machine, UINT16, 0x1000);
 }
 
 static VIDEO_UPDATE(twinsa)
@@ -257,8 +257,8 @@ ADDRESS_MAP_END
 static MACHINE_DRIVER_START( twinsa )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V30, XTAL_16MHz/2) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(twins_map, 0)
-	MDRV_CPU_IO_MAP(twinsa_io,0)
+	MDRV_CPU_PROGRAM_MAP(twins_map)
+	MDRV_CPU_IO_MAP(twinsa_io)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	/* video hardware */

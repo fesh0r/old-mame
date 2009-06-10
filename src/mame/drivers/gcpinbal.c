@@ -21,7 +21,7 @@ Understand role of bit 5 of IN1
 
 Eprom?
 
-MSM6295 banking?  (also missing in Raine)
+BGMs (controlled by MSM-6585 sound chip)
 
 Stephh's notes (based on the game M68000 code and some tests) :
 
@@ -38,7 +38,8 @@ Stephh's notes (based on the game M68000 code and some tests) :
 
 /* M6585 */
 
-static int start, end, bank;
+static UINT32 msm_start, msm_end, msm_bank;
+static UINT32 adpcm_start, adpcm_end, adpcm_idle;
 
 /***********************************************************
                       INTERRUPTS
@@ -46,7 +47,7 @@ static int start, end, bank;
 
 static TIMER_CALLBACK( gcpinbal_interrupt1 )
 {
-	cpu_set_input_line(machine->cpu[0],1,HOLD_LINE);
+	cputag_set_input_line(machine, "maincpu", 1, HOLD_LINE);
 }
 
 #ifdef UNUSED_FUNCTION
@@ -55,7 +56,7 @@ static TIMER_CALLBACK( gcpinbal_interrupt3 )
 	// IRQ3 is from the M6585
 //  if (!ADPCM_playing(0))
 	{
-		cpu_set_input_line(machine->cpu[0],3,HOLD_LINE);
+		cputag_set_input_line(machine, "maincpu", 3, HOLD_LINE);
 	}
 }
 #endif
@@ -132,17 +133,12 @@ static WRITE16_HANDLER( ioc_w )
 
 		// MSM6585 bank, coin LEDs, maybe others?
 		case 0x44:
-			if (data & 0x10)
-			{
-				bank = 0x100000;
-			}
-			else
-			{
-				bank = 0;
-			}
+			msm_bank = data & 0x1000 ? 0x100000 : 0;
+			okim6295_set_bank_base(devtag_get_device(space->machine, "oki"), 0x40000 * ((data & 0x800)>>11));
 			break;
 
 		case 0x45:
+			//adpcm_idle = 1;
 			break;
 
 		// OKIM6295
@@ -153,32 +149,38 @@ static WRITE16_HANDLER( ioc_w )
 
 		// MSM6585 ADPCM - mini emulation
 		case 0x60:
-			start &= 0xffff00;
-			start |= (data>>8);
+			msm_start &= 0xffff00;
+			msm_start |= (data>>8);
 			break;
 		case 0x61:
-			start &= 0xff00ff;
-			start |= data;
+			msm_start &= 0xff00ff;
+			msm_start |= data;
 			break;
 		case 0x62:
-			start &= 0x00ffff;
-			start |= (data<<8);
+			msm_start &= 0x00ffff;
+			msm_start |= (data<<8);
 			break;
 		case 0x63:
-			end &= 0xffff00;
-			end |= (data>>8);
+			msm_end &= 0xffff00;
+			msm_end |= (data>>8);
 			break;
 		case 0x64:
-			end &= 0xff00ff;
-			end |= data;
+			msm_end &= 0xff00ff;
+			msm_end |= data;
 			break;
 		case 0x65:
-			end &= 0x00ffff;
-			end |= (data<<8);
+			msm_end &= 0x00ffff;
+			msm_end |= (data<<8);
 			break;
 		case 0x66:
-			if (start < end)
+			if (msm_start < msm_end)
 			{
+				/* data written here is adpcm param? */
+				//popmessage("%08x %08x",msm_start+msm_bank,msm_end);
+				adpcm_idle = 0;
+				msm5205_reset_w(devtag_get_device(space->machine, "msm"),0);
+				adpcm_start = msm_start+msm_bank;
+				adpcm_end = msm_end;
 //              ADPCM_stop(0);
 //              ADPCM_play(0, start+bank, end-start);
 			}
@@ -198,29 +200,41 @@ static WRITE16_HANDLER( ioc_w )
 
 
 /* Controlled through ioc? */
+static void gcp_adpcm_int(const device_config *device)
+{
+	static UINT8 trigger,adpcm_data;
 
+	if (adpcm_idle)
+		msm5205_reset_w(device,1);
+	if (adpcm_start >= 0x200000 || adpcm_start > adpcm_end)
+	{
+		//msm5205_reset_w(device,1);
+		adpcm_start = msm_start+msm_bank;
+		trigger = 0;
+	}
+	else
+	{
+		UINT8 *ROM = memory_region(device->machine, "msm");
+
+		adpcm_data = ((trigger ? (ROM[adpcm_start] & 0x0f) : (ROM[adpcm_start] & 0xf0)>>4) );
+		msm5205_data_w(device,adpcm_data & 0xf);
+		trigger^=1;
+		if(trigger == 0) { adpcm_start++; }
+	}
+}
 
 
 /***********************************************************
                      MEMORY STRUCTURES
 ***********************************************************/
 
-static ADDRESS_MAP_START( gcpinbal_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_READ(SMH_ROM)
-	AM_RANGE(0xc00000, 0xc03fff) AM_READ(gcpinbal_tilemaps_word_r)
-	AM_RANGE(0xc80000, 0xc80fff) AM_READ(SMH_RAM)	/* sprite ram */
-	AM_RANGE(0xd00000, 0xd00fff) AM_READ(SMH_RAM)
-	AM_RANGE(0xd80000, 0xd800ff) AM_READ(ioc_r)
-	AM_RANGE(0xff0000, 0xffffff) AM_READ(SMH_RAM)	/* RAM */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( gcpinbal_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0xc00000, 0xc03fff) AM_WRITE(gcpinbal_tilemaps_word_w) AM_BASE(&gcpinbal_tilemapram)
-	AM_RANGE(0xc80000, 0xc80fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xd00000, 0xd00fff) AM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0xd80000, 0xd800ff) AM_WRITE(ioc_w) AM_BASE(&gcpinbal_ioc_ram)
-	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(SMH_RAM)
+static ADDRESS_MAP_START( gcpinbal_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x1fffff) AM_ROM
+	AM_RANGE(0xc00000, 0xc03fff) AM_READWRITE(gcpinbal_tilemaps_word_r, gcpinbal_tilemaps_word_w) AM_BASE(&gcpinbal_tilemapram)
+	AM_RANGE(0xc80000, 0xc80fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)	/* sprite ram */
+	AM_RANGE(0xd00000, 0xd00fff) AM_RAM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0xd80000, 0xd800ff) AM_READWRITE(ioc_r, ioc_w) AM_BASE(&gcpinbal_ioc_ram)
+	AM_RANGE(0xff0000, 0xffffff) AM_RAM	/* RAM */
 ADDRESS_MAP_END
 
 
@@ -367,9 +381,14 @@ GFXDECODE_END
 
 static const msm5205_interface msm5205_config =
 {
-	NULL,				/* VCK function */
+	gcp_adpcm_int,		/* VCK function */
 	MSM5205_S48_4B		/* 8 kHz */
 };
+
+static MACHINE_RESET( gcpinbal )
+{
+	adpcm_idle = 1;
+}
 
 /***********************************************************
                         MACHINE DRIVERS
@@ -379,7 +398,7 @@ static MACHINE_DRIVER_START( gcpinbal )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 32000000/2)	/* 16 MHz ? */
-	MDRV_CPU_PROGRAM_MAP(gcpinbal_readmem,gcpinbal_writemem)
+	MDRV_CPU_PROGRAM_MAP(gcpinbal_map)
 	MDRV_CPU_VBLANK_INT("screen", gcpinbal_interrupt)
 
 	/* video hardware */
@@ -392,6 +411,8 @@ static MACHINE_DRIVER_START( gcpinbal )
 
 	MDRV_GFXDECODE(gcpinbal)
 	MDRV_PALETTE_LENGTH(4096)
+
+	MDRV_MACHINE_RESET(gcpinbal)
 
 	MDRV_VIDEO_START(gcpinbal)
 	MDRV_VIDEO_UPDATE(gcpinbal)

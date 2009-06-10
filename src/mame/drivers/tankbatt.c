@@ -106,8 +106,8 @@ static WRITE8_HANDLER( tankbatt_interrupt_enable_w )
 	tankbatt_sound_enable = !data;
 	if (data != 0)
 	{
-		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
-		cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_NMI, CLEAR_LINE);
 	}
 	/* hack - turn off the engine noise if the normal game nmi's are disabled */
 	if (data) sample_stop (devtag_get_device(space->machine, "samples"), 2);
@@ -119,8 +119,8 @@ static WRITE8_HANDLER( tankbatt_demo_interrupt_enable_w )
 	tankbatt_nmi_enable = data;
 	if (data != 0)
 	{
-		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
-		cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_NMI, CLEAR_LINE);
 	}
 //  interrupt_enable_w (offset, data);
 }
@@ -283,7 +283,7 @@ static MACHINE_DRIVER_START( tankbatt )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, 1000000)	/* 1 MHz ???? */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", tankbatt_interrupt)
 
 	/* video hardware */

@@ -660,8 +660,8 @@ static MACHINE_DRIVER_START( skylncr )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK/4)
-	MDRV_CPU_PROGRAM_MAP(mem_map_skylncr,0)
-	MDRV_CPU_IO_MAP(io_map_skylncr,0)
+	MDRV_CPU_PROGRAM_MAP(mem_map_skylncr)
+	MDRV_CPU_IO_MAP(io_map_skylncr)
 	MDRV_CPU_VBLANK_INT("screen", skylncr_vblank_interrupt)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
@@ -824,8 +824,8 @@ ROM_END
 
 static DRIVER_INIT( skylncr )
 {
-	paletteram   = auto_malloc(0x100 * 3);
-	paletteram_2 = auto_malloc(0x100 * 3);
+	paletteram   = auto_alloc_array(machine, UINT8, 0x100 * 3);
+	paletteram_2 = auto_alloc_array(machine, UINT8, 0x100 * 3);
 }
 
 

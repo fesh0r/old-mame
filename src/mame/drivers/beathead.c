@@ -144,7 +144,7 @@ static TIMER_CALLBACK( scanline_callback )
 
 	/* on scanline zero, clear any halt condition */
 	if (scanline == 0)
-		cpu_set_input_line(machine->cpu[0], INPUT_LINE_HALT, CLEAR_LINE);
+		cputag_set_input_line(machine, "maincpu", INPUT_LINE_HALT, CLEAR_LINE);
 
 	/* wrap around at 262 */
 	scanline++;
@@ -204,7 +204,7 @@ static void update_interrupts(running_machine *machine)
 	{
 		irq_line_state = gen_int;
 //      if (irq_line_state != CLEAR_LINE)
-			cpu_set_input_line(machine->cpu[0], ASAP_IRQ0, irq_line_state);
+			cputag_set_input_line(machine, "maincpu", ASAP_IRQ0, irq_line_state);
 //      else
 //          asap_set_irq_line(ASAP_IRQ0, irq_line_state);
 	}
@@ -299,7 +299,7 @@ static WRITE32_HANDLER( sound_data_w )
 static WRITE32_HANDLER( sound_reset_w )
 {
 	logerror("Sound reset = %d\n", !offset);
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, offset ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(space->machine, "jsa", INPUT_LINE_RESET, offset ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -336,7 +336,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x41000220, 0x41000227) AM_WRITE(coin_count_w)
 	AM_RANGE(0x41000300, 0x41000303) AM_READ(input_2_r)
 	AM_RANGE(0x41000304, 0x41000307) AM_READ_PORT("IN3")
-	AM_RANGE(0x41000400, 0x41000403) AM_WRITE(SMH_RAM) AM_BASE(&beathead_palette_select)
+	AM_RANGE(0x41000400, 0x41000403) AM_WRITEONLY AM_BASE(&beathead_palette_select)
 	AM_RANGE(0x41000500, 0x41000503) AM_WRITE(eeprom_enable_w)
 	AM_RANGE(0x41000600, 0x41000603) AM_WRITE(beathead_finescroll_w)
 	AM_RANGE(0x41000700, 0x41000703) AM_WRITE(watchdog_reset32_w)
@@ -347,7 +347,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x8f900000, 0x8f97ffff) AM_WRITE(beathead_vram_transparent_w)
 	AM_RANGE(0x8f980000, 0x8f9fffff) AM_RAM AM_BASE(&videoram32)
 	AM_RANGE(0x8fb80000, 0x8fbfffff) AM_WRITE(beathead_vram_bulk_w)
-	AM_RANGE(0x8fff8000, 0x8fff8003) AM_WRITE(SMH_RAM) AM_BASE(&beathead_vram_bulk_latch)
+	AM_RANGE(0x8fff8000, 0x8fff8003) AM_WRITEONLY AM_BASE(&beathead_vram_bulk_latch)
 	AM_RANGE(0x9e280000, 0x9e2fffff) AM_WRITE(beathead_vram_copy_w)
 ADDRESS_MAP_END
 
@@ -410,7 +410,7 @@ static MACHINE_DRIVER_START( beathead )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", ASAP, ATARI_CLOCK_14MHz)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 
 	MDRV_MACHINE_RESET(beathead)
 	MDRV_NVRAM_HANDLER(generic_1fill)
@@ -514,8 +514,8 @@ static DRIVER_INIT( beathead )
 	atarijsa_init(machine, "IN2", 0x0040);
 
 	/* prepare the speedups */
-	speedup_data = memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00000ae8, 0x00000aeb, 0, 0, speedup_r);
-	movie_speedup_data = memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x00000804, 0x00000807, 0, 0, movie_speedup_r);
+	speedup_data = memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x00000ae8, 0x00000aeb, 0, 0, speedup_r);
+	movie_speedup_data = memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x00000804, 0x00000807, 0, 0, movie_speedup_r);
 }
 
 

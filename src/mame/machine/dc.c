@@ -19,6 +19,7 @@
 #define DEBUG_SYSCTRL	(0)
 #define DEBUG_MAPLE	(0)
 #define DEBUG_MAPLE_REGS	(0)
+#define DEBUG_AICA_DMA (0)
 
 #define ENABLE_MAPLE_IRQ (0)
 
@@ -242,55 +243,117 @@ int level;
 	}
 
 	level=dc_compute_interrupt_level(machine);
-	device_set_info_int(machine->cpu[0], CPUINFO_INT_SH4_IRLn_INPUT, 15-level);
+	sh4_set_irln_input(cputag_get_cpu(machine, "maincpu"), 15-level);
 }
+
+/******************************************************
+JVS init packets
+The function packets goes like this:
+[0] Function number
+[1] Number of "devices"
+[2] Parameter of the device
+[3] End flag (always zero)
+******************************************************/
+static int jvs_mux_data;
 
 static int jvsboard_init(int pos)
 {
 	// four bytes for every available function
-	// first function
+	//1 digital inputs
 	maple0x86data2[pos+10]=1;
-	maple0x86data2[pos+11]=2; // number of players
-	maple0x86data2[pos+12]=9+4; // switches per player (27 = mahjong)
+	if(jvsboard_type == JVSBD_MAHJONG)
+	{
+		maple0x86data2[pos+11]=1; // number of players
+		maple0x86data2[pos+12]=22; // switches per player (27 = mahjong)
+		jvs_mux_data = 1;
+	}
+	else //if JVSBD_DEFAULT
+	{
+		maple0x86data2[pos+11]=2; // number of players
+		maple0x86data2[pos+12]=9+4; // switches per player (27 = mahjong)
+	}
 	maple0x86data2[pos+13]=0;
-	// second function
+	//2 coin slots
 	maple0x86data2[pos+14]=2;
 	maple0x86data2[pos+15]=2; // number of coin slots
 	maple0x86data2[pos+16]=0;
 	maple0x86data2[pos+17]=0;
-	// third function
+	//3 ad stick
 	maple0x86data2[pos+18]=3;
 	maple0x86data2[pos+19]=2; // analog channels
 	maple0x86data2[pos+20]=8; // bits per channel
 	maple0x86data2[pos+21]=0;
-	// no more functions
+	//4 rotary
 	maple0x86data2[pos+22]=0;
+	//5 keyboard
+	//6 (touch?) screen
+	//7 card reader
+	//8 hopper out
+	//9 driver out
+	//10 analog out
+	//11 character
+	//12 backup
+
 	maple0x86data2[pos+7]=13+2;
 	return 13;
 }
 
-static void jvsboard_indirect_read(running_machine *machine, int pos)
+static int jvsboard_indirect_read(running_machine *machine, int pos)
 {
 	// report1,jvsbytes repeated for each function
-	// first function
+	//1 digital inputs
 	maple0x86data2[pos+ 9]=1; // report
 	maple0x86data2[pos+10]=0; // bits TEST TILT1 TILT2 TILT3 ? ? ? ?
-	maple0x86data2[pos+11]=input_port_read(machine, "IN1"); // bits 1Pstart 1Pservice 1Pup 1Pdown 1Pleft 1Pright 1Ppush1 1Ppush2
-	maple0x86data2[pos+12]=input_port_read(machine, "IN2"); // bits 1Ppush3 1Ppush4 1Ppush5 1Ppush6 1Ppush7 1Ppush8 ...
-	maple0x86data2[pos+13]=input_port_read(machine, "IN3"); // bits 2Pstart 2Pservice 2Pup 2Pdown 2Pleft 2Pright 2Ppush1 2Ppush2
-	maple0x86data2[pos+14]=input_port_read(machine, "IN4"); // bits 2Ppush3 2Ppush4 2Ppush5 2Ppush6 2Ppush7 2Ppush8 ...
-	// second function
+	if(jvsboard_type == JVSBD_MAHJONG)
+	{
+		maple0x86data2[pos+11]=0;
+		switch(jvs_mux_data)
+		{
+			case 0x01: maple0x86data2[pos+12]=input_port_read(machine, "IN1"); break;
+			case 0x02: maple0x86data2[pos+12]=input_port_read(machine, "IN2"); break;
+			case 0x04: maple0x86data2[pos+12]=input_port_read(machine, "IN3"); break;
+			case 0x08: maple0x86data2[pos+12]=input_port_read(machine, "IN4"); break;
+			case 0x10: maple0x86data2[pos+12]=0; break;
+		}
+		maple0x86data2[pos+13]=0;
+		maple0x86data2[pos+14]=0;
+
+		jvs_mux_data<<=1;
+		if(jvs_mux_data >= 0x20) { jvs_mux_data = 1; }
+	}
+	else
+	{
+		maple0x86data2[pos+11]=input_port_read(machine, "IN1"); // bits 1Pstart 1Pservice 1Pup 1Pdown 1Pleft 1Pright 1Ppush1 1Ppush2
+		maple0x86data2[pos+12]=input_port_read(machine, "IN2"); // bits 1Ppush3 1Ppush4 1Ppush5 1Ppush6 1Ppush7 1Ppush8 ...
+		maple0x86data2[pos+13]=input_port_read(machine, "IN3"); // bits 2Pstart 2Pservice 2Pup 2Pdown 2Pleft 2Pright 2Ppush1 2Ppush2
+		maple0x86data2[pos+14]=input_port_read(machine, "IN4"); // bits 2Ppush3 2Ppush4 2Ppush5 2Ppush6 2Ppush7 2Ppush8 ...
+	}
+	//2 coin slots
 	maple0x86data2[pos+15]=1; // report
 	maple0x86data2[pos+16]=(dc_coin_counts[0] >> 8) & 0xff; // 1CONDITION, 1SLOT COIN(bit13-8)
 	maple0x86data2[pos+17]=dc_coin_counts[0] & 0xff; // 1SLOT COIN(bit7-0)
 	maple0x86data2[pos+18]=(dc_coin_counts[1] >> 8) & 0xff; // 2CONDITION, 2SLOT COIN(bit13-8)
 	maple0x86data2[pos+19]=dc_coin_counts[1] & 0xff; // 2SLOT COIN(bit7-0)
-	// third function
+	//3 ad stick
 	maple0x86data2[pos+20]=1; // report
 	maple0x86data2[pos+21]=0xff; // channel 1 bits 7-0
 	maple0x86data2[pos+22]=0; // channel 1
 	maple0x86data2[pos+23]=0; // channel 2 bits 7-0
 	maple0x86data2[pos+24]=0xff; // channel 2
+	//4 rotary
+	maple0x86data2[pos+25]=0;
+	maple0x86data2[pos+26]=0;
+	//5 keyboard
+	//6 (touch?) screen
+	//7 card reader
+	//8 hopper out
+	//9 driver out
+	//10 analog out
+	//11 character
+	//12 backup
+
+	maple0x86data2[pos+7]=17+2;
+	return 17;
 }
 
 static int jvsboard_direct_read(running_machine *machine)
@@ -305,22 +368,47 @@ static int jvsboard_direct_read(running_machine *machine)
 	maple0x86data2[0x19] = 0x01;
 
 	/* read the inputs */
+	//1 digital inputs
 	maple0x86data2[0x1a]=1;
-	maple0x86data2[0x1b]=2; //number of players
-	maple0x86data2[0x1c]=input_port_read(machine, "IN1");
-	maple0x86data2[0x1d]=input_port_read(machine, "IN2");
-	maple0x86data2[0x1e]=input_port_read(machine, "IN3");
-	maple0x86data2[0x1f]=input_port_read(machine, "IN4");
+	if(jvsboard_type == JVSBD_MAHJONG)
+		maple0x86data2[0x1b]=1; //number of players
+	else //if JVSBD_DEFAULT
+		maple0x86data2[0x1b]=2; //number of players
+	if(jvsboard_type == JVSBD_MAHJONG)
+	{
+		maple0x86data2[0x1c]=input_port_read(machine, "IN1");
+		maple0x86data2[0x1d]=input_port_read(machine, "IN2");
+		maple0x86data2[0x1e]=input_port_read(machine, "IN3");
+		maple0x86data2[0x1f]=input_port_read(machine, "IN4");
+	}
+	else
+	{
+		maple0x86data2[0x1c]=input_port_read(machine, "IN1");
+		maple0x86data2[0x1d]=input_port_read(machine, "IN2");
+		maple0x86data2[0x1e]=input_port_read(machine, "IN3");
+		maple0x86data2[0x1f]=input_port_read(machine, "IN4");
+	}
+	//2 coin slots
 	maple0x86data2[0x20]=1;
 	maple0x86data2[0x21]=(dc_coin_counts[0] >> 8) & 0xff; //coin counter read-back hi byte
 	maple0x86data2[0x22]=dc_coin_counts[0] & 0xff; //coin counter read-back lo byte
 	maple0x86data2[0x23]=(dc_coin_counts[1] >> 8) & 0xff;
 	maple0x86data2[0x24]=dc_coin_counts[1] & 0xff;
+	//3 ad stick
 	maple0x86data2[0x25]=1;
 	maple0x86data2[0x26]=1;
 	maple0x86data2[0x27]=0;
 	maple0x86data2[0x28]=0;
 	maple0x86data2[0x29]=0;
+	//4 rotary
+	//5 keyboard
+	//6 (touch?) screen
+	//7 card reader
+	//8 hopper out
+	//9 driver out
+	//10 analog out
+	//11 character
+	//12 backup
 	maple0x86data2[0x2a]=0;
 	/*0x2b-0x2f rotary inputs */
 	//...
@@ -369,16 +457,16 @@ WRITE64_HANDLER( dc_sysctrl_w )
 			ddtdata.direction=0;
 			ddtdata.channel=2;
 			ddtdata.mode=25; //011001
-			device_set_info_ptr(space->machine->cpu[0],CPUINFO_PTR_SH4_EXTERNAL_DDT_DMA,&ddtdata);
+			sh4_dma_ddt(cputag_get_cpu(space->machine, "maincpu"),&ddtdata);
 			#if DEBUG_SYSCTRL
 			if ((address >= 0x11000000) && (address <= 0x11FFFFFF))
 				if (dc_sysctrl_regs[SB_LMMODE0])
-					mame_printf_verbose("SYSCTRL: Ch2 direct display lists dma %x from %08x to %08x (lmmode0=%d lmmode1=%d)\n", dc_sysctrl_regs[SB_C2DLEN], ddtdata.source-ddtdata.length, dc_sysctrl_regs[SB_C2DSTAT],dc_sysctrl_regs[SB_LMMODE0],dc_sysctrl_regs[SB_LMMODE1]); // 1
+					printf("SYSCTRL: Ch2 direct display lists dma %x from %08x to %08x (lmmode0=%d lmmode1=%d)\n", dc_sysctrl_regs[SB_C2DLEN], ddtdata.source-ddtdata.length, dc_sysctrl_regs[SB_C2DSTAT],dc_sysctrl_regs[SB_LMMODE0],dc_sysctrl_regs[SB_LMMODE1]); // 1
 				else
 					mame_printf_verbose("SYSCTRL: Ch2 direct textures dma %x from %08x to %08x (lmmode0=%d lmmode1=%d)\n", dc_sysctrl_regs[SB_C2DLEN], ddtdata.source-ddtdata.length, dc_sysctrl_regs[SB_C2DSTAT],dc_sysctrl_regs[SB_LMMODE0],dc_sysctrl_regs[SB_LMMODE1]); // 0
 			else if ((address >= 0x13000000) && (address <= 0x13FFFFFF))
 				if (dc_sysctrl_regs[SB_LMMODE1])
-					mame_printf_verbose("SYSCTRL: Ch2 direct display lists dma %x from %08x to %08x (lmmode0=%d lmmode1=%d)\n", dc_sysctrl_regs[SB_C2DLEN], ddtdata.source-ddtdata.length, dc_sysctrl_regs[SB_C2DSTAT],dc_sysctrl_regs[SB_LMMODE0],dc_sysctrl_regs[SB_LMMODE1]); // 1
+					printf("SYSCTRL: Ch2 direct display lists dma %x from %08x to %08x (lmmode0=%d lmmode1=%d)\n", dc_sysctrl_regs[SB_C2DLEN], ddtdata.source-ddtdata.length, dc_sysctrl_regs[SB_C2DSTAT],dc_sysctrl_regs[SB_LMMODE0],dc_sysctrl_regs[SB_LMMODE1]); // 1
 				else
 					mame_printf_verbose("SYSCTRL: Ch2 direct textures dma %x from %08x to %08x (lmmode0=%d lmmode1=%d)\n", dc_sysctrl_regs[SB_C2DLEN], ddtdata.source-ddtdata.length, dc_sysctrl_regs[SB_C2DSTAT],dc_sysctrl_regs[SB_LMMODE0],dc_sysctrl_regs[SB_LMMODE1]); // 0
 			else if ((address >= 0x10800000) && (address <= 0x10ffffff))
@@ -388,7 +476,15 @@ WRITE64_HANDLER( dc_sysctrl_w )
 			else
 				mame_printf_verbose("SYSCTRL: Ch2 unknown dma %x from %08x to %08x (lmmode0=%d lmmode1=%d)\n", dc_sysctrl_regs[SB_C2DLEN], ddtdata.source-ddtdata.length, dc_sysctrl_regs[SB_C2DSTAT],dc_sysctrl_regs[SB_LMMODE0],dc_sysctrl_regs[SB_LMMODE1]);
 			#endif
-			dc_sysctrl_regs[SB_C2DSTAT]=address+ddtdata.length;
+			if ((address >= 0x10000000) && (address <= 0x10ffffff))
+			{
+				dc_sysctrl_regs[SB_C2DSTAT]=address;
+			}
+			else
+			{
+				dc_sysctrl_regs[SB_C2DSTAT]=address+ddtdata.length;
+			}
+
 			dc_sysctrl_regs[SB_C2DLEN]=0;
 			dc_sysctrl_regs[SB_C2DST]=0;
 			dc_sysctrl_regs[SB_ISTNRM] |= IST_DMA_CH2;
@@ -478,18 +574,22 @@ WRITE64_HANDLER( dc_maple_w )
 					ddtdata.direction=0;	// 0 source to buffer, 1 buffer to source
 					ddtdata.channel= -1;	// not used
 					ddtdata.mode= -1;		// copy from/to buffer
-					device_set_info_ptr(space->machine->cpu[0], CPUINFO_PTR_SH4_EXTERNAL_DDT_DMA, &ddtdata);
+					sh4_dma_ddt(cputag_get_cpu(space->machine, "maincpu"), &ddtdata);
 
 					maple_regs[reg] = 0;
 					endflag=buff[0] & 0x80000000;
 					port=(buff[0] >> 16) & 3;
 					pattern=(buff[0] >> 8) & 7;
 					length=buff[0] & 255;
+					//if(length == 0)
+					//  length = 0x100;
 					destination=buff[1];
 					command=buff[2] & 255;
 					dap=(buff[2] >> 8) & 255;
 					sap=(buff[2] >> 16) & 255;
-					buff[0]=0;
+					//buff[0]=0;
+					//if(buff[1] == 0x700)
+					//  printf("%08x %08x",buff[0],buff[2]);
 					ddtdata.size=4;
 
 					if (pattern == 0)
@@ -510,7 +610,7 @@ WRITE64_HANDLER( dc_maple_w )
 								ddtdata.direction=0;
 								ddtdata.channel= -1;
 								ddtdata.mode=-1;
-								device_set_info_ptr(space->machine->cpu[0],CPUINFO_PTR_SH4_EXTERNAL_DDT_DMA,&ddtdata);
+								sh4_dma_ddt(cputag_get_cpu(space->machine, "maincpu"),&ddtdata);
 								chk=0;
 								for (a=1;a < length;a++)
 								{
@@ -538,7 +638,7 @@ WRITE64_HANDLER( dc_maple_w )
 								ddtdata.direction=0;
 								ddtdata.channel= -1;
 								ddtdata.mode=-1;
-								device_set_info_ptr(space->machine->cpu[0],CPUINFO_PTR_SH4_EXTERNAL_DDT_DMA,&ddtdata);
+								sh4_dma_ddt(cputag_get_cpu(space->machine, "maincpu"),&ddtdata);
 
 								subcommand = buff[0] & 0xff;
 								#if DEBUG_MAPLE
@@ -576,8 +676,8 @@ WRITE64_HANDLER( dc_maple_w )
 									#if DEBUG_MAPLE
 									printf("MAPLE: sent jvs command %x\n", jvs_command);
 									#endif
-									buff[1] = 0xe4e3e2e1;
-									ddtdata.length = 2;
+									//buff[1] = 0xe4e3e2e1;
+									ddtdata.length = 0;//2;
 								}
 								else if (subcommand == 0x15) // get response from previous jvs command
 								{
@@ -613,9 +713,9 @@ WRITE64_HANDLER( dc_maple_w )
 											case 0xf1: // set address
 												break;
 											case 0x10:
-												strcpy((char *)(maple0x86data2+0x11+10), "MAME test JVS I/O board"); // name
-												maple0x86data2[pos+7]=24+2;
-												tocopy += 24;
+												strcpy((char *)(maple0x86data2+0x11+10), "SEGA ENTERPRISES,LTD.\nI/O BD JVS\n837-13551"); // name
+												maple0x86data2[pos+7]=24+21+2;
+												tocopy += 24+21;
 												break;
 											case 0x11:
 												maple0x86data2[pos+10]=0x13; // version bcd
@@ -634,9 +734,7 @@ WRITE64_HANDLER( dc_maple_w )
 												break;
 											case 0x14:
 												{
-													static int dma_bytes;
-													dma_bytes = jvsboard_init(pos);
-													tocopy += dma_bytes;
+													tocopy += jvsboard_init(pos);
 												}
 												break;
 											case 0x21:
@@ -731,15 +829,16 @@ WRITE64_HANDLER( dc_maple_w )
 								#if DEBUG_MAPLE
 								printf("MAPLE: unknown transfer command %x port %x\n", command, port);
 								#endif
-								ddtdata.length=1;
-								buff[0]=0xffffffff;
+								ddtdata.length=0;
+								endflag = 1; /*TODO: check this */
+								//buff[0]=0xffffffff;
 								break;
 						}
 					}
 					ddtdata.destination=destination;
 					ddtdata.buffer=buff;
 					ddtdata.direction=1;
-					device_set_info_ptr(space->machine->cpu[0],CPUINFO_PTR_SH4_EXTERNAL_DDT_DMA,&ddtdata);
+					sh4_dma_ddt(cputag_get_cpu(space->machine, "maincpu"),&ddtdata);
 
 					if (endflag)
 					{
@@ -770,7 +869,7 @@ WRITE64_HANDLER( dc_maple_w )
 
 INPUT_CHANGED( dc_coin_slots_callback )
 {
-	UINT32 *counter = param;
+	UINT32 *counter = (UINT32 *)param;
 
 	/* check for a 0 -> 1 transition */
 	if (!oldval && newval)
@@ -861,7 +960,7 @@ WRITE64_HANDLER( dc_g1_ctrl_w )
 			ddtdata.channel= -1;	// not used
 			ddtdata.mode= -1;		// copy from/to buffer
  			mame_printf_verbose("G1CTRL: transfer %x from ROM %08x to sdram %08x\n", g1bus_regs[SB_GDLEN], dmaoffset, g1bus_regs[SB_GDSTAR]);
-			device_set_info_ptr(space->machine->cpu[0], CPUINFO_PTR_SH4_EXTERNAL_DDT_DMA, &ddtdata);
+			sh4_dma_ddt(cputag_get_cpu(space->machine, "maincpu"), &ddtdata);
 			g1bus_regs[SB_GDST]=0;
 			dc_sysctrl_regs[SB_ISTNRM] |= IST_DMA_GDROM;
 			dc_update_interrupt_status(space->machine);
@@ -884,7 +983,7 @@ WRITE64_HANDLER( dc_g2_ctrl_w )
 {
 	int reg;
 	UINT64 shift;
-	UINT32 dat,old;
+	UINT32 dat;
 	static struct {
 		UINT32 aica_addr;
 		UINT32 root_addr;
@@ -893,11 +992,11 @@ WRITE64_HANDLER( dc_g2_ctrl_w )
 		UINT8 flag;
 		UINT8 indirect;
 		UINT8 start;
+		UINT8 sel;
 	}wave_dma;
 
 	reg = decode_reg32_64(space->machine, offset, mem_mask, &shift);
 	dat = (UINT32)(data >> shift);
-	old = g2bus_regs[reg];
 
 	g2bus_regs[reg] = dat; // 5f7800+reg*4=dat
 
@@ -916,16 +1015,17 @@ WRITE64_HANDLER( dc_g2_ctrl_w )
 		case SB_ADDIR: wave_dma.dir = (dat & 1); break;
 		/*dma flag (active HIGH, bug in docs)*/
 		case SB_ADEN: wave_dma.flag = (dat & 1); break;
-		case SB_ADTSEL:
-			mame_printf_verbose("G2CTRL: initiation mode %d\n",dat);
-			//mame_printf_verbose("SB_ADTSEL data %08x\n",dat);
-			break;
+		case SB_ADTSEL: wave_dma.sel = dat & 7; break;
 		/*ready for dma'ing*/
 		case SB_ADST:
-			mame_printf_verbose("G2CTRL: AICA:G2-DMA start\n");
-			//mame_printf_verbose("AICA: G2-DMA start\n");
-			//mame_printf_verbose("%08x %08x %08x %02x\n",wave_dma.aica_addr,wave_dma.root_addr,wave_dma.size,wave_dma.indirect);
 			wave_dma.start = dat & 1;
+
+			#if DEBUG_AICA_DMA
+			printf("AICA: G2-DMA start \n");
+			printf("DST %08x SRC %08x SIZE %08x IND %02x\n",wave_dma.aica_addr,wave_dma.root_addr,wave_dma.size,wave_dma.indirect);
+			printf("SEL %08x ST  %08x FLAG %08x DIR %02x\n",wave_dma.sel,wave_dma.start,wave_dma.flag,wave_dma.dir);
+			#endif
+
 			//mame_printf_verbose("SB_ADST data %08x\n",dat);
 			if(wave_dma.flag && wave_dma.start)
 			{
@@ -960,12 +1060,24 @@ WRITE64_HANDLER( dc_g2_ctrl_w )
 				wave_dma.size = g2bus_regs[SB_ADLEN] = 0;
 				wave_dma.flag = (wave_dma.indirect & 1) ? 1 : 0;
 				wave_dma.start = g2bus_regs[SB_ADST] = 0;
-				dc_sysctrl_regs[SB_ISTNRM] |= IST_DMA_AICA;
-				dc_update_interrupt_status(space->machine);
+				/*TODO: this makes the sfz3upper to not play any bgm, understand why. */
+				//dc_sysctrl_regs[SB_ISTNRM] |= IST_DMA_AICA;
+				//dc_update_interrupt_status(space->machine);
 			}
 			break;
+
+		case SB_ADSUSP:
+		case SB_E1SUSP:
+		case SB_E2SUSP:
+		case SB_DDSUSP:
+		case SB_G2APRO:
+			break;
+
+		default:
+			/* might access the unhandled DMAs, so tell us if this happens. */
+			printf("Unhandled G2 register [%08x] -> %08x\n",reg,dat);
+			break;
 	}
-	mame_printf_verbose("G2CTRL: [%08x=%x] write %llx to %x, mask %llx\n", 0x5f7800+reg*4, dat, data, offset, mem_mask);
 }
 
 READ64_HANDLER( dc_modem_r )
@@ -1052,7 +1164,7 @@ MACHINE_START( dc )
 MACHINE_RESET( dc )
 {
 	/* halt the ARM7 */
-	cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
+	cputag_set_input_line(machine, "soundcpu", INPUT_LINE_RESET, ASSERT_LINE);
 
 	memset(dc_sysctrl_regs, 0, sizeof(dc_sysctrl_regs));
 	memset(maple_regs, 0, sizeof(maple_regs));
@@ -1067,10 +1179,10 @@ MACHINE_RESET( dc )
 
 READ64_DEVICE_HANDLER( dc_aica_reg_r )
 {
-	int reg;
+	//int reg;
 	UINT64 shift;
 
-	reg = decode_reg32_64(device->machine, offset, mem_mask, &shift);
+	/*reg = */decode_reg32_64(device->machine, offset, mem_mask, &shift);
 
 //  mame_printf_verbose("AICA REG: [%08x] read %llx, mask %llx\n", 0x700000+reg*4, (UINT64)offset, mem_mask);
 
@@ -1091,12 +1203,12 @@ WRITE64_DEVICE_HANDLER( dc_aica_reg_w )
 		if (dat & 1)
 		{
 			/* halt the ARM7 */
-			cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
+			cputag_set_input_line(device->machine, "soundcpu", INPUT_LINE_RESET, ASSERT_LINE);
 		}
 		else
 		{
 			/* it's alive ! */
-			cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
+			cputag_set_input_line(device->machine, "soundcpu", INPUT_LINE_RESET, CLEAR_LINE);
 		}
     }
 

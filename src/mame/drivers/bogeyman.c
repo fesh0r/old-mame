@@ -218,7 +218,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( bogeyman )
 	// basic machine hardware
 	MDRV_CPU_ADD("maincpu", M6502, 2000000)	// 12 MHz clock on board
-	MDRV_CPU_PROGRAM_MAP(bogeyman_map, 0)
+	MDRV_CPU_PROGRAM_MAP(bogeyman_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 16) // Controls sound
 
 	// video hardware
@@ -281,4 +281,4 @@ ROM_END
 
 /* Game Driver */
 
-GAME( 1985?, bogeyman, 0, bogeyman, bogeyman, 0, ROT0, "Technos Japan", "Bogey Manor", GAME_IMPERFECT_COLORS )
+GAME( 1985, bogeyman, 0, bogeyman, bogeyman, 0, ROT0, "Technos Japan", "Bogey Manor", GAME_IMPERFECT_COLORS )

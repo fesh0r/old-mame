@@ -82,8 +82,8 @@ static INPUT_PORTS_START( ajax )
 	PORT_DIPNAME( 0x60, 0x40, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("SW2:6,7")
 	PORT_DIPSETTING(	0x60, DEF_STR( Easy ) )
 	PORT_DIPSETTING(	0x40, DEF_STR( Normal ) )
-	PORT_DIPSETTING(	0x20, "Difficult" )
-	PORT_DIPSETTING(	0x00, "Very Difficult" )
+	PORT_DIPSETTING(	0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )	PORT_DIPLOCATION("SW2:8")
 	PORT_DIPSETTING(	0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
@@ -184,14 +184,14 @@ static MACHINE_DRIVER_START( ajax )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", KONAMI, 3000000)	/* 12/4 MHz*/
-	MDRV_CPU_PROGRAM_MAP(ajax_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(ajax_main_map)
 	MDRV_CPU_VBLANK_INT("screen", ajax_interrupt)	/* IRQs triggered by the 051960 */
 
 	MDRV_CPU_ADD("sub", M6809, 3000000)	/* ? */
-	MDRV_CPU_PROGRAM_MAP(ajax_sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(ajax_sub_map)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3579545)	/* 3.58 MHz */
-	MDRV_CPU_PROGRAM_MAP(ajax_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(ajax_sound_map)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 

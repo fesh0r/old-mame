@@ -123,7 +123,7 @@ static WRITE8_HANDLER( unknown_w )
 
 static TIMER_CALLBACK( main_to_sound_callback )
 {
-	cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, ASSERT_LINE);
+	cputag_set_input_line(machine, "audiocpu", INPUT_LINE_NMI, ASSERT_LINE);
 	main_to_sound_data = param;
 }
 
@@ -136,7 +136,7 @@ static WRITE8_HANDLER( main_to_sound_w )
 
 static READ8_HANDLER( main_to_sound_r )
 {
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, CLEAR_LINE);
 	return main_to_sound_data;
 }
 
@@ -150,7 +150,7 @@ static READ8_HANDLER( main_to_sound_r )
 
 static TIMER_CALLBACK( sound_to_main_callback )
 {
-	cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, ASSERT_LINE);
+	cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, ASSERT_LINE);
 	sound_to_main_data = param;
 }
 
@@ -163,7 +163,7 @@ static WRITE8_HANDLER( sound_to_main_w )
 
 static READ8_HANDLER( sound_to_main_r )
 {
-	cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_NMI, CLEAR_LINE);
 	return sound_to_main_data;
 }
 
@@ -237,11 +237,11 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x5fff) AM_RAM
 	AM_RANGE(0x6000, 0x7fff) AM_ROMBANK(1)
-	AM_RANGE(0x8003, 0x8003) AM_WRITE(SMH_RAM) AM_BASE(&crgolf_color_select)
-	AM_RANGE(0x8004, 0x8004) AM_WRITE(SMH_RAM) AM_BASE(&crgolf_screen_flip)
-	AM_RANGE(0x8005, 0x8005) AM_WRITE(SMH_RAM) AM_BASE(&crgolf_screen_select)
-	AM_RANGE(0x8006, 0x8006) AM_WRITE(SMH_RAM) AM_BASE(&crgolf_screenb_enable)
-	AM_RANGE(0x8007, 0x8007) AM_WRITE(SMH_RAM) AM_BASE(&crgolf_screena_enable)
+	AM_RANGE(0x8003, 0x8003) AM_WRITEONLY AM_BASE(&crgolf_color_select)
+	AM_RANGE(0x8004, 0x8004) AM_WRITEONLY AM_BASE(&crgolf_screen_flip)
+	AM_RANGE(0x8005, 0x8005) AM_WRITEONLY AM_BASE(&crgolf_screen_select)
+	AM_RANGE(0x8006, 0x8006) AM_WRITEONLY AM_BASE(&crgolf_screenb_enable)
+	AM_RANGE(0x8007, 0x8007) AM_WRITEONLY AM_BASE(&crgolf_screena_enable)
 	AM_RANGE(0x8800, 0x8800) AM_READWRITE(sound_to_main_r, main_to_sound_w)
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(rom_bank_select_w)
 	AM_RANGE(0xa000, 0xffff) AM_READWRITE(crgolf_videoram_r, crgolf_videoram_w)
@@ -367,11 +367,11 @@ static MACHINE_DRIVER_START( crgolf )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,MASTER_CLOCK/3/2)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,MASTER_CLOCK/3/2)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_MACHINE_START(crgolf)
@@ -581,7 +581,7 @@ ROM_END
 static DRIVER_INIT( crgolfhi )
 {
 	const device_config *msm = devtag_get_device(machine, "msm");
-	memory_install_write8_device_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), msm, 0xa000, 0xa003, 0, 0, crgolfhi_sample_w);
+	memory_install_write8_device_handler(cputag_get_address_space(machine, "audiocpu", ADDRESS_SPACE_PROGRAM), msm, 0xa000, 0xa003, 0, 0, crgolfhi_sample_w);
 }
 
 

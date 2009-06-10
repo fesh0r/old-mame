@@ -64,10 +64,10 @@ static WRITE32_HANDLER( aga_overlay_w )
 		/* swap the write handlers between ROM and bank 1 based on the bit */
 		if ((data & 1) == 0)
 			/* overlay disabled, map RAM on 0x000000 */
-			memory_install_write32_handler(space, 0x000000, 0x1fffff, 0, 0, SMH_BANK1);
+			memory_install_write32_handler(space, 0x000000, 0x1fffff, 0, 0, (write32_space_func)SMH_BANK(1));
 		else
 			/* overlay enabled, map Amiga system ROM on 0x000000 */
-			memory_install_write32_handler(space, 0x000000, 0x1fffff, 0, 0, SMH_UNMAP);
+			memory_install_write32_handler(space, 0x000000, 0x1fffff, 0, 0, (write32_space_func)SMH_UNMAP);
 	}
 }
 
@@ -138,10 +138,10 @@ static ADDRESS_MAP_START( cd32_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xf80000, 0xffffff) AM_ROM AM_REGION("user1", 0x0)		/* Kickstart */
 ADDRESS_MAP_END
 
-int cubo_input_port_val = 0;
-int cubo_input_select = 0;
-UINT16 potgo_value = 0;
-int cd32_shifter[2];
+//int cubo_input_port_val = 0;
+//int cubo_input_select = 0;
+static UINT16 potgo_value = 0;
+static int cd32_shifter[2];
 
 static void cubocd32_potgo_w(running_machine *machine, UINT16 data)
 {
@@ -338,7 +338,7 @@ static MACHINE_DRIVER_START( cd32 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68EC020, AMIGA_68EC020_PAL_CLOCK) /* 14.3 Mhz */
-	MDRV_CPU_PROGRAM_MAP(cd32_map,0)
+	MDRV_CPU_PROGRAM_MAP(cd32_map)
 
 	MDRV_MACHINE_RESET(amiga)
 	MDRV_NVRAM_HANDLER(cd32)

@@ -86,7 +86,7 @@ static NVRAM_HANDLER( seicross )
 static MACHINE_RESET( friskyt )
 {
 	/* start with the protection mcu halted */
-	cpu_set_input_line(machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE);
+	cputag_set_input_line(machine, "mcu", INPUT_LINE_HALT, ASSERT_LINE);
 }
 
 
@@ -100,7 +100,7 @@ static WRITE8_DEVICE_HANDLER( friskyt_portB_w )
 {
 //logerror("PC %04x: 8910 port B = %02x\n",cpu_get_pc(space->cpu),data);
 	/* bit 0 is IRQ enable */
-	cpu_interrupt_enable(device->machine->cpu[0],data & 1);
+	cpu_interrupt_enable(cputag_get_cpu(device->machine, "maincpu"), data & 1);
 
 	/* bit 1 flips screen */
 
@@ -108,8 +108,8 @@ static WRITE8_DEVICE_HANDLER( friskyt_portB_w )
 	if (((portb & 4) == 0) && (data & 4))
 	{
 		/* reset and start the protection mcu */
-		cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_RESET, PULSE_LINE);
-		cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_HALT, CLEAR_LINE);
+		cputag_set_input_line(device->machine, "mcu", INPUT_LINE_RESET, PULSE_LINE);
+		cputag_set_input_line(device->machine, "mcu", INPUT_LINE_HALT, CLEAR_LINE);
 	}
 
 	/* other bits unknown */
@@ -401,12 +401,12 @@ static MACHINE_DRIVER_START( nvram )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 3072000)	/* 3.072 MHz? */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_IO_MAP(main_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
+	MDRV_CPU_IO_MAP(main_portmap)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("mcu", NSC8105, 6000000)	/* ??? */
-	MDRV_CPU_PROGRAM_MAP(mcu_nvram_map,0)
+	MDRV_CPU_PROGRAM_MAP(mcu_nvram_map)
 
 	MDRV_QUANTUM_TIME(HZ(1200))	/* 20 CPU slices per frame - an high value to ensure proper */
 						/* synchronization of the CPUs */
@@ -445,7 +445,7 @@ static MACHINE_DRIVER_START( no_nvram )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(nvram)
 	MDRV_CPU_MODIFY("mcu")
-	MDRV_CPU_PROGRAM_MAP(mcu_no_nvram_map,0)
+	MDRV_CPU_PROGRAM_MAP(mcu_no_nvram_map)
 
 	MDRV_NVRAM_HANDLER(NULL)
 MACHINE_DRIVER_END

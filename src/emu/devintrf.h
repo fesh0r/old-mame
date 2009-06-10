@@ -60,6 +60,7 @@ enum
 
 		DEVINFO_PTR_ROM_REGION = DEVINFO_PTR_FIRST,		/* R/O: pointer to device-specific ROM region */
 		DEVINFO_PTR_MACHINE_CONFIG,						/* R/O: pointer to device-specific machine config */
+		DEVINFO_PTR_CONTRACT_LIST,						/* R/O: pointer to list of supported device contracts */
 
 	DEVINFO_PTR_CLASS_SPECIFIC = 0x14000,				/* R/W: device-specific values start here */
 	DEVINFO_PTR_DEVICE_SPECIFIC = 0x18000,				/* R/W: device-specific values start here */
@@ -68,8 +69,7 @@ enum
 	/* --- the following bits of info are returned as pointers to functions --- */
 	DEVINFO_FCT_FIRST = 0x20000,
 
-		DEVINFO_FCT_SET_INFO = DEVINFO_FCT_FIRST,		/* R/O: device_set_info_func */
-		DEVINFO_FCT_START,								/* R/O: device_start_func */
+		DEVINFO_FCT_START = DEVINFO_FCT_FIRST,			/* R/O: device_start_func */
 		DEVINFO_FCT_STOP,								/* R/O: device_stop_func */
 		DEVINFO_FCT_RESET,								/* R/O: device_reset_func */
 		DEVINFO_FCT_EXECUTE,							/* R/O: device_execute_func */
@@ -105,10 +105,6 @@ enum
 #define DEVICE_GET_INFO(name)		void DEVICE_GET_INFO_NAME(name)(const device_config *device, UINT32 state, deviceinfo *info)
 #define DEVICE_GET_INFO_CALL(name)	DEVICE_GET_INFO_NAME(name)(device, state, info)
 
-#define DEVICE_SET_INFO_NAME(name)	device_set_info_##name
-#define DEVICE_SET_INFO(name)		void DEVICE_SET_INFO_NAME(name)(const device_config *device, UINT32 state, const deviceinfo *info)
-#define DEVICE_SET_INFO_CALL(name)	DEVICE_SET_INFO_NAME(name)(device, state, info)
-
 #define DEVICE_START_NAME(name)		device_start_##name
 #define DEVICE_START(name)			void DEVICE_START_NAME(name)(const device_config *device)
 #define DEVICE_START_CALL(name)		DEVICE_START_NAME(name)(device)
@@ -125,17 +121,29 @@ enum
 #define DEVICE_EXECUTE(name)		INT32 DEVICE_EXECUTE_NAME(name)(const device_config *device, INT32 clocks)
 #define DEVICE_EXECUTE_CALL(name)	DEVICE_EXECUTE_NAME(name)(device, clocks)
 
-#define DEVICE_NVRAM_NAME(name)		device_NVRAM_##name
+#define DEVICE_NVRAM_NAME(name)		device_nvram_##name
 #define DEVICE_NVRAM(name)			void DEVICE_NVRAM_NAME(name)(const device_config *device, mame_file *file, int read_or_write)
 #define DEVICE_NVRAM_CALL(name)		DEVICE_NVRAM_NAME(name)(device, file, read_or_write)
 
 #define DEVICE_VALIDITY_CHECK_NAME(name)	device_validity_check_##name
 #define DEVICE_VALIDITY_CHECK(name)			int DEVICE_VALIDITY_CHECK_NAME(name)(const game_driver *driver, const device_config *device)
-#define DEVICE_VALIDITY_CHECK_CALL(name)	DEVICE_VALIDITY_CHECK(name)(driver, device)
+#define DEVICE_VALIDITY_CHECK_CALL(name)	DEVICE_VALIDITY_CHECK_NAME(name)(driver, device)
 
 #define DEVICE_CUSTOM_CONFIG_NAME(name)		device_custom_config_##name
 #define DEVICE_CUSTOM_CONFIG(name)			const union _machine_config_token *DEVICE_CUSTOM_CONFIG_NAME(name)(const device_config *device, UINT32 entrytype, const union _machine_config_token *tokens)
-#define DEVICE_CUSTOM_CONFIG_CALL(name)		DEVICE_CUSTOM_CONFIG(name)(device, entrytype, tokens)
+#define DEVICE_CUSTOM_CONFIG_CALL(name)		DEVICE_CUSTOM_CONFIG_NAME(name)(device, entrytype, tokens)
+
+
+/* device contract lists */
+#define DEVICE_CONTRACT_LIST_NAME(name)		device_contract_list_##name
+
+#define DEVICE_CONTRACT_LIST_START(name)	static const device_contract DEVICE_CONTRACT_LIST_NAME(name)[] = {
+#define DEVICE_CONTRACT_ENTRY(type, var)	{ type, sizeof(var), &(var) },
+#define DEVICE_CONTRACT_LIST_END			{ NULL, 0, NULL } };
+
+
+/* macro for specifying a clock derived from an owning device */
+#define DERIVED_CLOCK(num, den)		(0xff000000 | ((num) << 12) | ((den) << 0))
 
 
 /* shorthand for accessing devices by machine/type/tag */
@@ -147,10 +155,6 @@ enum
 #define devtag_get_info_ptr(mach,tag,state)					device_get_info_ptr(devtag_get_device(mach, tag), state)
 #define devtag_get_info_fct(mach,tag,state)					device_get_info_fct(devtag_get_device(mach, tag), state)
 #define devtag_get_info_string(mach,tag,state)				device_get_info_string(devtag_get_device(mach, tag), state)
-
-#define devtag_set_info_int(mach,tag,state,data)			device_set_info_int(devtag_get_device(mach, tag), state, data)
-#define devtag_set_info_ptr(mach,tag,state,data)			device_set_info_ptr(devtag_get_device(mach, tag), state, data)
-#define devtag_set_info_fct(mach,tag,state,data)			device_set_info_fct(devtag_get_device(mach, tag), state, data)
 
 
 /* shorthand for getting standard data about device types */
@@ -187,9 +191,18 @@ typedef union _deviceinfo deviceinfo;
 typedef struct _device_config device_config;
 
 
+/* a device contract */
+typedef struct _device_contract device_contract;
+struct _device_contract
+{
+	const char *	name;			/* name of this contract */
+	UINT32			size;			/* size of this contract in bytes */
+	const void *	contract;		/* pointer to the contract struct itself */
+};
+
+
 /* device interface function types */
 typedef void (*device_get_info_func)(const device_config *device, UINT32 state, deviceinfo *info);
-typedef void (*device_set_info_func)(const device_config *device, UINT32 state, const deviceinfo *info);
 typedef void (*device_start_func)(const device_config *device);
 typedef void (*device_stop_func)(const device_config *device);
 typedef INT32 (*device_execute_func)(const device_config *device, INT32 clocks);
@@ -211,7 +224,6 @@ union _deviceinfo
 	genf *  				f;						/* generic function pointers */
 	char *					s;						/* generic strings */
 
-	device_set_info_func 	set_info;				/* DEVINFO_FCT_SET_INFO */
 	device_start_func		start;					/* DEVINFO_FCT_START */
 	device_stop_func		stop;					/* DEVINFO_FCT_STOP */
 	device_reset_func		reset;					/* DEVINFO_FCT_RESET */
@@ -221,6 +233,7 @@ union _deviceinfo
 	device_nvram_func		nvram;					/* DEVINFO_FCT_NVRAM */
 	const rom_entry *		romregion;				/* DEVINFO_PTR_ROM_REGION */
 	const union _machine_config_token *machine_config;/* DEVINFO_PTR_MACHINE_CONFIG */
+	const device_contract *	contract_list;			/* DEVINFO_PTR_CONTRACT_LIST */
 };
 
 
@@ -236,7 +249,6 @@ struct _device_config
 	/* device properties (always valid) */
 	device_type				type;					/* device type */
 	device_class			devclass;				/* device class */
-	device_set_info_func 	set_info;				/* quick pointer to set_info callback */
 
 	/* device configuration (always valid) */
 	UINT32					clock;					/* device clock */
@@ -278,6 +290,9 @@ const char *device_build_tag(astring *dest, const device_config *device, const c
 
 /* build a tag with the same device prefix as the source tag*/
 const char *device_inherit_tag(astring *dest, const char *sourcetag, const char *tag);
+
+/* find a given contract on a device */
+const device_contract *device_get_contract(const device_config *device, const char *name);
 
 
 
@@ -367,19 +382,6 @@ genf *devtype_get_info_fct(device_type type, UINT32 state);
 
 /* return a string value from a device type (does not need to be allocated) */
 const char *devtype_get_info_string(device_type type, UINT32 state);
-
-
-
-/* ----- device information setters ----- */
-
-/* set an integer state value for an allocated device */
-void device_set_info_int(const device_config *device, UINT32 state, INT64 data);
-
-/* set a pointer state value for an allocated device */
-void device_set_info_ptr(const device_config *device, UINT32 state, void *data);
-
-/* set a function pointer state value for an allocated device */
-void device_set_info_fct(const device_config *device, UINT32 state, genf *data);
 
 
 #endif	/* __DEVINTRF_H__ */

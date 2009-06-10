@@ -23,7 +23,7 @@ static UINT8 *shift_lo;
 static INPUT_CHANGED( coin_inserted )
 {
 	/* coin insertion causes an NMI */
-	cpu_set_input_line(field->port->machine->cpu[0], INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(field->port->machine, "maincpu", INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -58,14 +58,14 @@ static WRITE8_HANDLER( madalien_output_w )
 
 static WRITE8_HANDLER( madalien_sound_command_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], 0, ASSERT_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", 0, ASSERT_LINE);
 	soundlatch_w(space, offset, data);
 }
 
 
 static READ8_HANDLER(madalien_sound_command_r )
 {
-	cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", 0, CLEAR_LINE);
 	return soundlatch_r(space, offset);
 }
 
@@ -176,10 +176,10 @@ static MACHINE_DRIVER_START( madalien )
 
 	/* main CPU */
 	MDRV_CPU_ADD("maincpu", M6502, MADALIEN_MAIN_CLOCK / 8)    /* 1324kHz */
-	MDRV_CPU_PROGRAM_MAP(main_map, 0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 
 	MDRV_CPU_ADD("audiocpu", M6502, SOUND_CLOCK / 8)   /* 512kHz */
-	MDRV_CPU_PROGRAM_MAP(audio_map, 0)
+	MDRV_CPU_PROGRAM_MAP(audio_map)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	/* video hardware */

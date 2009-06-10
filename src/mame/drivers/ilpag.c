@@ -83,7 +83,7 @@ static UINT8 *blit_buffer;
 
 static VIDEO_START(ilpag)
 {
-	blit_buffer = auto_malloc(512*512*4); //just to be sure,number is wrong
+	blit_buffer = auto_alloc_array(machine, UINT8, 512*512*4); //just to be sure,number is wrong
 }
 
 static VIDEO_UPDATE(ilpag)
@@ -242,7 +242,7 @@ static READ16_HANDLER( test_r )
 static WRITE16_HANDLER( irq_callback_w )
 {
 //  popmessage("%02x",data);
-	cpu_set_input_line(space->machine->cpu[0],3,HOLD_LINE );
+	cputag_set_input_line(space->machine, "maincpu", 3, HOLD_LINE );
 }
 
 static WRITE16_HANDLER( sound_write_w )
@@ -444,7 +444,7 @@ INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( ilpag )
 	MDRV_CPU_ADD("maincpu", M68000, 11059200 )	// ?
-	MDRV_CPU_PROGRAM_MAP(ilpag_map,0)
+	MDRV_CPU_PROGRAM_MAP(ilpag_map)
 	MDRV_CPU_VBLANK_INT("screen",irq4_line_hold) //3 & 6 used, mcu comms?
 
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -513,7 +513,7 @@ static INTERRUPT_GEN( steaser_irq )
 static MACHINE_DRIVER_START( steaser )
 	MDRV_IMPORT_FROM( ilpag )
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(steaser_map,0)
+	MDRV_CPU_PROGRAM_MAP(steaser_map)
 	MDRV_CPU_VBLANK_INT_HACK(steaser_irq,4)
 
 	MDRV_TIMER_ADD_PERIODIC("coinsim", steaser_mcu_sim, HZ(10000)) // not real, but for simulating the MCU

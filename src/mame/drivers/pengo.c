@@ -348,7 +348,7 @@ static MACHINE_DRIVER_START( pengo )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK/6)
-	MDRV_CPU_PROGRAM_MAP(pengo_map,0)
+	MDRV_CPU_PROGRAM_MAP(pengo_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
@@ -379,7 +379,7 @@ static MACHINE_DRIVER_START( jrpacmbl )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(jrpacmbl_map,0)
+	MDRV_CPU_PROGRAM_MAP(jrpacmbl_map)
 
 	MDRV_VIDEO_START(jrpacman)
 MACHINE_DRIVER_END
@@ -661,7 +661,7 @@ static DRIVER_INIT( penta )
 		{ 0x88,0x0a,0x82,0x00,0xa0,0x22,0xaa,0x28 }		/* ...1...1...1.... */
 	};
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	UINT8 *decrypt = auto_malloc(0x8000);
+	UINT8 *decrypt = auto_alloc_array(machine, UINT8, 0x8000);
 	UINT8 *rom = memory_region(machine, "maincpu");
 	int A;
 

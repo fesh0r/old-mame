@@ -10,6 +10,87 @@ his PCB for dumping/collecting the c-chip data from Rainbow Islands Extra.
 
                             ***
 
+Rainbow Islands & Rainbow Islands Extra
+Taito, 1987
+
+PCB Layout
+----------
+
+MAIN PCB
+J1100128A
+K1100277A
+|----------------------------------------------------|
+| MB3735 Z80 B22-14.43    16MHz      DIP28    DIP28  |
+|       YM2151  5563                                 |
+|VOL          PC060HA    B22-05.33          B22-01.2 |
+| 4556  TL074 YM3012               |-------|         |
+|Y   6116 6116                     |TAITO  |   43256 |
+|                                  |PC080SN|         |
+|J    TC0070RGB  2018   |-------|  |-------|   43256 |
+|A               2018   |TAITO  |                    |
+|M     PC050CM   2018   |PC0900J|           B22-02.5 |
+|M               2018   |-------|           B22-13.6 |
+|A                                          B22-12.7 |
+|        TC0030CMD  12MHz                        3771|
+|  26.686MHz                   B39-02.20  B22-01.19  |
+|        68000                 B39-04.22  B39-03.21  |
+|        B22-07.56  B22-06.41  B22-04.24  B22-03.23  |
+|   DSWB   DSWA                8464       8464       |
+|----------------------------------------------------|
+Notes:
+      68000       - clock 8.000MHz [16/2]
+      Z80         - clock 4.000MHz [16/4]
+      YM2151      - clock 4.000MHz [16/4]
+      6116        - 2kx8 SRAM (color RAM)
+      43256       - 32kx8 SRAM (tile RAM)
+      8464        - 8kx8 SRAM (68000 work RAM)
+      5563        - 8kx8 SRAM (Z80 work RAM)
+      2018        - 2kx8 SRAM (sprite RAM)
+      4556        - NEC uPC4556 dual operational amplifier IC (DIP8)
+      TL074       - Texas Instruments TL074 low noise j-fet quad operational amplifier (DIP14)
+      YM3102      - Yamaha YM3012 2-channel serial input floating DAC (DIP16)
+      MB3735      - Fujitsu MB3735 20 watt BTL audio power amplifier (SIP9)
+      PC080SN     - Taito custom tilemap generator IC (connected to 43256 SRAM)
+      PC0900J     - Taito custom sprite generator IC (connected to 2018 SRAM)
+      PC060HA     - Taito custom IC (sound-related)
+      TC0030CMD   - Taito custom C-Chip marked 'TC0030CMD, clock input 12.000MHz on pin 20
+                      - For Rainbow Islands with sticker 'B22-15' at IC53
+                      - For Rainbow Islands Extra with sticker 'B39-05' at IC53
+      TC0070RGB   - Taito custom ceramic module RGB mixer IC
+      PC050CM     - Taito custom ceramic module (input related functions)
+      3771        - Fujitsu MB3771 master reset IC (DIP8)
+      Y           - 3 pin connector for 2nd speaker output
+      DIP28       - unpopulated DIP28 socket(s)
+
+      ROMs -
+         |----------------------------------------------------------------------|
+         | Common to Rainbow Islands and Rainbow Islands Extra                  |
+         |--------------|---------------|---------------|-----------------------|
+         |   234000     |   23C1000     |   27C512      |   PALs                |
+         |--------------|---------------|---------------|-----------------------|
+         |   B22-01.2   |   B22-03.23   |   B22-12.7    |   B22-05.33 (PAL16L8) |
+         |   B22-02.5   |   B22-04.24   |   B22-13.6    |   B22-06.41 (PAL16L8) |
+         |              |               |   B22-14.43   |   B22-07.56 (PAL20L8) |
+         |--------------|---------------|---------------|-----------------------|
+         |---------------------------------------|------------------------------|
+         | Used only on Rainbow Islands Extra    | Used only on Rainbow Islands |
+         |--------------|------------------------|--------------|---------------|
+         |   27C512     |  C-Chip                |   27C512     |  C-Chip       |
+         |--------------|------------------------|--------------|---------------|
+         |   B39-01.19  |  B39-05.53             |   B22-10.19  |  B22-15.53    |
+         |   B39-02.20  |                        |   B22-11.20  |               |
+         |   B39-03.21  |                        |   B22-08.21  |               |
+         |   B39-04.22  |                        |   B22-09.22  |               |
+         |--------------|------------------------|--------------|---------------|
+
+      Measurements
+      ------------
+      XTAL1 - 26.68599MHz
+      XTAL2 - 16.00000MHz
+      XTAL3 - 12.00000MHz
+      VSync - 60.0559Hz
+      HSync - 15.6745kHz
+
 Notes on Rainbow Islands romsets by Robert Gallagher
 ----------------------------------------------------
 
@@ -263,7 +344,7 @@ static WRITE16_HANDLER( jumping_sound_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		jumping_latch = data & 0xff; /*M68000 writes .b to $400007*/
-		cpu_set_input_line(space->machine->cpu[1],0,HOLD_LINE);
+		cputag_set_input_line(space->machine, "audiocpu", 0, HOLD_LINE);
 	}
 }
 
@@ -272,71 +353,47 @@ static WRITE16_HANDLER( jumping_sound_w )
                             MEMORY STRUCTURES
 ***************************************************************************/
 
-static ADDRESS_MAP_START( rainbow_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)
-	AM_RANGE(0x10c000, 0x10ffff) AM_READ(SMH_RAM)	/* main RAM */
-	AM_RANGE(0x200000, 0x200fff) AM_READ(SMH_RAM)	/* palette */
-	AM_RANGE(0x201000, 0x203fff) AM_READ(SMH_RAM)	/* read in initial checks */
+static ADDRESS_MAP_START( rainbow_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x07ffff) AM_ROM
+	AM_RANGE(0x10c000, 0x10ffff) AM_RAM				/* main RAM */
+	AM_RANGE(0x200000, 0x200fff) AM_RAM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x201000, 0x203fff) AM_RAM				/* r/w in initial checks */
 	AM_RANGE(0x390000, 0x390003) AM_READ_PORT("DSWA")
-	AM_RANGE(0x3b0000, 0x3b0003) AM_READ_PORT("DSWB")
-	AM_RANGE(0x3e0000, 0x3e0001) AM_READNOP
-	AM_RANGE(0x3e0002, 0x3e0003) AM_READ8(taitosound_comm_r, 0x00ff)
-	AM_RANGE(0x800000, 0x8007ff) AM_READ(rainbow_cchip_ram_r)
-	AM_RANGE(0x800802, 0x800803) AM_READ(rainbow_cchip_ctrl_r)
-	AM_RANGE(0xc00000, 0xc0ffff) AM_READ(PC080SN_word_0_r)
-	AM_RANGE(0xd00000, 0xd03fff) AM_READ(PC090OJ_word_0_r)	/* sprite ram + other stuff */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( rainbow_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x10c000, 0x10ffff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x200000, 0x200fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x201000, 0x203fff) AM_WRITE(SMH_RAM)	/* written in initial checks */
 	AM_RANGE(0x3a0000, 0x3a0001) AM_WRITE(rainbow_spritectrl_w)
-	AM_RANGE(0x3c0000, 0x3c0003) AM_WRITENOP	/* written very often, watchdog? */
-	AM_RANGE(0x3e0000, 0x3e0001) AM_WRITE8(taitosound_port_w, 0x00ff)
-	AM_RANGE(0x3e0002, 0x3e0003) AM_WRITE8(taitosound_comm_w, 0x00ff)
-	AM_RANGE(0x800000, 0x8007ff) AM_WRITE(rainbow_cchip_ram_w)
-	AM_RANGE(0x800802, 0x800803) AM_WRITE(rainbow_cchip_ctrl_w)
+	AM_RANGE(0x3b0000, 0x3b0003) AM_READ_PORT("DSWB")
+	AM_RANGE(0x3c0000, 0x3c0003) AM_WRITENOP		/* written very often, watchdog? */
+	AM_RANGE(0x3e0000, 0x3e0001) AM_READNOP AM_WRITE8(taitosound_port_w, 0x00ff)
+	AM_RANGE(0x3e0002, 0x3e0003) AM_READWRITE8(taitosound_comm_r,taitosound_comm_w, 0x00ff)
+	AM_RANGE(0x800000, 0x8007ff) AM_READWRITE(rainbow_cchip_ram_r,rainbow_cchip_ram_w)
+	AM_RANGE(0x800802, 0x800803) AM_READWRITE(rainbow_cchip_ctrl_r,rainbow_cchip_ctrl_w)
 	AM_RANGE(0x800c00, 0x800c01) AM_WRITE(rainbow_cchip_bank_w)
-	AM_RANGE(0xc00000, 0xc0ffff) AM_WRITE(PC080SN_word_0_w)
+	AM_RANGE(0xc00000, 0xc0ffff) AM_READWRITE(PC080SN_word_0_r,PC080SN_word_0_w)
 	AM_RANGE(0xc20000, 0xc20003) AM_WRITE(PC080SN_yscroll_word_0_w)
 	AM_RANGE(0xc40000, 0xc40003) AM_WRITE(PC080SN_xscroll_word_0_w)
 	AM_RANGE(0xc50000, 0xc50003) AM_WRITE(PC080SN_ctrl_word_0_w)
-	AM_RANGE(0xd00000, 0xd03fff) AM_WRITE(PC090OJ_word_0_w)	/* sprite ram + other stuff */
+	AM_RANGE(0xd00000, 0xd03fff) AM_READWRITE(PC090OJ_word_0_r,PC090OJ_word_0_w)	/* sprite ram + other stuff */
 ADDRESS_MAP_END
 
-
-static ADDRESS_MAP_START( jumping_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x09ffff) AM_READ(SMH_ROM)
-	AM_RANGE(0x10c000, 0x10ffff) AM_READ(SMH_RAM)	/* main RAM */
-	AM_RANGE(0x200000, 0x200fff) AM_READ(SMH_RAM)	/* palette */
-	AM_RANGE(0x201000, 0x203fff) AM_READ(SMH_RAM)	/* read in initial checks */
+static ADDRESS_MAP_START( jumping_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x09ffff) AM_ROM
+	AM_RANGE(0x10c000, 0x10ffff) AM_RAM				/* main RAM */
+	AM_RANGE(0x200000, 0x200fff) AM_RAM_WRITE(paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x201000, 0x203fff) AM_RAM				/* r/w in initial checks */
 	AM_RANGE(0x400000, 0x400001) AM_READ_PORT("DSWA")
 	AM_RANGE(0x400002, 0x400003) AM_READ_PORT("DSWB")
 	AM_RANGE(0x401000, 0x401001) AM_READ_PORT("401001")
 	AM_RANGE(0x401002, 0x401003) AM_READ_PORT("401003")
-	AM_RANGE(0x420000, 0x420001) AM_READNOP	/* read, but result not used */
-	AM_RANGE(0x440000, 0x4407ff) AM_READ(SMH_RAM)
-	AM_RANGE(0xc00000, 0xc0ffff) AM_READ(PC080SN_word_0_r)
-	AM_RANGE(0xd00000, 0xd01fff) AM_READ(SMH_RAM)	/* original spriteram location, needed for Attract Mode */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( jumping_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x09ffff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x10c000, 0x10ffff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x200000, 0x200fff) AM_WRITE(paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x201000, 0x203fff) AM_WRITE(SMH_RAM)	/* written in initial checks */
 	AM_RANGE(0x3a0000, 0x3a0001) AM_WRITE(jumping_spritectrl_w)
-	AM_RANGE(0x3c0000, 0x3c0001) AM_WRITENOP	/* watchdog? */
+	AM_RANGE(0x3c0000, 0x3c0001) AM_WRITENOP		/* watchdog? */
 	AM_RANGE(0x400006, 0x400007) AM_WRITE(jumping_sound_w)
+	AM_RANGE(0x420000, 0x420001) AM_READNOP			/* read, but result not used */
 	AM_RANGE(0x430000, 0x430003) AM_WRITE(PC080SN_yscroll_word_0_w)
-	AM_RANGE(0x440000, 0x4407ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x800000, 0x80ffff) AM_WRITENOP	/* original c-chip location (not used) */
-	AM_RANGE(0xc00000, 0xc0ffff) AM_WRITE(PC080SN_word_0_w)
-	AM_RANGE(0xc20000, 0xc20003) AM_WRITENOP	/* seems it is a leftover from rainbow: scroll y written here too */
+	AM_RANGE(0x440000, 0x4407ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x800000, 0x80ffff) AM_WRITENOP		/* original c-chip location (not used) */
+	AM_RANGE(0xc00000, 0xc0ffff) AM_READWRITE(PC080SN_word_0_r,PC080SN_word_0_w)
+	AM_RANGE(0xc20000, 0xc20003) AM_WRITENOP		/* seems it is a leftover from rainbow: scroll y written here too */
 	AM_RANGE(0xc40000, 0xc40003) AM_WRITE(PC080SN_xscroll_word_0_w)
-	AM_RANGE(0xd00000, 0xd01fff) AM_WRITE(SMH_RAM) 	/* original spriteram location, needed for Attract Mode */
+	AM_RANGE(0xd00000, 0xd01fff) AM_RAM				/* original spriteram location, needed for Attract Mode */
 ADDRESS_MAP_END
 
 
@@ -349,7 +406,7 @@ ADDRESS_MAP_END
 
 static WRITE8_DEVICE_HANDLER( bankswitch_w )
 {
-	memory_set_bankptr(device->machine, 5, memory_region(device->machine, "audiocpu") + ((data - 1) & 3) * 0x4000 + 0x10000);
+	memory_set_bankptr(device->machine, 1, memory_region(device->machine, "audiocpu") + ((data - 1) & 3) * 0x4000 + 0x10000);
 }
 
 static READ8_HANDLER( jumping_latch_r )
@@ -358,38 +415,24 @@ static READ8_HANDLER( jumping_latch_r )
 }
 
 
-static ADDRESS_MAP_START( rainbow_s_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK5)
-	AM_RANGE(0x8000, 0x8fff) AM_READ(SMH_RAM)
-	AM_RANGE(0x9000, 0x9001) AM_DEVREAD("ym", ym2151_r)
-	AM_RANGE(0x9002, 0x9100) AM_READ(SMH_RAM)
-	AM_RANGE(0xa001, 0xa001) AM_READ(taitosound_slave_comm_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( rainbow_s_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x8000, 0x8fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x9000, 0x9001) AM_DEVWRITE("ym", ym2151_w)
+static ADDRESS_MAP_START( rainbow_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x3fff) AM_ROM
+	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK(1)
+	AM_RANGE(0x8000, 0x8fff) AM_RAM
+	AM_RANGE(0x9000, 0x9001) AM_DEVREADWRITE("ym", ym2151_r,ym2151_w)
+	AM_RANGE(0x9002, 0x9100) AM_READNOP
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(taitosound_slave_port_w)
-	AM_RANGE(0xa001, 0xa001) AM_WRITE(taitosound_slave_comm_w)
+	AM_RANGE(0xa001, 0xa001) AM_READWRITE(taitosound_slave_comm_r,taitosound_slave_comm_w)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( jumping_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
-	AM_RANGE(0x8000, 0x8fff) AM_READ(SMH_RAM)
-	AM_RANGE(0xb000, 0xb001) AM_DEVREAD("ym1", ym2203_r)
-	AM_RANGE(0xb400, 0xb401) AM_DEVREAD("ym2", ym2203_r)
+static ADDRESS_MAP_START( jumping_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0x8fff) AM_RAM
+	AM_RANGE(0xb000, 0xb001) AM_DEVREADWRITE("ym1", ym2203_r,ym2203_w)
+	AM_RANGE(0xb400, 0xb401) AM_DEVREADWRITE("ym2", ym2203_r,ym2203_w)
 	AM_RANGE(0xb800, 0xb800) AM_READ(jumping_latch_r)
-	AM_RANGE(0xc000, 0xffff) AM_READ(SMH_ROM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( jumping_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
-	AM_RANGE(0x8000, 0x8fff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0xb000, 0xb001) AM_DEVWRITE("ym1", ym2203_w)
-	AM_RANGE(0xb400, 0xb401) AM_DEVWRITE("ym2", ym2203_w)
 	AM_RANGE(0xbc00, 0xbc00) AM_WRITENOP	/* looks like a bankswitch, but sound works with or without it */
+	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 
@@ -591,7 +634,7 @@ GFXDECODE_END
 
 static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2151_interface ym2151_config =
@@ -609,11 +652,11 @@ static MACHINE_DRIVER_START( rainbow )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_16MHz/2) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(rainbow_readmem,rainbow_writemem)
+	MDRV_CPU_PROGRAM_MAP(rainbow_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_16MHz/4) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(rainbow_s_readmem,rainbow_s_writemem)
+	MDRV_CPU_PROGRAM_MAP(rainbow_sound_map)
 
 	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
@@ -641,16 +684,16 @@ static MACHINE_DRIVER_START( rainbow )
 MACHINE_DRIVER_END
 
 
-/* Jumping The pcb has 2 xtals, 24MHz and 18,432MHz */
+/* Jumping: The PCB has 2 Xtals, 24MHz and 18,432MHz */
 static MACHINE_DRIVER_START( jumping )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_24MHz/3)	/* not verified but matches original */
-	MDRV_CPU_PROGRAM_MAP(jumping_readmem,jumping_writemem)
+	MDRV_CPU_PROGRAM_MAP(jumping_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_18_432MHz/6)	/* not verified but music tempo matches original */
-	MDRV_CPU_PROGRAM_MAP(jumping_sound_readmem,jumping_sound_writemem)
+	MDRV_CPU_PROGRAM_MAP(jumping_sound_map)
 
 	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - enough ? */
 
@@ -700,7 +743,7 @@ ROM_START( rainbow )
 	ROM_LOAD( "b22-01.2",             0x00000, 0x80000, CRC(b76c9168) SHA1(e924be0c8294b930488bb04583784254a840a52e) )	/* tiles */
 
 	ROM_REGION( 0xa0000, "gfx2", ROMREGION_DISPOSE )
-	ROM_LOAD( "b22-01.5",             0x00000, 0x80000, CRC(1b87ecf0) SHA1(37a463184f4064fe0565367236e289d57639614c) )	/* sprites */
+	ROM_LOAD( "b22-02.5",             0x00000, 0x80000, CRC(1b87ecf0) SHA1(37a463184f4064fe0565367236e289d57639614c) )	/* sprites */
 	ROM_LOAD16_BYTE( "b22-12.7",      0x80000, 0x10000, CRC(67a76dc6) SHA1(626ee684eb3ea859c695ffe03344ccaa442da4af) )
 	ROM_LOAD16_BYTE( "b22-13.6",      0x80001, 0x10000, CRC(2fda099f) SHA1(a1e27a4497f6733608be924d69d965b19f725b99) )
 ROM_END
@@ -722,7 +765,7 @@ ROM_START( rainbowo )
 	ROM_LOAD( "b22-01.2",             0x00000, 0x80000, CRC(b76c9168) SHA1(e924be0c8294b930488bb04583784254a840a52e) )	/* tiles */
 
 	ROM_REGION( 0xa0000, "gfx2", ROMREGION_DISPOSE )
-  	ROM_LOAD( "b22-01.5",             0x00000, 0x80000, CRC(1b87ecf0) SHA1(37a463184f4064fe0565367236e289d57639614c) )	/* sprites */
+  	ROM_LOAD( "b22-02.5",             0x00000, 0x80000, CRC(1b87ecf0) SHA1(37a463184f4064fe0565367236e289d57639614c) )	/* sprites */
 	ROM_LOAD16_BYTE( "b22-12.7",      0x80000, 0x10000, CRC(67a76dc6) SHA1(626ee684eb3ea859c695ffe03344ccaa442da4af) )
 	ROM_LOAD16_BYTE( "b22-13.6",      0x80001, 0x10000, CRC(2fda099f) SHA1(a1e27a4497f6733608be924d69d965b19f725b99) )
 ROM_END
@@ -744,7 +787,7 @@ ROM_START( rainbowe )
 	ROM_LOAD( "b22-01.2",             0x00000, 0x80000, CRC(b76c9168) SHA1(e924be0c8294b930488bb04583784254a840a52e) )	/* tiles */
 
 	ROM_REGION( 0xa0000, "gfx2", ROMREGION_DISPOSE )
-  	ROM_LOAD( "b22-01.5",             0x00000, 0x80000, CRC(1b87ecf0) SHA1(37a463184f4064fe0565367236e289d57639614c) )	/* sprites */
+  	ROM_LOAD( "b22-02.5",             0x00000, 0x80000, CRC(1b87ecf0) SHA1(37a463184f4064fe0565367236e289d57639614c) )	/* sprites */
 	ROM_LOAD16_BYTE( "b22-12.7",      0x80000, 0x10000, CRC(67a76dc6) SHA1(626ee684eb3ea859c695ffe03344ccaa442da4af) )
 	ROM_LOAD16_BYTE( "b22-13.6",      0x80001, 0x10000, CRC(2fda099f) SHA1(a1e27a4497f6733608be924d69d965b19f725b99) )
 ROM_END

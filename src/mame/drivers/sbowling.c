@@ -104,7 +104,7 @@ static VIDEO_UPDATE(sbowling)
 
 static VIDEO_START(sbowling)
 {
-	tmpbitmap = auto_bitmap_alloc(32*8,32*8,video_screen_get_format(machine->primary_screen));
+	tmpbitmap = auto_bitmap_alloc(machine,32*8,32*8,video_screen_get_format(machine->primary_screen));
 	sb_tilemap = tilemap_create(machine, get_sb_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 }
 
@@ -331,8 +331,8 @@ static PALETTE_INIT( sbowling )
 static MACHINE_DRIVER_START( sbowling )
 
 	MDRV_CPU_ADD("maincpu", 8080, 19968000/10 )
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_IO_MAP(port_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
+	MDRV_CPU_IO_MAP(port_map)
 	MDRV_CPU_VBLANK_INT_HACK(sbw_interrupt, 2)
 	MDRV_GFXDECODE(sbowling)
 

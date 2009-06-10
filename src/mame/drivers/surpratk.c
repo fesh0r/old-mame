@@ -138,8 +138,8 @@ static INPUT_PORTS_START( surpratk )
 	PORT_DIPNAME( 0x60, 0x40, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x60, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x20, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x20, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -165,7 +165,7 @@ INPUT_PORTS_END
 
 static void irqhandler(const device_config *device, int linestate)
 {
-	cpu_set_input_line(device->machine->cpu[0],KONAMI_FIRQ_LINE,linestate);
+	cputag_set_input_line(device->machine, "maincpu", KONAMI_FIRQ_LINE, linestate);
 }
 
 static const ym2151_interface ym2151_config =
@@ -179,7 +179,7 @@ static MACHINE_DRIVER_START( surpratk )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", KONAMI, 3000000)	/* 053248 */
-	MDRV_CPU_PROGRAM_MAP(surpratk_map,0)
+	MDRV_CPU_PROGRAM_MAP(surpratk_map)
 	MDRV_CPU_VBLANK_INT("screen", surpratk_interrupt)
 
 	MDRV_MACHINE_RESET(surpratk)
@@ -280,7 +280,7 @@ logerror("%04x: setlines %02x\n",cpu_get_pc(device),lines);
 
 static MACHINE_RESET( surpratk )
 {
-	konami_configure_set_lines(machine->cpu[0], surpratk_banking);
+	konami_configure_set_lines(cputag_get_cpu(machine, "maincpu"), surpratk_banking);
 
 	paletteram = &memory_region(machine, "maincpu")[0x48000];
 }

@@ -484,13 +484,13 @@ static WRITE32_HANDLER(flash_s3_w)
 
 static void install_handlers(running_machine *machine, int mode)
 {
-	const address_space *a = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *a = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	if(mode == 0) {
 		// Mode 0 has access to the subbios, the mn102 flash and the rf5c296 mem zone
 		memory_install_readwrite32_handler(a, 0x1f000000, 0x1f1fffff, 0, 0, flash_subbios_r, flash_subbios_w);
 		memory_install_readwrite32_handler(a, 0x1f200000, 0x1f2fffff, 0, 0, rf5c296_mem_r, rf5c296_mem_w);
 		memory_install_readwrite32_handler(a, 0x1f300000, 0x1f37ffff, 0, 0, flash_mn102_r, flash_mn102_w);
-		memory_install_readwrite32_handler(a, 0x1f380000, 0x1f5fffff, 0, 0, SMH_NOP, SMH_NOP);
+		memory_install_readwrite32_handler(a, 0x1f380000, 0x1f5fffff, 0, 0, (read32_space_func)SMH_NOP, (write32_space_func)SMH_NOP);
 
 	} else {
 		// Mode 1 has access to the 3 samples flashes
@@ -703,7 +703,7 @@ static TIMER_CALLBACK( dip_timer_fired )
 
 	if( param )
 	{
-		timer_adjust_oneshot( dip_timer, cpu_clocks_to_attotime( machine->cpu[0], 50 ), 0 );
+		timer_adjust_oneshot(dip_timer, cputag_clocks_to_attotime(machine, "maincpu", 50), 0);
 	}
 }
 
@@ -813,7 +813,7 @@ static DRIVER_INIT( coh3002t )
 static DRIVER_INIT( coh3002t_mp )
 {
 	DRIVER_INIT_CALL(coh3002t);
-	memory_install_read32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fa10100, 0x1fa10103, 0, 0, gnet_mahjong_panel_r );
+	memory_install_read32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fa10100, 0x1fa10103, 0, 0, gnet_mahjong_panel_r );
 }
 
 static MACHINE_RESET( coh3002t )
@@ -888,7 +888,7 @@ static const psx_spu_interface psxspu_interface =
 static MACHINE_DRIVER_START( coh3002t )
 	/* basic machine hardware */
 	MDRV_CPU_ADD( "maincpu", PSXCPU, XTAL_100MHz )
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
+	MDRV_CPU_PROGRAM_MAP( zn_map)
 	MDRV_CPU_VBLANK_INT("screen", psx_vblank)
 
 	/* video hardware */
@@ -1077,7 +1077,14 @@ ROM_START(chaoshea)
 	TAITOGNET_BIOS
 
 	DISK_REGION( "card" )
-	DISK_IMAGE( "chaoshea", 0, SHA1(2f211ac08675ea8ec33c7659a13951db94eaa627))
+	DISK_IMAGE( "chaosheat", 0, SHA1(c13b7d7025eee05f1f696d108801c7bafb3f1356))
+ROM_END
+
+ROM_START(chaoshej)
+	TAITOGNET_BIOS
+
+	DISK_REGION( "card" )
+	DISK_IMAGE( "chaosheatj", 0, SHA1(2f211ac08675ea8ec33c7659a13951db94eaa627))
 ROM_END
 
 
@@ -1138,7 +1145,16 @@ ROM_START(shikigam)
 	DISK_IMAGE( "shikigam", 0, SHA1(fa49a0bc47f5cb7c30d7e49e2c3696b21bafb840))
 ROM_END
 
+
 /* Success */
+
+ROM_START(otenamih)
+	TAITOGNET_BIOS
+
+	DISK_REGION( "card" )
+	DISK_IMAGE( "otenamih", 0, SHA1(b3babe3a1876c43745616ee1e7d87276ce7dad0b) )
+ROM_END
+
 
 ROM_START(psyvaria)
 	TAITOGNET_BIOS
@@ -1167,6 +1183,10 @@ ROM_START(zokuoten)
 	DISK_REGION( "card" )
 	DISK_IMAGE( "zokuoten", 0, SHA1(5ce13db00518f96af64935176c71ec68d2a51938))
 ROM_END
+
+
+
+
 
 /* Takumi */
 
@@ -1200,6 +1220,14 @@ ROM_START(mahjngoh)
 	DISK_IMAGE( "mahjngoh", 0, SHA1(3ef1110d15582d7c0187438d7ad61765dd121cff))
 ROM_END
 
+ROM_START(shangtou)
+	TAITOGNET_BIOS
+
+	DISK_REGION( "card" )
+	DISK_IMAGE( "shanghaito", 0, SHA1(9901db5a9aae77e3af4157aa2c601eaab5b7ca85) )
+ROM_END
+
+
 /* Triangle Service */
 
 ROM_START(xiistag)
@@ -1215,7 +1243,8 @@ ROM_END
 /* it in every zip file */
 GAME( 1997, taitogn,  0, coh3002t, coh3002t, coh3002t, ROT0, "Sony/Taito", "Taito GNET", GAME_IS_BIOS_ROOT )
 
-GAME( 1998, chaoshea, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Chaos Heat (V2.08J)", 0 )
+GAME( 1998, chaoshea, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Chaos Heat (V2.09O)", 0 )
+GAME( 1998, chaoshej, chaoshea, coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Chaos Heat (V2.08J)", 0 )
 GAME( 1998, raycris,  taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Ray Crisis (V2.03J)", 0 )
 GAME( 1999, spuzbobl, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Super Puzzle Bobble (V2.05O)", 0 )
 GAME( 1999, spuzbobj, spuzbobl, coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Super Puzzle Bobble (V2.04J)", 0 )
@@ -1226,6 +1255,7 @@ GAME( 2001, shikigam, taitogn,  coh3002t, coh3002t, coh3002t, ROT270, "Taito/Alf
 GAME( 2003, sianniv,  taitogn,  coh3002t, coh3002t, coh3002t, ROT270, "Taito", "Space Invaders Anniversary (V2.02J)", GAME_NOT_WORKING ) // IRQ at the wrong time
 GAME( 2003, kollon,   taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Kollon (V2.04J)", 0 )
 
+GAME( 1999, otenamih, taitogn, coh3002t, coh3002t, coh3002t, ROT0,   "Success", "Otenami Haiken (V2.04J)", 0 )
 GAME( 2000, psyvaria, taitogn, coh3002t, coh3002t, coh3002t, ROT270, "Success", "Psyvariar -Medium Unit- (V2.04J)", 0 )
 GAME( 2000, psyvarrv, taitogn, coh3002t, coh3002t, coh3002t, ROT270, "Success", "Psyvariar -Revision- (V2.04J)", 0 )
 GAME( 2000, zokuoten, taitogn, coh3002t, coh3002t, coh3002t, ROT0,   "Success", "Zoku Otenamihaiken (V2.03J)", 0 )
@@ -1235,8 +1265,12 @@ GAME( 1999, mahjngoh, taitogn, coh3002t, coh3002t_mp, coh3002t_mp, ROT0, "Warash
 GAME( 2001, usagi,    taitogn, coh3002t, coh3002t_mp, coh3002t_mp, ROT0, "Warashi/Mahjong Kobo/Taito", "Usagi (V2.02J)", 0 )
 GAME( 2000, soutenry, taitogn, coh3002t, coh3002t, coh3002t, ROT0,   "Warashi", "Soutenryu (V2.07J)", 0 )
 GAME( 2000, shanghss, taitogn, coh3002t, coh3002t, coh3002t, ROT0,   "Warashi", "Shanghai Shoryu Sairin (V2.03J)", 0 )
+GAME( 2002, shangtou, taitogn, coh3002t, coh3002t, coh3002t, ROT0,   "Warashi/Sunsoft/Taito", "Shanghai Sangokuhai Tougi (Ver 2.01J)", 0 )
 
 GAME( 2001, nightrai, taitogn, coh3002t, coh3002t, coh3002t, ROT0, "Takumi", "Night Raid (V2.03J)", GAME_NOT_WORKING ) // no background / enemy sprites
 GAME( 2001, otenki,   taitogn, coh3002t, coh3002t, coh3002t, ROT0, "Takumi", "Otenki Kororin (V2.01J)", 0 )
 
 GAME( 2002, xiistag,  taitogn, coh3002t, coh3002t, coh3002t, ROT270, "Triangle Service", "XII Stag (V2.01J)", 0 )
+
+
+

@@ -165,7 +165,7 @@ static WRITE8_HANDLER( ppmast93_port4_w )
 
 static ADDRESS_MAP_START( ppmast93_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM) AM_WRITENOP AM_REGION("maincpu", 0x10000)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK(1))
 	AM_RANGE(0xd000, 0xd7ff) AM_RAM_WRITE(ppmast93_bgram_w) AM_BASE(&ppmast93_bgram) AM_SHARE(1)
 	AM_RANGE(0xd800, 0xdfff) AM_WRITENOP
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM_WRITE(ppmast93_fgram_w) AM_BASE(&ppmast93_fgram) AM_SHARE(2)
@@ -342,13 +342,13 @@ static VIDEO_UPDATE( ppmast93 )
 static MACHINE_DRIVER_START( ppmast93 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,5000000)		 /* 5 MHz */
-	MDRV_CPU_PROGRAM_MAP(ppmast93_cpu1_map,0)
-	MDRV_CPU_IO_MAP(ppmast93_cpu1_io,0)
+	MDRV_CPU_PROGRAM_MAP(ppmast93_cpu1_map)
+	MDRV_CPU_IO_MAP(ppmast93_cpu1_io)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80,5000000)		 /* 5 MHz */
-	MDRV_CPU_PROGRAM_MAP(ppmast93_cpu2_map,0)
-	MDRV_CPU_IO_MAP(ppmast93_cpu2_io,0)
+	MDRV_CPU_PROGRAM_MAP(ppmast93_cpu2_map)
+	MDRV_CPU_IO_MAP(ppmast93_cpu2_io)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold,8000)
 
 	/* video hardware */

@@ -277,7 +277,7 @@ static READ8_HANDLER( devram_r )
 
 static WRITE8_HANDLER( master_nmi_trigger_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	cputag_set_input_line(space->machine, "slave", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static void airbustr_bankswitch(running_machine *machine, const char *cpu, int bank, int data)
@@ -334,7 +334,7 @@ static WRITE8_HANDLER( soundcommand_w )
 {
 	soundlatch_w(space, 0, data);
 	soundlatch_status = 1;	// soundlatch has been written
-	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_NMI, PULSE_LINE);	// cause a nmi to sub cpu
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);	// cause a nmi to sub cpu
 }
 
 static WRITE8_HANDLER( soundcommand2_w )
@@ -488,8 +488,8 @@ static INPUT_PORTS_START( airbustr )
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("SW2:1,2")
 	PORT_DIPSETTING(    0x02, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x01, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x01, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPUNUSED_DIPLOC( 0x04, IP_ACTIVE_LOW, "SW2:3" )
 	PORT_DIPNAME( 0x08, 0x08, "Freeze" )				PORT_DIPLOCATION("SW2:4")
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
@@ -598,7 +598,7 @@ static MACHINE_START( airbustr )
 
 static MACHINE_RESET( airbustr )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "master", ADDRESS_SPACE_PROGRAM);
 	soundlatch_status = soundlatch2_status = 0;
 	master_addr = 0xff;
 	slave_addr = 0xfd;
@@ -612,18 +612,18 @@ static MACHINE_RESET( airbustr )
 static MACHINE_DRIVER_START( airbustr )
 	// basic machine hardware
 	MDRV_CPU_ADD("master", Z80, 6000000)	// ???
-	MDRV_CPU_PROGRAM_MAP(master_map, 0)
-	MDRV_CPU_IO_MAP(master_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(master_map)
+	MDRV_CPU_IO_MAP(master_io_map)
 	MDRV_CPU_VBLANK_INT_HACK(master_interrupt, 2)	// nmi caused by sub cpu?, ?
 
 	MDRV_CPU_ADD("slave", Z80, 6000000)	// ???
-	MDRV_CPU_PROGRAM_MAP(slave_map, 0)
-	MDRV_CPU_IO_MAP(slave_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(slave_map)
+	MDRV_CPU_IO_MAP(slave_io_map)
 	MDRV_CPU_VBLANK_INT_HACK(slave_interrupt, 2)		// nmi caused by main cpu, ?
 
 	MDRV_CPU_ADD("audiocpu", Z80, 6000000)	// ???
-	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
-	MDRV_CPU_IO_MAP(sound_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)		// nmi are caused by sub cpu writing a sound command
 
 	MDRV_QUANTUM_TIME(HZ(6000))	// Palette RAM is filled by sub cpu with data supplied by main cpu
@@ -683,6 +683,9 @@ ROM_START( airbustr )
 	ROM_LOAD( "pr-21.bin",  0x00000, 0x0c000, CRC(6e0a5df0) SHA1(616b7c7aaf52a9a55b63c60717c1866940635cd4) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
 
+	ROM_REGION( 0x1000, "mcu", 0 ) //MCU is a 80c51 like DJ Boy / Heavy Unit?
+	ROM_LOAD( "i80c51", 0x0000, 0x1000, NO_DUMP )
+
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "pr-000.bin", 0x00000, 0x80000, CRC(8ca68f0d) SHA1(d60389e7e63e9850bcddecb486558de1414f1276) ) // scrolling layers
 
@@ -706,6 +709,9 @@ ROM_START( airbustj )
 	ROM_REGION( 0x24000, "audiocpu", 0 )
 	ROM_LOAD( "pr-21.bin",  0x00000, 0x0c000, CRC(6e0a5df0) SHA1(616b7c7aaf52a9a55b63c60717c1866940635cd4) )
 	ROM_CONTINUE(           0x10000, 0x14000 )
+
+	ROM_REGION( 0x1000, "mcu", 0 ) //MCU is a 80c51 like DJ Boy / Heavy Unit?
+	ROM_LOAD( "i80c51", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
 	ROM_LOAD( "pr-000.bin", 0x00000, 0x80000, CRC(8ca68f0d) SHA1(d60389e7e63e9850bcddecb486558de1414f1276) ) // scrolling layers
@@ -770,7 +776,7 @@ ROM_END
 
 static DRIVER_INIT( airbustr )
 {
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xe000, 0xefff, 0, 0, devram_r); // protection device lives here
+	memory_install_read8_handler(cputag_get_address_space(machine, "master", ADDRESS_SPACE_PROGRAM), 0xe000, 0xefff, 0, 0, devram_r); // protection device lives here
 }
 
 

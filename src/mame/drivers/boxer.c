@@ -27,7 +27,7 @@ static TIMER_CALLBACK( pot_interrupt )
 	int mask = param;
 
 	if (pot_latch & mask)
-		cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, ASSERT_LINE);
+		cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, ASSERT_LINE);
 
 	pot_state |= mask;
 }
@@ -37,7 +37,7 @@ static TIMER_CALLBACK( periodic_callback )
 {
 	int scanline = param;
 
-	cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
+	cputag_set_input_line(machine, "maincpu", 0, ASSERT_LINE);
 
 	if (scanline == 0)
 	{
@@ -149,13 +149,13 @@ static WRITE8_HANDLER( boxer_pot_w )
 
 	pot_latch = data & 0x3f;
 
-	cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 
 static WRITE8_HANDLER( boxer_irq_reset_w )
 {
-	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 }
 
 
@@ -191,7 +191,7 @@ static ADDRESS_MAP_START( boxer_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1b00, 0x1bff) AM_WRITE(boxer_crowd_w)
 	AM_RANGE(0x1c00, 0x1cff) AM_WRITE(boxer_irq_reset_w)
 	AM_RANGE(0x1d00, 0x1dff) AM_WRITE(boxer_bell_w)
-	AM_RANGE(0x1e00, 0x1eff) AM_WRITE(SMH_RAM) AM_BASE(&boxer_sprite_ram)
+	AM_RANGE(0x1e00, 0x1eff) AM_WRITEONLY AM_BASE(&boxer_sprite_ram)
 	AM_RANGE(0x1f00, 0x1fff) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x3000, 0x3fff) AM_ROM
 ADDRESS_MAP_END
@@ -293,7 +293,7 @@ static MACHINE_DRIVER_START(boxer)
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, MASTER_CLOCK / 16)
-	MDRV_CPU_PROGRAM_MAP(boxer_map, 0)
+	MDRV_CPU_PROGRAM_MAP(boxer_map)
 
 	/* video hardware */
 	MDRV_MACHINE_RESET(boxer)

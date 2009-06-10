@@ -141,6 +141,7 @@ static const struct
 	{ "stridr2a", cp10, cp13 }, /* OK ( random crashes on bosses ) */
 	{ "shiryu2",  cp10, cp13 }, /* OK ( random crashes on bosses ) */
 	{ "beastrzr", et01, et02 }, /* OK */
+	{ "bldyroar", et01, et02 }, /* OK */
 	{ "beastrzb", et01, et02 }, /* OK */
 	{ "bldyror2", et01, et03 }, /* OK */
 	{ "bam2",     et01, et05 },
@@ -167,6 +168,7 @@ static const struct
 	{ "raystorm", tt01, tt04 }, /* OK */
 	{ "raystorj", tt01, tt04 }, /* OK */
 	{ "ftimpact", tt01, tt05 }, /* OK */
+	{ "ftimpactj",tt01, tt05 }, /* OK */
 	{ "ftimpcta", tt01, tt05 }, /* OK */
 	{ "mgcldate", tt01, tt06 }, /* OK */
 	{ "mgcldtex", tt01, tt06 }, /* OK */
@@ -298,7 +300,7 @@ static TIMER_CALLBACK( dip_timer_fired )
 
 	if( param )
 	{
-		timer_adjust_oneshot( dip_timer, cpu_clocks_to_attotime( machine->cpu[0], 50 ), 0 );
+		timer_adjust_oneshot( dip_timer, cputag_clocks_to_attotime( machine, "maincpu", 50 ), 0 );
 	}
 }
 
@@ -444,7 +446,7 @@ static void zn_machine_init( running_machine *machine )
 static MACHINE_DRIVER_START( zn1_1mb_vram )
 	/* basic machine hardware */
 	MDRV_CPU_ADD( "maincpu", PSXCPU, XTAL_67_7376MHz )
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
+	MDRV_CPU_PROGRAM_MAP( zn_map)
 	MDRV_CPU_VBLANK_INT("screen", psx_vblank)
 
 	/* video hardware */
@@ -482,7 +484,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( zn2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD( "maincpu", PSXCPU, XTAL_100MHz )
-	MDRV_CPU_PROGRAM_MAP( zn_map, 0 )
+	MDRV_CPU_PROGRAM_MAP( zn_map)
 	MDRV_CPU_VBLANK_INT("screen", psx_vblank)
 
 	/* video hardware */
@@ -648,18 +650,18 @@ static INTERRUPT_GEN( qsound_interrupt )
 static WRITE32_HANDLER( zn_qsound_w )
 {
 	soundlatch_w(space, 0, data);
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static DRIVER_INIT( coh1000c )
 {
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f3fffff, 0, 0, SMH_BANK1 );     /* fixed game rom */
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f400000, 0x1f7fffff, 0, 0, SMH_BANK2 );     /* banked game rom */
-	memory_install_write32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00003, 0, 0, bank_coh1000c_w ); /* bankswitch */
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb40010, 0x1fb40013, 0, 0, capcom_kickharness_r );
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb40020, 0x1fb40023, 0, 0, capcom_kickharness_r );
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb80000, 0x1fbfffff, 0, 0, SMH_BANK3 );     /* country rom */
-	memory_install_write32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb60000, 0x1fb60003, 0, 0, zn_qsound_w );
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f3fffff, 0, 0, (read32_space_func)SMH_BANK(1) );     /* fixed game rom */
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f400000, 0x1f7fffff, 0, 0, (read32_space_func)SMH_BANK(2) );     /* banked game rom */
+	memory_install_write32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00003, 0, 0, bank_coh1000c_w ); /* bankswitch */
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb40010, 0x1fb40013, 0, 0, capcom_kickharness_r );
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb40020, 0x1fb40023, 0, 0, capcom_kickharness_r );
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb80000, 0x1fbfffff, 0, 0, (read32_space_func)SMH_BANK(3) );     /* country rom */
+	memory_install_write32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb60000, 0x1fb60003, 0, 0, zn_qsound_w );
 
 	zn_driver_init(machine);
 
@@ -669,7 +671,7 @@ static DRIVER_INIT( coh1000c )
 		/* disable:
             the QSound CPU for glpracr as it doesn't have any roms &
             the link cpu for glprac2l as the h/w is not emulated yet. */
-		cpu_suspend( machine->cpu[1], SUSPEND_REASON_DISABLE, 1 );
+		cputag_suspend( machine, "audiocpu", SUSPEND_REASON_DISABLE, 1 );
 	}
 }
 
@@ -699,8 +701,8 @@ static MACHINE_DRIVER_START( coh1000c )
 	MDRV_IMPORT_FROM( zn1_1mb_vram )
 
 	MDRV_CPU_ADD("audiocpu",  Z80, 8000000 )  /* 8MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( qsound_map, 0 )
-	MDRV_CPU_IO_MAP( qsound_portmap, 0 )
+	MDRV_CPU_PROGRAM_MAP( qsound_map)
+	MDRV_CPU_IO_MAP( qsound_portmap)
 	MDRV_CPU_VBLANK_INT_HACK( qsound_interrupt, 4 ) /* 4 interrupts per frame ?? */
 
 	MDRV_MACHINE_RESET( coh1000c )
@@ -714,8 +716,8 @@ static MACHINE_DRIVER_START( coh1002c )
 	MDRV_IMPORT_FROM( zn1_2mb_vram )
 
 	MDRV_CPU_ADD("audiocpu",  Z80, 8000000 )  /* 8MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( qsound_map, 0 )
-	MDRV_CPU_IO_MAP( qsound_portmap, 0 )
+	MDRV_CPU_PROGRAM_MAP( qsound_map)
+	MDRV_CPU_IO_MAP( qsound_portmap)
 	MDRV_CPU_VBLANK_INT_HACK( qsound_interrupt, 4 ) /* 4 interrupts per frame ?? */
 
 	MDRV_MACHINE_RESET( coh1000c )
@@ -872,13 +874,13 @@ static WRITE32_HANDLER( bank_coh3002c_w )
 
 static DRIVER_INIT( coh3002c )
 {
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f3fffff, 0, 0, SMH_BANK1 );     /* fixed game rom */
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f400000, 0x1f7fffff, 0, 0, SMH_BANK2 );     /* banked game rom */
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb40010, 0x1fb40013, 0, 0, capcom_kickharness_r );
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb40020, 0x1fb40023, 0, 0, capcom_kickharness_r );
-	memory_install_write32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00003, 0, 0, bank_coh3002c_w ); /* bankswitch */
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb80000, 0x1fbfffff, 0, 0, SMH_BANK3 );     /* country rom */
-	memory_install_write32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb60000, 0x1fb60003, 0, 0, zn_qsound_w );
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f3fffff, 0, 0, (read32_space_func)SMH_BANK(1) );     /* fixed game rom */
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f400000, 0x1f7fffff, 0, 0, (read32_space_func)SMH_BANK(2) );     /* banked game rom */
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb40010, 0x1fb40013, 0, 0, capcom_kickharness_r );
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb40020, 0x1fb40023, 0, 0, capcom_kickharness_r );
+	memory_install_write32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00003, 0, 0, bank_coh3002c_w ); /* bankswitch */
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb80000, 0x1fbfffff, 0, 0, (read32_space_func)SMH_BANK(3) );     /* country rom */
+	memory_install_write32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb60000, 0x1fb60003, 0, 0, zn_qsound_w );
 
 	zn_driver_init(machine);
 }
@@ -895,8 +897,8 @@ static MACHINE_DRIVER_START( coh3002c )
 	MDRV_IMPORT_FROM( zn2 )
 
 	MDRV_CPU_ADD("audiocpu", Z80, 8000000 )	/* 8MHz ?? */
-	MDRV_CPU_PROGRAM_MAP( qsound_map, 0 )
-	MDRV_CPU_IO_MAP( qsound_portmap, 0 )
+	MDRV_CPU_PROGRAM_MAP( qsound_map)
+	MDRV_CPU_IO_MAP( qsound_portmap)
 	MDRV_CPU_VBLANK_INT_HACK( qsound_interrupt, 4 ) /* 4 interrupts per frame ?? */
 
 	MDRV_MACHINE_RESET( coh3002c )
@@ -1131,7 +1133,8 @@ static UINT8 *taitofx1_eeprom2 = NULL;
 
 static WRITE32_HANDLER( bank_coh1000t_w )
 {
-	mb3773_set_ck( ( data & 0x20 ) >> 5 );
+	const device_config *mb3773 = devtag_get_device(space->machine, "mb3773");
+	mb3773_set_ck(mb3773, 0, (data & 0x20) >> 5);
 	verboselog( space->machine, 1, "bank_coh1000t_w( %08x, %08x, %08x )\n", offset, data, mem_mask );
 	memory_set_bankptr(space->machine,  1, memory_region( space->machine, "user2" ) + ( ( data & 3 ) * 0x800000 ) );
 }
@@ -1160,15 +1163,14 @@ static WRITE32_HANDLER( taitofx1a_ymsound_w )
 
 static DRIVER_INIT( coh1000ta )
 {
-	taitofx1_eeprom_size1 = 0x200; taitofx1_eeprom1 = auto_malloc( taitofx1_eeprom_size1 );
+	taitofx1_eeprom_size1 = 0x200; taitofx1_eeprom1 = auto_alloc_array(machine, UINT8,  taitofx1_eeprom_size1 );
 
-	memory_install_read32_handler     ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f7fffff, 0, 0, SMH_BANK1 );     /* banked game rom */
-	memory_install_write32_handler    ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb40000, 0x1fb40003, 0, 0, bank_coh1000t_w ); /* bankswitch */
-	memory_install_readwrite32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb80000, 0x1fb80003, 0, 0, taitofx1a_ymsound_r, taitofx1a_ymsound_w );
-	memory_install_readwrite32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fbe0000, 0x1fbe0000 + ( taitofx1_eeprom_size1 - 1 ), 0, 0, SMH_BANK2, SMH_BANK2 );
+	memory_install_read32_handler     ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f7fffff, 0, 0, (read32_space_func)SMH_BANK(1) );     /* banked game rom */
+	memory_install_write32_handler    ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb40000, 0x1fb40003, 0, 0, bank_coh1000t_w ); /* bankswitch */
+	memory_install_readwrite32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb80000, 0x1fb80003, 0, 0, taitofx1a_ymsound_r, taitofx1a_ymsound_w );
+	memory_install_readwrite32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fbe0000, 0x1fbe0000 + ( taitofx1_eeprom_size1 - 1 ), 0, 0, (read32_space_func)SMH_BANK(2), (write32_space_func)SMH_BANK(2) );
 
 	zn_driver_init(machine);
-	mb3773_init(machine);
 }
 
 static MACHINE_RESET( coh1000ta )
@@ -1195,7 +1197,7 @@ static NVRAM_HANDLER( coh1000ta )
 }
 
 static ADDRESS_MAP_START( fx1a_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK10)	/* Fallthrough */
+	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK(10))	/* Fallthrough */
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0xc000, 0xdfff) AM_RAM
 	AM_RANGE(0xe000, 0xe003) AM_DEVREADWRITE("ym", ym2610_r, ym2610_w)
@@ -1210,7 +1212,7 @@ ADDRESS_MAP_END
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irq_handler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -1222,7 +1224,7 @@ static MACHINE_DRIVER_START( coh1000ta )
 	MDRV_IMPORT_FROM( zn1_1mb_vram )
 
 	MDRV_CPU_ADD("audiocpu", Z80, 16000000 / 4 )	/* 4 MHz */
-	MDRV_CPU_PROGRAM_MAP( fx1a_sound_map, 0 )
+	MDRV_CPU_PROGRAM_MAP( fx1a_sound_map)
 	MDRV_MACHINE_RESET( coh1000ta )
 	MDRV_NVRAM_HANDLER( coh1000ta )
 
@@ -1232,6 +1234,8 @@ static MACHINE_DRIVER_START( coh1000ta )
 	MDRV_SOUND_ROUTE(0, "rspeaker", 0.25)
 	MDRV_SOUND_ROUTE(1, "lspeaker",  1.0)
 	MDRV_SOUND_ROUTE(2, "rspeaker", 1.0)
+
+	MDRV_MB3773_ADD("mb3773")
 MACHINE_DRIVER_END
 
 static WRITE32_HANDLER( taitofx1b_volume_w )
@@ -1253,19 +1257,18 @@ static READ32_HANDLER( taitofx1b_sound_r )
 
 static DRIVER_INIT( coh1000tb )
 {
-	taitofx1_eeprom_size1 = 0x400; taitofx1_eeprom1 = auto_malloc( taitofx1_eeprom_size1 );
-	taitofx1_eeprom_size2 = 0x200; taitofx1_eeprom2 = auto_malloc( taitofx1_eeprom_size2 );
+	taitofx1_eeprom_size1 = 0x400; taitofx1_eeprom1 = auto_alloc_array(machine, UINT8,  taitofx1_eeprom_size1 );
+	taitofx1_eeprom_size2 = 0x200; taitofx1_eeprom2 = auto_alloc_array(machine, UINT8,  taitofx1_eeprom_size2 );
 
-	memory_install_read32_handler     ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f7fffff, 0, 0, SMH_BANK1 ); /* banked game rom */
-	memory_install_readwrite32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00000 + ( taitofx1_eeprom_size1 - 1 ), 0, 0, SMH_BANK2, SMH_BANK2 );
-	memory_install_write32_handler    ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb40000, 0x1fb40003, 0, 0, bank_coh1000t_w ); /* bankswitch */
-	memory_install_write32_handler    ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb80000, 0x1fb80003, 0, 0, taitofx1b_volume_w );
-	memory_install_write32_handler    ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fba0000, 0x1fba0003, 0, 0, taitofx1b_sound_w );
-	memory_install_read32_handler     ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fbc0000, 0x1fbc0003, 0, 0, taitofx1b_sound_r );
-	memory_install_readwrite32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fbe0000, 0x1fbe0000 + ( taitofx1_eeprom_size2 - 1 ), 0, 0, SMH_BANK3, SMH_BANK3 );
+	memory_install_read32_handler     ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f7fffff, 0, 0, (read32_space_func)SMH_BANK(1) ); /* banked game rom */
+	memory_install_readwrite32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00000 + ( taitofx1_eeprom_size1 - 1 ), 0, 0, (read32_space_func)SMH_BANK(2), (write32_space_func)SMH_BANK(2) );
+	memory_install_write32_handler    ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb40000, 0x1fb40003, 0, 0, bank_coh1000t_w ); /* bankswitch */
+	memory_install_write32_handler    ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb80000, 0x1fb80003, 0, 0, taitofx1b_volume_w );
+	memory_install_write32_handler    ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fba0000, 0x1fba0003, 0, 0, taitofx1b_sound_w );
+	memory_install_read32_handler     ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fbc0000, 0x1fbc0003, 0, 0, taitofx1b_sound_r );
+	memory_install_readwrite32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fbe0000, 0x1fbe0000 + ( taitofx1_eeprom_size2 - 1 ), 0, 0, (read32_space_func)SMH_BANK(3), (write32_space_func)SMH_BANK(3) );
 
 	zn_driver_init(machine);
-	mb3773_init(machine);
 }
 
 static MACHINE_RESET( coh1000tb )
@@ -1300,6 +1303,8 @@ static MACHINE_DRIVER_START( coh1000tb )
 
 	MDRV_MACHINE_RESET( coh1000tb )
 	MDRV_NVRAM_HANDLER( coh1000tb )
+
+	MDRV_MB3773_ADD("mb3773")
 MACHINE_DRIVER_END
 
 /*
@@ -1458,11 +1463,11 @@ static DRIVER_INIT( coh1000w )
 {
 	const device_config *ide = devtag_get_device(machine, "ide");
 
-	memory_install_read32_handler            ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f1fffff, 0, 0, SMH_BANK1 );
-	memory_install_write32_handler           ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f000003, 0, 0, SMH_NOP );
-	memory_install_readwrite32_device_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), ide, 0x1f7e4000, 0x1f7e4fff, 0, 0, ide_controller32_r, ide_controller32_w );
-	memory_install_readwrite32_handler       ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f7e8000, 0x1f7e8003, 0, 0, SMH_NOP, SMH_NOP );
-	memory_install_readwrite32_device_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), ide, 0x1f7f4000, 0x1f7f4fff, 0, 0, ide_controller32_r, ide_controller32_w );
+	memory_install_read32_handler            ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f1fffff, 0, 0, (read32_space_func)SMH_BANK(1) );
+	memory_install_write32_handler           ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f000003, 0, 0, (write32_space_func)SMH_NOP );
+	memory_install_readwrite32_device_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), ide, 0x1f7e4000, 0x1f7e4fff, 0, 0, ide_controller32_r, ide_controller32_w );
+	memory_install_readwrite32_handler       ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f7e8000, 0x1f7e8003, 0, 0, (read32_space_func)SMH_NOP, (write32_space_func)SMH_NOP );
+	memory_install_readwrite32_device_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), ide, 0x1f7f4000, 0x1f7f4fff, 0, 0, ide_controller32_r, ide_controller32_w );
 
 	zn_driver_init(machine);
 }
@@ -1642,16 +1647,16 @@ static WRITE32_HANDLER( coh1002e_bank_w )
 static WRITE32_HANDLER( coh1002e_latch_w )
 {
 	if (offset)
-		cpu_set_input_line(space->machine->cpu[1], 2, HOLD_LINE);	// irq 2 on the 68k
+		cputag_set_input_line(space->machine, "audiocpu", 2, HOLD_LINE);	// irq 2 on the 68k
 	else
 		soundlatch_w(space, 0, data);
 }
 
 static DRIVER_INIT( coh1002e )
 {
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f7fffff, 0, 0, SMH_BANK1 );
-	memory_install_write32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fa10300, 0x1fa10303, 0, 0, coh1002e_bank_w );
-	memory_install_write32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00007, 0, 0, coh1002e_latch_w );
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f7fffff, 0, 0, (read32_space_func)SMH_BANK(1) );
+	memory_install_write32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fa10300, 0x1fa10303, 0, 0, coh1002e_bank_w );
+	memory_install_write32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00007, 0, 0, coh1002e_latch_w );
 
 	zn_driver_init(machine);
 }
@@ -1675,7 +1680,7 @@ static MACHINE_DRIVER_START( coh1002e )
 	MDRV_IMPORT_FROM( zn1_2mb_vram )
 
 	MDRV_CPU_ADD("audiocpu", M68000, 12000000 )
-	MDRV_CPU_PROGRAM_MAP( psarc_snd_map, 0 )
+	MDRV_CPU_PROGRAM_MAP( psarc_snd_map)
 
 	MDRV_MACHINE_RESET( coh1002e )
 
@@ -1791,12 +1796,12 @@ static READ32_HANDLER( bam2_unk_r )
 
 static DRIVER_INIT( bam2 )
 {
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f3fffff, 0, 0, SMH_BANK1 );
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f400000, 0x1f7fffff, 0, 0, SMH_BANK2 );
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00007, 0, 0, bam2_mcu_r );
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fa20000, 0x1fa20003, 0, 0, bam2_unk_r );
-	memory_install_write32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fa10300, 0x1fa10303, 0, 0, bam2_sec_w );
-	memory_install_write32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00007, 0, 0, bam2_mcu_w );
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f3fffff, 0, 0, (read32_space_func)SMH_BANK(1) );
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f400000, 0x1f7fffff, 0, 0, (read32_space_func)SMH_BANK(2) );
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00007, 0, 0, bam2_mcu_r );
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fa20000, 0x1fa20003, 0, 0, bam2_unk_r );
+	memory_install_write32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fa10300, 0x1fa10303, 0, 0, bam2_sec_w );
+	memory_install_write32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00007, 0, 0, bam2_mcu_w );
 
 	zn_driver_init(machine);
 }
@@ -2111,17 +2116,17 @@ static READ32_HANDLER( nbajamex_80_r )
 
 static DRIVER_INIT( coh1000a )
 {
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f1fffff, 0, 0, SMH_BANK1 );
-	memory_install_write32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fbfff00, 0x1fbfff03, 0, 0, acpsx_00_w );
-	memory_install_write32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fbfff10, 0x1fbfff13, 0, 0, acpsx_10_w );
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f1fffff, 0, 0, (read32_space_func)SMH_BANK(1) );
+	memory_install_write32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fbfff00, 0x1fbfff03, 0, 0, acpsx_00_w );
+	memory_install_write32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fbfff10, 0x1fbfff13, 0, 0, acpsx_10_w );
 
 	if( strcmp( machine->gamedrv->name, "nbajamex" ) == 0 )
 	{
-		nbajamex_eeprom_size = 0x8000; nbajamex_eeprom = auto_malloc( nbajamex_eeprom_size );
+		nbajamex_eeprom_size = 0x8000; nbajamex_eeprom = auto_alloc_array(machine, UINT8,  nbajamex_eeprom_size );
 
-		memory_install_readwrite32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f200000, 0x1f200000 + ( nbajamex_eeprom_size - 1 ), 0, 0, SMH_BANK2, SMH_BANK2 );
-		memory_install_read32_handler     ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fbfff08, 0x1fbfff0b, 0, 0, nbajamex_08_r );
-		memory_install_readwrite32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fbfff80, 0x1fbfff83, 0, 0, nbajamex_80_r, nbajamex_80_w );
+		memory_install_readwrite32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f200000, 0x1f200000 + ( nbajamex_eeprom_size - 1 ), 0, 0, (read32_space_func)SMH_BANK(2), (write32_space_func)SMH_BANK(2) );
+		memory_install_read32_handler     ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fbfff08, 0x1fbfff0b, 0, 0, nbajamex_08_r );
+		memory_install_readwrite32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fbfff80, 0x1fbfff83, 0, 0, nbajamex_80_r, nbajamex_80_w );
 
 		memory_set_bankptr(machine,  2, nbajamex_eeprom ); /* ram/eeprom/?? */
 	}
@@ -2131,9 +2136,9 @@ static DRIVER_INIT( coh1000a )
 	{
 		const device_config *ide = devtag_get_device(machine, "ide");
 
-		memory_install_read32_device_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), ide, 0x1fbfff8c, 0x1fbfff8f, 0, 0, jdredd_idestat_r );
-		memory_install_write32_handler      ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fbfff8c, 0x1fbfff8f, 0, 0, SMH_NOP );
-		memory_install_readwrite32_device_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), ide, 0x1fbfff90, 0x1fbfff9f, 0, 0, jdredd_ide_r, jdredd_ide_w );
+		memory_install_read32_device_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), ide, 0x1fbfff8c, 0x1fbfff8f, 0, 0, jdredd_idestat_r );
+		memory_install_write32_handler      ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fbfff8c, 0x1fbfff8f, 0, 0, (write32_space_func)SMH_NOP );
+		memory_install_readwrite32_device_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), ide, 0x1fbfff90, 0x1fbfff9f, 0, 0, jdredd_ide_r, jdredd_ide_w );
 	}
 
 	zn_driver_init(machine);
@@ -2290,8 +2295,8 @@ static WRITE32_HANDLER( coh1001l_bnk_w )
 
 static DRIVER_INIT( coh1001l )
 {
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f7fffff, 0, 0, SMH_BANK1 ); /* banked rom */
-	memory_install_write32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00003, 0, 0, coh1001l_bnk_w );
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f7fffff, 0, 0, (read32_space_func)SMH_BANK(1) ); /* banked rom */
+	memory_install_write32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00003, 0, 0, coh1001l_bnk_w );
 
 	zn_driver_init(machine);
 }
@@ -2306,7 +2311,7 @@ static MACHINE_DRIVER_START( coh1001l )
 	MDRV_IMPORT_FROM( zn1_2mb_vram )
 
 //  MDRV_CPU_ADD("audiocpu", M68000, 10000000 )
-//  MDRV_CPU_PROGRAM_MAP( atlus_snd_map, 0 )
+//  MDRV_CPU_PROGRAM_MAP( atlus_snd_map)
 
 	MDRV_MACHINE_RESET( coh1001l )
 
@@ -2333,9 +2338,9 @@ static WRITE32_HANDLER( coh1002v_bnk_w )
 
 static DRIVER_INIT( coh1002v )
 {
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f27ffff, 0, 0, SMH_BANK1 );
-	memory_install_read32_handler ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fbfffff, 0, 0, SMH_BANK2 );
-	memory_install_write32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00003, 0, 0, coh1002v_bnk_w );
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f27ffff, 0, 0, (read32_space_func)SMH_BANK(1) );
+	memory_install_read32_handler ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fbfffff, 0, 0, (read32_space_func)SMH_BANK(2) );
+	memory_install_write32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00003, 0, 0, coh1002v_bnk_w );
 
 	zn_driver_init(machine);
 }
@@ -2536,9 +2541,9 @@ static WRITE32_HANDLER( cbaj_z80_w )
 
 static DRIVER_INIT( coh1002m )
 {
-	memory_install_read32_handler     ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f7fffff, 0, 0, SMH_BANK1 );
-	memory_install_readwrite32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00003, 0, 0, cbaj_z80_r, cbaj_z80_w );
-	memory_install_write32_handler    ( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1fb00004, 0x1fb00007, 0, 0, coh1002m_bank_w );
+	memory_install_read32_handler     ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f000000, 0x1f7fffff, 0, 0, (read32_space_func)SMH_BANK(1) );
+	memory_install_readwrite32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb00000, 0x1fb00003, 0, 0, cbaj_z80_r, cbaj_z80_w );
+	memory_install_write32_handler    ( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1fb00004, 0x1fb00007, 0, 0, coh1002m_bank_w );
 
 	zn_driver_init(machine);
 }
@@ -2593,8 +2598,8 @@ static MACHINE_DRIVER_START( coh1002msnd )
 	MDRV_IMPORT_FROM( zn1_2mb_vram )
 
 	MDRV_CPU_ADD("audiocpu", Z80, 32000000/8 )
-	MDRV_CPU_PROGRAM_MAP( cbaj_z80_map, 0 )
-	MDRV_CPU_IO_MAP( cbaj_z80_port_map, 0 )
+	MDRV_CPU_PROGRAM_MAP( cbaj_z80_map)
+	MDRV_CPU_IO_MAP( cbaj_z80_port_map)
 
 	MDRV_MACHINE_RESET( coh1002m )
 
@@ -2607,7 +2612,7 @@ static MACHINE_DRIVER_START( coh1002ml )
 	MDRV_IMPORT_FROM( zn1_2mb_vram )
 
 	MDRV_CPU_ADD("link", Z80, 8000000 )
-	MDRV_CPU_PROGRAM_MAP( link_map, 0 )
+	MDRV_CPU_PROGRAM_MAP( link_map)
 
 	MDRV_MACHINE_RESET( coh1002m )
 MACHINE_DRIVER_END
@@ -3778,6 +3783,24 @@ ROM_START( ftimpact )
 	ROM_LOAD( "e25-05.28",    0x0040000, 0x200000, CRC(3fb57636) SHA1(aa38bfac11ecf10fd55143cf4525a2a529be8bb6) )
 ROM_END
 
+ROM_START( ftimpactj )
+	TAITOFX1_BIOS
+
+	ROM_REGION32_LE( 0x01000000, "user2", 0 )
+	ROM_LOAD16_BYTE( "e25-06.4",     0x0000001, 0x080000, CRC(3a59deeb) SHA1(4377c5829fb5b6f5d0120caf992b1ee714897641) )
+	ROM_LOAD16_BYTE( "e25-07.3",     0x0000000, 0x080000, CRC(829be1cc) SHA1(64b139d7c3696ab2f0b9a4842c19a38fe6a8cede) )
+	ROM_LOAD( "e25-01.1",            0x0400000, 0x400000, CRC(8cc4be0c) SHA1(9ca15558a83b7e332e50accf1f7852444a7ce730) )
+	ROM_LOAD( "e25-02.2",            0x0800000, 0x400000, CRC(8e8b4c82) SHA1(55c9d4d3a08fc3226a75ab3a674be433af83e289) )
+	ROM_LOAD( "e25-03.12",           0x0c00000, 0x400000, CRC(43b1c085) SHA1(6e53550e9be0d2f415fc6b4f3b8a71185c5370b2) )
+
+	ROM_REGION( 0x080000, "cpu1", 0 )
+	ROM_LOAD( "e25-10.14",    0x0000000, 0x080000, CRC(2b2ad1b1) SHA1(6d064d0b6805d43ce42929ac8f5645b56384f53c) )
+
+	ROM_REGION( 0x600000, "unknown", 0 )
+	ROM_LOAD( "e25-04.27",    0x0000000, 0x400000, CRC(09a66d35) SHA1(f0df24bc9bfc9eb0f5150dc035c19fc5b8a39bf9) )
+	ROM_LOAD( "e25-05.28",    0x0040000, 0x200000, CRC(3fb57636) SHA1(aa38bfac11ecf10fd55143cf4525a2a529be8bb6) )
+ROM_END
+
 ROM_START( ftimpcta )
 	TAITOFX1_BIOS
 
@@ -3858,7 +3881,7 @@ ROM_START( mgcldate )
 	ROM_LOAD( "e32-03.12",           0x0c00000, 0x200000, CRC(190d1618) SHA1(838a651d32752015baa7e8caea62fd739631b8be) )
 
 	ROM_REGION( 0x2c000, "audiocpu", 0 )     /* 64k for Z80 code */
-	ROM_LOAD( "e32-10.22",           0x0000000, 0x004000, CRC(adf3feb5) SHA1(bae5bc3fad99a92a3492be1b775dab861007eb3b) )
+	ROM_LOAD( "e32-07.22",           0x0000000, 0x004000, CRC(adf3feb5) SHA1(bae5bc3fad99a92a3492be1b775dab861007eb3b) )
 	ROM_CONTINUE(                    0x0010000, 0x01c000 ) /* banked stuff */
 
 	ROM_REGION( 0x400000, "ym", 0 )
@@ -4023,22 +4046,41 @@ ROM_START( beastrzr )
 	PSARC95_BIOS
 
 	ROM_REGION32_LE( 0x1800000, "user2", 0 )
-	ROM_LOAD16_BYTE( "broar.213",    0x000001, 0x080000, CRC(2c586534) SHA1(a38dfc3a45446d24a1caac89b0f560989d46ded5) )
-	ROM_LOAD16_BYTE( "broar.212",    0x000000, 0x080000, CRC(1c85d7fb) SHA1(aa406a42c424cc16a9e5330c68dda9acf8760088) )
-	ROM_LOAD16_BYTE( "broar.215",    0x100001, 0x080000, CRC(31c8e055) SHA1(2811789ab6221b972d1e3ffe98916587990f7564) )
-	ROM_LOAD16_BYTE( "broar.214",    0x100000, 0x080000, CRC(1cdc450a) SHA1(9215e5fec52f7c5c0070feb621eb9c77f98e2362) )
-	ROM_LOAD( "rabroar1.217",        0x400000, 0x400000, CRC(11f1ba36) SHA1(d41ae686c2c607640cbadf906215c89134758050) )
-	ROM_LOAD( "rabroar2.216",        0x800000, 0x400000, CRC(d46d46b7) SHA1(1c42cb5dcda4b26c08c4ecf95efeadaf3a1d1dd2) )
+	ROM_LOAD16_BYTE( "b.roar_u0213",   0x000001, 0x080000, CRC(2c586534) SHA1(a38dfc3a45446d24a1caac89b0f560989d46ded5) ) /* For U0212 & U0213, 8ing used indentical rom labels */
+	ROM_LOAD16_BYTE( "b.roar_u0212",   0x000000, 0x080000, CRC(1c85d7fb) SHA1(aa406a42c424cc16a9e5330c68dda9acf8760088) ) /* even though the content changes between versions   */
+	ROM_LOAD16_BYTE( "b.roar-u0215",   0x100001, 0x080000, CRC(31c8e055) SHA1(2811789ab6221b972d1e3ffe98916587990f7564) )
+	ROM_LOAD16_BYTE( "b.roar-u0214",   0x100000, 0x080000, CRC(1cdc450a) SHA1(9215e5fec52f7c5c0070feb621eb9c77f98e2362) )
+	ROM_LOAD( "ra-b-roar_rom-1.u0217", 0x400000, 0x400000, CRC(11f1ba36) SHA1(d41ae686c2c607640cbadf906215c89134758050) )
+	ROM_LOAD( "ra-b.roar_rom-2.u0216", 0x800000, 0x400000, CRC(d46d46b7) SHA1(1c42cb5dcda4b26c08c4ecf95efeadaf3a1d1dd2) )
 
 	ROM_REGION( 0x080000, "audiocpu", 0 )
-	ROM_LOAD16_BYTE( "broar.046",    0x000001, 0x040000, CRC(d4bb261a) SHA1(9a295b1354ef15f37ea09bb209cf0cb98437c462) )
-	ROM_LOAD16_BYTE( "broar.042",    0x000000, 0x040000, CRC(4d537f88) SHA1(1760367d70a81606e29885ea315185d2c2a9409b) )
+	ROM_LOAD16_BYTE( "b.roar-u046",  0x000001, 0x040000, CRC(d4bb261a) SHA1(9a295b1354ef15f37ea09bb209cf0cb98437c462) )
+	ROM_LOAD16_BYTE( "b.roar-u042",  0x000000, 0x040000, CRC(4d537f88) SHA1(1760367d70a81606e29885ea315185d2c2a9409b) )
 
 	ROM_REGION( 0x400000, "ymf", 0 )
-	ROM_LOAD( "rabroar3.snd",        0x000000, 0x400000, CRC(b74cc4d1) SHA1(eb5485582a12959ae06927a2f1d8a7e63e0f956f) )
+	ROM_LOAD( "ra-b.roar3_rom-3.u0326", 0x000000, 0x400000, CRC(b74cc4d1) SHA1(eb5485582a12959ae06927a2f1d8a7e63e0f956f) )
 ROM_END
 
-ROM_START( beastrzb )
+ROM_START( bldyroar )
+	PSARC95_BIOS
+
+	ROM_REGION32_LE( 0x1800000, "user2", 0 )
+	ROM_LOAD16_BYTE( "b.roar-u0213",   0x000001, 0x080000, CRC(63769342) SHA1(7231188073b997b039467db85ce7c85383daf591) ) /* For U0212 & U0213, 8ing used indentical rom labels */
+	ROM_LOAD16_BYTE( "b.roar-u0212",   0x000000, 0x080000, CRC(966b7169) SHA1(63e025cacb84e89d30b40ed6cfa5c63d84c298c4) ) /* even though the content changes between versions   */
+	ROM_LOAD16_BYTE( "b.roar-u0215",   0x100001, 0x080000, CRC(31c8e055) SHA1(2811789ab6221b972d1e3ffe98916587990f7564) )
+	ROM_LOAD16_BYTE( "b.roar-u0214",   0x100000, 0x080000, CRC(1cdc450a) SHA1(9215e5fec52f7c5c0070feb621eb9c77f98e2362) )
+	ROM_LOAD( "ra-b-roar_rom-1.u0217", 0x400000, 0x400000, CRC(11f1ba36) SHA1(d41ae686c2c607640cbadf906215c89134758050) )
+	ROM_LOAD( "ra-b.roar_rom-2.u0216", 0x800000, 0x400000, CRC(d46d46b7) SHA1(1c42cb5dcda4b26c08c4ecf95efeadaf3a1d1dd2) )
+
+	ROM_REGION( 0x080000, "audiocpu", 0 )
+	ROM_LOAD16_BYTE( "b.roar-u046",  0x000001, 0x040000, CRC(d4bb261a) SHA1(9a295b1354ef15f37ea09bb209cf0cb98437c462) )
+	ROM_LOAD16_BYTE( "b.roar-u042",  0x000000, 0x040000, CRC(4d537f88) SHA1(1760367d70a81606e29885ea315185d2c2a9409b) )
+
+	ROM_REGION( 0x400000, "ymf", 0 )
+	ROM_LOAD( "ra-b.roar3_rom-3.u0326", 0x000000, 0x400000, CRC(b74cc4d1) SHA1(eb5485582a12959ae06927a2f1d8a7e63e0f956f) )
+ROM_END
+
+ROM_START( beastrzb ) /* bootleg board */
 	PSARC95_BIOS
 
 	ROM_REGION32_LE( 0x1800000, "user2", 0 )
@@ -4348,6 +4390,7 @@ GAME( 1996, mgcldate, mgcldtex, coh1000ta,zn, coh1000ta, ROT0, "Taito", "Magical
 GAME( 1996, raystorm, taitofx1, coh1000tb,zn, coh1000tb, ROT0, "Taito", "Ray Storm (Ver 2.06A)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1996, raystorj, raystorm, coh1000tb,zn, coh1000tb, ROT0, "Taito", "Ray Storm (Ver 2.05J)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1996, ftimpact, ftimpcta, coh1000tb,zn, coh1000tb, ROT0, "Taito", "Fighters' Impact (Ver 2.02O)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1996, ftimpactj,ftimpcta, coh1000tb,zn, coh1000tb, ROT0, "Taito", "Fighters' Impact (Ver 2.02J)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1997, ftimpcta, taitofx1, coh1000tb,zn, coh1000tb, ROT0, "Taito", "Fighters' Impact A (Ver 2.00J)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1997, mgcldtex, taitofx1, coh1000ta,zn, coh1000ta, ROT0, "Taito", "Magical Date EX / Magical Date - sotsugyou kokuhaku daisakusen (Ver 2.01J)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1997, gdarius,  gdarius2, coh1000tb,zn, coh1000tb, ROT0, "Taito", "G-Darius (Ver 2.01J)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
@@ -4362,6 +4405,7 @@ GAME( 1997, gdarius2, taitofx1, coh1000tb,zn, coh1000tb, ROT0, "Taito", "G-Dariu
 GAME( 1997, psarc95,  0,        coh1002e, zn,   coh1002e, ROT0, "Sony/Eighting/Raizing", "PS Arcade 95", GAME_IS_BIOS_ROOT )
 
 GAME( 1997, beastrzr, psarc95,  coh1002e, zn,   coh1002e, ROT0, "Eighting/Raizing", "Beastorizer (USA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1997, bldyroar, beastrzr, coh1002e, zn,   coh1002e, ROT0, "Eighting/Raizing", "Bloody Roar (JAPAN)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1997, beastrzb, psarc95,  coh1002e, zn,   coh1002e, ROT0, "Eighting/Raizing", "Beastorizer (USA Bootleg)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
 GAME( 1998, bldyror2, psarc95,  coh1002e, zn6b, coh1002e, ROT0, "Eighting/Raizing", "Bloody Roar 2 (JAPAN)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 2000, brvblade, tps,      coh1002e, zn,   coh1002e, ROT270, "Eighting/Raizing", "Brave Blade (JAPAN)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )

@@ -159,7 +159,7 @@ static const vr0_interface vr0_config =
 
 static MACHINE_DRIVER_START( psattack )
 	MDRV_CPU_ADD("maincpu", SE3208, 43000000)
-	MDRV_CPU_PROGRAM_MAP(psattack_mem,0)
+	MDRV_CPU_PROGRAM_MAP(psattack_mem)
  	MDRV_CPU_VBLANK_INT("screen", psattack_interrupt)
 
 	MDRV_MACHINE_START(psattack)
@@ -199,7 +199,7 @@ ROM_START( psattack )
 	ROM_LOAD("16c711.bin",  0x0000, 0x4010, CRC(b316693f) SHA1(eba1f75043bd415268eedfdb95c475e73c14ff86) ) // converted to binary
 
 	DISK_REGION( "cfcard" )
-	DISK_IMAGE_READONLY( "psattack", 0, SHA1(c2ed467c73d46aacff7a740e2e5aada4be204750) )
+	DISK_IMAGE_READONLY( "psattack", 0, SHA1(e99cd0dafc33ec13bf56061f81dc7c0a181594ee) )
 ROM_END
 
 

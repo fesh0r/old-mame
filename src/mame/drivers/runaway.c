@@ -27,26 +27,31 @@ extern WRITE8_HANDLER( runaway_paletteram_w );
 extern WRITE8_HANDLER( runaway_video_ram_w );
 extern WRITE8_HANDLER( runaway_tile_bank_w );
 
+static emu_timer *interrupt_timer;
 
 static TIMER_CALLBACK( interrupt_callback )
 {
 	/* assume Centipede-style interrupt timing */
 	int scanline = param;
 
-	cpu_set_input_line(machine->cpu[0], 0, (scanline & 32) ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 0, (scanline & 32) ? ASSERT_LINE : CLEAR_LINE);
 
 	scanline += 32;
 
 	if (scanline >= 263)
 		scanline = 16;
 
-	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, interrupt_callback);
+	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), scanline);
 }
 
+static MACHINE_START( runaway )
+{
+	interrupt_timer = timer_alloc(machine, interrupt_callback, NULL);
+}
 
 static MACHINE_RESET( runaway )
 {
-	timer_set(machine, video_screen_get_time_until_pos(machine->primary_screen, 16, 0), NULL, 16, interrupt_callback);
+	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, 16, 0), 16);
 }
 
 
@@ -81,38 +86,30 @@ static WRITE8_HANDLER( runaway_led_w )
 
 static WRITE8_HANDLER( runaway_irq_ack_w )
 {
-	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 }
 
 
-static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x0400, 0x07ff) AM_READ(SMH_RAM)
-	AM_RANGE(0x3000, 0x3007) AM_READ(runaway_input_r)
-	AM_RANGE(0x4000, 0x4000) AM_READ_PORT("4000")
-	AM_RANGE(0x5000, 0x5000) AM_DEVREAD("earom", atari_vg_earom_r)
-	AM_RANGE(0x6000, 0x600f) AM_DEVREAD("pokey1", pokey_r)
-	AM_RANGE(0x7000, 0x700f) AM_DEVREAD("pokey2", pokey_r)
-	AM_RANGE(0x8000, 0xcfff) AM_READ(SMH_ROM)
-	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_ROM)	/* for the interrupt vectors */
-ADDRESS_MAP_END
-
-
-static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_WRITE(SMH_RAM)
-	AM_RANGE(0x0400, 0x07bf) AM_WRITE(runaway_video_ram_w) AM_BASE(&runaway_video_ram)
-	AM_RANGE(0x07c0, 0x07ff) AM_WRITE(SMH_RAM) AM_BASE(&runaway_sprite_ram)
+static ADDRESS_MAP_START( runaway_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x03ff) AM_RAM
+	AM_RANGE(0x0400, 0x07bf) AM_RAM_WRITE(runaway_video_ram_w) AM_BASE(&runaway_video_ram)
+	AM_RANGE(0x07c0, 0x07ff) AM_RAM AM_BASE(&runaway_sprite_ram)
 	AM_RANGE(0x1000, 0x1000) AM_WRITE(runaway_irq_ack_w)
-	AM_RANGE(0x1400, 0x143F) AM_DEVWRITE("earom", atari_vg_earom_w)
+	AM_RANGE(0x1400, 0x143f) AM_DEVWRITE("earom", atari_vg_earom_w)
 	AM_RANGE(0x1800, 0x1800) AM_DEVWRITE("earom", atari_vg_earom_ctrl_w)
 	AM_RANGE(0x1c00, 0x1c0f) AM_WRITE(runaway_paletteram_w)
 	AM_RANGE(0x2000, 0x2000) AM_WRITENOP /* coin counter? */
 	AM_RANGE(0x2001, 0x2001) AM_WRITENOP /* coin counter? */
 	AM_RANGE(0x2003, 0x2004) AM_WRITE(runaway_led_w)
 	AM_RANGE(0x2005, 0x2005) AM_WRITE(runaway_tile_bank_w)
-	AM_RANGE(0x6000, 0x600f) AM_DEVWRITE("pokey1", pokey_w)
-	AM_RANGE(0x7000, 0x700f) AM_DEVWRITE("pokey2", pokey_w)
-	AM_RANGE(0x8000, 0xcfff) AM_WRITE(SMH_ROM)
+
+	AM_RANGE(0x3000, 0x3007) AM_READ(runaway_input_r)
+	AM_RANGE(0x4000, 0x4000) AM_READ_PORT("4000")
+	AM_RANGE(0x5000, 0x5000) AM_DEVREAD("earom", atari_vg_earom_r)
+	AM_RANGE(0x6000, 0x600f) AM_DEVREADWRITE("pokey1", pokey_r,pokey_w)
+	AM_RANGE(0x7000, 0x700f) AM_DEVREADWRITE("pokey2", pokey_r,pokey_w)
+	AM_RANGE(0x8000, 0xcfff) AM_ROM
+	AM_RANGE(0xf000, 0xffff) AM_ROM	/* for the interrupt vectors */
 ADDRESS_MAP_END
 
 
@@ -363,8 +360,9 @@ static MACHINE_DRIVER_START( runaway )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, 12096000 / 8) /* ? */
-	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
+	MDRV_CPU_PROGRAM_MAP(runaway_map)
 
+	MDRV_MACHINE_START(runaway)
 	MDRV_MACHINE_RESET(runaway)
 
 	MDRV_ATARIVGEAROM_ADD("earom")
@@ -441,5 +439,5 @@ ROM_START( qwak )
 ROM_END
 
 
-GAME( 1982, qwak,    0, qwak,    qwak,    0, ROT270, "Atari", "Qwak (prototype)", 0 )
-GAME( 1982, runaway, 0, runaway, runaway, 0, ROT0,   "Atari", "Runaway (prototype)", 0 )
+GAME( 1982, qwak,    0, qwak,    qwak,    0, ROT270, "Atari", "Qwak (prototype)", GAME_SUPPORTS_SAVE )
+GAME( 1982, runaway, 0, runaway, runaway, 0, ROT0,   "Atari", "Runaway (prototype)", GAME_SUPPORTS_SAVE )

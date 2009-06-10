@@ -43,7 +43,7 @@ static VIDEO_START( cowrace )
 
 static VIDEO_UPDATE( cowrace )
 {
-	tilemap_draw(bitmap,cliprect, tmap, 0, 0);
+	tilemap_draw(bitmap, cliprect, tmap, 0, 0);
 	return 0;
 }
 
@@ -51,7 +51,7 @@ static VIDEO_UPDATE( cowrace )
 static WRITE8_HANDLER( cowrace_soundlatch_w )
 {
 	soundlatch_w(0, data);
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 #endif
 
@@ -192,15 +192,15 @@ static MACHINE_DRIVER_START( cowrace )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 4000000)
-	MDRV_CPU_PROGRAM_MAP(mem_map_cowrace,0)
-	MDRV_CPU_IO_MAP(io_map_cowrace,0)
+	MDRV_CPU_PROGRAM_MAP(mem_map_cowrace)
+	MDRV_CPU_IO_MAP(io_map_cowrace)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* missing slave z80? (like in King Derby)*/
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)
-	MDRV_CPU_PROGRAM_MAP(mem_map_sound_cowrace,0)
-	MDRV_CPU_IO_MAP(io_map_sound_cowrace,0)
+	MDRV_CPU_PROGRAM_MAP(mem_map_sound_cowrace)
+	MDRV_CPU_IO_MAP(io_map_sound_cowrace)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)	// NMI by main CPU
 
 	/* video hardware */

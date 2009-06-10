@@ -35,7 +35,7 @@ static TIMER_CALLBACK( periodic_callback )
 {
 	int scanline = param;
 
-	cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
+	cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE);
 
 	scanline += 64;
 
@@ -311,7 +311,7 @@ static MACHINE_DRIVER_START(wolfpack)
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, 12096000 / 16)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 
 	/* video hardware */
 	MDRV_MACHINE_RESET(wolfpack)

@@ -304,7 +304,7 @@ static WRITE16_HANDLER( io_w )
 		case 0:
 			// sound data
 			if (ACCESSING_BITS_0_7)
-				cpu_set_input_line(space->machine->cpu[2], 0, HOLD_LINE);
+				cputag_set_input_line(space->machine, "audiocpu", 0, HOLD_LINE);
 			else
 				LOG_UNKNOWN_WRITE
 			break;
@@ -563,15 +563,15 @@ static const y8950_interface y8950_config = {
 
 static MACHINE_DRIVER_START( cybertnk )
 	MDRV_CPU_ADD("maincpu", M68000,20000000/2)
-	MDRV_CPU_PROGRAM_MAP(master_mem,0)
+	MDRV_CPU_PROGRAM_MAP(master_mem)
 	MDRV_CPU_VBLANK_INT_HACK(master_irq,2)
 
 	MDRV_CPU_ADD("slave", M68000,20000000/2)
-	MDRV_CPU_PROGRAM_MAP(slave_mem,0)
+	MDRV_CPU_PROGRAM_MAP(slave_mem)
 	MDRV_CPU_VBLANK_INT_HACK(slave_irq,2)
 
 	MDRV_CPU_ADD("audiocpu", Z80,3579500)
-	MDRV_CPU_PROGRAM_MAP(sound_mem,0)
+	MDRV_CPU_PROGRAM_MAP(sound_mem)
 
 	MDRV_QUANTUM_TIME(HZ(6000))//arbitrary value,needed to get the communication to work
 

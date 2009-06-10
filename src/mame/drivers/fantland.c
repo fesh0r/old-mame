@@ -55,7 +55,7 @@ Year + Game             Main CPU    Sound CPU    Sound            Video
 
 VIDEO_UPDATE( fantland );
 
-static const char *msm_name[4] = { "msm1", "msm2", "msm3", "msm4" };
+static const char *const msm_name[4] = { "msm1", "msm2", "msm3", "msm4" };
 
 /***************************************************************************
 
@@ -81,8 +81,8 @@ static WRITE16_HANDLER( fantland_nmi_enable_16_w )
 
 static WRITE8_HANDLER( fantland_soundlatch_w )
 {
-	soundlatch_w(space,0,data);
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(space, 0, data);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static WRITE16_HANDLER( fantland_soundlatch_16_w )
@@ -824,12 +824,12 @@ static INTERRUPT_GEN( fantland_sound_irq )
 static MACHINE_DRIVER_START( fantland )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", I8086, 8000000)        // ?
-	MDRV_CPU_PROGRAM_MAP(fantland_map, 0)
+	MDRV_CPU_PROGRAM_MAP(fantland_map)
 	MDRV_CPU_VBLANK_INT("screen", fantland_irq)
 
 	MDRV_CPU_ADD("audiocpu", I8088, 8000000)        // ?
-	MDRV_CPU_PROGRAM_MAP(fantland_sound_map, 0)
-	MDRV_CPU_IO_MAP(fantland_sound_iomap, 0)
+	MDRV_CPU_PROGRAM_MAP(fantland_sound_map)
+	MDRV_CPU_IO_MAP(fantland_sound_iomap)
 	MDRV_CPU_PERIODIC_INT(fantland_sound_irq, 8000)
 	// NMI when soundlatch is written
 
@@ -864,7 +864,7 @@ MACHINE_DRIVER_END
 
 static void galaxygn_sound_irq(const device_config *device, int line)
 {
-	cpu_set_input_line_and_vector(device->machine->cpu[1], 0, line ? ASSERT_LINE : CLEAR_LINE, 0x80/4);
+	cputag_set_input_line_and_vector(device->machine, "audiocpu", 0, line ? ASSERT_LINE : CLEAR_LINE, 0x80/4);
 }
 
 static const ym2151_interface galaxygn_ym2151_interface =
@@ -875,12 +875,12 @@ static const ym2151_interface galaxygn_ym2151_interface =
 static MACHINE_DRIVER_START( galaxygn )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", I8088, 8000000)        // ?
-	MDRV_CPU_PROGRAM_MAP(galaxygn_map, 0)
+	MDRV_CPU_PROGRAM_MAP(galaxygn_map)
 	MDRV_CPU_VBLANK_INT("screen", fantland_irq)
 
 	MDRV_CPU_ADD("audiocpu", I8088, 8000000)        // ?
-	MDRV_CPU_PROGRAM_MAP(fantland_sound_map, 0)
-	MDRV_CPU_IO_MAP(galaxygn_sound_iomap, 0)
+	MDRV_CPU_PROGRAM_MAP(fantland_sound_map)
+	MDRV_CPU_IO_MAP(galaxygn_sound_iomap)
 	// IRQ by YM2151, NMI when soundlatch is written
 
 	MDRV_MACHINE_RESET(fantland)
@@ -943,11 +943,11 @@ static MACHINE_RESET( borntofi )
 static MACHINE_DRIVER_START( borntofi )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V20, 16000000/2)        // D701080C-8 - NEC D70108C-8 V20 CPU, running at 8.000MHz [16/2]
-	MDRV_CPU_PROGRAM_MAP(borntofi_map, 0)
+	MDRV_CPU_PROGRAM_MAP(borntofi_map)
 	MDRV_CPU_VBLANK_INT("screen", fantland_irq)
 
 	MDRV_CPU_ADD("audiocpu", I8088, 18432000/3)        // 8088 - AMD P8088-2 CPU, running at 6.144MHz [18.432/3]
-	MDRV_CPU_PROGRAM_MAP(borntofi_sound_map, 0)
+	MDRV_CPU_PROGRAM_MAP(borntofi_sound_map)
 
 	MDRV_MACHINE_RESET(borntofi)
 
@@ -977,7 +977,7 @@ MACHINE_DRIVER_END
 
 static void wheelrun_ym3526_irqhandler(const device_config *device, int state)
 {
-	cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_IRQ0, state);
+	cputag_set_input_line(device->machine, "audiocpu", INPUT_LINE_IRQ0, state);
 }
 
 static const ym3526_interface wheelrun_ym3526_interface =
@@ -988,11 +988,11 @@ static const ym3526_interface wheelrun_ym3526_interface =
 static MACHINE_DRIVER_START( wheelrun )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V20, XTAL_18MHz/2)		// D701080C-8 (V20)
-	MDRV_CPU_PROGRAM_MAP(wheelrun_map, 0)
+	MDRV_CPU_PROGRAM_MAP(wheelrun_map)
 	MDRV_CPU_VBLANK_INT("screen", fantland_irq)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_18MHz/2)		// Z8400BB1 (Z80B)
-	MDRV_CPU_PROGRAM_MAP(wheelrun_sound_map, 0)
+	MDRV_CPU_PROGRAM_MAP(wheelrun_sound_map)
 	// IRQ by YM3526, NMI when soundlatch is written
 
 	MDRV_MACHINE_RESET(fantland)

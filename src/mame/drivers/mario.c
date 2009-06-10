@@ -128,13 +128,13 @@ static const z80dma_interface mario_dma =
 
 static READ8_DEVICE_HANDLER(mario_dma_read_byte)
 {
-	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	return memory_read_byte(space, offset);
 }
 
 static WRITE8_DEVICE_HANDLER(mario_dma_write_byte)
 {
-	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	memory_write_byte(space, offset, data);
 }
 
@@ -341,8 +341,8 @@ static MACHINE_DRIVER_START( mario_base )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, Z80_CLOCK)	/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(mario_map, 0)
-	MDRV_CPU_IO_MAP(mario_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(mario_map)
+	MDRV_CPU_IO_MAP(mario_io_map)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	/* devices */
@@ -377,8 +377,8 @@ static MACHINE_DRIVER_START( masao )
 	MDRV_IMPORT_FROM(mario_base )
 
 	MDRV_CPU_REPLACE("maincpu", Z80, 4000000)        /* 4.000 MHz (?) */
-	MDRV_CPU_PROGRAM_MAP(masao_map, 0)
-	MDRV_CPU_IO_MAP(mario_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(masao_map)
+	MDRV_CPU_IO_MAP(mario_io_map)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	/* sound hardware */

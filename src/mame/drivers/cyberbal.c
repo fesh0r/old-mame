@@ -38,8 +38,8 @@
 
 static void update_interrupts(running_machine *machine)
 {
-	cpu_set_input_line(machine->cpu[0], 1, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);
-	cpu_set_input_line(machine->cpu[2], 1, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 1, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "extra", 1, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -49,19 +49,19 @@ static MACHINE_RESET( cyberbal )
 	atarigen_slapstic_reset();
 	atarigen_interrupt_reset(update_interrupts);
 	atarigen_scanline_timer_reset(machine->primary_screen, cyberbal_scanline_update, 8);
-	atarigen_sound_io_reset(machine->cpu[1]);
+	atarigen_sound_io_reset(cputag_get_cpu(machine, "audiocpu"));
 
 	cyberbal_sound_reset(machine);
 
-	/* CPU 2 doesn't run until reset */
-	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, ASSERT_LINE);
+	/* Extra CPU (second M68k) doesn't run until reset */
+	cputag_set_input_line(machine, "extra", INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 
 static void cyberb2p_update_interrupts(running_machine *machine)
 {
-	cpu_set_input_line(machine->cpu[0], 1, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
-	cpu_set_input_line(machine->cpu[0], 3, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 1, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 3, atarigen_sound_int_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -114,7 +114,7 @@ static READ16_HANDLER( sound_state_r )
 
 static WRITE16_HANDLER( p2_reset_w )
 {
-	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "extra", INPUT_LINE_RESET, CLEAR_LINE);
 }
 
 
@@ -411,18 +411,18 @@ static MACHINE_DRIVER_START( cyberbal )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, ATARI_CLOCK_14MHz/2)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 
 	MDRV_CPU_ADD("audiocpu", M6502, ATARI_CLOCK_14MHz/8)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	MDRV_CPU_PERIODIC_INT(atarigen_6502_irq_gen, (double)ATARI_CLOCK_14MHz/4/4/16/16/14)
 
 	MDRV_CPU_ADD("extra", M68000, ATARI_CLOCK_14MHz/2)
-	MDRV_CPU_PROGRAM_MAP(extra_map,0)
+	MDRV_CPU_PROGRAM_MAP(extra_map)
 	MDRV_CPU_VBLANK_INT("lscreen", atarigen_video_int_gen)	/* or is it "right?" */
 
 	MDRV_CPU_ADD("dac", M68000, ATARI_CLOCK_14MHz/2)
-	MDRV_CPU_PROGRAM_MAP(sound_68k_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_68k_map)
 	MDRV_CPU_PERIODIC_INT(cyberbal_sound_68k_irq_gen, 10000)
 
 	MDRV_QUANTUM_TIME(HZ(600))
@@ -470,7 +470,7 @@ static MACHINE_DRIVER_START( cyberb2p )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, ATARI_CLOCK_14MHz/2)
-	MDRV_CPU_PROGRAM_MAP(cyberb2p_map,0)
+	MDRV_CPU_PROGRAM_MAP(cyberb2p_map)
 	MDRV_CPU_VBLANK_INT("screen", atarigen_video_int_gen)
 
 	MDRV_MACHINE_RESET(cyberb2p)
@@ -972,14 +972,14 @@ static const UINT16 default_eeprom[] =
 static DRIVER_INIT( cyberbal )
 {
 	atarigen_eeprom_default = default_eeprom;
-	atarigen_slapstic_init(machine->cpu[0], 0x018000, 0, 0);
+	atarigen_slapstic_init(cputag_get_cpu(machine, "maincpu"), 0x018000, 0, 0);
 }
 
 
 static DRIVER_INIT( cyberbt )
 {
 	atarigen_eeprom_default = default_eeprom;
-	atarigen_slapstic_init(machine->cpu[0], 0x018000, 0, 116);
+	atarigen_slapstic_init(cputag_get_cpu(machine, "maincpu"), 0x018000, 0, 116);
 }
 
 

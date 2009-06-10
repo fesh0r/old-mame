@@ -138,7 +138,7 @@ static WRITE8_DEVICE_HANDLER( lamps_w )
 
 static WRITE8_DEVICE_HANDLER( sound_w )
 {
-	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(device->machine, "cpu", ADDRESS_SPACE_PROGRAM);
 
 	/* bit 3 - coin lockout, lamp10 in poker / lamp6 in trivia test modes */
 	coin_lockout_global_w(~data & 0x08);
@@ -179,7 +179,7 @@ static WRITE8_DEVICE_HANDLER( lamps2_w )
 
 static WRITE8_DEVICE_HANDLER( nmi_w )
 {
-	const address_space *space = cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(device->machine, "cpu", ADDRESS_SPACE_PROGRAM);
 
 	/* bit 4 - play/raise button lamp, lamp 9 in selection test mode  */
 	set_led_status(8,data & 0x10);
@@ -468,7 +468,7 @@ static MACHINE_RESET( gselect )
 
 static MACHINE_DRIVER_START( getrivia )
 	MDRV_CPU_ADD("cpu",Z80,4000000) /* 4 MHz */
-	MDRV_CPU_PROGRAM_MAP(getrivia_map,0)
+	MDRV_CPU_PROGRAM_MAP(getrivia_map)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	/* video hardware */
@@ -503,7 +503,7 @@ static MACHINE_DRIVER_START( gselect )
 	MDRV_IMPORT_FROM(getrivia)
 
 	MDRV_CPU_MODIFY("cpu")
-	MDRV_CPU_PROGRAM_MAP(gselect_map,0)
+	MDRV_CPU_PROGRAM_MAP(gselect_map)
 
 	MDRV_MACHINE_RESET(gselect)
 
@@ -517,7 +517,7 @@ static MACHINE_DRIVER_START( amuse )
 	MDRV_IMPORT_FROM(getrivia)
 
 	MDRV_CPU_MODIFY("cpu")
-	MDRV_CPU_PROGRAM_MAP(amuse_map,0)
+	MDRV_CPU_PROGRAM_MAP(amuse_map)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( gepoker )
@@ -526,7 +526,7 @@ static MACHINE_DRIVER_START( gepoker )
 	MDRV_IMPORT_FROM(getrivia)
 
 	MDRV_CPU_MODIFY("cpu")
-	MDRV_CPU_PROGRAM_MAP(gepoker_map,0)
+	MDRV_CPU_PROGRAM_MAP(gepoker_map)
 MACHINE_DRIVER_END
 
 /***************************************************

@@ -238,7 +238,7 @@ static WRITE32_HANDLER( v_ctrl_w )
 		if (pending_vb_int && !DISABLE_VB_INT)
 		{
 			pending_vb_int = 0;
-			cpu_set_input_line(space->machine->cpu[0], M68K_IRQ_4, HOLD_LINE);
+			cputag_set_input_line(space->machine, "maincpu", M68K_IRQ_4, HOLD_LINE);
 		}
 	}
 }
@@ -450,12 +450,12 @@ static void ide_interrupt(const device_config *device, int state)
 	if (state != CLEAR_LINE)
 	{
 		//logerror("IDE interrupt asserted\n");
-		cpu_set_input_line(device->machine->cpu[0], M68K_IRQ_1, HOLD_LINE);
+		cputag_set_input_line(device->machine, "maincpu", M68K_IRQ_1, HOLD_LINE);
 	}
 	else
 	{
 		//logerror("IDE interrupt cleared\n");
-		cpu_set_input_line(device->machine->cpu[0], M68K_IRQ_1, CLEAR_LINE);
+		cputag_set_input_line(device->machine, "maincpu", M68K_IRQ_1, CLEAR_LINE);
 	}
 }
 
@@ -1485,7 +1485,7 @@ static MACHINE_DRIVER_START( djmain )
 	// popn3 works 9.6 MHz or slower in some songs */
 	//MDRV_CPU_ADD("maincpu", M68EC020, 18432000/2)    /*  9.216 MHz!? */
 	MDRV_CPU_ADD("maincpu", M68EC020, 32000000/4)	/*  8.000 MHz!? */
-	MDRV_CPU_PROGRAM_MAP(memory_map, 0)
+	MDRV_CPU_PROGRAM_MAP(memory_map)
 	MDRV_CPU_VBLANK_INT("screen", vb_interrupt)
 
 	MDRV_MACHINE_START(djmain)

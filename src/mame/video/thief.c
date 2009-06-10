@@ -54,10 +54,6 @@ WRITE8_HANDLER( thief_video_control_w ){
 */
 }
 
-WRITE8_HANDLER( thief_vtcsel_w ){
-	/* TMS9927 VTAC registers */
-}
-
 WRITE8_HANDLER( thief_color_map_w ){
 /*
     --xx----    blue
@@ -103,11 +99,10 @@ WRITE8_HANDLER( thief_videoram_w ){
 VIDEO_START( thief ){
 	memset( &thief_coprocessor, 0x00, sizeof(thief_coprocessor) );
 
-	videoram = auto_malloc( 0x2000*4*2 );
-	memset( videoram, 0, 0x2000*4*2 );
+	videoram = auto_alloc_array_clear(machine, UINT8, 0x2000*4*2 );
 
-	thief_coprocessor.image_ram = auto_malloc( 0x2000 );
-	thief_coprocessor.context_ram = auto_malloc( 0x400 );
+	thief_coprocessor.image_ram = auto_alloc_array(machine, UINT8, 0x2000 );
+	thief_coprocessor.context_ram = auto_alloc_array(machine, UINT8, 0x400 );
 }
 
 VIDEO_UPDATE( thief ){

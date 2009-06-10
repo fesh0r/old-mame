@@ -266,12 +266,12 @@ static READ8_HANDLER( dsw1_r )
 
 static WRITE8_HANDLER( int_ack1_w )
 {
-	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "cpu1", 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( int_ack2_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "cpu2", 0, CLEAR_LINE);
 }
 
 
@@ -360,7 +360,7 @@ static ADDRESS_MAP_START( cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(rthunder_spriteram_r,rthunder_spriteram_w)
 
-	AM_RANGE(0x6000, 0x7fff) AM_READ(SMH_BANK1)
+	AM_RANGE(0x6000, 0x7fff) AM_READ(SMH_BANK(1))
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 
 	/* ROM & Voice expansion board - only some games have it */
@@ -387,7 +387,7 @@ static ADDRESS_MAP_START( NAME##_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )							\
 	AM_RANGE(ADDR_SPRITE+0x0000, ADDR_SPRITE+0x1fff) AM_READWRITE(rthunder_spriteram_r,rthunder_spriteram_w) AM_BASE(&rthunder_spriteram)	\
 	AM_RANGE(ADDR_VIDEO1+0x0000, ADDR_VIDEO1+0x1fff) AM_READWRITE(rthunder_videoram1_r,rthunder_videoram1_w)	\
 	AM_RANGE(ADDR_VIDEO2+0x0000, ADDR_VIDEO2+0x1fff) AM_READWRITE(rthunder_videoram2_r,rthunder_videoram2_w)	\
-	AM_RANGE(ADDR_ROM+0x0000, ADDR_ROM+0x1fff) AM_READ(SMH_BANK2)								\
+	AM_RANGE(ADDR_ROM+0x0000, ADDR_ROM+0x1fff) AM_READ(SMH_BANK(2))								\
 	AM_RANGE(0x8000, 0xffff) AM_ROM																\
 /*  { ADDR_BANK+0x00, ADDR_BANK+0x02 } layer 2 scroll registers would be here */				\
 	AM_RANGE(ADDR_BANK+0x03, ADDR_BANK+0x03) AM_WRITE(bankswitch2_w)							\
@@ -1018,16 +1018,16 @@ static MACHINE_DRIVER_START( hopmappy )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("cpu1", M6809, 49152000/32)
-	MDRV_CPU_PROGRAM_MAP(cpu1_map,0)
+	MDRV_CPU_PROGRAM_MAP(cpu1_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_assert)
 
 	MDRV_CPU_ADD("cpu2", M6809, 49152000/32)
-	MDRV_CPU_PROGRAM_MAP(hopmappy_cpu2_map,0)
+	MDRV_CPU_PROGRAM_MAP(hopmappy_cpu2_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_assert)
 
 	MDRV_CPU_ADD("mcu", HD63701, 49152000/8)	/* or compatible 6808 with extra instructions */
-	MDRV_CPU_PROGRAM_MAP(hopmappy_mcu_map,0)
-	MDRV_CPU_IO_MAP(mcu_port_map,0)
+	MDRV_CPU_PROGRAM_MAP(hopmappy_mcu_map)
+	MDRV_CPU_IO_MAP(mcu_port_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)	/* ??? */
 
 	MDRV_QUANTUM_TIME(HZ(48000))	/* heavy interleaving needed to avoid hangs in rthunder */
@@ -1068,10 +1068,10 @@ static MACHINE_DRIVER_START( skykiddx )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(hopmappy)
 	MDRV_CPU_MODIFY("cpu2")
-	MDRV_CPU_PROGRAM_MAP(skykiddx_cpu2_map,0)
+	MDRV_CPU_PROGRAM_MAP(skykiddx_cpu2_map)
 
 	MDRV_CPU_MODIFY("mcu")
-	MDRV_CPU_PROGRAM_MAP(skykiddx_mcu_map,0)
+	MDRV_CPU_PROGRAM_MAP(skykiddx_mcu_map)
 MACHINE_DRIVER_END
 
 
@@ -1080,10 +1080,10 @@ static MACHINE_DRIVER_START( roishtar )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(hopmappy)
 	MDRV_CPU_MODIFY("cpu2")
-	MDRV_CPU_PROGRAM_MAP(roishtar_cpu2_map,0)
+	MDRV_CPU_PROGRAM_MAP(roishtar_cpu2_map)
 
 	MDRV_CPU_MODIFY("mcu")
-	MDRV_CPU_PROGRAM_MAP(roishtar_mcu_map,0)
+	MDRV_CPU_PROGRAM_MAP(roishtar_mcu_map)
 MACHINE_DRIVER_END
 
 
@@ -1092,10 +1092,10 @@ static MACHINE_DRIVER_START( genpeitd )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(hopmappy)
 	MDRV_CPU_MODIFY("cpu2")
-	MDRV_CPU_PROGRAM_MAP(genpeitd_cpu2_map,0)
+	MDRV_CPU_PROGRAM_MAP(genpeitd_cpu2_map)
 
 	MDRV_CPU_MODIFY("mcu")
-	MDRV_CPU_PROGRAM_MAP(genpeitd_mcu_map,0)
+	MDRV_CPU_PROGRAM_MAP(genpeitd_mcu_map)
 
 	/* sound hardware */
 	MDRV_SOUND_ADD("namco2", NAMCO_63701X, 6000000)
@@ -1108,10 +1108,10 @@ static MACHINE_DRIVER_START( rthunder )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(hopmappy)
 	MDRV_CPU_MODIFY("cpu2")
-	MDRV_CPU_PROGRAM_MAP(rthunder_cpu2_map,0)
+	MDRV_CPU_PROGRAM_MAP(rthunder_cpu2_map)
 
 	MDRV_CPU_MODIFY("mcu")
-	MDRV_CPU_PROGRAM_MAP(rthunder_mcu_map,0)
+	MDRV_CPU_PROGRAM_MAP(rthunder_mcu_map)
 
 	/* sound hardware */
 	MDRV_SOUND_ADD("namco2", NAMCO_63701X, 6000000)
@@ -1124,10 +1124,10 @@ static MACHINE_DRIVER_START( wndrmomo )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(hopmappy)
 	MDRV_CPU_MODIFY("cpu2")
-	MDRV_CPU_PROGRAM_MAP(wndrmomo_cpu2_map,0)
+	MDRV_CPU_PROGRAM_MAP(wndrmomo_cpu2_map)
 
 	MDRV_CPU_MODIFY("mcu")
-	MDRV_CPU_PROGRAM_MAP(wndrmomo_mcu_map,0)
+	MDRV_CPU_PROGRAM_MAP(wndrmomo_mcu_map)
 
 	/* sound hardware */
 	MDRV_SOUND_ADD("namco2", NAMCO_63701X, 6000000)
@@ -1506,7 +1506,7 @@ static DRIVER_INIT( namco86 )
 	/* shuffle tile ROMs so regular gfx unpack routines can be used */
 	gfx = memory_region(machine, "gfx1");
 	size = memory_region_length(machine, "gfx1") * 2 / 3;
-	buffer = malloc_or_die( size );
+	buffer = alloc_array_or_die(UINT8,  size );
 
 	{
 		UINT8 *dest1 = gfx;
@@ -1531,7 +1531,7 @@ static DRIVER_INIT( namco86 )
 
 	gfx = memory_region(machine, "gfx2");
 	size = memory_region_length(machine, "gfx2") * 2 / 3;
-	buffer = malloc_or_die( size );
+	buffer = alloc_array_or_die(UINT8,  size );
 
 	{
 		UINT8 *dest1 = gfx;

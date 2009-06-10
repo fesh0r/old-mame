@@ -86,16 +86,16 @@ static UINT8 *vastar_sharedram;
 static MACHINE_RESET( vastar )
 {
 	/* we must start with the second CPU halted */
-	cpu_set_input_line(machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
+	cputag_set_input_line(machine, "sub", INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( vastar_hold_cpu2_w )
 {
 	/* I'm not sure that this works exactly like this */
 	if (data & 1)
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "sub", INPUT_LINE_RESET, CLEAR_LINE);
 	else
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, ASSERT_LINE);
+		cputag_set_input_line(space->machine, "sub", INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static READ8_HANDLER( vastar_sharedram_r )
@@ -308,13 +308,13 @@ static MACHINE_DRIVER_START( vastar )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 3072000)	/* 3.072 MHz ???? */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_IO_MAP(main_port_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
+	MDRV_CPU_IO_MAP(main_port_map)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	MDRV_CPU_ADD("sub", Z80, 3072000)	/* 3.072 MHz ???? */
-	MDRV_CPU_PROGRAM_MAP(cpu2_map,0)
-	MDRV_CPU_IO_MAP(cpu2_port_map,0)
+	MDRV_CPU_PROGRAM_MAP(cpu2_map)
+	MDRV_CPU_IO_MAP(cpu2_port_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)	/* ??? */
 
 	MDRV_QUANTUM_TIME(HZ(600))	/* 10 CPU slices per frame - seems enough to ensure proper */

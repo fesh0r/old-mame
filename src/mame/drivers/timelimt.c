@@ -49,8 +49,8 @@ static WRITE8_HANDLER( nmi_enable_w )
 
 static WRITE8_HANDLER( sound_reset_w )
 {
-	if ( data & 1 )
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, PULSE_LINE );
+	if (data & 1)
+		cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_RESET, PULSE_LINE);
 }
 
 /***************************************************************************/
@@ -245,13 +245,13 @@ static MACHINE_DRIVER_START( timelimt )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 5000000)	/* 5.000 MHz */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_IO_MAP(main_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
+	MDRV_CPU_IO_MAP(main_io_map)
 	MDRV_CPU_VBLANK_INT("screen", timelimt_irq)
 
 	MDRV_CPU_ADD("audiocpu", Z80,18432000/6)	/* 3.072 MHz */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold) /* ? */
 
 	MDRV_QUANTUM_TIME(HZ(3000))
@@ -361,4 +361,3 @@ ROM_END
 
 GAME( 1983, timelimt, 0, timelimt, timelimt, 0, ROT90, "Chuo Co. Ltd", "Time Limit", GAME_IMPERFECT_COLORS )
 GAME( 1984, progress, 0, progress, progress, 0, ROT90, "Chuo Co. Ltd", "Progress", 0 )
-

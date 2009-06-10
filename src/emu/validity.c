@@ -233,7 +233,7 @@ static quark_table *quark_table_alloc(UINT32 entries, UINT32 hashsize)
 
 	/* determine how many total bytes we need */
 	total_bytes = sizeof(*table) + entries * sizeof(table->entry[0]) + hashsize * sizeof(table->hash[0]);
-	table = (quark_table *)auto_malloc(total_bytes);
+	table = (quark_table *)alloc_array_or_die(UINT8, total_bytes);
 
 	/* fill in the details */
 	table->entries = entries;
@@ -289,6 +289,34 @@ static void quark_tables_create(void)
 		if (string != NULL)
 			quark_add(defstr_table, strnum, quark_string_crc(string));
 	}
+}
+
+
+/*-------------------------------------------------
+    quark_tables_free - free allocated tables
+-------------------------------------------------*/
+
+static void quark_tables_free(void)
+{
+	if (source_table != NULL)
+		free(source_table);
+	source_table = NULL;
+
+	if (name_table != NULL)
+		free(name_table);
+	name_table = NULL;
+
+	if (description_table != NULL)
+		free(description_table);
+	description_table = NULL;
+
+	if (roms_table != NULL)
+		free(roms_table);
+	roms_table = NULL;
+
+	if (defstr_table != NULL)
+		free(defstr_table);
+	defstr_table = NULL;
 }
 
 
@@ -753,13 +781,6 @@ static int validate_cpu(int drivnum, const machine_config *config, const input_p
 			int alignunit = databus_width/8;
 			address_map_entry *entry;
 			address_map *map;
-
-			/* check to see that the same map is not used twice */
-			if (cpuconfig->address_map[spacenum] != NULL && cpuconfig->address_map[spacenum] == cpuconfig->address_map2[spacenum])
-			{
-				mame_printf_error("%s: %s uses identical memory maps for CPU '%s' spacenum %d\n", driver->source_file, driver->name, device->tag, spacenum);
-				error = TRUE;
-			}
 
 			/* construct the maps */
 			map = address_map_alloc(device, driver, spacenum);
@@ -1364,7 +1385,7 @@ static int validate_inputs(int drivnum, const machine_config *config, const inpu
 		for (field = port->fieldlist; field != NULL; field = field->next)
 		{
 			const input_setting_config *setting;
-			int strindex = 0;
+			//int strindex = 0;
 
 			/* verify analog inputs */
 			if (input_type_is_analog(field->type))
@@ -1416,7 +1437,7 @@ static int validate_inputs(int drivnum, const machine_config *config, const inpu
 				}
 
 				/* look up the string and print an error if default strings are not used */
-				strindex = get_defstr_index(field->name, driver, &error);
+				/*strindex = */get_defstr_index(field->name, driver, &error);
 			}
 
 			/* verify conditions on the field */
@@ -1718,6 +1739,7 @@ int mame_validitychecks(const game_driver *curdriver)
 
 	end_resource_tracking();
 	exit_resource_tracking();
+	quark_tables_free();
 
 	return error;
 }

@@ -279,24 +279,24 @@ static int sound_status;
 
 READ8_HANDLER ( snk_cpuA_nmi_trigger_r )
 {
-	cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, ASSERT_LINE);
+	cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_NMI, ASSERT_LINE);
 	return 0xff;
 }
 
 WRITE8_HANDLER( snk_cpuA_nmi_ack_w )
 {
-	cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_NMI, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 READ8_HANDLER ( snk_cpuB_nmi_trigger_r )
 {
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, ASSERT_LINE);
+	cputag_set_input_line(space->machine, "sub", INPUT_LINE_NMI, ASSERT_LINE);
 	return 0xff;
 }
 
 WRITE8_HANDLER( snk_cpuB_nmi_ack_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "sub", INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 /*********************************************************************/
@@ -318,13 +318,13 @@ static WRITE8_HANDLER( marvins_soundlatch_w )
 {
 	marvins_sound_busy_flag = 1;
 	soundlatch_w(space, offset, data);
-	cpu_set_input_line(space->machine->cpu[2], 0, HOLD_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", 0, HOLD_LINE);
 }
 
 static READ8_HANDLER( marvins_soundlatch_r )
 {
 	marvins_sound_busy_flag = 0;
-	return soundlatch_r(space,0);
+	return soundlatch_r(space, 0);
 }
 
 static CUSTOM_INPUT( marvins_sound_busy )
@@ -334,7 +334,7 @@ static CUSTOM_INPUT( marvins_sound_busy )
 
 static READ8_HANDLER( marvins_sound_nmi_ack_r )
 {
-	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_NMI, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, CLEAR_LINE);
 	return 0xff;
 }
 
@@ -357,7 +357,7 @@ static TIMER_CALLBACK( sgladiat_sndirq_update_callback )
 			break;
 	}
 
-	cpu_set_input_line(machine->cpu[2], INPUT_LINE_NMI, (sound_status & 0x8) ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "audiocpu", INPUT_LINE_NMI, (sound_status & 0x8) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -381,7 +381,7 @@ static READ8_HANDLER( sgladiat_sound_nmi_ack_r )
 
 static READ8_HANDLER( sgladiat_sound_irq_ack_r )
 {
-	cpu_set_input_line(space->machine->cpu[2], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", 0, CLEAR_LINE);
 	return 0xff;
 }
 
@@ -442,7 +442,7 @@ static TIMER_CALLBACK( sndirq_update_callback )
 			break;
 	}
 
-	cpu_set_input_line(machine->cpu[2], 0, (sound_status & 0xb) ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "audiocpu", 0, (sound_status & 0xb) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -3567,16 +3567,16 @@ static MACHINE_DRIVER_START( marvins )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 3360000)	/* 3.36 MHz */
-	MDRV_CPU_PROGRAM_MAP(marvins_cpuA_map,0)
+	MDRV_CPU_PROGRAM_MAP(marvins_cpuA_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, 3360000)	/* 3.36 MHz */
-	MDRV_CPU_PROGRAM_MAP(marvins_cpuB_map,0)
+	MDRV_CPU_PROGRAM_MAP(marvins_cpuB_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	/* verified on schematics */
-	MDRV_CPU_PROGRAM_MAP(marvins_sound_map,0)
-	MDRV_CPU_IO_MAP(marvins_sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(marvins_sound_map)
+	MDRV_CPU_IO_MAP(marvins_sound_portmap)
 	MDRV_CPU_PERIODIC_INT(nmi_line_assert, 244)	// schematics show a separate 244Hz timer
 
 	MDRV_QUANTUM_TIME(HZ(6000))
@@ -3617,10 +3617,10 @@ static MACHINE_DRIVER_START( vangrd2 )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(madcrash_cpuA_map,0)
+	MDRV_CPU_PROGRAM_MAP(madcrash_cpuA_map)
 
 	MDRV_CPU_MODIFY("sub")
-	MDRV_CPU_PROGRAM_MAP(madcrash_cpuB_map,0)
+	MDRV_CPU_PROGRAM_MAP(madcrash_cpuB_map)
 MACHINE_DRIVER_END
 
 
@@ -3628,16 +3628,16 @@ static MACHINE_DRIVER_START( jcross )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 3350000) /* NOT verified */
-	MDRV_CPU_PROGRAM_MAP(jcross_cpuA_map,0)
+	MDRV_CPU_PROGRAM_MAP(jcross_cpuA_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, 3350000) /* NOT verified */
-	MDRV_CPU_PROGRAM_MAP(jcross_cpuB_map,0)
+	MDRV_CPU_PROGRAM_MAP(jcross_cpuB_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000) /* NOT verified */
-	MDRV_CPU_PROGRAM_MAP(jcross_sound_map,0)
-	MDRV_CPU_IO_MAP(jcross_sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(jcross_sound_map)
+	MDRV_CPU_IO_MAP(jcross_sound_portmap)
 	MDRV_CPU_PERIODIC_INT(irq0_line_assert, 244)	// Marvin's frequency, sounds ok
 
 	MDRV_QUANTUM_TIME(HZ(6000))
@@ -3675,10 +3675,10 @@ static MACHINE_DRIVER_START( sgladiat )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(sgladiat_cpuA_map,0)
+	MDRV_CPU_PROGRAM_MAP(sgladiat_cpuA_map)
 
 	MDRV_CPU_MODIFY("sub")
-	MDRV_CPU_PROGRAM_MAP(sgladiat_cpuB_map,0)
+	MDRV_CPU_PROGRAM_MAP(sgladiat_cpuB_map)
 
 	/* video hardware */
 	/* visible area is correct. Debug info is shown in the black bars at the sides
@@ -3694,14 +3694,14 @@ static MACHINE_DRIVER_START( hal21 )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(hal21_cpuA_map,0)
+	MDRV_CPU_PROGRAM_MAP(hal21_cpuA_map)
 
 	MDRV_CPU_MODIFY("sub")
-	MDRV_CPU_PROGRAM_MAP(hal21_cpuB_map,0)
+	MDRV_CPU_PROGRAM_MAP(hal21_cpuB_map)
 
 	MDRV_CPU_MODIFY("audiocpu")
-	MDRV_CPU_PROGRAM_MAP(hal21_sound_map,0)
-	MDRV_CPU_IO_MAP(hal21_sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(hal21_sound_map)
+	MDRV_CPU_IO_MAP(hal21_sound_portmap)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, 220) // music tempo, hand tuned
 
 	/* video hardware */
@@ -3713,15 +3713,15 @@ static MACHINE_DRIVER_START( tnk3 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_13_4MHz/4) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(tnk3_cpuA_map,0)
+	MDRV_CPU_PROGRAM_MAP(tnk3_cpuA_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, XTAL_13_4MHz/4) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(tnk3_cpuB_map,0)
+	MDRV_CPU_PROGRAM_MAP(tnk3_cpuB_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_8MHz/2) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(tnk3_YM3526_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(tnk3_YM3526_sound_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 
@@ -3756,13 +3756,13 @@ static MACHINE_DRIVER_START( aso )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(aso_cpuA_map,0)
+	MDRV_CPU_PROGRAM_MAP(aso_cpuA_map)
 
 	MDRV_CPU_MODIFY("sub")
-	MDRV_CPU_PROGRAM_MAP(aso_cpuB_map,0)
+	MDRV_CPU_PROGRAM_MAP(aso_cpuB_map)
 
 	MDRV_CPU_MODIFY("audiocpu")
-	MDRV_CPU_PROGRAM_MAP(aso_YM3526_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(aso_YM3526_sound_map)
 
 	/* video hardware */
 	MDRV_VIDEO_START(aso)
@@ -3775,7 +3775,7 @@ static MACHINE_DRIVER_START( athena )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("audiocpu")
-	MDRV_CPU_PROGRAM_MAP(YM3526_YM3526_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(YM3526_YM3526_sound_map)
 
 	/* sound hardware */
 	MDRV_SOUND_ADD("ym2", YM3526, XTAL_8MHz/2) /* verified on pcb */
@@ -3791,7 +3791,7 @@ static MACHINE_DRIVER_START( fitegolf )
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("audiocpu")
 	// xtal is 4MHz instead of 8MHz/2 but the end result is the same
-	MDRV_CPU_PROGRAM_MAP(YM3812_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(YM3812_sound_map)
 
 	/* sound hardware */
 	MDRV_SOUND_REPLACE("ym1", YM3812, XTAL_4MHz) /* verified on pcb */
@@ -3804,15 +3804,15 @@ static MACHINE_DRIVER_START( ikari )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_13_4MHz/4) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(ikari_cpuA_map,0)
+	MDRV_CPU_PROGRAM_MAP(ikari_cpuA_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, XTAL_13_4MHz/4) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(ikari_cpuB_map,0)
+	MDRV_CPU_PROGRAM_MAP(ikari_cpuB_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_8MHz/2) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(YM3526_YM3526_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(YM3526_YM3526_sound_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 
@@ -3851,7 +3851,7 @@ static MACHINE_DRIVER_START( victroad )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("audiocpu")
-	MDRV_CPU_PROGRAM_MAP(YM3526_Y8950_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(YM3526_Y8950_sound_map)
 
 	/* sound hardware */
 	MDRV_SOUND_REPLACE("ym2", Y8950, XTAL_8MHz/2) /* verified on pcb */
@@ -3864,15 +3864,15 @@ static MACHINE_DRIVER_START( bermudat )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_8MHz/2) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(bermudat_cpuA_map,0)
+	MDRV_CPU_PROGRAM_MAP(bermudat_cpuA_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, XTAL_8MHz/2) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(bermudat_cpuB_map,0)
+	MDRV_CPU_PROGRAM_MAP(bermudat_cpuB_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_8MHz/2) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(YM3526_Y8950_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(YM3526_Y8950_sound_map)
 
 	MDRV_QUANTUM_TIME(HZ(24000))
 
@@ -3919,10 +3919,10 @@ static MACHINE_DRIVER_START( gwar )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(gwar_cpuA_map,0)
+	MDRV_CPU_PROGRAM_MAP(gwar_cpuA_map)
 
 	MDRV_CPU_MODIFY("sub")
-	MDRV_CPU_PROGRAM_MAP(gwar_cpuB_map,0)
+	MDRV_CPU_PROGRAM_MAP(gwar_cpuB_map)
 
 	/* video hardware */
 	MDRV_SCREEN_MODIFY("screen")
@@ -3938,10 +3938,10 @@ static MACHINE_DRIVER_START( gwara )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(gwara_cpuA_map,0)
+	MDRV_CPU_PROGRAM_MAP(gwara_cpuA_map)
 
 	MDRV_CPU_MODIFY("sub")
-	MDRV_CPU_PROGRAM_MAP(gwara_cpuB_map,0)
+	MDRV_CPU_PROGRAM_MAP(gwara_cpuB_map)
 MACHINE_DRIVER_END
 
 
@@ -3951,10 +3951,10 @@ static MACHINE_DRIVER_START( chopper1 )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("sub")
-	MDRV_CPU_PROGRAM_MAP(gwar_cpuB_map,0)
+	MDRV_CPU_PROGRAM_MAP(gwar_cpuB_map)
 
 	MDRV_CPU_MODIFY("audiocpu")
-	MDRV_CPU_PROGRAM_MAP(YM3812_Y8950_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(YM3812_Y8950_sound_map)
 
 	/* video hardware */
 	MDRV_SCREEN_MODIFY("screen")
@@ -3975,7 +3975,7 @@ static MACHINE_DRIVER_START( choppera )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(gwar_cpuA_map,0)
+	MDRV_CPU_PROGRAM_MAP(gwar_cpuA_map)
 MACHINE_DRIVER_END
 
 
@@ -3983,15 +3983,15 @@ static MACHINE_DRIVER_START( tdfever )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 4000000)
-	MDRV_CPU_PROGRAM_MAP(tdfever_cpuA_map,0)
+	MDRV_CPU_PROGRAM_MAP(tdfever_cpuA_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, 4000000)
-	MDRV_CPU_PROGRAM_MAP(tdfever_cpuB_map,0)
+	MDRV_CPU_PROGRAM_MAP(tdfever_cpuB_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)
-	MDRV_CPU_PROGRAM_MAP(YM3526_Y8950_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(YM3526_Y8950_sound_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 
@@ -4030,13 +4030,13 @@ static MACHINE_DRIVER_START( tdfever2 )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("audiocpu")
-	MDRV_CPU_PROGRAM_MAP(Y8950_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(Y8950_sound_map)
 
 	/* sound hardware */
 
 	// apparently, no "ym1" in tdfever2
 	// (registers are written to but they cause sound not to work)
-	MDRV_SOUND_REMOVE("ym1")
+	MDRV_DEVICE_REMOVE("ym1")
 MACHINE_DRIVER_END
 
 
@@ -6161,7 +6161,7 @@ ROM_END
 static DRIVER_INIT( countryc )
 {
 	// replace coin counter with trackball select
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc300, 0xc300, 0, 0, countryc_trackball_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc300, 0xc300, 0, 0, countryc_trackball_w);
 }
 
 

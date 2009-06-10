@@ -190,7 +190,7 @@ static TIMER_CALLBACK( delayed_ram16_w )
 {
 	UINT16 val = ((UINT32) param) & 0xffff;
 	UINT16 offset = (((UINT32) param) >> 16) & 0xffff;
-	UINT16 *ram = ptr;
+	UINT16 *ram = (UINT16 *)ptr;
 
 	ram[offset] = val;
 }
@@ -327,8 +327,8 @@ INLINE DRIVER_INIT( loht_mcu )
 	const address_space *sndio = cputag_get_address_space(machine, "soundcpu", ADDRESS_SPACE_IO);
 	const device_config *dac = devtag_get_device(machine, "dac");
 
-	protection_ram = auto_malloc(0x10000);
-	memory_install_read16_handler(program, 0xb0000, 0xbffff, 0, 0, SMH_BANK1);
+	protection_ram = auto_alloc_array(machine, UINT16, 0x10000/2);
+	memory_install_read16_handler(program, 0xb0000, 0xbffff, 0, 0, (read16_space_func)SMH_BANK(1));
 	memory_install_write16_handler(program, 0xb0000, 0xb0fff, 0, 0, m72_main_mcu_w);
 	memory_set_bankptr(machine, 1, protection_ram);
 
@@ -697,12 +697,12 @@ static WRITE16_HANDLER( protection_w )
 
 static void install_protection_handler(running_machine *machine, const UINT8 *code,const UINT8 *crc)
 {
-	protection_ram = auto_malloc(0x1000);
+	protection_ram = auto_alloc_array(machine, UINT16, 0x1000/2);
 	protection_code = code;
 	protection_crc =  crc;
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xb0000, 0xb0fff, 0, 0, SMH_BANK1);
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xb0ffa, 0xb0ffb, 0, 0, protection_r);
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xb0000, 0xb0fff, 0, 0, protection_w);
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xb0000, 0xb0fff, 0, 0, (read16_space_func)SMH_BANK(1));
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xb0ffa, 0xb0ffb, 0, 0, protection_r);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xb0000, 0xb0fff, 0, 0, protection_w);
 	memory_set_bankptr(machine, 1, protection_ram);
 }
 
@@ -710,42 +710,42 @@ static DRIVER_INIT( bchopper )
 {
 	install_protection_handler(machine, bchopper_code,bchopper_crc);
 
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, bchopper_sample_trigger_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, bchopper_sample_trigger_w);
 }
 
 static DRIVER_INIT( mrheli )
 {
 	install_protection_handler(machine, bchopper_code,mrheli_crc);
 
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, bchopper_sample_trigger_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, bchopper_sample_trigger_w);
 }
 
 static DRIVER_INIT( nspirit )
 {
 	install_protection_handler(machine, nspirit_code,nspirit_crc);
 
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, nspirit_sample_trigger_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, nspirit_sample_trigger_w);
 }
 
 static DRIVER_INIT( nspiritj )
 {
 	install_protection_handler(machine, nspirit_code,nspiritj_crc);
 
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, nspirit_sample_trigger_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, nspirit_sample_trigger_w);
 }
 
 static DRIVER_INIT( imgfight )
 {
 	install_protection_handler(machine, imgfight_code,imgfight_crc);
 
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, imgfight_sample_trigger_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, imgfight_sample_trigger_w);
 }
 
 static DRIVER_INIT( loht )
 {
 	install_protection_handler(machine, loht_code,loht_crc);
 
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, loht_sample_trigger_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, loht_sample_trigger_w);
 
 	/* since we skip the startup tests, clear video RAM to prevent garbage on title screen */
 	memset(m72_videoram2,0,0x4000);
@@ -755,33 +755,33 @@ static DRIVER_INIT( xmultipl )
 {
 	install_protection_handler(machine, xmultipl_code,xmultipl_crc);
 
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, xmultipl_sample_trigger_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, xmultipl_sample_trigger_w);
 }
 
 static DRIVER_INIT( dbreed72 )
 {
 	install_protection_handler(machine, dbreed72_code,dbreed72_crc);
 
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, dbreed72_sample_trigger_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, dbreed72_sample_trigger_w);
 }
 
 static DRIVER_INIT( airduel )
 {
 	install_protection_handler(machine, airduel_code,airduel_crc);
 
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, airduel_sample_trigger_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, airduel_sample_trigger_w);
 }
 
 static DRIVER_INIT( dkgenm72 )
 {
 	install_protection_handler(machine, dkgenm72_code,dkgenm72_crc);
 
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, dkgenm72_sample_trigger_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, dkgenm72_sample_trigger_w);
 }
 
 static DRIVER_INIT( gallop )
 {
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, gallop_sample_trigger_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO), 0xc0, 0xc1, 0, 0, gallop_sample_trigger_w);
 }
 
 
@@ -1791,12 +1791,12 @@ static MACHINE_DRIVER_START( rtype )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",V30,MASTER_CLOCK/2/2)	/* 16 MHz external freq (8MHz internal) */
-	MDRV_CPU_PROGRAM_MAP(rtype_map,0)
-	MDRV_CPU_IO_MAP(m72_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(rtype_map)
+	MDRV_CPU_IO_MAP(m72_portmap)
 
 	MDRV_CPU_ADD("soundcpu",Z80, SOUND_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(sound_ram_map,0)
-	MDRV_CPU_IO_MAP(rtype_sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_ram_map)
+	MDRV_CPU_IO_MAP(rtype_sound_portmap)
 								/* IRQs are generated by main Z80 and YM2151 */
 
 	MDRV_MACHINE_START(m72)
@@ -1826,12 +1826,12 @@ static MACHINE_DRIVER_START( m72_base )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",V30,MASTER_CLOCK/2/2)	/* 16 MHz external freq (8MHz internal) */
-	MDRV_CPU_PROGRAM_MAP(m72_map,0)
-	MDRV_CPU_IO_MAP(m72_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(m72_map)
+	MDRV_CPU_IO_MAP(m72_portmap)
 
 	MDRV_CPU_ADD("soundcpu",Z80, SOUND_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(sound_ram_map,0)
-	MDRV_CPU_IO_MAP(sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_ram_map)
+	MDRV_CPU_IO_MAP(sound_portmap)
 
 	MDRV_MACHINE_START(m72)
 	MDRV_MACHINE_RESET(m72)
@@ -1874,7 +1874,7 @@ static MACHINE_DRIVER_START( m72_8751 )
 	MDRV_IMPORT_FROM(m72_base)
 
 	MDRV_CPU_ADD("mcu",I8751, MASTER_CLOCK/4)
-	MDRV_CPU_IO_MAP(mcu_io_map,0)
+	MDRV_CPU_IO_MAP(mcu_io_map)
 	MDRV_CPU_VBLANK_INT("screen", m72_mcu_int)
 
 MACHINE_DRIVER_END
@@ -1884,12 +1884,12 @@ static MACHINE_DRIVER_START( dkgenm72 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",V30,MASTER_CLOCK/2/2)	/* 16 MHz external freq (8MHz internal) */
-	MDRV_CPU_PROGRAM_MAP(m72_map,0)
-	MDRV_CPU_IO_MAP(m72_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(m72_map)
+	MDRV_CPU_IO_MAP(m72_portmap)
 
 	MDRV_CPU_ADD("soundcpu",Z80, SOUND_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(sound_ram_map,0)
-	MDRV_CPU_IO_MAP(sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_ram_map)
+	MDRV_CPU_IO_MAP(sound_portmap)
 	MDRV_CPU_VBLANK_INT_HACK(fake_nmi,128)	/* clocked by V1? (Vigilante) */
 								/* IRQs are generated by main Z80 and YM2151 */
 
@@ -1925,12 +1925,12 @@ static MACHINE_DRIVER_START( xmultipl )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",V30,MASTER_CLOCK/2/2)	/* 16 MHz external freq (8MHz internal) */
-	MDRV_CPU_PROGRAM_MAP(xmultipl_map,0)
-	MDRV_CPU_IO_MAP(m72_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(xmultipl_map)
+	MDRV_CPU_IO_MAP(m72_portmap)
 
 	MDRV_CPU_ADD("soundcpu",Z80, SOUND_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(sound_ram_map,0)
-	MDRV_CPU_IO_MAP(sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_ram_map)
+	MDRV_CPU_IO_MAP(sound_portmap)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,128)	/* clocked by V1? (Vigilante) */
 								/* IRQs are generated by main Z80 and YM2151 */
 
@@ -1966,12 +1966,12 @@ static MACHINE_DRIVER_START( dbreed )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",V30,MASTER_CLOCK/2/2)	/* 16 MHz external freq (8MHz internal) */
-	MDRV_CPU_PROGRAM_MAP(dbreed_map,0)
-	MDRV_CPU_IO_MAP(hharry_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(dbreed_map)
+	MDRV_CPU_IO_MAP(hharry_portmap)
 
 	MDRV_CPU_ADD("soundcpu",Z80, SOUND_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(sound_rom_map,0)
-	MDRV_CPU_IO_MAP(rtype2_sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_rom_map)
+	MDRV_CPU_IO_MAP(rtype2_sound_portmap)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,128)	/* clocked by V1? (Vigilante) */
 								/* IRQs are generated by main Z80 and YM2151 */
 
@@ -2006,12 +2006,12 @@ static MACHINE_DRIVER_START( dbreed72 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V30,MASTER_CLOCK/2/2)	/* 16 MHz external freq (8MHz internal) */
-	MDRV_CPU_PROGRAM_MAP(dbreed72_map,0)
-	MDRV_CPU_IO_MAP(m72_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(dbreed72_map)
+	MDRV_CPU_IO_MAP(m72_portmap)
 
 	MDRV_CPU_ADD("soundcpu", Z80, SOUND_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(sound_ram_map,0)
-	MDRV_CPU_IO_MAP(sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_ram_map)
+	MDRV_CPU_IO_MAP(sound_portmap)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,128)	/* clocked by V1? (Vigilante) */
 								/* IRQs are generated by main Z80 and YM2151 */
 
@@ -2047,12 +2047,12 @@ static MACHINE_DRIVER_START( rtype2 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V30,MASTER_CLOCK/2/2)	/* 16 MHz external freq (8MHz internal) */
-	MDRV_CPU_PROGRAM_MAP(rtype2_map,0)
-	MDRV_CPU_IO_MAP(rtype2_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(rtype2_map)
+	MDRV_CPU_IO_MAP(rtype2_portmap)
 
 	MDRV_CPU_ADD("soundcpu", Z80, SOUND_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(sound_rom_map,0)
-	MDRV_CPU_IO_MAP(rtype2_sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_rom_map)
+	MDRV_CPU_IO_MAP(rtype2_sound_portmap)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,128)	/* clocked by V1? (Vigilante) */
 								/* IRQs are generated by main Z80 and YM2151 */
 
@@ -2087,12 +2087,12 @@ static MACHINE_DRIVER_START( majtitle )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V30,MASTER_CLOCK/2/2)	/* 16 MHz external freq (8MHz internal) */
-	MDRV_CPU_PROGRAM_MAP(majtitle_map,0)
-	MDRV_CPU_IO_MAP(majtitle_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(majtitle_map)
+	MDRV_CPU_IO_MAP(majtitle_portmap)
 
 	MDRV_CPU_ADD("soundcpu", Z80, SOUND_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(sound_rom_map,0)
-	MDRV_CPU_IO_MAP(rtype2_sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_rom_map)
+	MDRV_CPU_IO_MAP(rtype2_sound_portmap)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,128)	/* clocked by V1? (Vigilante) */
 								/* IRQs are generated by main Z80 and YM2151 */
 
@@ -2127,12 +2127,12 @@ static MACHINE_DRIVER_START( hharry )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V30,MASTER_CLOCK/2/2)	/* 16 MHz external freq (8MHz internal) */
-	MDRV_CPU_PROGRAM_MAP(hharry_map,0)
-	MDRV_CPU_IO_MAP(hharry_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(hharry_map)
+	MDRV_CPU_IO_MAP(hharry_portmap)
 
 	MDRV_CPU_ADD("soundcpu", Z80, SOUND_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(sound_rom_map,0)
-	MDRV_CPU_IO_MAP(rtype2_sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_rom_map)
+	MDRV_CPU_IO_MAP(rtype2_sound_portmap)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,128)	/* clocked by V1? (Vigilante) */
 								/* IRQs are generated by main Z80 and YM2151 */
 
@@ -2168,12 +2168,12 @@ static MACHINE_DRIVER_START( hharryu )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V30,MASTER_CLOCK/2/2)	/* 16 MHz external freq (8MHz internal) */
-	MDRV_CPU_PROGRAM_MAP(hharryu_map,0)
-	MDRV_CPU_IO_MAP(rtype2_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(hharryu_map)
+	MDRV_CPU_IO_MAP(rtype2_portmap)
 
 	MDRV_CPU_ADD("soundcpu", Z80, SOUND_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(sound_rom_map,0)
-	MDRV_CPU_IO_MAP(rtype2_sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_rom_map)
+	MDRV_CPU_IO_MAP(rtype2_sound_portmap)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,128)	/* clocked by V1? (Vigilante) */
 								/* IRQs are generated by main Z80 and YM2151 */
 
@@ -2209,12 +2209,12 @@ static MACHINE_DRIVER_START( poundfor )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V30,MASTER_CLOCK/2/2)	/* 16 MHz external freq (8MHz internal) */
-	MDRV_CPU_PROGRAM_MAP(rtype2_map,0)
-	MDRV_CPU_IO_MAP(poundfor_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(rtype2_map)
+	MDRV_CPU_IO_MAP(poundfor_portmap)
 
 	MDRV_CPU_ADD("soundcpu", Z80, SOUND_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(sound_rom_map,0)
-	MDRV_CPU_IO_MAP(poundfor_sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_rom_map)
+	MDRV_CPU_IO_MAP(poundfor_sound_portmap)
 	MDRV_CPU_VBLANK_INT_HACK(fake_nmi,128)	/* clocked by V1? (Vigilante) */
 								/* IRQs are generated by main Z80 and YM2151 */
 
@@ -2249,12 +2249,12 @@ static MACHINE_DRIVER_START( cosmccop )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V30,MASTER_CLOCK/2/2)
-	MDRV_CPU_PROGRAM_MAP(kengo_map,0)
-	MDRV_CPU_IO_MAP(kengo_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(kengo_map)
+	MDRV_CPU_IO_MAP(kengo_portmap)
 
 	MDRV_CPU_ADD("soundcpu", Z80, SOUND_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(sound_rom_map,0)
-	MDRV_CPU_IO_MAP(rtype2_sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_rom_map)
+	MDRV_CPU_IO_MAP(rtype2_sound_portmap)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,128)	/* clocked by V1? (Vigilante) */
 								/* IRQs are generated by main Z80 and YM2151 */
 

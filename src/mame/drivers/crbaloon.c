@@ -163,7 +163,7 @@ static WRITE8_HANDLER( port_sound_w )
 	const device_config *sn = devtag_get_device(space->machine, "sn");
 
 	/* D0 - interrupt enable - also goes to PC3259 as /HTCTRL */
-	cpu_interrupt_enable(space->machine->cpu[0], (data & 0x01) ? TRUE : FALSE);
+	cpu_interrupt_enable(cputag_get_cpu(space->machine, "maincpu"), (data & 0x01) ? TRUE : FALSE);
 	crbaloon_set_clear_collision_address((data & 0x01) ? TRUE : FALSE);
 
 	/* D1 - SOUND STOP */
@@ -342,7 +342,7 @@ GFXDECODE_END
 
 static MACHINE_RESET( crballoon )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_IO);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO);
 	const device_config *discrete = devtag_get_device(machine, "discrete");
 
 	pc3092_reset();
@@ -362,8 +362,8 @@ static MACHINE_DRIVER_START( crbaloon )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, CRBALOON_MASTER_XTAL / 3)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_IO_MAP(main_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
+	MDRV_CPU_IO_MAP(main_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_MACHINE_RESET(crballoon)

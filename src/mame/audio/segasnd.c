@@ -214,7 +214,7 @@ static TIMER_CALLBACK( delayed_speech_w )
 	speech_latch = data;
 
 	/* the high bit goes directly to the INT line */
-	cpu_set_input_line(machine->cpu[1], 0, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(machine, "audiocpu", 0, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 
 	/* a clock on the high bit clocks a 1 into T0 */
 	if (!(old & 0x80) && (data & 0x80))
@@ -280,8 +280,8 @@ MACHINE_DRIVER_START( sega_speech_board )
 
 	/* CPU for the speech board */
 	MDRV_CPU_ADD("audiocpu", I8035, SPEECH_MASTER_CLOCK)		/* divide by 15 in CPU */
-	MDRV_CPU_PROGRAM_MAP(speech_map, 0)
-	MDRV_CPU_IO_MAP(speech_portmap, 0)
+	MDRV_CPU_PROGRAM_MAP(speech_map)
+	MDRV_CPU_IO_MAP(speech_portmap)
 
 	/* sound hardware */
 	MDRV_SOUND_ADD("speech", SP0250, SPEECH_MASTER_CLOCK)
@@ -650,7 +650,7 @@ static DEVICE_START( usb_sound )
 	assert(usb.cpu != NULL);
 
 	/* allocate work RAM */
-	usb.work_ram = auto_malloc(0x400);
+	usb.work_ram = auto_alloc_array(machine, UINT8, 0x400);
 
 	/* create a sound stream */
 	usb.stream = stream_create(device, 0, 1, SAMPLE_RATE, NULL, usb_stream_update);
@@ -920,8 +920,8 @@ MACHINE_DRIVER_START( sega_universal_sound_board )
 
 	/* CPU for the usb board */
 	MDRV_CPU_ADD("usbcpu", I8035, USB_MASTER_CLOCK)		/* divide by 15 in CPU */
-	MDRV_CPU_PROGRAM_MAP(usb_map, 0)
-	MDRV_CPU_IO_MAP(usb_portmap, 0)
+	MDRV_CPU_PROGRAM_MAP(usb_map)
+	MDRV_CPU_IO_MAP(usb_portmap)
 
 	/* sound hardware */
 	MDRV_SOUND_ADD("usbsnd", USB, 0)
@@ -934,5 +934,5 @@ MACHINE_DRIVER_START( sega_universal_sound_board_rom )
 
 	/* CPU for the usb board */
 	MDRV_CPU_MODIFY("usbcpu")
-	MDRV_CPU_PROGRAM_MAP(usb_map_rom, 0)
+	MDRV_CPU_PROGRAM_MAP(usb_map_rom)
 MACHINE_DRIVER_END

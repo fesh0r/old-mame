@@ -91,7 +91,7 @@ static INPUT_PORTS_START( nitedrvr )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNKNOWN )	// Spare
 	PORT_DIPNAME( 0x20, 0x00, "Difficult Bonus" )
 	PORT_DIPSETTING(	0x00, DEF_STR( Normal ) )
-	PORT_DIPSETTING(	0x20, "Difficult" )
+	PORT_DIPSETTING(	0x20, DEF_STR( Difficult ) )
 	PORT_BIT( 0xc0, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START("IN0")	// fake
@@ -137,7 +137,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( nitedrvr )
 	// basic machine hardware
 	MDRV_CPU_ADD("maincpu", M6502, 12096000/12) // 1 MHz
-	MDRV_CPU_PROGRAM_MAP(nitedrvr_map, 0)
+	MDRV_CPU_PROGRAM_MAP(nitedrvr_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 	MDRV_WATCHDOG_VBLANK_INIT(3)
 

@@ -351,6 +351,7 @@ static READ32_HANDLER( mb89371_r )
 static READ32_HANDLER( jamma_r )
 {
 	running_machine *machine = space->machine;
+	const device_config *adc0834 = devtag_get_device(space->machine, "adc0834");
 	UINT32 data = 0;
 
 	switch (offset)
@@ -368,7 +369,7 @@ static READ32_HANDLER( jamma_r )
 			data |= ds2401_read( machine, security_cart_number ) << 14;
 		}
 
-		data |= adc083x_do_read( machine, 0 ) << 16;
+		data |= adc083x_do_read(adc0834, 0) << 16;
 
 		switch( chiptype[ security_cart_number ] )
 		{
@@ -411,15 +412,16 @@ static READ32_HANDLER( jamma_r )
 static WRITE32_HANDLER( jamma_w )
 {
 	running_machine *machine = space->machine;
+	const device_config *adc0834 = devtag_get_device(space->machine, "adc0834");
 	verboselog( machine, 2, "jamma_w( %08x, %08x, %08x )\n", offset, mem_mask, data );
 
 	switch( offset )
 	{
 	case 0:
-		adc083x_cs_write( machine, 0, ( data >> 1 ) & 1 );
-		adc083x_clk_write( machine, 0, ( data >> 2 ) & 1 );
-		adc083x_di_write( machine, 0, ( data >> 0 ) & 1 );
-		adc083x_se_write( machine, 0, 0 );
+		adc083x_cs_write(adc0834, 0, (data >> 1) & 1);
+		adc083x_clk_write(adc0834, 0, (data >> 2) & 1);
+		adc083x_di_write(adc0834, 0, (data >> 0) & 1);
+		adc083x_se_write(adc0834, 0, 0);
 		break;
 
 	default:
@@ -565,7 +567,7 @@ static TIMER_CALLBACK( atapi_xfer_end )
 		atapi_regs[ATAPI_REG_COUNTLOW] = atapi_xferlen & 0xff;
 		atapi_regs[ATAPI_REG_COUNTHIGH] = (atapi_xferlen>>8)&0xff;
 
-		timer_adjust_oneshot(atapi_timer, cpu_clocks_to_attotime(machine->cpu[0], (ATAPI_CYCLES_PER_SECTOR * (atapi_xferlen/2048))), 0);
+		timer_adjust_oneshot(atapi_timer, cputag_clocks_to_attotime(machine, "maincpu", (ATAPI_CYCLES_PER_SECTOR * (atapi_xferlen/2048))), 0);
 	}
 	else
 	{
@@ -952,7 +954,7 @@ static void atapi_init(running_machine *machine)
 {
 	int i;
 
-	atapi_regs = auto_malloc( ATAPI_REG_MAX );
+	atapi_regs = auto_alloc_array(machine, UINT8,  ATAPI_REG_MAX );
 	memset(atapi_regs, 0, sizeof(atapi_regs));
 
 	atapi_regs[ATAPI_REG_CMDSTATUS] = 0;
@@ -980,7 +982,7 @@ static void atapi_init(running_machine *machine)
 	}
 	add_exit_callback(machine, atapi_exit);
 
-	atapi_data = auto_malloc( ATAPI_DATA_SIZE );
+	atapi_data = auto_alloc_array(machine, UINT8,  ATAPI_DATA_SIZE );
 
 	state_save_register_global_pointer(machine,  atapi_regs, ATAPI_REG_MAX );
 	state_save_register_global_pointer(machine,  atapi_data, ATAPI_DATA_SIZE / 2 );
@@ -1032,7 +1034,7 @@ static void cdrom_dma_write( running_machine *machine, UINT32 n_address, INT32 n
 	verboselog( machine, 2, "atapi_xfer_end: %d %d\n", atapi_xferlen, atapi_xfermod );
 
 	// set a transfer complete timer (Note: CYCLES_PER_SECTOR can't be lower than 2000 or the BIOS ends up "out of order")
-	timer_adjust_oneshot(atapi_timer, cpu_clocks_to_attotime(machine->cpu[0], (ATAPI_CYCLES_PER_SECTOR * (atapi_xferlen/2048))), 0);
+	timer_adjust_oneshot(atapi_timer, cputag_clocks_to_attotime(machine, "maincpu", (ATAPI_CYCLES_PER_SECTOR * (atapi_xferlen/2048))), 0);
 }
 
 static UINT32 m_n_security_control;
@@ -1188,7 +1190,7 @@ static UINT64 m_p_n_root_start[ 3 ];
 static UINT64 psxcpu_gettotalcycles( running_machine *machine )
 {
 	/* TODO: should return the start of the current tick. */
-	return cpu_get_total_cycles(machine->cpu[0]) * 2;
+	return cputag_get_total_cycles(machine, "maincpu") * 2;
 }
 
 static int root_divider( int n_counter )
@@ -1384,6 +1386,7 @@ static ADDRESS_MAP_START( konami573_map, ADDRESS_SPACE_PROGRAM, 32 )
 ADDRESS_MAP_END
 
 
+
 static void flash_init( running_machine *machine )
 {
 	int i;
@@ -1438,26 +1441,6 @@ static void flash_init( running_machine *machine )
 
 	state_save_register_global(machine,  flash_bank );
 	state_save_register_global(machine,  control );
-}
-
-static double analogue_inputs_callback( running_machine *machine, int input )
-{
-	switch( input )
-	{
-	case ADC083X_CH0:
-		return (double) ( input_port_read_safe(machine,  "analog0", 0 ) * 5 ) / 255;
-	case ADC083X_CH1:
-		return (double) ( input_port_read_safe(machine,  "analog1", 0 ) * 5 ) / 255;
-	case ADC083X_CH2:
-		return (double) ( input_port_read_safe(machine,  "analog2", 0 ) * 5 ) / 255;
-	case ADC083X_CH3:
-		return (double) ( input_port_read_safe(machine,  "analog3", 0 ) * 5 ) / 255;
-	case ADC083X_AGND:
-		return 0;
-	case ADC083X_VREF:
-		return 5;
-	}
-	return 0;
 }
 
 static void *atapi_get_device(void)
@@ -1570,7 +1553,6 @@ static DRIVER_INIT( konami573 )
 	state_save_register_item_array( machine, "KSYS573", NULL, 0, m_p_n_root_target );
 	state_save_register_item_array( machine, "KSYS573", NULL, 0, m_p_n_root_start );
 
-	adc083x_init( machine, 0, ADC0834, analogue_inputs_callback );
 	flash_init(machine);
 }
 
@@ -1662,85 +1644,84 @@ todo:
 
 static READ32_HANDLER( ge765pwbba_r )
 {
+	const device_config *upd4701 = devtag_get_device(space->machine, "upd4701");
 	UINT32 data = 0;
 
-	switch( offset )
+	switch (offset)
 	{
 	case 0x26:
-		uPD4701_y_add( 0, input_port_read_safe(space->machine,  "uPD4701_y", 0 ) );
-		uPD4701_switches_set( 0, input_port_read_safe(space->machine,  "uPD4701_switches", 0 ) );
+		upd4701_y_add(upd4701, 0, input_port_read_safe(space->machine, "uPD4701_y", 0), 0xffff);
+		upd4701_switches_set(upd4701, 0, input_port_read_safe(space->machine, "uPD4701_switches", 0));
 
-		uPD4701_cs_w( 0, 0 );
-		uPD4701_xy_w( 0, 1 );
+		upd4701_cs_w(upd4701, 0, 0);
+		upd4701_xy_w(upd4701, 0, 1);
 
-		if( ACCESSING_BITS_0_7 )
+		if (ACCESSING_BITS_0_7)
 		{
-			uPD4701_ul_w( 0, 0 );
-			data |= uPD4701_d_r( 0 ) << 0;
+			upd4701_ul_w(upd4701, 0, 0);
+			data |= upd4701_d_r(upd4701, 0, 0xffff) << 0;
 		}
 
-		if( ACCESSING_BITS_16_23 )
+		if (ACCESSING_BITS_16_23)
 		{
-			uPD4701_ul_w( 0, 1 );
-			data |= uPD4701_d_r( 0 ) << 16;
+			upd4701_ul_w(upd4701, 0, 1);
+			data |= upd4701_d_r(upd4701, 0, 0xffff) << 16;
 		}
 
-		uPD4701_cs_w( 0, 1 );
+		upd4701_cs_w(upd4701, 0, 1);
 		break;
 
 	default:
-		verboselog( space->machine, 0, "ge765pwbba_r: unhandled offset %08x %08x\n", offset, mem_mask );
+		verboselog(space->machine, 0, "ge765pwbba_r: unhandled offset %08x %08x\n", offset, mem_mask);
 		break;
 	}
 
-	verboselog( space->machine, 2, "ge765pwbba_r( %08x, %08x ) %08x\n", offset, mem_mask, data );
+	verboselog(space->machine, 2, "ge765pwbba_r( %08x, %08x ) %08x\n", offset, mem_mask, data);
 	return data;
 }
 
 static WRITE32_HANDLER( ge765pwbba_w )
 {
-	switch( offset )
+	const device_config *upd4701 = devtag_get_device(space->machine, "upd4701");
+	switch (offset)
 	{
 	case 0x04:
 		break;
 
 	case 0x20:
-		if( ACCESSING_BITS_0_7 )
+		if (ACCESSING_BITS_0_7)
 		{
-			output_set_value( "motor", data & 0xff );
+			output_set_value("motor", data & 0xff);
 		}
 		break;
 
 	case 0x22:
-		if( ACCESSING_BITS_0_7 )
+		if (ACCESSING_BITS_0_7)
 		{
-			output_set_value( "brake", data & 0xff );
+			output_set_value("brake", data & 0xff);
 		}
 		break;
 
 	case 0x28:
-		if( ACCESSING_BITS_0_7 )
+		if (ACCESSING_BITS_0_7)
 		{
-			uPD4701_resety_w( 0, 1 );
-			uPD4701_resety_w( 0, 0 );
+			upd4701_resety_w(upd4701, 0, 1);
+			upd4701_resety_w(upd4701, 0, 0);
 		}
 		break;
 
 	default:
-		verboselog( space->machine, 0, "ge765pwbba_w: unhandled offset %08x %08x %08x\n", offset, mem_mask, data );
+		verboselog(space->machine, 0, "ge765pwbba_w: unhandled offset %08x %08x %08x\n", offset, mem_mask, data);
 		break;
 	}
 
-	verboselog( space->machine, 2, "ge765pwbba_w( %08x, %08x, %08x )\n", offset, mem_mask, data );
+	verboselog(space->machine, 2, "ge765pwbba_w( %08x, %08x, %08x )\n", offset, mem_mask, data);
 }
 
 static DRIVER_INIT( ge765pwbba )
 {
 	DRIVER_INIT_CALL(konami573);
-
-	uPD4701_init( machine, 0 );
-
-	memory_install_readwrite32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f640000, 0x1f6400ff, 0, 0, ge765pwbba_r, ge765pwbba_w );
+	memory_install_readwrite32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f640000, 0x1f6400ff, 0, 0, ge765pwbba_r, ge765pwbba_w );
 }
 
 /*
@@ -1851,7 +1832,7 @@ static void gx700pwfbf_init( running_machine *machine, void (*output_callback_fu
 
 	gx700pwfbf_output_callback = output_callback_func;
 
-	memory_install_readwrite32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f640000, 0x1f6400ff, 0, 0, gx700pwbf_io_r, gx700pwbf_io_w );
+	memory_install_readwrite32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f640000, 0x1f6400ff, 0, 0, gx700pwbf_io_r, gx700pwbf_io_w );
 
 	state_save_register_global_array(machine,  gx700pwbf_output_data );
 }
@@ -2094,7 +2075,7 @@ static DRIVER_INIT( gtrfrks )
 {
 	DRIVER_INIT_CALL(konami573);
 
-	memory_install_readwrite32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f600000, 0x1f6000ff, 0, 0, gtrfrks_io_r, gtrfrks_io_w );
+	memory_install_readwrite32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f600000, 0x1f6000ff, 0, 0, gtrfrks_io_r, gtrfrks_io_w );
 }
 
 /* GX894 digital i/o */
@@ -2340,6 +2321,7 @@ static WRITE32_HANDLER( gx894pwbba_w )
 			static int b = 0;
 			static int o = 0;
 
+			/* fpga */
 			s = ( s >> 1 ) | ( ( data & 0x8000 ) >> 8 );
 			b++;
 			if( b == 8 )
@@ -2384,11 +2366,11 @@ static void gx894pwbba_init( running_machine *machine, void (*output_callback_fu
 
 	gx894pwbba_output_callback = output_callback_func;
 
-	memory_install_readwrite32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f640000, 0x1f6400ff, 0, 0, gx894pwbba_r, gx894pwbba_w );
+	memory_install_readwrite32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f640000, 0x1f6400ff, 0, 0, gx894pwbba_r, gx894pwbba_w );
 
 	gx894_ram_write_offset = 0;
 	gx894_ram_read_offset = 0;
-	gx894_ram = auto_malloc( gx894_ram_size );
+	gx894_ram = auto_alloc_array(machine, UINT16,  gx894_ram_size/2);
 
 	ds2401_init( machine, 2, ds2401_xid ); /* todo: load this from roms */
 
@@ -2413,7 +2395,7 @@ static DRIVER_INIT( gtrfrkdigital )
 
 	gx894pwbba_init( machine, NULL );
 
-	memory_install_readwrite32_handler( cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f600000, 0x1f6000ff, 0, 0, gtrfrks_io_r, gtrfrks_io_w );
+	memory_install_readwrite32_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f600000, 0x1f6000ff, 0, 0, gtrfrks_io_r, gtrfrks_io_w );
 }
 
 /* ddr solo */
@@ -2706,7 +2688,7 @@ static DRIVER_INIT( dmx )
 
 	gx894pwbba_init( machine, dmx_output_callback );
 
-	memory_install_write32_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x1f600000, 0x1f6000ff, 0, 0, dmx_io_w );
+	memory_install_write32_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x1f600000, 0x1f6000ff, 0, 0, dmx_io_w );
 }
 
 /* salary man champ */
@@ -2782,10 +2764,39 @@ static DRIVER_INIT( salarymc )
 	state_save_register_global(machine,  salarymc_lamp_clk );
 }
 
+
+
+/* ADC0834 Interface */
+
+static double analogue_inputs_callback( const device_config *device, UINT8 input )
+{
+	switch (input)
+	{
+	case ADC083X_CH0:
+		return (double)(5 * input_port_read_safe(device->machine,  "analog0", 0)) / 255.0;
+	case ADC083X_CH1:
+		return (double)(5 * input_port_read_safe(device->machine,  "analog1", 0)) / 255.0;
+	case ADC083X_CH2:
+		return (double)(5 * input_port_read_safe(device->machine,  "analog2", 0)) / 255.0;
+	case ADC083X_CH3:
+		return (double)(5 * input_port_read_safe(device->machine,  "analog3", 0)) / 255.0;
+	case ADC083X_AGND:
+		return 0;
+	case ADC083X_VREF:
+		return 5;
+	}
+	return 0;
+}
+
+
+static const adc0831_interface konami573_adc_interface = {
+	analogue_inputs_callback
+};
+
 static MACHINE_DRIVER_START( konami573 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",  PSXCPU, XTAL_67_7376MHz )
-	MDRV_CPU_PROGRAM_MAP( konami573_map, 0 )
+	MDRV_CPU_PROGRAM_MAP( konami573_map)
 	MDRV_CPU_VBLANK_INT("screen", sys573_vblank)
 
 	MDRV_MACHINE_RESET( konami573 )
@@ -2818,6 +2829,16 @@ static MACHINE_DRIVER_START( konami573 )
 	MDRV_SOUND_ROUTE( 1, "rspeaker", 1.0 )
 
 	MDRV_M48T58_ADD( "m48t58" )
+
+	MDRV_ADC0834_ADD( "adc0834", konami573_adc_interface )
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( k573bait )
+	MDRV_IMPORT_FROM(konami573)
+
+	/* Additional NEC Encoder */
+	MDRV_UPD4701_ADD( "upd4701" )
 MACHINE_DRIVER_END
 
 static INPUT_PORTS_START( konami573 )
@@ -2938,12 +2959,12 @@ static INPUT_PORTS_START( ddr )
 
 	PORT_START( "STAGE" )
 	PORT_BIT( 0x00000100, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_16WAY PORT_PLAYER(1)
-	PORT_BIT( 0x00000200, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_16WAY PORT_PLAYER(1) /* serial? */
-	PORT_BIT( 0x00000400, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_16WAY PORT_PLAYER(1)    /* serial? */
+	PORT_BIT( 0x00000200, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_16WAY PORT_PLAYER(1) /* multiplexor */
+	PORT_BIT( 0x00000400, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_16WAY PORT_PLAYER(1)    /* multiplexor */
 	PORT_BIT( 0x00000800, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_16WAY PORT_PLAYER(1)
 	PORT_BIT( 0x00000001, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_16WAY PORT_PLAYER(2)
-	PORT_BIT( 0x00000002, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_16WAY PORT_PLAYER(2) /* serial? */
-	PORT_BIT( 0x00000004, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_16WAY PORT_PLAYER(2)    /* serial? */
+	PORT_BIT( 0x00000002, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_16WAY PORT_PLAYER(2) /* multiplexor */
+	PORT_BIT( 0x00000004, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_16WAY PORT_PLAYER(2)    /* multiplexor */
 	PORT_BIT( 0x00000008, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_16WAY PORT_PLAYER(2)
 INPUT_PORTS_END
 
@@ -2952,17 +2973,17 @@ static INPUT_PORTS_START( ddrsolo )
 
 	PORT_MODIFY("IN2")
 	PORT_BIT( 0x00000100, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_16WAY PORT_PLAYER(1) PORT_NAME( "P1 Left 1" )
-	PORT_BIT( 0x00000200, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_16WAY PORT_PLAYER(1) PORT_NAME( "P1 Right 1" ) /* serial? */
-	PORT_BIT( 0x00000400, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_16WAY PORT_PLAYER(1) PORT_NAME( "P1 Up 1" ) /* serial? */
+	PORT_BIT( 0x00000200, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_16WAY PORT_PLAYER(1) PORT_NAME( "P1 Right 1" )
+	PORT_BIT( 0x00000400, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_16WAY PORT_PLAYER(1) PORT_NAME( "P1 Up 1" )
 	PORT_BIT( 0x00000800, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_16WAY PORT_PLAYER(1) PORT_NAME( "P1 Down 1" )
-	PORT_BIT( 0x00001000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1) PORT_NAME( "P1 Up-Left 2" ) /* P1 BUTTON 1 */ /* skip init? */
+	PORT_BIT( 0x00001000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1) PORT_NAME( "P1 Up-Left 2" ) /* P1 BUTTON 1 */
 	PORT_BIT( 0x00002000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_16WAY PORT_PLAYER(1) PORT_NAME( "P1 Left 2" ) /* P1 BUTTON 2 */
 	PORT_BIT( 0x00004000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_16WAY PORT_PLAYER(1) PORT_NAME( "P1 Down 2" ) /* P1 BUTTON 3 */
 	PORT_BIT( 0x00000001, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_16WAY PORT_PLAYER(1) PORT_NAME( "P1 Up-Left 1" ) /* P2 LEFT */
-	PORT_BIT( 0x00000002, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_16WAY PORT_PLAYER(1) PORT_NAME( "P1 Up-Right 1" ) /* P2 RIGHT */ /* serial? */
-	PORT_BIT( 0x00000004, IP_ACTIVE_LOW, IPT_UNUSED ) /* P2 UP */ /* serial? */
+	PORT_BIT( 0x00000002, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_16WAY PORT_PLAYER(1) PORT_NAME( "P1 Up-Right 1" ) /* P2 RIGHT */
+	PORT_BIT( 0x00000004, IP_ACTIVE_LOW, IPT_UNUSED ) /* P2 UP */
 	PORT_BIT( 0x00000008, IP_ACTIVE_LOW, IPT_UNUSED ) /* P2 DOWN */
-	PORT_BIT( 0x00000010, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1) PORT_NAME( "P1 Up 2" ) /* P2 BUTTON1 */ /* skip init? */
+	PORT_BIT( 0x00000010, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1) PORT_NAME( "P1 Up 2" ) /* P2 BUTTON1 */
 	PORT_BIT( 0x00000020, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_16WAY PORT_PLAYER(1) PORT_NAME( "P1 Right 2" ) /* P2 BUTTON2 */
 	PORT_BIT( 0x00000040, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1) PORT_NAME( "P1 Up-Right 2" ) /* P2 BUTTON3 */
 	PORT_BIT( 0x00000080, IP_ACTIVE_HIGH, IPT_SPECIAL ) /* P2 START */
@@ -3068,6 +3089,7 @@ static INPUT_PORTS_START( drmn )
 	PORT_BIT( 0x02000000, IP_ACTIVE_LOW, IPT_UNUSED ) /* P2 BUTTON5 */
 	PORT_BIT( 0x08000000, IP_ACTIVE_LOW, IPT_UNUSED ) /* P2 BUTTON6 */
 INPUT_PORTS_END
+
 
 #define SYS573_BIOS_A ROM_LOAD( "700a01.22g",   0x0000000, 0x080000, CRC(11812ef8) SHA1(e1284add4aaddd5337bd7f4e27614460d52b5b48))
 
@@ -3292,6 +3314,9 @@ ROM_END
 ROM_START( ddr2ml )
 	ROM_REGION32_LE( 0x080000, "user1", 0 )
 	SYS573_BIOS_A
+
+	ROM_REGION( 0x080000, "cpu2", 0 ) /* memory card reader */
+	ROM_LOAD( "885a01.bin",   0x000000, 0x080000, CRC(e22d093f) SHA1(927f62f63b5caa7899392decacd12fea0e6fdbea) )
 
 	ROM_REGION( 0x0000224, "user2", 0 ) /* security cart eeprom */
 	ROM_LOAD( "ge885jaa.u1",  0x000000, 0x000224, BAD_DUMP CRC(cbc984c5) SHA1(6c0cd78a41000999b4ffbd9fb3707738b50a9b50) )
@@ -4011,6 +4036,29 @@ ROM_START( dsfdcta )
 	DISK_IMAGE_READONLY( "910jaa02", 0, SHA1(70851c383e3876c4a697a99706fbaae2dafcb0e0) )
 ROM_END
 
+ROM_START( dsfdr )
+	ROM_REGION32_LE( 0x080000, "user1", 0 )
+	SYS573_BIOS_A
+
+	ROM_REGION( 0x0000224, "user2", 0 ) /* install security cart eeprom */
+	ROM_LOAD( "gea37ja.u1",   0x000000, 0x000224, BAD_DUMP CRC(5321055e) SHA1(d06b0dca9caba8249d71340469ad9083b02fd087) )
+
+	ROM_REGION( 0x0001014, "user8", 0 ) /* game security cart eeprom */
+        ROM_LOAD( "gca37ja.u1",   0x000000, 0x001014, BAD_DUMP CRC(b6d9e7f9) SHA1(bc5f491de53a96d46745df09bc94e7853052296c) )
+
+	ROM_REGION( 0x1000000, "user3", 0 ) /* onboard flash */
+	ROM_FILL( 0x0000000, 0x1000000, 0xff )
+
+	ROM_REGION( 0x000008, "user9", 0 ) /* install security cart id */
+	ROM_LOAD( "gea37ja.u6",    0x000000, 0x000008, BAD_DUMP CRC(af09e43c) SHA1(d8372f2d6e0ae07061b496a2242a63e5bc2e54dc) )
+
+	ROM_REGION( 0x000008, "user10", 0 ) /* game security cart id */
+	ROM_LOAD( "gca37ja.u6",   0x000000, 0x000008, BAD_DUMP CRC(ce84419e) SHA1(839e8ee080ecfc79021a06417d930e8b32dfc6a1) )
+
+	DISK_REGION( "cdrom0" )
+	DISK_IMAGE_READONLY( "a37jaa02", 0, SHA1(c6a23b910e884aa0d4afc388dbc8379e0d09611a) )
+ROM_END
+
 ROM_START( dsftkd )
 	ROM_REGION32_LE( 0x080000, "user1", 0 )
 	SYS573_BIOS_A
@@ -4515,8 +4563,8 @@ ROM_END
 GAME( 1998, sys573,   0,        konami573, konami573, konami573,  ROT0, "Konami", "System 573 BIOS", GAME_IS_BIOS_ROOT )
 
 GAME( 1998, darkhleg, sys573,   konami573, konami573, konami573,  ROT0, "Konami", "Dark Horse Legend (GX706 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-GAME( 1998, fbaitbc,  sys573,   konami573, fbaitbc,   ge765pwbba, ROT0, "Konami", "Fisherman's Bait - A Bass Challenge (GE765 VER. UAB)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-GAME( 1998, bassangl, fbaitbc,  konami573, fbaitbc,   ge765pwbba, ROT0, "Konami", "Bass Angler (GE765 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1998, fbaitbc,  sys573,   k573bait,  fbaitbc,   ge765pwbba, ROT0, "Konami", "Fisherman's Bait - A Bass Challenge (GE765 VER. UAB)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1998, bassangl, fbaitbc,  k573bait,  fbaitbc,   ge765pwbba, ROT0, "Konami", "Bass Angler (GE765 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1998, pbballex, sys573,   konami573, konami573, konami573,  ROT0, "Konami", "Powerful Pro Baseball EX (GX802 VER. JAB)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1998, konam80s, sys573,   konami573, konami573, konami573,  ROT90, "Konami", "Konami 80's AC Special (GC826 VER. EAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1998, konam80u, konam80s, konami573, konami573, konami573,  ROT90, "Konami", "Konami 80's AC Special (GC826 VER. UAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
@@ -4529,16 +4577,16 @@ GAME( 1998, ddrj,     dstage,   konami573, ddr,       ddr,        ROT0, "Konami"
 GAME( 1998, ddrja,    dstage,   konami573, ddr,       ddr,        ROT0, "Konami", "Dance Dance Revolution (GC845 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
 GAME( 1998, ddrjb,    dstage,   konami573, ddr,       ddr,        ROT0, "Konami", "Dance Dance Revolution (GC845 VER. JAB)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
 GAME( 1999, ddra,     dstage,   konami573, ddr,       ddr,        ROT0, "Konami", "Dance Dance Revolution (GN845 VER. AAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-GAME( 1998, fbait2bc, sys573,   konami573, fbaitbc,   ge765pwbba, ROT0, "Konami", "Fisherman's Bait 2 - A Bass Challenge (GE865 VER. UAB)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1998, fbait2bc, sys573,   k573bait,  fbaitbc,   ge765pwbba, ROT0, "Konami", "Fisherman's Bait 2 - A Bass Challenge (GE865 VER. UAB)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1999, drmn,     sys573,   konami573, drmn,      drmn,       ROT0, "Konami", "DrumMania (GQ881 VER. JAD)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
 GAME( 1999, gtrfrks,  sys573,   konami573, gtrfrks,   gtrfrks,    ROT0, "Konami", "Guitar Freaks (GQ886 VER. EAC)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1999, gtrfrksu, gtrfrks,  konami573, gtrfrks,   gtrfrks,    ROT0, "Konami", "Guitar Freaks (GQ886 VER. UAC)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1999, gtrfrksj, gtrfrks,  konami573, gtrfrks,   gtrfrks,    ROT0, "Konami", "Guitar Freaks (GQ886 VER. JAC)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1999, gtrfrksa, gtrfrks,  konami573, gtrfrks,   gtrfrks,    ROT0, "Konami", "Guitar Freaks (GQ886 VER. AAC)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-GAME( 1999, fbaitmc,  sys573,   konami573, fbaitmc,   ge765pwbba, ROT0, "Konami", "Fisherman's Bait - Marlin Challenge (GX889 VER. EA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-GAME( 1999, fbaitmcu, fbaitmc,  konami573, fbaitmc,   ge765pwbba, ROT0, "Konami", "Fisherman's Bait - Marlin Challenge (GX889 VER. UA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-GAME( 1999, fbaitmcj, fbaitmc,  konami573, fbaitmc,   ge765pwbba, ROT0, "Konami", "Fisherman's Bait - Marlin Challenge (GX889 VER. JA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-GAME( 1999, fbaitmca, fbaitmc,  konami573, fbaitmc,   ge765pwbba, ROT0, "Konami", "Fisherman's Bait - Marlin Challenge (GX889 VER. AA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1999, fbaitmc,  sys573,   k573bait,  fbaitmc,   ge765pwbba, ROT0, "Konami", "Fisherman's Bait - Marlin Challenge (GX889 VER. EA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1999, fbaitmcu, fbaitmc,  k573bait,  fbaitmc,   ge765pwbba, ROT0, "Konami", "Fisherman's Bait - Marlin Challenge (GX889 VER. UA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1999, fbaitmcj, fbaitmc,  k573bait,  fbaitmc,   ge765pwbba, ROT0, "Konami", "Fisherman's Bait - Marlin Challenge (GX889 VER. JA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1999, fbaitmca, fbaitmc,  k573bait,  fbaitmc,   ge765pwbba, ROT0, "Konami", "Fisherman's Bait - Marlin Challenge (GX889 VER. AA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1999, ddr2m,    sys573,   konami573, ddr,       ddr,        ROT0, "Konami", "Dance Dance Revolution 2nd Mix (GN895 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1999, ddrbocd,  ddr2m,    konami573, ddr,       ddr,        ROT0, "Konami", "Dance Dance Revolution Best of Cool Dancers (GE892 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1999, ddr2ml,   ddr2m,    konami573, ddr,       ddr,        ROT0, "Konami", "Dance Dance Revolution 2nd Mix - Link Ver (GE885 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
@@ -4574,6 +4622,7 @@ GAME( 2000, ddr4m,    sys573,   konami573, ddr,       ddrdigital, ROT0, "Konami"
 GAME( 2000, ddr4mj,   ddr4m,    konami573, ddr,       ddrdigital, ROT0, "Konami", "Dance Dance Revolution 4th Mix (G*A33 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.8 */
 GAME( 2000, ddr4ms,   sys573,   konami573, ddrsolo,   ddrsolo,    ROT0, "Konami", "Dance Dance Revolution 4th Mix Solo (G*A33 VER. ABA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.8 */
 GAME( 2000, ddr4msj,  ddr4ms,   konami573, ddrsolo,   ddrsolo,    ROT0, "Konami", "Dance Dance Revolution 4th Mix Solo (G*A33 VER. JBA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.8 */
+GAME( 2000, dsfdr,    sys573,   konami573, ddr,       ddrdigital, ROT0, "Konami", "Dancing Stage Featuring Disney's Rave (GCA37JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.8 */
 GAME( 2000, ddrusa,   sys573,   konami573, ddr,       ddrdigital, ROT0, "Konami", "Dance Dance Revolution USA (G*A44 VER. UAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.8 */
 GAME( 2000, ddr4mp,   sys573,   konami573, ddr,       ddrdigital, ROT0, "Konami", "Dance Dance Revolution 4th Mix Plus (G*A34 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.9 */
 GAME( 2000, ddr4mps,  sys573,   konami573, ddrsolo,   ddrsolo,    ROT0, "Konami", "Dance Dance Revolution 4th Mix Plus Solo (G*A34 VER. JAA)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING ) /* BOOT VER 1.9 */

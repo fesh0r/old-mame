@@ -27,10 +27,10 @@ TODO:
 -kakumei/kakumei2:has weird text layer strings in test mode (like "#p control panel"),
  unsure if this one is somehow related to the above daireika bug, it's a BTANB or something else.
 -Check if urashima has a "mode 3" for the layer 0 tilemap;
--Complete the dip-switches for all the games;
 -There could be timing issues caused by MCU simulation at $80004;
 -Fix the sound banking, protection-related for the first version of the MCU
  (should be somewhere on the work ram/shared ram)
+-suchipi: I need a side-by-side to understand if the PAL shuffling is correct with the OKI bgm rom.
 -urashima: might use three/four layers instead of two.It can be checked when you win
  a match in particular circumstances because there's a write in the 94000-9bfff region;
 -Massive clean-ups needed for the MCU snippet programs and the input-ports, also check if
@@ -40,13 +40,13 @@ Notes (1st MCU ver.):
 -$f000e is bogus,maybe the program snippets can modify this value,or the MCU itself can
  do that,returning the contents of D0 register seems enough for now...
  Update: Improved it for the new mcu simulation,now it pulls all the values from 0x00 to
- 0x0f,it seems to be a MCU call snippet for the $f0000 work ram;
+ 0x0f, it seems to be a MCU call snippet for the $f0000 work ram;
 -$f030e is a mirror for $f000e in urashima.
 -I need more space for MCU code...that's why I've used an extra jmp when entering
  into mcu code,so we can debug the first version freely without being teased about
  memory space.
  BTW,the real HW is using a sort of bankswitch or I'm missing something?
--$f0020 is for the sound program,same for all games,for example mjzoomin hasn't any clear
+-$f0020 is for the sound program,same for all games, for example mjzoomin hasn't any clear
  write to $80040 area and the program jumps to $f0020 when there should be a sample.
 
 ============================================================================================
@@ -231,8 +231,8 @@ static VIDEO_START( jalmah )
 	sc3_tilemap_2 = tilemap_create(machine, get_sc3_tile_info,range2_8x8,8,8,128,64);
 	sc3_tilemap_3 = tilemap_create(machine, get_sc3_tile_info,range3_8x8,8,8,64,128);
 
-	jm_scrollram = auto_malloc(0x80);
-	jm_vregs = auto_malloc(0x40);
+	jm_scrollram = auto_alloc_array(machine, UINT16, 0x80/2);
+	jm_vregs = auto_alloc_array(machine, UINT16, 0x40/2);
 
 	tilemap_set_transparent_pen(sc0_tilemap_0,15);
 	tilemap_set_transparent_pen(sc0_tilemap_1,15);
@@ -259,8 +259,8 @@ static VIDEO_START( urashima )
 	sc0_tilemap_0 = tilemap_create(machine, get_sc0_tile_info,range0_16x16,16,16,256,32);
 	sc3_tilemap_0 = tilemap_create(machine, get_sc3_tile_info,range2_8x8,8,8,128,64);
 
-	jm_scrollram = auto_malloc(0x80);
-	jm_vregs = auto_malloc(0x40);
+	jm_scrollram = auto_alloc_array(machine, UINT16, 0x80/2);
+	jm_vregs = auto_alloc_array(machine, UINT16, 0x40/2);
 
 	tilemap_set_transparent_pen(sc0_tilemap_0,15);
 	tilemap_set_transparent_pen(sc3_tilemap_0,15);
@@ -626,27 +626,27 @@ static WRITE16_HANDLER( urashima_dma_w )
 	if(data & 4)
 	{
 		UINT32 i;
-		for(i=0;i<0x200;i+=2)
-			memory_write_word(space,0x88200+i,memory_read_word(space,0x88400+i));
+		for(i = 0; i < 0x200; i += 2)
+			memory_write_word(space, 0x88200 + i, memory_read_word(space, 0x88400 + i));
 	}
 }
 
 /*same as $f00c0 sub-routine,but with additional work-around,to remove from here...*/
-static void daireika_palette_dma(running_machine *machine,UINT16 val)
+static void daireika_palette_dma(running_machine *machine, UINT16 val)
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
-	UINT32 index_1,index_2,src_addr,tmp_addr;
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	UINT32 index_1, index_2, src_addr, tmp_addr;
 	/*a0=301c0+jm_shared_ram[0x540/2] & 0xf00 */
 	/*a1=88000*/
 	src_addr = 0x301c0 + (val * 0x40);
 //  popmessage("%08x",src_addr);
-	for(index_1=0;index_1<0x200;index_1+=0x20)
+	for(index_1 = 0; index_1 < 0x200; index_1 += 0x20)
 	{
 		tmp_addr = src_addr;
 		src_addr = memory_read_dword(space,src_addr);
 
-		for(index_2=0;index_2<0x20;index_2+=2)
-			memory_write_word(space,0x88000+index_2+index_1,memory_read_word(space,src_addr+index_2));
+		for(index_2 = 0; index_2 < 0x20; index_2 += 2)
+			memory_write_word(space, 0x88000 + index_2 + index_1, memory_read_word(space, src_addr + index_2));
 
 		src_addr = tmp_addr + 4;
 	}
@@ -655,7 +655,7 @@ static void daireika_palette_dma(running_machine *machine,UINT16 val)
 /*RAM-based protection handlings*/
 static void daireika_mcu_run(running_machine *machine)
 {
-	static UINT16 prg_prot,dma_old;
+	static UINT16 prg_prot, dma_old;
 
 	if(((jm_shared_ram[0x550/2] & 0xf00) == 0x700) && ((jm_shared_ram[0x540/2] & 0xf00) != dma_old))
 	{
@@ -863,12 +863,16 @@ static WRITE16_HANDLER( jalmah_okirom_w )
 	if(ACCESSING_BITS_0_7)
 	{
 		UINT8 *oki = memory_region(space->machine, "oki");
+
 		oki_rom = data & 1;
-		/*ZA appears to be related to the banking*/
+
+		/* ZA appears to be related to the banking, or maybe kakumei2 uses PAL shuffling and this is for something else? */
 		oki_za = (data & 2) ? 1 : 0;
+
 		memcpy(&oki[0x20000], &oki[(oki_rom * 0x80000) + ((oki_bank+oki_za) * 0x20000) + 0x40000], 0x20000);
 	}
-	//popmessage("PC=%06x %02x %02x %02x",cpu_get_pc(space->cpu),oki_rom,oki_za,oki_bank);
+
+	//popmessage("PC=%06x %02x %02x %02x %08x",cpu_get_pc(space->cpu),oki_rom,oki_za,oki_bank,(oki_rom * 0x80000) + ((oki_bank+oki_za) * 0x20000) + 0x40000);
 }
 
 static WRITE16_HANDLER( jalmah_okibank_w )
@@ -876,10 +880,13 @@ static WRITE16_HANDLER( jalmah_okibank_w )
 	if(ACCESSING_BITS_0_7)
 	{
 		UINT8 *oki = memory_region(space->machine, "oki");
+
 		oki_bank = data & 3;
+
 		memcpy(&oki[0x20000], &oki[(oki_rom * 0x80000) + ((oki_bank+oki_za) * 0x20000) + 0x40000], 0x20000);
 	}
-	//popmessage("PC=%06x %02x %02x %02x",cpu_get_pc(space->cpu),oki_rom,oki_za,oki_bank);
+
+	//popmessage("PC=%06x %02x %02x %02x %08x",cpu_get_pc(space->cpu),oki_rom,oki_za,oki_bank,(oki_rom * 0x80000) + ((oki_bank+oki_za) * 0x20000) + 0x40000);
 }
 
 static WRITE16_HANDLER( jalmah_flip_screen_w )
@@ -922,10 +929,10 @@ static ADDRESS_MAP_START( urashima, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x080010, 0x080011) AM_WRITE(jalmah_flip_screen_w)
 	//       0x080012, 0x080013  MCU write related,same for each game
 	//       0x080014, 0x080015  MCU write related,same for each game
-/**/AM_RANGE(0x080016, 0x080017) AM_READ(SMH_RAM) AM_WRITE(urashima_dma_w)
+/**/AM_RANGE(0x080016, 0x080017) AM_RAM_WRITE(urashima_dma_w)
 	AM_RANGE(0x080018, 0x080019) AM_WRITE(jalmah_okibank_w)
 	AM_RANGE(0x08001a, 0x08001b) AM_WRITE(jalmah_okirom_w)
-/**/AM_RANGE(0x08001c, 0x08001d) AM_READ(SMH_RAM) AM_WRITE(urashima_bank_w)
+/**/AM_RANGE(0x08001c, 0x08001d) AM_RAM_WRITE(urashima_bank_w)
 	AM_RANGE(0x080040, 0x080041) AM_DEVREADWRITE8("oki", okim6295_r, okim6295_w, 0x00ff)
 	//       0x084000, 0x084001  ?
 	AM_RANGE(0x088000, 0x0887ff) AM_RAM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16) /* Palette RAM */
@@ -1296,8 +1303,8 @@ static MACHINE_RESET ( jalmah )
 }
 
 static MACHINE_DRIVER_START( jalmah )
-	MDRV_CPU_ADD("maincpu" , M68000, 8000000) /* 68000-8 */
-	MDRV_CPU_PROGRAM_MAP(jalmah,0)
+	MDRV_CPU_ADD("maincpu" , M68000, 12000000) /* 68000-8 */
+	MDRV_CPU_PROGRAM_MAP(jalmah)
 	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
 	//M50747 MCU
@@ -1322,14 +1329,14 @@ static MACHINE_DRIVER_START( jalmah )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("oki", OKIM6295, 4000000)
 	MDRV_SOUND_CONFIG(okim6295_interface_pin7low)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( urashima )
 	MDRV_IMPORT_FROM(jalmah)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(urashima,0)
+	MDRV_CPU_PROGRAM_MAP(urashima)
 
 	MDRV_GFXDECODE(urashima)
 
@@ -1352,7 +1359,7 @@ ROM_START ( urashima )
 	ROM_RELOAD(                   0x40001, 0x20000 )
 
 	ROM_REGION( 0x1000, "mcu", 0 ) /* M50747 MCU Code */
-	ROM_LOAD( "mcu", 0x0000, 0x1000, NO_DUMP )
+	ROM_LOAD( "m50747", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x140000, "oki", ROMREGION_ERASEFF ) /* Samples */
 	ROM_LOAD( "um-3.22c",	   0x40000, 0x80000, CRC(9fd8c8fa) SHA1(0346f74c03a4daa7a84b64c9edf0e54297c82fd9) )
@@ -1400,7 +1407,7 @@ ROM_START( daireika )
 	ROM_RELOAD(                 0x40000, 0x20000 )
 
 	ROM_REGION( 0x1000, "mcu", 0 ) /* M50747 MCU Code */
-	ROM_LOAD( "mcu", 0x0000, 0x1000, NO_DUMP )
+	ROM_LOAD( "m50747", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x140000, "oki", ROMREGION_ERASEFF ) /* Samples */
 	ROM_LOAD( "mj3.bin", 0x40000, 0x80000, CRC(65bb350c) SHA1(e77866f2d612a0973adc616717e7c89a37d6c48e) )
@@ -1442,7 +1449,7 @@ ROM_START( mjzoomin )
 	ROM_RELOAD(                      0x40000, 0x20000 )
 
 	ROM_REGION( 0x1000, "mcu", 0 ) /* M50747 MCU Code */
-	ROM_LOAD( "mcu", 0x0000, 0x1000, NO_DUMP )
+	ROM_LOAD( "m50747", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x140000, "oki", ROMREGION_ERASEFF ) /* Samples */
 	ROM_LOAD( "zoomin-3.bin", 0x40000, 0x80000, CRC(07d7b8cd) SHA1(e05ce80ffb945b04f93f8c49d0c840b0bff6310b) )
@@ -1482,7 +1489,7 @@ ROM_START( kakumei )
 	ROM_RELOAD(                     0x40000, 0x20000 )
 
 	ROM_REGION( 0x1000, "mcu", 0 ) /* M50747 MCU Code */
-	ROM_LOAD( "mcu", 0x0000, 0x1000, NO_DUMP )
+	ROM_LOAD( "m50747", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x140000, "oki", ROMREGION_ERASEFF ) /* Samples */
 	ROM_LOAD( "rom3.bin", 0x00000, 0x40000, CRC(c9b7a526) SHA1(edec57e66d4ff601c8fdef7b1405af84a3f3d883) )
@@ -1519,7 +1526,7 @@ ROM_START( kakumei2 )
 	ROM_LOAD16_BYTE( "mj-8956.2", 0x00000, 0x40000, CRC(0f942507) SHA1(7ec2fbeb9a34dfc80c4df3de8397388db13f5c7c) )
 
 	ROM_REGION( 0x1000, "mcu", 0 ) /* M50747 MCU Code */
-	ROM_LOAD( "mcu", 0x0000, 0x1000, NO_DUMP )
+	ROM_LOAD( "m50747", 0x0000, 0x1000, NO_DUMP )
 
 	ROM_REGION( 0x140000, "oki", ROMREGION_ERASEFF ) /* Samples */
 	ROM_LOAD( "92000-01.3", 0x040000, 0x80000, CRC(4b0ed440) SHA1(11961d217a41f92b60d5083a5e346c245f7db620) )
@@ -1592,12 +1599,23 @@ ROM_START( suchipi )
 	ROM_LOAD16_BYTE( "2.bin", 0x00000, 0x40000, CRC(42ecf88a) SHA1(7bb85470bc9f94c867646afeb91c4730599ea299) )
 
 	ROM_REGION( 0x1000, "mcu", 0 ) /* M50747 MCU Code */
-	ROM_LOAD( "mcu", 0x0000, 0x1000, NO_DUMP )
+	ROM_LOAD( "m50747", 0x0000, 0x1000, NO_DUMP )
+
+	ROM_REGION( 0x100000, "oki_data", ROMREGION_ERASEFF ) /* Samples */
+	ROM_LOAD( "3.bin", 0x00000, 0x80000, CRC(691b5387) SHA1(b8bc9f904eab7653566042b18d89276d537ba586) )
+	ROM_LOAD( "4.bin", 0x80000, 0x80000, CRC(3fe932a1) SHA1(9e768b901738ee9eba207a67c4fd19efb0035a68) )
 
 	ROM_REGION( 0x140000, "oki", ROMREGION_ERASEFF ) /* Samples */
-	ROM_LOAD( "3.bin", 0x40000, 0x80000, CRC(691b5387) SHA1(b8bc9f904eab7653566042b18d89276d537ba586) )
-	ROM_LOAD( "4.bin", 0xc0000, 0x80000, CRC(3fe932a1) SHA1(9e768b901738ee9eba207a67c4fd19efb0035a68) )
-	ROM_COPY( "oki" ,  0x40000, 0x00000, 0x40000 )
+	ROM_COPY( "oki_data" , 0x00000, 0x000000+0x00000, 0x40000 )
+
+	/* PAL address shuffling for the BGM data (TODO: check this with a side-by-side test)*/
+	ROM_COPY( "oki_data" , 0x20000, 0x000000+0x40000, 0x20000 ) // 0
+	ROM_COPY( "oki_data" , 0x40000, 0x020000+0x40000, 0x20000 ) // 1
+	ROM_COPY( "oki_data" , 0x60000, 0x040000+0x40000, 0x20000 ) // 2
+	ROM_COPY( "oki_data" , 0x00000, 0x060000+0x40000, 0x20000 ) // 3
+
+	ROM_COPY( "oki_data" , 0x80000, 0x080000+0x40000, 0x40000 )
+	ROM_COPY( "oki_data" , 0xc0000, 0x0c0000+0x40000, 0x40000 )
 
 	ROM_REGION( 0x20000, "gfx1", 0 ) /* BG0 */
 	ROM_LOAD( "14.bin", 0x00000, 0x20000, CRC(e465a540) SHA1(10e19599ab90b0c0b6ef6ee41f16620bd1ba6800) )
@@ -1614,7 +1632,6 @@ ROM_START( suchipi )
 	ROM_LOAD( "9.bin",  0x100000, 0x80000, CRC(8a348246) SHA1(13516c48bdbe8d78e7517473ef2835a4dea2ce93) )
 	ROM_LOAD( "10.bin", 0x180000, 0x80000, CRC(2b0d1afd) SHA1(40009b450901567052aa63c4629a2f7a10343e63) )
 
-	/* the 3 missing proms should be the same as the other games */
 	ROM_REGION( 0x220, "user1", 0 ) /* Proms */
 	ROM_LOAD( "mj15.bpr", 0x000, 0x100, CRC(ebac41f9) SHA1(9d1629d977849663392cbf03a3ddf76665f88608) )
 	ROM_LOAD( "mj16.bpr", 0x100, 0x100, CRC(8d5dc1f6) SHA1(9f723e7cd44f8c09ec30b04725644346484ec753) )
@@ -2301,53 +2318,54 @@ static READ16_HANDLER( suchipi_mcu_r )
 
 static DRIVER_INIT( urashima )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x80004, 0x80005, 0, 0, urashima_mcu_r );
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x80012, 0x80013, 0, 0, urashima_mcu_w );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x80004, 0x80005, 0, 0, urashima_mcu_r );
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x80012, 0x80013, 0, 0, urashima_mcu_w );
 
 	mcu_prg = 0x12;
 }
 
 static DRIVER_INIT( daireika )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x80004, 0x80005, 0, 0, daireika_mcu_r );
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x80012, 0x80013, 0, 0, daireika_mcu_w );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x80004, 0x80005, 0, 0, daireika_mcu_r );
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x80012, 0x80013, 0, 0, daireika_mcu_w );
 
 	mcu_prg = 0x11;
 }
 
 static DRIVER_INIT( mjzoomin )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x80004, 0x80005, 0, 0, mjzoomin_mcu_r );
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x80012, 0x80013, 0, 0, mjzoomin_mcu_w );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x80004, 0x80005, 0, 0, mjzoomin_mcu_r );
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x80012, 0x80013, 0, 0, mjzoomin_mcu_w );
 
 	mcu_prg = 0x13;
 }
 
 static DRIVER_INIT( kakumei )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x80004, 0x80005, 0, 0, kakumei_mcu_r );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x80004, 0x80005, 0, 0, kakumei_mcu_r );
 
 	mcu_prg = 0x21;
 }
 
 static DRIVER_INIT( kakumei2 )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x80004, 0x80005, 0, 0, kakumei_mcu_r );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x80004, 0x80005, 0, 0, kakumei_mcu_r );
 
 	mcu_prg = 0x22;
 }
 
 static DRIVER_INIT( suchipi )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x80004, 0x80005, 0, 0, suchipi_mcu_r );
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x80004, 0x80005, 0, 0, suchipi_mcu_r );
+
 	mcu_prg = 0x23;
 }
 
 /*First version of the MCU*/
-GAME( 1989, urashima, 0, urashima,  urashima,   urashima, ROT0, "UPL",          "Otogizoushi Urashima Mahjong",         GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-GAME( 1989, daireika, 0, jalmah,    daireika,   daireika, ROT0, "Jaleco / NMK", "Mahjong Daireikai",                    GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-GAME( 1990, mjzoomin, 0, jalmah,    mjzoomin,   mjzoomin, ROT0, "Jaleco",       "Mahjong Channel Zoom In",              GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1989, urashima, 0, urashima,  urashima,   urashima, ROT0, "UPL",          "Otogizoushi Urashima Mahjong (Japan)",         GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1989, daireika, 0, jalmah,    daireika,   daireika, ROT0, "Jaleco / NMK", "Mahjong Daireikai (Japan)",                    GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1990, mjzoomin, 0, jalmah,    mjzoomin,   mjzoomin, ROT0, "Jaleco",       "Mahjong Channel Zoom In (Japan)",              GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 /*Second version of the MCU*/
-GAME( 1990, kakumei,  0, jalmah,    kakumei,    kakumei,  ROT0, "Jaleco",       "Mahjong Kakumei",                      GAME_IMPERFECT_GRAPHICS )
-GAME( 1992, kakumei2, 0, jalmah,    kakumei2,   kakumei2, ROT0, "Jaleco",       "Mahjong Kakumei 2 - Princess League",  GAME_IMPERFECT_GRAPHICS )
-GAME( 1993, suchipi,  0, jalmah,    suchipi,    suchipi,  ROT0, "Jaleco",       "Idol Janshi Suchie-Pai Special",       GAME_IMPERFECT_GRAPHICS )
+GAME( 1990, kakumei,  0, jalmah,    kakumei,    kakumei,  ROT0, "Jaleco",       "Mahjong Kakumei (Japan)",                      GAME_IMPERFECT_GRAPHICS )
+GAME( 1992, kakumei2, 0, jalmah,    kakumei2,   kakumei2, ROT0, "Jaleco",       "Mahjong Kakumei 2 - Princess League (Japan)",  GAME_IMPERFECT_GRAPHICS )
+GAME( 1993, suchipi,  0, jalmah,    suchipi,    suchipi,  ROT0, "Jaleco",       "Idol Janshi Suchie-Pai Special (Japan)",       GAME_IMPERFECT_GRAPHICS )

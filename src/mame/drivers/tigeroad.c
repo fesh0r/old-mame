@@ -283,7 +283,7 @@ static INPUT_PORTS_START( tigeroad )
 	PORT_DIPSETTING(      0x2000, DEF_STR( Very_Easy) )
 	PORT_DIPSETTING(      0x4000, DEF_STR( Easy ) )
 	PORT_DIPSETTING(      0x6000, DEF_STR( Normal ) )
-	PORT_DIPSETTING(      0x0000, "Difficult" )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Difficult ) )
 	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Allow_Continue ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( No ) )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Yes ) )
@@ -359,8 +359,8 @@ static INPUT_PORTS_START( toramich )
 	PORT_DIPNAME( 0x6000, 0x6000, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(      0x4000, DEF_STR( Easy ) )
 	PORT_DIPSETTING(      0x6000, DEF_STR( Normal ) )
-	PORT_DIPSETTING(      0x2000, "Difficult" )
-	PORT_DIPSETTING(      0x0000, "Very Difficult" )
+	PORT_DIPSETTING(      0x2000, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Allow_Continue ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( No ) )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Yes ) )
@@ -434,7 +434,7 @@ static INPUT_PORTS_START( f1dream )
 	PORT_DIPSETTING(      0x0000, "20" )
 	PORT_DIPNAME( 0x2000, 0x2000, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(      0x2000, DEF_STR( Normal ) )
-	PORT_DIPSETTING(      0x0000, "Difficult" )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Difficult ) )
 	PORT_DIPNAME( 0x4000, 0x0000, DEF_STR( Version ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( International ) )
 	PORT_DIPSETTING(      0x4000, DEF_STR( Japan ) )
@@ -501,7 +501,7 @@ GFXDECODE_END
 /* handler called by the 2203 emulator when the internal timers cause an IRQ */
 static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =
@@ -525,12 +525,12 @@ static MACHINE_DRIVER_START( tigeroad )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_10MHz) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_port_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_port_map)
 
 	/* IRQs are triggered by the YM2203 */
 
@@ -570,8 +570,8 @@ static MACHINE_DRIVER_START( toramich )
 	MDRV_IMPORT_FROM(tigeroad)
 
 	MDRV_CPU_ADD("sample", Z80, 3579545) /* ? */
-	MDRV_CPU_PROGRAM_MAP(sample_map,0)
-	MDRV_CPU_IO_MAP(sample_port_map,0)
+	MDRV_CPU_PROGRAM_MAP(sample_map)
+	MDRV_CPU_IO_MAP(sample_port_map)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold,4000)	/* ? */
 
 	/* sound hardware */
@@ -708,6 +708,9 @@ ROM_START( f1dream )
 	ROM_REGION( 0x10000, "audiocpu", 0 ) /* audio CPU */
 	ROM_LOAD( "12k_04.bin",   0x0000, 0x8000, CRC(4b9a7524) SHA1(19004958c19ac0af35f2c97790b0082ee2c15bc4) )
 
+	ROM_REGION( 0x1000, "mcu", 0 )	/* i8751 microcontroller */
+	ROM_LOAD( "c8751h-88",     0x0000, 0x1000, NO_DUMP )
+
 	ROM_REGION( 0x008000, "text", ROMREGION_DISPOSE )
 	ROM_LOAD( "10d_01.bin",   0x00000, 0x08000, CRC(361caf00) SHA1(8a109e4e116d0c5eea86f9c57c05359754daa5b9) ) /* 8x8 text */
 
@@ -770,12 +773,12 @@ ROM_END
 
 static DRIVER_INIT( tigeroad )
 {
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xfe4002, 0xfe4003, 0, 0, tigeroad_soundcmd_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xfe4002, 0xfe4003, 0, 0, tigeroad_soundcmd_w);
 }
 
 static DRIVER_INIT( f1dream )
 {
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xfe4002, 0xfe4003, 0, 0, f1dream_control_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xfe4002, 0xfe4003, 0, 0, f1dream_control_w);
 }
 
 

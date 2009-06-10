@@ -27,7 +27,7 @@ static INPUT_CHANGED( coin_inserted )
 {
 	/* this starts a 556 one-shot timer (and triggers a sound effect) */
 	if (newval)
-		cpu_set_input_line(field->port->machine->cpu[0], INPUT_LINE_NMI, PULSE_LINE);
+		cputag_set_input_line(field->port->machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -41,7 +41,7 @@ static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ_PORT("DSW")
 	AM_RANGE(0x01, 0x01) AM_READ_PORT("INPUTS")
-	AM_RANGE(0x20, 0x3f) AM_WRITE(SMH_RAM) AM_BASE(&cheekyms_spriteram)
+	AM_RANGE(0x20, 0x3f) AM_WRITEONLY AM_BASE(&cheekyms_spriteram)
 	AM_RANGE(0x40, 0x40) AM_WRITE(cheekyms_port_40_w)
 	AM_RANGE(0x80, 0x80) AM_WRITE(cheekyms_port_80_w) AM_BASE(&cheekyms_port_80)
 ADDRESS_MAP_END
@@ -122,8 +122,8 @@ static MACHINE_DRIVER_START( cheekyms )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,5000000/2)  /* 2.5 MHz */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_IO_MAP(io_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
+	MDRV_CPU_IO_MAP(io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
@@ -180,4 +180,4 @@ ROM_END
 
 
 
-GAME( 1980, cheekyms, 0, cheekyms, cheekyms, 0, ROT270, "Universal", "Cheeky Mouse", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1980, cheekyms, 0, cheekyms, cheekyms, 0, ROT270, "Universal", "Cheeky Mouse", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )

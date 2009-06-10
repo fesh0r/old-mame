@@ -348,8 +348,8 @@ static const st0016_interface st0016_config =
 static MACHINE_DRIVER_START( macs )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",Z80,8000000) /* 8 MHz ? */
-	MDRV_CPU_PROGRAM_MAP(macs_mem,0)
-	MDRV_CPU_IO_MAP(macs_io,0)
+	MDRV_CPU_PROGRAM_MAP(macs_mem)
+	MDRV_CPU_IO_MAP(macs_io)
 
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
@@ -590,19 +590,19 @@ static MACHINE_RESET(macs)
 
 static DRIVER_INIT(macs)
 {
-	macs_ram1=auto_malloc(0x20000);
+	macs_ram1=auto_alloc_array(machine, UINT8, 0x20000);
 	st0016_game=10|0x80;
 }
 
 static DRIVER_INIT(kisekaeh)
 {
-	macs_ram1=auto_malloc(0x20000);
+	macs_ram1=auto_alloc_array(machine, UINT8, 0x20000);
 	st0016_game=11|0x180;
 }
 
 static DRIVER_INIT(kisekaem)
 {
-	macs_ram1=auto_malloc(0x20000);
+	macs_ram1=auto_alloc_array(machine, UINT8, 0x20000);
 	st0016_game=10|0x180;
 }
 

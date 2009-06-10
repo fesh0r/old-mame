@@ -145,7 +145,7 @@ void asic65_config(running_machine *machine, int asictype)
 
 void asic65_reset(running_machine *machine, int state)
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	/* rom-based means reset and clear states */
 	if (asic65.cpu != NULL)
@@ -543,8 +543,8 @@ MACHINE_DRIVER_START( asic65 )
 
 	/* ASIC65 */
 	MDRV_CPU_ADD("asic65", TMS32010, 20000000)
-	MDRV_CPU_PROGRAM_MAP(asic65_program_map,0)
-	MDRV_CPU_IO_MAP(asic65_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(asic65_program_map)
+	MDRV_CPU_IO_MAP(asic65_io_map)
 MACHINE_DRIVER_END
 
 

@@ -58,14 +58,14 @@ INLINE void get_crosshair_xy(running_machine *machine, int player, int *x, int *
 static TIMER_CALLBACK( trigger_gun_interrupt )
 {
 	/* fire the IRQ at the correct moment */
-	cpu_set_input_line(machine->cpu[0], param, ASSERT_LINE);
+	cputag_set_input_line(machine, "maincpu", param, ASSERT_LINE);
 }
 
 
 static TIMER_CALLBACK( clear_gun_interrupt )
 {
 	/* clear the IRQ on the next scanline? */
-	cpu_set_input_line(machine->cpu[0], param, CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", param, CLEAR_LINE);
 }
 
 
@@ -429,7 +429,7 @@ static MACHINE_DRIVER_START( tickee )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", TMS34010, XTAL_40MHz)
 	MDRV_CPU_CONFIG(tms_config)
-	MDRV_CPU_PROGRAM_MAP(tickee_map,0)
+	MDRV_CPU_PROGRAM_MAP(tickee_map)
 
 	MDRV_MACHINE_RESET(tickee)
 	MDRV_NVRAM_HANDLER(generic_1fill)
@@ -460,7 +460,7 @@ static MACHINE_DRIVER_START( ghoshunt )
 
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(ghoshunt_map,0)
+	MDRV_CPU_PROGRAM_MAP(ghoshunt_map)
 MACHINE_DRIVER_END
 
 

@@ -285,7 +285,7 @@ ADDRESS_MAP_END
 
 static MACHINE_DRIVER_START( pr8210 )
 	MDRV_CPU_ADD("pr8210", I8049, XTAL_4_41MHz)
-	MDRV_CPU_IO_MAP(pr8210_portmap,0)
+	MDRV_CPU_IO_MAP(pr8210_portmap)
 MACHINE_DRIVER_END
 
 
@@ -305,8 +305,8 @@ const ldplayer_interface pr8210_interface =
 	LASERDISC_TYPE_PIONEER_PR8210,				/* type of the player */
 	sizeof(ldplayer_data),						/* size of the state */
 	"Pioneer PR-8210",							/* name of the player */
-	rom_pr8210,									/* pointer to ROM region information */
-	machine_config_pr8210,						/* pointer to machine configuration */
+	ROM_NAME(pr8210),							/* pointer to ROM region information */
+	MACHINE_DRIVER_NAME(pr8210),				/* pointer to machine configuration */
 	pr8210_init,								/* initialization callback */
 	pr8210_vsync,								/* vsync callback */
 	pr8210_update,								/* update callback */
@@ -1000,7 +1000,7 @@ ADDRESS_MAP_END
 
 static MACHINE_DRIVER_START( simutrek )
 	MDRV_CPU_ADD("simutrek", I8748, XTAL_6MHz)
-	MDRV_CPU_IO_MAP(simutrek_portmap,0)
+	MDRV_CPU_IO_MAP(simutrek_portmap)
 
 	MDRV_IMPORT_FROM(pr8210)
 MACHINE_DRIVER_END
@@ -1025,8 +1025,8 @@ const ldplayer_interface simutrek_interface =
 	LASERDISC_TYPE_SIMUTREK_SPECIAL,			/* type of the player */
 	sizeof(ldplayer_data),						/* size of the state */
 	"Simutrek Modified PR-8210",				/* name of the player */
-	rom_simutrek,								/* pointer to ROM region information */
-	machine_config_simutrek,					/* pointer to machine configuration */
+	ROM_NAME(simutrek),							/* pointer to ROM region information */
+	MACHINE_DRIVER_NAME(simutrek),				/* pointer to machine configuration */
 	simutrek_init,								/* initialization callback */
 	simutrek_vsync,								/* vsync callback */
 	simutrek_update,							/* update callback */

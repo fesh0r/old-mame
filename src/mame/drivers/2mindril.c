@@ -393,7 +393,7 @@ static INTERRUPT_GEN( drill_interrupt )
 /* WRONG,it does something with 60000c & 700002,likely to be called when the player throws the ball.*/
 static void irqhandler(const device_config *device, int irq)
 {
-//  cpu_set_input_line(device->machine->cpu[0],5,irq ? ASSERT_LINE : CLEAR_LINE);
+//  cputag_set_input_line(device->machine, "maincpu", 5, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -403,7 +403,7 @@ static const ym2610_interface ym2610_config =
 
 static MACHINE_DRIVER_START( drill )
 	MDRV_CPU_ADD("maincpu", M68000, 16000000 )
-	MDRV_CPU_PROGRAM_MAP(drill_map,0)
+	MDRV_CPU_PROGRAM_MAP(drill_map)
 	MDRV_CPU_VBLANK_INT("screen", drill_interrupt)
 	MDRV_GFXDECODE(2mindril)
 

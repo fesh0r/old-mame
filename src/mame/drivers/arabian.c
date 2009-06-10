@@ -217,7 +217,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xc000) AM_MIRROR(0x01ff) AM_READ_PORT("IN0")
 	AM_RANGE(0xc200, 0xc200) AM_MIRROR(0x01ff) AM_READ_PORT("DSW1")
 	AM_RANGE(0xd000, 0xd7ef) AM_RAM AM_BASE(&custom_cpu_ram)
-	AM_RANGE(0xd7f0, 0xd7ff) AM_READWRITE(custom_cpu_r, SMH_RAM)
+	AM_RANGE(0xd7f0, 0xd7ff) AM_READ(custom_cpu_r) AM_WRITENOP
 	AM_RANGE(0xe000, 0xe007) AM_MIRROR(0x0ff8) AM_WRITE(arabian_blitter_w) AM_BASE(&arabian_blitter)
 ADDRESS_MAP_END
 
@@ -371,8 +371,8 @@ static MACHINE_DRIVER_START( arabian )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MAIN_OSC/4)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_IO_MAP(main_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
+	MDRV_CPU_IO_MAP(main_io_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
     MDRV_MACHINE_START(arabian)
@@ -445,8 +445,8 @@ ROM_END
 
 static DRIVER_INIT( arabian )
 {
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd34b, 0xd34b, 0, 0, custom_flip_w);
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd400, 0xd401, 0, 0, custom_cocktail_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd34b, 0xd34b, 0, 0, custom_flip_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd400, 0xd401, 0, 0, custom_cocktail_w);
 }
 
 

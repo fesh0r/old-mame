@@ -40,19 +40,19 @@ static UINT8 cpu2_m6000=0;
 
 static WRITE8_HANDLER( cpu1_reset_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(space->machine, "sub", INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( cpu2_reset_w )
 {
-	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( mcu_reset_w )
 {
 	/* the bootlegs don't have a MCU, so make sure it's there before trying to reset it */
-	if (space->machine->cpu[3] != NULL)
-		cpu_set_input_line(space->machine->cpu[3], INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
+	if (cputag_get_cpu(space->machine, "68705") != NULL)
+		cputag_set_input_line(space->machine, "68705", INPUT_LINE_RESET, data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( cpu2_m6000_w )
@@ -68,25 +68,25 @@ static READ8_HANDLER( cpu0_mf800_r )
 static WRITE8_HANDLER( soundcommand_w )
 {
       soundlatch_w(space, 0, data);
-      cpu_set_input_line(space->machine->cpu[2], 0, HOLD_LINE);
+      cputag_set_input_line(space->machine, "audiocpu", 0, HOLD_LINE);
 }
 
 static WRITE8_HANDLER( irq0_ack_w )
 {
 	int bit = data & 1;
 
-	cpu_interrupt_enable(space->machine->cpu[0],bit);
+	cpu_interrupt_enable(cputag_get_cpu(space->machine, "maincpu"), bit);
 	if (!bit)
-		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( irq1_ack_w )
 {
 	int bit = data & 1;
 
-	cpu_interrupt_enable(space->machine->cpu[1],bit);
+	cpu_interrupt_enable(cputag_get_cpu(space->machine, "sub"), bit);
 	if (!bit)
-		cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "sub", 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( coincounter_w )
@@ -340,19 +340,19 @@ static MACHINE_DRIVER_START( retofinv )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 18432000/6)	/* 3.072 MHz? */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_assert)
 
 	MDRV_CPU_ADD("sub", Z80, 18432000/6)	/* 3.072 MHz? */
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_assert)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 18432000/6)	/* 3.072 MHz? */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,2)
 
 	MDRV_CPU_ADD("68705", M68705,18432000/6)	/* 3.072 MHz? */
-	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
+	MDRV_CPU_PROGRAM_MAP(mcu_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000))	/* 100 CPU slices per frame - enough for the sound CPU to read all commands */
 
@@ -386,7 +386,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( retofinb )
 
 	MDRV_IMPORT_FROM(retofinv)
-	MDRV_CPU_REMOVE("68705")
+	MDRV_DEVICE_REMOVE("68705")
 
 MACHINE_DRIVER_END
 

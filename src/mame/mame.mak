@@ -30,7 +30,8 @@ OBJDIRS += \
 
 #-------------------------------------------------
 # specify available CPU cores; some of these are
-# only for MESS and so aren't included
+# only for MESS, but are included so that they get
+# updated with any MAME core changes
 #-------------------------------------------------
 
 CPUS += Z80
@@ -109,7 +110,7 @@ CPUS += LR35902
 CPUS += TMS7000
 CPUS += SM8500
 CPUS += MINX
-
+CPUS += SSEM
 
 
 #-------------------------------------------------
@@ -341,9 +342,9 @@ $(MAMEOBJ)/shared.a: \
 #-------------------------------------------------
 
 $(MAMEOBJ)/alba.a: \
-	$(DRIVERS)/hanaroku.o \
+	$(DRIVERS)/albazc.o \
+	$(DRIVERS)/albazg.o \
 	$(DRIVERS)/rmhaihai.o \
-	$(DRIVERS)/yumefuda.o \
 
 $(MAMEOBJ)/alliedl.a: \
 	$(DRIVERS)/ace.o \
@@ -367,6 +368,7 @@ $(MAMEOBJ)/amiga.a: \
 $(MAMEOBJ)/aristocr.a: \
 	$(DRIVERS)/86lions.o \
 	$(DRIVERS)/caswin.o \
+	$(DRIVERS)/aristmk4.o \
 	$(DRIVERS)/aristmk5.o \
 	$(MACHINE)/archimds.o \
 
@@ -692,6 +694,7 @@ $(MAMEOBJ)/igs.a: \
 
 $(MAMEOBJ)/irem.a: \
 	$(DRIVERS)/m10.o $(VIDEO)/m10.o \
+	$(DRIVERS)/m14.o \
 	$(DRIVERS)/m52.o $(VIDEO)/m52.o \
 	$(DRIVERS)/m57.o $(VIDEO)/m57.o \
 	$(DRIVERS)/m58.o $(VIDEO)/m58.o \
@@ -799,6 +802,7 @@ $(MAMEOBJ)/konami.a: \
 	$(DRIVERS)/konamigx.o $(MACHINE)/konamigx.o $(VIDEO)/konamigx.o \
 	$(DRIVERS)/konamim2.o \
 	$(DRIVERS)/ksys573.o $(MACHINE)/zs01.o \
+	$(DRIVERS)/twinkle.o \
 	$(DRIVERS)/labyrunr.o $(VIDEO)/labyrunr.o \
 	$(DRIVERS)/lethal.o $(VIDEO)/lethal.o \
 	$(DRIVERS)/mainevt.o $(VIDEO)/mainevt.o \
@@ -938,7 +942,11 @@ $(MAMEOBJ)/namco.a: \
 	$(DRIVERS)/warpwarp.o $(AUDIO)/warpwarp.o $(VIDEO)/warpwarp.o \
 	$(MACHINE)/namcoio.o \
 	$(AUDIO)/geebee.o \
+	$(MACHINE)/namco06.o \
 	$(MACHINE)/namco50.o \
+	$(MACHINE)/namco51.o \
+	$(MACHINE)/namco53.o \
+	$(AUDIO)/namco52.o \
 	$(AUDIO)/namco54.o \
 	$(AUDIO)/namcoc7x.o \
 	$(VIDEO)/bosco.o \
@@ -1125,7 +1133,6 @@ $(MAMEOBJ)/sega.a: \
 	$(DRIVERS)/suprloco.o $(VIDEO)/suprloco.o \
 	$(DRIVERS)/system1.o $(VIDEO)/system1.o \
 	$(DRIVERS)/system16.o $(MACHINE)/system16.o $(VIDEO)/system16.o $(VIDEO)/sys16spr.o \
-	$(DRIVERS)/system18.o \
 	$(DRIVERS)/topshoot.o \
 	$(DRIVERS)/turbo.o $(AUDIO)/turbo.o $(VIDEO)/turbo.o \
 	$(DRIVERS)/vicdual.o $(AUDIO)/vicdual.o $(VIDEO)/vicdual.o \
@@ -1274,7 +1281,6 @@ $(MAMEOBJ)/taito.a: \
 	$(DRIVERS)/nycaptor.o $(MACHINE)/nycaptor.o $(VIDEO)/nycaptor.o \
 	$(DRIVERS)/opwolf.o $(MACHINE)/opwolf.o \
 	$(DRIVERS)/othunder.o $(VIDEO)/othunder.o \
-	$(DRIVERS)/parentj.o \
 	$(DRIVERS)/pitnrun.o $(MACHINE)/pitnrun.o $(VIDEO)/pitnrun.o \
 	$(DRIVERS)/qix.o $(MACHINE)/qix.o $(AUDIO)/qix.o $(VIDEO)/qix.o \
 	$(DRIVERS)/rainbow.o $(MACHINE)/rainbow.o \
@@ -1293,6 +1299,7 @@ $(MAMEOBJ)/taito.a: \
 	$(DRIVERS)/taito_l.o $(VIDEO)/taito_l.o \
 	$(DRIVERS)/taito_x.o $(MACHINE)/cchip.o \
 	$(DRIVERS)/taito_z.o $(VIDEO)/taito_z.o \
+	$(DRIVERS)/taito_o.o $(VIDEO)/taito_o.o \
 	$(DRIVERS)/taitoair.o $(VIDEO)/taitoair.o \
 	$(DRIVERS)/taitojc.o $(VIDEO)/taitojc.o \
 	$(DRIVERS)/taitopjc.o $\
@@ -1575,6 +1582,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/rcorsair.o \
 	$(DRIVERS)/re900.o \
 	$(DRIVERS)/shangkid.o $(VIDEO)/shangkid.o \
+	$(DRIVERS)/skimaxx.o \
 	$(DRIVERS)/skyarmy.o \
 	$(DRIVERS)/skylncr.o \
 	$(DRIVERS)/sliver.o \

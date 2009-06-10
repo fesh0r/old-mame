@@ -446,7 +446,7 @@ static TIMER_DEVICE_CALLBACK( generate_interrupt )
 
 	/* IRQ is clocked on the rising edge of 16V, equal to the previous 32V */
 	if (scanline & 16)
-		cpu_set_input_line(timer->machine->cpu[0], 0, ((scanline - 1) & 32) ? ASSERT_LINE : CLEAR_LINE);
+		cputag_set_input_line(timer->machine, "maincpu", 0, ((scanline - 1) & 32) ? ASSERT_LINE : CLEAR_LINE);
 
 	/* do a partial update now to handle sprite multiplexing (Maze Invaders) */
 	video_screen_update_partial(timer->machine->primary_screen, scanline);
@@ -463,7 +463,7 @@ static MACHINE_START( centiped )
 
 static MACHINE_RESET( centiped )
 {
-	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 0, CLEAR_LINE);
 	dsw_select = 0;
 	control_select = 0;
 }
@@ -480,7 +480,7 @@ static MACHINE_RESET( magworm )
 
 static WRITE8_HANDLER( irq_ack_w )
 {
-	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 }
 
 
@@ -1590,7 +1590,7 @@ static MACHINE_DRIVER_START( centiped )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, 12096000/8)	/* 1.512 MHz (slows down to 0.75MHz while accessing playfield RAM) */
-	MDRV_CPU_PROGRAM_MAP(centiped_map,0)
+	MDRV_CPU_PROGRAM_MAP(centiped_map)
 
 	MDRV_MACHINE_START(centiped)
 	MDRV_MACHINE_RESET(centiped)
@@ -1637,7 +1637,7 @@ static MACHINE_DRIVER_START( centipdb )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(centiped)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(centipdb_map,0)
+	MDRV_CPU_PROGRAM_MAP(centipdb_map)
 
 	/* sound hardware */
 	MDRV_SOUND_REPLACE("pokey", AY8910, 12096000/8)
@@ -1664,7 +1664,7 @@ static MACHINE_DRIVER_START( milliped )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(centiped)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(milliped_map,0)
+	MDRV_CPU_PROGRAM_MAP(milliped_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(milliped)
@@ -1689,7 +1689,7 @@ static MACHINE_DRIVER_START( warlords )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(centiped)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(warlords_map,0)
+	MDRV_CPU_PROGRAM_MAP(warlords_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(warlords)
@@ -1711,7 +1711,7 @@ static MACHINE_DRIVER_START( mazeinv )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(milliped)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(mazeinv_map,0)
+	MDRV_CPU_PROGRAM_MAP(mazeinv_map)
 	MDRV_VIDEO_UPDATE(centiped)
 MACHINE_DRIVER_END
 
@@ -1720,8 +1720,8 @@ static MACHINE_DRIVER_START( bullsdrt )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", S2650, 12096000/8)
-	MDRV_CPU_PROGRAM_MAP(bullsdrt_map,0)
-	MDRV_CPU_IO_MAP(bullsdrt_port_map,0)
+	MDRV_CPU_PROGRAM_MAP(bullsdrt_map)
+	MDRV_CPU_IO_MAP(bullsdrt_port_map)
 
 	MDRV_ATARIVGEAROM_ADD("earom")
 
@@ -1976,7 +1976,7 @@ ROM_END
 
 static DRIVER_INIT( caterplr )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	const device_config *device = devtag_get_device(machine, "pokey");
 	memory_install_readwrite8_device_handler(space, device, 0x1000, 0x100f, 0, 0, caterplr_AY8910_r, caterplr_AY8910_w);
 	memory_install_read8_device_handler(space, device, 0x1780, 0x1780, 0, 0, caterplr_rand_r);
@@ -1985,7 +1985,7 @@ static DRIVER_INIT( caterplr )
 
 static DRIVER_INIT( magworm )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	const device_config *device = devtag_get_device(machine, "pokey");
 	memory_install_write8_device_handler(space, device, 0x1001, 0x1001, 0, 0, ay8910_address_w);
 	memory_install_readwrite8_device_handler(space, device, 0x1003, 0x1003, 0, 0, ay8910_r, ay8910_data_w);

@@ -89,11 +89,11 @@ static WRITE8_DEVICE_HANDLER( upscope_cia_0_porta_w )
 	/* swap the write handlers between ROM and bank 1 based on the bit */
 	if ((data & 1) == 0)
 		/* overlay disabled, map RAM on 0x000000 */
-		memory_install_write16_handler(cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x000000, 0x07ffff, 0, 0, SMH_BANK1);
+		memory_install_write16_handler(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x000000, 0x07ffff, 0, 0, (write16_space_func)SMH_BANK(1));
 
 	else
 		/* overlay enabled, map Amiga system ROM on 0x000000 */
-		memory_install_write16_handler(cpu_get_address_space(device->machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x000000, 0x07ffff, 0, 0, SMH_UNMAP);
+		memory_install_write16_handler(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x000000, 0x07ffff, 0, 0, (write16_space_func)SMH_UNMAP);
 }
 
 
@@ -300,7 +300,7 @@ static MACHINE_DRIVER_START( upscope )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, AMIGA_68000_NTSC_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 
 	MDRV_MACHINE_RESET(amiga)
 	MDRV_NVRAM_HANDLER(generic_0fill)
@@ -388,7 +388,7 @@ static DRIVER_INIT( upscope )
 
 	/* allocate NVRAM */
 	generic_nvram_size = 0x100;
-	generic_nvram = auto_malloc(generic_nvram_size);
+	generic_nvram = auto_alloc_array(machine, UINT8, generic_nvram_size);
 
 	/* set up memory */
 	memory_configure_bank(machine, 1, 0, 1, amiga_chip_ram, 0);

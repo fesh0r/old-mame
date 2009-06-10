@@ -46,8 +46,8 @@ static WRITE8_HANDLER( thedeep_nmi_w )
 
 static WRITE8_HANDLER( thedeep_sound_w )
 {
-	soundlatch_w(space,0,data);
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(space, 0, data);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static UINT8 protection_command, protection_data;
@@ -151,7 +151,7 @@ static WRITE8_HANDLER( thedeep_e100_w )
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK1, SMH_ROM)	// ROM (banked)
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK(1), SMH_ROM)	// ROM (banked)
 	AM_RANGE(0xc000, 0xcfff) AM_RAM
 	AM_RANGE(0xd000, 0xdfff) AM_RAM				            	// RAM (MCU data copied here)
 	AM_RANGE(0xe000, 0xe000) AM_READWRITE(thedeep_protection_r, thedeep_protection_w	)	// To MCU
@@ -308,7 +308,7 @@ GFXDECODE_END
 
 static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface thedeep_ym2203_intf =
@@ -352,15 +352,15 @@ static INTERRUPT_GEN( thedeep_interrupt )
 static MACHINE_DRIVER_START( thedeep )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", Z80, 6000000)		/* 6MHz */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_ADD("maincpu", Z80, XTAL_12MHz/2)		/* verified on pcb */
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT_HACK(thedeep_interrupt,2)	/* IRQ by MCU, NMI by vblank (maskable) */
 
- 	MDRV_CPU_ADD("audiocpu", M65C02, 2000000)	/* 2MHz */
-	MDRV_CPU_PROGRAM_MAP(audio_map,0)
+ 	MDRV_CPU_ADD("audiocpu", M65C02, XTAL_12MHz/8)		/* verified on pcb */
+	MDRV_CPU_PROGRAM_MAP(audio_map)
 	/* IRQ by YM2203, NMI by when sound latch written by main cpu */
 
-	/* CPU3 is a i8751 */
+	/* CPU3 is a i8751 running at 8Mhz (8mhz xtal)*/
 
 	MDRV_MACHINE_RESET(thedeep)
 
@@ -382,7 +382,7 @@ static MACHINE_DRIVER_START( thedeep )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD("ym", YM2203, 3000000)
+	MDRV_SOUND_ADD("ym", YM2203, XTAL_12MHz/4)  /* verified on pcb */
 	MDRV_SOUND_CONFIG(thedeep_ym2203_intf)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END

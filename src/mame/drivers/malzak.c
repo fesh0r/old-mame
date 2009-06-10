@@ -171,7 +171,7 @@ static WRITE8_HANDLER( port40_w )
 //  Bits 1-3 are all set high upon death, until the game continues
 //  Bit 6 is used only in Malzak II, and is set high after checking
 //        the selected version
-//  logerror("S2650 [0x%04x]: port 0x40 write: 0x%02x\n",cpu_get_pc(space->machine->cpu[0]),data);
+//  logerror("S2650 [0x%04x]: port 0x40 write: 0x%02x\n", cpu_get_pc(cputag_get_cpu(space->machine, "maincpu")), data);
 	if(data & 0x40)
 		malzak_bank1 = 1;
 	else
@@ -367,8 +367,8 @@ static MACHINE_DRIVER_START( malzak )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", S2650, 3800000/4)
-	MDRV_CPU_PROGRAM_MAP(malzak_map,0)
-	MDRV_CPU_IO_MAP(malzak_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(malzak_map)
+	MDRV_CPU_IO_MAP(malzak_io_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -403,7 +403,7 @@ static MACHINE_DRIVER_START( malzak2 )
 	MDRV_IMPORT_FROM( malzak )
 
 	MDRV_CPU_MODIFY( "maincpu" )
-	MDRV_CPU_PROGRAM_MAP(malzak2_map,0)
+	MDRV_CPU_PROGRAM_MAP(malzak2_map)
 
 	MDRV_NVRAM_HANDLER( generic_0fill )
 MACHINE_DRIVER_END

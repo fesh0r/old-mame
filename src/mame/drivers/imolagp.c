@@ -113,7 +113,7 @@ static WRITE8_HANDLER( transmit_data_w )
 }
 static READ8_HANDLER( trigger_slave_nmi_r )
 {
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	cputag_set_input_line(space->machine, "slave", INPUT_LINE_NMI, PULSE_LINE);
 	return 0;
 }
 
@@ -164,7 +164,7 @@ static VIDEO_START( imolagp )
 	int i;
 	for( i=0; i<3; i++ )
 	{
-		imola_videoram[i] = auto_malloc(0x4000);
+		imola_videoram[i] = auto_alloc_array(machine, UINT8, 0x4000);
 		memset( imola_videoram[i], 0x00, 0x4000 );
 	}
 	InitializeColors(machine);
@@ -406,13 +406,13 @@ static const ppi8255_interface ppi8255_intf =
 
 static MACHINE_DRIVER_START( imolagp )
 	MDRV_CPU_ADD("maincpu", Z80,8000000) /* ? */
-	MDRV_CPU_PROGRAM_MAP(imolagp_master,0)
-	MDRV_CPU_IO_MAP(readport_master,0)
+	MDRV_CPU_PROGRAM_MAP(imolagp_master)
+	MDRV_CPU_IO_MAP(readport_master)
 	MDRV_CPU_VBLANK_INT_HACK(master_interrupt,4)
 
 	MDRV_CPU_ADD("slave", Z80,8000000) /* ? */
-	MDRV_CPU_PROGRAM_MAP(imolagp_slave,0)
-	MDRV_CPU_IO_MAP(readport_slave,0)
+	MDRV_CPU_PROGRAM_MAP(imolagp_slave)
+	MDRV_CPU_IO_MAP(readport_slave)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_TIME(HZ(6000))

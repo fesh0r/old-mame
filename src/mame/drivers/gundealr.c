@@ -463,8 +463,8 @@ static MACHINE_DRIVER_START( gundealr )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 8000000)	/* 8 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_IO_MAP(main_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
+	MDRV_CPU_IO_MAP(main_portmap)
 	MDRV_CPU_VBLANK_INT_HACK(yamyam_interrupt,4)	/* ? */
 
 	/* video hardware */
@@ -567,7 +567,7 @@ static DRIVER_INIT( gundealr )
 static DRIVER_INIT( yamyam )
 {
 	input_ports_hack = 1;
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xe000, 0xe000, 0, 0, yamyam_protection_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xe000, 0xe000, 0, 0, yamyam_protection_w);
 }
 
 

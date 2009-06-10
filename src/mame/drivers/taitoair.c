@@ -248,9 +248,9 @@ static WRITE16_HANDLER( system_control_w )
 
 	dsp_HOLD_signal = (data & 4) ? CLEAR_LINE : ASSERT_LINE;
 
-	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(space->machine, "dsp", INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
 
-	logerror("68K:%06x writing %04x to TMS32025.  %s HOLD , %s RESET\n",cpu_get_previouspc(space->cpu),data,((data & 4) ? "Clear" : "Assert"),((data & 1) ? "Clear" : "Assert"));
+	logerror("68K:%06x writing %04x to TMS32025.  %s HOLD , %s RESET\n", cpu_get_previouspc(space->cpu), data, ((data & 4) ? "Clear" : "Assert"), ((data & 1) ? "Clear" : "Assert"));
 }
 
 static READ16_HANDLER( lineram_r )
@@ -582,7 +582,7 @@ GFXDECODE_END
 /* Handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface airsys_ym2610_interface =
@@ -599,16 +599,16 @@ static MACHINE_DRIVER_START( airsys )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,24000000 / 2)		/* 12 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(airsys_map, 0)
+	MDRV_CPU_PROGRAM_MAP(airsys_map)
 	MDRV_CPU_VBLANK_INT("screen", irq5_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,8000000 / 2)			/* 4 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	MDRV_CPU_ADD("dsp", TMS32025,24000000)			/* 24 MHz ??? *///
-	MDRV_CPU_PROGRAM_MAP(DSP_map_program, 0)
-	MDRV_CPU_DATA_MAP(DSP_map_data, 0)
-	MDRV_CPU_IO_MAP(DSP_map_io, 0)
+	MDRV_CPU_PROGRAM_MAP(DSP_map_program)
+	MDRV_CPU_DATA_MAP(DSP_map_data)
+	MDRV_CPU_IO_MAP(DSP_map_io)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 

@@ -68,7 +68,7 @@ static WRITE8_HANDLER( k88games_5f84_w )
 
 static WRITE8_HANDLER( k88games_sh_irqtrigger_w )
 {
-	cpu_set_input_line_and_vector(space->machine->cpu[1], 0, HOLD_LINE, 0xff);
+	cputag_set_input_line_and_vector(space->machine, "audiocpu", 0, HOLD_LINE, 0xff);
 }
 
 static UINT8 speech_chip[8];
@@ -224,11 +224,11 @@ static MACHINE_DRIVER_START( 88games )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", KONAMI, 3000000) /* ? */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", k88games_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3579545)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	MDRV_MACHINE_RESET(88games)
 	MDRV_NVRAM_HANDLER(generic_0fill)
@@ -477,7 +477,7 @@ logerror("%04x: bank select %02x\n",cpu_get_pc(device),lines);
 
 static MACHINE_RESET( 88games )
 {
-	konami_configure_set_lines(machine->cpu[0], k88games_banking);
+	konami_configure_set_lines(cputag_get_cpu(machine, "maincpu"), k88games_banking);
 	paletteram = &memory_region(machine, "maincpu")[0x20000];
 }
 

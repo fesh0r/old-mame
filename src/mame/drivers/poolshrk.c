@@ -92,7 +92,7 @@ static READ8_HANDLER( poolshrk_input_r )
 
 static READ8_HANDLER( poolshrk_irq_reset_r )
 {
-	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 
 	return 0;
 }
@@ -216,7 +216,7 @@ static MACHINE_DRIVER_START( poolshrk )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6800, 11055000 / 8) /* ? */
-	MDRV_CPU_PROGRAM_MAP(poolshrk_cpu_map, 0)
+	MDRV_CPU_PROGRAM_MAP(poolshrk_cpu_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_assert)
 
 	/* video hardware */

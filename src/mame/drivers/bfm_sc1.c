@@ -180,7 +180,7 @@ static INTERRUPT_GEN( timer_irq )
 
 	    sc1_Inputs[2] = input_port_read(device->machine,"STROBE0");
 
-		generic_pulse_irq_line(device->machine->cpu[0], M6809_IRQ_LINE);
+		generic_pulse_irq_line(cputag_get_cpu(device->machine, "maincpu"), M6809_IRQ_LINE);
 	}
 }
 
@@ -277,7 +277,7 @@ static WRITE8_HANDLER( mmtr_w )
 			if ( changed & (1 << i) )
 			{
 				Mechmtr_update(i, cycles, data & (1 << i) );
-				generic_pulse_irq_line(space->machine->cpu[0], M6809_FIRQ_LINE);
+				generic_pulse_irq_line(cputag_get_cpu(space->machine, "maincpu"), M6809_FIRQ_LINE);
 			}
 		}
 	}
@@ -371,7 +371,7 @@ static void send_to_adder(running_machine *machine, int data)
 	adder2_sc2data       = data;	// store data
 
 	adder2_acia_triggered = 1;		// set flag, acia IRQ triggered
-	cpu_set_input_line(machine->cpu[1], M6809_IRQ_LINE, ASSERT_LINE );//HOLD_LINE);// trigger IRQ
+	cputag_set_input_line(machine, "adder2", M6809_IRQ_LINE, ASSERT_LINE );//HOLD_LINE);// trigger IRQ
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -497,7 +497,7 @@ static WRITE8_HANDLER( mux2latch_w )
 	if ( changed & 0x08 )
 	{ // clock changed
 
-		if ( (!data & 0x08) )
+		if ( !(data & 0x08) )
 		{ // clock changed to low
 			int strobe, offset, pattern, i;
 
@@ -662,7 +662,7 @@ static void decode_sc1(running_machine *machine,const char *rom_region)
 
 	rom = memory_region(machine,rom_region);
 
-	tmp = malloc_or_die(0x10000);
+	tmp = alloc_array_or_die(UINT8, 0x10000);
 
 	{
 		int i;
@@ -766,18 +766,18 @@ static MACHINE_RESET( bfm_sc1 )
 static ADDRESS_MAP_START( memmap, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x0000, 0x1FFF) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size) //8k RAM
-	AM_RANGE(0x2000, 0x21FF) AM_WRITE(reel34_w)	  // reel 2+3 latch
-	AM_RANGE(0x2200, 0x23FF) AM_WRITE(reel12_w)	  // reel 1+2 latch
-	AM_RANGE(0x2400, 0x25FF) AM_WRITE(vfd_w)	  // vfd latch
+	AM_RANGE(0x2000, 0x21FF) AM_WRITE(reel34_w)	  			// reel 2+3 latch
+	AM_RANGE(0x2200, 0x23FF) AM_WRITE(reel12_w)	  			// reel 1+2 latch
+	AM_RANGE(0x2400, 0x25FF) AM_WRITE(vfd_w)	  			// vfd latch
 
-	AM_RANGE(0x2600, 0x27FF) AM_READWRITE(mmtr_r,mmtr_w)      // mechanical meters
-	AM_RANGE(0x2800, 0x2800) AM_READWRITE(triac_r,triac_w)     // payslide triacs
+	AM_RANGE(0x2600, 0x27FF) AM_READWRITE(mmtr_r,mmtr_w)	// mechanical meters
+	AM_RANGE(0x2800, 0x2800) AM_READWRITE(triac_r,triac_w)	// payslide triacs
 
 	AM_RANGE(0x2A00, 0x2A00) AM_READWRITE(mux1latch_r,mux1latch_w) // mux1
 	AM_RANGE(0x2A01, 0x2A01) AM_READWRITE(mux1datlo_r,mux1datlo_w)
 	AM_RANGE(0x2A02, 0x2A02) AM_READWRITE(mux1dathi_r,mux1dathi_w)
 
-	AM_RANGE(0x2E00, 0x2E00) AM_READ(irqlatch_r)  // irq latch
+	AM_RANGE(0x2E00, 0x2E00) AM_READ(irqlatch_r)			// irq latch
 
 	AM_RANGE(0x3001, 0x3001) AM_READ(soundlatch_r)
 	AM_RANGE(0x3001, 0x3001) AM_DEVWRITE("ay", ay8910_data_w)
@@ -790,15 +790,15 @@ static ADDRESS_MAP_START( memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x3409, 0x3409) AM_READWRITE(mux2datlo_r,mux2datlo_w)
 	AM_RANGE(0x340A, 0x340A) AM_READWRITE(mux2dathi_r,mux2dathi_w)
 
-	AM_RANGE(0x3404, 0x3404) AM_READ(dipcoin_r ) // coin input on gamecard
-	AM_RANGE(0x3801, 0x3801) AM_READNOP		 // uPD5579 status on soundcard (not installed)
+	AM_RANGE(0x3404, 0x3404) AM_READ(dipcoin_r )			// coin input on gamecard
+	AM_RANGE(0x3801, 0x3801) AM_READNOP						// uPD5579 status on soundcard (not installed)
 
-	AM_RANGE(0x3600, 0x3600) AM_WRITE(bankswitch_w) // write bank
-	AM_RANGE(0x3800, 0x39FF) AM_WRITE(reel56_w)	 // reel 5+6 latch
+	AM_RANGE(0x3600, 0x3600) AM_WRITE(bankswitch_w) 		// write bank
+	AM_RANGE(0x3800, 0x39FF) AM_WRITE(reel56_w)	 			// reel 5+6 latch
 
-	AM_RANGE(0x4000, 0x5FFF) AM_ROM				// 8k  ROM
-	AM_RANGE(0x6000, 0x7FFF) AM_READ(SMH_BANK1) // 8k  paged ROM (4 pages)
-	AM_RANGE(0x8000, 0xFFFF) AM_READWRITE(SMH_ROM,watchdog_w)	 // 32k ROM
+	AM_RANGE(0x4000, 0x5FFF) AM_ROM							// 8k  ROM
+	AM_RANGE(0x6000, 0x7FFF) AM_ROMBANK(1)					// 8k  paged ROM (4 pages)
+	AM_RANGE(0x8000, 0xFFFF) AM_RAM AM_WRITE(watchdog_w)	// 32k ROM
 
 ADDRESS_MAP_END
 
@@ -844,9 +844,9 @@ static ADDRESS_MAP_START( memmap_adder2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x3E00, 0x3E00) AM_READWRITE(vid_uart_ctrl_r,vid_uart_ctrl_w)	// video uart control reg read
 	AM_RANGE(0x3E01, 0x3E01) AM_READWRITE(vid_uart_rx_r,vid_uart_tx_w)		// video uart receive  reg
 
-	AM_RANGE(0x4000, 0x5FFF) AM_ROM				// 8k  ROM
-	AM_RANGE(0x6000, 0x7FFF) AM_READ(SMH_BANK1) // 8k  paged ROM (4 pages)
-	AM_RANGE(0x8000, 0xFFFF) AM_READWRITE(SMH_ROM,watchdog_w)	 // 32k ROM
+	AM_RANGE(0x4000, 0x5FFF) AM_ROM							// 8k  ROM
+	AM_RANGE(0x6000, 0x7FFF) AM_ROMBANK(1)					// 8k  paged ROM (4 pages)
+	AM_RANGE(0x8000, 0xFFFF) AM_ROM AM_WRITE(watchdog_w)	// 32k ROM
 
 ADDRESS_MAP_END
 
@@ -890,8 +890,8 @@ static ADDRESS_MAP_START( sc1_nec_uk, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x3800, 0x39FF) AM_DEVWRITE("upd", nec_latch_w)
 
 	AM_RANGE(0x4000, 0x5FFF) AM_ROM							// 8k  ROM
-	AM_RANGE(0x6000, 0x7FFF) AM_READ(SMH_BANK1)				// 8k  paged ROM (4 pages)
-	AM_RANGE(0x8000, 0xFFFF) AM_READWRITE(SMH_ROM,watchdog_w)	// 32k ROM
+	AM_RANGE(0x6000, 0x7FFF) AM_ROMBANK(1)					// 8k  paged ROM (4 pages)
+	AM_RANGE(0x8000, 0xFFFF) AM_ROM AM_WRITE(watchdog_w)	// 32k ROM
 
 ADDRESS_MAP_END
 
@@ -1243,7 +1243,7 @@ INPUT_PORTS_END
 static MACHINE_DRIVER_START( scorpion1 )
 	MDRV_MACHINE_RESET(bfm_sc1)							// main scorpion1 board initialisation
 	MDRV_CPU_ADD("maincpu", M6809, MASTER_CLOCK/4)			// 6809 CPU at 1 Mhz
-	MDRV_CPU_PROGRAM_MAP(memmap,0)						// setup read and write memorymap
+	MDRV_CPU_PROGRAM_MAP(memmap)						// setup read and write memorymap
 	MDRV_CPU_PERIODIC_INT(timer_irq, 1000 )				// generate 1000 IRQ's per second
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1262,7 +1262,7 @@ static MACHINE_DRIVER_START( scorpion1_adder2 )
 	MDRV_IMPORT_FROM( scorpion1 )
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(memmap_adder2,0)				// setup read and write memorymap
+	MDRV_CPU_PROGRAM_MAP(memmap_adder2)				// setup read and write memorymap
 
 	MDRV_DEFAULT_LAYOUT(layout_bfm_sc1)
 	MDRV_SCREEN_ADD("adder", RASTER)
@@ -1281,7 +1281,7 @@ static MACHINE_DRIVER_START( scorpion1_adder2 )
 	MDRV_GFXDECODE(adder2)
 
 	MDRV_CPU_ADD("adder2", M6809, ADDER_CLOCK/4 )		// adder2 board 6809 CPU at 2 Mhz
-	MDRV_CPU_PROGRAM_MAP(adder2_memmap,0)				// setup adder2 board memorymap
+	MDRV_CPU_PROGRAM_MAP(adder2_memmap)				// setup adder2 board memorymap
 	MDRV_CPU_VBLANK_INT("adder",adder2_vbl)				// board has a VBL IRQ
 MACHINE_DRIVER_END
 
@@ -1292,7 +1292,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( scorpion1_nec_uk )
 	MDRV_IMPORT_FROM( scorpion1 )
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(sc1_nec_uk,0)					// setup read and write memorymap
+	MDRV_CPU_PROGRAM_MAP(sc1_nec_uk)					// setup read and write memorymap
 
 	MDRV_SOUND_ADD("upd",UPD7759, UPD7759_STANDARD_CLOCK)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)

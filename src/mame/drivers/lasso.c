@@ -39,7 +39,7 @@ DIP locations verified for:
 static INPUT_CHANGED( coin_inserted )
 {
 	/* coin insertion causes an NMI */
-	cpu_set_input_line(field->port->machine->cpu[0], INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(field->port->machine, "maincpu", INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -51,13 +51,13 @@ static UINT8 *lasso_chip_data;
 static WRITE8_HANDLER( sound_command_w )
 {
 	soundlatch_w(space,offset,data);
-	generic_pulse_irq_line(space->machine->cpu[1], 0);
+	generic_pulse_irq_line(cputag_get_cpu(space->machine, "audiocpu"), 0);
 }
 
 static WRITE8_HANDLER( pinbo_sound_command_w )
 {
 	soundlatch_w(space,offset,data);
-	cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", 0, HOLD_LINE);
 }
 
 static READ8_HANDLER( sound_status_r )
@@ -465,11 +465,11 @@ static MACHINE_DRIVER_START( base )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, 11289000/16)	/* guess */
-	MDRV_CPU_PROGRAM_MAP(lasso_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(lasso_main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", M6502, 600000)
-	MDRV_CPU_PROGRAM_MAP(lasso_audio_map, 0)
+	MDRV_CPU_PROGRAM_MAP(lasso_audio_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 
@@ -503,7 +503,7 @@ static MACHINE_DRIVER_START( lasso )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(base)
 	MDRV_CPU_ADD("blitter", M6502, 11289000/16)	/* guess */
-	MDRV_CPU_PROGRAM_MAP(lasso_coprocessor_map,0)
+	MDRV_CPU_PROGRAM_MAP(lasso_coprocessor_map)
 
 MACHINE_DRIVER_END
 
@@ -512,10 +512,10 @@ static MACHINE_DRIVER_START( chameleo )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(base)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(chameleo_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(chameleo_main_map)
 
 	MDRV_CPU_MODIFY("audiocpu")
-	MDRV_CPU_PROGRAM_MAP(chameleo_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(chameleo_audio_map)
 
 	/* video hardware */
 	MDRV_VIDEO_UPDATE(chameleo)
@@ -526,10 +526,10 @@ static MACHINE_DRIVER_START( wwjgtin )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(base)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(wwjgtin_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(wwjgtin_main_map)
 
 	MDRV_CPU_MODIFY("audiocpu")
-	MDRV_CPU_PROGRAM_MAP(wwjgtin_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(wwjgtin_audio_map)
 
 	/* video hardware */
 	MDRV_SCREEN_MODIFY("screen")
@@ -551,11 +551,11 @@ static MACHINE_DRIVER_START( pinbo )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(base)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(pinbo_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(pinbo_main_map)
 
 	MDRV_CPU_REPLACE("audiocpu", Z80, 3000000)
-	MDRV_CPU_PROGRAM_MAP(pinbo_audio_map,0)
-	MDRV_CPU_IO_MAP(pinbo_audio_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(pinbo_audio_map)
+	MDRV_CPU_IO_MAP(pinbo_audio_io_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(pinbo)
@@ -566,8 +566,8 @@ static MACHINE_DRIVER_START( pinbo )
 	MDRV_VIDEO_UPDATE(pinbo)
 
 	/* sound hardware */
-	MDRV_SOUND_REMOVE("sn76489.1")
-	MDRV_SOUND_REMOVE("sn76489.2")
+	MDRV_DEVICE_REMOVE("sn76489.1")
+	MDRV_DEVICE_REMOVE("sn76489.2")
 
 	MDRV_SOUND_ADD("ay1", AY8910, 1250000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.55)

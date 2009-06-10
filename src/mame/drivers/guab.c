@@ -57,17 +57,17 @@ enum int_levels
  *
  *************************************/
 
-static void ptm_irq(running_machine *machine, int state)
+static WRITE_LINE_DEVICE_HANDLER( ptm_irq )
 {
-	cpu_set_input_line(machine->cpu[0], INT_6840PTM, state);
+	cputag_set_input_line(device->machine, "maincpu", INT_6840PTM, state);
 }
 
 static const ptm6840_interface ptm_intf =
 {
 	1000000,
 	{ 0, 0, 0 },
-	{ 0, 0, 0 },
-	ptm_irq
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL },
+	DEVCB_LINE(ptm_irq)
 };
 
 
@@ -83,7 +83,7 @@ static const ptm6840_interface ptm_intf =
 
 static void tms_interrupt(running_machine *machine, int state)
 {
-	cpu_set_input_line(machine->cpu[0], INT_TMS34061, state);
+	cputag_set_input_line(machine, "maincpu", INT_TMS34061, state);
 }
 
 static const struct tms34061_interface tms34061intf =
@@ -350,7 +350,7 @@ static TIMER_CALLBACK( fdc_data_callback )
 	}
 
 	fdc.status |= DATA_REQUEST;
-	cpu_set_input_line(machine->cpu[0], INT_FLOPPYCTRL, ASSERT_LINE);
+	cputag_set_input_line(machine, "maincpu", INT_FLOPPYCTRL, ASSERT_LINE);
 }
 
 
@@ -444,7 +444,7 @@ static WRITE16_HANDLER( wd1770_w )
 															fdc.sector));
 
 					/* Trigger a DRQ interrupt on the CPU */
-					cpu_set_input_line(space->machine->cpu[0], INT_FLOPPYCTRL, ASSERT_LINE);
+					cputag_set_input_line(space->machine, "maincpu", INT_FLOPPYCTRL, ASSERT_LINE);
 					fdc.status |= DATA_REQUEST;
 					break;
 				}
@@ -489,7 +489,7 @@ static WRITE16_HANDLER( wd1770_w )
 			fdc.data = data;
 
 			/* Clear the DRQ */
-			cpu_set_input_line(space->machine->cpu[0], INT_FLOPPYCTRL, CLEAR_LINE);
+			cputag_set_input_line(space->machine, "maincpu", INT_FLOPPYCTRL, CLEAR_LINE);
 
 			/* Queue an event to write the data if write command was specified */
 			if (fdc.cmd & 0x20)
@@ -526,7 +526,7 @@ static READ16_HANDLER( wd1770_r )
 			retval = fdc.data;
 
 			/* Clear the DRQ */
-			cpu_set_input_line(space->machine->cpu[0], INT_FLOPPYCTRL, CLEAR_LINE);
+			cputag_set_input_line(space->machine, "maincpu", INT_FLOPPYCTRL, CLEAR_LINE);
 			fdc.status &= ~DATA_REQUEST;
 			break;
 		}
@@ -572,7 +572,7 @@ static INPUT_CHANGED( coin_inserted )
 	if (newval == 0)
 	{
 		UINT32 credit;
-		const address_space *space = cpu_get_address_space(field->port->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+		const address_space *space = cputag_get_address_space(field->port->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 		/* Get the current credit value and add the new coin value */
 		credit = memory_read_dword(space, 0x8002c) + (UINT32)(FPTR)param;
@@ -661,7 +661,7 @@ static ADDRESS_MAP_START( guab_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x0c0000, 0x0c007f) AM_READWRITE(io_r, io_w)
 	AM_RANGE(0x0c0080, 0x0c0083) AM_NOP /* ACIA 1 */
 	AM_RANGE(0x0c00a0, 0x0c00a3) AM_NOP /* ACIA 2 */
-	AM_RANGE(0x0c00c0, 0x0c00cf) AM_READWRITE(ptm6840_0_lsb_r, ptm6840_0_lsb_w)
+	AM_RANGE(0x0c00c0, 0x0c00cf) AM_DEVREADWRITE8("6840ptm", ptm6840_read, ptm6840_write, 0xff)
 	AM_RANGE(0x0c00e0, 0x0c00e7) AM_READWRITE(wd1770_r, wd1770_w)
 	AM_RANGE(0x080000, 0x080fff) AM_RAM
 	AM_RANGE(0x100000, 0x100003) AM_READWRITE(ef9369_r, ef9369_w)
@@ -752,7 +752,6 @@ INPUT_PORTS_END
  static MACHINE_START( guab )
 {
 	fdc_timer = timer_alloc(machine, fdc_data_callback, NULL);
-	ptm6840_config(machine, 0, &ptm_intf);
 }
 
 static MACHINE_RESET( guab )
@@ -763,7 +762,7 @@ static MACHINE_RESET( guab )
 static MACHINE_DRIVER_START( guab )
 	/* TODO: Verify clock */
 	MDRV_CPU_ADD("maincpu", M68000, 8000000)
-	MDRV_CPU_PROGRAM_MAP(guab_map, 0)
+	MDRV_CPU_PROGRAM_MAP(guab_map)
 
 	MDRV_MACHINE_START(guab)
 	MDRV_MACHINE_RESET(guab)
@@ -786,6 +785,9 @@ static MACHINE_DRIVER_START( guab )
 	/* TODO: Verify clock */
 	MDRV_SOUND_ADD("sn", SN76489, 2000000)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	/* 6840 PTM */
+	MDRV_PTM6840_ADD("6840ptm", ptm_intf)
 MACHINE_DRIVER_END
 
 

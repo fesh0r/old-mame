@@ -41,7 +41,7 @@ static WRITE16_HANDLER( blockout_sound_command_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch_w(space,offset,data & 0xff);
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+		cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -58,7 +58,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x180000, 0x1bffff) AM_RAM_WRITE(blockout_videoram_w) AM_BASE(&blockout_videoram)
 	AM_RANGE(0x1d4000, 0x1dffff) AM_RAM	/* work RAM */
 	AM_RANGE(0x1f4000, 0x1fffff) AM_RAM	/* work RAM */
-	AM_RANGE(0x200000, 0x207fff) AM_RAM_WRITE(SMH_RAM) AM_BASE(&blockout_frontvideoram)
+	AM_RANGE(0x200000, 0x207fff) AM_WRITEONLY AM_BASE(&blockout_frontvideoram)
 	AM_RANGE(0x208000, 0x21ffff) AM_RAM	/* ??? */
 	AM_RANGE(0x280002, 0x280003) AM_WRITE(blockout_frontcolor_w)
 	AM_RANGE(0x280200, 0x2805ff) AM_RAM_WRITE(blockout_paletteram_w) AM_BASE(&paletteram16)
@@ -171,7 +171,7 @@ INPUT_PORTS_END
 /* handler called by the 2151 emulator when the internal timers cause an IRQ */
 static void blockout_irq_handler(const device_config *device, int irq)
 {
-	cpu_set_input_line_and_vector(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE,0xff);
+	cputag_set_input_line_and_vector(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE, 0xff);
 }
 
 static const ym2151_interface ym2151_config =
@@ -184,11 +184,11 @@ static MACHINE_DRIVER_START( blockout )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 10000000)       /* MRH - 8.76 makes gfx/adpcm samples sync better -- but 10 is correct speed*/
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT_HACK(blockout_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3579545)	/* 3.579545 MHz */
-	MDRV_CPU_PROGRAM_MAP(audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(audio_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)

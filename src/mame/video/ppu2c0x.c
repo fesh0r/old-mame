@@ -199,21 +199,23 @@ void ppu2c0x_init_palette(running_machine *machine, int first_entry )
 	/* Loop through the emphasis modes (8 total) */
 	for (colorEmphasis = 0; colorEmphasis < 8; colorEmphasis ++)
 	{
-		double r_mod = 0.0;
-		double g_mod = 0.0;
-		double b_mod = 0.0;
+		/*
+        double r_mod = 0.0;
+        double g_mod = 0.0;
+        double b_mod = 0.0;
 
-		switch (colorEmphasis)
-		{
-			case 0: r_mod = 1.0; g_mod = 1.0; b_mod = 1.0; break;
-			case 1: r_mod = 1.24; g_mod = .915; b_mod = .743; break;
-			case 2: r_mod = .794; g_mod = 1.09; b_mod = .882; break;
-			case 3: r_mod = .905; g_mod = 1.03; b_mod = 1.28; break;
-			case 4: r_mod = .741; g_mod = .987; b_mod = 1.0; break;
-			case 5: r_mod = 1.02; g_mod = .908; b_mod = .979; break;
-			case 6: r_mod = 1.02; g_mod = .98; b_mod = .653; break;
-			case 7: r_mod = .75; g_mod = .75; b_mod = .75; break;
-		}
+        switch (colorEmphasis)
+        {
+            case 0: r_mod = 1.0; g_mod = 1.0; b_mod = 1.0; break;
+            case 1: r_mod = 1.24; g_mod = .915; b_mod = .743; break;
+            case 2: r_mod = .794; g_mod = 1.09; b_mod = .882; break;
+            case 3: r_mod = .905; g_mod = 1.03; b_mod = 1.28; break;
+            case 4: r_mod = .741; g_mod = .987; b_mod = 1.0; break;
+            case 5: r_mod = 1.02; g_mod = .908; b_mod = .979; break;
+            case 6: r_mod = 1.02; g_mod = .98; b_mod = .653; break;
+            case 7: r_mod = .75; g_mod = .75; b_mod = .75; break;
+        }
+        */
 
 		/* loop through the 4 intensities */
 		for (colorIntensity = 0; colorIntensity < 4; colorIntensity++)
@@ -315,17 +317,13 @@ static DEVICE_START( ppu2c0x )
 	chip->scan_scale = 1;
 
 	/* allocate a screen bitmap, videomem and spriteram, a dirtychar array and the monochromatic colortable */
-	chip->bitmap = auto_bitmap_alloc( VISIBLE_SCREEN_WIDTH, VISIBLE_SCREEN_HEIGHT, video_screen_get_format(device->machine->primary_screen));
-	chip->videomem = auto_malloc( VIDEOMEM_SIZE );
-	chip->videoram = auto_malloc( VIDEOMEM_SIZE );
-	chip->spriteram = auto_malloc( SPRITERAM_SIZE );
-	chip->colortable = auto_malloc( sizeof( default_colortable ) );
-	chip->colortable_mono = auto_malloc( sizeof( default_colortable_mono ) );
+	chip->bitmap = auto_bitmap_alloc(device->machine, VISIBLE_SCREEN_WIDTH, VISIBLE_SCREEN_HEIGHT, video_screen_get_format(device->machine->primary_screen));
+	chip->videomem = auto_alloc_array_clear(device->machine, UINT8, VIDEOMEM_SIZE );
+	chip->videoram = auto_alloc_array_clear(device->machine, UINT8, VIDEOMEM_SIZE );
+	chip->spriteram = auto_alloc_array_clear(device->machine, UINT8, SPRITERAM_SIZE );
+	chip->colortable = auto_alloc_array(device->machine, pen_t, ARRAY_LENGTH( default_colortable ) );
+	chip->colortable_mono = auto_alloc_array(device->machine, pen_t, ARRAY_LENGTH( default_colortable_mono ) );
 
-	/* clear videomem & spriteram */
-	memset( chip->videomem, 0, VIDEOMEM_SIZE );
-	memset( chip->videoram, 0, VIDEOMEM_SIZE );
-	memset( chip->spriteram, 0, SPRITERAM_SIZE );
 	memset( chip->videoram_banks_indices, 0xff, sizeof(chip->videoram_banks_indices) );
 
 	if ( intf->vram_enabled )
@@ -376,7 +374,7 @@ static DEVICE_START( ppu2c0x )
 
 static TIMER_CALLBACK( hblank_callback )
 {
-	const device_config *device = ptr;
+	const device_config *device = (const device_config *)ptr;
 	ppu2c0x_chip *this_ppu = get_token(device);
 	int *ppu_regs = &this_ppu->regs[0];
 
@@ -393,7 +391,7 @@ static TIMER_CALLBACK( hblank_callback )
 
 static TIMER_CALLBACK( nmi_callback )
 {
-	const device_config *device = ptr;
+	const device_config *device = (const device_config *)ptr;
 	ppu2c0x_chip *this_ppu = get_token(device);
 	const ppu2c0x_interface *intf = get_interface(device);
 	int *ppu_regs = &this_ppu->regs[0];
@@ -865,7 +863,7 @@ static void update_scanline(const device_config *device)
 
 static TIMER_CALLBACK( scanline_callback )
 {
-	const device_config *device = ptr;
+	const device_config *device = (const device_config *)ptr;
 	ppu2c0x_chip *this_ppu = get_token(device);
 	int *ppu_regs = &this_ppu->regs[0];
 	int blanked = ( ppu_regs[PPU_CONTROL1] & ( PPU_CONTROL1_BACKGROUND | PPU_CONTROL1_SPRITES ) ) == 0;
@@ -898,7 +896,7 @@ logerror("vlbank starting\n");
 			// a game can read the high bit of $2002 before the NMI is called (potentially resetting the bit
 			// via a read from $2002 in the NMI handler).
 			// B-Wings is an example game that needs this.
-			timer_adjust_oneshot(this_ppu->nmi_timer, cpu_clocks_to_attotime(device->machine->cpu[0], 4), 0);
+			timer_adjust_oneshot(this_ppu->nmi_timer, cputag_clocks_to_attotime(device->machine, "maincpu", 4), 0);
 		}
 	}
 
@@ -926,7 +924,7 @@ logerror("vlbank ending\n");
 		next_scanline = 0;
 
 	// Call us back when the hblank starts for this scanline
-	timer_adjust_oneshot(this_ppu->hblank_timer, cpu_clocks_to_attotime(device->machine->cpu[0], 86.67), 0); // ??? FIXME - hardcoding NTSC, need better calculation
+	timer_adjust_oneshot(this_ppu->hblank_timer, cputag_clocks_to_attotime(device->machine, "maincpu", 86.67), 0); // ??? FIXME - hardcoding NTSC, need better calculation
 
 	// trigger again at the start of the next scanline
 	timer_adjust_oneshot(this_ppu->scanline_timer, video_screen_get_time_until_pos(device->machine->primary_screen, next_scanline * this_ppu->scan_scale, 0), 0);
@@ -954,7 +952,7 @@ static DEVICE_RESET( ppu2c0x )
 	timer_adjust_oneshot(this_ppu->nmi_timer, attotime_never, 0);
 
 	// Call us back when the hblank starts for this scanline
-	timer_adjust_oneshot(this_ppu->hblank_timer, cpu_clocks_to_attotime(device->machine->cpu[0], 86.67), 0); // ??? FIXME - hardcoding NTSC, need better calculation
+	timer_adjust_oneshot(this_ppu->hblank_timer, cputag_clocks_to_attotime(device->machine, "maincpu", 86.67), 0); // ??? FIXME - hardcoding NTSC, need better calculation
 
 	// Call us back at the start of the next scanline
 	timer_adjust_oneshot(this_ppu->scanline_timer, video_screen_get_time_until_pos(device->machine->primary_screen, 1, 0), 0);
@@ -1535,7 +1533,6 @@ DEVICE_GET_INFO(ppu2c02)
 		case PPU2C0XINFO_INT_SCANLINES_PER_FRAME:		info->i = PPU_NTSC_SCANLINES_PER_FRAME;		break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_FCT_SET_INFO:						/* Nothing */								break;
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(ppu2c0x);	break;
 		case DEVINFO_FCT_STOP:							/* Nothing */								break;
 		case DEVINFO_FCT_RESET:							info->reset = DEVICE_RESET_NAME(ppu2c0x);	break;

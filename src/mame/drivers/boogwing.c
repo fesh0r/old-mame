@@ -109,13 +109,13 @@ static ADDRESS_MAP_START( boogwing_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x24e344, 0x24e345) AM_READ_PORT("INPUTS")
 	AM_RANGE(0x24e000, 0x24e7ff) AM_WRITE(deco16_104_prot_w) AM_BASE(&deco16_prot_ram)
 
-	AM_RANGE(0x260000, 0x26000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf12_control)
+	AM_RANGE(0x260000, 0x26000f) AM_WRITEONLY AM_BASE(&deco16_pf12_control)
 	AM_RANGE(0x264000, 0x265fff) AM_RAM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
 	AM_RANGE(0x266000, 0x267fff) AM_RAM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
 	AM_RANGE(0x268000, 0x268fff) AM_RAM AM_BASE(&deco16_pf1_rowscroll)
 	AM_RANGE(0x26a000, 0x26afff) AM_RAM AM_BASE(&deco16_pf2_rowscroll)
 
-	AM_RANGE(0x270000, 0x27000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf34_control)
+	AM_RANGE(0x270000, 0x27000f) AM_WRITEONLY AM_BASE(&deco16_pf34_control)
 	AM_RANGE(0x274000, 0x275fff) AM_RAM_WRITE(deco16_pf3_data_w) AM_BASE(&deco16_pf3_data)
 	AM_RANGE(0x276000, 0x277fff) AM_RAM_WRITE(deco16_pf4_data_w) AM_BASE(&deco16_pf4_data)
 	AM_RANGE(0x278000, 0x278fff) AM_RAM AM_BASE(&deco16_pf3_rowscroll)
@@ -137,7 +137,7 @@ static ADDRESS_MAP_START( audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x120000, 0x120001) AM_DEVREADWRITE("oki1", okim6295_r, okim6295_w)
 	AM_RANGE(0x130000, 0x130001) AM_DEVREADWRITE("oki2", okim6295_r, okim6295_w)
 	AM_RANGE(0x140000, 0x140001) AM_READ(soundlatch_r)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_READWRITE(SMH_BANK8, SMH_BANK8)
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_RAMBANK(8)
 	AM_RANGE(0x1fec00, 0x1fec01) AM_WRITE(h6280_timer_w)
 	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(h6280_irq_status_w)
 ADDRESS_MAP_END
@@ -279,7 +279,7 @@ GFXDECODE_END
 
 static void sound_irq(const device_config *device, int state)
 {
-	cpu_set_input_line(device->machine->cpu[1],1,state); /* IRQ 2 */
+	cputag_set_input_line(device->machine, "audiocpu", 1, state); /* IRQ 2 */
 }
 
 static WRITE8_DEVICE_HANDLER( sound_bankswitch_w )
@@ -298,11 +298,11 @@ static const ym2151_interface ym2151_config =
 static MACHINE_DRIVER_START( boogwing )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 14000000)	/* DE102 */
-	MDRV_CPU_PROGRAM_MAP(boogwing_map,0)
+	MDRV_CPU_PROGRAM_MAP(boogwing_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", H6280,32220000/4)
-	MDRV_CPU_PROGRAM_MAP(audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(audio_map)
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM )
@@ -385,7 +385,7 @@ ROM_START( boogwing ) /* VER 1.5 EUR 92.12.07 */
 	ROM_LOAD( "kj-00.15n",    0x000000, 0x00400, CRC(add4d50b) SHA1(080e5a8192a146d5141aef5c8d9996ddf8cd3ab4) )
 ROM_END
 
-ROM_START( boogwina )
+ROM_START( boogwina ) /* VER 1.5 ASA 92.12.07 */
 	ROM_REGION( 0x100000, "maincpu", 0 ) /* DE102 code (encrypted) */
 	ROM_LOAD16_BYTE( "km_00-2.2b",    0x000000, 0x040000, CRC(71ab71c6) SHA1(00bfd71dd9ae5f12c574ab0ecc07d85898930c4b) )
 	ROM_LOAD16_BYTE( "km_02-2.2e",    0x000001, 0x040000, CRC(e90f07f9) SHA1(1e8bd3983ed875f4752cbf2ab1c7e748d3df019c) )

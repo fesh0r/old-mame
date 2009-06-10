@@ -2,6 +2,10 @@
 
     Driver by Ville Linde
 
+TODO:
+- sound cpu irqs generation is unknown and very prone to get broken (i.e. if 4G and 2G returns as bad in POST screen).
+- sound is lagged, reason is probably the same as above.
+
 */
 
 #include "driver.h"
@@ -70,23 +74,23 @@ static WRITE32_HANDLER( eeprom_w )
 
 static CUSTOM_INPUT( analog_ctrl_r )
 {
-	const char *tag = param;
+	const char *tag = (const char *)param;
 	return input_port_read(field->port->machine, tag) & 0xfff;
 }
 
 static WRITE32_HANDLER( int_ack_w )
 {
-	cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ1, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_IRQ1, CLEAR_LINE);
 }
 
 static MACHINE_START( ultrsprt )
 {
 	/* set conservative DRC options */
-	ppcdrc_set_options(machine->cpu[0], PPCDRC_COMPATIBLE_OPTIONS);
+	ppcdrc_set_options(cputag_get_cpu(machine, "maincpu"), PPCDRC_COMPATIBLE_OPTIONS);
 
 	/* configure fast RAM regions for DRC */
-	ppcdrc_add_fastram(machine->cpu[0], 0x80000000, 0x8007ffff, FALSE, vram);
-	ppcdrc_add_fastram(machine->cpu[0], 0xff000000, 0xff01ffff, FALSE, workram);
+	ppcdrc_add_fastram(cputag_get_cpu(machine, "maincpu"), 0x80000000, 0x8007ffff, FALSE, vram);
+	ppcdrc_add_fastram(cputag_get_cpu(machine, "maincpu"), 0xff000000, 0xff01ffff, FALSE, workram);
 }
 
 
@@ -197,11 +201,11 @@ static INTERRUPT_GEN( ultrsprt_vblank )
 static MACHINE_DRIVER_START( ultrsprt )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", PPC403GA, 25000000)		/* PowerPC 403GA 25MHz */
-	MDRV_CPU_PROGRAM_MAP(ultrsprt_map, 0)
+	MDRV_CPU_PROGRAM_MAP(ultrsprt_map)
 	MDRV_CPU_VBLANK_INT("screen", ultrsprt_vblank)
 
 	MDRV_CPU_ADD("audiocpu", M68000, 8000000)		/* Not sure about the frequency */
-	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	MDRV_CPU_PERIODIC_INT(irq5_line_hold, 1)	// ???
 
 	MDRV_QUANTUM_TIME(HZ(12000))
@@ -232,9 +236,9 @@ MACHINE_DRIVER_END
 static void sound_irq_callback(running_machine *machine, int irq)
 {
 	if (irq == 0)
-		/*generic_pulse_irq_line(machine->cpu[1], INPUT_LINE_IRQ5)*/;
+		/*generic_pulse_irq_line(cputag_get_cpu(machine, "audiocpu"), INPUT_LINE_IRQ5)*/;
 	else
-		cpu_set_input_line(machine->cpu[1], INPUT_LINE_IRQ6, HOLD_LINE);
+		cputag_set_input_line(machine, "audiocpu", INPUT_LINE_IRQ6, HOLD_LINE);
 }
 
 static DRIVER_INIT( ultrsprt )

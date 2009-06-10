@@ -1194,12 +1194,12 @@ static MACHINE_DRIVER_START( balsente )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809, 5000000/4)
-	MDRV_CPU_PROGRAM_MAP(cpu1_map,0)
+	MDRV_CPU_PROGRAM_MAP(cpu1_map)
 	MDRV_CPU_VBLANK_INT("screen", balsente_update_analog_inputs)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)
-	MDRV_CPU_PROGRAM_MAP(cpu2_map,0)
-	MDRV_CPU_IO_MAP(cpu2_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(cpu2_map)
+	MDRV_CPU_IO_MAP(cpu2_io_map)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 
@@ -1252,7 +1252,7 @@ static MACHINE_DRIVER_START( shrike )
 	MDRV_IMPORT_FROM(balsente)
 
 	MDRV_CPU_ADD("68k", M68000, 8000000)
-	MDRV_CPU_PROGRAM_MAP(shrike68k_map,0)
+	MDRV_CPU_PROGRAM_MAP(shrike68k_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 MACHINE_DRIVER_END
@@ -1983,7 +1983,7 @@ static void expand_roms(running_machine *machine, UINT8 cd_rom_mask)
 	/* load EF           from 0x2e000-0x30000 */
 	/* ROM region must be 0x40000 total */
 
-	UINT8 *temp = malloc_or_die(0x20000);
+	UINT8 *temp = alloc_array_or_die(UINT8, 0x20000);
 	{
 		UINT8 *rom = memory_region(machine, "maincpu");
 		UINT32 len = memory_region_length(machine, "maincpu");
@@ -2068,48 +2068,48 @@ static DRIVER_INIT( minigol2 ) { expand_roms(machine, 0x0c);        balsente_sho
 static DRIVER_INIT( toggle )   { expand_roms(machine, EXPAND_ALL);  balsente_shooter = 0; /* noanalog */ }
 static DRIVER_INIT( nametune )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	memory_install_write8_handler(space, 0x9f00, 0x9f00, 0, 0, balsente_rombank2_select_w);
 	expand_roms(machine, EXPAND_NONE | SWAP_HALVES); balsente_shooter = 0; /* noanalog */
 }
 static DRIVER_INIT( nstocker )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	memory_install_write8_handler(space, 0x9f00, 0x9f00, 0, 0, balsente_rombank2_select_w);
 	expand_roms(machine, EXPAND_NONE | SWAP_HALVES); balsente_shooter = 1; balsente_adc_shift = 1;
 }
 static DRIVER_INIT( sfootbal )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	memory_install_write8_handler(space, 0x9f00, 0x9f00, 0, 0, balsente_rombank2_select_w);
 	expand_roms(machine, EXPAND_ALL  | SWAP_HALVES); balsente_shooter = 0; balsente_adc_shift = 0;
 }
 static DRIVER_INIT( spiker )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	memory_install_readwrite8_handler(space, 0x9f80, 0x9f8f, 0, 0, spiker_expand_r, spiker_expand_w);
 	memory_install_write8_handler(space, 0x9f00, 0x9f00, 0, 0, balsente_rombank2_select_w);
 	expand_roms(machine, EXPAND_ALL  | SWAP_HALVES); balsente_shooter = 0; balsente_adc_shift = 1;
 }
 static DRIVER_INIT( stompin )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	memory_install_write8_handler(space, 0x9f00, 0x9f00, 0, 0, balsente_rombank2_select_w);
 	expand_roms(machine, 0x0c | SWAP_HALVES); balsente_shooter = 0; balsente_adc_shift = 32;
 }
 static DRIVER_INIT( rescraid ) { expand_roms(machine, EXPAND_NONE); balsente_shooter = 0; /* noanalog */ }
 static DRIVER_INIT( grudge )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	memory_install_read8_handler(space, 0x9400, 0x9400, 0, 0, grudge_steering_r);
 	expand_roms(machine, EXPAND_NONE); balsente_shooter = 0;
 }
 static DRIVER_INIT( shrike )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	memory_install_readwrite8_handler(space, 0x9e00, 0x9fff, 0, 0, shrike_shared_6809_r, shrike_shared_6809_w);
 	memory_install_write8_handler(space, 0x9e01, 0x9e01, 0, 0, shrike_sprite_select_w );
-	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[2], ADDRESS_SPACE_PROGRAM), 0x10000, 0x1001f, 0, 0, shrike_io_68k_r, shrike_io_68k_w);
+	memory_install_readwrite16_handler(cputag_get_address_space(machine, "68k", ADDRESS_SPACE_PROGRAM), 0x10000, 0x1001f, 0, 0, shrike_io_68k_r, shrike_io_68k_w);
 
 	expand_roms(machine, EXPAND_ALL);  balsente_shooter = 0; balsente_adc_shift = 32;
 }

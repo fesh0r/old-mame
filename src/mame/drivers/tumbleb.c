@@ -352,14 +352,14 @@ static READ16_HANDLER( tumblepb_prot_r )
 static WRITE16_HANDLER( tumblepb_sound_w )
 {
 	soundlatch_w(space,0,data & 0xff);
-	cpu_set_input_line(space->machine->cpu[1],0,HOLD_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", 0, HOLD_LINE);
 }
 #endif
 
 static WRITE16_HANDLER( jumppop_sound_w )
 {
 	soundlatch_w(space,0,data & 0xff);
-	cpu_set_input_line(space->machine->cpu[1], 0, ASSERT_LINE );
+	cputag_set_input_line(space->machine, "audiocpu", 0, ASSERT_LINE );
 }
 
 /******************************************************************************/
@@ -750,8 +750,8 @@ ADDRESS_MAP_END
 
 static WRITE16_HANDLER( jumpkids_sound_w )
 {
-	soundlatch_w(space,0,data & 0xff);
-	cpu_set_input_line(space->machine->cpu[1],0,HOLD_LINE);
+	soundlatch_w(space, 0, data & 0xff);
+	cputag_set_input_line(space->machine, "audiocpu", 0, HOLD_LINE);
 }
 
 
@@ -829,13 +829,13 @@ static WRITE8_HANDLER(jumppop_z80_bank_w)
 
 static ADDRESS_MAP_START( jumppop_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x2fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK(1))
 	AM_RANGE(0xf800, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 static READ8_HANDLER(jumppop_z80latch_r)
 {
-	cpu_set_input_line(space->machine->cpu[1], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", 0, CLEAR_LINE);
 	return soundlatch_r(space, 0);
 }
 
@@ -1996,7 +1996,7 @@ static MACHINE_DRIVER_START( tumblepb )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 14000000)
-	MDRV_CPU_PROGRAM_MAP(tumblepopb_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(tumblepopb_main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	/* video hardware */
@@ -2026,7 +2026,7 @@ static MACHINE_DRIVER_START( tumbleb2 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 14000000)
-	MDRV_CPU_PROGRAM_MAP(tumblepopb_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(tumblepopb_main_map)
 	MDRV_CPU_VBLANK_INT("screen", tumbleb2_interrupt)
 
 	/* video hardware */
@@ -2055,12 +2055,12 @@ static MACHINE_DRIVER_START( jumpkids )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 12000000)
-	MDRV_CPU_PROGRAM_MAP(jumpkids_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(jumpkids_main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	/* z80? */
 	MDRV_CPU_ADD("audiocpu", Z80, 8000000/2)
-	MDRV_CPU_PROGRAM_MAP(jumpkids_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(jumpkids_sound_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -2087,7 +2087,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( fncywld )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 12000000)
-	MDRV_CPU_PROGRAM_MAP(fncywld_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(fncywld_main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	/* video hardware */
@@ -2121,7 +2121,7 @@ MACHINE_DRIVER_END
 
 static void semicom_irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -2145,11 +2145,11 @@ static MACHINE_RESET (htchctch)
 static MACHINE_DRIVER_START( htchctch )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 15000000) /* verified */
-	MDRV_CPU_PROGRAM_MAP(htchctch_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(htchctch_main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 15000000/4) /* verified on dquizgo */
-	MDRV_CPU_PROGRAM_MAP(semicom_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(semicom_sound_map)
 
 	MDRV_MACHINE_RESET ( htchctch )
 
@@ -2220,12 +2220,12 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( jumppop )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 16000000)
-	MDRV_CPU_PROGRAM_MAP(jumppop_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(jumppop_main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3500000) /* verified */
-	MDRV_CPU_PROGRAM_MAP(jumppop_sound_map, 0)
-	MDRV_CPU_IO_MAP(jumppop_sound_io_map, 0)
+	MDRV_CPU_PROGRAM_MAP(jumppop_sound_map)
+	MDRV_CPU_IO_MAP(jumppop_sound_io_map)
 	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, 1953)	/* measured */
 
 	/* video hardware */
@@ -2258,11 +2258,11 @@ static MACHINE_DRIVER_START( suprtrio )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 14000000) /* 14mhz should be correct, but lots of sprite flicker later in game */
-	MDRV_CPU_PROGRAM_MAP(suprtrio_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(suprtrio_main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq6_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 8000000)
-	MDRV_CPU_PROGRAM_MAP(suprtrio_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(suprtrio_sound_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -2291,7 +2291,7 @@ static MACHINE_DRIVER_START( pangpang )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 14000000)
-	MDRV_CPU_PROGRAM_MAP(pangpang_main_map,0)
+	MDRV_CPU_PROGRAM_MAP(pangpang_main_map)
 	MDRV_CPU_VBLANK_INT("screen", tumbleb2_interrupt)
 
 	/* video hardware */
@@ -3292,7 +3292,7 @@ static DRIVER_INIT( tumbleb2 )
 	tumblepb_patch_code(machine, 0x000132);
 	#endif
 
-	memory_install_write16_device_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), oki, 0x100000, 0x100001, 0, 0, tumbleb2_soundmcu_w );
+	memory_install_write16_device_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), oki, 0x100000, 0x100001, 0, 0, tumbleb2_soundmcu_w );
 
 }
 
@@ -3333,7 +3333,7 @@ static READ16_HANDLER( bcstory_1a0_read )
 static DRIVER_INIT ( bcstory )
 {
 	tumblepb_gfx1_rearrange(machine);
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x180008, 0x180009, 0, 0, bcstory_1a0_read ); // io should be here??
+	memory_install_read16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x180008, 0x180009, 0, 0, bcstory_1a0_read ); // io should be here??
 }
 
 
@@ -3574,7 +3574,7 @@ static DRIVER_INIT( htchctch )
 
 	HCROM[0x1e228/2] = 0x4e75;
 
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x140000, 0x1407ff, 0, 0, SMH_NOP ); // kill palette writes as the interrupt code we don't have controls them
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x140000, 0x1407ff, 0, 0, (write16_space_func)SMH_NOP ); // kill palette writes as the interrupt code we don't have controls them
 
 
 	{
@@ -3595,7 +3595,7 @@ static DRIVER_INIT( htchctch )
 static void suprtrio_decrypt_code(running_machine *machine)
 {
 	UINT16 *rom = (UINT16 *)memory_region(machine, "maincpu");
-	UINT16 *buf = malloc_or_die(0x80000);
+	UINT16 *buf = alloc_array_or_die(UINT16, 0x80000/2);
 	int i;
 
 	/* decrypt main ROMs */
@@ -3615,7 +3615,7 @@ static void suprtrio_decrypt_code(running_machine *machine)
 static void suprtrio_decrypt_gfx(running_machine *machine)
 {
 	UINT16 *rom = (UINT16 *)memory_region(machine, "gfx1");
-	UINT16 *buf = malloc_or_die(0x100000);
+	UINT16 *buf = alloc_array_or_die(UINT16, 0x100000/2);
 	int i;
 
 	/* decrypt tiles */
@@ -3640,10 +3640,10 @@ static DRIVER_INIT( chokchok )
 	DRIVER_INIT_CALL(htchctch);
 
 	/* different palette format, closer to tumblep -- is this controlled by a register? the palette was right with the hatch catch trojan */
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x140000, 0x140fff, 0, 0, paletteram16_xxxxBBBBGGGGRRRR_word_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x140000, 0x140fff, 0, 0, paletteram16_xxxxBBBBGGGGRRRR_word_w);
 
 	/* slightly different banking */
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x100002, 0x100003, 0, 0, chokchok_tilebank_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x100002, 0x100003, 0, 0, chokchok_tilebank_w);
 }
 
 static DRIVER_INIT( wlstar )
@@ -3651,7 +3651,7 @@ static DRIVER_INIT( wlstar )
 	DRIVER_INIT_CALL(htchctch);
 
 	/* slightly different banking */
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x100002, 0x100003, 0, 0, wlstar_tilebank_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x100002, 0x100003, 0, 0, wlstar_tilebank_w);
 }
 
 static DRIVER_INIT ( dquizgo )

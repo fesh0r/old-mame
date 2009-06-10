@@ -229,14 +229,14 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( feversoc_irq )
 {
-	cpu_set_input_line(device->machine->cpu[0], 8, HOLD_LINE );
+	cputag_set_input_line(device->machine, "maincpu", 8, HOLD_LINE );
 }
 
 static MACHINE_DRIVER_START( feversoc )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",SH2,MASTER_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(feversoc_map,0)
+	MDRV_CPU_PROGRAM_MAP(feversoc_map)
 	MDRV_CPU_VBLANK_INT("screen",feversoc_irq)
 
 	/* video hardware */

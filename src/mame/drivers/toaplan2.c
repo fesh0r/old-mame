@@ -298,14 +298,16 @@ static WRITE16_HANDLER( batsugun_share_w );
 static WRITE16_HANDLER( batsugun_share2_w );
 #endif
 
+static const device_config *sub_cpu = NULL;
+
 /***************************************************************************
   Initialisation handlers
 ***************************************************************************/
 
 static void toaplan2_reset(const device_config *device)
 {
-	if (device->machine->cpu[1] != NULL)
-		cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_RESET, PULSE_LINE);
+	if (sub_cpu != NULL)
+		cpu_set_input_line(sub_cpu, INPUT_LINE_RESET, PULSE_LINE);
 }
 
 static MACHINE_RESET( toaplan2 )
@@ -317,7 +319,7 @@ static MACHINE_RESET( toaplan2 )
       This is important for games with common RAM; the RAM test will fail
       when leaving service mode if the sound CPU is not reset.
     */
-	device_set_info_fct(machine->cpu[0], CPUINFO_FCT_M68K_RESET_CALLBACK, (genf *)toaplan2_reset);
+	m68k_set_reset_callback(cputag_get_cpu(machine, "maincpu"), toaplan2_reset);
 }
 
 static MACHINE_RESET( ghox )
@@ -368,18 +370,24 @@ static void register_state_save(running_machine *machine)
 static DRIVER_INIT( T2_Z80 )		/* init_t2_Z80(); */
 {
 	toaplan2_sub_cpu = CPU_2_Z80;
+	sub_cpu = cputag_get_cpu(machine, "audiocpu");
 	register_state_save(machine);
 }
 
 static DRIVER_INIT( T2_Z180 )
 {
 	toaplan2_sub_cpu = CPU_2_HD647180;
+	sub_cpu = cputag_get_cpu(machine, "mcu");
 	register_state_save(machine);
 }
 
 static DRIVER_INIT( T2_V25 )
 {
 	toaplan2_sub_cpu = CPU_2_V25;
+	if (cputag_get_cpu(machine, "mcu") != NULL)
+		sub_cpu = cputag_get_cpu(machine, "mcu");
+	else if (cputag_get_cpu(machine, "audiocpu") != NULL)
+		sub_cpu = cputag_get_cpu(machine, "audiocpu");
 	register_state_save(machine);
 }
 
@@ -392,9 +400,9 @@ static DRIVER_INIT( T2_noZ80 )
 static DRIVER_INIT( fixeight )
 {
 	#if USE_V25
-
+	sub_cpu = cputag_get_cpu(machine, "audiocpu");
 	#else
-	memory_install_readwrite16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x28f002, 0x28fbff, 0, 0, SMH_BANK2, SMH_BANK2 );
+	memory_install_readwrite16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x28f002, 0x28fbff, 0, 0, (read16_space_func)SMH_BANK(2), (write16_space_func)SMH_BANK(2) );
 	memory_set_bankptr(machine, 2, fixeight_sec_cpu_mem);
 	#endif
 
@@ -490,6 +498,7 @@ static DRIVER_INIT( pipibibi )
 	}
 
 	toaplan2_sub_cpu = CPU_2_Z80;
+	sub_cpu = cputag_get_cpu(machine, "audiocpu");
 	register_state_save(machine);
 }
 
@@ -497,6 +506,7 @@ static DRIVER_INIT( batrider )
 {
 	raizing_sndirq_line = 4;
 	toaplan2_sub_cpu = CPU_2_Z80;
+	sub_cpu = cputag_get_cpu(machine, "audiocpu");
 	register_state_save(machine);
 }
 
@@ -505,6 +515,7 @@ static DRIVER_INIT( bbakraid )
 	bbakraid_unlimited_ver = 0;
 	raizing_sndirq_line = 2;
 	toaplan2_sub_cpu = CPU_2_Z80;
+	sub_cpu = cputag_get_cpu(machine, "audiocpu");
 	register_state_save(machine);
 }
 
@@ -513,6 +524,7 @@ static DRIVER_INIT( bbakradu )
 	bbakraid_unlimited_ver = 1;
 	raizing_sndirq_line = 2;
 	toaplan2_sub_cpu = CPU_2_Z80;
+	sub_cpu = cputag_get_cpu(machine, "audiocpu");
 	register_state_save(machine);
 }
 
@@ -529,7 +541,7 @@ static READ16_HANDLER( toaplan2_inputport_0_word_r )
 
 static TIMER_CALLBACK( toaplan2_raise_irq )
 {
-	cpu_set_input_line(machine->cpu[0], param, HOLD_LINE);
+	cputag_set_input_line(machine, "maincpu", param, HOLD_LINE);
 }
 
 static void toaplan2_vblank_irq(running_machine *machine, int irq_line)
@@ -617,8 +629,8 @@ static WRITE16_HANDLER( toaplan2_v25_coin_word_w )
 
 		#if USE_V25
 		/* only the ram-based V25 based games access the following bits */
-		//cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data & 0x0020) ? CLEAR_LINE : ASSERT_LINE );
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_HALT,  (data & 0x0010) ? CLEAR_LINE : ASSERT_LINE);
+		//cpu_set_input_line(sub_cpu, INPUT_LINE_RESET, (data & 0x0020) ? CLEAR_LINE : ASSERT_LINE );
+		cpu_set_input_line(sub_cpu, INPUT_LINE_HALT,  (data & 0x0010) ? CLEAR_LINE : ASSERT_LINE);
 		#endif
 
 	}
@@ -921,7 +933,7 @@ static WRITE16_HANDLER( fixeight_sec_cpu_w )
 			/* game keeping service mode. It writes/reads the settings to/from */
 			/* these shared RAM locations. The secondary CPU reads/writes them */
 			/* from/to nvram to store the settings (a 93C45 EEPROM) */
-			memory_install_readwrite16_handler(space, 0x28f002, 0x28fbff, 0, 0, SMH_BANK2, SMH_BANK2);
+			memory_install_readwrite16_handler(space, 0x28f002, 0x28fbff, 0, 0, (read16_space_func)SMH_BANK(2), (write16_space_func)SMH_BANK(2));
 			memory_set_bankptr(space->machine, 2, fixeight_sec_cpu_mem);
 			memory_install_read_port_handler(space, 0x28f004, 0x28f005, 0, 0, "DSWA");	/* Dip Switch A - Wrong !!! */
 			memory_install_read_port_handler(space, 0x28f006, 0x28f007, 0, 0, "DSWB");	/* Dip Switch B - Wrong !!! */
@@ -1016,7 +1028,7 @@ static WRITE16_HANDLER( bgaregga_soundlatch_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch_w(space, offset, data & 0xff);
-		cpu_set_input_line(space->machine->cpu[1], 0, HOLD_LINE);
+		cpu_set_input_line(sub_cpu, 0, HOLD_LINE);
 	}
 }
 
@@ -1131,7 +1143,7 @@ static WRITE16_HANDLER( batrider_soundlatch_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch_w(space, offset, data & 0xff);
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, ASSERT_LINE);
+		cpu_set_input_line(sub_cpu, INPUT_LINE_NMI, ASSERT_LINE);
 	}
 }
 
@@ -1141,7 +1153,7 @@ static WRITE16_HANDLER( batrider_soundlatch2_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch2_w(space, offset, data & 0xff);
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, ASSERT_LINE);
+		cpu_set_input_line(sub_cpu, INPUT_LINE_NMI, ASSERT_LINE);
 	}
 }
 
@@ -1157,20 +1169,20 @@ static WRITE16_HANDLER( raizing_clear_sndirq_w )
 {
 	// not sure whether this is correct
 	// the 68K writes here during the sound IRQ handler, and nowhere else...
-	cpu_set_input_line(space->machine->cpu[0], raizing_sndirq_line, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", raizing_sndirq_line, CLEAR_LINE);
 }
 
 
 static WRITE8_HANDLER( raizing_sndirq_w )
 {
 	// if raizing_clear_sndirq_w() is correct, should this be ASSERT_LINE?
-	cpu_set_input_line(space->machine->cpu[0], raizing_sndirq_line, HOLD_LINE);
+	cputag_set_input_line(space->machine, "maincpu", raizing_sndirq_line, HOLD_LINE);
 }
 
 
 static WRITE8_HANDLER( raizing_clear_nmi_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, CLEAR_LINE);
+	cpu_set_input_line(sub_cpu, INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 
@@ -1495,7 +1507,7 @@ ADDRESS_MAP_END
 WRITE16_HANDLER( fixeight_subcpu_ctrl )
 {
 	/* 0x18 used */
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_HALT,  (data & 0x0010) ? CLEAR_LINE : ASSERT_LINE);
+	cpu_set_input_line(sub_cpu, INPUT_LINE_HALT,  (data & 0x0010) ? CLEAR_LINE : ASSERT_LINE);
 }
 #endif
 
@@ -1558,7 +1570,7 @@ static ADDRESS_MAP_START( fixeighb_68k_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x502000, 0x5021ff) AM_READWRITE(toaplan2_txvideoram16_offs_r, toaplan2_txvideoram16_offs_w) AM_BASE(&toaplan2_txvideoram16_offs) AM_SIZE(&toaplan2_tx_offs_vram_size)
 	AM_RANGE(0x503000, 0x5031ff) AM_READWRITE(toaplan2_txscrollram16_r, toaplan2_txscrollram16_w) AM_BASE(&toaplan2_txscrollram16) AM_SIZE(&toaplan2_tx_scroll_vram_size)
 	AM_RANGE(0x700000, 0x700001) AM_READ(video_count_r)
-	AM_RANGE(0x800000, 0x87ffff) AM_READ(SMH_BANK1)
+	AM_RANGE(0x800000, 0x87ffff) AM_READ(SMH_BANK(1))
 ADDRESS_MAP_END
 
 
@@ -3342,7 +3354,8 @@ GFXDECODE_END
 
 static void irqhandler(const device_config *device, int linestate)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,linestate);
+	if (sub_cpu != NULL)		// wouldn't tekipaki have problem without this? "mcu" is not generally added
+		cpu_set_input_line(sub_cpu, 0, linestate);
 }
 
 static const ym3812_interface ym3812_config =
@@ -3362,12 +3375,12 @@ static MACHINE_DRIVER_START( tekipaki )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_10MHz)			/* 10MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(tekipaki_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(tekipaki_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq4)
 
 #if USE_HD64x180
 	MDRV_CPU_ADD("mcu", Z180, XTAL_10MHz)			/* HD647180 CPU actually */
-	MDRV_CPU_PROGRAM_MAP(hd647180_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(hd647180_mem)
 #endif
 
 	MDRV_MACHINE_RESET(toaplan2)
@@ -3401,12 +3414,12 @@ static MACHINE_DRIVER_START( ghox )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_10MHz)			/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(ghox_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(ghox_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq4)
 
 #if USE_HD64x180
 	MDRV_CPU_ADD("mcu", Z180, XTAL_10MHz)			/* HD647180 CPU actually */
-	MDRV_CPU_PROGRAM_MAP(hd647180_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(hd647180_mem)
 #endif
 
 	MDRV_MACHINE_RESET(ghox)
@@ -3439,13 +3452,13 @@ static MACHINE_DRIVER_START( dogyuun )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_25MHz/2)			/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(dogyuun_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(dogyuun_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq4)
 
 #if USE_V25
 	MDRV_CPU_ADD("audiocpu", V25, XTAL_25MHz/2)			/* NEC V25+ type Toaplan marked CPU ??? */
-	MDRV_CPU_PROGRAM_MAP(V25_rambased_mem, 0)
-	//MDRV_CPU_IO_MAP(V25_port, 0)
+	MDRV_CPU_PROGRAM_MAP(V25_rambased_mem)
+	//MDRV_CPU_IO_MAP(V25_port)
 #endif
 
 	MDRV_MACHINE_RESET(dogyuun)
@@ -3482,14 +3495,14 @@ static MACHINE_DRIVER_START( kbash )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_16MHz)			/* 16MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(kbash_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(kbash_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq4)
 
 	/* ROM based v25 */
 #if USE_V25
 	MDRV_CPU_ADD("mcu", V25, XTAL_16MHz)			/* NEC V25+ type Toaplan marked CPU ??? */
-	MDRV_CPU_PROGRAM_MAP(V25_mem, 0)
-	MDRV_CPU_IO_MAP(V25_port, 0)
+	MDRV_CPU_PROGRAM_MAP(V25_mem)
+	MDRV_CPU_IO_MAP(V25_port)
 #endif
 
 	MDRV_MACHINE_RESET(toaplan2)
@@ -3525,7 +3538,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( kbash2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_16MHz)			/* 16MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(kbash2_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(kbash2_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq4)
 
 	MDRV_MACHINE_RESET(toaplan2)
@@ -3563,7 +3576,7 @@ static MACHINE_DRIVER_START( truxton2 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_16MHz)			/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(truxton2_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(truxton2_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq2)
 
 	MDRV_MACHINE_RESET(toaplan2)
@@ -3600,11 +3613,11 @@ static MACHINE_DRIVER_START( pipibibs )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_10MHz)			/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(pipibibs_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(pipibibs_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq4)
 
 	MDRV_CPU_ADD("audiocpu", Z80,XTAL_27MHz/8)			/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(sound_z80_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(sound_z80_mem)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 
@@ -3639,12 +3652,12 @@ static MACHINE_DRIVER_START( whoopee )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_10MHz)			/* 10MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(tekipaki_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(tekipaki_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq4)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_27MHz/8)			/* This should be a HD647180 */
 											/* Change this to 10MHz when HD647180 gets dumped. 10MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(sound_z80_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(sound_z80_mem)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 
@@ -3679,11 +3692,11 @@ static MACHINE_DRIVER_START( pipibibi )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_10MHz)			/* 10MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(pipibibi_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(pipibibi_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq4)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_27MHz/8)			/* ??? 3.37MHz */
-	MDRV_CPU_PROGRAM_MAP(sound_z80_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(sound_z80_mem)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 
@@ -3718,13 +3731,13 @@ static MACHINE_DRIVER_START( fixeight )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_16MHz)			/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(fixeight_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(fixeight_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq4)
 
 #if USE_V25
 	MDRV_CPU_ADD("audiocpu", V25, XTAL_16MHz)			/* NEC V25+ type Toaplan marked CPU ??? */
-	MDRV_CPU_PROGRAM_MAP(V25_rambased_mem, 0)
-	//MDRV_CPU_IO_MAP(V25_port, 0)
+	MDRV_CPU_PROGRAM_MAP(V25_rambased_mem)
+	//MDRV_CPU_IO_MAP(V25_port)
 #endif
 
 	MDRV_MACHINE_RESET(batsugun)
@@ -3761,7 +3774,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( fixeighb )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_10MHz)			/* 10MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(fixeighb_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(fixeighb_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq2)
 
 	MDRV_MACHINE_RESET(toaplan2)
@@ -3795,13 +3808,13 @@ static MACHINE_DRIVER_START( vfive )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_10MHz)			/* 10MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(vfive_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(vfive_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq4)
 
 #if USE_V25
 	MDRV_CPU_ADD("audiocpu", V25, XTAL_32MHz/2)			/* NEC V25+ type Toaplan marked CPU ??? */
-	MDRV_CPU_PROGRAM_MAP(V25_rambased_mem, 0)
-	//MDRV_CPU_IO_MAP(V25_port, 0)
+	MDRV_CPU_PROGRAM_MAP(V25_rambased_mem)
+	//MDRV_CPU_IO_MAP(V25_port)
 #endif
 
 	MDRV_MACHINE_RESET(vfive)
@@ -3832,7 +3845,7 @@ MACHINE_DRIVER_END
 static MACHINE_RESET(batsugun)
 {
 	#if USE_V25
-	cpu_set_input_line(machine->cpu[1], INPUT_LINE_HALT, ASSERT_LINE);
+	cpu_set_input_line(sub_cpu, INPUT_LINE_HALT, ASSERT_LINE);
 	#endif
 }
 
@@ -3851,13 +3864,13 @@ static MACHINE_DRIVER_START( batsugun )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_32MHz/2)			/* 16MHz , 32MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(batsugun_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(batsugun_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq4)
 
 #if USE_V25
 	MDRV_CPU_ADD("audiocpu", V25, XTAL_32MHz/2)			/* NEC V25+ type Toaplan marked CPU ??? */
-	MDRV_CPU_PROGRAM_MAP(V25_rambased_mem, 0)
-	//MDRV_CPU_IO_MAP(V25_port, 0)
+	MDRV_CPU_PROGRAM_MAP(V25_rambased_mem)
+	//MDRV_CPU_IO_MAP(V25_port)
 #endif
 
 	MDRV_MACHINE_RESET(batsugun)
@@ -3895,7 +3908,7 @@ static MACHINE_DRIVER_START( snowbro2 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_16MHz)
-	MDRV_CPU_PROGRAM_MAP(snowbro2_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(snowbro2_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq4)
 
 	MDRV_MACHINE_RESET(toaplan2)
@@ -3932,11 +3945,11 @@ static MACHINE_DRIVER_START( mahoudai )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_32MHz/2)		/* 16MHz , 32MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(mahoudai_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(mahoudai_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq4)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_32MHz/8)		/* 4MHz , 32MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(raizing_sound_z80_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(raizing_sound_z80_mem)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 
@@ -3974,11 +3987,11 @@ static MACHINE_DRIVER_START( shippumd )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_32MHz/2)		/* 16MHz , 32MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(shippumd_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(shippumd_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq4)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_32MHz/8)		/* 4MHz , 32MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(raizing_sound_z80_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(raizing_sound_z80_mem)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 
@@ -4016,11 +4029,11 @@ static MACHINE_DRIVER_START( bgaregga )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_32MHz/2)		/* 16MHz , 32MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(bgaregga_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(bgaregga_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq4)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_32MHz/8)		/* 4MHz , 32MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(bgaregga_sound_z80_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(bgaregga_sound_z80_mem)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 
@@ -4058,12 +4071,12 @@ static MACHINE_DRIVER_START( batrider )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_32MHz/2)		/* 16MHz , 32MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(batrider_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(batrider_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq2)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_32MHz/8)		/* 4MHz , 32MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(batrider_sound_z80_mem, 0)
-	MDRV_CPU_IO_MAP(batrider_sound_z80_port, 0)
+	MDRV_CPU_PROGRAM_MAP(batrider_sound_z80_mem)
+	MDRV_CPU_IO_MAP(batrider_sound_z80_port)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 
@@ -4103,12 +4116,12 @@ static MACHINE_DRIVER_START( bbakraid )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_32MHz/2)		/* 16MHz , 32MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(bbakraid_68k_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(bbakraid_68k_mem)
 	MDRV_CPU_VBLANK_INT("screen", toaplan2_vblank_irq1)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_32MHz/6)		/* 5.3333MHz , 32MHz Oscillator */
-	MDRV_CPU_PROGRAM_MAP(bbakraid_sound_z80_mem, 0)
-	MDRV_CPU_IO_MAP(bbakraid_sound_z80_port, 0)
+	MDRV_CPU_PROGRAM_MAP(bbakraid_sound_z80_mem)
+	MDRV_CPU_IO_MAP(bbakraid_sound_z80_port)
 	MDRV_CPU_PERIODIC_INT(bbakraid_snd_interrupt, 448)
 
 	MDRV_QUANTUM_TIME(HZ(600))
@@ -5258,7 +5271,7 @@ GAME( 1998, batridk,  batrid,   batrider, batrider, batrider, ROT270, "Raizing /
 GAME( 1998, batridja, batrid,   batrider, batrider, batrider, ROT270, "Raizing / Eighting", "Armed Police Batrider (Japan) (Mon Dec 22 1997)", GAME_SUPPORTS_SAVE )
 
 // Battle Bakraid
-// the 'unlimited' version is a newer revisino of the code.
+// the 'unlimited' version is a newer revision of the code.
 GAME( 1999, bkraidu,  0,       bbakraid, bbakraid, bbakradu, ROT270, "Eighting", "Battle Bakraid - Unlimited Version (U.S.A.) (Tue Jun 8 1999)", GAME_SUPPORTS_SAVE )
 GAME( 1999, bkraiduj, bkraidu, bbakraid, bbakraid, bbakradu, ROT270, "Eighting", "Battle Bakraid - Unlimited Version (Japan) (Tue Jun 8 1999)", GAME_SUPPORTS_SAVE )
 // older revision of the code

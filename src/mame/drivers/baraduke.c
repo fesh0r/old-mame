@@ -170,7 +170,7 @@ static WRITE8_HANDLER( baraduke_lamps_w )
 
 static WRITE8_HANDLER( baraduke_irq_ack_w )
 {
-	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 }
 
 
@@ -184,7 +184,7 @@ static ADDRESS_MAP_START( baraduke_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8800, 0x8800) AM_WRITE(baraduke_irq_ack_w)		/* irq acknowledge */
 	AM_RANGE(0xb000, 0xb002) AM_WRITE(baraduke_scroll0_w)		/* scroll (layer 0) */
 	AM_RANGE(0xb004, 0xb006) AM_WRITE(baraduke_scroll1_w)		/* scroll (layer 1) */
-	AM_RANGE(0x6000, 0xffff) AM_READ(SMH_ROM)				/* ROM */
+	AM_RANGE(0x6000, 0xffff) AM_ROM								/* ROM */
 ADDRESS_MAP_END
 
 static READ8_HANDLER( soundkludge_r )
@@ -199,11 +199,11 @@ static ADDRESS_MAP_START( mcu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0080, 0x00ff) AM_RAM								/* built in RAM */
 	AM_RANGE(0x1105, 0x1105) AM_READ(soundkludge_r)				/* cures speech */
 	AM_RANGE(0x1000, 0x13ff) AM_DEVREADWRITE("namco", namcos1_cus30_r,namcos1_cus30_w) AM_BASE(&namco_wavedata)/* PSG device, shared RAM */
-	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_ROM)					/* MCU external ROM */
-	AM_RANGE(0x8000, 0x8000) AM_WRITENOP					/* watchdog reset? */
-	AM_RANGE(0x8800, 0x8800) AM_WRITENOP					/* irq acknoledge? */
+	AM_RANGE(0x8000, 0xbfff) AM_ROM								/* MCU external ROM */
+	AM_RANGE(0x8000, 0x8000) AM_WRITENOP						/* watchdog reset? */
+	AM_RANGE(0x8800, 0x8800) AM_WRITENOP						/* irq acknoledge? */
 	AM_RANGE(0xc000, 0xc7ff) AM_RAM								/* RAM */
-	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_ROM)					/* MCU internal ROM */
+	AM_RANGE(0xf000, 0xffff) AM_ROM								/* MCU internal ROM */
 ADDRESS_MAP_END
 
 
@@ -394,12 +394,12 @@ static MACHINE_DRIVER_START( baraduke )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809,49152000/32)
-	MDRV_CPU_PROGRAM_MAP(baraduke_map,0)
+	MDRV_CPU_PROGRAM_MAP(baraduke_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_assert)
 
 	MDRV_CPU_ADD("mcu", HD63701,49152000/8)
-	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
-	MDRV_CPU_IO_MAP(mcu_port_map,0)
+	MDRV_CPU_PROGRAM_MAP(mcu_map)
+	MDRV_CPU_IO_MAP(mcu_port_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_TIME(HZ(6000))		/* we need heavy synch */

@@ -248,8 +248,8 @@ static INPUT_PORTS_START( quasar )
 	PORT_DIPNAME( 0x18, 0x10, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x18, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Medium ) )
-	PORT_DIPSETTING(    0x08, "Difficult" )
-	PORT_DIPSETTING(    0x00, "Very Difficult" )
+	PORT_DIPSETTING(    0x08, DEF_STR( Difficult ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Very_Difficult ) )
 	PORT_DIPNAME( 0x60, 0x20, "Extended Play" )
 	PORT_DIPSETTING(    0x20, "5500" )						/* confirmed */
 	PORT_DIPSETTING(    0x40, "7500" )
@@ -320,13 +320,13 @@ static INTERRUPT_GEN( quasar_interrupt )
 static MACHINE_DRIVER_START( quasar )
 
 	MDRV_CPU_ADD("maincpu", S2650, 14318000/4)	/* 14 mhz crystal divide by 4 on board */
-	MDRV_CPU_PROGRAM_MAP(quasar,0)
-	MDRV_CPU_IO_MAP(quasar_io,0)
+	MDRV_CPU_PROGRAM_MAP(quasar)
+	MDRV_CPU_IO_MAP(quasar_io)
 	MDRV_CPU_VBLANK_INT("screen", quasar_interrupt)
 
 	MDRV_CPU_ADD("soundcpu",I8035,6000000)			/* 6MHz crystal divide by 15 in CPU */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_portmap)
 
 	MDRV_MACHINE_START( cvs )
 

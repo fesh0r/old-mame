@@ -137,9 +137,9 @@ static void machine_init(running_machine *machine)
 {
 	int i;
 
-	taitol_rambanks = auto_malloc(0x1000*12);
-	palette_ram = auto_malloc(0x1000);
-	empty_ram = auto_malloc(0x1000);
+	taitol_rambanks = auto_alloc_array(machine, UINT8, 0x1000*12);
+	palette_ram = auto_alloc_array(machine, UINT8, 0x1000);
+	empty_ram = auto_alloc_array(machine, UINT8, 0x1000);
 
 	for(i=0;i<3;i++)
 		irq_adr_table[i] = 0;
@@ -314,7 +314,7 @@ static WRITE8_HANDLER( irq_enable_w )
 
 	// fix Plotting test mode
 	if ((irq_enable & (1 << last_irq_level)) == 0)
-		cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 }
 
 static READ8_HANDLER( irq_enable_r )
@@ -866,8 +866,8 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER (evilston_snd_w)
 {
-	shared_ram[0x7fe]=data&0x7f;
-	cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
+	shared_ram[0x7fe] = data & 0x7f;
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static ADDRESS_MAP_START( evilston_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -1877,7 +1877,7 @@ GFXDECODE_END
 
 static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static WRITE8_DEVICE_HANDLER( portA_w )
@@ -1889,8 +1889,8 @@ static WRITE8_DEVICE_HANDLER( portA_w )
 
 		cur_bank = data & 0x03;
 		bankaddress = 0x10000 + (cur_bank-1) * 0x4000;
-		memory_set_bankptr(device->machine, 7,&RAM[bankaddress]);
-		//logerror ("YM2203 bank change val=%02x  pc=%04x\n",cur_bank, cpu_get_pc(space->cpu) );
+		memory_set_bankptr(device->machine, 7, &RAM[bankaddress]);
+		//logerror ("YM2203 bank change val=%02x  pc=%04x\n", cur_bank, cpu_get_pc(space->cpu) );
 	}
 }
 
@@ -1950,14 +1950,14 @@ static MACHINE_DRIVER_START( fhawk )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 13330560/2) 	/* verified freq on pin122 of TC0090LVC cpu */
-	MDRV_CPU_PROGRAM_MAP(fhawk_map,0)
+	MDRV_CPU_PROGRAM_MAP(fhawk_map)
 	MDRV_CPU_VBLANK_INT_HACK(vbl_interrupt,3)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)	/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(fhawk_3_map,0)
+	MDRV_CPU_PROGRAM_MAP(fhawk_3_map)
 
 	MDRV_CPU_ADD("slave", Z80, 12000000/3) 	/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(fhawk_2_map,0)
+	MDRV_CPU_PROGRAM_MAP(fhawk_2_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,3) /* fixes slow down problems */
 
 	MDRV_QUANTUM_TIME(HZ(6000))
@@ -1996,13 +1996,13 @@ static MACHINE_DRIVER_START( champwr )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(fhawk)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(champwr_map,0)
+	MDRV_CPU_PROGRAM_MAP(champwr_map)
 
 	MDRV_CPU_MODIFY("audiocpu")
-	MDRV_CPU_PROGRAM_MAP(champwr_3_map,0)
+	MDRV_CPU_PROGRAM_MAP(champwr_3_map)
 
 	MDRV_CPU_MODIFY("slave")
-	MDRV_CPU_PROGRAM_MAP(champwr_2_map,0)
+	MDRV_CPU_PROGRAM_MAP(champwr_2_map)
 
 	MDRV_MACHINE_RESET(champwr)
 
@@ -2026,13 +2026,13 @@ static MACHINE_DRIVER_START( raimais )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(fhawk)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(raimais_map,0)
+	MDRV_CPU_PROGRAM_MAP(raimais_map)
 
 	MDRV_CPU_MODIFY("audiocpu")
-	MDRV_CPU_PROGRAM_MAP(raimais_3_map,0)
+	MDRV_CPU_PROGRAM_MAP(raimais_3_map)
 
 	MDRV_CPU_MODIFY("slave")
-	MDRV_CPU_PROGRAM_MAP(raimais_2_map,0)
+	MDRV_CPU_PROGRAM_MAP(raimais_2_map)
 
 	MDRV_MACHINE_RESET(raimais)
 
@@ -2049,11 +2049,11 @@ static MACHINE_DRIVER_START( kurikint )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 13330560/2) 	/* verified freq on pin122 of TC0090LVC cpu */
-	MDRV_CPU_PROGRAM_MAP(kurikint_map,0)
+	MDRV_CPU_PROGRAM_MAP(kurikint_map)
 	MDRV_CPU_VBLANK_INT_HACK(vbl_interrupt,3)
 
 	MDRV_CPU_ADD("audiocpu",  Z80, 12000000/3) 	/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(kurikint_2_map,0)
+	MDRV_CPU_PROGRAM_MAP(kurikint_2_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
@@ -2100,7 +2100,7 @@ static MACHINE_DRIVER_START( plotting )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 13330560/2) 	/* verified freq on pin122 of TC0090LVC cpu */
-	MDRV_CPU_PROGRAM_MAP(plotting_map,0)
+	MDRV_CPU_PROGRAM_MAP(plotting_map)
 	MDRV_CPU_VBLANK_INT_HACK(vbl_interrupt,3)
 
 	MDRV_MACHINE_RESET(plotting)
@@ -2137,7 +2137,7 @@ static MACHINE_DRIVER_START( puzznic )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(plotting)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(puzznic_map,0)
+	MDRV_CPU_PROGRAM_MAP(puzznic_map)
 
 	MDRV_MACHINE_RESET(puzznic)
 MACHINE_DRIVER_END
@@ -2147,7 +2147,7 @@ static MACHINE_DRIVER_START( puzznici )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(plotting)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(puzznici_map,0)
+	MDRV_CPU_PROGRAM_MAP(puzznici_map)
 
 	MDRV_MACHINE_RESET(puzznic)
 MACHINE_DRIVER_END
@@ -2158,7 +2158,7 @@ static MACHINE_DRIVER_START( horshoes )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(plotting)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(horshoes_map,0)
+	MDRV_CPU_PROGRAM_MAP(horshoes_map)
 
 	MDRV_MACHINE_RESET(horshoes)
 MACHINE_DRIVER_END
@@ -2169,7 +2169,7 @@ static MACHINE_DRIVER_START( palamed )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(plotting)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(palamed_map,0)
+	MDRV_CPU_PROGRAM_MAP(palamed_map)
 
 	MDRV_MACHINE_RESET(palamed)
 MACHINE_DRIVER_END
@@ -2180,7 +2180,7 @@ static MACHINE_DRIVER_START( cachat )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(plotting)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(cachat_map,0)
+	MDRV_CPU_PROGRAM_MAP(cachat_map)
 
 	MDRV_MACHINE_RESET(cachat)
 MACHINE_DRIVER_END
@@ -2189,11 +2189,11 @@ static MACHINE_DRIVER_START( evilston )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 13330560/2) 	/* not verfied */
-	MDRV_CPU_PROGRAM_MAP(evilston_map,0)
+	MDRV_CPU_PROGRAM_MAP(evilston_map)
 	MDRV_CPU_VBLANK_INT_HACK(vbl_interrupt,3)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 12000000/3) 	/* not verified */
-	MDRV_CPU_PROGRAM_MAP(evilston_2_map,0)
+	MDRV_CPU_PROGRAM_MAP(evilston_2_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
@@ -2761,7 +2761,7 @@ static DRIVER_INIT( evilston )
 {
 	UINT8 *ROM = memory_region(machine, "audiocpu");
 	ROM[0x72]=0x45;	/* reti -> retn  ('dead' loop @ $1104 )*/
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xa7fe, 0xa7fe, 0, 0, evilston_snd_w);
+	memory_install_write8_handler(cputag_get_address_space(machine, "audiocpu", ADDRESS_SPACE_PROGRAM), 0xa7fe, 0xa7fe, 0, 0, evilston_snd_w);
 }
 
 

@@ -115,7 +115,7 @@ static READ8_DEVICE_HANDLER( junofrst_portA_r )
 
 static WRITE8_DEVICE_HANDLER( junofrst_portB_w )
 {
-	static const char *fltname[] = { "filter.0.0", "filter.0.1", "filter.0.2" };
+	static const char *const fltname[] = { "filter.0.0", "filter.0.1", "filter.0.2" };
 	int i;
 
 
@@ -141,7 +141,7 @@ static WRITE8_HANDLER( junofrst_sh_irqtrigger_w )
 	if (last == 0 && data == 1)
 	{
 		/* setting bit 0 low then high triggers IRQ on the sound CPU */
-		cpu_set_input_line_and_vector(space->machine->cpu[1],0,HOLD_LINE,0xff);
+		cputag_set_input_line_and_vector(space->machine, "audiocpu", 0, HOLD_LINE, 0xff);
 	}
 
 	last = data;
@@ -150,14 +150,14 @@ static WRITE8_HANDLER( junofrst_sh_irqtrigger_w )
 
 static WRITE8_HANDLER( junofrst_i8039_irq_w )
 {
-	cpu_set_input_line(space->machine->cpu[2], 0, ASSERT_LINE);
+	cputag_set_input_line(space->machine, "mcu", 0, ASSERT_LINE);
 }
 
 
 static WRITE8_HANDLER( i8039_irqen_and_status_w )
 {
 	if ((data & 0x80) == 0)
-		cpu_set_input_line(space->machine->cpu[2], 0, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "mcu", 0, CLEAR_LINE);
 	i8039_status = (data & 0x70) >> 4;
 }
 
@@ -194,7 +194,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8060, 0x8060) AM_WRITE(junofrst_bankselect_w)
 	AM_RANGE(0x8070, 0x8073) AM_WRITE(junofrst_blitter_w)
 	AM_RANGE(0x8100, 0x8fff) AM_RAM
-	AM_RANGE(0x9000, 0x9fff) AM_READ(SMH_BANK1)
+	AM_RANGE(0x9000, 0x9fff) AM_READ(SMH_BANK(1))
 	AM_RANGE(0xa000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -280,15 +280,15 @@ static MACHINE_DRIVER_START( junofrst )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809, 1500000)			/* 1.5 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80,14318000/8)	/* 1.78975 MHz */
-	MDRV_CPU_PROGRAM_MAP(audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(audio_map)
 
 	MDRV_CPU_ADD("mcu", I8039,8000000)	/* 8MHz crystal */
-	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
-	MDRV_CPU_IO_MAP(mcu_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(mcu_map)
+	MDRV_CPU_IO_MAP(mcu_io_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)

@@ -96,7 +96,7 @@ static const ppi8255_interface ppi8255_intf[2] =
 
 static VIDEO_START( spaceint )
 {
-	colorram = auto_malloc(videoram_size);
+	colorram = auto_alloc_array(machine, UINT8, videoram_size);
 }
 
 
@@ -188,14 +188,14 @@ static VIDEO_UPDATE( spaceint )
 
 static TIMER_CALLBACK( kamikaze_int_off )
 {
-	cpu_set_input_line(machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 0, CLEAR_LINE);
 }
 
 
 static TIMER_CALLBACK( kamizake_int_gen )
 {
 	/* interrupts are asserted on every state change of the 128V line */
-	cpu_set_input_line(machine->cpu[0], 0, ASSERT_LINE);
+	cputag_set_input_line(machine, "maincpu", 0, ASSERT_LINE);
 	param ^= 128;
 	timer_adjust_oneshot(int_timer, video_screen_get_time_until_pos(machine->primary_screen, param, 0), param);
 
@@ -214,7 +214,7 @@ static MACHINE_START( kamikaze )
 static INPUT_CHANGED( spaceint_coin_inserted )
 {
 	/* coin insertion causes an NMI */
-	cpu_set_input_line(field->port->machine->cpu[0], INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(field->port->machine, "maincpu", INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -522,8 +522,8 @@ static MACHINE_DRIVER_START( kamikaze )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(kamikaze_map,0)
-	MDRV_CPU_IO_MAP(kamikaze_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(kamikaze_map)
+	MDRV_CPU_IO_MAP(kamikaze_portmap)
 
 	MDRV_MACHINE_START(kamikaze)
 
@@ -559,8 +559,8 @@ static MACHINE_DRIVER_START( spaceint )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MASTER_CLOCK)        /* a guess */
-	MDRV_CPU_PROGRAM_MAP(spaceint_map,0)
-	MDRV_CPU_IO_MAP(spaceint_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(spaceint_map)
+	MDRV_CPU_IO_MAP(spaceint_portmap)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */

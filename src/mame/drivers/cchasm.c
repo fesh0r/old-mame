@@ -33,7 +33,7 @@
 
 static ADDRESS_MAP_START( memmap, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x00ffff) AM_ROM
-	AM_RANGE(0x040000, 0x04000f) AM_READWRITE(ptm6840_0_lsb_r,ptm6840_0_lsb_w)
+	AM_RANGE(0x040000, 0x04000f) AM_DEVREADWRITE8("6840ptm", ptm6840_read, ptm6840_write, 0xff)
 	AM_RANGE(0x050000, 0x050001) AM_WRITE(cchasm_refresh_control_w)
 	AM_RANGE(0x060000, 0x060001) AM_READ_PORT("DSW") AM_WRITE(cchasm_led_w)
 	AM_RANGE(0x070000, 0x070001) AM_WRITE(watchdog_reset16_w)
@@ -66,16 +66,17 @@ static ADDRESS_MAP_START( sound_portmap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE("ctc", z80ctc_r, z80ctc_w)
 ADDRESS_MAP_END
 
-static void cchasm_6840_irq(running_machine *machine, int state)
+static WRITE_LINE_DEVICE_HANDLER( cchasm_6840_irq )
 {
-	cpu_set_input_line(machine->cpu[0], 4, state?ASSERT_LINE:CLEAR_LINE);
+	cputag_set_input_line(device->machine, "maincpu", 4, state ? ASSERT_LINE : CLEAR_LINE);
 }
+
 static const ptm6840_interface cchasm_6840_intf =
 {
 	CCHASM_68K_CLOCK/10,
-	{ 0,CCHASM_68K_CLOCK/10,0 },
-	{ NULL, NULL, NULL },
-	cchasm_6840_irq
+	{ 0, CCHASM_68K_CLOCK / 10, 0 },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL },
+	DEVCB_LINE(cchasm_6840_irq)
 };
 
 /*************************************
@@ -130,12 +131,6 @@ static INPUT_PORTS_START( cchasm )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED ) /* Test 3, not used in cchasm */
 INPUT_PORTS_END
 
-static MACHINE_START( cchasm )
-{
-	ptm6840_config(machine, 0, &cchasm_6840_intf );
-}
-
-
 
 /*************************************
  *
@@ -161,16 +156,14 @@ static MACHINE_DRIVER_START( cchasm )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,CCHASM_68K_CLOCK)	/* 8 MHz (from schematics) */
-	MDRV_CPU_PROGRAM_MAP(memmap,0)
+	MDRV_CPU_PROGRAM_MAP(memmap)
 
 	MDRV_CPU_ADD("audiocpu", Z80,3584229)		/* 3.58  MHz (from schematics) */
 	MDRV_CPU_CONFIG(daisy_chain)
-	MDRV_CPU_PROGRAM_MAP(sound_memmap,0)
-	MDRV_CPU_IO_MAP(sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_memmap)
+	MDRV_CPU_IO_MAP(sound_portmap)
 
 	MDRV_Z80CTC_ADD("ctc", 3584229 /* same as "audiocpu" */, cchasm_ctc_intf)
-
-	MDRV_MACHINE_START(cchasm)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", VECTOR)
@@ -197,6 +190,9 @@ static MACHINE_DRIVER_START( cchasm )
 
 	MDRV_SOUND_ADD("dac2", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	/* 6840 PTM */
+	MDRV_PTM6840_ADD("6840ptm", cchasm_6840_intf)
 MACHINE_DRIVER_END
 
 

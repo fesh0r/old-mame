@@ -96,7 +96,7 @@ static void gottlieb1_sh_w(const device_config *riot, UINT8 data)
 
 static void snd_interrupt(const device_config *device, int state)
 {
-	cpu_set_input_line(device->machine->cpu[1], M6502_IRQ_LINE, state);
+	cputag_set_input_line(device->machine, "audiocpu", M6502_IRQ_LINE, state);
 }
 
 
@@ -109,7 +109,7 @@ static UINT8 r6532_portb_r(const device_config *device, UINT8 olddata)
 static void r6532_portb_w(const device_config *device, UINT8 newdata, UINT8 olddata)
 {
 	/* unsure if this is ever used, but the NMI is connected to the RIOT's PB7 */
-	cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, (newdata & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", INPUT_LINE_NMI, (newdata & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -222,7 +222,7 @@ void gottlieb_knocker(running_machine *machine)
 /* callback for the timer */
 static TIMER_CALLBACK( gottlieb_nmi_generate )
 {
-	cpu_set_input_line(machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
+	cputag_set_input_line(machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -338,7 +338,7 @@ MACHINE_DRIVER_START( gottlieb_soundrev1 )
 	MDRV_RIOT6532_ADD("riot", SOUND1_CLOCK/4, gottlieb_riot6532_intf)
 
 	MDRV_CPU_ADD("audiocpu", M6502, SOUND1_CLOCK/4)	/* the board can be set to /2 as well */
-	MDRV_CPU_PROGRAM_MAP(gottlieb_sound1_map,0)
+	MDRV_CPU_PROGRAM_MAP(gottlieb_sound1_map)
 
 	/* sound hardware */
 	MDRV_SOUND_ADD("dac", DAC, 0)
@@ -585,10 +585,10 @@ ADDRESS_MAP_END
 MACHINE_DRIVER_START( gottlieb_soundrev2 )
 	/* audio CPUs */
 	MDRV_CPU_ADD("audiocpu", M6502, SOUND2_CLOCK/4)
-	MDRV_CPU_PROGRAM_MAP(gottlieb_audio2_map,0)
+	MDRV_CPU_PROGRAM_MAP(gottlieb_audio2_map)
 
 	MDRV_CPU_ADD("speech", M6502, SOUND2_CLOCK/4)
-	MDRV_CPU_PROGRAM_MAP(gottlieb_speech2_map,0)
+	MDRV_CPU_PROGRAM_MAP(gottlieb_speech2_map)
 
 	/* sound hardware */
 	MDRV_SOUND_START( gottlieb2 )

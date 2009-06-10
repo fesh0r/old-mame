@@ -58,33 +58,226 @@ Tilemap entry formats (16-bit wide):
 
 ===================================================================================
 
-Harley Davidson (Rev.A)
-Sega, 1997
+Model 3 Hardware Overview.
+Sega, 1996-1998
 
-This game runs on Sega Model3 Step2 hardware.
+This document covers all games running on the original Model 3 hardware and is produced with
+reference to a Scud Race PCB and Virtua Fighter 3TB PCB. ALL PCB numbers are identical.
+Scud Race runs on the original Sega Model 3 hardware. It's the same PCB as Virtua Fighter 3, there
+is no mention of 'Step 1.5' or even 'Step 1.0' on any of the PCBs and there is no 50MHz or
+100MHz OSC on the CPU board that would allow the CPU to run at 100MHz like the current
+documention lists.
+The CPU on Scud Race runs at 66MHz. I suspect the 100MHz clock and STEP 1 and STEP 1.5 is yet
+another system16.com wild guess. Therefore, until proven, STEP 1.0 and STEP 1.5 DO NOT EXIST!
+
+Existing Model 3 hardware revisions as noted on the PCBs are ....
+MODEL3 (verified seen)
+MODEL3 STEP2 (verified seen)
+Other possibilites could be 'MODEL3 STEP 2.1' but no PCBs have been found yet with that
+written on the PCBs. If you have evidence that they do exist (i.e. you have a PCB), or you
+have a Model 3 game on a different version PCB to what is documented here, please let us know!
+
+This document is for MODEL3 (the first version).
+The games that exist on this hardware include....
+Boat Race GP
+Get Bass / Sega Bass Fishing
+Virtua Fighter 3
+Virtua Fighter 3 Team Battle
+Le Mans 24
+Scud Race / Super GT
+Scud Race Plus
+The Lost World
+The Lost World Special
+Virtua Striker 2
+Virtua Striker 2 Version '98
+
+
+[There is an external MPEG PCB used on some games but it was not available for documenting]
 
 COMM Board
 ----------
-
-171-7053B  837-11861  NEP-16T MODEL3 COMMUNICATION BOARD
+171-7053B
+837-11861 MODEL3 COMMUNICATION BOARD
+SEGA 1995
 |---------------------------------------------------------------------------------------------------|
 |                                                                                                   |
 |   LATTICE                     NKK N341256SJ-20     NKK N341256SJ-20     NKK N341256SJ-20    40MHz |
 |   PLSI 2032   JP3                                                                      JP1        |
-|               JP4             NKK N341256SJ-20     NKK N341256SJ-20     NKK N341256SJ-20          |
+|   (315-5958)  JP4             NKK N341256SJ-20     NKK N341256SJ-20     NKK N341256SJ-20          |
 |                                                                                             JP2   |
 |                                                                                                   |
 |   PALCE16V8                                                                                       |
-|   315-6075A      68000FN12       315-5804             315-5917              315-5917              |
+|   315-6075       68000FN12       315-5804             315-5917              315-5917              |
 |                                  (QFP144)             (QFP80)               (QFP80)               |
 |   PALCE16V8                                                                                       |
 |   315-6074                                                                                        |
-|                                                                                                   |
+|  LEDx7                                                                                            |
 |---------------------------------------------------------------------------------------------------|
 JP1: 1-2
 JP2: 2-3
 JP3: not shorted
 JP4: shorted
+
+
+ROM Board
+---------
+837-11860 MODEL3 ROM BOARD
+171-7052C
+|---------------------------------------------------------------------------------------------------|
+| CN1                                              CN2                                    CN4       |
+|        MC88915FN70                               CN3   GAL16V8B                                   |
+| LED1 LED2                                              315-5983   JP1  JP10  JP2                  |
+|                                                                   1-2  1-2   2-3          JP3-JP9 |
+|                                                                                  SROM0.21 ALL 2-3 |
+| VROM01.26   VROM00.27        CROM03.1    CROM02.2                                                 |
+|                                                                                                   |
+| VROM03.28   VROM02.29        CROM01.3    CROM00.4                                                 |
+|                                                                                                   |
+| VROM05.30   VROM04.31        CROM13.5    CROM12.6          CROM2.18  CROM0.20  SROM1.22  SROM3.24 |
+|                                                                                                   |
+| VROM07.32   VROM06.33        CROM11.7    CROM10.8                                                 |
+|                                                                                                   |
+| VROM11.34   VROM10.35        CROM23.9    CROM22.10                                                |
+|                                                                                                   |
+| VROM13.36   VROM12.37        CROM21.11   CROM20.12                                                |
+|                                                                                                   |
+| VROM15.38   VROM14.39        CROM33.13   CROM32.14        CROM3.17  CROM1.19   SROM2.23  SROM4.25 |
+|                                                                                                   |
+| VROM17.40   VROM16.41        CROM31.15   CROM30.16                                                |
+|                                                                                                   |
+|---------------------------------------------------------------------------------------------------|
+Notes:
+      CN1/2/3/4 - Connectors joining ROM board to CPU board (below)
+      Jumpers   - These jumper settings match Scud Race and VF3TB. Jumpers may be different for other games, but
+                  if different, it's likely only for the games that use 64MBit MASKROMs.
+      ROMs      - Not all sockets are populated. See MAME src for exact ROM usage.
+
+
+CPU Board
+---------
+
+837-11858 MODEL3 CPU BOARD
+171-7050D
+|---------------------------------------------------------------------------------------------------|
+|       CN22           JP21-26(ALL 2-3)             CN2                           CN7               |
+| 315-5941        KM4132G271AQ-10                   CN3                                 PC910   CN10|
+| GAL16V8                                                                        LED1 LED2 LED3 LED4|
+| (PLCC20)                                                                  JP42(2-3)  315-5942A    |
+|CN4    KM4132G271AQ-10                              45.158MHz        68000-12         GAL16V8      |
+|JP27(1-2)                    JP12(1-2)                               (PLCC68)         (DIP20)      |
+|JP28(1-2) JP15(2-3) MOTOROLA      PowerPC603ev    |---------|      |---------|                     |
+|JP49(2-3) JP16(1-2) XPC106ARX66CD (QFP240,        | SEGA    |      | SEGA    |             LMC6484 |
+|JP50(2-3) JP17(2-3) MPC106+        HEATSINKED)    | 315-5687|      | 315-5687|        TDA1386T     |
+|          JP18(2-3) (BGA304)                      | (QFP128)|      | (QFP128)|            JP40(2-3)|
+| GAL16V8           JP1(1-2)  JP11(OPEN)  JP6(1-2) |---------|      |---------|        TDA1386T     |
+| 315-5940          JP2(1-2)              JP7(1-2)                                         JP41(2-3)|
+| (DIP20)           JP3(2-3)   MPC950A    JP8(2-3) HM514270CJ7      HM514270CJ7                     |
+|         JP13(2-3) JP4(1-2)   (QFP32)    JP9(2-3)                                                  |
+|         JP14(2-3)  33.000MHz                                                          uPA2003     |
+|CN5                                                                                                |
+||--------|                      |--------|                                             uPA2003  CN8|
+||SEGA    |                      |SEGA    |                           3771                          |
+||315-5894|      SYMBIOS         |315-5893|                                             PC817       |
+||(QFP240)|      53C810A         |(QFP240)|                                                         |
+||--------|                      |--------|       |--------|   |--------|               PC817       |
+|                                                 |SEGA    |   |SEGA    |                           |
+|                                                 |315-5296|   |315-5649|               PC817       |
+|                CY7C199          32MHz           |(QFP100)|   |(QFP100)|                           |
+|JP29(1-2)       CY7C199                          |--------|   |--------| 93C46A        PC817       |
+|JP30(1-2)                                         JP10(1-2)                     A179B              |
+|                                                    RTC72421       BATT_3V             PC817       |
+| KM4132G271AQ-10                                                                                   |
+|                                                                  0.1uF                PC817    CN9|
+|              32MHz      JP39(2-3)        LH52B256  LH52B256      SUPERCAP                         |
+|        JP51-53(ALL 1-2)  NEC D71051-10                                   JP31-37(ALL 1-2)         |
+|LED15                         JP38(2-3)            LED14 LED13 LED12 LED11                         |
+|   LED16      24.576MHz      SW1   SW2        CN6  LED10 LED9 LED8 LED7 DIPSW(8) SW4 SW3  LED5 LED6|
+|---------------------------------------------------------------------------------------------------|
+Notes:
+      Note some jumpers are hardwired on the PCB but are identical except on Scud Race JP12 is open and in
+      position 1-2 for VF3TB, although changing the jumper didn't make any difference :-/
+      CN8/9/10   - Connectors to join filter board (external connectors to cabinet panel/monitor/power etc)
+      CN6        - Connector to join network board (above)
+      CN2/3/7/22 - Connectors to join ROM board (above)
+      CN4/5/22   - Connectors to join video board (below)
+
+
+Video Board
+-----------
+
+837-11859 MODEL3 VIDEO BOARD
+171-7051C
+|---------------------------------------------------------------------------------------------------|
+|     CN5                                   33MHz                                                   |
+|                                           PI49FCT3807S                                            |
+|  HM5241605  HM5241605                             M5M4V4169  M5M4V4169  M5M4V4169  M5M4V4169      |
+|                                                                                                CN6|
+|                     HM5241605  HM5241605       M5M410092FP                                        |
+|  HM5241605  HM5241605                          (TQFP128)                                M5M4V4169 |
+|                      |----------------|     |----------------|     |---------------|              |
+|  |----------|        |                |     |                |     |               |              |
+|  |SEGA      |        |    SEGA        |     |    SEGA        |     |   SEGA        |    M5M4V4169 |
+|  |315-5827-C|        |    315-5828-B  |     |    315-5829-C  |     |   315-5830-B  |              |
+|  |(QFP208)  |        |                |     |                |     |               |              |
+|  |          |        |                |     |                |     |               |    M5M4V4169 |
+|  |----------|        |   (QFP304)     |     |   (QFP304)     |     |  (QFP304)     |              |
+|CN1                   |----------------|     |----------------|     |---------------|              |
+|                                                                                         M5M4V4169 |
+|                     HM5241605  HM5241605                                                          |
+|                                                                                                   |
+|                                                                                                   |
+|                                             M5M410092FP            |---------------|    M5M4V4169 |
+|       |--------|          |----------|                             |               |              |
+|       |SEGA    |          |          |                             |   SEGA        |              |
+|       |315-5648|          |SEGA      |                             |   315-5830-B  |    M5M4V4169 |
+|       |(QFP64) |          |315-5831-B|                             |               |              |
+|       |--------|          |(QFP208)  |      M5M410092FP            |               |              |
+|CN2                        |----------|                             |  (QFP304)     |    M5M4V4169 |
+|       ADV7120KP30                                                  |---------------|              |
+|      (PLCC44)                                                                                     |
+|               AD589                                                                     M5M4V4169 |
+|                 JP2(1-2)                    M5M410092FP                                           |
+|                                                                                                   |
+|                                                   M5M4V4169  M5M4V4169  M5M4V4169  M5M4V4169      |
+|                                                                                                   |
+|   LED1 LED2                                                                                       |
+|---------------------------------------------------------------------------------------------------|
+Notes:
+      CN1/2/5      - Connectors to join CPU board
+      CN6          - Connectors to join Filter board (external connectors to cabinet panel/monitor/power etc)
+      ADV7120KP30  - Analog Devices ADV7120KP30 CMOS 80 MHz, Triple 8 Bit Video DAC
+      AD589        - Analog Devices 1.2 volt reference IC
+      PI49FCT3807S - Pericom 3.3V 1 to 10 Fast CMOS Clock Driver
+      HM5241605    - Hitachi HM5241605 4M (256k x 16 x 2 banks) SDRAM
+      M5M4V4169    - Mitsubishi M5M4V4169TP 4M (256k x 16) Cache DRAM with 1k x16 on-chip SRAM cache
+      M5M410092FP  - Mitsubishi 3D-RAM
+                     Specs....
+                              10-Mbits DRAM array supporting 1280 x 1024 x 8 frame buffer
+                              Four independent, interleaved DRAM banks
+                              2048-bit SRAM Pixel Buffer as the cache between DRAM and ALU
+                              Built-in tile-oriented memory addressing for rendering and scan line-oriented
+                              memory addressing for video refresh
+                              256-bit global bus connecting DRAM banks and Pixel Buffer
+
+      Note!! Scud Race uses a newer revision of some of the Sega custom chips. Swapping a VF3 Video board
+             onto a Scud Race will result in an error on bootup 'JUPITER ASIC HAS THE WRONG ID CODE' and the
+             game will not boot (some of the RED LEDs flash on/off continually)
+             The above layout is for Scud Race. The chip listing on VF3TB is....
+             IC76 - 315-5827-B
+             IC77 - 315-5828-A
+             IC90 - 315-5831-A
+             IC78 - 315-5829-B
+             IC79 - 315-5830-A
+             IC92 - 315-5830-A
+
+             Other than the revision of the listed chips, the PCBs are identical.
+
+
+
+Harley Davidson (Rev.A)
+Sega, 1997
+
+This game runs on Sega Model3 Step2 hardware.
 
 
 ROM Board
@@ -388,9 +581,9 @@ static UINT16 *model3_soundram;
 static void update_irq_state(running_machine *machine)
 {
 	if ((irq_enable & irq_state) || scsi_irq_state)
-		cpu_set_input_line(machine->cpu[0], PPC_IRQ, ASSERT_LINE);
+		cputag_set_input_line(machine, "maincpu", PPC_IRQ, ASSERT_LINE);
 	else
-		cpu_set_input_line(machine->cpu[0], PPC_IRQ, CLEAR_LINE);
+		cputag_set_input_line(machine, "maincpu", PPC_IRQ, CLEAR_LINE);
 }
 
 void model3_set_irq_line(running_machine *machine, UINT8 bit, int state)
@@ -768,7 +961,7 @@ static WRITE64_HANDLER(scsi_w)
 
 static UINT32 scsi_fetch(running_machine *machine, UINT32 dsp)
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT32 result;
 	result = memory_read_dword(space, dsp);
 	return FLIPENDIAN_INT32(result);
@@ -873,7 +1066,7 @@ static WRITE64_HANDLER( real3d_dma_w )
 
 static void real3d_dma_callback(running_machine *machine, UINT32 src, UINT32 dst, int length, int byteswap)
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	switch(dst >> 24)
 	{
 		case 0x88:		/* Display List End Trigger */
@@ -897,7 +1090,7 @@ static void real3d_dma_callback(running_machine *machine, UINT32 src, UINT32 dst
 		case 0x9c:		/* Unknown */
 			break;
 		default:
-			fatalerror("dma_callback: %08X, %08X, %d at %08X", src, dst, length, cpu_get_pc(machine->cpu[0]));
+			fatalerror("dma_callback: %08X, %08X, %d at %08X", src, dst, length, cpu_get_pc(cputag_get_cpu(machine, "maincpu")));
 			break;
 	}
 }
@@ -981,10 +1174,10 @@ static void model3_exit(running_machine *machine)
 static void configure_fast_ram(running_machine *machine)
 {
 	/* set conservative DRC options */
-	ppcdrc_set_options(machine->cpu[0], PPCDRC_COMPATIBLE_OPTIONS - PPCDRC_ACCURATE_SINGLES);
+	ppcdrc_set_options(cputag_get_cpu(machine, "maincpu"), PPCDRC_COMPATIBLE_OPTIONS - PPCDRC_ACCURATE_SINGLES);
 
 	/* configure fast RAM regions for DRC */
-	ppcdrc_add_fastram(machine->cpu[0], 0x00000000, 0x007fffff, FALSE, work_ram);
+	ppcdrc_add_fastram(cputag_get_cpu(machine, "maincpu"), 0x00000000, 0x007fffff, FALSE, work_ram);
 }
 
 static MACHINE_START(model3_10)
@@ -4298,8 +4491,8 @@ static ADDRESS_MAP_START( model3_snd, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x400000, 0x400001) AM_WRITE(model3snd_ctrl)
 	AM_RANGE(0x600000, 0x67ffff) AM_ROM AM_REGION("audiocpu", 0x80000)
 	AM_RANGE(0x800000, 0x9fffff) AM_ROM AM_REGION("samples", 0)
-	AM_RANGE(0xa00000, 0xdfffff) AM_READ(SMH_BANK4)
-	AM_RANGE(0xe00000, 0xffffff) AM_READ(SMH_BANK5)
+	AM_RANGE(0xa00000, 0xdfffff) AM_READ(SMH_BANK(4))
+	AM_RANGE(0xe00000, 0xffffff) AM_READ(SMH_BANK(5))
 ADDRESS_MAP_END
 
 static int scsp_last_line = 0;
@@ -4309,10 +4502,10 @@ static void scsp_irq(const device_config *device, int irq)
  	if (irq > 0)
 	{
 		scsp_last_line = irq;
-		cpu_set_input_line(device->machine->cpu[1], irq, ASSERT_LINE);
+		cputag_set_input_line(device->machine, "audiocpu", irq, ASSERT_LINE);
 	}
 	else
-		cpu_set_input_line(device->machine->cpu[1], -irq, CLEAR_LINE);
+		cputag_set_input_line(device->machine, "audiocpu", -irq, CLEAR_LINE);
 }
 
 static const scsp_interface scsp_config =
@@ -4372,11 +4565,11 @@ static const powerpc_config model3_2x =
 static MACHINE_DRIVER_START( model3_10 )
 	MDRV_CPU_ADD("maincpu", PPC603E, 66000000)
 	MDRV_CPU_CONFIG(model3_10)
-	MDRV_CPU_PROGRAM_MAP(model3_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(model3_mem)
  	MDRV_CPU_VBLANK_INT_HACK(model3_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", M68000, 12000000)
-	MDRV_CPU_PROGRAM_MAP(model3_snd, 0)
+	MDRV_CPU_PROGRAM_MAP(model3_snd)
 
  	MDRV_QUANTUM_TIME(HZ(600))
 
@@ -4412,11 +4605,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( model3_15 )
 	MDRV_CPU_ADD("maincpu", PPC603E, 100000000)
 	MDRV_CPU_CONFIG(model3_15)
-	MDRV_CPU_PROGRAM_MAP(model3_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(model3_mem)
  	MDRV_CPU_VBLANK_INT_HACK(model3_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", M68000, 12000000)
-	MDRV_CPU_PROGRAM_MAP(model3_snd, 0)
+	MDRV_CPU_PROGRAM_MAP(model3_snd)
 
 	MDRV_MACHINE_START(model3_15)
 	MDRV_MACHINE_RESET(model3_15)
@@ -4450,11 +4643,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( model3_20 )
 	MDRV_CPU_ADD("maincpu", PPC603R, 166000000)
 	MDRV_CPU_CONFIG(model3_2x)
-	MDRV_CPU_PROGRAM_MAP(model3_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(model3_mem)
  	MDRV_CPU_VBLANK_INT_HACK(model3_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", M68000, 12000000)
-	MDRV_CPU_PROGRAM_MAP(model3_snd, 0)
+	MDRV_CPU_PROGRAM_MAP(model3_snd)
 
 	MDRV_MACHINE_START(model3_20)
 	MDRV_MACHINE_RESET(model3_20)
@@ -4488,11 +4681,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( model3_21 )
 	MDRV_CPU_ADD("maincpu", PPC603R, 166000000)
 	MDRV_CPU_CONFIG(model3_2x)
-	MDRV_CPU_PROGRAM_MAP(model3_mem, 0)
+	MDRV_CPU_PROGRAM_MAP(model3_mem)
  	MDRV_CPU_VBLANK_INT_HACK(model3_interrupt,2)
 
 	MDRV_CPU_ADD("audiocpu", M68000, 12000000)
-	MDRV_CPU_PROGRAM_MAP(model3_snd, 0)
+	MDRV_CPU_PROGRAM_MAP(model3_snd)
 
 	MDRV_MACHINE_START(model3_21)
 	MDRV_MACHINE_RESET(model3_21)
@@ -4533,7 +4726,7 @@ static void interleave_vroms(running_machine *machine)
 	int vrom_length = memory_region_length(machine, "user3");
 	UINT16 *vrom;
 
-	model3_vrom = auto_malloc(0x4000000);
+	model3_vrom = auto_alloc_array(machine, UINT32, 0x4000000/4);
 	vrom = (UINT16 *)model3_vrom;
 
 	if( vrom_length <= 0x1000000 ) {
@@ -4558,35 +4751,35 @@ static DRIVER_INIT( model3_10 )
 {
 	interleave_vroms(machine);
 
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc0000000, 0xc00000ff, 0, 0, scsi_r, scsi_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc0000000, 0xc00000ff, 0, 0, scsi_r, scsi_w );
 
-	memory_install_read64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
+	memory_install_read64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xff000000, 0xff7fffff, 0, 0, (read64_space_func)SMH_BANK(1) );
 
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_r, mpc105_addr_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc105_data_r, mpc105_data_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf8fff000, 0xf8fff0ff, 0, 0, mpc105_reg_r, mpc105_reg_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_r, mpc105_addr_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc105_data_r, mpc105_data_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf8fff000, 0xf8fff0ff, 0, 0, mpc105_reg_r, mpc105_reg_w );
 }
 
 static DRIVER_INIT( model3_15 )
 {
 	interleave_vroms(machine);
-	memory_install_read64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
+	memory_install_read64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xff000000, 0xff7fffff, 0, 0, (read64_space_func)SMH_BANK(1) );
 
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_r, mpc105_addr_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc105_data_r, mpc105_data_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf8fff000, 0xf8fff0ff, 0, 0, mpc105_reg_r, mpc105_reg_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_r, mpc105_addr_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc105_data_r, mpc105_data_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf8fff000, 0xf8fff0ff, 0, 0, mpc105_reg_r, mpc105_reg_w );
 }
 
 static DRIVER_INIT( model3_20 )
 {
 	interleave_vroms(machine);
-	memory_install_read64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
+	memory_install_read64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xff000000, 0xff7fffff, 0, 0, (read64_space_func)SMH_BANK(1) );
 
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc2000000, 0xc20000ff, 0, 0, real3d_dma_r, real3d_dma_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc2000000, 0xc20000ff, 0, 0, real3d_dma_r, real3d_dma_w );
 
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_r, mpc106_addr_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_r, mpc106_data_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_r, mpc106_reg_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_r, mpc106_addr_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_r, mpc106_data_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_r, mpc106_reg_w );
 }
 
 static DRIVER_INIT( lostwsga )
@@ -4595,7 +4788,7 @@ static DRIVER_INIT( lostwsga )
 
 	DRIVER_INIT_CALL(model3_15);
 	/* TODO: there's an M68K device at 0xC0000000 - FF, maybe lightgun controls ? */
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc1000000, 0xc10000ff, 0, 0, scsi_r, scsi_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc1000000, 0xc10000ff, 0, 0, scsi_r, scsi_w );
 
 	rom[0x7374f0/4] = 0x38840004;		/* This seems to be an actual bug in the original code */
 }
@@ -4606,7 +4799,7 @@ static DRIVER_INIT( scud )
 
 	DRIVER_INIT_CALL(model3_15);
 	/* TODO: network device at 0xC0000000 - FF */
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf9000000, 0xf90000ff, 0, 0, scsi_r, scsi_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf9000000, 0xf90000ff, 0, 0, scsi_r, scsi_w );
 
 	rom[(0x71275c^4)/4] = 0x60000000;
 	rom[(0x71277c^4)/4] = 0x60000000;
@@ -4618,7 +4811,7 @@ static DRIVER_INIT( scudp )
 
 	DRIVER_INIT_CALL(model3_15);
 	/* TODO: network device at 0xC0000000 - FF */
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc1000000, 0xc10000ff, 0, 0, scsi_r, scsi_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc1000000, 0xc10000ff, 0, 0, scsi_r, scsi_w );
 
 	rom[(0x713724^4)/4] = 0x60000000;
 	rom[(0x713744^4)/4] = 0x60000000;
@@ -4634,7 +4827,7 @@ static DRIVER_INIT( lemans24 )
 	UINT32 *rom = (UINT32*)memory_region(machine, "user1");
 	DRIVER_INIT_CALL(model3_15);
 
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc1000000, 0xc10000ff, 0, 0, scsi_r, scsi_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc1000000, 0xc10000ff, 0, 0, scsi_r, scsi_w );
 
 	rom[(0x73fe38^4)/4] = 0x38840004;		/* This seems to be an actual bug in the original code */
 
@@ -4665,15 +4858,15 @@ static DRIVER_INIT( vs215 )
 	rom[(0x70e710^4)/4] = 0x60000000;
 
 	interleave_vroms(machine);
-	memory_install_read64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
+	memory_install_read64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xff000000, 0xff7fffff, 0, 0, (read64_space_func)SMH_BANK(1) );
 
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf9000000, 0xf90000ff, 0, 0, scsi_r, scsi_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf9000000, 0xf90000ff, 0, 0, scsi_r, scsi_w );
 
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf0800cf8, 0xf0800cff, 0, 0, mpc106_addr_r, mpc106_addr_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_r, mpc106_addr_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc106_data_r, mpc106_data_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_r, mpc106_data_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_r, mpc106_reg_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf0800cf8, 0xf0800cff, 0, 0, mpc106_addr_r, mpc106_addr_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_r, mpc106_addr_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc106_data_r, mpc106_data_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_r, mpc106_data_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_r, mpc106_reg_w );
 }
 
 static DRIVER_INIT( vs29815 )
@@ -4684,15 +4877,15 @@ static DRIVER_INIT( vs29815 )
 	rom[(0x60290c^4)/4] = 0x60000000;
 
 	interleave_vroms(machine);
-	memory_install_read64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
+	memory_install_read64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xff000000, 0xff7fffff, 0, 0, (read64_space_func)SMH_BANK(1) );
 
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf9000000, 0xf90000ff, 0, 0, scsi_r, scsi_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf9000000, 0xf90000ff, 0, 0, scsi_r, scsi_w );
 
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf0800cf8, 0xf0800cff, 0, 0, mpc106_addr_r, mpc106_addr_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_r, mpc106_addr_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc106_data_r, mpc106_data_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_r, mpc106_data_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_r, mpc106_reg_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf0800cf8, 0xf0800cff, 0, 0, mpc106_addr_r, mpc106_addr_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_r, mpc106_addr_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc106_data_r, mpc106_data_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_r, mpc106_data_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_r, mpc106_reg_w );
 }
 
 static DRIVER_INIT( bass )
@@ -4703,27 +4896,27 @@ static DRIVER_INIT( bass )
 	rom[(0x7999c8^4)/4] = 0x60000000;
 
 	interleave_vroms(machine);
-	memory_install_read64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
+	memory_install_read64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xff000000, 0xff7fffff, 0, 0, (read64_space_func)SMH_BANK(1) );
 
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf9000000, 0xf90000ff, 0, 0, scsi_r, scsi_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf9000000, 0xf90000ff, 0, 0, scsi_r, scsi_w );
 
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf0800cf8, 0xf0800cff, 0, 0, mpc106_addr_r, mpc106_addr_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_r, mpc106_addr_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc106_data_r, mpc106_data_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_r, mpc106_data_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_r, mpc106_reg_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf0800cf8, 0xf0800cff, 0, 0, mpc106_addr_r, mpc106_addr_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_r, mpc106_addr_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc106_data_r, mpc106_data_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_r, mpc106_data_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_r, mpc106_reg_w );
 }
 
 static DRIVER_INIT( getbass )
 {
 	interleave_vroms(machine);
-	memory_install_read64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
+	memory_install_read64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xff000000, 0xff7fffff, 0, 0, (read64_space_func)SMH_BANK(1) );
 
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf9000000, 0xf90000ff, 0, 0, scsi_r, scsi_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf9000000, 0xf90000ff, 0, 0, scsi_r, scsi_w );
 
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_r, mpc105_addr_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc105_data_r, mpc105_data_w );
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf8fff000, 0xf8fff0ff, 0, 0, mpc105_reg_r, mpc105_reg_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_r, mpc105_addr_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc105_data_r, mpc105_data_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf8fff000, 0xf8fff0ff, 0, 0, mpc105_reg_r, mpc105_reg_w );
 }
 
 static DRIVER_INIT( vs2 )
@@ -4772,7 +4965,7 @@ static DRIVER_INIT( harley )
 	UINT32 *rom = (UINT32*)memory_region(machine, "user1");
 	DRIVER_INIT_CALL(model3_20);
 
-	memory_install_readwrite64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc0000000, 0xc00fffff, 0, 0, network_r, network_w );
+	memory_install_readwrite64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc0000000, 0xc00fffff, 0, 0, network_r, network_w );
 
 	rom[(0x50e8d4^4)/4] = 0x60000000;
 	rom[(0x50e8f4^4)/4] = 0x60000000;
@@ -4840,7 +5033,7 @@ static DRIVER_INIT( daytona2 )
 	UINT32 *rom = (UINT32*)memory_region(machine, "user1");
 	DRIVER_INIT_CALL(model3_20);
 
-	memory_install_write64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc3800000, 0xc3800007, 0, 0, daytona2_rombank_w );
+	memory_install_write64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc3800000, 0xc3800007, 0, 0, daytona2_rombank_w );
 
 	//rom[(0x68468c^4)/4] = 0x60000000;
 	rom[(0x6063c4^4)/4] = 0x60000000;
@@ -4853,7 +5046,7 @@ static DRIVER_INIT( dayto2pe )
 	UINT32 *rom = (UINT32*)memory_region(machine, "user1");
 	DRIVER_INIT_CALL(model3_20);
 
-	memory_install_write64_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xc3800000, 0xc3800007, 0, 0, daytona2_rombank_w );
+	memory_install_write64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc3800000, 0xc3800007, 0, 0, daytona2_rombank_w );
 
 	rom[(0x606784^4)/4] = 0x60000000;
 	rom[(0x69a3fc^4)/4] = 0x60000000;		// jump to encrypted code

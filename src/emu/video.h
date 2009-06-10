@@ -52,7 +52,7 @@ enum
 #define video_screen_get_format(screen)	(((screen_config *)(screen)->inline_config)->format)
 
 /* allocates a bitmap that has the same dimensions and format as the passed in screen */
-#define video_screen_auto_bitmap_alloc(screen)	auto_bitmap_alloc(video_screen_get_width(screen), video_screen_get_height(screen), video_screen_get_format(screen))
+#define video_screen_auto_bitmap_alloc(screen)	auto_bitmap_alloc(screen->machine, video_screen_get_width(screen), video_screen_get_height(screen), video_screen_get_format(screen))
 
 
 
@@ -98,9 +98,6 @@ typedef void (*vblank_state_changed_func)(const device_config *device, void *par
 #define MDRV_SCREEN_ADD(_tag, _type) \
 	MDRV_DEVICE_ADD(_tag, VIDEO_SCREEN, 0) \
 	MDRV_DEVICE_CONFIG_DATA32(screen_config, type, SCREEN_TYPE_##_type)
-
-#define MDRV_SCREEN_REMOVE(_tag) \
-	MDRV_DEVICE_REMOVE(_tag)
 
 #define MDRV_SCREEN_MODIFY(_tag) \
 	MDRV_DEVICE_MODIFY(_tag)

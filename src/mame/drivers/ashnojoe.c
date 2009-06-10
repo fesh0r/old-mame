@@ -129,7 +129,7 @@ static ADDRESS_MAP_START( ashnojoe_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x04a000, 0x04a001) AM_READ_PORT("P1")
 	AM_RANGE(0x04a002, 0x04a003) AM_READ_PORT("P2")
 	AM_RANGE(0x04a004, 0x04a005) AM_READ_PORT("DSW")
-	AM_RANGE(0x04a006, 0x04a007) AM_WRITE(SMH_RAM) AM_BASE(&ashnojoe_tilemap_reg)
+	AM_RANGE(0x04a006, 0x04a007) AM_WRITEONLY AM_BASE(&ashnojoe_tilemap_reg)
 	AM_RANGE(0x04a008, 0x04a009) AM_WRITE(ashnojoe_soundlatch_w)
 	AM_RANGE(0x04a00a, 0x04a00b) AM_READ(fake_4a00a_r)	// ??
 	AM_RANGE(0x04a010, 0x04a019) AM_WRITE(joe_tilemaps_xscroll_w)
@@ -293,7 +293,7 @@ GFXDECODE_END
 
 static void ym2203_irq_handler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1], 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static WRITE8_DEVICE_HANDLER( ym2203_write_a )
@@ -332,7 +332,7 @@ static void ashnojoe_vclk_cb(const device_config *device)
 	else
 	{
 		msm5205_data_w(device, adpcm_byte & 0xf);
-		cpu_set_input_line(device->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+		cputag_set_input_line(device->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 	}
 
 	msm5205_vclk_toggle ^= 1;
@@ -354,12 +354,12 @@ static MACHINE_DRIVER_START( ashnojoe )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 8000000)
-	MDRV_CPU_PROGRAM_MAP(ashnojoe_map,0)
+	MDRV_CPU_PROGRAM_MAP(ashnojoe_map)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 4000000)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_portmap)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)

@@ -411,13 +411,13 @@ static MACHINE_RESET( magicard )
 static INTERRUPT_GEN( magicard_irq )
 {
 //  if(input_code_pressed(KEYCODE_Z))
-//      cpu_set_input_line(device->machine->cpu[0], 1, HOLD_LINE);
+//      cputag_set_input_line(device->machine, "maincpu", 1, HOLD_LINE);
 //  magicram[0x2004/2]^=0xffff;
 }
 
 static MACHINE_DRIVER_START( magicard )
 	MDRV_CPU_ADD("maincpu", M68000, CLOCK_A/2)	/* SCC-68070 CCA84 datasheet */
-	MDRV_CPU_PROGRAM_MAP(magicard_mem,0)
+	MDRV_CPU_PROGRAM_MAP(magicard_mem)
  	MDRV_CPU_VBLANK_INT("screen", magicard_irq) /* no interrupts? (it erases the vectors..) */
 
 	MDRV_SCREEN_ADD("screen", RASTER)

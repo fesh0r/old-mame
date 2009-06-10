@@ -717,10 +717,8 @@ static INPUT_PORTS_START( tetrsark )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) // or up? it rotates the piece.
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START2 )
-//  PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 ) // WTF? it does't work
-//  PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 ) // WTF? it does't work
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
 INPUT_PORTS_END
 
 
@@ -763,11 +761,11 @@ static const ay8910_interface ay8910_config =
 static MACHINE_DRIVER_START( arkanoid )
 	// basic machine hardware
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_12MHz/2) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(arkanoid_map, 0)
+	MDRV_CPU_PROGRAM_MAP(arkanoid_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("mcu", M68705, XTAL_12MHz/4) /* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(mcu_map, 0)
+	MDRV_CPU_PROGRAM_MAP(mcu_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000))					// 100 CPU slices per second to synchronize between the MCU and the main CPU
 
@@ -802,9 +800,9 @@ static MACHINE_DRIVER_START( bootleg )
 
 	// basic machine hardware
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(bootleg_map, 0)
+	MDRV_CPU_PROGRAM_MAP(bootleg_map)
 
-	MDRV_CPU_REMOVE("mcu")
+	MDRV_DEVICE_REMOVE("mcu")
 MACHINE_DRIVER_END
 
 
@@ -1127,9 +1125,9 @@ ROM_END
 
 static void arkanoid_bootleg_init( running_machine *machine )
 {
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xf002, 0xf002, 0, 0, arkanoid_bootleg_f002_r );
-	memory_install_write8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd018, 0xd018, 0, 0, arkanoid_bootleg_d018_w );
-	memory_install_read8_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0xd008, 0xd008, 0, 0, arkanoid_bootleg_d008_r );
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf002, 0xf002, 0, 0, arkanoid_bootleg_f002_r );
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd018, 0xd018, 0, 0, arkanoid_bootleg_d018_w );
+	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd008, 0xd008, 0, 0, arkanoid_bootleg_d008_r );
 }
 
 static DRIVER_INIT( arkangc )
@@ -1178,6 +1176,8 @@ static DRIVER_INIT( tetrsark )
 	{
 		ROM[x]=ROM[x]^0x94;
 	}
+
+	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd008, 0xd008, 0, 0, tetrsark_d008_w );
 }
 
 
@@ -1198,4 +1198,4 @@ GAME( 1988, paddle2,  arkanoid, bootleg,  paddle2,  paddle2,  ROT90, "bootleg", 
 GAME( 1986, arkatayt, arkanoid, bootleg,  arkatayt, 0,        ROT90, "bootleg", "Arkanoid (Tayto bootleg)", GAME_SUPPORTS_SAVE )
 GAME( 1986, arktayt2, arkanoid, bootleg,  arktayt2, 0,        ROT90, "bootleg", "Arkanoid (Tayto bootleg, harder)", GAME_SUPPORTS_SAVE )
 GAME( 1987, arkatour, arkanoid, arkanoid, arkanoid, 0,        ROT90, "Taito America Corporation (Romstar license)", "Tournament Arkanoid (US)", GAME_SUPPORTS_SAVE )
-GAME( 19??, tetrsark, 0,        bootleg,  tetrsark, tetrsark, ROT0,  "D.R. Korea", "Tetris (D.R. Korea)", GAME_SUPPORTS_SAVE | GAME_WRONG_COLORS )
+GAME( 19??, tetrsark, 0,        bootleg,  tetrsark, tetrsark, ROT0,  "D.R. Korea", "Tetris (D.R. Korea)", GAME_SUPPORTS_SAVE )

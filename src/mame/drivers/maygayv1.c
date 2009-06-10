@@ -464,10 +464,11 @@ static void update_outputs(UINT16 which)
 	for (i = 0; i < 16; i++)
 		if (which & (1 << i))
 		{
-			int val;
-
-			val = i8279.ram[i] & 0xff;
 /*
+            int val;
+
+            val = i8279.ram[i] & 0xff;
+
             val = i8279.ram[i] & 0x0f;
             if (i8279.inhibit & 0x01)
                 val = i8279.clear & 0x0f;
@@ -485,7 +486,7 @@ static void update_outputs(UINT16 which)
 
 static READ16_HANDLER( maygay_8279_r )
 {
-	static const char *portnames[] = { "STROBE1","STROBE2","STROBE3","STROBE4","STROBE5","STROBE6","STROBE7","STROBE8" };
+	static const char *const portnames[] = { "STROBE1","STROBE2","STROBE3","STROBE4","STROBE5","STROBE6","STROBE7","STROBE8" };
 	UINT8 result = 0xff;
 	UINT8 addr;
 
@@ -636,7 +637,7 @@ static WRITE16_HANDLER( vsync_int_ctrl )
 
 	// Active low
 	if (!(vsync_latch_preset))
-		cpu_set_input_line(space->machine->cpu[0], 3, CLEAR_LINE);
+		cputag_set_input_line(space->machine, "maincpu", 3, CLEAR_LINE);
 }
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -702,7 +703,7 @@ static READ8_HANDLER( mcu_r )
 				return 0;
 		}
 
-		case 3: upd7759_busy_r(0) ? 0 : 0x08;
+		case 3: return upd7759_busy_r(0) ? 0 : 0x08;
 	}
 	return 0;
 }
@@ -895,8 +896,8 @@ INPUT_PORTS_END
 
 static void duart_irq_handler(const device_config *device, UINT8 vector)
 {
-	cpu_set_input_line_and_vector(device->machine->cpu[0], 5, ASSERT_LINE, vector);
-//  cpu_set_input_line(device->machine->cpu[0], 5, state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line_and_vector(device->machine, "maincpu", 5, ASSERT_LINE, vector);
+//  cputag_set_input_line(device->machine, "maincpu", 5, state ? ASSERT_LINE : CLEAR_LINE);
 };
 
 static int d68681_val;
@@ -906,7 +907,7 @@ static void duart_tx(const device_config *device, int channel, UINT8 data)
 	if (channel == 0)
 	{
 		d68681_val = data;
-		cpu_set_input_line(device->machine->cpu[1], MCS51_RX_LINE, ASSERT_LINE);  // ?
+		cputag_set_input_line(device->machine, "soundcpu", MCS51_RX_LINE, ASSERT_LINE);  // ?
 	}
 
 };
@@ -962,15 +963,15 @@ static const pia6821_interface pia_intf =
 
 static MACHINE_START( maygayv1 )
 {
-	i82716.dram = auto_malloc(0x80000);   // ???
-	i82716.line_buf = auto_malloc(512);
+	i82716.dram = auto_alloc_array(machine, UINT16, 0x80000/2);   // ???
+	i82716.line_buf = auto_alloc_array(machine, UINT8, 512);
 
 	state_save_register_global_pointer(machine, i82716.dram, 0x40000);
 
 //  duart_68681_init(DUART_CLOCK, duart_irq_handler, duart_tx);
 
-	i8051_set_serial_tx_callback(machine->cpu[1], data_from_i8031);
-	i8051_set_serial_rx_callback(machine->cpu[1], data_to_i8031);
+	i8051_set_serial_tx_callback(cputag_get_cpu(machine, "soundcpu"), data_from_i8031);
+	i8051_set_serial_rx_callback(cputag_get_cpu(machine, "soundcpu"), data_to_i8031);
 }
 
 static MACHINE_RESET( maygayv1 )
@@ -985,19 +986,19 @@ static MACHINE_RESET( maygayv1 )
 static INTERRUPT_GEN( vsync_interrupt )
 {
 	if (vsync_latch_preset)
-		cpu_set_input_line(device->machine->cpu[0], 3, ASSERT_LINE);
+		cputag_set_input_line(device->machine, "maincpu", 3, ASSERT_LINE);
 }
 
 
 static MACHINE_DRIVER_START( maygayv1 )
 	MDRV_CPU_ADD("maincpu", M68000, MASTER_CLOCK / 2)
-	MDRV_CPU_PROGRAM_MAP(main_map, 0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", vsync_interrupt)
 
 	MDRV_CPU_ADD("soundcpu", I8052, SOUND_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(sound_prg, 0)
-	MDRV_CPU_DATA_MAP(sound_data, 0)
-	MDRV_CPU_IO_MAP(sound_io, 0)
+	MDRV_CPU_PROGRAM_MAP(sound_prg)
+	MDRV_CPU_DATA_MAP(sound_data)
+	MDRV_CPU_IO_MAP(sound_io)
 
 	MDRV_PIA6821_ADD("pia", pia_intf)
 

@@ -609,12 +609,12 @@ driftout  8000 0000/8  0000 0000    The first control changes from 8000 to 0000 
 
 static TIMER_CALLBACK( taitof2_interrupt6 )
 {
-	cpu_set_input_line(machine->cpu[0],6,HOLD_LINE);
+	cputag_set_input_line(machine, "maincpu", 6, HOLD_LINE);
 }
 
 static INTERRUPT_GEN( taitof2_interrupt )
 {
-	timer_set(device->machine, cpu_clocks_to_attotime(device,500), NULL, 0, taitof2_interrupt6);
+	timer_set(device->machine, cpu_clocks_to_attotime(device, 500), NULL, 0, taitof2_interrupt6);
 	cpu_set_input_line(device, 5, HOLD_LINE);
 }
 
@@ -639,7 +639,7 @@ static INT32 driveout_sound_latch = 0;
 
 static READ8_HANDLER( driveout_sound_command_r)
 {
-	cpu_set_input_line(space->machine->cpu[1],0,CLEAR_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", 0, CLEAR_LINE);
 //  logerror("sound IRQ OFF (sound command=%02x)\n",driveout_sound_latch);
 	return driveout_sound_latch;
 }
@@ -667,7 +667,7 @@ static WRITE16_HANDLER ( driveout_sound_command_w )
 	if (ACCESSING_BITS_8_15)
 	{
 		data >>= 8;
-		if (offset==0)
+		if (offset == 0)
 		{
 			nibble = data & 1;
 		}
@@ -679,8 +679,8 @@ static WRITE16_HANDLER ( driveout_sound_command_w )
 			}
 			else
 			{
-				driveout_sound_latch = ((data<<4) & 0xf0) | (driveout_sound_latch & 0x0f);
-				cpu_set_input_line (space->machine->cpu[1], 0, ASSERT_LINE);
+				driveout_sound_latch = ((data << 4) & 0xf0) | (driveout_sound_latch & 0x0f);
+				cputag_set_input_line (space->machine, "audiocpu", 0, ASSERT_LINE);
 			}
 		}
 	}
@@ -3129,7 +3129,7 @@ GFXDECODE_END
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
 static void irq_handler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2610_interface ym2610_config =
@@ -3174,7 +3174,7 @@ static MACHINE_DRIVER_START( taito_f2 )
 	MDRV_CPU_VBLANK_INT("screen", taitof2_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 24000000/6)	/* 4 MHz */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	MDRV_MACHINE_START(f2)
 
@@ -3210,7 +3210,7 @@ static MACHINE_DRIVER_START( finalb )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(finalb_map,0)
+	MDRV_CPU_PROGRAM_MAP(finalb_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(finalb)
@@ -3224,7 +3224,7 @@ static MACHINE_DRIVER_START( dondokod )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(dondokod_map,0)
+	MDRV_CPU_PROGRAM_MAP(dondokod_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(pivot)
@@ -3239,7 +3239,7 @@ static MACHINE_DRIVER_START( megab )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(megab_map,0)
+	MDRV_CPU_PROGRAM_MAP(megab_map)
 
 	/* video hardware */
 	MDRV_VIDEO_START(taitof2_megab)
@@ -3252,7 +3252,7 @@ static MACHINE_DRIVER_START( thundfox )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(thundfox_map,0)
+	MDRV_CPU_PROGRAM_MAP(thundfox_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(thundfox)
@@ -3267,7 +3267,7 @@ static MACHINE_DRIVER_START( cameltry )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(cameltry_map,0)
+	MDRV_CPU_PROGRAM_MAP(cameltry_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(pivot)
@@ -3281,7 +3281,7 @@ static MACHINE_DRIVER_START( qtorimon )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(qtorimon_map,0)
+	MDRV_CPU_PROGRAM_MAP(qtorimon_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(yuyugogo)
@@ -3294,7 +3294,7 @@ static MACHINE_DRIVER_START( liquidk )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(liquidk_map,0)
+	MDRV_CPU_PROGRAM_MAP(liquidk_map)
 
 	/* video hardware */
 	MDRV_VIDEO_START(taitof2_megab)
@@ -3308,7 +3308,7 @@ static MACHINE_DRIVER_START( quizhq )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(quizhq_map,0)
+	MDRV_CPU_PROGRAM_MAP(quizhq_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(yuyugogo)
@@ -3321,7 +3321,7 @@ static MACHINE_DRIVER_START( ssi )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(ssi_map,0)
+	MDRV_CPU_PROGRAM_MAP(ssi_map)
 
 	/* video hardware */
 	MDRV_VIDEO_START(taitof2_ssi)
@@ -3335,7 +3335,7 @@ static MACHINE_DRIVER_START( gunfront )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(gunfront_map,0)
+	MDRV_CPU_PROGRAM_MAP(gunfront_map)
 
 	/* video hardware */
 	MDRV_VIDEO_START(taitof2_gunfront)
@@ -3348,7 +3348,7 @@ static MACHINE_DRIVER_START( growl )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(growl_map,0)
+	MDRV_CPU_PROGRAM_MAP(growl_map)
 
 	/* video hardware */
 	MDRV_VIDEO_START(taitof2_growl)
@@ -3361,7 +3361,7 @@ static MACHINE_DRIVER_START( mjnquest )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(mjnquest_map,0)
+	MDRV_CPU_PROGRAM_MAP(mjnquest_map)
 
 	/* video hardware */
 	MDRV_VIDEO_START(taitof2_mjnquest)
@@ -3373,7 +3373,7 @@ static MACHINE_DRIVER_START( footchmp )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(footchmp_map,0)
+	MDRV_CPU_PROGRAM_MAP(footchmp_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(deadconx)
@@ -3388,7 +3388,7 @@ static MACHINE_DRIVER_START( hthero )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(footchmp_map,0)
+	MDRV_CPU_PROGRAM_MAP(footchmp_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(deadconx)
@@ -3403,7 +3403,7 @@ static MACHINE_DRIVER_START( koshien )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(koshien_map,0)
+	MDRV_CPU_PROGRAM_MAP(koshien_map)
 
 	/* video hardware */
 	MDRV_VIDEO_START(taitof2_koshien)
@@ -3416,7 +3416,7 @@ static MACHINE_DRIVER_START( yuyugogo )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(yuyugogo_map,0)
+	MDRV_CPU_PROGRAM_MAP(yuyugogo_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(yuyugogo)
@@ -3430,7 +3430,7 @@ static MACHINE_DRIVER_START( ninjak )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(ninjak_map,0)
+	MDRV_CPU_PROGRAM_MAP(ninjak_map)
 
 	/* video hardware */
 	MDRV_VIDEO_START(taitof2_ninjak)
@@ -3443,7 +3443,7 @@ static MACHINE_DRIVER_START( solfigtr )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(solfigtr_map,0)
+	MDRV_CPU_PROGRAM_MAP(solfigtr_map)
 
 	/* video hardware */
 	MDRV_VIDEO_START(taitof2_solfigtr)
@@ -3456,7 +3456,7 @@ static MACHINE_DRIVER_START( qzquest )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(qzquest_map,0)
+	MDRV_CPU_PROGRAM_MAP(qzquest_map)
 
 	/* video hardware */
 	MDRV_VIDEO_EOF(taitof2_partial_buffer_delayed)
@@ -3468,7 +3468,7 @@ static MACHINE_DRIVER_START( pulirula )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(pulirula_map,0)
+	MDRV_CPU_PROGRAM_MAP(pulirula_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(pivot)
@@ -3482,7 +3482,7 @@ static MACHINE_DRIVER_START( metalb )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(metalb_map,0)
+	MDRV_CPU_PROGRAM_MAP(metalb_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(deadconx)
@@ -3497,7 +3497,7 @@ static MACHINE_DRIVER_START( qzchikyu )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(qzchikyu_map,0)
+	MDRV_CPU_PROGRAM_MAP(qzchikyu_map)
 
 	/* video hardware */
 	MDRV_VIDEO_START(taitof2_qzchikyu)
@@ -3510,7 +3510,7 @@ static MACHINE_DRIVER_START( yesnoj )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(yesnoj_map,0)
+	MDRV_CPU_PROGRAM_MAP(yesnoj_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(yuyugogo)
@@ -3524,7 +3524,7 @@ static MACHINE_DRIVER_START( deadconx )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(deadconx_map,0)
+	MDRV_CPU_PROGRAM_MAP(deadconx_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(deadconx)
@@ -3538,7 +3538,7 @@ static MACHINE_DRIVER_START( deadconxj )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(deadconx_map,0)
+	MDRV_CPU_PROGRAM_MAP(deadconx_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(deadconx)
@@ -3552,7 +3552,7 @@ static MACHINE_DRIVER_START( dinorex )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(dinorex_map,0)
+	MDRV_CPU_PROGRAM_MAP(dinorex_map)
 
 	/* video hardware */
 	MDRV_VIDEO_START(taitof2_dinorex)
@@ -3565,7 +3565,7 @@ static MACHINE_DRIVER_START( qjinsei )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(qjinsei_map,0)
+	MDRV_CPU_PROGRAM_MAP(qjinsei_map)
 
 	/* video hardware */
 	MDRV_VIDEO_START(taitof2_quiz)
@@ -3578,7 +3578,7 @@ static MACHINE_DRIVER_START( qcrayon )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(qcrayon_map,0)
+	MDRV_CPU_PROGRAM_MAP(qcrayon_map)
 
 	/* video hardware */
 	MDRV_VIDEO_START(taitof2_quiz)
@@ -3591,7 +3591,7 @@ static MACHINE_DRIVER_START( qcrayon2 )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(qcrayon2_map,0)
+	MDRV_CPU_PROGRAM_MAP(qcrayon2_map)
 
 	/* video hardware */
 	MDRV_VIDEO_START(taitof2_quiz)
@@ -3604,7 +3604,7 @@ static MACHINE_DRIVER_START( driftout )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(taito_f2)
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(driftout_map,0)
+	MDRV_CPU_PROGRAM_MAP(driftout_map)
 
 	/* video hardware */
 	MDRV_GFXDECODE(pivot)
@@ -3617,11 +3617,11 @@ static MACHINE_DRIVER_START( cameltrya )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,24000000/2)	/* verified on pcb  */
-	MDRV_CPU_PROGRAM_MAP(cameltry_map,0)
+	MDRV_CPU_PROGRAM_MAP(cameltry_map)
 	MDRV_CPU_VBLANK_INT("screen", taitof2_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80,24000000/4)	/* verifed on pcb */
-	MDRV_CPU_PROGRAM_MAP(cameltrya_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(cameltrya_sound_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -3658,11 +3658,11 @@ static MACHINE_DRIVER_START( driveout )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000,24000000/2)	/* 12 MHz */
-	MDRV_CPU_PROGRAM_MAP(driveout_map,0)
+	MDRV_CPU_PROGRAM_MAP(driveout_map)
 	MDRV_CPU_VBLANK_INT("screen", taitof2_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80,24000000/6)	/* 4 MHz */
-	MDRV_CPU_PROGRAM_MAP(driveout_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(driveout_sound_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)

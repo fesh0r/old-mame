@@ -24,8 +24,8 @@ extern VIDEO_UPDATE( solomon );
 
 static WRITE8_HANDLER( solomon_sh_command_w )
 {
-	soundlatch_w(space,offset,data);
-	cpu_set_input_line(space->machine->cpu[1],INPUT_LINE_NMI,PULSE_LINE);
+	soundlatch_w(space, offset, data);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 /* this is checked on the title screen and when you reach certain scores in the game
@@ -34,17 +34,17 @@ static WRITE8_HANDLER( solomon_sh_command_w )
 
 static READ8_HANDLER( solomon_0xe603_r )
 {
-	if (cpu_get_pc(space->cpu)==0x161) // all the time .. return 0 to act as before  for coin / startup etc.
+	if (cpu_get_pc(space->cpu) == 0x161) // all the time .. return 0 to act as before  for coin / startup etc.
 	{
 		return 0;
 	}
-	else if (cpu_get_pc(space->cpu)==0x4cf0) // stop it clearing the screen at certain scores
+	else if (cpu_get_pc(space->cpu) == 0x4cf0) // stop it clearing the screen at certain scores
 	{
 		return (cpu_get_reg(space->cpu, Z80_BC) & 0x08);
 	}
 	else
 	{
-		mame_printf_debug("unhandled solomon_0xe603_r %04x\n",cpu_get_pc(space->cpu));
+		mame_printf_debug("unhandled solomon_0xe603_r %04x\n", cpu_get_pc(space->cpu));
 		return 0;
 	}
 }
@@ -146,7 +146,7 @@ static INPUT_PORTS_START( solomon )
 	PORT_DIPSETTING(    0x02, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Harder ) )
-	PORT_DIPSETTING(    0x03, "Difficult" )
+	PORT_DIPSETTING(    0x03, DEF_STR( Difficult ) )
 	PORT_DIPNAME( 0x0c, 0x00, "Timer Speed" )
 	PORT_DIPSETTING(    0x08, "Slow" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Normal ) )
@@ -154,7 +154,7 @@ static INPUT_PORTS_START( solomon )
 	PORT_DIPSETTING(    0x0c, "Fastest" )
 	PORT_DIPNAME( 0x10, 0x00, "Extra" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x10, "Difficult" )
+	PORT_DIPSETTING(    0x10, DEF_STR( Difficult ) )
 	PORT_DIPNAME( 0xe0, 0x00, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x00, "30k 200k 500k" )
 	PORT_DIPSETTING(    0x80, "100k 300k 800k" )
@@ -202,12 +202,12 @@ static MACHINE_DRIVER_START( solomon )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 4000000)	/* 4.0 MHz (?????) */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", nmi_line_pulse)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3072000)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_portmap)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)	/* ??? */
 						/* NMIs are caused by the main CPU */
 

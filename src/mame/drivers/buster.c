@@ -72,7 +72,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( buster )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,8000000)		 /* ? MHz */
-	MDRV_CPU_PROGRAM_MAP(mainmap,0)
+	MDRV_CPU_PROGRAM_MAP(mainmap)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
@@ -114,7 +114,7 @@ ROM_END
 static DRIVER_INIT( buster )
 {
 	UINT8 *ROM = memory_region(machine, "maincpu");
-//  vram = auto_malloc(0x2000);
+//  vram = auto_alloc_array(machine, UINT8, 0x2000);
 	memcpy(buster_rom, ROM, 0x4000);
 }
 

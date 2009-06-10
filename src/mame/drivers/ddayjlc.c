@@ -173,7 +173,7 @@ static WRITE8_HANDLER(bg2_w)
 static WRITE8_HANDLER( sound_w )
 {
 	soundlatch_w(space,offset,data);
-	cpu_set_input_line_and_vector(space->machine->cpu[1], 0, HOLD_LINE, 0xff);
+	cputag_set_input_line_and_vector(space->machine, "audiocpu", 0, HOLD_LINE, 0xff);
 }
 
 static WRITE8_HANDLER( i8257_CH0_w )
@@ -402,11 +402,11 @@ static INTERRUPT_GEN( ddayjlc_snd_interrupt )
 
 static MACHINE_DRIVER_START( ddayjlc )
 	MDRV_CPU_ADD("maincpu", Z80,12000000/3)
-	MDRV_CPU_PROGRAM_MAP(main_cpu,0)
+	MDRV_CPU_PROGRAM_MAP(main_cpu)
 	MDRV_CPU_VBLANK_INT("screen", ddayjlc_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 12000000/4)
-	MDRV_CPU_PROGRAM_MAP(sound_cpu,0)
+	MDRV_CPU_PROGRAM_MAP(sound_cpu)
 	MDRV_CPU_VBLANK_INT("screen", ddayjlc_snd_interrupt)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
@@ -556,7 +556,7 @@ static DRIVER_INIT( ddayjlc )
 	{
 		UINT32 oldaddr, newadr, length,j;
 		UINT8 *src, *dst, *temp;
-		temp = malloc_or_die(0x10000);
+		temp = alloc_array_or_die(UINT8, 0x10000);
 		src = temp;
 		dst = memory_region(machine, "gfx1");
 		length = memory_region_length(machine, "gfx1");

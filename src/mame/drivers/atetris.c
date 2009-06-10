@@ -80,7 +80,7 @@ static TIMER_CALLBACK( interrupt_gen )
 	int scanline = param;
 
 	/* assert/deassert the interrupt */
-	cpu_set_input_line(machine->cpu[0], 0, (scanline & 32) ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 0, (scanline & 32) ? ASSERT_LINE : CLEAR_LINE);
 
 	/* set the next timer */
 	scanline += 32;
@@ -92,7 +92,7 @@ static TIMER_CALLBACK( interrupt_gen )
 
 static WRITE8_HANDLER( irq_ack_w )
 {
-	cpu_set_input_line(space->machine->cpu[0], 0, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "maincpu", 0, CLEAR_LINE);
 }
 
 
@@ -343,7 +343,7 @@ static MACHINE_DRIVER_START( atetris )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502,MASTER_CLOCK/8)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 
 	MDRV_MACHINE_START(atetris)
 	MDRV_MACHINE_RESET(atetris)
@@ -379,7 +379,7 @@ static MACHINE_DRIVER_START( atetrsb2 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502,BOOTLEG_CLOCK/8)
-	MDRV_CPU_PROGRAM_MAP(atetrsb2_map,0)
+	MDRV_CPU_PROGRAM_MAP(atetrsb2_map)
 
 	MDRV_MACHINE_START(atetris)
 	MDRV_MACHINE_RESET(atetris)

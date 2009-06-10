@@ -46,8 +46,8 @@ extern VIDEO_UPDATE( tagteam );
 
 static WRITE8_HANDLER( sound_command_w )
 {
-	soundlatch_w(space,offset,data);
-	cpu_set_input_line(space->machine->cpu[1],M6502_IRQ_LINE,HOLD_LINE);
+	soundlatch_w(space, offset, data);
+	cputag_set_input_line(space->machine, "audiocpu", M6502_IRQ_LINE, HOLD_LINE);
 }
 
 
@@ -228,11 +228,11 @@ static MACHINE_DRIVER_START( tagteam )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6502, 1500000)	/* 1.5 MHz ?? */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", tagteam_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", M6502, 975000)  /* 975 kHz ?? */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,16)   /* IRQs are triggered by the main CPU */
 
 	/* video hardware */

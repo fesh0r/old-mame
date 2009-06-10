@@ -115,9 +115,9 @@ static READ16_HANDLER( nvram_r )
 
 static void update_interrupts(running_machine *machine)
 {
-	cpu_set_input_line(machine->cpu[0], 1, atarigen_scanline_int_state ? ASSERT_LINE : CLEAR_LINE);
-	cpu_set_input_line(machine->cpu[0], 2, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
-	cpu_set_input_line(machine->cpu[0], 3, atarigen_scanline_int_state && atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 1, atarigen_scanline_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 2, atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 3, atarigen_scanline_int_state && atarigen_video_int_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -131,7 +131,7 @@ static TIMER_CALLBACK( scanline_update )
        mystery yet */
 
 	/* INT 1 is on 32V */
-	atarigen_scanline_int_gen(machine->cpu[0]);
+	atarigen_scanline_int_gen(cputag_get_cpu(machine, "maincpu"));
 
 	/* advance to the next interrupt */
 	scanline += 64;
@@ -361,7 +361,7 @@ static MACHINE_DRIVER_START( foodf )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, MASTER_CLOCK/2)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", atarigen_video_int_gen)
 
 	MDRV_MACHINE_START(foodf)

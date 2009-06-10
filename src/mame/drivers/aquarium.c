@@ -98,7 +98,7 @@ static WRITE16_HANDLER( aquarium_sound_w )
 //  popmessage("sound write %04x",data);
 
 	soundlatch_w(space,1,data&0xff);
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE );
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE );
 }
 
 static WRITE8_HANDLER( aquarium_z80_bank_w )
@@ -146,7 +146,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xc02000, 0xc03fff) AM_RAM_WRITE(aquarium_txt_videoram_w) AM_BASE(&aquarium_txt_videoram)
 	AM_RANGE(0xc80000, 0xc81fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xd00000, 0xd00fff) AM_RAM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0xd80014, 0xd8001f) AM_WRITE(SMH_RAM) AM_BASE(&aquarium_scroll)
+	AM_RANGE(0xd80014, 0xd8001f) AM_WRITEONLY AM_BASE(&aquarium_scroll)
 	AM_RANGE(0xd80068, 0xd80069) AM_WRITENOP		/* probably not used */
 	AM_RANGE(0xd80080, 0xd80081) AM_READ_PORT("DSW")
 	AM_RANGE(0xd80082, 0xd80083) AM_READNOP	/* stored but not read back ? check code at 0x01f440 */
@@ -318,7 +318,7 @@ static DRIVER_INIT( aquarium )
 	}
 
 	/* reset the sound bank */
-	aquarium_z80_bank_w(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_IO), 0, 0);
+	aquarium_z80_bank_w(cputag_get_address_space(machine, "audiocpu", ADDRESS_SPACE_IO), 0, 0);
 }
 
 
@@ -331,7 +331,7 @@ GFXDECODE_END
 
 static void irq_handler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1], 0 , irq ? ASSERT_LINE : CLEAR_LINE );
+	cputag_set_input_line(device->machine, "audiocpu", 0 , irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
 static const ym2151_interface ym2151_config =
@@ -349,12 +349,12 @@ static MACHINE_DRIVER_START( aquarium )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 32000000/2)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 6000000)
-	MDRV_CPU_PROGRAM_MAP(snd_map,0)
-	MDRV_CPU_IO_MAP(snd_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(snd_map)
+	MDRV_CPU_IO_MAP(snd_portmap)
 
     MDRV_MACHINE_START(aquarium)
 #if AQUARIUS_HACK

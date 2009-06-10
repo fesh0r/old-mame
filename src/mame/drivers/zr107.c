@@ -220,7 +220,7 @@ static VIDEO_UPDATE( jetwave )
 	draw_7segment_led(bitmap, 3, 3, led_reg0);
 	draw_7segment_led(bitmap, 9, 3, led_reg1);
 
-	sharc_set_flag_input(screen->machine->cpu[2], 1, ASSERT_LINE);
+	sharc_set_flag_input(cputag_get_cpu(screen->machine, "dsp"), 1, ASSERT_LINE);
 	return 0;
 }
 
@@ -274,7 +274,7 @@ static VIDEO_UPDATE( zr107 )
 	draw_7segment_led(bitmap, 3, 3, led_reg0);
 	draw_7segment_led(bitmap, 9, 3, led_reg1);
 
-	sharc_set_flag_input(screen->machine->cpu[2], 1, ASSERT_LINE);
+	sharc_set_flag_input(cputag_get_cpu(screen->machine, "dsp"), 1, ASSERT_LINE);
 	return 0;
 }
 
@@ -282,12 +282,14 @@ static VIDEO_UPDATE( zr107 )
 
 static CUSTOM_INPUT( adcdo_r )
 {
-	return adc083x_do_read(field->port->machine, 0);
+	const device_config *adc0838 = devtag_get_device(field->port->machine, "adc0838");
+	return adc083x_do_read(adc0838, 0);
 }
 
 static READ8_HANDLER( sysreg_r )
 {
 	UINT32 r = 0;
+	const device_config *adc0838 = devtag_get_device(space->machine, "adc0838");
 	static const char *const portnames[] = { "IN0", "IN1", "IN2", "IN3" };
 
 	switch (offset)
@@ -306,7 +308,7 @@ static READ8_HANDLER( sysreg_r )
                 0x20 = SARS (A/D busy flag)
                 0x10 = EEPDO (EEPROM DO)
             */
-			r = (adc083x_sars_read(space->machine, 0) << 5) | (eeprom_read_bit() << 4);
+			r = (adc083x_sars_read(adc0838, 0) << 5) | (eeprom_read_bit() << 4);
 			break;
 
 		case 5:	/* Parallel data port */
@@ -317,6 +319,8 @@ static READ8_HANDLER( sysreg_r )
 
 static WRITE8_HANDLER( sysreg_w )
 {
+	const device_config *adc0838 = devtag_get_device(space->machine, "adc0838");
+
 	switch (offset)
 	{
 		case 0:	/* LED Register 0 */
@@ -345,7 +349,7 @@ static WRITE8_HANDLER( sysreg_w )
 			eeprom_write_bit((data & 0x01) ? 1 : 0);
 			eeprom_set_clock_line((data & 0x02) ? ASSERT_LINE : CLEAR_LINE);
 			eeprom_set_cs_line((data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
-			cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+			cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 			mame_printf_debug("System register 0 = %02X\n", data);
 			break;
 
@@ -361,13 +365,13 @@ static WRITE8_HANDLER( sysreg_w )
                 0x01 = ADDSCLK (ADC SCLK)
             */
 			if (data & 0x80)	/* CG Board 1 IRQ Ack */
-				cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ1, CLEAR_LINE);
+				cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_IRQ1, CLEAR_LINE);
 			if (data & 0x40)	/* CG Board 0 IRQ Ack */
-				cpu_set_input_line(space->machine->cpu[0], INPUT_LINE_IRQ0, CLEAR_LINE);
+				cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_IRQ0, CLEAR_LINE);
 			set_cgboard_id((data >> 4) & 3);
-			adc083x_cs_write(space->machine, 0, (data >> 2) & 1);
-			adc083x_di_write(space->machine, 0, (data >> 1) & 1);
-			adc083x_clk_write(space->machine, 0, (data >> 0) & 1);
+			adc083x_cs_write(adc0838, 0, (data >> 2) & 1);
+			adc083x_di_write(adc0838, 0, (data >> 1) & 1);
+			adc083x_clk_write(adc0838, 0, (data >> 0) & 1);
 			mame_printf_debug("System register 1 = %02X\n", data);
 			break;
 
@@ -380,28 +384,6 @@ static WRITE8_HANDLER( sysreg_w )
 			break;
 
 	}
-}
-
-static double adc0838_callback(running_machine *machine, int input)
-{
-	switch (input)
-	{
-		case ADC083X_CH0:
-			return (double)(5 * input_port_read(machine, "ANALOG1")) / 255.0;
-		case ADC083X_CH1:
-			return (double)(5 * input_port_read(machine, "ANALOG2")) / 255.0;
-		case ADC083X_CH2:
-			return (double)(5 * input_port_read(machine, "ANALOG3")) / 255.0;
-		case ADC083X_CH3:
-			return 0;
-		case ADC083X_COM:
-			return 0;
-		case ADC083X_AGND:
-			return 0;
-		case ADC083X_VREF:
-			return 5;
-	}
-	return 0;
 }
 
 static int ccu_vcth = 0;
@@ -442,10 +424,10 @@ static UINT32 *workram;
 static MACHINE_START( zr107 )
 {
 	/* set conservative DRC options */
-	ppcdrc_set_options(machine->cpu[0], PPCDRC_COMPATIBLE_OPTIONS);
+	ppcdrc_set_options(cputag_get_cpu(machine, "maincpu"), PPCDRC_COMPATIBLE_OPTIONS);
 
 	/* configure fast RAM regions for DRC */
-	ppcdrc_add_fastram(machine->cpu[0], 0x00000000, 0x000fffff, FALSE, workram);
+	ppcdrc_add_fastram(cputag_get_cpu(machine, "maincpu"), 0x00000000, 0x000fffff, FALSE, workram);
 }
 
 static ADDRESS_MAP_START( zr107_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -697,6 +679,37 @@ static const sharc_config sharc_cfg =
 	BOOT_MODE_EPROM
 };
 
+
+/* ADC0838 Interface */
+
+static double adc0838_callback( const device_config *device, UINT8 input )
+{
+	switch (input)
+	{
+	case ADC083X_CH0:
+		return (double)(5 * input_port_read(device->machine, "ANALOG1")) / 255.0;
+	case ADC083X_CH1:
+		return (double)(5 * input_port_read(device->machine, "ANALOG2")) / 255.0;
+	case ADC083X_CH2:
+		return (double)(5 * input_port_read(device->machine, "ANALOG3")) / 255.0;
+	case ADC083X_CH3:
+		return 0;
+	case ADC083X_COM:
+		return 0;
+	case ADC083X_AGND:
+		return 0;
+	case ADC083X_VREF:
+		return 5;
+	}
+	return 0;
+}
+
+
+static const adc0831_interface zr107_adc_interface = {
+	adc0838_callback
+};
+
+
 /* PowerPC interrupts
 
     IRQ0:  Vblank
@@ -710,22 +723,22 @@ static INTERRUPT_GEN( zr107_vblank )
 }
 static MACHINE_RESET( zr107 )
 {
-	cpu_set_input_line(machine->cpu[2], INPUT_LINE_RESET, ASSERT_LINE);
+	cputag_set_input_line(machine, "dsp", INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static MACHINE_DRIVER_START( zr107 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
-	MDRV_CPU_PROGRAM_MAP(zr107_map, 0)
+	MDRV_CPU_PROGRAM_MAP(zr107_map)
 	MDRV_CPU_VBLANK_INT("screen", zr107_vblank)
 
 	MDRV_CPU_ADD("audiocpu", M68000, 64000000/8)	/* 8MHz */
-	MDRV_CPU_PROGRAM_MAP(sound_memmap, 0)
+	MDRV_CPU_PROGRAM_MAP(sound_memmap)
 
 	MDRV_CPU_ADD("dsp", ADSP21062, 36000000)
 	MDRV_CPU_CONFIG(sharc_cfg)
-	MDRV_CPU_DATA_MAP(sharc_map, 0)
+	MDRV_CPU_DATA_MAP(sharc_map)
 
 	MDRV_QUANTUM_TIME(HZ(30000))
 
@@ -756,21 +769,23 @@ static MACHINE_DRIVER_START( zr107 )
 	MDRV_SOUND_CONFIG(k054539_config)
 	MDRV_SOUND_ROUTE(0, "lspeaker", 0.75)
 	MDRV_SOUND_ROUTE(1, "rspeaker", 0.75)
+
+	MDRV_ADC0838_ADD("adc0838", zr107_adc_interface)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( jetwave )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
-	MDRV_CPU_PROGRAM_MAP(jetwave_map, 0)
+	MDRV_CPU_PROGRAM_MAP(jetwave_map)
 	MDRV_CPU_VBLANK_INT("screen", zr107_vblank)
 
 	MDRV_CPU_ADD("audiocpu", M68000, 64000000/8)	/* 8MHz */
-	MDRV_CPU_PROGRAM_MAP(sound_memmap, 0)
+	MDRV_CPU_PROGRAM_MAP(sound_memmap)
 
 	MDRV_CPU_ADD("dsp", ADSP21062, 36000000)
 	MDRV_CPU_CONFIG(sharc_cfg)
-	MDRV_CPU_DATA_MAP(sharc_map, 0)
+	MDRV_CPU_DATA_MAP(sharc_map)
 
 	MDRV_QUANTUM_TIME(HZ(30000))
 
@@ -801,33 +816,33 @@ static MACHINE_DRIVER_START( jetwave )
 	MDRV_SOUND_CONFIG(k054539_config)
 	MDRV_SOUND_ROUTE(0, "lspeaker", 0.75)
 	MDRV_SOUND_ROUTE(1, "rspeaker", 0.75)
+
+	MDRV_ADC0838_ADD("adc0838", zr107_adc_interface)
 MACHINE_DRIVER_END
 
 /*****************************************************************************/
 
 static TIMER_CALLBACK( irq_off )
 {
-	cpu_set_input_line(machine->cpu[1], param, CLEAR_LINE);
+	cputag_set_input_line(machine, "audiocpu", param, CLEAR_LINE);
 }
 
 static void sound_irq_callback(running_machine *machine, int irq)
 {
 	int line = (irq == 0) ? INPUT_LINE_IRQ1 : INPUT_LINE_IRQ2;
-	cpu_set_input_line(machine->cpu[1], line, ASSERT_LINE);
+	cputag_set_input_line(machine, "audiocpu", line, ASSERT_LINE);
 	timer_set(machine, ATTOTIME_IN_USEC(1), NULL, line, irq_off);
 }
 
 static void init_zr107(running_machine *machine)
 {
-	sharc_dataram = auto_malloc(0x100000);
+	sharc_dataram = auto_alloc_array(machine, UINT32, 0x100000/4);
 	led_reg0 = led_reg1 = 0x7f;
 	ccu_vcth = ccu_vctl = 0;
 
 	K001005_preprocess_texture_data(memory_region(machine, "gfx1"), memory_region_length(machine, "gfx1"), 0);
 
 	K056800_init(machine, sound_irq_callback);
-
-	adc083x_init(machine, 0, ADC0838, adc0838_callback);
 }
 
 static DRIVER_INIT(zr107)

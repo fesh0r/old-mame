@@ -252,7 +252,6 @@ static UINT8 led2_value;
  *
  *************************************/
 
-static void calendar_clock(void);
 static void set_output_latch(running_machine *machine, UINT8 data);
 static void set_output_data(UINT8 data);
 
@@ -312,9 +311,9 @@ void neogeo_set_display_counter_lsb(const address_space *space, UINT16 data)
 
 static void update_interrupts(running_machine *machine)
 {
-	cpu_set_input_line(machine->cpu[0], 1, vblank_interrupt_pending ? ASSERT_LINE : CLEAR_LINE);
-	cpu_set_input_line(machine->cpu[0], 2, display_position_interrupt_pending ? ASSERT_LINE : CLEAR_LINE);
-	cpu_set_input_line(machine->cpu[0], 3, irq3_pending ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 1, vblank_interrupt_pending ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 2, display_position_interrupt_pending ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, "maincpu", 3, irq3_pending ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -362,10 +361,12 @@ static TIMER_CALLBACK( display_position_vblank_callback )
 
 static TIMER_CALLBACK( vblank_interrupt_callback )
 {
+	const device_config *upd4990a = devtag_get_device(machine, "upd4990a");
+
 	if (LOG_VIDEO_SYSTEM) logerror("+++ VBLANK @ %d,%d\n", video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen));
 
 	/* add a timer tick to the pd4990a */
-	calendar_clock();
+	upd4990a_addretrace(upd4990a);
 
 	vblank_interrupt_pending = 1;
 
@@ -400,19 +401,19 @@ static void start_interrupt_timers(running_machine *machine)
 
 static void audio_cpu_irq(const device_config *device, int assert)
 {
-	cpu_set_input_line(device->machine->cpu[1], 0, assert ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, assert ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static void audio_cpu_assert_nmi(running_machine *machine)
 {
-	cpu_set_input_line(machine->cpu[1], INPUT_LINE_NMI, ASSERT_LINE);
+	cputag_set_input_line(machine, "audiocpu", INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 
 static WRITE8_HANDLER( audio_cpu_clear_nmi_w )
 {
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, CLEAR_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 
@@ -469,12 +470,14 @@ cpu #0 (PC=00C18C40): unmapped memory word write to 00380000 = 0000 & 00FF
 
 static WRITE16_HANDLER( io_control_w )
 {
+	const device_config *upd4990a = devtag_get_device(space->machine, "upd4990a");
+
 	switch (offset)
 	{
 	case 0x00: select_controller(data & 0x00ff); break;
 	case 0x18: set_output_latch(space->machine, data & 0x00ff); break;
 	case 0x20: set_output_data(data & 0x00ff); break;
-	case 0x28: pd4990a_control_16_w(space, 0, data, mem_mask); break;
+	case 0x28: upd4990a_control_16_w(upd4990a, 0, data, mem_mask); break;
 //  case 0x30: break; // coin counters
 //  case 0x31: break; // coin counters
 //  case 0x32: break; // coin lockout
@@ -523,35 +526,10 @@ READ16_HANDLER( neogeo_unmapped_r )
  *
  *************************************/
 
-static void calendar_init(running_machine *machine)
-{
-	/* set the celander IC to 'right now' */
-	mame_system_time systime;
-	mame_system_tm time;
-
-	mame_get_base_datetime(machine, &systime);
-	time = systime.local_time;
-
-	pd4990a.seconds = ((time.second / 10) << 4) + (time.second % 10);
-	pd4990a.minutes = ((time.minute / 10) << 4) + (time.minute % 10);
-	pd4990a.hours = ((time.hour / 10) <<4 ) + (time.hour % 10);
-	pd4990a.days = ((time.mday / 10) << 4) + (time.mday % 10);
-	pd4990a.month = time.month + 1;
-	pd4990a.year = ((((time.year - 1900) % 100) / 10) << 4) + ((time.year - 1900) % 10);
-	pd4990a.weekday = time.weekday;
-}
-
-
-static void calendar_clock(void)
-{
-	pd4990a_addretrace();
-}
-
-
 static CUSTOM_INPUT( get_calendar_status )
 {
-	const address_space *space = cpu_get_address_space(field->port->machine->cpu[0], ADDRESS_SPACE_PROGRAM);
-	return (pd4990a_databit_r(space, 0) << 1) | pd4990a_testbit_r(space, 0);
+	const device_config *upd4990a = devtag_get_device(field->port->machine, "upd4990a");
+	return (upd4990a_databit_r(upd4990a, 0) << 1) | upd4990a_testbit_r(upd4990a, 0);
 }
 
 
@@ -599,13 +577,6 @@ static WRITE16_HANDLER( save_ram_w )
  *************************************/
 
 #define MEMCARD_SIZE	0x0800
-
-
-static void memcard_init(void)
-{
-	memcard_data = auto_malloc(MEMCARD_SIZE);
-	memset(memcard_data, 0, MEMCARD_SIZE);
-}
 
 
 static CUSTOM_INPUT( get_memcard_status )
@@ -708,7 +679,7 @@ static CUSTOM_INPUT( get_audio_result )
 {
 	UINT32 ret = audio_result;
 
-//  if (LOG_CPU_COMM) logerror("MAIN CPU PC %06x: audio_result_r %02x\n", cpu_get_pc(field->port->machine->cpu[0]), ret);
+//  if (LOG_CPU_COMM) logerror("MAIN CPU PC %06x: audio_result_r %02x\n", cpu_get_pc(cputag_get_cpu(field->port->machine, "maincpu")), ret);
 
 	return ret;
 }
@@ -775,7 +746,7 @@ static WRITE16_HANDLER( main_cpu_bank_select_w )
 
 static void main_cpu_banking_init(running_machine *machine)
 {
-	const address_space *mainspace = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *mainspace = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	/* create vector banks */
 	memory_configure_bank(machine, NEOGEO_BANK_VECTORS, 0, 1, memory_region(machine, "mainbios"), 0);
@@ -859,7 +830,7 @@ static void _set_audio_cpu_rom_source(const address_space *space)
 	{
 		audio_cpu_rom_source_last = audio_cpu_rom_source;
 
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_RESET, PULSE_LINE);
+		cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_RESET, PULSE_LINE);
 
 		if (LOG_AUDIO_CPU_BANKING) logerror("Audio CPU PC %03x: selectign %s ROM\n", cpu_get_pc(space->cpu), audio_cpu_rom_source ? "CARTRIDGE" : "BIOS");
 	}
@@ -909,7 +880,7 @@ static void audio_cpu_banking_init(running_machine *machine)
 	set_audio_cpu_banking(machine);
 
 	audio_cpu_rom_source_last = 0;
-	set_audio_cpu_rom_source(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0);
+	set_audio_cpu_rom_source(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0);
 }
 
 
@@ -1061,7 +1032,7 @@ static STATE_POSTLOAD( neogeo_postload )
 	_set_main_cpu_bank_address(machine);
 	_set_main_cpu_vector_table_source(machine);
 	set_audio_cpu_banking(machine);
-	_set_audio_cpu_rom_source(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM));
+	_set_audio_cpu_rom_source(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM));
 	set_outputs();
 }
 
@@ -1078,11 +1049,8 @@ static MACHINE_START( neogeo )
 
 	create_interrupt_timers(machine);
 
-	/* initialize the celander IC to 'right now' */
-	calendar_init(machine);
-
 	/* initialize the memcard data structure */
-	memcard_init();
+	memcard_data = auto_alloc_array_clear(machine, UINT8, MEMCARD_SIZE);
 
 	/* start with an IRQ3 - but NOT on a reset */
 	irq3_pending = 1;
@@ -1122,12 +1090,12 @@ static MACHINE_START( neogeo )
 static MACHINE_RESET( neogeo )
 {
 	offs_t offs;
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	/* reset system control registers */
 	for (offs = 0; offs < 8; offs++)
 		system_control_w(space, offs, 0, 0x00ff);
-	device_reset(machine->cpu[0]);
+	device_reset(cputag_get_cpu(machine, "maincpu"));
 
 	neogeo_reset_rng();
 
@@ -1343,11 +1311,11 @@ static MACHINE_DRIVER_START( neogeo )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, NEOGEO_MAIN_CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 
 	MDRV_CPU_ADD("audiocpu", Z80, NEOGEO_AUDIO_CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(audio_map,0)
-	MDRV_CPU_IO_MAP(auido_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(audio_map)
+	MDRV_CPU_IO_MAP(auido_io_map)
 
 	MDRV_WATCHDOG_TIME_INIT(USEC(128762))
 
@@ -1375,6 +1343,9 @@ static MACHINE_DRIVER_START( neogeo )
 	MDRV_SOUND_ROUTE(0, "rspeaker", 0.60)
 	MDRV_SOUND_ROUTE(1, "lspeaker",  1.0)
 	MDRV_SOUND_ROUTE(2, "rspeaker", 1.0)
+
+	/* NEC uPD4990A RTC */
+	MDRV_UPD4990A_ADD("upd4990a")
 MACHINE_DRIVER_END
 
 /*************************************

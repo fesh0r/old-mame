@@ -116,7 +116,7 @@ static MACHINE_DRIVER_START( tcl )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,12000000/4)
-	MDRV_CPU_PROGRAM_MAP(tcl_map,0)
+	MDRV_CPU_PROGRAM_MAP(tcl_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -183,7 +183,7 @@ static DRIVER_INIT(tcl)
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 *dest = memory_region(machine, "maincpu");
 	int len = memory_region_length(machine, "maincpu");
-	UINT8 *src = malloc_or_die(len);
+	UINT8 *src = alloc_array_or_die(UINT8, len);
 
 	int i,idx=0;
 	memcpy(src, dest, len);

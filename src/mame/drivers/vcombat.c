@@ -189,41 +189,41 @@ static READ16_HANDLER( control_3_r )
 	return (input_port_read(space->machine, "IN2") << 8);
 }
 
-static void wiggle_i860_common(int n, UINT16 data, const device_config *device)
+static void wiggle_i860_common(const device_config *device, UINT16 data)
 {
 	int bus_hold = (data & 0x03) == 0x03;
 	int reset = data & 0x10;
-	assert(n >= 0 && n < 2);
 	if (!device)
 		return;
+
 	if (bus_hold)
 	{
 		fprintf(stderr, "M0 asserting bus HOLD to i860 %s\n", device->tag);
-		i860_set_pin(device->token, DEC_PIN_BUS_HOLD, 1);
+		i860_set_pin(device, DEC_PIN_BUS_HOLD, 1);
 	}
 	else
 	{
 		fprintf(stderr, "M0 clearing bus HOLD to i860 %s\n", device->tag);
-		i860_set_pin(device->token, DEC_PIN_BUS_HOLD, 0);
+		i860_set_pin(device, DEC_PIN_BUS_HOLD, 0);
 	}
 
 	if (reset)
 	{
 		fprintf(stderr, "M0 asserting RESET to i860 %s\n", device->tag);
-		i860_set_pin(device->token, DEC_PIN_RESET, 1);
+		i860_set_pin(device, DEC_PIN_RESET, 1);
 	}
 	else
-		i860_set_pin(device->token, DEC_PIN_RESET, 0);
+		i860_set_pin(device, DEC_PIN_RESET, 0);
 }
 
 static WRITE16_HANDLER( wiggle_i860p0_pins_w )
 {
-	wiggle_i860_common(0, data, cputag_get_cpu(space->machine, "vid_0"));
+	wiggle_i860_common(cputag_get_cpu(space->machine, "vid_0"), data);
 }
 
 static WRITE16_HANDLER( wiggle_i860p1_pins_w )
 {
-	wiggle_i860_common(1, data, cputag_get_cpu(space->machine, "vid_1"));
+	wiggle_i860_common(cputag_get_cpu(space->machine, "vid_1"), data);
 }
 
 static READ16_HANDLER( main_irqiack_r )
@@ -379,8 +379,8 @@ static MACHINE_RESET( vcombat )
 	/* Setup the Bt476 VGA RAMDAC palette chip */
 	tlc34076_reset(6);
 
-	i860_set_pin(cputag_get_cpu(machine, "vid_0")->token, DEC_PIN_BUS_HOLD, 1);
-	i860_set_pin(cputag_get_cpu(machine, "vid_1")->token, DEC_PIN_BUS_HOLD, 1);
+	i860_set_pin(cputag_get_cpu(machine, "vid_0"), DEC_PIN_BUS_HOLD, 1);
+	i860_set_pin(cputag_get_cpu(machine, "vid_1"), DEC_PIN_BUS_HOLD, 1);
 
 	crtc_select = 0;
 }
@@ -390,7 +390,7 @@ static MACHINE_RESET( shadfgtr )
 	/* Setup the Bt476 VGA RAMDAC palette chip */
 	tlc34076_reset(6);
 
-	i860_set_pin(cputag_get_cpu(machine, "vid_0")->token, DEC_PIN_BUS_HOLD, 1);
+	i860_set_pin(cputag_get_cpu(machine, "vid_0"), DEC_PIN_BUS_HOLD, 1);
 
 	crtc_select = 0;
 }
@@ -426,16 +426,16 @@ static DRIVER_INIT( vcombat )
 	memory_set_direct_update_handler(cputag_get_address_space(machine, "vid_1", ADDRESS_SPACE_PROGRAM), vid_1_direct_handler);
 
 	/* Allocate the 68000 framebuffers */
-	m68k_framebuffer[0] = auto_malloc(0x8000 * sizeof(UINT16));
-	m68k_framebuffer[1] = auto_malloc(0x8000 * sizeof(UINT16));
+	m68k_framebuffer[0] = auto_alloc_array(machine, UINT16, 0x8000);
+	m68k_framebuffer[1] = auto_alloc_array(machine, UINT16, 0x8000);
 
 	/* First i860 */
-	i860_framebuffer[0][0] = auto_malloc(0x8000 * sizeof(UINT16));
-	i860_framebuffer[0][1] = auto_malloc(0x8000 * sizeof(UINT16));
+	i860_framebuffer[0][0] = auto_alloc_array(machine, UINT16, 0x8000);
+	i860_framebuffer[0][1] = auto_alloc_array(machine, UINT16, 0x8000);
 
 	/* Second i860 */
-	i860_framebuffer[1][0] = auto_malloc(0x8000 * sizeof(UINT16));
-	i860_framebuffer[1][1] = auto_malloc(0x8000 * sizeof(UINT16));
+	i860_framebuffer[1][0] = auto_alloc_array(machine, UINT16, 0x8000);
+	i860_framebuffer[1][1] = auto_alloc_array(machine, UINT16, 0x8000);
 
 	/* pc==4016 : jump 4038 ... There's something strange about how it waits at 402e (interrupts all masked out)
        I think what is happening here is that M0 snags the first time
@@ -456,12 +456,12 @@ static DRIVER_INIT( vcombat )
 static DRIVER_INIT( shadfgtr )
 {
 	/* Allocate th 68000 frame buffers */
-	m68k_framebuffer[0] = auto_malloc(0x8000 * sizeof(UINT16));
-	m68k_framebuffer[1] = auto_malloc(0x8000 * sizeof(UINT16));
+	m68k_framebuffer[0] = auto_alloc_array(machine, UINT16, 0x8000);
+	m68k_framebuffer[1] = auto_alloc_array(machine, UINT16, 0x8000);
 
 	/* Only one i860 */
-	i860_framebuffer[0][0] = auto_malloc(0x8000 * sizeof(UINT16));
-	i860_framebuffer[0][1] = auto_malloc(0x8000 * sizeof(UINT16));
+	i860_framebuffer[0][0] = auto_alloc_array(machine, UINT16, 0x8000);
+	i860_framebuffer[0][1] = auto_alloc_array(machine, UINT16, 0x8000);
 	i860_framebuffer[1][0] = NULL;
 	i860_framebuffer[1][1] = NULL;
 
@@ -549,20 +549,20 @@ static const mc6845_interface mc6845_intf =
 
 static MACHINE_DRIVER_START( vcombat )
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_12MHz)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_assert)
 
 	/* The middle board i860 */
 	MDRV_CPU_ADD("vid_0", I860, XTAL_20MHz)
-	MDRV_CPU_PROGRAM_MAP(vid_0_map,0)
+	MDRV_CPU_PROGRAM_MAP(vid_0_map)
 
 	/* The top board i860 */
 	MDRV_CPU_ADD("vid_1", I860, XTAL_20MHz)
-	MDRV_CPU_PROGRAM_MAP(vid_1_map,0)
+	MDRV_CPU_PROGRAM_MAP(vid_1_map)
 
 	/* Sound CPU */
 	MDRV_CPU_ADD("soundcpu", M68000, XTAL_12MHz)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	MDRV_CPU_PERIODIC_INT(irq1_line_hold, 15000)	/* Remove this if MC6845 is enabled */
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
@@ -597,16 +597,16 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( shadfgtr )
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_12MHz)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_assert)
 
 	/* The middle board i860 */
 	MDRV_CPU_ADD("vid_0", I860, XTAL_20MHz)
-	MDRV_CPU_PROGRAM_MAP(vid_0_map,0)
+	MDRV_CPU_PROGRAM_MAP(vid_0_map)
 
 	/* Sound CPU */
 	MDRV_CPU_ADD("soundcpu", M68000, XTAL_12MHz)
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 	MDRV_MACHINE_RESET(shadfgtr)

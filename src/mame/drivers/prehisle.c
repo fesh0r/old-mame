@@ -29,7 +29,7 @@ extern UINT16 *prehisle_bg_videoram16;
 static WRITE16_HANDLER( prehisle_sound16_w )
 {
 	soundlatch_w(space, 0, data & 0xff);
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 /*******************************************************************************/
@@ -135,7 +135,7 @@ static INPUT_PORTS_START( prehisle )
 	PORT_DIPSETTING(	0x02, DEF_STR( Easy ) )
 	PORT_DIPSETTING(	0x03, DEF_STR( Standard ) )
 	PORT_DIPSETTING(	0x01, "Middle" )
-	PORT_DIPSETTING(	0x00, "Difficult" )
+	PORT_DIPSETTING(	0x00, DEF_STR( Difficult ) )
 	PORT_DIPNAME( 0x0c, 0x0c, "Game Mode" )
 	PORT_DIPSETTING(	0x08, "Demo Sounds Off" )
 	PORT_DIPSETTING(	0x0c, "Demo Sounds On" )
@@ -202,7 +202,7 @@ GFXDECODE_END
 
 static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym3812_interface ym3812_config =
@@ -216,12 +216,12 @@ static MACHINE_DRIVER_START( prehisle )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, XTAL_18MHz/2) 	/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(prehisle_map,0)
+	MDRV_CPU_PROGRAM_MAP(prehisle_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, XTAL_4MHz)	/* verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(prehisle_sound_map,0)
-	MDRV_CPU_IO_MAP(prehisle_sound_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(prehisle_sound_map)
+	MDRV_CPU_IO_MAP(prehisle_sound_io_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -340,4 +340,3 @@ ROM_END
 GAME( 1989, prehisle, 0,        prehisle, prehisle, 0, ROT0, "SNK", "Prehistoric Isle in 1930 (World)", GAME_SUPPORTS_SAVE )
 GAME( 1989, prehislu, prehisle, prehisle, prehisle, 0, ROT0, "SNK of America", "Prehistoric Isle in 1930 (US)", GAME_SUPPORTS_SAVE )
 GAME( 1989, gensitou, prehisle, prehisle, prehisle, 0, ROT0, "SNK", "Genshi-Tou 1930's", GAME_SUPPORTS_SAVE )
-

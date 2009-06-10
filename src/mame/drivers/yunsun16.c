@@ -158,10 +158,10 @@ static WRITE16_HANDLER( magicbub_sound_command_w )
 HACK: the game continuously sends this. It'll play the oki sample
 number 0 on each voice. That sample is 00000-00000.
 */
-		if ((data&0xff)!=0x3a)
+		if ((data & 0xff) != 0x3a)
 		{
-		soundlatch_w(space,0,data & 0xff);
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w(space, 0, data & 0xff);
+		cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 		}
 	}
 }
@@ -169,7 +169,7 @@ number 0 on each voice. That sample is 00000-00000.
 static DRIVER_INIT( magicbub )
 {
 //  remove_mem_write16_handler (0, 0x800180, 0x800181 );
-	memory_install_write16_handler(cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM), 0x800188, 0x800189, 0, 0, magicbub_sound_command_w);
+	memory_install_write16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x800188, 0x800189, 0, 0, magicbub_sound_command_w);
 }
 
 /***************************************************************************
@@ -573,7 +573,7 @@ GFXDECODE_END
 
 static void soundirq(const device_config *device, int state)
 {
-	cpu_set_input_line(device->machine->cpu[1], 0, state);
+	cputag_set_input_line(device->machine, "audiocpu", 0, state);
 }
 
 static const ym3812_interface magicbub_ym3812_intf =
@@ -585,12 +585,12 @@ static MACHINE_DRIVER_START( magicbub )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 16000000)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 3000000)	/* ? */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_IO_MAP(sound_port_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
+	MDRV_CPU_IO_MAP(sound_port_map)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -629,7 +629,7 @@ static MACHINE_DRIVER_START( shocking )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 16000000)
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq2_line_hold)
 
 	/* video hardware */

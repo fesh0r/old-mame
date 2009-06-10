@@ -62,8 +62,8 @@ static WRITE16_HANDLER( zerozone_sound_w )
 {
 	if (ACCESSING_BITS_8_15)
 	{
-		soundlatch_w(space,offset,data >> 8);
-		cpu_set_input_line_and_vector(space->machine->cpu[1],0,HOLD_LINE,0xff);
+		soundlatch_w(space, offset, data >> 8);
+		cputag_set_input_line_and_vector(space->machine, "audiocpu", 0, HOLD_LINE, 0xff);
 	}
 }
 
@@ -177,11 +177,11 @@ static MACHINE_DRIVER_START( zerozone )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, 10000000)	/* 10 MHz */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", irq1_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, 1000000)	/* 1 MHz ??? */
-	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 
 	MDRV_QUANTUM_TIME(HZ(600))
 

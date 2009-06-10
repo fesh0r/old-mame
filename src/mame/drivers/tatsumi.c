@@ -188,7 +188,7 @@ static READ16_HANDLER(cyclwarr_input2_r)
 static WRITE16_HANDLER(cyclwarr_sound_w)
 {
 	soundlatch_w(space, 0, data >> 8);
-	cpu_set_input_line(space->machine->cpu[2], INPUT_LINE_NMI, PULSE_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 /***************************************************************************/
@@ -829,7 +829,7 @@ GFXDECODE_END
 
 static void sound_irq(const device_config *device, int state)
 {
-	cpu_set_input_line(device->machine->cpu[2], INPUT_LINE_IRQ0, state);
+	cputag_set_input_line(device->machine, "audiocpu", INPUT_LINE_IRQ0, state);
 }
 
 static const ym2151_interface ym2151_config =
@@ -844,15 +844,15 @@ static INTERRUPT_GEN( roundup5_interrupt )
 
 static void apache3_68000_reset(const device_config *device)
 {
-	cpu_set_input_line(device->machine->cpu[3], INPUT_LINE_RESET, PULSE_LINE);
+	cputag_set_input_line(device->machine, "sub2", INPUT_LINE_RESET, PULSE_LINE);
 }
 
 static MACHINE_RESET( apache3 )
 {
-	cpu_set_input_line(machine->cpu[3], INPUT_LINE_RESET, ASSERT_LINE); // TODO
+	cputag_set_input_line(machine, "sub2", INPUT_LINE_RESET, ASSERT_LINE); // TODO
 
 	/* Hook the RESET line, which resets the Z80 */
-	device_set_info_fct(machine->cpu[1], CPUINFO_FCT_M68K_RESET_CALLBACK, (genf *)apache3_68000_reset);
+	m68k_set_reset_callback(cputag_get_cpu(machine, "sub"), apache3_68000_reset);
 }
 
 
@@ -860,18 +860,18 @@ static MACHINE_DRIVER_START( apache3 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V30, CLOCK_1 / 2)
-	MDRV_CPU_PROGRAM_MAP(apache3_v30_map,0)
+	MDRV_CPU_PROGRAM_MAP(apache3_v30_map)
 	MDRV_CPU_VBLANK_INT("screen", roundup5_interrupt)
 
 	MDRV_CPU_ADD("sub", M68000, CLOCK_2 / 4)
-	MDRV_CPU_PROGRAM_MAP(apache3_68000_map,0)
+	MDRV_CPU_PROGRAM_MAP(apache3_68000_map)
 	MDRV_CPU_VBLANK_INT("screen", irq4_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", V20, CLOCK_1 / 2)
-	MDRV_CPU_PROGRAM_MAP(apache3_v20_map,0)
+	MDRV_CPU_PROGRAM_MAP(apache3_v20_map)
 
 	MDRV_CPU_ADD("sub2", Z80, CLOCK_2 / 8)
-	MDRV_CPU_PROGRAM_MAP(apache3_z80_map,0)
+	MDRV_CPU_PROGRAM_MAP(apache3_z80_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
@@ -907,14 +907,14 @@ static MACHINE_DRIVER_START( roundup5 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V30, CLOCK_1 / 2)
-	MDRV_CPU_PROGRAM_MAP(roundup5_v30_map,0)
+	MDRV_CPU_PROGRAM_MAP(roundup5_v30_map)
 	MDRV_CPU_VBLANK_INT("screen", roundup5_interrupt)
 
 	MDRV_CPU_ADD("sub", M68000, CLOCK_2 / 4)
-	MDRV_CPU_PROGRAM_MAP(roundup5_68000_map, 0)
+	MDRV_CPU_PROGRAM_MAP(roundup5_68000_map)
 
 	MDRV_CPU_ADD("audiocpu", Z80, CLOCK_1 / 4)
-	MDRV_CPU_PROGRAM_MAP(roundup5_z80_map, 0)
+	MDRV_CPU_PROGRAM_MAP(roundup5_z80_map)
 
 	MDRV_QUANTUM_TIME(HZ(6000))
 
@@ -950,15 +950,15 @@ static MACHINE_DRIVER_START( cyclwarr )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, CLOCK_2 / 4)
-	MDRV_CPU_PROGRAM_MAP(cyclwarr_68000a_map,0)
+	MDRV_CPU_PROGRAM_MAP(cyclwarr_68000a_map)
 	MDRV_CPU_VBLANK_INT("screen", irq5_line_hold)
 
 	MDRV_CPU_ADD("sub", M68000, CLOCK_2 / 4)
-	MDRV_CPU_PROGRAM_MAP(cyclwarr_68000b_map,0)
+	MDRV_CPU_PROGRAM_MAP(cyclwarr_68000b_map)
 	MDRV_CPU_VBLANK_INT("screen", irq5_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, CLOCK_1 / 4)
-	MDRV_CPU_PROGRAM_MAP(cyclwarr_z80_map,0)
+	MDRV_CPU_PROGRAM_MAP(cyclwarr_z80_map)
 
 	MDRV_QUANTUM_TIME(HZ(12000))
 
@@ -994,15 +994,15 @@ static MACHINE_DRIVER_START( bigfight )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M68000, CLOCK_2 / 4)
-	MDRV_CPU_PROGRAM_MAP(bigfight_68000a_map,0)
+	MDRV_CPU_PROGRAM_MAP(bigfight_68000a_map)
 	MDRV_CPU_VBLANK_INT("screen", irq5_line_hold)
 
 	MDRV_CPU_ADD("sub", M68000, CLOCK_2 / 4)
-	MDRV_CPU_PROGRAM_MAP(bigfight_68000b_map,0)
+	MDRV_CPU_PROGRAM_MAP(bigfight_68000b_map)
 	MDRV_CPU_VBLANK_INT("screen", irq5_line_hold)
 
 	MDRV_CPU_ADD("audiocpu", Z80, CLOCK_1 / 4)
-	MDRV_CPU_PROGRAM_MAP(cyclwarr_z80_map,0)
+	MDRV_CPU_PROGRAM_MAP(cyclwarr_z80_map)
 
 	MDRV_QUANTUM_TIME(HZ(12000))
 

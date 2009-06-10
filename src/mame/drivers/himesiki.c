@@ -101,7 +101,7 @@ extern UINT8 *himesiki_bg_ram;
 static WRITE8_HANDLER( himesiki_rombank_w )
 {
 	UINT8 *ROM = memory_region(space->machine, "maincpu");
-	memory_set_bankptr(space->machine, 1, &ROM[0x10000+0x800*(data & 8)]);
+	memory_set_bankptr(space->machine, 1, &ROM[0x10000 + 0x800 * (data & 8)]);
 
 	if (data & 0xf7)
 		logerror("p06_w %02x\n",data);
@@ -110,7 +110,7 @@ static WRITE8_HANDLER( himesiki_rombank_w )
 static WRITE8_HANDLER( himesiki_sound_w )
 {
 	soundlatch_w(space, offset, data);
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	cputag_set_input_line(space->machine, "sub", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 /****************************************************************************/
@@ -280,13 +280,13 @@ static MACHINE_DRIVER_START( himesiki )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MCLK/2) /* 6.000 MHz */
-	MDRV_CPU_PROGRAM_MAP(himesiki_prm0,0)
-	MDRV_CPU_IO_MAP(himesiki_iom0,0)
+	MDRV_CPU_PROGRAM_MAP(himesiki_prm0)
+	MDRV_CPU_IO_MAP(himesiki_iom0)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, MCLK/3) /* 4.000 MHz */
-	MDRV_CPU_PROGRAM_MAP(himesiki_prm1,0)
-	MDRV_CPU_IO_MAP(himesiki_iom1,0)
+	MDRV_CPU_PROGRAM_MAP(himesiki_prm1)
+	MDRV_CPU_IO_MAP(himesiki_iom1)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)

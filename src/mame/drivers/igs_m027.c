@@ -269,7 +269,7 @@ static void sdwx_gfx_decrypt(running_machine *machine)
 	int i;
 	unsigned rom_size = 0x80000;
 	UINT8 *src = (UINT8 *) (memory_region(machine, "gfx1"));
-	UINT8 *result_data = malloc_or_die(rom_size);
+	UINT8 *result_data = alloc_array_or_die(UINT8, rom_size);
 
 	for (i=0; i<rom_size; i++)
     	result_data[i] = src[BITSWAP24(i, 23,22,21,20,19,18,17,16,15,14,13,12,11,8,7,6,10,9,5,4,3,2,1,0)];
@@ -367,7 +367,7 @@ static INTERRUPT_GEN( igs_majhong_interrupt )
 static MACHINE_DRIVER_START( igs_majhong )
 	MDRV_CPU_ADD("maincpu",ARM7, 20000000)
 
-	MDRV_CPU_PROGRAM_MAP(igs_majhong_map,0)
+	MDRV_CPU_PROGRAM_MAP(igs_majhong_map)
 
 	MDRV_CPU_VBLANK_INT("screen", igs_majhong_interrupt)
 	//MDRV_NVRAM_HANDLER(generic_0fill)

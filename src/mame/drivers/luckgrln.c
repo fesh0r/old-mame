@@ -79,7 +79,7 @@
 
 static ADDRESS_MAP_START( mainmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x00000, 0x03fff) AM_ROM
-	AM_RANGE(0x10000, 0x1ffff) AM_READ(SMH_BANK1)
+	AM_RANGE(0x10000, 0x1ffff) AM_READ(SMH_BANK(1))
 	AM_RANGE(0x0d800, 0x0dfff) AM_RAM
 	AM_RANGE(0x0f000, 0x0ffff) AM_RAM
 	AM_RANGE(0xf0000, 0xfffff) AM_RAM
@@ -122,8 +122,8 @@ static VIDEO_UPDATE(luckgrln)
 
 static MACHINE_DRIVER_START( luckgrln )
 	MDRV_CPU_ADD("maincpu", Z180,8000000)
-	MDRV_CPU_PROGRAM_MAP(mainmap,0)
-	MDRV_CPU_IO_MAP(portmap,0)
+	MDRV_CPU_PROGRAM_MAP(mainmap)
+	MDRV_CPU_IO_MAP(portmap)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_SCREEN_ADD("screen", RASTER)

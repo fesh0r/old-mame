@@ -79,8 +79,8 @@ static READ8_DEVICE_HANDLER( amspdwy_sound_r )
 
 static WRITE8_HANDLER( amspdwy_sound_w )
 {
-	soundlatch_w(space,0,data);
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(space, 0, data);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static ADDRESS_MAP_START( amspdwy_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -250,7 +250,7 @@ GFXDECODE_END
 
 static void irq_handler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "audiocpu", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2151_interface amspdwy_ym2151_interface =
@@ -270,12 +270,12 @@ static MACHINE_DRIVER_START( amspdwy )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80,3000000)
-	MDRV_CPU_PROGRAM_MAP(amspdwy_map,0)
-	MDRV_CPU_IO_MAP(amspdwy_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(amspdwy_map)
+	MDRV_CPU_IO_MAP(amspdwy_portmap)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)	/* IRQ: 60Hz, NMI: retn */
 
 	MDRV_CPU_ADD("audiocpu", Z80,3000000)	/* Can't be disabled: the YM2151 timers must work */
-	MDRV_CPU_PROGRAM_MAP(amspdwy_sound_map,0)
+	MDRV_CPU_PROGRAM_MAP(amspdwy_sound_map)
 
     MDRV_MACHINE_START(amspdwy)
 

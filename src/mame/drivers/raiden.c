@@ -228,7 +228,7 @@ static INTERRUPT_GEN( raiden_interrupt )
 
 static VIDEO_EOF( raiden )
 {
-	const address_space *space = cpu_get_address_space(machine->cpu[0], ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	buffer_spriteram16_w(space,0,0,0xffff); /* Could be a memory location instead */
 }
 
@@ -236,11 +236,11 @@ static MACHINE_DRIVER_START( raiden )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V30,XTAL_20MHz/2) /* NEC V30 CPU, 20MHz verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
 	MDRV_CPU_VBLANK_INT("screen", raiden_interrupt)
 
 	MDRV_CPU_ADD("sub", V30,XTAL_20MHz/2) /* NEC V30 CPU, 20MHz verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
 	MDRV_CPU_VBLANK_INT("screen", raiden_interrupt)
 
 	SEIBU_SOUND_SYSTEM_CPU(XTAL_14_31818MHz/4) /* verified on pcb */
@@ -275,11 +275,11 @@ static MACHINE_DRIVER_START( raidena )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V30,XTAL_20MHz/2) /* NEC V30 CPU, 20MHz verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(alt_map,0)
+	MDRV_CPU_PROGRAM_MAP(alt_map)
 	MDRV_CPU_VBLANK_INT("screen", raiden_interrupt)
 
 	MDRV_CPU_ADD("sub", V30,XTAL_20MHz/2) /* NEC V30 CPU, 20MHz verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
 	MDRV_CPU_VBLANK_INT("screen", raiden_interrupt)
 
 	SEIBU_SOUND_SYSTEM_CPU(XTAL_14_31818MHz/4) /* verified on pcb */
@@ -474,12 +474,12 @@ static READ16_HANDLER( sub_cpu_spina_r )
 
 static DRIVER_INIT( raiden )
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x4008, 0x4009, 0, 0, sub_cpu_spin_r);
+	memory_install_read16_handler(cputag_get_address_space(machine, "sub", ADDRESS_SPACE_PROGRAM), 0x4008, 0x4009, 0, 0, sub_cpu_spin_r);
 }
 
 static void memory_patcha(running_machine *machine)
 {
-	memory_install_read16_handler(cpu_get_address_space(machine->cpu[1], ADDRESS_SPACE_PROGRAM), 0x4008, 0x4009, 0, 0, sub_cpu_spina_r);
+	memory_install_read16_handler(cputag_get_address_space(machine, "sub", ADDRESS_SPACE_PROGRAM), 0x4008, 0x4009, 0, 0, sub_cpu_spina_r);
 }
 
 /* This is based on code by Niclas Karlsson Mate, who figured out the

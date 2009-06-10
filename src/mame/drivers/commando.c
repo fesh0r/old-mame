@@ -157,7 +157,7 @@ static INPUT_PORTS_START( commando )
 	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
 	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW2:4")
 	PORT_DIPSETTING(    0x10, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x00, "Difficult" )
+	PORT_DIPSETTING(    0x00, DEF_STR( Difficult ) )
 	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW2:3")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
@@ -239,11 +239,11 @@ static INTERRUPT_GEN( commando_interrupt )
 static MACHINE_DRIVER_START( commando )
 	// basic machine hardware
 	MDRV_CPU_ADD("maincpu", Z80, PHI_MAIN)	// ???
-	MDRV_CPU_PROGRAM_MAP(commando_map, 0)
+	MDRV_CPU_PROGRAM_MAP(commando_map)
 	MDRV_CPU_VBLANK_INT("screen", commando_interrupt)
 
 	MDRV_CPU_ADD("audiocpu", Z80, PHI_B)	// 3 MHz
-	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
+	MDRV_CPU_PROGRAM_MAP(sound_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 4)
 
 	// video hardware
@@ -506,7 +506,7 @@ static DRIVER_INIT( commando )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 *rom = memory_region(machine, "maincpu");
-	UINT8 *decrypt = auto_malloc(0xc000);
+	UINT8 *decrypt = auto_alloc_array(machine, UINT8, 0xc000);
 	int A;
 
 	memory_set_decrypted_region(space, 0x0000, 0xbfff, decrypt);
@@ -526,7 +526,7 @@ static DRIVER_INIT( spaceinv )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 *rom = memory_region(machine, "maincpu");
-	UINT8 *decrypt = auto_malloc(0xc000);
+	UINT8 *decrypt = auto_alloc_array(machine, UINT8, 0xc000);
 	int A;
 
 	memory_set_decrypted_region(space, 0x0000, 0xbfff, decrypt);

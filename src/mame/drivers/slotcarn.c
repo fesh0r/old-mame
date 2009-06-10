@@ -145,7 +145,7 @@ static MC6845_ON_HSYNC_CHANGED(hsync_changed)
 
 static MC6845_ON_VSYNC_CHANGED(vsync_changed)
 {
-	cpu_set_input_line(device->machine->cpu[0], 0, vsync ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "maincpu", 0, vsync ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const mc6845_interface mc6845_intf =
@@ -532,7 +532,7 @@ static VIDEO_UPDATE( slotcarn )
 
 static MACHINE_START(merit)
 {
-	ram_palette = auto_malloc(RAM_PALETTE_SIZE);
+	ram_palette = auto_alloc_array(machine, UINT8, RAM_PALETTE_SIZE);
 	state_save_register_global_pointer(machine, ram_palette, RAM_PALETTE_SIZE);
 }
 
@@ -593,8 +593,8 @@ static MACHINE_DRIVER_START( slotcarn )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, CPU_CLOCK) // 2.5 Mhz?
-	MDRV_CPU_PROGRAM_MAP(slotcarn_map,0)
-	MDRV_CPU_IO_MAP(spielbud_io_map,0)
+	MDRV_CPU_PROGRAM_MAP(slotcarn_map)
+	MDRV_CPU_IO_MAP(spielbud_io_map)
 
 	/* 3x 8255 */
 	MDRV_PPI8255_ADD( "ppi8255_0", scarn_ppi8255_intf[0] )

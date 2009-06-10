@@ -704,7 +704,7 @@ static MACHINE_DRIVER_START( nova2001 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MAIN_CLOCK/4)	// 3 MHz verified on schematics
-	MDRV_CPU_PROGRAM_MAP(nova2001_map,0)
+	MDRV_CPU_PROGRAM_MAP(nova2001_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
@@ -737,11 +737,11 @@ static MACHINE_DRIVER_START( ninjakun )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MAIN_CLOCK/4)	// 3 MHz
-	MDRV_CPU_PROGRAM_MAP(ninjakun_cpu1_map,0)
+	MDRV_CPU_PROGRAM_MAP(ninjakun_cpu1_map)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, MAIN_CLOCK/4)	// 3 MHz
-	MDRV_CPU_PROGRAM_MAP(ninjakun_cpu2_map,0)
+	MDRV_CPU_PROGRAM_MAP(ninjakun_cpu2_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4) /* ? */
 
 	MDRV_QUANTUM_TIME(HZ(6000))	/* 100 CPU slices per frame */
@@ -778,8 +778,8 @@ static MACHINE_DRIVER_START( pkunwar )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MAIN_CLOCK/4)	// 3 MHz
-	MDRV_CPU_PROGRAM_MAP(pkunwar_map,0)
-	MDRV_CPU_IO_MAP(pkunwar_io,0)
+	MDRV_CPU_PROGRAM_MAP(pkunwar_map)
+	MDRV_CPU_IO_MAP(pkunwar_io)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	/* video hardware */
@@ -812,12 +812,12 @@ static MACHINE_DRIVER_START( raiders5 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, MAIN_CLOCK/4)	// 3 MHz
-	MDRV_CPU_PROGRAM_MAP(raiders5_cpu1_map,0)
-	MDRV_CPU_IO_MAP(raiders5_io,0)
+	MDRV_CPU_PROGRAM_MAP(raiders5_cpu1_map)
+	MDRV_CPU_IO_MAP(raiders5_io)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, MAIN_CLOCK/4)	// 3 MHz
-	MDRV_CPU_PROGRAM_MAP(raiders5_cpu2_map,0)
+	MDRV_CPU_PROGRAM_MAP(raiders5_cpu2_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)	/* ? */
 
 	MDRV_QUANTUM_TIME(HZ(24000))
@@ -1009,7 +1009,7 @@ static void lineswap_gfx_roms(running_machine *machine, const char *region, cons
 
 	UINT8* const src = memory_region(machine, region);
 
-	UINT8* const temp = malloc_or_die(length);
+	UINT8* const temp = alloc_array_or_die(UINT8, length);
 
 	const int mask = (1 << (bit + 1)) - 1;
 
@@ -1057,7 +1057,7 @@ static DRIVER_INIT( raiders5 )
 GAME( 1983, nova2001, 0,        nova2001, nova2001, 0,        ROT0, "UPL", "Nova 2001 (Japan)", 0 )
 GAME( 1983, nov2001u, nova2001, nova2001, nova2001, 0,        ROT0, "UPL (Universal license)", "Nova 2001 (US)", 0 )
 GAME( 1984, ninjakun, 0,        ninjakun, ninjakun, 0,        ROT0, "[UPL] (Taito license)", "Ninjakun Majou no Bouken", 0 )
-GAME( 1985?,pkunwar,  0,        pkunwar,  pkunwar,  pkunwar,  ROT0, "UPL", "Penguin-Kun Wars (US)", 0 )
-GAME( 1985?,pkunwarj, pkunwar,  pkunwar,  pkunwar,  pkunwar,  ROT0, "UPL", "Penguin-Kun Wars (Japan)", 0 )
+GAME( 1985, pkunwar,  0,        pkunwar,  pkunwar,  pkunwar,  ROT0, "UPL", "Penguin-Kun Wars (US)", 0 )
+GAME( 1985, pkunwarj, pkunwar,  pkunwar,  pkunwar,  pkunwar,  ROT0, "UPL", "Penguin-Kun Wars (Japan)", 0 )
 GAME( 1985, raiders5, 0,        raiders5, raiders5, raiders5, ROT0, "UPL", "Raiders5", 0 )
 GAME( 1985, raidrs5t, raiders5, raiders5, raiders5, raiders5, ROT0, "UPL (Taito license)", "Raiders5 (Japan)", 0 )

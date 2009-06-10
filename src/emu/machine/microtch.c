@@ -91,7 +91,7 @@ static TIMER_CALLBACK(microtouch_timer_callback)
 		{
 			ty = 0x4000 - ty;
 
-			microtouch_send_format_table_packet(0xc0, tx, ty);
+			microtouch_send_format_table_packet(0xc8, tx, ty);
 			microtouch.last_touch_state = 1;
 			microtouch.last_x = tx;
 			microtouch.last_y = ty;
@@ -102,7 +102,7 @@ static TIMER_CALLBACK(microtouch_timer_callback)
 		if ( microtouch.last_touch_state == 1 )
 		{
 			microtouch.last_touch_state = 0;
-			microtouch_send_format_table_packet(0x80, microtouch.last_x, microtouch.last_y);
+			microtouch_send_format_table_packet(0x88, microtouch.last_x, microtouch.last_y);
 		}
 	}
 };
@@ -175,7 +175,7 @@ void microtouch_rx(int count, UINT8* data)
 
 INPUT_PORTS_START(microtouch)
 	PORT_START("TOUCH")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_IMPULSE(10) PORT_NAME( "Touch screen" )
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME( "Touch screen" )
 	PORT_START("TOUCH_X")
 	PORT_BIT( 0x3fff, 0x2000, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(45) PORT_KEYDELTA(15)
 	PORT_START("TOUCH_Y")

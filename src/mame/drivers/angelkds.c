@@ -538,7 +538,7 @@ static READ8_HANDLER( angelkds_sub_sound_r )
 
 static void irqhandler(const device_config *device, int irq)
 {
-	cpu_set_input_line(device->machine->cpu[1],0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "sub", 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =
@@ -604,13 +604,13 @@ static MACHINE_START( angelkds )
 
 static MACHINE_DRIVER_START( angelkds )
 	MDRV_CPU_ADD("maincpu", Z80, 8000000) /* 8MHz? 6 seems too slow? */
-	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_IO_MAP(main_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(main_map)
+	MDRV_CPU_IO_MAP(main_portmap)
 	MDRV_CPU_VBLANK_INT("screen", irq0_line_hold)
 
 	MDRV_CPU_ADD("sub", Z80, 4000000) /* 8 MHz? */
-	MDRV_CPU_PROGRAM_MAP(sub_map,0)
-	MDRV_CPU_IO_MAP(sub_portmap,0)
+	MDRV_CPU_PROGRAM_MAP(sub_map)
+	MDRV_CPU_IO_MAP(sub_portmap)
 
     MDRV_MACHINE_START(angelkds)
 

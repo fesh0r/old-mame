@@ -228,7 +228,7 @@ static INTERRUPT_GEN( re900_video_interrupt )
 
 static void vdp_interrupt (running_machine *machine, int state)
 {
-	cpu_set_input_line(machine->cpu[0], INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE );
+	cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE );
 }
 
 
@@ -391,8 +391,8 @@ static MACHINE_DRIVER_START( re900 )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", I8051, MAIN_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(mem_prg, 0)
-	MDRV_CPU_IO_MAP(mem_io, 0)
+	MDRV_CPU_PROGRAM_MAP(mem_prg)
+	MDRV_CPU_IO_MAP(mem_io)
 	MDRV_CPU_VBLANK_INT("screen", re900_video_interrupt)
 
 	/* video hardware */

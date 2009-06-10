@@ -43,8 +43,6 @@
 static UINT8 ay8910_latch_1;
 static UINT8 ay8910_latch_2;
 
-static UINT8 ay8910_latch_1;
-
 
 
 /*************************************
@@ -83,7 +81,7 @@ WRITE8_HANDLER( redalert_audio_command_w )
 	/* D7 is also connected to the NMI input of the CPU -
        the NMI is actually toggled by a 74121 */
 	if ((data & 0x80) == 0x00)
-		cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+		cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -166,7 +164,7 @@ static SOUND_START( redalert_audio )
 WRITE8_HANDLER( redalert_voice_command_w )
 {
 	soundlatch2_w(space, 0, (data & 0x78) >> 3);
-	cpu_set_input_line(space->machine->cpu[2], I8085_RST75_LINE, (~data & 0x80) ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(space->machine, "voice", I8085_RST75_LINE, (~data & 0x80) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -222,7 +220,7 @@ static SOUND_START( redalert )
 static MACHINE_DRIVER_START( redalert_audio_m37b )
 
 	MDRV_CPU_ADD("audiocpu", M6502, REDALERT_AUDIO_CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(redalert_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(redalert_audio_map)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, REDALERT_AUDIO_CPU_IRQ_FREQ)
 
 	MDRV_SOUND_ADD("ay", AY8910, REDALERT_AY8910_CLOCK)
@@ -243,7 +241,7 @@ static MACHINE_DRIVER_START( redalert_audio_voice )
 
 	MDRV_CPU_ADD("voice", 8085A, REDALERT_VOICE_CPU_CLOCK)
 	MDRV_CPU_CONFIG(redalert_voice_i8085_config)
-	MDRV_CPU_PROGRAM_MAP(redalert_voice_map,0)
+	MDRV_CPU_PROGRAM_MAP(redalert_voice_map)
 
 	MDRV_SOUND_ADD("cvsd", HC55516, REDALERT_HC55516_CLOCK)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
@@ -293,7 +291,7 @@ WRITE8_HANDLER( demoneye_audio_command_w )
 {
 	/* the byte is connected to port A of the AY8910 */
 	soundlatch_w(space, 0, data);
-	cpu_set_input_line(space->machine->cpu[1], INPUT_LINE_NMI, PULSE_LINE);
+	cputag_set_input_line(space->machine, "audiocpu", INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -410,7 +408,7 @@ static SOUND_START( demoneye )
 MACHINE_DRIVER_START( demoneye_audio )
 
 	MDRV_CPU_ADD("audiocpu", M6802, DEMONEYE_AUDIO_CPU_CLOCK)
-	MDRV_CPU_PROGRAM_MAP(demoneye_audio_map,0)
+	MDRV_CPU_PROGRAM_MAP(demoneye_audio_map)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, REDALERT_AUDIO_CPU_IRQ_FREQ)  /* guess */
 
 	MDRV_PIA6821_ADD("sndpia", demoneye_pia_intf)

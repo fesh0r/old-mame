@@ -4,6 +4,7 @@
   This is the core driver, no video specific stuff should go in here.
   This driver holds all the mechanical games.
 
+     05-2009: Miscellaneous lamp fixes, based on data from FME Forever.
      09-2007: Haze: Added Deal 'Em video support.
   03-08-2007: J Wallace: Removed audio filter for now, since sound is more accurate without them.
                          Connect 4 now has the right sound.
@@ -294,6 +295,7 @@ static int lamp_col;
 static int ic23_active;
 static int led_extend;
 static int serial_card_connected;
+static int multiplex_smooth;
 static emu_timer *ic24_timer;
 static TIMER_CALLBACK( ic24_timeout );
 
@@ -394,7 +396,15 @@ static void update_lamps(void)
 		mpu4_draw_led(8, pled_segs[0]);
 		mpu4_draw_led(9, pled_segs[1]);
 	}
-	draw_lamps();
+
+	/* Lamp smoothing, this draws lamps only at the peaks of the AC power that would light them */
+	if ((multiplex_smooth == (input_strobe - 1))||((multiplex_smooth == 7) && (input_strobe == 0)))
+	{
+		draw_lamps();
+		mpu4_draw_led(input_strobe, led_segs[input_strobe]);
+		multiplex_smooth = input_strobe;
+	}
+
 }
 
 
@@ -437,7 +447,7 @@ static MACHINE_RESET( mpu4 )
 		memory_configure_bank(machine, 1, 0, 8, &rom[0x01000], 0x10000);
 
 		memory_set_bank(machine, 1,0);
-		device_reset(machine->cpu[0]);
+		device_reset(cputag_get_cpu(machine, "maincpu"));
 	}
 
 }
@@ -452,6 +462,7 @@ static WRITE_LINE_DEVICE_HANDLER( cpu0_irq )
 	const device_config *pia6 = devtag_get_device(device->machine, "pia_ic6");
 	const device_config *pia7 = devtag_get_device(device->machine, "pia_ic7");
 	const device_config *pia8 = devtag_get_device(device->machine, "pia_ic8");
+	const device_config *ptm6840 = devtag_get_device(device->machine, "6840ptm");
 
 	/* The PIA and PTM IRQ lines are all connected to a common PCB track, leading directly to the 6809 IRQ line. */
 	int combined_state = pia6821_get_irq_a(pia3) | pia6821_get_irq_b(pia3) |
@@ -460,23 +471,23 @@ static WRITE_LINE_DEVICE_HANDLER( cpu0_irq )
 						 pia6821_get_irq_a(pia6) | pia6821_get_irq_b(pia6) |
 						 pia6821_get_irq_a(pia7) | pia6821_get_irq_b(pia7) |
 						 pia6821_get_irq_a(pia8) | pia6821_get_irq_b(pia8) |
-						 ptm6840_get_irq(0);
+						 ptm6840_get_irq(ptm6840);
 
 	if (!serial_card_connected)
 	{
-		cpu_set_input_line(device->machine->cpu[0], M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+		cputag_set_input_line(device->machine, "maincpu", M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 		LOG(("6809 int%d \n", combined_state));
 	}
 	else
 	{
-		cpu_set_input_line(device->machine->cpu[0], M6809_FIRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+		cputag_set_input_line(device->machine, "maincpu", M6809_FIRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 		LOG(("6809 fint%d \n", combined_state));
 	}
 }
 
-static void cpu0_irq_m6840(running_machine *machine, int state)
+static WRITE_LINE_DEVICE_HANDLER( cpu0_irq_m6840 )
 {
-	cpu0_irq(devtag_get_device(machine, "pia_ic3"), state);
+	cpu0_irq(devtag_get_device(device->machine, "pia_ic3"), state);
 }
 
 
@@ -494,40 +505,42 @@ static READ8_HANDLER( bankswitch_r )
 
 
 /* IC2 6840 PTM handler */
-static WRITE8_HANDLER( ic2_o1_callback )
+static WRITE8_DEVICE_HANDLER( ic2_o1_callback )
 {
-	ptm6840_set_c2(space->machine,0,data);
+	ptm6840_set_c2(device, 0, data);
 
 	/* copy output value to IC2 c2
     this output is the clock for timer2 */
 }
 
 
-static WRITE8_HANDLER( ic2_o2_callback )
+static WRITE8_DEVICE_HANDLER( ic2_o2_callback )
 {
-	const device_config *pia = devtag_get_device(space->machine, "pia_ic3");
+	const device_config *pia = devtag_get_device(device->machine, "pia_ic3");
 	pia6821_ca1_w(pia, 0, data); /* copy output value to IC3 ca1 */
 
 	/* the output from timer2 is the input clock for timer3 */
-	ptm6840_set_c3(   space->machine, 0, data);
+	ptm6840_set_c3(device, 0, data);
 }
 
 
-static WRITE8_HANDLER( ic2_o3_callback )
+static WRITE8_DEVICE_HANDLER( ic2_o3_callback )
 {
 	/* the output from timer3 is used as a square wave for the alarm output
     and as an external clock source for timer 1! */
 
-	ptm6840_set_c1(    space->machine, 0, data);
+	ptm6840_set_c1(device, 0, data);
 }
 
 
 static const ptm6840_interface ptm_ic2_intf =
 {
-	MPU4_MASTER_CLOCK/4,
-	{ 0,0,0 },
-	{ ic2_o1_callback, ic2_o2_callback, ic2_o3_callback },
-	cpu0_irq_m6840
+	MPU4_MASTER_CLOCK / 4,
+	{ 0, 0, 0 },
+	{ DEVCB_HANDLER(ic2_o1_callback),
+	  DEVCB_HANDLER(ic2_o2_callback),
+	  DEVCB_HANDLER(ic2_o3_callback) },
+	DEVCB_LINE(cpu0_irq_m6840)
 };
 
 
@@ -540,7 +553,6 @@ static WRITE8_DEVICE_HANDLER( pia_ic3_porta_w )
 	if(ic23_active)
 	{
 		lamp_strobe = data;
-		update_lamps();
 	}
 }
 
@@ -552,7 +564,6 @@ static WRITE8_DEVICE_HANDLER( pia_ic3_portb_w )
 	if(ic23_active)
 	{
 		lamp_strobe2 = data;
-		update_lamps();
 	}
 }
 
@@ -1527,8 +1538,6 @@ static const stepper_interface barcrest_reel_interface =
 static void mpu4_config_common(running_machine *machine)
 {
 	ic24_timer = timer_alloc(machine, ic24_timeout, NULL);
-	/* setup 6840ptm */
-	ptm6840_config(machine, 0, &ptm_ic2_intf );
 }
 
 static MACHINE_START( mpu4mod2 )
@@ -1731,10 +1740,10 @@ static DRIVER_INIT (m_gmball)
 static TIMER_DEVICE_CALLBACK( gen_50hz )
 {
 	/* Although reported as a '50Hz' signal, the fact that both rising and
-    falling edges of the pulse are used, the timer actually gives a 100Hz
+    falling edges of the pulse are used means the timer actually gives a 100Hz
     oscillating signal.*/
 	signal_50hz = signal_50hz?0:1;
-
+	update_lamps();
 	pia6821_ca1_w(devtag_get_device(timer->machine, "pia_ic4"), 0,  signal_50hz);	/* signal is connected to IC4 CA1 */
 }
 
@@ -1745,18 +1754,18 @@ static ADDRESS_MAP_START( mod2_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x0850, 0x0850) AM_READWRITE(bankswitch_r,bankswitch_w)	/* write bank (rom page select) */
 
-/*  AM_RANGE(0x08E0, 0x08E7) AM_READWRITE(68681_duart_r,68681_duart_w) */
+/*  AM_RANGE(0x08e0, 0x08e7) AM_READWRITE(68681_duart_r,68681_duart_w) */
 
-	AM_RANGE(0x0900, 0x0907) AM_READWRITE(ptm6840_0_r,ptm6840_0_w)  /* 6840PTM */
+	AM_RANGE(0x0900, 0x0907) AM_DEVREADWRITE("6840ptm", ptm6840_read, ptm6840_write) /* 6840PTM */
 
-	AM_RANGE(0x0A00, 0x0A03) AM_DEVREADWRITE("pia_ic3", pia6821_r,pia6821_w)	  	/* PIA6821 IC3 */
-	AM_RANGE(0x0B00, 0x0B03) AM_DEVREADWRITE("pia_ic4", pia6821_r,pia6821_w)	  	/* PIA6821 IC4 */
-	AM_RANGE(0x0C00, 0x0C03) AM_DEVREADWRITE("pia_ic5", pia6821_r,pia6821_w)	  	/* PIA6821 IC5 */
-	AM_RANGE(0x0D00, 0x0D03) AM_DEVREADWRITE("pia_ic6", pia6821_r,pia6821_w)		/* PIA6821 IC6 */
-	AM_RANGE(0x0E00, 0x0E03) AM_DEVREADWRITE("pia_ic7", pia6821_r,pia6821_w)		/* PIA6821 IC7 */
-	AM_RANGE(0x0F00, 0x0F03) AM_DEVREADWRITE("pia_ic8", pia6821_r,pia6821_w)		/* PIA6821 IC8 */
+	AM_RANGE(0x0a00, 0x0a03) AM_DEVREADWRITE("pia_ic3", pia6821_r, pia6821_w)	  	/* PIA6821 IC3 */
+	AM_RANGE(0x0b00, 0x0b03) AM_DEVREADWRITE("pia_ic4", pia6821_r, pia6821_w)	  	/* PIA6821 IC4 */
+	AM_RANGE(0x0c00, 0x0c03) AM_DEVREADWRITE("pia_ic5", pia6821_r, pia6821_w)	  	/* PIA6821 IC5 */
+	AM_RANGE(0x0d00, 0x0d03) AM_DEVREADWRITE("pia_ic6", pia6821_r, pia6821_w)		/* PIA6821 IC6 */
+	AM_RANGE(0x0e00, 0x0e03) AM_DEVREADWRITE("pia_ic7", pia6821_r, pia6821_w)		/* PIA6821 IC7 */
+	AM_RANGE(0x0f00, 0x0f03) AM_DEVREADWRITE("pia_ic8", pia6821_r, pia6821_w)		/* PIA6821 IC8 */
 
-	AM_RANGE(0x1000, 0xffff) AM_READ(SMH_BANK1)	/* 64k  paged ROM (4 pages)  */
+	AM_RANGE(0x1000, 0xffff) AM_READ(SMH_BANK(1))	/* 64k  paged ROM (4 pages)  */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mod4_yam_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -1768,17 +1777,18 @@ static ADDRESS_MAP_START( mod4_yam_map, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x0880, 0x0881) AM_DEVWRITE( "ym2413", ym2413_w )
 
-//  AM_RANGE(0x08E0, 0x08E7) AM_READWRITE(68681_duart_r,68681_duart_w)
+//  AM_RANGE(0x08e0, 0x08e7) AM_READWRITE(68681_duart_r,68681_duart_w)
 
-	AM_RANGE(0x0900, 0x0907) AM_READWRITE(ptm6840_0_r,ptm6840_0_w)	// 6840PTM
-	AM_RANGE(0x0A00, 0x0A03) AM_DEVREADWRITE("pia_ic3", pia6821_r,pia6821_w)	  	/* PIA6821 IC3 */
-	AM_RANGE(0x0B00, 0x0B03) AM_DEVREADWRITE("pia_ic4", pia6821_r,pia6821_w)	  	/* PIA6821 IC4 */
-	AM_RANGE(0x0C00, 0x0C03) AM_DEVREADWRITE("pia_ic5", pia6821_r,pia6821_w)	  	/* PIA6821 IC5 */
-	AM_RANGE(0x0D00, 0x0D03) AM_DEVREADWRITE("pia_ic6", pia6821_r,pia6821_w)		/* PIA6821 IC6 */
-	AM_RANGE(0x0E00, 0x0E03) AM_DEVREADWRITE("pia_ic7", pia6821_r,pia6821_w)		/* PIA6821 IC7 */
-	AM_RANGE(0x0F00, 0x0F03) AM_DEVREADWRITE("pia_ic8", pia6821_r,pia6821_w)		/* PIA6821 IC8 */
+	AM_RANGE(0x0900, 0x0907) AM_DEVREADWRITE("6840ptm", ptm6840_read, ptm6840_write) /* 6840PTM */
 
-	AM_RANGE(0x1000, 0xffff) AM_READ(SMH_BANK1)	// 64k  paged ROM (4 pages)
+	AM_RANGE(0x0a00, 0x0a03) AM_DEVREADWRITE("pia_ic3", pia6821_r, pia6821_w)	  	/* PIA6821 IC3 */
+	AM_RANGE(0x0b00, 0x0b03) AM_DEVREADWRITE("pia_ic4", pia6821_r, pia6821_w)	  	/* PIA6821 IC4 */
+	AM_RANGE(0x0c00, 0x0c03) AM_DEVREADWRITE("pia_ic5", pia6821_r, pia6821_w)	  	/* PIA6821 IC5 */
+	AM_RANGE(0x0d00, 0x0d03) AM_DEVREADWRITE("pia_ic6", pia6821_r, pia6821_w)		/* PIA6821 IC6 */
+	AM_RANGE(0x0e00, 0x0e03) AM_DEVREADWRITE("pia_ic7", pia6821_r, pia6821_w)		/* PIA6821 IC7 */
+	AM_RANGE(0x0f00, 0x0f03) AM_DEVREADWRITE("pia_ic8", pia6821_r, pia6821_w)		/* PIA6821 IC8 */
+
+	AM_RANGE(0x1000, 0xffff) AM_READ(SMH_BANK(1))	// 64k  paged ROM (4 pages)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mod4_oki_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -1790,19 +1800,20 @@ static ADDRESS_MAP_START( mod4_oki_map, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x0880, 0x0883) AM_DEVREADWRITE("pia_gamebd", pia6821_r,pia6821_w)      // PIA6821 on game board
 
-//  AM_RANGE(0x08C0, 0x08C7) AM_READERITE(ptm6840_1_r,ptm6840_1_w)  // 6840PTM on game board
+//  AM_RANGE(0x08c0, 0x08c7) AM_DEVREADWRITE("??", ptm6840_read, ptm6840_write)  // 6840PTM on game board
 
-//  AM_RANGE(0x08E0, 0x08E7) AM_READWRITE(68681_duart_r,68681_duart_w)
+//  AM_RANGE(0x08e0, 0x08e7) AM_READWRITE(68681_duart_r,68681_duart_w)
 
-	AM_RANGE(0x0900, 0x0907) AM_READWRITE(ptm6840_0_r,ptm6840_0_w)	// 6840PTM
-	AM_RANGE(0x0A00, 0x0A03) AM_DEVREADWRITE("pia_ic3", pia6821_r,pia6821_w)	  	/* PIA6821 IC3 */
-	AM_RANGE(0x0B00, 0x0B03) AM_DEVREADWRITE("pia_ic4", pia6821_r,pia6821_w)	  	/* PIA6821 IC4 */
-	AM_RANGE(0x0C00, 0x0C03) AM_DEVREADWRITE("pia_ic5", pia6821_r,pia6821_w)	  	/* PIA6821 IC5 */
-	AM_RANGE(0x0D00, 0x0D03) AM_DEVREADWRITE("pia_ic6", pia6821_r,pia6821_w)		/* PIA6821 IC6 */
-	AM_RANGE(0x0E00, 0x0E03) AM_DEVREADWRITE("pia_ic7", pia6821_r,pia6821_w)		/* PIA6821 IC7 */
-	AM_RANGE(0x0F00, 0x0F03) AM_DEVREADWRITE("pia_ic8", pia6821_r,pia6821_w)		/* PIA6821 IC8 */
+	AM_RANGE(0x0900, 0x0907) AM_DEVREADWRITE("6840ptm", ptm6840_read, ptm6840_write) /* 6840PTM */
 
-	AM_RANGE(0x1000, 0xffff) AM_READ(SMH_BANK1)	// 64k  paged ROM (4 pages)
+	AM_RANGE(0x0a00, 0x0a03) AM_DEVREADWRITE("pia_ic3", pia6821_r, pia6821_w)	  	/* PIA6821 IC3 */
+	AM_RANGE(0x0b00, 0x0b03) AM_DEVREADWRITE("pia_ic4", pia6821_r, pia6821_w)	  	/* PIA6821 IC4 */
+	AM_RANGE(0x0c00, 0x0c03) AM_DEVREADWRITE("pia_ic5", pia6821_r, pia6821_w)	  	/* PIA6821 IC5 */
+	AM_RANGE(0x0d00, 0x0d03) AM_DEVREADWRITE("pia_ic6", pia6821_r, pia6821_w)		/* PIA6821 IC6 */
+	AM_RANGE(0x0e00, 0x0e03) AM_DEVREADWRITE("pia_ic7", pia6821_r, pia6821_w)		/* PIA6821 IC7 */
+	AM_RANGE(0x0f00, 0x0f03) AM_DEVREADWRITE("pia_ic8", pia6821_r, pia6821_w)		/* PIA6821 IC8 */
+
+	AM_RANGE(0x1000, 0xffff) AM_READ(SMH_BANK(1))	// 64k  paged ROM (4 pages)
 ADDRESS_MAP_END
 
 // memory map for barcrest mpu4 board /////////////////////////////////////
@@ -1816,19 +1827,20 @@ static ADDRESS_MAP_START( dutch_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0850, 0x0850) AM_WRITE(bankswitch_w)	// write bank (rom page select)
 	AM_RANGE(0x0880, 0x0883) AM_DEVREADWRITE("pia_gamebd", pia6821_r,pia6821_w)		// PIA6821 on game board
 
-//  AM_RANGE(0x08C0, 0x08C7) AM_READERITE(ptm6840_2_r,ptm6840_2_w)  // 6840PTM on game board
+//  AM_RANGE(0x08c0, 0x08c7) AM_DEVREADWRITE("??", ptm6840_read, ptm6840_write)  // 6840PTM on game board
 
-//  AM_RANGE(0x08E0, 0x08E7) AM_READWRITE(68681_duart_r,68681_duart_w)
+//  AM_RANGE(0x08e0, 0x08e7) AM_READWRITE(68681_duart_r,68681_duart_w)
 
-	AM_RANGE(0x0900, 0x0907) AM_READWRITE(ptm6840_0_r,ptm6840_0_w)	// 6840PTM
-	AM_RANGE(0x0A00, 0x0A03) AM_DEVREADWRITE("pia_ic3", pia6821_r,pia6821_w)	  	/* PIA6821 IC3 */
-	AM_RANGE(0x0B00, 0x0B03) AM_DEVREADWRITE("pia_ic4", pia6821_r,pia6821_w)	  	/* PIA6821 IC4 */
-	AM_RANGE(0x0C00, 0x0C03) AM_DEVREADWRITE("pia_ic5", pia6821_r,pia6821_w)	  	/* PIA6821 IC5 */
-	AM_RANGE(0x0D00, 0x0D03) AM_DEVREADWRITE("pia_ic6", pia6821_r,pia6821_w)		/* PIA6821 IC6 */
-	AM_RANGE(0x0E00, 0x0E03) AM_DEVREADWRITE("pia_ic7", pia6821_r,pia6821_w)		/* PIA6821 IC7 */
-	AM_RANGE(0x0F00, 0x0F03) AM_DEVREADWRITE("pia_ic8", pia6821_r,pia6821_w)		/* PIA6821 IC8 */
+	AM_RANGE(0x0900, 0x0907) AM_DEVREADWRITE("6840ptm", ptm6840_read, ptm6840_write) /* 6840PTM */
 
-	AM_RANGE(0x1000, 0xffff) AM_READ(SMH_BANK1)	// 64k paged ROM (4 pages)
+	AM_RANGE(0x0a00, 0x0a03) AM_DEVREADWRITE("pia_ic3", pia6821_r, pia6821_w)	  	/* PIA6821 IC3 */
+	AM_RANGE(0x0b00, 0x0b03) AM_DEVREADWRITE("pia_ic4", pia6821_r, pia6821_w)	  	/* PIA6821 IC4 */
+	AM_RANGE(0x0c00, 0x0c03) AM_DEVREADWRITE("pia_ic5", pia6821_r, pia6821_w)	  	/* PIA6821 IC5 */
+	AM_RANGE(0x0d00, 0x0d03) AM_DEVREADWRITE("pia_ic6", pia6821_r, pia6821_w)		/* PIA6821 IC6 */
+	AM_RANGE(0x0e00, 0x0e03) AM_DEVREADWRITE("pia_ic7", pia6821_r, pia6821_w)		/* PIA6821 IC7 */
+	AM_RANGE(0x0f00, 0x0f03) AM_DEVREADWRITE("pia_ic8", pia6821_r, pia6821_w)		/* PIA6821 IC8 */
+
+	AM_RANGE(0x1000, 0xffff) AM_READ(SMH_BANK(1))	// 64k paged ROM (4 pages)
 ADDRESS_MAP_END
 
 static const ay8910_interface ay8910_config =
@@ -1848,9 +1860,12 @@ static MACHINE_DRIVER_START( mpu4mod2 )
 	MDRV_MACHINE_START(mpu4mod2)
 	MDRV_MACHINE_RESET(mpu4)
 	MDRV_CPU_ADD("maincpu", M6809, MPU4_MASTER_CLOCK/4)
-	MDRV_CPU_PROGRAM_MAP(mod2_memmap,0)
+	MDRV_CPU_PROGRAM_MAP(mod2_memmap)
 
 	MDRV_TIMER_ADD_PERIODIC("50hz",gen_50hz, HZ(100))
+
+	/* 6840 PTM */
+	MDRV_PTM6840_ADD("6840ptm", ptm_ic2_intf)
 
 	MDRV_PIA6821_ADD("pia_ic3", pia_ic3_intf)
 	MDRV_PIA6821_ADD("pia_ic4", pia_ic4_intf)
@@ -1874,9 +1889,9 @@ static MACHINE_DRIVER_START( mod4yam )
 	MDRV_MACHINE_START(mpu4mod4)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(mod4_yam_map,0)
+	MDRV_CPU_PROGRAM_MAP(mod4_yam_map)
 
-	MDRV_SOUND_REMOVE("ay8913")
+	MDRV_DEVICE_REMOVE("ay8913")
 	MDRV_SOUND_ADD("ym2413", YM2413, MPU4_MASTER_CLOCK/4)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 MACHINE_DRIVER_END
@@ -1888,9 +1903,9 @@ static MACHINE_DRIVER_START( mod4oki )
 	MDRV_PIA6821_ADD("pia_gamebd", pia_gameboard_intf)
 
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(mod4_oki_map,0)
+	MDRV_CPU_PROGRAM_MAP(mod4_oki_map)
 
-	MDRV_SOUND_REMOVE("ay8913")
+	MDRV_DEVICE_REMOVE("ay8913")
 	MDRV_SOUND_ADD("msm6376", OKIM6376, 4000000) //?
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
@@ -1898,7 +1913,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( mpu4dutch )
 	MDRV_IMPORT_FROM( mod4oki )
 	MDRV_CPU_MODIFY("maincpu")
-	MDRV_CPU_PROGRAM_MAP(dutch_memmap,0)	  			// setup read and write memorymap
+	MDRV_CPU_PROGRAM_MAP(dutch_memmap)	  			// setup read and write memorymap
 	MDRV_MACHINE_START(mpu4dutch)						// main mpu4 board initialisation
 MACHINE_DRIVER_END
 
