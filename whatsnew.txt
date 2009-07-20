@@ -1,3 +1,94 @@
+0.133
+-----
+
+
+MAMETesters Bugs Fixed
+----------------------
+- 03191: [Crash/Freeze] armchmp2: Allowing Demo to run triggersTest 
+         Mode (hap)
+- 02916: [Crash/Freeze] srmvs: [debug] Assertion (Aaron Giles)
+- 03300: [Crash/Freeze] tmmjprd, tmpdoki: [debug] Crash after OK 
+         (Aaron Giles)
+- 03310: [Misc.] cobram3, cobra: Parent/clone relationship missing 
+         (Aaron Giles)
+- 03311: [Misc.] p911uc, p911j: chd a00c02 is used in both clones but 
+         they use different hashes (Angelo Salese)
+
+
+Source Changes
+--------------
+Added GAME_IMPERFECT_SOUND flag to taitogn.c games since we don't 
+emulate the sound CPU. [Fabio Priuli]
+
+CDP1802: [Curt Coder]
+ - refactored the Q and DMA callbacks to use devcb
+ - fixed state code output and load mode
+
+Added FP registers to PPC debugger interface. Fixed bugs in the x64
+back-end that prevented proper 3D rendering for Model 3 games.
+[Aaron Giles]
+
+ARM7 improvements: [R. Belmont]
+ - Added ARMv5+ CLZ instruction.
+ - Added ARMv5TE instructions: QADD, QDADD, QSUB, QDSUB, SMLAxy, 
+   SMLALxy, SMULxy, SMULWy, and SMLAWy
+ - Fixed disassembly of CLZ
+
+Improved DIP switches in toypop. [kanikani]
+
+Audited and added GAME_SUPPORTS_SAVE flag to all games in the mappy.c 
+driver (superpac, pacnpal, grobda, phozon, mappy, todruaga, digdug2, 
+motos and clones of each) [MooglyGuy]
+
+Naomi update [Deunan Knute, R. Belmont]
+ - Implemented cartridge protection chip mechanism
+ - Added protection data for doa2 and doa2m
+ - Added real dumped cartridge X76F100 data for doa2/doa2m
+
+Several MESS-specific snes fixes for rendering. [Angelo Salese]
+
+Merit Multi-Poker improvements: [Roberto Fresca]
+ * Full Inputs.
+ * DIP Switches.
+ * Simulated spark-watchdog circuitery.
+ * Demuxed custom port.
+ * NVRAM support.
+ * CPU clock derived from #defined crystal.
+ * 8000-8007 Output ports.
+ * Coin related counters.
+ * Sound components and trigger found at 8000-8003, bit2.
+ * Full lamps support.
+ * PCBs layouts & technical notes.
+The 4 games are fully playable. Sound seems to be discrete, so the 
+circuitery need to be traced. Colors are still wrong.
+
+Added documentation regarding different Cobra Command versions.
+[Ruben Panossian]
+
+Fixed card reset in Taito g-net games. [Joerg Hartenberger]
+
+Fixed gun and crosshair positioning in TimeCrisis and Bubble Trouble.
+[hap]
+
+Decoded some ram based tiles in jclub2. [David Haywood]
+
+Fixed interrupts in the cischeat driver, fixing Scud Hammer and 
+Arm Champs II. [hap]
+
+
+
+New games added or promoted from NOT_WORKING status
+---------------------------------------------------
+Multi-Poker [Roberto Fresca]
+
+
+
+New clones added
+----------------
+Super Free Kick (set 2) [Klaus Sommers]
+
+
+
 0.132u5
 -------
 
@@ -312,7 +403,7 @@ Improved Jockey Club 2 driver organization: [David Haywood]
 
 New games added or promoted from NOT_WORKING status
 ---------------------------------------------------
-Mahjong Private [Uki, Yasuhiro Ogawa]
+Mahjong Private [Ali, Uki]
 Tokimeki Mahjong Paradise - Dear My Love [David Haywood, Angelo Salese] 
 Tokimeki Mahjong Paradise - Doki Doki Hen [David Haywood, Angelo Salese]
 Woodpecker (set 2) [Guru]
@@ -468,7 +559,7 @@ Sunset Riders (bootleg of Megadrive version)
 
 New games marked as GAME_NOT_WORKING
 ------------------------------------
-Mahjong Shiseikatsu [mNyz49s8]
+Mahjong Shiseikatsu [Uki, Ali]
 Skeet Shot [Phil Bennett, Andy Welburn, Angelo Salese]
 Magical Truck Adventure [R. Belmont]
 
