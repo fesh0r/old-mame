@@ -136,11 +136,6 @@ static MACHINE_RESET( tmc1800 );
 static MACHINE_RESET( tmc2000 );
 static MACHINE_RESET( oscnano );
 
-static const device_config *cassette_device_image(running_machine *machine)
-{
-	return devtag_get_device(machine, "cassette");
-}
-
 /* Read/Write Handlers */
 
 static WRITE8_HANDLER( tmc1800_keylatch_w )
@@ -482,7 +477,7 @@ static CDP1802_EF_READ( tmc1800_ef_r )
 	if (state->cdp1861_efx) flags -= EF1;
 
 	/* tape input */
-	if (cassette_input(cassette_device_image(device->machine)) < 0) flags -= EF2;
+	if (cassette_input(state->cassette) < 0) flags -= EF2;
 
 	/* keyboard */
 	if (~input_port_read(device->machine, keynames[state->keylatch / 8]) & (1 << (state->keylatch % 8))) flags -= EF3;
@@ -490,13 +485,15 @@ static CDP1802_EF_READ( tmc1800_ef_r )
 	return flags;
 }
 
-static CDP1802_Q_WRITE( tmc1800_q_w )
+static WRITE_LINE_DEVICE_HANDLER( tmc1800_q_w )
 {
+	tmc1800_state *driver_state = device->machine->driver_data;
+
 	/* tape output */
-	cassette_output(cassette_device_image(device->machine), level ? 1.0 : -1.0);
+	cassette_output(driver_state->cassette, state ? 1.0 : -1.0);
 }
 
-static CDP1802_DMA_WRITE( tmc1800_dma_w )
+static WRITE8_DEVICE_HANDLER( tmc1800_dma_w )
 {
 	tmc1800_state *state = device->machine->driver_data;
 
@@ -508,9 +505,9 @@ static CDP1802_INTERFACE( tmc1800_config )
 	tmc1800_mode_r,
 	tmc1800_ef_r,
 	NULL,
-	tmc1800_q_w,
-	NULL,
-	tmc1800_dma_w
+	DEVCB_LINE(tmc1800_q_w),
+	DEVCB_NULL,
+	DEVCB_HANDLER(tmc1800_dma_w)
 };
 
 static CDP1802_INTERFACE( osc1000b_config )
@@ -518,9 +515,9 @@ static CDP1802_INTERFACE( osc1000b_config )
 	tmc1800_mode_r,
 	tmc1800_ef_r,
 	NULL,
-	tmc1800_q_w,
-	NULL,
-	NULL
+	DEVCB_LINE(tmc1800_q_w),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 // Telmac 2000
@@ -567,7 +564,7 @@ static CDP1802_EF_READ( tmc2000_ef_r )
 	if (state->cdp1864_efx) flags -= EF1;
 
 	/* tape input */
-	if (cassette_input(cassette_device_image(device->machine)) < 0) flags -= EF2;
+	if (cassette_input(state->cassette) < 0) flags -= EF2;
 
 	/* keyboard */
 	if (~input_port_read(device->machine, keynames[state->keylatch / 8]) & (1 << (state->keylatch % 8))) flags -= EF3;
@@ -575,25 +572,25 @@ static CDP1802_EF_READ( tmc2000_ef_r )
 	return flags;
 }
 
-static CDP1802_Q_WRITE( tmc2000_q_w )
+static WRITE_LINE_DEVICE_HANDLER( tmc2000_q_w )
 {
-	tmc2000_state *state = device->machine->driver_data;
+	tmc2000_state *driver_state = device->machine->driver_data;
 
 	/* CDP1864 audio output enable */
-	cdp1864_aoe_w(state->cdp1864, level);
+	cdp1864_aoe_w(driver_state->cdp1864, state);
 
 	/* set Q led status */
-	set_led_status(1, level);
+	set_led_status(1, state);
 
 	/* tape output */
-	cassette_output(cassette_device_image(device->machine), level ? 1.0 : -1.0);
+	cassette_output(driver_state->cassette, state ? 1.0 : -1.0);
 }
 
-static CDP1802_DMA_WRITE( tmc2000_dma_w )
+static WRITE8_DEVICE_HANDLER( tmc2000_dma_w )
 {
 	tmc2000_state *state = device->machine->driver_data;
 
-	UINT8 color = ~(state->colorram[ma & 0x1ff]) & 0x07;
+	UINT8 color = ~(state->colorram[offset & 0x1ff]) & 0x07;
 	
 	int rdata = BIT(color, 2);
 	int gdata = BIT(color, 0);
@@ -607,9 +604,9 @@ static CDP1802_INTERFACE( tmc2000_config )
 	tmc2000_mode_r,
 	tmc2000_ef_r,
 	NULL,
-	tmc2000_q_w,
-	NULL,
-	tmc2000_dma_w
+	DEVCB_LINE(tmc2000_q_w),
+	DEVCB_NULL,
+	DEVCB_HANDLER(tmc2000_dma_w)
 };
 
 // OSCOM Nano
@@ -680,7 +677,7 @@ static CDP1802_EF_READ( oscnano_ef_r )
 	if (state->cdp1864_efx) flags -= EF1;
 
 	/* tape input */
-	if (cassette_input(cassette_device_image(device->machine)) < 0) flags -= EF2;
+	if (cassette_input(state->cassette) < 0) flags -= EF2;
 
 	/* keyboard */
 	if (~input_port_read(device->machine, keynames[state->keylatch / 8]) & (1 << (state->keylatch % 8))) flags -= EF3;
@@ -691,21 +688,21 @@ static CDP1802_EF_READ( oscnano_ef_r )
 	return flags;
 }
 
-static CDP1802_Q_WRITE( oscnano_q_w )
+static WRITE_LINE_DEVICE_HANDLER( oscnano_q_w )
 {
-	oscnano_state *state = device->machine->driver_data;
+	oscnano_state *driver_state = device->machine->driver_data;
 
 	/* CDP1864 audio output enable */
-	cdp1864_aoe_w(state->cdp1864, level);
+	cdp1864_aoe_w(driver_state->cdp1864, state);
 
 	/* set Q led status */
-	set_led_status(1, level);
+	set_led_status(1, state);
 
 	/* tape output */
-	cassette_output(cassette_device_image(device->machine), level ? 1.0 : -1.0);
+	cassette_output(driver_state->cassette, state ? 1.0 : -1.0);
 }
 
-static CDP1802_DMA_WRITE( oscnano_dma_w )
+static WRITE8_DEVICE_HANDLER( oscnano_dma_w )
 {
 	oscnano_state *state = device->machine->driver_data;
 
@@ -717,9 +714,9 @@ static CDP1802_INTERFACE( oscnano_config )
 	oscnano_mode_r,
 	oscnano_ef_r,
 	NULL,
-	oscnano_q_w,
-	NULL,
-	oscnano_dma_w
+	DEVCB_LINE(oscnano_q_w),
+	DEVCB_NULL,
+	DEVCB_HANDLER(oscnano_dma_w)
 };
 
 /* Machine Initialization */
@@ -731,11 +728,10 @@ static MACHINE_START( tmc1800 )
 	tmc1800_state *state = machine->driver_data;
 
 	/* find devices */
-
 	state->cdp1861 = devtag_get_device(machine, CDP1861_TAG);
+	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* register for state saving */
-
 	state_save_register_global(machine, state->cdp1861_efx);
 	state_save_register_global(machine, state->keylatch);
 	state_save_register_global(machine, state->reset);
@@ -746,7 +742,6 @@ static MACHINE_RESET( tmc1800 )
 	tmc1800_state *state = machine->driver_data;
 
 	/* reset CDP1864 */
-
 	device_reset(state->cdp1861);
 }
 
@@ -756,8 +751,10 @@ static MACHINE_START( osc1000b )
 {
 	osc1000b_state *state = machine->driver_data;
 
-	/* register for state saving */
+	/* find devices */
+	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
+	/* register for state saving */
 	state_save_register_global(machine, state->keylatch);
 	state_save_register_global(machine, state->reset);
 }
@@ -775,29 +772,25 @@ static MACHINE_START( tmc2000 )
 	UINT16 addr;
 
 	/* RAM banking */
-
 	memory_configure_bank(machine, 1, 0, 2, memory_region(machine, CDP1802_TAG), 0x8000);
 
 	/* ROM/colorram banking */
-
 	state->colorram = auto_alloc_array(machine, UINT8, TMC2000_COLORRAM_SIZE);
 
 	memory_configure_bank(machine, 2, TMC2000_BANK_MONITOR, 1, memory_region(machine, CDP1802_TAG) + 0x8000, 0);
 	memory_configure_bank(machine, 2, TMC2000_BANK_COLORRAM, 1, state->colorram, 0);
 
 	/* randomize color RAM contents */
-
 	for (addr = 0; addr < TMC2000_COLORRAM_SIZE; addr++)
 	{
 		state->colorram[addr] = mame_rand(machine) & 0xff;
 	}
 
 	/* find devices */
-
 	state->cdp1864 = devtag_get_device(machine, CDP1864_TAG);
+	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* register for state saving */
-
 	state_save_register_global_pointer(machine, state->colorram, TMC2000_COLORRAM_SIZE);
 	state_save_register_global(machine, state->cdp1864_efx);
 	state_save_register_global(machine, state->keylatch);
@@ -809,19 +802,14 @@ static MACHINE_RESET( tmc2000 )
 	tmc2000_state *state = machine->driver_data;
 
 	/* reset CDP1864 */
-
 	device_reset(state->cdp1864);
 
 	/* enable monitor mirror at 0x0000 */
-
 	memory_set_bank(machine, 1, TMC2000_BANK_ROM);
-
 	memory_install_readwrite8_handler(cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x01ff, 0, 0x7e00, SMH_BANK(1), SMH_UNMAP);
 
 	/* enable monitor */
-
 	memory_set_bank(machine, 2, TMC2000_BANK_MONITOR);
-
 	memory_install_readwrite8_handler(cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00, SMH_BANK(2), SMH_UNMAP);
 }
 
@@ -832,23 +820,19 @@ static MACHINE_START( oscnano )
 	oscnano_state *state = machine->driver_data;
 
 	/* RAM/ROM banking */
-
 	memory_configure_bank(machine, 1, 0, 2, memory_region(machine, CDP1802_TAG), 0x8000);
 
 	/* allocate monitor timer */
-	
 	state->ef4_timer = timer_alloc(machine, oscnano_ef4_tick, NULL);
 
 	/* initialize variables */
-	
 	state->monitor_ef4 = 1;
 
 	/* find devices */
-
 	state->cdp1864 = devtag_get_device(machine, CDP1864_TAG);
+	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* register for state saving */
-
 	state_save_register_global(machine, state->monitor_ef4);
 	state_save_register_global(machine, state->cdp1864_efx);
 	state_save_register_global(machine, state->keylatch);
@@ -860,13 +844,10 @@ static MACHINE_RESET( oscnano )
 	oscnano_state *state = machine->driver_data;
 
 	/* reset CDP1864 */
-
 	device_reset(state->cdp1864);
 
 	/* enable ROM */
-
 	memory_set_bank(machine, 1, OSCNANO_BANK_ROM);
-
 	memory_install_readwrite8_handler(cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x01ff, 0, 0x7e00, SMH_BANK(1), SMH_BANK(1));
 }
 
@@ -1014,7 +995,7 @@ ROM_START( osc1000b )
 	ROM_REGION( 0x10000, CDP1802_TAG, 0 )
 	ROM_LOAD( "mmi6341-1.ic2", 0x8000, 0x0200, NO_DUMP ) // equivalent to 82S141
 
-	ROM_REGION( 0x400, "gfx1", ROMREGION_DISPOSE )
+	ROM_REGION( 0x400, "gfx1", 0 )
 	ROM_LOAD( "mmi6349.5d",	0x0000, 0x0200, NO_DUMP ) // equivalent to 82S147
 	ROM_LOAD( "mmi6349.5c",	0x0200, 0x0200, NO_DUMP ) // equivalent to 82S147
 ROM_END

@@ -75,7 +75,7 @@
 #include "devices/cassette.h"
 #include "machine/ctronics.h"
 #include "machine/upd1990a.h"
-#include "machine/8155pio.h"
+#include "machine/i8155.h"
 #include "machine/rp5c01a.h"
 #include "machine/msm8251.h"
 #include "video/hd61830.h"
@@ -83,7 +83,7 @@
 
 static const device_config *cassette_device_image(running_machine *machine)
 {
-	return devtag_get_device(machine, "cassette");
+	return devtag_get_device(machine, CASSETTE_TAG);
 }
 
 /* Read/Write Handlers */
@@ -210,7 +210,7 @@ static WRITE8_HANDLER( pc8201_ctrl_w )
 	kc85_state *state = space->machine->driver_data;
 	
 	/* cassette motor */
-	cassette_change_state(cassette_device_image(space->machine), BIT(data, 3) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
+	cassette_change_state(state->cassette, BIT(data, 3) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 
 	/* RTC strobe */
 	upd1990a_stb_w(state->upd1990a, BIT(data, 4));
@@ -371,7 +371,7 @@ static WRITE8_HANDLER( kc85_ctrl_w )
 	upd1990a_stb_w(state->upd1990a, BIT(data, 2));
 
 	/* cassette motor */
-	cassette_change_state(cassette_device_image(space->machine), BIT(data, 3) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
+	cassette_change_state(state->cassette, BIT(data, 3) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 }
 
 static UINT8 read_keyboard(running_machine *machine, UINT16 keylatch)
@@ -469,7 +469,7 @@ static WRITE8_HANDLER( tandy200_stbk_w )
 	centronics_strobe_w(state->centronics, BIT(data, 0));
 
 	/* cassette motor */
-	cassette_change_state(cassette_device_image(space->machine), BIT(data, 1) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
+	cassette_change_state(state->cassette, BIT(data, 1) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 }
 
 /* Memory Maps */
@@ -499,7 +499,7 @@ static ADDRESS_MAP_START( kc85_io, ADDRESS_SPACE_IO, 8 )
 //	AM_RANGE(0x80, 0x80) AM_MIRROR(0x0f) optional I/O controller unit
 //	AM_RANGE(0x90, 0x90) AM_MIRROR(0x0f) optional answering telephone unit
 //	AM_RANGE(0xa0, 0xa0) AM_MIRROR(0x0f) optional modem
-	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE(PIO8155_TAG, pio8155_r, pio8155_w)
+	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE(I8155_TAG, i8155_r, i8155_w)
 //	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x0f) AM_DEVREADWRITE(IM6402_TAG, im6402_data_r, im6402_data_w)
 	AM_RANGE(0xd0, 0xd0) AM_MIRROR(0x0f) AM_READWRITE(uart_status_r, uart_ctrl_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x0f) AM_READWRITE(keyboard_r, kc85_ctrl_w)
@@ -513,7 +513,7 @@ static ADDRESS_MAP_START( trsm100_io, ADDRESS_SPACE_IO, 8 )
 //	AM_RANGE(0x80, 0x80) AM_MIRROR(0x0f) optional I/O controller unit
 //	AM_RANGE(0x90, 0x90) AM_MIRROR(0x0f) optional answering telephone unit
 	AM_RANGE(0xa0, 0xa0) AM_MIRROR(0x0f) AM_WRITE(modem_w)
-	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE(PIO8155_TAG, pio8155_r, pio8155_w)
+	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE(I8155_TAG, i8155_r, i8155_w)
 //	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x0f) AM_DEVREADWRITE(IM6402_TAG, im6402_data_r, im6402_data_w)
 	AM_RANGE(0xd0, 0xd0) AM_MIRROR(0x0f) AM_READWRITE(uart_status_r, uart_ctrl_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x0f) AM_READWRITE(keyboard_r, kc85_ctrl_w)
@@ -527,7 +527,7 @@ static ADDRESS_MAP_START( pc8201_io, ADDRESS_SPACE_IO, 8 )
 //	AM_RANGE(0x80, 0x80) AM_MIRROR(0x0f) optional 128K ROM cartridge
 	AM_RANGE(0x90, 0x90) AM_MIRROR(0x0f) AM_WRITE(pc8201_ctrl_w)
 	AM_RANGE(0xa0, 0xa0) AM_MIRROR(0x0f) AM_READWRITE(pc8201_bank_r, pc8201_bank_w)
-	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE(PIO8155_TAG, pio8155_r, pio8155_w )
+	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE(I8155_TAG, i8155_r, i8155_w )
 //	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x0f) AM_DEVREADWRITE(IM6402_TAG, im6402_data_r, im6402_data_w)
 	AM_RANGE(0xd0, 0xd0) AM_MIRROR(0x0f) AM_READWRITE(pc8201_uart_status_r, uart_ctrl_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x0f) AM_READ(keyboard_r)
@@ -539,7 +539,7 @@ static ADDRESS_MAP_START( tandy200_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x90, 0x9f) AM_DEVREADWRITE(RP5C01A_TAG, rp5c01a_r, rp5c01a_w)
 //	AM_RANGE(0xa0, 0xa0) AM_MIRROR(0x0f) AM_DEVWRITE(TCM5089_TAG, tcm5089_w)
-	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE(PIO8155_TAG, pio8155_r, pio8155_w)
+	AM_RANGE(0xb0, 0xb7) AM_MIRROR(0x08) AM_DEVREADWRITE(I8155_TAG, i8155_r, i8155_w)
 	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0x0e) AM_DEVREADWRITE(MSM8251_TAG, msm8251_data_r, msm8251_data_w)
 	AM_RANGE(0xc1, 0xc1) AM_MIRROR(0x0e) AM_DEVREADWRITE(MSM8251_TAG, msm8251_status_r, msm8251_control_w)
 	AM_RANGE(0xd0, 0xd0) AM_MIRROR(0x0f) AM_READWRITE(tandy200_bank_r, tandy200_bank_w)
@@ -921,7 +921,7 @@ static WRITE_LINE_DEVICE_HANDLER( kc85_8155_to_w )
 	}
 }
 
-static PIO8155_INTERFACE( kc85_8155_intf )
+static I8155_INTERFACE( kc85_8155_intf )
 {
 	DEVCB_NULL,								/* port A read */
 	DEVCB_NULL,								/* port B read */
@@ -991,7 +991,7 @@ static WRITE8_DEVICE_HANDLER( pc8201_8155_port_b_w )
 	if (state->buzzer) speaker_level_w(state->speaker, state->bell);
 }
 
-static PIO8155_INTERFACE( pc8201_8155_intf )
+static I8155_INTERFACE( pc8201_8155_intf )
 {
 	DEVCB_NULL,								/* port A read */
 	DEVCB_NULL,								/* port B read */
@@ -1090,7 +1090,7 @@ static WRITE_LINE_DEVICE_HANDLER( tandy200_8155_to_w )
 	}
 }
 
-static PIO8155_INTERFACE( tandy200_8155_intf )
+static I8155_INTERFACE( tandy200_8155_intf )
 {
 	DEVCB_NULL,								/* port A read */
 	DEVCB_NULL,								/* port B read */
@@ -1119,8 +1119,9 @@ static MACHINE_START( kc85 )
 
 	/* find devices */
 	state->upd1990a = devtag_get_device(machine, UPD1990A_TAG);
-	state->centronics = devtag_get_device(machine, "centronics");
+	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
 	state->speaker = devtag_get_device(machine, "speaker");
+	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* initialize RTC */
 	upd1990a_cs_w(state->upd1990a, 1);
@@ -1162,8 +1163,9 @@ static MACHINE_START( pc8201 )
 
 	/* find devices */
 	state->upd1990a = devtag_get_device(machine, UPD1990A_TAG);
-	state->centronics = devtag_get_device(machine, "centronics");
+	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
 	state->speaker = devtag_get_device(machine, "speaker");
+	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* initialize RTC */
 	upd1990a_cs_w(state->upd1990a, 1);
@@ -1199,8 +1201,9 @@ static MACHINE_START( trsm100 )
 	
 	/* find devices */
 	state->upd1990a = devtag_get_device(machine, UPD1990A_TAG);
-	state->centronics = devtag_get_device(machine, "centronics");
+	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
 	state->speaker = devtag_get_device(machine, "speaker");
+	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* initialize RTC */
 	upd1990a_cs_w(state->upd1990a, 1);
@@ -1251,8 +1254,9 @@ static MACHINE_START( tandy200 )
 	tandy200_state *state = machine->driver_data;
 
 	/* find devices */
-	state->centronics = devtag_get_device(machine, "centronics");
+	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
 	state->speaker = devtag_get_device(machine, "speaker");
+	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* configure ROM banking */
 	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, I8085_TAG), 0);
@@ -1326,11 +1330,11 @@ static MACHINE_DRIVER_START( kc85 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
-	MDRV_PIO8155_ADD(PIO8155_TAG, XTAL_4_9152MHz/2, kc85_8155_intf)
+	MDRV_I8155_ADD(I8155_TAG, XTAL_4_9152MHz/2, kc85_8155_intf)
 	MDRV_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, kc85_upd1990a_intf)
 
 	/* printer */
-	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+	MDRV_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD("cassette", kc85_cassette_config)
@@ -1361,11 +1365,11 @@ static MACHINE_DRIVER_START( pc8201 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
-	MDRV_PIO8155_ADD(PIO8155_TAG, XTAL_4_9152MHz/2, pc8201_8155_intf)
+	MDRV_I8155_ADD(I8155_TAG, XTAL_4_9152MHz/2, pc8201_8155_intf)
 	MDRV_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, kc85_upd1990a_intf)
 
 	/* printer */
-	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+	MDRV_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD("cassette", kc85_cassette_config)
@@ -1413,13 +1417,13 @@ static MACHINE_DRIVER_START( tandy200 )
 //	MDRV_TCM5089_ADD(TCM5089_TAG, XTAL_3_579545MHz)
 
 	/* devices */
-	MDRV_PIO8155_ADD(PIO8155_TAG, XTAL_4_9152MHz/2, tandy200_8155_intf)
+	MDRV_I8155_ADD(I8155_TAG, XTAL_4_9152MHz/2, tandy200_8155_intf)
 	MDRV_RP5C01A_ADD(RP5C01A_TAG, XTAL_32_768kHz, tandy200_rp5c01a_intf)
 	MDRV_MSM8251_ADD(MSM8251_TAG, /*XTAL_4_9152MHz/2,*/ tandy200_msm8251_interface)
 //	MDRV_MC14412_ADD(MC14412_TAG, XTAL_1MHz)
 
 	/* printer */
-	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+	MDRV_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD("cassette", kc85_cassette_config)

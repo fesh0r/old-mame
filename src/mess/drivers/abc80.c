@@ -91,11 +91,6 @@ Notes:
 #include "devices/cassette.h"
 #include "devices/printer.h"
 
-static const device_config *cassette_device_image(running_machine *machine)
-{
-	return devtag_get_device(machine, "cassette");
-}
-
 /* Read/Write Handlers */
 
 static WRITE8_HANDLER( abc80_sound_w )
@@ -201,11 +196,22 @@ static void abc80_keyboard_scan(running_machine *machine)
 		{
 			if (BIT(data, col))
 			{
-				/* latch key data */
-				state->key_data = abc80_keycodes[row + (table * 7)][col];
+				UINT8 keydata = abc80_keycodes[row + (table * 7)][col];
 
-				/* set key strobe */
-				state->key_strobe = 1;
+				if (state->key_data != keydata)
+				{
+					UINT8 pio_data = 0x80 | keydata;
+
+					/* latch key data */
+					state->key_data = keydata;
+
+					/* set key strobe */
+					state->key_strobe = 1;
+
+					z80pio_p_w(state->z80pio, 0, pio_data);
+
+					return;
+				}
 			}
 		}
 	}
@@ -364,11 +370,6 @@ static TIMER_DEVICE_CALLBACK( z80pio_astb_tick )
 	z80pio_astb_w(state->z80pio, state->z80pio_astb);
 }
 
-static void abc80_pio_interrupt(const device_config *device, int state)
-{
-	cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_IRQ0, state);
-}
-
 static READ8_DEVICE_HANDLER( abc80_pio_port_a_r )
 {
 	/*
@@ -410,8 +411,10 @@ static READ8_DEVICE_HANDLER( abc80_pio_port_b_r )
 
 	*/
 
+	abc80_state *state = device->machine->driver_data;
+
 	/* cassette data */
-	UINT8 data = (cassette_input(cassette_device_image(device->machine)) > +1.0) ? 0x80 : 0;
+	UINT8 data = (cassette_input(state->cassette) > +1.0) ? 0x80 : 0;
 
 	return data;
 };
@@ -433,16 +436,18 @@ static WRITE8_DEVICE_HANDLER( abc80_pio_port_b_w )
 
 	*/
 
+	abc80_state *state = device->machine->driver_data;
+
 	/* cassette motor */
-	cassette_change_state(cassette_device_image(device->machine), BIT(data, 5) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
+	cassette_change_state(state->cassette, BIT(data, 5) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 
 	/* cassette data */
-	cassette_output(cassette_device_image(device->machine), BIT(data, 6) ? -1.0 : +1.0);
+	cassette_output(state->cassette, BIT(data, 6) ? -1.0 : +1.0);
 };
 
 static const z80pio_interface abc80_pio_intf =
 {
-	DEVCB_LINE(abc80_pio_interrupt),		/* callback when change interrupt status */
+	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0), /* callback when change interrupt status */
 	DEVCB_HANDLER(abc80_pio_port_a_r),			/* port A read callback */
 	DEVCB_HANDLER(abc80_pio_port_b_r),			/* port B read callback */
 	DEVCB_NULL,						/* port A write callback */
@@ -472,7 +477,6 @@ static MACHINE_START( abc80 )
 	abc80_state *state = machine->driver_data;
 
 	/* configure RAM expansion */
-
 	memory_configure_bank(machine, 1, 0, 1, mess_ram, 0);
 	memory_set_bank(machine, 1, 0);
 
@@ -488,15 +492,13 @@ static MACHINE_START( abc80 )
 	}
 
 	/* find devices */
-
 	state->z80pio = devtag_get_device(machine, Z80PIO_TAG);
+	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* initialize the ABC BUS */
-
 	abcbus_init(machine, Z80_TAG, abcbus_config);
 
 	/* register for state saving */
-
 	state_save_register_global(machine, state->key_data);
 	state_save_register_global(machine, state->key_strobe);
 	state_save_register_global(machine, state->z80pio_astb);
@@ -563,7 +565,7 @@ ROM_START( abc80 )
 	ROM_REGION( 0x10000, "keyboard", 0 )
 	ROM_LOAD( "keyboard.rom", 0x0000, 0x1000, NO_DUMP )
 
-	ROM_REGION( 0xa00, "chargen", ROMREGION_DISPOSE )
+	ROM_REGION( 0xa00, "chargen", 0 )
 	ROM_LOAD( "sn74s263.h2", 0x0000, 0x0a00, BAD_DUMP CRC(9e064e91) SHA1(354783c8f2865f73dc55918c9810c66f3aca751f) ) // created by hand
 
 	ROM_REGION( 0x80, "hsync", 0 )
@@ -601,7 +603,7 @@ ROM_START( abc80h )
 	ROM_REGION( 0x10000, "keyboard", 0 )
 	ROM_LOAD( "keyboard.rom", 0x0000, 0x1000, NO_DUMP )
 
-	ROM_REGION( 0xa00, "chargen", ROMREGION_DISPOSE )
+	ROM_REGION( 0xa00, "chargen", 0 )
 	ROM_LOAD( "sn74s262.h2", 0x0000, 0x0a00, NO_DUMP ) // UK charset
 
 	ROM_REGION( 0x80, "hsync", 0 )

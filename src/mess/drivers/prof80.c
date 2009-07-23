@@ -13,13 +13,18 @@
 
 	TODO:
 
-	- MC6845 DE callback is broken
-	- Z80 STI (Mostek MK3801) push-model
-	- RAM banking
-	- floppy access
+	- PROF<>GRIP interface fails if IBFA is cleared after reading PA
+	- keyboard
+	- NE555 timeout is 10x too high
+	- GRIP does not send keys back to PROF-80
+	- grip31 does not work
+	- PROF-80 RAM banking
+	- PROF-80 floppy format
+	- GRIP model selection
 	- UNIO card (Z80-STI, Z80-SIO, 2x centronics)
 	- GRIP-COLOR (192kB color RAM)
-	- GRIP 1/2/3/4/5 selection
+	- GRIP-5 (HD6345, 256KB RAM)
+	- XR color card
 	
 */
 
@@ -29,11 +34,116 @@
 #include "cpu/z80/z80daisy.h"
 #include "devices/basicdsk.h"
 #include "video/mc6845.h"
-#include "machine/8255ppi.h"
+#include "machine/i8255a.h"
 #include "machine/nec765.h"
 #include "machine/upd1990a.h"
 #include "machine/z80sti.h"
 #include "machine/ctronics.h"
+#include "machine/rescap.h"
+
+INLINE const device_config *get_floppy_image(running_machine *machine, int drive)
+{
+	return image_from_devtype_and_index(machine, IO_FLOPPY, drive);
+}
+
+/* Keyboard HACK */
+
+static const UINT8 prof80_keycodes[3][9][8] =
+{
+	/* unshifted */
+	{
+	{ 0x1e, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37 },
+	{ 0x38, 0x39, 0x30, 0x2d, 0x3d, 0x08, 0x7f, 0x2d },
+	{ 0x37, 0x38, 0x39, 0x09, 0x71, 0x77, 0x65, 0x72 },
+	{ 0x74, 0x79, 0x75, 0x69, 0x6f, 0x70, 0x5b, 0x5d },
+	{ 0x1b, 0x2b, 0x34, 0x35, 0x36, 0x61, 0x73, 0x64 },
+	{ 0x66, 0x67, 0x68, 0x6a, 0x6b, 0x6c, 0x3b, 0x27 },
+	{ 0x0d, 0x0a, 0x01, 0x31, 0x32, 0x33, 0x7a, 0x78 },
+	{ 0x63, 0x76, 0x62, 0x6e, 0x6d, 0x2c, 0x2e, 0x2f },
+	{ 0x04, 0x02, 0x03, 0x30, 0x2e, 0x20, 0x00, 0x00 }
+	},
+
+	/* shifted */
+	{
+	{ 0x1e, 0x21, 0x40, 0x23, 0x24, 0x25, 0x5e, 0x26 },
+	{ 0x2a, 0x28, 0x29, 0x5f, 0x2b, 0x08, 0x7f, 0x2d },
+	{ 0x37, 0x38, 0x39, 0x09, 0x51, 0x57, 0x45, 0x52 },
+	{ 0x54, 0x59, 0x55, 0x49, 0x4f, 0x50, 0x7b, 0x7d },
+	{ 0x1b, 0x2b, 0x34, 0x35, 0x36, 0x41, 0x53, 0x44 },
+	{ 0x46, 0x47, 0x48, 0x4a, 0x4b, 0x4c, 0x3a, 0x22 },
+	{ 0x0d, 0x0a, 0x01, 0x31, 0x32, 0x33, 0x5a, 0x58 },
+	{ 0x43, 0x56, 0x42, 0x4e, 0x4d, 0x3c, 0x3e, 0x3f },
+	{ 0x04, 0x02, 0x03, 0x30, 0x2e, 0x20, 0x00, 0x00 }
+	},
+
+	/* control */
+	{
+	{ 0x9e, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97 },
+	{ 0x98, 0x99, 0x90, 0x1f, 0x9a, 0x88, 0xff, 0xad },
+	{ 0xb7, 0xb8, 0xb9, 0x89, 0x11, 0x17, 0x05, 0x12 },
+	{ 0x14, 0x19, 0x15, 0x09, 0x0f, 0x10, 0x1b, 0x1d },
+	{ 0x9b, 0xab, 0xb4, 0xb5, 0xb6, 0x01, 0x13, 0x04 },
+	{ 0x06, 0x07, 0x08, 0x0a, 0x0b, 0x0c, 0x7e, 0x60 },
+	{ 0x8d, 0x8a, 0x81, 0xb1, 0xb2, 0xb3, 0x1a, 0x18 },
+	{ 0x03, 0x16, 0x02, 0x0e, 0x0d, 0x1c, 0x7c, 0x5c },
+	{ 0x84, 0x82, 0x83, 0xb0, 0xae, 0x00, 0x00, 0x00 }
+	}
+};
+
+static void prof80_keyboard_scan(running_machine *machine)
+{
+	prof80_state *state = machine->driver_data;
+
+	static const char *const keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8" };
+	int table = 0, row, col;
+	int keydata = -1;
+
+	if (input_port_read(machine, "ROW9") & 0x07)
+	{
+		/* shift, upper case */
+		table = 1;
+	}
+
+	if (input_port_read(machine, "ROW9") & 0x18)
+	{
+		/* ctrl */
+		table = 2;
+	}
+
+	/* scan keyboard */
+	for (row = 0; row < 9; row++)
+	{
+		UINT8 data = input_port_read(machine, keynames[row]);
+
+		for (col = 0; col < 8; col++)
+		{
+			if (!BIT(data, col))
+			{
+				/* latch key data */
+				keydata = ~prof80_keycodes[table][row][col];
+				
+				if (state->keydata != keydata)
+				{
+					state->keydata = keydata;
+
+					/* trigger GRIP 8255 port C bit 2 (_STBB) */
+					i8255a_pc2_w(state->ppi8255, 0);
+					i8255a_pc2_w(state->ppi8255, 1);
+					return;
+				}
+			}
+		}
+	}
+
+	state->keydata = keydata;
+}
+
+static TIMER_DEVICE_CALLBACK( prof80_keyboard_tick )
+{
+	prof80_state *state = timer->machine->driver_data;
+
+	if (!state->kbf) prof80_keyboard_scan(timer->machine);
+}
 
 /* PROF-80 */
 
@@ -77,64 +187,72 @@ static void prof80_bankswitch(running_machine *machine)
 	}
 }
 
-static WRITE8_HANDLER( flr_w )
+static TIMER_CALLBACK( floppy_motor_off_tick )
 {
-	/*
+	prof80_state *state = machine->driver_data;
 
-		bit		description
+	floppy_drive_set_motor_state(get_floppy_image(machine, 0), 0);
+	floppy_drive_set_motor_state(get_floppy_image(machine, 1), 0);
+	floppy_drive_set_ready_state(get_floppy_image(machine, 0), 0, 1);
+	floppy_drive_set_ready_state(get_floppy_image(machine, 1), 0, 1);
 
-		0		FB
-		1		SB0
-		2		SB1
-		3		SB2
-		4		SA0
-		5		SA1
-		6		SA2
-		7		FA
+	state->motor = 0;
+}
 
-	*/
-
-	prof80_state *state = space->machine->driver_data;
-
-	int fa = BIT(data, 7);
-	int sa = (data >> 4) & 0x07;
-
-	int fb = BIT(data, 0);
-	int sb = (data >> 1) & 0x07;
+static void ls259_w(running_machine *machine, int fa, int sa, int fb, int sb)
+{
+	prof80_state *state = machine->driver_data;
 
 	switch (sa)
 	{
-	case 0:
+	case 0: /* C0/TDI */
 		upd1990a_data_w(state->upd1990a, fa);
 		upd1990a_c0_w(state->upd1990a, fa);
 		break;
 
-	case 1:
+	case 1: /* C1 */
 		upd1990a_c1_w(state->upd1990a, fa);
 		break;
 
-	case 2:
+	case 2: /* C2 */
 		upd1990a_c2_w(state->upd1990a, fa);
 		break;
 
-	case 3:
-		/* READY */
+	case 3:	/* READY */
 		break;
 
-	case 4:
+	case 4: /* TCK */
 		upd1990a_clk_w(state->upd1990a, fa);
 		break;
 
-	case 5:
-		/* IN USE */
+	case 5:	/* IN USE */
+		output_set_led_value(0, fa);
 		break;
 
-	case 6:
-		/* _MOTOR */
+	case 6:	/* _MOTOR */
+		if (fa)
+		{
+			/* trigger floppy motor off NE555 timer */
+			int t = 110 * RES_M(10) * CAP_U(6.8); // t = 1.1 * R8 * C6
+
+			timer_adjust_oneshot(state->floppy_motor_off_timer, ATTOTIME_IN_MSEC(t), 0);
+		}
+		else
+		{
+			/* turn on floppy motor */
+			floppy_drive_set_motor_state(get_floppy_image(machine, 0), 1);
+			floppy_drive_set_motor_state(get_floppy_image(machine, 1), 1);
+			floppy_drive_set_ready_state(get_floppy_image(machine, 0), 1, 1);
+			floppy_drive_set_ready_state(get_floppy_image(machine, 1), 1, 1);
+
+			state->motor = 1;
+
+			/* reset floppy motor off NE555 timer */
+			timer_enable(state->floppy_motor_off_timer, 0);
+		}
 		break;
 
-	case 7:
-		/* SELECT */
+	case 7:	/* SELECT */
 		break;
 	}
 
@@ -154,6 +272,11 @@ static WRITE8_HANDLER( flr_w )
 		break;
 
 	case 4: /* _MSTOP */
+		if (!fb)
+		{
+			/* immediately turn off floppy motor */
+			timer_adjust_oneshot(state->floppy_motor_off_timer, attotime_zero, 0);
+		}
 		break;
 
 	case 5: /* TXP */
@@ -167,6 +290,32 @@ static WRITE8_HANDLER( flr_w )
 		state->mme = fb;
 		break;
 	}
+}
+
+static WRITE8_HANDLER( flr_w )
+{
+	/*
+
+		bit		description
+
+		0		FB
+		1		SB0
+		2		SB1
+		3		SB2
+		4		SA0
+		5		SA1
+		6		SA2
+		7		FA
+
+	*/
+
+	int fa = BIT(data, 7);
+	int sa = (data >> 4) & 0x07;
+
+	int fb = BIT(data, 0);
+	int sb = (data >> 1) & 0x07;
+
+	ls259_w(space->machine, fa, sa, fb, sb);
 }
 
 static READ8_HANDLER( status_r )
@@ -197,12 +346,12 @@ static READ8_HANDLER( status2_r )
 
 		bit		signal		description
 
-		0		MOTOR
+		0		_MOTOR		floppy motor (0=on, 1=off)
 		1
 		2
 		3
-		4		x
-		5		x
+		4		JS4
+		5		JS5
 		6
 		7		_TDO
 
@@ -210,44 +359,7 @@ static READ8_HANDLER( status2_r )
 
 	prof80_state *state = space->machine->driver_data;
 
-	return (!state->rtc_data << 7);
-}
-
-static READ8_HANDLER( fdc_status_r )
-{
-	/*
-
-		bit		signal		description
-
-		0		FDB1
-		1		FDB2
-		2		FDB3
-		3		FDB4
-		4		CB
-		5		EXM
-		6		DIO
-		7		RQM
-
-	*/
-
-	return 0;
-}
-
-static WRITE8_HANDLER( fdc_w )
-{
-	prof80_state *state = space->machine->driver_data;
-
-	nec765_data_w(state->nec765, 0, data);
-}
-
-static READ8_HANDLER( fdc_r )
-{
-	prof80_state *state = space->machine->driver_data;
-
-	UINT8 data = nec765_data_r(state->nec765, 0);
-	data = nec765_status_r(state->nec765, 0); // TODO how to choose which read?
-
-	return data;
+	return (!state->rtc_data << 7) | !state->motor;
 }
 
 static WRITE8_HANDLER( mmu_w )
@@ -267,40 +379,39 @@ static READ8_HANDLER( gripc_r )
 {
 	prof80_state *state = space->machine->driver_data;
 
-	return state->ecb_status;
+	return state->gripc;
 }
 
 static READ8_HANDLER( gripd_r )
 {
 	prof80_state *state = space->machine->driver_data;
 
-	logerror("Read GRIP data %02x\n", state->ecb_data);
-
 	/* trigger GRIP 8255 port C bit 6 (_ACKA) */
-	ppi8255_set_port_c(state->ppi8255, 0x54);
-	ppi8255_set_port_c(state->ppi8255, 0x14);
-	ppi8255_set_port_c(state->ppi8255, 0x54);
+	i8255a_pc6_w(state->ppi8255, 0);
+	i8255a_pc6_w(state->ppi8255, 1);
 
-	logerror("Read GRIP data %02x\n", state->ecb_data);
-
-	return state->ecb_data;
+	return state->gripd;
 }
 
 static WRITE8_HANDLER( gripd_w )
 {
 	prof80_state *state = space->machine->driver_data;
 
-	logerror("Write GRIP data %02x\n", data);
-
-	state->ecb_data = data;
+	state->gripd = data;
 
 	/* trigger GRIP 8255 port C bit 4 (_STBA) */
-	ppi8255_set_port_c(state->ppi8255, 0x54);
-	ppi8255_set_port_c(state->ppi8255, 0x44);
-	ppi8255_set_port_c(state->ppi8255, 0x54);
+	i8255a_pc4_w(state->ppi8255, 0);
+	i8255a_pc4_w(state->ppi8255, 1);
 }
 
 /* GRIP */
+
+static WRITE8_HANDLER( flash_w )
+{
+	prof80_state *state = space->machine->driver_data;
+
+	state->flash = BIT(data, 7);
+}
 
 static WRITE8_HANDLER( page_w )
 {
@@ -324,7 +435,7 @@ static READ8_HANDLER( stat_r )
 		4		JS0
 		5		JS1
 		6		_ERROR
-		7		LPS
+		7		LPSTB		light pen strobe
 
 	*/
 
@@ -423,8 +534,8 @@ static ADDRESS_MAP_START( prof80_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xd8, 0xd8) AM_MIRROR(0xff00) AM_WRITE(flr_w)
 	AM_RANGE(0xda, 0xda) AM_MIRROR(0xff00) AM_READ(status_r)
 	AM_RANGE(0xdb, 0xdb) AM_MIRROR(0xff00) AM_READ(status2_r)
-	AM_RANGE(0xdc, 0xdc) AM_MIRROR(0xff00) AM_READ(fdc_status_r)
-	AM_RANGE(0xdd, 0xdd) AM_MIRROR(0xff00) AM_READWRITE(fdc_r, fdc_w)
+	AM_RANGE(0xdc, 0xdc) AM_MIRROR(0xff00) AM_DEVREAD(NEC765_TAG, nec765_status_r)
+	AM_RANGE(0xdd, 0xdd) AM_MIRROR(0xff00) AM_DEVREADWRITE(NEC765_TAG, nec765_data_r, nec765_data_w)
 	AM_RANGE(0xde, 0xde) AM_MIRROR(0xff01) AM_MASK(0xff00) AM_WRITE(mmu_w)
 ADDRESS_MAP_END
 
@@ -443,7 +554,7 @@ static ADDRESS_MAP_START( grip_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x13, 0x13) AM_WRITE(page_w)
 //	AM_RANGE(0x14, 0x14) AM_WRITE(cc1_w)
 //	AM_RANGE(0x15, 0x15) AM_WRITE(cc2_w)
-//	AM_RANGE(0x16, 0x16) AM_WRITE(flash_w)
+	AM_RANGE(0x16, 0x16) AM_WRITE(flash_w)
 //	AM_RANGE(0x17, 0x17) AM_WRITE(vol1_w)
 	AM_RANGE(0x20, 0x2f) AM_DEVREADWRITE(Z80STI_TAG, z80sti_r, z80sti_w)
 	AM_RANGE(0x30, 0x30) AM_READWRITE(lrs_r, lrs_w)
@@ -452,7 +563,49 @@ static ADDRESS_MAP_START( grip_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x52, 0x52) AM_DEVWRITE(MC6845_TAG, mc6845_register_w)
 	AM_RANGE(0x53, 0x53) AM_DEVREAD(MC6845_TAG, mc6845_register_r)
 	AM_RANGE(0x60, 0x60) AM_DEVWRITE("centronics", centronics_data_w)
-	AM_RANGE(0x70, 0x73) AM_DEVREADWRITE(PPI8255_TAG, ppi8255_r, ppi8255_w)
+	AM_RANGE(0x70, 0x73) AM_DEVREADWRITE(I8255A_TAG, i8255a_r, i8255a_w)
+//	AM_RANGE(0x80, 0x80) AM_WRITE(bl2out_w)
+//	AM_RANGE(0x90, 0x90) AM_WRITE(gr2out_w)
+//	AM_RANGE(0xa0, 0xa0) AM_WRITE(rd2out_w)
+//	AM_RANGE(0xb0, 0xb0) AM_WRITE(clrg2_w)
+//	AM_RANGE(0xc0, 0xc0) AM_WRITE(bluout_w)
+//	AM_RANGE(0xd0, 0xd0) AM_WRITE(grnout_w)
+//	AM_RANGE(0xe0, 0xe0) AM_WRITE(redout_w)
+//	AM_RANGE(0xf0, 0xf0) AM_WRITE(clrg1_w)
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( grip5_mem, ADDRESS_SPACE_PROGRAM, 8 )
+    AM_RANGE(0x0000, 0x3fff) AM_ROMBANK(18)
+    AM_RANGE(0x4000, 0x47ff) AM_RAM
+    AM_RANGE(0x8000, 0xffff) AM_RAMBANK(17)
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( grip5_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x00, 0x00) AM_READWRITE(cxstb_r, cxstb_w)
+//	AM_RANGE(0x10, 0x10) AM_WRITE(eprom_w)
+//	AM_RANGE(0x11, 0x11) AM_WRITE(vol0_w)
+//	AM_RANGE(0x12, 0x12) AM_WRITE(rts_w)
+	AM_RANGE(0x13, 0x13) AM_WRITE(page_w)
+//	AM_RANGE(0x14, 0x14) AM_WRITE(str_w)
+//	AM_RANGE(0x15, 0x15) AM_WRITE(intl_w)
+//	AM_RANGE(0x16, 0x16) AM_WRITE(dpage_w)
+//	AM_RANGE(0x17, 0x17) AM_WRITE(vol1_w)
+	AM_RANGE(0x20, 0x2f) AM_DEVREADWRITE(Z80STI_TAG, z80sti_r, z80sti_w)
+	AM_RANGE(0x30, 0x30) AM_READWRITE(lrs_r, lrs_w)
+	AM_RANGE(0x40, 0x40) AM_READ(stat_r)
+	AM_RANGE(0x50, 0x50) AM_DEVWRITE(MC6845_TAG, mc6845_address_w)
+	AM_RANGE(0x52, 0x52) AM_DEVWRITE(MC6845_TAG, mc6845_register_w)
+	AM_RANGE(0x53, 0x53) AM_DEVREAD(MC6845_TAG, mc6845_register_r)
+	AM_RANGE(0x60, 0x60) AM_DEVWRITE("centronics", centronics_data_w)
+	AM_RANGE(0x70, 0x73) AM_DEVREADWRITE(I8255A_TAG, i8255a_r, i8255a_w)
+
+//	AM_RANGE(0x80, 0x80) AM_WRITE(xrflgs_w)
+//	AM_RANGE(0xc0, 0xc0) AM_WRITE(xrclrg_w)
+//	AM_RANGE(0xe0, 0xe0) AM_WRITE(xrclu0_w)
+//	AM_RANGE(0xe1, 0xe1) AM_WRITE(xrclu1_w)
+//	AM_RANGE(0xe2, 0xe2) AM_WRITE(xrclu2_w)
+
 //	AM_RANGE(0x80, 0x80) AM_WRITE(bl2out_w)
 //	AM_RANGE(0x90, 0x90) AM_WRITE(gr2out_w)
 //	AM_RANGE(0xa0, 0xa0) AM_WRITE(rd2out_w)
@@ -465,7 +618,229 @@ ADDRESS_MAP_END
 
 /* Input Ports */
 
-INPUT_PORTS_START( prof80 )
+static INPUT_PORTS_START( prof80 )
+	PORT_START("ROW0")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("HELP") PORT_CODE(KEYCODE_TILDE)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHAR('!')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_2) PORT_CHAR('2') PORT_CHAR('@')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_3) PORT_CHAR('3') PORT_CHAR('#')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_4) PORT_CHAR('4') PORT_CHAR('$')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_5) PORT_CHAR('5') PORT_CHAR('%')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_6) PORT_CHAR('6') PORT_CHAR('^')
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_7) PORT_CHAR('7') PORT_CHAR('&')
+
+	PORT_START("ROW1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_8) PORT_CHAR('8') PORT_CHAR('*')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_9) PORT_CHAR('9') PORT_CHAR('(')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_0) PORT_CHAR('0') PORT_CHAR(')')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_MINUS) PORT_CHAR('-') PORT_CHAR('_')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_EQUALS) PORT_CHAR('=') PORT_CHAR('+')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("BACKSPACE") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(8)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("DEL") PORT_CODE(KEYCODE_DEL)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad -") PORT_CODE(KEYCODE_MINUS_PAD)
+
+	PORT_START("ROW2")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad 7") PORT_CODE(KEYCODE_7_PAD)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad 8") PORT_CODE(KEYCODE_8_PAD)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad 9") PORT_CODE(KEYCODE_9_PAD)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("TAB") PORT_CODE(KEYCODE_TAB) PORT_CHAR('\t')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Q) PORT_CHAR('q') PORT_CHAR('Q')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_W) PORT_CHAR('w') PORT_CHAR('W')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_E) PORT_CHAR('e') PORT_CHAR('E')
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_R) PORT_CHAR('r') PORT_CHAR('R')
+	
+	PORT_START("ROW3")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_T) PORT_CHAR('t') PORT_CHAR('T')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Y) PORT_CHAR('y') PORT_CHAR('Y')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_U) PORT_CHAR('u') PORT_CHAR('U')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_I) PORT_CHAR('i') PORT_CHAR('I')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_O) PORT_CHAR('o') PORT_CHAR('O')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_P) PORT_CHAR('p') PORT_CHAR('P')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR('[') PORT_CHAR('{')
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR(']') PORT_CHAR('}')
+	
+	PORT_START("ROW4")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("ESC") PORT_CODE(KEYCODE_ESC) PORT_CHAR(UCHAR_MAMEKEY(ESC))
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad +") PORT_CODE(KEYCODE_PLUS_PAD)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad 4") PORT_CODE(KEYCODE_4_PAD)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad 5") PORT_CODE(KEYCODE_5_PAD)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad 6") PORT_CODE(KEYCODE_6_PAD)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_A) PORT_CHAR('a') PORT_CHAR('A')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_S) PORT_CHAR('s') PORT_CHAR('S')
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_D) PORT_CHAR('d') PORT_CHAR('D')
+	
+	PORT_START("ROW5")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F) PORT_CHAR('f') PORT_CHAR('F')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_G) PORT_CHAR('g') PORT_CHAR('G')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_H) PORT_CHAR('h') PORT_CHAR('H')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_J) PORT_CHAR('j') PORT_CHAR('J')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_K) PORT_CHAR('k') PORT_CHAR('K')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_L) PORT_CHAR('l') PORT_CHAR('L')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COLON) PORT_CHAR(';') PORT_CHAR(':')
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR('\'') PORT_CHAR('"')
+	
+	PORT_START("ROW6")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("RETURN") PORT_CODE(KEYCODE_ENTER) PORT_CHAR('\r')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("LINE FEED") PORT_CODE(KEYCODE_ENTER_PAD)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x91") PORT_CODE(KEYCODE_UP) PORT_CHAR(UCHAR_MAMEKEY(UP))
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad 1") PORT_CODE(KEYCODE_1_PAD)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad 2") PORT_CODE(KEYCODE_2_PAD)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad 3") PORT_CODE(KEYCODE_3_PAD)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Z) PORT_CHAR('z') PORT_CHAR('Z')
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_X) PORT_CHAR('x') PORT_CHAR('X')
+	
+	PORT_START("ROW7")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_C) PORT_CHAR('c') PORT_CHAR('C')
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_V) PORT_CHAR('v') PORT_CHAR('V')
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_B) PORT_CHAR('b') PORT_CHAR('B')
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_N) PORT_CHAR('n') PORT_CHAR('N')
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_M) PORT_CHAR('m') PORT_CHAR('M')
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COMMA) PORT_CHAR(',') PORT_CHAR('<')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_STOP) PORT_CHAR('.') PORT_CHAR('>')
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_SLASH) PORT_CHAR('/') PORT_CHAR('?')
+	
+	PORT_START("ROW8")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x90") PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x93") PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x92") PORT_CODE(KEYCODE_RIGHT) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad 0") PORT_CODE(KEYCODE_0_PAD)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad .") PORT_CODE(KEYCODE_ASTERISK)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("SPACE") PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ')
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) 
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) 
+
+	PORT_START("ROW9")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("LOCK") PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("LEFT SHIFT") PORT_CODE(KEYCODE_LSHIFT) PORT_CHAR(UCHAR_SHIFT_1)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("RIGHT SHIFT") PORT_CODE(KEYCODE_RSHIFT)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("LEFT CTRL") PORT_CODE(KEYCODE_LCONTROL) PORT_CHAR(UCHAR_MAMEKEY(LCONTROL))
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("RIGHT CTRL") PORT_CODE(KEYCODE_RCONTROL) PORT_CHAR(UCHAR_MAMEKEY(RCONTROL))
+
+	PORT_START("J1")
+	PORT_CONFNAME( 0x01, 0x00, "J1 RDY/HDLD")
+	PORT_CONFSETTING( 0x00, "HDLD" )
+	PORT_CONFSETTING( 0x01, "READY" )
+
+	PORT_START("J2")
+	PORT_CONFNAME( 0x01, 0x01, "J2 RDY/DCHG")
+	PORT_CONFSETTING( 0x00, "DCHG" )
+	PORT_CONFSETTING( 0x01, "READY" )
+
+	PORT_START("J3")
+	PORT_CONFNAME( 0x01, 0x00, "J3 Port Address")
+	PORT_CONFSETTING( 0x00, "D8-DF" )
+	PORT_CONFSETTING( 0x01, "E8-EF" )
+
+	PORT_START("J4")
+	PORT_CONFNAME( 0x07, 0x00, "J4 Console")
+	PORT_CONFSETTING( 0x00, "GRIP-1" )
+	PORT_CONFSETTING( 0x01, "V24 DUPLEX" )
+	PORT_CONFSETTING( 0x02, "USER1" )
+	PORT_CONFSETTING( 0x03, "USER2" )
+	PORT_CONFSETTING( 0x04, "CP/M" )
+
+	PORT_START("J5")
+	PORT_CONFNAME( 0x07, 0x00, "J5 Baud")
+	PORT_CONFSETTING( 0x00, "9600" )
+	PORT_CONFSETTING( 0x01, "4800" )
+	PORT_CONFSETTING( 0x02, "2400" )
+	PORT_CONFSETTING( 0x03, "1200" )
+	PORT_CONFSETTING( 0x04, "300" )
+
+	PORT_START("J6")
+	PORT_CONFNAME( 0x01, 0x01, "J6 Interrupt")
+	PORT_CONFSETTING( 0x00, "Serial" )
+	PORT_CONFSETTING( 0x01, "ECB" )
+
+	PORT_START("J7")
+	PORT_CONFNAME( 0x01, 0x01, "J7 DMA MMU")
+	PORT_CONFSETTING( 0x00, "PROF" )
+	PORT_CONFSETTING( 0x01, "DMA Card" )
+
+	PORT_START("J8")
+	PORT_CONFNAME( 0x01, 0x01, "J8 Active Mode")
+	PORT_CONFSETTING( 0x00, DEF_STR( Off ) )
+	PORT_CONFSETTING( 0x01, DEF_STR( On ) )
+
+	PORT_START("J9")
+	PORT_CONFNAME( 0x01, 0x00, "J9 EPROM Type")
+	PORT_CONFSETTING( 0x00, "2732/2764" )
+	PORT_CONFSETTING( 0x01, "27128" )
+
+	PORT_START("J10")
+	PORT_CONFNAME( 0x03, 0x00, "J10 Wait States")
+	PORT_CONFSETTING( 0x00, "On all memory accesses" )
+	PORT_CONFSETTING( 0x01, "On internal memory accesses" )
+	PORT_CONFSETTING( 0x02, DEF_STR( None ) )
+
+	PORT_START("L1")
+	PORT_CONFNAME( 0x01, 0x00, "L1 Write Polarity")
+	PORT_CONFSETTING( 0x00, "Inverted" )
+	PORT_CONFSETTING( 0x01, "Normal" )
+
+	PORT_START("GRIP-J1")
+	PORT_CONFNAME( 0x01, 0x00, "J1 EPROM Type")
+	PORT_CONFSETTING( 0x00, "2732" )
+	PORT_CONFSETTING( 0x01, "2764/27128" )
+
+	PORT_START("GRIP-J2")
+	PORT_CONFNAME( 0x03, 0x00, "J2 Centronics Mode")
+	PORT_CONFSETTING( 0x00, "Mode 1" )
+	PORT_CONFSETTING( 0x01, "Mode 2" )
+	PORT_CONFSETTING( 0x02, "Mode 3" )
+
+	PORT_START("GRIP-J3A")
+	PORT_CONFNAME( 0x07, 0x00, "J3 Host")
+	PORT_CONFSETTING( 0x00, "ECB Bus" )
+	PORT_CONFSETTING( 0x01, "V24 9600 Baud" )
+	PORT_CONFSETTING( 0x02, "V24 4800 Baud" )
+	PORT_CONFSETTING( 0x03, "V24 1200 Baud" )
+	PORT_CONFSETTING( 0x04, "Keyboard" )
+
+	PORT_START("GRIP-J3B")
+	PORT_CONFNAME( 0x07, 0x00, "J3 Keyboard")
+	PORT_CONFSETTING( 0x00, "Parallel" )
+	PORT_CONFSETTING( 0x01, "Serial (1200 Baud, 8 Bits)" )
+	PORT_CONFSETTING( 0x02, "Serial (1200 Baud, 7 Bits)" )
+	PORT_CONFSETTING( 0x03, "Serial (600 Baud, 8 Bits)" )
+	PORT_CONFSETTING( 0x04, "Serial (600 Baud, 7 Bits)" )
+
+	PORT_START("GRIP-J4")
+	PORT_CONFNAME( 0x01, 0x00, "J4 GRIP-COLOR")
+	PORT_CONFSETTING( 0x00, DEF_STR( No ) )
+	PORT_CONFSETTING( 0x01, DEF_STR( Yes ) )
+
+	PORT_START("GRIP-J5")
+	PORT_CONFNAME( 0x01, 0x01, "J5 Power On Reset")
+	PORT_CONFSETTING( 0x00, "External" )
+	PORT_CONFSETTING( 0x01, "Internal" )
+
+	PORT_START("GRIP-J6")
+	PORT_CONFNAME( 0x01, 0x00, "J6 Serial Clock")
+	PORT_CONFSETTING( 0x00, "TC/16, TD/16, TD" )
+	PORT_CONFSETTING( 0x01, "TD/16, TD/16, TD" )
+	PORT_CONFSETTING( 0x02, "TC/16, BAUD/16, input" )
+	PORT_CONFSETTING( 0x03, "BAUD/16, BAUD/16, input" )
+
+	PORT_START("GRIP-J7")
+	PORT_CONFNAME( 0x01, 0x00, "J7 ECB Bus Address")
+	PORT_CONFSETTING( 0x00, "C0/C1" )
+	PORT_CONFSETTING( 0x01, "A0/A1" )
+
+	PORT_START("GRIP-J8")
+	PORT_CONFNAME( 0x01, 0x00, "J8 Video RAM")
+	PORT_CONFSETTING( 0x00, "32 KB" )
+	PORT_CONFSETTING( 0x01, "64 KB" )
+
+	PORT_START("GRIP-J9")
+	PORT_CONFNAME( 0x01, 0x01, "J9 CPU Clock")
+	PORT_CONFSETTING( 0x00, "2 MHz" )
+	PORT_CONFSETTING( 0x01, "4 MHz" )
+
+	PORT_START("GRIP-J10")
+	PORT_CONFNAME( 0x01, 0x01, "J10 Pixel Clock")
+	PORT_CONFSETTING( 0x00, "External" )
+	PORT_CONFSETTING( 0x01, "Internal" )
 INPUT_PORTS_END
 
 /* Video */
@@ -483,19 +858,25 @@ static MC6845_UPDATE_ROW( grip_update_row )
 		for (bit = 0; bit < 8; bit++)
 		{
 			int x = (column * 8) + bit;
-			*BITMAP_ADDR16(bitmap, y, x) = BIT(data, 7);
-			data <<= 1;
+			int color = state->flash ? 0 : BIT(data, bit);
+
+			*BITMAP_ADDR16(bitmap, y, x) = color;
 		}
 	}
 }
 
-static MC6845_ON_DE_CHANGED( grip_on_de_changed )
+static WRITE_LINE_DEVICE_HANDLER( grip_de_w )
 {
-	prof80_state *state = device->machine->driver_data;
+	prof80_state *driver_state = device->machine->driver_data;
 
-//	logerror("DE changed to %u\n", display_enabled);
-	
-	z80sti_i1_w(state->z80sti, display_enabled);
+	z80sti_i1_w(driver_state->z80sti, state);
+}
+
+static WRITE_LINE_DEVICE_HANDLER( grip_cur_w )
+{
+	prof80_state *driver_state = device->machine->driver_data;
+
+	z80sti_i2_w(driver_state->z80sti, state);
 }
 
 static const mc6845_interface grip_mc6845_interface = 
@@ -505,9 +886,10 @@ static const mc6845_interface grip_mc6845_interface =
 	NULL,
 	grip_update_row,
 	NULL,
-	grip_on_de_changed,
-	NULL,
-	NULL,
+	DEVCB_LINE(grip_de_w),
+	DEVCB_LINE(grip_cur_w),
+	DEVCB_NULL,
+	DEVCB_NULL,
 	NULL
 };
 
@@ -577,7 +959,7 @@ static READ8_DEVICE_HANDLER( grip_ppi8255_a_r )
 
 	prof80_state *state = device->machine->driver_data;
 
-	return state->ecb_data;
+	return state->gripd;
 }
 
 static WRITE8_DEVICE_HANDLER( grip_ppi8255_a_w )
@@ -599,9 +981,7 @@ static WRITE8_DEVICE_HANDLER( grip_ppi8255_a_w )
 
 	prof80_state *state = device->machine->driver_data;
 
-	logerror("8255 PA write %02x\n", data);
-
-	state->ecb_data = data;
+	state->gripd = data;
 }
 
 static READ8_DEVICE_HANDLER( grip_ppi8255_b_r )
@@ -621,27 +1001,9 @@ static READ8_DEVICE_HANDLER( grip_ppi8255_b_r )
     
 	*/
 
-	return 0;
-}
+	prof80_state *state = device->machine->driver_data;
 
-static READ8_DEVICE_HANDLER( grip_ppi8255_c_r )
-{
-	/*
-
-        bit		signal		description
-
-		PC0     INTRB		interrupt B output (keyboard)
-        PC1     KBF			input buffer B full output (keyboard)
-        PC2     _KBSTB		strobe B input (keyboard)
-        PC3     INTRA		interrupt A output (PROF-80)
-        PC4		_STBA		strobe A input (PROF-80)
-        PC5     IBFA		input buffer A full output (PROF-80)
-        PC6		_ACKA		acknowledge A input (PROF-80)
-        PC7     _OBFA		output buffer full output (PROF-80)
-    
-	*/
-
-	return 0x54;
+	return state->keydata;
 }
 
 static WRITE8_DEVICE_HANDLER( grip_ppi8255_c_w )
@@ -666,20 +1028,21 @@ static WRITE8_DEVICE_HANDLER( grip_ppi8255_c_w )
 	/* keyboard interrupt */
 	z80sti_i4_w(state->z80sti, BIT(data, 0));
 
+	/* keyboard buffer full */
+	state->kbf = BIT(data, 1);
+
 	/* PROF-80 interrupt */
 	z80sti_i7_w(state->z80sti, BIT(data, 3));
 
 	/* PROF-80 handshaking */
-	state->ecb_status = (!BIT(data, 7) << 7) | (!BIT(data, 5) << 6);
-
-	logerror("8255 PC write %02x\n", data);
+	state->gripc = (!BIT(data, 7) << 7) | (!BIT(data, 5) << 6) | (i8255a_pa_r(state->ppi8255, 0) & 0x3f);
 }
 
-static const ppi8255_interface grip_ppi8255_interface =
+static I8255A_INTERFACE( grip_ppi8255_interface )
 {
 	DEVCB_HANDLER(grip_ppi8255_a_r),	// Port A read
 	DEVCB_HANDLER(grip_ppi8255_b_r),	// Port B read
-	DEVCB_HANDLER(grip_ppi8255_c_r),	// Port C read
+	DEVCB_NULL,							// Port C read
 	DEVCB_HANDLER(grip_ppi8255_a_w),	// Port A write
 	DEVCB_NULL,							// Port B write
 	DEVCB_HANDLER(grip_ppi8255_c_w)		// Port C write
@@ -704,11 +1067,9 @@ static READ8_DEVICE_HANDLER( grip_z80sti_gpio_r )
     
 	*/
 
-//	prof80_state *state = device->machine->driver_data;
+	prof80_state *state = device->machine->driver_data;
 
-//	return state->pc3 << 7 | state->exin << 6 | state->skbd << 5 | state->pc0 << 4 | busy << 3 | state->cursor << 2 | state->de << 1 | state->cts;
-
-	return 0;
+	return centronics_busy_r(state->centronics) << 3;
 }
 
 static WRITE_LINE_DEVICE_HANDLER( grip_z80sti_tbo_w )
@@ -755,7 +1116,7 @@ static MACHINE_START( prof80 )
 	state->nec765 = devtag_get_device(machine, NEC765_TAG);
 	state->upd1990a = devtag_get_device(machine, UPD1990A_TAG);
 	state->mc6845 = devtag_get_device(machine, MC6845_TAG);
-	state->ppi8255 = devtag_get_device(machine, PPI8255_TAG);
+	state->ppi8255 = devtag_get_device(machine, I8255A_TAG);
 	state->z80sti = devtag_get_device(machine, Z80STI_TAG);
 	state->centronics = devtag_get_device(machine, "centronics");
 
@@ -765,6 +1126,9 @@ static MACHINE_START( prof80 )
 
 	/* configure FDC */
 	floppy_drive_set_index_pulse_callback(image_from_devtype_and_index(machine, IO_FLOPPY, 0), prof80_fdc_index_callback);
+
+	/* allocate floppy motor off timer */
+	state->floppy_motor_off_timer = timer_alloc(machine, floppy_motor_off_tick, NULL);
 
 	/* allocate video RAM */
 	state->video_ram = auto_alloc_array(machine, UINT8, GRIP_VIDEORAM_SIZE);
@@ -786,9 +1150,16 @@ static MACHINE_START( prof80 )
 	/* register for state saving */
 	state_save_register_global_array(machine, state->mmu);
 	state_save_register_global(machine, state->mme);
+	state_save_register_global(machine, state->keydata);
+	state_save_register_global(machine, state->kbf);
 	state_save_register_global_pointer(machine, state->video_ram, GRIP_VIDEORAM_SIZE);
+	state_save_register_global(machine, state->lps);
+	state_save_register_global(machine, state->page);
+	state_save_register_global(machine, state->flash);
 	state_save_register_global(machine, state->rtc_data);
 	state_save_register_global(machine, state->fdc_index);
+	state_save_register_global(machine, state->gripd);
+	state_save_register_global(machine, state->gripc);
 }
 
 static MACHINE_RESET( prof80 )
@@ -799,11 +1170,10 @@ static MACHINE_RESET( prof80 )
 
 	for (i = 0; i < 8; i++)
 	{
-	// write all zeroes 0 flr_W
-		//UINT8 data = (i << 4) | (i << 1);
+		ls259_w(machine, 0, i, 0, i);
 	}
 
-	state->ecb_status = 0x40;
+	state->gripc = 0x40;
 }
 
 /* Machine Drivers */
@@ -824,6 +1194,9 @@ static MACHINE_DRIVER_START( prof80 )
 	MDRV_MACHINE_START(prof80)
 	MDRV_MACHINE_RESET(prof80)
 
+	/* keyboard hack */
+	MDRV_TIMER_ADD_PERIODIC("keyboard", prof80_keyboard_tick, HZ(50))
+
     /* video hardware */
     MDRV_SCREEN_ADD(SCREEN_TAG, RASTER)
     MDRV_SCREEN_REFRESH_RATE(60)
@@ -837,12 +1210,12 @@ static MACHINE_DRIVER_START( prof80 )
     MDRV_VIDEO_START(prof80)
     MDRV_VIDEO_UPDATE(prof80)
 
-	MDRV_MC6845_ADD(MC6845_TAG, MC6845, XTAL_16MHz, grip_mc6845_interface)
+	MDRV_MC6845_ADD(MC6845_TAG, MC6845, XTAL_16MHz/4, grip_mc6845_interface)
 
 	/* devices */
 	MDRV_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, prof80_upd1990a_intf)
 	MDRV_NEC765A_ADD(NEC765_TAG, prof80_nec765_interface)
-	MDRV_PPI8255_ADD(PPI8255_TAG, grip_ppi8255_interface)
+	MDRV_I8255A_ADD(I8255A_TAG, grip_ppi8255_interface)
 	MDRV_Z80STI_ADD(Z80STI_TAG, XTAL_16MHz/4, grip_z80sti_interface)
 
 	/* printer */
@@ -874,6 +1247,9 @@ ROM_START( prof80 )
 	ROM_LOAD( "grip26.z2", 0x0000, 0x4000, CRC(a1c424f0) SHA1(83942bc75b9475f044f936b8d9d7540551d87db9) )
 	ROM_LOAD( "grip31.z2", 0x0000, 0x4000, CRC(e0e4e8ab) SHA1(73d3d14c9b06fed0c187fb0fffe5ec035d8dd256) )
 	ROM_LOAD( "grip25.z2", 0x0000, 0x4000, CRC(49ebb284) SHA1(0a7eaaf89da6db2750f820146c8f480b7157c6c7) )
+
+	ROM_REGION( 0x8000, "grip5", 0 )
+	ROM_LOAD( "grip562.z2", 0x0000, 0x8000, CRC(74be0455) SHA1(1c423ecca6363345a8690ddc45dbafdf277490d3) )
 ROM_END
 
 /* System Configurations */
@@ -891,7 +1267,7 @@ static void prof80_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:					info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:					info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case MESS_DEVINFO_PTR_LOAD:						info->load = DEVICE_IMAGE_LOAD_NAME(prof80_floppy); break;

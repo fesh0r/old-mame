@@ -20,7 +20,7 @@ static ADDRESS_MAP_START( chessmst_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 /* Input ports */
-INPUT_PORTS_START( chessmst )
+static INPUT_PORTS_START( chessmst )
 INPUT_PORTS_END
 
 
@@ -81,5 +81,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( ????, chessmst,  0,       0, 	chessmst, 	chessmst, 	 0,  	  chessmst,  	 "VEB Mikroelektronik Erfurt",   "Chess-Master",		GAME_NOT_WORKING)
+COMP( 1984, chessmst,  0,       0, 	chessmst, 	chessmst, 	 0,  	  chessmst,  	 "VEB Mikroelektronik Erfurt",   "Chess-Master",		GAME_NOT_WORKING)
 

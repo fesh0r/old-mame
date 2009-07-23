@@ -60,8 +60,8 @@ static VIDEO_UPDATE( mc6845_mda );
 static READ8_HANDLER( pc_MDA_r );
 static WRITE8_HANDLER( pc_MDA_w );
 static MC6845_UPDATE_ROW( mda_update_row );
-static MC6845_ON_HSYNC_CHANGED( mda_hsync_changed );
-static MC6845_ON_VSYNC_CHANGED( mda_vsync_changed );
+static WRITE_LINE_DEVICE_HANDLER( mda_hsync_changed );
+static WRITE_LINE_DEVICE_HANDLER( mda_vsync_changed );
 
 static const mc6845_interface mc6845_mda_intf =
 {
@@ -70,9 +70,11 @@ static const mc6845_interface mc6845_mda_intf =
 	NULL,				/* begin_update */
 	mda_update_row,		/* update_row */
 	NULL,				/* end_update */
-	NULL,				/* on_de_changed */
-	mda_hsync_changed,	/* on_hsync_changed */
-	mda_vsync_changed	/* on_vsync_changed */
+	DEVCB_NULL,				/* on_de_changed */
+	DEVCB_NULL,				/* on_cur_changed */
+	DEVCB_LINE(mda_hsync_changed),	/* on_hsync_changed */
+	DEVCB_LINE(mda_vsync_changed),	/* on_vsync_changed */
+	NULL
 };
 
 MACHINE_DRIVER_START( pcvideo_mda )
@@ -298,16 +300,16 @@ static MC6845_UPDATE_ROW( mda_update_row )
 }
 
 
-static MC6845_ON_HSYNC_CHANGED( mda_hsync_changed )
+static WRITE_LINE_DEVICE_HANDLER( mda_hsync_changed )
 {
-	mda.hsync = hsync ? 1 : 0;
+	mda.hsync = state ? 1 : 0;
 }
 
 
-static MC6845_ON_VSYNC_CHANGED( mda_vsync_changed )
+static WRITE_LINE_DEVICE_HANDLER( mda_vsync_changed )
 {
-	mda.vsync = vsync ? 0x80 : 0;
-	if ( vsync )
+	mda.vsync = state ? 0x80 : 0;
+	if ( state )
 	{
 		mda.pc_framecnt++;
 	}
@@ -363,7 +365,7 @@ static int pc_mda_status_r(void)
  *************************************************************************/
 WRITE8_HANDLER ( pc_MDA_w )
 {
-	device_config   *devconf = (device_config *) devtag_get_device(space->machine, MDA_MC6845_NAME);
+	const device_config *devconf = devtag_get_device(space->machine, MDA_MC6845_NAME);
 	switch( offset )
 	{
 		case 0: case 2: case 4: case 6:
@@ -380,7 +382,7 @@ WRITE8_HANDLER ( pc_MDA_w )
 
  READ8_HANDLER ( pc_MDA_r )
 {
-	device_config   *devconf = (device_config *) devtag_get_device(space->machine, MDA_MC6845_NAME);
+	const device_config *devconf = devtag_get_device(space->machine, MDA_MC6845_NAME);
 	int data = 0xff;
 	switch( offset )
 	{
@@ -426,9 +428,11 @@ static const mc6845_interface mc6845_hercules_intf =
 	NULL,					/* begin_update */
 	mda_update_row,			/* update_row */
 	NULL,					/* end_update */
-	NULL,					/* on_de_changed */
-	mda_hsync_changed,		/* on_hsync_changed */
-	mda_vsync_changed		/* on_vsync_changed */
+	DEVCB_NULL,				/* on_de_changed */
+	DEVCB_NULL,				/* on_cur_changed */
+	DEVCB_LINE(mda_hsync_changed),		/* on_hsync_changed */
+	DEVCB_LINE(mda_vsync_changed),		/* on_vsync_changed */
+	NULL
 };
 
 MACHINE_DRIVER_START( pcvideo_hercules )
@@ -528,7 +532,7 @@ static VIDEO_UPDATE( mc6845_hercules )
 
 static void hercules_mode_control_w(running_machine *machine, int data)
 {
-	device_config	*devconf = (device_config *) devtag_get_device(machine, HERCULES_MC6845_NAME);
+	const device_config *devconf = devtag_get_device(machine, HERCULES_MC6845_NAME);
 
 	MDA_LOG(1,"hercules_mode_control_w",("$%02x: colums %d, gfx %d, enable %d, blink %d\n",
 		data, (data&1)?80:40, (data>>1)&1, (data>>3)&1, (data>>5)&1));
@@ -564,7 +568,7 @@ static void hercules_config_w(running_machine *machine, int data)
 
 static WRITE8_HANDLER ( pc_hercules_w )
 {
-	device_config   *devconf = (device_config *) devtag_get_device(space->machine, HERCULES_MC6845_NAME);
+	const device_config *devconf = devtag_get_device(space->machine, HERCULES_MC6845_NAME);
 
 	switch( offset )
 	{
@@ -604,7 +608,7 @@ static int pc_hercules_status_r(void)
 
 static READ8_HANDLER ( pc_hercules_r )
 {
-	device_config	*devconf = (device_config *) devtag_get_device(space->machine, HERCULES_MC6845_NAME);
+	const device_config *devconf = devtag_get_device(space->machine, HERCULES_MC6845_NAME);
 	int data = 0xff;
 
 	switch( offset )

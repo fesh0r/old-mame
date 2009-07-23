@@ -15,7 +15,7 @@
 #include "video/mc6845.h"
 #include "includes/svi318.h"
 #include "video/tms9928a.h"
-#include "machine/8255ppi.h"
+#include "machine/i8255a.h"
 #include "machine/wd17xx.h"
 #include "machine/ctronics.h"
 #include "devices/basicdsk.h"
@@ -24,7 +24,7 @@
 #include "formats/svi_cas.h"
 #include "sound/dac.h"
 #include "sound/ay8910.h"
-#include "sv328806.lh"
+#include "rendlay.h"
 
 static ADDRESS_MAP_START( svi318_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x0000, 0x7fff) AM_READWRITE( SMH_BANK(1), svi318_writemem1 )
@@ -290,7 +290,7 @@ static MACHINE_DRIVER_START( svi318 )
 	MDRV_MACHINE_START( svi318_pal )
 	MDRV_MACHINE_RESET( svi318 )
 
-	MDRV_PPI8255_ADD( "ppi8255", svi318_ppi8255_interface )
+	MDRV_I8255A_ADD( "ppi8255", svi318_ppi8255_interface )
 
 	MDRV_INS8250_ADD( "ins8250_0", svi318_ins8250_interface[0] )
 	MDRV_INS8250_ADD( "ins8250_1", svi318_ins8250_interface[1] )
@@ -338,8 +338,10 @@ static const mc6845_interface svi806_crtc6845_interface =
 	NULL,
 	svi806_crtc6845_update_row,
 	NULL,
-	NULL,
-	NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
 	NULL
 };
 
@@ -354,13 +356,13 @@ static MACHINE_DRIVER_START( svi328_806 )
 	MDRV_MACHINE_START( svi318_pal )
 	MDRV_MACHINE_RESET( svi328_806 )
 
-	MDRV_PPI8255_ADD( "ppi8255", svi318_ppi8255_interface )
+	MDRV_I8255A_ADD( "ppi8255", svi318_ppi8255_interface )
 
 	MDRV_INS8250_ADD( "ins8250_0", svi318_ins8250_interface[0] )
 	MDRV_INS8250_ADD( "ins8250_1", svi318_ins8250_interface[1] )
 
 	/* Video hardware */
-	MDRV_DEFAULT_LAYOUT( layout_sv328806 )
+	MDRV_DEFAULT_LAYOUT( layout_dualhsxs )
 
 	MDRV_IMPORT_FROM(tms9928a)
 	MDRV_SCREEN_MODIFY("screen")

@@ -185,8 +185,8 @@ static WRITE16_HANDLER( pc_cga16le_w );
 static READ32_HANDLER( pc_cga32le_r );
 static WRITE32_HANDLER( pc_cga32le_w );
 static MC6845_UPDATE_ROW( cga_update_row );
-static MC6845_ON_HSYNC_CHANGED( cga_hsync_changed );
-static MC6845_ON_VSYNC_CHANGED( cga_vsync_changed );
+static WRITE_LINE_DEVICE_HANDLER( cga_hsync_changed );
+static WRITE_LINE_DEVICE_HANDLER( cga_vsync_changed );
 static VIDEO_START( pc1512 );
 static VIDEO_UPDATE( mc6845_pc1512 );
 
@@ -198,9 +198,11 @@ static const mc6845_interface mc6845_cga_intf =
 	NULL,				/* begin_update */
 	cga_update_row,		/* update_row */
 	NULL,				/* end_update */
-	NULL,				/* on_de_chaged */
-	cga_hsync_changed,	/* on_hsync_changed */
-	cga_vsync_changed	/* on_vsync_changed */
+	DEVCB_NULL,				/* on_de_changed */
+	DEVCB_NULL,				/* on_cur_changed */
+	DEVCB_LINE(cga_hsync_changed),	/* on_hsync_changed */
+	DEVCB_LINE(cga_vsync_changed),	/* on_vsync_changed */
+	NULL
 };
 
 
@@ -986,16 +988,16 @@ static MC6845_UPDATE_ROW( cga_update_row )
 }
 
 
-static MC6845_ON_HSYNC_CHANGED( cga_hsync_changed )
+static WRITE_LINE_DEVICE_HANDLER( cga_hsync_changed )
 {
-	cga.hsync = hsync ? 1 : 0;
+	cga.hsync = state ? 1 : 0;
 }
 
 
-static MC6845_ON_VSYNC_CHANGED( cga_vsync_changed )
+static WRITE_LINE_DEVICE_HANDLER( cga_vsync_changed )
 {
-	cga.vsync = vsync ? 8 : 0;
-	if ( vsync )
+	cga.vsync = state ? 8 : 0;
+	if ( state )
 	{
 		cga.frame++;
 	}
@@ -1059,7 +1061,7 @@ static void pc_cga_set_palette_luts(void)
  */
 static void pc_cga_mode_control_w(running_machine *machine, int data)
 {
-	device_config	*devconf = (device_config *) devtag_get_device(machine, CGA_MC6845_NAME);
+	const device_config *devconf = devtag_get_device(machine, CGA_MC6845_NAME);
 
 	CGA_LOG(1,"CGA_mode_control_w",("$%02x: columns %d, gfx %d, hires %d, blink %d\n",
 		data, (data&1)?80:40, (data>>1)&1, (data>>4)&1, (data>>5)&1));
@@ -1197,7 +1199,7 @@ static void pc_cga_plantronics_w(running_machine *machine, int data)
 
 static READ8_HANDLER( pc_cga8_r )
 {
-	device_config	*devconf = (device_config *) devtag_get_device(space->machine, CGA_MC6845_NAME);
+	const device_config *devconf = devtag_get_device(space->machine, CGA_MC6845_NAME);
 	int data = 0xff;
 	switch( offset )
 	{
@@ -1218,15 +1220,15 @@ static READ8_HANDLER( pc_cga8_r )
 
 static WRITE8_HANDLER( pc_cga8_w )
 {
-	device_config	*devconf;
+	const device_config *devconf;
 
 	switch(offset) {
 	case 0: case 2: case 4: case 6:
-		devconf = (device_config *) devtag_get_device(space->machine, CGA_MC6845_NAME);
+		devconf = devtag_get_device(space->machine, CGA_MC6845_NAME);
 		mc6845_address_w( devconf, offset, data );
 		break;
 	case 1: case 3: case 5: case 7:
-		devconf = (device_config *) devtag_get_device(space->machine, CGA_MC6845_NAME);
+		devconf = devtag_get_device(space->machine, CGA_MC6845_NAME);
 		mc6845_register_w( devconf, offset, data );
 		break;
 	case 8:
@@ -1488,7 +1490,7 @@ static MC6845_UPDATE_ROW( pc1512_gfx_4bpp_update_row )
 
 static WRITE8_HANDLER ( pc1512_w )
 {
-	device_config	*devconf = (device_config *) devtag_get_device(space->machine, CGA_MC6845_NAME);
+	const device_config *devconf = devtag_get_device(space->machine, CGA_MC6845_NAME);
 
 	switch (offset)
 	{

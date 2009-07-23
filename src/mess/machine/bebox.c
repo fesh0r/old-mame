@@ -119,10 +119,10 @@ static UINT32 bebox_interrupts;
 static UINT32 bebox_crossproc_interrupts;
 
 static struct {
-	device_config	*pic8259_master;
-	device_config	*pic8259_slave;
-	device_config	*dma8237_1;
-	device_config	*dma8237_2;
+	const device_config	*pic8259_master;
+	const device_config	*pic8259_slave;
+	const device_config	*dma8237_1;
+	const device_config	*dma8237_2;
 } bebox_devices;
 
 
@@ -431,9 +431,9 @@ static const device_config *bebox_fdc_get_image(running_machine *machine, int fl
 	return image_from_devtype_and_index(machine, IO_FLOPPY, 0);
 }
 
-static device_config * bebox_get_device(running_machine *machine )
+static const device_config * bebox_get_device(running_machine *machine )
 {
-	return (device_config*)devtag_get_device(machine, "smc37c78");
+	return devtag_get_device(machine, "smc37c78");
 }
 
 
@@ -499,7 +499,7 @@ const struct pic8259_interface bebox_pic8259_slave_config = {
 
 static const device_config *ide_device(running_machine *machine)
 {
-	return devtag_get_device(machine, "ide_controller");
+	return devtag_get_device(machine, "ide");
 }
 
 static READ8_HANDLER( bebox_800001F0_8_r ) { return ide_controller_r(ide_device(space->machine), offset + 0x1F0, 1); }
@@ -722,6 +722,15 @@ WRITE64_HANDLER(bebox_80000480_w)
 }
 
 
+static DMA8237_HRQ_CHANGED( bebox_dma_hrq_changed )
+{
+	cputag_set_input_line(device->machine, "ppc1", INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
+
+	/* Assert HLDA */
+	dma8237_set_hlda( device, state );
+}
+
+
 static DMA8237_MEM_READ( bebox_dma_read_byte )
 {
 	const address_space *space = cputag_get_address_space(device->machine, "ppc1", ADDRESS_SPACE_PROGRAM);
@@ -757,9 +766,9 @@ static DMA8237_OUT_EOP( bebox_dma8237_out_eop ) {
 
 const struct dma8237_interface bebox_dma8237_1_config =
 {
-	0,
-	1.0e-6, /* 1us */
+	XTAL_14_31818MHz/3, /* this needs to be verified */
 
+	bebox_dma_hrq_changed,
 	bebox_dma_read_byte,
 	bebox_dma_write_byte,
 
@@ -771,9 +780,9 @@ const struct dma8237_interface bebox_dma8237_1_config =
 
 const struct dma8237_interface bebox_dma8237_2_config =
 {
-	0,
-	1.0e-6, /* 1us */
+	XTAL_14_31818MHz/3, /* this needs to be verified */
 
+	NULL,
 	NULL,
 	NULL,
 
@@ -863,7 +872,7 @@ static void bebox_keyboard_interrupt(running_machine *machine,int state)
 }
 
 static int bebox_get_out2(running_machine *machine) {
-	return pit8253_get_output((device_config*)devtag_get_device(machine, "pit8254"), 2 );
+	return pit8253_get_output(devtag_get_device(machine, "pit8254"), 2 );
 }
 
 static const struct kbdc8042_interface bebox_8042_interface =
@@ -1052,10 +1061,10 @@ static const struct LSI53C810interface scsi53c810_intf =
 
 
 static TIMER_CALLBACK( bebox_get_devices ) {
-	bebox_devices.pic8259_master = (device_config*)devtag_get_device(machine, "pic8259_master");
-	bebox_devices.pic8259_slave = (device_config*)devtag_get_device(machine, "pic8259_slave");
-	bebox_devices.dma8237_1 = (device_config*)devtag_get_device(machine, "dma8237_1");
-	bebox_devices.dma8237_2 = (device_config*)devtag_get_device(machine, "dma8237_2");
+	bebox_devices.pic8259_master = devtag_get_device(machine, "pic8259_master");
+	bebox_devices.pic8259_slave = devtag_get_device(machine, "pic8259_slave");
+	bebox_devices.dma8237_1 = devtag_get_device(machine, "dma8237_1");
+	bebox_devices.dma8237_2 = devtag_get_device(machine, "dma8237_2");
 }
 
 

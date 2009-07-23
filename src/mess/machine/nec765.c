@@ -71,6 +71,8 @@ typedef enum
 /* state of nec765 FDD READY input */
 #define NEC765_FDD_READY 0x040
 
+#define NEC765_MF	0x40
+
 #define NEC765_RESET 0x080
 
 typedef struct _nec765_t nec765_t;
@@ -353,8 +355,16 @@ static void nec765_timer_func(const device_config *device, int timer_type)
 
 		if (!(fdc->nec765_flags & NEC765_DMA_MODE))
 		{
-			/* for pcw */
-			timer_reset(fdc->timer, ATTOTIME_IN_USEC(27));
+			if (fdc->nec765_command_bytes[0] & NEC765_MF)
+			{
+				/* MFM */
+				timer_reset(fdc->timer, ATTOTIME_IN_USEC(13));
+			}
+			else
+			{
+				/* FM */
+				timer_reset(fdc->timer, ATTOTIME_IN_USEC(27));
+			}
 		}
 		else
 		{
@@ -900,8 +910,11 @@ static int nec765_get_matching_sector(const device_config *device)
 	}
 	while (index_count!=2);
 
-	/* no data - specified sector ID was not found */
-    fdc->nec765_status[1] |= NEC765_ST1_NO_DATA;
+	if (fdc->nec765_command_bytes[4] != fdc->nec765_command_bytes[6])
+	{
+		/* no data - specified sector ID was not found */
+		fdc->nec765_status[1] |= NEC765_ST1_NO_DATA;
+	}
 
 	return 0;
 }
@@ -1847,19 +1860,22 @@ static void nec765_setup_command(const device_config *device)
 
 			fdc->nec765_status[3] = fdc->drive | (fdc->side<<2);
 
-			if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_DISK_WRITE_PROTECTED))
+			if (img)
 			{
-				fdc->nec765_status[3] |= 0x40;
-			}
+				if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_DISK_WRITE_PROTECTED))
+				{
+					fdc->nec765_status[3] |= 0x40;
+				}
 
-			if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_READY))
-			{
-				fdc->nec765_status[3] |= 0x20;
-			}
+				if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_READY))
+				{
+					fdc->nec765_status[3] |= 0x20;
+				}
 
-			if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_HEAD_AT_TRACK_0))
-			{
-				fdc->nec765_status[3] |= 0x10;
+				if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_HEAD_AT_TRACK_0))
+				{
+					fdc->nec765_status[3] |= 0x10;
+				}
 			}
 
 			fdc->nec765_status[3] |= 0x08;

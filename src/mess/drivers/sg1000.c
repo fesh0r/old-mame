@@ -73,15 +73,10 @@ Notes:
 #include "machine/ctronics.h"
 #include "includes/serial.h"
 #include "machine/msm8251.h"
-#include "machine/8255ppi.h"
+#include "machine/i8255a.h"
 #include "machine/nec765.h"
 #include "sound/sn76496.h"
 #include "video/tms9928a.h"
-
-static const device_config *cassette_device_image(running_machine *machine)
-{
-	return devtag_get_device(machine, "cassette");
-}
 
 /* Terebi Oekaki (TV Draw) */
 
@@ -168,13 +163,13 @@ static ADDRESS_MAP_START( sc3000_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE(SN76489A_TAG, sn76496_w)
 	AM_RANGE(0xbe, 0xbe) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0xbf, 0xbf) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
-	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE("ppi8255", i8255a_r, i8255a_w)
 ADDRESS_MAP_END
 
 /* This is how the I/O ports are really mapped, but MAME does not support overlapping ranges
 static ADDRESS_MAP_START( sc3000_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_MIRROR(0xdf) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x00, 0x00) AM_MIRROR(0xdf) AM_DEVREADWRITE("ppi8255", i8255a_r, i8255a_w)
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x7f) AM_WRITE(sn76496_0_w)
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0xae) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0xae) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
@@ -194,10 +189,10 @@ static ADDRESS_MAP_START( sf7000_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x7f, 0x7f) AM_DEVWRITE(SN76489A_TAG, sn76496_w)
 	AM_RANGE(0xbe, 0xbe) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0xbf, 0xbf) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
-	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE("ppi8255_0", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE("ppi8255_0", i8255a_r, i8255a_w)
 	AM_RANGE(0xe0, 0xe0) AM_DEVREAD(NEC765_TAG, nec765_status_r)
 	AM_RANGE(0xe1, 0xe1) AM_DEVREADWRITE(NEC765_TAG, nec765_data_r, nec765_data_w)
-	AM_RANGE(0xe4, 0xe7) AM_DEVREADWRITE("ppi8255_1", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xe4, 0xe7) AM_DEVREADWRITE("ppi8255_1", i8255a_r, i8255a_w)
 	AM_RANGE(0xe8, 0xe8) AM_DEVREADWRITE("uart", msm8251_data_r, msm8251_data_w)
 	AM_RANGE(0xe9, 0xe9) AM_DEVREADWRITE("uart", msm8251_status_r, msm8251_control_w)
 ADDRESS_MAP_END
@@ -536,7 +531,7 @@ static READ8_DEVICE_HANDLER( sc3000_ppi8255_b_r )
 	data |= 0x60;
 
 	/* tape input */
-	if (cassette_input(cassette_device_image(device->machine)) > +0.0) data |= 0x80;
+	if (cassette_input(state->cassette) > +0.0) data |= 0x80;
 
 	return data;
 }
@@ -562,12 +557,12 @@ static WRITE8_DEVICE_HANDLER( sc3000_ppi8255_c_w )
 	state->keylatch = data & 0x07;
 
 	/* cassette */
-	cassette_output(cassette_device_image(device->machine), BIT(data, 4) ? +1.0 : -1.0);
+	cassette_output(state->cassette, BIT(data, 4) ? +1.0 : -1.0);
 
 	/* printer */
 }
 
-static const ppi8255_interface sc3000_ppi8255_intf =
+static I8255A_INTERFACE( sc3000_ppi8255_intf )
 {
 	DEVCB_HANDLER(sc3000_ppi8255_a_r),	// Port A read
 	DEVCB_HANDLER(sc3000_ppi8255_b_r),	// Port B read
@@ -580,6 +575,9 @@ static const ppi8255_interface sc3000_ppi8255_intf =
 static MACHINE_START( sc3000 )
 {
 	sg1000_state *state = machine->driver_data;
+
+	/* find devices */
+	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* configure VDP */
 	TMS9928A_configure(&tms9928a_interface);
@@ -609,7 +607,7 @@ static READ8_DEVICE_HANDLER( sf7000_ppi8255_a_r )
         PA7
     */
 
-	const device_config *printer = devtag_get_device(device->machine, "centronics");
+	const device_config *printer = devtag_get_device(device->machine, CENTRONICS_TAG);
 	sg1000_state *state = device->machine->driver_data;
 	UINT8 result = 0;
 
@@ -623,7 +621,7 @@ static READ8_DEVICE_HANDLER( sf7000_ppi8255_a_r )
 static WRITE8_DEVICE_HANDLER( sf7000_ppi8255_c_w )
 {
 	const device_config *fdc = devtag_get_device(device->machine, NEC765_TAG);
-	const device_config *printer = devtag_get_device(device->machine, "centronics");
+	const device_config *printer = devtag_get_device(device->machine, CENTRONICS_TAG);
 	/*
         Signal  Description
 
@@ -657,7 +655,7 @@ static WRITE8_DEVICE_HANDLER( sf7000_ppi8255_c_w )
 	centronics_strobe_w(printer, BIT(data, 7));
 }
 
-static const ppi8255_interface sf7000_ppi8255_intf[2] =
+static const i8255a_interface sf7000_ppi8255_intf[2] =
 {
 	{
 		DEVCB_HANDLER(sc3000_ppi8255_a_r),		// Port A read
@@ -672,15 +670,14 @@ static const ppi8255_interface sf7000_ppi8255_intf[2] =
 		DEVCB_NULL,								// Port B read
 		DEVCB_NULL,								// Port C read
 		DEVCB_NULL,								// Port A write
-		DEVCB_DEVICE_HANDLER("centronics", centronics_data_w),	// Port B write
+		DEVCB_DEVICE_HANDLER(CENTRONICS_TAG, centronics_data_w),	// Port B write
 		DEVCB_HANDLER(sf7000_ppi8255_c_w)		// Port C write
 	}
 };
 
-/* callback for /INT output from FDC */
 static NEC765_INTERRUPT( sf7000_fdc_interrupt )
 {
-	sg1000_state *driver_state = device->machine->driver_data; // TODO
+	sg1000_state *driver_state = device->machine->driver_data;
 
 	driver_state->fdc_irq = state;
 }
@@ -704,6 +701,9 @@ static const struct nec765_interface sf7000_nec765_interface =
 static MACHINE_START( sf7000 )
 {
 	sg1000_state *state = machine->driver_data;
+
+	/* find devices */
+	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* configure VDP */
 	TMS9928A_configure(&tms9928a_interface);
@@ -880,7 +880,7 @@ static MACHINE_DRIVER_START( sc3000 )
 
 	MDRV_MACHINE_START( sc3000 )
 
-	MDRV_PPI8255_ADD( "ppi8255", sc3000_ppi8255_intf ) // uPD9255AC-2
+	MDRV_I8255A_ADD( "ppi8255", sc3000_ppi8255_intf ) // uPD9255AC-2
 
     /* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
@@ -897,7 +897,7 @@ static MACHINE_DRIVER_START( sc3000 )
 	MDRV_PRINTER_ADD("sp400") /* serial printer */
 
 	/* cassette */
-	MDRV_CASSETTE_ADD( "cassette", sc3000_cassette_config )
+	MDRV_CASSETTE_ADD(CASSETTE_TAG, sc3000_cassette_config)
 
 	/* cartridge */
 	MDRV_CARTSLOT_ADD("cart")
@@ -918,8 +918,8 @@ static MACHINE_DRIVER_START( sf7000 )
 	MDRV_MACHINE_START( sf7000 )
 	MDRV_MACHINE_RESET( sf7000 )
 
-	MDRV_PPI8255_ADD("ppi8255_0", sf7000_ppi8255_intf[0])
-	MDRV_PPI8255_ADD("ppi8255_1", sf7000_ppi8255_intf[1])
+	MDRV_I8255A_ADD("ppi8255_0", sf7000_ppi8255_intf[0])
+	MDRV_I8255A_ADD("ppi8255_1", sf7000_ppi8255_intf[1])
 
     /* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
@@ -933,11 +933,11 @@ static MACHINE_DRIVER_START( sf7000 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* printer */
-	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
+	MDRV_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
 	MDRV_PRINTER_ADD("sp400") /* serial printer */
 
 	/* cassette */
-	MDRV_CASSETTE_ADD("cassette", sc3000_cassette_config)
+	MDRV_CASSETTE_ADD(CASSETTE_TAG, sc3000_cassette_config)
 
 	/* uart */
 	MDRV_MSM8251_ADD("uart", default_msm8251_interface)

@@ -7,7 +7,7 @@
 #define NEC765_TAG				"z38"
 #define UPD1990A_TAG			"z43"
 #define MC6845_TAG				"z30"
-#define PPI8255_TAG				"z6"
+#define I8255A_TAG				"z6"
 #define Z80STI_TAG				"z9"
 
 #define GRIP_Z80_TAG			"grip_z1"
@@ -28,20 +28,26 @@ struct _prof80_state
 	UINT8 mmu[16];			/* MMU block register */
 	int mme;				/* MMU enable */
 
+	/* keyboard state */
+	UINT8 keydata;			/* keyboard data */
+	int kbf;				/* keyboard buffer full */
+
 	/* video state */
 	UINT8 *video_ram;		/* video RAM */
 	int lps;				/* light pen sense */
 	int page;				/* video page */
+	int flash;				/* flash */
 
 	/* clock state */
 	int rtc_data;			/* RTC data output */
 
 	/* floppy state */
 	int	fdc_index;			/* floppy index hole sensor */
+	int motor;				/* floppy motor */
 
-	/* ECB bus state */
-	UINT8 ecb_data;			/* ECB bus data */
-	UINT8 ecb_status;		/* ECB bus status */
+	/* GRIP state */
+	UINT8 gripd;			/* GRIP data */
+	UINT8 gripc;			/* GRIP status */
 
 	/* devices */
 	const device_config *nec765;
@@ -50,6 +56,9 @@ struct _prof80_state
 	const device_config *ppi8255;
 	const device_config *z80sti;
 	const device_config *centronics;
+
+	/* timers */
+	emu_timer	*floppy_motor_off_timer;
 };
 
 #endif

@@ -26,7 +26,7 @@
 */
 
 #include "driver.h"
-#include "machine/8255ppi.h"
+#include "machine/i8255a.h"
 #include "cpu/z80/z80.h"
 #include "machine/z80ctc.h"
 #include "machine/z80pio.h"
@@ -76,6 +76,11 @@ static ADDRESS_MAP_START( mpf1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x2fff) AM_ROM
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START( mpf1p_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x1fff) AM_ROM
+	AM_RANGE(0xf000, 0xffff) AM_RAM
+ADDRESS_MAP_END
+
 static ADDRESS_MAP_START( mpf1_io_map, ADDRESS_SPACE_IO, 8 )
     /* Appendix B.D from the MPF-I user's manual:
        (contains possible typing/printing errors so I've cited it literally)
@@ -107,7 +112,7 @@ static ADDRESS_MAP_START( mpf1_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 
 	// The 16 I/O port combinations for the 8255 (P8255A-5, 8628LLP, (c) 1981 AMD)
-	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE("ppi8255", ppi8255_r, ppi8255_w) AM_MIRROR(0x3C)
+	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE("ppi8255", i8255a_r, i8255a_w) AM_MIRROR(0x3C)
 
 //  TODO: create drivers to emulate the following two chips
 //  The 16 I/O port combinations for the CTC (Zilog, Z0843004PSC, Z80 CTC, 8644)
@@ -421,7 +426,7 @@ static WRITE8_DEVICE_HANDLER( mpf1_portc_w )
 
 
 
-static const ppi8255_interface ppi8255_intf =
+static I8255A_INTERFACE( ppi8255_intf )
 {
 	DEVCB_HANDLER(mpf1_porta_r),	/* Port A read */
 	DEVCB_HANDLER(mpf1_portb_r),	/* Port B read */
@@ -458,7 +463,27 @@ static MACHINE_DRIVER_START( mpf1 )
 
 	MDRV_Z80PIO_ADD( "z80pio", mpf1_pio_intf )
 
-	MDRV_PPI8255_ADD( "ppi8255", ppi8255_intf )
+	MDRV_I8255A_ADD( "ppi8255", ppi8255_intf )
+
+	// sound hardware
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD("dac", DAC, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+
+	MDRV_DEFAULT_LAYOUT( layout_mpf1 )
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( mpf1p )
+	// basic machine hardware
+	MDRV_CPU_ADD("maincpu", Z80, 2500000)
+	MDRV_CPU_PROGRAM_MAP(mpf1p_map)
+	MDRV_CPU_IO_MAP(mpf1_io_map)
+
+	MDRV_MACHINE_RESET( mpf1 )
+
+	MDRV_Z80PIO_ADD( "z80pio", mpf1_pio_intf )
+
+	MDRV_I8255A_ADD( "ppi8255", ppi8255_intf )
 
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -481,6 +506,10 @@ ROM_START( mpf1b )
     ROM_LOAD( "basic.u7",  0x2000, 0x1000, CRC(d276ed6b) SHA1(a45fb98961be5e5396988498c6ed589a35398dcf) )
 ROM_END
 
+ROM_START( mpf1p )
+    ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "mpf1pmon.bin", 0x0000, 0x2000, CRC(91ace7d3) SHA1(22e3c16a81ac09f37741ad1b526a4456b2ba9493))
+ROM_END
 /* System Configuration */
 
 static SYSTEM_CONFIG_START(mpf1)
@@ -491,3 +520,4 @@ SYSTEM_CONFIG_END
 
 COMP( 1979, mpf1,  0,    0, mpf1, mpf1,  0, mpf1, "Multitech", "Micro Professor 1" , 0)
 COMP( 1979, mpf1b, mpf1, 0, mpf1, mpf1b, 0, mpf1, "Multitech", "Micro Professor 1B" , 0)
+COMP( 1982, mpf1p, mpf1, 0, mpf1p,mpf1b, 0, mpf1, "Multitech", "Micro Professor 1 Plus" , GAME_NOT_WORKING)

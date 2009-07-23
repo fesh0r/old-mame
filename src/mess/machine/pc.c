@@ -14,7 +14,7 @@
 #include "driver.h"
 #include "includes/pc.h"
 
-#include "machine/8255ppi.h"
+#include "machine/i8255a.h"
 #include "machine/ins8250.h"
 #include "machine/mc146818.h"
 #include "machine/pic8259.h"
@@ -59,10 +59,14 @@
 	} while (0)
 
 static struct {
-	const device_config	*pic8259_master;
-	const device_config	*pic8259_slave;
+	const device_config *maincpu;
+	const device_config	*pic8259;
 	const device_config	*dma8237;
 	const device_config	*pit8253;
+	/* U73 is an LS74 - dual flip flop */
+	/* Q2 is set by OUT1 from the 8253 and goes to DRQ1 on the 8237 */
+	UINT8	u73_q2;
+	UINT8	out1;
 } pc_devices;
 
 /*************************************************************************
@@ -94,6 +98,15 @@ WRITE8_HANDLER(pc_page_w)
 		dma_offset[0][0] = dma_offset[0][1] = data;
 		break;
 	}
+}
+
+
+static DMA8237_HRQ_CHANGED( pc_dma_hrq_changed )
+{
+	cpu_set_input_line(pc_devices.maincpu, INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
+
+	/* Assert HLDA */
+	dma8237_set_hlda( device, state );
 }
 
 
@@ -141,22 +154,29 @@ static DMA8237_CHANNEL_WRITE( pc_dma8237_hdc_dack_w )
 }
 
 
+static DMA8237_CHANNEL_WRITE( pc_dma8237_0_dack_w )
+{
+	pc_devices.u73_q2 = 0;
+	dma8237_drq_write( pc_devices.dma8237, 0, pc_devices.u73_q2 );
+}
+
+
 static DMA8237_OUT_EOP( pc_dma8237_out_eop )
 {
-	pc_fdc_set_tc_state( device->machine, state );
+	pc_fdc_set_tc_state( device->machine, state == ASSERT_LINE ? 0 : 1 );
 }
 
 
 const struct dma8237_interface ibm5150_dma8237_config =
 {
-	0,
-	1.0e-6, // 1us
+	XTAL_14_31818MHz/3,
 
+	pc_dma_hrq_changed,
 	pc_dma_read_byte,
 	pc_dma_write_byte,
 
-	{ 0, 0, pc_dma8237_fdc_dack_r, pc_dma8237_hdc_dack_r },
-	{ 0, 0, pc_dma8237_fdc_dack_w, pc_dma8237_hdc_dack_w },
+	{ NULL, NULL, pc_dma8237_fdc_dack_r, pc_dma8237_hdc_dack_r },
+	{ pc_dma8237_0_dack_w, NULL, pc_dma8237_fdc_dack_w, pc_dma8237_hdc_dack_w },
 	pc_dma8237_out_eop
 };
 
@@ -167,27 +187,15 @@ const struct dma8237_interface ibm5150_dma8237_config =
  *
  *************************************************************/
 
-static PIC8259_SET_INT_LINE( pc_pic8259_master_set_int_line )
+static PIC8259_SET_INT_LINE( pc_pic8259_set_int_line )
 {
 	cpu_set_input_line(device->machine->cpu[0], 0, interrupt ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
-static PIC8259_SET_INT_LINE( pc_pic8259_slave_set_int_line )
+const struct pic8259_interface ibm5150_pic8259_config =
 {
-	pic8259_set_irq_line( pc_devices.pic8259_master, 2, interrupt);
-}
-
-
-const struct pic8259_interface ibm5150_pic8259_master_config =
-{
-	pc_pic8259_master_set_int_line
-};
-
-
-const struct pic8259_interface ibm5150_pic8259_slave_config =
-{
-	pc_pic8259_slave_set_int_line
+	pc_pic8259_set_int_line
 };
 
 
@@ -215,7 +223,7 @@ static TIMER_CALLBACK( pcjr_delayed_pic8259_irq )
 }
 
 
-static PIC8259_SET_INT_LINE( pcjr_pic8259_master_set_int_line )
+static PIC8259_SET_INT_LINE( pcjr_pic8259_set_int_line )
 {
 	if ( cpu_get_reg( device->machine->cpu[0], REG_GENPC ) == 0xF0454 )
 	{
@@ -228,9 +236,9 @@ static PIC8259_SET_INT_LINE( pcjr_pic8259_master_set_int_line )
 }
 
 
-const struct pic8259_interface pcjr_pic8259_master_config =
+const struct pic8259_interface pcjr_pic8259_config =
 {
-	pcjr_pic8259_master_set_int_line
+	pcjr_pic8259_set_int_line
 };
 
 
@@ -271,15 +279,21 @@ void pc_speaker_set_input(running_machine *machine, UINT8 data)
  *
  *************************************************************/
 
-static PIT8253_OUTPUT_CHANGED( ibm5150_timer0_w )
+static PIT8253_OUTPUT_CHANGED( ibm5150_pit8253_out0_changed )
 {
-	pic8259_set_irq_line(pc_devices.pic8259_master, 0, state);
+	pic8259_set_irq_line(pc_devices.pic8259, 0, state);
 }
 
 
 static PIT8253_OUTPUT_CHANGED( ibm5150_pit8253_out1_changed )
 {
-	/* Trigger DMA channel #0 */
+ 	/* Trigger DMA channel #0 */
+	if ( pc_devices.out1 == 0 && state == 1 && pc_devices.u73_q2 == 0 )
+	{
+		pc_devices.u73_q2 = 1;
+		dma8237_drq_write( pc_devices.dma8237, 0, pc_devices.u73_q2 );
+	}
+	pc_devices.out1 = state;
 }
 
 
@@ -294,7 +308,7 @@ const struct pit8253_config ibm5150_pit8253_config =
 	{
 		{
 			XTAL_14_31818MHz/12,				/* heartbeat IRQ */
-			ibm5150_timer0_w
+			ibm5150_pit8253_out0_changed
 		}, {
 			XTAL_14_31818MHz/12,				/* dram refresh */
 			ibm5150_pit8253_out1_changed
@@ -317,7 +331,7 @@ const struct pit8253_config pcjr_pit8253_config =
 	{
 		{
 			XTAL_14_31818MHz/12,              /* heartbeat IRQ */
-			ibm5150_timer0_w
+			ibm5150_pit8253_out0_changed
 		}, {
 			XTAL_14_31818MHz/12,              /* dram refresh */
 			NULL
@@ -337,12 +351,12 @@ const struct pit8253_config pcjr_pit8253_config =
 /* called when a interrupt is set/cleared from com hardware */
 static INS8250_INTERRUPT( pc_com_interrupt_1 )
 {
-	pic8259_set_irq_line(pc_devices.pic8259_master, 4, state);
+	pic8259_set_irq_line(pc_devices.pic8259, 4, state);
 }
 
 static INS8250_INTERRUPT( pc_com_interrupt_2 )
 {
-	pic8259_set_irq_line(pc_devices.pic8259_master, 3, state);
+	pic8259_set_irq_line(pc_devices.pic8259, 3, state);
 }
 
 /* called when com registers read/written - used to update peripherals that
@@ -758,7 +772,7 @@ static WRITE8_DEVICE_HANDLER ( ibm5150_ppi_portb_w )
 	/* If PB7 is set clear the shift register and reset the IRQ line */
 	if ( pc_ppi.keyboard_clear )
 	{
-		pic8259_set_irq_line(pc_devices.pic8259_master, 1, 0);
+		pic8259_set_irq_line(pc_devices.pic8259, 1, 0);
 		pc_ppi.shift_register = 0;
 		pc_ppi.shift_enable = 1;
 	}
@@ -791,7 +805,7 @@ static WRITE8_HANDLER( ibm5150_kb_set_clock_signal )
 					pc_ppi.shift_register = ( pc_ppi.shift_register >> 1 ) | ( pc_ppi.data_signal << 7 );
 					if ( trigger_irq )
 					{
-						pic8259_set_irq_line(pc_devices.pic8259_master, 1, 1);
+						pic8259_set_irq_line(pc_devices.pic8259, 1, 1);
 						pc_ppi.shift_enable = 0;
 						pc_ppi.clock_signal = 0;
 						pc_ppi.clock_callback( space, 0, 0 );
@@ -822,7 +836,7 @@ static void ibm5150_set_keyboard_interface( running_machine *machine, write8_spa
 
 /* IBM PC has a 8255 which is connected to keyboard and other
 status information */
-const ppi8255_interface ibm5150_ppi8255_interface =
+I8255A_INTERFACE( ibm5150_ppi8255_interface )
 {
 	DEVCB_HANDLER(ibm5150_ppi_porta_r),
 	DEVCB_HANDLER(ibm5150_ppi_portb_r),
@@ -910,14 +924,14 @@ static WRITE8_DEVICE_HANDLER( ibm5160_ppi_portb_w )
 	/* If PB7 is set clear the shift register and reset the IRQ line */
 	if ( pc_ppi.keyboard_clear )
 	{
-		pic8259_set_irq_line(pc_devices.pic8259_master, 1, 0);
+		pic8259_set_irq_line(pc_devices.pic8259, 1, 0);
 		pc_ppi.shift_register = 0;
 		pc_ppi.shift_enable = 1;
 	}
 }
 
 
-const ppi8255_interface ibm5160_ppi8255_interface =
+I8255A_INTERFACE( ibm5160_ppi8255_interface )
 {
 	DEVCB_HANDLER(ibm5160_ppi_porta_r),
 	DEVCB_HANDLER(ibm5150_ppi_portb_r),
@@ -972,7 +986,7 @@ static WRITE8_DEVICE_HANDLER( pc_ppi_portb_w )
 }
 
 
-const ppi8255_interface pc_ppi8255_interface =
+I8255A_INTERFACE( pc_ppi8255_interface )
 {
 	DEVCB_HANDLER(pc_ppi_porta_r),
 	DEVCB_HANDLER(ibm5150_ppi_portb_r),
@@ -1027,6 +1041,8 @@ static READ8_DEVICE_HANDLER ( pcjr_ppi_portc_r )
 
 	data&=~0x80;
 	data &= ~0x04;		/* floppy drive installed */
+	if ( mess_ram_size > 64 * 1024 )	/* more than 64KB ram installed */
+		data &= ~0x08;
 	data = ( data & ~0x01 ) | ( pcjr_keyb.latch ? 0x01: 0x00 );
 	if ( ! ( pc_ppi.portb & 0x08 ) )
 	{
@@ -1055,7 +1071,7 @@ static READ8_DEVICE_HANDLER ( pcjr_ppi_portc_r )
 }
 
 
-const ppi8255_interface pcjr_ppi8255_interface =
+I8255A_INTERFACE( pcjr_ppi8255_interface )
 {
 	DEVCB_HANDLER(pcjr_ppi_porta_r),
 	DEVCB_HANDLER(ibm5150_ppi_portb_r),
@@ -1076,8 +1092,8 @@ const ppi8255_interface pcjr_ppi8255_interface =
 
 static void pc_fdc_interrupt(running_machine *machine, int state)
 {
-	if ( pc_devices.pic8259_master ) {
-		pic8259_set_irq_line(pc_devices.pic8259_master, 6, state);
+	if ( pc_devices.pic8259 ) {
+		pic8259_set_irq_line(pc_devices.pic8259, 6, state);
 	}
 }
 
@@ -1086,9 +1102,9 @@ static void pc_fdc_dma_drq(running_machine *machine, int state, int read_)
 	dma8237_drq_write( pc_devices.dma8237, FDC_DMA, state);
 }
 
-static device_config * pc_get_device(running_machine *machine )
+static const device_config * pc_get_device(running_machine *machine )
 {
-	return (device_config*)devtag_get_device(machine, "nec765");
+	return devtag_get_device(machine, "nec765");
 }
 
 static const struct pc_fdc_interface fdc_interface_nc =
@@ -1099,8 +1115,18 @@ static const struct pc_fdc_interface fdc_interface_nc =
 	pc_get_device
 };
 
+
+static const struct pc_fdc_interface pcjr_fdc_interface_nc =
+{
+	pc_fdc_interrupt,
+	NULL,
+	NULL,
+	pc_get_device
+};
+
+
 static void pc_set_irq_line(int irq, int state) {
-	pic8259_set_irq_line(pc_devices.pic8259_master, irq, state);
+	pic8259_set_irq_line(pc_devices.pic8259, irq, state);
 }
 
 static void pc_set_keyb_int(running_machine *machine, int state)
@@ -1309,7 +1335,7 @@ DRIVER_INIT( pc_vga )
 
 static IRQ_CALLBACK(pc_irq_callback)
 {
-	return pic8259_acknowledge( pc_devices.pic8259_master );
+	return pic8259_acknowledge( pc_devices.pic8259 );
 }
 
 
@@ -1322,21 +1348,43 @@ MACHINE_START( pc )
 MACHINE_RESET( pc )
 {
 	const device_config *speaker = devtag_get_device(machine, "speaker");
-	cpu_set_irq_callback(machine->cpu[0], pc_irq_callback);
 
-	pc_devices.pic8259_master = devtag_get_device(machine, "pic8259_master");
-	pc_devices.pic8259_slave = devtag_get_device(machine, "pic8259_slave");
+	pc_devices.maincpu = devtag_get_device(machine, "maincpu" );
+	cpu_set_irq_callback(pc_devices.maincpu, pc_irq_callback);
+
+	pc_devices.pic8259 = devtag_get_device(machine, "pic8259");
 	pc_devices.dma8237 = devtag_get_device(machine, "dma8237");
 	pc_devices.pit8253 = devtag_get_device(machine, "pit8253");
+	pc_devices.u73_q2 = 0;
+	pc_devices.out1 = 0;
 	pc_mouse_set_serial_port( devtag_get_device(machine, "ins8250_0") );
 	pc_hdc_set_dma8237_device( pc_devices.dma8237 );
 	speaker_level_w( speaker, 0 );
 }
 
 
+MACHINE_START( pcjr )
+{
+	pc_fdc_init( machine, &pcjr_fdc_interface_nc );
+}
+
+
 MACHINE_RESET( pcjr )
 {
-	MACHINE_RESET_CALL( pc );
+	const device_config *speaker = devtag_get_device(machine, "speaker");
+
+	pc_devices.maincpu = devtag_get_device(machine, "maincpu" );
+	cpu_set_irq_callback(pc_devices.maincpu, pc_irq_callback);
+
+	pc_devices.pic8259 = devtag_get_device(machine, "pic8259");
+	pc_devices.dma8237 = NULL;
+	pc_devices.pit8253 = devtag_get_device(machine, "pit8253");
+	pc_devices.u73_q2 = 0;
+	pc_devices.out1 = 0;
+	pc_mouse_set_serial_port( devtag_get_device(machine, "ins8250_0") );
+	pc_hdc_set_dma8237_device( pc_devices.dma8237 );
+	speaker_level_w( speaker, 0 );
+
 	pcjr_keyb_init(machine);
 	pc_int_delay_timer = timer_alloc(machine,  pcjr_delayed_pic8259_irq, NULL );
 }

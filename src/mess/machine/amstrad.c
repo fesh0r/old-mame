@@ -37,7 +37,7 @@ This gives a total of 19968 NOPs per frame.
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
-#include "machine/8255ppi.h"
+#include "machine/i8255a.h"
 #include "machine/mc146818.h"
 #include "machine/nec765.h"
 #include "machine/ctronics.h"
@@ -1192,9 +1192,9 @@ static MC6845_UPDATE_ROW( amstrad_plus_update_row )
 }
 
 
-static MC6845_ON_HSYNC_CHANGED( amstrad_hsync_changed )
+static WRITE_LINE_DEVICE_HANDLER( amstrad_hsync_changed )
 {
-	if ( hsync )
+	if ( state )
 	{
 		amstrad_CRTC_HS_Counter++;
 
@@ -1218,13 +1218,13 @@ static MC6845_ON_HSYNC_CHANGED( amstrad_hsync_changed )
 			cputag_set_input_line(device->machine, "maincpu", 0, ASSERT_LINE);
 		}
 	}
-	amstrad_CRTC_HS = hsync ? 1 : 0;
+	amstrad_CRTC_HS = state ? 1 : 0;
 }
 
 
-static MC6845_ON_HSYNC_CHANGED( amstrad_plus_hsync_changed )
+static WRITE_LINE_DEVICE_HANDLER( amstrad_plus_hsync_changed )
 {
-	if ( hsync )
+	if ( state )
 	{
 		amstrad_CRTC_HS_Counter++;
 
@@ -1280,19 +1280,19 @@ static MC6845_ON_HSYNC_CHANGED( amstrad_plus_hsync_changed )
 			amstrad_plus_handle_dma(device->machine);  // a DMA command is handled at the leading edge of HSYNC (every 64us)
 		}
 	}
-	amstrad_CRTC_HS = hsync ? 1 : 0;
+	amstrad_CRTC_HS = state ? 1 : 0;
 }
 
 
-static MC6845_ON_VSYNC_CHANGED( amstrad_vsync_changed )
+static WRITE_LINE_DEVICE_HANDLER( amstrad_vsync_changed )
 {
-	if ( ! amstrad_CRTC_VS && vsync )
+	if ( ! amstrad_CRTC_VS && state )
 	{
 		/* Reset the amstrad_CRTC_HS_After_VS_Counter */
 		amstrad_CRTC_HS_After_VS_Counter = 2;
 	}
 
-	amstrad_CRTC_VS = vsync ? 1 : 0;
+	amstrad_CRTC_VS = state ? 1 : 0;
 }
 
 
@@ -1320,9 +1320,11 @@ const mc6845_interface mc6845_amstrad_intf =
 	NULL,						/* begin_update */
 	amstrad_update_row,			/* update_row */
 	NULL,						/* end_update */
-	NULL,						/* on_de_changed */
-	amstrad_hsync_changed,		/* on_hsync_changed */
-	amstrad_vsync_changed		/* on_vsync_changed */
+	DEVCB_NULL,					/* on_de_changed */
+	DEVCB_NULL,					/* on_cur_changed */
+	DEVCB_LINE(amstrad_hsync_changed),		/* on_hsync_changed */
+	DEVCB_LINE(amstrad_vsync_changed),		/* on_vsync_changed */
+	NULL
 };
 
 
@@ -1333,9 +1335,11 @@ const mc6845_interface mc6845_amstrad_plus_intf =
 	NULL,						/* begin_update */
 	amstrad_plus_update_row,	/* update_row */
 	NULL,						/* end_update */
-	NULL,						/* on_de_changed */
-	amstrad_plus_hsync_changed,	/* on_hsync_changed */
-	amstrad_vsync_changed		/* on_vsync_changed */
+	DEVCB_NULL,					/* on_de_changed */
+	DEVCB_NULL,					/* on_cur_changed */
+	DEVCB_LINE(amstrad_plus_hsync_changed),	/* on_hsync_changed */
+	DEVCB_LINE(amstrad_vsync_changed),		/* on_vsync_changed */
+	NULL
 };
 
 
@@ -2350,7 +2354,7 @@ b9 b8 | PPI Function Read/Write status
 	if ((offset & (1<<11)) == 0)
 	{
 		if (r1r0 < 0x03 )
-			data = ppi8255_r(devtag_get_device(space->machine, "ppi8255" ), r1r0);
+			data = i8255a_r(devtag_get_device(space->machine, "ppi8255" ), r1r0);
 	}
 
 /* if b10 = 0 : Expansion Peripherals Read selected
@@ -2515,7 +2519,7 @@ WRITE8_HANDLER ( amstrad_cpc_io_w )
 	{
 		unsigned int Index = ((offset & 0x0300) >> 8);
 
-		ppi8255_w(devtag_get_device(space->machine, "ppi8255" ), Index, data);
+		i8255a_w(devtag_get_device(space->machine, "ppi8255" ), Index, data);
 	}
 
 	/* if b10 = 0 : Expansion Peripherals Write selected */
@@ -2688,11 +2692,11 @@ static void amstrad_handle_snapshot(running_machine *machine, unsigned char *pSn
 	gate_array.upper_bank = pSnapshot[0x055];
 
 	/* PPI */
-	ppi8255_w(devtag_get_device(machine, "ppi8255"),3,pSnapshot[0x059] & 0x0ff);
+	i8255a_w(devtag_get_device(machine, "ppi8255"),3,pSnapshot[0x059] & 0x0ff);
 
-	ppi8255_w(devtag_get_device(machine, "ppi8255"),0,pSnapshot[0x056] & 0x0ff);
-	ppi8255_w(devtag_get_device(machine, "ppi8255"),1,pSnapshot[0x057] & 0x0ff);
-	ppi8255_w(devtag_get_device(machine, "ppi8255"),2,pSnapshot[0x058] & 0x0ff);
+	i8255a_w(devtag_get_device(machine, "ppi8255"),0,pSnapshot[0x056] & 0x0ff);
+	i8255a_w(devtag_get_device(machine, "ppi8255"),1,pSnapshot[0x057] & 0x0ff);
+	i8255a_w(devtag_get_device(machine, "ppi8255"),2,pSnapshot[0x058] & 0x0ff);
 
 	/* PSG */
 	for (i=0; i<16; i++)

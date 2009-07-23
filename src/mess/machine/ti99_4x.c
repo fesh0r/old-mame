@@ -63,6 +63,7 @@ TODO:
 #include "99_ide.h"
 #include "99_hsgpl.h"
 #include "99_usbsm.h"
+#include "ti99pcod.h"
 
 #include "sound/tms5220.h"	/* for tms5220_set_variant() */
 #include "sound/5220intf.h"
@@ -125,6 +126,9 @@ static char has_hsgpl;
 static char has_mecmouse;
 /* TRUE if usb-sm card present */
 static char has_usb_sm;
+
+/* TRUE if p-code card present */
+static char has_pcode;
 
 /* handset interface */
 static int handset_buf;
@@ -226,7 +230,7 @@ GPL ports:
 */
 
 /* descriptor for console GROMs */
-GROM_port_t console_GROMs;
+static GROM_port_t console_GROMs;
 
 /* true if hsgpl is enabled (i.e. has_hsgpl is true and hsgpl cru bit crdena is
 set) */
@@ -258,7 +262,7 @@ static UINT8 *sRAM_ptr_8;
 /* NPW 23-Feb-2004 - externs no longer needed because we now use cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),) */
 
 /* Link to the cartridge system. */
-const device_config *cartslots;
+static const device_config *cartslots;
 
 /*===========================================================================*/
 /*
@@ -507,7 +511,8 @@ MACHINE_RESET( ti99 )
 	has_handset = (ti99_model == model_99_4) && ((input_port_read(machine, "CFG") >> config_handsets_bit) & config_handsets_mask);
 	has_hsgpl = ((ti99_model == model_99_4p) || (input_port_read(machine, "CFG") >> config_hsgpl_bit) & config_hsgpl_mask);
 	has_usb_sm = (input_port_read(machine, "CFG") >> config_usbsm_bit) & config_usbsm_mask;
-
+	has_pcode = (input_port_read(machine, "CFG") >> config_pcode_bit) & config_pcode_mask;
+	
 	/* set up optional expansion hardware */
 	ti99_peb_reset(ti99_model == model_99_4p, tms9901_set_int1, NULL);
 
@@ -606,6 +611,9 @@ MACHINE_RESET( ti99 )
 
 	if (has_evpc)
 		ti99_evpc_reset(machine);
+
+	if (has_pcode)
+		ti99_pcode_reset(machine);
 
 	/* initialize mechatronics mouse */
 	mecmouse_sel = 0;
@@ -1084,7 +1092,7 @@ WRITE16_HANDLER ( ti99_grom_w )
 	GROM read for TI-99/8
 	For comments, see the handler for TI-99/4A
 */
-READ8_HANDLER ( ti99_grom_r8 )
+static READ8_HANDLER ( ti99_grom_r8 )
 {
 	UINT8 reply;
 
@@ -1119,7 +1127,7 @@ READ8_HANDLER ( ti99_grom_r8 )
 	GROM write for TI-99/8
 	For comments, see the handler for TI-99/4A
 */
-WRITE8_HANDLER ( ti99_grom_w8 )
+static WRITE8_HANDLER ( ti99_grom_w8 )
 {
 	cpu_adjust_icount(space->machine->cpu[0],-4/*20+3*/);		/* from 4 to 23? */
 

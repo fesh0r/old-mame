@@ -15,35 +15,40 @@ VIDEO_START( pk8020 )
 
 VIDEO_UPDATE( pk8020 )
 {
- 	UINT8 code1,code2,code3,code4;
- 	UINT8 col;
-	int y, x, b;
-
-	// draw image
-	for (x = 0; x < 32; x++)
+ 	int y, x, b, j;
+	UINT8 *gfx = memory_region(screen->machine, "gfx1");
+	
+	for (y = 0; y < 16; y++)
 	{
-		for (y = 0; y < 256; y++)
+		for (x = 0; x < 64; x++)
 		{
-			code1 = mess_ram[0x10000 + x*256 + y];
-			code2 = mess_ram[0x14000 + x*256 + y];
-			code3 = mess_ram[0x18000 + x*256 + y];
-			code4 = mess_ram[0x1C000 + x*256 + y];
-			for (b = 0; b < 8; b++)
-			{
-				col = ((code1 >> b) & 0x01) * 8 + ((code2 >> b) & 0x01) * 4 + ((code3 >> b) & 0x01)* 2+ ((code4 >> b) & 0x01);
-				*BITMAP_ADDR16(bitmap, 255-y, x*8+(7-b)) =  col;
+			UINT8 chr = mess_ram[x +(y*64) + 0x40000];
+			UINT8 attr= mess_ram[x +(y*64) + 0x40400];			
+			for (j = 0; j < 16; j++) {				
+				UINT32 addr = 0x10000 + x + ((y*16+j)*64) + (pk8020_video_page * 0xC000);
+				UINT8 code1 = mess_ram[addr];
+				UINT8 code2 = mess_ram[addr + 0x4000];
+				UINT8 code3 = mess_ram[addr + 0x8000];
+				UINT8 code4 = gfx[((chr<<4) + j) + (pk8020_font*0x1000)];				
+				if(attr) code4 ^= 0xff;
+				for (b = 0; b < 8; b++)
+				{								
+					UINT8 col = (((code4 >> b) & 0x01) ? 0x08 : 0x00);
+					col |= (((code3 >> b) & 0x01) ? 0x04 : 0x00);
+					col |= (((code2 >> b) & 0x01) ? 0x02 : 0x00);
+					col |= (((code1 >> b) & 0x01) ? 0x01 : 0x00);
+					*BITMAP_ADDR16(bitmap, (y*16)+j, x*8+(7-b)) =  col;
+				}
 			}
 		}
 	}
-
-
 	return 0;
 }
 
 PALETTE_INIT( pk8020 )
 {
 	int i;
-	for(i=0;i<16;i++) {
-		palette_set_color( machine, i, MAKE_RGB(0,0,0) );
+	for(i=0;i<16;i++) {		
+		palette_set_color( machine, i, MAKE_RGB(i*0x10,i*0x10,i*0x10) );
 	}
 }

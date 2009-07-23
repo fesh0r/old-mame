@@ -951,6 +951,7 @@ VIDEO_START( ted7360 )
 	int width = video_screen_get_width(screen);
 	int height = video_screen_get_height(screen);
 
+	// FIXME: this element needs to be placed in machine->gfx[], so it will be free'd
 	cursorelement = gfx_element_alloc(machine, &cursorlayout, cursormask, machine->config->total_colors / 16, 0);
 	/* 7-Sep-2007 - After 0.118u5, you cannot revector the color table */
 	/* cursorelement->colortable = cursorcolortable; */
@@ -1166,8 +1167,8 @@ static void ted7360_drawlines (running_machine *machine, int first, int last)
 					ted7360_draw_cursor (ybegin, yend, yoff, xoff,
 							attr & 0x7f);
 #else
-					drawgfx (ted7360_bitmap, cursorelement, 0, attr & 0x7f, 0, 0,
-						xoff, yoff, 0, TRANSPARENCY_NONE, 0);
+					drawgfx_opaque (ted7360_bitmap, 0, cursorelement, 0, attr & 0x7f, 0, 0,
+						xoff, yoff);
 #endif
 				}
 				else if (REVERSEON && (ch & 0x80))

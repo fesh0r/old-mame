@@ -11,7 +11,7 @@
 #include "cpu/i8085/i8085.h"
 #include "devices/cassette.h"
 #include "devices/basicdsk.h"
-#include "machine/8255ppi.h"
+#include "machine/i8255a.h"
 #include "machine/pit8253.h"
 #include "machine/wd17xx.h"
 #include "machine/pic8259.h"
@@ -160,7 +160,7 @@ static void b2m_set_bank(running_machine *machine,int bank)
 
 static PIT8253_OUTPUT_CHANGED(bm2_pit_out0)
 {
-	pic8259_set_irq_line((device_config*)devtag_get_device(device->machine, "pic8259"),1,state);		
+	pic8259_set_irq_line(devtag_get_device(device->machine, "pic8259"),1,state);		
 }
 
 
@@ -217,7 +217,7 @@ static READ8_DEVICE_HANDLER (b2m_8255_portb_r )
 	return b2m_video_scroll;
 }
 
-const ppi8255_interface b2m_ppi8255_interface_1 =
+I8255A_INTERFACE( b2m_ppi8255_interface_1 )
 {
 	DEVCB_NULL,
 	DEVCB_HANDLER(b2m_8255_portb_r),
@@ -245,7 +245,7 @@ static WRITE8_DEVICE_HANDLER (b2m_ext_8255_portc_w )
 	}
 }
 
-const ppi8255_interface b2m_ppi8255_interface_2 =
+I8255A_INTERFACE( b2m_ppi8255_interface_2 )
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -271,7 +271,7 @@ static WRITE8_DEVICE_HANDLER (b2m_romdisk_portc_w )
 	b2m_romdisk_msb = data & 0x7f;	
 }
 
-const ppi8255_interface b2m_ppi8255_interface_3 =
+I8255A_INTERFACE( b2m_ppi8255_interface_3 )
 {
 	DEVCB_HANDLER(b2m_romdisk_porta_r),
 	DEVCB_NULL,
@@ -329,12 +329,12 @@ READ8_HANDLER ( b2m_localmachine_r )
 
 MACHINE_START(b2m)
 {
-	wd17xx_set_pause_time((device_config*)devtag_get_device(machine, "wd1793"),10);
+	wd17xx_set_pause_time(devtag_get_device(machine, "wd1793"),10);
 }
 
 static IRQ_CALLBACK(b2m_irq_callback)
 {	
-	return pic8259_acknowledge((device_config*)devtag_get_device(device->machine, "pic8259"));
+	return pic8259_acknowledge(devtag_get_device(device->machine, "pic8259"));
 } 
 
 
@@ -346,7 +346,7 @@ INTERRUPT_GEN (b2m_vblank_interrupt)
 {	
 	vblank_state++;
 	if (vblank_state>1) vblank_state=0;
-	pic8259_set_irq_line((device_config*)devtag_get_device(device->machine, "pic8259"), 0, vblank_state);		
+	pic8259_set_irq_line(devtag_get_device(device->machine, "pic8259"), 0, vblank_state);		
 }
 
 MACHINE_RESET(b2m)

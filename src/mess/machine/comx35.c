@@ -1,11 +1,53 @@
 /*
 
-COMX-35 Disk Controller Card
+COMX-35E Expansion Box
+(c) 1984 Comx World Operations
 
 PCB Layout
 ----------
 
-xxx-REVx
+F-001-EB-REV0
+
+	 |--------------------------------------|
+	 |	40174		4073	4049	4075	|
+	 |										|
+	 |	ROM			40175	4073	4075	|
+	 |										|
+|----|		-		-		-		-		|
+|			|		|		|		| 7805	|
+|			|		|		|		|		|
+|			|		|		|		|		|
+|C			C		C		C		C		|
+|N			N		N		N		N		|
+|5			1		2		3		4		|
+|			|		|		|		|		|
+|			|		|		|		|		|
+|			|		|		|		|		|
+|			-		-		- LD1	-		|
+|-------------------------------------------|
+
+Notes:
+    All IC's shown.
+
+    ROM     - NEC D2732D-4 4Kx8 EPROM, unlabeled
+    CN1		- COMX-35 bus connector slot 1
+    CN2		- COMX-35 bus connector slot 2
+    CN3		- COMX-35 bus connector slot 3
+    CN4		- COMX-35 bus connector slot 4
+    CN5		- COMX-35 bus PCB edge connector
+    LD1		- LED
+
+*/
+
+/*
+
+COMX-35 Disk Controller Card
+(c) 1984 Comx World Operations
+
+PCB Layout
+----------
+
+F-001-FD-REV0
 
 	|---------------|
 	|      CN1      |
@@ -30,6 +72,45 @@ Notes:
     CN2		- 34 pin floppy connector
     LD1		- card selected LED
     LD2		- floppy motor on LED
+
+*/
+
+/*
+
+COMX-35 80-Column Card
+(c) 1985 Comx World Operations
+
+PCB Layout
+----------
+
+F-003-CLM-REV 1
+
+	|---------------|
+	|      CN1      |
+|---|				|---------------------------|
+|												|
+|  MC14174	LS86	LS175	LS10	LS161		|
+|									14.31818MHz	|
+|							LS245	LS04		|
+|	 ROM1		6845						CN2	|
+|							LS374	LS165		|
+|LD2 LS138	LS157	LS157						|
+|LD1						6116	ROM2	SW1 |
+|	 LS126	LS32	LS157						|
+|-----------------------------------------------|
+
+Notes:
+    All IC's shown.
+
+	6845	- Motorola MC6845P CRT Controller
+	6116	- Motorola MCM6116P15 2Kx8 Asynchronous CMOS Static RAM
+    ROM1    - Mitsubishi 2Kx8 EPROM "C"
+    ROM2    - Mitsubishi 2Kx8 EPROM "P"
+    CN1		- COMX-35 bus PCB edge connector
+	CN2		- RCA video output connector
+    LD1		- LED
+    LD2		- LED
+	SW1		- switch
 
 */
 

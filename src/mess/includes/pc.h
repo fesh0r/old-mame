@@ -8,21 +8,20 @@
 #define PC_H_
 
 #include "machine/ins8250.h"
-#include "machine/8255ppi.h"
+#include "machine/i8255a.h"
 
 /*----------- defined in machine/pc.c -----------*/
 
 extern const struct dma8237_interface ibm5150_dma8237_config;
 extern const struct pit8253_config ibm5150_pit8253_config;
 extern const struct pit8253_config pcjr_pit8253_config;
-extern const struct pic8259_interface ibm5150_pic8259_master_config;
-extern const struct pic8259_interface ibm5150_pic8259_slave_config;
-extern const struct pic8259_interface pcjr_pic8259_master_config;
+extern const struct pic8259_interface ibm5150_pic8259_config;
+extern const struct pic8259_interface pcjr_pic8259_config;
 extern const ins8250_interface ibm5150_com_interface[4];
-extern const ppi8255_interface ibm5150_ppi8255_interface;
-extern const ppi8255_interface ibm5160_ppi8255_interface;
-extern const ppi8255_interface pc_ppi8255_interface;
-extern const ppi8255_interface pcjr_ppi8255_interface;
+extern const i8255a_interface ibm5150_ppi8255_interface;
+extern const i8255a_interface ibm5160_ppi8255_interface;
+extern const i8255a_interface pc_ppi8255_interface;
+extern const i8255a_interface pcjr_ppi8255_interface;
 
 UINT8 pc_speaker_get_spk(void);
 void pc_speaker_set_spkrdata(running_machine *machine, UINT8 data);
@@ -50,6 +49,7 @@ DRIVER_INIT( pcjr );
 
 MACHINE_START( pc );
 MACHINE_RESET( pc );
+MACHINE_START( pcjr );
 MACHINE_RESET( pcjr );
 
 DEVICE_IMAGE_LOAD( pcjr_cartridge );

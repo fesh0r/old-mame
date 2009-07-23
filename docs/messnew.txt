@@ -1,3 +1,161 @@
+0.133
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Canon Cat [Miodrag Milanovic]
+- MMD-1 [Miodrag Milanovic]
+- Nuova Elettronica Z80NE + LX.388 + LX.390  [Roberto Lavarone]
+- Netronics Elf II [Curt Coder]
+
+
+
+Systems Promoted from GAME_NOT_WORKING:
+---------------------------------------
+- Bondwell 12 [Curt Coder, Tomas Karlsson]
+- Bondwell 14 [Curt Coder, Tomas Karlsson]
+- C-80 [Curt Coder]
+- CCE MC-1000 [Curt Coder]
+- Fujitsu FM-7 [Barry Rodewald]
+- Fujitsu FM-77AV [Barry Rodewald]
+- KONTIKI 100 [Curt Coder]
+- Lerncomputer LC-80 [Curt Coder]
+- Lerncomputer LC-80.2 [Curt Coder]
+- PK8000 Sura/Hobby [Miodrag Milanovic]
+- PK8000 Vesta [Miodrag Milanovic]
+- PK8020 Korvet [Miodrag Milanovic]
+- Poly-Computer 880 [Curt Coder]
+- TI-83 [Xander]
+- TIKI 100 [Curt Coder]
+- VCS-80 [Curt Coder]
+- Visual 1050 [Curt Coder, rbramante]
+
+
+Skeleton drivers: 
+-----------------
+- ACT Apricot Xi / F1 / F10 / Portable
+- AIM 65/40
+- Apple Bandai Pippin
+- A.S.EL. Amico 2000
+- Beta Computer
+- DEC VT220
+- DEC VT320
+- DEC VT520
+- EC-65
+- EC-65K
+- Elektor Junior
+- Epson LX-800
+- Intel SDK-86
+- Jugend+Technik CompJU+TEr
+- MMD-2
+- MPF-1 Plus
+- Netronics Explorer 85
+- Nintendo Virtual Boy
+- PROF-180X
+- PTC SOL-20
+- Robotron Z9001 / KC85/1 / KC87
+- Swyft
+- ZRT-80
+
+
+
+System Driver Changes:
+----------------------
+- [APRICOT] Added proper dumps. [John Elliott]
+
+- [BW12] System is now fully working. Disk operations are very slow, so set
+  maximum speed to unlimited while loading. [Curt Coder, Tomas Karlsson]
+
+- [C80] System is now fully working. [Curt Coder]
+
+- [EINSTEIN] Largely rewritten and lots of cleanups.  [Dirk Best]
+
+- [GENESIS] Save RAM emulation improved for several games (bugs #1691, #1696,
+  #1823, #1824) [Enik]
+  
+- [LC80] System is now fully working. [Curt Coder]
+
+- [MC1000] System is now basically working. [Curt Coder]
+
+- [MZ80] [MZ700] Sound works now [Miodrag Milanovic]
+
+- [NES] Fixed mappers #88, #193, added mappers #107, #154.  [Heretical One]
+
+- [PC] Renamed bondwell to bw230. [Curt Coder]
+
+- [PC200] Proper ROM labels and PCB locations, added v1.2 dump. [John Elliott]
+
+- [POLY880] System is now working, except single stepping. [Curt Coder]
+
+- [SC80] Merged with lc80.c. [Curt Coder]
+
+- [SEGA CD] Rearranged sets and added new and better dumps. [Justin Kerk, TmEE,
+  segaloco]
+
+- [SNES] Fixed a blending flag bug (see Micro Machines bg colors), added basic 
+  Horizontal Mosaic effect, fixed 16x16 tiles in 2bpp mode (see e.g. Super 
+  Adventure Island, but also many others). [Angelo Salese]
+
+- [SPECTRUM] Added logging support for Text/Message/Archive/Hardware/Custom 
+  Blocks in TZX files. Info are not (and won't be) used directly by the 
+  emulator, but can be of use to improve bug reports. Also, updated TZX
+  support to v1.20 by deprecating some block types. [Fabio Priuli]
+
+- [TI85] TI-83 now works [Xander]
+
+- [TI85] Fixed TI-82/TI-83 on/off and NVRAM, added a DSW to TI-83 for the
+  battery status [Xander]
+
+- [TI85] Initial work on TI-83+ emulation.  [Xander]
+
+- [TI99] Implemented p-Code peripheral card.  [Michael Zapf]
+
+- [TIKI100] System is now working, except for double sided disks. [Curt Coder]
+
+- [VCS80] System is now fully working. [Curt Coder]
+
+- [V1050] System is now working with some minor issues. [Curt Coder, rbramante]
+
+
+
+User Interface Changes:
+-----------------------
+(none)
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.133.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Added support for passing around 'deleted address mark' information
+  to the floppy system. [Roberto Lavarone]
+
+- Changes to the wd17xx implementation:
+  - Added support for head loaded feedback from floppy drive.
+  - Busy flag was cleared too early.
+  - Added support for the WD1771.  [Roberto Lavarone]
+  
+- Changes to the NEC765 implementation:
+  - Fixed interrupt timing in FM/MFM modes.
+  - NO DATA error flag is no longer set during EOT condition. [Curt Coder]
+
+- Added natural keyboard support to KR2376.  [Roberto Lavarone]
+
+- Static/const/include improvements.  [Atari Ace]
+
+- Cleaned up the makefile: grouped drivers by manufacturer, sorted 
+  manufacturers in alphabetical order, and moved general use ICs
+  to shared group. [Curt Coder]
+
+
+
 0.132
 
 New System Drivers Supported (in no particular order):

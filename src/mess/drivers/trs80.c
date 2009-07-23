@@ -96,7 +96,7 @@ Expansion interface for more floppy drives. The drives use 8-inch floppies holdi
 It was extremely expensive, non-standard, and not many were sold. A rom dump does not seem to exist.
 
 About the Model 4 - This has 4 memory maps.
-		We emulate Map 1 except for the legacy printer port (see address map for Model 3).
+		We emulate Map 1 (see address map for Model 3).
 		Map 2 - RAM=0..37FF, Keyboard=3800..3Bff, Video=3C00..3FFF, RAM=4000..FFFF
 		Map 3 - RAM=0..F3FF, Keyboard=F400..F7FF, Video=F800..FFFF
 		Map 4 - RAM=0..FFFF
@@ -118,8 +118,8 @@ Not dumped (to our knowledge):
  TRS80 Japanese bios
  TRS80 Katakana Character Generator
  TRS80 Small English Character Generator
- TRS80 Model III/4 Character Generators
- TRS80 Model 4P boot disk
+ TRS80 Model III old version Character Generator
+ TRS80 Model 4P boot disk (being worked on)
  TRS80 Model II bios and boot disk
 
 Not emulated:
@@ -209,7 +209,9 @@ static ADDRESS_MAP_START( lnw80_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( model3_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x37ff) AM_ROM
+	AM_RANGE(0x0000, 0x37e7) AM_ROM
+	AM_RANGE(0x37e8, 0x37e9) AM_READWRITE(trs80_printer_r, trs80_printer_w)
+	AM_RANGE(0x37ea, 0x37ff) AM_ROM
 	AM_RANGE(0x3800, 0x38ff) AM_MIRROR(0x300) AM_READ(trs80_keyboard_r)
 	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(trs80_videoram_r, trs80_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x4000, 0xffff) AM_RAM
@@ -373,7 +375,7 @@ static INPUT_PORTS_START( trs80 )
 	PORT_BIT(0x80, 0x00, IPT_UNUSED)
 INPUT_PORTS_END
 
-INPUT_PORTS_START( trs80m3 )
+static INPUT_PORTS_START( trs80m3 )
 	PORT_INCLUDE (trs80)
 	PORT_START("E9")	// these are the power-on uart settings
 	PORT_BIT(0x07, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -466,8 +468,8 @@ static MACHINE_DRIVER_START( model3 )
 
 	MDRV_VIDEO_UPDATE( trs80m4 )
 	MDRV_SCREEN_MODIFY("screen")
-	MDRV_SCREEN_SIZE(80*FW, 240)
-	MDRV_SCREEN_VISIBLE_AREA(0,80*FW-1,0,239)
+	MDRV_SCREEN_SIZE(80*8, 240)
+	MDRV_SCREEN_VISIBLE_AREA(0,80*8-1,0,239)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( sys80 )
@@ -577,29 +579,63 @@ ROM_START(lnw80)
 ROM_END
 
 ROM_START(trs80m3)
+/* ROMS we have and are missing:
+HAVE	TRS-80 Model III Level 1 ROM (U104)
+MISSING	TRS-80 Model III Level 2 (ENGLISH) ROM A (U104) ver. CRC BBC4
+MISSING	TRS-80 Model III Level 2 (ENGLISH) ROM A (U104) ver. CRC DA75
+HAVE	TRS-80 Model III Level 2 (ENGLISH) ROM A (U104) ver. CRC 9639
+HAVE	TRS-80 Model III Level 2 (ENGLISH) ROM B (U105) ver. CRC 407C
+MISSING	TRS-80 Model III Level 2 (ENGLISH) ROM C (U106) ver. CRC 2B91 - early mfg. #80040316
+MISSING	TRS-80 Model III Level 2 (ENGLISH) ROM C (U106) ver. CRC 278A - no production REV A
+HAVE	TRS-80 Model III Level 2 (ENGLISH) ROM C (U106) ver. CRC 2EF8 - Manufacturing #80040316 REV B
+HAVE	TRS-80 Model III Level 2 (ENGLISH) ROM C (U106) ver. CRC 2F84 - Manufacturing #80040316 REV C
+MISSING	TRS-80 Model III Level 2 (ENGLISH) ROM C ver. CRC 2764 - Network III v1
+HAVE	TRS-80 Model III Level 2 (ENGLISH) ROM C ver. CRC 276A - Network III v2
+MISSING	TRS-80 Model III Level 2 (BELGIUM) CRC ????
+Note: Be careful when dumping rom C: if dumped on the trs-80 m3 with software, bytes 0x7e8 and 0x7e9 (addresses 0x37e8, 0x0x37e9)
+      will read as 0xFF 0xFF; on the original rom, these bytes are 0x00 0x00 (for eproms) or 0xAA 0xAA (for mask roms), those two bytes are used for printer status on the trs-80 and are mapped on top of the rom; This problem should be avoided by pulling the rom chips and dumping them directly.
+*/
 	ROM_REGION(0x10000, "maincpu",0)
-	ROM_LOAD("trs80m3.rom",  0x0000, 0x3800, CRC(bddbf843) SHA1(04a1f062cf73c3931c038434e3f299482b6bf613))
+	ROM_SYSTEM_BIOS(0, "trs80m3_revc", "Level 2 bios, RomC Rev C")
+	ROMX_LOAD("8041364.u104", 0x0000, 0x2000, CRC(ec0c6daa) SHA1(257cea6b9b46912d4681251019ec2b84f1b95fc8), ROM_BIOS(1)) // Label: "SCM91248C // Tandy (c) 80 // 8041364 // 8134" (Level 2 bios ROM A '9639')
+	ROMX_LOAD("8040332.u105", 0x2000, 0x1000, CRC(ed4ee921) SHA1(ec0a19d4b72f71e51965de63250009c3c4e4cab3), ROM_BIOS(1)) // Label: "SCM91619P // Tandy (c) 80 // 8040332 // QQ8117", (Level 2 bios ROM B '407c')
+	ROMX_LOAD("8040316c.u106", 0x3000, 0x0800, CRC(c8f79433) SHA1(6f395bba822d39d3cd2b73c8ea25aab4c4c26da7), ROM_BIOS(1)) // Label: "SCM91692P // Tandy (c) 81 // 8040316-C // QQ8220" (Level 2 bios ROM C REV C '2f84')
+	ROM_SYSTEM_BIOS(1, "trs80m3_revb", "Level 2 bios, RomC Rev B")
+	ROMX_LOAD("8041364.u104", 0x0000, 0x2000, CRC(ec0c6daa) SHA1(257cea6b9b46912d4681251019ec2b84f1b95fc8), ROM_BIOS(2)) // Label: "SCM91248C // Tandy (c) 80 // 8041364 // 8134" (Level 2 bios ROM A '9639')
+	ROMX_LOAD("8040332.u105", 0x2000, 0x1000, CRC(ed4ee921) SHA1(ec0a19d4b72f71e51965de63250009c3c4e4cab3), ROM_BIOS(2)) // Label: "SCM91619P // Tandy (c) 80 // 8040332 // QQ8117", (Level 2 bios ROM B '407c')
+	ROMX_LOAD("8040316b.u106", 0x3000, 0x0800, CRC(84a5702d) SHA1(297dca756a9d3c6fd13e0fa6f93d172ff795b520), ROM_BIOS(2)) // Label: "SCM91692P // Tandy (c) 80 // 8040316B // QQ8040" (Level 2 bios ROM C REV B '2ef8')
+	ROM_SYSTEM_BIOS(2, "trs80m3_n3v2", "Level 2 bios, Network III v2 (student)")
+	ROMX_LOAD("8041364.u104", 0x0000, 0x2000, CRC(ec0c6daa) SHA1(257cea6b9b46912d4681251019ec2b84f1b95fc8), ROM_BIOS(3)) // Label: "SCM91248C // Tandy (c) 80 // 8041364 // 8134" (Level 2 bios ROM A '9639')
+	ROMX_LOAD("8040332.u105", 0x2000, 0x1000, CRC(ed4ee921) SHA1(ec0a19d4b72f71e51965de63250009c3c4e4cab3), ROM_BIOS(3)) // Label: "SCM91619P // Tandy (c) 80 // 8040332 // QQ8117" (Level 2 bios ROM B '407c')
+	ROMX_LOAD("276a.u106", 0x3000, 0x0800, CRC(7d38720a) SHA1(bef621e5ae2a8c1f9e7f6325b7841f5ab8ab7e6a), ROM_BIOS(3)) // 2716 EPROM Label: "MOD.III // ROM C // (276A)" (Network III v2 ROM C '276a')
+	ROM_SYSTEM_BIOS(3, "trs80m3_l1", "Level 1 bios")
+	ROMX_LOAD("8040032.u104", 0x0000, 0x1000, CRC(6418d641) SHA1(f823ab6ceb102588d27e5f5c751e31175289291c), ROM_BIOS(4) ) // Label: "8040032 // (M) QQ8028 // SCM91616P"; Silkscreen: "TANDY // (C) '80"; (Level 1 bios)
 
-	ROM_REGION(0x00400, "gfx1",0)	/* incorrect rom */
-	ROM_LOAD("trs80m1.chr",  0x0000, 0x0400, NO_DUMP CRC(0033f2b9) SHA1(0d2cd4197d54e2e872b515bbfdaa98efe502eda7))
+	ROM_REGION(0x00800, "gfx1",0)	/* correct for later systems; the trs80m3_l1 bios uses the non-a version of this rom, dump is pending */
+	ROM_LOAD("8044316.u36", 0x0000, 0x0800, NO_DUMP) // Label: "(M) // SCM91665P // 8044316 // QQ8029" ('no-letter' revision)
+	ROM_LOAD("8044316a.u36", 0x0000, 0x0800, CRC(444c8b60) SHA1(c52ee41439bd5e57c3b113ebfd61c951e2af4446)) // Label: "Tandy (C) 81 // 8044316A // 8206" (rev A)
 ROM_END
 
+// for model 4 and 4p info, see http://vt100.net/mirror/harte/Radio%20Shack/TRS-80%20Model%204_4P%20Soft%20Tech%20Ref.pdf
 ROM_START(trs80m4)
 	ROM_REGION(0x10000, "maincpu",0)
-	ROM_LOAD("trs80m4.rom",  0x0000, 0x3800, CRC(1a92d54d) SHA1(752555fdd0ff23abc9f35c6e03d9d9b4c0e9677b))
+	ROM_LOAD("trs80m4.rom",  0x0000, 0x3800, BAD_DUMP CRC(1a92d54d) SHA1(752555fdd0ff23abc9f35c6e03d9d9b4c0e9677b)) // should be split into 3 roms, roms A, B, C, exactly like trs80m3; in fact, roms A and B are shared between both systems.
 
-	ROM_REGION(0x00400, "gfx1",0)
-	/* this rom unlikely to be the correct one, but it will do for now */
-	ROM_LOAD("trs80m1.chr",  0x0000, 0x0400, NO_DUMP CRC(0033f2b9) SHA1(0d2cd4197d54e2e872b515bbfdaa98efe502eda7))
+	ROM_REGION(0x00800, "gfx1",0)
+	ROM_LOAD("8044316a.u36", 0x0000, 0x0800, CRC(444c8b60) SHA1(c52ee41439bd5e57c3b113ebfd61c951e2af4446)) // according to parts catalog, this is the correct rom for both model 3 and 4
 ROM_END
 
-ROM_START(trs80m4p)
+ROM_START(trs80m4p) // uses a completely different memory map scheme to the others; the trs-80 model 3 roms are loaded from a boot disk, the only rom on the machine is a bootloader; bootloader can be banked out of 0x0000-0x1000 space which is replaced with ram; see the tech ref pdf, pdf page 62
+// Currently this fails miserably due to lack of ram banking; it does some i/o stuff, copies some of the int vectors to 0x4000, then does some more i/o stuff and fills the entire 0x4000-43ff space with 0x20 (space? is it trying to clear the screen?), then immediately afterward it executes a RET; since the stack pointer is still pointing to 0x40A2, it RETs to 0x2020, which is in unmapped, nop-filled space.
+// Clearly there's some major ram-bank related stuff that isn't working at all here.
 	ROM_REGION(0x10000, "maincpu",0)
-	ROM_LOAD("trs80m4p.rom", 0x0000, 0x01f8, CRC(7ff336f4) SHA1(41184f5240b4b54f3804f5a22b4d78bbba52ed1d))
+	ROM_SYSTEM_BIOS(0, "trs80m4p", "Level 2 bios, gate array machine")
+	ROMX_LOAD("8075332.u69", 0x0000, 0x1000, CRC(3a738aa9) SHA1(6393396eaa10a84b9e9f0cf5930aba73defc5c52), ROM_BIOS(1)) // Label: "SCM95060P // 8075332 // TANDY (C) 1983 // 8421" at location U69 (may be located at U70 on some pcb revisions)
+	ROM_SYSTEM_BIOS(1, "trs80m4p_hack", "Disk loader hack")
+	ROMX_LOAD("trs80m4p_loader_hack.rom", 0x0000, 0x01f8, CRC(7ff336f4) SHA1(41184f5240b4b54f3804f5a22b4d78bbba52ed1d), ROM_BIOS(2))
 
-	ROM_REGION(0x00400, "gfx1",0)
-	/* this rom unlikely to be the correct one, but it will do for now */
-	ROM_LOAD("trs80m1.chr",  0x0000, 0x0400, NO_DUMP CRC(0033f2b9) SHA1(0d2cd4197d54e2e872b515bbfdaa98efe502eda7))
+	ROM_REGION(0x00800, "gfx1",0)
+	ROM_LOAD("8049007.u103", 0x0000, 0x0800, CRC(1ac44bea) SHA1(c9426ab2b2aa5380dc97a7b9c048ccd1bbde92ca)) // Label: "SCM95987P // 8049007 // TANDY (C) 1983 // 8447" at location U103 (may be located at U43 on some pcb revisions)
 ROM_END
 
 ROM_START(ht1080z)
@@ -685,7 +721,7 @@ COMP( 1980, sys80,    trs80,	0,	sys80,    trs80,   trs80l2,  trs8012,	"EACA Comp
 COMP( 1981, lnw80,    trs80,	0,	lnw80,    trs80m3, lnw80,    trs8012,	"LNW Research","LNW-80", 0 )
 COMP( 1980, trs80m3,  trs80,	0,	model3,   trs80m3, trs80m4,  trs8012,	"Tandy Radio Shack",  "TRS-80 Model III", 0 )
 COMP( 1980, trs80m4,  trs80,	0,	model3,   trs80m3, trs80m4,  trs8012,	"Tandy Radio Shack",  "TRS-80 Model 4", 0 )
-COMP( 1980, trs80m4p, trs80,	0,	model3,   trs80m3, trs80m4,  trs8012,	"Tandy Radio Shack",  "TRS-80 Model 4P", GAME_NOT_WORKING )
+COMP( 1983, trs80m4p, trs80,	0,	model3,   trs80m3, trs80m4,  trs8012,	"Tandy Radio Shack",  "TRS-80 Model 4P", GAME_NOT_WORKING )
 COMP( 1983, ht1080z,  trs80,	0,	ht1080z,  trs80,   trs80l2,  trs8012,	"Hiradastechnika Szovetkezet",  "HT-1080Z Series I" , 0 )
 COMP( 1984, ht1080z2, trs80,	0,	ht1080z,  trs80,   trs80l2,  trs8012,	"Hiradastechnika Szovetkezet",  "HT-1080Z Series II" , 0 )
 COMP( 1985, ht108064, trs80,	0,	ht1080z,  trs80,   trs80,    trs8012,	"Hiradastechnika Szovetkezet",  "HT-1080Z/64" , 0 )

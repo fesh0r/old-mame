@@ -99,9 +99,18 @@ const game_driver * const drivers[] =
     DRIVER( pico )      /* 1994 Sega Pico (Europe)                          */
     DRIVER( picou )     /* 1994 Sega Pico (USA)                             */
     DRIVER( picoj )     /* 1993 Sega Pico (Japan)                           */
+    DRIVER( segacd )    /* 1992 Sega Sega CD (USA)                          */
     DRIVER( megacd )    /* 1993 Sega Mega-CD (Europe)                       */
     DRIVER( megacdj )   /* 1991 Sega Mega-CD (Japan)                        */
-    DRIVER( segacd )    /* 1992 Sega Sega CD (USA)                          */
+    DRIVER( segacd2 )   /* 1993 Sega Sega CD 2 (USA)                        */
+    DRIVER( megacd2 )   /* 1993 Sega Mega-CD 2 (Europe)                     */
+    DRIVER( megacd2j )  /* 1993 Sega Mega-CD 2 (Japan)                      */
+    DRIVER( laseract )  /* 1993 Pioneer LaserActive (USA)                   */
+    DRIVER( laseractj ) /* 1993 Pioneer LaserActive (Japan)                 */
+    DRIVER( xeye )      /* 1993 JVC X'eye (USA)                             */
+    DRIVER( wmega )     /* 1993 Sega Wondermega (Japan)                     */
+    DRIVER( cdx )       /* 1994 Sega CDX (USA)                              */
+    DRIVER( multmega )  /* 1994 Sega Multi-Mega (Europe)                    */
     DRIVER( 32x )       /* 1994 Sega 32X (USA)                              */
     DRIVER( 32x_scd )   /* 1994 Sega Sega CD (USA w/32X addon)              */
 
@@ -344,6 +353,7 @@ const game_driver * const drivers[] =
     DRIVER( kim1 )      /* Commodore (MOS) KIM-1 1975                       */
     DRIVER( sym1 )      /* Synertek SYM-1                                   */
     DRIVER( aim65 )     /* Rockwell AIM65                                   */
+    DRIVER( aim65_40 )  /* Rockwell AIM65/40                                */
 
     DRIVER( pet2001 )   /* PET 2001                                         */
     DRIVER( pet2001n )  /* PET 2001-N                                       */
@@ -466,7 +476,7 @@ const game_driver * const drivers[] =
     DRIVER( pcmda )     /* 1987 PC with MDA                                 */
     DRIVER( pcherc )    /* 1987 PC with Hercules (for testing hercules)     */
     DRIVER( pc )        /* 1987 PC with CGA                                 */
-    DRIVER( bondwell )  /* 1985 Bondwell (CGA)                              */
+    DRIVER( bw230 )		/* 1985 Bondwell (CGA)                              */
     DRIVER( europc )    /* 1988 Schneider Euro PC (CGA or Hercules)         */
 
     /* pc junior */
@@ -702,12 +712,14 @@ const game_driver * const drivers[] =
     /* KC compact is partial CPC compatible */
     DRIVER( kc85_2 )    /* VEB KC 85/2                                      */
     DRIVER( kc85_3 )    /* VEB KC 85/3                                      */
-    DRIVER( kc85_4 )    /* VEB KC 85/4                                      */    
+    DRIVER( kc85_4 )    /* VEB KC 85/4                                      */
     DRIVER( kc85_4d )   /* VEB KC 85/4 with disk interface                  */
     DRIVER( kc85_5 )    /* VEB KC 85/5                                      */
     DRIVER( mc8020 )    /* MC 80.2x                                         */
     DRIVER( mc8030 )    /* MC 80.3x                                         */
-
+    DRIVER( lc80 )
+    DRIVER( lc80_2 )
+    DRIVER( sc80 )
 
     /* MICROBEE SYSTEMS */
     DRIVER( mbee )      /* Microbee 16 Standard or Plus                     */
@@ -1226,8 +1238,11 @@ const game_driver * const drivers[] =
 
     DRIVER( pcm )   /* PC/M Mugler                          */
 
-    /* DEC VT100 */
+    /* DEC */
     DRIVER(vt100)
+    DRIVER(vt220)
+    DRIVER(vt320)
+    DRIVER(vt520)
 
     /* Ei Nis */
     DRIVER(pecom64)
@@ -1265,6 +1280,7 @@ const game_driver * const drivers[] =
     DRIVER( z80ne )         /* 1980 - Z80NE */
     DRIVER( z80net )        /* 1980 - Z80NE + LX388 Video Interface */
     DRIVER( z80netb )       /* 1980 - Z80NE + LX388 Video Interface + 16Kb BASIC */
+    DRIVER( z80netf )       /* 1980 - Z80NE + LX.388 Video Interface + LX.390 FD Controller */
 
     /* Talking Electronics Magazine */
     DRIVER( tec1 )          /* Talking Electronics Computer */
@@ -1279,7 +1295,7 @@ const game_driver * const drivers[] =
 //  DRIVER( npc8201 )
     DRIVER( npc8201a )
 //  DRIVER( npc8300 )
-//	DRIVER( pc8401a )
+//  DRIVER( pc8401a )
     DRIVER( pc8500 )
 
     /* Nakajima manufactured eletronic typewriters */
@@ -1297,13 +1313,17 @@ const game_driver * const drivers[] =
     DRIVER( fmtmarty )  /* 1993 Fujitsu FM-Towns Marty */
 
     /* Camputers */
-    DRIVER( camplynx )
-    DRIVER( camply96 )
-    DRIVER( camply128 )
+    DRIVER( lynx48k )
+    DRIVER( lynx96k )
+    DRIVER( lynx128k )
 
     /* Votrax */
     DRIVER( votrtnt ) /* 1980 Votrax Type-'N-Talk */
     DRIVER( votrpss ) /* 1982 Votrax Personal Speech System */
+
+	/* Conitec Datensysteme */
+    DRIVER( prof80 )
+    DRIVER( prof180x )
 
 /****************Games*******************************************************/
     /* Computer Electronic */
@@ -1330,8 +1350,10 @@ const game_driver * const drivers[] =
 
 /*********** Misc ***********************************************************/
 
-    DRIVER( ex800 )
+    DRIVER( ex800 ) /* Epson EX-800 printer */
+    DRIVER( lx800 ) /* Epson LX-800 printer */
     DRIVER( ssem ) /* Manchester Small-Scale Experimental Machine, "Baby" */
+    DRIVER( craft ) /* Craft, by [lft] */
 
 /*********** To sort (mostly skeleton drivers) ******************************/
 
@@ -1352,8 +1374,6 @@ const game_driver * const drivers[] =
     DRIVER( et3400 )
     DRIVER( huebler )
     DRIVER( interact )
-    DRIVER( sc80 )
-    DRIVER( lc80 )
     DRIVER( jr200 )
     DRIVER( h8 )
     DRIVER( h19 )
@@ -1367,14 +1387,15 @@ const game_driver * const drivers[] =
     DRIVER( chessmst )
     DRIVER( sys2900 )
     DRIVER( pmi80 )
+    DRIVER( kontiki )
     DRIVER( tiki100 )
     DRIVER( vcs80 )
     DRIVER( v1050 )
     DRIVER( xerox820 )
     DRIVER( xor100 )
     DRIVER( iq151 )
-    DRIVER( ply601 )
-    DRIVER( ply601a )
+    DRIVER( pyl601 )
+    DRIVER( pyl601a )
     DRIVER( m20 )
     DRIVER( m40 )
     DRIVER( nanos )
@@ -1390,11 +1411,42 @@ const game_driver * const drivers[] =
     DRIVER( unior)
     DRIVER( vec1200)
     DRIVER( pk6128c)
-	DRIVER( prof80 )
     DRIVER( tvc64 )
     DRIVER( tvc64p )
     DRIVER( tvc64pru )
     DRIVER( bw12 )
     DRIVER( bw14 )
+    DRIVER( sdk86 )
+    DRIVER( vboy )
+    DRIVER( zrt80 )
+    DRIVER( exp85 )
+    DRIVER( z9001 )
+    DRIVER( kc85_111 )
+    DRIVER( kc87_10 )
+    DRIVER( kc87_11 )
+    DRIVER( kc87_20 )
+    DRIVER( kc87_21 )
+    DRIVER( cat )
+    DRIVER( swyft )
+    DRIVER( mmd1 )
+    DRIVER( mmd2 )
+    DRIVER( mpf1p )
+	DRIVER( stopthie )
+    DRIVER( aprixi )
+    DRIVER( aprif1 )
+    DRIVER( aprif10 )
+    DRIVER( aprifp )
+    DRIVER( amico2k )
+    DRIVER( jtc )
+    DRIVER( jtces88 )
+    DRIVER( jtces23 )
+    DRIVER( jtces40 )
+    DRIVER( ec65 )
+    DRIVER( ec65k )
+    DRIVER( junior )
+    DRIVER( beta )
+    DRIVER( elf2 )
+    DRIVER( pippin )
+    DRIVER( sol20 )
 
 #endif /* DRIVER_RECURSIVE */

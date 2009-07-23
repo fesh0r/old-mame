@@ -8,7 +8,7 @@
 	but the pen colours may be wrong. This needs to be tested. */
 
 #include "driver.h"
-#include "machine/8255ppi.h"
+#include "machine/i8255a.h"
 #include "includes/pc8801.h"
 
 /* NPW 23-Oct-2001 - Adding this so that it compiles */
@@ -492,14 +492,13 @@ VIDEO_UPDATE( pc8801 )
 	  }
 	} else {
 	  /* normal text */
-	  drawgfx(wbm2,screen->machine->gfx
+	  drawgfx_transpen(wbm2,NULL,screen->machine->gfx
 		  [((attr_new&TX_WID_MASK)>>TX_WID_SHIFT)+
 		  (pc8801_is_24KHz ? 3 : 0)],
 		  text_new,
 		  ((attr_new&TX_REV) ? 8 : 0)
 		  + ((attr_new&TX_COL_MASK)>>TX_COL_SHIFT),
 		  0,0,x*8,y*BLOCK_YSIZE,
-		  NULL,TRANSPARENCY_PEN,
 		  (attr_new&TX_REV) ? 1 : 0);
 	}
 	if(attr_new&TX_UL) {

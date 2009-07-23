@@ -27,8 +27,8 @@ static VIDEO_START( pc_aga );
 static VIDEO_UPDATE( mc6845_aga );
 static PALETTE_INIT( pc_aga );
 static MC6845_UPDATE_ROW( aga_update_row );
-static MC6845_ON_HSYNC_CHANGED( aga_hsync_changed );
-static MC6845_ON_VSYNC_CHANGED( aga_vsync_changed );
+static WRITE_LINE_DEVICE_HANDLER( aga_hsync_changed );
+static WRITE_LINE_DEVICE_HANDLER( aga_vsync_changed );
 static VIDEO_START( pc200 );
 
 
@@ -38,9 +38,11 @@ static const mc6845_interface mc6845_aga_intf = {
 	NULL,				/* begin_update */
 	aga_update_row,		/* update_row */
 	NULL,				/* end_update */
-	NULL,				/* on_de_chaged */
-	aga_hsync_changed,	/* on_hsync_changed */
-	aga_vsync_changed	/* on_vsync_changed */
+	DEVCB_NULL,			/* on_de_chaged */
+	DEVCB_NULL,			/* on_cur_chaged */
+	DEVCB_LINE(aga_hsync_changed),	/* on_hsync_changed */
+	DEVCB_LINE(aga_vsync_changed),	/* on_vsync_changed */
+	NULL
 };
 
 
@@ -101,14 +103,14 @@ static MC6845_UPDATE_ROW( aga_update_row ) {
 }
 
 
-static MC6845_ON_HSYNC_CHANGED( aga_hsync_changed ) {
-	aga.hsync = hsync ? 1 : 0;
+static WRITE_LINE_DEVICE_HANDLER( aga_hsync_changed ) {
+	aga.hsync = state ? 1 : 0;
 }
 
 
-static MC6845_ON_VSYNC_CHANGED( aga_vsync_changed ) {
-	aga.vsync = vsync ? 8 : 0;
-	if ( vsync ) {
+static WRITE_LINE_DEVICE_HANDLER( aga_vsync_changed ) {
+	aga.vsync = state ? 8 : 0;
+	if ( state ) {
 		aga.pc_framecnt++;
 	}
 }
@@ -477,7 +479,7 @@ static READ8_HANDLER ( pc_aga_mda_r )
 	UINT8 data = 0xFF;
 
 	if ( aga.mode == AGA_MONO ) {
-		device_config   *devconf = (device_config *) devtag_get_device(space->machine, MDA_MC6845_NAME);
+		const device_config *devconf = devtag_get_device(space->machine, MDA_MC6845_NAME);
 		switch( offset )
 		{
 		case 0: case 2: case 4: case 6:
@@ -499,7 +501,7 @@ static READ8_HANDLER ( pc_aga_mda_r )
 static WRITE8_HANDLER ( pc_aga_mda_w )
 {
 	if ( aga.mode == AGA_MONO ) {
-		device_config   *devconf = (device_config *) devtag_get_device(space->machine, AGA_MC6845_NAME);
+		const device_config *devconf = devtag_get_device(space->machine, AGA_MC6845_NAME);
 		switch( offset )
 		{
 			case 0: case 2: case 4: case 6:
@@ -532,7 +534,7 @@ static READ8_HANDLER ( pc_aga_cga_r )
 	UINT8 data = 0xFF;
 
 	if ( aga.mode == AGA_COLOR ) {
-		device_config	*devconf = (device_config *) devtag_get_device(space->machine, AGA_MC6845_NAME);
+		const device_config *devconf = devtag_get_device(space->machine, AGA_MC6845_NAME);
 		switch( offset ) {
 		case 0: case 2: case 4: case 6:
 			/* return last written mc6845 address value here? */
@@ -578,7 +580,7 @@ static void pc_aga_set_palette_luts(void) {
 static WRITE8_HANDLER ( pc_aga_cga_w )
 {
 	if ( aga.mode == AGA_COLOR ) {
-		device_config	*devconf = (device_config *) devtag_get_device(space->machine, AGA_MC6845_NAME);
+		const device_config *devconf = devtag_get_device(space->machine, AGA_MC6845_NAME);
 
 		switch(offset) {
 		case 0: case 2: case 4: case 6:
@@ -659,7 +661,7 @@ static WRITE16_HANDLER ( pc16le_aga_cga_w ) { write16le_with_write8_handler(pc_a
 
 void pc_aga_set_mode(running_machine *machine, AGA_MODE mode)
 {
-	device_config	*devconf = (device_config *) devtag_get_device(machine, AGA_MC6845_NAME);
+	const device_config *devconf = devtag_get_device(machine, AGA_MC6845_NAME);
 
 	aga.mode = mode;
 

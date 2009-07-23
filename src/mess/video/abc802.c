@@ -9,14 +9,6 @@
 #include "machine/z80dart.h"
 #include "video/mc6845.h"
 
-/* Palette Initialization */
-
-static PALETTE_INIT( abc802 )
-{
-	palette_set_color_rgb(machine, 0, 0x00, 0x00, 0x00); // black
-	palette_set_color_rgb(machine, 1, 0xff, 0x81, 0x00); // amber
-}
-
 /* Character Memory */
 
 READ8_HANDLER( abc802_charram_r )
@@ -176,26 +168,26 @@ static MC6845_UPDATE_ROW( abc802_update_row )
 	}
 }
 
-static MC6845_ON_VSYNC_CHANGED(abc802_vsync_changed)
+static WRITE_LINE_DEVICE_HANDLER( abc802_vsync_changed )
 {
-	abc802_state *state = device->machine->driver_data;
+	abc802_state *driver_state = device->machine->driver_data;
 
-	if (!vsync)
+	if (!state)
 	{
 		/* flash clock */
-		if (state->flshclk_ctr & 0x20)
+		if (driver_state->flshclk_ctr & 0x20)
 		{
-			state->flshclk = !state->flshclk;
-			state->flshclk_ctr = 0;
+			driver_state->flshclk = !driver_state->flshclk;
+			driver_state->flshclk_ctr = 0;
 		}
 		else
 		{
-			state->flshclk_ctr++;
+			driver_state->flshclk_ctr++;
 		}
 	}
 
 	/* signal _DEW to DART */
-	z80dart_rib_w(state->z80dart, !vsync);
+	z80dart_rib_w(driver_state->z80dart, !state);
 }
 
 /* MC6845 Interfaces */
@@ -206,9 +198,11 @@ static const mc6845_interface abc802_mc6845_interface = {
 	NULL,
 	abc802_update_row,
 	NULL,
-	NULL,
-	NULL,
-	abc802_vsync_changed
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_LINE(abc802_vsync_changed),
+	NULL
 };
 
 /* Video Start */
@@ -270,7 +264,7 @@ MACHINE_DRIVER_START( abc802_video )
 
 	MDRV_PALETTE_LENGTH(2)
 
-	MDRV_PALETTE_INIT(abc802)
+	MDRV_PALETTE_INIT(monochrome_amber)
 	MDRV_VIDEO_START(abc802)
 	MDRV_VIDEO_UPDATE(abc802)
 MACHINE_DRIVER_END
