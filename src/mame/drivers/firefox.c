@@ -188,7 +188,7 @@ static VIDEO_UPDATE( firefox )
 				int flipx = flags & 0x20;
 				int code = sprite_data[ 15 - row ] + ( 256 * ( ( flags >> 6 ) & 3 ) );
 
-				drawgfx( bitmap, screen->machine->gfx[ 1 ], code, color, flipx, flipy, x + 8, gfxtop + 500 - y - ( row * 16 ), cliprect, TRANSPARENCY_PEN, 0 );
+				drawgfx_transpen( bitmap, cliprect, screen->machine->gfx[ 1 ], code, color, flipx, flipy, x + 8, gfxtop + 500 - y - ( row * 16 ), 0 );
 			}
 		}
 	}
@@ -737,10 +737,10 @@ ROM_START( firefox )
 	ROM_RELOAD( 0x0a000, 0x2000 )
 	ROM_LOAD( "136026.214",     0x0c000, 0x4000, CRC(92378b78) SHA1(62c7a1fee675fa3f9125f8e208b8207f0ce28bbe) ) /* 4n */
 
-	ROM_REGION( 0x2000, "tiles", ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "tiles", 0 )
 	ROM_LOAD( "136026.125",     0x0000,  0x2000, CRC(8a32f9f1) SHA1(f899174f55cd4a24a3be4a0f4bb44d3e8e938586) ) /* 6p */
 
-	ROM_REGION( 0x30000, "sprites", ROMREGION_DISPOSE | ROMREGION_ERASE00 )
+	ROM_REGION( 0x30000, "sprites", ROMREGION_ERASE00 )
 	/* empty 6c */
 	/* empty 6a */
 	ROM_LOAD( "136026.124",     0x08000,  0x4000, CRC(5efe0f6c) SHA1(df35fd9267d966ab379c2f78ed418f4606741b28)) /* 5c */
@@ -777,10 +777,10 @@ ROM_START( firefoxa )
 	ROM_LOAD( "136026.113",     0x08000, 0x4000, CRC(90988b3b) SHA1(7571cf6b7e9e3e22f930d9ba991b730e734edfb7)) /* 4m */
 	ROM_LOAD( "136026.114",     0x0c000, 0x4000, CRC(1437ce14) SHA1(eef14172b3935a4afb3470852f93d30926b139e4)) /* 4n */
 
-	ROM_REGION( 0x2000, "tiles", ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "tiles", 0 )
 	ROM_LOAD( "136026.125",     0x0000,  0x2000, CRC(8a32f9f1) SHA1(f899174f55cd4a24a3be4a0f4bb44d3e8e938586) ) /* 6p */
 
-	ROM_REGION( 0x30000, "sprites", ROMREGION_DISPOSE | ROMREGION_ERASE00 )
+	ROM_REGION( 0x30000, "sprites", ROMREGION_ERASE00 )
 	/* empty 6c */
 	/* empty 6a */
 	ROM_LOAD( "136026.124",     0x08000,  0x4000, CRC(5efe0f6c) SHA1(df35fd9267d966ab379c2f78ed418f4606741b28)) /* 5c */

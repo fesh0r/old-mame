@@ -1292,13 +1292,13 @@ WRITE8_HANDLER( K007121_ctrl_1_w )
  *
  */
 
-void K007121_sprites_draw(int chip,bitmap_t *bitmap,gfx_element **gfxs, colortable_t *ctable,
-						  const rectangle *cliprect, const UINT8 *source,int base_color,
+void K007121_sprites_draw(int chip,bitmap_t *bitmap,const rectangle *cliprect, gfx_element **gfxs, colortable_t *ctable,
+						  const UINT8 *source,int base_color,
 						  int global_x_offset,int bank_base, UINT32 pri_mask)
 {
 	const gfx_element *gfx = gfxs[chip];
 	int flipscreen = K007121_flipscreen[chip];
-	int i,num,inc,offs[5],trans;
+	int i,num,inc,offs[5];
 	int is_flakatck = (ctable == NULL);
 
 #if 0
@@ -1329,9 +1329,6 @@ if (input_code_pressed(KEYCODE_D))
 		offs[2] = 0x06;
 		offs[3] = 0x04;
 		offs[4] = 0x08;
-		/* Flak Attack doesn't use a lookup PROM, it maps the color code directly */
-		/* to a palette entry */
-		trans = TRANSPARENCY_PEN;
 	}
 	else	/* all others */
 	{
@@ -1344,7 +1341,6 @@ if (input_code_pressed(KEYCODE_D))
 		offs[2] = 0x02;
 		offs[3] = 0x03;
 		offs[4] = 0x04;
-		trans = TRANSPARENCY_PENS;
 		/* when using priority buffer, draw front to back */
 		if (pri_mask != -1)
 		{
@@ -1364,10 +1360,10 @@ if (input_code_pressed(KEYCODE_D))
 		int yflip = source[offs[4]] & 0x20;		/* flip y */
 		int color = base_color + ((source[offs[1]] & 0xf0) >> 4);
 		int width,height;
-		int transparent_color;
+		int transparent_mask;
 		static const int x_offset[4] = {0x0,0x1,0x4,0x5};
 		static const int y_offset[4] = {0x0,0x2,0x8,0xa};
-		int x,y, ex, ey;
+		int x,y, ex, ey, flipx, flipy, destx, desty;
 
 		if (attr & 0x01) sx -= 256;
 		if (sy >= 240) sy -= 256;
@@ -1376,10 +1372,12 @@ if (input_code_pressed(KEYCODE_D))
 		number = number << 2;
 		number += (sprite_bank >> 2) & 3;
 
-		if (trans == TRANSPARENCY_PEN)
-			transparent_color = 0;
+		/* Flak Attack doesn't use a lookup PROM, it maps the color code directly */
+		/* to a palette entry */
+		if (is_flakatck)
+			transparent_mask = 1 << 0;
 		else
-			transparent_color = colortable_get_transpen_mask(ctable, gfx, color, 0);
+			transparent_mask = colortable_get_transpen_mask(ctable, gfx, color, 0);
 
 		if (!is_flakatck || source[0x00])	/* Flak Attack needs this */
 		{
@@ -1406,40 +1404,34 @@ if (input_code_pressed(KEYCODE_D))
 
 					if (flipscreen)
 					{
-						if (pri_mask != -1)
-							pdrawgfx(bitmap,gfx,
-								number + x_offset[ex] + y_offset[ey],
-								color,
-								!xflip,!yflip,
-								248-(sx+x*8),248-(sy+y*8),
-								cliprect,trans,transparent_color,
-								pri_mask);
-						else
-							drawgfx(bitmap,gfx,
-								number + x_offset[ex] + y_offset[ey],
-								color,
-								!xflip,!yflip,
-								248-(sx+x*8),248-(sy+y*8),
-								cliprect,trans,transparent_color);
+						flipx = !xflip;
+						flipy = !yflip;
+						destx = 248-(sx+x*8);
+						desty = 248-(sy+y*8);
 					}
 					else
 					{
-						if (pri_mask != -1)
-							pdrawgfx(bitmap,gfx,
-								number + x_offset[ex] + y_offset[ey],
-								color,
-								xflip,yflip,
-								global_x_offset+sx+x*8,sy+y*8,
-								cliprect,trans,transparent_color,
-								pri_mask);
-						else
-							drawgfx(bitmap,gfx,
-								number + x_offset[ex] + y_offset[ey],
-								color,
-								xflip,yflip,
-								global_x_offset+sx+x*8,sy+y*8,
-								cliprect,trans,transparent_color);
+						flipx = xflip;
+						flipy = yflip;
+						destx = global_x_offset+sx+x*8;
+						desty = sy+y*8;
 					}
+
+					if (pri_mask != -1)
+						pdrawgfx_transmask(bitmap,cliprect,gfx,
+							number + x_offset[ex] + y_offset[ey],
+							color,
+							flipx,flipy,
+							destx,desty,
+							priority_bitmap,pri_mask,
+							transparent_mask);
+					else
+						drawgfx_transmask(bitmap,cliprect,gfx,
+							number + x_offset[ex] + y_offset[ey],
+							color,
+							flipx,flipy,
+							destx,desty,
+							transparent_mask);
 				}
 			}
 		}
@@ -1804,20 +1796,18 @@ void K007420_sprites_draw(bitmap_t *bitmap,const rectangle *cliprect)
 
 					if (c & bankmask) continue; else c += bank;
 
-					drawgfx(bitmap,K007420_gfx,
+					drawgfx_transpen(bitmap,cliprect,K007420_gfx,
 						c,
 						color,
 						flipx,flipy,
-						sx,sy,
-						cliprect,TRANSPARENCY_PEN,0);
+						sx,sy,0);
 
 					if (K007342_regs[2] & 0x80)
-						drawgfx(bitmap,K007420_gfx,
+						drawgfx_transpen(bitmap,cliprect,K007420_gfx,
 							c,
 							color,
 							flipx,flipy,
-							sx,sy-256,
-							cliprect,TRANSPARENCY_PEN,0);
+							sx,sy-256,0);
 				}
 			}
 		}
@@ -1842,22 +1832,20 @@ void K007420_sprites_draw(bitmap_t *bitmap,const rectangle *cliprect)
 
 					if (c & bankmask) continue; else c += bank;
 
-					drawgfxzoom(bitmap,K007420_gfx,
+					drawgfxzoom_transpen(bitmap,cliprect,K007420_gfx,
 						c,
 						color,
 						flipx,flipy,
 						sx,sy,
-						cliprect,TRANSPARENCY_PEN,0,
-						(zw << 16) / 8,(zh << 16) / 8);
+						(zw << 16) / 8,(zh << 16) / 8,0);
 
 					if (K007342_regs[2] & 0x80)
-						drawgfxzoom(bitmap,K007420_gfx,
+						drawgfxzoom_transpen(bitmap,cliprect,K007420_gfx,
 							c,
 							color,
 							flipx,flipy,
 							sx,sy-256,
-							cliprect,TRANSPARENCY_PEN,0,
-							(zw << 16) / 8,(zh << 16) / 8);
+							(zw << 16) / 8,(zh << 16) / 8,0);
 				}
 			}
 		}
@@ -4922,17 +4910,30 @@ UINT16 *K053936_1_ctrl,*K053936_1_linectrl;
 static int K053936_offset[K053936_MAX_CHIPS][2];
 static int K053936_wraparound[K053936_MAX_CHIPS];
 
+// there is another implementation of this in  machine/konamigx.c (!)
+//  why?
 
-static void K053936_zoom_draw(int chip,UINT16 *ctrl,UINT16 *linectrl,bitmap_t *bitmap,const rectangle *cliprect,tilemap *tmap,int flags,UINT32 priority)
+static void K053936_zoom_draw(int chip,UINT16 *ctrl,UINT16 *linectrl, bitmap_t *bitmap,const rectangle *cliprect,tilemap *tmap,int flags,UINT32 priority, int glfgreat_hack)
 {
-	if (ctrl[0x07] & 0x0040)	/* "super" mode */
+	if (!tmap)
+		return;
+
+	if (ctrl[0x07] & 0x0040)
 	{
 		UINT32 startx,starty;
 		int incxx,incxy;
 		rectangle my_clip;
 		int y,maxy;
 
-		if ((ctrl[0x07] & 0x0002) && ctrl[0x09])	/* wrong, but fixes glfgreat */
+		// Racin' Force will get to here if glfgreat_hack is enabled, and it ends
+		// up setting a maximum y value of '13', thus causing nothing to be drawn.
+		// It looks like the roz output should be flipped somehow as it seems to be
+		// displaying the wrong areas of the tilemap and is rendered upside down,
+		// although due to the additional post-processing the voxel renderer performs
+		// it's difficult to know what the output SHOULD be.  (hold W in Racin' Force
+		// to see the chip output)
+
+		if (((ctrl[0x07] & 0x0002) && ctrl[0x09]) && (glfgreat_hack))	/* wrong, but fixes glfgreat */
 		{
 			my_clip.min_x = ctrl[0x08] + K053936_offset[chip][0]+2;
 			my_clip.max_x = ctrl[0x09] + K053936_offset[chip][0]+2 - 1;
@@ -4961,6 +4962,8 @@ static void K053936_zoom_draw(int chip,UINT16 *ctrl,UINT16 *linectrl,bitmap_t *b
 		{
 			UINT16 *lineaddr = linectrl + 4*((y - K053936_offset[chip][1]) & 0x1ff);
 			my_clip.min_y = my_clip.max_y = y;
+
+
 
 			startx = 256 * (INT16)(lineaddr[0] + ctrl[0x00]);
 			starty = 256 * (INT16)(lineaddr[1] + ctrl[0x01]);
@@ -5031,14 +5034,14 @@ if (input_code_pressed(KEYCODE_D))
 }
 
 
-void K053936_0_zoom_draw(bitmap_t *bitmap,const rectangle *cliprect,tilemap *tmap,int flags,UINT32 priority)
+void K053936_0_zoom_draw(bitmap_t *bitmap,const rectangle *cliprect,tilemap *tmap,int flags,UINT32 priority, int glfgreat_hack)
 {
-	K053936_zoom_draw(0,K053936_0_ctrl,K053936_0_linectrl,bitmap,cliprect,tmap,flags,priority);
+	K053936_zoom_draw(0,K053936_0_ctrl,K053936_0_linectrl,bitmap,cliprect,tmap,flags,priority, glfgreat_hack);
 }
 
-void K053936_1_zoom_draw(bitmap_t *bitmap,const rectangle *cliprect,tilemap *tmap,int flags,UINT32 priority)
+void K053936_1_zoom_draw(bitmap_t *bitmap,const rectangle *cliprect,tilemap *tmap,int flags,UINT32 priority, int glfgreat_hack)
 {
-	K053936_zoom_draw(1,K053936_1_ctrl,K053936_1_linectrl,bitmap,cliprect,tmap,flags,priority);
+	K053936_zoom_draw(1,K053936_1_ctrl,K053936_1_linectrl,bitmap,cliprect,tmap,flags,priority, glfgreat_hack);
 }
 
 

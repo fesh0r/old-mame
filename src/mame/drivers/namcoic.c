@@ -265,10 +265,9 @@ WRITE32_HANDLER( namco_tilemapvideoram32_le_w )
 
 /**************************************************************************************/
 
-static void zdrawgfxzoom(running_machine *machine,
-		bitmap_t *dest_bmp,const gfx_element *gfx,
+static void zdrawgfxzoom(
+		bitmap_t *dest_bmp,const rectangle *clip,const gfx_element *gfx,
 		UINT32 code,UINT32 color,int flipx,int flipy,int sx,int sy,
-		const rectangle *clip,int transparency,int transparent_color,
 		int scalex, int scaley, int zpos )
 {
 	if (!scalex || !scaley) return;
@@ -276,8 +275,8 @@ static void zdrawgfxzoom(running_machine *machine,
 	{
 		if( gfx )
 		{
-			int shadow_offset = (machine->config->video_attributes&VIDEO_HAS_SHADOWS)?machine->config->total_colors:0;
-			const pen_t *pal = &machine->pens[gfx->color_base + gfx->color_granularity * (color % gfx->total_colors)];
+			int shadow_offset = (gfx->machine->config->video_attributes&VIDEO_HAS_SHADOWS)?gfx->machine->config->total_colors:0;
+			const pen_t *pal = &gfx->machine->pens[gfx->color_base + gfx->color_granularity * (color % gfx->total_colors)];
 			const UINT8 *source_base = gfx_element_get_data(gfx, code % gfx->total_elements);
 			int sprite_screen_height = (scaley*gfx->height+0x8000)>>16;
 			int sprite_screen_width = (scalex*gfx->width+0x8000)>>16;
@@ -342,68 +341,65 @@ static void zdrawgfxzoom(running_machine *machine,
 				if( ex>sx )
 				{ /* skip if inner loop doesn't draw anything */
 					int y;
-					if (transparency == TRANSPARENCY_PEN)
+					if( priority_bitmap )
 					{
-						if( priority_bitmap )
+						for( y=sy; y<ey; y++ )
 						{
-							for( y=sy; y<ey; y++ )
+							const UINT8 *source = source_base + (y_index>>16) * gfx->line_modulo;
+							UINT16 *dest = BITMAP_ADDR16(dest_bmp, y, 0);
+							UINT8 *pri = BITMAP_ADDR8(priority_bitmap, y, 0);
+							int x, x_index = x_index_base;
+							if( mPalXOR )
 							{
-								const UINT8 *source = source_base + (y_index>>16) * gfx->line_modulo;
-								UINT16 *dest = BITMAP_ADDR16(dest_bmp, y, 0);
-								UINT8 *pri = BITMAP_ADDR8(priority_bitmap, y, 0);
-								int x, x_index = x_index_base;
-								if( mPalXOR )
+								for( x=sx; x<ex; x++ )
 								{
-									for( x=sx; x<ex; x++ )
+									int c = source[x_index>>16];
+									if( c != 0xff )
 									{
-										int c = source[x_index>>16];
-										if( c != transparent_color )
+										if( pri[x]<=zpos )
 										{
-											if( pri[x]<=zpos )
+											switch( c )
 											{
-												switch( c )
-												{
-												case 0:
-													dest[x] = 0x4000|(dest[x]&0x1fff);
-													break;
-												case 1:
-													dest[x] = 0x6000|(dest[x]&0x1fff);
-													break;
-												default:
-													dest[x] = pal[c];
-													break;
-												}
-												pri[x] = zpos;
+											case 0:
+												dest[x] = 0x4000|(dest[x]&0x1fff);
+												break;
+											case 1:
+												dest[x] = 0x6000|(dest[x]&0x1fff);
+												break;
+											default:
+												dest[x] = pal[c];
+												break;
 											}
+											pri[x] = zpos;
 										}
-										x_index += dx;
 									}
-									y_index += dy;
+									x_index += dx;
 								}
-								else
+								y_index += dy;
+							}
+							else
+							{
+								for( x=sx; x<ex; x++ )
 								{
-									for( x=sx; x<ex; x++ )
+									int c = source[x_index>>16];
+									if( c != 0xff )
 									{
-										int c = source[x_index>>16];
-										if( c != transparent_color )
+										if( pri[x]<=zpos )
 										{
-											if( pri[x]<=zpos )
+											if( color == 0xf && c==0xfe && shadow_offset )
 											{
-												if( color == 0xf && c==0xfe && shadow_offset )
-												{
-													dest[x] |= shadow_offset;
-												}
-												else
-												{
-													dest[x] = pal[c];
-												}
-												pri[x] = zpos;
+												dest[x] |= shadow_offset;
 											}
+											else
+											{
+												dest[x] = pal[c];
+											}
+											pri[x] = zpos;
 										}
-										x_index += dx;
 									}
-									y_index += dy;
+									x_index += dx;
 								}
+								y_index += dy;
 							}
 						}
 					}
@@ -478,15 +474,13 @@ namcos2_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle
 						gfx_element_set_source_clip(gfx, 0, 32, 0, 32);
 
 					zdrawgfxzoom(
-						machine,
 						bitmap,
+						cliprect,
 						gfx,
 						sprn,
 						color,
 						flipx,flipy,
 						xpos,ypos,
-						cliprect,
-						TRANSPARENCY_PEN,0xff,
 						scalex,scaley,
 						loop );
 				}
@@ -613,13 +607,13 @@ namcos2_draw_sprites_metalhawk(running_machine *machine, bitmap_t *bitmap, const
 				rect.min_y += (tile&2)?16:0;
 				rect.max_y += (tile&2)?16:0;
 			}
-			zdrawgfxzoom(machine,
-				bitmap,machine->gfx[0],
+			zdrawgfxzoom(
+				bitmap,
+				&rect,
+				machine->gfx[0],
 				sprn, color,
 				flipx,flipy,
 				sx,sy,
-				&rect,
-				TRANSPARENCY_PEN,0xff,
 				scalex, scaley,
 				loop );
 		}
@@ -877,14 +871,14 @@ draw_spriteC355(running_machine *machine, bitmap_t *bitmap, const rectangle *cli
 			tile = spritetile16[tile_index++];
 			if( (tile&0x8000)==0 )
 			{
-				zdrawgfxzoom(machine,
-					bitmap,machine->gfx[mGfxC355],
+				zdrawgfxzoom(
+					bitmap,
+					&clip,
+					machine->gfx[mGfxC355],
 					mpCodeToTile(tile) + offset,
 					color,
 					flipx,flipy,
 					sx,sy,
-					&clip,
-					TRANSPARENCY_PEN,0xff,
 					zoomx, zoomy, zpos );
 			}
 			if( !flipx )

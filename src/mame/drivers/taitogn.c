@@ -306,6 +306,15 @@ Notes:
       Super Puzzle Bobble (Japan)
       Usagi
 
+Type 3 (PCMCIA Compact Flash Adaptor + Compact Flash card, sealed together with the game?s label)
+------
+
+       The Compact Flash card is read protected, it is a custom Sandisk SDCFB-64 Card (64MByte)
+
+       Confirmed usage on.... (not all games listed)
+       Otenami Haiken Final
+       Kollon
+       Zooo
 */
 
 #include "driver.h"
@@ -315,6 +324,7 @@ Notes:
 #include "machine/intelfsh.h"
 #include "machine/znsec.h"
 #include "machine/idectrl.h"
+#include "machine/mb3773.h"
 #include "sound/psx.h"
 
 
@@ -328,6 +338,22 @@ static unsigned char rf5c296_reg = 0;
 static void rf5c296_reg_w(ATTR_UNUSED running_machine *machine, UINT8 reg, UINT8 data)
 {
 	//  fprintf(stderr, "rf5c296_reg_w %02x, %02x (%s)\n", reg, data, cpuexec_describe_context(machine));
+	switch (reg)
+	{
+		// Interrupt and General Control Register
+		case 0x03:
+			// Check for card reset
+			if (!(data & 0x40))
+			{
+				devtag_reset(machine, "card");
+				locked = 0x1ff;
+				ide_set_gnet_readlock (devtag_get_device(machine, "card"), 1);
+			}
+		break;
+
+		default:
+		break;
+	}
 }
 
 static UINT8 rf5c296_reg_r(ATTR_UNUSED running_machine *machine, UINT8 reg)
@@ -403,6 +429,9 @@ static WRITE32_HANDLER(rf5c296_mem_w)
 			locked &= ~(1 << pos);
 		else
 			locked |= 1 << pos;
+		if (!locked) {
+			ide_set_gnet_readlock (devtag_get_device(space->machine, "card"), 0);
+		}
 	}
 }
 
@@ -519,7 +548,11 @@ static WRITE32_HANDLER(control_w)
 	// selection too, but they're always 0.
 
 	UINT32 p = control;
+	const device_config *mb3773 = devtag_get_device(space->machine, "mb3773");
+
 	COMBINE_DATA(&control);
+
+	mb3773_set_ck(mb3773, 0, (control & 0x20) >> 5);
 
 #if 0
 	if((p ^ control) & ~0x20)
@@ -551,12 +584,6 @@ static READ32_HANDLER(control3_r)
 static WRITE32_HANDLER(control3_w)
 {
 	COMBINE_DATA(&control3);
-
-	// card reset, maybe
-	if(control3 & 2) {
-		devtag_reset(space->machine, "card");
-		locked = 0x1ff;
-	}
 }
 
 static READ32_HANDLER(gn_1fb70000_r)
@@ -824,6 +851,7 @@ static MACHINE_RESET( coh3002t )
 	control = 0;
 	psx_machine_init(machine);
 	devtag_reset(machine, "card");
+	ide_set_gnet_readlock (devtag_get_device(machine, "card"), 1);
 }
 
 static ADDRESS_MAP_START( zn_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -918,6 +946,8 @@ static MACHINE_DRIVER_START( coh3002t )
 	MDRV_AT28C16_ADD( "at28c16", 0 )
 	MDRV_IDE_CONTROLLER_ADD( "card", 0 )
 	MDRV_NVRAM_HANDLER( coh3002t )
+
+	MDRV_MB3773_ADD("mb3773")
 MACHINE_DRIVER_END
 
 static INPUT_PORTS_START( coh3002t )
@@ -1032,14 +1062,19 @@ static INPUT_PORTS_START( coh3002t_mp )
 INPUT_PORTS_END
 
 
-//    ROM_LOAD( "flashv2.u30",    0x000000, 0x200000, CRC(f624ebf8) SHA1(be84ef1b083f819f3ab13c983c52bca97bb908ef) )
+//
+
+#define ROM_LOAD16_WORD_BIOS(bios,name,offset,length,hash) \
+		ROMX_LOAD(name, offset, length, hash, ROM_GROUPWORD | ROM_BIOS(bios+1)) /* Note '+1' */
 
 #define TAITOGNET_BIOS \
 	ROM_REGION32_LE( 0x080000, "mainbios", 0 ) \
 	ROM_LOAD( "coh-3002t.353", 0x000000, 0x080000, CRC(03967fa7) SHA1(0e17fec2286e4e25deb23d40e41ce0986f373d49) ) \
-\
 	ROM_REGION16_LE( 0x200000, "subbios", 0 ) \
-    ROM_LOAD( "flash.u30",     0x000000, 0x200000, CRC(c48c8236) SHA1(c6dad60266ce2ff635696bc0d91903c543273559) ) \
+	ROM_SYSTEM_BIOS( 0, "v1",   "G-NET Bios v1" ) \
+    	ROM_LOAD16_WORD_BIOS(0, "flash.u30", 0x000000, 0x200000, CRC(c48c8236) SHA1(c6dad60266ce2ff635696bc0d91903c543273559) ) \
+	ROM_SYSTEM_BIOS( 1, "v2",   "G-NET Bios v2" ) \
+    	ROM_LOAD16_WORD_BIOS(1, "flashv2.u30", 0x000000, 0x200000, CRC(CAE462D3) SHA1(f1b10846a8423d9fe021191c5876190857c3d2a4) ) \
 	ROM_REGION32_LE( 0x80000,  "soundcpu", 0) \
 	ROM_FILL( 0, 0x80000, 0xff) \
 	ROM_REGION32_LE( 0x600000, "samples", 0) \
@@ -1184,6 +1219,13 @@ ROM_START(zokuoten)
 	DISK_IMAGE( "zokuoten", 0, SHA1(5ce13db00518f96af64935176c71ec68d2a51938))
 ROM_END
 
+ROM_START(otenamhf)
+	TAITOGNET_BIOS
+	ROM_DEFAULT_BIOS( "v2" )
+
+	DISK_REGION( "card" )
+	DISK_IMAGE( "otenamhf", 0, SHA1(5b15c33bf401e5546d78e905f538513d6ffcf562))
+ROM_END
 
 
 
@@ -1241,36 +1283,34 @@ ROM_END
 /* A dummy driver, so that the bios can be debugged, and to serve as */
 /* parent for the coh-3002t.353 file, so that we do not have to include */
 /* it in every zip file */
-GAME( 1997, taitogn,  0, coh3002t, coh3002t, coh3002t, ROT0, "Sony/Taito", "Taito GNET", GAME_IS_BIOS_ROOT )
+GAME( 1997, taitogn,  0,        coh3002t, coh3002t, coh3002t, ROT0,   "Sony/Taito", "Taito GNET", GAME_IS_BIOS_ROOT )
 
-GAME( 1998, chaoshea, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Chaos Heat (V2.09O)", 0 )
-GAME( 1998, chaoshej, chaoshea, coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Chaos Heat (V2.08J)", 0 )
-GAME( 1998, raycris,  taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Ray Crisis (V2.03J)", 0 )
-GAME( 1999, spuzbobl, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Super Puzzle Bobble (V2.05O)", 0 )
-GAME( 1999, spuzbobj, spuzbobl, coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Super Puzzle Bobble (V2.04J)", 0 )
-GAME( 1999, gobyrc,   taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Go By RC (V2.03O)", GAME_NOT_WORKING ) // custom inputs need calibrating
-GAME( 1999, rcdego,   gobyrc,   coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "RC De Go (V2.03J)", GAME_NOT_WORKING ) // custom inputs need calibrating
-GAME( 1999, flipmaze, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito/Moss", "Flip Maze (V2.04J)", 0 )
-GAME( 2001, shikigam, taitogn,  coh3002t, coh3002t, coh3002t, ROT270, "Taito/Alfa System", "Shikigami no Shiro (V2.03J)", 0 )
-GAME( 2003, sianniv,  taitogn,  coh3002t, coh3002t, coh3002t, ROT270, "Taito", "Space Invaders Anniversary (V2.02J)", GAME_NOT_WORKING ) // IRQ at the wrong time
-GAME( 2003, kollon,   taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Kollon (V2.04J)", 0 )
+GAME( 1998, chaoshea, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Chaos Heat (V2.09O)", GAME_IMPERFECT_SOUND )
+GAME( 1998, chaoshej, chaoshea, coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Chaos Heat (V2.08J)", GAME_IMPERFECT_SOUND )
+GAME( 1998, raycris,  taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Ray Crisis (V2.03J)", GAME_IMPERFECT_SOUND )
+GAME( 1999, spuzbobl, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Super Puzzle Bobble (V2.05O)", GAME_IMPERFECT_SOUND )
+GAME( 1999, spuzbobj, spuzbobl, coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Super Puzzle Bobble (V2.04J)", GAME_IMPERFECT_SOUND )
+GAME( 1999, gobyrc,   taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Go By RC (V2.03O)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // custom inputs need calibrating
+GAME( 1999, rcdego,   gobyrc,   coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "RC De Go (V2.03J)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // custom inputs need calibrating
+GAME( 1999, flipmaze, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito/Moss", "Flip Maze (V2.04J)", GAME_IMPERFECT_SOUND )
+GAME( 2001, shikigam, taitogn,  coh3002t, coh3002t, coh3002t, ROT270, "Taito/Alfa System", "Shikigami no Shiro (V2.03J)", GAME_IMPERFECT_SOUND )
+GAME( 2003, sianniv,  taitogn,  coh3002t, coh3002t, coh3002t, ROT270, "Taito", "Space Invaders Anniversary (V2.02J)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // IRQ at the wrong time
+GAME( 2003, kollon,   taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Kollon (V2.04J)", GAME_IMPERFECT_SOUND )
 
-GAME( 1999, otenamih, taitogn, coh3002t, coh3002t, coh3002t, ROT0,   "Success", "Otenami Haiken (V2.04J)", 0 )
-GAME( 2000, psyvaria, taitogn, coh3002t, coh3002t, coh3002t, ROT270, "Success", "Psyvariar -Medium Unit- (V2.04J)", 0 )
-GAME( 2000, psyvarrv, taitogn, coh3002t, coh3002t, coh3002t, ROT270, "Success", "Psyvariar -Revision- (V2.04J)", 0 )
-GAME( 2000, zokuoten, taitogn, coh3002t, coh3002t, coh3002t, ROT0,   "Success", "Zoku Otenamihaiken (V2.03J)", 0 )
-GAME( 2004, zooo,     taitogn, coh3002t, coh3002t, coh3002t, ROT0,   "Success", "Zooo (V2.01J)", GAME_NOT_WORKING ) // missing most of the playfield
+GAME( 1999, otenamih, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Success", "Otenami Haiken (V2.04J)", GAME_IMPERFECT_SOUND )
+GAME( 2005, otenamhf, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Success/Warashi", "Otenami Haiken Final (V2.07JC)", GAME_IMPERFECT_SOUND )
+GAME( 2000, psyvaria, taitogn,  coh3002t, coh3002t, coh3002t, ROT270, "Success", "Psyvariar -Medium Unit- (V2.04J)", GAME_IMPERFECT_SOUND )
+GAME( 2000, psyvarrv, taitogn,  coh3002t, coh3002t, coh3002t, ROT270, "Success", "Psyvariar -Revision- (V2.04J)", GAME_IMPERFECT_SOUND )
+GAME( 2000, zokuoten, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Success", "Zoku Otenamihaiken (V2.03J)", GAME_IMPERFECT_SOUND )
+GAME( 2004, zooo,     taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Success", "Zooo (V2.01J)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // missing most of the playfield
 
-GAME( 1999, mahjngoh, taitogn, coh3002t, coh3002t_mp, coh3002t_mp, ROT0, "Warashi/Mahjong Kobo/Taito", "Mahjong Oh (V2.06J)", 0 )
-GAME( 2001, usagi,    taitogn, coh3002t, coh3002t_mp, coh3002t_mp, ROT0, "Warashi/Mahjong Kobo/Taito", "Usagi (V2.02J)", 0 )
-GAME( 2000, soutenry, taitogn, coh3002t, coh3002t, coh3002t, ROT0,   "Warashi", "Soutenryu (V2.07J)", 0 )
-GAME( 2000, shanghss, taitogn, coh3002t, coh3002t, coh3002t, ROT0,   "Warashi", "Shanghai Shoryu Sairin (V2.03J)", 0 )
-GAME( 2002, shangtou, taitogn, coh3002t, coh3002t, coh3002t, ROT0,   "Warashi/Sunsoft/Taito", "Shanghai Sangokuhai Tougi (Ver 2.01J)", 0 )
+GAME( 1999, mahjngoh, taitogn,  coh3002t, coh3002t_mp, coh3002t_mp, ROT0, "Warashi/Mahjong Kobo/Taito", "Mahjong Oh (V2.06J)", GAME_IMPERFECT_SOUND )
+GAME( 2001, usagi,    taitogn,  coh3002t, coh3002t_mp, coh3002t_mp, ROT0, "Warashi/Mahjong Kobo/Taito", "Usagi (V2.02J)", GAME_IMPERFECT_SOUND )
+GAME( 2000, soutenry, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Warashi", "Soutenryu (V2.07J)", GAME_IMPERFECT_SOUND )
+GAME( 2000, shanghss, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Warashi", "Shanghai Shoryu Sairin (V2.03J)", GAME_IMPERFECT_SOUND )
+GAME( 2002, shangtou, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Warashi/Sunsoft/Taito", "Shanghai Sangokuhai Tougi (Ver 2.01J)", GAME_IMPERFECT_SOUND )
 
-GAME( 2001, nightrai, taitogn, coh3002t, coh3002t, coh3002t, ROT0, "Takumi", "Night Raid (V2.03J)", GAME_NOT_WORKING ) // no background / enemy sprites
-GAME( 2001, otenki,   taitogn, coh3002t, coh3002t, coh3002t, ROT0, "Takumi", "Otenki Kororin (V2.01J)", 0 )
+GAME( 2001, nightrai, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Takumi", "Night Raid (V2.03J)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // no background / enemy sprites
+GAME( 2001, otenki,   taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Takumi", "Otenki Kororin (V2.01J)", GAME_IMPERFECT_SOUND )
 
-GAME( 2002, xiistag,  taitogn, coh3002t, coh3002t, coh3002t, ROT270, "Triangle Service", "XII Stag (V2.01J)", 0 )
-
-
-
+GAME( 2002, xiistag,  taitogn,  coh3002t, coh3002t, coh3002t, ROT270, "Triangle Service", "XII Stag (V2.01J)", GAME_IMPERFECT_SOUND )

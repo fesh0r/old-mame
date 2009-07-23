@@ -114,34 +114,30 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		if(bestleag_vregs[0x00/2] & 0x1000)
 			color &= 7;
 
-		drawgfx(bitmap,machine->gfx[2],
+		drawgfx_transpen(bitmap,cliprect,machine->gfx[2],
 					code,
 					color,
 					flipx, 0,
-					flipx ? (sx+16) : (sx),sy,
-					cliprect,TRANSPARENCY_PEN,15);
+					flipx ? (sx+16) : (sx),sy,15);
 
-		drawgfx(bitmap,machine->gfx[2],
+		drawgfx_transpen(bitmap,cliprect,machine->gfx[2],
 					code+1,
 					color,
 					flipx, 0,
-					flipx ? (sx) : (sx+16),sy,
-					cliprect,TRANSPARENCY_PEN,15);
+					flipx ? (sx) : (sx+16),sy,15);
 
 		/* wraparound x */
-		drawgfx(bitmap,machine->gfx[2],
+		drawgfx_transpen(bitmap,cliprect,machine->gfx[2],
 					code,
 					color,
 					flipx, 0,
-					flipx ? (sx+16 - 512) : (sx - 512),sy,
-					cliprect,TRANSPARENCY_PEN,15);
+					flipx ? (sx+16 - 512) : (sx - 512),sy,15);
 
-		drawgfx(bitmap,machine->gfx[2],
+		drawgfx_transpen(bitmap,cliprect,machine->gfx[2],
 					code+1,
 					color,
 					flipx, 0,
-					flipx ? (sx - 512) : (sx+16 - 512),sy,
-					cliprect,TRANSPARENCY_PEN,15);
+					flipx ? (sx - 512) : (sx+16 - 512),sy,15);
 	}
 }
 
@@ -349,20 +345,20 @@ ROM_START( bestleag )
 	ROM_LOAD16_BYTE( "2.bin", 0x00000, 0x20000, CRC(d2be3431) SHA1(37815c80b9fbc246fcdaa202d40fb40b10f55b45) )
 	ROM_LOAD16_BYTE( "3.bin", 0x00001, 0x20000, CRC(f29c613a) SHA1(c66fa53f38bfa77ce1b894db74f94ce573c62412) )
 
-	ROM_REGION( 0x200000, "gfx1", ROMREGION_DISPOSE ) /* 16x16x4 BG and 8x8x4 FG Tiles */
+	ROM_REGION( 0x200000, "gfx1", 0 ) /* 16x16x4 BG and 8x8x4 FG Tiles */
 	ROM_LOAD( "4.bin", 0x000000, 0x80000, CRC(47f7c9bc) SHA1(f0e5ef971f3bd6972316c248175436055cb5789d) )
 	ROM_LOAD( "5.bin", 0x080000, 0x80000, CRC(6a6f499d) SHA1(cacdccc64d09fa7289221cdea4654e6c2d811647) )
 	ROM_LOAD( "6.bin", 0x100000, 0x80000, CRC(0c3d2609) SHA1(6e1f1c5b010ef0dfa3f7b4ff9a832e758fbb97d5) )
 	ROM_LOAD( "7.bin", 0x180000, 0x80000, CRC(dcece871) SHA1(7db919ab7f51748b77b3bd35228bbf71b951349f) )
 
-	ROM_REGION( 0x080000, "gfx2", ROMREGION_DISPOSE ) /* 16x16x4 Sprites */
-	ROM_LOAD( "8.bin",  0x000000, 0x20000, CRC(a463422a) SHA1(a3b6efd1c57b0a3b0ce4ce734a9a9b79540c4136) )
-	ROM_LOAD( "9.bin",  0x020000, 0x20000, CRC(ebec74ed) SHA1(9a1620f4ca163470f5e567f650663ae368bdd3c1) )
-	ROM_LOAD( "10.bin", 0x040000, 0x20000, CRC(7ea4e22d) SHA1(3c7f05dfd1c5889bfcbc14d08026e2a484870216) )
-	ROM_LOAD( "11.bin", 0x060000, 0x20000, CRC(283d9ba6) SHA1(6054853f76907a4a0f89ad5aa02dde9d3d4ff196) )
+	ROM_REGION( 0x080000, "gfx2", 0 ) /* 16x16x4 Sprites */
+	ROM_LOAD( "27_27c010.u86",  0x000000, 0x20000, CRC(a463422a) SHA1(a3b6efd1c57b0a3b0ce4ce734a9a9b79540c4136) )
+	ROM_LOAD( "28_27c010.u85",  0x020000, 0x20000, CRC(ebec74ed) SHA1(9a1620f4ca163470f5e567f650663ae368bdd3c1) )
+	ROM_LOAD( "29_27c010.u84", 0x040000, 0x20000, CRC(7ea4e22d) SHA1(3c7f05dfd1c5889bfcbc14d08026e2a484870216) )
+	ROM_LOAD( "30_27c010.u83", 0x060000, 0x20000, CRC(283d9ba6) SHA1(6054853f76907a4a0f89ad5aa02dde9d3d4ff196) )
 
 	ROM_REGION( 0x80000, "user1", 0 ) /* Samples */
-	ROM_LOAD( "1.bin", 0x00000, 0x80000, CRC(e152138e) SHA1(9d41b61b98414e1d5804b5a9edf4acb4c5f31615) )
+	ROM_LOAD( "20_27c040.u16", 0x00000, 0x80000, CRC(e152138e) SHA1(9d41b61b98414e1d5804b5a9edf4acb4c5f31615) )
 
 	ROM_REGION( 0xc0000, "oki", 0 )
 	ROM_COPY( "user1", 0x000000, 0x000000, 0x020000)
@@ -373,6 +369,44 @@ ROM_START( bestleag )
 	ROM_COPY( "user1", 0x060000, 0x0a0000, 0x020000)
 ROM_END
 
+ROM_START( bestleaw )
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* 68000 Code */
+	ROM_LOAD16_BYTE( "21_27c101.u67", 0x00000, 0x20000, CRC(ab5abd37) SHA1(822a4ab77041ea4d62d9f8df6197c4afe2558f21) )
+	ROM_LOAD16_BYTE( "22_27c010.u66", 0x00001, 0x20000, CRC(4abc0580) SHA1(c834ad0710d1ecd3babb446df4b3b4e5d0b23cbd) )
+
+	ROM_REGION( 0x200000, "gfx1", 0 ) /* 16x16x4 BG and 8x8x4 FG Tiles */
+	ROM_LOAD( "23_27c040.u36", 0x000000, 0x80000, CRC(dcd53a97) SHA1(ed22c51a3501bbe164d8ec4b19f1f67e28e10427) )
+	ROM_LOAD( "24_27c040.u42", 0x080000, 0x80000, CRC(2984c1a0) SHA1(ddab53cc6e9debb7f1fb7dae8196ff6df31cbedc) )
+	ROM_LOAD( "25_27c040.u38", 0x100000, 0x80000, CRC(8bb5d73a) SHA1(bc93825aab08340ef182cde56323bf30ea6c5edf) )
+	ROM_LOAD( "26_27c4001.u45", 0x180000, 0x80000, CRC(a82c905d) SHA1(b1c1098ad79eb66943bc362246983427d0263b6e) )
+
+	ROM_REGION( 0x080000, "gfx2", 0 ) /* 16x16x4 Sprites */
+	ROM_LOAD( "27_27c010.u86",  0x000000, 0x20000, CRC(a463422a) SHA1(a3b6efd1c57b0a3b0ce4ce734a9a9b79540c4136) )
+	ROM_LOAD( "28_27c010.u85",  0x020000, 0x20000, CRC(ebec74ed) SHA1(9a1620f4ca163470f5e567f650663ae368bdd3c1) )
+	ROM_LOAD( "29_27c010.u84", 0x040000, 0x20000, CRC(7ea4e22d) SHA1(3c7f05dfd1c5889bfcbc14d08026e2a484870216) )
+	ROM_LOAD( "30_27c010.u83", 0x060000, 0x20000, CRC(283d9ba6) SHA1(6054853f76907a4a0f89ad5aa02dde9d3d4ff196) )
+
+	ROM_REGION( 0x80000, "user1", 0 ) /* Samples */
+	ROM_LOAD( "20_27c040.u16", 0x00000, 0x80000, CRC(e152138e) SHA1(9d41b61b98414e1d5804b5a9edf4acb4c5f31615) )
+
+	ROM_REGION( 0xc0000, "oki", 0 )
+	ROM_COPY( "user1", 0x000000, 0x000000, 0x020000)
+	ROM_COPY( "user1", 0x020000, 0x020000, 0x020000)
+	ROM_COPY( "user1", 0x000000, 0x040000, 0x020000)
+	ROM_COPY( "user1", 0x040000, 0x060000, 0x020000)
+	ROM_COPY( "user1", 0x000000, 0x080000, 0x020000)
+	ROM_COPY( "user1", 0x060000, 0x0a0000, 0x020000)
+
+	ROM_REGION( 0x2000, "plds", 0 )
+	ROM_LOAD( "85c060.bin",            0x0000, 0x032f, CRC(537100ac) SHA1(3d5e9013e3cba660671f02e78c233c866dad2e53) )
+	ROM_LOAD( "gal16v8-25hb1.u182",    0x0200, 0x0117, NO_DUMP ) /* Protected */
+	ROM_LOAD( "gal16v8-25hb1.u183",    0x0400, 0x0117, NO_DUMP ) /* Protected */
+	ROM_LOAD( "gal16v8-25hb1.u58",     0x0800, 0x0117, NO_DUMP ) /* Protected */
+      ROM_LOAD( "palce20v8h-15pc-4.u38", 0x1000, 0x0157, NO_DUMP ) /* Protected */
+ROM_END
+
 /* GAME drivers */
 
 GAME( 1993, bestleag, bigstrik, bestleag, bestleag, 0, ROT0, "bootleg", "Best League", 0 )
+GAME( 1993, bestleaw, bigstrik, bestleag, bestleag, 0, ROT0, "bootleg", "Best League (World)", GAME_IMPERFECT_GRAPHICS )
+

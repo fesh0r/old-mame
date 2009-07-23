@@ -1236,14 +1236,15 @@ static const struct CPS1config cps1_config_table[]=
 	{"forgottn", CPS_B_01,     mapper_LW621 },
 	{"forgottu", CPS_B_01,     mapper_LWCHR },
 	{"lostwrld", CPS_B_01,     mapper_LWCHR },
+	{"lostwrldo",CPS_B_01,     mapper_LWCHR },
 	{"ghouls",   CPS_B_01,     mapper_DM620 },
 	{"ghoulsu",  CPS_B_01,     mapper_DM620 },
 	{"daimakai", CPS_B_01,     mapper_DM22A },	// equivalent to DM620
-	{"daimakr2", CPS_B_21_DEF, mapper_DAM63B },	// equivalent to DM620, also CPS_B_21_DEF is equivalent to CPS_B_01
+	{"daimakair",CPS_B_21_DEF, mapper_DAM63B },	// equivalent to DM620, also CPS_B_21_DEF is equivalent to CPS_B_01
 	{"strider",  CPS_B_01,     mapper_ST24M1 },
 	{"stridrua", CPS_B_01,     mapper_ST24M1 },
-	{"striderj", CPS_B_01,     mapper_ST24M1 },
-	{"stridrja", CPS_B_01,     mapper_ST22B },	// equivalent to ST24M1
+	{"striderj", CPS_B_01,     mapper_ST22B },	// equivalent to ST24M1
+	{"striderjr",CPS_B_01,     mapper_ST24M1 },
 	{"dynwar",   CPS_B_02,     mapper_TK22B },
 	{"dynwaru",  CPS_B_02,     mapper_TK22B },
 	{"dynwarj",  CPS_B_02,     mapper_TK22B },
@@ -1306,6 +1307,7 @@ static const struct CPS1config cps1_config_table[]=
 	{"knights",  CPS_B_21_BT4, mapper_KR63B,  0x36, 0, 0x34 },
 	{"knightsu", CPS_B_21_BT4, mapper_KR63B,  0x36, 0, 0x34 },
 	{"knightsj", CPS_B_21_BT4, mapper_KR63B,  0x36, 0, 0x34 },
+	{"knightsb", CPS_B_21_BT4, mapper_KR63B,  0x36, 0, 0x34 },
 	{"sf2ce",    CPS_B_21_DEF, mapper_S9263B, 0x36 },
 	{"sf2ceua",  CPS_B_21_DEF, mapper_S9263B, 0x36 },
 	{"sf2ceub",  CPS_B_21_DEF, mapper_S9263B, 0x36 },
@@ -2210,19 +2212,19 @@ static void cps1_render_sprites(running_machine *machine, bitmap_t *bitmap, cons
 #define DRAWSPRITE(CODE,COLOR,FLIPX,FLIPY,SX,SY)					\
 {																	\
 	if (flip_screen_get(machine))											\
-		pdrawgfx(bitmap,machine->gfx[2],							\
+		pdrawgfx_transpen(bitmap,\
+				cliprect,machine->gfx[2],							\
 				CODE,												\
 				COLOR,												\
 				!(FLIPX),!(FLIPY),									\
-				511-16-(SX),255-16-(SY),							\
-				cliprect,TRANSPARENCY_PEN,15,0x02);					\
+				511-16-(SX),255-16-(SY),							priority_bitmap,0x02,15);					\
 	else															\
-		pdrawgfx(bitmap,machine->gfx[2],							\
+		pdrawgfx_transpen(bitmap,\
+				cliprect,machine->gfx[2],							\
 				CODE,												\
 				COLOR,												\
 				FLIPX,FLIPY,										\
-				SX,SY,												\
-				cliprect,TRANSPARENCY_PEN,15,0x02);					\
+				SX,SY,												priority_bitmap,0x02,15);					\
 }
 
 
@@ -2446,19 +2448,19 @@ static void cps2_render_sprites(running_machine *machine, bitmap_t *bitmap,const
 #define DRAWSPRITE(CODE,COLOR,FLIPX,FLIPY,SX,SY)									\
 {																					\
 	if (flip_screen_get(machine))															\
-		pdrawgfx(bitmap,machine->gfx[2],											\
+		pdrawgfx_transpen(bitmap,\
+				cliprect,machine->gfx[2],											\
 				CODE,																\
 				COLOR,																\
 				!(FLIPX),!(FLIPY),													\
-				511-16-(SX),255-16-(SY),											\
-				cliprect,TRANSPARENCY_PEN,15,primasks[priority]);					\
+				511-16-(SX),255-16-(SY),											priority_bitmap,primasks[priority],15);					\
 	else																			\
-		pdrawgfx(bitmap,machine->gfx[2],											\
+		pdrawgfx_transpen(bitmap,\
+				cliprect,machine->gfx[2],											\
 				CODE,																\
 				COLOR,																\
 				FLIPX,FLIPY,														\
-				SX,SY,																\
-				cliprect,TRANSPARENCY_PEN,15,primasks[priority]);					\
+				SX,SY,																priority_bitmap,primasks[priority],15);					\
 }
 
 	int i;

@@ -44,6 +44,7 @@ enum
 	XTAL_32_768kHz		= 327680,		/* 32.768kHz, used to drive RTC chips */
 	XTAL_1MHz    		= 1000000,		/* Used to drive OKI M6295 chips */
 	XTAL_1_75MHz		= 1750000,		/* RCA CDP1861 */
+	XTAL_1_8432MHz		= 1843200,		/* Bondwell 12/14 */
 	XTAL_2MHz    		= 2000000,
 	XTAL_2_01216MHz		= 2012160,		/* Cidelsa Draco sound board */
 	XTAL_2_4576MHz		= 2457600,		/* Atari ST MFP */
@@ -101,6 +102,7 @@ enum
 	XTAL_14_705882MHz  	= 14705882,		/* Aleck64 */
 	XTAL_14_7456MHz 	= 14745600,		/* Namco System 12 & System Super 22/23 for H8/3002 CPU */
 	XTAL_15MHz			= 15000000,		/* Sinclair QL */
+	XTAL_15_36MHz		= 15360000,		/* Visual 1050 */
 	XTAL_15_468MHz  	= 15468000,		/* Bank Panic h/w, Sega G80 */
 	XTAL_16MHz   		= 16000000,		/* Extremely common, used on 100's of PCBs */
 	XTAL_16_9344MHz  	= 16934400,		/* Usually used to drive 90's Yamaha OPL/FM chips */

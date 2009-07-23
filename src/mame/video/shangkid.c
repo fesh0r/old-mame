@@ -138,16 +138,15 @@ static void draw_sprite(running_machine *machine, const UINT8 *source, bitmap_t 
 		{
 			sx = xpos+(c^xflip)*width;
 			sy = ypos+(r^yflip)*height;
-			drawgfxzoom(
+			drawgfxzoom_transpen(
 				bitmap,
+				cliprect,
 				gfx,
 				tile+c*8+r,
 				color,
 				xflip,yflip,
 				sx,sy,
-				cliprect,
-				TRANSPARENCY_PEN,transparent_pen,
-				(width<<16)/16, (height<<16)/16 );
+				(width<<16)/16, (height<<16)/16,transparent_pen );
 		}
 	}
 }
@@ -221,8 +220,6 @@ static void dynamski_draw_background(running_machine *machine, bitmap_t *bitmap,
 	int attr;
 	int temp;
 
-	int transparency = pri?TRANSPARENCY_PEN:TRANSPARENCY_NONE;
-
 	for( i=0; i<0x400; i++ )
 	{
 		sx = (i%32)*8;
@@ -254,15 +251,15 @@ static void dynamski_draw_background(running_machine *machine, bitmap_t *bitmap,
 		if( pri==0 || (attr>>7)==pri )
 		{
 			tile += ((attr>>5)&0x3)*256;
-			drawgfx(
+			drawgfx_transpen(
 				bitmap,
+				cliprect,
 				machine->gfx[0],
 				tile,
 				attr & 0x0f,
 				0,0,//xflip,yflip,
 				sx,sy,
-				cliprect,
-				transparency,3 );
+				pri?3:-1 );
 		}
 	}
 }
@@ -286,15 +283,14 @@ static void dynamski_draw_sprites(running_machine *machine, bitmap_t *bitmap, co
 		sx = videoram[0x1381+i]-64+8+16;
 		if( attr&1 ) sx += 0x100;
 
-		drawgfx(
+		drawgfx_transpen(
 				bitmap,
+				cliprect,
 				machine->gfx[1],
 				bank*0x40 + (tile&0x3f),
 				color,
 				tile&0x80,tile&0x40, /* flipx,flipy */
-				sx,sy,
-				cliprect,
-				TRANSPARENCY_PEN,3 );
+				sx,sy,3 );
 	}
 }
 

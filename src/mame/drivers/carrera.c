@@ -248,7 +248,7 @@ static VIDEO_UPDATE(carrera)
 		{
 			int tile = carrera_tileram[count&0x7ff] | carrera_tileram[(count&0x7ff)+0x800]<<8;
 
-			drawgfx(bitmap,screen->machine->gfx[0],tile,0,0,0,x*8,y*8,cliprect,TRANSPARENCY_NONE,0);
+			drawgfx_opaque(bitmap,cliprect,screen->machine->gfx[0],tile,0,0,0,x*8,y*8);
 			count++;
 		}
 	}
@@ -304,9 +304,11 @@ static const mc6845_interface mc6845_intf =
 	NULL,		/* before pixel update callback */
 	NULL,		/* row update callback */
 	NULL,		/* after pixel update callback */
-	NULL,		/* callback for display state changes */
-	NULL,		/* HSYNC callback */
-	NULL		/* VSYNC callback */
+	DEVCB_NULL,	/* callback for display state changes */
+	DEVCB_NULL,	/* callback for cursor state changes */
+	DEVCB_NULL,	/* HSYNC callback */
+	DEVCB_NULL,	/* VSYNC callback */
+	NULL		/* update address callback */
 };
 
 

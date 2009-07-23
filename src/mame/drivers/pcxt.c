@@ -192,12 +192,12 @@ static void cga_alphanumeric_tilemap(running_machine *machine, bitmap_t *bitmap,
 			int tile =  vga_vram[offs] & 0xff;
 			int color = vga_vram[offs+1] & 0xff;
 
-			drawgfx(bitmap,machine->gfx[gfx_num],
+			drawgfx_transpen(bitmap,cliprect,machine->gfx[gfx_num],
 					tile,
 					color,
 					0,0,
 					x*8,y*8,
-					cliprect,((color & 0xf0) != 0) ? TRANSPARENCY_NONE : TRANSPARENCY_PEN,0);
+					((color & 0xf0) != 0) ? -1 : 0);
 
 			offs+=2;
 		}
@@ -551,6 +551,15 @@ DMA8237 Controller
 static UINT8 dma_offset[2][4];
 static UINT8 at_pages[0x10];
 
+static DMA8237_HRQ_CHANGED( pc_dma_hrq_changed )
+{
+	cputag_set_input_line(device->machine, "maincpu", INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
+
+	/* Assert HLDA */
+	dma8237_set_hlda( device, state );
+}
+
+
 static DMA8237_MEM_READ( pc_dma_read_byte )
 {
 	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
@@ -615,14 +624,14 @@ static WRITE8_HANDLER(dma_page_select_w)
 
 static const struct dma8237_interface dma8237_1_config =
 {
-	"maincpu",
-	1.0e-6, // 1us
+	XTAL_14_31818MHz/3,
 
+	pc_dma_hrq_changed,
 	pc_dma_read_byte,
 	pc_dma_write_byte,
 
-	{ 0, 0, NULL, NULL },
-	{ 0, 0, NULL, NULL },
+	{ NULL, NULL, NULL, NULL },
+	{ NULL, NULL, NULL, NULL },
 	NULL
 };
 
@@ -1010,10 +1019,10 @@ ROM_START( filetto )
 	ROM_LOAD( "m2.u3", 0x20000, 0x10000, CRC(abc64869) SHA1(564fc9d90d241a7b7776160b3fd036fb08037355) )
 	ROM_LOAD( "m3.u4", 0x30000, 0x10000, CRC(0c1e8a67) SHA1(f1b9280c65fcfcb5ec481cae48eb6f52d6cdbc9d) )
 
-	ROM_REGION( 0x2000, "gfx1", ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx1", 0 )
 	ROM_LOAD("u67.bin", 0x0000, 0x2000, CRC(09710122) SHA1(de84bdd9245df287bbd3bb808f0c3531d13a3545) )
 
-	ROM_REGION( 0x40000, "user2", ROMREGION_DISPOSE ) // UM5100 sample roms?
+	ROM_REGION( 0x40000, "user2", 0 ) // UM5100 sample roms?
 	ROM_LOAD16_BYTE("v1.u15",  0x00000, 0x20000, CRC(613ddd07) SHA1(ebda3d559315879819cb7034b5696f8e7861fe42) )
 	ROM_LOAD16_BYTE("v2.u14",  0x00001, 0x20000, CRC(427e012e) SHA1(50514a6307e63078fe7444a96e39d834684db7df) )
 ROM_END

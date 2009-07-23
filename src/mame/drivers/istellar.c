@@ -64,10 +64,10 @@ static VIDEO_UPDATE( istellar )
 		{
 			int current_screen_character = (chary*32) + charx;
 
-			drawgfx(bitmap, screen->machine->gfx[0],
+			drawgfx_transpen(bitmap, cliprect, screen->machine->gfx[0],
 					tile_ram[current_screen_character],
 					(tile_control_ram[current_screen_character] & 0x0f),
-					0, 0, charx*8, chary*8, cliprect, TRANSPARENCY_PEN, 0);
+					0, 0, charx*8, chary*8, 0);
 		}
 	}
 
@@ -379,7 +379,7 @@ ROM_START( istellar )
 	ROM_LOAD( "rom11.bot", 0x0000, 0x2000, CRC(165cbc57) SHA1(39463888f22ec3125f0686066d923a9aae79a8f7) )	/* At IC location C12 (bottom board) - label IS11 */
 
 	/* Tiles */
-	ROM_REGION( 0x6000, "gfx1", ROMREGION_DISPOSE )
+	ROM_REGION( 0x6000, "gfx1", 0 )
 	ROM_LOAD( "rom9.bot", 0x0000, 0x2000, CRC(9d79acb6) SHA1(72af972695face0016afce8a26c629d963e86d48) )	/* At IC location C47? (bottom board) - label ? */
 	ROM_LOAD( "rom8.bot", 0x2000, 0x2000, CRC(e9c9e490) SHA1(79aa35552b984018bc723adece5c40a0833a313c) )	/* At IC location C48? (bottom board) - label ? */
 	ROM_LOAD( "rom7.bot", 0x4000, 0x2000, CRC(1447ce3a) SHA1(8545cec108df6adab303802b1407c89b2dceba21) )	/* At IC location C49? (bottom board) - label ? */

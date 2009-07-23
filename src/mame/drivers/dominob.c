@@ -55,18 +55,16 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 		code = spriteram[offs + 3] + ((spriteram[offs + 2] & 0x03) << 8)  ;
 
-		drawgfx(bitmap,machine->gfx[0],
+		drawgfx_transpen(bitmap,cliprect,machine->gfx[0],
 				2 * code,
 				((spriteram[offs + 2] & 0xf8) >> 3)  ,
 				flip_screen_x_get(machine),flip_screen_y_get(machine),
-				sx,sy + (flip_screen_y_get(machine) ? 8 : -8),
-				cliprect,TRANSPARENCY_PEN,0);
-		drawgfx(bitmap,machine->gfx[0],
+				sx,sy + (flip_screen_y_get(machine) ? 8 : -8),0);
+		drawgfx_transpen(bitmap,cliprect,machine->gfx[0],
 				2 * code + 1,
 				((spriteram[offs + 2] & 0xf8) >> 3)  ,
 				flip_screen_x_get(machine),flip_screen_y_get(machine),
-				sx,sy,
-				cliprect,TRANSPARENCY_PEN,0);
+				sx,sy,0);
 	}
 }
 
@@ -80,14 +78,13 @@ static VIDEO_UPDATE( dominob )
 		for(y=0;y<256/32;y++)
 	 		for(x=0;x<256/32;x++)
 	 		{
-	 			drawgfx(	bitmap,
-									screen->machine->gfx[1],
+	 			drawgfx_opaque(	bitmap,
+									cliprect,
+						screen->machine->gfx[1],
 									bgram[index]+256*(bgram[index+1]&0xf),
 						bgram[index+1]>>4,
 						0, 0,
-						x*32,y*32,
-						cliprect,
-						TRANSPARENCY_NONE,0);
+						x*32,y*32);
 				index+=2;
 	 		}
 	}
@@ -97,14 +94,13 @@ static VIDEO_UPDATE( dominob )
 		for(y=0;y<32;y++)
 	 		for(x=0;x<32;x++)
 	 		{
-	 			drawgfx(	bitmap,
+	 			drawgfx_transpen(	bitmap,
+						cliprect,
 						screen->machine->gfx[0],
 						videoram[(y*32+x)*2+1]+(videoram[(y*32+x)*2]&7)*256,
 						(videoram[(y*32+x)*2]>>3),
 						0, 0,
-						x*8,y*8,
-						cliprect,
-						TRANSPARENCY_PEN,0);
+						x*8,y*8,0);
 	 		}
 	}
 
@@ -285,12 +281,12 @@ ROM_START( dominob )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "u81",   0x0000, 0x10000, CRC(709b7a29) SHA1(7c95cbaf669a0885101a48e937868c245f87567e) )
 
-	ROM_REGION( 0x18000, "gfx1", ROMREGION_DISPOSE )
+	ROM_REGION( 0x18000, "gfx1", 0 )
 	ROM_LOAD( "u33",   0x00000, 0x8000, CRC(359c98de) SHA1(5c96dfb538c6b25530582f8c2a0cb20d85c39f68) )
 	ROM_LOAD( "u34",   0x08000, 0x8000, CRC(0031f713) SHA1(9341f84081e2d8954e476236e93e49b4d8819b8f) )
 	ROM_LOAD( "u35",   0x10000, 0x8000, CRC(6eb87657) SHA1(40ff9d6f21ade48b16f0cefea08a9364a4ee9144) )
 
-	ROM_REGION( 0x100000, "gfx2", ROMREGION_DISPOSE )
+	ROM_REGION( 0x100000, "gfx2", 0 )
 	ROM_LOAD( "u111",   0x00000, 0x40000, CRC(b835be84) SHA1(bbb744a28df00017f81d6eac12b00b5f3aca3a8b) )
 	ROM_CONTINUE(0x00000,0x40000) // 1ST AND 2ND HALF IDENTICAL
 	ROM_LOAD( "u112",   0x40000, 0x40000, CRC(60d7bfd7) SHA1(9f6475ce717e3d5a42aaaacc3ec340e74b7e40b4) )

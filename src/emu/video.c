@@ -59,6 +59,7 @@ struct _screen_state
 	/* textures and bitmaps */
 	render_texture *		texture[2];				/* 2x textures for the screen bitmap */
 	bitmap_t *				bitmap[2];				/* 2x bitmaps for rendering */
+	bitmap_t *				burnin;					/* burn-in bitmap */
 	UINT8					curbitmap;				/* current bitmap index */
 	UINT8					curtexture;				/* current texture index */
 	INT32					texture_format;			/* texture format of bitmap for this screen */
@@ -176,7 +177,6 @@ static void init_buffered_spriteram(running_machine *machine);
 
 /* graphics decoding */
 static void allocate_graphics(running_machine *machine, const gfx_decode_entry *gfxdecodeinfo);
-static void decode_graphics(running_machine *machine, const gfx_decode_entry *gfxdecodeinfo);
 
 static void realloc_screen_bitmaps(const device_config *screen);
 static STATE_POSTLOAD( video_screen_postload );
@@ -203,6 +203,10 @@ static file_error mame_fopen_next(running_machine *machine, const char *pathopti
 /* movie recording */
 static void video_mng_record_frame(running_machine *machine);
 static void video_avi_record_frame(running_machine *machine);
+
+/* burn-in generation */
+static void video_update_burnin(running_machine *machine);
+static void video_finalize_burnin(const device_config *screen);
 
 /* software rendering */
 static void rgb888_draw_primitives(const render_primitive *primlist, void *dstdata, UINT32 width, UINT32 height, UINT32 pitch);
@@ -339,10 +343,6 @@ void video_init(running_machine *machine)
 	/* call the PALETTE_INIT function */
 	if (machine->config->init_palette != NULL)
 		(*machine->config->init_palette)(machine, memory_region(machine, "proms"));
-
-	/* actually decode the graphics */
-	if (PREDECODE_GFX && machine->config->gfxdecodeinfo != NULL)
-		decode_graphics(machine, machine->config->gfxdecodeinfo);
 
 	/* create a render target for snapshots */
 	viewname = options_get_string(mame_options(), OPTION_SNAPVIEW);
@@ -590,51 +590,6 @@ static void allocate_graphics(running_machine *machine, const gfx_decode_entry *
 		/* allocate the graphics */
 		machine->gfx[curgfx] = gfx_element_alloc(machine, &glcopy, (region_base != NULL) ? region_base + gfxdecode->start : NULL, gfxdecode->total_color_codes, gfxdecode->color_codes_start);
 	}
-}
-
-
-/*-------------------------------------------------
-    decode_graphics - decode the graphics
--------------------------------------------------*/
-
-static void decode_graphics(running_machine *machine, const gfx_decode_entry *gfxdecodeinfo)
-{
-	int totalgfx = 0, curgfx = 0;
-	int i;
-
-	/* count total graphics elements */
-	for (i = 0; i < MAX_GFX_ELEMENTS; i++)
-		if (machine->gfx[i] != NULL)
-			totalgfx += machine->gfx[i]->total_elements;
-
-	/* loop over all elements */
-	for (i = 0; i < MAX_GFX_ELEMENTS; i++)
-		if (machine->gfx[i] != NULL)
-		{
-			/* if we have a valid region, decode it now */
-			if (gfxdecodeinfo[i].memory_region != NULL)
-			{
-				gfx_element *gfx = machine->gfx[i];
-				int j;
-
-				/* now decode the actual graphics */
-				for (j = 0; j < gfx->total_elements; j += 1024)
-				{
-					char buffer[200];
-					int num_to_decode = (j + 1024 < gfx->total_elements) ? 1024 : (gfx->total_elements - j);
-					decodegfx(gfx, j, num_to_decode);
-					curgfx += num_to_decode;
-
-					/* display some startup text */
-					sprintf(buffer, "Decoding (%d%%)", curgfx * 100 / totalgfx);
-					ui_set_startup_text(machine, buffer, FALSE);
-				}
-			}
-
-			/* otherwise, clear the target region */
-			else
-				memset(machine->gfx[i]->gfxdata, 0, machine->gfx[i]->char_modulo * machine->gfx[i]->total_elements);
-		}
 }
 
 
@@ -1247,6 +1202,18 @@ static DEVICE_START( video_screen )
 	if (screen->machine->config->video_attributes & VIDEO_UPDATE_SCANLINE)
 		timer_adjust_oneshot(state->scanline_timer, video_screen_get_time_until_pos(screen, 0, 0), 0);
 
+	/* create burn-in bitmap */
+	if (options_get_int(mame_options(), OPTION_BURNIN) > 0)
+	{
+		int width, height;
+		if (sscanf(options_get_string(mame_options(), OPTION_SNAPSIZE), "%dx%d", &width, &height) != 2 || width == 0 || height == 0)
+			width = height = 300;
+		state->burnin = bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED64);
+		if (state->burnin == NULL)
+			fatalerror("Error allocating burn-in bitmap for screen at (%dx%d)\n", width, height);
+		bitmap_fill(state->burnin, NULL, 0);
+	}
+
 	state_save_register_device_item(screen, 0, state->width);
 	state_save_register_device_item(screen, 0, state->height);
 	state_save_register_device_item(screen, 0, state->visarea.min_x);
@@ -1298,6 +1265,11 @@ static DEVICE_STOP( video_screen )
 		bitmap_free(state->bitmap[0]);
 	if (state->bitmap[1] != NULL)
 		bitmap_free(state->bitmap[1]);
+	if (state->burnin != NULL)
+	{
+		video_finalize_burnin(screen);
+		bitmap_free(state->burnin);
+	}
 }
 
 
@@ -1573,11 +1545,12 @@ static int finish_screen_updates(running_machine *machine)
 		state->changed = FALSE;
 	}
 
-	/* update our movie recording state */
+	/* update our movie recording and burn-in state */
 	if (!mame_is_paused(machine))
 	{
 		video_mng_record_frame(machine);
 		video_avi_record_frame(machine);
+		video_update_burnin(machine);
 	}
 
 	/* draw any crosshairs */
@@ -2631,6 +2604,166 @@ void video_avi_add_sound(running_machine *machine, const INT16 *sound, int numsa
 			video_avi_end_recording(machine);
 
 		profiler_mark(PROFILER_END);
+	}
+}
+
+
+
+/***************************************************************************
+    BURN-IN GENERATION
+***************************************************************************/
+
+/*-------------------------------------------------
+    video_update_burnin - update the burnin bitmap
+    for all screens
+-------------------------------------------------*/
+
+#undef rand
+static void video_update_burnin(running_machine *machine)
+{
+	const device_config *screen;
+
+	/* iterate over screens and update the burnin for the ones that care */
+	for (screen = video_screen_first(machine->config); screen != NULL; screen = video_screen_next(screen))
+	{
+		screen_state *state = get_safe_token(screen);
+		if (state->burnin != NULL)
+		{
+			bitmap_t *srcbitmap = state->bitmap[state->curtexture];
+			int srcwidth = srcbitmap->width;
+			int srcheight = srcbitmap->height;
+			int dstwidth = state->burnin->width;
+			int dstheight = state->burnin->height;
+			int xstep = (srcwidth << 16) / dstwidth;
+			int ystep = (srcheight << 16) / dstheight;
+			int xstart = ((UINT32)rand() % 32767) * xstep / 32767;
+			int ystart = ((UINT32)rand() % 32767) * ystep / 32767;
+			int srcx, srcy;
+			int x, y;
+
+			/* iterate over rows in the destination */
+			for (y = 0, srcy = ystart; y < dstheight; y++, srcy += ystep)
+			{
+				UINT64 *dst = BITMAP_ADDR64(state->burnin, y, 0);
+
+				/* handle the 16-bit palettized case */
+				if (srcbitmap->format == BITMAP_FORMAT_INDEXED16)
+				{
+					const UINT16 *src = BITMAP_ADDR16(srcbitmap, srcy >> 16, 0);
+					const rgb_t *palette = palette_entry_list_adjusted(machine->palette);
+					for (x = 0, srcx = xstart; x < dstwidth; x++, srcx += xstep)
+					{
+						rgb_t pixel = palette[src[srcx >> 16]];
+						dst[x] += RGB_GREEN(pixel) + RGB_RED(pixel) + RGB_BLUE(pixel);
+					}
+				}
+
+				/* handle the 15-bit RGB case */
+				else if (srcbitmap->format == BITMAP_FORMAT_RGB15)
+				{
+					const UINT16 *src = BITMAP_ADDR16(srcbitmap, srcy >> 16, 0);
+					for (x = 0, srcx = xstart; x < dstwidth; x++, srcx += xstep)
+					{
+						rgb15_t pixel = src[srcx >> 16];
+						dst[x] += ((pixel >> 10) & 0x1f) + ((pixel >> 5) & 0x1f) + ((pixel >> 0) & 0x1f);
+					}
+				}
+
+				/* handle the 32-bit RGB case */
+				else if (srcbitmap->format == BITMAP_FORMAT_RGB32)
+				{
+					const UINT32 *src = BITMAP_ADDR32(srcbitmap, srcy >> 16, 0);
+					for (x = 0, srcx = xstart; x < dstwidth; x++, srcx += xstep)
+					{
+						rgb_t pixel = src[srcx >> 16];
+						dst[x] += RGB_GREEN(pixel) + RGB_RED(pixel) + RGB_BLUE(pixel);
+					}
+				}
+			}
+		}
+	}
+}
+
+
+/*-------------------------------------------------
+    video_finalize_burnin - finalize the burnin
+    bitmaps for all screens
+-------------------------------------------------*/
+
+static void video_finalize_burnin(const device_config *screen)
+{
+	screen_state *state = get_safe_token(screen);
+	if (state->burnin != NULL)
+	{
+		astring *fname = astring_alloc();
+		rectangle scaledvis;
+		bitmap_t *finalmap;
+		UINT64 minval = ~(UINT64)0;
+		UINT64 maxval = 0;
+		file_error filerr;
+		mame_file *file;
+		int x, y;
+
+		/* compute the scaled visible region */
+		scaledvis.min_x = state->visarea.min_x * state->burnin->width / state->width;
+		scaledvis.max_x = state->visarea.max_x * state->burnin->width / state->width;
+		scaledvis.min_y = state->visarea.min_y * state->burnin->height / state->height;
+		scaledvis.max_y = state->visarea.max_y * state->burnin->height / state->height;
+
+		/* wrap a bitmap around the subregion we care about */
+		finalmap = bitmap_alloc(scaledvis.max_x + 1 - scaledvis.min_x,
+		                        scaledvis.max_y + 1 - scaledvis.min_y,
+		                        BITMAP_FORMAT_ARGB32);
+
+		/* find the maximum value */
+		for (y = 0; y < finalmap->height; y++)
+		{
+			UINT64 *src = BITMAP_ADDR64(state->burnin, y, 0);
+			for (x = 0; x < finalmap->width; x++)
+			{
+				minval = MIN(minval, src[x]);
+				maxval = MAX(maxval, src[x]);
+			}
+		}
+
+		/* now normalize and convert to RGB */
+		for (y = 0; y < finalmap->height; y++)
+		{
+			UINT64 *src = BITMAP_ADDR64(state->burnin, y, 0);
+			UINT32 *dst = BITMAP_ADDR32(finalmap, y, 0);
+			for (x = 0; x < finalmap->width; x++)
+			{
+				int brightness = (UINT64)(maxval - src[x]) * 255 / (maxval - minval);
+				dst[x] = MAKE_ARGB(0xff, brightness, brightness, brightness);
+			}
+		}
+
+		/* write the final PNG */
+
+		/* compute the name and create the file */
+		astring_printf(fname, "%s" PATH_SEPARATOR "burnin-%s.png", screen->machine->basename, screen->tag);
+		filerr = mame_fopen(SEARCHPATH_SCREENSHOT, astring_c(fname), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
+		if (filerr == FILERR_NONE)
+		{
+			png_info pnginfo = { 0 };
+			png_error pngerr;
+			char text[256];
+
+			/* add two text entries describing the image */
+			sprintf(text, APPNAME " %s", build_version);
+			png_add_text(&pnginfo, "Software", text);
+			sprintf(text, "%s %s", screen->machine->gamedrv->manufacturer, screen->machine->gamedrv->description);
+			png_add_text(&pnginfo, "System", text);
+
+			/* now do the actual work */
+			pngerr = png_write_bitmap(mame_core_file(file), &pnginfo, finalmap, 0, NULL);
+
+			/* free any data allocated */
+			png_free(&pnginfo);
+			mame_fclose(file);
+		}
+		astring_free(fname);
+		bitmap_free(finalmap);
 	}
 }
 

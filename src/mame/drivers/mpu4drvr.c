@@ -524,7 +524,7 @@ static VIDEO_UPDATE( mpu4_vid )
 			colattr = tiledat >>12;
 			tiledat &= 0x0fff;
 
-			drawgfx(bitmap,screen->machine->gfx[gfxregion],tiledat,colattr,0,0,x*8,y*8,cliprect,TRANSPARENCY_NONE,0);
+			drawgfx_opaque(bitmap,cliprect,screen->machine->gfx[gfxregion],tiledat,colattr,0,0,x*8,y*8);
 
 			count++;
 		}
@@ -1625,7 +1625,7 @@ static VIDEO_UPDATE(dealem)
 		{
 			int tile = dealem_videoram[count + 0x1000] | (dealem_videoram[count] << 8);
 			count++;
-			drawgfx(bitmap,screen->machine->gfx[0],tile,0,0,0,x * 8,y * 8,cliprect,TRANSPARENCY_NONE,0);
+			drawgfx_opaque(bitmap,cliprect,screen->machine->gfx[0],tile,0,0,0,x * 8,y * 8);
 		}
 	}
 
@@ -1633,9 +1633,9 @@ static VIDEO_UPDATE(dealem)
 }
 
 
-static MC6845_ON_VSYNC_CHANGED( dealem_vsync_changed )
+static WRITE_LINE_DEVICE_HANDLER( dealem_vsync_changed )
 {
-	cputag_set_input_line(device->machine, "maincpu", INPUT_LINE_NMI, vsync);
+	cputag_set_input_line(device->machine, "maincpu", INPUT_LINE_NMI, state);
 }
 
 /*************************************
@@ -1646,14 +1646,16 @@ static MC6845_ON_VSYNC_CHANGED( dealem_vsync_changed )
 
 static const mc6845_interface hd6845_intf =
 {
-	"screen",					/* screen we are acting on */
-	8,							/* number of pixels per video memory address */
-	NULL,						/* before pixel update callback */
-	NULL,						/* row update callback */
-	NULL,						/* after pixel update callback */
-	NULL,						/* callback for display state changes */
-	NULL,						/* HSYNC callback */
-	dealem_vsync_changed		/* VSYNC callback */
+	"screen",							/* screen we are acting on */
+	8,									/* number of pixels per video memory address */
+	NULL,								/* before pixel update callback */
+	NULL,								/* row update callback */
+	NULL,								/* after pixel update callback */
+	DEVCB_NULL,							/* callback for display state changes */
+	DEVCB_NULL,							/* callback for cursor state changes */
+	DEVCB_NULL,							/* HSYNC callback */
+	DEVCB_LINE(dealem_vsync_changed),	/* VSYNC callback */
+	NULL								/* update address callback */
 };
 
 
@@ -1828,7 +1830,7 @@ ROM_START( dealem )
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASE00  )
 	ROM_LOAD( "zenndlem.u6",	0x8000, 0x8000,  CRC(571e5c05) SHA1(89b4c331407a04eae34bb187b036791e0a671533) )
 
-	ROM_REGION( 0x10000, "gfx1", ROMREGION_DISPOSE )
+	ROM_REGION( 0x10000, "gfx1", 0 )
 	ROM_LOAD( "zenndlem.u24",	0x0000, 0x10000, CRC(3a1950c4) SHA1(7138346d4e8b3cffbd9751b4d7ebd367b9ad8da9) )    /* text layer */
 
 	ROM_REGION( 0x020, "proms", 0 )

@@ -229,6 +229,21 @@ $(CPUOBJ)/jaguar/jaguar.o:	$(CPUSRC)/jaguar/jaguar.c \
 
 
 #-------------------------------------------------
+# Atmel 8-bit AVR
+#-------------------------------------------------
+
+ifneq ($(filter AVR8,$(CPUS)),)
+OBJDIRS += $(CPUOBJ)/avr8
+CPUOBJS += $(CPUOBJ)/avr8/avr8.o
+DBGOBJS += $(CPUOBJ)/avr8/avr8dasm.o
+endif
+
+$(CPUOBJ)/avr8/avr8.o: 	$(CPUSRC)/avr8/avr8.c \
+			$(CPUSRC)/avr8/avr8.h
+
+
+
+#-------------------------------------------------
 # Simutrek Cube Quest bit-sliced CPUs
 #-------------------------------------------------
 
@@ -1253,6 +1268,24 @@ endif
 
 $(CPUOBJ)/ssp1610/ssp1601.o:	$(CPUSRC)/ssp1601/ssp1601.c \
 								$(CPUSRC)/ssp1610/ssp1601.h
+
+
+
+#-------------------------------------------------
+# Texas Instruments TMS0980
+#-------------------------------------------------
+
+ifneq ($(filter TMS0980,$(CPUS)),)
+OBJDIRS += $(CPUOBJ)/tms0980
+CPUOBJS += $(CPUOBJ)/tms0980/tms0980.o
+DBGOBJS += $(CPUOBJ)/tms0980/tms0980d.o
+endif
+
+$(CPUOBJ)/tms0980/tms0980.o:	$(CPUSRC)/tms0980/tms0980.h \
+								$(CPUSRC)/tms0980/tms0980.c
+
+$(CPUOBJ)/tms0980/tms0980d.o:	$(CPUSRC)/tms0980/tms0980.h \
+								$(CPUSRC)/tms0980/tms0980d.c
 
 
 

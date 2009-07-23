@@ -351,9 +351,11 @@ static const mc6845_interface mc6845_intf =
 	NULL,		/* before pixel update callback */
 	NULL,		/* row update callback */
 	NULL,		/* after pixel update callback */
-	NULL,		/* callback for display state changes */
-	NULL,		/* HSYNC callback */
-	NULL		/* VSYNC callback */
+	DEVCB_NULL,	/* callback for display state changes */
+	DEVCB_NULL,	/* callback for cursor state changes */
+	DEVCB_NULL,	/* HSYNC callback */
+	DEVCB_NULL,	/* VSYNC callback */
+	NULL		/* update address callback */
 };
 
 
@@ -407,7 +409,7 @@ ROM_START( jokrwild )
 	ROM_LOAD( "jwild.7b",	0x8000, 0x4000, CRC(744cd029) SHA1(766faea330836344ffc6a1b4e1a64a679b9bf579) )
 	ROM_LOAD( "jwild.7a",	0xc000, 0x4000, CRC(ca8e4f58) SHA1(a4f682980fe562dcd8743890ce94619719cd1153) )
 
-	ROM_REGION( 0x4000, "gfx1", ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, "gfx1", 0 )
 	ROM_LOAD( "jwild.2h",	0x0000, 0x0800, CRC(aed38e00) SHA1(9530078f6c22d67594606476c3698a75e052d1d6) )
 	ROM_LOAD( "jwild.2g",	0x0800, 0x0800, CRC(d635f025) SHA1(f70d5a837797e2250a7e581b96e60a704da25511) )
 	ROM_LOAD( "jwild.2f",	0x1000, 0x0800, CRC(9c1e057c) SHA1(23fd630aa20a4ffa5179d4a4fa32c6ee4b3f9c1b) )

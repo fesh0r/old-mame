@@ -697,14 +697,13 @@ void metro_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectan
 
 				gfx_element_build_temporary(&gfx, machine, gfxdata, width, height, width, 0, 256, 0);
 
-				pdrawgfxzoom(	bitmap,&gfx,
+				pdrawgfxzoom_transpen(	bitmap,cliprect, &gfx,
 								0,
 								color_start >> 4,
 								flipx, flipy,
 								x, y,
-								cliprect, TRANSPARENCY_PEN, 255,
 								zoom, zoom,
-								primask[pri]);
+								priority_bitmap,primask[pri], 255);
 			}
 			else
 			{
@@ -714,14 +713,13 @@ void metro_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectan
 
 				gfx_element_build_temporary(&gfx, machine, gfxdata, width, height, width/2, 0, 16, GFX_ELEMENT_PACKED);
 
-				pdrawgfxzoom(	bitmap,&gfx,
+				pdrawgfxzoom_transpen(	bitmap,cliprect, &gfx,
 								0,
 								color + color_start,
 								flipx, flipy,
 								x, y,
-								cliprect, TRANSPARENCY_PEN, 15,
 								zoom, zoom,
-								primask[pri]);
+								priority_bitmap,primask[pri], 15);
 			}
 #if 0
 {	/* Display priority + zoom on each sprite */
@@ -943,7 +941,7 @@ if (input_code_pressed(KEYCODE_Z))
 }
 #endif
 
-	if (has_zoom) K053936_0_zoom_draw(bitmap,cliprect,metro_K053936_tilemap,0,0);
+	if (has_zoom) K053936_0_zoom_draw(bitmap,cliprect,metro_K053936_tilemap,0,0, 1);
 
 
 	for (pri=3; pri>=0; pri--)

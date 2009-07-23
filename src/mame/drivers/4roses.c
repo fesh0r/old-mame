@@ -364,9 +364,11 @@ static const mc6845_interface mc6845_intf =
 	NULL,		/* before pixel update callback */
 	NULL,		/* row update callback */
 	NULL,		/* after pixel update callback */
-	NULL,		/* callback for display state changes */
-	NULL,		/* HSYNC callback */
-	NULL		/* VSYNC callback */
+	DEVCB_NULL,	/* callback for display state changes */
+	DEVCB_NULL,	/* callback for cursor state changes */
+	DEVCB_NULL,	/* HSYNC callback */
+	DEVCB_NULL,	/* VSYNC callback */
+	NULL		/* update address callback */
 };
 
 
@@ -420,7 +422,7 @@ ROM_START( 4roses )
 	ROM_REGION( 0x0400,  "mcu", 0 )	/* protected... no dump available */
 	ROM_LOAD( "ep87c750ebpn_no_dump.u41", 0x0000, 0x0400, NO_DUMP )
 
-	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
+	ROM_REGION( 0x80000, "gfx1", 0 )
 	ROM_LOAD( "30.u17", 0x00000, 0x80000, CRC(daefacc2) SHA1(5896e9da06fde39770fcdc585881b8c689b34369) )
 
 	ROM_REGION( 0x18000, "proms", 0 )
@@ -438,7 +440,7 @@ ROM_START( 4rosesa )
 	ROM_REGION( 0x0400,  "mcu", 0 )	/* protected... no dump available */
 	ROM_LOAD( "ep87c750ebpn_no_dump.u41", 0x0000, 0x0400, NO_DUMP )
 
-	ROM_REGION( 0x80000, "gfx1", ROMREGION_DISPOSE )
+	ROM_REGION( 0x80000, "gfx1", 0 )
 	ROM_LOAD( "30.u17", 0x00000, 0x80000, CRC(daefacc2) SHA1(5896e9da06fde39770fcdc585881b8c689b34369) )
 
 	ROM_REGION( 0x20000, "proms", 0 )

@@ -341,6 +341,8 @@ VIDEO_START( phozon )
 	spriteram = mappy_spriteram + 0x780;
 	spriteram_2 = spriteram + 0x800;
 	spriteram_3 = spriteram_2 + 0x800;
+
+    state_save_register_global(machine, mappy_scroll);
 }
 
 VIDEO_START( mappy )
@@ -441,12 +443,11 @@ void mappy_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectan
 			{
 				for (x = 0;x <= sizex;x++)
 				{
-					drawgfx(bitmap,machine->gfx[1],
+					drawgfx_transmask(bitmap,cliprect,machine->gfx[1],
 						sprite + gfx_offs[y ^ (sizey * flipy)][x ^ (sizex * flipx)],
 						color,
 						flipx,flipy,
 						sx + 16*x,sy + 16*y,
-						cliprect,TRANSPARENCY_PENS,
 						colortable_get_transpen_mask(machine->colortable, machine->gfx[1], color, transcolor));
 				}
 			}
@@ -517,12 +518,11 @@ static void phozon_draw_sprites(running_machine *machine, bitmap_t *bitmap, cons
 			{
 				for (x = 0;x <= sizex;x++)
 				{
-					drawgfx(bitmap,machine->gfx[1],
+					drawgfx_transmask(bitmap,cliprect,machine->gfx[1],
 						sprite + gfx_offs[y ^ (sizey * flipy)][x ^ (sizex * flipx)],
 						color,
 						flipx,flipy,
 						sx + 8*x,sy + 8*y,
-						cliprect,TRANSPARENCY_PENS,
 						colortable_get_transpen_mask(machine->colortable, machine->gfx[1], color, 31));
 				}
 			}

@@ -724,6 +724,9 @@ file_error core_fload(const char *filename, void **data, UINT32 *length)
 		free(*data);
 		return FILERR_FAILURE;
 	}
+
+	/* close the file and return data */
+	core_fclose(file);
 	return FILERR_NONE;
 }
 
@@ -884,7 +887,7 @@ int core_filename_ends_with(const char *filename, const char *extension)
 
 	/* work backwards checking for a match */
 	while (extlen > 0)
-		if (tolower(filename[--namelen]) != tolower(extension[--extlen]))
+		if (tolower((UINT8)filename[--namelen]) != tolower((UINT8)extension[--extlen]))
 		{
 			matches = FALSE;
 			break;

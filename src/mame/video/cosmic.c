@@ -297,18 +297,16 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
             if (spriteram[offs] & 0x80)
                 /* 16x16 sprite */
-			    drawgfx(bitmap,machine->gfx[0],
+			    drawgfx_transpen(bitmap,cliprect,machine->gfx[0],
 					    code, color,
 					    0, ~spriteram[offs] & 0x40,
-				    	256-spriteram[offs+2],spriteram[offs+1],
-				        cliprect,TRANSPARENCY_PEN,0);
+				    	256-spriteram[offs+2],spriteram[offs+1],0);
             else
                 /* 32x32 sprite */
-			    drawgfx(bitmap,machine->gfx[1],
+			    drawgfx_transpen(bitmap,cliprect,machine->gfx[1],
 					    code >> 2, color,
 					    0, ~spriteram[offs] & 0x40,
-				    	256-spriteram[offs+2],spriteram[offs+1],
-				        cliprect,TRANSPARENCY_PEN,0);
+				    	256-spriteram[offs+2],spriteram[offs+1],0);
         }
 	}
 }
@@ -344,7 +342,7 @@ static void cosmica_draw_starfield(const device_config *screen, bitmap_t *bitmap
 				// flip-flop at IC11 is clocked
 				map = PROM[(x1 >> 5) | (y >> 1 << 3)];
 
-			if ((!(hc & va) & (vb ^ hb_)) &&			/* right network */
+			if (((!(hc & va)) & (vb ^ hb_)) &&			/* right network */
 			    (((x1 ^ map) & (hc | 0x1e)) == 0x1e))	/* left network */
 			{
 				/* RGB order is reversed -- bit 7=R, 6=G, 5=B */
@@ -482,10 +480,10 @@ static void nomnlnd_draw_background(const device_config *screen, bitmap_t *bitma
 			int hc_ = (x >> 6) & 0x01;
 			int hd_ =  x >> 7;
 
-			if ((!vb_ & vc_ & !vd_) ^ (vb_ & !vc_ & vd_))
+			if (((!vb_) & vc_ & (!vd_)) ^ (vb_ & (!vc_) & vd_))
 			{
 				/* tree */
-				if (!hd_ & hc_ & !hb_)
+				if ((!hd_) & hc_ & (!hb_))
 				{
 					offs_t offs = ((x >> 3) & 0x03) | ((y & 0x1f) << 2) |
 					              (flip_screen_get(screen->machine) ? 0x80 : 0);
@@ -516,7 +514,7 @@ static void nomnlnd_draw_background(const device_config *screen, bitmap_t *bitma
 
 					color = ( plane1 & plane2)      |	// R
 					        ( plane1 | plane2) << 1 |	// G
-					        (!plane1 & hd)     << 2; 	// B - see above
+					        ((!plane1) & hd)     << 2; 	// B - see above
 				}
 			}
 

@@ -35,7 +35,7 @@
 #define GFX_RAW 				0x12345678
 /* When planeoffset[0] is set to GFX_RAW, the gfx data is left as-is, with no conversion.
    No buffer is allocated for the decoded data, and gfxdata is set to point to the source
-   data; therefore, you must not use ROMREGION_DISPOSE.
+   data.
    xoffset[0] is an optional displacement (*8) from the beginning of the source data, while
    yoffset[0] is the line modulo (*8) and charincrement the char modulo (*8). They are *8
    for consistency with the usual behaviour, but the bottom 3 bits are not used.
@@ -45,15 +45,6 @@
    handlings of the same ROM data (e.g. metro.c can use both 4bpp and 8bpp tiles, and both
    8x8 and 16x16; cps.c has 8x8, 16x16 and 32x32 tiles all fetched from the same ROMs).
 */
-
-enum
-{
-	TRANSPARENCY_NONE,			/* opaque with remapping */
-	TRANSPARENCY_PEN,			/* single pen transparency with remapping */
-	TRANSPARENCY_PENS,			/* multiple pen transparency with remapping */
-
-	TRANSPARENCY_MODES			/* total number of modes; must be last */
-};
 
 enum
 {
@@ -192,9 +183,6 @@ void gfx_element_build_temporary(gfx_element *gfx, running_machine *machine, UIN
 
 /* ----- core graphics drawing ----- */
 
-/* generic drawgfx with legacy interface */
-void drawgfx(bitmap_t *dest, const gfx_element *gfx, UINT32 code, UINT32 color, int flipx, int flipy, INT32 destx, INT32 desty, const rectangle *cliprect, int transparency, UINT32 transparent_color);
-
 /* specific drawgfx implementations for each transparency type */
 void drawgfx_opaque(bitmap_t *dest, const rectangle *cliprect, const gfx_element *gfx, UINT32 code, UINT32 color, int flipx, int flipy, INT32 destx, INT32 desty);
 void drawgfx_transpen(bitmap_t *dest, const rectangle *cliprect, const gfx_element *gfx, UINT32 code, UINT32 color, int flipx, int flipy, INT32 destx, INT32 desty, UINT32 transpen);
@@ -206,9 +194,6 @@ void drawgfx_alpha(bitmap_t *dest, const rectangle *cliprect, const gfx_element 
 
 
 /* ----- zoomed graphics drawing ----- */
-
-/* generic drawgfxzoom with legacy interface */
-void drawgfxzoom(bitmap_t *dest, const gfx_element *gfx, UINT32 code, UINT32 color, int flipx, int flipy, INT32 destx, INT32 desty, const rectangle *cliprect, int transparency, UINT32 transparent_color, UINT32 scalex, UINT32 scaley);
 
 /* specific drawgfxzoom implementations for each transparency type */
 void drawgfxzoom_opaque(bitmap_t *dest, const rectangle *cliprect, const gfx_element *gfx, UINT32 code, UINT32 color, int flipx, int flipy, INT32 destx, INT32 desty, UINT32 scalex, UINT32 scaley);
@@ -222,9 +207,6 @@ void drawgfxzoom_alpha(bitmap_t *dest, const rectangle *cliprect, const gfx_elem
 
 /* ----- priority masked graphics drawing ----- */
 
-/* generic pdrawgfx with legacy interface */
-void pdrawgfx(bitmap_t *dest, const gfx_element *gfx, UINT32 code, UINT32 color, int flipx, int flipy, INT32 destx, INT32 desty, const rectangle *cliprect, int transparency, UINT32 transparent_color, UINT32 pmask);
-
 /* specific pdrawgfx implementations for each transparency type */
 void pdrawgfx_opaque(bitmap_t *dest, const rectangle *cliprect, const gfx_element *gfx, UINT32 code, UINT32 color, int flipx, int flipy, INT32 destx, INT32 desty, bitmap_t *priority, UINT32 pmask);
 void pdrawgfx_transpen(bitmap_t *dest, const rectangle *cliprect, const gfx_element *gfx, UINT32 code, UINT32 color, int flipx, int flipy, INT32 destx, INT32 desty, bitmap_t *priority, UINT32 pmask, UINT32 transpen);
@@ -236,9 +218,6 @@ void pdrawgfx_alpha(bitmap_t *dest, const rectangle *cliprect, const gfx_element
 
 
 /* ----- priority masked zoomed graphics drawing ----- */
-
-/* generic pdrawgfxzoom with legacy interface */
-void pdrawgfxzoom(bitmap_t *dest, const gfx_element *gfx, UINT32 code, UINT32 color, int flipx, int flipy, INT32 destx, INT32 desty, const rectangle *cliprect, int transparency, UINT32 transparent_color, UINT32 scalex, UINT32 scaley, UINT32 pmask);
 
 /* specific pdrawgfxzoom implementations for each transparency type */
 void pdrawgfxzoom_opaque(bitmap_t *dest, const rectangle *cliprect, const gfx_element *gfx, UINT32 code, UINT32 color, int flipx, int flipy, INT32 destx, INT32 desty, UINT32 scalex, UINT32 scaley, bitmap_t *priority, UINT32 pmask);

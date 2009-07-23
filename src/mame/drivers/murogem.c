@@ -181,7 +181,7 @@ static VIDEO_UPDATE(murogem)
 			int tileno = murogem_videoram[count]&0x3f;
 			int attr = murogem_videoram[count+0x400]&0x0f;
 
-			drawgfx(bitmap,screen->machine->gfx[0],tileno,attr,0,0,xx*8,yy*8,cliprect,TRANSPARENCY_PEN,0);
+			drawgfx_transpen(bitmap,cliprect,screen->machine->gfx[0],tileno,attr,0,0,xx*8,yy*8,0);
 
 			count++;
 
@@ -199,9 +199,11 @@ static const mc6845_interface mc6845_intf =
 	NULL,		/* before pixel update callback */
 	NULL,		/* row update callback */
 	NULL,		/* after pixel update callback */
-	NULL,		/* callback for display state changes */
-	NULL,		/* HSYNC callback */
-	NULL		/* VSYNC callback */
+	DEVCB_NULL,	/* callback for display state changes */
+	DEVCB_NULL,	/* callback for cursor state changes */
+	DEVCB_NULL,	/* HSYNC callback */
+	DEVCB_NULL,	/* VSYNC callback */
+	NULL		/* update address callback */
 };
 
 
@@ -268,6 +270,6 @@ ROM_START( lasvegas )
 
 ROM_END
 
-GAME( 198?,	murogem,  0,       murogem, murogem, 0, ROT0, "unknown", "Muroge Monaco (set 1)", GAME_NO_SOUND|GAME_WRONG_COLORS )
+GAME( 198?, murogem,  0,       murogem, murogem, 0, ROT0, "unknown", "Muroge Monaco (set 1)", GAME_NO_SOUND|GAME_WRONG_COLORS )
 GAME( 198?, murogema, murogem, murogem, murogem, 0, ROT0, "unknown", "Muroge Monaco (set 2)", GAME_NO_SOUND|GAME_WRONG_COLORS )
-GAME( 198?, lasvegas, murogem, murogem, murogem, 0, ROT0, "hack", "Las Vegas, Nevada", GAME_NO_SOUND|GAME_WRONG_COLORS )
+GAME( 198?, lasvegas, murogem, murogem, murogem, 0, ROT0, "hack",    "Las Vegas, Nevada", GAME_NO_SOUND|GAME_WRONG_COLORS )

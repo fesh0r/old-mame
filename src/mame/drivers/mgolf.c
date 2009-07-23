@@ -51,21 +51,19 @@ static VIDEO_UPDATE( mgolf )
 
 	for (i = 0; i < 2; i++)
 	{
-		drawgfx(bitmap, screen->machine->gfx[1],
+		drawgfx_transpen(bitmap, cliprect, screen->machine->gfx[1],
 			mgolf_video_ram[0x399 + 4 * i],
 			i,
 			0, 0,
 			mgolf_video_ram[0x390 + 2 * i] - 7,
-			mgolf_video_ram[0x398 + 4 * i] - 16,
-			cliprect, TRANSPARENCY_PEN, 0);
+			mgolf_video_ram[0x398 + 4 * i] - 16, 0);
 
-		drawgfx(bitmap, screen->machine->gfx[1],
+		drawgfx_transpen(bitmap, cliprect, screen->machine->gfx[1],
 			mgolf_video_ram[0x39b + 4 * i],
 			i,
 			0, 0,
 			mgolf_video_ram[0x390 + 2 * i] - 15,
-			mgolf_video_ram[0x39a + 4 * i] - 16,
-			cliprect, TRANSPARENCY_PEN, 0);
+			mgolf_video_ram[0x39a + 4 * i] - 16, 0);
 	}
 	return 0;
 }
@@ -326,15 +324,15 @@ ROM_START( mgolf )
 	ROM_LOAD_NIB_LOW ( "33502-01.j2", 0x3800, 0x0800, CRC(2177b041) SHA1(c842f8764e28c377e35458f1ae972a3c0278df45) )
 	ROM_LOAD_NIB_HIGH( "33503-01.k2", 0x3800, 0x0800, CRC(db6ccbf6) SHA1(84f7b8bf37b487a386f700fb35c15a0c6e5254a4) )
 
-	ROM_REGION( 0x0400, "gfx1", ROMREGION_DISPOSE ) /* tiles */
+	ROM_REGION( 0x0400, "gfx1", 0 ) /* tiles */
 	ROM_LOAD( "33524-01.h8", 0x0000, 0x0200, CRC(bd0e3bb3) SHA1(d833bf777118800c84fdae3d52c856375e05bc26) )
 	ROM_LOAD( "33525-01.f8", 0x0200, 0x0200, CRC(7b2bac96) SHA1(2d2580b66b56de2837ccb3b60d0f24a03d018fbd) )
 
-	ROM_REGION( 0x0100, "gfx2", ROMREGION_DISPOSE ) /* sprites */
+	ROM_REGION( 0x0100, "gfx2", 0 ) /* sprites */
 	ROM_LOAD_NIB_LOW ( "33526-01.f5", 0x0000, 0x0100, CRC(feee59ad) SHA1(6a7a3e043d7db2c2711029fcd49e1e2ff4cfde78) )
 	ROM_LOAD_NIB_HIGH( "33527-01.e5", 0x0000, 0x0100, CRC(d482bdf2) SHA1(59251980bb7c6b02dcd75c46e32c9bf9d8c5e8c1) )
 
-	ROM_REGION( 0x0200, "proms", ROMREGION_DISPOSE )
+	ROM_REGION( 0x0200, "proms", 0 )
 	ROM_LOAD( "33756-01.m7", 0x0000, 0x0200, CRC(4cec9bf3) SHA1(6dd49f045fb53ae9f412639117b107faa93dfd99) )
 ROM_END
 

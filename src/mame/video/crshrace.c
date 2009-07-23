@@ -150,21 +150,19 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 				map_start++;
 
 				if (flipscreen)
-					drawgfxzoom(bitmap,machine->gfx[2],
+					drawgfxzoom_transpen(bitmap,cliprect,machine->gfx[2],
 							code,
 							color,
 							!flipx,!flipy,
 							304-sx,208-sy,
-							cliprect,TRANSPARENCY_PEN,15,
-							0x1000 * zoomx,0x1000 * zoomy);
+							0x1000 * zoomx,0x1000 * zoomy,15);
 				else
-					drawgfxzoom(bitmap,machine->gfx[2],
+					drawgfxzoom_transpen(bitmap,cliprect,machine->gfx[2],
 							code,
 							color,
 							flipx,flipy,
 							sx,sy,
-							cliprect,TRANSPARENCY_PEN,15,
-							0x1000 * zoomx,0x1000 * zoomy);
+							0x1000 * zoomx,0x1000 * zoomy,15);
 			}
 		}
 	}
@@ -179,7 +177,7 @@ static void draw_bg(bitmap_t *bitmap,const rectangle *cliprect)
 
 static void draw_fg(bitmap_t *bitmap,const rectangle *cliprect)
 {
-	K053936_0_zoom_draw(bitmap,cliprect,tilemap1,0,0);
+	K053936_0_zoom_draw(bitmap,cliprect,tilemap1,0,0,1);
 }
 
 

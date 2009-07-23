@@ -81,10 +81,9 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 				ex = xflip ? (spr_size-1-x) : x;
 				ey = yflip ? (spr_size-1-y) : y;
 
-				drawgfx(bitmap,gfx,number + x_offset[ex] + y_offset[ey],
+				drawgfx_transpen(bitmap,cliprect,gfx,number + x_offset[ex] + y_offset[ey],
 						color,xflip,yflip,
-						sx-0x09+x*8,sy+y*8,
-						cliprect,TRANSPARENCY_PEN,0);
+						sx-0x09+x*8,sy+y*8,0);
 			}
 		}
 	}
@@ -283,7 +282,7 @@ ROM_START( drtomy )
 	ROM_LOAD16_BYTE( "15.u21", 0x00001, 0x20000, CRC(0b8d763b) SHA1(082005985a2de7b941ea227bbf6e761a197132e6) )
 	ROM_LOAD16_BYTE( "16.u22", 0x00000, 0x20000, CRC(206f4d65) SHA1(f4a28bc6041981d50a03477e63e90d5ff8ffb765) )
 
-	ROM_REGION( 0x400000, "gfx1", ROMREGION_DISPOSE )
+	ROM_REGION( 0x400000, "gfx1", 0 )
 	ROM_LOAD( "20.u80",	0x000000, 0x40000, CRC(4d4d86ff) SHA1(60df0bf8ba62fea42ff756cd7c5485b57f597098) )
 	ROM_LOAD( "19.u81",	0x100000, 0x40000, CRC(49ecbfe2) SHA1(16889663bdd3b7d0a350d5b18e221480413f6b4f) )
 	ROM_LOAD( "18.u82", 0x200000, 0x40000, CRC(8ee5c921) SHA1(6ba43eeb3b633c3db22f7b18b8fe91f250da2242) )

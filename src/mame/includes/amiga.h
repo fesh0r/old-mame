@@ -144,6 +144,7 @@ Ernesto Corvi & Mariusz Wojcieszek
 #define REG_BPLCON3		(0x106/2)	/* W    D    Bit plane control reg (enhanced features) */
 #define REG_BPL1MOD		(0x108/2)	/* W  A      Bit plane modulo (odd planes) */
 #define REG_BPL2MOD		(0x10A/2)	/* W  A      Bit Plane modulo (even planes) */
+#define REG_BPLCON4		(0x10C/2)	/* W    D    Bit plane control reg. (display masks) */
 #define REG_BPL1DAT		(0x110/2)	/* W    D    Bit plane 1 data (parallel-to-serial convert) */
 #define REG_BPL2DAT		(0x112/2)	/* W    D    Bit plane 2 data (parallel-to-serial convert) */
 #define REG_BPL3DAT		(0x114/2)	/* W    D    Bit plane 3 data (parallel-to-serial convert) */
@@ -232,6 +233,7 @@ Ernesto Corvi & Mariusz Wojcieszek
 #define REG_COLOR29		(0x1BA/2)	/* W    D    Color table 29 */
 #define REG_COLOR30		(0x1BC/2)	/* W    D    Color table 30 */
 #define REG_COLOR31		(0x1BE/2)	/* W    D    Color table 31 */
+#define REG_DIWHIGH		(0x1E4/2)	/* W  A D    Display window upper bits for start/stop */
 #define REG_FMODE		(0x1FC/2)	/* W  A D    Fetch mode */
 
 /* DMACON bit layout */
@@ -365,6 +367,7 @@ extern const char *const amiga_custom_names[0x100];
 
 extern UINT16 (*amiga_chip_ram_r)(offs_t offset);
 extern void (*amiga_chip_ram_w)(offs_t offset, UINT16 data);
+extern void amiga_chip_ram_w8(offs_t offset, UINT8 data);
 
 void amiga_machine_config(running_machine *machine, const amiga_machine_interface *intf);
 
@@ -415,7 +418,6 @@ void amiga_sprite_enable_comparitor(int which, int enable);
 
 /*----------- defined in video/amigaaga.c -----------*/
 
-PALETTE_INIT( amiga_aga );
 VIDEO_START( amiga_aga );
 VIDEO_UPDATE( amiga_aga );
 
@@ -426,5 +428,6 @@ void amiga_aga_render_scanline(running_machine *machine, bitmap_t *bitmap, int s
 void amiga_aga_sprite_dma_reset(int which);
 void amiga_aga_sprite_enable_comparitor(int which, int enable);
 void aga_palette_write(int color_reg, UINT16 data);
+void aga_diwhigh_written(int written);
 
 #endif /* __AMIGA_H__ */

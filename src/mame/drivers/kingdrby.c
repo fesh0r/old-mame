@@ -164,13 +164,13 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		{
 			for(dy=0;dy<h;dy++)
 				for(dx=0;dx<w;dx++)
-					drawgfx(bitmap,machine->gfx[0],spr_offs++,colour,1,0,((x+16*w)-(dx+1)*16),(y+dy*16),cliprect,TRANSPARENCY_PEN,0);
+					drawgfx_transpen(bitmap,cliprect,machine->gfx[0],spr_offs++,colour,1,0,((x+16*w)-(dx+1)*16),(y+dy*16),0);
 		}
 		else
 		{
 			for(dy=0;dy<h;dy++)
 				for(dx=0;dx<w;dx++)
-					drawgfx(bitmap,machine->gfx[0],spr_offs++,colour,0,0,(x+dx*16),(y+dy*16),cliprect,TRANSPARENCY_PEN,0);
+					drawgfx_transpen(bitmap,cliprect,machine->gfx[0],spr_offs++,colour,0,0,(x+dx*16),(y+dy*16),0);
 		}
 	}
 }
@@ -631,9 +631,11 @@ static const mc6845_interface mc6845_intf =
 	NULL,		/* before pixel update callback */
 	NULL,		/* row update callback */
 	NULL,		/* after pixel update callback */
-	NULL,		/* callback for display state changes */
-	NULL,		/* HSYNC callback */
-	NULL		/* VSYNC callback */
+	DEVCB_NULL,	/* callback for display state changes */
+	DEVCB_NULL,	/* callback for cursor state changes */
+	DEVCB_NULL,	/* HSYNC callback */
+	DEVCB_NULL,	/* VSYNC callback */
+	NULL		/* update address callback */
 };
 
 /*************************************

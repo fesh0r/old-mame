@@ -468,20 +468,18 @@ static VIDEO_UPDATE( marinedt )
 	tilemap_draw(tile, cliprect, tx_tilemap, 0, 0);
 
 	bitmap_fill(obj1, NULL, 0);
-	drawgfx(obj1, screen->machine->gfx[1],
+	drawgfx_transpen(obj1, NULL, screen->machine->gfx[1],
 			OBJ_CODE(marinedt_obj1_a),
 			OBJ_COLOR(marinedt_obj1_a),
 			OBJ_FLIPX(marinedt_obj1_a), OBJ_FLIPY(marinedt_obj1_a),
-			0, 0,
-			NULL, TRANSPARENCY_PEN, 0);
+			0, 0, 0);
 
 	bitmap_fill(obj2, NULL, 0);
-	drawgfx(obj2, screen->machine->gfx[2],
+	drawgfx_transpen(obj2, NULL, screen->machine->gfx[2],
 			OBJ_CODE(marinedt_obj2_a),
 			OBJ_COLOR(marinedt_obj2_a),
 			OBJ_FLIPX(marinedt_obj2_a), OBJ_FLIPY(marinedt_obj2_a),
-			0, 0,
-			NULL, TRANSPARENCY_PEN, 0);
+			0, 0, 0);
 
 	bitmap_fill(bitmap, NULL, 0);
 
@@ -610,15 +608,15 @@ ROM_START( marinedt )
 	ROM_LOAD( "mg06",     0x2800, 0x0800, CRC(a7e2c69b) SHA1(614fc479d13c1726382fe7b4b0379c1dd4915af0) )
 	ROM_LOAD( "mg07",     0x3000, 0x0800, CRC(b85d1f9a) SHA1(4fd3e76b1816912df84477dba4655d395f5e7072) )
 
-	ROM_REGION( 0x1800, "gfx1", ROMREGION_DISPOSE )
+	ROM_REGION( 0x1800, "gfx1", 0 )
 	ROM_LOAD( "mg09",     0x0000, 0x0800, CRC(f4c349ca) SHA1(077f65eeac616a778d6c42bb95677fa2892ab697) )
 	ROM_LOAD( "mg10",     0x0800, 0x0800, CRC(b41251e3) SHA1(e125a971b401c78efeb4b03d0fab43e392d3fc14) )
 	ROM_LOAD( "mg11",     0x1000, 0x0800, CRC(50d66dd7) SHA1(858d1d2a75e091b0e382d964c5e4ddcd8e6f07dd))
 
-	ROM_REGION( 0x1000, "gfx2", ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx2", 0 )
 	ROM_LOAD( "mg12",     0x0000, 0x1000, CRC(7c6486d5) SHA1(a7f17a803937937f05fc90621883a0fd44b297a0) )
 
-	ROM_REGION( 0x1000, "gfx3", ROMREGION_DISPOSE )
+	ROM_REGION( 0x1000, "gfx3", 0 )
 	ROM_LOAD( "mg13",     0x0000, 0x1000, CRC(17817044) SHA1(8c9b96620e3c414952e6d85c6e81b0df85c88e7a) )
 
 	ROM_REGION( 0x0080, "proms", 0 )

@@ -21,6 +21,17 @@
 
 
 /***************************************************************************
+    CONSTANTS
+***************************************************************************/
+
+#define DOUBLE_SIGN		(U64(0x8000000000000000))
+#define DOUBLE_EXP		(U64(0x7ff0000000000000))
+#define DOUBLE_FRAC		(U64(0x000fffffffffffff))
+#define DOUBLE_ZERO		(0)
+
+
+
+/***************************************************************************
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
@@ -171,6 +182,98 @@ INLINE void set_decrementer(powerpc_state *ppc, UINT32 newdec)
 
 	if ((INT32)curdec >= 0 && (INT32)newdec < 0)
 		ppc->irq_pending |= 0x02;
+}
+
+
+/*-------------------------------------------------
+    is_nan_double - is a double value a NaN
+-------------------------------------------------*/
+
+INLINE int is_nan_double(double x)
+{
+	UINT64 xi = *(UINT64*)&x;
+	return( ((xi & DOUBLE_EXP) == DOUBLE_EXP) &&
+			((xi & DOUBLE_FRAC) != DOUBLE_ZERO) );
+}
+
+
+/*-------------------------------------------------
+    is_qnan_double - is a double value a
+    quiet NaN
+-------------------------------------------------*/
+
+INLINE int is_qnan_double(double x)
+{
+	UINT64 xi = *(UINT64*)&x;
+	return( ((xi & DOUBLE_EXP) == DOUBLE_EXP) &&
+			((xi & U64(0x0007fffffffffff)) == U64(0x000000000000000)) &&
+			((xi & U64(0x000800000000000)) == U64(0x000800000000000)) );
+}
+
+
+/*-------------------------------------------------
+    is_snan_double - is a double value a
+    signaling NaN
+-------------------------------------------------*/
+
+INLINE int is_snan_double(double x)
+{
+	UINT64 xi = *(UINT64*)&x;
+	return( ((xi & DOUBLE_EXP) == DOUBLE_EXP) &&
+			((xi & DOUBLE_FRAC) != DOUBLE_ZERO) &&
+			((xi & U64(0x0008000000000000)) == DOUBLE_ZERO) );
+}
+
+
+/*-------------------------------------------------
+    is_infinity_double - is a double value
+    infinity
+-------------------------------------------------*/
+
+INLINE int is_infinity_double(double x)
+{
+	UINT64 xi = *(UINT64*)&x;
+	return( ((xi & DOUBLE_EXP) == DOUBLE_EXP) &&
+			((xi & DOUBLE_FRAC) == DOUBLE_ZERO) );
+}
+
+
+/*-------------------------------------------------
+    is_normalized_double - is a double value
+    normalized
+-------------------------------------------------*/
+
+INLINE int is_normalized_double(double x)
+{
+	UINT64 exp;
+	UINT64 xi = *(UINT64*)&x;
+	exp = (xi & DOUBLE_EXP) >> 52;
+
+	return (exp >= 1) && (exp <= 2046);
+}
+
+
+/*-------------------------------------------------
+    is_denormalized_double - is a double value
+    denormalized
+-------------------------------------------------*/
+
+INLINE int is_denormalized_double(double x)
+{
+	UINT64 xi = *(UINT64*)&x;
+	return( ((xi & DOUBLE_EXP) == 0) &&
+			((xi & DOUBLE_FRAC) != DOUBLE_ZERO) );
+}
+
+
+/*-------------------------------------------------
+    sign_double - return sign of a double value
+-------------------------------------------------*/
+
+INLINE int sign_double(double x)
+{
+	UINT64 xi = *(UINT64*)&x;
+	return ((xi & DOUBLE_SIGN) != 0);
 }
 
 
@@ -997,6 +1100,59 @@ void ppccom_execute_mtdcr(powerpc_state *ppc)
 
 
 /***************************************************************************
+    FLOATING POINT STATUS FLAGS HANDLING
+***************************************************************************/
+
+/*-------------------------------------------------
+    ppccom_update_fprf - update the FPRF field
+    of the FPSCR register
+-------------------------------------------------*/
+
+void ppccom_update_fprf(powerpc_state *ppc)
+{
+	UINT32 fprf;
+	double f = ppc->f[ppc->param0];
+
+	if (is_qnan_double(f))
+	{
+		fprf = 0x11;
+	}
+	else if (is_infinity_double(f))
+	{
+		if (sign_double(f))		/* -Infinity */
+			fprf = 0x09;
+		else					/* +Infinity */
+			fprf = 0x05;
+	}
+	else if (is_normalized_double(f))
+	{
+		if (sign_double(f))		/* -Normalized */
+			fprf = 0x08;
+		else					/* +Normalized */
+			fprf = 0x04;
+	}
+	else if (is_denormalized_double(f))
+	{
+		if (sign_double(f))		/* -Denormalized */
+			fprf = 0x18;
+		else					/* +Denormalized */
+			fprf = 0x14;
+	}
+	else
+	{
+		if (sign_double(f))		/* -Zero */
+			fprf = 0x12;
+		else					/* +Zero */
+			fprf = 0x02;
+	}
+
+	ppc->fpscr &= ~0x0001f000;
+	ppc->fpscr |= fprf << 12;
+}
+
+
+
+/***************************************************************************
     COMMON GET/SET INFO
 ***************************************************************************/
 
@@ -1067,6 +1223,40 @@ void ppccom_set_info(powerpc_state *ppc, UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_REGISTER + PPC_R30:			ppc->r[30] = info->i;					break;
 		case CPUINFO_INT_SP:
 		case CPUINFO_INT_REGISTER + PPC_R31:			ppc->r[31] = info->i;					break;
+
+		case CPUINFO_INT_REGISTER + PPC_F0:				ppc->f[0] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F1:				ppc->f[1] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F2:				ppc->f[2] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F3:				ppc->f[3] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F4:				ppc->f[4] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F5:				ppc->f[5] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F6:				ppc->f[6] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F7:				ppc->f[7] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F8:				ppc->f[8] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F9:				ppc->f[9] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F10:			ppc->f[10] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F11:			ppc->f[11] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F12:			ppc->f[12] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F13:			ppc->f[13] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F14:			ppc->f[14] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F15:			ppc->f[15] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F16:			ppc->f[16] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F17:			ppc->f[17] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F18:			ppc->f[18] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F19:			ppc->f[19] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F20:			ppc->f[20] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F21:			ppc->f[21] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F22:			ppc->f[22] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F23:			ppc->f[23] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F24:			ppc->f[24] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F25:			ppc->f[25] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F26:			ppc->f[26] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F27:			ppc->f[27] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F28:			ppc->f[28] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F29:			ppc->f[29] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F30:			ppc->f[30] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_F31:			ppc->f[31] = *(double *)&info->i;		break;
+		case CPUINFO_INT_REGISTER + PPC_FPSCR:			ppc->fpscr = info->i;					break;
 	}
 }
 
@@ -1084,7 +1274,7 @@ void ppccom_get_info(powerpc_state *ppc, UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_CONTEXT_SIZE:					/* provided by core */					break;
 		case CPUINFO_INT_INPUT_LINES:					info->i = 1;							break;
 		case CPUINFO_INT_DEFAULT_IRQ_VECTOR:			info->i = 0;							break;
-		case CPUINFO_INT_ENDIANNESS:					info->i = ENDIANNESS_BIG;					break;
+		case DEVINFO_INT_ENDIANNESS:					info->i = ENDIANNESS_BIG;					break;
 		case CPUINFO_INT_CLOCK_MULTIPLIER:				info->i = 1;							break;
 		case CPUINFO_INT_CLOCK_DIVIDER:					info->i = 1;							break;
 		case CPUINFO_INT_MIN_INSTRUCTION_BYTES:			info->i = 4;							break;
@@ -1158,6 +1348,40 @@ void ppccom_get_info(powerpc_state *ppc, UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_SP:
 		case CPUINFO_INT_REGISTER + PPC_R31:			info->i = ppc->r[31];					break;
 
+		case CPUINFO_INT_REGISTER + PPC_F0:				info->i = *(UINT64 *)&ppc->f[0];		break;
+		case CPUINFO_INT_REGISTER + PPC_F1:				info->i = *(UINT64 *)&ppc->f[1];		break;
+		case CPUINFO_INT_REGISTER + PPC_F2:				info->i = *(UINT64 *)&ppc->f[2];		break;
+		case CPUINFO_INT_REGISTER + PPC_F3:				info->i = *(UINT64 *)&ppc->f[3];		break;
+		case CPUINFO_INT_REGISTER + PPC_F4:				info->i = *(UINT64 *)&ppc->f[4];		break;
+		case CPUINFO_INT_REGISTER + PPC_F5:				info->i = *(UINT64 *)&ppc->f[5];		break;
+		case CPUINFO_INT_REGISTER + PPC_F6:				info->i = *(UINT64 *)&ppc->f[6];		break;
+		case CPUINFO_INT_REGISTER + PPC_F7:				info->i = *(UINT64 *)&ppc->f[7];		break;
+		case CPUINFO_INT_REGISTER + PPC_F8:				info->i = *(UINT64 *)&ppc->f[8];		break;
+		case CPUINFO_INT_REGISTER + PPC_F9:				info->i = *(UINT64 *)&ppc->f[9];		break;
+		case CPUINFO_INT_REGISTER + PPC_F10:			info->i = *(UINT64 *)&ppc->f[10];		break;
+		case CPUINFO_INT_REGISTER + PPC_F11:			info->i = *(UINT64 *)&ppc->f[11];		break;
+		case CPUINFO_INT_REGISTER + PPC_F12:			info->i = *(UINT64 *)&ppc->f[12];		break;
+		case CPUINFO_INT_REGISTER + PPC_F13:			info->i = *(UINT64 *)&ppc->f[13];		break;
+		case CPUINFO_INT_REGISTER + PPC_F14:			info->i = *(UINT64 *)&ppc->f[14];		break;
+		case CPUINFO_INT_REGISTER + PPC_F15:			info->i = *(UINT64 *)&ppc->f[15];		break;
+		case CPUINFO_INT_REGISTER + PPC_F16:			info->i = *(UINT64 *)&ppc->f[16];		break;
+		case CPUINFO_INT_REGISTER + PPC_F17:			info->i = *(UINT64 *)&ppc->f[17];		break;
+		case CPUINFO_INT_REGISTER + PPC_F18:			info->i = *(UINT64 *)&ppc->f[18];		break;
+		case CPUINFO_INT_REGISTER + PPC_F19:			info->i = *(UINT64 *)&ppc->f[19];		break;
+		case CPUINFO_INT_REGISTER + PPC_F20:			info->i = *(UINT64 *)&ppc->f[20];		break;
+		case CPUINFO_INT_REGISTER + PPC_F21:			info->i = *(UINT64 *)&ppc->f[21];		break;
+		case CPUINFO_INT_REGISTER + PPC_F22:			info->i = *(UINT64 *)&ppc->f[22];		break;
+		case CPUINFO_INT_REGISTER + PPC_F23:			info->i = *(UINT64 *)&ppc->f[23];		break;
+		case CPUINFO_INT_REGISTER + PPC_F24:			info->i = *(UINT64 *)&ppc->f[24];		break;
+		case CPUINFO_INT_REGISTER + PPC_F25:			info->i = *(UINT64 *)&ppc->f[25];		break;
+		case CPUINFO_INT_REGISTER + PPC_F26:			info->i = *(UINT64 *)&ppc->f[26];		break;
+		case CPUINFO_INT_REGISTER + PPC_F27:			info->i = *(UINT64 *)&ppc->f[27];		break;
+		case CPUINFO_INT_REGISTER + PPC_F28:			info->i = *(UINT64 *)&ppc->f[28];		break;
+		case CPUINFO_INT_REGISTER + PPC_F29:			info->i = *(UINT64 *)&ppc->f[29];		break;
+		case CPUINFO_INT_REGISTER + PPC_F30:			info->i = *(UINT64 *)&ppc->f[30];		break;
+		case CPUINFO_INT_REGISTER + PPC_F31:			info->i = *(UINT64 *)&ppc->f[31];		break;
+		case CPUINFO_INT_REGISTER + PPC_FPSCR:			info->i = ppc->fpscr;					break;
+
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_FCT_SET_INFO:						/* provided by core */					break;
 		case CPUINFO_FCT_INIT:							/* provided by core */					break;
@@ -1169,11 +1393,11 @@ void ppccom_get_info(powerpc_state *ppc, UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &ppc->icount;			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case CPUINFO_STR_NAME:							strcpy(info->s, "PowerPC");				break;
-		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "PowerPC");				break;
-		case CPUINFO_STR_CORE_VERSION:					strcpy(info->s, "2.0");					break;
-		case CPUINFO_STR_CORE_FILE:						/* provided by core */					break;
-		case CPUINFO_STR_CORE_CREDITS:					strcpy(info->s, "Copyright Aaron Giles"); break;
+		case DEVINFO_STR_NAME:							strcpy(info->s, "PowerPC");				break;
+		case DEVINFO_STR_FAMILY:					strcpy(info->s, "PowerPC");				break;
+		case DEVINFO_STR_VERSION:					strcpy(info->s, "2.0");					break;
+		case DEVINFO_STR_SOURCE_FILE:						/* provided by core */					break;
+		case DEVINFO_STR_CREDITS:					strcpy(info->s, "Copyright Aaron Giles"); break;
 
 		case CPUINFO_STR_FLAGS:							strcpy(info->s, " ");					break;
 
@@ -1230,6 +1454,40 @@ void ppccom_get_info(powerpc_state *ppc, UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_REGISTER + PPC_R29:			sprintf(info->s, "R29:%08X", ppc->r[29]); break;
 		case CPUINFO_STR_REGISTER + PPC_R30:			sprintf(info->s, "R30:%08X", ppc->r[30]); break;
 		case CPUINFO_STR_REGISTER + PPC_R31:			sprintf(info->s, "R31:%08X", ppc->r[31]); break;
+
+		case CPUINFO_STR_REGISTER + PPC_F0:				sprintf(info->s, "F0: %12f", ppc->f[0]); break;
+		case CPUINFO_STR_REGISTER + PPC_F1:				sprintf(info->s, "F1: %12f", ppc->f[1]); break;
+		case CPUINFO_STR_REGISTER + PPC_F2:				sprintf(info->s, "F2: %12f", ppc->f[2]); break;
+		case CPUINFO_STR_REGISTER + PPC_F3:				sprintf(info->s, "F3: %12f", ppc->f[3]); break;
+		case CPUINFO_STR_REGISTER + PPC_F4:				sprintf(info->s, "F4: %12f", ppc->f[4]); break;
+		case CPUINFO_STR_REGISTER + PPC_F5:				sprintf(info->s, "F5: %12f", ppc->f[5]); break;
+		case CPUINFO_STR_REGISTER + PPC_F6:				sprintf(info->s, "F6: %12f", ppc->f[6]); break;
+		case CPUINFO_STR_REGISTER + PPC_F7:				sprintf(info->s, "F7: %12f", ppc->f[7]); break;
+		case CPUINFO_STR_REGISTER + PPC_F8:				sprintf(info->s, "F8: %12f", ppc->f[8]); break;
+		case CPUINFO_STR_REGISTER + PPC_F9:				sprintf(info->s, "F9: %12f", ppc->f[9]); break;
+		case CPUINFO_STR_REGISTER + PPC_F10:			sprintf(info->s, "F10:%12f", ppc->f[10]); break;
+		case CPUINFO_STR_REGISTER + PPC_F11:			sprintf(info->s, "F11:%12f", ppc->f[11]); break;
+		case CPUINFO_STR_REGISTER + PPC_F12:			sprintf(info->s, "F12:%12f", ppc->f[12]); break;
+		case CPUINFO_STR_REGISTER + PPC_F13:			sprintf(info->s, "F13:%12f", ppc->f[13]); break;
+		case CPUINFO_STR_REGISTER + PPC_F14:			sprintf(info->s, "F14:%12f", ppc->f[14]); break;
+		case CPUINFO_STR_REGISTER + PPC_F15:			sprintf(info->s, "F15:%12f", ppc->f[15]); break;
+		case CPUINFO_STR_REGISTER + PPC_F16:			sprintf(info->s, "F16:%12f", ppc->f[16]); break;
+		case CPUINFO_STR_REGISTER + PPC_F17:			sprintf(info->s, "F17:%12f", ppc->f[17]); break;
+		case CPUINFO_STR_REGISTER + PPC_F18:			sprintf(info->s, "F18:%12f", ppc->f[18]); break;
+		case CPUINFO_STR_REGISTER + PPC_F19:			sprintf(info->s, "F19:%12f", ppc->f[19]); break;
+		case CPUINFO_STR_REGISTER + PPC_F20:			sprintf(info->s, "F20:%12f", ppc->f[20]); break;
+		case CPUINFO_STR_REGISTER + PPC_F21:			sprintf(info->s, "F21:%12f", ppc->f[21]); break;
+		case CPUINFO_STR_REGISTER + PPC_F22:			sprintf(info->s, "F22:%12f", ppc->f[22]); break;
+		case CPUINFO_STR_REGISTER + PPC_F23:			sprintf(info->s, "F23:%12f", ppc->f[23]); break;
+		case CPUINFO_STR_REGISTER + PPC_F24:			sprintf(info->s, "F24:%12f", ppc->f[24]); break;
+		case CPUINFO_STR_REGISTER + PPC_F25:			sprintf(info->s, "F25:%12f", ppc->f[25]); break;
+		case CPUINFO_STR_REGISTER + PPC_F26:			sprintf(info->s, "F26:%12f", ppc->f[26]); break;
+		case CPUINFO_STR_REGISTER + PPC_F27:			sprintf(info->s, "F27:%12f", ppc->f[27]); break;
+		case CPUINFO_STR_REGISTER + PPC_F28:			sprintf(info->s, "F28:%12f", ppc->f[28]); break;
+		case CPUINFO_STR_REGISTER + PPC_F29:			sprintf(info->s, "F29:%12f", ppc->f[29]); break;
+		case CPUINFO_STR_REGISTER + PPC_F30:			sprintf(info->s, "F30:%12f", ppc->f[30]); break;
+		case CPUINFO_STR_REGISTER + PPC_F31:			sprintf(info->s, "F31:%12f", ppc->f[31]); break;
+		case CPUINFO_STR_REGISTER + PPC_FPSCR:			sprintf(info->s, "FPSCR:%08X", ppc->fpscr); break;
 	}
 }
 

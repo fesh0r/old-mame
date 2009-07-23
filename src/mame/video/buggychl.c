@@ -111,12 +111,11 @@ static void draw_bg(running_machine *machine, bitmap_t *bitmap, const rectangle 
 		if (flip_screen_x_get(machine)) sx = 31 - sx;
 		if (flip_screen_y_get(machine)) sy = 31 - sy;
 
-		drawgfx(tmpbitmap1,machine->gfx[0],
+		drawgfx_opaque(tmpbitmap1,NULL,machine->gfx[0],
 				code,
 				2,
 				flip_screen_x_get(machine),flip_screen_y_get(machine),
-				8*sx,8*sy,
-				NULL,TRANSPARENCY_NONE,0);
+				8*sx,8*sy);
 	}
 
 	/* first copy to a temp bitmap doing column scroll */
@@ -142,20 +141,22 @@ static void draw_fg(running_machine *machine, bitmap_t *bitmap, const rectangle 
 	{
 		int sx = offs % 32;
 		int sy = offs / 32;
+		int flipx = flip_screen_x_get(machine);
+		int flipy = flip_screen_y_get(machine);
 		/* the following line is most likely wrong */
-		int transp = (bg_on && sx >= 22) ? TRANSPARENCY_NONE : TRANSPARENCY_PEN;
+		int transpen = (bg_on && sx >= 22) ? -1 : 0;
 
 		int code = videoram[offs];
 
-		if (flip_screen_x_get(machine)) sx = 31 - sx;
-		if (flip_screen_y_get(machine)) sy = 31 - sy;
+		if (flipx) sx = 31 - sx;
+		if (flipy) sy = 31 - sy;
 
-		drawgfx(bitmap,machine->gfx[0],
+		drawgfx_transpen(bitmap,cliprect,machine->gfx[0],
 				code,
 				0,
-				flip_screen_x_get(machine),flip_screen_y_get(machine),
+				flipx,flipy,
 				8*sx,8*sy,
-				cliprect,transp,0);
+				transpen);
 	}
 }
 

@@ -168,8 +168,8 @@ static VIDEO_START( madalien )
 
 	gfx_element_set_source(machine->gfx[0], madalien_charram);
 
-	drawgfx(headlight_bitmap, machine->gfx[2], 0, 0, 0, 0, 0x00, 0x00, NULL, TRANSPARENCY_NONE, 0);
-	drawgfx(headlight_bitmap, machine->gfx[2], 0, 0, 0, 1, 0x00, 0x40, NULL, TRANSPARENCY_NONE, 0);
+	drawgfx_opaque(headlight_bitmap, NULL, machine->gfx[2], 0, 0, 0, 0, 0x00, 0x00);
+	drawgfx_opaque(headlight_bitmap, NULL, machine->gfx[2], 0, 0, 0, 1, 0x00, 0x40);
 }
 
 
@@ -387,14 +387,16 @@ GFXDECODE_END
 
 static const mc6845_interface mc6845_intf =
 {
-	"screen",		/* screen we are acting on */
-	8,                /* number of pixels per video memory address */
-	NULL,             /* before pixel update callback */
-	NULL,             /* row update callback */
-	NULL,             /* after pixel update callback */
-	NULL,             /* callback for display state changes */
-	NULL,			  /* HSYNC callback */
-	NULL			  /* VSYNC callback */
+	"screen",	/* screen we are acting on */
+	8,			/* number of pixels per video memory address */
+	NULL,		/* before pixel update callback */
+	NULL,		/* row update callback */
+	NULL,		/* after pixel update callback */
+	DEVCB_NULL,	/* callback for display state changes */
+	DEVCB_NULL,	/* callback for cursor state changes */
+	DEVCB_NULL,	/* HSYNC callback */
+	DEVCB_NULL,	/* VSYNC callback */
+	NULL		/* update address callback */
 };
 
 

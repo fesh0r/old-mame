@@ -51,10 +51,10 @@ PALETTE_INIT( ambush )
 
 static void draw_chars(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int priority)
 {
-	int offs, transparency;
+	int offs, transpen;
 
 
-	transparency = (priority == 0) ? TRANSPARENCY_NONE : TRANSPARENCY_PEN;
+	transpen = (priority == 0) ? -1 : 0;
 
 	for (offs = 0; offs < videoram_size; offs++)
 	{
@@ -80,12 +80,12 @@ static void draw_chars(running_machine *machine, bitmap_t *bitmap, const rectang
 			scroll = ~scroll - 1;
 		}
 
-		drawgfx(bitmap,machine->gfx[0],
+		drawgfx_transpen(bitmap,cliprect,machine->gfx[0],
 				code,
 				(col & 0x0f) | ((*ambush_colorbank & 0x03) << 4),
 				flip_screen_get(machine),flip_screen_get(machine),
 				8*sx, (8*sy + scroll) & 0xff,
-				cliprect,transparency,0);
+				transpen);
 	}
 }
 
@@ -159,11 +159,10 @@ VIDEO_UPDATE( ambush )
 			flipy = !flipy;
 		}
 
-		drawgfx(bitmap,screen->machine->gfx[gfx],
+		drawgfx_transpen(bitmap,cliprect,screen->machine->gfx[gfx],
 				code, col | ((*ambush_colorbank & 0x03) << 4),
 				flipx, flipy,
-				sx,sy,
-				cliprect,TRANSPARENCY_PEN,0);
+				sx,sy,0);
 	}
 
 

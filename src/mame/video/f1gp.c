@@ -226,15 +226,15 @@ static void f1gp_draw_sprites(running_machine *machine,bitmap_t *bitmap,const re
 				else
 					code = f1gp_spr2cgram[map_start % (f1gp_spr2cgram_size/2)];
 
-				pdrawgfxzoom(bitmap,machine->gfx[1 + chip],
+				pdrawgfxzoom_transpen(bitmap,cliprect,machine->gfx[1 + chip],
 						code,
 						color,
 						flipx,flipy,
 						sx,sy,
-						cliprect,TRANSPARENCY_PEN,15,
 						0x1000 * zoomx,0x1000 * zoomy,
+						priority_bitmap,
 //                      pri ? 0 : 0x2);
-						primask);
+						primask,15);
 				map_start++;
 			}
 
@@ -293,22 +293,22 @@ static void f1gpb_draw_sprites(running_machine *machine, bitmap_t *bitmap,const 
 			gfx = 0;
 		}
 
-		pdrawgfx(bitmap,machine->gfx[1 + gfx],
+		pdrawgfx_transpen(bitmap,cliprect,machine->gfx[1 + gfx],
 			code,
 			color,
 			flipx,flipy,
 			x,y,
-			cliprect,TRANSPARENCY_PEN,15,
-			pri ? 0 : 0x2);
+			priority_bitmap,
+			pri ? 0 : 0x2,15);
 
 		// wrap around x
-		pdrawgfx(bitmap,machine->gfx[1 + gfx],
+		pdrawgfx_transpen(bitmap,cliprect,machine->gfx[1 + gfx],
 			code,
 			color,
 			flipx,flipy,
 			x - 512,y,
-			cliprect,TRANSPARENCY_PEN,15,
-			pri ? 0 : 0x2);
+			priority_bitmap,
+			pri ? 0 : 0x2,15);
 	}
 }
 
@@ -317,7 +317,7 @@ VIDEO_UPDATE( f1gp )
 {
 	bitmap_fill(priority_bitmap, cliprect, 0);
 
-	K053936_0_zoom_draw(bitmap,cliprect,roz_tilemap,0,0);
+	K053936_0_zoom_draw(bitmap,cliprect,roz_tilemap,0,0,1);
 
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,1);
 
@@ -415,21 +415,19 @@ static void f1gp2_draw_sprites(running_machine *machine,bitmap_t *bitmap,const r
 				map_start++;
 
 				if (flipscreen)
-					drawgfxzoom(bitmap,machine->gfx[1],
+					drawgfxzoom_transpen(bitmap,cliprect,machine->gfx[1],
 							code,
 							color,
 							!flipx,!flipy,
 							304-sx,208-sy,
-							cliprect,TRANSPARENCY_PEN,15,
-							zoomx << 11,zoomy << 11);
+							zoomx << 11,zoomy << 11,15);
 				else
-					drawgfxzoom(bitmap,machine->gfx[1],
+					drawgfxzoom_transpen(bitmap,cliprect,machine->gfx[1],
 							code,
 							color,
 							flipx,flipy,
 							sx,sy,
-							cliprect,TRANSPARENCY_PEN,15,
-							zoomx << 11,zoomy << 11);
+							zoomx << 11,zoomy << 11,15);
 			}
 		}
 	}
@@ -445,18 +443,18 @@ VIDEO_UPDATE( f1gp2 )
 		switch (gfxctrl & 3)
 		{
 			case 0:
-				K053936_0_zoom_draw(bitmap,cliprect,roz_tilemap,TILEMAP_DRAW_OPAQUE,0);
+				K053936_0_zoom_draw(bitmap,cliprect,roz_tilemap,TILEMAP_DRAW_OPAQUE,0,1);
 				f1gp2_draw_sprites(screen->machine,bitmap,cliprect);
 				tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 				break;
 			case 1:
-				K053936_0_zoom_draw(bitmap,cliprect,roz_tilemap,TILEMAP_DRAW_OPAQUE,0);
+				K053936_0_zoom_draw(bitmap,cliprect,roz_tilemap,TILEMAP_DRAW_OPAQUE,0,1);
 				tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 				f1gp2_draw_sprites(screen->machine,bitmap,cliprect);
 				break;
 			case 2:
 				tilemap_draw(bitmap,cliprect,fg_tilemap,TILEMAP_DRAW_OPAQUE,0);
-				K053936_0_zoom_draw(bitmap,cliprect,roz_tilemap,0,0);
+				K053936_0_zoom_draw(bitmap,cliprect,roz_tilemap,0,0,1);
 				f1gp2_draw_sprites(screen->machine,bitmap,cliprect);
 				break;
 #ifdef MAME_DEBUG

@@ -103,7 +103,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		y = 0x100 - spriteram[count];
 		x = spriteram[count+3];
 
-		drawgfx(bitmap,machine->gfx[1],spr_offs,color,fx,fy,x,y-16,cliprect,TRANSPARENCY_PEN,0);
+		drawgfx_transpen(bitmap,cliprect,machine->gfx[1],spr_offs,color,fx,fy,x,y-16,0);
 	}
 }
 
@@ -122,9 +122,9 @@ static VIDEO_UPDATE(mirax)
 			int x_scroll = (color & 0xff00)>>8;
 			tile |= ((color & 0xe0)<<3);
 
-			drawgfx(bitmap,gfx,tile,color & 7,0,0,(x*8),(y*8)-x_scroll,cliprect,TRANSPARENCY_NONE,0);
+			drawgfx_opaque(bitmap,cliprect,gfx,tile,color & 7,0,0,(x*8),(y*8)-x_scroll);
 			/* wrap-around */
-			drawgfx(bitmap,gfx,tile,color & 7,0,0,(x*8),(y*8)-x_scroll+256,cliprect,TRANSPARENCY_NONE,0);
+			drawgfx_opaque(bitmap,cliprect,gfx,tile,color & 7,0,0,(x*8),(y*8)-x_scroll+256);
 
 			count++;
 		}
@@ -146,9 +146,9 @@ static VIDEO_UPDATE(mirax)
 
 			if(x <= 1 || x >= 30)
 			{
-				drawgfx(bitmap,gfx,tile,color & 7,0,0,(x*8),(y*8)-x_scroll,cliprect,TRANSPARENCY_NONE,0);
+				drawgfx_opaque(bitmap,cliprect,gfx,tile,color & 7,0,0,(x*8),(y*8)-x_scroll);
 				/* wrap-around */
-				drawgfx(bitmap,gfx,tile,color & 7,0,0,(x*8),(y*8)-x_scroll+256,cliprect,TRANSPARENCY_NONE,0);
+				drawgfx_opaque(bitmap,cliprect,gfx,tile,color & 7,0,0,(x*8),(y*8)-x_scroll+256);
 			}
 
 			count++;
@@ -417,12 +417,12 @@ ROM_START( mirax )
 	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "mxr2-4v.rom",   0x0000, 0x2000, CRC(cd2d52dc) SHA1(0d4181dc68beac338f47a2065c7b755008877896) )
 
-	ROM_REGION( 0xc000, "gfx1", ROMREGION_DISPOSE )
+	ROM_REGION( 0xc000, "gfx1", 0 )
 	ROM_LOAD( "mxe3-4v.rom",   0x0000, 0x4000, CRC(0cede01f) SHA1(c723dd8ee9dc06c94a7fe5d5b5bccc42e2181af1) )
 	ROM_LOAD( "mxh3-4v.rom",   0x4000, 0x4000, CRC(58221502) SHA1(daf5c508939b44616ca76308fc33f94d364ed587) )
 	ROM_LOAD( "mxk3-4v.rom",   0x8000, 0x4000, CRC(6dbc2961) SHA1(5880c28f1ef704fee2d625a42682c7d65613acc8) )
 
-	ROM_REGION( 0x18000, "gfx2", ROMREGION_DISPOSE )
+	ROM_REGION( 0x18000, "gfx2", 0 )
 	ROM_LOAD( "mxe2-4v.rom",   0x04000, 0x4000, CRC(2cf5d8b7) SHA1(f66bce4d413a48f6ae07974870dc0f31eefa68e9) )
 	ROM_LOAD( "mxf2-4v.rom",   0x0c000, 0x4000, CRC(1f42c7fa) SHA1(33e56c6ddf7676a12f57de87ec740c6b6eb1cc8c) )
 	ROM_LOAD( "mxh2-4v.rom",   0x14000, 0x4000, CRC(cbaff4c6) SHA1(2dc4a1f51b28e98be0cfb5ab7576047c748b6728) )

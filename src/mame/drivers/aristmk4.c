@@ -60,7 +60,7 @@ static VIDEO_UPDATE(aristmk4)
 			int flipx = ((mkiv_vram[count]) & 0x04);
 			// 0x0800 probably flipy
 
-			drawgfx(bitmap,gfx,tile,color,flipx,0,x*8,y*8,cliprect,TRANSPARENCY_NONE,0);
+			drawgfx_opaque(bitmap,cliprect,gfx,tile,color,flipx,0,x*8,y*8);
 			count+=2;
 		}
 	}
@@ -419,14 +419,16 @@ static const mc6845_interface mc6845_intf =
 	/* in fact is a mc6845 driving 4 pixels by memory address.
        that's why the big horizontal parameters */
 
-	"screen",/* screen we are acting on */
-	4,		/* number of pixels per video memory address */
-	NULL,	/* before pixel update callback */
-	NULL,	/* row update callback */
-	NULL,	/* after pixel update callback */
-	NULL,	/* callback for display state changes */
-	NULL,	/* HSYNC callback */
-	NULL	/* VSYNC callback */
+	"screen",	/* screen we are acting on */
+	4,			/* number of pixels per video memory address */
+	NULL,		/* before pixel update callback */
+	NULL,		/* row update callback */
+	NULL,		/* after pixel update callback */
+	DEVCB_NULL,	/* callback for display state changes */
+	DEVCB_NULL,	/* callback for cursor state changes */
+	DEVCB_NULL,	/* HSYNC callback */
+	DEVCB_NULL,	/* VSYNC callback */
+	NULL		/* update address callback */
 };
 
 

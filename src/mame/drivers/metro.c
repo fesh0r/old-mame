@@ -869,7 +869,8 @@ static READ16_HANDLER( balcube_dsw_r )
 static ADDRESS_MAP_START( balcube_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM													// ROM
 	AM_RANGE(0xf00000, 0xf0ffff) AM_RAM													// RAM
-	AM_RANGE(0x300000, 0x300001) AM_DEVREADWRITE8("ymf", ymf278b_r,ymf278b_w, 0x00ff)	// Sound
+	AM_RANGE(0x300000, 0x300001) AM_DEVREAD8("ymf", ymf278b_r, 0x00ff)					// Sound
+	AM_RANGE(0x300000, 0x30000b) AM_DEVWRITE8("ymf", ymf278b_w, 0x00ff)					// Sound
 	AM_RANGE(0x400000, 0x41ffff) AM_READ(balcube_dsw_r)									// DSW x 3
 	AM_RANGE(0x500000, 0x500001) AM_READ_PORT("IN0")									// Inputs
 	AM_RANGE(0x500002, 0x500003) AM_READ_PORT("IN1")									//
@@ -903,7 +904,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( daitoa_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM													// ROM
 	AM_RANGE(0xf00000, 0xf0ffff) AM_RAM 												// RAM
-	AM_RANGE(0x400000, 0x400001) AM_DEVREADWRITE8("ymf", ymf278b_r,ymf278b_w, 0x00ff)	// Sound
+	AM_RANGE(0x400000, 0x400001) AM_DEVREAD8("ymf", ymf278b_r, 0x00ff)					// Sound
+	AM_RANGE(0x400000, 0x40000b) AM_DEVWRITE8("ymf", ymf278b_w, 0x00ff)					// Sound
 	AM_RANGE(0x300000, 0x31ffff) AM_READ(balcube_dsw_r)									// DSW x 3
 	AM_RANGE(0x100000, 0x11ffff) AM_RAM_WRITE(metro_vram_0_w) AM_BASE(&metro_vram_0	)	// Layer 0
 	AM_RANGE(0x120000, 0x13ffff) AM_RAM_WRITE(metro_vram_1_w) AM_BASE(&metro_vram_1	)	// Layer 1
@@ -937,7 +939,8 @@ static ADDRESS_MAP_START( bangball_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM													// ROM
 	AM_RANGE(0xf00000, 0xf0ffff) AM_RAM													// RAM
 	AM_RANGE(0xf10000, 0xf10fff) AM_RAM													// RAM (bug in the ram test routine)
-	AM_RANGE(0xb00000, 0xb00001) AM_DEVREADWRITE8("ymf", ymf278b_r,ymf278b_w, 0x00ff)	// Sound
+	AM_RANGE(0xb00000, 0xb00001) AM_DEVREAD8("ymf", ymf278b_r, 0x00ff)					// Sound
+	AM_RANGE(0xb00000, 0xb0000b) AM_DEVWRITE8("ymf", ymf278b_w, 0x00ff)					// Sound
 	AM_RANGE(0xc00000, 0xc1ffff) AM_READ(balcube_dsw_r)									// DSW x 3
 	AM_RANGE(0xd00000, 0xd00001) AM_READ_PORT("IN0")									// Inputs
 	AM_RANGE(0xd00002, 0xd00003) AM_READ_PORT("IN1")									//
@@ -4683,7 +4686,7 @@ ROM_START( blzntrnd )
 	ROMX_LOAD( "rom331.bin", 0x1000004, 0x200000, CRC(4d909c28) SHA1(fb9bb824e518f67713799ed2c0159a7bd70f35c4) , ROM_GROUPWORD | ROM_SKIP(6))
 	ROMX_LOAD( "rom375.bin", 0x1000006, 0x200000, CRC(6eb4f97c) SHA1(c7f006230cbf10e706b0362eeed34655a3aef1a5) , ROM_GROUPWORD | ROM_SKIP(6))
 
-	ROM_REGION( 0x200000, "gfx3", ROMREGION_DISPOSE )	/* 053936 gfx data */
+	ROM_REGION( 0x200000, "gfx3", 0 )	/* 053936 gfx data */
 	ROM_LOAD( "rom9.bin", 0x000000, 0x200000, CRC(37ca3570) SHA1(3374c586bf84583fa33f2793c4e8f2f61a0cab1c) )
 
 	ROM_REGION( 0x080000, "ym.deltat", 0 )	/* Samples */
@@ -4767,7 +4770,7 @@ ROM_START( gstrik2 )
 //  ROMX_LOAD( "chr14.90", 0x1800004, 0x200000, CRC() SHA1() , ROM_GROUPWORD | ROM_SKIP(6))
 //  ROMX_LOAD( "chr15.89", 0x1800006, 0x200000, CRC() SHA1() , ROM_GROUPWORD | ROM_SKIP(6))
 
-	ROM_REGION( 0x200000, "gfx3", ROMREGION_DISPOSE )	/* 053936 gfx data */
+	ROM_REGION( 0x200000, "gfx3", 0 )	/* 053936 gfx data */
 	ROM_LOAD( "psacrom.60", 0x000000, 0x200000,  CRC(73f1f279) SHA1(1135b2b1eb4c52249bc12ee178340bbb202a94c8) )
 
 	ROM_REGION( 0x200000, "ym.deltat", 0 )	/* Samples */
@@ -4775,6 +4778,46 @@ ROM_START( gstrik2 )
 
 	ROM_REGION( 0x400000, "ym", 0 )	/* ? YRW801-M ? */
 	ROM_LOAD( "sndpcm-a.23", 0x000000, 0x200000, CRC(e6d32373) SHA1(8a79d4ea8b27d785fffd80e38d5ae73b7cea7304) )
+	/* ROM7.27 not populated?  */
+ROM_END
+
+ROM_START( gstrik2e )
+	ROM_REGION( 0x200000, "maincpu", 0 )	/* 68000 */
+	ROM_LOAD16_BYTE( "hum_003_g2f.rom1.u107", 0x000000, 0x80000, CRC(2712d9ca) SHA1(efa967de931728534a663fa1529e92003afbb3e9) )
+	ROM_LOAD16_BYTE( "hum_003_g2f.rom2.u108", 0x000001, 0x80000, CRC(86785c64) SHA1(ef172d6e859a68eb80f7c127b61883d50eefb0fe) )
+	ROM_LOAD16_BYTE( "prg2.109", 0x100000, 0x80000, BAD_DUMP CRC(ead86919) SHA1(eb9b68dff4e08d90ac90043c7f3021914caa007d) )
+	ROM_LOAD16_BYTE( "prg3.110", 0x100001, 0x80000, BAD_DUMP CRC(e0b026e3) SHA1(05f75c0432efda3dec0372199382e310bb268fba) )
+
+	ROM_REGION( 0x20000, "audiocpu", 0 )	/* Z80 */
+	ROM_LOAD( "sprg.30", 0x0000, 0x20000, BAD_DUMP CRC(aeef6045) SHA1(61b8c89ca495d3aac79e53413a85dd203db816f3) )
+
+	ROM_REGION( 0x1000000, "gfx1", 0 )	/* Gfx + Data (Addressable by CPU & Blitter) */
+	ROMX_LOAD( "chr0.80", 0x0000000, 0x200000, BAD_DUMP CRC(f63a52a9) SHA1(1ad52bb3a051eaffe8fb6ba49d4fc1d0b6144156) , ROM_GROUPWORD | ROM_SKIP(6))
+	ROMX_LOAD( "chr1.79", 0x0000002, 0x200000, BAD_DUMP CRC(4110c184) SHA1(90ccb3d50eff7a655336cfa9c072f7213589e64c) , ROM_GROUPWORD | ROM_SKIP(6))
+	ROMX_LOAD( "chr2.78", 0x0000004, 0x200000, BAD_DUMP CRC(ddb4b9ee) SHA1(0e2c151c3690b9c3d298dda8842e283660d37386) , ROM_GROUPWORD | ROM_SKIP(6))
+	ROMX_LOAD( "chr3.77", 0x0000006, 0x200000, BAD_DUMP CRC(5ab367db) SHA1(adf8749451f4583f8e9e00ab61f3408d804a7265) , ROM_GROUPWORD | ROM_SKIP(6))
+	ROMX_LOAD( "chr4.84", 0x0800000, 0x200000, BAD_DUMP CRC(77d7ef99) SHA1(8f5cf72f5919fe9363e7549e0bb1b3ee633cec3b) , ROM_GROUPWORD | ROM_SKIP(6))
+	ROMX_LOAD( "chr5.83", 0x0800002, 0x200000, BAD_DUMP CRC(a4d49e95) SHA1(9789bacba7876100e0f0293f54c81def545ed068) , ROM_GROUPWORD | ROM_SKIP(6))
+	ROMX_LOAD( "chr6.82", 0x0800004, 0x200000, BAD_DUMP CRC(32eb33b0) SHA1(2ea06484ca326b44a35ee470343147a9d91d5626) , ROM_GROUPWORD | ROM_SKIP(6))
+	ROMX_LOAD( "chr7.81", 0x0800006, 0x200000, BAD_DUMP CRC(2d30a21e) SHA1(749e86b7935ef71556eaee4caf6f954634e9bcbf) , ROM_GROUPWORD | ROM_SKIP(6))
+	/* not populated */
+//  ROMX_LOAD( "chr8.88", 0x1000000, 0x200000, CRC() SHA1() , ROM_GROUPWORD | ROM_SKIP(6))
+//  ROMX_LOAD( "chr9.87", 0x1000002, 0x200000, CRC() SHA1() , ROM_GROUPWORD | ROM_SKIP(6))
+//  ROMX_LOAD( "chr10.86", 0x1000004, 0x200000, CRC() SHA1() , ROM_GROUPWORD | ROM_SKIP(6))
+//  ROMX_LOAD( "chr11.85", 0x1000006, 0x200000, CRC() SHA1() , ROM_GROUPWORD | ROM_SKIP(6))
+//  ROMX_LOAD( "chr12.92", 0x1800000, 0x200000, CRC() SHA1() , ROM_GROUPWORD | ROM_SKIP(6))
+//  ROMX_LOAD( "chr13.91", 0x1800002, 0x200000, CRC() SHA1() , ROM_GROUPWORD | ROM_SKIP(6))
+//  ROMX_LOAD( "chr14.90", 0x1800004, 0x200000, CRC() SHA1() , ROM_GROUPWORD | ROM_SKIP(6))
+//  ROMX_LOAD( "chr15.89", 0x1800006, 0x200000, CRC() SHA1() , ROM_GROUPWORD | ROM_SKIP(6))
+
+	ROM_REGION( 0x200000, "gfx3", 0 )	/* 053936 gfx data */
+	ROM_LOAD( "psacrom.60", 0x000000, 0x200000,  BAD_DUMP CRC(73f1f279) SHA1(1135b2b1eb4c52249bc12ee178340bbb202a94c8) )
+
+	ROM_REGION( 0x200000, "ym.deltat", 0 )	/* Samples */
+	ROM_LOAD( "sndpcm-b.22", 0x000000, 0x200000, BAD_DUMP CRC(a5d844d2) SHA1(18d644545f0844e66aa53775b67b0a29c7b7c31b) )
+
+	ROM_REGION( 0x400000, "ym", 0 )	/* ? YRW801-M ? */
+	ROM_LOAD( "sndpcm-a.23", 0x000000, 0x200000, BAD_DUMP CRC(e6d32373) SHA1(8a79d4ea8b27d785fffd80e38d5ae73b7cea7304) )
 	/* ROM7.27 not populated?  */
 ROM_END
 
@@ -5127,7 +5170,7 @@ ROM_START( lastfort )
 	ROMX_LOAD( "tr_jc05", 0x000006, 0x020000, CRC(3fbbe49c) SHA1(642631e69d78898403013884cf0fb711ea000541) , ROM_SKIP(7))
 	ROMX_LOAD( "tr_jc07", 0x000007, 0x020000, CRC(05e1456b) SHA1(51cd3ad2aa9c0adc7b9d63a337b247b4b65701ca) , ROM_SKIP(7))
 
-	ROM_REGION( 0x020000, "oki", 0 )	/* Samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* Samples */
 	ROM_LOAD( "tr_jb11", 0x000000, 0x020000, CRC(83786a09) SHA1(910cf0ccf4493f2a80062149f6364dbb6a1c2a5d) )
 ROM_END
 
@@ -5150,7 +5193,7 @@ ROM_START( lastfork )
 	ROMX_LOAD( "12i-5", 0x000006, 0x040000, CRC(ce69c805) SHA1(88debdbd8e73da54c1c25a1a60f27a05dac3f104) , ROM_SKIP(7))
 	ROMX_LOAD( "14i-7", 0x000007, 0x040000, CRC(0cb38317) SHA1(6e18096f6616aa0d9c4f3a2394561ed3f636731e) , ROM_SKIP(7))
 
-	ROM_REGION( 0x020000, "oki", 0 )	/* Samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* Samples */
 	ROM_LOAD( "tr_jb11", 0x000000, 0x020000, CRC(83786a09) SHA1(910cf0ccf4493f2a80062149f6364dbb6a1c2a5d) )
 ROM_END
 
@@ -5171,7 +5214,7 @@ ROM_START( lastforg )
 	ROMX_LOAD( "trma05.bin", 0x000004, 0x080000, CRC(5d917ba5) SHA1(34fc72924fa2877c1038d7f61b22f7667af01e9f) , ROM_GROUPWORD | ROM_SKIP(6))
 	ROMX_LOAD( "trma06.bin", 0x000006, 0x080000, CRC(d366c04e) SHA1(e0a67688043cb45916860d32ff1076d9257e6ad9) , ROM_GROUPWORD | ROM_SKIP(6))
 
-	ROM_REGION( 0x020000, "oki", 0 )	/* Samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* Samples */
 	ROM_LOAD( "trma08.bin",   0x000000, 0x020000, CRC(83786a09) SHA1(910cf0ccf4493f2a80062149f6364dbb6a1c2a5d) ) /* Same as parent set, but different label */
 ROM_END
 
@@ -5208,7 +5251,7 @@ ROM_START( lastfero )
 	ROMX_LOAD( "tre_jc05", 0x000006, 0x020000, CRC(79f769dd) SHA1(7a9ff8e961ae09fdf36a0a751befc141f47c9fd8) , ROM_SKIP(7))
 	ROMX_LOAD( "tre_jc07", 0x000007, 0x020000, CRC(b6feacb2) SHA1(85df28d5ff6601753a435e31bcaf45702c7489ea) , ROM_SKIP(7))
 
-	ROM_REGION( 0x020000, "oki", 0 )	/* Samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* Samples */
 	ROM_LOAD( "tr_jb11", 0x000000, 0x020000, CRC(83786a09) SHA1(910cf0ccf4493f2a80062149f6364dbb6a1c2a5d) )
 ROM_END
 
@@ -5432,7 +5475,7 @@ ROM_START( pangpoms )
 	ROMX_LOAD( "ppoms05.bin", 0x000006, 0x020000, CRC(02226214) SHA1(82302e7f1e7269c45e11dfba45ec7bbf522b47f1) , ROM_SKIP(7))
 	ROMX_LOAD( "ppoms07.bin", 0x000007, 0x020000, CRC(48471c87) SHA1(025fa79993788a0091c4edb83423725abd3a47a2) , ROM_SKIP(7))
 
-	ROM_REGION( 0x020000, "oki", 0 )	/* Samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* Samples */
 	ROM_LOAD( "ppoms11.bin", 0x000000, 0x020000, CRC(e89bd565) SHA1(6c7c1ad67ba708dbbe9654c1d290af290207d2be) )
 ROM_END
 
@@ -5455,7 +5498,7 @@ ROM_START( pangpomm )
 	ROMX_LOAD( "pj.e05",      0x000006, 0x020000, CRC(79c0ec1e) SHA1(b15582e89d859dda4f82908c62e9e07cb45229b9) , ROM_SKIP(7))
 	ROMX_LOAD( "ppoms07.bin", 0x000007, 0x020000, CRC(48471c87) SHA1(025fa79993788a0091c4edb83423725abd3a47a2) , ROM_SKIP(7))
 
-	ROM_REGION( 0x020000, "oki", 0 )	/* Samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* Samples */
 	ROM_LOAD( "ppoms11.bin", 0x000000, 0x020000, CRC(e89bd565) SHA1(6c7c1ad67ba708dbbe9654c1d290af290207d2be) )
 ROM_END
 
@@ -5723,7 +5766,7 @@ ROM_START( skyalert )
 	ROMX_LOAD( "sa_a_05.bin", 0x000006, 0x040000, CRC(62169d31) SHA1(294887b6ce0d56e053e7f7583b8a160afeef4ce5) , ROM_SKIP(7))
 	ROMX_LOAD( "sa_a_07.bin", 0x000007, 0x040000, CRC(a6f5966f) SHA1(00319b96dacc4dcfd70935e1626da0ae6aa63e5a) , ROM_SKIP(7))
 
-	ROM_REGION( 0x020000, "oki", 0 )	/* Samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* Samples */
 	ROM_LOAD( "sa_a_11.bin", 0x000000, 0x020000, CRC(04842a60) SHA1(ade016c85867dee7ac27efe3910b01f5f8e730a0) )
 ROM_END
 
@@ -5774,7 +5817,7 @@ ROM_START( toride2g )
 	ROMX_LOAD( "tr2aja-1.12i", 0x000004, 0x080000, CRC(96245a5c) SHA1(524990c88a08648de6f330652fc5c02a27e1325c) , ROM_GROUPWORD | ROM_SKIP(6))
 	ROMX_LOAD( "tr2aja-3.16i", 0x000006, 0x080000, CRC(49013f5d) SHA1(8f29bd2606b30260e9b21886f2b257f7ae8fb2bf) , ROM_GROUPWORD | ROM_SKIP(6))
 
-	ROM_REGION( 0x020000, "oki", 0 )	/* Samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* Samples */
 	ROM_LOAD( "tr2aja-7.3g", 0x000000, 0x020000, CRC(630c6193) SHA1(ddb63724e0b0f7264cb02904e49b24b87beb35a9) )
 ROM_END
 
@@ -5793,7 +5836,7 @@ ROM_START( torid2gg )
 	ROMX_LOAD( "trii_gb_1", 0x000004, 0x080000, CRC(bcf30944) SHA1(c36fbffa6062a2443a47d8faf83baa903529ee97) , ROM_GROUPWORD | ROM_SKIP(6))
 	ROMX_LOAD( "trii_gb_3", 0x000006, 0x080000, CRC(138e68d0) SHA1(5a9655f31e2f2e2f16a5bdc334efa78b2cfc37d2) , ROM_GROUPWORD | ROM_SKIP(6))
 
-	ROM_REGION( 0x020000, "oki", 0 )	/* Samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* Samples */
 	ROM_LOAD( "trii_ja_7", 0x000000, 0x020000, CRC(6ee32315) SHA1(ef4d59576929deab0aa459a67be21d97c2803dea) )
 ROM_END
 
@@ -5812,7 +5855,7 @@ ROM_START( toride2j )
 	ROMX_LOAD( "tr2_jb-1.12i", 0x000004, 0x080000, CRC(856f40b7) SHA1(99aca5472b991cd08e9c2128ffdd40675a3b968d) , ROM_GROUPWORD | ROM_SKIP(6))
 	ROMX_LOAD( "tr2_jb-3.16i", 0x000006, 0x080000, CRC(78ba205f) SHA1(1069a362e60747aaa284c0d9bb7718013df347f3) , ROM_GROUPWORD | ROM_SKIP(6))
 
-	ROM_REGION( 0x020000, "oki", 0 )	/* Samples */
+	ROM_REGION( 0x40000, "oki", 0 )	/* Samples */
 	ROM_LOAD( "pcm.3g", 0x000000, 0x020000, CRC(6ee32315) SHA1(ef4d59576929deab0aa459a67be21d97c2803dea) )
 ROM_END
 
@@ -5852,6 +5895,7 @@ GAME( 1996, 3kokushi, 0,        3kokushi, 3kokushi, karatour, ROT0,   "Mitchell"
 GAME( 1996, balcube,  0,        balcube,  balcube,  balcube,  ROT0,   "Metro",                                  "Bal Cube",                          0 )
 GAME( 1996, bangball, 0,        bangball, bangball, balcube,  ROT0,   "Banpresto / Kunihiko Tashiro+Goodhouse", "Bang Bang Ball (v1.05)",            0 )
 GAME( 1996, gstrik2,  0,        gstrik2,  gstrik2,  blzntrnd, ROT0,   "Human Amusement",                        "Grand Striker 2 (Japan)",           GAME_IMPERFECT_GRAPHICS ) // priority between rounds
+GAME( 1996, gstrik2e, gstrik2,  gstrik2,  gstrik2,  blzntrnd, ROT0,   "Human Amusement",                        "Grand Striker 2 (Europe and Oceania)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1999, batlbubl, bangball, batlbubl, batlbubl, balcube,  ROT0,   "Limenko",                                "Battle Bubble (v2.00)",             0 )
 GAME( 1996, mouja,    0,        mouja,    mouja,    mouja,    ROT0,   "Etona",                                  "Mouja (Japan)",                     GAME_NO_COCKTAIL )
 GAME( 1997, gakusai,  0,        gakusai,  gakusai,  gakusai,  ROT0,   "MakeSoft",                               "Mahjong Gakuensai (Japan)",         GAME_IMPERFECT_GRAPHICS )

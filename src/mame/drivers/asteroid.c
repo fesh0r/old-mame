@@ -27,8 +27,19 @@ Kits are available immediately from your Atari Distributor.  To determine which 
   require, check ROMs on your Asteroids PCB.  If ROM code is "-01" order kit no. 08-0303009.
   If ROM code is "-02", order no. 08-0303008.
 
-*** It looks like both current sets are the older "easier" version.  We need dumps of the updates
-    for both sets.
+For kit 08-0303009 (from rev 01) swap the following:
+
+ 035127-01 --> 035127-02
+ 035143-01 --> 035143-02
+ 035144-01 --> 034144-04E
+ 035145-01 --> 034145-04E
+
+For kit 08-0303008 (from rev 02) swap the following:
+
+ 035144-02 --> 034144-04E
+ 035145-02 --> 034145-04E
+
+There is not a rev 3 known, mentioned or dumped
 
     Asteroids-deluxe state-prom added by HIGHWAYMAN.
     The prom pcb location is:C8 and is 256x4
@@ -678,38 +689,54 @@ MACHINE_DRIVER_END
 
 ROM_START( asteroid )
 	ROM_REGION( 0x8000, "maincpu", 0 )
-	ROM_LOAD( "035145.02",    0x6800, 0x0800, CRC(0cc75459) SHA1(2af85c9689b878155004da47fedbde5853a18723) )
-	ROM_LOAD( "035144.02",    0x7000, 0x0800, CRC(096ed35c) SHA1(064d680ded7f30c543f93ae5ca85f90d550f73e5) )
-	ROM_LOAD( "035143.02",    0x7800, 0x0800, CRC(312caa02) SHA1(1ce2eac1ab90b972e3f1fc3d250908f26328d6cb) )
+	ROM_LOAD( "035145-04e.ef2", 0x6800, 0x0800, CRC(b503eaf7) SHA1(5369dcfe01c0b9e48b15a96a0de8d23ee8ef9145) )
+	ROM_LOAD( "035144-04e.h2",  0x7000, 0x0800, CRC(25233192) SHA1(51b2865fa897cdaa84ac6500c4b4833a80827019) )
+	ROM_LOAD( "035143-02.j2",   0x7800, 0x0800, CRC(312caa02) SHA1(1ce2eac1ab90b972e3f1fc3d250908f26328d6cb) )
 	/* Vector ROM */
-	ROM_LOAD( "035127.02",    0x5000, 0x0800, CRC(8b71fd9e) SHA1(8cd5005e531eafa361d6b7e9eed159d164776c70) )
+	ROM_LOAD( "035127-02.np3",  0x5000, 0x0800, CRC(8b71fd9e) SHA1(8cd5005e531eafa361d6b7e9eed159d164776c70) )
+
 	/* DVG PROM */
 	ROM_REGION( 0x100, "user1", 0 )
-	ROM_LOAD( "034602-01.c8",	0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+	ROM_LOAD( "034602-01.c8",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+ROM_END
+
+ROM_START( asteroi2 )
+	ROM_REGION( 0x8000, "maincpu", 0 )
+	ROM_LOAD( "035145-02.ef2",  0x6800, 0x0800, CRC(0cc75459) SHA1(2af85c9689b878155004da47fedbde5853a18723) )
+	ROM_LOAD( "035144-02.h2",   0x7000, 0x0800, CRC(096ed35c) SHA1(064d680ded7f30c543f93ae5ca85f90d550f73e5) )
+	ROM_LOAD( "035143-02.j2",   0x7800, 0x0800, CRC(312caa02) SHA1(1ce2eac1ab90b972e3f1fc3d250908f26328d6cb) )
+	/* Vector ROM */
+	ROM_LOAD( "035127-02.np3",  0x5000, 0x0800, CRC(8b71fd9e) SHA1(8cd5005e531eafa361d6b7e9eed159d164776c70) )
+
+	/* DVG PROM */
+	ROM_REGION( 0x100, "user1", 0 )
+	ROM_LOAD( "034602-01.c8",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 ROM_START( asteroi1 )
 	ROM_REGION( 0x8000, "maincpu", 0 )
-	ROM_LOAD( "035145.01",    0x6800, 0x0800, CRC(e9bfda64) SHA1(291dc567ebb31b35df83d9fb87f4080f251ff9c8) )
-	ROM_LOAD( "035144.01",    0x7000, 0x0800, CRC(e53c28a9) SHA1(d9f081e73511ec43377f0c6457747f15a470d4dc) )
-	ROM_LOAD( "035143.01",    0x7800, 0x0800, CRC(7d4e3d05) SHA1(d88000e904e158efde50e453e2889ecd2cb95f24) )
+	ROM_LOAD( "035145-01.ef2",  0x6800, 0x0800, CRC(e9bfda64) SHA1(291dc567ebb31b35df83d9fb87f4080f251ff9c8) )
+	ROM_LOAD( "035144-01.h2",   0x7000, 0x0800, CRC(e53c28a9) SHA1(d9f081e73511ec43377f0c6457747f15a470d4dc) )
+	ROM_LOAD( "035143-01.j2",   0x7800, 0x0800, CRC(7d4e3d05) SHA1(d88000e904e158efde50e453e2889ecd2cb95f24) )
 	/* Vector ROM */
-	ROM_LOAD( "035127.01",    0x5000, 0x0800, CRC(99699366) SHA1(9b2828fc1cef7727f65fa65e1e11e309b7c98792) )
+	ROM_LOAD( "035127-01.np3",  0x5000, 0x0800, CRC(99699366) SHA1(9b2828fc1cef7727f65fa65e1e11e309b7c98792) )
+
 	/* DVG PROM */
 	ROM_REGION( 0x100, "user1", 0 )
-	ROM_LOAD( "034602-01.c8",	0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+	ROM_LOAD( "034602-01.c8",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 ROM_START( asteroib )
 	ROM_REGION( 0x8000, "maincpu", 0 )
-	ROM_LOAD( "035145ll.bin", 0x6800, 0x0800, CRC(605fc0f2) SHA1(8d897a3b75bd1f2537470f0a34a97a8c0853ee08) )
-	ROM_LOAD( "035144ll.bin", 0x7000, 0x0800, CRC(e106de77) SHA1(003e99d095bd4df6fae243ea1dd5b12f3eb974f1) )
-	ROM_LOAD( "035143ll.bin", 0x7800, 0x0800, CRC(6b1d8594) SHA1(ff3cd93f1bc5734bface285e442125b395602d7d) )
+	ROM_LOAD( "035145ll.de1",  0x6800, 0x0800, CRC(605fc0f2) SHA1(8d897a3b75bd1f2537470f0a34a97a8c0853ee08) )
+	ROM_LOAD( "035144ll.c1",   0x7000, 0x0800, CRC(e106de77) SHA1(003e99d095bd4df6fae243ea1dd5b12f3eb974f1) )
+	ROM_LOAD( "035143ll.b1",   0x7800, 0x0800, CRC(6b1d8594) SHA1(ff3cd93f1bc5734bface285e442125b395602d7d) )
 	/* Vector ROM */
-	ROM_LOAD( "035127.02",    0x5000, 0x0800, CRC(8b71fd9e) SHA1(8cd5005e531eafa361d6b7e9eed159d164776c70) )
+	ROM_LOAD( "035127-01.np3", 0x5000, 0x0800, CRC(99699366) SHA1(9b2828fc1cef7727f65fa65e1e11e309b7c98792) )
+
 	/* DVG PROM */
 	ROM_REGION( 0x100, "user1", 0 )
-	ROM_LOAD( "034602-01.c8",	0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+	ROM_LOAD( "034602-01.c8",  0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 ROM_START( asterock )
@@ -723,9 +750,10 @@ ROM_START( asterock )
 	/* Vector ROM */
 	ROM_LOAD( "sidamas.0",    0x5000, 0x0400, CRC(6bd2053f) SHA1(790f2858f44bbb1854e2d9d549e29f4815c4665b) )
 	ROM_LOAD( "sidamas.1",    0x5400, 0x0400, CRC(231ce201) SHA1(710f4c19864d725ba1c9ea447a97e84001a679f7) )
+
 	/* DVG PROM */
 	ROM_REGION( 0x100, "user1", 0 )
-	ROM_LOAD( "034602-01.c8",	0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+	ROM_LOAD( "034602-01.c8",    0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 ROM_START( meteorts )
@@ -735,9 +763,10 @@ ROM_START( meteorts )
 	ROM_LOAD( "m2_j1.bin",    0x7800, 0x0800, CRC(64bd0408) SHA1(141d053cb4cce3fece98293136928b527d3ade0f) )
 	/* Vector ROM */
 	ROM_LOAD( "mv_np3.bin",   0x5000, 0x0800, CRC(11d1c4ae) SHA1(433c2c05b92094bbe102c356d7f1a907db13da67) )
+
 	/* DVG PROM */
 	ROM_REGION( 0x100, "user1", 0 )
-	ROM_LOAD( "034602-01.c8",	0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+	ROM_LOAD( "034602-01.c8",    0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 ROM_START( meteorho )
@@ -751,6 +780,7 @@ ROM_START( meteorho )
 	/* Vector ROM */
 	ROM_LOAD( "a.bin",    0x5000, 0x0400, CRC(d7822110) SHA1(bf6c5e622fdc16c39a1d8f23fc029abaa1e99b19) )
 	ROM_LOAD( "b.bin",    0x5400, 0x0400, CRC(d62b2887) SHA1(8832953c7166d2f0ed1067c43ebf369db4a4aa70) )
+
 	/* DVG PROM */
 	ROM_REGION( 0x100, "user1", 0 )
 	ROM_LOAD( "prom.bin",	0x0000, 0x0100, CRC(9e237193) SHA1(f663e12d5db0fa50ea49d03591475ae0a7168bc0) )
@@ -759,30 +789,32 @@ ROM_END
 
 ROM_START( astdelux )
 	ROM_REGION( 0x8000, "maincpu", 0 )
-	ROM_LOAD( "036430.02",    0x6000, 0x0800, CRC(a4d7a525) SHA1(abe262193ec8e1981be36928e9a89a8ac95cd0ad) )
-	ROM_LOAD( "036431.02",    0x6800, 0x0800, CRC(d4004aae) SHA1(aa2099b8fc62a79879efeea70ea1e9ed77e3e6f0) )
-	ROM_LOAD( "036432.02",    0x7000, 0x0800, CRC(6d720c41) SHA1(198218cd2f43f8b83e4463b1f3a8aa49da5015e4) )
-	ROM_LOAD( "036433.03",    0x7800, 0x0800, CRC(0dcc0be6) SHA1(bf10ffb0c4870e777d6b509cbede35db8bb6b0b8) )
+	ROM_LOAD( "036430-02.d1",  0x6000, 0x0800, CRC(a4d7a525) SHA1(abe262193ec8e1981be36928e9a89a8ac95cd0ad) )
+	ROM_LOAD( "036431-02.ef1", 0x6800, 0x0800, CRC(d4004aae) SHA1(aa2099b8fc62a79879efeea70ea1e9ed77e3e6f0) )
+	ROM_LOAD( "036432-02.fh1", 0x7000, 0x0800, CRC(6d720c41) SHA1(198218cd2f43f8b83e4463b1f3a8aa49da5015e4) )
+	ROM_LOAD( "036433-03.j1",  0x7800, 0x0800, CRC(0dcc0be6) SHA1(bf10ffb0c4870e777d6b509cbede35db8bb6b0b8) )
 	/* Vector ROM */
-	ROM_LOAD( "036800.02",    0x4800, 0x0800, CRC(bb8cabe1) SHA1(cebaa1b91b96e8b80f2b2c17c6fd31fa9f156386) )
-	ROM_LOAD( "036799.01",    0x5000, 0x0800, CRC(7d511572) SHA1(1956a12bccb5d3a84ce0c1cc10c6ad7f64e30b40) )
+	ROM_LOAD( "036800-02.r2",  0x4800, 0x0800, CRC(bb8cabe1) SHA1(cebaa1b91b96e8b80f2b2c17c6fd31fa9f156386) )
+	ROM_LOAD( "036799-01.np2", 0x5000, 0x0800, CRC(7d511572) SHA1(1956a12bccb5d3a84ce0c1cc10c6ad7f64e30b40) )
+
 	/* DVG PROM */
 	ROM_REGION( 0x100, "user1", 0 )
-	ROM_LOAD( "034602-01.c8",	0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+	ROM_LOAD( "034602-01.c8",  0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 ROM_START( astdelu2 )
 	ROM_REGION( 0x8000, "maincpu", 0 )
-	ROM_LOAD( "036430.01",    0x6000, 0x0800, CRC(8f5dabc6) SHA1(5d7543e19acab99ddb63c0ffd60f54d7a0f267f5) )
-	ROM_LOAD( "036431.01",    0x6800, 0x0800, CRC(157a8516) SHA1(9041d8c2369d004f198681e02b59a923fa8f70c9) )
-	ROM_LOAD( "036432.01",    0x7000, 0x0800, CRC(fdea913c) SHA1(ded0138a20d80317d67add5bb2a64e6274e0e409) )
-	ROM_LOAD( "036433.02",    0x7800, 0x0800, CRC(d8db74e3) SHA1(52b64e867df98d14742eb1817b59931bb7f941d9) )
+	ROM_LOAD( "036430-01.d1",  0x6000, 0x0800, CRC(8f5dabc6) SHA1(5d7543e19acab99ddb63c0ffd60f54d7a0f267f5) )
+	ROM_LOAD( "036431-01.ef1", 0x6800, 0x0800, CRC(157a8516) SHA1(9041d8c2369d004f198681e02b59a923fa8f70c9) )
+	ROM_LOAD( "036432-01.fh1", 0x7000, 0x0800, CRC(fdea913c) SHA1(ded0138a20d80317d67add5bb2a64e6274e0e409) )
+	ROM_LOAD( "036433-02.j1",  0x7800, 0x0800, CRC(d8db74e3) SHA1(52b64e867df98d14742eb1817b59931bb7f941d9) )
 	/* Vector ROM */
-	ROM_LOAD( "036800.01",    0x4800, 0x0800, CRC(3b597407) SHA1(344fea2e5d84acce365d76daed61e96b9b6b37cc) )
-	ROM_LOAD( "036799.01",    0x5000, 0x0800, CRC(7d511572) SHA1(1956a12bccb5d3a84ce0c1cc10c6ad7f64e30b40) )
+	ROM_LOAD( "036800-01.r2",  0x4800, 0x0800, CRC(3b597407) SHA1(344fea2e5d84acce365d76daed61e96b9b6b37cc) )
+	ROM_LOAD( "036799-01.np2", 0x5000, 0x0800, CRC(7d511572) SHA1(1956a12bccb5d3a84ce0c1cc10c6ad7f64e30b40) )
+
 	/* DVG PROM */
-	ROM_REGION( 0x0100, "user1", 0 )
-	ROM_LOAD( "034602-01.c8",	0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+	ROM_REGION( 0x100, "user1", 0 )
+	ROM_LOAD( "034602-01.c8",  0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 /***************************************************************************
@@ -825,51 +857,52 @@ www.andys-arcade.com
 */
 ROM_START( astdelu1 )
 	ROM_REGION( 0x8000, "maincpu", 0 )
-	ROM_LOAD( "036430.01",    0x6000, 0x0800, CRC(8f5dabc6) SHA1(5d7543e19acab99ddb63c0ffd60f54d7a0f267f5) )
-	ROM_LOAD( "036431.01",    0x6800, 0x0800, CRC(157a8516) SHA1(9041d8c2369d004f198681e02b59a923fa8f70c9) )
-	ROM_LOAD( "036432.01",    0x7000, 0x0800, CRC(fdea913c) SHA1(ded0138a20d80317d67add5bb2a64e6274e0e409) )
-	ROM_LOAD( "036433.01",    0x7800, 0x0800, CRC(ef09bac7) SHA1(6a4b37dbfe4e6badc4e81036b1430da2e9cb8ca4) )
+	ROM_LOAD( "036430-01.d1",  0x6000, 0x0800, CRC(8f5dabc6) SHA1(5d7543e19acab99ddb63c0ffd60f54d7a0f267f5) )
+	ROM_LOAD( "036431-01.ef1", 0x6800, 0x0800, CRC(157a8516) SHA1(9041d8c2369d004f198681e02b59a923fa8f70c9) )
+	ROM_LOAD( "036432-01.fh1", 0x7000, 0x0800, CRC(fdea913c) SHA1(ded0138a20d80317d67add5bb2a64e6274e0e409) )
+	ROM_LOAD( "036433-01.j1",  0x7800, 0x0800, CRC(ef09bac7) SHA1(6a4b37dbfe4e6badc4e81036b1430da2e9cb8ca4) )
 	/* Vector ROM */
-	ROM_LOAD( "036800.01",    0x4800, 0x0800, CRC(3b597407) SHA1(344fea2e5d84acce365d76daed61e96b9b6b37cc) )
-	ROM_LOAD( "036799.01",    0x5000, 0x0800, CRC(7d511572) SHA1(1956a12bccb5d3a84ce0c1cc10c6ad7f64e30b40) )
+	ROM_LOAD( "036800-01.r2",  0x4800, 0x0800, CRC(3b597407) SHA1(344fea2e5d84acce365d76daed61e96b9b6b37cc) )
+	ROM_LOAD( "036799-01.np2", 0x5000, 0x0800, CRC(7d511572) SHA1(1956a12bccb5d3a84ce0c1cc10c6ad7f64e30b40) )
+
 	/* DVG PROM */
-	ROM_REGION( 0x0100, "user1", 0 )
-	ROM_LOAD( "034602-01.c8",   0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+	ROM_REGION( 0x100, "user1", 0 )
+	ROM_LOAD( "034602-01.c8",  0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 
 ROM_START( llander )
 	ROM_REGION( 0x8000, "maincpu", 0 )
-	ROM_LOAD( "034572.02",    0x6000, 0x0800, CRC(b8763eea) SHA1(5a15eaeaf825ccdf9ce013a6789cf51da20f785c) )
-	ROM_LOAD( "034571.02",    0x6800, 0x0800, CRC(77da4b2f) SHA1(4be6cef5af38734d580cbfb7e4070fe7981ddfd6) )
-	ROM_LOAD( "034570.01",    0x7000, 0x0800, CRC(2724e591) SHA1(ecf4430a0040c227c896aa2cd81ee03960b4d641) )
-	ROM_LOAD( "034569.02",    0x7800, 0x0800, CRC(72837a4e) SHA1(9b21ba5e1518079c326ca6e15b9993e6c4483caa) )
+	ROM_LOAD( "034572-02.f1",  0x6000, 0x0800, CRC(b8763eea) SHA1(5a15eaeaf825ccdf9ce013a6789cf51da20f785c) )
+	ROM_LOAD( "034571-02.de1", 0x6800, 0x0800, CRC(77da4b2f) SHA1(4be6cef5af38734d580cbfb7e4070fe7981ddfd6) )
+	ROM_LOAD( "034570-01.c1",  0x7000, 0x0800, CRC(2724e591) SHA1(ecf4430a0040c227c896aa2cd81ee03960b4d641) )
+	ROM_LOAD( "034569-02.b1",  0x7800, 0x0800, CRC(72837a4e) SHA1(9b21ba5e1518079c326ca6e15b9993e6c4483caa) )
 	/* Vector ROM */
-	ROM_LOAD( "034599.01",    0x4800, 0x0800, CRC(355a9371) SHA1(6ecb40169b797d9eb623bcb17872f745b1bf20fa) )
-	ROM_LOAD( "034598.01",    0x5000, 0x0800, CRC(9c4ffa68) SHA1(eb4ffc289d254f699f821df3146aa2c6cd78597f) )
-	/* This _should_ be the rom for international versions. */
-	/* Unfortunately, is it not currently available. */
-	ROM_LOAD( "034597.01",    0x5800, 0x0800, NO_DUMP )
+	ROM_LOAD( "034599-01.r3",  0x4800, 0x0800, CRC(355a9371) SHA1(6ecb40169b797d9eb623bcb17872f745b1bf20fa) )
+	ROM_LOAD( "034598-01.np3", 0x5000, 0x0800, CRC(9c4ffa68) SHA1(eb4ffc289d254f699f821df3146aa2c6cd78597f) )
+	/* This _should_ be the rom for international versions.  Unfortunately, is it not currently available. */
+	ROM_LOAD( "034597-01.m3",  0x5800, 0x0800, NO_DUMP )
+
 	/* DVG PROM */
 	ROM_REGION( 0x100, "user1", 0 )
-	ROM_LOAD( "034602-01.c8",	0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+	ROM_LOAD( "034602-01.c8",  0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 ROM_START( llander1 )
 	ROM_REGION( 0x8000, "maincpu", 0 )
-	ROM_LOAD( "034572.01",    0x6000, 0x0800, CRC(2aff3140) SHA1(4fc8aae640ce655417c11d9a3121aae9a1238e7c) )
-	ROM_LOAD( "034571.01",    0x6800, 0x0800, CRC(493e24b7) SHA1(125a2c335338ccabababef12fd7096ef4b605a31) )
-	ROM_LOAD( "034570.01",    0x7000, 0x0800, CRC(2724e591) SHA1(ecf4430a0040c227c896aa2cd81ee03960b4d641) )
-	ROM_LOAD( "034569.01",    0x7800, 0x0800, CRC(b11a7d01) SHA1(8f2935dbe04ee68815d69ea9e71853b5a145d7c3) )
+	ROM_LOAD( "034572-01.f1",  0x6000, 0x0800, CRC(2aff3140) SHA1(4fc8aae640ce655417c11d9a3121aae9a1238e7c) )
+	ROM_LOAD( "034571-01.de1", 0x6800, 0x0800, CRC(493e24b7) SHA1(125a2c335338ccabababef12fd7096ef4b605a31) )
+	ROM_LOAD( "034570-01.c1",  0x7000, 0x0800, CRC(2724e591) SHA1(ecf4430a0040c227c896aa2cd81ee03960b4d641) )
+	ROM_LOAD( "034569-01.b1",  0x7800, 0x0800, CRC(b11a7d01) SHA1(8f2935dbe04ee68815d69ea9e71853b5a145d7c3) )
 	/* Vector ROM */
-	ROM_LOAD( "034599.01",    0x4800, 0x0800, CRC(355a9371) SHA1(6ecb40169b797d9eb623bcb17872f745b1bf20fa) )
-	ROM_LOAD( "034598.01",    0x5000, 0x0800, CRC(9c4ffa68) SHA1(eb4ffc289d254f699f821df3146aa2c6cd78597f) )
-	/* This _should_ be the rom for international versions. */
-	/* Unfortunately, is it not currently available. */
-	ROM_LOAD( "034597.01",    0x5800, 0x0800, NO_DUMP )
+	ROM_LOAD( "034599-01.r3",  0x4800, 0x0800, CRC(355a9371) SHA1(6ecb40169b797d9eb623bcb17872f745b1bf20fa) )
+	ROM_LOAD( "034598-01.np3", 0x5000, 0x0800, CRC(9c4ffa68) SHA1(eb4ffc289d254f699f821df3146aa2c6cd78597f) )
+	/* This _should_ be the rom for international versions.  Unfortunately, is it not currently available. */
+	ROM_LOAD( "034597-01.m3",  0x5800, 0x0800, NO_DUMP )
+
 	/* DVG PROM */
 	ROM_REGION( 0x100, "user1", 0 )
-	ROM_LOAD( "034602-01.c8",	0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+	ROM_LOAD( "034602-01.c8",  0x0000, 0x0100, CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
 ROM_END
 
 
@@ -900,14 +933,15 @@ static DRIVER_INIT( asterock )
  *
  *************************************/
 
-GAME( 1979, asteroid, 0,        asteroid, asteroid, 0,        ROT0, "Atari",   "Asteroids (rev 2)",							   GAME_SUPPORTS_SAVE				  )
-GAME( 1979, asteroi1, asteroid, asteroid, asteroid, 0,        ROT0, "Atari",   "Asteroids (rev 1)",							   GAME_SUPPORTS_SAVE				  )
-GAME( 1979, asteroib, asteroid, asteroid, asteroib, asteroib, ROT0, "bootleg", "Asteroids (bootleg on Lunar Lander hardware)", GAME_SUPPORTS_SAVE				  )
-GAME( 1979, asterock, asteroid, asterock, asterock, asterock, ROT0, "Sidam",   "Asterock",									   GAME_SUPPORTS_SAVE				  )
-GAME( 1979, meteorts, asteroid, asteroid, asteroid, 0,        ROT0, "VGG",     "Meteorites",								   GAME_SUPPORTS_SAVE				  )
-GAME( 1980, meteorho, asteroid, asteroid, asteroid, 0,        ROT0, "Hoei",    "Meteor",									   GAME_SUPPORTS_SAVE				  )
-GAMEL(1980, astdelux, 0,        astdelux, astdelux, 0,        ROT0, "Atari",   "Asteroids Deluxe (rev 3)",					   GAME_SUPPORTS_SAVE, layout_ho88ffff )
-GAMEL(1980, astdelu2, astdelux, astdelux, astdelux, 0,        ROT0, "Atari",   "Asteroids Deluxe (rev 2)",					   GAME_SUPPORTS_SAVE, layout_ho88ffff )
-GAMEL(1980, astdelu1, astdelux, astdelux, astdelux, 0,        ROT0, "Atari",   "Asteroids Deluxe (rev 1)",					   GAME_SUPPORTS_SAVE, layout_ho88ffff )
-GAME( 1979, llander,  0,        llander,  llander,  0,        ROT0, "Atari",   "Lunar Lander (rev 2)",						   GAME_SUPPORTS_SAVE				  )
-GAME( 1979, llander1, llander,  llander,  llander1, 0,        ROT0, "Atari",   "Lunar Lander (rev 1)",						   GAME_SUPPORTS_SAVE				  )
+GAME( 1979, asteroid, 0,        asteroid, asteroid, 0,        ROT0, "Atari",   "Asteroids (rev 4)",        GAME_SUPPORTS_SAVE )
+GAME( 1979, asteroi2, asteroid, asteroid, asteroid, 0,        ROT0, "Atari",   "Asteroids (rev 2)",        GAME_SUPPORTS_SAVE )
+GAME( 1979, asteroi1, asteroid, asteroid, asteroid, 0,        ROT0, "Atari",   "Asteroids (rev 1)",        GAME_SUPPORTS_SAVE )
+GAME( 1979, asteroib, asteroid, asteroid, asteroib, asteroib, ROT0, "bootleg", "Asteroids (bootleg on Lunar Lander hardware)", GAME_SUPPORTS_SAVE )
+GAME( 1979, asterock, asteroid, asterock, asterock, asterock, ROT0, "Sidam",   "Asterock",                 GAME_SUPPORTS_SAVE )
+GAME( 1979, meteorts, asteroid, asteroid, asteroid, 0,        ROT0, "VGG",     "Meteorites",               GAME_SUPPORTS_SAVE )
+GAME( 1980, meteorho, asteroid, asteroid, asteroid, 0,        ROT0, "Hoei",    "Meteor",                   GAME_SUPPORTS_SAVE )
+GAMEL(1980, astdelux, 0,        astdelux, astdelux, 0,        ROT0, "Atari",   "Asteroids Deluxe (rev 3)", GAME_SUPPORTS_SAVE, layout_ho88ffff )
+GAMEL(1980, astdelu2, astdelux, astdelux, astdelux, 0,        ROT0, "Atari",   "Asteroids Deluxe (rev 2)", GAME_SUPPORTS_SAVE, layout_ho88ffff )
+GAMEL(1980, astdelu1, astdelux, astdelux, astdelux, 0,        ROT0, "Atari",   "Asteroids Deluxe (rev 1)", GAME_SUPPORTS_SAVE, layout_ho88ffff )
+GAME( 1979, llander,  0,        llander,  llander,  0,        ROT0, "Atari",   "Lunar Lander (rev 2)",     GAME_SUPPORTS_SAVE )
+GAME( 1979, llander1, llander,  llander,  llander1, 0,        ROT0, "Atari",   "Lunar Lander (rev 1)",     GAME_SUPPORTS_SAVE )

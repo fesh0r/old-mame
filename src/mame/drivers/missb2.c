@@ -44,12 +44,11 @@ static VIDEO_UPDATE( missb2 )
 	//popmessage("%02x",(*missb2_bgvram) & 0x1f);
 	for(bg_offs = ((*missb2_bgvram) << 4);bg_offs<(((*missb2_bgvram)<< 4)|0xf);bg_offs++)
 	{
-		drawgfx(bitmap,screen->machine->gfx[1],
+		drawgfx_opaque(bitmap,cliprect,screen->machine->gfx[1],
 				bg_offs,
 				1,
 				0,0,
-				0,(bg_offs & 0xf) * 0x10,
-				cliprect,TRANSPARENCY_NONE,0xff);
+				0,(bg_offs & 0xf) * 0x10);
 	}
 
 
@@ -105,12 +104,11 @@ static VIDEO_UPDATE( missb2 )
 					flipy = !flipy;
 				}
 
-				drawgfx(bitmap,screen->machine->gfx[0],
+				drawgfx_transpen(bitmap,cliprect,screen->machine->gfx[0],
 						code,
 						0,
 						flipx,flipy,
-						x,y,
-						cliprect,TRANSPARENCY_PEN,0xff);
+						x,y,0xff);
 			}
 		}
 
@@ -411,7 +409,7 @@ ROM_START( missb2 )
 	ROM_REGION( 0x10000, "audiocpu", 0 ) /* 64k for the third CPU */
 	ROM_LOAD( "msbub2-u.211", 0x0000, 0x08000, CRC(08e5d846) SHA1(8509a71df984f0348bdc6ab60eb2ba7ceb9b1246) )
 
-	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE | ROMREGION_INVERT )
+	ROM_REGION( 0x100000, "gfx1", ROMREGION_INVERT )
 	ROM_LOAD( "msbub2-u.14",  0x00000, 0x40000, CRC(b3164b47) SHA1(083a63010515b0aa43b482938ae302b2df985312) )
 	ROM_LOAD( "msbub2-u.126", 0x40000, 0x40000, CRC(b0a9a353) SHA1(40d7f4c970d8571de319231c295fa0d2836efcf7) )
 	ROM_LOAD( "msbub2-u.124", 0x80000, 0x40000, CRC(4b0d8e5b) SHA1(218da3edcfea228e6df1ac59bc24217713d79410) )
@@ -423,7 +421,7 @@ ROM_START( missb2 )
 	ROM_LOAD16_BYTE( "msbub2-u.ic2", 0x000001, 0x80000, CRC(694c2783) SHA1(401dc8713a02130289f364786c38e70c4c4f9b2e) )
 	ROM_LOAD16_BYTE( "msbub2-u.ic4", 0x000000, 0x80000, CRC(be71c9f0) SHA1(1961e931017f644486cea0ce431d50973679c848) )
 
-	ROM_REGION( 0x20000, "oki", 0 ) /* samples */
+	ROM_REGION( 0x40000, "oki", 0 ) /* samples */
 	ROM_LOAD( "msbub2-u.13", 0x00000, 0x20000, BAD_DUMP CRC(14f07386) SHA1(097897d92226f900e11dbbdd853aff3ac46ff016) )
 
 	/* I doubt this prom is on the board, it's loaded so we can share video emulation with bubble bobble */

@@ -360,7 +360,7 @@ static VIDEO_UPDATE( ddayjlc )
 
 		code=(code&0x7f)|((flags&0x30)<<3);
 
-		drawgfx(bitmap, screen->machine->gfx[0], code, 1, xflip, yflip, x, y, cliprect, TRANSPARENCY_PEN, 0);
+		drawgfx_transpen(bitmap, cliprect, screen->machine->gfx[0], code, 1, xflip, yflip, x, y, 0);
 	}
 
 	{
@@ -370,9 +370,9 @@ static VIDEO_UPDATE( ddayjlc )
 			{
 				c=videoram[y*32+x];
 				if(x>1&&x<30)
-					drawgfx(bitmap, screen->machine->gfx[1], c+char_bank*0x100, 1, 0, 0, x*8, y*8, cliprect, TRANSPARENCY_PEN, 0);
+					drawgfx_transpen(bitmap, cliprect, screen->machine->gfx[1], c+char_bank*0x100, 1, 0, 0, x*8, y*8, 0);
 				else
-					drawgfx(bitmap, screen->machine->gfx[1], c+char_bank*0x100, 1, 0, 0, x*8, y*8, cliprect, TRANSPARENCY_NONE, 0);
+					drawgfx_opaque(bitmap, cliprect, screen->machine->gfx[1], c+char_bank*0x100, 1, 0, 0, x*8, y*8);
 		}
 	}
 	return 0;
@@ -446,17 +446,17 @@ ROM_START( ddayjlc )
 	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "11", 0x0000, 0x2000, CRC(fe4de019) SHA1(16c5402e1a79756f8227d7e99dd94c5896c57444) )
 
-	ROM_REGION( 0x8000, "gfx1", ROMREGION_DISPOSE )
+	ROM_REGION( 0x8000, "gfx1", 0 )
 	ROM_LOAD( "16", 0x0000, 0x2000, CRC(a167fe9a) SHA1(f2770d93ee5ae4eb9b3bcb052e14e36f53eec707) )
 	ROM_LOAD( "17", 0x2000, 0x2000, CRC(13ffe662) SHA1(2ea7855a14a4b8429751bae2e670e77608f93406) )
 	ROM_LOAD( "18", 0x4000, 0x2000, CRC(debe6531) SHA1(34b3b70a1872527266c664b2a82014d028a4ff1e) )
 	ROM_LOAD( "19", 0x6000, 0x2000, CRC(5816f947) SHA1(2236bed3e82980d3e7de3749aef0fbab042086e6) )
 
-	ROM_REGION( 0x2000, "gfx2", ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx2", 0 )
 	ROM_LOAD( "14", 0x0000, 0x1000, CRC(2c0e9bbe) SHA1(e34ab774d2eb17ddf51af513dbcaa0c51f8dcbf7) )
 	ROM_LOAD( "15", 0x1000, 0x1000, CRC(a6eeaa50) SHA1(052cd3e906ca028e6f55d0caa1e1386482684cbf) )
 
-	ROM_REGION( 0x2000, "gfx3", ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx3", 0 )
 	ROM_LOAD( "12", 0x0000, 0x1000, CRC(7f7afe80) SHA1(e8a549b8a8985c61d3ba452e348414146f2bc77e) )
 	ROM_LOAD( "13", 0x1000, 0x1000, CRC(f169b93f) SHA1(fb0617162542d688503fc6618dd430308e259455) )
 
@@ -486,17 +486,17 @@ ROM_START( ddayjlca )
 	ROM_REGION( 0x10000, "audiocpu", 0 )
 	ROM_LOAD( "11", 0x0000, 0x2000, CRC(fe4de019) SHA1(16c5402e1a79756f8227d7e99dd94c5896c57444) )
 
-	ROM_REGION( 0x8000, "gfx1", ROMREGION_DISPOSE )
+	ROM_REGION( 0x8000, "gfx1", 0 )
 	ROM_LOAD( "16", 0x0000, 0x2000, CRC(a167fe9a) SHA1(f2770d93ee5ae4eb9b3bcb052e14e36f53eec707) )
 	ROM_LOAD( "17", 0x2000, 0x2000, CRC(13ffe662) SHA1(2ea7855a14a4b8429751bae2e670e77608f93406) )
 	ROM_LOAD( "18", 0x4000, 0x2000, CRC(debe6531) SHA1(34b3b70a1872527266c664b2a82014d028a4ff1e) )
 	ROM_LOAD( "19", 0x6000, 0x2000, CRC(5816f947) SHA1(2236bed3e82980d3e7de3749aef0fbab042086e6) )
 
-	ROM_REGION( 0x2000, "gfx2", ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx2", 0 )
 	ROM_LOAD( "14", 0x0000, 0x1000, CRC(2c0e9bbe) SHA1(e34ab774d2eb17ddf51af513dbcaa0c51f8dcbf7) )
 	ROM_LOAD( "15", 0x1000, 0x1000, CRC(a6eeaa50) SHA1(052cd3e906ca028e6f55d0caa1e1386482684cbf) )
 
-	ROM_REGION( 0x2000, "gfx3", ROMREGION_DISPOSE )
+	ROM_REGION( 0x2000, "gfx3", 0 )
 	ROM_LOAD( "12", 0x0000, 0x1000, CRC(7f7afe80) SHA1(e8a549b8a8985c61d3ba452e348414146f2bc77e) )
 	ROM_LOAD( "13", 0x1000, 0x1000, CRC(f169b93f) SHA1(fb0617162542d688503fc6618dd430308e259455) )
 

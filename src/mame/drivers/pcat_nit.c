@@ -144,23 +144,21 @@ static void cga_alphanumeric_tilemap(running_machine *machine, bitmap_t *bitmap,
 			tile =  (vga_vram[offs] & 0x00ff0000)>>16;
 			color = (vga_vram[offs] & 0xff000000)>>24;
 
-			drawgfx(bitmap,machine->gfx[gfx_num],
+			drawgfx_opaque(bitmap,cliprect,machine->gfx[gfx_num],
 					tile,
 					color,
 					0,0,
-					(x+1)*8,y*8,
-					cliprect,TRANSPARENCY_NONE,0);
+					(x+1)*8,y*8);
 
 
 			tile =  (vga_vram[offs] & 0x000000ff);
 			color = (vga_vram[offs] & 0x0000ff00)>>8;
 
-			drawgfx(bitmap,machine->gfx[gfx_num],
+			drawgfx_opaque(bitmap,cliprect,machine->gfx[gfx_num],
 					tile,
 					color,
 					0,0,
-					(x+0)*8,y*8,
-					cliprect,TRANSPARENCY_NONE,0);
+					(x+0)*8,y*8);
 
 			offs++;
 		}
@@ -187,6 +185,15 @@ DMA8237 Controller
 
 static UINT8 dma_offset[2][4];
 static UINT8 at_pages[0x10];
+
+static DMA8237_HRQ_CHANGED( pc_dma_hrq_changed )
+{
+	cputag_set_input_line(device->machine, "maincpu", INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
+
+	/* Assert HLDA */
+	dma8237_set_hlda( device, state );
+}
+
 
 static DMA8237_MEM_READ( pc_dma_read_byte )
 {
@@ -254,27 +261,27 @@ static WRITE8_HANDLER(dma_page_select_w)
 
 static const struct dma8237_interface dma8237_1_config =
 {
-	"maincpu",
-	1.0e-6, // 1us
+	XTAL_14_31818MHz/3,
 
+	pc_dma_hrq_changed,
 	pc_dma_read_byte,
 	pc_dma_write_byte,
 
-	{ 0, 0, NULL, NULL },
-	{ 0, 0, NULL, NULL },
+	{ NULL, NULL, NULL, NULL },
+	{ NULL, NULL, NULL, NULL },
 	NULL
 };
 
 static const struct dma8237_interface dma8237_2_config =
 {
-	"maincpu",
-	1.0e-6, // 1us
+	XTAL_14_31818MHz/3,
 
 	NULL,
 	NULL,
+	NULL,
 
-	{ 0, 0, NULL, NULL },
-	{ 0, 0, NULL, NULL },
+	{ NULL, NULL, NULL, NULL },
+	{ NULL, NULL, NULL, NULL },
 	NULL
 };
 

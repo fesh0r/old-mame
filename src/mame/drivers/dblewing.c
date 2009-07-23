@@ -119,20 +119,20 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 
 		while (multi >= 0)
 		{
-			pdrawgfx(bitmap,machine->gfx[2],
+			pdrawgfx_transpen(bitmap,cliprect,machine->gfx[2],
 					sprite - multi * inc,
 					colour,
 					fx,fy,
 					x,y + mult * multi,
-					cliprect,TRANSPARENCY_PEN,0,pri);
+					priority_bitmap,pri,0);
 
 			if (xsize)
-			pdrawgfx(bitmap,machine->gfx[2],
+			pdrawgfx_transpen(bitmap,cliprect,machine->gfx[2],
 					(sprite - multi * inc)-mult2,
 					colour,
 					fx,fy,
 					x-16,y + mult * multi,
-					cliprect,TRANSPARENCY_PEN,0,pri);
+					priority_bitmap,pri,0);
 
 
 			multi--;
@@ -756,10 +756,10 @@ ROM_START( dblewing )
 	ROM_COPY( "audiocpu" ,  0x00000, 0x00000, 0x8000 )
 	ROM_COPY( "audiocpu" ,  0x10000, 0x08000, 0x8000 )
 
-	ROM_REGION( 0x100000, "gfx1", ROMREGION_DISPOSE )
+	ROM_REGION( 0x100000, "gfx1", 0 )
 	ROM_LOAD( "mbe-02.8h",    0x00000, 0x100000, CRC(5a6d3ac5) SHA1(738bb833e2c5d929ac75fe4e69ee0af88197d8a6) )
 
-	ROM_REGION( 0x200000, "gfx2", ROMREGION_DISPOSE )
+	ROM_REGION( 0x200000, "gfx2", 0 )
 	ROM_LOAD16_BYTE( "mbe-00.14a",    0x000000, 0x100000, CRC(e33f5c93) SHA1(720904b54d02dace2310ac6bd07d5ed4bc4fd69c) )
 	ROM_LOAD16_BYTE( "mbe-01.16a",    0x000001, 0x100000, CRC(ef452ad7) SHA1(7fe49123b5c2778e46104eaa3a2104ce09e05705) )
 
