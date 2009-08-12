@@ -113,6 +113,7 @@ CPUS += MINX
 CPUS += SSEM
 CPUS += AVR8
 CPUS += TMS0980
+CPUS += I4004
 
 
 #-------------------------------------------------
@@ -1739,7 +1740,8 @@ $(DRIVERS)/mw8080bw.o:	$(LAYOUT)/280zzzap.lh \
 						$(LAYOUT)/clowns.lh \
 						$(LAYOUT)/invaders.lh \
 						$(LAYOUT)/invad2ct.lh \
-						$(LAYOUT)/lagunar.lh
+						$(LAYOUT)/lagunar.lh \
+						$(LAYOUT)/spacwalk.lh
 
 $(DRIVERS)/meadows.o:	$(LAYOUT)/deadeye.lh \
 						$(LAYOUT)/gypsyjug.lh
@@ -1767,9 +1769,9 @@ $(DRIVERS)/polepos.o:	$(LAYOUT)/polepos.lh
 
 $(DRIVERS)/qix.o:		$(LAYOUT)/elecyoyo.lh
 
-$(DRIVERS)/re900.o:	$(LAYOUT)/re900.lh
+$(DRIVERS)/re900.o:		$(LAYOUT)/re900.lh
 
-$(DRIVERS)/roul.o:	$(LAYOUT)/roul.lh
+$(DRIVERS)/roul.o:		$(LAYOUT)/roul.lh
 
 $(DRIVERS)/sbrkout.o:	$(LAYOUT)/sbrkout.lh
 
@@ -1819,6 +1821,8 @@ $(DRIVERS)/tx1.o:		$(LAYOUT)/buggybjr.lh \
 						$(LAYOUT)/tx1.lh
 
 $(DRIVERS)/undrfire.o:	$(LAYOUT)/cbombers.lh
+
+$(DRIVERS)/vicdual.o:	$(LAYOUT)/depthch.lh
 
 $(DRIVERS)/videopin.o:	$(LAYOUT)/videopin.lh
 
