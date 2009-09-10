@@ -1699,7 +1699,7 @@ static void init_autoselect_devices(const input_port_config *portlist, int type1
 		mame_printf_error("Invalid %s value %s; reverting to keyboard\n", option, stemp);
 
 	/* only scan the list if we haven't already enabled this class of control */
-	if (!input_device_class_enabled(portlist->machine, autoenable))
+	if (portlist != NULL && !input_device_class_enabled(portlist->machine, autoenable))
 		for (port = portlist; port != NULL; port = port->next)
 			for (field = port->fieldlist; field != NULL; field = field->next)
 
