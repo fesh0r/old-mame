@@ -263,7 +263,7 @@ static void unico_draw_sprites(running_machine *machine, bitmap_t *bitmap,const 
 						attr & 0x1f,
 						flipx, flipy,
 						x, sy,
-						priority_bitmap,
+						machine->priority_bitmap,
 						pri_mask,0x00	);
 		}
 	}
@@ -316,7 +316,7 @@ static void zeropnt2_draw_sprites(running_machine *machine, bitmap_t *bitmap,con
 						attr & 0x1f,
 						flipx, flipy,
 						x, sy,
-						priority_bitmap,
+						machine->priority_bitmap,
 						pri_mask,0x00	);
 		}
 	}
@@ -346,20 +346,20 @@ VIDEO_UPDATE( unico )
 	tilemap_set_scrollx(tilemap_2, 0, *unico_scrollx_2);
 
 #ifdef MAME_DEBUG
-if ( input_code_pressed(KEYCODE_Z) || input_code_pressed(KEYCODE_X) )
+if ( input_code_pressed(screen->machine, KEYCODE_Z) || input_code_pressed(screen->machine, KEYCODE_X) )
 {
 	int msk = 0;
-	if (input_code_pressed(KEYCODE_Q))	msk |= 1;
-	if (input_code_pressed(KEYCODE_W))	msk |= 2;
-	if (input_code_pressed(KEYCODE_E))	msk |= 4;
-	if (input_code_pressed(KEYCODE_A))	msk |= 8;
+	if (input_code_pressed(screen->machine, KEYCODE_Q))	msk |= 1;
+	if (input_code_pressed(screen->machine, KEYCODE_W))	msk |= 2;
+	if (input_code_pressed(screen->machine, KEYCODE_E))	msk |= 4;
+	if (input_code_pressed(screen->machine, KEYCODE_A))	msk |= 8;
 	if (msk != 0) layers_ctrl &= msk;
 }
 #endif
 
 	/* The background color is the first of the last palette */
 	bitmap_fill(bitmap,cliprect,0x1f00);
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 
 	if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect,tilemap_0,0,1);
 	if (layers_ctrl & 2)	tilemap_draw(bitmap,cliprect,tilemap_1,0,2);
@@ -385,20 +385,20 @@ VIDEO_UPDATE( zeropnt2 )
 	tilemap_set_scrolly(tilemap_2, 0, unico_scroll32[1] >> 16);
 
 #ifdef MAME_DEBUG
-if ( input_code_pressed(KEYCODE_Z) || input_code_pressed(KEYCODE_X) )
+if ( input_code_pressed(screen->machine, KEYCODE_Z) || input_code_pressed(screen->machine, KEYCODE_X) )
 {
 	int msk = 0;
-	if (input_code_pressed(KEYCODE_Q))	msk |= 1;
-	if (input_code_pressed(KEYCODE_W))	msk |= 2;
-	if (input_code_pressed(KEYCODE_E))	msk |= 4;
-	if (input_code_pressed(KEYCODE_A))	msk |= 8;
+	if (input_code_pressed(screen->machine, KEYCODE_Q))	msk |= 1;
+	if (input_code_pressed(screen->machine, KEYCODE_W))	msk |= 2;
+	if (input_code_pressed(screen->machine, KEYCODE_E))	msk |= 4;
+	if (input_code_pressed(screen->machine, KEYCODE_A))	msk |= 8;
 	if (msk != 0) layers_ctrl &= msk;
 }
 #endif
 
 	/* The background color is the first of the last palette */
 	bitmap_fill(bitmap,cliprect,0x1f00);
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 
 	if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect,tilemap_0,0,1);
 	if (layers_ctrl & 2)	tilemap_draw(bitmap,cliprect,tilemap_1,0,2);

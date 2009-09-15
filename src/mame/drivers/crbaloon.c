@@ -167,7 +167,7 @@ static WRITE8_HANDLER( port_sound_w )
 	crbaloon_set_clear_collision_address((data & 0x01) ? TRUE : FALSE);
 
 	/* D1 - SOUND STOP */
-	sound_global_enable((data & 0x02) ? TRUE : FALSE);
+	sound_global_enable(space->machine, (data & 0x02) ? TRUE : FALSE);
 
 	/* D2 - unlabeled - music enable */
 	crbaloon_audio_set_music_enable(discrete, 0, (data & 0x04) ? TRUE : FALSE);
@@ -414,7 +414,7 @@ ROM_START( crbaloon )
 ROM_END
 
 
-ROM_START( crbalon2 )
+ROM_START( crbaloon2 )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "cl01.bin",     0x0000, 0x0800, CRC(9d4eef0b) SHA1(a8dd814ac2612073982123c91fa62deaf5bee242) )
 	ROM_LOAD( "crazybal.ep2", 0x0800, 0x0800, CRC(87572086) SHA1(dba842c7c4cb16154ae0da43d71f8f03a56441c3) )
@@ -439,4 +439,4 @@ ROM_END
  *************************************/
 
 GAME( 1980, crbaloon, 0,		crbaloon, crbaloon, 0, ROT90, "Taito Corporation", "Crazy Balloon (set 1)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
-GAME( 1980, crbalon2, crbaloon, crbaloon, crbaloon, 0, ROT90, "Taito Corporation", "Crazy Balloon (set 2)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1980, crbaloon2,crbaloon, crbaloon, crbaloon, 0, ROT90, "Taito Corporation", "Crazy Balloon (set 2)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )

@@ -30,12 +30,12 @@ CYC1399
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
 
-VIDEO_START( cmmb )
+static VIDEO_START( cmmb )
 {
 
 }
 
-VIDEO_UPDATE( cmmb )
+static VIDEO_UPDATE( cmmb )
 {
 	const gfx_element *gfx = screen->machine->gfx[0];
 	int count = 0x00000;
@@ -262,7 +262,7 @@ GFXDECODE_END
 
 static INTERRUPT_GEN( cmmb_irq )
 {
-	//if(input_code_pressed_once(KEYCODE_Z))
+	//if(input_code_pressed_once(device->machine, KEYCODE_Z))
 	//  cpu_set_input_line(device, 0, HOLD_LINE);
 }
 

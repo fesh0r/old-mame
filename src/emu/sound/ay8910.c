@@ -12,7 +12,7 @@
   Games using ADSR: gyruss
 
   A list with more games using ADSR can be found here:
-        http://mametesters.org/mantis/view.php?id=3043
+        http://mametesters.org/view.php?id=3043
 
   TODO:
   * The AY8930 has an extended mode which is currently
@@ -876,9 +876,7 @@ int ay8910_read_ym(void *chip)
 
 	if (r > 15) return 0;
 
-	/* FIXME: calling stream_update here makes gyruss sound awfull.
-     *        For the time being, no idea why this is the case */
-	/* update the output buffer before returning the register */
+	/* There are no state dependent register in the AY8910! */
 	/* stream_update(psg->channel); */
 
 	switch (r)

@@ -1637,12 +1637,12 @@ static void handle_fpu(char *s, UINT8 op1, UINT8 op2)
 				switch ((op2 >> 3) & 0x7)
 				{
 					case 0: sprintf(s, "fadd    st(0),st(%d)", op2 & 0x7); break;
-					case 1: sprintf(s, "fcom    st(0),st(%d)", op2 & 0x7); break;
-					case 2: sprintf(s, "fsub    st(0),st(%d)", op2 & 0x7); break;
-					case 3: sprintf(s, "fdiv    st(0),st(%d)", op2 & 0x7); break;
-					case 4: sprintf(s, "fmul    st(0),st(%d)", op2 & 0x7); break;
-					case 5: sprintf(s, "fcomp   st(0),st(%d)", op2 & 0x7); break;
-					case 6: sprintf(s, "fsubr   st(0),st(%d)", op2 & 0x7); break;
+					case 1: sprintf(s, "fmul    st(0),st(%d)", op2 & 0x7); break;
+					case 2: sprintf(s, "fcom    st(0),st(%d)", op2 & 0x7); break;
+					case 3: sprintf(s, "fcomp   st(0),st(%d)", op2 & 0x7); break;
+					case 4: sprintf(s, "fsub    st(0),st(%d)", op2 & 0x7); break;
+					case 5: sprintf(s, "fsubr   st(0),st(%d)", op2 & 0x7); break;
+					case 6: sprintf(s, "fdiv    st(0),st(%d)", op2 & 0x7); break;
 					case 7: sprintf(s, "fdivr   st(0),st(%d)", op2 & 0x7); break;
 				}
 			}
@@ -1747,6 +1747,8 @@ static void handle_fpu(char *s, UINT8 op1, UINT8 op2)
 
 					case 0x18: case 0x19: case 0x1a: case 0x1b: case 0x1c: case 0x1d: case 0x1e: case 0x1f:
 						sprintf(s, "fcmovu  st(0),st(%d)", op2 & 0x7); break;
+					case 0x29:
+						sprintf(s, "fucompp"); break;
 
 					default: sprintf(s, "??? (FPU)"); break;
 
@@ -2055,7 +2057,7 @@ static void decode_opcode(char *s, const I386_OPCODE *op, UINT8 op1)
 		case GROUP:
 			handle_modrm( modrm_string );
 			for( i=0; i < ARRAY_LENGTH(group_op_table); i++ ) {
-				if( mame_stricmp(op->mnemonic, group_op_table[i].mnemonic) == 0 ) {
+				if( strcmp(op->mnemonic, group_op_table[i].mnemonic) == 0 ) {
 					decode_opcode( s, &group_op_table[i].opcode[MODRM_REG1], op1 );
 					return;
 				}
@@ -2136,4 +2138,19 @@ static int i386_dasm_one_ex(char *buffer, UINT64 eip, const UINT8 *oprom, int mo
 int i386_dasm_one(char *buffer, offs_t eip, const UINT8 *oprom, int mode)
 {
 	return i386_dasm_one_ex(buffer, eip, oprom, mode);
+}
+
+CPU_DISASSEMBLE( x86_16 )
+{
+	return i386_dasm_one_ex(buffer, pc, oprom, 16);
+}
+
+CPU_DISASSEMBLE( x86_32 )
+{
+	return i386_dasm_one_ex(buffer, pc, oprom, 32);
+}
+
+CPU_DISASSEMBLE( x86_64 )
+{
+	return i386_dasm_one_ex(buffer, pc, oprom, 64);
 }

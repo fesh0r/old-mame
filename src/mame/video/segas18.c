@@ -122,9 +122,10 @@ void system18_set_vdp_mixing(running_machine *machine, int mixing)
  *
  *************************************/
 
-static void draw_vdp(bitmap_t *bitmap, const rectangle *cliprect, int priority)
+static void draw_vdp(const device_config *screen, bitmap_t *bitmap, const rectangle *cliprect, int priority)
 {
 	int x, y;
+	bitmap_t *priority_bitmap = screen->machine->priority_bitmap;
 
 	for (y = cliprect->min_y; y <= cliprect->max_y; y++)
 	{
@@ -191,15 +192,15 @@ VIDEO_UPDATE( system18 )
 	vdppri = (vdp_mixing & 1) ? (1 << vdplayer) : 0;
 
 #if DEBUG_VDP
-	if (input_code_pressed(KEYCODE_Q)) vdplayer = 0;
-	if (input_code_pressed(KEYCODE_W)) vdplayer = 1;
-	if (input_code_pressed(KEYCODE_E)) vdplayer = 2;
-	if (input_code_pressed(KEYCODE_R)) vdplayer = 3;
-	if (input_code_pressed(KEYCODE_A)) vdppri = 0x00;
-	if (input_code_pressed(KEYCODE_S)) vdppri = 0x01;
-	if (input_code_pressed(KEYCODE_D)) vdppri = 0x02;
-	if (input_code_pressed(KEYCODE_F)) vdppri = 0x04;
-	if (input_code_pressed(KEYCODE_G)) vdppri = 0x08;
+	if (input_code_pressed(screen->machine, KEYCODE_Q)) vdplayer = 0;
+	if (input_code_pressed(screen->machine, KEYCODE_W)) vdplayer = 1;
+	if (input_code_pressed(screen->machine, KEYCODE_E)) vdplayer = 2;
+	if (input_code_pressed(screen->machine, KEYCODE_R)) vdplayer = 3;
+	if (input_code_pressed(screen->machine, KEYCODE_A)) vdppri = 0x00;
+	if (input_code_pressed(screen->machine, KEYCODE_S)) vdppri = 0x01;
+	if (input_code_pressed(screen->machine, KEYCODE_D)) vdppri = 0x02;
+	if (input_code_pressed(screen->machine, KEYCODE_F)) vdppri = 0x04;
+	if (input_code_pressed(screen->machine, KEYCODE_G)) vdppri = 0x08;
 #endif
 
 	/* if no drawing is happening, fill with black and get out */
@@ -214,38 +215,38 @@ VIDEO_UPDATE( system18 )
 		system18_vdp_update(tempbitmap, cliprect);
 
 	/* reset priorities */
-	bitmap_fill(priority_bitmap, cliprect, 0);
+	bitmap_fill(screen->machine->priority_bitmap, cliprect, 0);
 
 	/* draw background opaquely first, not setting any priorities */
 	segaic16_tilemap_draw(screen, bitmap, cliprect, 0, SEGAIC16_TILEMAP_BACKGROUND, 0 | TILEMAP_DRAW_OPAQUE, 0x00);
 	segaic16_tilemap_draw(screen, bitmap, cliprect, 0, SEGAIC16_TILEMAP_BACKGROUND, 1 | TILEMAP_DRAW_OPAQUE, 0x00);
-	if (vdp_enable && vdplayer == 0) draw_vdp(bitmap, cliprect, vdppri);
+	if (vdp_enable && vdplayer == 0) draw_vdp(screen, bitmap, cliprect, vdppri);
 
 	/* draw background again to draw non-transparent pixels over the VDP and set the priority */
 	segaic16_tilemap_draw(screen, bitmap, cliprect, 0, SEGAIC16_TILEMAP_BACKGROUND, 0, 0x01);
 	segaic16_tilemap_draw(screen, bitmap, cliprect, 0, SEGAIC16_TILEMAP_BACKGROUND, 1, 0x02);
-	if (vdp_enable && vdplayer == 1) draw_vdp(bitmap, cliprect, vdppri);
+	if (vdp_enable && vdplayer == 1) draw_vdp(screen, bitmap, cliprect, vdppri);
 
 	/* draw foreground */
 	segaic16_tilemap_draw(screen, bitmap, cliprect, 0, SEGAIC16_TILEMAP_FOREGROUND, 0, 0x02);
 	segaic16_tilemap_draw(screen, bitmap, cliprect, 0, SEGAIC16_TILEMAP_FOREGROUND, 1, 0x04);
-	if (vdp_enable && vdplayer == 2) draw_vdp(bitmap, cliprect, vdppri);
+	if (vdp_enable && vdplayer == 2) draw_vdp(screen, bitmap, cliprect, vdppri);
 
 	/* text layer */
 	segaic16_tilemap_draw(screen, bitmap, cliprect, 0, SEGAIC16_TILEMAP_TEXT, 0, 0x04);
 	segaic16_tilemap_draw(screen, bitmap, cliprect, 0, SEGAIC16_TILEMAP_TEXT, 1, 0x08);
-	if (vdp_enable && vdplayer == 3) draw_vdp(bitmap, cliprect, vdppri);
+	if (vdp_enable && vdplayer == 3) draw_vdp(screen, bitmap, cliprect, vdppri);
 
 	/* draw the sprites */
 	segaic16_sprites_draw(screen, bitmap, cliprect, 0);
 
 #if DEBUG_VDP
-	if (vdp_enable && input_code_pressed(KEYCODE_V))
+	if (vdp_enable && input_code_pressed(screen->machine, KEYCODE_V))
 	{
 		bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 		update_system18_vdp(bitmap, cliprect);
 	}
-	if (vdp_enable && input_code_pressed(KEYCODE_B))
+	if (vdp_enable && input_code_pressed(screen->machine, KEYCODE_B))
 	{
 		FILE *f = fopen("vdp.bin", "w");
 		fwrite(tempbitmap->base, 1, tempbitmap->rowpixels * (tempbitmap->bpp / 8) * tempbitmap->height, f);

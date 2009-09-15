@@ -352,7 +352,6 @@ typedef INT64 osd_ticks_t;
 -----------------------------------------------------------------------------*/
 osd_ticks_t osd_ticks(void);
 
-
 /*-----------------------------------------------------------------------------
     osd_ticks_per_second: return the number of ticks per second
 
@@ -366,35 +365,6 @@ osd_ticks_t osd_ticks(void);
         second
 -----------------------------------------------------------------------------*/
 osd_ticks_t osd_ticks_per_second(void);
-
-
-/*-----------------------------------------------------------------------------
-    osd_profiling_ticks: return the current running "profiling" tick counter
-
-    Parameters:
-
-        None
-
-    Return value:
-
-        an osd_ticks_t value which represents the current "profiling" tick
-        counter
-
-    Notes:
-
-        The profiling tick counter may or may not be different from the
-        regular tick counter. However, the profiling counter has differing
-        requirements. First, it must be as fast as possible, so as not to
-        perturb profiling measurements in a significant way. Second, it
-        should be a high resolution as possible to provide accurate short-
-        term measurements (1us resolution or better is ideal). Third, it
-        is not necessary to calibrate the timing (hence the lack of an
-        osd_profiling_ticks_per_second call).
-
-        On x86 system, this generally maps to an RDTSC instruction.
------------------------------------------------------------------------------*/
-osd_ticks_t osd_profiling_ticks(void);
-
 
 /*-----------------------------------------------------------------------------
     osd_sleep: sleep for the specified time interval
@@ -755,28 +725,6 @@ void *osd_alloc_executable(size_t size);
         None
 -----------------------------------------------------------------------------*/
 void osd_free_executable(void *ptr, size_t size);
-
-
-/*-----------------------------------------------------------------------------
-    osd_is_bad_read_ptr: attempt to determine if the given pointer will
-        generate an access violation if accessed for read
-
-    Parameters:
-
-        ptr - the pointer to examine
-
-        size - the number of bytes to reference
-
-    Return value:
-
-        TRUE if an access to the referenced memory will generate an access
-        violation on a read; FALSE otherwise.
-
-    Notes:
-
-        This function will eventually be deprecated.
------------------------------------------------------------------------------*/
-int osd_is_bad_read_ptr(const void *ptr, size_t size);
 
 
 /*-----------------------------------------------------------------------------

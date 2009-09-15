@@ -28,12 +28,12 @@ CPU is an Intel 80188
 
 static UINT8 *led_vram_lo,*led_vram_hi;
 
-VIDEO_START( timetrv )
+static VIDEO_START( timetrv )
 {
 
 }
 
-VIDEO_UPDATE( timetrv )
+static VIDEO_UPDATE( timetrv )
 {
 	popmessage("%s%s",led_vram_lo,led_vram_hi);
 	return 0;
@@ -163,4 +163,4 @@ ROM_START( timetrv )
 	DISK_IMAGE_READONLY( "timetrv", 0, NO_DUMP )
 ROM_END
 
-GAME( 1991, timetrv,  0,       timetrv,  timetrv,  0, ROT0, "Virtual Image Productions (Sega license)", "Time Traveller", GAME_NO_SOUND | GAME_NOT_WORKING )
+GAME( 1991, timetrv,  0,       timetrv,  timetrv,  0, ROT0, "Virtual Image Productions (Sega license)", "Time Traveler", GAME_NO_SOUND | GAME_NOT_WORKING )

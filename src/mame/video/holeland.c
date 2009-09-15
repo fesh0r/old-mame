@@ -23,10 +23,10 @@ static TILE_GET_INFO( holeland_get_tile_info )
 	int attr = colorram[tile_index];
 	int tile_number = videoram[tile_index] | ((attr & 0x03) << 8);
 
-/*if (input_code_pressed(KEYCODE_Q) && (attr & 0x10)) tile_number = rand(); */
-/*if (input_code_pressed(KEYCODE_W) && (attr & 0x20)) tile_number = rand(); */
-/*if (input_code_pressed(KEYCODE_E) && (attr & 0x40)) tile_number = rand(); */
-/*if (input_code_pressed(KEYCODE_R) && (attr & 0x80)) tile_number = rand(); */
+/*if (input_code_pressed(machine, KEYCODE_Q) && (attr & 0x10)) tile_number = rand(); */
+/*if (input_code_pressed(machine, KEYCODE_W) && (attr & 0x20)) tile_number = rand(); */
+/*if (input_code_pressed(machine, KEYCODE_E) && (attr & 0x40)) tile_number = rand(); */
+/*if (input_code_pressed(machine, KEYCODE_R) && (attr & 0x80)) tile_number = rand(); */
 	SET_TILE_INFO(
 			0,
 			tile_number,
@@ -86,7 +86,7 @@ WRITE8_HANDLER( holeland_pal_offs_w )
 	{
 		po[offset] = data & 1;
 		palette_offset = (po[0] + (po[1] << 1)) << 4;
-		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
+		tilemap_mark_all_tiles_dirty_all(space->machine);
 	}
 }
 

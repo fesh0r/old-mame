@@ -77,16 +77,24 @@
 #include "xmlfile.h"
 #include "ui.h"
 #include "uimenu.h"
+#include "cheat.h"
 #include "debug/debugcpu.h"
 #include "debug/express.h"
 
 #include <ctype.h>
+
+#ifdef MESS
+#include "cheatms.h"
+#endif
 
 
 
 /***************************************************************************
     CONSTANTS
 ***************************************************************************/
+
+/* turn this on to enable removing duplicate cheats; not sure if we should */
+#define REMOVE_DUPLICATE_CHEATS	0
 
 #define CHEAT_VERSION			1
 
@@ -195,8 +203,9 @@ struct _cheat_private
 	UINT64				framecount;						/* frame count */
 	astring *			output[UI_TARGET_FONT_ROWS*2];	/* array of output strings */
 	UINT8				justify[UI_TARGET_FONT_ROWS*2];	/* justification for each string */
-	UINT8				numlines;						/* nnumber of lines available for output */
+	UINT8				numlines;						/* number of lines available for output */
 	INT8				lastline;						/* last line used for output */
+	UINT8				disabled;						/* true if the cheat engine is disabled */
 };
 
 
@@ -374,17 +383,47 @@ void cheat_init(running_machine *machine)
 	cheatinfo = auto_alloc_clear(machine, cheat_private);
 	machine->cheat_data = cheatinfo;
 
-	/* load the cheat file */
-	cheatinfo->cheatlist = cheat_list_load(machine, machine->basename);
-
-	/* temporary: save the file back out as output.xml for comparison */
-	if (cheatinfo->cheatlist != NULL)
-		cheat_list_save("output", cheatinfo->cheatlist);
+	/* load the cheats */
+	cheat_reload(machine);
 
 	/* we rely on the debugger expression callbacks; if the debugger isn't
        enabled, we must jumpstart them manually */
 	if ((machine->debug_flags & DEBUG_FLAG_ENABLED) == 0)
 		debug_cpu_init(machine);
+}
+
+
+/*-------------------------------------------------
+    cheat_reload - re-initialize the cheat engine,
+    and reload the cheat file(s)
+-------------------------------------------------*/
+
+void cheat_reload(running_machine *machine)
+{
+	cheat_private *cheatinfo = machine->cheat_data;
+
+	/* free everything */
+	cheat_exit(machine);
+
+	/* reset our memory */
+	memset(cheatinfo, 0, sizeof(*cheatinfo));
+
+	/* load the cheat file, MESS will load a crc32.xml ( eg. 01234567.xml )
+       and MAME will load gamename.xml */
+	#ifdef MESS
+	{
+		char mess_cheat_filename[9];
+		cheat_mess_init(machine);
+		sprintf(mess_cheat_filename, "%08X", this_game_crc);
+		cheatinfo->cheatlist = cheat_list_load(machine, mess_cheat_filename);
+	}
+	#else
+	cheatinfo->cheatlist = cheat_list_load(machine, machine->basename);
+	#endif
+
+	/* temporary: save the file back out as output.xml for comparison */
+	if (cheatinfo->cheatlist != NULL)
+		cheat_list_save("output", cheatinfo->cheatlist);
 }
 
 
@@ -405,6 +444,52 @@ static void cheat_exit(running_machine *machine)
 	for (linenum = 0; linenum < ARRAY_LENGTH(cheatinfo->output); linenum++)
 		if (cheatinfo->output[linenum] != NULL)
 			astring_free(cheatinfo->output[linenum]);
+}
+
+
+/*-------------------------------------------------
+    cheat_get_global_enable - return the global
+    enabled state of the cheat engine
+-------------------------------------------------*/
+
+int cheat_get_global_enable(running_machine *machine)
+{
+	cheat_private *cheatinfo = machine->cheat_data;
+	return !cheatinfo->disabled;
+}
+
+
+/*-------------------------------------------------
+    cheat_set_global_enable - globally enable or
+    disable the cheat engine
+-------------------------------------------------*/
+
+void cheat_set_global_enable(running_machine *machine, int enable)
+{
+	cheat_private *cheatinfo = machine->cheat_data;
+	cheat_entry *cheat;
+
+	/* if we're enabled currently and we don't want to be, turn things off */
+	if (!cheatinfo->disabled && !enable)
+	{
+		/* iterate over running cheats and execute any OFF Scripts */
+		for (cheat = cheatinfo->cheatlist; cheat != NULL; cheat = cheat->next)
+			if (cheat->state == SCRIPT_STATE_RUN)
+				cheat_execute_script(cheatinfo, cheat, SCRIPT_STATE_OFF);
+		popmessage("Cheats Disabled");
+		cheatinfo->disabled = TRUE;
+	}
+
+	/* if we're disabled currently and we want to be enabled, turn things on */
+	else if (cheatinfo->disabled && enable)
+	{
+		/* iterate over running cheats and execute any ON Scripts */
+		cheatinfo->disabled = FALSE;
+		for (cheat = cheatinfo->cheatlist; cheat != NULL; cheat = cheat->next)
+			if (cheat->state == SCRIPT_STATE_RUN)
+				cheat_execute_script(cheatinfo, cheat, SCRIPT_STATE_ON);
+		popmessage("Cheats Enabled");
+	}
 }
 
 
@@ -563,6 +648,10 @@ int cheat_activate(running_machine *machine, void *entry)
 	cheat_private *cheatinfo = machine->cheat_data;
 	cheat_entry *cheat = (cheat_entry *)entry;
 	int changed = FALSE;
+
+	/* if cheats have been toggled off no point in even trying to do anything */
+	if (cheatinfo->disabled)
+		return changed;
 
 	/* if we have no parameter and no run or off script, but we do have an on script, it's a oneshot cheat */
 	if (is_oneshot_cheat(cheat))
@@ -777,6 +866,18 @@ int cheat_select_next_state(running_machine *machine, void *entry)
 }
 
 
+/*-------------------------------------------------
+    cheat_get_comment - called by the UI system
+    to help render displayable comments
+-------------------------------------------------*/
+
+astring *cheat_get_comment(void *entry)
+{
+	cheat_entry *cheat = (cheat_entry *)entry;
+	return cheat->comment;
+}
+
+
 
 /***************************************************************************
     CHEAT EXECUTION
@@ -822,8 +923,8 @@ static void cheat_execute_script(cheat_private *cheatinfo, cheat_entry *cheat, s
 {
 	script_entry *entry;
 
-	/* if no script, bail */
-	if (cheat->script[state] == NULL)
+	/* if cheat engine has been temporarily disabled or no script, bail */
+	if (cheatinfo->disabled || cheat->script[state] == NULL)
 		return;
 
 	/* iterate over entries */
@@ -912,76 +1013,99 @@ static void cheat_execute_script(cheat_private *cheatinfo, cheat_entry *cheat, s
 
 static cheat_entry *cheat_list_load(running_machine *machine, const char *filename)
 {
-	xml_data_node *rootnode, *mamecheatnode, *cheatnode;
+	xml_data_node *rootnode = NULL;
 	cheat_entry *cheatlist = NULL;
-	cheat_entry **cheattailptr;
-	xml_parse_options options;
-	xml_parse_error error;
-	mame_file *cheatfile;
+	cheat_entry **cheattailptr = &cheatlist;
+	mame_file *cheatfile = NULL;
 	file_error filerr;
 	astring *fname;
-	int version;
 
 	/* open the file with the proper name */
 	fname = astring_assemble_2(astring_alloc(), filename, ".xml");
 	filerr = mame_fopen(SEARCHPATH_CHEAT, astring_c(fname), OPEN_FLAG_READ, &cheatfile);
-	astring_free(fname);
 
-	/* if that failed, return nothing */
-	if (filerr != FILERR_NONE)
-		return NULL;
-
-	/* read the XML file into internal data structures */
-	memset(&options, 0, sizeof(options));
-	options.error = &error;
-	rootnode = xml_file_read(mame_core_file(cheatfile), &options);
-	mame_fclose(cheatfile);
-
-	/* if unable to parse the file, just bail */
-	if (rootnode == NULL)
+	/* loop over all instrances of the files found in our search paths */
+	while (filerr == FILERR_NONE)
 	{
-		mame_printf_error("%s.xml(%d): error parsing XML (%s)\n", filename, error.error_line, error.error_message);
-		return NULL;
-	}
+		xml_data_node *mamecheatnode, *cheatnode;
+		xml_parse_options options;
+		xml_parse_error error;
+		cheat_entry *scannode;
+		int version;
 
-	/* find the layout node */
-	mamecheatnode = xml_get_sibling(rootnode->child, "mamecheat");
-	if (mamecheatnode == NULL)
-	{
-		mame_printf_error("%s.xml: missing mamecheatnode node", filename);
-		goto error;
-	}
+		mame_printf_verbose("Loading cheats file from %s\n", mame_file_full_name(cheatfile));
 
-	/* validate the config data version */
-	version = xml_get_attribute_int(mamecheatnode, "version", 0);
-	if (version != CHEAT_VERSION)
-	{
-		mame_printf_error("%s.xml(%d): Invalid cheat XML file: unsupported version", filename, mamecheatnode->line);
-		goto error;
-	}
+		/* read the XML file into internal data structures */
+		memset(&options, 0, sizeof(options));
+		options.error = &error;
+		rootnode = xml_file_read(mame_core_file(cheatfile), &options);
 
-	/* parse all the elements */
-	cheatlist = NULL;
-	cheattailptr = &cheatlist;
-	for (cheatnode = xml_get_sibling(mamecheatnode->child, "cheat"); cheatnode != NULL; cheatnode = xml_get_sibling(cheatnode->next, "cheat"))
-	{
-		/* load this entry */
-		cheat_entry *curcheat = cheat_entry_load(machine, filename, cheatnode);
-		if (curcheat == NULL)
+		/* if unable to parse the file, just bail */
+		if (rootnode == NULL)
+		{
+			mame_printf_error("%s.xml(%d): error parsing XML (%s)\n", filename, error.error_line, error.error_message);
 			goto error;
+		}
 
-		/* add to the end of the list */
-		*cheattailptr = curcheat;
-		cheattailptr = &curcheat->next;
+		/* find the layout node */
+		mamecheatnode = xml_get_sibling(rootnode->child, "mamecheat");
+		if (mamecheatnode == NULL)
+		{
+			mame_printf_error("%s.xml: missing mamecheatnode node", filename);
+			goto error;
+		}
+
+		/* validate the config data version */
+		version = xml_get_attribute_int(mamecheatnode, "version", 0);
+		if (version != CHEAT_VERSION)
+		{
+			mame_printf_error("%s.xml(%d): Invalid cheat XML file: unsupported version", filename, mamecheatnode->line);
+			goto error;
+		}
+
+		/* parse all the elements */
+		for (cheatnode = xml_get_sibling(mamecheatnode->child, "cheat"); cheatnode != NULL; cheatnode = xml_get_sibling(cheatnode->next, "cheat"))
+		{
+			/* load this entry */
+			cheat_entry *curcheat = cheat_entry_load(machine, filename, cheatnode);
+			if (curcheat == NULL)
+				goto error;
+
+			/* make sure we're not a duplicate */
+			scannode = NULL;
+			if (REMOVE_DUPLICATE_CHEATS)
+				for (scannode = cheatlist; scannode != NULL; scannode = scannode->next)
+					if (astring_cmp(scannode->description, curcheat->description) == 0)
+					{
+						mame_printf_verbose("Ignoring duplicate cheat '%s' from file %s\n", astring_c(curcheat->description), mame_file_full_name(cheatfile));
+						break;
+					}
+
+			/* add to the end of the list */
+			if (scannode == NULL)
+			{
+				*cheattailptr = curcheat;
+				cheattailptr = &curcheat->next;
+			}
+		}
+
+		/* free the file and loop for the next one */
+		xml_file_free(rootnode);
+
+		/* open the next file in sequence */
+		filerr = mame_fclose_and_open_next(&cheatfile, astring_c(fname), OPEN_FLAG_READ);
 	}
 
-	/* free the file and exit */
-	xml_file_free(rootnode);
+	/* release memory and return the cheat list */
+	astring_free(fname);
 	return cheatlist;
 
 error:
 	cheat_list_free(cheatlist);
 	xml_file_free(rootnode);
+	if (cheatfile != NULL)
+		mame_fclose(cheatfile);
+	astring_free(fname);
 	return NULL;
 }
 

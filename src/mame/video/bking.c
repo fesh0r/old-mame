@@ -151,7 +151,7 @@ WRITE8_HANDLER( bking_cont1_w )
 
 	flip_screen_set_no_update(space->machine, data & 0x04);
 
-	tilemap_set_flip(ALL_TILEMAPS, flip_screen_get(space->machine) ? TILEMAP_FLIPX | TILEMAP_FLIPY : 0);
+	tilemap_set_flip_all(space->machine, flip_screen_get(space->machine) ? TILEMAP_FLIPX | TILEMAP_FLIPY : 0);
 
 	controller = data & 0x02;
 
@@ -186,7 +186,7 @@ WRITE8_HANDLER( bking_cont3_w )
 
 	palette_bank = (data >> 1) & 0x03;
 
-	sound_global_enable(~data & 0x08);
+	sound_global_enable(space->machine, ~data & 0x08);
 }
 
 

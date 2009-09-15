@@ -49,6 +49,7 @@ UINT16* galsnew_bg_pixram;
 UINT16* galsnew_fg_pixram;
 
 int kaneko16_sprite_type;
+int kaneko16_sprite_fliptype;
 static int kaneko16_keep_sprites = 0; // default disabled for games not using it
 UINT16 kaneko16_sprite_xoffs, kaneko16_sprite_flipx;
 UINT16 kaneko16_sprite_yoffs, kaneko16_sprite_flipy;
@@ -438,7 +439,7 @@ static void kaneko16_draw_sprites_custom(bitmap_t *dest_bmp,const rectangle *cli
 {
 	pen_t pen_base = gfx->color_base + gfx->color_granularity * (color % gfx->total_colors);
 	const UINT8 *source_base = gfx_element_get_data(gfx, code % gfx->total_elements);
-
+	bitmap_t *priority_bitmap = gfx->machine->priority_bitmap;
 	int sprite_screen_height = ((1<<16)*gfx->height+0x8000)>>16;
 	int sprite_screen_width = ((1<<16)*gfx->width+0x8000)>>16;
 
@@ -579,14 +580,19 @@ void kaneko16_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rec
 		else
 			code = s->code;		// .. or latch this value
 
+
 		if (flags & USE_LATCHED_COLOR)
 		{
 			s->color		=	color;
 			s->priority		=	priority;
 			s->xoffs		=	xoffs;
 			s->yoffs		=	yoffs;
-			s->flipx		=	flipx;
-			s->flipy		=	flipy;
+
+			if (kaneko16_sprite_fliptype==0)
+			{
+				s->flipx		=	flipx;
+				s->flipy		=	flipy;
+			}
 		}
 		else
 		{
@@ -594,6 +600,17 @@ void kaneko16_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rec
 			priority	=	s->priority;
 			xoffs		=	s->xoffs;
 			yoffs		=	s->yoffs;
+
+			if (kaneko16_sprite_fliptype==0)
+			{
+				flipx = s->flipx;
+				flipy = s->flipy;
+			}
+		}
+
+		// brap boys explicitly doesn't want the flip to be latched, maybe there is a different bit to enable that behavior?
+		if (kaneko16_sprite_fliptype==1)
+		{
 			flipx		=	s->flipx;
 			flipy		=	s->flipy;
 		}
@@ -989,7 +1006,7 @@ static VIDEO_UPDATE( common )
 {
 	int i;
 
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 
 	kaneko16_prepare_first_tilemap_chip(screen->machine, bitmap, cliprect);
 	kaneko16_prepare_second_tilemap_chip(screen->machine, bitmap, cliprect);

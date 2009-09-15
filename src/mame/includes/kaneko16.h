@@ -32,9 +32,15 @@ extern void (*toybox_mcu_run)(running_machine *machine);	/* one of the following
 void bloodwar_mcu_run(running_machine *machine);
 void bonkadv_mcu_run(running_machine *machine);
 void gtmr_mcu_run(running_machine *machine);
+void calc3_mcu_run(running_machine *machine);
+
 void toxboy_handle_04_subcommand(running_machine* machine,UINT8 mcu_subcmd, UINT16*mcu_ram);
+
 DRIVER_INIT( decrypt_toybox_rom );
 DRIVER_INIT( decrypt_toybox_rom_alt );
+DRIVER_INIT( calc3_scantables );
+
+
 
 /*----------- defined in drivers/kaneko16.c -----------*/
 
@@ -63,6 +69,7 @@ WRITE16_HANDLER( kaneko16_layers_1_regs_w );
 /* Sprites: */
 
 extern int kaneko16_sprite_type;
+extern int kaneko16_sprite_fliptype;
 extern UINT16 kaneko16_sprite_xoffs, kaneko16_sprite_flipx;
 extern UINT16 kaneko16_sprite_yoffs, kaneko16_sprite_flipy;
 extern UINT16 *kaneko16_sprites_regs;

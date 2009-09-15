@@ -1229,14 +1229,14 @@ UINT8 K007121_ctrlram[MAX_K007121][8];
 static int K007121_flipscreen[MAX_K007121];
 
 
-void K007121_ctrl_w(int chip,int offset,int data)
+void K007121_ctrl_w(running_machine *machine,int chip,int offset,int data)
 {
 	switch (offset)
 	{
 		case 6:
 /* palette bank change */
 if ((K007121_ctrlram[chip][offset] & 0x30) != (data & 0x30))
-	tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
+	tilemap_mark_all_tiles_dirty_all(machine);
 			break;
 		case 7:
 			K007121_flipscreen[chip] = data & 0x08;
@@ -1248,12 +1248,12 @@ if ((K007121_ctrlram[chip][offset] & 0x30) != (data & 0x30))
 
 WRITE8_HANDLER( K007121_ctrl_0_w )
 {
-	K007121_ctrl_w(0,offset,data);
+	K007121_ctrl_w(space->machine,0,offset,data);
 }
 
 WRITE8_HANDLER( K007121_ctrl_1_w )
 {
-	K007121_ctrl_w(1,offset,data);
+	K007121_ctrl_w(space->machine,1,offset,data);
 }
 
 
@@ -1297,6 +1297,7 @@ void K007121_sprites_draw(int chip,bitmap_t *bitmap,const rectangle *cliprect, g
 						  int global_x_offset,int bank_base, UINT32 pri_mask)
 {
 	const gfx_element *gfx = gfxs[chip];
+	bitmap_t *priority_bitmap = gfx->machine->priority_bitmap;
 	int flipscreen = K007121_flipscreen[chip];
 	int i,num,inc,offs[5];
 	int is_flakatck = (ctable == NULL);
@@ -1306,7 +1307,7 @@ popmessage("%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x  %02x-%02x-%02x-%02x-%02x-%0
 	K007121_ctrlram[0][0x00],K007121_ctrlram[0][0x01],K007121_ctrlram[0][0x02],K007121_ctrlram[0][0x03],K007121_ctrlram[0][0x04],K007121_ctrlram[0][0x05],K007121_ctrlram[0][0x06],K007121_ctrlram[0][0x07],
 	K007121_ctrlram[1][0x00],K007121_ctrlram[1][0x01],K007121_ctrlram[1][0x02],K007121_ctrlram[1][0x03],K007121_ctrlram[1][0x04],K007121_ctrlram[1][0x05],K007121_ctrlram[1][0x06],K007121_ctrlram[1][0x07]);
 
-if (input_code_pressed(KEYCODE_D))
+if (input_code_pressed(gfx->machine, KEYCODE_D))
 {
 	FILE *fp;
 	fp=fopen(chip?"SPRITE1.DMP":"SPRITE0.DMP", "w+b");
@@ -1577,7 +1578,7 @@ WRITE8_HANDLER( K007342_vreg_w )
 			break;
 		case 0x01:  /* used for banking in Rock'n'Rage */
 			if (data != K007342_regs[1])
-				tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
+				tilemap_mark_all_tiles_dirty_all(space->machine);
 		case 0x02:
 			K007342_scrollx[0] = (K007342_scrollx[0] & 0xff) | ((data & 0x01) << 8);
 			K007342_scrollx[1] = (K007342_scrollx[1] & 0xff) | ((data & 0x02) << 7);
@@ -1645,7 +1646,7 @@ void K007342_tilemap_update(void)
 	{
 		static int current_layer = 0;
 
-		if (input_code_pressed_once(KEYCODE_Z)) current_layer = !current_layer;
+		if (input_code_pressed_once(machine, KEYCODE_Z)) current_layer = !current_layer;
 		tilemap_set_enable(K007342_tilemap[current_layer], 1);
 		tilemap_set_enable(K007342_tilemap[!current_layer], 0);
 
@@ -1854,8 +1855,8 @@ void K007420_sprites_draw(bitmap_t *bitmap,const rectangle *cliprect)
 	{
 		static int current_sprite = 0;
 
-		if (input_code_pressed_once(KEYCODE_Z)) current_sprite = (current_sprite+1) & ((K007420_SPRITERAM_SIZE/8)-1);
-		if (input_code_pressed_once(KEYCODE_X)) current_sprite = (current_sprite-1) & ((K007420_SPRITERAM_SIZE/8)-1);
+		if (input_code_pressed_once(machine, KEYCODE_Z)) current_sprite = (current_sprite+1) & ((K007420_SPRITERAM_SIZE/8)-1);
+		if (input_code_pressed_once(machine, KEYCODE_X)) current_sprite = (current_sprite-1) & ((K007420_SPRITERAM_SIZE/8)-1);
 
 		popmessage("%02x:%02x %02x %02x %02x %02x %02x %02x %02x", current_sprite,
 			K007420_ram[(current_sprite*8)+0], K007420_ram[(current_sprite*8)+1],
@@ -2413,7 +2414,7 @@ if ((K052109_scrollctrl & 0x03) == 0x01 ||
 		(K052109_scrollctrl & 0xc0) != 0)
 	popmessage("scrollcontrol = %02x",K052109_scrollctrl);
 
-if (input_code_pressed(KEYCODE_F))
+if (input_code_pressed(machine, KEYCODE_F))
 {
 	FILE *fp;
 	fp=fopen("TILE.DMP", "w+b");
@@ -2817,7 +2818,7 @@ void K051960_sprites_draw(running_machine *machine,bitmap_t *bitmap,const rectan
 								color,
 								flipx,flipy,
 								sx & 0x1ff,sy,
-								priority_bitmap,pri,
+								machine->priority_bitmap,pri,
 								drawmode_table,machine->shadow_table);
 					else
 						drawgfx_transtable(bitmap,cliprect,K051960_gfx,
@@ -2856,7 +2857,7 @@ void K051960_sprites_draw(running_machine *machine,bitmap_t *bitmap,const rectan
 								flipx,flipy,
 								sx & 0x1ff,sy,
 								(zw << 16) / 16,(zh << 16) / 16,
-								priority_bitmap,pri,
+								machine->priority_bitmap,pri,
 								drawmode_table,machine->shadow_table);
 					else
 						drawgfxzoom_transtable(bitmap,cliprect,K051960_gfx,
@@ -2871,7 +2872,7 @@ void K051960_sprites_draw(running_machine *machine,bitmap_t *bitmap,const rectan
 		}
 	}
 #if 0
-if (input_code_pressed(KEYCODE_D))
+if (input_code_pressed(machine, KEYCODE_D))
 {
 	FILE *fp;
 	fp=fopen("SPRITE.DMP", "w+b");
@@ -3420,7 +3421,7 @@ void K053245_sprites_draw(running_machine *machine, int chip, bitmap_t *bitmap,c
 							color,
 							fx,fy,
 							sx,sy,
-							priority_bitmap,pri,
+							machine->priority_bitmap,pri,
 							drawmode_table,machine->shadow_table);
 				}
 				else
@@ -3431,7 +3432,7 @@ void K053245_sprites_draw(running_machine *machine, int chip, bitmap_t *bitmap,c
 							fx,fy,
 							sx,sy,
 							(zw << 16) / 16,(zh << 16) / 16,
-							priority_bitmap,pri,
+							machine->priority_bitmap,pri,
 							drawmode_table,machine->shadow_table);
 
 				}
@@ -3439,7 +3440,7 @@ void K053245_sprites_draw(running_machine *machine, int chip, bitmap_t *bitmap,c
 		}
 	}
 #if 0
-if (input_code_pressed(KEYCODE_D))
+if (input_code_pressed(machine, KEYCODE_D))
 {
 	FILE *fp;
 	fp=fopen("SPRITE.DMP", "w+b");
@@ -3657,7 +3658,7 @@ void K053245_sprites_draw_lethal(running_machine *machine,int chip, bitmap_t *bi
 							color,
 							fx,fy,
 							sx,sy,
-							priority_bitmap,pri,
+							machine->priority_bitmap,pri,
 							drawmode_table,machine->shadow_table);
 				}
 				else
@@ -3668,7 +3669,7 @@ void K053245_sprites_draw_lethal(running_machine *machine,int chip, bitmap_t *bi
 							fx,fy,
 							sx,sy,
 							(zw << 16) / 16,(zh << 16) / 16,
-							priority_bitmap,pri,
+							machine->priority_bitmap,pri,
 							drawmode_table,machine->shadow_table);
 
 				}
@@ -3676,7 +3677,7 @@ void K053245_sprites_draw_lethal(running_machine *machine,int chip, bitmap_t *bi
 		}
 	}
 #if 0
-if (input_code_pressed(KEYCODE_D))
+if (input_code_pressed(machine, KEYCODE_D))
 {
 	FILE *fp;
 	fp=fopen("SPRITE.DMP", "w+b");
@@ -4486,7 +4487,7 @@ void K053247_sprites_draw(running_machine *machine, bitmap_t *bitmap,const recta
 							color,
 							fx,fy,
 							sx,sy,
-							priority_bitmap,primask,
+							machine->priority_bitmap,primask,
 							whichtable,machine->shadow_table);
 				}
 				else
@@ -4497,7 +4498,7 @@ void K053247_sprites_draw(running_machine *machine, bitmap_t *bitmap,const recta
 							fx,fy,
 							sx,sy,
 							(zw << 16) >> 4,(zh << 16) >> 4,
-							priority_bitmap,primask,
+							machine->priority_bitmap,primask,
 							whichtable,machine->shadow_table);
 				}
 
@@ -4510,7 +4511,7 @@ void K053247_sprites_draw(running_machine *machine, bitmap_t *bitmap,const recta
 								color,
 								fx,!fy,
 								sx,sy,
-								priority_bitmap,primask,
+								machine->priority_bitmap,primask,
 								whichtable,machine->shadow_table);
 					}
 					else
@@ -4521,7 +4522,7 @@ void K053247_sprites_draw(running_machine *machine, bitmap_t *bitmap,const recta
 								fx,!fy,
 								sx,sy,
 								(zw << 16) >> 4,(zh << 16) >> 4,
-								priority_bitmap,primask,
+								machine->priority_bitmap,primask,
 								whichtable,machine->shadow_table);
 					}
 				}
@@ -5012,7 +5013,7 @@ static void K053936_zoom_draw(int chip,UINT16 *ctrl,UINT16 *linectrl, bitmap_t *
 	}
 
 #if 0
-if (input_code_pressed(KEYCODE_D))
+if (input_code_pressed(machine, KEYCODE_D))
 	popmessage("%04x %04x %04x %04x\n%04x %04x %04x %04x\n%04x %04x %04x %04x\n%04x %04x %04x %04x",
 			ctrl[0x00],
 			ctrl[0x01],
@@ -5123,7 +5124,7 @@ WRITE8_HANDLER( K053251_w )
 			}
 
 			if (!K053251_tilemaps_set)
-				tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
+				tilemap_mark_all_tiles_dirty_all(space->machine);
 		}
 		else if (offset == 10)
 		{
@@ -5141,7 +5142,7 @@ WRITE8_HANDLER( K053251_w )
 			}
 
 			if (!K053251_tilemaps_set)
-				tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
+				tilemap_mark_all_tiles_dirty_all(space->machine);
 		}
 	}
 }
@@ -7613,13 +7614,13 @@ READ16_HANDLER( K053250_1_rom_r )
 
 static void K053250_pdraw_scanline8(
 		bitmap_t *bitmap,int x,int y,int length,
-		const UINT8 *src,pen_t *pens,int transparent_pen,UINT32 orient,int pri)
+		const UINT8 *src,pen_t *pens,int transparent_pen,UINT32 orient,bitmap_t *priority,UINT8 pri)
 {
 	/* 8bpp destination */
 	if (bitmap->bpp == 8)
 	{
 		/* adjust in case we're oddly oriented */
-		ADJUST_FOR_ORIENTATION(UINT8, orient, bitmap, priority_bitmap, x, y);
+		ADJUST_FOR_ORIENTATION(UINT8, orient, bitmap, priority, x, y);
 
 		/* with pen lookups */
 		if (pens)
@@ -7676,7 +7677,7 @@ static void K053250_pdraw_scanline8(
 	else if(bitmap->bpp == 16)
 	{
 		/* adjust in case we're oddly oriented */
-		ADJUST_FOR_ORIENTATION(UINT16, orient, bitmap, priority_bitmap, x, y);
+		ADJUST_FOR_ORIENTATION(UINT16, orient, bitmap, priority, x, y);
 		/* with pen lookups */
 		if (pens)
 		{
@@ -7732,7 +7733,7 @@ static void K053250_pdraw_scanline8(
 	else
 	{
 		/* adjust in case we're oddly oriented */
-		ADJUST_FOR_ORIENTATION(UINT32, orient, bitmap, priority_bitmap, x, y);
+		ADJUST_FOR_ORIENTATION(UINT32, orient, bitmap, priority, x, y);
 		/* with pen lookups */
 		if (pens)
 		{
@@ -7843,32 +7844,32 @@ void K053250_draw(running_machine *machine, bitmap_t *bitmap, const rectangle *c
 	if(chip && ++kk == 3) {
 		int kx=0, kkc = 0;
 		kk = 0;
-		if(input_code_pressed(KEYCODE_Y)) {
+		if(input_code_pressed(machine, KEYCODE_Y)) {
 			kx = 1;
 			kc--;
 			if(kc<-1)
 				kc = 511;
 		}
-		if(input_code_pressed(KEYCODE_U)) {
+		if(input_code_pressed(machine, KEYCODE_U)) {
 			kx = 1;
 			kc++;
 			if(kc==512)
 				kc = -1;
 		}
 
-		if(input_code_pressed(KEYCODE_T)) {
+		if(input_code_pressed(machine, KEYCODE_T)) {
 			kkc = 1;
 			kyy--;
 		}
-		if(input_code_pressed(KEYCODE_V)) {
+		if(input_code_pressed(machine, KEYCODE_V)) {
 			kkc = 1;
 			kyy++;
 		}
-		if(input_code_pressed(KEYCODE_F)) {
+		if(input_code_pressed(machine, KEYCODE_F)) {
 			kkc = 1;
 			kxx--;
 		}
-		if(input_code_pressed(KEYCODE_G)) {
+		if(input_code_pressed(machine, KEYCODE_G)) {
 			kkc = 1;
 			kxx++;
 		}
@@ -7989,7 +7990,7 @@ void K053250_draw(running_machine *machine, bitmap_t *bitmap, const rectangle *c
 // utility function to render a clipped scanline vertically or horizontally
 INLINE void K053250_pdraw_scanline32(bitmap_t *bitmap, const pen_t *palette, UINT8 *source,
 		const rectangle *cliprect, int linepos, int scroll, int zoom,
-		UINT32 clipmask, UINT32 wrapmask, UINT32 orientation, int priority)
+		UINT32 clipmask, UINT32 wrapmask, UINT32 orientation, bitmap_t *priority, UINT8 pri)
 {
 // a sixteen-bit fixed point resolution should be adequate to our application
 #define FIXPOINT_PRECISION		16
@@ -8006,7 +8007,6 @@ INLINE void K053250_pdraw_scanline32(bitmap_t *bitmap, const pen_t *palette, UIN
 	UINT8  *pri_base;
 	UINT32 *dst_base;
 	int dst_adv;
-	UINT8 pri;
 
 	// flip X and flip Y also switch role when the X Y coordinates are swapped
 	if (!(orientation & ORIENTATION_SWAP_XY))
@@ -8093,7 +8093,7 @@ INLINE void K053250_pdraw_scanline32(bitmap_t *bitmap, const pen_t *palette, UIN
 		// calculate target increment for horizontal scanlines which is exactly one
 		dst_adv = 1;
 		dst_offset = dst_length;
-		pri_base = BITMAP_ADDR8(priority_bitmap, linepos, dst_start + dst_offset);
+		pri_base = BITMAP_ADDR8(priority, linepos, dst_start + dst_offset);
 		dst_base = BITMAP_ADDR32(bitmap, linepos, dst_start + dst_length);
 	}
 	else
@@ -8101,7 +8101,7 @@ INLINE void K053250_pdraw_scanline32(bitmap_t *bitmap, const pen_t *palette, UIN
 		// calculate target increment for vertical scanlines which is the bitmap's pitch value
 		dst_adv = bitmap->rowpixels;
 		dst_offset= dst_length * dst_adv;
-		pri_base = BITMAP_ADDR8(priority_bitmap, dst_start, linepos + dst_offset);
+		pri_base = BITMAP_ADDR8(priority, dst_start, linepos + dst_offset);
 		dst_base = BITMAP_ADDR32(bitmap, dst_start, linepos + dst_offset);
 	}
 
@@ -8114,7 +8114,6 @@ INLINE void K053250_pdraw_scanline32(bitmap_t *bitmap, const pen_t *palette, UIN
 	src_wrapmask = (clipmask) ? ~0 : wrapmask;
 
 	pal_base = palette;
-	pri = (UINT8)priority;
 	dst_offset = -dst_offset; // negate target offset in order to terminated draw loop at zero condition
 
 	if (pri)
@@ -8360,7 +8359,7 @@ void K053250_draw(running_machine *machine, bitmap_t *bitmap, const rectangle *c
                 priority     : value to be written to the priority bitmap, no effect when equals zero
             */
 			K053250_pdraw_scanline32(bitmap, pal_ptr, pix_ptr, cliprect,
-				line_pos, scroll, zoom, src_clipmask, src_wrapmask, orientation, priority);
+				line_pos, scroll, zoom, src_clipmask, src_wrapmask, orientation, machine->priority_bitmap, (UINT8)priority);
 
 			// shift scanline position one virtual screen upward to render the wrapped end if necessary
 			scroll -= dst_height;

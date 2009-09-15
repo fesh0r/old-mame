@@ -175,11 +175,11 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 //  static int ytlim = 1;
 //  static int xtlim = 1;
 
-//  if ( input_code_pressed_once(KEYCODE_Q) ) ytlim--;
-//  if ( input_code_pressed_once(KEYCODE_W) ) ytlim++;
+//  if ( input_code_pressed_once(machine, KEYCODE_Q) ) ytlim--;
+//  if ( input_code_pressed_once(machine, KEYCODE_W) ) ytlim++;
 
-//  if ( input_code_pressed_once(KEYCODE_A) ) xtlim--;
-//  if ( input_code_pressed_once(KEYCODE_S) ) xtlim++;
+//  if ( input_code_pressed_once(machine, KEYCODE_A) ) xtlim--;
+//  if ( input_code_pressed_once(machine, KEYCODE_S) ) xtlim++;
 
 
 	/*00 ???? ????  (colour / priority?)
@@ -454,80 +454,80 @@ static VIDEO_UPDATE ( raiden2 )
 		int mod = 0;
 		tick = 0;
 
-		if(input_code_pressed(KEYCODE_R)) {
+		if(input_code_pressed(screen->machine, KEYCODE_R)) {
 			mod = 1;
 			bg_bank++;
 			if(bg_bank == 8)
 				bg_bank = 0;
 		}
-		if(input_code_pressed(KEYCODE_T)) {
+		if(input_code_pressed(screen->machine, KEYCODE_T)) {
 			mod = 1;
 			if(bg_bank == 0)
 				bg_bank = 8;
 			bg_bank--;
 		}
-		if(input_code_pressed(KEYCODE_Y)) {
+		if(input_code_pressed(screen->machine, KEYCODE_Y)) {
 			mod = 1;
 			mid_bank++;
 			if(mid_bank == 8)
 				mid_bank = 0;
 		}
-		if(input_code_pressed(KEYCODE_U)) {
+		if(input_code_pressed(screen->machine, KEYCODE_U)) {
 			mod = 1;
 			if(mid_bank == 0)
 				mid_bank = 8;
 			mid_bank--;
 		}
-		if(input_code_pressed(KEYCODE_O)) {
+		if(input_code_pressed(screen->machine, KEYCODE_O)) {
 			mod = 1;
 			fg_bank++;
 			if(fg_bank == 8)
 				fg_bank = 0;
 		}
-		if(input_code_pressed(KEYCODE_I)) {
+		if(input_code_pressed(screen->machine, KEYCODE_I)) {
 			mod = 1;
 			if(fg_bank == 0)
 				fg_bank = 8;
 			fg_bank--;
 		}
 
-		if(input_code_pressed(KEYCODE_D)) {
+		if(input_code_pressed(screen->machine, KEYCODE_D)) {
 			mod = 1;
 			bg_col++;
 			if(bg_col == 8)
 				bg_col = 0;
 		}
-		if(input_code_pressed(KEYCODE_F)) {
+		if(input_code_pressed(screen->machine, KEYCODE_F)) {
 			mod = 1;
 			if(bg_col == 0)
 				bg_col = 8;
 			bg_col--;
 		}
-		if(input_code_pressed(KEYCODE_G)) {
+		if(input_code_pressed(screen->machine, KEYCODE_G)) {
 			mod = 1;
 			mid_col++;
 			if(mid_col == 8)
 				mid_col = 0;
 		}
-		if(input_code_pressed(KEYCODE_H)) {
+		if(input_code_pressed(screen->machine, KEYCODE_H)) {
 			mod = 1;
 			if(mid_col == 0)
 				mid_col = 8;
 			mid_col--;
 		}
-		if(input_code_pressed(KEYCODE_J)) {
+		if(input_code_pressed(screen->machine, KEYCODE_J)) {
 			mod = 1;
 			fg_col++;
 			if(fg_col == 8)
 				fg_col = 0;
 		}
-		if(input_code_pressed(KEYCODE_K)) {
+		if(input_code_pressed(screen->machine, KEYCODE_K)) {
 			mod = 1;
 			if(fg_col == 0)
 				fg_col = 8;
 			fg_col--;
 		}
-		if(mod || input_code_pressed(KEYCODE_L)) {
+		if(mod || input_code_pressed(screen->machine, KEYCODE_L)) {
 			popmessage("b:%x.%x m:%x.%x f:%x.%x %d%d%d", bg_bank, bg_col, mid_bank, mid_col, fg_bank, fg_col, info_1, info_2, info_3);
 			tilemap_mark_all_tiles_dirty(background_layer);
 			tilemap_mark_all_tiles_dirty(midground_layer);
@@ -539,16 +539,16 @@ static VIDEO_UPDATE ( raiden2 )
 
 	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
 
-	if (!input_code_pressed(KEYCODE_Q))
+	if (!input_code_pressed(screen->machine, KEYCODE_Q))
 		tilemap_draw(bitmap, cliprect, background_layer, 0, 0);
-	if (!input_code_pressed(KEYCODE_W))
+	if (!input_code_pressed(screen->machine, KEYCODE_W))
 		tilemap_draw(bitmap, cliprect, midground_layer, 0, 0);
-	if (!input_code_pressed(KEYCODE_E))
+	if (!input_code_pressed(screen->machine, KEYCODE_E))
 		tilemap_draw(bitmap, cliprect, foreground_layer, 0, 0);
 
 	draw_sprites(screen->machine, bitmap, cliprect, 0);
 
-	if (!input_code_pressed(KEYCODE_A))
+	if (!input_code_pressed(screen->machine, KEYCODE_A))
 		tilemap_draw(bitmap, cliprect, text_layer, 0, 0);
 
 	return 0;
@@ -1090,7 +1090,7 @@ static MACHINE_DRIVER_START( raiden2 )
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
 
 	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_REFRESH_RATE(55.47)    /* verified on pcb */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate *//2)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 #if 1
@@ -1614,7 +1614,7 @@ ROM_START( zeroteam )
 	ROM_REGION( 0x100000, "oki2", ROMREGION_ERASEFF )	/* ADPCM samples */
 ROM_END
 
-ROM_START( zeroteaa )
+ROM_START( zeroteama )
 	ROM_REGION( 0x200000, "user1", 0 ) /* v30 main cpu */
 	ROM_LOAD32_BYTE("1.bin",   0x000000, 0x40000, CRC(bd7b3f3a) SHA1(896413901a429d0efa3290f61920063c81730e9b) )
 	ROM_LOAD32_BYTE("3.bin",   0x000002, 0x40000, CRC(19e02822) SHA1(36c9b887eaa9b9b67d65c55e8f7eefd08fe0be15) )
@@ -1645,7 +1645,7 @@ ROM_START( zeroteaa )
 	ROM_REGION( 0x100000, "oki2", ROMREGION_ERASEFF )	/* ADPCM samples */
 ROM_END
 
-ROM_START( zerotsel )
+ROM_START( zeroteams )
 	ROM_REGION( 0x200000, "user1", 0 ) /* v30 main cpu */
 	ROM_LOAD32_BYTE("1_sel.bin",   0x000000, 0x40000, CRC(d99d6273) SHA1(21dccd5d71c720b8364406835812b3c9defaff6c) )
 	ROM_LOAD32_BYTE("3_sel.bin",   0x000002, 0x40000, CRC(0a9fe0b1) SHA1(3588fe19788f77d07e9b5ab8182b94362ffd0024) )
@@ -1677,7 +1677,7 @@ ROM_START( zerotsel )
 ROM_END
 
 /* set contained only program roms, was marked as 'non-encrytped' but program isn't encrypted anyway?! */
-ROM_START( zeroteab )
+ROM_START( zeroteamb )
 	ROM_REGION( 0x200000, "user1", 0 ) /* v30 main cpu */
 	ROM_LOAD32_BYTE("z1",   0x000000, 0x40000, CRC(157743d0) SHA1(f9c84c9025319f76807ef0e79f1ee1599f915b45) )
 	ROM_LOAD32_BYTE("z3",   0x000002, 0x40000, CRC(fea7e4e8) SHA1(08c4bdff82362ae4bcf86fa56fcfc384bbf82b71) )
@@ -1708,7 +1708,7 @@ ROM_START( zeroteab )
 	ROM_REGION( 0x100000, "oki2", ROMREGION_ERASEFF )	/* ADPCM samples */
 ROM_END
 
-ROM_START( zeroteac )
+ROM_START( zeroteamc )
 	ROM_REGION( 0x200000, "user1", 0 ) /* v30 main cpu */
 	ROM_LOAD32_BYTE("b1.024",   0x000000, 0x40000, CRC(528de3b9) SHA1(9ca8cdc0212f2540e852d20ab4c04f68b967d024) )
 	ROM_LOAD32_BYTE("b3.023",   0x000002, 0x40000, CRC(3688739a) SHA1(f98f461fb8e7804b3b4020a5e3762d36d6458a62) )
@@ -2002,15 +2002,17 @@ static WRITE16_HANDLER( mcu_prog_w2 )
 {
 	mcu_prog[mcu_prog_offs*2+1] = data;
 
-	{
-		FILE *fp;
-		fp=fopen("rdx_v33.dmp", "w+b");
-		if (fp)
-		{
-			fwrite(mcu_prog, 0x400, 2, fp);
-			fclose(fp);
-		}
-	}
+/* Uncommented until actively worked on
+    {
+        FILE *fp;
+        fp=fopen("rdx_v33.dmp", "w+b");
+        if (fp)
+        {
+            fwrite(mcu_prog, 0x400, 2, fp);
+            fclose(fp);
+        }
+    }
+*/
 }
 
 static WRITE16_HANDLER( mcu_prog_offs_w )
@@ -2221,10 +2223,10 @@ GAME( 1993, raidndxm, raidndx, raiden2,  raidendx, raiden2,  ROT270, "Seibu Kaih
 GAME( 1993, raidndxj, raidndx, raiden2,  raidendx, raiden2,  ROT270, "Seibu Kaihatsu", "Raiden DX (Japan)", GAME_NOT_WORKING|GAME_NO_SOUND)
 GAME( 1993, raidndxt, raidndx, raiden2,  raidendx, raiden2,  ROT270, "Seibu Kaihatsu", "Raiden DX (Tuning license)", GAME_NOT_WORKING|GAME_NO_SOUND)
 GAME( 1993, zeroteam, 0,       raiden2,  raiden2,  raiden2,  ROT0,   "Seibu Kaihatsu", "Zero Team (set 1)", GAME_NOT_WORKING|GAME_NO_SOUND)
-GAME( 1993, zeroteaa, zeroteam,raiden2,  raiden2,  raiden2,  ROT0,   "Seibu Kaihatsu", "Zero Team (set 2)", GAME_NOT_WORKING|GAME_NO_SOUND)
-GAME( 1993, zeroteab, zeroteam,raiden2,  raiden2,  raiden2,  ROT0,   "Seibu Kaihatsu", "Zero Team (set 3)", GAME_NOT_WORKING|GAME_NO_SOUND)
-GAME( 1993, zeroteac, zeroteam,raiden2,  raiden2,  raiden2,  ROT0,   "Seibu Kaihatsu", "Zero Team (set 4)", GAME_NOT_WORKING|GAME_NO_SOUND)
-GAME( 1993, zerotsel, zeroteam,raiden2,  raiden2,  raiden2,  ROT0,   "Seibu Kaihatsu", "Zero Team Selection", GAME_NOT_WORKING|GAME_NO_SOUND)
+GAME( 1993, zeroteama,zeroteam,raiden2,  raiden2,  raiden2,  ROT0,   "Seibu Kaihatsu", "Zero Team (set 2)", GAME_NOT_WORKING|GAME_NO_SOUND)
+GAME( 1993, zeroteamb,zeroteam,raiden2,  raiden2,  raiden2,  ROT0,   "Seibu Kaihatsu", "Zero Team (set 3)", GAME_NOT_WORKING|GAME_NO_SOUND)
+GAME( 1993, zeroteamc,zeroteam,raiden2,  raiden2,  raiden2,  ROT0,   "Seibu Kaihatsu", "Zero Team (set 4)", GAME_NOT_WORKING|GAME_NO_SOUND)
+GAME( 1993, zeroteams,zeroteam,raiden2,  raiden2,  raiden2,  ROT0,   "Seibu Kaihatsu", "Zero Team Selection", GAME_NOT_WORKING|GAME_NO_SOUND)
 GAME( 1995, xsedae,   0,       raiden2,  raiden2,  xsedae,   ROT0,   "Dream Island",   "X Se Dae Quiz", GAME_NOT_WORKING|GAME_NO_SOUND)
 
 // 'V33 system type_b' - uses V33 CPU, COPX-D3 external protection rom, but still has the proper sound system

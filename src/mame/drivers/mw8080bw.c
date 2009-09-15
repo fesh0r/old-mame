@@ -20,6 +20,7 @@
         * Guided Missile
         * M-4
         * Clowns
+        * Space Walk
         * Extra Inning
         * Shuffleboard
         * Dog Patch
@@ -33,7 +34,6 @@
 
     Other games on this basic hardware:
         * Gun Fight (cocktail version)
-        * Space Walk
         * 4 Player Bowling Alley (cocktail version)
 
     Notes:
@@ -152,6 +152,7 @@
 #include "invaders.lh"
 #include "invad2ct.lh"
 #include "lagunar.lh"
+#include "spacwalk.lh"
 
 
 
@@ -1842,6 +1843,92 @@ MACHINE_DRIVER_END
 
 /*************************************
  *
+ *  Space Walk (PCB #640)
+ *
+ *************************************/
+
+static ADDRESS_MAP_START( spacwalk_io_map, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0x7)
+
+	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0")
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1")
+	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN2")
+	AM_RANGE(0x03, 0x03) AM_READ(mb14241_0_shift_result_r)
+
+	AM_RANGE(0x01, 0x01) AM_WRITE(mb14241_0_shift_count_w)
+	AM_RANGE(0x02, 0x02) AM_WRITE(mb14241_0_shift_data_w)
+	AM_RANGE(0x03, 0x03) AM_WRITE(spacwalk_audio_1_w)
+	AM_RANGE(0x04, 0x04) AM_WRITE(watchdog_reset_w)
+ADDRESS_MAP_END
+
+static INPUT_PORTS_START( spacwalk )
+	PORT_START("IN0")
+	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(clowns_controller_r, NULL)
+
+	PORT_START("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	/* 8 pin DIP Switch on location C2 on PCB A084-90700-D640 */
+	/* PCB picture also shows a 2nd DIP Switch on location B2, supposedly for language selection,
+    but ROM contents suggests it's not connected (no different languages or unmapped reads) */
+	PORT_START("IN2")
+	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Game_Time ) ) PORT_DIPLOCATION("C2:1,2")
+	PORT_DIPSETTING(    0x03, "40 seconds + 20 extended" ) PORT_CONDITION("IN2", 0x30, PORTCOND_NOTEQUALS, 0x00) // 45 + 20 for 2 players
+	PORT_DIPSETTING(    0x02, "50 seconds + 25 extended" ) PORT_CONDITION("IN2", 0x30, PORTCOND_NOTEQUALS, 0x00) // 60 + 30 for 2 players
+	PORT_DIPSETTING(    0x01, "60 seconds + 30 extended" ) PORT_CONDITION("IN2", 0x30, PORTCOND_NOTEQUALS, 0x00) // 75 + 35 for 2 players
+	PORT_DIPSETTING(    0x00, "70 seconds + 35 extended" ) PORT_CONDITION("IN2", 0x30, PORTCOND_NOTEQUALS, 0x00) // 90 + 45 for 2 players
+	PORT_DIPSETTING(    0x03, "40 seconds" ) PORT_CONDITION("IN2", 0x30, PORTCOND_EQUALS, 0x00)
+	PORT_DIPSETTING(    0x02, "50 seconds" ) PORT_CONDITION("IN2", 0x30, PORTCOND_EQUALS, 0x00)
+	PORT_DIPSETTING(    0x01, "60 seconds" ) PORT_CONDITION("IN2", 0x30, PORTCOND_EQUALS, 0x00)
+	PORT_DIPSETTING(    0x00, "70 seconds" ) PORT_CONDITION("IN2", 0x30, PORTCOND_EQUALS, 0x00)
+	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Coinage ) ) PORT_DIPLOCATION("C2:3,4")
+	PORT_DIPSETTING(    0x00, "1 Coin per Player" )
+	PORT_DIPSETTING(    0x04, "1 Coin/1 or 2 Players" )
+	PORT_DIPSETTING(    0x0c, "2 Coins per Player" )
+	PORT_DIPSETTING(    0x08, "2 Coins/1 or 2 Players" )
+	PORT_DIPNAME( 0x30, 0x00, "Extended Time At" ) PORT_DIPLOCATION("C2:5,6")
+	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
+	PORT_DIPSETTING(    0x10, "5000" )
+	PORT_DIPSETTING(    0x20, "6000" )
+	PORT_DIPSETTING(    0x30, "7000" )
+	PORT_DIPNAME( 0x40, 0x00, "Springboard Alignment" ) PORT_DIPLOCATION("C2:7")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
+	PORT_SERVICE_DIPLOC(0x80, IP_ACTIVE_HIGH, "C2:8" ) // RAM-ROM Test
+
+	/* fake ports for two analog controls multiplexed */
+	PORT_START(CLOWNS_CONTROLLER_P1_TAG)
+	PORT_BIT( 0xff, 0x7f, IPT_PADDLE ) PORT_MINMAX(0x01,0xfe) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_PLAYER(1)
+
+	PORT_START(CLOWNS_CONTROLLER_P2_TAG)
+	PORT_BIT( 0xff, 0x7f, IPT_PADDLE ) PORT_MINMAX(0x01,0xfe) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_PLAYER(2)
+INPUT_PORTS_END
+
+static MACHINE_DRIVER_START( spacwalk )
+
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(mw8080bw_root)
+	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_IO_MAP(spacwalk_io_map)
+	MDRV_MACHINE_START(clowns)
+	MDRV_WATCHDOG_TIME_INIT(USEC(255000000 / (MW8080BW_PIXEL_CLOCK / MW8080BW_HTOTAL / MW8080BW_VTOTAL)))
+
+	/* audio hardware */
+	// MDRV_IMPORT_FROM(spacwalk_audio)
+
+MACHINE_DRIVER_END
+
+
+
+/*************************************
+ *
  *  Shuffleboard (PCB #643)
  *
  *************************************/
@@ -2295,7 +2382,6 @@ static READ8_HANDLER( bowler_shift_result_r )
 
 	return ~mb14241_0_shift_result_r(space,0);
 }
-
 
 static WRITE8_HANDLER( bowler_lights_1_w )
 {
@@ -2960,6 +3046,18 @@ ROM_START( clowns1 )
 	ROM_LOAD( "clownsv1.c", 0x1400, 0x0400, CRC(12968e52) SHA1(71e4f09d30b992a4ac44b0e88e83b4f8a0f63caa) )
 ROM_END
 
+ROM_START( spacwalk )
+	ROM_REGION( 0x10000, "maincpu", 0 )
+	ROM_LOAD( "sw.h", 0x0000, 0x0400, CRC(1b07fc1f) SHA1(bc6423ebcfcc1d158bc44c1a577485682b0aa79b) )
+	ROM_LOAD( "sw.g", 0x0400, 0x0400, CRC(52220910) SHA1(2d479b241d6a57f28a91d6a085f10cc3fd6787a1) )
+	ROM_LOAD( "sw.f", 0x0800, 0x0400, CRC(787d4ef6) SHA1(42b24a80e750bb51b81caeaf418014e62f55810d) )
+	ROM_LOAD( "sw.e", 0x0c00, 0x0400, CRC(d62d324b) SHA1(1c1ed2f9995d960f6dac79cae53fd4e82cb06640) )
+	ROM_LOAD( "sw.d", 0x1000, 0x0400, CRC(17dcc591) SHA1(a6c96da27713e51f4d400ef3bb33654a40214aa8))
+	ROM_LOAD( "sw.c", 0x1400, 0x0400, CRC(61aef726) SHA1(fbb8e90e0a0f7de4e5e5a37b9595a1be626ada9b) )
+	ROM_LOAD( "sw.b", 0x1800, 0x0400, CRC(c59d45d0) SHA1(5e772772e235ab8c0615ec26334d2e192f297604))
+	ROM_LOAD( "sw.a", 0x1c00, 0x0400, CRC(d563da07) SHA1(937b683dddfddbc1c0f2e45571657b569c0c4928) )
+ROM_END
+
 
 ROM_START( einning )
 	ROM_REGION( 0x10000, "maincpu", 0 )
@@ -3077,7 +3175,7 @@ ROM_END
 /* 626 */ GAME( 1977, m4,       0,        m4,       m4,       0, ROT0,   "Midway", "M-4", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )
 /* 630 */ GAMEL(1978, clowns,   0,        clowns,   clowns,   0, ROT0,   "Midway", "Clowns (rev. 2)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE , layout_clowns )
 /* 630 */ GAMEL(1978, clowns1,  clowns,   clowns,   clowns1,  0, ROT0,   "Midway", "Clowns (rev. 1)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE , layout_clowns )
-/* 640 Space Walk (dump does not exist) */
+/* 640 */ GAMEL(1978, spacwalk, 0,        spacwalk, spacwalk, 0, ROT0,   "Midway", "Space Walk", GAME_NO_SOUND | GAME_SUPPORTS_SAVE, layout_spacwalk )
 /* 642 */ GAME( 1978, einning,  0,        dplay,    einning,  0, ROT0,   "Midway", "Extra Inning", GAME_SUPPORTS_SAVE  )
 /* 643 */ GAME( 1978, shuffle,  0,        shuffle,  shuffle,  0, ROT90,  "Midway", "Shuffleboard", GAME_NO_SOUND | GAME_SUPPORTS_SAVE  )
 /* 644 */ GAME( 1977, dogpatch, 0,        dogpatch, dogpatch, 0, ROT0,   "Midway", "Dog Patch", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE  )

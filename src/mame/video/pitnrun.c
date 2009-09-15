@@ -98,7 +98,7 @@ WRITE8_HANDLER(pitnrun_v_heed_w)
 WRITE8_HANDLER(pitnrun_color_select_w)
 {
 	pitnrun_color_select=data;
-	tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
+	tilemap_mark_all_tiles_dirty_all(space->machine);
 }
 
 static void pitnrun_spotlights(running_machine *machine)
@@ -216,19 +216,19 @@ VIDEO_UPDATE( pitnrun )
 	rectangle myclip=*cliprect;
 
 #ifdef MAME_DEBUG
-	if (input_code_pressed_once(KEYCODE_Q))
+	if (input_code_pressed_once(screen->machine, KEYCODE_Q))
 	{
 		UINT8 *ROM = memory_region(screen->machine, "maincpu");
 		ROM[0x84f6]=0; /* lap 0 - normal */
 	}
 
-	if (input_code_pressed_once(KEYCODE_W))
+	if (input_code_pressed_once(screen->machine, KEYCODE_W))
 	{
 		UINT8 *ROM = memory_region(screen->machine, "maincpu");
 		ROM[0x84f6]=6; /* lap 6 = spotlight */
 	}
 
-	if (input_code_pressed_once(KEYCODE_E))
+	if (input_code_pressed_once(screen->machine, KEYCODE_E))
 	{
 		UINT8 *ROM = memory_region(screen->machine, "maincpu");
 		ROM[0x84f6]=2; /* lap 3 (trial 2)= lightnings */

@@ -78,7 +78,7 @@ static char *get_cond(int op)
 }
 
 
-unsigned dasm_ssp1601(char *buffer, unsigned pc, const UINT8 *oprom)
+static unsigned dasm_ssp1601(char *buffer, unsigned pc, const UINT8 *oprom)
 {
 	const UINT8 *base_oprom;
 	UINT16 op;
@@ -288,3 +288,12 @@ unsigned dasm_ssp1601(char *buffer, unsigned pc, const UINT8 *oprom)
 }
 
 // vim:ts=4
+
+CPU_DISASSEMBLE( ssp1601 )
+{
+	//ssp1601_state_t *ssp1601_state = get_safe_token(device);
+
+	return dasm_ssp1601(buffer, pc, oprom);
+}
+
+

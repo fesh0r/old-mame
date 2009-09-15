@@ -71,6 +71,7 @@ typedef int (*debug_instruction_hook_func)(const device_config *device, offs_t c
 
 typedef struct _debug_cpu_breakpoint debug_cpu_breakpoint;
 typedef struct _debug_cpu_watchpoint debug_cpu_watchpoint;
+typedef struct _debug_cpu_comment_group debug_cpu_comment_group;
 
 
 typedef struct _debug_trace_info debug_trace_info;
@@ -126,6 +127,7 @@ struct _cpu_debug_data
 	cpu_disassemble_func 	dasm_override;				/* pointer to provided override function */
 	debug_instruction_hook_func instrhook;				/* per-instruction callback hook */
 	debug_cpu_watchpoint *	wplist[ADDRESS_SPACES];		/* watchpoint lists for each address space */
+	debug_cpu_comment_group *comments;					/* disassembly comments */
 };
 
 
@@ -336,6 +338,9 @@ UINT32 debug_read_dword(const address_space *space, offs_t address, int apply_tr
 /* return a qword from the the specified memory space */
 UINT64 debug_read_qword(const address_space *space, offs_t address, int apply_translation);
 
+/* return 1,2,4 or 8 bytes from the specified memory space */
+UINT64 debug_read_memory(const address_space *space, offs_t address, int size, int apply_translation);
+
 /* write a byte to the specified memory space */
 void debug_write_byte(const address_space *space, offs_t address, UINT8 data, int apply_translation);
 
@@ -347,6 +352,9 @@ void debug_write_dword(const address_space *space, offs_t address, UINT32 data, 
 
 /* write a qword to the specified memory space */
 void debug_write_qword(const address_space *space, offs_t address, UINT64 data, int apply_translation);
+
+/* write 1,2,4 or 8 bytes to the specified memory space */
+void debug_write_memory(const address_space *space, offs_t address, UINT64 data, int size, int apply_translation);
 
 /* read 1,2,4 or 8 bytes at the given offset from opcode space */
 UINT64 debug_read_opcode(const address_space *space, offs_t offset, int size, int arg);

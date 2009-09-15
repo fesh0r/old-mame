@@ -112,6 +112,26 @@ static const char *const maple_names[] =
 
 #endif
 
+static const UINT8 dc_controller_id[0x70] =
+{
+	0x00, 0x00, 0x00, 0x01, 0x00, 0x0f, 0x06, 0xfe, 0x00, 0x00, 0x00, 0x00,	0x00, 0x00, 0x00, 0x00,
+	0xff, 0x00, 0x44, 0x72, 0x65, 0x61, 0x6d, 0x63, 0x61, 0x73, 0x74, 0x20,	0x43, 0x6f, 0x6e, 0x74,
+	0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,	0x20, 0x20, 0x20, 0x20,
+	0x50, 0x72, 0x6f, 0x64, 0x75, 0x63, 0x65, 0x64, 0x20, 0x42, 0x79, 0x20,	0x6f, 0x72, 0x20, 0x55,
+	0x6e, 0x64, 0x65, 0x72, 0x20, 0x4c, 0x69, 0x63, 0x65, 0x6e, 0x73, 0x65,	0x20, 0x46, 0x72, 0x6f,
+	0x6d, 0x20, 0x53, 0x45, 0x47, 0x41, 0x20, 0x45, 0x4e, 0x54, 0x45, 0x52,	0x50, 0x52, 0x49, 0x53,
+	0x45, 0x53, 0x2c, 0x4c, 0x54, 0x44, 0x2e, 0x20, 0x20, 0x20, 0x20, 0x20,	0xae, 0x01, 0xf4, 0x01
+};
+
+static const UINT8 dc_controller_version[0x50] =
+{
+	0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x20, 0x31, 0x2e, 0x30, 0x31, 0x30, 0x2c, 0x31, 0x39,
+	0x39, 0x38, 0x2f, 0x30, 0x39, 0x2f, 0x32, 0x38, 0x2c, 0x33, 0x31, 0x35, 0x2d, 0x36, 0x32, 0x31,
+	0x31, 0x2d, 0x41, 0x42, 0x20, 0x20, 0x20, 0x2c, 0x41, 0x6e, 0x61, 0x6c,	0x6f, 0x67, 0x20, 0x4d,
+	0x6f, 0x64, 0x75, 0x6c, 0x65, 0x20, 0x3a, 0x20, 0x54, 0x68, 0x65, 0x20,	0x34, 0x74, 0x68, 0x20,
+	0x45, 0x64, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x35, 0x2f, 0x38, 0x20,	0x20, 0x2b, 0x44, 0x46
+};
+
 // selected Maple registers
 enum
 {
@@ -426,7 +446,7 @@ READ64_HANDLER( dc_sysctrl_r )
 	#if DEBUG_SYSCTRL
 	if ((reg != 0x40) && (reg != 0x41) && (reg != 0x42) && (reg != 0x23) && (reg > 2))	// filter out IRQ status reads
 	{
-		mame_printf_verbose("SYSCTRL: [%08x] read %x @ %x (reg %x: %s), mask %llx (PC=%x)\n", 0x5f6800+reg*4, dc_sysctrl_regs[reg], offset, reg, sysctrl_names[reg], mem_mask, cpu_get_pc(space->cpu));
+		mame_printf_verbose("SYSCTRL: [%08x] read %x @ %x (reg %x: %s), mask %" I64FMT "x (PC=%x)\n", 0x5f6800+reg*4, dc_sysctrl_regs[reg], offset, reg, sysctrl_names[reg], mem_mask, cpu_get_pc(space->cpu));
 	}
 	#endif
 
@@ -512,12 +532,13 @@ WRITE64_HANDLER( dc_sysctrl_w )
 	#if DEBUG_SYSCTRL
 	if ((reg != 0x40) && (reg != 0x42) && (reg > 2))	// filter out IRQ acks and ch2 dma
 	{
-		mame_printf_verbose("SYSCTRL: write %llx to %x (reg %x), mask %llx\n", data>>shift, offset, reg, /*sysctrl_names[reg],*/ mem_mask);
+		mame_printf_verbose("SYSCTRL: write %" I64FMT "x to %x (reg %x), mask %" I64FMT "x\n", data>>shift, offset, reg, /*sysctrl_names[reg],*/ mem_mask);
 	}
 	#endif
 }
 
-READ64_HANDLER( dc_maple_r )
+// Naomi/Naomi2 implementation with Maple/JVS bridging
+READ64_HANDLER( naomi_maple_r )
 {
 	int reg;
 	UINT64 shift;
@@ -530,7 +551,7 @@ READ64_HANDLER( dc_maple_r )
 	return (UINT64)maple_regs[reg] << shift;
 }
 
-WRITE64_HANDLER( dc_maple_w )
+WRITE64_HANDLER( naomi_maple_w )
 {
 	int reg;
 	UINT64 shift;
@@ -542,14 +563,14 @@ WRITE64_HANDLER( dc_maple_w )
 	static int jvs_command = 0,jvs_address = 0;
 	int chk;
 	int a;
-	int off,len;
+	int off,len,func;
 
 	reg = decode_reg32_64(space->machine, offset, mem_mask, &shift);
 	dat = (UINT32)(data >> shift);
 	old = maple_regs[reg];
 
 	#if DEBUG_MAPLE_REGS
-	mame_printf_verbose("MAPLE: [%08x=%x] write %llx to %x (reg %x: %s), mask %llx\n", 0x5f6c00+reg*4, dat, data >> shift, offset, reg, maple_names[reg], mem_mask);
+	mame_printf_verbose("MAPLE: [%08x=%x] write %" I64FMT "x to %x (reg %x: %s), mask %" I64FMT "x\n", 0x5f6c00+reg*4, dat, data >> shift, offset, reg, maple_names[reg], mem_mask);
 	#endif
 
 	maple_regs[reg] = dat; // 5f6c00+reg*4=dat
@@ -563,8 +584,8 @@ WRITE64_HANDLER( dc_maple_w )
 			{
 				maple_regs[reg] = 1;
 				dat=maple_regs[SB_MDSTAR];
-				//printf("Maple DMA: %08x %08x %08x %08x\n",maple_regs[SB_MDSTAR],maple_regs[SB_MDTSEL],maple_regs[SB_MDEN],maple_regs[SB_MDST]);
-				//printf("           %08x %08x %08x %08x\n",maple_regs[SB_MSYS],maple_regs[SB_MST],maple_regs[SB_MSHTCL],maple_regs[SB_MMSEL]);
+//              printf("Maple DMA: %08x %08x %08x %08x\n",maple_regs[SB_MDSTAR],maple_regs[SB_MDTSEL],maple_regs[SB_MDEN],maple_regs[SB_MDST]);
+//              printf("           %08x %08x %08x %08x\n",maple_regs[SB_MSYS],maple_regs[SB_MST],maple_regs[SB_MSHTCL],maple_regs[SB_MMSEL]);
 				while (1) // do transfers
 				{
 					ddtdata.source=dat;		// source address
@@ -587,6 +608,7 @@ WRITE64_HANDLER( dc_maple_w )
 					command=buff[2] & 255;
 					dap=(buff[2] >> 8) & 255;
 					sap=(buff[2] >> 16) & 255;
+					func = buff[3];
 					//buff[0]=0;
 					//if(buff[1] == 0x700)
 					//  printf("%08x %08x",buff[0],buff[2]);
@@ -602,9 +624,10 @@ WRITE64_HANDLER( dc_maple_w )
 							case 3:
 								ddtdata.length=1;
 								#if DEBUG_MAPLE
-								printf("MAPLE: transfer command %x port %x\n", command, port);
+								printf("MAPLE: transfer command %x port %x length %x\n", command, port, length);
 								#endif
 								break;
+
 							case 0x80: // get data and compute checksum
 								ddtdata.length=length;
 								ddtdata.direction=0;
@@ -842,8 +865,162 @@ WRITE64_HANDLER( dc_maple_w )
 
 					if (endflag)
 					{
-						#if ENABLE_MAPLE_IRQ
+						#if 1 //ENABLE_MAPLE_IRQ
 						/*TODO: this fixes moeru but breaks other games, understand why.*/
+						dc_sysctrl_regs[SB_ISTNRM] |= IST_DMA_MAPLE;
+						dc_update_interrupt_status(space->machine);
+						#endif
+						break;
+					}
+					// skip fixed packet header
+					dat += 8;
+					// skip transfer data
+					dat += (length + 1) * 4;
+				} // do transfers
+				maple_regs[reg] = 0;
+			}
+			else
+			{
+				#if DEBUG_MAPLE
+				printf("MAPLE: hardware trigger not supported yet\n");
+				#endif
+			}
+		}
+		break;
+	}
+}
+
+// implementation for Dreamcast and Atomiswave supports only standard Sega Dreamcast Maple commands and peripherals
+READ64_HANDLER( dc_maple_r )
+{
+	int reg;
+	UINT64 shift;
+
+	reg = decode_reg32_64(space->machine, offset, mem_mask, &shift);
+
+	#if DEBUG_MAPLE_REGS
+	mame_printf_verbose("MAPLE:  Unmapped read %08x\n", 0x5f6c00+reg*4);
+	#endif
+	return (UINT64)maple_regs[reg] << shift;
+}
+
+WRITE64_HANDLER( dc_maple_w )
+{
+	int reg, func;
+	UINT64 shift;
+	UINT32 old,dat;
+	struct sh4_ddt_dma ddtdata;
+	UINT32 buff[512];
+	UINT32 endflag,port,pattern,length,command,dap,sap,destination;
+
+	reg = decode_reg32_64(space->machine, offset, mem_mask, &shift);
+	dat = (UINT32)(data >> shift);
+	old = maple_regs[reg];
+
+	#if DEBUG_MAPLE_REGS
+	mame_printf_verbose("MAPLE: [%08x=%x] write %" I64FMT "x to %x (reg %x: %s), mask %" I64FMT "x\n", 0x5f6c00+reg*4, dat, data >> shift, offset, reg, maple_names[reg], mem_mask);
+	#endif
+
+	maple_regs[reg] = dat; // 5f6c00+reg*4=dat
+	switch (reg)
+	{
+	case SB_MDST:
+		maple_regs[reg] = old;
+		if (!(old & 1) && (dat & 1) && maple_regs[SB_MDEN] & 1) // 0 -> 1
+		{
+			if (!(maple_regs[SB_MDTSEL] & 1))
+			{
+				maple_regs[reg] = 1;
+				dat=maple_regs[SB_MDSTAR];
+//              printf("Maple DMA: %08x %08x %08x %08x\n",maple_regs[SB_MDSTAR],maple_regs[SB_MDTSEL],maple_regs[SB_MDEN],maple_regs[SB_MDST]);
+//              printf("           %08x %08x %08x %08x\n",maple_regs[SB_MSYS],maple_regs[SB_MST],maple_regs[SB_MSHTCL],maple_regs[SB_MMSEL]);
+				while (1) // do transfers
+				{
+					ddtdata.source=dat;		// source address
+					ddtdata.length=3;		// words to transfer
+					ddtdata.size=4;			// bytes per word
+					ddtdata.buffer=buff;	// destination buffer
+					ddtdata.direction=0;	// 0 source to buffer, 1 buffer to source
+					ddtdata.channel= -1;	// not used
+					ddtdata.mode= -1;		// copy from/to buffer
+					sh4_dma_ddt(cputag_get_cpu(space->machine, "maincpu"), &ddtdata);
+
+					maple_regs[reg] = 0;
+					endflag=buff[0] & 0x80000000;
+					port=(buff[0] >> 16) & 3;
+					pattern=(buff[0] >> 8) & 7;
+					length=buff[0] & 255;
+					//if(length == 0)
+					//  length = 0x100;
+					destination=buff[1];
+					command=buff[2] & 255;
+					dap=(buff[2] >> 8) & 255;
+					sap=(buff[2] >> 16) & 255;
+					func = buff[3];
+					//buff[0]=0;
+					//if(buff[1] == 0x700)
+					//  printf("%08x %08x",buff[0],buff[2]);
+					ddtdata.size=4;
+
+					if (pattern == 0)
+					{
+						char pL[8], pH[8];
+
+						if (port > 0)
+							buff[0]=0xffffffff;
+						switch (command)
+						{
+							case 1: // AW/DC MAPLE_CMD_INFO
+								ddtdata.length = sizeof(dc_controller_id)/4;
+
+								buff[0] = 5;	// MAPLE_RESP_INFO
+								memcpy(&buff[1], dc_controller_id, sizeof(dc_controller_id));
+								break;
+
+							case 2: // AW/DC MAPLE_CMD_EXT_INFO
+								ddtdata.length = sizeof(dc_controller_id)+sizeof(dc_controller_version)/4;
+
+								buff[0] = 6;	// MAPLE_RESP_EXT_INFO
+								memcpy(&buff[1], dc_controller_id, sizeof(dc_controller_id));
+								memcpy(&buff[1+(0x70/4)], dc_controller_version, sizeof(dc_controller_version));
+								break;
+
+							case 3:	// AW/DC MAPLE_CMD_RESET
+								ddtdata.length=1;
+								#if DEBUG_MAPLE
+								printf("MAPLE: transfer command %x port %x length %x\n", command, port, length);
+								#endif
+								break;
+
+							case 9: // AW/DC MAPLE_CMD_GET_COND
+								buff[0] = 8;	// MAPLE_RESP_DATA
+
+								sprintf(pL, "P%dL", port+1);
+								sprintf(pH, "P%dH", port+1);
+
+								buff[1] = func;
+								buff[2] = input_port_read(space->machine, pH)<<8 | input_port_read(space->machine, pL) | 0xffff0000;
+								buff[3] = 0xffffffff;
+								ddtdata.length=(8/4)+1;
+								break;
+							default:
+								#if DEBUG_MAPLE
+								printf("MAPLE: unknown transfer command %x port %x\n", command, port);
+								#endif
+								ddtdata.length=0;
+								endflag = 1; /*TODO: check this */
+								//buff[0]=0xffffffff;
+								break;
+						}
+					}
+					ddtdata.destination=destination;
+					ddtdata.buffer=buff;
+					ddtdata.direction=1;
+					sh4_dma_ddt(cputag_get_cpu(space->machine, "maincpu"),&ddtdata);
+
+					if (endflag)
+					{
+						#if ENABLE_MAPLE_IRQ
 						dc_sysctrl_regs[SB_ISTNRM] |= IST_DMA_MAPLE;
 						dc_update_interrupt_status(space->machine);
 						#endif
@@ -912,7 +1089,7 @@ WRITE64_HANDLER( dc_gdrom_w )
 		off=offset << 1;
 	}
 
-	mame_printf_verbose("GDROM: [%08x=%x]write %llx to %x, mask %llx\n", 0x5f7000+off*4, dat, data, offset, mem_mask);
+	mame_printf_verbose("GDROM: [%08x=%x]write %" I64FMT "x to %x, mask %" I64FMT "x\n", 0x5f7000+off*4, dat, data, offset, mem_mask);
 }
 
 READ64_HANDLER( dc_g1_ctrl_r )
@@ -939,7 +1116,7 @@ WRITE64_HANDLER( dc_g1_ctrl_w )
 	old = g1bus_regs[reg];
 
 	g1bus_regs[reg] = dat; // 5f7400+reg*4=dat
-	mame_printf_verbose("G1CTRL: [%08x=%x] write %llx to %x, mask %llx\n", 0x5f7400+reg*4, dat, data, offset, mem_mask);
+	mame_printf_verbose("G1CTRL: [%08x=%x] write %" I64FMT "x to %x, mask %" I64FMT "x\n", 0x5f7400+reg*4, dat, data, offset, mem_mask);
 	switch (reg)
 	{
 	case SB_GDST:
@@ -950,6 +1127,7 @@ WRITE64_HANDLER( dc_g1_ctrl_w )
 				mame_printf_verbose("G1CTRL: unsupported transfer\n");
 				return;
 			}
+//          printf("ROM board DMA to %x len %x (PC %x)\n", g1bus_regs[SB_GDSTAR], g1bus_regs[SB_GDLEN], cpu_get_pc(space->cpu));
  			ROM = (UINT8 *)devtag_get_info_ptr(space->machine, "rom_board", DEVINFO_PTR_MEMORY);
  			dmaoffset = (UINT32)devtag_get_info_int(space->machine, "rom_board", DEVINFO_INT_DMAOFFSET);
 			ddtdata.destination=g1bus_regs[SB_GDSTAR];		// destination address
@@ -1089,9 +1267,9 @@ READ64_HANDLER( dc_modem_r )
 
 	// from ElSemi: this makes Atomiswave do it's "verbose boot" with a Sammy logo and diagnostics instead of just running the cart.
 	// our PVR emulation is apparently not good enough for that to work yet though.
-	if ((reg == 0x280/4) && (mem_mask == U64(0x00000000ffffffff)))
+	if (reg == 0x280/4)
 	{
-		return 1;
+		return U64(0xffffffffffffffff);
 	}
 
 	mame_printf_verbose("MODEM:  Unmapped read %08x\n", 0x600000+reg*4);
@@ -1106,7 +1284,7 @@ WRITE64_HANDLER( dc_modem_w )
 
 	reg = decode_reg32_64(space->machine, offset, mem_mask, &shift);
 	dat = (UINT32)(data >> shift);
-	mame_printf_verbose("MODEM: [%08x=%x] write %llx to %x, mask %llx\n", 0x600000+reg*4, dat, data, offset, mem_mask);
+	mame_printf_verbose("MODEM: [%08x=%x] write %" I64FMT "x to %x, mask %" I64FMT "x\n", 0x600000+reg*4, dat, data, offset, mem_mask);
 }
 
 READ64_HANDLER( dc_rtc_r )
@@ -1147,7 +1325,7 @@ WRITE64_HANDLER( dc_rtc_w )
 		dc_rtcregister[RTC3] &= 1;
 		break;
 	}
-	mame_printf_verbose("RTC: [%08x=%x] write %llx to %x, mask %llx\n", 0x710000 + reg*4, dat, data, offset, mem_mask);
+	mame_printf_verbose("RTC: [%08x=%x] write %" I64FMT "x to %x, mask %" I64FMT "x\n", 0x710000 + reg*4, dat, data, offset, mem_mask);
 }
 
 static TIMER_CALLBACK(dc_rtc_increment)
@@ -1184,7 +1362,7 @@ READ64_DEVICE_HANDLER( dc_aica_reg_r )
 
 	/*reg = */decode_reg32_64(device->machine, offset, mem_mask, &shift);
 
-//  mame_printf_verbose("AICA REG: [%08x] read %llx, mask %llx\n", 0x700000+reg*4, (UINT64)offset, mem_mask);
+//  mame_printf_verbose("AICA REG: [%08x] read %" I64FMT "x, mask %" I64FMT "x\n", 0x700000+reg*4, (UINT64)offset, mem_mask);
 
 	return (UINT64) aica_r(device, offset*2, 0xffff)<<shift;
 }
@@ -1214,7 +1392,7 @@ WRITE64_DEVICE_HANDLER( dc_aica_reg_w )
 
 	aica_w(device, offset*2, dat, shift ? ((mem_mask>>32)&0xffff) : (mem_mask & 0xffff));
 
-//  mame_printf_verbose("AICA REG: [%08x=%x] write %llx to %x, mask %llx\n", 0x700000+reg*4, dat, data, offset, mem_mask);
+//  mame_printf_verbose("AICA REG: [%08x=%x] write %" I64FMT "x to %x, mask %" I64FMT "x\n", 0x700000+reg*4, dat, data, offset, mem_mask);
 }
 
 READ32_DEVICE_HANDLER( dc_arm_aica_r )

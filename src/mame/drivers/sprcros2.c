@@ -91,7 +91,7 @@ static WRITE8_HANDLER( sprcros2_m_port7_w )
 	if((sprcros2_m_port7^data)&0x40)
 		memory_set_bankptr(space->machine, 1,&RAM[0x10000+((data&0x40)<<7)]);
 
-	tilemap_set_flip( ALL_TILEMAPS,data&0x02?(TILEMAP_FLIPX|TILEMAP_FLIPY):0 );
+	tilemap_set_flip_all( space->machine,data&0x02?(TILEMAP_FLIPX|TILEMAP_FLIPY):0 );
 
 	sprcros2_m_port7 = data;
 }
@@ -347,7 +347,7 @@ ROM_START( sprcros2 )
 ROM_END
 
 /* this is probably an old revision */
-ROM_START( sprcrs2a )
+ROM_START( sprcros2a )
 	ROM_REGION( 0x14000, "master", 0 )
 	ROM_LOAD( "15.bin",     0x00000, 0x4000, CRC(b9d02558) SHA1(775404c6c7648d9dab02b496541739ea700cd481) )
 	ROM_LOAD( "scm-02.10j", 0x04000, 0x4000, CRC(849c5c87) SHA1(0e02c4990e371d6a290efa53301818e769648945) )
@@ -384,4 +384,4 @@ ROM_START( sprcrs2a )
 ROM_END
 
 GAME( 1986, sprcros2, 0,        sprcros2, sprcros2, 0, ROT0, "GM Shoji", "Super Cross II (Japan, set 1)", 0 )
-GAME( 1986, sprcrs2a, sprcros2, sprcros2, sprcros2, 0, ROT0, "GM Shoji", "Super Cross II (Japan, set 2)", 0 )
+GAME( 1986, sprcros2a,sprcros2, sprcros2, sprcros2, 0, ROT0, "GM Shoji", "Super Cross II (Japan, set 2)", 0 )

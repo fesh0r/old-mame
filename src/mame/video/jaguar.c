@@ -424,6 +424,8 @@ static void jaguar_set_palette(UINT16 vmode)
 	{
 		/* YCC full */
 		case 0x000:
+		/* RGB24 */
+		case 0x002:
 			for (i = 0; i < 65536; i++)
 			{
 				UINT8 r = (red_lookup[i >> 8] * (i & 0xff)) >> 8;
@@ -435,7 +437,7 @@ static void jaguar_set_palette(UINT16 vmode)
 
 		/* YCC/RGB VARMOD */
 		case 0x100:
-		case 0x107:
+		case 0x106:
 			for (i = 0; i < 65536; i++)
 			{
 				UINT8 r = (red_lookup[i >> 8] * (i & 0xff)) >> 8;
@@ -465,6 +467,7 @@ static void jaguar_set_palette(UINT16 vmode)
 		/* others */
 		default:
 			logerror("Can't handle mode %X\n", vmode);
+			fprintf(stderr, "Can't handle mode %X\n", vmode);
 			break;
 	}
 }
@@ -497,7 +500,7 @@ static void blitter_run(running_machine *machine)
 	UINT32 a1flags = blitter_regs[A1_FLAGS] & STATIC_FLAGS_MASK;
 	UINT32 a2flags = blitter_regs[A2_FLAGS] & STATIC_FLAGS_MASK;
 
-	profiler_mark(PROFILER_USER1);
+	profiler_mark_start(PROFILER_USER1);
 
 	if (a1flags == a2flags)
 	{
@@ -586,7 +589,7 @@ if (++reps % 100 == 99)
 }
 
 	generic_blitter(machine, blitter_regs[B_CMD], blitter_regs[A1_FLAGS], blitter_regs[A2_FLAGS]);
-	profiler_mark(PROFILER_END);
+	profiler_mark_end();
 }
 
 
@@ -595,7 +598,7 @@ READ32_HANDLER( jaguar_blitter_r )
 	switch (offset)
 	{
 		case B_CMD:	/* B_CMD */
-			return 0x00000001;
+			return 1;
 
 		default:
 			logerror("%08X:Blitter read register @ F022%02X\n", cpu_get_previouspc(space->cpu), offset * 4);
@@ -643,22 +646,53 @@ READ16_HANDLER( jaguar_tom_regs_r )
 	return gpu_regs[offset];
 }
 
+#if 0
+static TIMER_CALLBACK( jaguar_pit )
+{
+	attotime sample_period;
+	cpu_irq_state |= 4;
+	update_cpu_irq(machine);
+
+	if (gpu_regs[PIT0])
+	{
+		sample_period = ATTOTIME_IN_NSEC(cpu_get_clock(cputag_get_cpu(machine,"gpu")) / (1+gpu_regs[PIT0]) / (1+gpu_regs[PIT1]));
+//      timer_set(machine, sample_period, NULL, 0, jaguar_pit);
+	}
+}
+#endif
 
 WRITE16_HANDLER( jaguar_tom_regs_w )
 {
+	UINT32 reg_store = gpu_regs[offset];
+//  attotime sample_period;
 	if (offset < GPU_REGS)
 	{
 		COMBINE_DATA(&gpu_regs[offset]);
 
 		switch (offset)
 		{
+#if 0
+			case PIT1:
+				if (gpu_regs[PIT0])
+				{
+					sample_period = ATTOTIME_IN_NSEC(cpu_get_clock(cputag_get_cpu(space->machine,"gpu")) / (1+gpu_regs[PIT0]) / (1+gpu_regs[PIT1]));
+					timer_set(space->machine, sample_period, NULL, 0, jaguar_pit);
+				}
+				break;
+#endif
 			case INT1:
 				cpu_irq_state &= ~(gpu_regs[INT1] >> 8);
 				update_cpu_irq(space->machine);
 				break;
 
 			case VMODE:
-				jaguar_set_palette(gpu_regs[VMODE]);
+				if (reg_store != gpu_regs[offset])
+					jaguar_set_palette(gpu_regs[VMODE]);
+				break;
+
+			case OBF:	/* clear GPU interrupt */
+				cpu_irq_state &= 0xfd;
+				update_cpu_irq(space->machine);
 				break;
 
 			case HP:
@@ -673,22 +707,25 @@ WRITE16_HANDLER( jaguar_tom_regs_w )
 			case VDB:
 			case VDE:
 			{
-				int hperiod = 2 * ((gpu_regs[HP] & 0x3ff) + 1);
-				int hbend = effective_hvalue(ENABLE_BORDERS ? gpu_regs[HBE] : MIN(gpu_regs[HDB1], gpu_regs[HDB2]));
-				int hbstart = effective_hvalue(gpu_regs[ENABLE_BORDERS ? HBB : HDE]);
-				int vperiod = (gpu_regs[VP] & 0x7ff) + 1;
-				int vbend = gpu_regs[VBE] & 0x7ff;
-				int vbstart = gpu_regs[VBB] & 0x7ff;
-
-				/* adjust for the half-lines */
-				if (hperiod != 0 && vperiod != 0 && hbend < hbstart && vbend < vbstart && hbstart < hperiod)
+				if (reg_store != gpu_regs[offset])
 				{
-					rectangle visarea;
-					visarea.min_x = hbend / 2;
-					visarea.max_x = hbstart / 2 - 1;
-					visarea.min_y = vbend / 2;
-					visarea.max_y = vbstart / 2 - 1;
-					video_screen_configure(space->machine->primary_screen, hperiod / 2, vperiod / 2, &visarea, HZ_TO_ATTOSECONDS((double)COJAG_PIXEL_CLOCK * 2 / hperiod / vperiod));
+					int hperiod = 2 * ((gpu_regs[HP] & 0x3ff) + 1);
+					int hbend = effective_hvalue(ENABLE_BORDERS ? gpu_regs[HBE] : MIN(gpu_regs[HDB1], gpu_regs[HDB2]));
+					int hbstart = effective_hvalue(gpu_regs[ENABLE_BORDERS ? HBB : HDE]);
+					int vperiod = (gpu_regs[VP] & 0x7ff) + 1;
+					int vbend = MAX(gpu_regs[VBE],gpu_regs[VDB]) & 0x7ff;
+					int vbstart = gpu_regs[VBB] & 0x7ff;
+
+					/* adjust for the half-lines */
+					if (hperiod != 0 && vperiod != 0 && hbend < hbstart && vbend < vbstart && hbstart < hperiod)
+					{
+						rectangle visarea;
+						visarea.min_x = hbend / 2;
+						visarea.max_x = hbstart / 2 - 1;
+						visarea.min_y = vbend / 2;
+						visarea.max_y = vbstart / 2 - 1;
+						video_screen_configure(space->machine->primary_screen, hperiod / 2, vperiod / 2, &visarea, HZ_TO_ATTOSECONDS((double)COJAG_PIXEL_CLOCK * 2 / hperiod / vperiod));
+					}
 				}
 				break;
 			}
@@ -763,11 +800,11 @@ static TIMER_CALLBACK( cojag_scanline_update )
 	/* only run if video is enabled and we are past the "display begin" */
 	if ((gpu_regs[VMODE] & 1) && vc >= (gpu_regs[VDB] & 0x7ff))
 	{
-		UINT32 *dest = BITMAP_ADDR32(screen_bitmap, vc / 2, 0);
+		UINT32 *dest = BITMAP_ADDR32(screen_bitmap, vc >> 1, 0);
 		int maxx = visarea->max_x;
-		int hde = effective_hvalue(gpu_regs[HDE]) / 2;
-		UINT16 scanline[360];
-		int x;
+		int hde = effective_hvalue(gpu_regs[HDE]) >> 1;
+		UINT16 x,scanline[760];
+		UINT8 y,pixel_width = ((gpu_regs[VMODE]>>10)&3)+1;
 
 		/* if we are first on this scanline, clear to the border color */
 		if (ENABLE_BORDERS && vc % 2 == 0)
@@ -781,8 +818,23 @@ static TIMER_CALLBACK( cojag_scanline_update )
 		process_object_list(machine, vc, scanline);
 
 		/* copy the data to the target, clipping */
-		for (x = 0; x < 360 && hdb <= maxx && hdb < hde; x++, hdb++)
-			dest[hdb] = pen_table[scanline[x]];
+		if ((gpu_regs[VMODE] & 0x106) == 0x002)	/* RGB24 */
+		{
+			for (x = 0; x < 760 && hdb <= maxx && hdb < hde; x+=2)
+				for (y = 0; y < pixel_width; y++)
+				{
+					UINT8 r = pen_table[(scanline[x]&0xff)|256];
+					UINT8 g = pen_table[(scanline[x]>>8)|512];
+					UINT8 b = pen_table[scanline[x+1]&0xff];
+					dest[hdb++] = MAKE_RGB(r, g, b);
+				}
+		}
+		else
+		{
+			for (x = 0; x < 760 && hdb <= maxx && hdb < hde; x++)
+				for (y = 0; y < pixel_width; y++)
+					dest[hdb++] = pen_table[scanline[x]];
+		}
 	}
 
 	/* adjust the timer in a loop, to handle missed cases */
@@ -816,7 +868,7 @@ VIDEO_START( cojag )
 	object_timer = timer_alloc(machine, cojag_scanline_update, NULL);
 	adjust_object_timer(machine, 0);
 
-	screen_bitmap = auto_bitmap_alloc(machine, 720, 512, BITMAP_FORMAT_RGB32);
+	screen_bitmap = auto_bitmap_alloc(machine, 760, 512, BITMAP_FORMAT_RGB32);
 
 	jagobj_init(machine);
 

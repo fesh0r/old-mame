@@ -539,6 +539,8 @@ static SOUND_START( gottlieb2 )
 	nmi_rate = 0;
 	nmi_timer_adjust();
 
+	dac_data[0] = dac_data[1] = 0xff;
+
 	/* register for save states */
 	state_save_register_global(machine, nmi_rate);
 	state_save_register_global(machine, nmi_state);

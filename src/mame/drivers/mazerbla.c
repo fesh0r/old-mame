@@ -166,31 +166,31 @@ VIDEO_UPDATE( test_vcu )
 
 	bitmap_fill(tmpbitmaps[0],NULL,color_base);
 
-	if (input_code_pressed_once(KEYCODE_1))	/* plane 1 */
+	if (input_code_pressed_once(screen->machine, KEYCODE_1))	/* plane 1 */
 		planes_enabled[0] ^= 1;
 
-	if (input_code_pressed_once(KEYCODE_2))	/* plane 2 */
+	if (input_code_pressed_once(screen->machine, KEYCODE_2))	/* plane 2 */
 		planes_enabled[1] ^= 1;
 
-	if (input_code_pressed_once(KEYCODE_3))	/* plane 3 */
+	if (input_code_pressed_once(screen->machine, KEYCODE_3))	/* plane 3 */
 		planes_enabled[2] ^= 1;
 
-	if (input_code_pressed_once(KEYCODE_4))	/* plane 4 */
+	if (input_code_pressed_once(screen->machine, KEYCODE_4))	/* plane 4 */
 		planes_enabled[3] ^= 1;
 
-	if (input_code_pressed_once(KEYCODE_I))	/* show/hide debug info */
+	if (input_code_pressed_once(screen->machine, KEYCODE_I))	/* show/hide debug info */
 		dbg_info = !dbg_info;
 
-	if (input_code_pressed_once(KEYCODE_G))	/* enable gfx area handling */
+	if (input_code_pressed_once(screen->machine, KEYCODE_G))	/* enable gfx area handling */
 		dbg_gfx_e = !dbg_gfx_e;
 
-	if (input_code_pressed_once(KEYCODE_C))	/* enable color area handling */
+	if (input_code_pressed_once(screen->machine, KEYCODE_C))	/* enable color area handling */
 		dbg_clr_e = !dbg_clr_e;
 
-	if (input_code_pressed_once(KEYCODE_V))	/* draw only when vbank==dbg_vbank */
+	if (input_code_pressed_once(screen->machine, KEYCODE_V))	/* draw only when vbank==dbg_vbank */
 		dbg_vbank ^= 1;
 
-	if (input_code_pressed_once(KEYCODE_L))	/* showlookup ram */
+	if (input_code_pressed_once(screen->machine, KEYCODE_L))	/* showlookup ram */
 		dbg_lookup = (dbg_lookup+1)%5;//0,1,2,3, 4-off
 
 
@@ -1537,7 +1537,7 @@ ROM_START( mazerbla )
 	ROM_LOAD( "pal16r8.7d", 0x0000, 0x098, NO_DUMP ) /* pal on zpu board, for ?protection? (similar to bagman?) */
 ROM_END
 
-ROM_START( mzrblzra )
+ROM_START( mazerblaa )
 	ROM_REGION( 0x10000, "maincpu", 0 )     /* 64k for main CPU (ZPU board) */
 	ROM_LOAD( "zpu0.1h",       0x0000, 0x2000, CRC(aa77705c) SHA1(ef93c3eaa66591bef495caa101ef2aff93f2de8c) )
 	ROM_LOAD( "zpu1.2h",       0x2000, 0x2000, CRC(599e1b97) SHA1(ceeb3017d6130d4d54ff4436261f2d3f2a29f8ab) )
@@ -1610,5 +1610,5 @@ ROM_END
 
 
 GAME( 1983, mazerbla, 0,        mazerbla,  mazerbla, 0, ROT0, "Stern", "Mazer Blazer (set 1)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND | GAME_NOT_WORKING )
-GAME( 1983, mzrblzra, mazerbla, mazerbla,  mazerbla, 0, ROT0, "Stern", "Mazer Blazer (set 2)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND | GAME_NOT_WORKING )
+GAME( 1983, mazerblaa,mazerbla, mazerbla,  mazerbla, 0, ROT0, "Stern", "Mazer Blazer (set 2)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND | GAME_NOT_WORKING )
 GAME( 1983, greatgun, 0,        greatgun,  greatgun, 0, ROT0, "Stern", "Great Guns", GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )

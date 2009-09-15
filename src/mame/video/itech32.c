@@ -405,9 +405,9 @@ WRITE32_HANDLER( itech020_paletteram_w )
  *
  *************************************/
 
-static void logblit(const char *tag)
+static void logblit(running_machine *machine, const char *tag)
 {
-	if (!input_code_pressed(KEYCODE_L))
+	if (!input_code_pressed(machine, KEYCODE_L))
 		return;
 	if (is_drivedge && VIDEO_TRANSFER_FLAGS == 0x5490)
 	{
@@ -1202,8 +1202,8 @@ static void handle_video_command(running_machine *machine)
 	{
 		/* command 1: blit raw data */
 		case 1:
-			profiler_mark(PROFILER_USER1);
-			if (BLIT_LOGGING) logblit("Blit Raw");
+			profiler_mark_start(PROFILER_USER1);
+			if (BLIT_LOGGING) logblit(machine, "Blit Raw");
 
 			if (is_drivedge)
 			{
@@ -1215,23 +1215,23 @@ static void handle_video_command(running_machine *machine)
 				if (enable_latch[1]) draw_raw(videoplane[1], color_latch[1]);
 			}
 
-			profiler_mark(PROFILER_END);
+			profiler_mark_end();
 			break;
 
 		/* command 2: blit RLE-compressed data */
 		case 2:
-			profiler_mark(PROFILER_USER2);
-			if (BLIT_LOGGING) logblit("Blit RLE");
+			profiler_mark_start(PROFILER_USER2);
+			if (BLIT_LOGGING) logblit(machine, "Blit RLE");
 
 			if (enable_latch[0]) draw_rle(videoplane[0], color_latch[0]);
 			if (enable_latch[1]) draw_rle(videoplane[1], color_latch[1]);
 
-			profiler_mark(PROFILER_END);
+			profiler_mark_end();
 			break;
 
 		/* command 3: set up raw data transfer */
 		case 3:
-			if (BLIT_LOGGING) logblit("Raw Xfer");
+			if (BLIT_LOGGING) logblit(machine, "Raw Xfer");
 			xfer_xcount = VIDEO_TRANSFER_WIDTH;
 			xfer_ycount = ADJUSTED_HEIGHT(VIDEO_TRANSFER_HEIGHT);
 			xfer_xcur = VIDEO_TRANSFER_X & 0xfff;
@@ -1248,8 +1248,8 @@ static void handle_video_command(running_machine *machine)
 
 		/* command 6: perform shift register copy */
 		case 6:
-			profiler_mark(PROFILER_USER3);
-			if (BLIT_LOGGING) logblit("ShiftReg");
+			profiler_mark_start(PROFILER_USER3);
+			if (BLIT_LOGGING) logblit(machine, "ShiftReg");
 
 			if (is_drivedge)
 			{
@@ -1261,7 +1261,7 @@ static void handle_video_command(running_machine *machine)
 				if (enable_latch[1]) shiftreg_clear(videoplane[1], NULL);
 			}
 
-			profiler_mark(PROFILER_END);
+			profiler_mark_end();
 			break;
 
 		default:

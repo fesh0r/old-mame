@@ -426,7 +426,7 @@ WRITE16_HANDLER( twineagl_tilebank_w )
 		if (twineagl_tilebank[offset] != data)
 		{
 			twineagl_tilebank[offset] = data;
-			tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
+			tilemap_mark_all_tiles_dirty_all(space->machine);
 		}
 	}
 }
@@ -907,7 +907,7 @@ static VIDEO_UPDATE( seta_layers )
 
 	flip ^= tilemaps_flip;
 
-	tilemap_set_flip(ALL_TILEMAPS, flip ? (TILEMAP_FLIPX|TILEMAP_FLIPY) : 0 );
+	tilemap_set_flip_all(screen->machine, flip ? (TILEMAP_FLIPX|TILEMAP_FLIPY) : 0 );
 
 	x_0		=	seta_vctrl_0[ 0/2 ];
 	y_0		=	seta_vctrl_0[ 2/2 ];
@@ -965,11 +965,11 @@ static VIDEO_UPDATE( seta_layers )
 
 
 #ifdef MAME_DEBUG
-if (input_code_pressed(KEYCODE_Z))
+if (input_code_pressed(screen->machine, KEYCODE_Z))
 {	int msk = 0;
-	if (input_code_pressed(KEYCODE_Q))	msk |= 1;
-	if (input_code_pressed(KEYCODE_W))	msk |= 2;
-	if (input_code_pressed(KEYCODE_A))	msk |= 8;
+	if (input_code_pressed(screen->machine, KEYCODE_Q))	msk |= 1;
+	if (input_code_pressed(screen->machine, KEYCODE_W))	msk |= 2;
+	if (input_code_pressed(screen->machine, KEYCODE_A))	msk |= 8;
 	if (msk != 0) layers_ctrl &= msk;
 
 	if (tilemap_2)		popmessage("VR:%04X-%04X-%04X L0:%04X L1:%04X",seta_vregs[0],seta_vregs[1],seta_vregs[2],seta_vctrl_0[4/2],seta_vctrl_2[4/2]);

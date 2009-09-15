@@ -232,7 +232,7 @@ static UINT32 dasm_cop1(UINT32 pc, UINT32 op, char *buffer)
 	return flags;
 }
 
-unsigned dasmr3k(char *buffer, unsigned pc, UINT32 op)
+static unsigned dasmr3k(char *buffer, unsigned pc, UINT32 op)
 {
 	int rs = (op >> 21) & 31;
 	int rt = (op >> 16) & 31;
@@ -368,4 +368,20 @@ unsigned dasmr3k(char *buffer, unsigned pc, UINT32 op)
 		default:	sprintf(buffer, "dc.l   $%08x [invalid]", op);									break;
 	}
 	return 4 | flags | DASMFLAG_SUPPORTED;
+}
+
+
+CPU_DISASSEMBLE( r3000be )
+{
+	UINT32 op = *(UINT32 *)oprom;
+	op = BIG_ENDIANIZE_INT32(op);
+	return dasmr3k(buffer, pc, op);
+}
+
+
+CPU_DISASSEMBLE( r3000le )
+{
+	UINT32 op = *(UINT32 *)oprom;
+	op = LITTLE_ENDIANIZE_INT32(op);
+	return dasmr3k(buffer, pc, op);
 }

@@ -236,7 +236,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 						col,
 						flipx, flipy,
 						curx,cury,
-						priority_bitmap,
+						machine->priority_bitmap,
 						priority ? 0xfc : 0xf0,0);
 
 				code++;
@@ -281,19 +281,19 @@ VIDEO_UPDATE( gcpinbal )
 #endif
 
 #ifdef MAME_DEBUG
-	if (input_code_pressed_once (KEYCODE_V))
+	if (input_code_pressed_once (screen->machine, KEYCODE_V))
 	{
 		dislayer[0] ^= 1;
 		popmessage("bg0: %01x",dislayer[0]);
 	}
 
-	if (input_code_pressed_once (KEYCODE_B))
+	if (input_code_pressed_once (screen->machine, KEYCODE_B))
 	{
 		dislayer[1] ^= 1;
 		popmessage("bg1: %01x",dislayer[1]);
 	}
 
-	if (input_code_pressed_once (KEYCODE_N))
+	if (input_code_pressed_once (screen->machine, KEYCODE_N))
 	{
 		dislayer[2] ^= 1;
 		popmessage("fg: %01x",dislayer[2]);
@@ -317,7 +317,7 @@ VIDEO_UPDATE( gcpinbal )
 		tilemap_set_scrolly(gcpinbal_tilemap[i], 0, gcpinbal_scrolly[i]);
 	}
 
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 	bitmap_fill(bitmap, cliprect, 0);
 
 	layer[0] = 0;

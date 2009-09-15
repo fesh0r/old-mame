@@ -104,7 +104,7 @@ static void ui_input_frame_update(running_machine *machine)
 	/* update the state of all the UI keys */
 	for (code = __ipt_ui_start; code <= __ipt_ui_end; code++)
 	{
-		int pressed = input_seq_pressed(input_type_seq(machine, code, 0, SEQ_TYPE_STANDARD));
+		int pressed = input_seq_pressed(machine, input_type_seq(machine, code, 0, SEQ_TYPE_STANDARD));
 		if (!pressed || uidata->seqpressed[code] != SEQ_PRESSED_RESET)
 			uidata->seqpressed[code] = pressed;
 	}
@@ -256,7 +256,7 @@ int ui_input_pressed_repeat(running_machine *machine, int code, int speed)
 	ui_input_private *uidata = machine->ui_input_data;
 	int pressed = FALSE;
 
-profiler_mark(PROFILER_INPUT);
+profiler_mark_start(PROFILER_INPUT);
 
 	/* get the status of this key (assumed to be only in the defaults) */
 	assert(code >= IPT_UI_CONFIGURE && code <= IPT_OSD_16);
@@ -284,7 +284,7 @@ profiler_mark(PROFILER_INPUT);
 	else
 		uidata->next_repeat[code] = 0;
 
-profiler_mark(PROFILER_END);
+profiler_mark_end();
 
 	return pressed;
 }

@@ -76,7 +76,7 @@ INLINE char *signed_16bit(INT16 val)
 	return temp;
 }
 
-unsigned dasmjag(int variant, char *buffer, unsigned pc, const UINT8 *oprom)
+static unsigned dasmjag(int variant, char *buffer, unsigned pc, const UINT8 *oprom)
 {
 	UINT32 flags = 0;
 	int op = ROPCODE(0);
@@ -180,3 +180,17 @@ unsigned dasmjag(int variant, char *buffer, unsigned pc, const UINT8 *oprom)
 	}
 	return size | flags | DASMFLAG_SUPPORTED;
 }
+
+
+CPU_DISASSEMBLE( jaguargpu )
+{
+    return dasmjag(JAGUAR_VARIANT_GPU, buffer, pc, oprom);
+}
+
+CPU_DISASSEMBLE( jaguardsp )
+{
+    return dasmjag(JAGUAR_VARIANT_DSP, buffer, pc, oprom);
+}
+
+
+

@@ -1152,7 +1152,7 @@ static void build_dasm_table(void)
 	}
 }
 
-UINT32 sharc_dasm_one(char *buffer, offs_t pc, UINT64 opcode)
+static UINT32 sharc_dasm_one(char *buffer, offs_t pc, UINT64 opcode)
 {
 	#define DEFAULT_DASM_WIDTH	(64)
 
@@ -1180,4 +1180,19 @@ UINT32 sharc_dasm_one(char *buffer, offs_t pc, UINT64 opcode)
 	}
 	return flags;
 }
+
+
+CPU_DISASSEMBLE( sharc )
+{
+	UINT64 op = 0;
+	UINT32 flags = 0;
+
+	op = ((UINT64)oprom[0] << 0)  | ((UINT64)oprom[1] << 8) |
+		 ((UINT64)oprom[2] << 16) | ((UINT64)oprom[3] << 24) |
+		 ((UINT64)oprom[4] << 32) | ((UINT64)oprom[5] << 40);
+
+	flags = sharc_dasm_one(buffer, pc, op);
+	return 1 | flags | DASMFLAG_SUPPORTED;
+}
+
 

@@ -15,7 +15,6 @@
 #include "cpu/z80/z80.h"
 #include "machine/7474.h"
 #include "sound/flt_rc.h"
-#include "sound/5110intf.h"
 #include "sound/tms5110.h"
 #include "sound/ay8910.h"
 #include "includes/galaxold.h"
@@ -85,7 +84,7 @@ WRITE8_DEVICE_HANDLER( scramble_sh_irqtrigger_w )
 	TTL7474_update(device->machine, 2);
 
 	/* bit 4 is sound disable */
-	sound_global_enable(~data & 0x10);
+	sound_global_enable(device->machine, ~data & 0x10);
 }
 
 WRITE8_DEVICE_HANDLER( mrkougar_sh_irqtrigger_w )

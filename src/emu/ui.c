@@ -298,8 +298,8 @@ int ui_display_startup_screens(running_machine *machine, int first_time, int sho
 		}
 
 		/* clear the input memory */
-		input_code_poll_switches(TRUE);
-		while (input_code_poll_switches(FALSE) != INPUT_CODE_INVALID) ;
+		input_code_poll_switches(machine, TRUE);
+		while (input_code_poll_switches(machine, FALSE) != INPUT_CODE_INVALID) ;
 
 		/* loop while we have a handler */
 		while (ui_handler_callback != handler_ingame && !mame_is_scheduled_event_pending(machine) && !ui_menu_is_force_game_select())
@@ -883,11 +883,11 @@ static astring *warnings_string(running_machine *machine, astring *string)
 	astring_reset(string);
 
 	/* if no warnings, nothing to return */
-	if (rom_load_warnings() == 0 && !(machine->gamedrv->flags & WARNING_FLAGS))
+	if (rom_load_warnings(machine) == 0 && !(machine->gamedrv->flags & WARNING_FLAGS))
 		return string;
 
 	/* add a warning if any ROMs were loaded with warnings */
-	if (rom_load_warnings() > 0)
+	if (rom_load_warnings(machine) > 0)
 	{
 		astring_catc(string, "One or more ROMs/CHDs for this game are incorrect. The " GAMENOUN " may not run correctly.\n");
 		if (machine->gamedrv->flags & WARNING_FLAGS)
@@ -985,7 +985,7 @@ astring *game_info_astring(running_machine *machine, astring *string)
 	astring_printf(string, "%s\n%s %s\n\nCPU:\n", machine->gamedrv->description, machine->gamedrv->year, machine->gamedrv->manufacturer);
 
 	/* loop over all CPUs */
-	for (device = machine->cpu[0]; device != NULL; device = scandevice)
+	for (device = machine->firstcpu; device != NULL; device = scandevice)
 	{
 		/* count how many identical CPUs we have */
 		count = 1;
@@ -1104,11 +1104,11 @@ static UINT32 handler_messagebox_ok(running_machine *machine, UINT32 state)
 	ui_draw_text_box(astring_c(messagebox_text), JUSTIFY_LEFT, 0.5f, 0.5f, messagebox_backcolor);
 
 	/* an 'O' or left joystick kicks us to the next state */
-	if (state == 0 && (input_code_pressed_once(KEYCODE_O) || ui_input_pressed(machine, IPT_UI_LEFT)))
+	if (state == 0 && (input_code_pressed_once(machine, KEYCODE_O) || ui_input_pressed(machine, IPT_UI_LEFT)))
 		state++;
 
 	/* a 'K' or right joystick exits the state */
-	else if (state == 1 && (input_code_pressed_once(KEYCODE_K) || ui_input_pressed(machine, IPT_UI_RIGHT)))
+	else if (state == 1 && (input_code_pressed_once(machine, KEYCODE_K) || ui_input_pressed(machine, IPT_UI_RIGHT)))
 		state = UI_HANDLER_CANCEL;
 
 	/* if the user cancels, exit out completely */
@@ -1141,7 +1141,7 @@ static UINT32 handler_messagebox_anykey(running_machine *machine, UINT32 state)
 	}
 
 	/* if any key is pressed, just exit */
-	else if (input_code_poll_switches(FALSE) != INPUT_CODE_INVALID)
+	else if (input_code_poll_switches(machine, FALSE) != INPUT_CODE_INVALID)
 		state = UI_HANDLER_CANCEL;
 
 	return state;
@@ -1234,7 +1234,7 @@ static UINT32 handler_ingame(running_machine *machine, UINT32 state)
 	if (ui_input_pressed(machine, IPT_UI_PAUSE))
 	{
 		/* with a shift key, it is single step */
-		if (is_paused && (input_code_pressed(KEYCODE_LSHIFT) || input_code_pressed(KEYCODE_RSHIFT)))
+		if (is_paused && (input_code_pressed(machine, KEYCODE_LSHIFT) || input_code_pressed(machine, KEYCODE_RSHIFT)))
 		{
 			single_step = TRUE;
 			mame_pause(machine, FALSE);
@@ -1242,6 +1242,10 @@ static UINT32 handler_ingame(running_machine *machine, UINT32 state)
 		else
 			mame_pause(machine, !mame_is_paused(machine));
 	}
+
+	/* handle a toggle cheats request */
+	if (ui_input_pressed(machine, IPT_UI_TOGGLE_CHEAT))
+		cheat_set_global_enable(machine, !cheat_get_global_enable(machine));
 
 	/* toggle movie recording */
 	if (ui_input_pressed(machine, IPT_UI_RECORD_MOVIE))
@@ -1346,15 +1350,15 @@ static UINT32 handler_load_save(running_machine *machine, UINT32 state)
 
 	/* check for A-Z or 0-9 */
 	for (code = KEYCODE_A; code <= (input_code)KEYCODE_Z; code++)
-		if (input_code_pressed_once(code))
+		if (input_code_pressed_once(machine, code))
 			file = code - KEYCODE_A + 'a';
 	if (file == 0)
 		for (code = KEYCODE_0; code <= (input_code)KEYCODE_9; code++)
-			if (input_code_pressed_once(code))
+			if (input_code_pressed_once(machine, code))
 				file = code - KEYCODE_0 + '0';
 	if (file == 0)
 		for (code = KEYCODE_0_PAD; code <= (input_code)KEYCODE_9_PAD; code++)
-			if (input_code_pressed_once(code))
+			if (input_code_pressed_once(machine, code))
 				file = code - KEYCODE_0_PAD + '0';
 	if (file == 0)
 		return state;
@@ -1461,13 +1465,13 @@ static slider_state *slider_init(running_machine *machine)
 	/* add CPU overclocking (cheat only) */
 	if (options_get_bool(mame_options(), OPTION_CHEAT))
 	{
-		for (item = 0; item < ARRAY_LENGTH(machine->cpu); item++)
-			if (machine->cpu[item] != NULL)
-			{
-				astring_printf(string, "Overclock CPU %s", machine->cpu[item]->tag);
-				*tailptr = slider_alloc(machine, astring_c(string), 10, 1000, 2000, 1, slider_overclock, (void *)(FPTR)item);
-				tailptr = &(*tailptr)->next;
-			}
+		for (device = machine->firstcpu; device != NULL; device = cpu_next(device))
+		{
+			void *param = (void *)device;
+			astring_printf(string, "Overclock CPU %s", device->tag);
+			*tailptr = slider_alloc(machine, astring_c(string), 10, 1000, 2000, 1, slider_overclock, param);
+			tailptr = &(*tailptr)->next;
+		}
 	}
 
 	/* add screen parameters */
@@ -1583,10 +1587,10 @@ static slider_state *slider_init(running_machine *machine)
 static INT32 slider_volume(running_machine *machine, void *arg, astring *string, INT32 newval)
 {
 	if (newval != SLIDER_NOCHANGE)
-		sound_set_attenuation(newval);
+		sound_set_attenuation(machine, newval);
 	if (string != NULL)
-		astring_printf(string, "%3ddB", sound_get_attenuation());
-	return sound_get_attenuation();
+		astring_printf(string, "%3ddB", sound_get_attenuation(machine));
+	return sound_get_attenuation(machine);
 }
 
 
@@ -1635,12 +1639,12 @@ static INT32 slider_adjuster(running_machine *machine, void *arg, astring *strin
 
 static INT32 slider_overclock(running_machine *machine, void *arg, astring *string, INT32 newval)
 {
-	int which = (FPTR)arg;
+	const device_config *cpu = (const device_config *)arg;
 	if (newval != SLIDER_NOCHANGE)
-		cpu_set_clockscale(machine->cpu[which], (float)newval * 0.001f);
+		cpu_set_clockscale(cpu, (float)newval * 0.001f);
 	if (string != NULL)
-		astring_printf(string, "%3.0f%%", floor(cpu_get_clockscale(machine->cpu[which]) * 100.0f + 0.5f));
-	return floor(cpu_get_clockscale(machine->cpu[which]) * 1000.0f + 0.5f);
+		astring_printf(string, "%3.0f%%", floor(cpu_get_clockscale(cpu) * 100.0f + 0.5f));
+	return floor(cpu_get_clockscale(cpu) * 1000.0f + 0.5f);
 }
 
 

@@ -6,7 +6,6 @@
 #include "machine/latch8.h"
 
 #include "sound/tms5110.h"
-#include "sound/5110intf.h"
 
 #include "includes/dkong.h"
 
@@ -285,14 +284,14 @@ static const discrete_op_amp_filt_info dkong_sallen_key_info =
  *                                        Gnd         Gnd
  *
  ************************************************************************/
-#define DKONG_CUSTOM_IN1		(*(node->input[0]))
-#define DKONG_CUSTOM_IN2		(*(node->input[1]))
-#define DKONG_CUSTOM_R1			(*(node->input[2]))
-#define DKONG_CUSTOM_R2			(*(node->input[3]))
-#define DKONG_CUSTOM_R3			(*(node->input[4]))
-#define DKONG_CUSTOM_R4			(*(node->input[5]))
-#define DKONG_CUSTOM_C			(*(node->input[6]))
-#define DKONG_CUSTOM_V			(*(node->input[7]))
+#define DKONG_CUSTOM_IN1		DISCRETE_INPUT(0)
+#define DKONG_CUSTOM_IN2		DISCRETE_INPUT(1)
+#define DKONG_CUSTOM_R1			DISCRETE_INPUT(2)
+#define DKONG_CUSTOM_R2			DISCRETE_INPUT(3)
+#define DKONG_CUSTOM_R3			DISCRETE_INPUT(4)
+#define DKONG_CUSTOM_R4			DISCRETE_INPUT(5)
+#define DKONG_CUSTOM_C			DISCRETE_INPUT(6)
+#define DKONG_CUSTOM_V			DISCRETE_INPUT(7)
 
 struct dkong_custom_mixer_context
 {
@@ -336,17 +335,15 @@ static DISCRETE_RESET( dkong_custom_mixer )
 	context->r_total[0] = RES_2_PARALLEL(context->r_in[0] + DKONG_CUSTOM_R4, NE555_CV_R);
 	context->r_total[1] = RES_2_PARALLEL((context->r_in[1] + DKONG_CUSTOM_R4), NE555_CV_R);
 	/* precalculate charging exponents */
-	context->exp[0] = RC_CHARGE_EXP(context->r_total[0] * DKONG_CUSTOM_C);
-	context->exp[1] = RC_CHARGE_EXP(context->r_total[1] * DKONG_CUSTOM_C);
+	context->exp[0] = RC_CHARGE_EXP(node, context->r_total[0] * DKONG_CUSTOM_C);
+	context->exp[1] = RC_CHARGE_EXP(node, context->r_total[1] * DKONG_CUSTOM_C);
 
 	node->output[0] = 0;
 }
 
 static const discrete_custom_info dkong_custom_mixer_info =
 {
-	DISCRETE_RESET_NAME( dkong_custom_mixer ),
-	DISCRETE_STEP_NAME( dkong_custom_mixer ),
-	sizeof(struct dkong_custom_mixer_context),
+	DISCRETE_CUSTOM_MODULE( dkong_custom_mixer, struct dkong_custom_mixer_context),
 	NULL
 };
 #endif
@@ -362,7 +359,8 @@ static DISCRETE_SOUND_START(dkong2b)
 	DISCRETE_INPUT_NOT(DS_SOUND1_INV)	/* IC 6J, pin 12 */
 	DISCRETE_INPUT_NOT(DS_SOUND0_INV)	/* IC 6J, pin 2 */
 	DISCRETE_INPUT_NOT(DS_DISCHARGE_INV)
-	DISCRETE_INPUT_DATA(DS_DAC)
+	//DISCRETE_INPUT_DATA(DS_DAC)
+
 	/* Mixing - DAC */
 	DISCRETE_ADJUSTMENT_TAG(DS_ADJ_DAC, 0, 1, DISC_LINADJ, "VR2")
 
@@ -370,6 +368,7 @@ static DISCRETE_SOUND_START(dkong2b)
 	/* Stomp                                        */
 	/************************************************/
 	/* Noise */
+	DISCRETE_TASK_START()
 	DISCRETE_LFSR_NOISE(NODE_11, 1, 1, CLOCK_2VF, 1.0, 0, 0.5, &dkong_lfsr)
 	DISCRETE_COUNTER(NODE_12, 1, 0, NODE_11, 7, DISC_COUNT_UP, 0, DISC_CLK_ON_R_EDGE)	/* LS161, IC 3J */
 	DISCRETE_TRANSFORM3(NODE_13,NODE_12,3,DK_SUP_V,"01>2*")
@@ -385,12 +384,14 @@ static DISCRETE_SOUND_START(dkong2b)
 
 	DISCRETE_RCINTEGRATE(NODE_22,NODE_20,DK_R5, RES_2_PARALLEL(DK_R4+DK_R3,DK_R6),0,DK_C19,DK_SUP_V,DISC_RC_INTEGRATE_TYPE1)
 	DISCRETE_MULTIPLY(DS_OUT_SOUND0,1,NODE_22,DK_R3/R_SERIES(DK_R3,DK_R4))
+	DISCRETE_TASK_END()
 
 	/************************************************/
 	/* Jump                                         */
 	/************************************************/
-/*  tt */
+	/*  tt */
 	/* 4049B Inverter Oscillator build from 3 inverters */
+	DISCRETE_TASK_START()
 	DISCRETE_INVERTER_OSC(NODE_25,1,0,DK_R38,DK_R39,DK_C26,0,&dkong_inverter_osc_desc_jump)
 
 #if DK_USE_CUSTOM
@@ -417,10 +418,12 @@ static DISCRETE_SOUND_START(dkong2b)
 
 	DISCRETE_RCINTEGRATE(NODE_39,NODE_38,DK_R27, RES_2_PARALLEL(DK_R28,DK_R26+DK_R25),0,DK_C16,DK_SUP_V,DISC_RC_INTEGRATE_TYPE1)
 	DISCRETE_MULTIPLY(DS_OUT_SOUND1,1,NODE_39,DK_R25/(DK_R26+DK_R25))
+	DISCRETE_TASK_END()
 
 	/************************************************/
 	/* Walk                                         */
 	/************************************************/
+	DISCRETE_TASK_START()
 	DISCRETE_INVERTER_OSC(NODE_51,1,0,DK_R47,DK_R48,DK_C30,0,&dkong_inverter_osc_desc_walk)
 
 #if DK_USE_CUSTOM
@@ -441,11 +444,16 @@ static DISCRETE_SOUND_START(dkong2b)
 	/* Filter and divide - omitted C22 */
 	DISCRETE_CRFILTER(NODE_61, 1, NODE_60, DK_R15+DK_R16, DK_C23)
 	DISCRETE_MULTIPLY(DS_OUT_SOUND2, 1, NODE_61, DK_R15/(DK_R15+DK_R16))
+	DISCRETE_TASK_END()
 
 	/************************************************/
 	/* DAC                                          */
 	/************************************************/
 
+	DISCRETE_TASK_START()
+	/* Buffer DAC first to input stream 0 */
+	DISCRETE_INPUT_BUFFER(DS_DAC, 0)
+	//DISCRETE_INPUT_DATA(DS_DAC)
 	/* Signal decay circuit Q7, R20, C32 */
 	DISCRETE_RCDISC(NODE_70, DS_DISCHARGE_INV, 1, DK_R20, DK_C32)
 	DISCRETE_TRANSFORM4(NODE_71, DS_DAC,  DK_SUP_V/256.0, NODE_70, DS_DISCHARGE_INV, "01*3!2+*")
@@ -466,6 +474,7 @@ static DISCRETE_SOUND_START(dkong2b)
 #else
 	DISCRETE_MULTIPLY(DS_OUT_DAC, 1, NODE_73, DS_ADJ_DAC)
 #endif
+	DISCRETE_TASK_END()
 
 	/************************************************/
 	/* Amplifier                                    */
@@ -484,6 +493,9 @@ static DISCRETE_SOUND_START(dkong2b)
 	DISCRETE_OUTPUT(NODE_288, 32767.0/5.0 * 10)
 #else
 	DISCRETE_OUTPUT(NODE_296, 32767.0/5.0 * 3.41)
+	/* Test */
+	//DISCRETE_CSVLOG2(NODE_296, NODE_288)
+	//DISCRETE_WAVELOG1(NODE_296, 32767.0/5.0 * 3.41)
 #endif
 
 DISCRETE_SOUND_END
@@ -624,7 +636,10 @@ static DISCRETE_SOUND_START(radarscp)
 	DISCRETE_INPUT_NOT(DS_SOUND6_INV)
 	DISCRETE_INPUT_NOT(DS_SOUND7_INV)
 	DISCRETE_INPUT_NOT(DS_DISCHARGE_INV)
-	DISCRETE_INPUT_DATA(DS_DAC)
+
+	/* Must be in task if tasks added */
+	DISCRETE_INPUT_BUFFER(DS_DAC, 0)
+	//DISCRETE_INPUT_DATA(DS_DAC)
 
 	/* Mixing - DAC */
 	DISCRETE_ADJUSTMENT_TAG(DS_ADJ_DAC, 0, 1, DISC_LINADJ, "VR2")
@@ -804,7 +819,6 @@ DISCRETE_SOUND_END
 #define DISCRETE_LS123_INV(_N, _T, _R, _C) \
 	DISCRETE_ONESHOTR(_N, 0, _T, TTL_HIGH, (0.25 * (_R) * (_C) * (1.0+700./(_R))), DISC_ONESHOT_RETRIG | DISC_ONESHOT_REDGE | DISC_OUT_ACTIVE_LOW)
 
-#define DISCRETE_BITSET(_N, _N1, _B) DISCRETE_TRANSFORM3(_N, _N1, 1 << ((_B)-1), 0, "01&2>")
 #define DISCRETE_ENERGY_NAND(_N, _N1, _N2) DISCRETE_TRANSFORM3(_N, _N1, _N2, 1, "201*-")
 
 static const discrete_mixer_desc dkongjr_mixer_desc =
@@ -911,10 +925,10 @@ static DISCRETE_SOUND_START(dkongjr)
 
 	DISCRETE_COUNTER(NODE_100,1,0,NODE_118,0xFFFF,DISC_COUNT_UP,0,DISC_CLK_BY_COUNT)
 
-	DISCRETE_BITSET(NODE_101, NODE_100, 7) 	/*LS157 2A */
-	DISCRETE_BITSET(NODE_102, NODE_100, 4) 	/*LS157 2B */
-	DISCRETE_BITSET(NODE_103, NODE_100, 13) /*LS157 3A */
-	DISCRETE_BITSET(NODE_104, NODE_100, 12) /*LS157 3B */
+	DISCRETE_BIT_DECODE(NODE_101, NODE_100,  6, 1) 	/*LS157 2A */
+	DISCRETE_BIT_DECODE(NODE_102, NODE_100,  3, 1) 	/*LS157 2B */
+	DISCRETE_BIT_DECODE(NODE_103, NODE_100, 12, 1)  /*LS157 3A */
+	DISCRETE_BIT_DECODE(NODE_104, NODE_100, 11, 1)  /*LS157 3B */
 
 	/* LS157 Switches */
 	DISCRETE_SWITCH(NODE_105, 1, DS_SOUND7_INV, GND, NODE_113) /* Switch 1 from LS624 */

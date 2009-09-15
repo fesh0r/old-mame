@@ -479,7 +479,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 						color,
 						flipx, flipy,
 						sx + x * 8, sy + y * 8,
-						priority_bitmap, primask, 0);
+						machine->priority_bitmap, primask, 0);
 			}
 			code	+=	(0x100/8) - xnum;
 		}
@@ -507,13 +507,13 @@ VIDEO_UPDATE( tetrisp2 )
 
 	/* Black background color */
 	bitmap_fill(bitmap, cliprect, 0);
-	bitmap_fill(priority_bitmap, NULL, 0);
+	bitmap_fill(screen->machine->priority_bitmap, NULL, 0);
 
 	/* Flip Screen */
 	if (flipscreen != flipscreen_old)
 	{
 		flipscreen_old = flipscreen;
-		tilemap_set_flip(ALL_TILEMAPS, flipscreen ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
+		tilemap_set_flip_all(screen->machine, flipscreen ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
 	}
 
 	/* Flip Screen */
@@ -591,13 +591,13 @@ VIDEO_UPDATE( rockntread )
 
 	/* Black background color */
 	bitmap_fill(bitmap, cliprect, 0);
-	bitmap_fill(priority_bitmap, NULL, 0);
+	bitmap_fill(screen->machine->priority_bitmap, NULL, 0);
 
 	/* Flip Screen */
 	if (flipscreen != flipscreen_old)
 	{
 		flipscreen_old = flipscreen;
-		tilemap_set_flip(ALL_TILEMAPS, flipscreen ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
+		tilemap_set_flip_all(screen->machine, flipscreen ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
 	}
 
 	/* Flip Screen */
@@ -686,7 +686,7 @@ VIDEO_UPDATE( rocknms )
 		tilemap_set_scrolly(tilemap_sub_rot, 0, rocknms_sub_rotregs[ 2 ] + 0x400);
 
 		bitmap_fill(bitmap, cliprect, screen->machine->pens[0x0000]);
-		bitmap_fill(priority_bitmap, cliprect, 0);
+		bitmap_fill(screen->machine->priority_bitmap, cliprect, 0);
 
 		asc_pri = scr_pri = rot_pri = 0;
 
@@ -739,7 +739,7 @@ VIDEO_UPDATE( rocknms )
 
 		/* Black background color */
 		bitmap_fill(bitmap, cliprect, screen->machine->pens[0x0000]);
-		bitmap_fill(priority_bitmap, cliprect, 0);
+		bitmap_fill(screen->machine->priority_bitmap, cliprect, 0);
 
 		asc_pri = scr_pri = rot_pri = 0;
 

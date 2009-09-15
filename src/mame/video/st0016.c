@@ -6,7 +6,8 @@
 #include "driver.h"
 #include "st0016.h"
 
-UINT8 *st0016_charram,*st0016_spriteram,*st0016_paletteram;
+UINT8 *st0016_charram;
+static UINT8 *st0016_spriteram,*st0016_paletteram;
 
 UINT8 *macs_ram1,*macs_ram2;
 
@@ -594,7 +595,7 @@ VIDEO_UPDATE( st0016 )
 {
 
 #ifdef MAME_DEBUG
-	if(input_code_pressed_once(KEYCODE_Z))
+	if(input_code_pressed_once(screen->machine, KEYCODE_Z))
 	{
 		int h,j;
 		FILE *p=fopen("vram.bin","wb");

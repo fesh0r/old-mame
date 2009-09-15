@@ -19,50 +19,51 @@ Custom :    X1-001A  X1-002A (SDIP64)   Sprites
             X1-014                      Sprites?
 
 -------------------------------------------------------------------------------
-Ordered by Board        Year + Game                         Licensed To
+Ordered by Board        Year + Game                             Licensed To
 -------------------------------------------------------------------------------
-P0-029-A (M6100287A)    88 Thundercade / Twin Formation (1) Taito
-?        (M6100326A)    88 Twin Eagle                       Taito
-P0-045-A (M6100429A)    89 DownTown                         Taito / RomStar
-?        (M6100430A)    89 U.S. Classic(2)                  Taito / RomStar
-?                       88 Caliber 50                       Taito / RomStar
-?                       89 Arbalester                       Taito / RomStar
+P0-029-A (M6100287A)    88 Thundercade / Twin Formation (1)     Taito
+?        (M6100326A)    88 Twin Eagle                           Taito
+P0-045-A (M6100429A)    89 DownTown                             Taito / RomStar
+?        (M6100430A)    89 U.S. Classic(2)                      Taito / RomStar
+?                       88 Caliber 50                           Taito / RomStar
+?                       89 Arbalester                           Taito / RomStar
 P1-036-A + P0-045-A +
-P1-049-A                89 Meta Fox                         Taito / RomStar
-P0-053-1                89 Castle of Dragon/Dragon Unit     Taito / RomStar / Athena
-P0-053-A                91 Strike Gunner S.T.G              Athena / Tecmo
-P0-053-A                92 Quiz Kokology                    Tecmo
-P0-055-B                89 Wit's                            Athena
-P0-055-D                90 Thunder & Lightning              Romstar / Visco
-Promat PCB              94 Wiggie Waggie(5)                 --
-P0-058-C                98 Internation Toote (6)            Coinmaster
-P0-063-A                91 Rezon                            Allumer
-P0-068-B (M6100723A)    92 Block Carnival                   Visco
-P0-072-2 (prototype)    92 Blandia (prototype)              Allumer
-P0-077-A (BP922)        92 Ultraman Club                    Banpresto
-PO-078-A                92 Blandia                          Allumer
-P0-079-A                92 Zing Zing Zip                    Allumer + Tecmo
-P0-079-A                94 Eight Forces                     Tecmo
-PO-080-A (BP923)        92 SD Gundam Neo Battling (3)       Banpresto
-?                       93 Athena no Hatena?                Athena
-?                       93 J.J.Squawkers                    Athena / Able
-?        (93111A)       93 War Of Aero                      Yang Cheng
-P0-081-A                93 Mobile Suit Gundam               Banpresto
-PO-083-A (BP931)        93 Ultra Toukon Densetsu            Banpresto + Tsuburaya Prod.
-PO-092-A                93 Daioh                            Athena
-PO-096-A (BP934KA)      93 Kamen Rider                      Banpresto
-P0-097-A                93 Oishii Puzzle ..                 Sunsoft + Atlus
-bootleg                 9? Triple Fun (4)                   bootleg (Comad?)
-P0-100-A                93 Quiz Kokology 2                  Tecmo
-P0-101-1                94 Pro Mahjong Kiwame               Athena
-PO-102-A                93 Mad Shark                        Allumer
-PO-107-A (prototype?)   94 Orbs (prototype?)                American Sammy
-P0-114-A (SKB-001)      94 Krazy Bowl                       American Sammy
-P0-117-A (DH-01)        95 Extreme Downhill                 Sammy Japan
-P0-117-A?               95 Sokonuke Taisen Game             Sammy Industries
-P0-120-A (BP954KA)      95 Gundhara                         Banpresto
-PO-122-A (SZR-001)      95 Zombie Raid                      American Sammy
-?                       96 Crazy Fight                      Subsino
+P1-049-A                89 Meta Fox                             Taito / RomStar
+P0-053-1                89 Castle of Dragon/Dragon Unit         Taito / RomStar / Athena
+P0-053-A                91 Strike Gunner S.T.G                  Athena / Tecmo
+P0-053-A                92 Quiz Kokology                        Tecmo
+P0-055-B                89 Wit's                                Athena
+P0-055-D                90 Thunder & Lightning                  Romstar / Visco
+Promat PCB              94 Wiggie Waggie(5)                     --
+P0-058-C                98 Internation Toote (6)                Coinmaster
+P0-063-A                91 Rezon                                Allumer
+P0-068-B (M6100723A)    92 Block Carnival                       Visco
+P0-072-2 (prototype)    92 Blandia (prototype)                  Allumer
+P0-077-A (BP922)        92 Ultraman Club                        Banpresto
+PO-078-A                92 Blandia                              Allumer
+P0-079-A                92 Zing Zing Zip                        Allumer + Tecmo
+P0-079-A                94 Eight Forces                         Tecmo
+PO-080-A (BP923)        92 SD Gundam Neo Battling (3)           Banpresto
+?                       93 Athena no Hatena?                    Athena
+?                       93 J.J.Squawkers                        Athena / Able
+?        (93111A)       93 War Of Aero                          Yang Cheng
+P0-081-A                93 Mobile Suit Gundam                   Banpresto
+PO-083-A (BP931)        93 Ultra Toukon Densetsu                Banpresto + Tsuburaya Prod.
+PO-092-A                93 Daioh                                Athena
+PO-096-A (BP934KA)      93 Kamen Rider                          Banpresto
+P0-097-A                93 Oishii Puzzle ..                     Sunsoft + Atlus
+bootleg                 9? Triple Fun (4)                       bootleg (Comad?)
+P0-100-A                93 Quiz Kokology 2                      Tecmo
+P0-101-1                94 Pro Mahjong Kiwame                   Athena
+PO-102-A                93 Mad Shark                            Allumer
+PO-107-A (prototype?)   94 Orbs (prototype?)                    American Sammy
+PO-107-A                93 Kero Kero Keroppi no Issyoni Asobou  Sammy Industries  [added Chack'n, Hau]
+P0-114-A (SKB-001)      94 Krazy Bowl                           American Sammy
+P0-117-A (DH-01)        95 Extreme Downhill                     Sammy Japan
+P0-117-A?               95 Sokonuke Taisen Game                 Sammy Industries
+P0-120-A (BP954KA)      95 Gundhara                             Banpresto
+PO-122-A (SZR-001)      95 Zombie Raid                          American Sammy
+?                       96 Crazy Fight                          Subsino
 -------------------------------------------------------------------------------
 (1) YM2203 + YM3812 instead of X1-010
 (2) wrong colors
@@ -1725,7 +1726,7 @@ static WRITE16_HANDLER( usclssic_lockout_w )
 		port_select = (data & 0x40) >> 6;
 
 		seta_tiles_offset = (data & 0x10) ? 0x4000: 0;
-		if (old_tiles_offset != seta_tiles_offset)	tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
+		if (old_tiles_offset != seta_tiles_offset)	tilemap_mark_all_tiles_dirty_all(space->machine);
 		old_tiles_offset = seta_tiles_offset;
 
 		seta_coin_lockout_w(space->machine, data);
@@ -1943,10 +1944,10 @@ static ADDRESS_MAP_START( jjsquawb_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800000, 0x803fff) AM_RAM_WRITE(seta_vram_0_w) AM_BASE(&seta_vram_0)	// VRAM 0
 	AM_RANGE(0x804000, 0x807fff) AM_RAM_WRITE(seta_vram_2_w) AM_BASE(&seta_vram_2)	// VRAM 2
 	AM_RANGE(0x884000, 0x88ffff) AM_RAM								// (jjsquawk)
-/**/AM_RANGE(0x900000, 0x900005) AM_RAM AM_BASE(&seta_vctrl_0)		// VRAM 0&1 Ctrl
-/**/AM_RANGE(0x980000, 0x980005) AM_RAM AM_BASE(&seta_vctrl_2)		// VRAM 2&3 Ctrl
-/**/AM_RANGE(0xa0a000, 0xa0a607) AM_RAM AM_BASE(&spriteram16)		// RZ: Sprites Y
-/**/AM_RANGE(0xa80000, 0xa80001) AM_RAM								// ? 0x4000
+	AM_RANGE(0x908000, 0x908005) AM_RAM AM_BASE(&seta_vctrl_0)		// VRAM 0&1 Ctrl
+	AM_RANGE(0x909000, 0x909005) AM_RAM AM_BASE(&seta_vctrl_2)		// VRAM 2&3 Ctrl
+	AM_RANGE(0xa0a000, 0xa0a607) AM_RAM AM_BASE(&spriteram16)		// RZ: Sprites Y
+// AM_RANGE(0xa80000, 0xa80001) AM_RAM                              // ? 0x4000
 	AM_RANGE(0xb0c000, 0xb0ffff) AM_RAM AM_BASE(&spriteram16_2)		// RZ: Sprites Code + X + Attr
 	AM_RANGE(0xc00000, 0xc03fff) AM_DEVREADWRITE("x1", seta_sound_word_r,seta_sound_word_w)	// Sound
 #if __uPD71054_TIMER
@@ -1981,6 +1982,94 @@ static ADDRESS_MAP_START( orbs_map, ADDRESS_SPACE_PROGRAM, 16 )
 /**/AM_RANGE(0xd00000, 0xd00001) AM_RAM								// ? 0x4000
 /**/AM_RANGE(0xe00000, 0xe00607) AM_RAM AM_BASE(&spriteram16)		// Sprites Y
 ADDRESS_MAP_END
+
+/***************************************************************************
+                  Kero Kero Keroppi no Issyoni Asobou
+***************************************************************************/
+
+static int keroppi_prize_hop;
+static int keroppi_protection_count;
+static const UINT16 keroppi_protection_word[] = {
+	0x0000,
+	0x0000, 0x0000, 0x0000,
+	0x2000, 0x2000, 0x2000,
+	0x2000, 0x2000, 0x2000,
+	0x0400, 0x0400, 0x0400,
+	0x0000, 0x0000, 0x0000
+};
+
+
+static READ16_HANDLER( keroppi_protection_r )
+{
+	UINT16 result = keroppi_protection_word[keroppi_protection_count];
+
+	keroppi_protection_count++;
+	if (keroppi_protection_count > 15)
+		keroppi_protection_count = 15;
+
+	return result;
+}
+
+static READ16_HANDLER( keroppi_protection_init_r )
+{
+	keroppi_protection_count = 0;
+
+	return 0x00;
+}
+
+static READ16_HANDLER( keroppi_coin_r )
+{
+	UINT16 result = input_port_read(space->machine, "COINS");
+
+	if (keroppi_prize_hop == 2)
+	{
+		result &= ~0x0002;		/* prize hopper */
+		keroppi_prize_hop = 0;
+	}
+
+	return result;
+}
+
+static TIMER_CALLBACK( keroppi_prize_hop_callback )
+{
+	keroppi_prize_hop = 2;
+}
+
+static WRITE16_HANDLER( keroppi_prize_w )
+{
+	if ((data & 0x0010) && !keroppi_prize_hop)
+	{
+		keroppi_prize_hop = 1;
+		timer_set(space->machine, ATTOTIME_IN_SEC(3), NULL, 0x20, keroppi_prize_hop_callback);		/* 3 seconds */
+	}
+}
+
+static ADDRESS_MAP_START( keroppi_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x000000, 0x07ffff) AM_ROM								// ROM
+	AM_RANGE(0xf00000, 0xf0ffff) AM_RAM								// RAM
+	AM_RANGE(0x100000, 0x100001) AM_READ(keroppi_protection_r)		//
+	AM_RANGE(0x200000, 0x200001) AM_READ(keroppi_protection_init_r)	//
+	AM_RANGE(0x300000, 0x300003) AM_READ(seta_dsw_r)				// DSW
+	AM_RANGE(0x400000, 0x400001) AM_WRITENOP						// ?
+	AM_RANGE(0x500000, 0x500001) AM_READ_PORT("P1")					// P1
+	AM_RANGE(0x500002, 0x500003) AM_READ_PORT("P2")					// P2
+	AM_RANGE(0x500004, 0x500005) AM_READ(keroppi_coin_r)			// Coins
+	AM_RANGE(0x8000f0, 0x8000f1) AM_RAM								// NVRAM
+	AM_RANGE(0x800100, 0x8001ff) AM_RAM								// NVRAM
+	AM_RANGE(0x900000, 0x900001) AM_WRITENOP						// ?
+	AM_RANGE(0x900002, 0x900003) AM_WRITE(keroppi_prize_w)			//
+	AM_RANGE(0xa00000, 0xa03fff) AM_DEVREADWRITE("x1", seta_sound_word_r,seta_sound_word_w)	// Sound
+	AM_RANGE(0xb00000, 0xb003ff) AM_RAM AM_BASE(&paletteram16) AM_SIZE(&seta_paletteram_size)	// Palette
+	AM_RANGE(0xc00000, 0xc03fff) AM_RAM AM_BASE(&spriteram16_2)		// Sprites Code + X + Attr
+/**/AM_RANGE(0xd00000, 0xd00001) AM_RAM								// ? 0x4000
+/**/AM_RANGE(0xe00000, 0xe00607) AM_RAM AM_BASE(&spriteram16)		// Sprites Y
+ADDRESS_MAP_END
+
+static MACHINE_START( keroppi )
+{
+	keroppi_prize_hop = 0;
+	keroppi_protection_count = 0;
+}
 
 /***************************************************************************
                                 Block Carnival
@@ -5808,6 +5897,91 @@ static INPUT_PORTS_START( orbs )
 INPUT_PORTS_END
 
 /***************************************************************************
+                  Kero Kero Keroppi no Issyoni Asobou
+***************************************************************************/
+
+static INPUT_PORTS_START( keroppi )
+	PORT_START("P1")
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Prize Out") PORT_CODE(KEYCODE_W)
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START("P2")
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_IMPULSE(5)
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START("COINS") //Coins
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(5)
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Prize Hopper") PORT_CODE(KEYCODE_Q)
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW,  IPT_UNKNOWN )
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW,  IPT_UNKNOWN )
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW,  IPT_UNKNOWN )
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW,  IPT_UNKNOWN )
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW,  IPT_UNKNOWN )
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW,  IPT_UNKNOWN )
+
+	PORT_START("DSW") //2 DSWs - $600001 & 3.b
+	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW2:1,2,3")
+	PORT_DIPSETTING(      0x0003, "1" )
+	PORT_DIPSETTING(      0x0005, "2" )
+	PORT_DIPSETTING(      0x0001, "3" )
+	PORT_DIPSETTING(      0x0007, "4" )
+	PORT_DIPSETTING(      0x0006, "5" )
+	PORT_DIPSETTING(      0x0002, "6" )
+	PORT_DIPSETTING(      0x0004, "7" )
+	PORT_DIPSETTING(      0x0000, "8" )
+	PORT_DIPNAME( 0x0038, 0x0038, "Game Select" ) PORT_DIPLOCATION("SW2:4,5,6")
+	PORT_DIPSETTING(      0x0038, "No. 1,2,3" )
+	PORT_DIPSETTING(      0x0030, "No. 1" )
+	PORT_DIPSETTING(      0x0028, "No. 2,3" )
+	PORT_DIPSETTING(      0x0020, "No. 3" )
+	PORT_DIPSETTING(      0x0018, "No. 1,2" )
+	PORT_DIPSETTING(      0x0010, "No. 2" )
+	PORT_DIPSETTING(      0x0008, "No. 1,3" )
+	PORT_DIPSETTING(      0x0000, "No. 1,2,3" )
+	PORT_DIPNAME( 0x0040, 0x0040, "Unknown 2-7" ) PORT_DIPLOCATION("SW2:7")
+	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0080, 0x0080, "Unknown 2-8" ) PORT_DIPLOCATION("SW2:8")
+	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+
+	PORT_DIPNAME( 0x0700, 0x0700, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("SW1:1,2,3")
+	PORT_DIPSETTING(      0x0000, DEF_STR( 5C_1C ) )
+	PORT_DIPSETTING(      0x0400, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(      0x0200, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x0600, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x0700, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x0300, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0500, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x0100, DEF_STR( 1C_4C ) )
+	PORT_DIPNAME( 0x0800, 0x0800, "Unknown 1-4" ) PORT_DIPLOCATION("SW1:4")
+	PORT_DIPSETTING(      0x0800, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x1000, 0x1000, "Unknown 1-5" ) PORT_DIPLOCATION("SW1:5")
+	PORT_DIPSETTING(      0x1000, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x2000, 0x2000, DEF_STR( Free_Play ) ) PORT_DIPLOCATION("SW1:6")
+	PORT_DIPSETTING(      0x2000, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x4000, 0x0000, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW1:7")
+	PORT_DIPSETTING(      0x4000, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_SERVICE_DIPLOC(  0x8000, IP_ACTIVE_LOW, "SW1:8" )
+INPUT_PORTS_END
+
+/***************************************************************************
                                 Crazy Fight
 ***************************************************************************/
 
@@ -6613,7 +6787,7 @@ static MACHINE_DRIVER_START( downtown )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_REFRESH_RATE(57.42) /* verified on pcb */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
@@ -6626,12 +6800,10 @@ static MACHINE_DRIVER_START( downtown )
 	MDRV_VIDEO_UPDATE(seta)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
-
+	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("x1", X1_010, 16000000)	/* 16 MHz */
 	MDRV_SOUND_CONFIG(seta_sound_intf)
-	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
-	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
 
@@ -6709,11 +6881,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( calibr50 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", M68000, 16000000/2)	/* 8 MHz */
+	MDRV_CPU_ADD("maincpu", M68000, XTAL_16MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(calibr50_map)
 	MDRV_CPU_VBLANK_INT_HACK(calibr50_interrupt,calibr50_INTERRUPTS_NUM)
 
-	MDRV_CPU_ADD("sub", M65C02, 16000000/8)	/* 2 MHz */
+	MDRV_CPU_ADD("sub", M65C02, XTAL_16MHz/8) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(calibr50_sub_map)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)	/* IRQ: 4/frame
                                NMI: when the 68k writes the sound latch */
@@ -6722,7 +6894,7 @@ static MACHINE_DRIVER_START( calibr50 )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_REFRESH_RATE(57.42)  /* verified on pcb */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
@@ -6735,12 +6907,10 @@ static MACHINE_DRIVER_START( calibr50 )
 	MDRV_VIDEO_UPDATE(seta)
 
 	/* sound hardware */
-	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
-
+	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("x1", X1_010, 16000000)	/* 16 MHz */
 	MDRV_SOUND_CONFIG(seta_sound_intf2)
-	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
-	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
 
@@ -7306,6 +7476,43 @@ static MACHINE_DRIVER_START( orbs )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 39*8-1, 1*8, 31*8-1)
+
+	MDRV_GFXDECODE(orbs)
+	MDRV_PALETTE_LENGTH(512)	/* sprites only */
+
+	MDRV_VIDEO_START(seta_no_layers)
+	MDRV_VIDEO_UPDATE(seta_no_layers) /* just draw the sprites */
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
+
+	MDRV_SOUND_ADD("x1", X1_010, 14318180)	/* 14.318180 MHz */
+	MDRV_SOUND_CONFIG(seta_sound_intf)
+	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
+MACHINE_DRIVER_END
+
+
+/***************************************************************************
+                  Kero Kero Keroppi no Issyoni Asobou
+***************************************************************************/
+
+static MACHINE_DRIVER_START( keroppi )
+
+	/* basic machine hardware */
+	MDRV_CPU_ADD("maincpu", M68000, 14318180/2)	/* 7.143 MHz */
+	MDRV_CPU_PROGRAM_MAP(keroppi_map)
+	MDRV_CPU_VBLANK_INT_HACK(seta_interrupt_1_and_2,SETA_INTERRUPTS_NUM)
+
+	MDRV_MACHINE_START(keroppi)
+
+	/* video hardware */
+	MDRV_SCREEN_ADD("screen", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_SIZE(64*8, 32*8)
+	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
 
 	MDRV_GFXDECODE(orbs)
 	MDRV_PALETTE_LENGTH(512)	/* sprites only */
@@ -8068,7 +8275,7 @@ ROM_START( tndrcade )
 	ROM_LOAD( "ua0-9.u11",  0x1c0000, 0x040000, CRC(e812371c) SHA1(b0e1e0c143da743bf9f7b48d657594e76f4970ed) )
 ROM_END
 
-ROM_START( tndrcadj )
+ROM_START( tndrcadej )
 	ROM_REGION( 0x080000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "ua0-4.u19", 0x000000, 0x020000, CRC(73bd63eb) SHA1(5d410d2a77f1c3c4c37a9fe1e56019335891fe67) )
 	ROM_LOAD16_BYTE( "ua0-2.u17", 0x000001, 0x020000, CRC(e96194b1) SHA1(c5084d06a2e4f7ba3112be1ccc314f7d712bb45e) )
@@ -8143,7 +8350,7 @@ ROM_START( downtown )
 	ROM_LOAD( "ud2011.t07", 0x000000, 0x080000, CRC(9c9ff69f) SHA1(3840b654f4f709bc4c03dfe4ee79369d5c70dd62) )
 ROM_END
 
-ROM_START( downtow2 )
+ROM_START( downtown2 )
 	ROM_REGION( 0x0a0000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "ud2001.000", 0x000000, 0x040000, CRC(f1965260) SHA1(c0560342238d75f9b81ae9f3408cacfbcd331529) )
 	ROM_LOAD16_BYTE( "ud2001.003", 0x000001, 0x040000, CRC(e7d5fa5f) SHA1(48612514598711aa73bf75243c842f0aca72f3d0) )
@@ -8168,7 +8375,7 @@ ROM_START( downtow2 )
 	ROM_LOAD( "ud2011.t07", 0x000000, 0x080000, CRC(9c9ff69f) SHA1(3840b654f4f709bc4c03dfe4ee79369d5c70dd62) )
 ROM_END
 
-ROM_START( downtowj )
+ROM_START( downtownj )
 	ROM_REGION( 0x0a0000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "ud2001.000", 0x000000, 0x040000, CRC(f1965260) SHA1(c0560342238d75f9b81ae9f3408cacfbcd331529) )
 	ROM_LOAD16_BYTE( "ud2001.003", 0x000001, 0x040000, CRC(e7d5fa5f) SHA1(48612514598711aa73bf75243c842f0aca72f3d0) )
@@ -8193,7 +8400,7 @@ ROM_START( downtowj )
 	ROM_LOAD( "ud2011.t07", 0x000000, 0x080000, CRC(9c9ff69f) SHA1(3840b654f4f709bc4c03dfe4ee79369d5c70dd62) )
 ROM_END
 
-ROM_START( downtowp )
+ROM_START( downtownp )
 	ROM_REGION( 0x0a0000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "ud2001.000",   0x000000, 0x040000, CRC(f1965260) SHA1(c0560342238d75f9b81ae9f3408cacfbcd331529) )
 	ROM_LOAD16_BYTE( "ud2001.003",   0x000001, 0x040000, CRC(e7d5fa5f) SHA1(48612514598711aa73bf75243c842f0aca72f3d0) )
@@ -8700,7 +8907,7 @@ ROM_START( msgundam )
 	ROM_LOAD( "fa001004.u26",  0x000000, 0x100000, CRC(b965f07c) SHA1(ff7827cc80655465ffbb732d55ba81f21f51a5ca) )
 ROM_END
 
-ROM_START( msgunda1 )
+ROM_START( msgundam1 )
 	ROM_REGION( 0x200000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_WORD_SWAP( "fa002002.u25",  0x000000, 0x080000, CRC(dee3b083) SHA1(e2ad626aa0109906846dd9e9053ffc83b7bf4d2e) )
 	ROM_LOAD16_WORD_SWAP( "fa001001.u20",  0x100000, 0x100000, CRC(fca139d0) SHA1(b56282c69f7ec64c697a48e42d59a2565401c032) )
@@ -8833,7 +9040,7 @@ ROM_START( jjsquawk )
 	ROM_LOAD( "jj-rom6.040", 0x080000, 0x080000, CRC(9df1e478) SHA1(f41b55821187b417ad09e4a1f439c01a107d2674) )
 ROM_END
 
-ROM_START( jjsquawb )
+ROM_START( jjsquawkb )
 	ROM_REGION( 0x200000, "maincpu", 0 )		/* 68000 Code */
 	ROM_LOAD16_WORD_SWAP( "3", 0x000000, 0x080000, CRC(afd5bd07) SHA1(eee231f596ce5cb9bbf41c7c9e18c11a399d7dfd) )
 	ROM_LOAD16_WORD_SWAP( "2", 0x100000, 0x080000, CRC(740a7366) SHA1(2539f9a9b4fed1a1e2c354d144b8d455ed4bc144) )
@@ -8946,6 +9153,22 @@ ROM_START( orbs )	/* All eproms are socketed and labelled (handwritten) "ORBS 10
 	ROM_REGION( 0x100000, "x1", 0 )	/* Samples */
 	ROM_LOAD( "orbs.u15",  0x000000, 0x080000, CRC(bc0e9fe3) SHA1(758a44d07d59af8bbc87602df25dfcdc6cb8d9b3) )
 	ROM_LOAD( "orbs.u16",  0x080000, 0x080000, CRC(aecd8373) SHA1(5620bcb281a9ea4920cfe81d163827013289c5bf) )
+ROM_END
+
+ROM_START( keroppi )
+	ROM_REGION( 0x100000, "maincpu", 0 )		/* 68000 Code */
+	ROM_LOAD16_BYTE( "ft-001-001.u10",  0x000000, 0x080000, CRC(37861e7d) SHA1(4bf75f119b0ef1420c96844224850867fa8e273f) )
+	ROM_LOAD16_BYTE( "ft-001-002.u9",   0x000001, 0x080000, CRC(f531d4ef) SHA1(75a99695679de083765700c250bd1fdfd8be9981) )
+
+	ROM_REGION( 0x200000, "gfx1", 0 )	/* Sprites */
+	ROM_LOAD( "ft-001-003.u14",  0x000000, 0x080000, CRC(62fb22fb) SHA1(a67cb46152b73a47c2287c4058d0a22fb7064e7e) )
+	ROM_LOAD( "ft-001-004.u13",  0x080000, 0x080000, CRC(69908c98) SHA1(1af069e9330a33cd2f0e1365e05c72eb23c3244e) )
+	ROM_LOAD( "ft-001-005.u12",  0x100000, 0x080000, CRC(de6432a8) SHA1(afee9b29e0b3db4815fc29456044532aee03597e) )
+	ROM_LOAD( "ft-001-006.u11",  0x180000, 0x080000, CRC(9c500eae) SHA1(3448adef04c9ad2e0b39a283e4eb9c9bac7d4967) )
+
+	ROM_REGION( 0x100000, "x1", 0 )	/* Samples */
+	ROM_LOAD( "ft-001-007.u15",  0x000000, 0x080000, CRC(c98dacf0) SHA1(b508433e2383af1e8bd5fda253c9925c48443490) )
+	ROM_LOAD( "ft-001-008.u16",  0x080000, 0x080000, CRC(b9c4b637) SHA1(82977d10de1048f71525bab5431b031cca510114) )
 ROM_END
 
 ROM_START( extdwnhl )
@@ -9527,12 +9750,12 @@ static DRIVER_INIT( inttootea )
 
 /* 68000 + 65C02 */
 GAME( 1987, tndrcade, 0,        tndrcade, tndrcade, 0,        ROT270, "[Seta] (Taito license)", "Thundercade / Twin Formation" , 0) // Title/License: DSW
-GAME( 1987, tndrcadj, tndrcade, tndrcade, tndrcadj, 0,        ROT270, "[Seta] (Taito license)", "Tokusyu Butai U.A.G. (Japan)" , 0) // License: DSW
+GAME( 1987, tndrcadej,tndrcade, tndrcade, tndrcadj, 0,        ROT270, "[Seta] (Taito license)", "Tokusyu Butai U.A.G. (Japan)" , 0) // License: DSW
 GAME( 1988, twineagl, 0,        twineagl, twineagl, twineagl, ROT270, "Seta (Taito license)",   "Twin Eagle - Revenge Joe's Brother" , 0) // Country/License: DSW
 GAME( 1989, downtown, 0,        downtown, downtown, downtown, ROT270, "Seta",                   "DownTown / Mokugeki (Set 1)" , 0) // Country/License: DSW
-GAME( 1989, downtow2, downtown, downtown, downtown, downtown, ROT270, "Seta",                   "DownTown / Mokugeki (Set 2)" , 0) // Country/License: DSW
-GAME( 1989, downtowj, downtown, downtown, downtown, downtown, ROT270, "Seta",                   "DownTown / Mokugeki (Joystick Hack)" , 0) // Country/License: DSW
-GAME( 1989, downtowp, downtown, downtown, downtown, downtown, ROT270, "Seta",                   "DownTown / Mokugeki (prototype)" , 0) // Country/License: DSW
+GAME( 1989, downtown2,downtown, downtown, downtown, downtown, ROT270, "Seta",                   "DownTown / Mokugeki (Set 2)" , 0) // Country/License: DSW
+GAME( 1989, downtownj,downtown, downtown, downtown, downtown, ROT270, "Seta",                   "DownTown / Mokugeki (Joystick Hack)" , 0) // Country/License: DSW
+GAME( 1989, downtownp,downtown, downtown, downtown, downtown, ROT270, "Seta",                   "DownTown / Mokugeki (prototype)" , 0) // Country/License: DSW
 GAME( 1989, usclssic, 0,        usclssic, usclssic, 0,        ROT270, "Seta",                   "U.S. Classic" , 0) // Country/License: DSW
 GAME( 1989, calibr50, 0,        calibr50, calibr50, 0,        ROT270, "Athena / Seta",          "Caliber 50" , 0) // Country/License: DSW
 GAME( 1989, arbalest, 0,        metafox,  arbalest, arbalest, ROT270, "Seta",                   "Arbalester" , 0) // Country/License: DSW
@@ -9560,11 +9783,11 @@ GAME( 1992, zingzip,  0,        zingzip,  zingzip,  0,        ROT270, "Allumer +
 GAME( 1993, atehate,  0,        atehate,  atehate,  0,        ROT0,   "Athena",                 "Athena no Hatena ?", 0 )
 GAME( 1993, daioh,    0,        daioh,    daioh,    0,        ROT270, "Athena",                 "Daioh", 0 )
 GAME( 1993, jjsquawk, 0,        jjsquawk, jjsquawk, 0,        ROT0,   "Athena / Able",          "J. J. Squawkers", GAME_IMPERFECT_SOUND )
-GAME( 1993, jjsquawb, jjsquawk, jjsquawb, jjsquawk, 0,        ROT0,   "bootleg",                "J. J. Squawkers (bootleg)", GAME_IMPERFECT_SOUND )
+GAME( 1993, jjsquawkb,jjsquawk, jjsquawb, jjsquawk, 0,        ROT0,   "bootleg",                "J. J. Squawkers (bootleg)", GAME_IMPERFECT_SOUND )
 GAME( 1993, kamenrid, 0,        kamenrid, kamenrid, 0,        ROT0,   "Toei / Banpresto",       "Masked Riders Club Battle Race", 0 )
 GAME( 1993, madshark, 0,        madshark, madshark, 0,        ROT270, "Allumer",                "Mad Shark", 0 )
 GAME( 1993, msgundam, 0,        msgundam, msgundam, 0,        ROT0,   "Banpresto",              "Mobile Suit Gundam", 0 )
-GAME( 1993, msgunda1, msgundam, msgundam, msgunda1, 0,        ROT0,   "Banpresto",              "Mobile Suit Gundam (Japan)", 0 )
+GAME( 1993, msgundam1,msgundam, msgundam, msgunda1, 0,        ROT0,   "Banpresto",              "Mobile Suit Gundam (Japan)", 0 )
 GAME( 1993, oisipuzl, 0,        oisipuzl, oisipuzl, 0,        ROT0,   "Sunsoft + Atlus",        "Oishii Puzzle Ha Irimasenka", 0 )
 GAME( 1993, qzkklgy2, 0,        qzkklgy2, qzkklgy2, 0,        ROT0,   "Tecmo",                  "Quiz Kokology 2", 0 )
 GAME( 1993, triplfun, oisipuzl, triplfun, oisipuzl, 0,        ROT0,   "bootleg",                "Triple Fun", 0 )
@@ -9574,6 +9797,7 @@ GAME( 1994, eightfrc, 0,        eightfrc, eightfrc, eightfrc, ROT90,  "Tecmo",  
 GAME( 1994, kiwame,   0,        kiwame,   kiwame,   kiwame,   ROT0,   "Athena",                 "Pro Mahjong Kiwame", 0 )
 GAME( 1994, krzybowl, 0,        krzybowl, krzybowl, 0,        ROT270, "American Sammy",         "Krazy Bowl", 0 )
 GAME( 1994, orbs,     0,        orbs,     orbs,     0,        ROT0,   "American Sammy",         "Orbs (10/7/94 prototype?)", 0 )
+GAME( 1993, keroppi,  0,        keroppi,  keroppi,  0,        ROT0,   "Sammy Industries",       "Kero Kero Keroppi no Issyoni Asobou (Japan)", 0 )
 GAME( 1995, extdwnhl, 0,        extdwnhl, extdwnhl, 0,        ROT0,   "Sammy Industries Japan", "Extreme Downhill (v1.5)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1995, gundhara, 0,        gundhara, gundhara, 0,        ROT270, "Banpresto",              "Gundhara", 0 )
 GAME( 1995, sokonuke, 0,        extdwnhl, sokonuke, 0,        ROT0,   "Sammy Industries",       "Sokonuke Taisen Game (Japan)", GAME_IMPERFECT_SOUND )

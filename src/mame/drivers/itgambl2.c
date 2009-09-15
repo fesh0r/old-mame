@@ -72,28 +72,28 @@ static VIDEO_UPDATE( itgambl2 )
 	const UINT8 *blit_ram = memory_region(screen->machine,"gfx1");
 	static int test_x = 256,test_y = 256,start_offs;
 
-	if(input_code_pressed(KEYCODE_Z))
+	if(input_code_pressed(screen->machine, KEYCODE_Z))
 		test_x++;
 
-	if(input_code_pressed(KEYCODE_X))
+	if(input_code_pressed(screen->machine, KEYCODE_X))
 		test_x--;
 
-	if(input_code_pressed(KEYCODE_A))
+	if(input_code_pressed(screen->machine, KEYCODE_A))
 		test_y++;
 
-	if(input_code_pressed(KEYCODE_S))
+	if(input_code_pressed(screen->machine, KEYCODE_S))
 		test_y--;
 
-	if(input_code_pressed(KEYCODE_Q))
+	if(input_code_pressed(screen->machine, KEYCODE_Q))
 		start_offs+=0x200;
 
-	if(input_code_pressed(KEYCODE_W))
+	if(input_code_pressed(screen->machine, KEYCODE_W))
 		start_offs-=0x200;
 
-	if(input_code_pressed(KEYCODE_E))
+	if(input_code_pressed(screen->machine, KEYCODE_E))
 		start_offs++;
 
-	if(input_code_pressed(KEYCODE_R))
+	if(input_code_pressed(screen->machine, KEYCODE_R))
 		start_offs--;
 
 	popmessage("%d %d %04x",test_x,test_y,start_offs);
@@ -782,15 +782,15 @@ ROM_END
 *************************/
 
 /*    YEAR  NAME      PARENT  MACHINE   INPUT     INIT ROT    COMPANY    FULLNAME                          FLAGS  */
-GAME( 1999, ntcash,   0,      itgambl2, itgambl2, 0,   ROT0, "Unknown", "NtCash",                               GAME_NOT_WORKING )
-GAME( 1999, wizard,   0,      itgambl2, itgambl2, 0,   ROT0, "A.A.",    "Wizard (Ver 1.0)",                     GAME_NOT_WORKING )
-GAME( 200?, trstar2k, 0,      itgambl2, itgambl2, 0,   ROT0, "A.M.",    "Triple Star 2000",                     GAME_NOT_WORKING )
-GAME( 2001, laser2k1, 0,      itgambl2, itgambl2, 0,   ROT0, "Unknown", "Laser 2001 (Ver 1.2)",                 GAME_NOT_WORKING )
-GAME( 2001, mdrink,   0,      itgambl2, itgambl2, 0,   ROT0, "Unknown", "Magic Drink (Ver 1.2)",                GAME_NOT_WORKING )
-GAME( 2001, te0144,   0,      itgambl2, itgambl2, 0,   ROT0, "Unknown", "Puzzle Bobble (Italian Gambling Game)",GAME_NOT_WORKING )
-GAME( 200?, cmagica,  0,      itgambl2, itgambl2, 0,   ROT0, "Unknown", "Carta Magica (Ver 1.8)",               GAME_NOT_WORKING )
-GAME( 200?, millsun,  0,      itgambl2, itgambl2, 0,   ROT0, "Unknown", "Millennium Sun",                       GAME_NOT_WORKING )
-GAME( 200?, sspac2k1, 0,      itgambl2, itgambl2, 0,   ROT0, "Unknown", "Super Space 2001",                     GAME_NOT_WORKING )
-GAME( 200?, elvis,    0,      itgambl2, itgambl2, 0,   ROT0, "Unknown", "Elvis?",                               GAME_NOT_WORKING )
-GAME( 200?, sstar,    0,      itgambl2, itgambl2, 0,   ROT0, "Unknown", "Super Star",                           GAME_NOT_WORKING )
-GAME( 2001, pirati,   0,      itgambl2, itgambl2, 0,   ROT0, "Cin", 	"Pirati",                           GAME_NOT_WORKING )
+GAME( 1999, ntcash,   0,      itgambl2, itgambl2, 0,   ROT0, "<unknown>", "NtCash",                                GAME_NOT_WORKING )
+GAME( 1999, wizard,   0,      itgambl2, itgambl2, 0,   ROT0, "A.A.",      "Wizard (Ver 1.0)",                      GAME_NOT_WORKING )
+GAME( 200?, trstar2k, 0,      itgambl2, itgambl2, 0,   ROT0, "A.M.",      "Triple Star 2000",                      GAME_NOT_WORKING )
+GAME( 2001, laser2k1, 0,      itgambl2, itgambl2, 0,   ROT0, "<unknown>", "Laser 2001 (Ver 1.2)",                  GAME_NOT_WORKING )
+GAME( 2001, mdrink,   0,      itgambl2, itgambl2, 0,   ROT0, "<unknown>", "Magic Drink (Ver 1.2)",                 GAME_NOT_WORKING )
+GAME( 2001, te0144,   0,      itgambl2, itgambl2, 0,   ROT0, "<unknown>", "Puzzle Bobble (Italian Gambling Game)", GAME_NOT_WORKING )
+GAME( 200?, cmagica,  0,      itgambl2, itgambl2, 0,   ROT0, "<unknown>", "Carta Magica (Ver 1.8)",                GAME_NOT_WORKING )
+GAME( 200?, millsun,  0,      itgambl2, itgambl2, 0,   ROT0, "<unknown>", "Millennium Sun",                        GAME_NOT_WORKING )
+GAME( 200?, sspac2k1, 0,      itgambl2, itgambl2, 0,   ROT0, "<unknown>", "Super Space 2001",                      GAME_NOT_WORKING )
+GAME( 200?, elvis,    0,      itgambl2, itgambl2, 0,   ROT0, "<unknown>", "Elvis?",                                GAME_NOT_WORKING )
+GAME( 200?, sstar,    0,      itgambl2, itgambl2, 0,   ROT0, "<unknown>", "Super Star",                            GAME_NOT_WORKING )
+GAME( 2001, pirati,   0,      itgambl2, itgambl2, 0,   ROT0, "Cin", 	  "Pirati",                                GAME_NOT_WORKING )

@@ -86,6 +86,21 @@ VIDEO_START( gaiden )
 	tilemap_set_transparent_pen(text_layer, 0);
 }
 
+VIDEO_START( mastninj )
+{
+	/* set up tile layers */
+	background = tilemap_create(machine, get_bg_tile_info, tilemap_scan_rows,  16, 16, 64, 32);
+	foreground = tilemap_create(machine, get_fg_tile_info, tilemap_scan_rows,  16, 16, 64, 32);
+	text_layer = tilemap_create(machine, get_tx_tile_info, tilemap_scan_rows,   8,  8, 32, 32);
+
+//  tilemap_set_transparent_pen(background, 15);
+	tilemap_set_transparent_pen(foreground, 15);
+	tilemap_set_transparent_pen(text_layer, 15);
+
+	tilemap_set_scrolldx(background, -248, 248);
+	tilemap_set_scrolldx(foreground, -252, 252);
+}
+
 VIDEO_START( raiga )
 {
 	int width = video_screen_get_width(machine->primary_screen);
@@ -366,7 +381,7 @@ static void gaiden_draw_sprites(running_machine *machine, bitmap_t *bitmap, cons
 						gfx->color_base + color * gfx->color_granularity,
 						flipx, flipy,
 						sx, sy,
-						priority_bitmap, priority_mask, 0);
+						machine->priority_bitmap, priority_mask, 0);
 				}
 			}
 		}
@@ -466,7 +481,7 @@ static void raiga_draw_sprites(running_machine *machine, bitmap_t *bitmap_bg, bi
 							gfx->color_base + color * gfx->color_granularity,
 							flipx, flipy,
 							sx, sy,
-							priority_bitmap, priority_mask, 0);
+							machine->priority_bitmap, priority_mask, 0);
 					}
 				}
 			}
@@ -486,7 +501,7 @@ static void raiga_draw_sprites(running_machine *machine, bitmap_t *bitmap_bg, bi
 							gfx->color_base + color * gfx->color_granularity,
 							flipx, flipy,
 							sx, sy,
-							priority_bitmap, priority_mask, 0);
+							machine->priority_bitmap, priority_mask, 0);
 					}
 				}
 			}
@@ -542,21 +557,21 @@ static void drgnbowl_draw_sprites(running_machine *machine, bitmap_t *bitmap, co
 				code,
 				machine->gfx[3]->color_base + color * machine->gfx[3]->color_granularity,
 				flipx,flipy,x,y,
-				priority_bitmap, priority_mask,15);
+				machine->priority_bitmap, priority_mask,15);
 
 		/* wrap x*/
 		pdrawgfx_transpen_raw(bitmap,cliprect,machine->gfx[3],
 				code,
 				machine->gfx[3]->color_base + color * machine->gfx[3]->color_granularity,
 				flipx,flipy,x-512,y,
-				priority_bitmap, priority_mask,15);
+				machine->priority_bitmap, priority_mask,15);
 
 	}
 }
 
 VIDEO_UPDATE( gaiden )
 {
-	bitmap_fill(priority_bitmap, cliprect, 0);
+	bitmap_fill(screen->machine->priority_bitmap, cliprect, 0);
 	bitmap_fill(bitmap, cliprect, 0x200);
 
 	tilemap_draw(bitmap, cliprect, background, 0, 1);
@@ -569,7 +584,7 @@ VIDEO_UPDATE( gaiden )
 
 VIDEO_UPDATE( raiga )
 {
-	bitmap_fill(priority_bitmap,    cliprect, 0);
+	bitmap_fill(screen->machine->priority_bitmap,    cliprect, 0);
 
 	bitmap_fill(tile_bitmap_bg, cliprect, 0x200);
 	bitmap_fill(tile_bitmap_fg,     cliprect, 0);
@@ -593,7 +608,7 @@ VIDEO_UPDATE( raiga )
 
 VIDEO_UPDATE( drgnbowl )
 {
-	bitmap_fill(priority_bitmap, cliprect, 0);
+	bitmap_fill(screen->machine->priority_bitmap, cliprect, 0);
 
 	tilemap_draw(bitmap, cliprect, background, 0, 1);
 	tilemap_draw(bitmap, cliprect, foreground, 0, 2);

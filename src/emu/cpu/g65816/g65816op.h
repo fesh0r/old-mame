@@ -1641,7 +1641,8 @@ INLINE uint EA_SIY(g65816i_cpu_struct *cpustate)   {return MAKE_UINT_16(read_16_
 				}															\
 				tmp16 = tmp1 | (tmp2 << 4) | (tmp3 << 8) | (tmp4 << 12);	\
 				FLAG_V = VFLAG_SUB_16(SRC, REGISTER_A, tmp16);				\
-				FLAG_N = FLAG_Z = REGISTER_A = MAKE_UINT_16(tmp16);			\
+				FLAG_Z = REGISTER_A = MAKE_UINT_16(tmp16);					\
+				FLAG_N = NFLAG_16(REGISTER_A);								\
 			}
 #endif
 
@@ -2437,7 +2438,7 @@ TABLE_FUNCTION(int, execute, (g65816i_cpu_struct *cpustate, int clocks))
 			g65816i_check_maskable_interrupt(cpustate);
 
 			REGISTER_PPC = REGISTER_PC;
-			G65816_CALL_DEBUGGER(REGISTER_PC);
+			G65816_CALL_DEBUGGER(REGISTER_PB | REGISTER_PC);
 
 			REGISTER_PC++;
 			REGISTER_IR = read_8_IMM(REGISTER_PB | REGISTER_PPC);

@@ -664,7 +664,7 @@ MACHINE_DRIVER_END
 
 ROM_START( mk3 )
 	ROM_REGION16_LE( 0x800000, "dcs", ROMREGION_ERASEFF )	/* sound data */
-	ROM_LOAD16_BYTE( "mk3-u2.bin", 0x000000, 0x100000, BAD_DUMP CRC(3838cfe5) SHA1(e3d2901f3bae1362742fc6ee0aa31c9f63b4dfa3) )
+	ROM_LOAD16_BYTE( "mk3-u2.bin", 0x000000, 0x100000, CRC(5273436f) SHA1(e1735842a0159eafe79d878d44e3828df9bfa5bb) )
 	ROM_LOAD16_BYTE( "mk3-u3.bin", 0x200000, 0x100000, CRC(856fe411) SHA1(6165ebecfce7500e948d84492ffa19eed7f47091) )
 	ROM_LOAD16_BYTE( "mk3-u4.bin", 0x400000, 0x100000, CRC(428a406f) SHA1(e70ec83cd054de0da1e178720ed0035b8887f797) )
 	ROM_LOAD16_BYTE( "mk3-u5.bin", 0x600000, 0x100000, CRC(3b98a09f) SHA1(edf1d02a56dcf3349e6b4bb4097acfe7592305f4) )
@@ -703,7 +703,7 @@ ROM_END
 
 ROM_START( mk3r20 )
 	ROM_REGION16_LE( 0x800000, "dcs", ROMREGION_ERASEFF )	/* sound data */
-	ROM_LOAD16_BYTE( "mk3-u2.bin", 0x000000, 0x100000, BAD_DUMP CRC(3838cfe5) SHA1(e3d2901f3bae1362742fc6ee0aa31c9f63b4dfa3) )
+	ROM_LOAD16_BYTE( "mk3-u2.bin", 0x000000, 0x100000, CRC(5273436f) SHA1(e1735842a0159eafe79d878d44e3828df9bfa5bb) )
 	ROM_LOAD16_BYTE( "mk3-u3.bin", 0x200000, 0x100000, CRC(856fe411) SHA1(6165ebecfce7500e948d84492ffa19eed7f47091) )
 	ROM_LOAD16_BYTE( "mk3-u4.bin", 0x400000, 0x100000, CRC(428a406f) SHA1(e70ec83cd054de0da1e178720ed0035b8887f797) )
 	ROM_LOAD16_BYTE( "mk3-u5.bin", 0x600000, 0x100000, CRC(3b98a09f) SHA1(edf1d02a56dcf3349e6b4bb4097acfe7592305f4) )
@@ -742,7 +742,7 @@ ROM_END
 
 ROM_START( mk3r10 )
 	ROM_REGION16_LE( 0x800000, "dcs", ROMREGION_ERASEFF )	/* sound data */
-	ROM_LOAD16_BYTE( "mk3-u2.bin", 0x000000, 0x100000, BAD_DUMP CRC(3838cfe5) SHA1(e3d2901f3bae1362742fc6ee0aa31c9f63b4dfa3) )
+	ROM_LOAD16_BYTE( "mk3-u2.bin", 0x000000, 0x100000, CRC(5273436f) SHA1(e1735842a0159eafe79d878d44e3828df9bfa5bb) )
 	ROM_LOAD16_BYTE( "mk3-u3.bin", 0x200000, 0x100000, CRC(856fe411) SHA1(6165ebecfce7500e948d84492ffa19eed7f47091) )
 	ROM_LOAD16_BYTE( "mk3-u4.bin", 0x400000, 0x100000, CRC(428a406f) SHA1(e70ec83cd054de0da1e178720ed0035b8887f797) )
 	ROM_LOAD16_BYTE( "mk3-u5.bin", 0x600000, 0x100000, CRC(3b98a09f) SHA1(edf1d02a56dcf3349e6b4bb4097acfe7592305f4) )
@@ -781,7 +781,7 @@ ROM_END
 
 ROM_START( mk3p40 )
 	ROM_REGION16_LE( 0x800000, "dcs", ROMREGION_ERASEFF )	/* sound data */
-	ROM_LOAD16_BYTE( "mk3-u2.bin", 0x000000, 0x100000, BAD_DUMP CRC(3838cfe5) SHA1(e3d2901f3bae1362742fc6ee0aa31c9f63b4dfa3) )
+	ROM_LOAD16_BYTE( "mk3-u2.bin", 0x000000, 0x100000, CRC(5273436f) SHA1(e1735842a0159eafe79d878d44e3828df9bfa5bb) )
 	ROM_LOAD16_BYTE( "mk3-u3.bin", 0x200000, 0x100000, CRC(856fe411) SHA1(6165ebecfce7500e948d84492ffa19eed7f47091) )
 	ROM_LOAD16_BYTE( "mk3-u4.bin", 0x400000, 0x100000, CRC(428a406f) SHA1(e70ec83cd054de0da1e178720ed0035b8887f797) )
 	ROM_LOAD16_BYTE( "mk3-u5.bin", 0x600000, 0x100000, CRC(3b98a09f) SHA1(edf1d02a56dcf3349e6b4bb4097acfe7592305f4) )
@@ -1186,7 +1186,7 @@ ROM_START( wwfmania )
 ROM_END
 
 
-ROM_START( wwfmanib )
+ROM_START( wwfmaniab )
 	ROM_REGION16_LE( 0x800000, "dcs", ROMREGION_ERASEFF )	/* sound data */
 	ROM_LOAD16_BYTE( "wwf.2",  0x000000, 0x100000, CRC(a9acb250) SHA1(c1a7773ffdb86dc2c1c90c220482ed6330fcbb55) )
 	ROM_LOAD16_BYTE( "wwf.3",  0x200000, 0x100000, CRC(9442b6c9) SHA1(1f887c05ab9ca99078be584d7e9e6c59c8ec1818) )
@@ -1236,7 +1236,7 @@ GAME( 1994, umk3r11,  umk3,      wunit, mk3,      umk3r11,  ROT0, "Midway", "Ult
 GAME( 1994, umk3r10,  umk3,      wunit, mk3,      umk3r11,  ROT0, "Midway", "Ultimate Mortal Kombat 3 (rev 1.0)", GAME_SUPPORTS_SAVE )
 
 GAME( 1995, wwfmania, 0,         wunit, wwfmania, wwfmania, ROT0, "Midway", "WWF: Wrestlemania (rev 1.30 08/10/95)", GAME_SUPPORTS_SAVE )
-GAME( 1995, wwfmanib, wwfmania,  wunit, wwfmania, wwfmania, ROT0, "Midway", "WWF: Wrestlemania (rev 1.20 08/02/95)", GAME_SUPPORTS_SAVE )
+GAME( 1995, wwfmaniab,wwfmania,  wunit, wwfmania, wwfmania, ROT0, "Midway", "WWF: Wrestlemania (rev 1.20 08/02/95)", GAME_SUPPORTS_SAVE )
 GAME( 1995, openice,  0,         wunit, openice,  openice,  ROT0, "Midway", "2 On 2 Open Ice Challenge (rev 1.21)", GAME_SUPPORTS_SAVE )
 GAME( 1996, nbahangt, 0,         wunit, nbahangt, nbahangt, ROT0, "Midway", "NBA Hangtime (rev L1.1 04/16/96)", GAME_SUPPORTS_SAVE )
 GAME( 1996, nbamht,   nbahangt,  wunit, nbahangt, nbahangt, ROT0, "Midway", "NBA Maximum Hangtime (rev 1.03 06/09/97)", GAME_SUPPORTS_SAVE )

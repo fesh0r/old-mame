@@ -113,6 +113,9 @@ CPUS += MINX
 CPUS += SSEM
 CPUS += AVR8
 CPUS += TMS0980
+CPUS += I4004
+CPUS += SUPERFX
+CPUS += Z8
 
 
 #-------------------------------------------------
@@ -160,15 +163,7 @@ SOUNDS += C140
 SOUNDS += C352
 SOUNDS += TMS36XX
 SOUNDS += TMS3615
-SOUNDS += TMS5100
 SOUNDS += TMS5110
-SOUNDS += TMS5110A
-SOUNDS += CD2801
-SOUNDS += TMC0281
-SOUNDS += CD2802
-SOUNDS += M58817
-SOUNDS += TMC0285
-SOUNDS += TMS5200
 SOUNDS += TMS5220
 SOUNDS += VLM5030
 SOUNDS += ADPCM
@@ -1107,6 +1102,7 @@ $(MAMEOBJ)/sega.a: \
 	$(DRIVERS)/dotrikun.o $(VIDEO)/dotrikun.o \
 	$(DRIVERS)/genesis.o $(VIDEO)/genesis.o \
 	$(DRIVERS)/gpworld.o \
+	$(DRIVERS)/hikaru.o \
 	$(DRIVERS)/hshavoc.o \
 	$(DRIVERS)/kopunch.o $(VIDEO)/kopunch.o \
 	$(DRIVERS)/megadriv.o \
@@ -1480,15 +1476,18 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/aztarac.o $(AUDIO)/aztarac.o $(VIDEO)/aztarac.o \
 	$(DRIVERS)/beaminv.o \
 	$(DRIVERS)/big10.o \
+	$(DRIVERS)/bingor.o \
 	$(DRIVERS)/blackt96.o \
 	$(DRIVERS)/buster.o \
 	$(DRIVERS)/calchase.o \
 	$(DRIVERS)/calomega.o $(VIDEO)/calomega.o \
 	$(DRIVERS)/carrera.o \
 	$(DRIVERS)/cave.o $(VIDEO)/cave.o \
+	$(DRIVERS)/cb2001.o \
 	$(DRIVERS)/chsuper.o \
 	$(DRIVERS)/cidelsa.o $(VIDEO)/cidelsa.o \
 	$(DRIVERS)/coinmstr.o \
+	$(DRIVERS)/coinmvga.o \
 	$(DRIVERS)/comebaby.o \
 	$(DRIVERS)/coolpool.o \
 	$(DRIVERS)/cowrace.o \
@@ -1565,10 +1564,11 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/mole.o $(VIDEO)/mole.o \
 	$(DRIVERS)/mosaic.o $(VIDEO)/mosaic.o \
 	$(DRIVERS)/mrjong.o $(VIDEO)/mrjong.o \
+	$(DRIVERS)/multfish.o \
 	$(DRIVERS)/murogem.o \
 	$(DRIVERS)/murogmbl.o \
 	$(DRIVERS)/news.o $(VIDEO)/news.o \
-	$(DRIVERS)/norautp.o \
+	$(DRIVERS)/norautp.o  $(AUDIO)/norautp.o \
 	$(DRIVERS)/oneshot.o $(VIDEO)/oneshot.o \
 	$(DRIVERS)/onetwo.o \
 	$(DRIVERS)/othldrby.o $(VIDEO)/othldrby.o \
@@ -1579,7 +1579,10 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/pcat_nit.o \
 	$(DRIVERS)/pcxt.o \
 	$(DRIVERS)/peplus.o \
+	$(DRIVERS)/photon.o $(VIDEO)/pk8000.o \
+	$(DRIVERS)/photon2.o \
 	$(DRIVERS)/pipeline.o \
+	$(DRIVERS)/photoply.o \
 	$(DRIVERS)/pkscram.o \
 	$(DRIVERS)/pntnpuzl.o \
 	$(DRIVERS)/policetr.o $(VIDEO)/policetr.o \
@@ -1591,6 +1594,8 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/rbmk.o \
 	$(DRIVERS)/rcorsair.o \
 	$(DRIVERS)/re900.o \
+	$(DRIVERS)/roul.o \
+	$(DRIVERS)/sfbonus.o \
 	$(DRIVERS)/shangkid.o $(VIDEO)/shangkid.o \
 	$(DRIVERS)/skeetsht.o \
 	$(DRIVERS)/skimaxx.o \
@@ -1626,14 +1631,10 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/vcombat.o \
 	$(DRIVERS)/videopkr.o \
 	$(DRIVERS)/vp101.o \
+	$(DRIVERS)/vpoker.o \
 	$(DRIVERS)/vroulet.o \
 	$(DRIVERS)/wldarrow.o \
 	$(DRIVERS)/xyonix.o $(VIDEO)/xyonix.o \
-	$(DRIVERS)/hikaru.o \
-	$(DRIVERS)/cb2001.o \
-	$(DRIVERS)/sfbonus.o \
-	$(DRIVERS)/multfish.o \
-	$(DRIVERS)/roul.o \
 
 #-------------------------------------------------
 # layout dependencies
@@ -1735,7 +1736,8 @@ $(DRIVERS)/mw8080bw.o:	$(LAYOUT)/280zzzap.lh \
 						$(LAYOUT)/clowns.lh \
 						$(LAYOUT)/invaders.lh \
 						$(LAYOUT)/invad2ct.lh \
-						$(LAYOUT)/lagunar.lh
+						$(LAYOUT)/lagunar.lh \
+						$(LAYOUT)/spacwalk.lh
 
 $(DRIVERS)/meadows.o:	$(LAYOUT)/deadeye.lh \
 						$(LAYOUT)/gypsyjug.lh
@@ -1750,6 +1752,9 @@ $(DRIVERS)/namcos2.o:	$(LAYOUT)/finallap.lh
 
 $(DRIVERS)/neogeo.o:	$(LAYOUT)/neogeo.lh
 
+$(DRIVERS)/norautp.o:	$(LAYOUT)/noraut11.lh \
+						$(LAYOUT)/noraut12.lh
+
 $(DRIVERS)/overdriv.o:	$(LAYOUT)/overdriv.lh
 
 $(DRIVERS)/peplus.o:	$(LAYOUT)/peplus.lh \
@@ -1763,9 +1768,9 @@ $(DRIVERS)/polepos.o:	$(LAYOUT)/polepos.lh
 
 $(DRIVERS)/qix.o:		$(LAYOUT)/elecyoyo.lh
 
-$(DRIVERS)/re900.o:	$(LAYOUT)/re900.lh
+$(DRIVERS)/re900.o:		$(LAYOUT)/re900.lh
 
-$(DRIVERS)/roul.o:	$(LAYOUT)/roul.lh
+$(DRIVERS)/roul.o:		$(LAYOUT)/roul.lh
 
 $(DRIVERS)/sbrkout.o:	$(LAYOUT)/sbrkout.lh
 
@@ -1816,6 +1821,8 @@ $(DRIVERS)/tx1.o:		$(LAYOUT)/buggybjr.lh \
 
 $(DRIVERS)/undrfire.o:	$(LAYOUT)/cbombers.lh
 
+$(DRIVERS)/vicdual.o:	$(LAYOUT)/depthch.lh
+
 $(DRIVERS)/videopin.o:	$(LAYOUT)/videopin.lh
 
 $(DRIVERS)/videopkr.o:	$(LAYOUT)/videopkr.lh \
@@ -1840,3 +1847,10 @@ $(DRIVERS)/zac2650.o:	$(LAYOUT)/tinv2650.lh
 $(DRIVERS)/galaxian.o:	$(MAMESRC)/drivers/galdrvr.c
 $(DRIVERS)/mpu4.o:		$(MAMESRC)/drivers/mpu4drvr.c
 $(DRIVERS)/neogeo.o:	$(MAMESRC)/drivers/neodrvr.c
+$(MACHINE)/snes.o: 		$(MAMESRC)/machine/snesdsp1.c \
+				$(MAMESRC)/machine/snesdsp2.c \
+				$(MAMESRC)/machine/snesdsp3.c \
+				$(MAMESRC)/machine/snesdsp4.c \
+				$(MAMESRC)/machine/snesobc1.c \
+				$(MAMESRC)/machine/snesrtc.c \
+				$(MAMESRC)/machine/snessdd1.c

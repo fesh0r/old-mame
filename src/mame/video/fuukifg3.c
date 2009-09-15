@@ -162,7 +162,8 @@ VIDEO_START( fuuki32 )
 static void draw_sprites(const device_config *screen, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
-
+	const gfx_element *gfx = screen->machine->gfx[0];
+	bitmap_t *priority_bitmap = screen->machine->priority_bitmap;
 	const rectangle *visarea = video_screen_get_visible_area(screen);
 	int max_x =	visarea->max_x+1;
 	int max_y =	visarea->max_y+1;
@@ -222,10 +223,10 @@ static void draw_sprites(const device_config *screen, bitmap_t *bitmap, const re
 		else		{ ystart = 0;       yend = ynum;  yinc = +1; }
 
 #if 0
-		if(!( (input_code_pressed(KEYCODE_V) && (((attr >> 6)&3) == 0))
-		   || (input_code_pressed(KEYCODE_B) && (((attr >> 6)&3) == 1))
-		   || (input_code_pressed(KEYCODE_N) && (((attr >> 6)&3) == 2))
-		   || (input_code_pressed(KEYCODE_M) && (((attr >> 6)&3) == 3))
+		if(!( (input_code_pressed(screen->machine, KEYCODE_V) && (((attr >> 6)&3) == 0))
+		   || (input_code_pressed(screen->machine, KEYCODE_B) && (((attr >> 6)&3) == 1))
+		   || (input_code_pressed(screen->machine, KEYCODE_N) && (((attr >> 6)&3) == 2))
+		   || (input_code_pressed(screen->machine, KEYCODE_M) && (((attr >> 6)&3) == 3))
 		   ))
 #endif
 
@@ -234,7 +235,7 @@ static void draw_sprites(const device_config *screen, bitmap_t *bitmap, const re
 			for (x = xstart; x != xend; x += xinc)
 			{
 				if (xzoom == (16*8) && yzoom == (16*8))
-					pdrawgfx_transpen(		bitmap,cliprect,screen->machine->gfx[0],
+					pdrawgfx_transpen(		bitmap,cliprect,gfx,
 									code++,
 									attr & 0x3f,
 									flipx, flipy,
@@ -242,7 +243,7 @@ static void draw_sprites(const device_config *screen, bitmap_t *bitmap, const re
 									priority_bitmap,
 									pri_mask,15	);
 				else
-					pdrawgfxzoom_transpen(	bitmap,cliprect,screen->machine->gfx[0],
+					pdrawgfxzoom_transpen(	bitmap,cliprect,gfx,
 									code++,
 									attr & 0x3f,
 									flipx, flipy,
@@ -254,7 +255,7 @@ static void draw_sprites(const device_config *screen, bitmap_t *bitmap, const re
 
 #ifdef MAME_DEBUG
 #if 0
-if (input_code_pressed(KEYCODE_X))
+if (input_code_pressed(screen->machine, KEYCODE_X))
 {	/* Display some info on each sprite */
 	char buf[40];
 	sprintf(buf, "%Xx%X %X",xnum,ynum,(attr>>6)&3);
@@ -367,7 +368,7 @@ VIDEO_UPDATE( fuuki32 )
 
 	/* The bg colour is the last pen i.e. 0x1fff */
 	bitmap_fill(bitmap,cliprect,(0x800*4)-1);
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 
 	fuuki32_draw_layer(bitmap,cliprect, tm_back,   0, 1);
 	fuuki32_draw_layer(bitmap,cliprect, tm_middle, 0, 2);

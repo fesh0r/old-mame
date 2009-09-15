@@ -1247,7 +1247,7 @@ ROM_START( monsterb )
 	ROM_LOAD( "pr1512.u31",     0x0000, 0x0020, CRC(414ebe9b) SHA1(3df8694e3d26635d19fd4cdf02bd0998e8538b5b) )  /* U31 */
 ROM_END
 
-ROM_START( monster2 )
+ROM_START( monsterb2 )
 	ROM_REGION( 0xc000, "maincpu", 0 )
 	ROM_LOAD( "epr-1548",     0x0000, 0x2000, CRC(239f77c1) SHA1(2945e4b135c1c46bf3e0d947b3d9be052f12e8d8) )
 	ROM_LOAD( "epr-1549",     0x2000, 0x2000, CRC(40aeb223) SHA1(8e0cc1b53ded819673719ffe1fd69feb1ca6fa29) )
@@ -1538,19 +1538,19 @@ static DRIVER_INIT( sindbadm )
  *************************************/
 
 /* basic G-80 system with: CPU board, PROM board, Video I board, custom sound boards */
-GAME( 1981, astrob,   0,       astrob,   astrob,   astrob,   ROT270, "Sega", "Astro Blaster (version 3)", 0 )
-GAME( 1981, astrob2,  astrob,  astrob,   astrob2,  astrob,   ROT270, "Sega", "Astro Blaster (version 2)", 0 )
-GAME( 1981, astrob2a, astrob,  astrob,   astrob2,  astrob,   ROT270, "Sega", "Astro Blaster (version 2a)", 0 )
-GAME( 1981, astrob1,  astrob,  astrob,   astrob,   astrob,   ROT270, "Sega", "Astro Blaster (version 1)", GAME_NOT_WORKING )
+GAME( 1981, astrob,   0,       astrob,   astrob,   astrob,   ROT270, "Sega", "Astro Blaster (version 3)", GAME_IMPERFECT_SOUND )
+GAME( 1981, astrob2,  astrob,  astrob,   astrob2,  astrob,   ROT270, "Sega", "Astro Blaster (version 2)", GAME_IMPERFECT_SOUND )
+GAME( 1981, astrob2a, astrob,  astrob,   astrob2,  astrob,   ROT270, "Sega", "Astro Blaster (version 2a)", GAME_IMPERFECT_SOUND )
+GAME( 1981, astrob1,  astrob,  astrob,   astrob,   astrob,   ROT270, "Sega", "Astro Blaster (version 1)", GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
 GAME( 1981, 005,      0,       005,      005,      005,      ROT270, "Sega", "005", GAME_IMPERFECT_SOUND )
 
 /* basic G-80 system with individual background boards */
-GAME( 1981, spaceod,  0,       spaceod,  spaceod,  spaceod,  ROT270, "Sega", "Space Odyssey (version 2)", 0 )
-GAME( 1981, spaceod2, spaceod, spaceod,  spaceod,  spaceod,  ROT270, "Sega", "Space Odyssey (version 1)", 0 )
-GAME( 1982, monsterb, 0,       monsterb, monsterb, monsterb, ROT270, "Sega", "Monster Bash", 0 )
+GAME( 1981, spaceod,  0,       spaceod,  spaceod,  spaceod,  ROT270, "Sega", "Space Odyssey (version 2)", GAME_IMPERFECT_SOUND )
+GAME( 1981, spaceod2, spaceod, spaceod,  spaceod,  spaceod,  ROT270, "Sega", "Space Odyssey (version 1)", GAME_IMPERFECT_SOUND )
+GAME( 1982, monsterb, 0,       monsterb, monsterb, monsterb, ROT270, "Sega", "Monster Bash", GAME_IMPERFECT_SOUND )
 
 /* 2-board G-80 system */
-GAME( 1982, monster2, monsterb,monsterb, monsterb, monster2, ROT270, "Sega", "Monster Bash (2 board version)", 0 )
+GAME( 1982, monsterb2,monsterb,monsterb, monsterb, monster2, ROT270, "Sega", "Monster Bash (2 board version)", GAME_IMPERFECT_SOUND )
 GAME( 1983, pignewt,  0,       pignewt,  pignewt,  pignewt,  ROT270, "Sega", "Pig Newton (version C)", GAME_IMPERFECT_SOUND )
 GAME( 1983, pignewta, pignewt, pignewt,  pignewta, pignewt,  ROT270, "Sega", "Pig Newton (version A)", GAME_IMPERFECT_SOUND )
 GAME( 1983, sindbadm, 0,       sindbadm, sindbadm, sindbadm, ROT270, "Sega", "Sindbad Mystery", 0 )

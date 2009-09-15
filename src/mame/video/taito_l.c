@@ -147,7 +147,7 @@ WRITE8_HANDLER( taitol_control_w )
 
 	/* bit 4 flip screen */
 	flipscreen = data & 0x10;
-	tilemap_set_flip(ALL_TILEMAPS,flipscreen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
+	tilemap_set_flip_all(space->machine,flipscreen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
 	/* bit 5 display enable - handled in vh_screenrefresh() */
 }
@@ -282,7 +282,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 				color,
 				flipx,flipy,
 				sx,sy,
-				priority_bitmap,
+				machine->priority_bitmap,
 				(color & 0x08) ? 0xaa : 0x00,0);
 	}
 }
@@ -310,7 +310,7 @@ VIDEO_UPDATE( taitol )
 
 	if (cur_ctrl & 0x20)	/* display enable */
 	{
-		bitmap_fill(priority_bitmap,cliprect,0);
+		bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 
 		tilemap_draw(bitmap,cliprect,bg19_tilemap,0,0);
 

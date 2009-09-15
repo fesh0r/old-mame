@@ -455,7 +455,7 @@ WRITE16_HANDLER( midyunit_dma_w )
 
 if (LOG_DMA)
 {
-	if (input_code_pressed(KEYCODE_L))
+	if (input_code_pressed(space->machine, KEYCODE_L))
 	{
 		logerror("----\n");
 		logerror("DMA command %04X: (xflip=%d yflip=%d)\n",
@@ -469,7 +469,7 @@ if (LOG_DMA)
 	}
 }
 
-	profiler_mark(PROFILER_USER1);
+	profiler_mark_start(PROFILER_USER1);
 
 	/* fill in the basic data */
 	dma_state.rowbytes = (INT16)dma_register[DMA_ROWBYTES];
@@ -541,7 +541,7 @@ if (LOG_DMA)
 	/* signal we're done */
 	timer_set(space->machine, ATTOTIME_IN_NSEC(41 * dma_state.width * dma_state.height), NULL, 0, dma_callback);
 
-	profiler_mark(PROFILER_END);
+	profiler_mark_end();
 }
 
 

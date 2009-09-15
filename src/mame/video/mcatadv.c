@@ -124,7 +124,7 @@ static void draw_sprites( running_machine *machine, bitmap_t *bitmap, const rect
 
 				if ((drawypos >= cliprect->min_y) && (drawypos <= cliprect->max_y)) {
 					destline = BITMAP_ADDR16(bitmap, drawypos, 0);
-					priline = BITMAP_ADDR8(priority_bitmap, drawypos, 0);
+					priline = BITMAP_ADDR8(machine->priority_bitmap, drawypos, 0);
 
 					for (xcnt = xstart; xcnt != xend; xcnt += xinc) {
 						drawxpos = x+xcnt-global_x;
@@ -202,7 +202,7 @@ VIDEO_UPDATE( mcatadv )
 	int i;
 
 	bitmap_fill(bitmap, cliprect, get_black_pen(screen->machine));
-	bitmap_fill(priority_bitmap, cliprect, 0);
+	bitmap_fill(screen->machine->priority_bitmap, cliprect, 0);
 
 	if(mcatadv_scroll[2] != palette_bank1) {
 		palette_bank1 = mcatadv_scroll[2];
@@ -225,22 +225,22 @@ VIDEO_UPDATE( mcatadv )
 	for (i=0; i<=3; i++)
 	{
 	#ifdef MAME_DEBUG
-			if (!input_code_pressed(KEYCODE_Q))
+			if (!input_code_pressed(screen->machine, KEYCODE_Q))
 	#endif
 			mcatadv_draw_tilemap_part(mcatadv_scroll,  mcatadv_videoram1, i, mcatadv_tilemap1, bitmap, cliprect);
 
 	#ifdef MAME_DEBUG
-			if (!input_code_pressed(KEYCODE_W))
+			if (!input_code_pressed(screen->machine, KEYCODE_W))
 	#endif
 				mcatadv_draw_tilemap_part(mcatadv_scroll2, mcatadv_videoram2, i, mcatadv_tilemap2, bitmap, cliprect);
 	}
 
-	profiler_mark(PROFILER_USER1);
+	profiler_mark_start(PROFILER_USER1);
 #ifdef MAME_DEBUG
-	if (!input_code_pressed(KEYCODE_E))
+	if (!input_code_pressed(screen->machine, KEYCODE_E))
 #endif
 		draw_sprites (screen->machine, bitmap, cliprect);
-	profiler_mark(PROFILER_END);
+	profiler_mark_end();
 	return 0;
 }
 

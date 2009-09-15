@@ -115,7 +115,7 @@ static void a310_set_timer(int tmr)
 {
 	double freq;
 
-	if((double)ioc_timercnt[tmr] != 0) // FIXME: dmdtouch does a divide by zero?
+	if(ioc_timercnt[tmr] != 0) // FIXME: dmdtouch does a divide by zero?
 	{
 		freq = 2000000.0 / (double)ioc_timercnt[tmr];
 	//  logerror("IOC: starting timer %d, %d ticks, freq %f Hz\n", tmr, ioc_timercnt[tmr], freq);
@@ -202,7 +202,7 @@ READ32_HANDLER(memc_logical_r)
 		}
 		else
 		{
-			printf("ARCHIMEDES_MEMC: Reading unmapped page, what do we do?\n");
+			logerror("ARCHIMEDES_MEMC: Reading unmapped page, what do we do?\n");
 		}
 	}
 
@@ -232,7 +232,7 @@ WRITE32_HANDLER(memc_logical_w)
 		}
 		else
 		{
-			printf("ARCHIMEDES_MEMC: Writing unmapped page, what do we do?\n");
+			logerror("ARCHIMEDES_MEMC: Writing unmapped page, what do we do?\n");
 		}
 	}
 }

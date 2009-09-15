@@ -217,7 +217,7 @@ logerror("Sprite number %04x had %02x invalid chunks\n",tilenum,bad_chunks);
 				sprite_ptr->flipx,sprite_ptr->flipy,
 				sprite_ptr->x,sprite_ptr->y,
 				sprite_ptr->zoomx,sprite_ptr->zoomy,
-				priority_bitmap,sprite_ptr->primask,0);
+				machine->priority_bitmap,sprite_ptr->primask,0);
 	}
 }
 
@@ -350,7 +350,7 @@ static void draw_sprites_cbombers(running_machine *machine, bitmap_t *bitmap,con
 				sprite_ptr->flipx,sprite_ptr->flipy,
 				sprite_ptr->x,sprite_ptr->y,
 				sprite_ptr->zoomx,sprite_ptr->zoomy,
-				priority_bitmap,sprite_ptr->primask,0);
+				machine->priority_bitmap,sprite_ptr->primask,0);
 	}
 }
 
@@ -370,36 +370,36 @@ VIDEO_UPDATE( undrfire )
 #endif
 
 #ifdef MAME_DEBUG
-	if (input_code_pressed_once (KEYCODE_X))
+	if (input_code_pressed_once (screen->machine, KEYCODE_X))
 	{
 		dislayer[5] ^= 1;
 		popmessage("piv text: %01x",dislayer[5]);
 	}
-	if (input_code_pressed_once (KEYCODE_C))
+	if (input_code_pressed_once (screen->machine, KEYCODE_C))
 	{
 		dislayer[0] ^= 1;
 		popmessage("bg0: %01x",dislayer[0]);
 	}
 
-	if (input_code_pressed_once (KEYCODE_V))
+	if (input_code_pressed_once (screen->machine, KEYCODE_V))
 	{
 		dislayer[1] ^= 1;
 		popmessage("bg1: %01x",dislayer[1]);
 	}
 
-	if (input_code_pressed_once (KEYCODE_B))
+	if (input_code_pressed_once (screen->machine, KEYCODE_B))
 	{
 		dislayer[2] ^= 1;
 		popmessage("bg2: %01x",dislayer[2]);
 	}
 
-	if (input_code_pressed_once (KEYCODE_N))
+	if (input_code_pressed_once (screen->machine, KEYCODE_N))
 	{
 		dislayer[3] ^= 1;
 		popmessage("bg3: %01x",dislayer[3]);
 	}
 
-	if (input_code_pressed_once (KEYCODE_M))
+	if (input_code_pressed_once (screen->machine, KEYCODE_M))
 	{
 		dislayer[4] ^= 1;
 		popmessage("sprites: %01x",dislayer[4]);
@@ -421,7 +421,7 @@ VIDEO_UPDATE( undrfire )
 	pivlayer[1] = pivlayer[0]^1;
 	pivlayer[2] = 2;
 
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 	bitmap_fill(bitmap,cliprect,0);	/* wrong color? */
 
 
@@ -437,22 +437,22 @@ VIDEO_UPDATE( undrfire )
 #ifdef MAME_DEBUG
 	if (dislayer[layer[0]]==0)
 #endif
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[0],0,1);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[0],0,1);
 
 #ifdef MAME_DEBUG
 	if (dislayer[layer[1]]==0)
 #endif
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[1],0,2);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[1],0,2);
 
 #ifdef MAME_DEBUG
 	if (dislayer[layer[2]]==0)
 #endif
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[2],0,4);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[2],0,4);
 
 #ifdef MAME_DEBUG
 	if (dislayer[layer[3]]==0)
 #endif
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[3],0,8);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[3],0,8);
 
 #ifdef MAME_DEBUG
 	if (dislayer[4]==0)
@@ -476,7 +476,7 @@ VIDEO_UPDATE( undrfire )
 #endif
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,pivlayer[2],0,0);	/* piv text layer */
 
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[4],0,0);	/* TC0480SCP text layer */
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[4],0,0);	/* TC0480SCP text layer */
 
 	/* See if we should draw artificial gun targets */
 	/* (not yet implemented...) */
@@ -514,36 +514,36 @@ VIDEO_UPDATE( cbombers )
 #endif
 
 #ifdef MAME_DEBUG
-	if (input_code_pressed_once (KEYCODE_X))
+	if (input_code_pressed_once (screen->machine, KEYCODE_X))
 	{
 		dislayer[5] ^= 1;
 		popmessage("piv text: %01x",dislayer[5]);
 	}
-	if (input_code_pressed_once (KEYCODE_C))
+	if (input_code_pressed_once (screen->machine, KEYCODE_C))
 	{
 		dislayer[0] ^= 1;
 		popmessage("bg0: %01x",dislayer[0]);
 	}
 
-	if (input_code_pressed_once (KEYCODE_V))
+	if (input_code_pressed_once (screen->machine, KEYCODE_V))
 	{
 		dislayer[1] ^= 1;
 		popmessage("bg1: %01x",dislayer[1]);
 	}
 
-	if (input_code_pressed_once (KEYCODE_B))
+	if (input_code_pressed_once (screen->machine, KEYCODE_B))
 	{
 		dislayer[2] ^= 1;
 		popmessage("bg2: %01x",dislayer[2]);
 	}
 
-	if (input_code_pressed_once (KEYCODE_N))
+	if (input_code_pressed_once (screen->machine, KEYCODE_N))
 	{
 		dislayer[3] ^= 1;
 		popmessage("bg3: %01x",dislayer[3]);
 	}
 
-	if (input_code_pressed_once (KEYCODE_M))
+	if (input_code_pressed_once (screen->machine, KEYCODE_M))
 	{
 		dislayer[4] ^= 1;
 		popmessage("sprites: %01x",dislayer[4]);
@@ -565,7 +565,7 @@ VIDEO_UPDATE( cbombers )
 	pivlayer[1] = pivlayer[0]^1;
 	pivlayer[2] = 2;
 
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 	bitmap_fill(bitmap,cliprect,0);	/* wrong color? */
 
 
@@ -581,22 +581,22 @@ VIDEO_UPDATE( cbombers )
 #ifdef MAME_DEBUG
 	if (dislayer[layer[0]]==0)
 #endif
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[0],0,1);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[0],0,1);
 
 #ifdef MAME_DEBUG
 	if (dislayer[layer[1]]==0)
 #endif
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[1],0,2);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[1],0,2);
 
 #ifdef MAME_DEBUG
 	if (dislayer[layer[2]]==0)
 #endif
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[2],0,4);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[2],0,4);
 
 #ifdef MAME_DEBUG
 	if (dislayer[layer[3]]==0)
 #endif
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[3],0,8);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[3],0,8);
 
 #ifdef MAME_DEBUG
 	if (dislayer[4]==0)
@@ -620,7 +620,7 @@ VIDEO_UPDATE( cbombers )
 #endif
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,pivlayer[2],0,0);	/* piv text layer */
 
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[4],0,0);	/* TC0480SCP text layer */
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[4],0,0);	/* TC0480SCP text layer */
 
 /* Enable this to see rotation (?) control words */
 #if 0

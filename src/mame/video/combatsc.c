@@ -443,7 +443,7 @@ MACHINE_RESET( combasc )
 
 WRITE8_HANDLER( combasc_pf_control_w )
 {
-	K007121_ctrl_w(combasc_video_circuit,offset,data);
+	K007121_ctrl_w(space->machine,combasc_video_circuit,offset,data);
 
 	if (offset == 7)
 		tilemap_set_flip(bg_tilemap[combasc_video_circuit],(data & 0x08) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
@@ -516,7 +516,7 @@ VIDEO_UPDATE( combasc )
 	tilemap_set_scrolly(bg_tilemap[0],0,K007121_ctrlram[0][0x02]);
 	tilemap_set_scrolly(bg_tilemap[1],0,K007121_ctrlram[1][0x02]);
 
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 
 	if (priority == 0)
 	{

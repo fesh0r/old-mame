@@ -71,7 +71,6 @@ enum
 
 /* maxima */
 #define MAX_GFX_ELEMENTS		32
-#define MAX_MEMORY_REGIONS		32
 
 
 /* MESS vs. MAME abstractions */
@@ -130,8 +129,12 @@ typedef struct _timer_private timer_private;
 typedef struct _state_private state_private;
 typedef struct _memory_private memory_private;
 typedef struct _palette_private palette_private;
+typedef struct _tilemap_private tilemap_private;
 typedef struct _streams_private streams_private;
 typedef struct _devices_private devices_private;
+typedef struct _romload_private romload_private;
+typedef struct _sound_private sound_private;
+typedef struct _input_private input_private;
 typedef struct _input_port_private input_port_private;
 typedef struct _ui_input_private ui_input_private;
 typedef struct _cheat_private cheat_private;
@@ -148,7 +151,7 @@ struct _running_machine
 	const input_port_config *portconfig;		/* points to a list of input port configurations */
 
 	/* CPU information */
-	const device_config *	cpu[8];				/* array of first 8 CPU devices */
+	const device_config *	firstcpu;			/* first CPU (allows for quick iteration via typenext) */
 
 	/* game-related information */
 	const game_driver *		gamedrv;			/* points to the definition of the game machine */
@@ -163,6 +166,7 @@ struct _running_machine
 	const pen_t *			pens;				/* remapped palette pen numbers */
 	struct _colortable_t *	colortable;			/* global colortable for remapping */
 	pen_t *					shadow_table;		/* table for looking up a shadowed pen */
+	bitmap_t *				priority_bitmap;	/* priority bitmap */
 
 	/* audio-related information */
 	int						sample_rate;		/* the digital audio sample rate */
@@ -177,8 +181,12 @@ struct _running_machine
 	state_private *			state_data;			/* internal data from state.c */
 	memory_private *		memory_data;		/* internal data from memory.c */
 	palette_private *		palette_data;		/* internal data from palette.c */
+	tilemap_private *		tilemap_data;		/* internal data from tilemap.c */
 	streams_private *		streams_data;		/* internal data from streams.c */
 	devices_private *		devices_data;		/* internal data from devices.c */
+	romload_private *		romload_data;		/* internal data from romload.c */
+	sound_private *			sound_data;			/* internal data from sound.c */
+	input_private *			input_data;			/* internal data from input.c */
 	input_port_private *	input_port_data;	/* internal data from inptport.c */
 	ui_input_private *		ui_input_data;		/* internal data from uiinput.c */
 	cheat_private *			cheat_data;			/* internal data from cheat.c */
@@ -220,7 +228,7 @@ struct _mame_system_time
 
 
 /***************************************************************************
-    GLOBAL VARAIBLES
+    GLOBAL VARIABLES
 ***************************************************************************/
 
 extern const char mame_disclaimer[];
@@ -260,6 +268,9 @@ void add_exit_callback(running_machine *machine, void (*callback)(running_machin
 
 /* handle update tasks for a frame boundary */
 void mame_frame_update(running_machine *machine);
+
+/* return true if the given machine is valid */
+int mame_is_valid_machine(running_machine *machine);
 
 
 

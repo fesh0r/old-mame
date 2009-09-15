@@ -120,8 +120,8 @@ UINT32* stv_vdp2_cram;
 
 static void stv_vdp2_dynamic_res_change(running_machine *machine);
 static UINT8 get_hblank(running_machine *machine);
-static int   get_vblank_duration(running_machine *machine);
-//int get_hblank_duration(running_machine *machine); //<- when we know that...
+static int get_vblank_duration(running_machine *machine);
+static int get_hblank_duration(running_machine *machine);
 static UINT8 get_odd_bit(running_machine *machine);
 
 static void refresh_palette_data(running_machine *machine);
@@ -2163,7 +2163,7 @@ static struct _stv_rbg_cache_data
 
 #define mul_fixed32( a, b ) mul_32x32_shift( a, b, 16 )
 
-static void stv_vdp2_fill_rotation_parameter_table( UINT8 rot_parameter )
+static void stv_vdp2_fill_rotation_parameter_table( running_machine *machine, UINT8 rot_parameter )
 {
 	UINT32 address;
 
@@ -2222,10 +2222,10 @@ static void stv_vdp2_fill_rotation_parameter_table( UINT8 rot_parameter )
 	/*Attempt to show on screen the rotation table*/
 	if(LOG_ROZ == 2)
 	{
-		if(input_code_pressed_once(JOYCODE_Y_UP_SWITCH))
+		if(input_code_pressed_once(machine, JOYCODE_Y_UP_SWITCH))
 			debug.roz++;
 
-		if(input_code_pressed_once(JOYCODE_Y_DOWN_SWITCH))
+		if(input_code_pressed_once(machine, JOYCODE_Y_DOWN_SWITCH))
 			debug.roz--;
 
 		if(debug.roz > 10)
@@ -4752,7 +4752,8 @@ static void stv_vdp2_draw_NBG3(running_machine *machine, bitmap_t *bitmap, const
 static void stv_vdp2_draw_rotation_screen(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int iRP)
 {
 	rectangle roz_clip_rect, mycliprect;
-	int planesizex = 0, planesizey = 0, planerenderedsizex, planerenderedsizey;
+	int planesizex = 0, planesizey = 0;
+	int planerenderedsizex, planerenderedsizey;
 	UINT8 colour_calculation_enabled;
 	UINT8 window_control;
 	UINT8 fade_control;
@@ -4800,7 +4801,7 @@ static void stv_vdp2_draw_rotation_screen(running_machine *machine, bitmap_t *bi
 		stv2_current_tilemap.map_count = 16;
 	}
 
-	stv_vdp2_fill_rotation_parameter_table(iRP);
+	stv_vdp2_fill_rotation_parameter_table(machine, iRP);
 
 	if ( iRP == 1 )
 	{
@@ -4885,7 +4886,7 @@ static void stv_vdp2_draw_rotation_screen(running_machine *machine, bitmap_t *bi
 		stv2_current_tilemap.window_control = 0;
 		fade_control = stv2_current_tilemap.fade_control;
 		stv2_current_tilemap.fade_control = 0;
-		profiler_mark(PROFILER_USER1);
+		profiler_mark_start(PROFILER_USER1);
 		if ( LOG_VDP2 ) logerror( "Checking for cached RBG bitmap, cache_dirty = %d, memcmp() = %d\n", stv_rbg_cache_data.is_cache_dirty, memcmp(&stv_rbg_cache_data.layer_data[iRP-1],&stv2_current_tilemap,sizeof(stv2_current_tilemap)));
 		if ( (stv_rbg_cache_data.is_cache_dirty & iRP) ||
 			memcmp(&stv_rbg_cache_data.layer_data[iRP-1],&stv2_current_tilemap,sizeof(stv2_current_tilemap)) != 0 )
@@ -4904,7 +4905,7 @@ static void stv_vdp2_draw_rotation_screen(running_machine *machine, bitmap_t *bi
 				stv_rbg_cache_data.map_offset_max[iRP-1], stv_rbg_cache_data.tile_offset_min[iRP-1], stv_rbg_cache_data.tile_offset_max[iRP-1] );
 		}
 
-		profiler_mark(PROFILER_END);
+		profiler_mark_end();
 
 		stv2_current_tilemap.colour_calculation_enabled = colour_calculation_enabled;
 		if ( colour_calculation_enabled )
@@ -4925,9 +4926,9 @@ static void stv_vdp2_draw_rotation_screen(running_machine *machine, bitmap_t *bi
 
 		stv2_current_tilemap.fade_control = fade_control;
 
-		profiler_mark(PROFILER_USER2);
+		profiler_mark_start(PROFILER_USER2);
 		stv_vdp2_copy_roz_bitmap(bitmap, stv_vdp2_roz_bitmap[iRP-1], &mycliprect, iRP, planesizex, planesizey, planerenderedsizex, planerenderedsizey );
-		profiler_mark(PROFILER_END);
+		profiler_mark_end();
 	}
 
 }
@@ -5277,8 +5278,19 @@ static UINT8 get_hblank(running_machine *machine)
 		return 0;
 }
 
-//int get_hblank_duration(running_machine *machine)
-//...
+/* the following is a complete guess-work */
+static int get_hblank_duration(running_machine *machine)
+{
+	switch( STV_VDP2_HRES & 3 )
+	{
+		case 0: return 80; //400-320
+		case 1: return 104; break; //456-352
+		case 2: return 160; break; //(400-320)*2
+		case 3: return 208; break; //(456-352)*2
+	}
+
+	return 0;
+}
 
 UINT8 stv_get_vblank(running_machine *machine)
 {
@@ -5295,26 +5307,21 @@ UINT8 stv_get_vblank(running_machine *machine)
 /*some vblank lines measurements (according to Charles MacDonald)*/
 static int get_vblank_duration(running_machine *machine)
 {
-	/* TODO: +64 is probably due of missing pixel clock/screen raw params hook-up.
-             Problem is, I don't know if it's possible to handle that in MAME with
-             all this dynamic resolution babblecrap...
-             */
-
 	if(STV_VDP2_HRES & 4)
 	{
 		switch(STV_VDP2_HRES & 1)
 		{
-			case 0: return 45+64; //31kHz Monitor
-			case 1: return 82+64; //Hi-Vision Monitor
+			case 0: return 45; //31kHz Monitor
+			case 1: return 82; //Hi-Vision Monitor
 		}
 	}
 
 	switch(STV_VDP2_VRES & 3)
 	{
-		case 0: return 39+64; //263-224
-		case 1: return 23+64; //263-240
-		case 2: return 7+64; //263-256
-		case 3: return 7+64; //263-256
+		case 0: return 40; //264-224
+		case 1: return 24; //264-240
+		case 2: return 8; //264-256
+		case 3: return 8; //264-256
 	}
 
 	return 0;
@@ -5435,7 +5442,7 @@ VIDEO_START( stv_vdp2 )
 /*    & height / width not yet understood (docs-wise MUST be bigger than normal visible area)*/
 static TIMER_CALLBACK( dyn_res_change )
 {
-	UINT8 vblank_period;
+	int vblank_period,hblank_period;
 	rectangle visarea = *video_screen_get_visible_area(machine->primary_screen);
 	visarea.min_x = 0;
 	visarea.max_x = horz_res-1;
@@ -5443,9 +5450,10 @@ static TIMER_CALLBACK( dyn_res_change )
 	visarea.max_y = vert_res-1;
 
 	vblank_period = get_vblank_duration(machine);
+	hblank_period = get_hblank_duration(machine);
 //  popmessage("%d",vblank_period);
 //  hblank_period = get_hblank_duration(machine->primary_screen);
-	video_screen_configure(machine->primary_screen, horz_res*2, (vert_res+vblank_period), &visarea, video_screen_get_frame_period(machine->primary_screen).attoseconds );
+	video_screen_configure(machine->primary_screen, (horz_res+hblank_period), (vert_res+vblank_period), &visarea, video_screen_get_frame_period(machine->primary_screen).attoseconds );
 }
 
 static void stv_vdp2_dynamic_res_change(running_machine *machine)
@@ -6219,32 +6227,32 @@ VIDEO_UPDATE( stv_vdp2 )
 	stv_vdp2_draw_back(screen->machine, bitmap,cliprect);
 
 	#if DEBUG_MODE
-	if(input_code_pressed_once(KEYCODE_T))
+	if(input_code_pressed_once(screen->machine, KEYCODE_T))
 	{
 		debug.l_en^=1;
 		popmessage("NBG3 %sabled",debug.l_en & 1 ? "en" : "dis");
 	}
-	if(input_code_pressed_once(KEYCODE_Y))
+	if(input_code_pressed_once(screen->machine, KEYCODE_Y))
 	{
 		debug.l_en^=2;
 		popmessage("NBG2 %sabled",debug.l_en & 2 ? "en" : "dis");
 	}
-	if(input_code_pressed_once(KEYCODE_U))
+	if(input_code_pressed_once(screen->machine, KEYCODE_U))
 	{
 		debug.l_en^=4;
 		popmessage("NBG1 %sabled",debug.l_en & 4 ? "en" : "dis");
 	}
-	if(input_code_pressed_once(KEYCODE_I))
+	if(input_code_pressed_once(screen->machine, KEYCODE_I))
 	{
 		debug.l_en^=8;
 		popmessage("NBG0 %sabled",debug.l_en & 8 ? "en" : "dis");
 	}
-	if(input_code_pressed_once(KEYCODE_K))
+	if(input_code_pressed_once(screen->machine, KEYCODE_K))
 	{
 		debug.l_en^=0x10;
 		popmessage("RBG0 %sabled",debug.l_en & 0x10 ? "en" : "dis");
 	}
-	if(input_code_pressed_once(KEYCODE_O))
+	if(input_code_pressed_once(screen->machine, KEYCODE_O))
 	{
 		debug.l_en^=0x20;
 		popmessage("SPRITE %sabled",debug.l_en & 0x20 ? "en" : "dis");
@@ -6287,7 +6295,7 @@ VIDEO_UPDATE( stv_vdp2 )
     ,STV_VDP2_N1ZMXI,STV_VDP2_N1ZMXD
     ,STV_VDP2_N1ZMYI,STV_VDP2_N1ZMYD);*/
 
-	if ( input_code_pressed_once(KEYCODE_W) )
+	if ( input_code_pressed_once(screen->machine, KEYCODE_W) )
 	{
 		int tilecode;
 
@@ -6331,7 +6339,7 @@ VIDEO_UPDATE( stv_vdp2 )
 		}
 	}
 
-	if ( input_code_pressed_once(KEYCODE_N) )
+	if ( input_code_pressed_once(screen->machine, KEYCODE_N) )
 	{
 		FILE *fp;
 
@@ -6343,7 +6351,7 @@ VIDEO_UPDATE( stv_vdp2 )
 		}
 	}
 
-	if ( input_code_pressed_once(KEYCODE_M) )
+	if ( input_code_pressed_once(screen->machine, KEYCODE_M) )
 	{
 		FILE *fp;
 

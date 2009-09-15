@@ -70,6 +70,102 @@
     Or it could really be the last address bit to allow up to 512MB of data on a cart?
 
     Normal address starts with 0xa0000000 to enable auto-advance and standard addressing mode.
+
+------------------------
+
+Atomiswave ROM board specs from Cah4e3 @ http://cah4e3.wordpress.com/2009/07/26/some-atomiswave-info/
+
+ AW_EPR_OFFSETL                                          Register addres: 0x5f7000
+ +-------------------------------------------------------------------------------+
+ |                                  bit15-0                                      |
+ +-------------------------------------------------------------------------------+
+ |                         EPR data offset low word                              |
+ +-------------------------------------------------------------------------------+
+
+ AW_EPR_OFFSETH                                          Register addres: 0x5f7004
+ +-------------------------------------------------------------------------------+
+ |                                  bit15-0                                      |
+ +-------------------------------------------------------------------------------+
+ |                          EPR data offset hi word                              |
+ +-------------------------------------------------------------------------------+
+
+  Both low and high words of 32-bit offset from start of EPR-ROM area. Used for
+  reading header and programm code data, cannot be used for reading MPR-ROMs data.
+
+ AW_MPR_RECORD_INDEX                                     Register addres: 0x5f700c
+ +-------------------------------------------------------------------------------+
+ |                                  bit15-0                                      |
+ +-------------------------------------------------------------------------------+
+ |                          File system record index                             |
+ +-------------------------------------------------------------------------------+
+
+  This register contains index of MPR-ROM file system record (64-bytes in size) to
+  read throught DMA. Internal DMA offset register is assigned as AW_MPR_RECORD_INDEX<<6
+  from start of MPR-ROM area. Size of DMA transaction not limited, it is possible
+  to read any number of records or just part of it.
+
+ AW_MPR_FIRST_FILE_INDEX                                 Register addres: 0x5f7010
+ +-------------------------------------------------------------------------------+
+ |                                  bit15-0                                      |
+ +-------------------------------------------------------------------------------+
+ |                           First file record index                             |
+ +-------------------------------------------------------------------------------+
+
+  This register assign for internal cart circuit index of record in MPR-ROM file
+  system sub-area that contain information about first file of MPR-ROM files
+  sub-area. Internal circuit using this record to read absolute first file offset
+  from start of MPR-ROM area and calculate normal offset for each other file
+  requested, since MPR-ROM file data sub-area can be assighed only with relative
+  offsets from start of such sub-area.
+
+ AW_MPR_FILE_OFFSETL                                     Register addres: 0x5f7014
+ +-------------------------------------------------------------------------------+
+ |                                  bit15-0                                      |
+ +-------------------------------------------------------------------------------+
+ |                         MPR file offset low word                              |
+ +-------------------------------------------------------------------------------+
+
+ AW_MPR_FILE_OFFSETH                                     Register addres: 0x5f7018
+ +-------------------------------------------------------------------------------+
+ |                                  bit15-0                                      |
+ +-------------------------------------------------------------------------------+
+ |                          MPR file offset hi word                              |
+ +-------------------------------------------------------------------------------+
+
+  Both low and high words of 32-bit relative offset from start of MPR-ROM files
+  sub-area. Used by internal circuit to calculate absolute offset using data
+  from AW_MPR_FIRST_FILE_INDEX register. Cannot be used for reading EPR-ROM
+  data nor even MPR-ROM file system sub-area data.
+
+ In short:
+
+     EPR-ROM
+ +--------------+ 0x00000000
+ |              |
+ |    HEADER    +- AW_EPR_OFFSET << 1
+ |              |
+ +--------------+
+ |              |
+ |     CODE     +- AW_EPR_OFFSET << 1
+ |              |
+ |              |
+ +--------------+ 0x007fffff
+
+     MPR-ROMS
+ +--------------+ 0x00000000
+ | FS_HEADER    |
+ | FS_RECORD[1] +- (AW_MPR_RECORD_INDEX << 6)
+ | FS_RECORD[2] |
+ | FS_RECORD[3] +- (AW_MPR_FIRST_FILE_INDEX << 6)
+ |     ...      |
+ | FS_RECORD[N] |
+ +--------------+- FS_RECORD[AW_MPR_FIRST_FILE_INDEX].FILE_ABS_OFFSET
+ | FILE_0       |
+ | FILE_1       +- (AW_MPR_FILE_OFFSET << 1) + FS_RECORD[AW_MPR_FIRST_FILE_INDEX].FILE_ABS_OFFSET
+ |     ...      |
+ | FILE_N       |
+ +--------------+ 0x07ffffff
+
 */
 
 // NOTE: all accesses are 16 or 32 bits wide but only 16 bits are valid
@@ -84,7 +180,9 @@
 
 #define NAOMIBD_FLAG_AUTO_ADVANCE	(8)	// address auto-advances on read
 #define NAOMIBD_FLAG_SPECIAL_MODE	(4)	// used to access protection registers
-#define NAOMIBD_FLAG_ADDRESS_SHUFFLE	(2)	// 0 to let protection chip scramble address lines, 1 for normal
+#define NAOMIBD_FLAG_ADDRESS_SHUFFLE	(2)	// 0 to let protection chip en/decrypt, 1 for normal
+
+#define NAOMIBD_PRINTF_PROTECTION	(0)	// 1 to printf protection access details
 
 /*************************************
  *
@@ -107,7 +205,8 @@ typedef struct _naomibd_config_table naomibd_config_table;
 struct _naomibd_config_table
 {
 	const char *name;
-	UINT32	transtbl[MAX_PROT_REGIONS*2];
+	int reverse_bytes;
+	UINT32	transtbl[MAX_PROT_REGIONS*3];
 };
 
 typedef struct _naomibd_state naomibd_state;
@@ -124,21 +223,75 @@ struct _naomibd_state
 	UINT32				rom_offset, rom_offset_flags, dma_count;
 	UINT32				dma_offset, dma_offset_flags;
 	UINT32				prot_offset, prot_key;
+	UINT32				aw_offset, aw_file_base, aw_file_offset;
 
-	UINT32				*prot_translate;
+	const UINT32				*prot_translate;
+	int				prot_reverse_bytes;
+	#if NAOMIBD_PRINTF_PROTECTION
+	int				prot_pio_count;
+	#endif
 };
 
 // maps protection offsets to real addresses
-static naomibd_config_table naomibd_translate_tbl[] =
+// format of array: encryption key, address written, address to switch out with.  if key is -1 it's ignored and address written is the match.
+// if key is not -1, it's used for the match instead of the address written.
+static const naomibd_config_table naomibd_translate_tbl[] =
 {
-	{ "doa2", { 0x500, 0, 0x20504, 0x20000, 0x40508, 0x40000, 0x6050c, 0x60000, 0x80510, 0x80000,
-		    0xa0514, 0xa0000, 0xc0518, 0xc0000, 0xe051c, 0xe0000, 0x100520,0x100000, 0x118a3a, 0x120000,
-		    0x12c0d8, 0x140000, 0x147e22, 0x160000, 0x1645ce, 0x180000, 0x17c6b2, 0x1a0000,
-		    0x19902e, 0x1c0000, 0x1b562a, 0x1e0000, 0xffffffff, 0xffffffff } },
-	{ "doa2m", { 0x500, 0, 0x20504, 0x20000, 0x40508, 0x40000, 0x6050c, 0x60000, 0x80510, 0x80000,
-		    0xa0514, 0xa0000, 0xc0518, 0xc0000, 0xe051c, 0xe0000, 0x100520,0x100000, 0x11a5b4, 0x120000,
-		    0x12e7c4, 0x140000, 0x1471f6, 0x160000, 0x1640c4, 0x180000, 0x1806ca, 0x1a0000,
-		    0x199df4, 0x1c0000, 0x1b5d0a, 0x1e0000, 0xffffffff, 0xffffffff } },
+	{ "doa2", 0, { -1, 0x500, 0, -1, 0x20504, 0x20000, -1, 0x40508, 0x40000, -1, 0x6050c, 0x60000, -1, 0x80510, 0x80000,
+		    -1, 0xa0514, 0xa0000, -1, 0xc0518, 0xc0000, -1, 0xe051c, 0xe0000, -1, 0x100520,0x100000, -1, 0x118a3a, 0x120000,
+		    -1, 0x12c0d8, 0x140000, -1, 0x147e22, 0x160000, -1, 0x1645ce, 0x180000, -1, 0x17c6b2, 0x1a0000,
+		    -1, 0x19902e, 0x1c0000, -1, 0x1b562a, 0x1e0000, -1, 0xffffffff, 0xffffffff } },
+	{ "doa2m", 0, { -1, 0x500, 0, -1, 0x20504, 0x20000, -1, 0x40508, 0x40000, -1, 0x6050c, 0x60000, -1, 0x80510, 0x80000,
+		    -1, 0xa0514, 0xa0000, -1, 0xc0518, 0xc0000, -1, 0xe051c, 0xe0000, -1, 0x100520,0x100000, -1, 0x11a5b4, 0x120000,
+		    -1, 0x12e7c4, 0x140000, -1, 0x1471f6, 0x160000, -1, 0x1640c4, 0x180000, -1, 0x1806ca, 0x1a0000,
+		    -1, 0x199df4, 0x1c0000, -1, 0x1b5d0a, 0x1e0000, 0xffffffff, 0xffffffff } },
+	{ "csmash", 1, { -1, 0x2000000, 0xbb614, 0xffffffff, 0xffffffff, 0xffffffff } },
+	{ "csmasho", 1, { -1, 0x2000000, 0xbb5b4, 0xffffffff, 0xffffffff, 0xffffffff } },
+	{ "capsnk", 0, { 0x8c2a, 0, 0, 0x3d3e, 0, 0x10000, 0x65b7, 0, 0x20000, 0x5896, 0, 0x30000, 0x16d2, 0, 0x40000,
+			0x9147, 0, 0x50000, 0x7ac, 0, 0x60000, 0xee67, 0, 0x70000, 0xeb63, 0, 0x80000, 0x2a04, 0, 0x90000,
+			0x3e41, 0, 0xa0000, 0xb7af, 0, 0xb0000, 0x9651, 0, 0xc0000, 0xd208, 0, 0xd0000, 0x4769, 0, 0xe0000,
+			0xad8c, 0, 0xf0000, 0x923d, 0, 0x100000, 0x4a65, 0, 0x110000, 0x9958, 0, 0x120000, 0x8216, 0, 0x130000,
+			0xaa91, 0, 0x140000, 0xd007, 0, 0x150000, 0xead, 0, 0x160000, 0x492, 0, 0x170000,
+			0xffffffff, 0xffffffff, 0xffffffff } },
+	{ "capsnka", 0, { 0x8c2a, 0, 0, 0x3d3e, 0, 0x10000, 0x65b7, 0, 0x20000, 0x5896, 0, 0x30000, 0x16d2, 0, 0x40000,
+			0x9147, 0, 0x50000, 0x7ac, 0, 0x60000, 0xee67, 0, 0x70000, 0xeb63, 0, 0x80000, 0x2a04, 0, 0x90000,
+			0x3e41, 0, 0xa0000, 0xb7af, 0, 0xb0000, 0x9651, 0, 0xc0000, 0xd208, 0, 0xd0000, 0x4769, 0, 0xe0000,
+			0xad8c, 0, 0xf0000, 0x923d, 0, 0x100000, 0x4a65, 0, 0x110000, 0x9958, 0, 0x120000, 0x8216, 0, 0x130000,
+			0xaa91, 0, 0x140000, 0xd007, 0, 0x150000, 0xead, 0, 0x160000, 0x492, 0, 0x170000,
+			0xffffffff, 0xffffffff, 0xffffffff } },
+	{ "pjustic", 0, { 0x923d, 0, 0, 0x3e41, 0, 0x10000, 0xb7af, 0, 0x20000,
+			  0x9651, 0, 0x30000, 0xad8c, 0, 0x40000, 0xffffffff, 0xffffffff, 0xffffffff } },
+	{ "hmgeo",   0, { 0x6cc8, 0, 0x000000, 0x7b92, 0, 0x010000, 0x69bc, 0, 0x020000,
+			  0x6d16, 0, 0x030000, 0x6134, 0, 0x040000, 0x1340, 0, 0x050000,
+			  0x7716, 0, 0x060000, 0x2e1a, 0, 0x070000, 0x3030, 0, 0x080000,
+			  0x0870, 0, 0x090000, 0x2856, 0, 0x0a0000, 0x4224, 0, 0x0b0000,
+			  0x6df0, 0, 0x0c0000, 0x0dd8, 0, 0x0d0000, 0x576c, 0, 0x0e0000,
+			  0x0534, 0, 0x0f0000, 0x0904, 0, 0x100000, 0x2f14, 0, 0x110000,
+			  0x1792, 0, 0x120000, 0x6866, 0, 0x130000, 0x06fa, 0, 0x140000,
+			  0x2842, 0, 0x150000, 0x7cc8, 0, 0x160000, 0xffffffff, 0xffffffff, 0xffffffff } },
+	{ "wwfroyal",0, { 0xaaaa, 0, 0, 0xffffffff, 0xffffffff, 0xffffffff } },
+	{ "gwing2",  0, { -1, 0x85ddc0, 0, 0xd567, 0, 0x10000, 0xe329, 0, 0x30000, 0xc112, 0, 0x50000,
+			  0xabcd, 0, 0x70000, 0xef01, 0, 0x90000, 0x1234, 0, 0xb0000, 0x5678, 0, 0xd0000,
+			  0x5555, 0, 0xf0000, 0x6666, 0, 0x110000, 0xa901, 0, 0x130000, 0xa802, 0, 0x150000,
+			  0x3232, 0, 0x170000, 0x8989, 0, 0x190000, 0x6655, 0, 0x1a0000,
+			  0x3944, 0, 0x1c0000, 0x655a, 0, 0x1d0000, 0xf513, 0, 0x1e0000,
+			  0xb957, 0, 0, 0x37ca, 0, 0, 0xffffffff, 0xffffffff, 0xffffffff } },
+/*  { "pstone2", 0, { 0x4a65, 0, 0x000000, 0x0ead, 0, 0x010000, 0x0492, 0, 0x020000, 0x414a, 0, 0x030000,
+              0xad8c, 0, 0x040000, 0x923d, 0, 0x050000, 0x4a65, 0, 0x060000, 0x9958, 0, 0x070000,
+              0x8216, 0, 0x080000, 0xaa91, 0, 0x090000, 0xd007, 0, 0x0a0000, 0x71ee, 0, 0x0b0000,
+              0x3e41, 0, 0x0c0000, 0xb7af, 0, 0x0d0000, 0x9651, 0, 0x0e0000, 0x0492, 0, 0x0f0000,
+              0x414a, 0, 0x100000, 0xaf99, 0, 0x110000, 0x5182, 0, 0x120000, 0x08aa, 0, 0x130000,
+              0x69d0, 0, 0x140000, 0x9d71, 0, 0x150000, 0xd319, 0, 0x160000, 0xcc09, 0, 0x170000,
+              0x5ec4, 0, 0x180000, 0x7103, 0, 0x190000, 0xffffffff, 0xffffffff, 0xffffffff } },
+*/
+	{ "toyfight", 0,{ 0x0615, 0, 0x0000, 0x1999, 0, 0x1000, 0x7510, 0, 0x2000, 0x5736, 0, 0x3000,
+		          0xffffffff, 0xffffffff, 0xffffffff } },
+	{ "ggx",      0,{ -1, 0x200000, 0x100000, -1, 0x210004, 0x110000, -1, 0x220008, 0x120000, -1, 0x228000, 0x130000,
+		          0x3af9, 0, 0x000000, 0x2288, 0, 0x010000, 0xe5e6, 0, 0x020000, 0xebb0, 0, 0x030000,
+			  0x0228, 0, 0x040000, 0x872c, 0, 0x050000, 0xbba0, 0, 0x060000, 0x772f, 0, 0x070000,
+			  0x2924, 0, 0x080000, 0x3222, 0, 0x090000, 0x7954, 0, 0x0a0000, 0x5acd, 0, 0x0b0000,
+			  0xdd19, 0, 0x0c0000, 0x2428, 0, 0x0d0000, 0x3329, 0, 0x0e0000, 0x2142, 0, 0x0f0000,
+		          0xffffffff, 0xffffffff, 0xffffffff } },
 };
 
 /***************************************************************************
@@ -212,6 +365,9 @@ static void init_save_state(const device_config *device)
 	state_save_register_device_item(device, 0, v->dma_offset_flags);
 	state_save_register_device_item(device, 0, v->prot_offset);
 	state_save_register_device_item(device, 0, v->prot_key);
+	state_save_register_device_item(device, 0, v->aw_offset);
+	state_save_register_device_item(device, 0, v->aw_file_base);
+	state_save_register_device_item(device, 0, v->aw_file_offset);
 }
 
 
@@ -239,6 +395,13 @@ READ64_DEVICE_HANDLER( naomibd_r )
 	naomibd_state *v = get_safe_token(device);
 	UINT8 *ROM = (UINT8 *)v->memory;
 
+	// AW board is different, shouldn't ever be read
+	if (v->type == AW_ROM_BOARD)
+	{
+		mame_printf_debug("AW_ROM_BOARD read @ %x mask %" I64FMT "x\n", offset, mem_mask);
+		return U64(0xffffffffffffffff);
+	}
+
 	// ROM_DATA
 	if ((offset == 1) && ACCESSING_BITS_0_15)
 	{
@@ -251,20 +414,37 @@ READ64_DEVICE_HANDLER( naomibd_r )
 				UINT8 *prot = (UINT8 *)v->protdata;
 				UINT32 byte_offset = v->prot_offset*2;
 
-				if (!prot)
+				if (v->prot_translate == NULL)
 				{
-					logerror("naomibd: reading protection data, but none was supplied\n");
+					#if NAOMIBD_PRINTF_PROTECTION
+					v->prot_pio_count += 2;
+					printf("naomibd: reading protection data, but none was supplied (now %x bytes)\n", v->prot_pio_count);
+					#endif
 					return 0;
 				}
 
-				ret = (UINT64)(prot[byte_offset] | (prot[byte_offset+1]<<8));
+				#if NAOMIBD_PRINTF_PROTECTION
+				v->prot_pio_count += 2;
+				printf("naomibd: PIO read count %x\n", v->prot_pio_count);
+				#endif
+
+			 	if (v->prot_reverse_bytes)
+				{
+					ret = (UINT64)(prot[byte_offset+1] | (prot[byte_offset]<<8));
+				}
+				else
+				{
+					ret = (UINT64)(prot[byte_offset] | (prot[byte_offset+1]<<8));
+				}
 
 				v->prot_offset++;
 			}
+			#if NAOMIBD_PRINTF_PROTECTION
 			else
 			{
-				mame_printf_verbose("Bad protection offset read %x\n", v->rom_offset);
+				printf("Bad protection offset read %x\n", v->rom_offset);
 			}
+			#endif
 		}
 		else
 		{
@@ -318,7 +498,7 @@ READ64_DEVICE_HANDLER( naomibd_r )
 	}
 	else
 	{
-		//mame_printf_verbose("%s:ROM: read mask %llx @ %x\n", cpuexec_describe_context(machine), mem_mask, offset);
+		//mame_printf_verbose("%s:ROM: read mask %" I64FMT "x @ %x\n", cpuexec_describe_context(machine), mem_mask, offset);
 	}
 
 	return U64(0xffffffffffffffff);
@@ -328,6 +508,92 @@ WRITE64_DEVICE_HANDLER( naomibd_w )
 {
 	naomibd_state *v = get_safe_token(device);
 	INT32 i;
+
+	// AW board
+	if (v->type == AW_ROM_BOARD)
+	{
+		//printf("AW: %" I64FMT "x to ROM board @ %x (mask %" I64FMT "x)\n", data, offset, mem_mask);
+
+		switch (offset)
+		{
+			case 0:
+			{
+				if(ACCESSING_BITS_0_15)
+				{
+					// EPR_OFFSETL
+					v->aw_offset &= 0xffff0000;
+					v->aw_offset |= (data & 0xffff);
+					v->dma_offset = v->aw_offset*2;
+					//printf("EPR_OFFSETL = %x, dma_offset %x\n", (UINT32)data, v->dma_offset);
+				}
+				else if(ACCESSING_BITS_32_47 || ACCESSING_BITS_32_63)
+				{
+					// EPR_OFFSETH
+					v->aw_offset &= 0xffff;
+					v->aw_offset |= ((data>>16) & 0xffff0000);
+					v->dma_offset = v->aw_offset*2;
+					v->dma_offset_flags = NAOMIBD_FLAG_ADDRESS_SHUFFLE|NAOMIBD_FLAG_AUTO_ADVANCE;	// force normal DMA mode
+					//printf("EPR_OFFSETH = %x, dma_offset %x\n", (UINT32)(data>>32), v->dma_offset);
+				}
+
+			}
+			break;
+
+			case 1:
+			{
+				if(ACCESSING_BITS_32_47 || ACCESSING_BITS_32_63)
+				{
+					// MPR_RECORD_INDEX
+					//printf("%x to RECORD_INDEX\n", (UINT32)(data>>32));
+					v->dma_offset = 0x1000000 + (0x40 * (data>>32));
+				}
+			}
+			break;
+
+			case 2:
+			{
+				if(ACCESSING_BITS_0_15)
+				{
+					UINT8 *ROM = (UINT8 *)v->memory;
+					UINT32 base;
+
+					// MPR_FIRST_FILE_INDEX (usually 3)
+					base = data * 64;
+					v->aw_file_base = ROM[0x100000b+base]<<24 | ROM[0x100000a+base]<<16 | ROM[0x1000009+base]<<8 | ROM[0x1000008+base];
+					v->aw_file_base += 0x1000000;
+					//printf("%x to FIRST_FILE_INDEX, file_base = %x\n", (UINT32)data, v->aw_file_base);
+				}
+				else if(ACCESSING_BITS_32_47 || ACCESSING_BITS_32_63)
+				{
+					// MPR_FILE_OFFSETL
+					v->aw_file_offset &= 0xffff0000;
+					v->aw_file_offset |= (data>>32) & 0xffff;
+					v->dma_offset = v->aw_file_base + (v->aw_file_offset*2);
+					//printf("%x to FILE_OFFSETL, file_offset %x, dma_offset %x\n", (UINT32)(data>>32), v->aw_file_offset, v->dma_offset);
+				}
+			}
+			break;
+
+			case 3:
+			{
+				if(ACCESSING_BITS_0_15)
+				{
+					// MPR_FILE_OFFSETH
+					v->aw_file_offset &= 0xffff;
+					v->aw_file_offset |= (data & 0xffff)<<16;
+					v->dma_offset = v->aw_file_base + (v->aw_file_offset*2);
+					//printf("%x to FILE_OFFSETH, file_offset %x, dma_offset %x\n", (UINT32)data, v->aw_file_offset, v->dma_offset);
+				}
+			}
+			break;
+
+			default:
+				logerror("AW: unhandled %" I64FMT "x to ROM board @ %x (mask %" I64FMT "x)\n", data, offset, mem_mask);
+			break;
+		}
+
+		return;
+	}
 
 	switch(offset)
 	{
@@ -346,6 +612,10 @@ WRITE64_DEVICE_HANDLER( naomibd_w )
 				v->rom_offset &= 0xffff0000;
 				v->rom_offset |= ((data >> 32) & 0xffff);
 			}
+
+			#if NAOMIBD_PRINTF_PROTECTION
+			printf("PIO: offset to %x\n", v->rom_offset);
+			#endif
 		}
 		break;
 		case 1:
@@ -375,30 +645,63 @@ WRITE64_DEVICE_HANDLER( naomibd_w )
 					case 0x1fffc:	// decryption key
 						v->prot_key = data;
 
-						mame_printf_verbose("Protection: set up read @ %x, key %x [%s]\n", v->prot_offset, v->prot_key, cpuexec_describe_context(device->machine));
+						#if NAOMIBD_PRINTF_PROTECTION
+						printf("Protection: set up read @ %x, key %x (PIO %x DMA %x) [%s]\n", v->prot_offset*2, v->prot_key, v->rom_offset, v->dma_offset, cpuexec_describe_context(device->machine));
+
+						v->prot_pio_count = 0;
+						#endif
 
 						// translate address if necessary
 						if (v->prot_translate != NULL)
 						{
 							i = 0;
-							while (v->prot_translate[i] != 0xffffffff)
+							while (v->prot_translate[i+1] != 0xffffffff)
 							{
-								if (v->prot_translate[i] == (v->prot_offset*2))
+								// should we match by key or address?
+								if (v->prot_translate[i] != -1)
 								{
-									mame_printf_verbose("Protection: got offset %x, translated to %x\n", v->prot_offset, v->prot_translate[i+1]);
-									v->prot_offset = v->prot_translate[i+1]/2;
-									break;
+									if (v->prot_translate[i] == v->prot_key)
+									{
+										#if NAOMIBD_PRINTF_PROTECTION
+										printf("Protection: got key %x, translated to %x\n", v->prot_key, v->prot_translate[i+2]);
+										#endif
+										v->prot_offset = v->prot_translate[i+2]/2;
+										break;
+									}
+									else
+									{
+										i+= 3;
+									}
 								}
 								else
 								{
-									i += 2;
+									if (v->prot_translate[i+1] == (v->prot_offset*2))
+									{
+										#if NAOMIBD_PRINTF_PROTECTION
+										printf("Protection: got offset %x, translated to %x\n", v->prot_offset, v->prot_translate[i+2]);
+										#endif
+										v->prot_offset = v->prot_translate[i+2]/2;
+										break;
+									}
+									else
+									{
+										i += 3;
+									}
 								}
 							}
 						}
+						#if NAOMIBD_PRINTF_PROTECTION
+						else
+						{
+							printf("naomibd: protection not handled for this game\n");
+						}
+						#endif
 						break;
 
 					default:
-						mame_printf_verbose("naomibd: unknown protection write %x @ %x\n", (UINT32)data, offset);
+						#if NAOMIBD_PRINTF_PROTECTION
+						printf("naomibd: unknown protection write %x @ %x\n", (UINT32)data, offset);
+						#endif
 						break;
 				}
 			}
@@ -456,7 +759,7 @@ WRITE64_DEVICE_HANDLER( naomibd_w )
 		}
 		break;
 		default:
-			mame_printf_verbose("%s: ROM: write %llx to %x, mask %llx\n", cpuexec_describe_context(device->machine), data, offset, mem_mask);
+			mame_printf_verbose("%s: ROM: write %" I64FMT "x to %x, mask %" I64FMT "x\n", cpuexec_describe_context(device->machine), data, offset, mem_mask);
 			break;
 	}
 }
@@ -669,11 +972,15 @@ static DEVICE_START( naomibd )
 
 	/* find the protection address translation for this game */
 	v->prot_translate = (UINT32 *)0;
+	#if NAOMIBD_PRINTF_PROTECTION
+	v->prot_pio_count = 0;
+	#endif
 	for (i=0; i<ARRAY_LENGTH(naomibd_translate_tbl); i++)
 	{
 		if (!strcmp(device->machine->gamedrv->name, naomibd_translate_tbl[i].name))
 		{
 			v->prot_translate = &naomibd_translate_tbl[i].transtbl[0];
+			v->prot_reverse_bytes = naomibd_translate_tbl[i].reverse_bytes;
 			break;
 		}
 	}
@@ -686,9 +993,13 @@ static DEVICE_START( naomibd )
 			v->protdata = (UINT8 *)memory_region(device->machine, "naomibd_prot");
 			break;
 
+		case AW_ROM_BOARD:
+			v->memory = (UINT8 *)memory_region(device->machine, config->regiontag);
+			break;
+
 		case DIMM_BOARD:
 			v->memory = (UINT8 *)memory_region(device->machine, config->regiontag);
-			v->gdromchd = get_disk_handle(config->gdromregiontag);
+			v->gdromchd = get_disk_handle(device->machine, config->gdromregiontag);
 			v->picdata = (UINT8 *)memory_region(device->machine, config->picregiontag);
 			load_rom_gdrom(device->machine, v);
 			break;
@@ -785,7 +1096,45 @@ DEVICE_GET_INFO( naomibd )
 		case DEVINFO_INT_TOKEN_BYTES:			info->i = sizeof(naomibd_state);				break;
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:	info->i = sizeof(naomibd_config);				break;
 		case DEVINFO_INT_CLASS:					info->i = DEVICE_CLASS_PERIPHERAL;				break;
-		case DEVINFO_INT_DMAOFFSET:				info->i = get_safe_token(device)->dma_offset;	break;
+		case DEVINFO_INT_DMAOFFSET:
+			#if NAOMIBD_PRINTF_PROTECTION
+		        printf("DMA source %08x, flags %x\n", get_safe_token(device)->dma_offset, get_safe_token(device)->dma_offset_flags);
+			#endif
+
+			// if the flag is cleared that lets the protection chip go,
+			// we need to handle this specially.  but not on DIMM boards.
+			if (!(get_safe_token(device)->dma_offset_flags & NAOMIBD_FLAG_ADDRESS_SHUFFLE) && (get_safe_token(device)->type == ROM_BOARD))
+			{
+				if (!strcmp(device->machine->gamedrv->name, "qmegamis"))
+				{
+					info->i = 0x9000000;
+					break;
+				}
+				else if (!strcmp(device->machine->gamedrv->name, "mvsc2"))
+				{
+					switch (get_safe_token(device)->dma_offset)
+					{
+						case 0x08000000: info->i = 0x8800000;	break;
+						case 0x08026440: info->i = 0x8830000;	break;
+						case 0x0803bda0: info->i = 0x8850000;	break;
+						case 0x0805a560: info->i = 0x8870000;	break;
+						case 0x0805b720: info->i = 0x8880000;	break;
+						case 0x0808b7e0: info->i = 0x88a0000;	break;
+						default:
+							info->i = get_safe_token(device)->dma_offset;
+							break;
+					}
+
+					return;
+				}
+				else
+				{
+					logerror("Protected DMA not handled for this game (dma_offset %x)\n", get_safe_token(device)->dma_offset);
+				}
+			}
+
+			info->i = get_safe_token(device)->dma_offset;
+			break;
 
 		/* --- the following bits of info are returned as pointers --- */
 		case DEVINFO_PTR_ROM_REGION:			info->romregion = NULL;							break;
@@ -804,13 +1153,13 @@ DEVICE_GET_INFO( naomibd )
 			{
 				default:
 				case ROM_BOARD:					strcpy(info->s, "Naomi Rom Board");				break;
+				case AW_ROM_BOARD:				strcpy(info->s, "Atomiswave Rom Board");				break;
 				case DIMM_BOARD:				strcpy(info->s, "Naomi Dimm Board");			break;
 			}
 			break;
-		case DEVINFO_STR_FAMILY:				strcpy(info->s, "Naomi plug-in board");			break;
-		case DEVINFO_STR_VERSION:				strcpy(info->s, "1.0");							break;
+		case DEVINFO_STR_FAMILY:				strcpy(info->s, "Naomi/Atomiswave plug-in board");			break;
+		case DEVINFO_STR_VERSION:				strcpy(info->s, "1.1");							break;
 		case DEVINFO_STR_SOURCE_FILE:			strcpy(info->s, __FILE__);						break;
 		case DEVINFO_STR_CREDITS:				strcpy(info->s, "Copyright Nicola Salmoria and the MAME Team"); break;
 	}
 }
-

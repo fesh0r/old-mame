@@ -15,7 +15,7 @@ WRITE8_HANDLER( pokechmp_flipscreen_w )
 	if (flip_screen_get(space->machine) != (data & 0x80))
 	{
 		flip_screen_set(space->machine, data & 0x80);
-		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
+		tilemap_mark_all_tiles_dirty_all(space->machine);
 	}
 }
 
@@ -58,7 +58,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 			drawgfx_transpen(bitmap,cliprect,machine->gfx[1],
 					spriteram[offs+3] + ((spriteram[offs+1] & 1) << 8),
-					(spriteram[offs+1] & 0x70) >> 4,
+					(spriteram[offs+1] & 0xf0) >> 4,
 					flipx,flipy,
 					sx,sy,0);
 		}

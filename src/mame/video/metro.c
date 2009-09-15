@@ -703,7 +703,7 @@ void metro_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectan
 								flipx, flipy,
 								x, y,
 								zoom, zoom,
-								priority_bitmap,primask[pri], 255);
+								machine->priority_bitmap,primask[pri], 255);
 			}
 			else
 			{
@@ -719,7 +719,7 @@ void metro_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectan
 								flipx, flipy,
 								x, y,
 								zoom, zoom,
-								priority_bitmap,primask[pri], 15);
+								machine->priority_bitmap,primask[pri], 15);
 			}
 #if 0
 {	/* Display priority + zoom on each sprite */
@@ -888,7 +888,7 @@ VIDEO_UPDATE( metro )
 	metro_sprite_yoffs	=	metro_videoregs[0x04/2] - video_screen_get_height(screen) / 2;
 
 	/* The background color is selected by a register */
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 	bitmap_fill(bitmap,cliprect,((metro_videoregs[0x12/2] & 0x0fff)) + 0x1000);
 
 	/*  Screen Control Register:
@@ -923,13 +923,13 @@ VIDEO_UPDATE( metro )
 
 
 #ifdef MAME_DEBUG
-if (input_code_pressed(KEYCODE_Z))
+if (input_code_pressed(screen->machine, KEYCODE_Z))
 {
 	int msk = 0;
-	if (input_code_pressed(KEYCODE_Q))	msk |= 1;
-	if (input_code_pressed(KEYCODE_W))	msk |= 2;
-	if (input_code_pressed(KEYCODE_E))	msk |= 4;
-	if (input_code_pressed(KEYCODE_A))	msk |= 8;
+	if (input_code_pressed(screen->machine, KEYCODE_Q))	msk |= 1;
+	if (input_code_pressed(screen->machine, KEYCODE_W))	msk |= 2;
+	if (input_code_pressed(screen->machine, KEYCODE_E))	msk |= 4;
+	if (input_code_pressed(screen->machine, KEYCODE_A))	msk |= 8;
 	if (msk != 0)
 	{	bitmap_fill(bitmap,cliprect,0);
 		layers_ctrl &= msk;	}

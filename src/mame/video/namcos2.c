@@ -207,44 +207,13 @@ WRITE16_HANDLER( namcos2_68k_roz_ram_w )
 {
 	COMBINE_DATA(&namcos2_68k_roz_ram[offset]);
 	tilemap_mark_tile_dirty(tilemap_roz,offset);
-//      if( input_code_pressed(KEYCODE_Q) )
+//      if( input_code_pressed(space->machine, KEYCODE_Q) )
 //      {
 //          debugger_break(space->machine);
 //      }
 }
 
 /**************************************************************************/
-
-READ16_HANDLER( namcos2_68k_video_palette_r )
-{
-	if( (offset&0x1800) == 0x1800 )
-	{
-		offset &= 0x180f;
-		if( offset == 0x180d ) return 0xff;
-		if( offset == 0x180f ) return 0xff;
-	}
-	return namcos2_68k_palette_ram[offset];
-} /* namcos2_68k_video_palette_r */
-
-WRITE16_HANDLER( namcos2_68k_video_palette_w )
-{
-	if( (offset&0x1800) == 0x1800 )
-	{
-		offset &= 0x180f;
-		if( ACCESSING_BITS_0_7 )
-		{
-			namcos2_68k_palette_ram[offset] = data;
-		}
-		else
-		{
-			namcos2_68k_palette_ram[offset] = data>>8;
-		}
-	}
-	else
-	{
-		COMBINE_DATA(&namcos2_68k_palette_ram[offset]);
-	}
-} /* namcos2_68k_video_palette_w */
 
 static UINT16
 GetPaletteRegister( int which )
@@ -253,18 +222,71 @@ GetPaletteRegister( int which )
 	return ((source[which*2]&0xff)<<8) | (source[which*2+1]&0xff);
 }
 
+READ16_HANDLER( namcos2_68k_video_palette_r )
+{
+	if( (offset&0x1800) == 0x1800 )
+	{
+		/* palette register */
+		offset &= 0x180f;
+
+		/* registers 6,7: unmapped? */
+		if (offset > 0x180b) return 0xff;
+	}
+	return namcos2_68k_palette_ram[offset];
+} /* namcos2_68k_video_palette_r */
+
+WRITE16_HANDLER( namcos2_68k_video_palette_w )
+{
+	if( (offset&0x1800) == 0x1800 )
+	{
+		/* palette register */
+		offset &= 0x180f;
+
+		if( ACCESSING_BITS_0_7 ) data&=0xff;
+		else data>>=8;
+
+		switch (offset) {
+			/* registers 0-3: clipping */
+
+			/* register 4: ? */
+			/* sets using it:
+            assault:    $0020
+            burnforc:   $0130 after titlescreen
+            dirtfoxj:   $0108 at game start
+            finalap1/2/3:   $00C0
+            finehour:   $0168 after titlescreen
+            fourtrax:   $00E8 and $00F0
+            luckywld:   $00E8 at titlescreen, $00A0 in game and $0118 if in tunnel
+            suzuka8h1/2:    $00E8 and $00A0 */
+			case 0x1808: case 0x1809:
+				// if (data^namcos2_68k_palette_ram[offset]) printf("%04X\n",data<<((~offset&1)<<3)|namcos2_68k_palette_ram[offset^1]<<((offset&1)<<3));
+				break;
+
+			/* register 5: POSIRQ scanline (only 8 bits used) */
+			/*case 0x180a:*/ case 0x180b:
+				if (data^namcos2_68k_palette_ram[offset]) {
+					namcos2_68k_palette_ram[offset] = data;
+					namcos2_adjust_posirq_timer(space->machine,namcos2_GetPosIrqScanline(space->machine));
+				}
+				break;
+
+			/* registers 6,7: nothing? */
+			default: break;
+		}
+
+		namcos2_68k_palette_ram[offset] = data;
+	}
+	else
+	{
+		COMBINE_DATA(&namcos2_68k_palette_ram[offset]);
+	}
+} /* namcos2_68k_video_palette_w */
+
+
 int
 namcos2_GetPosIrqScanline( running_machine *machine )
 {
-	/* PaleteRegister(4)? used by Finest Hour; pc=0x356e */
-	int scanline = GetPaletteRegister(5) - 34;
-	int height = video_screen_get_height(machine->primary_screen);
-	if( scanline<0 )
-		scanline = 0;
-	else if( scanline > height )
-		scanline = height;
-
-	return scanline;
+	return (GetPaletteRegister(5) - 32) & 0xff;
 } /* namcos2_GetPosIrqScanline */
 
 static void

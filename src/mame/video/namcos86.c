@@ -316,7 +316,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 				flipx,flipy,
 				sx & 0x1ff,
 				((sy + 16) & 0xff) - 16,
-				priority_bitmap, pri_mask,0xf);
+				machine->priority_bitmap, pri_mask,0xf);
 
 		source -= 0x10;
 	}
@@ -347,13 +347,13 @@ VIDEO_UPDATE( namcos86 )
 	/* flip screen is embedded in the sprite control registers */
 	/* can't use flip_screen_set(screen->machine, ) because the visible area is asymmetrical */
 	flip_screen_set_no_update(screen->machine, spriteram[0x07f6] & 1);
-	tilemap_set_flip(ALL_TILEMAPS,flip_screen_get(screen->machine) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
+	tilemap_set_flip_all(screen->machine,flip_screen_get(screen->machine) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 	set_scroll(screen->machine, 0);
 	set_scroll(screen->machine, 1);
 	set_scroll(screen->machine, 2);
 	set_scroll(screen->machine, 3);
 
-	bitmap_fill(priority_bitmap, cliprect, 0);
+	bitmap_fill(screen->machine->priority_bitmap, cliprect, 0);
 
 	bitmap_fill(bitmap,cliprect,screen->machine->gfx[0]->color_base + 8*backcolor+7);
 

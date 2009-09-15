@@ -423,7 +423,7 @@ static WRITE32_HANDLER(rf5c296_mem_w)
 			pos++;
 		} else
 			v = data;
-		chd_get_metadata(get_disk_handle("card"), HARD_DISK_KEY_METADATA_TAG, 0, key, 5, 0, 0, 0);
+		chd_get_metadata(get_disk_handle(space->machine, "card"), HARD_DISK_KEY_METADATA_TAG, 0, key, 5, 0, 0, 0);
 		k = pos < 5 ? key[pos] : 0;
 		if(v == k)
 			locked &= ~(1 << pos);
@@ -834,7 +834,7 @@ static DRIVER_INIT( coh3002t )
 	dip_timer = timer_alloc(machine,  dip_timer_fired, NULL );
 
 	memset(cis, 0xff, 512);
-	chd_get_metadata(get_disk_handle("card"), PCMCIA_CIS_METADATA_TAG, 0, cis, 512, 0, 0, 0);
+	chd_get_metadata(get_disk_handle(machine, "card"), PCMCIA_CIS_METADATA_TAG, 0, cis, 512, 0, 0, 0);
 }
 
 static DRIVER_INIT( coh3002t_mp )
@@ -1115,7 +1115,7 @@ ROM_START(chaoshea)
 	DISK_IMAGE( "chaosheat", 0, SHA1(c13b7d7025eee05f1f696d108801c7bafb3f1356))
 ROM_END
 
-ROM_START(chaoshej)
+ROM_START(chaosheaj)
 	TAITOGNET_BIOS
 
 	DISK_REGION( "card" )
@@ -1138,7 +1138,7 @@ ROM_START(spuzbobl)
 	DISK_IMAGE( "spuzbobl", 0, SHA1(1b1c72fb7e5656021485fefaef8f2ba48e2b4ea8))
 ROM_END
 
-ROM_START(spuzbobj)
+ROM_START(spuzboblj)
 	TAITOGNET_BIOS
 
 	DISK_REGION( "card" )
@@ -1171,6 +1171,14 @@ ROM_START(kollon)
 
 	DISK_REGION( "card" )
 	DISK_IMAGE( "kollon", 0, SHA1(d8ea5b5b0ee99004b16ef89883e23de6c7ddd7ce))
+ROM_END
+
+ROM_START(kollonc)
+	TAITOGNET_BIOS
+	ROM_DEFAULT_BIOS( "v2" )
+
+	DISK_REGION( "card" )
+	DISK_IMAGE( "kollonc", 0, SHA1(ce62181659701cfb8f7c564870ab902be4d8e060)) /* Original Taito Compact Flash version */
 ROM_END
 
 ROM_START(shikigam)
@@ -1224,7 +1232,7 @@ ROM_START(otenamhf)
 	ROM_DEFAULT_BIOS( "v2" )
 
 	DISK_REGION( "card" )
-	DISK_IMAGE( "otenamhf", 0, SHA1(5b15c33bf401e5546d78e905f538513d6ffcf562))
+	DISK_IMAGE( "otenamhf", 0, SHA1(5b15c33bf401e5546d78e905f538513d6ffcf562)) /* Original Taito Compact Flash version */
 ROM_END
 
 
@@ -1286,16 +1294,17 @@ ROM_END
 GAME( 1997, taitogn,  0,        coh3002t, coh3002t, coh3002t, ROT0,   "Sony/Taito", "Taito GNET", GAME_IS_BIOS_ROOT )
 
 GAME( 1998, chaoshea, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Chaos Heat (V2.09O)", GAME_IMPERFECT_SOUND )
-GAME( 1998, chaoshej, chaoshea, coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Chaos Heat (V2.08J)", GAME_IMPERFECT_SOUND )
+GAME( 1998, chaosheaj,chaoshea, coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Chaos Heat (V2.08J)", GAME_IMPERFECT_SOUND )
 GAME( 1998, raycris,  taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Ray Crisis (V2.03J)", GAME_IMPERFECT_SOUND )
 GAME( 1999, spuzbobl, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Super Puzzle Bobble (V2.05O)", GAME_IMPERFECT_SOUND )
-GAME( 1999, spuzbobj, spuzbobl, coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Super Puzzle Bobble (V2.04J)", GAME_IMPERFECT_SOUND )
+GAME( 1999, spuzboblj,spuzbobl, coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Super Puzzle Bobble (V2.04J)", GAME_IMPERFECT_SOUND )
 GAME( 1999, gobyrc,   taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Go By RC (V2.03O)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // custom inputs need calibrating
 GAME( 1999, rcdego,   gobyrc,   coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "RC De Go (V2.03J)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // custom inputs need calibrating
 GAME( 1999, flipmaze, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito/Moss", "Flip Maze (V2.04J)", GAME_IMPERFECT_SOUND )
 GAME( 2001, shikigam, taitogn,  coh3002t, coh3002t, coh3002t, ROT270, "Taito/Alfa System", "Shikigami no Shiro (V2.03J)", GAME_IMPERFECT_SOUND )
 GAME( 2003, sianniv,  taitogn,  coh3002t, coh3002t, coh3002t, ROT270, "Taito", "Space Invaders Anniversary (V2.02J)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // IRQ at the wrong time
 GAME( 2003, kollon,   taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Kollon (V2.04J)", GAME_IMPERFECT_SOUND )
+GAME( 2003, kollonc,  kollon,   coh3002t, coh3002t, coh3002t, ROT0,   "Taito", "Kollon (V2.04JC)", GAME_IMPERFECT_SOUND )
 
 GAME( 1999, otenamih, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Success", "Otenami Haiken (V2.04J)", GAME_IMPERFECT_SOUND )
 GAME( 2005, otenamhf, taitogn,  coh3002t, coh3002t, coh3002t, ROT0,   "Success/Warashi", "Otenami Haiken Final (V2.07JC)", GAME_IMPERFECT_SOUND )

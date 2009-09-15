@@ -73,6 +73,8 @@ static UINT8 f2_tilepri[6]; // todo - move into taitoic.c
 static UINT8 f2_spritepri[6]; // todo - move into taitoic.c
 static UINT8 f2_spriteblendmode; // todo - move into taitoic.c
 
+static UINT16 *paletteram_buffer;
+
 enum
 {
 	FOOTCHMP = 1
@@ -295,6 +297,15 @@ VIDEO_START( taitof2_driftout )
 	f2_pivot_xdisp = -16;
 	f2_pivot_ydisp = 16;
 	taitof2_core_vh_start(machine, 0,3,3,0,0,0,0,0,0);
+
+	paletteram_buffer = auto_alloc_array(machine, UINT16, 4096);
+	memset(paletteram_buffer, 0, 4096*sizeof(UINT16));
+	state_save_register_global_pointer(machine, paletteram_buffer, 4096);
+}
+
+WRITE16_HANDLER( taitof2_palette_w )
+{
+	COMBINE_DATA(&paletteram_buffer[offset]);
 }
 
 
@@ -373,7 +384,7 @@ static void taito_f2_tc360_spritemixdraw( bitmap_t *dest_bmp,const rectangle *cl
 {
 	int pal_base = gfx->color_base + gfx->color_granularity * (color % gfx->total_colors);
 	const UINT8 *source_base = gfx_element_get_data(gfx, code % gfx->total_elements);
-
+	bitmap_t *priority_bitmap = gfx->machine->priority_bitmap;
 	int sprite_screen_height = (scaley*gfx->height+0x8000)>>16;
 	int sprite_screen_width = (scalex*gfx->width+0x8000)>>16;
 
@@ -880,7 +891,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 					sprite_ptr->flipx,sprite_ptr->flipy,
 					sprite_ptr->x,sprite_ptr->y,
 					sprite_ptr->zoomx,sprite_ptr->zoomy,
-					priority_bitmap,sprite_ptr->primask,0);
+					machine->priority_bitmap,sprite_ptr->primask,0);
 		else
 			taito_f2_tc360_spritemixdraw(bitmap,cliprect,machine->gfx[0],
 					sprite_ptr->code,
@@ -964,6 +975,7 @@ static void taitof2_update_sprites_active_area(void)
 	}
 }
 
+
 VIDEO_EOF( taitof2_no_buffer )
 {
 	taitof2_update_sprites_active_area();
@@ -1039,26 +1051,26 @@ VIDEO_EOF( taitof2_partial_buffer_delayed_qzchikyu )
 
 
 /* SSI */
-VIDEO_UPDATE( ssi )
+VIDEO_UPDATE( taitof2_ssi )
 {
 	taitof2_handle_sprite_buffering();
 
 	/* SSI only uses sprites, the tilemap registers are not even initialized.
        (they are in Majestic 12, but the tilemaps are not used anyway) */
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 	bitmap_fill(bitmap,cliprect,0);
 	draw_sprites(screen->machine, bitmap,cliprect,NULL, 0);
 	return 0;
 }
 
 
-VIDEO_UPDATE( yesnoj )
+VIDEO_UPDATE( taitof2_yesnoj )
 {
 	taitof2_handle_sprite_buffering();
 
 	TC0100SCN_tilemap_update(screen->machine);
 
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 	bitmap_fill(bitmap,cliprect,0);	/* wrong color? */
 	draw_sprites(screen->machine, bitmap,cliprect,NULL, 0);
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,TC0100SCN_bottomlayer(0),0,0);
@@ -1074,7 +1086,7 @@ VIDEO_UPDATE( taitof2 )
 
 	TC0100SCN_tilemap_update(screen->machine);
 
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 	bitmap_fill(bitmap,cliprect,0);	/* wrong color? */
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,TC0100SCN_bottomlayer(0),0,0);
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,TC0100SCN_bottomlayer(0)^1,0,0);
@@ -1106,7 +1118,7 @@ VIDEO_UPDATE( taitof2_pri )
 
 	f2_spriteblendmode = TC0360PRI_regs[0]&0xc0;
 
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 	bitmap_fill(bitmap,cliprect,0);	/* wrong color? */
 
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[0],0,1);
@@ -1165,7 +1177,7 @@ VIDEO_UPDATE( taitof2_pri_roz )
 
 	f2_spriteblendmode = TC0360PRI_regs[0]&0xc0;
 
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 	bitmap_fill(bitmap,cliprect,0);	/* wrong color? */
 
 	drawn=0;
@@ -1193,10 +1205,23 @@ VIDEO_UPDATE( taitof2_pri_roz )
 	return 0;
 }
 
+VIDEO_UPDATE( taitof2_driftout )
+{
+	UINT16 pen;
+
+	/* send palette, workaround for bug http://www.mametesters.org/view.php?id=3356 (just for this game)
+     driftout writes twice per frame to the palette, this causes glitches on some setups due to
+     VIDEO_UPDATE not being synced to renderer update when multithreading is on. */
+	for (pen=0;pen<4096;pen++)
+		palette_set_color_rgb(screen->machine, pen, pal5bit(paletteram_buffer[pen] >> 10), pal5bit(paletteram_buffer[pen] >> 5), pal5bit(paletteram_buffer[pen] >> 0));
+
+	return VIDEO_UPDATE_CALL( taitof2_pri_roz );
+}
+
 
 
 /* Thunderfox */
-VIDEO_UPDATE( thundfox )
+VIDEO_UPDATE( taitof2_thundfox )
 {
 	int tilepri[2][3];
 	int spritepri[4];
@@ -1228,7 +1253,7 @@ VIDEO_UPDATE( thundfox )
 	spritepri[3] = TC0360PRI_regs[7] >> 4;
 
 
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 	bitmap_fill(bitmap,cliprect,0);	/* wrong color? */
 
 
@@ -1326,7 +1351,7 @@ and it changes these (and the sprite pri settings) a lot.
 
 ********************************************************************/
 
-VIDEO_UPDATE( metalb )
+VIDEO_UPDATE( taitof2_metalb )
 {
 	UINT8 layer[5], invlayer[4];
 	UINT16 priority;
@@ -1361,14 +1386,14 @@ VIDEO_UPDATE( metalb )
 
 	f2_spriteblendmode = TC0360PRI_regs[0]&0xc0;
 
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 	bitmap_fill(bitmap,cliprect,0);
 
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[0],0,1);
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[1],0,2);
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[2],0,4);
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[3],0,8);
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[4],0,16);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[0],0,1);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[1],0,2);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[2],0,4);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[3],0,8);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[4],0,16);
 
 	draw_sprites(screen->machine, bitmap,cliprect,NULL,1);
 	return 0;
@@ -1376,7 +1401,7 @@ VIDEO_UPDATE( metalb )
 
 
 /* Deadconx, Footchmp */
-VIDEO_UPDATE( deadconx )
+VIDEO_UPDATE( taitof2_deadconx )
 {
 	UINT8 layer[5];
 	UINT8 tilepri[5];
@@ -1408,13 +1433,13 @@ VIDEO_UPDATE( deadconx )
 	spritepri[2] = TC0360PRI_regs[7] & 0x0f;
 	spritepri[3] = TC0360PRI_regs[7] >> 4;
 
-	bitmap_fill(priority_bitmap,cliprect,0);
+	bitmap_fill(screen->machine->priority_bitmap,cliprect,0);
 	bitmap_fill(bitmap,cliprect,0);
 
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[0],0,1);
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[1],0,2);
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[2],0,4);
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[3],0,8);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[0],0,1);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[1],0,2);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[2],0,4);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[3],0,8);
 
 	{
 		int primasks[4] = {0,0,0,0};
@@ -1437,6 +1462,6 @@ VIDEO_UPDATE( deadconx )
     that the FG layer is always on top of sprites.
     */
 
-	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[4],0,0);
+	TC0480SCP_tilemap_draw(screen->machine,bitmap,cliprect,layer[4],0,0);
 	return 0;
 }

@@ -459,7 +459,7 @@ INLINE UINT8 read_byte_generic(const address_space *space, offs_t byteaddress)
 	UINT32 entry;
 	UINT8 result;
 
-	profiler_mark(PROFILER_MEMREAD);
+	profiler_mark_start(PROFILER_MEMREAD);
 
 	byteaddress &= space->bytemask;
 	entry = space->readlookup[LEVEL1_INDEX(byteaddress)];
@@ -473,7 +473,7 @@ INLINE UINT8 read_byte_generic(const address_space *space, offs_t byteaddress)
 	else
 		result = (*handler->handler.read.shandler8)((const address_space *)handler->object, byteoffset);
 
-	profiler_mark(PROFILER_END);
+	profiler_mark_end();
 	return result;
 }
 
@@ -489,7 +489,7 @@ INLINE void write_byte_generic(const address_space *space, offs_t byteaddress, U
 	offs_t byteoffset;
 	UINT32 entry;
 
-	profiler_mark(PROFILER_MEMWRITE);
+	profiler_mark_start(PROFILER_MEMWRITE);
 
 	byteaddress &= space->bytemask;
 	entry = space->writelookup[LEVEL1_INDEX(byteaddress)];
@@ -503,7 +503,7 @@ INLINE void write_byte_generic(const address_space *space, offs_t byteaddress, U
 	else
 		(*handler->handler.write.shandler8)((const address_space *)handler->object, byteoffset, data);
 
-	profiler_mark(PROFILER_END);
+	profiler_mark_end();
 }
 
 
@@ -519,7 +519,7 @@ INLINE UINT16 read_word_generic(const address_space *space, offs_t byteaddress, 
 	UINT32 entry;
 	UINT16 result;
 
-	profiler_mark(PROFILER_MEMREAD);
+	profiler_mark_start(PROFILER_MEMREAD);
 
 	byteaddress &= space->bytemask;
 	entry = space->readlookup[LEVEL1_INDEX(byteaddress)];
@@ -533,7 +533,7 @@ INLINE UINT16 read_word_generic(const address_space *space, offs_t byteaddress, 
 	else
 		result = (*handler->handler.read.shandler16)((const address_space *)handler->object, byteoffset >> 1, mem_mask);
 
-	profiler_mark(PROFILER_END);
+	profiler_mark_end();
 	return result;
 }
 
@@ -549,7 +549,7 @@ INLINE void write_word_generic(const address_space *space, offs_t byteaddress, U
 	offs_t byteoffset;
 	UINT32 entry;
 
-	profiler_mark(PROFILER_MEMWRITE);
+	profiler_mark_start(PROFILER_MEMWRITE);
 
 	byteaddress &= space->bytemask;
 	entry = space->writelookup[LEVEL1_INDEX(byteaddress)];
@@ -566,7 +566,7 @@ INLINE void write_word_generic(const address_space *space, offs_t byteaddress, U
 	else
 		(*handler->handler.write.shandler16)((const address_space *)handler->object, byteoffset >> 1, data, mem_mask);
 
-	profiler_mark(PROFILER_END);
+	profiler_mark_end();
 }
 
 
@@ -582,7 +582,7 @@ INLINE UINT32 read_dword_generic(const address_space *space, offs_t byteaddress,
 	UINT32 entry;
 	UINT32 result;
 
-	profiler_mark(PROFILER_MEMREAD);
+	profiler_mark_start(PROFILER_MEMREAD);
 
 	byteaddress &= space->bytemask;
 	entry = space->readlookup[LEVEL1_INDEX(byteaddress)];
@@ -596,7 +596,7 @@ INLINE UINT32 read_dword_generic(const address_space *space, offs_t byteaddress,
 	else
 		result = (*handler->handler.read.shandler32)((const address_space *)handler->object, byteoffset >> 2, mem_mask);
 
-	profiler_mark(PROFILER_END);
+	profiler_mark_end();
 	return result;
 }
 
@@ -612,7 +612,7 @@ INLINE void write_dword_generic(const address_space *space, offs_t byteaddress, 
 	offs_t byteoffset;
 	UINT32 entry;
 
-	profiler_mark(PROFILER_MEMWRITE);
+	profiler_mark_start(PROFILER_MEMWRITE);
 
 	byteaddress &= space->bytemask;
 	entry = space->writelookup[LEVEL1_INDEX(byteaddress)];
@@ -629,7 +629,7 @@ INLINE void write_dword_generic(const address_space *space, offs_t byteaddress, 
 	else
 		(*handler->handler.write.shandler32)((const address_space *)handler->object, byteoffset >> 2, data, mem_mask);
 
-	profiler_mark(PROFILER_END);
+	profiler_mark_end();
 }
 
 
@@ -645,7 +645,7 @@ INLINE UINT64 read_qword_generic(const address_space *space, offs_t byteaddress,
 	UINT32 entry;
 	UINT64 result;
 
-	profiler_mark(PROFILER_MEMREAD);
+	profiler_mark_start(PROFILER_MEMREAD);
 
 	byteaddress &= space->bytemask;
 	entry = space->readlookup[LEVEL1_INDEX(byteaddress)];
@@ -659,7 +659,7 @@ INLINE UINT64 read_qword_generic(const address_space *space, offs_t byteaddress,
 	else
 		result = (*handler->handler.read.shandler64)((const address_space *)handler->object, byteoffset >> 3, mem_mask);
 
-	profiler_mark(PROFILER_END);
+	profiler_mark_end();
 	return result;
 }
 
@@ -675,7 +675,7 @@ INLINE void write_qword_generic(const address_space *space, offs_t byteaddress, 
 	offs_t offset;
 	UINT32 entry;
 
-	profiler_mark(PROFILER_MEMWRITE);
+	profiler_mark_start(PROFILER_MEMWRITE);
 
 	byteaddress &= space->bytemask;
 	entry = space->writelookup[LEVEL1_INDEX(byteaddress)];
@@ -692,7 +692,7 @@ INLINE void write_qword_generic(const address_space *space, offs_t byteaddress, 
 	else
 		(*handler->handler.write.shandler64)((const address_space *)handler->object, offset >> 3, data, mem_mask);
 
-	profiler_mark(PROFILER_END);
+	profiler_mark_end();
 }
 
 
@@ -921,7 +921,7 @@ int memory_set_direct_region(const address_space *space, offs_t *byteaddress)
 		spacerw->direct.byteend = 0;
 		spacerw->direct.bytestart = 1;
 		if (!spacerw->debugger_access)
-			logerror("Device '%s': warning - attempt to direct-map address %08X in %s space\n", space->cpu->tag, overrideaddress, space->name);
+			logerror("Device '%s': warning - attempt to direct-map address %s in %s space\n", space->cpu->tag, core_i64_hex_format(overrideaddress, space->addrchars), space->name);
 		return FALSE;
 	}
 
@@ -3211,40 +3211,40 @@ static address_map_entry *block_assign_intersecting(address_space *space, offs_t
 
 static READ8_HANDLER( unmap_read8 )
 {
-	if (space->log_unmap && !space->debugger_access) logerror("%s: unmapped %s memory byte read from %08X\n", cpuexec_describe_context(space->machine), space->name, memory_byte_to_address(space, offset));
+	if (space->log_unmap && !space->debugger_access) logerror("%s: unmapped %s memory byte read from %s\n", cpuexec_describe_context(space->machine), space->name, core_i64_hex_format(memory_byte_to_address(space, offset), space->addrchars));
 	return space->unmap;
 }
 static READ16_HANDLER( unmap_read16 )
 {
-	if (space->log_unmap && !space->debugger_access) logerror("%s: unmapped %s memory word read from %08X & %04X\n", cpuexec_describe_context(space->machine), space->name, memory_byte_to_address(space, offset*2), mem_mask);
+	if (space->log_unmap && !space->debugger_access) logerror("%s: unmapped %s memory word read from %s & %04X\n", cpuexec_describe_context(space->machine), space->name, core_i64_hex_format(memory_byte_to_address(space, offset*2), space->addrchars), mem_mask);
 	return space->unmap;
 }
 static READ32_HANDLER( unmap_read32 )
 {
-	if (space->log_unmap && !space->debugger_access) logerror("%s: unmapped %s memory dword read from %08X & %08X\n", cpuexec_describe_context(space->machine), space->name, memory_byte_to_address(space, offset*4), mem_mask);
+	if (space->log_unmap && !space->debugger_access) logerror("%s: unmapped %s memory dword read from %s & %08X\n", cpuexec_describe_context(space->machine), space->name, core_i64_hex_format(memory_byte_to_address(space, offset*4), space->addrchars), mem_mask);
 	return space->unmap;
 }
 static READ64_HANDLER( unmap_read64 )
 {
-	if (space->log_unmap && !space->debugger_access) logerror("%s: unmapped %s memory qword read from %08X & %08X%08X\n", cpuexec_describe_context(space->machine), space->name, memory_byte_to_address(space, offset*8), (int)(mem_mask >> 32), (int)(mem_mask & 0xffffffff));
+	if (space->log_unmap && !space->debugger_access) logerror("%s: unmapped %s memory qword read from %s & %s\n", cpuexec_describe_context(space->machine), space->name, core_i64_hex_format(memory_byte_to_address(space, offset*8), space->addrchars), core_i64_hex_format(mem_mask, 16));
 	return space->unmap;
 }
 
 static WRITE8_HANDLER( unmap_write8 )
 {
-	if (space->log_unmap && !space->debugger_access) logerror("%s: unmapped %s memory byte write to %08X = %02X\n", cpuexec_describe_context(space->machine), space->name, memory_byte_to_address(space, offset), data);
+	if (space->log_unmap && !space->debugger_access) logerror("%s: unmapped %s memory byte write to %s = %02X\n", cpuexec_describe_context(space->machine), space->name, core_i64_hex_format(memory_byte_to_address(space, offset), space->addrchars), data);
 }
 static WRITE16_HANDLER( unmap_write16 )
 {
-	if (space->log_unmap && !space->debugger_access) logerror("%s: unmapped %s memory word write to %08X = %04X & %04X\n", cpuexec_describe_context(space->machine), space->name, memory_byte_to_address(space, offset*2), data, mem_mask);
+	if (space->log_unmap && !space->debugger_access) logerror("%s: unmapped %s memory word write to %s = %04X & %04X\n", cpuexec_describe_context(space->machine), space->name, core_i64_hex_format(memory_byte_to_address(space, offset*2), space->addrchars), data, mem_mask);
 }
 static WRITE32_HANDLER( unmap_write32 )
 {
-	if (space->log_unmap && !space->debugger_access) logerror("%s: unmapped %s memory dword write to %08X = %08X & %08X\n", cpuexec_describe_context(space->machine), space->name, memory_byte_to_address(space, offset*4), data, mem_mask);
+	if (space->log_unmap && !space->debugger_access) logerror("%s: unmapped %s memory dword write to %s = %08X & %08X\n", cpuexec_describe_context(space->machine), space->name, core_i64_hex_format(memory_byte_to_address(space, offset*4), space->addrchars), data, mem_mask);
 }
 static WRITE64_HANDLER( unmap_write64 )
 {
-	if (space->log_unmap && !space->debugger_access) logerror("%s: unmapped %s memory qword write to %08X = %08X%08X & %08X%08X\n", cpuexec_describe_context(space->machine), space->name, memory_byte_to_address(space, offset*8), (int)(data >> 32), (int)(data & 0xffffffff), (int)(mem_mask >> 32), (int)(mem_mask & 0xffffffff));
+	if (space->log_unmap && !space->debugger_access) logerror("%s: unmapped %s memory qword write to %s = %s & %s\n", cpuexec_describe_context(space->machine), space->name, core_i64_hex_format(memory_byte_to_address(space, offset*8), space->addrchars), core_i64_hex_format(data, 16), core_i64_hex_format(mem_mask, 16));
 }
 
 

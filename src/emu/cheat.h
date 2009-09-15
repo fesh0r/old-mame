@@ -28,6 +28,15 @@
 /* initialize the cheat system, loading any cheat files */
 void cheat_init(running_machine *machine);
 
+/* re-initialize the cheat system, reloading any cheat files */
+void cheat_reload(running_machine *machine);
+
+/* return the global enabled state of the cheat engine */
+int cheat_get_global_enable(running_machine *machine);
+
+/* globally enable or disable the cheat engine */
+void cheat_set_global_enable(running_machine *machine, int enable);
+
 
 
 /* ----- cheat UI helpers ----- */
@@ -49,6 +58,9 @@ int cheat_select_previous_state(running_machine *machine, void *entry);
 
 /* select the next menu state */
 int cheat_select_next_state(running_machine *machine, void *entry);
+
+/* return the displayable comment of the current cheat */
+astring *cheat_get_comment(void *entry);
 
 
 #endif	/* __CHEAT_H__ */

@@ -207,6 +207,11 @@ Notes:
   136014-231 which matches Namco's PP1-27. The bad bit should cause a tiny gfx
   glitch, though it's difficult to notice.
 
+- topracra: Use Service1 to start game
+
+Todo:
+
+- topracra: Gear is not updated in artwork
 
 ***************************************************************************/
 
@@ -347,7 +352,8 @@ static WRITE16_HANDLER( polepos_z8002_nvi_enable_w )
 }
 
 
-static CUSTOM_INPUT( shifted_port_r ) { return input_port_read(field->port->machine, param) >> 4; }
+static CUSTOM_INPUT( high_port_r ) { return input_port_read(field->port->machine, (const char *)param) >> 4; }
+static CUSTOM_INPUT( low_port_r ) { return input_port_read(field->port->machine, (const char *)param) & 0x0f; }
 static CUSTOM_INPUT( auto_start_r ) { return auto_start_mask; }
 
 static WRITE8_DEVICE_HANDLER( out_0 )
@@ -553,7 +559,7 @@ static INPUT_PORTS_START( polepos )
 	PORT_DIPSETTING(	0x00, "4" )
 
 	PORT_START("DSWA_HI")
-	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(shifted_port_r, "DSWA")
+	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(high_port_r, "DSWA")
 
 	PORT_START("DSWB")
 	PORT_DIPNAME( 0x07, 0x07, "Extended Rank" )
@@ -582,7 +588,7 @@ static INPUT_PORTS_START( polepos )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 
 	PORT_START("DSWB_HI")
-	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(shifted_port_r, "DSWB")
+	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(high_port_r, "DSWB")
 
 	PORT_START("BRAKE")
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL2 ) PORT_MINMAX(0,0x90) PORT_SENSITIVITY(100) PORT_KEYDELTA(16)
@@ -633,7 +639,7 @@ static INPUT_PORTS_START( poleposa )
 	PORT_DIPSETTING(	0x00, "4" )
 
 	PORT_START("DSWA_HI")
-	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(shifted_port_r, "DSWA")
+	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(high_port_r, "DSWA")
 
 	PORT_START("DSWB")
 	PORT_DIPNAME( 0xe0, 0xe0, "Practice Rank" )
@@ -662,7 +668,7 @@ static INPUT_PORTS_START( poleposa )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 
 	PORT_START("DSWB_HI")
-	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(shifted_port_r, "DSWB")
+	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(high_port_r, "DSWB")
 
 	PORT_START("BRAKE")
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL2 ) PORT_MINMAX(0,0x90) PORT_SENSITIVITY(100) PORT_KEYDELTA(16)
@@ -685,6 +691,12 @@ static INPUT_PORTS_START( topracra )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Gear Change") PORT_CODE(KEYCODE_SPACE) POLEPOS_TOGGLE /* Gear */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
+
+	PORT_START("IN0L")
+	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(low_port_r, "IN0")
+
+	PORT_START("IN0H")
+	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(high_port_r, "IN0")
 
 	PORT_START("DSWA")
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ) )
@@ -711,7 +723,7 @@ static INPUT_PORTS_START( topracra )
 	PORT_DIPSETTING(	0x00, "4" )
 
 	PORT_START("DSWA_HI")
-	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(shifted_port_r, "DSWA")
+	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(high_port_r, "DSWA")
 
 	PORT_START("DSWB")
 	PORT_DIPNAME( 0x07, 0x07, "Extended Rank" )
@@ -740,7 +752,7 @@ static INPUT_PORTS_START( topracra )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 
 	PORT_START("DSWB_HI")
-	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(shifted_port_r, "DSWB")
+	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(high_port_r, "DSWB")
 
 	PORT_START("BRAKE")
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL2 ) PORT_MINMAX(0,0x90) PORT_SENSITIVITY(100) PORT_KEYDELTA(16)
@@ -792,7 +804,7 @@ static INPUT_PORTS_START( polepos2 )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 
 	PORT_START("DSWA_HI")
-	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(shifted_port_r, "DSWA")
+	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(high_port_r, "DSWA")
 
 	PORT_START("DSWB")
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Game_Time ) )
@@ -818,7 +830,7 @@ static INPUT_PORTS_START( polepos2 )
 	PORT_DIPSETTING(	0x00, DEF_STR( High ) )
 
 	PORT_START("DSWB_HI")
-	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(shifted_port_r, "DSWB")
+	PORT_BIT( 0x0f, 0x00, IPT_SPECIAL ) PORT_CUSTOM(high_port_r, "DSWB")
 
 	PORT_START("BRAKE")
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL2 ) PORT_MINMAX(0,0x90) PORT_SENSITIVITY(100) PORT_KEYDELTA(16)
@@ -1637,7 +1649,7 @@ ROM_END
     couple of extra roms.
 */
 
-ROM_START( poleps2a )
+ROM_START( polepos2a )
 	/* Z80 memory/ROM data */
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "136014.180",   0x0000, 0x2000, CRC(f85212c4) SHA1(666e55a7662247e72393b105b3e719be4233f1ff) )
@@ -1720,7 +1732,7 @@ ROM_START( poleps2a )
 ROM_END
 
 
-ROM_START( poleps2b )
+ROM_START( polepos2b )
 	/* Z80 memory/ROM data */
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "136014.180",   0x0000, 0x2000, CRC(f85212c4) SHA1(666e55a7662247e72393b105b3e719be4233f1ff) )
@@ -1840,5 +1852,5 @@ GAME( 1982, topracer, polepos,	polepos, polepos,  polepos,	 ROT0, "bootleg", "To
 GAME( 1982, topracra, polepos,	polepos, topracra, topracra, ROT0, "bootleg", "Top Racer (set 2)", 0 )
 GAME( 1983, topracrb, polepos,	polepos, polepos,  polepos,	 ROT0, "bootleg", "Top Racer (set 3)", 0 )
 GAME( 1983, polepos2, 0,		polepos, polepos2, polepos2, ROT0, "Namco", "Pole Position II", 0 )
-GAME( 1983, poleps2a, polepos2, polepos, polepos2, polepos2, ROT0, "Namco (Atari license)", "Pole Position II (Atari)", 0 )
-GAME( 1983, poleps2b, polepos2, polepos, polepos2, polepos,	 ROT0, "bootleg", "Pole Position II (bootleg)", 0 )
+GAME( 1983, polepos2a,polepos2, polepos, polepos2, polepos2, ROT0, "Namco (Atari license)", "Pole Position II (Atari)", 0 )
+GAME( 1983, polepos2b,polepos2, polepos, polepos2, polepos,	 ROT0, "bootleg", "Pole Position II (bootleg)", 0 )

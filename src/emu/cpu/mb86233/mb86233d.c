@@ -372,7 +372,7 @@ static char * ALU( UINT32 alu)
 	return buf;
 }
 
-unsigned dasm_mb86233(char *buffer, UINT32 opcode )
+static unsigned dasm_mb86233(char *buffer, UINT32 opcode )
 {
 	char *p = buffer;
 	UINT32	grp = ( opcode >> 26 ) & 0x3f;
@@ -771,4 +771,11 @@ unsigned dasm_mb86233(char *buffer, UINT32 opcode )
 	}
 
 	return (1 | DASMFLAG_SUPPORTED);
+}
+
+CPU_DISASSEMBLE( mb86233 )
+{
+	UINT32 op = *(UINT32 *)oprom;
+	op = LITTLE_ENDIANIZE_INT32(op);
+	return dasm_mb86233(buffer, op);
 }
