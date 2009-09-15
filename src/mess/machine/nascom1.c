@@ -14,7 +14,6 @@
 #include "machine/ay31015.h"
 
 /* Devices */
-#include "devices/basicdsk.h"
 #include "devices/snapquik.h"
 #include "devices/cassette.h"
 
@@ -102,48 +101,6 @@ READ8_HANDLER( nascom2_fdc_status_r )
 {
 	return (nascom2_fdc.drq << 7) | nascom2_fdc.irq;
 }
-
-
-DEVICE_IMAGE_LOAD( nascom2_floppy )
-{
-	int sides, sectors;
-	const device_config *fdc = devtag_get_device(image->machine, "wd1793");
-	if (!image_has_been_created(image))
-	{
-		switch (image_length(image))
-		{
-		case 80 * 2 * 2 * 8 * 256:
-			sides = 2;
-			sectors = 2 * 8;
-			wd17xx_set_density(fdc,DEN_FM_HI);
-			break;
-
-		case 80 * 1 * 2 * 8 * 256:
-			sides = 1;
-			sectors = 2 * 8;
-			wd17xx_set_density(fdc,DEN_FM_HI);
-			break;
-
-		default:
-			return INIT_FAIL;
-		}
-	}
-	else
-	{
-		return INIT_FAIL;
-	}
-
-	if (device_load_basicdsk_floppy(image) != INIT_PASS)
-	{
-		return INIT_FAIL;
-	}
-
-	basicdsk_set_geometry(image, 80, sides, sectors, 256, 1, 0, FALSE);
-
-	return INIT_PASS;
-}
-
-
 
 /*************************************
  *
@@ -310,6 +267,14 @@ MACHINE_RESET( nascom1 )
 	ay31015_set_input_pin( nascom1_hd6402, AY31015_CS, 1 );
 }
 
+MACHINE_RESET( nascom2 )
+{
+	const device_config *fdc = devtag_get_device(machine, "wd1793");
+	
+	wd17xx_set_density(fdc,DEN_FM_HI);
+
+	MACHINE_RESET_CALL(nascom1);
+}
 
 DRIVER_INIT( nascom1 )
 {

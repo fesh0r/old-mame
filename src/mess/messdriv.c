@@ -65,10 +65,13 @@ const game_driver * const drivers[] =
     DRIVER( gblight )   /* Nintendo Game Boy Light Handheld             */
     DRIVER( gbcolor )   /* Nintendo Game Boy Color Handheld                 */
     DRIVER( snes )      /* Nintendo Super Nintendo NTSC                     */
+    DRIVER( snessfx )	/* Nintendo Super Nintendo NTSC, SuperFX			*/
     DRIVER( snespal )   /* Nintendo Super Nintendo PAL                      */
+    DRIVER( snespsfx )	/* Nintendo Super Nintendo PAL, SuperFX			*/
     DRIVER( sfcbox )    /* Nintendo Super Famicom Box                       */
     DRIVER( n64 )       /* Nintendo N64                                     */
     DRIVER( pokemini )  /* Nintendo Pokemon Mini                            */
+    DRIVER( gba )	/* Nintendo Game Boy Advance Handheld               */
 
     DRIVER( megaduck )  /* Megaduck                                         */
 
@@ -146,6 +149,9 @@ const game_driver * const drivers[] =
 //  DRIVER( mtc9016 )   /* 1978 Mustang 9016 Telespiel Computer             */
 //  DRIVER( shmc1200 )
 
+    /* ENSONIQ */
+    DRIVER( esq1 )	/* 1986 ESQ-1 Digital Wave Synthesizer */
+
     /* FAIRCHILD */
     DRIVER( channelf )  /* Fairchild Channel F VES - 1976                   */
     DRIVER( sabavdpl )  /* SABA Videoplay - 1977 (PAL)                      */
@@ -174,6 +180,10 @@ const game_driver * const drivers[] =
     DRIVER( arcadia )   /* Emerson Arcadia 2001                             */
     DRIVER( vcg )       /* Palladium Video-Computer-Game                    */
 
+    /* GAME PARK */
+    DRIVER( gp32 )	/* GP32 2001 */
+    DRIVER( gp2x )	/* GP2X 2005 */
+
     /* GCE */
     DRIVER( vectrex )   /* General Consumer Electric Vectrex - 1982-1984    */
                         /* (aka Milton-Bradley Vectrex)                     */
@@ -187,10 +197,10 @@ const game_driver * const drivers[] =
     DRIVER( advision )  /* Adventurevision                                  */
 
     /* CAPCOM */
-    DRIVER( sfach )     /* CPS Changer (Street Fighter Alpha)               */
-    DRIVER( sfzbch )    /* CPS Changer (Street Fighter ZERO Brazil)         */
-    DRIVER( sfzch )     /* CPS Changer (Street Fighter ZERO)                */
-    DRIVER( wofch )     /* CPS Changer (Tenchi Wo Kurau II)                 */
+	DRIVER( sfach )     /* CPS Changer (Street Fighter Alpha)               */
+	DRIVER( sfzbch )    /* CPS Changer (Street Fighter ZERO Brazil)         */
+	DRIVER( sfzch )     /* CPS Changer (Street Fighter ZERO)                */
+	DRIVER( wofch )     /* CPS Changer (Tenchi Wo Kurau II)                 */
 
     /* MAGNAVOX */
     DRIVER( odyssey2 )  /* Magnavox Odyssey 2 - 1978-1983                   */
@@ -483,6 +493,7 @@ const game_driver * const drivers[] =
     DRIVER( ibmpcjr )   /* 1984 IBM PC Jr                                   */
     DRIVER( t1000hx )   /* 1987 Tandy 1000HX (similiar to PCJr)             */
     DRIVER( t1000sx )   /* 1987 Tandy 1000SX (similiar to PCJr)             */
+	DRIVER( t1000rl )	/* 1989 Tandy 1000RL                                */
 
     /* xt */
     DRIVER( ibm5160 )   /* 1982 IBM XT 5160                                 */
@@ -695,6 +706,7 @@ const game_driver * const drivers[] =
     /* Tatung */
     DRIVER( einstein )
     DRIVER( einstei2 )
+    DRIVER( einst256 )
 
     /* INTELLIGENT SOFTWARE */
     DRIVER( ep64 )      /* Enterprise 64                                    */
@@ -703,8 +715,10 @@ const game_driver * const drivers[] =
 
     /* NON LINEAR SYSTEMS */
     DRIVER( kaypro2x )  /* Kaypro 2 - 2/84 */
+    DRIVER( kaypro4a )  /* Kaypro 4 - 4/84 */
     DRIVER( kayproii )  /* Kaypro II - 2/83 */
     DRIVER( kaypro4 )   /* Kaypro 4 - 4/83 */
+    DRIVER( kaypro4p88 )   /* Kaypro 4 - 4/83 w/plus88 board installed*/
     DRIVER( kaypro10 )  /* Kaypro 10 */
     DRIVER( omni2 )     /* Omni II */
 
@@ -957,6 +971,23 @@ const game_driver * const drivers[] =
 
     /* DEC */
     DRIVER( pdp1 )      /* 1961 DEC PDP1                                    */
+    DRIVER(vt100) /* 1978 Digital Equipment Corporation */
+    //DRIVER(vt100wp) /* 1978 Digital Equipment Corporation */
+    //DRIVER(vt100stp) /* 1978 Digital Equipment Corporation */
+    //DRIVER(vt101) /* 1981 Digital Equipment Corporation */
+    //DRIVER(vt102) /* 1981 Digital Equipment Corporation */
+    //DRIVER(vt103) /* 1979 Digital Equipment Corporation */
+    DRIVER(vt105) /* 1978 Digital Equipment Corporation */
+    //DRIVER(vt110) /* 1978 Digital Equipment Corporation */
+    //DRIVER(vt125) /* 1981 Digital Equipment Corporation */
+    DRIVER(vt131) /* 1981 Digital Equipment Corporation */
+    //DRIVER(vt132) /* 1978 Digital Equipment Corporation */
+    //DRIVER(vt180) /* 1981 Digital Equipment Corporation */
+    DRIVER(vt220) /* 1983 Digital Equipment Corporation */
+    DRIVER(vt320) /* 1987 Digital Equipment Corporation */
+    DRIVER(vt520) /* 1994 Digital Equipment Corporation */
+    DRIVER(vk100) /* 1980 Digital Equipment Corporation */
+    DRIVER(dectalk) /* 1982 Digital Equipment Corporation */
 
     /* MEMOTECH */
     DRIVER( mtx512 )    /* 1983 Memotech MTX 512                            */
@@ -967,6 +998,7 @@ const game_driver * const drivers[] =
     DRIVER( intvkbd )   /* 1981 - Mattel Intellivision Keyboard Component   */
                         /* (Test marketed, later recalled)                  */
     DRIVER( aquarius )  /* 1983 Aquarius                                    */
+    DRIVER( aquarius_qd )  /* 1983 Aquarius w/ Quick Disk                   */
 //  DRIVER( aquariu2 )  /* 1984 Aquarius II                                 */
 
     /*EXIDY INC */
@@ -1152,6 +1184,7 @@ const game_driver * const drivers[] =
     DRIVER( radiorom )
     DRIVER( radioram )
     DRIVER( spektr01 )
+    DRIVER( mikron2 )
     DRIVER( apogee )
     DRIVER( mikrosha )
     DRIVER( partner )
@@ -1200,10 +1233,14 @@ const game_driver * const drivers[] =
 
   /* ICE-Felix */
     DRIVER( hc85 )    /* 1985 HC-85                                       */
+    DRIVER( hc88 )    /* 1988 HC-88                                       */
     DRIVER( hc90 )    /* 1990 HC-90                                       */
     DRIVER( hc91 )    /* 1991 HC-91                                       */
     DRIVER( hc128 )   /* 1991 HC-128                                      */
     DRIVER( hc2000 )  /* 1992 HC-2000                                     */
+
+    DRIVER( cobra )
+    DRIVER( cobra80 )
 
     DRIVER( cip01 )   /* 1987 CIP-01                                      */
     DRIVER( cip03 )   /* 1988 CIP-03                                      */
@@ -1237,12 +1274,6 @@ const game_driver * const drivers[] =
     DRIVER(ac1scch) /* 1984 Amateurcomputer AC1 SCCH        */
 
     DRIVER( pcm )   /* PC/M Mugler                          */
-
-    /* DEC */
-    DRIVER(vt100)
-    DRIVER(vt220)
-    DRIVER(vt320)
-    DRIVER(vt520)
 
     /* Ei Nis */
     DRIVER(pecom64)
@@ -1365,7 +1396,6 @@ const game_driver * const drivers[] =
     DRIVER( bob85 )
     DRIVER( c80 )
     DRIVER( mc1000 )
-    DRIVER( vk100 )
     DRIVER( d6809 )
     DRIVER( mk85 )
     DRIVER( mk90 )
@@ -1448,5 +1478,7 @@ const game_driver * const drivers[] =
     DRIVER( elf2 )
     DRIVER( pippin )
     DRIVER( sol20 )
+    DRIVER( 4004clk )
+    DRIVER( busicom )
 
 #endif /* DRIVER_RECURSIVE */

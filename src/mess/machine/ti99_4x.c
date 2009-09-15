@@ -66,7 +66,6 @@ TODO:
 #include "ti99pcod.h"
 
 #include "sound/tms5220.h"	/* for tms5220_set_variant() */
-#include "sound/5220intf.h"
 #include "sound/sn76496.h"
 
 #include "devices/harddriv.h"	/* for device_init_mess_hd() */
@@ -703,7 +702,7 @@ void set_hsgpl_crdena(int data)
 READ16_HANDLER ( ti99_nop_8_r )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	return (0);
 }
@@ -711,7 +710,7 @@ READ16_HANDLER ( ti99_nop_8_r )
 WRITE16_HANDLER ( ti99_nop_8_w )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 }
 
 /*
@@ -723,7 +722,7 @@ READ16_HANDLER ( ti99_4p_cart_r )
 		return ti99_4p_internal_ROM6[offset];
 
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	if (hsgpl_crdena)
 		/* hsgpl is enabled */
@@ -741,7 +740,7 @@ WRITE16_HANDLER ( ti99_4p_cart_w )
 	}
 
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	if (hsgpl_crdena)
 		/* hsgpl is enabled */
@@ -784,7 +783,7 @@ Theory:
 WRITE16_HANDLER ( ti99_wsnd_w )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	sn76496_w(devtag_get_device(space->machine, "sn76496"), offset, (data >> 8) & 0xff);
 }
@@ -795,7 +794,7 @@ WRITE16_HANDLER ( ti99_wsnd_w )
 READ16_HANDLER ( ti99_rvdp_r )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	if (offset & 1)
 	{	/* read VDP status */
@@ -813,7 +812,7 @@ READ16_HANDLER ( ti99_rvdp_r )
 WRITE16_HANDLER ( ti99_wvdp_w )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	if (offset & 1)
 	{	/* write VDP address */
@@ -831,7 +830,7 @@ WRITE16_HANDLER ( ti99_wvdp_w )
 READ16_HANDLER ( ti99_rv38_r )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	if (offset & 1)
 	{	/* read VDP status */
@@ -849,7 +848,7 @@ READ16_HANDLER ( ti99_rv38_r )
 WRITE16_HANDLER ( ti99_wv38_w )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	switch (offset & 3)
 	{
@@ -965,7 +964,7 @@ READ16_HANDLER ( ti99_grom_r )
 	UINT16 reply;
 
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4 /*20+3*/);		/* from 4 to 23? */
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	/* This implementation features a multislot cartridge system which
 	   is based on multiple GROM base addresses. The standard base 
@@ -1036,7 +1035,7 @@ READ16_HANDLER ( ti99_grom_r )
 WRITE16_HANDLER ( ti99_grom_w )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4/*20+3*/);		/* from 4 to 23? */
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	/* Activates a slot in the multi-cartridge extender. */
 	cartridge_slot_set(cartslots, (offset & 0x01fe)/2);
@@ -1096,7 +1095,7 @@ static READ8_HANDLER ( ti99_grom_r8 )
 {
 	UINT8 reply;
 
-	cpu_adjust_icount(space->machine->cpu[0],-4);
+	cpu_adjust_icount(space->machine->firstcpu,-4);
 	
 	/* Activates a slot in the multi-cartridge extender. */
 	// 1001 1wbb bbbb bbr0
@@ -1129,7 +1128,7 @@ static READ8_HANDLER ( ti99_grom_r8 )
 */
 static WRITE8_HANDLER ( ti99_grom_w8 )
 {
-	cpu_adjust_icount(space->machine->cpu[0],-4/*20+3*/);		/* from 4 to 23? */
+	cpu_adjust_icount(space->machine->firstcpu,-4/*20+3*/);		/* from 4 to 23? */
 
 	/* Activates a slot in the multi-cartridge extender. */
 	cartridge_slot_set(cartslots, (offset & 0x03fc)/4);
@@ -1165,7 +1164,7 @@ static WRITE8_HANDLER ( ti99_grom_w8 )
 READ16_HANDLER ( ti99_4p_grom_r )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);		/* HSGPL is located on 8-bit bus? */
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	return /*hsgpl_crdena ?*/ ti99_hsgpl_gpl_r(space, offset, mem_mask) /*: 0*/;
 }
@@ -1176,7 +1175,7 @@ READ16_HANDLER ( ti99_4p_grom_r )
 WRITE16_HANDLER ( ti99_4p_grom_w )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);		/* HSGPL is located on 8-bit bus? */
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	/*if (hsgpl_crdena)*/
 		ti99_hsgpl_gpl_w(space, offset, data, mem_mask);
@@ -2454,7 +2453,7 @@ static void ti99_TIxram_init(running_machine *machine)
 static READ16_HANDLER ( ti99_TIxramlow_r )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	return xRAM_ptr[offset];
 }
@@ -2462,7 +2461,7 @@ static READ16_HANDLER ( ti99_TIxramlow_r )
 static WRITE16_HANDLER ( ti99_TIxramlow_w )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	COMBINE_DATA(xRAM_ptr + offset);
 }
@@ -2471,7 +2470,7 @@ static WRITE16_HANDLER ( ti99_TIxramlow_w )
 static READ16_HANDLER ( ti99_TIxramhigh_r )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	return xRAM_ptr[offset+0x1000];
 }
@@ -2479,7 +2478,7 @@ static READ16_HANDLER ( ti99_TIxramhigh_r )
 static WRITE16_HANDLER ( ti99_TIxramhigh_w )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	COMBINE_DATA(xRAM_ptr + offset+0x1000);
 }
@@ -2562,7 +2561,7 @@ static WRITE8_HANDLER(sAMS_mapper_w)
 static READ16_HANDLER ( ti99_sAMSxramlow_r )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	if (sAMS_mapper_on)
 		return xRAM_ptr[(offset&0x7ff)+sAMSlookup[(0x1000+offset)>>11]];
@@ -2573,7 +2572,7 @@ static READ16_HANDLER ( ti99_sAMSxramlow_r )
 static WRITE16_HANDLER ( ti99_sAMSxramlow_w )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	if (sAMS_mapper_on)
 		COMBINE_DATA(xRAM_ptr + (offset&0x7ff)+sAMSlookup[(0x1000+offset)>>11]);
@@ -2585,7 +2584,7 @@ static WRITE16_HANDLER ( ti99_sAMSxramlow_w )
 static READ16_HANDLER ( ti99_sAMSxramhigh_r )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	if (sAMS_mapper_on)
 		return xRAM_ptr[(offset&0x7ff)+sAMSlookup[(0x5000+offset)>>11]];
@@ -2596,7 +2595,7 @@ static READ16_HANDLER ( ti99_sAMSxramhigh_r )
 static WRITE16_HANDLER ( ti99_sAMSxramhigh_w )
 {
 	cpu_adjust_icount(cputag_get_cpu(space->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(space->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	if (sAMS_mapper_on)
 		COMBINE_DATA(xRAM_ptr + (offset&0x7ff)+sAMSlookup[(0x5000+offset)>>11]);

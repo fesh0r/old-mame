@@ -1766,7 +1766,7 @@ static WRITE8_DEVICE_HANDLER( ti99_cart_w_legacy8 )
 				if (slotebr2 < 0 || slotrom < 0)
 					return; /* just ignore if the cartridge is not paged. */
 				else
-					cartslots->cartridge[slotrom].rom_page = ((data >> 8) & 1);
+					cartslots->cartridge[slotrom].rom_page = ((data >> 7) & 1);
 			}
 		}
 		return;
@@ -1819,7 +1819,7 @@ static int load_legacy(const device_config *image)
 	/* There is a circuitry in TI99/4(a) that resets the console when a
 	cartridge is inserted or removed.  We emulate this instead of resetting the
 	emulator (which is the default in MESS). */
-	/*cpu_set_input_line(machine->cpu[0], INPUT_LINE_RESET, PULSE_LINE);
+	/*cpu_set_input_line(machine->firstcpu, INPUT_LINE_RESET, PULSE_LINE);
 	tms9901_reset(0);
 	if (! has_evpc)
 		TMS9928A_reset();
@@ -2171,7 +2171,7 @@ READ16_DEVICE_HANDLER( ti99_multicart_r )
         cpu_adjust_icount(cputag_get_cpu(device->machine, "maincpu"),-4);
 
 	// Alternatively:
-	// cpu_spinuntil_time(device->machine->cpu[0], ATTOTIME_IN_USEC(6));
+	// cpu_spinuntil_time(device->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 //	printf("rpk = %d, bin = %d\n", cartslots->multi_slots,cartslots->legacy_slots); 
 
@@ -2223,7 +2223,7 @@ WRITE16_DEVICE_HANDLER( ti99_multicart_w )
 	
 	/* Idle the CPU */
         cpu_adjust_icount(cputag_get_cpu(device->machine, "maincpu"),-4);
-//	cpu_spinuntil_time(device->machine->cpu[0], ATTOTIME_IN_USEC(6));
+//	cpu_spinuntil_time(device->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	/* Handle legacy mode. */
 	if (in_legacy_mode(device))

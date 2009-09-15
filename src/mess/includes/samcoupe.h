@@ -12,6 +12,14 @@
 #define SAMCOUPE_H_
 
 
+/* interrupt sources */
+#define SAM_LINE_INT	 0x01
+#define SAM_MOUSE_INT    0x02
+#define SAM_MIDIIN_INT   0x04
+#define SAM_FRAME_INT	 0x08
+#define SAM_MIDIOUT_INT  0x10
+
+
 typedef struct _coupe_asic coupe_asic;
 struct _coupe_asic
 {

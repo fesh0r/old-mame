@@ -15,6 +15,9 @@
 typedef struct _mc1000_state mc1000_state;
 struct _mc1000_state
 {
+	/* cpu state */
+	int ne555_int;
+
 	/* memory state */
 	int rom0000;
 	int mc6845_bank;
@@ -24,6 +27,8 @@ struct _mc1000_state
 	int keylatch;
 
 	/* video state */
+	int hsync;
+	int vsync;
 	UINT8 *mc6845_video_ram;
 	UINT8 *mc6847_video_ram;
 	UINT8 mc6847_attr;

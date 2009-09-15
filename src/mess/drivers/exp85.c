@@ -142,14 +142,14 @@ static I8355_INTERFACE( i8355_intf )
 
 /* I8085A Interface */
 
-static void exp85_sod_w(const device_config *device, int state)
+static WRITE_LINE_DEVICE_HANDLER( exp85_sod_w )
 {
 	exp85_state *driver_state = device->machine->driver_data;
 
 	cassette_output(driver_state->cassette, state ? -1.0 : +1.0);
 }
 
-static int exp85_sid_r(const device_config *device)
+static READ_LINE_DEVICE_HANDLER( exp85_sid_r )
 {
 	exp85_state *driver_state = device->machine->driver_data;
 
@@ -163,12 +163,12 @@ static int exp85_sid_r(const device_config *device)
 	return data;
 }
 
-static const i8085_config exp85_i8085_config =
+static I8085_CONFIG( exp85_i8085_config )
 {
-	NULL,				/* INTE changed callback */
-	NULL,				/* STATUS changed callback */
-	exp85_sod_w,		/* SOD changed callback (8085A only) */
-	exp85_sid_r			/* SID changed callback (8085A only) */
+	DEVCB_NULL,					/* STATUS changed callback */
+	DEVCB_NULL,					/* INTE changed callback */
+	DEVCB_LINE(exp85_sid_r),	/* SID changed callback (8085A only) */
+	DEVCB_LINE(exp85_sod_w)		/* SOD changed callback (8085A only) */
 };
 
 /* Machine Initialization */
@@ -245,16 +245,16 @@ ROM_START( exp85 )
 	ROM_LOAD( "d000.bin", 0xd000, 0x0800, CRC(c10c4a22) SHA1(30588ba0b27a775d85f8c581ad54400c8521225d) )
 	ROM_LOAD( "d800.bin", 0xd800, 0x0800, CRC(dfa43ef4) SHA1(56a7e7a64928bdd1d5f0519023d1594cacef49b3) )
 	ROM_SYSTEM_BIOS( 0, "eia", "EIA Terminal" )
-	ROMX_LOAD( "explorer.u105", 0xf000, 0x0800, CRC(1a99d0d9) SHA1(57b6d48e71257bc4ef2d3dddc9b30edf6c1db766), ROM_BIOS(1) )
+	ROMX_LOAD( "eia.u105", 0xf000, 0x0800, CRC(1a99d0d9) SHA1(57b6d48e71257bc4ef2d3dddc9b30edf6c1db766), ROM_BIOS(1) )
 	ROM_SYSTEM_BIOS( 1, "hex", "Hex Keyboard" )
-	ROMX_LOAD( "explorer.u105", 0xf000, 0x0800, NO_DUMP, ROM_BIOS(2) )
+	ROMX_LOAD( "hex.u105", 0xf000, 0x0800, NO_DUMP, ROM_BIOS(2) )
 
 	ROM_REGION( 0x800, I8355_TAG, ROMREGION_ERASE00 )
 /*	ROM_DEFAULT_BIOS("terminal")
 	ROM_SYSTEM_BIOS( 0, "terminal", "Terminal" )
-	ROMX_LOAD( "explorer.u105", 0xf000, 0x0800, CRC(1a99d0d9) SHA1(57b6d48e71257bc4ef2d3dddc9b30edf6c1db766), ROM_BIOS(1) )
+	ROMX_LOAD( "eia.u105", 0xf000, 0x0800, CRC(1a99d0d9) SHA1(57b6d48e71257bc4ef2d3dddc9b30edf6c1db766), ROM_BIOS(1) )
 	ROM_SYSTEM_BIOS( 1, "hexkbd", "Hex Keyboard" )
-	ROMX_LOAD( "explorer.u105", 0xf000, 0x0800, NO_DUMP, ROM_BIOS(2) )*/
+	ROMX_LOAD( "hex.u105", 0xf000, 0x0800, NO_DUMP, ROM_BIOS(2) )*/
 ROM_END
 
 /* System Configuration */

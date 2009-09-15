@@ -44,7 +44,7 @@
 #include "cpu/g65816/g65816.h"
 #include "includes/apple2.h"
 #include "machine/ay3600.h"
-#include "devices/mflopimg.h"
+#include "devices/flopdrv.h"
 #include "formats/ap2_dsk.h"
 #include "includes/apple2gs.h"
 #include "devices/sonydriv.h"
@@ -56,7 +56,7 @@
 #include "machine/mockngbd.h"
 #include "machine/8530scc.h"
 #include "sound/ay8910.h"
-#include "sound/dac.h"
+#include "sound/speaker.h"
 
 static const gfx_layout apple2gs_text_layout =
 {
@@ -168,7 +168,7 @@ static MACHINE_DRIVER_START( apple2gs )
 
 	MDRV_NVRAM_HANDLER( apple2gs )
 
-	MDRV_SOUND_REPLACE("a2dac", DAC, 0)
+	MDRV_SOUND_REPLACE("a2speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 	MDRV_SOUND_ADD("es5503", ES5503, APPLE2GS_7M)

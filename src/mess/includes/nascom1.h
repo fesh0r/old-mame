@@ -23,7 +23,6 @@ SNAPSHOT_LOAD( nascom1 );
 READ8_HANDLER( nascom2_fdc_select_r );
 WRITE8_HANDLER( nascom2_fdc_select_w );
 READ8_HANDLER( nascom2_fdc_status_r );
-DEVICE_IMAGE_LOAD( nascom2_floppy );
 
 READ8_HANDLER( nascom1_port_00_r);
 READ8_HANDLER( nascom1_port_01_r);
@@ -35,6 +34,7 @@ READ8_DEVICE_HANDLER( nascom1_hd6402_si );
 WRITE8_DEVICE_HANDLER( nascom1_hd6402_so );
 
 MACHINE_RESET( nascom1 );
+MACHINE_RESET( nascom2 );
 
 /*----------- defined in video/nascom1.c -----------*/
 

@@ -22,6 +22,7 @@ Historical notes: TI made several last minute design changes.
 #include "deprecat.h"
 #include "cpu/tms9900/tms9900.h"
 #include "sound/sn76496.h"
+#include "sound/tms5220.h"
 #include "sound/wave.h"
 #include "video/v9938.h"
 #include "machine/ti99_4x.h"
@@ -33,11 +34,10 @@ Historical notes: TI made several last minute design changes.
 #include "machine/99_dsk.h"
 #include "machine/99_ide.h"
 #include "machine/99_hsgpl.h"
-#include "devices/mflopimg.h"
+#include "devices/flopdrv.h"
 #include "devices/harddriv.h"
 #include "devices/cassette.h"
 #include "machine/smartmed.h"
-#include "sound/5220intf.h"
 #include "machine/idectrl.h"
 #include "machine/smc92x4.h"
 #include "machine/mm58274c.h"
@@ -885,8 +885,7 @@ static void ti99_4_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
-                /* Used within mflopimg.c. */
-                case MESS_DEVINFO_INT_KEEP_DRIVE_GEOMETRY:                                  info->i = 1; break;
+        case MESS_DEVINFO_INT_KEEP_DRIVE_GEOMETRY:                                  info->i = 1; break;
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_ti99; break;
 

@@ -41,7 +41,6 @@ This gives a total of 19968 NOPs per frame.
 #include "machine/mc146818.h"
 #include "machine/nec765.h"
 #include "machine/ctronics.h"
-#include "devices/dsk.h"
 #include "devices/cassette.h"
 #include "devices/snapquik.h"
 #include "includes/amstrad.h"
@@ -280,7 +279,7 @@ PALETTE_INIT( amstrad_cpc_green )
 }
 
 
-NEC765_INTERRUPT( aleste_interrupt )
+WRITE_LINE_DEVICE_HANDLER( aleste_interrupt )
 {
 	if(state == CLEAR_LINE)
 		aleste_fdc_int = 0;

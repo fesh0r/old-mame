@@ -9,7 +9,8 @@
 #include "machine/z80sio.h"
 #include "includes/newbrain.h"
 #include "includes/serial.h"
-#include "devices/basicdsk.h"
+#include "devices/flopdrv.h"
+#include "formats/basicdsk.h"
 #include "devices/cassette.h"
 #include "machine/rescap.h"
 
@@ -658,9 +659,9 @@ static WRITE8_HANDLER( fdc_auxiliary_w )
 	floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0), BIT(data, 0));
 	floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0), 1, 0);
 
-	nec765_set_reset_state(state->nec765, BIT(data, 1));
+	nec765_reset_w(state->nec765, BIT(data, 1));
 
-	nec765_set_tc_state(state->nec765, BIT(data, 2));
+	nec765_tc_w(state->nec765, BIT(data, 2));
 }
 
 static READ8_HANDLER( fdc_control_r )
@@ -1288,7 +1289,7 @@ static ACIA6850_INTERFACE( newbrain_acia_intf )
 	DEVCB_LINE(acia_interrupt)
 };
 
-static NEC765_INTERRUPT( newbrain_fdc_interrupt )
+static WRITE_LINE_DEVICE_HANDLER( newbrain_fdc_interrupt )
 {
 	newbrain_state *driver_state = device->machine->driver_data;
 
@@ -1297,7 +1298,7 @@ static NEC765_INTERRUPT( newbrain_fdc_interrupt )
 
 static const nec765_interface newbrain_nec765_interface =
 {
-	newbrain_fdc_interrupt,
+	DEVCB_LINE(newbrain_fdc_interrupt),
 	NULL,
 	NULL,
 	NEC765_RDY_PIN_NOT_CONNECTED
@@ -1633,19 +1634,9 @@ ROM_START( newbraim )
 ROM_END
 
 /* System Configuration */
-
-static DEVICE_IMAGE_LOAD( newbrain_floppy )
-{
-	if (image_has_been_created(image))
-		return INIT_FAIL;
-
-	if (device_load_basicdsk_floppy(image) == INIT_PASS)
-	{
-		// 180K
-	}
-
-	return INIT_PASS;
-}
+static FLOPPY_OPTIONS_START(newbrain)
+	// 180K img
+FLOPPY_OPTIONS_END
 
 static void newbrain_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -1653,15 +1644,12 @@ static void newbrain_floppy_getinfo(const mess_device_class *devclass, UINT32 st
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:					info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:						info->load = DEVICE_IMAGE_LOAD_NAME(newbrain_floppy); break;
+		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_newbrain; break;
 
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:			strcpy(info->s = device_temp_str(), "img"); break;
-
-		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
+		default:										floppy_device_getinfo(devclass, state, info); break;
 	}
 }
 

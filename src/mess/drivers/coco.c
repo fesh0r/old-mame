@@ -33,13 +33,12 @@ coco3h	1.2	2.0		1.1
 #include "machine/ds1315.h"
 #include "machine/6883sam.h"
 #include "includes/coco.h"
-#include "devices/basicdsk.h"
 #include "machine/wd17xx.h"
 #include "machine/6551.h"
 #include "formats/coco_dsk.h"
 #include "formats/coco_cas.h"
 #include "devices/printer.h"
-#include "devices/mflopimg.h"
+#include "devices/flopdrv.h"
 #include "devices/cassette.h"
 #include "devices/bitbngr.h"
 #include "devices/snapquik.h"
@@ -487,6 +486,15 @@ static INPUT_PORTS_START( coco )
 	PORT_INCLUDE( coco_joystick )
 	PORT_INCLUDE( coco_joystick_buttons )
 	PORT_INCLUDE( m6847_artifacting )
+
+	PORT_START("joystick_mode")
+	PORT_CONFNAME( 0x70, 0x00, "Joystick Type" )
+	PORT_CHANGED( coco_joystick_mode_changed, 0 )
+	PORT_CONFSETTING(	0x00, DEF_STR( Normal ) )
+	PORT_CONFSETTING(	0x10, "Hi-Res Interface" )
+	PORT_CONFSETTING(	0x30, "Hi-Res Interface (CoCoMax 3 Style)" )
+	PORT_CONFSETTING(	0x20, "The Rat Graphics Mouse" )
+	PORT_CONFSETTING(	0x40, "Diecom Light Gun Adaptor" )
 
 	PORT_START("real_time_clock") /* 13 */
 	PORT_CONFNAME( 0x03, 0x00, "Real Time Clock" )

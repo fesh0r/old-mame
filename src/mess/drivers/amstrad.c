@@ -98,8 +98,9 @@ Some bugs left :
 #include "machine/ctronics.h"
 
 /* Devices */
-#include "devices/dsk.h"		/* for CPCEMU style disk images */
-#include "devices/basicdsk.h"   /* for 720k MSX disk images (Aleste supports these) */
+#include "formats/dsk_dsk.h"		/* for CPCEMU style disk images */
+#include "devices/flopdrv.h"
+#include "formats/basicdsk.h"
 #include "includes/msx_slot.h"
 #include "includes/msx.h"  /* MSX floppy device load */
 #include "devices/snapquik.h"
@@ -134,7 +135,7 @@ static I8255A_INTERFACE( amstrad_ppi8255_interface )
 /* Amstrad NEC765 interface doesn't use interrupts or DMA! */
 static const nec765_interface amstrad_nec765_interface =
 {
-	NULL,
+	DEVCB_NULL,
 	NULL,
 	NULL,
 	NEC765_RDY_PIN_CONNECTED
@@ -143,7 +144,7 @@ static const nec765_interface amstrad_nec765_interface =
 /* Aleste uses an 8272A, with the interrupt flag visible on PPI port B */
 static const nec765_interface aleste_8272_interface =
 {
-	aleste_interrupt,
+	DEVCB_LINE(aleste_interrupt),
 	NULL,
 	NULL,
 	NEC765_RDY_PIN_CONNECTED
@@ -1126,8 +1127,12 @@ static void cpc6128_floppy_getinfo(const mess_device_class *devclass, UINT32 sta
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
-		default:										legacydsk_device_getinfo(devclass, state, info); break;
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_dsk; break;
+
+		default:										floppy_device_getinfo(devclass, state, info); break;
 	}
+
 }
 
 static void aleste_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
@@ -1137,10 +1142,11 @@ static void aleste_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(msx_floppy); break;
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
 
-		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_msx; break;
+
+		default:										floppy_device_getinfo(devclass, state, info); break;
 	}
 }
 

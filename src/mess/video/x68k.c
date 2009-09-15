@@ -51,7 +51,6 @@ static tilemap* x68k_bg1_16;
 
 static int sprite_shift;
 
-static void x68k_render_video_word(int offset);
 static void x68k_crtc_refresh_mode(running_machine *machine);
 
 INLINE void x68k_plot_pixel(bitmap_t *bitmap, int x, int y, UINT32 color)
@@ -102,7 +101,6 @@ static void x68k_crtc_text_copy(int src, int dest)
 	// copys one raster in T-VRAM to another raster
 	int src_ram = src * 256;  // 128 bytes per scanline
 	int dest_ram = dest * 256;
-	int x;
 	int line;
 
 	if(dest > 250)
@@ -115,10 +113,6 @@ static void x68k_crtc_text_copy(int src, int dest)
 		memcpy(x68k_tvram+dest_ram+0x10000,x68k_tvram+src_ram+0x10000,128);
 		memcpy(x68k_tvram+dest_ram+0x20000,x68k_tvram+src_ram+0x20000,128);
 		memcpy(x68k_tvram+dest_ram+0x30000,x68k_tvram+src_ram+0x30000,128);
-
-		// redraw scanline
-		for(x=0;x<64;x++)
-			x68k_render_video_word(dest_ram+x);
 
 		src_ram+=64;
 		dest_ram+=64;
@@ -530,47 +524,6 @@ READ16_HANDLER( x68k_crtc_r )
 	return 0xffff;
 }
 
-static int x68k_get_text_pixel(int offset, int bit)
-{
-	int ret = 0;
-
-//	if(offset % 2 == 0)
-//		bit += 8;
-//	offset = offset/2;
-	if(x68k_tvram[offset] & (1 << bit))
-		ret |= 0x01;
-	if(x68k_tvram[offset+0x10000] & (1 << bit))
-		ret |= 0x02;
-	if(x68k_tvram[offset+0x20000] & (1 << bit))
-		ret |= 0x04;
-	if(x68k_tvram[offset+0x30000] & (1 << bit))
-		ret |= 0x08;
-
-	return ret;
-}
-
-static void x68k_render_video_word(int offset)
-{
-	int x,y;
-	int l;
-
-	offset &= 0xffff;
-	y = offset / 64;
-	x = ((offset % 64)) * 16;
-
-	for(l=0;l<16;l++)
-	{
-		// apply text layer access mask
-		if(x68k_sys.crtc.reg[21] & 0x0200)
-		{
-			if((x68k_sys.crtc.reg[23] & (1<<l)) == 0)
-				x68k_plot_pixel(x68k_text_bitmap,x+(15-l),y,0x100+x68k_get_text_pixel(offset,l));
-		}
-		else
-			x68k_plot_pixel(x68k_text_bitmap,x+(15-l),y,0x100+x68k_get_text_pixel(offset,l));
-	}
-}
-
 WRITE16_HANDLER( x68k_gvram_w )
 {
 	int xloc,yloc,pageoffset;
@@ -696,12 +649,10 @@ WRITE16_HANDLER( x68k_tvram_w )
 				COMBINE_DATA(x68k_tvram+offset+(0x10000*plane));
 			}
 		}
-		x68k_render_video_word(offset);
 	}
 	else
 	{
 		COMBINE_DATA(x68k_tvram+offset);
-		x68k_render_video_word(offset);
 	}
 }
 
@@ -823,6 +774,46 @@ READ16_HANDLER( x68k_spriteram_r )
 	return x68k_spriteram[offset];
 }
 
+static void x68k_draw_text(running_machine* machine,bitmap_t* bitmap, int xscr, int yscr, rectangle rect)
+{
+	unsigned int line,pixel; // location on screen
+	UINT32 loc;  // location in TVRAM
+	UINT32 colour;
+	int bit;
+	
+	for(line=rect.min_y;line<=rect.max_y;line++)  // per scanline
+	{
+		// adjust for scroll registers
+		loc = (((line - x68k_sys.crtc.vbegin) + yscr) & 0x3ff) * 64;
+		loc += (xscr / 16) & 0x7f;
+		loc &= 0xffff;
+		bit = 15 - (xscr & 0x0f);
+		for(pixel=rect.min_x;pixel<=rect.max_x;pixel++)  // per pixel
+		{
+			colour = (((x68k_tvram[loc] >> bit) & 0x01) ? 1 : 0)
+				+ (((x68k_tvram[loc+0x10000] >> bit) & 0x01) ? 2 : 0)
+				+ (((x68k_tvram[loc+0x20000] >> bit) & 0x01) ? 4 : 0)
+				+ (((x68k_tvram[loc+0x30000] >> bit) & 0x01) ? 8 : 0);
+			if(x68k_sys.video.text_pal[colour] != 0x0000)  // any colour but black
+			{
+				// Colour 0 is displayable if the text layer is at the priority level 2
+				if(colour == 0 && (x68k_sys.video.reg[1] & 0x0c00) == 0x0800)
+					*BITMAP_ADDR16(bitmap,line,pixel) = 512 + (x68k_sys.video.text_pal[colour] >> 1);
+				else
+					if(colour != 0)
+						*BITMAP_ADDR16(bitmap,line,pixel) = 512 + (x68k_sys.video.text_pal[colour] >> 1);
+			}
+			bit--;
+			if(bit < 0)
+			{
+				bit = 15;
+				loc++;
+				loc &= 0xffff;
+			}
+		}
+	}
+}
+
 static void x68k_draw_gfx(bitmap_t* bitmap,rectangle cliprect)
 {
 	int priority;
@@ -940,7 +931,7 @@ static void x68k_draw_sprites(running_machine *machine, bitmap_t* bitmap, int pr
 	{
 		pri = x68k_spritereg[ptr+3] & 0x03;
 #ifdef MAME_DEBUG
-		if(!(input_code_pressed(KEYCODE_I)))
+		if(!(input_code_pressed(machine,KEYCODE_I)))
 #endif
 		if(pri == priority)
 		{  // if at the right priority level, draw the sprite
@@ -1104,6 +1095,9 @@ VIDEO_UPDATE( x68000 )
 //	rect.max_y=x68k_sys.crtc.height;
 	bitmap_fill(bitmap,cliprect,0);
 
+	if(x68k_sys.sysport.contrast == 0)  // if monitor contrast is 0, then don't bother displaying anything
+		return 0;
+
 	rect.min_x=x68k_sys.crtc.hbegin;
 	rect.min_y=x68k_sys.crtc.vbegin;
 //	rect.max_x=rect.min_x + x68k_sys.crtc.visible_width-1;
@@ -1179,27 +1173,27 @@ VIDEO_UPDATE( x68000 )
 		// Text screen
 		if(x68k_sys.video.reg[2] & 0x0020 && priority == x68k_sys.video.text_pri)
 		{
-			xscr = x68k_sys.crtc.hbegin-(x68k_sys.crtc.reg[10] & 0x3ff);
-			yscr = x68k_sys.crtc.vbegin-(x68k_sys.crtc.reg[11] & 0x3ff);
+			xscr = (x68k_sys.crtc.reg[10] & 0x3ff);
+			yscr = (x68k_sys.crtc.reg[11] & 0x3ff);
 			if(!(x68k_sys.crtc.reg[20] & 0x1000))  // if text layer is set to buffer, then it's not visible
-				copyscrollbitmap_trans(bitmap, x68k_text_bitmap, 1, &xscr, 1, &yscr, &rect, 0x100);
+				x68k_draw_text(screen->machine,bitmap,xscr,yscr,rect);
 		}
 	}
 
 #ifdef MAME_DEBUG
-	if(input_code_pressed(KEYCODE_I))
+	if(input_code_pressed(screen->machine,KEYCODE_I))
 	{
 		x68k_sys.mfp.isra = 0;
 		x68k_sys.mfp.isrb = 0;
 //		mfp_trigger_irq(MFP_IRQ_GPIP6);
 //		cputag_set_input_line_and_vector(machine, "maincpu",6,ASSERT_LINE,0x43);
 	}
-	if(input_code_pressed(KEYCODE_9))
+	if(input_code_pressed(screen->machine,KEYCODE_9))
 	{
 		sprite_shift--;
 		popmessage("Sprite shift = %i",sprite_shift);
 	}
-	if(input_code_pressed(KEYCODE_0))
+	if(input_code_pressed(screen->machine,KEYCODE_0))
 	{
 		sprite_shift++;
 		popmessage("Sprite shift = %i",sprite_shift);
@@ -1226,7 +1220,6 @@ VIDEO_UPDATE( x68000 )
 //	popmessage("Layer enable - 0x%02x",x68k_sys.video.reg[2] & 0xff);
 //	popmessage("Graphic layer scroll - %i, %i - %i, %i - %i, %i - %i, %i",
 //		x68k_sys.crtc.reg[12],x68k_sys.crtc.reg[13],x68k_sys.crtc.reg[14],x68k_sys.crtc.reg[15],x68k_sys.crtc.reg[16],x68k_sys.crtc.reg[17],x68k_sys.crtc.reg[18],x68k_sys.crtc.reg[19]);
-//	popmessage("Video Controller registers - %04x - %04x - %04x",x68k_sys.video.reg[0],x68k_sys.video.reg[1],x68k_sys.video.reg[2]);
 //	popmessage("IOC IRQ status - %02x",x68k_sys.ioc.irqstatus);
 //	popmessage("RAM: mouse data - %02x %02x %02x %02x",mess_ram[0x931],mess_ram[0x930],mess_ram[0x933],mess_ram[0x932]);
 #endif

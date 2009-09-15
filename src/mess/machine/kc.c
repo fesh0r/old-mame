@@ -12,8 +12,6 @@
 
 /* Devices */
 #include "devices/cassette.h"
-#include "devices/basicdsk.h"
-
 
 #define KC_DEBUG 1
 #define LOG(x) do { if (KC_DEBUG) logerror x; } while (0)
@@ -136,17 +134,6 @@ QUICKLOAD_LOAD(kc)
 /* bit 4: Index pulse from disc */
 static unsigned char kc85_disc_hw_input_gate;
 
-DEVICE_IMAGE_LOAD( kc85_floppy )
-{
-	if (device_load_basicdsk_floppy(image)==INIT_PASS)
-	{
-		basicdsk_set_geometry(image, 80, 2, 9, 512, 1, 0, FALSE);
-		return INIT_PASS;
-	}
-
-	return INIT_FAIL;
-}
-
 #if 0
 static void kc85_disc_hw_ctc_interrupt(int state)
 {
@@ -205,12 +192,12 @@ WRITE8_HANDLER(kc85_disc_hw_terminal_count_w)
 {
 	const device_config *fdc = devtag_get_device(space->machine, "nec765");
 	logerror("kc85 disc hw tc w: %02x\n",data);
-	nec765_set_tc_state(fdc, data & 0x01);
+	nec765_tc_w(fdc, data & 0x01);
 }
 
 
 /* callback for /INT output from FDC */
-static NEC765_INTERRUPT( kc85_fdc_interrupt )
+static WRITE_LINE_DEVICE_HANDLER( kc85_fdc_interrupt )
 {
 	kc85_disc_hw_input_gate &=~(1<<6);
 	if (state)
@@ -227,7 +214,7 @@ static NEC765_DMA_REQUEST( kc85_fdc_dma_drq )
 
 const nec765_interface kc_fdc_interface=
 {
-	kc85_fdc_interrupt,
+	DEVCB_LINE(kc85_fdc_interrupt),
 	kc85_fdc_dma_drq,
 	NULL,
 	NEC765_RDY_PIN_CONNECTED	

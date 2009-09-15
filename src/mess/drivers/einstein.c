@@ -57,8 +57,8 @@
 #include "machine/wd17xx.h"
 #include "machine/ctronics.h"
 #include "machine/msm8251.h"
-#include "devices/dsk.h"
-#include "devices/basicdsk.h"
+#include "formats/dsk_dsk.h"
+#include "devices/flopdrv.h"
 #include "sound/ay8910.h"
 #include "video/mc6845.h"
 #include "rendlay.h"
@@ -964,20 +964,28 @@ ROM_START( einstei2 )
 	ROM_LOAD("charrom.rom", 0, 0x800, NO_DUMP)
 ROM_END
 
+ROM_START( einst256 )
+	ROM_REGION(0x8000, "bios", 0)
+	ROM_LOAD("tc256.rom", 0x0000, 0x4000, CRC(ef8dad88) SHA1(eb2102d3bef572db7161c26a7c68a5fcf457b4d0) )
+ROM_END
+
+
 
 /***************************************************************************
     SYSTEM CONFIG
 ***************************************************************************/
-
 static void einstein_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:	info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
-		default:						legacydsk_device_getinfo(devclass, state, info); break;
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_dsk; break;
+
+		default:										floppy_device_getinfo(devclass, state, info); break;
 	}
 }
 
@@ -995,3 +1003,4 @@ SYSTEM_CONFIG_END
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT           INIT  CONFIG,   COMPANY   FULLNAME                             FLAGS */
 COMP( 1984, einstein, 0,        0,		einstein, einstein,       0,    einstein, "Tatung", "Einstein TC-01",                    0 )
 COMP( 1984, einstei2, einstein, 0,		einstei2, einstein_80col, 0,    einstein, "Tatung", "Einstein TC-01 + 80 column device", 0 )
+COMP( 1984, einst256, 0,        0,		einstein, einstein,       0,    einstein, "Tatung", "Einstein 256",						 GAME_NOT_WORKING )

@@ -80,7 +80,7 @@
 #include "sound/discrete.h"
 
 /* Devices */
-#include "devices/basicdsk.h"
+#include "devices/flopdrv.h"
 #include "devices/cassette.h"
 #include "devices/printer.h"
 
@@ -721,27 +721,11 @@ static WRITE_LINE_DEVICE_HANDLER( abc800_abc77_txd_w )
 	driver_state->abc77_txd = state;
 }
 
-static WRITE_LINE_DEVICE_HANDLER( abc77_clock_w )
-{
-	const device_config *z80dart = devtag_get_device(device->machine, Z80DART_TAG);
-
-	/* connected to DART channel B clock */
-	z80dart_rxtxcb_w(z80dart, state);
-}
-
-static WRITE_LINE_DEVICE_HANDLER( abc77_keydown_w )
-{
-	const device_config *z80dart = devtag_get_device(device->machine, Z80DART_TAG);
-
-	/* connected to DART channel B DCD */
-	z80dart_dcdb_w(z80dart, state);
-}
-
 static ABC77_INTERFACE( abc800_abc77_intf )
 {
 	DEVCB_LINE(abc800_abc77_txd_w),
-	DEVCB_LINE(abc77_clock_w),
-	DEVCB_LINE(abc77_keydown_w)
+	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_rxtxcb_w),
+	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_dcdb_w)
 };
 
 static WRITE_LINE_DEVICE_HANDLER( abc802_abc77_txd_w )
@@ -754,8 +738,8 @@ static WRITE_LINE_DEVICE_HANDLER( abc802_abc77_txd_w )
 static ABC77_INTERFACE( abc802_abc77_intf )
 {
 	DEVCB_LINE(abc802_abc77_txd_w),
-	DEVCB_LINE(abc77_clock_w),
-	DEVCB_LINE(abc77_keydown_w)
+	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_rxtxcb_w),
+	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_dcdb_w)
 };
 
 static WRITE_LINE_DEVICE_HANDLER( abc806_abc77_txd_w )
@@ -768,8 +752,8 @@ static WRITE_LINE_DEVICE_HANDLER( abc806_abc77_txd_w )
 static ABC77_INTERFACE( abc806_abc77_intf )
 {
 	DEVCB_LINE(abc806_abc77_txd_w),
-	DEVCB_LINE(abc77_clock_w),
-	DEVCB_LINE(abc77_keydown_w)
+	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_rxtxcb_w),
+	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_dcdb_w)
 };
 
 /* Z80 CTC */
@@ -1038,26 +1022,22 @@ static MACHINE_START( abc800 )
 	abc800_state *state = machine->driver_data;
 
 	/* find devices */
-
 	state->z80ctc = devtag_get_device(machine, Z80CTC_TAG);
 	state->z80dart = devtag_get_device(machine, Z80DART_TAG);
 	state->z80sio = devtag_get_device(machine, Z80SIO_TAG);
-	//state->abc77 = devtag_get_device(machine, ABC77_TAG);
+	state->abc77 = devtag_get_device(machine, ABC77_TAG);
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* initialize the ABC BUS */
-
 	abcbus_init(machine, Z80_TAG, abcbus_config);
 
 	/* configure memory */
-
 	state->videoram = auto_alloc_array(machine, UINT8, ABC800_VIDEO_RAM_SIZE);
 
 	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, Z80_TAG), 0);
 	memory_configure_bank(machine, 1, 1, 1, state->videoram, 0);
 
 	/* register for state saving */
-
 	state_save_register_global(machine, state->fetch_charram);
 	state_save_register_global(machine, state->abc77_txd);
 	state_save_register_global(machine, state->pling);
@@ -1074,24 +1054,20 @@ static MACHINE_START( abc802 )
 	abc802_state *state = machine->driver_data;
 
 	/* find devices */
-
 	state->z80ctc = devtag_get_device(machine, Z80CTC_TAG);
 	state->z80dart = devtag_get_device(machine, Z80DART_TAG);
 	state->z80sio = devtag_get_device(machine, Z80SIO_TAG);
-//	state->abc77 = devtag_get_device(machine, ABC77_TAG);
+	state->abc77 = devtag_get_device(machine, ABC77_TAG);
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* initialize the ABC BUS */
-
 	abcbus_init(machine, Z80_TAG, abcbus_config);
 
 	/* configure memory */
-
 	memory_configure_bank(machine, 1, 0, 1, mess_ram, 0);
 	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, Z80_TAG), 0);
 
 	/* register for state saving */
-
 	state_save_register_global(machine, state->lrs);
 	state_save_register_global(machine, state->abc77_txd);
 	state_save_register_global(machine, state->pling);
@@ -1128,20 +1104,17 @@ static MACHINE_START( abc806 )
 	int bank;
 
 	/* find devices */
-
 	state->z80ctc = devtag_get_device(machine, Z80CTC_TAG);
 	state->z80dart = devtag_get_device(machine, Z80DART_TAG);
 	state->z80sio = devtag_get_device(machine, Z80SIO_TAG);
 	state->e0516 = devtag_get_device(machine, E0516_TAG);
-	//state->abc77 = devtag_get_device(machine, ABC77_TAG);
+	state->abc77 = devtag_get_device(machine, ABC77_TAG);
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* initialize the ABC BUS */
-
 	abcbus_init(machine, Z80_TAG, abcbus_config);
 
 	/* setup memory banking */
-
 	state->videoram = auto_alloc_array(machine, UINT8, videoram_size);
 
 	for (bank = 1; bank <= 16; bank++)
@@ -1152,7 +1125,6 @@ static MACHINE_START( abc806 )
 	}
 
 	/* register for state saving */
-
 	state_save_register_global(machine, state->abc77_txd);
 	state_save_register_global(machine, state->keydtr);
 	state_save_register_global(machine, state->eme);
@@ -1165,7 +1137,6 @@ static MACHINE_RESET( abc806 )
 	abc806_state *state = machine->driver_data;
 
 	/* setup memory banking */
-
 	int bank;
 
 	for (bank = 1; bank <= 16; bank++)
@@ -1457,22 +1428,18 @@ ROM_START( abc806 )
 ROM_END
 
 /* System Configuration */
-
 static void abc800_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:						info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(abc_floppy); break;
+		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_abc80; break;
 
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
-
-		default:											legacybasicdsk_device_getinfo(devclass, state, info); break;
+		default:										floppy_device_getinfo(devclass, state, info); break;
 	}
 }
 

@@ -113,8 +113,7 @@ Notes:
 #include "cpu/m6502/m6502.h"
 #include "cpu/mcs48/mcs48.h"
 #include "formats/basicdsk.h"
-#include "devices/basicdsk.h"
-#include "devices/mflopimg.h"
+#include "devices/flopdrv.h"
 #include "machine/ctronics.h"
 #include "machine/i8214.h"
 #include "machine/i8255a.h"
@@ -819,6 +818,13 @@ static WRITE8_DEVICE_HANDLER( misc_8255_a_w )
 	wd17xx_set_density(state->mb8877, BIT(data, 7) ? DEN_FM_LO : DEN_FM_HI);
 }
 
+static WRITE8_DEVICE_HANDLER( misc_8255_b_w )
+{
+	v1050_state *state = device->machine->driver_data;
+
+	centronics_data_w(state->centronics, 0, ~data & 0xff);
+}
+
 static READ8_DEVICE_HANDLER( misc_8255_c_r )
 {
 	/*
@@ -840,7 +846,7 @@ static READ8_DEVICE_HANDLER( misc_8255_c_r )
 
 	UINT8 data = 0;
 
-	data |= centronics_busy_r(state->centronics) << 4;
+	data |= centronics_not_busy_r(state->centronics) << 4;
 	data |= centronics_pe_r(state->centronics) << 5;
 
 	return data;
@@ -898,7 +904,7 @@ static I8255A_INTERFACE( misc_8255_intf )
 	DEVCB_NULL,							// Port B read
 	DEVCB_HANDLER(misc_8255_c_r),		// Port C read
 	DEVCB_HANDLER(misc_8255_a_w),		// Port A write
-	DEVCB_DEVICE_HANDLER(CENTRONICS_TAG, centronics_data_w),// Port B write
+	DEVCB_HANDLER(misc_8255_b_w),		// Port B write
 	DEVCB_HANDLER(misc_8255_c_w)		// Port C write
 };
 

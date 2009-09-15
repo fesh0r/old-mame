@@ -78,6 +78,8 @@ typedef enum
 typedef struct _nec765_t nec765_t;
 struct _nec765_t
 {
+	devcb_resolved_write_line	out_int_func;
+
 	unsigned long	sector_counter;
 	/* version of fdc to emulate */
 	NEC765_VERSION version;
@@ -325,11 +327,13 @@ static void nec765_seek_complete(const device_config *device)
 
 	/* set drive and side */
 	fdc->nec765_status[0] |= fdc->drive | (fdc->side<<2);
-
+	
 	nec765_set_int(device,0);
 	nec765_set_int(device,1);
 
 	fdc->nec765_flags &= ~NEC765_SEEK_ACTIVE;
+	
+	nec765_idle(device);
 }
 
 static TIMER_CALLBACK(nec765_seek_timer_callback)
@@ -467,7 +471,7 @@ static void nec765_setup_timed_int(const device_config *device,int signed_tracks
 {
 	nec765_t *fdc = get_safe_token(device);
 	/* setup timer to signal after seek time is complete */
-	timer_adjust_periodic(fdc->seek_timer, attotime_zero, 0, double_to_attotime(fdc->srt_in_ms*abs(signed_tracks)*0.001));
+	timer_adjust_oneshot(fdc->seek_timer, double_to_attotime(fdc->srt_in_ms*abs(signed_tracks)*0.001), 0);
 }
 
 static void nec765_seek_setup(const device_config *device, int is_recalibrate)
@@ -489,6 +493,7 @@ static void nec765_seek_setup(const device_config *device, int is_recalibrate)
 	img = current_image(device);
 
 	fdc->FDC_main |= (1<<fdc->drive);
+	fdc->FDC_main |= 0x20;  // execution phase
 
 	/* recalibrate command? */
 	if (is_recalibrate)
@@ -504,7 +509,9 @@ static void nec765_seek_setup(const device_config *device, int is_recalibrate)
 			)
 		{
 			/* seek completed */
-			nec765_seek_complete(device);
+//			nec765_seek_complete(device);
+			// delay for the time of 1 step, the PCW does not like immediate recalibrates
+			nec765_setup_timed_int(device,1);
 		}
 		else
 		{
@@ -566,7 +573,7 @@ static void nec765_seek_setup(const device_config *device, int is_recalibrate)
 		}
 	}
 
-    nec765_idle(device);
+//    nec765_idle(device);
 
 }
 
@@ -645,8 +652,8 @@ static void nec765_change_flags(const device_config *device,unsigned int flags, 
 	fdc->nec765_flags = new_flags;
 
 	/* if interrupt changed, call the handler */
-	if ((changed_flags & NEC765_INT) && fdc->intf->interrupt)
-		fdc->intf->interrupt(device,(fdc->nec765_flags & NEC765_INT) ? 1 : 0);
+	if (changed_flags & NEC765_INT)
+		devcb_call_write_line(&fdc->out_int_func, (fdc->nec765_flags & NEC765_INT) ? 1 : 0);
 
 	/* if DRQ changed, call the handler */
 	if ((changed_flags & NEC765_DMA_DRQ) && fdc->intf->dma_drq)
@@ -721,7 +728,7 @@ static void nec765_set_ready_change_callback(const device_config *controller, co
 
 
 /* terminal count input */
-void nec765_set_tc_state(const device_config *device, int state)
+WRITE_LINE_DEVICE_HANDLER( nec765_tc_w )
 {
 	int old_state;
 	nec765_t *fdc = get_safe_token(device);
@@ -1660,7 +1667,7 @@ void nec765_update_state(const device_config *device)
 		fdc->FDC_main |= 0x10;                      /* set BUSY */
 
 		if (LOG_VERBOSE)
-			logerror("nec765(): pc=0x%08x command=0x%02x\n", cpu_get_pc(device->machine->cpu[0]), fdc->nec765_data_reg);
+			logerror("nec765(): pc=0x%08x command=0x%02x\n", cpu_get_pc(device->machine->firstcpu), fdc->nec765_data_reg);
 
 		/* seek in progress? */
 		if (fdc->nec765_flags & NEC765_SEEK_ACTIVE)
@@ -1691,7 +1698,7 @@ void nec765_update_state(const device_config *device)
 
     case NEC765_COMMAND_PHASE_BYTES:
 		if (LOG_VERBOSE)
-			logerror("nec765(): pc=0x%08x command=0x%02x\n", cpu_get_pc(device->machine->cpu[0]), fdc->nec765_data_reg);
+			logerror("nec765(): pc=0x%08x command=0x%02x\n", cpu_get_pc(device->machine->firstcpu), fdc->nec765_data_reg);
 
 		fdc->nec765_command_bytes[fdc->nec765_transfer_bytes_count] = fdc->nec765_data_reg;
 		fdc->nec765_transfer_bytes_count++;
@@ -1821,7 +1828,7 @@ static void nec765_setup_command(const device_config *device)
 		"Lock"						/* [14] */
 	};
 
-	const device_config *img = current_image(device);
+	const device_config *img;
 	const char *cmd = NULL;
 	chrn_id id;
 
@@ -1857,7 +1864,8 @@ static void nec765_setup_command(const device_config *device)
 
 		case 0x04:  /* sense drive status */
 			nec765_setup_drive_and_side(device);
-
+			img = current_image(device);
+			
 			fdc->nec765_status[3] = fdc->drive | (fdc->side<<2);
 
 			if (img)
@@ -1895,7 +1903,8 @@ static void nec765_setup_command(const device_config *device)
 
 		case 0x0a:      /* read id */
 			nec765_setup_drive_and_side(device);
-
+			img = current_image(device);
+			
 			fdc->nec765_status[0] = fdc->drive | (fdc->side<<2);
 			fdc->nec765_status[1] = 0;
 			fdc->nec765_status[2] = 0;
@@ -2045,7 +2054,7 @@ static void nec765_setup_command(const device_config *device)
 		case 0x02:
 			/* read a track */
 			nec765_setup_drive_and_side(device);
-
+			img = current_image(device);
 			fdc->nec765_status[0] = fdc->drive | (fdc->side<<2);
 			fdc->nec765_status[1] = 0;
 			fdc->nec765_status[2] = 0;
@@ -2210,7 +2219,7 @@ void nec765_reset(const device_config *device, int offset)
 	}
 }
 
-void nec765_set_reset_state(const device_config *device, int state)
+WRITE_LINE_DEVICE_HANDLER( nec765_reset_w )
 {
 	nec765_t *fdc = get_safe_token(device);
 
@@ -2246,7 +2255,7 @@ void nec765_set_reset_state(const device_config *device, int state)
 }
 
 
-void nec765_set_ready_state(const device_config *device, int state)
+WRITE_LINE_DEVICE_HANDLER( nec765_ready_w )
 {
 	nec765_t *fdc = get_safe_token(device);
 
@@ -2281,6 +2290,7 @@ static void common_start(const device_config *device, int device_type)
 	fdc->nec765_flags &= NEC765_FDD_READY;
 	fdc->data_buffer = auto_alloc_array(device->machine, char, 32*1024);
 
+	devcb_resolve_write_line(&fdc->out_int_func, &fdc->intf->out_int_func, device);
 
 	// register for state saving
 	//state_save_register_item(device->machine, "nec765", device->tag, 0, nec765->number);
