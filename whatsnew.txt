@@ -1,3 +1,128 @@
+0.135
+-----
+
+
+MAMETesters Bugs Fixed
+----------------------
+- 03378: [DIP/Input] kamakazi3: Unable to use normal coin slots (coin 
+         lockout) (Luigi30)
+- 03496: [Sound] mouja: Sound Effects/Voice missing (Mamesick)
+- 03423: [Crash/Freeze] acpsx, atpsx, atluspsx, cpzn1, cpzn2, psarc95,
+         taitofx1, tps, vspsx : Access Violation (Fabio Priuli)
+- 03425: [Crash/Freeze] taitogn: Access Violation before typing OK. 
+         (Fabio Priuli)
+- 03424: [Crash/Freeze] chihiro, triforce: Access Violation before 
+         typing OK (Fabio Priuli)
+- 03490: [Crash/Freeze] quasar, quasara: Segmentation Fault after OK 
+         (Fabio Priuli)
+- 03491: [Crash/Freeze] dynobop, sstrike, slikshot, slikshot17, 
+         slikshot16 : Access Violation after OK (Phil Bennett)
+- 03487: [Crash/Freeze] All Drivers using z180 cpu: Access Violation 
+         (Phil Bennett)
+
+
+
+Source Changes
+--------------
+Changed sound banking on Shogun Warriors/B.Rap Boys to use an 
+OKIM6295 address map and banks [David Haywood]
+
+Removed the MCU comm hack from namcofl/namconb. This now fixes the 
+music tempo in most games. [Phil Bennett]
+
+Fixed vroulet controls so that the Red column can be selected. 
+[luigi30]
+
+680x0 update: [R. Belmont]
+ - Support PMOVE modes from PMMU
+ - Allow the FPU to be used for both '030 and '040
+ - Add byte and word FPU loads/stores
+ - Fixed buggy FPU 64-bit stores in the (An) addressing mode
+
+chdman: add option to create uncompressed writeable HD images for MESS
+[R. Belmont]
+
+scsihd: don't crash if no media is attached [R. Belmont]
+
+More goldstar.c improvements... [Roberto Fresca]
+ * Completed the New Lucky 8 Lines / New Super 8 Lines hardware/PCB 
+    layout.
+ * Added New Lucky 8 Lines (set 3, extended gfx).
+    This set has the New Lucky 8 Lines / New Super 8 Lines program, so 
+    bets are up to 64. Same extended tileset for reels, but lacks of 
+    the New Super 8 Lines title tiles. Maybe is a hidden feature, 
+    maybe just graphics for another hack.
+ * Added technical notes.
+
+Added abort button to sfrush [Arthur Peale]
+
+Updated mt_tout CRC/SHA1 and added note about old, likely bad dump 
+[David Haywood]
+
+Added missing dependencies for video/model2.c and video/model3.c
+[Phil Bennett]
+
+Fixed recent sprite breakage in some toaplan2 video HW-based games.
+[Phil Bennett]
+
+Added later version of Naomi analog I/O board program [Alex]
+
+Changes to the dsp56156 cpu core. [Andrew Gardner]
+ * Added JF table decode function.
+ * Added ABS, IMAC, and TFR2 opcodes.
+ * Fixed various flags for TST, INC24, SUB, CMP, and CMPM.
+ * Added hack to DO function to accommodate for the CPU core's 
+    inaccurate math.
+
+Galaxian driver changes: [luigi30]
+ * Crystallized some clock speeds, put ?s near ones that didn't look 
+    correct
+ * Changed references to galaxiaj in game names to galaxiana
+
+Re-added 2nd button back to ddayc [David Haywood]
+
+Documentation update for the Seibu COPDX-based games. Renamed 
+sdgndmrb to grainbow. [David Haywood]
+
+Updated most tools in src/tools to be straight BSD license. 
+[Aaron Giles]
+
+Added -flipped option to unidasm to output with disassembly first and
+address/data bytes afterwards in comment form. [Aaron Giles]
+
+Changed 32010 unknown opcode to output in $xxx format like all other
+hex values. [Aaron Giles]
+
+
+
+New games added or promoted from NOT_WORKING status
+---------------------------------------------------
+Mahjong Seiryu Densetsu [Luca Elia, Guru, Dyq, Bnathan]
+Mahjong Daimyojin [Luca Elia, Guru, Dyq, Bnathan]
+
+
+
+New clones added
+----------------
+Pinball Action (set 5, encrypted) [f205v]
+Hyper Sports (bootleg) [f205v, David Haywood]
+Darkstalkers: The Night Warriors (Hispanic 940818) [Artemio]
+Gran Premio F1 (Italian bootleg of Pole Position II) 
+   [f205v, David Haywood]
+Scramble (Karateko, French bootleg) [Joachim Bassmann]
+Super Breakout (rev 03) [Andy Welburn, Lord Nightmare]
+New Lucky 8 Lines (set 3, extended gfx) 
+   [Roberto Fresca, Darklord & Team Europe]
+
+
+
+New games marked as GAME_NOT_WORKING
+------------------------------------
+Tournament Solitaire [Angelo Salese, Siftware]
+Airline Pilots DX [ANY, The Dumping Union]
+
+
+
 0.134u4
 -------
 
@@ -312,17 +437,17 @@ New games added or promoted from NOT_WORKING status
 ---------------------------------------------------
 Pirate 2 (061005) [Metallic]
 Phoenix Part 2 [Andy Welburn, Dumping Union]
-Block 2 (Arkanoid bootleg) [Andy Welburn, stephh]
 Danchi de Quiz [Guru]
-Go For The Gold (Japan) [Darran]
 
 
 
 New clones added
 ----------------
 Pirate (060803) [MetalliC]
-Battle of Atlantis (bootleg) [David Heywood, Dumping Union]
+Battle of Atlantis (bootleg) [David Haywood, Dumping Union]
 Multi Fish (031124) [MetalliC]
+Block 2 (Arkanoid bootleg) [Andy Welburn, stephh]
+Go For The Gold (Japan) [Darran]
 
 
 
@@ -422,8 +547,9 @@ Expanded PROFILER_USERx to support up to 8 custom profiler areas.
 Added more _NAME macros to be consistent with the standard naming
 conventions. [Atari Ace]
 
-Shuffled code around to better integrate HazeMD implementation.
-[David Haywood, Fabio Priuli]
+Removed old master system code from megaplay.c, megatech.c, segae.c
+and updated the drivers to use more recent implementation (from
+HazeMD) [David Haywood]
 
 Sped up mario_custom_run() discrete sound. [Derrick Renaud]
 
@@ -510,7 +636,7 @@ MAMETesters Bugs Fixed
 - 02565: [Sound] All Sets in zaccaria.c: TMS5200 hookup is currently 
          kludged to work. (couriersud)
 - 03443: [Sound] brapboys, brapboysj: Music samples looping 
-         incorrectly / ending too soon (hap)
+         incorrectly / ending too soon (Kitsune Sniper, Haze, Guru, hap)
 - 03439: [Sound] chinagat and clones: OKI6295 sound pitch is too high.
          (sasuke)
 - 03435: [Compiling] gcc warning for src/emu/sound/ymf271.c with 
