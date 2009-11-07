@@ -130,7 +130,6 @@ extern UINT16* galsnew_fg_pixram;
 
 extern UINT16 *galpani2_bg8_0,         *galpani2_bg8_1;
 extern UINT16 *galpani2_palette_0,     *galpani2_palette_1;
-extern UINT16 *galpani2_bg8_regs_0,    *galpani2_bg8_regs_1;
 extern UINT16 *galpani2_bg8_0_scrollx, *galpani2_bg8_1_scrollx;
 extern UINT16 *galpani2_bg8_0_scrolly, *galpani2_bg8_1_scrolly;
 
@@ -143,10 +142,6 @@ VIDEO_UPDATE( galpani2 );
 WRITE16_HANDLER( galpani2_palette_0_w );
 WRITE16_HANDLER( galpani2_palette_1_w );
 
-READ16_HANDLER ( galpani2_bg8_regs_0_r );
-READ16_HANDLER ( galpani2_bg8_regs_1_r );
-WRITE16_HANDLER( galpani2_bg8_regs_0_w );
-WRITE16_HANDLER( galpani2_bg8_regs_1_w );
 WRITE16_HANDLER( galpani2_bg8_0_w );
 WRITE16_HANDLER( galpani2_bg8_1_w );
 

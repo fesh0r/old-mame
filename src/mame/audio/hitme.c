@@ -58,13 +58,13 @@ DISCRETE_SOUND_START(hitme)
 	/* There are 2 cascaded 4-bit downcounters (2R = low, 2P = high), effectively
      * making an 8-bit downcounter, clocked by the clock from the 404 chip.
      * The initial count is latched by writing OUT0. */
-	DISCRETE_COUNTER(NODE_20,1,HITME_OUT0,NODE_17,255,0,HITME_DOWNCOUNT_VAL,DISC_CLK_ON_F_EDGE)
+	DISCRETE_COUNTER(NODE_20,1,HITME_OUT0,NODE_17,0,255,0,HITME_DOWNCOUNT_VAL,DISC_CLK_ON_F_EDGE)
 	/* When the counter rolls over from 0->255, we clock a D-type flipflop at 2N. */
 	DISCRETE_TRANSFORM2(NODE_21,NODE_20,255,"01=!")
 
 	/* This flipflop represents the latch at 1L. It is clocked when OUT1 is written and latches
      * the value from the processor. When the downcounter above rolls over, it clears the latch. */
-	DISCRETE_LOGIC_DFLIPFLOP(NODE_22,1,NODE_21,1,HITME_OUT1,HITME_ENABLE_VAL)
+	DISCRETE_LOGIC_DFLIPFLOP(NODE_22,NODE_21,1,HITME_OUT1,HITME_ENABLE_VAL)
 
 	/* The output of the latch goes through a series of various capacitors in parallel. */
 	DISCRETE_COMP_ADDER(NODE_23,NODE_22,&desc_hitme_adder)
@@ -73,7 +73,7 @@ DISCRETE_SOUND_START(hitme)
 	DISCRETE_555_ASTABLE(NODE_24,1,22e3,39e3,NODE_23,&desc_hitme_555)
 
 	/* The output of the 555 timer is fed through a simple CR filter in the amp stage. */
-	DISCRETE_CRFILTER(HITME_FINAL_SND,1,NODE_24,1e3,50e-6)
+	DISCRETE_CRFILTER(HITME_FINAL_SND,NODE_24,1e3,50e-6)
 
 	/* We scale the final output of 3.8 to 16-bit range and output it at full volume */
 	DISCRETE_OUTPUT(HITME_FINAL_SND,32000.0/3.8)

@@ -5,6 +5,7 @@
 
     Russian arcade system based on ZX Spectrum home computer.
 
+    Each coin buys you 1-6 minutes of game time.
 */
 
 #include "driver.h"
@@ -71,12 +72,12 @@ static const rgb_t spectrum_palette[16] = {
 };
 
 /* Initialise the palette */
-PALETTE_INIT( spectrum )
+static PALETTE_INIT( spectrum )
 {
 	palette_set_colors(machine, 0, spectrum_palette, ARRAY_LENGTH(spectrum_palette));
 }
 
-VIDEO_START( spectrum )
+static VIDEO_START( spectrum )
 {
 	spectrum_frame_number = 0;
 	spectrum_flash_invert = 0;
@@ -93,7 +94,7 @@ INLINE unsigned char get_display_color (unsigned char color, int invert)
 
 /* Code to change the FLASH status every 25 frames. Note this must be
    independent of frame skip etc. */
-VIDEO_EOF( spectrum )
+static VIDEO_EOF( spectrum )
 {
     spectrum_frame_number++;
     if (spectrum_frame_number >= 25)
@@ -108,7 +109,7 @@ INLINE void spectrum_plot_pixel(bitmap_t *bitmap, int x, int y, UINT32 color)
 	*BITMAP_ADDR16(bitmap, y, x) = (UINT16)color;
 }
 
-VIDEO_UPDATE( spectrum )
+static VIDEO_UPDATE( spectrum )
 {
     /* for now do a full-refresh */
     int x, y, b, scrx, scry;
@@ -243,13 +244,20 @@ static INPUT_PORTS_START( photon2 )
 
 	PORT_START("COIN")
 	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_COIN1) PORT_PLAYER(1) PORT_IMPULSE(1)
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_UNUSED)
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_UNUSED)
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_UNUSED)
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_UNUSED)
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_UNUSED)
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_UNUSED)
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_UNUSED)
+	PORT_DIPNAME( 0x0e, 0x0e, "Time per Coin" )
+	PORT_DIPSETTING(    0x00, "1:00" )
+	PORT_DIPSETTING(    0x02, "1:30" )
+	PORT_DIPSETTING(    0x04, "2:00" )
+	PORT_DIPSETTING(    0x06, "2:30" )
+	PORT_DIPSETTING(    0x08, "3:00" )
+	PORT_DIPSETTING(    0x0a, "4:00" )
+	PORT_DIPSETTING(    0x0c, "5:00" )
+	PORT_DIPSETTING(    0x0e, "6:00" )
+	// todo: check if these are really unused..
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_UNUSED)
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_UNUSED)
+	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_UNUSED)
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_UNUSED)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( black )
@@ -288,7 +296,7 @@ static MACHINE_RESET( photon2 )
 	memory_set_bankptr(machine, 1, memory_region(machine, "maincpu"));
 }
 
-MACHINE_DRIVER_START( photon2 )
+static MACHINE_DRIVER_START( photon2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 3500000)        /* 3.5 MHz */
 	MDRV_CPU_PROGRAM_MAP(spectrum_mem)
@@ -353,6 +361,6 @@ ROM_START( brod )
 	ROM_LOAD( "brod13.bin", 0xa000, 0x2000, CRC(1177cd17) SHA1(58c5c09a7b857ce6311339c4d0f4d8c1a7e232a3) )
 ROM_END
 
-GAME( 19??,  kok,   0,      photon2, photon2, 0, ROT0, "<unknown>", "Povar / Sobrat' Buran / Agroprom", 0 )
-GAME( 19??,  black, 0,      photon2, black,   0, ROT0, "<unknown>", "Czernyj Korabl", 0 )
-GAME( 19??,  brod,  0,      photon2, black,   0, ROT0, "<unknown>", "Brodjaga", 0 )
+GAME( 19??,  kok,   0,      photon2, photon2, 0, ROT0, "<unknown>", "Povar / Sobrat' Buran / Agroprom (Arcade multi-game bootleg of ZX Spectrum 'Cookie', 'Jetpac' & 'Pssst')", 0 ) // originals (c)1983 ACG / Ultimate
+GAME( 19??,  black, 0,      photon2, black,   0, ROT0, "<unknown>", "Czernyj Korabl (Arcade bootleg of ZX Spectrum 'Blackbeard')", 0 ) // original (c)1988 Toposoft
+GAME( 19??,  brod,  0,      photon2, black,   0, ROT0, "<unknown>", "Brodjaga (Arcade bootleg of ZX Spectrum 'Inspector Gadget and the Circus of Fear')", 0 ) // original (c)1987 BEAM software

@@ -367,11 +367,9 @@ DISCRETE_SOUND_START(phoenix)
 					DEFAULT_TTL_V_LOGIC_1,
 					DEFAULT_TTL_V_LOGIC_1 * RES_K(100) / (RES_K(10) + RES_K(100)))	/* R20, R19 */
 	DISCRETE_MULTIPLY(NODE_24,
-					  1,						/* ENAB */
 					  NODE_22,
 					  NODE_23)
 	DISCRETE_RCFILTER(NODE_25,
-					  1,
 					  NODE_24,
 					  1.0/(1.0/RES_K(10) + 1.0/RES_K(100)),	/* R19, R20 */
 					  CAP_U(.047))							/* C5 */
@@ -430,7 +428,6 @@ DISCRETE_SOUND_START(phoenix)
 					&phoenix_effect2_mixer2)
 	/* C22 charging is R45 in parallel with R46, R42 and the 555 CV internal resistance */
 	DISCRETE_RCFILTER(NODE_37,
-					  1,						/* ENAB */
 					  NODE_36,
 					  1.0/ (1.0/RES_K(5.1) + (1.0/(RES_K(5.1) + 1.0/(1.0/RES_K(10) + 1.0/RES_K(5) + 1.0/RES_K(10)) ))),
 					  CAP_U(100))	/* R45, R46, R42, internal 555 Rs, C22 */
@@ -457,7 +454,6 @@ DISCRETE_SOUND_START(phoenix)
 				  1,							/* Maximum count of second counter 0-1 (IC21) */
 				  DISC_CLK_BY_COUNT | DISC_OUT_IS_ENERGY)
 	DISCRETE_MULTIPLY(PHOENIX_EFFECT_2_SND,
-					  1,						/* ENAB */
 					  NODE_40,					/* IC21 pin 9 output */
 					  NODE_32)					/* voltage level selected by high bit of PHOENIX_EFFECT_2_FREQ */
 

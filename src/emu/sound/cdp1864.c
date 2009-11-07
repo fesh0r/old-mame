@@ -11,14 +11,14 @@
 
     TODO:
 
-	- interlace mode
-	- PAL output, currently using RGB
-	- cpu synchronization
+    - interlace mode
+    - PAL output, currently using RGB
+    - cpu synchronization
 
-		SC1 and SC0 are used to provide CDP1864C-to-CPU synchronization for a jitter-free display.
-		During every horizontal sync the CDP1864C samples SC0 and SC1 for SC0 = 1 and SC1 = 0
-		(CDP1800 execute state). Detection of a fetch cycle causes the CDP1864C to skip cycles to
-		attain synchronization. (i.e. picture moves 8 pixels to the right)
+        SC1 and SC0 are used to provide CDP1864C-to-CPU synchronization for a jitter-free display.
+        During every horizontal sync the CDP1864C samples SC0 and SC1 for SC0 = 1 and SC1 = 0
+        (CDP1800 execute state). Detection of a fetch cycle causes the CDP1864C to skip cycles to
+        attain synchronization. (i.e. picture moves 8 pixels to the right)
 
 */
 
@@ -99,7 +99,7 @@ INLINE cdp1864_t *get_safe_token(const device_config *device)
 
 static TIMER_CALLBACK( cdp1864_int_tick )
 {
-	const device_config *device = ptr;
+	const device_config *device = (const device_config *) ptr;
 	cdp1864_t *cdp1864 = get_safe_token(device);
 
 	int scanline = video_screen_get_vpos(cdp1864->screen);
@@ -130,7 +130,7 @@ static TIMER_CALLBACK( cdp1864_int_tick )
 
 static TIMER_CALLBACK( cdp1864_efx_tick )
 {
-	const device_config *device = ptr;
+	const device_config *device = (const device_config *) ptr;
 	cdp1864_t *cdp1864 = get_safe_token(device);
 
 	int scanline = video_screen_get_vpos(cdp1864->screen);
@@ -165,7 +165,7 @@ static TIMER_CALLBACK( cdp1864_efx_tick )
 
 static TIMER_CALLBACK( cdp1864_dma_tick )
 {
-	const device_config *device = ptr;
+	const device_config *device = (const device_config *) ptr;
 	cdp1864_t *cdp1864 = get_safe_token(device);
 
 	int scanline = video_screen_get_vpos(cdp1864->screen);

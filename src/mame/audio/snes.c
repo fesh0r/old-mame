@@ -179,15 +179,8 @@ static const int        ENVCNT[ 0x20 ]
                                     /* Returns SUSTAIN rate         */
 
 /* Handle endianness */
-#ifndef LSB_FIRST
-#define LEtoME16( x )                                                \
-    ( ( ( ( x ) >> 8 ) & 0xFF ) | ( ( ( x ) << 8 ) & 0xFF00 ) )
-#define MEtoLE16( x )                                                \
-    ( ( ( ( x ) >> 8 ) & 0xFF ) | ( ( ( x ) << 8 ) & 0xFF00 ) )
-#else
-#define LEtoME16( x )   ( x )
-#define MEtoLE16( x )   ( x )
-#endif
+#define LEtoME16( x ) LITTLE_ENDIANIZE_INT16(x)
+#define MEtoLE16( x ) LITTLE_ENDIANIZE_INT16(x)
 
 /*========== PROCEDURES ==========*/
 
@@ -195,6 +188,8 @@ static int AdvanceEnvelope          /* Run envelope step & retn ENVX*/
     (
     int                 v           /* Voice to process envelope for*/
     );
+
+static STREAM_UPDATE( snes_sh_update );
 
 /* Privately shared functions (for internal library use only) */
 
@@ -1186,7 +1181,7 @@ DEVICE_GET_INFO( snes_sound )
 }
 
 
-STREAM_UPDATE( snes_sh_update )
+static STREAM_UPDATE( snes_sh_update )
 {
 	int i;
 	short mix[2];

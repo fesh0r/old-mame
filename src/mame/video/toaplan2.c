@@ -199,13 +199,13 @@ static int objectbank_dirty = 0;		/* dirty flag of object bank (for Batrider) */
 static UINT16 batrider_object_bank[8];		/* Batrider object bank */
 
 #ifdef MAME_DEBUG
-static int display_bg[2]  = { 1, 1 };
-static int display_fg[2]  = { 1, 1 };
-static int display_top[2] = { 1, 1 };
+static int display_bg[2];
+static int display_fg[2];
+static int display_top[2];
 static int displog = 0;
-static int display_tx = 1;
+static int display_tx;
 #endif
-static int display_sp[2] = { 1, 1 };
+static int display_sp[2];
 
 static UINT8 bg_flip[2] = { 0, 0 };
 static UINT8 fg_flip[2] = { 0, 0 };
@@ -481,6 +481,16 @@ static void toaplan2_vh_start(running_machine *machine, int controller)
 	{
 		create_tilemaps_1(machine);
 	}
+
+#ifdef MAME_DEBUG
+	display_bg[controller] = 1;
+	display_fg[controller] = 1;
+	display_top[controller] = 1;
+	displog = 0;
+	display_tx = 1;
+#endif
+
+	display_sp[controller] = 1;
 }
 
 static void register_state_save(running_machine *machine, int vrams)
@@ -572,6 +582,7 @@ VIDEO_START( truxton2_0 )
 		tilemap_set_scrolldx(tx_tilemap, 0x1d4 +1, 0x2a);
 	}
 
+	display_sp[0] = 1;
 	register_state_save(machine,1);
 }
 
@@ -581,6 +592,8 @@ VIDEO_START( bgaregga_0 )
 	truxton2_create_tilemaps_0(machine);
 	tilemap_set_scrolldx(tx_tilemap, 0x1d4, 0x2a);
 	defaultOffsets();
+	display_sp[0] = 1;
+	display_sp[1] = 1;
 	register_state_save(machine,1);
 }
 
@@ -598,6 +611,8 @@ VIDEO_START( batrider_0 )
 
 	tilemap_set_scrolldx(tx_tilemap, 0x1d4, 0x2a);
 	defaultOffsets();
+	display_sp[0] = 1;
+	display_sp[1] = 1;
 	register_state_save(machine,1);
 }
 

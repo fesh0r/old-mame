@@ -3,7 +3,7 @@
 /* ======================================================================== */
 /*
  *                                  MUSASHI
- *                                Version 4.00
+ *                                Version 4.50
  *
  * A portable Motorola M680x0 processor emulation engine.
  * Copyright Karl Stenerud.  All rights reserved.
@@ -73,12 +73,16 @@ typedef struct _m68ki_cpu_core m68ki_cpu_core;
 #define FUNCTION_CODE_CPU_SPACE          7
 
 /* CPU types for deciding what to emulate */
-#define CPU_TYPE_000   1
-#define CPU_TYPE_008   2
-#define CPU_TYPE_010   4
-#define CPU_TYPE_EC020 8
-#define CPU_TYPE_020   16
-#define CPU_TYPE_040   32
+#define CPU_TYPE_000	(0x00000001)
+#define CPU_TYPE_008    (0x00000002)
+#define CPU_TYPE_010    (0x00000004)
+#define CPU_TYPE_EC020  (0x00000008)
+#define CPU_TYPE_020    (0x00000010)
+#define CPU_TYPE_EC030  (0x00000020)
+#define CPU_TYPE_030    (0x00000040)
+#define CPU_TYPE_EC040  (0x00000080)
+#define CPU_TYPE_040    (0x00000100)
+#define CPU_TYPE_SCC070 (0x00000200)
 
 /* Different ways to stop the CPU */
 #define STOP_LEVEL_STOP 1
@@ -215,19 +219,22 @@ typedef struct _m68ki_cpu_core m68ki_cpu_core;
 /* These defines are dependant on the configuration defines in m68kconf.h */
 
 /* Disable certain comparisons if we're not using all CPU types */
-#define CPU_TYPE_IS_040_PLUS(A)    ((A) & CPU_TYPE_040)
+#define CPU_TYPE_IS_040_PLUS(A)    ((A) & (CPU_TYPE_040 | CPU_TYPE_EC040))
 #define CPU_TYPE_IS_040_LESS(A)    1
 
-#define CPU_TYPE_IS_020_PLUS(A)    ((A) & (CPU_TYPE_020 | CPU_TYPE_040))
+#define CPU_TYPE_IS_030_PLUS(A)    ((A) & (CPU_TYPE_030 | CPU_TYPE_EC030 | CPU_TYPE_040 | CPU_TYPE_EC040))
+#define CPU_TYPE_IS_030_LESS(A)    1
+
+#define CPU_TYPE_IS_020_PLUS(A)    ((A) & (CPU_TYPE_020 | CPU_TYPE_030 | CPU_TYPE_EC030 | CPU_TYPE_040 | CPU_TYPE_EC040))
 #define CPU_TYPE_IS_020_LESS(A)    1
 
 #define CPU_TYPE_IS_020_VARIANT(A) ((A) & (CPU_TYPE_EC020 | CPU_TYPE_020))
 
-#define CPU_TYPE_IS_EC020_PLUS(A)  ((A) & (CPU_TYPE_EC020 | CPU_TYPE_020 | CPU_TYPE_040))
+#define CPU_TYPE_IS_EC020_PLUS(A)  ((A) & (CPU_TYPE_EC020 | CPU_TYPE_020 | CPU_TYPE_030 | CPU_TYPE_EC030 | CPU_TYPE_040 | CPU_TYPE_EC040))
 #define CPU_TYPE_IS_EC020_LESS(A)  ((A) & (CPU_TYPE_000 | CPU_TYPE_008 | CPU_TYPE_010 | CPU_TYPE_EC020))
 
 #define CPU_TYPE_IS_010(A)         ((A) == CPU_TYPE_010)
-#define CPU_TYPE_IS_010_PLUS(A)    ((A) & (CPU_TYPE_010 | CPU_TYPE_EC020 | CPU_TYPE_020 | CPU_TYPE_040))
+#define CPU_TYPE_IS_010_PLUS(A)    ((A) & (CPU_TYPE_010 | CPU_TYPE_EC020 | CPU_TYPE_020 | CPU_TYPE_EC030 | CPU_TYPE_030 | CPU_TYPE_040 | CPU_TYPE_EC040))
 #define CPU_TYPE_IS_010_LESS(A)    ((A) & (CPU_TYPE_000 | CPU_TYPE_008 | CPU_TYPE_010))
 
 #define CPU_TYPE_IS_000(A)         ((A) == CPU_TYPE_000 || (A) == CPU_TYPE_008)
@@ -256,6 +263,29 @@ typedef struct _m68ki_cpu_core m68ki_cpu_core;
 
 
 /* Address error */
+/* sigjmp() on Mac OS X and *BSD in general saves signal contexts and is super-slow, use sigsetjmp() to tell it not to */
+#ifdef _BSD_SETJMP_H
+#define m68ki_set_address_error_trap(m68k) \
+	if(sigsetjmp(m68k->aerr_trap, 0) != 0) \
+	{ \
+		m68ki_exception_address_error(m68k); \
+		if(m68k->stopped) \
+		{ \
+			if (m68k->remaining_cycles > 0) \
+				m68k->remaining_cycles = 0; \
+			return m68k->initial_cycles; \
+		} \
+	}
+
+#define m68ki_check_address_error(m68k, ADDR, WRITE_MODE, FC) \
+	if((ADDR)&1) \
+	{ \
+		m68k->aerr_address = ADDR; \
+		m68k->aerr_write_mode = WRITE_MODE; \
+		m68k->aerr_fc = FC; \
+		siglongjmp(m68k->aerr_trap, 1); \
+	}
+#else
 #define m68ki_set_address_error_trap(m68k) \
 	if(setjmp(m68k->aerr_trap) != 0) \
 	{ \
@@ -276,7 +306,7 @@ typedef struct _m68ki_cpu_core m68ki_cpu_core;
 		m68k->aerr_fc = FC; \
 		longjmp(m68k->aerr_trap, 1); \
 	}
-
+#endif
 
 
 /* -------------------------- EA / Operand Access ------------------------- */
@@ -517,7 +547,7 @@ struct _m68k_memory_interface
 
 struct _m68ki_cpu_core
 {
-	UINT32 cpu_type;     /* CPU Type: 68000, 68008, 68010, 68EC020, or 68020 */
+	UINT32 cpu_type;     /* CPU Type: 68000, 68008, 68010, 68EC020, 68020, 68EC030, 68030, 68EC040, or 68040 */
 	UINT32 dasm_type;	 /* disassembly type */
 	UINT32 dar[16];      /* Data and Address Registers */
 	UINT32 ppc;		   /* Previous program counter */
@@ -550,6 +580,8 @@ struct _m68ki_cpu_core
 	UINT32 sr_mask;      /* Implemented status register bits */
 	UINT32 instr_mode;   /* Stores whether we are in instruction mode or group 0/1 exception mode */
 	UINT32 run_mode;     /* Stores whether we are processing a reset, bus error, address error, or something else */
+	int    has_pmmu;     /* Indicates if a PMMU available (yes on 030, 040, no on EC030) */
+	int    pmmu_enabled; /* Indicates if the PMMU is enabled */
 
 	/* Clocks required for instructions / exceptions */
 	UINT32 cyc_bcc_notake_b;
@@ -567,7 +599,11 @@ struct _m68ki_cpu_core
 	int  reset_cycles;
 	UINT32 tracing;
 
+#ifdef _BSD_SETJMP_H
+	sigjmp_buf aerr_trap;
+#else
 	jmp_buf aerr_trap;
+#endif
 	UINT32    aerr_address;
 	UINT32    aerr_write_mode;
 	UINT32    aerr_fc;
@@ -600,6 +636,12 @@ struct _m68ki_cpu_core
 	UINT16 save_sr;
 	UINT8 save_stopped;
 	UINT8 save_halted;
+
+	/* PMMU registers */
+	UINT32 mmu_crp_aptr, mmu_crp_limit;
+	UINT32 mmu_srp_aptr, mmu_srp_limit;
+	UINT32 mmu_tc;
+	UINT16 mmu_sr;
 };
 
 

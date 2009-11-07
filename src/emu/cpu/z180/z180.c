@@ -122,6 +122,7 @@ struct _z180_state
 	UINT8	rtemp;
 	UINT32	ioltemp;
 	int icount;
+	UINT8 *cc[6];
 };
 
 INLINE z180_state *get_safe_token(const device_config *device)
@@ -2017,9 +2018,6 @@ static CPU_INIT( z180 )
 	if (device->static_config)
 		cpustate->daisy = z80daisy_init(device, (const z80_daisy_chain *)device->static_config);
 	cpustate->irq_callback = irqcallback;
-	cpustate->device = device;
-	cpustate->program = memory_find_address_space(device, ADDRESS_SPACE_PROGRAM);
-	cpustate->iospace = memory_find_address_space(device, ADDRESS_SPACE_IO);
 
 	/* set up the state table */
 	cpustate->state = state_table_template;
@@ -2142,6 +2140,8 @@ static CPU_RESET( z180 )
 	save_irqcallback = cpustate->irq_callback;
 	save_table = cpustate->state;
 	memset(cpustate, 0, sizeof(*cpustate));
+
+	memcpy(cpustate->cc, (UINT8 *)cc_default, sizeof(cpustate->cc));
 	cpustate->daisy = save_daisy;
 	cpustate->irq_callback = save_irqcallback;
 	cpustate->state = save_table;
@@ -2162,7 +2162,6 @@ static CPU_RESET( z180 )
 	cpustate->read_tcr_tmdr[1] = 0;
 	cpustate->tmdr_value[0] = 0xffff;
 	cpustate->tmdr_value[1] = 0xffff;
-	cpustate->device = device;
 
 	/* reset io registers */
 	cpustate->IO_CNTLA0  = Z180_CNTLA0_RESET;
@@ -2516,12 +2515,12 @@ static CPU_SET_INFO( z180 )
 		case CPUINFO_INT_INPUT_STATE + Z180_INT0:		set_irq_line(cpustate, Z180_INT0, info->i);			break;
 
 		/* --- the following bits of info are set as pointers to data or functions --- */
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_op: 		cc[Z180_TABLE_op] = (const UINT8 *)info->p;				break;
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_cb: 		cc[Z180_TABLE_cb] = (const UINT8 *)info->p;				break;
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_ed: 		cc[Z180_TABLE_ed] = (const UINT8 *)info->p;				break;
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_xy: 		cc[Z180_TABLE_xy] = (const UINT8 *)info->p;				break;
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_xycb: 	cc[Z180_TABLE_xycb] = (const UINT8 *)info->p;				break;
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_ex: 		cc[Z180_TABLE_ex] = (const UINT8 *)info->p;				break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_op: 		cpustate->cc[Z180_TABLE_op] = info->p;		break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_cb: 		cpustate->cc[Z180_TABLE_cb] = info->p;		break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_ed: 		cpustate->cc[Z180_TABLE_ed] = info->p;		break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_xy: 		cpustate->cc[Z180_TABLE_xy] = info->p;		break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_xycb: 	cpustate->cc[Z180_TABLE_xycb] = info->p;	break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_ex: 		cpustate->cc[Z180_TABLE_ex] = info->p;		break;
 	}
 }
 
@@ -2574,12 +2573,12 @@ CPU_GET_INFO( z180 )
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &cpustate->icount;		break;
 		case CPUINFO_PTR_STATE_TABLE:					info->state_table = &cpustate->state;	break;
 
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_op: 		info->p = (void *)cc[Z180_TABLE_op];	break;
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_cb: 		info->p = (void *)cc[Z180_TABLE_cb];	break;
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_ed: 		info->p = (void *)cc[Z180_TABLE_ed];	break;
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_xy: 		info->p = (void *)cc[Z180_TABLE_xy];	break;
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_xycb:	info->p = (void *)cc[Z180_TABLE_xycb];	break;
-		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_ex: 		info->p = (void *)cc[Z180_TABLE_ex];	break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_op: 		info->p = (void *)cpustate->cc[Z180_TABLE_op];	break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_cb: 		info->p = (void *)cpustate->cc[Z180_TABLE_cb];	break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_ed: 		info->p = (void *)cpustate->cc[Z180_TABLE_ed];	break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_xy: 		info->p = (void *)cpustate->cc[Z180_TABLE_xy];	break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_xycb:	info->p = (void *)cpustate->cc[Z180_TABLE_xycb];	break;
+		case CPUINFO_PTR_Z180_CYCLE_TABLE + Z180_TABLE_ex: 		info->p = (void *)cpustate->cc[Z180_TABLE_ex];	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Z180");				break;

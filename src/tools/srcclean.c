@@ -4,10 +4,38 @@
 
     Basic source code cleanear.
 
-    Copyright Nicola Salmoria and the MAME Team.
-    Visit http://mamedev.org for licensing and usage restrictions.
+****************************************************************************
 
-***************************************************************************/
+    Copyright Aaron Giles
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are
+    met:
+
+        * Redistributions of source code must retain the above copyright
+          notice, this list of conditions and the following disclaimer.
+        * Redistributions in binary form must reproduce the above copyright
+          notice, this list of conditions and the following disclaimer in
+          the documentation and/or other materials provided with the
+          distribution.
+        * Neither the name 'MAME' nor the names of its contributors may be
+          used to endorse or promote products derived from this software
+          without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY AARON GILES ''AS IS'' AND ANY EXPRESS OR
+    IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+    DISCLAIMED. IN NO EVENT SHALL AARON GILES BE LIABLE FOR ANY DIRECT,
+    INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+    SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+    HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+    STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+    IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    POSSIBILITY OF SUCH DAMAGE.
+
+****************************************************************************/
 
 #include <stdio.h>
 #include <string.h>
@@ -46,13 +74,14 @@ int main(int argc, char *argv[])
 	const char *ext;
 	FILE *file;
 	int bytes;
+	int col = 0;
 
 	/* print usage info */
 	if (argc != 2)
 	{
 		printf("Usage:\nsrcclean <file>\n");
 		return 0;
- 	}
+	}
 
 	/* read the file */
 	file = fopen(argv[1], "rb");
@@ -114,6 +143,7 @@ int main(int argc, char *argv[])
 			/* insert a proper CR/LF */
 			modified[dst++] = 0x0d;
 			modified[dst++] = 0x0a;
+			col = 0;
 
 			/* skip over any LF in the source file */
 			if (original[src] == 0x0a)
@@ -125,32 +155,31 @@ int main(int argc, char *argv[])
 			in_cpp_comment = FALSE;
 		}
 
-		/* if we hit a tab within a comment, expand it */
-		else if (ch == 0x09 && (in_c_comment || in_cpp_comment))
+		/* if we hit a tab... */
+		else if (ch == 0x09)
 		{
-			int temp, col;
+			int spaces = 4 - col % 4;
 
-			/* scan backwards to find the start of line */
-			for (temp = dst; temp >= 0; temp--)
-				if (modified[temp] == 0x0a)
-					break;
+			col += spaces;
 
-			/* scan forwards to compute the current column */
-			for (temp++, col = 0; temp < dst; temp++)
-				if (modified[temp] == 0x09)
-					col += 4 - col % 4;
-				else
-					col++;
-
-			/* compute how many spaces */
-			col = 4 - col % 4;
-			while (col--) modified[dst++] = ' ';
-			removed_tabs++;
+			/* if inside a comment, expand it */
+			if (in_c_comment || in_cpp_comment)
+			{
+				while (spaces--) modified[dst++] = ' ';
+				removed_tabs++;
+			}
+			else
+			{
+				modified[dst++] = ch;
+			}
 		}
 
 		/* otherwise, copy the source character */
 		else
+		{
 			modified[dst++] = ch;
+			col++;
+		}
 	}
 
 	/* if we didn't find an end of comment, we screwed up */

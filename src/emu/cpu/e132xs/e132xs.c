@@ -215,7 +215,6 @@
 #include "cpuexec.h"
 #include "eminline.h"
 #include "e132xs.h"
-#include "osd_cpu.h"
 
 #ifdef MAME_DEBUG
 #define DEBUG_PRINTF(x) do { mame_printf_debug x; } while (0)
@@ -350,7 +349,6 @@ struct regs_decode
 	UINT8   same_src_dst;
 	UINT8   same_src_dstf;
 	UINT8   same_srcf_dst;
-	UINT16	op;
 };
 
 static void check_interrupts(hyperstone_state *cpustate);
@@ -361,7 +359,6 @@ static void check_interrupts(hyperstone_state *cpustate);
 #define DREGF (decode)->next_dst_value
 #define EXTRA_U (decode)->extra.u
 #define EXTRA_S (decode)->extra.s
-#define OP    (decode)->op
 
 #define SET_SREG( _data_ )  ((decode)->src_is_local ? set_local_register(cpustate, (decode)->src, _data_) : set_global_register(cpustate, (decode)->src, _data_))
 #define SET_SREGF( _data_ ) ((decode)->src_is_local ? set_local_register(cpustate, (decode)->src + 1, _data_) : set_global_register(cpustate, (decode)->src + 1, _data_))
@@ -501,6 +498,7 @@ static void hyperstone_set_trap_entry(hyperstone_state *cpustate, int which)
 	}
 }
 
+#define OP    			cpustate->op
 #define PPC				cpustate->ppc //previous pc
 #define PC				cpustate->global_regs[0] //Program Counter
 #define SR				cpustate->global_regs[1] //Status Register
@@ -1793,7 +1791,7 @@ INLINE void hyperstone_movd(hyperstone_state *cpustate, struct regs_decode *deco
 		SET_DREG(SREG);
 		SET_DREGF(SREGF);
 
-		tmp = COMBINE_U64_U32_U32(SREG, SREGF);
+		tmp = CONCAT_64(SREG, SREGF);
 		SET_Z( tmp == 0 ? 1 : 0 );
 		SET_N( SIGN_BIT(SREG) );
 
@@ -1817,7 +1815,7 @@ INLINE void hyperstone_divu(hyperstone_state *cpustate, struct regs_decode *deco
 		{
 			UINT64 dividend;
 
-			dividend = COMBINE_U64_U32_U32(DREG, DREGF);
+			dividend = CONCAT_64(DREG, DREGF);
 
 			if( SREG == 0 )
 			{
@@ -1866,7 +1864,7 @@ INLINE void hyperstone_divs(hyperstone_state *cpustate, struct regs_decode *deco
 		{
 			INT64 dividend;
 
-			dividend = (INT64) COMBINE_64_32_32(DREG, DREGF);
+			dividend = (INT64) CONCAT_64(DREG, DREGF);
 
 			if( SREG == 0 || (DREG & 0x80000000) )
 			{
@@ -2535,7 +2533,7 @@ INLINE void hyperstone_shrdi(hyperstone_state *cpustate, struct regs_decode *dec
 	high_order = DREG;
 	low_order  = DREGF;
 
-	val = COMBINE_U64_U32_U32(high_order, low_order);
+	val = CONCAT_64(high_order, low_order);
 
 	if( N_VALUE )
 		SET_C((val >> (N_VALUE - 1)) & 1);
@@ -2544,8 +2542,8 @@ INLINE void hyperstone_shrdi(hyperstone_state *cpustate, struct regs_decode *dec
 
 	val >>= N_VALUE;
 
-	high_order = HI32_32_64(val);
-	low_order  = LO32_32_64(val);
+	high_order = EXTRACT_64HI(val);
+	low_order  = EXTRACT_64LO(val);
 
 	SET_DREG(high_order);
 	SET_DREGF(low_order);
@@ -2571,7 +2569,7 @@ INLINE void hyperstone_shrd(hyperstone_state *cpustate, struct regs_decode *deco
 		high_order = DREG;
 		low_order  = DREGF;
 
-		val = COMBINE_U64_U32_U32(high_order, low_order);
+		val = CONCAT_64(high_order, low_order);
 
 		if( n )
 			SET_C((val >> (n - 1)) & 1);
@@ -2580,8 +2578,8 @@ INLINE void hyperstone_shrd(hyperstone_state *cpustate, struct regs_decode *deco
 
 		val >>= n;
 
-		high_order = HI32_32_64(val);
-		low_order  = LO32_32_64(val);
+		high_order = EXTRACT_64HI(val);
+		low_order  = EXTRACT_64LO(val);
 
 		SET_DREG(high_order);
 		SET_DREGF(low_order);
@@ -2624,7 +2622,7 @@ INLINE void hyperstone_sardi(hyperstone_state *cpustate, struct regs_decode *dec
 	high_order = DREG;
 	low_order  = DREGF;
 
-	val = COMBINE_64_32_32(high_order, low_order);
+	val = CONCAT_64(high_order, low_order);
 
 	if( N_VALUE )
 		SET_C((val >> (N_VALUE - 1)) & 1);
@@ -2673,7 +2671,7 @@ INLINE void hyperstone_sard(hyperstone_state *cpustate, struct regs_decode *deco
 		high_order = DREG;
 		low_order  = DREGF;
 
-		val = COMBINE_64_32_32(high_order, low_order);
+		val = CONCAT_64(high_order, low_order);
 
 		if( n )
 			SET_C((val >> (n - 1)) & 1);
@@ -2745,7 +2743,7 @@ INLINE void hyperstone_shldi(hyperstone_state *cpustate, struct regs_decode *dec
 	high_order = DREG;
 	low_order  = DREGF;
 
-	val  = COMBINE_U64_U32_U32(high_order, low_order);
+	val  = CONCAT_64(high_order, low_order);
 	SET_C( (N_VALUE)?(((val<<(N_VALUE-1))&U64(0x8000000000000000))?1:0):0);
 	mask = ((((UINT64)1) << (32 - N_VALUE)) - 1) ^ 0xffffffff;
 	tmp  = high_order << N_VALUE;
@@ -2758,8 +2756,8 @@ INLINE void hyperstone_shldi(hyperstone_state *cpustate, struct regs_decode *dec
 
 	val <<= N_VALUE;
 
-	high_order = HI32_32_64(val);
-	low_order  = LO32_32_64(val);
+	high_order = EXTRACT_64HI(val);
+	low_order  = EXTRACT_64LO(val);
 
 	SET_DREG(high_order);
 	SET_DREGF(low_order);
@@ -2789,7 +2787,7 @@ INLINE void hyperstone_shld(hyperstone_state *cpustate, struct regs_decode *deco
 
 		mask = ((((UINT64)1) << (32 - n)) - 1) ^ 0xffffffff;
 
-		val = COMBINE_U64_U32_U32(high_order, low_order);
+		val = CONCAT_64(high_order, low_order);
 		SET_C( (n)?(((val<<(n-1))&U64(0x8000000000000000))?1:0):0);
 		tmp = high_order << n;
 
@@ -2801,8 +2799,8 @@ INLINE void hyperstone_shld(hyperstone_state *cpustate, struct regs_decode *deco
 
 		val <<= n;
 
-		high_order = HI32_32_64(val);
-		low_order  = LO32_32_64(val);
+		high_order = EXTRACT_64HI(val);
+		low_order  = EXTRACT_64LO(val);
 
 		SET_DREG(high_order);
 		SET_DREGF(low_order);
@@ -4055,7 +4053,7 @@ INLINE void hyperstone_extend(hyperstone_state *cpustate, struct regs_decode *de
 		{
 			INT64 result;
 
-			result = (INT64)COMBINE_64_32_32(GET_G_REG(14), GET_G_REG(15)) + (INT64)((INT64)(INT32)(vals) * (INT64)(INT32)(vald));
+			result = (INT64)CONCAT_64(GET_G_REG(14), GET_G_REG(15)) + (INT64)((INT64)(INT32)(vals) * (INT64)(INT32)(vald));
 
 			vals = result >> 32;
 			vald = result & 0xffffffff;
@@ -4079,7 +4077,7 @@ INLINE void hyperstone_extend(hyperstone_state *cpustate, struct regs_decode *de
 		{
 			INT64 result;
 
-			result = (INT64)COMBINE_64_32_32(GET_G_REG(14), GET_G_REG(15)) - (INT64)((INT64)(INT32)(vals) * (INT64)(INT32)(vald));
+			result = (INT64)CONCAT_64(GET_G_REG(14), GET_G_REG(15)) - (INT64)((INT64)(INT32)(vals) * (INT64)(INT32)(vald));
 
 			vals = result >> 32;
 			vald = result & 0xffffffff;
@@ -4103,7 +4101,7 @@ INLINE void hyperstone_extend(hyperstone_state *cpustate, struct regs_decode *de
 		{
 			INT64 result;
 
-			result = (INT64)COMBINE_64_32_32(GET_G_REG(14), GET_G_REG(15)) + (INT64)((INT64)(INT32)((vald & 0xffff0000) >> 16) * (INT64)(INT32)((vals & 0xffff0000) >> 16)) + ((INT64)(INT32)(vald & 0xffff) * (INT64)(INT32)(vals & 0xffff));
+			result = (INT64)CONCAT_64(GET_G_REG(14), GET_G_REG(15)) + (INT64)((INT64)(INT32)((vald & 0xffff0000) >> 16) * (INT64)(INT32)((vals & 0xffff0000) >> 16)) + ((INT64)(INT32)(vald & 0xffff) * (INT64)(INT32)(vals & 0xffff));
 
 			vals = result >> 32;
 			vald = result & 0xffffffff;
@@ -4672,18 +4670,17 @@ static CPU_EXECUTE( hyperstone )
 	do
 	{
 		UINT32 oldh = SR & 0x00000020;
-		UINT16 opcode;
 
 		PPC = PC;	/* copy PC to previous PC */
 		debugger_instruction_hook(device, PC);
 
-		opcode = READ_OP(cpustate, PC);
+		OP = READ_OP(cpustate, PC);
 		PC += 2;
 
 		cpustate->instruction_length = 1;
 
 		/* execute opcode */
-		(*hyperstone_op[(opcode & 0xff00) >> 8])(cpustate, opcode);
+		(*hyperstone_op[(OP & 0xff00) >> 8])(cpustate);
 
 		/* clear the H state if it was previously set */
 		SR ^= oldh;

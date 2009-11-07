@@ -176,6 +176,7 @@ Atomiswave ROM board specs from Cah4e3 @ http://cah4e3.wordpress.com/2009/07/26/
 #include "machine/eeprom.h"
 #include "machine/x76f100.h"
 #include "cdrom.h"
+#include "includes/naomi.h"
 #include "naomibd.h"
 
 #define NAOMIBD_FLAG_AUTO_ADVANCE	(8)	// address auto-advances on read
@@ -183,15 +184,6 @@ Atomiswave ROM board specs from Cah4e3 @ http://cah4e3.wordpress.com/2009/07/26/
 #define NAOMIBD_FLAG_ADDRESS_SHUFFLE	(2)	// 0 to let protection chip en/decrypt, 1 for normal
 
 #define NAOMIBD_PRINTF_PROTECTION	(0)	// 1 to printf protection access details
-
-/*************************************
- *
- *  Prototypes
- *
- *************************************/
-
-extern void naomi_game_decrypt(running_machine* machine, UINT64 key, UINT8* region, int length);
-
 
 /*************************************
  *
@@ -225,7 +217,9 @@ struct _naomibd_state
 	UINT32				prot_offset, prot_key;
 	UINT32				aw_offset, aw_file_base, aw_file_offset;
 
-	const UINT32				*prot_translate;
+	INT32				prot_sum;
+
+	const UINT32			*prot_translate;
 	int				prot_reverse_bytes;
 	#if NAOMIBD_PRINTF_PROTECTION
 	int				prot_pio_count;
@@ -276,15 +270,15 @@ static const naomibd_config_table naomibd_translate_tbl[] =
 			  0x3232, 0, 0x170000, 0x8989, 0, 0x190000, 0x6655, 0, 0x1a0000,
 			  0x3944, 0, 0x1c0000, 0x655a, 0, 0x1d0000, 0xf513, 0, 0x1e0000,
 			  0xb957, 0, 0, 0x37ca, 0, 0, 0xffffffff, 0xffffffff, 0xffffffff } },
-/*  { "pstone2", 0, { 0x4a65, 0, 0x000000, 0x0ead, 0, 0x010000, 0x0492, 0, 0x020000, 0x414a, 0, 0x030000,
-              0xad8c, 0, 0x040000, 0x923d, 0, 0x050000, 0x4a65, 0, 0x060000, 0x9958, 0, 0x070000,
-              0x8216, 0, 0x080000, 0xaa91, 0, 0x090000, 0xd007, 0, 0x0a0000, 0x71ee, 0, 0x0b0000,
-              0x3e41, 0, 0x0c0000, 0xb7af, 0, 0x0d0000, 0x9651, 0, 0x0e0000, 0x0492, 0, 0x0f0000,
-              0x414a, 0, 0x100000, 0xaf99, 0, 0x110000, 0x5182, 0, 0x120000, 0x08aa, 0, 0x130000,
-              0x69d0, 0, 0x140000, 0x9d71, 0, 0x150000, 0xd319, 0, 0x160000, 0xcc09, 0, 0x170000,
-              0x5ec4, 0, 0x180000, 0x7103, 0, 0x190000, 0xffffffff, 0xffffffff, 0xffffffff } },
-*/
-	{ "toyfight", 0,{ 0x0615, 0, 0x0000, 0x1999, 0, 0x1000, 0x7510, 0, 0x2000, 0x5736, 0, 0x3000,
+	{ "pstone2", 0, { -2, 0x14db3f4,  0x000000, -2, 0xfbd0179d, 0x010000, -2, 0x9827117, 0x020000, -2, 0x69358f, 0x030000,
+			  -2, 0x193954e, 0x040000, -2, 0xba50eb, 0x050000, -2, 0x9f1523, 0x060000, -2, 0xcb7b03, 0x070000,
+			  -2, 0x8f712b, 0x080000, -2, 0x120f246, 0x090000, -2, 0xacc9fc, 0x0a0000, -2, 0x4eb319, 0x0b0000,
+			  -2, 0x19d0c41, 0x0c0000, -2, 0x1077853, 0x0d0000, -2, 0x100019d, 0x0e0000, -2, 0xfd91596b, 0x0f0000,
+			  -2, 0x63bae7, 0x100000, -2, 0x3e3685, 0x110000, -2, 0x6d08a9, 0x120000, -2, 0xfff85c5d, 0x130000,
+			  -2, 0x5263bf, 0x140000, -2, 0x396180, 0x150000, -2, 0x73af6c, 0x160000, -2, 0xfffa8a76, 0x170000,
+			  -2, 0xc2d9e0, 0x180000, -2, 0x33be72, 0x190000,
+			  0xffffffff, 0xffffffff, 0xffffffff } },
+	{ "toyfight", 0,{ 0x0615, 0, 0x8f058, 0x1999, 0, 0x8ec58, 0x7510, 0, 0x8f458, 0x5736, 0, 0x8e858,
 		          0xffffffff, 0xffffffff, 0xffffffff } },
 	{ "ggx",      0,{ -1, 0x200000, 0x100000, -1, 0x210004, 0x110000, -1, 0x220008, 0x120000, -1, 0x228000, 0x130000,
 		          0x3af9, 0, 0x000000, 0x2288, 0, 0x010000, 0xe5e6, 0, 0x020000, 0xebb0, 0, 0x030000,
@@ -292,6 +286,9 @@ static const naomibd_config_table naomibd_translate_tbl[] =
 			  0x2924, 0, 0x080000, 0x3222, 0, 0x090000, 0x7954, 0, 0x0a0000, 0x5acd, 0, 0x0b0000,
 			  0xdd19, 0, 0x0c0000, 0x2428, 0, 0x0d0000, 0x3329, 0, 0x0e0000, 0x2142, 0, 0x0f0000,
 		          0xffffffff, 0xffffffff, 0xffffffff } },
+	{ "crzytaxi", 0,{ 0x0219, 0, 0, 0xffffffff, 0xffffffff, 0xffffffff } },
+	{ "jambo",    0,{ 0x0223, 0, 0, 0xffffffff, 0xffffffff, 0xffffffff } },
+	{ "18wheelr", 0,{ 0x1502, 0, 0, 0xffffffff, 0xffffffff, 0xffffffff } },
 };
 
 /***************************************************************************
@@ -380,6 +377,7 @@ static void init_save_state(const device_config *device)
 
 static void soft_reset(naomibd_state *v)
 {
+	v->prot_sum = 0;
 }
 
 
@@ -413,6 +411,9 @@ READ64_DEVICE_HANDLER( naomibd_r )
 			{
 				UINT8 *prot = (UINT8 *)v->protdata;
 				UINT32 byte_offset = v->prot_offset*2;
+
+				// this is a good time to clear the prot_sum
+				v->prot_sum = 0;
 
 				if (v->prot_translate == NULL)
 				{
@@ -646,7 +647,7 @@ WRITE64_DEVICE_HANDLER( naomibd_w )
 						v->prot_key = data;
 
 						#if NAOMIBD_PRINTF_PROTECTION
-						printf("Protection: set up read @ %x, key %x (PIO %x DMA %x) [%s]\n", v->prot_offset*2, v->prot_key, v->rom_offset, v->dma_offset, cpuexec_describe_context(device->machine));
+						printf("Protection: set up read @ %x, key %x sum %x (PIO %x DMA %x) [%s]\n", v->prot_offset*2, v->prot_key, v->prot_sum, v->rom_offset, v->dma_offset, cpuexec_describe_context(device->machine));
 
 						v->prot_pio_count = 0;
 						#endif
@@ -657,13 +658,13 @@ WRITE64_DEVICE_HANDLER( naomibd_w )
 							i = 0;
 							while (v->prot_translate[i+1] != 0xffffffff)
 							{
-								// should we match by key or address?
-								if (v->prot_translate[i] != -1)
+								// should we match by key, address, or sum?
+								if (v->prot_translate[i] == -2)	// match sum
 								{
-									if (v->prot_translate[i] == v->prot_key)
+									if (v->prot_translate[i+1] == v->prot_sum)
 									{
 										#if NAOMIBD_PRINTF_PROTECTION
-										printf("Protection: got key %x, translated to %x\n", v->prot_key, v->prot_translate[i+2]);
+										printf("Protection: got sum %x, translated to %x\n", v->prot_sum, v->prot_translate[i+2]);
 										#endif
 										v->prot_offset = v->prot_translate[i+2]/2;
 										break;
@@ -673,7 +674,7 @@ WRITE64_DEVICE_HANDLER( naomibd_w )
 										i+= 3;
 									}
 								}
-								else
+								else if (v->prot_translate[i] == -1)	// match address
 								{
 									if (v->prot_translate[i+1] == (v->prot_offset*2))
 									{
@@ -688,6 +689,21 @@ WRITE64_DEVICE_HANDLER( naomibd_w )
 										i += 3;
 									}
 								}
+								else	// match key
+								{
+									if (v->prot_translate[i] == v->prot_key)
+									{
+										#if NAOMIBD_PRINTF_PROTECTION
+										printf("Protection: got key %x, translated to %x\n", v->prot_key, v->prot_translate[i+2]);
+										#endif
+										v->prot_offset = v->prot_translate[i+2]/2;
+										break;
+									}
+									else
+									{
+										i+= 3;
+									}
+								}
 							}
 						}
 						#if NAOMIBD_PRINTF_PROTECTION
@@ -698,9 +714,17 @@ WRITE64_DEVICE_HANDLER( naomibd_w )
 						#endif
 						break;
 
+					case 0x2000000:
+					case 0x2020000:
+						#if NAOMIBD_PRINTF_PROTECTION
+						printf("Protection write %04x to upload\n", (UINT32)(data&0xffff));
+						#endif
+						v->prot_sum += (INT16)(data&0xffff);
+						break;
+
 					default:
 						#if NAOMIBD_PRINTF_PROTECTION
-						printf("naomibd: unknown protection write %x @ %x\n", (UINT32)data, offset);
+						printf("naomibd: unknown protection write %x @ %x\n", (UINT32)data, v->rom_offset);
 						#endif
 						break;
 				}
@@ -1001,7 +1025,8 @@ static DEVICE_START( naomibd )
 			v->memory = (UINT8 *)memory_region(device->machine, config->regiontag);
 			v->gdromchd = get_disk_handle(device->machine, config->gdromregiontag);
 			v->picdata = (UINT8 *)memory_region(device->machine, config->picregiontag);
-			load_rom_gdrom(device->machine, v);
+			if (v->memory != NULL && v->gdromchd != NULL && v->picdata != NULL)
+				load_rom_gdrom(device->machine, v);
 			break;
 
 		default:
@@ -1058,7 +1083,13 @@ static DEVICE_RESET( naomibd )
 static DEVICE_NVRAM( naomibd )
 {
 	//naomibd_state *v = get_safe_token(device);
-	static UINT8 eeprom_romboard[20+48] = {0x19,0x00,0xaa,0x55,0,0,0,0,0,0,0,0,0x69,0x79,0x68,0x6b,0x74,0x6d,0x68,0x6d};
+	static const UINT8 eeprom_romboard[20+48] =
+	{
+		0x19,0x00,0xaa,0x55,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x69,0x79,0x68,0x6b,0x74,0x6d,0x68,0x6d,
+		0xa1,0x09,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,
+		0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,
+		0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30
+	};
 	UINT8 *games_contents;
 
 	if (read_or_write)
@@ -1076,8 +1107,9 @@ static DEVICE_NVRAM( naomibd )
 		}
 		else
 		{
-			x76f100_init( device->machine, 0, eeprom_romboard );
-			memcpy(eeprom_romboard+20,"\241\011                              0000000000000000",48);
+			UINT8 *eeprom = auto_alloc_array_clear(device->machine, UINT8, 0x84);
+			memcpy(eeprom, eeprom_romboard, sizeof(eeprom_romboard));
+			x76f100_init( device->machine, 0, eeprom );
 		}
 
 	}

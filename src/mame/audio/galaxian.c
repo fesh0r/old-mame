@@ -268,19 +268,33 @@ static DISCRETE_SOUND_START(galaxian)
 	/* Pitch */
 	DISCRETE_INPUT_DATA(GAL_INP_PITCH)
 
+	DISCRETE_TASK_START(0)
+
+	    /************************************************/
+		/* NOISE                                        */
+		/************************************************/
+
+	    /* since only a sample of the LFSR is latched @V2 we let the lfsr
+         * run at a lower speed
+         */
+	    DISCRETE_LFSR_NOISE(NODE_150, 1, 1, RNG_RATE/100, 1.0, 0, 0.5, &galaxian_lfsr)
+		DISCRETE_SQUAREWFIX(NODE_151,1,60*264/2,1.0,50,0.5,0)  /* 2V signal */
+		DISCRETE_LOGIC_DFLIPFLOP(NODE_152,1,1,NODE_151,NODE_150)
+	DISCRETE_TASK_END()
+
 	/* Group Background and pitch */
-	DISCRETE_TASK_START()
+	DISCRETE_TASK_START(1)
 
 		/************************************************/
 		/* Background                                   */
 		/************************************************/
 
-		DISCRETE_DAC_R1(NODE_100, 1, GAL_INP_BG_DAC, TTL_OUT, &galaxian_bck_dac)
+		DISCRETE_DAC_R1(NODE_100, GAL_INP_BG_DAC, TTL_OUT, &galaxian_bck_dac)
 		DISCRETE_555_CC(NODE_105, 1, NODE_100, GAL_R21, GAL_C15, 0, 0, 0, &galaxian_bck_vco)
 		// Next is mult/add opamp circuit
-		DISCRETE_MULTADD(NODE_110, 1, NODE_105, GAL_R33/RES_3_PARALLEL(GAL_R31,GAL_R32,GAL_R33),
+		DISCRETE_MULTADD(NODE_110, NODE_105, GAL_R33/RES_3_PARALLEL(GAL_R31,GAL_R32,GAL_R33),
 				-5.0*GAL_R33/GAL_R31)
-		DISCRETE_CLAMP(NODE_111,1,NODE_110,0.0,5.0,0.0)
+		DISCRETE_CLAMP(NODE_111,NODE_110,0.0,5.0)
 		// The three 555
 		DISCRETE_555_ASTABLE_CV(NODE_115, GAL_INP_FS1, GAL_R22, GAL_R23, GAL_C17, NODE_111, &galaxian_555_vco_desc)
 		DISCRETE_555_ASTABLE_CV(NODE_116, GAL_INP_FS2, GAL_R25, GAL_R26, GAL_C18, NODE_111, &galaxian_555_vco_desc)
@@ -297,7 +311,7 @@ static DISCRETE_SOUND_START(galaxian)
          *
          * One possibility to implement this is
          * DISCRETE_TRANSFORM3(NODE_130, SOUND_CLOCK, 256, GAL_INP_PITCH, "012-/")
-         * DISCRETE_COUNTER(NODE_132, 1, 0, NODE_130, 15, DISC_COUNT_UP, 0, DISC_CLK_IS_FREQ)
+         * DISCRETE_COUNTER(NODE_132, 1, 0, NODE_130, 0, 15, DISC_COUNT_UP, 0, DISC_CLK_IS_FREQ)
          * but there is a native choice:
          */
 	    DISCRETE_NOTE(NODE_132, 1, SOUND_CLOCK, GAL_INP_PITCH, 255, 15,  DISC_CLK_IS_FREQ)
@@ -310,36 +324,27 @@ static DISCRETE_SOUND_START(galaxian)
     /* End of this task */
     DISCRETE_TASK_END()
 
-    /* Group Hit and Fire */
-
-    DISCRETE_TASK_START()
+    DISCRETE_TASK_START(1)
 
 	    /************************************************/
 		/* HIT                                          */
 		/************************************************/
 
-	    /* NOISE */
-	    /* since only a sample of the LFSR is latched @V2 we let the lfsr
-         * run at a lower speed
-         */
-	    DISCRETE_LFSR_NOISE(NODE_150, 1, 1, RNG_RATE/100, 1.0, 0, 0.5, &galaxian_lfsr)
-		DISCRETE_SQUAREWFIX(NODE_151,1,60*264/2,1.0,50,0.5,0)  /* 2V signal */
-		DISCRETE_LOGIC_DFLIPFLOP(NODE_152,1,1,1,NODE_151,NODE_150)
-
-
 		/* Not 100% correct - switching causes high impedance input for node_157
          * this is not emulated */
 		DISCRETE_RCDISC5(NODE_155, NODE_152, GAL_INP_HIT, (GAL_R35 + GAL_R36), GAL_C21)
 		DISCRETE_OP_AMP_FILTER(NODE_157, 1, NODE_155, 0, DISC_OP_AMP_FILTER_IS_BAND_PASS_1M, &galaxian_bandpass_desc)
+	DISCRETE_TASK_END()
 
+	DISCRETE_TASK_START(1)
 		/************************************************/
 		/* FIRE                                         */
 		/************************************************/
 
-		DISCRETE_LOGIC_INVERT(NODE_170, 1, GAL_INP_FIRE)
-		DISCRETE_MULTIPLY(NODE_171, 1, TTL_OUT, GAL_INP_FIRE)
-		DISCRETE_MULTIPLY(NODE_172, 1, TTL_OUT, NODE_170) // inverted
-		DISCRETE_RCFILTER(NODE_173, 1, NODE_172, GAL_R47, GAL_C28)
+		DISCRETE_LOGIC_INVERT(NODE_170, GAL_INP_FIRE)
+		DISCRETE_MULTIPLY(NODE_171, TTL_OUT, GAL_INP_FIRE)
+		DISCRETE_MULTIPLY(NODE_172, TTL_OUT, NODE_170) // inverted
+		DISCRETE_RCFILTER(NODE_173, NODE_172, GAL_R47, GAL_C28)
 		/* Mix noise and 163 */
 		DISCRETE_TRANSFORM5(NODE_177, NODE_152, TTL_OUT, 1.0/GAL_R46, NODE_173, 1.0/GAL_R48,
 				"01*2*34*+" )
@@ -347,7 +352,7 @@ static DISCRETE_SOUND_START(galaxian)
 		//DISCRETE_MULTIPLY(NODE_175, 1, 1.0/GAL_R46, NODE_174)
 		//DISCRETE_MULTIPLY(NODE_176, 1, 1.0/GAL_R48, NODE_173)
 		//DISCRETE_ADDER2(NODE_177, 1, NODE_175, NODE_176)
-		DISCRETE_MULTIPLY(NODE_178, 1, RES_2_PARALLEL(GAL_R46, GAL_R48), NODE_177)
+		DISCRETE_MULTIPLY(NODE_178, RES_2_PARALLEL(GAL_R46, GAL_R48), NODE_177)
 
 		DISCRETE_555_ASTABLE_CV(NODE_181, 1, GAL_R44, GAL_R45, GAL_C27, NODE_178, &galaxian_555_fire_vco_desc)
 
@@ -361,9 +366,11 @@ static DISCRETE_SOUND_START(galaxian)
 	/* FINAL MIX                                    */
 	/************************************************/
 
-	DISCRETE_MIXER5(NODE_279, 1, NODE_SUB(133,0), NODE_SUB(133,2), NODE_SUB(133,2), NODE_SUB(133,3), NODE_120, &galaxian_mixerpre_desc)
-	DISCRETE_MIXER3(NODE_280, 1, NODE_279, NODE_157, NODE_182, &galaxian_mixer_desc)
-	DISCRETE_OUTPUT(NODE_280, 32767.0/5.0*5)
+	DISCRETE_TASK_START(2)
+		DISCRETE_MIXER5(NODE_279, 1, NODE_133_00, NODE_133_02, NODE_133_02, NODE_133_03, NODE_120, &galaxian_mixerpre_desc)
+		DISCRETE_MIXER3(NODE_280, 1, NODE_279, NODE_157, NODE_182, &galaxian_mixer_desc)
+		DISCRETE_OUTPUT(NODE_280, 32767.0/5.0*5)
+	DISCRETE_TASK_END()
 
 DISCRETE_SOUND_END
 
@@ -376,7 +383,7 @@ static DISCRETE_SOUND_START(mooncrst)
 	/************************************************/
 	DISCRETE_DELETE(NODE_279, NODE_279)
 	DISCRETE_REPLACE
-	DISCRETE_MIXER7(NODE_280, 1, NODE_SUB(133,0), NODE_SUB(133,2), NODE_SUB(133,2), NODE_SUB(133,3), NODE_120, NODE_157, NODE_182, &mooncrst_mixer_desc)
+	DISCRETE_MIXER7(NODE_280, 1, NODE_133_00, NODE_133_02, NODE_133_02,NODE_133_03, NODE_120, NODE_157, NODE_182, &mooncrst_mixer_desc)
 DISCRETE_SOUND_END
 
 /*************************************

@@ -213,6 +213,8 @@ SOUNDS += WAVE
 #SOUNDS += SID8580
 SOUNDS += SP0256
 SOUNDS += DIGITALKER
+SOUNDS += CDP1863
+SOUNDS += CDP1864
 
 
 #-------------------------------------------------
@@ -428,10 +430,10 @@ $(MAMEOBJ)/atari.a: \
 	$(DRIVERS)/shuuz.o $(VIDEO)/shuuz.o \
 	$(DRIVERS)/skullxbo.o $(VIDEO)/skullxbo.o \
 	$(DRIVERS)/skydiver.o $(AUDIO)/skydiver.o $(VIDEO)/skydiver.o \
-	$(DRIVERS)/skyraid.o $(VIDEO)/skyraid.o \
+	$(DRIVERS)/skyraid.o $(AUDIO)/skyraid.o $(VIDEO)/skyraid.o \
 	$(DRIVERS)/sprint2.o $(AUDIO)/sprint2.o $(VIDEO)/sprint2.o \
 	$(DRIVERS)/sprint4.o $(VIDEO)/sprint4.o $(AUDIO)/sprint4.o \
-	$(DRIVERS)/sprint8.o $(VIDEO)/sprint8.o \
+	$(DRIVERS)/sprint8.o $(AUDIO)/sprint8.o $(VIDEO)/sprint8.o \
 	$(DRIVERS)/starshp1.o $(AUDIO)/starshp1.o $(VIDEO)/starshp1.o \
 	$(DRIVERS)/starwars.o $(MACHINE)/starwars.o $(AUDIO)/starwars.o \
 	$(DRIVERS)/subs.o $(MACHINE)/subs.o $(AUDIO)/subs.o $(VIDEO)/subs.o \
@@ -831,6 +833,7 @@ $(MAMEOBJ)/konami.a: \
 	$(DRIVERS)/simpsons.o $(MACHINE)/simpsons.o $(VIDEO)/simpsons.o \
 	$(DRIVERS)/spy.o $(VIDEO)/spy.o \
 	$(DRIVERS)/surpratk.o $(VIDEO)/surpratk.o \
+	$(DRIVERS)/tgtpanic.o \
 	$(DRIVERS)/thunderx.o $(VIDEO)/thunderx.o \
 	$(DRIVERS)/timeplt.o $(AUDIO)/timeplt.o $(VIDEO)/timeplt.o \
 	$(DRIVERS)/tmnt.o $(VIDEO)/tmnt.o \
@@ -1052,6 +1055,7 @@ $(MAMEOBJ)/pacman.a: \
 $(MAMEOBJ)/pce.a: \
 	$(DRIVERS)/uapce.o \
 	$(DRIVERS)/paranoia.o \
+	$(DRIVERS)/ggconnie.o \
 	$(MACHINE)/pcecommn.o $(VIDEO)/vdc.o \
 
 $(MAMEOBJ)/phoenix.a: \
@@ -1100,7 +1104,7 @@ $(MAMEOBJ)/sega.a: \
 	$(DRIVERS)/coolridr.o \
 	$(DRIVERS)/deniam.o $(VIDEO)/deniam.o \
 	$(DRIVERS)/dotrikun.o $(VIDEO)/dotrikun.o \
-	$(DRIVERS)/genesis.o $(VIDEO)/genesis.o \
+	$(VIDEO)/genesis.o \
 	$(DRIVERS)/gpworld.o \
 	$(DRIVERS)/hikaru.o \
 	$(DRIVERS)/hshavoc.o \
@@ -1125,7 +1129,7 @@ $(MAMEOBJ)/sega.a: \
 	$(DRIVERS)/segas18.o $(VIDEO)/segas18.o \
 	$(DRIVERS)/segas24.o $(MACHINE)/segas24.o $(VIDEO)/segas24.o \
 	$(DRIVERS)/segas32.o $(MACHINE)/segas32.o $(VIDEO)/segas32.o \
-	$(DRIVERS)/segae.o $(VIDEO)/segasyse.o \
+	$(DRIVERS)/segamsys.o $(DRIVERS)/segae.o \
 	$(DRIVERS)/segaxbd.o $(VIDEO)/segaxbd.o \
 	$(DRIVERS)/segaybd.o $(VIDEO)/segaybd.o \
 	$(DRIVERS)/ssf2md.o \
@@ -1467,6 +1471,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/4roses.o \
 	$(DRIVERS)/acefruit.o \
 	$(DRIVERS)/adp.o \
+	$(DRIVERS)/amaticmg.o \
 	$(DRIVERS)/ambush.o $(VIDEO)/ambush.o \
 	$(DRIVERS)/ampoker2.o $(VIDEO)/ampoker2.o \
 	$(DRIVERS)/amspdwy.o $(VIDEO)/amspdwy.o \
@@ -1561,6 +1566,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/miniboy7.o \
 	$(DRIVERS)/mirage.o \
 	$(DRIVERS)/mirax.o \
+	$(DRIVERS)/mirderby.o \
 	$(DRIVERS)/mole.o $(VIDEO)/mole.o \
 	$(DRIVERS)/mosaic.o $(VIDEO)/mosaic.o \
 	$(DRIVERS)/mrjong.o $(VIDEO)/mrjong.o \
@@ -1571,11 +1577,13 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/norautp.o  $(AUDIO)/norautp.o \
 	$(DRIVERS)/oneshot.o $(VIDEO)/oneshot.o \
 	$(DRIVERS)/onetwo.o \
+	$(DRIVERS)/othello.o \
 	$(DRIVERS)/othldrby.o $(VIDEO)/othldrby.o \
 	$(DRIVERS)/pachifev.o \
 	$(DRIVERS)/pangofun.o \
 	$(DRIVERS)/pasha2.o \
 	$(DRIVERS)/pass.o $(VIDEO)/pass.o \
+	$(DRIVERS)/pcat_dyn.o \
 	$(DRIVERS)/pcat_nit.o \
 	$(DRIVERS)/pcxt.o \
 	$(DRIVERS)/peplus.o \
@@ -1852,5 +1860,14 @@ $(MACHINE)/snes.o: 		$(MAMESRC)/machine/snesdsp1.c \
 				$(MAMESRC)/machine/snesdsp3.c \
 				$(MAMESRC)/machine/snesdsp4.c \
 				$(MAMESRC)/machine/snesobc1.c \
+				$(MAMESRC)/machine/snescx4.c \
+				$(MAMESRC)/machine/cx4ops.c \
+				$(MAMESRC)/machine/cx4oam.c \
+				$(MAMESRC)/machine/cx4fn.c \
+				$(MAMESRC)/machine/cx4data.c \
 				$(MAMESRC)/machine/snesrtc.c \
-				$(MAMESRC)/machine/snessdd1.c
+				$(MAMESRC)/machine/snessdd1.c \
+				$(MAMESRC)/machine/snes7110.c \
+				$(MAMESRC)/machine/snesst10.c
+$(VIDEO)/model2.o: 		$(MAMESRC)/video/model2rd.c
+$(VIDEO)/model3.o: 		$(MAMESRC)/video/m3raster.c

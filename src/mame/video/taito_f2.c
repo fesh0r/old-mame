@@ -43,7 +43,6 @@ size_t f2_spriteext_size;
 static UINT16 spritebank[8];
 //static UINT16 spritebank_eof[8];
 static UINT16 spritebank_buffered[8];
-static UINT16 koshien_spritebank;
 
 static INT32 sprites_disabled,sprites_active_area,sprites_master_scrollx,sprites_master_scrolly;
 /* remember flip status over frames because driftout can fail to set it */
@@ -72,8 +71,6 @@ static INT32 f2_game = 0;
 static UINT8 f2_tilepri[6]; // todo - move into taitoic.c
 static UINT8 f2_spritepri[6]; // todo - move into taitoic.c
 static UINT8 f2_spriteblendmode; // todo - move into taitoic.c
-
-static UINT16 *paletteram_buffer;
 
 enum
 {
@@ -136,7 +133,6 @@ static void taitof2_core_vh_start (running_machine *machine, int sprite_type,int
 	state_save_register_global(machine, f2_hide_pixels);
 	state_save_register_global(machine, f2_sprite_type);
 	state_save_register_global_array(machine, spritebank);
-	state_save_register_global(machine, koshien_spritebank);
 	state_save_register_global(machine, sprites_disabled);
 	state_save_register_global(machine, sprites_active_area);
 	state_save_register_global_pointer(machine, spriteram_delayed, spriteram_size/2);
@@ -297,15 +293,6 @@ VIDEO_START( taitof2_driftout )
 	f2_pivot_xdisp = -16;
 	f2_pivot_ydisp = 16;
 	taitof2_core_vh_start(machine, 0,3,3,0,0,0,0,0,0);
-
-	paletteram_buffer = auto_alloc_array(machine, UINT16, 4096);
-	memset(paletteram_buffer, 0, 4096*sizeof(UINT16));
-	state_save_register_global_pointer(machine, paletteram_buffer, 4096);
-}
-
-WRITE16_HANDLER( taitof2_palette_w )
-{
-	COMBINE_DATA(&paletteram_buffer[offset]);
 }
 
 
@@ -358,15 +345,8 @@ WRITE16_HANDLER( taitof2_spritebank_w )
 
 }
 
-READ16_HANDLER( koshien_spritebank_r )
-{
-	return koshien_spritebank;
-}
-
 WRITE16_HANDLER( koshien_spritebank_w )
 {
-	koshien_spritebank = data;
-
 	spritebank_buffered[0]=0x0000;   /* never changes */
 	spritebank_buffered[1]=0x0400;
 
@@ -1203,19 +1183,6 @@ VIDEO_UPDATE( taitof2_pri_roz )
 
 	draw_sprites(screen->machine, bitmap,cliprect,NULL,1);
 	return 0;
-}
-
-VIDEO_UPDATE( taitof2_driftout )
-{
-	UINT16 pen;
-
-	/* send palette, workaround for bug http://www.mametesters.org/view.php?id=3356 (just for this game)
-     driftout writes twice per frame to the palette, this causes glitches on some setups due to
-     VIDEO_UPDATE not being synced to renderer update when multithreading is on. */
-	for (pen=0;pen<4096;pen++)
-		palette_set_color_rgb(screen->machine, pen, pal5bit(paletteram_buffer[pen] >> 10), pal5bit(paletteram_buffer[pen] >> 5), pal5bit(paletteram_buffer[pen] >> 0));
-
-	return VIDEO_UPDATE_CALL( taitof2_pri_roz );
 }
 
 

@@ -80,6 +80,14 @@ Driver by
 Hardware Info
  Malcolm & Darren
 
+Additional work
+    2009 Couriersud
+
+Todo & FIXME:
+
+- the board most probably has discrete circuits. The 393Hz tone used
+  for shots (superbike) and collisions (8ball) is just a guess.
+
 ***************************************************************************/
 
 #include "driver.h"
@@ -94,7 +102,7 @@ Hardware Info
 #define CVS_SHOW_ALL_INPUTS	0
 
 
-#define VERBOSE 1
+#define VERBOSE 0
 #define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
 
@@ -113,15 +121,18 @@ static UINT8 *cvs_character_ram;
 UINT8 *cvs_s2636_0_ram;
 UINT8 *cvs_s2636_1_ram;
 UINT8 *cvs_s2636_2_ram;
+UINT8 *cvs_fo_state;
 
 static emu_timer *cvs_393hz_timer;
 static UINT8 cvs_393hz_clock;
 static UINT8 *cvs_4_bit_dac_data;
 static UINT8 *cvs_tms5110_ctl_data;
+static UINT8 *dac3_state;
 
 static UINT8 character_banking_mode;
 static UINT16 character_ram_page_start;
 static UINT16 speech_rom_bit_address;
+
 
 
 
@@ -140,7 +151,7 @@ UINT8 cvs_get_character_banking_mode(void)
 
 READ8_HANDLER( cvs_video_or_color_ram_r )
 {
-	if (cpu_get_reg(space->cpu, S2650_FO))
+	if (*cvs_fo_state)
 		return cvs_video_ram[offset];
 	else
 		return cvs_color_ram[offset];
@@ -148,7 +159,7 @@ READ8_HANDLER( cvs_video_or_color_ram_r )
 
 WRITE8_HANDLER( cvs_video_or_color_ram_w )
 {
-	if (cpu_get_reg(space->cpu, S2650_FO))
+	if (*cvs_fo_state)
 		cvs_video_ram[offset] = data;
 	else
 		cvs_color_ram[offset] = data;
@@ -157,7 +168,7 @@ WRITE8_HANDLER( cvs_video_or_color_ram_w )
 
 READ8_HANDLER( cvs_bullet_ram_or_palette_r )
 {
-	if (cpu_get_reg(space->cpu, S2650_FO))
+	if (*cvs_fo_state)
 		return cvs_palette_ram[offset & 0x0f];
 	else
 		return cvs_bullet_ram[offset];
@@ -165,7 +176,7 @@ READ8_HANDLER( cvs_bullet_ram_or_palette_r )
 
 WRITE8_HANDLER( cvs_bullet_ram_or_palette_w )
 {
-	if (cpu_get_reg(space->cpu, S2650_FO))
+	if (*cvs_fo_state)
 		cvs_palette_ram[offset & 0x0f] = data;
 	else
 		cvs_bullet_ram[offset] = data;
@@ -174,7 +185,7 @@ WRITE8_HANDLER( cvs_bullet_ram_or_palette_w )
 
 READ8_HANDLER( cvs_s2636_0_or_character_ram_r )
 {
-	if (cpu_get_reg(space->cpu, S2650_FO))
+	if (*cvs_fo_state)
 		return cvs_character_ram[(0 * 0x800) | 0x400 | character_ram_page_start | offset];
 	else
 		return cvs_s2636_0_ram[offset];
@@ -182,7 +193,7 @@ READ8_HANDLER( cvs_s2636_0_or_character_ram_r )
 
 WRITE8_HANDLER( cvs_s2636_0_or_character_ram_w )
 {
-	if (cpu_get_reg(space->cpu, S2650_FO))
+	if (*cvs_fo_state)
 	{
 		offset |= (0 * 0x800) | 0x400 | character_ram_page_start;
 		cvs_character_ram[offset] = data;
@@ -195,7 +206,7 @@ WRITE8_HANDLER( cvs_s2636_0_or_character_ram_w )
 
 READ8_HANDLER( cvs_s2636_1_or_character_ram_r )
 {
-	if (cpu_get_reg(space->cpu, S2650_FO))
+	if (*cvs_fo_state)
 		return cvs_character_ram[(1 * 0x800) | 0x400 | character_ram_page_start | offset];
 	else
 		return cvs_s2636_1_ram[offset];
@@ -203,7 +214,7 @@ READ8_HANDLER( cvs_s2636_1_or_character_ram_r )
 
 WRITE8_HANDLER( cvs_s2636_1_or_character_ram_w )
 {
-	if (cpu_get_reg(space->cpu, S2650_FO))
+	if (*cvs_fo_state)
 	{
 		offset |= (1 * 0x800) | 0x400 | character_ram_page_start;
 		cvs_character_ram[offset] = data;
@@ -216,7 +227,7 @@ WRITE8_HANDLER( cvs_s2636_1_or_character_ram_w )
 
 READ8_HANDLER( cvs_s2636_2_or_character_ram_r )
 {
-	if (cpu_get_reg(space->cpu, S2650_FO))
+	if (*cvs_fo_state)
 		return cvs_character_ram[(2 * 0x800) | 0x400 | character_ram_page_start | offset];
 	else
 		return cvs_s2636_2_ram[offset];
@@ -224,7 +235,7 @@ READ8_HANDLER( cvs_s2636_2_or_character_ram_r )
 
 WRITE8_HANDLER( cvs_s2636_2_or_character_ram_w )
 {
-	if (cpu_get_reg(space->cpu, S2650_FO))
+	if (*cvs_fo_state)
 	{
 		offset |= (2 * 0x800) | 0x400 | character_ram_page_start;
 		cvs_character_ram[offset] = data;
@@ -251,10 +262,11 @@ static INTERRUPT_GEN( cvs_main_cpu_interrupt )
 }
 
 
-static void cvs_dac_cpu_interrupt(running_machine *machine)
+static void cvs_slave_cpu_interrupt(running_machine *machine, const char *cpu, int state)
 {
-	cpu_set_input_line_vector(cputag_get_cpu(machine, "audiocpu"), 0, 0x03);
-	cputag_set_input_line(machine, "audiocpu", 0, HOLD_LINE);
+	cpu_set_input_line_vector(cputag_get_cpu(machine, cpu), 0, 0x03);
+	//cputag_set_input_line(machine, cpu, 0, state ? ASSERT_LINE : CLEAR_LINE);
+	cputag_set_input_line(machine, cpu, 0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 
@@ -295,23 +307,36 @@ static READ8_HANDLER( cvs_input_r )
  *  Timing
  *
  *************************************/
-
+#if 0
 static READ8_HANDLER( cvs_393hz_clock_r )
 {
   	return cvs_393hz_clock ? 0x80 : 0;
 }
+#endif
 
+static READ8_DEVICE_HANDLER( tms_clock_r )
+{
+  	return tms5110_romclk_r(device, 0) ? 0x80 : 0;
+}
 
 static TIMER_CALLBACK( cvs_393hz_timer_cb )
 {
+	const device_config *dac3 = devtag_get_device(machine, "dac3");
 	cvs_393hz_clock = !cvs_393hz_clock;
+
+	/* quasar.c games use this timer but have no dac3! */
+	if (dac3 != NULL)
+	{
+		if (dac3_state[2])
+			dac_w(dac3, 0, cvs_393hz_clock * 0xff);
+	}
 }
 
 
 static void start_393hz_timer(running_machine *machine)
 {
 	cvs_393hz_timer = timer_alloc(machine, cvs_393hz_timer_cb, NULL);
-	timer_adjust_periodic(cvs_393hz_timer, ATTOTIME_IN_HZ(2*393), 0, ATTOTIME_IN_HZ(2*393));
+	timer_adjust_periodic(cvs_393hz_timer, ATTOTIME_IN_HZ(30*393), 0, ATTOTIME_IN_HZ(30*393));
 }
 
 
@@ -325,12 +350,18 @@ static void start_393hz_timer(running_machine *machine)
 static WRITE8_DEVICE_HANDLER( cvs_4_bit_dac_data_w )
 {
 	UINT8 dac_value;
+	static int old_data[4] = {0,0,0,0};
 
+	if (data != old_data[offset])
+	{
+		LOG(("4BIT: %02x %02x\n", offset, data));
+		old_data[offset] = data;
+	}
 	cvs_4_bit_dac_data[offset] = data >> 7;
 
 	/* merge into D0-D3 */
 	dac_value = (cvs_4_bit_dac_data[0] << 0) |
-				(cvs_4_bit_dac_data[1] << 1) |
+			    (cvs_4_bit_dac_data[1] << 1) |
 			    (cvs_4_bit_dac_data[2] << 2) |
 			    (cvs_4_bit_dac_data[3] << 3);
 
@@ -338,6 +369,22 @@ static WRITE8_DEVICE_HANDLER( cvs_4_bit_dac_data_w )
 	dac_data_w(device, (dac_value << 4) | dac_value);
 }
 
+static WRITE8_DEVICE_HANDLER( cvs_unknown_w )
+{
+	/* offset 2 is used in 8ball
+     * offset 0 is used in spacefrt
+     * offset 3 is used in darkwar
+     *
+     * offset 1 is not used (no trace in disassembly)
+     */
+
+	if (data != dac3_state[offset])
+	{
+		if (offset != 2)
+			popmessage("Unknown: %02x %02x\n", offset, data);
+		dac3_state[offset] = data;
+	}
+}
 
 
 /*************************************
@@ -346,88 +393,52 @@ static WRITE8_DEVICE_HANDLER( cvs_4_bit_dac_data_w )
  *
  *************************************/
 
-/* temporary code begin */
-static void speech_execute_command(const device_config *tms, UINT8 command)
-{
-	/* reset */
-	if (command == 0x3f)
-	{
-		tms5110_ctl_w(tms, 0, TMS5110_CMD_RESET);
-
-		tms5110_pdc_w(tms, 0,0);
-		tms5110_pdc_w(tms, 0,1);
-		tms5110_pdc_w(tms, 0,0);
-
-		tms5110_pdc_w(tms, 0,0);
-		tms5110_pdc_w(tms, 0,1);
-		tms5110_pdc_w(tms, 0,0);
-
-		tms5110_pdc_w(tms, 0,0);
-		tms5110_pdc_w(tms, 0,1);
-		tms5110_pdc_w(tms, 0,0);
-
-		speech_rom_bit_address = 0;
-	}
-	/* start */
-	else
-	{
-		tms5110_ctl_w(tms, 0, TMS5110_CMD_SPEAK);
-
-		tms5110_pdc_w(tms, 0, 0);
-		tms5110_pdc_w(tms, 0, 1);
-		tms5110_pdc_w(tms, 0, 0);
-
-		speech_rom_bit_address = command * 0x80 * 8;
-	}
-}
-/* temporary code end */
-
 
 static WRITE8_HANDLER( cvs_speech_rom_address_lo_w )
 {
 	/* assuming that d0-d2 are cleared here */
 	speech_rom_bit_address = (speech_rom_bit_address & 0xf800) | (data << 3);
-	LOG(("%04x : CVS: Speech Address = %04x\n", cpu_get_pc(space->cpu), speech_rom_bit_address >> 3));
+	LOG(("%04x : CVS: Speech Lo %02x Address = %04x\n", cpu_get_pc(space->cpu), data, speech_rom_bit_address >> 3));
 }
 
 static WRITE8_HANDLER( cvs_speech_rom_address_hi_w )
 {
 	speech_rom_bit_address = (speech_rom_bit_address & 0x07ff) | (data << 11);
-}
-
-
-static void cvs_set_speech_command_w(const address_space *space, UINT8 data)
-{
-	soundlatch2_w(space, 0, data & 0x7f);
-	if (~data & 0x40) LOG(("%04x : CVS: Speech Command W = %04x\n", cpu_get_pc(space->cpu), data & 0x7f));
+	LOG(("%04x : CVS: Speech Hi %02x Address = %04x\n", cpu_get_pc(space->cpu), data, speech_rom_bit_address >> 3));
 }
 
 
 static READ8_HANDLER( cvs_speech_command_r )
 {
-	/* bit 7 is TMS status (active LO) */
-	return (~tms5110_status_r(devtag_get_device(space->machine, "tms"), 0) << 7) | soundlatch2_r(space, 0);
+	/* FIXME: this was by observation on board ???
+     *          -bit 7 is TMS status (active LO) */
+	return ((tms5110_ctl_r(devtag_get_device(space->machine, "tms"), 0) ^ 1) << 7) | (soundlatch_r(space, 0) & 0x7f);
 }
 
 
 static WRITE8_DEVICE_HANDLER( cvs_tms5110_ctl_w )
 {
 	UINT8 ctl;
-
+	/*
+     * offset 0: CS ?
+     */
 	cvs_tms5110_ctl_data[offset] = (~data >> 7) & 0x01;
 
 	ctl = 0 |								/* CTL1 */
 		  (cvs_tms5110_ctl_data[1] << 1) |	/* CTL2 */
-		  0 |								/* CTL4 */
-		  (cvs_tms5110_ctl_data[0] << 3);	/* CTL8 */
+		  (cvs_tms5110_ctl_data[2] << 2) |	/* CTL4 */
+		  (cvs_tms5110_ctl_data[1] << 3);	/* CTL8 */
 
-	//tms5110_ctl_w(device, ctl);
+	LOG(("CVS: Speech CTL = %04x %02x %02x\n",  ctl, offset, data));
+	tms5110_ctl_w(device, 0, ctl);
 }
 
 
 static WRITE8_DEVICE_HANDLER( cvs_tms5110_pdc_w )
 {
-	//tms5110_pdc_w(device, ~data >> 7);
+	UINT8 out = ((~data) >> 7) & 1;
+	LOG(("CVS: Speech PDC = %02x %02x\n", offset, out));
+	tms5110_pdc_w(device, 0, out);
 }
 
 
@@ -464,21 +475,10 @@ static const tms5110_interface tms5100_interface =
 
 static WRITE8_HANDLER( audio_command_w )
 {
-    /* cause interrupt on audio CPU if bit 7 set */
-	if (data & 0x80)
-	{
-	   	soundlatch_w(space, 0, data);
-		cvs_dac_cpu_interrupt(space->machine);
-
-		LOG(("%04x : CVS: Audio command = %02x\n", cpu_get_pc(space->cpu), data));
-	}
-
-	cvs_set_speech_command_w(space, data);
-
-	/* temporary code begin */
-	if ((data & 0x40) == 0)
-		speech_execute_command(devtag_get_device(space->machine, "tms"), data & 0x03f);
-	/* temporary code end */
+	LOG(("data %02x\n", data));
+	/* cause interrupt on audio CPU if bit 7 set */
+	soundlatch_w(space, 0, data);
+	cvs_slave_cpu_interrupt(space->machine, "audiocpu", data & 0x80 ? 1 : 0);
 }
 
 
@@ -524,12 +524,12 @@ MACHINE_START( cvs )
 static ADDRESS_MAP_START( cvs_main_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x13ff) AM_ROM
-    AM_RANGE(0x1400, 0x14ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_bullet_ram_or_palette_r, cvs_bullet_ram_or_palette_w) AM_BASE(&cvs_bullet_ram)
-    AM_RANGE(0x1500, 0x15ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_s2636_2_or_character_ram_r, cvs_s2636_2_or_character_ram_w) AM_BASE(&cvs_s2636_2_ram)
-    AM_RANGE(0x1600, 0x16ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_s2636_1_or_character_ram_r, cvs_s2636_1_or_character_ram_w) AM_BASE(&cvs_s2636_1_ram)
-    AM_RANGE(0x1700, 0x17ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_s2636_0_or_character_ram_r, cvs_s2636_0_or_character_ram_w) AM_BASE(&cvs_s2636_0_ram)
+	AM_RANGE(0x1400, 0x14ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_bullet_ram_or_palette_r, cvs_bullet_ram_or_palette_w) AM_BASE(&cvs_bullet_ram)
+	AM_RANGE(0x1500, 0x15ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_s2636_2_or_character_ram_r, cvs_s2636_2_or_character_ram_w) AM_BASE(&cvs_s2636_2_ram)
+	AM_RANGE(0x1600, 0x16ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_s2636_1_or_character_ram_r, cvs_s2636_1_or_character_ram_w) AM_BASE(&cvs_s2636_1_ram)
+	AM_RANGE(0x1700, 0x17ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_s2636_0_or_character_ram_r, cvs_s2636_0_or_character_ram_w) AM_BASE(&cvs_s2636_0_ram)
 	AM_RANGE(0x1800, 0x1bff) AM_MIRROR(0x6000) AM_READWRITE(cvs_video_or_color_ram_r, cvs_video_or_color_ram_w) AM_BASE(&cvs_video_ram)
-    AM_RANGE(0x1c00, 0x1fff) AM_MIRROR(0x6000) AM_RAM
+	AM_RANGE(0x1c00, 0x1fff) AM_MIRROR(0x6000) AM_RAM
 	AM_RANGE(0x2000, 0x33ff) AM_ROM
 	AM_RANGE(0x4000, 0x53ff) AM_ROM
 	AM_RANGE(0x6000, 0x73ff) AM_ROM
@@ -540,7 +540,8 @@ static ADDRESS_MAP_START( cvs_main_cpu_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0xff) AM_READWRITE(cvs_input_r, cvs_scroll_w)
 	AM_RANGE(S2650_DATA_PORT, S2650_DATA_PORT) AM_READWRITE(cvs_collision_clear, cvs_video_fx_w)
 	AM_RANGE(S2650_CTRL_PORT, S2650_CTRL_PORT) AM_READWRITE(cvs_collision_r, audio_command_w)
-    AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ_PORT("SENSE")
+	AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ_PORT("SENSE")
+	AM_RANGE(S2650_FO_PORT, S2650_FO_PORT) AM_RAM AM_BASE(&cvs_fo_state)
 ADDRESS_MAP_END
 
 
@@ -554,16 +555,17 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( cvs_dac_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
-    AM_RANGE(0x1000, 0x107f) AM_RAM
-    AM_RANGE(0x1800, 0x1800) AM_READ(soundlatch_r)
-    AM_RANGE(0x1840, 0x1840) AM_DEVWRITE("dac1", dac_w)
-    AM_RANGE(0x1880, 0x1883) AM_DEVWRITE("dac2", cvs_4_bit_dac_data_w) AM_BASE(&cvs_4_bit_dac_data)
-    AM_RANGE(0x1884, 0x1887) AM_WRITENOP		/* not connected to anything */
+	AM_RANGE(0x1000, 0x107f) AM_RAM
+	AM_RANGE(0x1800, 0x1800) AM_READ(soundlatch_r)
+	AM_RANGE(0x1840, 0x1840) AM_DEVWRITE("dac1", dac_w)
+	AM_RANGE(0x1880, 0x1883) AM_DEVWRITE("dac2", cvs_4_bit_dac_data_w) AM_BASE(&cvs_4_bit_dac_data)
+	AM_RANGE(0x1884, 0x1887) AM_DEVWRITE("dac3", cvs_unknown_w)	AM_BASE(&dac3_state)	/* ???? not connected to anything */
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( cvs_dac_cpu_io_map, ADDRESS_SPACE_IO, 8 )
-    AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ(cvs_393hz_clock_r)
+	/* doesn't look like it is used at all */
+    //AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ(cvs_393hz_clock_r)
 ADDRESS_MAP_END
 
 
@@ -579,16 +581,17 @@ static ADDRESS_MAP_START( cvs_speech_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
 	AM_RANGE(0x1d00, 0x1d00) AM_WRITE(cvs_speech_rom_address_lo_w)
 	AM_RANGE(0x1d40, 0x1d40) AM_WRITE(cvs_speech_rom_address_hi_w)
-    AM_RANGE(0x1d80, 0x1d80) AM_READ(cvs_speech_command_r)
-	AM_RANGE(0x1ddd, 0x1dde) AM_DEVWRITE("tms", cvs_tms5110_ctl_w) AM_BASE(&cvs_tms5110_ctl_data)
+	AM_RANGE(0x1d80, 0x1d80) AM_READ(cvs_speech_command_r)
+	AM_RANGE(0x1ddc, 0x1dde) AM_DEVWRITE("tms", cvs_tms5110_ctl_w) AM_BASE(&cvs_tms5110_ctl_data)
 	AM_RANGE(0x1ddf, 0x1ddf) AM_DEVWRITE("tms", cvs_tms5110_pdc_w)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( cvs_speech_cpu_io_map, ADDRESS_SPACE_IO, 8 )
-    AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ(cvs_393hz_clock_r)
+/* romclk is much more probable, 393 Hz results in timing issues */
+//  AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ(cvs_393hz_clock_r)
+    AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_DEVREAD("tms", tms_clock_r)
 ADDRESS_MAP_END
-
 
 
 /*************************************
@@ -599,14 +602,14 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( cvs )
 	PORT_START("IN0")	/* Matrix 0 */
-    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
-    PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL        /* "Red button" */
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 )                      /* "Red button" */
-    PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-    PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START("IN1")	/* Dunno */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL        /* "Green button" */
@@ -615,22 +618,22 @@ static INPUT_PORTS_START( cvs )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_COCKTAIL
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
-    PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-    PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START("IN2")	/* Dunno */
-    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE1 )           /* not sure it's SERVICE1 : it uses "Coin B" coinage and doesn't say "CREDIT" */
-    PORT_BIT( 0xfe, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE1 )           /* not sure it's SERVICE1 : it uses "Coin B" coinage and doesn't say "CREDIT" */
+	PORT_BIT( 0xfe, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START("IN3")	/* Dunno */
-    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
-    PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_COCKTAIL
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )	PORT_COCKTAIL
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_COCKTAIL
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
-    PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-    PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START("DSW3")	/* SW BANK 3 */
 	PORT_DIPUNUSED( 0x01, IP_ACTIVE_HIGH )                  /* can't tell if it's ACTIVE_HIGH or ACTIVE_LOW */
@@ -642,7 +645,7 @@ static INPUT_PORTS_START( cvs )
 	PORT_DIPSETTING(    0x10, DEF_STR( Cocktail ) )
 	PORT_DIPUNUSED( 0x20, IP_ACTIVE_HIGH )                  /* can't tell if it's ACTIVE_HIGH or ACTIVE_LOW */
 
-    PORT_START("DSW2")	/* SW BANK 2 */
+	PORT_START("DSW2")	/* SW BANK 2 */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 3C_1C ) )
@@ -694,7 +697,7 @@ static INPUT_PORTS_START( cosmos )
 
 #if !CVS_SHOW_ALL_INPUTS
 	PORT_MODIFY("IN2")
-    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_SERVICE1 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_SERVICE1 */
 
 	PORT_MODIFY("IN3")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_UP   PORT_COCKTAIL */
@@ -705,11 +708,11 @@ static INPUT_PORTS_START( cosmos )
 
 	PORT_MODIFY("DSW3")
     /* DSW3 bits 0 and 1 stored at 0x7d55 (0, 2, 1, 3) - code at 0x66f3 - not read back */
-    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
-    PORT_DIPSETTING(    0x08, "20k only" )                  /* displays "20000" */
-    PORT_DIPSETTING(    0x04, "30k only" )                  /* displays "30000" */
-    PORT_DIPSETTING(    0x00, "40k only" )                  /* displays "40000" */
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
+	PORT_DIPSETTING(    0x08, "20k only" )                  /* displays "20000" */
+	PORT_DIPSETTING(    0x04, "30k only" )                  /* displays "30000" */
+	PORT_DIPSETTING(    0x00, "40k only" )                  /* displays "40000" */
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( darkwar )
@@ -721,7 +724,7 @@ static INPUT_PORTS_START( darkwar )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 */
 
 	PORT_MODIFY("IN2")
-    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_SERVICE1 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_SERVICE1 */
 
 	PORT_MODIFY("IN3")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_UP   PORT_COCKTAIL */
@@ -738,7 +741,7 @@ static INPUT_PORTS_START( spacefrt )
 
 #if !CVS_SHOW_ALL_INPUTS
 	PORT_MODIFY("IN2")
-    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_SERVICE1 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_SERVICE1 */
 
 	PORT_MODIFY("IN3")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_UP   PORT_COCKTAIL */
@@ -749,11 +752,11 @@ static INPUT_PORTS_START( spacefrt )
 
 	PORT_MODIFY("DSW3")
     /* DSW3 bits 0 and 1 stored at 0x7d3f (0, 2, 1, 3) - code at 0x6895 - not read back */
-    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x0c, "100k only" )                 /* displays "50000" */
-    PORT_DIPSETTING(    0x08, "150k only" )                 /* displays "110000" */
-    PORT_DIPSETTING(    0x04, "200k only" )                 /* displays "200000" */
-    PORT_DIPSETTING(    0x00, DEF_STR( None ) )             /* displays "200000" */
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x0c, "100k only" )                 /* displays "50000" */
+	PORT_DIPSETTING(    0x08, "150k only" )                 /* displays "110000" */
+	PORT_DIPSETTING(    0x04, "200k only" )                 /* displays "200000" */
+	PORT_DIPSETTING(    0x00, DEF_STR( None ) )             /* displays "200000" */
 INPUT_PORTS_END
 
 
@@ -767,11 +770,11 @@ static INPUT_PORTS_START( 8ball )
 #endif
 
 	PORT_MODIFY("DSW3")
-    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
-    PORT_DIPSETTING(    0x08, "20k only" )                  /* displays "20000" */
-    PORT_DIPSETTING(    0x04, "40k only" )                  /* displays "80000" */
-    PORT_DIPSETTING(    0x00, "80k only" )                  /* displays "80000" */
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
+	PORT_DIPSETTING(    0x08, "20k only" )                  /* displays "20000" */
+	PORT_DIPSETTING(    0x04, "40k only" )                  /* displays "80000" */
+	PORT_DIPSETTING(    0x00, "80k only" )                  /* displays "80000" */
 	PORT_DIPNAME( 0x20, 0x00, "Colors" )                    /* stored at 0x1ed4 - code at 0x0847 ('8ball') or 0x08af ('8ball1') */
 	PORT_DIPSETTING(    0x00, "Palette 1" )                 /* table at 0x0781 ('8ball') or 0x07e9 ('8ball1') - 16 bytes */
 	PORT_DIPSETTING(    0x20, "Palette 2" )                 /* table at 0x0791 ('8ball') or 0x07f9 ('8ball1') - 16 bytes */
@@ -789,11 +792,11 @@ static INPUT_PORTS_START( logger )
 #endif
 
 	PORT_MODIFY("DSW3")
-    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
-    PORT_DIPSETTING(    0x08, "20k only" )                  /* displays "20000" */
-    PORT_DIPSETTING(    0x04, "40k only" )                  /* displays "40000" */
-    PORT_DIPSETTING(    0x00, "80k only" )                  /* displays "80000" */
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
+	PORT_DIPSETTING(    0x08, "20k only" )                  /* displays "20000" */
+	PORT_DIPSETTING(    0x04, "40k only" )                  /* displays "40000" */
+	PORT_DIPSETTING(    0x00, "80k only" )                  /* displays "80000" */
 	/* DSW3 bit 5 stored at 0x7dc8 - code at 0x6eb6 - not read back */
 
 	/* DSW2 bit 5 stored at 0x7da1 - code at 0x6ec7 - read back code at 0x0073 */
@@ -809,11 +812,11 @@ static INPUT_PORTS_START( dazzler )
 #endif
 
 	PORT_MODIFY("DSW3")
-    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
-    PORT_DIPSETTING(    0x04, "20k only" )                  /* displays "20000" */
-    PORT_DIPSETTING(    0x08, "40k only" )                  /* displays "40000" */
-    PORT_DIPSETTING(    0x00, "80k only" )                  /* displays "80000" */
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
+	PORT_DIPSETTING(    0x04, "20k only" )                  /* displays "20000" */
+	PORT_DIPSETTING(    0x08, "40k only" )                  /* displays "40000" */
+	PORT_DIPSETTING(    0x00, "80k only" )                  /* displays "80000" */
 
 	/* DSW2 bit 5 stored at 0x7d9c - code at 0x6b51 - read back code at 0x0099 */
 INPUT_PORTS_END
@@ -828,11 +831,11 @@ static INPUT_PORTS_START( wallst )
 #endif
 
 	PORT_MODIFY("DSW3")
-    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
-    PORT_DIPSETTING(    0x04, "20k only" )                  /* displays "20000" */
-    PORT_DIPSETTING(    0x08, "40k only" )                  /* displays "40000" */
-    PORT_DIPSETTING(    0x00, "80k only" )                  /* displays "80000" */
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
+	PORT_DIPSETTING(    0x04, "20k only" )                  /* displays "20000" */
+	PORT_DIPSETTING(    0x08, "40k only" )                  /* displays "40000" */
+	PORT_DIPSETTING(    0x00, "80k only" )                  /* displays "80000" */
 
 	/* DSW2 bit 5 stored at 0x1e95 - code at 0x1232 - read back code at 0x6054 */
 INPUT_PORTS_END
@@ -847,11 +850,11 @@ static INPUT_PORTS_START( radarzon )
 #endif
 
 	PORT_MODIFY("DSW3")
-    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x0c, "100k only" )                 /* displays "100000" */
-    PORT_DIPSETTING(    0x04, "200k only" )                 /* displays "200000" */
-    PORT_DIPSETTING(    0x08, "400k only" )                 /* displays "400000" */
-    PORT_DIPSETTING(    0x00, "800k only" )                 /* displays "800000" */
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x0c, "100k only" )                 /* displays "100000" */
+	PORT_DIPSETTING(    0x04, "200k only" )                 /* displays "200000" */
+	PORT_DIPSETTING(    0x08, "400k only" )                 /* displays "400000" */
+	PORT_DIPSETTING(    0x00, "800k only" )                 /* displays "800000" */
 
 	/* DSW2 bit 5 stored at 0x3d6e - code at 0x22aa - read back code at 0x00e4 */
 INPUT_PORTS_END
@@ -866,11 +869,11 @@ static INPUT_PORTS_START( goldbug )
 #endif
 
 	PORT_MODIFY("DSW3")
-    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x0c, "100k only" )                 /* displays "100000" */
-    PORT_DIPSETTING(    0x04, "200k only" )                 /* displays "200000" */
-    PORT_DIPSETTING(    0x08, "400k only" )                 /* displays "400000" */
-    PORT_DIPSETTING(    0x00, "800k only" )                 /* displays "800000" */
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x0c, "100k only" )                 /* displays "100000" */
+	PORT_DIPSETTING(    0x04, "200k only" )                 /* displays "200000" */
+	PORT_DIPSETTING(    0x08, "400k only" )                 /* displays "400000" */
+	PORT_DIPSETTING(    0x00, "800k only" )                 /* displays "800000" */
 
 	/* DSW2 bit 5 stored at 0x3d89 - code at 0x3377 - read back code at 0x6054 */
 INPUT_PORTS_END
@@ -885,11 +888,11 @@ static INPUT_PORTS_START( diggerc )
 #endif
 
 	PORT_MODIFY("DSW3")
-    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x0c, "50k only" )                  /* displays "50000" */
-    PORT_DIPSETTING(    0x04, "100k only" )                 /* displays "100000" */
-    PORT_DIPSETTING(    0x08, "150k only" )                 /* displays "150000" */
-    PORT_DIPSETTING(    0x00, "200k only" )                 /* displays "200000" */
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x0c, "50k only" )                  /* displays "50000" */
+	PORT_DIPSETTING(    0x04, "100k only" )                 /* displays "100000" */
+	PORT_DIPSETTING(    0x08, "150k only" )                 /* displays "150000" */
+	PORT_DIPSETTING(    0x00, "200k only" )                 /* displays "200000" */
 
 	/* DSW2 bit 5 stored at 0x3db3 - code at 0x22ad - read back code at 0x00e4 */
 INPUT_PORTS_END
@@ -919,11 +922,11 @@ static INPUT_PORTS_START( hunchbak )
 #endif
 
 	PORT_MODIFY("DSW3")
-    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
-    PORT_DIPSETTING(    0x04, "20k only" )                  /* displays "20000" */
-    PORT_DIPSETTING(    0x08, "40k only" )                  /* displays "40000" */
-    PORT_DIPSETTING(    0x00, "80k only" )                  /* displays "80000" */
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+	PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
+	PORT_DIPSETTING(    0x04, "20k only" )                  /* displays "20000" */
+	PORT_DIPSETTING(    0x08, "40k only" )                  /* displays "40000" */
+	PORT_DIPSETTING(    0x00, "80k only" )                  /* displays "80000" */
 
 	/* hunchbak : DSW2 bit 5 stored at 0x5e97 - code at 0x516c - read back code at 0x6054 */
 	/* hunchbka : DSW2 bit 5 stored at 0x1e97 - code at 0x0c0c - read back code at 0x6054 */
@@ -932,7 +935,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( superbik )
 	PORT_INCLUDE(cvs_registration)
 
-    /* DSW3 bits 2 and 3 are not read : bonus life alaways at 5000 */
+	/* DSW3 bits 2 and 3 are not read : bonus life alaways at 5000 */
 
 	/* DSW2 bit 5 stored at 0x1e79 - code at 0x060f - read back code at 0x25bf */
 INPUT_PORTS_END
@@ -940,7 +943,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( raiders )
 	PORT_INCLUDE(cvs_registration)
 
-    /* DSW3 bits 2 and 3 are not read : bonus life alaways at 100000 */
+	/* DSW3 bits 2 and 3 are not read : bonus life alaways at 100000 */
 
 	PORT_MODIFY("DSW2")
 	PORT_DIPUNUSED( 0x10, IP_ACTIVE_HIGH )                  /* always 4 lives - table at 0x4218 - 2 bytes */
@@ -956,7 +959,7 @@ static INPUT_PORTS_START( hero )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 */
 #endif
 
-    /* DSW3 bits 2 and 3 are not read : bonus life alaways at 150000 */
+	/* DSW3 bits 2 and 3 are not read : bonus life alaways at 150000 */
 
 	PORT_MODIFY("DSW2")
 	PORT_DIPUNUSED( 0x10, IP_ACTIVE_HIGH )                  /* always 3 lives - table at 0x4ebb - 2 bytes */
@@ -972,7 +975,7 @@ static INPUT_PORTS_START( huncholy )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 */
 #endif
 
-    /* DSW3 bits 2 and 3 are not read : bonus life alaways at 20000 */
+	/* DSW3 bits 2 and 3 are not read : bonus life alaways at 20000 */
 
 	PORT_MODIFY("DSW2")
 	PORT_DIPUNUSED( 0x10, IP_ACTIVE_HIGH )                  /* always 3 lives - table at 0x4531 - 2 bytes */
@@ -1051,7 +1054,13 @@ static MACHINE_DRIVER_START( cvs )
 	MDRV_SOUND_ADD("dac1", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
+	//MDRV_SOUND_ADD("dac1a", DAC, 0)
+	//MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+
 	MDRV_SOUND_ADD("dac2", DAC, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+
+	MDRV_SOUND_ADD("dac3", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 	MDRV_SOUND_ADD("tms", TMS5100, 640000)
@@ -1072,7 +1081,7 @@ MACHINE_DRIVER_END
 	ROM_LOAD( "5b.bin",     0x0000, 0x0800, CRC(f055a624) SHA1(5dfe89d7271092e665cdd5cd59d15a2b70f92f43) )	\
 																											\
 	ROM_REGION( 0x0820, "proms", 0 )																	\
-    ROM_LOAD( "82s185.10h", 0x0000, 0x0800, CRC(c205bca6) SHA1(ec9bd220e75f7b067ede6139763ef8aca0fb7a29) )	\
+	ROM_LOAD( "82s185.10h", 0x0000, 0x0800, CRC(c205bca6) SHA1(ec9bd220e75f7b067ede6139763ef8aca0fb7a29) )	\
 	ROM_LOAD( "82s123.10k", 0x0800, 0x0020, CRC(b5221cec) SHA1(71d9830b33b1a8140b0fe1a2ba8024ba8e6e48e0) )	\
 
 #define CVS_ROM_REGION_SPEECH_DATA(name, len, hash)	\
@@ -1641,24 +1650,24 @@ static DRIVER_INIT( raiders )
  *
  *************************************/
 
-GAME( 1981, cosmos,   0,        cvs,     cosmos,   0,        ROT90, "Century Electronics", "Cosmos", GAME_NO_COCKTAIL )
-GAME( 1981, darkwar,  0,        cvs,     darkwar,  0,        ROT90, "Century Electronics", "Dark Warrior", GAME_NO_COCKTAIL )
-GAME( 1981, spacefrt, 0,        cvs,     spacefrt, 0,        ROT90, "Century Electronics", "Space Fortress (CVS)", GAME_NO_COCKTAIL )
-GAME( 1982, 8ball,    0,        cvs,     8ball,    0,        ROT90, "Century Electronics", "Video Eight Ball", GAME_NO_COCKTAIL )
-GAME( 1982, 8ball1,   8ball,    cvs,     8ball,    0,        ROT90, "Century Electronics", "Video Eight Ball (Rev.1)", GAME_NO_COCKTAIL )
-GAME( 1982, logger,   0,        cvs,     logger,   0,        ROT90, "Century Electronics", "Logger", GAME_NO_COCKTAIL )
-GAME( 1982, dazzler,  0,        cvs,     dazzler,  0,        ROT90, "Century Electronics", "Dazzler", GAME_NO_COCKTAIL )
-GAME( 1982, wallst,   0,        cvs,     wallst,   0,        ROT90, "Century Electronics", "Wall Street", GAME_NO_COCKTAIL )
-GAME( 1982, radarzon, 0,        cvs,     radarzon, 0,        ROT90, "Century Electronics", "Radar Zone", GAME_NO_COCKTAIL )
-GAME( 1982, radarzon1,radarzon, cvs,     radarzon, 0,        ROT90, "Century Electronics", "Radar Zone (Rev.1)", GAME_NO_COCKTAIL )
-GAME( 1982, radarzont,radarzon, cvs,     radarzon, 0,        ROT90, "Century Electronics (Tuni Electro Service Inc)", "Radar Zone (Tuni)", GAME_NO_COCKTAIL )
-GAME( 1982, outline,  radarzon, cvs,     radarzon, 0,        ROT90, "Century Electronics", "Outline", GAME_NO_COCKTAIL )
-GAME( 1982, goldbug,  0,        cvs,     goldbug,  0,        ROT90, "Century Electronics", "Gold Bug", GAME_NO_COCKTAIL )
-GAME( 1982, diggerc,  0,        cvs,     diggerc,  0,        ROT90, "Century Electronics", "Digger (CVS)", GAME_NO_COCKTAIL )
-GAME( 1983, heartatk, 0,        cvs,     heartatk, 0,        ROT90, "Century Electronics", "Heart Attack", GAME_NO_COCKTAIL )
-GAME( 1983, hunchbak, 0,        cvs,     hunchbak, 0,        ROT90, "Century Electronics", "Hunchback (set 1)", GAME_NO_COCKTAIL )
-GAME( 1983, hunchbaka,hunchbak, cvs,     hunchbak, hunchbka, ROT90, "Century Electronics", "Hunchback (set 2)", GAME_NO_COCKTAIL )
-GAME( 1983, superbik, 0,        cvs,     superbik, superbik, ROT90, "Century Electronics", "Superbike", GAME_NO_COCKTAIL )
-GAME( 1983, raiders,  0,        cvs,     raiders,  raiders,  ROT90, "Century Electronics", "Raiders", GAME_NO_COCKTAIL )
-GAME( 1983, hero,     0,        cvs,     hero,     hero,     ROT90, "Seatongrove Ltd",     "Hero", GAME_NO_COCKTAIL )
-GAME( 1984, huncholy, 0,        cvs,     huncholy, huncholy, ROT90, "Seatongrove Ltd",     "Hunchback Olympic", GAME_NO_COCKTAIL )
+GAME( 1981, cosmos,   0,        cvs,     cosmos,   0,        ROT90, "Century Electronics", "Cosmos", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND )
+GAME( 1981, darkwar,  0,        cvs,     darkwar,  0,        ROT90, "Century Electronics", "Dark Warrior", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1981, spacefrt, 0,        cvs,     spacefrt, 0,        ROT90, "Century Electronics", "Space Fortress (CVS)", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND )
+GAME( 1982, 8ball,    0,        cvs,     8ball,    0,        ROT90, "Century Electronics", "Video Eight Ball", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1982, 8ball1,   8ball,    cvs,     8ball,    0,        ROT90, "Century Electronics", "Video Eight Ball (Rev.1)", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1982, logger,   0,        cvs,     logger,   0,        ROT90, "Century Electronics", "Logger", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1982, dazzler,  0,        cvs,     dazzler,  0,        ROT90, "Century Electronics", "Dazzler", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1982, wallst,   0,        cvs,     wallst,   0,        ROT90, "Century Electronics", "Wall Street", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1982, radarzon, 0,        cvs,     radarzon, 0,        ROT90, "Century Electronics", "Radar Zone", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1982, radarzon1,radarzon, cvs,     radarzon, 0,        ROT90, "Century Electronics", "Radar Zone (Rev.1)", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1982, radarzont,radarzon, cvs,     radarzon, 0,        ROT90, "Century Electronics (Tuni Electro Service Inc)", "Radar Zone (Tuni)", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1982, outline,  radarzon, cvs,     radarzon, 0,        ROT90, "Century Electronics", "Outline", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1982, goldbug,  0,        cvs,     goldbug,  0,        ROT90, "Century Electronics", "Gold Bug", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1982, diggerc,  0,        cvs,     diggerc,  0,        ROT90, "Century Electronics", "Digger (CVS)", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1983, heartatk, 0,        cvs,     heartatk, 0,        ROT90, "Century Electronics", "Heart Attack", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1983, hunchbak, 0,        cvs,     hunchbak, 0,        ROT90, "Century Electronics", "Hunchback (set 1)", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1983, hunchbaka,hunchbak, cvs,     hunchbak, hunchbka, ROT90, "Century Electronics", "Hunchback (set 2)", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1983, superbik, 0,        cvs,     superbik, superbik, ROT90, "Century Electronics", "Superbike", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1983, raiders,  0,        cvs,     raiders,  raiders,  ROT90, "Century Electronics", "Raiders", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1983, hero,     0,        cvs,     hero,     hero,     ROT90, "Seatongrove Ltd",     "Hero", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)
+GAME( 1984, huncholy, 0,        cvs,     huncholy, huncholy, ROT90, "Seatongrove Ltd",     "Hunchback Olympic", GAME_NO_COCKTAIL | GAME_IMPERFECT_SOUND)

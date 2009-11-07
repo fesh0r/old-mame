@@ -286,8 +286,8 @@ static ADDRESS_MAP_START( master_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xdd00, 0xdfff) AM_RAM AM_BASE(&bublbobl_objectram) AM_SIZE(&bublbobl_objectram_size)
 	AM_RANGE(0xe000, 0xf7ff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0xf800, 0xf9ff) AM_RAM_WRITE(paletteram_RRRRGGGGBBBBxxxx_be_w) AM_BASE(&paletteram)
-	AM_RANGE(0xfa00, 0xfa00) AM_READWRITE(sound_status_r, bublbobl_sound_command_w)
-	AM_RANGE(0xfa03, 0xfa03) AM_WRITE(soundcpu_reset_w)
+	AM_RANGE(0xfa00, 0xfa00) AM_READWRITE(bublbobl_sound_status_r, bublbobl_sound_command_w)
+	AM_RANGE(0xfa03, 0xfa03) AM_WRITE(bublbobl_soundcpu_reset_w)
 	AM_RANGE(0xfa80, 0xfa80) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0xfb40, 0xfb40) AM_WRITE(bublbobl_bankswitch_w)
 	AM_RANGE(0xfc00, 0xffff) AM_RAM AM_BASE(&bublbobl_mcu_sharedram)
@@ -303,7 +303,7 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0x8fff) AM_RAM
 	AM_RANGE(0x9000, 0x9001) AM_DEVREADWRITE("ym1", ym2203_r, ym2203_w)
 	AM_RANGE(0xa000, 0xa001) AM_DEVREADWRITE("ym2", ym3526_r, ym3526_w)
-	AM_RANGE(0xb000, 0xb000) AM_READWRITE(soundlatch_r, sound_status_w)
+	AM_RANGE(0xb000, 0xb000) AM_READWRITE(soundlatch_r, bublbobl_sound_status_w)
 	AM_RANGE(0xb001, 0xb001) AM_WRITE(bublbobl_sh_nmi_enable_w) AM_READNOP
 	AM_RANGE(0xb002, 0xb002) AM_WRITE(bublbobl_sh_nmi_disable_w)
 	AM_RANGE(0xe000, 0xffff) AM_ROM	// space for diagnostic ROM?
@@ -342,8 +342,8 @@ static ADDRESS_MAP_START( bootleg_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xdd00, 0xdfff) AM_RAM AM_BASE(&bublbobl_objectram) AM_SIZE(&bublbobl_objectram_size)
 	AM_RANGE(0xe000, 0xf7ff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0xf800, 0xf9ff) AM_RAM_WRITE(paletteram_RRRRGGGGBBBBxxxx_be_w) AM_BASE(&paletteram)
-	AM_RANGE(0xfa00, 0xfa00) AM_READWRITE(sound_status_r, bublbobl_sound_command_w)
-	AM_RANGE(0xfa03, 0xfa03) AM_WRITE(soundcpu_reset_w)
+	AM_RANGE(0xfa00, 0xfa00) AM_READWRITE(bublbobl_sound_status_r, bublbobl_sound_command_w)
+	AM_RANGE(0xfa03, 0xfa03) AM_WRITE(bublbobl_soundcpu_reset_w)
 	AM_RANGE(0xfa80, 0xfa80) AM_WRITENOP // ???
 	AM_RANGE(0xfb40, 0xfb40) AM_WRITE(bublbobl_bankswitch_w)
 	AM_RANGE(0xfc00, 0xfcff) AM_RAM
@@ -375,7 +375,7 @@ static ADDRESS_MAP_START( tokio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xfa80, 0xfa80) AM_WRITE(tokio_bankswitch_w)
 	AM_RANGE(0xfb00, 0xfb00) AM_WRITE(tokio_videoctrl_w)
 	AM_RANGE(0xfb80, 0xfb80) AM_WRITE(bublbobl_nmitrigger_w)
-	AM_RANGE(0xfc00, 0xfc00) AM_READWRITE(sound_status_r, bublbobl_sound_command_w)
+	AM_RANGE(0xfc00, 0xfc00) AM_READWRITE(bublbobl_sound_status_r, bublbobl_sound_command_w)
 	AM_RANGE(0xfe00, 0xfe00) AM_READ(tokio_mcu_r) AM_WRITENOP // ???
 ADDRESS_MAP_END
 
@@ -387,7 +387,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( tokio_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x8fff) AM_RAM
-	AM_RANGE(0x9000, 0x9000) AM_READWRITE(soundlatch_r, sound_status_w)
+	AM_RANGE(0x9000, 0x9000) AM_READWRITE(soundlatch_r, bublbobl_sound_status_w)
 	AM_RANGE(0x9800, 0x9800) AM_READNOP	// ???
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(bublbobl_sh_nmi_disable_w)
 	AM_RANGE(0xa800, 0xa800) AM_WRITE(bublbobl_sh_nmi_enable_w)
@@ -796,7 +796,7 @@ MACHINE_DRIVER_END
 ROM_START( tokio )
 	ROM_REGION( 0x30000, "maincpu", 0 )	/* main CPU */
 	ROM_LOAD( "a71-02.4",     0x00000, 0x8000, CRC(d556c908) SHA1(d5d8afb7f7888d77aa9a372dfbab75fbd0358cc3) )
-    /* ROMs banked at 8000-bfff */
+	/* ROMs banked at 8000-bfff */
 	ROM_LOAD( "a71-03.5",     0x10000, 0x8000, CRC(69dacf44) SHA1(ee8c33702749c0e2562951f9f80c897d3fbd7dd7) )
 	ROM_LOAD( "a71-04.6",     0x18000, 0x8000, CRC(a0a4ce0e) SHA1(c49bdcd85c760a5e7327d1b424772e1560f1a318) )
 	ROM_LOAD( "a71-05.7",     0x20000, 0x8000, CRC(6da0b945) SHA1(6c80b8333dd95657f99e6ba5b6e877733ac02a8c) )
@@ -833,13 +833,13 @@ ROM_START( tokio )
 	ROM_LOAD( "a71-25.41",    0x0000, 0x0100, CRC(2d0f8545) SHA1(089c31e2f614145ef2743164f7b52ae35bc06808) )	/* video timing */
 
 	ROM_REGION( 0x0200, "plds", 0 )
-	ROM_LOAD( "pal16l8a.bin", 0x0000, 0x0104, CRC(6ad38519) SHA1(f7aba9bd5be74731bc4cc49a07dc3cb398873d8d) )
+	ROM_LOAD( "a71-26.bin", 0x0000, 0x0117, CRC(4e1f119c) SHA1(0ac8eb2fdb202951e5f7145f92dfd10fe96b294b) )
 ROM_END
 
 ROM_START( tokiou )
 	ROM_REGION( 0x30000, "maincpu", 0 )	/* main CPU */
 	ROM_LOAD( "a71-27-1.4",   0x00000, 0x8000, CRC(8c180896) SHA1(bc8aeb42da4bae7db6f65b9874224f60a9bc4500) )
-    /* ROMs banked at 8000-bfff */
+	/* ROMs banked at 8000-bfff */
 	ROM_LOAD( "a71-28-1.5",   0x10000, 0x8000, CRC(1b447527) SHA1(6939e6c1b8492825d18f4e96f39ff45f4c96eea2) )
 	ROM_LOAD( "a71-04.6",     0x18000, 0x8000, CRC(a0a4ce0e) SHA1(c49bdcd85c760a5e7327d1b424772e1560f1a318) )
 	ROM_LOAD( "a71-05.7",     0x20000, 0x8000, CRC(6da0b945) SHA1(6c80b8333dd95657f99e6ba5b6e877733ac02a8c) )
@@ -876,13 +876,13 @@ ROM_START( tokiou )
 	ROM_LOAD( "a71-25.41",    0x0000, 0x0100, CRC(2d0f8545) SHA1(089c31e2f614145ef2743164f7b52ae35bc06808) )	/* video timing */
 
 	ROM_REGION( 0x0200, "plds", 0 )
-	ROM_LOAD( "pal16l8a.bin", 0x0000, 0x0104, CRC(6ad38519) SHA1(f7aba9bd5be74731bc4cc49a07dc3cb398873d8d) )
+	ROM_LOAD( "a71-26.bin", 0x0000, 0x0117, CRC(4e1f119c) SHA1(0ac8eb2fdb202951e5f7145f92dfd10fe96b294b) )
 ROM_END
 
 ROM_START( tokiob )
 	ROM_REGION( 0x30000, "maincpu", 0 ) /* main CPU */
 	ROM_LOAD( "2",            0x00000, 0x8000, CRC(f583b1ef) SHA1(a97b36299b51792953516224191f11decc579a38) )
-    /* ROMs banked at 8000-bfff */
+	/* ROMs banked at 8000-bfff */
 	ROM_LOAD( "a71-03.5",     0x10000, 0x8000, CRC(69dacf44) SHA1(ee8c33702749c0e2562951f9f80c897d3fbd7dd7) )
 	ROM_LOAD( "a71-04.6",     0x18000, 0x8000, CRC(a0a4ce0e) SHA1(c49bdcd85c760a5e7327d1b424772e1560f1a318) )
 	ROM_LOAD( "a71-05.7",     0x20000, 0x8000, CRC(6da0b945) SHA1(6c80b8333dd95657f99e6ba5b6e877733ac02a8c) )
@@ -934,7 +934,7 @@ a78-06-1.51    32768  0x567934b6  Intel D27256
 ROM_START( bublbobl )
 	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "a78-06-1.51",    0x00000, 0x08000, CRC(567934b6) SHA1(b0c4d49fd551f465d148c25c3e80b278835e2f0d) )
-    /* ROMs banked at 8000-bfff */
+	/* ROMs banked at 8000-bfff */
 	ROM_LOAD( "a78-05-1.52",    0x10000, 0x10000, CRC(9f8ee242) SHA1(924150d4e7e087a9b2b0a294c2d0e9903a266c6c) )
 	/* 20000-2ffff empty */
 
@@ -966,11 +966,11 @@ ROM_START( bublbobl )
 	ROM_REGION( 0x0100, "proms", 0 )
 	ROM_LOAD( "a71-25.41",    0x0000, 0x0100, CRC(2d0f8545) SHA1(089c31e2f614145ef2743164f7b52ae35bc06808) )	/* video timing */
 
-    /* Located on CPU/Sound Board */
+	/* Located on CPU/Sound Board */
 	ROM_REGION( 0x0003, "plds", 0 )
 	ROM_LOAD( "pal16l8.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC49 */
-    ROM_LOAD( "pal16l8.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC43 */
-    ROM_LOAD( "pal16r4.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC12 */
+	ROM_LOAD( "pal16l8.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC43 */
+	ROM_LOAD( "pal16r4.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC12 */
 ROM_END
 
 /*
@@ -983,7 +983,7 @@ VER 0.018.AUG,1986 SUMMER
 ROM_START( bublbobl1 )
 	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "a78-06.51",    0x00000, 0x08000, CRC(32c8305b) SHA1(6bf69b3edfbefd33cd670a762b4bf0b39629a220) )
-    /* ROMs banked at 8000-bfff */
+	/* ROMs banked at 8000-bfff */
 	ROM_LOAD( "a78-05.52",    0x10000, 0x10000, CRC(53f4bc6e) SHA1(15a2e6d83438d4136b154b3d90dd2cf9f1ce572c) )
 	/* 20000-2ffff empty */
 
@@ -1015,11 +1015,11 @@ ROM_START( bublbobl1 )
 	ROM_REGION( 0x0100, "proms", 0 )
 	ROM_LOAD( "a71-25.41",    0x0000, 0x0100, CRC(2d0f8545) SHA1(089c31e2f614145ef2743164f7b52ae35bc06808) )	/* video timing */
 
-    /* Located on CPU/Sound Board */
+	/* Located on CPU/Sound Board */
 	ROM_REGION( 0x0003, "plds", 0 )
 	ROM_LOAD( "pal16l8.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC49 */
-    ROM_LOAD( "pal16l8.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC43 */
-    ROM_LOAD( "pal16r4.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC12 */
+	ROM_LOAD( "pal16l8.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC43 */
+	ROM_LOAD( "pal16r4.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC12 */
 ROM_END
 
 /*
@@ -1032,7 +1032,7 @@ VER 5.1 8.NOV,1986 SUMMER
 ROM_START( bublboblr )
 	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "a78-25.51",    0x00000, 0x08000, CRC(2d901c9d) SHA1(72504225d3a26212e8f35508a79200eeb91138b6) )
-    /* ROMs banked at 8000-bfff */
+	/* ROMs banked at 8000-bfff */
 	ROM_LOAD( "a78-24.52",    0x10000, 0x10000, CRC(b7afedc4) SHA1(6e4c8712f1fdf000e231cfd622dd3b514c61a6fd) )
 	/* 20000-2ffff empty */
 
@@ -1064,11 +1064,11 @@ ROM_START( bublboblr )
 	ROM_REGION( 0x0100, "proms", 0 )
 	ROM_LOAD( "a71-25.41",    0x0000, 0x0100, CRC(2d0f8545) SHA1(089c31e2f614145ef2743164f7b52ae35bc06808) )	/* video timing */
 
-    /* Located on CPU/Sound Board */
+	/* Located on CPU/Sound Board */
 	ROM_REGION( 0x0003, "plds", 0 )
 	ROM_LOAD( "pal16l8.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC49 */
-    ROM_LOAD( "pal16l8.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC43 */
-    ROM_LOAD( "pal16r4.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC12 */
+	ROM_LOAD( "pal16l8.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC43 */
+	ROM_LOAD( "pal16r4.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC12 */
 ROM_END
 
 /*
@@ -1081,7 +1081,7 @@ VER 1.0 26.AUG,1986 SUMMER
 ROM_START( bublboblr1 )
 	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "a78-06.51",    0x00000, 0x08000, CRC(32c8305b) SHA1(6bf69b3edfbefd33cd670a762b4bf0b39629a220) )
-    /* ROMs banked at 8000-bfff */
+	/* ROMs banked at 8000-bfff */
 	ROM_LOAD( "a78-21.52",    0x10000, 0x10000, CRC(2844033d) SHA1(6ac0b09d0325990cf18935f35b0adbc033758947) )
 	/* 20000-2ffff empty */
 
@@ -1113,17 +1113,17 @@ ROM_START( bublboblr1 )
 	ROM_REGION( 0x0100, "proms", 0 )
 	ROM_LOAD( "a71-25.41",    0x0000, 0x0100, CRC(2d0f8545) SHA1(089c31e2f614145ef2743164f7b52ae35bc06808) )	/* video timing */
 
-    /* Located on CPU/Sound Board */
+	/* Located on CPU/Sound Board */
 	ROM_REGION( 0x0003, "plds", 0 )
 	ROM_LOAD( "pal16l8.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC49 */
-    ROM_LOAD( "pal16l8.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC43 */
-    ROM_LOAD( "pal16r4.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC12 */
+	ROM_LOAD( "pal16l8.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC43 */
+	ROM_LOAD( "pal16r4.bin",  0x0000, 0x0001, NO_DUMP ) /* Located at IC12 */
 ROM_END
 
 ROM_START( boblbobl )
 	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "bb3",          0x00000, 0x08000, CRC(01f81936) SHA1(a48489a13bfd01949e7fd273029d9cb8bfd7be48) )
-    /* ROMs banked at 8000-bfff */
+	/* ROMs banked at 8000-bfff */
 	ROM_LOAD( "bb5",          0x10000, 0x08000, CRC(13118eb1) SHA1(5a5da40c2cc82420f70bc58ffa32de1088c6c82f) )
 	ROM_LOAD( "bb4",          0x18000, 0x08000, CRC(afda99d8) SHA1(304324074ae726501bbb08e683850639d69939fb) )
 	/* 20000-2ffff empty */
@@ -1163,7 +1163,7 @@ ROM_END
 ROM_START( sboblboa )
 	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "1c.bin",    0x00000, 0x08000, CRC(f304152a) SHA1(103d9beddccef289ed739d28ebda69bbad3d42f9) )
-    /* ROMs banked at 8000-bfff */
+	/* ROMs banked at 8000-bfff */
 	ROM_LOAD( "1a.bin",          0x10000, 0x08000, CRC(0865209c) SHA1(eddd3547ae675b73376e5c284e0b15830f4a6645) )
 	ROM_LOAD( "1b.bin",          0x18000, 0x08000, CRC(1f29b5c0) SHA1(c15c84ca11cc10edac6340468bca463ecb2d89e6) )
 	/* 20000-2ffff empty */
@@ -1197,7 +1197,7 @@ ROM_END
 ROM_START( sboblbob )
 	ROM_REGION( 0x30000, "maincpu", 0 )
 	ROM_LOAD( "bbb-3.rom",    0x00000, 0x08000, CRC(f304152a) SHA1(103d9beddccef289ed739d28ebda69bbad3d42f9) )
-    /* ROMs banked at 8000-bfff */
+	/* ROMs banked at 8000-bfff */
 	ROM_LOAD( "bb5",          0x10000, 0x08000, CRC(13118eb1) SHA1(5a5da40c2cc82420f70bc58ffa32de1088c6c82f) )
 	ROM_LOAD( "bbb-4.rom",    0x18000, 0x08000, CRC(94c75591) SHA1(7698bc4b7d20e554a73a489cd3a15ae61b350e37) )
 	/* 20000-2ffff empty */
@@ -1233,7 +1233,7 @@ ROM_END
 ROM_START( bub68705 )
 	ROM_REGION( 0x30000, "maincpu", 0 ) /* Program roms match Bubble Bobble (older) */
 	ROM_LOAD( "2.bin",    0x00000, 0x08000, CRC(32c8305b) SHA1(6bf69b3edfbefd33cd670a762b4bf0b39629a220) )
-    /* ROMs banked at 8000-bfff */
+	/* ROMs banked at 8000-bfff */
 	ROM_LOAD( "3-1.bin",        0x10000, 0x08000, CRC(980c2615) SHA1(3670cf3e4e73028aadf4460ad887a0b544bcdbc4) )
 	ROM_LOAD( "3.bin",          0x18000, 0x08000, CRC(e6c698f2) SHA1(8df116075f5891f74d0da8966ed11c597b5f544f) )
 	/* 20000-2ffff empty */

@@ -62,7 +62,7 @@ void _profiler_mark_start(int type)
 
 	/* fail if we overflow */
 	if (index > ARRAY_LENGTH(global_profiler.filo))
-		fatalerror("Profiler FILO overflow\n");
+		fatalerror("Profiler FILO overflow (type = %d)\n", type);
 
 	/* if we're nested, stop the previous entry */
 	if (index > 0)
@@ -134,6 +134,10 @@ astring *_profiler_get_text(running_machine *machine, astring *string)
 		{ PROFILER_USER2,            "User 2" },
 		{ PROFILER_USER3,            "User 3" },
 		{ PROFILER_USER4,            "User 4" },
+		{ PROFILER_USER5,            "User 5" },
+		{ PROFILER_USER6,            "User 6" },
+		{ PROFILER_USER7,            "User 7" },
+		{ PROFILER_USER8,            "User 8" },
 		{ PROFILER_PROFILER,         "Profiler" },
 		{ PROFILER_IDLE,             "Idle" }
 	};
@@ -158,7 +162,7 @@ astring *_profiler_get_text(running_machine *machine, astring *string)
 	total = computed;
 	astring_reset(string);
 	if (total == 0 || normalize == 0)
-		return string;
+		goto out;
 
 	/* loop over all types and generate the string */
 	for (curtype = 0; curtype < PROFILER_TOTAL; curtype++)
@@ -205,8 +209,6 @@ astring *_profiler_get_text(running_machine *machine, astring *string)
 		astring_catprintf(string, "%d CPU switches\n", switches / (int) ARRAY_LENGTH(global_profiler.data));
 	}
 
-	profiler_mark_end();
-
 	/* advance to the next dataset and reset it to 0 */
 	global_profiler.dataindex = (global_profiler.dataindex + 1) % ARRAY_LENGTH(global_profiler.data);
 	memset(&global_profiler.data[global_profiler.dataindex], 0, sizeof(global_profiler.data[global_profiler.dataindex]));
@@ -214,6 +216,9 @@ astring *_profiler_get_text(running_machine *machine, astring *string)
 	/* we are ready once we have wrapped around */
 	if (global_profiler.dataindex == 0)
 		global_profiler.dataready = TRUE;
+
+out:
+	profiler_mark_end();
 
 	return string;
 }

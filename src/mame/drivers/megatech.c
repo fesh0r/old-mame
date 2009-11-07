@@ -83,6 +83,7 @@ Bonanza Bros.              171-5782    837-6963-49       610-0239-49         MPR
 Streets of Rage            171-5782    837-6963-51       610-0239-51         MPR-14125-SM   (uPD23C4000)  EPR-12368-51   (27C256)  n/a
 Sonic The Hedgehog         171-5782    837-6963-52       610-0239-52         MPR-13913-F    (834200A)     EPR-12368-52   (27C256)  n/a
 Mario Lemeux Hockey        171-5782    837-6963-59       610-0239-59         MPR-14376-H    (234000)      EPR-12368-59   (27256)   n/a
+Turbo Outrun               171-5782    837-6963-61       610-0239-61         MPR-14674      (uPD23C4000)  EPR-12368-61   (27256)   n/a
 Sonic Hedgehog 2           171-6215A   837-6963-62       610-0239-62         MPR-15000A-F   (838200)      EPR-12368-62   (27256)   n/a
 
 */
@@ -91,15 +92,13 @@ Sonic Hedgehog 2           171-6215A   837-6963-62       610-0239-62         MPR
 #include "sound/sn76496.h"
 #include "rendlay.h"
 
-#include "segae.h"
-#include "genesis.h"
+#include "segamsys.h"
 #include "megadriv.h"
 
+static struct _mtech_bios mtech_bios;
+
 /* Megatech BIOS specific */
-static UINT32 bios_port_ctrl;
 static UINT8* megatech_banked_ram;
-static int current_game_is_sms; // is the current game SMS based (running on genesis z80, in VDP compatibility mode)
-UINT32 bios_ctrl_inputs;
 
 #define MASTER_CLOCK		53693100
 
@@ -108,25 +107,25 @@ static INPUT_PORTS_START( megatech ) /* Genesis Input Ports */
 	PORT_INCLUDE(megadriv)
 
 	PORT_START("BIOS_IN0") // port 6
-    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE2 ) PORT_NAME("Select") PORT_CODE(KEYCODE_0)
-    PORT_DIPNAME( 0x0002, 0x0002, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0002, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0004, 0x0004, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0008, 0x0008, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE2 ) PORT_NAME("Select") PORT_CODE(KEYCODE_0)
+	PORT_DIPNAME( 0x0002, 0x0002, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0002, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0004, 0x0004, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0008, 0x0008, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 
 	PORT_START("BIOS_IN1") // port 6
@@ -141,11 +140,11 @@ static INPUT_PORTS_START( megatech ) /* Genesis Input Ports */
 
 	PORT_START("BIOS_DSW0")
 	PORT_DIPNAME( 0x02, 0x02, "Coin slot 3" )
-	PORT_DIPSETTING (   0x00, "Inhibit" )
-	PORT_DIPSETTING (   0x02, "Accept" )
+	PORT_DIPSETTING(    0x00, "Inhibit" )
+	PORT_DIPSETTING(    0x02, "Accept" )
 	PORT_DIPNAME( 0x01, 0x01, "Coin slot 4" )
-	PORT_DIPSETTING (   0x00, "Inhibit" )
-	PORT_DIPSETTING (   0x01, "Accept" )
+	PORT_DIPSETTING(    0x00, "Inhibit" )
+	PORT_DIPSETTING(    0x01, "Accept" )
 	PORT_DIPNAME( 0x1c, 0x1c, "Coin slot 3/4 value" )
 	PORT_DIPSETTING(    0x1c, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x18, DEF_STR( 1C_2C ) )
@@ -203,102 +202,47 @@ static INPUT_PORTS_START( megatech ) /* Genesis Input Ports */
 
 
 	PORT_START("BIOS_J1")
-    PORT_DIPNAME( 0x0001, 0x0001, "5" )
-    PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0002, 0x0002, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0002, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0004, 0x0004, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0008, 0x0008, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0001, 0x0001, "5" )
+	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0002, 0x0002, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0002, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0004, 0x0004, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0008, 0x0008, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
 INPUT_PORTS_END
 
 /* MEGATECH specific */
 
-static UINT8 mt_cart_select_reg;
-
 static READ8_HANDLER( megatech_instr_r )
 {
-	UINT8* instr = memory_region(space->machine, "mtbios")+0x8000;
+	UINT8* instr = memory_region(space->machine, "mtbios") + 0x8000;
 
-	return instr[offset/2];
+	return instr[offset / 2];
 //  else
 //      return 0xff;
 }
 
 static READ8_HANDLER( megatech_cart_select_r )
 {
-	return (mt_cart_select_reg);
-}
-
-static READ8_HANDLER( z80_unmapped_port_r )
-{
-	printf("unmapped z80 port read %04x\n",offset);
-	return 0;
-}
-
-static WRITE8_HANDLER( z80_unmapped_port_w )
-{
-	printf("unmapped z80 port write %04x\n",offset);
-}
-
-static READ8_HANDLER( z80_unmapped_r )
-{
-	printf("unmapped z80 read %04x\n",offset);
-	return 0;
-}
-
-static WRITE8_HANDLER( z80_unmapped_w )
-{
-	printf("unmapped z80 write %04x\n",offset);
-}
-
-static UINT8* sms_mainram;
-static UINT8* sms_rom;
-
-
-static WRITE8_HANDLER( mt_sms_standard_rom_bank_w )
-{
-	int bank = data&0x1f;
-	//logerror("bank w %02x %02x\n", offset, data);
-
-	sms_mainram[0x1ffc+offset] = data;
-	switch (offset)
-	{
-		case 0:
-			logerror("bank w %02x %02x\n", offset, data);
-			memory_install_readwrite8_handler(space, 0x0000, 0xbfff, 0, 0, (read8_space_func)SMH_BANK(5), (write8_space_func)SMH_UNMAP);
-
-			//printf("bank ram??\n");
-			break;
-		case 1:
-			memcpy(sms_rom+0x0000, memory_region(space->machine, "maincpu")+bank*0x4000, 0x4000);
-			break;
-		case 2:
-			memcpy(sms_rom+0x4000, memory_region(space->machine, "maincpu")+bank*0x4000, 0x4000);
-			break;
-		case 3:
-			memcpy(sms_rom+0x8000, memory_region(space->machine, "maincpu")+bank*0x4000, 0x4000);
-			break;
-
-	}
+	return mtech_bios.mt_cart_select_reg;
 }
 
 #ifdef UNUSED_FUNCTION
@@ -315,56 +259,6 @@ READ8_HANDLER( md_sms_ioport_dd_r )
 
 
 
-static void megatech_set_genz80_as_sms_standard_ports(running_machine *machine)
-{
-	/* INIT THE PORTS *********************************************************************************************/
-
-	const address_space *io = cputag_get_address_space(machine, "genesis_snd_z80", ADDRESS_SPACE_IO);
-	const device_config *sn = devtag_get_device(machine, "sn");
-
-	memory_install_readwrite8_handler(io, 0x0000, 0xffff, 0, 0, z80_unmapped_port_r, z80_unmapped_port_w);
-
-	memory_install_read8_handler     (io, 0x7e, 0x7e, 0, 0, md_sms_vdp_vcounter_r);
-	memory_install_write8_device_handler(io, sn, 0x7e, 0x7f, 0, 0, sn76496_w);
-	memory_install_readwrite8_handler(io, 0xbe, 0xbe, 0, 0, md_sms_vdp_data_r, md_sms_vdp_data_w);
-	memory_install_readwrite8_handler(io, 0xbf, 0xbf, 0, 0, md_sms_vdp_ctrl_r, md_sms_vdp_ctrl_w);
-
-	memory_install_read8_handler     (io, 0x10, 0x10, 0, 0, megatech_sms_ioport_dd_r); // super tetris
-
-	memory_install_read8_handler     (io, 0xdc, 0xdc, 0, 0, megatech_sms_ioport_dc_r);
-	memory_install_read8_handler     (io, 0xdd, 0xdd, 0, 0, megatech_sms_ioport_dd_r);
-	memory_install_read8_handler     (io, 0xde, 0xde, 0, 0, megatech_sms_ioport_dd_r);
-	memory_install_read8_handler     (io, 0xdf, 0xdf, 0, 0, megatech_sms_ioport_dd_r); // adams family
-}
-
-static void megatech_set_genz80_as_sms_standard_map(running_machine *machine)
-{
-	/* INIT THE MEMMAP / BANKING *********************************************************************************/
-
-	/* catch any addresses that don't get mapped */
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, "genesis_snd_z80", ADDRESS_SPACE_PROGRAM), 0x0000, 0xffff, 0, 0, z80_unmapped_r, z80_unmapped_w);
-
-	/* fixed rom bank area */
-	sms_rom = auto_alloc_array(machine, UINT8, 0x400000);
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, "genesis_snd_z80", ADDRESS_SPACE_PROGRAM), 0x0000, 0xbfff, 0, 0, (read8_space_func)SMH_BANK(5), (write8_space_func)SMH_UNMAP);
-	memory_set_bankptr(machine,  5, sms_rom );
-
-	memcpy(sms_rom, memory_region(machine, "maincpu"), 0x400000);
-
-	/* main ram area */
-	sms_mainram = auto_alloc_array(machine, UINT8, 0x2000); // 8kb of main ram
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, "genesis_snd_z80", ADDRESS_SPACE_PROGRAM), 0xc000, 0xdfff, 0, 0, (read8_space_func)SMH_BANK(6), (write8_space_func)SMH_BANK(6));
-	memory_set_bankptr(machine,  6, sms_mainram );
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, "genesis_snd_z80", ADDRESS_SPACE_PROGRAM), 0xe000, 0xffff, 0, 0, (read8_space_func)SMH_BANK(7), (write8_space_func)SMH_BANK(7));
-	memory_set_bankptr(machine,  7, sms_mainram );
-	memset(sms_mainram,0x00,0x2000);
-
-	memory_install_write8_handler(cputag_get_address_space(machine, "genesis_snd_z80", ADDRESS_SPACE_PROGRAM), 0xfffc, 0xffff, 0, 0, mt_sms_standard_rom_bank_w);
-
-	megatech_set_genz80_as_sms_standard_ports(machine);
-//  smsgg_backupram = NULL;
-
-}
 
 static void megatech_select_game(running_machine *machine, int gameno)
 {
@@ -401,8 +295,8 @@ static void megatech_select_game(running_machine *machine, int gameno)
 		if (bios_region[0x8000]==2)
 		{
 			printf("SMS cart!!, CPU not running\n");
-			current_game_is_sms = 1;
-			megatech_set_genz80_as_sms_standard_map(machine);
+			mtech_bios.current_game_is_sms = 1;
+			megatech_set_genz80_as_sms_standard_map(machine, "genesis_snd_z80", MAPPER_STANDARD);
 			cputag_set_input_line(machine, "genesis_snd_z80", INPUT_LINE_HALT, CLEAR_LINE);
 			cputag_set_input_line(machine, "genesis_snd_z80", INPUT_LINE_RESET, CLEAR_LINE);
 
@@ -411,8 +305,8 @@ static void megatech_select_game(running_machine *machine, int gameno)
 		else if (bios_region[0x8000]==1)
 		{
 			printf("Genesis Cart, CPU0 running\n");
-			current_game_is_sms = 0;
-			megatech_set_megadrive_z80_as_megadrive_z80(machine);
+			mtech_bios.current_game_is_sms = 0;
+			megatech_set_megadrive_z80_as_megadrive_z80(machine, "genesis_snd_z80");
 			cputag_set_input_line(machine, "maincpu", INPUT_LINE_RESET, CLEAR_LINE);
 			cputag_set_input_line(machine, "maincpu", INPUT_LINE_HALT, CLEAR_LINE);
 		}
@@ -429,7 +323,7 @@ static void megatech_select_game(running_machine *machine, int gameno)
 	//  cputag_set_input_line(machine, "genesis_snd_z80", INPUT_LINE_RESET, ASSERT_LINE);
 
 		/* no cart.. */
-		memset(memory_region(machine, "mtbios")+0x8000, 0x00, 0x8000);
+		memset(memory_region(machine, "mtbios") + 0x8000, 0x00, 0x8000);
 		memset(memory_region(machine, "maincpu"), 0x00, 0x300000);
 	}
 
@@ -445,30 +339,30 @@ static WRITE8_HANDLER( megatech_cart_select_w )
 
 //  printf("megatech_instr_w %02x\n",data);
 
-	mt_cart_select_reg = data;
+	mtech_bios.mt_cart_select_reg = data;
 
 
-	megatech_select_game(space->machine, mt_cart_select_reg);
+	megatech_select_game(space->machine, mtech_bios.mt_cart_select_reg);
 
 /*
-    if (mt_cart_select_reg==2)
+    if (mtech_bios.mtech_bios.mt_cart_select_reg == 2)
     {
         printf("game 2 selected\n");
-        memcpy(memory_region(space->machine, "mtbios")+0x8000, memory_region(space->machine, "inst0"), 0x8000);
+        memcpy(memory_region(space->machine, "mtbios") + 0x8000, memory_region(space->machine, "inst0"), 0x8000);
     }
-//  else if (mt_cart_select_reg==0)
+//  else if (mtech_bios.mt_cart_select_reg == 0)
 //  {
 //      printf("game 0 selected\n");
-//      memcpy(memory_region(space->machine, "mtbios")+0x8000, memory_region(space->machine, "inst2"), 0x8000);
+//      memcpy(memory_region(space->machine, "mtbios") + 0x8000, memory_region(space->machine, "inst2"), 0x8000);
 //  }
-    else if (mt_cart_select_reg==6)
+    else if (mtech_bios.mt_cart_select_reg == 6)
     {
         printf("game 6 selected\n");
-        memcpy(memory_region(space->machine, "mtbios")+0x8000, memory_region(space->machine, "user6"), 0x8000);
+        memcpy(memory_region(space->machine, "mtbios") + 0x8000, memory_region(space->machine, "user6"), 0x8000);
     }
     else
     {
-        memset(memory_region(space->machine, "mtbios")+0x8000, 0x00, 0x8000);
+        memset(memory_region(space->machine, "mtbios" )+ 0x8000, 0x00, 0x8000);
     }
 */
 
@@ -481,54 +375,50 @@ static READ8_HANDLER( bios_ctrl_r )
 	if(offset == 0)
 		return 0;
 	if(offset == 2)
-		return bios_ctrl[offset] & 0xfe;
+		return mtech_bios.bios_ctrl[offset] & 0xfe;
 
-	return bios_ctrl[offset];
+	return mtech_bios.bios_ctrl[offset];
 }
 
 static WRITE8_HANDLER( bios_ctrl_w )
 {
 	if(offset == 1)
 	{
-		bios_ctrl_inputs = data & 0x04;  // Genesis/SMS input ports disable bit
+		mtech_bios.bios_ctrl_inputs = data & 0x04;  // Genesis/SMS input ports disable bit
 	}
-	bios_ctrl[offset] = data;
+	mtech_bios.bios_ctrl[offset] = data;
 }
 
-
-static int mt_bank_bank_pos = 0;
-static int mt_bank_partial = 0;
-static int mt_bank_addr = 0;
 
 /* this sets 0x300000 which may indicate that the 68k can see the instruction rom
    there, this limiting the max game rom capacity to 3meg. */
 static WRITE8_HANDLER (mt_z80_bank_w)
 {
-	mt_bank_partial |= (data & 0x01)<<23; // add new bit to partial address
-	mt_bank_bank_pos++;
+	mtech_bios.mt_bank_partial |= (data & 0x01) << 23; // add new bit to partial address
+	mtech_bios.mt_bank_bank_pos++;
 
-	if (mt_bank_bank_pos<9)
+	if (mtech_bios.mt_bank_bank_pos < 9)
 	{
-		mt_bank_partial >>= 1;
+		mtech_bios.mt_bank_partial >>= 1;
 	}
 	else
 	{
-		mt_bank_bank_pos = 0;
-		mt_bank_addr = mt_bank_partial;
-		mt_bank_partial = 0;
-		printf("MT z80 bank set to %08x\n",mt_bank_addr);
+		mtech_bios.mt_bank_bank_pos = 0;
+		mtech_bios.mt_bank_addr = mtech_bios.mt_bank_partial;
+		mtech_bios.mt_bank_partial = 0;
+		printf("MT z80 bank set to %08x\n", mtech_bios.mt_bank_addr);
 
 	}
 }
 
 static READ8_HANDLER( megatech_banked_ram_r )
 {
-	return megatech_banked_ram[offset + 0x1000 * (mt_cart_select_reg&0x7) ];
+	return megatech_banked_ram[offset + 0x1000 * (mtech_bios.mt_cart_select_reg & 0x07)];
 }
 
 static WRITE8_HANDLER( megatech_banked_ram_w )
 {
-	megatech_banked_ram[offset + 0x1000 * (mt_cart_select_reg&0x7) ] = data;
+	megatech_banked_ram[offset + 0x1000 * (mtech_bios.mt_cart_select_reg & 0x07)] = data;
 }
 
 
@@ -553,19 +443,19 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER (megatech_bios_port_ctrl_w)
 {
-	bios_port_ctrl = data;
+	mtech_bios.bios_port_ctrl = data;
 }
 
 static READ8_HANDLER (megatech_bios_joypad_r)
 {
-	return megatech_bios_port_cc_dc_r(space->machine,offset,bios_port_ctrl);
+	return megatech_bios_port_cc_dc_r(space->machine, offset, mtech_bios.bios_port_ctrl);
 }
 
 
 
 static WRITE8_HANDLER (megatech_bios_port_7f_w)
 {
-//  popmessage("CPU #3: I/O port 0x7F write, data %02x",data);
+//  popmessage("CPU #3: I/O port 0x7F write, data %02x", data);
 }
 
 
@@ -604,7 +494,7 @@ static VIDEO_UPDATE(mtnew)
 	if (screen == megadriv_screen)
 	{
 		/* if we're running an sms game then use the SMS update.. maybe this should be moved to the megadrive emulation core as compatibility mode is a feature of the chip */
-		if (!current_game_is_sms) VIDEO_UPDATE_CALL(megadriv);
+		if (!mtech_bios.current_game_is_sms) VIDEO_UPDATE_CALL(megadriv);
 		else VIDEO_UPDATE_CALL(megatech_md_sms);
 	}
 	else if (screen == menu_screen) VIDEO_UPDATE_CALL(megatech_bios);
@@ -613,13 +503,17 @@ static VIDEO_UPDATE(mtnew)
 
 static VIDEO_EOF(mtnew)
 {
-	if (!current_game_is_sms) VIDEO_EOF_CALL(megadriv);
+	if (!mtech_bios.current_game_is_sms) VIDEO_EOF_CALL(megadriv);
 	else VIDEO_EOF_CALL(megatech_md_sms);
 	VIDEO_EOF_CALL(megatech_bios);
 }
 
 static MACHINE_RESET(mtnew)
 {
+	mtech_bios.mt_bank_bank_pos = 0;
+	mtech_bios.mt_bank_partial = 0;
+	mtech_bios.mt_bank_addr = 0;
+
 	MACHINE_RESET_CALL(megadriv);
 	MACHINE_RESET_CALL(megatech_bios);
 	MACHINE_RESET_CALL(megatech_md_sms);
@@ -1205,6 +1099,22 @@ ROM_START( mt_kcham ) /* Kid Chameleon */
 	MEGATECH_GAME60("game0", "inst0")
 ROM_END
 
+/* Game 61 - Turbo Outrun */
+#define MEGATECH_GAME61(GAME_REGION, INSTRUCTION_REGION) \
+	ROM_REGION16_BE( 0x300000, GAME_REGION, 0 ) \
+	ROM_LOAD16_WORD_SWAP( "epr-14674.ic1", 0x000000, 0x080000, CRC(453712a2) SHA1(5d2c8430a9a14aac7f19c22617539b0503ab92cd) ) \
+    MEGATECH_INSTRUCTION_REGION( INSTRUCTION_REGION, MEGATECH_GAME_IS_GEN ) \
+	ROM_LOAD( "epr-12368-61.ic2", 0x000000, 0x08000, CRC(4aa0b2a2) SHA1(bce03f88d6cfd02683d51c28058f6229fda13b49) ) \
+
+// original dump of epr-14674.ic1 had CRC(c2b9a802) SHA1(108cc844c944125f9d271a2f2db094301294e8c2)
+// with the byte at offset 3 being F6 instead of Fe, this seems like a bad dump when compared to the Genesis rom which
+// has been verified on multiple carts, chances are the ROM had developed a fault.
+
+ROM_START( mt_tout ) /* Turbo Outrun */
+	MEGATECH_BIOS
+	MEGATECH_GAME61("game0", "inst0")
+ROM_END
+
 /* Game 62 - Sonic The Hedgehog 2 */
 #define MEGATECH_GAME62(GAME_REGION, INSTRUCTION_REGION) \
 	ROM_REGION16_BE( 0x300000, GAME_REGION, 0 ) \
@@ -1308,7 +1218,7 @@ ROM_END
 /* 58 */ GAME( 1991, mt_stf,   megatech, megatech, megatech, mtnew, ROT0, "Sega",                  "Joe Montana II: Sports Talk Football (Mega-Tech)", GAME_NOT_WORKING )
 /* 59 */ GAME( 1991, mt_mlh,   megatech, megatech, megatech, mtnew, ROT0, "Sega",                  "Mario Lemieux Hockey (Mega-Tech)", GAME_NOT_WORKING )
 /* 60 */ GAME( 1992, mt_kcham, megatech, megatech, megatech, mtnew, ROT0, "Sega",                  "Kid Chameleon (Mega-Tech)", GAME_NOT_WORKING )
-/* 61 */ // Turbo Outrun
+/* 61 */ GAME( 1992, mt_tout,  megatech, megatech, megatech, mtnew, ROT0, "Sega",                  "Turbo Outrun (Mega-Tech)", GAME_NOT_WORKING )
 /* 62 */ GAME( 1992, mt_soni2, megatech, megatech, megatech, mtnew, ROT0, "Sega",                  "Sonic The Hedgehog 2 (Mega-Tech)", GAME_NOT_WORKING )
 
 /* more? */

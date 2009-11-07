@@ -99,12 +99,10 @@ static UINT32 dasm_wrapped(const device_config *device, char *buffer, offs_t pc)
 
 /* expression handlers */
 static UINT64 expression_read_memory(void *param, const char *name, int space, UINT32 address, int size);
-static UINT64 expression_read_address_space(const address_space *space, offs_t address, int size);
 static UINT64 expression_read_program_direct(const address_space *space, int opcode, offs_t address, int size);
 static UINT64 expression_read_memory_region(running_machine *machine, const char *rgntag, offs_t address, int size);
 static UINT64 expression_read_eeprom(running_machine *machine, offs_t address, int size);
 static void expression_write_memory(void *param, const char *name, int space, UINT32 address, int size, UINT64 data);
-static void expression_write_address_space(const address_space *space, offs_t address, int size, UINT64 data);
 static void expression_write_program_direct(const address_space *space, int opcode, offs_t address, int size, UINT64 data);
 static void expression_write_memory_region(running_machine *machine, const char *rgntag, offs_t address, int size, UINT64 data);
 static void expression_write_eeprom(running_machine *machine, offs_t address, int size, UINT64 data);
@@ -371,11 +369,13 @@ symbol_table *debug_cpu_get_symtable(const device_config *device)
 
 int debug_cpu_translate(const address_space *space, int intention, offs_t *address)
 {
-	cpu_debug_data *info = cpu_get_debug_data(space->cpu);
-	if (info->translate != NULL)
-		return (*info->translate)(space->cpu, space->spacenum, intention, address);
-	else
-		return TRUE;
+	if (space->cpu != NULL && space->cpu->type == CPU)
+	{
+		cpu_debug_data *info = cpu_get_debug_data(space->cpu);
+		if (info->translate != NULL)
+			return (*info->translate)(space->cpu, space->spacenum, intention, address);
+	}
+	return TRUE;
 }
 
 
@@ -1336,8 +1336,8 @@ int debug_cpu_hotspot_track(const device_config *device, int numspots, int thres
 
 UINT8 debug_read_byte(const address_space *space, offs_t address, int apply_translation)
 {
+	cpu_debug_data *info = (space->cpu->type == CPU) ? cpu_get_debug_data(space->cpu) : NULL;
 	debugcpu_private *global = space->machine->debugcpu_data;
-	cpu_debug_data *info = cpu_get_debug_data(space->cpu);
 	UINT64 custom;
 	UINT8 result;
 
@@ -1352,7 +1352,7 @@ UINT8 debug_read_byte(const address_space *space, offs_t address, int apply_tran
 		result = 0xff;
 
 	/* if there is a custom read handler, and it returns TRUE, use that value */
-	else if (info->read != NULL && (*info->read)(space->cpu, space->spacenum, address, 1, &custom))
+	else if (info != NULL && info->read != NULL && (*info->read)(space->cpu, space->spacenum, address, 1, &custom))
 		result = custom;
 
 	/* otherwise, call the byte reading function for the translated address */
@@ -1394,7 +1394,7 @@ UINT16 debug_read_word(const address_space *space, offs_t address, int apply_tra
 	/* otherwise, this proceeds like the byte case */
 	else
 	{
-		cpu_debug_data *info = cpu_get_debug_data(space->cpu);
+		cpu_debug_data *info = (space->cpu->type == CPU) ? cpu_get_debug_data(space->cpu) : NULL;
 		UINT64 custom;
 
 		/* all accesses from this point on are for the debugger */
@@ -1405,7 +1405,7 @@ UINT16 debug_read_word(const address_space *space, offs_t address, int apply_tra
 			result = 0xffff;
 
 		/* if there is a custom read handler, and it returns TRUE, use that value */
-		else if (info->read != NULL && (*info->read)(space->cpu, space->spacenum, address, 2, &custom))
+		else if (info != NULL && info->read != NULL && (*info->read)(space->cpu, space->spacenum, address, 2, &custom))
 			result = custom;
 
 		/* otherwise, call the byte reading function for the translated address */
@@ -1449,7 +1449,7 @@ UINT32 debug_read_dword(const address_space *space, offs_t address, int apply_tr
 	/* otherwise, this proceeds like the byte case */
 	else
 	{
-		cpu_debug_data *info = cpu_get_debug_data(space->cpu);
+		cpu_debug_data *info = (space->cpu->type == CPU) ? cpu_get_debug_data(space->cpu) : NULL;
 		UINT64 custom;
 
 		/* all accesses from this point on are for the debugger */
@@ -1460,7 +1460,7 @@ UINT32 debug_read_dword(const address_space *space, offs_t address, int apply_tr
 			result = 0xffffffff;
 
 		/* if there is a custom read handler, and it returns TRUE, use that value */
-		else if (info->read != NULL && (*info->read)(space->cpu, space->spacenum, address, 4, &custom))
+		else if (info != NULL && info->read != NULL && (*info->read)(space->cpu, space->spacenum, address, 4, &custom))
 			result = custom;
 
 		/* otherwise, call the byte reading function for the translated address */
@@ -1504,7 +1504,7 @@ UINT64 debug_read_qword(const address_space *space, offs_t address, int apply_tr
 	/* otherwise, this proceeds like the byte case */
 	else
 	{
-		cpu_debug_data *info = cpu_get_debug_data(space->cpu);
+		cpu_debug_data *info = (space->cpu->type == CPU) ? cpu_get_debug_data(space->cpu) : NULL;
 		UINT64 custom;
 
 		/* all accesses from this point on are for the debugger */
@@ -1515,7 +1515,7 @@ UINT64 debug_read_qword(const address_space *space, offs_t address, int apply_tr
 			result = ~(UINT64)0;
 
 		/* if there is a custom read handler, and it returns TRUE, use that value */
-		else if (info->read != NULL && (*info->read)(space->cpu, space->spacenum, address, 8, &custom))
+		else if (info != NULL && info->read != NULL && (*info->read)(space->cpu, space->spacenum, address, 8, &custom))
 			result = custom;
 
 		/* otherwise, call the byte reading function for the translated address */
@@ -1556,8 +1556,8 @@ UINT64 debug_read_memory(const address_space *space, offs_t address, int size, i
 
 void debug_write_byte(const address_space *space, offs_t address, UINT8 data, int apply_translation)
 {
+	cpu_debug_data *info = (space->cpu->type == CPU) ? cpu_get_debug_data(space->cpu) : NULL;
 	debugcpu_private *global = space->machine->debugcpu_data;
-	cpu_debug_data *info = cpu_get_debug_data(space->cpu);
 
 	/* mask against the logical byte mask */
 	address &= space->logbytemask;
@@ -1570,7 +1570,7 @@ void debug_write_byte(const address_space *space, offs_t address, UINT8 data, in
 		;
 
 	/* if there is a custom write handler, and it returns TRUE, use that */
-	else if (info->write != NULL && (*info->write)(space->cpu, space->spacenum, address, 1, data))
+	else if (info != NULL && info->write != NULL && (*info->write)(space->cpu, space->spacenum, address, 1, data))
 		;
 
 	/* otherwise, call the byte reading function for the translated address */
@@ -1613,7 +1613,7 @@ void debug_write_word(const address_space *space, offs_t address, UINT16 data, i
 	/* otherwise, this proceeds like the byte case */
 	else
 	{
-		cpu_debug_data *info = cpu_get_debug_data(space->cpu);
+		cpu_debug_data *info = (space->cpu->type == CPU) ? cpu_get_debug_data(space->cpu) : NULL;
 
 		/* all accesses from this point on are for the debugger */
 		memory_set_debugger_access(space, global->debugger_access = TRUE);
@@ -1623,7 +1623,7 @@ void debug_write_word(const address_space *space, offs_t address, UINT16 data, i
 			;
 
 		/* if there is a custom write handler, and it returns TRUE, use that */
-		else if (info->write != NULL && (*info->write)(space->cpu, space->spacenum, address, 2, data))
+		else if (info != NULL && info->write != NULL && (*info->write)(space->cpu, space->spacenum, address, 2, data))
 			;
 
 		/* otherwise, call the byte reading function for the translated address */
@@ -1667,7 +1667,7 @@ void debug_write_dword(const address_space *space, offs_t address, UINT32 data, 
 	/* otherwise, this proceeds like the byte case */
 	else
 	{
-		cpu_debug_data *info = cpu_get_debug_data(space->cpu);
+		cpu_debug_data *info = (space->cpu->type == CPU) ? cpu_get_debug_data(space->cpu) : NULL;
 
 		/* all accesses from this point on are for the debugger */
 		memory_set_debugger_access(space, global->debugger_access = TRUE);
@@ -1677,7 +1677,7 @@ void debug_write_dword(const address_space *space, offs_t address, UINT32 data, 
 			;
 
 		/* if there is a custom write handler, and it returns TRUE, use that */
-		else if (info->write != NULL && (*info->write)(space->cpu, space->spacenum, address, 4, data))
+		else if (info != NULL && info->write != NULL && (*info->write)(space->cpu, space->spacenum, address, 4, data))
 			;
 
 		/* otherwise, call the byte reading function for the translated address */
@@ -1721,7 +1721,7 @@ void debug_write_qword(const address_space *space, offs_t address, UINT64 data, 
 	/* otherwise, this proceeds like the byte case */
 	else
 	{
-		cpu_debug_data *info = cpu_get_debug_data(space->cpu);
+		cpu_debug_data *info = (space->cpu->type == CPU) ? cpu_get_debug_data(space->cpu) : NULL;
 
 		/* all accesses from this point on are for the debugger */
 		memory_set_debugger_access(space, global->debugger_access = TRUE);
@@ -1731,7 +1731,7 @@ void debug_write_qword(const address_space *space, offs_t address, UINT64 data, 
 			;
 
 		/* if there is a custom write handler, and it returns TRUE, use that */
-		else if (info->write != NULL && (*info->write)(space->cpu, space->spacenum, address, 8, data))
+		else if (info != NULL && info->write != NULL && (*info->write)(space->cpu, space->spacenum, address, 8, data))
 			;
 
 		/* otherwise, call the byte reading function for the translated address */
@@ -1779,14 +1779,12 @@ UINT64 debug_read_opcode(const address_space *space, offs_t address, int size, i
 	/* shortcut if we have a custom routine */
 	if (info->readop != NULL)
 	{
-		UINT64 result;
-
 		/* return early if we got the result directly */
 		memory_set_debugger_access(space, global->debugger_access = TRUE);
-		if ((*info->readop)(space->cpu, address, size, &result))
+		if ((*info->readop)(space->cpu, address, size, &result2))
 		{
 			memory_set_debugger_access(space, global->debugger_access = FALSE);
-			return result;
+			return result2;
 		}
 	}
 
@@ -2461,21 +2459,40 @@ static const device_config *expression_cpu_index(running_machine *machine, const
     space
 -------------------------------------------------*/
 
-static UINT64 expression_read_memory(void *param, const char *name, int space, UINT32 address, int size)
+static UINT64 expression_read_memory(void *param, const char *name, int spacenum, UINT32 address, int size)
 {
 	running_machine *machine = (running_machine *)param;
+	UINT64 result = ~(UINT64)0 >> (64 - 8*size);
 	const device_config *cpu = NULL;
+	const address_space *space;
 
-	switch (space)
+	switch (spacenum)
 	{
-		case EXPSPACE_PROGRAM:
-		case EXPSPACE_DATA:
-		case EXPSPACE_IO:
+		case EXPSPACE_PROGRAM_LOGICAL:
+		case EXPSPACE_DATA_LOGICAL:
+		case EXPSPACE_IO_LOGICAL:
+		case EXPSPACE_SPACE3_LOGICAL:
 			if (name != NULL)
 				cpu = expression_cpu_index(machine, name);
 			if (cpu == NULL)
 				cpu = debug_cpu_get_visible_cpu(machine);
-			return expression_read_address_space(cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM + (space - EXPSPACE_PROGRAM)), address, size);
+			space = cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM + (spacenum - EXPSPACE_PROGRAM_LOGICAL));
+			if (space != NULL)
+				result = debug_read_memory(space, memory_address_to_byte(space, address), size, TRUE);
+			break;
+
+		case EXPSPACE_PROGRAM_PHYSICAL:
+		case EXPSPACE_DATA_PHYSICAL:
+		case EXPSPACE_IO_PHYSICAL:
+		case EXPSPACE_SPACE3_PHYSICAL:
+			if (name != NULL)
+				cpu = expression_cpu_index(machine, name);
+			if (cpu == NULL)
+				cpu = debug_cpu_get_visible_cpu(machine);
+			space = cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM + (spacenum - EXPSPACE_PROGRAM_PHYSICAL));
+			if (space != NULL)
+				result = debug_read_memory(space, memory_address_to_byte(space, address), size, FALSE);
+			break;
 
 		case EXPSPACE_OPCODE:
 		case EXPSPACE_RAMWRITE:
@@ -2483,31 +2500,19 @@ static UINT64 expression_read_memory(void *param, const char *name, int space, U
 				cpu = expression_cpu_index(machine, name);
 			if (cpu == NULL)
 				cpu = debug_cpu_get_visible_cpu(machine);
-			return expression_read_program_direct(cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM), (space == EXPSPACE_OPCODE), address, size);
+			result = expression_read_program_direct(cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM), (spacenum == EXPSPACE_OPCODE), address, size);
+			break;
 
 		case EXPSPACE_EEPROM:
-			return expression_read_eeprom(machine, address, size);
+			result = expression_read_eeprom(machine, address, size);
+			break;
 
 		case EXPSPACE_REGION:
 			if (name == NULL)
 				break;
-			return expression_read_memory_region(machine, name, address, size);
+			result = expression_read_memory_region(machine, name, address, size);
+			break;
 	}
-	return ~(UINT64)0 >> (64 - 8*size);
-}
-
-
-/*-------------------------------------------------
-    expression_read_address_space - read memory
-    from a specific CPU's address space
--------------------------------------------------*/
-
-static UINT64 expression_read_address_space(const address_space *space, offs_t address, int size)
-{
-	UINT64 result = ~(UINT64)0 >> (64 - 8*size);
-
-	if (space != NULL)
-		result = debug_read_memory(space, memory_address_to_byte(space, address), size, TRUE);
 	return result;
 }
 
@@ -2654,21 +2659,38 @@ static UINT64 expression_read_eeprom(running_machine *machine, offs_t address, i
     space
 -------------------------------------------------*/
 
-static void expression_write_memory(void *param, const char *name, int space, UINT32 address, int size, UINT64 data)
+static void expression_write_memory(void *param, const char *name, int spacenum, UINT32 address, int size, UINT64 data)
 {
 	running_machine *machine = (running_machine *)param;
 	const device_config *cpu = NULL;
+	const address_space *space;
 
-	switch (space)
+	switch (spacenum)
 	{
-		case EXPSPACE_PROGRAM:
-		case EXPSPACE_DATA:
-		case EXPSPACE_IO:
+		case EXPSPACE_PROGRAM_LOGICAL:
+		case EXPSPACE_DATA_LOGICAL:
+		case EXPSPACE_IO_LOGICAL:
+		case EXPSPACE_SPACE3_LOGICAL:
 			if (name != NULL)
 				cpu = expression_cpu_index(machine, name);
 			if (cpu == NULL)
 				cpu = debug_cpu_get_visible_cpu(machine);
-			expression_write_address_space(cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM + (space - EXPSPACE_PROGRAM)), address, size, data);
+			space = cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM + (spacenum - EXPSPACE_PROGRAM_LOGICAL));
+			if (space != NULL)
+				debug_write_memory(space, memory_address_to_byte(space, address), data, size, TRUE);
+			break;
+
+		case EXPSPACE_PROGRAM_PHYSICAL:
+		case EXPSPACE_DATA_PHYSICAL:
+		case EXPSPACE_IO_PHYSICAL:
+		case EXPSPACE_SPACE3_PHYSICAL:
+			if (name != NULL)
+				cpu = expression_cpu_index(machine, name);
+			if (cpu == NULL)
+				cpu = debug_cpu_get_visible_cpu(machine);
+			space = cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM + (spacenum - EXPSPACE_PROGRAM_PHYSICAL));
+			if (space != NULL)
+				debug_write_memory(space, memory_address_to_byte(space, address), data, size, FALSE);
 			break;
 
 		case EXPSPACE_OPCODE:
@@ -2677,7 +2699,7 @@ static void expression_write_memory(void *param, const char *name, int space, UI
 				cpu = expression_cpu_index(machine, name);
 			if (cpu == NULL)
 				cpu = debug_cpu_get_visible_cpu(machine);
-			expression_write_program_direct(cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM), (space == EXPSPACE_OPCODE), address, size, data);
+			expression_write_program_direct(cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM), (spacenum == EXPSPACE_OPCODE), address, size, data);
 			break;
 
 		case EXPSPACE_EEPROM:
@@ -2690,18 +2712,6 @@ static void expression_write_memory(void *param, const char *name, int space, UI
 			expression_write_memory_region(machine, name, address, size, data);
 			break;
 	}
-}
-
-
-/*-------------------------------------------------
-    expression_write_address_space - write memory
-    to a specific CPU's address space
--------------------------------------------------*/
-
-static void expression_write_address_space(const address_space *space, offs_t address, int size, UINT64 data)
-{
-	if (space != NULL)
-		debug_write_memory(space, memory_address_to_byte(space, address), data, size, TRUE);
 }
 
 
@@ -2881,9 +2891,10 @@ static EXPRERR expression_validate(void *param, const char *name, int space)
 
 	switch (space)
 	{
-		case EXPSPACE_PROGRAM:
-		case EXPSPACE_DATA:
-		case EXPSPACE_IO:
+		case EXPSPACE_PROGRAM_LOGICAL:
+		case EXPSPACE_DATA_LOGICAL:
+		case EXPSPACE_IO_LOGICAL:
+		case EXPSPACE_SPACE3_LOGICAL:
 			if (name != NULL)
 			{
 				cpu = expression_cpu_index(machine, name);
@@ -2892,7 +2903,23 @@ static EXPRERR expression_validate(void *param, const char *name, int space)
 			}
 			if (cpu == NULL)
 				cpu = debug_cpu_get_visible_cpu(machine);
-			if (cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM + (space - EXPSPACE_PROGRAM)) == NULL)
+			if (cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM + (space - EXPSPACE_PROGRAM_LOGICAL)) == NULL)
+				return EXPRERR_NO_SUCH_MEMORY_SPACE;
+			break;
+
+		case EXPSPACE_PROGRAM_PHYSICAL:
+		case EXPSPACE_DATA_PHYSICAL:
+		case EXPSPACE_IO_PHYSICAL:
+		case EXPSPACE_SPACE3_PHYSICAL:
+			if (name != NULL)
+			{
+				cpu = expression_cpu_index(machine, name);
+				if (cpu == NULL)
+					return EXPRERR_INVALID_MEMORY_NAME;
+			}
+			if (cpu == NULL)
+				cpu = debug_cpu_get_visible_cpu(machine);
+			if (cpu_get_address_space(cpu, ADDRESS_SPACE_PROGRAM + (space - EXPSPACE_PROGRAM_PHYSICAL)) == NULL)
 				return EXPRERR_NO_SUCH_MEMORY_SPACE;
 			break;
 

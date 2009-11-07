@@ -6,30 +6,30 @@
     Visit http://mamedev.org for licensing and usage restrictions.
 
 **********************************************************************
-							________________
-			INLACE	 1	---|	   \/		|---  40  Vdd
-		   CLK IN_	 2	---|				|---  39  AUD
-		  CLR OUT_	 3	---|				|---  38  CLR IN_
-			   AOE	 4	---|				|---  37  DMA0_
-			   SC1	 5	---|				|---  36  INT_
-			   SC0	 6	---|				|---  35  TPA
-			  MRD_	 7	---|				|---  34  TPB
-			 BUS 7	 8	---|				|---  33  EVS
-			 BUS 6	 9	---|				|---  32  V SYNC
-			 BUS 5	10	---|	CDP1864C    |---  31  H SYNC
-			 BUS 4	11	---|	top view	|---  30  C SYNC_
-			 BUS 3	12	---|				|---  29  RED
-			 BUS 2	13	---|				|---  28  BLUE
-			 BUS 1	14	---|				|---  27  GREEN
-			 BUS 0	15	---|				|---  26  BCK GND_
-			  CON_	16	---|				|---  25  BURST
-				N2	17	---|				|---  24  ALT
-			   EF_	18	---|				|---  23  R DATA
-				N0	19	---|				|---  22  G DATA
-			   Vss	20	---|________________|---  21  B DATA
+                            ________________
+            INLACE   1  ---|       \/       |---  40  Vdd
+           CLK IN_   2  ---|                |---  39  AUD
+          CLR OUT_   3  ---|                |---  38  CLR IN_
+               AOE   4  ---|                |---  37  DMA0_
+               SC1   5  ---|                |---  36  INT_
+               SC0   6  ---|                |---  35  TPA
+              MRD_   7  ---|                |---  34  TPB
+             BUS 7   8  ---|                |---  33  EVS
+             BUS 6   9  ---|                |---  32  V SYNC
+             BUS 5  10  ---|    CDP1864C    |---  31  H SYNC
+             BUS 4  11  ---|    top view    |---  30  C SYNC_
+             BUS 3  12  ---|                |---  29  RED
+             BUS 2  13  ---|                |---  28  BLUE
+             BUS 1  14  ---|                |---  27  GREEN
+             BUS 0  15  ---|                |---  26  BCK GND_
+              CON_  16  ---|                |---  25  BURST
+                N2  17  ---|                |---  24  ALT
+               EF_  18  ---|                |---  23  R DATA
+                N0  19  ---|                |---  22  G DATA
+               Vss  20  ---|________________|---  21  B DATA
 
 
-		   http://homepage.mac.com/ruske/cosmacelf/cdp1864.pdf
+           http://homepage.mac.com/ruske/cosmacelf/cdp1864.pdf
 
 **********************************************************************/
 
@@ -82,6 +82,11 @@
 	MDRV_DEVICE_CONFIG_DATAPTR(sound_config, type, SOUND_CDP1864) \
 	MDRV_DEVICE_CONFIG(_config)
 
+#define MDRV_CDP1864_SCREEN_ADD(_tag, _clock) \
+	MDRV_SCREEN_ADD(_tag, RASTER) \
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16) \
+	MDRV_SCREEN_RAW_PARAMS(_clock, CDP1864_SCREEN_WIDTH, CDP1864_HBLANK_END, CDP1864_HBLANK_START, CDP1864_TOTAL_SCANLINES, CDP1864_SCANLINE_VBLANK_END, CDP1864_SCANLINE_VBLANK_START)
+
 #define CDP1864_INTERFACE(name) \
 	const cdp1864_interface (name) =
 
@@ -89,11 +94,11 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef enum _cdp1864_format cdp1864_format;
 enum _cdp1864_format {
 	CDP1864_NON_INTERLACED = 0,
 	CDP1864_INTERLACED
 };
+typedef enum _cdp1864_format cdp1864_format;
 
 typedef struct _cdp1864_interface cdp1864_interface;
 struct _cdp1864_interface

@@ -1343,6 +1343,7 @@ WRITE16_HANDLER( namco_rozcontrol16_w )
 	COMBINE_DATA( &rozcontrol16[offset] );
 } /* namco_rozcontrol16_w */
 
+#ifdef UNUSED_FUNCTION
 READ16_HANDLER( namco_rozbank16_r )
 {
 	return rozbank16[offset];
@@ -1361,6 +1362,7 @@ WRITE16_HANDLER( namco_rozbank16_w )
 		}
 	}
 } /* namco_rozbank16_w */
+#endif
 
 static void
 writerozvideo( int offset, UINT16 data )
@@ -1520,11 +1522,7 @@ static const gfx_layout RoadTileLayout =
 	ROAD_TILE_SIZE,	ROAD_TILE_SIZE,
 	ROAD_TILE_COUNT_MAX,
 	2,
-#ifndef LSB_FIRST
-	{ 0,8 },
-#else
-	{ 8,0 },
-#endif
+	{ NATIVE_ENDIAN_VALUE_LE_BE(0,8), NATIVE_ENDIAN_VALUE_LE_BE(8,0) },
 	{/* x offset */
 		0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
 		0x10,0x11,0x12,0x13,0x14,0x15,0x16,0x17

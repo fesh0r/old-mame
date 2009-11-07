@@ -77,16 +77,26 @@ static int scsihd_exec_command( SCSIInstance *scsiInstance, UINT8 *statusCode )
 
 		case 0x28: // READ(10)
 			our_this->lba = command[2]<<24 | command[3]<<16 | command[4]<<8 | command[5];
-			our_this->blocks = command[6]<<24 | command[7]<<16 | command[8]<<8 | command[9];
+			our_this->blocks = SCSILengthFromUINT16( &command[7] );
 
 			logerror("SCSIHD: READ at LBA %x for %x blocks\n", our_this->lba, our_this->blocks);
 
 			SCSISetPhase( scsiInstance, SCSI_PHASE_DATAIN );
 			return our_this->blocks * 512;
 
-		case 0xa8: // READ(12)
+		case 0x2a: // WRITE (10)
 			our_this->lba = command[2]<<24 | command[3]<<16 | command[4]<<8 | command[5];
 			our_this->blocks = SCSILengthFromUINT16( &command[7] );
+
+			logerror("SCSIHD: WRITE to LBA %x for %x blocks\n", our_this->lba, our_this->blocks);
+
+			SCSISetPhase( scsiInstance, SCSI_PHASE_DATAOUT );
+
+			return our_this->blocks * 512;
+
+		case 0xa8: // READ(12)
+			our_this->lba = command[2]<<24 | command[3]<<16 | command[4]<<8 | command[5];
+			our_this->blocks = command[6]<<24 | command[7]<<16 | command[8]<<8 | command[9];
 
 			logerror("SCSIHD: READ at LBA %x for %x blocks\n", our_this->lba, our_this->blocks);
 
@@ -105,6 +115,13 @@ static void scsihd_read_data( SCSIInstance *scsiInstance, UINT8 *data, int dataL
 	int commandLength;
 	SCSIHd *our_this = (SCSIHd *)SCSIThis( &SCSIClassHARDDISK, scsiInstance );
 	SCSIGetCommand( scsiInstance, &command, &commandLength );
+
+	// if we're a drive without a disk, return all zeroes
+	if (!our_this->disk)
+	{
+		memset(data, 0, dataLength);
+		return;
+	}
 
 	switch ( command[0] )
 	{
@@ -197,6 +214,11 @@ static void scsihd_write_data( SCSIInstance *scsiInstance, UINT8 *data, int data
 	SCSIHd *our_this = (SCSIHd *)SCSIThis( &SCSIClassHARDDISK, scsiInstance );
 	SCSIGetCommand( scsiInstance, &command, &commandLength );
 
+	if (!our_this->disk)
+	{
+		return;
+	}
+
 	switch ( command[0] )
 	{
 		case 0x0a: // WRITE(6)
@@ -238,12 +260,12 @@ static void scsihd_alloc_instance( SCSIInstance *scsiInstance, const char *diskr
 	our_this->disk = mess_hd_get_hard_disk_file( devtag_get_device( machine, diskregion ) );
 #else
 	our_this->disk = hard_disk_open(get_disk_handle( machine, diskregion ));
+#endif
 
 	if (!our_this->disk)
 	{
 		logerror("SCSIHD: no HD found!\n");
 	}
-#endif
 }
 
 static void scsihd_delete_instance( SCSIInstance *scsiInstance )

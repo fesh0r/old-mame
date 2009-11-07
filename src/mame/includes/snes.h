@@ -51,6 +51,7 @@
 #define SNES_CGRAM_SIZE		0x202	/* 256 16-bit colours + 1 tacked on 16-bit colour for fixed colour */
 #define SNES_OAM_SIZE		0x440	/* 1088 bytes of Object Attribute Memory */
 #define SNES_SPCRAM_SIZE	0x10000	/* 64kb of spc700 ram */
+#define SNES_EXROM_START	0x1000000
 #define FIXED_COLOUR		256		/* Position in cgram for fixed colour */
 /* Definitions for PPU Memory-Mapped registers */
 #define INIDISP			0x2100
@@ -410,6 +411,7 @@ extern WRITE8_HANDLER( superfx_w_bank3 );
 WRITE_LINE_DEVICE_HANDLER( snes_extern_irq_w );
 
 extern UINT8 snes_has_addon_chip;
+extern UINT32 snes_rom_size;
 extern UINT16 snes_htmult;
 
 extern void snes_gdma( const address_space *space, UINT8 channels );
@@ -542,8 +544,6 @@ extern READ8_HANDLER( spc_ipl_r );
 extern DEVICE_GET_INFO( snes_sound );
 #define SOUND_SNES DEVICE_GET_INFO_NAME( snes_sound )
 
-extern STREAM_UPDATE( snes_sh_update );
-
 /* Stuff from OpenSPC 0.3.99 by Brad Martin */
 
 /*========== TYPES ==========*/
@@ -605,6 +605,7 @@ typedef struct                      /* Source directory entry       */
 
 extern struct SNES_PPU_STRUCT snes_ppu;
 
+extern VIDEO_START( snes );
 extern VIDEO_UPDATE( snes );
 
 

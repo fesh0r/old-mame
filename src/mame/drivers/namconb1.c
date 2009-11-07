@@ -6,8 +6,7 @@ Notes:
 
 ToDo:
 - gunbulet force feedback
-- MCU simulation (coin/inputs) is incomplete; it doesn't handle coinage
-- sound support
+- music tempo is too fast in Nebulas Ray, JLS V-Shoot and the Great Sluggers games
 
 Main CPU : Motorola 68020 32-bit processor @ 25MHz
 Secondary CPUs : C329 + 137 (both custom)
@@ -281,7 +280,6 @@ GFX:                Custom 145     ( 80 pin PQFP)
 #define NB1_NVMEM_SIZE (0x800)
 static UINT32 *nvmem32;
 
-UINT32 *namconb1_workram32;
 UINT32 *namconb1_spritebank32;
 UINT32 *namconb1_tilebank32;
 static UINT16 *namconb_shareram;
@@ -897,10 +895,12 @@ static WRITE16_HANDLER( nbmcu_shared_w )
 	// HACK!  Many games data ROM routines redirect the vector from the sound command read to an RTS.
 	// This needs more investigation.  nebulray and vshoot do NOT do this.
 	// Timers A2 and A3 are set up in "external input counter" mode, this may be related.
+#if 0
 	if ((offset == 0x647c/2) && (data != 0))
 	{
 		data = 0xd2f6;
 	}
+#endif
 
 	COMBINE_DATA(&namconb_shareram[offset]);
 

@@ -20,6 +20,8 @@
 /* Set to 1 to use faster custom mixer */
 #define		DK_USE_CUSTOM	(1)
 
+#define USE_LS629	(0)		/* set to use new LS624 code */
+
 /* Issue surrounded by this define need to be analyzed and
  * reviewed at a lator time.
  * Currently, the following issues exist:
@@ -335,8 +337,8 @@ static DISCRETE_RESET( dkong_custom_mixer )
 	context->r_total[0] = RES_2_PARALLEL(context->r_in[0] + DKONG_CUSTOM_R4, NE555_CV_R);
 	context->r_total[1] = RES_2_PARALLEL((context->r_in[1] + DKONG_CUSTOM_R4), NE555_CV_R);
 	/* precalculate charging exponents */
-	context->exp[0] = RC_CHARGE_EXP(node, context->r_total[0] * DKONG_CUSTOM_C);
-	context->exp[1] = RC_CHARGE_EXP(node, context->r_total[1] * DKONG_CUSTOM_C);
+	context->exp[0] = RC_CHARGE_EXP(context->r_total[0] * DKONG_CUSTOM_C);
+	context->exp[1] = RC_CHARGE_EXP(context->r_total[1] * DKONG_CUSTOM_C);
 
 	node->output[0] = 0;
 }
@@ -361,16 +363,13 @@ static DISCRETE_SOUND_START(dkong2b)
 	DISCRETE_INPUT_NOT(DS_DISCHARGE_INV)
 	//DISCRETE_INPUT_DATA(DS_DAC)
 
-	/* Mixing - DAC */
-	DISCRETE_ADJUSTMENT_TAG(DS_ADJ_DAC, 0, 1, DISC_LINADJ, "VR2")
-
 	/************************************************/
 	/* Stomp                                        */
 	/************************************************/
 	/* Noise */
-	DISCRETE_TASK_START()
+	DISCRETE_TASK_START(1)
 	DISCRETE_LFSR_NOISE(NODE_11, 1, 1, CLOCK_2VF, 1.0, 0, 0.5, &dkong_lfsr)
-	DISCRETE_COUNTER(NODE_12, 1, 0, NODE_11, 7, DISC_COUNT_UP, 0, DISC_CLK_ON_R_EDGE)	/* LS161, IC 3J */
+	DISCRETE_COUNTER(NODE_12, 1, 0, NODE_11, 0, 7, DISC_COUNT_UP, 0, DISC_CLK_ON_R_EDGE)	/* LS161, IC 3J */
 	DISCRETE_TRANSFORM3(NODE_13,NODE_12,3,DK_SUP_V,"01>2*")
 
 	/* Stomp */
@@ -383,7 +382,7 @@ static DISCRETE_SOUND_START(dkong2b)
 	DISCRETE_DIODE_MIXER2(NODE_20, NODE_17, NODE_13, &dkong_diode_mix_table) /* D1, D2 + D3 */
 
 	DISCRETE_RCINTEGRATE(NODE_22,NODE_20,DK_R5, RES_2_PARALLEL(DK_R4+DK_R3,DK_R6),0,DK_C19,DK_SUP_V,DISC_RC_INTEGRATE_TYPE1)
-	DISCRETE_MULTIPLY(DS_OUT_SOUND0,1,NODE_22,DK_R3/R_SERIES(DK_R3,DK_R4))
+	DISCRETE_MULTIPLY(DS_OUT_SOUND0,NODE_22,DK_R3/R_SERIES(DK_R3,DK_R4))
 	DISCRETE_TASK_END()
 
 	/************************************************/
@@ -391,7 +390,7 @@ static DISCRETE_SOUND_START(dkong2b)
 	/************************************************/
 	/*  tt */
 	/* 4049B Inverter Oscillator build from 3 inverters */
-	DISCRETE_TASK_START()
+	DISCRETE_TASK_START(1)
 	DISCRETE_INVERTER_OSC(NODE_25,1,0,DK_R38,DK_R39,DK_C26,0,&dkong_inverter_osc_desc_jump)
 
 #if DK_USE_CUSTOM
@@ -417,13 +416,13 @@ static DISCRETE_SOUND_START(dkong2b)
 	DISCRETE_DIODE_MIXER2(NODE_38, NODE_35, NODE_29, &dkong_diode_mix_table)
 
 	DISCRETE_RCINTEGRATE(NODE_39,NODE_38,DK_R27, RES_2_PARALLEL(DK_R28,DK_R26+DK_R25),0,DK_C16,DK_SUP_V,DISC_RC_INTEGRATE_TYPE1)
-	DISCRETE_MULTIPLY(DS_OUT_SOUND1,1,NODE_39,DK_R25/(DK_R26+DK_R25))
+	DISCRETE_MULTIPLY(DS_OUT_SOUND1,NODE_39,DK_R25/(DK_R26+DK_R25))
 	DISCRETE_TASK_END()
 
 	/************************************************/
 	/* Walk                                         */
 	/************************************************/
-	DISCRETE_TASK_START()
+	DISCRETE_TASK_START(1)
 	DISCRETE_INVERTER_OSC(NODE_51,1,0,DK_R47,DK_R48,DK_C30,0,&dkong_inverter_osc_desc_walk)
 
 #if DK_USE_CUSTOM
@@ -442,15 +441,18 @@ static DISCRETE_SOUND_START(dkong2b)
 	/* Trigger */
 	DISCRETE_RCDISC_MODULATED(NODE_60,DS_SOUND0_INV,NODE_55,DK_R36,DK_R18,DK_R35,DK_R17,DK_C25,DK_SUP_V)
 	/* Filter and divide - omitted C22 */
-	DISCRETE_CRFILTER(NODE_61, 1, NODE_60, DK_R15+DK_R16, DK_C23)
-	DISCRETE_MULTIPLY(DS_OUT_SOUND2, 1, NODE_61, DK_R15/(DK_R15+DK_R16))
+	DISCRETE_CRFILTER(NODE_61, NODE_60, DK_R15+DK_R16, DK_C23)
+	DISCRETE_MULTIPLY(DS_OUT_SOUND2, NODE_61, DK_R15/(DK_R15+DK_R16))
 	DISCRETE_TASK_END()
 
 	/************************************************/
 	/* DAC                                          */
 	/************************************************/
 
-	DISCRETE_TASK_START()
+	DISCRETE_TASK_START(1)
+	/* Mixing - DAC */
+	DISCRETE_ADJUSTMENT_TAG(DS_ADJ_DAC, 0, 1, DISC_LINADJ, "VR2")
+
 	/* Buffer DAC first to input stream 0 */
 	DISCRETE_INPUT_BUFFER(DS_DAC, 0)
 	//DISCRETE_INPUT_DATA(DS_DAC)
@@ -470,9 +472,9 @@ static DISCRETE_SOUND_START(dkong2b)
 
 	/* Adjustment VR2 */
 #if DK_NO_FILTERS
-	DISCRETE_MULTIPLY(DS_OUT_DAC, 1, NODE_71, DS_ADJ_DAC)
+	DISCRETE_MULTIPLY(DS_OUT_DAC, NODE_71, DS_ADJ_DAC)
 #else
-	DISCRETE_MULTIPLY(DS_OUT_DAC, 1, NODE_73, DS_ADJ_DAC)
+	DISCRETE_MULTIPLY(DS_OUT_DAC, NODE_73, DS_ADJ_DAC)
 #endif
 	DISCRETE_TASK_END()
 
@@ -480,15 +482,17 @@ static DISCRETE_SOUND_START(dkong2b)
 	/* Amplifier                                    */
 	/************************************************/
 
+	DISCRETE_TASK_START(2)
+
 	DISCRETE_MIXER4(NODE_288, 1, DS_OUT_SOUND0, DS_OUT_SOUND1, DS_OUT_DAC, DS_OUT_SOUND2, &dkong_mixer_desc)
 
 	/* Amplifier: internal amplifier */
 	DISCRETE_ADDER2(NODE_289,1,NODE_288,5.0*43.0/(100.0+43.0))
 	DISCRETE_RCINTEGRATE(NODE_294,NODE_289,0,150,1000, CAP_U(33),DK_SUP_V,DISC_RC_INTEGRATE_TYPE3)
-	DISCRETE_CRFILTER(NODE_295,1,NODE_294, RES_K(50), DK_C13)
+	DISCRETE_CRFILTER(NODE_295,NODE_294, RES_K(50), DK_C13)
 	/*DISCRETE_CRFILTER(NODE_295,1,NODE_294, 1000, DK_C13) */
 	/* EZV20 equivalent filter circuit ... */
-	DISCRETE_CRFILTER(NODE_296,1,NODE_295, RES_K(1), CAP_U(4.7))
+	DISCRETE_CRFILTER(NODE_296,NODE_295, RES_K(1), CAP_U(4.7))
 #if DK_NO_FILTERS
 	DISCRETE_OUTPUT(NODE_288, 32767.0/5.0 * 10)
 #else
@@ -497,6 +501,7 @@ static DISCRETE_SOUND_START(dkong2b)
 	//DISCRETE_CSVLOG2(NODE_296, NODE_288)
 	//DISCRETE_WAVELOG1(NODE_296, 32767.0/5.0 * 3.41)
 #endif
+	DISCRETE_TASK_END()
 
 DISCRETE_SOUND_END
 
@@ -648,8 +653,8 @@ static DISCRETE_SOUND_START(radarscp)
 	/* SIGNALS                                      */
 	/************************************************/
 
-	DISCRETE_LOGIC_INVERT(DS_SOUND6,1,DS_SOUND6_INV)
-	DISCRETE_LOGIC_INVERT(DS_SOUND7,1,DS_SOUND7_INV)
+	DISCRETE_LOGIC_INVERT(DS_SOUND6,DS_SOUND6_INV)
+	DISCRETE_LOGIC_INVERT(DS_SOUND7,DS_SOUND7_INV)
 
 	/************************************************/
 	/* Noise                                      */
@@ -657,7 +662,7 @@ static DISCRETE_SOUND_START(radarscp)
 
 	DISCRETE_LFSR_NOISE(NODE_11, 1, 1, CLOCK_2VF, 1.0, 0, 0.5, &dkong_lfsr)
 	/* Clear (1) from SOUND6 */
-	DISCRETE_COUNTER(NODE_12, 1, DS_SOUND6_INV, NODE_11, 15, DISC_COUNT_UP, 0, DISC_CLK_ON_R_EDGE)	/* LS161, IC 3J */
+	DISCRETE_COUNTER(NODE_12, 1, DS_SOUND6_INV, NODE_11, 0, 15, DISC_COUNT_UP, 0, DISC_CLK_ON_R_EDGE)	/* LS161, IC 3J */
 	DISCRETE_TRANSFORM3(NODE_13,NODE_12,0x04,DK_SUP_V,"01&1=2*")  /*QC => SND02 */
 	DISCRETE_TRANSFORM3(NODE_14,NODE_12,0x02,DK_SUP_V,"01&1=2*")  /*QB => SND01 */
 
@@ -674,7 +679,7 @@ static DISCRETE_SOUND_START(radarscp)
 	DISCRETE_DIODE_MIXER2(NODE_20, NODE_18, NODE_13, &dkong_diode_mix_table) /* D1, D2 + D3 */
 
 	DISCRETE_RCINTEGRATE(NODE_22,NODE_20,RS_R5, RES_2_PARALLEL(RS_R4+RS_R3,RS_R6),0,RS_C18,DK_SUP_V,DISC_RC_INTEGRATE_TYPE1)
-	DISCRETE_MULTIPLY(DS_OUT_SOUND2,1,NODE_22,RS_R3/R_SERIES(RS_R3,RS_R4))
+	DISCRETE_MULTIPLY(DS_OUT_SOUND2,NODE_22,RS_R3/R_SERIES(RS_R3,RS_R4))
 
 	/************************************************/
 	/* SOUND1                                       */
@@ -689,7 +694,7 @@ static DISCRETE_SOUND_START(radarscp)
 	DISCRETE_DIODE_MIXER2(NODE_30, NODE_28, NODE_14, &dkong_diode_mix_table) /* D1, D2 + D3 */
 
 	DISCRETE_RCINTEGRATE(NODE_31,NODE_30,RS_R28, RES_2_PARALLEL(RS_R27+RS_R26,RS_R29),0,RS_C29,DK_SUP_V,DISC_RC_INTEGRATE_TYPE1)
-	DISCRETE_MULTIPLY(DS_OUT_SOUND1,1,NODE_31,RS_R26/R_SERIES(RS_R26,RS_R27))
+	DISCRETE_MULTIPLY(DS_OUT_SOUND1,NODE_31,RS_R26/R_SERIES(RS_R26,RS_R27))
 
 	/************************************************/
 	/* SOUND0                                       */
@@ -702,8 +707,8 @@ static DISCRETE_SOUND_START(radarscp)
 	DISCRETE_555_ASTABLE_CV(NODE_43, DS_SOUND6, RES_K(47), RES_K(27), RS_C49, NODE_42, &radarscp_555_vco_desc)
 
 	DISCRETE_RCDISC_MODULATED(NODE_44,DS_SOUND0_INV,NODE_43,RS_R39,RS_R18,RS_R37,RS_R38,RS_C22,DK_SUP_V)
-	DISCRETE_CRFILTER(NODE_45, 1, NODE_44, RS_R15+RS_R16, RS_C33)
-	DISCRETE_MULTIPLY(DS_OUT_SOUND0, 1, NODE_45, RS_R15/(RS_R15+RS_R16))
+	DISCRETE_CRFILTER(NODE_45, NODE_44, RS_R15+RS_R16, RS_C33)
+	DISCRETE_MULTIPLY(DS_OUT_SOUND0, NODE_45, RS_R15/(RS_R15+RS_R16))
 
 	/************************************************/
 	/* SOUND7                                       */
@@ -719,8 +724,8 @@ static DISCRETE_SOUND_START(radarscp)
 
 	DISCRETE_RCINTEGRATE(NODE_55,NODE_52,RS_R46, RS_R46,0,RS_C45,DK_SUP_V,DISC_RC_INTEGRATE_TYPE1)
 	DISCRETE_TRANSFORM4(NODE_56, NODE_55, DS_SOUND7,NODE_54,2.5, "01*23<*")
-	DISCRETE_CRFILTER(NODE_57, 1, NODE_56, RS_R43+RS_R44, RS_C46)
-	DISCRETE_MULTIPLY(DS_OUT_SOUND7, 1, NODE_57, RS_R44/(RS_R43+RS_R44))
+	DISCRETE_CRFILTER(NODE_57, NODE_56, RS_R43+RS_R44, RS_C46)
+	DISCRETE_MULTIPLY(DS_OUT_SOUND7, NODE_57, RS_R44/(RS_R43+RS_R44))
 
 	/************************************************/
 	/* DAC                                          */
@@ -740,7 +745,7 @@ static DISCRETE_SOUND_START(radarscp)
 	DISCRETE_SALLEN_KEY_FILTER(NODE_173, 1, NODE_171, DISC_SALLEN_KEY_LOW_PASS, &dkong_sallen_key_info)
 
 	/* Adjustment VR3 */
-	DISCRETE_MULTIPLY(DS_OUT_DAC, 1, NODE_173, DS_ADJ_DAC)
+	DISCRETE_MULTIPLY(DS_OUT_DAC, NODE_173, DS_ADJ_DAC)
 
 	/************************************************/
 	/* Amplifier                                    */
@@ -751,7 +756,7 @@ static DISCRETE_SOUND_START(radarscp)
 	/* Amplifier: internal amplifier */
 	DISCRETE_ADDER2(NODE_289,1,NODE_288,5.0*43.0/(100.0+43.0))
 	DISCRETE_RCINTEGRATE(NODE_294,NODE_289,0,150,1000, CAP_U(33),DK_SUP_V,DISC_RC_INTEGRATE_TYPE3)
-	DISCRETE_CRFILTER(NODE_295,1,NODE_294, 1000, DK_C13)
+	DISCRETE_CRFILTER(NODE_295,NODE_294, 1000, DK_C13)
 	DISCRETE_OUTPUT(NODE_295, 32767.0/5.0 * 3)
 
 DISCRETE_SOUND_END
@@ -831,6 +836,14 @@ static const discrete_mixer_desc dkongjr_mixer_desc =
 		JR_C161,
 		0, 1};
 
+#if (USE_LS629)
+static const discrete_mixer_desc dkongjr_s1_mixer_desc =
+{
+	DISC_MIXER_IS_RESISTOR,
+	{JR_R13, JR_R12},
+	{0}, {0}, 0, 0, JR_C24, 0, 0, 1		/* r_node{}, c{}, rI, rF, cF, cAmp, vRef, gain */
+};
+#else
 static const discrete_mixer_desc dkongjr_s1_mixer_desc =
 	{DISC_MIXER_IS_RESISTOR,
 		{JR_R13, JR_R12},
@@ -840,10 +853,11 @@ static const discrete_mixer_desc dkongjr_s1_mixer_desc =
 		JR_C24,
 		0,
 		0, 1};
+#endif
 
 static const discrete_lfsr_desc dkongjr_lfsr =
 {
-	DISC_CLK_BY_COUNT,
+	DISC_CLK_IS_FREQ,
 	16,			          /* Bit Length */
 	0,			          /* Reset Value */
 	2,			          /* Use Bit 2 (QC of first LS164) as F0 input 0 */
@@ -868,62 +882,17 @@ static DISCRETE_SOUND_START(dkongjr)
 	DISCRETE_INPUT_NOT(DS_SOUND2_INV)
 	DISCRETE_INPUT_NOT(DS_SOUND6_INV)
 	DISCRETE_INPUT_NOT(DS_SOUND7_INV)
-	DISCRETE_INPUT_NOT(DS_SOUND9_INV)
+	DISCRETE_INPUTX_NOT(DS_SOUND9_INV, TTL_HIGH, 0, 0)
 	DISCRETE_INPUT_NOT(DS_DISCHARGE_INV)
-	DISCRETE_INPUT_DATA(DS_DAC)
+	//DISCRETE_INPUT_DATA(DS_DAC)
 
-	/************************************************/
-	/* SIGNALS                                      */
-	/************************************************/
+	/************************************************
+     * SOUND0 / SOUND7  -
+     ************************************************/
 
-	DISCRETE_LOGIC_INVERT(DS_SOUND7,1,DS_SOUND7_INV)
-	DISCRETE_LOGIC_INVERT(DS_SOUND9,1,DS_SOUND9_INV)
-
-	/************************************************/
-	/* SOUND1                                       */
-	/************************************************/
-
-	DISCRETE_LS123(NODE_10, DS_SOUND1_INV, JR_R9, JR_C15)
-	DISCRETE_TRANSFORM2(NODE_11,NODE_104,TTL_HIGH,"0!1*")
-	DISCRETE_LOGIC_INVERT(NODE_12,1,NODE_10)
-	DISCRETE_MIXER2(NODE_13, 1, NODE_10, NODE_11, &dkongjr_s1_mixer_desc)
-	DISCRETE_74LS624( NODE_14, 1, NODE_13, 0.98*DK_SUP_V, JR_C22, DISC_LS624_OUT_ENERGY)
-	DISCRETE_RCDISC_MODULATED(NODE_15, NODE_12, NODE_14, 120, JR_R27, RES_K(0.001), JR_R28, JR_C28, DK_SUP_V)
-	/* The following circuit does not match 100%, however works.
-     * To be exact, we need a C-R-C-R circuit, we actually do not have.
-     */
-	DISCRETE_CRFILTER_VREF(NODE_16, 1, NODE_15, JR_R4, JR_C23, 2.5)
-	DISCRETE_RCFILTER(DS_OUT_SOUND1, 1, NODE_16, JR_R19, JR_C21)
-
-	/************************************************/
-	/* SOUND2                                       */
-	/************************************************/
-
-	DISCRETE_74LS624( NODE_20, 1, 0, 0.98*DK_SUP_V, JR_C20, DISC_LS624_OUT_COUNT_F)
-	DISCRETE_LFSR_NOISE(NODE_21, 1, 1, NODE_20, 1.0, 0, 0.5, &dkongjr_lfsr)
-	DISCRETE_LS123_INV(NODE_25, DS_SOUND2_INV, JR_R17, JR_C27)
-	DISCRETE_RCDISC_MODULATED(NODE_26, NODE_25, NODE_21, 120, JR_R24, RES_K(0.001), JR_R18, JR_C29, DK_SUP_V)
-	/* The following circuit does not match 100%, however works.
-     * To be exact, we need a C-R-C-R circuit, we actually do not have.
-     */
-	DISCRETE_CRFILTER_VREF(NODE_27, 1, NODE_26, JR_R6, JR_C30, 2.5)
-	DISCRETE_RCFILTER(DS_OUT_SOUND2, 1, NODE_27, JR_R2, JR_C25)
-
-	/************************************************/
-	/* SOUND9                                       */
-	/************************************************/
-
-	DISCRETE_RCFILTER(NODE_90, 1, DS_SOUND9_INV, JR_R14, JR_C26)
-	DISCRETE_MULTIPLY(NODE_91, 1, NODE_90, TTL_HIGH)
-	DISCRETE_74LS624( NODE_92, 1, NODE_91, DK_SUP_V, JR_C37, DISC_LS624_OUT_ENERGY)
-	DISCRETE_ENERGY_NAND(NODE_93, NODE_92, DS_SOUND9)
-	DISCRETE_MULTIPLY(DS_OUT_SOUND9, 1, NODE_93, TTL_HIGH)
-
-	/************************************************/
-	/* SOUND0 / SOUND7                              */
-	/************************************************/
-
-	DISCRETE_COUNTER(NODE_100,1,0,NODE_118,0xFFFF,DISC_COUNT_UP,0,DISC_CLK_BY_COUNT)
+DISCRETE_TASK_START(1)
+	DISCRETE_LOGIC_INVERT(DS_SOUND7,DS_SOUND7_INV)
+	DISCRETE_COUNTER(NODE_100, 1, 0, NODE_118, 0, 0xFFFF, DISC_COUNT_UP, 0, DISC_CLK_BY_COUNT)
 
 	DISCRETE_BIT_DECODE(NODE_101, NODE_100,  6, 1) 	/*LS157 2A */
 	DISCRETE_BIT_DECODE(NODE_102, NODE_100,  3, 1) 	/*LS157 2B */
@@ -936,22 +905,126 @@ static DISCRETE_SOUND_START(dkongjr)
 	DISCRETE_SWITCH(NODE_107, 1, DS_SOUND7_INV, NODE_103, NODE_104) /* Switch 3 */
 
 	DISCRETE_LS123(NODE_110, DS_SOUND0_INV, JR_R8, JR_C14)
-	DISCRETE_TRANSFORM2(NODE_111, TTL_HIGH, NODE_110, "01-")
-	DISCRETE_RCFILTER(NODE_112, 1, NODE_111, JR_R10, JR_C17)
-	DISCRETE_74LS624(NODE_113, 1, NODE_112, DK_SUP_V, JR_C18, DISC_LS624_OUT_ENERGY)
+	DISCRETE_SWITCH(NODE_111,						/* invert voltage */
+		1, NODE_110,								/* ENAB, SWITCH */
+		TTL_HIGH, 0)								/* INP0, INP1 */
+	DISCRETE_RCFILTER(NODE_112, NODE_111, JR_R10, JR_C17)
+#if (USE_LS629)
+	DISCRETE_74LS629(NODE_113,						/* IC 5K, pin 7 */
+		1,											/* ENAB */
+		NODE_112, DK_SUP_V,							/* VMOD, VRNG */
+		JR_C18, JR_R10,								/* C, R_FREQ_IN */
+		DISC_LS624_OUT_ENERGY)
+#else
+	DISCRETE_74LS624(NODE_113, NODE_112, DK_SUP_V, JR_C18, DISC_LS624_OUT_ENERGY)
+#endif
 
-	DISCRETE_LOGIC_XOR(NODE_115, 1, NODE_105, NODE_106)
+	DISCRETE_LOGIC_XOR(NODE_115, NODE_105, NODE_106)
 
-	DISCRETE_TRANSFORM2(NODE_116, NODE_107, TTL_HIGH, "0!1*")
-	DISCRETE_RCFILTER(NODE_117, 1, NODE_116, JR_R11, JR_C16)
-	DISCRETE_74LS624(NODE_118, 1, NODE_117, DK_SUP_V, JR_C19, DISC_LS624_OUT_COUNT_F)
+	DISCRETE_SWITCH(NODE_116,						/* invert with TTL voltage */
+		1, NODE_107,								/* ENAB, SWITCH */
+		TTL_HIGH, 0)								/* INP0, INP1 */
+	DISCRETE_RCFILTER(NODE_117, NODE_116, JR_R11, JR_C16)
+#if (0 && USE_LS629)
+	DISCRETE_74LS629(NODE_118,						/* IC 5K, pin 7 */
+		1,											/* ENAB */
+		NODE_117, DK_SUP_V,							/* VMOD, VRNG */
+		JR_C19, JR_R11,								/* C, R_FREQ_IN */
+		DISC_LS624_OUT_COUNT_F)
+#else
+	DISCRETE_74LS624(NODE_118, NODE_117, DK_SUP_V, JR_C19, DISC_LS624_OUT_COUNT_F)
+#endif
 
-	DISCRETE_LOGIC_NAND(NODE_120, 1, NODE_115, NODE_110)
-	DISCRETE_MULTIPLY(DS_OUT_SOUND0, 1, NODE_120, TTL_HIGH)
+//DISCRETE_74LS629(NODE_30,                     /* IC 5K, pin 7 */
+//      1,                                          /* ENAB */
+//      NODE_117, DK_SUP_V,                         /* VMOD, VRNG */
+//      JR_C19, JR_R11,                             /* C, R_FREQ_IN */
+//      DISC_LS624_OUT_COUNT_F)
+//DISCRETE_74LS624(NODE_31, NODE_117, DK_SUP_V, JR_C19, DISC_LS624_OUT_COUNT_F)
+//DISCRETE_WAVELOG2(NODE_30, 1000,NODE_31, 1000)
+
+	DISCRETE_LOGIC_NAND(NODE_120, NODE_115, NODE_110)
+	DISCRETE_MULTIPLY(DS_OUT_SOUND0, NODE_120, TTL_HIGH)
+DISCRETE_TASK_END()
+
+	/************************************************
+     * SOUND1  - Jump
+     ************************************************/
+
+DISCRETE_TASK_START(2)
+	/* needs NODE_104 from TASK(1) ready */
+	DISCRETE_LS123(NODE_10, DS_SOUND1_INV, JR_R9, JR_C15)
+	DISCRETE_SWITCH(NODE_11,						/* invert with TTL voltage */
+		1, NODE_104,								/* ENAB, SWITCH */
+		TTL_HIGH, 0)								/* INP0, INP1 */
+	DISCRETE_LOGIC_INVERT(NODE_12, NODE_10)
+	DISCRETE_MIXER2(NODE_13, 1, NODE_10, NODE_11, &dkongjr_s1_mixer_desc)
+#if (USE_LS629)
+	DISCRETE_74LS629(NODE_14,						/* IC 8L, pin 10 */
+		1,											/* ENAB */
+		NODE_13, DK_SUP_V,							/* VMOD, VRNG */
+		JR_C22, RES_2_PARALLEL(JR_R12, JR_R13),		/* C, R_FREQ_IN */
+		DISC_LS624_OUT_ENERGY)
+#else
+	DISCRETE_74LS624( NODE_14, NODE_13, 0.98*DK_SUP_V, JR_C22, DISC_LS624_OUT_ENERGY)
+#endif
+	DISCRETE_RCDISC_MODULATED(NODE_15, NODE_12, NODE_14, 120, JR_R27, RES_K(0.001), JR_R28, JR_C28, DK_SUP_V)
+	/* The following circuit does not match 100%, however works.
+     * To be exact, we need a C-R-C-R circuit, we actually do not have.
+     */
+	DISCRETE_CRFILTER_VREF(NODE_16, NODE_15, JR_R4, JR_C23, 2.5)
+	DISCRETE_RCFILTER(DS_OUT_SOUND1, NODE_16, JR_R19, JR_C21)
+DISCRETE_TASK_END()
+
+	/************************************************/
+	/* SOUND2                                       */
+	/************************************************/
+
+DISCRETE_TASK_START(1)
+	/* the noise source clock is a 74LS629 IC 7P, pin 10.
+     * using JR_C20 as the timing cap, with Freq Control tied to 0V
+     * and Range tied to 5V.  This creates a fixed frequency of 710Hz.
+     * So for speed, I breadboarded and measured the frequency.
+     * Oct 2009, D.R.
+     */
+	DISCRETE_LFSR_NOISE(NODE_21, 1, 1, 710, 1.0, 0, 0.5, &dkongjr_lfsr)
+	DISCRETE_LS123_INV(NODE_25, DS_SOUND2_INV, JR_R17, JR_C27)
+	DISCRETE_RCDISC_MODULATED(NODE_26, NODE_25, NODE_21, 120, JR_R24, RES_K(0.001), JR_R18, JR_C29, DK_SUP_V)
+	/* The following circuit does not match 100%, however works.
+     * To be exact, we need a C-R-C-R circuit, we actually do not have.
+     */
+	DISCRETE_CRFILTER_VREF(NODE_27, NODE_26, JR_R6, JR_C30, 2.5)
+	DISCRETE_RCFILTER(DS_OUT_SOUND2, NODE_27, JR_R2, JR_C25)
+DISCRETE_TASK_END()
+
+	/************************************************
+     * SOUND9 - Falling
+     ************************************************/
+
+DISCRETE_TASK_START(1)
+#if (USE_LS629)
+	DISCRETE_RCFILTER(NODE_90, DS_SOUND9_INV, JR_R14, JR_C26)
+	DISCRETE_74LS629(NODE_91,				/* IC 7P, pin 7 */
+		1,									/* ENAB */
+		NODE_90, DK_SUP_V,					/* VMOD, VRNG */
+		JR_C37, JR_R14,						/* C, R_FREQ_IN */
+		DISC_LS624_OUT_ENERGY)
+	DISCRETE_SWITCH(DS_OUT_SOUND9, 1, DS_SOUND9_INV, NODE_91, 0)
+#else
+	DISCRETE_LOGIC_INVERT(DS_SOUND9, DS_SOUND9_INV)
+	DISCRETE_RCFILTER(NODE_90, DS_SOUND9_INV, JR_R14, JR_C26)
+	DISCRETE_74LS624( NODE_92, NODE_90, DK_SUP_V, JR_C37, DISC_LS624_OUT_ENERGY)
+	DISCRETE_ENERGY_NAND(NODE_93, NODE_92, DS_SOUND9)
+	DISCRETE_MULTIPLY(DS_OUT_SOUND9, NODE_93, TTL_HIGH)
+#endif
+DISCRETE_TASK_END()
 
 	/************************************************/
 	/* DAC                                          */
 	/************************************************/
+
+DISCRETE_TASK_START(1)
+	DISCRETE_INPUT_BUFFER(DS_DAC, 0)
 	/* Signal decay circuit Q7, R20, C32 */
 	DISCRETE_RCDISC(NODE_170, DS_DISCHARGE_INV, 1, JR_R20, JR_C32)
 	DISCRETE_TRANSFORM4(NODE_171, DS_DAC,  DK_SUP_V/256.0, NODE_170, DS_DISCHARGE_INV, "01*3!2+*")
@@ -966,18 +1039,21 @@ static DISCRETE_SOUND_START(dkongjr)
      */
 
 	DISCRETE_SALLEN_KEY_FILTER(DS_OUT_DAC, 1, NODE_171, DISC_SALLEN_KEY_LOW_PASS, &dkong_sallen_key_info)
+DISCRETE_TASK_END()
 
 	/************************************************/
 	/* Amplifier                                    */
 	/************************************************/
 
+DISCRETE_TASK_START(3)
 	DISCRETE_MIXER5(NODE_288, 1, DS_OUT_SOUND9, DS_OUT_SOUND0, DS_OUT_SOUND2, DS_OUT_SOUND1, DS_OUT_DAC, &dkongjr_mixer_desc)
 
 	/* Amplifier: internal amplifier
      * Just a 1:n amplifier without filters - just the output filter
      */
-	DISCRETE_CRFILTER(NODE_295,1,NODE_288, 1000, JR_C13)
+	DISCRETE_CRFILTER(NODE_295,NODE_288, 1000, JR_C13)
 	DISCRETE_OUTPUT(NODE_295, 32767.0/5.0 * 10)
+DISCRETE_TASK_END()
 
 DISCRETE_SOUND_END
 
@@ -1287,7 +1363,7 @@ MACHINE_DRIVER_START( radarsc1_audio )
 	MDRV_LATCH8_ADD( "virtual_p1" )	/* virtual latch for port A */
 	MDRV_LATCH8_INVERT( 0x80 )		/* signal is inverted       */
 	MDRV_LATCH8_DEVREAD(7, "ls259.6h", latch8_r, 3)
-	MDRV_LATCH8_DEVREAD(6, "tms", tms5110_status_r, 0)
+	MDRV_LATCH8_DEVREAD(6, "tms", m58817_status_r, 0)
 
 	MDRV_SOUND_ADD("tms", M58817, XTAL_640kHz)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)

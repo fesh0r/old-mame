@@ -1177,7 +1177,7 @@ static READ8_HANDLER( s23_mcu_rtc_r )
 	return ret;
 }
 
-static int s23_lastpB = 0x50, s23_setstate = 0, s23_setnum, s23_settings[8];
+static int s23_lastpB, s23_setstate, s23_setnum, s23_settings[8];
 
 static READ8_HANDLER( s23_mcu_portB_r )
 {
@@ -1351,7 +1351,17 @@ static DRIVER_INIT(ss23)
 {
 	mi_rd = mi_wr = im_rd = im_wr = 0;
 	namcos23_jvssense = 1;
+	s23_vbl = 0;
+	s23_lastpB = 0x50;
+	s23_setstate = 0;
+	s23_setnum = 0;
+	memset(s23_settings, 0, sizeof(s23_settings));
+	s23_tssio_port_4 = 0;
+	s23_porta = 0, s23_rtcstate = 0;
+	gorgon_vbl = 0;
 }
+
+#define XOR(a) WORD2_XOR_BE(a)
 
 static const gfx_layout namcos23_cg_layout =
 {
@@ -1359,11 +1369,8 @@ static const gfx_layout namcos23_cg_layout =
 	0x400, /* 0x3c0 */
 	4,
 	{ 0,1,2,3 },
-#ifdef LSB_FIRST
-	{ 4*6,4*7,4*4,4*5,4*2,4*3,4*0,4*1,4*14,4*15,4*12,4*13,4*10,4*11,4*8,4*9 },
-#else
-	{ 4*0,4*1,4*2,4*3,4*4,4*5,4*6,4*7,4*8,4*9,4*10,4*11,4*12,4*13,4*14,4*15 },
-#endif
+	{ XOR(0)*4, XOR(1)*4,  XOR(2)*4,  XOR(3)*4,  XOR(4)*4,  XOR(5)*4,  XOR(6)*4,  XOR(7)*4,
+	  XOR(8)*4, XOR(9)*4, XOR(10)*4, XOR(11)*4, XOR(12)*4, XOR(13)*4, XOR(14)*4, XOR(15)*4 },
 	{ 64*0,64*1,64*2,64*3,64*4,64*5,64*6,64*7,64*8,64*9,64*10,64*11,64*12,64*13,64*14,64*15 },
 	64*16
 }; /* cg_layout */
