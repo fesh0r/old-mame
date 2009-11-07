@@ -1,25 +1,25 @@
 /***************************************************************************
-   
+
     Bondwell 12/14
 
     12/05/2009 Skeleton driver.
 
-	- Z80A CPU 4MHz
-	- 64KB RAM (BW 12), 128KB RAM (BW 14)
-	- 4KB ROM System
-	- NEC765A Floppy controller
-	- 2 x 5.25" Floppy drives 48 tpi SSDD (BW 12), DSDD (BW 14)
-	- MC6845 Video controller
-	- 2KB RAM Video buffer
-	- 4KB ROM Character set
-	- Z80SIO Serial interface
-	- MC6821 Parallel interface
-	- I8253 Counter-timer 
-	- MC1408 8-bit DAC sound
-	- KB3600 PRO (AY-5-3600 PRO) Keyboard controller
+    - Z80A CPU 4MHz
+    - 64KB RAM (BW 12), 128KB RAM (BW 14)
+    - 4KB ROM System
+    - UPD765A Floppy controller
+    - 2 x 5.25" Floppy drives 48 tpi SSDD (BW 12), DSDD (BW 14)
+    - MC6845 Video controller
+    - 2KB RAM Video buffer
+    - 4KB ROM Character set
+    - Z80SIO Serial interface
+    - MC6821 Parallel interface
+    - I8253 Counter-timer
+    - MC1408 8-bit DAC sound
+    - KB3600 PRO (AY-5-3600 PRO) Keyboard controller
 
-	http://www.eld.leidenuniv.nl/~moene/Home/sitemap/
-	http://www.baltissen.org/newhtm/schemas.htm
+    http://www.eld.leidenuniv.nl/~moene/Home/sitemap/
+    http://www.baltissen.org/newhtm/schemas.htm
 
 ****************************************************************************/
 
@@ -30,26 +30,26 @@
 #include "formats/basicdsk.h"
 #include "machine/6821pia.h"
 #include "machine/ctronics.h"
-#include "machine/nec765.h"
+#include "machine/upd765.h"
 #include "machine/pit8253.h"
 #include "machine/rescap.h"
 #include "machine/z80sio.h"
 #include "machine/kb3600.h"
 #include "video/mc6845.h"
 #include "sound/dac.h"
-
+#include "devices/messram.h"
 /*
 
-	TODO:
+    TODO:
 
-	- Osborne 1 DD disk format
-	- floppy motor off timer
+    - Osborne 1 DD disk format
+    - floppy motor off timer
 
 */
 
 INLINE const device_config *get_floppy_image(running_machine *machine, int drive)
 {
-	return image_from_devtype_and_index(machine, IO_FLOPPY, drive);
+	return floppy_get_device(machine, drive);
 }
 
 static void bw12_bankswitch(running_machine *machine)
@@ -70,7 +70,7 @@ static void bw12_bankswitch(running_machine *machine)
 
 	case 2: /* BK1 */
 	case 3: /* BK2 */
-		if (mess_ram_size > 64*1024)
+		if (messram_get_size(devtag_get_device(machine, "messram")) > 64*1024)
 		{
 			memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
 		}
@@ -110,10 +110,10 @@ static void bw12_set_floppy_motor_off_timer(running_machine *machine)
 		/* trigger floppy motor off NE556 timer */
 		/*
 
-			R18 = RES_K(100)
-			C11 = CAP_U(4.7)
+            R18 = RES_K(100)
+            C11 = CAP_U(4.7)
 
-		*/
+        */
 		timer_adjust_oneshot(state->floppy_motor_off_timer, attotime_zero, 0);
 	}
 }
@@ -169,7 +169,7 @@ static void ls259_w(running_machine *machine, int address, int data)
 		break;
 
 	case 7: /* FDC TC */
-		nec765_tc_w(state->nec765, data);
+		upd765_tc_w(state->upd765, data);
 		break;
 	}
 }
@@ -202,8 +202,8 @@ static ADDRESS_MAP_START( bw12_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x0f) AM_READWRITE(bw12_ls259_r, bw12_ls259_w)
 	AM_RANGE(0x10, 0x10) AM_MIRROR(0x0e) AM_DEVWRITE(MC6845_TAG, mc6845_address_w)
 	AM_RANGE(0x11, 0x11) AM_MIRROR(0x0e) AM_DEVREADWRITE(MC6845_TAG, mc6845_register_r, mc6845_register_w)
-	AM_RANGE(0x20, 0x20) AM_MIRROR(0x0e) AM_DEVREAD(NEC765_TAG, nec765_status_r)
-	AM_RANGE(0x21, 0x21) AM_MIRROR(0x0e) AM_DEVREADWRITE(NEC765_TAG, nec765_data_r, nec765_data_w)
+	AM_RANGE(0x20, 0x20) AM_MIRROR(0x0e) AM_DEVREAD(UPD765_TAG, upd765_status_r)
+	AM_RANGE(0x21, 0x21) AM_MIRROR(0x0e) AM_DEVREADWRITE(UPD765_TAG, upd765_data_r, upd765_data_w)
 	AM_RANGE(0x30, 0x33) AM_MIRROR(0x0c) AM_DEVREADWRITE(PIA6821_TAG, pia6821_r, pia6821_w)
 	AM_RANGE(0x40, 0x40) AM_MIRROR(0x0c) AM_DEVREADWRITE(Z80SIO_TAG, z80sio_d_r, z80sio_d_w)
 	AM_RANGE(0x41, 0x41) AM_MIRROR(0x0c) AM_DEVREADWRITE(Z80SIO_TAG, z80sio_c_r, z80sio_c_w)
@@ -218,31 +218,31 @@ ADDRESS_MAP_END
 static INPUT_PORTS_START( bw12 )
 	/*
 
-	  KB3600 PRO2 Keyboard matrix
+      KB3600 PRO2 Keyboard matrix
 
-		  | Y0  | Y1  | Y2  | Y3  | Y4  | Y5  | Y6  | Y7  | Y8  | Y9  |
-		  |     |     |     |     |     |     |     |     |     |     |
-	  ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
-	  X0  |  7  |  8  |  9  |  0  |  1  |  2  |  3  |  4  |  5  |  6  |
-	  ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
-	  X1  |  U  |  I  |  O  |  P  |  Q  |  W  |  E  |  R  |  T  |  Y  |
-	  ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
-	  X2  | F15 | F16 | RET | N.  | SP  | LOCK| F11 | F12 | F13 | F14 |
-	  ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
-	  X3  | F7  | F8  | F9  | F10 | F1  | F2  | F3  | F4  | F5  | F6  |
-	  ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
-	  X4  | LEFT|RIGHT| N3  | BS  |  @  |     |  -  |  ]  | UP  | DOWN|
-	  ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
-	  X5  | N9  | CL  | N2  | LF  | DEL | HT  |ARROW|  [  | N7  | N8  |
-	  ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
-	  X6  |  M  |  ,  |  .  |  /  |  Z  |  X  |  C  |  V  |  B  |  N  |
-	  ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
-	  X7  |  J  |  K  |  L  |  ;  |  A  |  S  |  D  |  F  |  G  |  H  |
-	  ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
-	  X8  | N6  |  -  | N1  | N0  | ESC |     |  :  | NRET| N4  | N5  |
-	  ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
+          | Y0  | Y1  | Y2  | Y3  | Y4  | Y5  | Y6  | Y7  | Y8  | Y9  |
+          |     |     |     |     |     |     |     |     |     |     |
+      ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
+      X0  |  7  |  8  |  9  |  0  |  1  |  2  |  3  |  4  |  5  |  6  |
+      ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
+      X1  |  U  |  I  |  O  |  P  |  Q  |  W  |  E  |  R  |  T  |  Y  |
+      ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
+      X2  | F15 | F16 | RET | N.  | SP  | LOCK| F11 | F12 | F13 | F14 |
+      ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
+      X3  | F7  | F8  | F9  | F10 | F1  | F2  | F3  | F4  | F5  | F6  |
+      ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
+      X4  | LEFT|RIGHT| N3  | BS  |  @  |     |  -  |  ]  | UP  | DOWN|
+      ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
+      X5  | N9  | CL  | N2  | LF  | DEL | HT  |ARROW|  [  | N7  | N8  |
+      ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
+      X6  |  M  |  ,  |  .  |  /  |  Z  |  X  |  C  |  V  |  B  |  N  |
+      ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
+      X7  |  J  |  K  |  L  |  ;  |  A  |  S  |  D  |  F  |  G  |  H  |
+      ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
+      X8  | N6  |  -  | N1  | N0  | ESC |     |  :  | NRET| N4  | N5  |
+      ----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----|
 
-	*/
+    */
 
 	PORT_START("X0")
 	PORT_BIT( 0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_7) PORT_CHAR('7') PORT_CHAR('\'')
@@ -380,7 +380,7 @@ static MC6845_UPDATE_ROW( bw12_update_row )
 		{
 			int x = (column * 8) + bit;
 			int color = BIT(data, 7);
-				
+
 			*BITMAP_ADDR16(bitmap, y, x) = color;
 
 			data <<= 1;
@@ -419,19 +419,19 @@ static VIDEO_UPDATE( bw12 )
 
 	mc6845_update(state->mc6845, bitmap, cliprect);
 
-	return 0;	
+	return 0;
 }
 
-/* NEC765 Interface */
+/* UPD765 Interface */
 
-static WRITE_LINE_DEVICE_HANDLER( bw12_nec765_interrupt )
+static WRITE_LINE_DEVICE_HANDLER( bw12_upd765_interrupt )
 {
 	bw12_state *driver_state = device->machine->driver_data;
 
 	driver_state->fdcint = state;
 }
 
-static NEC765_GET_IMAGE( bw12_nec765_get_image )
+static UPD765_GET_IMAGE( bw12_upd765_get_image )
 {
 	switch (floppy_index)
 	{
@@ -446,12 +446,13 @@ static NEC765_GET_IMAGE( bw12_nec765_get_image )
 	}
 }
 
-static const struct nec765_interface bw12_nec765_interface =
+static const struct upd765_interface bw12_upd765_interface =
 {
-	DEVCB_LINE(bw12_nec765_interrupt),		/* interrupt */
+	DEVCB_LINE(bw12_upd765_interrupt),		/* interrupt */
 	NULL,						/* DMA request */
-	bw12_nec765_get_image,		/* image lookup */
-	NEC765_RDY_PIN_CONNECTED	/* ready pin */
+	bw12_upd765_get_image,		/* image lookup */
+	UPD765_RDY_PIN_CONNECTED,	/* ready pin */
+	{FLOPPY_0,FLOPPY_1, NULL, NULL}
 };
 
 /* PIA6821 Interface */
@@ -464,22 +465,22 @@ static WRITE_LINE_DEVICE_HANDLER( bw12_interrupt )
 static READ8_DEVICE_HANDLER( bw12_pia6821_pa_r )
 {
 	/*
-		
-		bit		description
 
-		PA0     Input from Centronics BUSY status
-		PA1     Input from Centronics ERROR status
-		PA2     Input from Centronics PAPER OUT status
-		PA3     Input from FDC MOTOR
-		PA4     Input from PIT OUT2
-		PA5     Input from keyboard strobe
-		PA6     Input from keyboard serial data
-		PA7     Input from FDC interrupt
+        bit     description
 
-	*/
-	
+        PA0     Input from Centronics BUSY status
+        PA1     Input from Centronics ERROR status
+        PA2     Input from Centronics PAPER OUT status
+        PA3     Input from FDC MOTOR
+        PA4     Input from PIT OUT2
+        PA5     Input from keyboard strobe
+        PA6     Input from keyboard serial data
+        PA7     Input from FDC interrupt
+
+    */
+
 	bw12_state *state = device->machine->driver_data;
-	
+
 	UINT8 data = 0;
 
 	data |= centronics_busy_r(state->centronics);
@@ -523,7 +524,7 @@ static WRITE_LINE_DEVICE_HANDLER( bw12_pia6821_cb2_w )
 	{
 		/* keyboard shift clock */
 		driver_state->key_shift++;
-		
+
 		if (driver_state->key_shift < 10)
 		{
 			driver_state->key_sin = driver_state->key_data[driver_state->key_shift];
@@ -683,16 +684,16 @@ static MACHINE_START( bw12 )
 
 	/* find devices */
 	state->pia6821 = devtag_get_device(machine, PIA6821_TAG);
-	state->nec765 = devtag_get_device(machine, NEC765_TAG);
+	state->upd765 = devtag_get_device(machine, UPD765_TAG);
 	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
 
 	/* allocate floppy motor off timer */
 	state->floppy_motor_off_timer = timer_alloc(machine, floppy_motor_off_tick, NULL);
-	
+
 	/* setup memory banking */
 	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, Z80_TAG), 0);
-	memory_configure_bank(machine, 1, 1, 1, mess_ram, 0);
-	memory_configure_bank(machine, 1, 2, 2, mess_ram + 0x10000, 0x8000);
+	memory_configure_bank(machine, 1, 1, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
+	memory_configure_bank(machine, 1, 2, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x10000, 0x8000);
 
 	/* register for state saving */
 	state_save_register_global(machine, state->bank);
@@ -717,19 +718,97 @@ static MACHINE_RESET( bw12 )
 	}
 }
 
-/* Machine Driver */
+static FLOPPY_OPTIONS_START( bw12 )
+	FLOPPY_OPTION(bw12, "dsk", "180KB BW 12 SSDD", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([40])
+		SECTORS([18])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([0]))
+	FLOPPY_OPTION(bw12, "dsk", "SVI-328 SSDD", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([40])
+		SECTORS([17])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([0]))
+	FLOPPY_OPTION(bw12, "dsk", "Kaypro II SSDD", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([40])
+		SECTORS([10])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([0]))
+FLOPPY_OPTIONS_END
 
-static MACHINE_DRIVER_START( bw12 )
+static const floppy_config bw12_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_SS_80,
+	FLOPPY_OPTIONS_NAME(bw12),
+	DO_NOT_KEEP_GEOMETRY
+};
+
+static FLOPPY_OPTIONS_START( bw14 )
+	FLOPPY_OPTION(bw14, "dsk", "180KB BW 12 SSDD", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([40])
+		SECTORS([18])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([0]))
+	FLOPPY_OPTION(bw14, "dsk", "360KB BW 14 DSDD", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([40])
+		SECTORS([18])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([0]))
+	FLOPPY_OPTION(bw14, "dsk", "SVI-328 SSDD", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([40])
+		SECTORS([17])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([0]))
+	FLOPPY_OPTION(bw14, "dsk", "SVI-328 DSDD", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([40])
+		SECTORS([17])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([0]))
+	FLOPPY_OPTION(bw14, "dsk", "Kaypro II SSDD", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([40])
+		SECTORS([10])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([0]))
+FLOPPY_OPTIONS_END
+
+
+static const floppy_config bw14_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(bw14),
+	DO_NOT_KEEP_GEOMETRY
+};
+
+/* Machine Driver */
+static MACHINE_DRIVER_START( common )
 	MDRV_DRIVER_DATA(bw12_state)
 
 	/* basic machine hardware */
     MDRV_CPU_ADD(Z80_TAG, Z80, XTAL_16MHz/4)
     MDRV_CPU_PROGRAM_MAP(bw12_mem)
-    MDRV_CPU_IO_MAP(bw12_io)	
+    MDRV_CPU_IO_MAP(bw12_io)
 
     MDRV_MACHINE_START(bw12)
     MDRV_MACHINE_RESET(bw12)
-	
+
     /* video hardware */
 	MDRV_SCREEN_ADD(SCREEN_TAG, RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
@@ -745,7 +824,7 @@ static MACHINE_DRIVER_START( bw12 )
     MDRV_VIDEO_UPDATE(bw12)
 
 	MDRV_MC6845_ADD(MC6845_TAG, MC6845, XTAL_16MHz/8, bw12_mc6845_interface)
-	
+
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
@@ -753,7 +832,7 @@ static MACHINE_DRIVER_START( bw12 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
-	MDRV_NEC765A_ADD(NEC765_TAG, bw12_nec765_interface)
+	MDRV_UPD765A_ADD(UPD765_TAG, bw12_upd765_interface)
 	MDRV_PIA6821_ADD(PIA6821_TAG, bw12_pia_config)
 	MDRV_Z80SIO_ADD(Z80SIO_TAG, XTAL_16MHz/4, bw12_z80sio_intf) /* Z80-SIO/0 */
 	MDRV_PIT8253_ADD(PIT8253_TAG, bw12_pit8253_intf)
@@ -761,6 +840,28 @@ static MACHINE_DRIVER_START( bw12 )
 
 	/* printer */
 	MDRV_CENTRONICS_ADD(CENTRONICS_TAG, bw12_centronics_intf)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( bw12 )
+	MDRV_IMPORT_FROM(common)
+
+	/* floppy drives */
+	MDRV_FLOPPY_2_DRIVES_ADD(bw12_floppy_config)
+
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( bw14 )
+	MDRV_IMPORT_FROM(common)
+
+	/* floppy drives */
+	MDRV_FLOPPY_2_DRIVES_ADD(bw14_floppy_config)
+
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("128K")
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -775,66 +876,8 @@ ROM_END
 
 #define rom_bw14 rom_bw12
 
-/* System Configurations */
-static FLOPPY_OPTIONS_START(bw12)
-	FLOPPY_OPTION(bw12, "dsk", "180KB BW 12 SSDD", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([40])
-		SECTORS([18])
-		SECTOR_LENGTH([256])
-		FIRST_SECTOR_ID([0]))
-	FLOPPY_OPTION(bw12, "dsk", "360KB BW 14 DSDD", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([40])
-		SECTORS([18])
-		SECTOR_LENGTH([256])
-		FIRST_SECTOR_ID([0]))
-	FLOPPY_OPTION(bw12, "dsk", "SVI-328 SSDD", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([40])
-		SECTORS([17])
-		SECTOR_LENGTH([256])
-		FIRST_SECTOR_ID([0]))
-	FLOPPY_OPTION(bw12, "dsk", "SVI-328 DSDD", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([40])
-		SECTORS([17])
-		SECTOR_LENGTH([256])
-		FIRST_SECTOR_ID([0]))
-	FLOPPY_OPTION(bw12, "dsk", "Kaypro II SSDD", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([40])
-		SECTORS([10])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([0]))
-FLOPPY_OPTIONS_END
-
-static void bw12_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_bw12; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-static SYSTEM_CONFIG_START( bw12 )
-	CONFIG_RAM_DEFAULT( 64 * 1024 )
-	CONFIG_DEVICE( bw12_floppy_getinfo )
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( bw14 )
-	CONFIG_RAM_DEFAULT( 128 * 1024 )
-	CONFIG_DEVICE( bw12_floppy_getinfo )
-SYSTEM_CONFIG_END
-
 /* System Drivers */
 
-/*    YEAR	NAME	PARENT	COMPAT	MACHINE	INPUT	INIT	CONFIG	COMPANY								FULLNAME		FLAGS */
-COMP( 1984,	bw12,	0,		0,		bw12, 	bw12,	0,		bw12,	"Bondwell International Limited",   "Bondwell 12",	GAME_SUPPORTS_SAVE )
-COMP( 1984,	bw14,	bw12,	0,		bw12,	bw12,	0,		bw14,	"Bondwell International Limited",   "Bondwell 14",	GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY                             FULLNAME        FLAGS */
+COMP( 1984,	bw12,	0,		0,		bw12, 	bw12,	0,		0,	"Bondwell International Limited",   "Bondwell 12",	GAME_SUPPORTS_SAVE )
+COMP( 1984,	bw14,	bw12,	0,		bw14,	bw12,	0,		0,	"Bondwell International Limited",   "Bondwell 14",	GAME_SUPPORTS_SAVE )

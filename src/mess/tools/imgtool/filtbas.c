@@ -1,14 +1,14 @@
 /****************************************************************************
 
-	filtbas.c
+    filtbas.c
 
-	Filter for Microsoft-style tokenized BASIC files
+    Filter for Microsoft-style tokenized BASIC files
 
-	BASIC files typically follow the following format:
+    BASIC files typically follow the following format:
 
-		int8     $ff
-		int16    <TOTAL LENGTH>
-		...
+        int8     $ff
+        int16    <TOTAL LENGTH>
+        ...
         int16    <PTR_NEXT_LINE>
         int16    <LINE_NUM>
         int8[]   <TOKENISED_DATA>
@@ -66,7 +66,7 @@ struct _basictokens
 
 /*-------------------------------------------------
     basic_readfile - reads a file and decodes
-	BASIC tokens into ASCII text
+    BASIC tokens into ASCII text
 -------------------------------------------------*/
 
 static imgtoolerr_t basic_readfile(const basictokens *tokens,
@@ -169,7 +169,7 @@ done:
 
 /*-------------------------------------------------
     basic_writefile - translates ASCII text to
-	BASIC tokens and writes it to a file
+    BASIC tokens and writes it to a file
 -------------------------------------------------*/
 
 static imgtoolerr_t basic_writefile(const basictokens *tokens,
@@ -234,7 +234,7 @@ static imgtoolerr_t basic_writefile(const basictokens *tokens,
 				line_number *= 10;
 				line_number += (buf[pos++] - '0');
 			}
-			
+
 			/* determine address */
 			if (tokens->baseaddress != 0)
 			{
@@ -257,7 +257,7 @@ static imgtoolerr_t basic_writefile(const basictokens *tokens,
 				place_integer_be(line_header, 0, 2, address);
 				place_integer_be(line_header, 2, 2, line_number);
 			}
-			
+
 			/* emit line header */
 			stream_write(mem_stream, line_header, sizeof(line_header));
 
@@ -2800,8 +2800,8 @@ static const char *const basic_100[] = /* "BASIC 10.0" - supported by c65 & clon
 
 static const basictoken_tableent cocobas_tokenents[] =
 {
-	{ 0x00,	0x80,	cocobas_statements,	sizeof(cocobas_statements) / sizeof(cocobas_statements[0]) },
-	{ 0xff,	0x80,	cocobas_functions,	sizeof(cocobas_functions) / sizeof(cocobas_functions[0]) }
+	{ 0x00,	0x80,	cocobas_statements,	ARRAY_LENGTH(cocobas_statements) },
+	{ 0xff,	0x80,	cocobas_functions,	ARRAY_LENGTH(cocobas_functions) }
 };
 
 static const basictokens cocobas_tokens =
@@ -2810,7 +2810,7 @@ static const basictokens cocobas_tokens =
 	3,
 	TRUE,
 	cocobas_tokenents,
-	sizeof(cocobas_tokenents) / sizeof(cocobas_tokenents[0])
+	ARRAY_LENGTH(cocobas_tokenents)
 };
 
 static imgtoolerr_t cocobas_readfile(imgtool_partition *partition, const char *filename,
@@ -2844,8 +2844,8 @@ void filter_cocobas_getinfo(UINT32 state, union filterinfo *info)
 
 static const basictoken_tableent dragonbas_tokenents[] =
 {
-	{ 0x00,	0x80,	dragonbas_statements,	sizeof(dragonbas_statements) / sizeof(dragonbas_statements[0]) },
-	{ 0xff,	0x80,	dragonbas_functions,	sizeof(dragonbas_functions) / sizeof(dragonbas_functions[0]) }
+	{ 0x00,	0x80,	dragonbas_statements,	ARRAY_LENGTH(dragonbas_statements) },
+	{ 0xff,	0x80,	dragonbas_functions,	ARRAY_LENGTH(dragonbas_functions) }
 };
 
 static const basictokens dragonbas_tokens =
@@ -2854,7 +2854,7 @@ static const basictokens dragonbas_tokens =
 	4,
 	TRUE,
 	dragonbas_tokenents,
-	sizeof(dragonbas_tokenents) / sizeof(dragonbas_tokenents[0])
+	ARRAY_LENGTH(dragonbas_tokenents)
 };
 
 static imgtoolerr_t dragonbas_readfile(imgtool_partition *partition, const char *filename,
@@ -2888,7 +2888,7 @@ void filter_dragonbas_getinfo(UINT32 state, union filterinfo *info)
 
 static const basictoken_tableent vzbas_tokenents[] =
 {
-	{ 0x00, 0x80,	vzbas,	sizeof(vzbas) / sizeof(vzbas[0]) }
+	{ 0x00, 0x80,	vzbas,	ARRAY_LENGTH(vzbas) }
 };
 
 
@@ -2899,7 +2899,7 @@ static const basictokens vzbas_tokens =
 	0,
 	FALSE,
 	vzbas_tokenents,
-	sizeof(vzbas_tokenents) / sizeof(vzbas_tokenents[0])
+	ARRAY_LENGTH(vzbas_tokenents)
 };
 
 static imgtoolerr_t vzbas_readfile(imgtool_partition *partition, const char *filename,

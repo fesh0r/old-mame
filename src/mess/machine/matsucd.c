@@ -1,6 +1,6 @@
 /***************************************************************************
 
-	Matsushita/Panasonic CDR521/522 type CDROM drive emulation
+    Matsushita/Panasonic CDR521/522 type CDROM drive emulation
 
 Notes:
 This version implements the drive found in Amiga CDTV. There are
@@ -30,7 +30,7 @@ can be expanded with support for the other drives as needed.
 typedef struct
 {
 	UINT8	enabled;		/* /ENABLE - Unit enabled */
-	UINT8	cmd_signal;		/* /CMD - Command mode	 */
+	UINT8	cmd_signal;		/* /CMD - Command mode   */
 	UINT8	stch_signal;	/* /STCH - Status Changed */
 	UINT8	sten_signal;	/* /STEN - Status Enabled */
 	UINT8	scor_signal;	/* /STEN - Subcode Ready */
@@ -51,6 +51,7 @@ typedef struct
 	void (*stch_cb)( running_machine *machine, int level );	/* Status changed callback */
 	void (*scor_cb)( running_machine *machine, int level );	/* Subcode ready callback */
 	cdrom_file *cdrom;
+	const device_config *cdda;
 	emu_timer *frame_timer;
 } matsucd;
 
@@ -61,11 +62,12 @@ static matsucd cd;
 
 static TIMER_CALLBACK(matsu_subcode_proc);
 
-void matsucd_init( const device_config *cdrom_device )
+void matsucd_init( const device_config *cdrom_device, const char *cdda_tag )
 {
 	memset(&cd, 0, sizeof( matsucd ) );
 
 	cd.cdrom = mess_cd_get_cdrom_file( cdrom_device );
+	cd.cdda = devtag_get_device(cdrom_device->machine, cdda_tag);
 
 	cd.frame_timer = timer_alloc(cdrom_device->machine, matsu_subcode_proc, NULL);
 
@@ -362,8 +364,11 @@ void matsucd_command_w( running_machine *machine, UINT8 data )
 
 	if ( cd.cdda_set == 0 )
 	{
+		// 2009-10, FP: for some reason, cdda_from_cdrom was not returning the correct 
+		// CDDA device. Hence, as a temp workaround, I added the cdda to the struct 
+		// and its tag is configured in matsucd_init 
 		if ( cd.cdrom )
-			cdda_set_cdrom( cdda_from_cdrom(machine, cd.cdrom), cd.cdrom);
+			cdda_set_cdrom( cd.cdda, cd.cdrom);
 
 		cd.cdda_set = 1;
 	}

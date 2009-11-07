@@ -54,8 +54,8 @@
 
     TODO:
 
-	- ABC 77 keyboard
-	- bit accurate Z80 SIO/2 (cassette)
+    - ABC 77 keyboard
+    - bit accurate Z80 SIO/2 (cassette)
     - floppy controller board
     - hard disks (ABC-850 10MB, ABC-852 20MB, ABC-856 60MB)
 
@@ -68,7 +68,7 @@
 /* Components */
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
-#include "includes/serial.h"
+#include "machine/serial.h"
 #include "machine/z80ctc.h"
 #include "machine/z80sio.h"
 #include "machine/z80dart.h"
@@ -83,6 +83,7 @@
 #include "devices/flopdrv.h"
 #include "devices/cassette.h"
 #include "devices/printer.h"
+#include "devices/messram.h"
 
 static const device_config *cassette_device_image(running_machine *machine)
 {
@@ -250,7 +251,7 @@ static void abc806_bankswitch(running_machine *machine)
 {
 	abc806_state *state = machine->driver_data;
 	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
-	UINT32 videoram_mask = mess_ram_size - (32 * 1024) - 1;
+	UINT32 videoram_mask = messram_get_size(devtag_get_device(machine, "messram")) - (32 * 1024) - 1;
 	FPTR bank;
 
 	if (!state->keydtr)
@@ -387,18 +388,18 @@ static WRITE8_HANDLER( abc806_mao_w )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0		physical block address bit 0
-		1		physical block address bit 1
-		2		physical block address bit 2
-		3		physical block address bit 3
-		4		physical block address bit 4
-		5
-		6
-		7		allocate block
+        0       physical block address bit 0
+        1       physical block address bit 1
+        2       physical block address bit 2
+        3       physical block address bit 3
+        4       physical block address bit 4
+        5
+        6
+        7       allocate block
 
-	*/
+    */
 
 	abc806_state *state = space->machine->driver_data;
 
@@ -492,7 +493,7 @@ static ADDRESS_MAP_START( abc800m_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x05, 0x05) AM_MIRROR(0x18) AM_READ(abc800_pling_r)
 	AM_RANGE(0x06, 0x06) AM_MIRROR(0x18) AM_WRITE(abc800_hrs_w)
 	AM_RANGE(0x07, 0x07) AM_MIRROR(0x18) AM_READWRITE(abcbus_reset_r, abc800_hrc_w)
-	AM_RANGE(0x20, 0x23) AM_MIRROR(0x0c) AM_DEVREADWRITE(Z80DART_TAG, z80dart_alt_r, z80dart_alt_w)
+	AM_RANGE(0x20, 0x23) AM_MIRROR(0x0c) AM_DEVREADWRITE(Z80DART_TAG, z80dart_ba_cd_r, z80dart_ba_cd_w)
 	AM_RANGE(0x31, 0x31) AM_MIRROR(0x06) AM_DEVREAD(MC6845_TAG, mc6845_register_r)
 	AM_RANGE(0x38, 0x38) AM_MIRROR(0x06) AM_DEVWRITE(MC6845_TAG, mc6845_address_w)
 	AM_RANGE(0x39, 0x39) AM_MIRROR(0x06) AM_DEVWRITE(MC6845_TAG, mc6845_register_w)
@@ -517,7 +518,7 @@ static ADDRESS_MAP_START( abc800c_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x05, 0x05) AM_MIRROR(0x18) AM_READ(abc800_pling_r)
 	AM_RANGE(0x06, 0x06) AM_MIRROR(0x18) AM_WRITE(abc800_hrs_w)
 	AM_RANGE(0x07, 0x07) AM_MIRROR(0x18) AM_READWRITE(abcbus_reset_r, abc800_hrc_w)
-	AM_RANGE(0x20, 0x23) AM_MIRROR(0x0c) AM_DEVREADWRITE(Z80DART_TAG, z80dart_alt_r, z80dart_alt_w)
+	AM_RANGE(0x20, 0x23) AM_MIRROR(0x0c) AM_DEVREADWRITE(Z80DART_TAG, z80dart_ba_cd_r, z80dart_ba_cd_w)
 	AM_RANGE(0x40, 0x43) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80SIO_TAG, sio2_r, sio2_w)
 	AM_RANGE(0x60, 0x63) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80CTC_TAG, z80ctc_r, z80ctc_w)
 ADDRESS_MAP_END
@@ -536,7 +537,7 @@ static ADDRESS_MAP_START( abc802_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x08) AM_WRITE(abcbus_channel_w)
 	AM_RANGE(0x05, 0x05) AM_MIRROR(0x08) AM_READ(abc802_pling_r)
 	AM_RANGE(0x07, 0x07) AM_MIRROR(0x08) AM_READ(abcbus_reset_r)
-	AM_RANGE(0x20, 0x23) AM_MIRROR(0x0c) AM_DEVREADWRITE(Z80DART_TAG, z80dart_alt_r, z80dart_alt_w)
+	AM_RANGE(0x20, 0x23) AM_MIRROR(0x0c) AM_DEVREADWRITE(Z80DART_TAG, z80dart_ba_cd_r, z80dart_ba_cd_w)
 	AM_RANGE(0x31, 0x31) AM_MIRROR(0x06) AM_DEVREAD(MC6845_TAG, mc6845_register_r)
 	AM_RANGE(0x38, 0x38) AM_MIRROR(0x06) AM_DEVWRITE(MC6845_TAG, mc6845_address_w)
 	AM_RANGE(0x39, 0x39) AM_MIRROR(0x06) AM_DEVWRITE(MC6845_TAG, mc6845_register_w)
@@ -571,7 +572,7 @@ static ADDRESS_MAP_START( abc806_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0xff18) AM_WRITE(abcbus_channel_w)
 	AM_RANGE(0x06, 0x06) AM_MIRROR(0xff18) AM_WRITE(abc806_hrs_w)
 	AM_RANGE(0x07, 0x07) AM_MIRROR(0xff18) AM_MASK(0xff00) AM_READWRITE(abcbus_reset_r, abc806_hrc_w)
-	AM_RANGE(0x20, 0x23) AM_MIRROR(0xff0c) AM_DEVREADWRITE(Z80DART_TAG, z80dart_alt_r, z80dart_alt_w)
+	AM_RANGE(0x20, 0x23) AM_MIRROR(0xff0c) AM_DEVREADWRITE(Z80DART_TAG, z80dart_ba_cd_r, z80dart_ba_cd_w)
 	AM_RANGE(0x31, 0x31) AM_MIRROR(0xff06) AM_DEVREAD(MC6845_TAG, mc6845_register_r)
 	AM_RANGE(0x34, 0x34) AM_MIRROR(0xff00) AM_MASK(0xff00) AM_READWRITE(abc806_mai_r, abc806_mao_w)
 	AM_RANGE(0x35, 0x35) AM_MIRROR(0xff00) AM_READWRITE(abc806_ami_r, abc806_amo_w)
@@ -668,7 +669,7 @@ static INPUT_PORTS_START( fake_keyboard )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( abc800 )
-//	PORT_INCLUDE(abc77)
+//  PORT_INCLUDE(abc77)
 	PORT_INCLUDE(fake_keyboard)
 
 	PORT_START("SB")
@@ -687,7 +688,7 @@ static INPUT_PORTS_START( abc800 )
 	PORT_CONFSETTING(    0x04, "ABC 852 (640KB/HDD 20MB)" )
 	PORT_CONFSETTING(    0x05, "ABC 856 (640KB/HDD 64MB)" )
 
-//	PORT_INCLUDE(luxor_55_21046)
+	PORT_INCLUDE(luxor_55_21046)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( abc802 )
@@ -762,22 +763,17 @@ static TIMER_DEVICE_CALLBACK( ctc_tick )
 {
 	const device_config *z80ctc = devtag_get_device(timer->machine, Z80CTC_TAG);
 
-	z80ctc_trg_w(z80ctc, 0, 1);
-	z80ctc_trg_w(z80ctc, 0, 0);
+	z80ctc_trg0_w(z80ctc, 1);
+	z80ctc_trg0_w(z80ctc, 0);
 
-	z80ctc_trg_w(z80ctc, 1, 1);
-	z80ctc_trg_w(z80ctc, 1, 0);
+	z80ctc_trg1_w(z80ctc, 1);
+	z80ctc_trg1_w(z80ctc, 0);
 
-	z80ctc_trg_w(z80ctc, 2, 1);
-	z80ctc_trg_w(z80ctc, 2, 0);
+	z80ctc_trg2_w(z80ctc, 1);
+	z80ctc_trg2_w(z80ctc, 0);
 }
 
-static void ctc_interrupt(const device_config *device, int state)
-{
-	cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_IRQ0, state);
-}
-
-static WRITE8_DEVICE_HANDLER( ctc_z0_w )
+static WRITE_LINE_DEVICE_HANDLER( ctc_z0_w )
 {
 	//const device_config *z80sio = devtag_get_device(device->machine, Z80SIO_TAG);
 
@@ -786,8 +782,8 @@ static WRITE8_DEVICE_HANDLER( ctc_z0_w )
 	if (BIT(sb, 2))
 	{
 		/* connected to SIO/2 TxCA, CTC CLK/TRG3 */
-		//z80sio_txca_w(z80sio, data);
-		z80ctc_trg_w(device, 3, data);
+		//z80sio_txca_w(z80sio, state);
+		z80ctc_trg3_w(device, state);
 	}
 
 	/* connected to SIO/2 RxCB through a thingy */
@@ -799,7 +795,7 @@ static WRITE8_DEVICE_HANDLER( ctc_z0_w )
 	//z80sio_txcb_w(z80sio, z80sio_txcb);
 }
 
-static WRITE8_DEVICE_HANDLER( ctc_z1_w )
+static WRITE_LINE_DEVICE_HANDLER( ctc_z1_w )
 {
 	//const device_config *z80sio = devtag_get_device(device->machine, Z80SIO_TAG);
 
@@ -808,33 +804,33 @@ static WRITE8_DEVICE_HANDLER( ctc_z1_w )
 	if (BIT(sb, 3))
 	{
 		/* connected to SIO/2 RxCA */
-		//z80sio_rxca_w(z80sio, data);
+		//z80sio_rxca_w(z80sio, state);
 	}
 
 	if (BIT(sb, 4))
 	{
 		/* connected to SIO/2 TxCA, CTC CLK/TRG3 */
-		//z80sio_txca_w(z80sio, data);
-		z80ctc_trg_w(device, 3, data);
+		//z80sio_txca_w(z80sio, state);
+		z80ctc_trg3_w(device, state);
 	}
 }
 
-static WRITE8_DEVICE_HANDLER( ctc_z2_w )
+static WRITE_LINE_DEVICE_HANDLER( ctc_z2_w )
 {
 	const device_config *z80dart = devtag_get_device(device->machine, Z80DART_TAG);
 
 	/* connected to DART channel A clock inputs */
-	z80dart_rxca_w(z80dart, data);
-	z80dart_txca_w(z80dart, data);
+	z80dart_rxca_w(z80dart, state);
+	z80dart_txca_w(z80dart, state);
 }
 
-static const z80ctc_interface ctc_intf =
+static Z80CTC_INTERFACE( ctc_intf )
 {
-	0,              	/* timer disables */
-	ctc_interrupt,		/* interrupt handler */
-	ctc_z0_w,			/* ZC/TO0 callback */
-	ctc_z1_w,			/* ZC/TO1 callback */
-	ctc_z2_w    		/* ZC/TO2 callback */
+	0,              				/* timer disables */
+	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* interrupt handler */
+	DEVCB_LINE(ctc_z0_w),			/* ZC/TO0 callback */
+	DEVCB_LINE(ctc_z1_w),			/* ZC/TO1 callback */
+	DEVCB_LINE(ctc_z2_w)    		/* ZC/TO2 callback */
 };
 
 /* Z80 SIO/2 */
@@ -1011,7 +1007,13 @@ static const z80_daisy_chain abc800_daisy_chain[] =
 
 static ABCBUS_CONFIG( abcbus_config )
 {
-//	{ LUXOR_55_21046, CONKORT_TAG },
+	{ LUXOR_55_21046, CONKORT_TAG },
+	{ NULL }
+};
+
+static ABCBUS_CONFIG( abc802_abcbus_config )
+{
+//  { LUXOR_55_21046, CONKORT_TAG }, won't boot with this enabled
 	{ NULL }
 };
 
@@ -1061,10 +1063,10 @@ static MACHINE_START( abc802 )
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* initialize the ABC BUS */
-	abcbus_init(machine, Z80_TAG, abcbus_config);
+	abcbus_init(machine, Z80_TAG, abc802_abcbus_config); // TODO: enable floppy
 
 	/* configure memory */
-	memory_configure_bank(machine, 1, 0, 1, mess_ram, 0);
+	memory_configure_bank(machine, 1, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
 	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, Z80_TAG), 0);
 
 	/* register for state saving */
@@ -1100,7 +1102,7 @@ static MACHINE_START( abc806 )
 	abc806_state *state = machine->driver_data;
 
 	UINT8 *mem = memory_region(machine, Z80_TAG);
-	UINT32 videoram_size = mess_ram_size - (32 * 1024);
+	UINT32 videoram_size = messram_get_size(devtag_get_device(machine, "messram")) - (32 * 1024);
 	int bank;
 
 	/* find devices */
@@ -1164,6 +1166,18 @@ static MACHINE_RESET( abc806 )
 
 /* Machine Drivers */
 
+static const floppy_config abc800_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(abc80),
+	DO_NOT_KEEP_GEOMETRY
+};
+
 static MACHINE_DRIVER_START( abc800m )
 	MDRV_DRIVER_DATA(abc800_state)
 
@@ -1190,13 +1204,20 @@ static MACHINE_DRIVER_START( abc800m )
 	MDRV_TIMER_ADD_PERIODIC("ctc", ctc_tick, HZ(ABC800_X01/2/2/2))
 	MDRV_Z80SIO_ADD(Z80SIO_TAG, ABC800_X01/2/2, sio_intf)
 	MDRV_Z80DART_ADD(Z80DART_TAG, ABC800_X01/2/2, abc800_dart_intf)
-//	MDRV_ABC77_ADD(abc800_abc77_intf)
-//	MDRV_LUXOR_55_21046_ADD
+//  MDRV_ABC77_ADD(abc800_abc77_intf)
+	MDRV_LUXOR_55_21046_ADD
 	MDRV_PRINTER_ADD("printer")
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 
 	/* fake keyboard */
 	MDRV_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, USEC(2500))
+
+	MDRV_FLOPPY_2_DRIVES_ADD(abc800_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("16K")
+	MDRV_RAM_EXTRA_OPTIONS("32K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( abc800c )
@@ -1225,13 +1246,20 @@ static MACHINE_DRIVER_START( abc800c )
 	MDRV_TIMER_ADD_PERIODIC("ctc", ctc_tick, HZ(ABC800_X01/2/2/2))
 	MDRV_Z80SIO_ADD(Z80SIO_TAG, ABC800_X01/2/2, sio_intf)
 	MDRV_Z80DART_ADD(Z80DART_TAG, ABC800_X01/2/2, abc800_dart_intf)
-//	MDRV_ABC77_ADD(abc800_abc77_intf)
-//	MDRV_LUXOR_55_21046_ADD
+//  MDRV_ABC77_ADD(abc800_abc77_intf)
+	MDRV_LUXOR_55_21046_ADD
 	MDRV_PRINTER_ADD("printer")
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 
 	/* fake keyboard */
 	MDRV_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, USEC(2500))
+
+	MDRV_FLOPPY_2_DRIVES_ADD(abc800_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("16K")
+	MDRV_RAM_EXTRA_OPTIONS("32K")	
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( abc802 )
@@ -1260,13 +1288,19 @@ static MACHINE_DRIVER_START( abc802 )
 	MDRV_TIMER_ADD_PERIODIC("ctc", ctc_tick, HZ(ABC800_X01/2/2/2))
 	MDRV_Z80SIO_ADD(Z80SIO_TAG, ABC800_X01/2/2, sio_intf)
 	MDRV_Z80DART_ADD(Z80DART_TAG, ABC800_X01/2/2, abc802_dart_intf)
-//	MDRV_ABC77_ADD(abc802_abc77_intf)
-//	MDRV_LUXOR_55_21046_ADD
+//  MDRV_ABC77_ADD(abc802_abc77_intf)
+	MDRV_LUXOR_55_21046_ADD
 	MDRV_PRINTER_ADD("printer")
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 
 	/* fake keyboard */
 	MDRV_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, USEC(2500))
+
+	MDRV_FLOPPY_2_DRIVES_ADD(abc800_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( abc806 )
@@ -1293,13 +1327,20 @@ static MACHINE_DRIVER_START( abc806 )
 	MDRV_TIMER_ADD_PERIODIC("ctc", ctc_tick, HZ(ABC800_X01/2/2/2))
 	MDRV_Z80SIO_ADD(Z80SIO_TAG, ABC800_X01/2/2, sio_intf)
 	MDRV_Z80DART_ADD(Z80DART_TAG, ABC800_X01/2/2, abc806_dart_intf)
-//	MDRV_ABC77_ADD(abc806_abc77_intf)
-//	MDRV_LUXOR_55_21046_ADD
+//  MDRV_ABC77_ADD(abc806_abc77_intf)
+	MDRV_LUXOR_55_21046_ADD
 	MDRV_PRINTER_ADD("printer")
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 
 	/* fake keyboard */
 	MDRV_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, USEC(2500))
+
+	MDRV_FLOPPY_2_DRIVES_ADD(abc800_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("160K") // 32KB + 128KB
+	MDRV_RAM_EXTRA_OPTIONS("544K") // 32KB + 512KB
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -1314,20 +1355,20 @@ MACHINE_DRIVER_END
     800 8"      DD88
     ABC 6-2X    ABC832
     ABC 6-3X    ABC838
-	ABC 6-52	ABC834
+    ABC 6-52    ABC834
     UFD 6.XX    Winchester
 
 
-	Floppy Controllers
+    Floppy Controllers
 
-	Art N/O
-	--------
-	55 10761-01		"old" controller
-	55 10828-01		"old" controller
-	55 20900-0x
-	55 21046-11		Luxor Conkort	25 pin D-sub connector
-	55 21046-21		Luxor Conkort	34 pin FDD connector
-	55 21046-41		Luxor Conkort	both of the above
+    Art N/O
+    --------
+    55 10761-01     "old" controller
+    55 10828-01     "old" controller
+    55 20900-0x
+    55 21046-11     Luxor Conkort   25 pin D-sub connector
+    55 21046-21     Luxor Conkort   34 pin FDD connector
+    55 21046-41     Luxor Conkort   both of the above
 
 */
 
@@ -1415,7 +1456,7 @@ ROM_START( abc806 )
 
 	ROM_REGION( 0x200, "hru2", 0 )
 	ROM_LOAD( "fgctl.bin",  0x0000, 0x0200, BAD_DUMP CRC(7a19de8d) SHA1(e7cc49e749b37f7d7dd14f3feda53eae843a8fe0) )
-//	ROM_LOAD( "64 90127-01.12g", 0x0000, 0x0200, NO_DUMP ) // "HRU II" 7621 (82S131), ABC800C HR compatibility mode palette
+//  ROM_LOAD( "64 90127-01.12g", 0x0000, 0x0200, NO_DUMP ) // "HRU II" 7621 (82S131), ABC800C HR compatibility mode palette
 
 	ROM_REGION( 0x400, "v50", 0 )
 	ROM_LOAD( "64 90242-01.7e",  0x0000, 0x0200, NO_DUMP ) // "V50" 7621 (82S131), HR vertical timing 50Hz
@@ -1428,21 +1469,6 @@ ROM_START( abc806 )
 ROM_END
 
 /* System Configuration */
-static void abc800_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_abc80; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
 static DEVICE_IMAGE_LOAD( abc800_serial )
 {
 	/* filename specified */
@@ -1450,8 +1476,6 @@ static DEVICE_IMAGE_LOAD( abc800_serial )
 	{
 		/* setup transmit parameters */
 		serial_device_setup(image, 9600 >> input_port_read(image->machine, "BAUD"), 8, 1, SERIAL_PARITY_NONE);
-
-		serial_device_set_protocol(image, SERIAL_PROTOCOL_NONE);
 
 		/* and start transmit */
 		serial_device_set_transmit_state(image, 1);
@@ -1482,22 +1506,6 @@ static void abc800_serial_getinfo(const mess_device_class *devclass, UINT32 stat
 }
 
 static SYSTEM_CONFIG_START( abc800 )
-	CONFIG_RAM_DEFAULT(16 * 1024)
-	CONFIG_RAM		  (32 * 1024)
-	CONFIG_DEVICE(abc800_floppy_getinfo)
-	CONFIG_DEVICE(abc800_serial_getinfo)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( abc802 )
-	CONFIG_RAM_DEFAULT(64 * 1024)
-	CONFIG_DEVICE(abc800_floppy_getinfo)
-	CONFIG_DEVICE(abc800_serial_getinfo)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( abc806 )
-	CONFIG_RAM_DEFAULT(160 * 1024) // 32KB + 128KB
-	CONFIG_RAM		  (544 * 1024) // 32KB + 512KB
-	CONFIG_DEVICE(abc800_floppy_getinfo)
 	CONFIG_DEVICE(abc800_serial_getinfo)
 SYSTEM_CONFIG_END
 
@@ -1543,7 +1551,7 @@ static DIRECT_UPDATE_HANDLER( abc802_direct_update_handler )
 	}
 	else
 	{
-		direct->raw = direct->decrypted = mess_ram;
+		direct->raw = direct->decrypted = messram_get_ptr(devtag_get_device(space->machine, "messram"));
 		return ~0;
 	}
 
@@ -1593,8 +1601,8 @@ static DRIVER_INIT( abc806 )
 
 /* System Drivers */
 
-/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT    CONFIG  COMPANY             FULLNAME		FLAGS */
+/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT    CONFIG  COMPANY             FULLNAME        FLAGS */
 COMP( 1981, abc800m,    0,			0,      abc800m,    abc800, abc800, abc800, "Luxor Datorer AB", "ABC 800 M/HR", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 COMP( 1981, abc800c,    abc800m,    0,      abc800c,    abc800, abc800, abc800, "Luxor Datorer AB", "ABC 800 C/HR", GAME_NOT_WORKING )
-COMP( 1983, abc802,     0,          0,      abc802,     abc802, abc802, abc802, "Luxor Datorer AB", "ABC 802",		GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-COMP( 1983, abc806,     0,          0,      abc806,     abc806, abc806, abc806, "Luxor Datorer AB", "ABC 806",		GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+COMP( 1983, abc802,     0,          0,      abc802,     abc802, abc802, abc800, "Luxor Datorer AB", "ABC 802",		GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+COMP( 1983, abc806,     0,          0,      abc806,     abc806, abc806, abc800, "Luxor Datorer AB", "ABC 806",		GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )

@@ -42,6 +42,7 @@ TODO:
 #include "formats/basicdsk.h"
 #include "machine/wd17xx.h"
 #include "machine/6821pia.h"
+#include "devices/messram.h"
 #include "includes/osborne1.h"
 
 
@@ -160,11 +161,64 @@ static PALETTE_INIT( osborne1 )
 
 static const z80_daisy_chain osborne1_daisy_chain[] =
 {
-/*	{ osborne1_z80_reset, osborne1_z80_irq_state, osborne1_z80_irq_ack, osborne1_z80_irq_reti, 0 }, */
+/*  { osborne1_z80_reset, osborne1_z80_irq_state, osborne1_z80_irq_ack, osborne1_z80_irq_reti, 0 }, */
 	{ "osborne1_daisy" },
 	{ NULL }
 };
 
+/*
+ * The Osborne-1 supports the following disc formats:
+ * - Osborne single density: 40 tracks, 10 sectors per track, 256-byte sectors (100 KByte)
+ * - Osborne double density: 40 tracks, 5 sectors per track, 1024-byte sectors (200 KByte)
+ * - IBM Personal Computer: 40 tracks, 8 sectors per track, 512-byte sectors (160 KByte)
+ * - Xerox 820 Computer: 40 tracks, 18 sectors per track, 128-byte sectors (90 KByte)
+ * - DEC 1820 double density: 40 tracks, 9 sectors per track, 512-byte sectors (180 KByte)
+ *
+ */
+static FLOPPY_OPTIONS_START(osborne1 )
+	FLOPPY_OPTION( osd, "img", "Osborne single density", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([40])
+		SECTORS([10])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION( odd, "img", "Osborne double density", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([40])
+		SECTORS([5])
+		SECTOR_LENGTH([1024])
+		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION( ibm, "img", "IBM Personal Computer", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([40])
+		SECTORS([8])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION( xerox, "img", "Xerox 820 Computer", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([40])
+		SECTORS([18])
+		SECTOR_LENGTH([128])
+		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION( dec, "img", "DEC 1820 double density", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([40])
+		SECTORS([9])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([1]))
+FLOPPY_OPTIONS_END
+
+static const floppy_config osborne1_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_SS_40,
+	FLOPPY_OPTIONS_NAME(osborne1),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 static MACHINE_DRIVER_START( osborne1 )
 	MDRV_CPU_ADD( "maincpu", Z80, MAIN_CLOCK/4 )
@@ -187,12 +241,17 @@ static MACHINE_DRIVER_START( osborne1 )
 	MDRV_SPEAKER_STANDARD_MONO( "mono" )
 	MDRV_SOUND_ADD( "beep", BEEP, 0 )
 	MDRV_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.00 )
-	
+
 	MDRV_PIA6821_ADD( "pia_0", osborne1_ieee_pia_config )
 	MDRV_PIA6821_ADD( "pia_1", osborne1_video_pia_config )
 
-	MDRV_MB8877_ADD("mb8877", default_wd17xx_interface )
+	MDRV_MB8877_ADD("mb8877", default_wd17xx_interface_2_drives )
+
+	MDRV_FLOPPY_2_DRIVES_ADD(osborne1_floppy_config)
 	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("68K")	/* 64KB Main RAM and 4Kbit video attribute RAM */
 MACHINE_DRIVER_END
 
 
@@ -216,69 +275,5 @@ ROM_START( osborne1 )
 	ROM_LOAD( "osbchr.bin", 0x0000, 0x800, BAD_DUMP CRC(6c1eab0d) SHA1(b04459d377a70abc9155a5486003cb795342c801) )
 ROM_END
 
-/* System Configuration */
-/*
- * The Osborne-1 supports the following disc formats:
- * - Osborne single density: 40 tracks, 10 sectors per track, 256-byte sectors (100 KByte)
- * - Osborne double density: 40 tracks, 5 sectors per track, 1024-byte sectors (200 KByte)
- * - IBM Personal Computer: 40 tracks, 8 sectors per track, 512-byte sectors (160 KByte)
- * - Xerox 820 Computer: 40 tracks, 18 sectors per track, 128-byte sectors (90 KByte)
- * - DEC 1820 double density: 40 tracks, 9 sectors per track, 512-byte sectors (180 KByte)
- *
- */
-FLOPPY_OPTIONS_START(osborne1 )
-	FLOPPY_OPTION( osd, "img", "Osborne single density", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([40])
-		SECTORS([10])
-		SECTOR_LENGTH([256])
-		FIRST_SECTOR_ID([1]))	
-	FLOPPY_OPTION( odd, "img", "Osborne double density", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([40])
-		SECTORS([5])
-		SECTOR_LENGTH([1024])
-		FIRST_SECTOR_ID([1]))
-	FLOPPY_OPTION( ibm, "img", "IBM Personal Computer", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([40])
-		SECTORS([8])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1]))					
-	FLOPPY_OPTION( xerox, "img", "Xerox 820 Computer", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([40])
-		SECTORS([18])
-		SECTOR_LENGTH([128])
-		FIRST_SECTOR_ID([1]))					
-	FLOPPY_OPTION( dec, "img", "DEC 1820 double density", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([40])
-		SECTORS([9])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1]))					
-FLOPPY_OPTIONS_END
-
-static void osborne1_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_osborne1; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( osborne1 )
-	CONFIG_DEVICE( osborne1_floppy_getinfo )
-	CONFIG_RAM_DEFAULT( 68 * 1024 )		/* 64KB Main RAM and 4Kbit video attribute RAM */
-SYSTEM_CONFIG_END
-
-
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY     FULLNAME        FLAGS */
-COMP( 1981, osborne1,   0,      0,      osborne1,   osborne1,   osborne1,   osborne1,   "Osborne",  "Osborne-1",    0 )
+COMP( 1981, osborne1,   0,      0,      osborne1,   osborne1,   osborne1,   0,   "Osborne",  "Osborne-1",    0 )

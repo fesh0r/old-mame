@@ -1,5 +1,5 @@
 /*
-	Hitachi HD63450 DMA Controller
+    Hitachi HD63450 DMA Controller
 */
 
 #include "driver.h"
@@ -7,7 +7,7 @@
 typedef struct _hd63450_interface hd63450_intf;
 struct _hd63450_interface
 {
-	int cpu;
+	const char *cpu_tag;
 	attotime clock[4];
 	attotime burst_clock[4];
 	void (*dma_end)(running_machine *machine,int channel,int irq);  // called when the DMA transfer ends

@@ -15,7 +15,8 @@
 #include "devices/cassette.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
-
+#include "devices/flopdrv.h"
+#include "devices/messram.h"
 
 #define AYWriteReg(chip,port,value) \
 	ay8910_address_w(ay8910, 0,port);  \
@@ -145,26 +146,26 @@ MACHINE_START( cgenie )
 	head = 0;
 
 	/*
-	 * Every fifth cycle is a wait cycle, so I reduced
-	 * the overlocking by one fitfth
-	 * Underclocking causes the tape loading to not work.
-	 */
-//	cpunum_set_clockscale(machine, 0, 0.80);
+     * Every fifth cycle is a wait cycle, so I reduced
+     * the overlocking by one fitfth
+     * Underclocking causes the tape loading to not work.
+     */
+//  cpunum_set_clockscale(machine, 0, 0.80);
 
 	/* Initialize some patterns to be displayed in graphics mode */
 	for( i = 0; i < 256; i++ )
 		memset(gfx + i * 8, i, 8);
 
 	/* set up RAM */
-	memory_install_read8_handler(space, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0, SMH_BANK(1));
-	memory_install_write8_handler(space, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0, cgenie_videoram_w);
-	videoram = mess_ram;
-	memory_set_bankptr(machine, 1, mess_ram);
+	memory_install_read8_handler(space, 0x4000, 0x4000 + messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0, SMH_BANK(1));
+	memory_install_write8_handler(space, 0x4000, 0x4000 + messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0, cgenie_videoram_w);
+	videoram = messram_get_ptr(devtag_get_device(machine, "messram"));
+	memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
 }
 
 /*************************************
  *
- *				Port handlers.
+ *              Port handlers.
  *
  *************************************/
 
@@ -266,9 +267,9 @@ int cgenie_port_xx_r( int offset )
 }
 
 /*************************************
- *									 *
- *		Memory handlers 			 *
- *									 *
+ *                                   *
+ *      Memory handlers              *
+ *                                   *
  *************************************/
 
 static UINT8 psg_a_out = 0x00;
@@ -425,32 +426,32 @@ INTERRUPT_GEN( cgenie_timer_interrupt )
 	}
 }
 
-static  WD17XX_CALLBACK( cgenie_fdc_callback )
+static WRITE_LINE_DEVICE_HANDLER( cgenie_fdc_intrq_w )
 {
 	/* if disc hardware is not enabled, do not cause an int */
 	if (!( input_port_read(device->machine, "DSW0") & 0x80 ))
 		return;
 
-	switch( state )
+	if (state)
 	{
-		case WD17XX_IRQ_CLR:
-			irq_status &= ~IRQ_FDC;
-			break;
-		case WD17XX_IRQ_SET:
-			if( (irq_status & IRQ_FDC) == 0 )
-			{
-				irq_status |= IRQ_FDC;
-				cputag_set_input_line(device->machine, "maincpu", 0, HOLD_LINE);
-			}
-			break;
-		case WD17XX_DRQ_CLR:
-		case WD17XX_DRQ_SET:
-			/* do nothing */
-			break;
+		if( (irq_status & IRQ_FDC) == 0 )
+		{
+			irq_status |= IRQ_FDC;
+			cputag_set_input_line(device->machine, "maincpu", 0, HOLD_LINE);
+		}
+	}
+	else
+	{
+		irq_status &= ~IRQ_FDC;
 	}
 }
 
-const wd17xx_interface cgenie_wd17xx_interface = { cgenie_fdc_callback, NULL };
+const wd17xx_interface cgenie_wd17xx_interface =
+{
+	DEVCB_LINE(cgenie_fdc_intrq_w),
+	DEVCB_NULL,
+	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
+};
 
 WRITE8_HANDLER( cgenie_motor_w )
 {
@@ -482,7 +483,7 @@ WRITE8_HANDLER( cgenie_motor_w )
 }
 
 /*************************************
- *		Keyboard					 *
+ *      Keyboard                     *
  *************************************/
  READ8_HANDLER( cgenie_keyboard_r )
 {
@@ -516,7 +517,7 @@ WRITE8_HANDLER( cgenie_motor_w )
 }
 
 /*************************************
- *		Video RAM					 *
+ *      Video RAM                    *
  *************************************/
 
 int cgenie_videoram_r( int offset )
@@ -580,7 +581,7 @@ WRITE8_HANDLER( cgenie_fontram_w )
 
 /*************************************
  *
- *		Interrupt handlers.
+ *      Interrupt handlers.
  *
  *************************************/
 
@@ -593,4 +594,17 @@ INTERRUPT_GEN( cgenie_frame_interrupt )
 		port_ff ^= FF_BGD0;
 		cgenie_port_ff_w(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0, port_ff ^ FF_BGD0);
 	}
+}
+
+static UINT8 control_port;
+
+READ8_DEVICE_HANDLER( cgenie_sh_control_port_r )
+{
+	return control_port;
+}
+
+WRITE8_DEVICE_HANDLER( cgenie_sh_control_port_w )
+{
+	control_port = data;
+	ay8910_address_w(device, offset, data);
 }

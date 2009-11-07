@@ -1,6 +1,6 @@
 /***************************************************************************
 
-	NOTE: ****** Specbusy: press N, R, or E to boot *************
+    NOTE: ****** Specbusy: press N, R, or E to boot *************
 
 
         Spectrum/Inves/TK90X etc. memory map:
@@ -155,10 +155,9 @@ http://www.z88forever.org.uk/zxplus3e/
 #include "formats/tzx_cas.h"
 
 /* +3 hardware */
-#include "machine/nec765.h"
-#include "formats/dsk_dsk.h"
+#include "machine/upd765.h"
 #include "devices/flopdrv.h"
-
+#include "devices/messram.h"
 
 /****************************************************************************************************/
 /* Spectrum + 3 specific functions */
@@ -168,12 +167,13 @@ but with a disc drive */
 int spectrum_plus3_port_1ffd_data = -1;
 
 
-static const nec765_interface spectrum_plus3_nec765_interface =
+static const upd765_interface spectrum_plus3_upd765_interface =
 {
 	DEVCB_NULL,
 	NULL,
 	NULL,
-	NEC765_RDY_PIN_CONNECTED
+	UPD765_RDY_PIN_CONNECTED,
+	{FLOPPY_0,FLOPPY_1, NULL, NULL}
 };
 
 
@@ -188,7 +188,7 @@ static const int spectrum_plus3_memory_selections[]=
 static WRITE8_HANDLER(spectrum_plus3_port_3ffd_w)
 {
 	if (~input_port_read(space->machine, "CONFIG") & 0x20)
-		nec765_data_w(devtag_get_device(space->machine, "nec765"), 0,data);
+		upd765_data_w(devtag_get_device(space->machine, "upd765"), 0,data);
 }
 
 static  READ8_HANDLER(spectrum_plus3_port_3ffd_r)
@@ -196,7 +196,7 @@ static  READ8_HANDLER(spectrum_plus3_port_3ffd_r)
 	if (input_port_read(space->machine, "CONFIG") & 0x20)
 		return 0xff;
 	else
-		return nec765_data_r(devtag_get_device(space->machine, "nec765"), 0);
+		return upd765_data_r(devtag_get_device(space->machine, "upd765"), 0);
 }
 
 
@@ -205,23 +205,23 @@ static  READ8_HANDLER(spectrum_plus3_port_2ffd_r)
 		if (input_port_read(space->machine, "CONFIG") & 0x20)
 				return 0xff;
 		else
-				return nec765_status_r(devtag_get_device(space->machine, "nec765"), 0);
+				return upd765_status_r(devtag_get_device(space->machine, "upd765"), 0);
 }
 
 
 void spectrum_plus3_update_memory(running_machine *machine)
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	
+
 	if (spectrum_128_port_7ffd_data & 8)
 	{
 			logerror("+3 SCREEN 1: BLOCK 7\n");
-			spectrum_screen_location = mess_ram + (7 << 14);
+			spectrum_screen_location = messram_get_ptr(devtag_get_device(machine, "messram")) + (7 << 14);
 	}
 	else
 	{
 			logerror("+3 SCREEN 0: BLOCK 5\n");
-			spectrum_screen_location = mess_ram + (5 << 14);
+			spectrum_screen_location = messram_get_ptr(devtag_get_device(machine, "messram")) + (5 << 14);
 	}
 
 	if ((spectrum_plus3_port_1ffd_data & 0x01) == 0)
@@ -235,7 +235,7 @@ void spectrum_plus3_update_memory(running_machine *machine)
 
 			/* select ram at 0x0c000-0x0ffff */
 			ram_page = spectrum_128_port_7ffd_data & 0x07;
-			ram_data = mess_ram + (ram_page<<14);
+			ram_data = messram_get_ptr(devtag_get_device(machine, "messram")) + (ram_page<<14);
 
 			memory_set_bankptr(machine, 4, ram_data);
 
@@ -243,10 +243,10 @@ void spectrum_plus3_update_memory(running_machine *machine)
 
 			/* Reset memory between 0x4000 - 0xbfff in case extended paging was being used */
 			/* Bank 5 in 0x4000 - 0x7fff */
-			memory_set_bankptr(machine, 2, mess_ram + (5 << 14));
+			memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + (5 << 14));
 
 			/* Bank 2 in 0x8000 - 0xbfff */
-			memory_set_bankptr(machine, 3, mess_ram + (2 << 14));
+			memory_set_bankptr(machine, 3, messram_get_ptr(devtag_get_device(machine, "messram")) + (2 << 14));
 
 
 			ROMSelection = ((spectrum_128_port_7ffd_data >> 4) & 0x01) |
@@ -273,18 +273,18 @@ void spectrum_plus3_update_memory(running_machine *machine)
 
 			memory_selection = &spectrum_plus3_memory_selections[(MemorySelection << 2)];
 
-			ram_data = mess_ram + (memory_selection[0] << 14);
+			ram_data = messram_get_ptr(devtag_get_device(machine, "messram")) + (memory_selection[0] << 14);
 			memory_set_bankptr(machine, 1, ram_data);
 			/* allow writes to 0x0000-0x03fff */
 			memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_BANK(1));
 
-			ram_data = mess_ram + (memory_selection[1] << 14);
+			ram_data = messram_get_ptr(devtag_get_device(machine, "messram")) + (memory_selection[1] << 14);
 			memory_set_bankptr(machine, 2, ram_data);
 
-			ram_data = mess_ram + (memory_selection[2] << 14);
+			ram_data = messram_get_ptr(devtag_get_device(machine, "messram")) + (memory_selection[2] << 14);
 			memory_set_bankptr(machine, 3, ram_data);
 
-			ram_data = mess_ram + (memory_selection[3] << 14);
+			ram_data = messram_get_ptr(devtag_get_device(machine, "messram")) + (memory_selection[3] << 14);
 			memory_set_bankptr(machine, 4, ram_data);
 
 			logerror("extended memory paging: %02x\n", MemorySelection);
@@ -318,10 +318,10 @@ static WRITE8_HANDLER(spectrum_plus3_port_1ffd_w)
 	/* D3 - Disk motor on/off */
 	/* D4 - parallel port strobe */
 
-	floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0), data & (1<<3));
-	floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 1), data & (1<<3));
-	floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0), 1, 1);
-	floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 1), 1, 1);
+	floppy_drive_set_motor_state(floppy_get_device(space->machine, 0), data & (1<<3));
+	floppy_drive_set_motor_state(floppy_get_device(space->machine, 1), data & (1<<3));
+	floppy_drive_set_ready_state(floppy_get_device(space->machine, 0), 1, 1);
+	floppy_drive_set_ready_state(floppy_get_device(space->machine, 1), 1, 1);
 
 	spectrum_plus3_port_1ffd_data = data;
 
@@ -337,7 +337,7 @@ static WRITE8_HANDLER(spectrum_plus3_port_1ffd_w)
 The function decodes the ports appropriately */
 static ADDRESS_MAP_START (spectrum_plus3_io, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x0000) AM_READWRITE(spectrum_port_fe_r,spectrum_port_fe_w) AM_MIRROR(0xfffe) AM_MASK(0xffff) 
+	AM_RANGE(0x0000, 0x0000) AM_READWRITE(spectrum_port_fe_r,spectrum_port_fe_w) AM_MIRROR(0xfffe) AM_MASK(0xffff)
 	AM_RANGE(0x001f, 0x001f) AM_READ(spectrum_port_1f_r) AM_MIRROR(0xff00)
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(spectrum_plus3_port_7ffd_w) AM_MIRROR(0x3ffd)
 	AM_RANGE(0x8000, 0x8000) AM_DEVWRITE("ay8912", ay8910_data_w) AM_MIRROR(0x3ffd)
@@ -349,10 +349,7 @@ ADDRESS_MAP_END
 
 static MACHINE_RESET( spectrum_plus3 )
 {
-	memset(mess_ram,0,128*1024);
-	
-	floppy_drive_set_geometry(image_from_devtype_and_index(machine, IO_FLOPPY, 0), FLOPPY_DRIVE_SS_40);
-	floppy_drive_set_geometry(image_from_devtype_and_index(machine, IO_FLOPPY, 1), FLOPPY_DRIVE_SS_40);
+	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,128*1024);
 
 	/* Initial configuration */
 	spectrum_128_port_7ffd_data = 0;
@@ -362,6 +359,18 @@ static MACHINE_RESET( spectrum_plus3 )
 	MACHINE_RESET_CALL(spectrum);
 }
 
+static const floppy_config specpls3_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_SS_40,
+	FLOPPY_OPTIONS_NAME(default),
+	DO_NOT_KEEP_GEOMETRY
+};
+
 static MACHINE_DRIVER_START( spectrum_plus3 )
 	MDRV_IMPORT_FROM( spectrum_128 )
 	MDRV_CPU_MODIFY("maincpu")
@@ -370,8 +379,9 @@ static MACHINE_DRIVER_START( spectrum_plus3 )
 	MDRV_SCREEN_REFRESH_RATE(50.01)
 
 	MDRV_MACHINE_RESET( spectrum_plus3 )
-	
-	MDRV_NEC765A_ADD("nec765", spectrum_plus3_nec765_interface)
+
+	MDRV_UPD765A_ADD("upd765", spectrum_plus3_upd765_interface)
+	MDRV_FLOPPY_2_DRIVES_ADD(specpls3_floppy_config)
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -419,7 +429,7 @@ ROM_START(specpl3e)
 	ROMX_LOAD("romb-en.rom",0x18000,0x8000, CRC(ef8d5d92) SHA1(983aa53aa76e25a3af123c896016bacf6829b72b), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS( 1, "sp", "Spanish" )
 	ROMX_LOAD("roma-es.rom",0x10000,0x8000, CRC(ba694b4b) SHA1(d15d9e43950483cffc79f1cfa89ecb114a88f6c2), ROM_BIOS(2))
-	ROMX_LOAD("romb-es.rom",0x18000,0x8000, CRC(61ed94db) SHA1(935b14c13db75d872de8ad0d591aade0adbbc355), ROM_BIOS(2))	
+	ROMX_LOAD("romb-es.rom",0x18000,0x8000, CRC(61ed94db) SHA1(935b14c13db75d872de8ad0d591aade0adbbc355), ROM_BIOS(2))
 	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
@@ -450,32 +460,10 @@ ROM_START(sp3eata)
 	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
-static void specpls3_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_dsk; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-
-static SYSTEM_CONFIG_START(specpls3)
-	CONFIG_DEVICE(specpls3_floppy_getinfo)
-	CONFIG_RAM_DEFAULT(128 * 1024)
-SYSTEM_CONFIG_END
-
-
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE			INPUT       INIT    CONFIG      COMPANY     FULLNAME */
-COMP( 1987, specpl2a, spec128,  0,		spectrum_plus3, spec_plus,	0,		specpls3,	"Amstrad plc",          "ZX Spectrum +2a" , 0 )
-COMP( 1987, specpls3, spec128,  0,		spectrum_plus3, spec_plus,	0,		specpls3,	"Amstrad plc",          "ZX Spectrum +3" , 0 )
-COMP( 2000, specpl3e, spec128,  0,		spectrum_plus3, spec_plus,	0,		specpls3,	"Amstrad plc",          "ZX Spectrum +3e" , GAME_COMPUTER_MODIFIED )
-COMP( 2002, sp3e8bit, spec128,  0,		spectrum_plus3, spec_plus,	0,		specpls3,	"Amstrad plc",          "ZX Spectrum +3e 8bit IDE" , GAME_COMPUTER_MODIFIED )
-COMP( 2002, sp3eata,  spec128,  0,		spectrum_plus3, spec_plus,	0,		specpls3,	"Amstrad plc",          "ZX Spectrum +3e 8bit ZXATASP" , GAME_COMPUTER_MODIFIED )
-COMP( 2002, sp3ezcf,  spec128,  0,		spectrum_plus3, spec_plus,	0,		specpls3,	"Amstrad plc",          "ZX Spectrum +3e 8bit ZXCF" , GAME_COMPUTER_MODIFIED )
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE         INPUT       INIT    CONFIG      COMPANY     FULLNAME */
+COMP( 1987, specpl2a, spec128,  0,		spectrum_plus3, spec_plus,	0,		0,	"Amstrad plc",          "ZX Spectrum +2a" , 0 )
+COMP( 1987, specpls3, spec128,  0,		spectrum_plus3, spec_plus,	0,		0,	"Amstrad plc",          "ZX Spectrum +3" , 0 )
+COMP( 2000, specpl3e, spec128,  0,		spectrum_plus3, spec_plus,	0,		0,	"Amstrad plc",          "ZX Spectrum +3e" , GAME_COMPUTER_MODIFIED )
+COMP( 2002, sp3e8bit, spec128,  0,		spectrum_plus3, spec_plus,	0,		0,	"Amstrad plc",          "ZX Spectrum +3e 8bit IDE" , GAME_COMPUTER_MODIFIED )
+COMP( 2002, sp3eata,  spec128,  0,		spectrum_plus3, spec_plus,	0,		0,	"Amstrad plc",          "ZX Spectrum +3e 8bit ZXATASP" , GAME_COMPUTER_MODIFIED )
+COMP( 2002, sp3ezcf,  spec128,  0,		spectrum_plus3, spec_plus,	0,		0,	"Amstrad plc",          "ZX Spectrum +3e 8bit ZXCF" , GAME_COMPUTER_MODIFIED )

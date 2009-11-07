@@ -17,13 +17,13 @@
     Kevin Thacker [MESS driver]
 
 
-	TODO:
+    TODO:
 
-		- There are 3 different 64K RAM expansions, Masterchess checks
-		  for all of them
-		- Serial interface SI-5
-		- Floppy interface ROM isn't dumped
-		- Interrupts are wrong
+        - There are 3 different 64K RAM expansions, Masterchess checks
+          for all of them
+        - Serial interface SI-5
+        - Floppy interface ROM isn't dumped
+        - Interrupts are wrong
 
  ******************************************************************************/
 
@@ -42,7 +42,7 @@
 #include "machine/8255ppi.h"
 #include "devices/flopdrv.h"
 #include "formats/basicdsk.h"
-#include "machine/nec765.h"
+#include "machine/upd765.h"
 
 
 #define SORD_DEBUG 1
@@ -53,8 +53,8 @@
 /* - Z80 CPU */
 /* - 27128 ROM (16K) */
 /* - 2x6116 RAM */
-/* - Intel8272/NEC765 */
-/* - IRQ of NEC765 is connected to INT of Z80 */
+/* - Intel8272/UPD765 */
+/* - IRQ of UPD765 is connected to INT of Z80 */
 /* PI-5 interface is required. mode 2 of the 8255 is used to communicate with the FD-5 */
 
 
@@ -130,17 +130,17 @@ static WRITE8_HANDLER(fd5_drive_control_w)
 
 	LOG(("fd5 drive state w: %02x\n",state));
 
-	floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0), state);
-	floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0), state);
-	floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 1), 1,1);
-	floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 1), 1,1);
+	floppy_drive_set_motor_state(floppy_get_device(space->machine, 0), state);
+	floppy_drive_set_motor_state(floppy_get_device(space->machine, 0), state);
+	floppy_drive_set_ready_state(floppy_get_device(space->machine, 1), 1,1);
+	floppy_drive_set_ready_state(floppy_get_device(space->machine, 1), 1,1);
 }
 
 static WRITE8_HANDLER(fd5_tc_w)
 {
-	const device_config *fdc = devtag_get_device(space->machine, "nec765");
-	nec765_tc_w(fdc, 1);
-	nec765_tc_w(fdc, 0);
+	const device_config *fdc = devtag_get_device(space->machine, "upd765");
+	upd765_tc_w(fdc, 1);
+	upd765_tc_w(fdc, 0);
 }
 
 /* 0x020 fd5 writes to this port to communicate with m5 */
@@ -149,8 +149,8 @@ static WRITE8_HANDLER(fd5_tc_w)
 /* 0x040 */
 /* 0x050 */
 static ADDRESS_MAP_START(sord_fd5_io, ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x000, 0x000) AM_DEVREAD( "nec765", nec765_status_r)
-	AM_RANGE(0x001, 0x001) AM_DEVREADWRITE("nec765", nec765_data_r, nec765_data_w)
+	AM_RANGE(0x000, 0x000) AM_DEVREAD( "upd765", upd765_status_r)
+	AM_RANGE(0x001, 0x001) AM_DEVREADWRITE("upd765", upd765_data_r, upd765_data_w)
 	AM_RANGE(0x010, 0x010) AM_READWRITE(fd5_data_r, fd5_data_w)
 	AM_RANGE(0x020, 0x020) AM_WRITE(fd5_communication_w)
 	AM_RANGE(0x030, 0x030) AM_READ(fd5_communication_r)
@@ -158,24 +158,23 @@ static ADDRESS_MAP_START(sord_fd5_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x050, 0x050) AM_WRITE(fd5_tc_w)
 ADDRESS_MAP_END
 
-/* nec765 data request is connected to interrupt of z80 inside fd5 interface */
+/* upd765 data request is connected to interrupt of z80 inside fd5 interface */
 static WRITE_LINE_DEVICE_HANDLER( sord_fd5_fdc_interrupt )
 {
 	cputag_set_input_line(device->machine, "floppy", 0, state? HOLD_LINE : CLEAR_LINE);
 }
 
-static const struct nec765_interface sord_fd5_nec765_interface=
+static const struct upd765_interface sord_fd5_upd765_interface=
 {
 	DEVCB_LINE(sord_fd5_fdc_interrupt),
 	NULL,
 	NULL,
-	NEC765_RDY_PIN_CONNECTED
+	UPD765_RDY_PIN_CONNECTED,
+	{FLOPPY_0, FLOPPY_1, NULL, NULL}
 };
 
 static MACHINE_RESET( sord_m5_fd5 )
 {
-	floppy_drive_set_geometry(image_from_devtype_and_index(machine, IO_FLOPPY, 0), FLOPPY_DRIVE_SS_40);
-	floppy_drive_set_geometry(image_from_devtype_and_index(machine, IO_FLOPPY, 1), FLOPPY_DRIVE_SS_40);
 	MACHINE_RESET_CALL(sord_m5);
 	ppi8255_set_port_c(devtag_get_device(machine, "ppi8255"), 0x50);
 }
@@ -286,18 +285,12 @@ static const ppi8255_interface sord_ppi8255_interface =
     MACHINE EMULATION
 ***************************************************************************/
 
-static void sord_m5_ctc_interrupt(const device_config *device, int state)
-{
-	logerror("interrupting ctc %02x\n", state);
-	cputag_set_input_line(device->machine, "maincpu", 0, state);
-}
-
 static void sordm5_video_interrupt_callback(running_machine *machine, int state)
 {
 	if (state)
 	{
-		z80ctc_trg3_w(devtag_get_device(machine, "z80ctc"), 0, 1);
-		z80ctc_trg3_w(devtag_get_device(machine, "z80ctc"), 0, 0);
+		z80ctc_trg3_w(devtag_get_device(machine, "z80ctc"), 1);
+		z80ctc_trg3_w(devtag_get_device(machine, "z80ctc"), 0);
 	}
 }
 
@@ -487,13 +480,13 @@ static const z80_daisy_chain sord_m5_daisy_chain[] =
 	{ NULL }
 };
 
-static const z80ctc_interface sord_m5_ctc_intf =
+static Z80CTC_INTERFACE( sord_m5_ctc_intf )
 {
 	0,
-	sord_m5_ctc_interrupt,
-	0,
-	0,
-	0
+	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static const cassette_config sordm5_cassette_config =
@@ -559,6 +552,27 @@ static MACHINE_DRIVER_START( sord_m5 )
 MACHINE_DRIVER_END
 
 
+static FLOPPY_OPTIONS_START( sordm5 )
+	FLOPPY_OPTION( sordm5, "dsk", "Sord M5 disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([40])
+		SECTORS([18])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([1]))
+FLOPPY_OPTIONS_END
+
+static const floppy_config sordm5_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_SS_40,
+	FLOPPY_OPTIONS_NAME(sordm5),
+	DO_NOT_KEEP_GEOMETRY
+};
+
 static MACHINE_DRIVER_START( sord_m5_fd5 )
 	MDRV_IMPORT_FROM( sord_m5 )
 
@@ -571,10 +585,12 @@ static MACHINE_DRIVER_START( sord_m5_fd5 )
 	MDRV_CPU_IO_MAP(sord_fd5_io)
 
 	MDRV_PPI8255_ADD("ppi8255", sord_ppi8255_interface)
-	MDRV_NEC765A_ADD("nec765", sord_fd5_nec765_interface)
+	MDRV_UPD765A_ADD("upd765", sord_fd5_upd765_interface)
 
 	MDRV_QUANTUM_TIME(HZ(1200))
 	MDRV_MACHINE_RESET(sord_m5_fd5)
+
+	MDRV_FLOPPY_4_DRIVES_ADD(sordm5_floppy_config)
 MACHINE_DRIVER_END
 
 
@@ -601,45 +617,11 @@ ROM_END
 /***************************************************************************
     SYSTEM CONFIG
 ***************************************************************************/
-
-static FLOPPY_OPTIONS_START( sordm5 )
-	FLOPPY_OPTION( sordm5, "dsk", "Sord M5 disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([40])
-		SECTORS([18])
-		SECTOR_LENGTH([256])
-		FIRST_SECTOR_ID([1]))
-FLOPPY_OPTIONS_END
-
 /* different ram sizes need to be emulated */
 #ifdef UNUSED_FUNCTION
-static SYSTEM_CONFIG_START( sordm5 )
-	CONFIG_RAM(4 * 1024)
-	CONFIG_RAM_DEFAULT(36 * 1024)
-SYSTEM_CONFIG_END
+	4K
+	36K
 #endif
-
-static void srdm5fd5_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:			info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:	info->p = (void *) floppyoptions_sordm5; break;
-
-		default: floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-
-static SYSTEM_CONFIG_START(srdm5fd5)
-/*	CONFIG_IMPORT_FROM(sordm5) */
-	CONFIG_DEVICE(srdm5fd5_floppy_getinfo)
-SYSTEM_CONFIG_END
-
 
 /***************************************************************************
     GAME DRIVERS
@@ -647,4 +629,4 @@ SYSTEM_CONFIG_END
 
 /*    YEAR  NAME      PARENT  COMPAT  MACHINE      INPUT    INIT  CONFIG    COMPANY  FULLNAME               FLAGS */
 COMP( 1983, sordm5,	  0,      0,      sord_m5,	   sord_m5, 0,    0,        "Sord",  "Sord M5",             0 )
-COMP( 1983, srdm5fd5, sordm5, 0,      sord_m5_fd5, sord_m5, 0,    srdm5fd5, "Sord",  "Sord M5 + PI5 + FD5", 0 )
+COMP( 1983, srdm5fd5, sordm5, 0,      sord_m5_fd5, sord_m5, 0,    0, "Sord",  "Sord M5 + PI5 + FD5", 0 )

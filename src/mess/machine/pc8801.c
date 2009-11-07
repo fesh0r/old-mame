@@ -1,26 +1,27 @@
 /***************************************************************************
 
-	machine/pc8801.c
+    machine/pc8801.c
 
-	Implementation of the PC8801
+    Implementation of the PC8801
 
-	On the PC8801, there are two CPUs.  The main CPU and the FDC CPU.  Two
-	8255 PPIs are used for cross CPU communication.  These ports are connected
-	as below:
+    On the PC8801, there are two CPUs.  The main CPU and the FDC CPU.  Two
+    8255 PPIs are used for cross CPU communication.  These ports are connected
+    as below:
 
-		Main CPU 8255 port A <--> FDC CPU 8255 port B
-		Main CPU 8255 port B <--> FDC CPU 8255 port A
-		Main CPU 8255 port C (bits 7-4) <--> FDC CPU 8255 port C (bits 0-3)
-		Main CPU 8255 port C (bits 0-3) <--> FDC CPU 8255 port C (bits 7-4)
+        Main CPU 8255 port A <--> FDC CPU 8255 port B
+        Main CPU 8255 port B <--> FDC CPU 8255 port A
+        Main CPU 8255 port C (bits 7-4) <--> FDC CPU 8255 port C (bits 0-3)
+        Main CPU 8255 port C (bits 0-3) <--> FDC CPU 8255 port C (bits 7-4)
 
 ***************************************************************************/
 
 #include "driver.h"
-#include "machine/8255ppi.h"
 #include "includes/pc8801.h"
-#include "machine/nec765.h"
+#include "machine/ctronics.h"
+#include "machine/i8255a.h"
+#include "machine/upd1990a.h"
+#include "machine/upd765.h"
 #include "sound/beep.h"
-
 
 static int ROMmode,RAMmode,maptvram;
 static int no4throm,no4throm2,port71_save;
@@ -43,65 +44,20 @@ static int enable_FM_IRQ;
 static int FM_IRQ_save;
 #define FM_IRQ_LEVEL 4
 
-/*
-  calender IC (PD1990)
-  */
-
-static UINT8 calender_reg[5];
-static int calender_save;
-static int calender_hold;
-
-WRITE8_HANDLER(pc8801_calender)
+WRITE8_HANDLER( pc88_rtc_w )
 {
-  calender_save=data;
-  /* printer (not yet) */
-  /* UOP3 (bit 7 -- not yet) */
-}
+	pc88_state *state = space->machine->driver_data;
 
-static void calender_strobe(running_machine *machine)
-{
-	mame_system_time systime;
+	/* real time clock */
+	upd1990a_c0_w(state->upd1990a, BIT(data, 0));
+	upd1990a_c1_w(state->upd1990a, BIT(data, 1));
+	upd1990a_c2_w(state->upd1990a, BIT(data, 2));
+	upd1990a_data_w(state->upd1990a, BIT(data, 3));
 
-	switch(calender_save&0x07)
-	{
-		case 0:
-			calender_hold = 1;
-			break;
-		case 1:
-			calender_hold = 0;
-			break;
-		case 2:
-			/* time set (not yet) */
-			calender_hold = 1;
-			break;
-		case 3:
-			/* get the current date/time from the core */
-			mame_get_current_datetime(machine, &systime);
+	/* printer */
+	centronics_data_w(state->centronics, 0, data);
 
-			calender_reg[4] = (systime.local_time.month + 1) * 16 + systime.local_time.weekday;
-			calender_reg[3] = dec_2_bcd(systime.local_time.mday);
-			calender_reg[2] = dec_2_bcd(systime.local_time.hour);
-			calender_reg[1] = dec_2_bcd(systime.local_time.minute);
-			calender_reg[0] = dec_2_bcd(systime.local_time.second);
-			calender_hold = 1;
-			break;
-	}
-}
-
-static void calender_shift(void)
-{
-  if(!calender_hold) {
-    calender_reg[0] = (calender_reg[0] >> 1) | ((calender_reg[1] << 7) & 0x80);
-    calender_reg[1] = (calender_reg[1] >> 1) | ((calender_reg[2] << 7) & 0x80);
-    calender_reg[2] = (calender_reg[2] >> 1) | ((calender_reg[3] << 7) & 0x80);
-    calender_reg[3] = (calender_reg[3] >> 1) | ((calender_reg[4] << 7) & 0x80);
-    calender_reg[4] = (calender_reg[4] >> 1) | ((calender_save << 4) & 0x80);
-  }
-}
-
-static int calender_data(void)
-{
-  return (calender_reg[0]&0x01)!=0x00;
+	/* UOP3 (bit 7 -- not yet) */
 }
 
 /* interrupt staff */
@@ -126,7 +82,7 @@ static void pc8801_update_interrupt(running_machine *machine)
 	}
 }
 
-static IRQ_CALLBACK(pc8801_interrupt_callback)
+static IRQ_CALLBACK( pc8801_interrupt_callback )
 {
 	int level, i;
 
@@ -140,13 +96,13 @@ static IRQ_CALLBACK(pc8801_interrupt_callback)
 	return level*2;
 }
 
-WRITE8_HANDLER(pc8801_write_interrupt_level)
+WRITE8_HANDLER( pc8801_write_interrupt_level )
 {
 	interrupt_level_reg = data&0x0f;
 	pc8801_update_interrupt(space->machine);
 }
 
-WRITE8_HANDLER(pc8801_write_interrupt_mask)
+WRITE8_HANDLER( pc8801_write_interrupt_mask )
 {
 	interrupt_mask_reg = ((data&0x01)<<2) | (data&0x02)
 		| ((data&0x04)>>2) | 0xf8;
@@ -163,7 +119,7 @@ INTERRUPT_GEN( pc8801_interrupt )
 	pc8801_raise_interrupt(device->machine, 1);
 }
 
-static TIMER_CALLBACK(pc8801_timer_interrupt)
+static TIMER_CALLBACK( pc8801_timer_interrupt )
 {
 	pc8801_raise_interrupt(machine, 2);
 }
@@ -177,22 +133,25 @@ static void pc8801_init_interrupt(running_machine *machine)
 	timer_pulse(machine, ATTOTIME_IN_HZ(600), NULL, 0, pc8801_timer_interrupt);
 }
 
-WRITE8_HANDLER(pc88sr_outport_30)
+WRITE8_HANDLER( pc88sr_outport_30 )
 {
 	/* bit 1-5 not implemented yet */
 	pc88sr_disp_30(space, offset,data);
 }
 
-WRITE8_HANDLER(pc88sr_outport_40)
-     /* bit 3,4,6 not implemented */
-     /* bit 7 incorrect behavior */
+WRITE8_HANDLER( pc88sr_outport_40 )
 {
+	/* bit 3,4,6 not implemented */
+	/* bit 7 incorrect behavior */
+	pc88_state *state = space->machine->driver_data;
 	const device_config *speaker = devtag_get_device(space->machine, "beep");
-	static int port_save;
 
-	if((port_save&0x02) == 0x00 && (data&0x02) != 0x00) calender_strobe(space->machine);
-	if((port_save&0x04) == 0x00 && (data&0x04) != 0x00) calender_shift();
-	port_save=data;
+	/* printer */
+	centronics_strobe_w(state->centronics, BIT(data, 0));
+
+	/* real time clock */
+	upd1990a_stb_w(state->upd1990a, BIT(data, 1));
+	upd1990a_clk_w(state->upd1990a, BIT(data, 2));
 
 	if((input_port_read(space->machine, "DSW1") & 0x40) == 0x00) data&=0x7f;
 
@@ -213,56 +172,31 @@ WRITE8_HANDLER(pc88sr_outport_40)
 	}
 }
 
-READ8_HANDLER(pc88sr_inport_40)
-     /* bit0, 2 not implemented */
+READ8_HANDLER( pc88sr_inport_40 )
 {
-  int r;
+	/* bit 2 not implemented */
+	pc88_state *state = space->machine->driver_data;
+	UINT8 r;
 
-  r = pc8801_is_24KHz ? 0x00 : 0x02;
-  r |= use_5FD ? 0x00 : 0x08;
-  r |= calender_data() ? 0x10 : 0x00;
-  if(video_screen_get_vblank(space->machine->primary_screen)) r|=0x20;
-  return r|0xc0;
+	r = centronics_busy_r(state->centronics);
+	r |= pc8801_is_24KHz ? 0x00 : 0x02;
+	r |= use_5FD ? 0x00 : 0x08;
+	r |= state->rtc_data ? 0x10 : 0x00;
+	if(video_screen_get_vblank(space->machine->primary_screen)) r|=0x20;
+
+	return r|0xc0;
 }
 
-READ8_HANDLER(pc88sr_inport_30)
-     /* DIP-SW1
-	bit 0: BASIC selection (0 = N-BASIC, 1 = N88-BASIC)
-	bit 1: terminal mode (0 = terminal mode, 1 = BASIC mode)
-	bit 2: startup text width (0 = 80chars/line, 1 = 40chars/line)
-	bit 3: startup text height (0 = 25lines/screen, 1 = 20lines/screen)
-	bit 4: S parameter (0 = enable, 1 = disable)
-	bit 5: operation when recevied DEL code (0 = handle DEL code,
-						 1 = ignore DEL code)
-	bit 6: universal input port 1 (currently always 1)
-	bit 7: universal input port 2 (currently always 1)
-      */
-{
-  int r;
-
-  /* read DIP-SW */
-  r=input_port_read(space->machine, "DSW1")<<1;
-  /* change bit 0 according BASIC mode */
-  if(is_Nbasic) {
-    r&=0xfe;
-  } else {
-    r|=0x01;
-  }
-  /* force set bit 6, 7 */
-  r|=0xc0;
-  return r;
-}
-
-READ8_HANDLER(pc88sr_inport_31)
+READ8_HANDLER( pc88sr_inport_31 )
      /* DIP-SW2
-	bit 0: serial parity (0 = enable, 1 = disable)
-	bit 1: parity type (0 = even parity, 1 = odd parity)
-	bit 2: serial bit length (0 = 8bits/char, 1 = 7bits/char)
-	bit 3: stop bit length (0 = 2bits, 1 = 1bits)
-	bit 4: X parameter (0 = enable, 1 = disable)
-	bit 5: duplex mode (0 = half, 1 = full-duplex)
-	bit 6: speed switch (0 = normal speed, 1 = high speed)
-	bit 7: N88-BASIC version (0 = V2.x, 1 = V1.x)
+    bit 0: serial parity (0 = enable, 1 = disable)
+    bit 1: parity type (0 = even parity, 1 = odd parity)
+    bit 2: serial bit length (0 = 8bits/char, 1 = 7bits/char)
+    bit 3: stop bit length (0 = 2bits, 1 = 1bits)
+    bit 4: X parameter (0 = enable, 1 = disable)
+    bit 5: duplex mode (0 = half, 1 = full-duplex)
+    bit 6: speed switch (0 = normal speed, 1 = high speed)
+    bit 7: N88-BASIC version (0 = V2.x, 1 = V1.x)
       */
 {
   int r;
@@ -284,22 +218,22 @@ READ8_HANDLER(pc88sr_inport_31)
   return r;
 }
 
-static WRITE8_HANDLER ( pc8801_writemem1 )
+static WRITE8_HANDLER( pc8801_writemem1 )
 {
   pc8801_mainRAM[offset]=data;
 }
 
-static WRITE8_HANDLER ( pc8801_writemem2 )
+static WRITE8_HANDLER( pc8801_writemem2 )
 {
   pc8801_mainRAM[offset+0x6000]=data;
 }
 
-static READ8_HANDLER ( pc8801_read_textwindow )
+static READ8_HANDLER( pc8801_read_textwindow )
 {
   return pc8801_mainRAM[(offset+text_window*0x100)&0xffff];
 }
 
-static WRITE8_HANDLER ( pc8801_write_textwindow )
+static WRITE8_HANDLER( pc8801_write_textwindow )
 {
   pc8801_mainRAM[(offset+text_window*0x100)&0xffff]=data;
 }
@@ -377,6 +311,7 @@ static void select_extmem(char **r,char **w,UINT8 *ret_ctrl)
 
 void pc8801_update_bank(running_machine *machine)
 {
+	const address_space *program = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	char *ext_r,*ext_w;
 
 	select_extmem(&ext_r,&ext_w,NULL);
@@ -394,14 +329,14 @@ void pc8801_update_bank(running_machine *machine)
 		if(ext_w==NULL)
 		{
 			/* read only mode */
-			memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, 0x5fff, 0, 0, SMH_NOP);
-			memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x6000, 0x7fff, 0, 0, SMH_NOP);
+			memory_install_write8_handler(program, 0x0000, 0x5fff, 0, 0, SMH_NOP);
+			memory_install_write8_handler(program, 0x6000, 0x7fff, 0, 0, SMH_NOP);
 		}
 		else
 		{
 			/* r/w mode */
-			memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, 0x5fff, 0, 0, SMH_BANK(1));
-			memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x6000, 0x7fff, 0, 0, SMH_BANK(2));
+			memory_install_write8_handler(program, 0x0000, 0x5fff, 0, 0, SMH_BANK(1));
+			memory_install_write8_handler(program, 0x6000, 0x7fff, 0, 0, SMH_BANK(2));
 			if(ext_w!=ext_r) logerror("differnt between read and write bank of extension memory.\n");
 		}
 	}
@@ -411,8 +346,8 @@ void pc8801_update_bank(running_machine *machine)
 		if(RAMmode)
 		{
 			/* RAM */
-			memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, 0x5fff, 0, 0, SMH_BANK(1));
-			memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x6000, 0x7fff, 0, 0, SMH_BANK(2));
+			memory_install_write8_handler(program, 0x0000, 0x5fff, 0, 0, SMH_BANK(1));
+			memory_install_write8_handler(program, 0x6000, 0x7fff, 0, 0, SMH_BANK(2));
 			memory_set_bankptr(machine, 1, pc8801_mainRAM + 0x0000);
 			memory_set_bankptr(machine, 2, pc8801_mainRAM + 0x6000);
 		}
@@ -420,8 +355,8 @@ void pc8801_update_bank(running_machine *machine)
 		{
 			/* ROM */
 			/* write through to main RAM */
-			memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, 0x5fff, 0, 0, pc8801_writemem1);
-			memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x6000, 0x7fff, 0, 0, pc8801_writemem2);
+			memory_install_write8_handler(program, 0x0000, 0x5fff, 0, 0, pc8801_writemem1);
+			memory_install_write8_handler(program, 0x6000, 0x7fff, 0, 0, pc8801_writemem2);
 			if(ROMmode)
 			{
 				/* N-BASIC */
@@ -443,8 +378,8 @@ void pc8801_update_bank(running_machine *machine)
 	}
 
 	/* 0x8000 to 0xffff */
-	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? SMH_BANK(3) : pc8801_read_textwindow);
-	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? SMH_BANK(3) : pc8801_write_textwindow);
+	memory_install_read8_handler(program, 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? SMH_BANK(3) : pc8801_read_textwindow);
+	memory_install_write8_handler(program, 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? SMH_BANK(3) : pc8801_write_textwindow);
 
 	memory_set_bankptr(machine, 4, pc8801_mainRAM + 0x8400);
 
@@ -455,10 +390,10 @@ void pc8801_update_bank(running_machine *machine)
 	}
 	else
 	{
-		memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc000, 0xefff, 0, 0, SMH_BANK(5));
-		memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc000, 0xefff, 0, 0, SMH_BANK(5));
-		memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf000, 0xffff, 0, 0, SMH_BANK(6));
-		memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xf000, 0xffff, 0, 0, SMH_BANK(6));
+		memory_install_read8_handler(program, 0xc000, 0xefff, 0, 0, SMH_BANK(5));
+		memory_install_write8_handler(program, 0xc000, 0xefff, 0, 0, SMH_BANK(5));
+		memory_install_read8_handler(program, 0xf000, 0xffff, 0, 0, SMH_BANK(6));
+		memory_install_write8_handler(program, 0xf000, 0xffff, 0, 0, SMH_BANK(6));
 
 		memory_set_bankptr(machine, 5, pc8801_mainRAM + 0xc000);
 		if(maptvram)
@@ -468,20 +403,20 @@ void pc8801_update_bank(running_machine *machine)
 	}
 }
 
-READ8_HANDLER(pc8801_read_extmem)
+READ8_HANDLER( pc88_extmem_r )
 {
 	UINT8 ret[2];
 	select_extmem(NULL,NULL,ret);
 	return ret[offset];
 }
 
-WRITE8_HANDLER(pc8801_write_extmem)
+WRITE8_HANDLER( pc88_extmem_w )
 {
   extmem_ctrl[offset]=data;
   pc8801_update_bank(space->machine);
 }
 
-WRITE8_HANDLER(pc88sr_outport_31)
+WRITE8_HANDLER( pc88sr_outport_31 )
 {
   /* bit 5 not implemented */
   RAMmode=((data&0x02)!=0);
@@ -490,12 +425,12 @@ WRITE8_HANDLER(pc88sr_outport_31)
   pc88sr_disp_31(space, offset,data);
 }
 
-READ8_HANDLER(pc88sr_inport_32)
+READ8_HANDLER( pc88sr_inport_32 )
 {
   return(port32_save);
 }
 
-WRITE8_HANDLER(pc88sr_outport_32)
+WRITE8_HANDLER( pc88sr_outport_32 )
 {
   /* bit 2, 3 not implemented */
   port32_save=data;
@@ -507,29 +442,29 @@ WRITE8_HANDLER(pc88sr_outport_32)
   pc8801_update_bank(space->machine);
 }
 
-READ8_HANDLER(pc8801_inport_70)
+READ8_HANDLER( pc8801_inport_70 )
 {
   return text_window;
 }
 
-WRITE8_HANDLER(pc8801_outport_70)
+WRITE8_HANDLER( pc8801_outport_70 )
 {
   text_window=data;
   pc8801_update_bank(space->machine);
 }
 
-WRITE8_HANDLER(pc8801_outport_78)
+WRITE8_HANDLER( pc8801_outport_78 )
 {
   text_window=((text_window+1)&0xff);
   pc8801_update_bank(space->machine);
 }
 
-READ8_HANDLER(pc88sr_inport_71)
+READ8_HANDLER( pc88sr_inport_71 )
 {
   return(port71_save);
 }
 
-WRITE8_HANDLER(pc88sr_outport_71)
+WRITE8_HANDLER( pc88sr_outport_71 )
 /* bit 1-7 not implemented (no ROMs) */
 {
   port71_save=data;
@@ -691,7 +626,7 @@ static void fix_V1V2(void)
   }
 }
 
-static void pc88sr_ch_reset (running_machine *machine, int hireso)
+static void pc88sr_ch_reset(running_machine *machine, int hireso)
 {
 	const device_config *speaker = devtag_get_device(machine, "beep");
 	int a;
@@ -710,129 +645,96 @@ static void pc88sr_ch_reset (running_machine *machine, int hireso)
 	pc88sr_init_fmsound();
 }
 
-MACHINE_RESET( pc88srl )
-{
-	pc88sr_ch_reset(machine, 0);
-}
-
-MACHINE_RESET( pc88srh )
-{
-	pc88sr_ch_reset(machine, 1);
-}
-
 /* 5 inch floppy drive */
 
-static UINT8 load_8255_A(running_machine *machine, int chip)
+static READ8_DEVICE_HANDLER( cpu_8255_c_r )
 {
-	return use_5FD ? ppi8255_get_port_b(devtag_get_device(machine, chip? "ppi8255_0" : "ppi8255_1" ) ) : 0xff;
+	pc88_state *state = device->machine->driver_data;
+
+	return state->i8255_1_pc >> 4;
 }
 
-static UINT8 load_8255_B(running_machine *machine, int chip)
+static WRITE8_DEVICE_HANDLER( cpu_8255_c_w )
 {
-	return use_5FD ? ppi8255_get_port_a(devtag_get_device(machine, chip? "ppi8255_0" : "ppi8255_1" ) ) : 0xff;
+	pc88_state *state = device->machine->driver_data;
+
+	state->i8255_0_pc = data;
 }
 
-static UINT8 load_8255_C(running_machine *machine, int chip)
+I8255A_INTERFACE( pc8801_8255_config_0 )
 {
-	UINT8 result = 0xFF;
-	UINT8 port_c;
-
-	if (use_5FD)
-	{
-		port_c = ppi8255_get_port_c(devtag_get_device(machine, chip? "ppi8255_0" : "ppi8255_1" ) );
-		result = ((port_c >> 4) & 0x0F) | ((port_c << 4) & 0xF0);
-	}
-
-	/* NPW 11-Feb-2006 - This is a brutal no-good hack to work around bug #759
-	 *
-	 * The problem is that in MESS 0.96, a regression was introduced that
-	 * prevented the PC8801 from booting up.  The source of this regression
-	 * was the 8255 PPI rewrite.
-	 *
-	 * What seems to happen is CPU #0 does a write to 8255 #0 port C at PC=37CF
-	 * and this causes a communication to be made to CPU #1.  Under the
-	 * previous 8255 code, this write would not actually make it to the the
-	 * slave CPU, CPU #1.  After examining the data sheet, all indications are
-	 * that the new 8255 behavior is indeed correct.
-	 *
-	 * So what I'm doing is an ugly hack so that when the slave CPU #1 sees the
-	 * value written to it, I actually change this to the previous value,
-	 * cloaking the communication.  So the PC8801 now boots up, but hopefully
-	 * a correct fix can be made.
-	 */
-	if ((chip == 1) && (result == 0xF8))
-		result = 0xF0;
-
-	return result;
-}
-
-static READ8_DEVICE_HANDLER( load_8255_chip0_A )	{ return load_8255_A(device->machine, 0); }
-static READ8_DEVICE_HANDLER( load_8255_chip1_A )	{ return load_8255_A(device->machine, 1); }
-static READ8_DEVICE_HANDLER( load_8255_chip0_B )	{ return load_8255_B(device->machine, 0); }
-static READ8_DEVICE_HANDLER( load_8255_chip1_B )	{ return load_8255_B(device->machine, 1); }
-static READ8_DEVICE_HANDLER( load_8255_chip0_C )	{ return load_8255_C(device->machine, 0); }
-static READ8_DEVICE_HANDLER( load_8255_chip1_C )	{ return load_8255_C(device->machine, 1); }
-
-
-const ppi8255_interface pc8801_8255_config_0 =
-{
-	DEVCB_HANDLER(load_8255_chip0_A),
-	DEVCB_HANDLER(load_8255_chip0_B),
-	DEVCB_HANDLER(load_8255_chip0_C),
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL
+	DEVCB_DEVICE_HANDLER(FDC_I8255A_TAG, i8255a_pb_r),	// Port A read
+	DEVCB_NULL,							// Port B read
+	DEVCB_HANDLER(cpu_8255_c_r),		// Port C read
+	DEVCB_NULL,							// Port A write
+	DEVCB_NULL,							// Port B write
+	DEVCB_HANDLER(cpu_8255_c_w)			// Port C write
 };
 
-const ppi8255_interface pc8801_8255_config_1 =
+static READ8_DEVICE_HANDLER( fdc_8255_c_r )
 {
-	DEVCB_HANDLER(load_8255_chip1_A),
-	DEVCB_HANDLER(load_8255_chip1_B),
-	DEVCB_HANDLER(load_8255_chip1_C),
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL
+	pc88_state *state = device->machine->driver_data;
+
+	return state->i8255_0_pc >> 4;
+}
+
+static WRITE8_DEVICE_HANDLER( fdc_8255_c_w )
+{
+	pc88_state *state = device->machine->driver_data;
+
+	state->i8255_1_pc = data;
+}
+
+I8255A_INTERFACE( pc8801_8255_config_1 )
+{
+	DEVCB_DEVICE_HANDLER(CPU_I8255A_TAG, i8255a_pb_r),	// Port A read
+	DEVCB_NULL,							// Port B read
+	DEVCB_HANDLER(fdc_8255_c_r),		// Port C read
+	DEVCB_NULL,							// Port A write
+	DEVCB_NULL,							// Port B write
+	DEVCB_HANDLER(fdc_8255_c_w)			// Port C write
 };
 
-READ8_HANDLER(pc8801fd_nec765_tc)
+static TIMER_CALLBACK( pc8801fd_upd765_tc_to_zero )
 {
-  const device_config *fdc = devtag_get_device(space->machine, "nec765");
-  nec765_tc_w(fdc, 1);
-  nec765_tc_w(fdc, 0);
-  return 0;
+	pc88_state *state = machine->driver_data;
+
+	upd765_tc_w(state->upd765, 0);
 }
 
-/* callback for /INT output from FDC */
-static WRITE_LINE_DEVICE_HANDLER( pc8801_fdc_interrupt )
+READ8_HANDLER( pc8801fd_upd765_tc )
 {
-    cputag_set_input_line(device->machine, "sub", 0, state ? HOLD_LINE : CLEAR_LINE);
+	pc88_state *state = space->machine->driver_data;
+
+	upd765_tc_w(state->upd765, 1);
+	timer_set(space->machine,  attotime_zero, NULL, 0, pc8801fd_upd765_tc_to_zero );	
+	return 0;
 }
 
-/* callback for /DRQ output from FDC */
-static NEC765_DMA_REQUEST( pc8801_fdc_dma_drq )
+const upd765_interface pc8801_fdc_interface =
 {
-}
-
-const nec765_interface pc8801_fdc_interface=
-{
-	DEVCB_LINE(pc8801_fdc_interrupt),
-	pc8801_fdc_dma_drq,
+	DEVCB_CPU_INPUT_LINE("sub", INPUT_LINE_IRQ0),
 	NULL,
-	NEC765_RDY_PIN_CONNECTED
+	NULL,
+	UPD765_RDY_PIN_CONNECTED,
+	{ FLOPPY_0, FLOPPY_1, NULL, NULL }
 };
 
 static void pc8801_init_5fd(running_machine *machine)
 {
 	use_5FD = (input_port_read(machine, "DSW2") & 0x80) != 0x00;
+	
 	if (!use_5FD)
 		cputag_suspend(machine, "sub", SUSPEND_REASON_DISABLE, 1);
 	else
 		cputag_resume(machine, "sub", SUSPEND_REASON_DISABLE);
+
 	cpu_set_input_line_vector(cputag_get_cpu(machine, "sub"), 0, 0);
-	floppy_drive_set_motor_state(image_from_devtype_and_index(machine, IO_FLOPPY, 0), 1);
-	floppy_drive_set_motor_state(image_from_devtype_and_index(machine, IO_FLOPPY, 1), 1);
-	floppy_drive_set_ready_state(image_from_devtype_and_index(machine, IO_FLOPPY, 0), 1,0);
-	floppy_drive_set_ready_state(image_from_devtype_and_index(machine, IO_FLOPPY, 1), 1,0);
+	
+	floppy_drive_set_motor_state(floppy_get_device(machine, 0), 1);
+	floppy_drive_set_motor_state(floppy_get_device(machine, 1), 1);
+	floppy_drive_set_ready_state(floppy_get_device(machine, 0), 1, 1);
+	floppy_drive_set_ready_state(floppy_get_device(machine, 1), 1, 1);
 }
 
 /*
@@ -856,54 +758,86 @@ void pc88sr_sound_interupt(const device_config *device, int irq)
   KANJI ROM
   */
 
-static UINT8 kanji_high,kanji_low;
-
-WRITE8_HANDLER(pc8801_write_kanji1)
+READ8_HANDLER( pc88_kanji_r )
 {
-  switch(offset) {
-  case 0:
-    kanji_low=data;
-    break;
-  case 1:
-    kanji_high=data;
-    break;
-  }
+	pc88_state *state = space->machine->driver_data;
+
+	UINT8 *kanji = memory_region(space->machine, "gfx1");
+	UINT32 addr = (state->kanji << 1) | !offset;
+
+	return kanji[addr];
 }
 
-READ8_HANDLER(pc8801_read_kanji1)
+WRITE8_HANDLER( pc88_kanji_w )
 {
-  switch(offset) {
-  case 0:
-    return *(memory_region(space->machine, "gfx1")+kanji_high*0x200+kanji_low*0x2+1);
-  case 1:
-    return *(memory_region(space->machine, "gfx1")+kanji_high*0x200+kanji_low*0x2+0);
-  default:
-    return 0xff;
-  }
+	pc88_state *state = space->machine->driver_data;
+
+	switch (offset)
+	{
+	case 0:
+		state->kanji = (state->kanji & 0xff00) | data;
+		break;
+
+	case 1:
+		state->kanji = (data << 8) | (state->kanji & 0xff);
+		break;
+	}
 }
 
-static UINT8 kanji_high2,kanji_low2;
-
-WRITE8_HANDLER(pc8801_write_kanji2)
+READ8_HANDLER( pc88_kanji2_r )
 {
-  switch(offset) {
-  case 0:
-    kanji_low2=data;
-    break;
-  case 1:
-    kanji_high2=data;
-    break;
-  }
+	pc88_state *state = space->machine->driver_data;
+
+	UINT8 *kanji2 = memory_region(space->machine, "kanji2");
+	UINT32 addr = (state->kanji2 << 1) | !offset;
+
+	return kanji2[addr];
 }
 
-READ8_HANDLER(pc8801_read_kanji2)
+WRITE8_HANDLER( pc88_kanji2_w )
 {
-  switch(offset) {
-  case 0:
-    return *(memory_region(space->machine, "gfx1")+kanji_high2*0x200+kanji_low2*0x2+1+0x20000);
-  case 1:
-    return *(memory_region(space->machine, "gfx1")+kanji_high2*0x200+kanji_low2*0x2+0+0x20000);
-  default:
-    return 0xff;
-  }
+	pc88_state *state = space->machine->driver_data;
+
+	switch (offset)
+	{
+	case 0:
+		state->kanji2 = (state->kanji2 & 0xff00) | data;
+		break;
+
+	case 1:
+		state->kanji2 = (data << 8) | (state->kanji2 & 0xff);
+		break;
+	}
+}
+
+/* Machine Initialization */
+
+MACHINE_START( pc88srl )
+{
+	pc88_state *state = machine->driver_data;
+
+	/* find devices */
+	state->upd765 = devtag_get_device(machine, UPD765_TAG);
+	state->upd1990a = devtag_get_device(machine, UPD1990A_TAG);
+	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
+	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
+
+	/* initialize RTC */
+	upd1990a_cs_w(state->upd1990a, 1);
+	upd1990a_oe_w(state->upd1990a, 1);
+}
+
+MACHINE_RESET( pc88srl )
+{
+	pc88sr_ch_reset(machine, 0);
+}
+
+MACHINE_START( pc88srh )
+{
+	MACHINE_START_CALL(pc88srl);
+}
+
+MACHINE_RESET( pc88srh )
+{
+	pc88sr_ch_reset(machine, 1);
 }

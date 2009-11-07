@@ -7,11 +7,12 @@
 #include "machine/z80pio.h"
 #include "machine/z80sio.h"
 #include "cpu/z80/z80.h"
-#include "machine/nec765.h"
+#include "machine/upd765.h"
 #include "sound/speaker.h"
 
 /* Devices */
 #include "devices/cassette.h"
+#include "devices/messram.h"
 
 #define KC_DEBUG 1
 #define LOG(x) do { if (KC_DEBUG) logerror x; } while (0)
@@ -112,7 +113,7 @@ QUICKLOAD_LOAD(kc)
 	addr = (header->load_address_l & 0x0ff) | ((header->load_address_h & 0x0ff)<<8);
 
 	for (i=0; i<datasize; i++)
-		mess_ram[(addr+i) & 0x0ffff] = data[i+128];
+		messram_get_ptr(devtag_get_device(image->machine, "messram"))[(addr+i) & 0x0ffff] = data[i+128];
 	return INIT_PASS;
 }
 
@@ -125,7 +126,7 @@ QUICKLOAD_LOAD(kc)
 - Z80 at 4 MHz
 - Z80 CTC
 - 1k ram
-- NEC765 floppy disc controller
+- UPD765 floppy disc controller
 */
 
 /* bit 7: DMA Request (DRQ from FDC) */
@@ -157,7 +158,7 @@ WRITE8_HANDLER(kc85_disc_interface_ram_w)
 
 
 	/* bits 1,0 of i/o address define 256 byte block to access.
-	bits 15-8 define the byte offset in the 256 byte block selected */
+    bits 15-8 define the byte offset in the 256 byte block selected */
 	addr = ((offset & 0x03)<<8) | ((offset>>8) & 0x0ff);
 
 	logerror("interface ram w: %04x %02x\n",addr,data);
@@ -190,9 +191,9 @@ WRITE8_HANDLER(kc85_disc_interface_latch_w)
 
 WRITE8_HANDLER(kc85_disc_hw_terminal_count_w)
 {
-	const device_config *fdc = devtag_get_device(space->machine, "nec765");
+	const device_config *fdc = devtag_get_device(space->machine, "upd765");
 	logerror("kc85 disc hw tc w: %02x\n",data);
-	nec765_tc_w(fdc, data & 0x01);
+	upd765_tc_w(fdc, data & 0x01);
 }
 
 
@@ -205,19 +206,20 @@ static WRITE_LINE_DEVICE_HANDLER( kc85_fdc_interrupt )
 }
 
 /* callback for /DRQ output from FDC */
-static NEC765_DMA_REQUEST( kc85_fdc_dma_drq )
+static UPD765_DMA_REQUEST( kc85_fdc_dma_drq )
 {
 	kc85_disc_hw_input_gate &=~(1<<7);
 	if (state)
 		kc85_disc_hw_input_gate |=(1<<7);
 }
 
-const nec765_interface kc_fdc_interface=
+const upd765_interface kc_fdc_interface=
 {
 	DEVCB_LINE(kc85_fdc_interrupt),
 	kc85_fdc_dma_drq,
 	NULL,
-	NEC765_RDY_PIN_CONNECTED	
+	UPD765_RDY_PIN_CONNECTED,
+	{FLOPPY_0, FLOPPY_1, NULL, NULL}
 };
 
 static TIMER_CALLBACK(kc85_disk_reset_timer_callback)
@@ -242,26 +244,26 @@ static void kc_disc_interface_init(running_machine *machine)
 */
 
 /*
-	Module ID		Module Name			Module Description
+    Module ID       Module Name         Module Description
 
 
-					D001				Basis Device
-					D002				Bus Driver device
-	a7				D004				Floppy Disk Interface Device
+                    D001                Basis Device
+                    D002                Bus Driver device
+    a7              D004                Floppy Disk Interface Device
 
 
-	ef				M001				Digital IN/OUT
-	ee				M003				V24
-					M005				User (empty)
-					M007				Adapter (empty)
-	e7				M010				ADU1
-	f6				M011				64k RAM
-	fb				M012				Texor
-	f4				M022				Expander RAM (16k)
-	f7				M025				User PROM (8k)
-	fb				M026				Forth
-	fb				M027				Development
-	e3				M029				DAU1
+    ef              M001                Digital IN/OUT
+    ee              M003                V24
+                    M005                User (empty)
+                    M007                Adapter (empty)
+    e7              M010                ADU1
+    f6              M011                64k RAM
+    fb              M012                Texor
+    f4              M022                Expander RAM (16k)
+    f7              M025                User PROM (8k)
+    fb              M026                Forth
+    fb              M027                Development
+    e3              M029                DAU1
 */
 
 
@@ -281,9 +283,9 @@ struct kc85_module
 /*
 static const struct kc85_module kc85_v24_module=
 {
-	0x0ee,
-	"M003",
-	"V24"
+    0x0ee,
+    "M003",
+    "V24"
 };
 */
 static const struct kc85_module kc85_disk_interface_device=
@@ -296,16 +298,16 @@ static const struct kc85_module kc85_disk_interface_device=
 static const struct kc85_module *modules[256>>2];
 /*
 
-	port xx80
+    port xx80
 
-	- xx is module id.
+    - xx is module id.
 
 
-	Only addressess divisible by 4 are checked.
-	If module does not exist, 0x0ff is returned.
+    Only addressess divisible by 4 are checked.
+    If module does not exist, 0x0ff is returned.
 
-	When xx80 is read, if a module exists a id will be returned.
-	Id's for known modules are listed above.
+    When xx80 is read, if a module exists a id will be returned.
+    Id's for known modules are listed above.
   */
 
 /* bus drivers 4 */
@@ -361,15 +363,15 @@ static void kc85_module_system_init(void)
 /**********************/
 /* used by KC85/4 and KC85/3 */
 /*
-	The cassette motor is controlled by bit 6 of PIO port A.
-	The cassette read data is connected to /ASTB input of the PIO.
-	A edge from the cassette therefore will trigger a interrupt
-	from the PIO.
-	The duration between two edges can be timed and the data-bit
-	identified.
+    The cassette motor is controlled by bit 6 of PIO port A.
+    The cassette read data is connected to /ASTB input of the PIO.
+    A edge from the cassette therefore will trigger a interrupt
+    from the PIO.
+    The duration between two edges can be timed and the data-bit
+    identified.
 
-	I have used a timer to feed data into /ASTB. The timer is only
-	active when the cassette motor is on.
+    I have used a timer to feed data into /ASTB. The timer is only
+    active when the cassette motor is on.
 */
 
 
@@ -387,7 +389,7 @@ static TIMER_CALLBACK(kc_cassette_timer_callback)
 	int bit;
 
 	/* the cassette data is linked to /astb input of
-	the pio. */
+    the pio. */
 
 	bit = 0;
 
@@ -433,27 +435,27 @@ static void	kc_cassette_set_motor(running_machine *machine, int motor_state)
 /*
   pin 2 = gnd
   pin 3 = read
-  pin 1 = k1		?? modulating signal
-  pin 4 = k0		?? signal??
+  pin 1 = k1        ?? modulating signal
+  pin 4 = k0        ?? signal??
   pin 5 = motor on
 
 
-	Tape signals:
-		K0, K1		??
-		MOTON		motor control
-		ASTB		read?
+    Tape signals:
+        K0, K1      ??
+        MOTON       motor control
+        ASTB        read?
 
-		T1-T4 give 4 bit a/d tone sound?
-		K1, K0 are mixed with tone.
+        T1-T4 give 4 bit a/d tone sound?
+        K1, K0 are mixed with tone.
 
-	Cassette read goes into ASTB of PIO.
-	From this, KC must be able to detect the length
-	of the pulses and can read the data.
+    Cassette read goes into ASTB of PIO.
+    From this, KC must be able to detect the length
+    of the pulses and can read the data.
 
 
-	Tape write: clock comes from CTC?
-	truck signal resets, 5v signal for set.
-	output gives k0 and k1.
+    Tape write: clock comes from CTC?
+    truck signal resets, 5v signal for set.
+    output gives k0 and k1.
 
 
 
@@ -478,7 +480,7 @@ static void	kc_cassette_set_motor(running_machine *machine, int motor_state)
 
   E-mail from Torsten Paul about the keyboard:
 
-	Torsten.Paul@gmx.de
+    Torsten.Paul@gmx.de
 
 "> I hope that you will be able to help me so I can add keyboard
 > emulation to it.
@@ -557,77 +559,77 @@ triggers the time measurement by the CTC channel 3." */
 
 /*
 
-	The CTC timer 3 count is initialised at 0x08f and counts down.
+    The CTC timer 3 count is initialised at 0x08f and counts down.
 
-	The pulses are connected into PIO /BSTB and generate a interrupt
-	on a positive edge. A pulse will not get through if BRDY from PIO is
-	not true!
+    The pulses are connected into PIO /BSTB and generate a interrupt
+    on a positive edge. A pulse will not get through if BRDY from PIO is
+    not true!
 
-	Then the interrupt occurs, the CTC count is read. The time between
-	pulses is therefore measured by the CTC.
+    Then the interrupt occurs, the CTC count is read. The time between
+    pulses is therefore measured by the CTC.
 
-	The time is checked and depending on the value the KC detects
-	a 1 or 0 bit sent from the keyboard.
+    The time is checked and depending on the value the KC detects
+    a 1 or 0 bit sent from the keyboard.
 
-	Summary From code below:
+    Summary From code below:
 
-	0x065<=count<0x078	-> 0 bit				"short pulse"
-	0x042<=count<0x065	-> 1 bit				"long pulse"
-	count<0x014			-> ignore
-	count>=0x078		-> ignore
-	0x014<=count<0x042	-> signal end of code	"very long pulse"
+    0x065<=count<0x078  -> 0 bit                "short pulse"
+    0x042<=count<0x065  -> 1 bit                "long pulse"
+    count<0x014         -> ignore
+    count>=0x078        -> ignore
+    0x014<=count<0x042  -> signal end of code   "very long pulse"
 
-	codes are sent bit 0, bit 1, bit 2...bit 7. bit 0 is the state
-	of the shift key.
+    codes are sent bit 0, bit 1, bit 2...bit 7. bit 0 is the state
+    of the shift key.
 
-	Torsten's e-mail indicates "short pulse" for 1 bit, and "long
-	pulse" for 0 bit, but I found this to be incorrect. However,
-	the timings are correct.
+    Torsten's e-mail indicates "short pulse" for 1 bit, and "long
+    pulse" for 0 bit, but I found this to be incorrect. However,
+    the timings are correct.
 
 
-	Keyboard reading procedure extracted from KC85/4 system rom:
+    Keyboard reading procedure extracted from KC85/4 system rom:
 
 0345  f5        push    af
-0346  db8f      in      a,(#8f)			; get CTC timer 3 count
+0346  db8f      in      a,(#8f)         ; get CTC timer 3 count
 0348  f5        push    af
-0349  3ea7      ld      a,#a7			; channel 3, enable int, select counter mode, control word
-										; write, software reset, time constant follows
+0349  3ea7      ld      a,#a7           ; channel 3, enable int, select counter mode, control word
+                                        ; write, software reset, time constant follows
 034b  d38f      out     (#8f),a
-034d  3e8f      ld      a,#8f			; time constant
+034d  3e8f      ld      a,#8f           ; time constant
 034f  d38f      out     (#8f),a
 0351  f1        pop     af
 
 0352  fb        ei
-0353  b7        or      a				; count is over
+0353  b7        or      a               ; count is over
 0354  284d      jr      z,#03a3         ;
 
-	;; check count is in range
+    ;; check count is in range
 0356  fe14      cp      #14
 0358  3849      jr      c,#03a3         ;
 035a  fe78      cp      #78
 035c  3045      jr      nc,#03a3        ;
 
-	;; at this point, time must be between #14 and #77 to be valid
+    ;; at this point, time must be between #14 and #77 to be valid
 
-	;; if >=#65, then carry=0, and a 0 bit has been detected
+    ;; if >=#65, then carry=0, and a 0 bit has been detected
 
 035e  fe65      cp      #65
 0360  303d      jr      nc,#039f        ; (61)
 
-	;; if <#65, then a 1 bit has been detected. carry is set with the addition below.
-	;; a carry will be generated if the count is >#42
+    ;; if <#65, then a 1 bit has been detected. carry is set with the addition below.
+    ;; a carry will be generated if the count is >#42
 
-	;; therefore for a 1 bit to be generated, then #42<=time<#65
-	;; must be true.
+    ;; therefore for a 1 bit to be generated, then #42<=time<#65
+    ;; must be true.
 
 0362  c6be      add     a,#be
 0364  3839      jr      c,#039f         ; (57)
 
-	;; this code appears to take the transmitted scan-code
-	;; and converts it into a useable code by the os???
+    ;; this code appears to take the transmitted scan-code
+    ;; and converts it into a useable code by the os???
 0366  e5        push    hl
 0367  d5        push    de
-	;; convert hardware scan-code into os code
+    ;; convert hardware scan-code into os code
 0368  dd7e0c    ld      a,(ix+#0c)
 036b  1f        rra
 036c  ee01      xor     #01
@@ -640,38 +642,38 @@ triggers the time measurement by the CTC channel 3." */
 0379  d1        pop     de
 037a  e1        pop     hl
 
-	;; shift lock pressed?
+    ;; shift lock pressed?
 037b  ddcb087e  bit     7,(ix+#08)
 037f  200a      jr      nz,#038b
-	;; no.
+    ;; no.
 
-	;; alpha char?
+    ;; alpha char?
 0381  fe40      cp      #40
 0383  3806      jr      c,#038b
 0385  fe80      cp      #80
 0387  3002      jr      nc,#038b
-	;; yes, it is a alpha char
-	;; force to lower case
+    ;; yes, it is a alpha char
+    ;; force to lower case
 0389  ee20      xor     #20
 
-038b  ddbe0d    cp      (ix+#0d)		;; same as stored?
+038b  ddbe0d    cp      (ix+#0d)        ;; same as stored?
 038e  201d      jr      nz,#03ad
 
-	 ;; yes - must be held for a certain time before it can repeat?
+     ;; yes - must be held for a certain time before it can repeat?
 0390  f5        push    af
 0391  3ae0b7    ld      a,(#b7e0)
 0394  ddbe0a    cp      (ix+#0a)
 0397  3811      jr      c,#03aa
 0399  f1        pop     af
 
-039a  dd340a    inc     (ix+#0a)		;; incremenent repeat count?
+039a  dd340a    inc     (ix+#0a)        ;; incremenent repeat count?
 039d  1804      jr      #03a3
 
-	;; update scan-code received so far
+    ;; update scan-code received so far
 
-039f  ddcb0c1e  rr      (ix+#0c)		; shift in 0 or 1 bit depending on what has been selected
+039f  ddcb0c1e  rr      (ix+#0c)        ; shift in 0 or 1 bit depending on what has been selected
 
-03a3  db89      in      a,(#89)			; used to clear brdy
+03a3  db89      in      a,(#89)         ; used to clear brdy
 03a5  d389      out     (#89),a
 03a7  f1        pop     af
 03a8  ed4d      reti
@@ -737,9 +739,9 @@ triggers the time measurement by the CTC channel 3." */
 01b3  3054      jr      nc,#0209
 
 
-	;; count>=#65 = 0 bit
-	;; #44<=count<#65 = 1 bit
-	;; count<#44 = end of code
+    ;; count>=#65 = 0 bit
+    ;; #44<=count<#65 = 1 bit
+    ;; count<#44 = end of code
 
 01b5  fe44      cp      #44
 01b7  3053      jr      nc,#020c
@@ -822,12 +824,12 @@ static int kc_previous_keyboard[KC_KEYBOARD_NUM_LINES-1];
 static unsigned char kc_brdy;
 
 /*
-	The kc keyboard is seperate from the kc base unit.
+    The kc keyboard is seperate from the kc base unit.
 
-	The keyboard emulation uses 2 timers:
+    The keyboard emulation uses 2 timers:
 
-	update_timer is used to add scan-codes to the keycode list.
-	transmit_timer is used to transmit the scan-code to the kc.
+    update_timer is used to add scan-codes to the keycode list.
+    transmit_timer is used to transmit the scan-code to the kc.
 */
 
 static kc_keyboard keyboard_data;
@@ -1130,7 +1132,7 @@ static void kc85_4_update_0x08000(running_machine *machine)
 		/* ram8 block chosen */
 		ram8_block = ((kc85_84_data)>>4) & 0x01;
 
-		mem_ptr = mess_ram+0x08000+(ram8_block<<14);
+		mem_ptr = messram_get_ptr(devtag_get_device(machine, "messram"))+0x08000+(ram8_block<<14);
 
 		memory_set_bankptr(machine, 3, mem_ptr);
 		memory_set_bankptr(machine, 4, mem_ptr+0x02800);
@@ -1197,7 +1199,7 @@ static void kc85_4_update_0x00000(running_machine *machine)
 
 		/* yes; set address of bank */
 		memory_install_read8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_BANK(1));
-		memory_set_bankptr(machine, 1, mess_ram);
+		memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
 
 		/* write protect ram? */
 		if ((kc85_pio_data[0] & (1<<3))==0)
@@ -1214,14 +1216,14 @@ static void kc85_4_update_0x00000(running_machine *machine)
 
 			/* ram is enabled and write enabled; and set address of bank */
 			memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_BANK(7));
-			memory_set_bankptr(machine, 7, mess_ram);
+			memory_set_bankptr(machine, 7, messram_get_ptr(devtag_get_device(machine, "messram")));
 		}
 	}
 	else
 	{
 		LOG(("no memory at ram0!\n"));
 
-//		memory_set_bankptr(machine, 1,memory_region(machine, "maincpu") + 0x013000);
+//      memory_set_bankptr(machine, 1,memory_region(machine, "maincpu") + 0x013000);
 		/* ram is disabled */
 		memory_install_read8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_NOP);
 		memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_NOP);
@@ -1240,7 +1242,7 @@ static void kc85_4_update_0x04000(running_machine *machine)
 	{
 		UINT8 *mem_ptr;
 
-		mem_ptr = mess_ram + 0x04000;
+		mem_ptr = messram_get_ptr(devtag_get_device(machine, "messram")) + 0x04000;
 
 		/* yes */
 		rh = SMH_BANK(2);
@@ -1396,7 +1398,7 @@ WRITE8_HANDLER ( kc85_4_pio_data_w )
 			speaker_level = (data>>1) & 0x0f;
 
 			/* this might not be correct, the range might
-			be logarithmic and not linear! */
+            be logarithmic and not linear! */
 			speaker_level_w(speaker, (speaker_level<<4));
 		}
 		break;
@@ -1500,7 +1502,7 @@ static void kc85_3_update_0x00000(running_machine *machine)
 		/* yes */
 		rh = SMH_BANK(1);
 		/* set address of bank */
-		memory_set_bankptr(machine, 1, mess_ram);
+		memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
 
 		/* write protect ram? */
 		if ((kc85_pio_data[0] & (1<<3))==0)
@@ -1518,7 +1520,7 @@ static void kc85_3_update_0x00000(running_machine *machine)
 			/* ram is enabled and write enabled */
 			wh = SMH_BANK(6);
 			/* set address of bank */
-			memory_set_bankptr(machine, 6, mess_ram);
+			memory_set_bankptr(machine, 6, messram_get_ptr(devtag_get_device(machine, "messram")));
 		}
 	}
 	else
@@ -1547,7 +1549,7 @@ static void kc85_3_update_0x08000(running_machine *machine)
     {
         /* IRM enabled */
         LOG(("IRM enabled\n"));
-		ram_page = mess_ram+0x08000;
+		ram_page = messram_get_ptr(devtag_get_device(machine, "messram"))+0x08000;
 
 		memory_set_bankptr(machine, 3, ram_page);
 		memory_set_bankptr(machine, 8, ram_page);
@@ -1559,7 +1561,7 @@ static void kc85_3_update_0x08000(running_machine *machine)
     {
 		/* RAM8 ACCESS */
 		LOG(("RAM8 enabled\n"));
-		ram_page = mess_ram + 0x04000;
+		ram_page = messram_get_ptr(devtag_get_device(machine, "messram")) + 0x04000;
 
 		memory_set_bankptr(machine, 3, ram_page);
 		rh = SMH_BANK(3);
@@ -1642,7 +1644,7 @@ WRITE8_HANDLER ( kc85_3_pio_data_w )
 			speaker_level = (data>>1) & 0x0f;
 
 			/* this might not be correct, the range might
-			be logarithmic and not linear! */
+            be logarithmic and not linear! */
 			speaker_level_w(speaker, (speaker_level<<4));
 		}
 		break;
@@ -1728,11 +1730,6 @@ static void kc85_pio_interrupt(const device_config *device, int state)
 	cputag_set_input_line(device->machine, "maincpu", 0, state);
 }
 
-static void kc85_ctc_interrupt(const device_config *device, int state)
-{
-	cputag_set_input_line(device->machine, "maincpu", 1, state);
-}
-
 /* callback for ardy output from PIO */
 /* used in KC85/4 & KC85/3 cassette interface */
 static void kc85_pio_ardy_callback(const device_config *device, int state)
@@ -1770,14 +1767,14 @@ const z80pio_interface kc85_pio_intf =
 
 
 /* used in cassette write -> K0 */
-static WRITE8_DEVICE_HANDLER(kc85_zc0_callback)
+static WRITE_LINE_DEVICE_HANDLER(kc85_zc0_callback)
 {
 
 
 }
 
 /* used in cassette write -> K1 */
-static WRITE8_DEVICE_HANDLER(kc85_zc1_callback)
+static WRITE_LINE_DEVICE_HANDLER(kc85_zc1_callback)
 {
 
 }
@@ -1791,8 +1788,8 @@ static TIMER_CALLBACK(kc85_15khz_timer_callback)
 	kc85_15khz_state^=1;
 
 	/* set clock input for channel 2 and 3 to ctc */
-	z80ctc_trg0_w(device, 0,kc85_15khz_state);
-	z80ctc_trg1_w(device, 0,kc85_15khz_state);
+	z80ctc_trg0_w(device, kc85_15khz_state);
+	z80ctc_trg1_w(device, kc85_15khz_state);
 
 	kc85_15khz_count++;
 
@@ -1804,30 +1801,30 @@ static TIMER_CALLBACK(kc85_15khz_timer_callback)
 		kc85_50hz_state^=1;
 
 		/* set clock input for channel 2 and 3 to ctc */
-		z80ctc_trg2_w(device, 0, kc85_50hz_state);
-		z80ctc_trg3_w(device, 0, kc85_50hz_state);
+		z80ctc_trg2_w(device, kc85_50hz_state);
+		z80ctc_trg3_w(device, kc85_50hz_state);
 	}
 }
 
 /* video blink */
-static WRITE8_DEVICE_HANDLER(kc85_zc2_callback)
+static WRITE_LINE_DEVICE_HANDLER( kc85_zc2_callback )
 {
 	/* is blink enabled? */
 	if (kc85_pio_data[1] & (1<<7))
 	{
 		/* yes */
 		/* toggle state of blink to video hardware */
-		kc85_video_set_blink_state(device->machine, data);
+		kc85_video_set_blink_state(device->machine, state);
 	}
 }
 
-const z80ctc_interface	kc85_ctc_intf =
+Z80CTC_INTERFACE( kc85_ctc_intf )
 {
 	0,
-    kc85_ctc_interrupt,
-	kc85_zc0_callback,
-	kc85_zc1_callback,
-    kc85_zc2_callback
+    DEVCB_CPU_INPUT_LINE("maincpu", 1),
+	DEVCB_LINE(kc85_zc0_callback),
+	DEVCB_LINE(kc85_zc1_callback),
+    DEVCB_LINE(kc85_zc2_callback)
 };
 
 static void	kc85_common_init(running_machine *machine)
@@ -1872,10 +1869,10 @@ MACHINE_RESET( kc85_4 )
 
 #if 0
 	/* this is temporary. Normally when a Z80 is reset, it will
-	execute address 0. It appears the KC85 series pages the rom
-	at address 0x0000-0x01000 which has a single jump in it,
-	can't see yet where it disables it later!!!! so for now
-	here will be a override */
+    execute address 0. It appears the KC85 series pages the rom
+    at address 0x0000-0x01000 which has a single jump in it,
+    can't see yet where it disables it later!!!! so for now
+    here will be a override */
 	memory_set_direct_update_handler(0, kc85_4_opbaseoverride);
 #endif
 }
@@ -1891,8 +1888,8 @@ MACHINE_RESET( kc85_3 )
 	kc85_pio_data[0] = 0x0f;
 	kc85_pio_data[1] = 0x0f1;
 
-	memory_set_bankptr(machine, 2,mess_ram+0x0c000);
-	memory_set_bankptr(machine, 7,mess_ram+0x0c000);
+	memory_set_bankptr(machine, 2,messram_get_ptr(devtag_get_device(machine, "messram"))+0x0c000);
+	memory_set_bankptr(machine, 7,messram_get_ptr(devtag_get_device(machine, "messram"))+0x0c000);
 
 	kc85_z80pio = devtag_get_device(machine, "z80pio");
 
@@ -1906,10 +1903,10 @@ MACHINE_RESET( kc85_3 )
 
 #if 0
 	/* this is temporary. Normally when a Z80 is reset, it will
-	execute address 0. It appears the KC85 series pages the rom
-	at address 0x0000-0x01000 which has a single jump in it,
-	can't see yet where it disables it later!!!! so for now
-	here will be a override */
+    execute address 0. It appears the KC85 series pages the rom
+    at address 0x0000-0x01000 which has a single jump in it,
+    can't see yet where it disables it later!!!! so for now
+    here will be a override */
 	memory_set_direct_update_handler(0, kc85_3_opbaseoverride);
 #endif
 }

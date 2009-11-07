@@ -19,6 +19,7 @@
 #include "machine/6532riot.h"
 #include "machine/74145.h"
 #include "sound/speaker.h"
+#include "devices/messram.h"
 
 #define LED_REFRESH_DELAY  ATTOTIME_IN_USEC(70)
 
@@ -75,7 +76,7 @@ static TIMER_CALLBACK( led_refresh )
 }
 
 
-static UINT8 sym1_riot_a_r(const device_config *device, UINT8 olddata)
+static READ8_DEVICE_HANDLER(sym1_riot_a_r)
 {
 	int data = 0x7f;
 
@@ -93,7 +94,7 @@ static UINT8 sym1_riot_a_r(const device_config *device, UINT8 olddata)
 }
 
 
-static UINT8 sym1_riot_b_r(const device_config *device, UINT8 olddata)
+static READ8_DEVICE_HANDLER(sym1_riot_b_r)
 {
 	int data = 0xff;
 
@@ -113,7 +114,7 @@ static UINT8 sym1_riot_b_r(const device_config *device, UINT8 olddata)
 }
 
 
-static void sym1_riot_a_w(const device_config *device, UINT8 newdata, UINT8 data)
+static WRITE8_DEVICE_HANDLER(sym1_riot_a_w)
 {
 	logerror("%x: riot_a_w 0x%02x\n", cpu_get_pc( cputag_get_cpu(device->machine, "maincpu") ), data);
 
@@ -122,7 +123,7 @@ static void sym1_riot_a_w(const device_config *device, UINT8 newdata, UINT8 data
 }
 
 
-static void sym1_riot_b_w(const device_config *device, UINT8 newdata, UINT8 data)
+static WRITE8_DEVICE_HANDLER(sym1_riot_b_w)
 {
 	logerror("%x: riot_b_w 0x%02x\n", cpu_get_pc( cputag_get_cpu(device->machine, "maincpu") ), data);
 
@@ -136,10 +137,10 @@ static void sym1_riot_b_w(const device_config *device, UINT8 newdata, UINT8 data
 
 const riot6532_interface sym1_r6532_interface =
 {
-	sym1_riot_a_r,
-	sym1_riot_b_r,
-	sym1_riot_a_w,
-	sym1_riot_b_w
+	DEVCB_HANDLER(sym1_riot_a_r),
+	DEVCB_HANDLER(sym1_riot_b_r),
+	DEVCB_HANDLER(sym1_riot_a_w),
+	DEVCB_HANDLER(sym1_riot_b_w)
 };
 
 
@@ -269,10 +270,10 @@ const via6522_interface sym1_via2 =
 DRIVER_INIT( sym1 )
 {
 	/* wipe expansion memory banks that are not installed */
-	if (mess_ram_size < 4*1024)
+	if (messram_get_size(devtag_get_device(machine, "messram")) < 4*1024)
 	{
 		memory_install_readwrite8_handler(cputag_get_address_space( machine, "maincpu", ADDRESS_SPACE_PROGRAM ),
-			mess_ram_size, 0x0fff, 0, 0, SMH_NOP, SMH_NOP);
+			messram_get_size(devtag_get_device(machine, "messram")), 0x0fff, 0, 0, SMH_NOP, SMH_NOP);
 	}
 
 	/* allocate a timer to refresh the led display */
@@ -283,7 +284,7 @@ DRIVER_INIT( sym1 )
 MACHINE_RESET( sym1 )
 {
 	/* make 0xf800 to 0xffff point to the last half of the monitor ROM
-	   so that the CPU can find its reset vectors */
+       so that the CPU can find its reset vectors */
 	memory_install_readwrite8_handler(cputag_get_address_space( machine, "maincpu", ADDRESS_SPACE_PROGRAM ),
 			0xf800, 0xffff, 0, 0, SMH_BANK(1), SMH_NOP);
 	memory_set_bankptr(machine, 1, sym1_monitor + 0x800);

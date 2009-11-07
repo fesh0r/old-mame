@@ -62,7 +62,7 @@ static MC6845_UPDATE_ROW( h19_update_row )
 		{
 			int x = (column * 8) + bit;
 			int color = BIT(data, 7) ? 1 : 0;
-				
+
 			*BITMAP_ADDR16(bitmap, y, x) = color;
 
 			data <<= 1;
@@ -108,9 +108,6 @@ static MACHINE_DRIVER_START( h19 )
 	MDRV_VIDEO_UPDATE( h19 )
 MACHINE_DRIVER_END
 
-static SYSTEM_CONFIG_START(h19)
-SYSTEM_CONFIG_END
-
 /* ROM definition */
 ROM_START( h19 )
     ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
@@ -137,5 +134,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( ????, h19,  0,       0, 	h19, 	h19, 	 0,  	  h19,  	 "Heath, Inc.",   "Heathkit H19",		GAME_NOT_WORKING)
+COMP( ????, h19,  0,       0, 	h19, 	h19, 	 0,  	  0,  	 "Heath, Inc.",   "Heathkit H19",		GAME_NOT_WORKING)
 

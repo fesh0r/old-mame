@@ -10,23 +10,23 @@
 
     TODO:
 
-	- Tyche bios is broken
-	- several disk interfaces (720K/1.44MB/3.2MB)
-	- discrete sound
-	- Gold Card (68000 @ 16MHz, 2MB RAM)
-	- Super Gold Card (68020 @ 24MHz, 4MB RAM)
-	- QLToolkit II ROM
-	- GST 68kOS ROM
-	- natural keyboard SHIFT does not work, it causes characters to be skipped altogether
-	- get modified Danish version to boot (e.g. MD_DESEL was patched to jump to 0x1cd5e)
-	- ICL One Per Desk / British Telecom Merlin Tonto / Telecom Australia Computerphone / Mega OPD (US)
-	- OPD: 68008P8 @ 7.5MHz, ZX8301 @ 12MHz, CDP65C51E1 @ 1.8432MHz, 128K RAM, 2K NVRAM, 128K ROM (4x32), 16K speech ROM, ADM7910 modem, TMS5220 speech, 2x100K microdrives, RTC 1/1/1970, 1xRS-423
-	- Sandy Q-XT 640 (original motherboard, Super QBoard 512KB, Centronics, Super Toolkit II, FDC, 1 or 2 3.5" 1MB drives, 3 expansion slots)
-	- CST Thor PC 1F (720K 3.5")
-	- CST Thor PC 2F (2x 720k 3.5")
-	- CST Thor PC 2FW (20MB Winchester + 720K 3.5")
-	- CST Thor 20 (68020)
-	- CST Thor 21 (68020+68881)
+    - Tyche bios is broken
+    - several disk interfaces (720K/1.44MB/3.2MB)
+    - discrete sound
+    - Gold Card (68000 @ 16MHz, 2MB RAM)
+    - Super Gold Card (68020 @ 24MHz, 4MB RAM)
+    - QLToolkit II ROM
+    - GST 68kOS ROM
+    - natural keyboard SHIFT does not work, it causes characters to be skipped altogether
+    - get modified Danish version to boot (e.g. MD_DESEL was patched to jump to 0x1cd5e)
+    - ICL One Per Desk / British Telecom Merlin Tonto / Telecom Australia Computerphone / Mega OPD (US)
+    - OPD: 68008P8 @ 7.5MHz, ZX8301 @ 12MHz, CDP65C51E1 @ 1.8432MHz, 128K RAM, 2K NVRAM, 128K ROM (4x32), 16K speech ROM, ADM7910 modem, TMS5220 speech, 2x100K microdrives, RTC 1/1/1970, 1xRS-423
+    - Sandy Q-XT 640 (original motherboard, Super QBoard 512KB, Centronics, Super Toolkit II, FDC, 1 or 2 3.5" 1MB drives, 3 expansion slots)
+    - CST Thor PC 1F (720K 3.5")
+    - CST Thor PC 2F (2x 720k 3.5")
+    - CST Thor PC 2FW (20MB Winchester + 720K 3.5")
+    - CST Thor 20 (68020)
+    - CST Thor 21 (68020+68881)
     - CST Thor XVI CF    (Workstation, 68000 @ 8 MHz, M6802, 68682 DUART)
     - CST Thor XVI IF    (Single Floppy)
     - CST Thor XVI FF    (Dual Floppy)
@@ -47,10 +47,11 @@
 #include "devices/cartslot.h"
 #include "devices/microdrv.h"
 #include "devices/snapquik.h"
-#include "includes/serial.h"
+#include "machine/serial.h"
 #include "sound/speaker.h"
 #include "video/zx8301.h"
 #include "machine/zx8302.h"
+#include "devices/messram.h"
 
 static QUICKLOAD_LOAD( ql );
 
@@ -472,12 +473,12 @@ INPUT_PORTS_END
 
 static READ8_HANDLER( ql_ram_r )
 {
-	return mess_ram[offset];
+	return messram_get_ptr(devtag_get_device(space->machine, "messram"))[offset];
 }
 
 static WRITE8_HANDLER( ql_ram_w )
 {
-	mess_ram[offset] = data;
+	messram_get_ptr(devtag_get_device(space->machine, "messram"))[offset] = data;
 }
 
 static ZX8301_INTERFACE( ql_zx8301_intf )
@@ -540,7 +541,7 @@ static MACHINE_START( ql )
 
 	/* configure RAM */
 
-	switch (mess_ram_size)
+	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 128*1024:
 		memory_install_readwrite8_handler(program, 0x040000, 0x0fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
@@ -610,6 +611,52 @@ static DEVICE_IMAGE_LOAD( ql_cart )
 	return INIT_FAIL;
 }
 
+
+static FLOPPY_OPTIONS_START(ql)
+	FLOPPY_OPTION(ql, "dsk", "SSSD disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([40])
+		SECTORS([9])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION(ql, "dsk", "DSSD disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([40])
+		SECTORS([9])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION(ql, "dsk", "DSDD disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([80])
+		SECTORS([9])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION(ql, "dsk", "DSHD disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([80])
+		SECTORS([18])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION(ql, "dsk", "DSED disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([80])
+		SECTORS([40])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([1]))
+FLOPPY_OPTIONS_END
+
+static const floppy_config ql_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(ql),
+	DO_NOT_KEEP_GEOMETRY
+};
+
 static MACHINE_DRIVER_START( ql )
 	MDRV_DRIVER_DATA(ql_state)
 
@@ -655,19 +702,14 @@ static MACHINE_DRIVER_START( ql )
 	MDRV_CARTSLOT_EXTENSION_LIST("bin")
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(ql_cart)
-MACHINE_DRIVER_END
 
-static MACHINE_DRIVER_START( opd )
-	MDRV_DRIVER_DATA(ql_state)
-
-	// basic machine hardware
-	MDRV_CPU_ADD(M68008_TAG, M68008, 7500000)
-	MDRV_CPU_PROGRAM_MAP(ql_map)
-
-	MDRV_CPU_ADD(I8051_TAG, I8051, X4)
-	MDRV_CPU_IO_MAP(ipc_io_map)
+	MDRV_FLOPPY_2_DRIVES_ADD(ql_floppy_config)
 	
-	MDRV_DEVICE_REMOVE("cart")
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("128K")
+	MDRV_RAM_EXTRA_OPTIONS("192K,256K,384K,640K,896K")
+	
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ql_ntsc )
@@ -677,6 +719,23 @@ static MACHINE_DRIVER_START( ql_ntsc )
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_SIZE(960, 262)
 	MDRV_SCREEN_VISIBLE_AREA(0, 512-1, 0, 256-1)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( opd )
+	MDRV_IMPORT_FROM(ql)
+	
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("128K")
+	MDRV_RAM_EXTRA_OPTIONS("256K")		
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( megaopd )
+	MDRV_IMPORT_FROM(ql)
+
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("256K")	
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -720,9 +779,9 @@ ROM_START( ql )
 
 	ROM_IPC
 	/*
-	ROM_REGION( 0x400, "plds", 0 )
-	ROM_LOAD( "hal16l8.ic38", 0x0000, 0x0400, NO_DUMP )
-	*/
+    ROM_REGION( 0x400, "plds", 0 )
+    ROM_LOAD( "hal16l8.ic38", 0x0000, 0x0400, NO_DUMP )
+    */
 ROM_END
 
 ROM_START( ql_us )
@@ -844,7 +903,7 @@ ROM_END
 
 static QUICKLOAD_LOAD( ql )
 {
-	image_fread(image, mess_ram, 128*1024);
+	image_fread(image, messram_get_ptr(devtag_get_device(image->machine, "messram")), 128*1024);
 
 	return INIT_PASS;
 }
@@ -868,71 +927,8 @@ static void ql_serial_getinfo(const mess_device_class *devclass, UINT32 state, u
 	}
 }
 
-static FLOPPY_OPTIONS_START(ql)
-	FLOPPY_OPTION(ql, "dsk", "SSSD disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([40])
-		SECTORS([9])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1]))
-	FLOPPY_OPTION(ql, "dsk", "DSSD disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([40])
-		SECTORS([9])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1]))
-	FLOPPY_OPTION(ql, "dsk", "DSDD disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([80])
-		SECTORS([9])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1]))
-	FLOPPY_OPTION(ql, "dsk", "DSHD disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([80])
-		SECTORS([18])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1]))
-	FLOPPY_OPTION(ql, "dsk", "DSED disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([80])
-		SECTORS([40])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1]))		
-FLOPPY_OPTIONS_END
-
-static void ql_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_ql; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
 static SYSTEM_CONFIG_START( ql )
-	CONFIG_RAM_DEFAULT	(128 * 1024)
-	CONFIG_RAM			(192 * 1024) // 64K expansion
-	CONFIG_RAM			(256 * 1024) // 128K expansion
-	CONFIG_RAM			(384 * 1024) // 256K expansion
-	CONFIG_RAM			(640 * 1024) // 512K expansion
-	CONFIG_RAM			(896 * 1024) // Trump Card
 	CONFIG_DEVICE(ql_serial_getinfo)
-	CONFIG_DEVICE(ql_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( opd )
-	CONFIG_RAM_DEFAULT	(128 * 1024)
-	CONFIG_RAM			(256 * 1024) // 128K expansion
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( megaopd )
-	CONFIG_RAM_DEFAULT	(256 * 1024)
 SYSTEM_CONFIG_END
 
 /* Computer Drivers */
@@ -941,11 +937,11 @@ SYSTEM_CONFIG_END
 COMP( 1984, ql,     0,      0,      ql,         ql,     0,      ql,     "Sinclair Research Ltd",    "QL (UK)",      GAME_SUPPORTS_SAVE )
 COMP( 1985, ql_us,  ql,     0,      ql_ntsc,    ql,     0,      ql,     "Sinclair Research Ltd",    "QL (USA)",     GAME_SUPPORTS_SAVE )
 COMP( 1985, ql_es,  ql,     0,      ql,         ql_es,  0,      ql,     "Sinclair Research Ltd",    "QL (Spain)",   GAME_SUPPORTS_SAVE )
-COMP( 1985, ql_fr,  ql,     0,      ql,         ql_fr,  0,      ql,     "Sinclair Research Ltd",    "QL (France)",  GAME_SUPPORTS_SAVE )
+COMP( 1985, ql_fr,  ql,     0,      ql,         ql_fr,  0,      ql,     "Sinclair Research Ltd",    "QL (France)",  GAME_NOT_WORKING )
 COMP( 1985, ql_de,  ql,     0,      ql,         ql_de,  0,      ql,     "Sinclair Research Ltd",    "QL (Germany)", GAME_SUPPORTS_SAVE )
 COMP( 1985, ql_it,  ql,     0,      ql,         ql_it,  0,      ql,     "Sinclair Research Ltd",    "QL (Italy)",   GAME_SUPPORTS_SAVE )
-COMP( 1985, ql_se,  ql,     0,      ql,         ql_se,  0,      ql,     "Sinclair Research Ltd",    "QL (Sweden)",  GAME_SUPPORTS_SAVE )
+COMP( 1985, ql_se,  ql,     0,      ql,         ql_se,  0,      ql,     "Sinclair Research Ltd",    "QL (Sweden)",  GAME_NOT_WORKING )
 COMP( 1985, ql_dk,  ql,     0,      ql,         ql_dk,  0,      ql,     "Sinclair Research Ltd",    "QL (Denmark)", GAME_NOT_WORKING )
 COMP( 1985, ql_gr,  ql,     0,      ql,         ql,     0,      ql,     "Sinclair Research Ltd",    "QL (Greece)",  GAME_SUPPORTS_SAVE )
-COMP( 1984, tonto,  0,		0,		ql,			ql,		0,		opd,	"British Telecom Business Systems", "Merlin M1800 Tonto", GAME_NOT_WORKING )
-COMP( 1986, megaopd,tonto,	0,		ql,			ql,		0,		megaopd,"International Computer Limited", "MegaOPD (USA)", GAME_NOT_WORKING )
+COMP( 1984, tonto,  0,		0,		opd,		ql,		0,		0,		"British Telecom Business Systems", "Merlin M1800 Tonto", GAME_NOT_WORKING )
+COMP( 1986, megaopd,tonto,	0,		megaopd,	ql,		0,		0,		"International Computer Limited", "MegaOPD (USA)", GAME_NOT_WORKING )

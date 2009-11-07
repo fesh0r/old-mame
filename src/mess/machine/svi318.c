@@ -19,6 +19,7 @@
 #include "formats/svi_cas.h"
 #include "sound/dac.h"
 #include "sound/ay8910.h"
+#include "devices/messram.h"
 
 enum {
 	SVI_INTERNAL	= 0,
@@ -305,32 +306,29 @@ WRITE8_HANDLER( svi318_psg_port_b_w )
 typedef struct
 {
 	UINT8 driveselect;
-	UINT8 irq_drq;
+	int drq;
+	int irq;
 	UINT8 heads[2];
 } SVI318_FDC_STRUCT;
 
 static SVI318_FDC_STRUCT svi318_fdc;
 
-static WD17XX_CALLBACK( svi_fdc_callback )
+static WRITE_LINE_DEVICE_HANDLER( svi_fdc_intrq_w )
 {
-	switch( state )
-	{
-	case WD17XX_IRQ_CLR:
-		svi318_fdc.irq_drq &= ~0x80;
-		break;
-	case WD17XX_IRQ_SET:
-		svi318_fdc.irq_drq |= 0x80;
-		break;
-	case WD17XX_DRQ_CLR:
-		svi318_fdc.irq_drq &= ~0x40;
-		break;
-	case WD17XX_DRQ_SET:
-		svi318_fdc.irq_drq |= 0x40;
-		break;
-	}
+	svi318_fdc.irq = state;
 }
 
-const wd17xx_interface svi_wd17xx_interface = { svi_fdc_callback, NULL };
+static WRITE_LINE_DEVICE_HANDLER( svi_fdc_drq_w )
+{
+	svi318_fdc.drq = state;
+}
+
+const wd17xx_interface svi_wd17xx_interface =
+{
+	DEVCB_LINE(svi_fdc_intrq_w),
+	DEVCB_LINE(svi_fdc_drq_w),
+	{FLOPPY_0, FLOPPY_1, NULL, NULL}
+};
 
 static WRITE8_HANDLER( svi318_fdc_drive_motor_w )
 {
@@ -360,7 +358,12 @@ static WRITE8_HANDLER( svi318_fdc_density_side_w )
 
 static READ8_HANDLER( svi318_fdc_irqdrq_r )
 {
-	return svi318_fdc.irq_drq;
+	UINT8 result = 0;
+
+	result |= svi318_fdc.drq << 6;
+	result |= svi318_fdc.irq << 7;
+
+	return result;
 }
 
 MC6845_UPDATE_ROW( svi806_crtc6845_update_row )
@@ -608,10 +611,9 @@ MACHINE_START( svi318_pal )
 static void svi318_load_proc(const device_config *image)
 {
 	int size;
-	int id = image_index_in_device(image);
+	int id = floppy_get_drive(image);
 
 	size = image_length (image);
-
 	switch (size)
 	{
 	case 172032:	/* SVI-328 SSDD */
@@ -634,10 +636,10 @@ MACHINE_RESET( svi318 )
 
 	svi.bank_switch = 0xff;
 	svi318_set_banks(machine);
-	
+
 	for(drive=0;drive<2;drive++)
 	{
-		floppy_install_load_proc(image_from_devtype_and_index(machine, IO_FLOPPY, drive), svi318_load_proc);
+		floppy_install_load_proc(floppy_get_device(machine, drive), svi318_load_proc);
 	}
 }
 
@@ -716,16 +718,16 @@ static void svi318_set_banks(running_machine *machine)
 		}
 		break;
 	case SVI_EXPRAM2:
-		if ( mess_ram_size >= 64 * 1024 )
+		if ( messram_get_size(devtag_get_device(machine, "messram")) >= 64 * 1024 )
 		{
-			svi.bankLow_ptr = mess_ram + mess_ram_size - 64 * 1024;
+			svi.bankLow_ptr = messram_get_ptr(devtag_get_device(machine, "messram")) + messram_get_size(devtag_get_device(machine, "messram")) - 64 * 1024;
 			svi.bankLow_read_only = 0;
 		}
 		break;
 	case SVI_EXPRAM3:
-		if ( mess_ram_size > 128 * 1024 )
+		if ( messram_get_size(devtag_get_device(machine, "messram")) > 128 * 1024 )
 		{
-			svi.bankLow_ptr = mess_ram + mess_ram_size - 128 * 1024;
+			svi.bankLow_ptr = messram_get_ptr(devtag_get_device(machine, "messram")) + messram_get_size(devtag_get_device(machine, "messram")) - 128 * 1024;
 			svi.bankLow_read_only = 0;
 		}
 		break;
@@ -737,34 +739,34 @@ static void svi318_set_banks(running_machine *machine)
 	switch( svi.bankHigh1 )
 	{
 	case SVI_INTERNAL:
-		if ( mess_ram_size == 16 * 1024 )
+		if ( messram_get_size(devtag_get_device(machine, "messram")) == 16 * 1024 )
 		{
-			svi.bankHigh2_ptr = mess_ram;
+			svi.bankHigh2_ptr = messram_get_ptr(devtag_get_device(machine, "messram"));
 			svi.bankHigh2_read_only = 0;
 		}
 		else
 		{
-			svi.bankHigh1_ptr = mess_ram;
+			svi.bankHigh1_ptr = messram_get_ptr(devtag_get_device(machine, "messram"));
 			svi.bankHigh1_read_only = 0;
-			svi.bankHigh2_ptr = mess_ram + 0x4000;
+			svi.bankHigh2_ptr = messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000;
 			svi.bankHigh2_read_only = 0;
 		}
 		break;
 	case SVI_EXPRAM2:
-		if ( mess_ram_size > 64 * 1024 )
+		if ( messram_get_size(devtag_get_device(machine, "messram")) > 64 * 1024 )
 		{
-			svi.bankHigh1_ptr = mess_ram + mess_ram_size - 64 * 1024 + 32 * 1024;
+			svi.bankHigh1_ptr = messram_get_ptr(devtag_get_device(machine, "messram")) + messram_get_size(devtag_get_device(machine, "messram")) - 64 * 1024 + 32 * 1024;
 			svi.bankHigh1_read_only = 0;
-			svi.bankHigh2_ptr = mess_ram + mess_ram_size - 64 * 1024 + 48 * 1024;
+			svi.bankHigh2_ptr = messram_get_ptr(devtag_get_device(machine, "messram")) + messram_get_size(devtag_get_device(machine, "messram")) - 64 * 1024 + 48 * 1024;
 			svi.bankHigh2_read_only = 0;
 		}
 		break;
 	case SVI_EXPRAM3:
-		if ( mess_ram_size > 128 * 1024 )
+		if ( messram_get_size(devtag_get_device(machine, "messram")) > 128 * 1024 )
 		{
-			svi.bankHigh1_ptr = mess_ram + mess_ram_size - 128 * 1024 + 32 * 1024;
+			svi.bankHigh1_ptr = messram_get_ptr(devtag_get_device(machine, "messram")) + messram_get_size(devtag_get_device(machine, "messram")) - 128 * 1024 + 32 * 1024;
 			svi.bankHigh1_read_only = 0;
-			svi.bankHigh2_ptr = mess_ram + mess_ram_size - 128 * 1024 + 48 * 1024;
+			svi.bankHigh2_ptr = messram_get_ptr(devtag_get_device(machine, "messram")) + messram_get_size(devtag_get_device(machine, "messram")) - 128 * 1024 + 48 * 1024;
 			svi.bankHigh2_read_only = 0;
 		}
 		break;

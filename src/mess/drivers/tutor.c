@@ -78,7 +78,7 @@ Memory Map found at http://www.floodgap.com/retrobits/tomy/mmap.html
                    *** $0000-$7FFF is the 32K BIOS ***
  it is also possible to replace the BIOS with an external ROM (see $E000 range)
 
-0000                            
+0000
                                 reset vector (level 0)
                                 0000-0001: WP   0002-0003: PC (%)
 0004
@@ -88,64 +88,64 @@ Memory Map found at http://www.floodgap.com/retrobits/tomy/mmap.html
                                 additional vectors
 0040
                                 XOP vectors (%)
-				The BIOS doesn't seem to use these for XOPs.
-				Instead, this is a branch table.
+                The BIOS doesn't seem to use these for XOPs.
+                Instead, this is a branch table.
 0080
-				BIOS code
-				(CRU only: $1EE0-FE: 9995 flag register;
-					$1FDA: MID flag)
+                BIOS code
+                (CRU only: $1EE0-FE: 9995 flag register;
+                    $1FDA: MID flag)
 4000
-				GBASIC
-				(on the American v2.3 firmware, the GPL
-					interpreter and VDP RAMLUT co-exist
-					with GBASIC in this range)
+                GBASIC
+                (on the American v2.3 firmware, the GPL
+                    interpreter and VDP RAMLUT co-exist
+                    with GBASIC in this range)
 
               *** $8000-$BFFF is the 16K option ROM area ***
 
 8000
-				BASIC (Tutor only) and/or cartridge ROM
-					(controlled by $E100)
-				To be recognized, a cartridge must have a
-				$55, $66 or $aa header sequence.
+                BASIC (Tutor only) and/or cartridge ROM
+                    (controlled by $E100)
+                To be recognized, a cartridge must have a
+                $55, $66 or $aa header sequence.
 
                          *** end ROM ***
 C000
-				unmapped (possible use in 24K cartridges)
+                unmapped (possible use in 24K cartridges)
 E000
-				I/O range
-				---------
-				9918A VDP data/register ports: $E000, E002
-				"MMU" banking controls: $E100-E1FF
-					$E100 write: enable cartridge, disable
-						BIOS at $0000 (???) -- magic
-						required at $E110 for this
-					$E108 write: enable BASIC ROM, disable
-						cartridge at $8000
-					$E10C write: enable cartridge, disable
-						BASIC ROM at $8000
-					$E110 must be $42 to enable $E100
-						and to replace the BIOS with
-						an installed cartridge ROM.
-						BLWP assumed at $0000 (??).
-				SN76489AN sound data port: $E200
-				Device handshaking: $E600
-					Unknown purpose, disk drive maybe?
-				Printer handshaking: $E800
-				This is a standard Centronics port.
-					$E810 write: parallel data bus
-					$E820 read: parallel port busy
-					$E840 write: port handshake output
-				Keyboard lines: $EC00-$EC7E (*CRU*)
-					(CRU physical address $7600-$763F)
-				Cassette lines: $ED00-$EEFF
-					$ED00 (*CRU*): input level
-						(physical address $7680)
-					$EE00 write: tape output zero
-					$EE20 write: tape output one
-					$EE40 write: tape IRQ on
-					$EE60 write: tape IRQ off
-					$EE80, A0, C0, E0: ???
-					
+                I/O range
+                ---------
+                9918A VDP data/register ports: $E000, E002
+                "MMU" banking controls: $E100-E1FF
+                    $E100 write: enable cartridge, disable
+                        BIOS at $0000 (???) -- magic
+                        required at $E110 for this
+                    $E108 write: enable BASIC ROM, disable
+                        cartridge at $8000
+                    $E10C write: enable cartridge, disable
+                        BASIC ROM at $8000
+                    $E110 must be $42 to enable $E100
+                        and to replace the BIOS with
+                        an installed cartridge ROM.
+                        BLWP assumed at $0000 (??).
+                SN76489AN sound data port: $E200
+                Device handshaking: $E600
+                    Unknown purpose, disk drive maybe?
+                Printer handshaking: $E800
+                This is a standard Centronics port.
+                    $E810 write: parallel data bus
+                    $E820 read: parallel port busy
+                    $E840 write: port handshake output
+                Keyboard lines: $EC00-$EC7E (*CRU*)
+                    (CRU physical address $7600-$763F)
+                Cassette lines: $ED00-$EEFF
+                    $ED00 (*CRU*): input level
+                        (physical address $7680)
+                    $EE00 write: tape output zero
+                    $EE20 write: tape output one
+                    $EE40 write: tape IRQ on
+                    $EE60 write: tape IRQ off
+                    $EE80, A0, C0, E0: ???
+
 F000
                                 TMS9995 RAM (*)
 F0FC
@@ -165,7 +165,7 @@ FFFF
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
 #include "sound/sn76496.h"
-
+#include "machine/ctronics.h"
 
 /* mapper state */
 static char cartridge_enable;
@@ -224,12 +224,6 @@ static INTERRUPT_GEN( tutor_vblank_interrupt )
 	/* No vblank interrupt? */
 	TMS9928A_interrupt(device->machine);
 }
-
-static const device_config *printer_fp(running_machine *machine)
-{
-	return image_from_devtype_and_index(machine, IO_PARALLEL, 0);
-}
-
 
 /*
     Keyboard:
@@ -410,7 +404,7 @@ static WRITE8_HANDLER(tutor_cassette_w)
 }
 
 /* memory handlers */
-static  READ8_HANDLER(tutor_printer_r)
+static  READ8_DEVICE_HANDLER(tutor_printer_r)
 {
 	int reply;
 
@@ -418,7 +412,7 @@ static  READ8_HANDLER(tutor_printer_r)
 	{
 	case 0x20:
 		/* busy */
-		reply = printer_fp(space->machine) ? 0xff : 0x00;
+		reply = centronics_busy_r(device) ? 0x00 : 0xff;
 		break;
 
 	default:
@@ -431,24 +425,18 @@ static  READ8_HANDLER(tutor_printer_r)
 	return reply;
 }
 
-static WRITE8_HANDLER(tutor_printer_w)
+static WRITE8_DEVICE_HANDLER(tutor_printer_w)
 {
 	switch (offset)
 	{
 	case 0x10:
 		/* data */
-		printer_data = data;
+		centronics_data_w(device, 0, data);
 		break;
 
 	case 0x40:
 		/* strobe */
-		if (data && ! printer_strobe)
-		{
-			/* strobe is asserted: output data */
-			if (printer_fp(space->machine))
-				image_fwrite(printer_fp(space->machine), & printer_data, 1);
-		}
-		printer_strobe = data != 0;
+		centronics_strobe_w(device, BIT(data, 7));
 		break;
 
 	default:
@@ -511,7 +499,7 @@ static ADDRESS_MAP_START(tutor_memmap, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xe002, 0xe002) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)/*VDP status*/
 	AM_RANGE(0xe100, 0xe1ff) AM_READWRITE(tutor_mapper_r, tutor_mapper_w)	/*cartridge mapper*/
 	AM_RANGE(0xe200, 0xe200) AM_DEVWRITE("sn76489a", sn76496_w)	/*sound chip*/
-	AM_RANGE(0xe800, 0xe8ff) AM_READWRITE(tutor_printer_r, tutor_printer_w)	/*printer*/
+	AM_RANGE(0xe800, 0xe8ff) AM_DEVREADWRITE("printer",tutor_printer_r, tutor_printer_w)	/*printer*/
 	AM_RANGE(0xee00, 0xeeff) AM_READWRITE(SMH_NOP, tutor_cassette_w)		/*cassette interface*/
 
 	AM_RANGE(0xf000, 0xffff) AM_NOP	/*free for expansion (and internal processor RAM)*/
@@ -533,9 +521,9 @@ static ADDRESS_MAP_START(tutor_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0xed0, 0xed0) AM_READ(tutor_cassette_r)		/*cassette interface*/
 ADDRESS_MAP_END
 
-/* tutor keyboard: 56 keys 
+/* tutor keyboard: 56 keys
 
-2008-05 FP: 
+2008-05 FP:
 Small note about natural keyboard support: currently,
 - "MON" is mapped to 'F1'
 - "MOD" is mapped to 'F2'
@@ -689,6 +677,8 @@ static MACHINE_DRIVER_START(tutor)
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(tutor_cart)
 	MDRV_CARTSLOT_UNLOAD(tutor_cart)
+
+	MDRV_CENTRONICS_ADD("printer", standard_centronics)
 MACHINE_DRIVER_END
 
 
@@ -702,29 +692,5 @@ ROM_START(tutor)
 	ROM_LOAD("tutor2.bin", 0x8000, 0x4000, CRC(05f228f5) SHA1(46a14a45f6f9e2c30663a2b87ce60c42768a78d0))      /* BASIC ROM */
 ROM_END
 
-static void tutor_parallel_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* parallel */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_PARALLEL; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 0; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(tutor)
-
-	/* cartridge port is not emulated */
-	CONFIG_DEVICE(tutor_parallel_getinfo)
-
-SYSTEM_CONFIG_END
-
 /*      YEAR    NAME    PARENT      COMPAT  MACHINE     INPUT   INIT    CONFIG      COMPANY     FULLNAME */
-COMP(	1983?,	tutor,	0,			0,		tutor,		tutor,	tutor,	tutor,		"Tomy",		"Tomy Tutor" , 0)
+COMP(	1983?,	tutor,	0,			0,		tutor,		tutor,	tutor,	0,		"Tomy",		"Tomy Tutor" , 0)

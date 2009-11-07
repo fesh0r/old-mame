@@ -2,30 +2,30 @@
 
     machine/pc_hdc.c
 
-	Functions to emulate a WD1004A-WXI hard disk controller
+    Functions to emulate a WD1004A-WXI hard disk controller
 
-	Information was gathered from various places:
-	Linux' /usr/src/linux/drivers/block/xd.c and /usr/include/linux/xd.h
-	Original IBM PC-XT technical data book
-	The WD1004A-WXI BIOS ROM image
+    Information was gathered from various places:
+    Linux' /usr/src/linux/drivers/block/xd.c and /usr/include/linux/xd.h
+    Original IBM PC-XT technical data book
+    The WD1004A-WXI BIOS ROM image
 
     TODO:
-	Still very much :)
-	The format of the so called 'POD' (power on drive paramters?) area
-	read from the MBR (master boot record) at offset 1AD to 1BD is wrong.
+    Still very much :)
+    The format of the so called 'POD' (power on drive paramters?) area
+    read from the MBR (master boot record) at offset 1AD to 1BD is wrong.
 
 
 
-	There were a lot of different Fixed Disk Adapter for the IBM pcs.
-	Xebec produced a couple of the Fixed Disk Adapter for IBM.
-	
-	One Xebec Adapter has these roms on it:
-	One MK6xxxx ROM: 62X0822__(M)_AMI_8621MAB__S68B364-P__(C)IBM_CORP_1982,1985__PHILIPPINES.12D.2364.bin
-	One 2732 ROM for the Z80: 104839RE__COPYRIGHT__XEBEC_1986.12A.2732.bin
+    There were a lot of different Fixed Disk Adapter for the IBM pcs.
+    Xebec produced a couple of the Fixed Disk Adapter for IBM.
+
+    One Xebec Adapter has these roms on it:
+    One MK6xxxx ROM: 62X0822__(M)_AMI_8621MAB__S68B364-P__(C)IBM_CORP_1982,1985__PHILIPPINES.12D.2364.bin
+    One 2732 ROM for the Z80: 104839RE__COPYRIGHT__XEBEC_1986.12A.2732.bin
 
 
-	tandon Fixed Disk Adapter found in an IBM 5150:
-	600963-001__TYPE_5.U12.2764.bin
+    tandon Fixed Disk Adapter found in an IBM 5150:
+    600963-001__TYPE_5.U12.2764.bin
 
 ***************************************************************************/
 
@@ -84,20 +84,20 @@
 #define CTL_PIO 		0x00
 #define CTL_DMA 		0x01
 
-static int idx = 0; 							/* contoller * 2 + drive */
+static int idx = 0; 				/* controller * 2 + drive */
 static int drv = 0; 							/* 0 master, 1 slave drive */
-static int cylinders[MAX_HARD] = {612,612,};    /* number of cylinders */
-static int rwc[MAX_HARD] = {613,613,};			/* recduced write current from cyl */
-static int wp[MAX_HARD] = {613,613,};			/* write precompensation from cyl */
-static int heads[MAX_HARD] = {4,4,};			/* heads */
-static int ecc[MAX_HARD] = {11,11,};			/* ECC bytes */
+static int cylinders[MAX_HARD];		/* number of cylinders */
+static int rwc[MAX_HARD];			/* reduced write current from cyl */
+static int wp[MAX_HARD];			/* write precompensation from cyl */
+static int heads[MAX_HARD];			/* heads */
+static int ecc[MAX_HARD];			/* ECC bytes */
 
 /* indexes */
-static int cylinder[MAX_HARD] = {0,};			/* current cylinder */
-static int head[MAX_HARD] = {0,};				/* current head */
-static int sector[MAX_HARD] = {0,}; 			/* current sector */
-static int sector_cnt[MAX_HARD] = {0,};         /* sector count */
-static int control[MAX_HARD] = {0,};            /* control */
+static int cylinder[MAX_HARD];			/* current cylinder */
+static int head[MAX_HARD];				/* current head */
+static int sector[MAX_HARD]; 			/* current sector */
+static int sector_cnt[MAX_HARD];		/* sector count */
+static int control[MAX_HARD];			/* control */
 
 static int csb[MAX_BOARD];				/* command status byte */
 static int status[MAX_BOARD];			/* drive status */
@@ -110,7 +110,7 @@ static int data_cnt = 0;                /* data count */
 static UINT8 *buffer;					/* data buffer */
 static UINT8 *buffer_ptr = 0;			/* data pointer */
 static UINT8 hdc_control;
-static void (*hdc_set_irq)(int,int);
+static void (*hdc_set_irq)(running_machine *,int,int);
 static const device_config *pc_hdc_dma8237;
 
 
@@ -177,7 +177,7 @@ static const char *const hdc_command_names[] =
 
 static TIMER_CALLBACK(pc_hdc_command);
 
-int pc_hdc_setup(running_machine *machine, void (*hdc_set_irq_func)(int,int))
+int pc_hdc_setup(running_machine *machine, void (*hdc_set_irq_func)(running_machine *,int,int))
 {
 	int i;
 
@@ -185,6 +185,22 @@ int pc_hdc_setup(running_machine *machine, void (*hdc_set_irq_func)(int,int))
 	hdc_set_irq = hdc_set_irq_func;
 
 	buffer = auto_alloc_array(machine, UINT8, 17*4*512);
+
+	for (i = 0; i < MAX_HARD; i++)
+	{
+		cylinders[i] = 612;
+		rwc[i] = 613;
+		wp[i] = 613;
+		heads[i] = 4;
+		ecc[i] = 11;
+
+		/* indexes */
+		cylinder[i] = 0;
+		head[i] = 0;
+		sector[i] = 0;
+		sector_cnt[i] = 0;
+		control[i] = 0;
+	}
 
 	/* init for all boards */
 	for (i = 0; i < MAX_BOARD; i++)
@@ -230,14 +246,14 @@ static hard_disk_file *pc_hdc_file(running_machine *machine, int id)
 
 	if ( img == NULL )
 		return NULL;
- 
+
 	if (!image_exists(img))
 		return NULL;
 
 	return mess_hd_get_hard_disk_file(img);
 }
 
-static void pc_hdc_result(int n, int set_error_info)
+static void pc_hdc_result(running_machine *machine,int n, int set_error_info)
 {
 	int irq;
 
@@ -245,7 +261,7 @@ static void pc_hdc_result(int n, int set_error_info)
 	irq = (dip[n] & 0x40) ? 5 : 2;
 
 	if ( ( hdc_control & 0x02 ) && hdc_set_irq ) {
-		hdc_set_irq( irq, 1 );
+		hdc_set_irq( machine, irq, 1 );
 	}
 
 	if (LOG_HDC_STATUS)
@@ -591,29 +607,29 @@ static TIMER_CALLBACK(pc_hdc_command)
 			break;
 
 	}
-	pc_hdc_result(n, set_error_info);
+	pc_hdc_result(machine, n, set_error_info);
 }
 
 
 /*  Command format
- *	Bits	 Description
- *	7	   0
- *	xxxxxxxx command
- *	dddhhhhh drive / head
- *	ccssssss cylinder h / sector
- *	cccccccc cylinder l
- *	nnnnnnnn count
- *	xxxxxxxx control
+ *  Bits     Description
+ *  7      0
+ *  xxxxxxxx command
+ *  dddhhhhh drive / head
+ *  ccssssss cylinder h / sector
+ *  cccccccc cylinder l
+ *  nnnnnnnn count
+ *  xxxxxxxx control
  *
- *	Command format extra for set drive characteristics
- *	000000cc cylinders h
- *	cccccccc cylinders l
- *	000hhhhh heads
- *	000000cc reduced write h
- *	cccccccc reduced write l
- *	000000cc write precomp h
- *	cccccccc write precomp l
- *	eeeeeeee ecc
+ *  Command format extra for set drive characteristics
+ *  000000cc cylinders h
+ *  cccccccc cylinders l
+ *  000hhhhh heads
+ *  000000cc reduced write h
+ *  cccccccc reduced write l
+ *  000000cc write precomp h
+ *  cccccccc write precomp l
+ *  eeeeeeee ecc
  */
 static void pc_hdc_data_w(running_machine *machine, int n, int data)
 {
@@ -656,7 +672,7 @@ static void pc_hdc_data_w(running_machine *machine, int n, int data)
 				data_cnt = 0;
 				status[n] |= STA_INPUT;
 				csb[n] |= CSB_ERROR | 0x20; /* unknown command */
-				pc_hdc_result(n, 1);
+				pc_hdc_result(machine, n, 1);
 				break;
 		}
 		if( data_cnt )
@@ -720,7 +736,7 @@ static void pc_hdc_control_w(running_machine *machine, int n, int data)
 	hdc_control = data;
 
 	if ( ! ( hdc_control & 0x02 ) && hdc_set_irq ) {
-		hdc_set_irq( irq, 0 );
+		hdc_set_irq( machine, irq, 0 );
 	}
 }
 
@@ -755,17 +771,17 @@ static UINT8 pc_hdc_status_r(int n)
 
 
 /*
-	Dipswitch configuration
+    Dipswitch configuration
 
 
-	Tandon/Western Digital Fixed Disk Controller
-	bit0-1 : Determine disk size(?)
-		Causes geometry data to be read from c8043, c8053, c8063, c8073 (?)
-		00 - 40 Mbytes
-		01 - 30 Mbytes
-		10 - 10 Mbytes
-		11 - 20 Mbytes
-	bit2-7 : unknown
+    Tandon/Western Digital Fixed Disk Controller
+    bit0-1 : Determine disk size(?)
+        Causes geometry data to be read from c8043, c8053, c8063, c8073 (?)
+        00 - 40 Mbytes
+        01 - 30 Mbytes
+        10 - 10 Mbytes
+        11 - 20 Mbytes
+    bit2-7 : unknown
 
  */
 
@@ -779,8 +795,8 @@ static UINT8 pc_hdc_dipswitch_r(int n)
 
 /*************************************************************************
  *
- *		HDC
- *		hard disk controller
+ *      HDC
+ *      hard disk controller
  *
  *************************************************************************/
 
@@ -821,7 +837,7 @@ static void pc_HDC_w(running_machine *machine, int chip, offs_t offs, UINT8 data
 
 /*************************************
  *
- *		Port handlers
+ *      Port handlers
  *
  *************************************/
 

@@ -22,7 +22,6 @@
     Todo:
     -----
 
-    - Tape
     - Attribute read
     - Better timing
     - Harddisk interfaces
@@ -46,8 +45,7 @@
 #include "formats/tzx_cas.h"
 #include "devices/flopdrv.h"
 #include "formats/coupedsk.h"
-#include "formats/dsk_dsk.h"
-
+#include "devices/messram.h"
 
 /***************************************************************************
     CONSTANTS
@@ -221,7 +219,15 @@ static READ8_HANDLER( samcoupe_keyboard_r )
 	if (!BIT(offset, 13)) data &= input_port_read(space->machine, "keyboard_row_df") & 0x1f;
 	if (!BIT(offset, 14)) data &= input_port_read(space->machine, "keyboard_row_bf") & 0x1f;
 	if (!BIT(offset, 15)) data &= input_port_read(space->machine, "keyboard_row_7f") & 0x1f;
-	if (offset == 0xff00) data &= input_port_read(space->machine, "keyboard_row_ff") & 0x1f;
+
+	if (offset == 0xff00)
+	{
+		data &= input_port_read(space->machine, "keyboard_row_ff") & 0x1f;
+
+		/* if no key has been pressed, return the mouse state */
+		if (data == 0x1f)
+			data = samcoupe_mouse_r(space->machine);
+	}
 
 	/* bit 5, lightpen strobe */
 	data |= 1 << 5;
@@ -254,17 +260,12 @@ static WRITE8_HANDLER( samcoupe_border_w )
 
 static READ8_HANDLER( samcoupe_attributes_r )
 {
+	coupe_asic *asic = space->machine->driver_data;
+
 	if (video_screen_get_vblank(space->machine->primary_screen))
-	{
-		/* Border areas return 0xff */
-		return 0xff;
-	}
+		return 0xff; /* border areas return 0xff */
 	else
-	{
-		/* TODO: This actually needs to return various attributes
-         * of the currently displayed screen data */
-		return 0x00;
-	}
+		return asic->attribute;
 }
 
 static READ8_DEVICE_HANDLER( samcoupe_lpt1_busy_r )
@@ -445,6 +446,18 @@ static INPUT_PORTS_START( samcoupe )
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_LEFT)   PORT_CHAR(UCHAR_MAMEKEY(LEFT))
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_RIGHT)  PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
 
+	PORT_START("mouse_buttons")
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CODE(MOUSECODE_BUTTON1) PORT_NAME("Mouse Button 1")
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_CODE(MOUSECODE_BUTTON3) PORT_NAME("Mouse Button 3")
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CODE(MOUSECODE_BUTTON2) PORT_NAME("Mouse Button 2")
+	PORT_BIT(0xf8, IP_ACTIVE_LOW, IPT_UNUSED)
+
+	PORT_START("mouse_x")
+	PORT_BIT(0xfff, 0x000, IPT_MOUSE_X) PORT_SENSITIVITY(50) PORT_KEYDELTA(0) PORT_REVERSE
+
+	PORT_START("mouse_y")
+	PORT_BIT(0xfff, 0x000, IPT_MOUSE_Y) PORT_SENSITIVITY(50) PORT_KEYDELTA(0)
+
 	PORT_START("config")
 	PORT_CONFNAME(0x01, 0x00, "Real Time Clock")
 	PORT_CONFSETTING(   0x00, DEF_STR(None))
@@ -505,6 +518,49 @@ static const cassette_config samcoupe_cassette_config =
 	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED
 };
 
+
+static FLOPPY_OPTIONS_START( samcoupe )
+	FLOPPY_OPTION
+	(
+		coupe_mgt, "mgt,dsk,sad", "SAM Coupe MGT disk image", coupe_mgt_identify, coupe_mgt_construct,
+		HEADS([2])
+		TRACKS([80])
+		SECTORS(9-[10])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([1])
+	)
+	FLOPPY_OPTION
+	(
+		coupe_sad, "sad,dsk", "SAM Coupe SAD disk image", coupe_sad_identify, coupe_sad_construct,
+		HEADS(1-[2]-255)
+		TRACKS(1-[80]-255)
+		SECTORS(1-[10]-255)
+		SECTOR_LENGTH(64/128/256/[512]/1024/2048/4096)
+		FIRST_SECTOR_ID([1])
+	)
+	FLOPPY_OPTION
+	(
+		coupe_sdf, "sdf,dsk,sad", "SAM Coupe SDF disk image", coupe_sdf_identify, coupe_sdf_construct,
+		HEADS(1-[2])
+		TRACKS(1-[80]-83)
+		SECTORS(1-[10]-12)
+		SECTOR_LENGTH(128/256/[512]/1024)
+		FIRST_SECTOR_ID([1])
+	)
+FLOPPY_OPTIONS_END
+
+static const floppy_config samcoupe_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(samcoupe),
+	DO_NOT_KEEP_GEOMETRY
+};
+
 static MACHINE_DRIVER_START( samcoupe )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, SAMCOUPE_XTAL_X1 / 4) /* 6 MHz */
@@ -529,7 +585,7 @@ static MACHINE_DRIVER_START( samcoupe )
 	MDRV_CENTRONICS_ADD("lpt1", standard_centronics)
 	MDRV_CENTRONICS_ADD("lpt2", standard_centronics)
 	MDRV_MSM6242_ADD("sambus_clock")
-	MDRV_WD1772_ADD("wd1772", default_wd17xx_interface)
+	MDRV_WD1772_ADD("wd1772", default_wd17xx_interface_2_drives)
 	MDRV_CASSETTE_ADD("cassette", samcoupe_cassette_config)
 
 	/* sound hardware */
@@ -538,6 +594,13 @@ static MACHINE_DRIVER_START( samcoupe )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD("saa1099", SAA1099, SAMCOUPE_XTAL_X1/3) /* 8 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(samcoupe_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("512K")
+	MDRV_RAM_EXTRA_OPTIONS("256K,1280K,1536K,2304K,2560K,3328K,3584K,4352K,4608K")
 MACHINE_DRIVER_END
 
 
@@ -582,75 +645,9 @@ ROM_START( samcoupe )
 	ROMX_LOAD( "rom01.z5",  0x0000, 0x8000, CRC(c04acfdf) SHA1(8976ed005c14905eec1215f0a5c28aa686a7dda2), ROM_BIOS(14) )
 ROM_END
 
-
-/***************************************************************************
-    SYSTEM CONFIG
-***************************************************************************/
-
-FLOPPY_OPTIONS_START( coupe )
-	FLOPPY_OPTION
-	(
-		coupe_mgt, "mgt,dsk,sad", "SAM Coupe MGT disk image", coupe_mgt_identify, coupe_mgt_construct,
-		HEADS([2])
-		TRACKS([80])
-		SECTORS(9-[10])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1])
-	)
-	FLOPPY_OPTION
-	(
-		coupe_sad, "sad,dsk", "SAM Coupe SAD disk image", coupe_sad_identify, coupe_sad_construct,
-		HEADS(1-[2]-255)
-		TRACKS(1-[80]-255)
-		SECTORS(1-[10]-255)
-		SECTOR_LENGTH(64/128/256/[512]/1024/2048/4096)
-		FIRST_SECTOR_ID([1])
-	)
-	FLOPPY_OPTION
-	(
-		coupe_sdf, "sdf,dsk,sad", "SAM Coupe SDF disk image", coupe_sdf_identify, coupe_sdf_construct,
-		HEADS(1-[2])
-		TRACKS(1-[80]-83)
-		SECTORS(1-[10]-12)
-		SECTOR_LENGTH(128/256/[512]/1024)
-		FIRST_SECTOR_ID([1])
-	)
-	FLOPPY_OPTION(dsk, "dsk", "DSK floppy disk image", dsk_dsk_identify, dsk_dsk_construct, NULL)
-FLOPPY_OPTIONS_END
-
-static void samcoupe_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:			info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:	info->p = (void *) floppyoptions_coupe; break;
-
-		default:								floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( samcoupe )
-	CONFIG_RAM(256 * 1024)
-	CONFIG_RAM_DEFAULT(512 * 1024)
-	CONFIG_RAM(256 * 1024 + 1 * 1024 * 1024)
-	CONFIG_RAM(512 * 1024 + 1 * 1024 * 1024)
-	CONFIG_RAM(256 * 1024 + 2 * 1024 * 1024)
-	CONFIG_RAM(512 * 1024 + 2 * 1024 * 1024)
-	CONFIG_RAM(256 * 1024 + 3 * 1024 * 1024)
-	CONFIG_RAM(512 * 1024 + 3 * 1024 * 1024)
-	CONFIG_RAM(256 * 1024 + 4 * 1024 * 1024)
-	CONFIG_RAM(512 * 1024 + 4 * 1024 * 1024)
-	CONFIG_DEVICE(samcoupe_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-
 /***************************************************************************
     GAME DRIVERS
 ***************************************************************************/
 
 /*    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     INIT  CONFIG    COMPANY                        FULLNAME     FLAGS */
-COMP( 1989, samcoupe, 0,      0,      samcoupe, samcoupe, 0,    samcoupe, "Miles Gordon Technology plc", "SAM Coupe", 0 )
+COMP( 1989, samcoupe, 0,      0,      samcoupe, samcoupe, 0,    0, "Miles Gordon Technology plc", "SAM Coupe", 0 )

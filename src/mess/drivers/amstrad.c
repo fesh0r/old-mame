@@ -9,7 +9,7 @@
                 and some PCB links
             - 6845 (either HD6845S, UM6845R or M6845) crtc graphics display
               controller
-            - NEC765 floppy disc controller (CPC664,CPC6128)
+            - UPD765 floppy disc controller (CPC664,CPC6128)
             - Z80 CPU running at 4 MHz (slowed by wait states on memory
               access)
             - custom ASIC "Gate Array" controlling rom paging, ram paging,
@@ -58,20 +58,20 @@
 
    January 2008 - added preliminary Aleste 520EX support
                The Aleste 520EX is a Russian clone of the CPC6128, that expands on existing video mode, and can run MSX-DOS.
-			   It also adds an MC146818 RTC/NVRAM, an Intel 8253 timer, and the "Magic Sound" board, a 4-channel DMA-based
-			   sample player.  Also includes a software emulation of the MSX2 VDP, used in the ports of MSX games.
+               It also adds an MC146818 RTC/NVRAM, an Intel 8253 timer, and the "Magic Sound" board, a 4-channel DMA-based
+               sample player.  Also includes a software emulation of the MSX2 VDP, used in the ports of MSX games.
 
-			   Known issues:
-			    - The RTC doesn't always update in setup.  It expects bit 4 of register C (Update End Interrupt) to be high.
-				- Title screens appear then disappear quickly (probably because the 8253 hasn't been plugged in yet).
-				- Some video modes display wrong (still needs some work here).
-				- Vampire Killer crashes after collecting a certain key part way through stage 1.
-				- Magic Sound isn't emulated.
+               Known issues:
+                - The RTC doesn't always update in setup.  It expects bit 4 of register C (Update End Interrupt) to be high.
+                - Title screens appear then disappear quickly (probably because the 8253 hasn't been plugged in yet).
+                - Some video modes display wrong (still needs some work here).
+                - Vampire Killer crashes after collecting a certain key part way through stage 1.
+                - Magic Sound isn't emulated.
 
 
    January 2009 - changed drivers to use the mc6845 device implementation
-			   To get rid of duplicated code the drivers have been changed to use the new mc6845 device
-			   implementation. As a result the (runtime) selection of CRTC type has been removed.
+               To get rid of duplicated code the drivers have been changed to use the new mc6845 device
+               implementation. As a result the (runtime) selection of CRTC type has been removed.
 
 
 Some bugs left :
@@ -79,7 +79,7 @@ Some bugs left :
     - CRTC all type support (0,1,2,3,4) ?
     - Gate Array and CRTC aren't synchronised. (The Gate Array can change the color every microseconds?) So the multi-rasters in one line aren't supported (see yao demo p007's part)!
     - Implement full Asic for CPC+ emulation.  Soft scroll is rather dodgy.
-	- The KC Compact should not reuse the gate array functionality. Instead z8536 support should be added. (bug #42)
+    - The KC Compact should not reuse the gate array functionality. Instead z8536 support should be added. (bug #42)
 
  ******************************************************************************/
 
@@ -91,14 +91,13 @@ Some bugs left :
 #include "machine/i8255a.h"	/* for 8255 ppi */
 #include "cpu/z80/z80.h"		/* for cycle tables */
 #include "video/mc6845.h"		/* CRTC */
-#include "machine/nec765.h"	/* for floppy disc controller */
+#include "machine/upd765.h"	/* for floppy disc controller */
 #include "sound/ay8910.h"
 #include "sound/wave.h"
 #include "machine/mc146818.h"  /* Aleste RTC */
 #include "machine/ctronics.h"
 
 /* Devices */
-#include "formats/dsk_dsk.h"		/* for CPCEMU style disk images */
 #include "devices/flopdrv.h"
 #include "formats/basicdsk.h"
 #include "includes/msx_slot.h"
@@ -108,6 +107,7 @@ Some bugs left :
 #include "devices/cassette.h"
 #include "formats/tzx_cas.h"
 
+#include "devices/messram.h"
 
 #define MANUFACTURER_NAME 0x07
 #define TV_REFRESH_RATE 0x10
@@ -132,22 +132,24 @@ static I8255A_INTERFACE( amstrad_ppi8255_interface )
 };
 
 
-/* Amstrad NEC765 interface doesn't use interrupts or DMA! */
-static const nec765_interface amstrad_nec765_interface =
+/* Amstrad UPD765 interface doesn't use interrupts or DMA! */
+static const upd765_interface amstrad_upd765_interface =
 {
 	DEVCB_NULL,
 	NULL,
 	NULL,
-	NEC765_RDY_PIN_CONNECTED
+	UPD765_RDY_PIN_CONNECTED,
+	{FLOPPY_0,FLOPPY_1, NULL, NULL}
 };
 
 /* Aleste uses an 8272A, with the interrupt flag visible on PPI port B */
-static const nec765_interface aleste_8272_interface =
+static const upd765_interface aleste_8272_interface =
 {
 	DEVCB_LINE(aleste_interrupt),
 	NULL,
 	NULL,
-	NEC765_RDY_PIN_CONNECTED
+	UPD765_RDY_PIN_CONNECTED,
+	{FLOPPY_0,FLOPPY_1, NULL, NULL}
 };
 
 
@@ -373,14 +375,14 @@ lk4     Frequency
    Pre-ASIC??? Amstrad?     4 In the "cost-down" CPC6128, the CRTC functionality is integrated into a single ASIC IC. This ASIC is often refered to as the "Pre-ASIC" because it preceeded the CPC+ ASIC
 As far as I know, the KC compact used HD6845S only.
 */
-//	PORT_START("crtc")
-//	PORT_CONFNAME( 0xFF, M6845_PERSONALITY_UM6845R, "CRTC Type")
-//	PORT_CONFSETTING(M6845_PERSONALITY_UM6845, "Type 0 - UM6845")
-//	PORT_CONFSETTING(M6845_PERSONALITY_HD6845S, "Type 0 - HD6845S")
-//	PORT_CONFSETTING(M6845_PERSONALITY_UM6845R, "Type 1 - UM6845R")
-//	PORT_CONFSETTING(M6845_PERSONALITY_GENUINE, "Type 2 - MC6845")
-//	PORT_CONFSETTING(M6845_PERSONALITY_AMS40489, "Type 3 - AMS40489")
-//	PORT_CONFSETTING(M6845_PERSONALITY_PREASIC, "Type 4 - Pre-ASIC")
+//  PORT_START("crtc")
+//  PORT_CONFNAME( 0xFF, M6845_PERSONALITY_UM6845R, "CRTC Type")
+//  PORT_CONFSETTING(M6845_PERSONALITY_UM6845, "Type 0 - UM6845")
+//  PORT_CONFSETTING(M6845_PERSONALITY_HD6845S, "Type 0 - HD6845S")
+//  PORT_CONFSETTING(M6845_PERSONALITY_UM6845R, "Type 1 - UM6845R")
+//  PORT_CONFSETTING(M6845_PERSONALITY_GENUINE, "Type 2 - MC6845")
+//  PORT_CONFSETTING(M6845_PERSONALITY_AMS40489, "Type 3 - AMS40489")
+//  PORT_CONFSETTING(M6845_PERSONALITY_PREASIC, "Type 4 - Pre-ASIC")
 
 	PORT_START("multiface")
 	PORT_CONFNAME(0x01, 0x00, "Multiface Two" )
@@ -835,6 +837,30 @@ static const cassette_config amstrad_cassette_config =
 	CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED
 };
 
+static const floppy_config cpc6128_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_SS_40,
+	FLOPPY_OPTIONS_NAME(default),
+	DO_NOT_KEEP_GEOMETRY
+};
+
+static const floppy_config aleste_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(msx),
+	DO_NOT_KEEP_GEOMETRY
+};
+
 static MACHINE_DRIVER_START( cpcplus_cartslot )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("cpr,bin")
@@ -857,7 +883,7 @@ static MACHINE_DRIVER_START( amstrad )
     /* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_RAW_PARAMS( XTAL_16MHz, 1024, 0, 639, 312, 0, 199 )
+	MDRV_SCREEN_RAW_PARAMS( XTAL_16MHz, 1024, 0, 640, 312, 0, 200 )
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)
 
 	MDRV_PALETTE_LENGTH(32)
@@ -885,7 +911,13 @@ static MACHINE_DRIVER_START( amstrad )
 
 	MDRV_CASSETTE_ADD( "cassette", amstrad_cassette_config )
 
-	MDRV_NEC765A_ADD("nec765", amstrad_nec765_interface)
+	MDRV_UPD765A_ADD("upd765", amstrad_upd765_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(cpc6128_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("128K")
 MACHINE_DRIVER_END
 
 
@@ -913,7 +945,7 @@ static MACHINE_DRIVER_START( cpcplus )
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_RAW_PARAMS( ( XTAL_40MHz * 2 ) / 5, 1024, 0, 639, 312, 0, 199 )
+	MDRV_SCREEN_RAW_PARAMS( ( XTAL_40MHz * 2 ) / 5, 1024, 0, 640, 312, 0, 200 )
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)
 
 	MDRV_PALETTE_LENGTH(4096)
@@ -941,9 +973,15 @@ static MACHINE_DRIVER_START( cpcplus )
 
 	MDRV_CASSETTE_ADD( "cassette", amstrad_cassette_config )
 
-	MDRV_NEC765A_ADD("nec765", amstrad_nec765_interface)
+	MDRV_UPD765A_ADD("upd765", amstrad_upd765_interface)
 
 	MDRV_IMPORT_FROM(cpcplus_cartslot)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(cpc6128_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("128K")	
 MACHINE_DRIVER_END
 
 
@@ -963,7 +1001,7 @@ static MACHINE_DRIVER_START( gx4000 )
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_RAW_PARAMS( ( XTAL_40MHz * 2 ) / 5, 1024, 0, 639, 312, 0, 199 )
+	MDRV_SCREEN_RAW_PARAMS( ( XTAL_40MHz * 2 ) / 5, 1024, 0, 640, 312, 0, 200 )
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)
 
 	MDRV_PALETTE_LENGTH(4096)
@@ -982,6 +1020,10 @@ static MACHINE_DRIVER_START( gx4000 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MDRV_IMPORT_FROM(cpcplus_cartslot)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")	
 MACHINE_DRIVER_END
 
 
@@ -995,7 +1037,13 @@ static MACHINE_DRIVER_START( aleste )
 	MDRV_PALETTE_LENGTH(32+64)
 	MDRV_PALETTE_INIT(aleste)
 	MDRV_NVRAM_HANDLER(mc146818)
-	MDRV_NEC765A_MODIFY("nec765", aleste_8272_interface)
+	MDRV_UPD765A_MODIFY("upd765", aleste_8272_interface)
+
+	MDRV_FLOPPY_2_DRIVES_MODIFY(aleste_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("2M")
 MACHINE_DRIVER_END
 
 
@@ -1111,69 +1159,6 @@ ROM_START( al520ex )
 	ROM_LOAD("romram.bin", 0x00, 0x100, CRC(b3ea95d7) SHA1(1252390737a7ead4ecec988c873181798fbc291b))
 ROM_END
 
-
-
-/*************************************
- *
- *  System configs
- *
- *************************************/
-
-static void cpc6128_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_dsk; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-
-}
-
-static void aleste_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_msx; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-
-static SYSTEM_CONFIG_START( cpc6128 )
-	CONFIG_RAM_DEFAULT(128 * 1024)
-	CONFIG_DEVICE(cpc6128_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-
-static SYSTEM_CONFIG_START( cpcplus )
-	CONFIG_IMPORT_FROM(cpc6128)
-SYSTEM_CONFIG_END
-
-
-static SYSTEM_CONFIG_START( gx4000 )
-	CONFIG_RAM_DEFAULT(64 * 1024)  // has 64k RAM
-SYSTEM_CONFIG_END
-
-
-static SYSTEM_CONFIG_START( aleste )
-	CONFIG_DEVICE(aleste_floppy_getinfo)
-	CONFIG_RAM_DEFAULT(2048 * 1024)  // has 2048k RAM
-SYSTEM_CONFIG_END
-
-
-
 /*************************************
  *
  *  Driver definitions
@@ -1181,13 +1166,13 @@ SYSTEM_CONFIG_END
  *************************************/
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE  INPUT     INIT     CONFIG   COMPANY                FULLNAME                                     FLAGS */
-COMP( 1984, cpc464,   0,        0,      amstrad, cpc464,   0,       cpc6128, "Amstrad plc",         "Amstrad CPC464",                            0 )
-COMP( 1985, cpc664,   cpc464,   0,      amstrad, cpc664,   0,       cpc6128, "Amstrad plc",         "Amstrad CPC664",                            0 )
-COMP( 1985, cpc6128,  cpc464,   0,      amstrad, cpc6128,  0,       cpc6128, "Amstrad plc",         "Amstrad CPC6128",                           0 )
-COMP( 1985, cpc6128f, cpc464,   0,      amstrad, cpc6128f, 0,       cpc6128, "Amstrad plc",         "Amstrad CPC6128 (France, AZERTY Keyboard)", 0 )
-COMP( 1985, cpc6128s, cpc464,   0,      amstrad, cpc6128s, 0,       cpc6128, "Amstrad plc",         "Amstrad CPC6128 (Sweden/Finland)",			 0 )
-COMP( 1990, cpc464p,  0,        0,      cpcplus, plus,     0,       cpcplus, "Amstrad plc",         "Amstrad CPC464+",                           0 )
-COMP( 1990, cpc6128p, 0,        0,      cpcplus, plus,     0,       cpcplus, "Amstrad plc",         "Amstrad CPC6128+",                          0 )
-CONS( 1990, gx4000,   0,        0,      gx4000,  gx4000,   0,       gx4000,  "Amstrad plc",         "Amstrad GX4000",                            0 )
-COMP( 1989, kccomp,   cpc464,   0,      kccomp,  kccomp,   0,       cpc6128, "VEB Mikroelektronik", "KC Compact",                                0 )
-COMP( 1993, al520ex,  cpc464,   0,      aleste,  aleste,   aleste,  aleste,  "Patisonic",           "Aleste 520EX",                              GAME_IMPERFECT_SOUND )
+COMP( 1984, cpc464,   0,        0,      amstrad, cpc464,   0,       0, "Amstrad plc",         "Amstrad CPC464",                            0 )
+COMP( 1985, cpc664,   cpc464,   0,      amstrad, cpc664,   0,       0, "Amstrad plc",         "Amstrad CPC664",                            0 )
+COMP( 1985, cpc6128,  cpc464,   0,      amstrad, cpc6128,  0,       0, "Amstrad plc",         "Amstrad CPC6128",                           0 )
+COMP( 1985, cpc6128f, cpc464,   0,      amstrad, cpc6128f, 0,       0, "Amstrad plc",         "Amstrad CPC6128 (France, AZERTY Keyboard)", 0 )
+COMP( 1985, cpc6128s, cpc464,   0,      amstrad, cpc6128s, 0,       0, "Amstrad plc",         "Amstrad CPC6128 (Sweden/Finland)",			 0 )
+COMP( 1990, cpc464p,  0,        0,      cpcplus, plus,     0,       0, "Amstrad plc",         "Amstrad CPC464+",                           0 )
+COMP( 1990, cpc6128p, 0,        0,      cpcplus, plus,     0,       0, "Amstrad plc",         "Amstrad CPC6128+",                          0 )
+CONS( 1990, gx4000,   0,        0,      gx4000,  gx4000,   0,       0,  "Amstrad plc",         "Amstrad GX4000",                            0 )
+COMP( 1989, kccomp,   cpc464,   0,      kccomp,  kccomp,   0,       0, "VEB Mikroelektronik", "KC Compact",                                0 )
+COMP( 1993, al520ex,  cpc464,   0,      aleste,  aleste,   aleste,  0,  "Patisonic",           "Aleste 520EX",                              GAME_IMPERFECT_SOUND )

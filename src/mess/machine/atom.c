@@ -1,16 +1,16 @@
 /***********************************************************************
 
-	atom.c
+    atom.c
 
-	Functions to emulate general aspects of the machine (RAM, ROM,
-	interrupts, I/O ports)
+    Functions to emulate general aspects of the machine (RAM, ROM,
+    interrupts, I/O ports)
 
-	Many thanks to Kees van Oss for:
-	1.	Tape input/output circuit diagram. It describes in great detail how the 2.4 kHz
-		tone, 2.4 kHz tone enable, tape output and tape input are connected.
-	2.	The DOS rom for the Atom so I could complete the floppy disc emulation.
-	3.	Details of the eprom expansion board for the Atom.
-	4.	His demo programs which I used to test the driver.
+    Many thanks to Kees van Oss for:
+    1.  Tape input/output circuit diagram. It describes in great detail how the 2.4 kHz
+        tone, 2.4 kHz tone enable, tape output and tape input are connected.
+    2.  The DOS rom for the Atom so I could complete the floppy disc emulation.
+    3.  Details of the eprom expansion board for the Atom.
+    4.  His demo programs which I used to test the driver.
 
 ***********************************************************************/
 
@@ -95,8 +95,8 @@ static void atom_8271_interrupt_callback(const device_config *device, int state)
 {
 	/* I'm assuming that the nmi is edge triggered */
 	/* a interrupt from the fdc will cause a change in line state, and
-	the nmi will be triggered, but when the state changes because the int
-	is cleared this will not cause another nmi */
+    the nmi will be triggered, but when the state changes because the int
+    is cleared this will not cause another nmi */
 	/* I'll emulate it like this to be sure */
 
 	if (state!=previous_i8271_int_state)
@@ -104,7 +104,7 @@ static void atom_8271_interrupt_callback(const device_config *device, int state)
 		if (state)
 		{
 			/* I'll pulse it because if I used hold-line I'm not sure
-			it would clear - to be checked */
+            it would clear - to be checked */
 			cputag_set_input_line(device->machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE);
 		}
 	}
@@ -115,7 +115,8 @@ static void atom_8271_interrupt_callback(const device_config *device, int state)
 const i8271_interface atom_8271_interface=
 {
 	atom_8271_interrupt_callback,
-	NULL
+	NULL,
+	{FLOPPY_0, FLOPPY_1}
 };
 
 /*
@@ -153,7 +154,7 @@ static TIMER_CALLBACK(atom_timer_callback)
 	timer_state^=1;
 
 	/* the 2.4 kHz signal is notted (A), and nand'ed with the 2.4kz enable, resulting
-	in B. The final cassette output is the result of tape output nand'ed with B */
+    in B. The final cassette output is the result of tape output nand'ed with B */
 
 
 	{
@@ -184,9 +185,9 @@ MACHINE_RESET( atom )
 
 	/* this is temporary */
 	/* Kees van Oss mentions that address 8-b are used for the random number
-	generator. I don't know if this is hardware, or random data because the
-	ram chips are not cleared at start-up. So at this time, these numbers
-	are poked into the memory to simulate it. When I have more details I will fix it */
+    generator. I don't know if this is hardware, or random data because the
+    ram chips are not cleared at start-up. So at this time, these numbers
+    are poked into the memory to simulate it. When I have more details I will fix it */
 	memory_region(machine, "maincpu")[0x08] = mame_rand(machine) & 0x0ff;
 	memory_region(machine, "maincpu")[0x09] = mame_rand(machine) & 0x0ff;
 	memory_region(machine, "maincpu")[0x0a] = mame_rand(machine) & 0x0ff;
@@ -281,12 +282,14 @@ READ8_DEVICE_HANDLER ( atom_8255_portb_r )
 
 	row = atom_8255_porta & 0x0f;
 	/* logerror("8255: Read port b: %02X %02X\n", input_port_read(machine, port),
-									input_port_read(machine, "KEY10") & 0xc0); */
+                                    input_port_read(machine, "KEY10") & 0xc0); */
 	return ((input_port_read(device->machine, keynames[row]) & 0x3f) | (input_port_read(device->machine, "KEY10") & 0xc0));
 }
 
 READ8_DEVICE_HANDLER ( atom_8255_portc_r )
 {
+	const device_config *mc6847 = devtag_get_device(device->machine, "mc6847");
+
 	atom_8255_portc &= 0x0f;
 
 	/* cassette input */
@@ -301,28 +304,35 @@ READ8_DEVICE_HANDLER ( atom_8255_portc_r )
 		atom_8255_portc |= (1<<4);
 	}
 
-	atom_8255_portc |= (m6847_get_field_sync(device->machine) ? 0x00 : 0x80);
 	atom_8255_portc |= (input_port_read(device->machine, "KEY11") & 0x40);
+	atom_8255_portc |= mc6847_fs_r(mc6847) << 7;
 	/* logerror("8255: Read port c (%02X)\n",atom_8255.atom_8255_portc); */
 	return (atom_8255_portc);
 }
 
 /* Atom 6847 modes:
 
-0000xxxx	Text
-0001xxxx	64x64	4
-0011xxxx	128x64	2
-0101xxxx	128x64	4
-0111xxxx	128x96	2
-1001xxxx	128x96	4
-1011xxxx	128x192	2
-1101xxxx	128x192	4
-1111xxxx	256x192	2
+0000xxxx    Text
+0001xxxx    64x64   4
+0011xxxx    128x64  2
+0101xxxx    128x64  4
+0111xxxx    128x96  2
+1001xxxx    128x96  4
+1011xxxx    128x192 2
+1101xxxx    128x192 4
+1111xxxx    256x192 2
 
 */
 
-WRITE8_DEVICE_HANDLER ( atom_8255_porta_w )
+WRITE8_DEVICE_HANDLER( atom_8255_porta_w )
 {
+	const device_config *mc6847 = devtag_get_device(device->machine, "mc6847");
+
+	mc6847_ag_w(mc6847, BIT(data, 4));
+	mc6847_gm0_w(mc6847, BIT(data, 5));
+	mc6847_gm1_w(mc6847, BIT(data, 6));
+	mc6847_gm2_w(mc6847, BIT(data, 7));
+
 	atom_8255_porta = data;
 }
 
@@ -333,8 +343,12 @@ WRITE8_DEVICE_HANDLER ( atom_8255_portb_w )
 
 WRITE8_DEVICE_HANDLER(atom_8255_portc_w)
 {
-	atom_8255_portc = data;
+	const device_config *mc6847 = devtag_get_device(device->machine, "mc6847");
+
 	speaker_level_w(device, BIT(data, 2));
+	mc6847_css_w(mc6847, BIT(data, 3));
+
+	atom_8255_portc = data;
 }
 
 
@@ -381,3 +395,22 @@ MACHINE_RESET( atomeb )
 	atom_eprom_box_init(machine);
 }
 
+
+/***************************************************************************
+    MC6847 VDP
+***************************************************************************/
+
+READ8_DEVICE_HANDLER( atom_mc6847_videoram_r )
+{
+	mc6847_as_w(device, BIT(videoram[offset], 6));
+	mc6847_intext_w(device, BIT(videoram[offset], 6));
+	mc6847_inv_w(device, BIT(videoram[offset], 7));
+
+	return videoram[offset];
+}
+
+VIDEO_UPDATE( atom )
+{
+	const device_config *mc6847 = devtag_get_device(screen->machine, "mc6847");
+	return mc6847_update(mc6847, bitmap, cliprect);
+}

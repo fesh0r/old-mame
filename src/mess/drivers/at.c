@@ -54,6 +54,9 @@
 #include "sound/dac.h"
 #include "sound/speaker.h"
 #include "sound/saa1099.h"
+#include "devices/messram.h"
+
+#include "memconv.h"
 
 /* window resizing with dirtybuffering traping in xmess window */
 
@@ -83,7 +86,7 @@
 
 static ADDRESS_MAP_START( at16_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x09ffff) AM_MIRROR(0xff000000) AM_RAMBANK(10)
-//	AM_RANGE(0x0a0000, 0x0bffff) AM_READWRITE(SMH_RAM, pc_video_videoram16le_w) AM_BASE((UINT16 **)&videoram) AM_SIZE(&videoram_size)
+//  AM_RANGE(0x0a0000, 0x0bffff) AM_READWRITE(SMH_RAM, pc_video_videoram16le_w) AM_BASE((UINT16 **)&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x0c0000, 0x0c7fff) AM_ROM
 	AM_RANGE(0x0c8000, 0x0cffff) AM_ROM
 	AM_RANGE(0x0d0000, 0x0effff) AM_RAM
@@ -96,7 +99,7 @@ static ADDRESS_MAP_START( at386_map, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_GLOBAL_MASK(0x00ffffff)
 	AM_RANGE(0x00000000, 0x0009ffff) AM_RAMBANK(10)
 	AM_RANGE(0x000a0000, 0x000bffff) AM_NOP
-//	AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(SMH_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
+//  AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(SMH_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x000c0000, 0x000c7fff) AM_ROM
 	AM_RANGE(0x000c8000, 0x000cffff) AM_ROM
 	AM_RANGE(0x000d0000, 0x000effff) AM_ROM
@@ -107,7 +110,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( at586_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x0009ffff) AM_RAMBANK(10)
 	AM_RANGE(0x000a0000, 0x000bffff) AM_NOP
-//	AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(SMH_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
+//  AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(SMH_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0xfffe0000, 0xffffffff) AM_ROM AM_REGION("user1", 0x20000)
 ADDRESS_MAP_END
 
@@ -148,6 +151,16 @@ static WRITE16_DEVICE_HANDLER( at16_388_w )
 	}
 }
 
+static READ32_HANDLER( at_kbdc8042_32le_r )
+{
+	return read32le_with_read8_handler(at_kbdc8042_r, space, offset, mem_mask);
+}
+
+static WRITE32_HANDLER( at_kbdc8042_32le_w )
+{
+	write32le_with_write8_handler(at_kbdc8042_w, space, offset, data, mem_mask);
+}
+
 static ADDRESS_MAP_START(at16_io, ADDRESS_SPACE_IO, 16)
 	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", dma8237_r, dma8237_w, 0xffff)
 	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_r, pic8259_w, 0xffff)
@@ -163,8 +176,8 @@ static ADDRESS_MAP_START(at16_io, ADDRESS_SPACE_IO, 16)
 	AM_RANGE(0x0278, 0x027f) AM_DEVREADWRITE8("lpt_2", pc_lpt_r, pc_lpt_w, 0x00ff)
 	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8("ns16450_3", ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ns16450_1", ins8250_r, ins8250_w, 0xffff)
-//	AM_RANGE(0x0320, 0x0323) AM_READWRITE8(pc_HDC1_r,                pc_HDC1_w, 0xffff)
-//	AM_RANGE(0x0324, 0x0327) AM_READWRITE8(pc_HDC2_r,                pc_HDC2_w, 0xffff)
+//  AM_RANGE(0x0320, 0x0323) AM_READWRITE8(pc_HDC1_r,                pc_HDC1_w, 0xffff)
+//  AM_RANGE(0x0324, 0x0327) AM_READWRITE8(pc_HDC2_r,                pc_HDC2_w, 0xffff)
 	AM_RANGE(0x0378, 0x037f) AM_DEVREADWRITE8("lpt_1", pc_lpt_r, pc_lpt_w, 0x00ff)
 #ifdef ADLIB
 	AM_RANGE(0x0388, 0x0389) AM_DEVREADWRITE("ym3812", at16_388_r, at16_388_w )
@@ -180,7 +193,7 @@ static ADDRESS_MAP_START(at386_io, ADDRESS_SPACE_IO, 32)
 	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", dma8237_r, dma8237_w, 0xffffffff)
 	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_r, pic8259_w, 0xffffffff)
 	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8253_r, pit8253_w, 0xffffffff)
-	AM_RANGE(0x0060, 0x006f) AM_READWRITE(kbdc8042_32le_r,			kbdc8042_32le_w)
+	AM_RANGE(0x0060, 0x006f) AM_READWRITE(at_kbdc8042_32le_r,      at_kbdc8042_32le_w)
 	AM_RANGE(0x0070, 0x007f) AM_READWRITE(mc146818_port32le_r,		mc146818_port32le_w)
 	AM_RANGE(0x0080, 0x009f) AM_READWRITE8(at_page8_r,				at_page8_w, 0xffffffff)
 	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE8("pic8259_slave", pic8259_r, pic8259_w, 0xffffffff)
@@ -202,7 +215,7 @@ static ADDRESS_MAP_START(at586_io, ADDRESS_SPACE_IO, 32)
 	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", dma8237_r, dma8237_w, 0xffffffff)
 	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_r, pic8259_w, 0xffffffff)
 	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8253_r, pit8253_w, 0xffffffff)
-	AM_RANGE(0x0060, 0x006f) AM_READWRITE(kbdc8042_32le_r,			kbdc8042_32le_w)
+	AM_RANGE(0x0060, 0x006f) AM_READWRITE(at_kbdc8042_32le_r,      at_kbdc8042_32le_w)
 	AM_RANGE(0x0070, 0x007f) AM_READWRITE(mc146818_port32le_r,		mc146818_port32le_w)
 	AM_RANGE(0x0080, 0x009f) AM_READWRITE8(at_page8_r,				at_page8_w, 0xffffffff)
 	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE8("pic8259_slave", pic8259_r, pic8259_w, 0xffffffff)
@@ -429,8 +442,20 @@ static const pc_lpt_interface at_lpt_config =
 	DEVCB_CPU_INPUT_LINE("maincpu", 0)
 };
 
+static const floppy_config ibmat_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(pc),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 static MACHINE_DRIVER_START( ibm5170 )
+	MDRV_DRIVER_DATA(at_state)
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", I80286, 6000000 /*6000000*/)
 	MDRV_CPU_PROGRAM_MAP(at16_map)
@@ -487,7 +512,13 @@ static MACHINE_DRIVER_START( ibm5170 )
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
+
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("1664K")
 MACHINE_DRIVER_END
 
 
@@ -498,6 +529,7 @@ MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( ibm5162 )
+	MDRV_DRIVER_DATA(at_state)
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", I80286, 6000000 /*6000000*/)
 	MDRV_CPU_PROGRAM_MAP(at16_map)
@@ -550,11 +582,18 @@ static MACHINE_DRIVER_START( ibm5162 )
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("1664K")
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( ps2m30286 )
+	MDRV_DRIVER_DATA(at_state)
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", I80286, 12000000)
 	MDRV_CPU_PROGRAM_MAP(at16_map)
@@ -615,11 +654,18 @@ static MACHINE_DRIVER_START( ps2m30286 )
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("1664K")	
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( atvga )
+	MDRV_DRIVER_DATA(at_state)
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", I80286, 12000000)
 	MDRV_CPU_PROGRAM_MAP(at16_map)
@@ -682,11 +728,18 @@ static MACHINE_DRIVER_START( atvga )
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("1664K")	
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( at386 )
+	MDRV_DRIVER_DATA(at_state)
     /* basic machine hardware */
 	/* original at 6 MHz, at03 8 megahertz */
 	MDRV_CPU_ADD("maincpu", I386, 12000000)
@@ -712,7 +765,11 @@ static MACHINE_DRIVER_START( at386 )
 	MDRV_NS16450_ADD( "ns16450_2", ibm5170_com_interface[2] )			/* TODO: verify model */
 	MDRV_NS16450_ADD( "ns16450_3", ibm5170_com_interface[3] )			/* TODO: verify model */
 
-	MDRV_IMPORT_FROM( pcvideo_cga )
+	MDRV_IMPORT_FROM( pcvideo_vga )
+
+	MDRV_SCREEN_MODIFY("screen")
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -746,7 +803,13 @@ static MACHINE_DRIVER_START( at386 )
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("1664K")
 MACHINE_DRIVER_END
 
 
@@ -809,9 +872,9 @@ ROM_START( ibm5170 )
 	ROMX_LOAD("6480090.u27", 0xf0000, 0x8000, CRC(99703aa9) SHA1(18022e93a0412c8477e58f8c61a87718a0b9ab0e), ROM_SKIP(1) | ROM_BIOS(2))
 	ROMX_LOAD("6480091.u47", 0xf0001, 0x8000, CRC(013ef44b) SHA1(bfa15d2180a1902cb6d38c6eed3740f5617afd16), ROM_SKIP(1) | ROM_BIOS(2))
 
-//	ROM_SYSTEM_BIOS( 2, "atdiag", "IBM PC/AT 5170 w/Super Diagnostics")
-//	ROMX_LOAD("atdiage.bin", 0xf8000, 0x4000, CRC(e8855d0c) SHA1(c9d53e61c08da0a64f43d691bf6cadae5393843a), ROM_SKIP(1) | ROM_BIOS(3))
-//	ROMX_LOAD("atdiago.bin", 0xf8001, 0x4000, CRC(606fa71d) SHA1(165e45bae7ae2da274f1e645c763c5bfcbde027b), ROM_SKIP(1) | ROM_BIOS(3))
+//  ROM_SYSTEM_BIOS( 2, "atdiag", "IBM PC/AT 5170 w/Super Diagnostics")
+//  ROMX_LOAD("atdiage.bin", 0xf8000, 0x4000, CRC(e8855d0c) SHA1(c9d53e61c08da0a64f43d691bf6cadae5393843a), ROM_SKIP(1) | ROM_BIOS(3))
+//  ROMX_LOAD("atdiago.bin", 0xf8001, 0x4000, CRC(606fa71d) SHA1(165e45bae7ae2da274f1e645c763c5bfcbde027b), ROM_SKIP(1) | ROM_BIOS(3))
 
 	ROM_REGION(0x08100, "gfx1", 0)
 	ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
@@ -886,7 +949,7 @@ ROM_START( ibm5170a )
 ROM_END
 
 
-ROM_START( ibm5162 ) //MB p/n 62x1168 
+ROM_START( ibm5162 ) //MB p/n 62x1168
 	ROM_REGION16_LE(0x1000000,"maincpu", 0)
 	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
 
@@ -945,8 +1008,10 @@ ROM_START( at )
 	ROM_RELOAD(0xff0001,0x8000)
     ROM_LOAD16_BYTE("at110387.0", 0xf0000, 0x8000, CRC(65ae1f97) SHA1(91a29c7deecf7a9afbba330e64e0eee9aafee4d1))
 	ROM_RELOAD(0xff0000,0x8000)
-	ROM_REGION(0x08100, "gfx1", 0)
-    ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
+
+	/* Character rom */
+	ROM_REGION(0x2000,"gfx1", 0)
+	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f))
 
 	ROM_REGION(0x50000, "gfx2", ROMREGION_ERASE00)
 
@@ -986,8 +1051,10 @@ ROM_START( neat )
 	ROM_RELOAD(0xff0000,0x8000)
     ROM_LOAD16_BYTE("at030389.1", 0xf0001, 0x8000, CRC(4e90f294) SHA1(18c21fd8d7e959e2292a9afbbaf78310f9cad12f))
 	ROM_RELOAD(0xff0001,0x8000)
-	ROM_REGION(0x08100, "gfx1", 0)
-    ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
+
+	/* Character rom */
+	ROM_REGION(0x2000,"gfx1", 0)
+	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f))
 
 	ROM_REGION(0x50000, "gfx2", ROMREGION_ERASE00)
 
@@ -1003,11 +1070,10 @@ ROM_END
 
 ROM_START( at386 )
     ROM_REGION(0x1000000,"maincpu", 0)
-    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
-    ROM_LOAD("at386.bin", 0xf0000, 0x10000, CRC(3df9732a) SHA1(def71567dee373dc67063f204ef44ffab9453ead))
+    ROM_LOAD("et4000.bin", 0xc0000, 0x08000, CRC(f01e4be0) SHA1(95d75ff41bcb765e50bd87a8da01835fd0aa01d5))
+    ROM_LOAD("wdbios.rom", 0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+    ROM_LOAD("at386.bin",  0xf0000, 0x10000, CRC(3df9732a) SHA1(def71567dee373dc67063f204ef44ffab9453ead))
 	ROM_RELOAD(0xff0000,0x10000)
-	ROM_REGION(0x08100, "gfx1", 0)
-    ROM_LOAD("cga.chr",     0x01000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 
 	/* 8042 keyboard controller */
 	ROM_REGION( 0x0800, "kbdc8042", 0 )
@@ -1021,6 +1087,7 @@ ROM_END
 
 ROM_START( at486 )
 	ROM_REGION(0x1000000, "maincpu", 0)
+	ROM_LOAD("et4000.bin", 0xc0000, 0x08000, CRC(f01e4be0) SHA1(95d75ff41bcb765e50bd87a8da01835fd0aa01d5))
 	ROM_LOAD("wdbios.rom", 0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
 
 	ROM_SYSTEM_BIOS(0, "at486", "PC/AT 486")	\
@@ -1030,9 +1097,6 @@ ROM_START( at486 )
 	ROM_SYSTEM_BIOS(2, "ft01232", "Free Tech 01-232")	\
 	ROMX_LOAD("ft01232.bin", 0x0f0000, 0x10000, CRC(30efaf92) SHA1(665c8ef05ca052dcc06bb473c9539546bfef1e86), ROM_BIOS(3))
 	ROM_COPY("maincpu", 0, 0xff0000, 0x10000)
-
-	ROM_REGION(0x08100, "gfx1", 0)
-	ROM_LOAD("cga.chr", 0x01000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 
 	/* 8042 keyboard controller */
 	ROM_REGION( 0x0800, "kbdc8042", 0 )
@@ -1046,11 +1110,9 @@ ROM_END
 
 ROM_START( at586 )
 	ROM_REGION32_LE(0x40000, "user1", 0)
+	ROM_LOAD("et4000.bin",  0x00000, 0x08000, CRC(f01e4be0) SHA1(95d75ff41bcb765e50bd87a8da01835fd0aa01d5))
     ROM_LOAD("wdbios.rom",  0x08000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
     ROM_LOAD("at586.bin",   0x20000, 0x20000, CRC(717037f5) SHA1(1d49d1b7a4a40d07d1a897b7f8c827754d76f824))
-
-	ROM_REGION(0x08100, "gfx1", 0)
-    ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 
 	/* 8042 keyboard controller */
 	ROM_REGION( 0x0800, "kbdc8042", 0 )
@@ -1060,29 +1122,7 @@ ROM_START( at586 )
 	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
 	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
-
-
-static void ibmat_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_pc; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-
-static SYSTEM_CONFIG_START(ibmat)
-	CONFIG_RAM_DEFAULT( (640+1024) * 1024 )
-	CONFIG_DEVICE(ibmat_floppy_getinfo)
-SYSTEM_CONFIG_END
-
+	
 /***************************************************************************
 
   Game driver(s)
@@ -1090,13 +1130,13 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*     YEAR  NAME      PARENT   COMPAT   MACHINE    INPUT       INIT        CONFIG   COMPANY     FULLNAME */
-COMP ( 1984, ibm5170,  0,       ibm5160, ibm5170,   atcga,	atega,	    ibmat,   "International Business Machines",  "IBM PC/AT 5170", GAME_NOT_WORKING )
-COMP ( 1985, ibm5170a, ibm5170, 0,       ibm5170a,  atcga,      atega,      ibmat,   "International Business Machines",  "IBM PC/AT 5170 8MHz", GAME_NOT_WORKING )
-COMP ( 1985, ibm5162,  ibm5170, 0,       ibm5162,   atcga,      atcga,      ibmat,   "International Business Machines",  "IBM PC/XT-286 5162", GAME_NOT_WORKING )
-COMP ( 1988, i8530286, ibm5170, 0,       ps2m30286, atvga,	ps2m30286,  ibmat,   "International Business Machines",  "IBM PS2 Model 30 286", GAME_NOT_WORKING )
-COMP ( 1987, at,       ibm5170, 0,       ibm5170a,  atcga,	atcga,	    ibmat,   "",  "PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1989, neat,     ibm5170, 0,       ibm5170a,  atcga,	atcga,	    ibmat,   "",  "NEAT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1988, at386,    ibm5170, 0,       at386,     atcga,	at386,	    ibmat,   "MITAC INC",  "PC/AT 386(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1990, at486,    ibm5170, 0,       at486,     atcga,	at386,	    ibmat,   "",  "PC/AT 486(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1990, at586,    ibm5170, 0,       at586,     atcga,	at586,	    ibmat,   "",  "PC/AT 586(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1987, atvga,    ibm5170, 0,       atvga,     atvga,	at_vga,     ibmat,   "",  "PC/AT (VGA, MF2 Keyboard)" , GAME_NOT_WORKING )
+COMP ( 1984, ibm5170,  0,       ibm5160, ibm5170,   atcga,	atega,	    0,   "International Business Machines",  "IBM PC/AT 5170", GAME_NOT_WORKING )
+COMP ( 1985, ibm5170a, ibm5170, 0,       ibm5170a,  atcga,  atega,      0,   "International Business Machines",  "IBM PC/AT 5170 8MHz", GAME_NOT_WORKING )
+COMP ( 1985, ibm5162,  ibm5170, 0,       ibm5162,   atcga,  atcga,      0,   "International Business Machines",  "IBM PC/XT-286 5162", GAME_NOT_WORKING )
+COMP ( 1988, i8530286, ibm5170, 0,       ps2m30286, atvga,	ps2m30286,  0,   "International Business Machines",  "IBM PS2 Model 30 286", GAME_NOT_WORKING )
+COMP ( 1987, at,       ibm5170, 0,       ibm5162,  atcga,	atcga,	    0,   "",  "PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1989, neat,     ibm5170, 0,       ibm5162,  atcga,	atcga,	    0,   "",  "NEAT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1988, at386,    ibm5170, 0,       at386,     atvga,	at386,	    0,   "MITAC INC",  "PC/AT 386 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1990, at486,    ibm5170, 0,       at486,     atvga,	at386,	    0,   "",  "PC/AT 486 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1990, at586,    ibm5170, 0,       at586,     atvga,	at586,	    0,   "",  "PC/AT 586 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1987, atvga,    ibm5170, 0,       atvga,     atvga,	at_vga,     0,   "",  "PC/AT (VGA, MF2 Keyboard)" , GAME_NOT_WORKING )

@@ -1,8 +1,8 @@
 /*********************************************************************
 
-	formats/pc_dsk.c
+    formats/pc_dsk.c
 
-	PC disk images
+    PC disk images
 
 *********************************************************************/
 
@@ -44,7 +44,7 @@ static floperr_t pc_dsk_compute_geometry(floppy_image *floppy, struct basicdsk_g
 	memset(geometry, 0, sizeof(*geometry));
 	size = floppy_image_size(floppy);
 
-	for (i = 0; i < sizeof(disk_sizes) / sizeof(disk_sizes[0]); i++)
+	for (i = 0; i < ARRAY_LENGTH(disk_sizes); i++)
 	{
 		if (disk_sizes[i].image_size == size)
 		{
@@ -60,9 +60,9 @@ static floperr_t pc_dsk_compute_geometry(floppy_image *floppy, struct basicdsk_g
 	if (size >= 0x1a)
 	{
 		/*
-		 * get info from boot sector.
-		 * not correct on all disks
-		 */
+         * get info from boot sector.
+         * not correct on all disks
+         */
 		UINT8 scl, spt, heads;
 		floppy_image_read(floppy, &scl, 0x0c, 1);
 		floppy_image_read(floppy, &spt, 0x18, 1);
@@ -130,7 +130,7 @@ static FLOPPY_CONSTRUCT(pc_dsk_construct)
 /* ----------------------------------------------------------------------- */
 
 FLOPPY_OPTIONS_START( pc )
-	FLOPPY_OPTION( pc_dsk, "dsk,ima,img,ufi",		"PC floppy disk image",	pc_dsk_identify, pc_dsk_construct,
+	FLOPPY_OPTION( pc_dsk, "dsk,ima,img,ufi,360",		"PC floppy disk image",	pc_dsk_identify, pc_dsk_construct,
 		HEADS([1]-2)
 		TRACKS(40/[80])
 		SECTORS(8/[9]/10/15/18/36))

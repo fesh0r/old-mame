@@ -1,73 +1,73 @@
 /*********************************************************************
 
-	ap_dsk35.c
+    ap_dsk35.c
 
-	Apple 3.5" disk images
+    Apple 3.5" disk images
 
-	This code supports 3.5" 400k/800k disks used in early Macintoshes
-	and the Apple IIgs.
+    This code supports 3.5" 400k/800k disks used in early Macintoshes
+    and the Apple IIgs.
 
-	These disks have the following properties:
+    These disks have the following properties:
 
-		400k:	80 tracks, 1 head
-		800k:	80 tracks, 2 heads
+        400k:   80 tracks, 1 head
+        800k:   80 tracks, 2 heads
 
-		Tracks  0-15 have 12 sectors each
-		Tracks 16-31 have 11 sectors each
-		Tracks 32-47 have 10 sectors each
-		Tracks 48-63 have  9 sectors each
-		Tracks 64-79 have  8 sectors each
+        Tracks  0-15 have 12 sectors each
+        Tracks 16-31 have 11 sectors each
+        Tracks 32-47 have 10 sectors each
+        Tracks 48-63 have  9 sectors each
+        Tracks 64-79 have  8 sectors each
 
-		1440k disks are the exception; they are simply 80 tracks, 2 heads and
-		18 sectors per track.
+        1440k disks are the exception; they are simply 80 tracks, 2 heads and
+        18 sectors per track.
 
-	Each sector has 524 bytes, 512 of which are really used by the Macintosh
+    Each sector has 524 bytes, 512 of which are really used by the Macintosh
 
-	(80 tracks) * (avg of 10 sectors) * (512 bytes) * (2 sides) = 800 kB
+    (80 tracks) * (avg of 10 sectors) * (512 bytes) * (2 sides) = 800 kB
 
-	Data is nibblized : 3 data bytes -> 4 bytes on disk.
+    Data is nibblized : 3 data bytes -> 4 bytes on disk.
 
-	In addition to 512 logical bytes, each sector contains 800 physical
-	bytes.  Here is the layout of the physical sector:
+    In addition to 512 logical bytes, each sector contains 800 physical
+    bytes.  Here is the layout of the physical sector:
 
-		Pos
-		0		0xFF (pad byte where head is turned on ???)
-		1-35	self synch 0xFFs (7*5) (42 bytes actually written to media)
-		36		0xD5
-		37		0xAA
-		38		0x96
-		39		diskbytes[(track number) & 0x3F]
-		40		diskbytes[(sector number)]
-		41		diskbytes[("side")]
-		42		diskbytes[("format byte")]
-		43		diskbytes[("sum")]
-		44		0xDE
-		45		0xAA
-		46		pad byte where head is turned off/on (0xFF here)
-		47-51	self synch 0xFFs (6 bytes actually written to media)
-		52		0xD5
-		53		0xAA
-		54		0xAD
-		55		spare byte, generally diskbytes[(sector number)]
-		56-754	"nibblized" sector data	...
-		755-758	checksum
-		759		0xDE
-		760		0xAA
-		761		pad byte where head is turned off (0xFF here)
+        Pos
+        0       0xFF (pad byte where head is turned on ???)
+        1-35    self synch 0xFFs (7*5) (42 bytes actually written to media)
+        36      0xD5
+        37      0xAA
+        38      0x96
+        39      diskbytes[(track number) & 0x3F]
+        40      diskbytes[(sector number)]
+        41      diskbytes[("side")]
+        42      diskbytes[("format byte")]
+        43      diskbytes[("sum")]
+        44      0xDE
+        45      0xAA
+        46      pad byte where head is turned off/on (0xFF here)
+        47-51   self synch 0xFFs (6 bytes actually written to media)
+        52      0xD5
+        53      0xAA
+        54      0xAD
+        55      spare byte, generally diskbytes[(sector number)]
+        56-754  "nibblized" sector data ...
+        755-758 checksum
+        759     0xDE
+        760     0xAA
+        761     pad byte where head is turned off (0xFF here)
 
-	Note : "Self synch refers to a technique whereby two zeroes are inserted
-	between each synch byte written to the disk.", i.e. "0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF" is actually "0xFF, 0x3F, 0xCF, 0xF3, 0xFC, 0xFF" on disk.
-	Since the IWM assumes the data transfer is complete when the MSBit of its
-	shift register is 1, we do read 4 0xFF, even though they are not
-	contiguous on the disk media.  Some reflexion shows that 4 synch bytes
-	allow the IWM to synchronize with the trailing data.
+    Note : "Self synch refers to a technique whereby two zeroes are inserted
+    between each synch byte written to the disk.", i.e. "0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF" is actually "0xFF, 0x3F, 0xCF, 0xF3, 0xFC, 0xFF" on disk.
+    Since the IWM assumes the data transfer is complete when the MSBit of its
+    shift register is 1, we do read 4 0xFF, even though they are not
+    contiguous on the disk media.  Some reflexion shows that 4 synch bytes
+    allow the IWM to synchronize with the trailing data.
 
-	Format byte codes:
-		0x00	Apple II
-		0x01	Lisa
-		0x02	Mac MFS (single sided)?
-		0x22	Mac MFS (double sided)?
+    Format byte codes:
+        0x00    Apple II
+        0x01    Lisa
+        0x02    Mac MFS (single sided)?
+        0x22    Mac MFS (double sided)?
 
 *********************************************************************/
 
@@ -157,14 +157,14 @@ static const INT16 rev_diskbytes[] =
 static const UINT8 blk1[] =
 {
 	/*0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xD5, 0xAA, 0x96*/
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xD5, 0xAA, 0x96*/
 	0xFF,
 	0xFF, 0x3F, 0xCF, 0xF3, 0xFC, 0xFF,
 	0xFF, 0x3F, 0xCF, 0xF3, 0xFC, 0xFF,
@@ -200,7 +200,7 @@ int apple35_sectors_per_track(floppy_image *image, int track)
 	int sectors;
 
 	assert(track >= 0);
-	assert(track < sizeof(apple35_tracklen_800kb) / sizeof(apple35_tracklen_800kb[0]));
+	assert(track < ARRAY_LENGTH(apple35_tracklen_800kb));
 
 	if (get_apple35_tag(image)->is_1440k)
 		sectors = 18;
@@ -212,11 +212,11 @@ int apple35_sectors_per_track(floppy_image *image, int track)
 
 
 /*
-	converts data to its nibblized representation, and generate checksum
+    converts data to its nibblized representation, and generate checksum
 
-	now handles 524-byte-long sectors
+    now handles 524-byte-long sectors
 
-	tag data IS important, since it allows data recovery when the catalog is trashed
+    tag data IS important, since it allows data recovery when the catalog is trashed
 */
 static void sony_nibblize35(const UINT8 *in, UINT8 *nib_ptr, UINT8 *csum)
 {
@@ -227,8 +227,8 @@ static void sony_nibblize35(const UINT8 *in, UINT8 *nib_ptr, UINT8 *csum)
 	UINT8 b1[175], b2[175], b3[175];
 
 	/* Copy from the user's buffer to our buffer, while computing
-	 * the three-byte data checksum
-	 */
+     * the three-byte data checksum
+     */
 
 	i = 0;
 	j = 0;
@@ -300,7 +300,7 @@ static void sony_nibblize35(const UINT8 *in, UINT8 *nib_ptr, UINT8 *csum)
 
 
 /*
-	does the reverse process of sony_nibblize35
+    does the reverse process of sony_nibblize35
 */
 static void sony_denibblize35(UINT8 *out, const UINT8 *nib_ptr, UINT8 *checksum)
 {
@@ -325,8 +325,8 @@ static void sony_denibblize35(UINT8 *out, const UINT8 *nib_ptr, UINT8 *checksum)
 	}
 
 	/* Copy from the user's buffer to our buffer, while computing
-	 * the three-byte data checksum
-	 */
+     * the three-byte data checksum
+     */
 
 	i = 0;
 	j = 0;
@@ -406,8 +406,8 @@ UINT8 sony_fetchtrack(const UINT8 *buffer, size_t buffer_len, size_t *pos)
 	while ((data & 0x80) == 0)
 	{
 		/* this code looks weird because it isn't simply rotating the new bit
-		 * in, but for some reason it won't work if I rotate the bit in; I
-		 * have to match the algorithm used by the old code */
+         * in, but for some reason it won't work if I rotate the bit in; I
+         * have to match the algorithm used by the old code */
 		data <<= 1;
 		data |= (buffer[*pos / 8] >> (8 - ((*pos % 8) + 1)));
 		(*pos)++;
@@ -426,7 +426,7 @@ static UINT32 apple35_get_offset(floppy_image *floppy, int head, int track, int 
 
 	tag = get_apple35_tag(floppy);
 
-	if (track >= (sizeof(apple35_tracklen_800kb) / sizeof(apple35_tracklen_800kb[0])))
+	if (track >= ARRAY_LENGTH(apple35_tracklen_800kb))
 		return ~0;
 	if (head >= tag->sides)
 		return ~0;
@@ -576,7 +576,7 @@ static floperr_t apple35_read_track(floppy_image *floppy, int head, int track, U
 
 	tag = get_apple35_tag(floppy);
 
-	if (track >= (sizeof(apple35_tracklen_800kb) / sizeof(apple35_tracklen_800kb[0])))
+	if (track >= ARRAY_LENGTH(apple35_tracklen_800kb))
 		return FLOPPY_ERROR_SEEKERROR;
 	if (offset != 0)
 		return FLOPPY_ERROR_UNSUPPORTED;
@@ -588,12 +588,12 @@ static floperr_t apple35_read_track(floppy_image *floppy, int head, int track, U
 	for (sector = 0; sector < sector_count; sector++)
 	{
 		/* read the sector */
-		err = apple35_read_sector_td(floppy, head, track, sector, sector_data, sizeof(sector_data) / sizeof(sector_data[0]));
+		err = apple35_read_sector_td(floppy, head, track, sector, sector_data, ARRAY_LENGTH(sector_data));
 		if (err)
 			return err;
 		sony_nibblize35(sector_data, nibble_data, checksum);
 
-		for (i = 0; i < (sizeof(blk1) / sizeof(blk1[0])); i++)
+		for (i = 0; i < ARRAY_LENGTH(blk1); i++)
 			sony_filltrack(buffer, buflen, &pos, blk1[i]);
 
 		sum = (track ^ sector ^ side ^ tag->format_byte) & 0x3F;
@@ -604,18 +604,18 @@ static floperr_t apple35_read_track(floppy_image *floppy, int head, int track, U
 		sony_filltrack(buffer, buflen, &pos, diskbytes[tag->format_byte]);
 		sony_filltrack(buffer, buflen, &pos, diskbytes[sum]);
 
-		for (i = 0; i < (sizeof(blk2) / sizeof(blk2[0])); i++)
+		for (i = 0; i < ARRAY_LENGTH(blk2); i++)
 			sony_filltrack(buffer, buflen, &pos, blk2[i]);
 
 		sony_filltrack(buffer, buflen, &pos, diskbytes[sector]);
 
-		for (i = 0; i < (sizeof(nibble_data) / sizeof(nibble_data[0])); i++)
+		for (i = 0; i < ARRAY_LENGTH(nibble_data); i++)
 			sony_filltrack(buffer, buflen, &pos, diskbytes[nibble_data[i]]);
 
 		for (i = 3; i >= 0; i--)
 			sony_filltrack(buffer, buflen, &pos, diskbytes[checksum[i]]);
 
-		for (i = 0; i < (sizeof(blk3) / sizeof(blk3[0])); i++)
+		for (i = 0; i < ARRAY_LENGTH(blk3); i++)
 			sony_filltrack(buffer, buflen, &pos, blk3[i]);
 	}
 	return FLOPPY_ERROR_SUCCESS;
@@ -637,7 +637,7 @@ static floperr_t apple35_write_track(floppy_image *floppy, int head, int track, 
 
 	tag = get_apple35_tag(floppy);
 
-	if (track >= (sizeof(apple35_tracklen_800kb) / sizeof(apple35_tracklen_800kb[0])))
+	if (track >= ARRAY_LENGTH(apple35_tracklen_800kb))
 		return FLOPPY_ERROR_SEEKERROR;
 	if (offset != 0)
 		return FLOPPY_ERROR_UNSUPPORTED;
@@ -712,7 +712,7 @@ static floperr_t apple35_write_track(floppy_image *floppy, int head, int track, 
 			continue;
 		j++;
 
-		for (i = 0; i < (sizeof(nibble_data) / sizeof(nibble_data[0])); i++)
+		for (i = 0; i < ARRAY_LENGTH(nibble_data); i++)
 		{
 			nibble_data[i] = rev_diskbytes[sony_fetchtrack(buffer, buflen, &pos)];
 			j++;
@@ -734,7 +734,7 @@ static floperr_t apple35_write_track(floppy_image *floppy, int head, int track, 
 			sony_denibblize35(sector_data, nibble_data, checksum);
 
 			/* write the sector */
-			err = apple35_write_sector_td(floppy, head, track, sector, sector_data, sizeof(sector_data) / sizeof(sector_data[0]), 0);
+			err = apple35_write_sector_td(floppy, head, track, sector, sector_data, ARRAY_LENGTH(sector_data), 0);
 			if (err)
 				return err;
 
@@ -857,8 +857,8 @@ struct header_diskcopy
 	UINT8 disk_format;		/* 0 = 400K, 1 = 800K, 2 = 720K, 3 = 1440K  (other values reserved) */
 	UINT8 format_byte;		/* should be $00 Apple II, $01 Lisa, $02 Mac MFS ??? */
 							/* $12 = 400K, $22 = >400K Macintosh (DiskCopy uses this value for
-							   all Apple II disks not 800K in size, and even for some of those),
-							   $24 = 800K Apple II disk */
+                               all Apple II disks not 800K in size, and even for some of those),
+                               $24 = 800K Apple II disk */
 	UINT16 magic;			/* always $0100 (otherwise, the file may be in a different format. */
 };
 

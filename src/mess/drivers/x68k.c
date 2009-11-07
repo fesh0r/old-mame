@@ -122,7 +122,7 @@
 #include "cpu/m68000/m68000.h"
 #include "machine/68901mfp.h"
 #include "machine/i8255a.h"
-#include "machine/nec765.h"
+#include "machine/upd765.h"
 #include "sound/2151intf.h"
 #include "sound/okim6258.h"
 #include "machine/8530scc.h"
@@ -134,6 +134,7 @@
 #include "devices/harddriv.h"
 #include "machine/x68k_hdc.h"
 #include "includes/x68k.h"
+#include "devices/messram.h"
 #include "x68000.lh"
 
 struct x68k_system x68k_sys;
@@ -466,7 +467,7 @@ static void x68k_keyboard_push_scancode(running_machine* machine,unsigned char c
 		x68k_sys.keyboard.headpos = 0;
 //      mfp_trigger_irq(MFP_IRQ_RX_ERROR);
 		current_vector[6] = 0x4b;
-//		cputag_set_input_line_and_vector(machine, "maincpu",6,ASSERT_LINE,0x4b);
+//      cputag_set_input_line_and_vector(machine, "maincpu",6,ASSERT_LINE,0x4b);
 	}
 }
 
@@ -637,8 +638,8 @@ static TIMER_CALLBACK(x68k_scc_ack)
 	if(x68k_sys.mouse.bufferempty != 0)  // nothing to do if the mouse data buffer is empty
 		return;
 
-//	if((x68k_sys.ioc.irqstatus & 0xc0) != 0)
-//		return;
+//  if((x68k_sys.ioc.irqstatus & 0xc0) != 0)
+//      return;
 
 	// hard-code the IRQ vector for now, until the SCC code is more complete
 	if((scc_get_reg_a(scc, 9) & 0x08) || (scc_get_reg_b(scc, 9) & 0x08))  // SCC reg WR9 is the same for both channels
@@ -694,11 +695,11 @@ static UINT8 md_3button_r(const device_config* device, int port)
 		UINT8 porta = input_port_read(device->machine,"md3b") & 0xff;
 		UINT8 portb = (input_port_read(device->machine,"md3b") >> 8) & 0xff;
 		if(x68k_sys.mdctrl.mux1 & 0x10)
-		{	
+		{
 			return porta | 0x90;
 		}
 		else
-		{	
+		{
 			return (portb & 0x60) | (porta & 0x03) | 0x90;
 		}
 	}
@@ -707,11 +708,11 @@ static UINT8 md_3button_r(const device_config* device, int port)
 		UINT8 porta = (input_port_read(device->machine,"md3b") >> 16) & 0xff;
 		UINT8 portb = (input_port_read(device->machine,"md3b") >> 24) & 0xff;
 		if(x68k_sys.mdctrl.mux2 & 0x20)
-		{	
+		{
 			return porta | 0x90;
 		}
 		else
-		{	
+		{
 			return (portb & 0x60) | (porta & 0x03) | 0x90;
 		}
 	}
@@ -742,35 +743,35 @@ static UINT8 md_6button_r(const device_config* device, int port)
 		UINT8 porta = input_port_read(device->machine,"md6b") & 0xff;
 		UINT8 portb = (input_port_read(device->machine,"md6b") >> 8) & 0xff;
 		UINT8 extra = input_port_read(device->machine,"md6b_extra") & 0x0f;
-		
+
 		switch(x68k_sys.mdctrl.seq1)
 		{
 			case 1:
 			default:
 				if(x68k_sys.mdctrl.mux1 & 0x10)
-				{	
+				{
 					return porta | 0x90;
 				}
 				else
-				{	
+				{
 					return (portb & 0x60) | (porta & 0x03) | 0x90;
 				}
 			case 2:
 				if(x68k_sys.mdctrl.mux1 & 0x10)
-				{	
+				{
 					return porta | 0x90;
 				}
 				else
-				{	
+				{
 					return (portb & 0x60) | 0x90;
 				}
 			case 3:
 				if(x68k_sys.mdctrl.mux1 & 0x10)
-				{	
+				{
 					return (porta & 0x60) | (extra & 0x0f) | 0x90;
 				}
 				else
-				{	
+				{
 					return (portb & 0x60) | 0x9f;
 				}
 		}
@@ -786,29 +787,29 @@ static UINT8 md_6button_r(const device_config* device, int port)
 			case 1:
 			default:
 				if(x68k_sys.mdctrl.mux2 & 0x20)
-				{	
+				{
 					return porta | 0x90;
 				}
 				else
-				{	
+				{
 					return (portb & 0x60) | (porta & 0x03) | 0x90;
 				}
 			case 2:
 				if(x68k_sys.mdctrl.mux2 & 0x20)
-				{	
+				{
 					return porta | 0x90;
 				}
 				else
-				{	
+				{
 					return (portb & 0x60) | 0x90;
 				}
 			case 3:
 				if(x68k_sys.mdctrl.mux2 & 0x20)
-				{	
+				{
 					return (porta & 0x60) | (extra & 0x0f) | 0x90;
 				}
 				else
-				{	
+				{
 					return (portb & 0x60) | 0x9f;
 				}
 		}
@@ -830,11 +831,11 @@ static UINT8 xpd1lr_r(const device_config* device, int port)
 		UINT8 porta = input_port_read(device->machine,"xpd1lr") & 0xff;
 		UINT8 portb = (input_port_read(device->machine,"xpd1lr") >> 8) & 0xff;
 		if(x68k_sys.mdctrl.mux1 & 0x10)
-		{	
+		{
 			return porta;
 		}
 		else
-		{	
+		{
 			return portb | (porta & 0x60);
 		}
 	}
@@ -843,11 +844,11 @@ static UINT8 xpd1lr_r(const device_config* device, int port)
 		UINT8 porta = (input_port_read(device->machine,"xpd1lr") >> 16) & 0xff;
 		UINT8 portb = (input_port_read(device->machine,"xpd1lr") >> 24) & 0xff;
 		if(x68k_sys.mdctrl.mux2 & 0x20)
-		{	
+		{
 			return porta;
 		}
 		else
-		{	
+		{
 			return portb | (porta & 0x60);
 		}
 	}
@@ -858,7 +859,7 @@ static UINT8 xpd1lr_r(const device_config* device, int port)
 static READ8_DEVICE_HANDLER( ppi_port_a_r )
 {
 	int ctrl = input_port_read(device->machine,"ctrltype") & 0x0f;
-	
+
 	switch(ctrl)
 	{
 		case 0x00:  // standard MSX/FM-Towns joystick
@@ -873,14 +874,14 @@ static READ8_DEVICE_HANDLER( ppi_port_a_r )
 		case 0x03:  // XPD-1LR
 			return xpd1lr_r(device,1);
 	}
-	
+
 	return 0xff;
 }
 
 static READ8_DEVICE_HANDLER( ppi_port_b_r )
 {
 	int ctrl = input_port_read(device->machine,"ctrltype") & 0xf0;
-	
+
 	switch(ctrl)
 	{
 		case 0x00:  // standard MSX/FM-Towns joystick
@@ -895,7 +896,7 @@ static READ8_DEVICE_HANDLER( ppi_port_b_r )
 		case 0x30:  // XPD-1LR
 			return xpd1lr_r(device,2);
 	}
-	
+
 	return 0xff;
 }
 
@@ -919,7 +920,7 @@ static WRITE8_DEVICE_HANDLER( ppi_port_c_w )
 	static UINT16 prev1;
 	static UINT16 prev2;
 	static UINT16 prevA;
-	
+
 	ppi_port[2] = data;
 	if((data & 0x0f) != (prevA & 0x0f))
 	{
@@ -929,7 +930,7 @@ static WRITE8_DEVICE_HANDLER( ppi_port_c_w )
 		okim6258_set_divider(oki, (data >> 2) & 3);
 	}
 	prevA = data & 0x0f;
-	
+
 	// The joystick enable bits also handle the multiplexer for various controllers
 	x68k_sys.joy.joy1_enable = data & 0x10;
 	x68k_sys.mdctrl.mux1 = data & 0x10;
@@ -958,13 +959,13 @@ static WRITE8_DEVICE_HANDLER( ppi_port_c_w )
 // NEC uPD72065 at 0xe94000
 static WRITE16_HANDLER( x68k_fdc_w )
 {
-	const device_config *fdc = devtag_get_device(space->machine, "nec72065");
+	const device_config *fdc = devtag_get_device(space->machine, "upd72065");
 	unsigned int drive, x;
 	switch(offset)
 	{
 	case 0x00:
 	case 0x01:
-		nec765_data_w(fdc, 0,data);
+		upd765_data_w(fdc, 0,data);
 		break;
 	case 0x02:  // drive option signal control
 		x = data & 0x0f;
@@ -979,8 +980,8 @@ static WRITE16_HANDLER( x68k_fdc_w )
 					output_set_indexed_value("eject_drv",drive,(data & 0x40) ? 1 : 0);
 					if(data & 0x20)  // ejects disk
 					{
-						image_unload(image_from_devtype_and_index(space->machine, IO_FLOPPY, drive));
-						floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, drive), 0);  // I'll presume ejecting the disk stops the drive motor :)
+						image_unload(floppy_get_device(space->machine, drive));
+						floppy_drive_set_motor_state(floppy_get_device(space->machine, drive), 0);  // I'll presume ejecting the disk stops the drive motor :)
 					}
 				}
 			}
@@ -991,14 +992,14 @@ static WRITE16_HANDLER( x68k_fdc_w )
 	case 0x03:
 		x68k_sys.fdc.media_density[data & 0x03] = data & 0x10;
 		x68k_sys.fdc.motor[data & 0x03] = data & 0x80;
-		floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, data & 0x03), (data & 0x80));
+		floppy_drive_set_motor_state(floppy_get_device(space->machine, data & 0x03), (data & 0x80));
 		if(data & 0x80)
 		{
 			for(drive=0;drive<4;drive++) // enable motor for this drive
 			{
 				if(drive == (data & 0x03))
 				{
-					floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, drive), 1);
+					floppy_drive_set_motor_state(floppy_get_device(space->machine, drive), 1);
 					output_set_indexed_value("access_drv",drive,0);
 				}
 				else
@@ -1009,21 +1010,21 @@ static WRITE16_HANDLER( x68k_fdc_w )
 		{
 			for(drive=0;drive<4;drive++)
 			{
-				floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, drive), 0);
+				floppy_drive_set_motor_state(floppy_get_device(space->machine, drive), 0);
 				output_set_indexed_value("access_drv",drive,1);
 			}
 		}
-		floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0),1,1);
-		floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 1),1,1);
-		floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 2),1,1);
-		floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 3),1,1);
-//		for(drive=0;drive<4;drive++)
-//		{
-//			if(floppy_drive_get_flag_state(image_from_devtype_and_index(machine, IO_FLOPPY, drive),FLOPPY_DRIVE_MOTOR_ON))
-//				output_set_indexed_value("access_drv",drive,0);
-//			else
-//				output_set_indexed_value("access_drv",drive,1);
-//		}
+		floppy_drive_set_ready_state(floppy_get_device(space->machine, 0),1,1);
+		floppy_drive_set_ready_state(floppy_get_device(space->machine, 1),1,1);
+		floppy_drive_set_ready_state(floppy_get_device(space->machine, 2),1,1);
+		floppy_drive_set_ready_state(floppy_get_device(space->machine, 3),1,1);
+//      for(drive=0;drive<4;drive++)
+//      {
+//          if(floppy_drive_get_flag_state(floppy_get_device(machine, drive),FLOPPY_DRIVE_MOTOR_ON))
+//              output_set_indexed_value("access_drv",drive,0);
+//          else
+//              output_set_indexed_value("access_drv",drive,1);
+//      }
 		logerror("FDC: Drive #%i: Drive selection set to %02x\n",data & 0x03,data);
 		break;
 	default:
@@ -1036,14 +1037,14 @@ static READ16_HANDLER( x68k_fdc_r )
 {
 	unsigned int ret;
 	int x;
-	const device_config *fdc = devtag_get_device(space->machine, "nec72065");
-	
+	const device_config *fdc = devtag_get_device(space->machine, "upd72065");
+
 	switch(offset)
 	{
 	case 0x00:
-		return nec765_status_r(fdc, 0);
+		return upd765_status_r(fdc, 0);
 	case 0x01:
-		return nec765_data_r(fdc, 0);
+		return upd765_data_r(fdc, 0);
 	case 0x02:
 		ret = 0x00;
 		for(x=0;x<4;x++)
@@ -1085,21 +1086,21 @@ static WRITE_LINE_DEVICE_HANDLER( fdc_irq )
 static int x68k_fdc_read_byte(running_machine *machine,int addr)
 {
 	int data = -1;
-	const device_config *fdc = devtag_get_device(machine, "nec72065");
+	const device_config *fdc = devtag_get_device(machine, "upd72065");
 
 	if(x68k_sys.fdc.drq_state != 0)
-		data = nec765_dack_r(fdc, 0);
+		data = upd765_dack_r(fdc, 0);
 //  logerror("FDC: DACK reading\n");
 	return data;
 }
 
 static void x68k_fdc_write_byte(running_machine *machine,int addr, int data)
 {
-	const device_config *fdc = devtag_get_device(machine, "nec72065");
-	nec765_dack_w(fdc, 0, data);
+	const device_config *fdc = devtag_get_device(machine, "upd72065");
+	upd765_dack_w(fdc, 0, data);
 }
 
-static NEC765_DMA_REQUEST ( fdc_drq )
+static UPD765_DMA_REQUEST ( fdc_drq )
 {
 	x68k_sys.fdc.drq_state = state;
 }
@@ -1125,13 +1126,13 @@ static READ16_HANDLER( x68k_fm_r )
 
 static WRITE8_DEVICE_HANDLER( x68k_ct_w )
 {
-	const device_config *fdc = devtag_get_device(device->machine, "nec72065");
+	const device_config *fdc = devtag_get_device(device->machine, "upd72065");
 	const device_config *okim = devtag_get_device(device->machine, "okim6258");
 
 	// CT1 and CT2 bits from YM2151 port 0x1b
 	// CT1 - ADPCM clock - 0 = 8MHz, 1 = 4MHz
 	// CT2 - 1 = Set ready state of FDC
-	nec765_ready_w(fdc,data & 0x01);
+	upd765_ready_w(fdc,data & 0x01);
 	x68k_sys.adpcm.clock = data & 0x02;
 	x68k_set_adpcm(device->machine);
 	okim6258_set_clock(okim, data & 0x02 ? 4000000 : 8000000);
@@ -1262,9 +1263,9 @@ static READ16_HANDLER( x68k_sysport_r )
 
 /*static READ16_HANDLER( x68k_mfp_r )
 {
-	const device_config *x68k_mfp = devtag_get_device(space->machine, MC68901_TAG);
+    const device_config *x68k_mfp = devtag_get_device(space->machine, MC68901_TAG);
 
-	return mc68901_register_r(x68k_mfp, offset);
+    return mc68901_register_r(x68k_mfp, offset);
 }*/
 
 static READ16_HANDLER( x68k_mfp_r )
@@ -1507,10 +1508,10 @@ static WRITE16_HANDLER( x68k_sram_w )
 static READ16_HANDLER( x68k_sram_r )
 {
 	// HACKS!
-//	if(offset == 0x5a/2)  // 0x5a should be 0 if no SASI HDs are present.
-//		return 0x0000;
+//  if(offset == 0x5a/2)  // 0x5a should be 0 if no SASI HDs are present.
+//      return 0x0000;
 	if(offset == 0x08/2)
-		return mess_ram_size >> 16;  // RAM size
+		return messram_get_size(devtag_get_device(space->machine, "messram")) >> 16;  // RAM size
 	/*if(offset == 0x46/2)
         return 0x0024;
     if(offset == 0x6e/2)
@@ -1518,6 +1519,27 @@ static READ16_HANDLER( x68k_sram_r )
     if(offset == 0x70/2)
         return 0x0700;*/
 	return generic_nvram16[offset];
+}
+
+static READ32_HANDLER( x68k_sram32_r )
+{
+	if(offset == 0x08/4)
+		return (messram_get_size(devtag_get_device(space->machine, "messram")) & 0xffff0000);  // RAM size
+	/*if(offset == 0x46/2)
+        return 0x0024;
+    if(offset == 0x6e/2)
+        return 0xff00;
+    if(offset == 0x70/2)
+        return 0x0700;*/
+	return generic_nvram32[offset];
+}
+
+static WRITE32_HANDLER( x68k_sram32_w )
+{
+	if(x68k_sys.sysport.sram_writeprotect == 0x31)
+	{
+		COMBINE_DATA(generic_nvram32+offset);
+	}
 }
 
 static WRITE16_HANDLER( x68k_vid_w )
@@ -1618,26 +1640,36 @@ static WRITE16_HANDLER( x68k_enh_areaset_w )
 static TIMER_CALLBACK(x68k_fake_bus_error)
 {
 	int val = param;
+	int v;
+	
+	if(strcmp(machine->gamedrv->name,"x68030") == 0)
+		v = 0x0b;
+	else
+		v = 0x09;
 
 	// rather hacky, but this generally works for programs that check for MIDI hardware
-	if(mess_ram[0x09] != 0x02)  // normal vector for bus errors points to 02FF0540
+	if(messram_get_ptr(devtag_get_device(machine, "messram"))[v] != 0x02)  // normal vector for bus errors points to 02FF0540
 	{
-		int addr = (mess_ram[0x09] << 24) | (mess_ram[0x08] << 16) |(mess_ram[0x0b] << 8) | mess_ram[0x0a];
+		int addr = (messram_get_ptr(devtag_get_device(machine, "messram"))[0x09] << 24) | (messram_get_ptr(devtag_get_device(machine, "messram"))[0x08] << 16) |(messram_get_ptr(devtag_get_device(machine, "messram"))[0x0b] << 8) | messram_get_ptr(devtag_get_device(machine, "messram"))[0x0a];
 		int sp = cpu_get_reg(cputag_get_cpu(machine, "maincpu"), REG_GENSP);
 		int pc = cpu_get_reg(cputag_get_cpu(machine, "maincpu"), REG_GENPC);
 		int sr = cpu_get_reg(cputag_get_cpu(machine, "maincpu"), M68K_SR);
 		//int pda = cpu_get_reg(cputag_get_cpu(machine, "maincpu"), M68K_PREF_DATA);
+		if(strcmp(machine->gamedrv->name,"x68030") == 0)
+		{  // byte order varies on the 68030
+			addr = (messram_get_ptr(devtag_get_device(machine, "messram"))[0x0b] << 24) | (messram_get_ptr(devtag_get_device(machine, "messram"))[0x0a] << 16) |(messram_get_ptr(devtag_get_device(machine, "messram"))[0x09] << 8) | messram_get_ptr(devtag_get_device(machine, "messram"))[0x08];
+		}
 		cpu_set_reg(cputag_get_cpu(machine, "maincpu"), REG_GENSP, sp - 14);
-		mess_ram[sp-11] = (val & 0xff000000) >> 24;
-		mess_ram[sp-12] = (val & 0x00ff0000) >> 16;
-		mess_ram[sp-9] = (val & 0x0000ff00) >> 8;
-		mess_ram[sp-10] = (val & 0x000000ff);  // place address onto the stack
-		mess_ram[sp-3] = (pc & 0xff000000) >> 24;
-		mess_ram[sp-4] = (pc & 0x00ff0000) >> 16;
-		mess_ram[sp-1] = (pc & 0x0000ff00) >> 8;
-		mess_ram[sp-2] = (pc & 0x000000ff);  // place PC onto the stack
-		mess_ram[sp-5] = (sr & 0xff00) >> 8;
-		mess_ram[sp-6] = (sr & 0x00ff);  // place SR onto the stack
+		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-11] = (val & 0xff000000) >> 24;
+		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-12] = (val & 0x00ff0000) >> 16;
+		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-9] = (val & 0x0000ff00) >> 8;
+		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-10] = (val & 0x000000ff);  // place address onto the stack
+		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-3] = (pc & 0xff000000) >> 24;
+		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-4] = (pc & 0x00ff0000) >> 16;
+		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-1] = (pc & 0x0000ff00) >> 8;
+		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-2] = (pc & 0x000000ff);  // place PC onto the stack
+		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-5] = (sr & 0xff00) >> 8;
+		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-6] = (sr & 0x00ff);  // place SR onto the stack
 		cpu_set_reg(cputag_get_cpu(machine, "maincpu"), REG_GENPC, addr);  // real exceptions seem to take too long to be acknowledged
 		popmessage("Expansion access [%08x]: PC jump to %08x", val, addr);
 	}
@@ -1649,7 +1681,7 @@ static READ16_HANDLER( x68k_rom0_r )
        then access causes a bus error */
 	current_vector[2] = 0x02;  // bus error
 	current_irq_line = 2;
-//	cputag_set_input_line_and_vector(space->machine, "maincpu",2,ASSERT_LINE,current_vector[2]);
+//  cputag_set_input_line_and_vector(space->machine, "maincpu",2,ASSERT_LINE,current_vector[2]);
 	if(input_port_read(space->machine, "options") & 0x02)
 	{
 		offset *= 2;
@@ -1666,13 +1698,46 @@ static WRITE16_HANDLER( x68k_rom0_w )
        then access causes a bus error */
 	current_vector[2] = 0x02;  // bus error
 	current_irq_line = 2;
-//	cputag_set_input_line_and_vector(space->machine, "maincpu",2,ASSERT_LINE,current_vector[2]);
+//  cputag_set_input_line_and_vector(space->machine, "maincpu",2,ASSERT_LINE,current_vector[2]);
 	if(input_port_read(space->machine, "options") & 0x02)
 	{
 		offset *= 2;
 		if(ACCESSING_BITS_0_7)
 			offset++;
 		timer_set(space->machine, cputag_clocks_to_attotime(space->machine, "maincpu", 4), NULL, 0xbffffc+offset,x68k_fake_bus_error);
+	}
+}
+
+static READ16_HANDLER( x68k_emptyram_r )
+{
+	/* this location is unused RAM, access here causes a bus error 
+	   Often a method for detecting amount of installed RAM, is to read or write at 1MB intervals, until a bus error occurs */
+	current_vector[2] = 0x02;  // bus error
+	current_irq_line = 2;
+//  cputag_set_input_line_and_vector(space->machine, "maincpu",2,ASSERT_LINE,current_vector[2]);
+	if(input_port_read(space->machine, "options") & 0x02)
+	{
+		offset *= 2;
+		if(ACCESSING_BITS_0_7)
+			offset++;
+		timer_set(space->machine, cputag_clocks_to_attotime(space->machine, "maincpu", 4), NULL, offset,x68k_fake_bus_error);
+	}
+	return 0xff;
+}
+
+static WRITE16_HANDLER( x68k_emptyram_w )
+{
+	/* this location is unused RAM, access here causes a bus error 
+	   Often a method for detecting amount of installed RAM, is to read or write at 1MB intervals, until a bus error occurs */
+	current_vector[2] = 0x02;  // bus error
+	current_irq_line = 2;
+//  cputag_set_input_line_and_vector(space->machine, "maincpu",2,ASSERT_LINE,current_vector[2]);
+	if(input_port_read(space->machine, "options") & 0x02)
+	{
+		offset *= 2;
+		if(ACCESSING_BITS_0_7)
+			offset++;
+		timer_set(space->machine, cputag_clocks_to_attotime(space->machine, "maincpu", 4), NULL, offset,x68k_fake_bus_error);
 	}
 }
 
@@ -1755,9 +1820,22 @@ static READ8_DEVICE_HANDLER( mfp_gpio_r )
 	data &= ~(x68k_sys.crtc.vblank << 4);
 	data |= 0x23;  // GPIP5 is unused, always 1
 
-//	mc68901_tai_w(mfp, x68k_sys.crtc.vblank);
+//  mc68901_tai_w(mfp, x68k_sys.crtc.vblank);
 
 	return data;
+}
+
+static WRITE8_DEVICE_HANDLER( x68030_adpcm_w )
+{
+	switch(offset)
+	{
+		case 0x00:
+			okim6258_ctrl_w(device,0,data);
+			break;
+		case 0x01:
+			okim6258_data_w(device,0,data);
+			break;
+	}
 }
 
 static WRITE_LINE_DEVICE_HANDLER( mfp_irq_callback )
@@ -1765,8 +1843,10 @@ static WRITE_LINE_DEVICE_HANDLER( mfp_irq_callback )
 	static int prev;
 	if(prev == CLEAR_LINE && state == CLEAR_LINE)  // eliminate unnecessary calls to set the IRQ line for speed reasons
 		return;
-//	if((x68k_sys.ioc.irqstatus & 0xc0) != 0)  // if the FDC is busy, then we don't want to miss that IRQ
-//		return;
+	if(state != CLEAR_LINE)
+		state = HOLD_LINE;  // to get around erroneous spurious interrupt
+//  if((x68k_sys.ioc.irqstatus & 0xc0) != 0)  // if the FDC is busy, then we don't want to miss that IRQ
+//      return;
 	cputag_set_input_line(device->machine, "maincpu", 6, state);
 	current_vector[6] = 0;
 	prev = state;
@@ -1802,7 +1882,7 @@ static IRQ_CALLBACK(x68k_int_ack)
 		logerror("SYS: IRQ acknowledged (vector=0x%02x, line = %i)\n",current_vector[6],irqline);
 		return current_vector[6];
 	}
-	
+
 	cputag_set_input_line_and_vector(device->machine, "maincpu",irqline,CLEAR_LINE,current_vector[irqline]);
 	if(irqline == 1)  // IOSC
 	{
@@ -1848,7 +1928,44 @@ static ADDRESS_MAP_START(x68k_map, ADDRESS_SPACE_PROGRAM, 16)
 //  AM_RANGE(0xed0000, 0xed3fff) AM_READWRITE(sram_r, sram_w) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xed0000, 0xed3fff) AM_RAMBANK(4) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xed4000, 0xefffff) AM_NOP
-	AM_RANGE(0xf00000, 0xffffff) AM_ROM
+	AM_RANGE(0xf00000, 0xfbffff) AM_ROM
+//	AM_RANGE(0xfc0000, 0xfdffff) AM_READWRITE(x68k_rom0_r, x68k_rom0_w)
+	AM_RANGE(0xfe0000, 0xffffff) AM_ROM
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START(x68030_map, ADDRESS_SPACE_PROGRAM, 32)
+	AM_RANGE(0x000000, 0xbfffff) AM_RAMBANK(1)
+	AM_RANGE(0xbffffc, 0xbfffff) AM_READWRITE16(x68k_rom0_r, x68k_rom0_w,0xffffffff)
+//  AM_RANGE(0xc00000, 0xdfffff) AM_READWRITE(x68k_gvram_r, x68k_gvram_w) AM_BASE(&x68k_gvram)
+//  AM_RANGE(0xe00000, 0xe7ffff) AM_READWRITE(x68k_tvram_r, x68k_tvram_w) AM_BASE(&x68k_tvram)
+	AM_RANGE(0xc00000, 0xdfffff) AM_RAMBANK(2)
+	AM_RANGE(0xe00000, 0xe7ffff) AM_RAMBANK(3)
+	AM_RANGE(0xe80000, 0xe81fff) AM_READWRITE16(x68k_crtc_r, x68k_crtc_w,0xffffffff)
+	AM_RANGE(0xe82000, 0xe83fff) AM_READWRITE16(x68k_vid_r, x68k_vid_w,0xffffffff)
+	AM_RANGE(0xe84000, 0xe85fff) AM_READWRITE16(x68k_dmac_r, x68k_dmac_w,0xffffffff)
+	AM_RANGE(0xe86000, 0xe87fff) AM_READWRITE16(x68k_areaset_r, x68k_areaset_w,0xffffffff)
+	AM_RANGE(0xe88000, 0xe89fff) AM_READWRITE16(x68k_mfp_r, x68k_mfp_w,0xffffffff)
+	AM_RANGE(0xe8a000, 0xe8bfff) AM_DEVREADWRITE16("rp5c15", x68k_rtc_r, x68k_rtc_w,0xffffffff)
+//  AM_RANGE(0xe8c000, 0xe8dfff) AM_READWRITE(x68k_printer_r, x68k_printer_w)
+	AM_RANGE(0xe8e000, 0xe8ffff) AM_READWRITE16(x68k_sysport_r, x68k_sysport_w,0xffffffff)
+	AM_RANGE(0xe90000, 0xe91fff) AM_READWRITE16(x68k_fm_r, x68k_fm_w,0xffffffff)
+	AM_RANGE(0xe92000, 0xe92003) AM_DEVREADWRITE8("okim6258", okim6258_status_r, x68030_adpcm_w, 0x00ff00ff)
+	AM_RANGE(0xe94000, 0xe95fff) AM_READWRITE16(x68k_fdc_r, x68k_fdc_w,0xffffffff)
+	AM_RANGE(0xe96000, 0xe97fff) AM_DEVREADWRITE16("x68k_hdc",x68k_hdc_r, x68k_hdc_w,0xffffffff)
+	AM_RANGE(0xe98000, 0xe99fff) AM_READWRITE16(x68k_scc_r, x68k_scc_w,0xffffffff)
+	AM_RANGE(0xe9a000, 0xe9bfff) AM_DEVREADWRITE16("ppi8255", x68k_ppi_r, x68k_ppi_w,0xffffffff)
+	AM_RANGE(0xe9c000, 0xe9dfff) AM_READWRITE16(x68k_ioc_r, x68k_ioc_w,0xffffffff)
+	AM_RANGE(0xeafa00, 0xeafa1f) AM_READWRITE16(x68k_exp_r, x68k_exp_w,0xffffffff)
+	AM_RANGE(0xeafa80, 0xeafa8b) AM_READWRITE16(x68k_areaset_r, x68k_enh_areaset_w,0xffffffff)
+	AM_RANGE(0xeb0000, 0xeb7fff) AM_READWRITE16(x68k_spritereg_r, x68k_spritereg_w,0xffffffff)
+	AM_RANGE(0xeb8000, 0xebffff) AM_READWRITE16(x68k_spriteram_r, x68k_spriteram_w,0xffffffff)
+	AM_RANGE(0xec0000, 0xecffff) AM_NOP  // User I/O
+//  AM_RANGE(0xed0000, 0xed3fff) AM_READWRITE(sram_r, sram_w) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0xed0000, 0xed3fff) AM_RAMBANK(4) AM_BASE(&generic_nvram32) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0xed4000, 0xefffff) AM_NOP
+	AM_RANGE(0xf00000, 0xfbffff) AM_ROM
+//	AM_RANGE(0xfc0000, 0xfdffff) AM_READWRITE16(x68k_rom0_r, x68k_rom0_w,0xffffffff)
+	AM_RANGE(0xfe0000, 0xffffff) AM_ROM
 ADDRESS_MAP_END
 
 static WRITE8_DEVICE_HANDLER( mfp_tdo_w )
@@ -1885,7 +2002,7 @@ static I8255A_INTERFACE( ppi_interface )
 
 static const hd63450_intf dmac_interface =
 {
-	0,  // CPU - 68000
+	"maincpu",  // CPU - 68000
 	{STATIC_ATTOTIME_IN_USEC(32),STATIC_ATTOTIME_IN_NSEC(450),STATIC_ATTOTIME_IN_USEC(4),STATIC_ATTOTIME_IN_HZ(15625/2)},  // Cycle steal mode timing (guesstimate)
 	{STATIC_ATTOTIME_IN_USEC(32),STATIC_ATTOTIME_IN_NSEC(450),STATIC_ATTOTIME_IN_NSEC(50),STATIC_ATTOTIME_IN_NSEC(50)}, // Burst mode timing (guesstimate)
 	x68k_dma_end,
@@ -1896,12 +2013,13 @@ static const hd63450_intf dmac_interface =
 //  { 0, 0, 0, 0 }
 };
 
-static const nec765_interface fdc_interface =
+static const upd765_interface fdc_interface =
 {
 	DEVCB_LINE(fdc_irq),
 	fdc_drq,
 	NULL,
-	NEC765_RDY_PIN_CONNECTED
+	UPD765_RDY_PIN_CONNECTED,
+	{FLOPPY_0,FLOPPY_1,FLOPPY_2,FLOPPY_3}
 };
 
 static const ym2151_interface x68k_ym2151_interface =
@@ -2100,7 +2218,7 @@ static INPUT_PORTS_START( x68000 )
 
 	PORT_START("mouse3")  // Y-axis
 	PORT_BIT( 0xff, 0x00, IPT_MOUSE_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
-	
+
 	// 3-button Megadrive gamepad
 	PORT_START("md3b")
 	PORT_BIT( 0x00000001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_NAME("MD Pad 1 Up") PORT_8WAY PORT_PLAYER(1) PORT_CATEGORY(11)
@@ -2138,7 +2256,7 @@ static INPUT_PORTS_START( x68000 )
 	PORT_BIT( 0x20000000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) PORT_NAME("MD Pad 2 A Button") PORT_CATEGORY(21)
 	PORT_BIT( 0x40000000, IP_ACTIVE_LOW, IPT_START ) PORT_PLAYER(2) PORT_NAME("MD Pad 2 Start Button") PORT_CATEGORY(21)
 	PORT_BIT( 0x80000000, IP_ACTIVE_LOW, IPT_UNUSED ) PORT_CATEGORY(21)
-	
+
 	// 6-button Megadrive gamepad
 	PORT_START("md6b")
 	PORT_BIT( 0x00000001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_NAME("MD Pad 1 Up") PORT_8WAY PORT_PLAYER(1) PORT_CATEGORY(12)
@@ -2230,7 +2348,7 @@ static INPUT_PORTS_START( x68000 )
 INPUT_PORTS_END
 
 static void x68k_load_proc(const device_config *image)
-{	
+{
 	if(x68k_sys.ioc.irqstatus & 0x02)
 	{
 		current_vector[1] = 0x61;
@@ -2239,7 +2357,7 @@ static void x68k_load_proc(const device_config *image)
 		cputag_set_input_line_and_vector(image->machine, "maincpu",1,ASSERT_LINE,current_vector[1]);  // Disk insert/eject interrupt
 		logerror("IOC: Disk image inserted\n");
 	}
-	x68k_sys.fdc.disk_inserted[image_index_in_device(image)] = 1;
+	x68k_sys.fdc.disk_inserted[floppy_get_drive(image)] = 1;
 }
 
 static void x68k_unload_proc(const device_config *image)
@@ -2251,10 +2369,10 @@ static void x68k_unload_proc(const device_config *image)
 		current_irq_line = 1;
 		cputag_set_input_line_and_vector(image->machine, "maincpu",1,ASSERT_LINE,current_vector[1]);  // Disk insert/eject interrupt
 	}
-	x68k_sys.fdc.disk_inserted[image_index_in_device(image)] = 0;
+	x68k_sys.fdc.disk_inserted[floppy_get_drive(image)] = 0;
 }
 
-FLOPPY_OPTIONS_START( x68k )
+static FLOPPY_OPTIONS_START( x68k )
 	FLOPPY_OPTION( dim, "dim",		"DIM floppy disk image",	dim_dsk_identify, dim_dsk_construct, NULL)
 	FLOPPY_OPTION( img2d, "xdf,hdm,2hd", "XDF disk image", basicdsk_identify_default, basicdsk_construct_default,
 		HEADS([2])
@@ -2265,20 +2383,17 @@ FLOPPY_OPTIONS_START( x68k )
 FLOPPY_OPTIONS_END
 
 
-static void x68k_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
+static const floppy_config x68k_floppy_config =
 {
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_x68k; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(x68k),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 static MACHINE_RESET( x68000 )
 {
@@ -2290,8 +2405,8 @@ static MACHINE_RESET( x68000 )
 	UINT8* romdata = memory_region(machine, "user2");
 	attotime irq_time;
 
-	memset(mess_ram,0,mess_ram_size);
-	memcpy(mess_ram,romdata,8);
+	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,messram_get_size(devtag_get_device(machine, "messram")));
+	memcpy(messram_get_ptr(devtag_get_device(machine, "messram")),romdata,8);
 
 	// init keyboard
 	x68k_sys.keyboard.delay = 500;  // 3*100+200
@@ -2300,7 +2415,7 @@ static MACHINE_RESET( x68000 )
 	// check for disks
 	for(drive=0;drive<4;drive++)
 	{
-		if(image_exists(image_from_devtype_and_index(machine, IO_FLOPPY,drive)))
+		if(image_exists(floppy_get_device(machine, drive)))
 			x68k_sys.fdc.disk_inserted[drive] = 1;
 		else
 			x68k_sys.fdc.disk_inserted[drive] = 0;
@@ -2344,10 +2459,10 @@ static MACHINE_RESET( x68000 )
 		output_set_indexed_value("eject_drv",drive,1);
 		output_set_indexed_value("ctrl_drv",drive,1);
 		output_set_indexed_value("access_drv",drive,1);
-		floppy_install_unload_proc(image_from_devtype_and_index(machine, IO_FLOPPY, drive), x68k_unload_proc);
-		floppy_install_load_proc(image_from_devtype_and_index(machine, IO_FLOPPY, drive), x68k_load_proc);
+		floppy_install_unload_proc(floppy_get_device(machine, drive), x68k_unload_proc);
+		floppy_install_load_proc(floppy_get_device(machine, drive), x68k_load_proc);
 	}
-	
+
 	// reset CPU
 	device_reset(cputag_get_cpu(machine, "maincpu"));
 }
@@ -2357,18 +2472,54 @@ static MACHINE_START( x68000 )
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	/*  Install RAM handlers  */
 	x68k_spriteram = (UINT16*)memory_region(machine, "user1");
-	memory_install_read16_handler(space,0x000000,mess_ram_size-1,mess_ram_size-1,0,(read16_space_func)1);
-	memory_install_write16_handler(space,0x000000,mess_ram_size-1,mess_ram_size-1,0,(write16_space_func)1);
-	memory_set_bankptr(machine, 1,mess_ram);
-	memory_install_read16_handler(space,0xc00000,0xdfffff,0x1fffff,0,(read16_space_func)x68k_gvram_r);
-	memory_install_write16_handler(space,0xc00000,0xdfffff,0x1fffff,0,(write16_space_func)x68k_gvram_w);
+	memory_install_read16_handler(space,0x000000,0xbffffb,0xffffffff,0,(read16_space_func)x68k_emptyram_r);
+	memory_install_write16_handler(space,0x000000,0xbffffb,0xffffffff,0,(write16_space_func)x68k_emptyram_w);
+	memory_install_read16_handler(space,0x000000,messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,(read16_space_func)1);
+	memory_install_write16_handler(space,0x000000,messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,(write16_space_func)1);
+	memory_set_bankptr(machine, 1,messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_install_read16_handler(space,0xc00000,0xdfffff,0xffffffff,0,x68k_gvram_r);
+	memory_install_write16_handler(space,0xc00000,0xdfffff,0xffffffff,0,x68k_gvram_w);
 	memory_set_bankptr(machine, 2,x68k_gvram);  // so that code in VRAM is executable - needed for Terra Cresta
-	memory_install_read16_handler(space,0xe00000,0xe7ffff,0x07ffff,0,(read16_space_func)x68k_tvram_r);
-	memory_install_write16_handler(space,0xe00000,0xe7ffff,0x07ffff,0,(write16_space_func)x68k_tvram_w);
+	memory_install_read16_handler(space,0xe00000,0xe7ffff,0xffffffff,0,x68k_tvram_r);
+	memory_install_write16_handler(space,0xe00000,0xe7ffff,0xffffffff,0,x68k_tvram_w);
 	memory_set_bankptr(machine, 3,x68k_tvram);  // so that code in VRAM is executable - needed for Terra Cresta
-	memory_install_read16_handler(space,0xed0000,0xed3fff,0x003fff,0,(read16_space_func)x68k_sram_r);
-	memory_install_write16_handler(space,0xed0000,0xed3fff,0x003fff,0,(write16_space_func)x68k_sram_w);
+	memory_install_read16_handler(space,0xed0000,0xed3fff,0xffffffff,0,x68k_sram_r);
+	memory_install_write16_handler(space,0xed0000,0xed3fff,0xffffffff,0,x68k_sram_w);
 	memory_set_bankptr(machine, 4,generic_nvram16);  // so that code in SRAM is executable, there is an option for booting from SRAM
+
+	// start keyboard timer
+	timer_adjust_periodic(kb_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(5));  // every 5ms
+
+	// start mouse timer
+	timer_adjust_periodic(mouse_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(1));  // a guess for now
+	x68k_sys.mouse.inputtype = 0;
+
+	// start LED timer
+	timer_adjust_periodic(led_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(400));
+}
+
+static MACHINE_START( x68030 )
+{
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	/*  Install RAM handlers  */
+	x68k_spriteram = (UINT16*)memory_region(machine, "user1");
+	memory_install_read32_handler(space,0x000000,0xbffffb,0xffffffff,0,(read32_space_func)x68k_rom0_r);
+	memory_install_write32_handler(space,0x000000,0xbffffb,0xffffffff,0,(write32_space_func)x68k_rom0_w);
+	memory_install_read32_handler(space,0x000000,messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,(read32_space_func)1);
+	memory_install_write32_handler(space,0x000000,messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,(write32_space_func)1);
+	// mirror? Human68k 3.02 explicitly adds 0x3000000 to some pointers
+	memory_install_read32_handler(space,0x3000000,0x3000000+messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,(read32_space_func)1);
+	memory_install_write32_handler(space,0x3000000,0x3000000+messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,(write32_space_func)1);
+	memory_set_bankptr(machine, 1,messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_install_read32_handler(space,0xc00000,0xdfffff,0xffffffff,0,x68k_gvram32_r);
+	memory_install_write32_handler(space,0xc00000,0xdfffff,0xffffffff,0,x68k_gvram32_w);
+	memory_set_bankptr(machine, 2,x68k_gvram);  // so that code in VRAM is executable - needed for Terra Cresta
+	memory_install_read32_handler(space,0xe00000,0xe7ffff,0xffffffff,0,x68k_tvram32_r);
+	memory_install_write32_handler(space,0xe00000,0xe7ffff,0xffffffff,0,x68k_tvram32_w);
+	memory_set_bankptr(machine, 3,x68k_tvram);  // so that code in VRAM is executable - needed for Terra Cresta
+	memory_install_read32_handler(space,0xed0000,0xed3fff,0xffffffff,0,x68k_sram32_r);
+	memory_install_write32_handler(space,0xed0000,0xed3fff,0xffffffff,0,x68k_sram32_w);
+	memory_set_bankptr(machine, 4,generic_nvram32);  // so that code in SRAM is executable, there is an option for booting from SRAM
 
 	// start keyboard timer
 	timer_adjust_periodic(kb_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(5));  // every 5ms
@@ -2416,9 +2567,14 @@ static DRIVER_INIT( x68000 )
 	x68k_vblank_irq = timer_alloc(machine, x68k_crtc_vblank_irq,NULL);
 	mouse_timer = timer_alloc(machine, x68k_scc_ack,NULL);
 	led_timer = timer_alloc(machine, x68k_led_callback,NULL);
-	
+
 	// Initialise timers for 6-button MD controllers
 	md_6button_init(machine);
+}
+
+static DRIVER_INIT( x68030 )
+{
+	DRIVER_INIT_CALL( x68000 );
 }
 
 static MACHINE_DRIVER_START( x68000 )
@@ -2441,7 +2597,7 @@ static MACHINE_DRIVER_START( x68000 )
 	MDRV_X68KHDC_ADD( "x68k_hdc" )
 
 	MDRV_SCC8530_ADD( "scc" )
-	
+
 	MDRV_RP5C15_ADD( "rp5c15" , rtc_intf)
 
     /* video hardware */
@@ -2473,24 +2629,30 @@ static MACHINE_DRIVER_START( x68000 )
 
 	MDRV_NVRAM_HANDLER( generic_0fill )
 
-	MDRV_NEC72065_ADD("nec72065", fdc_interface)	
+	MDRV_UPD72065_ADD("upd72065", fdc_interface)
+	MDRV_FLOPPY_4_DRIVES_ADD(x68k_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("4M")
+	MDRV_RAM_EXTRA_OPTIONS("1M,2M,3M,5M,6M,7M,8M,9M,10M,11M,12M")
 MACHINE_DRIVER_END
 
-static SYSTEM_CONFIG_START(x68000)
-	CONFIG_DEVICE(x68k_floppy_getinfo)
-	CONFIG_RAM(0x100000)
-	CONFIG_RAM(0x200000)
-	CONFIG_RAM(0x300000)
-	CONFIG_RAM_DEFAULT(0x400000)  // 4MB - should be enough for most things
-	CONFIG_RAM(0x500000)
-	CONFIG_RAM(0x600000)
-	CONFIG_RAM(0x700000)
-	CONFIG_RAM(0x800000)
-	CONFIG_RAM(0x900000)
-	CONFIG_RAM(0xa00000)
-	CONFIG_RAM(0xb00000)
-	CONFIG_RAM(0xc00000)  // 12MB - maximum possible
-SYSTEM_CONFIG_END
+static MACHINE_DRIVER_START( x68kxvi )
+	MDRV_IMPORT_FROM( x68000 )
+	
+	MDRV_CPU_REPLACE("maincpu", M68000, 16000000)  /* 16 MHz */
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( x68030 )
+	MDRV_IMPORT_FROM( x68000 )
+	
+	MDRV_CPU_REPLACE("maincpu", M68030, 25000000)  /* 25 MHz 68EC030 */
+	MDRV_CPU_PROGRAM_MAP(x68030_map)
+
+	MDRV_MACHINE_START( x68030 )
+	MDRV_MACHINE_RESET( x68000 )
+MACHINE_DRIVER_END
 
 ROM_START( x68000 )
 	ROM_REGION16_BE(0x1000000, "maincpu", 0)  // 16MB address space
@@ -2510,6 +2672,48 @@ ROM_START( x68000 )
 	ROM_FILL(0x000,0x20000,0x00)
 ROM_END
 
+ROM_START( x68kxvi )
+	ROM_REGION16_BE(0x1000000, "maincpu", 0)  // 16MB address space
+	ROM_DEFAULT_BIOS("ipl11")
+	ROM_LOAD( "cgrom.dat",  0xf00000, 0xc0000, CRC(9f3195f1) SHA1(8d72c5b4d63bb14c5dbdac495244d659aa1498b6) )
+	ROM_SYSTEM_BIOS(0, "ipl10",  "IPL-ROM V1.0 (87/05/07)")
+	ROMX_LOAD( "iplrom.dat", 0xfe0000, 0x20000, CRC(72bdf532) SHA1(0ed038ed2133b9f78c6e37256807424e0d927560), ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS(1, "ipl11",  "IPL-ROM V1.1 (91/01/11)")
+	ROMX_LOAD( "iplromxv.dat", 0xfe0000, 0x020000, CRC(00eeb408) SHA1(e33cdcdb69cd257b0b211ef46e7a8b144637db57), ROM_BIOS(2) )
+	ROM_SYSTEM_BIOS(2, "ipl12",  "IPL-ROM V1.2 (91/10/24)")
+	ROMX_LOAD( "iplromco.dat", 0xfe0000, 0x020000, CRC(6c7ef608) SHA1(77511fc58798404701f66b6bbc9cbde06596eba7), ROM_BIOS(3) )
+	ROM_SYSTEM_BIOS(3, "ipl13",  "IPL-ROM V1.3 (92/11/27)")
+	ROMX_LOAD( "iplrom30.dat", 0xfe0000, 0x020000, CRC(e8f8fdad) SHA1(239e9124568c862c31d9ec0605e32373ea74b86a), ROM_BIOS(4) )
+	ROM_REGION(0x8000, "user1",0)  // For Background/Sprite decoding
+	ROM_FILL(0x0000,0x8000,0x00)
+	ROM_REGION(0x20000, "user2", 0)
+	ROM_FILL(0x000,0x20000,0x00)
+	ROM_REGION(0x8000, "scsi", 0)
+	ROM_LOAD("scsiinrom.dat",0x000000, 0x008000, NO_DUMP )
+ROM_END
+
+ROM_START( x68030 )
+	ROM_REGION16_BE(0x1000000, "maincpu", 0)  // 16MB address space
+	ROM_DEFAULT_BIOS("ipl13")
+	ROM_LOAD( "cgrom.dat",  0xf00000, 0xc0000, CRC(9f3195f1) SHA1(8d72c5b4d63bb14c5dbdac495244d659aa1498b6) )
+	ROM_SYSTEM_BIOS(0, "ipl10",  "IPL-ROM V1.0 (87/05/07)")
+	ROMX_LOAD( "iplrom.dat", 0xfe0000, 0x20000, CRC(72bdf532) SHA1(0ed038ed2133b9f78c6e37256807424e0d927560), ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS(1, "ipl11",  "IPL-ROM V1.1 (91/01/11)")
+	ROMX_LOAD( "iplromxv.dat", 0xfe0000, 0x020000, CRC(00eeb408) SHA1(e33cdcdb69cd257b0b211ef46e7a8b144637db57), ROM_BIOS(2) )
+	ROM_SYSTEM_BIOS(2, "ipl12",  "IPL-ROM V1.2 (91/10/24)")
+	ROMX_LOAD( "iplromco.dat", 0xfe0000, 0x020000, CRC(6c7ef608) SHA1(77511fc58798404701f66b6bbc9cbde06596eba7), ROM_BIOS(3) )
+	ROM_SYSTEM_BIOS(3, "ipl13",  "IPL-ROM V1.3 (92/11/27)")
+	ROMX_LOAD( "iplrom30.dat", 0xfe0000, 0x020000, CRC(e8f8fdad) SHA1(239e9124568c862c31d9ec0605e32373ea74b86a), ROM_BIOS(4) )
+	ROM_REGION(0x8000, "user1",0)  // For Background/Sprite decoding
+	ROM_FILL(0x0000,0x8000,0x00)
+	ROM_REGION(0x20000, "user2", 0)
+	ROM_FILL(0x000,0x20000,0x00)
+	ROM_REGION(0x8000, "scsi", 0)
+	ROM_LOAD("scsiinrom.dat",0x000000, 0x008000, NO_DUMP )
+ROM_END
+
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY     FULLNAME        FLAGS */
-COMP( 1987, x68000, 0,      0,      x68000, x68000, x68000, x68000, "Sharp",    "Sharp X68000", GAME_IMPERFECT_GRAPHICS )
+COMP( 1987, x68000, 0,      0,      x68000, x68000, x68000, 0, "Sharp",    "X68000", GAME_IMPERFECT_GRAPHICS )
+COMP( 1991, x68kxvi,x68000, 0,      x68kxvi,x68000, x68000, 0, "Sharp",    "X68000 XVI", GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )
+COMP( 1993, x68030, x68000, 0,      x68030, x68000, x68030, 0, "Sharp",    "X68030", GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )

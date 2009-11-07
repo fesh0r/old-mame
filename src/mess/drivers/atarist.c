@@ -6,7 +6,7 @@
 #include "devices/flopdrv.h"
 #include "devices/cartslot.h"
 #include "machine/ctronics.h"
-#include "includes/serial.h"
+#include "machine/serial.h"
 #include "machine/6850acia.h"
 #include "machine/68901mfp.h"
 #include "machine/8530scc.h"
@@ -15,12 +15,13 @@
 #include "sound/ay8910.h"
 #include "audio/lmc1992.h"
 #include "includes/atarist.h"
+#include "devices/messram.h"
 
 /*
 
     TODO:
 
-	- move static variables to driver state
+    - move static variables to driver state
     - fix floppy interface
     - fix mouse
     - MSA disk image support
@@ -80,32 +81,33 @@ static void atarist_fdc_dma_transfer(running_machine *machine)
 	}
 }
 
-static WD17XX_CALLBACK( atarist_fdc_callback )
+static WRITE_LINE_DEVICE_HANDLER( atarist_fdc_intrq_w )
+{
+	atarist_state *driver_state = device->machine->driver_data;
+	driver_state->fdc_irq = state;
+}
+
+static WRITE_LINE_DEVICE_HANDLER( atarist_fdc_drq_w )
 {
 	atarist_state *driver_state = device->machine->driver_data;
 
-	switch (state)
+	if (state)
 	{
-	case WD17XX_IRQ_SET:
-		driver_state->fdc_irq = 1;
-		break;
-
-	case WD17XX_IRQ_CLR:
-		driver_state->fdc_irq = 0;
-		break;
-
-	case WD17XX_DRQ_SET:
 		driver_state->fdc_status |= ATARIST_FLOPPY_STATUS_FDC_DATA_REQUEST;
 		atarist_fdc_dma_transfer(device->machine);
-		break;
-
-	case WD17XX_DRQ_CLR:
+	}
+	else
+	{
 		driver_state->fdc_status &= ~ATARIST_FLOPPY_STATUS_FDC_DATA_REQUEST;
-		break;
 	}
 }
 
-static const wd17xx_interface atarist_wd17xx_interface = { atarist_fdc_callback, NULL };
+static const wd17xx_interface atarist_wd17xx_interface =
+{
+	DEVCB_LINE(atarist_fdc_intrq_w),
+	DEVCB_LINE(atarist_fdc_drq_w),
+	{FLOPPY_0, FLOPPY_1, NULL, NULL}
+};
 
 static READ16_HANDLER( atarist_fdc_data_r )
 {
@@ -1446,7 +1448,7 @@ static void atarist_configure_memory(running_machine *machine)
 	const address_space *program = cputag_get_address_space(machine, M68000_TAG, ADDRESS_SPACE_PROGRAM);
 	UINT8 *RAM = memory_region(machine, M68000_TAG);
 
-	switch (mess_ram_size)
+	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 256 * 1024:
 		memory_install_readwrite16_handler(program, 0x000008, 0x03ffff, 0, 0, SMH_BANK(1), SMH_BANK(1));
@@ -1640,7 +1642,7 @@ static void stbook_configure_memory(running_machine *machine)
 	const address_space *program = cputag_get_address_space(machine, M68000_TAG, ADDRESS_SPACE_PROGRAM);
 	UINT8 *RAM = memory_region(machine, M68000_TAG);
 
-	switch (mess_ram_size)
+	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 1024 * 1024:
 		memory_install_readwrite16_handler(program, 0x000008, 0x07ffff, 0, 0x080000, SMH_BANK(1), SMH_BANK(1));
@@ -1792,6 +1794,18 @@ static DEVICE_IMAGE_LOAD( atarist_cart )
 	return INIT_FAIL;
 }
 
+static const floppy_config atarist_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(atarist),
+	DO_NOT_KEEP_GEOMETRY
+};
+
 static MACHINE_DRIVER_START( atarist_cartslot )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("stc")
@@ -1840,7 +1854,14 @@ static MACHINE_DRIVER_START( atarist )
 
 	MDRV_WD1772_ADD(WD1772_TAG, atarist_wd17xx_interface )
 
+	MDRV_FLOPPY_2_DRIVES_ADD(atarist_floppy_config)
+	
 	MDRV_IMPORT_FROM(atarist_cartslot)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("1024K")  // 1040ST
+	MDRV_RAM_EXTRA_OPTIONS("512K,256K") //  520ST ,260ST	
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( megast )
@@ -1851,6 +1872,11 @@ static MACHINE_DRIVER_START( megast )
 	MDRV_RP5C15_ADD("rp5c15", rtc_intf)
 
 	MDRV_MACHINE_START(megast)
+	
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("4M")  //  Mega ST 4
+	MDRV_RAM_EXTRA_OPTIONS("2M,1M") //  Mega ST 2 ,Mega ST 1
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( atariste )
@@ -1902,7 +1928,14 @@ static MACHINE_DRIVER_START( atariste )
 
 	MDRV_WD1772_ADD(WD1772_TAG, atarist_wd17xx_interface )
 
+	MDRV_FLOPPY_2_DRIVES_ADD(atarist_floppy_config)
+
 	MDRV_IMPORT_FROM(atarist_cartslot)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("1024K")  // 1040STe
+	MDRV_RAM_EXTRA_OPTIONS("512K") //  520STe	
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( megaste )
@@ -1913,6 +1946,11 @@ static MACHINE_DRIVER_START( megaste )
 	MDRV_RP5C15_ADD("rp5c15", rtc_intf)
 
 	MDRV_MACHINE_START(megaste)
+
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("4M")  //  Mega STe 4
+	MDRV_RAM_EXTRA_OPTIONS("2M,1M") //  Mega STe 2 ,Mega STe 1
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( stbook )
@@ -1958,7 +1996,14 @@ static MACHINE_DRIVER_START( stbook )
 
 	MDRV_WD1772_ADD(WD1772_TAG, atarist_wd17xx_interface )
 
+	MDRV_FLOPPY_2_DRIVES_ADD(atarist_floppy_config)
+
 	MDRV_IMPORT_FROM(atarist_cartslot)
+
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("4M")
+	MDRV_RAM_EXTRA_OPTIONS("1M")
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -2099,20 +2144,6 @@ ROM_START( falcon40 )
 ROM_END
 
 /* System Configuration */
-static void atarist_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_atarist; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
 static DEVICE_IMAGE_LOAD( atarist_serial )
 {
 	/* filename specified */
@@ -2120,8 +2151,6 @@ static DEVICE_IMAGE_LOAD( atarist_serial )
 	{
 		/* setup transmit parameters */
 		serial_device_setup(image, 9600, 8, 1, SERIAL_PARITY_NONE);
-
-		serial_device_set_protocol(image, SERIAL_PROTOCOL_NONE);
 
 		/* and start transmit */
 		serial_device_set_transmit_state(image, 1);
@@ -2171,60 +2200,26 @@ static void megaste_serial_getinfo(const mess_device_class *devclass, UINT32 sta
 }
 
 static SYSTEM_CONFIG_START( atarist )
-	CONFIG_RAM_DEFAULT(1024 * 1024) // 1040ST
-	CONFIG_RAM		  ( 512 * 1024) //  520ST
-	CONFIG_RAM		  ( 256 * 1024) //  260ST
-	CONFIG_DEVICE(atarist_floppy_getinfo)
-	CONFIG_DEVICE(atarist_serial_getinfo)
-	// MIDI
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( megast )
-	CONFIG_RAM_DEFAULT(4096 * 1024) // Mega ST 4
-	CONFIG_RAM		  (2048 * 1024) // Mega ST 2
-	CONFIG_RAM		  (1024 * 1024) // Mega ST 1
-	CONFIG_DEVICE(atarist_floppy_getinfo)
-	CONFIG_DEVICE(atarist_serial_getinfo)
-	// MIDI
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( atariste )
-	CONFIG_RAM_DEFAULT(1024 * 1024) // 1040STe
-	CONFIG_RAM		  ( 512 * 1024) //  520STe
-	CONFIG_DEVICE(atarist_floppy_getinfo)
 	CONFIG_DEVICE(atarist_serial_getinfo)
 	// MIDI
 SYSTEM_CONFIG_END
 
 static SYSTEM_CONFIG_START( megaste )
-	CONFIG_RAM_DEFAULT(4096 * 1024) // Mega STe 4
-	CONFIG_RAM		  (2048 * 1024) // Mega STe 2
-	CONFIG_RAM		  (1024 * 1024) // Mega STe 1
-	CONFIG_DEVICE(atarist_floppy_getinfo)
 	CONFIG_DEVICE(megaste_serial_getinfo)
-	// MIDI
-	// LAN
 SYSTEM_CONFIG_END
 
-static SYSTEM_CONFIG_START( stbook )
-	CONFIG_RAM_DEFAULT(4096 * 1024)
-	CONFIG_RAM		  (1024 * 1024)
-	CONFIG_DEVICE(atarist_floppy_getinfo)
-	CONFIG_DEVICE(megaste_serial_getinfo)
-	// MIDI
-	// IDE Hard Disk
-SYSTEM_CONFIG_END
+
 
 /* System Drivers */
 
 /*     YEAR  NAME    PARENT    COMPAT   MACHINE   INPUT     INIT    CONFIG   COMPANY    FULLNAME */
 COMP( 1985, atarist,  0,        0,		atarist,  atarist,  0,     atarist,  "Atari", "Atari ST", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
-COMP( 1987, megast,   atarist,  0,		megast,   atarist,  0,     megast,   "Atari", "Atari Mega ST", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE  )
+COMP( 1987, megast,   atarist,  0,		megast,   atarist,  0,     atarist,   "Atari", "Atari Mega ST", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE  )
 /*
-COMP( 1989, stacy,    atarist,  0,      stacy,    stacy,    0,     stacy,    "Atari", "Atari Stacy", GAME_NOT_WORKING )
+COMP( 1989, stacy,    atarist,  0,      stacy,    stacy,    0,     atarist,    "Atari", "Atari Stacy", GAME_NOT_WORKING )
 */
-COMP( 1989, atariste, 0,		0,		atariste, atariste, 0,     atariste, "Atari", "Atari STE", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE  )
-COMP( 1990, stbook,   atariste, 0,		stbook,   stbook,   0,     stbook,	 "Atari", "Atari STBook", GAME_NOT_WORKING )
+COMP( 1989, atariste, 0,		0,		atariste, atariste, 0,     atarist, "Atari", "Atari STE", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE  )
+COMP( 1990, stbook,   atariste, 0,		stbook,   stbook,   0,     megaste,	 "Atari", "Atari STBook", GAME_NOT_WORKING )
 COMP( 1991, megaste,  atariste, 0,		megaste,  atarist,  0,     megaste,  "Atari", "Atari Mega STE", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE  )
 /*
 COMP( 1991, stpad,    atariste, 0,      stpad,    stpad,    0,     stpad,    "Atari", "Atari STPad (prototype)", GAME_NOT_WORKING )

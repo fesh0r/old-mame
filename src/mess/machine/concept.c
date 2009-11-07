@@ -1,7 +1,7 @@
 /*
-	Corvus Concept driver
+    Corvus Concept driver
 
-	Raphael Nabet, Brett Wyer, 2003-2005
+    Raphael Nabet, Brett Wyer, 2003-2005
 */
 
 #include "driver.h"
@@ -12,6 +12,8 @@
 #include "machine/wd17xx.h"
 #include "cpu/m68000/m68000.h"
 #include "includes/corvushd.h"
+#include "devices/flopdrv.h"
+
 
 #define VERBOSE 1
 
@@ -205,16 +207,16 @@ INTERRUPT_GEN( concept_interrupt )
 }
 
 /*
-	VIA port A
+    VIA port A
 
-	0: omninet ready (I)
-	1: CTS0 (I)
-	2: CTS1 (I)
-	3: DSR0 (I)
-	4: DSR1 (I)
-	5: DCD0 (I)
-	6: DCD1 (I)
-	7: IOX (O)
+    0: omninet ready (I)
+    1: CTS0 (I)
+    2: CTS1 (I)
+    3: DSR0 (I)
+    4: DSR1 (I)
+    5: DCD0 (I)
+    6: DCD1 (I)
+    7: IOX (O)
 */
 static  READ8_DEVICE_HANDLER(via_in_a)
 {
@@ -229,16 +231,16 @@ static WRITE8_DEVICE_HANDLER(via_out_a)
 }
 
 /*
-	VIA port B
+    VIA port B
 
-	0: video off (O)
-	1: video address 17 (O)
-	2: video address 18 (O)
-	3: monitor orientation (I)
-	4: CH rate select DC0 (serial port line) (O)
-	5: CH rate select DC1 (serial port line) (O)
-	6: boot switch 0 (I)
-	7: boot switch 1 (I)
+    0: video off (O)
+    1: video address 17 (O)
+    2: video address 18 (O)
+    3: monitor orientation (I)
+    4: CH rate select DC0 (serial port line) (O)
+    5: CH rate select DC1 (serial port line) (O)
+    6: boot switch 0 (I)
+    7: boot switch 1 (I)
 */
 static READ8_DEVICE_HANDLER(via_in_b)
 {
@@ -255,7 +257,7 @@ static WRITE8_DEVICE_HANDLER(via_out_b)
 }
 
 /*
-	VIA CB2: used as sound output
+    VIA CB2: used as sound output
 */
 static WRITE8_DEVICE_HANDLER(via_out_cb2)
 {
@@ -263,7 +265,7 @@ static WRITE8_DEVICE_HANDLER(via_out_cb2)
 }
 
 /*
-	VIA irq -> 68k level 5
+    VIA irq -> 68k level 5
 */
 static void via_irq_func(const device_config *device, int state)
 {
@@ -527,7 +529,7 @@ WRITE16_HANDLER(concept_io_w)
 }
 
 /*
-	Concept fdc controller
+    Concept fdc controller
 */
 
 static UINT8 fdc_local_status;
@@ -578,26 +580,28 @@ static void concept_fdc_init(running_machine *machine, int slot)
 	install_expansion_slot(slot, concept_fdc_reg_r, concept_fdc_reg_w, concept_fdc_rom_r, NULL);
 }
 
-static WD17XX_CALLBACK( fdc_callback )
+static WRITE_LINE_DEVICE_HANDLER( concept_fdc_intrq_w )
 {
-	switch (state)
-	{
-		case WD17XX_IRQ_CLR:
-			fdc_local_status &= ~LS_INT_mask;
-			break;
-		case WD17XX_IRQ_SET:
-			fdc_local_status |= LS_INT_mask;
-			break;
-		case WD17XX_DRQ_CLR:
-			fdc_local_status &= ~LS_DRQ_mask;
-			break;
-		case WD17XX_DRQ_SET:
-			fdc_local_status |= LS_DRQ_mask;
-			break;
-	}
+	if (state)
+		fdc_local_status |= LS_INT_mask;
+	else
+		fdc_local_status &= ~LS_INT_mask;
 }
 
-const wd17xx_interface concept_wd17xx_interface = { fdc_callback, NULL };
+static WRITE_LINE_DEVICE_HANDLER( concept_fdc_drq_w )
+{
+	if (state)
+		fdc_local_status |= LS_DRQ_mask;
+	else
+		fdc_local_status &= ~LS_DRQ_mask;
+}
+
+const wd17xx_interface concept_wd17xx_interface =
+{
+	DEVCB_LINE(concept_fdc_intrq_w),
+	DEVCB_LINE(concept_fdc_drq_w),
+	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
+};
 
 static  READ8_HANDLER(concept_fdc_reg_r)
 {
@@ -642,10 +646,10 @@ static WRITE8_HANDLER(concept_fdc_reg_w)
 		current_drive = ((data >> LC_DE0_bit) & 1) | ((data >> (LC_DE1_bit-1)) & 2);
 		wd17xx_set_drive(fdc, current_drive);
 		/*motor_on = (data & LC_MOTOROF_mask) == 0;*/
-		// floppy_drive_set_motor_state(image_from_devtype_and_index(machine, IO_FLOPPY, current_drive), (data & LC_MOTOROF_mask) == 0 ? 1 : 0);
+		// floppy_drive_set_motor_state(floppy_get_device(machine,  current_drive), (data & LC_MOTOROF_mask) == 0 ? 1 : 0);
 		/*flp_8in = (data & LC_FLP8IN_mask) != 0;*/
 		wd17xx_set_density(fdc, (data & LC_FMMFM_mask) ? DEN_FM_LO : DEN_MFM_LO);
-		floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, current_drive), 1, 0);
+		floppy_drive_set_ready_state(floppy_get_device(space->machine, current_drive), 1, 0);
 		break;
 
 	case 8:
@@ -677,7 +681,7 @@ static  READ8_HANDLER(concept_fdc_rom_r)
 }
 
 /*
- *	Concept Hard Disk Controller (hdc)
+ *  Concept Hard Disk Controller (hdc)
  */
 
 static  READ8_HANDLER(concept_hdc_reg_r);
@@ -685,7 +689,7 @@ static WRITE8_HANDLER(concept_hdc_reg_w);
 static  READ8_HANDLER(concept_hdc_rom_r);
 
 /*
- *	Hook up the Register and ROM R/W routines into the Slot I/O Space
+ *  Hook up the Register and ROM R/W routines into the Slot I/O Space
  */
 
 static void concept_hdc_init(running_machine *machine, int slot)
@@ -695,7 +699,7 @@ static void concept_hdc_init(running_machine *machine, int slot)
 }
 
 /*
- *	Handle reads against the Hard Disk Controller's onboard registers
+ *  Handle reads against the Hard Disk Controller's onboard registers
  */
 static READ8_HANDLER(concept_hdc_reg_r)
 {
@@ -714,7 +718,7 @@ static READ8_HANDLER(concept_hdc_reg_r)
 }
 
 /*
- *	Handle writes against the Hard Disk Controller's onboard registers
+ *  Handle writes against the Hard Disk Controller's onboard registers
  */
 static WRITE8_HANDLER(concept_hdc_reg_w)
 {
@@ -728,7 +732,7 @@ static WRITE8_HANDLER(concept_hdc_reg_w)
 }
 
 /*
- *	Handle reads agsint the Hard Disk Controller's onboard ROM
+ *  Handle reads agsint the Hard Disk Controller's onboard ROM
  */
 static  READ8_HANDLER(concept_hdc_rom_r)
 {

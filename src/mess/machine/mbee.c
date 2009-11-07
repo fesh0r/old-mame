@@ -1,14 +1,15 @@
 /***************************************************************************
 
-	microbee.c
+    microbee.c
 
     machine driver
-	Juergen Buchmueller <pullmoll@t-online.de>, Jan 2000
+    Juergen Buchmueller <pullmoll@t-online.de>, Jan 2000
 
 
 ****************************************************************************/
 
 #include "driver.h"
+#include "devices/flopdrv.h"
 #include "includes/mbee.h"
 
 static UINT8 mbee_vsync;
@@ -21,7 +22,7 @@ static const device_config *mbee_printer;
 
 /***********************************************************
 
-	PIO
+    PIO
 
 ************************************************************/
 
@@ -46,15 +47,15 @@ static WRITE8_DEVICE_HANDLER( pio_port_a_w )
 
 static WRITE8_DEVICE_HANDLER( pio_port_b_w )
 {
-/*	PIO port B - d5..d2 not emulated
-	d7 network interrupt (microbee network for classrooms)
-	d6 speaker
-	d5 rs232 output (1=mark)
-	d4 rs232 input (0=mark)
-	d3 rs232 CTS (0=clear to send)
-	d2 rs232 clock or DTR
-	d1 cass out
-	d0 cass in */
+/*  PIO port B - d5..d2 not emulated
+    d7 network interrupt (microbee network for classrooms)
+    d6 speaker
+    d5 rs232 output (1=mark)
+    d4 rs232 input (0=mark)
+    d3 rs232 CTS (0=clear to send)
+    d2 rs232 clock or DTR
+    d1 cass out
+    d0 cass in */
 
 	cassette_output(mbee_cassette, (data & 0x02) ? -1.0 : +1.0);
 
@@ -117,37 +118,50 @@ WRITE8_DEVICE_HANDLER( mbee_pio_w )
 
 /*************************************************************************************
 
-	Floppy DIsk
+    Floppy DIsk
 
-	The callback is quite simple, no interrupts are used.
-	If either IRQ or DRQ activate, they set bit 7 of inport 0x48.
+    The callback is quite simple, no interrupts are used.
+    If either IRQ or DRQ activate, they set bit 7 of inport 0x48.
 
 *************************************************************************************/
 
-static WD17XX_CALLBACK( mbee_fdc_callback )
+static WRITE_LINE_DEVICE_HANDLER( mbee_fdc_intrq_w )
 {
-	if (WD17XX_IRQ_SET || WD17XX_DRQ_SET)
+	if (state)
 		fdc_status |= 0x80;
 	else
 		fdc_status &= 0x7f;
 }
 
-const wd17xx_interface mbee_wd17xx_interface = { mbee_fdc_callback, NULL };
+static WRITE_LINE_DEVICE_HANDLER( mbee_fdc_drq_w )
+{
+	if (state)
+		fdc_status |= 0x80;
+	else
+		fdc_status &= 0x7f;
+}
+
+const wd17xx_interface mbee_wd17xx_interface =
+{
+	DEVCB_LINE(mbee_fdc_intrq_w),
+	DEVCB_LINE(mbee_fdc_drq_w),
+	{FLOPPY_0, FLOPPY_1, NULL, NULL }
+};
 
 READ8_HANDLER ( mbee_fdc_status_r )
 {
-/*	d7 indicate if IRQ or DRQ is occuring (1=happening)
-	d6..d0 not used */
+/*  d7 indicate if IRQ or DRQ is occuring (1=happening)
+    d6..d0 not used */
 
 	return fdc_status;
 }
 
 WRITE8_HANDLER ( mbee_fdc_motor_w )
 {
-/*	d7..d4 not used
-	d3 density (1=MFM)
-	d2 side (1=side 1)
-	d1..d0 drive select (0 to 3 - although no microbee ever had more than 2 drives) */
+/*  d7..d4 not used
+    d3 density (1=MFM)
+    d2 side (1=side 1)
+    d1..d0 drive select (0 to 3 - although no microbee ever had more than 2 drives) */
 
 	wd17xx_set_drive(mbee_fdc, data & 3);
 	wd17xx_set_side(mbee_fdc, (data & 4) ? 1 : 0);
@@ -156,7 +170,7 @@ WRITE8_HANDLER ( mbee_fdc_motor_w )
 
 /***********************************************************
 
-	Machine
+    Machine
 
 ************************************************************/
 
@@ -191,8 +205,8 @@ INTERRUPT_GEN( mbee_interrupt )
 	mbee_vsync = 1;
 
 	/* The printer status connects to the pio ASTB pin, and the printer changing to not
-		busy should signal an interrupt routine at B61C, (next line) but this doesn't work.
-		The line below does what the interrupt should be doing. */
+        busy should signal an interrupt routine at B61C, (next line) but this doesn't work.
+        The line below does what the interrupt should be doing. */
 
 	z80pio_astb_w( mbee_z80pio, centronics_busy_r(mbee_printer));	/* signal int when not busy (L->H) */
 
@@ -201,10 +215,10 @@ INTERRUPT_GEN( mbee_interrupt )
 
 /***********************************************************
 
-	Quickload
+    Quickload
 
-	These load the standard BIN format, as well
-	as COM and MWB files.
+    These load the standard BIN format, as well
+    as COM and MWB files.
 
 ************************************************************/
 
@@ -240,12 +254,19 @@ QUICKLOAD_LOAD( mbee )
 		{
 			j = 0x8c0 + i;
 
-			if (image_fread(image, &data, 1) != 1) return INIT_FAIL;
+			if (image_fread(image, &data, 1) != 1)
+			{
+				image_message(image, "Unexpected EOF");
+				return INIT_FAIL;
+			}
 
 			if ((j < mbee_size) || (j > 0xefff))
 				memory_write_byte(space, j, data);
 			else
+			{
+				image_message(image, "Not enough memory in this microbee");
 				return INIT_FAIL;
+			}
 		}
 
 		if (sw)
@@ -263,12 +284,19 @@ QUICKLOAD_LOAD( mbee )
 		{
 			j = 0x100 + i;
 
-			if (image_fread(image, &data, 1) != 1) return INIT_FAIL;
+			if (image_fread(image, &data, 1) != 1)
+			{
+				image_message(image, "Unexpected EOF");
+				return INIT_FAIL;
+			}
 
 			if ((j < mbee_size) || (j > 0xefff))
 				memory_write_byte(space, j, data);
 			else
+			{
+				image_message(image, "Not enough memory in this microbee");
 				return INIT_FAIL;
+			}
 		}
 
 		if (sw) cpu_set_reg(cpu, REG_GENPC, 0x100);

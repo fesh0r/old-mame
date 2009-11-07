@@ -49,10 +49,10 @@ port 03de write/read
    fc818
    fc87d display amstrad ..
     fca17 keyboard check
-	 fca69
-	 fd680
+     fca69
+     fd680
       fd7f9
-	 fca7b !keyboard interrupt routine for this check
+     fca7b !keyboard interrupt routine for this check
  */
 
 
@@ -84,7 +84,7 @@ port 03de write/read
    fc5fa
     the following when language selection not 0 (test for presence of 0x80000..0x9ffff ram)
     fc60e
-	fc667
+    fc667
    fc678
    fc6e5
    fc72e
@@ -200,6 +200,19 @@ WRITE8_HANDLER( pc1640_port60_w )
 }
 
 READ8_HANDLER( pc200_port378_r )
+{
+	const device_config *lpt = devtag_get_device(space->machine, "lpt_1");
+	UINT8 data = pc_lpt_r(lpt, offset);
+
+	if (offset == 1)
+		data = (data & ~7) | (input_port_read(space->machine, "DSW0") & 7);
+	if (offset == 2)
+		data = (data & ~0xe0) | (input_port_read(space->machine, "DSW0") & 0xc0);
+
+	return data;
+}
+
+static READ8_HANDLER( pc200_port278_r )
 {
 	const device_config *lpt = devtag_get_device(space->machine, "lpt_2");
 	UINT8 data = pc_lpt_r(lpt, offset);
@@ -416,6 +429,7 @@ INPUT_PORTS_END
 READ16_HANDLER( pc1640_16le_port60_r ) { return read16le_with_read8_handler(pc1640_port60_r, space, offset, mem_mask); }
 WRITE16_HANDLER( pc1640_16le_port60_w ) { write16le_with_write8_handler(pc1640_port60_w, space, offset, data, mem_mask); }
 
+READ16_HANDLER( pc200_16le_port278_r ) { return read16le_with_read8_handler(pc200_port278_r, space, offset, mem_mask); }
 READ16_HANDLER( pc200_16le_port378_r ) { return read16le_with_read8_handler(pc200_port378_r, space, offset, mem_mask); }
 READ16_HANDLER( pc1640_16le_port378_r ) { return read16le_with_read8_handler(pc1640_port378_r, space, offset, mem_mask); }
 READ16_HANDLER( pc1640_16le_port3d0_r ) { return read16le_with_read8_handler(pc1640_port3d0_r, space, offset, mem_mask); }

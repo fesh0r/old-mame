@@ -25,6 +25,7 @@
 #include "formats/svi_cas.h"
 #include "sound/dac.h"
 #include "sound/ay8910.h"
+#include "devices/messram.h"
 #include "rendlay.h"
 
 static ADDRESS_MAP_START( svi318_mem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -271,6 +272,18 @@ static const cassette_config svi318_cassette_config =
 	CASSETTE_PLAY
 };
 
+static const floppy_config svi318_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(svi318),
+	DO_NOT_KEEP_GEOMETRY
+};
+
 static MACHINE_DRIVER_START( svi318_cartslot )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("rom")
@@ -319,7 +332,14 @@ static MACHINE_DRIVER_START( svi318 )
 
 	MDRV_WD179X_ADD("wd179x", svi_wd17xx_interface )
 
+	MDRV_FLOPPY_2_DRIVES_ADD(svi318_floppy_config)
+
 	MDRV_IMPORT_FROM( svi318_cartslot )
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("16K")
+	MDRV_RAM_EXTRA_OPTIONS("32K,96K,160K")	
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( svi318n )
@@ -330,6 +350,24 @@ static MACHINE_DRIVER_START( svi318n )
 
 	MDRV_MACHINE_START( svi318_ntsc )
 	MDRV_MACHINE_RESET( svi318 )
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( svi328 )
+	MDRV_IMPORT_FROM( svi318 )
+
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")
+	MDRV_RAM_EXTRA_OPTIONS("96K,160K")
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( svi328n )
+	MDRV_IMPORT_FROM( svi318n )
+
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")
+	MDRV_RAM_EXTRA_OPTIONS("96K,160K")
 MACHINE_DRIVER_END
 
 static const mc6845_interface svi806_crtc6845_interface =
@@ -400,7 +438,14 @@ static MACHINE_DRIVER_START( svi328_806 )
 
 	MDRV_WD179X_ADD("wd179x", svi_wd17xx_interface )
 
+	MDRV_FLOPPY_2_DRIVES_ADD(svi318_floppy_config)
+
 	MDRV_IMPORT_FROM( svi318_cartslot )
+
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")
+	MDRV_RAM_EXTRA_OPTIONS("96K,160K")		
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( svi328n_806 )
@@ -478,44 +523,11 @@ ROM_START( sv328n80 )
 	ROMX_LOAD ("svi806se.rom", 0x0000, 0x1000, CRC(daea8956) SHA1(3f16d5513ad35692488ae7d864f660e76c6e8ed3), ROM_BIOS(2))
 ROM_END
 
-static void svi318_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_svi318; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( svi318_common )
-	CONFIG_DEVICE(svi318_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( svi318 )
-	CONFIG_IMPORT_FROM(svi318_common)
-	CONFIG_RAM_DEFAULT(16 * 1024)
-	CONFIG_RAM( 32 * 1024 )
-	CONFIG_RAM( 96 * 1024 )
-	CONFIG_RAM( 160 * 1024 )
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( svi328 )
-	CONFIG_IMPORT_FROM(svi318_common)
-	CONFIG_RAM_DEFAULT(64 * 1024)
-	CONFIG_RAM( 96 * 1024 )
-	CONFIG_RAM( 160 * 1024 )
-SYSTEM_CONFIG_END
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT   INIT    CONFIG  COMPANY         FULLNAME                    FLAGS */
-COMP( 1983, svi318,     0,      0,      svi318,     svi318, svi318, svi318, "Spectravideo", "SVI-318 (PAL)",            0 )
-COMP( 1983, svi318n,    svi318, 0,      svi318n,    svi318, svi318, svi318, "Spectravideo", "SVI-318 (NTSC)",           0 )
-COMP( 1983, svi328,     svi318, 0,      svi318,     svi328, svi318, svi328, "Spectravideo", "SVI-328 (PAL)",            0 )
-COMP( 1983, svi328n,    svi318, 0,      svi318n,    svi328, svi318, svi328, "Spectravideo", "SVI-328 (NTSC)",           0 )
-COMP( 1983, sv328p80,   svi318, 0,      svi328_806,    svi328, svi318, svi328, "Spectravideo", "SVI-328 (PAL) + SVI-806 80 column card", 0 )
-COMP( 1983, sv328n80,   svi318, 0,      svi328n_806,   svi328, svi318, svi328, "Spectravideo", "SVI-328 (NTSC) + SVI-806 80 column card", 0 )
+COMP( 1983, svi318,     0,      0,      svi318,     svi318, svi318, 0, "Spectravideo", "SVI-318 (PAL)",            0 )
+COMP( 1983, svi318n,    svi318, 0,      svi318n,    svi318, svi318, 0, "Spectravideo", "SVI-318 (NTSC)",           0 )
+COMP( 1983, svi328,     svi318, 0,      svi328,     svi328, svi318, 0, "Spectravideo", "SVI-328 (PAL)",            0 )
+COMP( 1983, svi328n,    svi318, 0,      svi328n,    svi328, svi318, 0, "Spectravideo", "SVI-328 (NTSC)",           0 )
+COMP( 1983, sv328p80,   svi318, 0,      svi328_806,    svi328, svi318, 0, "Spectravideo", "SVI-328 (PAL) + SVI-806 80 column card", 0 )
+COMP( 1983, sv328n80,   svi318, 0,      svi328n_806,   svi328, svi318, 0, "Spectravideo", "SVI-328 (NTSC) + SVI-806 80 column card", 0 )

@@ -16,6 +16,8 @@
 /* Devices */
 #include "devices/snapquik.h"
 #include "devices/cassette.h"
+#include "devices/flopdrv.h"
+#include "devices/messram.h"
 
 #define NASCOM1_KEY_RESET	0x02
 #define NASCOM1_KEY_INCR	0x01
@@ -54,19 +56,22 @@ static struct
  *
  *************************************/
 
-static WD17XX_CALLBACK( nascom2_fdc_callback )
+static WRITE_LINE_DEVICE_HANDLER( nascom2_fdc_intrq_w )
 {
-	switch (state)
-	{
-	case WD17XX_IRQ_SET: nascom2_fdc.irq = 1; break;
-	case WD17XX_IRQ_CLR: nascom2_fdc.irq = 0; break;
-	case WD17XX_DRQ_SET: nascom2_fdc.drq = 1; break;
-	case WD17XX_DRQ_CLR: nascom2_fdc.drq = 0; break;
-	}
+	nascom2_fdc.irq = state;
 }
 
+static WRITE_LINE_DEVICE_HANDLER( nascom2_fdc_drq_w )
+{
+	nascom2_fdc.drq = state;
+}
 
-const wd17xx_interface nascom2_wd17xx_interface = { nascom2_fdc_callback, NULL };
+const wd17xx_interface nascom2_wd17xx_interface =
+{
+	DEVCB_LINE(nascom2_fdc_intrq_w),
+	DEVCB_LINE(nascom2_fdc_drq_w),
+	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
+};
 
 
 READ8_HANDLER( nascom2_fdc_select_r )
@@ -114,7 +119,7 @@ READ8_HANDLER ( nascom1_port_00_r )
 
 	if (nascom1_portstat.stat_count < 9)
 		return (input_port_read(space->machine, keynames[nascom1_portstat.stat_count]) | ~0x7f);
-	
+
 	return (0xff);
 }
 
@@ -125,20 +130,20 @@ WRITE8_HANDLER( nascom1_port_00_w )
 	cassette_change_state( devtag_get_device(space->machine, "cassette"),
 		( data & 0x10 ) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR );
 
-	if (!(data & NASCOM1_KEY_RESET)) 
+	if (!(data & NASCOM1_KEY_RESET))
 	{
 		if (nascom1_portstat.stat_flags & NASCOM1_KEY_RESET)
 			nascom1_portstat.stat_count = 0;
-	} 
-	else 
+	}
+	else
 		nascom1_portstat.stat_flags = NASCOM1_KEY_RESET;
 
-	if (!(data & NASCOM1_KEY_INCR)) 
+	if (!(data & NASCOM1_KEY_INCR))
 	{
 		if (nascom1_portstat.stat_flags & NASCOM1_KEY_INCR)
 			nascom1_portstat.stat_count++;
-	} 
-	else 
+	}
+	else
 		nascom1_portstat.stat_flags = NASCOM1_KEY_INCR;
 }
 
@@ -270,7 +275,7 @@ MACHINE_RESET( nascom1 )
 MACHINE_RESET( nascom2 )
 {
 	const device_config *fdc = devtag_get_device(machine, "wd1793");
-	
+
 	wd17xx_set_density(fdc,DEN_FM_HI);
 
 	MACHINE_RESET_CALL(nascom1);
@@ -278,7 +283,7 @@ MACHINE_RESET( nascom2 )
 
 DRIVER_INIT( nascom1 )
 {
-	switch (mess_ram_size)
+	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 1 * 1024:
 		memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM),
@@ -290,7 +295,7 @@ DRIVER_INIT( nascom1 )
 			0x1400, 0x4fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
 		memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM),
 			0x5000, 0xafff, 0, 0, SMH_NOP, SMH_NOP);
-		memory_set_bankptr(machine, 1, mess_ram);
+		memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
 		break;
 
 	case 32 * 1024:
@@ -298,13 +303,13 @@ DRIVER_INIT( nascom1 )
 			0x1400, 0x8fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
 		memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM),
 			0x9000, 0xafff, 0, 0, SMH_NOP, SMH_NOP);
-		memory_set_bankptr(machine, 1, mess_ram);
+		memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
 		break;
 
 	case 40 * 1024:
 		memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM),
 			0x1400, 0xafff, 0, 0, SMH_BANK(1), SMH_BANK(1));
-		memory_set_bankptr(machine, 1, mess_ram);
+		memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
 		break;
 	}
 }

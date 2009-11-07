@@ -11,9 +11,9 @@
 *  Special thanks to leeeeee for helping figure out what the led selftest codes actually mean
 *
 *  TODO:
-*  * DUART: 
+*  * DUART:
 *    * DUART needs to be reset on reset line activation. as is it works ok, but it should be done anyway.
-*    * DUART needs its i/o pins connected as well:    
+*    * DUART needs its i/o pins connected as well:
 *    * pins IP0, IP2, and IP3 are connected to the primary serial port:
 *      * IP0 is CTS
 *      * IP2 is DSR
@@ -314,26 +314,26 @@ static void dectalk_reset(const device_config *device)
 	dectalk.duart_outport = 0;
 }
 
-MACHINE_RESET( dectalk )
+static MACHINE_RESET( dectalk )
 {
 	/* hook the RESET line, which resets a slew of other components */
 	m68k_set_reset_callback(cputag_get_cpu(machine, "maincpu"), dectalk_reset);
 }
 
 /* Begin 68k i/o handlers */
-READ8_HANDLER( nvram_read ) // read from x2212 nvram chip and possibly do recall
+static READ8_HANDLER( nvram_read ) // read from x2212 nvram chip and possibly do recall
 {
 	UINT8 data = 0xFF;
 	data = dectalk.nvram_local[offset&0xff]; // TODO: should this be before or after a possible /RECALL? I'm guessing before.
 #ifdef NVRAM_LOG
-		logerror("m68k: nvram read at %08X: %02X\n", offset, data;
+		logerror("m68k: nvram read at %08X: %02X\n", offset, data);
 #endif
 	if (offset&0x200) // if a9 is set, do a /RECALL
 	dectalk_x2212_recall(space->machine);
 	return data;
 }
 
-WRITE8_HANDLER( led_write )
+static WRITE8_HANDLER( led_write )
 {
 	dectalk.statusLED = data&0xFF;
 	popmessage("LED status: %02X\n", data&0xFF);
@@ -343,7 +343,7 @@ WRITE8_HANDLER( led_write )
 	//popmessage("LED status: %x %x %x %x %x %x %x %x\n", data&0x80, data&0x40, data&0x20, data&0x10, data&0x8, data&0x4, data&0x2, data&0x1);
 }
 
-WRITE8_HANDLER( nvram_write ) // write to X2212 NVRAM chip and possibly do store
+static WRITE8_HANDLER( nvram_write ) // write to X2212 NVRAM chip and possibly do store
 {
 #ifdef NVRAM_LOG
 	logerror("m68k: nvram write at %08X: %02X\n", offset, data&0x0f);
@@ -353,7 +353,7 @@ WRITE8_HANDLER( nvram_write ) // write to X2212 NVRAM chip and possibly do store
 	dectalk_x2212_store(space->machine);
 }
 
-WRITE16_HANDLER( m68k_infifo_w ) // 68k write to the speech input fifo
+static WRITE16_HANDLER( m68k_infifo_w ) // 68k write to the speech input fifo
 {
 #ifdef USE_LOOSE_TIMING
 	cpuexec_boost_interleave(space->machine, attotime_zero, ATTOTIME_IN_USEC(25));
@@ -374,7 +374,7 @@ WRITE16_HANDLER( m68k_infifo_w ) // 68k write to the speech input fifo
 	dectalk.infifo_head_ptr&=0x1F;
 }
 
-READ16_HANDLER( m68k_spcflags_r ) // 68k read from the speech flags
+static READ16_HANDLER( m68k_spcflags_r ) // 68k read from the speech flags
 {
 	UINT8 data = 0;
 	data |= dectalk.m68k_spcflags_latch; // bits 0 and 6
@@ -386,7 +386,7 @@ READ16_HANDLER( m68k_spcflags_r ) // 68k read from the speech flags
 	return data;
 }
 
-WRITE16_HANDLER( m68k_spcflags_w ) // 68k write to the speech flags (only 3 bits do anything)
+static WRITE16_HANDLER( m68k_spcflags_w ) // 68k write to the speech flags (only 3 bits do anything)
 {
 #ifdef USE_LOOSE_TIMING
 	cpuexec_boost_interleave(space->machine, attotime_zero, ATTOTIME_IN_USEC(25));
@@ -445,7 +445,7 @@ WRITE16_HANDLER( m68k_spcflags_w ) // 68k write to the speech flags (only 3 bits
 	}
 }
 
-READ16_HANDLER( m68k_tlcflags_r ) // dtmf flags read
+static READ16_HANDLER( m68k_tlcflags_r ) // dtmf flags read
 {
 	UINT16 data = 0;
 	data |= dectalk.m68k_tlcflags_latch; // bits 6, 8, 14;
@@ -457,7 +457,7 @@ READ16_HANDLER( m68k_tlcflags_r ) // dtmf flags read
 	return data;
 }
 
-WRITE16_HANDLER( m68k_tlcflags_w ) // dtmf flags write
+static WRITE16_HANDLER( m68k_tlcflags_w ) // dtmf flags write
 {
 #ifdef TLC_LOG
 	logerror("m68k: TLC flags written with %04X, only storing %04X\n",data, data&0x4140);
@@ -519,7 +519,7 @@ WRITE16_HANDLER( m68k_tlcflags_w ) // dtmf flags write
 	}
 }
 
-READ16_HANDLER( m68k_tlc_dtmf_r ) // dtmf chip read
+static READ16_HANDLER( m68k_tlc_dtmf_r ) // dtmf chip read
 {
 	UINT16 data = 0xFFFF;
 	data = dectalk.tlc_dtmf&0xF;
@@ -531,7 +531,7 @@ READ16_HANDLER( m68k_tlc_dtmf_r ) // dtmf chip read
 /* End 68k i/o handlers */
 
 /* Begin tms32010 i/o handlers */
-WRITE16_HANDLER( spc_latch_outfifo_error_stats ) // latch 74ls74 @ E64 upper and lower halves with d0 and 1 respectively
+static WRITE16_HANDLER( spc_latch_outfifo_error_stats ) // latch 74ls74 @ E64 upper and lower halves with d0 and 1 respectively
 {
 #ifdef USE_LOOSE_TIMING
 	cpuexec_boost_interleave(space->machine, attotime_zero, ATTOTIME_IN_USEC(25));
@@ -543,7 +543,7 @@ WRITE16_HANDLER( spc_latch_outfifo_error_stats ) // latch 74ls74 @ E64 upper and
 	dectalk.spc_error_latch = (data&1);
 }
 
-READ16_HANDLER( spc_infifo_data_r )
+static READ16_HANDLER( spc_infifo_data_r )
 {
 	UINT16 data = 0xFFFF;
 	data = dectalk.infifo[dectalk.infifo_tail_ptr];
@@ -557,7 +557,7 @@ READ16_HANDLER( spc_infifo_data_r )
 	return data;
 }
 
-WRITE16_HANDLER( spc_outfifo_data_w )
+static WRITE16_HANDLER( spc_outfifo_data_w )
 {
 	// the low 4 data bits are thrown out on the real unit due to use of a 12 bit dac (and to save use of another 16x4 fifo chip), though technically they're probably valid, and with suitable hacking a dtc-01 could probably output full 16 bit samples at 10khz.
 #ifdef SPC_LOG_DSP
@@ -578,7 +578,7 @@ WRITE16_HANDLER( spc_outfifo_data_w )
 	//dectalk_outfifo_check(space->machine); // commented to allow int to clear
 }
 
-READ16_HANDLER( spc_semaphore_r ) // Return state of d-latch 74ls74 @ E64 'lower half' in d0 which indicates whether infifo is readable
+static READ16_HANDLER( spc_semaphore_r ) // Return state of d-latch 74ls74 @ E64 'lower half' in d0 which indicates whether infifo is readable
 {
 #ifdef SPC_LOG_DSP
 	//logerror("dsp: read infifo semaphore, returned %d\n", dectalk.infifo_semaphore); // commented due to extreme annoyance factor
@@ -595,19 +595,19 @@ READ16_HANDLER( spc_semaphore_r ) // Return state of d-latch 74ls74 @ E64 'lower
 /*
 Address maps (x = ignored; * = selects address within this range)
 68k address map:
-a23	a22	a21	a20	a19	a18	a17	a16	a15	a14	a13	a12	a11	a10	a9	a8	a7	a6	a5	a4	a3	a2	a1	(a0 via UDS/LDS)
-0	x	x	x	0	x	*	*	*	*	*	*	*	*	*	*	*	*	*	*	*	*	*	*		R	ROM
-0	x	x	x	1	x	x	0	*	*	*	*	*	*	*	*	*	*	*	*	*	*	*	*		RW	RAM (first 4 chip pairs)
-0	x	x	x	1	x	x	1	0	0	*	*	*	*	*	*	*	*	*	*	*	*	*	*		RW	RAM (last chip pair)
-0	x	x	x	1	x	x	1	0	1	x	x	x	x	x	x	x	x	x	x	x	x	x	0		W	Status LED <d7-d0>
-0	x	x	x	1	x	x	1	0	1	x	x	x	x	0	*	*	*	*	*	*	*	*	1		RW	NVRAM (read/write volatile ram, does not store to eeprom)
-0	x	x	x	1	x	x	1	0	1	x	x	x	x	1	*	*	*	*	*	*	*	*	1		RW	NVRAM (all reads do /recall from eeprom, all writes do /store to eeprom)
-0	x	x	x	1	x	x	1	1	0	x	x	x	x	x	x	x	x	x	*	*	*	*	x		RW	DUART (keep in mind that a0 is not connected)
-0	x	x	x	1	x	x	1	1	1	x	x	x	x	x	x	x	x	x	x	x	0	0	*		RW	SPC flags: fifo writable (readonly, d7), spc irq suppress (readwrite, d6), fifo error status (readonly, d5), 'fifo release'/clear-tms-fifo-error-status-bits (writeonly, d1), speech initialize/clear (readwrite, d0) [see schematic sheet 4]
-0	x	x	x	1	x	x	1	1	1	x	x	x	x	x	x	x	x	x	x	x	0	1	0?		W	SPC fifo write (clocks fifo)
-0	x	x	x	1	x	x	1	1	1	x	x	x	x	x	x	x	x	x	x	x	1	0	*		RW	TLC flags: ring detect (readonly, d15), ring detected irq enable (readwrite, d14), answer phone (readwrite, d8), tone detected (readonly, d7), tone detected irq enable (readwrite, d6) [see schematic sheet 6]
-0	x	x	x	1	x	x	1	1	1	x	x	x	x	x	x	x	x	x	x	x	1	1	*		R	TLC tone chip read, reads on bits d0-d7 only, d4-d7 are tied low; d15-d8 are probably open bus
-			  |				  |				  |				  |				  |
+a23 a22 a21 a20 a19 a18 a17 a16 a15 a14 a13 a12 a11 a10 a9  a8  a7  a6  a5  a4  a3  a2  a1  (a0 via UDS/LDS)
+0   x   x   x   0   x   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *       R   ROM
+0   x   x   x   1   x   x   0   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *       RW  RAM (first 4 chip pairs)
+0   x   x   x   1   x   x   1   0   0   *   *   *   *   *   *   *   *   *   *   *   *   *   *       RW  RAM (last chip pair)
+0   x   x   x   1   x   x   1   0   1   x   x   x   x   x   x   x   x   x   x   x   x   x   0       W   Status LED <d7-d0>
+0   x   x   x   1   x   x   1   0   1   x   x   x   x   0   *   *   *   *   *   *   *   *   1       RW  NVRAM (read/write volatile ram, does not store to eeprom)
+0   x   x   x   1   x   x   1   0   1   x   x   x   x   1   *   *   *   *   *   *   *   *   1       RW  NVRAM (all reads do /recall from eeprom, all writes do /store to eeprom)
+0   x   x   x   1   x   x   1   1   0   x   x   x   x   x   x   x   x   x   *   *   *   *   x       RW  DUART (keep in mind that a0 is not connected)
+0   x   x   x   1   x   x   1   1   1   x   x   x   x   x   x   x   x   x   x   x   0   0   *       RW  SPC flags: fifo writable (readonly, d7), spc irq suppress (readwrite, d6), fifo error status (readonly, d5), 'fifo release'/clear-tms-fifo-error-status-bits (writeonly, d1), speech initialize/clear (readwrite, d0) [see schematic sheet 4]
+0   x   x   x   1   x   x   1   1   1   x   x   x   x   x   x   x   x   x   x   x   0   1   0?      W   SPC fifo write (clocks fifo)
+0   x   x   x   1   x   x   1   1   1   x   x   x   x   x   x   x   x   x   x   x   1   0   *       RW  TLC flags: ring detect (readonly, d15), ring detected irq enable (readwrite, d14), answer phone (readwrite, d8), tone detected (readonly, d7), tone detected irq enable (readwrite, d6) [see schematic sheet 6]
+0   x   x   x   1   x   x   1   1   1   x   x   x   x   x   x   x   x   x   x   x   1   1   *       R   TLC tone chip read, reads on bits d0-d7 only, d4-d7 are tied low; d15-d8 are probably open bus
+              |               |               |               |               |
 */
 
 static ADDRESS_MAP_START(m68k_mem, ADDRESS_SPACE_PROGRAM, 16)
@@ -687,7 +687,7 @@ static TIMER_CALLBACK( simulate_input_cb )
 }
 
 /* Driver init: stuff that needs setting up which isn't directly affected by reset */
-DRIVER_INIT( dectalk )
+static DRIVER_INIT( dectalk )
 {
 	dectalk_clear_all_fifos(machine);
 	dectalk.simulate_outfifo_error = 0;
@@ -783,16 +783,8 @@ ROM_START( dectalk )
 ROM_END
 
 /******************************************************************************
- System Config
-******************************************************************************/
-static SYSTEM_CONFIG_START(dectalk)
-// write me!
-SYSTEM_CONFIG_END
-
-
-/******************************************************************************
  Drivers
 ******************************************************************************/
 
-/*    YEAR	NAME		PARENT	COMPAT	MACHINE		INPUT		INIT		CONFIG		COMPANY		FULLNAME			FLAGS */
-COMP( 1984, dectalk,	0,		0,		dectalk,	dectalk,	dectalk,	dectalk,	"DEC",		"DECTalk DTC-01",	GAME_NOT_WORKING )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY     FULLNAME            FLAGS */
+COMP( 1984, dectalk,	0,		0,		dectalk,	dectalk,	dectalk,	0,	"DEC",		"DECTalk DTC-01",	GAME_NOT_WORKING )

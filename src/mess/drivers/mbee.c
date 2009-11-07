@@ -32,32 +32,32 @@
         F800-FFFF PCG RAM (graphics), Colour RAM (banked)
 
     Commands to call up built-in roms (depends on the model):
-	NET - Jump to E000, usually the Telcom communications program.
-	      This rom can be replaced with the Dreamdisk Chip-8 rom.
-		Note that Telcom 3.21 is 8k, it uses a rombank switch
-		(by reading port 0A) to swap between the two halves.
+    NET - Jump to E000, usually the Telcom communications program.
+          This rom can be replaced with the Dreamdisk Chip-8 rom.
+        Note that Telcom 3.21 is 8k, it uses a rombank switch
+        (by reading port 0A) to swap between the two halves.
 
-	EDASM - Jump to C000, usually the editor/Assembler package.
-		Currently this works properly only on the Standard model,
-		there appears to be some sort of core issue causing it to
-		freeze on the other models.
+    EDASM - Jump to C000, usually the editor/Assembler package.
+        Currently this works properly only on the Standard model,
+        there appears to be some sort of core issue causing it to
+        freeze on the other models.
 
-	MENU - Do a rombank switch to bank 5 and jump to C000 to start the Shell
+    MENU - Do a rombank switch to bank 5 and jump to C000 to start the Shell
 
-	PAK n - Do a rombank switch (write to port 0A) to bank "n" and jump to C000.
+    PAK n - Do a rombank switch (write to port 0A) to bank "n" and jump to C000.
 
     These early colour computers have a PROM to create the foreground palette.
 
-	TODO:
-	- Printer is working, but with improper code. This needs to be fixed.
-	- Other models to be added (64k, 128k, 256k, 512k, PPC85, Teleterm)
-	- Roms for mbeepc to be checked (I think they are correct)
-	- Diskette code to be checked and made working
+    TODO:
+    - Printer is working, but with improper code. This needs to be fixed.
+    - Other models to be added (64k, 128k, 256k, 512k, PPC85, Teleterm)
+    - Roms for mbeepc to be checked (I think they are correct)
+    - Diskette code to be checked and made working
 
-	Notes about the printer:
-	- When computer turned on, defaults to 1200 baud serial printer
-	- Change it to parallel by entering OUTL#1
-	- After you mount/create a printfile, you can LPRINT and LLIST.
+    Notes about the printer:
+    - When computer turned on, defaults to 1200 baud serial printer
+    - Change it to parallel by entering OUTL#1
+    - After you mount/create a printfile, you can LPRINT and LLIST.
 
 
 ***************************************************************************/
@@ -73,8 +73,8 @@
 size_t mbee_size;
 
 /********** NOTE !!! ***********************************************************
-	The microbee uses lots of bankswitching and the memory maps are still
-	being determined. Please don't merge memory maps !!
+    The microbee uses lots of bankswitching and the memory maps are still
+    being determined. Please don't merge memory maps !!
 ********************************************************************************/
 
 
@@ -320,15 +320,54 @@ static INPUT_PORTS_START( mbee )
 	PORT_CONFSETTING(    0x00, DEF_STR(No))
 	PORT_CONFSETTING(    0x01, DEF_STR(Yes))
 	PORT_BIT( 0x6, 0x6, IPT_UNUSED )
-//	PORT_CONFNAME( 0x08, 0x08, "Cassette Speaker")
-//	PORT_CONFSETTING(    0x08, DEF_STR(On))
-//	PORT_CONFSETTING(    0x00, DEF_STR(Off))
+//  PORT_CONFNAME( 0x08, 0x08, "Cassette Speaker")
+//  PORT_CONFSETTING(    0x08, DEF_STR(On))
+//  PORT_CONFSETTING(    0x00, DEF_STR(Off))
 INPUT_PORTS_END
 
 static const z80_daisy_chain mbee_daisy_chain[] =
 {
 	{ "z80pio" },
 	{ NULL }
+};
+
+static FLOPPY_OPTIONS_START(mbee)
+	FLOPPY_OPTION(ss80, "ss80", "SS80 disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([80])
+		SECTORS([10])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION(ds40, "ds40", "DS40 disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([40])
+		SECTORS([10])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION(ds80, "ds80", "DS80 disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([80])
+		SECTORS([10])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION(ds84, "ds84", "DS84 disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([84])
+		SECTORS([10])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([1]))
+FLOPPY_OPTIONS_END
+
+static const floppy_config mbee_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(mbee),
+	DO_NOT_KEEP_GEOMETRY
 };
 
 static MACHINE_DRIVER_START( mbee )
@@ -420,7 +459,6 @@ static MACHINE_DRIVER_START( mbeepc85 )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP(mbeepc85_mem)
 	MDRV_CPU_IO_MAP(mbeepc85_io)
-	MDRV_WD179X_ADD("wd179x", mbee_wd17xx_interface )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( mbeeppc )
@@ -435,6 +473,8 @@ static MACHINE_DRIVER_START( mbee56 )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP(mbee56_mem)
 	MDRV_CPU_IO_MAP(mbee56_io)
+	MDRV_WD179X_ADD("wd179x", mbee_wd17xx_interface )
+	MDRV_FLOPPY_2_DRIVES_ADD(mbee_floppy_config)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( mbee64 )
@@ -442,6 +482,8 @@ static MACHINE_DRIVER_START( mbee64 )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP(mbee64_mem)
 	MDRV_CPU_IO_MAP(mbee64_io)
+	MDRV_WD179X_ADD("wd179x", mbee_wd17xx_interface )
+	MDRV_FLOPPY_2_DRIVES_ADD(mbee_floppy_config)
 MACHINE_DRIVER_END
 
 static DRIVER_INIT( mbee )
@@ -547,8 +589,8 @@ ROM_START( mbee )
 	ROM_LOAD_OPTIONAL("edasmb.ic33",  0xd000,  0x1000, CRC(a23bf3c8) SHA1(73a57c2800a1c744b527d0440b170b8b03351753) )
 	ROM_LOAD_OPTIONAL("telcom10.rom", 0xe000,  0x1000, CRC(cc9ac94d) SHA1(6804b5ff54d16f8e06180751d8681c44f351e0bb) )
 
-/*	Optional Dreamcards Chip-8 V2.2 rom, take out the Telcom rom and insert this in its place
-	ROM_LOAD_OPTIONAL("chip8_22.rom", 0xe000,  0x1000, CRC(11fbb547) SHA1(7bd9dc4b67b33b8e1be99beb6a0ddff25bdbd3f7) ) */
+/*  Optional Dreamcards Chip-8 V2.2 rom, take out the Telcom rom and insert this in its place
+    ROM_LOAD_OPTIONAL("chip8_22.rom", 0xe000,  0x1000, CRC(11fbb547) SHA1(7bd9dc4b67b33b8e1be99beb6a0ddff25bdbd3f7) ) */
 
 	ROM_LOAD("charrom.ic13",          0x11000, 0x0800, CRC(b149737b) SHA1(a3cd4f5d0d3c71137cd1f0f650db83333a2e3597) )
 	ROM_RELOAD( 0x17000, 0x0800 )
@@ -565,8 +607,8 @@ ROM_START( mbeeic )
 	ROM_LOAD("charrom.bin",           0x11000, 0x1000, CRC(1f9fcee4) SHA1(e57ac94e03638075dde68a0a8c834a4f84ba47b0) )
 	ROM_RELOAD( 0x17000, 0x1000 )
 
-/*	Telcom v1.1 was shipped with the first version of the IC model
-	ROM_LOAD_OPTIONAL("telcom11.rom", 0xe000,  0x1000, CRC(15516499) SHA1(2d4953f994b66c5d3b1d457b8c92d9a0a69eb8b8) ) */
+/*  Telcom v1.1 was shipped with the first version of the IC model
+    ROM_LOAD_OPTIONAL("telcom11.rom", 0xe000,  0x1000, CRC(15516499) SHA1(2d4953f994b66c5d3b1d457b8c92d9a0a69eb8b8) ) */
 	ROM_LOAD_OPTIONAL("telcom12.rom", 0xe000,  0x1000, CRC(0231bda3) SHA1(be7b32499034f985cc8f7865f2bc2b78c485585c) )
 
 	/* PAK option roms */
@@ -669,59 +711,13 @@ ROM_END
   Game driver(s)
 
 ***************************************************************************/
-static FLOPPY_OPTIONS_START(mbee)
-	FLOPPY_OPTION(mbee, "ss80", "SS80 disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([80])
-		SECTORS([10])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1]))
-	FLOPPY_OPTION(mbee, "ds40", "DS40 disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([80])
-		SECTORS([10])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1]))
-	FLOPPY_OPTION(mbee, "ds80", "DS80 disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([160])
-		SECTORS([10])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1]))
-	FLOPPY_OPTION(mbee, "ds84", "DS84 disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([168])
-		SECTORS([10])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1]))						
-FLOPPY_OPTIONS_END
 
-static void mbee_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_mbee; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(mbeeic)
-	CONFIG_DEVICE(mbee_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      CONFIG    COMPANY			FULLNAME */
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      CONFIG    COMPANY         FULLNAME */
 COMP( 1982, mbee,     0,	0,	mbee,     mbee,     mbee,     0,	"Applied Technology",  "Microbee 16 Standard" , 0)
-COMP( 1982, mbeeic,   mbee,	0,	mbeeic,   mbee,     mbeeic,   mbeeic,	"Applied Technology",  "Microbee 32 IC" , 0)
-COMP( 1982, mbeepc,   mbee,	0,	mbeepc,   mbee,     mbeepc,   mbeeic,	"Applied Technology",  "Microbee 32 Personal Communicator" , 0)
-COMP( 1985, mbeepc85, mbee,	0,	mbeepc85, mbee,     mbeepc85, mbeeic,	"Applied Technology",  "Microbee 32 PC85" , 0)
-COMP( 1985, mbeeppc,  mbee,	0,	mbeeppc,  mbee,     mbeeppc,  mbeeic,	"Applied Technology",  "Microbee 32 Premium PC85" , GAME_NOT_WORKING)
-COMP( 1986, mbee56,   mbee,	0,	mbee56,   mbee,     mbee56,   mbeeic,	"Applied Technology",  "Microbee 56k" , GAME_NOT_WORKING)
-COMP( 1986, mbee64,   mbee,	0,	mbee64,   mbee,     mbee64,   mbeeic,	"Applied Technology",  "Microbee 64k" , GAME_NOT_WORKING)
+COMP( 1982, mbeeic,   mbee,	0,	mbeeic,   mbee,     mbeeic,   0,	"Applied Technology",  "Microbee 32 IC" , 0)
+COMP( 1982, mbeepc,   mbee,	0,	mbeepc,   mbee,     mbeepc,   0,	"Applied Technology",  "Microbee 32 Personal Communicator" , 0)
+COMP( 1985, mbeepc85, mbee,	0,	mbeepc85, mbee,     mbeepc85, 0,	"Applied Technology",  "Microbee 32 PC85" , 0)
+COMP( 1985, mbeeppc,  mbee,	0,	mbeeppc,  mbee,     mbeeppc,  0,	"Applied Technology",  "Microbee 32 Premium PC85" , GAME_NOT_WORKING)
+COMP( 1986, mbee56,   mbee,	0,	mbee56,   mbee,     mbee56,   0,	"Applied Technology",  "Microbee 56k" , 0 )
+COMP( 1986, mbee64,   mbee,	0,	mbee64,   mbee,     mbee64,   0,	"Applied Technology",  "Microbee 64k" , GAME_NOT_WORKING)
 

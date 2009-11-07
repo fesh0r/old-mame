@@ -1,5 +1,5 @@
 /***************************************************************************
-   
+
         Elektronika MK-85
 
         12/05/2009 Skeleton driver.
@@ -20,8 +20,8 @@ static INPUT_PORTS_START( mk85 )
 INPUT_PORTS_END
 
 
-static MACHINE_RESET(mk85) 
-{	
+static MACHINE_RESET(mk85)
+{
 }
 
 static VIDEO_START( mk85 )
@@ -43,9 +43,9 @@ static MACHINE_DRIVER_START( mk85 )
     MDRV_CPU_ADD("maincpu",T11, XTAL_4MHz)
     MDRV_CPU_CONFIG(t11_data)
     MDRV_CPU_PROGRAM_MAP(mk85_mem)
-    
+
     MDRV_MACHINE_RESET(mk85)
-	
+
     /* video hardware */
     MDRV_SCREEN_ADD("screen", RASTER)
     MDRV_SCREEN_REFRESH_RATE(50)
@@ -60,9 +60,6 @@ static MACHINE_DRIVER_START( mk85 )
     MDRV_VIDEO_UPDATE(mk85)
 MACHINE_DRIVER_END
 
-static SYSTEM_CONFIG_START(mk85)
-SYSTEM_CONFIG_END
-
 /* ROM definition */
 ROM_START( mk85 )
     ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
@@ -73,5 +70,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( ????, mk85,  0,       0, 	mk85, 	mk85, 	 0,  	  mk85,  	 "Elektronika",   "MK-85",		GAME_NOT_WORKING)
+COMP( 1986, mk85,  0,       0, 	mk85, 	mk85, 	 0,  	  0,  	 "Elektronika",   "MK-85",		GAME_NOT_WORKING)
 

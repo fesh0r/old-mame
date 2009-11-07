@@ -256,6 +256,42 @@ static const centronics_interface atom_centronics_config =
 	DEVCB_NULL
 };
 
+static FLOPPY_OPTIONS_START(atom)
+	FLOPPY_OPTION(atom, "ssd", "Atom disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([80])
+		SECTORS([10])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([0]))
+FLOPPY_OPTIONS_END
+
+static const floppy_config atom_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(atom),
+	DO_NOT_KEEP_GEOMETRY
+};
+
+static const mc6847_interface atom_mc6847_intf =
+{
+	DEVCB_HANDLER(atom_mc6847_videoram_r),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
+};
 
 /* machine definition */
 static MACHINE_DRIVER_START( atom )
@@ -271,11 +307,13 @@ static MACHINE_DRIVER_START( atom )
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
 
-	MDRV_VIDEO_START(atom)
-	MDRV_VIDEO_UPDATE(m6847)
+	MDRV_VIDEO_UPDATE(atom)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(320, 25+192+26)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
+
+	MDRV_MC6847_ADD("mc6847", atom_mc6847_intf)
+	MDRV_MC6847_TYPE(M6847_VERSION_ORIGINAL_PAL)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -296,6 +334,8 @@ static MACHINE_DRIVER_START( atom )
 
 	/* i8271 */
 	MDRV_I8271_ADD("i8271", atom_8271_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(atom_floppy_config)
 MACHINE_DRIVER_END
 
 
@@ -334,34 +374,6 @@ ROM_START (atomeb)
 	ROM_LOAD ("atomicw.rom",0x018000,0x1000, CRC(a3fd737d) SHA1(d418d9322c69c49106ed2c268ad0864c0f2c4c1b))    // Atomic Windows
 ROM_END
 
-static FLOPPY_OPTIONS_START(atom)
-	FLOPPY_OPTION(atom, "ssd", "Atom disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([80])
-		SECTORS([10])
-		SECTOR_LENGTH([256])
-		FIRST_SECTOR_ID([0]))
-FLOPPY_OPTIONS_END
-
-static void atom_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_atom; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(atom)
-	CONFIG_DEVICE(atom_floppy_getinfo)
-SYSTEM_CONFIG_END
-
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      CONFIG   COMPANY   FULLNAME */
-COMP( 1979, atom,     0,        0,		atom,     atom,     0,        atom,    "Acorn",  "Atom" , 0)
-COMP( 1979, atomeb,   atom,     0,		atomeb,   atom,     0,        atom,    "Acorn",  "Atom with Eprom Box" , 0)
+COMP( 1979, atom,     0,        0,		atom,     atom,     0,        0,    "Acorn",  "Atom" , 0)
+COMP( 1979, atomeb,   atom,     0,		atomeb,   atom,     0,        0,    "Acorn",  "Atom with Eprom Box" , 0)

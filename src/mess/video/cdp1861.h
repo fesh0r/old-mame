@@ -6,22 +6,22 @@
     Visit http://mamedev.org for licensing and usage restrictions.
 
 **********************************************************************
-							_______  _______
-			  CLK_	 1	---|	   \/		|---  24  Vdd
-		     DMAO_	 2	---|				|---  23  CLEAR_
-		      INT_	 3	---|				|---  22  SC1
-			   TPA	 4	---|				|---  21  SC0
-			   TPB	 5	---|				|---  20  DI7
-		COMP SYNC_	 6	---|	CDP1861C	|---  19  DI6
-			 VIDEO	 7	---|	top view	|---  18  DI5
-			RESET_	 8	---|				|---  17  DI4
-			  EFX_	 9	---|				|---  16  DI3
-		   DISP ON	10	---|			    |---  15  DI2
-		  DISP OFF	11	---|				|---  14  DI1
-			   Vss	12	---|________________|---  13  DI0
+                            _______  _______
+              CLK_   1  ---|       \/       |---  24  Vdd
+             DMAO_   2  ---|                |---  23  CLEAR_
+              INT_   3  ---|                |---  22  SC1
+               TPA   4  ---|                |---  21  SC0
+               TPB   5  ---|                |---  20  DI7
+        COMP SYNC_   6  ---|    CDP1861C    |---  19  DI6
+             VIDEO   7  ---|    top view    |---  18  DI5
+            RESET_   8  ---|                |---  17  DI4
+              EFX_   9  ---|                |---  16  DI3
+           DISP ON  10  ---|                |---  15  DI2
+          DISP OFF  11  ---|                |---  14  DI1
+               Vss  12  ---|________________|---  13  DI0
 
 
-		   http://homepage.mac.com/ruske/cosmacelf/cdp1861.pdf
+           http://homepage.mac.com/ruske/cosmacelf/cdp1861.pdf
 
 **********************************************************************/
 
@@ -67,6 +67,11 @@
 #define MDRV_CDP1861_ADD(_tag, _clock, _config) \
 	MDRV_DEVICE_ADD(_tag, CDP1861, _clock) \
 	MDRV_DEVICE_CONFIG(_config)
+
+#define MDRV_CDP1861_SCREEN_ADD(_tag, _clock) \
+	MDRV_SCREEN_ADD(_tag, RASTER) \
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16) \
+	MDRV_SCREEN_RAW_PARAMS(_clock, CDP1861_SCREEN_WIDTH, CDP1861_HBLANK_END, CDP1861_HBLANK_START, CDP1861_TOTAL_SCANLINES, CDP1861_SCANLINE_VBLANK_END, CDP1861_SCANLINE_VBLANK_START)
 
 #define CDP1861_INTERFACE(name) \
 	const cdp1861_interface (name) =

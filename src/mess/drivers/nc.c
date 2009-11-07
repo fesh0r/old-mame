@@ -40,7 +40,7 @@
         Hardware:
             - Z80 CPU
             - Intel 8251 compatible uart
-            - nec765 compatible floppy disc controller
+            - upd765 compatible floppy disc controller
             - mc146818 real time clock?
             - 720k floppy disc drive (compatible with MS-DOS)
             (disc drive can be not ready).
@@ -96,16 +96,17 @@
 #include "driver.h"
 #include "cpu/z80/z80.h"
 #include "includes/nc.h"
-#include "includes/serial.h"	/* for serial data transfers */
+#include "machine/serial.h"	/* for serial data transfers */
 #include "machine/ctronics.h"
 #include "machine/msm8251.h"	/* for NC100 uart */
 #include "machine/mc146818.h"	/* for NC200 real time clock */
 #include "machine/tc8521.h"	/* for NC100 real time clock */
-#include "machine/nec765.h"		/* for NC200 disk drive interface */
+#include "machine/upd765.h"		/* for NC200 disk drive interface */
 #include "devices/flopdrv.h"	/* for NC200 disk image */
 #include "formats/pc_dsk.h"		/* for NC200 disk image */
 #include "devices/cartslot.h"
 #include "sound/beep.h"
+#include "devices/messram.h"
 
 
 #define VERBOSE 0
@@ -259,7 +260,7 @@ static void nc200_machine_stop(running_machine *machine);
         bit 7: nc200 power on/off: 1 = on, 0=off
         bit 2: backlight: 1=off, 0=on
         bit 1: disk motor: 1=off, 0=disk motor???
-        bit 0: nec765 terminal count input
+        bit 0: upd765 terminal count input
 */
 
 
@@ -374,7 +375,7 @@ static void nc_refresh_memory_bank_config(running_machine *machine, int bank)
 
 			mem_bank = mem_bank & nc_membank_internal_ram_mask;
 
-			addr = mess_ram + (mem_bank<<14);
+			addr = messram_get_ptr(devtag_get_device(machine, "messram")) + (mem_bank<<14);
 
 			memory_set_bankptr(machine, bank+1, addr);
 			memory_set_bankptr(machine, bank+5, addr);
@@ -445,7 +446,7 @@ static void nc_refresh_memory_config(running_machine *machine)
 static mame_file *file;
 
 /* restore a block of memory from the nvram file */
-static void nc_common_restore_memory_from_stream(void)
+static void nc_common_restore_memory_from_stream(running_machine *machine)
 {
 	unsigned long stored_size;
 	unsigned long restore_size;
@@ -457,29 +458,30 @@ static void nc_common_restore_memory_from_stream(void)
 	/* get size of memory data stored */
 	mame_fread(file, &stored_size, sizeof(unsigned long));
 
-	if (stored_size > mess_ram_size)
-		restore_size = mess_ram_size;
+	if (stored_size > messram_get_size(devtag_get_device(machine, "messram")))
+		restore_size = messram_get_size(devtag_get_device(machine, "messram"));
 	else
 		restore_size = stored_size;
 
 	/* read as much as will fit into memory */
-	mame_fread(file, mess_ram, restore_size);
+	mame_fread(file, messram_get_ptr(devtag_get_device(machine, "messram")), restore_size);
 	/* seek over remaining data */
 	mame_fseek(file, SEEK_CUR,stored_size - restore_size);
 }
 
 /* store a block of memory to the nvram file */
-static void nc_common_store_memory_to_stream(void)
+static void nc_common_store_memory_to_stream(running_machine *machine)
 {
+	UINT32 size = messram_get_size(devtag_get_device(machine, "messram"));
 	if (!file)
 		return;
 
 	LOG(("storing nc memory\n"));
 	/* write size of memory data */
-	mame_fwrite(file, &mess_ram_size, sizeof(unsigned long));
+	mame_fwrite(file, &size, sizeof(UINT32));
 
 	/* write data block */
-	mame_fwrite(file, mess_ram, mess_ram_size);
+	mame_fwrite(file, messram_get_ptr(devtag_get_device(machine, "messram")), size);
 }
 
 static void nc_common_open_stream_for_reading(running_machine *machine)
@@ -969,7 +971,7 @@ static MACHINE_RESET( nc100 )
 		tc8521_load_stream(rtc, file);
 	}
 
-	nc_common_restore_memory_from_stream();
+	nc_common_restore_memory_from_stream(machine);
 
 	nc_common_close_stream();
 
@@ -984,7 +986,7 @@ static void nc100_machine_stop(running_machine *machine)
 		const device_config *rtc = devtag_get_device(machine, "rtc");
 		tc8521_save_stream(rtc, file);
 	}
-	nc_common_store_memory_to_stream();
+	nc_common_store_memory_to_stream(machine);
 	nc_common_close_stream();
 }
 
@@ -1311,12 +1313,13 @@ static WRITE_LINE_DEVICE_HANDLER( nc200_fdc_interrupt )
     nc_update_interrupts(device->machine);
 }
 
-static const nec765_interface nc200_nec765_interface=
+static const upd765_interface nc200_upd765_interface=
 {
     DEVCB_LINE(nc200_fdc_interrupt),
     NULL,
     NULL,
-    NEC765_RDY_PIN_CONNECTED
+    UPD765_RDY_PIN_CONNECTED,
+	{FLOPPY_0, NULL, NULL, NULL }
 };
 
 #ifdef UNUSED_FUNCTION
@@ -1340,10 +1343,6 @@ static MACHINE_RESET( nc200 )
 
     nc_common_init_machine(machine);
 
-    /* double sided, 80 track drive */
-	floppy_drive_set_geometry(image_from_devtype_and_index(machine, IO_FLOPPY, 0), FLOPPY_DRIVE_DS_80);
-	//floppy_drive_set_index_pulse_callback(image_from_devtype_and_index(machine, IO_FLOPPY, 0), nc200_floppy_drive_index_callback);
-
 	mc146818_init(machine, MC146818_STANDARD);
 
 	nc200_uart_interrupt_irq = 0;
@@ -1353,7 +1352,7 @@ static MACHINE_RESET( nc200 )
 	{
 		mc146818_load_stream(file);
 	}
-	nc_common_restore_memory_from_stream();
+	nc_common_restore_memory_from_stream(machine);
 	nc_common_close_stream();
 
 	/* fdc, serial */
@@ -1369,7 +1368,7 @@ static void nc200_machine_stop(running_machine *machine)
 	{
 		mc146818_save_stream(file);
 	}
-	nc_common_store_memory_to_stream();
+	nc_common_store_memory_to_stream(machine);
 	nc_common_close_stream();
 }
 
@@ -1467,17 +1466,17 @@ static WRITE8_HANDLER(nc200_uart_control_w)
 
 /* bit 7: nc200 power control: 1=on, 0=off */
 /* bit 1: disk motor??  */
-/* bit 0: NEC765 Terminal Count input */
+/* bit 0: UPD765 Terminal Count input */
 
 static WRITE8_HANDLER(nc200_memory_card_wait_state_w)
 {
-	const device_config *fdc = devtag_get_device(space->machine, "nec765");
+	const device_config *fdc = devtag_get_device(space->machine, "upd765");
 	LOG_DEBUG(("nc200 memory card wait state: PC: %04x %02x\n", cpu_get_pc(cputag_get_cpu(space->machine, "maincpu")), data));
 #if 0
 	floppy_drive_set_motor_state(0, 1);
 	floppy_drive_set_ready_state(0, 1, 1);
 #endif
-	nec765_tc_w(fdc, (data & 0x01));
+	upd765_tc_w(fdc, (data & 0x01));
 }
 
 /* bit 2: backlight: 1=off, 0=on */
@@ -1507,8 +1506,8 @@ static ADDRESS_MAP_START(nc200_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0xc0, 0xc0) AM_DEVREADWRITE("uart", msm8251_data_r, msm8251_data_w)
 	AM_RANGE(0xc1, 0xc1) AM_DEVREADWRITE("uart", msm8251_status_r, msm8251_control_w)
 	AM_RANGE(0xd0, 0xd1) AM_READWRITE(mc146818_port_r, mc146818_port_w)
-	AM_RANGE(0xe0, 0xe0) AM_DEVREAD("nec765", nec765_status_r)
-	AM_RANGE(0xe1, 0xe1) AM_DEVREADWRITE("nec765",nec765_data_r, nec765_data_w)
+	AM_RANGE(0xe0, 0xe0) AM_DEVREAD("upd765", upd765_status_r)
+	AM_RANGE(0xe1, 0xe1) AM_DEVREADWRITE("upd765",upd765_data_r, upd765_data_w)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START(nc200)
@@ -1671,8 +1670,23 @@ static MACHINE_DRIVER_START( nc100 )
 	MDRV_CARTSLOT_START(nc_pcmcia_card)
 	MDRV_CARTSLOT_LOAD(nc_pcmcia_card)
 	MDRV_CARTSLOT_UNLOAD(nc_pcmcia_card)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")
 MACHINE_DRIVER_END
 
+static const floppy_config nc200_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(pc),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 static MACHINE_DRIVER_START( nc200 )
 	MDRV_IMPORT_FROM( nc100 )
@@ -1700,7 +1714,13 @@ static MACHINE_DRIVER_START( nc200 )
 	/* no rtc */
 	MDRV_DEVICE_REMOVE("rtc")
 
-	MDRV_NEC765A_ADD("nec765", nc200_nec765_interface)
+	MDRV_UPD765A_ADD("upd765", nc200_upd765_interface)
+
+	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, nc200_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("128K")
 MACHINE_DRIVER_END
 
 
@@ -1756,34 +1776,8 @@ static SYSTEM_CONFIG_START(nc_common)
 	CONFIG_DEVICE(nc_common_serial_getinfo)
 SYSTEM_CONFIG_END
 
-static SYSTEM_CONFIG_START(nc100)
-	CONFIG_IMPORT_FROM(nc_common)
-	CONFIG_RAM_DEFAULT(64 * 1024)
-SYSTEM_CONFIG_END
-
-static void nc200_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_pc; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(nc200)
-	CONFIG_IMPORT_FROM(nc_common)
-	CONFIG_RAM_DEFAULT(128 * 1024)
-	CONFIG_DEVICE(nc200_floppy_getinfo)
-SYSTEM_CONFIG_END
-
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY         FULLNAME    FLAGS */
-COMP( 1992, nc100,  0,      0,      nc100,  nc100,  0,      nc100,  "Amstrad plc",  "NC100",    0 )
-COMP( 1992, nc150,  nc100,  0,      nc100,  nc100,  0,      nc100,  "Amstrad plc",  "NC150",    0 )
-COMP( 1993, nc200,  0,      0,      nc200,  nc200,  0,      nc200,  "Amstrad plc",  "NC200",    0 )
+COMP( 1992, nc100,  0,      0,      nc100,  nc100,  0,      nc_common,  "Amstrad plc",  "NC100",    0 )
+COMP( 1992, nc150,  nc100,  0,      nc100,  nc100,  0,      nc_common,  "Amstrad plc",  "NC150",    0 )
+COMP( 1993, nc200,  0,      0,      nc200,  nc200,  0,      nc_common,  "Amstrad plc",  "NC200",    0 )
 

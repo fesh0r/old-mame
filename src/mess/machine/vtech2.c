@@ -1,20 +1,21 @@
 /***************************************************************************
-	vtech2.c
+    vtech2.c
 
     machine driver
-	Juergen Buchmueller <pullmoll@t-online.de> MESS driver, Jan 2000
-	Davide Moretti <dave@rimini.com> ROM dump and hardware description
+    Juergen Buchmueller <pullmoll@t-online.de> MESS driver, Jan 2000
+    Davide Moretti <dave@rimini.com> ROM dump and hardware description
 
     TODO:
-		Add loading images from WAV files.
-		Printer and RS232 support.
-		Check if the FDC is really the same as in the
-		Laser 210/310 (aka VZ200/300) series.
+        Add loading images from WAV files.
+        Printer and RS232 support.
+        Check if the FDC is really the same as in the
+        Laser 210/310 (aka VZ200/300) series.
 
 ****************************************************************************/
 
 #include "driver.h"
 #include "includes/vtech2.h"
+#include "devices/flopdrv.h"
 #include "devices/cassette.h"
 #include "sound/speaker.h"
 
@@ -108,7 +109,7 @@ DRIVER_INIT(laser)
 	laser_latch = -1;
     mem = memory_region(machine, "maincpu");
 
-	for (i = 0; i < sizeof(laser_bank) / sizeof(laser_bank[0]); i++)
+	for (i = 0; i < ARRAY_LENGTH(laser_bank); i++)
 		laser_bank[i] = -1;
 }
 
@@ -123,7 +124,7 @@ static void laser_machine_init(running_machine *machine, int bank_mask, int vide
 	videoram = mem + laser_video_bank * 0x04000;
 	logerror("laser_machine_init(): bank mask $%04X, video %d [$%05X]\n", laser_bank_mask, laser_video_bank, laser_video_bank * 0x04000);
 
-	for (i = 0; i < sizeof(laser_bank) / sizeof(laser_bank[0]); i++)
+	for (i = 0; i < ARRAY_LENGTH(laser_bank); i++)
 		laser_bank_select_w(cputag_get_address_space(machine,"maincpu",ADDRESS_SPACE_PROGRAM), i, 0);
 }
 
@@ -187,7 +188,7 @@ WRITE8_HANDLER( laser_bank_select_w )
 			else
 			{
 				logerror("select bank #%d MASKED!\n", offset+1);
-				read_handler = return8_FF;
+				read_handler = SMH_NOP;
 				write_handler = SMH_NOP;
 			}
 		}
@@ -204,14 +205,14 @@ static const device_config *vtech2_cassette_image(running_machine *machine)
 /*************************************************
  * memory mapped I/O read
  * bit  function
- * 7	not assigned
- * 6	column 6
- * 5	column 5
- * 4	column 4
- * 3	column 3
- * 2	column 2
- * 1	column 1
- * 0	column 0
+ * 7    not assigned
+ * 6    column 6
+ * 5    column 5
+ * 4    column 4
+ * 3    column 3
+ * 2    column 2
+ * 1    column 1
+ * 0    column 0
  ************************************************/
 static int mra_bank(running_machine *machine, int bank, int offs)
 {
@@ -362,20 +363,9 @@ DEVICE_IMAGE_UNLOAD( laser_cart )
 	memset(&mem[0x30000], 0xff, 0x10000);
 }
 
-DEVICE_IMAGE_LOAD( laser_floppy )
-{
-	UINT8 buff[32];
-
-	image_fread(image, buff, sizeof(buff));
-	if (memcmp(buff, "\x80\x80\x80\x80\x80\x80\x00\xfe\0xe7\0x18\0xc3\x00\x00\x00\x80\x80", 16))
-		return INIT_FAIL;
-
-	return INIT_PASS;
-}
-
 static const device_config *laser_file(running_machine *machine)
 {
-	return image_from_devtype_and_index(machine, IO_FLOPPY, laser_drive);
+	return devtag_get_device( machine, laser_drive ? FLOPPY_1 : FLOPPY_0 );
 }
 
 static void laser_get_track(running_machine *machine)

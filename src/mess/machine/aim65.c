@@ -18,6 +18,7 @@
 /* M6502 main CPU */
 #include "cpu/m6502/m6502.h"
 
+#include "devices/messram.h"
 
 
 /******************************************************************************
@@ -127,7 +128,7 @@ void aim65_update_ds5(const device_config *device, int digit, int data)
 ******************************************************************************/
 
 
-UINT8 aim65_riot_b_r(const device_config *device, UINT8 olddata)
+READ8_DEVICE_HANDLER(aim65_riot_b_r)
 {
 	static const char *const keynames[] =
 	{
@@ -148,13 +149,13 @@ UINT8 aim65_riot_b_r(const device_config *device, UINT8 olddata)
 }
 
 
-void aim65_riot_a_w(const device_config *device, UINT8 data, UINT8 olddata)
+WRITE8_DEVICE_HANDLER(aim65_riot_a_w)
 {
 	riot_port_a = data;
 }
 
 
-void aim65_riot_irq(const device_config *device, int state)
+WRITE_LINE_DEVICE_HANDLER(aim65_riot_irq)
 {
 	cputag_set_input_line(device->machine, "maincpu", M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
 }
@@ -171,11 +172,11 @@ MACHINE_START( aim65 )
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	/* Init RAM */
-	memory_install_readwrite8_handler(space, 0, mess_ram_size - 1, 0, 0, SMH_BANK(1), SMH_BANK(1));
-	memory_set_bankptr(machine, 1, mess_ram);
+	memory_install_readwrite8_handler(space, 0, messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0, SMH_BANK(1), SMH_BANK(1));
+	memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
 
-	if (mess_ram_size < 4 * 1024)
-		memory_install_readwrite8_handler(space, mess_ram_size, 0x0fff, 0, 0, SMH_NOP, SMH_NOP);
+	if (messram_get_size(devtag_get_device(machine, "messram")) < 4 * 1024)
+		memory_install_readwrite8_handler(space, messram_get_size(devtag_get_device(machine, "messram")), 0x0fff, 0, 0, SMH_NOP, SMH_NOP);
 
 	via_cb1_w(via_0, 1, 1);
 	via_ca1_w(via_0, 1, 0);

@@ -3,18 +3,18 @@
     Mattel Aquarius
 
 
-	TODO:
+    TODO:
 
-	- hand controllers
-	- scramble RAM also
-	- CAQ tape support
-	- memory mapper
-	- proper video timings
-	- PAL mode
-	- floppy support
-	- modem
-	- "old" version of BASIC ROM
-	- Aquarius II
+    - hand controllers
+    - scramble RAM also
+    - CAQ tape support
+    - memory mapper
+    - proper video timings
+    - PAL mode
+    - floppy support
+    - modem
+    - "old" version of BASIC ROM
+    - Aquarius II
 
 ***************************************************************************/
 
@@ -28,7 +28,7 @@
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
 #include "devices/printer.h"
-
+#include "devices/messram.h"
 
 /***************************************************************************
     CONSTANTS
@@ -50,15 +50,15 @@ static UINT8 scrambler;
 ***************************************************************************/
 
 /*
-	To read stored data from cassette the program should look at bit zero of
-	the cassette input port and measure the time difference between leading
-	edges or trailing edges. This is to prevent DC level shifting from altering
-	pulse width of data. The program should then look for sync bytes for data
-	synchronisation before data block transfer. If there is any task that must
-	be performed during cassette loading, the maximum allowable time to do the
-	job after one byte from cassette, must be less than 80% of the period of a
-	mark cycle. Control must be returned at that time to the cassette routine
-	in order to maintain data integrity.
+    To read stored data from cassette the program should look at bit zero of
+    the cassette input port and measure the time difference between leading
+    edges or trailing edges. This is to prevent DC level shifting from altering
+    pulse width of data. The program should then look for sync bytes for data
+    synchronisation before data block transfer. If there is any task that must
+    be performed during cassette loading, the maximum allowable time to do the
+    job after one byte from cassette, must be less than 80% of the period of a
+    mark cycle. Control must be returned at that time to the cassette routine
+    in order to maintain data integrity.
 */
 static READ8_HANDLER( cassette_r )
 {
@@ -68,9 +68,9 @@ static READ8_HANDLER( cassette_r )
 
 
 /*
-	Sound and cassette port use a common pin. Therefore the signal to cassette
-	will appear on audio output. Sound port is a simple one bit I/O and therefore
-	it must be toggled at a specific rate under software control.
+    Sound and cassette port use a common pin. Therefore the signal to cassette
+    will appear on audio output. Sound port is a simple one bit I/O and therefore
+    it must be toggled at a specific rate under software control.
 */
 static WRITE8_HANDLER( cassette_w )
 {
@@ -83,16 +83,16 @@ static WRITE8_HANDLER( cassette_w )
 
 
 /*
-	The current state of the vertical sync will appear on bit 0 during a read of
-	this port. The waveform and timing spec is shown as follows:
+    The current state of the vertical sync will appear on bit 0 during a read of
+    this port. The waveform and timing spec is shown as follows:
 
-		|<-    Active scan period   ->|V.sync |<-
-		|      12.8 ms                |3.6 ms (PAL)
-		|                             |2.8 ms (NTSC)
-		+++++++++++++++++++++++++++++++       ++++++++++++
-		+                             +       +
-		+                             +       +
-	+++++                             +++++++++
+        |<-    Active scan period   ->|V.sync |<-
+        |      12.8 ms                |3.6 ms (PAL)
+        |                             |2.8 ms (NTSC)
+        +++++++++++++++++++++++++++++++       ++++++++++++
+        +                             +       +
+        +                             +       +
+    +++++                             +++++++++
 */
 static READ8_HANDLER( vsync_r )
 {
@@ -102,9 +102,9 @@ static READ8_HANDLER( vsync_r )
 
 
 /*
-	Bit D0 of this port controls the swapping of the lower 16K block in the memory
-	map with the upper 16K. A 1 in this bit indicates swapping. This bit is reset
-	after power up initialization.
+    Bit D0 of this port controls the swapping of the lower 16K block in the memory
+    map with the upper 16K. A 1 in this bit indicates swapping. This bit is reset
+    after power up initialization.
 */
 static WRITE8_HANDLER( mapper_w )
 {
@@ -112,9 +112,9 @@ static WRITE8_HANDLER( mapper_w )
 
 
 /*
-	Printer handshaking port (read) Port 0xFE when read, presents the clear
-	to send status from PRNHASK pin at bit D0. A 1 indicates printer is ready,
-	0 means not ready.
+    Printer handshaking port (read) Port 0xFE when read, presents the clear
+    to send status from PRNHASK pin at bit D0. A 1 indicates printer is ready,
+    0 means not ready.
 */
 static READ8_HANDLER( printer_r )
 {
@@ -123,10 +123,10 @@ static READ8_HANDLER( printer_r )
 
 
 /*
-	This is a single bit I/O at D0, it will perform as a serial output
-	port under software control. Since timing is done by software the
-	baudrate is variable. In BASIC this is a 1200 baud printer port for
-	the 40 column thermal printer.
+    This is a single bit I/O at D0, it will perform as a serial output
+    port under software control. Since timing is done by software the
+    baudrate is variable. In BASIC this is a 1200 baud printer port for
+    the 40 column thermal printer.
 */
 static WRITE8_HANDLER( printer_w )
 {
@@ -134,15 +134,15 @@ static WRITE8_HANDLER( printer_w )
 
 
 /*
-	This port is 6 bits wide, when read, it returns the row data from the
-	keyboard matrix. The keyboard is usually scanned in the following manner:
+    This port is 6 bits wide, when read, it returns the row data from the
+    keyboard matrix. The keyboard is usually scanned in the following manner:
 
-	The keyboard is a 6 row by 8 column matrix. The column is connected to
-	the higher order address bus A15-A8. When Z80 executes its input
-	instruction sets, either the current content of the accumulator (A) or
-	the content of register (B) will go to the higher order address bus.
-	Therefore the keyboard can be scanned by placing a specific scanning
-	pattern in (A) or (B) and reading the result returned on rows.
+    The keyboard is a 6 row by 8 column matrix. The column is connected to
+    the higher order address bus A15-A8. When Z80 executes its input
+    instruction sets, either the current content of the accumulator (A) or
+    the content of register (B) will go to the higher order address bus.
+    Therefore the keyboard can be scanned by placing a specific scanning
+    pattern in (A) or (B) and reading the result returned on rows.
 */
 static READ8_HANDLER( keyboard_r )
 {
@@ -162,22 +162,22 @@ static READ8_HANDLER( keyboard_r )
 
 
 /*
-	Software lock: Writing this port with an 8 bit value will set the software
-	scrambler pattern. The data that appears on the output side will be the
-	result of the input bus EX-ORed with this pattern, bit by bit. The software
-	lock is a scrambler built between the CPU and external interface. The
-	scrambling pattern is contained in port 0xFF and is not readable. CPU data
-	output to external bus will be XORed with this pattern in a bit by bit
-	fashion to generate the real data on external bus. By the same mechanism,
-	data from external bus is also XORed with this pattern and read by CPU.
+    Software lock: Writing this port with an 8 bit value will set the software
+    scrambler pattern. The data that appears on the output side will be the
+    result of the input bus EX-ORed with this pattern, bit by bit. The software
+    lock is a scrambler built between the CPU and external interface. The
+    scrambling pattern is contained in port 0xFF and is not readable. CPU data
+    output to external bus will be XORed with this pattern in a bit by bit
+    fashion to generate the real data on external bus. By the same mechanism,
+    data from external bus is also XORed with this pattern and read by CPU.
 
-	Therefore it the external device is RAM, the software lock simply has no
-	effect as long as the scrambling pattern remains unchanged. For I/O
-	operation the pattern is gated to 0 and thus scrambling action is nullified.
+    Therefore it the external device is RAM, the software lock simply has no
+    effect as long as the scrambling pattern remains unchanged. For I/O
+    operation the pattern is gated to 0 and thus scrambling action is nullified.
 
-	In BASIC operation the scrambling pattern is generated by a random number
-	routine. For game cartridge the lock pattern is generated from data in the
-	game cartridge itself.
+    In BASIC operation the scrambling pattern is generated by a random number
+    routine. For game cartridge the lock pattern is generated from data in the
+    game cartridge itself.
 */
 static WRITE8_HANDLER( scrambler_w )
 {
@@ -215,12 +215,12 @@ static WRITE8_HANDLER( floppy_w )
 static DRIVER_INIT( aquarius )
 {
 	/* install expansion memory if available */
-	if (mess_ram_size > 0x1000)
+	if (messram_get_size(devtag_get_device(machine, "messram")) > 0x1000)
 	{
 		const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
-		memory_install_readwrite8_handler(space, 0x4000, 0x4000 + mess_ram_size - 0x1000 - 1, 0, 0, SMH_BANK(1), SMH_BANK(1));
-		memory_set_bankptr(machine, 1, mess_ram);
+		memory_install_readwrite8_handler(space, 0x4000, 0x4000 + messram_get_size(devtag_get_device(machine, "messram")) - 0x1000 - 1, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
 	}
 }
 
@@ -239,7 +239,7 @@ static ADDRESS_MAP_START( aquarius_mem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( aquarius_io, ADDRESS_SPACE_IO, 8 )
-//	AM_RANGE(0x7e, 0x7f) AM_MIRROR(0xff00) AM_READWRITE(modem_r, modem_w)
+//  AM_RANGE(0x7e, 0x7f) AM_MIRROR(0xff00) AM_READWRITE(modem_r, modem_w)
 	AM_RANGE(0xf6, 0xf6) AM_MIRROR(0xff00) AM_DEVREADWRITE("ay8910", ay8910_r, ay8910_data_w)
 	AM_RANGE(0xf7, 0xf7) AM_MIRROR(0xff00) AM_DEVWRITE("ay8910", ay8910_address_w)
 	AM_RANGE(0xfc, 0xfc) AM_MIRROR(0xff00) AM_READWRITE(cassette_r, cassette_w)
@@ -431,7 +431,28 @@ static MACHINE_DRIVER_START( aquarius )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("bin")
 	MDRV_CARTSLOT_NOT_MANDATORY
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("4K")
+	MDRV_RAM_EXTRA_OPTIONS("8K,20K,36K")	
 MACHINE_DRIVER_END
+
+static FLOPPY_OPTIONS_START(aquarius)
+	/* 128K images, 64K/side */
+FLOPPY_OPTIONS_END
+
+static const floppy_config aquarius_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(aquarius),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 static MACHINE_DRIVER_START( aquarius_qd )
 	MDRV_IMPORT_FROM( aquarius )
@@ -440,6 +461,8 @@ static MACHINE_DRIVER_START( aquarius_qd )
 	MDRV_CPU_IO_MAP(aquarius_qd_io)
 
 	MDRV_DEVICE_REMOVE("cart")
+
+	MDRV_FLOPPY_2_DRIVES_ADD(aquarius_floppy_config)
 MACHINE_DRIVER_END
 
 
@@ -485,45 +508,10 @@ ROM_END
 
 
 /***************************************************************************
-    SYSTEM CONFIG
-***************************************************************************/
-static FLOPPY_OPTIONS_START(aquarius)
-	/* 128K images, 64K/side */
-FLOPPY_OPTIONS_END
-
-static void aquarius_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_aquarius; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( aquarius )
-	CONFIG_RAM_DEFAULT( 4 * 1024)
-	CONFIG_RAM		  ( 8 * 1024)
-	CONFIG_RAM		  (20 * 1024)
-	CONFIG_RAM		  (36 * 1024)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( aquarius_qd )
-	CONFIG_IMPORT_FROM(aquarius)
-	CONFIG_DEVICE(aquarius_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-
-/***************************************************************************
     GAME DRIVERS
 ***************************************************************************/
 
 /*    YEAR  NAME         PARENT    COMPAT  MACHINE      INPUT     INIT      CONFIG       COMPANY   FULLNAME                         FLAGS */
-COMP( 1983, aquarius,    0,        0,      aquarius,    aquarius, aquarius, aquarius,    "Mattel", "Aquarius (NTSC)",               0 )
-COMP( 1983, aquarius_qd, aquarius, 0,      aquarius_qd, aquarius, aquarius, aquarius_qd, "Mattel", "Aquarius w/ Quick Disk (NTSC)", 0 )
-//COMP(	1984,	aquariu2,	aquarius,	0,		aquarius,	aquarius,	0,		aquarius,	"Mattel",	"Aquarius II",	GAME_NOT_WORKING )
+COMP( 1983, aquarius,    0,        0,      aquarius,    aquarius, aquarius, 0,    "Mattel", "Aquarius (NTSC)",               0 )
+COMP( 1983, aquarius_qd, aquarius, 0,      aquarius_qd, aquarius, aquarius, 0, "Mattel", "Aquarius w/ Quick Disk (NTSC)", 0 )
+//COMP( 1984,   aquariu2,   aquarius,   0,      aquarius,   aquarius,   0,      0,   "Mattel",   "Aquarius II",  GAME_NOT_WORKING )

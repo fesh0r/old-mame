@@ -214,7 +214,7 @@ DEVICE_IMAGE_LOAD (msx_cart)
 		else /*if (size <= 0xc000) */ {
 			if (page) {
 				/* shift up 16kB; custom memcpy so overlapping memory
-				   isn't corrupted. ROM starts in page 1 (0x4000) */
+                   isn't corrupted. ROM starts in page 1 (0x4000) */
 				UINT8 *m;
 
 				page = 1;
@@ -474,7 +474,7 @@ DRIVER_INIT( msx )
 
 	memset (&msx1, 0, sizeof (MSX));
 	/* LOAD_DEVICE is called before DRIVER_INIT */
-	for (i=0; i<MSX_MAX_CARTS; i++) 
+	for (i=0; i<MSX_MAX_CARTS; i++)
 	{
 		msx1.cart_state[i] = cart_state[i];
 	}
@@ -690,11 +690,11 @@ WD1793 or wd2793 registers
 
 adress
 
-7FF8H read	status register
-	  write command register
-7FF9H  r/w	track register (r/o on NMS 8245 and Sony)
-7FFAH  r/w	sector register (r/o on NMS 8245 and Sony)
-7FFBH  r/w	data register
+7FF8H read  status register
+      write command register
+7FF9H  r/w  track register (r/o on NMS 8245 and Sony)
+7FFAH  r/w  sector register (r/o on NMS 8245 and Sony)
+7FFBH  r/w  data register
 
 
 hardware registers
@@ -703,25 +703,35 @@ adress
 
 7FFCH r/w  bit 0 side select
 7FFDH r/w  b7>M-on , b6>in-use , b1>ds1 , b0>ds0  (all neg. logic)
-7FFEH		  not used
+7FFEH         not used
 7FFFH read b7>drq , b6>intrq
 
 set on 7FFDH bit 2 always to 0 (some use it as disk change reset)
 
 */
 
-static WD17XX_CALLBACK( msx_wd179x_int )
+static WRITE_LINE_DEVICE_HANDLER( msx_wd179x_intrq_w )
 {
-	switch (state)
-	{
-		case WD17XX_IRQ_CLR: msx1.dsk_stat |= 0x40; break;
-		case WD17XX_IRQ_SET: msx1.dsk_stat &= ~0x40; break;
-		case WD17XX_DRQ_CLR: msx1.dsk_stat |= 0x80; break;
-		case WD17XX_DRQ_SET: msx1.dsk_stat &= ~0x80; break;
-	}
+	if (state)
+		msx1.dsk_stat &= ~0x40;
+	else
+		msx1.dsk_stat |= 0x40;
 }
 
-const wd17xx_interface msx_wd17xx_interface = { msx_wd179x_int, NULL };
+static WRITE_LINE_DEVICE_HANDLER( msx_wd179x_drq_w )
+{
+	if (state)
+		msx1.dsk_stat &= ~0x80;
+	else
+		msx1.dsk_stat |= 0x80;
+}
+
+const wd17xx_interface msx_wd17xx_interface =
+{
+	DEVCB_LINE(msx_wd179x_intrq_w),
+	DEVCB_LINE(msx_wd179x_drq_w),
+	{FLOPPY_0, FLOPPY_1, NULL, NULL}
+};
 
 FLOPPY_OPTIONS_START(msx)
 	FLOPPY_OPTION(msx, "dsk", "MSX SS", basicdsk_identify_default, basicdsk_construct_default,

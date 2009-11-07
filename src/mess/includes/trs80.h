@@ -27,6 +27,7 @@ extern UINT8 trs80_mode;
 QUICKLOAD_LOAD( trs80_cmd );
 
 MACHINE_RESET( trs80 );
+MACHINE_RESET( trs80m4 );
 MACHINE_RESET( lnw80 );
 
 WRITE8_HANDLER ( trs80_ff_w );
@@ -42,6 +43,7 @@ WRITE8_HANDLER ( trs80m4_e9_w );
 WRITE8_HANDLER ( trs80m4_e8_w );
 WRITE8_HANDLER ( trs80m4_e4_w );
 WRITE8_HANDLER ( trs80m4_e0_w );
+WRITE8_HANDLER ( trs80m4p_9c_w );
 WRITE8_HANDLER ( trs80m4_90_w );
 WRITE8_HANDLER ( trs80m4_84_w );
 READ8_HANDLER ( lnw80_fe_r );

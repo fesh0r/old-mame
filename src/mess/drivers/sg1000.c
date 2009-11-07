@@ -8,44 +8,44 @@ PCB Layout
 171-5078 (C) SEGA 1983
 171-5046 REV. A (C) SEGA 1983
 
-|---------------------------|							   |----------------------------|
-|	SW1		CN2				|   |------|---------------|   |	SW2		CN4				|
-|							|---|		  CN3		   |---|							|
-|  CN1																				CN5	|
-|																						|
-|	10.738635MHz			|------------------------------|				7805		|
-|	|---|					|------------------------------|							|
-|	|   |								  CN6											|
-|	| 9 |																				|
-|	| 9 |																		LS32	|
-|	| 1 |		|---------|																|
-|	| 8 |		| TMM2009 |														LS139	|
-|	| A |		|---------|				|------------------|							|
-|	|   |								|		Z80		   |							|
-|   |---|								|------------------|							|
-|																						|
-|																						|
-|		MB8118	MB8118	MB8118	MB8118				SN76489A			SW3				|
-|			MB8118	MB8118	MB8118	MB8118							LS257	LS257		|
+|---------------------------|                              |----------------------------|
+|   SW1     CN2             |   |------|---------------|   |    SW2     CN4             |
+|                           |---|         CN3          |---|                            |
+|  CN1                                                                              CN5 |
+|                                                                                       |
+|   10.738635MHz            |------------------------------|                7805        |
+|   |---|                   |------------------------------|                            |
+|   |   |                                 CN6                                           |
+|   | 9 |                                                                               |
+|   | 9 |                                                                       LS32    |
+|   | 1 |       |---------|                                                             |
+|   | 8 |       | TMM2009 |                                                     LS139   |
+|   | A |       |---------|             |------------------|                            |
+|   |   |                               |       Z80        |                            |
+|   |---|                               |------------------|                            |
+|                                                                                       |
+|                                                                                       |
+|       MB8118  MB8118  MB8118  MB8118              SN76489A            SW3             |
+|           MB8118  MB8118  MB8118  MB8118                          LS257   LS257       |
 |---------------------------------------------------------------------------------------|
 
 Notes:
     All IC's shown.
 
-	Z80		- NEC D780C-1 / Zilog Z8400A (REV.A) Z80A CPU @ 3.579545
-	TMS9918A- Texas Instruments TMS9918ANL Video Display Processor @ 10.738635MHz
-	MB8118	- Fujitsu MB8118-12 16K x 1 Dynamic RAM
-	TMM2009	- Toshiba TMM2009P-A / TMM2009P-B (REV.A)
-	SN76489A- Texas Instruments SN76489AN Digital Complex Sound Generator @ 3.579545
-	CN1		- player 1 joystick connector
-	CN2		- RF video connector
-	CN3		- keyboard connector
-	CN4		- power connector (+9VDC)
-	CN5		- player 2 joystick connector
-	CN6		- cartridge connector
-	SW1		- TV channel select switch
-	SW2		- power switch
-	SW3		- hold switch
+    Z80     - NEC D780C-1 / Zilog Z8400A (REV.A) Z80A CPU @ 3.579545
+    TMS9918A- Texas Instruments TMS9918ANL Video Display Processor @ 10.738635MHz
+    MB8118  - Fujitsu MB8118-12 16K x 1 Dynamic RAM
+    TMM2009 - Toshiba TMM2009P-A / TMM2009P-B (REV.A)
+    SN76489A- Texas Instruments SN76489AN Digital Complex Sound Generator @ 3.579545
+    CN1     - player 1 joystick connector
+    CN2     - RF video connector
+    CN3     - keyboard connector
+    CN4     - power connector (+9VDC)
+    CN5     - player 2 joystick connector
+    CN6     - cartridge connector
+    SW1     - TV channel select switch
+    SW2     - power switch
+    SW3     - hold switch
 
 */
 
@@ -53,12 +53,12 @@ Notes:
 
     TODO:
 
-	- OMV keyboard
-	- SC-3000 return instruction referenced by R when reading ports 60-7f,e0-ff
-	- connect the PSG /READY signal
-	- accurate video timing
+    - OMV keyboard
+    - SC-3000 return instruction referenced by R when reading ports 60-7f,e0-ff
+    - connect the PSG /READY signal
+    - accurate video timing
     - SP-400 serial printer
-	- SH-400 racing controller
+    - SH-400 racing controller
     - SF-7000 serial comms
 
 */
@@ -72,12 +72,13 @@ Notes:
 #include "devices/cassette.h"
 #include "devices/printer.h"
 #include "machine/ctronics.h"
-#include "includes/serial.h"
+#include "machine/serial.h"
 #include "machine/msm8251.h"
 #include "machine/i8255a.h"
-#include "machine/nec765.h"
+#include "machine/upd765.h"
 #include "sound/sn76496.h"
 #include "video/tms9928a.h"
+#include "devices/messram.h"
 
 /* Terebi Oekaki (TV Draw) */
 
@@ -169,12 +170,12 @@ ADDRESS_MAP_END
 
 /* This is how the I/O ports are really mapped, but MAME does not support overlapping ranges
 static ADDRESS_MAP_START( sc3000_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_MIRROR(0xdf) AM_DEVREADWRITE("ppi8255", i8255a_r, i8255a_w)
-	AM_RANGE(0x00, 0x00) AM_MIRROR(0x7f) AM_WRITE(sn76496_0_w)
-	AM_RANGE(0x00, 0x00) AM_MIRROR(0xae) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
-	AM_RANGE(0x01, 0x01) AM_MIRROR(0xae) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
-	AM_RANGE(0x60, 0x60) AM_MIRROR(0x9f) AM_READ(sc3000_r_r)
+    ADDRESS_MAP_GLOBAL_MASK(0xff)
+    AM_RANGE(0x00, 0x00) AM_MIRROR(0xdf) AM_DEVREADWRITE("ppi8255", i8255a_r, i8255a_w)
+    AM_RANGE(0x00, 0x00) AM_MIRROR(0x7f) AM_WRITE(sn76496_0_w)
+    AM_RANGE(0x00, 0x00) AM_MIRROR(0xae) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
+    AM_RANGE(0x01, 0x01) AM_MIRROR(0xae) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
+    AM_RANGE(0x60, 0x60) AM_MIRROR(0x9f) AM_READ(sc3000_r_r)
 ADDRESS_MAP_END
 */
 
@@ -191,8 +192,8 @@ static ADDRESS_MAP_START( sf7000_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xbe, 0xbe) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0xbf, 0xbf) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
 	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE("ppi8255_0", i8255a_r, i8255a_w)
-	AM_RANGE(0xe0, 0xe0) AM_DEVREAD(NEC765_TAG, nec765_status_r)
-	AM_RANGE(0xe1, 0xe1) AM_DEVREADWRITE(NEC765_TAG, nec765_data_r, nec765_data_w)
+	AM_RANGE(0xe0, 0xe0) AM_DEVREAD(UPD765_TAG, upd765_status_r)
+	AM_RANGE(0xe1, 0xe1) AM_DEVREADWRITE(UPD765_TAG, upd765_data_r, upd765_data_w)
 	AM_RANGE(0xe4, 0xe7) AM_DEVREADWRITE("ppi8255_1", i8255a_r, i8255a_w)
 	AM_RANGE(0xe8, 0xe8) AM_DEVREADWRITE("uart", msm8251_data_r, msm8251_data_w)
 	AM_RANGE(0xe9, 0xe9) AM_DEVREADWRITE("uart", msm8251_status_r, msm8251_control_w)
@@ -398,28 +399,28 @@ static INPUT_PORTS_START( omv )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 /*
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_0) PORT_CHAR('0')
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_1) PORT_CHAR('1')
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_2) PORT_CHAR('2')
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_3) PORT_CHAR('3')
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_4) PORT_CHAR('4')
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_5) PORT_CHAR('5')
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_6) PORT_CHAR('6')
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_7) PORT_CHAR('7')
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_8) PORT_CHAR('8')
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_9) PORT_CHAR('9')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_0) PORT_CHAR('0')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_1) PORT_CHAR('1')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_2) PORT_CHAR('2')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_3) PORT_CHAR('3')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_4) PORT_CHAR('4')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_5) PORT_CHAR('5')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_6) PORT_CHAR('6')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_7) PORT_CHAR('7')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_8) PORT_CHAR('8')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_9) PORT_CHAR('9')
 
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_A) PORT_CHAR('A')
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_B) PORT_CHAR('B')
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_C) PORT_CHAR('C')
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_D) PORT_CHAR('D')
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_E) PORT_CHAR('E')
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F) PORT_CHAR('F')
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_G) PORT_CHAR('G')
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_H) PORT_CHAR('H')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_A) PORT_CHAR('A')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_B) PORT_CHAR('B')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_C) PORT_CHAR('C')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_D) PORT_CHAR('D')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_E) PORT_CHAR('E')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F) PORT_CHAR('F')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_G) PORT_CHAR('G')
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_H) PORT_CHAR('H')
 
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("S-1") PORT_CODE(KEYCODE_LCONTROL) PORT_CHAR(UCHAR_MAMEKEY(LCONTROL))
-	PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("S-1") PORT_CODE(KEYCODE_RCONTROL) PORT_CHAR(UCHAR_MAMEKEY(RCONTROL))
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("S-1") PORT_CODE(KEYCODE_LCONTROL) PORT_CHAR(UCHAR_MAMEKEY(LCONTROL))
+    PORT_BIT( 0x, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("S-1") PORT_CODE(KEYCODE_RCONTROL) PORT_CHAR(UCHAR_MAMEKEY(RCONTROL))
 */
 	PORT_START("NMI")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START ) PORT_NAME("PAUSE") PORT_CODE(KEYCODE_P) PORT_CHANGED(trigger_nmi, 0)
@@ -621,7 +622,7 @@ static READ8_DEVICE_HANDLER( sf7000_ppi8255_a_r )
 
 static WRITE8_DEVICE_HANDLER( sf7000_ppi8255_c_w )
 {
-	const device_config *fdc = devtag_get_device(device->machine, NEC765_TAG);
+	const device_config *fdc = devtag_get_device(device->machine, UPD765_TAG);
 	const device_config *printer = devtag_get_device(device->machine, CENTRONICS_TAG);
 	/*
         Signal  Description
@@ -637,16 +638,16 @@ static WRITE8_DEVICE_HANDLER( sf7000_ppi8255_c_w )
     */
 
 	/* floppy motor */
-	floppy_drive_set_motor_state(image_from_devtype_and_index(device->machine, IO_FLOPPY, 0), (data & 0x02) ? 0 : 1);
-	floppy_drive_set_ready_state(image_from_devtype_and_index(device->machine, IO_FLOPPY, 0), 1, 0);
+	floppy_drive_set_motor_state(floppy_get_device(device->machine, 0), (data & 0x02) ? 0 : 1);
+	floppy_drive_set_ready_state(floppy_get_device(device->machine, 0), 1, 0);
 
 	/* FDC terminal count */
-	nec765_tc_w(fdc, data & 0x04);
+	upd765_tc_w(fdc, data & 0x04);
 
 	/* FDC reset */
 	if (data & 0x08)
 	{
-		nec765_reset(fdc, 0);
+		upd765_reset(fdc, 0);
 	}
 
 	/* ROM selection */
@@ -690,12 +691,13 @@ static void sf7000_fdc_index_callback(const device_config *controller, const dev
 	driver_state->fdc_index = state;
 }
 
-static const struct nec765_interface sf7000_nec765_interface =
+static const struct upd765_interface sf7000_upd765_interface =
 {
 	DEVCB_LINE(sf7000_fdc_interrupt),
 	NULL,
 	NULL,
-	NEC765_RDY_PIN_CONNECTED
+	UPD765_RDY_PIN_CONNECTED,
+	{FLOPPY_0, NULL, NULL, NULL }
 };
 
 
@@ -710,12 +712,12 @@ static MACHINE_START( sf7000 )
 	TMS9928A_configure(&tms9928a_interface);
 
 	/* configure FDC */
-	floppy_drive_set_index_pulse_callback(image_from_devtype_and_index(machine, IO_FLOPPY, 0), sf7000_fdc_index_callback);
+	floppy_drive_set_index_pulse_callback(floppy_get_device(machine, 0), sf7000_fdc_index_callback);
 
 	/* configure memory banking */
 	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, Z80_TAG), 0);
-	memory_configure_bank(machine, 1, 1, 1, mess_ram, 0);
-	memory_configure_bank(machine, 2, 0, 1, mess_ram, 0);
+	memory_configure_bank(machine, 1, 1, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
+	memory_configure_bank(machine, 2, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
 
 	/* register for state saving */
 	state_save_register_global(machine, state->keylatch);
@@ -808,7 +810,7 @@ static void sc3000_map_cartridge_memory(running_machine *machine, UINT8 *ptr, in
 
 static DEVICE_IMAGE_LOAD( sc3000_cart )
 {
-//	const address_space *program = cputag_get_address_space(image->machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
+//  const address_space *program = cputag_get_address_space(image->machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 	int size = image_length(image);
 	UINT8 *ptr = memory_region(image->machine, Z80_TAG);
 
@@ -852,6 +854,10 @@ static MACHINE_DRIVER_START( sg1000 )
 	MDRV_CARTSLOT_EXTENSION_LIST("sg,bin")
 	MDRV_CARTSLOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(sg1000_cart)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("1K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( omv )
@@ -905,7 +911,32 @@ static MACHINE_DRIVER_START( sc3000 )
 	MDRV_CARTSLOT_EXTENSION_LIST("sg,sc,bin")
 	MDRV_CARTSLOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(sc3000_cart)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("2K")
 MACHINE_DRIVER_END
+
+static FLOPPY_OPTIONS_START(sf7000)
+	FLOPPY_OPTION(sf7000, "sf7", "SF7 disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([40])
+		SECTORS([16])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([1]))
+FLOPPY_OPTIONS_END
+
+static const floppy_config sf7000_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(sf7000),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 static MACHINE_DRIVER_START( sf7000 )
 	MDRV_DRIVER_DATA(sg1000_state)
@@ -943,7 +974,13 @@ static MACHINE_DRIVER_START( sf7000 )
 	/* uart */
 	MDRV_MSM8251_ADD("uart", default_msm8251_interface)
 
-	MDRV_NEC765A_ADD(NEC765_TAG, sf7000_nec765_interface)
+	MDRV_UPD765A_ADD(UPD765_TAG, sf7000_upd765_interface)
+
+	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, sf7000_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -980,30 +1017,6 @@ ROM_START( sf7000 )
 ROM_END
 
 /* System Configuration */
-static FLOPPY_OPTIONS_START(sf7000)
-	FLOPPY_OPTION(sf7000, "sf7", "SF7 disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([40])
-		SECTORS([16])
-		SECTOR_LENGTH([256])
-		FIRST_SECTOR_ID([1]))
-FLOPPY_OPTIONS_END
-
-static void sf7000_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_sf7000; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
 static void sf7000_serial_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* serial */
@@ -1022,18 +1035,7 @@ static void sf7000_serial_getinfo(const mess_device_class *devclass, UINT32 stat
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:			strcpy(info->s = device_temp_str(), "txt"); break;
 	}
 }
-
-static SYSTEM_CONFIG_START( sg1000 )
-	CONFIG_RAM_DEFAULT	(1 * 1024)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( sc3000 )
-	CONFIG_RAM_DEFAULT	(2 * 1024)
-SYSTEM_CONFIG_END
-
 static SYSTEM_CONFIG_START( sf7000 )
-	CONFIG_RAM_DEFAULT	(64 * 1024)
-	CONFIG_DEVICE(sf7000_floppy_getinfo)
 	CONFIG_DEVICE(sf7000_serial_getinfo)
 SYSTEM_CONFIG_END
 
@@ -1041,10 +1043,10 @@ SYSTEM_CONFIG_END
 /* System Drivers */
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY   FULLNAME */
-CONS( 1983,	sg1000,		0,		0,		sg1000,		sg1000,		0,		sg1000,		"Sega",	"SG-1000", GAME_SUPPORTS_SAVE )
-CONS( 1984,	sg1000m2,	sg1000,	0,		sc3000,		sc3000,		0,		sc3000,		"Sega",	"SG-1000 II", GAME_SUPPORTS_SAVE )
-COMP( 1983,	sc3000,		0,		0,		sc3000,		sc3000,		0,		sc3000,		"Sega",	"SC-3000", GAME_SUPPORTS_SAVE )
-COMP( 1983,	sc3000h,	sc3000,	0,		sc3000,		sc3000,		0,		sc3000,		"Sega",	"SC-3000H", GAME_SUPPORTS_SAVE )
+CONS( 1983,	sg1000,		0,		0,		sg1000,		sg1000,		0,		0,		"Sega",	"SG-1000", GAME_SUPPORTS_SAVE )
+CONS( 1984,	sg1000m2,	sg1000,	0,		sc3000,		sc3000,		0,		0,		"Sega",	"SG-1000 II", GAME_SUPPORTS_SAVE )
+COMP( 1983,	sc3000,		0,		0,		sc3000,		sc3000,		0,		0,		"Sega",	"SC-3000", GAME_SUPPORTS_SAVE )
+COMP( 1983,	sc3000h,	sc3000,	0,		sc3000,		sc3000,		0,		0,		"Sega",	"SC-3000H", GAME_SUPPORTS_SAVE )
 COMP( 1983,	sf7000,		sc3000, 0,		sf7000,		sf7000,		0,		sf7000,		"Sega",	"SC-3000/Super Control Station SF-7000", GAME_SUPPORTS_SAVE )
 CONS( 1984,	omv1000,    sg1000,	0,      omv,        omv,        0,      0,        "Tsukuda Original", "Othello Multivision FG-1000", GAME_NOT_WORKING )
 CONS( 1984,	omv2000,    sg1000,	0,      omv,        omv,        0,      0,        "Tsukuda Original", "Othello Multivision FG-2000", GAME_NOT_WORKING )

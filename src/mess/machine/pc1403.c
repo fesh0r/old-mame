@@ -4,6 +4,7 @@
 #include "includes/pocketc.h"
 #include "includes/pc1401.h"
 #include "includes/pc1403.h"
+#include "devices/messram.h"
 
 /* C-CE while reset, program will not be destroyed! */
 
@@ -84,7 +85,7 @@ int pc1403_ina(const device_config *device)
     if (outa & 0x01)
 	{
 		data |= input_port_read(device->machine, "KEY7");
-		
+
 		/* At Power Up we fake a 'C-CE' pressure */
 		if (power)
 			data |= 0x02;
@@ -116,7 +117,7 @@ int pc1403_inb(void)
 {
 	int data = outb;
 
-	if (input_port_read(machine, "KEY13")) 
+	if (input_port_read(machine, "KEY13"))
 		data |= 1;
 
 	return data;
@@ -180,7 +181,7 @@ DRIVER_INIT( pc1403 )
 	timer_set(machine, ATTOTIME_IN_SEC(1), NULL, 0, pc1403_power_up);
 
 	memory_set_bankptr(machine, 1, memory_region(machine, "user1"));
-	/* NPW 28-Jun-2006 - Input ports can't be read at init time! Even then, this should use mess_ram */
+	/* NPW 28-Jun-2006 - Input ports can't be read at init time! Even then, this should use messram_get_ptr(devtag_get_device(machine, "messram")) */
 	if (0 && (input_port_read(machine, "DSW0") & 0x80) == 0x80)
 	{
 		memory_install_read8_handler(space, 0x8000, 0xdfff, 0, 0, SMH_RAM);

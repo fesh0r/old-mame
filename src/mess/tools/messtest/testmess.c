@@ -1,8 +1,8 @@
 /*********************************************************************
 
-	testmess.c
+    testmess.c
 
-	MESS testing code
+    MESS testing code
 
 *********************************************************************/
 
@@ -18,7 +18,7 @@
 #include "video/generic.h"
 #include "render.h"
 #include "messopts.h"
-
+#include "devices/messram.h"
 #include "debug/debugcpu.h"
 
 
@@ -216,7 +216,7 @@ static void dump_screenshot(running_machine *machine, int write_file)
 	if (write_file)
 	{
 		/* dump a screenshot */
-		snprintf(buf, sizeof(buf) / sizeof(buf[0]),
+		snprintf(buf, ARRAY_LENGTH(buf),
 			(screenshot_num >= 0) ? "_%s_%d.png" : "_%s.png",
 			current_testcase.name, screenshot_num);
 		filerr = mame_fopen(SEARCHPATH_SCREENSHOT, buf, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE, &fp);
@@ -280,7 +280,7 @@ static void messtest_output_error(void *param, const char *format, va_list argpt
 	char *s;
 	int pos, nextpos;
 
-	vsnprintf(buffer, sizeof(buffer) / sizeof(buffer[0]), format, argptr);
+	vsnprintf(buffer, ARRAY_LENGTH(buffer), format, argptr);
 
 	pos = 0;
 	while(buffer[pos] != '\0')
@@ -451,7 +451,7 @@ int osd_start_audio_stream(int stereo)
 
 	if (current_testcase.wavwrite)
 	{
-		snprintf(buf, sizeof(buf) / sizeof(buf[0]), "snap/_%s.wav", current_testcase.name);
+		snprintf(buf, ARRAY_LENGTH(buf), "snap/_%s.wav", current_testcase.name);
 		wavptr = wav_open(buf, machine->sample_rate, 2);
 	}
 	else
@@ -712,11 +712,6 @@ static const device_config *find_device_by_identity(running_machine *machine, co
 		/* no device_type was specified; use the new preferred mechanism */
 		device = devtag_get_device(machine, ident->tag);
 	}
-	else if (ident->tag != NULL)
-	{
-		/* perform a legacy lookup by tag */
-		device = image_from_devtag_and_index(machine, ident->tag, ident->slot);
-	}
 	else
 	{
 		/* perform a legacy lookup by device type */
@@ -782,7 +777,7 @@ static void command_image_loadcreate(running_machine *machine)
 	filename = current_command->u.image_args.filename;
 	if (!filename)
 	{
-		snprintf(buf, sizeof(buf) / sizeof(buf[0]),	"%s.%s",
+		snprintf(buf, ARRAY_LENGTH(buf),	"%s.%s",
 			current_testcase.name, file_extensions);
 		osd_get_temp_filename(buf, ARRAY_LENGTH(buf), buf);
 		filename = buf;
@@ -827,8 +822,8 @@ static void command_verify_memory(running_machine *machine)
 	offs_t offset, offset_start, offset_end;
 	const UINT8 *verify_data;
 	size_t verify_data_size;
-	const UINT8 *target_data;
-	size_t target_data_size;
+	const UINT8 *target_data = NULL;
+	size_t target_data_size = 0;
 	const char *region;
 
 	offset_start = current_command->u.verify_args.start;
@@ -846,12 +841,6 @@ static void command_verify_memory(running_machine *machine)
 		/* we're validating a conventional memory region */
 		target_data = memory_region(machine, region);
 		target_data_size = memory_region_length(machine, region);
-	}
-	else
-	{
-		/* we're validating mess_ram */
-		target_data = mess_ram;
-		target_data_size = mess_ram_size;
 	}
 
 	/* sanity check the ranges */
@@ -918,7 +907,7 @@ static void command_verify_image(running_machine *machine)
 	}
 
 	/* very dirty hack - we unload the image because we cannot access it
-	 * because the file is locked */
+     * because the file is locked */
 	strcpy(filename_buf, filename);
 	image_unload(image);
 	filename = filename_buf;
@@ -962,9 +951,9 @@ static void command_trace(running_machine *machine)
 	for (cpu = cpu_first(machine->config); cpu != NULL; cpu = cpu_next(cpu))
 	{
 		if (cpu_next(cpu_first(machine->config)) == NULL)
-			snprintf(filename, sizeof(filename) / sizeof(filename[0]), "_%s.tr", current_testcase.name);
+			snprintf(filename, ARRAY_LENGTH(filename), "_%s.tr", current_testcase.name);
 		else
-			snprintf(filename, sizeof(filename) / sizeof(filename[0]), "_%s.%d.tr", current_testcase.name, cpunum);
+			snprintf(filename, ARRAY_LENGTH(filename), "_%s.%d.tr", current_testcase.name, cpunum);
 
 		file = fopen(filename, "w");
 		if (file)
@@ -1066,7 +1055,7 @@ void osd_update(running_machine *machine, int skip_redraw)
 		return;
 	}
 
-	for (i = 0; i < sizeof(commands) / sizeof(commands[i]); i++)
+	for (i = 0; i < ARRAY_LENGTH(commands); i++)
 	{
 		if (current_command->command_type == commands[i].command_type)
 		{
@@ -1079,8 +1068,8 @@ void osd_update(running_machine *machine, int skip_redraw)
 	if (state == STATE_READY)
 	{
 		/* if we are at the end, and we are dumping screenshots, and we didn't
-		 * just dump a screenshot, dump one now
-		 */
+         * just dump a screenshot, dump one now
+         */
 		if ((test_flags & MESSTEST_ALWAYS_DUMP_SCREENSHOT) &&
 			(current_command[0].command_type != MESSTEST_COMMAND_SCREENSHOT) &&
 			(current_command[1].command_type == MESSTEST_COMMAND_END))

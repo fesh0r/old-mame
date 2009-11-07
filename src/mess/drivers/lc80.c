@@ -8,13 +8,13 @@
 
 /*
 
-	TODO:
+    TODO:
 
-	- HALT led
-	- KSD11 switch
-	- banking for ROM 4-5
-	- Schachcomputer SC-80
-	- CTC clock inputs
+    - HALT led
+    - KSD11 switch
+    - banking for ROM 4-5
+    - Schachcomputer SC-80
+    - CTC clock inputs
 
 */
 
@@ -26,6 +26,7 @@
 #include "machine/z80pio.h"
 #include "machine/z80ctc.h"
 #include "sound/speaker.h"
+#include "devices/messram.h"
 #include "lc80.lh"
 
 /* Memory Maps */
@@ -103,30 +104,25 @@ INPUT_PORTS_END
 
 /* Z80-CTC Interface */
 
-static void z80daisy_interrupt(const device_config *device, int state)
-{
-	cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_IRQ0, state);
-}
-
-static WRITE8_DEVICE_HANDLER( ctc_z0_w )
+static WRITE_LINE_DEVICE_HANDLER( ctc_z0_w )
 {
 }
 
-static WRITE8_DEVICE_HANDLER( ctc_z1_w )
+static WRITE_LINE_DEVICE_HANDLER( ctc_z1_w )
 {
 }
 
-static WRITE8_DEVICE_HANDLER( ctc_z2_w )
+static WRITE_LINE_DEVICE_HANDLER( ctc_z2_w )
 {
 }
 
-static const z80ctc_interface ctc_intf =
+static Z80CTC_INTERFACE( ctc_intf )
 {
 	0,              	/* timer disables */
-	z80daisy_interrupt,	/* interrupt handler */
-	ctc_z0_w,			/* ZC/TO0 callback */
-	ctc_z1_w,			/* ZC/TO1 callback */
-	ctc_z2_w    		/* ZC/TO2 callback */
+	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* interrupt handler */
+	DEVCB_LINE(ctc_z0_w),			/* ZC/TO0 callback */
+	DEVCB_LINE(ctc_z1_w),			/* ZC/TO1 callback */
+	DEVCB_LINE(ctc_z2_w)    		/* ZC/TO2 callback */
 };
 
 /* Z80-PIO Interface */
@@ -144,19 +140,19 @@ static void update_display(lc80_state *state)
 static WRITE8_DEVICE_HANDLER( pio1_port_a_w )
 {
 	/*
-		
-		bit		description
 
-		PA0		VQE23 segment B
-		PA1		VQE23 segment F
-		PA2		VQE23 segment A
-		PA3		VQE23 segment G
-		PA4		VQE23 segment DP
-		PA5		VQE23 segment C
-		PA6		VQE23 segment E
-		PA7		VQE23 segment D
+        bit     description
 
-	*/
+        PA0     VQE23 segment B
+        PA1     VQE23 segment F
+        PA2     VQE23 segment A
+        PA3     VQE23 segment G
+        PA4     VQE23 segment DP
+        PA5     VQE23 segment C
+        PA6     VQE23 segment E
+        PA7     VQE23 segment D
+
+    */
 
 	lc80_state *state = device->machine->driver_data;
 
@@ -168,19 +164,19 @@ static WRITE8_DEVICE_HANDLER( pio1_port_a_w )
 static READ8_DEVICE_HANDLER( pio1_port_b_r )
 {
 	/*
-		
-		bit		description
 
-		PB0		tape input
-		PB1		tape output
-		PB2		digit 0
-		PB3		digit 1
-		PB4		digit 2
-		PB5		digit 3
-		PB6		digit 4
-		PB7		digit 5
+        bit     description
 
-	*/
+        PB0     tape input
+        PB1     tape output
+        PB2     digit 0
+        PB3     digit 1
+        PB4     digit 2
+        PB5     digit 3
+        PB6     digit 4
+        PB7     digit 5
+
+    */
 
 	lc80_state *state = device->machine->driver_data;
 
@@ -190,19 +186,19 @@ static READ8_DEVICE_HANDLER( pio1_port_b_r )
 static WRITE8_DEVICE_HANDLER( pio1_port_b_w )
 {
 	/*
-		
-		bit		description
 
-		PB0		tape input
-		PB1		tape output, speaker output, OUT led
-		PB2		digit 0
-		PB3		digit 1
-		PB4		digit 2
-		PB5		digit 3
-		PB6		digit 4
-		PB7		digit 5
+        bit     description
 
-	*/
+        PB0     tape input
+        PB1     tape output, speaker output, OUT led
+        PB2     digit 0
+        PB3     digit 1
+        PB4     digit 2
+        PB5     digit 3
+        PB6     digit 4
+        PB7     digit 5
+
+    */
 
 	lc80_state *state = device->machine->driver_data;
 
@@ -236,19 +232,19 @@ static const z80pio_interface pio1_intf =
 static READ8_DEVICE_HANDLER( pio2_port_b_r )
 {
 	/*
-		
-		bit		description
 
-		PB0		
-		PB1		
-		PB2		
-		PB3		
-		PB4		key row 0
-		PB5		key row 1
-		PB6		key row 2
-		PB7		key row 3
+        bit     description
 
-	*/
+        PB0
+        PB1
+        PB2
+        PB3
+        PB4     key row 0
+        PB5     key row 1
+        PB6     key row 2
+        PB7     key row 3
+
+    */
 
 	lc80_state *state = device->machine->driver_data;
 	UINT8 data = 0xf0;
@@ -309,7 +305,7 @@ static MACHINE_START( lc80 )
 	memory_configure_bank(machine, 2, 0, 1, memory_region(machine, Z80_TAG) + 0x800, 0); // TODO
 	memory_configure_bank(machine, 2, 1, 1, memory_region(machine, Z80_TAG) + 0x800, 0);
 	memory_set_bank(machine, 2, 1);
-	
+
 	memory_configure_bank(machine, 3, 0, 1, memory_region(machine, Z80_TAG) + 0x1000, 0); // TODO
 	memory_configure_bank(machine, 3, 1, 1, memory_region(machine, Z80_TAG) + 0x1000, 0);
 	memory_set_bank(machine, 3, 1);
@@ -321,7 +317,7 @@ static MACHINE_START( lc80 )
 	memory_install_readwrite8_handler(program, 0x0800, 0x0fff, 0, 0, SMH_BANK(2), SMH_BANK(2));
 	memory_install_readwrite8_handler(program, 0x1000, 0x17ff, 0, 0, SMH_BANK(3), SMH_BANK(3));
 
-	switch (mess_ram_size)
+	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 1*1024:
 		memory_install_readwrite8_handler(program, 0x2000, 0x23ff, 0, 0, SMH_BANK(4), SMH_BANK(4));
@@ -381,6 +377,10 @@ static MACHINE_DRIVER_START( lc80 )
 	MDRV_Z80PIO_ADD(Z80PIO2_TAG, pio2_intf)
 
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, lc80_cassette_config)
+	
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("1K")	
+	MDRV_RAM_EXTRA_OPTIONS("2K,3K,4K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( lc80_2 )
@@ -407,11 +407,15 @@ static MACHINE_DRIVER_START( lc80_2 )
 	MDRV_Z80PIO_ADD(Z80PIO2_TAG, pio2_intf)
 
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, lc80_cassette_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("4K")	
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( sc80 )
 	MDRV_IMPORT_FROM( lc80_2 )
-	
+
 	/* basic machine hardware */
     MDRV_CPU_MODIFY(Z80_TAG)
     MDRV_CPU_PROGRAM_MAP(sc80_mem)
@@ -440,22 +444,9 @@ ROM_START( sc80 )
 	ROM_LOAD( "lc80e-c000-schach.rom", 0xc000, 0x1000, CRC(9c858d9c) SHA1(2f7b3fd046c965185606253f6cd9372da289ca6f) )
 ROM_END
 
-/* System Configuration */
-
-static SYSTEM_CONFIG_START( lc80 )
-	CONFIG_RAM_DEFAULT( 1 * 1024 )
-	CONFIG_RAM		  ( 2 * 1024 )
-	CONFIG_RAM		  ( 3 * 1024 )
-	CONFIG_RAM		  ( 4 * 1024 )
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( lc80_2 )
-	CONFIG_RAM_DEFAULT( 4 * 1024 )
-SYSTEM_CONFIG_END
-
 /* System Drivers */
 
-/*    YEAR	NAME	PARENT	COMPAT	MACHINE	INPUT	INIT	CONFIG	COMPANY					FULLNAME				FLAGS */
-COMP( 1984, lc80,	0,		0,		lc80,	lc80,	0,		lc80,	"VEB Mikroelektronik",	"Lerncomputer LC 80",	GAME_SUPPORTS_SAVE )
-COMP( 1984, lc80_2,	lc80,	0,		lc80_2,	lc80,	0,		lc80_2,	"VEB Mikroelektronik",	"Lerncomputer LC 80.2",	GAME_SUPPORTS_SAVE )
-COMP( 1984, sc80,	lc80,	0,		lc80_2,	lc80,	0,		lc80_2,	"VEB Mikroelektronik",	"Schachcomputer SC-80",	GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY                 FULLNAME                FLAGS */
+COMP( 1984, lc80,	0,		0,		lc80,	lc80,	0,		0,	"VEB Mikroelektronik",	"Lerncomputer LC 80",	GAME_SUPPORTS_SAVE )
+COMP( 1984, lc80_2,	lc80,	0,		lc80_2,	lc80,	0,		0,	"VEB Mikroelektronik",	"Lerncomputer LC 80.2",	GAME_SUPPORTS_SAVE )
+COMP( 1984, sc80,	lc80,	0,		lc80_2,	lc80,	0,		0,	"VEB Mikroelektronik",	"Schachcomputer SC-80",	GAME_SUPPORTS_SAVE )

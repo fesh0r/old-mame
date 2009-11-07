@@ -1,15 +1,15 @@
 /*********************************************************************
 
-	msm8251.h
+    msm8251.h
 
-	MSM/Intel 8251 Universal Synchronous/Asynchronous Receiver Transmitter code
+    MSM/Intel 8251 Universal Synchronous/Asynchronous Receiver Transmitter code
 
 *********************************************************************/
 
 #ifndef __MSM8251_H__
 #define __MSM8251_H__
 
-#include "includes/serial.h"
+#include "machine/serial.h"
 
 
 /***************************************************************************

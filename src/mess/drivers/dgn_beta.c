@@ -47,6 +47,7 @@ documentation still exists.
 #include "formats/coco_dsk.h"
 #include "devices/flopdrv.h"
 #include "devices/coco_vhd.h"
+#include "devices/messram.h"
 
 /*
  Colour codes are as below acording to os-9 headers, however the presise values
@@ -275,35 +276,6 @@ static INPUT_PORTS_START( dgnbeta )
 INPUT_PORTS_END
 
 
-static void dgnbeta_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:			info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:	info->p = (void *) floppyoptions_coco; break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_NAME+0:		strcpy(info->s = device_temp_str(), "floppydisk0"); break;
-		case MESS_DEVINFO_STR_NAME+1:		strcpy(info->s = device_temp_str(), "floppydisk1"); break;
-		case MESS_DEVINFO_STR_NAME+2:		strcpy(info->s = device_temp_str(), "floppydisk2"); break;
-		case MESS_DEVINFO_STR_NAME+3:		strcpy(info->s = device_temp_str(), "floppydisk3"); break;
-		case MESS_DEVINFO_STR_SHORT_NAME+0:		strcpy(info->s = device_temp_str(), "flop0"); break;
-		case MESS_DEVINFO_STR_SHORT_NAME+1:		strcpy(info->s = device_temp_str(), "flop1"); break;
-		case MESS_DEVINFO_STR_SHORT_NAME+2:		strcpy(info->s = device_temp_str(), "flop2"); break;
-		case MESS_DEVINFO_STR_SHORT_NAME+3:		strcpy(info->s = device_temp_str(), "flop3"); break;
-		case MESS_DEVINFO_STR_DESCRIPTION+0:	strcpy(info->s = device_temp_str(), "Floppy #0"); break;
-		case MESS_DEVINFO_STR_DESCRIPTION+1:	strcpy(info->s = device_temp_str(), "Floppy #1"); break;
-		case MESS_DEVINFO_STR_DESCRIPTION+2:	strcpy(info->s = device_temp_str(), "Floppy #2"); break;
-		case MESS_DEVINFO_STR_DESCRIPTION+3:	strcpy(info->s = device_temp_str(), "Floppy #3"); break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
 static PALETTE_INIT( dgnbeta )
 {
 	int i;
@@ -312,6 +284,18 @@ static PALETTE_INIT( dgnbeta )
 		palette_set_color_rgb(machine, i, dgnbeta_palette[i*3], dgnbeta_palette[i*3+1], dgnbeta_palette[i*3+2]);
 	}
 }
+
+static const floppy_config dgnbeta_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(coco),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 static MACHINE_DRIVER_START( dgnbeta )
 	/* basic machine hardware */
@@ -332,18 +316,30 @@ static MACHINE_DRIVER_START( dgnbeta )
 
 	MDRV_SCREEN_SIZE(700,550)
 	MDRV_SCREEN_VISIBLE_AREA(0, 699, 0, 549)
-	MDRV_PALETTE_LENGTH(sizeof (dgnbeta_palette) / sizeof (dgnbeta_palette[0]) / 3)
+	MDRV_PALETTE_LENGTH(ARRAY_LENGTH(dgnbeta_palette) / 3)
 	MDRV_PALETTE_INIT( dgnbeta )
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 
 	MDRV_VIDEO_UPDATE( dgnbeta )
-	
+
 	MDRV_PIA6821_ADD( "pia_0", dgnbeta_pia_intf[0] )
 	MDRV_PIA6821_ADD( "pia_1", dgnbeta_pia_intf[1] )
 	MDRV_PIA6821_ADD( "pia_2", dgnbeta_pia_intf[2] )
 
-	MDRV_WD179X_ADD("wd179x", dgnbeta_wd17xx_interface )	
+	MDRV_WD179X_ADD("wd179x", dgnbeta_wd17xx_interface )
+
+	MDRV_FLOPPY_4_DRIVES_ADD(dgnbeta_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("256K")
+	MDRV_RAM_EXTRA_OPTIONS("128K,384K,512K,640K,768K")
+	/* Ram size can now be configured, since the machine was known as either the Dragon Beta or */
+	/* the Dragon 128, I have added a config for 128K, however, the only working machine known  */
+	/* to exist was fitted with 256K, so I have made this the default. Also available           */
+	/* documentation seems to sugest a maximum of 768K, so I have included configs increasing   */
+	/* in blocks of 128K up to this maximum.                                                    */	
 MACHINE_DRIVER_END
 
 ROM_START(dgnbeta)
@@ -361,20 +357,5 @@ ROM_START(dgnbeta)
 	ROM_LOAD("betachar.rom"	,0x0000	,0x2000	,CRC(ca79d66c) SHA1(8e2090d471dd97a53785a7f44a49d3c8c85b41f2))
 ROM_END
 
-/* Ram size can now be configured, since the machine was known as either the Dragon Beta or */
-/* the Dragon 128, I have added a config for 128K, however, the only working machine known  */
-/* to exist was fitted with 256K, so I have made this the default. Also available           */
-/* documentation seems to sugest a maximum of 768K, so I have included configs increasing   */
-/* in blocks of 128K up to this maximum.                                                    */
-static SYSTEM_CONFIG_START(dgnbeta)
-	CONFIG_RAM(128 * 1024)
-	CONFIG_RAM_DEFAULT(RamSize * 1024)
-	CONFIG_RAM(384 * 1024)
-	CONFIG_RAM(512 * 1024)
-	CONFIG_RAM(640 * 1024)
-	CONFIG_RAM(768 * 1024)
-	CONFIG_DEVICE( dgnbeta_floppy_getinfo )
-SYSTEM_CONFIG_END
-
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY             FULLNAME                    FLAGS */
-COMP( 1984, dgnbeta,    0,      0,      dgnbeta,    dgnbeta,    0,      dgnbeta,    "Dragon Data Ltd",  "Dragon Beta Prototype",    0 )
+COMP( 1984, dgnbeta,    0,      0,      dgnbeta,    dgnbeta,    0,      0,    "Dragon Data Ltd",  "Dragon Beta Prototype",    0 )

@@ -5,27 +5,27 @@
 
     Juergen Buchmueller, June 1998
 
-	2009-05 FP changes:
-	 Factored out MESS specific code from MAME
-	 Added skeleton support for other XL/XE machines (VERY preliminary):
-	 - a600xl based on maxaflex emulation in MAME
-	 - a1200xl sharing a800xl code without BASIC
-	 - a65xe, a65xea, a130xe, a800xe, xegs sharing a800xl code (and this is wrong 
-	  at least for xegs)
-	 Added proper dumps and labels, thanks to Freddy Offenga researches (a few
-	 are still marked BAD_DUMP while waiting for crc confirmation, since they 
-	 have been obtained by splitting whole dumps)
+    2009-05 FP changes:
+     Factored out MESS specific code from MAME
+     Added skeleton support for other XL/XE machines (VERY preliminary):
+     - a600xl based on maxaflex emulation in MAME
+     - a1200xl sharing a800xl code without BASIC
+     - a65xe, a65xea, a130xe, a800xe, xegs sharing a800xl code (and this is wrong
+      at least for xegs)
+     Added proper dumps and labels, thanks to Freddy Offenga researches (a few
+     are still marked BAD_DUMP while waiting for crc confirmation, since they
+     have been obtained by splitting whole dumps)
 
-	 To Do:
-	 - Find out why a600xl and a800xl don't work (xe machines should then follow)
-	 - Investigate supported RAM sizes and OS versions in different models 
-	 - Implement differences between various models (currently most of the
-	  XL/XE are exactly an a800xl, but this will change as soon as emulation 
-	  starts to work)
-	 - Fix various keyboard differences
-	 - Freddy emulation for 800XLF?
-	 - Add support for proto boards and expansions (a1400xl, C/PM board, etc.)
-	 - Clean up the whole driver + cart + floppy structure
+     To Do:
+     - Find out why a600xl and a800xl don't work (xe machines should then follow)
+     - Investigate supported RAM sizes and OS versions in different models
+     - Implement differences between various models (currently most of the
+      XL/XE are exactly an a800xl, but this will change as soon as emulation
+      starts to work)
+     - Fix various keyboard differences
+     - Freddy emulation for 800XLF?
+     - Add support for proto boards and expansions (a1400xl, C/PM board, etc.)
+     - Clean up the whole driver + cart + floppy structure
 
 ******************************************************************************/
 
@@ -39,6 +39,7 @@
 #include "machine/6821pia.h"
 #include "video/gtia.h"
 #include "sound/dac.h"
+#include "devices/messram.h"
 
 /******************************************************************************
     Atari 800 memory map (preliminary)
@@ -412,7 +413,7 @@ INPUT_PORTS_END
 Small note about natural keyboard support: currently,
 - "Break" is mapped to 'F1'
 - "Clear" is mapped to 'F2'
-- "Atari" is mapped to 'F3'							*/
+- "Atari" is mapped to 'F3'                         */
 
 static INPUT_PORTS_START( atari_keyboard )
 	PORT_START("keyboard_0")
@@ -420,7 +421,7 @@ static INPUT_PORTS_START( atari_keyboard )
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_J) PORT_CHAR('j') PORT_CHAR('J')
 	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_COLON) PORT_CHAR(';') PORT_CHAR(':')
 	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Break") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(UCHAR_MAMEKEY(F1))
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_UNUSED) 
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_UNUSED)
 	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_K) PORT_CHAR('k') PORT_CHAR('K')
 	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR('+') PORT_CHAR('\\')
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_BACKSLASH) PORT_CHAR('*') PORT_CHAR('^')
@@ -480,7 +481,7 @@ static INPUT_PORTS_START( atari_keyboard )
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_UNUSED)
 	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_0) PORT_CHAR('0') PORT_CHAR(')')
 	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_7) PORT_CHAR('7') PORT_CHAR('\'')
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("BackS  Delete") PORT_CODE(KEYCODE_BACKSLASH2) PORT_CHAR(8) PORT_CHAR(UCHAR_MAMEKEY(DEL)) 
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("BackS  Delete") PORT_CODE(KEYCODE_BACKSLASH2) PORT_CHAR(8) PORT_CHAR(UCHAR_MAMEKEY(DEL))
 	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_8) PORT_CHAR('8') PORT_CHAR('@')
 	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("<  Clear") PORT_CODE(KEYCODE_MINUS) PORT_CHAR('<') PORT_CHAR(UCHAR_MAMEKEY(F2))
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(">  Insert") PORT_CODE(KEYCODE_EQUALS) PORT_CHAR('>') PORT_CHAR(UCHAR_MAMEKEY(INSERT))
@@ -584,7 +585,7 @@ static INPUT_PORTS_START( a5200 )
     PORT_BIT(0xf0, IP_ACTIVE_HIGH, IPT_UNUSED)
 
     PORT_START("keypad_3")
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Start") PORT_CODE(KEYCODE_F1)
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_START)    PORT_NAME("Start")
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[3]") PORT_CODE(KEYCODE_3_PAD)
 	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[2]") PORT_CODE(KEYCODE_2_PAD)
 	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("[1]") PORT_CODE(KEYCODE_1_PAD)
@@ -713,7 +714,7 @@ static PALETTE_INIT( atari )
 {
 	int i;
 
-	for ( i = 0; i < sizeof(atari_palette) / 3; i++ ) 
+	for ( i = 0; i < sizeof(atari_palette) / 3; i++ )
 	{
 		palette_set_color_rgb(machine, i, atari_palette[i*3], atari_palette[i*3+1], atari_palette[i*3+2]);
 	}
@@ -791,7 +792,7 @@ static void a800xl_mmu(running_machine *machine, UINT8 new_mmu)
 		base2 = memory_region(machine, "maincpu") + 0x15000;  /* 0x0800 bytes */
 	}
 	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x5000, 0x57ff, 0, 0, rbank2, wbank2);
-	memory_set_bankptr(machine, 2, base2);	
+	memory_set_bankptr(machine, 2, base2);
 }
 
 /* BASIC was available in a separate cart, so we don't test it */
@@ -843,7 +844,7 @@ static void a1200xl_mmu(running_machine *machine, UINT8 new_mmu)
 		base2 = memory_region(machine, "maincpu") + 0x15000;  /* 0x0800 bytes */
 	}
 	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x5000, 0x57ff, 0, 0, rbank2, wbank2);
-	memory_set_bankptr(machine, 2, base2);	
+	memory_set_bankptr(machine, 2, base2);
 }
 
 /**************************************************************
@@ -853,7 +854,11 @@ static void a1200xl_mmu(running_machine *machine, UINT8 new_mmu)
  **************************************************************/
 
 static WRITE8_DEVICE_HANDLER(a1200xl_pia_pb_w) { a1200xl_mmu(device->machine, data); }
-static WRITE8_DEVICE_HANDLER(a800xl_pia_pb_w) { a800xl_mmu(device->machine, data); }
+static WRITE8_DEVICE_HANDLER(a800xl_pia_pb_w) 
+{
+	if ( pia6821_get_port_b_z_mask(device) != 0xff )
+		a800xl_mmu(device->machine, data); 
+}
 
 static const pokey_interface atari_pokey_interface =
 {
@@ -969,7 +974,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( atari_common_nodac )
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", M6510, FREQ_17_EXACT)
+	MDRV_CPU_ADD("maincpu", M6502, FREQ_17_EXACT)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -989,6 +994,10 @@ static MACHINE_DRIVER_START( atari_common_nodac )
 	MDRV_SOUND_ADD("pokey", POKEY, FREQ_17_EXACT)
 	MDRV_SOUND_CONFIG(atari_pokey_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("40K")		
 MACHINE_DRIVER_END
 
 
@@ -1011,7 +1020,7 @@ static MACHINE_DRIVER_START( a400 )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
-	
+
 	MDRV_IMPORT_FROM(a400_cartslot)
 MACHINE_DRIVER_END
 
@@ -1028,7 +1037,7 @@ static MACHINE_DRIVER_START( a400pal )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_50HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_50HZ)
-	
+
 	MDRV_IMPORT_FROM(a400_cartslot)
 MACHINE_DRIVER_END
 
@@ -1045,7 +1054,7 @@ static MACHINE_DRIVER_START( a800 )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
-	
+
 	MDRV_IMPORT_FROM(a800_cartslot)
 MACHINE_DRIVER_END
 
@@ -1081,8 +1090,12 @@ static MACHINE_DRIVER_START( a600xl )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
-	
+
 	MDRV_IMPORT_FROM(a400_cartslot)
+	
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("16K")		
 MACHINE_DRIVER_END
 
 
@@ -1100,10 +1113,23 @@ static MACHINE_DRIVER_START( a800xl )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
-	
+
 	MDRV_IMPORT_FROM(a400_cartslot)
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( a800xlpal )
+	MDRV_IMPORT_FROM( a800xl )
+
+	MDRV_CPU_MODIFY( "maincpu" )	
+	MDRV_CPU_CLOCK( 1773000 )	
+	MDRV_CPU_VBLANK_INT_HACK(a800xl_interrupt, TOTAL_LINES_50HZ)	
+	MDRV_SCREEN_MODIFY("screen")	
+	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_50HZ)	
+	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_50HZ)	
+
+	MDRV_SOUND_MODIFY("pokey")	
+	MDRV_SOUND_CLOCK(1773000)
+MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( a1200xl )
 	MDRV_IMPORT_FROM( a800xl )
@@ -1124,12 +1150,16 @@ static MACHINE_DRIVER_START( a5200 )
 	MDRV_SCREEN_MODIFY( "screen" )
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
-	
+
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("rom,bin,a52")
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(a5200_cart)
 	MDRV_CARTSLOT_UNLOAD(a5200_cart)
+	
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("16K")	
 MACHINE_DRIVER_END
 
 
@@ -1193,9 +1223,12 @@ ROM_END
 
 ROM_START(a800xl)
 	ROM_REGION(0x18000, "maincpu", 0)
+	ROM_FILL( 0, 0x10000, 0x00 )
 	ROM_LOAD( "co60302a.rom", 0x10000, 0x2000, CRC(f0202fb3) SHA1(7ad88dd99ff4a6ee66f6d162074db6f8bef7a9b6) )	// Rev. B
 	ROM_LOAD( "co61598b.rom", 0x14000, 0x4000, CRC(1f9cd270) SHA1(ae4f523ba08b6fd59f3cae515a2b2410bbd98f55) )	// Rev. 2
 ROM_END
+
+#define rom_a800xlp rom_a800xl
 
 ROM_START(a65xe)
 	ROM_REGION(0x18000, "maincpu", 0)
@@ -1206,7 +1239,7 @@ ROM_END
 ROM_START(a65xea)
 	ROM_REGION(0x18000, "maincpu", 0)
 	ROM_LOAD( "basic_ar.rom", 0x10000, 0x2000, CRC(c899f4d6) SHA1(043df191d1fe402e792266a108e147ffcda35130) )	// is this correct? or shall we use Rev. C?
-//	ROM_LOAD( "c101700.rom",  0x14000, 0x4000, CRC(7f9a76c8) SHA1(57eb6d87850a763f11767f53d4eaede186f831a2) )	// this was from Savetz and has wrong bits!
+//  ROM_LOAD( "c101700.rom",  0x14000, 0x4000, CRC(7f9a76c8) SHA1(57eb6d87850a763f11767f53d4eaede186f831a2) )   // this was from Savetz and has wrong bits!
 	ROM_LOAD( "c101700.rom",  0x14000, 0x4000, CRC(45f47988) SHA1(a36b8b20f657580f172749bb0625c08706ed824c) )	// Rev. 3B ?
 ROM_END
 
@@ -1266,42 +1299,15 @@ static SYSTEM_CONFIG_START(atari)
 	CONFIG_DEVICE(atari_floppy_getinfo)
 SYSTEM_CONFIG_END
 
-static SYSTEM_CONFIG_START(a400)
-	CONFIG_IMPORT_FROM(atari)
-	CONFIG_RAM_DEFAULT(40 * 1024)
-SYSTEM_CONFIG_END
-
-
-static SYSTEM_CONFIG_START(a800)
-	CONFIG_IMPORT_FROM(atari)
-	CONFIG_RAM_DEFAULT(40 * 1024)
-SYSTEM_CONFIG_END
-
-
-static SYSTEM_CONFIG_START(a5200)
-	CONFIG_RAM_DEFAULT(16 * 1024)
-SYSTEM_CONFIG_END
-
-
 /**************************************************************
  *
  * Driver initializations
  *
  **************************************************************/
 
-// VERY WIP code to load OS at start and, hopefully, go on with the implementation...
 static DRIVER_INIT( a800xl )
 {
-	UINT8 *rom = memory_region(machine, "maincpu");
-
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xa000, 0xbfff, 0, 0, SMH_BANK(1), SMH_UNMAP);
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x5000, 0x57ff, 0, 0, SMH_BANK(2), SMH_UNMAP);
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc000, 0xcfff, 0, 0, SMH_BANK(3), SMH_UNMAP);
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xd800, 0xffff, 0, 0, SMH_BANK(4), SMH_UNMAP);
-	memory_set_bankptr(machine, 1, rom + 0x10000);
-	memory_set_bankptr(machine, 2, rom + 0x15000);
-	memory_set_bankptr(machine, 3, rom + 0x14000);
-	memory_set_bankptr(machine, 4, rom + 0x15800);
+	a800xl_mmu(machine, 0xff);
 }
 
 static DRIVER_INIT( a600xl )
@@ -1317,17 +1323,18 @@ static DRIVER_INIT( a600xl )
  **************************************************************/
 
 /*     YEAR  NAME      PARENT    COMPAT MACHINE     INPUT    INIT    CONFIG   COMPANY    FULLNAME */
-COMP ( 1979, a400,     0,        0,     a400,       a800,    0,      a400,    "Atari",   "Atari 400 (NTSC)", 0)
-COMP ( 1979, a400pal,  a400,     0,     a400pal,    a800,    0,      a400,    "Atari",   "Atari 400 (PAL)",  0)
-COMP ( 1979, a800,     0,        0,     a800,       a800,    0,      a800,    "Atari",   "Atari 800 (NTSC)", 0)
-COMP ( 1979, a800pal,  a800,     0,     a800pal,    a800,    0,      a800,    "Atari",   "Atari 800 (PAL)",  0)
-COMP ( 1982, a1200xl,  a800,     0,     a1200xl,    a800xl,  a800xl, a800,    "Atari",   "Atari 1200XL",     GAME_NOT_WORKING )		// 64k RAM
-COMP ( 1983, a600xl,   a800,     0,     a600xl,     a800xl,  a600xl, a5200,   "Atari",   "Atari 600XL",      GAME_NOT_WORKING )		// 16k RAM
-COMP ( 1983, a800xl,   a800,     0,     a800xl,     a800xl,  a800xl, a800,    "Atari",   "Atari 800XL",      GAME_NOT_WORKING )		// 64k RAM
-COMP ( 1986, a65xe,    0,        0,     a800xl,     a800xl,  a800xl, a800,    "Atari",   "Atari 65XE",       GAME_NOT_WORKING )		// 64k RAM
-COMP ( 1986, a65xea,   a65xe,    0,     a800xl,     a800xl,  a800xl, a800,    "Atari",   "Atari 65XE (Arabic)", GAME_NOT_WORKING )
-COMP ( 1986, a130xe,   a65xe,    0,     a800xl,     a800xl,  a800xl, a800,    "Atari",   "Atari 130XE",      GAME_NOT_WORKING )		// 128k RAM
-COMP ( 1986, a800xe,   a65xe,    0,     a800xl,     a800xl,  a800xl, a800,    "Atari",   "Atari 800XE",      GAME_NOT_WORKING )		// 64k RAM
-COMP ( 1987, xegs,     0,        0,     a800xl,     a800xl,  a800xl, a800,    "Atari",   "Atari XE Game System", GAME_NOT_WORKING )	// 64k RAM
+COMP ( 1979, a400,     0,        0,     a400,       a800,    0,      atari,    "Atari",   "Atari 400 (NTSC)", 0)
+COMP ( 1979, a400pal,  a400,     0,     a400pal,    a800,    0,      atari,    "Atari",   "Atari 400 (PAL)",  0)
+COMP ( 1979, a800,     0,        0,     a800,       a800,    0,      atari,    "Atari",   "Atari 800 (NTSC)", 0)
+COMP ( 1979, a800pal,  a800,     0,     a800pal,    a800,    0,      atari,    "Atari",   "Atari 800 (PAL)",  0)
+COMP ( 1982, a1200xl,  a800,     0,     a1200xl,    a800xl,  a800xl, atari,    "Atari",   "Atari 1200XL",     GAME_NOT_WORKING )		// 64k RAM
+COMP ( 1983, a600xl,   a800xl,   0,     a600xl,     a800xl,  a600xl, atari,   "Atari",   "Atari 600XL",      GAME_NOT_WORKING )		// 16k RAM
+COMP ( 1983, a800xl,   0,		 0,     a800xl,     a800xl,  a800xl, atari,    "Atari",   "Atari 800XL (NTSC)",GAME_IMPERFECT_GRAPHICS )		// 64k RAM
+COMP ( 1983, a800xlp,  a800xl,	 0,     a800xlpal,  a800xl,  a800xl, atari,    "Atari",   "Atari 800XL (PAL)", GAME_IMPERFECT_GRAPHICS )		// 64k RAM
+COMP ( 1986, a65xe,    a800xl,   0,     a800xl,     a800xl,  a800xl, atari,    "Atari",   "Atari 65XE",       GAME_NOT_WORKING )		// 64k RAM
+COMP ( 1986, a65xea,   a800xl,   0,     a800xl,     a800xl,  a800xl, atari,    "Atari",   "Atari 65XE (Arabic)", GAME_NOT_WORKING )
+COMP ( 1986, a130xe,   a800xl,   0,     a800xl,     a800xl,  a800xl, atari,    "Atari",   "Atari 130XE",      GAME_NOT_WORKING )		// 128k RAM
+COMP ( 1986, a800xe,   a800xl,   0,     a800xl,     a800xl,  a800xl, atari,    "Atari",   "Atari 800XE",      GAME_NOT_WORKING )		// 64k RAM
+COMP ( 1987, xegs,     0,        0,     a800xl,     a800xl,  a800xl, atari,    "Atari",   "Atari XE Game System", GAME_NOT_WORKING )	// 64k RAM
 
-CONS ( 1982, a5200,    0,        0,     a5200,      a5200,   0,      a5200,    "Atari",   "Atari 5200",       0)
+CONS ( 1982, a5200,    0,        0,     a5200,      a5200,   0,      atari,    "Atari",   "Atari 5200",       0)

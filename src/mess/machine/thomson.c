@@ -12,6 +12,7 @@
 #include "includes/thomson.h"
 #include "machine/6821pia.h"
 #include "machine/ctronics.h"
+#include "devices/messram.h"
 
 #define VERBOSE       0
 #define VERBOSE_IRQ   0
@@ -35,6 +36,13 @@
 /* This set to 1 handle the .k7 files without passing through .wav */
 /* It must be set accordingly in formats/thom_cas.c */
 #define K7_SPEED_HACK 0
+
+/* bank logging */
+static int old_cart_bank;
+static int old_ram_bank;
+static int old_floppy_bank;
+
+
 
 /********************* common cassette code ***************************/
 
@@ -405,7 +413,6 @@ DEVICE_START( thom_serial )
 	}
 
 	serial_device_setup( device, 2400, 7, 2, SERIAL_PARITY_NONE ); /* default */
-	serial_device_set_protocol( device, SERIAL_PROTOCOL_NONE );
 	serial_device_set_transmit_state( device, 1 );
 }
 
@@ -506,7 +513,6 @@ DEVICE_IMAGE_LOAD( to7_cartridge )
 static void to7_update_cart_bank(running_machine *machine)
 {
 	const address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	static int old_bank = -1;
 	int bank = 0;
 	if ( thom_cart_nb_banks )
 	{
@@ -514,11 +520,11 @@ static void to7_update_cart_bank(running_machine *machine)
 		memory_install_read8_handler(space, 0x0000, 0x0003, 0, 0, to7_cartridge_r );
 	}
 
-	if ( bank != old_bank )
+	if ( bank != old_cart_bank )
 		LOG_BANK(( "to7_update_cart_bank: CART is cartridge bank %i\n", bank ));
 
 	memory_set_bank( machine, THOM_CART_BANK, bank );
-	old_bank = bank;
+	old_cart_bank = bank;
 }
 
 
@@ -1093,10 +1099,10 @@ static READ8_DEVICE_HANDLER ( to7_game_porta_in )
 		/* joystick */
 		data = input_port_read(device->machine, "game_port_directions");
 		/* bit 0=0 => P1 up      bit 4=0 => P2 up
-		   bit 1=0 => P1 down    bit 5=0 => P2 down
-		   bit 2=0 => P1 left    bit 6=0 => P2 left
-		   bit 3=0 => P1 right   bit 7=0 => P2 right
-		*/
+           bit 1=0 => P1 down    bit 5=0 => P2 down
+           bit 2=0 => P1 left    bit 6=0 => P2 left
+           bit 3=0 => P1 right   bit 7=0 => P2 right
+        */
 		/* remove impossible combinations: up+down, left+right */
 		if ( ! ( data & 0x03 ) )
 			data |= 0x03;
@@ -1203,14 +1209,14 @@ static TIMER_CALLBACK(to7_game_update_cb)
 		pia6821_cb1_w( game_pia, 0, (in & 0x08) ? 1 : 0 ); /* P2 action B */
 		pia6821_ca1_w( game_pia, 0, (in & 0x04) ? 1 : 0 ); /* P1 action B */
 		/* TODO:
-		   it seems that CM 90-112 behaves differently
-		   - ca1 is P1 action A, i.e., in & 0x40
-		   - ca2 is P2 action A, i.e., in & 0x80
-		   - cb1, cb2 are not connected (should not be a problem)
-		*/
+           it seems that CM 90-112 behaves differently
+           - ca1 is P1 action A, i.e., in & 0x40
+           - ca2 is P2 action A, i.e., in & 0x80
+           - cb1, cb2 are not connected (should not be a problem)
+        */
 		/* Note: the MO6 & MO5NR have slightly different connections
-		   (see mo6_game_update_cb)
-		*/
+           (see mo6_game_update_cb)
+        */
 	}
 }
 
@@ -1518,6 +1524,7 @@ MACHINE_RESET ( to7 )
 	pia6821_cb1_w( sys_pia, 0, 0 );
 
 	/* memory */
+	old_cart_bank = -1;
 	to7_update_cart_bank(machine);
 	/* thom_cart_bank not reset */
 
@@ -1544,22 +1551,22 @@ MACHINE_START ( to7 )
 
 	/* memory */
 	thom_cart_bank = 0;
-	thom_vram = mess_ram;
-	memory_configure_bank( machine, THOM_BASE_BANK, 0, 1, mess_ram + 0x4000, 0x2000 );
+	thom_vram = messram_get_ptr(devtag_get_device(machine, "messram"));
+	memory_configure_bank( machine, THOM_BASE_BANK, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000, 0x2000 );
 	memory_configure_bank( machine, THOM_VRAM_BANK, 0, 2, thom_vram, 0x2000 );
 	memory_configure_bank( machine, THOM_CART_BANK, 0, 4, mem + 0x10000, 0x4000 );
 	memory_set_bank( machine, THOM_BASE_BANK, 0 );
 	memory_set_bank( machine, THOM_VRAM_BANK, 0 );
 	memory_set_bank( machine, THOM_CART_BANK, 0 );
 
-	if ( mess_ram_size > 24*1024 )
+	if ( messram_get_size(devtag_get_device(machine, "messram")) > 24*1024 )
 	{
 		/* install 16 KB or 16 KB + 8 KB memory extensions */
 		/* BASIC instruction to see free memory: ?FRE(0) */
-		int extram = mess_ram_size - 24*1024;
+		int extram = messram_get_size(devtag_get_device(machine, "messram")) - 24*1024;
 		memory_install_write8_handler(space, 0x8000, 0x8000 + extram - 1, 0, 0, (write8_space_func)(STATIC_BANK1 + THOM_RAM_BANK - 1) );
 		memory_install_read8_handler(space, 0x8000, 0x8000 + extram - 1, 0, 0, (read8_space_func)(STATIC_BANK1 + THOM_RAM_BANK - 1) );
-		memory_configure_bank( machine, THOM_RAM_BANK,  0, 1, mess_ram + 0x6000, extram );
+		memory_configure_bank( machine, THOM_RAM_BANK,  0, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x6000, extram );
 		memory_set_bank( machine, THOM_RAM_BANK, 0 );
 	}
 
@@ -1610,7 +1617,6 @@ static void to770_update_ram_bank(running_machine *machine)
 	const device_config *sys_pia = devtag_get_device( machine, THOM_PIA_SYS );
 	const address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 portb = pia6821_get_port_b_z_mask( sys_pia );
-	static int old_bank = -1;
 	int bank;
 
 	switch (portb & 0xf8)
@@ -1633,10 +1639,10 @@ static void to770_update_ram_bank(running_machine *machine)
 		return;
 	}
 
-	if ( bank != old_bank )
+	if ( bank != old_ram_bank )
 		LOG_BANK(( "to770_update_ram_bank: RAM bank change %i\n", bank ));
 
-	if ( mess_ram_size == 128*1024 || bank < 2 )
+	if ( messram_get_size(devtag_get_device(machine, "messram")) == 128*1024 || bank < 2 )
 	{
 		memory_set_bank( machine, THOM_RAM_BANK, bank );
 		memory_install_write8_handler(space, 0xa000, 0xdfff, 0, 0, (write8_space_func)(STATIC_BANK1 + THOM_RAM_BANK - 1) );
@@ -1646,7 +1652,7 @@ static void to770_update_ram_bank(running_machine *machine)
 		memory_install_write8_handler(space, 0xa000, 0xdfff, 0, 0, SMH_UNMAP );
 	}
 
-	old_bank = bank;
+	old_ram_bank = bank;
 }
 
 
@@ -1772,6 +1778,8 @@ MACHINE_RESET( to770 )
 	pia6821_cb1_w( sys_pia, 0, 0 );
 
 	/* memory */
+	old_ram_bank = -1;
+	old_cart_bank = -1;
 	to7_update_cart_bank(machine);
 	to770_update_ram_bank(machine);
 	/* thom_cart_bank not reset */
@@ -1798,9 +1806,9 @@ MACHINE_START ( to770 )
 
 	/* memory */
 	thom_cart_bank = 0;
-	thom_vram = mess_ram;
-	memory_configure_bank( machine, THOM_BASE_BANK, 0, 1, mess_ram + 0x4000, 0x4000 );
-	memory_configure_bank( machine, THOM_RAM_BANK,  0, 6, mess_ram + 0x8000, 0x4000 );
+	thom_vram = messram_get_ptr(devtag_get_device(machine, "messram"));
+	memory_configure_bank( machine, THOM_BASE_BANK, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000, 0x4000 );
+	memory_configure_bank( machine, THOM_RAM_BANK,  0, 6, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000, 0x4000 );
 	memory_configure_bank( machine, THOM_VRAM_BANK, 0, 2, thom_vram, 0x2000 );
 	memory_configure_bank( machine, THOM_CART_BANK, 0, 4, mem + 0x10000, 0x4000 );
 	memory_set_bank( machine, THOM_BASE_BANK, 0 );
@@ -2030,7 +2038,6 @@ DEVICE_IMAGE_LOAD( mo5_cartridge )
 static void mo5_update_cart_bank(running_machine *machine)
 {
 	const address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	static int old_bank = -1;
 	int rom_is_ram = mo5_reg_cart & 4;
 	int bank = 0;
 
@@ -2041,7 +2048,7 @@ static void mo5_update_cart_bank(running_machine *machine)
 		/* 64 KB ROM from "JANE" cartridge */
 		memory_install_write8_handler( space, 0xb000, 0xefff, 0, 0, SMH_NOP );
 		bank = mo5_reg_cart & 3;
-		if ( bank != old_bank )
+		if ( bank != old_cart_bank )
 			LOG_BANK(( "mo5_update_cart_bank: CART is cartridge bank %i (A7CB style)\n", bank ));
 	}
 	else if ( rom_is_ram )
@@ -2050,7 +2057,7 @@ static void mo5_update_cart_bank(running_machine *machine)
 		int write_enable = mo5_reg_cart & 8;
 		bank = 4 + ( mo5_reg_cart & 3 );
 		memory_install_write8_handler( space, 0xb000, 0xefff, 0, 0, write_enable ? (write8_space_func)(STATIC_BANK1 + THOM_CART_BANK - 1) :  SMH_NOP );
-		if ( bank != old_bank )
+		if ( bank != old_cart_bank )
 			LOG_BANK(( "mo5_update_cart_bank: CART is nanonetwork RAM bank %i (write-enable=%i)\n", mo5_reg_cart & 3, write_enable ? 1 : 0 ));
 	}
 	else
@@ -2062,11 +2069,11 @@ static void mo5_update_cart_bank(running_machine *machine)
 			bank = thom_cart_bank % thom_cart_nb_banks;
 			memory_install_read8_handler( space, 0xbffc, 0xbfff, 0, 0, mo5_cartridge_r );
 		}
-		if ( bank != old_bank )
+		if ( bank != old_cart_bank )
 			LOG_BANK(( "mo5_update_cart_bank: CART is internal / cartridge bank %i\n", thom_cart_bank ));
 	}
 	memory_set_bank( machine, THOM_CART_BANK, bank );
-	old_bank = bank;
+	old_cart_bank = bank;
 }
 
 
@@ -2139,6 +2146,7 @@ MACHINE_RESET( mo5 )
 	pia6821_ca1_w( sys_pia, 0, 0 );
 
 	/* memory */
+	old_cart_bank = -1;
 	mo5_update_cart_bank(machine);
 	/* mo5_reg_cart not reset */
 	/* thom_cart_bank not reset */
@@ -2167,10 +2175,10 @@ MACHINE_START ( mo5 )
 	/* memory */
 	thom_cart_bank = 0;
 	mo5_reg_cart = 0;
-	thom_vram = mess_ram;
-	memory_configure_bank( machine, THOM_BASE_BANK, 0, 1, mess_ram + 0x4000, 0x8000 );
+	thom_vram = messram_get_ptr(devtag_get_device(machine, "messram"));
+	memory_configure_bank( machine, THOM_BASE_BANK, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000, 0x8000 );
 	memory_configure_bank( machine, THOM_CART_BANK, 0, 4, mem + 0x10000, 0x4000 );
-	memory_configure_bank( machine, THOM_CART_BANK, 4, 4, mess_ram + 0xc000, 0x4000 );
+	memory_configure_bank( machine, THOM_CART_BANK, 4, 4, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000, 0x4000 );
 	memory_configure_bank( machine, THOM_VRAM_BANK, 0, 2, thom_vram, 0x2000 );
 	memory_set_bank( machine, THOM_BASE_BANK, 0 );
 	memory_set_bank( machine, THOM_CART_BANK, 0 );
@@ -2391,7 +2399,6 @@ static UINT8 to9_soft_bank;
 static void to9_update_cart_bank(running_machine *machine)
 {
 	const address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	static int old_bank = -1;
 	int bank = 0;
 	int slot = ( mc6846_get_output_port(devtag_get_device(machine, "mc6846")) >> 4 ) & 3; /* bits 4-5: ROM bank */
 
@@ -2403,19 +2410,19 @@ static void to9_update_cart_bank(running_machine *machine)
 	case 0:
 		/* BASIC (64 KB) */
 		bank = 4 + to9_soft_bank;
-		if ( bank != old_bank )
+		if ( bank != old_cart_bank )
 			LOG_BANK(( "to9_update_cart_bank: CART is BASIC bank %i\n", to9_soft_bank ));
 		break;
 	case 1:
 		/* software 1 (32 KB) */
 		bank = 8 + (to9_soft_bank & 1);
-		if ( bank != old_bank )
+		if ( bank != old_cart_bank )
 			LOG_BANK(( "to9_update_cart_bank: CART is software 1 bank %i\n", to9_soft_bank ));
 		break;
 	case 2:
 		/* software 2 (32 KB) */
 		bank = 10 + (to9_soft_bank & 1);
-		if ( bank != old_bank )
+		if ( bank != old_cart_bank )
 			LOG_BANK(( "to9_update_cart_bank: CART is software 2 bank %i\n", to9_soft_bank ));
 		break;
 	case 3:
@@ -2425,13 +2432,13 @@ static void to9_update_cart_bank(running_machine *machine)
 			bank = thom_cart_bank % thom_cart_nb_banks;
 			memory_install_read8_handler( space, 0x0000, 0x0003, 0, 0, to7_cartridge_r );
 		}
-		if ( bank != old_bank )
+		if ( bank != old_cart_bank )
 			LOG_BANK(( "to9_update_cart_bank: CART is cartridge bank %i\n",  thom_cart_bank ));
 		break;
 	}
 
 	memory_set_bank( machine, THOM_CART_BANK, bank );
-	old_bank = bank;
+	old_cart_bank = bank;
 }
 
 
@@ -2476,7 +2483,6 @@ static void to9_update_ram_bank (running_machine *machine)
 {
 	const device_config *sys_pia = devtag_get_device( machine, THOM_PIA_SYS );
 	const address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	static int old_bank = -1;
 	UINT8 port = mc6846_get_output_port(devtag_get_device(machine, "mc6846"));
 	UINT8 portb = pia6821_get_port_b_z_mask( sys_pia );
 	UINT8 disk = ((port >> 2) & 1) | ((port >> 5) & 2); /* bits 6,2: RAM bank */
@@ -2503,10 +2509,10 @@ static void to9_update_ram_bank (running_machine *machine)
 		return;
 	}
 
-	if ( old_bank != bank )
+	if ( old_ram_bank != bank )
 		LOG_BANK(( "to9_update_ram_bank: bank %i selected (pia=$%02X disk=%i)\n", bank, portb & 0xf8, disk ));
 
-	if ( mess_ram_size == 192*1024 || bank < 6 )
+	if ( messram_get_size(devtag_get_device(machine, "messram")) == 192*1024 || bank < 6 )
 	{
 		memory_set_bank( machine, THOM_RAM_BANK, bank );
 		memory_install_write8_handler( space, 0xa000, 0xdfff, 0, 0, (write8_space_func)(STATIC_BANK1 + THOM_RAM_BANK - 1) );
@@ -2516,7 +2522,7 @@ static void to9_update_ram_bank (running_machine *machine)
 		memory_install_write8_handler( space, 0xa000, 0xdfff, 0, 0, SMH_NOP );
 	}
 
-	old_bank = bank;
+	old_ram_bank = bank;
 }
 
 
@@ -2823,8 +2829,8 @@ static int to9_kbd_get_key( running_machine *machine )
 			port |= 1; /* shift & control */
 
 		/* TODO: correct handling of simultaneous keystokes:
-		   return the new key preferably & disable repeat
-		*/
+           return the new key preferably & disable repeat
+        */
 		for ( bit = 0; bit < 8; bit++ )
 		{
 			if ( ! (port & (1 << bit)) )
@@ -3098,6 +3104,8 @@ MACHINE_RESET ( to9 )
 	pia6821_cb1_w( sys_pia, 0, 0 );
 
 	/* memory */
+	old_ram_bank = -1;
+	old_cart_bank = -1;
 	to9_soft_bank = 0;
 	to9_update_cart_bank(machine);
 	to9_update_ram_bank(machine);
@@ -3125,12 +3133,12 @@ MACHINE_START ( to9 )
 	to7_midi_init(machine);
 
 	/* memory */
-	thom_vram = mess_ram;
+	thom_vram = messram_get_ptr(devtag_get_device(machine, "messram"));
 	thom_cart_bank = 0;
 	memory_configure_bank( machine, THOM_VRAM_BANK, 0,  2, thom_vram, 0x2000 );
 	memory_configure_bank( machine, THOM_CART_BANK, 0, 12, mem + 0x10000, 0x4000 );
-	memory_configure_bank( machine, THOM_BASE_BANK, 0,  1, mess_ram + 0x4000, 0x4000 );
-	memory_configure_bank( machine, THOM_RAM_BANK,  0, 10, mess_ram + 0x8000, 0x4000 );
+	memory_configure_bank( machine, THOM_BASE_BANK, 0,  1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000, 0x4000 );
+	memory_configure_bank( machine, THOM_RAM_BANK,  0, 10, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000, 0x4000 );
 	memory_set_bank( machine, THOM_VRAM_BANK, 0 );
 	memory_set_bank( machine, THOM_CART_BANK, 0 );
 	memory_set_bank( machine, THOM_BASE_BANK, 0 );
@@ -3255,8 +3263,8 @@ static int to8_kbd_get_key( running_machine *machine )
 			port |= 1; /* shift & control */
 
 		/* TODO: correct handling of simultaneous keystokes:
-		   return the new key preferably & disable repeat
-		*/
+           return the new key preferably & disable repeat
+        */
 		for ( bit = 0; bit < 8; bit++ )
 		{
 			if ( ! (port & (1 << bit)) )
@@ -3319,8 +3327,8 @@ static void to8_kbd_timer_func(running_machine *machine)
 		/* key polling */
 		int k = to8_kbd_get_key(machine);
 		/* if not in transfer, send pulse from time to time
-		   (helps avoiding CPU lock)
-		*/
+           (helps avoiding CPU lock)
+        */
 		if ( ! to8_kbd_ack )
 			mc6846_set_input_cp1( devtag_get_device(machine, "mc6846"), 0 );
 		mc6846_set_input_cp1( devtag_get_device(machine, "mc6846"), 1 );
@@ -3502,15 +3510,14 @@ static UINT8  to8_bios_bank;
 
 static void to8_update_floppy_bank( running_machine *machine )
 {
-	static int old_bank = -1;
 	int bank = (to8_reg_sys1 & 0x80) ? to7_floppy_bank : (to8_bios_bank + TO7_NB_FLOP_BANK);
 
-	if ( bank != old_bank )
+	if ( bank != old_floppy_bank )
 		LOG_BANK(( "to8_update_floppy_bank: floppy ROM is %s bank %i\n",
 			  (to8_reg_sys1 & 0x80) ? "external" : "internal",
 			  bank % TO7_NB_FLOP_BANK ));
 	memory_set_bank( machine, THOM_FLOP_BANK, bank );
-	old_bank = bank;
+	old_floppy_bank = bank;
 }
 
 
@@ -3557,14 +3564,14 @@ static void to8_update_ram_bank (running_machine *machine)
 	}
 
 	/*  due to adressing distortion, the 16 KB banked memory space is
-	    split into two 8 KB spaces:
-	    - 0xa000-0xbfff maps to 0x2000-0x3fff in 16 KB bank
-	    - 0xc000-0xdfff maps to 0x0000-0x1fff in 16 KB bank
-	    this is important if we map a bank that is also reachable by another,
-	    undistorted space, such as cartridge, page 0 (video), or page 1
-	*/
+        split into two 8 KB spaces:
+        - 0xa000-0xbfff maps to 0x2000-0x3fff in 16 KB bank
+        - 0xc000-0xdfff maps to 0x0000-0x1fff in 16 KB bank
+        this is important if we map a bank that is also reachable by another,
+        undistorted space, such as cartridge, page 0 (video), or page 1
+    */
 	to8_data_vpage = bank;
-	if ( mess_ram_size == 512*1024 || to8_data_vpage < 16 )
+	if ( messram_get_size(devtag_get_device(machine, "messram")) == 512*1024 || to8_data_vpage < 16 )
 	{
 		memory_set_bank( machine, TO8_DATA_LO, to8_data_vpage );
 		memory_set_bank( machine, TO8_DATA_HI, to8_data_vpage );
@@ -3590,7 +3597,6 @@ static STATE_POSTLOAD( to8_update_ram_bank_postload )
 static void to8_update_cart_bank (running_machine *machine)
 {
 	const address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	static int old_bank = -1;
 	int bank = 0;
 
 	/* reset bank switch */
@@ -3602,11 +3608,11 @@ static void to8_update_cart_bank (running_machine *machine)
 		to8_cart_vpage = to8_reg_cart & 31;
 		bank = 8 + to8_cart_vpage;
 		memory_install_write8_handler( space, 0x0000, 0x3fff, 0, 0,
-					       ((to8_cart_vpage < 8 || mess_ram_size == 512*1024) && (to8_reg_cart & 0x40)) ?
+					       ((to8_cart_vpage < 8 || messram_get_size(devtag_get_device(machine, "messram")) == 512*1024) && (to8_reg_cart & 0x40)) ?
 					       (to8_cart_vpage <= 4) ? to8_vcart_w :
 					       (write8_space_func)(STATIC_BANK1 + THOM_CART_BANK - 1) :
 					       SMH_NOP );
-		if ( bank != old_bank )
+		if ( bank != old_cart_bank )
 			LOG_BANK(( "to8_update_cart_bank: CART is RAM bank %i (write-enable=%i)\n", to8_cart_vpage, (to8_reg_cart & 0x40) ? 1 : 0 ));
 	}
 	else
@@ -3616,7 +3622,7 @@ static void to8_update_cart_bank (running_machine *machine)
 		{
 			/* internal software ROM space */
 			bank = 4 + to8_soft_bank;
-			if ( bank != old_bank )
+			if ( bank != old_cart_bank )
 				LOG_BANK(( "to8_update_cart_bank: CART is internal bank %i\n",
 					  to8_soft_bank ));
 		}
@@ -3630,17 +3636,17 @@ static void to8_update_cart_bank (running_machine *machine)
 
 			}
 
-			if ( bank != old_bank )
+			if ( bank != old_cart_bank )
 				LOG_BANK(( "to8_update_cart_bank: CART is external cartridge bank %i\n", thom_cart_bank ));
 		}
 	}
 
-	if ( mess_ram_size == 512*1024 || bank < 16 )
+	if ( messram_get_size(devtag_get_device(machine, "messram")) == 512*1024 || bank < 16 )
 	{
 		memory_set_bank( machine, THOM_CART_BANK, bank );
 	}
 
-	old_bank = bank;
+	old_cart_bank = bank;
 }
 
 
@@ -4074,6 +4080,9 @@ MACHINE_RESET ( to8 )
 	pia6821_cb1_w( sys_pia, 0, 0 );
 
 	/* memory */
+	old_ram_bank = -1;
+	old_cart_bank = -1;
+	old_floppy_bank = -1;
 	to8_cart_vpage = 0;
 	to8_data_vpage = 0;
 	to8_soft_bank = 0;
@@ -4104,14 +4113,14 @@ MACHINE_START ( to8 )
 
 	/* memory */
 	thom_cart_bank = 0;
-	thom_vram = mess_ram;
+	thom_vram = messram_get_ptr(devtag_get_device(machine, "messram"));
 	memory_configure_bank( machine, THOM_CART_BANK, 0,  8, mem + 0x10000, 0x4000 );
-	memory_configure_bank( machine, THOM_CART_BANK, 8, 32, mess_ram, 0x4000 );
-	memory_configure_bank( machine, THOM_VRAM_BANK, 0,  2, mess_ram, 0x2000 );
-	memory_configure_bank( machine, TO8_SYS_LO,     0,  1, mess_ram + 0x6000, 0x4000 );
-	memory_configure_bank( machine, TO8_SYS_HI,     0,  1, mess_ram + 0x4000, 0x4000 );
-	memory_configure_bank( machine, TO8_DATA_LO,    0, 32, mess_ram + 0x2000, 0x4000 );
-	memory_configure_bank( machine, TO8_DATA_HI,    0, 32, mess_ram + 0x0000, 0x4000 );
+	memory_configure_bank( machine, THOM_CART_BANK, 8, 32, messram_get_ptr(devtag_get_device(machine, "messram")), 0x4000 );
+	memory_configure_bank( machine, THOM_VRAM_BANK, 0,  2, messram_get_ptr(devtag_get_device(machine, "messram")), 0x2000 );
+	memory_configure_bank( machine, TO8_SYS_LO,     0,  1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x6000, 0x4000 );
+	memory_configure_bank( machine, TO8_SYS_HI,     0,  1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000, 0x4000 );
+	memory_configure_bank( machine, TO8_DATA_LO,    0, 32, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2000, 0x4000 );
+	memory_configure_bank( machine, TO8_DATA_HI,    0, 32, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x0000, 0x4000 );
 	memory_configure_bank( machine, TO8_BIOS_BANK,  0,  2, mem + 0x30800, 0x2000 );
 	memory_set_bank( machine, THOM_CART_BANK, 0 );
 	memory_set_bank( machine, THOM_VRAM_BANK, 0 );
@@ -4241,6 +4250,9 @@ MACHINE_RESET ( to9p )
 	pia6821_cb1_w( sys_pia, 0, 0 );
 
 	/* memory */
+	old_ram_bank = -1;
+	old_cart_bank = -1;
+	old_floppy_bank = -1;
 	to8_cart_vpage = 0;
 	to8_data_vpage = 0;
 	to8_soft_bank = 0;
@@ -4271,14 +4283,14 @@ MACHINE_START ( to9p )
 
 	/* memory */
 	thom_cart_bank = 0;
-	thom_vram = mess_ram;
+	thom_vram = messram_get_ptr(devtag_get_device(machine, "messram"));
 	memory_configure_bank( machine, THOM_CART_BANK, 0,  8, mem + 0x10000, 0x4000 );
-	memory_configure_bank( machine, THOM_CART_BANK, 8, 32, mess_ram, 0x4000 );
-	memory_configure_bank( machine, THOM_VRAM_BANK, 0,  2, mess_ram, 0x2000 );
-	memory_configure_bank( machine, TO8_SYS_LO,     0,  1, mess_ram + 0x6000, 0x4000 );
-	memory_configure_bank( machine, TO8_SYS_HI,     0,  1, mess_ram + 0x4000, 0x4000 );
-	memory_configure_bank( machine, TO8_DATA_LO,    0, 32, mess_ram + 0x2000, 0x4000 );
-	memory_configure_bank( machine, TO8_DATA_HI,    0, 32, mess_ram + 0x0000, 0x4000 );
+	memory_configure_bank( machine, THOM_CART_BANK, 8, 32, messram_get_ptr(devtag_get_device(machine, "messram")), 0x4000 );
+	memory_configure_bank( machine, THOM_VRAM_BANK, 0,  2, messram_get_ptr(devtag_get_device(machine, "messram")), 0x2000 );
+	memory_configure_bank( machine, TO8_SYS_LO,     0,  1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x6000, 0x4000 );
+	memory_configure_bank( machine, TO8_SYS_HI,     0,  1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000, 0x4000 );
+	memory_configure_bank( machine, TO8_DATA_LO,    0, 32, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2000, 0x4000 );
+	memory_configure_bank( machine, TO8_DATA_HI,    0, 32, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x0000, 0x4000 );
 	memory_configure_bank( machine, TO8_BIOS_BANK,  0,  2, mem + 0x30800, 0x2000 );
 	memory_set_bank( machine, THOM_CART_BANK, 0 );
 	memory_set_bank( machine, THOM_VRAM_BANK, 0 );
@@ -4348,7 +4360,6 @@ static void mo6_update_cart_bank (running_machine *machine)
 	const device_config *sys_pia = devtag_get_device( machine, THOM_PIA_SYS );
 	const address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	int b = (pia6821_get_output_a( sys_pia ) >> 5) & 1;
-	static int old_bank = -1;
 	int bank = 0;
 
 	memory_install_read8_handler( space, 0xb000, 0xefff, 0, 0, (read8_space_func)(STATIC_BANK1 + THOM_CART_BANK - 1) );
@@ -4364,7 +4375,7 @@ static void mo6_update_cart_bank (running_machine *machine)
 			memory_install_write8_handler( space, 0xb000, 0xefff, 0, 0,
 						       (to8_reg_cart & 0x40) ? (to8_cart_vpage <= 4) ? to8_vcart_w :
 						       (write8_space_func)(STATIC_BANK1 + THOM_CART_BANK - 1) : SMH_NOP );
-			if ( bank != old_bank )
+			if ( bank != old_cart_bank )
 				LOG_BANK(( "mo6_update_cart_bank: CART is RAM bank %i (write-enable=%i)\n", to8_cart_vpage, (to8_reg_cart & 0x40) ? 1 : 0 ));
 		}
 		else if ( thom_cart_nb_banks == 4 )
@@ -4372,7 +4383,7 @@ static void mo6_update_cart_bank (running_machine *machine)
 			/* "JANE"-style cartridge bank switching */
 			memory_install_write8_handler( space, 0xb000, 0xefff, 0, 0, SMH_NOP );
 			bank = mo5_reg_cart & 3;
-			if ( bank != old_bank )
+			if ( bank != old_cart_bank )
 				LOG_BANK(( "mo6_update_cart_bank: CART is external cartridge bank %i (A7CB style)\n", bank ));
 		}
 		else
@@ -4383,7 +4394,7 @@ static void mo6_update_cart_bank (running_machine *machine)
 			bank = 8 + to8_cart_vpage;
 			memory_install_write8_handler( space, 0xb000, 0xefff, 0, 0, write_enable ?
 						       (write8_space_func)(STATIC_BANK1 + THOM_CART_BANK - 1) :  SMH_NOP );
-			if ( bank != old_bank )
+			if ( bank != old_cart_bank )
 				LOG_BANK(( "mo6_update_cart_bank: CART is RAM bank %i (write-enable=%i) (MO5 compat.)\n", to8_cart_vpage, write_enable ? 1 : 0 ));
 		}
 	}
@@ -4398,7 +4409,7 @@ static void mo6_update_cart_bank (running_machine *machine)
 				bank = b + 6; /* BASIC 128 */
 			else
 				bank = b + 4;                      /* BASIC 1 */
-			if ( bank != old_bank )
+			if ( bank != old_cart_bank )
 				LOG_BANK(( "mo6_update_cart_bank: CART is internal ROM bank %i\n", b ));
 		}
 		else
@@ -4410,12 +4421,12 @@ static void mo6_update_cart_bank (running_machine *machine)
 				bank = thom_cart_bank % thom_cart_nb_banks;
 				memory_install_read8_handler( space, 0xbffc, 0xbfff, 0, 0, mo6_cartridge_r );
 			}
-			if ( bank != old_bank )
+			if ( bank != old_cart_bank )
 				LOG_BANK(( "mo6_update_cart_bank: CART is external cartridge bank %i\n", bank ));
 		}
 	}
 
-	old_bank = bank;
+	old_cart_bank = bank;
 	memory_set_bank( machine, THOM_CART_BANK, bank );
 	memory_set_bank( machine, TO8_BIOS_BANK, b );
 }
@@ -4855,6 +4866,8 @@ MACHINE_RESET ( mo6 )
 	pia6821_ca1_w( sys_pia, 0, 0 );
 
 	/* memory */
+	old_ram_bank = -1;
+	old_cart_bank = -1;
 	to8_cart_vpage = 0;
 	to8_data_vpage = 0;
 	mo6_update_ram_bank(machine);
@@ -4883,16 +4896,16 @@ MACHINE_START ( mo6 )
 	/* memory */
 	thom_cart_bank = 0;
 	mo5_reg_cart = 0;
-	thom_vram = mess_ram;
+	thom_vram = messram_get_ptr(devtag_get_device(machine, "messram"));
 	memory_configure_bank( machine, THOM_CART_BANK, 0, 4, mem + 0x10000, 0x4000 );
 	memory_configure_bank( machine, THOM_CART_BANK, 4, 2, mem + 0x1f000, 0x4000 );
 	memory_configure_bank( machine, THOM_CART_BANK, 6, 2, mem + 0x28000, 0x4000 );
-	memory_configure_bank( machine, THOM_CART_BANK, 8, 8, mess_ram, 0x4000 );
-	memory_configure_bank( machine, THOM_VRAM_BANK, 0, 2, mess_ram, 0x2000 );
-	memory_configure_bank( machine, TO8_SYS_LO,     0, 1, mess_ram + 0x6000, 0x4000 );
-	memory_configure_bank( machine, TO8_SYS_HI,     0, 1, mess_ram + 0x4000, 0x4000 );
-	memory_configure_bank( machine, TO8_DATA_LO,    0, 8, mess_ram + 0x2000, 0x4000 );
-	memory_configure_bank( machine, TO8_DATA_HI,    0, 8, mess_ram + 0x0000, 0x4000 );
+	memory_configure_bank( machine, THOM_CART_BANK, 8, 8, messram_get_ptr(devtag_get_device(machine, "messram")), 0x4000 );
+	memory_configure_bank( machine, THOM_VRAM_BANK, 0, 2, messram_get_ptr(devtag_get_device(machine, "messram")), 0x2000 );
+	memory_configure_bank( machine, TO8_SYS_LO,     0, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x6000, 0x4000 );
+	memory_configure_bank( machine, TO8_SYS_HI,     0, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000, 0x4000 );
+	memory_configure_bank( machine, TO8_DATA_LO,    0, 8, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2000, 0x4000 );
+	memory_configure_bank( machine, TO8_DATA_HI,    0, 8, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x0000, 0x4000 );
 	memory_configure_bank( machine, TO8_BIOS_BANK,  0, 2, mem + 0x23000, 0x4000 );
 	memory_set_bank( machine, THOM_CART_BANK, 0 );
 	memory_set_bank( machine, THOM_VRAM_BANK, 0 );
@@ -5111,6 +5124,8 @@ MACHINE_RESET ( mo5nr )
 	pia6821_ca1_w( sys_pia, 0, 0 );
 
 	/* memory */
+	old_ram_bank = -1;
+	old_cart_bank = -1;
 	to8_cart_vpage = 0;
 	to8_data_vpage = 0;
 	mo6_update_ram_bank(machine);
@@ -5139,16 +5154,16 @@ MACHINE_START ( mo5nr )
 	/* memory */
 	thom_cart_bank = 0;
 	mo5_reg_cart = 0;
-	thom_vram = mess_ram;
+	thom_vram = messram_get_ptr(devtag_get_device(machine, "messram"));
 	memory_configure_bank( machine, THOM_CART_BANK, 0, 4, mem + 0x10000, 0x4000 );
 	memory_configure_bank( machine, THOM_CART_BANK, 4, 2, mem + 0x1f000, 0x4000 );
 	memory_configure_bank( machine, THOM_CART_BANK, 6, 2, mem + 0x28000, 0x4000 );
-	memory_configure_bank( machine, THOM_CART_BANK, 8, 8, mess_ram, 0x4000 );
-	memory_configure_bank( machine, THOM_VRAM_BANK, 0, 2, mess_ram, 0x2000 );
-	memory_configure_bank( machine, TO8_SYS_LO,     0, 1, mess_ram + 0x6000, 0x4000 );
-	memory_configure_bank( machine, TO8_SYS_HI,     0, 1, mess_ram + 0x4000, 0x4000 );
-	memory_configure_bank( machine, TO8_DATA_LO,    0, 8, mess_ram + 0x2000, 0x4000 );
-	memory_configure_bank( machine, TO8_DATA_HI,    0, 8, mess_ram + 0x0000, 0x4000 );
+	memory_configure_bank( machine, THOM_CART_BANK, 8, 8, messram_get_ptr(devtag_get_device(machine, "messram")), 0x4000 );
+	memory_configure_bank( machine, THOM_VRAM_BANK, 0, 2, messram_get_ptr(devtag_get_device(machine, "messram")), 0x2000 );
+	memory_configure_bank( machine, TO8_SYS_LO,     0, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x6000, 0x4000 );
+	memory_configure_bank( machine, TO8_SYS_HI,     0, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000, 0x4000 );
+	memory_configure_bank( machine, TO8_DATA_LO,    0, 8, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2000, 0x4000 );
+	memory_configure_bank( machine, TO8_DATA_HI,    0, 8, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x0000, 0x4000 );
 	memory_configure_bank( machine, TO8_BIOS_BANK,  0, 2, mem + 0x23000, 0x4000 );
 	memory_set_bank( machine, THOM_CART_BANK, 0 );
 	memory_set_bank( machine, THOM_VRAM_BANK, 0 );

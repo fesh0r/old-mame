@@ -217,7 +217,7 @@ GFXDECODE_END
 
 static const tms5220_interface ti99_4p_tms5220interface =
 {
-	NULL,						/* no IRQ callback */
+	DEVCB_NULL,					/* no IRQ callback */
 #if 1
 	spchroms_read,				/* speech ROM read handler */
 	spchroms_load_address,		/* speech ROM load address handler */
@@ -231,8 +231,17 @@ static const tms5220_interface ti99_4p_tms5220interface =
     b) this is a 2-level output (whereas a DAC provides a 256-level output...)
 */
 
-
-
+static const floppy_config ti99_4p_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(ti99),
+	DO_NOT_KEEP_GEOMETRY
+};
 /*
     machine description.
 */
@@ -264,8 +273,8 @@ static MACHINE_DRIVER_START(ti99_4p_60hz)
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("dac", DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
-//	MDRV_SOUND_WAVE_ADD("wave", "cassette")
-//	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+//  MDRV_SOUND_WAVE_ADD("wave", "cassette")
+//  MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 	MDRV_SOUND_ADD("sn76496", SN76496, 3579545)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
@@ -280,12 +289,15 @@ static MACHINE_DRIVER_START(ti99_4p_60hz)
 	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
 
 	/* MDRV_CASSETTE_ADD( "cassette", default_cassette_config ) */
-	
+
 	/* tms9901 */
-	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)	
-	/* tms9902 */
-	MDRV_TMS9902_ADD("tms9902_0", tms9902_params_0)
-	MDRV_TMS9902_ADD("tms9902_1", tms9902_params_1)	
+	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)
+
+	MDRV_FLOPPY_4_DRIVES_ADD(ti99_4p_floppy_config)
+
+	MDRV_SMARTMEDIA_ADD("smartmedia")
+
+	MDRV_TI99_4_RS232_CARD_ADD("rs232")
 MACHINE_DRIVER_END
 
 
@@ -314,114 +326,5 @@ ROM_START(ti99_4p)
 	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7) SHA1(382292295c00dff348d7e17c5ce4da12a1d87763)) /* system speech ROM */
 ROM_END
 
-static void ti99_4p_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_ti99; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static void ti99_4p_parallel_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* parallel */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_PARALLEL; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_4_pio); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_4_pio); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
-	}
-}
-
-static void ti99_4p_serial_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* serial */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_4_rs232); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_4_rs232); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
-	}
-}
-
-#if 0
-static void ti99_4p_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* quickload */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_QUICKLOAD; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-		case MESS_DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_hsgpl); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_hsgpl); break;
-	}
-}
-#endif
-
-static void ti99_4p_memcard_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* memcard */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_MEMCARD; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(smartmedia); break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(smartmedia); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(smartmedia); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(ti99_4p)
-	CONFIG_DEVICE(ti99_4p_floppy_getinfo)
-	CONFIG_DEVICE(ti99_4p_floppy_getinfo)
-	CONFIG_DEVICE(ti99_4p_parallel_getinfo)
-	CONFIG_DEVICE(ti99_4p_serial_getinfo)
-	/*CONFIG_DEVICE(ti99_4p_quickload_getinfo)*/
-	CONFIG_DEVICE(ti99_4p_memcard_getinfo)
-SYSTEM_CONFIG_END
-
 /*    YEAR  NAME      PARENT   COMPAT   MACHINE      INPUT    INIT     CONFIG   COMPANY     FULLNAME */
-COMP( 1996, ti99_4p,  0,	   0,		ti99_4p_60hz, ti99_4p, ti99_4p, ti99_4p,"snug",		"SGCPU (a.k.a. 99/4P)" , GAME_NOT_WORKING )
+COMP( 1996, ti99_4p,  0,	   0,		ti99_4p_60hz, ti99_4p, ti99_4p, 0,"snug",		"SGCPU (a.k.a. 99/4P)" , GAME_NOT_WORKING )

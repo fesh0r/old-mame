@@ -4,12 +4,12 @@
 
         12/05/2009 Skeleton driver.
 
-	Everything in this driver has been worked out by reading the
-	ROM and using the debugger, as no information is available.
+    Everything in this driver has been worked out by reading the
+    ROM and using the debugger, as no information is available.
 
-	Therefore, it is likely to be full of mistakes and omissions.
+    Therefore, it is likely to be full of mistakes and omissions.
 
-	Note: The $ key makes a square symbol.
+    Note: The $ key makes a square symbol.
 
 ****************************************************************************/
 
@@ -95,7 +95,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( bcs3_io, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-//	AM_RANGE( 0xf8, 0xfb ) AM_DEVREADWRITE(Z80CTC,"z80ctc",z80ctc_r,z80ctc_w)
+//  AM_RANGE( 0xf8, 0xfb ) AM_DEVREADWRITE(Z80CTC,"z80ctc",z80ctc_r,z80ctc_w)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -252,7 +252,7 @@ static VIDEO_UPDATE( bcs3 )
 }
 
 /* This has 100 lines of screen data. I'm assuming that it only shows a portion of this,
-	with the cursor always in sight. */
+    with the cursor always in sight. */
 static VIDEO_UPDATE( bcs3a )
 {
 	UINT8 y,ra,chr,gfx,rat;
@@ -440,9 +440,6 @@ static MACHINE_DRIVER_START( bcs3c )
 	MDRV_VIDEO_UPDATE(bcs3c)
 MACHINE_DRIVER_END
 
-static SYSTEM_CONFIG_START(bcs3)
-SYSTEM_CONFIG_END
-
 /* ROM definition */
 ROM_START( bcs3 )
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
@@ -481,7 +478,7 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( ????, bcs3,   0,       0,      bcs3, 	bcs3, 	 0,  	  bcs3,  "Eckhard Schiller",   "BCS 3 rev 2.4", GAME_NOT_WORKING)
-COMP( ????, bcs3a,  bcs3,    0,      bcs3a, 	bcs3, 	 0,  	  bcs3,  "Eckhard Schiller",   "BCS 3 rev 3.1 29-column", GAME_NOT_WORKING)
-COMP( ????, bcs3b,  bcs3,    0,      bcs3b, 	bcs3, 	 0,  	  bcs3,  "Eckhard Schiller",   "BCS 3 rev 3.1 40-column", GAME_NOT_WORKING)
-COMP( ????, bcs3c,  bcs3,    0,      bcs3c, 	bcs3, 	 0,  	  bcs3,  "Eckhard Schiller",   "BCS 3 rev 3.3", GAME_NOT_WORKING)
+COMP( 1984, bcs3,   0,       0,      bcs3, 	bcs3, 	 0,  	  0,  "Eckhard Schiller",   "BCS 3 rev 2.4", GAME_NOT_WORKING)
+COMP( 1986, bcs3a,  bcs3,    0,      bcs3a, 	bcs3, 	 0,  	  0,  "Eckhard Schiller",   "BCS 3 rev 3.1 29-column", GAME_NOT_WORKING)
+COMP( 1986, bcs3b,  bcs3,    0,      bcs3b, 	bcs3, 	 0,  	  0,  "Eckhard Schiller",   "BCS 3 rev 3.1 40-column", GAME_NOT_WORKING)
+COMP( 198?, bcs3c,  bcs3,    0,      bcs3c, 	bcs3, 	 0,  	  0,  "Eckhard Schiller",   "BCS 3 rev 3.3", GAME_NOT_WORKING)

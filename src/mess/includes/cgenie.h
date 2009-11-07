@@ -9,13 +9,10 @@
 
 #include "machine/wd17xx.h"
 
-/*----------- defined in audio/cgenie.c -----------*/
+/*----------- defined in machine/cgenie.c -----------*/
 
 READ8_DEVICE_HANDLER( cgenie_sh_control_port_r );
 WRITE8_DEVICE_HANDLER( cgenie_sh_control_port_w );
-
-
-/*----------- defined in machine/cgenie.c -----------*/
 
 extern UINT8 *cgenie_fontram;
 extern const wd17xx_interface cgenie_wd17xx_interface;
@@ -63,7 +60,7 @@ WRITE8_HANDLER ( cgenie_videoram_w );
 
 // CRTC 6845
 typedef struct
-{         
+{
 	UINT8    cursor_address_lo;
 	UINT8    cursor_address_hi;
 	UINT8    screen_address_lo;

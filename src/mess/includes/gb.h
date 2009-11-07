@@ -78,12 +78,6 @@ extern UINT8 sgb_hack;				/* Flag set if we're using a hack       */
 extern MACHINE_RESET( sgb );
 extern WRITE8_HANDLER ( sgb_io_w );
 
-/* -- Game Boy Color specific -- */
-#define GBC_MODE_GBC		1		/* GBC is in colour mode                */
-#define GBC_MODE_MONO		2		/* GBC is in mono mode                  */
-
-extern UINT8 gbc_mode;				/* is the GBC in mono/colour mode?      */
-
 MACHINE_RESET( gbc );
 
 
@@ -118,8 +112,6 @@ enum
 	GB_VIDEO_CGB
 };
 
-extern UINT8 *gb_vram;
-
 PALETTE_INIT( gb );
 PALETTE_INIT( gbp );
 PALETTE_INIT( sgb );
@@ -129,6 +121,7 @@ PALETTE_INIT( megaduck );
 READ8_HANDLER( gb_video_r );
 WRITE8_HANDLER( gb_video_w );
 void gb_video_init( running_machine *machine, int mode );
+UINT8 *gb_get_vram_ptr(running_machine *machine);
 
 
 #endif /* GB_H_ */

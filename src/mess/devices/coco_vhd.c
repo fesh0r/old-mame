@@ -1,45 +1,45 @@
 /***************************************************************************
 
-	coco_vhd.c
+    coco_vhd.c
 
-	Color Computer Virtual Hard Drives
+    Color Computer Virtual Hard Drives
 
 ****************************************************************************
 
-	Technical specs on the Virtual Hard Disk interface
+    Technical specs on the Virtual Hard Disk interface
 
-	Address       Description
-	-------       -----------
-	FF80          Logical record number (high byte)
-	FF81          Logical record number (middle byte)
-	FF82          Logical record number (low byte)
-	FF83          Command/status register
-	FF84          Buffer address (high byte)
-	FF85          Buffer address (low byte)
+    Address       Description
+    -------       -----------
+    FF80          Logical record number (high byte)
+    FF81          Logical record number (middle byte)
+    FF82          Logical record number (low byte)
+    FF83          Command/status register
+    FF84          Buffer address (high byte)
+    FF85          Buffer address (low byte)
 
-	Set the other registers, and then issue a command to FF83 as follows:
+    Set the other registers, and then issue a command to FF83 as follows:
 
-	 0 = read 256-byte sector at LRN
-	 1 = write 256-byte sector at LRN
-	 2 = flush write cache (Closes and then opens the image file)
+     0 = read 256-byte sector at LRN
+     1 = write 256-byte sector at LRN
+     2 = flush write cache (Closes and then opens the image file)
 
-	Error values:
+    Error values:
 
-	 0 = no error
-	-1 = power-on state (before the first command is recieved)
-	-2 = invalid command
-	 2 = VHD image does not exist
-	 4 = Unable to open VHD image file
-	 5 = access denied (may not be able to write to VHD image)
+     0 = no error
+    -1 = power-on state (before the first command is recieved)
+    -2 = invalid command
+     2 = VHD image does not exist
+     4 = Unable to open VHD image file
+     5 = access denied (may not be able to write to VHD image)
 
-	IMPORTANT: The I/O buffer must NOT cross an 8K MMU bank boundary.
+    IMPORTANT: The I/O buffer must NOT cross an 8K MMU bank boundary.
 
  ***************************************************************************/
 
 #include "driver.h"
 #include "coco_vhd.h"
 #include "includes/coco.h"
-
+#include "devices/messram.h"
 
 
 /***************************************************************************
@@ -159,16 +159,16 @@ static void coco_vhd_readwrite(const device_config *device, UINT8 data)
 		}
 	}
 
-	phyOffset = coco3_mmu_translate( (nBA >> 12 ) / 2, nBA % 8192 );
+	phyOffset = coco3_mmu_translate(device->machine, (nBA >> 12 ) / 2, nBA % 8192 );
 
 	switch(data)
 	{
 		case VHDCMD_READ: /* Read sector */
-			memset(&mess_ram[phyOffset], 0, 256);
+			memset(&messram_get_ptr(devtag_get_device(device->machine, "messram"))[phyOffset], 0, 256);
 			if (total_size > seek_position)
 			{
 				bytes_to_read = (UINT32) MIN((UINT64) 256, total_size - seek_position);
-				result = image_fread(device, &mess_ram[phyOffset], bytes_to_read);
+				result = image_fread(device, &messram_get_ptr(devtag_get_device(device->machine, "messram"))[phyOffset], bytes_to_read);
 				if (result != bytes_to_read)
 				{
 					vhd->status = VHDSTATUS_ACCESS_DENIED;
@@ -180,7 +180,7 @@ static void coco_vhd_readwrite(const device_config *device, UINT8 data)
 			break;
 
 		case VHDCMD_WRITE: /* Write Sector */
-			result = image_fwrite(device, &(mess_ram[phyOffset]), 256);
+			result = image_fwrite(device, &(messram_get_ptr(devtag_get_device(device->machine, "messram"))[phyOffset]), 256);
 
 			if (result != 256)
 			{

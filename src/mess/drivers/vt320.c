@@ -1,5 +1,5 @@
 /***************************************************************************
-   
+
         DEC VT320
 
         30/06/2009 Skeleton driver.
@@ -8,6 +8,7 @@
 
 #include "driver.h"
 #include "cpu/mcs51/mcs51.h"
+#include "devices/messram.h"
 /*
 
 Partlist :
@@ -21,7 +22,7 @@ ROM, 512K bits = 64K bytes. 28-pin package.
 Toshiba TC5565APL-12, 2 off
 Static RAM, 64K bit = 8K byte.
 ST TDA1170N
-Vertical deflection system IC. 
+Vertical deflection system IC.
 UC 80343Q
 20 pins. Unknown.
 UC 80068Q
@@ -33,7 +34,7 @@ Microchip ER5911
 Texas Inst. 749X 75146
 8 pins. Unknown.
 Signetics? 74LS373N
-8-bit D-type latch. This has eight inputs and eight outputs. 
+8-bit D-type latch. This has eight inputs and eight outputs.
 */
 static ADDRESS_MAP_START(vt320_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0xffff) AM_ROM
@@ -43,12 +44,12 @@ static ADDRESS_MAP_START( vt320_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 /* Input ports */
-INPUT_PORTS_START( vt320 )
+static INPUT_PORTS_START( vt320 )
 INPUT_PORTS_END
 
-static MACHINE_RESET(vt320) 
-{	
-	memset(mess_ram,0,16*1024);
+static MACHINE_RESET(vt320)
+{
+	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,16*1024);
 }
 
 static VIDEO_START( vt320 )
@@ -65,10 +66,10 @@ static MACHINE_DRIVER_START( vt320 )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu", I8051, XTAL_16MHz)
     MDRV_CPU_PROGRAM_MAP(vt320_mem)
-    MDRV_CPU_IO_MAP(vt320_io)	
+    MDRV_CPU_IO_MAP(vt320_io)
 
     MDRV_MACHINE_RESET(vt320)
-	
+
     /* video hardware */
     MDRV_SCREEN_ADD("screen", RASTER)
     MDRV_SCREEN_REFRESH_RATE(50)
@@ -81,11 +82,11 @@ static MACHINE_DRIVER_START( vt320 )
 
     MDRV_VIDEO_START(vt320)
     MDRV_VIDEO_UPDATE(vt320)
-MACHINE_DRIVER_END
 
-static SYSTEM_CONFIG_START(vt320)
-	CONFIG_RAM_DEFAULT(16 * 1024)
-SYSTEM_CONFIG_END
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("16K")
+MACHINE_DRIVER_END
 
 /* ROM definition */
 ROM_START( vt320 )
@@ -96,8 +97,8 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1987, vt320,  0,       0, 	vt320, 	vt320, 	 0,  	  vt320,  	 "DEC",   "VT320",		GAME_NOT_WORKING)
-//COMP( 1989?, vt330,  0,       0, 	vt320, 	vt320, 	 0,  	  vt320,  	 "DEC",   "VT330",		GAME_NOT_WORKING)
-//COMP( 1989?, vt340,  0,       0, 	vt320, 	vt320, 	 0,  	  vt320,  	 "DEC",   "VT340",		GAME_NOT_WORKING)
-//COMP( 1990?, vt340p,  0,       0, 	vt320, 	vt320, 	 0,  	  vt320,  	 "DEC",   "VT340+",		GAME_NOT_WORKING)
+COMP( 1987, vt320,  0,       0, 	vt320, 	vt320, 	 0,  	  0,  	 "DEC",   "VT320",		GAME_NOT_WORKING)
+//COMP( 1989?, vt330,  0,       0,  vt320,  vt320,   0,       0,     "DEC",   "VT330",      GAME_NOT_WORKING)
+//COMP( 1989?, vt340,  0,       0,  vt320,  vt320,   0,       0,     "DEC",   "VT340",      GAME_NOT_WORKING)
+//COMP( 1990?, vt340p,  0,       0,     vt320,  vt320,   0,       0,     "DEC",   "VT340+",     GAME_NOT_WORKING)
 

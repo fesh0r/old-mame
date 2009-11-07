@@ -1,5 +1,5 @@
 /***************************************************************************
-   
+
         DEC VT220
 
         30/06/2009 Skeleton driver.
@@ -8,6 +8,7 @@
 
 #include "driver.h"
 #include "cpu/mcs51/mcs51.h"
+#include "devices/messram.h"
 
 static ADDRESS_MAP_START(vt220_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
@@ -17,12 +18,12 @@ static ADDRESS_MAP_START( vt220_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 /* Input ports */
-INPUT_PORTS_START( vt220 )
+static INPUT_PORTS_START( vt220 )
 INPUT_PORTS_END
 
-static MACHINE_RESET(vt220) 
-{	
-	memset(mess_ram,0,16*1024);
+static MACHINE_RESET(vt220)
+{
+	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,16*1024);
 }
 
 static VIDEO_START( vt220 )
@@ -39,10 +40,10 @@ static MACHINE_DRIVER_START( vt220 )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu", I8051, XTAL_16MHz)
     MDRV_CPU_PROGRAM_MAP(vt220_mem)
-    MDRV_CPU_IO_MAP(vt220_io)	
+    MDRV_CPU_IO_MAP(vt220_io)
 
     MDRV_MACHINE_RESET(vt220)
-	
+
     /* video hardware */
     MDRV_SCREEN_ADD("screen", RASTER)
     MDRV_SCREEN_REFRESH_RATE(50)
@@ -55,11 +56,11 @@ static MACHINE_DRIVER_START( vt220 )
 
     MDRV_VIDEO_START(vt220)
     MDRV_VIDEO_UPDATE(vt220)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("16K")	
 MACHINE_DRIVER_END
-
-static SYSTEM_CONFIG_START(vt220)
-	CONFIG_RAM_DEFAULT(16 * 1024)
-SYSTEM_CONFIG_END
 
 /* ROM definition */
 ROM_START( vt220 )
@@ -70,7 +71,7 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1983, vt220,  0,       0, 	vt220, 	vt220, 	 0,  	  vt220,  	 "DEC",   "VT220",		GAME_NOT_WORKING)
-//COMP( 1983, vt240,  0,       0, 	vt220, 	vt220, 	 0,  	  vt220,  	 "DEC",   "VT240",		GAME_NOT_WORKING)
-//COMP( 1983, vt241,  0,       0, 	vt220, 	vt220, 	 0,  	  vt220,  	 "DEC",   "VT241",		GAME_NOT_WORKING)
+COMP( 1983, vt220,  0,       0, 	vt220, 	vt220, 	 0,  	  0,  	 "DEC",   "VT220",		GAME_NOT_WORKING)
+//COMP( 1983, vt240,  0,       0,   vt220,  vt220,   0,       0,     "DEC",   "VT240",      GAME_NOT_WORKING)
+//COMP( 1983, vt241,  0,       0,   vt220,  vt220,   0,       0,     "DEC",   "VT241",      GAME_NOT_WORKING)
 

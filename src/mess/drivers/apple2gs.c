@@ -46,6 +46,7 @@
 #include "machine/ay3600.h"
 #include "devices/flopdrv.h"
 #include "formats/ap2_dsk.h"
+#include "formats/ap_dsk35.h"
 #include "includes/apple2gs.h"
 #include "devices/sonydriv.h"
 #include "devices/appldriv.h"
@@ -57,6 +58,7 @@
 #include "machine/8530scc.h"
 #include "sound/ay8910.h"
 #include "sound/speaker.h"
+#include "devices/messram.h"
 
 static const gfx_layout apple2gs_text_layout =
 {
@@ -149,6 +151,70 @@ static const es5503_interface apple2gs_es5503_interface =
 	apple2gs_docram
 };
 
+/*
+static void apple2gs_floppy35_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
+{
+    // 3.5" floppy
+    switch(state)
+    {
+        case MESS_DEVINFO_INT_SONYDRIV_ALLOWABLE_SIZES:     info->i = SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_ALLOW800K | SONY_FLOPPY_SUPPORT2IMG; break;
+
+        case MESS_DEVINFO_STR_NAME+0:                       strcpy(info->s = device_temp_str(), "slot5disk1"); break;
+        case MESS_DEVINFO_STR_NAME+1:                       strcpy(info->s = device_temp_str(), "slot5disk2"); break;
+        case MESS_DEVINFO_STR_SHORT_NAME+0:                 strcpy(info->s = device_temp_str(), "s5d1"); break;
+        case MESS_DEVINFO_STR_SHORT_NAME+1:                 strcpy(info->s = device_temp_str(), "s5d2"); break;
+        case MESS_DEVINFO_STR_DESCRIPTION+0:                    strcpy(info->s = device_temp_str(), "Slot 5 Disk #1"); break;
+        case MESS_DEVINFO_STR_DESCRIPTION+1:                    strcpy(info->s = device_temp_str(), "Slot 5 Disk #2"); break;
+
+        default:                                        sonydriv_device_getinfo(devclass, state, info); break;
+    }
+}
+
+
+
+static void apple2gs_floppy525_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
+{
+    // 5.25" floppy
+    switch(state)
+    {
+        case MESS_DEVINFO_INT_APPLE525_SPINFRACT_DIVIDEND:  info->i = 15; break;
+        case MESS_DEVINFO_INT_APPLE525_SPINFRACT_DIVISOR:   info->i = 16; break;
+
+        case MESS_DEVINFO_STR_NAME+0:                       strcpy(info->s = device_temp_str(), "slot6disk1"); break;
+        case MESS_DEVINFO_STR_NAME+1:                       strcpy(info->s = device_temp_str(), "slot6disk2"); break;
+        case MESS_DEVINFO_STR_SHORT_NAME+0:                 strcpy(info->s = device_temp_str(), "s6d1"); break;
+        case MESS_DEVINFO_STR_SHORT_NAME+1:                 strcpy(info->s = device_temp_str(), "s6d2"); break;
+        case MESS_DEVINFO_STR_DESCRIPTION+0:                    strcpy(info->s = device_temp_str(), "Slot 6 Disk #1"); break;
+        case MESS_DEVINFO_STR_DESCRIPTION+1:                    strcpy(info->s = device_temp_str(), "Slot 6 Disk #2"); break;
+
+        default:                                        apple525_device_getinfo(devclass, state, info); break;
+    }
+}*/
+
+static const floppy_config apple2gs_floppy35_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(apple35_iigs),
+	DO_NOT_KEEP_GEOMETRY
+};
+
+static const floppy_config apple2gs_floppy525_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(apple2),
+	DO_NOT_KEEP_GEOMETRY
+};
+
 static MACHINE_DRIVER_START( apple2gs )
 	MDRV_IMPORT_FROM( apple2e )
 	MDRV_CPU_REPLACE("maincpu", G65816, APPLE2GS_14M/5)
@@ -181,6 +247,14 @@ static MACHINE_DRIVER_START( apple2gs )
 	MDRV_IWM_ADD("fdc", apple2_fdc_interface)
 	/* SCC */
 	MDRV_SCC8530_ADD("scc")
+
+	MDRV_FLOPPY_APPLE_2_DRIVES_REMOVE()
+	MDRV_FLOPPY_APPLE_2_DRIVES_ADD(apple2gs_floppy525_floppy_config,15,16)
+	MDRV_FLOPPY_SONY_2_DRIVES_ADDITIONAL_ADD(apple2gs_floppy35_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("2M")
 MACHINE_DRIVER_END
 
 
@@ -253,72 +327,14 @@ ROM_START(apple2gsr0)
 	ROM_LOAD("rom0d.bin", 0x18000, 0x8000, CRC(200a15b8) SHA1(0c2890bb169ead63369738bbd5f33b869f24c42a))
 ROM_END
 
-
-
-/* -----------------------------------------------------------------------
- * Floppy disk devices
- * ----------------------------------------------------------------------- */
-
-static void apple2gs_floppy35_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* 3.5" floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_SONYDRIV_ALLOWABLE_SIZES:		info->i = SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_ALLOW800K | SONY_FLOPPY_SUPPORT2IMG; break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_NAME+0:						strcpy(info->s = device_temp_str(), "slot5disk1"); break;
-		case MESS_DEVINFO_STR_NAME+1:						strcpy(info->s = device_temp_str(), "slot5disk2"); break;
-		case MESS_DEVINFO_STR_SHORT_NAME+0:					strcpy(info->s = device_temp_str(), "s5d1"); break;
-		case MESS_DEVINFO_STR_SHORT_NAME+1:					strcpy(info->s = device_temp_str(), "s5d2"); break;
-		case MESS_DEVINFO_STR_DESCRIPTION+0:					strcpy(info->s = device_temp_str(), "Slot 5 Disk #1"); break;
-		case MESS_DEVINFO_STR_DESCRIPTION+1:					strcpy(info->s = device_temp_str(), "Slot 5 Disk #2"); break;
-
-		default:										sonydriv_device_getinfo(devclass, state, info); break;
-	}
-}
-
-
-
-static void apple2gs_floppy525_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* 5.25" floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_APPLE525_SPINFRACT_DIVIDEND:	info->i = 15; break;
-		case MESS_DEVINFO_INT_APPLE525_SPINFRACT_DIVISOR:	info->i = 16; break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_NAME+0:						strcpy(info->s = device_temp_str(), "slot6disk1"); break;
-		case MESS_DEVINFO_STR_NAME+1:						strcpy(info->s = device_temp_str(), "slot6disk2"); break;
-		case MESS_DEVINFO_STR_SHORT_NAME+0:					strcpy(info->s = device_temp_str(), "s6d1"); break;
-		case MESS_DEVINFO_STR_SHORT_NAME+1:					strcpy(info->s = device_temp_str(), "s6d2"); break;
-		case MESS_DEVINFO_STR_DESCRIPTION+0:					strcpy(info->s = device_temp_str(), "Slot 6 Disk #1"); break;
-		case MESS_DEVINFO_STR_DESCRIPTION+1:					strcpy(info->s = device_temp_str(), "Slot 6 Disk #2"); break;
-
-		default:										apple525_device_getinfo(devclass, state, info); break;
-	}
-}
-
 static DRIVER_INIT(apple2gs)
 {
 	state_save_register_global_array(machine, apple2gs_docram);
 }
 
-/* ----------------------------------------------------------------------- */
-
-static SYSTEM_CONFIG_START(apple2gs)
-	CONFIG_DEVICE(apple2gs_floppy35_getinfo)
-	CONFIG_DEVICE(apple2gs_floppy525_getinfo)
-
-	CONFIG_RAM_DEFAULT			(2 * 1024 * 1024)
-SYSTEM_CONFIG_END
-
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT       INIT      CONFIG      COMPANY            FULLNAME */
-COMP( 1989, apple2gs, 0,        apple2, apple2gs, apple2gs,   apple2gs, apple2gs,	"Apple Computer", "Apple IIgs (ROM03)", 0 )
-COMP( 198?, apple2gsr3p, apple2gs, 0,   apple2gs, apple2gs,   apple2gs, apple2gs,	"Apple Computer", "Apple IIgs (ROM03 prototype)", GAME_NOT_WORKING )
-COMP( 1989, apple2gsr3lp, apple2gs, 0,  apple2gs, apple2gs,   apple2gs, apple2gs,	"Apple Computer", "Apple IIgs (ROM03 late prototype?)", GAME_NOT_WORKING )
-COMP( 1987, apple2gsr1, apple2gs, 0,    apple2gs, apple2gs,   apple2gs, apple2gs,	"Apple Computer", "Apple IIgs (ROM01)", 0 )
-COMP( 1986, apple2gsr0, apple2gs, 0,    apple2gs, apple2gs,   apple2gs, apple2gs,	"Apple Computer", "Apple IIgs (ROM00)", 0 )
+COMP( 1989, apple2gs, 0,        apple2, apple2gs, apple2gs,   apple2gs, 0,	"Apple Computer", "Apple IIgs (ROM03)", 0 )
+COMP( 198?, apple2gsr3p, apple2gs, 0,   apple2gs, apple2gs,   apple2gs, 0,	"Apple Computer", "Apple IIgs (ROM03 prototype)", GAME_NOT_WORKING )
+COMP( 1989, apple2gsr3lp, apple2gs, 0,  apple2gs, apple2gs,   apple2gs, 0,	"Apple Computer", "Apple IIgs (ROM03 late prototype?)", GAME_NOT_WORKING )
+COMP( 1987, apple2gsr1, apple2gs, 0,    apple2gs, apple2gs,   apple2gs, 0,	"Apple Computer", "Apple IIgs (ROM01)", 0 )
+COMP( 1986, apple2gsr0, apple2gs, 0,    apple2gs, apple2gs,   apple2gs, 0,	"Apple Computer", "Apple IIgs (ROM00)", 0 )

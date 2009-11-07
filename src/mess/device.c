@@ -151,7 +151,7 @@ const char *device_brieftypename(iodevice_t type)
 iodevice_t device_typeid(const char *name)
 {
 	int i;
-	for (i = 0; i < sizeof(device_info_array) / sizeof(device_info_array[0]); i++)
+	for (i = 0; i < ARRAY_LENGTH(device_info_array); i++)
 	{
 		if (!mame_stricmp(name, device_info_array[i].name) || !mame_stricmp(name, device_info_array[i].shortname))
 			return device_info_array[i].type;
@@ -467,7 +467,7 @@ static void create_mess_device(running_machine *machine, device_config **listhea
 void mess_devices_setup(running_machine *machine, machine_config *config, const game_driver *gamedrv)
 {
 	device_getinfo_handler handlers[64];
-	int count_overrides[sizeof(handlers) / sizeof(handlers[0])];
+	int count_overrides[ARRAY_LENGTH(handlers)];
 	int i, position = 0;
 
 	memset(handlers, 0, sizeof(handlers));
@@ -479,7 +479,7 @@ void mess_devices_setup(running_machine *machine, machine_config *config, const 
 		struct SystemConfigurationParamBlock params;
 
 		memset(&params, 0, sizeof(params));
-		params.device_slotcount = sizeof(handlers) / sizeof(handlers[0]);
+		params.device_slotcount = ARRAY_LENGTH(handlers);
 		params.device_handlers = handlers;
 		params.device_countoverrides = count_overrides;
 		gamedrv->sysconfig_ctor(&params);
@@ -520,102 +520,6 @@ static const legacy_mess_device *mess_device_from_core_device(const device_confi
 	return (mess_device != NULL) ? &mess_device->io_device : NULL;
 }
 
-
-
-const mess_device_class *mess_devclass_from_core_device(const device_config *device)
-{
-	const legacy_mess_device *iodev = mess_device_from_core_device(device);
-	return (iodev != NULL) ? &iodev->devclass : NULL;
-}
-
-
-
-int device_count_tag_from_machine(const running_machine *machine, const char *tag)
-{
-	int count = 0;
-	const device_config *device;
-
-	for (device = device_list_first(machine->config->devicelist, MESS_DEVICE); device != NULL; device = device_list_next(device, MESS_DEVICE))
-	{
-		const legacy_mess_device *iodev = mess_device_from_core_device(device);
-		if (!strcmp(tag, iodev->tag))
-		{
-			count++;
-		}
-	}
-	return count;
-}
-
-
-
-/* this function is deprecated */
-int device_find_from_machine(const running_machine *machine, iodevice_t type)
-{
-	const device_config *device;
-
-	for (device = device_list_first(machine->config->devicelist, MESS_DEVICE); device != NULL; device = device_list_next(device, MESS_DEVICE))
-	{
-		const legacy_mess_device *iodev = mess_device_from_core_device(device);
-		if (iodev->type == type)
-			return TRUE;
-	}
-	return FALSE;
-}
-
-
-
-/* this function is deprecated */
-int device_count(running_machine *machine, iodevice_t type)
-{
-	int count = 0;
-	const device_config *device;
-
-	for (device = device_list_first(machine->config->devicelist, MESS_DEVICE); device != NULL; device = device_list_next(device, MESS_DEVICE))
-	{
-		const legacy_mess_device *iodev = mess_device_from_core_device(device);
-		if (iodev->type == type)
-		{
-			count++;
-		}
-	}
-	return count;
-}
-
-
-
-/*************************************
- *
- *	Tag management
- *
- *************************************/
-
-static mess_device_token *get_token(const device_config *device)
-{
-	assert(device->type == MESS_DEVICE);
-	return (mess_device_token *) device->token;
-}
-
-
-
-void *image_alloctag(const device_config *device, const char *tag, size_t size)
-{
-	void *ptr = tagpool_alloc(&get_token(device)->tagpool, tag, size);
-	if (ptr == NULL)
-	{
-		fatalerror("Out of memory");
-	}
-	return ptr;
-}
-
-
-
-void *image_lookuptag(const device_config *device, const char *tag)
-{
-	return tagpool_lookup(&get_token(device)->tagpool, tag);
-}
-
-
-
 /*************************************
  *
  *	Deprecated device access functions
@@ -628,38 +532,6 @@ int image_index_in_device(const device_config *image)
 	assert(iodev != NULL);
 	return iodev->index_in_device;
 }
-
-
-
-const device_config *image_from_devtag_and_index(running_machine *machine, const char *devtag, int id)
-{
-	const device_config *image = NULL;
-	const device_config *dev;
-	const legacy_mess_device *iodev;
-
-	for (dev = device_list_first(machine->config->devicelist, MESS_DEVICE); dev != NULL; dev = device_list_next(dev, MESS_DEVICE))
-	{
-		iodev = mess_device_from_core_device(dev);
-		if ((iodev->tag != NULL) && !strcmp(iodev->tag, devtag) && (iodev->index_in_device == id))
-		{
-			image = dev;
-			break;
-		}
-	}
-
-	assert(image != NULL);
-	return image;
-}
-
-
-
-iodevice_t image_devtype(const device_config *image)
-{
-	const legacy_mess_device *iodev = mess_device_from_core_device(image);
-	assert(iodev != NULL);
-	return iodev->type;
-}
-
 
 
 const device_config *image_from_devtype_and_index(running_machine *machine, iodevice_t type, int id)
@@ -700,7 +572,7 @@ int device_valididtychecks(void)
 	int i;
 
 	/* Check the device struct array */
-	for (i = 0; i < sizeof(device_info_array) / sizeof(device_info_array[0]); i++)
+	for (i = 0; i < ARRAY_LENGTH(device_info_array); i++)
 	{
 		if (!device_info_array[i].name)
 		{

@@ -9,19 +9,19 @@
 
 /*
 
-	TODO:
+    TODO:
 
-	- Big Board (+ Italian version MK-82)
-	- Big Board II (+ Italian version MK-83)
-	- Xerox 820-II
-	- Xerox 16/8
-	- Emerald Microware X120 board
-	- type in Monitor v1.0 from manual
-	- proper keyboard emulation (MCU?)
+    - Big Board (+ Italian version MK-82)
+    - Big Board II (+ Italian version MK-83)
+    - Xerox 820-II
+    - Xerox 16/8
+    - Emerald Microware X120 board
+    - type in Monitor v1.0 from manual
+    - proper keyboard emulation (MCU?)
 
-	http://users.telenet.be/lust/Xerox820/index.htm
-	http://www.classiccmp.org/dunfield/img41867/system.htm
-	http://www.microcodeconsulting.com/z80/plus2.htm
+    http://users.telenet.be/lust/Xerox820/index.htm
+    http://www.classiccmp.org/dunfield/img41867/system.htm
+    http://www.microcodeconsulting.com/z80/plus2.htm
 
 */
 
@@ -36,10 +36,11 @@
 #include "machine/com8116.h"
 #include "devices/flopdrv.h"
 #include "formats/basicdsk.h"
+#include "devices/messram.h"
 
 INLINE const device_config *get_floppy_image(running_machine *machine, int drive)
 {
-	return image_from_devtype_and_index(machine, IO_FLOPPY, drive);
+	return floppy_get_device(machine, drive);
 }
 
 /* Keyboard HACK */
@@ -117,7 +118,7 @@ static void xerox820_keyboard_scan(running_machine *machine)
 			{
 				/* latch key data */
 				keydata = ~xerox820_keycodes[table][row][col];
-				
+
 				if (state->keydata != keydata)
 				{
 					state->keydata = keydata;
@@ -174,18 +175,18 @@ static WRITE8_HANDLER( x120_system_w )
 {
 	/*
 
-		bit		signal		description
+        bit     signal      description
 
-		0		DSEL0		drive select bit 0 (01=A, 10=B, 00=C, 11=D)
-		1		DSEL1		drive select bit 1
-		2		SIDE		side select
-		3		VATT		video attribute (0=inverse, 1=blinking)
-		4		BELL		bell trigger
-		5		DENSITY		density (0=double, 1=single)
-		6		_MOTOR		disk motor (0=on, 1=off)
-		7		BANK		memory bank switch (0=RAM, 1=ROM/video)
+        0       DSEL0       drive select bit 0 (01=A, 10=B, 00=C, 11=D)
+        1       DSEL1       drive select bit 1
+        2       SIDE        side select
+        3       VATT        video attribute (0=inverse, 1=blinking)
+        4       BELL        bell trigger
+        5       DENSITY     density (0=double, 1=single)
+        6       _MOTOR      disk motor (0=on, 1=off)
+        7       BANK        memory bank switch (0=RAM, 1=ROM/video)
 
-	*/
+    */
 }
 #endif
 
@@ -243,7 +244,7 @@ static INPUT_PORTS_START( xerox820 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_W) PORT_CHAR('w') PORT_CHAR('W')
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_E) PORT_CHAR('e') PORT_CHAR('E')
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_R) PORT_CHAR('r') PORT_CHAR('R')
-	
+
 	PORT_START("ROW3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_T) PORT_CHAR('t') PORT_CHAR('T')
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Y) PORT_CHAR('y') PORT_CHAR('Y')
@@ -253,7 +254,7 @@ static INPUT_PORTS_START( xerox820 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_P) PORT_CHAR('p') PORT_CHAR('P')
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR('[') PORT_CHAR('{')
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR(']') PORT_CHAR('}')
-	
+
 	PORT_START("ROW4")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("ESC") PORT_CODE(KEYCODE_ESC) PORT_CHAR(UCHAR_MAMEKEY(ESC))
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad +") PORT_CODE(KEYCODE_PLUS_PAD)
@@ -263,7 +264,7 @@ static INPUT_PORTS_START( xerox820 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_A) PORT_CHAR('a') PORT_CHAR('A')
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_S) PORT_CHAR('s') PORT_CHAR('S')
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_D) PORT_CHAR('d') PORT_CHAR('D')
-	
+
 	PORT_START("ROW5")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_F) PORT_CHAR('f') PORT_CHAR('F')
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_G) PORT_CHAR('g') PORT_CHAR('G')
@@ -273,7 +274,7 @@ static INPUT_PORTS_START( xerox820 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_L) PORT_CHAR('l') PORT_CHAR('L')
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COLON) PORT_CHAR(';') PORT_CHAR(':')
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR('\'') PORT_CHAR('"')
-	
+
 	PORT_START("ROW6")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("RETURN") PORT_CODE(KEYCODE_ENTER) PORT_CHAR('\r')
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("LINE FEED") PORT_CODE(KEYCODE_ENTER_PAD)
@@ -283,7 +284,7 @@ static INPUT_PORTS_START( xerox820 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad 3") PORT_CODE(KEYCODE_3_PAD)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Z) PORT_CHAR('z') PORT_CHAR('Z')
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_X) PORT_CHAR('x') PORT_CHAR('X')
-	
+
 	PORT_START("ROW7")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_C) PORT_CHAR('c') PORT_CHAR('C')
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_V) PORT_CHAR('v') PORT_CHAR('V')
@@ -293,7 +294,7 @@ static INPUT_PORTS_START( xerox820 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COMMA) PORT_CHAR(',') PORT_CHAR('<')
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_STOP) PORT_CHAR('.') PORT_CHAR('>')
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_SLASH) PORT_CHAR('/') PORT_CHAR('?')
-	
+
 	PORT_START("ROW8")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x90") PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xE2\x86\x93") PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
@@ -301,8 +302,8 @@ static INPUT_PORTS_START( xerox820 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad 0") PORT_CODE(KEYCODE_0_PAD)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Keypad .") PORT_CODE(KEYCODE_ASTERISK)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("SPACE") PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ')
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) 
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) 
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD )
 
 	PORT_START("ROW9")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("LOCK") PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE
@@ -313,11 +314,6 @@ static INPUT_PORTS_START( xerox820 )
 INPUT_PORTS_END
 
 /* Z80 PIO */
-
-static WRITE_LINE_DEVICE_HANDLER( z80daisy_interrupt )
-{
-	cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_IRQ0, state);
-}
 
 static WRITE_LINE_DEVICE_HANDLER( xerox820_pio_pbrdy_w )
 {
@@ -330,18 +326,18 @@ static READ8_DEVICE_HANDLER( xerox820_pio_port_a_r )
 {
 	/*
 
-		bit		signal			description
+        bit     signal          description
 
-		0
-		1
-		2
-		3		PBRDY			keyboard data available
-		4		8/N5			8"/5.25" disk select (0=5.25", 1=8")
-		5		400/460			double sided disk detect (only on Etch 2 PCB) (0=SS, 1=DS)
-		6
-		7
+        0
+        1
+        2
+        3       PBRDY           keyboard data available
+        4       8/N5            8"/5.25" disk select (0=5.25", 1=8")
+        5       400/460         double sided disk detect (only on Etch 2 PCB) (0=SS, 1=DS)
+        6
+        7
 
-	*/
+    */
 
 	xerox820_state *state = device->machine->driver_data;
 
@@ -352,18 +348,18 @@ static WRITE8_DEVICE_HANDLER( xerox820_pio_port_a_w )
 {
 	/*
 
-		bit		signal			description
+        bit     signal          description
 
-		0		_DVSEL1			drive select 1
-		1		_DVSEL2			drive select 2
-		2		_DVSEL3			side select
-		3		
-		4		
-		5
-		6		NCSET2			display character set (inverted and connected to chargen A10)
-		7		BANK			bank switching (0=RAM, 1=ROM/videoram)
+        0       _DVSEL1         drive select 1
+        1       _DVSEL2         drive select 2
+        2       _DVSEL3         side select
+        3
+        4
+        5
+        6       NCSET2          display character set (inverted and connected to chargen A10)
+        7       BANK            bank switching (0=RAM, 1=ROM/videoram)
 
-	*/
+    */
 
 	xerox820_state *state = device->machine->driver_data;
 
@@ -393,18 +389,18 @@ static READ8_DEVICE_HANDLER( xerox820_pio_port_b_r )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0		KB0
-		1		KB1
-		2		KB2
-		3		KB3
-		4		KB4
-		5		KB5
-		6		KB6
-		7		KB7
+        0       KB0
+        1       KB1
+        2       KB2
+        3       KB3
+        4       KB4
+        5       KB5
+        6       KB6
+        7       KB7
 
-	*/
+    */
 
 	xerox820_state *state = device->machine->driver_data;
 
@@ -413,7 +409,7 @@ static READ8_DEVICE_HANDLER( xerox820_pio_port_b_r )
 
 static const z80pio_interface kbpio_intf =
 {
-	DEVCB_LINE(z80daisy_interrupt),				/* callback when change interrupt status */
+	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* callback when change interrupt status */
 	DEVCB_HANDLER(xerox820_pio_port_a_r),		/* port A read callback */
 	DEVCB_HANDLER(xerox820_pio_port_b_r),		/* port B read callback */
 	DEVCB_HANDLER(xerox820_pio_port_a_w),		/* port A write callback */
@@ -424,7 +420,7 @@ static const z80pio_interface kbpio_intf =
 
 static const z80pio_interface gppio_intf =
 {
-	DEVCB_LINE(z80daisy_interrupt),	/* callback when change interrupt status */
+	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* callback when change interrupt status */
 	DEVCB_NULL,		/* port A read callback */
 	DEVCB_NULL,		/* port B read callback */
 	DEVCB_NULL,		/* port A write callback */
@@ -434,6 +430,11 @@ static const z80pio_interface gppio_intf =
 };
 
 /* Z80 SIO */
+
+static WRITE_LINE_DEVICE_HANDLER( z80daisy_interrupt )
+{
+	cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_IRQ0, state);
+}
 
 static const z80sio_interface sio_intf =
 {
@@ -451,32 +452,27 @@ static TIMER_DEVICE_CALLBACK( ctc_tick )
 {
 	xerox820_state *state = timer->machine->driver_data;
 
-	z80ctc_trg_w(state->z80ctc, 0, 1);
-	z80ctc_trg_w(state->z80ctc, 0, 0);
+	z80ctc_trg0_w(state->z80ctc, 1);
+	z80ctc_trg0_w(state->z80ctc, 0);
 }
 
-static WRITE8_DEVICE_HANDLER( ctc_z0_w )
+static WRITE_LINE_DEVICE_HANDLER( ctc_z0_w )
 {
-//	z80ctc_trg_w(device, 1, data);
+//  z80ctc_trg1_w(device, state);
 }
 
-static WRITE8_DEVICE_HANDLER( ctc_z1_w )
+static WRITE_LINE_DEVICE_HANDLER( ctc_z2_w )
 {
-	z80ctc_trg_w(device, 2, data);
+//  z80ctc_trg3_w(device, state);
 }
 
-static WRITE8_DEVICE_HANDLER( ctc_z2_w )
+static Z80CTC_INTERFACE( ctc_intf )
 {
-//	z80ctc_trg_w(device, 3, data);
-}
-
-static const z80ctc_interface ctc_intf =
-{
-	0,              	/* timer disables */
-	z80daisy_interrupt,	/* interrupt handler */
-	ctc_z0_w,			/* ZC/TO0 callback */
-	ctc_z1_w,			/* ZC/TO1 callback */
-	ctc_z2_w    		/* ZC/TO2 callback */
+	0,              			/* timer disables */
+	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* interrupt handler */
+	DEVCB_LINE(ctc_z0_w),		/* ZC/TO0 callback */
+	DEVCB_LINE(z80ctc_trg2_w),	/* ZC/TO1 callback */
+	DEVCB_LINE(ctc_z2_w)  		/* ZC/TO2 callback */
 };
 
 /* Z80 Daisy Chain */
@@ -492,34 +488,37 @@ static const z80_daisy_chain xerox820_daisy_chain[] =
 
 /* WD1771 Interface */
 
-static WD17XX_CALLBACK( wd1771_callback )
+static WRITE_LINE_DEVICE_HANDLER( xerox820_wd1771_intrq_w )
 {
 	xerox820_state *driver_state = device->machine->driver_data;
-
 	int halt = cpu_get_reg(cputag_get_cpu(device->machine, Z80_TAG), Z80_HALT);
 
-	switch (state)
-	{
-	case WD17XX_IRQ_CLR: driver_state->fdc_irq = 0; break;
-	case WD17XX_IRQ_SET: driver_state->fdc_irq = 1; break;
-	case WD17XX_DRQ_CLR: driver_state->fdc_drq = 0; break;
-	case WD17XX_DRQ_SET: driver_state->fdc_drq = 1; break;
-	}
+	driver_state->fdc_irq = state;
 
-	if (halt && (driver_state->fdc_irq | driver_state->fdc_drq))
-	{
+	if (halt && state)
 		cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_NMI, ASSERT_LINE);
-	}
 	else
-	{
 		cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_NMI, CLEAR_LINE);
-	}
+}
+
+static WRITE_LINE_DEVICE_HANDLER( xerox820_wd1771_drq_w )
+{
+	xerox820_state *driver_state = device->machine->driver_data;
+	int halt = cpu_get_reg(cputag_get_cpu(device->machine, Z80_TAG), Z80_HALT);
+
+	driver_state->fdc_drq = state;
+
+	if (halt && state)
+		cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_NMI, ASSERT_LINE);
+	else
+		cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 static const wd17xx_interface wd1771_intf =
 {
-	wd1771_callback, 
-	NULL
+	DEVCB_LINE(xerox820_wd1771_intrq_w),
+	DEVCB_LINE(xerox820_wd1771_drq_w),
+	{FLOPPY_0, FLOPPY_1, NULL, NULL}
 };
 
 /* COM8116 Interface */
@@ -592,9 +591,9 @@ static VIDEO_UPDATE( xerox820 )
 	return 0;
 }
 static void xerox820_load_proc(const device_config *image)
-{	
+{
 	xerox820_state *state = image->machine->driver_data;
-	
+
 	switch (image_length(image))
 	{
 	case 77*1*26*128: // 250K 8" SSSD
@@ -602,17 +601,17 @@ static void xerox820_load_proc(const device_config *image)
 		state->dsdd = 0;
 		return;
 
-	case 77*1*26*256: // 500K 8" SSDD		
+	case 77*1*26*256: // 500K 8" SSDD
 		state->_8n5 = 1;
 		state->dsdd = 0;
 		return;
 
-	case 40*1*18*128: // 90K 5.25" SSSD		
+	case 40*1*18*128: // 90K 5.25" SSSD
 		state->_8n5 = 0;
 		state->dsdd = 0;
 		return;
 
-	case 40*2*18*128: // 180K 5.25" DSSD		
+	case 40*2*18*128: // 180K 5.25" DSSD
 		state->_8n5 = 0;
 		state->dsdd = 1;
 		return;
@@ -647,10 +646,10 @@ static MACHINE_START( xerox820 )
 
 	/* bank switch */
 	xerox820_bankswitch(machine, 1);
-	
+
 	for(drive=0;drive<2;drive++)
 	{
-		floppy_install_load_proc(image_from_devtype_and_index(machine, IO_FLOPPY, drive), xerox820_load_proc);
+		floppy_install_load_proc(floppy_get_device(machine, drive), xerox820_load_proc);
 	}
 
 
@@ -666,6 +665,45 @@ static MACHINE_START( xerox820 )
 	state_save_register_global(machine, state->_8n5);
 	state_save_register_global(machine, state->dsdd);
 }
+
+static FLOPPY_OPTIONS_START(xerox820 )
+	FLOPPY_OPTION( sssd8, "dsk", "8\" SSSD", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([77])
+		SECTORS([26])
+		SECTOR_LENGTH([128])
+		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION( ssdd8, "dsk", "8\" SSDD", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([77])
+		SECTORS([26])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION( sssd5, "dsk", "5.25\" SSSD", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([40])
+		SECTORS([18])
+		SECTOR_LENGTH([128])
+		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION( ssdd5, "dsk", "5.25\" SSDD", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([40])
+		SECTORS([18])
+		SECTOR_LENGTH([128])
+		FIRST_SECTOR_ID([1]))
+FLOPPY_OPTIONS_END
+
+static const floppy_config xerox820_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(xerox820),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 /* Machine Drivers */
 
@@ -701,7 +739,12 @@ static MACHINE_DRIVER_START( xerox820 )
 	MDRV_Z80PIO_ADD(Z80GPPIO_TAG, gppio_intf)
 	MDRV_Z80CTC_ADD(Z80CTC_TAG, XTAL_20MHz/8, ctc_intf)
 	MDRV_WD1771_ADD(WD1771_TAG, wd1771_intf)
+	MDRV_FLOPPY_2_DRIVES_ADD(xerox820_floppy_config)
 	MDRV_COM8116_ADD(COM8116_TAG, XTAL_5_0688MHz, com8116_intf)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")	
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( xerox820ii )
@@ -745,67 +788,13 @@ ROM_START( xerox820ii )
 	ROM_LOAD( "x820ii.u58", 0x0000, 0x0800, NO_DUMP )
 ROM_END
 
-/* System Configuration */
-FLOPPY_OPTIONS_START(xerox820 )
-	FLOPPY_OPTION( sssd8, "dsk", "8\" SSSD", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([77])
-		SECTORS([26])
-		SECTOR_LENGTH([128])
-		FIRST_SECTOR_ID([1]))	
-	FLOPPY_OPTION( ssdd8, "dsk", "8\" SSDD", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([77])
-		SECTORS([26])
-		SECTOR_LENGTH([256])
-		FIRST_SECTOR_ID([1]))
-	FLOPPY_OPTION( sssd5, "dsk", "5.25\" SSSD", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([40])
-		SECTORS([18])
-		SECTOR_LENGTH([128])
-		FIRST_SECTOR_ID([1]))					
-	FLOPPY_OPTION( ssdd5, "dsk", "5.25\" SSDD", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([40])
-		SECTORS([18])
-		SECTOR_LENGTH([128])
-		FIRST_SECTOR_ID([1]))					
-FLOPPY_OPTIONS_END
-
-static void xerox820_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_xerox820; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( xerox820 )
-	CONFIG_RAM_DEFAULT	(64 * 1024)
-	CONFIG_DEVICE(xerox820_floppy_getinfo)
-SYSTEM_CONFIG_END
-/*
-static SYSTEM_CONFIG_START( xerox820ii )
-	CONFIG_RAM_DEFAULT	(64 * 1024)
-	CONFIG_DEVICE(xerox820ii_floppy_getinfo)
-//	CONFIG_DEVICE(xerox820_harddisk_getinfo) 10MB
-SYSTEM_CONFIG_END
-*/
 /* System Drivers */
 
-/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT		INIT	CONFIG		COMPANY							FULLNAME		FLAGS */
-COMP( 1981, xerox820,	0,			0,		xerox820,	xerox820,	0,		xerox820,	"Xerox",						"Xerox 820",	0)
+/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY                         FULLNAME        FLAGS */
+COMP( 1981, xerox820,	0,			0,		xerox820,	xerox820,	0,		0,	"Xerox",						"Xerox 820",	0)
 /*
-COMP( 1980, bigboard,	0,			0,		bigboard,	bigboard,	0,		bigboard,	"Digital Research Computers",	"Big Board",	GAME_NOT_WORKING)
-COMP( 1983, bigbord2,	0,			0,		bigbord2,	bigboard,	0,		bigbord2,	"Digital Research Computers",	"Big Board II",	GAME_NOT_WORKING)
-COMP( 1983, xerox820ii,	0,			0,		xerox820ii,	xerox820,	0,		xerox820ii,	"Xerox",						"Xerox 820-II",	GAME_NOT_WORKING)
-COMP( 1983, xerox168,	0,			0,		xerox168,	xerox168,	0,		xerox168,	"Xerox",						"Xerox 16/8",	GAME_NOT_WORKING)
+COMP( 1980, bigboard,   0,          0,      bigboard,   bigboard,   0,      bigboard,   "Digital Research Computers",   "Big Board",    GAME_NOT_WORKING)
+COMP( 1983, bigbord2,   0,          0,      bigbord2,   bigboard,   0,      bigbord2,   "Digital Research Computers",   "Big Board II", GAME_NOT_WORKING)
+COMP( 1983, xerox820ii, 0,          0,      xerox820ii, xerox820,   0,      xerox820ii, "Xerox",                        "Xerox 820-II", GAME_NOT_WORKING)
+COMP( 1983, xerox168,   0,          0,      xerox168,   xerox168,   0,      xerox168,   "Xerox",                        "Xerox 16/8",   GAME_NOT_WORKING)
 */

@@ -1,3 +1,361 @@
+0.135
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Philips CD-i [Harmony]
+- Fujitsu FM Towns Car Marty (not working)  [Barry Rodewald]
+- Macintosh II (FDHD), IIx, IIcx, IIci, IIsi, LC, LC II, and 
+  Classic II (not working) [R. Belmont]
+- P8000 (not working) [Matt Knoth, Fabio Priuli]
+- Sharp X68000 XVI and X68030 (not working). [Barry Rodewald]
+
+
+
+Systems Promoted from GAME_NOT_WORKING:
+---------------------------------------
+- Atari 800XL [Mariusz Wojcieszek]
+- Beta [Curt Coder]
+- Cosmicos [Curt Coder]
+- Microbee 56k [Robbbert]
+- Nokia MikroMikko 1 M6 [Curt Coder, Kara Trace]
+- Philips CD-i [Harmony]
+- Sony PocketStation [Harmony]
+- TRS-80 Model 4 [Robbbert]
+- TRS-80 Model 4P [Robbbert]
+
+
+
+Skeleton drivers: 
+-----------------
+- Amiga 3000
+- Amstrad PenPad PDA 600
+- Cosmicos
+- Epson HX20
+- NeXT
+- Robotron A7150
+- SGI IP6 4D/PI workstation
+
+
+System Driver Changes:
+----------------------
+- [A5200] Changed default start button mapping to match other drivers 
+  ("1" key by default). [Justin Kerk]
+
+- [APPLE2] Fixed corrupt lo-res graphics (bug #1842). [Harmony]
+
+- [AT] Fixed keyboard for at486 driver, so it boots into bios.[Miodrag 
+  Milanovic]
+
+- [AT] Fixed display for PC/AT and NEAT. [Miodrag Milanovic]
+
+- [AT] Changed the display for the 386-class drivers from CGA to VGA.
+  [Justin Kerk]
+
+- [ATARIXL] TRIG3 GTIA register handling is fixed, so more games boot 
+  and work properly [Mariusz Wojcieszek]
+
+- [ATVGA] Improved emulation. Now some output is showed. [Miodrag 
+  Milanovic]
+
+- [BETA] Added display, keyboard and EPROM read/write. 
+  Screen still flickers, and EPROM cannot be written
+  back to file yet. [Curt Coder]
+
+- [C16] Fixed graphical corruptions in multisession runs (bug #1387) 
+  [Fabio Priuli] 
+
+- [CBM] Fixed old regression in sx64 and c16c when trying to start 
+  emulation with a floppy inserted [Fabio Priuli]
+
+- [CDI] Implemented support for a Mono-I class CD-i player. [Harmony]
+  * Contains basic CDIC + SLAVE implementation from a Mono-I board.
+  * Theoretically conatins the extra 1MByte of RAM of a DVC cartridge.
+  * Supports savestates.
+
+- [CDI] Split LCD into a secondary screen, added appropriate default 
+  layouts. [Carlos]
+
+- [CDTV] Added workaround for crash due to CDDA failing initialization 
+  (more work needed to properly fix this) and fixed CIA0 problem which 
+  was crashing MESS with some games (e.g. Turrican). [Fabio Priuli]
+
+- [COCO/COCO3/DRAGON] Converted inputs to use PORT_CATEGORY (i.e. you 
+  now select controller type in the Categories submenu). When Joystick 
+  is selected in either Right or Left Controller Port, Hi-Res Interface
+  becomes available in the Driver Configuration submenu. [Fabio Priuli]
+
+- [COMPIS] Added proper ROM dumps and keyboard CPU. [Curt Coder]
+
+- [COSMICOS] Promoted driver to working. [Curt Coder]
+
+- [CPC family] Fixed screen dimensions. [Wilbert Pol]
+
+- [CRVISION] Many improvements: [Luca Antignano]
+  * Merged the Dick Smith Wizzard into the Crvision machine because they 
+    are exactly the same computers and share the same hardware and 
+    peripherals
+  * Optional memory expansion can be chained to 14K not 32K
+  * Totally rewritten ROM loading routines into RAM. As a result, all 6K, 
+    10K and 12K ROMs now load correctly
+  * Fixed system info, manufacturers, etc.
+
+- [DGONE] Added proper CGA char dump. Now the system shows correct output. 
+  [Miodrag Milanovic]
+
+- [DRAGON] Added same input devices as CoCo. [Fabio Priuli]
+
+- [EINSTEIN] Made it possible to select single or double sided disk 
+  drives.  [Dirk Best]
+
+- [ELWRO800] Updates: [Mariusz Wojcieszek]
+  * reworked keyboard mapping, added keys with Polish characters
+  * added network id
+  * added support for NMI firing (not used yet, as Junet is not working)	
+
+- [EXIDY] Added SNP support for the 6 games commonly found on the net. 
+  [RObbbert]
+
+- [EXIDY] Added preliminary floppy support, not working. [Robbbert]
+
+- [FMTOWNS] Various updates: [Barry Rodewald]
+  * Fixed up CMOS access
+  * Added Kanji I/O ports
+  * Hooked up MB8877A FDC
+  * Fixed palette
+  * Added serial ROM, uses fake ROM data (except for the Car Marty)
+  * Created basic uPD71071 DMA core, hooked up DMA channel 0 to FDC
+  * Hooked up PIT timer 0 interrupt
+  * Added simple RTC
+  * Hooked up slave PIC
+  * Hooked up linear VRAM access at 0x80000000
+
+- [GAMECOM] Some updates: [Robbbert]
+  * Fixed error and crashes when loading a cart.
+  * Added DMA for carts.
+  * Added crosshairs, and mouseclick for stylus touch.
+  * Lights Out game works, while some other games show title screens.
+
+- [GAMEGEAR] Added hacky LCD persistence support (bug #65) [Harmony]
+
+- [GBCOLOR] Added BIOS. [Wilbert Pol]
+
+- [GBCOLOR] RAM bank #0 cannot be selected at d000-dfff. This fixes many 
+  games. [Wilbert Pol]
+
+- [GBCOLOR] Made SVBK readable. [Wilbert Pol]
+
+- [GBCOLOR] Updates:  [Carlos]
+  * Fixed multisession error.
+  * Improved handling of palette writes. Fixes bugs #187, #298, and #1699.
+
+- [I386] Implemented SLDT & STR opcodes (needed by PC98 as well) [Angelo
+  Salese]
+
+- [INTV] Fixed multisession problem (bug #1884) [Robbbert]
+
+- [IP22] Fixed crash in Indy driver: boot tune works, and you can get in 
+  the boot menus. [Harmony]
+
+- [JR200] Various progresses: [Roberto Zandona']
+  * Hooked up text mode.
+  * Added keyboard support.
+  * Fixed palette.
+  * Implemented borders.
+
+- [MAC] Greatly expanded support for post-68000 models.  Many now POST 
+  and want a disk to boot from. [R. Belmont]
+
+- [MAC] Various minor tweeks plus preliminary boot tone from models with 
+  the Apple Sound Chip. [R. Belmont]
+
+- [MAC] Many updates: [R. Belmont]
+  * Fixed ID readbacks for all models.
+  * Fixed SCSI handshake on Mac II and later machines.
+  * Fixed ADB timing to specs; prevents hangs of System >6.0.3 on 
+    ADB systems and improves mouse pointer smoothness.
+  * Complete emulation of SE/30 on-board video and RasterOps 
+    264 ColorBoard.
+
+- [MC10] Reorganized and cleaned up the driver. [Dirk Best]
+
+- [MIKROMIK] Added proper ROM dumps, fixed keyboard and added drive 
+  B: motor. [Curt Coder, Kara Trace]
+
+- [MPF1] Cleaned up, added cassette support.  [Dirk Best]
+
+- [N64] Ported numerous fixes over from Mupen64's software rasterizer 
+  et al, some games appear considerably improved. [Harmony]
+
+- [NES] Various progresses: [Fabio Priuli]
+  * Fixed crash of MMC3 games with no CHR-ROM (bug #1860). [with Rob Bohms]
+  * Fixed Pinball Quest graphics problems.
+  * Fixed Super Spike V'Ball + Nintendo World Cup menu (last known
+    graphical regression compared to MESS 0.130 and earlier).
+  * Re-checked all supported mappers against docs and fixed many mirroring 
+    and IRQ problems. Improvements can be seen in Mappers: 16, 18, 22, 32, 
+    40, 45, 46, 65, 67, 69, 75, 78, 82, 86, 87, 91, 93, 95, 115, 118, 133, 
+    232, 241.
+  * Added the following Mappers (a few may still have graphical problems): 
+    12, 14, 35, 36, 37, 48, 50, 52, 54, 74, 104, 106, 114, 117, 121, 132, 
+    134, 136, 137, 138, 139, 141, 143, 145, 146, 147, 148, 149, 150, 152, 
+    153, 155, 156, 159, 166, 167, 171, 172, 173, 176, 177, 178, 179, 191, 
+    192, 194, 195, 196, 197, 199, 201, 202, 204, 205, 207, 212, 213, 214, 
+    216, 217, 221, 243, 245, 246, 250.
+  * Added preliminary emulation of the following Mappers: 38, 39, 157, 158, 
+    185, 187, 198, 208, 215, 222, 249, 252, 255.
+  * Added info about various Mappers in the source.
+  * Added partial support for UNIF files and support for UNIF boards which 
+    correspond to already emulated iNES Mappers.
+  * Added the following UNIF only boards: BMC-64IN1NOREPEAT, BMC-190IN1, 
+    BMC-A65AS, BMC-SUPER24IN1SC03, BMC-T-262, BMC-WS, DREAMTECH01, 
+    UNL-AX5705, UNL-CC-21, UNL-T-230.
+  * Added (very) preliminary support for the following UNIF only boards: 
+    BMC-GS2004, BMC-GS2013, UNL-8237, UNL-KOF97.
+
+- [ODYSSEY2] Fixed a multisession issue (bug #1517) [Harmony]
+
+- [PC] Fixed some booting issues with Amstrad PC clones. [Miodrag Milanovic]
+
+- [PC6001] Various progresses: [Angelo Salese]
+  * Added keyboard emulation.
+  * Added audio timer irq and basic joystic controls.
+  * Added basic bankswitch.
+  * Rewritten the video emulation adding 128x192x2 support (most games use 
+    it) and 256x192x1 mode (used by The Amazon).
+  * Implemented 2x2 squares on a single cell mode.
+  * Implemented color bank for 128x192x2 mode.
+  * Implemented cartslot support.
+  * Added skeleton support for the cassette interface, it doesn't work 
+    mainly because the MCU directly controls the tape handling
+
+- [PC98] Various progresses: [Angelo Salese]
+  * Hooked up ROM/RAM, basic devices and PIT, PIC, DMA.
+  * Improved tilemap support and fixed resolution.
+  * Added banked work ram & kludged Gate-A20 support.
+
+- [PocketStation] Many improvements: [Harmony]
+  * Implemented basic peripherals
+  * Implemented LCD
+  * Implemented ROM banking
+  * Implemented correct interrupts
+  * Driver supports savestates
+  
+- [PX4] Added external cassette support.  [Dirk Best]
+
+- [QX10] Driver boots and load CP/M from floppy image. [Mariusz Wojcieszek]
+
+- [SAMCOUPE] Added mouse support.  [Dirk Best]
+
+- [SAMCOUPE] Improved Mode 1 graphics.  [Dirk Best]
+
+- [SMS] Various improvements: [Enik Land]
+  * Added Light Phaser support. (bug #1123)
+  * Fixed border and sprite problems (affecting e.g. Fantastic Dizzy,
+    bug #1773).
+  * Fixed rapid-fire to only fire when buttons are pressed. (bug #1864)  
+  * Improved Line IRQ Hcount emulation.
+  * Fixed various Hcounter problems.
+
+- [SMS] Converted SMS VDP to be a device [Fabio Priuli]
+
+- [SNES] Added Capcom CX4 emulation [Harmony]
+
+- [SNES] Fixed a bug in DSP1_sin function. This makes Super Mario Kart and 
+  Pilotwings (and probably more DSP-1 games) playable again [Fabio Priuli]
+
+- [SNES] Added S-DD1 emulation and properly fixed cart loading and mirroring 
+  to support it [Harmony, Fabio Priuli]
+
+- [SNES] Added preliminary SPC7110 emulation [Harmony]
+
+- [SNES] Added Seta ST-010 emulation [Fabio Priuli]
+
+- [SNES] Fixed CG ram reading address and DMA register read [Angelo Salese]
+
+- [SPECIAL] Fixed floppy for Special MX, regressed since 0.124.
+  [Miodrag Milanovic]
+
+- [SPECTRUM] Fixed 48K SNA load routine bad PC (bug #803). [Miodrag Milanovic]
+
+- [SUPERGB] Added BIOS.  [Wilbert Pol]
+
+- [TI99] Added support for two new cartridge types. [Michael Zapf]
+
+- [TI99] Converted Smartmed and RS232 card to be devices. [Miodrag Milanovic]
+
+- [TI99] Changed TI99/4a to use SN94624 sound chip variant. [Justin Kerk,
+  Lord Nightmare]
+
+- [TRS80] Model 4 and 4P can boot from floppy disk. [Robbbert]
+
+- [TS1500] Fixed memory size regression, it can boot now. [Robbbert]
+
+- [TUTOR] Added centronics interface. [Miodrag Milanovic]
+
+- [TVC] Added keyboard and fixed memory mapping. [Miodrag Milanovic]
+
+- [VTECH1] Added support for the SHRG (super hires graphics)
+  modification.  [Dirk Best]
+
+- [X1] Various progresses: [Angelo Salese]
+  * Hooked up kanji ports.
+  * Added Z80 daisy chain.
+  * Rewritten bitmap routine in order to support tile height feature (fixing 
+    gfxs in e.g. Xevious and King's Knight).
+  * Implemented IPL & NMI reset front panel buttons.
+
+- [X1TURBO] Implemented 2bpp colors on tilemap layer. [Angelo Salese]
+
+- [X680x0] Added small workaround for avoiding MFP spurious interrupts. 
+  Parodius, Detana Twinbee and others work again. [Barry Rodewald]
+
+- [XTVGA] Fixed bus problem. [Miodrag Milanovic]
+
+
+
+User Interface Changes:
+-----------------------
+- [NEWUI] Fixed file extension filter for floppies. [Robbbert]
+
+- [MESSUI] Fixed default folders when using Device View. [Robbbert]
+
+- Fixed Tape UI display for systems with multiple cassettes (bug #1677)
+  [Dirk Best]
+  
+- Fixed assert in newui when trying to configure an emulated controller 
+  and no controller has been connected (through PORT_CATEGORY) to the 
+  emulated system (bug #1878) [Fabio Priuli]
+
+
+
+Imgtool Changes:
+----------------
+- Fixes for problems with TI99/4A disks.  [Barry Nelson]
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.135.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Moved floppy implementation to device.  [Miodrag Milanovic]
+
+- Floppy support for TD0, IMD and CQM. [Miodrag Milanovic]
+
+- Cleanups to use more *_NAME and *_CALL macros, headers and const correctness.
+  [Atari Ace]
+
+- Cleanups to add static/const qualifiers, and to remove dead prototypes and
+  code.  [Atari Ace]
+
+- Converted all drivers to use messram device.  [Miodrag Milanovic]
+
+- Removed XMODEM implementation from serial, was not used, and it should be 
+  implemented inside machine software not a MESS code [Miodrag Milanovic]
+
+
+
 0.134
 
 New System Drivers Supported (in no particular order):
@@ -679,9 +1037,9 @@ New System Drivers Supported (in no particular order):
 - Amateurcomputer AC1 [Miodrag Milanovic]
 - Pilot 1000, Pilot 5000, PalmPilot Personal, PalmPilot Pro, Palm III
   [MooglyGuy, R. Belmont]
-- Hewlett Packard HP 48 S/SX/G/GX/G+ [Antoine Min�]
+- Hewlett Packard HP 48 S/SX/G/GX/G+ [Antoine Min?]
 - Epson PX-4  [Dirk Best]
-- Various Channel F clones [Fredric QJ Bl�holtz]
+- Various Channel F clones [Fredric QJ Bl?holtz]
 - Radionic [Incog, Robbbert]
 
 
@@ -706,7 +1064,7 @@ System Driver Changes:
 - [BW2] Updated to use the new centronics interface.  [Dirk Best]
 
 - [CHANNELF] Added support for "new" sound, fixed PAL clock.  [Fredric QJ
-  Bl�holtz]
+  Bl?holtz]
 
 - [COCO] Cleanups  [Nathan Woods]
 
@@ -1047,9 +1405,9 @@ System Driver Changes:
   had plugged your joystick in port 2). This helps with games which expect
   joystick inputs from port 2 of the C64 [Fabio Priuli]
 
-- [C64] Fixed memory leaks with floppies [Oliver St�neberg]
+- [C64] Fixed memory leaks with floppies [Oliver St?neberg]
 
-- [C64] Fixed floppy unmounting [Oliver St�neberg]
+- [C64] Fixed floppy unmounting [Oliver St?neberg]
 
 - [C65] Added preliminary cartridge support through MESS core functions.
   Currently, .crt emulation uses unmodified C64 cart code and therefore
@@ -1098,7 +1456,7 @@ System Driver Changes:
 
 - [OSCNANO] Implemented RUN/MONITOR keys properly, changed video to
   black and white, and fixed quickloading. System is now fully
-  working, including the "S�kkij�rven polkka" program. [Curt Coder]
+  working, including the "S?kkij?rven polkka" program. [Curt Coder]
 
 - [JUPITER] Fixed regression; driver works again.  [Wilbert Pol]
 
@@ -1159,7 +1517,7 @@ System Driver Changes:
   single VP-580 Auxiliary Keyboard emulation. The VIP Blockout game can
   now be played in color with sound using 2 keypads. [Curt Coder]
 
-- [X68000] Fixed SASI harddisk device info [Oliver St�neberg]
+- [X68000] Fixed SASI harddisk device info [Oliver St?neberg]
 
 
 
@@ -1172,10 +1530,10 @@ User Interface Changes:
   Woods]
 
 - Added "Keyboard Mode" menu to switch between emulated and natural keyboard
-  during emulation. [Oliver St�neberg]
+  during emulation. [Oliver St?neberg]
 
 - Fixed toggling through multiple cassettes in Tape Control menu [Oliver
-  St�neberg]
+  St?neberg]
 
 - MESSUI now shows the actual values of the system configuration
   settings instead of the defaults. (bug #1679) [Curt Coder]
@@ -1201,7 +1559,7 @@ Source Changes:
   Woods]
 
 - Removed MESS_DEBUG and the TESTDRIVER define and enabled a lot of
-  non-working drivers [Oliver St�neberg]
+  non-working drivers [Oliver St?neberg]
 
 - Changed the cassette implementation into a regular mame device.  [Wilbert Pol]
 
@@ -1491,13 +1849,13 @@ System Driver Changes:
 
 - [CBM, C16] Simplified keyboard and interrupt handling code.  [Fabio Priuli]
 
-- [C64] Fixed some timings in c64 pal. [Roberto Zandon�]
+- [C64] Fixed some timings in c64 pal. [Roberto Zandon?]
 
 - [C64] Partial input fix, joystick 2 still not working. (bug #1150) [Roberto
-  Zandon�]
+  Zandon?]
 
 - [C64] Implentation of sprite wrapping at the top of the screen. (bug #1599)
-  [Roberto Zandon�]
+  [Roberto Zandon?]
 
 - [COCO/COCO3] Transitioned Bitbanger and VHD support to use MAME's core
   device system.  [Nate Woods]
@@ -1675,7 +2033,7 @@ System Driver Changes:
 
 - [COCO] Added a quickload for .BIN files.  [Nate Woods]
 
-- [COUPE] Added many new BIOS revisions.  [Oliver St�neberg]
+- [COUPE] Added many new BIOS revisions.  [Oliver St?neberg]
 
 - [EP128] Fixed 0.119 regression in graphics display. (bug #1478)
   [Wilbert Pol]
@@ -1957,7 +2315,7 @@ System Driver Changes:
   to the data port.  (bug #1378 and bug #1418) [Wilbert Pol]
 
 - [MEPHISTO] Implemented artwork/code for real chess board usage. [Ralf
-  Sch�fer, Cowering]
+  Sch?fer, Cowering]
 
 - [ORIC] Fixed floppy interface detection.  [Dirk Best]
 
@@ -7593,9 +7951,9 @@ Other Changes:
   *"Engine" is separate from the "shell"; which gives the potential for front ends for
    those who don't like command lines. [Nate Woods]
 
-- Disk write support for AMSTRAD CPC [Oscar Mart�n Gonz�lez]
+- Disk write support for AMSTRAD CPC [Oscar Mart?n Gonz?lez]
 
-- Wave timer fix [Oscar Mart�n Gonz�lez]
+- Wave timer fix [Oscar Mart?n Gonz?lez]
 
 - m6510t/m7501/m8502 CPU cores added [Peter Trauner]
 

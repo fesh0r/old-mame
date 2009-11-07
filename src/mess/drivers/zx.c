@@ -13,23 +13,23 @@
         14.05.2004 Finally fixed and readded.
 
     Changes done by Robbbert in Jan 2009:
-	- Added the NTSC/PAL diode to all systems except pc8300 which doesn't support it.
-	- Applied NTSC timings to pc8300 only, all others depend on the diode.
-	- Many keyboard fixes, and descriptions added to keys.
-	- Fixed .O files from causing an access violation.
-	- Enabled cassette saving (wav only).
-	- Many general fixes to pow3000/lambda.
-	- Added sound to pc8300/pow3000/lambda.
+    - Added the NTSC/PAL diode to all systems except pc8300 which doesn't support it.
+    - Applied NTSC timings to pc8300 only, all others depend on the diode.
+    - Many keyboard fixes, and descriptions added to keys.
+    - Fixed .O files from causing an access violation.
+    - Enabled cassette saving (wav only).
+    - Many general fixes to pow3000/lambda.
+    - Added sound to pc8300/pow3000/lambda.
 
     To do / problems:
-	- Some memory areas are not mirrored as they should.
-	- Video hardware is not fully emulated, so it does not support pseudo hi-res and hi-res modes.
-	- The screen in pc8300/pow3000/lambda jumps when you type something.
-	- lambda/pow3000 32k memory pack is unemulated, because where is the upper 16k mirror going to be?
-	- h4th and tree4th need their address maps worked out (eg, the stack is set to FB80)
-	- lambda/pow3000 joystick, connected in parallel with the 4,R,F,7,U keys, but the directions are unknown.
-	- Currently, cassettes will be saved in .wav format, even if you choose something else.
-	- Many games don't work.
+    - Some memory areas are not mirrored as they should.
+    - Video hardware is not fully emulated, so it does not support pseudo hi-res and hi-res modes.
+    - The screen in pc8300/pow3000/lambda jumps when you type something.
+    - lambda/pow3000 32k memory pack is unemulated, because where is the upper 16k mirror going to be?
+    - h4th and tree4th need their address maps worked out (eg, the stack is set to FB80)
+    - lambda/pow3000 joystick, connected in parallel with the 4,R,F,7,U keys, but the directions are unknown.
+    - Currently, cassettes will be saved in .wav format, even if you choose something else.
+    - Many games don't work.
 
 
 ****************************************************************************/
@@ -41,6 +41,7 @@
 #include "includes/zx.h"
 #include "devices/cassette.h"
 #include "formats/zx81_p.h"
+#include "devices/messram.h"
 
 /* Memory Maps */
 
@@ -70,7 +71,7 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( zx80 )
 /* PORT_NAME =  Key Mode (Press Key)    Shift Mode (Press Key+Shift)    BASIC Mode (Press Key at BASIC)  */
-/* Some keys (e.g. A,S,D,F,G etc.) produce glyphs when used in Shift Mode. MESS currently cannot show 
+/* Some keys (e.g. A,S,D,F,G etc.) produce glyphs when used in Shift Mode. MESS currently cannot show
 these functions in Input (This System) menu, hence we live some empty space in the menu */
 	PORT_START("ROW0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SHIFT") PORT_CODE(KEYCODE_LSHIFT) PORT_CHAR(UCHAR_SHIFT_1)
@@ -289,35 +290,6 @@ static INPUT_PORTS_START( pow3000 )
 	PORT_CONFSETTING(    0x01, "PAL")
 INPUT_PORTS_END
 
-/* Graphics Layouts */
-#if 0
-static const gfx_layout zx_char_layout =
-{
-	8, 8,							   /* 8x8 pixels */
-	64,								   /* 64 codes */
-	1,								   /* 1 bit per pixel */
-	{0},							   /* no bitplanes */
-	/* x offsets */
-	{0, 1, 2, 3, 4, 5, 6, 7},
-	/* y offsets */
-	{0 * 8, 1 * 8, 2 * 8, 3 * 8, 4 * 8, 5 * 8, 6 * 8, 7 * 8},
-	8 * 8							   /* eight bytes per code */
-};
-
-/* Graphics Decode Information */
-
-static GFXDECODE_START( zx80 )
-	GFXDECODE_ENTRY( "maincpu", 0x0e00, zx_char_layout, 0, 2 )
-GFXDECODE_END
-
-static GFXDECODE_START( zx81 )
-	GFXDECODE_ENTRY( "maincpu", 0x1e00, zx_char_layout, 0, 2 )
-GFXDECODE_END
-
-static GFXDECODE_START( pc8300 )
-	GFXDECODE_ENTRY( "gfx1", 0x0000, zx_char_layout, 0, 2 )
-GFXDECODE_END
-#endif
 
 /* Palette Initialization */
 
@@ -332,7 +304,7 @@ static PALETTE_INIT( zx80 )
 
 static PALETTE_INIT( ts1000 )
 {
-	palette_set_color(machine,0,MAKE_RGB(64, 244, 244)); /* cyan */	
+	palette_set_color(machine,0,MAKE_RGB(64, 244, 244)); /* cyan */
 	palette_set_color(machine,1,RGB_BLACK); /* black */
 	palette_set_color(machine,2,RGB_BLACK); /* black */
 	palette_set_color(machine,3,MAKE_RGB(64, 244, 244)); /* cyan */
@@ -389,7 +361,7 @@ static MACHINE_DRIVER_START( zx80 )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(ZX81_PIXELS_PER_SCANLINE, ZX81_PAL_SCANLINES)
 	MDRV_SCREEN_VISIBLE_AREA(0, ZX81_PIXELS_PER_SCANLINE-1, 0, ZX81_PAL_SCANLINES-1)
-//	MDRV_GFXDECODE(zx80)
+
 	MDRV_PALETTE_LENGTH(4)
 	MDRV_PALETTE_INIT(zx80)
 
@@ -405,6 +377,11 @@ static MACHINE_DRIVER_START( zx80 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
 	MDRV_CASSETTE_ADD( "cassette", zx80_cassette_config )
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("1K")
+	MDRV_RAM_EXTRA_OPTIONS("16K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( zx81 )
@@ -413,8 +390,6 @@ static MACHINE_DRIVER_START( zx81 )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(zx81_io_map)
 
-//	MDRV_GFXDECODE(zx81)
-
 	MDRV_CASSETTE_MODIFY( "cassette", zx81_cassette_config )
 MACHINE_DRIVER_END
 
@@ -422,6 +397,14 @@ static MACHINE_DRIVER_START( ts1000 )
 	MDRV_IMPORT_FROM(zx81)
 
 	MDRV_PALETTE_INIT(ts1000)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( ts1500 )
+	MDRV_IMPORT_FROM(ts1000)
+
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("16K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( pc8300 )
@@ -437,8 +420,11 @@ static MACHINE_DRIVER_START( pc8300 )
 	MDRV_SCREEN_SIZE(ZX81_PIXELS_PER_SCANLINE, ZX81_NTSC_SCANLINES)
 	MDRV_SCREEN_VISIBLE_AREA(0, ZX81_PIXELS_PER_SCANLINE-1, 0, ZX81_NTSC_SCANLINES-1)
 
-//	MDRV_GFXDECODE(pc8300)
 	MDRV_PALETTE_INIT(zx80)
+	
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("16K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( pow3000 )
@@ -448,8 +434,13 @@ static MACHINE_DRIVER_START( pow3000 )
 	MDRV_CPU_IO_MAP(pow3000_io_map)
 
 	MDRV_MACHINE_RESET(pow3000)
-//	MDRV_GFXDECODE(pc8300)
+
 	MDRV_PALETTE_INIT(zx80)
+
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("2K")
+	MDRV_RAM_EXTRA_OPTIONS("16K")	
 MACHINE_DRIVER_END
 
 
@@ -484,7 +475,7 @@ ROM_END
 
 ROM_START(ts1500)
 	ROM_REGION( 0x10000, "maincpu",0 )
-  	ROM_LOAD( "ts1500.rom", 0x0000, 0x2000, CRC(7dd19c48) SHA1(3eb437359221b4406d236085ec66fa02278e7495) )	
+  	ROM_LOAD( "ts1500.rom", 0x0000, 0x2000, CRC(7dd19c48) SHA1(3eb437359221b4406d236085ec66fa02278e7495) )
 ROM_END
 
 ROM_START(ringo470)
@@ -522,44 +513,23 @@ ROM_START( tk85 )
 ROM_END
 
 /* This homebrew has 192k of RAM and 32k of ROM via bankswitching. One of the primary bankswitching lines is /M1,
-	which is not emulated by MAME's z80. */
+    which is not emulated by MAME's z80. */
 ROM_START( zx97 )
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "zx97.rom", 0x0000, 0x2000, CRC(5cf49744) SHA1(b2a486efdc7b2bc3dc8e5a441ea5532bfa3207bd) )
 	ROM_IGNORE( 0x6000 )	/* Unemulated bankswitched part */
 ROM_END
 
-/* System Configuration */
-
-static SYSTEM_CONFIG_START(zx80)
-	CONFIG_RAM_DEFAULT(1 * 1024)
-	CONFIG_RAM(16 * 1024)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(zx81)
-	CONFIG_RAM_DEFAULT(1 * 1024)
-	CONFIG_RAM(16 * 1024)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(pc8300)
-	CONFIG_RAM_DEFAULT(16 * 1024)	/* bios hardcoded to only work with 16k */
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(pow3000)
-	CONFIG_RAM_DEFAULT(2 * 1024)
-	CONFIG_RAM(16 * 1024)
-SYSTEM_CONFIG_END
-
 /* Game Drivers */
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG  COMPANY                     FULLNAME                FLAGS */
-COMP( 1980, zx80,       0,      0,      zx80,       zx80,       zx,     zx80,    "Sinclair Research",        "ZX-80",               0 )
-COMP( 1981, zx81,       0,      0,      zx81,       zx81,       zx,     zx81,    "Sinclair Research",        "ZX-81",               0 )
-COMP( 1982, ts1000,     zx81,   0,      ts1000,     zx81,       zx,     zx81,    "Timex Sinclair",           "Timex Sinclair 1000", 0 )
-COMP( 1983, ts1500,     zx81,   0,      ts1000,     zx81,       zx,     pc8300,  "Timex Sinclair",           "Timex Sinclair 1500", 0 )
-COMP( 1983, tk85,     	zx81,   0,      ts1000,     zx81,       zx,     zx81,    "Microdigital",             "TK85",                0 )
-COMP( 1983, ringo470,   zx81,   0,      ts1000,     zx81,       zx,     zx81,    "Ritas do Brasil Ltda",     "Ringo 470", GAME_NOT_WORKING )
-COMP( 1984, pc8300,     zx81,   0,      pc8300,     pc8300,     zx,     pc8300,  "Your Computer",            "PC8300",              0 )
-COMP( 1983, pow3000,    zx81,   0,      pow3000,    pow3000,    zx,     pow3000, "Creon Enterprises",        "Power 3000",          0 )
-COMP( 1982, lambda,     zx81,   0,      pow3000,    pow3000,    zx,     pow3000, "Lambda Electronics Ltd",   "Lambda 8300",         0 )
-COMP( 1997, zx97,       zx81,   0,      zx81,       zx81,    	zx,     zx81,    "Wilf Rigter",		     "ZX97",	  GAME_NOT_WORKING )
+COMP( 1980, zx80,       0,      0,      zx80,       zx80,       zx,     0,    "Sinclair Research",        "ZX-80",               0 )
+COMP( 1981, zx81,       0,      0,      zx81,       zx81,       zx,     0,    "Sinclair Research",        "ZX-81",               0 )
+COMP( 1982, ts1000,     zx81,   0,      ts1000,     zx81,       zx,     0,    "Timex Sinclair",           "Timex Sinclair 1000", 0 )
+COMP( 1983, ts1500,     zx81,   0,      ts1500,     zx81,       zx,     0,    "Timex Sinclair",           "Timex Sinclair 1500", 0 )
+COMP( 1983, tk85,     	zx81,   0,      ts1000,     zx81,       zx,     0,    "Microdigital",             "TK85",                0 )
+COMP( 1983, ringo470,   zx81,   0,      ts1000,     zx81,       zx,     0,    "Ritas do Brasil Ltda",     "Ringo 470", GAME_NOT_WORKING )
+COMP( 1984, pc8300,     zx81,   0,      pc8300,     pc8300,     zx,     0,    "Your Computer",            "PC8300",              0 )
+COMP( 1983, pow3000,    zx81,   0,      pow3000,    pow3000,    zx,     0, 	  "Creon Enterprises",        "Power 3000",          0 )
+COMP( 1982, lambda,     zx81,   0,      pow3000,    pow3000,    zx,     0, 	  "Lambda Electronics Ltd",   "Lambda 8300",         0 )
+COMP( 1997, zx97,       zx81,   0,      zx81,       zx81,    	zx,     0,    "Wilf Rigter",		       "ZX97",	  GAME_NOT_WORKING )

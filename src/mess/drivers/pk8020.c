@@ -10,9 +10,11 @@
 #include "driver.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/i8255a.h"
+#include "machine/wd17xx.h"
 #include "devices/flopdrv.h"
 #include "formats/basicdsk.h"
 #include "includes/pk8020.h"
+#include "devices/messram.h"
 
 /* Address maps */
 static ADDRESS_MAP_START(pk8020_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -145,6 +147,27 @@ static const cassette_config pk8020_cassette_config =
 	CASSETTE_PLAY
 };
 
+static FLOPPY_OPTIONS_START(pk8020)
+	FLOPPY_OPTION(pk8020, "kdi", "PK8020 disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([80])
+		SECTORS([5])
+		SECTOR_LENGTH([1024])
+		FIRST_SECTOR_ID([1]))
+FLOPPY_OPTIONS_END
+
+static const floppy_config pk8020_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(pk8020),
+	DO_NOT_KEEP_GEOMETRY
+};
+
 /* Machine driver */
 static MACHINE_DRIVER_START( pk8020 )
   /* basic machine hardware */
@@ -167,52 +190,34 @@ static MACHINE_DRIVER_START( pk8020 )
 
 	MDRV_VIDEO_START(pk8020)
 	MDRV_VIDEO_UPDATE(pk8020)
-	
+
     MDRV_I8255A_ADD( "ppi8255_1", pk8020_ppi8255_interface_1 )
-    MDRV_I8255A_ADD( "ppi8255_2", pk8020_ppi8255_interface_2 )	
+    MDRV_I8255A_ADD( "ppi8255_2", pk8020_ppi8255_interface_2 )
     MDRV_I8255A_ADD( "ppi8255_3", pk8020_ppi8255_interface_3 )
-    
+
     MDRV_PIT8253_ADD( "pit8253", pk8020_pit8253_intf )
 
-	MDRV_PIC8259_ADD( "pic8259", pk8020_pic8259_config )    
+	MDRV_PIC8259_ADD( "pic8259", pk8020_pic8259_config )
 	MDRV_MSM8251_ADD( "rs232", default_msm8251_interface)
 	MDRV_MSM8251_ADD( "lan", default_msm8251_interface)
-	
-	MDRV_WD1793_ADD( "wd1793", default_wd17xx_interface )	
-    
+
+	MDRV_WD1793_ADD( "wd1793", default_wd17xx_interface )
+
     /* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	MDRV_CASSETTE_ADD( "cassette", pk8020_cassette_config )
+
+	MDRV_FLOPPY_4_DRIVES_ADD(pk8020_floppy_config)
 	
-	MDRV_CASSETTE_ADD( "cassette", pk8020_cassette_config )	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("258K")	//64 + 4*48 + 2
 MACHINE_DRIVER_END
-
-static FLOPPY_OPTIONS_START(pk8020)
-	FLOPPY_OPTION(pk8020, "kdi", "PK8020 disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([80])
-		SECTORS([5])
-		SECTOR_LENGTH([1024])
-		FIRST_SECTOR_ID([1]))
-FLOPPY_OPTIONS_END
-
-static void pk8020_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_pk8020; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
 
 /* ROM definition */
 
@@ -220,15 +225,10 @@ ROM_START( korvet )
     ROM_REGION( 0x16000, "maincpu", ROMREGION_ERASEFF )
     ROM_LOAD( "korvet11.rom", 0x10000, 0x6000, CRC(81BDC2AF) SHA1(c3484c3f1f3d252475979283c073286b8661d2b9) )
 	ROM_REGION( 0x2000, "gfx1", 0 )
-	ROM_LOAD ( "korvet2.fnt", 0x0000, 0x2000, CRC(FB1CD3D4))    
+	ROM_LOAD ( "korvet2.fnt", 0x0000, 0x2000, CRC(FB1CD3D4))
 ROM_END
-
-static SYSTEM_CONFIG_START(pk8020)
- 	CONFIG_RAM_DEFAULT((64 + 4*48 + 2) * 1024) // Text video ram is 1KB but it is 9bit, so we take 2 KB for that
- 	CONFIG_DEVICE(pk8020_floppy_getinfo);
-SYSTEM_CONFIG_END
 
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT       INIT     CONFIG COMPANY                  FULLNAME   FLAGS */
-COMP( 1987, korvet, 	 0,  	 0,	pk8020, 	pk8020, 	pk8020, pk8020,  "", 					 "PK8020 Korvet",	 0)
+COMP( 1987, korvet, 	 0,  	 0,	pk8020, 	pk8020, 	pk8020, 0,  "", 					 "PK8020 Korvet",	 0)

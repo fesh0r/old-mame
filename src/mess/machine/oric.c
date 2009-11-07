@@ -1,18 +1,18 @@
 /*********************************************************************
 
-	machine/oric.c
+    machine/oric.c
 
-	Paul Cook
-	Kev Thacker
+    Paul Cook
+    Kev Thacker
 
-	Thankyou to Fabrice Frances for his ORIC documentation which helped with this driver
-	http://oric.ifrance.com/oric/
+    Thankyou to Fabrice Frances for his ORIC documentation which helped with this driver
+    http://oric.ifrance.com/oric/
 
-	TODO:
-	- there are problems loading some .wav's. Try to fix these.
-	- fix more graphics display problems
-	- check the printer works
-	- fix more disc drive/wd179x problems so more software will run
+    TODO:
+    - there are problems loading some .wav's. Try to fix these.
+    - fix more graphics display problems
+    - check the printer works
+    - fix more disc drive/wd179x problems so more software will run
 
 *********************************************************************/
 
@@ -27,6 +27,7 @@
 #include "machine/ctronics.h"
 #include "devices/cassette.h"
 #include "sound/ay8910.h"
+#include "devices/flopdrv.h"
 
 
 UINT8 *oric_ram;
@@ -107,7 +108,7 @@ static unsigned char oric_via_port_a_data;
 static void oric_keyboard_sense_refresh(running_machine *machine)
 {
 	/* The following assumes that if a 0 is written, it can be used to detect if any key
-	has been pressed.. */
+    has been pressed.. */
 	/* for each bit that is 0, it combines it's pressed state with the pressed state so far */
 
 	int i;
@@ -289,9 +290,9 @@ static TIMER_CALLBACK(oric_refresh_tape)
 		data |= 1;
 
 	/* "A simple cable to catch the vertical retrace signal !
-		This cable connects the video output for the television/monitor
-	to the via cb1 input. Interrupts can be generated from the vertical
-	sync, and flicker free games can be produced */
+        This cable connects the video output for the television/monitor
+    to the via cb1 input. Interrupts can be generated from the vertical
+    sync, and flicker free games can be produced */
 
 	input_port_9 = input_port_read(machine, "FLOPPY");
 	/* cable is enabled? */
@@ -514,7 +515,7 @@ static WRITE8_HANDLER(apple2_v2_interface_w)
 {
 	/* data is ignored, address is used to decode operation */
 
-/*	logerror("apple 2 interface v2 rom page: %01x\n",(offset & 0x02)>>1); */
+/*  logerror("apple 2 interface v2 rom page: %01x\n",(offset & 0x02)>>1); */
 
 	/* bit 0 is 0 for page 0, 1 for page 1 */
 	memory_set_bankptr(space->machine, 4, memory_region(space->machine, "maincpu") + 0x014000 + 0x0100 + (((offset & 0x02)>>1)<<8));
@@ -583,13 +584,13 @@ static unsigned char port_3fb_w;
 static void oric_jasmin_set_mem_0x0c000(running_machine *machine)
 {
 	/* assumption:
-	1. It is possible to access all 16k overlay ram.
-	2. If os is enabled, and overlay ram is enabled, all 16k can be accessed.
-	3. if os is disabled, and overlay ram is enabled, jasmin rom takes priority.
-	*/
+    1. It is possible to access all 16k overlay ram.
+    2. If os is enabled, and overlay ram is enabled, all 16k can be accessed.
+    3. if os is disabled, and overlay ram is enabled, jasmin rom takes priority.
+    */
 
 	/* the ram is disabled in the jasmin rom which indicates that jasmin takes
-	priority over the ram */
+    priority over the ram */
 
 	/* basic rom disabled? */
 	if ((port_3fb_w & 0x01)==0)
@@ -661,30 +662,15 @@ static void oric_jasmin_set_mem_0x0c000(running_machine *machine)
 	}
 }
 
-static WD17XX_CALLBACK( oric_jasmin_wd179x_callback )
+/* DRQ is connected to interrupt */
+static WRITE_LINE_DEVICE_HANDLER( oric_jasmin_wd179x_drq_w )
 {
-	switch (state)
-	{
-		/* DRQ is connected to interrupt */
-		case WD17XX_DRQ_CLR:
-		{
-			oric_irqs &=~(1<<1);
+	if (state)
+		oric_irqs |= (1<<1);
+	else
+		oric_irqs &=~(1<<1);
 
-			oric_refresh_ints(device->machine);
-		}
-		break;
-
-		case WD17XX_DRQ_SET:
-		{
-			oric_irqs |= (1<<1);
-
-			oric_refresh_ints(device->machine);
-		}
-		break;
-
-		default:
-			break;
-	}
+	oric_refresh_ints(device->machine);
 }
 
 static READ8_HANDLER (oric_jasmin_r)
@@ -815,44 +801,25 @@ static void oric_microdisc_refresh_wd179x_ints(running_machine *machine)
 	oric_refresh_ints(machine);
 }
 
-static WD17XX_CALLBACK( oric_microdisc_wd179x_callback )
+static WRITE_LINE_DEVICE_HANDLER( oric_microdisc_wd179x_intrq_w )
 {
-	switch (state)
-	{
-		case WD17XX_IRQ_CLR:
-		{
-			port_314_r |=(1<<7);
+	oric_wd179x_int_state = state;
 
-			oric_wd179x_int_state = 0;
+	if (state)
+		port_314_r &= ~(1<<7);
+	else
+		port_314_r |=(1<<7);
 
-			oric_microdisc_refresh_wd179x_ints(device->machine);
-		}
-		break;
-
-		case WD17XX_IRQ_SET:
-		{
-			port_314_r &= ~(1<<7);
-
-			oric_wd179x_int_state = 1;
-
-			oric_microdisc_refresh_wd179x_ints(device->machine);
-		}
-		break;
-
-		case WD17XX_DRQ_CLR:
-		{
-			port_318_r |= (1<<7);
-		}
-		break;
-
-		case WD17XX_DRQ_SET:
-		{
-			port_318_r &=~(1<<7);
-		}
-		break;
-	}
+	oric_microdisc_refresh_wd179x_ints(device->machine);
 }
 
+static WRITE_LINE_DEVICE_HANDLER( oric_microdisc_wd179x_drq_w )
+{
+	if (state)
+		port_318_r &=~(1<<7);
+	else
+		port_318_r |= (1<<7);
+}
 
 static void	oric_microdisc_set_mem_0x0c000(running_machine *machine)
 {
@@ -946,11 +913,11 @@ READ8_HANDLER (oric_microdisc_r)
 			break;
 		case 0x04:
 			data = port_314_r | 0x07f;
-/*			logerror("port_314_r: %02x\n",data); */
+/*          logerror("port_314_r: %02x\n",data); */
 			break;
 		case 0x08:
 			data = port_318_r | 0x07f;
-/*			logerror("port_318_r: %02x\n",data); */
+/*          logerror("port_318_r: %02x\n",data); */
 			break;
 
 		default:
@@ -1045,8 +1012,13 @@ static void oric_install_microdisc_interface(running_machine *machine)
 
 /*********************************************************/
 
+static WRITE_LINE_DEVICE_HANDLER( oric_wd179x_intrq_w )
+{
+	if ((input_port_read(device->machine, "FLOPPY") & 0x07) == ORIC_FLOPPY_INTERFACE_MICRODISC)
+		oric_microdisc_wd179x_intrq_w(device, state);
+}
 
-static WD17XX_CALLBACK(oric_wd179x_callback)
+static WRITE_LINE_DEVICE_HANDLER( oric_wd179x_drq_w )
 {
 	switch (input_port_read(device->machine, "FLOPPY") &  0x07)
 	{
@@ -1055,15 +1027,20 @@ static WD17XX_CALLBACK(oric_wd179x_callback)
 		case ORIC_FLOPPY_INTERFACE_APPLE2:
 			return;
 		case ORIC_FLOPPY_INTERFACE_MICRODISC:
-			oric_microdisc_wd179x_callback(device, state, param);
+			oric_microdisc_wd179x_drq_w(device, state);
 			return;
 		case ORIC_FLOPPY_INTERFACE_JASMIN:
-			oric_jasmin_wd179x_callback(device, state, param);
+			oric_jasmin_wd179x_drq_w(device, state);
 			return;
 	}
 }
 
-const wd17xx_interface oric_wd17xx_interface = { oric_wd179x_callback, NULL };
+const wd17xx_interface oric_wd17xx_interface =
+{
+	DEVCB_LINE(oric_wd179x_intrq_w),
+	DEVCB_LINE(oric_wd179x_drq_w),
+	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
+};
 
 static void oric_common_init_machine(running_machine *machine)
 {

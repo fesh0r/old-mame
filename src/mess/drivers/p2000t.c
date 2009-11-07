@@ -95,7 +95,7 @@ GFXDECODE_END
 
 /* 2008-05 FP:
 TO DO: verify position of the following keys: '1/4 3/4', '-> <-', '@ up', 'Clrln'
-Also, notice that pictures of p2000 units shows slightly different key mappings, suggesting 
+Also, notice that pictures of p2000 units shows slightly different key mappings, suggesting
 many different .chr roms could exist
 
 Small note about natural keyboard support: currently,
@@ -277,6 +277,6 @@ ROM_START(p2000m)
 ROM_END
 
 /*      YEAR    NAME    PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG  COMPANY     FULLNAME */
-COMP (	1980,	p2000t,	0,	0,	p2000t,	p2000t,		0,	NULL,	"Philips",	"Philips P2000T" , 0)
-COMP (	1980,	p2000m,	p2000t,	0,	p2000m,	p2000t,		0,	NULL,	"Philips",	"Philips P2000M" , 0)
+COMP (	1980,	p2000t,	0,	0,	p2000t,	p2000t,		0,	0,	"Philips",	"Philips P2000T" , 0)
+COMP (	1980,	p2000m,	p2000t,	0,	p2000m,	p2000t,		0,	0,	"Philips",	"Philips P2000M" , 0)
 

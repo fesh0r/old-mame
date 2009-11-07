@@ -19,6 +19,7 @@
 #include "formats/basicdsk.h"
 #include "formats/rk_cas.h"
 #include "includes/radio86.h"
+#include "devices/messram.h"
 #include "includes/partner.h"
 
 /* Address maps */
@@ -144,6 +145,26 @@ static const cassette_config partner_cassette_config =
 	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED
 };
 
+static FLOPPY_OPTIONS_START(partner)
+	FLOPPY_OPTION(partner, "cpm", "Partner disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([80])
+		SECTORS([5])
+		SECTOR_LENGTH([1024])
+		FIRST_SECTOR_ID([1]))
+FLOPPY_OPTIONS_END
+
+static const floppy_config partner_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(partner),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 static MACHINE_DRIVER_START( partner )
     /* basic machine hardware */
@@ -176,33 +197,15 @@ static MACHINE_DRIVER_START( partner )
 	MDRV_DMA8257_ADD("dma8257", XTAL_16MHz / 9, partner_dma)
 
 	MDRV_CASSETTE_ADD( "cassette", partner_cassette_config )
-	
+
 	MDRV_WD1793_ADD("wd1793", partner_wd17xx_interface )
+
+	MDRV_FLOPPY_2_DRIVES_ADD(partner_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")	
 MACHINE_DRIVER_END
-
-static FLOPPY_OPTIONS_START(partner)
-	FLOPPY_OPTION(partner, "cpm", "Partner disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([80])
-		SECTORS([5])
-		SECTOR_LENGTH([1024])
-		FIRST_SECTOR_ID([1]))
-FLOPPY_OPTIONS_END
-
-static void partner_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_partner; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
 
 /* ROM definition */
 ROM_START( partner )
@@ -216,11 +219,6 @@ ROM_START( partner )
 	ROM_LOAD ("partner.fnt", 0x0000, 0x2000, CRC(2705F726) SHA1(3d7b33901ef098a405d7ddad924ba9677f6a9b15))
 ROM_END
 
-static SYSTEM_CONFIG_START(partner)
-	CONFIG_RAM_DEFAULT(64 * 1024)
-	CONFIG_DEVICE(partner_floppy_getinfo);
-SYSTEM_CONFIG_END
-
 /* Driver */
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT   INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1987, partner, radio86,   0, 	partner, 	partner,partner, partner,  "SAM SKB VM", 	"Partner-01.01",	GAME_NOT_WORKING)
+COMP( 1987, partner, radio86,   0, 	partner, 	partner,partner, 0,  "SAM SKB VM", 	"Partner-01.01",	GAME_NOT_WORKING)

@@ -1,16 +1,16 @@
 /**********************************************************************
 
-	Motorola 6883 SAM interface and emulation
+    Motorola 6883 SAM interface and emulation
 
-	This function emulates all the functionality of one M6883
-	synchronous address multiplexer.
+    This function emulates all the functionality of one M6883
+    synchronous address multiplexer.
 
-	Note that the real SAM chip was intimately involved in things like
-	memory and video addressing, which are things that the MAME core
-	largely handles.  Thus, this code only takes care of a small part
-	of the SAM's actual functionality; it simply tracks the SAM
-	registers and handles things like save states.  It then delegates
-	the bulk of the responsibilities back to the host.
+    Note that the real SAM chip was intimately involved in things like
+    memory and video addressing, which are things that the MAME core
+    largely handles.  Thus, this code only takes care of a small part
+    of the SAM's actual functionality; it simply tracks the SAM
+    registers and handles things like save states.  It then delegates
+    the bulk of the responsibilities back to the host.
 
 **********************************************************************/
 
@@ -18,6 +18,7 @@
 #define __6833SAM_H__
 
 #include "driver.h"
+#include "devcb.h"
 
 
 /***************************************************************************
@@ -79,6 +80,10 @@ const UINT8 *sam_m6847_get_video_ram(const device_config *device,int scanline);
 UINT8 get_sam_memorysize(const device_config *device);
 UINT8 get_sam_pagemode(const device_config *device);
 UINT8 get_sam_maptype(const device_config *device);
+
+#if 0
+WRITE_LINE_DEVICE_HANDLER( sam6883_hs_w );
+#endif
 
 
 /***************************************************************************

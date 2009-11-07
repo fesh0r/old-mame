@@ -17,6 +17,7 @@ COREDEFS += -DMESS
 CFLAGS += \
 	-I$(SRC)/mame \
 	-I$(SRC)/mame/includes \
+	-I$(SRC)/mess/osd \
 	-I$(SRC)/mess/osd/$(OSD)
 
 
@@ -84,10 +85,8 @@ EMUOBJS += \
 	$(MESSOBJ)/uimess.o		\
 	$(MESSOBJ)/filemngr.o	\
 	$(MESSOBJ)/tapectrl.o	\
-	$(MESSOBJ)/compcfg.o	\
 	$(MESSOBJ)/utils.o		\
 	$(MESSOBJ)/eventlst.o	\
-	$(MESSOBJ)/mscommon.o	\
 	$(MESSOBJ)/mslegacy.o	\
 	$(MESSOBJ)/tagpool.o	\
 	$(MESSOBJ)/cheatms.o	\

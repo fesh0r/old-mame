@@ -2,56 +2,56 @@
 
   machine\dgn_beta.c (machine.c)
 
-	Moved out of dragon.c, 2005-05-05, P.Harvey-Smith.
+    Moved out of dragon.c, 2005-05-05, P.Harvey-Smith.
 
-	I decided to move this out of the main Dragon/CoCo source files, as
-	the Beta is so radically different from the other Dragon machines that
-	this made more sense (to me at least).
+    I decided to move this out of the main Dragon/CoCo source files, as
+    the Beta is so radically different from the other Dragon machines that
+    this made more sense (to me at least).
 
   Functions to emulate general aspects of the machine (RAM, ROM, interrupts,
   I/O ports)
 
   References:
-	Disassembly of Dragon Beta ROM, examination of only (known) surviving board.
+    Disassembly of Dragon Beta ROM, examination of only (known) surviving board.
 
   TODO:
-	Pretty much everything !
+    Pretty much everything !
 
-	Display working with 6845 taking data from rom.
+    Display working with 6845 taking data from rom.
 
   2005-05-10
-	Memory banking seems to be working, as documented in code comments below.
+    Memory banking seems to be working, as documented in code comments below.
 
   2005-05-31
-	CPU#2 now executes code correctly to do transfers from WD2797.
+    CPU#2 now executes code correctly to do transfers from WD2797.
 
   2005-06-03
 
-	When fed a standard OS-9 boot disk it reads in the boot file and attempts
-	to start it, not being able to find init, it fails. Hopefully I will
-	soon have an image of a Beta boot disk.
+    When fed a standard OS-9 boot disk it reads in the boot file and attempts
+    to start it, not being able to find init, it fails. Hopefully I will
+    soon have an image of a Beta boot disk.
 
   2005-11-29
 
-	Major track tracing excersise on scans of bare beta board, reveal where a
-	whole bunch of the PIA lines go, especially the IRQs, most of them go back
-	to the IRQ line on the main CPU.
+    Major track tracing excersise on scans of bare beta board, reveal where a
+    whole bunch of the PIA lines go, especially the IRQs, most of them go back
+    to the IRQ line on the main CPU.
 
   2005-12-07
 
-	First booted to OS9 prompt, did not execute startup scripts.
+    First booted to OS9 prompt, did not execute startup scripts.
 
   2005-12-08
 
-	Fixed density setting on WD2797, so density of read data is now
-	correctlty set as required by OS-9. This was the reason startup
-	script was not being executed as Beta disks have a single denisty
-	boot track, however the rest of the disk is double density.
-	Booted completely to OS-9, including running startup script.
+    Fixed density setting on WD2797, so density of read data is now
+    correctlty set as required by OS-9. This was the reason startup
+    script was not being executed as Beta disks have a single denisty
+    boot track, however the rest of the disk is double density.
+    Booted completely to OS-9, including running startup script.
 
   2006-09-27
 
-	Clean up of IRQ/FIRQ handling code allows correct booting again.
+    Clean up of IRQ/FIRQ handling code allows correct booting again.
 
 ***************************************************************************/
 
@@ -67,9 +67,11 @@
 #include "machine/6551.h"
 #include "image.h"
 #include "machine/wd17xx.h"
+#include "devices/flopdrv.h"
 
 #include "debug/debugcpu.h"
 #include "debug/debugcon.h"
+#include "devices/messram.h"
 
 static UINT8 *system_rom;
 
@@ -131,7 +133,7 @@ static int KAny_next;				/* Next value for KAny */
 static int d_pia1_pa_last;
 static int d_pia1_pb_last;
 static int DMA_NMI_LAST;
-//static int DMA_NMI;				/* DMA cpu has received an NMI */
+//static int DMA_NMI;               /* DMA cpu has received an NMI */
 
 #define INVALID_KEYROW	-1			/* no ketrow selected */
 #define NO_KEY_PRESSED	0x7F			/* retrurned by hardware if no key pressed */
@@ -151,12 +153,12 @@ const pia6821_interface dgnbeta_pia_intf[] =
 		DEVCB_NULL,
 		DEVCB_NULL,
 		DEVCB_NULL,
-		/*outputs: A/B,CA/B2	   */
+		/*outputs: A/B,CA/B2       */
 		DEVCB_HANDLER(d_pia0_pa_w),
 		DEVCB_HANDLER(d_pia0_pb_w),
 		DEVCB_NULL,
 		DEVCB_HANDLER(d_pia0_cb2_w),
-		/*irqs	 : A/B		   */
+		/*irqs   : A/B         */
 		DEVCB_LINE(d_pia0_irq_a),
 		DEVCB_LINE(d_pia0_irq_b)
 	},
@@ -170,12 +172,12 @@ const pia6821_interface dgnbeta_pia_intf[] =
 		DEVCB_NULL,
 		DEVCB_NULL,
 		DEVCB_NULL,
-		/*outputs: A/B,CA/B2	   */
+		/*outputs: A/B,CA/B2       */
 		DEVCB_HANDLER(d_pia1_pa_w),
 		DEVCB_HANDLER(d_pia1_pb_w),
 		DEVCB_NULL,
 		DEVCB_NULL,
-		/*irqs	 : A/B		   */
+		/*irqs   : A/B         */
 		DEVCB_LINE(d_pia1_irq_a),
 		DEVCB_LINE(d_pia1_irq_b)
 	},
@@ -191,12 +193,12 @@ const pia6821_interface dgnbeta_pia_intf[] =
 		DEVCB_NULL,
 		DEVCB_NULL,
 		DEVCB_NULL,
-		/*outputs: A/B,CA/B2	   */
+		/*outputs: A/B,CA/B2       */
 		DEVCB_HANDLER(d_pia2_pa_w),
 		DEVCB_HANDLER(d_pia2_pb_w),
 		DEVCB_NULL,
 		DEVCB_NULL,
-		/*irqs	 : A/B	   	   */
+		/*irqs   : A/B         */
 		DEVCB_LINE(d_pia2_irq_a),
 		DEVCB_LINE(d_pia2_irq_b)
 	}
@@ -291,17 +293,17 @@ static void UpdateBanks(running_machine *machine, int first, int last)
 		//
 		// Map block, $00-$BF are ram, $FC-$FF are Boot ROM
 		//
-		if ((MapPage*4) < ((mess_ram_size / 1024)-1))		// Block is ram
+		if ((MapPage*4) < ((messram_get_size(devtag_get_device(machine, "messram")) / 1024)-1))		// Block is ram
 		{
 			if (!IsIOPage(Page))
 			{
-				readbank = &mess_ram[MapPage*RamPageSize];
+				readbank = &messram_get_ptr(devtag_get_device(machine, "messram"))[MapPage*RamPageSize];
 				if(LogDatWrites)
-					debug_console_printf(machine, "Mapping page %X, pageno=%X, mess_ram[%X]\n",Page,MapPage,(MapPage*RamPageSize));
+					debug_console_printf(machine, "Mapping page %X, pageno=%X, mess_ram)[%X]\n",Page,MapPage,(MapPage*RamPageSize));
 			}
 			else
 			{
-				readbank = &mess_ram[(MapPage*RamPageSize)-256];
+				readbank = &messram_get_ptr(devtag_get_device(machine, "messram"))[(MapPage*RamPageSize)-256];
 				logerror("Error RAM in IO PAGE !\n");
 			}
 			writebank=bank_info[Page].handler;
@@ -367,7 +369,7 @@ static void SetDefaultTask(running_machine *machine)
 
 	/* Map video ram to base of area it can use, that way we can take the literal RA */
 	/* from the 6845 without having to mask it ! */
-	videoram=&mess_ram[TextVidBasePage*RamPageSize];
+	videoram=&messram_get_ptr(devtag_get_device(machine, "messram"))[TextVidBasePage*RamPageSize];
 }
 
 // Return the value of a page register
@@ -491,10 +493,10 @@ The keyrow being scanned for any key is the lest significant bit
 of the output shift register that is zero, most of the time there should
 only be one row active e.g.
 
-Shifter		Row being scanned
-1111111110	0
-1111111101	1
-1111111011	2
+Shifter     Row being scanned
+1111111110  0
+1111111101  1
+1111111011  2
 
 etc.
 
@@ -548,19 +550,19 @@ static int GetKeyRow(int RowNo)
 
 /*********************************** PIA Handlers ************************/
 /* PIA #0 at $FC20-$FC23 I46
-	This handles:-
-		The Printer port, side A,
-		PB0	R16 (pullup) -> Printer Port (PL1)
-		PB1	Printer Port
-		PB2 	Keyboard (any key).
-		PB3	D4 -> R37 -> TR1 switching circuit -> PL5
-		PB4	Keyboard Data out, clocked by CB2.
-		        positive edge clocks data out of the input shift register.
-		PB5	Keyboard data in, clocked by PB4.
-		PB6	R79 -> I99/6/7416 -> PL9/26/READY (from floppy)
-		PB7	Printer port
-		CB1	I36/39/6845(Horz Sync)
-		CB2	Keyboard (out) Low loads input shift reg
+    This handles:-
+        The Printer port, side A,
+        PB0 R16 (pullup) -> Printer Port (PL1)
+        PB1 Printer Port
+        PB2     Keyboard (any key).
+        PB3 D4 -> R37 -> TR1 switching circuit -> PL5
+        PB4 Keyboard Data out, clocked by CB2.
+                positive edge clocks data out of the input shift register.
+        PB5 Keyboard data in, clocked by PB4.
+        PB6 R79 -> I99/6/7416 -> PL9/26/READY (from floppy)
+        PB7 Printer port
+        CB1 I36/39/6845(Horz Sync)
+        CB2 Keyboard (out) Low loads input shift reg
 */
 static READ8_DEVICE_HANDLER(d_pia0_pa_r)
 {
@@ -576,9 +578,9 @@ static READ8_DEVICE_HANDLER(d_pia0_pb_r)
 	int RetVal;
 	int Idx;
 	int Selected;
-	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", 
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4",
 										"KEY5", "KEY6", "KEY7", "KEY8", "KEY9" };
-	
+
 	LOG_KEYBOARD(("PB Read\n"));
 
 	KAny_next = 0;
@@ -617,12 +619,12 @@ static READ8_DEVICE_HANDLER(d_pia0_pb_r)
 static WRITE8_DEVICE_HANDLER(d_pia0_pb_w)
 {
 	int	InClkState;
-	//int	OutClkState;
+	//int   OutClkState;
 
 	LOG_KEYBOARD(("PB Write\n"));
 
 	InClkState	= data & KInClk;
-	//OutClkState	= data & KOutClk;
+	//OutClkState   = data & KOutClk;
 
 	LOG_KEYBOARD(("InClkState=$%02X OldInClkState=$%02X Keyrow=$%02X ",InClkState,(d_pia0_pb_last & KInClk),Keyrow));
 
@@ -675,13 +677,13 @@ static WRITE_LINE_DEVICE_HANDLER( d_pia0_irq_b )
 }
 
 /* PIA #1 at $FC24-$FC27 I63
-	This handles :-
-		Mouse + Disk Select on side A
-		Halt on DMA CPU		PA7
-		Beeper			PB0
-		Halt on main CPU	PB1
-		Character set select 	PB6
-		Baud rate 		PB1..PB5 ????
+    This handles :-
+        Mouse + Disk Select on side A
+        Halt on DMA CPU     PA7
+        Beeper          PB0
+        Halt on main CPU    PB1
+        Character set select    PB6
+        Baud rate       PB1..PB5 ????
 */
 
 static READ8_DEVICE_HANDLER(d_pia1_pa_r)
@@ -693,7 +695,7 @@ static WRITE8_DEVICE_HANDLER(d_pia1_pa_w)
 {
 	int	HALT_DMA;
 	const device_config *fdc = devtag_get_device(device->machine, "wd179x");
-	
+
 	/* Only play with halt line if halt bit changed since last write */
 	if((data & 0x80) != d_pia1_pa_last)
 	{
@@ -768,13 +770,13 @@ static WRITE_LINE_DEVICE_HANDLER( d_pia1_irq_b )
 }
 
 /* PIA #2 at FCC0-FCC3 I28
-	This handles :-
-		DAT task select	PA0..PA3
+    This handles :-
+        DAT task select PA0..PA3
 
-		DMA CPU NMI	PA7
+        DMA CPU NMI PA7
 
-		Graphics control PB0..PB7 ???
-		VSYNC intutrupt CB2
+        Graphics control PB0..PB7 ???
+        VSYNC intutrupt CB2
 */
 static READ8_DEVICE_HANDLER(d_pia2_pa_r)
 {
@@ -923,36 +925,28 @@ static void cpu1_recalc_firq(running_machine *machine, int state)
 /* Dragon Beta onboard FDC */
 /********************************************************************************************/
 
-static WD17XX_CALLBACK( dgnbeta_fdc_callback )
+/* The INTRQ line goes through pia2 ca1, in exactly the same way as DRQ from DragonDos does */
+static WRITE_LINE_DEVICE_HANDLER( dgnbeta_fdc_intrq_w )
 {
-	/* The INTRQ line goes through pia2 ca1, in exactly the same way as DRQ from DragonDos does */
-	/* DRQ is routed through various logic to the FIRQ inturrupt line on *BOTH* CPUs */
-	const device_config *pia_2 = devtag_get_device( device->machine, "pia_2" );
-
-	switch(state)
-	{
-		case WD17XX_IRQ_CLR:
-			pia6821_ca1_w(pia_2, 0, CLEAR_LINE);
-			break;
-		case WD17XX_IRQ_SET:
-			pia6821_ca1_w(pia_2, 0, ASSERT_LINE);
-			break;
-		case WD17XX_DRQ_CLR:
-			/*wd2797_drq=CLEAR_LINE;*/
-			cpu1_recalc_firq(device->machine, CLEAR_LINE);
-			break;
-		case WD17XX_DRQ_SET:
-			/*wd2797_drq=ASSERT_LINE;*/
-			cpu1_recalc_firq(device->machine, ASSERT_LINE);
-			break;
-	}
-
-	LOG_DISK(("dgnbeta_fdc_callback(%d)\n",state));
+	LOG_DISK(("dgnbeta_fdc_intrq_w(%d)\n", state));
+	pia6821_ca1_w(device, 0, state);
 }
 
-const wd17xx_interface dgnbeta_wd17xx_interface = { dgnbeta_fdc_callback, NULL };
+/* DRQ is routed through various logic to the FIRQ inturrupt line on *BOTH* CPUs */
+static WRITE_LINE_DEVICE_HANDLER( dgnbeta_fdc_drq_w )
+{
+	LOG_DISK(("dgnbeta_fdc_drq_w(%d)\n", state));
+	cpu1_recalc_firq(device->machine, state);
+}
 
- READ8_HANDLER(dgnbeta_wd2797_r)
+const wd17xx_interface dgnbeta_wd17xx_interface =
+{
+	DEVCB_DEVICE_LINE("pia_2", dgnbeta_fdc_intrq_w),
+	DEVCB_LINE(dgnbeta_fdc_drq_w),
+	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
+};
+
+READ8_HANDLER(dgnbeta_wd2797_r)
 {
 	int result = 0;
 	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
@@ -1012,9 +1006,9 @@ static void ScanInKeyboard(void)
 #if 0
 	int	Idx;
 	int	Row;
-	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", 
+	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4",
 										"KEY5", "KEY6", "KEY7", "KEY8", "KEY9" };
-	
+
 	LOG_KEYBOARD(("Scanning Host keyboard\n"));
 
 	for(Idx=0; Idx<NoKeyrows; Idx++)
@@ -1056,15 +1050,15 @@ void dgn_beta_frame_interrupt (running_machine *machine, int data)
 
 void dgn_beta_line_interrupt (int data)
 {
-//	/* Set PIA line, so it recognises inturrupt */
-//	if (data)
-//	{
-//		pia_0_cb1_w(machine, 0,ASSERT_LINE);
-//	}
-//	else
-//	{
-//		pia_0_cb1_w(machine, 0,CLEAR_LINE);
-//	}
+//  /* Set PIA line, so it recognises inturrupt */
+//  if (data)
+//  {
+//      pia_0_cb1_w(machine, 0,ASSERT_LINE);
+//  }
+//  else
+//  {
+//      pia_0_cb1_w(machine, 0,CLEAR_LINE);
+//  }
 }
 
 
@@ -1107,12 +1101,12 @@ static void dgnbeta_reset(running_machine *machine)
 	KAny_next = 0x00;			/* Next value for KAny */
 
 	DMA_NMI_LAST = 0x80;		/* start with DMA NMI inactive, as pulled up */
-//	DMA_NMI = CLEAR_LINE;		/* start with DMA NMI inactive */
+//  DMA_NMI = CLEAR_LINE;       /* start with DMA NMI inactive */
 
 	wd17xx_set_density(fdc, DEN_MFM_LO);
 	wd17xx_set_drive(fdc, 0);
 
-	videoram = mess_ram;		/* Point video ram at the start of physical ram */
+	videoram = messram_get_ptr(devtag_get_device(machine, "messram"));		/* Point video ram at the start of physical ram */
 }
 
 
@@ -1298,7 +1292,7 @@ static CPU_DISASSEMBLE(dgnbeta_dasm_override)
 	if ((oprom[0] == 0x10) && (oprom[1] == 0x3F))
 	{
 		call = oprom[2];
-		if ((call >= 0) && (call < sizeof(os9syscalls) / sizeof(os9syscalls[0])) && os9syscalls[call])
+		if ((call >= 0) && (call < ARRAY_LENGTH(os9syscalls)) && os9syscalls[call])
 		{
 			sprintf(buffer, "OS9   %s", os9syscalls[call]);
 			result = 3;

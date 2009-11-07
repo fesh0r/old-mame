@@ -24,7 +24,7 @@ void osd_break_into_debugger(const char *message)
 
 
 //============================================================
-//	osd_alloc_executable
+//  osd_alloc_executable
 //============================================================
 
 void *osd_alloc_executable(size_t size)
@@ -39,7 +39,7 @@ void *osd_alloc_executable(size_t size)
 
 
 //============================================================
-//	osd_free_executable
+//  osd_free_executable
 //============================================================
 
 void osd_free_executable(void *ptr, size_t size)
@@ -51,20 +51,6 @@ void osd_free_executable(void *ptr, size_t size)
 #endif
 }
 
-
-
-//============================================================
-//	osd_is_bad_read_ptr
-//============================================================
-
-int osd_is_bad_read_ptr(const void *ptr, size_t size)
-{
-#ifdef WIN32
-	return IsBadReadPtr(ptr, size);
-#else
-	return !ptr;
-#endif
-}
 
 
 void osd_get_emulator_directory(char *dir, size_t dir_size)

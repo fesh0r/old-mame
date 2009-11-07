@@ -194,7 +194,7 @@ Apple 3.5 and Apple 5.25 drives - up to three devices
 #include "machine/mockngbd.h"
 #include "sound/ay8910.h"
 #include "sound/speaker.h"
-
+#include "devices/messram.h"
 
 
 /***************************************************************************
@@ -556,6 +556,36 @@ static const ay8910_interface apple2_ay8910_interface =
 	AY8910_DEFAULT_LOADS,
 	DEVCB_NULL
 };
+/*
+static void apple2_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
+{
+    switch(state)
+    {
+        case MESS_DEVINFO_INT_APPLE525_SPINFRACT_DIVIDEND:  info->i = 15; break;
+        case MESS_DEVINFO_INT_APPLE525_SPINFRACT_DIVISOR:   info->i = 16; break;
+
+        case MESS_DEVINFO_STR_NAME+0:                       strcpy(info->s = device_temp_str(), "slot6disk1"); break;
+        case MESS_DEVINFO_STR_NAME+1:                       strcpy(info->s = device_temp_str(), "slot6disk2"); break;
+        case MESS_DEVINFO_STR_SHORT_NAME+0:                 strcpy(info->s = device_temp_str(), "s6d1"); break;
+        case MESS_DEVINFO_STR_SHORT_NAME+1:                 strcpy(info->s = device_temp_str(), "s6d2"); break;
+        case MESS_DEVINFO_STR_DESCRIPTION+0:                    strcpy(info->s = device_temp_str(), "Slot 6 Disk #1"); break;
+        case MESS_DEVINFO_STR_DESCRIPTION+1:                    strcpy(info->s = device_temp_str(), "Slot 6 Disk #2"); break;
+
+        default:                                        apple525_device_getinfo(devclass, state, info); break;
+    }
+}
+*/
+static const floppy_config apple2_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(apple2),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 static MACHINE_DRIVER_START( apple2_common )
 	/* basic machine hardware */
@@ -598,15 +628,32 @@ static MACHINE_DRIVER_START( apple2_common )
 	MDRV_APPLE2_SLOT_ADD(0, "langcard", apple2_langcard_r, apple2_langcard_w)
 	MDRV_APPLE2_SLOT_ADD(4, "mockingboard", mockingboard_r, mockingboard_w)
 	MDRV_APPLE2_SLOT_ADD(6, "fdc", applefdc_r, applefdc_w)
+
+	MDRV_FLOPPY_APPLE_2_DRIVES_ADD(apple2_floppy_config,15,16)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( apple2 )
 	MDRV_IMPORT_FROM( apple2_common )
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")	
+	MDRV_RAM_EXTRA_OPTIONS("4K,8K,12K,16K,20K,24K,32K,36K,48K")	
+	/* At the moment the RAM bank $C000-$FFFF is available only if you choose   */
+	/* default configuration: on real machine is present also in configurations */
+	/* with less memory, provided that the language card is installed           */
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( apple2p )
-	MDRV_IMPORT_FROM( apple2_common )
+	MDRV_IMPORT_FROM( apple2_common )	
 	MDRV_VIDEO_START(apple2p)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")	
+	MDRV_RAM_EXTRA_OPTIONS("16K,32K,48K")
+	/* At the moment the RAM bank $C000-$FFFF is available only if you choose   */
+	/* default configuration: on real machine is present also in configurations */
+	/* with less memory, provided that the language card is installed           */	
 MACHINE_DRIVER_END
 
 ROM_START(las3000)
@@ -621,6 +668,18 @@ ROM_END
 MACHINE_DRIVER_START( apple2e )
 	MDRV_IMPORT_FROM( apple2_common )
 	MDRV_VIDEO_START(apple2e)
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("128K")	
+	MDRV_RAM_EXTRA_OPTIONS("64K")
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( mprof3 )
+	MDRV_IMPORT_FROM( apple2e )	
+	
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("128K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( apple2ee )
@@ -662,8 +721,8 @@ ROM_START(apple2) /* the classic, non-autoboot apple2 with integer basic in rom.
 	ROM_LOAD ( "341-0003-00.f0", 0x3000, 0x0800, CRC(62230d38) SHA1(f268022da555e4c809ca1ae9e5d2f00b388ff61c)) /* Needs verification. From eBay: Label: S7908E // C48709 // 3410003 // CAPPLE78 F0 */
 	ROM_LOAD ( "341-0004-00.f8", 0x3800, 0x0800, CRC(020a86d0) SHA1(52a18bd578a4694420009cad7a7a5779a8c00226))
 	ROM_LOAD ( "341-0027-a.p5", 0x4500, 0x0100, CRC(ce7144f6) SHA1(d4181c9f046aafc3fb326b381baac809d9e38d16)) /* 341-0027-a: 16-sector disk drive (older version), PROM P5 */
-	/* For the following bits, I'm not sure how to do this properly, since the P5 and P6 roms came in pairs and are in different address spaces... 
-	Also the 3.5" 400k? disk control rom, 341-0438-a should probably be here as well, assuming it could be used with an apple2/2+/2e */
+	/* For the following bits, I'm not sure how to do this properly, since the P5 and P6 roms came in pairs and are in different address spaces...
+    Also the 3.5" 400k? disk control rom, 341-0438-a should probably be here as well, assuming it could be used with an apple2/2+/2e */
 	//ROMX_LOAD ( "341-0009.p5", 0x4500, 0x0100, CRC(d34eb2ff) SHA1(afd060e6f35faf3bb0146fa889fc787adf56330a), ROM_BIOS(1)) /* 341-0009: 13-sector disk drive, PROM P5 */
 	//ROMX_LOAD ( "341-0027-a.p5", 0x4500, 0x0100, CRC(ce7144f6) SHA1(d4181c9f046aafc3fb326b381baac809d9e38d16), ROM_BIOS(2)) /* 341-0027-a: 16-sector disk drive (older version), PROM P5 */
 	//ROMX_LOAD ( "341-0127-a.p5a", 0x4500, 0x0100, NO_DUMP, ROM_BIOS(3)) /* 341-0127-A: 16-sector disk drive (later version) PROM P5; Label: 341-0127-A // (C) APPLE 81 P5A (see 'Apple Disk II Interface Card.jpg') (I have a suspicion this rom is the same as the 341-0027-a one)*/
@@ -725,7 +784,7 @@ ROM_START( agat7 )
 	ROM_LOAD( "shugart7.rom", 0x4500, 0x0100, CRC(c6e4850c) SHA1(71626d3d2d4bbeeac2b77585b45a5566d20b8d34))
 	ROM_LOAD( "teac.rom", 	  0x4500, 0x0100, CRC(94266928) SHA1(5d369bad6cdd6a70b0bb16480eba69640de87a2e))
 	ROM_REGION(0x0800,"gfx1",0)
-	ROM_LOAD( "agathe7.fnt", 0x0000, 0x0800, CRC(fcffb490) SHA1(0bda26ae7ad75f74da835c0cf6d9928f9508844c))  
+	ROM_LOAD( "agathe7.fnt", 0x0000, 0x0800, CRC(fcffb490) SHA1(0bda26ae7ad75f74da835c0cf6d9928f9508844c))
 ROM_END
 
 ROM_START( agat9 )
@@ -784,8 +843,8 @@ ROM_START(mprof3)
 
 	ROM_REGION(0x4700,"maincpu",0)
 	ROM_LOAD ( "mpf3-cd.rom", 0x0000, 0x2000, CRC(5b662e06) SHA1(aa0db775ca78986480829fcc10f00e57629e1a7c))
-	ROM_LOAD ( "mpf3-ef.rom", 0x2000, 0x2000, CRC(2c5e8b92) SHA1(befeb03e04b7c3ef36ef5829948a53880df85e92))	
-	
+	ROM_LOAD ( "mpf3-ef.rom", 0x2000, 0x2000, CRC(2c5e8b92) SHA1(befeb03e04b7c3ef36ef5829948a53880df85e92))
+
 	ROM_LOAD ( "341-0027-a.p5", 0x4500, 0x0100, CRC(ce7144f6) SHA1(d4181c9f046aafc3fb326b381baac809d9e38d16)) /* Disk II ROM - DOS 3.3 version */
 ROM_END
 
@@ -895,89 +954,26 @@ ROM_START(ivelultr)
 	ROM_LOAD ( "341-0027-a.rom", 0x4500, 0x0100, CRC(ce7144f6) SHA1(d4181c9f046aafc3fb326b381baac809d9e38d16)) /* Disk II ROM - DOS 3.3 version */
 ROM_END
 
-static void apple2_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_APPLE525_SPINFRACT_DIVIDEND:	info->i = 15; break;
-		case MESS_DEVINFO_INT_APPLE525_SPINFRACT_DIVISOR:	info->i = 16; break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_NAME+0:						strcpy(info->s = device_temp_str(), "slot6disk1"); break;
-		case MESS_DEVINFO_STR_NAME+1:						strcpy(info->s = device_temp_str(), "slot6disk2"); break;
-		case MESS_DEVINFO_STR_SHORT_NAME+0:					strcpy(info->s = device_temp_str(), "s6d1"); break;
-		case MESS_DEVINFO_STR_SHORT_NAME+1:					strcpy(info->s = device_temp_str(), "s6d2"); break;
-		case MESS_DEVINFO_STR_DESCRIPTION+0:					strcpy(info->s = device_temp_str(), "Slot 6 Disk #1"); break;
-		case MESS_DEVINFO_STR_DESCRIPTION+1:					strcpy(info->s = device_temp_str(), "Slot 6 Disk #2"); break;
-
-		default:										apple525_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(apple2_common)
-	CONFIG_DEVICE(apple2_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(apple2)
-	CONFIG_IMPORT_FROM( apple2_common )
-	CONFIG_RAM				(4  * 1024)
-	CONFIG_RAM				(8  * 1024)
-	CONFIG_RAM				(12 * 1024)
-	CONFIG_RAM				(16 * 1024)
-	CONFIG_RAM				(20 * 1024)
-	CONFIG_RAM				(24 * 1024)
-	CONFIG_RAM				(32 * 1024)
-	CONFIG_RAM				(36 * 1024)
-	CONFIG_RAM				(48 * 1024)
-	CONFIG_RAM_DEFAULT		(64 * 1024)	/* At the moment the RAM bank $C000-$FFFF is available only if you choose   */
-										/* default configuration: on real machine is present also in configurations */
-										/* with less memory, provided that the language card is installed           */
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(apple2p)
-	CONFIG_IMPORT_FROM( apple2_common )
-	CONFIG_RAM				(16 * 1024)
-	CONFIG_RAM				(32 * 1024)
-	CONFIG_RAM				(48 * 1024)
-	CONFIG_RAM_DEFAULT		(64 * 1024)	/* At the moment the RAM bank $C000-$FFFF is available only if you choose   */
-										/* default configuration: on real machine is present also in configurations */
-										/* with less memory, provided that the language card is installed           */
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(apple2e)
-	CONFIG_IMPORT_FROM( apple2_common )
-	CONFIG_RAM				(64  * 1024)
-	CONFIG_RAM_DEFAULT		(128 * 1024)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(mprof3)
-	CONFIG_IMPORT_FROM( apple2_common )
-	CONFIG_RAM_DEFAULT		(128 * 1024)
-SYSTEM_CONFIG_END
-
-
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE		INPUT     INIT CONFIG     COMPANY            FULLNAME */
-COMP( 1977, apple2,   0,        0,	apple2,		apple2,   0,   apple2,	"Apple Computer", "Apple ][" , 0)
-COMP( 1979, apple2p,  apple2,   0,	apple2p,	apple2p,  0,   apple2p,	"Apple Computer", "Apple ][+" , 0)
-COMP( 1982, prav82,   apple2,   0,	apple2p,	apple2p,  0,   apple2p,	"Pravetz", "Pravetz 82" , 0)
-COMP( 1985, prav8m,   apple2,   0,	apple2p,	apple2p,  0,   apple2p,	"Pravetz", "Pravetz 8M" , 0)
-COMP( 1980, apple2jp, apple2,   0,	apple2p,	apple2p,  0,   apple2p,	"Apple Computer", "Apple ][j+" , 0)
-COMP( 1982, ace100,   apple2,   0,	apple2,		apple2e,  0,   apple2,	"Franklin Computer", "Franklin Ace 100" , 0)
-COMP( 1983, apple2e,  0,        apple2,	apple2e,	apple2e,  0,   apple2e,	"Apple Computer", "Apple //e" , 0)
-COMP( 1983, mprof3,   apple2e,  0,	apple2ee,	apple2e,  0,   mprof3,	"Multitech", "Microprofessor III" , 0)
-COMP( 1985, apple2ee, apple2e,  0,	apple2ee,	apple2e,  0,   apple2e,	"Apple Computer", "Apple //e (enhanced)" , 0)
-COMP( 1987, apple2ep, apple2e,  0,	apple2ee,	apple2ep, 0,   apple2e,	"Apple Computer", "Apple //e (Platinum)" , 0)
-COMP( 1984, apple2c,  0,        apple2,	apple2c,	apple2e,  0,   apple2e,	"Apple Computer", "Apple //c" , 0)
-COMP( 1989, prav8c,   apple2c,  0,	apple2c,	apple2e,  0,   apple2e,	"Pravetz", "Pravetz 8C" , 0)
-COMP( 1983, las3000,  apple2,   0,	apple2p,	apple2p,  0,   apple2p,	"Video Technology", "Laser 3000",		GAME_NOT_WORKING )
-COMP( 1987, laser128, apple2c,  0,	apple2c,	apple2e,  0,   apple2e,	"Video Technology", "Laser 128 (rev 4)",		GAME_NOT_WORKING )
-COMP( 1987, las128ex, apple2c,  0,	apple2c,	apple2e,  0,   apple2e,	"Video Technology", "Laser 128ex (rev 4a)",		GAME_NOT_WORKING )
-COMP( 1985, apple2c0, apple2c,  0,	apple2c_iwm,	apple2e,  0,   apple2e,	"Apple Computer", "Apple //c (UniDisk 3.5)" , 0)
-COMP( 1986, apple2c3, apple2c,  0,	apple2c_iwm,	apple2e,  0,   apple2e,	"Apple Computer", "Apple //c (Original Memory Expansion)" , 0)
-COMP( 1986, apple2c4, apple2c,  0,	apple2c_iwm,	apple2e,  0,   apple2e,	"Apple Computer", "Apple //c (rev 4)" , GAME_NOT_WORKING )
-COMP( 1988, apple2cp, apple2c,  0,	apple2c_iwm,	apple2e,  0,   apple2e,	"Apple Computer", "Apple //c Plus" , 0)
-COMP( 1984, ivelultr, apple2,   0,	apple2p,	apple2p,  0,   apple2p,	"Ivasim", "Ivel Ultra" , 0)
-COMP( 1983, agat7, apple2,   0,	apple2p,	apple2p,  0,   apple2p,	"Agat", "Agat-7" , GAME_NOT_WORKING)
-COMP( 1984, agat9, apple2,   0,	apple2p,	apple2p,  0,   apple2p,	"Agat", "Agat-9" , GAME_NOT_WORKING)
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT     INIT CONFIG     COMPANY            FULLNAME */
+COMP( 1977, apple2,   0,        0,	apple2,		apple2,   0,   0,	"Apple Computer", "Apple ][" , 0)
+COMP( 1979, apple2p,  apple2,   0,	apple2p,	apple2p,  0,   0,	"Apple Computer", "Apple ][+" , 0)
+COMP( 1982, prav82,   apple2,   0,	apple2p,	apple2p,  0,   0,	"Pravetz", "Pravetz 82" , 0)
+COMP( 1985, prav8m,   apple2,   0,	apple2p,	apple2p,  0,   0,	"Pravetz", "Pravetz 8M" , 0)
+COMP( 1980, apple2jp, apple2,   0,	apple2p,	apple2p,  0,   0,	"Apple Computer", "Apple ][j+" , 0)
+COMP( 1982, ace100,   apple2,   0,	apple2,		apple2e,  0,   0,	"Franklin Computer", "Franklin Ace 100" , 0)
+COMP( 1983, apple2e,  0,        apple2,	apple2e,	apple2e,  0,   0,	"Apple Computer", "Apple //e" , 0)
+COMP( 1983, mprof3,   apple2e,  0,	mprof3,	apple2e,  0,   0,	"Multitech", "Microprofessor III" , 0)
+COMP( 1985, apple2ee, apple2e,  0,	apple2ee,	apple2e,  0,   0,	"Apple Computer", "Apple //e (enhanced)" , 0)
+COMP( 1987, apple2ep, apple2e,  0,	apple2ee,	apple2ep, 0,   0,	"Apple Computer", "Apple //e (Platinum)" , 0)
+COMP( 1984, apple2c,  0,        apple2,	apple2c,	apple2e,  0,   0,	"Apple Computer", "Apple //c" , 0)
+COMP( 1989, prav8c,   apple2c,  0,	apple2c,	apple2e,  0,   0,	"Pravetz", "Pravetz 8C" , 0)
+COMP( 1983, las3000,  apple2,   0,	apple2p,	apple2p,  0,   0,	"Video Technology", "Laser 3000",		GAME_NOT_WORKING )
+COMP( 1987, laser128, apple2c,  0,	apple2c,	apple2e,  0,   0,	"Video Technology", "Laser 128 (rev 4)",		GAME_NOT_WORKING )
+COMP( 1987, las128ex, apple2c,  0,	apple2c,	apple2e,  0,   0,	"Video Technology", "Laser 128ex (rev 4a)",		GAME_NOT_WORKING )
+COMP( 1985, apple2c0, apple2c,  0,	apple2c_iwm,	apple2e,  0,   0,	"Apple Computer", "Apple //c (UniDisk 3.5)" , 0)
+COMP( 1986, apple2c3, apple2c,  0,	apple2c_iwm,	apple2e,  0,   0,	"Apple Computer", "Apple //c (Original Memory Expansion)" , 0)
+COMP( 1986, apple2c4, apple2c,  0,	apple2c_iwm,	apple2e,  0,   0,	"Apple Computer", "Apple //c (rev 4)" , GAME_NOT_WORKING )
+COMP( 1988, apple2cp, apple2c,  0,	apple2c_iwm,	apple2e,  0,   0,	"Apple Computer", "Apple //c Plus" , 0)
+COMP( 1984, ivelultr, apple2,   0,	apple2p,	apple2p,  0,   0,	"Ivasim", "Ivel Ultra" , 0)
+COMP( 1983, agat7, apple2,   0,	apple2p,	apple2p,  0,   0,	"Agat", "Agat-7" , GAME_NOT_WORKING)
+COMP( 1984, agat9, apple2,   0,	apple2p,	apple2p,  0,   0,	"Agat", "Agat-9" , GAME_NOT_WORKING)

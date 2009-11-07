@@ -1,12 +1,13 @@
 /****************************************************************************
 
-	pc_flop.c
+    pc_flop.c
 
-	PC floppies
+    PC floppies
 
 ****************************************************************************/
 
 #include "imgtool.h"
+#include "utils.h"
 #include "formats/pc_dsk.h"
 #include "fat.h"
 #include "iflopimg.h"

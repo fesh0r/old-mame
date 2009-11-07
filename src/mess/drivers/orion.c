@@ -22,6 +22,7 @@
 #include "devices/cartslot.h"
 #include "formats/rk_cas.h"
 #include "includes/orion.h"
+#include "devices/messram.h"
 #include "includes/radio86.h"
 
 /* Address maps */
@@ -85,6 +86,32 @@ static const cassette_config orion_cassette_config =
 	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED
 };
 
+static FLOPPY_OPTIONS_START(orion)
+	FLOPPY_OPTION(orion, "odi,img", "Orion disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([80])
+		SECTORS([5])
+		SECTOR_LENGTH([1024])
+		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION(orion_lk, "odi,img", "Lucksian Key Orion disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([80])
+		SECTORS([9])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([1]))
+FLOPPY_OPTIONS_END
+
+static const floppy_config orion_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(orion),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 /* Machine driver */
 static MACHINE_DRIVER_START( orion128 )
@@ -119,17 +146,23 @@ static MACHINE_DRIVER_START( orion128 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MDRV_CASSETTE_ADD( "cassette", orion_cassette_config )
-	
-	MDRV_WD1793_ADD("wd1793", default_wd17xx_interface )	
-	
+
+	MDRV_WD1793_ADD("wd1793", default_wd17xx_interface )
+
+	MDRV_FLOPPY_4_DRIVES_ADD(orion_floppy_config)
+
 	MDRV_CARTSLOT_ADD("cart")
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("256K")		
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( orion128ms )
 	MDRV_IMPORT_FROM(orion128)
 	MDRV_DEVICE_REMOVE("ppi8255_2")
-	MDRV_I8255A_ADD( "ppi8255_2", rk7007_ppi8255_interface )	
-MACHINE_DRIVER_END	
+	MDRV_I8255A_ADD( "ppi8255_2", rk7007_ppi8255_interface )
+MACHINE_DRIVER_END
 
 static const ay8910_interface orionz80_ay_interface =
 {
@@ -177,18 +210,24 @@ static MACHINE_DRIVER_START( orionz80 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", orion_cassette_config )
-	
-	MDRV_WD1793_ADD("wd1793", default_wd17xx_interface )		
-	
+
+	MDRV_WD1793_ADD("wd1793", default_wd17xx_interface )
+
+	MDRV_FLOPPY_4_DRIVES_ADD(orion_floppy_config)
+
 	MDRV_CARTSLOT_ADD("cart")
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("512K")		
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( orionz80ms )
 	MDRV_IMPORT_FROM(orionz80)
 
 	MDRV_DEVICE_REMOVE("ppi8255_2")
-	MDRV_I8255A_ADD( "ppi8255_2", rk7007_ppi8255_interface )	
-MACHINE_DRIVER_END	
+	MDRV_I8255A_ADD( "ppi8255_2", rk7007_ppi8255_interface )
+MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( orionpro )
     MDRV_CPU_ADD("maincpu", Z80, 5000000)
@@ -226,56 +265,17 @@ static MACHINE_DRIVER_START( orionpro )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", orion_cassette_config )
-	
+
 	MDRV_WD1793_ADD("wd1793", default_wd17xx_interface )
-	
+
+	MDRV_FLOPPY_4_DRIVES_ADD(orion_floppy_config)
+
 	MDRV_CARTSLOT_ADD("cart")
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("512K")	
 MACHINE_DRIVER_END
-
-static FLOPPY_OPTIONS_START(orion)
-	FLOPPY_OPTION(orion, "odi,img", "Orion disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([80])
-		SECTORS([5])
-		SECTOR_LENGTH([1024])
-		FIRST_SECTOR_ID([1]))
-	FLOPPY_OPTION(orion, "odi,img", "Lucksian Key Orion disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([80])
-		SECTORS([9])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1]))
-FLOPPY_OPTIONS_END
-
-static void orion_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_orion; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(orion128)
-	CONFIG_RAM_DEFAULT(256 * 1024)
-	CONFIG_DEVICE(orion_floppy_getinfo);
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(orionz80)
-	CONFIG_RAM_DEFAULT(512 * 1024)
-	CONFIG_DEVICE(orion_floppy_getinfo);
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(orionpro)
-	CONFIG_RAM_DEFAULT(512 * 1024)
-	CONFIG_DEVICE(orion_floppy_getinfo);
-SYSTEM_CONFIG_END
 
 /* ROM definition */
 
@@ -351,10 +351,10 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT           INIT    CONFIG  COMPANY              FULLNAME   FLAGS */
-COMP( 1990, orion128, 	 0,  		0,		orion128, 	radio86, 	orion128, orion128,  "", 					 "Orion 128",	 0)
-COMP( 1990, orionms, 	 orion128, 	0,		orion128ms,	ms7007, 	orion128, orion128,  "", 					 "Orion 128 (MS7007)",	 0)
-COMP( 1990, orionz80, 	 orion128, 	0,		orionz80, 	radio86,	orion128, orionz80,  "", 					 "Orion 128 + Z80 Card II",	 0)
-COMP( 1990, orionide, 	 orion128, 	0,		orionz80, 	radio86,	orion128, orionz80,  "", 					 "Orion 128 + Z80 Card II + IDE",	 0)
-COMP( 1990, orionzms, 	 orion128, 	0,		orionz80ms,	ms7007, 	orion128, orionz80,  "", 					 "Orion 128 + Z80 Card II (MS7007)",	 0)
-COMP( 1990, orionidm, 	 orion128, 	0,		orionz80ms,	ms7007, 	orion128, orionz80,  "", 					 "Orion 128 + Z80 Card II + IDE (MS7007)",	 0)
-COMP( 1994, orionpro, 	 orion128, 	0,		orionpro, 	radio86, 	orion128, orionpro,  "", 					 "Orion Pro",	 0)
+COMP( 1990, orion128, 	 0,  		0,		orion128, 	radio86, 	orion128, 0,  "", 					 "Orion 128",	 0)
+COMP( 1990, orionms, 	 orion128, 	0,		orion128ms,	ms7007, 	orion128, 0,  "", 					 "Orion 128 (MS7007)",	 0)
+COMP( 1990, orionz80, 	 orion128, 	0,		orionz80, 	radio86,	orion128, 0,  "", 					 "Orion 128 + Z80 Card II",	 0)
+COMP( 1990, orionide, 	 orion128, 	0,		orionz80, 	radio86,	orion128, 0,  "", 					 "Orion 128 + Z80 Card II + IDE",	 0)
+COMP( 1990, orionzms, 	 orion128, 	0,		orionz80ms,	ms7007, 	orion128, 0,  "", 					 "Orion 128 + Z80 Card II (MS7007)",	 0)
+COMP( 1990, orionidm, 	 orion128, 	0,		orionz80ms,	ms7007, 	orion128, 0,  "", 					 "Orion 128 + Z80 Card II + IDE (MS7007)",	 0)
+COMP( 1994, orionpro, 	 orion128, 	0,		orionpro, 	radio86, 	orion128, 0,  "", 					 "Orion Pro",	 0)

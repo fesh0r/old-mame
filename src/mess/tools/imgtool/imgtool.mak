@@ -14,7 +14,7 @@ IMGTOOL = imgtool$(EXE)
 CFLAGS += -I$(SRC)/$(TARGET)/tools/imgtool
 
 # imgtool directories
-IMGTOOLOBJ = $(MESSOBJ)/tools/imgtool
+IMGTOOLOBJ = $(MESS_TOOLS)/imgtool
 IMGTOOL_MODULES = $(IMGTOOLOBJ)/modules
 
 
@@ -43,6 +43,11 @@ IMGTOOL_LIB_OBJS =						\
 	$(MESS_FORMATS)/basicdsk.o			\
 	$(MESS_FORMATS)/coco_dsk.o			\
 	$(MESS_FORMATS)/coco_cas.o			\
+	$(MESS_FORMATS)/imd_dsk.o			\
+	$(MESS_FORMATS)/td0_dsk.o			\
+	$(MESS_FORMATS)/cqm_dsk.o			\
+	$(MESS_FORMATS)/dsk_dsk.o			\
+	$(MESS_FORMATS)/d88_dsk.o			\
 	$(MESS_FORMATS)/pc_dsk.o			\
 	$(MESS_FORMATS)/ap2_dsk.o			\
 	$(MESS_FORMATS)/ap_dsk35.o			\
@@ -59,6 +64,7 @@ IMGTOOL_LIB_OBJS =						\
 	$(IMGTOOLOBJ)/imgterrs.o			\
 	$(IMGTOOLOBJ)/imghd.o				\
 	$(IMGTOOLOBJ)/charconv.o			\
+	$(IMGTOOL_MODULES)/amiga.o			\
 	$(IMGTOOL_MODULES)/macbin.o			\
 	$(IMGTOOL_MODULES)/rsdos.o			\
 	$(IMGTOOL_MODULES)/os9.o			\
@@ -99,7 +105,7 @@ $(LIBIMGTOOL): $(IMGTOOL_LIB_OBJS)
 IMGTOOL_OBJS = \
 	$(IMGTOOLOBJ)/main.o \
 	$(IMGTOOLOBJ)/stubs.o \
-	$(MESSOBJ)/toolerr.o
+	$(MESS_TOOLS)/toolerr.o
 
 
 

@@ -37,6 +37,37 @@
     F1D000-F1DFFF   R     xxxxxxxx xxxxxxxx   Wavetable ROM
     ------------------------------------------------------------
 
+****************************************************************************
+
+Protection Check
+
+At power on, a checksum is performed on the cart to ensure it has been
+certified by Atari. The actual checksum calculation is performed by the GPU,
+the result being left in GPU RAM at address f03000. The GPU is instructed to
+do the calculation when the bios sends a 1 to f02114 while it is in the
+initialisation stage. The bios then loops, waiting for the GPU to finish the
+calculation. When it does, it sets bit 15 of f02114 high. The bios then does
+the compare of the checksum. The checksum algorithm is unknown, but the
+final result must be 03d0dead. The bios checks for this particular result,
+and if found, the cart is allowed to start. Otherwise, the background turns
+red, and the console freezes.
+
+
+Jaguar Logo
+
+A real Jaguar will show the red Jaguar logo, the falling white Atari letters,
+and the turning jaguar's head, accompanied by the sound of a flushing toilet.
+The cart will then start. All Jaguar emulators (including this one) skip the
+logo with the appropriate memory hack. The cart can also instruct the logo
+be skipped by placing non-zero at location 800408. We do the same thing when
+the cart is loaded (see the DEVICE_IMAGE_LOAD section below).
+
+
+Start Address
+
+The start address of a cart may be found at 800404. It is normally 802000.
+
+
 ***************************************************************************/
 
 
@@ -83,6 +114,7 @@ static size_t rom_size;
 static UINT32 *cart_base;
 static size_t cart_size;
 static UINT8 eeprom_bit_count;
+static UINT8 protection_check = 0;	/* 0 = check hasn't started yet; 1= check in progress; 2 = check is finished. */
 
 
 static IRQ_CALLBACK(jaguar_irq_callback)
@@ -100,10 +132,7 @@ static MACHINE_RESET( jaguar )
 {
 	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), jaguar_irq_callback);
 
-	/* Break the protection */
-	jaguar_gpu_ram[0] = 0x3d0dead;
-	rom_base[0x4da]=(rom_base[0x4da]&0xffff0000) | 1234;
-	rom_base[0x4db]=(rom_base[0x4db]&0xffff) | 56780000;
+	protection_check = 0;
 
 	/* Set up pointers for Jaguar logo */
 	memcpy(jaguar_shared_ram, rom_base, 0x10);
@@ -269,12 +298,20 @@ static READ32_HANDLER( jaguar_eeprom_cs )
 
 static READ32_HANDLER( gpuctrl_r )
 {
-	return jaguargpu_ctrl_r(cputag_get_cpu(space->machine, "gpu"), offset);
+	if (protection_check == 1)
+	{
+		protection_check++;
+		jaguar_gpu_ram[0] = 0x3d0dead;
+		return 0x80000000;
+	}
+	else
+		return jaguargpu_ctrl_r(cputag_get_cpu(space->machine, "gpu"), offset);
 }
 
 
 static WRITE32_HANDLER( gpuctrl_w )
 {
+	if ((!protection_check) && (offset == 5) && (data == 1)) protection_check++;
 	jaguargpu_ctrl_w(cputag_get_cpu(space->machine, "gpu"), offset, data, mem_mask);
 }
 
@@ -310,13 +347,13 @@ static WRITE32_HANDLER( dspctrl_w )
 static READ32_HANDLER( joystick_r )
 {
 	UINT16 joystick_result = 0xfffe;
-	UINT16 joybuts_result = 0xfffb;
+	UINT16 joybuts_result = 0xffef;
 	int i;
 	static const char *const keynames[2][8] =
 			{
-				{ "JOY0", "JOY1", "JOY2", "JOY3", 
+				{ "JOY0", "JOY1", "JOY2", "JOY3",
 						"JOY4", "JOY5", "JOY6", "JOY7" },
-				{ "BUTTONS0", "BUTTONS1", "BUTTONS2", "BUTTONS3", 
+				{ "BUTTONS0", "BUTTONS1", "BUTTONS2", "BUTTONS3",
 						"BUTTONS4", "BUTTONS5", "BUTTONS6", "BUTTONS7" }
 			};
 
@@ -344,7 +381,7 @@ static READ32_HANDLER( joystick_r )
 	}
 
 	joystick_result |= eeprom_read_bit();
-	joybuts_result |= (input_port_read(space->machine, "CONFIG") & 4);
+	joybuts_result |= (input_port_read(space->machine, "CONFIG") & 0x10);
 
 	return (joystick_result << 16) | joybuts_result;
 }
@@ -469,7 +506,7 @@ static INPUT_PORTS_START( jaguar )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0xf0ff, IP_ACTIVE_LOW, IPT_UNUSED )
-   
+
 	PORT_START("JOY1")
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Keypad 1") PORT_CODE(KEYCODE_1) PORT_PLAYER(1)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Keypad 4") PORT_CODE(KEYCODE_4) PORT_PLAYER(1)
@@ -554,12 +591,12 @@ static INPUT_PORTS_START( jaguar )
 	PORT_BIT( 0xfffc, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("CONFIG")
-//	PORT_CONFNAME( 0x02, 0x02, "Show Logo")
-//	PORT_CONFSETTING(    0x00, "Yes")
-//	PORT_CONFSETTING(    0x02, "No")
-	PORT_CONFNAME( 0x04, 0x04, "TV System")
+//  PORT_CONFNAME( 0x02, 0x02, "Show Logo")
+//  PORT_CONFSETTING(    0x00, "Yes")
+//  PORT_CONFSETTING(    0x02, "No")
+	PORT_CONFNAME( 0x10, 0x10, "TV System")
 	PORT_CONFSETTING(    0x00, "PAL")
-	PORT_CONFSETTING(    0x04, "NTSC")
+	PORT_CONFSETTING(    0x10, "NTSC")
 INPUT_PORTS_END
 
 
@@ -704,9 +741,8 @@ static DEVICE_IMAGE_LOAD( jaguar )
 		cart_base[i] = ((j & 0xff) << 24) | ((j & 0xff00) << 8) | ((j & 0xff0000) >> 8) | ((j & 0xff000000) >> 24);
 	}
 
-	/* Disable logo? - can't do this because of core fatal warning */
-	//if (input_port_read(image->machine, "CONFIG") & 2)
-		rom_base[0x53c / 4] = 0x67000002;
+	/* Skip the logo */
+	cart_base[0x102] = 1;
 
 	/* Transfer control to the bios */
 	cpu_set_reg(cputag_get_cpu(image->machine, "maincpu"), REG_GENPC, rom_base[1]);

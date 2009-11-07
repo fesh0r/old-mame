@@ -95,11 +95,13 @@
 #include "devices/flopdrv.h"
 #include "devices/cassette.h"
 #include "formats/z80ne_dsk.h"
+#include "devices/messram.h"
 
 /* peripheral chips */
 #include "machine/ay31015.h"
 #include "machine/kr2376.h"
 #include "video/m6847.h"
+#include "machine/wd17xx.h"
 
 /* Layout */
 #include "z80ne.lh"
@@ -381,6 +383,27 @@ INPUT_PORTS_END
  Machine Drivers
 ******************************************************************************/
 
+static const UINT32 lx388palette[] =
+{
+	MAKE_RGB(0x00, 0xff, 0x00),	/* GREEN */
+	MAKE_RGB(0x00, 0xff, 0x00),	/* YELLOW in original, here GREEN */
+	MAKE_RGB(0x00, 0x00, 0xff),	/* BLUE */
+	MAKE_RGB(0xff, 0x00, 0x00),	/* RED */
+	MAKE_RGB(0xff, 0xff, 0xff),	/* BUFF */
+	MAKE_RGB(0x00, 0xff, 0xff),	/* CYAN */
+	MAKE_RGB(0xff, 0x00, 0xff),	/* MAGENTA */
+	MAKE_RGB(0xff, 0x80, 0x00),	/* ORANGE */
+
+	MAKE_RGB(0x00, 0x20, 0x00),	/* BLACK in original, here DARK green */
+	MAKE_RGB(0x00, 0xff, 0x00),	/* GREEN */
+	MAKE_RGB(0x00, 0x00, 0x00),	/* BLACK */
+	MAKE_RGB(0xff, 0xff, 0xff),	/* BUFF */
+
+	MAKE_RGB(0x00, 0x20, 0x00),	/* ALPHANUMERIC DARK GREEN */
+	MAKE_RGB(0x00, 0xff, 0x00),	/* ALPHANUMERIC BRIGHT GREEN */
+	MAKE_RGB(0x40, 0x10, 0x00),	/* ALPHANUMERIC DARK ORANGE */
+	MAKE_RGB(0xff, 0xc4, 0x18)		/* ALPHANUMERIC BRIGHT ORANGE */
+};
 
 static const ay31015_config z80ne_ay31015_config =
 {
@@ -412,6 +435,34 @@ static const kr2376_interface lx388_kr2376_interface =
 	NULL
 };
 
+static const floppy_config z80netf_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(z80ne),
+	DO_NOT_KEEP_GEOMETRY
+};
+
+static const mc6847_interface z80net_mc6847_intf =
+{
+	DEVCB_HANDLER(lx388_mc6847_videoram_r),
+	DEVCB_LINE_GND,
+	DEVCB_LINE_GND,
+	DEVCB_LINE_GND,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_LINE_GND,
+	DEVCB_LINE_GND,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
+};
+
 static MACHINE_DRIVER_START( z80ne )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("z80ne", Z80, Z80NE_CPU_SPEED_HZ)
@@ -427,6 +478,10 @@ static MACHINE_DRIVER_START( z80ne )
 	MDRV_CASSETTE_ADD( "cassetteb", z80ne_cassetteb_config )
 
 	MDRV_DEFAULT_LAYOUT(layout_z80ne)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("32K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( z80net )
@@ -444,15 +499,22 @@ static MACHINE_DRIVER_START( z80net )
 	/* video hardware */
 	MDRV_SCREEN_ADD("lx388", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
-
-	MDRV_VIDEO_START(lx388)
-	MDRV_VIDEO_UPDATE(m6847)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(320, 25+192+26)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
 
-	MDRV_DEFAULT_LAYOUT(layout_z80net)
+	MDRV_VIDEO_UPDATE(lx388)
 
+	MDRV_MC6847_ADD("mc6847", z80net_mc6847_intf)
+	MDRV_MC6847_TYPE(M6847_VERSION_ORIGINAL_PAL)
+	MDRV_MC6847_PALETTE(lx388palette)
+
+	MDRV_DEFAULT_LAYOUT(layout_z80net)
+	
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("32K")
+	MDRV_RAM_EXTRA_OPTIONS("1K")	
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( z80netb )
@@ -474,13 +536,21 @@ static MACHINE_DRIVER_START( z80netb )
 	/* video hardware */
 	MDRV_SCREEN_ADD("lx388", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
-
-	MDRV_VIDEO_START(lx388)
-	MDRV_VIDEO_UPDATE(m6847)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(320, 25+192+26)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
 	MDRV_DEFAULT_LAYOUT(layout_z80netb)
+
+	MDRV_VIDEO_UPDATE(lx388)
+
+	MDRV_MC6847_ADD("mc6847", z80net_mc6847_intf)
+	MDRV_MC6847_TYPE(M6847_VERSION_ORIGINAL_PAL)
+	MDRV_MC6847_PALETTE(lx388palette)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("32K")
+	MDRV_RAM_EXTRA_OPTIONS("1K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( z80netf )
@@ -502,16 +572,24 @@ static MACHINE_DRIVER_START( z80netf )
 	/* video hardware */
 	MDRV_SCREEN_ADD("lx388", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
-
-	MDRV_VIDEO_START(lx388)
-	MDRV_VIDEO_UPDATE(m6847)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(320, 25+192+26)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
 
+	MDRV_VIDEO_UPDATE(lx388)
+
+	MDRV_MC6847_ADD("mc6847", z80net_mc6847_intf)
+	MDRV_MC6847_TYPE(M6847_VERSION_ORIGINAL_PAL)
+	MDRV_MC6847_PALETTE(lx388palette)
+
 	MDRV_WD1771_ADD("wd1771", default_wd17xx_interface)
+	MDRV_FLOPPY_4_DRIVES_ADD(z80netf_floppy_config)
 
 	MDRV_DEFAULT_LAYOUT(layout_z80netf)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("56K")
 MACHINE_DRIVER_END
 
 /******************************************************************************
@@ -567,67 +645,8 @@ ROM_START( z80netf )
 	ROM_LOAD( "ep2390.ic6", 0x14C00, 0x0400, CRC(28d28eee) SHA1(b80f75c1ac4905ae369ecbc9b9ce120cc85502ed) )
 ROM_END
 
-
-/******************************************************************************
- System Config
-******************************************************************************/
-
-
-static SYSTEM_CONFIG_START( z80ne )
-	CONFIG_RAM_DEFAULT( 32 * 1024 )
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( z80net )
-	CONFIG_RAM_DEFAULT( 32 * 1024 )
-	CONFIG_RAM( 1 * 1024 )
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( z80netb )
-	CONFIG_RAM_DEFAULT( 32 * 1024 )
-	CONFIG_RAM( 1 * 1024 )
-SYSTEM_CONFIG_END
-
-
-static void z80netf_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:			info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:	info->p = (void *) floppyoptions_z80ne; break;
-
-		case MESS_DEVINFO_STR_NAME+0:						strcpy(info->s = device_temp_str(), "floppydisk0"); break;
-		case MESS_DEVINFO_STR_NAME+1:						strcpy(info->s = device_temp_str(), "floppydisk1"); break;
-		case MESS_DEVINFO_STR_NAME+2:						strcpy(info->s = device_temp_str(), "floppydisk2"); break;
-		case MESS_DEVINFO_STR_NAME+3:						strcpy(info->s = device_temp_str(), "floppydisk3"); break;
-		case MESS_DEVINFO_STR_SHORT_NAME+0:					strcpy(info->s = device_temp_str(), "flop0"); break;
-		case MESS_DEVINFO_STR_SHORT_NAME+1:					strcpy(info->s = device_temp_str(), "flop1"); break;
-		case MESS_DEVINFO_STR_SHORT_NAME+2:					strcpy(info->s = device_temp_str(), "flop2"); break;
-		case MESS_DEVINFO_STR_SHORT_NAME+3:					strcpy(info->s = device_temp_str(), "flop3"); break;
-		case MESS_DEVINFO_STR_DESCRIPTION+0:					strcpy(info->s = device_temp_str(), "Floppy #0"); break;
-		case MESS_DEVINFO_STR_DESCRIPTION+1:					strcpy(info->s = device_temp_str(), "Floppy #1"); break;
-		case MESS_DEVINFO_STR_DESCRIPTION+2:					strcpy(info->s = device_temp_str(), "Floppy #2"); break;
-		case MESS_DEVINFO_STR_DESCRIPTION+3:					strcpy(info->s = device_temp_str(), "Floppy #3"); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = device_temp_str(), "zmk"); break;
-
-		default:					floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-
-static SYSTEM_CONFIG_START( z80netf )
-	CONFIG_RAM_DEFAULT( 56 * 1024 )
-	CONFIG_DEVICE(z80netf_floppy_getinfo)
-SYSTEM_CONFIG_END
-
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT     CONFIG   COMPANY               FULLNAME                      FLAGS */
-COMP( 1980,	z80ne,    0,        0,      z80ne,    z80ne,    z80ne,   z80ne,   "Nuova Elettronica",	"Z80NE",                      GAME_NO_SOUND | GAME_COMPUTER)
-COMP( 1980,	z80net,   z80ne,    0,      z80net,   z80net,   z80net,  z80net,  "Nuova Elettronica",	"Z80NE + LX.388",             GAME_NO_SOUND | GAME_COMPUTER)
-COMP( 1980,	z80netb,  z80ne,    0,      z80netb,  z80net,   z80netb, z80netb, "Nuova Elettronica",	"Z80NE + LX.388 + Basic 16k", GAME_NO_SOUND | GAME_COMPUTER)
-COMP( 1980,	z80netf,  z80ne,    0,      z80netf,  z80netf,  z80netf, z80netf, "Nuova Elettronica",	"Z80NE + LX.388 + LX.390",    GAME_NO_SOUND | GAME_COMPUTER)
+COMP( 1980,	z80ne,    0,        0,      z80ne,    z80ne,    z80ne,   0, "Nuova Elettronica",	"Z80NE",                      GAME_NO_SOUND | GAME_COMPUTER)
+COMP( 1980,	z80net,   z80ne,    0,      z80net,   z80net,   z80net,  0, "Nuova Elettronica",	"Z80NE + LX.388",             GAME_NO_SOUND | GAME_COMPUTER)
+COMP( 1980,	z80netb,  z80ne,    0,      z80netb,  z80net,   z80netb, 0, "Nuova Elettronica",	"Z80NE + LX.388 + Basic 16k", GAME_NO_SOUND | GAME_COMPUTER)
+COMP( 1980,	z80netf,  z80ne,    0,      z80netf,  z80netf,  z80netf, 0, "Nuova Elettronica",	"Z80NE + LX.388 + LX.390",    GAME_NO_SOUND | GAME_COMPUTER)

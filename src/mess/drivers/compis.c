@@ -33,6 +33,7 @@
 
 #include "driver.h"
 #include "cpu/i86/i86.h"
+#include "cpu/mcs48/mcs48.h"
 #include "machine/i8255a.h"
 #include "machine/ctronics.h"
 #include "includes/compis.h"
@@ -41,20 +42,20 @@
 #include "machine/pit8253.h"
 #include "machine/pic8259.h"
 #include "machine/mm58274c.h"
-#include "machine/nec765.h"
+#include "machine/upd765.h"
 #include "formats/cpis_dsk.h"
 
 static READ8_DEVICE_HANDLER( compis_ppi_r )
 {
 /* Port 3 is the control port and mame returns a hardcoded FF, but compis
-	does not like it. Code at that point:
-	F8DBD:	mov dx, 3
-		in al, dx
-		and al, 8
-		je F8DF1
-	The jump must be taken to succeed. It seems that the read should
-	return some kind of status rather than FF. Until this matter is
-	resolved, this will have to do. - R */
+    does not like it. Code at that point:
+    F8DBD:  mov dx, 3
+        in al, dx
+        and al, 8
+        je F8DF1
+    The jump must be taken to succeed. It seems that the read should
+    return some kind of status rather than FF. Until this matter is
+    resolved, this will have to do. - R */
 
 	if (offset == 3) return 0;
 	else
@@ -78,7 +79,7 @@ static ADDRESS_MAP_START( compis_io, ADDRESS_SPACE_IO, 16 )
 	AM_RANGE( 0x0280, 0x0283) AM_DEVREADWRITE8("pic8259_master", pic8259_r, pic8259_w, 0xffff) /* 80150/80130 */
 //  AM_RANGE( 0x0288, 0x028e) AM_DEVREADWRITE("pit8254", compis_osp_pit_r, compis_osp_pit_w ) /* PIT 8254 (80150/80130)  */
 	AM_RANGE( 0x0310, 0x031f) AM_READWRITE( compis_usart_r, compis_usart_w )	/* USART 8251 Keyboard      */
-	AM_RANGE( 0x0330, 0x033f) AM_READWRITE( compis_gdc_r, compis_gdc_w )	/* GDC 82720 PCS6:6     */
+	AM_RANGE( 0x0330, 0x033f) AM_READWRITE( compis_gdc_16_r, compis_gdc_16_w )	/* GDC 82720 PCS6:6     */
 	AM_RANGE( 0x0340, 0x0343) AM_READWRITE( compis_fdc_r, compis_fdc_w )	/* iSBX0 (J8) FDC 8272      */
 	AM_RANGE( 0x0350, 0x0351) AM_READ( compis_fdc_dack_r)	/* iSBX0 (J8) DMA ACK       */
 	AM_RANGE( 0xff00, 0xffff) AM_READWRITE( i186_internal_port_r, i186_internal_port_w)/* CPU 80186         */
@@ -101,6 +102,13 @@ static ADDRESS_MAP_START( compis_io, ADDRESS_SPACE_IO, 16 )
 //{ 0xff20, 0xffff, compis_null_r },    /* CPU 80186            */
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START( keyboard_io, ADDRESS_SPACE_IO, 8 )
+//	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) 
+//	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) 
+//	AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1) 
+//	AM_RANGE(MCS48_PORT_BUS, MCS48_PORT_BUS) 
+ADDRESS_MAP_END
+
 /* COMPIS Keyboard */
 
 /* 2008-05 FP:
@@ -113,8 +121,8 @@ Small note about natural keyboard: currently,
 - "Compis S" is mapped to 'F6'
 - "Avbryt" is mapped to 'F7'
 - "Inpassa" is mapped to 'Insert'
-- "Sök" is mapped to "Print Screen"
-- "Utplåna"is mapped to 'Delete'
+- "S?k" is mapped to "Print Screen"
+- "Utpl?na"is mapped to 'Delete'
 - "Start / Stop" is mapped to 'Pause'
 - "TabL" is mapped to 'Page Up'
 - "TabR" is mapped to 'Page Down'
@@ -244,8 +252,20 @@ static const unsigned i86_address_mask = 0x000fffff;
 
 static const mm58274c_interface compis_mm58274c_interface =
 {
-	0,	/* 	mode 24*/
+	0,	/*  mode 24*/
 	1   /*  first day of week */
+};
+
+static const floppy_config compis_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(compis),
+	DO_NOT_KEEP_GEOMETRY
 };
 
 static MACHINE_DRIVER_START( compis )
@@ -255,6 +275,9 @@ static MACHINE_DRIVER_START( compis )
 	MDRV_CPU_IO_MAP(compis_io)
 	MDRV_CPU_VBLANK_INT("screen", compis_vblank_int)
 	MDRV_CPU_CONFIG(i86_address_mask)
+
+	MDRV_CPU_ADD("i8749", I8749, 1000000)
+	MDRV_CPU_IO_MAP(keyboard_io)
 
 	MDRV_QUANTUM_TIME(HZ(60))
 
@@ -293,7 +316,9 @@ static MACHINE_DRIVER_START( compis )
 	/* rtc */
 	MDRV_MM58274C_ADD("mm58274c", compis_mm58274c_interface)
 
-	MDRV_NEC765A_ADD("nec765", compis_fdc_interface)
+	MDRV_UPD765A_ADD("upd765", compis_fdc_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(compis_floppy_config)
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -302,29 +327,31 @@ MACHINE_DRIVER_END
 
 ***************************************************************************/
 
-ROM_START (compis)
-     ROM_REGION (0x100000, "maincpu", 0)
-     ROM_LOAD ("compis.rom", 0xf0000, 0x10000, CRC(89877688) SHA1(7daa1762f24e05472eafc025879da90fe61d0225))
+ROM_START( compis )
+	ROM_REGION16_LE( 0x100000, "maincpu", 0 )
+	ROM_LOAD16_BYTE( "sa883003.u40", 0xf0000, 0x4000, CRC(195ef6bf) SHA1(eaf8ae897e1a4b62d3038ff23777ce8741b766ef) )
+	ROM_LOAD16_BYTE( "sa883003.u36", 0xf0001, 0x4000, CRC(7c918f56) SHA1(8ba33d206351c52f44f1aa76cc4d7f292dcef761) )
+	ROM_LOAD16_BYTE( "sa883003.u39", 0xf8000, 0x4000, CRC(3cca66db) SHA1(cac36c9caa2f5bb42d7a6d5b84f419318628935f) )
+	ROM_LOAD16_BYTE( "sa883003.u35", 0xf8001, 0x4000, CRC(43c38e76) SHA1(f32e43604107def2c2259898926d090f2ed62104) )
+
+	ROM_REGION( 0x800, "i8749", 0 )
+	ROM_LOAD( "cmpkey13.u1", 0x0000, 0x0800, CRC(3f87d138) SHA1(c04e2d325b9c04818bc7c47c3bf32b13862b11ec) )
 ROM_END
 
-static void compis_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
+ROM_START( compis2 )
+	ROM_REGION16_LE( 0x100000, "maincpu", 0 )
+	ROM_DEFAULT_BIOS( "v303" )
+	ROM_SYSTEM_BIOS( 0, "v302", "Compis II v3.02 (1986-09-09)" )
+	ROMX_LOAD( "comp302.u39", 0xf0000, 0x8000, CRC(16a7651e) SHA1(4cbd4ba6c6c915c04dfc913ec49f87c1dd7344e3), ROM_BIOS(1) | ROM_SKIP(1) )
+	ROMX_LOAD( "comp302.u35", 0xf0001, 0x8000, CRC(ae546bef) SHA1(572e45030de552bb1949a7facbc885b8bf033fc6), ROM_BIOS(1) | ROM_SKIP(1) )
+	ROM_SYSTEM_BIOS( 1, "v303", "Compis II v3.03 (1987-03-09)" )
+	ROMX_LOAD( "rysa094.u39", 0xf0000, 0x8000, CRC(e7302bff) SHA1(44ea20ef4008849af036c1a945bc4f27431048fb), ROM_BIOS(2) | ROM_SKIP(1) )
+	ROMX_LOAD( "rysa094.u35", 0xf0001, 0x8000, CRC(b0694026) SHA1(eb6b2e3cb0f42fd5ffdf44f70e652ecb9714ce30), ROM_BIOS(2) | ROM_SKIP(1) )
 
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_compis; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(compis)
-	CONFIG_DEVICE(compis_floppy_getinfo)
-SYSTEM_CONFIG_END
+	ROM_REGION( 0x800, "i8749", 0 )
+	ROM_LOAD( "cmpkey13.u1", 0x0000, 0x0800, CRC(3f87d138) SHA1(c04e2d325b9c04818bc7c47c3bf32b13862b11ec) )
+ROM_END
 
 /*   YEAR   NAME        PARENT  COMPAT MACHINE  INPUT   INIT    CONFIG  COMPANY     FULLNAME */
-COMP(1985,	compis,		0,		0,     compis,	compis,	compis,	compis,	"Telenova", "Compis" , GAME_NOT_WORKING)
+COMP(1985,	compis,		0,		0,     compis,	compis,	compis,	0,	"Telenova", "Compis" , GAME_NOT_WORKING)
+COMP(1986,	compis2,	compis,	0,     compis,	compis,	compis,	0,	"Telenova", "Compis II" , GAME_NOT_WORKING)

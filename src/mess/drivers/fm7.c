@@ -1,11 +1,11 @@
 /***********************************************************************************************
 
-	Fujitsu Micro 7 (FM-7)
+    Fujitsu Micro 7 (FM-7)
 
-	12/05/2009 Skeleton driver.
-	
-	Computers in this series:
-	
+    12/05/2009 Skeleton driver.
+
+    Computers in this series:
+
                  | Release |    Main CPU    |  Sub CPU  |              RAM              |
     =====================================================================================
     FM-8         | 1981-05 | M68A09 @ 1MHz  |  M6809    |    64K (main) + 48K (VRAM)    |
@@ -19,19 +19,19 @@
     FM-77AV40EX  | 1987-11 | M68B09E @ 2MHz |  M68B09   | 192/448K (main) + 144K (VRAM) |
     FM-77AV40SX  | 1988-11 | M68B09E @ 2MHz |  M68B09   | 192/448K (main) + 144K (VRAM) |
 
-	Note: FM-77AV dumps probably come from a FM-77AV40SX. Shall we confirm that both computers
-	used the same BIOS components?
+    Note: FM-77AV dumps probably come from a FM-77AV40SX. Shall we confirm that both computers
+    used the same BIOS components?
 
-	memory map info from http://www.nausicaa.net/~lgreenf/fm7page.htm
-	see also http://retropc.net/ryu/xm7/xm7.shtml
+    memory map info from http://www.nausicaa.net/~lgreenf/fm7page.htm
+    see also http://retropc.net/ryu/xm7/xm7.shtml
 
 
-	Known issues:
-	 - Beeper is not implemented
-	 - Keyboard repeat is not implemented
-	 - Optional Kanji ROM use is not implemented
-	 - Other optional hardware is not implemented (RS232, Z80 card...)
-	 - FM-77AV and later aren't working (extra features not yet implemented)
+    Known issues:
+     - Beeper is not implemented
+     - Keyboard repeat is not implemented
+     - Optional Kanji ROM use is not implemented
+     - Other optional hardware is not implemented (RS232, Z80 card...)
+     - FM-77AV and later aren't working (extra features not yet implemented)
 
 ************************************************************************************************/
 
@@ -46,25 +46,24 @@
 #include "formats/fm7_cas.h"
 #include "machine/wd17xx.h"
 #include "devices/flopdrv.h"
-#include "formats/fm7_dsk.h"
 #include "machine/ctronics.h"
 
 #include "includes/fm7.h"
 
 UINT8* fm7_video_ram;
 UINT8* shared_ram;
-UINT8* fm7_boot_ram;  // Boot RAM (AV only)
+static UINT8* fm7_boot_ram;  // Boot RAM (AV only)
 UINT8 fm7_type;
 static UINT8 irq_flags;  // active IRQ flags
-static UINT8 irq_mask;  // IRQ mask 
-emu_timer* fm7_timer;  // main timer, triggered every 2.0345ms
-emu_timer* fm7_subtimer;  // sub-CPU timer, triggered every 20ms
-emu_timer* fm7_keyboard_timer;
+static UINT8 irq_mask;  // IRQ mask
+static emu_timer* fm7_timer;  // main timer, triggered every 2.0345ms
+static emu_timer* fm7_subtimer;  // sub-CPU timer, triggered every 20ms
+static emu_timer* fm7_keyboard_timer;
 emu_timer* fm77av_vsync_timer;
 static UINT8 basic_rom_en;
 static UINT8 init_rom_en;  // AV only
-unsigned int key_delay;
-unsigned int key_repeat;
+static unsigned int key_delay;
+static unsigned int key_repeat;
 static UINT16 current_scancode;
 static UINT32 key_data[4];
 static UINT32 mod_data;
@@ -81,7 +80,7 @@ static UINT8 speaker_active;
 static UINT16 fm7_kanji_address;
 
 
-struct key_encoder
+static struct key_encoder
 {
 	UINT8 buffer[12];
 	UINT8 tx_count;
@@ -93,7 +92,7 @@ struct key_encoder
 	UINT8 position;
 } fm7_encoder;
 
-struct mmr
+static struct mmr
 {
 	UINT8 bank_addr[8][16];
 	UINT8 segment;
@@ -109,7 +108,7 @@ extern struct fm7_video_flags fm7_video;
  * when kana is active.
  */
  // TODO: fill in shift,ctrl,graph and kana code
-static const UINT16 fm7_key_list[0x60][7] =  
+static const UINT16 fm7_key_list[0x60][7] =
 { // norm  shift ctrl  graph kana  sh.kana scan
 	{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
 	{0x1b, 0x1b, 0x1b, 0x1b, 0x1b, 0x1b, 0x01},  // ESC
@@ -140,7 +139,7 @@ static const UINT16 fm7_key_list[0x60][7] =
 	{0x70, 0x50, 0x10, 0x8d, 0xbe, 0x00, 0x1a},  // P
 	{0x40, 0x60, 0x00, 0x8a, 0xde, 0x00, 0x1b},  // @
 	{0x5b, 0x7b, 0x1b, 0xed, 0xdf, 0xa2, 0x1c},  // [
-	{0x0d, 0x0d, 0x00, 0x0d, 0x0d, 0x0d, 0x1d},  // Return 
+	{0x0d, 0x0d, 0x00, 0x0d, 0x0d, 0x0d, 0x1d},  // Return
 	{0x61, 0x41, 0x01, 0x95, 0xc1, 0x00, 0x1e},  // A
 	{0x73, 0x53, 0x13, 0x96, 0xc4, 0x00, 0x1f},  // S
 
@@ -163,14 +162,14 @@ static const UINT16 fm7_key_list[0x60][7] =
 	{0x6d, 0x4d, 0x0d, 0x86, 0xd3, 0x00, 0x30},  // M
 	{0x2c, 0x3c, 0x00, 0x87, 0xc8, 0xa4, 0x31},  // <
 	{0x2e, 0x3e, 0x00, 0x88, 0xd9, 0xa1, 0x32},  // >
-	{0x2f, 0x3f, 0x00, 0x97, 0xd2, 0xa5, 0x33},  // /  
+	{0x2f, 0x3f, 0x00, 0x97, 0xd2, 0xa5, 0x33},  // /
 	{0x22, 0x5f, 0x1f, 0xe0, 0xdb, 0x00, 0x34},  // "
 	{0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x35},  // Space
 	{0x2a, 0x2a, 0x00, 0x98, 0x2a, 0x2a, 0x36},  // Tenkey
 	{0x2f, 0x2f, 0x00, 0x91, 0x2f, 0x2f, 0x37},
 	{0x2b, 0x2b, 0x00, 0x99, 0x2b, 0x2b, 0x38},
 	{0x2d, 0x2d, 0x00, 0xee, 0x2d, 0x2d, 0x39},
-	{0x37, 0x37, 0x00, 0xe1, 0x37, 0x37, 0x3a},  
+	{0x37, 0x37, 0x00, 0xe1, 0x37, 0x37, 0x3a},
 	{0x38, 0x38, 0x00, 0xe2, 0x38, 0x38, 0x3b},
 	{0x39, 0x39, 0x00, 0xe3, 0x39, 0x39, 0x3c},
 	{0x3d, 0x3d, 0x00, 0xef, 0x3d, 0x3d, 0x3d},  // Tenkey =
@@ -215,7 +214,7 @@ static const UINT16 fm7_key_list[0x60][7] =
 static void main_irq_set_flag(running_machine* machine, UINT8 flag)
 {
 	irq_flags |= flag;
-	
+
 	if(irq_flags != 0)
 		cputag_set_input_line(machine,"maincpu",M6809_IRQ_LINE,ASSERT_LINE);
 }
@@ -231,9 +230,9 @@ static void main_irq_clear_flag(running_machine* machine, UINT8 flag)
 
 /*
  * Main CPU: I/O port 0xfd02
- * 
+ *
  * On read: returns cassette data (bit 7) and printer status (bits 0-5)
- * On write: sets IRQ masks 
+ * On write: sets IRQ masks
  *   bit 0 - keypress
  *   bit 1 - printer
  *   bit 2 - timer
@@ -242,7 +241,7 @@ static void main_irq_clear_flag(running_machine* machine, UINT8 flag)
  *   bit 5 - TXRDY
  *   bit 6 - RXRDY
  *   bit 7 - SYNDET
- * 
+ *
  */
 static WRITE8_HANDLER( fm7_irq_mask_w )
 {
@@ -252,7 +251,7 @@ static WRITE8_HANDLER( fm7_irq_mask_w )
 
 /*
  * Main CPU: I/O port 0xfd03
- * 
+ *
  * On read: returns which IRQ is currently active (typically read by IRQ handler)
  *   bit 0 - keypress
  *   bit 1 - printer
@@ -266,15 +265,15 @@ static WRITE8_HANDLER( fm7_irq_mask_w )
 static READ8_HANDLER( fm7_irq_cause_r )
 {
 	UINT8 ret = ~irq_flags;
-	
+
 	// Timer and Printer IRQ flags are cleared when this port is read
 	// Keyboard IRQ flag is cleared when the scancode is read from
-	// either keyboard data port (main CPU 0xfd01 or sub CPU 0xd401) 
+	// either keyboard data port (main CPU 0xfd01 or sub CPU 0xd401)
 	if(irq_flags & 0x04)
 		main_irq_clear_flag(space->machine,IRQ_FLAG_TIMER);
 	if(irq_flags & 0x02)
 		main_irq_clear_flag(space->machine,IRQ_FLAG_PRINTER);
-		
+
 	logerror("IRQ flags read: 0x%02x\n",ret);
 	return ret;
 }
@@ -288,13 +287,13 @@ static TIMER_CALLBACK( fm7_beeper_off )
 static WRITE8_HANDLER( fm7_beeper_w )
 {
 	speaker_active = data & 0x01;
-	
+
 	if(!speaker_active)  // speaker not active, disable all beeper sound
 	{
 		beep_set_state(devtag_get_device(space->machine,"beeper"),0);
 		return;
 	}
-		
+
 	if(data & 0x80)
 	{
 		if(speaker_active)
@@ -302,7 +301,7 @@ static WRITE8_HANDLER( fm7_beeper_w )
 	}
 	else
 		beep_set_state(devtag_get_device(space->machine,"beeper"),0);
-	
+
 	if(data & 0x40)
 	{
 		if(speaker_active)
@@ -350,7 +349,7 @@ static READ8_HANDLER( vector_r )
 static WRITE8_HANDLER( vector_w )
 {
 	UINT8* RAM = memory_region(space->machine,"maincpu");
-	
+
 	if(fm7_type == SYS_FM7)
 		RAM[0xfff0+offset] = data;
 	else
@@ -359,14 +358,14 @@ static WRITE8_HANDLER( vector_w )
 
 /*
  * Main CPU: I/O port 0xfd04
- * 
+ *
  *  bit 0 - attention IRQ active, clears flag when read.
  *  bit 1 - break key active
  */
 static READ8_HANDLER( fm7_fd04_r )
 {
 	UINT8 ret = 0xff;
-	
+
 	if(fm7_video.attn_irq != 0)
 	{
 		ret &= ~0x01;
@@ -379,16 +378,16 @@ static READ8_HANDLER( fm7_fd04_r )
 	return ret;
 }
 
-/* 
+/*
  *  Main CPU: I/O port 0xfd0f
- * 
+ *
  *  On read, enables BASIC ROM at 0x8000 (default)
  *  On write, disables BASIC ROM, enables RAM (if more than 32kB)
  */
 static READ8_HANDLER( fm7_rom_en_r )
 {
 	UINT8* RAM = memory_region(space->machine,"maincpu");
-	
+
 	basic_rom_en = 1;
 	if(fm7_type == SYS_FM7)
 	{
@@ -404,7 +403,7 @@ static READ8_HANDLER( fm7_rom_en_r )
 static WRITE8_HANDLER( fm7_rom_en_w )
 {
 	UINT8* RAM = memory_region(space->machine,"maincpu");
-	
+
 	basic_rom_en = 0;
 	if(fm7_type == SYS_FM7)
 	{
@@ -420,9 +419,9 @@ static WRITE8_HANDLER( fm7_rom_en_w )
  *  Main CPU: port 0xfd10
  *  Initiate ROM enable. (FM-77AV and later only)
  *  Port is write-only.  Initiate ROM is on by default.
- * 
+ *
  */
-WRITE8_HANDLER( fm7_init_en_w )
+static WRITE8_HANDLER( fm7_init_en_w )
 {
 	if(data & 0x02)
 	{
@@ -440,30 +439,21 @@ WRITE8_HANDLER( fm7_init_en_w )
  *  Main CPU: I/O ports 0xfd18 - 0xfd1f
  *  Floppy Disk Controller (MB8877A)
  */
-static WD17XX_CALLBACK( fm7_fdc_irq )
+static WRITE_LINE_DEVICE_HANDLER( fm7_fdc_intrq_w )
 {
-	switch(state)
-	{
-		case WD17XX_IRQ_CLR:
-			fdc_irq_flag = 0;
-			break;
-		case WD17XX_IRQ_SET:
-			fdc_irq_flag = 1;
-			break;
-		case WD17XX_DRQ_CLR:
-			fdc_drq_flag = 0;
-			break;
-		case WD17XX_DRQ_SET:
-			fdc_drq_flag = 1;
-			break;
-	}
+	fdc_irq_flag = state;
 }
- 
+
+static WRITE_LINE_DEVICE_HANDLER( fm7_fdc_drq_w )
+{
+	fdc_drq_flag = state;
+}
+
 static READ8_HANDLER( fm7_fdc_r )
 {
 	const device_config* dev = devtag_get_device(space->machine,"fdc");
 	UINT8 ret = 0;
-	
+
 	switch(offset)
 	{
 		case 0:
@@ -524,15 +514,15 @@ static WRITE8_HANDLER( fm7_fdc_w )
 			else
 			{
 				wd17xx_set_drive(dev,data & 0x03);
-				floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, data & 0x03), data & 0x80);
-				floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, data & 0x03), data & 0x80,0);
+				floppy_drive_set_motor_state(floppy_get_device(space->machine, data & 0x03), data & 0x80);
+				floppy_drive_set_ready_state(floppy_get_device(space->machine, data & 0x03), data & 0x80,0);
 				logerror("FDC: wrote %02x to 0x%04x (drive)\n",data,offset+0xfd18);
 			}
 			break;
 		case 6:
 			// FM77AV and later only. FM-7 returns 0xff;
 			// bit 6 = 320k(1)/640k(0) FDD
-			// bits 2,3 = logical drive 
+			// bits 2,3 = logical drive
 			logerror("FDC: mode write - %02x\n",data);
 			break;
 		default:
@@ -543,7 +533,7 @@ static WRITE8_HANDLER( fm7_fdc_w )
 /*
  *  Main CPU: I/O ports 0xfd00-0xfd01
  *  Sub CPU: I/O ports 0xd400-0xd401
- * 
+ *
  *  The scancode of the last key pressed is stored in fd/d401, with the 9th
  *  bit (MSB) in bit 7 of fd/d400.  0xfd00 also holds a flag for the main
  *  CPU clock speed in bit 0 (0 = 1.2MHz, 1 = 2MHz)
@@ -585,26 +575,26 @@ READ8_HANDLER( fm7_sub_keyboard_r)
 /*
  *  Sub CPU: port 0xd431, 0xd432
  *  Keyboard encoder
- * 
+ *
  *  d431 (R/W): Data register (8 bit)
  *  d432 (R/O): Status register
  *              bit 0 - ACK
  *              bit 7 - LATCH (0 if ready to receive)
- * 
+ *
  *  Encoder commands:
- * 		00 xx    : Set scancode format (FM-7, FM16B(?), Scan(Make/Break))
- *  	01       : Get scancode format
- * 		02 xx    : Set LED status
- * 		03       : Get LED status
- * 		04 xx    : Enable/Disable key repeat
- * 		05 xx xx : Set repeat rate and time
- * 		80 00    : Get RTC
- * 		80 01 xx xx xx xx xx xx xx : Set RTC
- * 		81 xx    : Video digitise
- * 		82 xx    : Set video mode(?)
- * 		83       : Get video mode(?)
- * 		84 xx    : Video brightness (monitor?)
- * 
+ *      00 xx    : Set scancode format (FM-7, FM16B(?), Scan(Make/Break))
+ *      01       : Get scancode format
+ *      02 xx    : Set LED status
+ *      03       : Get LED status
+ *      04 xx    : Enable/Disable key repeat
+ *      05 xx xx : Set repeat rate and time
+ *      80 00    : Get RTC
+ *      80 01 xx xx xx xx xx xx xx : Set RTC
+ *      81 xx    : Video digitise
+ *      82 xx    : Set video mode(?)
+ *      83       : Get video mode(?)
+ *      84 xx    : Video brightness (monitor?)
+ *
  *  ACK is received after 5us.
  */
 READ8_HANDLER( fm77av_key_encoder_r )
@@ -630,7 +620,7 @@ READ8_HANDLER( fm77av_key_encoder_r )
 				ret &= ~0x01;
 			break;
 	}
-	
+
 	return ret;
 }
 
@@ -756,7 +746,7 @@ WRITE8_HANDLER( fm77av_key_encoder_w )
 		{
 			if(fm7_encoder.buffer[0] == 0x80 || fm7_encoder.buffer[1] == 0x01)
 			{
-				fm7_encoder.tx_count = 8; // 80 01 command is 9 bytes  
+				fm7_encoder.tx_count = 8; // 80 01 command is 9 bytes
 			}
 		}
 		fm7_encoder.buffer[fm7_encoder.position] = data;
@@ -764,10 +754,10 @@ WRITE8_HANDLER( fm77av_key_encoder_w )
 		fm7_encoder.tx_count--;
 		if(fm7_encoder.tx_count == 0)  // last byte
 			fm77av_encoder_handle_command();
-		
+
 		// wait 5us to set ACK flag
 		timer_set(space->machine,ATTOTIME_IN_USEC(5),NULL,0,fm77av_encoder_ack);
-			
+
 		//logerror("ENC: write 0x%02x to data register, moved to pos %i\n",data,fm7_encoder.position);
 	}
 }
@@ -782,17 +772,17 @@ static READ8_HANDLER( fm7_cassette_printer_r )
 	// bit 1: printer error
 	// bit 0: printer busy
 	UINT8 ret = 0x00;
-	double data = cassette_input(devtag_get_device(space->machine,"cass")); 
+	double data = cassette_input(devtag_get_device(space->machine,"cass"));
 	const device_config* printer_dev = devtag_get_device(space->machine,"lpt");
 	UINT8 pdata;
 	int x;
-	
+
 	if(data > 0.03)
 		ret |= 0x80;
-	
+
 	if(cassette_get_state(devtag_get_device(space->machine,"cass")) & CASSETTE_MOTOR_DISABLED)
 		ret |= 0x80;  // cassette input is high when not in use.
-	
+
 	ret |= 0x70;
 
 	if(input_port_read(space->machine,"config") & 0x01)
@@ -807,7 +797,7 @@ static READ8_HANDLER( fm7_cassette_printer_r )
 		}
 	}
 	else
-	{	
+	{
 		if(image_exists(devtag_get_device(space->machine,"lpt:printer")))
 		{
 			if(centronics_pe_r(printer_dev))
@@ -851,15 +841,15 @@ static WRITE8_HANDLER( fm7_cassette_printer_w )
 
 /*
  *  Main CPU: 0xfd0b
- *   - bit 0: Boot mode: 0=BASIC, 1=DOS 
+ *   - bit 0: Boot mode: 0=BASIC, 1=DOS
  */
-READ8_HANDLER( fm77av_boot_mode_r )
+static READ8_HANDLER( fm77av_boot_mode_r )
 {
 	UINT8 ret = 0xff;
-	
+
 	if(input_port_read(space->machine,"DSW") & 0x02)
 		ret &= ~0x01;
-	
+
 	return 0xff;
 }
 
@@ -947,14 +937,14 @@ static WRITE8_HANDLER( fm77av_ym_select_w )
 
 static READ8_HANDLER( fm7_psg_data_r )
 {
-//	fm7_update_psg(space->machine);
+//  fm7_update_psg(space->machine);
 	return psg_data;
 }
 
 static WRITE8_HANDLER( fm7_psg_data_w )
 {
 	psg_data = data;
-//	fm7_update_psg(space->machine);
+//  fm7_update_psg(space->machine);
 }
 
 static WRITE8_HANDLER( fm77av_bootram_w )
@@ -982,10 +972,10 @@ static WRITE8_HANDLER( fm7_main_shared_w )
 static READ8_HANDLER( fm7_fmirq_r )
 {
 	UINT8 ret = 0xff;
-	
+
 	if(fm77av_ym_irq != 0)
 		ret &= ~0x08;
-		
+
 	return ret;
 }
 
@@ -1012,15 +1002,15 @@ static READ8_HANDLER( fm7_unknown_r )
 /*
  * Memory Management Register
  * Main CPU: 0xfd80 - 0xfd93  (FM-77L4, FM-77AV and later only)
- * 
+ *
  * fd80-fd8f (R/W): RAM bank select for current segment (A19-A12)
  * fd90 (W/O): segment select register (3-bit, default = 0)
  * fd92 (W/O): window offset register (OA15-OA8)
  * fd93 (R/W): mode select register
- * 				- bit 7: MMR enable/disable
- * 				- bit 6: window enable/disable
- * 				- bit 0: boot RAM read-write/read-only 
- * 
+ *              - bit 7: MMR enable/disable
+ *              - bit 6: window enable/disable
+ *              - bit 0: boot RAM read-write/read-only
+ *
  */
 static READ8_HANDLER( fm7_mmr_r )
 {
@@ -1037,10 +1027,10 @@ static void fm7_update_bank(const address_space* space, int bank, UINT8 physical
 {
 	UINT8* RAM = memory_region(space->machine,"maincpu");
 	UINT16 size = 0xfff;
-	
+
 	if(bank == 15)
 		size = 0xbff;
-	
+
 	if(physical >= 0x10 && physical <= 0x1b)
 	{
 		switch(physical)
@@ -1082,7 +1072,7 @@ static void fm7_update_bank(const address_space* space, int bank, UINT8 physical
 				memory_install_readwrite8_handler(space,bank*0x1000,(bank*0x1000)+size,0,0,fm7_vramB_r,fm7_vramB_w);
 				break;
 		}
-//		memory_set_bankptr(space->machine,bank+1,RAM+(physical<<12)-0x10000);
+//      memory_set_bankptr(space->machine,bank+1,RAM+(physical<<12)-0x10000);
 		return;
 	}
 	if(physical == 0x1c)
@@ -1124,7 +1114,7 @@ void fm7_mmr_refresh(const address_space* space)
 	int x;
 	UINT16 window_addr;
 	UINT8* RAM = memory_region(space->machine,"maincpu");
-	
+
 	if(fm7_mmr.enabled)
 	{
 		for(x=0;x<16;x++)
@@ -1143,7 +1133,7 @@ void fm7_mmr_refresh(const address_space* space)
 		// memory (0x00000-0x0ffff) defined by the window address register
 		// 0x00 = 0x07c00, 0x04 = 0x08000 ... 0xff = 0x07400.
 		window_addr = ((fm7_mmr.window_offset << 8) + 0x7c00) & 0xffff;
-//		if(window_addr < 0xfc00)
+//      if(window_addr < 0xfc00)
 		{
 			memory_install_readwrite8_handler(space,0x7c00,0x7fff,0,0,SMH_BANK(24),SMH_BANK(24));
 			memory_set_bankptr(space->machine,24,RAM+window_addr);
@@ -1184,19 +1174,19 @@ static WRITE8_HANDLER( fm7_mmr_w )
 
 /*
  *  Main CPU: ports 0xfd20-0xfd23
- * 	Kanji ROM read ports
+ *  Kanji ROM read ports
  *  FD20 (W/O): ROM address high
  *  FD21 (W/O): ROM address low
  *  FD22 (R/O): Kanji data high
  *  FD23 (R/O): Kanji data low
- * 
- *  Kanji ROM is visible at 0x20000 (first half only?) 
+ *
+ *  Kanji ROM is visible at 0x20000 (first half only?)
  */
 static READ8_HANDLER( fm7_kanji_r )
 {
 	UINT8* KROM = memory_region(space->machine,"kanji1");
 	UINT32 addr = fm7_kanji_address << 1;
-	
+
 	switch(offset)
 	{
 		case 0:
@@ -1216,7 +1206,7 @@ static READ8_HANDLER( fm7_kanji_r )
 static WRITE8_HANDLER( fm7_kanji_w )
 {
 	UINT16 addr;
-	
+
 	switch(offset)
 	{
 		case 0:
@@ -1257,7 +1247,7 @@ static void key_press(running_machine* machine, UINT16 scancode)
 
 	if(scancode == 0)
 		return;
-	
+
 	if(irq_mask & IRQ_FLAG_KEY)
 	{
 		main_irq_set_flag(machine,IRQ_FLAG_KEY);
@@ -1277,11 +1267,11 @@ static void fm7_keyboard_poll_scan(running_machine* machine)
 	UINT32 keys;
 	UINT32 modifiers = input_port_read(machine,"key_modifiers");
 	UINT16 modscancodes[6] = { 0x52, 0x53, 0x54, 0x55, 0x56, 0x5a };
-	
+
 	for(x=0;x<3;x++)
 	{
 		keys = input_port_read(machine,portnames[x]);
-		
+
 		for(y=0;y<32;y++)  // loop through each bit in the port
 		{
 			if((keys & (1<<y)) != 0 && (key_data[x] & (1<<y)) == 0)
@@ -1292,9 +1282,9 @@ static void fm7_keyboard_poll_scan(running_machine* machine)
 			{
 				key_press(machine,fm7_key_list[bit][6] | 0x80); // key release
 			}
-			bit++; 
+			bit++;
 		}
-		
+
 		key_data[x] = keys;
 	}
 	// check modifier keys
@@ -1309,7 +1299,7 @@ static void fm7_keyboard_poll_scan(running_machine* machine)
 		{
 			key_press(machine,modscancodes[bit] | 0x80); // key release
 		}
-		bit++; 
+		bit++;
 	}
 	mod_data = modifiers;
 }
@@ -1337,7 +1327,7 @@ static TIMER_CALLBACK( fm7_keyboard_poll )
 		fm7_keyboard_poll_scan(machine);
 		return;
 	}
-	
+
 	// check key modifiers (Shift, Ctrl, Kana, etc...)
 	if(modifiers & 0x02 || modifiers & 0x04)
 		mod = 1;  // shift
@@ -1349,20 +1339,20 @@ static TIMER_CALLBACK( fm7_keyboard_poll )
 		mod = 4;  // kana (overrides all)
 	if((modifiers & 0x22) == 0x22 || (modifiers & 0x24) == 0x24)
 		mod = 5;  // shifted kana
-	
+
 	for(x=0;x<3;x++)
 	{
 		keys = input_port_read(machine,portnames[x]);
-		
+
 		for(y=0;y<32;y++)  // loop through each bit in the port
 		{
 			if((keys & (1<<y)) != 0 && (key_data[x] & (1<<y)) == 0)
 			{
 				key_press(machine,fm7_key_list[bit][mod]); // key press
 			}
-			bit++; 
+			bit++;
 		}
-		
+
 		key_data[x] = keys;
 	}
 }
@@ -1380,7 +1370,7 @@ static IRQ_CALLBACK(fm7_sub_irq_ack)
 	return -1;
 }
 
-void fm77av_fmirq(const device_config* device,int irq)
+static void fm77av_fmirq(const device_config* device,int irq)
 {
 	if(irq == 1)
 	{
@@ -1408,7 +1398,7 @@ void fm77av_fmirq(const device_config* device,int irq)
 */
 // The FM-7 has only 64kB RAM, so we'll worry about banking when we do the later models
 static ADDRESS_MAP_START( fm7_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000,0x7fff) AM_RAM 
+	AM_RANGE(0x0000,0x7fff) AM_RAM
 	AM_RANGE(0x8000,0xfbff) AM_ROMBANK(1) // also F-BASIC ROM, when enabled
 	AM_RANGE(0xfc00,0xfc7f) AM_RAM
 	AM_RANGE(0xfc80,0xfcff) AM_RAM AM_READWRITE(fm7_main_shared_r,fm7_main_shared_w)
@@ -1432,7 +1422,7 @@ static ADDRESS_MAP_START( fm7_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	// Boot ROM
 	AM_RANGE(0xfe00,0xffdf) AM_ROMBANK(17)
 	AM_RANGE(0xffe0,0xffef) AM_RAM
-	AM_RANGE(0xfff0,0xffff) AM_READWRITE(vector_r,vector_w) 
+	AM_RANGE(0xfff0,0xffff) AM_READWRITE(vector_r,vector_w)
 ADDRESS_MAP_END
 
 /*
@@ -1479,7 +1469,7 @@ static ADDRESS_MAP_START( fm77av_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000,0xcfff) AM_RAMBANK(13)
 	AM_RANGE(0xd000,0xdfff) AM_RAMBANK(14)
 	AM_RANGE(0xe000,0xefff) AM_RAMBANK(15)
-	AM_RANGE(0xf000,0xfbff) AM_RAMBANK(16) 
+	AM_RANGE(0xf000,0xfbff) AM_RAMBANK(16)
 	AM_RANGE(0xfc00,0xfc7f) AM_RAM
 	AM_RANGE(0xfc80,0xfcff) AM_RAM AM_READWRITE(fm7_main_shared_r,fm7_main_shared_w)
 	// I/O space (FD00-FDFF)
@@ -1515,7 +1505,7 @@ static ADDRESS_MAP_START( fm77av_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	// Boot ROM (RAM on FM77AV and later)
 	AM_RANGE(0xfe00,0xffdf) AM_RAM_WRITE(fm77av_bootram_w) AM_BASE(&fm7_boot_ram)
 	AM_RANGE(0xffe0,0xffef) AM_RAM
-	AM_RANGE(0xfff0,0xffff) AM_READWRITE(vector_r,vector_w) 
+	AM_RANGE(0xfff0,0xffff) AM_READWRITE(vector_r,vector_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fm77av_sub_mem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -1598,16 +1588,16 @@ static INPUT_PORTS_START( fm7 )
   PORT_BIT(0x00020000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME(",") PORT_CODE(KEYCODE_COMMA) PORT_CHAR(',')
   PORT_BIT(0x00040000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME(".") PORT_CODE(KEYCODE_STOP) PORT_CHAR('.')
   PORT_BIT(0x00080000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("/") PORT_CODE(KEYCODE_SLASH) PORT_CHAR('/')
-  PORT_BIT(0x00100000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("_") 
+  PORT_BIT(0x00100000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("_")
   PORT_BIT(0x00200000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Space") PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ')
   PORT_BIT(0x00400000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Tenkey *") PORT_CODE(KEYCODE_ASTERISK)
   PORT_BIT(0x00800000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Tenkey /") PORT_CODE(KEYCODE_SLASH_PAD)
   PORT_BIT(0x01000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Tenkey +") PORT_CODE(KEYCODE_PLUS_PAD)
   PORT_BIT(0x02000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Tenkey -") PORT_CODE(KEYCODE_MINUS_PAD)
   PORT_BIT(0x04000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Tenkey 7") PORT_CODE(KEYCODE_7_PAD)
-  PORT_BIT(0x08000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Tenkey 8") PORT_CODE(KEYCODE_8_PAD) 
+  PORT_BIT(0x08000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Tenkey 8") PORT_CODE(KEYCODE_8_PAD)
   PORT_BIT(0x10000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Tenkey 9") PORT_CODE(KEYCODE_9_PAD)
-  PORT_BIT(0x20000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Tenkey =") 
+  PORT_BIT(0x20000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Tenkey =")
   PORT_BIT(0x40000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Tenkey 4") PORT_CODE(KEYCODE_4_PAD)
   PORT_BIT(0x80000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Tenkey 5") PORT_CODE(KEYCODE_5_PAD)
 
@@ -1632,13 +1622,13 @@ static INPUT_PORTS_START( fm7 )
   PORT_BIT(0x00020000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Right") PORT_CODE(KEYCODE_RIGHT)
   PORT_BIT(0x00040000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("BREAK") PORT_CODE(KEYCODE_ESC)
   PORT_BIT(0x00080000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF1") PORT_CODE(KEYCODE_F1)
-  PORT_BIT(0x00100000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF2") PORT_CODE(KEYCODE_F2) 
+  PORT_BIT(0x00100000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF2") PORT_CODE(KEYCODE_F2)
   PORT_BIT(0x00200000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF3") PORT_CODE(KEYCODE_F3)
-  PORT_BIT(0x00400000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF4") PORT_CODE(KEYCODE_F4) 
+  PORT_BIT(0x00400000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF4") PORT_CODE(KEYCODE_F4)
   PORT_BIT(0x00800000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF5") PORT_CODE(KEYCODE_F5)
   PORT_BIT(0x01000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF6") PORT_CODE(KEYCODE_F6)
   PORT_BIT(0x02000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF7") PORT_CODE(KEYCODE_F7)
-  PORT_BIT(0x04000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF8") PORT_CODE(KEYCODE_F8) 
+  PORT_BIT(0x04000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF8") PORT_CODE(KEYCODE_F8)
   PORT_BIT(0x08000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF9") PORT_CODE(KEYCODE_F9)
   PORT_BIT(0x10000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("PF10") PORT_CODE(KEYCODE_F10)
 
@@ -1646,8 +1636,8 @@ static INPUT_PORTS_START( fm7 )
   PORT_BIT(0x00000001,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Ctrl") PORT_CODE(KEYCODE_LCONTROL)
   PORT_BIT(0x00000002,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Left Shift") PORT_CODE(KEYCODE_LSHIFT)
   PORT_BIT(0x00000004,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Right Shift") PORT_CODE(KEYCODE_RSHIFT)
-  PORT_BIT(0x00000008,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("CAP") PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE 
-  PORT_BIT(0x00000010,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("GRAPH") PORT_CODE(KEYCODE_RALT) 
+  PORT_BIT(0x00000008,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("CAP") PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE
+  PORT_BIT(0x00000010,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("GRAPH") PORT_CODE(KEYCODE_RALT)
   PORT_BIT(0x00000020,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("Kana") PORT_CODE(KEYCODE_RCONTROL) PORT_TOGGLE
 
   PORT_START("lptjoy")
@@ -1657,7 +1647,7 @@ static INPUT_PORTS_START( fm7 )
   PORT_BIT(0x08,IP_ACTIVE_HIGH,IPT_JOYSTICK_DOWN) PORT_NAME("LPT Joystick Down") PORT_8WAY PORT_PLAYER(1)
   PORT_BIT(0x10,IP_ACTIVE_HIGH,IPT_BUTTON2) PORT_NAME("LPT Joystick Button 2") PORT_PLAYER(1)
   PORT_BIT(0x20,IP_ACTIVE_HIGH,IPT_BUTTON1) PORT_NAME("LPT Joystick Button 1") PORT_PLAYER(1)
-  
+
   PORT_START("joy1")
   PORT_BIT(0x01,IP_ACTIVE_LOW,IPT_JOYSTICK_UP) PORT_NAME("1P Joystick Up") PORT_8WAY PORT_PLAYER(1)
   PORT_BIT(0x02,IP_ACTIVE_LOW,IPT_JOYSTICK_DOWN) PORT_NAME("1P Joystick Down") PORT_8WAY PORT_PLAYER(1)
@@ -1677,7 +1667,7 @@ static INPUT_PORTS_START( fm7 )
   PORT_BIT(0x20,IP_ACTIVE_LOW,IPT_BUTTON1) PORT_NAME("2P Joystick Button 1") PORT_PLAYER(2)
   PORT_BIT(0x40,IP_ACTIVE_LOW,IPT_UNUSED)
   PORT_BIT(0x80,IP_ACTIVE_LOW,IPT_UNUSED)
-  
+
 
   PORT_START("DSW")
   PORT_DIPNAME(0x01,0x01,"Switch A") PORT_DIPLOCATION("SWA:1")
@@ -1701,7 +1691,7 @@ INPUT_PORTS_END
 
 static DRIVER_INIT(fm7)
 {
-//	shared_ram = auto_alloc_array(machine,UINT8,0x80);
+//  shared_ram = auto_alloc_array(machine,UINT8,0x80);
 	fm7_video_ram = auto_alloc_array(machine,UINT8,0x18000);  // 2 pages on some systems
 	fm7_timer = timer_alloc(machine,fm7_timer_irq,NULL);
 	fm7_subtimer = timer_alloc(machine,fm7_subtimer_irq,NULL);
@@ -1717,13 +1707,13 @@ static MACHINE_START(fm7)
 	// The FM-7 has no initialisation ROM, and no other obvious
 	// way to set the reset vector, so for now this will have to do.
 	UINT8* RAM = memory_region(machine,"maincpu");
-	
+
 	RAM[0xfffe] = 0xfe;
-	RAM[0xffff] = 0x00; 
-	
+	RAM[0xffff] = 0x00;
+
 	memset(shared_ram,0xff,0x80);
 	fm7_type = SYS_FM7;
-	
+
 	beep_set_frequency(devtag_get_device(machine,"beeper"),1200);
 	beep_set_state(devtag_get_device(machine,"beeper"),0);
 }
@@ -1735,7 +1725,7 @@ static MACHINE_START(fm77av)
 
 	memset(shared_ram,0xff,0x80);
 
-	// last part of Initiate ROM is visible at the end of RAM too (interrupt vectors)	
+	// last part of Initiate ROM is visible at the end of RAM too (interrupt vectors)
 	memcpy(RAM+0x3fff0,ROM+0x1ff0,16);
 
 	fm7_video.subrom = 0;  // default sub CPU ROM is type C.
@@ -1743,7 +1733,7 @@ static MACHINE_START(fm77av)
 	memory_set_bankptr(machine,20,RAM);
 	RAM = memory_region(machine,"subsys_c");
 	memory_set_bankptr(machine,21,RAM+0x800);
-	
+
 	fm7_type = SYS_FM77AV;
 	beep_set_frequency(devtag_get_device(machine,"beeper"),1200);
 	beep_set_state(devtag_get_device(machine,"beeper"),0);
@@ -1753,13 +1743,13 @@ static MACHINE_RESET(fm7)
 {
 	UINT8* RAM = memory_region(machine,"maincpu");
 	UINT8* ROM = memory_region(machine,"init");
-	
+
 	timer_adjust_periodic(fm7_timer,ATTOTIME_IN_NSEC(2034500),0,ATTOTIME_IN_NSEC(2034500));
 	timer_adjust_periodic(fm7_subtimer,ATTOTIME_IN_MSEC(20),0,ATTOTIME_IN_MSEC(20));
 	timer_adjust_periodic(fm7_keyboard_timer,attotime_zero,0,ATTOTIME_IN_MSEC(10));
 	if(fm7_type != SYS_FM7)
 		timer_adjust_oneshot(fm77av_vsync_timer,video_screen_get_time_until_vblank_end(machine->primary_screen),0);
-		
+
 	irq_mask = 0x00;
 	irq_flags = 0x00;
 	fm7_video.attn_irq = 0;
@@ -1770,9 +1760,9 @@ static MACHINE_RESET(fm7)
 	else
 	{
 		init_rom_en = 1;
-		// last part of Initiate ROM is visible at the end of RAM too (interrupt vectors)	
+		// last part of Initiate ROM is visible at the end of RAM too (interrupt vectors)
 		memcpy(RAM+0x3fff0,ROM+0x1ff0,16);
-	}	
+	}
 	if(fm7_type == SYS_FM7)
 		memory_set_bankptr(machine,1,RAM+0x38000);
 	key_delay = 700;  // 700ms on FM-7
@@ -1809,8 +1799,9 @@ static MACHINE_RESET(fm7)
 
 static const wd17xx_interface fm7_mb8877a_interface =
 {
-	fm7_fdc_irq,
-	NULL
+	DEVCB_LINE(fm7_fdc_intrq_w),
+	DEVCB_LINE(fm7_fdc_drq_w),
+	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
 };
 
 static const ay8910_interface fm7_psg_intf =
@@ -1843,30 +1834,17 @@ static const cassette_config fm7_cassette_config =
 	CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED
 };
 
-static void fm7_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
+static const floppy_config fm7_floppy_config =
 {
-	switch(state)
-	{
-	case MESS_DEVINFO_INT_READABLE:
-		info->i = 1;
-		break;
-	case MESS_DEVINFO_INT_WRITEABLE:
-		info->i = 0;
-		break;
-	case MESS_DEVINFO_INT_CREATABLE:
-		info->i = 0;
-		break;
-	case MESS_DEVINFO_INT_COUNT:
-		info->i = 2;
-		break;
-	case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				
-		info->p = (void *) floppyoptions_fm7; 
-		break;
-	default:
-		floppy_device_getinfo(devclass, state, info);
-		break;
-	}
-}
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(default),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 static MACHINE_DRIVER_START( fm7 )
 	/* basic machine hardware */
@@ -1877,7 +1855,7 @@ static MACHINE_DRIVER_START( fm7 )
 	MDRV_CPU_ADD("sub", M6809, XTAL_2MHz)
 	MDRV_CPU_PROGRAM_MAP(fm7_sub_mem)
 	MDRV_QUANTUM_PERFECT_CPU("sub")
-	
+
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("psg", AY8910, XTAL_4_9152MHz / 4)
 	MDRV_SOUND_CONFIG(fm7_psg_intf)
@@ -1892,7 +1870,7 @@ static MACHINE_DRIVER_START( fm7 )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
-	
+
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -1903,12 +1881,14 @@ static MACHINE_DRIVER_START( fm7 )
 
 	MDRV_VIDEO_START(fm7)
 	MDRV_VIDEO_UPDATE(fm7)
-	
+
 	MDRV_CASSETTE_ADD("cass",fm7_cassette_config)
-	
+
 	MDRV_MB8877_ADD("fdc",fm7_mb8877a_interface)
-	
+
 	MDRV_CENTRONICS_ADD("lpt",standard_centronics)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(fm7_floppy_config)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( fm77av )
@@ -1947,10 +1927,12 @@ static MACHINE_DRIVER_START( fm77av )
 	MDRV_VIDEO_UPDATE(fm7)
 
 	MDRV_CASSETTE_ADD("cass",fm7_cassette_config)
-	
+
 	MDRV_MB8877_ADD("fdc",fm7_mb8877a_interface)
-	
+
 	MDRV_CENTRONICS_ADD("lpt",standard_centronics)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(fm7_floppy_config)
 MACHINE_DRIVER_END
 
 /* ROM definition */
@@ -1965,7 +1947,7 @@ ROM_START( fm7 )
 	ROM_REGION( 0x200, "basic", 0 )
 	ROM_LOAD( "boot_bas.rom", 0x0000,  0x0200, CRC(c70f0c74) SHA1(53b63a301cba7e3030e79c59a4d4291eab6e64b0) )
 
-	ROM_REGION( 0x200, "dos", 0 )	
+	ROM_REGION( 0x200, "dos", 0 )
 	ROM_LOAD( "boot_dos.rom", 0x0000,  0x0200, CRC(198614ff) SHA1(037e5881bd3fed472a210ee894a6446965a8d2ef) )
 
 	// optional Kanji ROM
@@ -1987,7 +1969,7 @@ ROM_START( fm77av )
 	ROM_REGION( 0x10000, "sub", 0 )
 	ROM_FILL(0x0000,0x10000,0xff)
 
-	// sub CPU ROMs	
+	// sub CPU ROMs
 	ROM_REGION( 0x2800, "subsys_c", 0 )
 	ROM_LOAD( "subsys_c.rom", 0x0000,  0x2800, CRC(24cec93f) SHA1(50b7283db6fe1342c6063fc94046283f4feddc1c) )
 	ROM_REGION( 0x2000, "subsys_a", 0 )
@@ -2016,7 +1998,7 @@ ROM_START( fm7740sx )
 	ROM_REGION( 0x10000, "sub", 0 )
 	ROM_FILL(0x0000,0x10000,0xff)
 
-	// sub CPU ROMs	
+	// sub CPU ROMs
 	ROM_REGION( 0x2800, "subsys_c", 0 )
 	ROM_LOAD( "subsys_c.rom", 0x0000,  0x2800, CRC(24cec93f) SHA1(50b7283db6fe1342c6063fc94046283f4feddc1c) )
 	ROM_REGION( 0x2000, "subsys_a", 0 )
@@ -2037,15 +2019,9 @@ ROM_START( fm7740sx )
 
 ROM_END
 
-
-static SYSTEM_CONFIG_START(fm7)
-	CONFIG_DEVICE(fm7_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-
 /* Driver */
 
 /*    YEAR  NAME      PARENT  COMPAT  MACHINE  INPUT   INIT  CONFIG  COMPANY      FULLNAME        FLAGS */
-COMP( 1982, fm7,      0,      0,      fm7,     fm7,    fm7,  fm7,    "Fujitsu",   "FM-7",         0)
-COMP( 1985, fm77av,   fm7,    0,      fm77av,  fm7,    fm7,  fm7,    "Fujitsu",   "FM-77AV",      GAME_IMPERFECT_GRAPHICS)
-COMP( 1985, fm7740sx, fm7,    0,      fm77av,  fm7,    fm7,  fm7,    "Fujitsu",   "FM-77AV40SX",  GAME_NOT_WORKING)
+COMP( 1982, fm7,      0,      0,      fm7,     fm7,    fm7,  0,    "Fujitsu",   "FM-7",         0)
+COMP( 1985, fm77av,   fm7,    0,      fm77av,  fm7,    fm7,  0,    "Fujitsu",   "FM-77AV",      GAME_IMPERFECT_GRAPHICS)
+COMP( 1985, fm7740sx, fm7,    0,      fm77av,  fm7,    fm7,  0,    "Fujitsu",   "FM-77AV40SX",  GAME_NOT_WORKING)

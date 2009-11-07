@@ -1,14 +1,15 @@
 /****************************************************************************
 
-	os9.c
+    os9.c
 
-	CoCo OS-9 disk images
+    CoCo OS-9 disk images
 
 ****************************************************************************/
 
 #include <time.h>
 
 #include "imgtool.h"
+#include "utils.h"
 #include "formats/coco_dsk.h"
 #include "iflopimg.h"
 
@@ -236,7 +237,7 @@ static int os9_interpret_dirent(void *entry, char **filename, UINT32 *lsn, int *
 
 /*-------------------------------------------------
     os9_decode_file_header - reads a file/directory
-	entry from an LSN, and decodes it
+    entry from an LSN, and decodes it
 -------------------------------------------------*/
 
 static imgtoolerr_t os9_decode_file_header(imgtool_image *image,
@@ -273,7 +274,7 @@ static imgtoolerr_t os9_decode_file_header(imgtool_image *image,
 
 	/* read all sector map entries */
 	max_entries = (disk_info->sector_size - 16) / 5;
-	max_entries = MIN(max_entries, sizeof(info->sector_map) / sizeof(info->sector_map[0]) - 1);
+	max_entries = MIN(max_entries, ARRAY_LENGTH(info->sector_map) - 1);
 	for (i = 0; i < max_entries; i++)
 	{
 		lsn = pick_integer_be(header, 16 + (i * 5) + 0, 3);
@@ -391,7 +392,7 @@ static imgtoolerr_t os9_set_file_size(imgtool_image *image,
 		/* first find out the size of our sector map */
 		sector_map_length = 0;
 		lsn = 0;
-		while((lsn < current_lsn_count) && (sector_map_length < sizeof(file_info->sector_map) / sizeof(file_info->sector_map[0])))
+		while((lsn < current_lsn_count) && (sector_map_length < ARRAY_LENGTH(file_info->sector_map)))
 		{
 			if (file_info->sector_map[sector_map_length].count == 0)
 				return os9_corrupt_file_error(file_info);
@@ -401,7 +402,7 @@ static imgtoolerr_t os9_set_file_size(imgtool_image *image,
 		}
 
 		/* keep in mind that the sector_map might not parallel our expected
-		 * current LSN count; we should tolerate this abnormality */
+         * current LSN count; we should tolerate this abnormality */
 		current_lsn_count = lsn;
 
 		while(current_lsn_count > new_lsn_count)
@@ -432,7 +433,7 @@ static imgtoolerr_t os9_set_file_size(imgtool_image *image,
 			{
 				file_info->sector_map[sector_map_length - 1].count++;
 			}
-			else if (sector_map_length >= sizeof(file_info->sector_map) / sizeof(file_info->sector_map[0]))
+			else if (sector_map_length >= ARRAY_LENGTH(file_info->sector_map))
 			{
 				return IMGTOOLERR_NOSPACE;
 			}
@@ -459,7 +460,7 @@ static imgtoolerr_t os9_set_file_size(imgtool_image *image,
 	/* do we have to write the sector map? */
 	if (sector_map_length >= 0)
 	{
-		for (i = 0; i < MIN(sector_map_length + 1, sizeof(file_info->sector_map) / sizeof(file_info->sector_map[0])); i++)
+		for (i = 0; i < MIN(sector_map_length + 1, ARRAY_LENGTH(file_info->sector_map)); i++)
 		{
 			place_integer_be(header, 16 + (i * 5) + 0, 3, file_info->sector_map[i].lsn);
 			place_integer_be(header, 16 + (i * 5) + 3, 2, file_info->sector_map[i].count);
@@ -477,8 +478,8 @@ static imgtoolerr_t os9_set_file_size(imgtool_image *image,
 
 /*-------------------------------------------------
     os9_lookup_path - walks an OS-9 directory
-	structure to find a file, or optionally, create
-	a file
+    structure to find a file, or optionally, create
+    a file
 -------------------------------------------------*/
 
 static imgtoolerr_t os9_lookup_path(imgtool_image *img, const char *path,
@@ -551,7 +552,7 @@ static imgtoolerr_t os9_lookup_path(imgtool_image *img, const char *path,
 		if (index >= dir_size)
 		{
 			/* if we're not creating, or we are creating but we have not fully
-			 * transversed the directory, error out */
+             * transversed the directory, error out */
 			if (!create || path[strlen(path) + 1])
 			{
 				err = IMGTOOLERR_PATHNOTFOUND;
@@ -914,8 +915,8 @@ static imgtoolerr_t os9_diskimage_nextenum(imgtool_directory *enumeration, imgto
 			pick_string(dir_entry, 0, 28, filename);
 
 			/* we have certain expectations of the directory contents; the
-			 * first directory entry should be "..", the second ".", and
-			 * subsequent entries should never be "." or ".." */
+             * first directory entry should be "..", the second ".", and
+             * subsequent entries should never be "." or ".." */
 			switch(os9enum->index)
 			{
 				case 0:
@@ -958,8 +959,8 @@ static imgtoolerr_t os9_diskimage_nextenum(imgtool_directory *enumeration, imgto
 		return err;
 
 	/* fill out imgtool_dirent structure */
-	snprintf(ent->filename, sizeof(ent->filename) / sizeof(ent->filename[0]), "%s", filename);
-	snprintf(ent->attr, sizeof(ent->attr) / sizeof(ent->attr[0]), "%c%c%c%c%c%c%c%c",
+	snprintf(ent->filename, ARRAY_LENGTH(ent->filename), "%s", filename);
+	snprintf(ent->attr, ARRAY_LENGTH(ent->attr), "%c%c%c%c%c%c%c%c",
 		file_info.directory      ? 'd' : '-',
 		file_info.non_sharable   ? 's' : '-',
 		file_info.public_execute ? 'x' : '-',
@@ -1157,7 +1158,7 @@ static imgtoolerr_t os9_diskimage_delete(imgtool_partition *partition, const cha
 		if (err)
 			return err;
 
-		for (i = 0; (i < sizeof(file_info.sector_map) / sizeof(file_info.sector_map[0])) && file_info.sector_map[i].count; i++)
+		for (i = 0; (i < ARRAY_LENGTH(file_info.sector_map)) && file_info.sector_map[i].count; i++)
 		{
 			lsn = file_info.sector_map[i].lsn;
 			for (j = 0;  j < file_info.sector_map[i].count; j++)

@@ -11,7 +11,7 @@
  *
  ****************************************************************************/
 
-// there're many chips; we use for PAL: 6569 and for NTSC 6567R8 
+// there're many chips; we use for PAL: 6569 and for NTSC 6567R8
 
 #ifndef VIC6567_H_
 #define VIC6567_H_
@@ -130,7 +130,7 @@ MACHINE_DRIVER_EXTERN( vh_vic2 );
 MACHINE_DRIVER_EXTERN( vh_vic2_pal );
 extern VIDEO_START( vic2 );
 extern VIDEO_UPDATE( vic2 );
-extern INTERRUPT_GEN( vic2_raster_irq );
+// extern INTERRUPT_GEN( vic2_raster_irq );
 // extern emu_timer *vicii_scanline_timer;
 // extern TIMER_CALLBACK( vicii_scanline_interrupt );
 

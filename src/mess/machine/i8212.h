@@ -6,19 +6,19 @@
     Visit http://mamedev.org for licensing and usage restrictions.
 
 **********************************************************************
-							_____   _____
-				  _DS1	 1 |*    \_/     | 24  Vcc
-				    MD	 2 |			 | 23  _INT
-				   DI1	 3 |			 | 22  DI8
-				   DO1	 4 |			 | 21  DO8
-				   DI2	 5 |			 | 20  DI7
-				   DO2	 6 |	8212	 | 19  DO7
-				   DI3	 7 |			 | 18  DI6
-				   DO3	 8 |			 | 17  DO6
-				   DI4	 9 |			 | 16  DI5
-				   DO4	10 |			 | 15  DO5
-				   STB	11 |			 | 14  _CLR
-				   GND  12 |_____________| 13  DS2
+                            _____   _____
+                  _DS1   1 |*    \_/     | 24  Vcc
+                    MD   2 |             | 23  _INT
+                   DI1   3 |             | 22  DI8
+                   DO1   4 |             | 21  DO8
+                   DI2   5 |             | 20  DI7
+                   DO2   6 |    8212     | 19  DO7
+                   DI3   7 |             | 18  DI6
+                   DO3   8 |             | 17  DO6
+                   DI4   9 |             | 16  DI5
+                   DO4  10 |             | 15  DO5
+                   STB  11 |             | 14  _CLR
+                   GND  12 |_____________| 13  DS2
 
 **********************************************************************/
 
@@ -69,9 +69,6 @@ DEVICE_GET_INFO( i8212 );
 /* data latch access */
 READ8_DEVICE_HANDLER( i8212_r );
 WRITE8_DEVICE_HANDLER( i8212_w );
-
-/* mode */
-WRITE_LINE_DEVICE_HANDLER( i8212_mode_w );
 
 /* strobe */
 WRITE_LINE_DEVICE_HANDLER( i8212_stb_w );

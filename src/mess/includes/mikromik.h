@@ -10,6 +10,7 @@
 #define I8275_TAG		"ic59"
 #define UPD7201_TAG		"ic11"
 #define UPD7220_TAG		"ic101"
+#define SPEAKER_TAG		"speaker"
 
 #define DMA_CRT			0
 #define DMA_MPSC_TX		1
@@ -19,6 +20,12 @@
 typedef struct _mm1_state mm1_state;
 struct _mm1_state
 {
+	/* keyboard state */
+	int sense;
+	int drive;
+	UINT8 keydata;
+	UINT8 *key_rom;
+
 	/* video state */
 	UINT8 *char_rom;
 	int llen;
@@ -37,6 +44,8 @@ struct _mm1_state
 	const device_config		*i8275;
 	const device_config		*upd765;
 	const device_config		*upd7201;
+	const device_config		*upd7220;
+	const device_config		*speaker;
 };
 
 #endif

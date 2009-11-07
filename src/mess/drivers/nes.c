@@ -216,9 +216,9 @@ static MACHINE_DRIVER_START( nes )
 	MDRV_SOUND_ADD("nessound", NES, NTSC_CLOCK)
 	MDRV_SOUND_CONFIG(nes_apu_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.90)
-	
+
 	MDRV_CARTSLOT_ADD("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("nes")
+	MDRV_CARTSLOT_EXTENSION_LIST("nes,unf")
 	MDRV_CARTSLOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(nes_cart)
 	MDRV_CARTSLOT_PARTIALHASH(nes_partialhash)
@@ -268,9 +268,9 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( famicom )
 	MDRV_IMPORT_FROM( nes )
-	
+
 	MDRV_CARTSLOT_MODIFY("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("nes")
+	MDRV_CARTSLOT_EXTENSION_LIST("nes,unf")
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(nes_cart)
 	MDRV_CARTSLOT_PARTIALHASH(nes_partialhash)
@@ -350,11 +350,11 @@ ROM_END
 // and http://www.disgruntleddesigner.com/chrisc/drpcjr/DrPCJrMemMap.txt
 ROM_START( drpcjr )
 	ROM_REGION( 0x18000, "maincpu", 0 )  /* Main RAM + program banks */
-	/* 4 banks to be mapped in 0xe000-0xffff (or 8 banks to be mapped in 0xe000-0xefff & 0xf000-0xffff). 
-	Banks selected by writing at 0x4180 */
+	/* 4 banks to be mapped in 0xe000-0xffff (or 8 banks to be mapped in 0xe000-0xefff & 0xf000-0xffff).
+    Banks selected by writing at 0x4180 */
 	ROM_LOAD("drpcjr_bios.bin", 0x10000, 0x8000, CRC(c8fbef89) SHA1(2cb0a817b31400cdf27817d09bae7e69f41b062b) )	// bios vers. 1.0a
 	// Not sure if we should support this: hacked version 1.5a by Chris Covell with bugfixes and GameGenie support
-//	ROM_LOAD("drpcjr_v1_5_gg.bin", 0x10000, 0x8000, CRC(98f2033b) SHA1(93c114da787a19279d1a46667c2f69b49e25d4f1) )
+//  ROM_LOAD("drpcjr_v1_5_gg.bin", 0x10000, 0x8000, CRC(98f2033b) SHA1(93c114da787a19279d1a46667c2f69b49e25d4f1) )
 
 	ROM_REGION( 0x2000,  "gfx1", 0 )  /* VROM */
 	ROM_FILL( 0x0000, 0x2000, 0x00 )
@@ -402,7 +402,7 @@ static void famicom_floppy_getinfo(const mess_device_class *devclass, UINT32 sta
 	}
 }
 
-static SYSTEM_CONFIG_START(famicom)	
+static SYSTEM_CONFIG_START(famicom)
 	CONFIG_DEVICE(famicom_floppy_getinfo)
 SYSTEM_CONFIG_END
 
@@ -411,9 +411,6 @@ SYSTEM_CONFIG_END
   Game driver(s)
 
 ***************************************************************************/
-
-/* Since 0.130u4, most of the games do not show graphics correctly. Conversion of PPU to a device showed some of the 
-limitations of the previous implementation. Systems regressed to GAME_NOT_WORKING status until a proper fix is found */
 
 /*     YEAR  NAME      PARENT  COMPAT MACHINE   INPUT    INIT   CONFIG   COMPANY       FULLNAME */
 CONS( 1985, nes,       0,      0,     nes,      nes,     0,     0,       "Nintendo",  "Nintendo Entertainment System / Famicom (NTSC)", GAME_IMPERFECT_GRAPHICS )

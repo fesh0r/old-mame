@@ -16,8 +16,9 @@
   not "rasterline" based
  */
 
-static UINT8 sprite_collision[0x20];
-static UINT8 background_collision[0x20];
+#define STICKCENTRE	(105)
+#define STICKLOW	(20)
+#define STICKHIGH	(225)
 
 #define VC4000_END_LINE (269)
 
@@ -68,15 +69,11 @@ static struct
 	} reg;
 
 	bitmap_t *bitmap;
-} vc4000_video =
-{
-	{
-		{ &vc4000_video.reg.d.sprites[0],1 },
-		{ &vc4000_video.reg.d.sprites[1],2 },
-		{ &vc4000_video.reg.d.sprites[2],4 },
-		{ &vc4000_video.reg.d.sprite4,8 }
-	}
-};
+} vc4000_video;
+
+static UINT8 sprite_collision[0x20];
+static UINT8 background_collision[0x20];
+static UINT8 joy1_x,joy1_y,joy2_x,joy2_y;
 
 VIDEO_START(vc4000)
 {
@@ -101,12 +98,22 @@ VIDEO_START(vc4000)
 		if ((i&0x18)==0x18) background_collision[i]|=0x10;
 	}
 
+	joy1_x = STICKCENTRE;
+	joy1_y = STICKCENTRE;
+	joy2_x = STICKCENTRE;
+	joy2_y = STICKCENTRE;
+
+	memset(&vc4000_video, 0, sizeof(vc4000_video));
+	for (i=0; i<3; i++)
+	{
+		vc4000_video.sprites[i].data = &vc4000_video.reg.d.sprites[i];
+		vc4000_video.sprites[i].mask = 1 << i;
+	}
+	vc4000_video.sprites[3].data = &vc4000_video.reg.d.sprite4;
+	vc4000_video.sprites[3].mask = 1 << 3;
+
 	vc4000_video.bitmap = auto_bitmap_alloc(machine, width, height, BITMAP_FORMAT_INDEXED16);
 }
-
-#define STICKCENTRE	(105)
-#define STICKLOW	(20)
-#define STICKHIGH	(225)
 
 INLINE UINT8 vc4000_joystick_return_to_centre(UINT8 joy)
 {
@@ -126,7 +133,6 @@ INLINE UINT8 vc4000_joystick_return_to_centre(UINT8 joy)
 READ8_HANDLER(vc4000_video_r)
 {
 	UINT8 data=0;
-	static UINT8 joy1_x=STICKCENTRE,joy1_y=STICKCENTRE,joy2_x=STICKCENTRE,joy2_y=STICKCENTRE;
 	if (offset > 0xcf) offset &= 0xcf;	// c0-cf is mirrored at d0-df, e0-ef, f0-ff
 	switch (offset) {
 
@@ -161,7 +167,7 @@ READ8_HANDLER(vc4000_video_r)
 		vc4000_video.sprite_collision = 0;
 		vc4000_video.reg.d.sprite_collision &= 0xbf;
 		break;
- 
+
 #ifndef ANALOG_HACK
 	case 0xcc:
 		if (!activecpu_get_reg(S2650_FO)) data=input_port_read(machine, "JOY1_X");
@@ -207,8 +213,8 @@ READ8_HANDLER(vc4000_video_r)
 					joy1_y+=5;
 					if (joy1_y > STICKHIGH) joy1_y=STICKHIGH;
 					break;
-		//		case 0x00:
-		//			joy1_y = vc4000_joystick_return_to_centre(joy1_y);
+		//      case 0x00:
+		//          joy1_y = vc4000_joystick_return_to_centre(joy1_y);
 				}
 				data=joy1_y;
 			}
@@ -284,8 +290,8 @@ READ8_HANDLER(vc4000_video_r)
 					joy2_y+=5;
 					if (joy2_y > STICKHIGH) joy2_y=STICKHIGH;
 					break;
-			//	case 0x00:
-			//		joy2_y = vc4000_joystick_return_to_centre(joy2_y);
+			//  case 0x00:
+			//      joy2_y = vc4000_joystick_return_to_centre(joy2_y);
 				}
 				data=joy2_y;
 			}
@@ -337,7 +343,7 @@ READ8_HANDLER(vc4000_video_r)
 
 WRITE8_HANDLER(vc4000_video_w)
 {
-//	vc4000_video.reg.data[offset]=data;
+//  vc4000_video.reg.data[offset]=data;
 	if (offset > 0xcf) offset &= 0xcf;	// c0-cf is mirrored at d0-df, e0-ef, f0-ff
 
 	switch (offset) {
@@ -353,7 +359,7 @@ WRITE8_HANDLER(vc4000_video_w)
 		vc4000_video.sprites[0].scolor=((~data>>3)&7);
 		vc4000_video.sprites[1].scolor=(~data&7);
 		break;
-		
+
 	case 0xc2:						// Sprite 2+3 color
 		vc4000_video.sprites[2].scolor=((~data>>3)&7);
 		vc4000_video.sprites[3].scolor=(~data&7);
@@ -630,7 +636,7 @@ INTERRUPT_GEN( vc4000_video_line )
 		vc4000_video.background_collision=0;
 		vc4000_video.sprite_collision=0;
 		vc4000_video.reg.d.sprite_collision=0;
-//		logerror("begin of frame\n");
+//      logerror("begin of frame\n");
 	}
 
 	if (irq_pause>10)

@@ -1,8 +1,8 @@
 /*****************************************************************************
 
-	includes/coco.h
+    includes/coco.h
 
-	CoCo/Dragon
+    CoCo/Dragon
 
 ****************************************************************************/
 
@@ -108,7 +108,7 @@ READ8_HANDLER ( coco3_mmu_r );
 WRITE8_HANDLER ( coco3_mmu_w );
 READ8_HANDLER ( coco3_gime_r );
 WRITE8_HANDLER ( coco3_gime_w );
-offs_t coco3_mmu_translate(int bank, int offset);
+offs_t coco3_mmu_translate(running_machine *machine,int bank, int offset);
 WRITE8_DEVICE_HANDLER( coco_pia_1_w );
 void coco3_horizontal_sync_callback(running_machine *machine,int data);
 void coco3_field_sync_callback(running_machine *machine,int data);

@@ -23,12 +23,13 @@
 #include "cpu/z80/z80daisy.h"
 #include "sound/speaker.h"
 #include "sound/wave.h"
-#include "machine/nec765.h"
+#include "machine/upd765.h"
 
 /* Devices */
 #include "devices/cassette.h"
 #include "devices/flopdrv.h"
 #include "formats/basicdsk.h"
+#include "devices/messram.h"
 
 static READ8_HANDLER(kc85_4_port_r)
 {
@@ -204,8 +205,8 @@ ADDRESS_MAP_END
 
 
 
-/* this is a fake keyboard layout. The keys are converted into codes 
-which are transmitted by the keyboard to the base-unit. key code can 
+/* this is a fake keyboard layout. The keys are converted into codes
+which are transmitted by the keyboard to the base-unit. key code can
 be calculated as (line*8)+bit_index */
 
 /* 2008-05 FP:
@@ -318,13 +319,13 @@ static const z80_daisy_chain kc85_daisy_chain[] =
 /********************/
 /** DISC INTERFACE **/
 
-static const z80ctc_interface kc85_disc_ctc_intf =
+static Z80CTC_INTERFACE( kc85_disc_ctc_intf )
 {
 	0,				/* timer disablers */
-	NULL,			/* interrupt callback */
-	NULL,			/* ZC/TO0 callback */
-	NULL,			/* ZC/TO1 callback */
-	NULL			/* ZC/TO2 callback */
+	DEVCB_NULL,			/* interrupt callback */
+	DEVCB_NULL,			/* ZC/TO0 callback */
+	DEVCB_NULL,			/* ZC/TO1 callback */
+	DEVCB_NULL			/* ZC/TO2 callback */
 };
 
 
@@ -333,14 +334,37 @@ static ADDRESS_MAP_START(kc85_disc_hw_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(kc85_disc_hw_io, ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x0f0, 0x0f0) AM_DEVREAD("nec765", nec765_status_r)
-	AM_RANGE(0x0f1, 0x0f1) AM_DEVREADWRITE("nec765", nec765_data_r, nec765_data_w)
-	AM_RANGE(0x0f2, 0x0f3) AM_DEVREADWRITE("nec765", nec765_dack_r, nec765_dack_w)
+	AM_RANGE(0x0f0, 0x0f0) AM_DEVREAD("upd765", upd765_status_r)
+	AM_RANGE(0x0f1, 0x0f1) AM_DEVREADWRITE("upd765", upd765_data_r, upd765_data_w)
+	AM_RANGE(0x0f2, 0x0f3) AM_DEVREADWRITE("upd765", upd765_dack_r, upd765_dack_w)
 	AM_RANGE(0x0f4, 0x0f5) AM_READ(kc85_disc_hw_input_gate_r)
 	/*{0x0f6, 0x0f7, SMH_NOP},*/		/* for controller */
 	AM_RANGE(0x0f8, 0x0f9) AM_WRITE( kc85_disc_hw_terminal_count_w) /* terminal count */
 	AM_RANGE(0x0fc, 0x0ff) AM_DEVREADWRITE("z80ctc_1", kc85_disk_hw_ctc_r, kc85_disk_hw_ctc_w)
 ADDRESS_MAP_END
+
+
+static FLOPPY_OPTIONS_START(kc85)
+	FLOPPY_OPTION(kc85, "img", "KC85 disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([80])
+		SECTORS([9])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([1]))
+FLOPPY_OPTIONS_END
+
+static const floppy_config kc85_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(kc85),
+	DO_NOT_KEEP_GEOMETRY
+};
+
 
 static MACHINE_DRIVER_START( cpu_kc_disc )
 	MDRV_CPU_ADD("disc", Z80, 4000000)
@@ -349,8 +373,8 @@ static MACHINE_DRIVER_START( cpu_kc_disc )
 
 	//FIX: put right clock value for CTC
 	MDRV_Z80CTC_ADD( "z80ctc_1", KC85_4_CLOCK, kc85_disc_ctc_intf )
-	
-	MDRV_NEC765A_ADD("nec765", kc_fdc_interface)
+
+	MDRV_UPD765A_ADD("upd765", kc_fdc_interface)
 MACHINE_DRIVER_END
 
 
@@ -392,6 +416,10 @@ static MACHINE_DRIVER_START( kc85_3 )
 	MDRV_QUICKLOAD_ADD("quickload", kc, "kcc", 0)
 
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")	
 MACHINE_DRIVER_END
 
 
@@ -407,12 +435,13 @@ static MACHINE_DRIVER_START( kc85_4 )
 	MDRV_VIDEO_UPDATE( kc85_4 )
 MACHINE_DRIVER_END
 
-
 static MACHINE_DRIVER_START( kc85_4d )
 	MDRV_IMPORT_FROM( kc85_4 )
 	MDRV_IMPORT_FROM( cpu_kc_disc )
 	MDRV_QUANTUM_TIME(HZ(120))
 	MDRV_MACHINE_RESET( kc85_4d )
+
+	MDRV_FLOPPY_4_DRIVES_ADD(kc85_floppy_config)
 MACHINE_DRIVER_END
 
 
@@ -424,7 +453,7 @@ ROM_START(kc85_4)
     ROM_SYSTEM_BIOS(0, "caos42", "CAOS 4.2" )
     ROMX_LOAD("caos__c0.854", 0x12000, 0x1000, CRC(57d9ab02) SHA1(774fc2496a59b77c7c392eb5aa46420e7722797e), ROM_BIOS(1))
     ROMX_LOAD("caos__e0.854", 0x13000, 0x2000, CRC(ee273933) SHA1(4300f7ff813c1fb2d5c928dbbf1c9e1fe52a9577), ROM_BIOS(1))
-	ROM_SYSTEM_BIOS(1, "caos41", "CAOS 4.1" )    
+	ROM_SYSTEM_BIOS(1, "caos41", "CAOS 4.1" )
   	ROMX_LOAD( "caos41c.854", 0x12000, 0x1000, CRC(c7e1c011) SHA1(acd998e3d9e8f592cd884aafc8ac4d291e40e097), ROM_BIOS(2))
   	ROMX_LOAD( "caos41e.854", 0x13000, 0x2000, CRC(60e045e5) SHA1(e19819fb477dcb742a13729a9bf5943d63abe863), ROM_BIOS(2))
 ROM_END
@@ -435,7 +464,7 @@ ROM_START(kc85_4d)
     ROM_SYSTEM_BIOS(0, "caos42", "CAOS 4.2" )
     ROMX_LOAD("caos__c0.854", 0x12000, 0x1000, CRC(57d9ab02) SHA1(774fc2496a59b77c7c392eb5aa46420e7722797e), ROM_BIOS(1))
     ROMX_LOAD("caos__e0.854", 0x13000, 0x2000, CRC(ee273933) SHA1(4300f7ff813c1fb2d5c928dbbf1c9e1fe52a9577), ROM_BIOS(1))
-	ROM_SYSTEM_BIOS(1, "caos41", "CAOS 4.1" )    
+	ROM_SYSTEM_BIOS(1, "caos41", "CAOS 4.1" )
   	ROMX_LOAD( "caos41c.854", 0x12000, 0x1000, CRC(c7e1c011) SHA1(acd998e3d9e8f592cd884aafc8ac4d291e40e097), ROM_BIOS(2))
   	ROMX_LOAD( "caos41e.854", 0x13000, 0x2000, CRC(60e045e5) SHA1(e19819fb477dcb742a13729a9bf5943d63abe863), ROM_BIOS(2))
 
@@ -456,7 +485,7 @@ ROM_START(kc85_3)
 	ROM_SYSTEM_BIOS(4, "pi88sw", "OS PI/88 (black/white)" )
 	ROMX_LOAD( "pi88_sw.853",  0x12000, 0x2000, CRC(f7d2e8fc) SHA1(9b5c068f10ff34bc3253f5b51abad51c8da9dd5d), ROM_BIOS(5))
 	ROM_SYSTEM_BIOS(5, "pi88ws", "OS PI/88 (white/blue)" )
-	ROMX_LOAD( "pi88_ws.853",  0x12000, 0x2000, CRC(9ef4efbf) SHA1(b8b6f606b76bce9fb7fcd61a14120e5e026b6b6e), ROM_BIOS(6))	
+	ROMX_LOAD( "pi88_ws.853",  0x12000, 0x2000, CRC(9ef4efbf) SHA1(b8b6f606b76bce9fb7fcd61a14120e5e026b6b6e), ROM_BIOS(6))
 ROM_END
 
 ROM_START(kc85_2)
@@ -464,7 +493,7 @@ ROM_START(kc85_2)
 	ROM_SYSTEM_BIOS(0, "hc900", "HC900 CAOS" )
 	ROMX_LOAD( "hc900.852",    0x12000, 0x2000, CRC(e6f4c0ab) SHA1(242a777788c774c5f764313361b1e0a65139ab32), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "caos22", "CAOS 2.2" )
-	ROMX_LOAD( "caos__e0.852", 0x12000, 0x2000, CRC(48d5624c) SHA1(568dd59bfad4c604ba36bc05b094fc598a642f85), ROM_BIOS(2))	
+	ROMX_LOAD( "caos__e0.852", 0x12000, 0x2000, CRC(48d5624c) SHA1(568dd59bfad4c604ba36bc05b094fc598a642f85), ROM_BIOS(2))
 ROM_END
 
 ROM_START(kc85_5)
@@ -473,48 +502,15 @@ ROM_START(kc85_5)
 	ROM_LOAD("basic_c0.855", 0x10000, 0x8000, CRC(0ed9f8b0) SHA1(be2c68a5b461014c57e33a127c3ffb32b0ff2346))
     ROM_SYSTEM_BIOS(0, "caos44", "CAOS 4.4" )
     ROMX_LOAD( "caos__c0.855",0x18000, 0x2000, CRC(f56d5c18) SHA1(2cf8023ee71ca50b92f9f151b7519f59727d1c79), ROM_BIOS(1))
-	ROMX_LOAD( "caos__e0.855",0x1A000, 0x2000, CRC(1dbc2e6d) SHA1(53ba4394d96e287ff8af01322af1e9879d4e77c4), ROM_BIOS(1))    
-	ROM_SYSTEM_BIOS(1, "caos43", "CAOS 4.3" )    
+	ROMX_LOAD( "caos__e0.855",0x1A000, 0x2000, CRC(1dbc2e6d) SHA1(53ba4394d96e287ff8af01322af1e9879d4e77c4), ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "caos43", "CAOS 4.3" )
 	ROMX_LOAD( "caos43c.855", 0x18000, 0x2000, CRC(2f0f9eaa) SHA1(5342be5104206d15e7471b094c7749a8a3d708ad), ROM_BIOS(2))
 	ROMX_LOAD( "caos43e.855", 0x1A000, 0x2000, CRC(b66fc6c3) SHA1(521ac2fbded4148220f8af2d5a5ab99634364079), ROM_BIOS(2))
 ROM_END
 
-static SYSTEM_CONFIG_START(kc85)
-	CONFIG_RAM_DEFAULT		(64 * 1024)
-SYSTEM_CONFIG_END
-
-static FLOPPY_OPTIONS_START(kc85)
-	FLOPPY_OPTION(kc85, "img", "KC85 disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([80])
-		SECTORS([9])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1]))
-FLOPPY_OPTIONS_END
-
-static void kc85d_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_kc85; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(kc85d)
-	CONFIG_IMPORT_FROM(kc85)
-	CONFIG_DEVICE(kc85d_floppy_getinfo)
-SYSTEM_CONFIG_END
-
 /*     YEAR  NAME      PARENT   COMPAT  MACHINE  INPUT     INIT  CONFIG  COMPANY   FULLNAME */
-COMP( 1987, kc85_2,   0,	   0,		kc85_3,  kc85,     0,    kc85,   "VEB Mikroelektronik", "HC900 / KC 85/2", GAME_NOT_WORKING)
-COMP( 1987, kc85_3,   kc85_2,  0,		kc85_3,  kc85,     0,    kc85,   "VEB Mikroelektronik", "KC 85/3", GAME_NOT_WORKING)
-COMP( 1989, kc85_4,   kc85_2,  0,		kc85_4,  kc85,     0,    kc85,   "VEB Mikroelektronik", "KC 85/4", GAME_NOT_WORKING)
-COMP( 1989, kc85_4d,  kc85_2,  0,		kc85_4d, kc85,     0,    kc85d,  "VEB Mikroelektronik", "KC 85/4 + Disk Interface Module (D004)", GAME_NOT_WORKING)
-COMP( 1989, kc85_5,   kc85_2,  0,		kc85_4,  kc85,     0,    kc85,   "VEB Mikroelektronik", "KC 85/5", GAME_NOT_WORKING)
+COMP( 1987, kc85_2,   0,	   0,		kc85_3,  kc85,     0,    0,   "VEB Mikroelektronik", "HC900 / KC 85/2", GAME_NOT_WORKING)
+COMP( 1987, kc85_3,   kc85_2,  0,		kc85_3,  kc85,     0,    0,   "VEB Mikroelektronik", "KC 85/3", GAME_NOT_WORKING)
+COMP( 1989, kc85_4,   kc85_2,  0,		kc85_4,  kc85,     0,    0,   "VEB Mikroelektronik", "KC 85/4", GAME_NOT_WORKING)
+COMP( 1989, kc85_4d,  kc85_2,  0,		kc85_4d, kc85,     0,    0,  "VEB Mikroelektronik", "KC 85/4 + Disk Interface Module (D004)", GAME_NOT_WORKING)
+COMP( 1989, kc85_5,   kc85_2,  0,		kc85_4,  kc85,     0,    0,   "VEB Mikroelektronik", "KC 85/5", GAME_NOT_WORKING)

@@ -1,8 +1,8 @@
 /*********************************************************************
 
-	core.c
+    core.c
 
-	MESS testing code
+    MESS testing code
 
 *********************************************************************/
 
@@ -14,6 +14,7 @@
 #include <windows.h>
 #endif /* WIN32 */
 
+#include "utils.h"
 #include "core.h"
 #include "testmess.h"
 #include "testimgt.h"
@@ -59,7 +60,7 @@ void error_reportf(const char *fmt, ...)
 	va_list va;
 
 	va_start(va, fmt);
-	vsnprintf(buf, sizeof(buf) / sizeof(buf[0]), fmt, va);
+	vsnprintf(buf, ARRAY_LENGTH(buf), fmt, va);
 	va_end(va);
 
 	error_report(buf);
@@ -365,10 +366,10 @@ static input_code messtest_token_to_code(const char *token)
 
 /* this external entity handler allows us to do things like this:
  *
- *	<!DOCTYPE tests
- *	[
- *		<!ENTITY mamekey_esc SYSTEM "http://www.mess.org/messtest/">
- *	]>
+ *  <!DOCTYPE tests
+ *  [
+ *      <!ENTITY mamekey_esc SYSTEM "http://www.mess.org/messtest/">
+ *  ]>
  */
 static int external_entity_handler(XML_Parser parser,
 	const XML_Char *context,
@@ -401,7 +402,7 @@ static int external_entity_handler(XML_Parser parser,
 
 		if (c != INPUT_CODE_INVALID)
 		{
-			snprintf(buf, sizeof(buf) / sizeof(buf[0]), "<%s%s>&#%d;</%s%s>",
+			snprintf(buf, ARRAY_LENGTH(buf), "<%s%s>&#%d;</%s%s>",
 				mamekey_prefix, context,
 				UCHAR_MAMEKEY_BEGIN + c,
 				mamekey_prefix, context);
@@ -412,7 +413,7 @@ static int external_entity_handler(XML_Parser parser,
 	}
 	else if (!strcmp(context, "eoln"))
 	{
-		snprintf(buf, sizeof(buf) / sizeof(buf[0]), "<eoln>%s</eoln>", EOLN);
+		snprintf(buf, ARRAY_LENGTH(buf), "<eoln>%s</eoln>", EOLN);
 
 		if (XML_Parse(extparser, buf, strlen(buf), 0) == XML_STATUS_ERROR)
 			goto done;
@@ -523,7 +524,7 @@ int messtest(const struct messtest_options *opts, int *test_count, int *failure_
 		script_directory = osd_dirname(opts->script_filename);
 		if (script_directory)
 		{
-			osd_getcurdir(saved_directory, sizeof(saved_directory) / sizeof(saved_directory[0]));
+			osd_getcurdir(saved_directory, ARRAY_LENGTH(saved_directory));
 			osd_setcurdir(script_directory);
 			free(script_directory);
 		}
@@ -581,7 +582,7 @@ void report_message(messtest_messagetype_t msgtype, const char *fmt, ...)
 	int last_space, base, i;
 
 	va_start(va, fmt);
-	vsnprintf(buf, sizeof(buf) / sizeof(buf[0]), fmt, va);
+	vsnprintf(buf, ARRAY_LENGTH(buf), fmt, va);
 	va_end(va);
 
 	prefix1 = current_testcase_name;
@@ -616,13 +617,13 @@ void report_message(messtest_messagetype_t msgtype, const char *fmt, ...)
 	while(buf[i++]);
 
 	/* did we abort? */
-/*	if ((msgtype == MSG_FAILURE) && (state != STATE_ABORTED))
-	{
-		state = STATE_ABORTED;
-		final_time = timer_get_time(machine);
-		if (final_time > 0.0)
-			dump_screenshot();
-	}
+/*  if ((msgtype == MSG_FAILURE) && (state != STATE_ABORTED))
+    {
+        state = STATE_ABORTED;
+        final_time = timer_get_time(machine);
+        if (final_time > 0.0)
+            dump_screenshot();
+    }
 */
 }
 

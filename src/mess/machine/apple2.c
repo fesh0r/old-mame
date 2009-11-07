@@ -7,7 +7,7 @@
   TODO:  Make a standard set of peripherals work.
   TODO:  Allow swappable peripherals in each slot.
   TODO:  Verify correctness of C08X switches.
-			- need to do double-read before write-enable RAM
+            - need to do double-read before write-enable RAM
 
 ***************************************************************************/
 
@@ -20,6 +20,7 @@
 #include "devices/sonydriv.h"
 #include "devices/appldriv.h"
 #include "devices/flopdrv.h"
+#include "devices/messram.h"
 #include "sound/speaker.h"
 #include "profiler.h"
 
@@ -185,11 +186,11 @@ void apple2_update_memory(running_machine *machine)
 			else
 			{
 				/* RAM */
-				if (end_r >= mess_ram_size)
-					end_r = mess_ram_size - 1;
+				if (end_r >= messram_get_size(devtag_get_device(machine, "messram")))
+					end_r = messram_get_size(devtag_get_device(machine, "messram")) - 1;
 				offset = meminfo.read_mem & APPLE2_MEM_MASK;
 				if (end_r >= begin)
-					rbase = &mess_ram[offset];
+					rbase = &messram_get_ptr(devtag_get_device(machine, "messram"))[offset];
 			}
 
 			/* install the actual handlers */
@@ -259,11 +260,11 @@ void apple2_update_memory(running_machine *machine)
 			else
 			{
 				/* RAM */
-				if (end_w >= mess_ram_size)
-					end_w = mess_ram_size - 1;
+				if (end_w >= messram_get_size(devtag_get_device(machine, "messram")))
+					end_w = messram_get_size(devtag_get_device(machine, "messram")) - 1;
 				offset = meminfo.write_mem & APPLE2_MEM_MASK;
 				if (end_w >= begin)
-					wbase = &mess_ram[offset];
+					wbase = &messram_get_ptr(devtag_get_device(machine, "messram"))[offset];
 			}
 
 
@@ -304,42 +305,47 @@ static STATE_POSTLOAD( apple2_update_memory_postload )
 
 READ8_HANDLER(apple2_c0xx_r)
 {
-	static const read8_space_func handlers[] =
+	if(!space->debugger_access)
 	{
-		apple2_c00x_r,
-		apple2_c01x_r,
-		apple2_c02x_r,
-		apple2_c03x_r,
-		NULL,
-		apple2_c05x_r,
-		apple2_c06x_r,
-		apple2_c07x_r
-	};
-	UINT8 result = 0x00;
-	int slotnum;
-	const device_config *slotdevice;
+		static const read8_space_func handlers[] =
+		{
+			apple2_c00x_r,
+			apple2_c01x_r,
+			apple2_c02x_r,
+			apple2_c03x_r,
+			NULL,
+			apple2_c05x_r,
+			apple2_c06x_r,
+			apple2_c07x_r
+		};
+		UINT8 result = 0x00;
+		int slotnum;
+		const device_config *slotdevice;
 
-	offset &= 0xFF;
+		offset &= 0xFF;
 
-	if (offset < 0x80)
-	{
-		/* normal handler */
-		if (handlers[offset / 0x10])
-			result = handlers[offset / 0x10](space, offset % 0x10);
+		if (offset < 0x80)
+		{
+			/* normal handler */
+			if (handlers[offset / 0x10])
+				result = handlers[offset / 0x10](space, offset % 0x10);
+		}
+		else
+		{
+			/* slot handler; identify the slot number */
+			slotnum = (offset - 0x80) / 0x10;
+
+			/* now identify the device */
+			slotdevice = apple2_slot(space->machine, slotnum);
+
+			/* and if we can, read from the slot */
+			if (slotdevice != NULL)
+				result = apple2_slot_r(slotdevice, offset % 0x10);
+		}
+		return result;
 	}
-	else
-	{
-		/* slot handler; identify the slot number */
-		slotnum = (offset - 0x80) / 0x10;
 
-		/* now identify the device */
-		slotdevice = apple2_slot(space->machine, slotnum);
-
-		/* and if we can, read from the slot */
-		if (slotdevice != NULL)
-			result = apple2_slot_r(slotdevice, offset % 0x10);
-	}
-	return result;
+	return 0;
 }
 
 
@@ -569,7 +575,7 @@ static const apple2_memmap_entry apple2_memmap_entries[] =
 
 void apple2_setvar(running_machine *machine, UINT32 val, UINT32 mask)
 {
-	LOG(("apple2_setvar(): val=0x%06x mask=0x%06x pc=0x%04x\n", val, mask, 
+	LOG(("apple2_setvar(): val=0x%06x mask=0x%06x pc=0x%04x\n", val, mask,
 					(unsigned int) cpu_get_reg(cputag_get_cpu(machine, "maincpu"), REG_GENPC)));
 
 	assert((val & mask) == val);
@@ -731,7 +737,7 @@ UINT8 apple2_getfloatingbusvalue(running_machine *machine)
 		//CMemory::mState |= CMemory::kVBLBar; // N: VBL' is true // FIX: MESS?
 	}
 
-	return mess_ram[address % mess_ram_size]; // FIX: this seems to work, but is it right!?
+	return messram_get_ptr(devtag_get_device(machine, "messram"))[address % messram_get_size(devtag_get_device(machine, "messram"))]; // FIX: this seems to work, but is it right!?
 }
 
 
@@ -796,34 +802,34 @@ INTERRUPT_GEN( apple2_interrupt )
 
 
 /***************************************************************************
-	apple2_mainram0400_w
-	apple2_mainram2000_w
-	apple2_auxram0400_w
-	apple2_auxram2000_w
+    apple2_mainram0400_w
+    apple2_mainram2000_w
+    apple2_auxram0400_w
+    apple2_auxram2000_w
 ***************************************************************************/
 
 static WRITE8_HANDLER ( apple2_mainram0400_w )
 {
 	offset += 0x400;
-	mess_ram[offset] = data;
+	messram_get_ptr(devtag_get_device(space->machine, "messram"))[offset] = data;
 }
 
 static WRITE8_HANDLER ( apple2_mainram2000_w )
 {
 	offset += 0x2000;
-	mess_ram[offset] = data;
+	messram_get_ptr(devtag_get_device(space->machine, "messram"))[offset] = data;
 }
 
 static WRITE8_HANDLER ( apple2_auxram0400_w )
 {
 	offset += 0x10400;
-	mess_ram[offset] = data;
+	messram_get_ptr(devtag_get_device(space->machine, "messram"))[offset] = data;
 }
 
 static WRITE8_HANDLER ( apple2_auxram2000_w )
 {
 	offset += 0x12000;
-	mess_ram[offset] = data;
+	messram_get_ptr(devtag_get_device(space->machine, "messram"))[offset] = data;
 }
 
 
@@ -834,12 +840,15 @@ static WRITE8_HANDLER ( apple2_auxram2000_w )
 
 READ8_HANDLER ( apple2_c00x_r )
 {
-	UINT8 result;
+	UINT8 result = 0;
 
-	/* Read the keyboard data and strobe */
-	profiler_mark_start(PROFILER_C00X);
-	result = AY3600_keydata_strobe_r();
-	profiler_mark_end();
+	if(!space->debugger_access)
+	{
+		/* Read the keyboard data and strobe */
+		profiler_mark_start(PROFILER_C00X);
+		result = AY3600_keydata_strobe_r();
+		profiler_mark_end();
+	}
 
 	return result;
 }
@@ -849,22 +858,22 @@ READ8_HANDLER ( apple2_c00x_r )
 /***************************************************************************
   apple2_c00x_w
 
-  C000	80STOREOFF
-  C001	80STOREON - use 80-column memory mapping
-  C002	RAMRDOFF
-  C003	RAMRDON - read from aux 48k
-  C004	RAMWRTOFF
-  C005	RAMWRTON - write to aux 48k
-  C006	INTCXROMOFF
-  C007	INTCXROMON
-  C008	ALTZPOFF
-  C009	ALTZPON - use aux ZP, stack and language card area
-  C00A	SLOTC3ROMOFF
-  C00B	SLOTC3ROMON - use external slot 3 ROM
-  C00C	80COLOFF
-  C00D	80COLON - use 80-column display mode
-  C00E	ALTCHARSETOFF
-  C00F	ALTCHARSETON - use alt character set
+  C000  80STOREOFF
+  C001  80STOREON - use 80-column memory mapping
+  C002  RAMRDOFF
+  C003  RAMRDON - read from aux 48k
+  C004  RAMWRTOFF
+  C005  RAMWRTON - write to aux 48k
+  C006  INTCXROMOFF
+  C007  INTCXROMON
+  C008  ALTZPOFF
+  C009  ALTZPON - use aux ZP, stack and language card area
+  C00A  SLOTC3ROMOFF
+  C00B  SLOTC3ROMON - use external slot 3 ROM
+  C00C  80COLOFF
+  C00D  80COLON - use 80-column display mode
+  C00E  ALTCHARSETOFF
+  C00F  ALTCHARSETON - use alt character set
 ***************************************************************************/
 
 WRITE8_HANDLER ( apple2_c00x_w )
@@ -884,30 +893,34 @@ READ8_HANDLER ( apple2_c01x_r )
 {
 	UINT8 result = apple2_getfloatingbusvalue(space->machine) & 0x7F;
 
-	profiler_mark_start(PROFILER_C01X);
-
-	LOG(("a2 softswitch_r: %04x\n", offset + 0xc010));
-	switch (offset)
+	if(!space->debugger_access)
 	{
-		case 0x00:			result |= AY3600_anykey_clearstrobe_r();		break;
-		case 0x01:			result |= (a2 & VAR_LCRAM2)		? 0x80 : 0x00;	break;
-		case 0x02:			result |= (a2 & VAR_LCRAM)		? 0x80 : 0x00;	break;
-		case 0x03:			result |= (a2 & VAR_RAMRD)		? 0x80 : 0x00;	break;
-		case 0x04:			result |= (a2 & VAR_RAMWRT)		? 0x80 : 0x00;	break;
-		case 0x05:			result |= (a2 & VAR_INTCXROM)	? 0x80 : 0x00;	break;
-		case 0x06:			result |= (a2 & VAR_ALTZP)		? 0x80 : 0x00;	break;
-		case 0x07:			result |= (a2 & VAR_SLOTC3ROM)	? 0x80 : 0x00;	break;
-		case 0x08:			result |= (a2 & VAR_80STORE)	? 0x80 : 0x00;	break;
-		case 0x09:			result |= !video_screen_get_vblank(space->machine->primary_screen)		? 0x80 : 0x00;	break;
-		case 0x0A:			result |= (a2 & VAR_TEXT)		? 0x80 : 0x00;	break;
-		case 0x0B:			result |= (a2 & VAR_MIXED)		? 0x80 : 0x00;	break;
-		case 0x0C:			result |= (a2 & VAR_PAGE2)		? 0x80 : 0x00;	break;
-		case 0x0D:			result |= (a2 & VAR_HIRES)		? 0x80 : 0x00;	break;
-		case 0x0E:			result |= (a2 & VAR_ALTCHARSET)	? 0x80 : 0x00;	break;
-		case 0x0F:			result |= (a2 & VAR_80COL)		? 0x80 : 0x00;	break;
+		profiler_mark_start(PROFILER_C01X);
+
+		LOG(("a2 softswitch_r: %04x\n", offset + 0xc010));
+		switch (offset)
+		{
+			case 0x00:			result |= AY3600_anykey_clearstrobe_r();		break;
+			case 0x01:			result |= (a2 & VAR_LCRAM2)		? 0x80 : 0x00;	break;
+			case 0x02:			result |= (a2 & VAR_LCRAM)		? 0x80 : 0x00;	break;
+			case 0x03:			result |= (a2 & VAR_RAMRD)		? 0x80 : 0x00;	break;
+			case 0x04:			result |= (a2 & VAR_RAMWRT)		? 0x80 : 0x00;	break;
+			case 0x05:			result |= (a2 & VAR_INTCXROM)	? 0x80 : 0x00;	break;
+			case 0x06:			result |= (a2 & VAR_ALTZP)		? 0x80 : 0x00;	break;
+			case 0x07:			result |= (a2 & VAR_SLOTC3ROM)	? 0x80 : 0x00;	break;
+			case 0x08:			result |= (a2 & VAR_80STORE)	? 0x80 : 0x00;	break;
+			case 0x09:			result |= !video_screen_get_vblank(space->machine->primary_screen)		? 0x80 : 0x00;	break;
+			case 0x0A:			result |= (a2 & VAR_TEXT)		? 0x80 : 0x00;	break;
+			case 0x0B:			result |= (a2 & VAR_MIXED)		? 0x80 : 0x00;	break;
+			case 0x0C:			result |= (a2 & VAR_PAGE2)		? 0x80 : 0x00;	break;
+			case 0x0D:			result |= (a2 & VAR_HIRES)		? 0x80 : 0x00;	break;
+			case 0x0E:			result |= (a2 & VAR_ALTCHARSET)	? 0x80 : 0x00;	break;
+			case 0x0F:			result |= (a2 & VAR_80COL)		? 0x80 : 0x00;	break;
+		}
+
+		profiler_mark_end();
 	}
 
-	profiler_mark_end();
 	return result;
 }
 
@@ -933,7 +946,10 @@ WRITE8_HANDLER( apple2_c01x_w )
 
 READ8_HANDLER( apple2_c02x_r )
 {
-	apple2_c02x_w(space, offset, 0);
+	if(!space->debugger_access)
+	{
+		apple2_c02x_w(space, offset, 0);
+	}
 	return apple2_getfloatingbusvalue(space->machine);
 }
 
@@ -961,15 +977,22 @@ WRITE8_HANDLER( apple2_c02x_w )
 
 READ8_HANDLER ( apple2_c03x_r )
 {
-	if (!offset)
+	if(!space->debugger_access)
 	{
-		const device_config *speaker_device = devtag_get_device(space->machine, "a2speaker");
+		if (!offset)
+		{
+			const device_config *speaker_device = devtag_get_device(space->machine, "a2speaker");
 
-		if (a2_speaker_state == 1)
-			a2_speaker_state = 0;
-		else
-			a2_speaker_state = 1;
-		speaker_level_w(speaker_device, a2_speaker_state);
+			if (a2_speaker_state == 1)
+			{
+				a2_speaker_state = 0;
+			}
+			else
+			{
+				a2_speaker_state = 1;
+			}
+			speaker_level_w(speaker_device, a2_speaker_state);
+		}
 	}
 	return apple2_getfloatingbusvalue(space->machine);
 }
@@ -993,14 +1016,19 @@ WRITE8_HANDLER ( apple2_c03x_w )
 
 READ8_HANDLER ( apple2_c05x_r )
 {
-	UINT32 mask;
+	if(!space->debugger_access)
+	{
+		UINT32 mask;
 
-	/* ANx has reverse SET logic */
-	if (offset >= 8)
-		offset ^= 1;
+		/* ANx has reverse SET logic */
+		if (offset >= 8)
+		{
+			offset ^= 1;
+		}
 
-	mask = 0x100 << (offset / 2);
-	apple2_setvar(space->machine, (offset & 1) ? mask : 0, mask);
+		mask = 0x100 << (offset / 2);
+		apple2_setvar(space->machine, (offset & 1) ? mask : 0, mask);
+	}
 	return apple2_getfloatingbusvalue(space->machine);
 }
 
@@ -1024,41 +1052,44 @@ WRITE8_HANDLER ( apple2_c05x_w )
 READ8_HANDLER ( apple2_c06x_r )
 {
 	int result = 0;
-	switch (offset & 0x0F)
+	if(!space->debugger_access)
 	{
-		case 0x01:
-			/* Open-Apple/Joystick button 0 */
-			result = apple2_pressed_specialkey(space->machine, SPECIALKEY_BUTTON0);
-			break;
-		case 0x02:
-			/* Closed-Apple/Joystick button 1 */
-			result = apple2_pressed_specialkey(space->machine, SPECIALKEY_BUTTON1);
-			break;
-		case 0x03:
-			/* Joystick button 2. Later revision motherboards connected this to SHIFT also */
-			result = apple2_pressed_specialkey(space->machine, SPECIALKEY_BUTTON2);
-			break;
-		case 0x04:
-			/* X Joystick 1 axis */
-			result = attotime_to_double(timer_get_time(space->machine)) < joystick_x1_time;
-			break;
-		case 0x05:
-			/* Y Joystick 1 axis */
-			result = attotime_to_double(timer_get_time(space->machine)) < joystick_y1_time;
-			break;
-		case 0x06:
-			/* X Joystick 2 axis */
-			result = attotime_to_double(timer_get_time(space->machine)) < joystick_x2_time;
-			break;
-		case 0x07:
-			/* Y Joystick 2 axis */
-			result = attotime_to_double(timer_get_time(space->machine)) < joystick_y2_time;
-			break;
-		default:
-			/* c060 Empty Cassette head read
-			 * and any other non joystick c06 port returns this according to applewin
-			 */
-			return apple2_getfloatingbusvalue(space->machine);
+		switch (offset & 0x0F)
+		{
+			case 0x01:
+				/* Open-Apple/Joystick button 0 */
+				result = apple2_pressed_specialkey(space->machine, SPECIALKEY_BUTTON0);
+				break;
+			case 0x02:
+				/* Closed-Apple/Joystick button 1 */
+				result = apple2_pressed_specialkey(space->machine, SPECIALKEY_BUTTON1);
+				break;
+			case 0x03:
+				/* Joystick button 2. Later revision motherboards connected this to SHIFT also */
+				result = apple2_pressed_specialkey(space->machine, SPECIALKEY_BUTTON2);
+				break;
+			case 0x04:
+				/* X Joystick 1 axis */
+				result = attotime_to_double(timer_get_time(space->machine)) < joystick_x1_time;
+				break;
+			case 0x05:
+				/* Y Joystick 1 axis */
+				result = attotime_to_double(timer_get_time(space->machine)) < joystick_y1_time;
+				break;
+			case 0x06:
+				/* X Joystick 2 axis */
+				result = attotime_to_double(timer_get_time(space->machine)) < joystick_x2_time;
+				break;
+			case 0x07:
+				/* Y Joystick 2 axis */
+				result = attotime_to_double(timer_get_time(space->machine)) < joystick_y2_time;
+				break;
+			default:
+				/* c060 Empty Cassette head read
+    	         * and any other non joystick c06 port returns this according to applewin
+    	         */
+				return apple2_getfloatingbusvalue(space->machine);
+		}
 	}
 	return result ? 0x80 : 0x00;
 }
@@ -1071,15 +1102,18 @@ READ8_HANDLER ( apple2_c06x_r )
 
 READ8_HANDLER ( apple2_c07x_r )
 {
-	double x_calibration = attotime_to_double(ATTOTIME_IN_USEC(12));
-	double y_calibration = attotime_to_double(ATTOTIME_IN_USEC(13));
-
-	if (offset == 0)
+	if(!space->debugger_access)
 	{
-		joystick_x1_time = attotime_to_double(timer_get_time(space->machine)) + x_calibration * input_port_read(space->machine, "joystick_1_x");
-		joystick_y1_time = attotime_to_double(timer_get_time(space->machine)) + y_calibration * input_port_read(space->machine, "joystick_1_y");
-		joystick_x2_time = attotime_to_double(timer_get_time(space->machine)) + x_calibration * input_port_read(space->machine, "joystick_2_x");
-		joystick_y2_time = attotime_to_double(timer_get_time(space->machine)) + y_calibration * input_port_read(space->machine, "joystick_2_y");
+		double x_calibration = attotime_to_double(ATTOTIME_IN_USEC(12));
+		double y_calibration = attotime_to_double(ATTOTIME_IN_USEC(13));
+
+		if (offset == 0)
+		{
+			joystick_x1_time = attotime_to_double(timer_get_time(space->machine)) + x_calibration * input_port_read(space->machine, "joystick_1_x");
+			joystick_y1_time = attotime_to_double(timer_get_time(space->machine)) + y_calibration * input_port_read(space->machine, "joystick_1_y");
+			joystick_x2_time = attotime_to_double(timer_get_time(space->machine)) + x_calibration * input_port_read(space->machine, "joystick_2_x");
+			joystick_y2_time = attotime_to_double(timer_get_time(space->machine)) + y_calibration * input_port_read(space->machine, "joystick_2_y");
+		}
 	}
 	return 0;
 }
@@ -1105,12 +1139,12 @@ static int apple2_fdc_diskreg;
 
 static int apple2_fdc_has_35(running_machine *machine)
 {
-	return device_count_tag_from_machine(machine, "sonydriv") > 0;
+	return (floppy_get_count(machine) - apple525_get_count(machine)) > 0;
 }
 
 static int apple2_fdc_has_525(running_machine *machine)
 {
-	return device_count_tag_from_machine(machine, "apple525driv") > 0;
+	return apple525_get_count(machine) > 0;
 }
 
 static void apple2_fdc_set_lines(const device_config *device, UINT8 lines)
@@ -1278,11 +1312,11 @@ void apple2_init_common(running_machine *machine)
 	state_save_register_postload(machine, apple2_update_memory_postload, NULL);
 
 	/* apple2 behaves much better when the default memory is zero */
-	memset(mess_ram, 0, mess_ram_size);
+	memset(messram_get_ptr(devtag_get_device(machine, "messram")), 0, messram_get_size(devtag_get_device(machine, "messram")));
 
 	/* --------------------------------------------- *
-	 * set up the softswitch mask/set                *
-	 * --------------------------------------------- */
+     * set up the softswitch mask/set                *
+     * --------------------------------------------- */
 	a2_mask = ~0;
 	a2_set = 0;
 
@@ -1290,7 +1324,7 @@ void apple2_init_common(running_machine *machine)
 	if (memory_region_length(machine, "maincpu") < 0x8000)
 		a2_mask &= ~VAR_ROMSWITCH;
 
-	if (mess_ram_size <= 64*1024)
+	if (messram_get_size(devtag_get_device(machine, "messram")) <= 64*1024)
 		a2_mask &= ~(VAR_RAMRD | VAR_RAMWRT | VAR_80STORE | VAR_ALTZP | VAR_80COL);
 }
 
@@ -1302,8 +1336,8 @@ MACHINE_START( apple2 )
 	void *apple2cp_ce00_ram = NULL;
 
 	/* there appears to be some hidden RAM that is swapped in on the Apple
-	 * IIc plus; I have not found any official documentation but the BIOS
-	 * clearly uses this area as writeable memory */
+     * IIc plus; I have not found any official documentation but the BIOS
+     * clearly uses this area as writeable memory */
 	if (!strcmp(machine->gamedrv->name, "apple2cp"))
 		apple2cp_ce00_ram = auto_alloc_array(machine, UINT8, 0x200);
 

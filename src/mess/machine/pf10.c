@@ -11,7 +11,7 @@
 #include "driver.h"
 #include "pf10.h"
 #include "cpu/m6800/m6800.h"
-#include "machine/nec765.h"
+#include "machine/upd765.h"
 
 
 /***************************************************************************
@@ -49,7 +49,7 @@ static ADDRESS_MAP_START( pf10_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe000, 0xffff) AM_ROM AM_REGION("pf10", 0)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( pf10_io, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( pf10_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 ADDRESS_MAP_END
@@ -59,12 +59,13 @@ ADDRESS_MAP_END
     MACHINE CONFIG
 *****************************************************************************/
 
-static const nec765_interface pf10_nec765a_intf =
+static const upd765_interface pf10_upd765a_intf =
 {
 	DEVCB_NULL, /* interrupt line */
 	NULL,
 	NULL,
-	NEC765_RDY_PIN_NOT_CONNECTED /* ??? */
+	UPD765_RDY_PIN_NOT_CONNECTED, /* ??? */
+	{NULL, NULL, NULL, NULL}
 };
 
 static MACHINE_DRIVER_START( pf10 )
@@ -72,7 +73,7 @@ static MACHINE_DRIVER_START( pf10 )
 	MDRV_CPU_PROGRAM_MAP(pf10_mem)
 	MDRV_CPU_IO_MAP(pf10_io)
 
-	MDRV_NEC765A_ADD("nec765a", pf10_nec765a_intf)
+	MDRV_UPD765A_ADD("upd765a", pf10_upd765a_intf)
 MACHINE_DRIVER_END
 
 

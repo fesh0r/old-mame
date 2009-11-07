@@ -54,7 +54,7 @@
 #include "machine/wd33c93.h"
 #include "devices/harddriv.h"
 #include "devices/chd_cd.h"
-#include "sound/dmadac.h"
+#include "sound/dac.h"
 
 #define VERBOSE_LEVEL ( 0 )
 
@@ -424,7 +424,7 @@ static READ32_HANDLER( hpc3_hd0_r )
 	case 0x0000/4:
 	case 0x4000/4:
 //      verboselog(machine, 2, "HPC3 HD0 Status Read: %08x (%08x): %08x\n", 0x1fb90000 + ( offset << 2), mem_mask, nHPC3_hd0_regs[0x17] );
-		if (!(mem_mask & 0xffffff00))
+		if (ACCESSING_BITS_0_7)
 		{
 			return wd33c93_r( space, 0 );
 		}
@@ -435,7 +435,7 @@ static READ32_HANDLER( hpc3_hd0_r )
 	case 0x0004/4:
 	case 0x4004/4:
 //      verboselog(machine, 2, "HPC3 HD0 Register Read: %08x (%08x): %08x\n", 0x1fb90000 + ( offset << 2), mem_mask, nHPC3_hd0_regs[nHPC3_hd0_register] );
-		if (!(mem_mask & 0xffffff00))
+		if (ACCESSING_BITS_0_7)
 		{
 			return wd33c93_r( space, 1 );
 		}
@@ -459,7 +459,7 @@ static WRITE32_HANDLER( hpc3_hd0_w )
 	case 0x0000/4:
 	case 0x4000/4:
 //      verboselog(machine, 2, "HPC3 HD0 Register Select Write: %08x\n", data );
-		if (!(mem_mask & 0xffffff00))
+		if (ACCESSING_BITS_0_7)
 		{
 			wd33c93_w( space, 0, data & 0x000000ff );
 		}
@@ -467,7 +467,7 @@ static WRITE32_HANDLER( hpc3_hd0_w )
 	case 0x0004/4:
 	case 0x4004/4:
 //      verboselog(machine, 2, "HPC3 HD0 Register %d Write: %08x\n", nHPC3_hd0_register, data );
-		if (!(mem_mask & 0xffffff00))
+		if (ACCESSING_BITS_0_7)
 		{
 			wd33c93_w( space, 1,  data & 0x000000ff );
 		}
@@ -1025,22 +1025,18 @@ static UINT32 nPBUS_DMA_DescPtr;
 static UINT32 nPBUS_DMA_NextPtr;
 static UINT32 nPBUS_DMA_WordsLeft;
 
-static const device_config *dmadac[1];
-
 static TIMER_CALLBACK(ip22_dma)
 {
-	dmadac[0] = devtag_get_device(machine, "dmadac");
 	if( nPBUS_DMA_Active )
 	{
-		INT16 temp16;
-//      mame_printf_info( "nPBUS_DMA_CurPtr - 0x08000000/4 = %08x\n", (nPBUS_DMA_CurPtr - 0x08000000)/4 );
-//      verboselog(machine, 0, "nPBUS_DMA_CurPtr - 0x08000000/4 = %08x\n", (nPBUS_DMA_CurPtr - 0x08000000)/4 );
-		temp16 = ( ip22_mainram[(nPBUS_DMA_CurPtr - 0x08000000)/4] & 0xffff0000 ) >> 16;
-		temp16 = ( ( temp16 & 0xff00 ) >> 8 ) | ( ( temp16 & 0x00ff ) << 8 );
-		dmadac_transfer(&dmadac[0], 1, 1, 1, 1, &temp16);
-		nPBUS_DMA_CurPtr += 4;
-		nPBUS_DMA_WordsLeft -= 4;
+		UINT16 temp16 = ( ip22_mainram[(nPBUS_DMA_CurPtr - 0x08000000)/4] & 0xffff0000 ) >> 16;
+		INT16 stemp16 = (INT16)((temp16 >> 8) | (temp16 << 8));
 
+		dac_signed_data_16_w(devtag_get_device(machine, "dac"), stemp16 ^ 0x8000);
+
+		nPBUS_DMA_CurPtr += 4;
+
+		nPBUS_DMA_WordsLeft -= 4;
 		if( nPBUS_DMA_WordsLeft == 0 )
 		{
 			if( nPBUS_DMA_NextPtr != 0 )
@@ -1162,7 +1158,6 @@ static TIMER_CALLBACK(ip22_timer)
 
 static MACHINE_RESET( ip225015 )
 {
-	dmadac[0] = devtag_get_device(machine, "dmadac");
 	mc_init(machine);
 	nHPC3_enetr_nbdp = 0x80000000;
 	nHPC3_enetr_cbp = 0x80000000;
@@ -1176,9 +1171,6 @@ static MACHINE_RESET( ip225015 )
 	memory_set_bankptr(machine, 1, ip22_mainram);
 
 	nPBUS_DMA_Active = 0;
-
-	dmadac_set_frequency(&dmadac[0], 1, 44100);
-	dmadac_enable(&dmadac[0], 1, 1);
 }
 
 static void dump_chain(const address_space *space, UINT32 ch_base)
@@ -1355,7 +1347,7 @@ static const SCSIConfigTable dev_table =
 {
         1,                                      /* 1 SCSI device */
         { { SCSI_ID_4, "cdrom", SCSI_DEVICE_CDROM } }  /* SCSI ID 4, using CD 0, and it's a CD-ROM */
-//	  { SCSI_ID_2, "cdrom", SCSI_DEVICE_CDROM } } /* SCSI ID 2, using HD 0, and it's a CD-ROM */
+//    { SCSI_ID_2, "cdrom", SCSI_DEVICE_CDROM } } /* SCSI ID 2, using HD 0, and it's a CD-ROM */
 };
 
 static const struct WD33C93interface scsi_intf =
@@ -1530,12 +1522,14 @@ static MACHINE_DRIVER_START( ip225015 )
 
 	MDRV_PC_LPT_ADD("lpt_0", ip22_lpt_config)
 
-	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MDRV_SOUND_ADD( "dmadac", DMADAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ADD( "dac", DAC, 0 )
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.5)
+
 	MDRV_SOUND_ADD( "cdda",  CDDA, 0 )
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 	MDRV_CDROM_ADD( "cdrom" )
 MACHINE_DRIVER_END
@@ -1565,11 +1559,7 @@ ROM_START( ip244415 )
 	ROM_LOAD( "ip244415.bin", 0x000000, 0x080000, CRC(2f37825a) SHA1(0d48c573b53a307478820b85aacb57b868297ca3) )
 ROM_END
 
-static SYSTEM_CONFIG_START( ip225015 )
-//  CONFIG_DEVICE(ip22_harddisk_getinfo)
-SYSTEM_CONFIG_END
-
 /*     YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */
-COMP( 1993, ip225015, 0,        0,        ip225015, ip225015, ip225015, ip225015, "Silicon Graphics, Inc", "Indy (R5000, 150MHz)", GAME_NOT_WORKING )
-COMP( 1993, ip224613, 0,        0,        ip224613, ip225015, ip225015, ip225015, "Silicon Graphics, Inc", "Indy (R4600, 133MHz)", GAME_NOT_WORKING )
-COMP( 1994, ip244415, 0,        0,        ip244415, ip225015, ip225015, ip225015, "Silicon Graphics, Inc", "Indigo2 (R4400, 150MHz)", GAME_NOT_WORKING )
+COMP( 1993, ip225015, 0,        0,        ip225015, ip225015, ip225015, 0, "Silicon Graphics, Inc", "Indy (R5000, 150MHz)", GAME_NOT_WORKING )
+COMP( 1993, ip224613, 0,        0,        ip224613, ip225015, ip225015, 0, "Silicon Graphics, Inc", "Indy (R4600, 133MHz)", GAME_NOT_WORKING )
+COMP( 1994, ip244415, 0,        0,        ip244415, ip225015, ip225015, 0, "Silicon Graphics, Inc", "Indigo2 (R4400, 150MHz)", GAME_NOT_WORKING )

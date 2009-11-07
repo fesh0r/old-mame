@@ -20,7 +20,9 @@
 #include "devices/flopdrv.h"
 #include "formats/basicdsk.h"
 #include "formats/rk_cas.h"
+#include "formats/smx_dsk.h"
 #include "machine/wd17xx.h"
+#include "devices/messram.h"
 
 /* Address maps */
 static ADDRESS_MAP_START(specialist_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -82,7 +84,7 @@ ADDRESS_MAP_END
 /* Input ports */
 
 /* Inputs will need to be adapted when/if support for non-latin keys is added to natural keyboard:
-these systems have different keys to switch among alphabets!  
+these systems have different keys to switch among alphabets!
 */
 static INPUT_PORTS_START( special )
 /* Alt switches between Latin and Cyrillic alphabets */
@@ -394,6 +396,17 @@ static const cassette_config special_cassette_config =
 	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED
 };
 
+static const floppy_config specimx_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(specimx),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 /* Machine driver */
 static MACHINE_DRIVER_START( special )
@@ -427,6 +440,7 @@ static MACHINE_DRIVER_START( special )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", special_cassette_config )
+
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( specialp )
@@ -461,8 +475,14 @@ static MACHINE_DRIVER_START( specimx )
     /* audio hardware */
 	MDRV_SOUND_ADD("custom", SPECIMX, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-		
-	MDRV_WD1793_ADD("wd1793", default_wd17xx_interface )	
+
+	MDRV_WD1793_ADD("wd1793", default_wd17xx_interface_2_drives )
+
+	MDRV_FLOPPY_2_DRIVES_ADD(specimx_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("128K")	
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( erik )
@@ -495,8 +515,14 @@ static MACHINE_DRIVER_START( erik )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", special_cassette_config )
+
+	MDRV_WD1793_ADD("wd1793", default_wd17xx_interface_2_drives )
+
+	MDRV_FLOPPY_2_DRIVES_ADD(specimx_floppy_config)
 	
-	MDRV_WD1793_ADD("wd1793", default_wd17xx_interface )	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("192K")	
 MACHINE_DRIVER_END
 
 /* ROM definition */
@@ -538,45 +564,11 @@ ROM_START( erik )
     ROM_LOAD( "erik.bin", 0x10000, 0x10000, CRC(6F3208F4) SHA1(41f6e2763ef60d3c7214c98893e580d25346fa2d))
 ROM_END
 
-static FLOPPY_OPTIONS_START(specimx)
-	FLOPPY_OPTION(specimx, "odi,img", "Specialist MX disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([80])
-		SECTORS([5])
-		SECTOR_LENGTH([1024])
-		FIRST_SECTOR_ID([1]))
-FLOPPY_OPTIONS_END
-
-static void specimx_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_specimx; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(specimx)
- 	CONFIG_RAM_DEFAULT(128 * 1024)
-	CONFIG_DEVICE(specimx_floppy_getinfo);
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(erik)
- 	CONFIG_RAM_DEFAULT(192 * 1024)
-	CONFIG_DEVICE(specimx_floppy_getinfo);
-SYSTEM_CONFIG_END
-
 /* Driver */
 
 /*    YEAR  NAME        PARENT  COMPAT   MACHINE    INPUT       INIT    CONFIG      COMPANY              FULLNAME       FLAGS */
 COMP( 1985, special,    0,     	0, 		special, 	special, 	special, 0,         "", 				 "Specialist",		0)
 COMP( 1985, specialp,   special,0, 		specialp, 	specialp, 	special, 0,         "", 				 "Specialist + hires graph",		0)
 COMP( 1985, lik,    	special,0, 		special, 	lik,		special, 0,         "", 				 "Lik",		 		0)
-COMP( 1985, specimx,   	special,0, 		specimx, 	specimx, 	specimx, specimx,   "", 				 "Specialist MX", 	0)
-COMP( 1994, erik,   	special,0, 		erik, 		special, 	erik, 	 erik,      "", 				 "Erik", 	0)
+COMP( 1985, specimx,   	special,0, 		specimx, 	specimx, 	specimx, 0,   		"", 				 "Specialist MX", 	0)
+COMP( 1994, erik,   	special,0, 		erik, 		special, 	erik, 	 0,     	"", 				 "Erik", 	0)

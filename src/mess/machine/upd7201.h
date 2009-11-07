@@ -1,37 +1,37 @@
 /**********************************************************************
 
-    NEC µPD7201 Multiprotocol Serial Communications Controller emulation
+    NEC ÂµPD7201 Multiprotocol Serial Communications Controller
 
     Copyright MESS Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 **********************************************************************
-							_____   _____
-				   CLK	 1 |*    \_/     | 40  Vcc
-				_RESET	 2 |			 | 39  _CTSA
-				 _DCDA	 3 |			 | 38  _RTSA
-				 _RxCB	 4 |			 | 37  TxDA
-				 _DCDB	 5 |			 | 36  _TxCA
-				 _CTSB	 6 |			 | 35  _RxCA
-				 _TxCB	 7 |			 | 34  RxDA
-				  TxDB	 8 |			 | 33  _SYNCA
-				  RxDB	 9 |			 | 32  _WAITA/DRQRxA
-		  _RTSB/_SYNCB	10 |   UPD7201	 | 31  _DTRA/_HAO
-		_WAITB/_DRQTxA	11 |			 | 30  _PRO/DRQTxB
-					D7	12 |			 | 29  _PRI/DRQRxB
-					D6	13 |			 | 28  _INT
-					D5	14 |			 | 27  _INTAK
-					D4	15 |			 | 26  _DTRB/_HAI
-					D3	16 |			 | 25  B/_A
-					D2	17 |			 | 24  C/_D
-					D1	18 |			 | 23  _CS
-					D0	19 |			 | 22  _RD
-				   Vss  20 |_____________| 21  _WR
+                            _____   _____
+                   CLK   1 |*    \_/     | 40  Vcc
+                _RESET   2 |             | 39  _CTSA
+                 _DCDA   3 |             | 38  _RTSA
+                 _RxCB   4 |             | 37  TxDA
+                 _DCDB   5 |             | 36  _TxCA
+                 _CTSB   6 |             | 35  _RxCA
+                 _TxCB   7 |             | 34  RxDA
+                  TxDB   8 |             | 33  _SYNCA
+                  RxDB   9 |             | 32  _WAITA/DRQRxA
+          _RTSB/_SYNCB  10 |   UPD7201   | 31  _DTRA/_HAO
+        _WAITB/_DRQTxA  11 |             | 30  _PRO/DRQTxB
+                    D7  12 |             | 29  _PRI/DRQRxB
+                    D6  13 |             | 28  _INT
+                    D5  14 |             | 27  _INTAK
+                    D4  15 |             | 26  _DTRB/_HAI
+                    D3  16 |             | 25  B/_A
+                    D2  17 |             | 24  C/_D
+                    D1  18 |             | 23  _CS
+                    D0  19 |             | 22  _RD
+                   Vss  20 |_____________| 21  _WR
 
 **********************************************************************/
 
-#ifndef __UPD7201__
-#define __UPD7201__
+#ifndef __UPD7201_H__
+#define __UPD7201_H__
 
 #include "devcb.h"
 
@@ -93,10 +93,6 @@ WRITE8_DEVICE_HANDLER( upd7201_cd_ba_w );
 READ8_DEVICE_HANDLER( upd7201_ba_cd_r );
 WRITE8_DEVICE_HANDLER( upd7201_ba_cd_w );
 
-/* hold acknowledge input */
-READ8_DEVICE_HANDLER( upd7201_hai_r );
-WRITE8_DEVICE_HANDLER( upd7201_hai_w );
-
 /* interrupt acknowledge */
 READ8_DEVICE_HANDLER( upd7201_intak_r );
 
@@ -104,10 +100,26 @@ READ8_DEVICE_HANDLER( upd7201_intak_r );
 WRITE_LINE_DEVICE_HANDLER( upd7201_synca_w );
 WRITE_LINE_DEVICE_HANDLER( upd7201_syncb_w );
 
+/* clear to send */
+WRITE_LINE_DEVICE_HANDLER( upd7201_ctsa_w );
+WRITE_LINE_DEVICE_HANDLER( upd7201_ctsb_w );
+
+/* data terminal ready, hold acknowledge */
+READ_LINE_DEVICE_HANDLER( upd7201_dtra_r );
+READ_LINE_DEVICE_HANDLER( upd7201_dtrb_r );
+WRITE_LINE_DEVICE_HANDLER( upd7201_hai_w );
+
+/* serial data */
+WRITE_LINE_DEVICE_HANDLER( upd7201_rxda_w );
+READ_LINE_DEVICE_HANDLER( upd7201_txda_r );
+WRITE_LINE_DEVICE_HANDLER( upd7201_rxdb_w );
+READ_LINE_DEVICE_HANDLER( upd7201_txdb_r );
+
 /* clock inputs */
 WRITE_LINE_DEVICE_HANDLER( upd7201_rxca_w );
 WRITE_LINE_DEVICE_HANDLER( upd7201_rxcb_w );
 WRITE_LINE_DEVICE_HANDLER( upd7201_txca_w );
 WRITE_LINE_DEVICE_HANDLER( upd7201_txcb_w );
 
-#endif
+
+#endif	/* __UPD7201_H__ */

@@ -3,6 +3,7 @@
 
 #include "includes/pocketc.h"
 #include "includes/pc1350.h"
+#include "devices/messram.h"
 
 static UINT8 outa,outb;
 
@@ -56,7 +57,7 @@ int pc1350_ina(const device_config *device)
 	if (outa & 0x04)
 	{
 		data |= input_port_read(machine, "KEY8");
-	
+
 		/* At Power Up we fake a 'CLS' pressure */
 		if (power)
 			data |= 0x08;
@@ -68,7 +69,7 @@ int pc1350_ina(const device_config *device)
 	if (outa & 0x10)
 		data |= input_port_read(machine, "KEY10");
 
-	if (outa & 0xc0) 
+	if (outa & 0xc0)
 		data |= input_port_read(machine, "KEY11");
 
 	// missing lshift
@@ -119,18 +120,18 @@ static TIMER_CALLBACK(pc1350_power_up)
 MACHINE_START( pc1350 )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	
+
 	timer_set(machine, ATTOTIME_IN_SEC(1), NULL, 0, pc1350_power_up);
 
 	memory_install_read8_handler(space, 0x6000, 0x6fff, 0, 0, SMH_BANK(1));
 	memory_install_write8_handler(space, 0x6000, 0x6fff, 0, 0, SMH_BANK(1));
-	memory_set_bankptr(machine, 1, &mess_ram[0x0000]);
+	memory_set_bankptr(machine, 1, &messram_get_ptr(devtag_get_device(machine, "messram"))[0x0000]);
 
-	if (mess_ram_size >= 0x3000)
+	if (messram_get_size(devtag_get_device(machine, "messram")) >= 0x3000)
 	{
 		memory_install_read8_handler(space, 0x4000, 0x5fff, 0, 0, SMH_BANK(2));
 		memory_install_write8_handler(space, 0x4000, 0x5fff, 0, 0, SMH_BANK(2));
-		memory_set_bankptr(machine, 2, &mess_ram[0x1000]);
+		memory_set_bankptr(machine, 2, &messram_get_ptr(devtag_get_device(machine, "messram"))[0x1000]);
 	}
 	else
 	{
@@ -138,11 +139,11 @@ MACHINE_START( pc1350 )
 		memory_install_write8_handler(space, 0x4000, 0x5fff, 0, 0, SMH_NOP);
 	}
 
-	if (mess_ram_size >= 0x5000)
+	if (messram_get_size(devtag_get_device(machine, "messram")) >= 0x5000)
 	{
 		memory_install_read8_handler(space, 0x2000, 0x3fff, 0, 0, SMH_BANK(3));
 		memory_install_write8_handler(space, 0x2000, 0x3fff, 0, 0, SMH_BANK(3));
-		memory_set_bankptr(machine, 3, &mess_ram[0x3000]);
+		memory_set_bankptr(machine, 3, &messram_get_ptr(devtag_get_device(machine, "messram"))[0x3000]);
 	}
 	else
 	{

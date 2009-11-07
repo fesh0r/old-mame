@@ -148,14 +148,14 @@ Keyboard interface:
 
 Known Issues (MZ, 2009-04-26)
 - Extended Basic II does not start when a floppy controller is present
-- Multiple cartridges are not shown in the startup screen; only one 
+- Multiple cartridges are not shown in the startup screen; only one
   cartridge is presented. The slots are scanned, though. Need to check whether
   this is a bug of the operating system or of the emulation.
 - Emulation speed must be checked. I have inserted adjust_icounts, but I need to
   check whether the console experienced those delays actually. Unfortunately,
   there is almost no real hardware available.
 - Extended Basic II gets stuck with OLD MINIMEM. MiniMemory may be incompatible
-  due to the different memory layout. SAVE/OLD only works if the machine is 
+  due to the different memory layout. SAVE/OLD only works if the machine is
   neither reset nor restarted.
 */
 
@@ -199,7 +199,7 @@ ADDRESS_MAP_END
 */
 
 static ADDRESS_MAP_START(ti99_8_cru_map, ADDRESS_SPACE_IO, 8)
-//	AM_RANGE(0x0000, 0x00ff) AM_DEVREAD("tms9901", tms9901_cru_r)
+//  AM_RANGE(0x0000, 0x00ff) AM_DEVREAD("tms9901", tms9901_cru_r)
         AM_RANGE(0x0000, 0x007f) AM_DEVREAD("tms9901", tms9901_cru_r)
         AM_RANGE(0x0080, 0x00ff) AM_DEVREAD("ti99_multicart", ti99_multicart_cru_r)     /* SuperSpace cartridge */
         AM_RANGE(0x0100, 0x02ff) AM_READ(ti99_8_peb_cru_r)
@@ -376,7 +376,7 @@ INPUT_PORTS_END
 */
 static const tms5220_interface ti99_8_tms5220interface =
 {
-	NULL,						/* no IRQ callback */
+	DEVCB_NULL,					/* no IRQ callback */
 	spchroms_read,				/* speech ROM read handler */
 	spchroms_load_address,		/* speech ROM load address handler */
 	spchroms_read_and_branch	/* speech ROM read and branch handler */
@@ -422,8 +422,20 @@ static const struct tms9995reset_param ti99_8_processor_config =
 
 static const mm58274c_interface floppy_mm58274c_interface =
 {
-	1,	/* 	mode 24*/
+	1,	/*  mode 24*/
 	0   /*  first day of week */
+};
+
+static const floppy_config ti99_8_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(ti99),
+	DO_NOT_KEEP_GEOMETRY
 };
 
 static MACHINE_DRIVER_START(ti99_8_60hz)
@@ -464,14 +476,18 @@ static MACHINE_DRIVER_START(ti99_8_60hz)
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 
 	/* rtc */
-	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)		
-	
+	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)
+
 	/* tms9901 */
-	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_8)	
+	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_8)
 
 	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )
-	
+
+	MDRV_FLOPPY_4_DRIVES_ADD(ti99_8_floppy_config)
+
 	MDRV_TI99_CARTRIDGE_ADD("ti99_multicart")
+	MDRV_SMARTMEDIA_ADD("smartmedia")
+	MDRV_TI99_4_RS232_CARD_ADD("rs232")
 MACHINE_DRIVER_END
 
 
@@ -513,14 +529,17 @@ static MACHINE_DRIVER_START(ti99_8_50hz)
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
 
 	/* rtc */
-	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)		
-	
+	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)
+
 	/* tms9901 */
-	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_8)	
+	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_8)
 
 	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )
+	MDRV_FLOPPY_4_DRIVES_ADD(ti99_8_floppy_config)
 
 	MDRV_TI99_CARTRIDGE_ADD("ti99_multicart")
+	MDRV_SMARTMEDIA_ADD("smartmedia")
+	MDRV_TI99_4_RS232_CARD_ADD("rs232")
 MACHINE_DRIVER_END
 
 /*
@@ -556,97 +575,6 @@ ROM_END
 
 #define rom_ti99_8e rom_ti99_8
 
-static void ti99_8_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_ti99; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static void ti99_8_parallel_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* parallel */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_PARALLEL; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_4_pio); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_4_pio); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
-	}
-}
-
-static void ti99_8_serial_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* serial */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_4_rs232); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_4_rs232); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
-	}
-}
-
-static void ti99_8_memcard_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* memcard */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_MEMCARD; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(smartmedia); break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(smartmedia); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(smartmedia); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(ti99_8)
-	/* one cartridge port */
-	/* one cassette unit port */
-	/* Hex-bus disk controller: supports up to 4 floppy disk drives */
-	/* expansion port (similar to 99/4(a) - yet slightly different) */
-	CONFIG_DEVICE(ti99_8_floppy_getinfo)
-	CONFIG_DEVICE(ti99_8_parallel_getinfo)
-	CONFIG_DEVICE(ti99_8_serial_getinfo)
-	/*CONFIG_DEVICE(ti99_8_quickload_getinfo)*/
-	CONFIG_DEVICE(ti99_8_memcard_getinfo)
-SYSTEM_CONFIG_END
-
 /*      YEAR    NAME        PARENT      COMPAT  MACHINE     INPUT   INIT        CONFIG      COMPANY                 FULLNAME */
-COMP(	1983,	ti99_8,		0,	0,	ti99_8_60hz,ti99_8,	ti99_8,	ti99_8,	"Texas Instruments",	"TI-99/8 Computer (US)" , 0)
-COMP(	1983,	ti99_8e,	ti99_8,	0,	ti99_8_50hz,ti99_8,	ti99_8,	ti99_8,	"Texas Instruments",	"TI-99/8 Computer (Europe)" , 0 )
+COMP(	1983,	ti99_8,		0,	0,	ti99_8_60hz,ti99_8,	ti99_8,	0,	"Texas Instruments",	"TI-99/8 Computer (US)" , 0)
+COMP(	1983,	ti99_8e,	ti99_8,	0,	ti99_8_50hz,ti99_8,	ti99_8,	0,	"Texas Instruments",	"TI-99/8 Computer (Europe)" , 0 )

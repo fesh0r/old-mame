@@ -14,7 +14,7 @@ CASTOOL = castool$(EXE)
 CFLAGS += -I$(SRC)/$(TARGET)/tools/castool
 
 # castool directories
-CASTOOLOBJ = $(MESSOBJ)/tools/castool
+CASTOOLOBJ = $(MESS_TOOLS)/castool
 
 
 
@@ -62,14 +62,14 @@ CASTOOL_LIB_OBJS =						\
 	$(MESS_FORMATS)/ioprocs.o			\
 	$(MESS_FORMATS)/cassimg.o			\
 	$(MESS_FORMATS)/wavfile.o			\
-	
+
 
 $(LIBCASTOOL): $(CASTOOL_LIB_OBJS)
 
 CASTOOL_OBJS = \
 	$(CASTOOLOBJ)/main.o \
 	$(CASTOOLOBJ)/stubs.o \
-	$(MESSOBJ)/toolerr.o
+	$(MESS_TOOLS)/toolerr.o
 
 
 

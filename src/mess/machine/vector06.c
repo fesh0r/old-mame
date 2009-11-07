@@ -13,6 +13,7 @@
 #include "machine/wd17xx.h"
 #include "devices/cassette.h"
 #include "includes/vector06.h"
+#include "devices/messram.h"
 
 UINT8 vector06_keyboard_mask;
 UINT8 vector_color_index;
@@ -21,7 +22,7 @@ UINT8 vector_video_mode;
 /* Driver initialization */
 DRIVER_INIT(vector06)
 {
-	memset(mess_ram,0,64*1024);
+	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,64*1024);
 }
 
 static READ8_DEVICE_HANDLER (vector06_8255_portb_r )
@@ -39,11 +40,11 @@ static READ8_DEVICE_HANDLER (vector06_8255_portb_r )
 }
 
 static READ8_DEVICE_HANDLER (vector06_8255_portc_r )
-{	
+{
 	double level = cassette_input(devtag_get_device(device->machine, "cassette"));
 	UINT8 retVal = input_port_read(device->machine, "LINE8");
-	if (level >  0) { 
-		retVal |= 0x10; 
+	if (level >  0) {
+		retVal |= 0x10;
  	}
 	return retVal;
 }
@@ -55,22 +56,22 @@ static WRITE8_DEVICE_HANDLER (vector06_8255_porta_w )
 
 static void vector_set_video_mode(running_machine *machine, int width) {
 	rectangle visarea;
-	
+
 	visarea.min_x = 0;
 	visarea.min_y = 0;
 	visarea.max_x = width+64-1;
 	visarea.max_y = 256+64-1;
-	video_screen_configure(machine->primary_screen, width+64, 256+64, &visarea, video_screen_get_frame_period(machine->primary_screen).attoseconds);	
+	video_screen_configure(machine->primary_screen, width+64, 256+64, &visarea, video_screen_get_frame_period(machine->primary_screen).attoseconds);
 }
 
 static WRITE8_DEVICE_HANDLER (vector06_8255_portb_w )
 {
 	vector_color_index = data & 0x0f;
-	if ((data & 0x10) != vector_video_mode) 
+	if ((data & 0x10) != vector_video_mode)
 	{
 		vector_video_mode = data & 0x10;
 		vector_set_video_mode(device->machine,(vector_video_mode==0x10) ? 512 : 256);
-	}	
+	}
 }
 
 WRITE8_HANDLER(vector06_color_set)
@@ -86,19 +87,19 @@ static UINT8 romdisk_lsb;
 
 static READ8_DEVICE_HANDLER (vector06_romdisk_portb_r )
 {
-	UINT8 *romdisk = memory_region(device->machine, "maincpu") + 0x18000;		
+	UINT8 *romdisk = memory_region(device->machine, "maincpu") + 0x18000;
 	UINT16 addr = (romdisk_msb*256+romdisk_lsb) & 0x7fff;
-	return romdisk[addr];	
+	return romdisk[addr];
 }
 
 static WRITE8_DEVICE_HANDLER (vector06_romdisk_porta_w )
-{	
+{
 	romdisk_lsb = data;
 }
 
 static WRITE8_DEVICE_HANDLER (vector06_romdisk_portc_w )
-{		
-	romdisk_msb = data;	
+{
+	romdisk_msb = data;
 }
 
 I8255A_INTERFACE( vector06_ppi8255_2_interface )
@@ -145,8 +146,8 @@ INTERRUPT_GEN( vector06_interrupt )
 {
 	vblank_state++;
 	if (vblank_state>1) vblank_state=0;
-	cpu_set_input_line(device,0,vblank_state ? HOLD_LINE : CLEAR_LINE);		
-	
+	cpu_set_input_line(device,0,vblank_state ? HOLD_LINE : CLEAR_LINE);
+
 }
 
 static IRQ_CALLBACK (  vector06_irq_callback )
@@ -163,7 +164,7 @@ static TIMER_CALLBACK(reset_check_callback)
 		device_reset(cputag_get_cpu(machine, "maincpu"));
 	}
 	if ((val & 2)==2) {
-		memory_set_bankptr(machine, 1, mess_ram + 0x0000);
+		memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x0000);
 		device_reset(cputag_get_cpu(machine, "maincpu"));
 	}
 }
@@ -172,7 +173,7 @@ WRITE8_HANDLER(vector_disc_w)
 {
 	const device_config *fdc = devtag_get_device(space->machine, "wd1793");
 	wd17xx_set_side (fdc,((data & 4) >> 2) ^ 1);
- 	wd17xx_set_drive(fdc,data & 1);					
+ 	wd17xx_set_drive(fdc,data & 1);
 }
 
 MACHINE_START( vector06 )
@@ -184,7 +185,7 @@ MACHINE_START( vector06 )
 MACHINE_RESET( vector06 )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	
+
 	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), vector06_irq_callback);
 	memory_install_read8_handler (space, 0x0000, 0x7fff, 0, 0, SMH_BANK(1));
 	memory_install_write8_handler(space, 0x0000, 0x7fff, 0, 0, SMH_BANK(2));
@@ -192,9 +193,9 @@ MACHINE_RESET( vector06 )
 	memory_install_write8_handler(space, 0x8000, 0xffff, 0, 0, SMH_BANK(4));
 
 	memory_set_bankptr(machine, 1, memory_region(machine, "maincpu") + 0x10000);
-	memory_set_bankptr(machine, 2, mess_ram + 0x0000);
-	memory_set_bankptr(machine, 3, mess_ram + 0x8000);
-	memory_set_bankptr(machine, 4, mess_ram + 0x8000);
+	memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x0000);
+	memory_set_bankptr(machine, 3, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000);
+	memory_set_bankptr(machine, 4, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000);
 
 	vector06_keyboard_mask = 0;
 	vector_color_index = 0;

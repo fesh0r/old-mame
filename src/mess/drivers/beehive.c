@@ -1,10 +1,10 @@
 /***************************************************************************
 
-	BEEHIVE DM3270
+    BEEHIVE DM3270
 
-	25/05/2009 Skeleton driver [Robbbert]
+    25/05/2009 Skeleton driver [Robbbert]
 
-	This is a conventional computer terminal using a serial link.
+    This is a conventional computer terminal using a serial link.
 
 ****************************************************************************/
 
@@ -61,9 +61,6 @@ static MACHINE_DRIVER_START( beehive )
     MDRV_VIDEO_UPDATE(beehive)
 MACHINE_DRIVER_END
 
-static SYSTEM_CONFIG_START(beehive)
-SYSTEM_CONFIG_END
-
 /* ROM definition */
 ROM_START( beehive )
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
@@ -77,5 +74,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( ????, beehive,  0,       0, 	beehive, 	beehive, 	 0,  	  beehive,  	 "BeeHive",   "DM3270",		GAME_NOT_WORKING)
+COMP( ????, beehive,  0,       0, 	beehive, 	beehive, 	 0,  	  0,  	 "BeeHive",   "DM3270",		GAME_NOT_WORKING)
 

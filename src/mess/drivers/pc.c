@@ -77,27 +77,27 @@ added some additional graphic capabilities similar, but not equal, to
 those added for the IBM PC Jr.
 
 Tandy 1000 (8088) variations:
-1000				128KB-640KB RAM		4.77 MHz		v01.00.00, v01.01.00
-1000A/1000HD		128KB-640KB RAM		4.77 MHz		v01.01.00
-1000SX/1000AX		384KB-640KB RAM		7.16/4.77 MHz	v01.02.00
-1000EX				256KB-640KB RAM		7.16/4.77 MHz	v01.02.00
-1000HX				256KB-640KB RAM		7.16/4.77 MHz	v02.00.00
+1000                128KB-640KB RAM     4.77 MHz        v01.00.00, v01.01.00
+1000A/1000HD        128KB-640KB RAM     4.77 MHz        v01.01.00
+1000SX/1000AX       384KB-640KB RAM     7.16/4.77 MHz   v01.02.00
+1000EX              256KB-640KB RAM     7.16/4.77 MHz   v01.02.00
+1000HX              256KB-640KB RAM     7.16/4.77 MHz   v02.00.00
 
 Tandy 1000 (8086) variations:
-1000RL/1000RL-HD	512KB-768KB RAM		9.44/4.77 MHz	v02.00.00, v02.00.01
+1000RL/1000RL-HD    512KB-768KB RAM     9.44/4.77 MHz   v02.00.00, v02.00.01
 1000SL/1000PC       384KB-640KB RAM     8.0/4.77 MHz    v01.04.00, v01.04.01, v01.04.02, v02.00.01
 1000SL/2            512KB-640KB RAM     8.0/4.77 MHz    v01.04.04
 
 Tandy 1000 (80286) variations:
-1000TX				640KB-768KB RAM		8.0/4.77 MHz	v01.03.00
-1000TL				640KB-768KB RAM		8.0/4.77 MHz	v01.04.00, v01.04.01, v01.04.02
-1000TL/2			640KB-768KB RAM		8.0/4.77 MHz	v02.00.00
-1000TL/3			640KB-768KB RAM		10.0/5.0 MHz	v02.00.00
-1000RLX				512KB-1024KB RAM	10.0/5.0 MHz	v02.00.00
-1000RLX-HD			1024MB RAM			10.0/5.0 MHz	v02.00.00
+1000TX              640KB-768KB RAM     8.0/4.77 MHz    v01.03.00
+1000TL              640KB-768KB RAM     8.0/4.77 MHz    v01.04.00, v01.04.01, v01.04.02
+1000TL/2            640KB-768KB RAM     8.0/4.77 MHz    v02.00.00
+1000TL/3            640KB-768KB RAM     10.0/5.0 MHz    v02.00.00
+1000RLX             512KB-1024KB RAM    10.0/5.0 MHz    v02.00.00
+1000RLX-HD          1024MB RAM          10.0/5.0 MHz    v02.00.00
 
 Tandy 1000 (80386) variations:
-1000RSX/1000RSX-HD	1M-9M RAM			25.0/8.0 MHz	v01.10.00
+1000RSX/1000RSX-HD  1M-9M RAM           25.0/8.0 MHz    v01.10.00
 
 IBM PC Jr:
 
@@ -157,7 +157,7 @@ TODO: Which clock signals are available in a PC Jr?
 #include "sound/3812intf.h"
 
 #include "machine/kb_keytro.h"
-
+#include "devices/messram.h"
 
 #define ym3812_StdClock 3579545
 
@@ -228,7 +228,7 @@ static ADDRESS_MAP_START(pc8_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE("ins8250_1", ins8250_r, ins8250_w)
 	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc_HDC1_r,			pc_HDC1_w)
 	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc_HDC2_r,			pc_HDC2_w)
-	AM_RANGE(0x0340, 0x0357) AM_READ(return8_FF) /* anonymous bios should not recogniced realtimeclock */
+	AM_RANGE(0x0340, 0x0357) AM_NOP /* anonymous bios should not recogniced realtimeclock */
 	AM_RANGE(0x0378, 0x037f) AM_DEVREADWRITE("lpt_1", pc_lpt_r, pc_lpt_w)
 #ifdef ADLIB
 	AM_RANGE(0x0388, 0x0388) AM_DEVREADWRITE("ym3812", ym3812_status_port_r,ym3812_control_port_w)
@@ -285,7 +285,7 @@ static ADDRESS_MAP_START(pc16_io, ADDRESS_SPACE_IO, 16)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ins8250_1", ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc16le_HDC1_r,			pc16le_HDC1_w)
 	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc16le_HDC2_r,			pc16le_HDC2_w)
-	AM_RANGE(0x0340, 0x0357) AM_READ(return16_FFFF) /* anonymous bios should not recogniced realtimeclock */
+	AM_RANGE(0x0340, 0x0357) AM_NOP /* anonymous bios should not recogniced realtimeclock */
 	AM_RANGE(0x0378, 0x037f) AM_DEVREADWRITE8("lpt_1", pc_lpt_r, pc_lpt_w, 0x00ff)
 #ifdef ADLIB
 	AM_RANGE(0x0388, 0x0389) AM_DEVREADWRITE("ym3812", pc16_388_r, pc16_388_w )
@@ -329,7 +329,7 @@ static ADDRESS_MAP_START(europc_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x0388, 0x0388) AM_DEVREADWRITE("ym3812", ym3812_status_port_r,ym3812_control_port_w)
 	AM_RANGE(0x0389, 0x0389) AM_DEVWRITE("ym3812", ym3812_write_port_w)
 #endif
-//	AM_RANGE(0x03bc, 0x03bf) AM_DEVREADWRITE("lpt_0", pc_lpt_r, pc_lpt_w)
+//  AM_RANGE(0x03bc, 0x03bf) AM_DEVREADWRITE("lpt_0", pc_lpt_r, pc_lpt_w)
 	AM_RANGE(0x03e8, 0x03ef) AM_DEVREADWRITE("ins8250_2", ins8250_r, ins8250_w)
 	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE(pc_fdc_r,				pc_fdc_w)
 	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE("ins8250_0", ins8250_r, ins8250_w)
@@ -437,18 +437,65 @@ static ADDRESS_MAP_START(ibmpcjr_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE("ins8250_0", ins8250_r, ins8250_w)
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START( ppc512_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x00000, 0x7ffff) AM_RAMBANK(10)
+	AM_RANGE(0x80000, 0xbffff) AM_NOP
+	AM_RANGE(0xc0000, 0xc7fff) AM_ROM
+	AM_RANGE(0xc8000, 0xcffff) AM_ROM
+	AM_RANGE(0xd0000, 0xeffff) AM_NOP
+	AM_RANGE(0xf0000, 0xfffff) AM_ROM
+ADDRESS_MAP_END
 
+static ADDRESS_MAP_START( ppc640_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
+	AM_RANGE(0xa0000, 0xbffff) AM_NOP
+	AM_RANGE(0xc0000, 0xc7fff) AM_ROM
+	AM_RANGE(0xc8000, 0xcffff) AM_ROM
+	AM_RANGE(0xd0000, 0xeffff) AM_NOP
+	AM_RANGE(0xf0000, 0xfffff) AM_ROM
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START(ppc512_io, ADDRESS_SPACE_IO, 16)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", dma8237_r, dma8237_w, 0xffff)
+	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8("pic8259", pic8259_r, pic8259_w, 0xffff)
+	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8("pit8253", pit8253_r, pit8253_w, 0xffff)
+	AM_RANGE(0x0060, 0x0065) AM_READWRITE(pc1640_16le_port60_r,			pc1640_16le_port60_w)
+	AM_RANGE(0x0070, 0x0071) AM_READWRITE(mc146818_port16le_r,		mc146818_port16le_w)
+	AM_RANGE(0x0078, 0x0079) AM_READWRITE(pc1640_16le_mouse_x_r,			pc1640_16le_mouse_x_w)
+	AM_RANGE(0x007a, 0x007b) AM_READWRITE(pc1640_16le_mouse_y_r,			pc1640_16le_mouse_y_w)
+	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,					pc_page_w, 0xffff)
+	AM_RANGE(0x0200, 0x0207) AM_READWRITE(pc16le_JOY_r,					pc16le_JOY_w)
+	AM_RANGE(0x0278, 0x027b) AM_READ(pc200_16le_port278_r) AM_DEVWRITE8("lpt_2", pc_lpt_w, 0x00ff)
+	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8("ins8250_3", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ins8250_1", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc16le_HDC1_r,				pc16le_HDC1_w)
+	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc16le_HDC2_r,				pc16le_HDC2_w)
+	AM_RANGE(0x0378, 0x037b) AM_READ(pc200_16le_port378_r) AM_DEVWRITE8("lpt_1", pc_lpt_w, 0x00ff)
+	AM_RANGE(0x03bc, 0x03bf) AM_DEVREADWRITE8("lpt_0", pc_lpt_r, pc_lpt_w, 0x00ff)
+	AM_RANGE(0x03e8, 0x03ef) AM_DEVREADWRITE8("ins8250_2", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE8(pc_fdc_r,					pc_fdc_w, 0xffff)
+	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8("ins8250_0", ins8250_r, ins8250_w, 0xffff)
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( pc200_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
+	AM_RANGE(0xa0000, 0xbffff) AM_NOP
+	AM_RANGE(0xc0000, 0xc7fff) AM_ROM
+	AM_RANGE(0xc8000, 0xcffff) AM_ROM
+	AM_RANGE(0xd0000, 0xeffff) AM_NOP
+	AM_RANGE(0xf0000, 0xfffff) AM_ROM
+ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(pc200_io, ADDRESS_SPACE_IO, 16)
 	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", dma8237_r, dma8237_w, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8("pic8259", pic8259_r, pic8259_w, 0xffff)
-	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8("pit8253", pit8253_r, pit8253_w, 0x00ff)
+	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0065) AM_READWRITE(pc1640_16le_port60_r,			pc1640_16le_port60_w)
 	AM_RANGE(0x0078, 0x0079) AM_READWRITE(pc1640_16le_mouse_x_r,			pc1640_16le_mouse_x_w)
 	AM_RANGE(0x007a, 0x007b) AM_READWRITE(pc1640_16le_mouse_y_r,			pc1640_16le_mouse_y_w)
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,					pc_page_w, 0xffff)
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE(pc16le_JOY_r,					pc16le_JOY_w)
-	AM_RANGE(0x0278, 0x027b) AM_DEVREADWRITE8("lpt_2", pc_lpt_r, pc_lpt_w, 0x00ff)
+	AM_RANGE(0x0278, 0x027b) AM_READ(pc200_16le_port278_r) AM_DEVWRITE8("lpt_2", pc_lpt_w, 0x00ff)
 	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8("ins8250_3", ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ins8250_1", ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc16le_HDC1_r,				pc16le_HDC1_w)
@@ -475,7 +522,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(pc1640_io, ADDRESS_SPACE_IO, 16)
 	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", dma8237_r, dma8237_w, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8("pic8259", pic8259_r, pic8259_w, 0xffff)
-	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8("pit8253", pit8253_r, pit8253_w, 0x00ff)
+	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0065) AM_READWRITE(pc1640_16le_port60_r,			pc1640_16le_port60_w)
 	AM_RANGE(0x0070, 0x0071) AM_READWRITE(mc146818_port16le_r,		mc146818_port16le_w)
 	AM_RANGE(0x0078, 0x0079) AM_READWRITE(pc1640_16le_mouse_x_r,	pc1640_16le_mouse_x_w)
@@ -494,7 +541,36 @@ static ADDRESS_MAP_START(pc1640_io, ADDRESS_SPACE_IO, 16)
 	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8("ins8250_0", ins8250_r, ins8250_w, 0xffff)
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START( pc1512_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
+	AM_RANGE(0xa0000, 0xbffff) AM_NOP
+	AM_RANGE(0xc0000, 0xc7fff) AM_ROM
+	AM_RANGE(0xc8000, 0xcffff) AM_ROM
+	AM_RANGE(0xd0000, 0xfbfff) AM_NOP
+	AM_RANGE(0xfc000, 0xfffff) AM_ROM
+ADDRESS_MAP_END
 
+static ADDRESS_MAP_START(pc1512_io, ADDRESS_SPACE_IO, 16)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", dma8237_r, dma8237_w, 0xffff)
+	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8("pic8259", pic8259_r, pic8259_w, 0xffff)
+	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8("pit8253", pit8253_r, pit8253_w, 0xffff)
+	AM_RANGE(0x0060, 0x0065) AM_READWRITE(pc1640_16le_port60_r,			pc1640_16le_port60_w)
+	AM_RANGE(0x0070, 0x0071) AM_READWRITE(mc146818_port16le_r,		mc146818_port16le_w)
+	AM_RANGE(0x0078, 0x0079) AM_READWRITE(pc1640_16le_mouse_x_r,	pc1640_16le_mouse_x_w)
+	AM_RANGE(0x007a, 0x007b) AM_READWRITE(pc1640_16le_mouse_y_r,	pc1640_16le_mouse_y_w)
+	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,				pc_page_w, 0xffff)
+	AM_RANGE(0x0200, 0x0207) AM_READWRITE(pc16le_JOY_r,				pc16le_JOY_w)
+	AM_RANGE(0x0278, 0x027b) AM_DEVREADWRITE8("lpt_2", pc_lpt_r, pc_lpt_w, 0x00ff)
+	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8("ins8250_3", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ins8250_1", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc16le_HDC1_r,			pc16le_HDC1_w)
+	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc16le_HDC2_r,			pc16le_HDC2_w)
+	AM_RANGE(0x0378, 0x037b) AM_READ(pc1640_16le_port378_r) AM_DEVWRITE8("lpt_1", pc_lpt_w, 0x00ff)
+	AM_RANGE(0x03bc, 0x03bf) AM_DEVREADWRITE8("lpt_0", pc_lpt_r, pc_lpt_w, 0x00ff)
+	AM_RANGE(0x03e8, 0x03ef) AM_DEVREADWRITE8("ins8250_2", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE8(pc_fdc_r,				pc_fdc_w, 0xffff)
+	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8("ins8250_0", ins8250_r, ins8250_w, 0xffff)
+ADDRESS_MAP_END
 
 static INPUT_PORTS_START( pcmda )
 	PORT_START("IN0") /* IN0 */
@@ -854,7 +930,7 @@ static INPUT_PORTS_START( bondwell )
 	PORT_DIPSETTING(	0x02, "On (12 MHz)" )
 	PORT_BIT( 0x01, 0x01,	IPT_UNUSED )
 
-//	PORT_INCLUDE( at_keyboard )		/* IN4 - IN11 */
+//  PORT_INCLUDE( at_keyboard )     /* IN4 - IN11 */
     PORT_INCLUDE( kb_keytronic_pc )
 	PORT_INCLUDE( pc_mouse_microsoft )	/* IN12 - IN14 */
 	PORT_INCLUDE( pc_joystick )			/* IN15 - IN19 */
@@ -929,9 +1005,9 @@ static INPUT_PORTS_START( xtcga )
 	PORT_DIPNAME( 0x04, 0x04, "HDC2 (CA00:0 port 324-327)")
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
-//	PORT_DIPNAME( 0x02, 0x02, "Turbo Switch" )
-//	PORT_DIPSETTING(	0x00, "Off (4.77 MHz)" )
-//	PORT_DIPSETTING(	0x02, "On (12 MHz)" )
+//  PORT_DIPNAME( 0x02, 0x02, "Turbo Switch" )
+//  PORT_DIPSETTING(    0x00, "Off (4.77 MHz)" )
+//  PORT_DIPSETTING(    0x02, "On (12 MHz)" )
 	PORT_BIT( 0x01, 0x01,	IPT_UNUSED )
 
 	PORT_INCLUDE( pc_keyboard )		/* IN4 - IN11 */
@@ -1007,9 +1083,9 @@ static INPUT_PORTS_START( pc200 )
 	PORT_DIPSETTING(	0x08, "0x08" )
 /* 2008-05 FP: This Dip Switch overlaps the next one.
 Since pc200 is anyway NOT_WORKING, I comment out this one */
-/*	PORT_DIPNAME( 0x10, 0x00, "37a 0x80")
-	PORT_DIPSETTING(	0x00, "0x00" )
-	PORT_DIPSETTING(	0x10, "0x10" ) */
+/*  PORT_DIPNAME( 0x10, 0x00, "37a 0x80")
+    PORT_DIPSETTING(    0x00, "0x00" )
+    PORT_DIPSETTING(    0x10, "0x10" ) */
 	PORT_DIPNAME( 0x30, 0x00, "Integrated Graphics Adapter")
 	PORT_DIPSETTING(	0x00, "CGA 1" )
 	PORT_DIPSETTING(	0x10, "CGA 2" )
@@ -1172,7 +1248,7 @@ static INPUT_PORTS_START( pc1640 )
 
 	PORT_START("DSW0") /* IN1 */
 	PORT_DIPNAME( 0x07, 0x07, "Name/Language")
-//	PORT_DIPSETTING(    0x00, "PC 512k" ) // machine crashes with ega bios at 0xc0000
+//  PORT_DIPSETTING(    0x00, "PC 512k" ) // machine crashes with ega bios at 0xc0000
 	PORT_DIPSETTING(	0x01, DEF_STR( Italian ) ) //prego attendere
 	PORT_DIPSETTING(	0x02, "V.g. v\xC3\xA4nta" )
 	PORT_DIPSETTING(	0x03, "Vent et cjeblik" ) // seldom c
@@ -1261,7 +1337,7 @@ static INPUT_PORTS_START( pc1640 )
 
 	PORT_INCLUDE( amstrad_keyboard )	/* IN4 - IN14 */
 
-//	PORT_INCLUDE( pc_mouse_microsoft )  /* IN12 - IN14 */
+//  PORT_INCLUDE( pc_mouse_microsoft )  /* IN12 - IN14 */
 
 INPUT_PORTS_END
 
@@ -1370,6 +1446,18 @@ static const pc_lpt_interface pc_lpt_config =
 	DEVCB_CPU_INPUT_LINE("maincpu", 0)
 };
 
+static const floppy_config ibmpc_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(pc),
+	DO_NOT_KEEP_GEOMETRY
+};
+
 
 #define MDRV_CPU_PC(mem, port, type, clock, vblankfunc)	\
 	MDRV_CPU_ADD("maincpu", type, clock)				\
@@ -1380,6 +1468,7 @@ static const pc_lpt_interface pc_lpt_config =
 
 
 static MACHINE_DRIVER_START( pcmda )
+	MDRV_DRIVER_DATA(pc_state)
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V20, 4772720)
 	MDRV_CPU_PROGRAM_MAP(pc8_map)
@@ -1434,11 +1523,18 @@ static MACHINE_DRIVER_START( pcmda )
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("640K")
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( pcherc )
+	MDRV_DRIVER_DATA(pc_state)
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", V20, 4772720)
 	MDRV_CPU_PROGRAM_MAP(pc8_map)
@@ -1491,7 +1587,13 @@ static MACHINE_DRIVER_START( pcherc )
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("640K")
 MACHINE_DRIVER_END
 
 
@@ -1502,8 +1604,8 @@ static const cassette_config ibm5150_cassette_config =
 	CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED
 };
 
-
 static MACHINE_DRIVER_START( ibm5150 )
+	MDRV_DRIVER_DATA(pc_state)
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", I8088, XTAL_14_31818MHz/3)
 	MDRV_CPU_PROGRAM_MAP(pc8_map)
@@ -1560,11 +1662,18 @@ static MACHINE_DRIVER_START( ibm5150 )
 
 	MDRV_CASSETTE_ADD( "cassette", ibm5150_cassette_config )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("640K")
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( pccga )
+	MDRV_DRIVER_DATA(pc_state)
 	/* basic machine hardware */
 	MDRV_CPU_PC(pc8, pc8, I8088, 4772720, pc_frame_interrupt)	/* 4,77 MHz */
 
@@ -1616,11 +1725,18 @@ static MACHINE_DRIVER_START( pccga )
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("640K")	
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( europc )
+	MDRV_DRIVER_DATA(pc_state)
 	/* basic machine hardware */
 	MDRV_CPU_PC(europc, europc, I8088, 4772720*2, pc_frame_interrupt)
 
@@ -1663,11 +1779,18 @@ static MACHINE_DRIVER_START( europc )
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("640K")	
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( ibm5160 )
+	MDRV_DRIVER_DATA(pc_state)
 	/* basic machine hardware */
 	MDRV_CPU_PC(pc8, pc8, I8088, XTAL_14_31818MHz/3, pc_frame_interrupt)
 
@@ -1717,13 +1840,20 @@ static MACHINE_DRIVER_START( ibm5160 )
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("640K")	
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( pc200 )
+	MDRV_DRIVER_DATA(pc_state)
 	/* basic machine hardware */
-	MDRV_CPU_PC(pc1640, pc200, I8086, 8000000, pc_frame_interrupt)
+	MDRV_CPU_PC(pc200, pc200, I8086, 8000000, pc_frame_interrupt)
 
 	MDRV_MACHINE_START(pc)
 	MDRV_MACHINE_RESET(pc)
@@ -1757,13 +1887,82 @@ static MACHINE_DRIVER_START( pc200 )
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("640K")	
 MACHINE_DRIVER_END
 
 
-static MACHINE_DRIVER_START( pc1512 )
+
+
+static MACHINE_DRIVER_START( ppc512 )
+	MDRV_DRIVER_DATA(pc_state)
 	/* basic machine hardware */
-	MDRV_CPU_PC(pc1640, pc1640, I8086, 8000000, pc_frame_interrupt)
+	MDRV_CPU_ADD("maincpu", V30, 8000000)
+	MDRV_CPU_PROGRAM_MAP(ppc512_map)
+	MDRV_CPU_IO_MAP(ppc512_io)
+	MDRV_CPU_VBLANK_INT_HACK(pc_frame_interrupt, 4)
+
+
+	MDRV_MACHINE_START(pc)
+	MDRV_MACHINE_RESET(pc)
+
+	MDRV_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
+
+	MDRV_DMA8237_ADD( "dma8237", ibm5150_dma8237_config )
+
+	MDRV_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
+
+	MDRV_I8255A_ADD( "ppi8255", pc_ppi8255_interface )
+
+	MDRV_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
+	MDRV_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
+	MDRV_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2] )			/* TODO: Verify model */
+	MDRV_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3] )			/* TODO: Verify model */
+
+	/* video hardware */
+	MDRV_IMPORT_FROM( pcvideo_pc200 )
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	/* printer */
+	MDRV_PC_LPT_ADD("lpt_0", pc_lpt_config)
+	MDRV_PC_LPT_ADD("lpt_1", pc_lpt_config)
+	MDRV_PC_LPT_ADD("lpt_2", pc_lpt_config)
+
+	/* harddisk */
+	MDRV_IMPORT_FROM( pc_hdc )
+
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("512K")	
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( ppc640 )
+	MDRV_IMPORT_FROM( ppc512 )
+	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_PROGRAM_MAP(ppc640_map)
+	
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("640K")
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( pc1512 )
+	MDRV_DRIVER_DATA(pc_state)
+	/* basic machine hardware */
+	MDRV_CPU_PC(pc1512, pc1512, I8086, 8000000, pc_frame_interrupt)
 
 	MDRV_MACHINE_START(pc)
 	MDRV_MACHINE_RESET(pc)
@@ -1799,11 +1998,18 @@ static MACHINE_DRIVER_START( pc1512 )
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("640K")
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( pc1640 )
+	MDRV_DRIVER_DATA(pc_state)
 	/* basic machine hardware */
 	MDRV_CPU_PC(pc1640, pc1640, I8086, 8000000, pc_vga_frame_interrupt)
 
@@ -1841,11 +2047,18 @@ static MACHINE_DRIVER_START( pc1640 )
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("640K")
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( xtvga )
+	MDRV_DRIVER_DATA(pc_state)
 	/* basic machine hardware */
 	MDRV_CPU_PC(pc16, pc16, I8086, 12000000, pc_vga_frame_interrupt)
 
@@ -1895,11 +2108,18 @@ static MACHINE_DRIVER_START( xtvga )
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("640K")
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( t1000hx )
+	MDRV_DRIVER_DATA(pc_state)
 	/* basic machine hardware */
 	MDRV_CPU_PC(tandy1000, tandy1000, I8088, 8000000, pc_frame_interrupt)
 
@@ -1937,11 +2157,18 @@ static MACHINE_DRIVER_START( t1000hx )
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("640K")
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( t1000_16 )
+	MDRV_DRIVER_DATA(pc_state)
 	/* basic machine hardware */
 	MDRV_CPU_PC(tandy1000_16, tandy1000_16, I8086, XTAL_28_63636MHz / 3, pc_frame_interrupt)
 
@@ -1979,11 +2206,18 @@ static MACHINE_DRIVER_START( t1000_16 )
 	/* harddisk */
 	MDRV_IMPORT_FROM( pc_hdc )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("640K")
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( ibmpcjr )
+	MDRV_DRIVER_DATA(pc_state)
 	/* basic machine hardware */
 	MDRV_CPU_PC(ibmpcjr, ibmpcjr, I8088, 4900000, pcjr_frame_interrupt)	/* TODO: Get correct cpu frequency, probably XTAL_14_31818MHz/3 */
 
@@ -2019,7 +2253,9 @@ static MACHINE_DRIVER_START( ibmpcjr )
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", ibm5150_cassette_config )
 
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_not_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
 
 	/* cartridge */
 	MDRV_CARTSLOT_ADD("cart1")
@@ -2030,6 +2266,10 @@ static MACHINE_DRIVER_START( ibmpcjr )
 	MDRV_CARTSLOT_EXTENSION_LIST("jrc")
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(pcjr_cartridge)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("640K")
 MACHINE_DRIVER_END
 
 #if 0
@@ -2094,13 +2334,13 @@ MACHINE_DRIVER_END
 ROM_START( ibm5150 )
 	ROM_REGION(0x100000,"maincpu", 0)
 	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
-//	ROM_LOAD("600963.u12", 0xc8000, 0x02000, CRC(f3daf85f) SHA1(3bd29538832d3084cbddeec92593988772755283))	/* Tandon/Western Digital Fixed Disk Adapter 600963-001__TYPE_5.U12.2764.bin - Meant for an IBM PC or XT which lacked bios support for HDDs */
+//  ROM_LOAD("600963.u12", 0xc8000, 0x02000, CRC(f3daf85f) SHA1(3bd29538832d3084cbddeec92593988772755283))  /* Tandon/Western Digital Fixed Disk Adapter 600963-001__TYPE_5.U12.2764.bin - Meant for an IBM PC or XT which lacked bios support for HDDs */
 
 	/* Xebec 1210 and 1220 Z80-based ST409/ST412 MFM controllers */
-//	ROM_LOAD("5000059.12d", 0xc8000, 0x02000, CRC(03e0ee9a) SHA1(6691be4f6a8d690c696ad8b259708d3e7e87ad89))	/* Xebec 1210 IBM OEM Fixed Disk Adapter - Revision 1, supplied with rev1 and rev2 XT, and PC/3270. supports 4 hdd types, selectable by jumpers (which on the older XTs were usually soldered to one setting) */
-//	ROM_LOAD("62x0822.12d", 0xc8000, 0x02000, CRC(4cdd2193) SHA1(fe8f88333b5e13e170bf637a9a0090383dee454d))	/* Xebec 1210 IBM OEM Fixed Disk Adapter 62X0822__(M)_AMI_8621MAB__S68B364-P__(C)IBM_CORP_1982,1985__PHILIPPINES.12D.2364.bin - Revision 2, supplied with rev3 and rev4 XT. supports 4 hdd types, selectable by jumpers (which unlike the older XTs, were changable without requiring soldering )*/
-//	ROM_LOAD("unknown.12d", 0xc8000, 0x02000, NO_DUMP )	/* Xebec 1210 Non-IBM/Retail Fixed Disk Adapter - supports 4 hdd types, selectable by jumpers (changable without soldering) */
-//	ROM_LOAD("unknown.???", 0xc8000, 0x02000, NO_DUMP )	/* Xebec 1220 Non-IBM/Retail Fixed Disk Adapter plus Floppy Disk Adapter - supports 4 hdd types, selectable by jumpers (changable without soldering) */
+//  ROM_LOAD("5000059.12d", 0xc8000, 0x02000, CRC(03e0ee9a) SHA1(6691be4f6a8d690c696ad8b259708d3e7e87ad89)) /* Xebec 1210 IBM OEM Fixed Disk Adapter - Revision 1, supplied with rev1 and rev2 XT, and PC/3270. supports 4 hdd types, selectable by jumpers (which on the older XTs were usually soldered to one setting) */
+//  ROM_LOAD("62x0822.12d", 0xc8000, 0x02000, CRC(4cdd2193) SHA1(fe8f88333b5e13e170bf637a9a0090383dee454d)) /* Xebec 1210 IBM OEM Fixed Disk Adapter 62X0822__(M)_AMI_8621MAB__S68B364-P__(C)IBM_CORP_1982,1985__PHILIPPINES.12D.2364.bin - Revision 2, supplied with rev3 and rev4 XT. supports 4 hdd types, selectable by jumpers (which unlike the older XTs, were changable without requiring soldering )*/
+//  ROM_LOAD("unknown.12d", 0xc8000, 0x02000, NO_DUMP ) /* Xebec 1210 Non-IBM/Retail Fixed Disk Adapter - supports 4 hdd types, selectable by jumpers (changable without soldering) */
+//  ROM_LOAD("unknown.???", 0xc8000, 0x02000, NO_DUMP ) /* Xebec 1220 Non-IBM/Retail Fixed Disk Adapter plus Floppy Disk Adapter - supports 4 hdd types, selectable by jumpers (changable without soldering) */
 
 	/* IBM PC 5150 (rev 3: 1501-476 10/27/82) 5-screw case 64-256k MB w/1501981 CGA Card, ROM Basic 1.1 */
 	ROM_DEFAULT_BIOS( "rev3" )
@@ -2129,9 +2369,9 @@ ROM_START( ibm5150 )
 	ROMX_LOAD("5700671.u33", 0xfe000, 0x2000, CRC(b7d4ec46) SHA1(bdb06f846c4768f39eeff7e16b6dbff8cd2117d2), ROM_BIOS(3))
 
 	/* Z80 on the Xebec 1210 and 1220 Hard Disk Controllers */
-//	ROM_REGION(0x10000, "cpu1", 0)
-//	ROM_LOAD("104839re.12a", 0x0000, 0x1000, CRC(3ad32fcc) SHA1(0127fa520aaee91285cb46a640ed835b4554e4b3))	/* Xebec 1210 IBM OEM Hard Disk Controller, silkscreened "104839RE // COPYRIGHT // XEBEC 1986" - Common for both XEBEC 1210 IBM OEM revisions. Some cards have the rom marked 104839E instead (John Eliott's card is like this), but contents are the same. */
-//	/* Other versions probably exist for the non-IBM/Retail 1210 and the 1220 */
+//  ROM_REGION(0x10000, "cpu1", 0)
+//  ROM_LOAD("104839re.12a", 0x0000, 0x1000, CRC(3ad32fcc) SHA1(0127fa520aaee91285cb46a640ed835b4554e4b3))  /* Xebec 1210 IBM OEM Hard Disk Controller, silkscreened "104839RE // COPYRIGHT // XEBEC 1986" - Common for both XEBEC 1210 IBM OEM revisions. Some cards have the rom marked 104839E instead (John Eliott's card is like this), but contents are the same. */
+//  /* Other versions probably exist for the non-IBM/Retail 1210 and the 1220 */
 
 	/* IBM 1501981(CGA) and 1501985(MDA) Character rom */
 	ROM_REGION(0x2000,"gfx1", 0)
@@ -2204,7 +2444,7 @@ ROM_END
 ROM_START( pc )
 	ROM_REGION(0x100000,"maincpu", 0)
 	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
-//	ROM_LOAD("xthdd.rom",  0xc8000, 0x02000, CRC(a96317da))
+//  ROM_LOAD("xthdd.rom",  0xc8000, 0x02000, CRC(a96317da))
 	ROM_LOAD("pcxt.rom",    0xfe000, 0x02000, CRC(031aafad) SHA1(a641b505bbac97b8775f91fe9b83d9afdf4d038f))
 
 	/* IBM 1501981(CGA) and 1501985(MDA) Character rom */
@@ -2328,7 +2568,7 @@ ROM_END
 
 ROM_START( t1000rl )
 	ROM_REGION(0x100000,"maincpu", 0)
-//	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */	// not sure about this one
+//  ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */   // not sure about this one
 
 	/* v2.0.0.1 */
 	/* Rom is labeled "(C) TANDY CORP. 1990 // 8079073 // LH534G70 JAPAN // 9034 D" */
@@ -2344,29 +2584,29 @@ ROM_END
 ROM_START( ibm5160 )
 	ROM_REGION16_LE(0x100000,"maincpu", 0)
 	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
-//	ROM_LOAD("600963.u12", 0xc8000, 0x02000, CRC(f3daf85f) SHA1(3bd29538832d3084cbddeec92593988772755283))  /* Tandon/Western Digital Fixed Disk Adapter 600963-001__TYPE_5.U12.2764.bin */
+//  ROM_LOAD("600963.u12", 0xc8000, 0x02000, CRC(f3daf85f) SHA1(3bd29538832d3084cbddeec92593988772755283))  /* Tandon/Western Digital Fixed Disk Adapter 600963-001__TYPE_5.U12.2764.bin */
 
 	/* PC/3270 has a 3270 keyboard controller card, plus a rom on that card to tell the pc how to run it.
-		* Unlike the much more complex keyboard controller used in the AT/3270, this one only has one rom,
-		  a motorola made "(M)1503828 // XE // 8434A XM // SC81155P" custom (an MCU?; the more complicated
-		  3270/AT keyboard card uses this same exact chip), an 8254, and some logic chips.
-		  Thanks to high resolution pictures provided by John Elliott, I can see that the location of the
+        * Unlike the much more complex keyboard controller used in the AT/3270, this one only has one rom,
+          a motorola made "(M)1503828 // XE // 8434A XM // SC81155P" custom (an MCU?; the more complicated
+          3270/AT keyboard card uses this same exact chip), an 8254, and some logic chips.
+          Thanks to high resolution pictures provided by John Elliott, I can see that the location of the
                   chips is unlabeled (except for by absolute pin position on the back), and there are no pals or proms.
-		* The board is stickered "2683114 // 874999 // 8446 SU" on the front.
-		* The board has a single DE-9 connector where the keyboard dongle connects to.
-		* The keyboard dongle has two connectors on it: a DIN-5 connector which connects to the Motherboard's
-		  keyboard port, plus an RJ45-lookalike socket which the 3270 keyboard connects to.
-		* The rom is mapped very strangely to avoid hitting the hard disk controller:
-		  The first 0x800 bytes appear at C0000-C07FF, and the last 0x1800 bytes appear at 0xCA000-CB7FF
-	*/
-//	ROM_LOAD("6323581.bin", 0xc0000, 0x00800, CRC(cf323cbd) SHA1(93c1ef2ede02772a46dab075c32e179faa045f81))
-//	ROM_LOAD("6323581.bin", 0xca000, 0x01800, CRC(cf323cbd) SHA1(93c1ef2ede02772a46dab075c32e179faa045f81) ROM_SKIP(0x800))
+        * The board is stickered "2683114 // 874999 // 8446 SU" on the front.
+        * The board has a single DE-9 connector where the keyboard dongle connects to.
+        * The keyboard dongle has two connectors on it: a DIN-5 connector which connects to the Motherboard's
+          keyboard port, plus an RJ45-lookalike socket which the 3270 keyboard connects to.
+        * The rom is mapped very strangely to avoid hitting the hard disk controller:
+          The first 0x800 bytes appear at C0000-C07FF, and the last 0x1800 bytes appear at 0xCA000-CB7FF
+    */
+//  ROM_LOAD("6323581.bin", 0xc0000, 0x00800, CRC(cf323cbd) SHA1(93c1ef2ede02772a46dab075c32e179faa045f81))
+//  ROM_LOAD("6323581.bin", 0xca000, 0x01800, CRC(cf323cbd) SHA1(93c1ef2ede02772a46dab075c32e179faa045f81) ROM_SKIP(0x800))
 
 	/* Xebec 1210 and 1220 Z80-based ST409/ST412 MFM controllers */
-//	ROM_LOAD("5000059.12d", 0xc8000, 0x02000, CRC(03e0ee9a) SHA1(6691be4f6a8d690c696ad8b259708d3e7e87ad89))	/* Xebec 1210 IBM OEM Fixed Disk Adapter - Revision 1, supplied with rev1 and rev2 XT, and PC/3270. supports 4 hdd types, selectable by jumpers (which on the older XTs were usually soldered to one setting) */
-//	ROM_LOAD("62x0822.12d", 0xc8000, 0x02000, CRC(4cdd2193) SHA1(fe8f88333b5e13e170bf637a9a0090383dee454d))	/* Xebec 1210 IBM OEM Fixed Disk Adapter 62X0822__(M)_AMI_8621MAB__S68B364-P__(C)IBM_CORP_1982,1985__PHILIPPINES.12D.2364.bin - Revision 2, supplied with rev3 and rev4 XT. supports 4 hdd types, selectable by jumpers (which unlike the older XTs, were changable without requiring soldering )*/
-//	ROM_LOAD("unknown.12d", 0xc8000, 0x02000, NO_DUMP )	/* Xebec 1210 Non-IBM/Retail Fixed Disk Adapter - supports 4 hdd types, selectable by jumpers (changable without soldering) */
-//	ROM_LOAD("unknown.???", 0xc8000, 0x02000, NO_DUMP )	/* Xebec 1220 Non-IBM/Retail Fixed Disk Adapter plus Floppy Disk Adapter - supports 4 hdd types, selectable by jumpers (changable without soldering) */
+//  ROM_LOAD("5000059.12d", 0xc8000, 0x02000, CRC(03e0ee9a) SHA1(6691be4f6a8d690c696ad8b259708d3e7e87ad89)) /* Xebec 1210 IBM OEM Fixed Disk Adapter - Revision 1, supplied with rev1 and rev2 XT, and PC/3270. supports 4 hdd types, selectable by jumpers (which on the older XTs were usually soldered to one setting) */
+//  ROM_LOAD("62x0822.12d", 0xc8000, 0x02000, CRC(4cdd2193) SHA1(fe8f88333b5e13e170bf637a9a0090383dee454d)) /* Xebec 1210 IBM OEM Fixed Disk Adapter 62X0822__(M)_AMI_8621MAB__S68B364-P__(C)IBM_CORP_1982,1985__PHILIPPINES.12D.2364.bin - Revision 2, supplied with rev3 and rev4 XT. supports 4 hdd types, selectable by jumpers (which unlike the older XTs, were changable without requiring soldering )*/
+//  ROM_LOAD("unknown.12d", 0xc8000, 0x02000, NO_DUMP ) /* Xebec 1210 Non-IBM/Retail Fixed Disk Adapter - supports 4 hdd types, selectable by jumpers (changable without soldering) */
+//  ROM_LOAD("unknown.???", 0xc8000, 0x02000, NO_DUMP ) /* Xebec 1220 Non-IBM/Retail Fixed Disk Adapter plus Floppy Disk Adapter - supports 4 hdd types, selectable by jumpers (changable without soldering) */
 
 
 	ROM_DEFAULT_BIOS( "rev4" )
@@ -2387,72 +2627,72 @@ ROM_START( ibm5160 )
 	ROMX_LOAD("68x4370.u19", 0xf0000, 0x8000, CRC(758ff036) SHA1(045e27a70407d89b7956ecae4d275bd2f6b0f8e2), ROM_BIOS(4))
 	ROMX_LOAD("62x0890.u18", 0xf8000, 0x8000, CRC(4f417635) SHA1(daa61762d3afdd7262e34edf1a3d2df9a05bcebb), ROM_BIOS(4))
 
-//	ROM_SYSTEM_BIOS( 4, "xtdiag", "IBM XT 5160 w/Supersoft Diagnostics" )    /* ROMs marked as BAD_DUMP for now. We expect the data to be in a different ROM chip layout */
-//	ROMX_LOAD("basicc11.f6", 0xf6000, 0x2000, BAD_DUMP CRC(80d3cf5d) SHA1(64769b7a8b60ffeefa04e4afbec778069a2840c9), ROM_BIOS(5) )
-//	ROMX_LOAD("basicc11.f8", 0xf8000, 0x2000, BAD_DUMP CRC(673a4acc) SHA1(082ae803994048e225150f771794ca305f73d731), ROM_BIOS(5) )
-//	ROMX_LOAD("basicc11.fa", 0xfa000, 0x2000, BAD_DUMP CRC(aac3fc37) SHA1(c9e0529470edf04da093bb8c8ae2536c688c1a74), ROM_BIOS(5) )
-//	ROMX_LOAD("basicc11.fc", 0xfc000, 0x2000, BAD_DUMP CRC(3062b3fc) SHA1(5134dd64721cbf093d059ee5d3fd09c7f86604c7), ROM_BIOS(5) )
-//	ROMX_LOAD("xtdiag.bin", 0xfe000, 0x2000, CRC(4e89a4d8) SHA1(39a28fb2fe9f1aeea24ed2c0255cebca76e37ed7), ROM_BIOS(5) )
+//  ROM_SYSTEM_BIOS( 4, "xtdiag", "IBM XT 5160 w/Supersoft Diagnostics" )    /* ROMs marked as BAD_DUMP for now. We expect the data to be in a different ROM chip layout */
+//  ROMX_LOAD("basicc11.f6", 0xf6000, 0x2000, BAD_DUMP CRC(80d3cf5d) SHA1(64769b7a8b60ffeefa04e4afbec778069a2840c9), ROM_BIOS(5) )
+//  ROMX_LOAD("basicc11.f8", 0xf8000, 0x2000, BAD_DUMP CRC(673a4acc) SHA1(082ae803994048e225150f771794ca305f73d731), ROM_BIOS(5) )
+//  ROMX_LOAD("basicc11.fa", 0xfa000, 0x2000, BAD_DUMP CRC(aac3fc37) SHA1(c9e0529470edf04da093bb8c8ae2536c688c1a74), ROM_BIOS(5) )
+//  ROMX_LOAD("basicc11.fc", 0xfc000, 0x2000, BAD_DUMP CRC(3062b3fc) SHA1(5134dd64721cbf093d059ee5d3fd09c7f86604c7), ROM_BIOS(5) )
+//  ROMX_LOAD("xtdiag.bin", 0xfe000, 0x2000, CRC(4e89a4d8) SHA1(39a28fb2fe9f1aeea24ed2c0255cebca76e37ed7), ROM_BIOS(5) )
 
 	/* IBM 1501981(CGA) and 1501985(MDA) Character rom */
 	ROM_REGION(0x2000,"gfx1", 0)
 	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f)) /* "AMI 8412PI // 5788005 // (C) IBM CORP. 1981 // KOREA" */
 
 	/* Z80 ROM on the Xebec 1210 and 1220 Hard Disk Controllers */
-//	ROM_REGION(0x10000, "cpu1", 0)
-//	ROM_LOAD("104839re.12a", 0x0000, 0x1000, CRC(3ad32fcc) SHA1(0127fa520aaee91285cb46a640ed835b4554e4b3))	/* Xebec 1210 IBM OEM Hard Disk Controller, silkscreened "104839RE // COPYRIGHT // XEBEC 1986" - Common for both XEBEC 1210 IBM OEM revisions. Some cards have the rom marked 104839E instead (John Eliott's card is like this), but contents are the same. */
-//	/* Other versions probably exist for the non-IBM/Retail 1210 and the 1220 */
+//  ROM_REGION(0x10000, "cpu1", 0)
+//  ROM_LOAD("104839re.12a", 0x0000, 0x1000, CRC(3ad32fcc) SHA1(0127fa520aaee91285cb46a640ed835b4554e4b3))  /* Xebec 1210 IBM OEM Hard Disk Controller, silkscreened "104839RE // COPYRIGHT // XEBEC 1986" - Common for both XEBEC 1210 IBM OEM revisions. Some cards have the rom marked 104839E instead (John Eliott's card is like this), but contents are the same. */
+//  /* Other versions probably exist for the non-IBM/Retail 1210 and the 1220 */
 
 
 	/* PC/3270 and AT/3270 have a set of two (optionally 3) 3270PGC programmable graphics controller cards on them which
            have 2 extra roms, plus a number of custom chips and at least one MCU.
-	   Information on these three boards plus the keyboard interface can be found at:
-	   http://www.seasip.info/VintagePC/5271.html
-		*** The descriptions below are based on the cards from the AT/3270, which are slightly
-		    different from the PC/3270 cards. Changes between the PC/3270 and AT/3270 video cards are
-		    listed:
-		    1. The card lip edge is changed on the APA and PS cards to allow them to be placed
-		       in a 16-bit ISA slot.
-		    2. The Main Display board is exactly the same PCB (hence cannot be placed in a 16-bit
-		       ISA slot), but the socket to the left of the 8255 is now populated, and has a lot of
-		       rework wires connected to various places on the PCB.
-		    3. The APA board was completely redone, and no longer has an 8254 (though it does have an
-		       empty socket) and has ?twice as much memory on it? (not sure about this). The APA
-		       board also now connects to both main board connectors 1 and 3, instead of only
-		       connector 1.
-		    4. The PS board has been minorly redone to allow clearance for a 16-bit ISA connector,
-		       but no other significant chip changes were made. The connector 3 still exists on the
-		       board but is unpopulated. Connector 2 still connects to the Main display board as
-		       before.
+       Information on these three boards plus the keyboard interface can be found at:
+       http://www.seasip.info/VintagePC/5271.html
+        *** The descriptions below are based on the cards from the AT/3270, which are slightly
+            different from the PC/3270 cards. Changes between the PC/3270 and AT/3270 video cards are
+            listed:
+            1. The card lip edge is changed on the APA and PS cards to allow them to be placed
+               in a 16-bit ISA slot.
+            2. The Main Display board is exactly the same PCB (hence cannot be placed in a 16-bit
+               ISA slot), but the socket to the left of the 8255 is now populated, and has a lot of
+               rework wires connected to various places on the PCB.
+            3. The APA board was completely redone, and no longer has an 8254 (though it does have an
+               empty socket) and has ?twice as much memory on it? (not sure about this). The APA
+               board also now connects to both main board connectors 1 and 3, instead of only
+               connector 1.
+            4. The PS board has been minorly redone to allow clearance for a 16-bit ISA connector,
+               but no other significant chip changes were made. The connector 3 still exists on the
+               board but is unpopulated. Connector 2 still connects to the Main display board as
+               before.
 
-		** The Main Display Board (with one 48-pin custom, 3 40 pin customs at least one of which is
-		   an MCU, four 2016BP-10 srams, an 8254 and an 8255 on it, two crystals (16.257MHz and
-		   21.676MHz) plus two mask roms ) is stickered "61X6579 // 983623 // 6390 SU" on the front.
-		*  The pcb is trace-marked "6320987" on both the front and back.
-		*  The card has a DE-9 connector on it for a monitor.
-		*  The customs are marked:
-		   "1503192 // TC15G008P-0009 // JAPAN       8549A" (40 pins, at U52)
-		   "1503193 // TC15G008AP-0020 // JAPAN       8610A" (48 pins, at U29)
-		   "(M)1503194 // XE KGA005 // 8616N XM // SC81156P" (40 pins, at U36, likely an MCU)
-		   "S8613 // SCN2672B // C4N40 A // CP3303" (40 pins, at U24, also possibly an MCU)
+        ** The Main Display Board (with one 48-pin custom, 3 40 pin customs at least one of which is
+           an MCU, four 2016BP-10 srams, an 8254 and an 8255 on it, two crystals (16.257MHz and
+           21.676MHz) plus two mask roms ) is stickered "61X6579 // 983623 // 6390 SU" on the front.
+        *  The pcb is trace-marked "6320987" on both the front and back.
+        *  The card has a DE-9 connector on it for a monitor.
+        *  The customs are marked:
+           "1503192 // TC15G008P-0009 // JAPAN       8549A" (40 pins, at U52)
+           "1503193 // TC15G008AP-0020 // JAPAN       8610A" (48 pins, at U29)
+           "(M)1503194 // XE KGA005 // 8616N XM // SC81156P" (40 pins, at U36, likely an MCU)
+           "S8613 // SCN2672B // C4N40 A // CP3303" (40 pins, at U24, also possibly an MCU)
 
-		** The All Points Addressable (Frame buffer?) card (with 2 48-pin customs on it which are
-		   probably gate arrays and not MCUs, an empty socket (28 pins, U46), an Intel Id2147H-3,
-		   a bank of twelve 16k*4-bit inmos ims2620p-15 DRAMs (tms4416 equivalent), and an Intel
-		   D2147K 4096*1 byte SRAM) is stickered
-		   "6487836 // A24969 // 6400 SU" on the back.
-		*  The pcb is trace-marked "EC 999040" on the back, and silkscreened "RC 2682819" on the front
-		*  The customs are marked:
-		   "6323259 // TC15G008AP-0028 // JAPAN       8606A" (48 pins, at U67)
-		   "6323260 // TC15G022AP-0018 // JAPAN       8606A" (48 pins, at U45)
+        ** The All Points Addressable (Frame buffer?) card (with 2 48-pin customs on it which are
+           probably gate arrays and not MCUs, an empty socket (28 pins, U46), an Intel Id2147H-3,
+           a bank of twelve 16k*4-bit inmos ims2620p-15 DRAMs (tms4416 equivalent), and an Intel
+           D2147K 4096*1 byte SRAM) is stickered
+           "6487836 // A24969 // 6400 SU" on the back.
+        *  The pcb is trace-marked "EC 999040" on the back, and silkscreened "RC 2682819" on the front
+        *  The customs are marked:
+           "6323259 // TC15G008AP-0028 // JAPAN       8606A" (48 pins, at U67)
+           "6323260 // TC15G022AP-0018 // JAPAN       8606A" (48 pins, at U45)
 
-		** The optional Programmable Symbol Card (with an AMD AM9128-10PC, and six tms4416-15NL DRAMS,
-		   and a fleet of discrete logic chips, but no roms, pals, or proms) is stickered
-		   "6347750 // A24866 // 6285 SU" on the front.
-		*  The PCB is trace-marked "PROGAMMABLE SYMBOL P/N 6347751 // ASSY. NO. 6347750" on the front,
-		   and trace-marked "|||CIM0286 ECA2466 // 94V-O" on the back.
-	*/
-//	ROM_REGION(0x4000,"gfx2", 0)
+        ** The optional Programmable Symbol Card (with an AMD AM9128-10PC, and six tms4416-15NL DRAMS,
+           and a fleet of discrete logic chips, but no roms, pals, or proms) is stickered
+           "6347750 // A24866 // 6285 SU" on the front.
+        *  The PCB is trace-marked "PROGAMMABLE SYMBOL P/N 6347751 // ASSY. NO. 6347750" on the front,
+           and trace-marked "|||CIM0286 ECA2466 // 94V-O" on the back.
+    */
+//  ROM_REGION(0x4000,"gfx2", 0)
 //      ROM_LOAD("1504161.u11", 0x00000, 0x2000, CRC(d9246cf5) SHA1(2eaed495893a4e6649b04d10dada7b5ef4abd140)) /* silkscreen: "AMI 8613MAJ // 9591-041 // S2364B // 1504161 // PHILIPPINES" - Purpose: Pixels 0 thru 7 of built-in 3270 terminal font*/
 //      ROM_LOAD("1504162.u26", 0x02000, 0x2000, CRC(59e1dc32) SHA1(337b5cced203345a5acfb02532d6b5f526902ee7)) /* silkscreen: "AMI 8607MAH // 9591-042 // S2364B // 1504162 // PHILIPPINES" - Purpose: Pixel 8 of built-in 3270 terminal font*/
 
@@ -2473,18 +2713,18 @@ ROM_END
 /*
 Sinclair PC200 ROMs (from a v1.2 PC200):
 
-40109.ic159  	-- Character set, the same as in the 1.5 PC200. Label:
-		
-			AMSTRAD
-			40109
-			8827 B
+40109.ic159     -- Character set, the same as in the 1.5 PC200. Label:
 
-40184.ic132	-- BIOS v1.2. 
-40185.ic129	   Labels are:
+            AMSTRAD
+            40109
+            8827 B
 
-			AMSTRAD			AMSTRAD
-			40184			40185
-			V1.2:5EA8		V1.2:A058
+40184.ic132 -- BIOS v1.2.
+40185.ic129    Labels are:
+
+            AMSTRAD         AMSTRAD
+            40184           40185
+            V1.2:5EA8       V1.2:A058
 */
 ROM_START( pc200 )
 //    ROM_REGION(0x100000,"maincpu", 0)
@@ -2525,8 +2765,8 @@ ROM_START( ppc512 )
 	ROM_REGION16_LE(0x100000,"maincpu", 0)
 	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 	// special bios at 0xe0000 !?
-	ROM_LOAD16_BYTE("40107.v1", 0xfc001, 0x2000, CRC(4e37e769) SHA1(88be3d3375ec3b0a7041dbcea225b197e50d4bfe)) // v1.9
-	ROM_LOAD16_BYTE("40108.v1", 0xfc000, 0x2000, CRC(4f0302d9) SHA1(e4d69ca98c3b98f3705a2902b16746360043f039)) // v1.9
+	ROM_LOAD16_BYTE("40107.v1", 0xfc000, 0x2000, CRC(4e37e769) SHA1(88be3d3375ec3b0a7041dbcea225b197e50d4bfe)) // v1.9
+	ROM_LOAD16_BYTE("40108.v1", 0xfc001, 0x2000, CRC(4f0302d9) SHA1(e4d69ca98c3b98f3705a2902b16746360043f039)) // v1.9
 	// also mapped to f0000, f4000, f8000
 	ROM_REGION(0x08100,"gfx1", 0)
 	ROM_LOAD("40109.bin",     0x00000, 0x08000, CRC(a8b67639) SHA1(99663bfb61798526e092205575370c2ad34249a1))
@@ -2538,8 +2778,8 @@ ROM_START( ppc640 )
 	ROM_REGION16_LE(0x100000,"maincpu", 0)
 	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 	// special bios at 0xe0000 !?
-	ROM_LOAD16_BYTE("40107.v2", 0xfc001, 0x2000, CRC(0785b63e) SHA1(4dbde6b9e9500298bb6241a8daefd85927f1ad28)) // v2.1
-	ROM_LOAD16_BYTE("40108.v2", 0xfc000, 0x2000, CRC(5351cf8c) SHA1(b4dbf11b39378ab4afd2107d3fe54a99fffdedeb)) // v2.1
+	ROM_LOAD16_BYTE("40107.v2", 0xfc000, 0x2000, CRC(0785b63e) SHA1(4dbde6b9e9500298bb6241a8daefd85927f1ad28)) // v2.1
+	ROM_LOAD16_BYTE("40108.v2", 0xfc001, 0x2000, CRC(5351cf8c) SHA1(b4dbf11b39378ab4afd2107d3fe54a99fffdedeb)) // v2.1
 	// also mapped to f0000, f4000, f8000
 	ROM_REGION(0x08100,"gfx1", 0)
 	ROM_LOAD("40109.bin",     0x00000, 0x08000, CRC(a8b67639) SHA1(99663bfb61798526e092205575370c2ad34249a1))
@@ -2595,48 +2835,14 @@ ROM_START( dgone )
 	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC IDE Superbios 2.0 (06/28/89) Expansion Rom C8000-C9FFF  */
 	ROM_LOAD( "dgone.bin",  0xf8000, 0x08000, CRC(2c38c86e) SHA1(c0f85a000d1d13cd354965689e925d677822549e))
 
-	ROM_REGION(0x08100, "gfx1", 0)
-	ROM_LOAD("cga.chr", 0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd)) // from an unknown clone cga card
+	/* IBM 1501981(CGA) and 1501985(MDA) Character rom */
+	ROM_REGION(0x2000,"gfx1", 0)
+	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f)) /* "AMI 8412PI // 5788005 // (C) IBM CORP. 1981 // KOREA" */
 
 	/* 8051 keytronic keyboard controller */
 	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
 	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
-
-
-static void ibmpc_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_pc; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(ibm5150)
-	CONFIG_RAM_DEFAULT( 640 * 1024 )
-	CONFIG_DEVICE(ibmpc_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-
-static SYSTEM_CONFIG_START(ibm5160)
-	CONFIG_RAM_DEFAULT( 640 * 1024 )
-	CONFIG_DEVICE(ibmpc_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-
-static SYSTEM_CONFIG_START(pcjr)
-//	CONFIG_RAM( 128 * 1024 )
-	CONFIG_RAM_DEFAULT( 640 * 1024 )
-//	CONFIG_RAM( 768 * 1024 )
-	CONFIG_DEVICE(ibmpc_floppy_getinfo)
-SYSTEM_CONFIG_END
 
 /***************************************************************************
 
@@ -2645,31 +2851,31 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*     YEAR     NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG   COMPANY     FULLNAME */
-COMP(  1981,	ibm5150,	0,			0,	ibm5150,    ibm5150,    ibm5150,    ibm5150, "International Business Machines",  "IBM PC 5150" , 0)
-COMP(  1984,	dgone,		ibm5150,	0,	pccga,      pccga,	    pccga,	    ibm5160, "Data General",  "Data General/One" , GAME_NOT_WORKING)	/* CGA, 2x 3.5" disk drives */
-COMP(  1985,	bw230,		ibm5150,	0,	pccga,		bondwell,   bondwell,	ibm5160, "Bondwell Holding",  "BW230 (PRO28 Series)", 0 )
-COMP(  1988,	europc,		ibm5150,	0,	europc,     europc,		europc,     ibm5160, "Schneider Rdf. AG",  "EURO PC", GAME_NOT_WORKING)
+COMP(  1981,	ibm5150,	0,			0,	ibm5150,    ibm5150,    ibm5150,    0, "International Business Machines",  "IBM PC 5150" , 0)
+COMP(  1984,	dgone,		ibm5150,	0,	pccga,      pccga,	    pccga,	    0, "Data General",  "Data General/One" , GAME_NOT_WORKING)	/* CGA, 2x 3.5" disk drives */
+COMP(  1985,	bw230,		ibm5150,	0,	pccga,		bondwell,   bondwell,	0, "Bondwell Holding",  "BW230 (PRO28 Series)", 0 )
+COMP(  1988,	europc,		ibm5150,	0,	europc,     europc,		europc,     0, "Schneider Rdf. AG",  "EURO PC", GAME_NOT_WORKING)
 
 // pcjr (better graphics, better sound)
-COMP(  1983,	ibmpcjr,	ibm5150,	0,	ibmpcjr,    tandy1t,	pcjr,       pcjr,    "International Business Machines",  "IBM PC Jr", GAME_NOT_WORKING|GAME_IMPERFECT_COLORS )
+COMP(  1983,	ibmpcjr,	ibm5150,	0,	ibmpcjr,    tandy1t,	pcjr,       0, "International Business Machines",  "IBM PC Jr", GAME_NOT_WORKING|GAME_IMPERFECT_COLORS )
 
 // tandy 1000
-COMP(  1987,	t1000hx,	ibm5150,	0,	t1000hx,    tandy1t,	t1000hx,	ibm5160, "Tandy Radio Shack",  "Tandy 1000HX", 0)
-COMP(  1987,	t1000sx,	ibm5150,	0,	t1000hx,    tandy1t,	t1000hx,	ibm5160, "Tandy Radio Shack",  "Tandy 1000SX", GAME_NOT_WORKING)
-COMP(  1989,    t1000rl,    ibm5150,    0,  t1000_16,   tandy1t,    t1000hx,    ibm5160, "Tandy Radio Shack",  "Tandy 1000RL", GAME_NOT_WORKING )
+COMP(  1987,	t1000hx,	ibm5150,	0,	t1000hx,    tandy1t,	t1000hx,	0, "Tandy Radio Shack",  "Tandy 1000HX", 0)
+COMP(  1987,	t1000sx,	ibm5150,	0,	t1000hx,    tandy1t,	t1000hx,	0, "Tandy Radio Shack",  "Tandy 1000SX", GAME_NOT_WORKING)
+COMP(  1989,    t1000rl,    ibm5150,    0,  t1000_16,   tandy1t,    t1000hx,    0, "Tandy Radio Shack",  "Tandy 1000RL", GAME_NOT_WORKING )
 
 // xt class (pc but 8086)
-COMP(  1982,	ibm5160,	ibm5150,	0,	ibm5160,    ibm5150,	ibm5150,	ibm5160, "International Business Machines",  "IBM XT 5160" , 0)
-COMP(  1988,	pc200,		ibm5150,	0,	pc200,		pc200,		pc200,		ibm5160, "Sinclair Research",  "PC200 Professional Series", GAME_NOT_WORKING)
-COMP(  1988,	pc20,		ibm5150,	0,	pc200,		pc200,		pc200,		ibm5160, "Amstrad plc",  "Amstrad PC20" , GAME_NOT_WORKING)
-COMP(  1987,	ppc512,		ibm5150,	0,	pc200,		pc200,		pc200,		ibm5160, "Amstrad plc",  "Amstrad PPC512", GAME_NOT_WORKING)
-COMP(  1987,	ppc640,		ibm5150,	0,	pc200,		pc200,		pc200,		ibm5160, "Amstrad plc",  "Amstrad PPC640", GAME_NOT_WORKING)
-COMP(  1986,	pc1512,		ibm5150,	0,	pc1512,     pc1512,		pc1512,		ibm5160, "Amstrad plc",  "Amstrad PC1512 (version 1)", GAME_NOT_WORKING)
-COMP(  198?,	pc1512v2,	ibm5150,	0,	pc1512,     pc1512,		pc1512,		ibm5160, "Amstrad plc",  "Amstrad PC1512 (version 2)", GAME_NOT_WORKING)
-COMP(  1987,	pc1640,		ibm5150,	0,	pc1640,     pc1640,		pc1640,		ibm5160, "Amstrad plc",  "Amstrad PC1640 / PC6400 (US)", GAME_NOT_WORKING )
+COMP(  1982,	ibm5160,	ibm5150,	0,	ibm5160,    ibm5150,	ibm5150,	0, "International Business Machines",  "IBM XT 5160" , 0)
+COMP(  1988,	pc200,		ibm5150,	0,	pc200,		pc200,		pc200,		0, "Sinclair Research",  "PC200 Professional Series", GAME_NOT_WORKING)
+COMP(  1988,	pc20,		ibm5150,	0,	pc200,		pc200,		pc200,		0, "Amstrad plc",  "Amstrad PC20" , GAME_NOT_WORKING)
+COMP(  1987,	ppc512,		ibm5150,	0,	ppc512,		pc200,		ppc512,		0, "Amstrad plc",  "Amstrad PPC512", GAME_NOT_WORKING)
+COMP(  1987,	ppc640,		ibm5150,	0,	ppc640,		pc200,		ppc512,		0, "Amstrad plc",  "Amstrad PPC640", GAME_NOT_WORKING)
+COMP(  1986,	pc1512,		ibm5150,	0,	pc1512,     pc1512,		pc1512,		0, "Amstrad plc",  "Amstrad PC1512 (version 1)", GAME_NOT_WORKING)
+COMP(  198?,	pc1512v2,	ibm5150,	0,	pc1512,     pc1512,		pc1512,		0, "Amstrad plc",  "Amstrad PC1512 (version 2)", GAME_NOT_WORKING)
+COMP(  1987,	pc1640,		ibm5150,	0,	pc1640,     pc1640,		pc1640,		0, "Amstrad plc",  "Amstrad PC1640 / PC6400 (US)", GAME_NOT_WORKING )
 // pc2086 pc1512 with vga??
-COMP(  1987,	pc,			ibm5150,	0,	pccga,		pccga,		pccga,		ibm5160, "Generic",  "PC (CGA)" , 0)
-COMP ( 1987,	pcmda,		ibm5150,	0,	pcmda,      pcmda,		ibm5150,    ibm5160, "Generic",  "PC (MDA)" , 0)
-COMP ( 1987,    pcherc,		ibm5150,	0,	pcherc,     pcmda,      ibm5150,	ibm5160, "Generic",  "PC (Hercules)" , 0)
-COMP ( 1987,	xtvga,		ibm5150,	0,	xtvga,      xtvga,		pc_vga,		ibm5160, "",  "PC/XT (VGA, MF2 Keyboard)" , GAME_NOT_WORKING)
+COMP(  1987,	pc,			ibm5150,	0,	pccga,		pccga,		pccga,		0, "Generic",  "PC (CGA)" , 0)
+COMP ( 1987,	pcmda,		ibm5150,	0,	pcmda,      pcmda,		ibm5150,    0, "Generic",  "PC (MDA)" , 0)
+COMP ( 1987,    pcherc,		ibm5150,	0,	pcherc,     pcmda,      ibm5150,	0, "Generic",  "PC (Hercules)" , 0)
+COMP ( 1987,	xtvga,		ibm5150,	0,	xtvga,      xtvga,		pc_vga,		0, "Generic",  "PC/XT (VGA, MF2 Keyboard)" , GAME_NOT_WORKING)
 

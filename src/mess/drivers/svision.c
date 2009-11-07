@@ -494,7 +494,7 @@ static MACHINE_DRIVER_START( svision )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(3+160+3, 160)
 	MDRV_SCREEN_VISIBLE_AREA(3+0, 3+160-1, 0, 160-1)
-	MDRV_PALETTE_LENGTH(sizeof(svision_palette) / (sizeof(svision_palette[0]) * 3))
+	MDRV_PALETTE_LENGTH(ARRAY_LENGTH(svision_palette) * 3)
 	MDRV_PALETTE_INIT( svision )
 
 	MDRV_VIDEO_UPDATE( svision )
@@ -505,7 +505,7 @@ static MACHINE_DRIVER_START( svision )
 	MDRV_SOUND_ADD("custom", SVISION, 0)
 	MDRV_SOUND_ROUTE(0, "lspeaker", 0.50)
 	MDRV_SOUND_ROUTE(1, "rspeaker", 0.50)
-	
+
 	/* cartridge */
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("bin,ws,sv")

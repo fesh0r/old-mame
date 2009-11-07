@@ -22,6 +22,7 @@
 #include "machine/wd17xx.h"
 #include "devices/flopdrv.h"
 #include "formats/basicdsk.h"
+#include "devices/messram.h"
 
 #define ENTERPRISE_XTAL_X1	XTAL_8MHz
 
@@ -72,10 +73,10 @@ static void enterprise_update_memory_page(const address_space *space, offs_t pag
 	case 0xfa:
 	case 0xfb:
 		/* additional 64k ram */
-		if (mess_ram_size == 128*1024)
+		if (messram_get_size(devtag_get_device(space->machine, "messram")) == 128*1024)
 		{
 			memory_install_readwrite8_handler(space, start, end, 0, 0, SMH_BANK((FPTR)page), SMH_BANK((FPTR)page));
-			memory_set_bankptr(space->machine, page, mess_ram + (index - 0xf4) * 0x4000);
+			memory_set_bankptr(space->machine, page, messram_get_ptr(devtag_get_device(space->machine, "messram")) + (index - 0xf4) * 0x4000);
 		}
 		else
 		{
@@ -89,7 +90,7 @@ static void enterprise_update_memory_page(const address_space *space, offs_t pag
 	case 0xff:
 		/* basic 64k ram */
 		memory_install_readwrite8_handler(space, start, end, 0, 0, SMH_BANK((FPTR)page), SMH_BANK((FPTR)page));
-		memory_set_bankptr(space->machine, page, mess_ram + (index - 0xfc) * 0x4000);
+		memory_set_bankptr(space->machine, page, messram_get_ptr(devtag_get_device(space->machine, "messram")) + (index - 0xfc) * 0x4000);
 		break;
 
 	default:
@@ -176,7 +177,6 @@ static MACHINE_RESET( enterprise )
 	const device_config *fdc = devtag_get_device(machine, "wd1770");
 	cpu_set_input_line_vector(cputag_get_cpu(machine, "maincpu"), 0, 0xff);
 
-	floppy_drive_set_geometry(image_from_devtype_and_index(machine, IO_FLOPPY, 0), FLOPPY_DRIVE_DS_80);
 	wd17xx_set_density(fdc, DEN_FM_HI);
 }
 
@@ -185,17 +185,24 @@ static MACHINE_RESET( enterprise )
     FLOPPY/EXDOS
 ***************************************************************************/
 
-static WD17XX_CALLBACK( enterp_wd1770_callback )
+static WRITE_LINE_DEVICE_HANDLER( enterp_wd1770_intrq_w )
 {
 	ep_state *ep = device->machine->driver_data;
 
-	switch (state)
-	{
-	case WD17XX_IRQ_CLR: ep->exdos_card_value &= ~0x02; break;
-	case WD17XX_IRQ_SET: ep->exdos_card_value |= 0x02; break;
-	case WD17XX_DRQ_CLR: ep->exdos_card_value &= ~0x80; break;
-	case WD17XX_DRQ_SET: ep->exdos_card_value |= 0x80; break;
-	}
+	if (state)
+		ep->exdos_card_value |= 0x02;
+	else
+		ep->exdos_card_value &= ~0x02;
+}
+
+static WRITE_LINE_DEVICE_HANDLER( enterp_wd1770_drq_w )
+{
+	ep_state *ep = device->machine->driver_data;
+
+	if (state)
+		ep->exdos_card_value |= 0x80;
+	else
+		ep->exdos_card_value &= ~0x80;
 }
 
 
@@ -284,9 +291,9 @@ N/C - Not connected or just dont know!
 2008-05 FP:
 Notice that I updated the matrix above with the following new info:
 l1:b1 is LOCK: you press it with CTRL to switch to Caps, you press it again to switch back
-	(you can also use it with ALT)
+    (you can also use it with ALT)
 l3:b7 is ESC: you use it to exit from nested programs (e.g. if you start to write a program in BASIC,
-	then start EXDOS, you can use ESC to go back to BASIC without losing the program you were writing)
+    then start EXDOS, you can use ESC to go back to BASIC without losing the program you were writing)
 
 According to pictures and manuals, there seem to be no more keys connected, so I label the remaining N/C
 as IPT_UNUSED.
@@ -413,7 +420,33 @@ INPUT_PORTS_END
     MACHINE DRIVERS
 ***************************************************************************/
 
-static const wd17xx_interface enterp_wd1770_interface = { enterp_wd1770_callback, NULL };
+static const wd17xx_interface enterp_wd1770_interface =
+{
+	DEVCB_LINE(enterp_wd1770_intrq_w),
+	DEVCB_LINE(enterp_wd1770_drq_w),
+	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
+};
+
+static FLOPPY_OPTIONS_START(enterprise)
+	FLOPPY_OPTION(enterprise, "dsk,img", "Enterprise disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([80])
+		SECTORS([9])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([1]))
+FLOPPY_OPTIONS_END
+
+static const floppy_config enterprise_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(enterprise),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 static MACHINE_DRIVER_START( ep64 )
 	/* basic machine hardware */
@@ -445,6 +478,19 @@ static MACHINE_DRIVER_START( ep64 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_WD1770_ADD("wd1770", enterp_wd1770_interface )
+
+	MDRV_FLOPPY_4_DRIVES_ADD(enterprise_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K") 	
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( ep128 )
+	MDRV_IMPORT_FROM(ep64)
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("128K") 	
 MACHINE_DRIVER_END
 
 
@@ -500,49 +546,11 @@ ROM_START( phc64 )
 	ROM_LOAD("exdos13.rom", 0x0000, 0x8000, CRC(d1d7e157) SHA1(31c8be089526aa8aa019c380cdf51ddd3ee76454))
 ROM_END
 
-
-/***************************************************************************
-    SYSTEM CONFIG
-***************************************************************************/
-static FLOPPY_OPTIONS_START(enterprise)
-	FLOPPY_OPTION(enterprise, "dsk,img", "Enterprise disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([80])
-		SECTORS([9])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1]))
-FLOPPY_OPTIONS_END
-
-static void enterprise_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_enterprise; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-static SYSTEM_CONFIG_START(ep64)
-	CONFIG_RAM_DEFAULT(64*1024)
-	CONFIG_DEVICE(enterprise_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(ep128)
-	CONFIG_RAM_DEFAULT(128*1024)
-	CONFIG_DEVICE(enterprise_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-
 /***************************************************************************
     GAME DRIVERS
 ***************************************************************************/
 
 /*    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT  INIT  CONFIG  COMPANY                 FULLNAME */
-COMP( 1985, ep64,  0,      0,      ep64,    ep64, 0,    ep64,   "Intelligent Software", "Enterprise 64", GAME_IMPERFECT_SOUND )
-COMP( 1985, ep128, ep64,   0,      ep64,    ep64, 0,    ep128,  "Intelligent Software", "Enterprise 128", GAME_IMPERFECT_SOUND )
-COMP( 1985, phc64, ep64,   0,      ep64,    ep64, 0,    ep64,   "Hegener & Glaser",     "Mephisto PHC 64", GAME_IMPERFECT_SOUND )
+COMP( 1985, ep64,  0,      0,      ep64,    ep64, 0,    0,   "Intelligent Software", "Enterprise 64", GAME_IMPERFECT_SOUND )
+COMP( 1985, ep128, ep64,   0,      ep128,   ep64, 0,    0,  "Intelligent Software", "Enterprise 128", GAME_IMPERFECT_SOUND )
+COMP( 1985, phc64, ep64,   0,      ep64,    ep64, 0,    0,   "Hegener & Glaser",     "Mephisto PHC 64", GAME_IMPERFECT_SOUND )

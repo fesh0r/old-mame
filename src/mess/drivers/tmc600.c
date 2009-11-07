@@ -88,6 +88,7 @@ Notes:
 #include "cpu/cdp1802/cdp1802.h"
 #include "sound/cdp1869.h"
 #include "includes/tmc600.h"
+#include "devices/messram.h"
 
 /* Read/Write Handlers */
 
@@ -275,10 +276,10 @@ static MACHINE_START( tmc600 )
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* configure RAM */
-	memory_configure_bank(machine, 1, 0, 1, mess_ram, 0);
+	memory_configure_bank(machine, 1, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
 	memory_set_bank(machine, 1, 0);
 
-	switch (mess_ram_size)
+	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 8*1024:
 		memory_install_readwrite8_handler(program, 0x6000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
@@ -312,6 +313,21 @@ static const cassette_config tmc600_cassette_config =
 	NULL,
 	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED
 };
+static FLOPPY_OPTIONS_START(tmc600)
+	// dsk
+FLOPPY_OPTIONS_END
+
+static const floppy_config tmc600_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(tmc600),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 static MACHINE_DRIVER_START( tmc600 )
 	MDRV_DRIVER_DATA(tmc600_state)
@@ -335,6 +351,13 @@ static MACHINE_DRIVER_START( tmc600 )
 
 	/* cassette */
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, tmc600_cassette_config)
+
+	MDRV_FLOPPY_4_DRIVES_ADD(tmc600_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("8K")		
+	MDRV_RAM_EXTRA_OPTIONS("16K,24K")
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -363,35 +386,7 @@ ROM_START( tmc600s2 )
 	ROM_LOAD( "chargen",	0x0000, 0x1000, CRC(93f92cbf) SHA1(371156fb38fa5319c6fde537ccf14eed94e7adfb) )
 ROM_END
 
-/* System Configuration */
-static FLOPPY_OPTIONS_START(tmc600)
-	// dsk
-FLOPPY_OPTIONS_END
-
-static void tmc600_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_tmc600; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( tmc600 )
-	CONFIG_RAM_DEFAULT	( 8 * 1024)
-	CONFIG_RAM			(16 * 1024)
-	CONFIG_RAM			(24 * 1024)
-	CONFIG_DEVICE(tmc600_floppy_getinfo)
-SYSTEM_CONFIG_END
-
 /* System Drivers */
-
 //    YEAR  NAME      PARENT    COMPAT   MACHINE   INPUT     INIT    CONFIG    COMPANY        FULLNAME
-COMP( 1982, tmc600s1, 0,	0,	     tmc600,   tmc600,   0, 	tmc600,   "Telercas Oy", "Telmac TMC-600 (Sarja I)",  GAME_NOT_WORKING )
-COMP( 1982, tmc600s2, 0,	0,	     tmc600,   tmc600,   0, 	tmc600,   "Telercas Oy", "Telmac TMC-600 (Sarja II)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+COMP( 1982, tmc600s1, 0,	0,	     tmc600,   tmc600,   0, 	0,   "Telercas Oy", "Telmac TMC-600 (Sarja I)",  GAME_NOT_WORKING )
+COMP( 1982, tmc600s2, 0,	0,	     tmc600,   tmc600,   0, 	0,   "Telercas Oy", "Telmac TMC-600 (Sarja II)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )

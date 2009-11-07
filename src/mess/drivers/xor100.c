@@ -4,37 +4,37 @@
 
         12/05/2009 Skeleton driver.
 
-	Execution of this monitor rom starts at F800.
+    Execution of this monitor rom starts at F800.
 
-	I/O sequence:	read 0A, discard result
-			read 0B, output result to 0B
-			send the sequence AA 40 4E 37 to 01, then to 03 (programming a device?)
-			L1:read 03 to see if display device is ready
-			write ascii character to 02 goto L1 until signon message is displayed
-			in same fashion display top of memory (F800)
-			display prompt character (*) wait for input
-			read 03 to see if a key is being input, if so read 02 and display it
-			if illegal input, display ? then display prompt on a new line
+    I/O sequence:   read 0A, discard result
+            read 0B, output result to 0B
+            send the sequence AA 40 4E 37 to 01, then to 03 (programming a device?)
+            L1:read 03 to see if display device is ready
+            write ascii character to 02 goto L1 until signon message is displayed
+            in same fashion display top of memory (F800)
+            display prompt character (*) wait for input
+            read 03 to see if a key is being input, if so read 02 and display it
+            if illegal input, display ? then display prompt on a new line
 
-	To summarise:	out 01 and out 03 - program a device
-			out 02 - display a character
-			in 02 - read character from keyboard
-			in 03 - get busy status of display (bit 0) and keyboard (bit 1) High=ready
+    To summarise:   out 01 and out 03 - program a device
+            out 02 - display a character
+            in 02 - read character from keyboard
+            in 03 - get busy status of display (bit 0) and keyboard (bit 1) High=ready
 
 *****************************************************************************************************/
 
 /*
 
-	TODO:
+    TODO:
 
-	- terminal
-	- keyboard
-	- ROM should be mirrored every 2K at boot
-	- 2/4 MHz jumper J2
-	- floppy
-	- memory expansion
-	- COM5016
-	- CTC
+    - terminal
+    - keyboard
+    - ROM should be mirrored every 2K at boot
+    - 2/4 MHz jumper J2
+    - floppy
+    - memory expansion
+    - COM5016
+    - CTC
 
 */
 
@@ -49,6 +49,7 @@
 #include "machine/msm8251.h"
 #include "machine/wd17xx.h"
 #include "machine/z80ctc.h"
+#include "devices/messram.h"
 
 /* Read/Write Handlers */
 
@@ -56,12 +57,12 @@ static WRITE8_HANDLER( mmu_w )
 {
 	/*
 
-		bit		description
-		
-		0		A16
-		1		A17
+        bit     description
 
-	*/
+        0       A16
+        1       A17
+
+    */
 }
 
 static WRITE8_HANDLER( prom_toggle_w )
@@ -181,7 +182,7 @@ static COM8116_INTERFACE( com5016_intf )
 	DEVCB_LINE(com5016_fr_w),	/* fR output */
 	DEVCB_LINE(com5016_ft_w),	/* fT output */
 	{ 101376, 67584, 46080, 37686, 33792, 16896, 8448, 4224, 2816, 2534, 2112, 1408, 1056, 704, 528, 264 },	// WRONG
-	{ 101376, 67584, 46080, 37686, 33792, 16896, 8448, 4224, 2816, 2534, 2112, 1408, 1056, 704, 528, 264 },	// WRONG	
+	{ 101376, 67584, 46080, 37686, 33792, 16896, 8448, 4224, 2816, 2534, 2112, 1408, 1056, 704, 528, 264 },	// WRONG
 };
 
 /* Printer 8251A Interface */
@@ -216,55 +217,34 @@ static I8255A_INTERFACE( printer_8255_intf )
 
 /* Z80-CTC Interface */
 
-static void z80daisy_interrupt(const device_config *device, int state)
-{
-	cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_IRQ0, state);
-}
-
-static WRITE8_DEVICE_HANDLER( ctc_z0_w )
+static WRITE_LINE_DEVICE_HANDLER( ctc_z0_w )
 {
 }
 
-static WRITE8_DEVICE_HANDLER( ctc_z1_w )
+static WRITE_LINE_DEVICE_HANDLER( ctc_z1_w )
 {
 }
 
-static WRITE8_DEVICE_HANDLER( ctc_z2_w )
+static WRITE_LINE_DEVICE_HANDLER( ctc_z2_w )
 {
 }
 
-static const z80ctc_interface ctc_intf =
+static Z80CTC_INTERFACE( ctc_intf )
 {
 	0,              	/* timer disables */
-	z80daisy_interrupt,	/* interrupt handler */
-	ctc_z0_w,			/* ZC/TO0 callback */
-	ctc_z1_w,			/* ZC/TO1 callback */
-	ctc_z2_w    		/* ZC/TO2 callback */
+	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* interrupt handler */
+	DEVCB_LINE(ctc_z0_w),			/* ZC/TO0 callback */
+	DEVCB_LINE(ctc_z1_w),			/* ZC/TO1 callback */
+	DEVCB_LINE(ctc_z2_w)    		/* ZC/TO2 callback */
 };
 
 /* WD1795-02 Interface */
 
-static WD17XX_CALLBACK( wd1795_callback )
+static const wd17xx_interface wd1795_intf =
 {
-	switch (state)
-	{
-	case WD17XX_IRQ_CLR:
-		break;
-
-	case WD17XX_IRQ_SET:
-		break;
-
-	case WD17XX_DRQ_CLR:
-		break;
-
-	case WD17XX_DRQ_SET:
-		break;
-	}
-}
-
-static const wd17xx_interface wd1795_intf = 
-{ 
-	wd1795_callback
+	DEVCB_NULL,
+	DEVCB_NULL,
+	{FLOPPY_0, FLOPPY_1, NULL, NULL}
 };
 
 /* Machine Initialization */
@@ -284,15 +264,15 @@ static MACHINE_START( xor100 )
 	memory_install_readwrite8_handler(program, 0xf800, 0xffff, 0, 0, SMH_BANK(3), SMH_BANK(4));
 
 	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, Z80_TAG) + 0xf800, 0);
-	memory_configure_bank(machine, 1, 1, 1, mess_ram, 0);
+	memory_configure_bank(machine, 1, 1, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
 
-	memory_configure_bank(machine, 2, 0, 1, mess_ram, 0);
+	memory_configure_bank(machine, 2, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
 	memory_set_bank(machine, 2, 0);
 
 	memory_configure_bank(machine, 3, 0, 1, memory_region(machine, Z80_TAG) + 0xf800, 0);
-	memory_configure_bank(machine, 3, 1, 1, mess_ram + 0xf800, 0);
+	memory_configure_bank(machine, 3, 1, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xf800, 0);
 
-	memory_configure_bank(machine, 4, 0, 1, mess_ram + 0xf800, 0);
+	memory_configure_bank(machine, 4, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xf800, 0);
 	memory_set_bank(machine, 4, 0);
 }
 
@@ -313,6 +293,27 @@ static const cassette_config xor100_cassette_config =
 	cassette_default_formats,
 	NULL,
 	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED
+};
+
+static FLOPPY_OPTIONS_START( xor100 )
+	FLOPPY_OPTION( xor100, "dsk", "XOR-100-12 disk image", basicdsk_identify_default, basicdsk_construct_default, // WRONG
+		HEADS([1])
+		TRACKS([80])
+		SECTORS([10])
+		SECTOR_LENGTH([512])
+		FIRST_SECTOR_ID([1]))
+FLOPPY_OPTIONS_END
+
+static const floppy_config xor100_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(xor100),
+	DO_NOT_KEEP_GEOMETRY
 };
 
 static MACHINE_DRIVER_START( xor100 )
@@ -346,8 +347,13 @@ static MACHINE_DRIVER_START( xor100 )
 	MDRV_Z80CTC_ADD(Z80CTC_TAG, XTAL_8MHz/2, ctc_intf)
 	MDRV_COM8116_ADD(COM5016_TAG, 5000000, com5016_intf) // COM5016
 	MDRV_WD179X_ADD(WD1795_TAG, /*XTAL_8MHz/8,*/ wd1795_intf ) // WD1795-02
+	MDRV_FLOPPY_2_DRIVES_ADD(xor100_floppy_config)
 
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, xor100_cassette_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")	
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -357,36 +363,8 @@ ROM_START( xor100 )
 	ROM_LOAD( "xp 185.8b", 0xf800, 0x0800, CRC(0d0bda8d) SHA1(11c83f7cd7e6a570641b44a2f2cc5737a7dd8ae3) )
 ROM_END
 
-/* System Configuration */
-
-static FLOPPY_OPTIONS_START( xor100 )
-	FLOPPY_OPTION( xor100, "dsk", "XOR-100-12 disk image", basicdsk_identify_default, basicdsk_construct_default, // WRONG
-		HEADS([1])
-		TRACKS([80])
-		SECTORS([10])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1]))
-FLOPPY_OPTIONS_END
-
-static void xor100_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:			info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:	info->p = (void *) floppyoptions_xor100; break;
-
-		default: floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-static SYSTEM_CONFIG_START( xor100 )
-	CONFIG_RAM_DEFAULT( 64 * 1024 )
-	CONFIG_DEVICE(xor100_floppy_getinfo)
-SYSTEM_CONFIG_END
 
 /* System Drivers */
 
-/*    YEAR	NAME		PARENT	COMPAT	MACHINE		INPUT		INIT	CONFIG		COMPANY					FULLNAME		FLAGS */
-COMP( 1982, xor100,		0,		0,		xor100,		xor100,		0,		xor100,		"Xor Data Science",		"XOR S-100-12",	GAME_NOT_WORKING )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY                 FULLNAME        FLAGS */
+COMP( 1982, xor100,		0,		0,		xor100,		xor100,		0,		0,		"Xor Data Science",		"XOR S-100-12",	GAME_NOT_WORKING )

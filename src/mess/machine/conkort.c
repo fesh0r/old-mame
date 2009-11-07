@@ -8,33 +8,33 @@ PCB Layout
 55 21046-03
 
 |-----------------------------------|
-|	LD1	SW1				CON2		|
-|									|
-|						CON3	S9	|
-|								S8	|
-|	LS240	LS174	7406	7406	|
-|									|
-|	LS174	FDC9229	LS107	LS266	|
-|									|
-|									|
-|		SAB1793						|
-|					LS368	16MHz	|
-|					S6				|
-|		Z80DMA			ROM			|
-|									|
-|									|
-|		Z80				TC5565		|
-|									|
-|									|
-|	LS138	LS174	SW2		74374	|
-|									|
-|	LS10	LS266	S5		LS374	|
-|					S3				|
-|					S1		LS240	|
-|									|
-|			LS244	SW3		DM8131	|
-|									|
-|									|
+|   LD1 SW1             CON2        |
+|                                   |
+|                       CON3    S9  |
+|                               S8  |
+|   LS240   LS174   7406    7406    |
+|                                   |
+|   LS174   FDC9229 LS107   LS266   |
+|                                   |
+|                                   |
+|       SAB1793                     |
+|                   LS368   16MHz   |
+|                   S6              |
+|       Z80DMA          ROM         |
+|                                   |
+|                                   |
+|       Z80             TC5565      |
+|                                   |
+|                                   |
+|   LS138   LS174   SW2     74374   |
+|                                   |
+|   LS10    LS266   S5      LS374   |
+|                   S3              |
+|                   S1      LS240   |
+|                                   |
+|           LS244   SW3     DM8131  |
+|                                   |
+|                                   |
 |--|-----------------------------|--|
    |------------CON1-------------|
 
@@ -43,45 +43,45 @@ Notes:
 
     ROM     - Toshiba TMM27128D-20 16Kx8 EPROM "CNTR 1.07 6490318-07"
     TC5565  - Toshiba TC5565PL-15 8Kx8 bit Static RAM
-    Z80	    - Zilog Z8400APS Z80A CPU Central Processing Unit
+    Z80     - Zilog Z8400APS Z80A CPU Central Processing Unit
     Z80DMA  - Zilog Z8410APS Z80A DMA Direct Memory Access Controller
     SAB1793 - Siemens SAB1793-02P Floppy Disc Controller
     FDC9229 - SMC FDC9229BT Floppy Disc Interface Circuit
     DM8131  - National Semiconductor DM8131N 6-Bit Unified Bus Comparator
-    CON1	-
-    CON2	- AMP4284
-    CON3	-
-    SW1		-
-    SW2		-
-    SW3		-
-    S1		-
-   	S3		-
-    S5		-
-    S6		- Amount of RAM installed (A:2KB, B:8KB)
-    S7		- Number of drives connected (0:3, 1:?) *located on solder side
-    S8		- 0:8", 1:5.25"
-    S9		- Location of RDY signal (A:P2:6, B:P2:34)
-    LD1		- LED
+    CON1    -
+    CON2    - AMP4284
+    CON3    -
+    SW1     -
+    SW2     -
+    SW3     -
+    S1      -
+    S3      -
+    S5      -
+    S6      - Amount of RAM installed (A:2KB, B:8KB)
+    S7      - Number of drives connected (0:3, 1:?) *located on solder side
+    S8      - 0:8", 1:5.25"
+    S9      - Location of RDY signal (A:P2:6, B:P2:34)
+    LD1     - LED
 
 */
 
 /*
 
-	TODO:
+    TODO:
 
-	Slow Controller
-	---------------
-	- DS/DD SS/DS jumpers
-	- S1-S5 jumpers
-	- protection device @ 8B
-	- FDC DRQ
-	- Z80 wait logic
+    Slow Controller
+    ---------------
+    - DS/DD SS/DS jumpers
+    - S1-S5 jumpers
+    - protection device @ 8B
+    - FDC DRQ
+    - Z80 wait logic
 
-	Fast Controller
-	---------------
-	- implement missing features to Z80DMA
-	- FDC INT
-	- FDC DRQ
+    Fast Controller
+    ---------------
+    - implement missing features to Z80DMA
+    - FDC INT
+    - FDC DRQ
 
 */
 
@@ -93,6 +93,8 @@ Notes:
 #include "cpu/z80/z80daisy.h"
 #include "machine/wd17xx.h"
 #include "machine/abcbus.h"
+#include "devices/flopdrv.h"
+
 
 /***************************************************************************
     PARAMETERS
@@ -167,7 +169,7 @@ INLINE fast_t *get_safe_token_machine_fast(running_machine *machine)
 
 INLINE const device_config *get_floppy_image(running_machine *machine, int drive)
 {
-	return image_from_devtype_and_index(machine, IO_FLOPPY, drive);
+	return floppy_get_device(machine, drive);
 }
 
 /***************************************************************************
@@ -235,7 +237,7 @@ static ABCBUS_CARD_SELECT( luxor_55_10828 )
 
 	if (data == 0x2d) // TODO: bit 0 of this is configurable with S1
 	{
-		const address_space *io = cputag_get_address_space(device->machine, Z80_TAG, ADDRESS_SPACE_IO);
+		const address_space *io = cpu_get_address_space(device->machine->firstcpu, ADDRESS_SPACE_IO);
 
 		memory_install_readwrite8_handler(io, ABCBUS_INP, ABCBUS_OUT, 0x18, 0, slow_bus_data_r, slow_bus_data_w);
 		memory_install_read8_handler(io, ABCBUS_STAT, ABCBUS_STAT, 0x18, 0, slow_bus_stat_r);
@@ -252,25 +254,25 @@ static WRITE8_HANDLER( slow_ctrl_w )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0		_SEL 0
-		1		_SEL 1
-		2		_SEL 2
-		3		_MOT
-		4		_SIDE
-		5		8B pin 2 (if S4 shorted)
-		6		8A pin 13
-		7		FDC _MR
+        0       _SEL 0
+        1       _SEL 1
+        2       _SEL 2
+        3       _MOT
+        4       _SIDE
+        5       8B pin 2 (if S4 shorted)
+        6       8A pin 13
+        7       FDC _MR
 
-	*/
+    */
 
 	slow_t *conkort = get_safe_token_machine_slow(space->machine);
 
 	/* drive selection */
 	if (!BIT(data, 0)) wd17xx_set_drive(conkort->wd1791, 0);
 	if (!BIT(data, 1)) wd17xx_set_drive(conkort->wd1791, 1);
-//	if (!BIT(data, 2)) wd17xx_set_drive(conkort->wd1791, 2);
+//  if (!BIT(data, 2)) wd17xx_set_drive(conkort->wd1791, 2);
 
 	/* motor enable */
 	floppy_drive_set_motor_state(get_floppy_image(space->machine, 0), !BIT(data, 3));
@@ -292,18 +294,18 @@ static WRITE8_HANDLER( slow_status_w )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0		_INT to main Z80
-		1
-		2
-		3
-		4
-		5
-		6		LS245 DIR
-		7
+        0       _INT to main Z80
+        1
+        2
+        3
+        4
+        5
+        6       LS245 DIR
+        7
 
-	*/
+    */
 
 	slow_t *conkort = get_safe_token_machine_slow(space->machine);
 
@@ -366,7 +368,7 @@ static ABCBUS_CARD_SELECT( luxor_55_21046 )
 
 	if (data == input_port_read(device->machine, "SW3"))
 	{
-		const address_space *io = cputag_get_address_space(device->machine, Z80_TAG, ADDRESS_SPACE_IO);
+		const address_space *io = cpu_get_address_space(device->machine->firstcpu, ADDRESS_SPACE_IO);
 
 		memory_install_readwrite8_handler(io, ABCBUS_INP, ABCBUS_OUT, 0x18, 0, fast_bus_data_r, fast_bus_data_w);
 		memory_install_read8_handler(io, ABCBUS_STAT, ABCBUS_STAT, 0x18, 0, fast_bus_stat_r);
@@ -434,8 +436,8 @@ static ADDRESS_MAP_START( fast_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0f, 0x0f) AM_READ(fast_data_r)
 	AM_RANGE(0x1f, 0x1f) AM_WRITE(fast_data_w)
 	AM_RANGE(0x2f, 0x2f) AM_WRITE(fast_status_w)
-//	AM_RANGE(0x3f, 0x3f) AM_WRITE()
-//	AM_RANGE(0x4f, 0x4f) AM_WRITE()
+//  AM_RANGE(0x3f, 0x3f) AM_WRITE()
+//  AM_RANGE(0x4f, 0x4f) AM_WRITE()
 	AM_RANGE(0x5d, 0x5d) AM_READ(fast_ctrl_r)
 	AM_RANGE(0x68, 0x6b) AM_DEVREAD(SAB1793_TAG, wd17xx_r)
 	AM_RANGE(0x78, 0x7b) AM_DEVWRITE(SAB1793_TAG, wd17xx_w)
@@ -520,18 +522,18 @@ static READ8_DEVICE_HANDLER( conkort_pio_port_b_r )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0		!(_DS0 & _DS1)
-		1		!(_DD0 & _DD1)
-		2		8B pin 10
-		3		FDC DDEN
-		4		_R/BS
-		5		FDC HLT
-		6		FDC _HDLD
-		7		FDC IRQ
+        0       !(_DS0 & _DS1)
+        1       !(_DD0 & _DD1)
+        2       8B pin 10
+        3       FDC DDEN
+        4       _R/BS
+        5       FDC HLT
+        6       FDC _HDLD
+        7       FDC IRQ
 
-	*/
+    */
 
 	slow_t *conkort = get_safe_token_machine_slow(device->machine);
 
@@ -542,18 +544,18 @@ static WRITE8_DEVICE_HANDLER( conkort_pio_port_b_w )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0		!(_DS0 & _DS1)
-		1		!(_DD0 & _DD1)
-		2		8B pin 10
-		3		FDC DDEN
-		4		_R/BS
-		5		FDC HLT
-		6		FDC _HDLD
-		7		FDC IRQ
+        0       !(_DS0 & _DS1)
+        1       !(_DD0 & _DD1)
+        2       8B pin 10
+        3       FDC DDEN
+        4       _R/BS
+        5       FDC HLT
+        6       FDC _HDLD
+        7       FDC IRQ
 
-	*/
+    */
 
 }
 
@@ -566,13 +568,13 @@ static void conkort_pio_ardy_w(const device_config *device, int state)
 
 static const z80pio_interface conkort_pio_intf =
 {
-	DEVCB_LINE(conkort_pio_interrupt),				/* interrupt callback */
-	DEVCB_HANDLER(conkort_pio_port_a_r),				/* port A read callback */
-	DEVCB_HANDLER(conkort_pio_port_b_r),				/* port B read callback */
-	DEVCB_HANDLER(conkort_pio_port_a_w),				/* port A write callback */
-	DEVCB_HANDLER(conkort_pio_port_b_w),				/* port B write callback */
-	DEVCB_LINE(conkort_pio_ardy_w),					/* port A ready callback */
-	DEVCB_NULL						/* port B ready callback */
+	DEVCB_LINE(conkort_pio_interrupt),		/* interrupt callback */
+	DEVCB_HANDLER(conkort_pio_port_a_r),	/* port A read callback */
+	DEVCB_HANDLER(conkort_pio_port_b_r),	/* port B read callback */
+	DEVCB_HANDLER(conkort_pio_port_a_w),	/* port A write callback */
+	DEVCB_HANDLER(conkort_pio_port_b_w),	/* port B write callback */
+	DEVCB_LINE(conkort_pio_ardy_w),			/* port A ready callback */
+	DEVCB_NULL								/* port B ready callback */
 };
 
 static const z80_daisy_chain slow_daisy_chain[] =
@@ -585,46 +587,46 @@ static const z80_daisy_chain slow_daisy_chain[] =
 
 /*
 
-	DMA Transfer Programs
-	---------------------
+    DMA Transfer Programs
+    ---------------------
 
-	C3 14 28 95 6B 02 8A CF 01 AF CF 87
+    C3 14 28 95 6B 02 8A CF 01 AF CF 87
 
-	C3	reset
-	14	port A is memory, port A address increments
-	28	port B is I/O, port B address fixed
-	95	byte mode, port B starting address low follows, interrupt control byte follows
-	6B	port B starting address 0x006B (FDC DATA read)
-	02	interrupt at end of block
-	8A	ready active high
-	CF	load
-	01	transfer B->A
-	AF	disable interrupts
-	CF	load
-	87	enable DMA
+    C3  reset
+    14  port A is memory, port A address increments
+    28  port B is I/O, port B address fixed
+    95  byte mode, port B starting address low follows, interrupt control byte follows
+    6B  port B starting address 0x006B (FDC DATA read)
+    02  interrupt at end of block
+    8A  ready active high
+    CF  load
+    01  transfer B->A
+    AF  disable interrupts
+    CF  load
+    87  enable DMA
 
-	C3 14 28 95 7B 02 8A CF 05 AF CF 87
+    C3 14 28 95 7B 02 8A CF 05 AF CF 87
 
-	C3	reset
-	14	port A is memory, port A address increments
-	28	port B is I/O, port B address fixed
-	95	byte mode, port B starting address low follows, interrupt control byte follows
-	7B	port B starting address 0x007B (FDC DATA write)
-	02	interrupt at end of block
-	8A	ready active high
-	CF	load
-	05	transfer A->B
-	AF	disable interrupts
-	CF	load
-	87	enable DMA
+    C3  reset
+    14  port A is memory, port A address increments
+    28  port B is I/O, port B address fixed
+    95  byte mode, port B starting address low follows, interrupt control byte follows
+    7B  port B starting address 0x007B (FDC DATA write)
+    02  interrupt at end of block
+    8A  ready active high
+    CF  load
+    05  transfer A->B
+    AF  disable interrupts
+    CF  load
+    87  enable DMA
 
-	C3 91 40 8A AB
+    C3 91 40 8A AB
 
-	C3	reset
-	91	byte mode, interrupt control byte follows
-	40	interrupt on RDY
-	8A	_CE only, ready active high, stop on end of block
-	AB	enable interrupts
+    C3  reset
+    91  byte mode, interrupt control byte follows
+    40  interrupt on RDY
+    8A  _CE only, ready active high, stop on end of block
+    AB  enable interrupts
 
 */
 
@@ -695,55 +697,32 @@ static const z80_daisy_chain fast_daisy_chain[] =
 
 /* FD1791 */
 
-static WD17XX_CALLBACK( slow_wd1791_callback )
+static WRITE_LINE_DEVICE_HANDLER( slow_wd1791_intrq_w )
 {
 	slow_t *conkort = get_safe_token_machine_slow(device->machine);
-
-	switch(state)
-	{
-		case WD17XX_IRQ_CLR:
-			conkort->fdc_irq = 0;
-			break;
-		case WD17XX_IRQ_SET:
-			conkort->fdc_irq = 1;
-			break;
-		case WD17XX_DRQ_CLR:
-			break;
-		case WD17XX_DRQ_SET:
-			break;
-	}
+	conkort->fdc_irq = state;
 }
 
 static const wd17xx_interface slow_wd17xx_interface =
 {
-	slow_wd1791_callback, 
-	NULL
+	DEVCB_LINE(slow_wd1791_intrq_w),
+	DEVCB_NULL,
+	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
 };
 
 /* FD1793 */
 
-static WD17XX_CALLBACK( fast_wd1793_callback )
+static WRITE_LINE_DEVICE_HANDLER( fast_wd1793_drq_w )
 {
 	fast_t *conkort = get_safe_token_machine_fast(device->machine);
-
-	switch(state)
-	{
-		case WD17XX_IRQ_CLR:
-			break;
-		case WD17XX_IRQ_SET:
-			break;
-		case WD17XX_DRQ_CLR:
-			z80dma_rdy_w(conkort->z80dma, 0, 0);
-			break;
-		case WD17XX_DRQ_SET:
-			z80dma_rdy_w(conkort->z80dma, 0, 1);
-			break;
-	}
+	z80dma_rdy_w(conkort->z80dma, 0, state);
 }
 
-static const wd17xx_interface fast_wd17xx_interface = 
-{ 
-	fast_wd1793_callback
+static const wd17xx_interface fast_wd17xx_interface =
+{
+	DEVCB_NULL,
+	DEVCB_LINE(fast_wd1793_drq_w),
+	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
 };
 
 /* Machine Driver */
@@ -772,13 +751,13 @@ MACHINE_DRIVER_END
 
 ROM_START( luxor_55_10828 )
 	ROM_REGION( 0x1000, "abc830", ROMREGION_LOADBYNAME )
-	ROM_LOAD( "mpi02.bin",    0x0000, 0x0800, CRC(2aac9296) SHA1(c01a62e7933186bdf7068d2e9a5bc36590544349) ) // MPI 51
+	ROM_LOAD( "mpi02.bin",    0x0000, 0x0800, CRC(2aac9296) SHA1(c01a62e7933186bdf7068d2e9a5bc36590544349) ) // MPI 51 (5510760-01)
 	ROM_LOAD( "basf6106.bin", 0x0800, 0x0800, NO_DUMP ) // BASF 6106
 
 	ROM_REGION( 0x1800, "abc832", ROMREGION_LOADBYNAME )
 	ROM_LOAD( "micr1015.bin", 0x0000, 0x0800, CRC(a7bc05fa) SHA1(6ac3e202b7ce802c70d89728695f1cb52ac80307) ) // Micropolis 1015
-	ROM_LOAD( "micr1115.bin", 0x0800, 0x0800, CRC(f2fc5ccc) SHA1(86d6baadf6bf1d07d0577dc1e092850b5ff6dd1b) ) // Micropolis 1115
-	ROM_LOAD( "basf6118.bin", 0x1000, 0x0800, CRC(9ca1a1eb) SHA1(04973ad69de8da403739caaebe0b0f6757e4a6b1) ) // BASF 6118
+	ROM_LOAD( "micr1115.bin", 0x0800, 0x0800, CRC(f2fc5ccc) SHA1(86d6baadf6bf1d07d0577dc1e092850b5ff6dd1b) ) // Micropolis 1115 (v2.3)
+	ROM_LOAD( "basf6118.bin", 0x1000, 0x0800, CRC(9ca1a1eb) SHA1(04973ad69de8da403739caaebe0b0f6757e4a6b1) ) // BASF 6118 (v1.2)
 
 	ROM_REGION( 0x1000, "abc838", ROMREGION_LOADBYNAME )
 	ROM_LOAD( "basf6104.bin", 0x0800, 0x0800, NO_DUMP ) // BASF 6104

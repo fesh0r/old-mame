@@ -1,8 +1,8 @@
 /*********************************************************************
 
-	cassette.c
+    cassette.c
 
-	MESS interface to the cassette image abstraction code
+    MESS interface to the cassette image abstraction code
 
 *********************************************************************/
 
@@ -56,7 +56,7 @@ INLINE dev_cassette_t *get_safe_token(const device_config *device)
 
 
 /*********************************************************************
-	cassette IO
+    cassette IO
 *********************************************************************/
 
 INLINE int cassette_is_motor_on(const device_config *device)
@@ -227,7 +227,7 @@ void cassette_seek(const device_config *device, double time, int origin)
 
 
 /*********************************************************************
-	cassette device init/load/unload/specify
+    cassette device init/load/unload/specify
 *********************************************************************/
 
 static DEVICE_START( cassette )
@@ -317,7 +317,7 @@ static DEVICE_IMAGE_UNLOAD( cassette )
 
 
 /*
-	display a small tape icon, with the current position in the tape image
+    display a small tape icon, with the current position in the tape image
 */
 static void device_display_cassette(const device_config *image)
 {
@@ -342,7 +342,7 @@ static void device_display_cassette(const device_config *image)
 
 	/* choose a location on the screen */
 	x = 0.0f;
-	y = 0;
+	y = 0.5f;
 
 	device = device_list_first( image->machine->config->devicelist, CASSETTE );
 
@@ -352,20 +352,20 @@ static void device_display_cassette(const device_config *image)
 		device = device_list_next( device, CASSETTE );
 	}
 
-	y *= ui_get_line_height();
+	y *= ui_get_line_height() + 2.0f * UI_BOX_TB_BORDER;
 	/* choose which frame of the animation we are at */
 	n = ((int) position / ANIMATION_FPS) % ANIMATION_FRAMES;
 #if 0
 	/* THE ANIMATION HASN'T WORKED SINCE 0.114 - LEFT HERE FOR REFERENCE */
 	/* NEVER SEEN THE PLAY / RECORD ICONS */
 	/* character pairs 2-3, 4-5, 6-7, 8-9 form little tape cassette images */
-	snprintf(buf, sizeof(buf) / sizeof(buf[0]), "%c%c %c %02d:%02d (%04d) [%02d:%02d (%04d)]",
+	snprintf(buf, ARRAY_LENGTH(buf), "%c%c %c %02d:%02d (%04d) [%02d:%02d (%04d)]",
 		n * 2 + 2,								/* cassette icon left */
 		n * 2 + 3,								/* cassette icon right */
 		(uistate == CASSETTE_PLAY) ? 16 : 14,	/* play or record icon */
 #endif
 	/* Since you can have anything in a BDF file, we will use crude ascii characters instead */
-	snprintf(buf, sizeof(buf) / sizeof(buf[0]), "%c%c %c %02d:%02d (%04d) [%02d:%02d (%04d)]",
+	snprintf(buf, ARRAY_LENGTH(buf), "%c%c %c %02d:%02d (%04d) [%02d:%02d (%04d)]",
 		shapes[n],					/* cassette icon left */
 		shapes[n|4],					/* cassette icon right */
 		(uistate == CASSETTE_PLAY) ? 0x50 : 0x52,	/* play (P) or record (R) */
@@ -377,7 +377,7 @@ static void device_display_cassette(const device_config *image)
 		(int) length);
 
 	/* draw the cassette */
-	ui_draw_text_box(buf, JUSTIFY_LEFT, x, y, UI_FILLCOLOR);
+	ui_draw_text_box(buf, JUSTIFY_LEFT, x, y, UI_BACKGROUND_COLOR);
 }
 
 

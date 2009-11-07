@@ -1,21 +1,26 @@
 /***************************************************************************
 
- SAM Coupe Driver - Written By Lee Hammerton
-
-  Functions to emulate general aspects of the machine (RAM, ROM, interrupts,
-  I/O ports)
+    SAM Coupe Driver - Written By Lee Hammerton, Dirk Best
 
 ***************************************************************************/
 
 #include "driver.h"
 #include "includes/samcoupe.h"
 #include "machine/msm6242.h"
+#include "devices/messram.h"
 
+/***************************************************************************
+    CONSTANTS
+***************************************************************************/
 
 #define LMPR_RAM0    0x20	/* If bit set ram is paged into bank 0, else its rom0 */
 #define LMPR_ROM1    0x40	/* If bit set rom1 is paged into bank 3, else its ram */
 #define HMPR_MCNTRL  0x80	/* If set external RAM is enabled */
 
+
+/***************************************************************************
+    MEMORY BANKING
+***************************************************************************/
 
 static void samcoupe_update_bank(const address_space *space, int bank, UINT8 *memory, int is_readonly)
 {
@@ -40,16 +45,16 @@ static void samcoupe_install_ext_mem(const address_space *space)
 	UINT8 *mem;
 
 	/* bank 3 */
-	if (asic->lext >> 6 < mess_ram_size >> 20)
-		mem = &mess_ram[(mess_ram_size & 0xfffff) + (asic->lext >> 6) * 0x100000 + (asic->lext & 0x3f) * 0x4000];
+	if (asic->lext >> 6 < messram_get_size(devtag_get_device(space->machine, "messram")) >> 20)
+		mem = &messram_get_ptr(devtag_get_device(space->machine, "messram"))[(messram_get_size(devtag_get_device(space->machine, "messram")) & 0xfffff) + (asic->lext >> 6) * 0x100000 + (asic->lext & 0x3f) * 0x4000];
 	else
 		mem = NULL;
 
 	samcoupe_update_bank(space, 3, mem, FALSE);
 
 	/* bank 4 */
-	if (asic->hext >> 6 < mess_ram_size >> 20)
-		mem = &mess_ram[(mess_ram_size & 0xfffff) + (asic->hext >> 6) * 0x100000 + (asic->hext & 0x3f) * 0x4000];
+	if (asic->hext >> 6 < messram_get_size(devtag_get_device(space->machine, "messram")) >> 20)
+		mem = &messram_get_ptr(devtag_get_device(space->machine, "messram"))[(messram_get_size(devtag_get_device(space->machine, "messram")) & 0xfffff) + (asic->hext >> 6) * 0x100000 + (asic->hext & 0x3f) * 0x4000];
 	else
 		mem = NULL;
 
@@ -60,7 +65,7 @@ static void samcoupe_install_ext_mem(const address_space *space)
 void samcoupe_update_memory(const address_space *space)
 {
 	coupe_asic *asic = space->machine->driver_data;
-	const int PAGE_MASK = ((mess_ram_size & 0xfffff) / 0x4000) - 1;
+	const int PAGE_MASK = ((messram_get_size(devtag_get_device(space->machine, "messram")) & 0xfffff) / 0x4000) - 1;
 	UINT8 *rom = memory_region(space->machine, "maincpu");
 	UINT8 *memory;
 	int is_readonly;
@@ -69,7 +74,7 @@ void samcoupe_update_memory(const address_space *space)
     if (asic->lmpr & LMPR_RAM0)   /* Is ram paged in at bank 1 */
 	{
 		if ((asic->lmpr & 0x1F) <= PAGE_MASK)
-			memory = &mess_ram[(asic->lmpr & PAGE_MASK) * 0x4000];
+			memory = &messram_get_ptr(devtag_get_device(space->machine, "messram"))[(asic->lmpr & PAGE_MASK) * 0x4000];
 		else
 			memory = NULL;	/* Attempt to page in non existant ram region */
 		is_readonly = FALSE;
@@ -84,7 +89,7 @@ void samcoupe_update_memory(const address_space *space)
 
 	/* BANK2 */
 	if (((asic->lmpr + 1) & 0x1f) <= PAGE_MASK)
-		memory = &mess_ram[((asic->lmpr + 1) & PAGE_MASK) * 0x4000];
+		memory = &messram_get_ptr(devtag_get_device(space->machine, "messram"))[((asic->lmpr + 1) & PAGE_MASK) * 0x4000];
 	else
 		memory = NULL;	/* Attempt to page in non existant ram region */
 	samcoupe_update_bank(space, 2, memory, FALSE);
@@ -98,7 +103,7 @@ void samcoupe_update_memory(const address_space *space)
 	{
 		/* BANK3 */
 		if ((asic->hmpr & 0x1F) <= PAGE_MASK )
-			memory = &mess_ram[(asic->hmpr & PAGE_MASK)*0x4000];
+			memory = &messram_get_ptr(devtag_get_device(space->machine, "messram"))[(asic->hmpr & PAGE_MASK)*0x4000];
 		else
 			memory = NULL;	/* Attempt to page in non existant ram region */
 		samcoupe_update_bank(space, 3, memory, FALSE);
@@ -113,7 +118,7 @@ void samcoupe_update_memory(const address_space *space)
 		else
 		{
 			if (((asic->hmpr + 1) & 0x1f) <= PAGE_MASK)
-				memory = &mess_ram[((asic->hmpr + 1) & PAGE_MASK) * 0x4000];
+				memory = &messram_get_ptr(devtag_get_device(space->machine, "messram"))[((asic->hmpr + 1) & PAGE_MASK) * 0x4000];
 			else
 				memory = NULL;	/* Attempt to page in non existant ram region */
 			is_readonly = FALSE;
@@ -123,9 +128,9 @@ void samcoupe_update_memory(const address_space *space)
 
 	/* video memory location */
 	if (asic->vmpr & 0x40)	/* if bit set in 2 bank screen mode */
-		videoram = &mess_ram[((asic->vmpr & 0x1e) & PAGE_MASK) * 0x4000];
+		videoram = &messram_get_ptr(devtag_get_device(space->machine, "messram"))[((asic->vmpr & 0x1e) & PAGE_MASK) * 0x4000];
 	else
-		videoram = &mess_ram[((asic->vmpr & 0x1f) & PAGE_MASK) * 0x4000];
+		videoram = &messram_get_ptr(devtag_get_device(space->machine, "messram"))[((asic->vmpr & 0x1f) & PAGE_MASK) * 0x4000];
 }
 
 
@@ -147,6 +152,10 @@ WRITE8_HANDLER( samcoupe_ext_mem_w )
 }
 
 
+/***************************************************************************
+    REAL TIME CLOCK
+***************************************************************************/
+
 static READ8_DEVICE_HANDLER( samcoupe_rtc_r )
 {
 	return msm6242_r(device, offset >> 12);
@@ -159,22 +168,89 @@ static WRITE8_DEVICE_HANDLER( samcoupe_rtc_w )
 }
 
 
+/***************************************************************************
+    MOUSE
+***************************************************************************/
+
+static TIMER_CALLBACK( samcoupe_mouse_reset )
+{
+	coupe_asic *asic = machine->driver_data;
+	asic->mouse_index = 0;
+}
+
+UINT8 samcoupe_mouse_r(running_machine *machine)
+{
+	coupe_asic *asic = machine->driver_data;
+	UINT8 result;
+
+	/* on a read, reset the timer */
+	timer_adjust_oneshot(asic->mouse_reset, ATTOTIME_IN_USEC(50), 0);
+
+	/* update when we are about to read the first real values */
+	if (asic->mouse_index == 2)
+	{
+		/* update values */
+		int mouse_x = input_port_read(machine, "mouse_x");
+		int mouse_y = input_port_read(machine, "mouse_y");
+
+		int mouse_dx = asic->mouse_x - mouse_x;
+		int mouse_dy = asic->mouse_y - mouse_y;
+
+		asic->mouse_x = mouse_x;
+		asic->mouse_y = mouse_y;
+
+		/* button state */
+		asic->mouse_data[2] = input_port_read(machine, "mouse_buttons");
+
+		/* y-axis */
+		asic->mouse_data[3] = (mouse_dy & 0xf00) >> 8;
+		asic->mouse_data[4] = (mouse_dy & 0x0f0) >> 4;
+		asic->mouse_data[5] = (mouse_dy & 0x00f) >> 0;
+
+		/* x-axis */
+		asic->mouse_data[6] = (mouse_dx & 0xf00) >> 8;
+		asic->mouse_data[7] = (mouse_dx & 0x0f0) >> 4;
+		asic->mouse_data[8] = (mouse_dx & 0x00f) >> 0;
+	}
+
+	/* get current value */
+	result = asic->mouse_data[asic->mouse_index++];
+
+	/* reset if we are at the end */
+	if (asic->mouse_index == sizeof(asic->mouse_data))
+		asic->mouse_index = 1;
+
+	return result;
+}
+
+
+/***************************************************************************
+    RESET
+***************************************************************************/
+
 MACHINE_RESET( samcoupe )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	const address_space *spaceio = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_IO);
 	coupe_asic *asic = machine->driver_data;
 
+	/* initialize asic */
 	asic->lmpr = 0x0f;      /* ROM0 paged in, ROM1 paged out RAM Banks */
 	asic->hmpr = 0x01;
 	asic->vmpr = 0x81;
 	asic->line_int = 0xff;  /* line interrupts disabled */
 	asic->status = 0x1f;    /* no interrupts active */
 
+	/* initialize mouse */
+	asic->mouse_reset = timer_alloc(space->machine, samcoupe_mouse_reset, 0);
+	asic->mouse_index = 0;
+	asic->mouse_data[0] = 0xff;
+	asic->mouse_data[1] = 0xff;
+
 	if (input_port_read(machine, "config") & 0x01)
 	{
 		/* install RTC */
-		const device_config *rtc = devtag_get_device(machine, "rtc");
+		const device_config *rtc = devtag_get_device(machine, "sambus_clock");
 		memory_install_readwrite8_device_handler(spaceio, rtc, 0xef, 0xef, 0xffff, 0xff00, samcoupe_rtc_r, samcoupe_rtc_w);
 	}
 	else
@@ -183,5 +259,6 @@ MACHINE_RESET( samcoupe )
 		memory_install_readwrite8_handler(spaceio, 0xef, 0xef, 0xffff, 0xff00, SMH_UNMAP, SMH_UNMAP);
 	}
 
+	/* initialize memory */
 	samcoupe_update_memory(space);
 }

@@ -57,12 +57,11 @@
 #include "machine/wd17xx.h"
 #include "machine/ctronics.h"
 #include "machine/msm8251.h"
-#include "formats/dsk_dsk.h"
 #include "devices/flopdrv.h"
 #include "sound/ay8910.h"
 #include "video/mc6845.h"
 #include "rendlay.h"
-
+#include "devices/messram.h"
 
 /***************************************************************************
     CONSTANTS
@@ -177,7 +176,7 @@ static READ8_HANDLER( einstein_80col_state_r )
 
 
 /****************************************************************
-	EINSTEIN NON-Z80 DEVICES DAISY CHAIN SUPPORT
+    EINSTEIN NON-Z80 DEVICES DAISY CHAIN SUPPORT
 ****************************************************************/
 
 static DEVICE_START( einstein_daisy ) { }
@@ -391,8 +390,12 @@ static WRITE8_DEVICE_HANDLER( einstein_drsel_w )
 	if (BIT(data, 2)) wd17xx_set_drive(device, 2);
 	if (BIT(data, 3)) wd17xx_set_drive(device, 3);
 
-	/* bit 4 selects the side */
-	wd17xx_set_side(device, BIT(data, 4));
+	/* double sided drive connected? */
+	if (input_port_read(device->machine, "config") & data)
+	{
+		/* bit 4 selects the side then */
+		wd17xx_set_side(device, BIT(data, 4));
+	}
 }
 
 
@@ -408,8 +411,8 @@ static TIMER_DEVICE_CALLBACK( einstein_ctc_trigger_callback )
 	/* toggle line status */
 	einstein->ctc_trigger ^= 1;
 
-	z80ctc_trg0_w(einstein->ctc, 0, einstein->ctc_trigger);
-	z80ctc_trg1_w(einstein->ctc, 0, einstein->ctc_trigger);
+	z80ctc_trg0_w(einstein->ctc, einstein->ctc_trigger);
+	z80ctc_trg1_w(einstein->ctc, einstein->ctc_trigger);
 }
 
 
@@ -417,13 +420,13 @@ static TIMER_DEVICE_CALLBACK( einstein_ctc_trigger_callback )
     UART
 ***************************************************************************/
 
-static WRITE8_DEVICE_HANDLER( einstein_serial_transmit_clock )
+static WRITE_LINE_DEVICE_HANDLER( einstein_serial_transmit_clock )
 {
 	const device_config *uart = devtag_get_device(device->machine, IC_I060);
 	msm8251_transmit_clock(uart);
 }
 
-static WRITE8_DEVICE_HANDLER( einstein_serial_receive_clock )
+static WRITE_LINE_DEVICE_HANDLER( einstein_serial_receive_clock )
 {
 	const device_config *uart = devtag_get_device(device->machine, IC_I060);
 	msm8251_receive_clock(uart);
@@ -437,7 +440,7 @@ static WRITE8_DEVICE_HANDLER( einstein_serial_receive_clock )
 static void einstein_page_rom(running_machine *machine)
 {
 	einstein_state *einstein = machine->driver_data;
-	memory_set_bankptr(machine, 1, einstein->rom_enabled ? memory_region(machine, "bios") : mess_ram);
+	memory_set_bankptr(machine, 1, einstein->rom_enabled ? memory_region(machine, "bios") : messram_get_ptr(devtag_get_device(machine, "messram")));
 }
 
 /* writing to this port is a simple trigger, and switches between RAM and ROM */
@@ -558,14 +561,16 @@ static MACHINE_START( einstein )
 static MACHINE_RESET( einstein )
 {
 	einstein_state *einstein = machine->driver_data;
+	const device_config *floppy;
+	UINT8 config = input_port_read(machine, "config");
 
 	/* save pointers to our devices */
 	einstein->color_screen = devtag_get_device(machine, "screen");
 	einstein->ctc = devtag_get_device(machine, IC_I058);
 
 	/* initialize memory mapping */
-	memory_set_bankptr(machine, 2, mess_ram);
-	memory_set_bankptr(machine, 3, mess_ram + 0x8000);
+	memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_set_bankptr(machine, 3, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000);
 	einstein->rom_enabled = 1;
 	einstein_page_rom(machine);
 
@@ -576,9 +581,17 @@ static MACHINE_RESET( einstein )
 	einstein->interrupt = 0;
 	einstein->interrupt_mask = 0;
 
-	floppy_drive_set_geometry(image_from_devtype_and_index(machine, IO_FLOPPY, 0), FLOPPY_DRIVE_SS_40);
-
 	einstein->ctc_trigger = 0;
+
+	/* configure floppy drives */
+	floppy = devtag_get_device(machine, "floppy0");
+	floppy_drive_set_geometry(floppy, config & 0x01 ? FLOPPY_DRIVE_DS_80 : FLOPPY_DRIVE_SS_40);
+	floppy = devtag_get_device(machine, "floppy1");
+	floppy_drive_set_geometry(floppy, config & 0x02 ? FLOPPY_DRIVE_DS_80 : FLOPPY_DRIVE_SS_40);
+	floppy = devtag_get_device(machine, "floppy2");
+	floppy_drive_set_geometry(floppy, config & 0x04 ? FLOPPY_DRIVE_DS_80 : FLOPPY_DRIVE_SS_40);
+	floppy = devtag_get_device(machine, "floppy3");
+	floppy_drive_set_geometry(floppy, config & 0x08 ? FLOPPY_DRIVE_DS_80 : FLOPPY_DRIVE_SS_40);
 }
 
 static MACHINE_RESET( einstein2 )
@@ -778,9 +791,23 @@ static INPUT_PORTS_START( einstein )
 	/* analog joystick 2 Y axis */
 	PORT_START("JOY2_Y")
 	PORT_BIT(0xff, 0x80, IPT_AD_STICK_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(1) PORT_MINMAX(1,0xff) PORT_CODE_DEC(JOYCODE_Y_UP_SWITCH) PORT_CODE_INC(JOYCODE_Y_DOWN_SWITCH) PORT_PLAYER(2) PORT_REVERSE
+
+	PORT_START("config")
+	PORT_CONFNAME(0x01, 0x00, "Floppy drive #1")
+	PORT_CONFSETTING(0x00, "Single sided")
+	PORT_CONFSETTING(0x01, "Double sided")
+	PORT_CONFNAME(0x02, 0x00, "Floppy drive #2")
+	PORT_CONFSETTING(0x00, "Single sided")
+	PORT_CONFSETTING(0x02, "Double sided")
+	PORT_CONFNAME(0x04, 0x00, "Floppy drive #3")
+	PORT_CONFSETTING(0x00, "Single sided")
+	PORT_CONFSETTING(0x04, "Double sided")
+	PORT_CONFNAME(0x08, 0x00, "Floppy drive #4")
+	PORT_CONFSETTING(0x00, "Single sided")
+	PORT_CONFSETTING(0x08, "Double sided")
 INPUT_PORTS_END
 
-INPUT_PORTS_START( einstein_80col )
+static INPUT_PORTS_START( einstein_80col )
 	PORT_INCLUDE(einstein)
 
 	/* dip switches on the 80 column card */
@@ -798,13 +825,13 @@ INPUT_PORTS_END
     MACHINE DRIVERS
 ***************************************************************************/
 
-static const z80ctc_interface einstein_ctc_intf =
+static Z80CTC_INTERFACE( einstein_ctc_intf )
 {
 	0,
-	0,
-	einstein_serial_transmit_clock,
-	einstein_serial_receive_clock,
-	z80ctc_trg3_w
+	DEVCB_NULL,
+	DEVCB_LINE(einstein_serial_transmit_clock),
+	DEVCB_LINE(einstein_serial_receive_clock),
+	DEVCB_LINE(z80ctc_trg3_w)
 };
 
 
@@ -851,6 +878,17 @@ static const mc6845_interface einstein_crtc6845_interface =
 	NULL
 };
 
+static const floppy_config einstein_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_SS_40,
+	FLOPPY_OPTIONS_NAME(default),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 static MACHINE_DRIVER_START( einstein )
 	/* basic machine hardware */
@@ -865,7 +903,7 @@ static MACHINE_DRIVER_START( einstein )
 	MDRV_MACHINE_RESET(einstein)
 
 	/* this is actually clocked at the system clock 4 MHz, but this would be too fast for our
-	driver. So we update at 50Hz and hope this is good enough. */
+    driver. So we update at 50Hz and hope this is good enough. */
 	MDRV_TIMER_ADD_PERIODIC("keyboard", einstein_keyboard_timer_callback, HZ(50))
 
 	MDRV_Z80PIO_ADD(IC_I063, einstein_pio_intf)
@@ -898,6 +936,13 @@ static MACHINE_DRIVER_START( einstein )
 	MDRV_MSM8251_ADD(IC_I060, default_msm8251_interface)
 
 	MDRV_WD1770_ADD(IC_I042, default_wd17xx_interface)
+
+	MDRV_FLOPPY_4_DRIVES_ADD(einstein_floppy_config)
+	
+	/* RAM is provided by 8k DRAM ICs i009, i010, i011, i012, i013, i014, i015 and i016 */
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")
 MACHINE_DRIVER_END
 
 
@@ -924,6 +969,7 @@ static MACHINE_DRIVER_START( einstei2 )
 	MDRV_MC6845_ADD("crtc", MC6845, XTAL_X002 / 4, einstein_crtc6845_interface)
 
 	MDRV_VIDEO_UPDATE(einstein2)
+
 MACHINE_DRIVER_END
 
 
@@ -969,38 +1015,11 @@ ROM_START( einst256 )
 	ROM_LOAD("tc256.rom", 0x0000, 0x4000, CRC(ef8dad88) SHA1(eb2102d3bef572db7161c26a7c68a5fcf457b4d0) )
 ROM_END
 
-
-
-/***************************************************************************
-    SYSTEM CONFIG
-***************************************************************************/
-static void einstein_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_dsk; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( einstein )
-	/* RAM is provided by 8k DRAM ICs i009, i010, i011, i012, i013, i014, i015 and i016 */
-	CONFIG_RAM_DEFAULT(8 * 8 * 1024)
-	CONFIG_DEVICE(einstein_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-
 /***************************************************************************
     GAME DRIVERS
 ***************************************************************************/
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT           INIT  CONFIG,   COMPANY   FULLNAME                             FLAGS */
-COMP( 1984, einstein, 0,        0,		einstein, einstein,       0,    einstein, "Tatung", "Einstein TC-01",                    0 )
-COMP( 1984, einstei2, einstein, 0,		einstei2, einstein_80col, 0,    einstein, "Tatung", "Einstein TC-01 + 80 column device", 0 )
-COMP( 1984, einst256, 0,        0,		einstein, einstein,       0,    einstein, "Tatung", "Einstein 256",						 GAME_NOT_WORKING )
+COMP( 1984, einstein, 0,        0,		einstein, einstein,       0,    0, "Tatung", "Einstein TC-01",                    0 )
+COMP( 1984, einstei2, einstein, 0,		einstei2, einstein_80col, 0,    0, "Tatung", "Einstein TC-01 + 80 column device", 0 )
+COMP( 1984, einst256, 0,        0,		einstein, einstein,       0,    0, "Tatung", "Einstein 256",						 GAME_NOT_WORKING )

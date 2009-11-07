@@ -10,7 +10,7 @@
 
 /*
 
-2008 - Driver Updates 
+2008 - Driver Updates
 ---------------------
 
 (most of the informations are taken from http://www.zimmers.net/cbmpics/ )
@@ -20,31 +20,31 @@
 
 * Commodore 65 (1989)
 
-Also known as C64 DX at early stages of the project. It was cancelled 
-around 1990-1991. Only few units survive (they were sold after Commodore 
+Also known as C64 DX at early stages of the project. It was cancelled
+around 1990-1991. Only few units survive (they were sold after Commodore
 liquidation in 1994).
 
 CPU: CSG 4510 (3.54 MHz)
 RAM: 128 kilobytes, expandable to 8 megabytes
 ROM: 128 kilobytes
-Video: CSG 4569 "VIC-III" (6 Video modes; Resolutions from 320x200 to 
-	1280x400; 80 columns text; Palette of 4096 colors)
-Sound: CSG 8580 "SID" x2 (6 voice stereo synthesizer/digital sound 
-	capabilities)
-Ports: CSG 4510 (2 Joystick/Mouse ports; CBM Serial port; CBM 'USER' 
-	port; CBM Monitor port; Power and reset switches; C65 bus drive 
-	port; RGBI video port; 2 RCA audio ports; RAM expansion port; C65 
-	expansion port)
+Video: CSG 4569 "VIC-III" (6 Video modes; Resolutions from 320x200 to
+    1280x400; 80 columns text; Palette of 4096 colors)
+Sound: CSG 8580 "SID" x2 (6 voice stereo synthesizer/digital sound
+    capabilities)
+Ports: CSG 4510 (2 Joystick/Mouse ports; CBM Serial port; CBM 'USER'
+    port; CBM Monitor port; Power and reset switches; C65 bus drive
+    port; RGBI video port; 2 RCA audio ports; RAM expansion port; C65
+    expansion port)
 Keyboard: Full-sized 77 key QWERTY (12 programmable function keys;
-	4 direction cursor-pad)
+    4 direction cursor-pad)
 Additional Hardware: Built in 3.5" DD disk drive (1581 compatible)
 Miscellaneous: Partially implemented Commodore 64 emulation
 
 [Notes]
 
-The datasette port was removed here. C65 supports an additional "dumb" 
-drive externally. It also features, in addition to the standard CBM 
-bus serial (available in all modes), a Fast and a Burst serial bus 
+The datasette port was removed here. C65 supports an additional "dumb"
+drive externally. It also features, in addition to the standard CBM
+bus serial (available in all modes), a Fast and a Burst serial bus
 (both available in C65 mode only)
 
 */
@@ -67,6 +67,7 @@ bus serial (available in all modes), a Fast and a Burst serial bus
 #include "includes/c64.h"
 #include "includes/c65.h"
 
+#include "devices/messram.h"
 
 /*************************************
  *
@@ -115,11 +116,11 @@ static INPUT_PORTS_START( c65 )
 	PORT_INCLUDE( common_cbm_keyboard )		/* ROW0 -> ROW7 */
 
 	PORT_START("FUNCT")
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("ESC") PORT_CODE(KEYCODE_F1)		
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("F13 F14") PORT_CODE(KEYCODE_F11)	
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("F11 F12") PORT_CODE(KEYCODE_F10)	
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("F9 F10") PORT_CODE(KEYCODE_F9)	
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("HELP") PORT_CODE(KEYCODE_F12)		
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("ESC") PORT_CODE(KEYCODE_F1)
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("F13 F14") PORT_CODE(KEYCODE_F11)
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("F11 F12") PORT_CODE(KEYCODE_F10)
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("F9 F10") PORT_CODE(KEYCODE_F9)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("HELP") PORT_CODE(KEYCODE_F12)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("ALT") PORT_CODE(KEYCODE_F2)		/* non blocking */
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("TAB") PORT_CODE(KEYCODE_TAB)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("NO SCRL") PORT_CODE(KEYCODE_F4)
@@ -132,7 +133,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( c65ger )
 	PORT_INCLUDE( c65 )
-    
+
 	PORT_MODIFY( "ROW1" )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Z  { Y }") PORT_CODE(KEYCODE_Z)					PORT_CHAR('Z')
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("3  #  { 3  Paragraph }") PORT_CODE(KEYCODE_3)		PORT_CHAR('3') PORT_CHAR('#')
@@ -225,7 +226,7 @@ static MACHINE_DRIVER_START( c65 )
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_SIZE(525 * 2, 520 * 2)
 	MDRV_SCREEN_VISIBLE_AREA(VIC6567_STARTVISIBLECOLUMNS ,(VIC6567_STARTVISIBLECOLUMNS + VIC6567_VISIBLECOLUMNS - 1) * 2, VIC6567_STARTVISIBLELINES, VIC6567_STARTVISIBLELINES + VIC6567_VISIBLELINES - 1)
-	MDRV_PALETTE_LENGTH(sizeof(vic3_palette) / sizeof(vic3_palette[0]) / 3)
+	MDRV_PALETTE_LENGTH(ARRAY_LENGTH(vic3_palette) / 3)
 	MDRV_PALETTE_INIT( c65 )
 
 	/* sound hardware */
@@ -242,11 +243,16 @@ static MACHINE_DRIVER_START( c65 )
 	/* cia */
 	MDRV_CIA6526_ADD("cia_0", CIA6526R1, 3500000, c65_ntsc_cia0)
 	MDRV_CIA6526_ADD("cia_1", CIA6526R1, 3500000, c65_ntsc_cia1)
-	
+
 	/* floppy from serial bus */
 	MDRV_IMPORT_FROM(simulated_drive)
 
 	MDRV_IMPORT_FROM(c64_cartslot)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("128K")
+	MDRV_RAM_EXTRA_OPTIONS("640K,4224K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( c65pal )
@@ -304,16 +310,10 @@ ROM_END
  *  System configuration(s)
  *
  *************************************/
-
-
 static SYSTEM_CONFIG_START( c65 )
 	// to investigate which carts could work in the c65 expansion port!
 	CONFIG_DEVICE(cbmfloppy_device_getinfo)
-	CONFIG_RAM_DEFAULT(128 * 1024)
-	CONFIG_RAM((128 + 512) * 1024)
-	CONFIG_RAM((128 + 4096) * 1024)
 SYSTEM_CONFIG_END
-
 
 /***************************************************************************
 

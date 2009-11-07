@@ -8,51 +8,51 @@ PCB Layout
 OHIO SCIENTIFIC MODEL 600 REV D
 
 |-------------------------------------------------------------------------------------------|
-|					2114	2114															|
-|									LS138				CN1									|
-|		IC1			2114	2114															|
-|									LS04			LS75	LS75							|
-|					2114	2114															|
-|									LS138													|
-|					2114	2114					LS125	LS125							|
-|									LS138													|
-| -					2114	2114					8T28	8T28							|
-| |																							|
-|C|					2114	2114															|
-|N|																							|
-|3|					2114	2114						6502								|
-| |																							|
-| -					2114	2114															|
-|																							|
-|							2114	8T28				ROM0								|
-|			LS163	LS157					LS174											|
-|							2114	8T28				ROM1								|
-|	CA3130	LS163	LS157					LS02											|
-|							2114	8T28				ROM2								|
-|	LS14	LS163	LS157					LS04											|
-|									SW1					ROM3								|
-|	7417	7404	LS20	ROM5	7408	LS139											|
-|														ROM4								|
-| -	74123	7474	LS163	LS165	7474													|
-|C|																							|
-|N|			7476	7400	LS157	LS93	LS04		6850								|
-|2|																							|
-| -	7403	74123	3.7MHz	LS86	LS163	LS20									CN4		|
+|                   2114    2114                                                            |
+|                                   LS138               CN1                                 |
+|       IC1         2114    2114                                                            |
+|                                   LS04            LS75    LS75                            |
+|                   2114    2114                                                            |
+|                                   LS138                                                   |
+|                   2114    2114                    LS125   LS125                           |
+|                                   LS138                                                   |
+| -                 2114    2114                    8T28    8T28                            |
+| |                                                                                         |
+|C|                 2114    2114                                                            |
+|N|                                                                                         |
+|3|                 2114    2114                        6502                                |
+| |                                                                                         |
+| -                 2114    2114                                                            |
+|                                                                                           |
+|                           2114    8T28                ROM0                                |
+|           LS163   LS157                   LS174                                           |
+|                           2114    8T28                ROM1                                |
+|   CA3130  LS163   LS157                   LS02                                            |
+|                           2114    8T28                ROM2                                |
+|   LS14    LS163   LS157                   LS04                                            |
+|                                   SW1                 ROM3                                |
+|   7417    7404    LS20    ROM5    7408    LS139                                           |
+|                                                       ROM4                                |
+| - 74123   7474    LS163   LS165   7474                                                    |
+|C|                                                                                         |
+|N|         7476    7400    LS157   LS93    LS04        6850                                |
+|2|                                                                                         |
+| - 7403    74123   3.7MHz  LS86    LS163   LS20                                    CN4     |
 |-------------------------------------------------------------------------------------------|
 
 Notes:
     All IC's shown.
 
-    ROM0-5  - 
-	6502	- 
-	6850	- Asynchronous Communications Interface Adapter
-	8T28	- 4-Bit Bidirectional Bus Transceiver
-	CA3130	- Operational Amplifier
-	CN1		- OSI-48 bus connector
-	CN2		- 
-	CN3		- 
-	CN4		- sound connector
-	SW1		- 
+    ROM0-5  -
+    6502    -
+    6850    - Asynchronous Communications Interface Adapter
+    8T28    - 4-Bit Bidirectional Bus Transceiver
+    CA3130  - Operational Amplifier
+    CN1     - OSI-48 bus connector
+    CN2     -
+    CN3     -
+    CN4     - sound connector
+    SW1     -
 
 */
 
@@ -64,51 +64,51 @@ PCB Layout
 ----------
 
 |-------------------------------------------------------------------------------------------|
-|					2114	2114															|
-|									LS138				CN1									|
-|		IC1			2114	2114															|
-|									7404			LS75	LS75							|
-|					2114	2114															|
-|									LS138													|
-|					2114	2114					LS125	LS125							|
-|									LS138													|
-| -					2114*	2114*					8T28*	8T28*							|
-| |																							|
-|C|					2114*	2114*															|
-|N|		CN4																					|
-|3|					2114*	2114*						6502								|
-| |																							|
-| -					2114*	2114*															|
-|																							|
-|							2114	8T28				ROM0								|
-|			74163	LS157																	|
-|							2114	8T28				ROM1								|
-|	IC66'	74163	LS157					7402											|
-|														ROM2								|
-|	IC67'	74163	LS157					7404											|
-|														ROM3								|
-|	IC68'	7404	7420	ROM5			LS139											|
-|														ROM4								|
-| -	LS123	7474	74163	74165	LS123													|
-|C|																							|
-|N|			7476	7400			7493	7404		6850								|
-|2|																							|
-| -	7403	LS123	8MHz			74163	LS20											|
+|                   2114    2114                                                            |
+|                                   LS138               CN1                                 |
+|       IC1         2114    2114                                                            |
+|                                   7404            LS75    LS75                            |
+|                   2114    2114                                                            |
+|                                   LS138                                                   |
+|                   2114    2114                    LS125   LS125                           |
+|                                   LS138                                                   |
+| -                 2114*   2114*                   8T28*   8T28*                           |
+| |                                                                                         |
+|C|                 2114*   2114*                                                           |
+|N|     CN4                                                                                 |
+|3|                 2114*   2114*                       6502                                |
+| |                                                                                         |
+| -                 2114*   2114*                                                           |
+|                                                                                           |
+|                           2114    8T28                ROM0                                |
+|           74163   LS157                                                                   |
+|                           2114    8T28                ROM1                                |
+|   IC66'   74163   LS157                   7402                                            |
+|                                                       ROM2                                |
+|   IC67'   74163   LS157                   7404                                            |
+|                                                       ROM3                                |
+|   IC68'   7404    7420    ROM5            LS139                                           |
+|                                                       ROM4                                |
+| - LS123   7474    74163   74165   LS123                                                   |
+|C|                                                                                         |
+|N|         7476    7400            7493    7404        6850                                |
+|2|                                                                                         |
+| - 7403    LS123   8MHz            74163   LS20                                            |
 |-------------------------------------------------------------------------------------------|
 
 Notes:
     All IC's shown.
 
-    ROM0-5  - 
-	6502	- 
-	6850	- Asynchronous Communications Interface Adapter
-	8T28	- 4-Bit Bidirectional Bus Transceiver
-	CN1		- OSI-48 Bus Connector
-	CN2		- 
-	CN3		- 
-	CN4		- UHF Modulator Output
-	*		- present when 8KB of RAM installed
-	'		- present when cassette option installed
+    ROM0-5  -
+    6502    -
+    6850    - Asynchronous Communications Interface Adapter
+    8T28    - 4-Bit Bidirectional Bus Transceiver
+    CN1     - OSI-48 Bus Connector
+    CN2     -
+    CN3     -
+    CN4     - UHF Modulator Output
+    *       - present when 8KB of RAM installed
+    '       - present when cassette option installed
 
 */
 
@@ -122,57 +122,57 @@ PCB Layout
 OSI 470 REV B
 
 |-------------------------------------------------------------------|
-|																	|
-|												8T26	8T26		|
-|																	|
-|		7417														|
-|																	|
-|						6820				6850		7400  U2C	|
-|		7417														|
-|																	|
-|																	|
-|		7417												7404	|
-|																	|
-|																	|
-|		7417														|
-|																	|
-|					7400	7404	74123	74123	7410			|
-|	4MHz															|
-|																	|
-|																	|
-|	7400	7493	74390	74390	74390	7404	7430	7404	|
-|																	|
-|																	|
-|					U6A												|
-|																	|
+|                                                                   |
+|                                               8T26    8T26        |
+|                                                                   |
+|       7417                                                        |
+|                                                                   |
+|                       6820                6850        7400  U2C   |
+|       7417                                                        |
+|                                                                   |
+|                                                                   |
+|       7417                                                7404    |
+|                                                                   |
+|                                                                   |
+|       7417                                                        |
+|                                                                   |
+|                   7400    7404    74123   74123   7410            |
+|   4MHz                                                            |
+|                                                                   |
+|                                                                   |
+|   7400    7493    74390   74390   74390   7404    7430    7404    |
+|                                                                   |
+|                                                                   |
+|                   U6A                                             |
+|                                                                   |
 |-------------------------------------------------------------------|
 
 Notes:
     All IC's shown.
 
-	6850	- Asynchronous Communications Interface Adapter
-	6820	- Peripheral Interface Adapter
-	8T26	- 4-Bit Bidirectional Bus Transceiver
-	U2C		- PROTO?
-	U6A		- PROTO?
+    6850    - Asynchronous Communications Interface Adapter
+    6820    - Peripheral Interface Adapter
+    8T26    - 4-Bit Bidirectional Bus Transceiver
+    U2C     - PROTO?
+    U6A     - PROTO?
 
 */
 
 /*
 
-	TODO:
+    TODO:
 
-	- fix uk101 video to 64x16
-	- floppy PIA is actually a 6820
-	- break key
-	- power on reset
-	- Superboard II revisions A/C/D
-	- uk101 medium resolution graphics
-	- uk101 ay-3-8910 sound
-	- cassette
-	- faster cassette
-	- floppy
-	- wemon?
+    - fix uk101 video to 64x16
+    - floppy PIA is actually a 6820
+    - break key
+    - power on reset
+    - Superboard II revisions A/C/D
+    - uk101 medium resolution graphics
+    - uk101 ay-3-8910 sound
+    - cassette
+    - faster cassette
+    - floppy
+    - wemon?
 
 */
 
@@ -186,6 +186,7 @@ Notes:
 #include "devices/flopdrv.h"
 #include "formats/basicdsk.h"
 #include "devices/cassette.h"
+#include "devices/messram.h"
 
 /* Sound */
 
@@ -202,8 +203,8 @@ static const discrete_dac_r1_ladder osi600_dac =
 static DISCRETE_SOUND_START( osi600_discrete_interface )
 	DISCRETE_INPUT_DATA(NODE_01)
 
-	DISCRETE_DAC_R1(NODE_02, 1, NODE_01, DEFAULT_TTL_V_LOGIC_1, &osi600_dac)
-	DISCRETE_CRFILTER(NODE_03, 1, NODE_02, 1.0/(1.0/RES_K(1)+1.0/180+1.0/180+1.0/180+1.0/180), CAP_U(0.1))
+	DISCRETE_DAC_R1(NODE_02, NODE_01, DEFAULT_TTL_V_LOGIC_1, &osi600_dac)
+	DISCRETE_CRFILTER(NODE_03, NODE_02, 1.0/(1.0/RES_K(1)+1.0/180+1.0/180+1.0/180+1.0/180), CAP_U(0.1))
 	DISCRETE_OUTPUT(NODE_03, 100)
 	DISCRETE_GAIN(NODE_04, NODE_03, 32767.0/5)
 	DISCRETE_OUTPUT(NODE_04, 100)
@@ -223,7 +224,7 @@ static DISCRETE_SOUND_START( osi600c_discrete_interface )
 	DISCRETE_INPUT_DATA(NODE_01)
 	DISCRETE_INPUT_LOGIC(NODE_10)
 
-	DISCRETE_DAC_R1(NODE_02, 1, NODE_01, DEFAULT_TTL_V_LOGIC_1, &osi600_dac)
+	DISCRETE_DAC_R1(NODE_02, NODE_01, DEFAULT_TTL_V_LOGIC_1, &osi600_dac)
 	DISCRETE_ONOFF(NODE_03, NODE_10, NODE_02)
 	DISCRETE_OUTPUT(NODE_03, 100)
 DISCRETE_SOUND_END
@@ -268,18 +269,18 @@ static WRITE8_HANDLER( osi600_ctrl_w )
 {
 	/*
 
-		bit		signal			description
+        bit     signal          description
 
-		0		_32				screen size (0=32x32, 1=64x16)
-		1		COLOR EN		color enable
-		2		BK0			
-		3		BK1			
-		4		DAC DISABLE		DAC sound enable
-		5		
-		6		
-		7		
+        0       _32             screen size (0=32x32, 1=64x16)
+        1       COLOR EN        color enable
+        2       BK0
+        3       BK1
+        4       DAC DISABLE     DAC sound enable
+        5
+        6
+        7
 
-	*/
+    */
 
 	const device_config *discrete = devtag_get_device(space->machine, "discrete");
 	osi_state *state = space->machine->driver_data;
@@ -295,18 +296,18 @@ static WRITE8_HANDLER( osi630_ctrl_w )
 	const device_config *speaker = devtag_get_device(space->machine, "beep");
 	/*
 
-		bit		description
+        bit     description
 
-		0		AC control enable
-		1		tone generator enable
-		2		modem select (0 = printer, 1 = modem)
-		3		
-		4		
-		5		
-		6		
-		7		
+        0       AC control enable
+        1       tone generator enable
+        2       modem select (0 = printer, 1 = modem)
+        3
+        4
+        5
+        6
+        7
 
-	*/
+    */
 
 	beep_set_state(speaker, BIT(data, 1));
 }
@@ -320,37 +321,37 @@ static WRITE8_HANDLER( osi630_sound_w )
 /* Disk Drive */
 
 /*
-	C000 FLOPIN			FLOPPY DISK STATUS PORT
+    C000 FLOPIN         FLOPPY DISK STATUS PORT
 
-	BIT	FUNCTION
-	0	DRIVE 0 READY (0 IF READY)
-	1	TRACK 0 (0 IF AT TRACK 0)
-	2	FAULT (0 IF FAULT)
-	3
-	4	DRIVE 1 READY (0 IF READY)
-	5	WRITE PROTECT (0 IF WRITE PROTECT)
-	6	DRIVE SELECT (1 = A OR C, 0 = B OR D)
-	7	INDEX (0 IF AT INDEX HOLE)
+    BIT FUNCTION
+    0   DRIVE 0 READY (0 IF READY)
+    1   TRACK 0 (0 IF AT TRACK 0)
+    2   FAULT (0 IF FAULT)
+    3
+    4   DRIVE 1 READY (0 IF READY)
+    5   WRITE PROTECT (0 IF WRITE PROTECT)
+    6   DRIVE SELECT (1 = A OR C, 0 = B OR D)
+    7   INDEX (0 IF AT INDEX HOLE)
 
-	C002 FLOPOT			FLOPPY DISK CONTROL PORT
+    C002 FLOPOT         FLOPPY DISK CONTROL PORT
 
-	BIT	FUNCTION
-	0	WRITE ENABLE (0 ALLOWS WRITING)
-	1	ERASE ENABLE (0 ALLOWS ERASING)
-		ERASE ENABLE IS ON 200us AFTER WRITE IS ON
-		ERASE ENABLE IS OFF 530us AFTER WRITE IS OFF
-	2	STEP BIT : INDICATES DIRECTION OF STEP (WAIT 10us FIRST)
-		0 INDICATES STEP TOWARD 76
-		1 INDICATES STEP TOWARD 0
-	3	STEP (TRANSITION FROM 1 TO 0)
-		MUST HOLD AT LEAST 10us, MIN 8us BETWEEN
-	4	FAULT RESET (0 RESETS)
-	5	SIDE SELECT (1 = A OR B, 0 = C OR D)
-	6	LOW CURRENT (0 FOR TRKS 43-76, 1 FOR TRKS 0-42)
-	7	HEAD LOAD (0 TO LOAD : MUST WAIT 40ms AFTER)
+    BIT FUNCTION
+    0   WRITE ENABLE (0 ALLOWS WRITING)
+    1   ERASE ENABLE (0 ALLOWS ERASING)
+        ERASE ENABLE IS ON 200us AFTER WRITE IS ON
+        ERASE ENABLE IS OFF 530us AFTER WRITE IS OFF
+    2   STEP BIT : INDICATES DIRECTION OF STEP (WAIT 10us FIRST)
+        0 INDICATES STEP TOWARD 76
+        1 INDICATES STEP TOWARD 0
+    3   STEP (TRANSITION FROM 1 TO 0)
+        MUST HOLD AT LEAST 10us, MIN 8us BETWEEN
+    4   FAULT RESET (0 RESETS)
+    5   SIDE SELECT (1 = A OR B, 0 = C OR D)
+    6   LOW CURRENT (0 FOR TRKS 43-76, 1 FOR TRKS 0-42)
+    7   HEAD LOAD (0 TO LOAD : MUST WAIT 40ms AFTER)
 
-	C010 ACIA			DISK CONTROLLER ACIA STATUS PORT
-	C011 ACIAIO			DISK CONTROLLER ACIA I/O PORT
+    C010 ACIA           DISK CONTROLLER ACIA STATUS PORT
+    C011 ACIAIO         DISK CONTROLLER ACIA I/O PORT
 */
 
 static void osi470_index_callback(const device_config *controller, const device_config *img, int state)
@@ -365,18 +366,18 @@ static READ8_DEVICE_HANDLER( osi470_pia_a_r )
 
 	/*
 
-		bit		description
+        bit     description
 
-		0		_READY DRIVE 1
-		1		_TRACK 00
-		2		_FAULT
-		3		_SECTOR
-		4		_READY DRIVE 2
-		5		_WRITE PROTECT
-		6		
-		7		_INDEX
+        0       _READY DRIVE 1
+        1       _TRACK 00
+        2       _FAULT
+        3       _SECTOR
+        4       _READY DRIVE 2
+        5       _WRITE PROTECT
+        6
+        7       _INDEX
 
-	*/
+    */
 
 	osi_state *state = device->machine->driver_data;
 
@@ -387,36 +388,36 @@ static WRITE8_DEVICE_HANDLER( osi470_pia_a_w )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0		
-		1		
-		2		
-		3		
-		4		
-		5		
-		6		drive select
-		7		
+        0
+        1
+        2
+        3
+        4
+        5
+        6       drive select
+        7
 
-	*/
+    */
 }
 
 static WRITE8_DEVICE_HANDLER( osi470_pia_b_w )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0		_WRITE ENABLE
-		1		_ERASE ENABLE
-		2		_STEP IN
-		3		_STEP
-		4		_FAULT RESET
-		5		side select
-		6		_LOW CURRENT
-		7		_HEAD LOAD
+        0       _WRITE ENABLE
+        1       _ERASE ENABLE
+        2       _STEP IN
+        3       _STEP
+        4       _FAULT RESET
+        5       side select
+        6       _LOW CURRENT
+        7       _HEAD LOAD
 
-	*/
+    */
 }
 
 static WRITE8_DEVICE_HANDLER( osi470_pia_cb2_w )
@@ -675,7 +676,7 @@ static MACHINE_START( osi600 )
 	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, M6502_TAG), 0);
 	memory_set_bank(machine, 1, 0);
 
-	switch (mess_ram_size)
+	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 4*1024:
 		memory_install_readwrite8_handler(program, 0x0000, 0x0fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
@@ -705,7 +706,7 @@ static MACHINE_START( c1p )
 	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, M6502_TAG), 0);
 	memory_set_bank(machine, 1, 0);
 
-	switch (mess_ram_size)
+	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 8*1024:
 		memory_install_readwrite8_handler(program, 0x0000, 0x1fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
@@ -730,8 +731,29 @@ static MACHINE_START( c1pmf )
 	MACHINE_START_CALL(c1p);
 
 	/* set floppy index hole callback */
-	floppy_drive_set_index_pulse_callback(image_from_devtype_and_index(machine, IO_FLOPPY, 0), osi470_index_callback);
+	floppy_drive_set_index_pulse_callback(floppy_get_device(machine, 0), osi470_index_callback);
 }
+
+static FLOPPY_OPTIONS_START(osi)
+	FLOPPY_OPTION(osi, "img", "OSI disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([36])
+		SECTORS([10])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([0]))
+FLOPPY_OPTIONS_END
+
+static const floppy_config osi_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_SS_40,
+	FLOPPY_OPTIONS_NAME(osi),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 /* Machine Drivers */
 
@@ -758,6 +780,11 @@ static MACHINE_DRIVER_START( osi600 )
 
 	/* cassette */
 	MDRV_CASSETTE_ADD("cassette", default_cassette_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("4K")
+	MDRV_RAM_EXTRA_OPTIONS("8K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( uk101 )
@@ -777,6 +804,11 @@ static MACHINE_DRIVER_START( uk101 )
 
 	/* cassette */
 	MDRV_CASSETTE_ADD("cassette", default_cassette_config)
+
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("4K")
+	MDRV_RAM_EXTRA_OPTIONS("8K")	
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( c1p )
@@ -808,6 +840,11 @@ static MACHINE_DRIVER_START( c1p )
 
 	/* cassette */
 	MDRV_CASSETTE_ADD("cassette", default_cassette_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("8K")
+	MDRV_RAM_EXTRA_OPTIONS("20K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( c1pmf )
@@ -822,6 +859,12 @@ static MACHINE_DRIVER_START( c1pmf )
 
 	/* floppy ACIA */
 	MDRV_ACIA6850_ADD("acia_1", osi470_acia_intf)
+
+	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, osi_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("20K")
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -867,56 +910,12 @@ static DRIVER_INIT( c1p )
 	timer_set(machine, attotime_zero, NULL, 0, setup_beep);
 }
 
-/* System Configuration */
-
-static SYSTEM_CONFIG_START( osi600 )
-	CONFIG_RAM_DEFAULT( 4 * 1024 )
-	CONFIG_RAM		  ( 8 * 1024 )
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( uk101 )
-	CONFIG_RAM_DEFAULT( 4 * 1024 )
-	CONFIG_RAM		  ( 8 * 1024 )
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( c1p )
-	CONFIG_RAM_DEFAULT( 8 * 1024 )
-	CONFIG_RAM		  (20 * 1024 )
-SYSTEM_CONFIG_END
-
-static FLOPPY_OPTIONS_START(osi)
-	FLOPPY_OPTION(osi, "img", "OSI disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([36])
-		SECTORS([10])
-		SECTOR_LENGTH([256])
-		FIRST_SECTOR_ID([0]))
-FLOPPY_OPTIONS_END
-
-static void osi_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_osi; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-static SYSTEM_CONFIG_START( c1pmf )
-	CONFIG_RAM_DEFAULT(20 * 1024 )
-	CONFIG_DEVICE( osi_floppy_getinfo )
-SYSTEM_CONFIG_END
 
 /* System Drivers */
 
-//    YEAR  NAME		PARENT		COMPAT	MACHINE		INPUT		INIT	CONFIG		COMPANY            FULLNAME
-COMP( 1978, sb2m600b,	0,			0,		osi600,		osi600,		0, 		osi600,		"Ohio Scientific", "Superboard II Model 600 (Rev. B)", 0)
-//COMP( 1980, sb2m600c,	0,			0,		osi600c,	osi600,		0, 		osi600,		"Ohio Scientific", "Superboard II Model 600 (Rev. C)", 0)
-COMP( 1980, c1p,		sb2m600b,	0,		c1p,		osi600,		c1p,	c1p,		"Ohio Scientific", "Challenger 1P Series 2", GAME_NOT_WORKING)
-COMP( 1980, c1pmf,		sb2m600b,	0,		c1pmf,		osi600,		c1p,	c1pmf,		"Ohio Scientific", "Challenger 1P MF Series 2", GAME_NOT_WORKING)
-COMP( 1979,	uk101,		sb2m600b,	0,		uk101,		uk101,		0, 		uk101,		"Compukit",        "UK101", GAME_NOT_WORKING)
+//    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY            FULLNAME
+COMP( 1978, sb2m600b,	0,			0,		osi600,		osi600,		0, 		0,		"Ohio Scientific", "Superboard II Model 600 (Rev. B)", 0)
+//COMP( 1980, sb2m600c, 0,          0,      osi600c,    osi600,     0,      0,     "Ohio Scientific", "Superboard II Model 600 (Rev. C)", 0)
+COMP( 1980, c1p,		sb2m600b,	0,		c1p,		osi600,		c1p,	0,		"Ohio Scientific", "Challenger 1P Series 2", GAME_NOT_WORKING)
+COMP( 1980, c1pmf,		sb2m600b,	0,		c1pmf,		osi600,		c1p,	0,		"Ohio Scientific", "Challenger 1P MF Series 2", GAME_NOT_WORKING)
+COMP( 1979,	uk101,		sb2m600b,	0,		uk101,		uk101,		0, 		0,		"Compukit",        "UK101", GAME_NOT_WORKING)

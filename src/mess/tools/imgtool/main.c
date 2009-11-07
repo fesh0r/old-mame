@@ -1,8 +1,8 @@
 /***************************************************************************
 
-	main.c
+    main.c
 
-	Imgtool command line front end
+    Imgtool command line front end
 
 ***************************************************************************/
 
@@ -17,6 +17,8 @@
 #include "imgtool.h"
 #include "mess.h"
 #include "main.h"
+#include "utils.h"
+#include "osdmess.h"
 #include "fileio.h"
 #include "modules.h"
 #ifdef WIN32
@@ -94,7 +96,7 @@ static int parse_options(int argc, char *argv[], int minunnamed, int maxunnamed,
 				if (*fork)
 					goto optionalreadyspecified;
 
-				snprintf(buf, sizeof(buf) / sizeof(buf[0]), "%s", value);
+				snprintf(buf, ARRAY_LENGTH(buf), "%s", value);
 				*fork = buf;
 			}
 			else
@@ -188,6 +190,7 @@ static int cmd_dir(const struct command *c, int argc, char *argv[])
 	imgtool_directory *imgenum = NULL;
 	imgtool_dirent ent;
 	char buf[512];
+	char last_modified[19];
 	const char *path;
 	int partition_index = 0;
 
@@ -208,15 +211,16 @@ static int cmd_dir(const struct command *c, int argc, char *argv[])
 		goto done;
 
 	memset(&ent, 0, sizeof(ent));
+	last_modified[0] = '\0';
 	total_count = 0;
 	total_size = 0;
 
-	fprintf(stdout, "Contents of %s:\n", argv[1]);
+	fprintf(stdout, "Contents of %s:%s\n", argv[1], path ? path : "");
 
 	imgtool_image_info(image, buf, sizeof(buf));
 	if (buf[0])
 		fprintf(stdout, "%s\n", buf);
-	fprintf(stdout, "------------------------  ------ ---------------\n");
+	fprintf(stdout, "------------------------------  --------  ---------------  ------------------\n");
 
 	while (((err = imgtool_directory_get_next(imgenum, &ent)) == 0) && !ent.eof)
 	{
@@ -225,9 +229,25 @@ static int cmd_dir(const struct command *c, int argc, char *argv[])
 		else
 			snprintf(buf, sizeof(buf), "%u", (unsigned int) ent.filesize);
 
-		fprintf(stdout, "%-20s\t%8s %15s\n", ent.filename, buf, ent.attr);
+		if (ent.lastmodified_time != 0)
+			strftime(last_modified, sizeof(last_modified), "%d-%b-%y %H:%M:%S",
+				localtime(&ent.lastmodified_time));
+
+		if (ent.hardlink)
+			strcat(ent.filename, " <hl>");
+
+		fprintf(stdout, "%-30s  %8s  %15s  %18s\n", ent.filename, buf, ent.attr, last_modified);
+
+		if (ent.softlink && ent.softlink[0] != '\0')
+			fprintf(stdout, "-> %s\n", ent.softlink);
+
+		if (ent.comment && ent.comment[0] != '\0')
+			fprintf(stdout, ": %s\n", ent.comment);
+
 		total_count++;
 		total_size += ent.filesize;
+
+		memset(&ent, 0, sizeof(ent));
 	}
 
 	freespace_err = imgtool_partition_get_free_space(partition, &freespace);
@@ -327,8 +347,8 @@ static int cmd_put(const struct command *c, int argc, char *argv[])
 	}
 
 	/* ugh I hate the way this function is set up, this is because the
-	 * arguments depend on the partition; something that requires some
-	 * rudimentary parsing */
+     * arguments depend on the partition; something that requires some
+     * rudimentary parsing */
 	if (argc >= 2)
 	{
 		/* open up the image */
@@ -547,7 +567,7 @@ static int cmd_identify(const struct command *c, int argc, char *argv[])
 	imgtoolerr_t err;
 	int i;
 
-	err = imgtool_identify_file(argv[0], modules, sizeof(modules) / sizeof(modules[0]));
+	err = imgtool_identify_file(argv[0], modules, ARRAY_LENGTH(modules));
 	if (err)
 		goto error;
 
@@ -766,7 +786,7 @@ static void listoptions(const option_guide *opt_guide, const char *opt_spec)
 	while(opt_guide->option_type != OPTIONTYPE_END)
 	{
 		range_buffer[0] = 0;
-		snprintf(opt_name, sizeof(opt_name) / sizeof(opt_name[0]), "--%s", opt_guide->identifier);
+		snprintf(opt_name, ARRAY_LENGTH(opt_name), "--%s", opt_guide->identifier);
 		opt_desc = opt_guide->display_name;
 
 		/* is this option relevant? */
@@ -779,11 +799,11 @@ static void listoptions(const option_guide *opt_guide, const char *opt_spec)
 		switch(opt_guide->option_type) {
 		case OPTIONTYPE_INT:
 			option_resolution_listranges(opt_spec, opt_guide->parameter,
-				range, sizeof(range) / sizeof(range[0]));
+				range, ARRAY_LENGTH(range));
 
 			for (i = 0; range[i].max >= 0; i++)
 			{
-				snprintf(buf, sizeof(buf) / sizeof(buf[0]),
+				snprintf(buf, ARRAY_LENGTH(buf),
 					(range[i].min == range[i].max) ? "%i" : "%i-%i",
 					range[i].min,
 					range[i].max);
@@ -918,7 +938,7 @@ int CLIB_DECL main(int argc, char *argv[])
 	if (argc > 1)
 	{
 		/* figure out what command they are running, and run it */
-		for (i = 0; i < (sizeof(cmds) / sizeof(cmds[0])); i++)
+		for (i = 0; i < ARRAY_LENGTH(cmds); i++)
 		{
 			c = &cmds[i];
 			if (!mame_stricmp(c->name, argv[1]))
@@ -957,7 +977,7 @@ int CLIB_DECL main(int argc, char *argv[])
 
 	/* Usage */
 	fprintf(stderr, "imgtool - Generic image manipulation tool for use with MESS\n\n");
-	for (i = 0; i < (sizeof(cmds) / sizeof(cmds[0])); i++)
+	for (i = 0; i < ARRAY_LENGTH(cmds); i++)
 	{
 		writeusage(stdout, (i == 0), &cmds[i], argv);
 	}

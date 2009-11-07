@@ -1,11 +1,11 @@
 /***************************************************************************
 
-	Univac Terminals
+    Univac Terminals
 
-	The terminals are models UTS20, UTS30, UTS40, UTS50 and SVT1120,
-	however only the UTS20 is dumped (program roms only).
+    The terminals are models UTS20, UTS30, UTS40, UTS50 and SVT1120,
+    however only the UTS20 is dumped (program roms only).
 
-	25/05/2009 Skeleton driver [Robbbert].
+    25/05/2009 Skeleton driver [Robbbert].
 
 ****************************************************************************/
 
@@ -62,9 +62,6 @@ static MACHINE_DRIVER_START( uts20 )
     MDRV_VIDEO_UPDATE(uts20)
 MACHINE_DRIVER_END
 
-static SYSTEM_CONFIG_START(uts20)
-SYSTEM_CONFIG_END
-
 /* ROM definition */
 ROM_START( uts20 )
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
@@ -80,5 +77,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( ????, uts20,  0,       0, 	uts20, 	uts20, 	 0,  	  uts20,  	 "Sperry Univac",   "UTS-20", GAME_NOT_WORKING)
-
+COMP( 198?, uts20,  0,       0, 	uts20, 	uts20, 	 0,  	  0,  	 "Sperry Univac",   "UTS-20", GAME_NOT_WORKING)

@@ -1,18 +1,18 @@
 /***************************************************************************
 
-	drivers/bw2.c
+    drivers/bw2.c
 
-	Bondwell BW 2
+    Bondwell BW 2
 
-	- Z80L CPU 4MHz
-	- 64KB RAM, expandable to 224KB RAM.
-	- 4KB System ROM
-	- MSM6255 LCD controller, 640x200 pixels
-	- 16KB Video RAM
-	- TMS2797 FDC controller
-	- 8251 USART serial interface
-	- 8253 PIT timer
-	- 8255 PPI
+    - Z80L CPU 4MHz
+    - 64KB RAM, expandable to 224KB RAM.
+    - 4KB System ROM
+    - MSM6255 LCD controller, 640x200 pixels
+    - 16KB Video RAM
+    - TMS2797 FDC controller
+    - 8251 USART serial interface
+    - 8253 PIT timer
+    - 8255 PPI
 
   http://www.thebattles.net/bondwell/
 
@@ -21,16 +21,16 @@
   http://www2.okisemi.com/site/productscatalog/displaydrivers/availabledocuments/Intro-7090.html
 
 
-	TODO:
+    TODO:
 
-	- modem card
+    - modem card
 
 ***************************************************************************/
 
 #include "driver.h"
 #include "includes/bw2.h"
 #include "cpu/z80/z80.h"
-#include "includes/serial.h"
+#include "machine/serial.h"
 #include "machine/i8255a.h"
 #include "machine/ctronics.h"
 #include "machine/msm8251.h"
@@ -39,11 +39,11 @@
 #include "devices/flopdrv.h"
 #include "formats/basicdsk.h"
 #include "video/msm6255.h"
-
+#include "devices/messram.h"
 
 static const device_config *get_floppy_image(running_machine *machine, int drive)
 {
-	return image_from_devtype_and_index(machine, IO_FLOPPY, drive);
+	return floppy_get_device(machine, drive);
 }
 
 static int get_ramdisk_size(running_machine *machine)
@@ -57,16 +57,16 @@ static void bw2_set_banks(running_machine *machine, UINT8 data)
 {
 	/*
 
-		Y0  /RAM1  	Memory bank 1
-		Y1  /VRAM  	Video memory
-		Y2  /RAM2  	Memory bank 2
-		Y3  /RAM3  	Memory bank 3
-		Y4  /RAM4  	Memory bank 4
-		Y5  /RAM5  	Memory bank 5
-		Y6  /RAM6  	Memory bank 6
-		Y7  /ROM 	ROM
+        Y0  /RAM1   Memory bank 1
+        Y1  /VRAM   Video memory
+        Y2  /RAM2   Memory bank 2
+        Y3  /RAM3   Memory bank 3
+        Y4  /RAM4   Memory bank 4
+        Y5  /RAM5   Memory bank 5
+        Y6  /RAM6   Memory bank 6
+        Y7  /ROM    ROM
 
-	*/
+    */
 
 	bw2_state *state = machine->driver_data;
 
@@ -74,7 +74,7 @@ static void bw2_set_banks(running_machine *machine, UINT8 data)
 
 	state->bank = data & 0x07;
 
-	switch (mess_ram_size)
+	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 64 * 1024:
 		max_ram_bank = BANK_RAM1;
@@ -138,16 +138,16 @@ static void ramcard_set_banks(running_machine *machine, UINT8 data)
 {
 	/*
 
-		Y0  /RAM1  	Memory bank 1
-		Y1  /VRAM  	Video memory
-		Y2  /RAM2  	RAMCARD ROM
-		Y3  /RAM3  	Memory bank 3
-		Y4  /RAM4  	Memory bank 4
-		Y5  /RAM5  	RAMCARD RAM
-		Y6  /RAM6  	Memory bank 6
-		Y7  /ROM 	ROM
+        Y0  /RAM1   Memory bank 1
+        Y1  /VRAM   Video memory
+        Y2  /RAM2   RAMCARD ROM
+        Y3  /RAM3   Memory bank 3
+        Y4  /RAM4   Memory bank 4
+        Y5  /RAM5   RAMCARD RAM
+        Y6  /RAM6   Memory bank 6
+        Y7  /ROM    ROM
 
-	*/
+    */
 
 	bw2_state *state = machine->driver_data;
 
@@ -155,7 +155,7 @@ static void ramcard_set_banks(running_machine *machine, UINT8 data)
 
 	state->bank = data & 0x07;
 
-	switch (mess_ram_size)
+	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 64 * 1024:
 	case 96 * 1024:
@@ -247,8 +247,6 @@ static DEVICE_IMAGE_LOAD( bw2_serial )
 		/* connect serial chip to serial device */
 		msm8251_connect_to_serial_device(state->msm8251, image);
 
-		serial_device_set_protocol(image, SERIAL_PROTOCOL_NONE);
-
 		/* and start transmit */
 		serial_device_set_transmit_state(image, 1);
 
@@ -260,28 +258,16 @@ static DEVICE_IMAGE_LOAD( bw2_serial )
 
 
 /* Floppy */
-static WD17XX_CALLBACK( bw2_wd17xx_callback )
+static WRITE_LINE_DEVICE_HANDLER( bw2_wd17xx_drq_w )
 {
-	switch(state)
+	if (state)
 	{
-		case WD17XX_IRQ_CLR:
-			cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_IRQ0, CLEAR_LINE);
-			break;
-
-		case WD17XX_IRQ_SET:
-			cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_IRQ0, HOLD_LINE);
-			break;
-
-		case WD17XX_DRQ_CLR:
-			cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_NMI, CLEAR_LINE);
-			break;
-
-		case WD17XX_DRQ_SET:
-			if (cpu_get_reg(cputag_get_cpu(device->machine, Z80_TAG), Z80_HALT))
-			{
-				cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_NMI, HOLD_LINE);
-			}
-			break;
+		if (cpu_get_reg(cputag_get_cpu(device->machine, Z80_TAG), Z80_HALT))
+			cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_NMI, HOLD_LINE);
+	}
+	else
+	{
+		cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_NMI, CLEAR_LINE);
 	}
 }
 
@@ -352,16 +338,16 @@ static WRITE8_DEVICE_HANDLER( bw2_8255_a_w )
 	const device_config *fdc = devtag_get_device(device->machine, "wd179x");
 	/*
 
-		PA0     KB0 Keyboard line select 0
-		PA1     KB1 Keyboard line select 1
-		PA2     KB2 Keyboard line select 2
-		PA3     KB3 Keyboard line select 3
-		PA4     /DS0 Drive select 0
-		PA5     /DS1 Drive select 1
-		PA6     Select RS232 connector
-		PA7     /STROBE to centronics printer
+        PA0     KB0 Keyboard line select 0
+        PA1     KB1 Keyboard line select 1
+        PA2     KB2 Keyboard line select 2
+        PA3     KB3 Keyboard line select 3
+        PA4     /DS0 Drive select 0
+        PA5     /DS1 Drive select 1
+        PA6     Select RS232 connector
+        PA7     /STROBE to centronics printer
 
-	*/
+    */
 
 	bw2_state *state = device->machine->driver_data;
 
@@ -386,16 +372,16 @@ static READ8_DEVICE_HANDLER( bw2_8255_b_r )
 {
 	/*
 
-		PB0     Keyboard column status of selected line
-		PB1     Keyboard column status of selected line
-		PB2     Keyboard column status of selected line
-		PB3     Keyboard column status of selected line
-		PB4     Keyboard column status of selected line
-		PB5     Keyboard column status of selected line
-		PB6     Keyboard column status of selected line
-		PB7     Keyboard column status of selected line
+        PB0     Keyboard column status of selected line
+        PB1     Keyboard column status of selected line
+        PB2     Keyboard column status of selected line
+        PB3     Keyboard column status of selected line
+        PB4     Keyboard column status of selected line
+        PB5     Keyboard column status of selected line
+        PB6     Keyboard column status of selected line
+        PB7     Keyboard column status of selected line
 
-	*/
+    */
 
 	bw2_state *state = device->machine->driver_data;
 
@@ -414,12 +400,12 @@ static WRITE8_DEVICE_HANDLER( bw2_8255_c_w )
 {
 	/*
 
-		PC0     Memory bank select
-		PC1     Memory bank select
-		PC2     Memory bank select
-		PC3     Not connected
+        PC0     Memory bank select
+        PC1     Memory bank select
+        PC2     Memory bank select
+        PC3     Not connected
 
-	*/
+    */
 
 	if (get_ramdisk_size(device->machine) > 0)
 	{
@@ -435,12 +421,12 @@ static READ8_DEVICE_HANDLER( bw2_8255_c_r )
 {
 	/*
 
-		PC4     BUSY from centronics printer
-		PC5     M/FDBK motor feedback
-		PC6     RLSD Carrier detect from RS232
-		PC7     /PROT Write protected disk
+        PC4     BUSY from centronics printer
+        PC5     M/FDBK motor feedback
+        PC6     RLSD Carrier detect from RS232
+        PC7     /PROT Write protected disk
 
-	*/
+    */
 
 	bw2_state *state = device->machine->driver_data;
 
@@ -540,7 +526,7 @@ static DRIVER_INIT( bw2 )
 	bw2_state *state = machine->driver_data;
 
 	/* allocate work memory */
-	state->work_ram = auto_alloc_array(machine, UINT8, mess_ram_size);
+	state->work_ram = auto_alloc_array(machine, UINT8, messram_get_size(devtag_get_device(machine, "messram")));
 
 	/* allocate video memory */
 	state->video_ram = auto_alloc_array(machine, UINT8, BW2_VIDEORAM_SIZE);
@@ -567,7 +553,7 @@ static MACHINE_START( bw2 )
 
 	/* register for state saving */
 	state_save_register_global(machine, state->keyboard_row);
-	state_save_register_global_pointer(machine, state->work_ram, mess_ram_size);
+	state_save_register_global_pointer(machine, state->work_ram, messram_get_size(devtag_get_device(machine, "messram")));
 	state_save_register_global_pointer(machine, state->ramcard_ram, BW2_RAMCARD_SIZE);
 	state_save_register_global(machine, state->bank);
 	state_save_register_global(machine, state->selected_drive);
@@ -617,12 +603,12 @@ static ADDRESS_MAP_START( bw2_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x00, 0x03 ) AM_DEVREADWRITE(I8255A_TAG, i8255a_r, i8255a_w )
 	AM_RANGE( 0x10, 0x13 ) AM_DEVREADWRITE(PIT8253_TAG, pit8253_r, pit8253_w )
 	AM_RANGE( 0x20, 0x21 ) AM_DEVREADWRITE(MSM6255_TAG, msm6255_register_r, msm6255_register_w )
-//	AM_RANGE( 0x30, 0x3f ) SLOT
+//  AM_RANGE( 0x30, 0x3f ) SLOT
 	AM_RANGE( 0x40, 0x40 ) AM_DEVREADWRITE( MSM8251_TAG, msm8251_data_r, msm8251_data_w )
 	AM_RANGE( 0x41, 0x41 ) AM_DEVREADWRITE( MSM8251_TAG, msm8251_status_r, msm8251_control_w )
 	AM_RANGE( 0x50, 0x50 ) AM_DEVWRITE(CENTRONICS_TAG, centronics_data_w)
 	AM_RANGE( 0x60, 0x63 ) AM_READWRITE( bw2_wd2797_r, bw2_wd2797_w )
-//	AM_RANGE( 0x70, 0x7f ) MODEMSEL
+//  AM_RANGE( 0x70, 0x7f ) MODEMSEL
 ADDRESS_MAP_END
 
 /*
@@ -782,7 +768,39 @@ static MSM6255_INTERFACE( bw2_msm6255_intf )
 	bw2_charram_r,
 };
 
-static const wd17xx_interface bw2_wd17xx_interface = { bw2_wd17xx_callback, NULL };
+static FLOPPY_OPTIONS_START(bw2)
+	FLOPPY_OPTION(bw2, "dsk", "BW2 340K disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([80])
+		SECTORS([17])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([0]))
+	FLOPPY_OPTION(bw2, "dsk", "BW2 360K disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([80])
+		SECTORS([18])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([0]))
+FLOPPY_OPTIONS_END
+
+static const floppy_config bw2_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(bw2),
+	DO_NOT_KEEP_GEOMETRY
+};
+
+static const wd17xx_interface bw2_wd17xx_interface =
+{
+	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),
+	DEVCB_LINE(bw2_wd17xx_drq_w),
+	{FLOPPY_0, FLOPPY_1, NULL, NULL}
+};
 
 static MACHINE_DRIVER_START( bw2 )
 	MDRV_DRIVER_DATA(bw2_state)
@@ -820,6 +838,13 @@ static MACHINE_DRIVER_START( bw2 )
 	MDRV_MSM8251_ADD(MSM8251_TAG, default_msm8251_interface)
 
 	MDRV_WD179X_ADD("wd179x", bw2_wd17xx_interface )
+
+	MDRV_FLOPPY_2_DRIVES_ADD(bw2_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")
+	MDRV_RAM_EXTRA_OPTIONS("96K,128K,160K,192K,224K")
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -839,35 +864,6 @@ ROM_START( bw2 )
 	ROM_LOAD("ramcard-10.bin", 0x0000, 0x4000, CRC(68cde1ba) SHA1(a776a27d64f7b857565594beb63aa2cd692dcf04))
 ROM_END
 
-static FLOPPY_OPTIONS_START(bw2)
-	FLOPPY_OPTION(bw2, "dsk", "BW2 340K disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([80])
-		SECTORS([17])
-		SECTOR_LENGTH([256])
-		FIRST_SECTOR_ID([0]))
-	FLOPPY_OPTION(bw2, "dsk", "BW2 360K disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([80])
-		SECTORS([18])
-		SECTOR_LENGTH([256])
-		FIRST_SECTOR_ID([0]))		
-FLOPPY_OPTIONS_END
-
-static void bw2_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_bw2; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
 static void bw2_serial_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* serial */
@@ -909,14 +905,7 @@ static void bw2_serial_getinfo(const mess_device_class *devclass, UINT32 state, 
 }
 
 static SYSTEM_CONFIG_START( bw2 )
-	CONFIG_DEVICE( bw2_floppy_getinfo )
 	CONFIG_DEVICE( bw2_serial_getinfo )
-	CONFIG_RAM_DEFAULT( 64 * 1024 )
-	CONFIG_RAM( 96 * 1024 )
-	CONFIG_RAM( 128 * 1024 )
-	CONFIG_RAM( 160 * 1024 )
-	CONFIG_RAM( 192 * 1024 )
-	CONFIG_RAM( 224 * 1024 )
 SYSTEM_CONFIG_END
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE   INPUT   INIT    CONFIG  COMPANY      FULLNAME  FLAGS */

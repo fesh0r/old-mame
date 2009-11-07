@@ -191,13 +191,13 @@ static int validate_driver_devices(const game_driver *drv)
 	struct SystemConfigurationParamBlock cfg;
 	device_getinfo_handler handlers[64];
 	mess_device_class devclass;
-	int count_overrides[sizeof(handlers) / sizeof(handlers[0])];
+	int count_overrides[ARRAY_LENGTH(handlers)];
 
 	if (drv->sysconfig_ctor)
 	{
 		memset(&cfg, 0, sizeof(cfg));
 		memset(handlers, 0, sizeof(handlers));
-		cfg.device_slotcount = sizeof(handlers) / sizeof(handlers[0]);
+		cfg.device_slotcount = ARRAY_LENGTH(handlers);
 		cfg.device_handlers = handlers;
 		cfg.device_countoverrides = count_overrides;
 		drv->sysconfig_ctor(&cfg);
@@ -293,9 +293,6 @@ int mess_validitychecks(void)
 
 		/* check compatibility chain */
 		error = validate_compatibility_chain(drivers[i]) || error;
-
-		/* check system config */
-		ram_option_count(drivers[i]);
 	}
 
 	/* call other validity checks */

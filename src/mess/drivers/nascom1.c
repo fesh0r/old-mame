@@ -63,7 +63,7 @@ Nascom Memory map
 #include "formats/basicdsk.h"
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
-
+#include "devices/messram.h"
 
 
 /*************************************
@@ -304,8 +304,39 @@ static MACHINE_DRIVER_START( nascom1 )
 	MDRV_SNAPSHOT_ADD("snapshot", nascom1, "nas", 0.5)
 
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("40K")
+	MDRV_RAM_EXTRA_OPTIONS("1K,16K,32K")	
 MACHINE_DRIVER_END
 
+static FLOPPY_OPTIONS_START(nascom2)
+	FLOPPY_OPTION(nascom2_ss, "dsk", "Nascom 2 SS disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([1])
+		TRACKS([80])
+		SECTORS([16])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION(nascom2_ds, "dsk", "Nascom 2 DS disk image", basicdsk_identify_default, basicdsk_construct_default,
+		HEADS([2])
+		TRACKS([80])
+		SECTORS([16])
+		SECTOR_LENGTH([256])
+		FIRST_SECTOR_ID([1]))
+FLOPPY_OPTIONS_END
+
+static const floppy_config nascom2_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(nascom2),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 static MACHINE_DRIVER_START( nascom2 )
 	MDRV_IMPORT_FROM(nascom1)
@@ -320,8 +351,10 @@ static MACHINE_DRIVER_START( nascom2 )
 	MDRV_SCREEN_VISIBLE_AREA(0, 48 * 8 - 1, 0, 16 * 14 - 1)
 	MDRV_GFXDECODE(nascom2)
 	MDRV_VIDEO_UPDATE(nascom2)
-	
+
 	MDRV_WD1793_ADD("wd1793", nascom2_wd17xx_interface )
+
+	MDRV_FLOPPY_4_DRIVES_ADD(nascom2_floppy_config)
 MACHINE_DRIVER_END
 
 
@@ -368,69 +401,24 @@ ROM_END
 
 //static void nascom1_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 //{
-//	/* cassette */
-//	switch(state)
-//	{
-//		/* --- the following bits of info are returned as 64-bit signed integers --- */
-//		case MESS_DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
-//		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-//		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 0; break;
-//		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
-//		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+//  /* cassette */
+//  switch(state)
+//  {
+//      /* --- the following bits of info are returned as 64-bit signed integers --- */
+//      case MESS_DEVINFO_INT_TYPE:                         info->i = IO_CASSETTE; break;
+//      case MESS_DEVINFO_INT_READABLE:                     info->i = 1; break;
+//      case MESS_DEVINFO_INT_WRITEABLE:                        info->i = 0; break;
+//      case MESS_DEVINFO_INT_CREATABLE:                        info->i = 0; break;
+//      case MESS_DEVINFO_INT_COUNT:                            info->i = 1; break;
 //
-//		/* --- the following bits of info are returned as pointers to data or functions --- */
-//		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(nascom1_cassette); break;
-//		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(nascom1_cassette); break;
+//      /* --- the following bits of info are returned as pointers to data or functions --- */
+//      case MESS_DEVINFO_PTR_LOAD:                         info->load = DEVICE_IMAGE_LOAD_NAME(nascom1_cassette); break;
+//      case MESS_DEVINFO_PTR_UNLOAD:                       info->unload = DEVICE_IMAGE_UNLOAD_NAME(nascom1_cassette); break;
 //
-//		/* --- the following bits of info are returned as NULL-terminated strings --- */
-//		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cas"); break;
-//	}
+//      /* --- the following bits of info are returned as NULL-terminated strings --- */
+//      case MESS_DEVINFO_STR_FILE_EXTENSIONS:              strcpy(info->s = device_temp_str(), "cas"); break;
+//  }
 //}
-
-static FLOPPY_OPTIONS_START(nascom2)
-	FLOPPY_OPTION(nascom2, "dsk", "Nascom 2 SS disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([1])
-		TRACKS([80])
-		SECTORS([16])
-		SECTOR_LENGTH([256])
-		FIRST_SECTOR_ID([1]))
-	FLOPPY_OPTION(nascom2, "dsk", "Nascom 2 DS disk image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([80])
-		SECTORS([16])
-		SECTOR_LENGTH([256])
-		FIRST_SECTOR_ID([1]))
-FLOPPY_OPTIONS_END
-
-static void nascom2_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_nascom2; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( nascom1 )
-	CONFIG_RAM(1 * 1024)
-	CONFIG_RAM(16 * 1024)
-	CONFIG_RAM(32 * 1024)
-	CONFIG_RAM_DEFAULT(40 * 1024)
-//	CONFIG_DEVICE(nascom1_cassette_getinfo)
-SYSTEM_CONFIG_END
-
-
-static SYSTEM_CONFIG_START( nascom2 )
-	CONFIG_IMPORT_FROM(nascom1)
-	CONFIG_DEVICE(nascom2_floppy_getinfo)
-SYSTEM_CONFIG_END
-
 
 
 /*************************************
@@ -440,5 +428,5 @@ SYSTEM_CONFIG_END
  *************************************/
 
 /*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY                     FULLNAME        FLAGS */
-COMP( 1978, nascom1,    0,          0,      nascom1,    nascom1,    nascom1,    nascom1,    "Nascom Microcomputers",    "Nascom 1",     0 )
-COMP( 1979, nascom2,    nascom1,    0,      nascom2,    nascom2,    nascom1,    nascom2,    "Nascom Microcomputers",    "Nascom 2",     0 )
+COMP( 1978, nascom1,    0,          0,      nascom1,    nascom1,    nascom1,    0,    "Nascom Microcomputers",    "Nascom 1",     0 )
+COMP( 1979, nascom2,    nascom1,    0,      nascom2,    nascom2,    nascom1,    0,    "Nascom Microcomputers",    "Nascom 2",     0 )

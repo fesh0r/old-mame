@@ -1,6 +1,6 @@
 /***************************************************************************
 
-	NOTE: ****** Specbusy: press N, R, or E to boot *************
+    NOTE: ****** Specbusy: press N, R, or E to boot *************
 
 
         Spectrum/Inves/TK90X etc. memory map:
@@ -154,7 +154,7 @@ http://www.z88forever.org.uk/zxplus3e/
 #include "sound/ay8910.h"
 #include "sound/speaker.h"
 #include "formats/tzx_cas.h"
-#include "machine/beta.h"
+#include "devices/messram.h"
 
 static const ay8910_interface spectrum_ay_interface =
 {
@@ -193,11 +193,11 @@ void spectrum_128_update_memory(running_machine *machine)
 
 	if (spectrum_128_port_7ffd_data & 8)
 	{
-			spectrum_screen_location = mess_ram + (7<<14);
+			spectrum_screen_location = messram_get_ptr(devtag_get_device(machine, "messram")) + (7<<14);
 	}
 	else
 	{
-			spectrum_screen_location = mess_ram + (5<<14);
+			spectrum_screen_location = messram_get_ptr(devtag_get_device(machine, "messram")) + (5<<14);
 	}
 
 	/* select ram at 0x0c000-0x0ffff */
@@ -206,7 +206,7 @@ void spectrum_128_update_memory(running_machine *machine)
 			unsigned char *ram_data;
 
 			ram_page = spectrum_128_port_7ffd_data & 0x07;
-			ram_data = mess_ram + (ram_page<<14);
+			ram_data = messram_get_ptr(devtag_get_device(machine, "messram")) + (ram_page<<14);
 
 			memory_set_bankptr(machine, 4, ram_data);
 	}
@@ -227,14 +227,14 @@ static  READ8_HANDLER ( spectrum_128_ula_r )
 }
 
 static ADDRESS_MAP_START (spectrum_128_io, ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x0000, 0x0000) AM_READWRITE(spectrum_port_fe_r,spectrum_port_fe_w) AM_MIRROR(0xfffe) AM_MASK(0xffff) 
+	AM_RANGE(0x0000, 0x0000) AM_READWRITE(spectrum_port_fe_r,spectrum_port_fe_w) AM_MIRROR(0xfffe) AM_MASK(0xffff)
 	AM_RANGE(0x001f, 0x001f) AM_READ(spectrum_port_1f_r) AM_MIRROR(0xff00)
 	AM_RANGE(0x007f, 0x007f) AM_READ(spectrum_port_7f_r) AM_MIRROR(0xff00)
 	AM_RANGE(0x00df, 0x00df) AM_READ(spectrum_port_df_r) AM_MIRROR(0xff00)
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(spectrum_128_port_7ffd_w) AM_MIRROR(0x3ffd)
 	AM_RANGE(0x8000, 0x8000) AM_DEVWRITE("ay8912", ay8910_data_w) AM_MIRROR(0x3ffd)
 	AM_RANGE(0xc000, 0xc000) AM_DEVREADWRITE("ay8912", ay8910_r, ay8910_address_w) AM_MIRROR(0x3ffd)
-	AM_RANGE(0x0001, 0x0001) AM_READ(spectrum_128_ula_r) AM_MIRROR(0xfffe)	
+	AM_RANGE(0x0001, 0x0001) AM_READ(spectrum_128_ula_r) AM_MIRROR(0xfffe)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START (spectrum_128_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -246,14 +246,14 @@ ADDRESS_MAP_END
 
 static MACHINE_RESET( spectrum_128 )
 {
-	memset(mess_ram,0,128*1024);
+	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,128*1024);
 	/* 0x0000-0x3fff always holds ROM */
 
 	/* Bank 5 is always in 0x4000 - 0x7fff */
-	memory_set_bankptr(machine, 2, mess_ram + (5<<14));
+	memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + (5<<14));
 
 	/* Bank 2 is always in 0x8000 - 0xbfff */
-	memory_set_bankptr(machine, 3, mess_ram + (2<<14));
+	memory_set_bankptr(machine, 3, messram_get_ptr(devtag_get_device(machine, "messram")) + (2<<14));
 
 	/* set initial ram config */
 	spectrum_128_port_7ffd_data = 0;
@@ -283,7 +283,9 @@ MACHINE_DRIVER_START( spectrum_128 )
 	MDRV_SOUND_CONFIG(spectrum_ay_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	
-	MDRV_BETA_DISK_ADD(BETA_DISK_TAG)
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("128K")
 MACHINE_DRIVER_END
 
 
@@ -300,7 +302,7 @@ ROM_START(spec128)
 	ROM_REGION(0x18000,"maincpu",0)
 	ROM_SYSTEM_BIOS( 0, "en", "English" )
 	ROMX_LOAD("zx128_0.rom",0x10000,0x4000, CRC(e76799d2) SHA1(4f4b11ec22326280bdb96e3baf9db4b4cb1d02c5), ROM_BIOS(1))
-	ROMX_LOAD("zx128_1.rom",0x14000,0x4000, CRC(b96a36be) SHA1(80080644289ed93d71a1103992a154cc9802b2fa), ROM_BIOS(1))	
+	ROMX_LOAD("zx128_1.rom",0x14000,0x4000, CRC(b96a36be) SHA1(80080644289ed93d71a1103992a154cc9802b2fa), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS( 1, "sp", "Spanish" )
 	ROMX_LOAD("zx128s0.rom",0x10000,0x4000, CRC(453d86b2) SHA1(968937b1c750f0ef6205f01c6db4148da4cca4e3), ROM_BIOS(2))
 	ROMX_LOAD("zx128s1.rom",0x14000,0x4000, CRC(6010e796) SHA1(bea3f397cc705eafee995ea629f4a82550562f90), ROM_BIOS(2))
@@ -320,7 +322,7 @@ ROM_START(specpls2)
 	ROMX_LOAD("plus2sp1.rom",0x14000,0x4000, CRC(41981d4b) SHA1(ec0d5a158842d20601b4fbeaefc6668db979d0e1), ROM_BIOS(3))
 	ROM_SYSTEM_BIOS( 3, "ao", "ZX Spectrum +2c (Andrew Owen)" )
 	ROMX_LOAD("plus2c-0.rom",0x10000,0x4000, CRC(bfddf748) SHA1(3eba870bcb2c5efa906f2ca3febe960fc35d66bb), ROM_BIOS(4))
-	ROMX_LOAD("plus2c-1.rom",0x14000,0x4000, CRC(fd8552b6) SHA1(5ffcf79f2154ba2cf42cc1d9cb4be93cb5043e73), ROM_BIOS(4))	
+	ROMX_LOAD("plus2c-1.rom",0x14000,0x4000, CRC(fd8552b6) SHA1(5ffcf79f2154ba2cf42cc1d9cb4be93cb5043e73), ROM_BIOS(4))
 	ROM_SYSTEM_BIOS( 4, "namco", "ZX Spectrum +2c (Namco)" )
 	ROMX_LOAD("pl2namco.rom",0x10000,0x8000, CRC(72a54e75) SHA1(311400157df689450dadc3620f4c4afa960b05ad), ROM_BIOS(5))
 	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
@@ -329,7 +331,7 @@ ROM_END
 ROM_START(hc128)
 	ROM_REGION(0x18000,"maincpu",0)
 	ROM_LOAD("zx128_0.rom",0x10000,0x4000, CRC(e76799d2) SHA1(4f4b11ec22326280bdb96e3baf9db4b4cb1d02c5))
-	ROM_LOAD("hc128.rom",  0x14000,0x4000, CRC(0241e960) SHA1(cea0d14391b9e571460a816088a1c00ecb24afa3))	
+	ROM_LOAD("hc128.rom",  0x14000,0x4000, CRC(0241e960) SHA1(cea0d14391b9e571460a816088a1c00ecb24afa3))
 	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
@@ -337,19 +339,15 @@ ROM_START(hc2000)
 	ROM_REGION(0x18000,"maincpu",0)
 	ROM_SYSTEM_BIOS( 0, "v1", "Version 1" )
 	ROMX_LOAD("zx128_0.rom",0x10000,0x4000, CRC(e76799d2) SHA1(4f4b11ec22326280bdb96e3baf9db4b4cb1d02c5), ROM_BIOS(1))
-	ROMX_LOAD("hc2000.v1",  0x14000,0x4000, CRC(453c1a5a) SHA1(f8139fc38478691cf44944dc83fd6e70b0f002fb), ROM_BIOS(1))	
+	ROMX_LOAD("hc2000.v1",  0x14000,0x4000, CRC(453c1a5a) SHA1(f8139fc38478691cf44944dc83fd6e70b0f002fb), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS( 1, "v2", "Version 2" )
 	ROMX_LOAD("zx128_0.rom",0x10000,0x4000, CRC(e76799d2) SHA1(4f4b11ec22326280bdb96e3baf9db4b4cb1d02c5), ROM_BIOS(2))
 	ROMX_LOAD("hc2000.v2",  0x14000,0x4000, CRC(65d90464) SHA1(5e2096e6460ff2120c8ada97579fdf82c1199c09), ROM_BIOS(2))
 	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
-static SYSTEM_CONFIG_START(spec128)
-	CONFIG_RAM_DEFAULT(128 * 1024)
-SYSTEM_CONFIG_END
-
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY     FULLNAME */
-COMP( 1986, spec128,  0,	   0,		spectrum_128,	spec_plus,	0,		spec128,	"Sinclair Research",    "ZX Spectrum 128" , 0 )
-COMP( 1986, specpls2, spec128, 0,		spectrum_128,	spec_plus,	0,		spec128,	"Amstrad plc",          "ZX Spectrum +2" , 0 )
-COMP( 1991, hc128,    spec128, 0,		spectrum_128,	spec_plus,	0,		spec128,	"ICE-Felix",			"HC-128" , 0)
-COMP( 1992, hc2000,   spec128, 0,		spectrum_128,	spec_plus,	0,		spec128,	"ICE-Felix",			"HC-2000" , GAME_NOT_WORKING)
+COMP( 1986, spec128,  0,	   0,		spectrum_128,	spec_plus,	0,		0,	"Sinclair Research",    "ZX Spectrum 128" , 0 )
+COMP( 1986, specpls2, spec128, 0,		spectrum_128,	spec_plus,	0,		0,	"Amstrad plc",          "ZX Spectrum +2" , 0 )
+COMP( 1991, hc128,    spec128, 0,		spectrum_128,	spec_plus,	0,		0,	"ICE-Felix",			"HC-128" , 0)
+COMP( 1992, hc2000,   spec128, 0,		spectrum_128,	spec_plus,	0,		0,	"ICE-Felix",			"HC-2000" , GAME_NOT_WORKING)

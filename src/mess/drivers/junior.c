@@ -1,5 +1,5 @@
 /***************************************************************************
-   
+
         Elektor Junior
 
         17/07/2009 Skeleton driver.
@@ -14,7 +14,7 @@
 static UINT8		junior_port_a;
 static UINT8		junior_port_b;
 static UINT8		junior_led_time[6];
- 
+
 
  static ADDRESS_MAP_START(junior_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0x1FFF)
@@ -34,7 +34,7 @@ static INPUT_CHANGED( junior_reset )
 
 
 /* Input ports */
-INPUT_PORTS_START( junior )
+static INPUT_PORTS_START( junior )
 PORT_START("LINE0")			/* IN0 keys row 0 */
 	PORT_BIT( 0x80, 0x00, IPT_UNUSED )
 	PORT_BIT( 0x40, 0x40, IPT_KEYBOARD ) PORT_NAME("0.6: 0") PORT_CODE(KEYCODE_0)
@@ -80,9 +80,9 @@ INPUT_PORTS_END
 
 
 
-static UINT8 junior_riot_a_r(const device_config *device, UINT8 olddata)
+static READ8_DEVICE_HANDLER(junior_riot_a_r)
 {
-		UINT8	data = 0xff;
+	UINT8	data = 0xff;
 
 	switch( ( junior_port_b >> 1 ) & 0x0f )
 	{
@@ -101,7 +101,7 @@ static UINT8 junior_riot_a_r(const device_config *device, UINT8 olddata)
 }
 
 
-static UINT8 junior_riot_b_r(const device_config *device, UINT8 olddata)
+static READ8_DEVICE_HANDLER(junior_riot_b_r)
 {
 	if ( riot6532_portb_out_get(device) & 0x20 )
 		return 0xFF;
@@ -111,11 +111,11 @@ static UINT8 junior_riot_b_r(const device_config *device, UINT8 olddata)
 }
 
 
-void junior_riot_a_w(const device_config *device, UINT8 newdata, UINT8 olddata)
+static WRITE8_DEVICE_HANDLER(junior_riot_a_w)
 {
 	UINT8 idx = ( junior_port_b >> 1 ) & 0x0f;
 
-	junior_port_a = newdata;
+	junior_port_a = data;
 
 	if ((idx >= 4 && idx < 10) & ( junior_port_a != 0xff ))
 	{
@@ -125,8 +125,9 @@ void junior_riot_a_w(const device_config *device, UINT8 newdata, UINT8 olddata)
 }
 
 
-void junior_riot_b_w(const device_config *device, UINT8 newdata, UINT8 olddata)
+static WRITE8_DEVICE_HANDLER(junior_riot_b_w)
 {
+	UINT8 newdata = data;
 	UINT8 idx = ( newdata >> 1 ) & 0x0f;
 
 	junior_port_b = newdata;
@@ -139,7 +140,7 @@ void junior_riot_b_w(const device_config *device, UINT8 newdata, UINT8 olddata)
 }
 
 
-void junior_riot_irq(const device_config *device, int state)
+static WRITE_LINE_DEVICE_HANDLER( junior_riot_irq )
 {
 	cputag_set_input_line(device->machine, "maincpu", M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
 }
@@ -147,11 +148,11 @@ void junior_riot_irq(const device_config *device, int state)
 
 static const riot6532_interface junior_riot_interface =
 {
-	junior_riot_a_r,
-	junior_riot_b_r,
-	junior_riot_a_w,
-	junior_riot_b_w,
-	junior_riot_irq
+	DEVCB_HANDLER(junior_riot_a_r),
+	DEVCB_HANDLER(junior_riot_b_r),
+	DEVCB_HANDLER(junior_riot_a_w),
+	DEVCB_HANDLER(junior_riot_b_w),
+	DEVCB_LINE(junior_riot_irq)
 };
 
 
@@ -162,7 +163,7 @@ static TIMER_CALLBACK( junior_update_leds )
 	for ( i = 0; i < 6; i++ )
 	{
 		if ( junior_led_time[i] )
-			junior_led_time[i]--; 
+			junior_led_time[i]--;
 		else
 			output_set_digit_value( i, 0 );
 	}
@@ -176,8 +177,8 @@ static MACHINE_START( junior )
 }
 
 
-static MACHINE_RESET(junior) 
-{	
+static MACHINE_RESET(junior)
+{
 	int i;
 
 	timer_pulse(machine,  ATTOTIME_IN_HZ(50), NULL, 0, junior_update_leds );
@@ -197,16 +198,12 @@ static MACHINE_DRIVER_START( junior )
 
 	MDRV_MACHINE_START( junior )
     MDRV_MACHINE_RESET(junior)
-	
+
     /* video hardware */
     MDRV_DEFAULT_LAYOUT( layout_junior )
 
     MDRV_RIOT6532_ADD("riot", XTAL_1MHz, junior_riot_interface)
 MACHINE_DRIVER_END
-
-
-static SYSTEM_CONFIG_START(junior)
-SYSTEM_CONFIG_END
 
 
 /* ROM definition */
@@ -224,5 +221,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1980, junior,  0,       0, 	junior, 	junior, 	 0,  	  junior,  	 "Elektor Electronics",   "Junior Computer",		GAME_SUPPORTS_SAVE)
+COMP( 1980, junior,  0,       0, 	junior, 	junior, 	 0,  	  0,  	 "Elektor Electronics",   "Junior Computer",		GAME_SUPPORTS_SAVE)
 

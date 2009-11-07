@@ -1,11 +1,11 @@
 /***************************************************************************
 
-	Matsushita/Panasonic CDR521/522 type CDROM drive emulation
+    Matsushita/Panasonic CDR521/522 type CDROM drive emulation
 
 ***************************************************************************/
 
 /* initialization */
-void matsucd_init( const device_config *cdrom_device );
+void matsucd_init( const device_config *cdrom_device, const char *cdda_tag );
 
 
 /* signaling */

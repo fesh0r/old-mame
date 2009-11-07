@@ -10,7 +10,7 @@
     GD-ROM drive (modified ATAPI interface)
 
             NTSC/N  NTSC/I   PAL/N   PAL/I   VGA
-	    (x/240) (x/480) (x/240)  (x/480) (640x480)
+        (x/240) (x/480) (x/240)  (x/480) (640x480)
     VTOTAL   262     524      312     624    524
     HTOTAL   857     857      863     863    857
 
@@ -31,7 +31,6 @@
 
 // things from mess/machine/dc.c
 void dreamcast_atapi_init(running_machine *machine);
-void dreamcast_atapi_exit(running_machine *machine);
 void dreamcast_atapi_reset(running_machine *machine);
 extern READ64_HANDLER( dc_mess_gdrom_r );
 extern WRITE64_HANDLER( dc_mess_gdrom_w );
@@ -216,7 +215,7 @@ static MACHINE_DRIVER_START( dc )
 	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
 
 	MDRV_PALETTE_LENGTH(0x1000)
-	
+
 	MDRV_VIDEO_START(dc)
 	MDRV_VIDEO_UPDATE(dc)
 
@@ -253,9 +252,6 @@ ROM_START( dcdev )
         ROM_LOAD( "hkt-0120.bin", 0x000000, 0x200000, CRC(2186E0E5) SHA1(6BD18FB83F8FDB56F1941E079580E5DD672A6DAD) )		// BIOS
         ROM_LOAD( "hkt-0120-flash.bin", 0x200000, 0x020000, CRC(7784C304) SHA1(31EF57F550D8CD13E40263CBC657253089E53034) )	// Flash
 ROM_END
-
-static SYSTEM_CONFIG_START(dc)
-SYSTEM_CONFIG_END
 
 static INPUT_PORTS_START( dc )
 	PORT_START("P1L")
@@ -342,8 +338,8 @@ INPUT_PORTS_END
 
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY FULLNAME */
-CONS( 1999, dc,		dcjp,	0,	dc,	dc,	dc,	dc, 	"Sega", "Dreamcast (US NTSC)", GAME_NOT_WORKING )
-CONS( 1998, dcjp,	0,	0,	dc,	dc,	dc,	dc, 	"Sega", "Dreamcast (Japan NTSC)", GAME_NOT_WORKING )
-CONS( 1999, dceu,	dcjp,	0,	dc,	dc,	dc,	dc, 	"Sega", "Dreamcast (European PAL)", GAME_NOT_WORKING )
-CONS( 1998, dcdev,	dcjp,	0,	dc,	dc,	dc,	dc, 	"Sega", "HKT-0120 Sega Dreamcast Development Box", GAME_NOT_WORKING )
+CONS( 1999, dc,		dcjp,	0,	dc,	dc,	dc,	0, 	"Sega", "Dreamcast (US NTSC)", GAME_NOT_WORKING )
+CONS( 1998, dcjp,	0,	0,	dc,	dc,	dc,	0, 	"Sega", "Dreamcast (Japan NTSC)", GAME_NOT_WORKING )
+CONS( 1999, dceu,	dcjp,	0,	dc,	dc,	dc,	0, 	"Sega", "Dreamcast (European PAL)", GAME_NOT_WORKING )
+CONS( 1998, dcdev,	dcjp,	0,	dc,	dc,	dc,	0, 	"Sega", "HKT-0120 Sega Dreamcast Development Box", GAME_NOT_WORKING )
 

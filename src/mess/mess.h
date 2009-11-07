@@ -6,8 +6,8 @@
 
 *********************************************************************/
 
-#ifndef MESS_H
-#define MESS_H
+#ifndef __MESS_H__
+#define __MESS_H__
 
 #include <stdarg.h>
 
@@ -16,7 +16,6 @@ struct SystemConfigurationParamBlock;
 #include "image.h"
 #include "artworkx.h"
 #include "memory.h"
-#include "compcfg.h"
 #include "configms.h"
 #include "messopts.h"
 
@@ -49,8 +48,6 @@ extern const char layout_lcd[];	/* generic 1:1 lcd screen layout */
 
 extern const char mess_disclaimer[];
 
-UINT32 hash_data_extract_crc32(const char *d);
-
 
 
 /***************************************************************************/
@@ -69,13 +66,6 @@ int mess_validitychecks(void);
 void mess_predevice_init(running_machine *machine);
 void mess_postdevice_init(running_machine *machine);
 
-enum
-{
-	OSD_FOPEN_READ,
-	OSD_FOPEN_WRITE,
-	OSD_FOPEN_RW,
-	OSD_FOPEN_RW_CREATE
-};
 
 /* --------------------------------------------------------------------------------------------- */
 
@@ -87,19 +77,5 @@ int mess_count_compatible_drivers(const game_driver *drv);
 
 /* --------------------------------------------------------------------------------------------- */
 
-/* RAM configuration calls */
-extern UINT32 mess_ram_size;
-extern UINT8 *mess_ram;
-extern UINT8 mess_ram_default_value;
 
-#define RAM_STRING_BUFLEN 16
-void		ram_dump(const char *filename);
-
-/* --------------------------------------------------------------------------------------------- */
-
-/* dummy read handlers */
-READ8_HANDLER(return8_FE);
-READ8_HANDLER(return8_FF);
-READ16_HANDLER(return16_FFFF);
-
-#endif
+#endif /* __MESS_H__ */

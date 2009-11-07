@@ -1,5 +1,5 @@
 /***************************************************************************
-   
+
     Explorer 85
 
     12/05/2009 Skeleton driver.
@@ -8,12 +8,12 @@
 
 /*
 
-	TODO:
+    TODO:
 
-	- needs a terminal, or a dump of the hexadecimal keyboard monitor ROM
-	- serial input/output at SID/SOD pins
-	- disable ROM mirror after boot
-	- RAM expansions
+    - needs a terminal, or a dump of the hexadecimal keyboard monitor ROM
+    - serial input/output at SID/SOD pins
+    - disable ROM mirror after boot
+    - RAM expansions
 
 */
 
@@ -24,6 +24,7 @@
 #include "machine/i8155.h"
 #include "machine/i8355.h"
 #include "sound/speaker.h"
+#include "devices/messram.h"
 
 /* Memory Maps */
 
@@ -39,7 +40,7 @@ static ADDRESS_MAP_START( exp85_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0xf0, 0xf3) AM_DEVREADWRITE(I8355_TAG, i8355_r, i8355_w)
 	AM_RANGE(0xf8, 0xfd) AM_DEVREADWRITE(I8155_TAG, i8155_r, i8155_w)
-//	AM_RANGE(0xfe, 0xff) AM_DEVREADWRITE(I8279_TAG, i8279_r, i8279_w)
+//  AM_RANGE(0xfe, 0xff) AM_DEVREADWRITE(I8279_TAG, i8279_r, i8279_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -90,18 +91,18 @@ static READ8_DEVICE_HANDLER( i8355_a_r )
 {
 	/*
 
-        bit		description
+        bit     description
 
-		PA0     tape control
+        PA0     tape control
         PA1     jumper S17 (open=+5V closed=GND)
         PA2     J5:13
-        PA3     
-        PA4		J2:22
-        PA5     
-        PA6		
+        PA3
+        PA4     J2:22
+        PA5
+        PA6
         PA7     speaker output
-    
-	*/
+
+    */
 
 	return 0x02;
 }
@@ -110,18 +111,18 @@ static WRITE8_DEVICE_HANDLER( i8355_a_w )
 {
 	/*
 
-        bit		description
+        bit     description
 
-		PA0     tape control
+        PA0     tape control
         PA1     jumper S17 (open=+5V closed=GND)
         PA2     J5:13
-        PA3     
-        PA4		J2:22
-        PA5     
-        PA6		
+        PA3
+        PA4     J2:22
+        PA5
+        PA6
         PA7     speaker output
-    
-	*/
+
+    */
 
 	exp85_state *state = device->machine->driver_data;
 
@@ -174,10 +175,10 @@ static I8085_CONFIG( exp85_i8085_config )
 /* Machine Initialization */
 
 static MACHINE_START( exp85 )
-{	
+{
 	exp85_state *state = machine->driver_data;
 	const address_space *program = cputag_get_address_space(machine, I8085A_TAG, ADDRESS_SPACE_PROGRAM);
-	
+
 	/* setup memory banking */
 	memory_install_readwrite8_handler(program, 0x0000, 0x07ff, 0, 0, SMH_BANK(1), SMH_UNMAP);
 	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, I8085A_TAG) + 0xf000, 0);
@@ -204,11 +205,11 @@ static MACHINE_DRIVER_START( exp85 )
     /* basic machine hardware */
     MDRV_CPU_ADD(I8085A_TAG, 8085A, XTAL_6_144MHz)
     MDRV_CPU_PROGRAM_MAP(exp85_mem)
-    MDRV_CPU_IO_MAP(exp85_io)	
+    MDRV_CPU_IO_MAP(exp85_io)
 	MDRV_CPU_CONFIG(exp85_i8085_config)
 
     MDRV_MACHINE_START(exp85)
-	
+
     /* video hardware */
     MDRV_SCREEN_ADD(SCREEN_TAG, RASTER)
     MDRV_SCREEN_REFRESH_RATE(50)
@@ -216,10 +217,10 @@ static MACHINE_DRIVER_START( exp85 )
     MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
     MDRV_SCREEN_SIZE(640, 480)
     MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
-    
+
 	MDRV_PALETTE_LENGTH(2)
     MDRV_PALETTE_INIT(black_and_white)
-    
+
 	MDRV_VIDEO_START(exp85)
     MDRV_VIDEO_UPDATE(exp85)
 
@@ -233,6 +234,11 @@ static MACHINE_DRIVER_START( exp85 )
 	MDRV_I8355_ADD(I8355_TAG, XTAL_6_144MHz/2, i8355_intf)
 
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, exp85_cassette_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("256")
+	MDRV_RAM_EXTRA_OPTIONS("4K")
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -250,21 +256,13 @@ ROM_START( exp85 )
 	ROMX_LOAD( "hex.u105", 0xf000, 0x0800, NO_DUMP, ROM_BIOS(2) )
 
 	ROM_REGION( 0x800, I8355_TAG, ROMREGION_ERASE00 )
-/*	ROM_DEFAULT_BIOS("terminal")
-	ROM_SYSTEM_BIOS( 0, "terminal", "Terminal" )
-	ROMX_LOAD( "eia.u105", 0xf000, 0x0800, CRC(1a99d0d9) SHA1(57b6d48e71257bc4ef2d3dddc9b30edf6c1db766), ROM_BIOS(1) )
-	ROM_SYSTEM_BIOS( 1, "hexkbd", "Hex Keyboard" )
-	ROMX_LOAD( "hex.u105", 0xf000, 0x0800, NO_DUMP, ROM_BIOS(2) )*/
+/*  ROM_DEFAULT_BIOS("terminal")
+    ROM_SYSTEM_BIOS( 0, "terminal", "Terminal" )
+    ROMX_LOAD( "eia.u105", 0xf000, 0x0800, CRC(1a99d0d9) SHA1(57b6d48e71257bc4ef2d3dddc9b30edf6c1db766), ROM_BIOS(1) )
+    ROM_SYSTEM_BIOS( 1, "hexkbd", "Hex Keyboard" )
+    ROMX_LOAD( "hex.u105", 0xf000, 0x0800, NO_DUMP, ROM_BIOS(2) )*/
 ROM_END
 
-/* System Configuration */
-
-static SYSTEM_CONFIG_START( exp85 )
-	CONFIG_RAM_DEFAULT( 256 )
-	CONFIG_RAM		  ( 4 * 1024 )
-SYSTEM_CONFIG_END
-
 /* System Drivers */
-
-/*    YEAR	NAME	PARENT	COMPAT	MACHINE	INPUT	INIT	CONFIG	COMPANY			FULLNAME		FLAGS */
-COMP( 1979, exp85,  0,		0,		exp85,	exp85,	0,		exp85,	"Netronics",	"Explorer/85",	GAME_NOT_WORKING )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY         FULLNAME        FLAGS */
+COMP( 1979, exp85,  0,		0,		exp85,	exp85,	0,		0,	"Netronics",	"Explorer/85",	GAME_NOT_WORKING )

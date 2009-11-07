@@ -36,6 +36,7 @@
 #include "messui.h"
 #include "winutf8.h"
 #include "swconfig.h"
+#include "zippath.h"
 
 
 //============================================================
@@ -54,6 +55,7 @@ struct _mess_image_type
 {
 	const device_config *dev;
     const char *ext;
+	const char *dlgname;
 };
 
 
@@ -64,7 +66,6 @@ struct _device_entry
 	const char *icon_name;
 	const char *dlgname;
 };
-
 
 
 
@@ -281,7 +282,7 @@ static int GetMessIcon(int drvindex, int nSoftwareType)
 		{
 			for (drv = drivers[drvindex]; drv; drv = driver_get_clone(drv))
 			{
-				_snprintf(buffer, sizeof(buffer) / sizeof(buffer[0]), "%s/%s", drv->name, iconname);
+				_snprintf(buffer, ARRAY_LENGTH(buffer), "%s/%s", drv->name, iconname);
 				hIcon = LoadIconFromFile(buffer);
 				if (hIcon)
 					break;
@@ -432,7 +433,7 @@ BOOL MessApproveImageList(HWND hParent, int drvindex)
 			pszSoftware = GetSelectedSoftware(drvindex, config, dev);
 			if (!pszSoftware || !*pszSoftware)
 			{
-				snprintf(szMessage, sizeof(szMessage) / sizeof(szMessage[0]),
+				snprintf(szMessage, ARRAY_LENGTH(szMessage),
 					"System '%s' requires that device %s must have an image to load\n",
 					drivers[drvindex]->description,
 					device_typename(info.type));
@@ -681,7 +682,7 @@ static BOOL CommonFileImageDialog(LPTSTR the_last_directory, common_file_dialog_
 		if (!imagetypes[i].dev)
 			typname = "Compressed images";
 		else
-			typname = lookupdevice(image_device_getinfo(config, imagetypes[i].dev).type)->dlgname;
+			typname = imagetypes[i].dlgname;
 
         strcpy(s, typname);
         s += strlen(s);
@@ -722,7 +723,7 @@ static BOOL CommonFileImageDialog(LPTSTR the_last_directory, common_file_dialog_
     of.nMaxFile = MAX_PATH;
     of.lpstrFileTitle = NULL;
     of.nMaxFileTitle = 0;
-    of.lpstrInitialDir = last_directory;
+    of.lpstrInitialDir = the_last_directory;
     of.lpstrTitle = NULL;
     of.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
     of.nFileOffset = 0;
@@ -757,6 +758,7 @@ static void SetupImageTypes(const machine_config *config, mess_image_type *types
 		/* add the ZIP extension */
 		types[num_extensions].ext = "zip";
 		types[num_extensions].dev = NULL;
+		types[num_extensions].dlgname = NULL;
 		num_extensions++;
     }
 
@@ -785,6 +787,7 @@ static void SetupImageTypes(const machine_config *config, mess_image_type *types
 				{
 					types[num_extensions].dev = dev;
 					types[num_extensions].ext = ext;
+					types[num_extensions].dlgname = lookupdevice(info.type)->dlgname;
 					num_extensions++;
 				}
 				ext += strlen(ext) + 1;
@@ -812,7 +815,7 @@ static void MessSetupDevice(common_file_dialog_proc cfd, const device_config *de
 	// allocate the machine config
 	config = machine_config_alloc_with_mess_devices(drivers[drvindex]);
 
-	SetupImageTypes(config, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, dev);
+	SetupImageTypes(config, imagetypes, ARRAY_LENGTH(imagetypes), TRUE, dev);
 
 	if (CommonFileImageDialog(last_directory, cfd, filename, config, imagetypes))
 	{
@@ -842,37 +845,135 @@ static void MessCreateDevice(const device_config *dev)
 }
 
 
+/* This is used to Mount an image in the device view of MESSUI. The directory in the dialog box is not
+	set, and is thus random.
+	2009-10-18 Robbbert:
+	I've attempted to set the directory properly. Since the emulation is not running at this time,
+	we cannot do the same as the NEWUI does, that is, "initial_dir = image_working_directory(dev);"
+	because a crash occurs (the image system isn't set up yet).
+
+	Order of priority:
+	1. Directory where existing image is already loaded from
+	2. First directory specified in game-specific software tab
+	3. First directory specified in the system-wide software directories
+	4. mess-folder\software
+	5. mess-folder */
 
 static BOOL DevView_GetOpenFileName(HWND hwndDevView, const machine_config *config, const device_config *dev, LPTSTR pszFilename, UINT nFilenameLength)
 {
 	BOOL bResult;
+	char *s;
+	int i;
 	mess_image_type imagetypes[64];
-	HWND hwndList;
-	//int gamenum;
+	HWND hwndList = GetDlgItem(GetMainWindow(), IDC_LIST);
+	int drvindex = Picker_GetSelectedItem(hwndList);
+	astring *as = astring_alloc();
 
-	hwndList = GetDlgItem(GetMainWindow(), IDC_LIST);
-	/*gamenum = */Picker_GetSelectedItem(hwndList);
+	/* Get the path to the currently mounted image */
+	zippath_parent(as, GetSelectedSoftware(drvindex, config, dev));
+	s = (char*)astring_c(as);
 
-	SetupImageTypes(config, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, dev);
-	bResult = CommonFileImageDialog(last_directory, GetOpenFileName, pszFilename, config, imagetypes);
+	/* See if an image was loaded, and that the path still exists */
+	if ((!osd_opendir(astring_c(as))) || (astring_chr(as, 0, ':') == -1))
+	{
+		/* Get the path from the software tab */
+		astring_cpyc(as, GetExtraSoftwarePaths(drvindex));
+
+		/* We only want the first path; throw out the rest */
+		i = astring_chr(as, 0, ';');
+		if (i > 0) astring_substr(as, 0, i);
+		s = (char*)astring_c(as);
+
+		/* Make sure a folder was specified in the tab, and that it exists */
+		if ((!osd_opendir(astring_c(as))) || (astring_chr(as, 0, ':') == -1))
+		{
+			/* Get the path from the system-wide software setting in the drop-down directory setup */
+			astring_cpyc(as, GetSoftwareDirs());
+
+			/* We only want the first path; throw out the rest */
+			i = astring_chr(as, 0, ';');
+			if (i > 0) astring_substr(as, 0, i);
+			s = (char*)astring_c(as);
+
+			/* Make sure a folder was specified in the tab, and that it exists */
+			if ((!osd_opendir(astring_c(as))) || (astring_chr(as, 0, ':') == -1))
+			{
+				/* Default to emu directory */
+				char mess_directory[1024];
+				osd_get_emulator_directory(mess_directory, ARRAY_LENGTH(mess_directory));
+				s = mess_directory;
+
+				/* If software folder exists, use it instead */
+				zippath_combine(as, mess_directory, "software");
+				if (osd_opendir(astring_c(as))) s = (char*)astring_c(as);
+			}
+		}
+	}
+
+	astring_free(as);
+	SetupImageTypes(config, imagetypes, ARRAY_LENGTH(imagetypes), TRUE, dev);
+	bResult = CommonFileImageDialog(s, GetOpenFileName, pszFilename, config, imagetypes);
 
 	return bResult;
 }
 
 
+/* This is used to Create an image in the device view of MESSUI. The directory in the dialog box is not
+	set, and is thus random.
+
+	Order of priority:
+	1. First directory specified in game-specific software tab
+	2. First directory specified in the system-wide software directories
+	3. mess-folder\software
+	4. mess-folder */
 
 static BOOL DevView_GetCreateFileName(HWND hwndDevView, const machine_config *config, const device_config *dev, LPTSTR pszFilename, UINT nFilenameLength)
 {
 	BOOL bResult;
+	char *s;
+	int i;
 	mess_image_type imagetypes[64];
-	HWND hwndList;
-	//int gamenum;
+	HWND hwndList = GetDlgItem(GetMainWindow(), IDC_LIST);
+	int drvindex = Picker_GetSelectedItem(hwndList);
+	astring *as = astring_alloc();
 
-	hwndList = GetDlgItem(GetMainWindow(), IDC_LIST);
-	/*gamenum = */Picker_GetSelectedItem(hwndList);
+	/* Get the path from the software tab */
+	astring_cpyc(as, GetExtraSoftwarePaths(drvindex));
 
-	SetupImageTypes(config, imagetypes, sizeof(imagetypes) / sizeof(imagetypes[0]), TRUE, dev);
-	bResult = CommonFileImageDialog(last_directory, GetSaveFileName, pszFilename, config, imagetypes);
+	/* We only want the first path; throw out the rest */
+	i = astring_chr(as, 0, ';');
+	if (i > 0) astring_substr(as, 0, i);
+	s = (char*)astring_c(as);
+
+	/* Make sure a folder was specified in the tab, and that it exists */
+	if ((!osd_opendir(astring_c(as))) || (astring_chr(as, 0, ':') == -1))
+	{
+		/* Get the path from the system-wide software setting in the drop-down directory setup */
+		astring_cpyc(as, GetSoftwareDirs());
+
+		/* We only want the first path; throw out the rest */
+		i = astring_chr(as, 0, ';');
+		if (i > 0) astring_substr(as, 0, i);
+		s = (char*)astring_c(as);
+
+		/* Make sure a folder was specified in the tab, and that it exists */
+		if ((!osd_opendir(astring_c(as))) || (astring_chr(as, 0, ':') == -1))
+		{
+			/* Default to emu directory */
+			char mess_directory[1024];
+			osd_get_emulator_directory(mess_directory, ARRAY_LENGTH(mess_directory));
+			s = mess_directory;
+
+			/* If software folder exists, use it instead */
+			zippath_combine(as, mess_directory, "software");
+			if (osd_opendir(astring_c(as))) s = (char*)astring_c(as);
+		}
+	}
+
+	astring_free(as);
+
+	SetupImageTypes(config, imagetypes, ARRAY_LENGTH(imagetypes), TRUE, dev);
+	bResult = CommonFileImageDialog(s, GetSaveFileName, pszFilename, config, imagetypes);
 
 	return bResult;
 }
@@ -1003,7 +1104,7 @@ static void SoftwarePicker_EnteringItem(HWND hwndSoftwarePicker, int nItem)
 		MessSpecifyImage(drvindex, NULL, pszFullName);
 
 		// Set up s_szSelecteItem, for the benefit of UpdateScreenShot()
-		strncpyz(g_szSelectedItem, pszName, sizeof(g_szSelectedItem) / sizeof(g_szSelectedItem[0]));
+		strncpyz(g_szSelectedItem, pszName, ARRAY_LENGTH(g_szSelectedItem));
 		s = strrchr(g_szSelectedItem, '.');
 		if (s)
 			*s = '\0';
@@ -1254,7 +1355,7 @@ static void SetupSoftwareTabView(void)
 
 	memset(&opts, 0, sizeof(opts));
 	opts.pCallbacks = &s_softwareTabViewCallbacks;
-	opts.nTabCount = sizeof(s_tabs) / sizeof(s_tabs[0]);
+	opts.nTabCount = ARRAY_LENGTH(s_tabs);
 
 	SetupTabView(GetDlgItem(GetMainWindow(), IDC_SWTAB), &opts);
 }

@@ -1,13 +1,14 @@
 /***************************************************************************
 
-	imgterrs.c
+    imgterrs.c
 
-	Imgtool errors
+    Imgtool errors
 
 ***************************************************************************/
 
 #include <assert.h>
 #include "imgterrs.h"
+#include "osdcomm.h"
 
 static const char *const msgs[] =
 {
@@ -47,6 +48,6 @@ const char *imgtool_error(imgtoolerr_t err)
 {
 	err = ERRORCODE(err) - 1;
 	assert(err >= 0);
-	assert(err < (sizeof(msgs) / sizeof(msgs[0])));
+	assert(err < ARRAY_LENGTH(msgs));
 	return msgs[err];
 }

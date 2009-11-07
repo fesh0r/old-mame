@@ -1,11 +1,10 @@
 /*
     Hitachi HD63450 DMA Controller
 
-	Largely based on documentation of the Sharp X68000
+    Largely based on documentation of the Sharp X68000
 */
 
-#include "machine/hd63450.h"
-#include "mslegacy.h"
+#include "hd63450.h"
 
 typedef struct _hd63450_regs hd63450_regs;
 struct _hd63450_regs
@@ -130,8 +129,8 @@ void hd63450_write(const device_config* device, int offset, int data, UINT16 mem
 	case 0x00:  // CSR / CER
 		if(ACCESSING_BITS_8_15)
 		{
-//			dmac->reg[channel].csr = (data & 0xff00) >> 8;
-//			logerror("DMA#%i: Channel status write : %02x\n",channel,dmac.reg[channel].csr);
+//          dmac->reg[channel].csr = (data & 0xff00) >> 8;
+//          logerror("DMA#%i: Channel status write : %02x\n",channel,dmac.reg[channel].csr);
 		}
 		// CER is read-only, so no action needed there.
 		break;
@@ -250,7 +249,8 @@ static void dma_transfer_start(const device_config* device, int channel, int dir
 	// Burst transfers will halt the CPU until the transfer is complete
 	if((dmac->reg[channel].dcr & 0xc0) == 0x00)  // Burst transfer
 	{
-		cpu_set_input_line(cpu_get_by_index(device->machine, dmac->intf->cpu), INPUT_LINE_HALT,ASSERT_LINE);
+		const device_config *cpu = devtag_get_device(device->machine, dmac->intf->cpu_tag);
+		cpu_set_input_line(cpu, INPUT_LINE_HALT, ASSERT_LINE);
 		timer_adjust_periodic(dmac->timer[channel], attotime_zero, channel, dmac->burst_clock[channel]);
 	}
 	else
@@ -353,7 +353,7 @@ void hd63450_single_transfer(const device_config* device, int x)
 						break;
 					}
 				}
-//				logerror("DMA#%i: byte transfer %08lx -> %08lx  (byte = %02x)\n",x,dmac.reg[x].dar,dmac.reg[x].mar,data);
+//              logerror("DMA#%i: byte transfer %08lx -> %08lx  (byte = %02x)\n",x,dmac.reg[x].dar,dmac.reg[x].mar,data);
 			}
 			else  // memory -> device
 			{
@@ -391,7 +391,7 @@ void hd63450_single_transfer(const device_config* device, int x)
 						break;
 					}
 				}
-//				logerror("DMA#%i: byte transfer %08lx -> %08lx\n",x,dmac->reg[x].mar,dmac->reg[x].dar);
+//              logerror("DMA#%i: byte transfer %08lx -> %08lx\n",x,dmac->reg[x].mar,dmac->reg[x].dar);
 			}
 
 
@@ -427,8 +427,13 @@ void hd63450_single_transfer(const device_config* device, int x)
 				dmac->in_progress[x] = 0;
 				dmac->reg[x].csr |= 0xe0;  // channel operation complete, block transfer complete
 				dmac->reg[x].csr &= ~0x08;  // channel no longer active
-				if((dmac->reg[x].dcr & 0xc0) == 0x00)  // Burst transfer
-					cpu_set_input_line(cpu_get_by_index(device->machine, dmac->intf->cpu), INPUT_LINE_HALT,CLEAR_LINE);
+
+				// Burst transfer
+				if((dmac->reg[x].dcr & 0xc0) == 0x00)
+				{
+					const device_config *cpu = devtag_get_device(device->machine, dmac->intf->cpu_tag);
+					cpu_set_input_line(cpu, INPUT_LINE_HALT, CLEAR_LINE);
+				}
 
 				if(dmac->intf->dma_end)
 					dmac->intf->dma_end(device->machine,x,dmac->reg[x].ccr & 0x08);

@@ -45,7 +45,7 @@ Notes:
     74S263  - Texas Instruments SN74S263N Row Output Character Generator
     MC1488  - Texas Instruments MC1488 Quadruple Line Driver
     MC1489  - Texas Instruments MC1489 Quadruple Line Receiver
-	8205	- ?
+    8205    - ?
     CN1     - RS-232 connector
     CN2     - ABC bus connector (DIN 41612)
     CN3     - video connector
@@ -62,12 +62,12 @@ Notes:
 
     TODO:
 
-	- memory bank switching using ABC80/13 PROM
-	- proper keyboard controller emulation
-	- get BASIC v1 dump
-	- MyAB 80-column card
-	- GeJo 80-column card
-	- Mikrodatorn 64K expansion
+    - memory bank switching using ABC80/13 PROM
+    - proper keyboard controller emulation
+    - get BASIC v1 dump
+    - MyAB 80-column card
+    - GeJo 80-column card
+    - Mikrodatorn 64K expansion
     - floppy
     - printer
     - IEC
@@ -90,25 +90,25 @@ Notes:
 #include "devices/flopdrv.h"
 #include "devices/cassette.h"
 #include "devices/printer.h"
-
+#include "devices/messram.h"
 /* Read/Write Handlers */
 
 static WRITE8_HANDLER( abc80_sound_w )
 {
 	/*
 
-		Bit Name     Description
+        Bit Name     Description
 
-		0  SYSENA   1 On, 0 Off (inverted)
-		1  EXTVCO   00 High freq, 01 Low freq
-		2  VCOSEL   10 SLF cntrl, 11 SLF ctrl
-		3  MIXSELB  000 VCO, 001 Noise, 010 SLF
-		4  MIXSELA  011 VCO+Noise, 100 SLF+Noise, 101 SLF+VCO
-		5  MIXSELC  110 SLF+VCO+Noise, 111 Quiet
-		6  ENVSEL2  00 VCO, 01 Rakt igenom
-		7  ENVSEL1  10 Monovippa, 11 VCO alt.pol.
+        0  SYSENA   1 On, 0 Off (inverted)
+        1  EXTVCO   00 High freq, 01 Low freq
+        2  VCOSEL   10 SLF cntrl, 11 SLF ctrl
+        3  MIXSELB  000 VCO, 001 Noise, 010 SLF
+        4  MIXSELA  011 VCO+Noise, 100 SLF+Noise, 101 SLF+VCO
+        5  MIXSELC  110 SLF+VCO+Noise, 111 Quiet
+        6  ENVSEL2  00 VCO, 01 Rakt igenom
+        7  ENVSEL1  10 Monovippa, 11 VCO alt.pol.
 
-	*/
+    */
 	const device_config *sn76477 = devtag_get_device(space->machine, "sn76477");
 
 	sn76477_enable_w(sn76477, ~data & 0x01);
@@ -374,20 +374,20 @@ static READ8_DEVICE_HANDLER( abc80_pio_port_a_r )
 {
 	/*
 
-		PIO Port A
+        PIO Port A
 
-		bit		description
+        bit     description
 
-		0		keyboard data
-		1		keyboard data
-		2		keyboard data
-		3		keyboard data
-		4		keyboard data
-		5		keyboard data
-		6		keyboard data
-		7		keyboard strobe
+        0       keyboard data
+        1       keyboard data
+        2       keyboard data
+        3       keyboard data
+        4       keyboard data
+        5       keyboard data
+        6       keyboard data
+        7       keyboard strobe
 
-	*/
+    */
 
 	abc80_state *state = device->machine->driver_data;
 
@@ -398,18 +398,18 @@ static READ8_DEVICE_HANDLER( abc80_pio_port_b_r )
 {
 	/*
 
-		PIO Channel B
+        PIO Channel B
 
-		0  R    RS-232C RxD
-		1  R    RS-232C _CTS
-		2  R    RS-232C _DCD
-		3  W    RS-232C TxD
-		4  W    RS-232C _RTS
-		5  W    Cassette Motor
-		6  W    Cassette Data
-		7  R    Cassette Data
+        0  R    RS-232C RxD
+        1  R    RS-232C _CTS
+        2  R    RS-232C _DCD
+        3  W    RS-232C TxD
+        4  W    RS-232C _RTS
+        5  W    Cassette Motor
+        6  W    Cassette Data
+        7  R    Cassette Data
 
-	*/
+    */
 
 	abc80_state *state = device->machine->driver_data;
 
@@ -423,18 +423,18 @@ static WRITE8_DEVICE_HANDLER( abc80_pio_port_b_w )
 {
 	/*
 
-		PIO Channel B
+        PIO Channel B
 
-		0  R    RS-232C RxD
-		1  R    RS-232C _CTS
-		2  R    RS-232C _DCD
-		3  W    RS-232C TxD
-		4  W    RS-232C _RTS
-		5  W    Cassette Motor
-		6  W    Cassette Data
-		7  R    Cassette Data
+        0  R    RS-232C RxD
+        1  R    RS-232C _CTS
+        2  R    RS-232C _DCD
+        3  W    RS-232C TxD
+        4  W    RS-232C _RTS
+        5  W    Cassette Motor
+        6  W    Cassette Data
+        7  R    Cassette Data
 
-	*/
+    */
 
 	abc80_state *state = device->machine->driver_data;
 
@@ -466,7 +466,7 @@ static const z80_daisy_chain abc80_daisy_chain[] =
 
 static ABCBUS_CONFIG( abcbus_config )
 {
-//	{ luxor_55_10828, CONKORT_TAG },
+	{ LUXOR_55_10828, CONKORT_TAG },
 	{ NULL }
 };
 
@@ -477,10 +477,10 @@ static MACHINE_START( abc80 )
 	abc80_state *state = machine->driver_data;
 
 	/* configure RAM expansion */
-	memory_configure_bank(machine, 1, 0, 1, mess_ram, 0);
+	memory_configure_bank(machine, 1, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
 	memory_set_bank(machine, 1, 0);
 
-	switch (mess_ram_size)
+	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 16*1024:
 		memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
@@ -504,6 +504,18 @@ static MACHINE_START( abc80 )
 	state_save_register_global(machine, state->z80pio_astb);
 }
 
+static const floppy_config abc80_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(abc80),
+	DO_NOT_KEEP_GEOMETRY
+};
+
 /* Machine Drivers */
 
 static MACHINE_DRIVER_START( abc80 )
@@ -526,7 +538,7 @@ static MACHINE_DRIVER_START( abc80 )
 	MDRV_Z80PIO_ADD(Z80PIO_TAG, abc80_pio_intf)
 
 	/* Luxor Conkort 55-10828 */
-//	MDRV_DEVICE_ADD(CONKORT_TAG, LUXOR_55_10828)
+	MDRV_LUXOR_55_10828_ADD
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(abc80_video)
@@ -542,6 +554,13 @@ static MACHINE_DRIVER_START( abc80 )
 
 	/* cassette */
 	MDRV_CASSETTE_ADD("cassette", default_cassette_config)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(abc80_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("16K")
+	MDRV_RAM_EXTRA_OPTIONS("32K")
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -622,30 +641,8 @@ ROM_START( abc80h )
 	ROM_LOAD( "abc80_13.e7", 0x0000, 0x0080, NO_DUMP ) // "64 40057-01" 82S129 256x4 address decoder
 ROM_END
 
-/* System Configuration */
-static void abc80_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_abc80; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( abc80 )
-	CONFIG_RAM_DEFAULT(16 * 1024)
-	CONFIG_RAM		  (32 * 1024)
-	CONFIG_DEVICE(abc80_floppy_getinfo)
-SYSTEM_CONFIG_END
-
 /* Drivers */
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY								FULLNAME					FLAGS */
-COMP( 1978, abc80,  0,      0,      abc80,  abc80,  0,      abc80,  "Luxor Datorer AB",					"ABC 80 (Sweden, Finland)",	GAME_SUPPORTS_SAVE )
-COMP( 1978, abc80h, abc80,  0,      abc80,  abc80,  0,      abc80,  "Budapesti Radiotechnikai Gyar",	"ABC 80 (Hungary)",			GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY                             FULLNAME                    FLAGS */
+COMP( 1978, abc80,  0,      0,      abc80,  abc80,  0,      0,  "Luxor Datorer AB",					"ABC 80 (Sweden, Finland)",	GAME_SUPPORTS_SAVE )
+COMP( 1978, abc80h, abc80,  0,      abc80,  abc80,  0,      0,  "Budapesti Radiotechnikai Gyar",	"ABC 80 (Hungary)",			GAME_SUPPORTS_SAVE )

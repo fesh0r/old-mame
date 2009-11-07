@@ -53,7 +53,7 @@ static ADDRESS_MAP_START(memmap, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM										/*system ROM*/
 	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*lower 8kb of RAM extension - installed dynamically*/
 	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(ti99_4x_peb_r, ti99_4x_peb_w)	/*DSR ROM space*/
-//	AM_RANGE(0x6000, 0x7fff) AM_READWRITE(ti99_cart_r, ti99_cart_w)		/*cartridge memory*/
+//  AM_RANGE(0x6000, 0x7fff) AM_READWRITE(ti99_cart_r, ti99_cart_w)     /*cartridge memory*/
 	AM_RANGE(0x6000, 0x7fff) AM_DEVREADWRITE("ti99_multicart", ti99_multicart_r, ti99_multicart_w)
 	AM_RANGE(0x8000, 0x80ff) AM_MIRROR(0x0300) AM_RAMBANK(1)			/*RAM PAD, mirrored 4 times*/
 	AM_RANGE(0x8400, 0x87ff) AM_READWRITE(ti99_nop_8_r, ti99_wsnd_w)	/*soundchip write*/
@@ -144,7 +144,7 @@ static INPUT_PORTS_START(ti99_4a)
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_pcode_bit, DEF_STR( On ) )
 
-		PORT_DIPNAME( config_cartslot_mask << config_cartslot_bit, 0, "Active cartridge slot")                
+		PORT_DIPNAME( config_cartslot_mask << config_cartslot_bit, 0, "Active cartridge slot")
 			PORT_DIPSETTING( 0, "auto" )
 			PORT_DIPSETTING( 1 << config_cartslot_bit, "Slot 1" )
 			PORT_DIPSETTING( 2 << config_cartslot_bit, "Slot 2" )
@@ -502,7 +502,7 @@ INPUT_PORTS_END
 */
 static const tms5220_interface ti99_4x_tms5220interface =
 {
-	NULL,						/* no IRQ callback */
+	DEVCB_NULL,						/* no IRQ callback */
 	spchroms_read,				/* speech ROM read handler */
 	spchroms_load_address,		/* speech ROM load address handler */
 	spchroms_read_and_branch	/* speech ROM read and branch handler */
@@ -510,8 +510,21 @@ static const tms5220_interface ti99_4x_tms5220interface =
 
 static const mm58274c_interface floppy_mm58274c_interface =
 {
-	1,	/* 	mode 24*/
+	1,	/*  mode 24*/
 	0   /*  first day of week */
+};
+
+
+static const floppy_config ti99_4_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(ti99),
+	KEEP_GEOMETRY
 };
 
 static MACHINE_DRIVER_START(ti99_4_60hz)
@@ -552,19 +565,21 @@ static MACHINE_DRIVER_START(ti99_4_60hz)
 
 	MDRV_CASSETTE_ADD( "cassette1", default_cassette_config )
 	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
-	
+
 	/* rtc */
-	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)		
+	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)
 	/* tms9901 */
-	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)	
-	/* tms9902 */
-	MDRV_TMS9902_ADD("tms9902_0", tms9902_params_0)
-	MDRV_TMS9902_ADD("tms9902_1", tms9902_params_1)		
-	
+	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)
+
 	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )
-	
+
+	MDRV_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_config)
+
 	MDRV_TI99_CARTRIDGE_ADD("ti99_multicart")
-	
+
+	MDRV_SMARTMEDIA_ADD("smartmedia")
+
+	MDRV_TI99_4_RS232_CARD_ADD("rs232")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(ti99_4_50hz)
@@ -605,16 +620,18 @@ static MACHINE_DRIVER_START(ti99_4_50hz)
 	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
 
 	/* rtc */
-	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)	
+	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)
 	/* tms9901 */
-	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)	
-	/* tms9902 */
-	MDRV_TMS9902_ADD("tms9902_0", tms9902_params_0)
-	MDRV_TMS9902_ADD("tms9902_1", tms9902_params_1)		
-	
+	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)
+
 	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )
+	MDRV_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_config)
+
 	MDRV_TI99_CARTRIDGE_ADD("ti99_multicart")
-	
+
+	MDRV_SMARTMEDIA_ADD("smartmedia")
+
+	MDRV_TI99_4_RS232_CARD_ADD("rs232")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(ti99_4a_60hz)
@@ -636,7 +653,7 @@ static MACHINE_DRIVER_START(ti99_4a_60hz)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sn76496", SN76496, 3579545)	/* 3.579545 MHz */
+	MDRV_SOUND_ADD("sn76496", SN94624, 3579545)	/* 3.579545 MHz SN94624N */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(ti99_4x_tms5220interface)
@@ -655,17 +672,19 @@ static MACHINE_DRIVER_START(ti99_4a_60hz)
 	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
 
 	/* rtc */
-	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)	
-	
+	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)
+
 	/* tms9901 */
-	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)	
-	/* tms9902 */
-	MDRV_TMS9902_ADD("tms9902_0", tms9902_params_0)
-	MDRV_TMS9902_ADD("tms9902_1", tms9902_params_1)		
-	
-	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )	
-	
+	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)
+
+	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )
+	MDRV_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_config)
+
 	MDRV_TI99_CARTRIDGE_ADD("ti99_multicart")
+
+	MDRV_SMARTMEDIA_ADD("smartmedia")
+
+	MDRV_TI99_4_RS232_CARD_ADD("rs232")
 MACHINE_DRIVER_END
 
 
@@ -688,7 +707,7 @@ static MACHINE_DRIVER_START(ti99_4a_50hz)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sn76496", SN76496, 3579545)	/* 3.579545 MHz */
+	MDRV_SOUND_ADD("sn76496", SN94624, 3579545)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(ti99_4x_tms5220interface)
@@ -707,16 +726,18 @@ static MACHINE_DRIVER_START(ti99_4a_50hz)
 	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
 
 	/* rtc */
-	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)		
+	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)
 	/* tms9901 */
-	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)	
-	/* tms9902 */
-	MDRV_TMS9902_ADD("tms9902_0", tms9902_params_0)
-	MDRV_TMS9902_ADD("tms9902_1", tms9902_params_1)	
-	
+	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)
+
 	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )
-	
+	MDRV_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_config)
+
 	MDRV_TI99_CARTRIDGE_ADD("ti99_multicart")
+
+	MDRV_SMARTMEDIA_ADD("smartmedia")
+
+	MDRV_TI99_4_RS232_CARD_ADD("rs232")
 MACHINE_DRIVER_END
 
 
@@ -747,7 +768,7 @@ static MACHINE_DRIVER_START(ti99_4ev_60hz)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sn76496", SN76496, 3579545)	/* 3.579545 MHz */
+	MDRV_SOUND_ADD("sn76496", SN94624, 3579545)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(ti99_4x_tms5220interface)
@@ -766,16 +787,16 @@ static MACHINE_DRIVER_START(ti99_4ev_60hz)
 	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
 
 	/* rtc */
-	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)	
+	MDRV_MM58274C_ADD("mm58274c_floppy", floppy_mm58274c_interface)
 	/* tms9901 */
 	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99_4x)
-	/* tms9902 */
-	MDRV_TMS9902_ADD("tms9902_0", tms9902_params_0)
-	MDRV_TMS9902_ADD("tms9902_1", tms9902_params_1)
-	
-	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )	
+
+	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )
+	MDRV_FLOPPY_4_DRIVES_ADD(ti99_4_floppy_config)
 	MDRV_TI99_CARTRIDGE_ADD("ti99_multicart")
-	
+	MDRV_SMARTMEDIA_ADD("smartmedia")
+
+	MDRV_TI99_4_RS232_CARD_ADD("rs232")
 MACHINE_DRIVER_END
 
 
@@ -833,10 +854,10 @@ ROM_START(ti99_4a)
 	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, CRC(06f1ec89) SHA1(6ad77033ed268f986d9a5439e65f7d391c4b7651)) /* BwG disk DSR ROM */
 	ROM_LOAD_OPTIONAL("hfdc.bin", offset_hfdc_dsr, 0x4000, CRC(66fbe0ed) SHA1(11df2ecef51de6f543e4eaf8b2529d3e65d0bd59)) /* HFDC disk DSR ROM */
 	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb) SHA1(ee609a18a21f1a3ddab334e8798d5f2a0fcefa91)) /* TI rs232 DSR ROM */
-	ROM_LOAD_OPTIONAL("pcode_r0.bin", offset_pcode_rom, 0x1000, CRC(3881d5b0) SHA1(a60e0468bb15ff72f97cf6e80979ca8c11ed0426)) /* TI P-Code card rom4732 */	
-	ROM_LOAD_OPTIONAL("pcode_r1.bin", offset_pcode_rom + 0x1000, 0x2000, CRC(46a06b8b) SHA1(24e2608179921aef312cdee6f455e3f46deb30d0)) /* TI P-Code card rom4764 */	
-	ROM_LOAD_OPTIONAL("pcode_g0.bin", offset_pcode_grom, 0x10000, CRC(541b3860) SHA1(7be77c216737334ae997753a6a85136f117affb7)) /* TI P-Code card groms */	
-	
+	ROM_LOAD_OPTIONAL("pcode_r0.bin", offset_pcode_rom, 0x1000, CRC(3881d5b0) SHA1(a60e0468bb15ff72f97cf6e80979ca8c11ed0426)) /* TI P-Code card rom4732 */
+	ROM_LOAD_OPTIONAL("pcode_r1.bin", offset_pcode_rom + 0x1000, 0x2000, CRC(46a06b8b) SHA1(24e2608179921aef312cdee6f455e3f46deb30d0)) /* TI P-Code card rom4764 */
+	ROM_LOAD_OPTIONAL("pcode_g0.bin", offset_pcode_grom, 0x10000, CRC(541b3860) SHA1(7be77c216737334ae997753a6a85136f117affb7)) /* TI P-Code card groms */
+
 	/* HSGPL memory space */
 	ROM_REGION(region_hsgpl_len, region_hsgpl, ROMREGION_ERASEFF)
 
@@ -877,118 +898,10 @@ ROM_END
 #define rom_ti99_4e rom_ti99_4
 #define rom_ti99_4ae rom_ti99_4a
 
-static void ti99_4_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
-
-        case MESS_DEVINFO_INT_KEEP_DRIVE_GEOMETRY:                                  info->i = 1; break;
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_ti99; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static void ti99_4_parallel_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* parallel */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_PARALLEL; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_4_pio); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_4_pio); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
-	}
-}
-
-static void ti99_4_serial_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* serial */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_4_rs232); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_4_rs232); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
-	}
-}
-
-#if 0
-static void ti99_4_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* quickload */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_QUICKLOAD; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-		case MESS_DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_hsgpl); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_hsgpl); break;
-	}
-}
-#endif
-
-static void ti99_4_memcard_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* memcard */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_MEMCARD; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(smartmedia); break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(smartmedia); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(smartmedia); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
-	}
-}		
-	
-static SYSTEM_CONFIG_START(ti99_4)	
-	CONFIG_DEVICE(ti99_4_floppy_getinfo)
-	CONFIG_DEVICE(ti99_4_parallel_getinfo)
-	CONFIG_DEVICE(ti99_4_serial_getinfo)
-	/*CONFIG_DEVICE(ti99_4_quickload_getinfo)*/
-	CONFIG_DEVICE(ti99_4_memcard_getinfo)
-SYSTEM_CONFIG_END
 
 /*    YEAR  NAME      PARENT   COMPAT   MACHINE      INPUT    INIT      CONFIG  COMPANY             FULLNAME */
-COMP( 1979, ti99_4,   0,	   0,		ti99_4_60hz,  ti99_4,  ti99_4,	ti99_4,	"Texas Instruments", "TI99/4 Home Computer (US)" , 0)
-COMP( 1980, ti99_4e,  ti99_4,  0,		ti99_4_50hz,  ti99_4,  ti99_4,	ti99_4,	"Texas Instruments", "TI99/4 Home Computer (Europe)" , 0)
-COMP( 1981, ti99_4a,  0,	   0,		ti99_4a_60hz, ti99_4a, ti99_4a,	ti99_4,	"Texas Instruments", "TI99/4A Home Computer (US)" , 0)
-COMP( 1981, ti99_4ae, ti99_4a, 0,		ti99_4a_50hz, ti99_4a, ti99_4a,	ti99_4,	"Texas Instruments", "TI99/4A Home Computer (Europe)" , 0)
-COMP( 1994, ti99_4ev, ti99_4a, 0,		ti99_4ev_60hz,ti99_4a, ti99_4ev,ti99_4,	"Texas Instruments", "TI99/4A Home Computer with EVPC" , 0)
+COMP( 1979, ti99_4,   0,	   0,		ti99_4_60hz,  ti99_4,  ti99_4,	0,	"Texas Instruments", "TI99/4 Home Computer (US)" , 0)
+COMP( 1980, ti99_4e,  ti99_4,  0,		ti99_4_50hz,  ti99_4,  ti99_4,	0,	"Texas Instruments", "TI99/4 Home Computer (Europe)" , 0)
+COMP( 1981, ti99_4a,  0,	   0,		ti99_4a_60hz, ti99_4a, ti99_4a,	0,	"Texas Instruments", "TI99/4A Home Computer (US)" , 0)
+COMP( 1981, ti99_4ae, ti99_4a, 0,		ti99_4a_50hz, ti99_4a, ti99_4a,	0,	"Texas Instruments", "TI99/4A Home Computer (Europe)" , 0)
+COMP( 1994, ti99_4ev, ti99_4a, 0,		ti99_4ev_60hz,ti99_4a, ti99_4ev,0,	"Texas Instruments", "TI99/4A Home Computer with EVPC" , 0)

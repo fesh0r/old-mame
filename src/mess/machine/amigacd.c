@@ -1,6 +1,6 @@
 /***************************************************************************
 
-	Amiga CD-ROM controller emulation
+    Amiga CD-ROM controller emulation
 
 Notes:
 Many thanks to Toni Wilen for all the help and information about the
@@ -28,7 +28,7 @@ DMAC controller.
 
 /***************************************************************************
 
-	DMAC
+    DMAC
 
 ***************************************************************************/
 
@@ -382,7 +382,7 @@ static WRITE16_HANDLER( amiga_dmac_w )
 
 /***************************************************************************
 
-	Autoconfig
+    Autoconfig
 
 ***************************************************************************/
 
@@ -420,7 +420,7 @@ static const amiga_autoconfig_device dmac_device =
 
 /***************************************************************************
 
-	TPI6525
+    TPI6525
 
 ***************************************************************************/
 
@@ -524,7 +524,7 @@ MACHINE_START( amigacd )
 MACHINE_RESET( amigacd )
 {
 	/* initialize the cdrom */
-	matsucd_init( devtag_get_device(machine, "cdrom") );
+	matsucd_init( devtag_get_device(machine, "cdrom"), "cdda" );
 	matsucd_set_status_enabled_callback( cdrom_status_enabled );
 	matsucd_set_status_changed_callback( cdrom_status_change );
 	matsucd_set_subcode_ready_callback( cdrom_subcode_ready );

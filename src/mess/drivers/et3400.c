@@ -35,7 +35,7 @@ static VIDEO_UPDATE( et3400 )
 
 static MACHINE_DRIVER_START( et3400 )
     /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu", M6800, XTAL_1MHz ) 
+    MDRV_CPU_ADD("maincpu", M6800, XTAL_1MHz )
     MDRV_CPU_PROGRAM_MAP(et3400_mem)
 
     MDRV_MACHINE_RESET(et3400)
@@ -54,9 +54,6 @@ static MACHINE_DRIVER_START( et3400 )
     MDRV_VIDEO_UPDATE(et3400)
 MACHINE_DRIVER_END
 
-static SYSTEM_CONFIG_START(et3400)
-SYSTEM_CONFIG_END
-
 /* ROM definition */
 ROM_START( et3400 )
     ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
@@ -67,5 +64,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1976, et3400,  0,       0, 	et3400, 	et3400, 	 0,  	  et3400,  	 "Heath, Inc.",   "Heathkit ET-3400",		GAME_NOT_WORKING)
+COMP( 1976, et3400,  0,       0, 	et3400, 	et3400, 	 0,  	  0,  	 "Heath, Inc.",   "Heathkit ET-3400",		GAME_NOT_WORKING)
 

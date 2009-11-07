@@ -1,8 +1,8 @@
 /*********************************************************************
 
-	iflopimg.c
+    iflopimg.c
 
-	Bridge code for Imgtool into the standard floppy code
+    Bridge code for Imgtool into the standard floppy code
 
 *********************************************************************/
 
@@ -39,7 +39,7 @@ imgtoolerr_t imgtool_floppy_error(floperr_t err)
 
 
 /*********************************************************************
-	Imgtool ioprocs
+    Imgtool ioprocs
 *********************************************************************/
 
 static void imgtool_floppy_closeproc(void *file)
@@ -90,7 +90,7 @@ static const struct io_procs imgtool_noclose_ioprocs =
 
 
 /*********************************************************************
-	Imgtool handlers
+    Imgtool handlers
 *********************************************************************/
 
 struct imgtool_floppy_image
@@ -267,7 +267,7 @@ static void imgtool_floppy_get_info(const imgtool_class *imgclass, UINT32 state,
 				imgtool_get_info_string(&derived_class, IMGTOOLINFO_STR_DESCRIPTION));
 			break;
 		case IMGTOOLINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = imgtool_temp_str(), format->extensions); break;
-		case IMGTOOLINFO_STR_CREATEIMAGE_OPTSPEC:	strcpy(info->s = imgtool_temp_str(), format->param_guidelines); break;
+		case IMGTOOLINFO_STR_CREATEIMAGE_OPTSPEC:	info->p = (void*)format->param_guidelines; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case IMGTOOLINFO_PTR_OPEN:					info->open = imgtool_floppy_open; break;

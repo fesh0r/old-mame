@@ -4,19 +4,19 @@
 
     12/05/2009 Skeleton driver.
 
-	http://ensjo.wikispaces.com/MC-1000+on+JEMU
-	http://ensjo.blogspot.com/2006/11/color-artifacting-no-mc-1000.html
+    http://ensjo.wikispaces.com/MC-1000+on+JEMU
+    http://ensjo.blogspot.com/2006/11/color-artifacting-no-mc-1000.html
 
 ****************************************************************************/
 
 /*
 
-	TODO:
+    TODO:
 
-	- xtal frequency?
-	- Z80 wait at 0x0000-0x1fff when !hsync & !vsync
-	- 80-column card (MC6845) character generator ROM
-	- Charlemagne / GEM-1000 / Junior Computer ROMs
+    - xtal frequency?
+    - Z80 wait at 0x0000-0x1fff when !hsync & !vsync
+    - 80-column card (MC6845) character generator ROM
+    - Charlemagne / GEM-1000 / Junior Computer ROMs
 
 */
 
@@ -28,6 +28,7 @@
 #include "sound/ay8910.h"
 #include "machine/ctronics.h"
 #include "machine/rescap.h"
+#include "devices/messram.h"
 
 /* Memory Banking */
 
@@ -40,7 +41,7 @@ static void mc1000_bankswitch(running_machine *machine)
 	memory_set_bank(machine, 2, state->mc6845_bank);
 
 	/* extended RAM */
-	if (mess_ram_size > 16*1024)
+	if (messram_get_size(devtag_get_device(machine, "messram")) > 16*1024)
 	{
 		memory_install_readwrite8_handler(program, 0x4000, 0x7fff, 0, 0, SMH_BANK(3), SMH_BANK(3));
 	}
@@ -52,7 +53,7 @@ static void mc1000_bankswitch(running_machine *machine)
 	/* MC6847 video RAM */
 	if (state->mc6847_bank)
 	{
-		if (mess_ram_size > 16*1024)
+		if (messram_get_size(devtag_get_device(machine, "messram")) > 16*1024)
 		{
 			memory_install_readwrite8_handler(program, 0x8000, 0x97ff, 0, 0, SMH_BANK(4), SMH_BANK(4));
 		}
@@ -69,7 +70,7 @@ static void mc1000_bankswitch(running_machine *machine)
 	memory_set_bank(machine, 4, state->mc6847_bank);
 
 	/* extended RAM */
-	if (mess_ram_size > 16*1024)
+	if (messram_get_size(devtag_get_device(machine, "messram")) > 16*1024)
 	{
 		memory_install_readwrite8_handler(program, 0x9800, 0xbfff, 0, 0, SMH_BANK(5), SMH_BANK(5));
 	}
@@ -84,7 +85,7 @@ static void mc1000_bankswitch(running_machine *machine)
 static READ8_HANDLER( printer_r )
 {
 	mc1000_state *state = space->machine->driver_data;
-	
+
 	return centronics_busy_r(state->centronics);
 }
 
@@ -108,26 +109,31 @@ static WRITE8_HANDLER( mc6847_attr_w )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0		enable CPU video RAM access
-		1		CSS
-		2		GM0
-		3		GM1
-		4		GM2
-		5		_INT/EXT
-		6		_A/S
-		7		_A/G
+        0       enable CPU video RAM access
+        1       CSS
+        2       GM0
+        3       GM1
+        4       GM2
+        5       _INT/EXT
+        6       _A/S
+        7       _A/G
 
-	*/
+    */
 
 	mc1000_state *state = space->machine->driver_data;
 
 	state->mc6847_bank = BIT(data, 0);
+	mc6847_css_w(state->mc6847, BIT(data, 1));
+	mc6847_gm0_w(state->mc6847, BIT(data, 2));
+	mc6847_gm1_w(state->mc6847, BIT(data, 3));
+	mc6847_gm2_w(state->mc6847, BIT(data, 4));
+	mc6847_intext_w(state->mc6847, BIT(data, 5));
+	mc6847_as_w(state->mc6847, BIT(data, 6));
+	mc6847_ag_w(state->mc6847, BIT(data, 7));
 
 	mc1000_bankswitch(space->machine);
-
-	state->mc6847_attr = data;
 }
 
 /* Memory Maps */
@@ -146,9 +152,9 @@ static ADDRESS_MAP_START( mc1000_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x04, 0x04) AM_READWRITE(printer_r, printer_w)
 	AM_RANGE(0x05, 0x05) AM_DEVWRITE(CENTRONICS_TAG, centronics_data_w)
-//	AM_RANGE(0x10, 0x10) AM_DEVWRITE(MC6845_TAG, mc6845_address_w)
-//	AM_RANGE(0x11, 0x11) AM_DEVREADWRITE(MC6845_TAG, mc6845_register_r, mc6845_register_w)
-	AM_RANGE(0x12, 0x12) AM_WRITE(mc6845_ctrl_w)	
+//  AM_RANGE(0x10, 0x10) AM_DEVWRITE(MC6845_TAG, mc6845_address_w)
+//  AM_RANGE(0x11, 0x11) AM_DEVREADWRITE(MC6845_TAG, mc6845_register_r, mc6845_register_w)
+	AM_RANGE(0x12, 0x12) AM_WRITE(mc6845_ctrl_w)
 	AM_RANGE(0x20, 0x20) AM_DEVWRITE(AY8910_TAG, ay8910_address_w)
 	AM_RANGE(0x40, 0x40) AM_DEVREAD(AY8910_TAG, ay8910_r)
 	AM_RANGE(0x60, 0x60) AM_DEVWRITE(AY8910_TAG, ay8910_data_w)
@@ -239,82 +245,31 @@ INPUT_PORTS_END
 
 /* Video */
 
-static void mc1000_hsync(running_machine *machine, int data)
+static WRITE_LINE_DEVICE_HANDLER( mc1000_mc6847_fs_w )
 {
-	mc1000_state *state = machine->driver_data;
-
-	state->hsync = data;
+	mc1000_state *mc1000 = device->machine->driver_data;
+	mc1000->vsync = state;
 }
 
-static void mc1000_vsync(running_machine *machine, int data)
+static WRITE_LINE_DEVICE_HANDLER( mc1000_mc6847_hs_w )
 {
-	mc1000_state *state = machine->driver_data;
-
-	state->vsync = data;
+	mc1000_state *mc1000 = device->machine->driver_data;
+	mc1000->hsync = state;
 }
 
-static ATTR_CONST UINT8 mc1000_get_attributes(running_machine *machine, UINT8 c, int scanline, int pos)
+static READ8_DEVICE_HANDLER( mc1000_mc6847_videoram_r )
 {
-	mc1000_state *state = machine->driver_data;
+	mc1000_state *state = device->machine->driver_data;
 
-	UINT8 data = 0;
+	mc6847_inv_w(device, BIT(state->mc6847_video_ram[offset], 7));
 
-	data |= BIT(c, 7) ? M6847_INV : 0;
-	data |= BIT(state->mc6847_attr, 1) ? M6847_CSS : 0;
-	data |= BIT(state->mc6847_attr, 2) ? M6847_GM0 : 0;
-	data |= BIT(state->mc6847_attr, 3) ? M6847_GM1 : 0;
-	data |= BIT(state->mc6847_attr, 4) ? M6847_GM2 : 0;
-	data |= BIT(state->mc6847_attr, 5) ? M6847_INTEXT : 0;
-	data |= BIT(state->mc6847_attr, 6) ? M6847_AS : 0;
-	data |= BIT(state->mc6847_attr, 7) ? M6847_AG : 0;
-
-	return data;
+	return state->mc6847_video_ram[offset];
 }
 
-static UINT8 mc1000_get_char_rom(running_machine *machine, UINT8 ch,int line)
+static VIDEO_UPDATE( mc1000 )
 {
-   return ch;
-}
-
-static const UINT8 *mc1000_get_video_ram(running_machine *machine, int scanline)
-{
-	mc1000_state *state = machine->driver_data;
-	
-	UINT16 addr = 0;
-
-	if (BIT(state->mc6847_attr, 7))
-	{
-		switch ((state->mc6847_attr >> 2) & 0x07)
-		{
-		case 0:	case 1: addr = (scanline / 3) * 0x10; break;
-		case 2:			addr = (scanline / 3) * 0x20; break;
-		case 3:	case 5: addr = (scanline / 2) * 0x10; break;
-		case 4:			addr = (scanline / 2) * 0x20; break;
-		case 6:	case 7: addr = scanline * 0x20; break;
-		}
-	}
-	else
-	{
-		addr = (scanline / 12) * 0x20;
-	}
-
-	return state->mc6847_video_ram + addr;
-}
-
-static VIDEO_START( mc1000 )
-{
-	m6847_config cfg;
-
-	memset(&cfg, 0, sizeof(cfg));
-
-	cfg.type = M6847_VERSION_ORIGINAL_NTSC;
-	cfg.horizontal_sync_callback = mc1000_hsync;
-	cfg.field_sync_callback = mc1000_vsync;
-	cfg.get_attributes = mc1000_get_attributes;
-	cfg.get_video_ram = mc1000_get_video_ram;
-	cfg.get_char_rom = mc1000_get_char_rom;
-
-	m6847_init(machine, &cfg);
+	mc1000_state *state = screen->machine->driver_data;
+	return mc6847_update(state->mc6847, bitmap, cliprect);
 }
 
 /* AY-3-8910 Interface */
@@ -369,6 +324,7 @@ static MACHINE_START( mc1000 )
 
 	/* find devices */
 	state->mc6845 = devtag_get_device(machine, MC6845_TAG);
+	state->mc6847 = devtag_get_device(machine, MC6847_TAG);
 	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
@@ -404,7 +360,6 @@ static MACHINE_START( mc1000 )
 	state_save_register_global(machine, state->keylatch);
 	state_save_register_global(machine, state->hsync);
 	state_save_register_global(machine, state->vsync);
-	state_save_register_global(machine, state->mc6847_attr);
 }
 
 static MACHINE_RESET( mc1000 )
@@ -441,6 +396,22 @@ static const cassette_config mc1000_cassette_config =
 	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED
 };
 
+static const mc6847_interface mc1000_mc6847_intf =
+{
+	DEVCB_HANDLER(mc1000_mc6847_videoram_r),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_LINE(mc1000_mc6847_fs_w),
+	DEVCB_LINE(mc1000_mc6847_hs_w),
+	DEVCB_NULL
+};
+
 static MACHINE_DRIVER_START( mc1000 )
 	MDRV_DRIVER_DATA(mc1000_state)
 
@@ -463,8 +434,10 @@ static MACHINE_DRIVER_START( mc1000 )
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
     MDRV_PALETTE_LENGTH(16)
 
-    MDRV_VIDEO_START(mc1000)
-    MDRV_VIDEO_UPDATE(m6847)
+    MDRV_VIDEO_UPDATE(mc1000)
+
+    MDRV_MC6847_ADD(MC6847_TAG, mc1000_mc6847_intf)
+    MDRV_MC6847_TYPE(M6847_VERSION_ORIGINAL_NTSC)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -475,6 +448,11 @@ static MACHINE_DRIVER_START( mc1000 )
 	/* devices */
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, mc1000_cassette_config)
 	MDRV_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("16K")
+	MDRV_RAM_EXTRA_OPTIONS("48K")	
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -485,12 +463,6 @@ ROM_START( mc1000 )
 	ROM_LOAD( "mc1000.ic12", 0xe000, 0x2000, CRC(750c95f0) SHA1(fd766f5ea4481ef7fd4df92cf7d8397cc2b5a6c4) )
 ROM_END
 
-/* System Configuration */
-
-static SYSTEM_CONFIG_START( mc1000 )
-	CONFIG_RAM_DEFAULT( 16 * 1024 )
-	CONFIG_RAM		  ( 48 * 1024 )
-SYSTEM_CONFIG_END
 
 /* Driver Initialization */
 
@@ -517,5 +489,5 @@ static DRIVER_INIT( mc1000 )
 
 /* System Drivers */
 
-/*    YEAR	NAME		PARENT		COMPAT	MACHINE		INPUT		INIT		CONFIG		COMPANY				FULLNAME		FLAGS */
-COMP( 1985,	mc1000,		0,			0,		mc1000,		mc1000,		mc1000,		mc1000,		"CCE",				"MC-1000",		GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY             FULLNAME        FLAGS */
+COMP( 1985,	mc1000,		0,			0,		mc1000,		mc1000,		mc1000,		0,		"CCE",				"MC-1000",		GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )

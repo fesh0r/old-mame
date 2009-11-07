@@ -1,9 +1,9 @@
 /******************************************************************************
- *	Sharp MZ700
+ *  Sharp MZ700
  *
- *	machine driver
+ *  machine driver
  *
- *	Juergen Buchmueller <pullmoll@t-online.de>, Jul 2000
+ *  Juergen Buchmueller <pullmoll@t-online.de>, Jul 2000
  *
  *  Reference: http://sharpmz.computingmuseum.com
  *
@@ -19,7 +19,7 @@
 #include "machine/ctronics.h"
 #include "sound/speaker.h"
 #include "devices/cassette.h"
-
+#include "devices/messram.h"
 
 #ifndef VERBOSE
 #define VERBOSE 1
@@ -59,7 +59,7 @@ static PIT8253_OUTPUT_CHANGED( pit_irq_2 );
 const struct pit8253_config mz700_pit8253_config =
 {
 	{
-		/* clockin	           callback */
+		/* clockin             callback */
 		{ XTAL_17_73447MHz/20, pit_out0_changed },
 		{	          15611.0, pit_out1_changed },
 		{		            0, pit_irq_2        },
@@ -69,7 +69,7 @@ const struct pit8253_config mz700_pit8253_config =
 const struct pit8253_config mz800_pit8253_config =
 {
 	{
-		/* clockin	           callback */
+		/* clockin             callback */
 		{ XTAL_17_73447MHz/16, pit_out0_changed },
 		{	          15611.0, pit_out1_changed },
 		{		            0, pit_irq_2        },
@@ -173,7 +173,7 @@ READ8_HANDLER( mz800_bank_0_r )
 
 			/* ram from 0xa000 to 0xbfff */
 			memory_install_readwrite8_handler(spc, 0xa000, 0xbfff, 0, 0, SMH_BANK(5), SMH_BANK(5));
-			memory_set_bankptr(space->machine, 5, mess_ram + 0xa000);
+			memory_set_bankptr(space->machine, 5, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0xa000);
 		}
 	}
 
@@ -185,7 +185,7 @@ WRITE8_HANDLER( mz700_bank_0_w )
 	const address_space *spc = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	memory_install_readwrite8_handler(spc, 0x0000, 0x0fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
-	memory_set_bankptr(space->machine, 1, mess_ram);
+	memory_set_bankptr(space->machine, 1, messram_get_ptr(devtag_get_device(space->machine, "messram")));
 }
 
 WRITE8_HANDLER( mz800_bank_0_w )
@@ -193,7 +193,7 @@ WRITE8_HANDLER( mz800_bank_0_w )
 	const address_space *spc = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	memory_install_readwrite8_handler(spc, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
-	memory_set_bankptr(space->machine, 1, mess_ram);
+	memory_set_bankptr(space->machine, 1, messram_get_ptr(devtag_get_device(space->machine, "messram")));
 }
 
 READ8_HANDLER( mz800_bank_1_r )
@@ -203,19 +203,19 @@ READ8_HANDLER( mz800_bank_1_r )
 
 	/* switch in ram from 0x1000 to 0x1fff */
 	memory_install_readwrite8_handler(spc, 0x1000, 0x1fff, 0x1000, 0, SMH_BANK(2), SMH_BANK(2));
-	memory_set_bankptr(space->machine, 2, mess_ram + 0x1000);
+	memory_set_bankptr(space->machine, 2, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x1000);
 
 	if (mz->mz700_mode)
 	{
 		/* ram from 0xc000 to 0xcfff */
 		memory_install_readwrite8_handler(spc, 0xc000, 0xcfff, 0, 0, SMH_BANK(6), SMH_BANK(6));
-		memory_set_bankptr(space->machine, 6, mess_ram + 0xc000);
+		memory_set_bankptr(space->machine, 6, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0xc000);
 	}
 	else
 	{
 		/* ram from 0x8000 to 0xbfff */
 		memory_install_readwrite8_handler(spc, 0x8000, 0xbfff, 0, 0, SMH_BANK(4), SMH_BANK(4));
-		memory_set_bankptr(space->machine, 4, mess_ram + 0x8000);
+		memory_set_bankptr(space->machine, 4, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x8000);
 	}
 
 	return 0xff;
@@ -232,7 +232,7 @@ WRITE8_HANDLER( mz_bank_1_w )
 		if (!mz->mz700_ram_lock)
 		{
 			memory_install_readwrite8_handler(spc, 0xd000, 0xffff, 0, 0, SMH_BANK(7), SMH_BANK(7));
-			memory_set_bankptr(space->machine, 7, mess_ram + 0xd000);
+			memory_set_bankptr(space->machine, 7, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0xd000);
 			mz->mz700_ram_vram = FALSE;
 		}
 	}
@@ -242,7 +242,7 @@ WRITE8_HANDLER( mz_bank_1_w )
 		if (!mz->mz800_ram_lock)
 		{
 			memory_install_readwrite8_handler(spc, 0xe000, 0xffff, 0, 0, SMH_BANK(8), SMH_BANK(8));
-			memory_set_bankptr(space->machine, 8, mess_ram + 0xe000);
+			memory_set_bankptr(space->machine, 8, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0xe000);
 			mz->mz800_ram_monitor = FALSE;
 		}
 	}
@@ -317,7 +317,7 @@ WRITE8_HANDLER( mz_bank_4_w )
 
 		/* rest is ram is always ram in mz700 mode */
 		memory_install_readwrite8_handler(spc, 0x1000, 0xcfff, 0, 0, SMH_BANK(2), SMH_BANK(2));
-		memory_set_bankptr(space->machine, 2, mess_ram + 0x1000);
+		memory_set_bankptr(space->machine, 2, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x1000);
 	}
 	else
 	{
@@ -327,7 +327,7 @@ WRITE8_HANDLER( mz_bank_4_w )
 
 		/* ram from 0x2000 to 0x7fff */
 		memory_install_readwrite8_handler(spc, 0x2000, 0x7fff, 0, 0, SMH_BANK(3), SMH_BANK(3));
-		memory_set_bankptr(space->machine, 3, mess_ram);
+		memory_set_bankptr(space->machine, 3, messram_get_ptr(devtag_get_device(space->machine, "messram")));
 
 		if (mz->hires_mode)
 		{
@@ -343,12 +343,12 @@ WRITE8_HANDLER( mz_bank_4_w )
 
 			/* ram from 0xa000 to 0xbfff */
 			memory_install_readwrite8_handler(spc, 0xa000, 0xbfff, 0, 0, SMH_BANK(5), SMH_BANK(5));
-			memory_set_bankptr(space->machine, 5, mess_ram + 0xa000);
+			memory_set_bankptr(space->machine, 5, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0xa000);
 		}
 
 		/* ram from 0xc000 to 0xdfff */
 		memory_install_readwrite8_handler(spc, 0xc000, 0xdfff, 0, 0, SMH_BANK(6), SMH_BANK(6));
-		memory_set_bankptr(space->machine, 6, mess_ram + 0xc000);
+		memory_set_bankptr(space->machine, 6, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0xc000);
 
 		/* mz800 monitor rom from 0xe000 to 0xffff */
 		memory_install_readwrite8_handler(spc, 0xe000, 0xffff, 0, 0, SMH_BANK(8), SMH_NOP);
@@ -416,7 +416,7 @@ static PIT8253_OUTPUT_CHANGED( pit_out0_changed )
 	const device_config *speaker = devtag_get_device(device->machine, "speaker");
 	if((prev_state==0) && (state==1)) {
 		speaker_level ^= 1;
-	}	
+	}
 	prev_state = state;
 	speaker_level_w( speaker, speaker_level);
 }
@@ -516,24 +516,24 @@ static WRITE8_DEVICE_HANDLER( pio_port_c_w )
      * bit 0 out    unused
      */
 
-//	UINT8 state = cassette_get_state(devtag_get_device(device->machine, "cassette"));
-//	UINT8 action = ((~pio_port_c_output & 8) & (data & 8));		/* detect low-to-high transition */
+//  UINT8 state = cassette_get_state(devtag_get_device(device->machine, "cassette"));
+//  UINT8 action = ((~pio_port_c_output & 8) & (data & 8));     /* detect low-to-high transition */
 
 	/* The motor control circuit consists of a resistor, capacitor, invertor, nand-gate, and D flip-flop.
-		The sense input from the cassette player goes low whenever play, rewind or fast-forward is pressed.
-		This connects to most of the above components.
-		The Q output enables the motor, and also connects to Bit 4 (input).
-		Bit 3 outputs a string of pulses to the Clock pin, and therefore cannot be used to control
-		the motor directly.
-		For the moment, the user can use the UI to select play, stop, etc.
-		If you load from the command-line or the software-picker, type in L <enter> immediately.
+        The sense input from the cassette player goes low whenever play, rewind or fast-forward is pressed.
+        This connects to most of the above components.
+        The Q output enables the motor, and also connects to Bit 4 (input).
+        Bit 3 outputs a string of pulses to the Clock pin, and therefore cannot be used to control
+        the motor directly.
+        For the moment, the user can use the UI to select play, stop, etc.
+        If you load from the command-line or the software-picker, type in L <enter> immediately.
 
-	cassette_change_state(
-		devtag_get_device(device->machine, "cassette"),
-		((data & 0x08) && mz700_motor_on) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,
-		CASSETTE_MOTOR_DISABLED);
+    cassette_change_state(
+        devtag_get_device(device->machine, "cassette"),
+        ((data & 0x08) && mz700_motor_on) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED,
+        CASSETTE_MOTOR_DISABLED);
 
-	*/
+    */
 
 	LOG(2,"mz700_pio_port_c_w",("%02X\n", data),device->machine);
 
@@ -542,7 +542,7 @@ static WRITE8_DEVICE_HANDLER( pio_port_c_w )
 
 
 /******************************************************************************
- *	Sharp MZ800
+ *  Sharp MZ800
  *
  *
  ******************************************************************************/
@@ -636,10 +636,10 @@ WRITE8_HANDLER( mz800_read_format_w )
 }
 
 /* port CE
- * bit 3	1: MZ700 mode		0: MZ800 mode
- * bit 2	1: 640 horizontal	0: 320 horizontal
- * bit 1	1: 4bpp/2bpp		0: 2bpp/1bpp
- * bit 0	???
+ * bit 3    1: MZ700 mode       0: MZ800 mode
+ * bit 2    1: 640 horizontal   0: 320 horizontal
+ * bit 1    1: 4bpp/2bpp        0: 2bpp/1bpp
+ * bit 0    ???
  */
 WRITE8_HANDLER( mz800_display_mode_w )
 {
@@ -650,12 +650,12 @@ WRITE8_HANDLER( mz800_display_mode_w )
 	mz->screen = data & 0x03;
 
 	/* change memory maps if we switched mode */
-//	if (BIT(data, 3) != mz->mz700_mode)
-//	{
-//		logerror("mz800_display_mode_w: switching mode to %s\n", (BIT(data, 3) ? "mz700" : "mz800"));
-//		mz->mz700_mode = BIT(data, 3);
-//		mz_bank_4_w(cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0, 0);
-//	}
+//  if (BIT(data, 3) != mz->mz700_mode)
+//  {
+//      logerror("mz800_display_mode_w: switching mode to %s\n", (BIT(data, 3) ? "mz700" : "mz800"));
+//      mz->mz700_mode = BIT(data, 3);
+//      mz_bank_4_w(cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0, 0);
+//  }
 }
 
 /* port CF */

@@ -39,11 +39,11 @@ System80 and LNW80 have non-addressable links to set the baud rate. Receive and 
 It is assumed that the TRS80L2 UART setup is identical to the System80, apart from the address ports used.
 Due to the above, the only working emulated UART is for the Model 3.
 
-Cassette baud rates: 	Model I level I - 250 baud
-			Model I level II and all clones - 500 baud
-			Model III/4 - 500 and 1500 baud selectable at boot time
-			- When it says "Cass?" press L for 500 baud, or Enter otherwise.
-			LNW-80 - 500 baud @1.77MHz and 1000 baud @4MHz.
+Cassette baud rates:    Model I level I - 250 baud
+            Model I level II and all clones - 500 baud
+            Model III/4 - 500 and 1500 baud selectable at boot time
+            - When it says "Cass?" press L for 500 baud, or Enter otherwise.
+            LNW-80 - 500 baud @1.77MHz and 1000 baud @4MHz.
 
 I/O ports
 FF:
@@ -86,8 +86,8 @@ E8:
 - UART Master Reset (write) on a Model III/4
 
 Model 4 - C0-CF = hard drive (optional)
-	- 90-93 write sound (optional)
-	- 80-8F hires graphics (optional)
+    - 90-93 write sound (optional)
+    - 80-8F hires graphics (optional)
 
 About the Model II - this runs a boostrap rom, and boots a floppy. The rom is then bankswitched
 out, and RAM takes its place. There is no rom basic, and no cassette support. Display sizes are
@@ -95,22 +95,30 @@ out, and RAM takes its place. There is no rom basic, and no cassette support. Di
 Expansion interface for more floppy drives. The drives use 8-inch floppies holding 0.5mb of data.
 It was extremely expensive, non-standard, and not many were sold. A rom dump does not seem to exist.
 
-About the Model 4 - This has 4 memory maps.
-		We emulate Map 1 (see address map for Model 3).
-		Map 2 - RAM=0..37FF, Keyboard=3800..3Bff, Video=3C00..3FFF, RAM=4000..FFFF
-		Map 3 - RAM=0..F3FF, Keyboard=F400..F7FF, Video=F800..FFFF
-		Map 4 - RAM=0..FFFF
-
 About the ht1080z - This was made for schools in Hungary. Each comes with a BASIC extension roms
-		which activated Hungarian features. To activate - start emulation - enter SYSTEM
-		Enter /12288 and the extensions will be installed and you are returned to READY.
-		The ht1080z is identical to the System 80, apart from the character rom.
-		The ht1080z2 has a modified extension rom and character generator.
+        which activated Hungarian features. To activate - start emulation - enter SYSTEM
+        Enter /12288 and the extensions will be installed and you are returned to READY.
+        The ht1080z is identical to the System 80, apart from the character rom.
+        The ht1080z2 has a modified extension rom and character generator.
 
 About the RTC - The time is incremented while ever the cursor is flashing. It is stored in a series
-		of bytes in the computer's work area. The bytes are in a certain order, this is:
-		seconds, minutes, hours, year, day, month. On a model 1, the seconds are stored at
-		0x4041, while on the model 4 it is 0x4217. A reboot always sets the time to zero.
+        of bytes in the computer's work area. The bytes are in a certain order, this is:
+        seconds, minutes, hours, year, day, month. On a model 1, the seconds are stored at
+        0x4041, while on the model 4 it is 0x4217. A reboot always sets the time to zero.
+
+Model 4 memory organisation -
+        Mode 0: ROM=0-37E7 and 37EA-3FFF; Printer=37E8-37E9; Keyboard=3800-3BFF; Video=3C00-3FFF
+        Mode 1: Keyboard and Video as above; 0-3FFF read=ROM and write=RAM
+        Mode 2: Keyboard=F400-F7FF; Video=F800-FFFF; the rest is RAM
+        Mode 3: All RAM
+        In the "maincpu" memory map, the first 64k is given to the ROM, keyboard, printer and video,
+            while the second 64k is RAM that is switched in as needed. The area from 4800-FFFF
+            is considered a "black hole", any writes to there will disappear.
+        The video is organised as 2 banks of 0x400 bytes, except in Mode 2 where it becomes contiguous.
+
+Model 4P - is the same as Model 4 except:
+        - ROM is only 0000-0FFF, while 1000-37FF is given over to RAM
+        - There is no cassette support in hardware.
 
 ***************************************************************************
 
@@ -119,7 +127,6 @@ Not dumped (to our knowledge):
  TRS80 Katakana Character Generator
  TRS80 Small English Character Generator
  TRS80 Model III old version Character Generator
- TRS80 Model 4P boot disk (being worked on)
  TRS80 Model II bios and boot disk
 
 Not emulated:
@@ -210,19 +217,53 @@ static ADDRESS_MAP_START( lnw80_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( model3_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x37e7) AM_ROM
-	AM_RANGE(0x37e8, 0x37e9) AM_READWRITE(trs80_printer_r, trs80_printer_w)
-	AM_RANGE(0x37ea, 0x37ff) AM_ROM
-	AM_RANGE(0x3800, 0x38ff) AM_MIRROR(0x300) AM_READ(trs80_keyboard_r)
-	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(trs80_videoram_r, trs80_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x4000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( model3_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0xe0, 0xe3) AM_READWRITE(trs80m4_e0_r, trs80m4_e0_w)
+	AM_RANGE(0xe4, 0xe4) AM_READWRITE(trs80m4_e4_r, trs80m4_e4_w)
+	AM_RANGE(0xe8, 0xe8) AM_READWRITE(trs80m4_e8_r, trs80m4_e8_w)
+	AM_RANGE(0xe9, 0xe9) AM_READ_PORT("E9") AM_WRITE(trs80m4_e9_w)
+	AM_RANGE(0xea, 0xea) AM_READWRITE(trs80m4_ea_r, trs80m4_ea_w)
+	AM_RANGE(0xeb, 0xeb) AM_READWRITE(trs80m4_eb_r, trs80m4_eb_w)
+	AM_RANGE(0xec, 0xef) AM_READWRITE(trs80m4_ec_r, trs80m4_ec_w)
+	AM_RANGE(0xf0, 0xf0) AM_DEVREADWRITE("wd179x", trs80_wd179x_r, wd17xx_command_w)
+	AM_RANGE(0xf1, 0xf1) AM_DEVREADWRITE("wd179x", wd17xx_track_r, wd17xx_track_w)
+	AM_RANGE(0xf2, 0xf2) AM_DEVREADWRITE("wd179x", wd17xx_sector_r, wd17xx_sector_w)
+	AM_RANGE(0xf3, 0xf3) AM_DEVREADWRITE("wd179x", wd17xx_data_r, wd17xx_data_w)
+	AM_RANGE(0xf4, 0xf4) AM_WRITE(trs80m4_f4_w)
+	AM_RANGE(0xf8, 0xfb) AM_READWRITE(trs80_printer_r, trs80_printer_w)
+	AM_RANGE(0xfc, 0xff) AM_READWRITE(trs80m4_ff_r, trs80m4_ff_w)
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( model4_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x84, 0x87) AM_WRITE(trs80m4_84_w)
 	AM_RANGE(0x88, 0x89) AM_WRITE(trs80m4_88_w)
 	AM_RANGE(0x90, 0x93) AM_WRITE(trs80m4_90_w)
+	AM_RANGE(0xe0, 0xe3) AM_READWRITE(trs80m4_e0_r, trs80m4_e0_w)
+	AM_RANGE(0xe4, 0xe4) AM_READWRITE(trs80m4_e4_r, trs80m4_e4_w)
+	AM_RANGE(0xe8, 0xe8) AM_READWRITE(trs80m4_e8_r, trs80m4_e8_w)
+	AM_RANGE(0xe9, 0xe9) AM_READ_PORT("E9") AM_WRITE(trs80m4_e9_w)
+	AM_RANGE(0xea, 0xea) AM_READWRITE(trs80m4_ea_r, trs80m4_ea_w)
+	AM_RANGE(0xeb, 0xeb) AM_READWRITE(trs80m4_eb_r, trs80m4_eb_w)
+	AM_RANGE(0xec, 0xef) AM_READWRITE(trs80m4_ec_r, trs80m4_ec_w)
+	AM_RANGE(0xf0, 0xf0) AM_DEVREADWRITE("wd179x", trs80_wd179x_r, wd17xx_command_w)
+	AM_RANGE(0xf1, 0xf1) AM_DEVREADWRITE("wd179x", wd17xx_track_r, wd17xx_track_w)
+	AM_RANGE(0xf2, 0xf2) AM_DEVREADWRITE("wd179x", wd17xx_sector_r, wd17xx_sector_w)
+	AM_RANGE(0xf3, 0xf3) AM_DEVREADWRITE("wd179x", wd17xx_data_r, wd17xx_data_w)
+	AM_RANGE(0xf4, 0xf4) AM_WRITE(trs80m4_f4_w)
+	AM_RANGE(0xf8, 0xfb) AM_READWRITE(trs80_printer_r, trs80_printer_w)
+	AM_RANGE(0xfc, 0xff) AM_READWRITE(trs80m4_ff_r, trs80m4_ff_w)
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( model4p_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x84, 0x87) AM_WRITE(trs80m4_84_w)
+	AM_RANGE(0x88, 0x89) AM_WRITE(trs80m4_88_w)
+	AM_RANGE(0x90, 0x93) AM_WRITE(trs80m4_90_w)
+	AM_RANGE(0x9c, 0x9f) AM_WRITE(trs80m4p_9c_w)
 	AM_RANGE(0xe0, 0xe3) AM_READWRITE(trs80m4_e0_r, trs80m4_e0_w)
 	AM_RANGE(0xe4, 0xe4) AM_READWRITE(trs80m4_e4_r, trs80m4_e4_w)
 	AM_RANGE(0xe8, 0xe8) AM_READWRITE(trs80m4_e8_r, trs80m4_e8_w)
@@ -264,22 +305,22 @@ ADDRESS_MAP_END
 +--+---+---+---+---+---+---+---+---+  +--+---+---+---+---+---+---+---+---+
 NB: row 7 contains some originally unused bits
     only the shift bit was there in the TRS80
-	
-2008-05 FP: 
-NB2: 3:3 -> 3:7 have no correspondent keys (see 
-	below) in the usual 53-keys keyboard ( + 
-	12-keys keypad) for Model I, III and 4. Where 
-	are the symbols above coming from?
-NB3: the 12-keys keypad present in later models 
-	is mapped to the corrispondent keys of the 
-	keyboard: '0' -> '9', 'Enter', '.'
+
+2008-05 FP:
+NB2: 3:3 -> 3:7 have no correspondent keys (see
+    below) in the usual 53-keys keyboard ( +
+    12-keys keypad) for Model I, III and 4. Where
+    are the symbols above coming from?
+NB3: the 12-keys keypad present in later models
+    is mapped to the corrispondent keys of the
+    keyboard: '0' -> '9', 'Enter', '.'
 NB4: when it was added a 15-key keypad, there were
-	three functions key 'F1', 'F2', 'F3'. I found no
-	doc about their position in the matrix above, 
-	but the schematics of the clone System-80 MkII
-	(which had 4 function keys) put these keys in
-	3:4 -> 3:7. Right now they're not implemented 
-	below.
+    three functions key 'F1', 'F2', 'F3'. I found no
+    doc about their position in the matrix above,
+    but the schematics of the clone System-80 MkII
+    (which had 4 function keys) put these keys in
+    3:4 -> 3:7. Right now they're not implemented
+    below.
 
 ***************************************************************************/
 
@@ -325,8 +366,8 @@ static INPUT_PORTS_START( trs80 )
 	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_NAME("Y") PORT_CODE(KEYCODE_Y) 			PORT_CHAR('y') PORT_CHAR('Y')
 	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_NAME("Z") PORT_CODE(KEYCODE_Z) 			PORT_CHAR('z') PORT_CHAR('Z')
 	/* on Model I and Model III keyboards, there are only 53 keys (+ 12 keypad keys) and these are not connected:
-	on Model I, they produce arrows and '_', on Model III either produce garbage or overlap with other keys;
-	on Model 4 (which has a 15-key with 3 function keys) here are mapped 'F1', 'F2', 'F3'    */
+    on Model I, they produce arrows and '_', on Model III either produce garbage or overlap with other keys;
+    on Model 4 (which has a 15-key with 3 function keys) here are mapped 'F1', 'F2', 'F3'    */
 	PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_NAME("(n/c)")
 	PORT_BIT(0x10, 0x00, IPT_KEYBOARD) PORT_NAME("(n/c)")
 	PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_NAME("(n/c)")
@@ -412,6 +453,18 @@ static const ay31015_config trs80_ay31015_config =
 	NULL
 };
 
+static const floppy_config trs80_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(trs80),
+	DO_NOT_KEEP_GEOMETRY
+};
+
 static MACHINE_DRIVER_START( trs80 )		// the original model I, level I, with no extras
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, 1796000)        /* 1.796 MHz */
@@ -455,6 +508,7 @@ static MACHINE_DRIVER_START( model1 )		// model I, level II
 	MDRV_CASSETTE_MODIFY( "cassette", trs80l2_cassette_config )
 	MDRV_QUICKLOAD_ADD("quickload", trs80_cmd, "cmd", 0.5)
 	MDRV_WD179X_ADD("wd179x", trs80_wd17xx_interface )
+	MDRV_FLOPPY_4_DRIVES_ADD(trs80_floppy_config)
 	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 	MDRV_AY31015_ADD( "tr1602", trs80_ay31015_config )
 MACHINE_DRIVER_END
@@ -467,10 +521,24 @@ static MACHINE_DRIVER_START( model3 )
 	MDRV_CPU_IO_MAP( model3_io)
 	MDRV_CPU_PERIODIC_INT(trs80_rtc_interrupt, 30)
 
+	MDRV_MACHINE_RESET( trs80m4 )
+
 	MDRV_VIDEO_UPDATE( trs80m4 )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_SIZE(80*8, 240)
 	MDRV_SCREEN_VISIBLE_AREA(0,80*8-1,0,239)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( model4 )
+	MDRV_IMPORT_FROM( model3 )
+	MDRV_CPU_MODIFY( "maincpu" )
+	MDRV_CPU_IO_MAP( model4_io)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( model4p )
+	MDRV_IMPORT_FROM( model3 )
+	MDRV_CPU_MODIFY( "maincpu" )
+	MDRV_CPU_IO_MAP( model4p_io)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( sys80 )
@@ -581,22 +649,22 @@ ROM_END
 
 ROM_START(trs80m3)
 /* ROMS we have and are missing:
-HAVE	TRS-80 Model III Level 1 ROM (U104)
-MISSING	TRS-80 Model III Level 2 (ENGLISH) ROM A (U104) ver. CRC BBC4
-MISSING	TRS-80 Model III Level 2 (ENGLISH) ROM A (U104) ver. CRC DA75
-HAVE	TRS-80 Model III Level 2 (ENGLISH) ROM A (U104) ver. CRC 9639
-HAVE	TRS-80 Model III Level 2 (ENGLISH) ROM B (U105) ver. CRC 407C
-MISSING	TRS-80 Model III Level 2 (ENGLISH) ROM C (U106) ver. CRC 2B91 - early mfg. #80040316
-MISSING	TRS-80 Model III Level 2 (ENGLISH) ROM C (U106) ver. CRC 278A - no production REV A
-HAVE	TRS-80 Model III Level 2 (ENGLISH) ROM C (U106) ver. CRC 2EF8 - Manufacturing #80040316 REV B
-HAVE	TRS-80 Model III Level 2 (ENGLISH) ROM C (U106) ver. CRC 2F84 - Manufacturing #80040316 REV C
-MISSING	TRS-80 Model III Level 2 (ENGLISH) ROM C ver. CRC 2764 - Network III v1
-HAVE	TRS-80 Model III Level 2 (ENGLISH) ROM C ver. CRC 276A - Network III v2
-MISSING	TRS-80 Model III Level 2 (BELGIUM) CRC ????
+HAVE    TRS-80 Model III Level 1 ROM (U104)
+MISSING TRS-80 Model III Level 2 (ENGLISH) ROM A (U104) ver. CRC BBC4
+MISSING TRS-80 Model III Level 2 (ENGLISH) ROM A (U104) ver. CRC DA75
+HAVE    TRS-80 Model III Level 2 (ENGLISH) ROM A (U104) ver. CRC 9639
+HAVE    TRS-80 Model III Level 2 (ENGLISH) ROM B (U105) ver. CRC 407C
+MISSING TRS-80 Model III Level 2 (ENGLISH) ROM C (U106) ver. CRC 2B91 - early mfg. #80040316
+MISSING TRS-80 Model III Level 2 (ENGLISH) ROM C (U106) ver. CRC 278A - no production REV A
+HAVE    TRS-80 Model III Level 2 (ENGLISH) ROM C (U106) ver. CRC 2EF8 - Manufacturing #80040316 REV B
+HAVE    TRS-80 Model III Level 2 (ENGLISH) ROM C (U106) ver. CRC 2F84 - Manufacturing #80040316 REV C
+MISSING TRS-80 Model III Level 2 (ENGLISH) ROM C ver. CRC 2764 - Network III v1
+HAVE    TRS-80 Model III Level 2 (ENGLISH) ROM C ver. CRC 276A - Network III v2
+MISSING TRS-80 Model III Level 2 (BELGIUM) CRC ????
 Note: Be careful when dumping rom C: if dumped on the trs-80 m3 with software, bytes 0x7e8 and 0x7e9 (addresses 0x37e8, 0x0x37e9)
       will read as 0xFF 0xFF; on the original rom, these bytes are 0x00 0x00 (for eproms) or 0xAA 0xAA (for mask roms), those two bytes are used for printer status on the trs-80 and are mapped on top of the rom; This problem should be avoided by pulling the rom chips and dumping them directly.
 */
-	ROM_REGION(0x10000, "maincpu",0)
+	ROM_REGION(0x20000, "maincpu",0)
 	ROM_SYSTEM_BIOS(0, "trs80m3_revc", "Level 2 bios, RomC Rev C")
 	ROMX_LOAD("8041364.u104", 0x0000, 0x2000, CRC(ec0c6daa) SHA1(257cea6b9b46912d4681251019ec2b84f1b95fc8), ROM_BIOS(1)) // Label: "SCM91248C // Tandy (c) 80 // 8041364 // 8134" (Level 2 bios ROM A '9639')
 	ROMX_LOAD("8040332.u105", 0x2000, 0x1000, CRC(ed4ee921) SHA1(ec0a19d4b72f71e51965de63250009c3c4e4cab3), ROM_BIOS(1)) // Label: "SCM91619P // Tandy (c) 80 // 8040332 // QQ8117", (Level 2 bios ROM B '407c')
@@ -619,7 +687,7 @@ ROM_END
 
 // for model 4 and 4p info, see http://vt100.net/mirror/harte/Radio%20Shack/TRS-80%20Model%204_4P%20Soft%20Tech%20Ref.pdf
 ROM_START(trs80m4)
-	ROM_REGION(0x10000, "maincpu",0)
+	ROM_REGION(0x20000, "maincpu",0)
 	ROM_LOAD("trs80m4.rom",  0x0000, 0x3800, BAD_DUMP CRC(1a92d54d) SHA1(752555fdd0ff23abc9f35c6e03d9d9b4c0e9677b)) // should be split into 3 roms, roms A, B, C, exactly like trs80m3; in fact, roms A and B are shared between both systems.
 
 	ROM_REGION(0x00800, "gfx1",0)
@@ -627,9 +695,7 @@ ROM_START(trs80m4)
 ROM_END
 
 ROM_START(trs80m4p) // uses a completely different memory map scheme to the others; the trs-80 model 3 roms are loaded from a boot disk, the only rom on the machine is a bootloader; bootloader can be banked out of 0x0000-0x1000 space which is replaced with ram; see the tech ref pdf, pdf page 62
-// Currently this fails miserably due to lack of ram banking; it does some i/o stuff, copies some of the int vectors to 0x4000, then does some more i/o stuff and fills the entire 0x4000-43ff space with 0x20 (space? is it trying to clear the screen?), then immediately afterward it executes a RET; since the stack pointer is still pointing to 0x40A2, it RETs to 0x2020, which is in unmapped, nop-filled space.
-// Clearly there's some major ram-bank related stuff that isn't working at all here.
-	ROM_REGION(0x10000, "maincpu",0)
+	ROM_REGION(0x20000, "maincpu",0)
 	ROM_SYSTEM_BIOS(0, "trs80m4p", "Level 2 bios, gate array machine")
 	ROMX_LOAD("8075332.u69", 0x0000, 0x1000, CRC(3a738aa9) SHA1(6393396eaa10a84b9e9f0cf5930aba73defc5c52), ROM_BIOS(1)) // Label: "SCM95060P // 8075332 // TANDY (C) 1983 // 8421" at location U69 (may be located at U70 on some pcb revisions)
 	ROM_SYSTEM_BIOS(1, "trs80m4p_hack", "Disk loader hack")
@@ -681,7 +747,15 @@ static DRIVER_INIT( trs80l2 )
 static DRIVER_INIT( trs80m4 )
 {
 	trs80_mode = 0;
-	trs80_model4 = 1;
+	trs80_model4 = 2;
+	videoram = memory_region(machine, "maincpu")+0x4000;
+}
+
+static DRIVER_INIT( trs80m4p )
+{
+	trs80_mode = 0;
+	trs80_model4 = 4;
+	videoram = memory_region(machine, "maincpu")+0x4000;
 }
 
 static DRIVER_INIT( lnw80 )
@@ -692,34 +766,15 @@ static DRIVER_INIT( lnw80 )
 	videoram = memory_region(machine, "gfx2")+0x4000;
 }
 
-static void trs8012_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_trs80; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(trs8012)
-	CONFIG_DEVICE(trs8012_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-/*    YEAR  NAME      PARENT  COMPAT  MACHINE	  INPUT    INIT      CONFIG       COMPANY  FULLNAME */
+/*    YEAR  NAME      PARENT  COMPAT  MACHINE     INPUT    INIT      CONFIG       COMPANY  FULLNAME */
 COMP( 1977, trs80,    0,	0,	trs80,    trs80,   trs80,    0,		"Tandy Radio Shack",  "TRS-80 Model I (Level I Basic)" , 0 )
-COMP( 1978, trs80l2,  trs80,	0,	model1,   trs80,   trs80l2,  trs8012,	"Tandy Radio Shack",  "TRS-80 Model I (Level II Basic)" , 0 )
-COMP( 1983, radionic, trs80,	0,	radionic, trs80,   trs80,    trs8012,	"Komtek",  "Radionic" , 0 )
-COMP( 1980, sys80,    trs80,	0,	sys80,    trs80,   trs80l2,  trs8012,	"EACA Computers Ltd.","System-80" , 0 )
-COMP( 1981, lnw80,    trs80,	0,	lnw80,    trs80m3, lnw80,    trs8012,	"LNW Research","LNW-80", 0 )
-COMP( 1980, trs80m3,  trs80,	0,	model3,   trs80m3, trs80m4,  trs8012,	"Tandy Radio Shack",  "TRS-80 Model III", 0 )
-COMP( 1980, trs80m4,  trs80,	0,	model3,   trs80m3, trs80m4,  trs8012,	"Tandy Radio Shack",  "TRS-80 Model 4", 0 )
-COMP( 1983, trs80m4p, trs80,	0,	model3,   trs80m3, trs80m4,  trs8012,	"Tandy Radio Shack",  "TRS-80 Model 4P", GAME_NOT_WORKING )
-COMP( 1983, ht1080z,  trs80,	0,	ht1080z,  trs80,   trs80l2,  trs8012,	"Hiradastechnika Szovetkezet",  "HT-1080Z Series I" , 0 )
-COMP( 1984, ht1080z2, trs80,	0,	ht1080z,  trs80,   trs80l2,  trs8012,	"Hiradastechnika Szovetkezet",  "HT-1080Z Series II" , 0 )
-COMP( 1985, ht108064, trs80,	0,	ht1080z,  trs80,   trs80,    trs8012,	"Hiradastechnika Szovetkezet",  "HT-1080Z/64" , 0 )
+COMP( 1978, trs80l2,  trs80,	0,	model1,   trs80,   trs80l2,  0,	"Tandy Radio Shack",  "TRS-80 Model I (Level II Basic)" , 0 )
+COMP( 1983, radionic, trs80,	0,	radionic, trs80,   trs80,    0,	"Komtek",  "Radionic" , 0 )
+COMP( 1980, sys80,    trs80,	0,	sys80,    trs80,   trs80l2,  0,	"EACA Computers Ltd.","System-80" , 0 )
+COMP( 1981, lnw80,    trs80,	0,	lnw80,    trs80m3, lnw80,    0,	"LNW Research","LNW-80", 0 )
+COMP( 1980, trs80m3,  trs80,	0,	model3,   trs80m3, trs80m4,  0,	"Tandy Radio Shack",  "TRS-80 Model III", 0 )
+COMP( 1980, trs80m4,  trs80,	0,	model4,   trs80m3, trs80m4,  0,	"Tandy Radio Shack",  "TRS-80 Model 4", 0 )
+COMP( 1983, trs80m4p, trs80,	0,	model4p,  trs80m3, trs80m4p, 0,	"Tandy Radio Shack",  "TRS-80 Model 4P", 0 )
+COMP( 1983, ht1080z,  trs80,	0,	ht1080z,  trs80,   trs80l2,  0,	"Hiradastechnika Szovetkezet",  "HT-1080Z Series I" , 0 )
+COMP( 1984, ht1080z2, trs80,	0,	ht1080z,  trs80,   trs80l2,  0,	"Hiradastechnika Szovetkezet",  "HT-1080Z Series II" , 0 )
+COMP( 1985, ht108064, trs80,	0,	ht1080z,  trs80,   trs80,    0,	"Hiradastechnika Szovetkezet",  "HT-1080Z/64" , 0 )

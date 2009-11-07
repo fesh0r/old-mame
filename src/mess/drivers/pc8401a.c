@@ -7,34 +7,35 @@
 #include "machine/upd1990a.h"
 #include "video/sed1330.h"
 #include "video/mc6845.h"
+#include "devices/messram.h"
 
 /*
 
-	NEC PC-8401A-LS "Starlet"
-	NEC PC-8500 "Studley"
+    NEC PC-8401A-LS "Starlet"
+    NEC PC-8500 "Studley"
 
-	TODO:
+    TODO:
 
-	- keyboard interrupt
-	- RTC TP pulse
-	- disassembler for NEC uPD70008C (RST mnemonics are different from Z80)
-	- clock does not advance in menu
-	- mirror e800-ffff to 6800-7fff
-	- soft power on/off
-	- NVRAM
-	- 8251 USART
-	- 8255 ports
-	- MC6845 palette
-	- MC6845 chargen ROM
+    - keyboard interrupt
+    - RTC TP pulse
+    - disassembler for NEC uPD70008C (RST mnemonics are different from Z80)
+    - clock does not advance in menu
+    - mirror e800-ffff to 6800-7fff
+    - soft power on/off
+    - NVRAM
+    - 8251 USART
+    - 8255 ports
+    - MC6845 palette
+    - MC6845 chargen ROM
 
-	- peripherals
-		* PC-8431A Dual Floppy Drive
-		* PC-8441A CRT / Disk Interface
-		* PC-8461A 1200 Baud Modem
-		* PC-8407A 128KB RAM Expansion
-		* PC-8508A ROM/RAM Cartridge
+    - peripherals
+        * PC-8431A Dual Floppy Drive
+        * PC-8441A CRT / Disk Interface
+        * PC-8461A 1200 Baud Modem
+        * PC-8407A 128KB RAM Expansion
+        * PC-8508A ROM/RAM Cartridge
 
-	- Use the 600 baud save rate (PIP CAS2:=A:<filename.ext> this is more reliable than the 1200 baud (PIP CAS:=A:<filename.ext> rate.
+    - Use the 600 baud save rate (PIP CAS2:=A:<filename.ext> this is more reliable than the 1200 baud (PIP CAS:=A:<filename.ext> rate.
 
 */
 
@@ -141,7 +142,7 @@ static void pc8401a_bankswitch(running_machine *machine, UINT8 data)
 		break;
 
 	case 3: /* RAM cartridge */
-		if (mess_ram_size > 64)
+		if (messram_get_size(devtag_get_device(machine, "messram")) > 64)
 		{
 			memory_install_readwrite8_handler(program, 0x8000, 0xbfff, 0, 0, SMH_BANK(3), SMH_BANK(3));
 			memory_set_bank(machine, 3, 3); // TODO or 4
@@ -175,18 +176,18 @@ static WRITE8_HANDLER( mmr_w )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0		ROM section bit 0
-		1		ROM section bit 1
-		2		mapping for CPU addresses 0000H to 7FFFH bit 0
-		3		mapping for CPU addresses 0000H to 7FFFH bit 1
-		4		mapping for CPU addresses 8000H to BFFFH bit 0
-		5		mapping for CPU addresses 8000H to BFFFH bit 1
-		6		mapping for CPU addresses C000H to E7FFH
-		7
+        0       ROM section bit 0
+        1       ROM section bit 1
+        2       mapping for CPU addresses 0000H to 7FFFH bit 0
+        3       mapping for CPU addresses 0000H to 7FFFH bit 1
+        4       mapping for CPU addresses 8000H to BFFFH bit 0
+        5       mapping for CPU addresses 8000H to BFFFH bit 1
+        6       mapping for CPU addresses C000H to E7FFH
+        7
 
-	*/
+    */
 
 	pc8401a_state *state = space->machine->driver_data;
 
@@ -209,18 +210,18 @@ static READ8_HANDLER( rtc_r )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0		RTC TP?
-		1		RTC DATA OUT
-		2		?
-		3		
-		4		
-		5		
-		6		
-		7
+        0       RTC TP?
+        1       RTC DATA OUT
+        2       ?
+        3
+        4
+        5
+        6
+        7
 
-	*/
+    */
 
 	pc8401a_state *state = space->machine->driver_data;
 
@@ -231,18 +232,18 @@ static WRITE8_HANDLER( rtc_cmd_w )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0		RTC C0
-		1		RTC C1
-		2		RTC C2
-		3		RTC DATA IN?
-		4		
-		5		
-		6		
-		7
+        0       RTC C0
+        1       RTC C1
+        2       RTC C2
+        3       RTC DATA IN?
+        4
+        5
+        6
+        7
 
-	*/
+    */
 
 	pc8401a_state *state = space->machine->driver_data;
 
@@ -256,18 +257,18 @@ static WRITE8_HANDLER( rtc_ctrl_w )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0		RTC OE or CS?
-		1		RTC STB
-		2		RTC CLK
-		3		
-		4		
-		5		
-		6		
-		7
+        0       RTC OE or CS?
+        1       RTC STB
+        2       RTC CLK
+        3
+        4
+        5
+        6
+        7
 
-	*/
+    */
 
 	pc8401a_state *state = space->machine->driver_data;
 
@@ -315,18 +316,18 @@ static READ8_HANDLER( port70_r )
 {
 	/*
 
-		bit		description
+        bit     description
 
-		0		key pressed
-		1		
-		2		
-		3		
-		4		must be 1 or CPU goes to HALT
-		5		
-		6		
-		7
+        0       key pressed
+        1
+        2
+        3
+        4       must be 1 or CPU goes to HALT
+        5
+        6
+        7
 
-	*/
+    */
 
 	pc8401a_state *state = space->machine->driver_data;
 
@@ -383,23 +384,23 @@ static ADDRESS_MAP_START( pc8500_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x20, 0x20) AM_DEVREADWRITE(MSM8251_TAG, msm8251_data_r, msm8251_data_w)
 	AM_RANGE(0x21, 0x21) AM_DEVREADWRITE(MSM8251_TAG, msm8251_status_r, msm8251_control_w)
 	AM_RANGE(0x30, 0x30) AM_READWRITE(mmr_r, mmr_w)
-//	AM_RANGE(0x31, 0x31)
+//  AM_RANGE(0x31, 0x31)
 	AM_RANGE(0x40, 0x40) AM_READWRITE(rtc_r, rtc_ctrl_w)
-//	AM_RANGE(0x41, 0x41)
-//	AM_RANGE(0x50, 0x51) 
+//  AM_RANGE(0x41, 0x41)
+//  AM_RANGE(0x50, 0x51)
 	AM_RANGE(0x60, 0x60) AM_DEVREADWRITE(SED1330_TAG, sed1330_status_r, sed1330_data_w)
 	AM_RANGE(0x61, 0x61) AM_DEVREADWRITE(SED1330_TAG, sed1330_data_r, sed1330_command_w)
 	AM_RANGE(0x70, 0x70) AM_READWRITE(port70_r, port70_w)
 	AM_RANGE(0x71, 0x71) AM_READWRITE(port71_r, port71_w)
-//	AM_RANGE(0x80, 0x80) modem status, set to 0xff to boot
-//	AM_RANGE(0x8b, 0x8b) 
-//	AM_RANGE(0x90, 0x93)
-//	AM_RANGE(0xa0, 0xa1) 
+//  AM_RANGE(0x80, 0x80) modem status, set to 0xff to boot
+//  AM_RANGE(0x8b, 0x8b)
+//  AM_RANGE(0x90, 0x93)
+//  AM_RANGE(0xa0, 0xa1)
 	AM_RANGE(0x98, 0x98) AM_DEVWRITE(MC6845_TAG, mc6845_address_w)
 	AM_RANGE(0x99, 0x99) AM_DEVREADWRITE(MC6845_TAG, mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0xb0, 0xb3) AM_WRITE(io_rom_addr_w)
 	AM_RANGE(0xb3, 0xb3) AM_READ(io_rom_data_r)
-//	AM_RANGE(0xc8, 0xc8) 
+//  AM_RANGE(0xc8, 0xc8)
 	AM_RANGE(0xfc, 0xff) AM_DEVREADWRITE(I8255A_TAG, i8255a_r, i8255a_w)
 ADDRESS_MAP_END
 
@@ -435,7 +436,7 @@ static INPUT_PORTS_START( pc8401a )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_J) PORT_CHAR('j') PORT_CHAR('J')
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_I) PORT_CHAR('i') PORT_CHAR('I')
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_H) PORT_CHAR('h') PORT_CHAR('H')
-	
+
 	PORT_START("KEY3")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_W) PORT_CHAR('w') PORT_CHAR('W')
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_V) PORT_CHAR('v') PORT_CHAR('V')
@@ -471,7 +472,7 @@ static INPUT_PORTS_START( pc8401a )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_SLASH) PORT_CHAR('/') PORT_CHAR('*')
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_STOP) PORT_CHAR('.') PORT_CHAR('*')
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COMMA) PORT_CHAR(',') PORT_CHAR('<')
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) // ´
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) // ?
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COLON) PORT_CHAR(';') PORT_CHAR('*')
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_9) PORT_CHAR('9') PORT_CHAR('*')
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_8) PORT_CHAR('8') PORT_CHAR('*')
@@ -524,20 +525,20 @@ static MACHINE_START( pc8401a )
 
 	/* set up A0/A1 memory banking */
 	memory_configure_bank(machine, 1, 0, 4, memory_region(machine, Z80_TAG), 0x8000);
-	memory_configure_bank(machine, 1, 4, 2, mess_ram, 0x8000);
+	memory_configure_bank(machine, 1, 4, 2, messram_get_ptr(devtag_get_device(machine, "messram")), 0x8000);
 	memory_set_bank(machine, 1, 0);
 
 	/* set up A2 memory banking */
-	memory_configure_bank(machine, 3, 0, 5, mess_ram, 0x4000);
+	memory_configure_bank(machine, 3, 0, 5, messram_get_ptr(devtag_get_device(machine, "messram")), 0x4000);
 	memory_set_bank(machine, 3, 0);
 
 	/* set up A3 memory banking */
-	memory_configure_bank(machine, 4, 0, 1, mess_ram + 0xc000, 0);
+	memory_configure_bank(machine, 4, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000, 0);
 	memory_configure_bank(machine, 4, 1, 1, state->crt_ram, 0);
 	memory_set_bank(machine, 4, 0);
 
 	/* set up A4 memory banking */
-	memory_configure_bank(machine, 5, 0, 1, mess_ram + 0xe800, 0);
+	memory_configure_bank(machine, 5, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xe800, 0);
 	memory_set_bank(machine, 5, 0);
 
 	/* bank switch */
@@ -555,18 +556,18 @@ static READ8_DEVICE_HANDLER( pc8401a_8255_c_r )
 {
 	/*
 
-		bit		signal			description
+        bit     signal          description
 
-		PC0
-		PC1
-		PC2
-		PC3
-		PC4     PC-8431A DAV	data valid
-		PC5     PC-8431A RFD	ready for data
-		PC6     PC-8431A DAC	data accepted
-		PC7     PC-8431A ATN	attention
+        PC0
+        PC1
+        PC2
+        PC3
+        PC4     PC-8431A DAV    data valid
+        PC5     PC-8431A RFD    ready for data
+        PC6     PC-8431A DAC    data accepted
+        PC7     PC-8431A ATN    attention
 
-	*/
+    */
 
 	return 0;
 }
@@ -575,18 +576,18 @@ static WRITE8_DEVICE_HANDLER( pc8401a_8255_c_w )
 {
 	/*
 
-		bit		signal			description
+        bit     signal          description
 
-		PC0
-		PC1
-		PC2
-		PC3
-		PC4     PC-8431A DAV	data valid
-		PC5     PC-8431A RFD	ready for data
-		PC6     PC-8431A DAC	data accepted
-		PC7     PC-8431A ATN	attention
+        PC0
+        PC1
+        PC2
+        PC3
+        PC4     PC-8431A DAV    data valid
+        PC5     PC-8431A RFD    ready for data
+        PC6     PC-8431A DAC    data accepted
+        PC7     PC-8431A ATN    attention
 
-	*/
+    */
 }
 
 static I8255A_INTERFACE( pc8401a_8255_interface )
@@ -638,7 +639,7 @@ static MACHINE_DRIVER_START( common )
 	MDRV_CPU_ADD(Z80_TAG, Z80, 4000000) // NEC uPD70008C
 	MDRV_CPU_PROGRAM_MAP(pc8401a_mem)
 	MDRV_CPU_IO_MAP(pc8401a_io)
-	
+
 	MDRV_MACHINE_START(pc8401a)
 
 	/* fake keyboard */
@@ -658,6 +659,11 @@ static MACHINE_DRIVER_START( common )
 	MDRV_CARTSLOT_ADD("iocart")
 	MDRV_CARTSLOT_EXTENSION_LIST("rom,bin")
 	MDRV_CARTSLOT_NOT_MANDATORY
+
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")
+	MDRV_RAM_EXTRA_OPTIONS("96K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( pc8401a )
@@ -673,9 +679,13 @@ static MACHINE_DRIVER_START( pc8500 )
 	/* basic machine hardware */
 	MDRV_CPU_MODIFY(Z80_TAG)
 	MDRV_CPU_IO_MAP(pc8500_io)
-	
+
 	/* video hardware */
 	MDRV_IMPORT_FROM(pc8500_video)
+	
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("64K")
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -704,22 +714,11 @@ ROM_START( pc8500 )
 	ROM_CART_LOAD("iocart", 0x00000, 0x40000, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
-/* System Configurations */
-
-static SYSTEM_CONFIG_START( pc8401a )
-	CONFIG_RAM_DEFAULT	(64 * 1024)
-	CONFIG_RAM			(96 * 1024)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START( pc8500 )
-	CONFIG_RAM_DEFAULT	(64 * 1024)
-SYSTEM_CONFIG_END
-
 /* System Drivers */
 
-/*    YEAR  NAME		PARENT	COMPAT	MACHINE		INPUT		INIT	CONFIG		COMPANY	FULLNAME */
-COMP( 1984,	pc8401a,	0,		0,		pc8401a,	pc8401a,	0,		pc8401a,	"NEC",	"PC-8401A-LS", GAME_NOT_WORKING )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY FULLNAME */
+COMP( 1984,	pc8401a,	0,		0,		pc8401a,	pc8401a,	0,		0,	"NEC",	"PC-8401A-LS", GAME_NOT_WORKING )
 /*
-COMP( 1984,	pc8401bd,	pc8401a,0,		pc8401a,	pc8401a,	0,		pc8401a,	"NEC",	"PC-8401BD", GAME_NOT_WORKING )
+COMP( 1984, pc8401bd,   pc8401a,0,      pc8401a,    pc8401a,    0,      0,    "NEC",  "PC-8401BD", GAME_NOT_WORKING )
 */
-COMP( 1985, pc8500,		0,		0,		pc8500,		pc8401a,	0,		pc8500,		"NEC",	"PC-8500", GAME_NOT_WORKING )
+COMP( 1985, pc8500,		0,		0,		pc8500,		pc8401a,	0,		0,		"NEC",	"PC-8500", GAME_NOT_WORKING )

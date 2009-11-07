@@ -1,6 +1,6 @@
 /*
 
-	Telmac 2000E
+    Telmac 2000E
     ------------
     (c) 1980 Telercas Oy, Finland
 
@@ -38,6 +38,7 @@
 #include "devices/cassette.h"
 #include "sound/cdp1864.h"
 #include "machine/rescap.h"
+#include "devices/messram.h"
 
 /* Read/Write Handlers */
 
@@ -214,7 +215,7 @@ static CDP1802_EF_READ( tmc2000e_ef_r )
 	// tape in
 
 	if (cassette_input(state->cassette) > +1.0) flags -= EF2;
-	
+
 	// keyboard
 
 	if (~input_port_read(device->machine, keynames[state->keylatch / 8]) & (1 << (state->keylatch % 8))) flags -= EF3;
@@ -299,6 +300,21 @@ static const cassette_config tmc2000_cassette_config =
 	NULL,
 	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED
 };
+static FLOPPY_OPTIONS_START(tmc2000e)
+	// dsk
+FLOPPY_OPTIONS_END
+
+static const floppy_config tmc2000e_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(tmc2000e),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 static MACHINE_DRIVER_START( tmc2000e )
 	MDRV_DRIVER_DATA(tmc2000e_state)
@@ -313,9 +329,7 @@ static MACHINE_DRIVER_START( tmc2000e )
 	MDRV_MACHINE_RESET(tmc2000e)
 
 	// video hardware
-	MDRV_SCREEN_ADD(SCREEN_TAG, RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16) 
-	MDRV_SCREEN_RAW_PARAMS(XTAL_1_75MHz, CDP1864_SCREEN_WIDTH, CDP1864_HBLANK_END, CDP1864_HBLANK_START, CDP1864_TOTAL_SCANLINES, CDP1864_SCANLINE_VBLANK_END, CDP1864_SCANLINE_VBLANK_START)
+	MDRV_CDP1864_SCREEN_ADD(SCREEN_TAG, XTAL_1_75MHz)
 
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_VIDEO_UPDATE(tmc2000e)
@@ -328,6 +342,13 @@ static MACHINE_DRIVER_START( tmc2000e )
 	/* devices */
 	MDRV_PRINTER_ADD("printer")
 	MDRV_CASSETTE_ADD("cassette", tmc2000_cassette_config)
+
+	MDRV_FLOPPY_4_DRIVES_ADD(tmc2000e_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("8K")		
+	MDRV_RAM_EXTRA_OPTIONS("40K")	
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -340,31 +361,5 @@ ROM_START( tmc2000e )
 	ROM_LOAD( "4", 0xd800, 0x0800, NO_DUMP )
 ROM_END
 
-/* System Configuration */
-static FLOPPY_OPTIONS_START(tmc2000e)
-	// dsk
-FLOPPY_OPTIONS_END
-
-static void tmc2000e_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_tmc2000e; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( tmc2000e )
-	CONFIG_RAM_DEFAULT	( 8 * 1024)
-	CONFIG_RAM			(40 * 1024)
-	CONFIG_DEVICE(tmc2000e_floppy_getinfo)
-SYSTEM_CONFIG_END
-
 //    YEAR  NAME      PARENT   COMPAT   MACHINE   INPUT     INIT    CONFIG    COMPANY        FULLNAME
-COMP( 1980, tmc2000e, 0,       0,	    tmc2000e, tmc2000e, 0,		tmc2000e, "Telercas Oy", "Telmac 2000E", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1980, tmc2000e, 0,       0,	    tmc2000e, tmc2000e, 0,		0, "Telercas Oy", "Telmac 2000E", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )

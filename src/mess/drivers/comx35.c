@@ -1,12 +1,12 @@
 /*
 
-	TODO:
+    TODO:
 
-	- unreliable DOS commands?
-	- tape input/output
-	- PL-80 plotter
-	- serial printer
-	- thermal printer
+    - unreliable DOS commands?
+    - tape input/output
+    - PL-80 plotter
+    - serial printer
+    - thermal printer
 
 */
 
@@ -22,6 +22,7 @@
 #include "devices/snapquik.h"
 #include "machine/cdp1871.h"
 #include "machine/wd17xx.h"
+#include "devices/messram.h"
 #include "video/mc6845.h"
 
 /* Memory Maps */
@@ -71,7 +72,7 @@ static INPUT_PORTS_START( comx35 )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_4) PORT_CHAR('4') PORT_CHAR('$')
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_5) PORT_CHAR('5') PORT_CHAR('%')
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_6) PORT_CHAR('6') PORT_CHAR('&')
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_7) PORT_CHAR('7') PORT_CHAR('´')
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_7) PORT_CHAR('7') PORT_CHAR('?')
 
 	PORT_START("D2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_CODE(KEYCODE_8) PORT_CHAR('8') PORT_CHAR('[')
@@ -362,6 +363,18 @@ static const cassette_config comx35_cassette_config =
 	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED
 };
 
+static const floppy_config comx35_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(comx35),
+	DO_NOT_KEEP_GEOMETRY
+};
+
 static MACHINE_DRIVER_START( comx35_pal )
 	MDRV_DRIVER_DATA(comx35_state)
 
@@ -379,10 +392,16 @@ static MACHINE_DRIVER_START( comx35_pal )
 
 	/* peripheral hardware */
 	MDRV_CDP1871_ADD(CDP1871_TAG, comx35_cdp1871_intf, CDP1869_CPU_CLK_PAL / 8)
-	MDRV_WD1770_ADD(WD1770_TAG, comx35_wd17xx_interface )	
+	MDRV_WD1770_ADD(WD1770_TAG, comx35_wd17xx_interface )
 	MDRV_QUICKLOAD_ADD("quickload", comx35, "comx", 0)
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, comx35_cassette_config)
 	MDRV_PRINTER_ADD("printer")
+
+	MDRV_FLOPPY_2_DRIVES_ADD(comx35_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("32K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( comx35_ntsc )
@@ -402,10 +421,16 @@ static MACHINE_DRIVER_START( comx35_ntsc )
 
 	/* peripheral hardware */
 	MDRV_CDP1871_ADD(CDP1871_TAG, comx35_cdp1871_intf, CDP1869_CPU_CLK_NTSC / 8)
-	MDRV_WD1770_ADD(WD1770_TAG, comx35_wd17xx_interface )	
+	MDRV_WD1770_ADD(WD1770_TAG, comx35_wd17xx_interface )
 	MDRV_QUICKLOAD_ADD("quickload", comx35, "comx", 0)
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, comx35_cassette_config)
 	MDRV_PRINTER_ADD("printer")
+
+	MDRV_FLOPPY_2_DRIVES_ADD(comx35_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("32K")	
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -449,28 +474,8 @@ ROM_END
 
 #define rom_comx35n rom_comx35p
 
-/* System Configuration */
-static void comx35_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_comx35; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-static SYSTEM_CONFIG_START( comx35 )
-	CONFIG_RAM_DEFAULT	(32 * 1024)
-	CONFIG_DEVICE(comx35_floppy_getinfo)
-SYSTEM_CONFIG_END
-
 /* System Drivers */
 
-//    YEAR  NAME		PARENT  COMPAT	MACHINE		INPUT     INIT	CONFIG    COMPANY						FULLNAME			FLAGS
-COMP( 1983, comx35p,	0,		0,		comx35_pal,	comx35,   0, 	comx35,   "Comx World Operations Ltd",	"COMX 35 (PAL)",	GAME_IMPERFECT_SOUND )
-COMP( 1983, comx35n,	comx35p,0,		comx35_ntsc,comx35,   0, 	comx35,   "Comx World Operations Ltd",	"COMX 35 (NTSC)",	GAME_IMPERFECT_SOUND )
+//    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT     INIT  CONFIG    COMPANY                       FULLNAME            FLAGS
+COMP( 1983, comx35p,	0,		0,		comx35_pal,	comx35,   0, 	0,   "Comx World Operations Ltd",	"COMX 35 (PAL)",	GAME_IMPERFECT_SOUND )
+COMP( 1983, comx35n,	comx35p,0,		comx35_ntsc,comx35,   0, 	0,   "Comx World Operations Ltd",	"COMX 35 (NTSC)",	GAME_IMPERFECT_SOUND )

@@ -16,12 +16,11 @@
 /* Set to dump info about the inputs to the errorlog */
 #define LOG_JOY		0
 
-/* Set to generate prg chunk files when the cart is loaded */
+/* Set to generate prg (16k) & chr (8k) chunk files when the cart is loaded */
 #define SPLIT_PRG	0
+#define SPLIT_CHR	0
 
 #define BATTERY_SIZE 0x2000
-
-
 
 /***************************************************************************
     TYPE DEFINITIONS
@@ -33,8 +32,6 @@ struct _nes_input
 	UINT32 shift;
 	UINT32 i0, i1, i2;
 };
-
-
 
 /***************************************************************************
     GLOBAL VARIABLES
@@ -49,8 +46,6 @@ struct fds_struct nes_fds;
 static nes_input in_0;
 static nes_input in_1;
 
-
-
 /***************************************************************************
     FUNCTION PROTOTYPES
 ***************************************************************************/
@@ -58,19 +53,17 @@ static nes_input in_1;
 static void init_nes_core(running_machine *machine);
 static void nes_machine_stop(running_machine *machine);
 
-
-
 /***************************************************************************
     FUNCTIONS
 ***************************************************************************/
 
-static const device_config *cartslot_image(running_machine *machine)
+static const device_config *cartslot_image( running_machine *machine )
 {
 	nes_state *state = machine->driver_data;
 	return state->cart;
 }
 
-static void init_nes_core(running_machine *machine)
+static void init_nes_core( running_machine *machine )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
@@ -82,7 +75,7 @@ static void init_nes_core(running_machine *machine)
 	nes.wram = memory_region(machine, "user1");
 
 	/* Brutal hack put in as a consequence of the new memory system; we really
-	 * need to fix the NES code */
+       need to fix the NES code */
 	memory_install_read8_handler(space, 0x0000, 0x07ff, 0, 0x1800, SMH_BANK(10));
 	memory_install_write8_handler(space, 0x0000, 0x07ff, 0, 0x1800, SMH_BANK(10));
 
@@ -98,9 +91,9 @@ static void init_nes_core(running_machine *machine)
 	{
 		case 20:
 			nes.slow_banking = 0;
-			/* If we are loading a disk we have already filled nes_fds.data and we don't want to overwrite it, 
-			if we are loading a cart image identified as mapper 20 (probably wrong mapper...) we need to alloc 
-			memory for the bank 2 pointer */
+			/* If we are loading a disk we have already filled nes_fds.data and we don't want to overwrite it,
+            if we are loading a cart image identified as mapper 20 (probably wrong mapper...) we need to alloc
+            memory for the bank 2 pointer */
 			if (nes_fds.data == NULL)
 				nes_fds.data = auto_alloc_array(machine, UINT8, 0x8000 );
 			memory_install_read8_handler(space, 0x4030, 0x403f, 0, 0, fds_r);
@@ -113,15 +106,9 @@ static void init_nes_core(running_machine *machine)
 			memory_set_bankptr(machine, 1, &nes.rom[0xe000]);
 			memory_set_bankptr(machine, 2, nes_fds.data );
 			break;
-		case 40:
-			nes.slow_banking = 1;
-			/* Game runs code in between banks, so we do things different */
-			memory_install_read8_handler(space, 0x6000, 0x7fff, 0, 0, SMH_RAM);
-			memory_install_read8_handler(space, 0x8000, 0xffff, 0, 0, SMH_ROM);
-
-			memory_install_write8_handler(space, 0x6000, 0x7fff, 0, 0, nes_mid_mapper_w);
-			memory_install_write8_handler(space, 0x8000, 0xffff, 0, 0, nes_mapper_w);
-			break;
+		case 50:
+			memory_install_write8_handler(space, 0x4020, 0x403f, 0, 0, mapper50_add_w);
+			memory_install_write8_handler(space, 0x40a0, 0x40bf, 0, 0, mapper50_add_w);
 		default:
 			nes.slow_banking = 0;
 			memory_install_read8_handler(space, 0x6000, 0x7fff, 0, 0, SMH_BANK(5));
@@ -141,6 +128,7 @@ static void init_nes_core(running_machine *machine)
 	}
 
 	/* Set up the mapper callbacks */
+	if (nes.format == 1)
 	{
 		const mmc *mapper;
 
@@ -152,19 +140,41 @@ static void init_nes_core(running_machine *machine)
 			mmc_write_mid = mapper->mmc_write_mid;
 			mmc_write = mapper->mmc_write;
 			ppu_latch = mapper->ppu_latch;
-//			mmc_irq = mmc_list[i].mmc_irq;
 		}
 		else
 		{
 			logerror("Mapper %d is not yet supported, defaulting to no mapper.\n",nes.mapper);
 			mmc_write_low = mmc_write_mid = mmc_write = NULL;
 			mmc_read_low = NULL;
+			ppu_latch = NULL;
+		}
+	}
+	else if (nes.format == 2)
+	{
+		const unif *board;
+
+		board = nes_unif_lookup(nes.board);
+		if (board)
+		{
+			mmc_write_low = board->mmc_write_low;
+			mmc_read_low = board->mmc_read_low;
+			mmc_write_mid = board->mmc_write_mid;
+			mmc_write = board->mmc_write;
+			ppu_latch = board->ppu_latch;
+		}
+		else
+		{
+			logerror("Board %s is not yet supported, defaulting to no mapper.\n", nes.board);
+			mmc_write_low = mmc_write_mid = mmc_write = NULL;
+			mmc_read_low = NULL;
+			ppu_latch = NULL;
 		}
 	}
 
 	/* Load a battery file, but only if there's no trainer since they share */
 	/* overlapping memory. */
-	if (nes.trainer) return;
+	if (nes.trainer)
+		return;
 
 	/* We need this because battery ram is loaded before the */
 	/* memory subsystem is set up. When this routine is called */
@@ -179,9 +189,9 @@ int nes_ppu_vidaccess( const device_config *device, int address, int data )
 	/* but, B-Wings, submath (j) seem to use this location differently... */
 	if (nes.chr_chunks && (address & 0x3fff) < 0x2000)
 	{
-//		int vrom_loc;
-//		vrom_loc = (nes_vram[(address & 0x1fff) >> 10] * 16) + (address & 0x3ff);
-//		data = nes.vrom [vrom_loc];
+//      int vrom_loc;
+//      vrom_loc = (nes_vram[(address & 0x1fff) >> 10] * 16) + (address & 0x3ff);
+//      data = nes.vrom [vrom_loc];
 	}
 	return data;
 }
@@ -198,7 +208,11 @@ MACHINE_RESET( nes )
 	nes.mid_ram_enable = 1;
 
 	/* Reset the mapper variables. Will also mark the char-gen ram as dirty */
-	mapper_reset(machine, nes.mapper);
+	if (nes.format == 1)
+		mapper_reset(machine, nes.mapper);
+
+	if (nes.format == 2)
+		unif_reset(machine, nes.board);
 
 	/* Reset the serial input ports */
 	in_0.shift = 0;
@@ -213,7 +227,7 @@ MACHINE_START( nes )
 	add_exit_callback(machine, nes_machine_stop);
 }
 
-static void nes_machine_stop(running_machine *machine)
+static void nes_machine_stop( running_machine *machine )
 {
 	/* Write out the battery file if necessary */
 	if (nes.battery)
@@ -325,8 +339,7 @@ READ8_HANDLER( nes_IN1_r )
 
 
 
-static void nes_read_input_device(running_machine *machine, int cfg, nes_input *vals, int pad_port,
-	int supports_zapper, int paddle_port)
+static void nes_read_input_device( running_machine *machine, int cfg, nes_input *vals, int pad_port, int supports_zapper, int paddle_port )
 {
 	static const char *const padnames[] = { "PAD1", "PAD2", "PAD3", "PAD4" };
 
@@ -398,7 +411,8 @@ WRITE8_HANDLER( nes_IN0_w )
 	nes_input in_2;
 	nes_input in_3;
 
-	if (data & 0x01) return;
+	if (data & 0x01)
+		return;
 
 	if (LOG_JOY)
 		logerror("joy 0 bits read: %d\n", in_0.shift);
@@ -443,164 +457,455 @@ DEVICE_IMAGE_LOAD( nes_cart )
 	char m;
 	int i;
 
-	/* Verify the file is in iNES format */
+	/* Check first 4 bytes of the image to decide if it is UNIF or iNES */
+      /* Unfortunately, many .unf files have been released as .nes, so we cannot rely on extensions only */
 	memset(magic, '\0', sizeof(magic));
 	image_fread(image, magic, 4);
 
-	if ((magic[0] != 'N') || (magic[1] != 'E') || (magic[2] != 'S'))
+	if ((magic[0] == 'N') && (magic[1] == 'E') && (magic[2] == 'S'))	/* If header starts with 'NES' it is iNES */
 	{
-		logerror("%s is NOT a file in iNES format.\n", image_filename(image));
-		return INIT_FAIL;
-	}
+		nes.format = 1;	// we use this to select between mapper_reset / unif_reset
 
-	mapinfo = image_extrainfo(image);
+		mapinfo = image_extrainfo(image);
 
-	if (mapinfo)
-	{
-		if (4 == sscanf(mapinfo,"%d %d %d %d", &mapint1, &mapint2, &mapint3, &mapint4))
+		if (mapinfo)
 		{
-			nes.mapper = mapint1;
-			local_options = mapint2;
-			nes.prg_chunks = mapint3;
-			nes.chr_chunks = mapint4;
-			logerror("NES.CRC info: %d %d %d %d\n",mapint1,mapint2,mapint3,mapint4);
-			goodcrcinfo = 1;
-		} 
+			if (4 == sscanf(mapinfo,"%d %d %d %d", &mapint1, &mapint2, &mapint3, &mapint4))
+			{
+				nes.mapper = mapint1;
+				local_options = mapint2 & 0x0f;
+				nes.crc_hack = mapint2 & 0xf0;	// this is used to differentiate among variants of the same Mapper (see nes_mmc.c)
+				nes.prg_chunks = mapint3;
+				nes.chr_chunks = mapint4;
+				logerror("NES.HSI info: %d %d %d %d\n", mapint1, mapint2, mapint3, mapint4);
+				goodcrcinfo = 1;
+			}
+			else
+			{
+				logerror("NES: [%s], Invalid mapinfo found\n",mapinfo);
+			}
+		}
 		else
 		{
-			logerror("NES: [%s], Invalid mapinfo found\n",mapinfo);
+			logerror("NES: No extrainfo found\n");
 		}
-	} 
-	else
-	{
-		logerror("NES: No extrainfo found\n");
-	}
 
-	if (!goodcrcinfo)
-	{
-		// image_extrainfo() resets the file position back to start.
-		// Let's skip past the magic header once again.
-		image_fseek(image, 4, SEEK_SET);
-
-		image_fread(image, &nes.prg_chunks, 1);
-		image_fread(image, &nes.chr_chunks, 1);
-		/* Read the first ROM option byte (offset 6) */
-		image_fread(image, &m, 1);
-
-		/* Interpret the iNES header flags */
-		nes.mapper = (m & 0xf0) >> 4;
-		local_options = m & 0x0f;
-
-
-		/* Read the second ROM option byte (offset 7) */
-		image_fread(image, &m, 1);
-
-		/* Check for skanky headers */
-		image_fread(image, &skank, 8);
-
-		/* If the header has junk in the unused bytes, assume the extra mapper byte is also invalid */
-		/* We only check the first 4 unused bytes for now */
-		for (i = 0; i < 4; i ++)
+		if (!goodcrcinfo)
 		{
-			logerror("%02x ", skank[i]);
-			if (skank[i] != 0x00)
+			// image_extrainfo() resets the file position back to start.
+			// Let's skip past the magic header once again.
+			image_fseek(image, 4, SEEK_SET);
+
+			image_fread(image, &nes.prg_chunks, 1);
+			image_fread(image, &nes.chr_chunks, 1);
+			/* Read the first ROM option byte (offset 6) */
+			image_fread(image, &m, 1);
+
+			/* Interpret the iNES header flags */
+			nes.mapper = (m & 0xf0) >> 4;
+			local_options = m & 0x0f;
+
+			/* Read the second ROM option byte (offset 7) */
+			image_fread(image, &m, 1);
+
+			/* Check for skanky headers */
+			image_fread(image, &skank, 8);
+
+			/* If the header has junk in the unused bytes, assume the extra mapper byte is also invalid */
+			/* We only check the first 4 unused bytes for now */
+			for (i = 0; i < 4; i ++)
 			{
-				logerror("(skank: %d)", i);
-//				m = 0;
+				logerror("%02x ", skank[i]);
+				if (skank[i] != 0x00)
+				{
+					logerror("(skank: %d)", i);
+				}
 			}
+			logerror("\n");
+
+			nes.mapper = nes.mapper | (m & 0xf0);
 		}
-		logerror("\n");
 
-		nes.mapper = nes.mapper | (m & 0xf0);
-	}
+		nes.hard_mirroring = local_options & 0x01;
+		nes.battery = local_options & 0x02;
+		nes.trainer = local_options & 0x04;
+		nes.four_screen_vram = local_options & 0x08;
 
-	nes.hard_mirroring = local_options & 0x01;
-	nes.battery = local_options & 0x02;
-	nes.trainer = local_options & 0x04;
-	nes.four_screen_vram = local_options & 0x08;
+		if (nes.battery)
+			logerror("-- Battery found\n");
 
-	if (nes.battery) logerror("-- Battery found\n");
-	if (nes.trainer) logerror("-- Trainer found\n");
-	if (nes.four_screen_vram) logerror("-- 4-screen VRAM\n");
+		if (nes.trainer)
+			logerror("-- Trainer found\n");
 
-	/* Free the regions that were allocated by the ROM loader */
-	memory_region_free(image->machine, "maincpu");
-	memory_region_free(image->machine, "gfx1");
+		if (nes.four_screen_vram)
+			logerror("-- 4-screen VRAM\n");
 
-	/* Allocate them again with the proper size */
-	memory_region_alloc(image->machine, "maincpu", 0x10000 + (nes.prg_chunks + 1) * 0x4000,0);
-	if (nes.chr_chunks)
-		memory_region_alloc(image->machine, "gfx1", nes.chr_chunks * 0x2000,0);
+		/* Free the regions that were allocated by the ROM loader */
+		memory_region_free(image->machine, "maincpu");
+		memory_region_free(image->machine, "gfx1");
 
-	nes.rom = memory_region(image->machine, "maincpu");
-	nes.vrom = memory_region(image->machine, "gfx1");
-	nes.vram = memory_region(image->machine, "gfx2");
-	nes.wram = memory_region(image->machine, "user1");
+		/* Allocate them again with the proper size */
+		memory_region_alloc(image->machine, "maincpu", 0x10000 + (nes.prg_chunks + 1) * 0x4000,0);
+		if (nes.chr_chunks)
+			memory_region_alloc(image->machine, "gfx1", nes.chr_chunks * 0x2000,0);
 
-	/* Position past the header */
-	image_fseek(image, 16, SEEK_SET);
+		nes.rom = memory_region(image->machine, "maincpu");
+		nes.vrom = memory_region(image->machine, "gfx1");
+		nes.vram = memory_region(image->machine, "gfx2");
+		nes.wram = memory_region(image->machine, "user1");
 
-	/* Load the 0x200 byte trainer at 0x7000 if it exists */
-	if (nes.trainer)
-	{
-		image_fread(image, &nes.wram[0x1000], 0x200);
-	}
+		/* Position past the header */
+		image_fseek(image, 16, SEEK_SET);
 
-	/* Read in the program chunks */
-	if (nes.prg_chunks == 1)
-	{
-		image_fread(image, &nes.rom[0x14000], 0x4000);
-		/* Mirror this bank into $8000 */
-		memcpy(&nes.rom[0x10000], &nes.rom [0x14000], 0x4000);
-	}
-	else
-		image_fread(image, &nes.rom[0x10000], 0x4000 * nes.prg_chunks);
+		/* Load the 0x200 byte trainer at 0x7000 if it exists */
+		if (nes.trainer)
+			image_fread(image, &nes.wram[0x1000], 0x200);
+
+		/* Read in the program chunks */
+		if (nes.prg_chunks == 1)
+		{
+			image_fread(image, &nes.rom[0x14000], 0x4000);
+			/* Mirror this bank into $8000 */
+			memcpy(&nes.rom[0x10000], &nes.rom [0x14000], 0x4000);
+		}
+		else
+			image_fread(image, &nes.rom[0x10000], 0x4000 * nes.prg_chunks);
 
 #if SPLIT_PRG
-	{
-		FILE *prgout;
-		char outname[255];
-
-		for (i = 0; i < nes.prg_chunks; i ++)
 		{
-			sprintf(outname, "%s.p%d", battery_name, i);
-			prgout = fopen(outname, "wb");
-			if (prgout)
+			FILE *prgout;
+			char outname[255];
+
+			for (i = 0; i < nes.prg_chunks; i ++)
 			{
-				fwrite(&nes.rom[0x10000 + 0x4000 * i], 1, 0x4000, prgout);
-				fclose(prgout);
+				sprintf(outname, "%s.p%d", image_filename(image), i);
+				prgout = fopen(outname, "wb");
+				if (prgout)
+				{
+					fwrite(&nes.rom[0x10000 + 0x4000 * i], 1, 0x4000, prgout);
+					fclose(prgout);
+				}
 			}
 		}
-	}
 #endif /* SPLIT_PRG */
 
-	logerror("**\n");
-	logerror("Mapper: %d\n", nes.mapper);
-	logerror("PRG chunks: %02x, size: %06x\n", nes.prg_chunks, 0x4000 * nes.prg_chunks);
+		logerror("**\n");
+		logerror("Mapper: %d\n", nes.mapper);
+		logerror("PRG chunks: %02x, size: %06x\n", nes.prg_chunks, 0x4000 * nes.prg_chunks);
+//      printf("Mapper: %d\n", nes.mapper);
+//      printf("PRG chunks: %02x, size: %06x\n", nes.prg_chunks, 0x4000 * nes.prg_chunks);
 
-	/* Read in any chr chunks */
-	if (nes.chr_chunks > 0)
-	{
-		image_fread(image, nes.vrom, nes.chr_chunks * 0x2000);
-		if (nes.mapper == 2)
-			logerror("Warning: VROM has been found in VRAM-based mapper. Either the mapper is set wrong or the ROM image is incorrect.\n");
+		/* Read in any chr chunks */
+		if (nes.chr_chunks > 0)
+		{
+			image_fread(image, nes.vrom, nes.chr_chunks * 0x2000);
+			if (nes.mapper == 2)
+				logerror("Warning: VROM has been found in VRAM-based mapper. Either the mapper is set wrong or the ROM image is incorrect.\n");
+		}
+
+#if SPLIT_CHR
+		{
+			FILE *chrout;
+			char outname[255];
+
+			for (i = 0; i < nes.chr_chunks; i ++)
+			{
+				sprintf(outname, "%s.c%d", image_filename(image), i);
+				chrout= fopen(outname, "wb");
+				if (chrout)
+				{
+					fwrite(&nes.rom[0x10000 + 0x2000 * i], 1, 0x2000, chrout);
+					fclose(chrout);
+				}
+			}
+		}
+#endif /* SPLIT_CHR */
+
+		logerror("CHR chunks: %02x, size: %06x\n", nes.chr_chunks, 0x4000 * nes.chr_chunks);
+		logerror("**\n");
+//      printf("CHR chunks: %02x, size: %06x\n", nes.chr_chunks, 0x4000 * nes.chr_chunks);
+//      printf("**\n");
+
+		/* Attempt to load a battery file for this ROM. If successful, we */
+		/* must wait until later to move it to the system memory. */
+		if (nes.battery)
+			image_battery_load(image, battery_data, BATTERY_SIZE);
+
 	}
+	else if ((magic[0] == 'U') && (magic[1] == 'N') && (magic[2] == 'I') && (magic[3] == 'F')) /* If header starts with 'UNIF' it is UNIF */
+	{
+		UINT32 unif_ver = 0;
+		char magic2[4];
+		UINT8 buffer[4];
+		UINT32 chunk_length = 0, read_length = 0x20;
+		UINT32 prg_start = 0, chr_start = 0;
+		int prg_left = 0, chr_left = 0;	// used to verify integrity of our unif image
+		char unif_mapr[32];	// here we should store MAPR chunks
+		UINT32 size = image_length(image);
+		const unif *unif_board;
+		int mapr_chunk_found = 0;
 
-	logerror("CHR chunks: %02x, size: %06x\n", nes.chr_chunks, 0x4000 * nes.chr_chunks);
-	logerror("**\n");
+		nes.format = 2;	// we use this to select between mapper_reset / unif_reset
 
-	/* Attempt to load a battery file for this ROM. If successful, we */
-	/* must wait until later to move it to the system memory. */
-	if (nes.battery)
-		image_battery_load(image, battery_data, BATTERY_SIZE);
+		image_fread(image, &buffer, 4);
+		unif_ver = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+		logerror("UNIF file found, version %d\n", unif_ver);
+
+		if (size <= 0x20)
+		{
+			logerror("%s only contains the UNIF header and no data.\n", image_filename(image));
+			return INIT_FAIL;
+		}
+
+		do
+		{
+			image_fseek(image, read_length, SEEK_SET);
+
+			memset(magic2, '\0', sizeof(magic2));
+			image_fread(image, &magic2, 4);
+
+#if 0
+// unfortunately, the MAPR chunk is not always the first chunk (see Super 24-in-1)
+			/* Preliminary checks: the first chunk MUST be MAPR! */
+			if (read_length == 0x20 && ((magic2[0] != 'M') || (magic2[1] != 'A') || (magic2[2] != 'P') || (magic2[3] != 'R')))
+				fatalerror("First chunk of data in UNIF should be [MAPR]. Check if your image has been corrupted\n");
+
+			/* Preliminary checks: multiple MAPR chunks are FORBIDDEN! */
+			if (read_length > 0x20 && ((magic2[0] == 'M') && (magic2[1] == 'A') && (magic2[2] == 'P') && (magic2[3] == 'R')))
+				fatalerror("UNIF should not have multiple [MAPR] chunks. Check if your image has been corrupted\n");
+#endif
+
+			/* we first run through the whole image to find a [MAPR] chunk */
+			/* when found, we set mapr_chunk_found=1 and we go back to load other chunks! */
+			if (!mapr_chunk_found)
+			{
+				if ((magic2[0] == 'M') && (magic2[1] == 'A') && (magic2[2] == 'P') && (magic2[3] == 'R'))
+				{
+					mapr_chunk_found = 1;
+					logerror("[MAPR] chunk found: ");
+					image_fread(image, &buffer, 4);
+					chunk_length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+
+					if (chunk_length <= 0x20)
+						image_fread(image, &unif_mapr, chunk_length);
+
+					unif_board = nes_unif_lookup(unif_mapr);
+					logerror("%s\n", unif_mapr);
+
+					if (unif_board == NULL)
+					{
+						fatalerror("Unsupported UNIF board %s.\n", unif_mapr);
+//                            logerror("Unsupported UNIF board %s.\n", unif_mapr);
+					}
+
+					nes.mapper = 0;	// this allows us to set up memory handlers without duplicating code (for the moment)
+					nes.board = unif_board->board;
+					nes.prg_chunks = unif_board->prgrom;
+					nes.chr_chunks = unif_board->chrrom;
+					nes.battery = unif_board->wram;	// we should implement WRAM banks...
+//                  nes.hard_mirroring = unif_board->nt;
+//                      nes.four_screen_vram = ;
+
+					/* Free the regions that were allocated by the ROM loader */
+					memory_region_free(image->machine, "maincpu");
+					memory_region_free(image->machine, "gfx1");
+
+					/* Allocate them again with the proper size */
+					memory_region_alloc(image->machine, "maincpu", 0x10000 + (nes.prg_chunks + 1) * 0x4000, 0);
+					if (nes.chr_chunks)
+						memory_region_alloc(image->machine, "gfx1", nes.chr_chunks * 0x2000, 0);
+
+					nes.rom = memory_region(image->machine, "maincpu");
+					nes.vrom = memory_region(image->machine, "gfx1");
+					nes.vram = memory_region(image->machine, "gfx2");
+					nes.wram = memory_region(image->machine, "user1");
+
+					/* for validation purposes */
+					prg_left = unif_board->prgrom * 0x4000;
+					chr_left = unif_board->chrrom * 0x2000;
+
+					/* now that we found the MAPR chunk, we can go back to load other chunks */
+					image_fseek(image, 0x20, SEEK_SET);
+					read_length = 0x20;
+				}
+				else
+				{
+					logerror("Skip this chunk. We need a [MAPR] chunk before anything else.\n");
+					image_fread(image, &buffer, 4);
+					chunk_length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+
+					read_length += (chunk_length + 8);
+				}
+			}
+			else
+			{
+				/* What kind of chunk do we have here? */
+				if ((magic2[0] == 'M') && (magic2[1] == 'A') && (magic2[2] == 'P') && (magic2[3] == 'R'))
+				{
+					/* The [MAPR] chunk has already been read, so we skip it */
+					/* TO DO: it would be nice to check if more than one MAPR chunk is present */
+					logerror("[MAPR] chunk found (in the 2nd run). Already loaded.\n");
+					image_fread(image, &buffer, 4);
+					chunk_length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+
+					read_length += (chunk_length + 8);
+				}
+				else if ((magic2[0] == 'R') && (magic2[1] == 'E') && (magic2[2] == 'A') && (magic2[3] == 'D'))
+				{
+					logerror("[READ] chunk found. No support yet.\n");
+					image_fread(image, &buffer, 4);
+					chunk_length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+
+					read_length += (chunk_length + 8);
+				}
+				else if ((magic2[0] == 'N') && (magic2[1] == 'A') && (magic2[2] == 'M') && (magic2[3] == 'E'))
+				{
+					logerror("[NAME] chunk found. No support yet.\n");
+					image_fread(image, &buffer, 4);
+					chunk_length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+
+					read_length += (chunk_length + 8);
+				}
+				else if ((magic2[0] == 'W') && (magic2[1] == 'R') && (magic2[2] == 'T') && (magic2[3] == 'R'))
+				{
+					logerror("[WRTR] chunk found. No support yet.\n");
+					image_fread(image, &buffer, 4);
+					chunk_length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+
+					read_length += (chunk_length + 8);
+				}
+				else if ((magic2[0] == 'T') && (magic2[1] == 'V') && (magic2[2] == 'C') && (magic2[3] == 'I'))
+				{
+					logerror("[TVCI] chunk found. No support yet.\n");
+					image_fread(image, &buffer, 4);
+					chunk_length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+
+					read_length += (chunk_length + 8);
+				}
+				else if ((magic2[0] == 'D') && (magic2[1] == 'I') && (magic2[2] == 'N') && (magic2[3] == 'F'))
+				{
+					logerror("[DINF] chunk found. No support yet.\n");
+					image_fread(image, &buffer, 4);
+					chunk_length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+
+					read_length += (chunk_length + 8);
+				}
+				else if ((magic2[0] == 'C') && (magic2[1] == 'T') && (magic2[2] == 'R') && (magic2[3] == 'L'))
+				{
+					logerror("[CTRL] chunk found. No support yet.\n");
+					image_fread(image, &buffer, 4);
+					chunk_length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+
+					read_length += (chunk_length + 8);
+				}
+				else if ((magic2[0] == 'B') && (magic2[1] == 'A') && (magic2[2] == 'T') && (magic2[3] == 'R'))
+				{
+					logerror("[BATR] chunk found. No support yet.\n");
+					image_fread(image, &buffer, 4);
+					chunk_length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+
+					read_length += (chunk_length + 8);
+				}
+				else if ((magic2[0] == 'V') && (magic2[1] == 'R') && (magic2[2] == 'O') && (magic2[3] == 'R'))
+				{
+					logerror("[VROR] chunk found. No support yet.\n");
+					image_fread(image, &buffer, 4);
+					chunk_length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+
+					read_length += (chunk_length + 8);
+				}
+				else if ((magic2[0] == 'M') && (magic2[1] == 'I') && (magic2[2] == 'R') && (magic2[3] == 'R'))
+				{
+					logerror("[MIRR] chunk found. No support yet.\n");
+					image_fread(image, &buffer, 4);
+					chunk_length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+
+					read_length += (chunk_length + 8);
+				}
+				else if ((magic2[0] == 'P') && (magic2[1] == 'C') && (magic2[2] == 'K'))
+				{
+					logerror("[PCK%c] chunk found. No support yet.\n", magic2[3]);
+					image_fread(image, &buffer, 4);
+					chunk_length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+
+					read_length += (chunk_length + 8);
+				}
+				else if ((magic2[0] == 'C') && (magic2[1] == 'C') && (magic2[2] == 'K'))
+				{
+					logerror("[CCK%c] chunk found. No support yet.\n", magic2[3]);
+						image_fread(image, &buffer, 4);
+					chunk_length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+
+					read_length += (chunk_length + 8);
+				}
+				else if ((magic2[0] == 'P') && (magic2[1] == 'R') && (magic2[2] == 'G'))
+				{
+					logerror("[PRG%c] chunk found. ", magic2[3]);
+					image_fread(image, &buffer, 4);
+					chunk_length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+
+					logerror("It consists of %d 16K-blocks.\n", chunk_length / 0x4000);
+					/* Validation */
+					prg_left -= chunk_length;
+					if (prg_left < 0)
+						fatalerror("PRG chunks larger than expected by board %s!\n", unif_mapr);
+
+					/* Read in the program chunks */
+					if (nes.prg_chunks == 1)
+					{
+						image_fread(image, &nes.rom[0x14000], chunk_length);
+						/* Mirror the only bank into $8000 */
+						memcpy(&nes.rom[0x10000], &nes.rom[0x14000], chunk_length);
+					}
+					else
+						image_fread(image, &nes.rom[0x10000 + prg_start], chunk_length);
+
+					prg_start += chunk_length;
+					read_length += (chunk_length + 8);
+				}
+				else if ((magic2[0] == 'C') && (magic2[1] == 'H') && (magic2[2] == 'R'))
+				{
+					logerror("[CHR%c] chunk found. ", magic2[3]);
+					image_fread(image, &buffer, 4);
+					chunk_length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+
+					logerror("It consists of %d 8K-blocks.\n", chunk_length / 0x2000);
+					/* validation */
+					chr_left -= chunk_length;
+					if (chr_left < 0)
+						fatalerror("CHR chunks larger than expected by board %s!\n", unif_mapr);
+
+					/* Read in the vrom chunks */
+					image_fread(image, nes.vrom + chr_start, chunk_length);
+
+					chr_start += chunk_length;
+					read_length += (chunk_length + 8);
+				}
+				else
+				{
+					printf("Unsupported UNIF chunk. Please report the problem at MESS Board.\n");
+					read_length = size;
+				}
+			}
+		} while (size > read_length);
+
+	if (!mapr_chunk_found )
+		fatalerror("UNIF should have a [MAPR] chunk to work. Check if your image has been corrupted\n");
+
+	logerror("UNIF support is only very preliminary.\n");
+	}
+	else
+	{
+		logerror("%s is NOT a file in either iNES or UNIF format.\n", image_filename(image));
+		return INIT_FAIL;
+	}
 
 	return INIT_PASS;
 }
 
 
 
-void nes_partialhash(char *dest, const unsigned char *data,
-	unsigned long length, unsigned int functions)
+void nes_partialhash( char *dest, const unsigned char *data, unsigned long length, unsigned int functions )
 {
 	if (length <= 16)
 		return;
@@ -608,13 +913,15 @@ void nes_partialhash(char *dest, const unsigned char *data,
 }
 
 
-DEVICE_START(nes_disk)
+DEVICE_START( nes_disk )
 {
 	/* clear some of the cart variables we don't use */
 	nes.trainer = 0;
 	nes.battery = 0;
 	nes.prg_chunks = nes.chr_chunks = 0;
 
+	/* initialize the system as if using a mapper 20 cart */
+	nes.format = 1;
 	nes.mapper = 20;
 	nes.four_screen_vram = 0;
 	nes.hard_mirroring = 0;
@@ -624,7 +931,7 @@ DEVICE_START(nes_disk)
 }
 
 
-DEVICE_IMAGE_LOAD(nes_disk)
+DEVICE_IMAGE_LOAD( nes_disk )
 {
 	unsigned char magic[4];
 
@@ -654,7 +961,7 @@ DEVICE_IMAGE_LOAD(nes_disk)
 	return INIT_PASS;
 }
 
-DEVICE_IMAGE_UNLOAD(nes_disk)
+DEVICE_IMAGE_UNLOAD( nes_disk )
 {
 	/* TODO: should write out changes here as well */
 	nes_fds.data = NULL;

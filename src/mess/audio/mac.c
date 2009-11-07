@@ -1,15 +1,15 @@
 /***************************************************************************
 
-	mac.c
+    mac.c
 
-	Sound handler
+    Sound handler
 
 ****************************************************************************/
 
 #include "driver.h"
 #include "includes/mac.h"
 #include "streams.h"
-
+#include "devices/messram.h"
 
 /***************************************************************************
     MACROS / CONSTANTS
@@ -111,7 +111,7 @@ static DEVICE_START(mac_sound)
 
 
 /*
-	Set the sound enable flag (VIA port line)
+    Set the sound enable flag (VIA port line)
 */
 void mac_enable_sound(const device_config *device, int on)
 {
@@ -122,22 +122,22 @@ void mac_enable_sound(const device_config *device, int on)
 
 
 /*
-	Set the current sound buffer (one VIA port line)
+    Set the current sound buffer (one VIA port line)
 */
 void mac_set_sound_buffer(const device_config *device, int buffer)
 {
 	mac_sound *token = get_token(device);
 
 	if (buffer)
-		token->mac_snd_buf_ptr = (UINT16 *) (mess_ram + mess_ram_size - MAC_MAIN_SND_BUF_OFFSET);
+		token->mac_snd_buf_ptr = (UINT16 *) (messram_get_ptr(devtag_get_device(device->machine, "messram")) + messram_get_size(devtag_get_device(device->machine, "messram")) - MAC_MAIN_SND_BUF_OFFSET);
 	else
-		token->mac_snd_buf_ptr = (UINT16 *) (mess_ram + mess_ram_size - MAC_ALT_SND_BUF_OFFSET);
+		token->mac_snd_buf_ptr = (UINT16 *) (messram_get_ptr(devtag_get_device(device->machine, "messram")) + messram_get_size(devtag_get_device(device->machine, "messram")) - MAC_ALT_SND_BUF_OFFSET);
 }
 
 
 
 /*
-	Set the current sound volume (3 VIA port line)
+    Set the current sound volume (3 VIA port line)
 */
 void mac_set_volume(const device_config *device, int volume)
 {
@@ -151,7 +151,7 @@ void mac_set_volume(const device_config *device, int volume)
 
 
 /*
-	Fetch one byte from sound buffer and put it to sound output (called every scanline)
+    Fetch one byte from sound buffer and put it to sound output (called every scanline)
 */
 void mac_sh_updatebuffer(const device_config *device)
 {

@@ -104,7 +104,7 @@ TODO:
 /* Devices */
 #include "formats/pc_dsk.h"		/* pc disk images */
 #include "devices/flopdrv.h"
-
+#include "devices/messram.h"
 
 // interrupt counter
 static unsigned long pcw16_interrupt_counter;
@@ -413,7 +413,7 @@ static void pcw16_set_bank_handlers(running_machine *machine, int bank, PCW16_RA
 
 static void pcw16_update_bank(running_machine *machine, int bank)
 {
-	unsigned char *mem_ptr = mess_ram;
+	unsigned char *mem_ptr = messram_get_ptr(devtag_get_device(machine, "messram"));
 	int bank_id = 0;
 	int bank_offs = 0;
 
@@ -450,7 +450,7 @@ static void pcw16_update_bank(running_machine *machine, int bank)
 	{
 		bank_offs = 128;
 		/* dram */
-		mem_ptr = mess_ram;
+		mem_ptr = messram_get_ptr(devtag_get_device(machine, "messram"));
 	}
 
 	mem_ptr = mem_ptr + ((bank_id - bank_offs)<<14);
@@ -1204,7 +1204,7 @@ static void	pcw16_fdc_interrupt(running_machine *machine, int state)
 
 static const device_config * pcw16_get_device(running_machine *machine)
 {
-	return devtag_get_device(machine, "nec765");
+	return devtag_get_device(machine, "upd765");
 }
 
 static const struct pc_fdc_interface pcw16_fdc_interface=
@@ -1382,6 +1382,17 @@ static const pc_lpt_interface pcw16_lpt_config =
 	DEVCB_CPU_INPUT_LINE("maincpu", 0)
 };
 
+static const floppy_config pcw16_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(pc),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 static MACHINE_DRIVER_START( pcw16 )
 	/* basic machine hardware */
@@ -1417,7 +1428,12 @@ static MACHINE_DRIVER_START( pcw16 )
 
 	/* printer */
 	MDRV_PC_LPT_ADD("lpt", pcw16_lpt_config)
-	MDRV_NEC765A_ADD("nec765", pc_fdc_nec765_connected_interface)
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_connected_interface)
+	MDRV_FLOPPY_2_DRIVES_ADD(pcw16_floppy_config)
+	
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("2M")	
 MACHINE_DRIVER_END
 
 
@@ -1441,25 +1457,6 @@ ROM_START(pcw16)
 	ROM_LOAD("pcw045.sys",0x10000, 524288, CRC(c642f498) SHA1(8a5c05de92e7b2c5acdfb038217503ad363285b5))
 ROM_END
 
-static void pcw16_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_pc; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(pcw16)
-	CONFIG_RAM_DEFAULT(2048 * 1024)
-	CONFIG_DEVICE(pcw16_floppy_getinfo)
-SYSTEM_CONFIG_END
 
 /*     YEAR  NAME     PARENT    COMPAT  MACHINE    INPUT     INIT   CONFIG,  COMPANY          FULLNAME */
-COMP( 1995, pcw16,	  0,		0,		pcw16,	   pcw16,    pcw16,	    pcw16,   "Amstrad plc",   "PCW16", GAME_NOT_WORKING )
+COMP( 1995, pcw16,	  0,		0,		pcw16,	   pcw16,    pcw16,	    0,   "Amstrad plc",   "PCW16", GAME_NOT_WORKING )

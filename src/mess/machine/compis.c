@@ -1,10 +1,10 @@
 /******************************************************************************
 
-	compis.c
-	machine driver
+    compis.c
+    machine driver
 
-	Per Ola Ingvarsson
-	Tomas Karlsson
+    Per Ola Ingvarsson
+    Tomas Karlsson
 
  ******************************************************************************/
 
@@ -19,7 +19,7 @@
 #include "machine/pic8259.h"
 #include "includes/compis.h"
 #include "machine/pit8253.h"
-#include "machine/nec765.h"
+#include "machine/upd765.h"
 #include "machine/msm8251.h"
 #include "machine/ctronics.h"
 
@@ -113,17 +113,17 @@ enum COMPIS_KEYB_SHIFT
 typedef struct
 {
 	UINT8 nationality;   /* Character set, keyboard layout (Swedish) */
-	UINT8 release_time;  /* Autorepeat release time (0.8)	*/
-	UINT8 speed;	     /* Transmission speed (14)		*/
-	UINT8 roll_over;     /* Key roll-over (MKEY)		*/
-	UINT8 click;	     /* Key click (NO)			*/
-	UINT8 break_nmi;     /* Keyboard break (NMI)		*/
-	UINT8 beep_freq;     /* Beep frequency (low)		*/
-	UINT8 beep_dura;     /* Beep duration (short)		*/
-	UINT8 password[8];   /* Password			*/
-	UINT8 owner[16];     /* Owner				*/
-	UINT8 network_id;    /* Network workstation number (1)	*/
-	UINT8 boot_order[4]; /* Boot device order (FD HD NW PD)	*/
+	UINT8 release_time;  /* Autorepeat release time (0.8)   */
+	UINT8 speed;	     /* Transmission speed (14)     */
+	UINT8 roll_over;     /* Key roll-over (MKEY)        */
+	UINT8 click;	     /* Key click (NO)          */
+	UINT8 break_nmi;     /* Keyboard break (NMI)        */
+	UINT8 beep_freq;     /* Beep frequency (low)        */
+	UINT8 beep_dura;     /* Beep duration (short)       */
+	UINT8 password[8];   /* Password            */
+	UINT8 owner[16];     /* Owner               */
+	UINT8 network_id;    /* Network workstation number (1)  */
+	UINT8 boot_order[4]; /* Boot device order (FD HD NW PD) */
 	UINT8 key_code;
 	UINT8 key_status;
 } TYP_COMPIS_KEYBOARD;
@@ -259,7 +259,7 @@ static void compis_keyb_update(running_machine *machine)
 		compis.keyboard.key_status = key_status;
 		compis.usart.status |= COMPIS_USART_STATUS_RX_READY;
 		compis.usart.bytes_sent = 0;
-//		compis_osp_pic_irq(COMPIS_IRQ_8251_RXRDY);
+//      compis_osp_pic_irq(COMPIS_IRQ_8251_RXRDY);
 	}
 }
 
@@ -276,21 +276,21 @@ static void compis_keyb_init(void)
 /*-------------------------------------------------------------------------*/
 static void compis_fdc_reset(running_machine *machine)
 {
-	const device_config *fdc = devtag_get_device(machine, "nec765");
+	const device_config *fdc = devtag_get_device(machine, "upd765");
 
-	nec765_reset(fdc, 0);
+	upd765_reset(fdc, 0);
 
 	/* set FDC at reset */
-	nec765_reset_w(fdc, 1);
+	upd765_reset_w(fdc, 1);
 }
 
 static void compis_fdc_tc(running_machine *machine, int state)
 {
-	const device_config *fdc = devtag_get_device(machine, "nec765");
+	const device_config *fdc = devtag_get_device(machine, "upd765");
 	/* Terminal count if iSBX-218A has DMA enabled */
   	if (input_port_read(machine, "DSW1"))
 	{
-		nec765_tc_w(fdc, state);
+		upd765_tc_w(fdc, state);
 	}
 }
 
@@ -303,7 +303,7 @@ static WRITE_LINE_DEVICE_HANDLER( compis_fdc_int )
 	}
 }
 
-static NEC765_DMA_REQUEST( compis_fdc_dma_drq )
+static UPD765_DMA_REQUEST( compis_fdc_dma_drq )
 {
 	/* DMA requst if iSBX-218A has DMA enabled */
   	if (input_port_read(device->machine, "DSW1") && state)
@@ -312,23 +312,24 @@ static NEC765_DMA_REQUEST( compis_fdc_dma_drq )
 	}
 }
 
-const nec765_interface compis_fdc_interface =
+const upd765_interface compis_fdc_interface =
 {
 	DEVCB_LINE(compis_fdc_int),
 	compis_fdc_dma_drq,
 	NULL,
-	NEC765_RDY_PIN_CONNECTED
+	UPD765_RDY_PIN_CONNECTED,
+	{FLOPPY_0, FLOPPY_1, NULL, NULL}
 };
 
 READ16_HANDLER (compis_fdc_dack_r)
 {
-	const device_config *fdc = devtag_get_device(space->machine, "nec765");
+	const device_config *fdc = devtag_get_device(space->machine, "upd765");
 	UINT16 data;
 	data = 0xffff;
 	/* DMA acknowledge if iSBX-218A has DMA enabled */
   	if (input_port_read(space->machine, "DSW1"))
   	{
-		data = nec765_dack_r(fdc, 0);
+		data = upd765_dack_r(fdc, 0);
 	}
 
 	return data;
@@ -336,11 +337,11 @@ READ16_HANDLER (compis_fdc_dack_r)
 
 WRITE16_HANDLER (compis_fdc_w)
 {
-	const device_config *fdc = devtag_get_device(space->machine, "nec765");
+	const device_config *fdc = devtag_get_device(space->machine, "upd765");
 	switch(offset)
 	{
 		case 2:
-			nec765_data_w(fdc, 0, data);
+			upd765_data_w(fdc, 0, data);
 			break;
 		default:
 			logerror("FDC Unknown Port Write %04X = %04X\n", offset, data);
@@ -350,16 +351,16 @@ WRITE16_HANDLER (compis_fdc_w)
 
 READ16_HANDLER (compis_fdc_r)
 {
-	const device_config *fdc = devtag_get_device(space->machine, "nec765");
+	const device_config *fdc = devtag_get_device(space->machine, "upd765");
 	UINT16 data;
 	data = 0xffff;
 	switch(offset)
 	{
 		case 0:
-			data = nec765_status_r(fdc, 0);
+			data = upd765_status_r(fdc, 0);
 			break;
 		case 1:
-			data = nec765_data_r(fdc, 0);
+			data = upd765_data_r(fdc, 0);
 			break;
 		default:
 			logerror("FDC Unknown Port Read %04X\n", offset);
@@ -373,13 +374,13 @@ READ16_HANDLER (compis_fdc_r)
 
 /*-------------------------------------------------------------------------*/
 /* Bit 0: J5-4                                                             */
-/* Bit 1: J5-5          		                                   */
+/* Bit 1: J5-5                                                     */
 /* Bit 2: J6-3 Cassette read                                               */
 /* Bit 3: J2-6 DSR / S8-4 Test                                             */
 /* Bit 4: J4-6 DSR / S8-3 Test                                             */
-/* Bit 5: J7-11 Centronics BUSY               	                           */
-/* Bit 6: J7-13 Centronics SELECT			                   */
-/* Bit 7: Tmr0			      	                                   */
+/* Bit 5: J7-11 Centronics BUSY                                            */
+/* Bit 6: J7-13 Centronics SELECT                              */
+/* Bit 7: Tmr0                                                     */
 /*-------------------------------------------------------------------------*/
 static READ8_DEVICE_HANDLER( compis_ppi_port_b_r )
 {
@@ -396,14 +397,14 @@ static READ8_DEVICE_HANDLER( compis_ppi_port_b_r )
 }
 
 /*-------------------------------------------------------------------------*/
-/* Bit 0: J5-1                       		                           */
-/* Bit 1: J5-2                         		                           */
-/* Bit 2: Select: 1=time measure, DSR from J2/J4 pin 6. 0=read cassette	   */
-/* Bit 3: Datex: Tristate datex output (low)				   */
-/* Bit 4: V2-5 Floppy motor on/off    		                           */
-/* Bit 5: J7-1 Centronics STROBE               		                   */
-/* Bit 6: V2-4 Floppy Soft reset   			                   */
-/* Bit 7: V2-3 Floppy Terminal count      	                           */
+/* Bit 0: J5-1                                                         */
+/* Bit 1: J5-2                                                         */
+/* Bit 2: Select: 1=time measure, DSR from J2/J4 pin 6. 0=read cassette    */
+/* Bit 3: Datex: Tristate datex output (low)                   */
+/* Bit 4: V2-5 Floppy motor on/off                                     */
+/* Bit 5: J7-1 Centronics STROBE                                       */
+/* Bit 6: V2-4 Floppy Soft reset                               */
+/* Bit 7: V2-3 Floppy Terminal count                                   */
 /*-------------------------------------------------------------------------*/
 static WRITE8_DEVICE_HANDLER( compis_ppi_port_c_w )
 {
@@ -478,8 +479,8 @@ WRITE16_DEVICE_HANDLER ( compis_osp_pit_w )
 static void compis_usart_rxready(const device_config *device, int state)
 {
 /*
-	if (state)
-		compis_pic_irq(COMPIS_IRQ_8251_RXRDY);
+    if (state)
+        compis_pic_irq(COMPIS_IRQ_8251_RXRDY);
 */
 }
 
@@ -515,7 +516,7 @@ WRITE16_HANDLER ( compis_usart_w )
 
 /*************************************
  *
- *	80186 interrupt controller
+ *  80186 interrupt controller
  *
  *************************************/
 static IRQ_CALLBACK(int_callback)
@@ -702,7 +703,7 @@ static void handle_eoi(running_machine *machine,int data)
 
 /*************************************
  *
- *	80186 internal timers
+ *  80186 internal timers
  *
  *************************************/
 
@@ -891,7 +892,7 @@ static void internal_timer_update(running_machine *machine,
 
 /*************************************
  *
- *	80186 internal DMA
+ *  80186 internal DMA
  *
  *************************************/
 
@@ -954,7 +955,7 @@ static void update_dma_control(running_machine *machine, int which, int new_cont
 		/* otherwise, set a timer */
 		else
 		{
-//			int count = d->count;
+//          int count = d->count;
 
 			/* adjust for redline racer */
          	// int dacnum = (d->dest & 0x3f) / 2;
@@ -962,7 +963,7 @@ static void update_dma_control(running_machine *machine, int which, int new_cont
 			if (LOG_DMA) logerror("Initiated DMA %d - count = %04X, source = %04X, dest = %04X\n", which, d->count, d->source, d->dest);
 
 			d->finished = 0;
-/*			timer_adjust_oneshot(d->finish_timer,
+/*          timer_adjust_oneshot(d->finish_timer,
          ATTOTIME_IN_HZ(dac[dacnum].frequency) * (double)count, which);*/
 		}
 	}
@@ -975,7 +976,7 @@ static void update_dma_control(running_machine *machine, int which, int new_cont
 
 /*************************************
  *
- *	80186 internal I/O reads
+ *  80186 internal I/O reads
  *
  *************************************/
 
@@ -1111,42 +1112,42 @@ READ16_HANDLER( i186_internal_port_r )
 		case 0x68:
 			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d lower source address\n", cpu_get_pc(space->cpu), (offset - 0x60) / 8);
 			which = (offset - 0x60) / 8;
-//			stream_update(dma_stream, 0);
+//          stream_update(dma_stream, 0);
 			return i186.dma[which].source;
 
 		case 0x61:
 		case 0x69:
 			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d upper source address\n", cpu_get_pc(space->cpu), (offset - 0x61) / 8);
 			which = (offset - 0x61) / 8;
-//			stream_update(dma_stream, 0);
+//          stream_update(dma_stream, 0);
 			return i186.dma[which].source >> 16;
 
 		case 0x62:
 		case 0x6a:
 			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d lower dest address\n", cpu_get_pc(space->cpu), (offset - 0x62) / 8);
 			which = (offset - 0x62) / 8;
-//			stream_update(dma_stream, 0);
+//          stream_update(dma_stream, 0);
 			return i186.dma[which].dest;
 
 		case 0x63:
 		case 0x6b:
 			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d upper dest address\n", cpu_get_pc(space->cpu), (offset - 0x63) / 8);
 			which = (offset - 0x63) / 8;
-//			stream_update(dma_stream, 0);
+//          stream_update(dma_stream, 0);
 			return i186.dma[which].dest >> 16;
 
 		case 0x64:
 		case 0x6c:
 			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d transfer count\n", cpu_get_pc(space->cpu), (offset - 0x64) / 8);
 			which = (offset - 0x64) / 8;
-//			stream_update(dma_stream, 0);
+//          stream_update(dma_stream, 0);
 			return i186.dma[which].count;
 
 		case 0x65:
 		case 0x6d:
 			if (LOG_PORTS) logerror("%05X:read 80186 DMA%d control\n", cpu_get_pc(space->cpu), (offset - 0x65) / 8);
 			which = (offset - 0x65) / 8;
-//			stream_update(dma_stream, 0);
+//          stream_update(dma_stream, 0);
 			return i186.dma[which].control;
 
 		default:
@@ -1158,7 +1159,7 @@ READ16_HANDLER( i186_internal_port_r )
 
 /*************************************
  *
- *	80186 internal I/O writes
+ *  80186 internal I/O writes
  *
  *************************************/
 
@@ -1311,14 +1312,14 @@ WRITE16_HANDLER( i186_internal_port_w )
 			temp = (i186.mem.peripheral & 0xffc0) << 4;
 			if (i186.mem.middle_size & 0x0040)
 			{
-//				install_mem_read_handler(2, temp, temp + 0x2ff, peripheral_r);
-//				install_mem_write_handler(2, temp, temp + 0x2ff, peripheral_w);
+//              install_mem_read_handler(2, temp, temp + 0x2ff, peripheral_r);
+//              install_mem_write_handler(2, temp, temp + 0x2ff, peripheral_w);
 			}
 			else
 			{
 				temp &= 0xffff;
-//				install_port_read_handler(2, temp, temp + 0x2ff, peripheral_r);
-//				install_port_write_handler(2, temp, temp + 0x2ff, peripheral_w);
+//              install_port_read_handler(2, temp, temp + 0x2ff, peripheral_r);
+//              install_port_write_handler(2, temp, temp + 0x2ff, peripheral_w);
 			}
 
 			/* we need to do this at a time when the I86 context is swapped in */
@@ -1331,7 +1332,7 @@ WRITE16_HANDLER( i186_internal_port_w )
 		case 0x68:
 			if (LOG_PORTS) logerror("%05X:80186 DMA%d lower source address = %04X\n", cpu_get_pc(space->cpu), (offset - 0x60) / 8, data16);
 			which = (offset - 0x60) / 8;
-//			stream_update(dma_stream, 0);
+//          stream_update(dma_stream, 0);
 			i186.dma[which].source = (i186.dma[which].source & ~0x0ffff) | (data16 & 0x0ffff);
 			break;
 
@@ -1339,7 +1340,7 @@ WRITE16_HANDLER( i186_internal_port_w )
 		case 0x69:
 			if (LOG_PORTS) logerror("%05X:80186 DMA%d upper source address = %04X\n", cpu_get_pc(space->cpu), (offset - 0x61) / 8, data16);
 			which = (offset - 0x61) / 8;
-//			stream_update(dma_stream, 0);
+//          stream_update(dma_stream, 0);
 			i186.dma[which].source = (i186.dma[which].source & ~0xf0000) | ((data16 << 16) & 0xf0000);
 			break;
 
@@ -1347,7 +1348,7 @@ WRITE16_HANDLER( i186_internal_port_w )
 		case 0x6a:
 			if (LOG_PORTS) logerror("%05X:80186 DMA%d lower dest address = %04X\n", cpu_get_pc(space->cpu), (offset - 0x62) / 8, data16);
 			which = (offset - 0x62) / 8;
-//			stream_update(dma_stream, 0);
+//          stream_update(dma_stream, 0);
 			i186.dma[which].dest = (i186.dma[which].dest & ~0x0ffff) | (data16 & 0x0ffff);
 			break;
 
@@ -1355,7 +1356,7 @@ WRITE16_HANDLER( i186_internal_port_w )
 		case 0x6b:
 			if (LOG_PORTS) logerror("%05X:80186 DMA%d upper dest address = %04X\n", cpu_get_pc(space->cpu), (offset - 0x63) / 8, data16);
 			which = (offset - 0x63) / 8;
-//			stream_update(dma_stream, 0);
+//          stream_update(dma_stream, 0);
 			i186.dma[which].dest = (i186.dma[which].dest & ~0xf0000) | ((data16 << 16) & 0xf0000);
 			break;
 
@@ -1363,7 +1364,7 @@ WRITE16_HANDLER( i186_internal_port_w )
 		case 0x6c:
 			if (LOG_PORTS) logerror("%05X:80186 DMA%d transfer count = %04X\n", cpu_get_pc(space->cpu), (offset - 0x64) / 8, data16);
 			which = (offset - 0x64) / 8;
-//			stream_update(dma_stream, 0);
+//          stream_update(dma_stream, 0);
 			i186.dma[which].count = data16;
 			break;
 
@@ -1371,7 +1372,7 @@ WRITE16_HANDLER( i186_internal_port_w )
 		case 0x6d:
 			if (LOG_PORTS) logerror("%05X:80186 DMA%d control = %04X\n", cpu_get_pc(space->cpu), (offset - 0x65) / 8, data16);
 			which = (offset - 0x65) / 8;
-//			stream_update(dma_stream, 0);
+//          stream_update(dma_stream, 0);
 			update_dma_control(space->machine, which, data16);
 			break;
 
@@ -1393,7 +1394,7 @@ WRITE16_HANDLER( i186_internal_port_w )
 				memory_install_read16_handler(cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_IO), temp, temp + 0xff, 0, 0, i186_internal_port_r);
 				memory_install_write16_handler(cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_IO), temp, temp + 0xff, 0, 0, i186_internal_port_w);
 			}
-/*			popmessage("Sound CPU reset");*/
+/*          popmessage("Sound CPU reset");*/
 			break;
 
 		default:
@@ -1430,15 +1431,15 @@ static void compis_cpu_init(running_machine *machine)
  *
  *************************************************************/
 
-static PIC8259_SET_INT_LINE( compis_pic8259_master_set_int_line ) 
+static PIC8259_SET_INT_LINE( compis_pic8259_master_set_int_line )
 {
 	cputag_set_input_line(device->machine, "maincpu", 0, interrupt ? HOLD_LINE : CLEAR_LINE);
 }
 
 
-static PIC8259_SET_INT_LINE( compis_pic8259_slave_set_int_line ) 
+static PIC8259_SET_INT_LINE( compis_pic8259_slave_set_int_line )
 {
-	if ( compis_devices.pic8259_master ) 
+	if ( compis_devices.pic8259_master )
 	{
 		pic8259_set_irq_line(compis_devices.pic8259_master, 2, interrupt);
 	}
@@ -1502,6 +1503,6 @@ MACHINE_RESET( compis )
 /*-------------------------------------------------------------------------*/
 INTERRUPT_GEN( compis_vblank_int )
 {
-//	compis_gdc_vblank_int();
+//  compis_gdc_vblank_int();
 	compis_keyb_update(device->machine);
 }

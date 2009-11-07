@@ -221,6 +221,8 @@ SOUNDS += SID6581
 SOUNDS += SID8580
 SOUNDS += SP0256
 #SOUNDS += DIGITALKER
+SOUNDS += CDP1863
+SOUNDS += CDP1864
 SOUNDS += SOCRATES
 SOUNDS += TMC0285
 SOUNDS += TMS5200
@@ -230,8 +232,6 @@ SOUNDS += TMS5200
 #SOUNDS += TMC0281
 #SOUNDS += TMS5100
 #SOUNDS += TMS5110A
-SOUNDS += CDP1863
-SOUNDS += CDP1864
 
 
 #-------------------------------------------------
@@ -339,6 +339,7 @@ DRVLIBS = \
 	$(MESSOBJ)/pdp1.a \
 	$(MESSOBJ)/pel.a \
 	$(MESSOBJ)/philips.a \
+	$(MESSOBJ)/pitronic.a \
 	$(MESSOBJ)/poly88.a \
 	$(MESSOBJ)/radio.a \
 	$(MESSOBJ)/rca.a \
@@ -395,9 +396,14 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_DEVICES)/cartslot.o	\
 	$(MESS_DEVICES)/cassette.o	\
 	$(MESS_DEVICES)/chd_cd.o	\
+	$(MESS_FORMATS)/imd_dsk.o	\
+	$(MESS_FORMATS)/td0_dsk.o	\
+	$(MESS_FORMATS)/cqm_dsk.o	\
 	$(MESS_FORMATS)/dsk_dsk.o	\
+	$(MESS_FORMATS)/d88_dsk.o	\
 	$(MESS_DEVICES)/flopdrv.o	\
 	$(MESS_DEVICES)/harddriv.o	\
+	$(MESS_DEVICES)/messram.o	\
 	$(MESS_DEVICES)/microdrv.o	\
 	$(MESS_DEVICES)/multcart.o	\
 	$(MESS_DEVICES)/printer.o	\
@@ -444,7 +450,7 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/mpc105.o	\
 	$(MESS_MACHINE)/msm58321.o	\
 	$(MESS_MACHINE)/msm8251.o	\
-	$(MESS_MACHINE)/nec765.o	\
+	$(MESS_MACHINE)/upd765.o	\
 	$(MESS_MACHINE)/ncr5380.o	\
 	$(MESS_MACHINE)/pc_lpt.o	\
 	$(MESS_MACHINE)/pc_mouse.o	\
@@ -503,7 +509,6 @@ $(MESSOBJ)/acorn.a:				\
 	$(MAME_MACHINE)/archimds.o	\
 	$(MESS_DRIVERS)/z88.o		\
 	$(MESS_VIDEO)/z88.o			\
-	$(MESS_VIDEO)/atom.o		\
 	$(MESS_DRIVERS)/atom.o		\
 	$(MESS_MACHINE)/atom.o		\
 	$(MESS_FORMATS)/uef_cas.o	\
@@ -524,6 +529,7 @@ $(MESSOBJ)/amiga.a:				\
 	$(MESS_MACHINE)/amigakbd.o	\
 	$(MESS_DRIVERS)/amiga.o		\
 	$(MAME_MACHINE)/cubocd32.o	\
+	$(MESS_DRIVERS)/a3000.o		\
 	$(MESS_DRIVERS)/ami1200.o	\
 
 $(MESSOBJ)/amstrad.a:			\
@@ -539,7 +545,6 @@ $(MESSOBJ)/amstrad.a:			\
 
 $(MESSOBJ)/apf.a:				\
 	$(MESS_DRIVERS)/apf.o		\
-	$(MESS_VIDEO)/apf.o			\
 	$(MESS_FORMATS)/apf_apt.o	\
 
 $(MESSOBJ)/apple.a:				\
@@ -790,7 +795,6 @@ $(MESSOBJ)/drc.a:				\
 $(MESSOBJ)/eaca.a:				\
 	$(MESS_DRIVERS)/cgenie.o	\
 	$(MESS_VIDEO)/cgenie.o		\
-	$(MESS_AUDIO)/cgenie.o		\
 	$(MESS_MACHINE)/cgenie.o	\
 	$(MESS_FORMATS)/cgen_cas.o	\
 
@@ -824,9 +828,11 @@ $(MESSOBJ)/epoch.a:				\
 
 $(MESSOBJ)/epson.a:				\
 	$(MESS_DRIVERS)/ex800.o		\
+	$(MESS_DRIVERS)/hx20.o		\
 	$(MESS_DRIVERS)/lx800.o		\
 	$(MESS_MACHINE)/e05a03.o	\
 	$(MESS_MACHINE)/pf10.o		\
+	$(MESS_MACHINE)/tf20.o		\
 	$(MESS_DRIVERS)/px4.o		\
 	$(MESS_DRIVERS)/px8.o		\
 	$(MESS_DRIVERS)/qx10.o		\
@@ -836,6 +842,7 @@ $(MESSOBJ)/exeltel.a:			\
 
 $(MESSOBJ)/exidy.a:				\
 	$(MESS_MACHINE)/exidy.o		\
+	$(MESS_FORMATS)/exidydsk.o	\
 	$(MESS_DRIVERS)/exidy.o		\
 	$(MESS_VIDEO)/exidy.o		\
 
@@ -846,10 +853,10 @@ $(MESSOBJ)/fairch.a:			\
 
 $(MESSOBJ)/fujitsu.a:			\
 	$(MESS_DRIVERS)/fmtowns.o	\
+	$(MESS_MACHINE)/upd71071.o	\
 	$(MESS_DRIVERS)/fm7.o		\
 	$(MESS_VIDEO)/fm7.o			\
 	$(MESS_FORMATS)/fm7_cas.o	\
-	$(MESS_FORMATS)/fm7_dsk.o	\
 
 $(MESSOBJ)/galaxy.a:			\
 	$(MESS_VIDEO)/galaxy.o		\
@@ -1007,7 +1014,6 @@ $(MESSOBJ)/nascom.a:			\
 
 $(MESSOBJ)/ne.a:				\
 	$(MESS_DRIVERS)/z80ne.o     \
-	$(MESS_VIDEO)/z80ne.o       \
 	$(MESS_FORMATS)/z80ne_dsk.o \
 	$(MESS_MACHINE)/z80ne.o     \
 
@@ -1016,9 +1022,12 @@ $(MESSOBJ)/nec.a:				\
 	$(MESS_MACHINE)/pce.o		\
 	$(MESS_DRIVERS)/pce.o		\
 	$(MESS_DRIVERS)/pcfx.o		\
+	$(MESS_FORMATS)/p6001_cas.o	\
 	$(MESS_DRIVERS)/pc6001.o	\
 	$(MESS_DRIVERS)/pc8401a.o	\
 	$(MESS_VIDEO)/pc8401a.o		\
+	$(MESS_DRIVERS)/pc8001.o	\
+	$(MESS_VIDEO)/upd3301.o		\
 	$(MESS_DRIVERS)/pc8801.o	\
 	$(MESS_MACHINE)/pc8801.o	\
 	$(MESS_VIDEO)/pc8801.o		\
@@ -1084,6 +1093,9 @@ $(MESSOBJ)/palm.a:				\
 
 $(MESSOBJ)/parker.a:			\
 	$(MESS_DRIVERS)/stopthie.o	\
+
+$(MESSOBJ)/pitronic.a:			\
+	$(MESS_DRIVERS)/beta.o		\
 
 $(MESSOBJ)/pc.a:				\
 	$(MESS_VIDEO)/pc_aga.o		\
@@ -1158,6 +1170,7 @@ $(MESSOBJ)/rca.a:				\
 $(MESSOBJ)/robotron.a:			\
 	$(MESS_DRIVERS)/a5105.o		\
 	$(MESS_DRIVERS)/a51xx.o		\
+	$(MESS_DRIVERS)/a7150.o		\
 	$(MESS_DRIVERS)/rt1715.o	\
 	$(MESS_MACHINE)/rt1715.o	\
 	$(MESS_VIDEO)/rt1715.o		\
@@ -1205,6 +1218,7 @@ $(MESSOBJ)/sgi.a:				\
 	$(MESS_MACHINE)/sgi.o		\
 	$(MESS_DRIVERS)/ip20.o		\
 	$(MESS_DRIVERS)/ip22.o		\
+	$(MESS_DRIVERS)/ip6.o		\
 	$(MESS_VIDEO)/newport.o		\
 
 $(MESSOBJ)/sharp.a:				\
@@ -1282,6 +1296,7 @@ $(MESSOBJ)/sord.a:				\
 $(MESSOBJ)/special.a:			\
 	$(MESS_AUDIO)/special.o		\
 	$(MESS_DRIVERS)/special.o	\
+	$(MESS_FORMATS)/smx_dsk.o	\
 	$(MESS_MACHINE)/special.o	\
 	$(MESS_VIDEO)/special.o		\
 
@@ -1414,13 +1429,13 @@ $(MESSOBJ)/trs.a:				\
 	$(MESS_DEVICES)/coco_pak.o	\
 	$(MESS_DEVICES)/coco_232.o	\
 	$(MESS_DEVICES)/orch90.o	\
-	$(MESS_MACHINE)/mc10.o		\
 	$(MESS_DRIVERS)/mc10.o		\
 	$(MESS_MACHINE)/trs80.o		\
 	$(MESS_VIDEO)/trs80.o		\
 	$(MESS_FORMATS)/trs_dsk.o	\
 	$(MESS_FORMATS)/trs_cas.o	\
 	$(MESS_DRIVERS)/trs80.o		\
+	$(MESS_VIDEO)/coco6847.o	\
 
 $(MESSOBJ)/unisys.a:			\
 	$(MESS_DRIVERS)/univac.o	\
@@ -1447,8 +1462,6 @@ $(MESSOBJ)/votrax.a:			\
 	$(MESS_DRIVERS)/votrtnt.o	\
 
 $(MESSOBJ)/vtech.a:				\
-	$(MESS_VIDEO)/vtech1.o		\
-	$(MESS_MACHINE)/vtech1.o	\
 	$(MESS_DRIVERS)/vtech1.o	\
 	$(MESS_VIDEO)/vtech2.o		\
 	$(MESS_MACHINE)/vtech2.o	\
@@ -1488,8 +1501,41 @@ $(MESSOBJ)/skeleton.a:			\
 	$(MESS_DRIVERS)/unior.o		\
 	$(MESS_DRIVERS)/tvc.o		\
 	$(MESS_DRIVERS)/mmd1.o		\
-	$(MESS_DRIVERS)/beta.o		\
 	$(MESS_DRIVERS)/ptcsol.o	\
+	$(MESS_DRIVERS)/p8k.o		\
+	$(MESS_DRIVERS)/cosmicos.o	\
+	$(MESS_DRIVERS)/next.o		\
+	$(MESS_DRIVERS)/pda600.o	\
+
+
+
+#-------------------------------------------------
+# miscellaneous dependencies
+#-------------------------------------------------
+
+$(MAME_MACHINE)/snes.o: 	$(MAMESRC)/machine/snesdsp1.c \
+				$(MAMESRC)/machine/snesdsp2.c \
+				$(MAMESRC)/machine/snesdsp3.c \
+				$(MAMESRC)/machine/snesdsp4.c \
+				$(MAMESRC)/machine/snesobc1.c \
+				$(MAMESRC)/machine/snescx4.c \
+				$(MAMESRC)/machine/cx4ops.c \
+				$(MAMESRC)/machine/cx4oam.c \
+				$(MAMESRC)/machine/cx4fn.c \
+				$(MAMESRC)/machine/cx4data.c \
+				$(MAMESRC)/machine/snesrtc.c \
+				$(MAMESRC)/machine/snessdd1.c \
+				$(MAMESRC)/machine/snesst10.c \
+				$(MAMESRC)/machine/snes7110.c
+
+$(MESS_VIDEO)/gba.o: 		$(MESSSRC)/video/gbamode0.c \
+				$(MESSSRC)/video/gbamode1.c \
+				$(MESSSRC)/video/gbamode2.c \
+				$(MESSSRC)/video/gbam345.c
+
+$(MESS_MACHINE)/nes_mmc.o: 	$(MESSSRC)/machine/nes_ines.c \
+				$(MESSSRC)/machine/nes_unif.c \
+
 
 #-------------------------------------------------
 # layout dependencies
@@ -1501,8 +1547,11 @@ $(MESS_DRIVERS)/4004clk.o:	$(MESS_LAYOUT)/4004clk.lh
 $(MESS_DRIVERS)/acrnsys1.o:	$(MESS_LAYOUT)/acrnsys1.lh
 $(MESS_DRIVERS)/aim65.o:	$(MESS_LAYOUT)/aim65.lh
 $(MESS_DRIVERS)/amico2k.o:	$(MESS_LAYOUT)/amico2k.lh
+$(MESS_DRIVERS)/beta.o:		$(MESS_LAYOUT)/beta.lh
 $(MESS_DRIVERS)/bob85.o:	$(MESS_LAYOUT)/bob85.lh
+$(MESS_DRIVERS)/cdi.o:		$(MESS_LAYOUT)/cdi.lh
 $(MESS_DRIVERS)/coco.o:		$(MESS_LAYOUT)/coco3.lh
+$(MESS_DRIVERS)/cosmicos.o:	$(MESS_LAYOUT)/cosmicos.lh
 $(MESS_DRIVERS)/c80.o:		$(MESS_LAYOUT)/c80.lh
 $(MESS_DRIVERS)/dectalk.o:	$(MESS_LAYOUT)/dectalk.lh
 $(MESS_DRIVERS)/elf.o:		$(MESS_LAYOUT)/elf2.lh
@@ -1538,52 +1587,16 @@ $(MESS_DRIVERS)/z80ne.o:	$(MESS_LAYOUT)/z80ne.lh   \
 							$(MESS_LAYOUT)/z80netb.lh \
 							$(MESS_LAYOUT)/z80netf.lh
 
-$(MAME_MACHINE)/snes.o: 	$(MAMESRC)/machine/snesdsp1.c \
-				$(MAMESRC)/machine/snesdsp2.c \
-				$(MAMESRC)/machine/snesdsp3.c \
-				$(MAMESRC)/machine/snesdsp4.c \
-				$(MAMESRC)/machine/snesobc1.c \
-				$(MAMESRC)/machine/snesrtc.c \
-				$(MAMESRC)/machine/snessdd1.c
 
 #-------------------------------------------------
 # MESS-specific tools
 #-------------------------------------------------
 
-ifdef BUILD_IMGTOOL
-include $(MESSSRC)/tools/imgtool/imgtool.mak
-TOOLS += $(IMGTOOL)
-endif
-
-ifdef BUILD_CASTOOL
-include $(MESSSRC)/tools/castool/castool.mak
-TOOLS += $(CASTOOL)
-endif
-
-ifdef BUILD_MESSTEST
-include $(MESSSRC)/tools/messtest/messtest.mak
-TOOLS += $(MESSTEST)
-endif
-
-ifdef BUILD_DAT2HTML
-include $(MESSSRC)/tools/dat2html/dat2html.mak
-TOOLS += $(DAT2HTML)
-endif
-
-# include OS-specific MESS stuff
-ifeq ($(OSD),windows)
-include $(MESSSRC)/tools/messdocs/messdocs.mak
-
-ifdef BUILD_WIMGTOOL
-include $(MESSSRC)/tools/imgtool/windows/wimgtool.mak
-TOOLS += $(WIMGTOOL)
-endif
-endif
-
+include $(MESSSRC)/tools/tools.mak
 
 
 #-------------------------------------------------
 # MESS special OSD rules
 #-------------------------------------------------
 
-include $(SRC)/mess/osd/$(OSD)/$(OSD).mak
+include $(MESSSRC)/osd/$(OSD)/$(OSD).mak

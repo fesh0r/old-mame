@@ -53,7 +53,7 @@
 
     The hardware:
        - Z80 CPU running at 3.4 MHz
-       - NEC765 FDC
+       - UPD765 FDC
        - mono display
        - beep (a fixed Hz tone which can be turned on/off)
        - 720x256 (PAL) bitmapped display, 720x200 (NTSC) bitmapped display
@@ -94,14 +94,14 @@
  ******************************************************************************/
 #include "driver.h"
 #include "cpu/z80/z80.h"
-// nec765 interface
-#include "machine/nec765.h"
-#include "formats/dsk_dsk.h"
+// upd765 interface
+#include "machine/upd765.h"
 #include "devices/flopdrv.h"
 // pcw video hardware
 #include "includes/pcw.h"
 // pcw/pcw16 beeper
 #include "sound/beep.h"
+#include "devices/messram.h"
 
 #define VERBOSE 1
 #define LOG(x) do { if (VERBOSE) logerror x; } while (0)
@@ -137,14 +137,15 @@ static void pcw_update_interrupt_counter(void)
 	pcw_interrupt_counter++;
 }
 
-/* PCW uses NEC765 in NON-DMA mode. FDC Ints are connected to /INT or
+/* PCW uses UPD765 in NON-DMA mode. FDC Ints are connected to /INT or
 /NMI depending on choice (see system control below) */
-static const nec765_interface pcw_nec765_interface =
+static const upd765_interface pcw_upd765_interface =
 {
 	DEVCB_LINE(pcw_fdc_interrupt),
 	NULL,
 	NULL,
-	NEC765_RDY_PIN_CONNECTED
+	UPD765_RDY_PIN_CONNECTED,
+	{FLOPPY_0,FLOPPY_1, NULL, NULL}
 };
 
 // set/reset INT and NMI lines
@@ -156,13 +157,13 @@ static void pcw_update_irqs(running_machine *machine)
 	else
 		cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, CLEAR_LINE);
 
-	// set IRQ line, timer pulses IRQ line, all other devices hold it as necessary		
+	// set IRQ line, timer pulses IRQ line, all other devices hold it as necessary
 	if(fdc_interrupt_code == 1 && (pcw_system_status & 0x20))
 	{
 		cputag_set_input_line(machine, "maincpu", 0, ASSERT_LINE);
 		return;
 	}
-	
+
 	if(pcw_timer_irq_flag != 0)
 	{
 		cputag_set_input_line(machine, "maincpu", 0, ASSERT_LINE);
@@ -244,7 +245,7 @@ static void pcw_update_read_memory_block(running_machine *machine, int block, in
 		memory_install_read8_handler(space,
 			block * 0x04000 + 0x3ff0, block * 0x04000 + 0x3fff, 0, 0,
 			pcw_keyboard_r);
-//		LOG(("MEM: read block %i -> bank %i\n",block,bank));
+//      LOG(("MEM: read block %i -> bank %i\n",block,bank));
 	}
 	else
 	{
@@ -252,17 +253,17 @@ static void pcw_update_read_memory_block(running_machine *machine, int block, in
 		memory_install_read8_handler(space,
 			block * 0x04000 + 0x0000, block * 0x04000 + 0x3fff, 0, 0,
 			(read8_space_func) (STATIC_BANK1 + (FPTR)block));
-//		LOG(("MEM: read block %i -> bank %i\n",block,bank));
+//      LOG(("MEM: read block %i -> bank %i\n",block,bank));
 	}
-	memory_set_bankptr(machine, block + 1, mess_ram + ((bank * 0x4000) % mess_ram_size));
+	memory_set_bankptr(machine, block + 1, messram_get_ptr(devtag_get_device(machine, "messram")) + ((bank * 0x4000) % messram_get_size(devtag_get_device(machine, "messram"))));
 }
 
 
 
 static void pcw_update_write_memory_block(running_machine *machine, int block, int bank)
 {
-	memory_set_bankptr(machine, block + 5, mess_ram + ((bank * 0x4000) % mess_ram_size));
-//	LOG(("MEM: write block %i -> bank %i\n",block,bank));
+	memory_set_bankptr(machine, block + 5, messram_get_ptr(devtag_get_device(machine, "messram")) + ((bank * 0x4000) % messram_get_size(devtag_get_device(machine, "messram"))));
+//  LOG(("MEM: write block %i -> bank %i\n",block,bank));
 }
 
 
@@ -376,7 +377,7 @@ static WRITE8_HANDLER(pcw_bank_select_w)
 	pcw_banks[offset] = data;
 
 	pcw_update_mem(space->machine, offset, data);
-	//popmessage("RAM Banks: %02x %02x %02x %02x",pcw_banks[0],pcw_banks[1],pcw_banks[2],pcw_banks[3]); 
+	//popmessage("RAM Banks: %02x %02x %02x %02x",pcw_banks[0],pcw_banks[1],pcw_banks[2],pcw_banks[3]);
 }
 
 static WRITE8_HANDLER(pcw_bank_force_selection_w)
@@ -414,7 +415,7 @@ static WRITE8_HANDLER(pcw_vdu_video_control_register_w)
 
 static WRITE8_HANDLER(pcw_system_control_w)
 {
-	const device_config *fdc = devtag_get_device(space->machine, "nec765");
+	const device_config *fdc = devtag_get_device(space->machine, "upd765");
 	const device_config *speaker = devtag_get_device(space->machine, "beep");
 	LOG(("SYSTEM CONTROL: %d\n",data));
 
@@ -501,14 +502,14 @@ static WRITE8_HANDLER(pcw_system_control_w)
 		/* set fdc terminal count */
 		case 5:
 		{
-			nec765_tc_w(fdc, 1);
+			upd765_tc_w(fdc, 1);
 		}
 		break;
 
 		/* clear fdc terminal count */
 		case 6:
 		{
-			nec765_tc_w(fdc, 0);
+			upd765_tc_w(fdc, 0);
 		}
 		break;
 
@@ -530,20 +531,20 @@ static WRITE8_HANDLER(pcw_system_control_w)
 		/* disc motor on */
 		case 9:
 		{
-			floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0), 1);
-			floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 1), 1);
-			floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0), 1,1);
-			floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 1), 1,1);
+			floppy_drive_set_motor_state(floppy_get_device(space->machine, 0), 1);
+			floppy_drive_set_motor_state(floppy_get_device(space->machine, 1), 1);
+			floppy_drive_set_ready_state(floppy_get_device(space->machine, 0), 1,1);
+			floppy_drive_set_ready_state(floppy_get_device(space->machine, 1), 1,1);
 		}
 		break;
 
 		/* disc motor off */
 		case 10:
 		{
-			floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0), 0);
-			floppy_drive_set_motor_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 1), 0);
-			floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 0), 0,1);
-			floppy_drive_set_ready_state(image_from_devtype_and_index(space->machine, IO_FLOPPY, 1), 0,1);
+			floppy_drive_set_motor_state(floppy_get_device(space->machine, 0), 0);
+			floppy_drive_set_motor_state(floppy_get_device(space->machine, 1), 0);
+			floppy_drive_set_ready_state(floppy_get_device(space->machine, 0), 0,1);
+			floppy_drive_set_ready_state(floppy_get_device(space->machine, 1), 0,1);
 		}
 		break;
 
@@ -568,8 +569,8 @@ static READ8_HANDLER(pcw_system_status_r)
 {
 	/* from Jacob Nevins docs */
 	UINT8 ret = pcw_get_sys_status(space->machine);
-	
-//	LOG(("SYS: Status port returning %02x\n",ret));
+
+//  LOG(("SYS: Status port returning %02x\n",ret));
 	return ret;
 }
 
@@ -633,23 +634,23 @@ static WRITE8_HANDLER(pcw_expansion_w)
 
 static READ8_HANDLER(pcw_fdc_r)
 {
-	const device_config *fdc = devtag_get_device(space->machine, "nec765");
+	const device_config *fdc = devtag_get_device(space->machine, "upd765");
 	/* from Jacob Nevins docs. FDC I/O is not fully decoded */
 	if (offset & 1)
 	{
-		return nec765_data_r(fdc, 0);
+		return upd765_data_r(fdc, 0);
 	}
 
-	return nec765_status_r(fdc, 0);
+	return upd765_status_r(fdc, 0);
 }
 
 static WRITE8_HANDLER(pcw_fdc_w)
 {
-	const device_config *fdc = devtag_get_device(space->machine, "nec765");
+	const device_config *fdc = devtag_get_device(space->machine, "upd765");
 	/* from Jacob Nevins docs. FDC I/O is not fully decoded */
 	if (offset & 1)
 	{
-		nec765_data_w(fdc, 0,data);
+		upd765_data_w(fdc, 0,data);
 	}
 }
 
@@ -693,7 +694,7 @@ static WRITE8_HANDLER(pcw9512_parallel_w)
 
 static ADDRESS_MAP_START(pcw_io, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x000, 0x07f) AM_READWRITE(pcw_fdc_r,					pcw_fdc_w)  
+	AM_RANGE(0x000, 0x07f) AM_READWRITE(pcw_fdc_r,					pcw_fdc_w)
 	AM_RANGE(0x080, 0x0ef) AM_READWRITE(pcw_expansion_r,			pcw_expansion_w)
 	AM_RANGE(0x0f0, 0x0f3) AM_WRITE(								pcw_bank_select_w)
 	AM_RANGE(0x0f4, 0x0f4) AM_READWRITE(pcw_interrupt_counter_r,	pcw_bank_force_selection_w)
@@ -733,15 +734,15 @@ static TIMER_CALLBACK(setup_beep)
 static MACHINE_START( pcw )
 {
 	fdc_interrupt_code = 2;
-	floppy_drive_set_geometry(image_from_devtype_and_index(machine, IO_FLOPPY, 0), FLOPPY_DRIVE_DS_80);
-	floppy_drive_set_geometry(image_from_devtype_and_index(machine, IO_FLOPPY, 1), FLOPPY_DRIVE_DS_80);
 }
 
 static MACHINE_RESET( pcw )
 {
+	UINT8* code = memory_region(machine,"bootcode");
+	int x;
 	/* ram paging is actually undefined at power-on */
 	pcw_bank_force = 0x00;
-	
+
 	pcw_banks[0] = 0x80;
 	pcw_banks[1] = 0x81;
 	pcw_banks[2] = 0x82;
@@ -751,22 +752,21 @@ static MACHINE_RESET( pcw )
 	pcw_update_mem(machine, 1, pcw_banks[1]);
 	pcw_update_mem(machine, 2, pcw_banks[2]);
 	pcw_update_mem(machine, 3, pcw_banks[3]);
+	/* copy boot code into RAM - yes, it's skipping a step,
+       but there is no verified dump of the boot sequence */
+
+	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0x00,messram_get_size(devtag_get_device(machine, "messram")));
+	for(x=0;x<256;x++)
+		messram_get_ptr(devtag_get_device(machine, "messram"))[x+2] = code[x];
+
 }
 
 static DRIVER_INIT(pcw)
 {
-	UINT8* code = memory_region(machine,"bootcode");
-	int x;
 	pcw_boot = 0;
 
 	cpu_set_input_line_vector(cputag_get_cpu(machine, "maincpu"), 0, 0x0ff);
 
-	/* copy boot code into RAM - yes, it's skipping a step, 
-	   but there is no verified dump of the boot sequence */
-
-	memset(mess_ram,0x00,mess_ram_size);	
-	for(x=0;x<256;x++)
-		mess_ram[x+2] = code[x];
 
 	/* lower 4 bits are interrupt counter */
 	pcw_system_status = 0x000;
@@ -794,7 +794,7 @@ b1:   k0     ptr    ]      -      9      7      5      3      2             extr
 b0:   f4     exit   del>   =      0      8      6      4      1             f6
       &3FF0  &3FF1  &3FF2  &3FF3  &3FF4  &3FF5  &3FF6  &3FF7  &3FF8  &3FF9  &3FFA
 
-2008-05 FP: 
+2008-05 FP:
 Small note about atural keyboard: currently,
 - "Paste" is mapped to 'F9'
 - "Exit" is mapped to 'F10'
@@ -923,8 +923,8 @@ static INPUT_PORTS_START(pcw)
 	PORT_START("LINE12")	/* 0x03ffc */
 	PORT_BIT(0xff, 0x00,	 IPT_UNUSED)
 
-	/* 2008-05  FP: not sure if this key is correct, "Caps Lock" is already mapped above. 
-	For now, I let it with no default mapping. */
+	/* 2008-05  FP: not sure if this key is correct, "Caps Lock" is already mapped above.
+    For now, I let it with no default mapping. */
 	PORT_START("LINE13")	/* 0x03ffd */
 	PORT_BIT(0x3f, 0x000, IPT_UNUSED)
 	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("SHIFT LOCK") //PORT_CODE(KEYCODE_CAPSLOCK)
@@ -975,6 +975,17 @@ static INPUT_PORTS_START(pcw)
 	PORT_BIT( 0xff, 0x00,	 IPT_UNUSED)
 INPUT_PORTS_END
 
+static const floppy_config pcw_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(default),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 /* PCW8256, PCW8512, PCW9256 */
 static MACHINE_DRIVER_START( pcw )
@@ -1004,16 +1015,33 @@ static MACHINE_DRIVER_START( pcw )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("beep", BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	MDRV_UPD765A_ADD("upd765", pcw_upd765_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(pcw_floppy_config)
 	
-	MDRV_NEC765A_ADD("nec765", pcw_nec765_interface)
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("256K")		
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START(  pcw_512 )
+	MDRV_IMPORT_FROM( pcw )
+
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("512K")
+MACHINE_DRIVER_END
 
 /* PCW9512, PCW9512+, PCW10 */
 static MACHINE_DRIVER_START( pcw9512 )
 	MDRV_IMPORT_FROM( pcw )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_IO_MAP(pcw9512_io)
+	
+	/* internal ram */
+	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_DEFAULT_SIZE("512K")
 MACHINE_DRIVER_END
 
 
@@ -1026,7 +1054,7 @@ MACHINE_DRIVER_END
 /* I am loading the boot-program outside of the Z80 memory area, because it
 is banked. */
 /* 8256boot.bin is not a real ROM, it is what is loaded into RAM by the boot sequence
-   It was typed in by hand based on the disassembly found at 
+   It was typed in by hand based on the disassembly found at
    http://www.chiark.greenend.org.uk/~jacobn/cpm/pcwboot.html  */
 
 // for now all models use the same rom
@@ -1034,9 +1062,9 @@ is banked. */
 	ROM_START(model)												\
 		ROM_REGION(0x010000, "maincpu",0)							\
 		ROM_FILL(0x0000,0x10000,0x00)											\
-/*		ROM_LOAD("pcwboot.bin", 0x010000, 608, BAD_DUMP CRC(679b0287) SHA1(5dde974304e3376ace00850d6b4c8ec3b674199e))*/	\
+/*      ROM_LOAD("pcwboot.bin", 0x010000, 608, BAD_DUMP CRC(679b0287) SHA1(5dde974304e3376ace00850d6b4c8ec3b674199e))*/	\
 		ROM_REGION(256,"bootcode",0)								\
-		ROM_LOAD("8256boot.bin", 0, 256, NO_DUMP CRC(d55925bd) SHA1(bca6a47d657557be99cb8580d4bf90968d8dde4a))	\
+		ROM_LOAD("8256boot.bin", 0, 256, BAD_DUMP CRC(d55925bd) SHA1(bca6a47d657557be99cb8580d4bf90968d8dde4a))	\
 	ROM_END															\
 
 ROM_PCW(pcw8256)
@@ -1045,41 +1073,11 @@ ROM_PCW(pcw9256)
 ROM_PCW(pcw9512)
 ROM_PCW(pcw10)
 
-static void generic_pcw_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* floppy */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_dsk; break;
-
-		default:										floppy_device_getinfo(devclass, state, info); break;
-	}
-}
-
-
-static SYSTEM_CONFIG_START(generic_pcw)
-	CONFIG_DEVICE(generic_pcw_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(pcw_256k)
-	CONFIG_IMPORT_FROM(generic_pcw)
-	CONFIG_RAM_DEFAULT(256 * 1024)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(pcw_512k)
-	CONFIG_IMPORT_FROM(generic_pcw)
-	CONFIG_RAM_DEFAULT(512 * 1024)
-SYSTEM_CONFIG_END
-
 /* these are all variants on the pcw design */
 /* major difference is memory configuration and drive type */
 /*     YEAR NAME        PARENT      COMPAT  MACHINE   INPUT INIT    CONFIG      COMPANY        FULLNAME */
-COMP( 1985, pcw8256,   0,			0,		pcw,	  pcw,	pcw,	pcw_256k,	"Amstrad plc", "PCW8256",		GAME_NOT_WORKING)
-COMP( 1985, pcw8512,   pcw8256,	0,		pcw,	  pcw,	pcw,	pcw_512k,	"Amstrad plc", "PCW8512",		GAME_NOT_WORKING)
-COMP( 1987, pcw9256,   pcw8256,	0,		pcw,	  pcw,	pcw,	pcw_256k,	"Amstrad plc", "PCW9256",		GAME_NOT_WORKING)
-COMP( 1987, pcw9512,   pcw8256,	0,		pcw9512,  pcw,	pcw,	pcw_512k,	"Amstrad plc", "PCW9512 (+)",	GAME_NOT_WORKING)
-COMP( 1993, pcw10,	    pcw8256,	0,		pcw9512,  pcw,	pcw,	pcw_512k,	"Amstrad plc", "PCW10",			GAME_NOT_WORKING)
+COMP( 1985, pcw8256,   0,			0,		pcw,	  pcw,	pcw,	0,	"Amstrad plc", "PCW8256",		GAME_NOT_WORKING)
+COMP( 1985, pcw8512,   pcw8256,	0,		pcw_512,	  pcw,	pcw,	0,	"Amstrad plc", "PCW8512",		GAME_NOT_WORKING)
+COMP( 1987, pcw9256,   pcw8256,	0,		pcw,	  pcw,	pcw,	0,	"Amstrad plc", "PCW9256",		GAME_NOT_WORKING)
+COMP( 1987, pcw9512,   pcw8256,	0,		pcw9512,  pcw,	pcw,	0,	"Amstrad plc", "PCW9512 (+)",	GAME_NOT_WORKING)
+COMP( 1993, pcw10,	    pcw8256,	0,		pcw9512,  pcw,	pcw,	0,	"Amstrad plc", "PCW10",			GAME_NOT_WORKING)
