@@ -16,7 +16,6 @@ todo for apf m1000:
 #include "driver.h"
 #include "cpu/m6800/m6800.h"
 #include "video/m6847.h"
-#include "includes/apf.h"
 
 #include "machine/6821pia.h"
 #include "machine/wd17xx.h"
@@ -51,6 +50,10 @@ static unsigned char keyboard_data;
 static unsigned char pad_data;
 static UINT8 mc6847_css = 0;
 static UINT8 *apf_video_ram;
+
+static unsigned char apf_ints;
+static void apf_update_ints(running_machine *machine);
+
 
 static READ8_DEVICE_HANDLER( apf_mc6847_videoram_r )
 {
@@ -154,9 +157,7 @@ static WRITE8_DEVICE_HANDLER(apf_m1000_pia_out_cb2_func)
 /* use bit 3 to identify state of irq from pia 1 */
 /* use bit 4 to identify state of irq from video */
 
-unsigned char apf_ints;
-
-void apf_update_ints(running_machine *machine)
+static void apf_update_ints(running_machine *machine)
 {
 	cputag_set_input_line(machine, "maincpu", 0, apf_ints ? HOLD_LINE : CLEAR_LINE);
 }
@@ -743,6 +744,6 @@ ROM_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE             INPUT               INIT    CONFIG      COMPANY               FULLNAME */
-COMP(1977, apfimag,	0,	0,	apf_imagination,	apf_imagination,	0,	0,	"APF Electronics Inc",  "APF Imagination Machine" , 0 )
-CONS(1978, apfm1000,	0,	0,	apf_m1000,		apf_m1000,		0,	0,		"APF Electronics Inc",  "APF M-1000" ,GAME_NOT_WORKING)
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE             INPUT               INIT         COMPANY               FULLNAME */
+COMP(1977, apfimag,	0,	0,	apf_imagination,	apf_imagination,	0,		"APF Electronics Inc",  "APF Imagination Machine" , 0 )
+CONS(1978, apfm1000,	0,	0,	apf_m1000,		apf_m1000,		0,			"APF Electronics Inc",  "APF M-1000" ,GAME_NOT_WORKING)

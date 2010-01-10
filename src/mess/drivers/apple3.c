@@ -23,10 +23,10 @@
 
 static ADDRESS_MAP_START( apple3_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x00FF) AM_READWRITE(apple3_00xx_r, apple3_00xx_w)
-	AM_RANGE(0x0100, 0x01FF) AM_RAMBANK(2)
-	AM_RANGE(0x0200, 0x1FFF) AM_RAMBANK(3)
-	AM_RANGE(0x2000, 0x9FFF) AM_RAMBANK(4)
-	AM_RANGE(0xA000, 0xBFFF) AM_RAMBANK(5)
+	AM_RANGE(0x0100, 0x01FF) AM_RAMBANK("bank2")
+	AM_RANGE(0x0200, 0x1FFF) AM_RAMBANK("bank3")
+	AM_RANGE(0x2000, 0x9FFF) AM_RAMBANK("bank4")
+	AM_RANGE(0xA000, 0xBFFF) AM_RAMBANK("bank5")
 ADDRESS_MAP_END
 
 
@@ -41,7 +41,7 @@ static const m6502_interface apple3_m6502_interface =
 	NULL,					/* port_write_func */
 };
 
-/*
+#ifdef UNUSED_FUNCTION
 static void apple3_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
     switch(state)
@@ -61,8 +61,7 @@ static void apple3_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
         default:                                        apple525_device_getinfo(devclass, state, info); break;
     }
 }
-
-*/
+#endif
 
 static const floppy_config apple3_floppy_config =
 {
@@ -108,7 +107,7 @@ static MACHINE_DRIVER_START( apple3 )
 	/* via */
 	MDRV_VIA6522_ADD("via6522_0", 1000000, apple3_via_0_intf)
 	MDRV_VIA6522_ADD("via6522_1", 2000000, apple3_via_1_intf)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("512K")
@@ -200,6 +199,6 @@ ROM_START(apple3)
 	ROM_LOAD( "apple3.rom", 0x0000, 0x1000, CRC(55e8eec9) SHA1(579ee4cd2b208d62915a0aa482ddc2744ff5e967))
 ROM_END
 
-/*     YEAR     NAME        PARENT  COMPAT  MACHINE    INPUT    INIT    CONFIG  COMPANY             FULLNAME */
-COMP( 1980,	apple3,		0,		0,		apple3,    apple3,	apple3,	0,	"Apple Computer",	"Apple ///", GAME_NOT_WORKING )
+/*     YEAR     NAME        PARENT  COMPAT  MACHINE    INPUT    INIT    COMPANY             FULLNAME */
+COMP( 1980,	apple3,		0,		0,		apple3,    apple3,	apple3,		"Apple Computer",	"Apple ///", GAME_NOT_WORKING )
 

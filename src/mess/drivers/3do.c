@@ -113,30 +113,42 @@ static UINT32	*vram;
 
 
 static ADDRESS_MAP_START( 3do_mem, ADDRESS_SPACE_PROGRAM, 32)
-	AM_RANGE(0x00000000, 0x001FFFFF) AM_RAMBANK(1) AM_BASE(&dram)					/* DRAM */
-	AM_RANGE(0x00200000, 0x002FFFFF) AM_RAM	AM_BASE(&vram)							/* VRAM */
-	AM_RANGE(0x03000000, 0x030FFFFF) AM_ROMBANK(2)									/* BIOS */
-	AM_RANGE(0x03140000, 0x0315FFFF) AM_READWRITE(nvarea_r, nvarea_w)				/* NVRAM */
-	AM_RANGE(0x03180000, 0x031FFFFF) AM_READWRITE(unk_318_r, unk_318_w)				/* ???? */
-	AM_RANGE(0x03200000, 0x032FFFFF) AM_READWRITE(vram_sport_r, vram_sport_w)		/* special vram access1 */
-	AM_RANGE(0x03300000, 0x033FFFFF) AM_READWRITE(madam_r, madam_w)					/* address decoder */
-	AM_RANGE(0x03400000, 0x034FFFFF) AM_READWRITE(clio_r, clio_w)					/* io controller */
+	AM_RANGE(0x00000000, 0x001FFFFF) AM_RAMBANK("bank1") AM_BASE(&dram)						/* DRAM */
+	AM_RANGE(0x00200000, 0x002FFFFF) AM_RAM	AM_BASE(&vram)									/* VRAM */
+	AM_RANGE(0x03000000, 0x030FFFFF) AM_ROMBANK("bank2")									/* BIOS */
+	AM_RANGE(0x03140000, 0x0315FFFF) AM_READWRITE(_3do_nvarea_r, _3do_nvarea_w)				/* NVRAM */
+	AM_RANGE(0x03180000, 0x031FFFFF) AM_READWRITE(_3do_unk_318_r, _3do_unk_318_w)			/* ???? */
+	AM_RANGE(0x03200000, 0x0320FFFF) AM_READWRITE(_3do_svf_r, _3do_svf_w)					/* special vram access1 */
+	AM_RANGE(0x03300000, 0x033FFFFF) AM_READWRITE(_3do_madam_r, _3do_madam_w)				/* address decoder */
+	AM_RANGE(0x03400000, 0x034FFFFF) AM_READWRITE(_3do_clio_r, _3do_clio_w)					/* io controller */
 ADDRESS_MAP_END
+
+static INPUT_PORTS_START( 3do )
+	PORT_START("P1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
+INPUT_PORTS_END
 
 
 static MACHINE_RESET( 3do )
 {
-	memory_set_bankptr(machine, 2,memory_region(machine, "user1"));
+	memory_set_bankptr(machine, "bank2",memory_region(machine, "user1"));
 
 	/* configure overlay */
-	memory_configure_bank(machine, 1, 0, 1, dram, 0);
-	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "user1"), 0);
+	memory_configure_bank(machine, "bank1", 0, 1, dram, 0);
+	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, "user1"), 0);
 
 	/* start with overlay enabled */
-	memory_set_bank(machine, 1, 1);
+	memory_set_bank(machine, "bank1", 1);
 
-	madam_init();
-	clio_init();
+	_3do_madam_init();
+	_3do_clio_init();
 }
 
 
@@ -152,9 +164,7 @@ static MACHINE_DRIVER_START( 3do )
 
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_FORMAT( BITMAP_FORMAT_RGB32 )
-	MDRV_SCREEN_SIZE( 640, 525 )
-	MDRV_SCREEN_VISIBLE_AREA( 0,639,0,479 )
-	MDRV_SCREEN_REFRESH_RATE( 60 )
+	MDRV_SCREEN_RAW_PARAMS( X2_CLOCK_NTSC / 2, 1592, 254, 1534, 263, 22, 262 )
 
 	MDRV_CDROM_ADD( "cdrom" )
 MACHINE_DRIVER_END
@@ -212,6 +222,6 @@ ROM_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT   INIT    CONFIG  COMPANY FULLNAME        FLAGS */
-CONS( 1991, 3do,        0,      0,      3do,        0,    	0,      0,      "3DO",  "3DO (NTSC)",   GAME_NOT_WORKING )
-CONS( 1991, 3do_pal,    3do,    0,      3do_pal,    0,    	0,      0,      "3DO",  "3DO (PAL)",    GAME_NOT_WORKING )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT   INIT    COMPANY FULLNAME        FLAGS */
+CONS( 1991, 3do,        0,      0,      3do,        3do,	0,      "3DO",  "3DO (NTSC)",   GAME_NOT_WORKING )
+CONS( 1991, 3do_pal,    3do,    0,      3do_pal,    3do,	0,      "3DO",  "3DO (PAL)",    GAME_NOT_WORKING )

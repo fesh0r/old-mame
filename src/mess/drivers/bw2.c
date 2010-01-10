@@ -104,11 +104,11 @@ static void bw2_set_banks(running_machine *machine, UINT8 data)
 	switch (state->bank)
 	{
 	case BANK_RAM1:
-		memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, "bank1");
 		break;
 
 	case BANK_VRAM:
-		memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0x4000, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0x4000, "bank1");
 		break;
 
 	case BANK_RAM2:
@@ -118,20 +118,21 @@ static void bw2_set_banks(running_machine *machine, UINT8 data)
 	case BANK_RAM6:
 		if (state->bank > max_ram_bank)
 		{
-			memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+			memory_unmap_readwrite(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0);
 		}
 		else
 		{
-			memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+			memory_install_readwrite_bank(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, "bank1");
 		}
 		break;
 
 	case BANK_ROM:
-		memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
+		memory_install_read_bank(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, "bank1");
+		memory_unmap_write(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0);
 		break;
 	}
 
-	memory_set_bank(machine, 1, state->bank);
+	memory_set_bank(machine, "bank1", state->bank);
 }
 
 static void ramcard_set_banks(running_machine *machine, UINT8 data)
@@ -180,11 +181,11 @@ static void ramcard_set_banks(running_machine *machine, UINT8 data)
 	{
 	case BANK_RAM1:
 	case BANK_RAMCARD_RAM:
-		memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, "bank1");
 		break;
 
 	case BANK_VRAM:
-		memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0x4000, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0x4000, "bank1");
 		break;
 
 	case BANK_RAM3:
@@ -192,24 +193,26 @@ static void ramcard_set_banks(running_machine *machine, UINT8 data)
 	case BANK_RAM6:
 		if (state->bank > max_ram_bank)
 		{
-			memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+			memory_unmap_readwrite(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0);
 		}
 		else
 		{
-			memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+			memory_install_readwrite_bank(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, "bank1");
 		}
 		break;
 
 	case BANK_RAMCARD_ROM:
-		memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0x4000, SMH_BANK(1), SMH_UNMAP);
+		memory_install_read_bank(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0x4000, "bank1");
+		memory_unmap_write(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0x4000);
 		break;
 
 	case BANK_ROM:
-		memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
+		memory_install_read_bank(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, "bank1");
+		memory_unmap_write(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0);
 		break;
 	}
 
-	memory_set_bank(machine, 1, state->bank);
+	memory_set_bank(machine, "bank1", state->bank);
 }
 
 static WRITE8_HANDLER( ramcard_bank_w )
@@ -221,41 +224,16 @@ static WRITE8_HANDLER( ramcard_bank_w )
 
 	if ((get_ramdisk_size(space->machine) == 256) && (ramcard_bank > 7))
 	{
-		memory_install_readwrite8_handler(cputag_get_address_space(space->machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_unmap_readwrite(cputag_get_address_space(space->machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0);
 	}
 	else
 	{
-		memory_install_readwrite8_handler(cputag_get_address_space(space->machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(cputag_get_address_space(space->machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, "bank1");
 	}
 
-	memory_configure_bank(space->machine, 1, BANK_RAMCARD_RAM, 1, state->ramcard_ram + bank_offset, 0);
-	memory_set_bank(space->machine, 1, state->bank);
+	memory_configure_bank(space->machine, "bank1", BANK_RAMCARD_RAM, 1, state->ramcard_ram + bank_offset, 0);
+	memory_set_bank(space->machine, "bank1", state->bank);
 }
-
-/* Serial */
-
-static DEVICE_IMAGE_LOAD( bw2_serial )
-{
-	bw2_state *state = image->machine->driver_data;
-
-	/* filename specified */
-	if (device_load_serial_device(image) == INIT_PASS)
-	{
-		/* setup transmit parameters */
-		serial_device_setup(image, 9600 >> input_port_read(image->machine, "BAUD"), 8, 1, SERIAL_PARITY_NONE);
-
-		/* connect serial chip to serial device */
-		msm8251_connect_to_serial_device(state->msm8251, image);
-
-		/* and start transmit */
-		serial_device_set_transmit_state(image, 1);
-
-		return INIT_PASS;
-	}
-
-	return INIT_FAIL;
-}
-
 
 /* Floppy */
 static WRITE_LINE_DEVICE_HANDLER( bw2_wd17xx_drq_w )
@@ -435,7 +413,7 @@ static READ8_DEVICE_HANDLER( bw2_8255_c_r )
 	data |= centronics_busy_r(state->centronics) << 4;
 	data |= state->mfdbk << 5;
 
-	data |= floppy_drive_get_flag_state(get_floppy_image(device->machine, state->selected_drive), FLOPPY_DRIVE_DISK_WRITE_PROTECTED) ? 0x00 : 0x80;
+	data |= floppy_wpt_r(get_floppy_image(device->machine, state->selected_drive)) << 7;
 
 	return data;
 }
@@ -472,8 +450,8 @@ static PIT8253_OUTPUT_CHANGED( bw2_timer2_w )
 	driver_state->mtron = state;
 	driver_state->mfdbk = !state;
 
-	floppy_drive_set_motor_state(get_floppy_image(device->machine, 0), !driver_state->mtron);
-	floppy_drive_set_motor_state(get_floppy_image(device->machine, 1), !driver_state->mtron);
+	floppy_mon_w(get_floppy_image(device->machine, 0), driver_state->mtron);
+	floppy_mon_w(get_floppy_image(device->machine, 1), driver_state->mtron);
 
 	floppy_drive_set_ready_state(get_floppy_image(device->machine, 0), 1, 1);
 	floppy_drive_set_ready_state(get_floppy_image(device->machine, 1), 1, 1);
@@ -548,8 +526,8 @@ static MACHINE_START( bw2 )
 	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
 
 	/* memory banking */
-	memory_configure_bank(machine, 1, BANK_RAM1, 1, state->work_ram, 0);
-	memory_configure_bank(machine, 1, BANK_VRAM, 1, state->video_ram, 0);
+	memory_configure_bank(machine, "bank1", BANK_RAM1, 1, state->work_ram, 0);
+	memory_configure_bank(machine, "bank1", BANK_VRAM, 1, state->video_ram, 0);
 
 	/* register for state saving */
 	state_save_register_global(machine, state->keyboard_row);
@@ -570,11 +548,11 @@ static MACHINE_RESET( bw2 )
 	{
 		// RAMCARD installed
 
-		memory_configure_bank(machine, 1, BANK_RAMCARD_ROM, 1, memory_region(machine, "ramcard"), 0);
-		memory_configure_bank(machine, 1, BANK_RAM3, 2, state->work_ram + 0x8000, 0x8000);
-		memory_configure_bank(machine, 1, BANK_RAMCARD_RAM, 1, state->ramcard_ram, 0);
-		memory_configure_bank(machine, 1, BANK_RAM6, 1, state->work_ram + 0x18000, 0);
-		memory_configure_bank(machine, 1, BANK_ROM, 1, memory_region(machine, "ic1"), 0);
+		memory_configure_bank(machine, "bank1", BANK_RAMCARD_ROM, 1, memory_region(machine, "ramcard"), 0);
+		memory_configure_bank(machine, "bank1", BANK_RAM3, 2, state->work_ram + 0x8000, 0x8000);
+		memory_configure_bank(machine, "bank1", BANK_RAMCARD_RAM, 1, state->ramcard_ram, 0);
+		memory_configure_bank(machine, "bank1", BANK_RAM6, 1, state->work_ram + 0x18000, 0);
+		memory_configure_bank(machine, "bank1", BANK_ROM, 1, memory_region(machine, "ic1"), 0);
 
 		memory_install_write8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_IO), 0x30, 0x30, 0, 0x0f, &ramcard_bank_w);
 	}
@@ -582,18 +560,18 @@ static MACHINE_RESET( bw2 )
 	{
 		// no RAMCARD
 
-		memory_configure_bank(machine, 1, BANK_RAM2, 5, state->work_ram + 0x8000, 0x8000);
-		memory_configure_bank(machine, 1, BANK_ROM, 1, memory_region(machine, "ic1"), 0);
+		memory_configure_bank(machine, "bank1", BANK_RAM2, 5, state->work_ram + 0x8000, 0x8000);
+		memory_configure_bank(machine, "bank1", BANK_ROM, 1, memory_region(machine, "ic1"), 0);
 
-		memory_install_write8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_IO), 0x30, 0x30, 0, 0x0f, SMH_UNMAP);
+		memory_unmap_write(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_IO), 0x30, 0x30, 0, 0x0f);
 	}
 
-	memory_set_bank(machine, 1, BANK_ROM);
+	memory_set_bank(machine, "bank1", BANK_ROM);
 }
 
 static ADDRESS_MAP_START( bw2_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x8000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -802,6 +780,47 @@ static const wd17xx_interface bw2_wd17xx_interface =
 	{FLOPPY_0, FLOPPY_1, NULL, NULL}
 };
 
+/* Serial */
+
+static DEVICE_IMAGE_LOAD( bw2_serial )
+{
+	bw2_state *state = image->machine->driver_data;
+
+	if (device_load_serial(image) == INIT_PASS)
+	{
+		serial_device_setup(image, 9600 >> input_port_read(image->machine, "BAUD"), 8, 1, SERIAL_PARITY_NONE);
+
+		msm8251_connect_to_serial_device(state->msm8251, image);
+
+		serial_device_set_transmit_state(image, 1);
+
+		return INIT_PASS;
+	}
+
+	return INIT_FAIL;
+}
+
+
+static DEVICE_GET_INFO( bw2_serial )
+{
+	switch ( state )
+	{
+		case DEVINFO_FCT_IMAGE_LOAD:		        info->f = (genf *) DEVICE_IMAGE_LOAD_NAME( bw2_serial );    break;
+		case DEVINFO_STR_NAME:		                strcpy(info->s, "BW2 serial port");	                    break;
+		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:	    strcpy(info->s, "txt");                                         break;
+		case DEVINFO_INT_IMAGE_READABLE:            info->i = 1;                                        	break;
+		case DEVINFO_INT_IMAGE_WRITEABLE:			info->i = 0;                                        	break;
+		case DEVINFO_INT_IMAGE_CREATABLE:	     	info->i = 0;                                        	break;		
+		default: 									DEVICE_GET_INFO_CALL(serial);	break;
+	}
+}
+
+#define BW2_SERIAL	DEVICE_GET_INFO_NAME(bw2_serial)
+
+#define MDRV_BW2_SERIAL_ADD(_tag) \
+	MDRV_DEVICE_ADD(_tag, BW2_SERIAL, 0)
+	
+
 static MACHINE_DRIVER_START( bw2 )
 	MDRV_DRIVER_DATA(bw2_state)
 
@@ -840,11 +859,13 @@ static MACHINE_DRIVER_START( bw2 )
 	MDRV_WD179X_ADD("wd179x", bw2_wd17xx_interface )
 
 	MDRV_FLOPPY_2_DRIVES_ADD(bw2_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
 	MDRV_RAM_EXTRA_OPTIONS("96K,128K,160K,192K,224K")
+	
+	MDRV_BW2_SERIAL_ADD("serial")
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -864,49 +885,5 @@ ROM_START( bw2 )
 	ROM_LOAD("ramcard-10.bin", 0x0000, 0x4000, CRC(68cde1ba) SHA1(a776a27d64f7b857565594beb63aa2cd692dcf04))
 ROM_END
 
-static void bw2_serial_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* serial */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:
-			info->i = IO_SERIAL;
-			break;
-		case MESS_DEVINFO_INT_READABLE:
-			info->i = 1;
-			break;
-		case MESS_DEVINFO_INT_WRITEABLE:
-			info->i = 0;
-			break;
-		case MESS_DEVINFO_INT_CREATABLE:
-			info->i = 0;
-			break;
-		case MESS_DEVINFO_INT_COUNT:
-			info->i = 1;
-			break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:
-			info->start = DEVICE_START_NAME(serial_device);
-			break;
-		case MESS_DEVINFO_PTR_LOAD:
-			info->load = DEVICE_IMAGE_LOAD_NAME(bw2_serial);
-			break;
-		case MESS_DEVINFO_PTR_UNLOAD:
-			info->unload = DEVICE_IMAGE_UNLOAD_NAME(serial_device);
-			break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:
-			strcpy(info->s = device_temp_str(), "txt");
-			break;
-	}
-}
-
-static SYSTEM_CONFIG_START( bw2 )
-	CONFIG_DEVICE( bw2_serial_getinfo )
-SYSTEM_CONFIG_END
-
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE   INPUT   INIT    CONFIG  COMPANY      FULLNAME  FLAGS */
-COMP( 1985, bw2,    0,      0,      bw2,      bw2,    bw2,    bw2,    "Bondwell",  "BW 2",   0 )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE   INPUT   INIT    COMPANY      FULLNAME  FLAGS */
+COMP( 1985, bw2,    0,      0,      bw2,      bw2,    bw2,    "Bondwell",  "BW 2",   0 )

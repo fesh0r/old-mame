@@ -631,6 +631,41 @@ static const cassette_config jtc_cassette_config =
 	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED
 };
 
+/* F4 Character Displayer */
+static const gfx_layout jtces23_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	64,					/* 128 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static const gfx_layout jtces40_charlayout =
+{
+	8, 8,					/* 8 x 16 characters */
+	128,					/* 128 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static GFXDECODE_START( jtces23 )
+	GFXDECODE_ENTRY( UB8830D_TAG, 0x1000, jtces23_charlayout, 0, 1 )
+GFXDECODE_END
+
+static GFXDECODE_START( jtces40 )
+	GFXDECODE_ENTRY( UB8830D_TAG, 0x1000, jtces40_charlayout, 0, 8 )
+GFXDECODE_END
+
 static MACHINE_DRIVER_START( basic )
 	MDRV_DRIVER_DATA(jtc_state)
 
@@ -671,7 +706,7 @@ static MACHINE_DRIVER_START( jtc )
 
     MDRV_VIDEO_START(jtc)
     MDRV_VIDEO_UPDATE(jtc)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("2K")
@@ -683,7 +718,7 @@ static MACHINE_DRIVER_START( jtces88 )
     /* basic machine hardware */
     MDRV_CPU_MODIFY(UB8830D_TAG)
     MDRV_CPU_PROGRAM_MAP(jtc_es1988_mem)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("4K")
@@ -703,12 +738,13 @@ static MACHINE_DRIVER_START( jtces23 )
     MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
     MDRV_SCREEN_SIZE(128, 128)
     MDRV_SCREEN_VISIBLE_AREA(0, 128-1, 0, 128-1)
+	MDRV_GFXDECODE(jtces23)
     MDRV_PALETTE_LENGTH(2)
     MDRV_PALETTE_INIT(black_and_white)
 
     MDRV_VIDEO_START(jtc_es23)
     MDRV_VIDEO_UPDATE(jtc_es23)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("4K")
@@ -728,12 +764,13 @@ static MACHINE_DRIVER_START( jtces40 )
     MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
     MDRV_SCREEN_SIZE(320, 192)
     MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 192-1)
+	MDRV_GFXDECODE(jtces40)
     MDRV_PALETTE_LENGTH(16)
     MDRV_PALETTE_INIT(jtc_es40)
 
     MDRV_VIDEO_START(jtc_es40)
     MDRV_VIDEO_UPDATE(jtc_es40)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("8K")
@@ -770,8 +807,8 @@ ROM_END
 
 /* System Drivers */
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG      COMPANY                 FULLNAME                    FLAGS */
-COMP( 1987, jtc,		0,       0, 	jtc, 	jtc, 	 0,		0,	 	  "Jugend+Technik",   "CompJU+TEr",					GAME_NOT_WORKING )
-COMP( 1988, jtces88,	jtc,     0, 	jtces88,jtc, 	 0,		0,  	  "Jugend+Technik",   "CompJU+TEr (EMR-ES 1988)",	GAME_NOT_WORKING )
-COMP( 1989, jtces23,	jtc,     0, 	jtces23,jtces23, 0,		0,  	  "Jugend+Technik",   "CompJU+TEr (ES 2.3)",		GAME_NOT_WORKING )
-COMP( 1990, jtces40,	jtc,     0, 	jtces40,jtces40, 0,		0,  	  "Jugend+Technik",   "CompJU+TEr (ES 4.0)",		GAME_NOT_WORKING )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                 FULLNAME                    FLAGS */
+COMP( 1987, jtc,	0,       0, 	jtc, 	jtc, 	 0,		"Jugend+Technik",   "CompJU+TEr",					GAME_NOT_WORKING )
+COMP( 1988, jtces88,	jtc,     0, 	jtces88,jtc, 	 0,		"Jugend+Technik",   "CompJU+TEr (EMR-ES 1988)",	GAME_NOT_WORKING )
+COMP( 1989, jtces23,	jtc,     0, 	jtces23,jtces23, 0,		"Jugend+Technik",   "CompJU+TEr (ES 2.3)",		GAME_NOT_WORKING )
+COMP( 1990, jtces40,	jtc,     0, 	jtces40,jtces40, 0,		"Jugend+Technik",   "CompJU+TEr (ES 4.0)",		GAME_NOT_WORKING )

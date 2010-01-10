@@ -44,11 +44,12 @@ static PALETTE_INIT( pokemini )
 	palette_set_color(machine, 3, MAKE_RGB(0x4e, 0x4e, 0x4e));
 }
 
+static const INT16 speaker_levels[] = {-32768, 0, 32767};
 
 static const speaker_interface pokemini_speaker_interface =
 {
 	3,				/* optional: number of different levels */
-	NULL			/* optional: level lookup table */
+	speaker_levels	/* optional: level lookup table */
 };
 
 static MACHINE_DRIVER_START( pokemini )
@@ -58,7 +59,7 @@ static MACHINE_DRIVER_START( pokemini )
 
 	MDRV_QUANTUM_TIME(HZ(60))
 
-	MDRV_MACHINE_RESET( pokemini )
+	MDRV_MACHINE_START( pokemini )
 
 	MDRV_NVRAM_HANDLER( i2cmem_0 )
 
@@ -102,5 +103,5 @@ ROM_START( pokemini )
 ROM_END
 
 
-CONS( 1999, pokemini, 0, 0, pokemini, pokemini, pokemini, 0, "Nintendo", "Pokemon Mini", GAME_NOT_WORKING )
+CONS( 1999, pokemini, 0, 0, pokemini, pokemini, pokemini, "Nintendo", "Pokemon Mini", GAME_NOT_WORKING )
 

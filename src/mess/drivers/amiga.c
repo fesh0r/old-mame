@@ -99,7 +99,7 @@ static const centronics_interface amiga_centronics_config =
 
 static ADDRESS_MAP_START(amiga_mem, ADDRESS_SPACE_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x000000, 0x07ffff) AM_MIRROR(0x80000) AM_RAMBANK(1) AM_BASE(&amiga_chip_ram) AM_SIZE(&amiga_chip_ram_size)
+	AM_RANGE(0x000000, 0x07ffff) AM_MIRROR(0x80000) AM_RAMBANK("bank1") AM_BASE(&amiga_chip_ram) AM_SIZE(&amiga_chip_ram_size)
 	AM_RANGE(0xbfd000, 0xbfefff) AM_READWRITE(amiga_cia_r, amiga_cia_w)
 	AM_RANGE(0xc00000, 0xc7ffff) AM_RAM /* slow-mem */
 	AM_RANGE(0xc80000, 0xcfffff) AM_READWRITE(amiga_custom_r, amiga_custom_w)	/* see Note 1 above */
@@ -153,10 +153,10 @@ ADDRESS_MAP_END
  */
 
 static ADDRESS_MAP_START(cdtv_mem, ADDRESS_SPACE_PROGRAM, 16)
-	AM_RANGE(0x000000, 0x0fffff) AM_RAMBANK(1) AM_BASE(&amiga_chip_ram) AM_SIZE(&amiga_chip_ram_size)
+	AM_RANGE(0x000000, 0x0fffff) AM_RAMBANK("bank1") AM_BASE(&amiga_chip_ram) AM_SIZE(&amiga_chip_ram_size)
 	AM_RANGE(0xbfd000, 0xbfefff) AM_READWRITE(amiga_cia_r, amiga_cia_w)
 	AM_RANGE(0xdc0000, 0xdc003f) AM_READWRITE(amiga_clock_r, amiga_clock_w)
-	AM_RANGE(0xdc8000, 0xdc87ff) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0xdc8000, 0xdc87ff) AM_RAM AM_BASE_GENERIC(nvram)
 	AM_RANGE(0xdf0000, 0xdfffff) AM_READWRITE(amiga_custom_r, amiga_custom_w) AM_BASE(&amiga_custom_regs)	/* Custom Chips */
 	AM_RANGE(0xe80000, 0xe8ffff) AM_READWRITE(amiga_autoconfig_r, amiga_autoconfig_w)
 	AM_RANGE(0xf00000, 0xffffff) AM_ROM AM_REGION("user1", 0)	/* CDTV & System ROM */
@@ -181,13 +181,13 @@ static ADDRESS_MAP_START(cdtv_rcmcu_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(a1000_mem, ADDRESS_SPACE_PROGRAM, 16)
-	AM_RANGE(0x000000, 0x03ffff) AM_MIRROR(0xc0000) AM_RAMBANK(1) AM_BASE(&amiga_chip_ram) AM_SIZE(&amiga_chip_ram_size)
+	AM_RANGE(0x000000, 0x03ffff) AM_MIRROR(0xc0000) AM_RAMBANK("bank1") AM_BASE(&amiga_chip_ram) AM_SIZE(&amiga_chip_ram_size)
 	AM_RANGE(0xbfd000, 0xbfefff) AM_READWRITE(amiga_cia_r, amiga_cia_w)
 	AM_RANGE(0xc00000, 0xc3ffff) AM_READWRITE(amiga_custom_r, amiga_custom_w) /* See Note 1 above */
 	AM_RANGE(0xdf0000, 0xdfffff) AM_READWRITE(amiga_custom_r, amiga_custom_w) AM_BASE(&amiga_custom_regs)	/* Custom Chips */
 	AM_RANGE(0xe80000, 0xe8ffff) AM_READWRITE(amiga_autoconfig_r, amiga_autoconfig_w)
 	AM_RANGE(0xf80000, 0xfbffff) AM_ROM AM_REGION("user1", 0)	/* Bootstrap ROM */
-	AM_RANGE(0xfc0000, 0xffffff) AM_RAMBANK(2)	/* Writable Control Store RAM */
+	AM_RANGE(0xfc0000, 0xffffff) AM_RAMBANK("bank2")	/* Writable Control Store RAM */
 ADDRESS_MAP_END
 
 
@@ -315,7 +315,7 @@ static const cia6526_interface cia_1_intf =
 	0,													/* tod_clock */
 	{
 		{ DEVCB_DEVICE_HANDLER("centronics", amiga_cia_1_porta_r), DEVCB_NULL },	/* port A */
-		{ DEVCB_NULL, DEVCB_HANDLER(amiga_fdc_control_w) }					/* port B */
+		{ DEVCB_NULL, DEVCB_DEVICE_HANDLER("fdc", amiga_fdc_control_w) }					/* port B */
 	}
 };
 
@@ -402,6 +402,8 @@ static MACHINE_DRIVER_START( ntsc )
 	/* cia */
 	MDRV_CIA8520_ADD("cia_0", AMIGA_68000_NTSC_CLOCK / 10, cia_0_ntsc_intf)
 	MDRV_CIA8520_ADD("cia_1", AMIGA_68000_NTSC_CLOCK, cia_1_intf)
+	
+	MDRV_AMIGA_FDC_ADD("fdc")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( a1000n )
@@ -487,7 +489,7 @@ MACHINE_DRIVER_END
 static READ8_DEVICE_HANDLER( amiga_cia_0_portA_r )
 {
 	UINT8 ret = input_port_read(device->machine, "CIA0PORTA") & 0xc0;	/* Gameport 1 and 0 buttons */
-	ret |= amiga_fdc_status_r();
+	ret |= amiga_fdc_status_r(devtag_get_device(device->machine, "fdc"));
 	return ret;
 }
 
@@ -501,7 +503,7 @@ static READ8_DEVICE_HANDLER( amiga_cia_0_cdtv_portA_r )
 static WRITE8_DEVICE_HANDLER( amiga_cia_0_portA_w )
 {
 	/* switch banks as appropriate */
-	memory_set_bank(device->machine, 1, data & 1);
+	memory_set_bank(device->machine, "bank1", data & 1);
 
 	/* swap the write handlers between ROM and bank 1 based on the bit */
 	if ((data & 1) == 0) {
@@ -512,7 +514,7 @@ static WRITE8_DEVICE_HANDLER( amiga_cia_0_portA_w )
 		}
 
 		/* overlay disabled, map RAM on 0x000000 */
-		memory_install_write16_handler(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x000000, amiga_chip_ram_size - 1, 0, mirror_mask, SMH_BANK(1));
+		memory_install_write_bank(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x000000, amiga_chip_ram_size - 1, 0, mirror_mask, "bank1");
 
 		/* if there is a cart region, check for cart overlay */
 		if (memory_region(device->machine, "user2") != NULL)
@@ -520,9 +522,9 @@ static WRITE8_DEVICE_HANDLER( amiga_cia_0_portA_w )
 	}
 	else
 		/* overlay enabled, map Amiga system ROM on 0x000000 */
-		memory_install_write16_handler(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x000000, amiga_chip_ram_size - 1, 0, 0, SMH_UNMAP);
+		memory_unmap_write(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x000000, amiga_chip_ram_size - 1, 0, 0);
 
-	set_led_status( 0, ( data & 2 ) ? 0 : 1 ); /* bit 2 = Power Led on Amiga */
+	set_led_status( device->machine, 0, ( data & 2 ) ? 0 : 1 ); /* bit 2 = Power Led on Amiga */
 	output_set_value("power_led", ( data & 2 ) ? 0 : 1);
 }
 
@@ -556,14 +558,14 @@ static UINT16 amiga_read_joy1dat(running_machine *machine)
 
 static UINT16 amiga_read_dskbytr(running_machine *machine)
 {
-	return amiga_fdc_get_byte();
+	return amiga_fdc_get_byte(devtag_get_device(machine, "fdc"));
 }
 
 static void amiga_write_dsklen(running_machine *machine, UINT16 data)
 {
 	if ( data & 0x8000 ) {
 		if ( CUSTOM_REG(REG_DSKLEN) & 0x8000 )
-			amiga_fdc_setup_dma(machine);
+			amiga_fdc_setup_dma(devtag_get_device(machine, "fdc"));
 	}
 }
 
@@ -578,7 +580,7 @@ static void amiga_reset(running_machine *machine)
 	else
 	{
 		/* No RTC support */
-		memory_install_readwrite16_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xdc0000, 0xdc003f, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_unmap_readwrite(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xdc0000, 0xdc003f, 0, 0);
 	}
 }
 
@@ -600,8 +602,8 @@ static DRIVER_INIT( amiga )
 	amiga_machine_config(machine, &amiga_intf);
 
 	/* set up memory */
-	memory_configure_bank(machine, 1, 0, 1, amiga_chip_ram, 0);
-	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "user1"), 0);
+	memory_configure_bank(machine, "bank1", 0, 1, amiga_chip_ram, 0);
+	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, "user1"), 0);
 
 	/* initialize cartridge (if present) */
 	amiga_cart_init(machine);
@@ -662,8 +664,8 @@ static DRIVER_INIT( cdtv )
 	amiga_machine_config(machine, &amiga_intf);
 
 	/* set up memory */
-	memory_configure_bank(machine, 1, 0, 1, amiga_chip_ram, 0);
-	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "user1"), 0);
+	memory_configure_bank(machine, "bank1", 0, 1, amiga_chip_ram, 0);
+	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, "user1"), 0);
 
 	/* initialize keyboard - in cdtv we can use a standard Amiga keyboard*/
 	amigakbd_init(machine);
@@ -729,23 +731,13 @@ ROM_START( cdtv )
 	ROM_LOAD("252608-01.u62", 0x000, 0x1000, NO_DUMP)
 ROM_END
 
-
-/***************************************************************************
-    SYSTEM CONFIG
-***************************************************************************/
-
-static SYSTEM_CONFIG_START( amiga )
-	CONFIG_DEVICE(amiga_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-
 /***************************************************************************
     GAME DRIVERS
 ***************************************************************************/
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY                             FULLNAME                 FLAGS */
-COMP( 1985, a1000n, 0,      0,      a1000n, amiga,  amiga,  amiga,  "Commodore Business Machines Co.",  "Amiga 1000 (NTSC)",     GAME_IMPERFECT_GRAPHICS )
-COMP( 1985, a1000p, a1000n, 0,      a1000p, amiga,  amiga,  amiga,  "Commodore Business Machines Co.",  "Amiga 1000 (PAL)",      GAME_IMPERFECT_GRAPHICS )
-COMP( 1987, a500n,  0,      0,      a500n,  amiga,  amiga,  amiga,  "Commodore Business Machines Co.",  "Amiga 500 (NTSC, OCS)", GAME_IMPERFECT_GRAPHICS )
-COMP( 1987, a500p,  a500n,  0,      a500p,  amiga,  amiga,  amiga,  "Commodore Business Machines Co.",  "Amiga 500 (PAL, OCS)",  GAME_IMPERFECT_GRAPHICS )
-COMP( 1991, cdtv,   0,      0,      cdtv,   cdtv,   cdtv,   0,      "Commodore Business Machines Co.",  "CDTV (NTSC)",           GAME_IMPERFECT_GRAPHICS )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                             FULLNAME                 FLAGS */
+COMP( 1985, a1000n, 0,      0,      a1000n, amiga,  amiga,  "Commodore Business Machines Co.",  "Amiga 1000 (NTSC)",     GAME_IMPERFECT_GRAPHICS )
+COMP( 1985, a1000p, a1000n, 0,      a1000p, amiga,  amiga,  "Commodore Business Machines Co.",  "Amiga 1000 (PAL)",      GAME_IMPERFECT_GRAPHICS )
+COMP( 1987, a500n,  0,      0,      a500n,  amiga,  amiga,  "Commodore Business Machines Co.",  "Amiga 500 (NTSC, OCS)", GAME_IMPERFECT_GRAPHICS )
+COMP( 1987, a500p,  a500n,  0,      a500p,  amiga,  amiga,  "Commodore Business Machines Co.",  "Amiga 500 (PAL, OCS)",  GAME_IMPERFECT_GRAPHICS )
+COMP( 1991, cdtv,   0,      0,      cdtv,   cdtv,   cdtv,   "Commodore Business Machines Co.",  "CDTV (NTSC)",           GAME_IMPERFECT_GRAPHICS )

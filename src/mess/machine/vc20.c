@@ -19,10 +19,8 @@
 
 #include "machine/6522via.h"
 #include "video/vic6560.h"
-#include "includes/vc1541.h"
-#include "includes/cbmserb.h"
+#include "machine/cbmiec.h"
 #include "includes/cbmieeeb.h"
-#include "includes/cbmdrive.h"
 
 #include "includes/vc20.h"
 
@@ -45,9 +43,7 @@ static UINT8 keyboard[8] =
 {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 static int via1_portb, via1_porta, via0_ca2;
-static int serial_atn, serial_clock, serial_data;
 
-static int has_vc1541;
 static int ieee; /* ieee cartridge (interface and rom)*/
 static UINT8 *vc20_rom_2000;
 static UINT8 *vc20_rom_4000;
@@ -107,34 +103,32 @@ static WRITE8_DEVICE_HANDLER( vc20_via0_write_ca2 )
 
 static READ8_DEVICE_HANDLER( vc20_via0_read_porta )
 {
-	UINT8 value = 0xff;
-	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
+	const device_config *serbus = devtag_get_device(device->machine, "iec");
+	UINT8 data = 0xfc;
 
-	value &= ~(input_port_read(device->machine, "JOY") & 0x3c);
+	data &= ~(input_port_read(device->machine, "JOY") & 0x3c);
 
 	/* to short to be recognized normally */
 	/* should be reduced to about 1 or 2 microseconds */
 	/*  if ((input_port_read(space->machine, "CTRLSEL") & 0x20 ) && (input_port_read(space->machine, "JOY") & 0x40) )  // i.e. LIGHTPEN_BUTTON
-        value &= ~0x20; */
-	if (!serial_clock || !cbm_serial_clock_read(serbus, 0))
-		value &= ~0x01;
-	if (!serial_data || !cbm_serial_data_read(serbus, 0))
-		value &= ~0x02;
+        data &= ~0x20; */
+
+	data |= cbm_iec_clk_r(serbus);
+	data |= cbm_iec_data_r(serbus) << 1;
 
 	if ((cassette_get_state(devtag_get_device(device->machine, "cassette")) & CASSETTE_MASK_UISTATE) != CASSETTE_STOPPED)
-		value &= ~0x40;
+		data &= ~0x40;
 	else
-		value |=  0x40;
+		data |=  0x40;
 
-	return value;
+	return data;
 }
 
 static WRITE8_DEVICE_HANDLER( vc20_via0_write_porta )
 {
-	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
+	const device_config *serbus = devtag_get_device(device->machine, "iec");
 
-	cbm_serial_atn_write(serbus, 0, serial_atn = !(data & 0x80));
-	DBG_LOG(device->machine, 1, "serial out", ("atn %s\n", serial_atn ? "high" : "low"));
+	cbm_iec_atn_w(serbus, device, !(data & 0x80));
 }
 
 /* via 1 addr 0x9120
@@ -192,9 +186,9 @@ static READ8_DEVICE_HANDLER( vc20_via1_read_ca1 )
 
 static WRITE8_DEVICE_HANDLER( vc20_via1_write_ca2 )
 {
-	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
+	const device_config *serbus = devtag_get_device(device->machine, "iec");
 
-	cbm_serial_clock_write(serbus, 0, serial_clock = !data);
+	cbm_iec_clk_w(serbus, device, !data);
 }
 
 static READ8_DEVICE_HANDLER( vc20_via1_read_portb )
@@ -333,16 +327,16 @@ static WRITE8_DEVICE_HANDLER( vc20_via1_write_portb )
 
 static READ8_DEVICE_HANDLER( vc20_via1_read_cb1 )
 {
-	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
+	const device_config *serbus = devtag_get_device(device->machine, "iec");
 
 	DBG_LOG(device->machine, 1, "serial in", ("request read\n"));
-	return cbm_serial_request_read(serbus, 0);
+	return cbm_iec_srq_r(serbus);
 }
 
 static WRITE8_DEVICE_HANDLER( vc20_via1_write_cb2 )
 {
-	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
-	cbm_serial_data_write(serbus, 0, serial_data = !data);
+	const device_config *serbus = devtag_get_device(device->machine, "iec");
+	cbm_iec_data_w(serbus, device, !data);
 }
 
 /* ieee 6522 number 1 (via4)
@@ -593,20 +587,12 @@ static void vc20_common_driver_init( running_machine *machine )
 {
 	vc20_memory_init(machine);
 
-	serial_atn = 1;
-	serial_clock = 1;
-	serial_data = 1;
-
 	datasette_timer = timer_alloc(machine, vic20_tape_timer, NULL);
-
-	if (has_vc1541)
-		cbm_drive_config(machine, type_1541, 0, 0, "cpu_vc1540", 8);
 }
 
 DRIVER_INIT( vc20 )
 {
 	ieee = 0;
-	has_vc1541 = 0;
 	vc20_common_driver_init(machine);
 	vic6561_init(vic6560_dma_read, vic6560_dma_read_color);
 }
@@ -614,7 +600,6 @@ DRIVER_INIT( vc20 )
 DRIVER_INIT( vic20 )
 {
 	ieee = 0;
-	has_vc1541 = 0;
 	vc20_common_driver_init(machine);
 	vic6560_init(vic6560_dma_read, vic6560_dma_read_color);
 }
@@ -627,7 +612,6 @@ DRIVER_INIT( vic1001 )
 DRIVER_INIT( vc20v )
 {
 	ieee = 0;
-	has_vc1541 = 1;
 	vc20_common_driver_init(machine);
 	vic6561_init(vic6560_dma_read, vic6560_dma_read_color);
 }
@@ -635,7 +619,6 @@ DRIVER_INIT( vc20v )
 DRIVER_INIT( vic20v )
 {
 	ieee = 0;
-	has_vc1541 = 1;
 	vc20_common_driver_init(machine);
 	vic6560_init(vic6560_dma_read, vic6560_dma_read_color);
 }
@@ -643,7 +626,6 @@ DRIVER_INIT( vic20v )
 DRIVER_INIT( vic20i )
 {
 	ieee = 1;
-	has_vc1541 = 0;
 	vc20_common_driver_init(machine);
 	vic6560_init(vic6560_dma_read, vic6560_dma_read_color);
 }
@@ -652,32 +634,21 @@ MACHINE_RESET( vic20 )
 {
 	const device_config *via_0 = devtag_get_device(machine, "via6522_0");
 
-	if (has_vc1541)
+// removed	
+/*	if (ieee)
 	{
-		cbm_drive_reset(machine);
+		cbm_drive_0_config(IEEE, 8);
+		cbm_drive_1_config(IEEE, 9);
 	}
-	else
-	{
-		if (ieee)
-		{
-			cbm_drive_0_config(IEEE, 8);
-			cbm_drive_1_config(IEEE, 9);
-		}
-		else
-		{
-			cbm_drive_0_config(SERIAL, 8);
-			cbm_drive_1_config(SERIAL, 9);
-		}
-	}
-
+*/
 	via_ca1_w(via_0, 0, vc20_via0_read_ca1(via_0, 0));
 
 	/* Set up memory banks */
-	memory_set_bankptr(machine,  1, ( ( messram_get_size(devtag_get_device(machine, "messram")) >=  8 * 1024 ) ? messram_get_ptr(devtag_get_device(machine, "messram")) : memory_region(machine, "maincpu") ) + 0x0400 );
-	memory_set_bankptr(machine,  2, vc20_rom_2000 ? vc20_rom_2000 : ( ( ( messram_get_size(devtag_get_device(machine, "messram")) >= 16 * 1024 ) ? messram_get_ptr(devtag_get_device(machine, "messram")) : memory_region(machine, "maincpu") ) + 0x2000 ) );
-	memory_set_bankptr(machine,  3, vc20_rom_4000 ? vc20_rom_4000 : ( ( ( messram_get_size(devtag_get_device(machine, "messram")) >= 24 * 1024 ) ? messram_get_ptr(devtag_get_device(machine, "messram")) : memory_region(machine, "maincpu") ) + 0x4000 ) );
-	memory_set_bankptr(machine,  4, vc20_rom_6000 ? vc20_rom_6000 : ( ( ( messram_get_size(devtag_get_device(machine, "messram")) >= 32 * 1024 ) ? messram_get_ptr(devtag_get_device(machine, "messram")) : memory_region(machine, "maincpu") ) + 0x6000 ) );
-	memory_set_bankptr(machine,  5, vc20_rom_a000 ? vc20_rom_a000 : ( memory_region(machine, "maincpu") + 0xa000 ) );
+	memory_set_bankptr(machine,  "bank1", ( ( messram_get_size(devtag_get_device(machine, "messram")) >=  8 * 1024 ) ? messram_get_ptr(devtag_get_device(machine, "messram")) : memory_region(machine, "maincpu") ) + 0x0400 );
+	memory_set_bankptr(machine,  "bank2", vc20_rom_2000 ? vc20_rom_2000 : ( ( ( messram_get_size(devtag_get_device(machine, "messram")) >= 16 * 1024 ) ? messram_get_ptr(devtag_get_device(machine, "messram")) : memory_region(machine, "maincpu") ) + 0x2000 ) );
+	memory_set_bankptr(machine,  "bank3", vc20_rom_4000 ? vc20_rom_4000 : ( ( ( messram_get_size(devtag_get_device(machine, "messram")) >= 24 * 1024 ) ? messram_get_ptr(devtag_get_device(machine, "messram")) : memory_region(machine, "maincpu") ) + 0x4000 ) );
+	memory_set_bankptr(machine,  "bank4", vc20_rom_6000 ? vc20_rom_6000 : ( ( ( messram_get_size(devtag_get_device(machine, "messram")) >= 32 * 1024 ) ? messram_get_ptr(devtag_get_device(machine, "messram")) : memory_region(machine, "maincpu") ) + 0x6000 ) );
+	memory_set_bankptr(machine,  "bank5", vc20_rom_a000 ? vc20_rom_a000 : ( memory_region(machine, "maincpu") + 0xa000 ) );
 }
 
 
@@ -712,7 +683,7 @@ INTERRUPT_GEN( vic20_frame_interrupt )
 	/* check if lightpen has been chosen as input: if so, enable crosshair */
 	timer_set(device->machine, attotime_zero, NULL, 0, lightpen_tick);
 
-	set_led_status (1, input_port_read(device->machine, "SPECIAL") & 0x01 ? 1 : 0);		/* Shift Lock */
+	set_led_status (device->machine,1, input_port_read(device->machine, "SPECIAL") & 0x01 ? 1 : 0);		/* Shift Lock */
 }
 
 

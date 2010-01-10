@@ -76,6 +76,8 @@
 #define THOM_SIZE_DATA_HI    (256+80)
 #define THOM_SIZE_SYNCHRO     12
 
+static int motor_on;
+
 
 /* build an identifier, with header & space */
 static int thom_floppy_make_addr( chrn_id id, UINT8* dst, int sector_size )
@@ -546,15 +548,13 @@ static const device_config * to7_qdd_image ( running_machine *machine )
 /* update MC6852 status register */
 static void to7_qdd_stat_update( running_machine *machine )
 {
-	int flags = floppy_drive_get_flag_state( to7_qdd_image(machine), -1 );
-
 	/* byte-ready */
 	to7qdd->status |= QDD_S_RDA | QDD_S_TDRA;
 	if ( ! to7qdd->drive )
 		to7qdd->status |= QDD_S_PE;
 
 	/* write-protect */
-	if ( flags & FLOPPY_DRIVE_DISK_WRITE_PROTECTED )
+	if (floppy_wpt_r(to7_qdd_image(machine)) == CLEAR_LINE)
 		to7qdd->status |= QDD_S_NCTS;
 
 	/* sticky reset conditions */
@@ -841,7 +841,10 @@ static void to7_qdd_reset( running_machine *machine )
 		if (img) {
 			floppy_drive_set_index_pulse_callback( img, to7_qdd_index_pulse_cb );
 			floppy_drive_set_ready_state( img, FLOPPY_DRIVE_READY, 0 );
-			floppy_drive_set_motor_state( img, 1 );
+
+			motor_on = CLEAR_LINE;
+			floppy_mon_w(img, motor_on);
+
 			/* pulse each time the whole-disk spiraling track ends */
 			/* at 90us per byte read, the disk can be read in 6s */
 			floppy_drive_set_rpm( img, 60. / 6. );
@@ -1239,8 +1242,8 @@ static void thmfc_floppy_format_byte ( running_machine *machine, UINT8 data )
 				UINT8 length = thmfc1->data[7]; /* actually, log length */
 				UINT8 filler = 0xe5;            /* standard Thomson filler */
                                 chrn_id id;
-                                if ( thmfc_floppy_find_sector( machine, &id ) ) 
-                                {                                        
+                                if ( thmfc_floppy_find_sector( machine, &id ) )
+                                {
                                         floppy_drive_format_sector( img, side, thmfc1->sector_id, track, thmfc1->side, sector, length, filler );
                                         thom_floppy_active( machine, 1 );
                                 }
@@ -1283,14 +1286,15 @@ READ8_HANDLER ( thmfc_floppy_r )
 				data |= 0x40;
 			if ( image_exists(img) )
 				data |= 0x20; /* disk change (?) */
-			if ( flags & FLOPPY_DRIVE_HEAD_AT_TRACK_0 )
-				data |= 0x08;
+
+			data |= !floppy_tk00_r(img) << 3;
+
 			if ( flags & FLOPPY_DRIVE_READY )
 				data |= 0x02;
 		}
-		if ( ! (flags & FLOPPY_DRIVE_MOTOR_ON ) )
+		if (!motor_on)
 			data |= 0x10;
-		if ( flags & FLOPPY_DRIVE_DISK_WRITE_PROTECTED )
+		if (!floppy_wpt_r(img))
 			data |= 0x04;
 		VLOG(( "%f $%04x thmfc_floppy_r: STAT1=$%02X\n", attotime_to_double(timer_get_time(space->machine)), cpu_get_previouspc(cputag_get_cpu(space->machine, "maincpu")), data ));
 		return data;
@@ -1467,7 +1471,8 @@ WRITE8_HANDLER ( thmfc_floppy_w )
            set motor to 1 every few seconds.
            instead of counting, we assume the motor is always running...
         */
-		floppy_drive_set_motor_state( img, 1 /* motor */ );
+		motor_on = CLEAR_LINE /* motor */;
+		floppy_mon_w(img, motor_on);
 	}
 	break;
 

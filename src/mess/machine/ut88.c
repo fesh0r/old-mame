@@ -22,8 +22,8 @@ DRIVER_INIT(ut88)
 	/* set initialy ROM to be visible on first bank */
 	UINT8 *RAM = memory_region(machine, "maincpu");
 	memset(RAM,0x0000,0x0800); // make frist page empty by default
-  	memory_configure_bank(machine, 1, 1, 2, RAM, 0x0000);
-	memory_configure_bank(machine, 1, 0, 2, RAM, 0xf800);
+  	memory_configure_bank(machine, "bank1", 1, 2, RAM, 0x0000);
+	memory_configure_bank(machine, "bank1", 0, 2, RAM, 0xf800);
 }
 
 static READ8_DEVICE_HANDLER (ut88_8255_portb_r )
@@ -62,13 +62,13 @@ I8255A_INTERFACE( ut88_ppi8255_interface )
 
 static TIMER_CALLBACK( ut88_reset )
 {
-	memory_set_bank(machine, 1, 0);
+	memory_set_bank(machine, "bank1", 0);
 }
 
 MACHINE_RESET( ut88 )
 {
 	timer_set(machine, ATTOTIME_IN_USEC(10), NULL, 0, ut88_reset);
-	memory_set_bank(machine, 1, 1);
+	memory_set_bank(machine, "bank1", 1);
 	ut88_keyboard_mask = 0;
 }
 
@@ -139,10 +139,12 @@ WRITE8_HANDLER( ut88mini_write_led )
 }
 
 static const UINT8 hex_to_7seg[16] =
-	{0x3F, 0x06, 0x5B, 0x4F,
+{
+	 0x3F, 0x06, 0x5B, 0x4F,
 	 0x66, 0x6D, 0x7D, 0x07,
 	 0x7F, 0x6F, 0x77, 0x7c,
-	 0x39, 0x5e, 0x79, 0x71 };
+	 0x39, 0x5e, 0x79, 0x71
+};
 
 static TIMER_CALLBACK( update_display )
 {

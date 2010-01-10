@@ -98,20 +98,20 @@ static READ8_HANDLER( bbc_fe_r )
 static ADDRESS_MAP_START( bbca_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH											/*  Hardware marked with a 1 is not present in a Model A        */
 
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK(1)		, bbc_memorya1_w      	)	/*    0000-3fff                 Regular Ram                     */
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK(3)		, bbc_memorya1_w      	)	/*    4000-7fff                 Repeat of the Regular Ram       */
+	AM_RANGE(0x0000, 0x3fff) AM_READ_BANK("bank1") AM_WRITE( bbc_memorya1_w      	)	/*    0000-3fff                 Regular Ram                     */
+	AM_RANGE(0x4000, 0x7fff) AM_READ_BANK("bank3") AM_WRITE( bbc_memorya1_w      	)	/*    4000-7fff                 Repeat of the Regular Ram       */
 
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK(4)		, SMH_ROM      	)	/*    8000-bfff                 Paged ROM                       */
+	AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank4")	/*    8000-bfff                 Paged ROM                       */
 
-	AM_RANGE(0xc000, 0xfbff) AM_READWRITE(SMH_BANK(7)    	, SMH_ROM      	)	/*    c000-fbff                 OS ROM                          */
+	AM_RANGE(0xc000, 0xfbff) AM_READ_BANK("bank7")  /*    c000-fbff                 OS ROM                          */
 
 	AM_RANGE(0xfc00, 0xfdff) AM_NOP	/*    fc00-fdff                 FRED & JIM Pages                */
 
 																					/*    fe00-feff                 Shiela Address Page             */
-	AM_RANGE(0xfe00, 0xfe07) AM_READWRITE(BBC_6845_r    	, BBC_6845_w		)	/*    fe00-fe07  6845 CRTA      Video controller                */
+	AM_RANGE(0xfe00, 0xfe07) AM_READWRITE(bbc_6845_r    	, bbc_6845_w		)	/*    fe00-fe07  6845 CRTA      Video controller                */
 	AM_RANGE(0xfe08, 0xfe08) AM_MIRROR(0x06) AM_DEVREADWRITE("acia6850", acia6850_stat_r, acia6850_ctrl_w)
 	AM_RANGE(0xfe09, 0xfe09) AM_MIRROR(0x06) AM_DEVREADWRITE("acia6850", acia6850_data_r, acia6850_data_w)
-	AM_RANGE(0xfe10, 0xfe17) AM_READWRITE(bbc_fe_r		, BBC_SerialULA_w   )	/*    fe10-fe17  Serial ULA     Serial system chip              */
+	AM_RANGE(0xfe10, 0xfe17) AM_READWRITE(bbc_fe_r		, bbc_SerialULA_w   )	/*    fe10-fe17  Serial ULA     Serial system chip              */
 	AM_RANGE(0xfe18, 0xfe1f) AM_NOP													/*    fe18-fe1f  INTOFF/STATID  1 ECONET Interrupt Off / ID No. */
 	AM_RANGE(0xfe20, 0xfe2f) AM_WRITE	 (              	  bbc_videoULA_w    )	/* R: fe20-fe2f  INTON          1 ECONET Interrupt On           */
 																					/* W: fe20-fe2f  Video ULA      Video system chip               */
@@ -131,21 +131,21 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( bbcb_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK(1)		, bbc_memorya1_w      	)	/*    0000-3fff                 Regular Ram                     */
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK(3)		, bbc_memoryb3_w      	)	/*    4000-7fff                 Repeat of the Regular Ram       */
+	AM_RANGE(0x0000, 0x3fff) AM_READ_BANK("bank1") AM_WRITE( bbc_memorya1_w      	)	/*    0000-3fff                 Regular Ram                     */
+	AM_RANGE(0x4000, 0x7fff) AM_READ_BANK("bank3") AM_WRITE( bbc_memoryb3_w      	)	/*    4000-7fff                 Repeat of the Regular Ram       */
 
 
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK(4)    	, bbc_memoryb4_w      	)	/*    8000-bfff                 Paged ROM                       */
+	AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank4") AM_WRITE( bbc_memoryb4_w      	)	/*    8000-bfff                 Paged ROM                       */
 
-	AM_RANGE(0xc000, 0xfbff) AM_READWRITE(SMH_BANK(7)    	, SMH_ROM       	)	/*    c000-fbff                 OS ROM                          */
+	AM_RANGE(0xc000, 0xfbff) AM_READ_BANK("bank7") /*    c000-fbff                 OS ROM                          */
 
 	AM_RANGE(0xfc00, 0xfdff) AM_READWRITE(bbc_opus_read     , bbc_opus_write	)	/*    fc00-fdff                 OPUS Disc Controller            */
 
 																					/*    fe00-feff                 Shiela Address Page             */
-	AM_RANGE(0xfe00, 0xfe07) AM_READWRITE(BBC_6845_r    	, BBC_6845_w     	)	/*    fe00-fe07  6845 CRTC      Video controller                */
+	AM_RANGE(0xfe00, 0xfe07) AM_READWRITE(bbc_6845_r    	, bbc_6845_w     	)	/*    fe00-fe07  6845 CRTC      Video controller                */
 	AM_RANGE(0xfe08, 0xfe08) AM_MIRROR(0x06) AM_DEVREADWRITE("acia6850", acia6850_stat_r, acia6850_ctrl_w)
 	AM_RANGE(0xfe09, 0xfe09) AM_MIRROR(0x06) AM_DEVREADWRITE("acia6850", acia6850_data_r, acia6850_data_w)
-	AM_RANGE(0xfe10, 0xfe17) AM_READWRITE(bbc_fe_r		, BBC_SerialULA_w   )	/*    fe10-fe17  Serial ULA     Serial system chip              */
+	AM_RANGE(0xfe10, 0xfe17) AM_READWRITE(bbc_fe_r		, bbc_SerialULA_w   )	/*    fe10-fe17  Serial ULA     Serial system chip              */
 	AM_RANGE(0xfe18, 0xfe1f) AM_NOP													/*    fe18-fe1f  INTOFF/STATID  ECONET Interrupt Off / ID No.   */
 	AM_RANGE(0xfe20, 0xfe2f) AM_WRITE    (              	  bbc_videoULA_w    )	/* R: fe20-fe2f  INTON          ECONET Interrupt On             */
 																					/* W: fe20-fe2f  Video ULA      Video system chip               */
@@ -165,22 +165,22 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( bbcbp_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 
-	AM_RANGE(0x0000, 0x2fff) AM_READWRITE(SMH_BANK(1)		, bbc_memorybp1_w		)	/*    0000-2fff                 Regular Ram                     */
+	AM_RANGE(0x0000, 0x2fff) AM_READ_BANK("bank1") AM_WRITE(  bbc_memorybp1_w		)	/*    0000-2fff                 Regular Ram                     */
 
-	AM_RANGE(0x3000, 0x7fff) AM_READWRITE(SMH_BANK(2)		, bbc_memorybp2_w		)	/*    3000-7fff                 Video/Shadow Ram                */
+	AM_RANGE(0x3000, 0x7fff) AM_READ_BANK("bank2") AM_WRITE( bbc_memorybp2_w		)	/*    3000-7fff                 Video/Shadow Ram                */
 
-	AM_RANGE(0x8000, 0xafff) AM_READWRITE(SMH_BANK(4)		, bbc_memorybp4_w		)	/*    8000-afff                 Paged ROM or 12K of RAM         */
-	AM_RANGE(0xb000, 0xbfff) AM_READWRITE(SMH_BANK(6)		, SMH_ROM			)	/*    b000-bfff                 Rest of paged ROM area          */
+	AM_RANGE(0x8000, 0xafff) AM_READ_BANK("bank4") AM_WRITE( bbc_memorybp4_w		)	/*    8000-afff                 Paged ROM or 12K of RAM         */
+	AM_RANGE(0xb000, 0xbfff) AM_READ_BANK("bank6") 	/*    b000-bfff                 Rest of paged ROM area          */
 
-	AM_RANGE(0xc000, 0xfbff) AM_READWRITE(SMH_BANK(7)		, SMH_ROM			)	/*    c000-fbff                 OS ROM                          */
+	AM_RANGE(0xc000, 0xfbff) AM_READ_BANK("bank7")  /*    c000-fbff                 OS ROM                          */
 
 	AM_RANGE(0xfc00, 0xfdff) AM_NOP	/*    fc00-fdff                 FRED & JIM Pages                */
 
 																					/*    fe00-feff                 Shiela Address Page             */
-	AM_RANGE(0xfe00, 0xfe07) AM_READWRITE(BBC_6845_r		, BBC_6845_w		)	/*    fe00-fe07  6845 CRTC      Video controller                */
+	AM_RANGE(0xfe00, 0xfe07) AM_READWRITE(bbc_6845_r		, bbc_6845_w		)	/*    fe00-fe07  6845 CRTC      Video controller                */
 	AM_RANGE(0xfe08, 0xfe08) AM_MIRROR(0x06) AM_DEVREADWRITE("acia6850", acia6850_stat_r, acia6850_ctrl_w)
 	AM_RANGE(0xfe09, 0xfe09) AM_MIRROR(0x06) AM_DEVREADWRITE("acia6850", acia6850_data_r, acia6850_data_w)
-	AM_RANGE(0xfe10, 0xfe17) AM_READWRITE(bbc_fe_r		, BBC_SerialULA_w   )	/*    fe10-fe17  Serial ULA     Serial system chip              */
+	AM_RANGE(0xfe10, 0xfe17) AM_READWRITE(bbc_fe_r		, bbc_SerialULA_w   )	/*    fe10-fe17  Serial ULA     Serial system chip              */
 	AM_RANGE(0xfe18, 0xfe1f) AM_NOP													/*    fe18-fe1f  INTOFF/STATID  ECONET Interrupt Off / ID No.   */
 	AM_RANGE(0xfe20, 0xfe2f) AM_WRITE	 (bbc_videoULA_w						)	/* R: fe20-fe2f  INTON          ECONET Interrupt On             */
 																					/* W: fe20-fe2f  Video ULA      Video system chip               */
@@ -201,22 +201,22 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( bbcbp128_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 
-	AM_RANGE(0x0000, 0x2fff) AM_READWRITE(SMH_BANK(1)		, bbc_memorybp1_w		)	/*    0000-2fff                 Regular Ram                     */
+	AM_RANGE(0x0000, 0x2fff) AM_READ_BANK("bank1") AM_WRITE( bbc_memorybp1_w		)	/*    0000-2fff                 Regular Ram                     */
 
-	AM_RANGE(0x3000, 0x7fff) AM_READWRITE(SMH_BANK(2)		, bbc_memorybp2_w		)	/*    3000-7fff                 Video/Shadow Ram                */
+	AM_RANGE(0x3000, 0x7fff) AM_READ_BANK("bank2") AM_WRITE( bbc_memorybp2_w		)	/*    3000-7fff                 Video/Shadow Ram                */
 
-	AM_RANGE(0x8000, 0xafff) AM_READWRITE(SMH_BANK(4)		, bbc_memorybp4_128_w	)	/*    8000-afff                 Paged ROM or 12K of RAM         */
-	AM_RANGE(0xb000, 0xbfff) AM_READWRITE(SMH_BANK(6)		, bbc_memorybp6_128_w	)	/*    b000-bfff                 Rest of paged ROM area          */
+	AM_RANGE(0x8000, 0xafff) AM_READ_BANK("bank4") AM_WRITE( bbc_memorybp4_128_w	)	/*    8000-afff                 Paged ROM or 12K of RAM         */
+	AM_RANGE(0xb000, 0xbfff) AM_READ_BANK("bank6") AM_WRITE( bbc_memorybp6_128_w	)	/*    b000-bfff                 Rest of paged ROM area          */
 
-	AM_RANGE(0xc000, 0xfbff) AM_READWRITE(SMH_BANK(7)		, SMH_ROM			)	/*    c000-fbff                 OS ROM                          */
+	AM_RANGE(0xc000, 0xfbff) AM_READ_BANK("bank7") 	/*    c000-fbff                 OS ROM                          */
 
 	AM_RANGE(0xfc00, 0xfdff) AM_NOP	/*    fc00-fdff                 FRED & JIM Pages                */
 
 																					/*    fe00-feff                 Shiela Address Page             */
-	AM_RANGE(0xfe00, 0xfe07) AM_READWRITE(BBC_6845_r		, BBC_6845_w		)	/*    fe00-fe07  6845 CRTC      Video controller                */
+	AM_RANGE(0xfe00, 0xfe07) AM_READWRITE(bbc_6845_r		, bbc_6845_w		)	/*    fe00-fe07  6845 CRTC      Video controller                */
 	AM_RANGE(0xfe08, 0xfe08) AM_MIRROR(0x06) AM_DEVREADWRITE("acia6850", acia6850_stat_r, acia6850_ctrl_w)
 	AM_RANGE(0xfe09, 0xfe09) AM_MIRROR(0x06) AM_DEVREADWRITE("acia6850", acia6850_data_r, acia6850_data_w)
-	AM_RANGE(0xfe10, 0xfe17) AM_READWRITE(bbc_fe_r		, BBC_SerialULA_w   )	/*    fe10-fe17  Serial ULA     Serial system chip              */
+	AM_RANGE(0xfe10, 0xfe17) AM_READWRITE(bbc_fe_r		, bbc_SerialULA_w   )	/*    fe10-fe17  Serial ULA     Serial system chip              */
 	AM_RANGE(0xfe10, 0xfe17) AM_NOP													/*    fe10-fe17  Serial ULA     Serial system chip              */
 	AM_RANGE(0xfe18, 0xfe1f) AM_NOP													/*    fe18-fe1f  INTOFF/STATID  ECONET Interrupt Off / ID No.   */
 	AM_RANGE(0xfe20, 0xfe2f) AM_WRITE	 (bbc_videoULA_w						)	/* R: fe20-fe2f  INTON          ECONET Interrupt On             */
@@ -261,24 +261,24 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(bbcm_mem, ADDRESS_SPACE_PROGRAM, 8)
 
-	AM_RANGE(0x0000, 0x2fff) AM_READWRITE(SMH_BANK(1)		, bbc_memorybm1_w		)	/*    0000-2fff                 Regular Ram                     */
+	AM_RANGE(0x0000, 0x2fff) AM_READ_BANK("bank1") AM_WRITE( bbc_memorybm1_w		)	/*    0000-2fff                 Regular Ram                     */
 
-	AM_RANGE(0x3000, 0x7fff) AM_READWRITE(SMH_BANK(2)		, bbc_memorybm2_w		)	/*    3000-7fff                 Video/Shadow Ram                */
+	AM_RANGE(0x3000, 0x7fff) AM_READ_BANK("bank2") AM_WRITE( bbc_memorybm2_w		)	/*    3000-7fff                 Video/Shadow Ram                */
 
-	AM_RANGE(0x8000, 0x8fff) AM_READWRITE(SMH_BANK(4)		, bbc_memorybm4_w		)	/*    8000-8fff                 Paged ROM/RAM or 4K of RAM ANDY */
-	AM_RANGE(0x9000, 0xbfff) AM_READWRITE(SMH_BANK(5)		, bbc_memorybm5_w		)	/*    9000-bfff                 Rest of paged ROM/RAM area      */
+	AM_RANGE(0x8000, 0x8fff) AM_READ_BANK("bank4") AM_WRITE( bbc_memorybm4_w		)	/*    8000-8fff                 Paged ROM/RAM or 4K of RAM ANDY */
+	AM_RANGE(0x9000, 0xbfff) AM_READ_BANK("bank5") AM_WRITE( bbc_memorybm5_w		)	/*    9000-bfff                 Rest of paged ROM/RAM area      */
 
-	AM_RANGE(0xc000, 0xdfff) AM_READWRITE(SMH_BANK(7)		, bbc_memorybm7_w		)	/*    c000-dfff                 OS ROM or 8K of RAM       HAZEL */
+	AM_RANGE(0xc000, 0xdfff) AM_READ_BANK("bank7") AM_WRITE( bbc_memorybm7_w		)	/*    c000-dfff                 OS ROM or 8K of RAM       HAZEL */
 	AM_RANGE(0xe000, 0xfbff) AM_ROM AM_REGION("user1", 0x42000)				/*    e000-fbff                 OS ROM                          */
 
-	AM_RANGE(0xfc00, 0xfeff) AM_READWRITE(SMH_BANK(8)			, bbcm_w			)   /*    this is now processed directly because it can be ROM or hardware */
+	AM_RANGE(0xfc00, 0xfeff) AM_READ_BANK("bank8") AM_WRITE(  bbcm_w			)   /*    this is now processed directly because it can be ROM or hardware */
 
 	//AM_RANGE(0xfc00, 0xfeff) AM_READWRITE(bbcm_r          , bbcm_w            )   /*    this is now processed directly because it can be ROM or hardware */
 	/*
     AM_RANGE(0xfc00, 0xfdff) AM_READWRITE(SMH_BANK(2)        , SMH_ROM          )       fc00-fdff                   FRED & JIM Pages
 
                                                                                           fe00-feff                 Shiela Address Page
-    AM_RANGE(0xfe00, 0xfe07) AM_READWRITE(BBC_6845_r        , BBC_6845_w        )         fe00-fe07  6845 CRTC      Video controller
+    AM_RANGE(0xfe00, 0xfe07) AM_READWRITE(bbc_6845_r        , bbc_6845_w        )         fe00-fe07  6845 CRTC      Video controller
     AM_RANGE(0xfe08, 0xfe08) AM_MIRROR(0x06) AM_DEVREADWRITE("acia6850", acia6850_stat_r, acia6850_ctrl_w)
     AM_RANGE(0xfe09, 0xfe09) AM_MIRROR(0x06) AM_DEVREADWRITE("acia6850", acia6850_data_r, acia6850_data_w)
     AM_RANGE(0xfe10, 0xfe17) AM_NOP                                                       fe10-fe17  Serial ULA     Serial system chip
@@ -558,6 +558,9 @@ ROM_START(bbcb)
 
 	ROM_REGION(0x80000, "disks", ROMREGION_ERASEFF) /* Opus Ram Disc Space */
 
+	ROM_REGION(0x2000, "torch", 0)
+	ROM_LOAD("torchz80_094.bin", 0x0000, 0x2000, CRC(49989bd4) SHA1(62b57c858a3baa4ff943c31f77d331c414772a61))
+	ROM_LOAD("torchz80_102.bin", 0x0000, 0x2000, CRC(2eb40a21) SHA1(e6ee738e5f2f8556002b79d18caa8ef21f14e08d))
 ROM_END
 
 #ifdef UNUSED_DEFINITION
@@ -708,8 +711,8 @@ ROM_END
 static INTERRUPT_GEN( bbcb_vsync )
 {
 	const device_config *via_0 = devtag_get_device(device->machine, "via6522_0");
-	via_ca1_w(via_0, 0,1);
-	via_ca1_w(via_0, 0,0);
+	via_ca1_w(via_0, 1);
+	via_ca1_w(via_0, 0);
 	bbc_frameclock();
 }
 
@@ -732,7 +735,7 @@ static const cassette_config bbc_cassette_config =
 
 static WRITE_LINE_DEVICE_HANDLER(bbcb_ack_w)
 {
-	via_ca1_w(device, 0, !state); /* ack seems to be inverted? */
+	via_ca1_w(device, !state); /* ack seems to be inverted? */
 }
 
 static const centronics_interface bbcb_centronics_config =
@@ -835,7 +838,7 @@ static MACHINE_DRIVER_START( bbca )
 	MDRV_ACIA6850_ADD("acia6850", bbc_acia6850_interface)
 
 	/* devices */
-	MDRV_UPD7002_ADD("upd7002",BBC_uPD7002)
+	MDRV_UPD7002_ADD("upd7002", bbc_uPD7002)
 	MDRV_VIA6522_ADD("via6522_0", 1000000, bbcb_system_via)
 
 	MDRV_I8271_ADD("i8271", bbc_i8271_interface)
@@ -933,7 +936,7 @@ static MACHINE_DRIVER_START( bbcm )
 	MDRV_ACIA6850_ADD("acia6850", bbc_acia6850_interface)
 
 	/* devices */
-	MDRV_UPD7002_ADD("upd7002",BBC_uPD7002)
+	MDRV_UPD7002_ADD("upd7002", bbc_uPD7002)
 	MDRV_VIA6522_ADD("via6522_0", 1000000, bbcb_system_via)
 	MDRV_VIA6522_ADD("via6522_1", 1000000, bbcb_user_via)
 
@@ -943,9 +946,9 @@ static MACHINE_DRIVER_START( bbcm )
 	MDRV_IMPORT_FROM(bbc_cartslot)
 MACHINE_DRIVER_END
 
-/*     YEAR  NAME      PARENT    COMPAT MACHINE   INPUT  INIT      CONFIG   COMPANY  FULLNAME */
-COMP ( 1981, bbca,	   0,		 0,		bbca,     bbca,   bbc,     0,		"Acorn","BBC Micro Model A" , 0)
-COMP ( 1981, bbcb,     bbca,	 0,		bbcb,     bbca,   bbc,	   0,		"Acorn","BBC Micro Model B" , 0)
-COMP ( 1985, bbcbp,    bbca,	 0,		bbcbp,    bbca,   bbc,     0,		"Acorn","BBC Micro Model B+ 64K" , 0)
-COMP ( 1985, bbcbp128, bbca,     0,		bbcbp128, bbca,   bbc,     0,		"Acorn","BBC Micro Model B+ 128k" , 0)
-COMP ( 198?, bbcm,     bbca,     0,		bbcm,     bbca,   bbcm,    0,		"Acorn","BBC Master" , 0)
+/*     YEAR  NAME      PARENT    COMPAT MACHINE   INPUT  INIT      COMPANY  FULLNAME */
+COMP ( 1981, bbca,	   0,		 0,		bbca,     bbca,   bbc,     "Acorn","BBC Micro Model A" , 0)
+COMP ( 1981, bbcb,     bbca,	 0,		bbcb,     bbca,   bbc,	   "Acorn","BBC Micro Model B" , 0)
+COMP ( 1985, bbcbp,    bbca,	 0,		bbcbp,    bbca,   bbc,     "Acorn","BBC Micro Model B+ 64K" , 0)
+COMP ( 1985, bbcbp128, bbca,     0,		bbcbp128, bbca,   bbc,     "Acorn","BBC Micro Model B+ 128k" , 0)
+COMP ( 198?, bbcm,     bbca,     0,		bbcm,     bbca,   bbcm,    "Acorn","BBC Master" , 0)

@@ -13,14 +13,12 @@
 
     TODO:
 
-    - PROF<>GRIP interface fails if IBFA is cleared after reading PA
+    - prof80 crashes because of no video
+    - GRIP does not ack display bytes sent by PROF
     - keyboard
     - NE555 timeout is 10x too high
-    - GRIP does not send keys back to PROF-80
+    - convert GRIP models to devices
     - grip31 does not work
-    - PROF-80 RAM banking
-    - PROF-80 floppy format
-    - GRIP model selection
     - UNIO card (Z80-STI, Z80-SIO, 2x centronics)
     - GRIP-COLOR (192kB color RAM)
     - GRIP-5 (HD6345, 256KB RAM)
@@ -33,20 +31,16 @@
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
 #include "video/mc6845.h"
+#include "formats/basicdsk.h"
+#include "devices/flopdrv.h"
+#include "devices/messram.h"
 #include "machine/i8255a.h"
 #include "machine/upd765.h"
 #include "machine/upd1990a.h"
 #include "machine/z80sti.h"
 #include "machine/ctronics.h"
 #include "machine/rescap.h"
-#include "devices/flopdrv.h"
-#include "formats/basicdsk.h"
-#include "devices/messram.h"
-
-INLINE const device_config *get_floppy_image(running_machine *machine, int drive)
-{
-	return floppy_get_device(machine, drive);
-}
+#include "sound/speaker.h"
 
 /* Keyboard HACK */
 
@@ -122,7 +116,7 @@ static void prof80_keyboard_scan(running_machine *machine)
 			if (!BIT(data, col))
 			{
 				/* latch key data */
-				keydata = ~prof80_keycodes[table][row][col];
+				keydata = prof80_keycodes[table][row][col];
 
 				if (state->keydata != keydata)
 				{
@@ -140,7 +134,7 @@ static void prof80_keyboard_scan(running_machine *machine)
 	state->keydata = keydata;
 }
 
-static TIMER_DEVICE_CALLBACK( prof80_keyboard_tick )
+static TIMER_DEVICE_CALLBACK( keyboard_tick )
 {
 	prof80_state *state = timer->machine->driver_data;
 
@@ -149,40 +143,50 @@ static TIMER_DEVICE_CALLBACK( prof80_keyboard_tick )
 
 /* PROF-80 */
 
+#define BLK_RAM1	0x0b
+#define BLK_RAM2	0x0a
+#define BLK_RAM3	0x03
+#define BLK_RAM4	0x02
+#define BLK_EPROM	0x00
+
 static void prof80_bankswitch(running_machine *machine)
 {
 	prof80_state *state = machine->driver_data;
 	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
+	UINT8 *ram = messram_get_ptr(devtag_get_device(machine, "messram"));
+	UINT8 *rom = memory_region(machine, Z80_TAG);
 	int bank;
 
 	for (bank = 0; bank < 16; bank++)
 	{
 		UINT16 start_addr = bank * 0x1000;
 		UINT16 end_addr = start_addr + 0xfff;
-		int block = state->mme ? (~state->mmu[bank] & 0x0f) : 15;
-
-		memory_set_bank(machine, bank + 1, block);
+		int block = state->init ? state->mmu[bank] : BLK_EPROM;
 
 		switch (block)
 		{
-		case 15:
-		case 14:
-		case 7:
-		case 6:
-			/* EPROM */
-			memory_install_readwrite8_handler(program, start_addr, end_addr, 0, 0, SMH_BANK(bank + 1), SMH_UNMAP);
+		case BLK_RAM1:
+			memory_install_ram(program, start_addr, end_addr, 0, 0, ram + ((bank % 8) * 0x1000));
 			break;
 
-		case 13:
-		case 12:
-		case 5:
-		case 4:
-			/* RAM */
-			memory_install_readwrite8_handler(program, start_addr, end_addr, 0, 0, SMH_BANK(bank + 1), SMH_BANK(bank + 1));
+		case BLK_RAM2:
+			memory_install_ram(program, start_addr, end_addr, 0, 0, ram + 0x8000 + ((bank % 8) * 0x1000));
 			break;
 
+		case BLK_RAM3:
+			memory_install_ram(program, start_addr, end_addr, 0, 0, ram + 0x10000 + ((bank % 8) * 0x1000));
+			break;
+
+		case BLK_RAM4:
+			memory_install_ram(program, start_addr, end_addr, 0, 0, ram + 0x18000 + ((bank % 8) * 0x1000));
+			break;
+		
+		case BLK_EPROM:	
+			memory_install_rom(program, start_addr, end_addr, 0, 0, rom + ((bank % 2) * 0x1000));
+			break;
+		
 		default:
-			memory_install_readwrite8_handler(program, start_addr, end_addr, 0, 0, SMH_BANK(bank + 1), SMH_UNMAP);
+			memory_unmap_readwrite(program, start_addr, end_addr, 0, 0);
 		}
 
 		//logerror("Segment %u address %04x-%04x block %u\n", bank, start_addr, end_addr, block);
@@ -193,10 +197,10 @@ static TIMER_CALLBACK( floppy_motor_off_tick )
 {
 	prof80_state *state = machine->driver_data;
 
-	floppy_drive_set_motor_state(get_floppy_image(machine, 0), 0);
-	floppy_drive_set_motor_state(get_floppy_image(machine, 1), 0);
-	floppy_drive_set_ready_state(get_floppy_image(machine, 0), 0, 1);
-	floppy_drive_set_ready_state(get_floppy_image(machine, 1), 0, 1);
+	floppy_mon_w(floppy_get_device(machine, 0), ASSERT_LINE);
+	floppy_mon_w(floppy_get_device(machine, 1), ASSERT_LINE);
+	floppy_drive_set_ready_state(floppy_get_device(machine, 0), 0, 1);
+	floppy_drive_set_ready_state(floppy_get_device(machine, 1), 0, 1);
 
 	state->motor = 0;
 }
@@ -208,16 +212,19 @@ static void ls259_w(running_machine *machine, int fa, int sa, int fb, int sb)
 	switch (sa)
 	{
 	case 0: /* C0/TDI */
-		upd1990a_data_w(state->upd1990a, fa);
+		upd1990a_data_in_w(state->upd1990a, fa);
 		upd1990a_c0_w(state->upd1990a, fa);
+		state->c0 = fa;
 		break;
 
 	case 1: /* C1 */
 		upd1990a_c1_w(state->upd1990a, fa);
+		state->c1 = fa;
 		break;
 
 	case 2: /* C2 */
 		upd1990a_c2_w(state->upd1990a, fa);
+		state->c2 = fa;
 		break;
 
 	case 3:	/* READY */
@@ -242,10 +249,10 @@ static void ls259_w(running_machine *machine, int fa, int sa, int fb, int sb)
 		else
 		{
 			/* turn on floppy motor */
-			floppy_drive_set_motor_state(get_floppy_image(machine, 0), 1);
-			floppy_drive_set_motor_state(get_floppy_image(machine, 1), 1);
-			floppy_drive_set_ready_state(get_floppy_image(machine, 0), 1, 1);
-			floppy_drive_set_ready_state(get_floppy_image(machine, 1), 1, 1);
+			floppy_mon_w(floppy_get_device(machine, 0), CLEAR_LINE);
+			floppy_mon_w(floppy_get_device(machine, 1), CLEAR_LINE);
+			floppy_drive_set_ready_state(floppy_get_device(machine, 0), 1, 1);
+			floppy_drive_set_ready_state(floppy_get_device(machine, 1), 1, 1);
 
 			state->motor = 1;
 
@@ -289,7 +296,9 @@ static void ls259_w(running_machine *machine, int fa, int sa, int fb, int sb)
 		break;
 
 	case 7: /* MME */
-		state->mme = fb;
+		//logerror("INIT %u\n", fb);
+		state->init = fb;
+		prof80_bankswitch(machine);
 		break;
 	}
 }
@@ -360,11 +369,43 @@ static READ8_HANDLER( status2_r )
     */
 
 	prof80_state *state = space->machine->driver_data;
+	UINT8 data = 0;
+	int js4 = 0, js5 = 0;
 
-	return (!state->rtc_data << 7) | !state->motor;
+	/* floppy motor */
+	data |= !state->motor;
+
+	/* JS4 */
+	switch (input_port_read(space->machine, "J4"))
+	{
+	case 0: js4 = 0; break;
+	case 1: js4 = 1; break;
+	case 2: js4 = !state->c0; break;
+	case 3: js4 = !state->c1; break;
+	case 4: js4 = !state->c2; break;
+	}
+
+	data |= js4 << 4;
+
+	/* JS5 */
+	switch (input_port_read(space->machine, "J5"))
+	{
+	case 0: js5 = 0; break;
+	case 1: js5 = 1; break;
+	case 2: js5 = !state->c0; break;
+	case 3: js5 = !state->c1; break;
+	case 4: js5 = !state->c2; break;
+	}
+
+	data |= js5 << 4;
+
+	/* RTC data */
+	data |= !upd1990a_data_out_r(state->upd1990a) << 7;
+
+	return data;
 }
 
-static WRITE8_HANDLER( mmu_w )
+static WRITE8_HANDLER( par_w )
 {
 	prof80_state *state = space->machine->driver_data;
 
@@ -381,12 +422,16 @@ static READ8_HANDLER( gripc_r )
 {
 	prof80_state *state = space->machine->driver_data;
 
+	//logerror("GRIP status read %02x\n", state->gripc);
+
 	return state->gripc;
 }
 
 static READ8_HANDLER( gripd_r )
 {
 	prof80_state *state = space->machine->driver_data;
+
+	//logerror("GRIP data read %02x\n", state->gripd);
 
 	/* trigger GRIP 8255 port C bit 6 (_ACKA) */
 	i8255a_pc6_w(state->ppi8255, 0);
@@ -400,6 +445,7 @@ static WRITE8_HANDLER( gripd_w )
 	prof80_state *state = space->machine->driver_data;
 
 	state->gripd = data;
+	//logerror("GRIP data write %02x\n", data);
 
 	/* trigger GRIP 8255 port C bit 4 (_STBA) */
 	i8255a_pc4_w(state->ppi8255, 0);
@@ -407,6 +453,20 @@ static WRITE8_HANDLER( gripd_w )
 }
 
 /* GRIP */
+
+static WRITE8_HANDLER( vol0_w )
+{
+	prof80_state *state = space->machine->driver_data;
+
+	state->vol0 = BIT(data, 7);
+}
+
+static WRITE8_HANDLER( vol1_w )
+{
+	prof80_state *state = space->machine->driver_data;
+
+	state->vol1 = BIT(data, 7);
+}
 
 static WRITE8_HANDLER( flash_w )
 {
@@ -421,7 +481,7 @@ static WRITE8_HANDLER( page_w )
 
 	state->page = BIT(data, 7);
 
-	memory_set_bank(space->machine, 17, state->page);
+	memory_set_bank(space->machine, "videoram", state->page);
 }
 
 static READ8_HANDLER( stat_r )
@@ -442,8 +502,40 @@ static READ8_HANDLER( stat_r )
     */
 
 	prof80_state *state = space->machine->driver_data;
+	UINT8 data = 0;
+	int js0 = 0, js1 = 0;
 
-	return (state->lps << 7) | (centronics_fault_r(state->centronics) << 6);
+	/* JS0 */
+	switch (input_port_read(space->machine, "GRIP-J3A"))
+	{
+	case 0: js0 = 0; break;
+	case 1: js0 = 1; break;
+	case 2: js0 = state->vol0; break;
+	case 3: js0 = state->vol1; break;
+	case 4: js0 = state->page; break;
+	}
+
+	data |= js0 << 4;
+
+	/* JS1 */
+	switch (input_port_read(space->machine, "GRIP-J3B"))
+	{
+	case 0: js1 = 0; break;
+	case 1: js1 = 1; break;
+	case 2: js1 = state->vol0; break;
+	case 3: js1 = state->vol1; break;
+	case 4: js1 = state->page; break;
+	}
+
+	data |= js1 << 5;
+
+	/* centronics fault */
+	data |= centronics_fault_r(state->centronics) << 6;
+
+	/* light pen strobe */
+	data |= state->lps << 7;
+
+	return data;
 }
 
 static READ8_HANDLER( lrs_r )
@@ -506,25 +598,27 @@ static WRITE8_HANDLER( unio_ctrl_w )
 /* Memory Maps */
 
 static ADDRESS_MAP_START( prof80_mem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0x0fff) AM_RAMBANK(1)
-    AM_RANGE(0x1000, 0x1fff) AM_RAMBANK(2)
-    AM_RANGE(0x2000, 0x2fff) AM_RAMBANK(3)
-    AM_RANGE(0x3000, 0x3fff) AM_RAMBANK(4)
-    AM_RANGE(0x4000, 0x4fff) AM_RAMBANK(5)
-    AM_RANGE(0x5000, 0x5fff) AM_RAMBANK(6)
-    AM_RANGE(0x6000, 0x6fff) AM_RAMBANK(7)
-    AM_RANGE(0x7000, 0x7fff) AM_RAMBANK(8)
-    AM_RANGE(0x8000, 0x8fff) AM_RAMBANK(9)
-    AM_RANGE(0x9000, 0x9fff) AM_RAMBANK(10)
-    AM_RANGE(0xa000, 0xafff) AM_RAMBANK(11)
-    AM_RANGE(0xb000, 0xbfff) AM_RAMBANK(12)
-    AM_RANGE(0xc000, 0xcfff) AM_RAMBANK(13)
-    AM_RANGE(0xd000, 0xdfff) AM_RAMBANK(14)
-    AM_RANGE(0xe000, 0xefff) AM_RAMBANK(15)
-    AM_RANGE(0xf000, 0xffff) AM_RAMBANK(16)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( prof80_io, ADDRESS_SPACE_IO, 8 )
+//  AM_RANGE(0x80, 0x8f) AM_MIRROR(0xff00) AM_DEVREADWRITE(UNIO_Z80STI_TAG, z80sti_r, z80sti_w)
+//  AM_RANGE(0x94, 0x95) AM_MIRROR(0xff00) AM_DEVREADWRITE(UNIO_Z80SIO_TAG, z80sio_d_r, z80sio_d_w)
+//  AM_RANGE(0x96, 0x97) AM_MIRROR(0xff00) AM_DEVREADWRITE(UNIO_Z80SIO_TAG, z80sio_c_r, z80sio_c_w)
+	AM_RANGE(0x9e, 0x9e) AM_MIRROR(0xff00) AM_WRITE(unio_ctrl_w)
+//  AM_RANGE(0x9c, 0x9c) AM_MIRROR(0xff00) AM_DEVWRITE(UNIO_CENTRONICS1_TAG, centronics_data_w)
+//  AM_RANGE(0x9d, 0x9d) AM_MIRROR(0xff00) AM_DEVWRITE(UNIO_CENTRONICS1_TAG, centronics_data_w)
+//	AM_RANGE(0xc0, 0xc0) AM_MIRROR(0xff00) AM_READ(gripc_r)
+//	AM_RANGE(0xc1, 0xc1) AM_MIRROR(0xff00) AM_READWRITE(gripd_r, gripd_w)
+	AM_RANGE(0xd8, 0xd8) AM_MIRROR(0xff00) AM_WRITE(flr_w)
+	AM_RANGE(0xda, 0xda) AM_MIRROR(0xff00) AM_READ(status_r)
+	AM_RANGE(0xdb, 0xdb) AM_MIRROR(0xff00) AM_READ(status2_r)
+	AM_RANGE(0xdc, 0xdc) AM_MIRROR(0xff00) AM_DEVREAD(UPD765_TAG, upd765_status_r)
+	AM_RANGE(0xdd, 0xdd) AM_MIRROR(0xff00) AM_DEVREADWRITE(UPD765_TAG, upd765_data_r, upd765_data_w)
+	AM_RANGE(0xde, 0xde) AM_MIRROR(0xff01) AM_MASK(0xff00) AM_WRITE(par_w)
+ADDRESS_MAP_END
+
+
+static ADDRESS_MAP_START( prof80_grip_io, ADDRESS_SPACE_IO, 8 )
 //  AM_RANGE(0x80, 0x8f) AM_MIRROR(0xff00) AM_DEVREADWRITE(UNIO_Z80STI_TAG, z80sti_r, z80sti_w)
 //  AM_RANGE(0x94, 0x95) AM_MIRROR(0xff00) AM_DEVREADWRITE(UNIO_Z80SIO_TAG, z80sio_d_r, z80sio_d_w)
 //  AM_RANGE(0x96, 0x97) AM_MIRROR(0xff00) AM_DEVREADWRITE(UNIO_Z80SIO_TAG, z80sio_c_r, z80sio_c_w)
@@ -538,33 +632,33 @@ static ADDRESS_MAP_START( prof80_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xdb, 0xdb) AM_MIRROR(0xff00) AM_READ(status2_r)
 	AM_RANGE(0xdc, 0xdc) AM_MIRROR(0xff00) AM_DEVREAD(UPD765_TAG, upd765_status_r)
 	AM_RANGE(0xdd, 0xdd) AM_MIRROR(0xff00) AM_DEVREADWRITE(UPD765_TAG, upd765_data_r, upd765_data_w)
-	AM_RANGE(0xde, 0xde) AM_MIRROR(0xff01) AM_MASK(0xff00) AM_WRITE(mmu_w)
+	AM_RANGE(0xde, 0xde) AM_MIRROR(0xff01) AM_MASK(0xff00) AM_WRITE(par_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( grip_mem, ADDRESS_SPACE_PROGRAM, 8 )
     AM_RANGE(0x0000, 0x3fff) AM_ROM
     AM_RANGE(0x4000, 0x47ff) AM_RAM
-    AM_RANGE(0x8000, 0xffff) AM_RAMBANK(17)
+    AM_RANGE(0x8000, 0xffff) AM_RAMBANK("videoram")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( grip_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(cxstb_r, cxstb_w)
 //  AM_RANGE(0x10, 0x10) AM_WRITE(ccon_w)
-//  AM_RANGE(0x11, 0x11) AM_WRITE(vol0_w)
+	AM_RANGE(0x11, 0x11) AM_WRITE(vol0_w)
 //  AM_RANGE(0x12, 0x12) AM_WRITE(rts_w)
 	AM_RANGE(0x13, 0x13) AM_WRITE(page_w)
 //  AM_RANGE(0x14, 0x14) AM_WRITE(cc1_w)
 //  AM_RANGE(0x15, 0x15) AM_WRITE(cc2_w)
 	AM_RANGE(0x16, 0x16) AM_WRITE(flash_w)
-//  AM_RANGE(0x17, 0x17) AM_WRITE(vol1_w)
+	AM_RANGE(0x17, 0x17) AM_WRITE(vol1_w)
 	AM_RANGE(0x20, 0x2f) AM_DEVREADWRITE(Z80STI_TAG, z80sti_r, z80sti_w)
 	AM_RANGE(0x30, 0x30) AM_READWRITE(lrs_r, lrs_w)
 	AM_RANGE(0x40, 0x40) AM_READ(stat_r)
 	AM_RANGE(0x50, 0x50) AM_DEVWRITE(MC6845_TAG, mc6845_address_w)
 	AM_RANGE(0x52, 0x52) AM_DEVWRITE(MC6845_TAG, mc6845_register_w)
 	AM_RANGE(0x53, 0x53) AM_DEVREAD(MC6845_TAG, mc6845_register_r)
-	AM_RANGE(0x60, 0x60) AM_DEVWRITE("centronics", centronics_data_w)
+	AM_RANGE(0x60, 0x60) AM_DEVWRITE(CENTRONICS_TAG, centronics_data_w)
 	AM_RANGE(0x70, 0x73) AM_DEVREADWRITE(I8255A_TAG, i8255a_r, i8255a_w)
 //  AM_RANGE(0x80, 0x80) AM_WRITE(bl2out_w)
 //  AM_RANGE(0x90, 0x90) AM_WRITE(gr2out_w)
@@ -574,12 +668,6 @@ static ADDRESS_MAP_START( grip_io, ADDRESS_SPACE_IO, 8 )
 //  AM_RANGE(0xd0, 0xd0) AM_WRITE(grnout_w)
 //  AM_RANGE(0xe0, 0xe0) AM_WRITE(redout_w)
 //  AM_RANGE(0xf0, 0xf0) AM_WRITE(clrg1_w)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( grip5_mem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0x3fff) AM_ROMBANK(18)
-    AM_RANGE(0x4000, 0x47ff) AM_RAM
-    AM_RANGE(0x8000, 0xffff) AM_RAMBANK(17)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( grip5_io, ADDRESS_SPACE_IO, 8 )
@@ -599,7 +687,7 @@ static ADDRESS_MAP_START( grip5_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x50, 0x50) AM_DEVWRITE(MC6845_TAG, mc6845_address_w)
 	AM_RANGE(0x52, 0x52) AM_DEVWRITE(MC6845_TAG, mc6845_register_w)
 	AM_RANGE(0x53, 0x53) AM_DEVREAD(MC6845_TAG, mc6845_register_r)
-	AM_RANGE(0x60, 0x60) AM_DEVWRITE("centronics", centronics_data_w)
+	AM_RANGE(0x60, 0x60) AM_DEVWRITE(CENTRONICS_TAG, centronics_data_w)
 	AM_RANGE(0x70, 0x73) AM_DEVREADWRITE(I8255A_TAG, i8255a_r, i8255a_w)
 
 //  AM_RANGE(0x80, 0x80) AM_WRITE(xrflgs_w)
@@ -620,7 +708,7 @@ ADDRESS_MAP_END
 
 /* Input Ports */
 
-static INPUT_PORTS_START( prof80 )
+static INPUT_PORTS_START( ascii_keyboard )
 	PORT_START("ROW0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("HELP") PORT_CODE(KEYCODE_TILDE)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHAR('!')
@@ -717,7 +805,9 @@ static INPUT_PORTS_START( prof80 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("RIGHT SHIFT") PORT_CODE(KEYCODE_RSHIFT)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("LEFT CTRL") PORT_CODE(KEYCODE_LCONTROL) PORT_CHAR(UCHAR_MAMEKEY(LCONTROL))
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("RIGHT CTRL") PORT_CODE(KEYCODE_RCONTROL) PORT_CHAR(UCHAR_MAMEKEY(RCONTROL))
+INPUT_PORTS_END
 
+static INPUT_PORTS_START( prof80 )
 	PORT_START("J1")
 	PORT_CONFNAME( 0x01, 0x00, "J1 RDY/HDLD")
 	PORT_CONFSETTING( 0x00, "HDLD" )
@@ -779,6 +869,11 @@ static INPUT_PORTS_START( prof80 )
 	PORT_CONFNAME( 0x01, 0x00, "L1 Write Polarity")
 	PORT_CONFSETTING( 0x00, "Inverted" )
 	PORT_CONFSETTING( 0x01, "Normal" )
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( grip )
+	PORT_INCLUDE(ascii_keyboard)
+	PORT_INCLUDE(prof80)
 
 	PORT_START("GRIP-J1")
 	PORT_CONFNAME( 0x01, 0x00, "J1 EPROM Type")
@@ -818,7 +913,7 @@ static INPUT_PORTS_START( prof80 )
 	PORT_CONFSETTING( 0x01, "Internal" )
 
 	PORT_START("GRIP-J6")
-	PORT_CONFNAME( 0x01, 0x00, "J6 Serial Clock")
+	PORT_CONFNAME( 0x03, 0x00, "J6 Serial Clock")
 	PORT_CONFSETTING( 0x00, "TC/16, TD/16, TD" )
 	PORT_CONFSETTING( 0x01, "TD/16, TD/16, TD" )
 	PORT_CONFSETTING( 0x02, "TC/16, BAUD/16, input" )
@@ -867,20 +962,6 @@ static MC6845_UPDATE_ROW( grip_update_row )
 	}
 }
 
-static WRITE_LINE_DEVICE_HANDLER( grip_de_w )
-{
-	prof80_state *driver_state = device->machine->driver_data;
-
-	z80sti_i1_w(driver_state->z80sti, state);
-}
-
-static WRITE_LINE_DEVICE_HANDLER( grip_cur_w )
-{
-	prof80_state *driver_state = device->machine->driver_data;
-
-	z80sti_i2_w(driver_state->z80sti, state);
-}
-
 static const mc6845_interface grip_mc6845_interface =
 {
 	SCREEN_TAG,
@@ -888,18 +969,18 @@ static const mc6845_interface grip_mc6845_interface =
 	NULL,
 	grip_update_row,
 	NULL,
-	DEVCB_LINE(grip_de_w),
-	DEVCB_LINE(grip_cur_w),
+	DEVCB_DEVICE_LINE(Z80STI_TAG, z80sti_i1_w),
+	DEVCB_DEVICE_LINE(Z80STI_TAG, z80sti_i2_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	NULL
 };
 
-static VIDEO_START( prof80 )
+static VIDEO_START( grip )
 {
 }
 
-static VIDEO_UPDATE( prof80 )
+static VIDEO_UPDATE( grip )
 {
 	prof80_state *state = screen->machine->driver_data;
 
@@ -910,16 +991,9 @@ static VIDEO_UPDATE( prof80 )
 
 /* uPD1990A Interface */
 
-static WRITE_LINE_DEVICE_HANDLER( prof80_upd1990a_data_w )
-{
-	prof80_state *driver_state = device->machine->driver_data;
-
-	driver_state->rtc_data = state;
-}
-
 static UPD1990A_INTERFACE( prof80_upd1990a_intf )
 {
-	DEVCB_LINE(prof80_upd1990a_data_w),
+	DEVCB_NULL,
 	DEVCB_NULL
 };
 
@@ -938,7 +1012,7 @@ static const struct upd765_interface prof80_upd765_interface =
 	NULL,
 	NULL,
 	UPD765_RDY_PIN_CONNECTED,
-	{FLOPPY_0,FLOPPY_1, FLOPPY_2, FLOPPY_3}
+	{ FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3 }
 };
 
 /* PPI8255 Interface */
@@ -1075,29 +1149,27 @@ static READ8_DEVICE_HANDLER( grip_z80sti_gpio_r )
 	return centronics_busy_r(state->centronics) << 3;
 }
 
-static WRITE_LINE_DEVICE_HANDLER( grip_z80sti_tbo_w )
+static WRITE_LINE_DEVICE_HANDLER( grip_speaker_w )
 {
-	// connected to speaker
-}
+	prof80_state *driver_state = device->machine->driver_data;
+	int level = state && ((driver_state->vol1 << 1) | driver_state->vol0);
 
-static WRITE_LINE_DEVICE_HANDLER( grip_z80sti_irq_w )
-{
-	cputag_set_input_line(device->machine, GRIP_Z80_TAG, INPUT_LINE_IRQ0, state);
+	speaker_level_w(device, level);
 }
 
 static Z80STI_INTERFACE( grip_z80sti_interface )
 {
-	0,									/* serial receive clock */
-	0,									/* serial transmit clock */
+	0,														/* serial receive clock */
+	0,														/* serial transmit clock */
+	DEVCB_CPU_INPUT_LINE(GRIP_Z80_TAG, INPUT_LINE_IRQ0),	/* interrupt */
 	DEVCB_DEVICE_HANDLER(Z80STI_TAG, grip_z80sti_gpio_r),	/* GPIO read */
-	DEVCB_NULL,							/* GPIO write */
-	DEVCB_NULL,							/* serial input */
-	DEVCB_NULL,							/* serial output */
-	DEVCB_NULL,							/* timer A output */
-	DEVCB_LINE(grip_z80sti_tbo_w),		/* timer B output */
-	DEVCB_LINE(z80sti_tc_w),			/* timer C output */
-	DEVCB_LINE(z80sti_rc_w),			/* timer D output */
-	DEVCB_LINE(grip_z80sti_irq_w)		/* interrupt */
+	DEVCB_NULL,												/* GPIO write */
+	DEVCB_NULL,												/* serial input */
+	DEVCB_NULL,												/* serial output */
+	DEVCB_NULL,												/* timer A output */
+	DEVCB_DEVICE_LINE(SPEAKER_TAG, grip_speaker_w),			/* timer B output */
+	DEVCB_LINE(z80sti_tc_w),								/* timer C output */
+	DEVCB_LINE(z80sti_rc_w)									/* timer D output */
 };
 
 /* Z80 Daisy Chain */
@@ -1113,15 +1185,10 @@ static const z80_daisy_chain grip_daisy_chain[] =
 static MACHINE_START( prof80 )
 {
 	prof80_state *state = machine->driver_data;
-	int bank;
 
 	/* find devices */
 	state->upd765 = devtag_get_device(machine, UPD765_TAG);
 	state->upd1990a = devtag_get_device(machine, UPD1990A_TAG);
-	state->mc6845 = devtag_get_device(machine, MC6845_TAG);
-	state->ppi8255 = devtag_get_device(machine, I8255A_TAG);
-	state->z80sti = devtag_get_device(machine, Z80STI_TAG);
-	state->centronics = devtag_get_device(machine, "centronics");
 
 	/* initialize RTC */
 	upd1990a_cs_w(state->upd1990a, 1);
@@ -1133,33 +1200,15 @@ static MACHINE_START( prof80 )
 	/* allocate floppy motor off timer */
 	state->floppy_motor_off_timer = timer_alloc(machine, floppy_motor_off_tick, NULL);
 
-	/* allocate video RAM */
-	state->video_ram = auto_alloc_array(machine, UINT8, GRIP_VIDEORAM_SIZE);
-
-	/* setup PROF-80 memory banking */
-	for (bank = 0; bank < 16; bank++)
-	{
-		UINT32 offset = bank * 0x1000;
-		memory_configure_bank(machine, bank + 1, 0, 16, memory_region(machine, Z80_TAG) + offset, 0x10000);
-	}
-
-	/* setup GRIP memory banking */
-	memory_configure_bank(machine, 17, 0, 2, state->video_ram, 0x8000);
-	memory_set_bank(machine, 17, 0);
-
 	/* bank switch */
 	prof80_bankswitch(machine);
 
 	/* register for state saving */
+	state_save_register_global(machine, state->c0);
+	state_save_register_global(machine, state->c1);
+	state_save_register_global(machine, state->c2);
 	state_save_register_global_array(machine, state->mmu);
-	state_save_register_global(machine, state->mme);
-	state_save_register_global(machine, state->keydata);
-	state_save_register_global(machine, state->kbf);
-	state_save_register_global_pointer(machine, state->video_ram, GRIP_VIDEORAM_SIZE);
-	state_save_register_global(machine, state->lps);
-	state_save_register_global(machine, state->page);
-	state_save_register_global(machine, state->flash);
-	state_save_register_global(machine, state->rtc_data);
+	state_save_register_global(machine, state->init);
 	state_save_register_global(machine, state->fdc_index);
 	state_save_register_global(machine, state->gripd);
 	state_save_register_global(machine, state->gripc);
@@ -1179,9 +1228,35 @@ static MACHINE_RESET( prof80 )
 	state->gripc = 0x40;
 }
 
-static FLOPPY_OPTIONS_START(prof80)
-	// dsk
-FLOPPY_OPTIONS_END
+static MACHINE_START( grip )
+{
+	prof80_state *state = machine->driver_data;
+
+	MACHINE_START_CALL(prof80);
+
+	/* find devices */
+	state->mc6845 = devtag_get_device(machine, MC6845_TAG);
+	state->ppi8255 = devtag_get_device(machine, I8255A_TAG);
+	state->z80sti = devtag_get_device(machine, Z80STI_TAG);
+	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
+
+	/* allocate video RAM */
+	state->video_ram = auto_alloc_array(machine, UINT8, GRIP_VIDEORAM_SIZE);
+
+	/* setup GRIP memory banking */
+	memory_configure_bank(machine, "videoram", 0, 2, state->video_ram, 0x8000);
+	memory_set_bank(machine, "videoram", 0);
+
+	/* register for state saving */
+	state_save_register_global(machine, state->vol0);
+	state_save_register_global(machine, state->vol1);
+	state_save_register_global(machine, state->keydata);
+	state_save_register_global(machine, state->kbf);
+	state_save_register_global_pointer(machine, state->video_ram, GRIP_VIDEORAM_SIZE);
+	state_save_register_global(machine, state->lps);
+	state_save_register_global(machine, state->page);
+	state_save_register_global(machine, state->flash);
+}
 
 static const floppy_config prof80_floppy_config =
 {
@@ -1191,11 +1266,30 @@ static const floppy_config prof80_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	FLOPPY_DRIVE_DS_80,
-	FLOPPY_OPTIONS_NAME(prof80),
+	FLOPPY_OPTIONS_NAME(default),
 	DO_NOT_KEEP_GEOMETRY
 };
 
+static const INT16 speaker_levels[] = {-32768, 0, 32767, 0};
+
+static const speaker_interface grip_speaker_interface =
+{
+	4,
+	speaker_levels
+};
+
+static VIDEO_START( prof80 )
+{
+}
+
+static VIDEO_UPDATE( prof80 )
+{
+	return 0;
+}
+
+
 /* Machine Drivers */
+
 static MACHINE_DRIVER_START( prof80 )
 	MDRV_DRIVER_DATA(prof80_state)
 
@@ -1204,16 +1298,13 @@ static MACHINE_DRIVER_START( prof80 )
     MDRV_CPU_PROGRAM_MAP(prof80_mem)
     MDRV_CPU_IO_MAP(prof80_io)
 
-    MDRV_CPU_ADD(GRIP_Z80_TAG, Z80, XTAL_16MHz/4)
-	MDRV_CPU_CONFIG(grip_daisy_chain)
-    MDRV_CPU_PROGRAM_MAP(grip_mem)
-    MDRV_CPU_IO_MAP(grip_io)
-
 	MDRV_MACHINE_START(prof80)
 	MDRV_MACHINE_RESET(prof80)
 
-	/* keyboard hack */
-	MDRV_TIMER_ADD_PERIODIC("keyboard", prof80_keyboard_tick, HZ(50))
+	/* devices */
+	MDRV_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, prof80_upd1990a_intf)
+	MDRV_UPD765A_ADD(UPD765_TAG, prof80_upd765_interface)
+	MDRV_FLOPPY_4_DRIVES_ADD(prof80_floppy_config)
 
     /* video hardware */
     MDRV_SCREEN_ADD(SCREEN_TAG, RASTER)
@@ -1227,56 +1318,120 @@ static MACHINE_DRIVER_START( prof80 )
 
     MDRV_VIDEO_START(prof80)
     MDRV_VIDEO_UPDATE(prof80)
-
-	MDRV_MC6845_ADD(MC6845_TAG, MC6845, XTAL_16MHz/4, grip_mc6845_interface)
-
-	/* devices */
-	MDRV_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, prof80_upd1990a_intf)
-	MDRV_UPD765A_ADD(UPD765_TAG, prof80_upd765_interface)
-	MDRV_I8255A_ADD(I8255A_TAG, grip_ppi8255_interface)
-	MDRV_Z80STI_ADD(Z80STI_TAG, XTAL_16MHz/4, grip_z80sti_interface)
-
-	/* printer */
-	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
-
-	MDRV_FLOPPY_4_DRIVES_ADD(prof80_floppy_config)
 	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("128K")	
+	MDRV_RAM_DEFAULT_SIZE("128K")
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( grip )
+	MDRV_IMPORT_FROM(prof80)
+
+    MDRV_CPU_MODIFY(Z80_TAG)
+    MDRV_CPU_IO_MAP(prof80_grip_io)
+
+    /* basic machine hardware */
+	MDRV_CPU_ADD(GRIP_Z80_TAG, Z80, XTAL_16MHz/4)
+	MDRV_CPU_CONFIG(grip_daisy_chain)
+    MDRV_CPU_PROGRAM_MAP(grip_mem)
+    MDRV_CPU_IO_MAP(grip_io)
+
+	MDRV_MACHINE_START(grip)
+
+	/* keyboard hack */
+	MDRV_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, HZ(50))
+
+
+    MDRV_VIDEO_START(grip)
+    MDRV_VIDEO_UPDATE(grip)
+
+	MDRV_MC6845_ADD(MC6845_TAG, MC6845, XTAL_16MHz/4, grip_mc6845_interface)
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
+	MDRV_SOUND_CONFIG(grip_speaker_interface)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+
+	/* devices */
+	MDRV_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
+	MDRV_I8255A_ADD(I8255A_TAG, grip_ppi8255_interface)
+	MDRV_Z80STI_ADD(Z80STI_TAG, XTAL_16MHz/4, grip_z80sti_interface)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( grip2 )
+	MDRV_IMPORT_FROM(grip)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( grip3 )
+	MDRV_IMPORT_FROM(grip)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( grip5 )
+	MDRV_IMPORT_FROM(grip)
+
+    /* basic machine hardware */
+	MDRV_CPU_MODIFY(GRIP_Z80_TAG)
+    MDRV_CPU_IO_MAP(grip5_io)
 MACHINE_DRIVER_END
 
 /* ROMs */
 
+#define ROM_PROF80 \
+	ROM_REGION( 0x2000, Z80_TAG, 0 ) \
+	ROM_DEFAULT_BIOS( "v17" ) \
+	ROM_SYSTEM_BIOS( 0, "v15", "v1.5" ) \
+	ROMX_LOAD( "prof80v15.z7", 0x0000, 0x2000, CRC(8f74134c) SHA1(83f9dcdbbe1a2f50006b41d406364f4d580daa1f), ROM_BIOS(1) ) \
+	ROM_SYSTEM_BIOS( 1, "v16", "v1.6" ) \
+	ROMX_LOAD( "prof80v16.z7", 0x0000, 0x2000, CRC(7d3927b3) SHA1(bcc15fd04dbf1d6640115be595255c7b9d2a7281), ROM_BIOS(2) ) \
+	ROM_SYSTEM_BIOS( 2, "v17", "v1.7" ) \
+	ROMX_LOAD( "prof80v17.z7", 0x0000, 0x2000, CRC(53305ff4) SHA1(3ea209093ac5ac8a5db618a47d75b705965cdf44), ROM_BIOS(3) ) \
+
 ROM_START( prof80 )
-	ROM_REGION( 0x100000, Z80_TAG, 0 )
-	ROM_DEFAULT_BIOS( "v17" )
+	ROM_PROF80
+ROM_END
 
-	ROM_SYSTEM_BIOS( 0, "v15", "v1.5" )
-	ROMX_LOAD( "prof80v15.z7", 0xf0000, 0x02000, CRC(8f74134c) SHA1(83f9dcdbbe1a2f50006b41d406364f4d580daa1f), ROM_BIOS(1) )
-	ROM_SYSTEM_BIOS( 1, "v16", "v1.6" )
-	ROMX_LOAD( "prof80v16.z7", 0xf0000, 0x02000, CRC(7d3927b3) SHA1(bcc15fd04dbf1d6640115be595255c7b9d2a7281), ROM_BIOS(2) )
-	ROM_SYSTEM_BIOS( 2, "v17", "v1.7" )
-	ROMX_LOAD( "prof80v17.z7", 0xf0000, 0x02000, CRC(53305ff4) SHA1(3ea209093ac5ac8a5db618a47d75b705965cdf44), ROM_BIOS(3) )
+ROM_START( prof80g21 )
+	ROM_PROF80
 
-	ROM_COPY( Z80_TAG, 0xf0000, 0xf2000, 0x02000 )
-	ROM_COPY( Z80_TAG, 0xf0000, 0xf4000, 0x04000 )
-	ROM_COPY( Z80_TAG, 0xf0000, 0xf8000, 0x08000 ) // block 15
-	ROM_COPY( Z80_TAG, 0xf0000, 0xe0000, 0x10000 ) // block 14
-	ROM_COPY( Z80_TAG, 0xf0000, 0x70000, 0x10000 ) // block 7
-	ROM_COPY( Z80_TAG, 0xf0000, 0x60000, 0x10000 ) // block 6
-
-	ROM_REGION( 0x10000, GRIP_Z80_TAG, 0 )
+	ROM_REGION( 0x4000, GRIP_Z80_TAG, 0 )
 	ROM_LOAD( "grip21.z2", 0x0000, 0x4000, CRC(7f6a37dd) SHA1(2e89f0b0c378257ff7e41c50d57d90865c6e214b) )
-	ROM_LOAD( "grip26.z2", 0x0000, 0x4000, CRC(a1c424f0) SHA1(83942bc75b9475f044f936b8d9d7540551d87db9) )
-	ROM_LOAD( "grip31.z2", 0x0000, 0x4000, CRC(e0e4e8ab) SHA1(73d3d14c9b06fed0c187fb0fffe5ec035d8dd256) )
-	ROM_LOAD( "grip25.z2", 0x0000, 0x4000, CRC(49ebb284) SHA1(0a7eaaf89da6db2750f820146c8f480b7157c6c7) )
+ROM_END
 
-	ROM_REGION( 0x8000, "grip5", 0 )
+ROM_START( prof80g25 )
+	ROM_PROF80
+
+	ROM_REGION( 0x4000, GRIP_Z80_TAG, 0 )
+	ROM_LOAD( "grip25.z2", 0x0000, 0x4000, CRC(49ebb284) SHA1(0a7eaaf89da6db2750f820146c8f480b7157c6c7) )
+ROM_END
+
+ROM_START( prof80g26 )
+	ROM_PROF80
+
+	ROM_REGION( 0x4000, GRIP_Z80_TAG, 0 )
+	ROM_LOAD( "grip26.z2", 0x0000, 0x4000, CRC(a1c424f0) SHA1(83942bc75b9475f044f936b8d9d7540551d87db9) )
+ROM_END
+
+ROM_START( prof80g31 )
+	ROM_PROF80
+
+	ROM_REGION( 0x4000, GRIP_Z80_TAG, 0 )
+	ROM_LOAD( "grip31.z2", 0x0000, 0x4000, CRC(e0e4e8ab) SHA1(73d3d14c9b06fed0c187fb0fffe5ec035d8dd256) )
+ROM_END
+
+ROM_START( prof80g562 )
+	ROM_PROF80
+
+	ROM_REGION( 0x8000, GRIP_Z80_TAG, 0 )
 	ROM_LOAD( "grip562.z2", 0x0000, 0x8000, CRC(74be0455) SHA1(1c423ecca6363345a8690ddc45dbafdf277490d3) )
 ROM_END
 
 /* System Drivers */
 
-/*    YEAR  NAME   PARENT  COMPAT  MACHINE INPUT   INIT  CONFIG COMPANY  FULLNAME   FLAGS */
-COMP( 1984, prof80,     0,      0, prof80, prof80, 0, 0,  "Conitec Datensysteme", "PROF-80", GAME_NO_SOUND | GAME_NOT_WORKING)
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                 FULLNAME                FLAGS */
+COMP( 1984, prof80,     0,		0,		prof80,	prof80,	0,		"Conitec Datensysteme",	"PROF-80",				GAME_NOT_WORKING )
+COMP( 1984, prof80g21,	prof80,	0,		grip2,	grip,	0,		"Conitec Datensysteme",	"PROF-80 (GRIP-2.1)",	GAME_NOT_WORKING )
+COMP( 1984, prof80g25,	prof80,	0,		grip2,	grip,	0,		"Conitec Datensysteme",	"PROF-80 (GRIP-2.5)",	GAME_NOT_WORKING )
+COMP( 1984, prof80g26,	prof80,	0,		grip2,	grip,	0,		"Conitec Datensysteme",	"PROF-80 (GRIP-2.6)",	GAME_NOT_WORKING )
+COMP( 1984, prof80g31,	prof80,	0,		grip3,	grip,	0,		"Conitec Datensysteme",	"PROF-80 (GRIP-3.1)",	GAME_NOT_WORKING )
+COMP( 1984, prof80g562,	prof80,	0,		grip5,	grip,	0,		"Conitec Datensysteme",	"PROF-80 (GRIP-5.62)",	GAME_NOT_WORKING )

@@ -16,10 +16,10 @@
 #include "driver.h"
 #include "cdrom.h"
 #include "debugger.h"
-#include "dc.h"
+#include "includes/dc.h"
 #include "cpu/sh4/sh4.h"
 #include "sound/aica.h"
-#include "naomi.h"
+#include "includes/naomi.h"
 #include "machine/gdrom.h"
 #include "devices/chd_cd.h"
 
@@ -520,7 +520,7 @@ static WRITE32_HANDLER( atapi_w )
 					break;
 			}
 		}
-	 }
+	}
 }
 
 static void dreamcast_atapi_exit(running_machine* machine)

@@ -30,11 +30,11 @@
 static ADDRESS_MAP_START( comx35_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
-	AM_RANGE(0x1000, 0x17ff) AM_ROMBANK(2)
+	AM_RANGE(0x1000, 0x17ff) AM_ROMBANK("bank2")
 	AM_RANGE(0x1800, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0xbfff) AM_RAM
-	AM_RANGE(0xc000, 0xdfff) AM_RAMBANK(1)
-	AM_RANGE(0xe000, 0xefff) AM_ROMBANK(3)
+	AM_RANGE(0xc000, 0xdfff) AM_RAMBANK("bank1")
+	AM_RANGE(0xe000, 0xefff) AM_ROMBANK("bank3")
 	AM_RANGE(0xf400, 0xf7ff) AM_DEVREADWRITE(CDP1869_TAG, cdp1869_charram_r, cdp1869_charram_w)
 	AM_RANGE(0xf800, 0xffff) AM_DEVREADWRITE(CDP1869_TAG, cdp1869_pageram_r, cdp1869_pageram_w)
 ADDRESS_MAP_END
@@ -375,6 +375,25 @@ static const floppy_config comx35_floppy_config =
 	DO_NOT_KEEP_GEOMETRY
 };
 
+/* F4 Character Displayer */
+static const gfx_layout comx35_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static GFXDECODE_START( comx35 )
+	GFXDECODE_ENTRY( "chargen", 0x0000, comx35_charlayout, 0, 36 )
+GFXDECODE_END
+
+
 static MACHINE_DRIVER_START( comx35_pal )
 	MDRV_DRIVER_DATA(comx35_state)
 
@@ -389,6 +408,7 @@ static MACHINE_DRIVER_START( comx35_pal )
 
 	/* sound and video hardware */
 	MDRV_IMPORT_FROM(comx35_pal_video)
+	MDRV_GFXDECODE(comx35)
 
 	/* peripheral hardware */
 	MDRV_CDP1871_ADD(CDP1871_TAG, comx35_cdp1871_intf, CDP1869_CPU_CLK_PAL / 8)
@@ -398,7 +418,7 @@ static MACHINE_DRIVER_START( comx35_pal )
 	MDRV_PRINTER_ADD("printer")
 
 	MDRV_FLOPPY_2_DRIVES_ADD(comx35_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("32K")
@@ -418,6 +438,7 @@ static MACHINE_DRIVER_START( comx35_ntsc )
 
 	/* sound and video hardware */
 	MDRV_IMPORT_FROM(comx35_ntsc_video)
+	MDRV_GFXDECODE(comx35)
 
 	/* peripheral hardware */
 	MDRV_CDP1871_ADD(CDP1871_TAG, comx35_cdp1871_intf, CDP1869_CPU_CLK_NTSC / 8)
@@ -427,10 +448,10 @@ static MACHINE_DRIVER_START( comx35_ntsc )
 	MDRV_PRINTER_ADD("printer")
 
 	MDRV_FLOPPY_2_DRIVES_ADD(comx35_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("32K")	
+	MDRV_RAM_DEFAULT_SIZE("32K")
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -476,6 +497,6 @@ ROM_END
 
 /* System Drivers */
 
-//    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT     INIT  CONFIG    COMPANY                       FULLNAME            FLAGS
-COMP( 1983, comx35p,	0,		0,		comx35_pal,	comx35,   0, 	0,   "Comx World Operations Ltd",	"COMX 35 (PAL)",	GAME_IMPERFECT_SOUND )
-COMP( 1983, comx35n,	comx35p,0,		comx35_ntsc,comx35,   0, 	0,   "Comx World Operations Ltd",	"COMX 35 (NTSC)",	GAME_IMPERFECT_SOUND )
+//    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT     INIT  COMPANY                       FULLNAME            FLAGS
+COMP( 1983, comx35p,	0,		0,		comx35_pal,	comx35,   0, 	"Comx World Operations Ltd",	"COMX 35 (PAL)",	GAME_IMPERFECT_SOUND )
+COMP( 1983, comx35n,	comx35p,0,		comx35_ntsc,comx35,   0, 	"Comx World Operations Ltd",	"COMX 35 (NTSC)",	GAME_IMPERFECT_SOUND )

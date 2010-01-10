@@ -14,7 +14,6 @@
 #include "video/vic6567.h"
 #include "includes/cbmserb.h"
 #include "includes/cbmieeeb.h"
-#include "includes/cbmdrive.h"
 
 #include "includes/cbmb.h"
 
@@ -45,7 +44,7 @@ UINT8 *cbmb_kernal;
 static UINT8 *cbmb_chargen;
 UINT8 *cbmb_videoram;
 UINT8 *cbmb_colorram;
-UINT8 *cbmb_memory;
+static UINT8 *cbmb_memory;
 
 /* tpi at 0xfde00
  in interrupt mode
@@ -344,8 +343,8 @@ DRIVER_INIT( p500 )
 
 MACHINE_RESET( cbmb )
 {
-	cbm_drive_0_config (IEEE8ON ? IEEE : 0, 8);
-	cbm_drive_1_config (IEEE9ON ? IEEE : 0, 9);
+//removed	cbm_drive_0_config (IEEE8ON ? IEEE : 0, 8);
+//removed	cbm_drive_1_config (IEEE9ON ? IEEE : 0, 9);
 }
 
 
@@ -451,7 +450,7 @@ static TIMER_CALLBACK(cbmb_frame_interrupt)
 // 128u4 FIXME
 //  vic2_frame_interrupt (device);
 
-	set_led_status(1, input_port_read(machine, "SPECIAL") & 0x04 ? 1 : 0);		/* Shift Lock */
+	set_led_status(machine, 1, input_port_read(machine, "SPECIAL") & 0x04 ? 1 : 0);		/* Shift Lock */
 }
 
 

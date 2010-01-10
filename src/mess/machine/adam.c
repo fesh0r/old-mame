@@ -27,6 +27,7 @@ static int KbRepeatDelay = 20;
 
 static UINT8 KbRepeatTable[256];
 
+#ifdef UNUSED_FUNCTION
 int adam_cart_verify(const UINT8 *cartdata, size_t size)
 {
 	int retval = IMAGE_VERIFY_FAIL;
@@ -39,6 +40,7 @@ int adam_cart_verify(const UINT8 *cartdata, size_t size)
 
 	return retval;
 }
+#endif
 
 void adam_clear_keyboard_buffer(void)
 {
@@ -698,27 +700,27 @@ WRITE8_HANDLER( adamnet_w )
 	{
 		if (data&0x02)
 		{
-			memory_set_bankptr(space->machine, 1, BankBase+0x32000); /* No data here */
-			memory_set_bankptr(space->machine, 2, BankBase+0x34000); /* No data here */
-			memory_set_bankptr(space->machine, 3, BankBase+0x36000); /* No data here */
-			memory_set_bankptr(space->machine, 4, BankBase+0x38000); /* EOS ROM */
+			memory_set_bankptr(space->machine, "bank1", BankBase+0x32000); /* No data here */
+			memory_set_bankptr(space->machine, "bank2", BankBase+0x34000); /* No data here */
+			memory_set_bankptr(space->machine, "bank3", BankBase+0x36000); /* No data here */
+			memory_set_bankptr(space->machine, "bank4", BankBase+0x38000); /* EOS ROM */
 
-			memory_set_bankptr(space->machine, 6, BankBase+0x3A000); /* Write protecting ROM */
-			memory_set_bankptr(space->machine, 7, BankBase+0x3A000); /* Write protecting ROM */
-			memory_set_bankptr(space->machine, 8, BankBase+0x3A000); /* Write protecting ROM */
-			memory_set_bankptr(space->machine, 9, BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(space->machine, "bank6", BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(space->machine, "bank7", BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(space->machine, "bank8", BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(space->machine, "bank9", BankBase+0x3A000); /* Write protecting ROM */
 		}
 		else
 		{
-			memory_set_bankptr(space->machine, 1, BankBase+0x20000); /* SmartWriter ROM */
-			memory_set_bankptr(space->machine, 2, BankBase+0x22000);
-			memory_set_bankptr(space->machine, 3, BankBase+0x24000);
-			memory_set_bankptr(space->machine, 4, BankBase+0x26000);
+			memory_set_bankptr(space->machine, "bank1", BankBase+0x20000); /* SmartWriter ROM */
+			memory_set_bankptr(space->machine, "bank2", BankBase+0x22000);
+			memory_set_bankptr(space->machine, "bank3", BankBase+0x24000);
+			memory_set_bankptr(space->machine, "bank4", BankBase+0x26000);
 
-			memory_set_bankptr(space->machine, 6, BankBase+0x3A000); /* Write protecting ROM */
-			memory_set_bankptr(space->machine, 7, BankBase+0x3A000); /* Write protecting ROM */
-			memory_set_bankptr(space->machine, 8, BankBase+0x3A000); /* Write protecting ROM */
-			memory_set_bankptr(space->machine, 9, BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(space->machine, "bank6", BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(space->machine, "bank7", BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(space->machine, "bank8", BankBase+0x3A000); /* Write protecting ROM */
+			memory_set_bankptr(space->machine, "bank9", BankBase+0x3A000); /* Write protecting ROM */
 		}
 	}
 	adam_net_data = data;

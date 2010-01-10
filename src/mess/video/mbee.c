@@ -45,7 +45,7 @@ static UINT8 m6545_video_bank = 0;
 static UINT8 mbee_pcg_color_latch = 0;
 
 UINT8 *mbee_pcgram;
-
+static UINT8 *colorram;
 static UINT8 mc6845_cursor[16];				// cursor shape
 static void mc6845_cursor_configure(void);
 static void mc6845_screen_configure(running_machine *machine);
@@ -54,9 +54,9 @@ WRITE8_HANDLER ( mbee_pcg_color_latch_w )
 {
 	mbee_pcg_color_latch = data;
 	if (data & 0x40)
-		memory_set_bank(space->machine, 3, 1);
+		memory_set_bank(space->machine, "bank3", 1);
 	else
-		memory_set_bank(space->machine, 3, 0);
+		memory_set_bank(space->machine, "bank3", 0);
 }
 
 READ8_HANDLER ( mbee_pcg_color_latch_r )
@@ -66,7 +66,7 @@ READ8_HANDLER ( mbee_pcg_color_latch_r )
 
 WRITE8_HANDLER ( mbee_videoram_w )
 {
-	videoram[offset] = data;
+	space->machine->generic.videoram.u8[offset] = data;
 }
 
 WRITE8_HANDLER ( mbee_pcg_w )
@@ -133,26 +133,26 @@ static int keyboard_matrix_r(running_machine *machine, int offs)
 READ8_HANDLER ( mbee_color_bank_r )
 {
 /* Read of port 0A - set Telcom rom to first half */
-	memory_set_bank(space->machine, 5, 0);
+	memory_set_bank(space->machine, "bank5", 0);
 	return m6545_color_bank;
 }
 
 WRITE8_HANDLER ( mbee_color_bank_w )
 {
 	m6545_color_bank = data;
-	memory_set_bank(space->machine, 4, data & 7);
+	memory_set_bank(space->machine, "bank4", data & 7);
 }
 
 WRITE8_HANDLER ( mbee_0a_w )
 {
 	m6545_color_bank = data;
-	memory_set_bank(space->machine, 4, (data&15) >> 1);
+	memory_set_bank(space->machine, "bank4", (data&15) >> 1);
 }
 
 READ8_HANDLER ( mbee_bank_netrom_r )
 {
 /* Read of port 10A - set Telcom rom to 2nd half */
-	memory_set_bank(space->machine, 5, 1);
+	memory_set_bank(space->machine, "bank5", 1);
 	return m6545_color_bank;
 }
 
@@ -163,7 +163,7 @@ WRITE8_HANDLER( mbee_1c_w )
     d4 select attribute ram - not emulated
     d3..d0 select videoram bank - not emulated */
 
-	memory_set_bank(space->machine, 6, (data & 0x20) ? 1 : 0);
+	memory_set_bank(space->machine, "bank6", (data & 0x20) ? 1 : 0);
 }
 
 READ8_HANDLER ( mbee_video_bank_r )
@@ -175,9 +175,9 @@ WRITE8_HANDLER ( mbee_video_bank_w )
 {
 	m6545_video_bank = data;
 	if (data & 1)
-		memory_set_bank(space->machine, 2, 0);
+		memory_set_bank(space->machine, "bank2", 0);
 	else
-		memory_set_bank(space->machine, 2, 1);
+		memory_set_bank(space->machine, "bank2", 1);
 }
 
 static void m6545_update_strobe(running_machine *machine, int param)
@@ -459,14 +459,14 @@ static void mc6845_screen_configure(running_machine *machine)
 VIDEO_START( mbee )
 {
 	UINT8 *ram = memory_region(machine, "maincpu");
-	videoram = ram+0x15000;
+	machine->generic.videoram.u8 = ram+0x15000;
 	mbee_pcgram = ram+0x11000;
 }
 
 VIDEO_START( mbeeic )
 {
 	UINT8 *ram = memory_region(machine, "maincpu");
-	videoram = ram+0x15000;
+	machine->generic.videoram.u8 = ram+0x15000;
 	colorram = ram+0x15800;
 	mbee_pcgram = ram+0x11000;
 }
@@ -491,7 +491,7 @@ VIDEO_UPDATE( mbee )
 			{
 				UINT8 inv=0;
 				mem = (x + screen_home) & 0x7ff;
-				chr = videoram[mem];
+				chr = screen->machine->generic.videoram.u8[mem];
 				if ((x & 15) == 0) keyboard_matrix_r(screen->machine, x);	// actually happens for every scanline of every character, but imposes too much unnecessary overhead */
 				/* process cursor */
 				if ((((!flash) && (!speed)) ||					// (5,6)=(0,0) = cursor on always
@@ -540,7 +540,7 @@ VIDEO_UPDATE( mbeeic )
 			{
 				UINT8 inv=0;
 				mem = (x + screen_home) & 0x7ff;
-				chr = videoram[mem];
+				chr = screen->machine->generic.videoram.u8[mem];
 				col = colorram[mem] | colourm;					// read a byte of colour
 				if ((x & 15) == 0) keyboard_matrix_r(screen->machine, x);	// actually happens for every scanline of every character, but imposes too much unnecessary overhead */
 

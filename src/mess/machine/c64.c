@@ -19,14 +19,11 @@
 #include "cpu/z80/z80.h"
 #include "sound/sid6581.h"
 #include "machine/6526cia.h"
+#include "machine/cbmiec.h"
 #include "video/vic6567.h"
 #include "video/vdc8563.h"
 
 #include "includes/cbm.h"
-#include "includes/cbmserb.h"
-#include "includes/cbmdrive.h"
-#include "includes/vc1541.h"
-
 #include "includes/c64.h"
 
 #include "devices/cassette.h"
@@ -70,7 +67,6 @@ static int c64_io_enabled;
 static int is_sx64;				// temporary workaround until we implement full vc1541 emulation for every c64 set
 static UINT8 c64_cart_n_banks = 0;
 
-static UINT8 serial_clock, serial_data, serial_atn;
 static UINT8 vicirq;
 
 static void c64_nmi( running_machine *machine )
@@ -108,14 +104,14 @@ static READ8_DEVICE_HANDLER( c64_cia0_port_a_r )
 {
 	UINT8 cia0portb = cia_get_output_b(devtag_get_device(device->machine, "cia_0"));
 
-	return common_cia0_port_a_r(device, cia0portb);
+	return cbm_common_cia0_port_a_r(device, cia0portb);
 }
 
 static READ8_DEVICE_HANDLER( c64_cia0_port_b_r )
 {
 	UINT8 cia0porta = cia_get_output_a(devtag_get_device(device->machine, "cia_0"));
 
-	return common_cia0_port_b_r(device, cia0porta);
+	return cbm_common_cia0_port_b_r(device, cia0porta);
 }
 
 static WRITE8_DEVICE_HANDLER( c64_cia0_port_b_w )
@@ -203,12 +199,12 @@ const cia6526_interface c64_pal_cia0 =
 static READ8_DEVICE_HANDLER( c64_cia1_port_a_r )
 {
 	UINT8 value = 0xff;
-	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
+	const device_config *serbus = devtag_get_device(device->machine, "iec");
 
-	if (!serial_clock || !cbm_serial_clock_read(serbus, 0))
+	if (!cbm_iec_clk_r(serbus))
 		value &= ~0x40;
 
-	if (!serial_data || !cbm_serial_data_read(serbus, 0))
+	if (!cbm_iec_data_r(serbus))
 		value &= ~0x80;
 
 	return value;
@@ -217,11 +213,11 @@ static READ8_DEVICE_HANDLER( c64_cia1_port_a_r )
 static WRITE8_DEVICE_HANDLER( c64_cia1_port_a_w )
 {
 	static const int helper[4] = {0xc000, 0x8000, 0x4000, 0x0000};
-	const device_config *serbus = devtag_get_device(device->machine, "serial_bus");
+	const device_config *serbus = devtag_get_device(device->machine, "iec");
 
-	cbm_serial_clock_write(serbus, 0, serial_clock = !(data & 0x10));
-	cbm_serial_data_write(serbus, 0, serial_data = !(data & 0x20));
-	cbm_serial_atn_write(serbus, 0, serial_atn = !(data & 0x08));
+	cbm_iec_clk_w(serbus, device, !(data & 0x10));
+	cbm_iec_data_w(serbus, device, !(data & 0x20));
+	cbm_iec_atn_w(serbus, device, !(data & 0x08));
 	c64_vicaddr = c64_memory + helper[data & 0x03];
 }
 
@@ -482,35 +478,35 @@ static void c64_bankswitch( running_machine *machine, int reset )
 	{
 			c64_io_enabled = 1;		// charen has no effect in ultimax_mode
 
-			memory_set_bankptr(machine, 1, roml);
-			memory_set_bankptr(machine, 2, c64_memory + 0x8000);
-			memory_set_bankptr(machine, 3, c64_memory + 0xa000);
-			memory_set_bankptr(machine, 4, romh);
-			memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xe000, 0xffff, 0, 0, SMH_NOP);
+			memory_set_bankptr(machine, "bank1", roml);
+			memory_set_bankptr(machine, "bank2", c64_memory + 0x8000);
+			memory_set_bankptr(machine, "bank3", c64_memory + 0xa000);
+			memory_set_bankptr(machine, "bank4", romh);
+			memory_nop_write(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xe000, 0xffff, 0, 0);
 	}
 	else
 	{
 		/* 0x8000-0x9000 */
 		if (loram && hiram && !c64_exrom)
 		{
-			memory_set_bankptr(machine, 1, roml);
-			memory_set_bankptr(machine, 2, c64_memory + 0x8000);
+			memory_set_bankptr(machine, "bank1", roml);
+			memory_set_bankptr(machine, "bank2", c64_memory + 0x8000);
 		}
 		else
 		{
-			memory_set_bankptr(machine, 1, c64_memory + 0x8000);
-			memory_set_bankptr(machine, 2, c64_memory + 0x8000);
+			memory_set_bankptr(machine, "bank1", c64_memory + 0x8000);
+			memory_set_bankptr(machine, "bank2", c64_memory + 0x8000);
 		}
 
 		/* 0xa000 */
 		if (hiram && !c64_game && !c64_exrom)
-			memory_set_bankptr(machine, 3, romh);
+			memory_set_bankptr(machine, "bank3", romh);
 
 		else if (loram && hiram && c64_game)
-			memory_set_bankptr(machine, 3, c64_basic);
+			memory_set_bankptr(machine, "bank3", c64_basic);
 
 		else
-			memory_set_bankptr(machine, 3, c64_memory + 0xa000);
+			memory_set_bankptr(machine, "bank3", c64_memory + 0xa000);
 
 		/* 0xd000 */
 		// RAM
@@ -540,8 +536,8 @@ static void c64_bankswitch( running_machine *machine, int reset )
 		}
 
 		/* 0xe000-0xf000 */
-		memory_set_bankptr(machine, 4, hiram ? c64_kernal : c64_memory + 0xe000);
-		memory_set_bankptr(machine, 5, c64_memory + 0xe000);
+		memory_set_bankptr(machine, "bank4", hiram ? c64_kernal : c64_memory + 0xe000);
+		memory_set_bankptr(machine, "bank5", c64_memory + 0xe000);
 	}
 
 	/* make sure the opbase function gets called each time */
@@ -866,7 +862,6 @@ DRIVER_INIT( sx64 )
 	c64_cia1_on = 1;
 	c64_tape_on = 0;
 	c64_common_driver_init(machine);
-	cbm_drive_config(machine, type_1541, 0, 0, "cpu_vc1540", 8);
 }
 
 MACHINE_START( c64 )
@@ -875,17 +870,6 @@ MACHINE_START( c64 )
 
 	c64_io_mirror = auto_alloc_array(machine, UINT8, 0x1000);
 	c64_io_enabled = 0;
-
-	if (is_sx64)
-	{
-		cbm_drive_reset(machine);
-	}
-	else if (c64_cia1_on)
-	{
-		cbm_drive_0_config(SERIAL, 8);
-		cbm_drive_1_config(SERIAL, 9);
-		serial_clock = serial_data = serial_atn = 1;
-	}
 
 	c64_vicaddr = c64_memory;
 	vicirq = 0;

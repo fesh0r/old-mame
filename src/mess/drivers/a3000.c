@@ -22,8 +22,18 @@
 ***************************************************************************/
 
 static ADDRESS_MAP_START( a3000_mem, ADDRESS_SPACE_PROGRAM, 32 )
-
+	ADDRESS_MAP_UNMAP_HIGH
+	AM_RANGE(0x000000, 0x1fffff) AM_RAMBANK("chipram")
+	AM_RANGE(0xf80000, 0xffffff) AM_ROM AM_REGION("kickstart", 0)
 ADDRESS_MAP_END
+
+
+/***************************************************************************
+    INPUT PORTS
+***************************************************************************/
+
+static INPUT_PORTS_START( a3000 )
+INPUT_PORTS_END
 
 
 /***************************************************************************
@@ -69,5 +79,5 @@ ROM_END
     GAME DRIVERS
 ***************************************************************************/
 
-/*    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT  INIT  CONFIG  COMPANY      FULLNAME      FLAGS */
-COMP( 1990, a3000, 0,      0,      a3000,   0,     0,    0,      "Commodore", "Amiga 3000", GAME_NOT_WORKING )
+/*    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT  INIT  COMPANY      FULLNAME      FLAGS */
+COMP( 1990, a3000, 0,      0,      a3000,   a3000, 0,    "Commodore", "Amiga 3000", GAME_NOT_WORKING )

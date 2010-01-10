@@ -11,7 +11,7 @@
 #include "cpu/i8085/i8085.h"
 #include "sound/wave.h"
 #include "machine/i8255a.h"
-#include "machine/8257dma.h"
+#include "machine/i8257.h"
 #include "machine/wd17xx.h"
 #include "video/i8275.h"
 #include "devices/cassette.h"
@@ -24,24 +24,24 @@
 
 /* Address maps */
 static ADDRESS_MAP_START(partner_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x0000, 0x07ff ) AM_RAMBANK(1)
-	AM_RANGE( 0x0800, 0x3fff ) AM_RAMBANK(2)
-	AM_RANGE( 0x4000, 0x5fff ) AM_RAMBANK(3)
-	AM_RANGE( 0x6000, 0x7fff ) AM_RAMBANK(4)
-	AM_RANGE( 0x8000, 0x9fff ) AM_RAMBANK(5)
-	AM_RANGE( 0xa000, 0xb7ff ) AM_RAMBANK(6)
-	AM_RANGE( 0xb800, 0xbfff ) AM_RAMBANK(7)
-	AM_RANGE( 0xc000, 0xc7ff ) AM_RAMBANK(8)
-	AM_RANGE( 0xc800, 0xcfff ) AM_RAMBANK(9)
-	AM_RANGE( 0xd000, 0xd7ff ) AM_RAMBANK(10)
+	AM_RANGE( 0x0000, 0x07ff ) AM_RAMBANK("bank1")
+	AM_RANGE( 0x0800, 0x3fff ) AM_RAMBANK("bank2")
+	AM_RANGE( 0x4000, 0x5fff ) AM_RAMBANK("bank3")
+	AM_RANGE( 0x6000, 0x7fff ) AM_RAMBANK("bank4")
+	AM_RANGE( 0x8000, 0x9fff ) AM_RAMBANK("bank5")
+	AM_RANGE( 0xa000, 0xb7ff ) AM_RAMBANK("bank6")
+	AM_RANGE( 0xb800, 0xbfff ) AM_RAMBANK("bank7")
+	AM_RANGE( 0xc000, 0xc7ff ) AM_RAMBANK("bank8")
+	AM_RANGE( 0xc800, 0xcfff ) AM_RAMBANK("bank9")
+	AM_RANGE( 0xd000, 0xd7ff ) AM_RAMBANK("bank10")
 	AM_RANGE( 0xd800, 0xd8ff ) AM_DEVREADWRITE("i8275", i8275_r, i8275_w)  // video
 	AM_RANGE( 0xd900, 0xd9ff ) AM_DEVREADWRITE("ppi8255_1", i8255a_r, i8255a_w)
 	AM_RANGE( 0xda00, 0xdaff ) AM_WRITE(partner_mem_page_w)
-	AM_RANGE( 0xdb00, 0xdbff ) AM_DEVWRITE("dma8257", dma8257_w)	 // DMA
-	AM_RANGE( 0xdc00, 0xddff ) AM_RAMBANK(11)
+	AM_RANGE( 0xdb00, 0xdbff ) AM_DEVWRITE("dma8257", i8257_w)	 // DMA
+	AM_RANGE( 0xdc00, 0xddff ) AM_RAMBANK("bank11")
 	AM_RANGE( 0xde00, 0xdeff ) AM_WRITE(partner_win_memory_page_w)
-	AM_RANGE( 0xe000, 0xe7ff ) AM_RAMBANK(12)
-	AM_RANGE( 0xe800, 0xffff ) AM_RAMBANK(13)
+	AM_RANGE( 0xe000, 0xe7ff ) AM_RAMBANK("bank12")
+	AM_RANGE( 0xe800, 0xffff ) AM_RAMBANK("bank13")
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -166,6 +166,25 @@ static const floppy_config partner_floppy_config =
 	DO_NOT_KEEP_GEOMETRY
 };
 
+/* F4 Character Displayer */
+static const gfx_layout partner_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	512,					/* 512 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static GFXDECODE_START( partner )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, partner_charlayout, 0, 1 )
+GFXDECODE_END
+
+
 static MACHINE_DRIVER_START( partner )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu", 8080, XTAL_16MHz / 9)
@@ -184,6 +203,7 @@ static MACHINE_DRIVER_START( partner )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(78*6, 30*10)
 	MDRV_SCREEN_VISIBLE_AREA(0, 78*6-1, 0, 30*10-1)
+	MDRV_GFXDECODE(partner)
 	MDRV_PALETTE_LENGTH(3)
 	MDRV_PALETTE_INIT(radio86)
 
@@ -194,17 +214,17 @@ static MACHINE_DRIVER_START( partner )
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_DMA8257_ADD("dma8257", XTAL_16MHz / 9, partner_dma)
+	MDRV_I8257_ADD("dma8257", XTAL_16MHz / 9, partner_dma)
 
 	MDRV_CASSETTE_ADD( "cassette", partner_cassette_config )
 
 	MDRV_WD1793_ADD("wd1793", partner_wd17xx_interface )
 
 	MDRV_FLOPPY_2_DRIVES_ADD(partner_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("64K")	
+	MDRV_RAM_DEFAULT_SIZE("64K")
 MACHINE_DRIVER_END
 
 /* ROM definition */
@@ -220,5 +240,5 @@ ROM_START( partner )
 ROM_END
 
 /* Driver */
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT   INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1987, partner, radio86,   0, 	partner, 	partner,partner, 0,  "SAM SKB VM", 	"Partner-01.01",	GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT   INIT    	COMPANY   FULLNAME       FLAGS */
+COMP( 1987, partner, radio86,   0, 	partner, 	partner,partner,  	"SAM SKB VM", 	"Partner-01.01",	GAME_NOT_WORKING)

@@ -11,7 +11,7 @@
 #include "cpu/i8085/i8085.h"
 #include "devices/cassette.h"
 #include "machine/i8255a.h"
-#include "machine/8257dma.h"
+#include "machine/i8257.h"
 #include "video/i8275.h"
 #include "includes/radio86.h"
 
@@ -32,8 +32,8 @@ DRIVER_INIT(radio86)
 	/* set initialy ROM to be visible on first bank */
 	UINT8 *RAM = memory_region(machine, "maincpu");
 	memset(RAM,0x0000,0x1000); // make frist page empty by default
-  	memory_configure_bank(machine, 1, 1, 2, RAM, 0x0000);
-	memory_configure_bank(machine, 1, 0, 2, RAM, 0xf800);
+  	memory_configure_bank(machine, "bank1", 1, 2, RAM, 0x0000);
+	memory_configure_bank(machine, "bank1", 0, 2, RAM, 0xf800);
 	radio86_init_keyboard();
 }
 
@@ -129,38 +129,30 @@ I8255A_INTERFACE( rk7007_ppi8255_interface )
 	DEVCB_HANDLER(radio86_8255_portc_w2),
 };
 
-static WRITE_LINE_DEVICE_HANDLER(radio86_video_dma_request) {
-	const device_config *dma8257 = devtag_get_device(device->machine, "dma8257");
-	dma8257_drq_w(dma8257, 2, state);
+static WRITE_LINE_DEVICE_HANDLER( hrq_w )
+{
+	/* HACK - this should be connected to the BUSREQ line of Z80 */
+	cputag_set_input_line(device->machine, "maincpu", INPUT_LINE_HALT, state);
+
+	/* HACK - this should be connected to the BUSACK line of Z80 */
+	i8257_hlda_w(device, state);
 }
 
-READ8_DEVICE_HANDLER(radio86_dma_read_byte)
+I8257_INTERFACE( radio86_dma )
 {
-	UINT8 result;
-	result = memory_read_byte(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM), offset);
-	return result;
-}
-
-WRITE8_DEVICE_HANDLER(radio86_write_video)
-{
-	i8275_dack_w(devtag_get_device(device->machine, "i8275"), 0, data);
-}
-
-const dma8257_interface radio86_dma =
-{
-	0,
-
-	radio86_dma_read_byte,
-	0,
-
-	{ 0, 0, 0, 0 },
-	{ 0, 0, radio86_write_video, 0 },
-	{ 0, 0, 0, 0 }
+	DEVCB_LINE(hrq_w),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	I8257_MEMORY_HANDLER("maincpu", PROGRAM, memory_read_byte),
+	I8257_MEMORY_HANDLER("maincpu", PROGRAM, memory_write_byte),
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_DEVICE_HANDLER("i8275", i8275_dack_w), DEVCB_NULL },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL }
 };
 
 static TIMER_CALLBACK( radio86_reset )
 {
-	memory_set_bank(machine, 1, 0);
+	memory_set_bank(machine, "bank1", 0);
 }
 
 static UINT8 romdisk_lsb,romdisk_msb, disk_sel;
@@ -183,7 +175,7 @@ WRITE8_HANDLER(radio_io_w )
 MACHINE_RESET( radio86 )
 {
 	timer_set(machine, ATTOTIME_IN_USEC(10), NULL, 0, radio86_reset);
-	memory_set_bank(machine, 1, 1);
+	memory_set_bank(machine, "bank1", 1);
 
 	radio86_keyboard_mask = 0;
 	disk_sel = 0;
@@ -248,7 +240,7 @@ const i8275_interface radio86_i8275_interface = {
 	"screen",
 	6,
 	0,
-	DEVCB_LINE(radio86_video_dma_request),
+	DEVCB_DEVICE_LINE("dma8257", i8257_drq2_w),
 	DEVCB_NULL,
 	radio86_display_pixels
 };
@@ -257,7 +249,7 @@ const i8275_interface mikrosha_i8275_interface = {
 	"screen",
 	6,
 	0,
-	DEVCB_LINE(radio86_video_dma_request),
+	DEVCB_DEVICE_LINE("dma8257", i8257_drq2_w),
 	DEVCB_NULL,
 	mikrosha_display_pixels
 };
@@ -266,7 +258,7 @@ const i8275_interface apogee_i8275_interface = {
 	"screen",
 	6,
 	0,
-	DEVCB_LINE(radio86_video_dma_request),
+	DEVCB_DEVICE_LINE("dma8257", i8257_drq2_w),
 	DEVCB_NULL,
 	apogee_display_pixels
 };
@@ -275,7 +267,7 @@ const i8275_interface partner_i8275_interface = {
 	"screen",
 	6,
 	1,
-	DEVCB_LINE(radio86_video_dma_request),
+	DEVCB_DEVICE_LINE("dma8257", i8257_drq2_w),
 	DEVCB_NULL,
 	partner_display_pixels
 };

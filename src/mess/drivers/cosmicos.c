@@ -1,33 +1,33 @@
 /*
 
-	COSMICOS
+    COSMICOS
 
-	http://retro.hansotten.nl/index.php?page=1802-cosmicos
+    http://retro.hansotten.nl/index.php?page=1802-cosmicos
 
 
-	HEX-monitor
+    HEX-monitor
 
-	0 - start user program
-	1 - inspect and/or change memory
-	2 - write memory block to cassette
-	3 - read memory block from cassette
-	4 - move memory block
-	5 - write memory block to EPROM
-	C - start user program from address 0000
+    0 - start user program
+    1 - inspect and/or change memory
+    2 - write memory block to cassette
+    3 - read memory block from cassette
+    4 - move memory block
+    5 - write memory block to EPROM
+    C - start user program from address 0000
 
 */
 
 /*
 
-	TODO:
+    TODO:
 
-	- display interface INH
-	- 2 segment display
-	- single step
-	- ascii monitor
-	- PPI 8255
-	- Floppy WD1793
-	- COM8017 UART to printer
+    - display interface INH
+    - 2 segment display
+    - single step
+    - ascii monitor
+    - PPI 8255
+    - Floppy WD1793
+    - COM8017 UART to printer
 
 */
 
@@ -154,17 +154,17 @@ static WRITE8_HANDLER( display_w )
 /* Memory Maps */
 
 static ADDRESS_MAP_START( cosmicos_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0xbfff) AM_RAMBANK("bank1")
 	AM_RANGE(0xc000, 0xcfff) AM_ROM
-	AM_RANGE(0xff00, 0xffff) AM_RAMBANK(2)
+	AM_RANGE(0xff00, 0xffff) AM_RAMBANK("bank2")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cosmicos_io, ADDRESS_SPACE_IO, 8 )
-//	AM_RANGE(0x00, 0x00)
+//  AM_RANGE(0x00, 0x00)
 	AM_RANGE(0x01, 0x01) AM_DEVREAD(CDP1864_TAG, video_on_r)
 	AM_RANGE(0x02, 0x02) AM_DEVREADWRITE(CDP1864_TAG, video_off_r, audio_latch_w)
-//	AM_RANGE(0x03, 0x03)
-//	AM_RANGE(0x04, 0x04)
+//  AM_RANGE(0x03, 0x03)
+//  AM_RANGE(0x04, 0x04)
 	AM_RANGE(0x05, 0x05) AM_READWRITE(hex_keyboard_r, hex_keylatch_w)
 	AM_RANGE(0x06, 0x06) AM_READWRITE(reset_counter_r, segment_w)
 	AM_RANGE(0x07, 0x07) AM_READWRITE(data_r, display_w)
@@ -208,7 +208,7 @@ static void set_cdp1802_mode(running_machine *machine, cdp1802_control_mode mode
 	cosmicos_state *state = machine->driver_data;
 
 	state->cdp1802_mode = mode;
-	
+
 	output_set_led_value(LED_RUN, 0);
 	output_set_led_value(LED_LOAD, 0);
 	output_set_led_value(LED_PAUSE, 0);
@@ -269,17 +269,20 @@ static void set_ram_mode(running_machine *machine)
 
 	if (state->ram_disable)
 	{
-		memory_install_readwrite8_handler(program, 0xff00, 0xffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_unmap_read(program, 0xff00, 0xffff, 0, 0);
+		memory_unmap_write(program, 0xff00, 0xffff, 0, 0);
 	}
 	else
 	{
 		if (state->ram_protect)
 		{
-			memory_install_readwrite8_handler(program, 0xff00, 0xffff, 0, 0, SMH_BANK(2), SMH_UNMAP);
+			memory_install_read_bank(program, 0xff00, 0xffff, 0, 0, "bank2");
+			memory_unmap_write(program, 0xff00, 0xffff, 0, 0);
 		}
 		else
 		{
-			memory_install_readwrite8_handler(program, 0xff00, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+			memory_install_read_bank(program, 0xff00, 0xffff, 0, 0, "bank2");
+			memory_install_write_bank(program, 0xff00, 0xffff, 0, 0, "bank2");
 		}
 	}
 }
@@ -423,8 +426,8 @@ static CDP1802_MODE_READ( cosmicos_mode_r )
 static CDP1802_EF_READ( cosmicos_ef_r )
 {
 	/*
-        EF1     
-        EF2		cassette input
+        EF1
+        EF2     cassette input
         EF3
         EF4     ENTER
     */
@@ -470,7 +473,7 @@ static CDP1802_SC_WRITE( cosmicos_sc_w )
 		cpu_set_input_line(device, CDP1802_INPUT_LINE_INT, CLEAR_LINE);
 		cpu_set_input_line(device, CDP1802_INPUT_LINE_DMAIN, CLEAR_LINE);
 	}
-	
+
 	driver_state->sc1 = sc1;
 }
 
@@ -524,29 +527,29 @@ static MACHINE_START( cosmicos )
 	dm9368_rbi_w(state->dm9368, 1);
 
 	/* setup memory banking */
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, CDP1802_TAG), 0);
-	memory_set_bank(machine, 1, 0);
+	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, CDP1802_TAG), 0);
+	memory_set_bank(machine, "bank1", 0);
 
-	memory_configure_bank(machine, 2, 0, 1, memory_region(machine, CDP1802_TAG) + 0xff00, 0);
-	memory_set_bank(machine, 2, 0);
+	memory_configure_bank(machine, "bank2", 0, 1, memory_region(machine, CDP1802_TAG) + 0xff00, 0);
+	memory_set_bank(machine, "bank2", 0);
 
 	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 256:
-		memory_install_readwrite8_handler(program, 0x0000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_unmap_readwrite(program, 0x0000, 0xbfff, 0, 0);
 		break;
 
 	case 4*1024:
-		memory_install_readwrite8_handler(program, 0x0000, 0x0fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
-		memory_install_readwrite8_handler(program, 0x1000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite_bank(program, 0x0000, 0x0fff, 0, 0, "bank1");
+		memory_unmap_readwrite(program, 0x1000, 0xbfff, 0, 0);
 		break;
 
 	case 48*1024:
-		memory_install_readwrite8_handler(program, 0x0000, 0xbfff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(program, 0x0000, 0xbfff, 0, 0, "bank1");
 		break;
 	}
 
-	memory_install_readwrite8_handler(program, 0xff00, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+	memory_install_readwrite_bank(program, 0xff00, 0xffff, 0, 0, "bank2");
 
 	/* register for state saving */
 	state_save_register_global(machine, state->cdp1802_mode);
@@ -627,7 +630,7 @@ static MACHINE_DRIVER_START( cosmicos )
 	/* devices */
 	MDRV_QUICKLOAD_ADD("quickload", cosmicos, "bin", 0)
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, cosmicos_cassette_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("256")
@@ -668,5 +671,5 @@ static DRIVER_INIT( cosmicos )
 	memory_set_direct_update_handler(program, cosmicos_direct_update_handler);
 }
 
-/*    YEAR  NAME		PARENT  COMPAT  MACHINE		INPUT		INIT		CONFIG		COMPANY				FULLNAME    FLAGS */
-COMP( 1979, cosmicos,	0,		0,		cosmicos,	cosmicos,	cosmicos,	0,			"Radio Bulletin",	"Cosmicos",	GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        COMPANY             FULLNAME    FLAGS */
+COMP( 1979, cosmicos,	0,		0,		cosmicos,	cosmicos,	cosmicos,	"Radio Bulletin",	"Cosmicos",	GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS )

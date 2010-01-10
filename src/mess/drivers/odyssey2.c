@@ -17,8 +17,8 @@
 
 static ADDRESS_MAP_START( odyssey2_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x03FF) AM_ROM
-	AM_RANGE( 0x0400, 0x0BFF) AM_RAMBANK(1)
-	AM_RANGE( 0x0C00, 0x0FFF) AM_RAMBANK(2)
+	AM_RANGE( 0x0400, 0x0BFF) AM_RAMBANK("bank1")
+	AM_RANGE( 0x0C00, 0x0FFF) AM_RAMBANK("bank2")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( odyssey2_io , ADDRESS_SPACE_IO, 8)
@@ -162,14 +162,14 @@ GFXDECODE_END
 
 static const sp0256_interface the_voice_sp0256 =
 {
-	DEVCB_LINE(the_voice_lrq_callback),
+	DEVCB_LINE(odyssey2_the_voice_lrq_callback),
 	DEVCB_NULL
 };
 
 static MACHINE_DRIVER_START( odyssey2_cartslot )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("bin,rom")
-	MDRV_CARTSLOT_MANDATORY
+	MDRV_CARTSLOT_NOT_MANDATORY
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( odyssey2 )
@@ -323,9 +323,9 @@ ROM_START (g7400)
 	ROM_CART_LOAD("cart", 0x0000, 0x4000, ROM_MIRROR)
 ROM_END
 
-/*     YEAR  NAME      PARENT   COMPAT  MACHINE   INPUT     INIT      CONFIG    COMPANY     FULLNAME     FLAGS */
-COMP( 1978, odyssey2, 0,		0,		odyssey2, odyssey2, odyssey2, 0, 	"Magnavox", "Odyssey 2", GAME_IMPERFECT_SOUND )
-COMP( 1979, videopac, odyssey2,	0,		videopac, odyssey2, odyssey2, 0, 	"Philips", "Videopac G7000/C52", GAME_IMPERFECT_SOUND )
-COMP( 1983, g7400, odyssey2, 0,			g7400,    odyssey2, odyssey2, 0, 	"Philips", "Videopac Plus G7400", GAME_NOT_WORKING )
+/*     YEAR  NAME      PARENT   COMPAT  MACHINE   INPUT     INIT      COMPANY     FULLNAME     FLAGS */
+COMP( 1978, odyssey2, 0,		0,		odyssey2, odyssey2, odyssey2, "Magnavox", "Odyssey 2", GAME_IMPERFECT_SOUND )
+COMP( 1979, videopac, odyssey2,	0,		videopac, odyssey2, odyssey2, "Philips", "Videopac G7000/C52", GAME_IMPERFECT_SOUND )
+COMP( 1983, g7400, odyssey2, 0,			g7400,    odyssey2, odyssey2, "Philips", "Videopac Plus G7400", GAME_NOT_WORKING )
 
 

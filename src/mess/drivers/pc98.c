@@ -2,20 +2,20 @@
 
     NEC PC-98 computer series
 
-	preliminary driver by Angelo Salese
+    preliminary driver by Angelo Salese
 
-	Reminder: tests A20 line feature, afaik it's NOT supported by the i386 core (along with protected mode / MMU)
+    Reminder: tests A20 line feature, afaik it's NOT supported by the i386 core (along with protected mode / MMU)
 
-	TODO:
-	- remove the A20 line hack
+    TODO:
+    - remove the A20 line hack
 
-	Debug tricks list (aka list of things that should be fixed):
-	- run a first time without doing anything;
-	- call the debugger then soft reset (the debugger will be called after the reset because the CPU is into an halt state);
-	- wpiset 35,1,r -> do eip=90 -> bpset f926c -> do eip=128d -> run until HALT
-	- soft reset -> wpiset 35,1,r -> do eip=90 again -> run until HALT
-	- soft reset -> modify I/O $43d with a 0x02 (should bankswitch with the basic ROM) -> run
-	- modify memory 0x53c from 0xc4 to 0x84 two times
+    Debug tricks list (aka list of things that should be fixed):
+    - run a first time without doing anything;
+    - call the debugger then soft reset (the debugger will be called after the reset because the CPU is into an halt state);
+    - wpiset 35,1,r -> do eip=90 -> bpset f926c -> do eip=128d -> run until HALT
+    - soft reset -> wpiset 35,1,r -> do eip=90 again -> run until HALT
+    - soft reset -> modify I/O $43d with a 0x02 (should bankswitch with the basic ROM) -> run
+    - modify memory 0x53c from 0xc4 to 0x84 two times
 
 ========================================================================================
 
@@ -255,7 +255,7 @@ bit 5-7: BRG colors
 
 static VIDEO_UPDATE( pc9801 )
 {
-//	const gfx_element *gfx = screen->machine->gfx[0];
+//  const gfx_element *gfx = screen->machine->gfx[0];
 	int y,x;
 	int yi,xi;
 	UINT8 *gfx_data = memory_region(screen->machine, "gfx1");
@@ -351,14 +351,14 @@ static WRITE8_HANDLER( sio_port_w )
 }
 
 /*
-#define UPD7220_SR_DATA_READY			0x01
-#define UPD7220_SR_FIFO_FULL			0x02
-#define UPD7220_SR_FIFO_EMPTY			0x04
-#define UPD7220_SR_DRAWING_IN_PROGRESS	0x08
-#define UPD7220_SR_DMA_EXECUTE			0x10
-#define UPD7220_SR_VSYNC_ACTIVE			0x20
-#define UPD7220_SR_HBLANK_ACTIVE		0x40
-#define UPD7220_SR_LIGHT_PEN_DETECT		0x80
+#define UPD7220_SR_DATA_READY           0x01
+#define UPD7220_SR_FIFO_FULL            0x02
+#define UPD7220_SR_FIFO_EMPTY           0x04
+#define UPD7220_SR_DRAWING_IN_PROGRESS  0x08
+#define UPD7220_SR_DMA_EXECUTE          0x10
+#define UPD7220_SR_VSYNC_ACTIVE         0x20
+#define UPD7220_SR_HBLANK_ACTIVE        0x40
+#define UPD7220_SR_LIGHT_PEN_DETECT     0x80
 */
 static READ8_HANDLER( crtc_status_r )
 {
@@ -421,7 +421,7 @@ static UINT8 rom_bank;
 
 static WRITE8_HANDLER( ems_sel_w )
 {
-//	printf("%02x %02x\n",offset,data);
+//  printf("%02x %02x\n",offset,data);
 
 	if(offset == 1)
 	{
@@ -430,13 +430,13 @@ static WRITE8_HANDLER( ems_sel_w )
 		if(data == 0x00 || data == 0x10)
 		{
 			rom_bank = 1;
-			memory_set_bankptr(space->machine, 1, &ROM[0x20000]);
+			memory_set_bankptr(space->machine, "bank1", &ROM[0x20000]);
 		}
 
 		if(data == 0x02 || data == 0x12)
 		{
 			rom_bank = 0;
-			memory_set_bankptr(space->machine, 1, &ROM[0x00000]);
+			memory_set_bankptr(space->machine, "bank1", &ROM[0x00000]);
 		}
 	}
 
@@ -454,7 +454,7 @@ static WRITE8_HANDLER( rom_bank_w )
 {
 	UINT8 *ROM = memory_region(space->machine, "cpudata");
 
-//	printf("%08x %04x %08x\n",ROM[offset+(rom_bank*0x20000/4)],offset+(rom_bank*0x20000/4),data);
+//  printf("%08x %04x %08x\n",ROM[offset+(rom_bank*0x20000/4)],offset+(rom_bank*0x20000/4),data);
 
 	/* NOP any attempt to write on ROM (TODO: why it's overwriting here anyway? Doesn't make sense...) */
 	if((rom_bank == 0 && offset < 0x8000) || (rom_bank == 1 && offset < 0x18000))
@@ -493,7 +493,7 @@ static READ8_HANDLER( port_00_r )
 	}
 
 	//logerror("DMA port $00 R access %02x\n",offset >> 1);
-	return dma8237_r(devtag_get_device(space->machine, "dma8237_1"), (offset & 0x1e) >> 1);
+	return i8237_r(devtag_get_device(space->machine, "dma8237_1"), (offset & 0x1e) >> 1);
 }
 
 static WRITE8_HANDLER( port_00_w )
@@ -506,7 +506,7 @@ static WRITE8_HANDLER( port_00_w )
 	else
 	{
 		//logerror("DMA port $00 W access %02x %02x\n",offset >> 1,data);
-		dma8237_w(devtag_get_device(space->machine, "dma8237_1"), (offset & 0x1e) >> 1, data);
+		i8237_w(devtag_get_device(space->machine, "dma8237_1"), (offset & 0x1e) >> 1, data);
 	}
 }
 
@@ -586,38 +586,38 @@ static ADDRESS_MAP_START( pc9801_mem, ADDRESS_SPACE_PROGRAM, 32)
 	AM_RANGE(0x000a5000, 0x000a7fff) AM_RAM //??? (presumably another work ram bank)
 	AM_RANGE(0x000a8000, 0x000bffff) AM_READWRITE(gfx_bitmap_ram_r,gfx_bitmap_ram_w)
 	AM_RANGE(0x000c0000, 0x000dffff) AM_READWRITE(wram_ide_r,wram_ide_w)
-	AM_RANGE(0x000e0000, 0x000fffff) AM_ROMBANK(1) AM_WRITE8(rom_bank_w,0xffffffff)
-	AM_RANGE(0xfffe0000, 0xffffffff) AM_ROMBANK(1) AM_WRITE8(rom_bank_w,0xffffffff)
+	AM_RANGE(0x000e0000, 0x000fffff) AM_ROMBANK("bank1") AM_WRITE8(rom_bank_w,0xffffffff)
+	AM_RANGE(0xfffe0000, 0xffffffff) AM_ROMBANK("bank1") AM_WRITE8(rom_bank_w,0xffffffff)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pc9801_io, ADDRESS_SPACE_IO, 32)
 	AM_RANGE(0x0000, 0x001f) AM_READWRITE8(port_00_r,port_00_w,0xffffffff) // pic8259 (even ports) / dma (odd ports)
-//	AM_RANGE(0x0020, 0x0020) rtc
-//	AM_RANGE(0x0022, 0x0022)
+//  AM_RANGE(0x0020, 0x0020) rtc
+//  AM_RANGE(0x0022, 0x0022)
 	AM_RANGE(0x0030, 0x0037) AM_READWRITE8(sys_port_r,sys_port_w,0xffffffff) // rs232c (even ports) / system ppi8255 (odd ports)
 	AM_RANGE(0x0040, 0x0047) AM_READWRITE8(sio_port_r,sio_port_w,0xffffffff) // printer ppi8255 (even ports) / keyboard (odd ports)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(port_60_r,port_60_w,0xffffffff) // uPD7220 status & fifo (R) / param & cmd (W) master (even ports)
-//	AM_RANGE(0x0064, 0x0064) V-SYNC related write
-//	AM_RANGE(0x0068, 0x0068) Flip-Flop 1 r/w
-//	AM_RANGE(0x006a, 0x006a) Flip-Flop 2 r/w
-//	AM_RANGE(0x006e, 0x006e) Flip-Flop 3 r/w
-//	AM_RANGE(0x0070, 0x0070) crtc registers
-//	AM_RANGE(0x0072, 0x0072)
-//	AM_RANGE(0x0074, 0x0074)
-//	AM_RANGE(0x0076, 0x0076)
-//	AM_RANGE(0x0078, 0x0078)
-//	AM_RANGE(0x007a, 0x007a)
-//	AM_RANGE(0x007c, 0x007c) GRCG mode write
-//	AM_RANGE(0x007e, 0x007e) GRCG tile write
+//  AM_RANGE(0x0064, 0x0064) V-SYNC related write
+//  AM_RANGE(0x0068, 0x0068) Flip-Flop 1 r/w
+//  AM_RANGE(0x006a, 0x006a) Flip-Flop 2 r/w
+//  AM_RANGE(0x006e, 0x006e) Flip-Flop 3 r/w
+//  AM_RANGE(0x0070, 0x0070) crtc registers
+//  AM_RANGE(0x0072, 0x0072)
+//  AM_RANGE(0x0074, 0x0074)
+//  AM_RANGE(0x0076, 0x0076)
+//  AM_RANGE(0x0078, 0x0078)
+//  AM_RANGE(0x007a, 0x007a)
+//  AM_RANGE(0x007c, 0x007c) GRCG mode write
+//  AM_RANGE(0x007e, 0x007e) GRCG tile write
 	AM_RANGE(0x0070, 0x007f) AM_READWRITE8(port_70_r,port_70_w,0xffffffff) // crtc regs (even ports) / pit8253 (odd ports)
 	AM_RANGE(0x00a0, 0x00a3) AM_READWRITE8(port_a0_r,port_a0_w,0xffffffff) // uPD7220 status & fifo (R) / param & cmd (W) slave (even ports)
-// 	AM_RANGE(0x00e0, 0x00ef) DMA
+//  AM_RANGE(0x00e0, 0x00ef) DMA
 	AM_RANGE(0x00f0, 0x00ff) AM_READWRITE8(port_f0_r,port_f0_w,0xffffffff)
 	AM_RANGE(0x043c, 0x043f) AM_WRITE8(ems_sel_w,0xffffffff)
 	AM_RANGE(0x0460, 0x0463) AM_READWRITE8(wram_sel_r,wram_sel_w,0xffffffff)
 	AM_RANGE(0x7fd8, 0x7fdf) AM_READ8(pc98_mouse_r,0xffffffff)
 
-//	(and many more...)
+//  (and many more...)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pc9821_mem, ADDRESS_SPACE_PROGRAM, 32)
@@ -656,7 +656,7 @@ static MACHINE_RESET(pc9801)
 	gate_a20 = 0;
 	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), I386_EIP, 0xffff0+0x10000);
 
-	memory_set_bankptr(machine, 1, &ROM[0x20000]);
+	memory_set_bankptr(machine, "bank1", &ROM[0x20000]);
 
 	wram_bank = 0;
 	rom_bank = 1;
@@ -672,7 +672,7 @@ static MACHINE_RESET(pc9821)
 	gate_a20 = 0;
 	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), I386_EIP, 0xffff0+0x10000);
 
-	memory_set_bankptr(machine, 1, &ROM[0x20000]);
+	memory_set_bankptr(machine, "bank1", &ROM[0x20000]);
 
 	wram_bank = 0;
 	rom_bank = 1;
@@ -799,7 +799,7 @@ static READ8_DEVICE_HANDLER( printer_porta_r )
 
 static READ8_DEVICE_HANDLER( printer_portb_r )
 {
-//	printf("PPI2 Port B read\n");
+//  printf("PPI2 Port B read\n");
 	return 0xb4;
 }
 
@@ -849,6 +849,7 @@ static PALETTE_INIT( pc9801 )
 		palette_set_color_rgb(machine, i+0x000, pal1bit(i >> 1), pal1bit(i >> 2), pal1bit(i >> 0));
 }
 
+static int dma_channel;
 static UINT8 dma_offset[2][4];
 
 #if 0
@@ -898,46 +899,51 @@ static WRITE8_HANDLER(at_page8_w)
 }
 #endif
 
-static DMA8237_HRQ_CHANGED( pc_dma_hrq_changed )
+static WRITE_LINE_DEVICE_HANDLER( pc_dma_hrq_changed )
 {
 	cputag_set_input_line(device->machine, "maincpu", INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
 
 	/* Assert HLDA */
-	dma8237_set_hlda( device, state );
+	i8237_hlda_w( device, state );
 }
 
 
-static DMA8237_MEM_READ( pc_dma_read_byte )
+static READ8_HANDLER( pc_dma_read_byte )
 {
-	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	offs_t page_offset = (((offs_t) dma_offset[0][channel]) << 16)
+	offs_t page_offset = (((offs_t) dma_offset[0][dma_channel]) << 16)
 		& 0xFF0000;
 
 	return memory_read_byte(space, page_offset + offset);
 }
 
 
-static DMA8237_MEM_WRITE( pc_dma_write_byte )
+static WRITE8_HANDLER( pc_dma_write_byte )
 {
-	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	offs_t page_offset = (((offs_t) dma_offset[0][channel]) << 16)
+	offs_t page_offset = (((offs_t) dma_offset[0][dma_channel]) << 16)
 		& 0xFF0000;
 
 	memory_write_byte(space, page_offset + offset, data);
 }
 
-
-static const struct dma8237_interface dma8237_1_config =
+static void set_dma_channel(const device_config *device, int channel, int state)
 {
-	XTAL_14_31818MHz/3,
+	if (!state) dma_channel = channel;
+}
 
-	pc_dma_hrq_changed,
-	pc_dma_read_byte,
-	pc_dma_write_byte,
+static WRITE_LINE_DEVICE_HANDLER( pc_dack0_w ) { set_dma_channel(device, 0, state); }
+static WRITE_LINE_DEVICE_HANDLER( pc_dack1_w ) { set_dma_channel(device, 1, state); }
+static WRITE_LINE_DEVICE_HANDLER( pc_dack2_w ) { set_dma_channel(device, 2, state); }
+static WRITE_LINE_DEVICE_HANDLER( pc_dack3_w ) { set_dma_channel(device, 3, state); }
 
-	{ NULL, NULL, NULL, NULL },
-	{ NULL, NULL, NULL, NULL },
-	NULL
+static I8237_INTERFACE( dma8237_1_config )
+{
+	DEVCB_LINE(pc_dma_hrq_changed),
+	DEVCB_NULL,
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, pc_dma_read_byte),
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, pc_dma_write_byte),
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL },
+	{ DEVCB_LINE(pc_dack0_w), DEVCB_LINE(pc_dack1_w), DEVCB_LINE(pc_dack2_w), DEVCB_LINE(pc_dack3_w) }
 };
 
 /* I suspect the dump for pc9801 comes from a i386 later model... the original machine would use a i8086 @ 5Mhz CPU (see notes at top) */
@@ -953,7 +959,7 @@ static MACHINE_DRIVER_START( pc9801 )
 	MDRV_I8255A_ADD( "ppi8255_0", ppi8255_intf )
 	MDRV_I8255A_ADD( "ppi8255_1", printer_intf )
 	MDRV_PIT8253_ADD( "pit8253", pit8253_config )
-	MDRV_DMA8237_ADD( "dma8237_1", dma8237_1_config )
+	MDRV_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, dma8237_1_config )
 	MDRV_PIC8259_ADD( "pic8259_master", pic8259_master_config )
 	MDRV_PIC8259_ADD( "pic8259_slave", pic8259_slave_config )
 
@@ -1034,6 +1040,6 @@ ROM_START( pc9821 )
 ROM_END
 
 
-/*    YEAR  NAME      PARENT   COMPAT MACHINE   INPUT     INIT    CONFIG     COMPANY                        FULLNAME    FLAGS */
-COMP( 1981, pc9801,   0,       0,     pc9801,   pc9801,   0,      0,    "Nippon Electronic Company",   "PC-9801",  GAME_NOT_WORKING )
-COMP( 1993, pc9821,   0,       0,     pc9801,   pc9801,   0,      0,    "Nippon Electronic Company",   "PC-9821 (98MATE)",  GAME_NOT_WORKING )
+/*    YEAR  NAME      PARENT   COMPAT MACHINE   INPUT     INIT    COMPANY                        FULLNAME    FLAGS */
+COMP( 1981, pc9801,   0,       0,     pc9801,   pc9801,   0,      "Nippon Electronic Company",   "PC-9801",  GAME_NOT_WORKING )
+COMP( 1993, pc9821,   0,       0,     pc9801,   pc9801,   0,      "Nippon Electronic Company",   "PC-9821 (98MATE)",  GAME_NOT_WORKING )

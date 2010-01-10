@@ -11,7 +11,6 @@
     TODO:
       * add Z8001 core so that we can handle the 16bit IO Map (Z8000 uses a
         8bit IO Map, and hence I commented out the whole map)
-      * add floppy emulation to 8 bit board
       * properly implement Z80 daisy chain in 16 bit board
 
 ****************************************************************************/
@@ -20,6 +19,9 @@
 #include "cpu/z80/z80.h"
 #include "cpu/z8000/z8000.h"
 #include "cpu/z80/z80daisy.h"
+#include "formats/basicdsk.h"
+#include "devices/flopdrv.h"
+#include "machine/upd765.h"
 #include "machine/z80ctc.h"
 #include "machine/z80pio.h"
 #include "machine/z80sio.h"
@@ -73,12 +75,13 @@ static ADDRESS_MAP_START(p8k_iomap, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("z80ctc_0", z80ctc_r, z80ctc_w)
 	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE("z80pio_0", z80pio_alt_r, z80pio_alt_w)
 	AM_RANGE(0x18, 0x1b) AM_DEVREADWRITE("z80pio_1", z80pio_alt_r, z80pio_alt_w)
-	AM_RANGE(0x1c, 0x1f) AM_DEVREADWRITE("z80pio_2", z80pio_alt_r, z80pio_alt_w)	// we still need to add the FDC related part of this one
-//  AM_RANGE(0x20, 0x23) // FDC
+	AM_RANGE(0x1c, 0x1f) AM_DEVREADWRITE("z80pio_2", z80pio_alt_r, z80pio_alt_w)
+	AM_RANGE(0x20, 0x20) AM_DEVREADWRITE("i8272", upd765_data_r, upd765_data_w)
+	AM_RANGE(0x21, 0x21) AM_DEVREAD("i8272", upd765_status_r)
 	AM_RANGE(0x24, 0x27) AM_DEVREADWRITE("z80sio_0", sio2_r, sio2_w)
 	AM_RANGE(0x28, 0x2b) AM_DEVREADWRITE("z80sio_1", sio2_r, sio2_w)
 	AM_RANGE(0x2c, 0x2f) AM_DEVREADWRITE("z80ctc_1", z80ctc_r, z80ctc_w)
-	AM_RANGE(0x3c, 0x3c) AM_DEVREADWRITE("z80dma", z80dma_r, z80dma_w)	// FDC related
+	AM_RANGE(0x3c, 0x3c) AM_DEVREADWRITE("z80dma", z80dma_r, z80dma_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(p8k_16_memmap, ADDRESS_SPACE_PROGRAM, 16)
@@ -206,26 +209,26 @@ static void p8k_daisy_interrupt(const device_config *device, int state)
 
 /* Z80 DMA */
 
-static READ8_DEVICE_HANDLER(p8k_dma_read_byte)
+static WRITE_LINE_DEVICE_HANDLER( p8k_dma_irq_w )
 {
-	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	return memory_read_byte(space, offset);
+	if (state)
+	{
+		const device_config *i8272 = devtag_get_device(device->machine, "i8272");
+		upd765_tc_w(i8272, state);
+	}
+
+	p8k_daisy_interrupt(device, state);
 }
 
-static WRITE8_DEVICE_HANDLER(p8k_dma_write_byte)
+static Z80DMA_INTERFACE( p8k_dma_intf )
 {
-	const address_space *space = cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	memory_write_byte(space, offset, data);
-}
-
-// still to implement: dma io read/write which handle FDC. also, the interrupt should deal with FDC as well, with p8k_daisy_interrupt as a fallback
-static const z80dma_interface p8k_dma_intf =
-{
-	"maincpu",
-	p8k_dma_read_byte,
-	p8k_dma_write_byte,
-	NULL, NULL, NULL, NULL,
-	p8k_daisy_interrupt
+	DEVCB_LINE(p8k_dma_irq_w),
+	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),
+	DEVCB_NULL,
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, memory_read_byte),
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, memory_write_byte),
+	DEVCB_MEMORY_HANDLER("maincpu", IO, memory_read_byte),
+	DEVCB_MEMORY_HANDLER("maincpu", IO, memory_write_byte)
 };
 
 /* Z80 CTC 0 */
@@ -329,7 +332,6 @@ static const z80sio_interface p8k_sio_1_intf =
 	NULL					/* receive handler */
 };
 
-
 /* Z80 Daisy Chain */
 
 static const z80_daisy_chain p8k_daisy_chain[] =
@@ -345,6 +347,42 @@ static const z80_daisy_chain p8k_daisy_chain[] =
 	{ NULL }
 };
 
+/* Intel 8272 Interface */
+
+static WRITE_LINE_DEVICE_HANDLER( p8k_i8272_irq_w )
+{
+	const device_config *z80pio = devtag_get_device(device->machine, "z80pio_2");
+
+	z80pio_p_w(z80pio, 1, (state) ? 0x10 : 0x00);
+}
+
+static UPD765_DMA_REQUEST( p8k_i8272_drq_w )
+{
+	const device_config *z80dma = devtag_get_device(device->machine, "z80dma");
+
+	z80dma_rdy_w(z80dma, state);
+}
+
+static const struct upd765_interface p8k_i8272_intf =
+{
+	DEVCB_LINE(p8k_i8272_irq_w),
+	p8k_i8272_drq_w,
+	NULL,
+	UPD765_RDY_PIN_CONNECTED,
+	{ FLOPPY_0, FLOPPY_1, NULL, NULL }
+};
+
+static const floppy_config p8k_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(default),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 /***************************************************************************
 
@@ -452,7 +490,6 @@ static const z80sio_interface p8k_16_sio_1_intf =
 	NULL					/* receive handler */
 };
 
-
 /* Z80 Daisy Chain */
 
 static const z80_daisy_chain p8k_16_daisy_chain[] =
@@ -466,6 +503,25 @@ static const z80_daisy_chain p8k_16_daisy_chain[] =
 	{ "z80pio_2" },
 	{ NULL }
 };
+
+/* F4 Character Displayer */
+static const gfx_layout p8k_charlayout =
+{
+	8, 12,					/* 8 x 12 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8, 10*8, 11*8 },
+	8*16					/* every char takes 16 bytes */
+};
+
+static GFXDECODE_START( p8k )
+	GFXDECODE_ENTRY( "chargen", 0x0000, p8k_charlayout, 0, 1 )
+GFXDECODE_END
+
 
 /***************************************************************************
 
@@ -492,6 +548,8 @@ static MACHINE_DRIVER_START( p8k )
 	MDRV_Z80PIO_ADD("z80pio_0", p8k_pio_0_intf)
 	MDRV_Z80PIO_ADD("z80pio_1", p8k_pio_1_intf)
 	MDRV_Z80PIO_ADD("z80pio_2", p8k_pio_2_intf)
+	MDRV_UPD765A_ADD("i8272", p8k_i8272_intf)
+	MDRV_FLOPPY_2_DRIVES_ADD(p8k_floppy_config)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -505,6 +563,7 @@ static MACHINE_DRIVER_START( p8k )
 	MDRV_SCREEN_REFRESH_RATE(15)
 	MDRV_SCREEN_SIZE(640,480)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+	MDRV_GFXDECODE(p8k)
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(black_and_white)
 
@@ -543,6 +602,7 @@ static MACHINE_DRIVER_START( p8k_16 )
 	MDRV_SCREEN_REFRESH_RATE(15)
 	MDRV_SCREEN_SIZE(640,480)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
+	MDRV_GFXDECODE(p8k)
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(black_and_white)
 
@@ -556,25 +616,25 @@ ROM_START( p8000 )
 	ROM_LOAD("mon8_1_3.1",	0x0000, 0x1000, CRC(ad1bb118) SHA1(2332963acd74d5d1a009d9bce8a2b108de01d2a5))
 	ROM_LOAD("mon8_2_3.1",	0x1000, 0x1000, CRC(daced7c2) SHA1(f1f778e72568961b448020fc543ed6e81bbe81b1))
 
-	ROM_REGION( 0x1000, "proms", 0 )
+	ROM_REGION( 0x1000, "chargen", 0 )
 	ROM_LOAD("p8t_zs",    0x0000, 0x0800, CRC(f9321251) SHA1(a6a796b58d50ec4a416f2accc34bd76bc83f18ea))
-      ROM_LOAD("p8tdzs.2",  0x0800, 0x0800, CRC(32736503) SHA1(6a1d7c55dddc64a7d601dfdbf917ce1afaefbb0a))
+	ROM_LOAD("p8tdzs.2",  0x0800, 0x0800, CRC(32736503) SHA1(6a1d7c55dddc64a7d601dfdbf917ce1afaefbb0a))
 ROM_END
 
 ROM_START( p8000_16 )
-      ROM_REGION16_BE( 0x4000, "maincpu", 0 )
-      ROM_LOAD16_BYTE("mon16_1h_3.1_udos",   0x0000, 0x1000, CRC(0c3c28da) SHA1(0cd35444c615b404ebb9cf80da788593e573ddb5))
-      ROM_LOAD16_BYTE("mon16_1l_3.1_udos",   0x0001, 0x1000, CRC(e8857bdc) SHA1(f89c65cbc479101130c71806fd3ddc28e6383f12))
-      ROM_LOAD16_BYTE("mon16_2h_3.1_udos",   0x2000, 0x1000, CRC(cddf58d5) SHA1(588bad8df75b99580459c7a8e898a3396907e3a4))
-      ROM_LOAD16_BYTE("mon16_2l_3.1_udos",   0x2001, 0x1000, CRC(395ee7aa) SHA1(d72fadb1608cd0915cd5ce6440897303ac5a12a6))
+	ROM_REGION16_BE( 0x4000, "maincpu", 0 )
+	ROM_LOAD16_BYTE("mon16_1h_3.1_udos",   0x0000, 0x1000, CRC(0c3c28da) SHA1(0cd35444c615b404ebb9cf80da788593e573ddb5))
+	ROM_LOAD16_BYTE("mon16_1l_3.1_udos",   0x0001, 0x1000, CRC(e8857bdc) SHA1(f89c65cbc479101130c71806fd3ddc28e6383f12))
+	ROM_LOAD16_BYTE("mon16_2h_3.1_udos",   0x2000, 0x1000, CRC(cddf58d5) SHA1(588bad8df75b99580459c7a8e898a3396907e3a4))
+	ROM_LOAD16_BYTE("mon16_2l_3.1_udos",   0x2001, 0x1000, CRC(395ee7aa) SHA1(d72fadb1608cd0915cd5ce6440897303ac5a12a6))
 
-	ROM_REGION( 0x1000, "proms", 0 )
+	ROM_REGION( 0x1000, "chargen", 0 )
 	ROM_LOAD("p8t_zs",    0x0000, 0x0800, CRC(f9321251) SHA1(a6a796b58d50ec4a416f2accc34bd76bc83f18ea))
-      ROM_LOAD("p8tdzs.2",  0x0800, 0x0800, CRC(32736503) SHA1(6a1d7c55dddc64a7d601dfdbf917ce1afaefbb0a))
+	ROM_LOAD("p8tdzs.2",  0x0800, 0x0800, CRC(32736503) SHA1(6a1d7c55dddc64a7d601dfdbf917ce1afaefbb0a))
 ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME        PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY                   FULLNAME       FLAGS */
-COMP( 1989, p8000,      0,      0,       p8k,       p8k,     0,      0,   "EAW electronic Treptow", "P8000 (8bit Board)",  GAME_NOT_WORKING)
-COMP( 1989, p8000_16,   p8000,  0,       p8k_16,    p8k,     0,      0,   "EAW electronic Treptow", "P8000 (16bit Board)",  GAME_NOT_WORKING)
+/*    YEAR  NAME        PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY                   FULLNAME       FLAGS */
+COMP( 1989, p8000,      0,      0,       p8k,       p8k,     0,      "EAW electronic Treptow", "P8000 (8bit Board)",  GAME_NOT_WORKING)
+COMP( 1989, p8000_16,   p8000,  0,       p8k_16,    p8k,     0,      "EAW electronic Treptow", "P8000 (16bit Board)",  GAME_NOT_WORKING)

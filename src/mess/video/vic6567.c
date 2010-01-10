@@ -71,6 +71,13 @@
 #include "vic4567.h"
 #include "utils.h"
 
+#ifdef UNUSED_FUNCTION
+static TIMER_CALLBACK( line_timer_callback );
+#endif
+static TIMER_CALLBACK( PAL_timer_callback );
+static TIMER_CALLBACK( NTSC_timer_callback );
+
+
 /* lightpen values */
 #include "includes/c64.h"
 
@@ -123,7 +130,7 @@ static UINT8 spr_disp_on = 0;
 static UINT16 spr_ptr[8];
 static UINT8 spr_data[8][4];
 static UINT16 mc_base[8];						// Sprite data counter bases
-static UINT16 mc[8] = {63, 63, 63, 63, 63, 63, 63, 63};	// Sprite data counters
+static UINT16 mc[8];							// Sprite data counters
 
 // Border
 static UINT8 border_on = 0;
@@ -797,6 +804,9 @@ VIDEO_START( vic2 )
 	const device_config *screen = video_screen_first(machine->config);
 	int width = video_screen_get_width(screen);
 	int height = video_screen_get_height(screen);
+
+	for (i = 0; i < ARRAY_LENGTH(mc); i++)
+		mc[i] = 63;
 
 	vic2.bitmap = auto_bitmap_alloc(machine, width, height, BITMAP_FORMAT_INDEXED16);
 
@@ -1499,7 +1509,8 @@ static void vic2_drawlines (running_machine *machine, int first, int last, int s
 
 #include "vic4567.c"
 
-TIMER_CALLBACK( line_timer_callback )
+#ifdef UNUSED_FUNCTION
+static TIMER_CALLBACK( line_timer_callback )
 {
 	int i,j;
 
@@ -1560,6 +1571,7 @@ TIMER_CALLBACK( line_timer_callback )
 
 	timer_set(machine, cputag_clocks_to_attotime(machine, "maincpu", 1), NULL, 0, line_timer_callback);
 }
+#endif
 
 // modified VIC II emulation by Christian Bauer starts here...
 
@@ -2152,7 +2164,7 @@ TIMER_CALLBACK( line_timer_callback )
 								} \
 							} \
 						} \
-					 } \
+					} \
 				} \
 			} \
 		} \
@@ -2172,7 +2184,7 @@ TIMER_CALLBACK( line_timer_callback )
 		} \
 	}
 
-TIMER_CALLBACK( PAL_timer_callback )
+static TIMER_CALLBACK( PAL_timer_callback )
 {
 	int i;
 	UINT8 mask;
@@ -2730,7 +2742,7 @@ TIMER_CALLBACK( PAL_timer_callback )
 	timer_set(machine, cputag_clocks_to_attotime(machine, "maincpu", 1), NULL, 0, PAL_timer_callback);
 }
 
-TIMER_CALLBACK( NTSC_timer_callback )
+static TIMER_CALLBACK( NTSC_timer_callback )
 {
 	int i;
 	UINT8 mask;

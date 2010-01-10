@@ -455,14 +455,14 @@ static const lr35902_cpu_core megaduck_cpu_reset = { megaduck_cpu_regs, LR35902_
 
 static ADDRESS_MAP_START(gb_map, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x00ff) AM_ROMBANK(5)					/* BIOS or ROM */
-	AM_RANGE(0x0100, 0x01ff) AM_ROMBANK(10)					/* ROM bank */
-	AM_RANGE(0x0200, 0x08ff) AM_ROMBANK(6)
-	AM_RANGE(0x0900, 0x3fff) AM_ROMBANK(11)
-	AM_RANGE(0x4000, 0x5fff) AM_ROMBANK(1)					/* 8KB/16KB switched ROM bank */
-	AM_RANGE(0x6000, 0x7fff) AM_ROMBANK(4)					/* 8KB/16KB switched ROM bank */
+	AM_RANGE(0x0000, 0x00ff) AM_ROMBANK("bank5")					/* BIOS or ROM */
+	AM_RANGE(0x0100, 0x01ff) AM_ROMBANK("bank10")					/* ROM bank */
+	AM_RANGE(0x0200, 0x08ff) AM_ROMBANK("bank6")
+	AM_RANGE(0x0900, 0x3fff) AM_ROMBANK("bank11")
+	AM_RANGE(0x4000, 0x5fff) AM_ROMBANK("bank1")					/* 8KB/16KB switched ROM bank */
+	AM_RANGE(0x6000, 0x7fff) AM_ROMBANK("bank4")					/* 8KB/16KB switched ROM bank */
 	AM_RANGE(0x8000, 0x9fff) AM_READWRITE( gb_vram_r, gb_vram_w ) /* 8k VRAM */
-	AM_RANGE(0xa000, 0xbfff) AM_RAMBANK(2)					/* 8k switched RAM bank (cartridge) */
+	AM_RANGE(0xa000, 0xbfff) AM_RAMBANK("bank2")					/* 8k switched RAM bank (cartridge) */
 	AM_RANGE(0xc000, 0xfdff) AM_RAM						/* 8k low RAM, echo RAM */
 	AM_RANGE(0xfe00, 0xfeff) AM_READWRITE( gb_oam_r, gb_oam_w )	/* OAM RAM */
 	AM_RANGE(0xff00, 0xff0f) AM_READWRITE( gb_io_r, gb_io_w )		/* I/O */
@@ -476,14 +476,14 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(sgb_map, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x00ff) AM_ROMBANK(5)					/* BIOS or ROM */
-	AM_RANGE(0x0100, 0x01ff) AM_ROMBANK(10)					/* ROM bank */
-	AM_RANGE(0x0200, 0x08ff) AM_ROMBANK(6)
-	AM_RANGE(0x0900, 0x3fff) AM_ROMBANK(11)
-	AM_RANGE(0x4000, 0x5fff) AM_ROMBANK(1)					/* 8KB/16KB switched ROM bank */
-	AM_RANGE(0x6000, 0x7fff) AM_ROMBANK(4)					/* 8KB/16KB switched ROM bank */
+	AM_RANGE(0x0000, 0x00ff) AM_ROMBANK("bank5")					/* BIOS or ROM */
+	AM_RANGE(0x0100, 0x01ff) AM_ROMBANK("bank10")					/* ROM bank */
+	AM_RANGE(0x0200, 0x08ff) AM_ROMBANK("bank6")
+	AM_RANGE(0x0900, 0x3fff) AM_ROMBANK("bank11")
+	AM_RANGE(0x4000, 0x5fff) AM_ROMBANK("bank1")					/* 8KB/16KB switched ROM bank */
+	AM_RANGE(0x6000, 0x7fff) AM_ROMBANK("bank4")					/* 8KB/16KB switched ROM bank */
 	AM_RANGE(0x8000, 0x9fff) AM_READWRITE( gb_vram_r, gb_vram_w ) /* 8k VRAM */
-	AM_RANGE(0xa000, 0xbfff) AM_RAMBANK(2)					/* 8k switched RAM bank (cartridge) */
+	AM_RANGE(0xa000, 0xbfff) AM_RAMBANK("bank2")					/* 8k switched RAM bank (cartridge) */
 	AM_RANGE(0xc000, 0xfdff) AM_RAM						/* 8k low RAM, echo RAM */
 	AM_RANGE(0xfe00, 0xfeff) AM_READWRITE( gb_oam_r, gb_oam_w )	/* OAM RAM */
 	AM_RANGE(0xff00, 0xff0f) AM_READWRITE( gb_io_r, sgb_io_w )		/* I/O */
@@ -497,16 +497,16 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(gbc_map, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x00ff) AM_ROMBANK(5)					/* 16k fixed ROM bank */
-	AM_RANGE(0x0100, 0x01ff) AM_ROMBANK(10)					/* ROM bank */
-	AM_RANGE(0x0200, 0x08ff) AM_ROMBANK(6)
-	AM_RANGE(0x0900, 0x3fff) AM_ROMBANK(11)
-	AM_RANGE(0x4000, 0x5fff) AM_ROMBANK(1)					/* 8KB/16KB switched ROM bank */
-	AM_RANGE(0x6000, 0x7fff) AM_ROMBANK(4)					/* 8KB/16KB switched ROM bank */
+	AM_RANGE(0x0000, 0x00ff) AM_ROMBANK("bank5")					/* 16k fixed ROM bank */
+	AM_RANGE(0x0100, 0x01ff) AM_ROMBANK("bank10")					/* ROM bank */
+	AM_RANGE(0x0200, 0x08ff) AM_ROMBANK("bank6")
+	AM_RANGE(0x0900, 0x3fff) AM_ROMBANK("bank11")
+	AM_RANGE(0x4000, 0x5fff) AM_ROMBANK("bank1")					/* 8KB/16KB switched ROM bank */
+	AM_RANGE(0x6000, 0x7fff) AM_ROMBANK("bank4")					/* 8KB/16KB switched ROM bank */
 	AM_RANGE(0x8000, 0x9fff) AM_READWRITE( gb_vram_r, gb_vram_w )		/* 8k switched VRAM bank */
-	AM_RANGE(0xa000, 0xbfff) AM_RAMBANK(2)					/* 8k switched RAM bank (on cartridge) */
+	AM_RANGE(0xa000, 0xbfff) AM_RAMBANK("bank2")					/* 8k switched RAM bank (on cartridge) */
 	AM_RANGE(0xc000, 0xcfff) AM_RAM						/* 4k fixed RAM bank */
-	AM_RANGE(0xd000, 0xdfff) AM_RAMBANK(3)					/* 4k switched RAM bank */
+	AM_RANGE(0xd000, 0xdfff) AM_RAMBANK("bank3")					/* 4k switched RAM bank */
 	AM_RANGE(0xe000, 0xfdff) AM_RAM						/* echo RAM */
 	AM_RANGE(0xfe00, 0xfeff) AM_READWRITE( gb_oam_r, gb_oam_w )	/* OAM RAM */
 	AM_RANGE(0xff00, 0xff0f) AM_READWRITE( gb_io_r, gb_io_w )		/* I/O */
@@ -520,8 +520,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(megaduck_map, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x3fff) AM_ROMBANK(10)						/* 16k switched ROM bank */
-	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK(1)						/* 16k switched ROM bank */
+	AM_RANGE(0x0000, 0x3fff) AM_ROMBANK("bank10")						/* 16k switched ROM bank */
+	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK("bank1")						/* 16k switched ROM bank */
 	AM_RANGE(0x8000, 0x9fff) AM_READWRITE( gb_vram_r, gb_vram_w )		/* 8k VRAM */
 	AM_RANGE(0xa000, 0xbfff) AM_NOP							/* unused? */
 	AM_RANGE(0xc000, 0xfe9f) AM_RAM							/* 8k low RAM, echo RAM */
@@ -599,6 +599,7 @@ static MACHINE_DRIVER_START( supergb )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_CONFIG(sgb_cpu_reset)
 
+	MDRV_MACHINE_START( sgb )
 	MDRV_MACHINE_RESET( sgb )
 
 	MDRV_DEFAULT_LAYOUT(layout_horizont)	/* runs on a TV, not an LCD */
@@ -629,11 +630,12 @@ static MACHINE_DRIVER_START( gbcolor )
 	MDRV_CPU_PROGRAM_MAP( gbc_map)
 	MDRV_CPU_CONFIG(cgb_cpu_reset)
 
+	MDRV_MACHINE_START(gbc)
 	MDRV_MACHINE_RESET(gbc)
 
 	MDRV_PALETTE_LENGTH(32768)
 	MDRV_PALETTE_INIT(gbc)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("48K") /* 2 pages of 8KB VRAM, 8 pages of 4KB RAM */
@@ -651,6 +653,7 @@ static MACHINE_DRIVER_START( megaduck )
 	MDRV_SCREEN_VBLANK_TIME(0)
 	MDRV_QUANTUM_TIME(HZ(60))
 
+	MDRV_MACHINE_START( megaduck )
 	MDRV_MACHINE_RESET( megaduck )
 
 	MDRV_VIDEO_START( generic_bitmapped )
@@ -712,14 +715,14 @@ ROM_START( megaduck )
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
 ROM_END
 
-/*    YEAR  NAME      PARENT   COMPAT   MACHINE   INPUT    INIT  CONFIG     COMPANY     FULLNAME */
-CONS( 1990, gameboy,  0,       0,		gameboy,  gameboy, 0,    0,			"Nintendo", "Game Boy", 0)
-CONS( 1994, supergb,  gameboy, 0,		supergb,  gameboy, 0,    0,			"Nintendo", "Super Game Boy", 0)
-CONS( 1996, gbpocket, gameboy, 0,		gbpocket, gameboy, 0,    0,			"Nintendo", "Game Boy Pocket", 0)
-CONS( 1997, gblight,  gameboy, 0,		gbpocket, gameboy, 0,    0,			"Nintendo", "Game Boy Light", 0)
-CONS( 1998, gbcolor,  gameboy, 0,		gbcolor,  gameboy, 0,    0,	"Nintendo", "Game Boy Color", GAME_IMPERFECT_GRAPHICS)
+/*    YEAR  NAME      PARENT   COMPAT   MACHINE   INPUT    INIT  COMPANY     FULLNAME */
+CONS( 1990, gameboy,  0,       0,		gameboy,  gameboy, 0,    "Nintendo", "Game Boy", 0)
+CONS( 1994, supergb,  gameboy, 0,		supergb,  gameboy, 0,    "Nintendo", "Super Game Boy", 0)
+CONS( 1996, gbpocket, gameboy, 0,		gbpocket, gameboy, 0,    "Nintendo", "Game Boy Pocket", 0)
+CONS( 1997, gblight,  gameboy, 0,		gbpocket, gameboy, 0,    "Nintendo", "Game Boy Light", 0)
+CONS( 1998, gbcolor,  gameboy, 0,		gbcolor,  gameboy, 0,    "Nintendo", "Game Boy Color", GAME_IMPERFECT_GRAPHICS)
 
 /* Sound is not 100% yet, it generates some sounds which could be ok. Since we're lacking a real
    system there's no way to verify. Same goes for the colors of the LCD. We are no using the default
    Game Boy green colors */
-CONS( 1993, megaduck, 0,       0,       megaduck, gameboy, 0,    0,	 "Creatronic/Videojet/Timlex/Cougar",  "MegaDuck/Cougar Boy" , 0)
+CONS( 1993, megaduck, 0,       0,       megaduck, gameboy, 0,    "Creatronic/Videojet/Timlex/Cougar",  "MegaDuck/Cougar Boy" , 0)

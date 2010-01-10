@@ -83,7 +83,7 @@ static const applefdc_interface lisa210_fdc_interface =
 	sony_read_status
 };
 
-/*
+#ifdef UNUSED_FUNCTION
 static void lisa_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
     switch(state)
@@ -93,7 +93,7 @@ static void lisa_floppy_getinfo(const mess_device_class *devclass, UINT32 state,
         default:                                        sonydriv_device_getinfo(devclass, state, info); break;
     }
 }
-*/
+#endif
 
 static const floppy_config lisa_floppy_config =
 {
@@ -122,6 +122,7 @@ static MACHINE_DRIVER_START( lisa )
 	MDRV_CPU_PROGRAM_MAP(lisa_fdc_map)
 
 	MDRV_QUANTUM_TIME(HZ(60))
+	MDRV_MACHINE_START( lisa )
 	MDRV_MACHINE_RESET( lisa )
 
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
@@ -459,8 +460,8 @@ ROM_END
     Lisa drivers boot MacWorks, but do not boot the Lisa OS, which is why we set
     the GAME_NOT_WORKING flag...
 */
-/*     YEAR  NAME      PARENT   COMPAT  MACHINE   INPUT  INIT      CONFIG   COMPANY  FULLNAME */
-COMP( 1983, lisa,     0,	0,	lisa,     lisa,	 lisa2,    0,	"Apple Computer",  "Lisa", GAME_NOT_WORKING )
-COMP( 1984, lisa2,    0,	0,	lisa,     lisa,	 lisa2,    0,	"Apple Computer",  "Lisa2", GAME_NOT_WORKING )
-COMP( 1984, lisa210,  lisa2,	0,	lisa210,  lisa,	 lisa210,  0,	"Apple Computer",  "Lisa2/10", GAME_NOT_WORKING )
-COMP( 1985, macxl,    lisa2,	0,	macxl,    lisa,	 mac_xl,   0,	"Apple Computer",  "Macintosh XL", /*GAME_NOT_WORKING*/0 )
+/*     YEAR  NAME      PARENT   COMPAT  MACHINE   INPUT  INIT   COMPANY  FULLNAME */
+COMP( 1983, lisa,     0,	0,	lisa,     lisa,	 lisa2,    		"Apple Computer",  "Lisa", GAME_NOT_WORKING )
+COMP( 1984, lisa2,    0,	0,	lisa,     lisa,	 lisa2,    		"Apple Computer",  "Lisa2", GAME_NOT_WORKING )
+COMP( 1984, lisa210,  lisa2,	0,	lisa210,  lisa,	 lisa210, 	"Apple Computer",  "Lisa2/10", GAME_NOT_WORKING )
+COMP( 1985, macxl,    lisa2,	0,	macxl,    lisa,	 mac_xl,  	"Apple Computer",  "Macintosh XL", /*GAME_NOT_WORKING*/0 )

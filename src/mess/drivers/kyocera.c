@@ -123,50 +123,51 @@ static void pc8201_bankswitch(running_machine *machine, UINT8 data)
 	if (rom_bank > 1)
 	{
 		/* RAM */
-		memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
 	}
 	else
 	{
 		/* ROM */
-		memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
+		memory_install_read_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
+		memory_unmap_write(program, 0x0000, 0x7fff, 0, 0 );
 	}
 
-	memory_set_bank(machine, 1, rom_bank);
+	memory_set_bank(machine, "bank1", rom_bank);
 
 	switch (ram_bank)
 	{
 	case 0:
 		if (messram_get_size(devtag_get_device(machine, "messram")) > 16 * 1024)
 		{
-			memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+			memory_install_readwrite_bank(program, 0x8000, 0xffff, 0, 0, "bank2");
 		}
 		else
 		{
-			memory_install_readwrite8_handler(program, 0x8000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
-			memory_install_readwrite8_handler(program, 0xc000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+			memory_unmap_readwrite(program, 0x8000, 0xbfff, 0, 0);
+			memory_install_readwrite_bank(program, 0xc000, 0xffff, 0, 0, "bank2");
 		}
 		break;
 
 	case 1:
-		memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_unmap_readwrite(program, 0x8000, 0xffff, 0, 0);
 		break;
 
 	case 2:
 		if (messram_get_size(devtag_get_device(machine, "messram")) > 32 * 1024)
-			memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+			memory_install_readwrite_bank(program, 0x8000, 0xffff, 0, 0, "bank2");
 		else
-			memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+			memory_unmap_readwrite(program, 0x8000, 0xffff, 0, 0);
 		break;
 
 	case 3:
 		if (messram_get_size(devtag_get_device(machine, "messram")) > 64 * 1024)
-			memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+			memory_install_readwrite_bank(program, 0x8000, 0xffff, 0, 0, "bank2");
 		else
-			memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+			memory_unmap_readwrite(program, 0x8000, 0xffff, 0, 0);
 		break;
 	}
 
-	memory_set_bank(machine, 2, ram_bank);
+	memory_set_bank(machine, "bank2", ram_bank);
 }
 
 static WRITE8_HANDLER( pc8201_bank_w )
@@ -237,7 +238,7 @@ static WRITE8_HANDLER( uart_ctrl_w )
         7
 
     */
-/*
+#if 0
     kc85_state *state = space->machine->driver_data;
 
     im6402_sbs_w(state->im6402, BIT(data, 0));
@@ -245,7 +246,7 @@ static WRITE8_HANDLER( uart_ctrl_w )
     im6402_pi_w(state->im6402, BIT(data, 2));
     im6402_cls1_w(state->im6402, BIT(data, 3));
     im6402_cls2_w(state->im6402, BIT(data, 4));
-*/
+#endif
 }
 
 static READ8_HANDLER( uart_status_r )
@@ -264,7 +265,7 @@ static READ8_HANDLER( uart_status_r )
         7       _LPS        low power sensor
 
     */
-/*
+#if 0
     kc85_state *state = space->machine->driver_data;
 
     UINT8 data = 0;
@@ -278,7 +279,7 @@ static READ8_HANDLER( uart_status_r )
     data = (tbre << 4) | (pe << 3) | (fe << 2) | (oe << 1) | cd;
 
     return data;
-*/
+#endif
 
 	return 0xf0;
 }
@@ -299,7 +300,7 @@ static READ8_HANDLER( pc8201_uart_status_r )
         7       _LPS        low power signal
 
     */
-/*
+#if 0
     kc85_state *state = space->machine->driver_data;
 
     UINT8 data = 0;
@@ -313,7 +314,7 @@ static READ8_HANDLER( pc8201_uart_status_r )
     data = (tbre << 4) | (pe << 3) | (fe << 2) | (oe << 1) | cd;
 
     return data;
-*/
+#endif
 
 	return 0xf0;
 }
@@ -334,11 +335,11 @@ static WRITE8_HANDLER( modem_w )
         7
 
     */
-/*
+#if 0
     kc85_state *state = space->machine->driver_data;
 
     mc14412_en_w(state->mc14412, BIT(data, 1));
-*/
+#endif
 }
 
 static WRITE8_HANDLER( kc85_ctrl_w )
@@ -361,7 +362,7 @@ static WRITE8_HANDLER( kc85_ctrl_w )
 	kc85_state *state = space->machine->driver_data;
 
 	/* ROM bank selection */
-	memory_set_bank(space->machine, 1, BIT(data, 0));
+	memory_set_bank(space->machine, "bank1", BIT(data, 0));
 
 	/* printer strobe */
 	centronics_strobe_w(state->centronics, BIT(data, 1));
@@ -418,23 +419,24 @@ static WRITE8_HANDLER( tandy200_bank_w )
 	if (rom_bank == 3)
 	{
 		/* invalid ROM bank */
-		memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_unmap_readwrite(program, 0x0000, 0x7fff, 0, 0);
 	}
 	else
 	{
-		memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
-		memory_set_bank(space->machine, 1, rom_bank);
+		memory_install_read_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
+		memory_unmap_write(program, 0x0000, 0x7fff, 0, 0);
+		memory_set_bank(space->machine, "bank1", rom_bank);
 	}
 
 	if (messram_get_size(devtag_get_device(space->machine, "messram")) < ((ram_bank + 1) * 24 * 1024))
 	{
 		/* invalid RAM bank */
-		memory_install_readwrite8_handler(program, 0xa000, 0xffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_unmap_readwrite(program, 0xa000, 0xffff, 0, 0);
 	}
 	else
 	{
-		memory_install_readwrite8_handler(program, 0xa000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
-		memory_set_bank(space->machine, 2, ram_bank);
+		memory_install_readwrite_bank(program, 0xa000, 0xffff, 0, 0, "bank2");
+		memory_set_bank(space->machine, "bank2", ram_bank);
 	}
 }
 
@@ -501,21 +503,21 @@ static WRITE8_HANDLER( lcd_w )
 
 static ADDRESS_MAP_START( kc85_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x7fff) AM_ROMBANK(1)
-	AM_RANGE(0x8000, 0xffff) AM_RAMBANK(2)
+	AM_RANGE(0x0000, 0x7fff) AM_ROMBANK("bank1")
+	AM_RANGE(0x8000, 0xffff) AM_RAMBANK("bank2")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pc8201_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK(1)
-	AM_RANGE(0x8000, 0xffff) AM_RAMBANK(2)
+	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x8000, 0xffff) AM_RAMBANK("bank2")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tandy200_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x7fff) AM_ROMBANK(1)
+	AM_RANGE(0x0000, 0x7fff) AM_ROMBANK("bank1")
 	AM_RANGE(0x8000, 0x9fff) AM_ROM
-	AM_RANGE(0xa000, 0xffff) AM_RAMBANK(2)
+	AM_RANGE(0xa000, 0xffff) AM_RAMBANK("bank2")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kc85_io, ADDRESS_SPACE_IO, 8 )
@@ -811,16 +813,9 @@ INPUT_PORTS_END
 
 /* uPD1990A Interface */
 
-static WRITE_LINE_DEVICE_HANDLER( kc85_upd1990a_data_w )
-{
-	kc85_state *driver_state = device->machine->driver_data;
-
-	driver_state->upd1990a_data = state;
-}
-
 static UPD1990A_INTERFACE( kc85_upd1990a_intf )
 {
-	DEVCB_LINE(kc85_upd1990a_data_w),
+	DEVCB_NULL,
 	DEVCB_CPU_INPUT_LINE(I8085_TAG, I8085_RST75_LINE)
 };
 
@@ -852,7 +847,7 @@ static READ8_DEVICE_HANDLER( kc85_8155_port_c_r )
 
 	UINT8 data = 0;
 
-	data |= state->upd1990a_data;
+	data |= upd1990a_data_out_r(state->upd1990a);
 	data |= centronics_not_busy_r(state->centronics) << 1;
 	data |= centronics_busy_r(state->centronics) << 2;
 
@@ -896,7 +891,7 @@ static WRITE8_DEVICE_HANDLER( kc85_8155_port_a_w )
 	upd1990a_c1_w(state->upd1990a, BIT(data, 1));
 	upd1990a_c2_w(state->upd1990a, BIT(data, 2));
 	upd1990a_clk_w(state->upd1990a, BIT(data, 3));
-	upd1990a_data_w(state->upd1990a, BIT(data, 4));
+	upd1990a_data_in_w(state->upd1990a, BIT(data, 4));
 }
 
 static WRITE8_DEVICE_HANDLER( kc85_8155_port_b_w )
@@ -972,7 +967,7 @@ static READ8_DEVICE_HANDLER( pc8201_8155_port_c_r )
 
 	UINT8 data = 0;
 
-	data |= state->upd1990a_data;
+	data |= upd1990a_data_out_r(state->upd1990a);
 	data |= centronics_not_busy_r(state->centronics) << 1;
 	data |= centronics_busy_r(state->centronics) << 2;
 
@@ -1141,7 +1136,7 @@ static MACHINE_START( kc85 )
 	/* find devices */
 	state->upd1990a = devtag_get_device(machine, UPD1990A_TAG);
 	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
-	state->speaker = devtag_get_device(machine, "speaker");
+	state->speaker = devtag_get_device(machine, SPEAKER_TAG);
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* initialize RTC */
@@ -1149,30 +1144,30 @@ static MACHINE_START( kc85 )
 	upd1990a_oe_w(state->upd1990a, 1);
 
 	/* configure ROM banking */
-	memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, I8085_TAG), 0);
-	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "option"), 0);
-	memory_set_bank(machine, 1, 0);
+	memory_install_read_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
+	memory_unmap_write(program, 0x0000, 0x7fff, 0, 0);
+	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, I8085_TAG), 0);
+	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, "option"), 0);
+	memory_set_bank(machine, "bank1", 0);
 
 	/* configure RAM banking */
 	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 16 * 1024:
-		memory_install_readwrite8_handler(program, 0x8000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
-		memory_install_readwrite8_handler(program, 0xc000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		memory_unmap_readwrite(program, 0x8000, 0xbfff, 0, 0);
+		memory_install_readwrite_bank(program, 0xc000, 0xffff, 0, 0, "bank2");
 		break;
 
 	case 32 * 1024:
-		memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		memory_install_readwrite_bank(program, 0x8000, 0xffff, 0, 0,"bank2");
 		break;
 	}
 
-	memory_configure_bank(machine, 2, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
-	memory_set_bank(machine, 2, 0);
+	memory_configure_bank(machine, "bank2", 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
+	memory_set_bank(machine, "bank2", 0);
 
 	/* register for state saving */
 	state_save_register_global(machine, state->bank);
-	state_save_register_global(machine, state->upd1990a_data);
 	state_save_register_global(machine, state->keylatch);
 	state_save_register_global(machine, state->buzzer);
 	state_save_register_global(machine, state->bell);
@@ -1185,7 +1180,7 @@ static MACHINE_START( pc8201 )
 	/* find devices */
 	state->upd1990a = devtag_get_device(machine, UPD1990A_TAG);
 	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
-	state->speaker = devtag_get_device(machine, "speaker");
+	state->speaker = devtag_get_device(machine, SPEAKER_TAG);
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* initialize RTC */
@@ -1193,21 +1188,20 @@ static MACHINE_START( pc8201 )
 	upd1990a_oe_w(state->upd1990a, 1);
 
 	/* configure ROM banking */
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, I8085_TAG), 0);
-	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "option"), 0);
-	memory_configure_bank(machine, 1, 2, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000, 0x8000);
-	memory_set_bank(machine, 1, 0);
+	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, I8085_TAG), 0);
+	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, "option"), 0);
+	memory_configure_bank(machine, "bank1", 2, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000, 0x8000);
+	memory_set_bank(machine, "bank1", 0);
 
 	/* configure RAM banking */
-	memory_configure_bank(machine, 2, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
-	memory_configure_bank(machine, 2, 2, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000, 0x8000);
-	memory_set_bank(machine, 2, 0);
+	memory_configure_bank(machine, "bank2", 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
+	memory_configure_bank(machine, "bank2", 2, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000, 0x8000);
+	memory_set_bank(machine, "bank2", 0);
 
 	pc8201_bankswitch(machine, 0);
 
 	/* register for state saving */
 	state_save_register_global(machine, state->bank);
-	state_save_register_global(machine, state->upd1990a_data);
 	state_save_register_global(machine, state->keylatch);
 	state_save_register_global(machine, state->buzzer);
 	state_save_register_global(machine, state->bell);
@@ -1223,7 +1217,7 @@ static MACHINE_START( trsm100 )
 	/* find devices */
 	state->upd1990a = devtag_get_device(machine, UPD1990A_TAG);
 	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
-	state->speaker = devtag_get_device(machine, "speaker");
+	state->speaker = devtag_get_device(machine, SPEAKER_TAG);
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* initialize RTC */
@@ -1231,40 +1225,40 @@ static MACHINE_START( trsm100 )
 	upd1990a_oe_w(state->upd1990a, 1);
 
 	/* configure ROM banking */
-	memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, I8085_TAG), 0);
-	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "option"), 0);
-	memory_set_bank(machine, 1, 0);
+	memory_install_read_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
+	memory_unmap_write(program, 0x0000, 0x7fff, 0, 0);
+	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, I8085_TAG), 0);
+	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, "option"), 0);
+	memory_set_bank(machine, "bank1", 0);
 
 	/* configure RAM banking */
 	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 8 * 1024:
-		memory_install_readwrite8_handler(program, 0x8000, 0xcfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
-		memory_install_readwrite8_handler(program, 0xe000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		memory_unmap_readwrite(program, 0x8000, 0xcfff, 0, 0);
+		memory_install_readwrite_bank(program, 0xe000, 0xffff, 0, 0, "bank2");
 		break;
 
 	case 16 * 1024:
-		memory_install_readwrite8_handler(program, 0x8000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
-		memory_install_readwrite8_handler(program, 0xc000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		memory_unmap_readwrite(program, 0x8000, 0xbfff, 0, 0);
+		memory_install_readwrite_bank(program, 0xc000, 0xffff, 0, 0, "bank2");
 		break;
 
 	case 24 * 1024:
-		memory_install_readwrite8_handler(program, 0x8000, 0x9fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
-		memory_install_readwrite8_handler(program, 0xa000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		memory_unmap_readwrite(program, 0x8000, 0x9fff, 0, 0);
+		memory_install_readwrite_bank(program, 0xa000, 0xffff, 0, 0, "bank2");
 		break;
 
 	case 32 * 1024:
-		memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		memory_install_readwrite_bank(program, 0x8000, 0xffff, 0, 0, "bank2");
 		break;
 	}
 
-	memory_configure_bank(machine, 2, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
-	memory_set_bank(machine, 2, 0);
+	memory_configure_bank(machine, "bank2", 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
+	memory_set_bank(machine, "bank2", 0);
 
 	/* register for state saving */
 	state_save_register_global(machine, state->bank);
-	state_save_register_global(machine, state->upd1990a_data);
 	state_save_register_global(machine, state->keylatch);
 	state_save_register_global(machine, state->buzzer);
 	state_save_register_global(machine, state->bell);
@@ -1276,18 +1270,18 @@ static MACHINE_START( tandy200 )
 
 	/* find devices */
 	state->centronics = devtag_get_device(machine, CENTRONICS_TAG);
-	state->speaker = devtag_get_device(machine, "speaker");
+	state->speaker = devtag_get_device(machine, SPEAKER_TAG);
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* configure ROM banking */
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, I8085_TAG), 0);
-	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, I8085_TAG) + 0x10000, 0);
-	memory_configure_bank(machine, 1, 2, 1, memory_region(machine, "option"), 0);
-	memory_set_bank(machine, 1, 0);
+	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, I8085_TAG), 0);
+	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, I8085_TAG) + 0x10000, 0);
+	memory_configure_bank(machine, "bank1", 2, 1, memory_region(machine, "option"), 0);
+	memory_set_bank(machine, "bank1", 0);
 
 	/* configure RAM banking */
-	memory_configure_bank(machine, 2, 0, 3, messram_get_ptr(devtag_get_device(machine, "messram")), 0x6000);
-	memory_set_bank(machine, 2, 0);
+	memory_configure_bank(machine, "bank2", 0, 3, messram_get_ptr(devtag_get_device(machine, "messram")), 0x6000);
+	memory_set_bank(machine, "bank2", 0);
 
 	/* register for state saving */
 	state_save_register_global(machine, state->bank);
@@ -1347,7 +1341,7 @@ static MACHINE_DRIVER_START( kc85 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
@@ -1364,7 +1358,7 @@ static MACHINE_DRIVER_START( kc85 )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("rom,bin")
 	MDRV_CARTSLOT_NOT_MANDATORY
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
@@ -1387,7 +1381,7 @@ static MACHINE_DRIVER_START( pc8201 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
@@ -1404,7 +1398,7 @@ static MACHINE_DRIVER_START( pc8201 )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("rom,bin")
 	MDRV_CARTSLOT_NOT_MANDATORY
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
@@ -1457,7 +1451,7 @@ static MACHINE_DRIVER_START( tandy200 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ADD(SPEAKER_TAG, SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 //  MDRV_TCM5089_ADD(TCM5089_TAG, XTAL_3_579545MHz)
 
@@ -1477,7 +1471,7 @@ static MACHINE_DRIVER_START( tandy200 )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("rom,bin")
 	MDRV_CARTSLOT_NOT_MANDATORY
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("24K")
@@ -1494,7 +1488,7 @@ ROM_START( kc85 )
 	ROM_CART_LOAD("cart", 0x0000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
-ROM_START( npc8201a )
+ROM_START( pc8201a )
 	ROM_REGION( 0x10000, I8085_TAG, 0 )
 	ROM_LOAD( "pc8201rom.rom0", 0x0000, 0x8000, CRC(30555035) SHA1(96f33ff235db3028bf5296052acedbc94437c596) )
 
@@ -1547,13 +1541,13 @@ ROM_START( tandy200 )
 ROM_END
 
 /* System Drivers */
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY                 FULLNAME */
-COMP( 1983,	kc85,		0,		0,		kc85,		kc85,		0,		0,			"Kyosei",				"Kyotronic 85 (Japan)", 0 )
-COMP( 1983, m10,		kc85,	0,		kc85,		olivm10,	0,		0,			"Olivetti",				"M-10", 0 )
-//COMP( 1983, m10m,     kc85,   0,      kc85,       olivm10,    0,      0,			"Olivetti",             "M-10 Modem (US)", 0 )
-COMP( 1983, trsm100,	0,		0,		trsm100,	kc85,		0,		0,			"Tandy Radio Shack",	"TRS-80 Model 100", 0 )
-COMP( 1986, tandy102,	trsm100,0,		tandy102,	kc85,		0,		0,			"Tandy Radio Shack",	"Tandy 102", 0 )
-//COMP( 1983, npc8201,  0,      0,      pc8201,     pc8201a,    0,      0,			"NEC",                  "PC-8201 (Japan)", 0 )
-COMP( 1983, npc8201a,	0,		0,		pc8201,		pc8201a,	0,		0,			"NEC",					"PC-8201A", 0 )
-//COMP( 1987, npc8300,  npc8201,0,      pc8300,     pc8300,     0,      0,			"NEC",                  "PC-8300", 0 )
-COMP( 1984, tandy200,	0,		0,		tandy200,	kc85,		0,		0,			"Tandy Radio Shack",	"Tandy 200", 0 )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    COMPANY                 FULLNAME */
+COMP( 1983,	kc85,		0,		0,		kc85,		kc85,		0,		"Kyosei",				"Kyotronic 85 (Japan)", 0 )
+COMP( 1983, m10,		kc85,	0,		kc85,		olivm10,	0,		"Olivetti",				"M-10", 0 )
+//COMP( 1983, m10m,     kc85,   0,      kc85,       olivm10,    0,      "Olivetti",             "M-10 Modem (US)", 0 )
+COMP( 1983, trsm100,	0,		0,		trsm100,	kc85,		0,		"Tandy Radio Shack",	"TRS-80 Model 100", 0 )
+COMP( 1986, tandy102,	trsm100,0,		tandy102,	kc85,		0,		"Tandy Radio Shack",	"Tandy 102", 0 )
+//COMP( 1983, npc8201,  0,      0,      pc8201,     pc8201a,    0,      "NEC",                  "PC-8201 (Japan)", 0 )
+COMP( 1983, pc8201a,	0,		0,		pc8201,		pc8201a,	0,		"NEC",					"PC-8201A", 0 )
+//COMP( 1987, npc8300,  npc8201,0,      pc8300,     pc8300,     0,      "NEC",                  "PC-8300", 0 )
+COMP( 1984, tandy200,	0,		0,		tandy200,	kc85,		0,		"Tandy Radio Shack",	"Tandy 200", 0 )

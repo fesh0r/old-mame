@@ -84,7 +84,7 @@ xx/xx/2001  KS -    TS-2068 sound fixed.
                 like monitors, tape copiers, decrunchers, etc.
                 works now.
                 Fixed problem with interrupt vector set to 0xffff (much
-            more 128k games works now).
+		more 128k games works now).
                 A useful used trick on the Spectrum is to set
                 interrupt vector to 0xffff (using the table
                 which contain 0xff's) and put a byte 0x18 hex,
@@ -96,13 +96,13 @@ xx/xx/2001  KS -    TS-2068 sound fixed.
                 causes Spectrum to reset. Fixing this problem
                 made much more software runing (i.e. Paperboy).
             Corrected frames per second value for 48k and 128k
-            Sincalir machines.
+            Sinclair machines.
                 There are 50.08 frames per second for Spectrum
                 48k what gives 69888 cycles for each frame and
                 50.021 for Spectrum 128/+2/+2A/+3 what gives
                 70908 cycles for each frame.
-            Remaped some Spectrum+ keys.
-                Presing F3 to reset was seting 0xf7 on keyboard
+            Remapped some Spectrum+ keys.
+                Pressing F3 to reset was seting 0xf7 on keyboard
                 input port. Problem occured for snapshots of
                 some programms where it was readed as pressing
                 key 4 (which is exit in Tapecopy by R. Dannhoefer
@@ -141,6 +141,10 @@ Notes:
 Very detailed infos about the ZX Spectrum +3e can be found at
 
 http://www.z88forever.org.uk/zxplus3e/
+
+
+The hc2000 corrupts its memory, especially if you type something, and the
+resulting mess can be seen in the F4 viewer display.
 
 *******************************************************************************/
 
@@ -208,7 +212,7 @@ void spectrum_128_update_memory(running_machine *machine)
 			ram_page = spectrum_128_port_7ffd_data & 0x07;
 			ram_data = messram_get_ptr(devtag_get_device(machine, "messram")) + (ram_page<<14);
 
-			memory_set_bankptr(machine, 4, ram_data);
+			memory_set_bankptr(machine, "bank4", ram_data);
 	}
 
 	/* ROM switching */
@@ -218,7 +222,7 @@ void spectrum_128_update_memory(running_machine *machine)
 
 	ChosenROM = memory_region(machine, "maincpu") + 0x010000 + (ROMSelection<<14);
 
-	memory_set_bankptr(machine, 1, ChosenROM);
+	memory_set_bankptr(machine, "bank1", ChosenROM);
 }
 
 static  READ8_HANDLER ( spectrum_128_ula_r )
@@ -238,10 +242,10 @@ static ADDRESS_MAP_START (spectrum_128_io, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START (spectrum_128_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x0000, 0x3fff) AM_RAMBANK(1)
-	AM_RANGE( 0x4000, 0x7fff) AM_RAMBANK(2)
-	AM_RANGE( 0x8000, 0xbfff) AM_RAMBANK(3)
-	AM_RANGE( 0xc000, 0xffff) AM_RAMBANK(4)
+	AM_RANGE( 0x0000, 0x3fff) AM_RAMBANK("bank1")
+	AM_RANGE( 0x4000, 0x7fff) AM_RAMBANK("bank2")
+	AM_RANGE( 0x8000, 0xbfff) AM_RAMBANK("bank3")
+	AM_RANGE( 0xc000, 0xffff) AM_RAMBANK("bank4")
 ADDRESS_MAP_END
 
 static MACHINE_RESET( spectrum_128 )
@@ -250,10 +254,10 @@ static MACHINE_RESET( spectrum_128 )
 	/* 0x0000-0x3fff always holds ROM */
 
 	/* Bank 5 is always in 0x4000 - 0x7fff */
-	memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + (5<<14));
+	memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + (5<<14));
 
 	/* Bank 2 is always in 0x8000 - 0xbfff */
-	memory_set_bankptr(machine, 3, messram_get_ptr(devtag_get_device(machine, "messram")) + (2<<14));
+	memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + (2<<14));
 
 	/* set initial ram config */
 	spectrum_128_port_7ffd_data = 0;
@@ -261,6 +265,25 @@ static MACHINE_RESET( spectrum_128 )
 
 	MACHINE_RESET_CALL(spectrum);
 }
+
+/* F4 Character Displayer */
+static const gfx_layout spectrum_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	96,					/* 96 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static GFXDECODE_START( spec128 )
+	GFXDECODE_ENTRY( "maincpu", 0x17d00, spectrum_charlayout, 0, 8 )
+GFXDECODE_END
+
 
 MACHINE_DRIVER_START( spectrum_128 )
 	MDRV_IMPORT_FROM( spectrum )
@@ -271,18 +294,19 @@ MACHINE_DRIVER_START( spectrum_128 )
 
 	MDRV_MACHINE_RESET( spectrum_128 )
 
-    /* video hardware */
+	/* video hardware */
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_PALETTE_LENGTH(16)
 	MDRV_PALETTE_INIT( spectrum )
 	MDRV_SCREEN_REFRESH_RATE(50.021)
 	MDRV_VIDEO_START( spectrum_128 )
+	MDRV_GFXDECODE(spec128)
 
 	/* sound hardware */
 	MDRV_SOUND_ADD("ay8912", AY8912, 1773400)
 	MDRV_SOUND_CONFIG(spectrum_ay_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("128K")
@@ -346,8 +370,8 @@ ROM_START(hc2000)
 	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY     FULLNAME */
-COMP( 1986, spec128,  0,	   0,		spectrum_128,	spec_plus,	0,		0,	"Sinclair Research",    "ZX Spectrum 128" , 0 )
-COMP( 1986, specpls2, spec128, 0,		spectrum_128,	spec_plus,	0,		0,	"Amstrad plc",          "ZX Spectrum +2" , 0 )
-COMP( 1991, hc128,    spec128, 0,		spectrum_128,	spec_plus,	0,		0,	"ICE-Felix",			"HC-128" , 0)
-COMP( 1992, hc2000,   spec128, 0,		spectrum_128,	spec_plus,	0,		0,	"ICE-Felix",			"HC-2000" , GAME_NOT_WORKING)
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT       INIT    COMPANY     FULLNAME */
+COMP( 1986, spec128,  0,	   0,		spectrum_128,	spec_plus,	0,	"Sinclair Research",    "ZX Spectrum 128" , 0 )
+COMP( 1986, specpls2, spec128, 0,		spectrum_128,	spec_plus,	0,	"Amstrad plc",          "ZX Spectrum +2" , 0 )
+COMP( 1991, hc128,    spec128, 0,		spectrum_128,	spec_plus,	0,	"ICE-Felix",			"HC-128" , 0)
+COMP( 1992, hc2000,   spec128, 0,		spectrum_128,	spec_plus,	0,	"ICE-Felix",			"HC-2000" , GAME_NOT_WORKING)

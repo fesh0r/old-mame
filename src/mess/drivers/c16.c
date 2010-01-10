@@ -122,15 +122,15 @@ printers and other devices; most expansion modules; userport; rs232/v.24 interfa
 #include "sound/sid6581.h"
 
 #include "machine/6525tpi.h"
-#include "includes/vc1541.h"
 #include "machine/cbmipt.h"
 #include "video/ted7360.h"
 #include "devices/messram.h"
+#include "machine/c1541.h"
+#include "machine/c1551.h"
 
 /* devices config */
 #include "includes/cbm.h"
-#include "includes/cbmdrive.h"
-#include "includes/cbmserb.h"
+#include "machine/cbmiec.h"
 
 #include "includes/c16.h"
 
@@ -177,17 +177,17 @@ printers and other devices; most expansion modules; userport; rs232/v.24 interfa
  */
 
 static ADDRESS_MAP_START(c16_map, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK(9)
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK(1), SMH_BANK(5))	   /* only ram memory configuration */
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK(2), SMH_BANK(6))
-	AM_RANGE(0xc000, 0xfbff) AM_READ(SMH_BANK(3))
-	AM_RANGE(0xfc00, 0xfcff) AM_READ(SMH_BANK(4))
-	AM_RANGE(0xc000, 0xfcff) AM_WRITE(SMH_BANK(7))
+	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank9")
+	AM_RANGE(0x4000, 0x7fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank5")	   /* only ram memory configuration */
+	AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank6")
+	AM_RANGE(0xc000, 0xfbff) AM_READ_BANK("bank3")
+	AM_RANGE(0xfc00, 0xfcff) AM_READ_BANK("bank4")
+	AM_RANGE(0xc000, 0xfcff) AM_WRITE_BANK("bank7")
 	AM_RANGE(0xfd10, 0xfd1f) AM_READ(c16_fd1x_r)
 	AM_RANGE(0xfd30, 0xfd3f) AM_READWRITE(c16_6529_port_r, c16_6529_port_w)		/* 6529 keyboard matrix */
 	AM_RANGE(0xfdd0, 0xfddf) AM_WRITE(c16_select_roms) /* rom chips selection */
 	AM_RANGE(0xff00, 0xff1f) AM_READWRITE(ted7360_port_r, ted7360_port_w)
-	AM_RANGE(0xff20, 0xffff) AM_READ(SMH_BANK(8))
+	AM_RANGE(0xff20, 0xffff) AM_READ_BANK("bank8")
 	AM_RANGE(0xff3e, 0xff3e) AM_WRITE(c16_switch_to_rom)
 	AM_RANGE(0xff3f, 0xff3f) AM_WRITE(c16_switch_to_ram)
 #if 0
@@ -203,11 +203,11 @@ static ADDRESS_MAP_START(c16_map, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(plus4_map, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_BANK(9))
-	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK(2))
-	AM_RANGE(0xc000, 0xfbff) AM_READ(SMH_BANK(3))
-	AM_RANGE(0xfc00, 0xfcff) AM_READ(SMH_BANK(4))
-	AM_RANGE(0x0000, 0xfcff) AM_WRITE(SMH_BANK(9))
+	AM_RANGE(0x0000, 0x7fff) AM_READ_BANK("bank9")
+	AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank2")
+	AM_RANGE(0xc000, 0xfbff) AM_READ_BANK("bank3")
+	AM_RANGE(0xfc00, 0xfcff) AM_READ_BANK("bank4")
+	AM_RANGE(0x0000, 0xfcff) AM_WRITE_BANK("bank9")
 	AM_RANGE(0xfd00, 0xfd0f) AM_READWRITE(c16_6551_port_r, c16_6551_port_w)
 	AM_RANGE(0xfd10, 0xfd1f) AM_READWRITE(plus4_6529_port_r, plus4_6529_port_w)
 	AM_RANGE(0xfd30, 0xfd3f) AM_READWRITE(c16_6529_port_r, c16_6529_port_w) /* 6529 keyboard matrix */
@@ -218,19 +218,19 @@ static ADDRESS_MAP_START(plus4_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfee0, 0xfeff) AM_READWRITE(c16_iec8_port_r, c16_iec8_port_w)		/*configured in c16_common_init */
 #endif
 	AM_RANGE(0xff00, 0xff1f) AM_READWRITE(ted7360_port_r, ted7360_port_w)
-	AM_RANGE(0xff20, 0xffff) AM_READ(SMH_BANK(8))
-	AM_RANGE(0xff20, 0xff3d) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xff20, 0xffff) AM_READ_BANK("bank8")
+	AM_RANGE(0xff20, 0xff3d) AM_WRITEONLY
 	AM_RANGE(0xff3e, 0xff3e) AM_WRITE(c16_switch_to_rom)
 	AM_RANGE(0xff3f, 0xff3f) AM_WRITE(c16_switch_to_ram)
-	AM_RANGE(0xff40, 0xffff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xff40, 0xffff) AM_WRITEONLY
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(c364_map , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_BANK(9))
-	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK(2))
-	AM_RANGE(0xc000, 0xfbff) AM_READ(SMH_BANK(3))
-	AM_RANGE(0xfc00, 0xfcff) AM_READ(SMH_BANK(4))
-	AM_RANGE(0x0000, 0xfcff) AM_WRITE(SMH_BANK(9))
+	AM_RANGE(0x0000, 0x7fff) AM_READ_BANK("bank9")
+	AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank2")
+	AM_RANGE(0xc000, 0xfbff) AM_READ_BANK("bank3")
+	AM_RANGE(0xfc00, 0xfcff) AM_READ_BANK("bank4")
+	AM_RANGE(0x0000, 0xfcff) AM_WRITE_BANK("bank9")
 	AM_RANGE(0xfd00, 0xfd0f) AM_READWRITE(c16_6551_port_r, c16_6551_port_w)
 	AM_RANGE(0xfd10, 0xfd1f) AM_READWRITE(plus4_6529_port_r, plus4_6529_port_w)
 	AM_RANGE(0xfd20, 0xfd2f) AM_READWRITE(c364_speech_r, c364_speech_w)
@@ -242,11 +242,11 @@ static ADDRESS_MAP_START(c364_map , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfee0, 0xfeff) AM_READWRITE(c16_iec8_port_r, c16_iec8_port_w)		/*configured in c16_common_init */
 #endif
 	AM_RANGE(0xff00, 0xff1f) AM_READWRITE(ted7360_port_r, ted7360_port_w)
-	AM_RANGE(0xff20, 0xffff) AM_READ(SMH_BANK(8))
-	AM_RANGE(0xff20, 0xff3d) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xff20, 0xffff) AM_READ_BANK("bank8")
+	AM_RANGE(0xff20, 0xff3d) AM_WRITEONLY
 	AM_RANGE(0xff3e, 0xff3e) AM_WRITE(c16_switch_to_rom)
 	AM_RANGE(0xff3f, 0xff3f) AM_WRITE(c16_switch_to_ram)
-	AM_RANGE(0xff40, 0xffff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xff40, 0xffff) AM_WRITEONLY
 ADDRESS_MAP_END
 
 
@@ -367,12 +367,12 @@ static PALETTE_INIT( c16 )
 
 static const tpi6525_interface c16_tpi6525_tpi_2_intf =
 {
-	c1551_0_read_data,
-	c1551_0_read_status,
-	c1551_0_read_handshake,
-	c1551_0_write_data,
+	NULL, //removed c1551_0_read_data,
+	NULL, //removed c1551_0_read_status,
+	NULL, //removed c1551_0_read_handshake,
+	NULL, //removed c1551_0_write_data,
 	NULL,
-	c1551_0_write_handshake,
+	NULL, //removed c1551_0_write_handshake,
 	NULL,
 	NULL,
 	NULL
@@ -380,12 +380,12 @@ static const tpi6525_interface c16_tpi6525_tpi_2_intf =
 
 static const tpi6525_interface c16_tpi6525_tpi_2_c1551_intf =
 {
-	c1551x_read_data,
-	c1551x_read_status,
-	c1551x_read_handshake,
-	c1551x_write_data,
+	NULL, //removed c1551x_read_data,
+	NULL, //removed c1551x_read_status,
+	NULL, //removed c1551x_read_handshake,
+	NULL, //removed c1551x_write_data,
 	NULL,
-	c1551x_write_handshake,
+	NULL, //removed c1551x_write_handshake,
 	NULL,
 	NULL,
 	NULL
@@ -393,12 +393,12 @@ static const tpi6525_interface c16_tpi6525_tpi_2_c1551_intf =
 
 static const tpi6525_interface c16_tpi6525_tpi_3_intf =
 {
-	c1551_1_read_data,
-	c1551_1_read_status,
-	c1551_1_read_handshake,
-	c1551_1_write_data,
+	NULL, //removed c1551_1_read_data,
+	NULL, //removed c1551_1_read_status,
+	NULL, //removed c1551_1_read_handshake,
+	NULL, //removed c1551_1_write_data,
 	NULL,
-	c1551_1_write_handshake,
+	NULL, //removed c1551_1_write_handshake,
 	NULL,
 	NULL,
 	NULL
@@ -410,6 +410,19 @@ static const m6502_interface c16_m7501_interface =
 	NULL,					/* write_indexed_func */
 	c16_m7501_port_read,	/* port_read_func */
 	c16_m7501_port_write	/* port_write_func */
+};
+
+static CBM_IEC_DAISY( c16_iec_no_drives )
+{
+	{ "maincpu" },
+	{ NULL}
+};
+
+static CBM_IEC_DAISY( c16_iec_1541 )
+{
+	{ "maincpu" },
+	{ C1541_IEC("c1541") },
+	{ NULL}
 };
 
 static MACHINE_DRIVER_START( c16 )
@@ -449,14 +462,14 @@ static MACHINE_DRIVER_START( c16 )
 	/* cassette */
 	MDRV_CASSETTE_ADD( "cassette", cbm_cassette_config )
 
-	/* floppy from serial bus */
-	MDRV_IMPORT_FROM(simulated_drive)
-
 	/* tpi */
 	MDRV_TPI6525_ADD("tpi6535_tpi_2", c16_tpi6525_tpi_2_intf)
 	MDRV_TPI6525_ADD("tpi6535_tpi_3", c16_tpi6525_tpi_3_intf)
 
 	MDRV_IMPORT_FROM(c16_cartslot)
+
+	/* IEC serial bus */
+	MDRV_CBM_IEC_ADD("iec", c16_iec_no_drives)
 
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
@@ -476,8 +489,7 @@ static MACHINE_DRIVER_START( c16c )
 	/* emulation code currently supports only one drive */
 	MDRV_DEVICE_REMOVE("tpi6535_tpi_3")
 
-	MDRV_DEVICE_REMOVE("serial_bus")	// in the current code, serial bus device is tied to the floppy drive
-	MDRV_IMPORT_FROM( cpu_c1551 )
+//removed 	MDRV_IMPORT_FROM( cpu_c1551 )
 #ifdef CPU_SYNC
 	MDRV_QUANTUM_TIME(HZ(60))
 #else
@@ -489,8 +501,10 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( c16v )
 	MDRV_IMPORT_FROM( c16 )
 
-	MDRV_DEVICE_REMOVE("serial_bus")	// in the current code, serial bus device is tied to the floppy drive
-	MDRV_IMPORT_FROM( cpu_vc1541 )
+	/* floppy from serial bus */
+	MDRV_DEVICE_REMOVE("iec")
+	MDRV_CBM_IEC_ADD("iec", c16_iec_1541)
+	MDRV_C1541_ADD("c1541", "iec", 8)
 #ifdef CPU_SYNC
 	MDRV_QUANTUM_TIME(HZ(60))
 #else
@@ -512,7 +526,7 @@ static MACHINE_DRIVER_START( plus4 )
 	MDRV_SCREEN_REFRESH_RATE(TED7360NTSC_VRETRACERATE)
 
 	MDRV_SOUND_REPLACE("sid", SID8580, TED7360NTSC_CLOCK/4)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
@@ -528,10 +542,9 @@ static MACHINE_DRIVER_START( plus4c )
 	MDRV_TPI6525_ADD("tpi6535_tpi_2", c16_tpi6525_tpi_2_c1551_intf)
 
 	/* emulation code currently supports only one drive */
-	MDRV_DEVICE_REMOVE("serial_bus")	// in the current code, serial bus device is tied to the floppy drive
 	MDRV_DEVICE_REMOVE("tpi6535_tpi_3")
 
-	MDRV_IMPORT_FROM( cpu_c1551 )
+//removed	MDRV_IMPORT_FROM( cpu_c1551 )
 
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
@@ -546,8 +559,10 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( plus4v )
 	MDRV_IMPORT_FROM( plus4 )
 
-	MDRV_DEVICE_REMOVE("serial_bus")	// in the current code, serial bus device is tied to the floppy drive
-	MDRV_IMPORT_FROM( cpu_vc1541 )
+	/* floppy from serial bus */
+	MDRV_DEVICE_REMOVE("iec")
+	MDRV_CBM_IEC_ADD("iec", c16_iec_1541)
+	MDRV_C1541_ADD("c1541", "iec", 8)
 
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
@@ -576,7 +591,7 @@ static MACHINE_DRIVER_START( c264 )
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
-MACHINE_DRIVER_END	
+MACHINE_DRIVER_END
 
 
 /*************************************
@@ -584,6 +599,9 @@ MACHINE_DRIVER_END
  *  ROM definition(s)
  *
  *************************************/
+#define C1551_ROM( cpu )	\
+	ROM_REGION( 0x10000, cpu, 0 )	\
+	ROM_LOAD( "318008-01.u4", 0xc000, 0x4000, CRC(6d16d024) SHA1(fae3c788ad9a6cc2dbdfbcf6c0264b2ca921d55e) )
 
 ROM_START( c232 )
 	ROM_REGION( 0x40000, "maincpu", 0 )
@@ -636,9 +654,6 @@ ROM_START( c16v )
 	ROM_REGION( 0x40000, "maincpu", 0 )
 	ROM_LOAD( "318006-01.bin", 0x10000, 0x4000, CRC(74eaae87) SHA1(161c96b4ad20f3a4f2321808e37a5ded26a135dd) )
 	ROM_LOAD( "318004-05.bin", 0x14000, 0x4000, CRC(71c07bd4) SHA1(7c7e07f016391174a557e790c4ef1cbe33512cdb) )
-
-	/* we temporarily use -bios to select among vc1541 firmwares, for this system */
-	VC1541_ROM("cpu_vc1540")
 ROM_END
 
 #define rom_c116		rom_c16
@@ -684,42 +699,7 @@ ROM_START( plus4v )
 
 	ROM_LOAD( "317053-01.bin", 0x18000, 0x4000, CRC(4fd1d8cb) SHA1(3b69f6e7cb4c18bb08e203fb18b7dabfa853390f) )
 	ROM_LOAD( "317054-01.bin", 0x1c000, 0x4000, CRC(109de2fc) SHA1(0ad7ac2db7da692d972e586ca0dfd747d82c7693) )
-
-	/* we temporarily use -bios to select among vc1541 firmwares, for this system */
-	VC1541_ROM("cpu_vc1540")
 ROM_END
-
-
-/*************************************
- *
- *  System configuration(s)
- *
- *************************************/
-
-
-static SYSTEM_CONFIG_START(c16)
-	CONFIG_DEVICE(cbmfloppy_device_getinfo)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(c16c)
-	CONFIG_DEVICE(c1551_device_getinfo)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(c16v)
-	CONFIG_DEVICE(vc1541_device_getinfo)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(plus)
-	CONFIG_DEVICE(cbmfloppy_device_getinfo)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(plusc)
-	CONFIG_DEVICE(c1551_device_getinfo)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(plusv)
-	CONFIG_DEVICE(vc1541_device_getinfo)
-SYSTEM_CONFIG_END
 
 /***************************************************************************
 
@@ -727,21 +707,21 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME  PARENT COMPAT MACHINE INPUT   INIT   CONFIG    COMPANY                             FULLNAME            FLAGS */
+/*    YEAR  NAME  PARENT COMPAT MACHINE INPUT   INIT      COMPANY                             FULLNAME            FLAGS */
 
-COMP( 1984, c16,     0,     0,  c16,    c16,    c16,    c16,     "Commodore Business Machines Co.",  "Commodore 16 (PAL)", 0)
-COMP( 1984, c16c,    c16,   0,  c16c,   c16,    c16c,   c16c,    "Commodore Business Machines Co.",  "Commodore 16 (PAL, 1551)", 0 )
-COMP( 1984, c16v,    c16,   0,  c16v,   c16,    c16v,   c16v,    "Commodore Business Machines Co.",  "Commodore 16 (PAL, VC1541)", GAME_NOT_WORKING)
-COMP( 1984, c16hun,  c16,   0,  c16,    c16,    c16,    c16,     "Commodore Business Machines Co.",  "Commodore 16 Novotrade (PAL, Hungary)", 0)
+COMP( 1984, c16,     0,     0,  c16,    c16,    c16,   "Commodore Business Machines Co.",  "Commodore 16 (PAL)", 0)
+COMP( 1984, c16c,    c16,   0,  c16c,   c16,    c16c,  "Commodore Business Machines Co.",  "Commodore 16 (PAL, 1551)", 0 )
+COMP( 1984, c16v,    c16,   0,  c16v,   c16,    c16v,  "Commodore Business Machines Co.",  "Commodore 16 (PAL, VC1541)", GAME_NOT_WORKING)
+COMP( 1984, c16hun,  c16,   0,  c16,    c16,    c16,   "Commodore Business Machines Co.",  "Commodore 16 Novotrade (PAL, Hungary)", 0)
 
-COMP( 1984, c116,    c16,   0,  c16,    c16,    c16,    c16,     "Commodore Business Machines Co.",  "Commodore 116 (PAL)", 0)
-COMP( 1984, c116c,	 c16,   0,  c16c,   c16,    c16c,   c16c,    "Commodore Business Machines Co.",  "Commodore 116 (PAL, 1551)", 0 )
-COMP( 1984, c116v,   c16,   0,  c16v,   c16,    c16v,   c16v,    "Commodore Business Machines Co.",  "Commodore 116 (PAL, VC1541)", GAME_NOT_WORKING)
+COMP( 1984, c116,    c16,   0,  c16,    c16,    c16,   "Commodore Business Machines Co.",  "Commodore 116 (PAL)", 0)
+COMP( 1984, c116c,	 c16,   0,  c16c,   c16,    c16c,  "Commodore Business Machines Co.",  "Commodore 116 (PAL, 1551)", 0 )
+COMP( 1984, c116v,   c16,   0,  c16v,   c16,    c16v,  "Commodore Business Machines Co.",  "Commodore 116 (PAL, VC1541)", GAME_NOT_WORKING)
 
-COMP( 1984, plus4,   c16,   0,  plus4,  plus4,  c16,    plus,    "Commodore Business Machines Co.",  "Commodore Plus/4 (NTSC)", 0)
-COMP( 1984, plus4c,  c16,   0,  plus4c, plus4,  c16c,   plusc,   "Commodore Business Machines Co.",  "Commodore Plus/4 (NTSC, 1551)", 0 )
-COMP( 1984, plus4v,  c16,   0,  plus4v, plus4,  c16v,   plusv,   "Commodore Business Machines Co.",  "Commodore Plus/4 (NTSC, VC1541)", GAME_NOT_WORKING)
+COMP( 1984, plus4,   c16,   0,  plus4,  plus4,  c16,   "Commodore Business Machines Co.",  "Commodore Plus/4 (NTSC)", 0)
+COMP( 1984, plus4c,  c16,   0,  plus4c, plus4,  c16c,  "Commodore Business Machines Co.",  "Commodore Plus/4 (NTSC, 1551)", 0 )
+COMP( 1984, plus4v,  c16,   0,  plus4v, plus4,  c16v,  "Commodore Business Machines Co.",  "Commodore Plus/4 (NTSC, VC1541)", GAME_NOT_WORKING)
 
-COMP( 1984, c232,    c16,   0,  c16,    c16,    c16,    c16,     "Commodore Business Machines Co.",  "Commodore 232 (Prototype)", 0)
-COMP( 1984, c264,    c16,   0,  c264,   plus4,  c16,    plus,    "Commodore Business Machines Co.",  "Commodore 264 (Prototype)", 0)
-COMP( 1984, c364,    c16,   0,  c364,   plus4,  c16,    plus,    "Commodore Business Machines Co.",  "Commodore V364 (Prototype)", GAME_IMPERFECT_SOUND)
+COMP( 1984, c232,    c16,   0,  c16,    c16,    c16,   "Commodore Business Machines Co.",  "Commodore 232 (Prototype)", 0)
+COMP( 1984, c264,    c16,   0,  c264,   plus4,  c16,   "Commodore Business Machines Co.",  "Commodore 264 (Prototype)", 0)
+COMP( 1984, c364,    c16,   0,  c364,   plus4,  c16,   "Commodore Business Machines Co.",  "Commodore V364 (Prototype)", GAME_IMPERFECT_SOUND)

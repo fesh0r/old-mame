@@ -16,13 +16,14 @@
 #include "image.h"
 #include "hash.h"
 #include "unzip.h"
-#include "devices/flopdrv.h"
 #include "utils.h"
 #include "hashfile.h"
 #include "mamecore.h"
 #include "messopts.h"
 #include "ui.h"
+#include "device.h"
 #include "zippath.h"
+#include "softlist.h"
 
 
 
@@ -63,6 +64,10 @@ struct _image_slot_data
     unsigned int writeable : 1;
     unsigned int created : 1;
     unsigned int is_loading : 1;
+
+	/* Software list and software entry information */
+	const software_list *software_list;
+	const software_entry *software_entry;
 
     /* info read from the hash file */
     char *longname;
@@ -242,6 +247,10 @@ void image_init(running_machine *machine)
         slot->unload = (device_image_unload_func) device_get_info_fct(slot->dev, DEVINFO_FCT_IMAGE_UNLOAD);
         slot->verify = (device_image_verify_func) device_get_info_fct(slot->dev, DEVINFO_FCT_IMAGE_VERIFY);
 
+		/* sodftware list and entry */
+		slot->software_list = software_list_get_by_name( device_get_info_string(slot->dev, DEVINFO_STR_SOFTWARE_LIST) );
+		slot->software_entry = NULL;
+
         /* creation option guide */
         slot->create_option_guide = (const option_guide *) device_get_info_ptr(slot->dev, DEVINFO_PTR_IMAGE_CREATE_OPTGUIDE);
 
@@ -327,8 +336,7 @@ void image_unload_all(running_machine *machine)
 
 static int is_image_device(const device_config *device)
 {
-    return (device->type == MESS_DEVICE)
-        || (device_get_info_int_offline(device, DEVINFO_INT_IMAGE_READABLE) != 0)
+    return (device_get_info_int_offline(device, DEVINFO_INT_IMAGE_READABLE) != 0)
         || (device_get_info_int_offline(device, DEVINFO_INT_IMAGE_WRITEABLE) != 0);
 }
 
@@ -341,7 +349,7 @@ static int is_image_device(const device_config *device)
 
 const device_config *image_device_first(const machine_config *config)
 {
-    const device_config *device = device_list_first(config->devicelist, DEVICE_TYPE_WILDCARD);
+    const device_config *device = device_list_first(&config->devicelist, DEVICE_TYPE_WILDCARD);
     while((device != NULL) && !is_image_device(device))
     {
         device = device_list_next(device, DEVICE_TYPE_WILDCARD);
@@ -694,7 +702,7 @@ static image_error_t set_image_filename(image_slot_data *image, const char *file
 
 static int is_loaded(image_slot_data *image)
 {
-    return (image->file != NULL) || (image->ptr != NULL);
+    return (image->file != NULL) || (image->ptr != NULL) || (image->software_entry != NULL);
 }
 
 
@@ -838,6 +846,34 @@ static int image_load_internal(const device_config *image, const char *path,
     /* do we need to reset the CPU? */
     if ((attotime_compare(timer_get_time(machine), attotime_zero) > 0) && slot->info.reset_on_load)
         mame_schedule_hard_reset(machine);
+
+	/* Check if there's a software list defined for this device and use that if we're not creating an image */
+/* This piece below is commented out until load_region_list or something better is available in src/emu/romload */
+#if 0
+	if ( !is_create && slot->software_list )
+	{
+		slot->software_entry = software_get_by_name( slot->software_list, path );
+
+		if ( slot->software_entry )
+		{
+			char swname[256];
+
+			sprintf( swname, "%s:%s", slot->software_list->name, slot->software_entry->name );
+
+			load_software_region(slot->dev, swname, slot->software_entry->rom_info );
+
+			/* call device load or create */
+			if (image->token != NULL)
+			{
+				err = image_finish_load(image);
+				if (err)
+					goto done;
+			}
+
+			goto done;
+		}
+	}
+#endif
 
     /* determine open plan */
     determine_open_plan(slot, is_create, open_plan);
@@ -1408,6 +1444,49 @@ UINT32 image_crc(const device_config *image)
     return crc;
 }
 
+
+
+/*-------------------------------------------------
+    image_software_entry
+-------------------------------------------------*/
+
+const software_entry *image_software_entry(const device_config *image)
+{
+	image_slot_data *slot = find_image_slot(image);
+
+	return slot->software_entry;
+}
+
+
+
+/*-------------------------------------------------
+    image_get_software_region
+-------------------------------------------------*/
+
+UINT8 *image_get_software_region(const device_config *image, const char *tag)
+{
+	image_slot_data *slot = find_image_slot(image);
+	char full_tag[256];
+
+	if ( slot->software_list == NULL || slot->software_entry == NULL )
+		return NULL;
+
+	sprintf( full_tag, "%s:%s:%s", slot->software_list->name, slot->software_entry->name, tag );
+	return memory_region( image->machine, full_tag );
+}
+
+
+/*-------------------------------------------------
+    image_get_software_region_length
+-------------------------------------------------*/
+
+UINT32 image_get_software_region_length(const device_config *image, const char *tag)
+{
+    char full_tag[256];
+
+    sprintf( full_tag, "%s:%s:%s", image->tag, image_software_entry(image)->name, tag );
+    return memory_region_length( image->machine, full_tag );
+}
 
 
 /*-------------------------------------------------

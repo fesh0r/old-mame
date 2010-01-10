@@ -5,7 +5,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "cps1.h"
+#include "includes/cpschngr.h"
 
 /********************************************************************
 
@@ -132,7 +132,7 @@ static UINT16 *cps1_other;
 static int cps1_last_sprite_offset;     /* Offset of the last sprite */
 static int cps1_stars_enabled[2];          /* Layer enabled [Y/N] */
 
-static tilemap *cps1_bg_tilemap[3];
+static tilemap_t *cps1_bg_tilemap[3];
 
 
 static int cps1_scroll1x, cps1_scroll1y;
@@ -242,15 +242,15 @@ WRITE16_HANDLER( cps1_cps_b_w )
 		{
 			if (cps1_game_config->cpsb_value == 0x0402)	// Mercs (CN2 connector)
 			{
-				coin_lockout_w(2,~data & 0x01);
-				set_led_status(0,data & 0x02);
-				set_led_status(1,data & 0x04);
-				set_led_status(2,data & 0x08);
+				coin_lockout_w(space->machine,2,~data & 0x01);
+				set_led_status(space->machine,0,data & 0x02);
+				set_led_status(space->machine,1,data & 0x04);
+				set_led_status(space->machine,2,data & 0x08);
 			}
 			else	// kod, captcomm, knights
 			{
-				coin_lockout_w(2,~data & 0x02);
-				coin_lockout_w(3,~data & 0x08);
+				coin_lockout_w(space->machine,2,~data & 0x02);
+				coin_lockout_w(space->machine,3,~data & 0x08);
 			}
 		}
 	}

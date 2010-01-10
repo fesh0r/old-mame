@@ -52,13 +52,14 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef void (*upd3301_display_pixels_func)(const device_config *device, bitmap_t *bitmap, int y, int x, UINT8 cc, int hlgt, int rvv, int vsp, int sl0, int sl12, int csr, int gpa);
-#define UPD3301_DISPLAY_PIXELS(name) void name(const device_config *device, bitmap_t *bitmap, int y, int x, UINT8 cc, int hlgt, int rvv, int vsp, int sl0, int sl12, int csr, int gpa)
+typedef void (*upd3301_display_pixels_func)(const device_config *device, bitmap_t *bitmap, int y, int sx, UINT8 cc, UINT8 lc, int hlgt, int rvv, int vsp, int sl0, int sl12, int csr, int gpa);
+#define UPD3301_DISPLAY_PIXELS(name) void name(const device_config *device, bitmap_t *bitmap, int y, int sx, UINT8 cc, UINT8 lc, int hlgt, int rvv, int vsp, int sl0, int sl12, int csr, int gpa)
 
 typedef struct _upd3301_interface upd3301_interface;
 struct _upd3301_interface
 {
 	const char *screen_tag;		/* screen we are acting on */
+	int width;					/* char width in pixels */
 
 	upd3301_display_pixels_func	display_func;
 
@@ -84,6 +85,12 @@ WRITE_LINE_DEVICE_HANDLER( upd3301_lpen_w );
 
 /* dma acknowledge */
 WRITE8_DEVICE_HANDLER( upd3301_dack_w );
+
+/* horizontal retrace */
+READ_LINE_DEVICE_HANDLER( upd3301_hrtc_r );
+
+/* vertical retrace */
+READ_LINE_DEVICE_HANDLER( upd3301_vrtc_r );
 
 /* screen update */
 void upd3301_update(const device_config *device, bitmap_t *bitmap, const rectangle *cliprect);

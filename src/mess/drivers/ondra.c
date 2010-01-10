@@ -16,9 +16,9 @@
 
 /* Address maps */
 static ADDRESS_MAP_START(ondra_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK(1)
-	AM_RANGE(0x4000, 0xdfff) AM_RAMBANK(2)
-	AM_RANGE(0xe000, 0xffff) AM_RAMBANK(3)
+	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x4000, 0xdfff) AM_RAMBANK("bank2")
+	AM_RANGE(0xe000, 0xffff) AM_RAMBANK("bank3")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ondra_io, ADDRESS_SPACE_IO, 8 )
@@ -181,7 +181,7 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT       INIT     CONFIG COMPANY          FULLNAME       FLAGS */
-COMP( 1989, ondrat, 0, 		0,		ondra, 		ondra, 		ondra, 	 0, "Tesla",		 "Ondra",	 	0)
-COMP( 1989, ondrav, ondrat,	0,		ondra, 		ondra, 		ondra, 	 0, "ViLi",		 	 "Ondra ViLi",	0)
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT       INIT     COMPANY          FULLNAME       FLAGS */
+COMP( 1989, ondrat, 0, 		0,		ondra, 		ondra, 		ondra, 	 "Tesla",		 "Ondra",	 	0)
+COMP( 1989, ondrav, ondrat,	0,		ondra, 		ondra, 		ondra, 	 "ViLi",		 	 "Ondra ViLi",	0)
 

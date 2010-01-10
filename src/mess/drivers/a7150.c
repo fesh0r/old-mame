@@ -1,5 +1,5 @@
 /***************************************************************************
-   
+
         Robotron A7150
 
         04/10/2009 Skeleton driver.
@@ -16,12 +16,12 @@ static ADDRESS_MAP_START(a7150_mem, ADDRESS_SPACE_PROGRAM, 16)
 ADDRESS_MAP_END
 
 /* Input ports */
-INPUT_PORTS_START( a7150 )
+static INPUT_PORTS_START( a7150 )
 INPUT_PORTS_END
 
 
-static MACHINE_RESET(a7150) 
-{	
+static MACHINE_RESET(a7150)
+{
 }
 
 static VIDEO_START( a7150 )
@@ -39,7 +39,7 @@ static MACHINE_DRIVER_START( a7150 )
     MDRV_CPU_PROGRAM_MAP(a7150_mem)
 
     MDRV_MACHINE_RESET(a7150)
-	
+
     /* video hardware */
     MDRV_SCREEN_ADD("screen", RASTER)
     MDRV_SCREEN_REFRESH_RATE(50)
@@ -62,6 +62,6 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1986, a7150,  0,       0, 	a7150, 	a7150, 	 0,  	  0,  	 "Robotron",   "A7150",		GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
+COMP( 1986, a7150,  0,       0, 	a7150, 	a7150, 	 0,  	   	 "Robotron",   "A7150",		GAME_NOT_WORKING)
 

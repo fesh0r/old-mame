@@ -56,10 +56,10 @@ static MACHINE_DRIVER_START( vt220 )
 
     MDRV_VIDEO_START(vt220)
     MDRV_VIDEO_UPDATE(vt220)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("16K")	
+	MDRV_RAM_DEFAULT_SIZE("16K")
 MACHINE_DRIVER_END
 
 /* ROM definition */
@@ -70,8 +70,8 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1983, vt220,  0,       0, 	vt220, 	vt220, 	 0,  	  0,  	 "DEC",   "VT220",		GAME_NOT_WORKING)
-//COMP( 1983, vt240,  0,       0,   vt220,  vt220,   0,       0,     "DEC",   "VT240",      GAME_NOT_WORKING)
-//COMP( 1983, vt241,  0,       0,   vt220,  vt220,   0,       0,     "DEC",   "VT241",      GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
+COMP( 1983, vt220,  0,       0, 	vt220, 	vt220, 	 0,  	  	 "DEC",   "VT220",		GAME_NOT_WORKING)
+//COMP( 1983, vt240,  0,       0,   vt220,  vt220,   0,          "DEC",   "VT240",      GAME_NOT_WORKING)
+//COMP( 1983, vt241,  0,       0,   vt220,  vt220,   0,          "DEC",   "VT241",      GAME_NOT_WORKING)
 

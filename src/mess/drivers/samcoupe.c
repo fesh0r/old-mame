@@ -294,10 +294,10 @@ static WRITE8_DEVICE_HANDLER( samcoupe_lpt2_strobe_w )
 ***************************************************************************/
 
 static ADDRESS_MAP_START( samcoupe_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK(1)
-	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK(2)
-	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK(3)
-	AM_RANGE(0xc000, 0xffff) AM_RAMBANK(4)
+	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank2")
+	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank3")
+	AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank4")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( samcoupe_io, ADDRESS_SPACE_IO, 8 )
@@ -568,6 +568,7 @@ static MACHINE_DRIVER_START( samcoupe )
 	MDRV_CPU_IO_MAP(samcoupe_io)
 	MDRV_CPU_VBLANK_INT("screen", samcoupe_frame_interrupt)
 
+	MDRV_MACHINE_START(samcoupe)
 	MDRV_MACHINE_RESET(samcoupe)
 	MDRV_DRIVER_DATA(coupe_asic)
 
@@ -596,7 +597,7 @@ static MACHINE_DRIVER_START( samcoupe )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(samcoupe_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("512K")
@@ -649,5 +650,5 @@ ROM_END
     GAME DRIVERS
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     INIT  CONFIG    COMPANY                        FULLNAME     FLAGS */
-COMP( 1989, samcoupe, 0,      0,      samcoupe, samcoupe, 0,    0, "Miles Gordon Technology plc", "SAM Coupe", 0 )
+/*    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     INIT  COMPANY                        FULLNAME     FLAGS */
+COMP( 1989, samcoupe, 0,      0,      samcoupe, samcoupe, 0,    "Miles Gordon Technology plc", "SAM Coupe", 0 )

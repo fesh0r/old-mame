@@ -42,6 +42,7 @@ struct _mz_state
 
 	int hires_mode;			/* 1 if in 640x200 mode */
 	int screen; 			/* screen designation */
+	UINT8 *colorram;
 };
 
 
@@ -58,17 +59,17 @@ MACHINE_START( mz700 );
 
 /* bank switching */
 WRITE8_HANDLER( mz700_bank_0_w );
-WRITE8_HANDLER( mz800_bank_0_w );
-WRITE8_HANDLER( mz_bank_1_w );
-WRITE8_HANDLER( mz_bank_2_w );
-WRITE8_HANDLER( mz_bank_3_w );
-WRITE8_HANDLER( mz_bank_4_w );
-WRITE8_HANDLER( mz_bank_5_w );
-WRITE8_HANDLER( mz_bank_6_w );
+WRITE8_HANDLER( mz700_bank_1_w );
+WRITE8_HANDLER( mz700_bank_2_w );
+WRITE8_HANDLER( mz700_bank_3_w );
+WRITE8_HANDLER( mz700_bank_4_w );
+WRITE8_HANDLER( mz700_bank_5_w );
+WRITE8_HANDLER( mz700_bank_6_w );
 
 /* bankswitching, mz800 only */
 READ8_HANDLER( mz800_bank_0_r );
 READ8_HANDLER( mz800_bank_1_r );
+WRITE8_HANDLER( mz800_bank_0_w );
 
 
 READ8_HANDLER( mz800_crtc_r );

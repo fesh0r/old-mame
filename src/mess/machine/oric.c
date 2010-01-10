@@ -302,7 +302,7 @@ static TIMER_CALLBACK(oric_refresh_tape)
 		data = input_port_9>>4;
 	}
 
-	via_cb1_w(via_0, 0, data);
+	via_cb1_w(via_0, data);
 }
 
 static unsigned char previous_portb_data = 0;
@@ -465,13 +465,16 @@ static void oric_install_apple2_interface(running_machine *machine)
 	const device_config *fdc = devtag_get_device(machine, "fdc");
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
+	if (oric_is_telestrat)
+		return;
+
 	memory_install_read8_handler(space, 0x0300, 0x030f, 0, 0, oric_IO_r);
 	memory_install_read8_device_handler(space, fdc, 0x0310, 0x031f, 0, 0, applefdc_r);
-	memory_install_read8_handler(space, 0x0320, 0x03ff, 0, 0, SMH_BANK(4));
+	memory_install_read_bank(space, 0x0320, 0x03ff, 0, 0, "bank4");
 
 	memory_install_write8_handler(space, 0x0300, 0x030f, 0, 0, oric_IO_w);
 	memory_install_write8_device_handler(space, fdc, 0x0310, 0x031f, 0, 0, applefdc_w);
-	memory_set_bankptr(machine, 4, 	memory_region(machine, "maincpu") + 0x014000 + 0x020);
+	memory_set_bankptr(machine, "bank4", 	memory_region(machine, "maincpu") + 0x014000 + 0x020);
 }
 
 
@@ -479,19 +482,42 @@ static void oric_enable_memory(running_machine *machine, int low, int high, int 
 {
 	int i;
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+
+	if (oric_is_telestrat)
+		return;
 	for (i = low; i <= high; i++)
 	{
 		switch(i) {
 		case 1:
-			memory_install_read8_handler(space, 0xc000, 0xdfff, 0, 0, rd ? SMH_BANK(1) : SMH_NOP);
-			memory_install_write8_handler(space, 0xc000, 0xdfff, 0, 0, wr ? SMH_BANK(5) : SMH_UNMAP);
+			if (rd) {
+				memory_install_read_bank(space, 0xc000, 0xdfff, 0, 0, "bank1");
+			} else {
+				memory_nop_read(space, 0xc000, 0xdfff, 0, 0);
+			}
+			if (wr) {
+				memory_install_write_bank(space, 0xc000, 0xdfff, 0, 0, "bank5");
+			} else {
+				memory_unmap_write(space, 0xc000, 0xdfff, 0, 0);
+			}
 			break;
 		case 2:
-			memory_install_read8_handler(space, 0xe000, 0xf7ff, 0, 0, rd ? SMH_BANK(2) : SMH_NOP);
-			memory_install_write8_handler(space, 0xe000, 0xf7ff, 0, 0, wr ? SMH_BANK(6) : SMH_UNMAP);
+			if (rd) {
+				memory_install_read_bank(space, 0xe000, 0xf7ff, 0, 0, "bank2");
+			} else {
+				memory_nop_read(space, 0xe000, 0xf7ff, 0, 0);
+			}
+			if (wr) {
+				memory_install_write_bank(space, 0xe000, 0xf7ff, 0, 0, "bank6");
+			} else {
+				memory_unmap_write(space, 0xe000, 0xf7ff, 0, 0);
+			}
 			break;
 		case 3:
-			memory_install_read8_handler(space, 0xf800, 0xffff, 0, 0, rd ? SMH_BANK(3) : SMH_NOP);
+			if (rd) {
+				memory_install_read_bank(space, 0xf800, 0xffff, 0, 0, "bank3");
+			} else {
+				memory_nop_read(space, 0xf800, 0xffff, 0, 0);
+			}
 			break;
 		}
 	}
@@ -514,11 +540,13 @@ CALL &320 to start, or use BOBY rom.
 static WRITE8_HANDLER(apple2_v2_interface_w)
 {
 	/* data is ignored, address is used to decode operation */
+	if (oric_is_telestrat)
+		return;
 
 /*  logerror("apple 2 interface v2 rom page: %01x\n",(offset & 0x02)>>1); */
 
 	/* bit 0 is 0 for page 0, 1 for page 1 */
-	memory_set_bankptr(space->machine, 4, memory_region(space->machine, "maincpu") + 0x014000 + 0x0100 + (((offset & 0x02)>>1)<<8));
+	memory_set_bankptr(space->machine, "bank4", memory_region(space->machine, "maincpu") + 0x014000 + 0x0100 + (((offset & 0x02)>>1)<<8));
 
 	oric_enable_memory(space->machine, 1, 3, TRUE, TRUE);
 
@@ -531,24 +559,24 @@ static WRITE8_HANDLER(apple2_v2_interface_w)
 
 		/* enable rom */
 		rom_ptr = memory_region(space->machine, "maincpu") + 0x010000;
-		memory_set_bankptr(space->machine, 1, rom_ptr);
-		memory_set_bankptr(space->machine, 2, rom_ptr+0x02000);
-		memory_set_bankptr(space->machine, 3, rom_ptr+0x03800);
-		memory_set_bankptr(space->machine, 5, oric_ram_0x0c000);
-		memory_set_bankptr(space->machine, 6, oric_ram_0x0c000+0x02000);
-		memory_set_bankptr(space->machine, 7, oric_ram_0x0c000+0x03800);
+		memory_set_bankptr(space->machine, "bank1", rom_ptr);
+		memory_set_bankptr(space->machine, "bank2", rom_ptr+0x02000);
+		memory_set_bankptr(space->machine, "bank3", rom_ptr+0x03800);
+		memory_set_bankptr(space->machine, "bank5", oric_ram_0x0c000);
+		memory_set_bankptr(space->machine, "bank6", oric_ram_0x0c000+0x02000);
+		memory_set_bankptr(space->machine, "bank7", oric_ram_0x0c000+0x03800);
 	}
 	else
 	{
 		/*logerror("apple 2 interface v2: ram enabled\n"); */
 
 		/* enable ram */
-		memory_set_bankptr(space->machine, 1, oric_ram_0x0c000);
-		memory_set_bankptr(space->machine, 2, oric_ram_0x0c000+0x02000);
-		memory_set_bankptr(space->machine, 3, oric_ram_0x0c000+0x03800);
-		memory_set_bankptr(space->machine, 5, oric_ram_0x0c000);
-		memory_set_bankptr(space->machine, 6, oric_ram_0x0c000+0x02000);
-		memory_set_bankptr(space->machine, 7, oric_ram_0x0c000+0x03800);
+		memory_set_bankptr(space->machine, "bank1", oric_ram_0x0c000);
+		memory_set_bankptr(space->machine, "bank2", oric_ram_0x0c000+0x02000);
+		memory_set_bankptr(space->machine, "bank3", oric_ram_0x0c000+0x03800);
+		memory_set_bankptr(space->machine, "bank5", oric_ram_0x0c000);
+		memory_set_bankptr(space->machine, "bank6", oric_ram_0x0c000+0x02000);
+		memory_set_bankptr(space->machine, "bank7", oric_ram_0x0c000+0x03800);
 	}
 }
 
@@ -561,7 +589,7 @@ static void oric_install_apple2_v2_interface(running_machine *machine)
 
 	memory_install_read8_handler(space, 0x0300, 0x030f, 0, 0, oric_IO_r);
 	memory_install_read8_device_handler(space, fdc, 0x0310, 0x031f, 0, 0, applefdc_r);
-	memory_install_read8_handler(space, 0x0320, 0x03ff, 0, 0, SMH_BANK(4));
+	memory_install_read_bank(space, 0x0320, 0x03ff, 0, 0, "bank4");
 
 	memory_install_write8_handler(space, 0x0300, 0x030f, 0, 0, oric_IO_w);
 	memory_install_write8_device_handler(space, fdc, 0x0310, 0x031f, 0, 0, applefdc_w);
@@ -588,6 +616,8 @@ static void oric_jasmin_set_mem_0x0c000(running_machine *machine)
     2. If os is enabled, and overlay ram is enabled, all 16k can be accessed.
     3. if os is disabled, and overlay ram is enabled, jasmin rom takes priority.
     */
+	if (oric_is_telestrat)
+		return;
 
 	/* the ram is disabled in the jasmin rom which indicates that jasmin takes
     priority over the ram */
@@ -608,9 +638,9 @@ static void oric_jasmin_set_mem_0x0c000(running_machine *machine)
 			oric_enable_memory(machine, 1, 3, TRUE, FALSE);
 
 			rom_ptr = memory_region(machine, "maincpu") + 0x010000;
-			memory_set_bankptr(machine, 1, rom_ptr);
-			memory_set_bankptr(machine, 2, rom_ptr+0x02000);
-			memory_set_bankptr(machine, 3, rom_ptr+0x03800);
+			memory_set_bankptr(machine, "bank1", rom_ptr);
+			memory_set_bankptr(machine, "bank2", rom_ptr+0x02000);
+			memory_set_bankptr(machine, "bank3", rom_ptr+0x03800);
 		}
 		else
 		{
@@ -618,12 +648,12 @@ static void oric_jasmin_set_mem_0x0c000(running_machine *machine)
 
 			oric_enable_memory(machine, 1, 3, TRUE, TRUE);
 
-			memory_set_bankptr(machine, 1, oric_ram_0x0c000);
-			memory_set_bankptr(machine, 2, oric_ram_0x0c000+0x02000);
-			memory_set_bankptr(machine, 3, oric_ram_0x0c000+0x03800);
-			memory_set_bankptr(machine, 5, oric_ram_0x0c000);
-			memory_set_bankptr(machine, 6, oric_ram_0x0c000+0x02000);
-			memory_set_bankptr(machine, 7, oric_ram_0x0c000+0x03800);
+			memory_set_bankptr(machine, "bank1", oric_ram_0x0c000);
+			memory_set_bankptr(machine, "bank2", oric_ram_0x0c000+0x02000);
+			memory_set_bankptr(machine, "bank3", oric_ram_0x0c000+0x03800);
+			memory_set_bankptr(machine, "bank5", oric_ram_0x0c000);
+			memory_set_bankptr(machine, "bank6", oric_ram_0x0c000+0x02000);
+			memory_set_bankptr(machine, "bank7", oric_ram_0x0c000+0x03800);
 		}
 	}
 	else
@@ -642,10 +672,10 @@ static void oric_jasmin_set_mem_0x0c000(running_machine *machine)
 			/*logerror("&c000-&f8ff is ram!\n"); */
 			oric_enable_memory(machine, 1, 2, TRUE, TRUE);
 
-			memory_set_bankptr(machine, 1, oric_ram_0x0c000);
-			memory_set_bankptr(machine, 2, oric_ram_0x0c000+0x02000);
-			memory_set_bankptr(machine, 5, oric_ram_0x0c000);
-			memory_set_bankptr(machine, 6, oric_ram_0x0c000+0x02000);
+			memory_set_bankptr(machine, "bank1", oric_ram_0x0c000);
+			memory_set_bankptr(machine, "bank2", oric_ram_0x0c000+0x02000);
+			memory_set_bankptr(machine, "bank5", oric_ram_0x0c000);
+			memory_set_bankptr(machine, "bank6", oric_ram_0x0c000+0x02000);
 		}
 
 		{
@@ -656,8 +686,8 @@ static void oric_jasmin_set_mem_0x0c000(running_machine *machine)
 			/* jasmin rom enabled */
 			oric_enable_memory(machine, 3, 3, TRUE, TRUE);
 			rom_ptr = memory_region(machine, "maincpu") + 0x010000+0x04000+0x02000;
-			memory_set_bankptr(machine, 3, rom_ptr);
-			memory_set_bankptr(machine, 7, rom_ptr);
+			memory_set_bankptr(machine, "bank3", rom_ptr);
+			memory_set_bankptr(machine, "bank7", rom_ptr);
 		}
 	}
 }
@@ -834,8 +864,8 @@ static void	oric_microdisc_set_mem_0x0c000(running_machine *machine)
 		/*logerror("&c000-&dfff is ram\n"); */
 		/* rom disabled enable ram */
 		oric_enable_memory(machine, 1, 1, TRUE, TRUE);
-		memory_set_bankptr(machine, 1, oric_ram_0x0c000);
-		memory_set_bankptr(machine, 5, oric_ram_0x0c000);
+		memory_set_bankptr(machine, "bank1", oric_ram_0x0c000);
+		memory_set_bankptr(machine, "bank5", oric_ram_0x0c000);
 	}
 	else
 	{
@@ -844,8 +874,8 @@ static void	oric_microdisc_set_mem_0x0c000(running_machine *machine)
 		/* basic rom */
 		oric_enable_memory(machine, 1, 1, TRUE, FALSE);
 		rom_ptr = memory_region(machine, "maincpu") + 0x010000;
-		memory_set_bankptr(machine, 1, rom_ptr);
-		memory_set_bankptr(machine, 5, rom_ptr);
+		memory_set_bankptr(machine, "bank1", rom_ptr);
+		memory_set_bankptr(machine, "bank5", rom_ptr);
 	}
 
 	/* for 0x0e000-0x0ffff */
@@ -857,10 +887,10 @@ static void	oric_microdisc_set_mem_0x0c000(running_machine *machine)
 		/* basic rom */
 		oric_enable_memory(machine, 2, 3, TRUE, FALSE);
 		rom_ptr = memory_region(machine, "maincpu") + 0x010000;
-		memory_set_bankptr(machine, 2, rom_ptr+0x02000);
-		memory_set_bankptr(machine, 3, rom_ptr+0x03800);
-		memory_set_bankptr(machine, 6, rom_ptr+0x02000);
-		memory_set_bankptr(machine, 7, rom_ptr+0x03800);
+		memory_set_bankptr(machine, "bank2", rom_ptr+0x02000);
+		memory_set_bankptr(machine, "bank3", rom_ptr+0x03800);
+		memory_set_bankptr(machine, "bank6", rom_ptr+0x02000);
+		memory_set_bankptr(machine, "bank7", rom_ptr+0x03800);
 
 	}
 	else
@@ -873,18 +903,18 @@ static void	oric_microdisc_set_mem_0x0c000(running_machine *machine)
 			oric_enable_memory(machine, 2, 3, TRUE, FALSE);
 			/* enable rom of microdisc interface */
 			rom_ptr = memory_region(machine, "maincpu") + 0x014000;
-			memory_set_bankptr(machine, 2, rom_ptr);
-			memory_set_bankptr(machine, 3, rom_ptr+0x01800);
+			memory_set_bankptr(machine, "bank2", rom_ptr);
+			memory_set_bankptr(machine, "bank3", rom_ptr+0x01800);
 		}
 		else
 		{
 			/*logerror("&e000-&ffff is ram\n"); */
 			/* rom disabled enable ram */
 			oric_enable_memory(machine, 2, 3, TRUE, TRUE);
-			memory_set_bankptr(machine, 2, oric_ram_0x0c000+0x02000);
-			memory_set_bankptr(machine, 3, oric_ram_0x0c000+0x03800);
-			memory_set_bankptr(machine, 6, oric_ram_0x0c000+0x02000);
-			memory_set_bankptr(machine, 7, oric_ram_0x0c000+0x03800);
+			memory_set_bankptr(machine, "bank2", oric_ram_0x0c000+0x02000);
+			memory_set_bankptr(machine, "bank3", oric_ram_0x0c000+0x03800);
+			memory_set_bankptr(machine, "bank6", oric_ram_0x0c000+0x02000);
+			memory_set_bankptr(machine, "bank7", oric_ram_0x0c000+0x03800);
 		}
 	}
 }
@@ -1065,6 +1095,8 @@ MACHINE_RESET( oric )
 {
 	int disc_interface_id = input_port_read(machine, "FLOPPY") & 0x07;
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	if (oric_is_telestrat)
+		return;
 
 	switch (disc_interface_id)
 	{
@@ -1079,12 +1111,12 @@ MACHINE_RESET( oric )
 			/* os rom */
 			oric_enable_memory(machine, 1, 3, TRUE, FALSE);
 			rom_ptr = memory_region(machine, "maincpu") + 0x010000;
-			memory_set_bankptr(machine, 1, rom_ptr);
-			memory_set_bankptr(machine, 2, rom_ptr+0x02000);
-			memory_set_bankptr(machine, 3, rom_ptr+0x03800);
-			memory_set_bankptr(machine, 5, rom_ptr);
-			memory_set_bankptr(machine, 6, rom_ptr+0x02000);
-			memory_set_bankptr(machine, 7, rom_ptr+0x03800);
+			memory_set_bankptr(machine, "bank1", rom_ptr);
+			memory_set_bankptr(machine, "bank2", rom_ptr+0x02000);
+			memory_set_bankptr(machine, "bank3", rom_ptr+0x03800);
+			memory_set_bankptr(machine, "bank5", rom_ptr);
+			memory_set_bankptr(machine, "bank6", rom_ptr+0x02000);
+			memory_set_bankptr(machine, "bank7", rom_ptr+0x03800);
 
 
 			if (disc_interface_id==ORIC_FLOPPY_INTERFACE_APPLE2)
@@ -1272,8 +1304,6 @@ static struct telestrat_mem_block	telestrat_blocks[8];
 
 static void	telestrat_refresh_mem(running_machine *machine)
 {
-	read8_space_func rh;
-	write8_space_func wh;
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	struct telestrat_mem_block *mem_block = &telestrat_blocks[telestrat_bank_selection];
@@ -1282,31 +1312,28 @@ static void	telestrat_refresh_mem(running_machine *machine)
 	{
 		case TELESTRAT_MEM_BLOCK_RAM:
 		{
-			rh = SMH_BANK(1);
-			wh = SMH_BANK(2);
-			memory_set_bankptr(machine, 1, mem_block->ptr);
-			memory_set_bankptr(machine, 2, mem_block->ptr);
+			memory_set_bankptr(machine, "bank1", mem_block->ptr);
+			memory_set_bankptr(machine, "bank2", mem_block->ptr);
+			memory_install_read_bank(space, 0xc000, 0xffff, 0, 0, "bank1");
+			memory_install_write_bank(space, 0xc000, 0xffff, 0, 0, "bank2");
 		}
 		break;
 
 		case TELESTRAT_MEM_BLOCK_ROM:
 		{
-			rh = SMH_BANK(1);
-			wh = SMH_NOP;
-			memory_set_bankptr(machine, 1, mem_block->ptr);
+			memory_set_bankptr(machine, "bank1", mem_block->ptr);
+			memory_install_read_bank(space, 0xc000, 0xffff, 0, 0, "bank1");
+			memory_nop_write(space, 0xc000, 0xffff, 0, 0);
 		}
 		break;
 
 		default:
 		case TELESTRAT_MEM_BLOCK_UNDEFINED:
 		{
-			rh = SMH_NOP;
-			wh = SMH_NOP;
+			memory_nop_readwrite(space, 0xc000, 0xffff, 0, 0);
 		}
 		break;
 	}
-	memory_install_read8_handler(space, 0xc000, 0xffff, 0, 0, rh);
-	memory_install_write8_handler(space, 0xc000, 0xffff, 0, 0, wh);
 }
 
 static READ8_DEVICE_HANDLER(telestrat_via2_in_a_func)

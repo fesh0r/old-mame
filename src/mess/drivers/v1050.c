@@ -154,30 +154,31 @@ static void v1050_bankswitch(running_machine *machine)
 
 	if (BIT(state->bank, 0))
 	{
-		memory_install_readwrite8_handler(program, 0x0000, 0x1fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
-		memory_set_bank(machine, 1, bank);
+		memory_install_readwrite_bank(program, 0x0000, 0x1fff, 0, 0, "bank1");
+		memory_set_bank(machine, "bank1", bank);
 	}
 	else
 	{
-		memory_install_readwrite8_handler(program, 0x0000, 0x1fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
-		memory_set_bank(machine, 1, 3);
+		memory_install_read_bank(program, 0x0000, 0x1fff, 0, 0, "bank1");
+		memory_unmap_write(program, 0x0000, 0x1fff, 0, 0);
+		memory_set_bank(machine, "bank1", 3);
 	}
 
-	memory_set_bank(machine, 2, bank);
+	memory_set_bank(machine, "bank2", bank);
 
 	if (bank == 2)
 	{
-		memory_install_readwrite8_handler(program, 0x4000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_unmap_readwrite(program, 0x4000, 0xbfff, 0, 0);
 	}
 	else
 	{
-		memory_install_readwrite8_handler(program, 0x4000, 0x7fff, 0, 0, SMH_BANK(3), SMH_BANK(3));
-		memory_install_readwrite8_handler(program, 0x8000, 0xbfff, 0, 0, SMH_BANK(4), SMH_BANK(4));
-		memory_set_bank(machine, 3, bank);
-		memory_set_bank(machine, 4, bank);
+		memory_install_readwrite_bank(program, 0x4000, 0x7fff, 0, 0, "bank3");
+		memory_install_readwrite_bank(program, 0x8000, 0xbfff, 0, 0, "bank4");
+		memory_set_bank(machine, "bank3", bank);
+		memory_set_bank(machine, "bank4", bank);
 	}
 
-	memory_set_bank(machine, 5, bank);
+	memory_set_bank(machine, "bank5", bank);
 }
 
 /* Keyboard HACK */
@@ -420,11 +421,11 @@ static WRITE8_HANDLER( p2_w )
 
 static ADDRESS_MAP_START( v1050_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x1fff) AM_RAMBANK(1)
-	AM_RANGE(0x2000, 0x3fff) AM_RAMBANK(2)
-	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK(3)
-	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK(4)
-	AM_RANGE(0xc000, 0xffff) AM_RAMBANK(5)
+	AM_RANGE(0x0000, 0x1fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x2000, 0x3fff) AM_RAMBANK("bank2")
+	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank3")
+	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank4")
+	AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank5")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( v1050_io, ADDRESS_SPACE_IO, 8 )
@@ -448,7 +449,7 @@ static ADDRESS_MAP_START( v1050_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( v1050_crt_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_READWRITE(v1050_videoram_r, v1050_videoram_w) AM_BASE_MEMBER(v1050_state, video_ram)
+	AM_RANGE(0x0000, 0x7fff) AM_READWRITE(v1050_videoram_r, v1050_videoram_w) AM_BASE_MEMBER(v1050_state, video_ram)
 	AM_RANGE(0x8000, 0x8000) AM_DEVWRITE(H46505_TAG, mc6845_address_w)
 	AM_RANGE(0x8001, 0x8001) AM_DEVREADWRITE(H46505_TAG, mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0x9000, 0x9003) AM_DEVREADWRITE(I8255A_M6502_TAG, i8255a_r, i8255a_w)
@@ -810,8 +811,8 @@ static WRITE8_DEVICE_HANDLER( misc_8255_a_w )
 	wd17xx_set_side(state->mb8877, BIT(data, 4));
 
 	/* floppy motor */
-	floppy_drive_set_motor_state(get_floppy_image(device->machine, 0), f_motor_on);
-	floppy_drive_set_motor_state(get_floppy_image(device->machine, 1), f_motor_on);
+	floppy_mon_w(get_floppy_image(device->machine, 0), BIT(data, 6));
+	floppy_mon_w(get_floppy_image(device->machine, 1), BIT(data, 6));
 	floppy_drive_set_ready_state(get_floppy_image(device->machine, 0), f_motor_on, 1);
 	floppy_drive_set_ready_state(get_floppy_image(device->machine, 1), f_motor_on, 1);
 
@@ -1123,22 +1124,22 @@ static MACHINE_START( v1050 )
 	cpu_set_irq_callback(cputag_get_cpu(machine, Z80_TAG), v1050_int_ack);
 
 	/* setup memory banking */
-	memory_configure_bank(machine, 1, 0, 2, messram_get_ptr(devtag_get_device(machine, "messram")), 0x10000);
-	memory_configure_bank(machine, 1, 2, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x1c000, 0);
-	memory_configure_bank(machine, 1, 3, 1, memory_region(machine, Z80_TAG), 0);
+	memory_configure_bank(machine, "bank1", 0, 2, messram_get_ptr(devtag_get_device(machine, "messram")), 0x10000);
+	memory_configure_bank(machine, "bank1", 2, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x1c000, 0);
+	memory_configure_bank(machine, "bank1", 3, 1, memory_region(machine, Z80_TAG), 0);
 
-	memory_install_readwrite8_handler(program, 0x2000, 0x3fff, 0, 0, SMH_BANK(2), SMH_BANK(2));
-	memory_configure_bank(machine, 2, 0, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2000, 0x10000);
-	memory_configure_bank(machine, 2, 2, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x1e000, 0);
+	memory_install_readwrite_bank(program, 0x2000, 0x3fff, 0, 0, "bank2");
+	memory_configure_bank(machine, "bank2", 0, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2000, 0x10000);
+	memory_configure_bank(machine, "bank2", 2, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x1e000, 0);
 
-	memory_install_readwrite8_handler(program, 0x4000, 0x7fff, 0, 0, SMH_BANK(3), SMH_BANK(3));
-	memory_configure_bank(machine, 3, 0, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000, 0x10000);
+	memory_install_readwrite_bank(program, 0x4000, 0x7fff, 0, 0, "bank3");
+	memory_configure_bank(machine, "bank3", 0, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000, 0x10000);
 
-	memory_install_readwrite8_handler(program, 0x8000, 0xbfff, 0, 0, SMH_BANK(4), SMH_BANK(4));
-	memory_configure_bank(machine, 4, 0, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000, 0x10000);
+	memory_install_readwrite_bank(program, 0x8000, 0xbfff, 0, 0, "bank4");
+	memory_configure_bank(machine, "bank4", 0, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000, 0x10000);
 
-	memory_install_readwrite8_handler(program, 0xc000, 0xffff, 0, 0, SMH_BANK(5), SMH_BANK(5));
-	memory_configure_bank(machine, 5, 0, 3, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000, 0);
+	memory_install_readwrite_bank(program, 0xc000, 0xffff, 0, 0, "bank5");
+	memory_configure_bank(machine, "bank5", 0, 3, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000, 0);
 
 	v1050_bankswitch(machine);
 
@@ -1235,10 +1236,10 @@ static MACHINE_DRIVER_START( v1050 )
 
 	/* printer */
 	MDRV_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("128K")		
+	MDRV_RAM_DEFAULT_SIZE("128K")
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -1257,5 +1258,5 @@ ROM_END
 
 /* System Drivers */
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY                             FULLNAME        FLAGS */
-COMP( 1983, v1050,	0,		0,		v1050,	v1050,	0,		0,	"Visual Technology Incorporated",	"Visual 1050",	GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                             FULLNAME        FLAGS */
+COMP( 1983, v1050,	0,		0,		v1050,	v1050,	0,		"Visual Technology Incorporated",	"Visual 1050",	GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )

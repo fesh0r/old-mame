@@ -59,7 +59,7 @@ static ADDRESS_MAP_START( poly880_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x23ff) AM_MIRROR(0x0c00) AM_ROM
 	AM_RANGE(0x3000, 0x33ff) AM_MIRROR(0x0c00) AM_ROM
 	AM_RANGE(0x4000, 0x43ff) AM_MIRROR(0x3c00) AM_RAM
-	AM_RANGE(0x8000, 0xffff) AM_RAMBANK(1)
+	AM_RANGE(0x8000, 0xffff) AM_RAMBANK("bank1")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( poly880_io, ADDRESS_SPACE_IO, 8)
@@ -303,10 +303,10 @@ static MACHINE_DRIVER_START( poly880 )
 	MDRV_Z80PIO_ADD(Z80PIO2_TAG, pio2_intf)
 
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, poly880_cassette_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("1K")	
+	MDRV_RAM_DEFAULT_SIZE("1K")
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -319,5 +319,5 @@ ROM_END
 
 /* System Drivers */
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY             FULLNAME                FLAGS */
-COMP( 1983, poly880,	0,		0,		poly880,	poly880,	0,		0,	"VEB Polytechnik",	"Poly-Computer 880",	GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    COMPANY             FULLNAME                FLAGS */
+COMP( 1983, poly880,	0,		0,		poly880,	poly880,	0,		"VEB Polytechnik",	"Poly-Computer 880",	GAME_SUPPORTS_SAVE )

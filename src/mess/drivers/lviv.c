@@ -300,10 +300,10 @@ ADDRESS_MAP_END
 /* memory w/r functions */
 
 static ADDRESS_MAP_START(lviv_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK(1), SMH_BANK(1))
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK(2), SMH_BANK(2))
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK(3), SMH_BANK(3))
-	AM_RANGE(0xc000, 0xffff) AM_READWRITE(SMH_BANK(4), SMH_BANK(4))
+	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank2")
+	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank3")
+	AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank4")
 ADDRESS_MAP_END
 
 
@@ -462,7 +462,7 @@ static MACHINE_DRIVER_START( lviv )
 	MDRV_SNAPSHOT_ADD("snapshot", lviv, "sav", 0)
 
 	MDRV_CASSETTE_ADD( "cassette", lviv_cassette_config )
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
@@ -479,5 +479,5 @@ ROM_START(lviv)
 	ROMX_LOAD("lvivp.bin", 0x10000, 0x4000, CRC(f171c282) SHA1(c7dc2bdb02400e6b5cdcc50040eb06f506a7ed84), ROM_BIOS(3))
 ROM_END
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY         FULLNAME    FLAGS */
-COMP( 1989, lviv,   0,      0,      lviv,   lviv,   0,      0,   "V. I. Lenin",  "Lviv" ,    0 )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY         FULLNAME    FLAGS */
+COMP( 1989, lviv,   0,      0,      lviv,   lviv,   0,      "V. I. Lenin",  "Lviv" ,    0 )

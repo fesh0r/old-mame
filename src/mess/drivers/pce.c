@@ -68,13 +68,13 @@ Super System Card:
 
 
 static ADDRESS_MAP_START( pce_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x000000, 0x07FFFF) AM_ROMBANK(1)
-	AM_RANGE( 0x080000, 0x087FFF) AM_ROMBANK(2)
-	AM_RANGE( 0x088000, 0x0CFFFF) AM_ROMBANK(3)
-	AM_RANGE( 0x0D0000, 0x0FFFFF) AM_ROMBANK(4)
+	AM_RANGE( 0x000000, 0x07FFFF) AM_ROMBANK("bank1")
+	AM_RANGE( 0x080000, 0x087FFF) AM_ROMBANK("bank2")
+	AM_RANGE( 0x088000, 0x0CFFFF) AM_ROMBANK("bank3")
+	AM_RANGE( 0x0D0000, 0x0FFFFF) AM_ROMBANK("bank4")
 	AM_RANGE( 0x100000, 0x10FFFF) AM_RAM AM_BASE( &pce_cd_ram )
 	AM_RANGE( 0x110000, 0x1EDFFF) AM_NOP
-	AM_RANGE( 0x1EE000, 0x1EE7FF) AM_ROMBANK(10) AM_WRITE( pce_cd_bram_w )
+	AM_RANGE( 0x1EE000, 0x1EE7FF) AM_ROMBANK("bank10") AM_WRITE( pce_cd_bram_w )
 	AM_RANGE( 0x1EE800, 0x1EFFFF) AM_NOP
 	AM_RANGE( 0x1F0000, 0x1F1FFF) AM_RAM AM_MIRROR(0x6000) AM_BASE( &pce_user_ram )
 	AM_RANGE( 0x1FE000, 0x1FE3FF) AM_READWRITE( vdc_0_r, vdc_0_w )
@@ -91,13 +91,13 @@ static ADDRESS_MAP_START( pce_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sgx_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x000000, 0x07FFFF) AM_ROMBANK(1)
-	AM_RANGE( 0x080000, 0x087FFF) AM_ROMBANK(2)
-	AM_RANGE( 0x088000, 0x0CFFFF) AM_ROMBANK(3)
-	AM_RANGE( 0x0D0000, 0x0FFFFF) AM_ROMBANK(4)
+	AM_RANGE( 0x000000, 0x07FFFF) AM_ROMBANK("bank1")
+	AM_RANGE( 0x080000, 0x087FFF) AM_ROMBANK("bank2")
+	AM_RANGE( 0x088000, 0x0CFFFF) AM_ROMBANK("bank3")
+	AM_RANGE( 0x0D0000, 0x0FFFFF) AM_ROMBANK("bank4")
 	AM_RANGE( 0x100000, 0x10FFFF) AM_RAM AM_BASE( &pce_cd_ram )
 	AM_RANGE( 0x110000, 0x1EDFFF) AM_NOP
-	AM_RANGE( 0x1EE000, 0x1EE7FF) AM_ROMBANK(10) AM_WRITE( pce_cd_bram_w )
+	AM_RANGE( 0x1EE000, 0x1EE7FF) AM_ROMBANK("bank10") AM_WRITE( pce_cd_bram_w )
 	AM_RANGE( 0x1EE800, 0x1EFFFF) AM_NOP
 	AM_RANGE( 0x1F0000, 0x1F7FFF) AM_RAM AM_BASE( &pce_user_ram )
 	AM_RANGE( 0x1FE000, 0x1FE007) AM_READWRITE( vdc_0_r, vdc_0_w ) AM_MIRROR(0x03E0)
@@ -144,7 +144,7 @@ INPUT_PORTS_END
 static void pce_partialhash(char *dest, const unsigned char *data,
         unsigned long length, unsigned int functions)
 {
-        if ( ( length <= PCE_HEADER_SIZE ) || ( length & PCE_HEADER_SIZE ) ) {
+	if ( ( length <= PCE_HEADER_SIZE ) || ( length & PCE_HEADER_SIZE ) ) {
 	        hash_compute(dest, &data[PCE_HEADER_SIZE], length - PCE_HEADER_SIZE, functions);
 	} else {
 		hash_compute(dest, data, length, functions);
@@ -173,7 +173,7 @@ static MACHINE_DRIVER_START( pce )
 	MDRV_CPU_VBLANK_INT_HACK(pce_interrupt, VDC_LPF)
 	MDRV_QUANTUM_TIME(HZ(60))
 
-	MDRV_MACHINE_RESET( pce )
+	MDRV_MACHINE_START( pce )
 
     /* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -217,7 +217,7 @@ static MACHINE_DRIVER_START( sgx )
 	MDRV_CPU_VBLANK_INT_HACK(sgx_interrupt, VDC_LPF)
 	MDRV_QUANTUM_TIME(HZ(60))
 
-	MDRV_MACHINE_RESET( pce )
+	MDRV_MACHINE_START( pce )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -264,7 +264,7 @@ ROM_END
 #define rom_tg16 rom_pce
 #define rom_sgx rom_pce
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT    INIT   CONFIG  COMPANY  FULLNAME */
-CONS( 1987, pce,    0,      0,      pce,    pce,     pce,   0,	"Nippon Electronic Company", "PC Engine", GAME_IMPERFECT_SOUND )
-CONS( 1989, tg16,   pce,    0,      pce,    pce,     tg16,  0,	"Nippon Electronic Company", "TurboGrafx 16", GAME_IMPERFECT_SOUND )
-CONS( 1989, sgx,    pce,    0,      sgx,    pce,     sgx,   0,	"Nippon Electronic Company", "SuperGrafx", GAME_IMPERFECT_SOUND )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT    INIT   COMPANY  FULLNAME */
+CONS( 1987, pce,    0,      0,      pce,    pce,     pce,   "Nippon Electronic Company", "PC Engine", GAME_IMPERFECT_SOUND )
+CONS( 1989, tg16,   pce,    0,      pce,    pce,     tg16,  "Nippon Electronic Company", "TurboGrafx 16", GAME_IMPERFECT_SOUND )
+CONS( 1989, sgx,    pce,    0,      sgx,    pce,     sgx,   "Nippon Electronic Company", "SuperGrafx", GAME_IMPERFECT_SOUND )

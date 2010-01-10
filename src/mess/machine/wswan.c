@@ -231,6 +231,14 @@ MACHINE_START( wswan )
 	ws_bios_bank = NULL;
 	system_type = WSWAN;
 	add_exit_callback( machine, wswan_machine_stop );
+	wswan_vdp.timer = timer_alloc( machine, wswan_scanline_interrupt, &wswan_vdp );
+	timer_adjust_periodic( wswan_vdp.timer, ticks_to_attotime( 256, 3072000 ), 0, ticks_to_attotime( 256, 3072000 ) );
+
+	wswan_setup_bios(machine);
+
+	/* Set up RTC timer */
+	if ( rtc.present )
+		timer_pulse(machine,  ATTOTIME_IN_SEC(1), NULL, 0, wswan_rtc_callback );
 }
 
 MACHINE_START( wscolor )
@@ -238,13 +246,19 @@ MACHINE_START( wscolor )
 	ws_bios_bank = NULL;
 	system_type = WSC;
 	add_exit_callback( machine, wswan_machine_stop );
+	wswan_vdp.timer = timer_alloc( machine, wswan_scanline_interrupt, &wswan_vdp );
+	timer_adjust_periodic( wswan_vdp.timer, ticks_to_attotime( 256, 3072000 ), 0, ticks_to_attotime( 256, 3072000 ) );
+
+	wswan_setup_bios(machine);
+
+	/* Set up RTC timer */
+	if ( rtc.present )
+		timer_pulse(machine,  ATTOTIME_IN_SEC(1), NULL, 0, wswan_rtc_callback );
 }
 
 MACHINE_RESET( wswan )
 {
 	const address_space *space = cputag_get_address_space( machine, "maincpu", ADDRESS_SPACE_PROGRAM );
-
-	wswan_setup_bios(machine);
 
 	/* Intialize ports */
 	memcpy( ws_portram, ws_portram_init, 256 );
@@ -260,36 +274,27 @@ MACHINE_RESET( wswan )
 	wswan_vdp.color_mode = 0;
 	wswan_vdp.colors_16 = 0;
 	wswan_vdp.tile_packed = 0;
-	wswan_vdp.timer = timer_alloc( machine, wswan_scanline_interrupt, &wswan_vdp );
-	timer_adjust_periodic( wswan_vdp.timer, ticks_to_attotime( 256, 3072000 ), 0, ticks_to_attotime( 256, 3072000 ) );
 
 	/* Initialize sound DMA */
 	memset( &sound_dma, 0, sizeof( sound_dma ) );
 
 	/* Switch in the banks */
-	memory_set_bankptr( machine, 2, ROMMap[(ROMBanks - 1) & (ROMBanks - 1)] );
-	memory_set_bankptr( machine, 3, ROMMap[(ROMBanks - 1) & (ROMBanks - 1)] );
-	memory_set_bankptr( machine, 4, ROMMap[(ROMBanks - 12) & (ROMBanks - 1)] );
-	memory_set_bankptr( machine, 5, ROMMap[(ROMBanks - 11) & (ROMBanks - 1)] );
-	memory_set_bankptr( machine, 6, ROMMap[(ROMBanks - 10) & (ROMBanks - 1)] );
-	memory_set_bankptr( machine, 7, ROMMap[(ROMBanks - 9) & (ROMBanks - 1)] );
-	memory_set_bankptr( machine, 8, ROMMap[(ROMBanks - 8) & (ROMBanks - 1)] );
-	memory_set_bankptr( machine, 9, ROMMap[(ROMBanks - 7) & (ROMBanks - 1)] );
-	memory_set_bankptr( machine, 10, ROMMap[(ROMBanks - 6) & (ROMBanks - 1)] );
-	memory_set_bankptr( machine, 11, ROMMap[(ROMBanks - 5) & (ROMBanks - 1)] );
-	memory_set_bankptr( machine, 12, ROMMap[(ROMBanks - 4) & (ROMBanks - 1)] );
-	memory_set_bankptr( machine, 13, ROMMap[(ROMBanks - 3) & (ROMBanks - 1)] );
-	memory_set_bankptr( machine, 14, ROMMap[(ROMBanks - 2) & (ROMBanks - 1)] );
+	memory_set_bankptr( machine, "bank2", ROMMap[(ROMBanks - 1) & (ROMBanks - 1)] );
+	memory_set_bankptr( machine, "bank3", ROMMap[(ROMBanks - 1) & (ROMBanks - 1)] );
+	memory_set_bankptr( machine, "bank4", ROMMap[(ROMBanks - 12) & (ROMBanks - 1)] );
+	memory_set_bankptr( machine, "bank5", ROMMap[(ROMBanks - 11) & (ROMBanks - 1)] );
+	memory_set_bankptr( machine, "bank6", ROMMap[(ROMBanks - 10) & (ROMBanks - 1)] );
+	memory_set_bankptr( machine, "bank7", ROMMap[(ROMBanks - 9) & (ROMBanks - 1)] );
+	memory_set_bankptr( machine, "bank8", ROMMap[(ROMBanks - 8) & (ROMBanks - 1)] );
+	memory_set_bankptr( machine, "bank9", ROMMap[(ROMBanks - 7) & (ROMBanks - 1)] );
+	memory_set_bankptr( machine, "bank10", ROMMap[(ROMBanks - 6) & (ROMBanks - 1)] );
+	memory_set_bankptr( machine, "bank11", ROMMap[(ROMBanks - 5) & (ROMBanks - 1)] );
+	memory_set_bankptr( machine, "bank12", ROMMap[(ROMBanks - 4) & (ROMBanks - 1)] );
+	memory_set_bankptr( machine, "bank13", ROMMap[(ROMBanks - 3) & (ROMBanks - 1)] );
+	memory_set_bankptr( machine, "bank14", ROMMap[(ROMBanks - 2) & (ROMBanks - 1)] );
 	wswan_bios_disabled = 0;
-	memory_set_bankptr( machine, 15, ws_bios_bank );
+	memory_set_bankptr( machine, "bank15", ws_bios_bank );
 //  memory_set_bankptr( machine, 15, ROMMap[(ROMBanks - 1) & (ROMBanks - 1)] );
-
-	/* Set up RTC timer */
-	if ( rtc.present )
-	{
-		timer_pulse(machine,  ATTOTIME_IN_SEC(1), NULL, 0, wswan_rtc_callback );
-	}
-
 }
 
 NVRAM_HANDLER( wswan )
@@ -891,7 +896,7 @@ WRITE8_HANDLER( wswan_port_w )
 			if ( ( data & 0x01 ) && !wswan_bios_disabled )
 			{
 				wswan_bios_disabled = 1;
-				memory_set_bankptr( space->machine, 15, ROMMap[ ( ( ( ws_portram[0xc0] & 0x0F ) << 4 ) | 15 ) & ( ROMBanks - 1 ) ] );
+				memory_set_bankptr( space->machine, "bank15", ROMMap[ ( ( ( ws_portram[0xc0] & 0x0F ) << 4 ) | 15 ) & ( ROMBanks - 1 ) ] );
 			}
 			break;
 		case 0xa2:	/* Timer control
@@ -1071,20 +1076,20 @@ WRITE8_HANDLER( wswan_port_w )
                    Bit 0-3 - ROM bank base register for banks 4-15
                    Bit 4-7 - Unknown
                 */
-			memory_set_bankptr( space->machine, 4, ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 4 ) & ( ROMBanks - 1 ) ] );
-			memory_set_bankptr( space->machine, 5, ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 5 ) & ( ROMBanks - 1 ) ] );
-			memory_set_bankptr( space->machine, 6, ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 6 ) & ( ROMBanks - 1 ) ] );
-			memory_set_bankptr( space->machine, 7, ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 7 ) & ( ROMBanks - 1 ) ] );
-			memory_set_bankptr( space->machine, 8, ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 8 ) & ( ROMBanks - 1 ) ] );
-			memory_set_bankptr( space->machine, 9, ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 9 ) & ( ROMBanks - 1 ) ] );
-			memory_set_bankptr( space->machine, 10, ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 10 ) & ( ROMBanks - 1 ) ] );
-			memory_set_bankptr( space->machine, 11, ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 11 ) & ( ROMBanks - 1 ) ] );
-			memory_set_bankptr( space->machine, 12, ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 12 ) & ( ROMBanks - 1 ) ] );
-			memory_set_bankptr( space->machine, 13, ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 13 ) & ( ROMBanks - 1 ) ] );
-			memory_set_bankptr( space->machine, 14, ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 14 ) & ( ROMBanks - 1 ) ] );
+			memory_set_bankptr( space->machine, "bank4", ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 4 ) & ( ROMBanks - 1 ) ] );
+			memory_set_bankptr( space->machine, "bank5", ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 5 ) & ( ROMBanks - 1 ) ] );
+			memory_set_bankptr( space->machine, "bank6", ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 6 ) & ( ROMBanks - 1 ) ] );
+			memory_set_bankptr( space->machine, "bank7", ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 7 ) & ( ROMBanks - 1 ) ] );
+			memory_set_bankptr( space->machine, "bank8", ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 8 ) & ( ROMBanks - 1 ) ] );
+			memory_set_bankptr( space->machine, "bank9", ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 9 ) & ( ROMBanks - 1 ) ] );
+			memory_set_bankptr( space->machine, "bank10", ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 10 ) & ( ROMBanks - 1 ) ] );
+			memory_set_bankptr( space->machine, "bank11", ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 11 ) & ( ROMBanks - 1 ) ] );
+			memory_set_bankptr( space->machine, "bank12", ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 12 ) & ( ROMBanks - 1 ) ] );
+			memory_set_bankptr( space->machine, "bank13", ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 13 ) & ( ROMBanks - 1 ) ] );
+			memory_set_bankptr( space->machine, "bank14", ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 14 ) & ( ROMBanks - 1 ) ] );
 			if ( wswan_bios_disabled )
 			{
-				memory_set_bankptr( space->machine, 15, ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 15 ) & ( ROMBanks - 1 ) ] );
+				memory_set_bankptr( space->machine, "bank15", ROMMap[ ( ( ( data & 0x0F ) << 4 ) | 15 ) & ( ROMBanks - 1 ) ] );
 			}
 			break;
 		case 0xc1:	/* SRAM bank select
@@ -1098,12 +1103,12 @@ WRITE8_HANDLER( wswan_port_w )
 		case 0xc2:	/* ROM bank select for segment 2 (0x20000 - 0x2ffff)
                    Bit 0-7 - ROM bank for segment 2
                 */
-			memory_set_bankptr( space->machine, 2, ROMMap[ data & ( ROMBanks - 1 ) ]);
+			memory_set_bankptr( space->machine, "bank2", ROMMap[ data & ( ROMBanks - 1 ) ]);
 			break;
 		case 0xc3:	/* ROM bank select for segment 3 (0x30000-0x3ffff)
                    Bit 0-7 - ROM bank for segment 3
                 */
-			memory_set_bankptr( space->machine, 3, ROMMap[ data & ( ROMBanks - 1 ) ]);
+			memory_set_bankptr( space->machine, "bank3", ROMMap[ data & ( ROMBanks - 1 ) ]);
 			break;
 		case 0xc6:	/* EEPROM address lower bits port/EEPROM address and command port
                    1KBit EEPROM:
@@ -1444,7 +1449,7 @@ static TIMER_CALLBACK(wswan_scanline_interrupt)
 {
 	if( wswan_vdp.current_line < 144 )
 	{
-		wswan_refresh_scanline();
+		wswan_refresh_scanline(machine);
 	}
 
 	/* Decrement 12kHz (HBlank) counter */

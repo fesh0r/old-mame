@@ -53,22 +53,22 @@
 #define JOYSTICK_SENSITIVITY	100
 
 static ADDRESS_MAP_START( coco_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0FFF) AM_RAMBANK(1)
-	AM_RANGE(0x1000, 0x1FFF) AM_RAMBANK(2)
-	AM_RANGE(0x2000, 0x2FFF) AM_RAMBANK(3)
-	AM_RANGE(0x3000, 0x3FFF) AM_RAMBANK(4)
-	AM_RANGE(0x4000, 0x4FFF) AM_RAMBANK(5)
-	AM_RANGE(0x5000, 0x5FFF) AM_RAMBANK(6)
-	AM_RANGE(0x6000, 0x6FFF) AM_RAMBANK(7)
-	AM_RANGE(0x7000, 0x7FFF) AM_RAMBANK(8)
-	AM_RANGE(0x8000, 0x8FFF) AM_RAMBANK(9)
-	AM_RANGE(0x9000, 0x9FFF) AM_RAMBANK(10)
-	AM_RANGE(0xA000, 0xAFFF) AM_RAMBANK(11)
-	AM_RANGE(0xB000, 0xBFFF) AM_RAMBANK(12)
-	AM_RANGE(0xC000, 0xCFFF) AM_RAMBANK(13)
-	AM_RANGE(0xD000, 0xDFFF) AM_RAMBANK(14)
-	AM_RANGE(0xE000, 0xEFFF) AM_RAMBANK(15)
-	AM_RANGE(0xF000, 0xFEFF) AM_RAMBANK(16)
+	AM_RANGE(0x0000, 0x0FFF) AM_RAMBANK("bank1")
+	AM_RANGE(0x1000, 0x1FFF) AM_RAMBANK("bank2")
+	AM_RANGE(0x2000, 0x2FFF) AM_RAMBANK("bank3")
+	AM_RANGE(0x3000, 0x3FFF) AM_RAMBANK("bank4")
+	AM_RANGE(0x4000, 0x4FFF) AM_RAMBANK("bank5")
+	AM_RANGE(0x5000, 0x5FFF) AM_RAMBANK("bank6")
+	AM_RANGE(0x6000, 0x6FFF) AM_RAMBANK("bank7")
+	AM_RANGE(0x7000, 0x7FFF) AM_RAMBANK("bank8")
+	AM_RANGE(0x8000, 0x8FFF) AM_RAMBANK("bank9")
+	AM_RANGE(0x9000, 0x9FFF) AM_RAMBANK("bank10")
+	AM_RANGE(0xA000, 0xAFFF) AM_RAMBANK("bank11")
+	AM_RANGE(0xB000, 0xBFFF) AM_RAMBANK("bank12")
+	AM_RANGE(0xC000, 0xCFFF) AM_RAMBANK("bank13")
+	AM_RANGE(0xD000, 0xDFFF) AM_RAMBANK("bank14")
+	AM_RANGE(0xE000, 0xEFFF) AM_RAMBANK("bank15")
+	AM_RANGE(0xF000, 0xFEFF) AM_RAMBANK("bank16")
 	AM_RANGE(0xff00, 0xff1f) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xff20, 0xff3f) AM_DEVREADWRITE("pia_1", pia6821_r, coco_pia_1_w)
 	AM_RANGE(0xff40, 0xff7f) AM_DEVREADWRITE("coco_cartslot", coco_cartridge_r, coco_cartridge_w)
@@ -80,22 +80,22 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( dragon_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0FFF) AM_RAMBANK(1)
-	AM_RANGE(0x1000, 0x1FFF) AM_RAMBANK(2)
-	AM_RANGE(0x2000, 0x2FFF) AM_RAMBANK(3)
-	AM_RANGE(0x3000, 0x3FFF) AM_RAMBANK(4)
-	AM_RANGE(0x4000, 0x4FFF) AM_RAMBANK(5)
-	AM_RANGE(0x5000, 0x5FFF) AM_RAMBANK(6)
-	AM_RANGE(0x6000, 0x6FFF) AM_RAMBANK(7)
-	AM_RANGE(0x7000, 0x7FFF) AM_RAMBANK(8)
-	AM_RANGE(0x8000, 0x8FFF) AM_RAMBANK(9)
-	AM_RANGE(0x9000, 0x9FFF) AM_RAMBANK(10)
-	AM_RANGE(0xA000, 0xAFFF) AM_RAMBANK(11)
-	AM_RANGE(0xB000, 0xBFFF) AM_RAMBANK(12)
-	AM_RANGE(0xC000, 0xCFFF) AM_RAMBANK(13)
-	AM_RANGE(0xD000, 0xDFFF) AM_RAMBANK(14)
-	AM_RANGE(0xE000, 0xEFFF) AM_RAMBANK(15)
-	AM_RANGE(0xF000, 0xFEFF) AM_RAMBANK(16)
+	AM_RANGE(0x0000, 0x0FFF) AM_RAMBANK("bank1")
+	AM_RANGE(0x1000, 0x1FFF) AM_RAMBANK("bank2")
+	AM_RANGE(0x2000, 0x2FFF) AM_RAMBANK("bank3")
+	AM_RANGE(0x3000, 0x3FFF) AM_RAMBANK("bank4")
+	AM_RANGE(0x4000, 0x4FFF) AM_RAMBANK("bank5")
+	AM_RANGE(0x5000, 0x5FFF) AM_RAMBANK("bank6")
+	AM_RANGE(0x6000, 0x6FFF) AM_RAMBANK("bank7")
+	AM_RANGE(0x7000, 0x7FFF) AM_RAMBANK("bank8")
+	AM_RANGE(0x8000, 0x8FFF) AM_RAMBANK("bank9")
+	AM_RANGE(0x9000, 0x9FFF) AM_RAMBANK("bank10")
+	AM_RANGE(0xA000, 0xAFFF) AM_RAMBANK("bank11")
+	AM_RANGE(0xB000, 0xBFFF) AM_RAMBANK("bank12")
+	AM_RANGE(0xC000, 0xCFFF) AM_RAMBANK("bank13")
+	AM_RANGE(0xD000, 0xDFFF) AM_RAMBANK("bank14")
+	AM_RANGE(0xE000, 0xEFFF) AM_RAMBANK("bank15")
+	AM_RANGE(0xF000, 0xFEFF) AM_RAMBANK("bank16")
 	AM_RANGE(0xff00, 0xff1f) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xff20, 0xff3f) AM_DEVREADWRITE("pia_1", pia6821_r, coco_pia_1_w)
 	AM_RANGE(0xff40, 0xff7f) AM_DEVREADWRITE("coco_cartslot", coco_cartridge_r, coco_cartridge_w)
@@ -115,22 +115,22 @@ ADDRESS_MAP_END
  * which would make sense, but I'm not sure.
  */
 static ADDRESS_MAP_START( coco3_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_RAMBANK(1)
-	AM_RANGE(0x2000, 0x3fff) AM_RAMBANK(2)
-	AM_RANGE(0x4000, 0x5fff) AM_RAMBANK(3)
-	AM_RANGE(0x6000, 0x7fff) AM_RAMBANK(4)
-	AM_RANGE(0x8000, 0x9fff) AM_RAMBANK(5)
-	AM_RANGE(0xa000, 0xbfff) AM_RAMBANK(6)
-	AM_RANGE(0xc000, 0xdfff) AM_RAMBANK(7)
-	AM_RANGE(0xe000, 0xfdff) AM_RAMBANK(8)
-	AM_RANGE(0xfe00, 0xfeff) AM_RAMBANK(9)
+	AM_RANGE(0x0000, 0x1fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x2000, 0x3fff) AM_RAMBANK("bank2")
+	AM_RANGE(0x4000, 0x5fff) AM_RAMBANK("bank3")
+	AM_RANGE(0x6000, 0x7fff) AM_RAMBANK("bank4")
+	AM_RANGE(0x8000, 0x9fff) AM_RAMBANK("bank5")
+	AM_RANGE(0xa000, 0xbfff) AM_RAMBANK("bank6")
+	AM_RANGE(0xc000, 0xdfff) AM_RAMBANK("bank7")
+	AM_RANGE(0xe000, 0xfdff) AM_RAMBANK("bank8")
+	AM_RANGE(0xfe00, 0xfeff) AM_RAMBANK("bank9")
 	AM_RANGE(0xff00, 0xff1f) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xff20, 0xff3f) AM_DEVREADWRITE("pia_1", pia6821_r, coco_pia_1_w)
 	AM_RANGE(0xff40, 0xff7f) AM_DEVREADWRITE("coco_cartslot", coco_cartridge_r, coco_cartridge_w)
 	AM_RANGE(0xff80, 0xff85) AM_DEVREADWRITE("vhd", coco_vhd_io_r, coco_vhd_io_w)
 	AM_RANGE(0xff90, 0xff9f) AM_READWRITE(coco3_gime_r, coco3_gime_w)
 	AM_RANGE(0xffa0, 0xffaf) AM_READWRITE(coco3_mmu_r, coco3_mmu_w)
-	AM_RANGE(0xffb0, 0xffbf) AM_READWRITE(SMH_BANK(10), coco3_palette_w)
+	AM_RANGE(0xffb0, 0xffbf) AM_READ_BANK("bank10") AM_WRITE(coco3_palette_w)
 	AM_RANGE(0xffc0, 0xffdf) AM_DEVWRITE("sam", sam6883_w)
 	AM_RANGE(0xffe0, 0xffef) AM_NOP
 	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION("maincpu", 0x7ff0)
@@ -139,22 +139,22 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( d64_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0FFF) AM_RAMBANK(1)
-	AM_RANGE(0x1000, 0x1FFF) AM_RAMBANK(2)
-	AM_RANGE(0x2000, 0x2FFF) AM_RAMBANK(3)
-	AM_RANGE(0x3000, 0x3FFF) AM_RAMBANK(4)
-	AM_RANGE(0x4000, 0x4FFF) AM_RAMBANK(5)
-	AM_RANGE(0x5000, 0x5FFF) AM_RAMBANK(6)
-	AM_RANGE(0x6000, 0x6FFF) AM_RAMBANK(7)
-	AM_RANGE(0x7000, 0x7FFF) AM_RAMBANK(8)
-	AM_RANGE(0x8000, 0x8FFF) AM_RAMBANK(9)
-	AM_RANGE(0x9000, 0x9FFF) AM_RAMBANK(10)
-	AM_RANGE(0xA000, 0xAFFF) AM_RAMBANK(11)
-	AM_RANGE(0xB000, 0xBFFF) AM_RAMBANK(12)
-	AM_RANGE(0xC000, 0xCFFF) AM_RAMBANK(13)
-	AM_RANGE(0xD000, 0xDFFF) AM_RAMBANK(14)
-	AM_RANGE(0xE000, 0xEFFF) AM_RAMBANK(15)
-	AM_RANGE(0xF000, 0xFEFF) AM_RAMBANK(16)
+	AM_RANGE(0x0000, 0x0FFF) AM_RAMBANK("bank1")
+	AM_RANGE(0x1000, 0x1FFF) AM_RAMBANK("bank2")
+	AM_RANGE(0x2000, 0x2FFF) AM_RAMBANK("bank3")
+	AM_RANGE(0x3000, 0x3FFF) AM_RAMBANK("bank4")
+	AM_RANGE(0x4000, 0x4FFF) AM_RAMBANK("bank5")
+	AM_RANGE(0x5000, 0x5FFF) AM_RAMBANK("bank6")
+	AM_RANGE(0x6000, 0x6FFF) AM_RAMBANK("bank7")
+	AM_RANGE(0x7000, 0x7FFF) AM_RAMBANK("bank8")
+	AM_RANGE(0x8000, 0x8FFF) AM_RAMBANK("bank9")
+	AM_RANGE(0x9000, 0x9FFF) AM_RAMBANK("bank10")
+	AM_RANGE(0xA000, 0xAFFF) AM_RAMBANK("bank11")
+	AM_RANGE(0xB000, 0xBFFF) AM_RAMBANK("bank12")
+	AM_RANGE(0xC000, 0xCFFF) AM_RAMBANK("bank13")
+	AM_RANGE(0xD000, 0xDFFF) AM_RAMBANK("bank14")
+	AM_RANGE(0xE000, 0xEFFF) AM_RAMBANK("bank15")
+	AM_RANGE(0xF000, 0xFEFF) AM_RAMBANK("bank16")
 	AM_RANGE(0xff00, 0xff03) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)		AM_MIRROR(0x0018)
 	AM_RANGE(0xff04, 0xff07) AM_DEVREADWRITE("acia", acia_6551_r,			acia_6551_w)	AM_MIRROR(0x0018)
 	AM_RANGE(0xff20, 0xff3f) AM_DEVREADWRITE("pia_1", pia6821_r, coco_pia_1_w)
@@ -173,22 +173,22 @@ ADDRESS_MAP_END
 */
 
 static ADDRESS_MAP_START( d64_plus_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0FFF) AM_RAMBANK(1)
-	AM_RANGE(0x1000, 0x1FFF) AM_RAMBANK(2)
-	AM_RANGE(0x2000, 0x2FFF) AM_RAMBANK(3)
-	AM_RANGE(0x3000, 0x3FFF) AM_RAMBANK(4)
-	AM_RANGE(0x4000, 0x4FFF) AM_RAMBANK(5)
-	AM_RANGE(0x5000, 0x5FFF) AM_RAMBANK(6)
-	AM_RANGE(0x6000, 0x6FFF) AM_RAMBANK(7)
-	AM_RANGE(0x7000, 0x7FFF) AM_RAMBANK(8)
-	AM_RANGE(0x8000, 0x8FFF) AM_RAMBANK(9)
-	AM_RANGE(0x9000, 0x9FFF) AM_RAMBANK(10)
-	AM_RANGE(0xA000, 0xAFFF) AM_RAMBANK(11)
-	AM_RANGE(0xB000, 0xBFFF) AM_RAMBANK(12)
-	AM_RANGE(0xC000, 0xCFFF) AM_RAMBANK(13)
-	AM_RANGE(0xD000, 0xDFFF) AM_RAMBANK(14)
-	AM_RANGE(0xE000, 0xEFFF) AM_RAMBANK(15)
-	AM_RANGE(0xF000, 0xFEFF) AM_RAMBANK(16)
+	AM_RANGE(0x0000, 0x0FFF) AM_RAMBANK("bank1")
+	AM_RANGE(0x1000, 0x1FFF) AM_RAMBANK("bank2")
+	AM_RANGE(0x2000, 0x2FFF) AM_RAMBANK("bank3")
+	AM_RANGE(0x3000, 0x3FFF) AM_RAMBANK("bank4")
+	AM_RANGE(0x4000, 0x4FFF) AM_RAMBANK("bank5")
+	AM_RANGE(0x5000, 0x5FFF) AM_RAMBANK("bank6")
+	AM_RANGE(0x6000, 0x6FFF) AM_RAMBANK("bank7")
+	AM_RANGE(0x7000, 0x7FFF) AM_RAMBANK("bank8")
+	AM_RANGE(0x8000, 0x8FFF) AM_RAMBANK("bank9")
+	AM_RANGE(0x9000, 0x9FFF) AM_RAMBANK("bank10")
+	AM_RANGE(0xA000, 0xAFFF) AM_RAMBANK("bank11")
+	AM_RANGE(0xB000, 0xBFFF) AM_RAMBANK("bank12")
+	AM_RANGE(0xC000, 0xCFFF) AM_RAMBANK("bank13")
+	AM_RANGE(0xD000, 0xDFFF) AM_RAMBANK("bank14")
+	AM_RANGE(0xE000, 0xEFFF) AM_RAMBANK("bank15")
+	AM_RANGE(0xF000, 0xFEFF) AM_RAMBANK("bank16")
 	AM_RANGE(0xff00, 0xff03) AM_DEVREADWRITE("pia_0", pia6821_r,pia6821_w)		AM_MIRROR(0x0018)
 	AM_RANGE(0xff04, 0xff07) AM_DEVREADWRITE("acia", acia_6551_r,acia_6551_w)	AM_MIRROR(0x0018)
 	AM_RANGE(0xff20, 0xff3f) AM_DEVREADWRITE("pia_1", pia6821_r, coco_pia_1_w)
@@ -196,7 +196,7 @@ static ADDRESS_MAP_START( d64_plus_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xff90, 0xffbf) AM_NOP
 	AM_RANGE(0xffc0, 0xffdf) AM_DEVWRITE("sam", sam6883_w)
 	AM_RANGE(0xffe0, 0xffe1) AM_NOP
-	AM_RANGE(0xffe2, 0xffe2) AM_READWRITE(plus_reg_r,plus_reg_w)	/* Dragon plus control / status reg */
+	AM_RANGE(0xffe2, 0xffe2) AM_READWRITE(dgnplus_reg_r,dgnplus_reg_w)	/* Dragon plus control / status reg */
 	AM_RANGE(0xffe3, 0xffef) AM_NOP
 	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION("maincpu", 0x3ff0)
 ADDRESS_MAP_END
@@ -251,33 +251,33 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( dgnalpha_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0FFF) AM_RAMBANK(1)
-	AM_RANGE(0x1000, 0x1FFF) AM_RAMBANK(2)
-	AM_RANGE(0x2000, 0x2FFF) AM_RAMBANK(3)
-	AM_RANGE(0x3000, 0x3FFF) AM_RAMBANK(4)
-	AM_RANGE(0x4000, 0x4FFF) AM_RAMBANK(5)
-	AM_RANGE(0x5000, 0x5FFF) AM_RAMBANK(6)
-	AM_RANGE(0x6000, 0x6FFF) AM_RAMBANK(7)
-	AM_RANGE(0x7000, 0x7FFF) AM_RAMBANK(8)
-	AM_RANGE(0x8000, 0x8FFF) AM_RAMBANK(9)
-	AM_RANGE(0x9000, 0x9FFF) AM_RAMBANK(10)
-	AM_RANGE(0xA000, 0xAFFF) AM_RAMBANK(11)
-	AM_RANGE(0xB000, 0xBFFF) AM_RAMBANK(12)
-	AM_RANGE(0xC000, 0xCFFF) AM_RAMBANK(13)
-	AM_RANGE(0xD000, 0xDFFF) AM_RAMBANK(14)
-	AM_RANGE(0xE000, 0xEFFF) AM_RAMBANK(15)
-	AM_RANGE(0xF000, 0xFEFF) AM_RAMBANK(16)
+	AM_RANGE(0x0000, 0x0FFF) AM_RAMBANK("bank1")
+	AM_RANGE(0x1000, 0x1FFF) AM_RAMBANK("bank2")
+	AM_RANGE(0x2000, 0x2FFF) AM_RAMBANK("bank3")
+	AM_RANGE(0x3000, 0x3FFF) AM_RAMBANK("bank4")
+	AM_RANGE(0x4000, 0x4FFF) AM_RAMBANK("bank5")
+	AM_RANGE(0x5000, 0x5FFF) AM_RAMBANK("bank6")
+	AM_RANGE(0x6000, 0x6FFF) AM_RAMBANK("bank7")
+	AM_RANGE(0x7000, 0x7FFF) AM_RAMBANK("bank8")
+	AM_RANGE(0x8000, 0x8FFF) AM_RAMBANK("bank9")
+	AM_RANGE(0x9000, 0x9FFF) AM_RAMBANK("bank10")
+	AM_RANGE(0xA000, 0xAFFF) AM_RAMBANK("bank11")
+	AM_RANGE(0xB000, 0xBFFF) AM_RAMBANK("bank12")
+	AM_RANGE(0xC000, 0xCFFF) AM_RAMBANK("bank13")
+	AM_RANGE(0xD000, 0xDFFF) AM_RAMBANK("bank14")
+	AM_RANGE(0xE000, 0xEFFF) AM_RAMBANK("bank15")
+	AM_RANGE(0xF000, 0xFEFF) AM_RAMBANK("bank16")
 	AM_RANGE(0xff00, 0xff03) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xff04, 0xff07) AM_DEVREADWRITE("acia", acia_6551_r, acia_6551_w)
 	AM_RANGE(0xff20, 0xff23) AM_DEVREADWRITE("pia_1", pia6821_r, coco_pia_1_w)
 	AM_RANGE(0xff24, 0xff27) AM_DEVREADWRITE("pia_2", pia6821_r, pia6821_w) 	/* Third PIA on Dragon Alpha */
-	AM_RANGE(0Xff28, 0xff2b) AM_READWRITE(alpha_modem_r, alpha_modem_w)		/* Modem, dummy to stop eror log ! */
-	AM_RANGE(0xff2c, 0xff2f) AM_READWRITE(wd2797_r,	wd2797_w)				/* Alpha onboard disk interface */
+	AM_RANGE(0Xff28, 0xff2b) AM_READWRITE(dgnalpha_modem_r, dgnalpha_modem_w)		/* Modem, dummy to stop eror log ! */
+	AM_RANGE(0xff2c, 0xff2f) AM_READWRITE(dgnalpha_wd2797_r, dgnalpha_wd2797_w)				/* Alpha onboard disk interface */
 	AM_RANGE(0xff40, 0xff7f) AM_DEVREADWRITE("coco_cartslot", coco_cartridge_r, coco_cartridge_w)
 	AM_RANGE(0xff90, 0xffbf) AM_NOP
 	AM_RANGE(0xffc0, 0xffdf) AM_DEVWRITE("sam", sam6883_w)
 	AM_RANGE(0xffe0, 0xffef) AM_NOP
-	AM_RANGE(0xfff0, 0xffff) AM_READ(dragon_alpha_mapped_irq_r)
+	AM_RANGE(0xfff0, 0xffff) AM_READ(dgnalpha_mapped_irq_r)
 ADDRESS_MAP_END
 
 
@@ -814,12 +814,12 @@ static MACHINE_DRIVER_START( dragon32 )
 	MDRV_DRAGON_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
 	MDRV_DRAGON_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
-	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("32K")
 	MDRV_RAM_EXTRA_OPTIONS("64K")
+	
+	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( dragon64 )
@@ -864,11 +864,11 @@ static MACHINE_DRIVER_START( dragon64 )
 	MDRV_DRAGON_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
 	MDRV_DRAGON_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
-	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
+	
+	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( d64plus )
@@ -914,11 +914,11 @@ static MACHINE_DRIVER_START( d64plus )
 	MDRV_DRAGON_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
 	MDRV_DRAGON_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
-	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("128K")
+	
+	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( dgnalpha )
@@ -972,7 +972,7 @@ static MACHINE_DRIVER_START( dgnalpha )
 	MDRV_DRAGON_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
@@ -1021,11 +1021,11 @@ static MACHINE_DRIVER_START( tanodr64 )
 	MDRV_DRAGON_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
 	MDRV_DRAGON_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
-	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
+	
+	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( coco )
@@ -1069,12 +1069,12 @@ static MACHINE_DRIVER_START( coco )
 	MDRV_COCO_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
 	MDRV_COCO_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
-	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
 	MDRV_RAM_EXTRA_OPTIONS("4K,32K,64K")
+	
+	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( coco2 )
@@ -1117,12 +1117,12 @@ static MACHINE_DRIVER_START( coco2 )
 	MDRV_COCO_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
 	MDRV_COCO_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
-	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
 	MDRV_RAM_EXTRA_OPTIONS("16K")
+	
+	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( coco2b )
@@ -1165,12 +1165,12 @@ static MACHINE_DRIVER_START( coco2b )
 	MDRV_COCO_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
 	MDRV_COCO_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
-	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
 	MDRV_RAM_EXTRA_OPTIONS("16K")
+	
+	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( coco3 )
@@ -1225,12 +1225,12 @@ static MACHINE_DRIVER_START( coco3 )
 	MDRV_COCO_CARTRIDGE_HALT_CALLBACK(coco_halt_w)
 	MDRV_COCO_CARTRIDGE_NMI_CALLBACK(coco_nmi_w)
 
-	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
-	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("512K")
 	MDRV_RAM_EXTRA_OPTIONS("128K,2M,8M")
+	
+	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( coco3p )
@@ -1252,7 +1252,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( cocoe )
 	MDRV_IMPORT_FROM( coco )
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
@@ -1393,17 +1393,17 @@ ROM_END
 /* use 64K rams, and will boot with 4k, if this is selected, so I have     */
 /* split these to avoid confusion -- PHS                                   */
 
-/*     YEAR     NAME        PARENT  COMPAT  MACHINE    INPUT      INIT    CONFIG COMPANY                 FULLNAME */
-COMP(  1980,    coco,       0,      0,      coco,      coco,      0,      0,     "Tandy Radio Shack",	         "Color Computer", 0)
-COMP(  1981,    cocoe,      coco,   0,      cocoe,     coco,      0,      0,     "Tandy Radio Shack",	         "Color Computer (Extended BASIC 1.0)", 0)
-COMP(  1983,    coco2,      coco,   0,      coco2,     coco,      0,      0,     "Tandy Radio Shack",	         "Color Computer 2", 0)
-COMP(  1985?,   coco2b,     coco,   0,      coco2b,    coco,      0,      0,     "Tandy Radio Shack",	         "Color Computer 2B", 0)
-COMP(  1986,    coco3,      coco,   0,      coco3,     coco3,     0,      0,     "Tandy Radio Shack",	         "Color Computer 3 (NTSC)", 0)
-COMP(  1986,    coco3p,     coco,   0,      coco3p,    coco3,     0,      0,     "Tandy Radio Shack",	         "Color Computer 3 (PAL)", 0)
-COMP(  19??,    coco3h,     coco,   0,      coco3h,    coco3,     0,      0,     "Tandy Radio Shack",	         "Color Computer 3 (NTSC; HD6309)", GAME_COMPUTER_MODIFIED)
-COMP(  1982,    dragon32,   coco,   0,      dragon32,  dragon32,  0,      0,     "Dragon Data Ltd",            "Dragon 32", 0)
-COMP(  1983,    dragon64,   coco,   0,      dragon64,  dragon32,  0,      0,     "Dragon Data Ltd",            "Dragon 64", 0)
-COMP(  1983,    d64plus,    coco,   0,      d64plus,   dragon32,  0,      0,     "Dragon Data Ltd",            "Dragon 64 Plus", 0)
-COMP(  1983,    tanodr64,   coco,   0,      tanodr64,  dragon32,  0,      0,     "Dragon Data Ltd / Tano Ltd", "Tano Dragon 64 (NTSC)", 0)
-COMP(  1984,    dgnalpha,   coco,   0,      dgnalpha,  dragon32,  0,      0,     "Dragon Data Ltd",            "Dragon Alpha Prototype", 0)
-COMP(  1984,    cp400,      coco,   0,      coco,      coco,      0,      0,     "Prologica",                  "CP400", 0)
+/*     YEAR     NAME        PARENT  COMPAT  MACHINE    INPUT      INIT    COMPANY                 FULLNAME */
+COMP(  1980,    coco,       0,      0,      coco,      coco,      0,      "Tandy Radio Shack",	         "Color Computer", 0)
+COMP(  1981,    cocoe,      coco,   0,      cocoe,     coco,      0,      "Tandy Radio Shack",	         "Color Computer (Extended BASIC 1.0)", 0)
+COMP(  1983,    coco2,      coco,   0,      coco2,     coco,      0,      "Tandy Radio Shack",	         "Color Computer 2", 0)
+COMP(  1985?,   coco2b,     coco,   0,      coco2b,    coco,      0,      "Tandy Radio Shack",	         "Color Computer 2B", 0)
+COMP(  1986,    coco3,      coco,   0,      coco3,     coco3,     0,      "Tandy Radio Shack",	         "Color Computer 3 (NTSC)", 0)
+COMP(  1986,    coco3p,     coco,   0,      coco3p,    coco3,     0,      "Tandy Radio Shack",	         "Color Computer 3 (PAL)", 0)
+COMP(  19??,    coco3h,     coco,   0,      coco3h,    coco3,     0,      "Tandy Radio Shack",	         "Color Computer 3 (NTSC; HD6309)", GAME_COMPUTER_MODIFIED)
+COMP(  1982,    dragon32,   coco,   0,      dragon32,  dragon32,  0,      "Dragon Data Ltd",            "Dragon 32", 0)
+COMP(  1983,    dragon64,   coco,   0,      dragon64,  dragon32,  0,      "Dragon Data Ltd",            "Dragon 64", 0)
+COMP(  1983,    d64plus,    coco,   0,      d64plus,   dragon32,  0,      "Dragon Data Ltd",            "Dragon 64 Plus", 0)
+COMP(  1983,    tanodr64,   coco,   0,      tanodr64,  dragon32,  0,      "Dragon Data Ltd / Tano Ltd", "Tano Dragon 64 (NTSC)", 0)
+COMP(  1984,    dgnalpha,   coco,   0,      dgnalpha,  dragon32,  0,      "Dragon Data Ltd",            "Dragon Alpha Prototype", 0)
+COMP(  1984,    cp400,      coco,   0,      coco,      coco,      0,      "Prologica",                  "CP400", 0)

@@ -34,7 +34,7 @@ WRITE8_HANDLER(pc1403_asic_write)
 	logerror ("asic write %.4x %.2x\n",offset, data);
 	break;
     case 2/*0x3c00*/:
-	memory_set_bankptr(space->machine, 1, memory_region(space->machine, "user1")+((data&7)<<14));
+	memory_set_bankptr(space->machine, "bank1", memory_region(space->machine, "user1")+((data&7)<<14));
 	logerror ("asic write %.4x %.2x\n",offset, data);
 	break;
     case 3/*0x3e00*/: break;
@@ -173,23 +173,11 @@ static TIMER_CALLBACK(pc1403_power_up)
 DRIVER_INIT( pc1403 )
 {
 	int i;
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 *gfx=memory_region(machine, "gfx1");
 
 	for (i=0; i<128; i++) gfx[i]=i;
 
 	timer_set(machine, ATTOTIME_IN_SEC(1), NULL, 0, pc1403_power_up);
 
-	memory_set_bankptr(machine, 1, memory_region(machine, "user1"));
-	/* NPW 28-Jun-2006 - Input ports can't be read at init time! Even then, this should use messram_get_ptr(devtag_get_device(machine, "messram")) */
-	if (0 && (input_port_read(machine, "DSW0") & 0x80) == 0x80)
-	{
-		memory_install_read8_handler(space, 0x8000, 0xdfff, 0, 0, SMH_RAM);
-		memory_install_write8_handler(space, 0x8000, 0xdfff, 0, 0, SMH_RAM);
-	}
-	else
-	{
-		memory_install_read8_handler(space, 0x8000, 0xdfff, 0, 0, SMH_NOP);
-		memory_install_write8_handler(space, 0x8000, 0xdfff, 0, 0, SMH_NOP);
-	}
+	memory_set_bankptr(machine, "bank1", memory_region(machine, "user1"));
 }

@@ -1,74 +1,74 @@
 /*********************************************************************************
 
-	NEC PC-6001 series
-	NEC PC-6600 series
+    NEC PC-6001 series
+    NEC PC-6600 series
 
-	preliminary driver by Angelo Salese
+    preliminary driver by Angelo Salese
 
-	TODO:
-	- Hook up tape loading, images that are floating around the net are already
-	  ADC'ed, so they should be easy to implement (but not exactly faithful)
-	- cassette handling requires a decap of the MCU. It could be possible to
-	  do some tight synch between the master CPU and a code simulation,but I think
-	  it's not worth the effort...
-	- Currently rewriting the video part without the MC6847 for two reasons:
-		A) the later models have a custom video chip in the place of the MC6847,
-		   so this implementation will be used in the end.
-		B) It's easier to me to see what the attribute vram does since I don't
-		   have any docs atm.
+    TODO:
+    - Hook up tape loading, images that are floating around the net are already
+      ADC'ed, so they should be easy to implement (but not exactly faithful)
+    - cassette handling requires a decap of the MCU. It could be possible to
+      do some tight synch between the master CPU and a code simulation,but I think
+      it's not worth the effort...
+    - Currently rewriting the video part without the MC6847 for two reasons:
+        A) the later models have a custom video chip in the place of the MC6847,
+           so this implementation will be used in the end.
+        B) It's easier to me to see what the attribute vram does since I don't
+           have any docs atm.
 
 ==================================================================================
 
-	PC-6001 (1981-09):
+    PC-6001 (1981-09):
 
-	 * CPU: Z80A @ 4 MHz
-	 * ROM: 16KB + 4KB (chargen) - no kanji
-	 * RAM: 16KB, it can be expanded to 32KB
-	 * Text Mode: 32x16 and 2 colors
-	 * Graphic Modes: 64x48 (9 colors), 128x192 (4 colors), 256x192 (2 colors)
-	 * Sound: BEEP + PSG - Optional Voice Synth Cart
-	 * Keyboard: JIS Keyboard with 5 function keys, control key, TAB key,
-			HOME/CLR key, INS key, DEL key, GRAPH key, Japanese syllabary
-			key, page key, STOP key, and cursor key (4 directions)
-	 * 1 cartslot, optional floppy drive, optional serial 232 port, 2
-			joystick ports
-
-
-	PC-6001 mkII (1983-07):
-
-	 * CPU: Z80A @ 4 MHz
-	 * ROM: 32KB + 16KB (chargen) + 32KB (kanji) + 16KB (Voice Synth)
-	 * RAM: 64KB
-	 * Text Mode: same as PC-6001 with N60-BASIC; 40x20 and 15 colors with
-			N60M-BASIC
-	 * Graphic Modes: same as PC-6001 with N60-BASIC; 80x40 (15 colors),
-			160x200 (15 colors), 320x200 (4 colors) with N60M-BASIC
-	 * Sound: BEEP + PSG
-	 * Keyboard: JIS Keyboard with 5 function keys, control key, TAB key,
-			HOME/CLR key, INS key, DEL key, CAPS key, GRAPH key, Japanese
-			syllabary key, page key, mode key, STOP key, and cursor key (4
-			directions)
-	 * 1 cartslot, floppy drive, optional serial 232 port, 2 joystick ports
+     * CPU: Z80A @ 4 MHz
+     * ROM: 16KB + 4KB (chargen) - no kanji
+     * RAM: 16KB, it can be expanded to 32KB
+     * Text Mode: 32x16 and 2 colors
+     * Graphic Modes: 64x48 (9 colors), 128x192 (4 colors), 256x192 (2 colors)
+     * Sound: BEEP + PSG - Optional Voice Synth Cart
+     * Keyboard: JIS Keyboard with 5 function keys, control key, TAB key,
+            HOME/CLR key, INS key, DEL key, GRAPH key, Japanese syllabary
+            key, page key, STOP key, and cursor key (4 directions)
+     * 1 cartslot, optional floppy drive, optional serial 232 port, 2
+            joystick ports
 
 
-	PC-6001 mkIISR (1984-12):
+    PC-6001 mkII (1983-07):
 
-	 * CPU: Z80A @ 3.58 MHz
-	 * ROM: 64KB + 16KB (chargen) + 32KB (kanji) + 32KB (Voice Synth)
-	 * RAM: 64KB
-	 * Text Mode: same as PC-6001/PC-6001mkII with N60-BASIC; 40x20, 40x25,
-			80x20, 80x25 and 15 colors with N66SR-BASIC
-	 * Graphic Modes: same as PC-6001/PC-6001mkII with N60-BASIC; 80x40 (15 colors),
-			320x200 (15 colors), 640x200 (15 colors) with N66SR-BASIC
-	 * Sound: BEEP + PSG + FM
-	 * Keyboard: JIS Keyboard with 5 function keys, control key, TAB key,
-			HOME/CLR key, INS key, DEL key, CAPS key, GRAPH key, Japanese
-			syllabary key, page key, mode key, STOP key, and cursor key (4
-			directions)
-	 * 1 cartslot, floppy drive, optional serial 232 port, 2 joystick ports
+     * CPU: Z80A @ 4 MHz
+     * ROM: 32KB + 16KB (chargen) + 32KB (kanji) + 16KB (Voice Synth)
+     * RAM: 64KB
+     * Text Mode: same as PC-6001 with N60-BASIC; 40x20 and 15 colors with
+            N60M-BASIC
+     * Graphic Modes: same as PC-6001 with N60-BASIC; 80x40 (15 colors),
+            160x200 (15 colors), 320x200 (4 colors) with N60M-BASIC
+     * Sound: BEEP + PSG
+     * Keyboard: JIS Keyboard with 5 function keys, control key, TAB key,
+            HOME/CLR key, INS key, DEL key, CAPS key, GRAPH key, Japanese
+            syllabary key, page key, mode key, STOP key, and cursor key (4
+            directions)
+     * 1 cartslot, floppy drive, optional serial 232 port, 2 joystick ports
 
 
-	info from http://www.geocities.jp/retro_zzz/machines/nec/6001/spc60.html
+    PC-6001 mkIISR (1984-12):
+
+     * CPU: Z80A @ 3.58 MHz
+     * ROM: 64KB + 16KB (chargen) + 32KB (kanji) + 32KB (Voice Synth)
+     * RAM: 64KB
+     * Text Mode: same as PC-6001/PC-6001mkII with N60-BASIC; 40x20, 40x25,
+            80x20, 80x25 and 15 colors with N66SR-BASIC
+     * Graphic Modes: same as PC-6001/PC-6001mkII with N60-BASIC; 80x40 (15 colors),
+            320x200 (15 colors), 640x200 (15 colors) with N66SR-BASIC
+     * Sound: BEEP + PSG + FM
+     * Keyboard: JIS Keyboard with 5 function keys, control key, TAB key,
+            HOME/CLR key, INS key, DEL key, CAPS key, GRAPH key, Japanese
+            syllabary key, page key, mode key, STOP key, and cursor key (4
+            directions)
+     * 1 cartslot, floppy drive, optional serial 232 port, 2 joystick ports
+
+
+    info from http://www.geocities.jp/retro_zzz/machines/nec/6001/spc60.html
 
 ==================================================================================
 
@@ -340,9 +340,9 @@ static WRITE8_DEVICE_HANDLER(nec_ppi8255_w) {
 			//printf("%02x\n",data);
 
 			if((data & 0x0f) == 0x05)
-				memory_set_bankptr(device->machine, 1, &ext_rom[0x2000]);
+				memory_set_bankptr(device->machine, "bank1", &ext_rom[0x2000]);
 			if((data & 0x0f) == 0x04)
-				memory_set_bankptr(device->machine, 1, &gfx_data[0]);
+				memory_set_bankptr(device->machine, "bank1", &gfx_data[0]);
 		}
 	}
 	i8255a_w(device,offset,data);
@@ -352,7 +352,7 @@ static ADDRESS_MAP_START(pc6001_map, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x5fff) AM_ROM AM_REGION("cart_img",0)
-	AM_RANGE(0x6000, 0x7fff) AM_ROMBANK(1)
+	AM_RANGE(0x6000, 0x7fff) AM_ROMBANK("bank1")
 	AM_RANGE(0x8000, 0xffff) AM_RAM AM_BASE(&pc6001_ram)
 ADDRESS_MAP_END
 
@@ -369,12 +369,12 @@ static ADDRESS_MAP_START( pc6001_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 /*
-	ROM_REGION( 0x28000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "basicrom.62", 0x10000, 0x8000, CRC(950ac401) SHA1(fbf195ba74a3b0f80b5a756befc96c61c2094182) )
-	ROM_LOAD( "voicerom.62", 0x18000, 0x4000, CRC(49b4f917) SHA1(1a2d18f52ef19dc93da3d65f19d3abbd585628af) )
-	ROM_LOAD( "cgrom60.62",  0x1c000, 0x2000, CRC(81eb5d95) SHA1(53d8ae9599306ff23bf95208d2f6cc8fed3fc39f) )
-	ROM_LOAD( "cgrom60m.62", 0x1e000, 0x2000, CRC(3ce48c33) SHA1(f3b6c63e83a17d80dde63c6e4d86adbc26f84f79) )
-	ROM_LOAD( "kanjirom.62", 0x20000, 0x8000, CRC(20c8f3eb) SHA1(4c9f30f0a2ebbe70aa8e697f94eac74d8241cadd) )
+    ROM_REGION( 0x28000, "maincpu", ROMREGION_ERASEFF )
+    ROM_LOAD( "basicrom.62", 0x10000, 0x8000, CRC(950ac401) SHA1(fbf195ba74a3b0f80b5a756befc96c61c2094182) )
+    ROM_LOAD( "voicerom.62", 0x18000, 0x4000, CRC(49b4f917) SHA1(1a2d18f52ef19dc93da3d65f19d3abbd585628af) )
+    ROM_LOAD( "cgrom60.62",  0x1c000, 0x2000, CRC(81eb5d95) SHA1(53d8ae9599306ff23bf95208d2f6cc8fed3fc39f) )
+    ROM_LOAD( "cgrom60m.62", 0x1e000, 0x2000, CRC(3ce48c33) SHA1(f3b6c63e83a17d80dde63c6e4d86adbc26f84f79) )
+    ROM_LOAD( "kanjirom.62", 0x20000, 0x8000, CRC(20c8f3eb) SHA1(4c9f30f0a2ebbe70aa8e697f94eac74d8241cadd) )
 */
 
 #define BASICROM(_v_) \
@@ -437,28 +437,28 @@ static WRITE8_HANDLER( pc6001m2_bank_r0_w )
 {
 	UINT8 *ROM = memory_region(space->machine, "maincpu");
 
-//	bankaddress = 0x10000 + (0x4000 * ((data & 0x40)>>6));
-//	memory_set_bankptr(space->machine, 1, &ROM[bankaddress]);
+//  bankaddress = 0x10000 + (0x4000 * ((data & 0x40)>>6));
+//  memory_set_bankptr(space->machine, 1, &ROM[bankaddress]);
 
 	printf("%02x BANK\n",data);
-	memory_set_bankptr(space->machine, 1, &ROM[banksw_table_r0[data & 0xf][0]]);
-	memory_set_bankptr(space->machine, 2, &ROM[banksw_table_r0[data & 0xf][1]]);
-	memory_set_bankptr(space->machine, 3, &ROM[banksw_table_r0[(data & 0xf0)>>4][2]]);
-	memory_set_bankptr(space->machine, 4, &ROM[banksw_table_r0[(data & 0xf0)>>4][3]]);
+	memory_set_bankptr(space->machine, "bank1", &ROM[banksw_table_r0[data & 0xf][0]]);
+	memory_set_bankptr(space->machine, "bank2", &ROM[banksw_table_r0[data & 0xf][1]]);
+	memory_set_bankptr(space->machine, "bank3", &ROM[banksw_table_r0[(data & 0xf0)>>4][2]]);
+	memory_set_bankptr(space->machine, "bank4", &ROM[banksw_table_r0[(data & 0xf0)>>4][3]]);
 }
 
 static WRITE8_HANDLER( pc6001m2_bank_r1_w )
 {
 	UINT8 *ROM = memory_region(space->machine, "maincpu");
 
-//	bankaddress = 0x10000 + (0x4000 * ((data & 0x40)>>6));
-//	memory_set_bankptr(space->machine, 1, &ROM[bankaddress]);
+//  bankaddress = 0x10000 + (0x4000 * ((data & 0x40)>>6));
+//  memory_set_bankptr(space->machine, 1, &ROM[bankaddress]);
 
 	printf("%02x BANK\n",data);
-	memory_set_bankptr(space->machine, 5, &ROM[banksw_table_r1[data & 0xf][0]]);
-	memory_set_bankptr(space->machine, 6, &ROM[banksw_table_r1[data & 0xf][1]]);
-	memory_set_bankptr(space->machine, 7, &ROM[banksw_table_r1[(data & 0xf0)>>4][2]]);
-	memory_set_bankptr(space->machine, 8, &ROM[banksw_table_r1[(data & 0xf0)>>4][3]]);
+	memory_set_bankptr(space->machine, "bank5", &ROM[banksw_table_r1[data & 0xf][0]]);
+	memory_set_bankptr(space->machine, "bank6", &ROM[banksw_table_r1[data & 0xf][1]]);
+	memory_set_bankptr(space->machine, "bank7", &ROM[banksw_table_r1[(data & 0xf0)>>4][2]]);
+	memory_set_bankptr(space->machine, "bank8", &ROM[banksw_table_r1[(data & 0xf0)>>4][3]]);
 }
 
 static WRITE8_HANDLER( work_ram0_w ) { UINT8 *ROM = memory_region(space->machine, "maincpu"); ROM[offset+WRAM(0)] = data; }
@@ -473,14 +473,14 @@ static WRITE8_HANDLER( work_ram7_w ) { UINT8 *ROM = memory_region(space->machine
 
 static ADDRESS_MAP_START(pc6001m2_map, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x1fff) AM_ROMBANK(1) AM_WRITE(work_ram0_w)
-	AM_RANGE(0x2000, 0x3fff) AM_ROMBANK(2) AM_WRITE(work_ram1_w)
-	AM_RANGE(0x4000, 0x5fff) AM_ROMBANK(3) AM_WRITE(work_ram2_w)
-	AM_RANGE(0x6000, 0x7fff) AM_ROMBANK(4) AM_WRITE(work_ram3_w)
-	AM_RANGE(0x8000, 0x9fff) AM_ROMBANK(5) AM_WRITE(work_ram4_w)
-	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK(6) AM_WRITE(work_ram5_w)
-	AM_RANGE(0xc000, 0xdfff) AM_ROMBANK(7) AM_WRITE(work_ram6_w)
-	AM_RANGE(0xe000, 0xffff) AM_ROMBANK(8) AM_WRITE(work_ram7_w)
+	AM_RANGE(0x0000, 0x1fff) AM_ROMBANK("bank1") AM_WRITE(work_ram0_w)
+	AM_RANGE(0x2000, 0x3fff) AM_ROMBANK("bank2") AM_WRITE(work_ram1_w)
+	AM_RANGE(0x4000, 0x5fff) AM_ROMBANK("bank3") AM_WRITE(work_ram2_w)
+	AM_RANGE(0x6000, 0x7fff) AM_ROMBANK("bank4") AM_WRITE(work_ram3_w)
+	AM_RANGE(0x8000, 0x9fff) AM_ROMBANK("bank5") AM_WRITE(work_ram4_w)
+	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK("bank6") AM_WRITE(work_ram5_w)
+	AM_RANGE(0xc000, 0xdfff) AM_ROMBANK("bank7") AM_WRITE(work_ram6_w)
+	AM_RANGE(0xe000, 0xffff) AM_ROMBANK("bank8") AM_WRITE(work_ram7_w)
 	AM_RANGE(0x8000, 0xffff) AM_RAM AM_BASE(&pc6001_ram)
 ADDRESS_MAP_END
 
@@ -664,12 +664,12 @@ static READ8_DEVICE_HANDLER (pc6001_8255_portb_r )
 
 static WRITE8_DEVICE_HANDLER (pc6001_8255_portb_w )
 {
-//	printf("pc6001_8255_portb_w %02x\n",data);
+//  printf("pc6001_8255_portb_w %02x\n",data);
 }
 
 static WRITE8_DEVICE_HANDLER (pc6001_8255_portc_w )
 {
-//	printf("pc6001_8255_portc_w %02x\n",data);
+//  printf("pc6001_8255_portc_w %02x\n",data);
 }
 
 static READ8_DEVICE_HANDLER (pc6001_8255_portc_r )
@@ -805,16 +805,20 @@ static TIMER_CALLBACK(keyboard_callback)
 	}
 }
 
+static MACHINE_START(pc6001)
+{
+	/* TODO: accurate timing on these (especially for the first one) */
+	timer_pulse(machine, ATTOTIME_IN_HZ(540), NULL, 0, audio_callback);
+	timer_pulse(machine, ATTOTIME_IN_HZ(250), NULL, 0, keyboard_callback);
+	timer_pulse(machine, ATTOTIME_IN_HZ(160), NULL, 0, cassette_callback);
+}
+
 static MACHINE_RESET(pc6001)
 {
 	port_c_8255=0;
 	//pc6001_video_ram =  pc6001_ram;
 
 	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"),pc6001_irq_callback);
-	/* TODO: accurate timing on these (especially for the first one) */
-	timer_pulse(machine, ATTOTIME_IN_HZ(540), NULL, 0, audio_callback);
-	timer_pulse(machine, ATTOTIME_IN_HZ(250), NULL, 0, keyboard_callback);
-	timer_pulse(machine, ATTOTIME_IN_HZ(160), NULL, 0, cassette_callback);
 	cas_switch = 0;
 	cas_offset = 0;
 }
@@ -825,22 +829,22 @@ static MACHINE_RESET(pc6001m2)
 	//pc6001_video_ram =  pc6001_ram;
 
 	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"),pc6001_irq_callback);
-	/* TODO: accurate timing on these (especially for the first one) */
-	timer_pulse(machine, ATTOTIME_IN_HZ(540), NULL, 0, audio_callback);
-	timer_pulse(machine, ATTOTIME_IN_HZ(250), NULL, 0, keyboard_callback);
-	timer_pulse(machine, ATTOTIME_IN_HZ(160), NULL, 0, cassette_callback);
 	cas_switch = 0;
 	cas_offset = 0;
 
 	/* set default bankswitch (basic 0 & 1) */
 	{
 		UINT8 *ROM = memory_region(machine, "maincpu");
-		memory_set_bankptr(machine, 1, &ROM[BASICROM(0)]);
-		memory_set_bankptr(machine, 2, &ROM[BASICROM(1)]);
-		memory_set_bankptr(machine, 5, &ROM[WRAM(4)]);
-		memory_set_bankptr(machine, 6, &ROM[WRAM(5)]);
-		memory_set_bankptr(machine, 7, &ROM[WRAM(6)]);
-		memory_set_bankptr(machine, 8, &ROM[WRAM(7)]);
+		memory_set_bankptr(machine, "bank1", &ROM[BASICROM(0)]);
+		memory_set_bankptr(machine, "bank2", &ROM[BASICROM(1)]);
+		// Added next two lines to prevent crash of driver, please update according to neeeds
+		memory_set_bankptr(machine, "bank3", &ROM[BASICROM(0)]);
+		memory_set_bankptr(machine, "bank4", &ROM[BASICROM(1)]);
+		
+		memory_set_bankptr(machine, "bank5", &ROM[WRAM(4)]);
+		memory_set_bankptr(machine, "bank6", &ROM[WRAM(5)]);
+		memory_set_bankptr(machine, "bank7", &ROM[WRAM(6)]);
+		memory_set_bankptr(machine, "bank8", &ROM[WRAM(7)]);
 	}
 }
 
@@ -878,8 +882,8 @@ static MACHINE_DRIVER_START( pc6001 )
 	MDRV_CPU_IO_MAP(pc6001_io)
 	MDRV_CPU_VBLANK_INT("screen", pc6001_interrupt)
 
-//	MDRV_CPU_ADD("subcpu", I8049, 7987200)
-
+//  MDRV_CPU_ADD("subcpu", I8049, 7987200)
+	MDRV_MACHINE_START(pc6001)
 	MDRV_MACHINE_RESET(pc6001)
 
 	/* video hardware */
@@ -888,9 +892,9 @@ static MACHINE_DRIVER_START( pc6001 )
 	MDRV_VIDEO_START(pc6001)
 	MDRV_VIDEO_UPDATE(pc6001)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-//	MDRV_SCREEN_REFRESH_RATE(M6847_NTSC_FRAMES_PER_SECOND)
-//	MDRV_VIDEO_UPDATE(m6847)
-//	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
+//  MDRV_SCREEN_REFRESH_RATE(M6847_NTSC_FRAMES_PER_SECOND)
+//  MDRV_VIDEO_UPDATE(m6847)
+//  MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(320, 25+192+26)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
 	MDRV_PALETTE_LENGTH(16)
@@ -947,7 +951,7 @@ ROM_START( pc6001 )	/* screen = 8000-83FF */
 
 	ROM_REGION( 0x10000, "cas", ROMREGION_ERASEFF )
 	/* Load here your tape for now (and change the cas length macro according to what MESS returns) */
-//	ROM_LOAD( "car.cas", 0x0000, CAS_LENGTH, CRC(1) SHA1(1) )
+//  ROM_LOAD( "car.cas", 0x0000, CAS_LENGTH, CRC(1) SHA1(1) )
 
 	ROM_REGION( 0x4000, "cart_img", ROMREGION_ERASE00 )
 	ROM_CART_LOAD("cart", 0x0000, 0x3fff, ROM_OPTIONAL | ROM_MIRROR)
@@ -1048,10 +1052,10 @@ ROM_START( pc6600sr )	/* Variant of pc6001sr */
 	ROM_CART_LOAD("cart", 0x0000, 0x3fff, ROM_OPTIONAL | ROM_MIRROR)
 ROM_END
 
-/*    YEAR  NAME      PARENT   COMPAT MACHINE   INPUT     INIT    CONFIG     COMPANY  FULLNAME          FLAGS */
-COMP( 1981, pc6001,   0,       0,     pc6001,   pc6001,   0,      0,    "Nippon Electronic Company",   "PC-6001",       GAME_NOT_WORKING )
-COMP( 1981, pc6001a,  pc6001,  0,     pc6001,   pc6001,   0,      0,    "Nippon Electronic Company",   "PC-6001A",      GAME_NOT_WORKING )	// US version of PC-6001
-COMP( 1983, pc6001m2, pc6001,  0,     pc6001m2, pc6001,   0,      0,    "Nippon Electronic Company",   "PC-6001mkII",   GAME_NOT_WORKING )
-COMP( 1983, pc6600,   pc6001,  0,     pc6001m2, pc6001,   0,      0,    "Nippon Electronic Company",   "PC-6600",       GAME_NOT_WORKING )	// high-end version of PC-6001mkII
-COMP( 1984, pc6001sr, pc6001,  0,     pc6001sr, pc6001,   0,      0,    "Nippon Electronic Company",   "PC-6001mkIISR", GAME_NOT_WORKING )
-COMP( 1984, pc6600sr, pc6001,  0,     pc6001sr, pc6001,   0,      0,    "Nippon Electronic Company",   "PC-6600SR",     GAME_NOT_WORKING )	// high-end version of PC-6001mkIISR
+/*    YEAR  NAME      PARENT   COMPAT MACHINE   INPUT     INIT    COMPANY  FULLNAME          FLAGS */
+COMP( 1981, pc6001,   0,       0,     pc6001,   pc6001,   0,      "Nippon Electronic Company",   "PC-6001",       GAME_NOT_WORKING )
+COMP( 1981, pc6001a,  pc6001,  0,     pc6001,   pc6001,   0,      "Nippon Electronic Company",   "PC-6001A",      GAME_NOT_WORKING )	// US version of PC-6001
+COMP( 1983, pc6001m2, pc6001,  0,     pc6001m2, pc6001,   0,      "Nippon Electronic Company",   "PC-6001mkII",   GAME_NOT_WORKING )
+COMP( 1983, pc6600,   pc6001,  0,     pc6001m2, pc6001,   0,      "Nippon Electronic Company",   "PC-6600",       GAME_NOT_WORKING )	// high-end version of PC-6001mkII
+COMP( 1984, pc6001sr, pc6001,  0,     pc6001sr, pc6001,   0,      "Nippon Electronic Company",   "PC-6001mkIISR", GAME_NOT_WORKING )
+COMP( 1984, pc6600sr, pc6001,  0,     pc6001sr, pc6001,   0,      "Nippon Electronic Company",   "PC-6600SR",     GAME_NOT_WORKING )	// high-end version of PC-6001mkIISR

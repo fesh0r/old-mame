@@ -367,41 +367,6 @@ static PALETTE_INIT( pdp1 )
 }
 
 
-pdp1_reset_param_t pdp1_reset_param =
-{
-	{	/* external iot handlers.  NULL means that the iot is unimplemented, unless there are
-        parentheses around the iot name, in which case the iot is internal to the cpu core. */
-		/* I put a ? when the source is the handbook, since a) I have used the maintainance manual
-        as the primary source (as it goes more into details) b) the handbook and the maintainance
-        manual occasionnally contradict each other. */
-		/* dia, dba, dcc, dra are documented in MIT PDP-1 COMPUTER MODIFICATION
-        BULLETIN no. 2 (drumInstrWriteup.bin/drumInstrWriteup.txt), and are
-        similar to IOT documented in Parallel Drum Type 23 Instruction Manual. */
-	/*  (iot)       rpa         rpb         tyo         tyi         ppa         ppb         dpy */
-		NULL,		iot_rpa,	iot_rpb,	iot_tyo,	iot_tyi,	iot_ppa,	iot_ppb,	iot_dpy,
-	/*              spacewar                                                                 */
-		NULL,		iot_011,	NULL,		NULL,		NULL,		NULL,		NULL,		NULL,
-	/*                          lag                                             glf?/jsp?   gpl?/gpr?/gcf? */
-		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,
-	/*  rrb         rcb?        rcc?        cks         mcs         mes         mel          */
-		iot_rrb,	NULL,		NULL,		iot_cks,	NULL,		NULL,		NULL,		NULL,
-	/*  cad?        rac?        rbc?        pac                     lpr/lfb/lsp swc/sci/sdf?/shr?   scv? */
-		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,
-	/*  (dsc)       (asc)       (isb)       (cac)       (lsm)       (esm)       (cbs)        */
-		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,
-	/*  icv?        dia         dba         dcc         dra                     mri|rlc?    mrf/inr?/ccr? */
-		NULL,		iot_dia,	iot_dba,	iot_dcc,	iot_dra,	NULL,		NULL,		NULL,
-	/*  mcb|dur?    mwc|mtf?    mrc|sfc?... msm|cgo?    (eem/lem)   mic         muf          */
-		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,		NULL,
-	},
-	pdp1_tape_read_binary,
-	pdp1_io_sc_callback,
-	0,	/* extend mode support defined in input ports and pdp1_init_machine */
-	0,	/* hardware multiply/divide support defined in input ports and pdp1_init_machine */
-	0	/* type 20 sequence break system support defined in input ports and pdp1_init_machine */
-};
-
-
 static MACHINE_DRIVER_START(pdp1)
 
 	/* basic machine hardware */
@@ -438,65 +403,53 @@ ROM_START(pdp1)
 	ROM_REGION(pdp1_fontdata_size, "gfx1", ROMREGION_ERASEFF)
 		/* space filled with our font */
 ROM_END
-
+/*
 static void pdp1_punchtape_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
-	/* punchtape */
 	switch(state)
 	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case MESS_DEVINFO_INT_TYPE:							info->i = IO_PUNCHTAPE; break;
 		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
-		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(pdp1_tape); break;
 		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(pdp1_tape); break;
 		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(pdp1_tape); break;
 		case MESS_DEVINFO_PTR_GET_DISPOSITIONS:				info->getdispositions = pdp1_get_open_mode; break;
 
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap,rim"); break;
 	}
 }
 
 static void pdp1_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
-	/* printer */
 	switch(state)
 	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case MESS_DEVINFO_INT_TYPE:							info->i = IO_PRINTER; break;
 		case MESS_DEVINFO_INT_READABLE:						info->i = 0; break;
 		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
 		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
-		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(pdp1_typewriter); break;
 		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(pdp1_typewriter); break;
 
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "typ"); break;
 	}
 }
 
 static void pdp1_cylinder_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
-	/* cylinder */
 	switch(state)
 	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case MESS_DEVINFO_INT_TYPE:							info->i = IO_CYLINDER; break;
 		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
 		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
 		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
-		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(pdp1_drum); break;
 		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(pdp1_drum); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "drm"); break;
 	}
 }
@@ -506,7 +459,7 @@ static SYSTEM_CONFIG_START(pdp1)
 	CONFIG_DEVICE(pdp1_printer_getinfo)
 	CONFIG_DEVICE(pdp1_cylinder_getinfo)
 SYSTEM_CONFIG_END
-
+*/
 
 /***************************************************************************
 
@@ -514,5 +467,5 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT    CONFIG  COMPANY FULLNAME */
-COMP( 1961, pdp1,	  0, 		0,		pdp1,	  pdp1, 	0,		pdp1,	"Digital Equipment Corporation",  "PDP-1" , 0)
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT    COMPANY FULLNAME */
+COMP( 1961, pdp1,	  0, 		0,		pdp1,	  pdp1, 	0,		"Digital Equipment Corporation",  "PDP-1" , 0)

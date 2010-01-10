@@ -9,7 +9,8 @@
 
 #include "machine/ins8250.h"
 #include "machine/i8255a.h"
-	
+#include "machine/8237dma.h"
+
 typedef struct _pc_state pc_state;
 struct _pc_state
 {
@@ -21,9 +22,10 @@ struct _pc_state
 	/* Q2 is set by OUT1 from the 8253 and goes to DRQ1 on the 8237 */
 	UINT8	u73_q2;
 	UINT8	out1;
-	UINT8 dma_offset[2][4];	
+	int dma_channel;
+	UINT8 dma_offset[2][4];
 	UINT8 pc_spkrdata;
-	UINT8 pc_input;		
+	UINT8 pc_input;
 
 	int						ppi_portc_switch_high;
 	int						ppi_speaker;
@@ -34,13 +36,11 @@ struct _pc_state
 	UINT8					ppi_data_signal;
 	UINT8					ppi_shift_register;
 	UINT8					ppi_shift_enable;
-	write8_space_func		ppi_clock_callback;
-	write8_space_func		ppi_data_callback;	
 };
 
 /*----------- defined in machine/pc.c -----------*/
 
-extern const struct dma8237_interface ibm5150_dma8237_config;
+extern const i8237_interface ibm5150_dma8237_config;
 extern const struct pit8253_config ibm5150_pit8253_config;
 extern const struct pit8253_config pcjr_pit8253_config;
 extern const struct pic8259_interface ibm5150_pic8259_config;
@@ -62,6 +62,9 @@ READ8_HANDLER( pcjr_nmi_enable_r );
 
 READ8_HANDLER( pc_page_r );
 WRITE8_HANDLER( pc_page_w );
+
+WRITE8_HANDLER( ibm5150_kb_set_clock_signal );
+WRITE8_HANDLER( ibm5150_kb_set_data_signal );
 
 DRIVER_INIT( ibm5150 );
 DRIVER_INIT( pccga );

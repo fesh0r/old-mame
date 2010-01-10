@@ -91,9 +91,10 @@ Notes:
 #include "devices/cassette.h"
 #include "devices/printer.h"
 #include "devices/messram.h"
+
 /* Read/Write Handlers */
 
-static WRITE8_HANDLER( abc80_sound_w )
+static WRITE8_DEVICE_HANDLER( abc80_sound_w )
 {
 	/*
 
@@ -109,19 +110,18 @@ static WRITE8_HANDLER( abc80_sound_w )
         7  ENVSEL1  10 Monovippa, 11 VCO alt.pol.
 
     */
-	const device_config *sn76477 = devtag_get_device(space->machine, "sn76477");
 
-	sn76477_enable_w(sn76477, ~data & 0x01);
+	sn76477_enable_w(device, !BIT(data, 0));
 
-	sn76477_vco_voltage_w(sn76477, (data & 0x02) ? 2.5 : 0);
-	sn76477_vco_w(sn76477, (data & 0x04) ? 1 : 0);
+	sn76477_vco_voltage_w(device, BIT(data, 1) ? 2.5 : 0);
+	sn76477_vco_w(device, BIT(data, 2));
 
-	sn76477_mixer_b_w(sn76477, (data & 0x08) ? 1 : 0);
-	sn76477_mixer_a_w(sn76477, (data & 0x10) ? 1 : 0);
-	sn76477_mixer_c_w(sn76477, (data & 0x20) ? 1 : 0);
+	sn76477_mixer_b_w(device, BIT(data, 3));
+	sn76477_mixer_a_w(device, BIT(data, 4));
+	sn76477_mixer_c_w(device, BIT(data, 5));
 
-	sn76477_envelope_2_w(sn76477, (data & 0x40) ? 1 : 0);
-	sn76477_envelope_1_w(sn76477, (data & 0x80) ? 1 : 0);
+	sn76477_envelope_2_w(device, BIT(data, 6));
+	sn76477_envelope_1_w(device, BIT(data, 7));
 }
 
 /* Keyboard HACK */
@@ -229,10 +229,10 @@ static ADDRESS_MAP_START( abc80_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x6000, 0x6fff) AM_ROM
 	AM_RANGE(0x7000, 0x73ff) AM_ROM
-	AM_RANGE(0x7400, 0x77ff) AM_RAM // 80 column videoram
+	AM_RANGE(0x7400, 0x77ff) AM_RAM AM_BASE_MEMBER(abc80_state, video_80_ram)
 	AM_RANGE(0x7800, 0x7bff) AM_ROM
-	AM_RANGE(0x7c00, 0x7fff) AM_RAM AM_BASE(&videoram)
-	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK(1)
+	AM_RANGE(0x7c00, 0x7fff) AM_RAM AM_BASE_MEMBER(abc80_state, video_ram)
+	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank1")
 	AM_RANGE(0xc000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -240,7 +240,7 @@ static ADDRESS_MAP_START( abc80_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0x17)
 	AM_RANGE(0x01, 0x01) AM_WRITE(abcbus_channel_w)
-	AM_RANGE(0x06, 0x06) AM_WRITE(abc80_sound_w)
+	AM_RANGE(0x06, 0x06) AM_DEVWRITE(SN76477_TAG, abc80_sound_w)
 	AM_RANGE(0x07, 0x07) AM_READ(abcbus_reset_r)
 	AM_RANGE(0x10, 0x13) AM_MIRROR(0x04) AM_DEVREADWRITE(Z80PIO_TAG, z80pio_alt_r, z80pio_alt_w)
 ADDRESS_MAP_END
@@ -466,7 +466,7 @@ static const z80_daisy_chain abc80_daisy_chain[] =
 
 static ABCBUS_CONFIG( abcbus_config )
 {
-	{ LUXOR_55_10828, CONKORT_TAG },
+	{ CONKORT_TAG },
 	{ NULL }
 };
 
@@ -477,17 +477,17 @@ static MACHINE_START( abc80 )
 	abc80_state *state = machine->driver_data;
 
 	/* configure RAM expansion */
-	memory_configure_bank(machine, 1, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
-	memory_set_bank(machine, 1, 0);
+	memory_configure_bank(machine, "bank1", 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
+	memory_set_bank(machine, "bank1", 0);
 
 	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 16*1024:
-		memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_unmap_readwrite(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0xbfff, 0, 0);
 		break;
 
 	case 32*1024:
-		memory_install_readwrite8_handler(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0xbfff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0xbfff, 0, 0, "bank1");
 		break;
 	}
 
@@ -503,18 +503,6 @@ static MACHINE_START( abc80 )
 	state_save_register_global(machine, state->key_strobe);
 	state_save_register_global(machine, state->z80pio_astb);
 }
-
-static const floppy_config abc80_floppy_config =
-{
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
-	FLOPPY_OPTIONS_NAME(abc80),
-	DO_NOT_KEEP_GEOMETRY
-};
 
 /* Machine Drivers */
 
@@ -545,7 +533,7 @@ static MACHINE_DRIVER_START( abc80 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sn76477", SN76477, 0)
+	MDRV_SOUND_ADD(SN76477_TAG, SN76477, 0)
 	MDRV_SOUND_CONFIG(abc80_sn76477_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
@@ -553,10 +541,8 @@ static MACHINE_DRIVER_START( abc80 )
 	MDRV_PRINTER_ADD("printer")
 
 	/* cassette */
-	MDRV_CASSETTE_ADD("cassette", default_cassette_config)
+	MDRV_CASSETTE_ADD(CASSETTE_TAG, default_cassette_config)
 
-	MDRV_FLOPPY_2_DRIVES_ADD(abc80_floppy_config)
-	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
@@ -643,6 +629,6 @@ ROM_END
 
 /* Drivers */
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY                             FULLNAME                    FLAGS */
-COMP( 1978, abc80,  0,      0,      abc80,  abc80,  0,      0,  "Luxor Datorer AB",					"ABC 80 (Sweden, Finland)",	GAME_SUPPORTS_SAVE )
-COMP( 1978, abc80h, abc80,  0,      abc80,  abc80,  0,      0,  "Budapesti Radiotechnikai Gyar",	"ABC 80 (Hungary)",			GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                             FULLNAME                    FLAGS */
+COMP( 1978, abc80,  0,      0,      abc80,  abc80,  0,      "Luxor Datorer AB",					"ABC 80 (Sweden, Finland)",	GAME_SUPPORTS_SAVE )
+COMP( 1978, abc80h, abc80,  0,      abc80,  abc80,  0,      "Budapesti Radiotechnikai Gyar",	"ABC 80 (Hungary)",			GAME_SUPPORTS_SAVE )

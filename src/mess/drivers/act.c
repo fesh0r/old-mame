@@ -1,13 +1,13 @@
 /***************************************************************************
 
-	ACT Apricot series
+    ACT Apricot series
 
-	preliminary driver by Angelo Salese
+    preliminary driver by Angelo Salese
 
-	TODO:
-	- I'm not entirely convinced that Apricot Xi/PC and F1/F10 should stay
-	  in the same driver, they looks to have uncompatible devices and
-	  probably uncompatible software too.
+    TODO:
+    - I'm not entirely convinced that Apricot Xi/PC and F1/F10 should stay
+      in the same driver, they looks to have uncompatible devices and
+      probably uncompatible software too.
 
 ****************************************************************************/
 
@@ -125,8 +125,8 @@ static READ8_HANDLER( act_sio_r )
 
 static WRITE8_HANDLER( act_sio_w )
 {
-//	if(data)
-//	printf("Write to 66 %c\n",data);
+//  if(data)
+//  printf("Write to 66 %c\n",data);
 }
 
 //static UINT8 fdc_irq_flag;
@@ -138,9 +138,9 @@ static READ8_HANDLER( act_fdc_r )
 {
 	const device_config* dev = devtag_get_device(space->machine,"fdc");
 
-//	printf("%02x\n",offset);
+//  printf("%02x\n",offset);
 
-	floppy_drive_set_motor_state(floppy_get_device(space->machine, xi_sys_ctrl.fdrv_num), 1);
+	floppy_mon_w(floppy_get_device(space->machine, xi_sys_ctrl.fdrv_num), CLEAR_LINE);
 	floppy_drive_set_ready_state(floppy_get_device(space->machine, xi_sys_ctrl.fdrv_num), 1,0);
 
 	switch(offset)
@@ -165,9 +165,9 @@ static WRITE8_HANDLER( act_fdc_w )
 {
 	const device_config* dev = devtag_get_device(space->machine,"fdc");
 
-//	printf("%02x %02x\n",offset,data);
+//  printf("%02x %02x\n",offset,data);
 
-	floppy_drive_set_motor_state(floppy_get_device(space->machine, xi_sys_ctrl.fdrv_num), 1);
+	floppy_mon_w(floppy_get_device(space->machine, xi_sys_ctrl.fdrv_num), CLEAR_LINE);
 	floppy_drive_set_ready_state(floppy_get_device(space->machine, xi_sys_ctrl.fdrv_num), 1,0);
 
 	switch(offset)
@@ -199,20 +199,20 @@ static const wd17xx_interface act_wd2797_interface =
 
 static READ16_HANDLER( act_pal_r )
 {
-	return paletteram16[offset];
+	return space->machine->generic.paletteram.u16[offset];
 }
 
 static WRITE16_HANDLER( act_pal_w )
 {
 	UINT8 i,r,g,b;
-	COMBINE_DATA(&paletteram16[offset]);
+	COMBINE_DATA(&space->machine->generic.paletteram.u16[offset]);
 
 	if(ACCESSING_BITS_0_7 && offset) //TODO: offset 0 looks bogus
 	{
-		i = paletteram16[offset] & 1;
-		r = ((paletteram16[offset] & 2)>>0) | i;
-		g = ((paletteram16[offset] & 4)>>1) | i;
-		b = ((paletteram16[offset] & 8)>>2) | i;
+		i = space->machine->generic.paletteram.u16[offset] & 1;
+		r = ((space->machine->generic.paletteram.u16[offset] & 2)>>0) | i;
+		g = ((space->machine->generic.paletteram.u16[offset] & 4)>>1) | i;
+		b = ((space->machine->generic.paletteram.u16[offset] & 8)>>2) | i;
 
 		palette_set_color_rgb(space->machine, offset, pal2bit(r), pal2bit(g), pal2bit(b));
 	}
@@ -221,7 +221,7 @@ static WRITE16_HANDLER( act_pal_w )
 static ADDRESS_MAP_START(act_f1_mem, ADDRESS_SPACE_PROGRAM, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x01e00,0x01fff) AM_RAM AM_BASE(&act_scrollram)
-	AM_RANGE(0xe0000,0xe001f) AM_READWRITE(act_pal_r,act_pal_w) AM_BASE(&paletteram16)
+	AM_RANGE(0xe0000,0xe001f) AM_READWRITE(act_pal_r,act_pal_w) AM_BASE_GENERIC(paletteram)
 	AM_RANGE(0x00000,0xeffff) AM_RAM AM_BASE(&act_vram)
 	AM_RANGE(0xf0000,0xf7fff) AM_RAM
 	AM_RANGE(0xf8000,0xfffff) AM_ROM
@@ -239,46 +239,46 @@ static ADDRESS_MAP_START( act_xi_io , ADDRESS_SPACE_IO, 16)
 	AM_RANGE(0x0000, 0x0003) AM_DEVREADWRITE8("pic8259_master",pic8259_r, pic8259_w,0x00ff)
 	AM_RANGE(0x0040, 0x0047) AM_READWRITE8(act_fdc_r, act_fdc_w,0x00ff)
 	AM_RANGE(0x0048, 0x004f) AM_DEVREADWRITE8("ppi8255_0", i8255a_r, i8255a_w,0x00ff)
-//	AM_RANGE(0x0050, 0x0051) sound gen
+//  AM_RANGE(0x0050, 0x0051) sound gen
 	AM_RANGE(0x0058, 0x005f) AM_DEVREADWRITE8("pit8253",pit8253_r,pit8253_w,0x00ff)
 	AM_RANGE(0x0060, 0x0067) AM_READWRITE8(act_sio_r,act_sio_w,0x00ff)
 	AM_RANGE(0x0068, 0x0069) AM_DEVWRITE8("crtc", mc6845_address_w,0x00ff)
 	AM_RANGE(0x006a, 0x006b) AM_DEVREADWRITE8("crtc", mc6845_register_r,mc6845_register_w,0x00ff)
-//	AM_RANGE(0x0070, 0x0073) 8089
+//  AM_RANGE(0x0070, 0x0073) 8089
 ADDRESS_MAP_END
 
 
 static WRITE8_HANDLER( actf1_sys_w )
 {
-//	static UINT8 cur_fdrv;
-//	const device_config* dev = devtag_get_device(space->machine,"fdc");
+//  static UINT8 cur_fdrv;
+//  const device_config* dev = devtag_get_device(space->machine,"fdc");
 
 	switch(offset)
 	{
 		case 0:
-//			cur_fdrv = ~data & 1;
-//			wd17xx_set_drive(dev,cur_fdrv);
+//          cur_fdrv = ~data & 1;
+//          wd17xx_set_drive(dev,cur_fdrv);
 			break;
 		case 1:
-//			wd17xx_set_side(dev,data ? 1 : 0);
+//          wd17xx_set_side(dev,data ? 1 : 0);
 			break;
 		case 2:
-//			floppy_drive_set_motor_state(floppy_get_device(space->machine, cur_fdrv), data);
-//			floppy_drive_set_ready_state(floppy_get_device(space->machine, cur_fdrv), data,0);
+//          floppy_drive_set_motor_state(floppy_get_device(space->machine, cur_fdrv), data);
+//          floppy_drive_set_ready_state(floppy_get_device(space->machine, cur_fdrv), data,0);
 			break;
 		case 3:
-//			data ? 256 : 200 line mode
-//			data ? 50 : 60 Hz
+//          data ? 256 : 200 line mode
+//          data ? 50 : 60 Hz
 			break;
 		case 4:
-//			data ? 80 : 40 columns mode
-//			data ? 14 Mhz : 7 Mhz Pixel clock
+//          data ? 80 : 40 columns mode
+//          data ? 14 Mhz : 7 Mhz Pixel clock
 			break;
 		case 5:
-//			caps lock LED
+//          caps lock LED
 			break;
 		case 6:
-//			stop LED
+//          stop LED
 			break;
 	}
 }
@@ -287,10 +287,10 @@ static ADDRESS_MAP_START( act_f1_io , ADDRESS_SPACE_IO, 16)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x000f) AM_WRITE8(actf1_sys_w,0x00ff)
 	AM_RANGE(0x0010, 0x0017) AM_DEVREADWRITE8("ctc",z80ctc_r,z80ctc_w,0x00ff)
-//	AM_RANGE(0x0020, 0x0027) z80 sio (!)
-//	AM_RANGE(0x0030, 0x0031) AM_WRITE8(ctc_ack_w,0x00ff)
+//  AM_RANGE(0x0020, 0x0027) z80 sio (!)
+//  AM_RANGE(0x0030, 0x0031) AM_WRITE8(ctc_ack_w,0x00ff)
 	AM_RANGE(0x0040, 0x0047) AM_READWRITE8(act_fdc_r, act_fdc_w,0x00ff)
-//	AM_RANGE(0x01e0, 0x01ff) winchester
+//  AM_RANGE(0x01e0, 0x01ff) winchester
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -323,18 +323,18 @@ static READ8_DEVICE_HANDLER( act_portb_r )
 }
 
 /*
-	x--- ---- Parallel Input Direction
-	-x-- ---- FDC Drive select
-	---x ---- Text/GFX Mode
-	---- x--- Display Enable
-	---- -x-- FDC Side load
-	---- ---x CRTC reset
+    x--- ---- Parallel Input Direction
+    -x-- ---- FDC Drive select
+    ---x ---- Text/GFX Mode
+    ---- x--- Display Enable
+    ---- -x-- FDC Side load
+    ---- ---x CRTC reset
 */
 static WRITE8_DEVICE_HANDLER( act_portb_w )
 {
 	const device_config* dev = devtag_get_device(device->machine,"fdc");
 
-//	printf("PPI Port B write %02x\n",data);
+//  printf("PPI Port B write %02x\n",data);
 	xi_sys_ctrl.disp_en = (data & 8)>>3;
 	xi_sys_ctrl.gfx_mode = (data & 0x10)>>4;
 	xi_sys_ctrl.p_input_dir = (data & 0x80)>>7;
@@ -417,7 +417,7 @@ static const z80_daisy_chain x1_daisy[] =
 static INTERRUPT_GEN( act_f1_irq )
 {
 	//if(input_code_pressed(device->machine, KEYCODE_C))
-	//	cpu_set_input_line_and_vector(device,0,HOLD_LINE,0x60);
+	//  cpu_set_input_line_and_vector(device,0,HOLD_LINE,0x60);
 }
 
 static PIC8259_SET_INT_LINE( pc98_master_set_int_line ) {
@@ -478,7 +478,7 @@ static MACHINE_DRIVER_START( act_f1 )
 	MDRV_CPU_PROGRAM_MAP(act_f1_mem)
 	MDRV_CPU_IO_MAP(act_f1_io)
 	MDRV_CPU_VBLANK_INT("screen",act_f1_irq )
-//	MDRV_CPU_CONFIG(x1_daisy)
+//  MDRV_CPU_CONFIG(x1_daisy)
 
 	MDRV_Z80CTC_ADD( "ctc", 4670000 , ctc_intf )
 
@@ -492,18 +492,18 @@ static MACHINE_DRIVER_START( act_f1 )
 	MDRV_SCREEN_SIZE(640, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 256-1)
 	MDRV_PALETTE_LENGTH(16)
-//	MDRV_PALETTE_INIT(black_and_white)
+//  MDRV_PALETTE_INIT(black_and_white)
 
-//	MDRV_MC6845_ADD("crtc", MC6845, XTAL_3_579545MHz/2, mc6845_intf)	/* hand tuned to get ~50 fps */
+//  MDRV_MC6845_ADD("crtc", MC6845, XTAL_3_579545MHz/2, mc6845_intf)    /* hand tuned to get ~50 fps */
 
-//	MDRV_I8255A_ADD("ppi8255_0", ppi8255_intf )
+//  MDRV_I8255A_ADD("ppi8255_0", ppi8255_intf )
 	MDRV_WD2793_ADD("fdc", act_wd2797_interface )
 
 	MDRV_GFXDECODE(act_f1)
 
 	MDRV_VIDEO_START(act_f1)
 	MDRV_VIDEO_UPDATE(act_f1)
-	
+
 	MDRV_FLOPPY_2_DRIVES_ADD(act_floppy_config)
 MACHINE_DRIVER_END
 
@@ -523,7 +523,7 @@ static MACHINE_DRIVER_START( act_xi )
 	MDRV_SCREEN_SIZE(640, 375)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 375-1)
 	MDRV_PALETTE_LENGTH(16)
-//	MDRV_PALETTE_INIT(black_and_white)
+//  MDRV_PALETTE_INIT(black_and_white)
 
 	MDRV_MC6845_ADD("crtc", MC6845, XTAL_3_579545MHz/2, mc6845_intf)	/* hand tuned to get ~50 fps */
 
@@ -550,7 +550,7 @@ ROM_START( aprixi )
 	ROM_RELOAD(						 0xf8001, 0x2000 )
 
 	ROM_REGION( 0x08000, "gfx", ROMREGION_ERASEFF )
-//	ROM_COPY( "maincpu", 0xf8800, 0x00000, 0x01000 )
+//  ROM_COPY( "maincpu", 0xf8800, 0x00000, 0x01000 )
 ROM_END
 
 ROM_START( aprif1 )
@@ -582,8 +582,8 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT MACHINE INPUT   INIT  CONFIG COMPANY  FULLNAME                 FLAGS */
-COMP( 1984, aprixi,    0,    0,     act_xi,    act,    0,    0,     "ACT",   "Apricot Xi",            GAME_NOT_WORKING)
-COMP( 1984, aprif1,    0,    0,     act_f1,    act,    0,    0,     "ACT",   "Apricot F1",            GAME_NOT_WORKING)
-COMP( 1985, aprif10,   0,    0,     act_f1,    act,    0,    0,     "ACT",   "Apricot F10",           GAME_NOT_WORKING)
-COMP( 1984, aprifp,    0,    0,     act_f1,    act,    0,    0,     "ACT",   "Apricot Portable / FP", GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT MACHINE INPUT   INIT   COMPANY  FULLNAME                 FLAGS */
+COMP( 1984, aprixi,    0,    0,     act_xi,    act,    0, "ACT",   "Apricot Xi",            GAME_NOT_WORKING)
+COMP( 1984, aprif1,    0,    0,     act_f1,    act,    0, "ACT",   "Apricot F1",            GAME_NOT_WORKING)
+COMP( 1985, aprif10,   0,    0,     act_f1,    act,    0, "ACT",   "Apricot F10",           GAME_NOT_WORKING)
+COMP( 1984, aprifp,    0,    0,     act_f1,    act,    0, "ACT",   "Apricot Portable / FP", GAME_NOT_WORKING)

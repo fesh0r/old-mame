@@ -26,6 +26,9 @@ static UINT8 pmd85_ppi_port_outputs[4][3];
 static UINT8 pmd85_startup_mem_map = 0;
 static UINT8 pmd853_memory_mapping = 0x01;
 static void (*pmd85_update_memory)(running_machine *);
+static int previous_level;
+static int clk_level;
+static int clk_level_tape;
 
 enum {PMD85_LED_1, PMD85_LED_2, PMD85_LED_3};
 enum {PMD85_1, PMD85_2, PMD85_2A, PMD85_2B, PMD85_3, ALFA, MATO, C2717};
@@ -42,38 +45,38 @@ static void pmd851_update_memory(running_machine *machine)
 	{
 		UINT8 *mem = memory_region(machine, "maincpu");
 
-		memory_install_write8_handler(space, 0x0000, 0x0fff, 0, 0, SMH_UNMAP);
-		memory_install_write8_handler(space, 0x1000, 0x1fff, 0, 0, SMH_NOP);
-		memory_install_write8_handler(space, 0x2000, 0x2fff, 0, 0, SMH_UNMAP);
-		memory_install_write8_handler(space, 0x3000, 0x3fff, 0, 0, SMH_NOP);
+		memory_unmap_write(space, 0x0000, 0x0fff, 0, 0);
+		memory_nop_write(space, 0x1000, 0x1fff, 0, 0);
+		memory_unmap_write(space, 0x2000, 0x2fff, 0, 0);
+		memory_nop_write(space, 0x3000, 0x3fff, 0, 0);
 
-		memory_install_read8_handler(space, 0x1000, 0x1fff, 0, 0, SMH_NOP);
-		memory_install_read8_handler(space, 0x3000, 0x3fff, 0, 0, SMH_NOP);
+		memory_nop_read(space, 0x1000, 0x1fff, 0, 0);
+		memory_nop_read(space, 0x3000, 0x3fff, 0, 0);
 
-		memory_set_bankptr(machine, 1, mem + 0x010000);
-		memory_set_bankptr(machine, 3, mem + 0x010000);
-		memory_set_bankptr(machine, 5, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
+		memory_set_bankptr(machine, "bank1", mem + 0x010000);
+		memory_set_bankptr(machine, "bank3", mem + 0x010000);
+		memory_set_bankptr(machine, "bank5", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
 
-		memory_set_bankptr(machine, 6, mem + 0x010000);
-		memory_set_bankptr(machine, 7, mem + 0x010000);
-		memory_set_bankptr(machine, 8, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
+		memory_set_bankptr(machine, "bank6", mem + 0x010000);
+		memory_set_bankptr(machine, "bank7", mem + 0x010000);
+		memory_set_bankptr(machine, "bank8", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
 	}
 	else
 	{
-		memory_install_write8_handler(space, 0x0000, 0x0fff, 0, 0, SMH_BANK(1));
-		memory_install_write8_handler(space, 0x1000, 0x1fff, 0, 0, SMH_BANK(2));
-		memory_install_write8_handler(space, 0x2000, 0x2fff, 0, 0, SMH_BANK(3));
-		memory_install_write8_handler(space, 0x3000, 0x3fff, 0, 0, SMH_BANK(4));
-		memory_install_write8_handler(space, 0x4000, 0x7fff, 0, 0, SMH_BANK(5));
+		memory_install_write_bank(space, 0x0000, 0x0fff, 0, 0, "bank1");
+		memory_install_write_bank(space, 0x1000, 0x1fff, 0, 0, "bank2");
+		memory_install_write_bank(space, 0x2000, 0x2fff, 0, 0, "bank3");
+		memory_install_write_bank(space, 0x3000, 0x3fff, 0, 0, "bank4");
+		memory_install_write_bank(space, 0x4000, 0x7fff, 0, 0, "bank5");
 
-		memory_install_read8_handler(space, 0x1000, 0x1fff, 0, 0, SMH_BANK(2));
-		memory_install_read8_handler(space, 0x3000, 0x3fff, 0, 0, SMH_BANK(4));
+		memory_install_read_bank(space, 0x1000, 0x1fff, 0, 0, "bank2");
+		memory_install_read_bank(space, 0x3000, 0x3fff, 0, 0, "bank4");
 
-		memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
-		memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x1000);
-		memory_set_bankptr(machine, 3, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2000);
-		memory_set_bankptr(machine, 4, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x3000);
-		memory_set_bankptr(machine, 5, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
+		memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+		memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x1000);
+		memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2000);
+		memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x3000);
+		memory_set_bankptr(machine, "bank5", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
 	}
 }
 
@@ -85,31 +88,31 @@ static void pmd852a_update_memory(running_machine *machine)
 	{
 		UINT8 *mem = memory_region(machine, "maincpu");
 
-		memory_install_write8_handler(space, 0x0000, 0x0fff, 0, 0, SMH_UNMAP);
-		memory_install_write8_handler(space, 0x2000, 0x2fff, 0, 0, SMH_UNMAP);
+		memory_unmap_write(space, 0x0000, 0x0fff, 0, 0);
+		memory_unmap_write(space, 0x2000, 0x2fff, 0, 0);
 
-		memory_set_bankptr(machine, 1, mem + 0x010000);
-		memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x9000);
-		memory_set_bankptr(machine, 3, mem + 0x010000);
-		memory_set_bankptr(machine, 4, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xb000);
-		memory_set_bankptr(machine, 5, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
-		memory_set_bankptr(machine, 6, mem + 0x010000);
-		memory_set_bankptr(machine, 7, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x9000);
-		memory_set_bankptr(machine, 8, mem + 0x010000);
-		memory_set_bankptr(machine, 9, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xb000);
-		memory_set_bankptr(machine, 10, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
+		memory_set_bankptr(machine, "bank1", mem + 0x010000);
+		memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x9000);
+		memory_set_bankptr(machine, "bank3", mem + 0x010000);
+		memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xb000);
+		memory_set_bankptr(machine, "bank5", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
+		memory_set_bankptr(machine, "bank6", mem + 0x010000);
+		memory_set_bankptr(machine, "bank7", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x9000);
+		memory_set_bankptr(machine, "bank8", mem + 0x010000);
+		memory_set_bankptr(machine, "bank9", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xb000);
+		memory_set_bankptr(machine, "bank10", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
 
 	}
 	else
 	{
-		memory_install_write8_handler(space, 0x0000, 0x0fff, 0, 0, SMH_BANK(1));
-		memory_install_write8_handler(space, 0x2000, 0x2fff, 0, 0, SMH_BANK(3));
+		memory_install_write_bank(space, 0x0000, 0x0fff, 0, 0, "bank1");
+		memory_install_write_bank(space, 0x2000, 0x2fff, 0, 0, "bank3");
 
-		memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
-		memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x1000);
-		memory_set_bankptr(machine, 3, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2000);
-		memory_set_bankptr(machine, 4, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x5000);
-		memory_set_bankptr(machine, 5, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
+		memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+		memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x1000);
+		memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2000);
+		memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x5000);
+		memory_set_bankptr(machine, "bank5", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
 	}
 }
 
@@ -119,33 +122,33 @@ static void pmd853_update_memory(running_machine *machine)
 	{
 		UINT8 *mem = memory_region(machine, "maincpu");
 
-		memory_set_bankptr(machine,  1, mem + 0x010000);
-		memory_set_bankptr(machine,  2, mem + 0x010000);
-		memory_set_bankptr(machine,  3, mem + 0x010000);
-		memory_set_bankptr(machine,  4, mem + 0x010000);
-		memory_set_bankptr(machine,  5, mem + 0x010000);
-		memory_set_bankptr(machine,  6, mem + 0x010000);
-		memory_set_bankptr(machine,  7, mem + 0x010000);
-		memory_set_bankptr(machine,  8, mem + 0x010000);
-		memory_set_bankptr(machine,  9, messram_get_ptr(devtag_get_device(machine, "messram")));
-		memory_set_bankptr(machine, 10, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2000);
-		memory_set_bankptr(machine, 11, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
-		memory_set_bankptr(machine, 12, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x6000);
-		memory_set_bankptr(machine, 13, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000);
-		memory_set_bankptr(machine, 14, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xa000);
-		memory_set_bankptr(machine, 15, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
-		memory_set_bankptr(machine, 16, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xe000);
+		memory_set_bankptr(machine, "bank1", mem + 0x010000);
+		memory_set_bankptr(machine, "bank2", mem + 0x010000);
+		memory_set_bankptr(machine, "bank3", mem + 0x010000);
+		memory_set_bankptr(machine, "bank4", mem + 0x010000);
+		memory_set_bankptr(machine, "bank5", mem + 0x010000);
+		memory_set_bankptr(machine, "bank6", mem + 0x010000);
+		memory_set_bankptr(machine, "bank7", mem + 0x010000);
+		memory_set_bankptr(machine, "bank8", mem + 0x010000);
+		memory_set_bankptr(machine, "bank9", messram_get_ptr(devtag_get_device(machine, "messram")));
+		memory_set_bankptr(machine, "bank10", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2000);
+		memory_set_bankptr(machine, "bank11", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
+		memory_set_bankptr(machine, "bank12", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x6000);
+		memory_set_bankptr(machine, "bank13", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000);
+		memory_set_bankptr(machine, "bank14", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xa000);
+		memory_set_bankptr(machine, "bank15", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
+		memory_set_bankptr(machine, "bank16", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xe000);
 	}
 	else
 	{
-		memory_set_bankptr(machine,  1, messram_get_ptr(devtag_get_device(machine, "messram")));
-		memory_set_bankptr(machine,  2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2000);
-		memory_set_bankptr(machine,  3, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
-		memory_set_bankptr(machine,  4, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x6000);
-		memory_set_bankptr(machine,  5, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000);
-		memory_set_bankptr(machine,  6, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xa000);
-		memory_set_bankptr(machine,  7, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
-		memory_set_bankptr(machine,  8, pmd853_memory_mapping ? memory_region(machine, "maincpu") + 0x010000 : messram_get_ptr(devtag_get_device(machine, "messram")) + 0xe000);
+		memory_set_bankptr(machine,  "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+		memory_set_bankptr(machine,  "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2000);
+		memory_set_bankptr(machine,  "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
+		memory_set_bankptr(machine,  "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x6000);
+		memory_set_bankptr(machine,  "bank5", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000);
+		memory_set_bankptr(machine,  "bank6", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xa000);
+		memory_set_bankptr(machine,  "bank7", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
+		memory_set_bankptr(machine,  "bank8", pmd853_memory_mapping ? memory_region(machine, "maincpu") + 0x010000 : messram_get_ptr(devtag_get_device(machine, "messram")) + 0xe000);
 	}
 }
 
@@ -157,27 +160,27 @@ static void alfa_update_memory(running_machine *machine)
 	{
 		UINT8 *mem = memory_region(machine, "maincpu");
 
-		memory_install_write8_handler(space, 0x0000, 0x0fff, 0, 0, SMH_UNMAP);
-		memory_install_write8_handler(space, 0x1000, 0x33ff, 0, 0, SMH_UNMAP);
-		memory_install_write8_handler(space, 0x3400, 0x3fff, 0, 0, SMH_NOP);
+		memory_unmap_write(space, 0x0000, 0x0fff, 0, 0);
+		memory_unmap_write(space, 0x1000, 0x33ff, 0, 0);
+		memory_nop_write(space, 0x3400, 0x3fff, 0, 0);
 
-		memory_set_bankptr(machine, 1, mem + 0x010000);
-		memory_set_bankptr(machine, 2, mem + 0x011000);
-		memory_set_bankptr(machine, 4, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
-		memory_set_bankptr(machine, 5, mem + 0x010000);
-		memory_set_bankptr(machine, 6, mem + 0x011000);
-		memory_set_bankptr(machine, 7, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
+		memory_set_bankptr(machine, "bank1", mem + 0x010000);
+		memory_set_bankptr(machine, "bank2", mem + 0x011000);
+		memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
+		memory_set_bankptr(machine, "bank5", mem + 0x010000);
+		memory_set_bankptr(machine, "bank6", mem + 0x011000);
+		memory_set_bankptr(machine, "bank7", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
 	}
 	else
 	{
-		memory_install_write8_handler(space, 0x0000, 0x0fff, 0, 0, SMH_BANK(1));
-		memory_install_write8_handler(space, 0x1000, 0x33ff, 0, 0, SMH_BANK(2));
-		memory_install_write8_handler(space, 0x3400, 0x3fff, 0, 0, SMH_BANK(3));
+		memory_install_write_bank(space, 0x0000, 0x0fff, 0, 0, "bank1");
+		memory_install_write_bank(space, 0x1000, 0x33ff, 0, 0, "bank2");
+		memory_install_write_bank(space, 0x3400, 0x3fff, 0, 0, "bank3");
 
-		memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
-		memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x1000);
-		memory_set_bankptr(machine, 3, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x3400);
-		memory_set_bankptr(machine, 4, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
+		memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+		memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x1000);
+		memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x3400);
+		memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
 	}
 }
 
@@ -189,19 +192,19 @@ static void mato_update_memory(running_machine *machine)
 	{
 		UINT8 *mem = memory_region(machine, "maincpu");
 
-		memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
+		memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
 
-		memory_set_bankptr(machine, 1, mem + 0x010000);
-		memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
-		memory_set_bankptr(machine, 3, mem + 0x010000);
-		memory_set_bankptr(machine, 4, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
+		memory_set_bankptr(machine, "bank1", mem + 0x010000);
+		memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
+		memory_set_bankptr(machine, "bank3", mem + 0x010000);
+		memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
 	}
 	else
 	{
-		memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_BANK(1));
+		memory_install_write_bank(space, 0x0000, 0x3fff, 0, 0, "bank1");
 
-		memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
-		memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
+		memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+		memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
 	}
 }
 
@@ -212,18 +215,18 @@ static void c2717_update_memory(running_machine *machine)
 	UINT8 *mem = memory_region(machine, "maincpu");
 	if (pmd85_startup_mem_map)
 	{
-		memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
+		memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
 
-		memory_set_bankptr(machine, 1, mem + 0x010000);
-		memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
-		memory_set_bankptr(machine, 3, mem + 0x010000);
-		memory_set_bankptr(machine, 4, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
+		memory_set_bankptr(machine, "bank1", mem + 0x010000);
+		memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
+		memory_set_bankptr(machine, "bank3", mem + 0x010000);
+		memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
 	}
 	else
 	{
-		memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_BANK(1));
-		memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
-		memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
+		memory_install_write_bank(space, 0x0000, 0x3fff, 0, 0, "bank1");
+		memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+		memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
 	}
 }
 
@@ -242,8 +245,10 @@ static  READ8_DEVICE_HANDLER ( pmd85_ppi_0_porta_r )
 
 static  READ8_DEVICE_HANDLER ( pmd85_ppi_0_portb_r )
 {
-	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7",
-										"KEY8", "KEY9", "KEY10", "KEY11", "KEY12", "KEY13", "KEY14", "KEY15" };
+	static const char *const keynames[] = {
+		"KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7",
+		"KEY8", "KEY9", "KEY10", "KEY11", "KEY12", "KEY13", "KEY14", "KEY15"
+	};
 
 	return input_port_read(device->machine, keynames[(pmd85_ppi_port_outputs[0][0] & 0x0f)]) & input_port_read(device->machine, "KEY15");
 }
@@ -266,8 +271,8 @@ static WRITE8_DEVICE_HANDLER ( pmd85_ppi_0_portb_w )
 static WRITE8_DEVICE_HANDLER ( pmd85_ppi_0_portc_w )
 {
 	pmd85_ppi_port_outputs[0][2] = data;
-	set_led_status(PMD85_LED_2, (data & 0x08) ? 1 : 0);
-	set_led_status(PMD85_LED_3, (data & 0x04) ? 1 : 0);
+	set_led_status(device->machine, PMD85_LED_2, (data & 0x08) ? 1 : 0);
+	set_led_status(device->machine, PMD85_LED_3, (data & 0x04) ? 1 : 0);
 }
 
 /*******************************************************************************
@@ -300,8 +305,8 @@ static  READ8_DEVICE_HANDLER ( mato_ppi_0_portc_r )
 static WRITE8_DEVICE_HANDLER ( mato_ppi_0_portc_w )
 {
 	pmd85_ppi_port_outputs[0][2] = data;
-	set_led_status(PMD85_LED_2, (data & 0x08) ? 1 : 0);
-	set_led_status(PMD85_LED_3, (data & 0x04) ? 1 : 0);
+	set_led_status(device->machine, PMD85_LED_2, (data & 0x08) ? 1 : 0);
+	set_led_status(device->machine, PMD85_LED_3, (data & 0x04) ? 1 : 0);
 }
 
 /*******************************************************************************
@@ -772,9 +777,6 @@ static TIMER_CALLBACK(pmd85_cassette_timer_callback)
 {
 	int data;
 	int current_level;
-	static int previous_level = 0;
-	static int clk_level = 1;
-	static int clk_level_tape = 1;
 
 	if (!(input_port_read(machine, "DSW0") & 0x02))	/* V.24 / Tape Switch */
 	{
@@ -852,6 +854,8 @@ static DIRECT_UPDATE_HANDLER(pmd85_opbaseoverride)
 
 static void pmd85_common_driver_init (running_machine *machine)
 {
+	previous_level = 0;
+	clk_level = clk_level_tape = 1;
 	pmd85_cassette_timer = timer_alloc(machine, pmd85_cassette_timer_callback, NULL);
 	timer_adjust_periodic(pmd85_cassette_timer, attotime_zero, 0, ATTOTIME_IN_HZ(2400));
 

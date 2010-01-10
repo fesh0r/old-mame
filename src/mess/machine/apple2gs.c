@@ -1045,7 +1045,7 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 		case 0x3A:	/* C03A - SCCBDATA */
 		case 0x3B:	/* C03B - SCCADATA */
 			scc = devtag_get_device(space->machine, "scc");
-			result = scc_r(scc, offset & 0x03);
+			result = scc8530_r(scc, offset & 0x03);
 			break;
 
 		case 0x3C:	/* C03C - SOUNDCTL */
@@ -1064,13 +1064,13 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 			break;
 
 		case 0x68:	/* C068 - STATEREG */
-			result = ((a2 & VAR_ALTZP)	? 0x80 : 0x00)
-				|	((a2 & VAR_PAGE2)	? 0x40 : 0x00)
-				|	((a2 & VAR_RAMRD)	? 0x20 : 0x00)
-				|	((a2 & VAR_RAMWRT)	? 0x10 : 0x00)
-				|	((a2 & VAR_LCRAM)	? 0x00 : 0x08)
-				|	((a2 & VAR_LCRAM2)	? 0x04 : 0x00)
-				|	((a2 & VAR_INTCXROM)? 0x01 : 0x00);
+			result = ((apple2_flags & VAR_ALTZP)	? 0x80 : 0x00)
+				|	((apple2_flags & VAR_PAGE2)	? 0x40 : 0x00)
+				|	((apple2_flags & VAR_RAMRD)	? 0x20 : 0x00)
+				|	((apple2_flags & VAR_RAMWRT)	? 0x10 : 0x00)
+				|	((apple2_flags & VAR_LCRAM)	? 0x00 : 0x08)
+				|	((apple2_flags & VAR_LCRAM2)	? 0x04 : 0x00)
+				|	((apple2_flags & VAR_INTCXROM)? 0x01 : 0x00);
 			break;
 
 		case 0x71: case 0x72: case 0x73:
@@ -1185,7 +1185,7 @@ static WRITE8_HANDLER( apple2gs_c0xx_w )
 		case 0x3A:	/* C03A - SCCBDATA */
 		case 0x3B:	/* C03B - SCCADATA */
 			scc = devtag_get_device(space->machine, "scc");
-			scc_w(scc, offset & 0x03, data);
+			scc8530_w(scc, offset & 0x03, data);
 			break;
 
 		case 0x3C:	/* C03C - SOUNDCTL */
@@ -1322,65 +1322,65 @@ static WRITE8_HANDLER( apple2gs_aux4000_w )
 
 static void apple2gs_mem_000000(running_machine *machine,offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
-	meminfo->read_mem			= (a2 & VAR_ALTZP)	? 0x010000 : 0x000000;
-	meminfo->write_mem			= (a2 & VAR_ALTZP)	? 0x010000 : 0x000000;
+	meminfo->read_mem			= (apple2_flags & VAR_ALTZP)	? 0x010000 : 0x000000;
+	meminfo->write_mem			= (apple2_flags & VAR_ALTZP)	? 0x010000 : 0x000000;
 }
 
 static void apple2gs_mem_000200(running_machine *machine,offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
-	meminfo->read_mem			= (a2 & VAR_RAMRD)	? 0x010200 : 0x000200;
-	meminfo->write_mem			= (a2 & VAR_RAMWRT)	? 0x010200 : 0x000200;
+	meminfo->read_mem			= (apple2_flags & VAR_RAMRD)	? 0x010200 : 0x000200;
+	meminfo->write_mem			= (apple2_flags & VAR_RAMWRT)	? 0x010200 : 0x000200;
 }
 
 static void apple2gs_mem_000400(running_machine *machine,offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
-	if (a2 & VAR_80STORE)
+	if (apple2_flags & VAR_80STORE)
 	{
-		meminfo->read_mem		= (a2 & VAR_PAGE2)	? 0x010400 : 0x000400;
-		meminfo->write_mem		= (a2 & VAR_PAGE2)	? 0x010400 : 0x000400;
-		meminfo->write_handler	= (a2 & VAR_PAGE2)	? apple2gs_aux0400_w : apple2gs_main0400_w;
+		meminfo->read_mem		= (apple2_flags & VAR_PAGE2)	? 0x010400 : 0x000400;
+		meminfo->write_mem		= (apple2_flags & VAR_PAGE2)	? 0x010400 : 0x000400;
+		meminfo->write_handler	= (apple2_flags & VAR_PAGE2)	? apple2gs_aux0400_w : apple2gs_main0400_w;
 	}
 	else
 	{
-		meminfo->read_mem		= (a2 & VAR_RAMRD)	? 0x010400 : 0x000400;
-		meminfo->write_mem		= (a2 & VAR_RAMWRT)	? 0x010400 : 0x000400;
-		meminfo->write_handler	= (a2 & VAR_RAMWRT)	? apple2gs_aux0400_w : apple2gs_main0400_w;
+		meminfo->read_mem		= (apple2_flags & VAR_RAMRD)	? 0x010400 : 0x000400;
+		meminfo->write_mem		= (apple2_flags & VAR_RAMWRT)	? 0x010400 : 0x000400;
+		meminfo->write_handler	= (apple2_flags & VAR_RAMWRT)	? apple2gs_aux0400_w : apple2gs_main0400_w;
 	}
 }
 
 static void apple2gs_mem_000800(running_machine *machine,offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
-	meminfo->read_mem			= (a2 & VAR_RAMRD)	? 0x010800 : 0x000800;
-	meminfo->write_mem			= (a2 & VAR_RAMWRT)	? 0x010800 : 0x000800;
+	meminfo->read_mem			= (apple2_flags & VAR_RAMRD)	? 0x010800 : 0x000800;
+	meminfo->write_mem			= (apple2_flags & VAR_RAMWRT)	? 0x010800 : 0x000800;
 }
 
 static void apple2gs_mem_002000(running_machine *machine,offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
-	if ((a2 & (VAR_80STORE|VAR_HIRES)) == (VAR_80STORE|VAR_HIRES))
+	if ((apple2_flags & (VAR_80STORE|VAR_HIRES)) == (VAR_80STORE|VAR_HIRES))
 	{
-		meminfo->read_mem		= (a2 & VAR_PAGE2)	? 0x012000 : 0x002000;
-		meminfo->write_mem		= (a2 & VAR_PAGE2)	? 0x012000 : 0x002000;
-		meminfo->write_handler	= (a2 & VAR_PAGE2)	? apple2gs_aux2000_w : apple2gs_main2000_w;
+		meminfo->read_mem		= (apple2_flags & VAR_PAGE2)	? 0x012000 : 0x002000;
+		meminfo->write_mem		= (apple2_flags & VAR_PAGE2)	? 0x012000 : 0x002000;
+		meminfo->write_handler	= (apple2_flags & VAR_PAGE2)	? apple2gs_aux2000_w : apple2gs_main2000_w;
 	}
 	else
 	{
-		meminfo->read_mem		= (a2 & VAR_RAMRD)	? 0x012000 : 0x002000;
-		meminfo->write_mem		= (a2 & VAR_RAMWRT)	? 0x012000 : 0x002000;
-		meminfo->write_handler	= (a2 & VAR_RAMWRT)	? apple2gs_aux2000_w : apple2gs_main2000_w;
+		meminfo->read_mem		= (apple2_flags & VAR_RAMRD)	? 0x012000 : 0x002000;
+		meminfo->write_mem		= (apple2_flags & VAR_RAMWRT)	? 0x012000 : 0x002000;
+		meminfo->write_handler	= (apple2_flags & VAR_RAMWRT)	? apple2gs_aux2000_w : apple2gs_main2000_w;
 	}
 }
 
 static void apple2gs_mem_004000(running_machine *machine,offs_t begin, offs_t end, apple2_meminfo *meminfo)
 {
-	meminfo->read_mem			= (a2 & VAR_RAMRD)	? 0x014000 : 0x004000;
-	meminfo->write_handler		= (a2 & VAR_RAMWRT)	? apple2gs_aux4000_w : apple2gs_main4000_w;
+	meminfo->read_mem			= (apple2_flags & VAR_RAMRD)	? 0x014000 : 0x004000;
+	meminfo->write_handler		= (apple2_flags & VAR_RAMWRT)	? apple2gs_aux4000_w : apple2gs_main4000_w;
 }
 
 static void apple2gs_mem_xxD000(running_machine *machine,apple2_meminfo *meminfo, UINT32 lcmem)
 {
-	if (a2 & VAR_LCRAM)
+	if (apple2_flags & VAR_LCRAM)
 	{
-		if (a2 & VAR_LCRAM2)
+		if (apple2_flags & VAR_LCRAM2)
 			meminfo->read_mem	= lcmem | 0x00C000;
 		else
 			meminfo->read_mem	= lcmem | 0x00D000;
@@ -1390,9 +1390,9 @@ static void apple2gs_mem_xxD000(running_machine *machine,apple2_meminfo *meminfo
 		meminfo->read_mem		= 0x03D000 | APPLE2_MEM_ROM;
 	}
 
-	if (a2 & VAR_LCWRITE)
+	if (apple2_flags & VAR_LCWRITE)
 	{
-		if (a2 & VAR_LCRAM2)
+		if (apple2_flags & VAR_LCRAM2)
 			meminfo->write_mem	= lcmem | 0x00C000;
 		else
 			meminfo->write_mem	= lcmem | 0x00D000;
@@ -1405,12 +1405,12 @@ static void apple2gs_mem_xxD000(running_machine *machine,apple2_meminfo *meminfo
 
 static void apple2gs_mem_xxE000(running_machine *machine,apple2_meminfo *meminfo, UINT32 lcmem)
 {
-	if (a2 & VAR_LCRAM)
+	if (apple2_flags & VAR_LCRAM)
 		meminfo->read_mem		= lcmem | 0x00E000;
 	else
 		meminfo->read_mem		= 0x03E000 | APPLE2_MEM_ROM;
 
-	if (a2 & VAR_LCWRITE)
+	if (apple2_flags & VAR_LCWRITE)
 		meminfo->write_mem		= lcmem | 0x00E000;
 	else
 		meminfo->write_mem		= APPLE2_MEM_FLOATING;
@@ -1420,12 +1420,12 @@ static void apple2gs_mem_00D000(running_machine *machine,offs_t begin, offs_t en
 {
 	if (apple2gs_shadow & 0x40)
 	{
-		meminfo->read_mem		= (a2 & VAR_RAMRD) ? 0x01D000 : 0x00D000;
-		meminfo->write_mem		= (a2 & VAR_RAMWRT) ? 0x01D000 : 0x00D000;
+		meminfo->read_mem		= (apple2_flags & VAR_RAMRD) ? 0x01D000 : 0x00D000;
+		meminfo->write_mem		= (apple2_flags & VAR_RAMWRT) ? 0x01D000 : 0x00D000;
 	}
 	else
 	{
-		apple2gs_mem_xxD000(machine,meminfo, (a2 & VAR_ALTZP) ? 0x010000 : 0x000000);
+		apple2gs_mem_xxD000(machine,meminfo, (apple2_flags & VAR_ALTZP) ? 0x010000 : 0x000000);
 	}
 }
 
@@ -1433,12 +1433,12 @@ static void apple2gs_mem_00E000(running_machine *machine,offs_t begin, offs_t en
 {
 	if (apple2gs_shadow & 0x40)
 	{
-		meminfo->read_mem		= (a2 & VAR_RAMRD) ? 0x01E000 : 0x00E000;
-		meminfo->write_mem		= (a2 & VAR_RAMWRT) ? 0x01E000 : 0x00E000;
+		meminfo->read_mem		= (apple2_flags & VAR_RAMRD) ? 0x01E000 : 0x00E000;
+		meminfo->write_mem		= (apple2_flags & VAR_RAMWRT) ? 0x01E000 : 0x00E000;
 	}
 	else
 	{
-		apple2gs_mem_xxE000(machine,meminfo, (a2 & VAR_ALTZP) ? 0x010000 : 0x000000);
+		apple2gs_mem_xxE000(machine,meminfo, (apple2_flags & VAR_ALTZP) ? 0x010000 : 0x000000);
 	}
 }
 
@@ -1664,24 +1664,23 @@ static void apple2gs_setup_memory(running_machine *machine)
 	state_save_register_item_array(machine, "APPLE2GS_SLOWMEM", NULL, 0, apple2gs_slowmem);
 
 	/* install expanded memory */
-	memory_install_read8_handler(space, 0x010000, messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0, SMH_BANK(1));
-	memory_install_write8_handler(space, 0x010000, messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0, SMH_BANK(1));
-	memory_set_bankptr(machine,1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x010000);
+	memory_install_readwrite_bank(space, 0x010000, messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0, "bank1");
+	memory_set_bankptr(machine,"bank1", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x010000);
 
 	/* install hi memory */
-	memory_install_read8_handler(space, 0xe00000, 0xe1ffff, 0, 0, SMH_BANK(2));
+	memory_install_read_bank(space, 0xe00000, 0xe1ffff, 0, 0, "bank2");
 	memory_install_write8_handler(space, 0xe00000, 0xe1ffff, 0, 0, apple2gs_slowmem_w);
 	memory_install_write8_handler(space, 0xe00400, 0xe007ff, 0, 0, apple2gs_E004xx_w);
 	memory_install_write8_handler(space, 0xe02000, 0xe03fff, 0, 0, apple2gs_E02xxx_w);
 	memory_install_write8_handler(space, 0xe10400, 0xe107ff, 0, 0, apple2gs_E104xx_w);
 	memory_install_write8_handler(space, 0xe12000, 0xe13fff, 0, 0, apple2gs_E12xxx_w);
-	memory_set_bankptr(machine,2, apple2gs_slowmem);
+	memory_set_bankptr(machine,"bank2", apple2gs_slowmem);
 
 	/* install alternate ROM bank */
 	begin = 0x1000000 - memory_region_length(machine, "maincpu");
 	end = 0xffffff;
-	memory_install_read8_handler(space, begin, end, 0, 0, SMH_BANK(3));
-	memory_set_bankptr(machine,3, memory_region(machine, "maincpu"));
+	memory_install_read_bank(space, begin, end, 0, 0, "bank3");
+	memory_set_bankptr(machine,"bank3", memory_region(machine, "maincpu"));
 
 	/* install new xxC000-xxCFFF handlers */
 	memory_install_read8_handler(space, 0x00c000, 0x00cfff, 0, 0, apple2gs_00Cxxx_r);
@@ -1721,17 +1720,8 @@ static READ8_HANDLER( apple2gs_read_vector )
 
 MACHINE_RESET( apple2gs )
 {
-	apple2gs_clock_timer = timer_alloc(machine, apple2gs_clock_tick, NULL);
-	timer_adjust_periodic(apple2gs_clock_timer, ATTOTIME_IN_SEC(1), 0, ATTOTIME_IN_SEC(1));
-
-	apple2gs_qsecond_timer = timer_alloc(machine, apple2gs_qsecond_tick, NULL);
-	timer_adjust_periodic(apple2gs_qsecond_timer, ATTOTIME_IN_USEC(266700), 0, ATTOTIME_IN_USEC(266700));
-
-	apple2gs_scanline_timer = timer_alloc(machine, apple2gs_scanline_tick, NULL);
-	timer_adjust_oneshot(apple2gs_scanline_timer, attotime_never, 0);
-
-	// fire on scanline zero
-	timer_adjust_oneshot(apple2gs_scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
+/* Something needs to be here? 
+	When F3 pressed, the video mode changes and the machine goes into Basic */
 }
 
 MACHINE_START( apple2gs )
@@ -1832,4 +1822,16 @@ MACHINE_START( apple2gs )
 	state_save_register_item(machine, "SNDGLUCTRL", NULL,0, sndglu_ctrl);
 	state_save_register_item(machine, "SNDGLUADDR", NULL,0, sndglu_addr);
 	state_save_register_item(machine, "SNDGLUDUMMYRD", NULL,0, sndglu_dummy_read);
+
+	apple2gs_clock_timer = timer_alloc(machine, apple2gs_clock_tick, NULL);
+	timer_adjust_periodic(apple2gs_clock_timer, ATTOTIME_IN_SEC(1), 0, ATTOTIME_IN_SEC(1));
+
+	apple2gs_qsecond_timer = timer_alloc(machine, apple2gs_qsecond_tick, NULL);
+	timer_adjust_periodic(apple2gs_qsecond_timer, ATTOTIME_IN_USEC(266700), 0, ATTOTIME_IN_USEC(266700));
+
+	apple2gs_scanline_timer = timer_alloc(machine, apple2gs_scanline_tick, NULL);
+	timer_adjust_oneshot(apple2gs_scanline_timer, attotime_never, 0);
+
+	// fire on scanline zero
+	timer_adjust_oneshot(apple2gs_scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 }

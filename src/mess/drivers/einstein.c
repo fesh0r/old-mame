@@ -440,7 +440,7 @@ static WRITE_LINE_DEVICE_HANDLER( einstein_serial_receive_clock )
 static void einstein_page_rom(running_machine *machine)
 {
 	einstein_state *einstein = machine->driver_data;
-	memory_set_bankptr(machine, 1, einstein->rom_enabled ? memory_region(machine, "bios") : messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_set_bankptr(machine, "bank1", einstein->rom_enabled ? memory_region(machine, "bios") : messram_get_ptr(devtag_get_device(machine, "messram")));
 }
 
 /* writing to this port is a simple trigger, and switches between RAM and ROM */
@@ -569,8 +569,8 @@ static MACHINE_RESET( einstein )
 	einstein->ctc = devtag_get_device(machine, IC_I058);
 
 	/* initialize memory mapping */
-	memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")));
-	memory_set_bankptr(machine, 3, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000);
+	memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000);
 	einstein->rom_enabled = 1;
 	einstein_page_rom(machine);
 
@@ -608,8 +608,12 @@ static MACHINE_RESET( einstein2 )
 	/* 80 column card palette */
 	palette_set_color(machine, TMS9928A_PALETTE_SIZE, RGB_BLACK);
 	palette_set_color(machine, TMS9928A_PALETTE_SIZE + 1, MAKE_RGB(0, 224, 0));
-
+}
+static MACHINE_START( einstein2 )
+{
+	einstein_state *einstein = machine->driver_data;
 	einstein->crtc_ram = auto_alloc_array(machine, UINT8, 2048);
+	MACHINE_START_CALL(einstein);
 }
 
 
@@ -637,8 +641,8 @@ static VIDEO_UPDATE( einstein2 )
 ***************************************************************************/
 
 static ADDRESS_MAP_START( einstein_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07fff) AM_READWRITE(SMH_BANK(1), SMH_BANK(2))
-	AM_RANGE(0x8000, 0x0ffff) AM_RAMBANK(3)
+	AM_RANGE(0x0000, 0x07fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank2")
+	AM_RANGE(0x8000, 0x0ffff) AM_RAMBANK("bank3")
 ADDRESS_MAP_END
 
 /* The I/O ports are decoded into 8 blocks using address lines A3 to A7 */
@@ -938,7 +942,7 @@ static MACHINE_DRIVER_START( einstein )
 	MDRV_WD1770_ADD(IC_I042, default_wd17xx_interface)
 
 	MDRV_FLOPPY_4_DRIVES_ADD(einstein_floppy_config)
-	
+
 	/* RAM is provided by 8k DRAM ICs i009, i010, i011, i012, i013, i014, i015 and i016 */
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
@@ -951,6 +955,8 @@ static MACHINE_DRIVER_START( einstei2 )
 
 	MDRV_CPU_MODIFY(IC_I001)
 	MDRV_CPU_IO_MAP(einstein2_io)
+	
+	MDRV_MACHINE_START(einstein2)
 	MDRV_MACHINE_RESET(einstein2)
 
     /* video hardware */
@@ -1019,7 +1025,7 @@ ROM_END
     GAME DRIVERS
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT           INIT  CONFIG,   COMPANY   FULLNAME                             FLAGS */
-COMP( 1984, einstein, 0,        0,		einstein, einstein,       0,    0, "Tatung", "Einstein TC-01",                    0 )
-COMP( 1984, einstei2, einstein, 0,		einstei2, einstein_80col, 0,    0, "Tatung", "Einstein TC-01 + 80 column device", 0 )
-COMP( 1984, einst256, 0,        0,		einstein, einstein,       0,    0, "Tatung", "Einstein 256",						 GAME_NOT_WORKING )
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT           INIT  COMPANY   FULLNAME                             FLAGS */
+COMP( 1984, einstein, 0,        0,		einstein, einstein,       0,    "Tatung", "Einstein TC-01",                    0 )
+COMP( 1984, einstei2, einstein, 0,		einstei2, einstein_80col, 0,    "Tatung", "Einstein TC-01 + 80 column device", 0 )
+COMP( 1984, einst256, 0,        0,		einstein, einstein,       0,    "Tatung", "Einstein 256",						 GAME_NOT_WORKING )

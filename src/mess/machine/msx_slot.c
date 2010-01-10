@@ -33,30 +33,34 @@ static void msx_cpu_setbank (running_machine *machine, int page, UINT8 *mem)
 	switch (page)
 	{
 	case 1:
+		memory_set_bankptr (machine,"bank1", mem);
+		break;
 	case 2:
+		memory_set_bankptr (machine,"bank2", mem);
+		break;
 	case 3:
-		memory_set_bankptr (machine,page, mem);
+		memory_set_bankptr (machine,"bank3", mem);
 		break;
 	case 4:
-		memory_set_bankptr (machine,4, mem);
-		memory_set_bankptr (machine,5, mem + 0x1ff8);
-		memory_install_read8_handler(space, 0x7ff8, 0x7fff, 0, 0, SMH_BANK(5));
+		memory_set_bankptr (machine,"bank4", mem);
+		memory_set_bankptr (machine,"bank5", mem + 0x1ff8);
+		memory_install_read_bank(space, 0x7ff8, 0x7fff, 0, 0, "bank5");
 		break;
 	case 5:
-		memory_set_bankptr (machine,6, mem);
-		memory_set_bankptr (machine,7, mem + 0x1800);
-		memory_install_read8_handler(space, 0x9800, 0x9fff, 0, 0, SMH_BANK(7));
+		memory_set_bankptr (machine,"bank6", mem);
+		memory_set_bankptr (machine,"bank7", mem + 0x1800);
+		memory_install_read_bank(space, 0x9800, 0x9fff, 0, 0, "bank7");
 		break;
 	case 6:
-		memory_set_bankptr (machine,8, mem);
-		memory_set_bankptr (machine,9, mem + 0x1800);
-		memory_install_read8_handler(space, 0xb800, 0xbfff, 0, 0, SMH_BANK(9));
+		memory_set_bankptr (machine,"bank8", mem);
+		memory_set_bankptr (machine,"bank9", mem + 0x1800);
+		memory_install_read_bank(space, 0xb800, 0xbfff, 0, 0, "bank9");
 		break;
 	case 7:
-		memory_set_bankptr (machine,10, mem);
+		memory_set_bankptr (machine,"bank10", mem);
 		break;
 	case 8:
-		memory_set_bankptr (machine,11, mem);
+		memory_set_bankptr (machine,"bank11", mem);
 		msx1.top_page = mem;
 		break;
 	}
@@ -383,8 +387,11 @@ MSX_SLOT_MAP(konami_scc)
 	case 2:
 		msx_cpu_setbank (machine, 5, state->mem + state->banks[2] * 0x2000);
 		msx_cpu_setbank (machine, 6, state->mem + state->banks[3] * 0x2000);
-		memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x9800, 0x9fff, 0, 0,
-				state->cart.scc.active ? konami_scc_bank5 : SMH_BANK(7));
+		if (state->cart.scc.active ) {
+			memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x9800, 0x9fff, 0, 0,konami_scc_bank5);
+		} else {
+			memory_install_read_bank(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x9800, 0x9fff, 0, 0,"bank7");
+		}
 		break;
 	case 3:
 		msx_cpu_setbank (machine, 7, state->mem + state->banks[0] * 0x2000);
@@ -1345,7 +1352,7 @@ MSX_SLOT_WRITE(diskrom)
 		wd17xx_set_drive (fdc,val & 1);
 		if ((state->mem[0x3ffd] ^ val) & 0x40)
 		{
-			set_led_status (0, !(val & 0x40));
+			set_led_status (machine, 0, !(val & 0x40));
 		}
 		state->mem[0x3ffd] = (val | 0x7c) & ~0x04;
 		break;
@@ -1467,7 +1474,7 @@ MSX_SLOT_WRITE(diskrom2)
 		wd17xx_set_drive (fdc,val & 1);
 		if ((state->mem[0x3fbc] ^ val) & 0x40)
 		{
-			set_led_status (0, !(val & 0x40));
+			set_led_status (machine, 0, !(val & 0x40));
 		}
 		state->mem[0x3fbc] = (val | 0x7c) & ~0x04;
 		break;
@@ -1766,7 +1773,7 @@ MSX_SLOT_LOADSRAM(fmpac)
 		if ((mame_fread (f, buf, PAC_HEADER_LEN) == PAC_HEADER_LEN) &&
 			!strncmp (buf, PAC_HEADER, PAC_HEADER_LEN) &&
 			mame_fread (f, state->cart.fmpac.mem, 0x1ffe))
-			{
+		{
 			logerror ("fmpac: info: sram loaded\n");
 			mame_fclose (f);
 			return 0;
@@ -1798,7 +1805,7 @@ MSX_SLOT_SAVESRAM(fmpac)
 	{
 		if ((mame_fwrite (f, PAC_HEADER, PAC_HEADER_LEN) == PAC_HEADER_LEN) &&
 			(mame_fwrite (f, state->cart.fmpac.mem, 0x1ffe) == 0x1ffe))
-			{
+		{
 			logerror ("fmpac: info: sram saved\n");
 			mame_fclose (f);
 			return 0;
@@ -2261,10 +2268,16 @@ MSX_SLOT_MAP(soundcartridge)
 	case 2:
 		msx_cpu_setbank (machine, 5, state->mem + state->banks[2] * 0x2000);
 		msx_cpu_setbank (machine, 6, state->mem + state->banks[3] * 0x2000);
-		memory_install_read8_handler(space, 0x9800, 0x9fff, 0, 0,
-			state->cart.sccp.scc_active ? soundcartridge_scc : SMH_BANK(7));
-		memory_install_read8_handler(space, 0xb800, 0xbfff, 0, 0,
-			state->cart.sccp.sccp_active ? soundcartridge_sccp : SMH_BANK(9));
+		if (state->cart.sccp.scc_active) {
+			memory_install_read8_handler(space, 0x9800, 0x9fff, 0, 0, soundcartridge_scc);
+		} else {
+			memory_install_read_bank(space, 0x9800, 0x9fff, 0, 0, "bank7");
+		}
+		if (state->cart.sccp.scc_active) {
+			memory_install_read8_handler(space, 0xb800, 0xbfff, 0, 0, soundcartridge_sccp);
+		} else {
+			memory_install_read_bank(space, 0xb800, 0xbfff, 0, 0, "bank9");
+		}
 		break;
 	case 3:
 		msx_cpu_setbank (machine, 7, state->mem + state->banks[0] * 0x2000);

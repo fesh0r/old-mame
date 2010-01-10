@@ -290,17 +290,17 @@ static UINT8 keymodreg;
 
 INLINE int a2_has_keypad(running_machine *machine)
 {
-	return input_port_by_tag(machine->portconfig, "keypad_1") != NULL;
+	return input_port_by_tag(&machine->portlist, "keypad_1") != NULL;
 }
 
 INLINE int a2_has_reset_dip(running_machine *machine)
 {
-	return input_port_by_tag(machine->portconfig, "reset_dip") != NULL;
+	return input_port_by_tag(&machine->portlist, "reset_dip") != NULL;
 }
 
 INLINE int a2_has_repeat(running_machine *machine)
 {
-	return input_port_by_tag(machine->portconfig, "keyb_repeat") != NULL;
+	return input_port_by_tag(&machine->portlist, "keyb_repeat") != NULL;
 }
 
 INLINE int a2_has_capslock(running_machine *machine)
@@ -329,7 +329,7 @@ int AY3600_init(running_machine *machine)
 	timer_pulse(machine, ATTOTIME_IN_HZ(60), NULL, 0, AY3600_poll);
 
 	/* Set Caps Lock light to ON, since that's how we default it. */
-	set_led_status(1,1);
+	set_led_status(machine,1,1);
 
 	keywaiting = 0;
 	keycode = 0;
@@ -366,8 +366,10 @@ static TIMER_CALLBACK(AY3600_poll)
 
 	static unsigned int time_until_repeat = MAGIC_KEY_REPEAT_NUMBER;
 
-	static const char *const portnames[] = { "keyb_0", "keyb_1", "keyb_2", "keyb_3", "keyb_4", "keyb_5", "keyb_6",
-										"keypad_1", "keypad_2" };
+	static const char *const portnames[] = {
+		"keyb_0", "keyb_1", "keyb_2", "keyb_3", "keyb_4", "keyb_5", "keyb_6",
+		"keypad_1", "keypad_2"
+	};
 
 	/* check for these special cases because they affect the emulated key codes */
 
@@ -379,13 +381,13 @@ static TIMER_CALLBACK(AY3600_poll)
 	if (apple2_pressed_specialkey(machine, SPECIALKEY_CAPSLOCK))
 	{
 		caps_lock = 1;
-		set_led_status(1,1);
+		set_led_status(machine,1,1);
 		keymodreg |= A2_KEYMOD_CAPSLOCK;
 	}
 	else
 	{
 		caps_lock = 0;
-		set_led_status(1,0);
+		set_led_status(machine,1,0);
 		keymodreg &= ~A2_KEYMOD_CAPSLOCK;
 	}
 
@@ -436,7 +438,7 @@ static TIMER_CALLBACK(AY3600_poll)
 	/* reset key check */
 	if (apple2_pressed_specialkey(machine, SPECIALKEY_RESET) &&
 		(a2_no_ctrl_reset(machine) || switchkey & A2_KEY_CONTROL))
-		{
+	{
 			if (!reset_flag)
 			{
 				reset_flag = 1;

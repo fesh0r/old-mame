@@ -75,10 +75,10 @@
 
 static ADDRESS_MAP_START(vtech2_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK(1), SMH_BANK(1))
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK(2), SMH_BANK(2))
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK(3), SMH_BANK(3))
-	AM_RANGE(0xc000, 0xffff) AM_READWRITE(SMH_BANK(4), SMH_BANK(4))
+	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank2")
+	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank3")
+	AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank4")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(vtech2_io, ADDRESS_SPACE_IO, 8)
@@ -518,7 +518,7 @@ ROM_END
 
 ***************************************************************************/
 
-/*    YEAR   NAME      PARENT    COMPAT MACHINE   INPUT     INIT      CONFIG    COMPANY              FULLNAME */
-COMP( 1984?, laser350, 0,		 0,		laser350, laser350, laser,    0,		"Video Technology",  "Laser 350" , 0)
-COMP( 1984?, laser500, laser350, 0,		laser500, laser500, laser,    0,		"Video Technology",  "Laser 500" , 0)
-COMP( 1984?, laser700, laser350, 0,		laser700, laser500, laser,    0,		"Video Technology",  "Laser 700" , 0)
+/*    YEAR   NAME      PARENT    COMPAT MACHINE   INPUT     INIT      COMPANY              FULLNAME */
+COMP( 1984?, laser350, 0,		 0,		laser350, laser350, laser,    "Video Technology",  "Laser 350" , 0)
+COMP( 1984?, laser500, laser350, 0,		laser500, laser500, laser,    "Video Technology",  "Laser 500" , 0)
+COMP( 1984?, laser700, laser350, 0,		laser700, laser500, laser,    "Video Technology",  "Laser 700" , 0)

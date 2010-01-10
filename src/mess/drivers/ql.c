@@ -216,7 +216,7 @@ static READ8_HANDLER( ipc_bus_r )
 
 static ADDRESS_MAP_START( ql_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x000000, 0x00bfff) AM_ROM	// 48K System ROM
-	AM_RANGE(0x00c000, 0x00ffff) AM_ROMBANK(1) // 16K Cartridge ROM
+	AM_RANGE(0x00c000, 0x00ffff) AM_ROMBANK("bank1") // 16K Cartridge ROM
 	AM_RANGE(0x010000, 0x017fff) AM_UNMAP // 32K Expansion I/O
 	AM_RANGE(0x018000, 0x018003) AM_DEVREAD(ZX8302_TAG, zx8302_rtc_r)
 	AM_RANGE(0x018000, 0x018001) AM_DEVWRITE(ZX8302_TAG, zx8302_rtc_w)
@@ -229,7 +229,7 @@ static ADDRESS_MAP_START( ql_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x018063, 0x018063) AM_DEVWRITE(ZX8301_TAG, zx8301_control_w)
 	AM_RANGE(0x01c000, 0x01ffff) AM_UNMAP // 16K Expansion I/O
 	AM_RANGE(0x020000, 0x03ffff) AM_DEVREADWRITE(ZX8301_TAG, zx8301_ram_r, zx8301_ram_w)
-	AM_RANGE(0x040000, 0x0fffff) AM_RAMBANK(2)
+	AM_RANGE(0x040000, 0x0fffff) AM_RAMBANK("bank2")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ipc_io_map, ADDRESS_SPACE_IO, 8 )
@@ -535,45 +535,45 @@ static MACHINE_START( ql )
 
 	/* configure ROM cartridge */
 
-	memory_install_readwrite8_handler(program, 0x00c000, 0x00ffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, M68008_TAG) + 0x00c000, 0);
-	memory_set_bank(machine, 1, 0);
+	memory_unmap_readwrite(program, 0x00c000, 0x00ffff, 0, 0);
+	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, M68008_TAG) + 0x00c000, 0);
+	memory_set_bank(machine, "bank1", 0);
 
 	/* configure RAM */
 
 	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 128*1024:
-		memory_install_readwrite8_handler(program, 0x040000, 0x0fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_unmap_readwrite(program, 0x040000, 0x0fffff, 0, 0);
 		break;
 
 	case 192*1024:
-		memory_install_readwrite8_handler(program, 0x040000, 0x04ffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
-		memory_install_readwrite8_handler(program, 0x050000, 0x0fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite_bank(program, 0x040000, 0x04ffff, 0, 0, "bank2");
+		memory_unmap_readwrite(program, 0x050000, 0x0fffff, 0, 0);
 		break;
 
 	case 256*1024:
-		memory_install_readwrite8_handler(program, 0x040000, 0x05ffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
-		memory_install_readwrite8_handler(program, 0x060000, 0x0fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite_bank(program, 0x040000, 0x05ffff, 0, 0, "bank2");
+		memory_unmap_readwrite(program, 0x060000, 0x0fffff, 0, 0);
 		break;
 
 	case 384*1024:
-		memory_install_readwrite8_handler(program, 0x040000, 0x07ffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
-		memory_install_readwrite8_handler(program, 0x080000, 0x0fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite_bank(program, 0x040000, 0x07ffff, 0, 0, "bank2");
+		memory_unmap_readwrite(program, 0x080000, 0x0fffff, 0, 0);
 		break;
 
 	case 640*1024:
-		memory_install_readwrite8_handler(program, 0x040000, 0x0bffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
-		memory_install_readwrite8_handler(program, 0x0c0000, 0x0fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite_bank(program, 0x040000, 0x0bffff, 0, 0, "bank2");
+		memory_unmap_readwrite(program, 0x0c0000, 0x0fffff, 0, 0);
 		break;
 
 	case 896*1024:
-		memory_install_readwrite8_handler(program, 0x040000, 0x0fffff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		memory_install_readwrite_bank(program, 0x040000, 0x0fffff, 0, 0, "bank2");
 		break;
 	}
 
-	memory_configure_bank(machine, 2, 0, 1, memory_region(machine, M68008_TAG) + 0x050000, 0);
-	memory_set_bank(machine, 2, 0);
+	memory_configure_bank(machine, "bank2", 0, 1, memory_region(machine, M68008_TAG) + 0x050000, 0);
+	memory_set_bank(machine, "bank2", 0);
 
 	// find devices
 
@@ -602,7 +602,8 @@ static DEVICE_IMAGE_LOAD( ql_cart )
 	{
 		if (image_fread(image, ptr, filesize) == filesize)
 		{
-			memory_install_readwrite8_handler(cputag_get_address_space(image->machine, M68008_TAG, ADDRESS_SPACE_PROGRAM), 0x00c000, 0x00ffff, 0, 0, SMH_BANK(1), SMH_UNMAP);
+			memory_install_read_bank(cputag_get_address_space(image->machine, M68008_TAG, ADDRESS_SPACE_PROGRAM), 0x00c000, 0x00ffff, 0, 0, "bank1");
+			memory_unmap_write(cputag_get_address_space(image->machine, M68008_TAG, ADDRESS_SPACE_PROGRAM), 0x00c000, 0x00ffff, 0, 0);
 
 			return INIT_PASS;
 		}
@@ -657,6 +658,24 @@ static const floppy_config ql_floppy_config =
 	DO_NOT_KEEP_GEOMETRY
 };
 
+static DEVICE_GET_INFO( ql_serial )
+{
+	switch ( state )
+	{
+		case DEVINFO_STR_NAME:		                strcpy(info->s, "QL serial port");	                    break;
+		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:	    strcpy(info->s, "txt");                                 break;
+		default: 									DEVICE_GET_INFO_CALL(serial);	break;
+	}
+}
+
+#define QL_SERIAL	DEVICE_GET_INFO_NAME(ql_serial)
+
+#define MDRV_QL_SERIAL_ADD(_tag) \
+	MDRV_DEVICE_ADD(_tag, QL_SERIAL, 0)
+
+#define MDRV_QL_SERIAL_REMOVE(_tag)		\
+  MDRV_DEVICE_REMOVE(_tag)
+  
 static MACHINE_DRIVER_START( ql )
 	MDRV_DRIVER_DATA(ql_state)
 
@@ -704,12 +723,14 @@ static MACHINE_DRIVER_START( ql )
 	MDRV_CARTSLOT_LOAD(ql_cart)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ql_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("128K")
 	MDRV_RAM_EXTRA_OPTIONS("192K,256K,384K,640K,896K")
-	
+
+	MDRV_QL_SERIAL_ADD("serial0")
+	MDRV_QL_SERIAL_ADD("serial1")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ql_ntsc )
@@ -723,11 +744,14 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( opd )
 	MDRV_IMPORT_FROM(ql)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("128K")
-	MDRV_RAM_EXTRA_OPTIONS("256K")		
+	MDRV_RAM_EXTRA_OPTIONS("256K")
+	
+	MDRV_QL_SERIAL_REMOVE("serial0")
+	MDRV_QL_SERIAL_REMOVE("serial1")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( megaopd )
@@ -735,7 +759,7 @@ static MACHINE_DRIVER_START( megaopd )
 
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
-	MDRV_RAM_DEFAULT_SIZE("256K")	
+	MDRV_RAM_DEFAULT_SIZE("256K")
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -907,41 +931,19 @@ static QUICKLOAD_LOAD( ql )
 
 	return INIT_PASS;
 }
-
-static void ql_serial_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* serial */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
-		case MESS_DEVINFO_INT_COUNT:						info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:						info->start = DEVICE_START_NAME(serial_device); break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(serial_device); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(serial_device); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "txt"); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( ql )
-	CONFIG_DEVICE(ql_serial_getinfo)
-SYSTEM_CONFIG_END
-
+	
 /* Computer Drivers */
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT   INIT    CONFIG  COMPANY                     FULLNAME        FLAGS */
-COMP( 1984, ql,     0,      0,      ql,         ql,     0,      ql,     "Sinclair Research Ltd",    "QL (UK)",      GAME_SUPPORTS_SAVE )
-COMP( 1985, ql_us,  ql,     0,      ql_ntsc,    ql,     0,      ql,     "Sinclair Research Ltd",    "QL (USA)",     GAME_SUPPORTS_SAVE )
-COMP( 1985, ql_es,  ql,     0,      ql,         ql_es,  0,      ql,     "Sinclair Research Ltd",    "QL (Spain)",   GAME_SUPPORTS_SAVE )
-COMP( 1985, ql_fr,  ql,     0,      ql,         ql_fr,  0,      ql,     "Sinclair Research Ltd",    "QL (France)",  GAME_NOT_WORKING )
-COMP( 1985, ql_de,  ql,     0,      ql,         ql_de,  0,      ql,     "Sinclair Research Ltd",    "QL (Germany)", GAME_SUPPORTS_SAVE )
-COMP( 1985, ql_it,  ql,     0,      ql,         ql_it,  0,      ql,     "Sinclair Research Ltd",    "QL (Italy)",   GAME_SUPPORTS_SAVE )
-COMP( 1985, ql_se,  ql,     0,      ql,         ql_se,  0,      ql,     "Sinclair Research Ltd",    "QL (Sweden)",  GAME_NOT_WORKING )
-COMP( 1985, ql_dk,  ql,     0,      ql,         ql_dk,  0,      ql,     "Sinclair Research Ltd",    "QL (Denmark)", GAME_NOT_WORKING )
-COMP( 1985, ql_gr,  ql,     0,      ql,         ql,     0,      ql,     "Sinclair Research Ltd",    "QL (Greece)",  GAME_SUPPORTS_SAVE )
-COMP( 1984, tonto,  0,		0,		opd,		ql,		0,		0,		"British Telecom Business Systems", "Merlin M1800 Tonto", GAME_NOT_WORKING )
-COMP( 1986, megaopd,tonto,	0,		megaopd,	ql,		0,		0,		"International Computer Limited", "MegaOPD (USA)", GAME_NOT_WORKING )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT   INIT    COMPANY                     FULLNAME        FLAGS */
+COMP( 1984, ql,     0,      0,      ql,         ql,     0,      "Sinclair Research Ltd",    "QL (UK)",      GAME_SUPPORTS_SAVE )
+COMP( 1985, ql_us,  ql,     0,      ql_ntsc,    ql,     0,      "Sinclair Research Ltd",    "QL (USA)",     GAME_SUPPORTS_SAVE )
+COMP( 1985, ql_es,  ql,     0,      ql,         ql_es,  0,      "Sinclair Research Ltd",    "QL (Spain)",   GAME_SUPPORTS_SAVE )
+COMP( 1985, ql_fr,  ql,     0,      ql,         ql_fr,  0,      "Sinclair Research Ltd",    "QL (France)",  GAME_NOT_WORKING )
+COMP( 1985, ql_de,  ql,     0,      ql,         ql_de,  0,      "Sinclair Research Ltd",    "QL (Germany)", GAME_SUPPORTS_SAVE )
+COMP( 1985, ql_it,  ql,     0,      ql,         ql_it,  0,      "Sinclair Research Ltd",    "QL (Italy)",   GAME_SUPPORTS_SAVE )
+COMP( 1985, ql_se,  ql,     0,      ql,         ql_se,  0,      "Sinclair Research Ltd",    "QL (Sweden)",  GAME_NOT_WORKING )
+COMP( 1985, ql_dk,  ql,     0,      ql,         ql_dk,  0,      "Sinclair Research Ltd",    "QL (Denmark)", GAME_NOT_WORKING )
+COMP( 1985, ql_gr,  ql,     0,      ql,         ql,     0,      "Sinclair Research Ltd",    "QL (Greece)",  GAME_SUPPORTS_SAVE )
+// last two did not used system config
+COMP( 1984, tonto,  0,		0,		opd,		ql,		0,		"British Telecom Business Systems", "Merlin M1800 Tonto", GAME_NOT_WORKING )
+COMP( 1986, megaopd,tonto,	0,		megaopd,	ql,		0,		"International Computer Limited", "MegaOPD (USA)", GAME_NOT_WORKING )

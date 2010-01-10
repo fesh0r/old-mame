@@ -174,7 +174,8 @@ static unsigned long detect_2600controllers(running_machine *machine)
 									{ 0x43, 0x58, 0x2d, 0x32, 10}, // Missile Command CX22 TrackBall
 									{ 0x43, 0x58, 0x2d, 0x38, 11}, // Missile Command CX80 TrackBall
 									{ 0x4e, 0xa8, 0xa4, 0xa2, 12}, // Omega Race for Joystick ONLY
-									{ 0xa6, 0xef, 0xb5, 0x38, 8}}; // Warlords.. paddles ONLY
+									{ 0xa6, 0xef, 0xb5, 0x38, 8} // Warlords.. paddles ONLY
+	};
 	// start with this.. if anyone finds a game that does NOT work with both controllers enabled
 	// it can be fixed here with a new signature (note that the Coleco Gemini has this setup also)
 	left = JOYS+PADD; right = JOYS+PADD;
@@ -297,7 +298,8 @@ static int detect_modeFE(running_machine *machine)
 									{ 0x20, 0x00, 0xd0, 0xc6, 0xc5 },
 									{ 0x20, 0xc3, 0xf8, 0xa5, 0x82 },
 									{ 0xd0, 0xfb, 0x20, 0x73, 0xfe },
-									{ 0x20, 0x00, 0xf0, 0x84, 0xd6 }};
+									{ 0x20, 0x00, 0xf0, 0x84, 0xd6 }
+	};
 	if (cart_size == 0x2000)
 	{
 		UINT8 *cart = CART;
@@ -325,7 +327,8 @@ static int detect_modeE0(running_machine *machine)
 									{ 0x8d, 0xe9, 0xff },
 									{ 0xad, 0xe9, 0xff },
 									{ 0xad, 0xed, 0xff },
-									{ 0xad, 0xf3, 0xbf }};
+									{ 0xad, 0xf3, 0xbf }
+	};
 	if (cart_size == 0x2000)
 	{
 		UINT8 *cart = CART;
@@ -349,7 +352,8 @@ static int detect_modeCV(running_machine *machine)
 	int i,j,numfound = 0;
 	static const unsigned char signatures[][3] = {
 									{ 0x9d, 0xff, 0xf3 },
-									{ 0x99, 0x00, 0xf4 }};
+									{ 0x99, 0x00, 0xf4 }
+	};
 	if (cart_size == 0x0800 || cart_size == 0x1000)
 	{
 		UINT8 *cart = CART;
@@ -372,7 +376,8 @@ static int detect_modeFV(running_machine *machine)
 {
 	int i,j,numfound = 0;
 	static const unsigned char signatures[][3] = {
-									{ 0x2c, 0xd0, 0xff }};
+									{ 0x2c, 0xd0, 0xff }
+	};
 	if (cart_size == 0x2000)
 	{
 		UINT8 *cart = CART;
@@ -397,7 +402,8 @@ static int detect_modeJVP(running_machine *machine)
 	int i,j,numfound = 0;
 	static const unsigned char signatures[][4] = {
 									{ 0x2c, 0xc0, 0xef, 0x60 },
-									{ 0x8d, 0xa0, 0x0f, 0xf0 }};
+									{ 0x8d, 0xa0, 0x0f, 0xf0 }
+	};
 	if (cart_size == 0x4000 || cart_size == 0x2000)
 	{
 		UINT8 *cart = CART;
@@ -421,7 +427,8 @@ static int detect_modeE7(running_machine *machine)
 	int i,j,numfound = 0;
 	static const unsigned char signatures[][3] = {
 									{ 0xad, 0xe5, 0xff },
-									{ 0x8d, 0xe7, 0xff }};
+									{ 0x8d, 0xe7, 0xff }
+	};
 	if (cart_size == 0x2000 || cart_size == 0x4000)
 	{
 		UINT8 *cart = CART;
@@ -509,7 +516,8 @@ static int detect_super_chip(running_machine *machine)
 	UINT8 *cart = CART;
 	static const unsigned char signatures[][5] = {
 									{ 0xa2, 0x7f, 0x9d, 0x00, 0xf0 }, // dig dug
-									{ 0xae, 0xf6, 0xff, 0x4c, 0x00 }}; // off the wall
+									{ 0xae, 0xf6, 0xff, 0x4c, 0x00 } // off the wall
+	};
 
 	if (cart_size == 0x4000)
 	{
@@ -613,63 +621,65 @@ static int next_bank(void)
 static void modeF8_switch(running_machine *machine, UINT16 offset, UINT8 data)
 {
 	bank_base[1] = CART + 0x1000 * offset;
-	memory_set_bankptr(machine,1, bank_base[1]);
+	memory_set_bankptr(machine,"bank1", bank_base[1]);
 }
 static void modeFA_switch(running_machine *machine, UINT16 offset, UINT8 data)
 {
 	bank_base[1] = CART + 0x1000 * offset;
-	memory_set_bankptr(machine,1, bank_base[1]);
+	memory_set_bankptr(machine,"bank1", bank_base[1]);
 }
 static void modeF6_switch(running_machine *machine, UINT16 offset, UINT8 data)
 {
 	bank_base[1] = CART + 0x1000 * offset;
-	memory_set_bankptr(machine,1, bank_base[1]);
+	memory_set_bankptr(machine,"bank1", bank_base[1]);
 }
 static void modeF4_switch(running_machine *machine, UINT16 offset, UINT8 data)
 {
 	bank_base[1] = CART + 0x1000 * offset;
-	memory_set_bankptr(machine,1, bank_base[1]);
+	memory_set_bankptr(machine,"bank1", bank_base[1]);
 }
 static void mode3F_switch(running_machine *machine, UINT16 offset, UINT8 data)
 {
 	bank_base[1] = CART + 0x800 * (data & (number_banks - 1));
-	memory_set_bankptr(machine,1, bank_base[1]);
+	memory_set_bankptr(machine,"bank1", bank_base[1]);
 }
 static void modeUA_switch(running_machine *machine, UINT16 offset, UINT8 data)
 {
 	bank_base[1] = CART + (offset >> 6) * 0x1000;
-	memory_set_bankptr(machine,1, bank_base[1]);
+	memory_set_bankptr(machine,"bank1", bank_base[1]);
 }
 static void modeE0_switch(running_machine *machine, UINT16 offset, UINT8 data)
 {
 	int bank = 1 + (offset >> 3);
+	char bank_name[10];
+	sprintf(bank_name,"bank%d",bank);
 	bank_base[bank] = CART + 0x400 * (offset & 7);
-	memory_set_bankptr(machine,bank, bank_base[bank]);
+	memory_set_bankptr(machine,bank_name, bank_base[bank]);
 }
 static void modeE7_switch(running_machine *machine, UINT16 offset, UINT8 data)
 {
 	bank_base[1] = CART + 0x800 * offset;
-	memory_set_bankptr(machine,1, bank_base[1]);
+	memory_set_bankptr(machine,"bank1", bank_base[1]);
 }
 static void modeE7_RAM_switch(running_machine *machine, UINT16 offset, UINT8 data)
 {
-	memory_set_bankptr(machine,9, extra_RAM + (4 + offset) * 256 );
+	memory_set_bankptr(machine,"bank9", extra_RAM + (4 + offset) * 256 );
 }
 static void modeDC_switch(running_machine *machine, UINT16 offset, UINT8 data)
 {
 	bank_base[1] = CART + 0x1000 * next_bank();
-	memory_set_bankptr(machine,1, bank_base[1]);
+	memory_set_bankptr(machine,"bank1", bank_base[1]);
 }
 static void mode3E_switch(running_machine *machine, UINT16 offset, UINT8 data)
 {
 	bank_base[1] = CART + 0x800 * (data & (number_banks - 1));
-	memory_set_bankptr(machine,1, bank_base[1]);
+	memory_set_bankptr(machine,"bank1", bank_base[1]);
 	mode3E_ram_enabled = 0;
 }
 static void mode3E_RAM_switch(running_machine *machine, UINT16 offset, UINT8 data)
 {
 	ram_base = extra_RAM + 0x200 * ( data & 0x3F );
-	memory_set_bankptr(machine,1, ram_base );
+	memory_set_bankptr(machine,"bank1", ram_base );
 	mode3E_ram_enabled = 1;
 }
 static void modeFV_switch(running_machine *machine, UINT16 offset, UINT8 data)
@@ -680,7 +690,7 @@ static void modeFV_switch(running_machine *machine, UINT16 offset, UINT8 data)
 		FVlocked = 1;
 		current_bank = current_bank ^ 0x01;
 		bank_base[1] = CART + 0x1000 * current_bank;
-		memory_set_bankptr(machine,1, bank_base[1]);
+		memory_set_bankptr(machine,"bank1", bank_base[1]);
 	}
 }
 static void modeJVP_switch(running_machine *machine, UINT16 offset, UINT8 data)
@@ -696,7 +706,7 @@ static void modeJVP_switch(running_machine *machine, UINT16 offset, UINT8 data)
 		break;
 	}
 	bank_base[1] = CART + 0x1000 * current_bank;
-	memory_set_bankptr(machine, 1, bank_base[1] );
+	memory_set_bankptr(machine, "bank1", bank_base[1] );
 }
 
 
@@ -822,8 +832,8 @@ static READ8_HANDLER(modeSS_r)
 			modeSS_high_ram_enabled = 1;
 			break;
 		}
-		memory_set_bankptr(space->machine, 1, bank_base[1] );
-		memory_set_bankptr(space->machine, 2, bank_base[2] );
+		memory_set_bankptr(space->machine, "bank1", bank_base[1] );
+		memory_set_bankptr(space->machine, "bank2", bank_base[2] );
 
 		/* Check if we should stop the tape */
 		if ( cpu_get_pc(cputag_get_cpu(space->machine, "maincpu")) == 0x00FD )
@@ -1101,7 +1111,7 @@ static DIRECT_UPDATE_HANDLER(modeFE_opbase_handler)
            cpu should be the last byte that was on the data bus and so should determine the bank
            we should switch in. */
 		bank_base[1] = memory_region(space->machine, "user1") + 0x1000 * ( ( address & 0x2000 ) ? 0 : 1 );
-		memory_set_bankptr(space->machine, 1, bank_base[1] );
+		memory_set_bankptr(space->machine, "bank1", bank_base[1] );
 		/* and restore old opbase handler */
 		memory_set_direct_update_handler(space, FE_old_opbase_handler);
 	}
@@ -1145,7 +1155,7 @@ static ADDRESS_MAP_START(a2600_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x007F) AM_MIRROR(0x0F00) AM_READWRITE(tia_r, tia_w)
 	AM_RANGE(0x0080, 0x00FF) AM_MIRROR(0x0D00) AM_RAM AM_BASE(&riot_ram)
 	AM_RANGE(0x0280, 0x029F) AM_MIRROR(0x0D00) AM_DEVREADWRITE("riot", riot6532_r, riot6532_w)
-	AM_RANGE(0x1000, 0x1FFF)                   AM_ROMBANK(1)
+	AM_RANGE(0x1000, 0x1FFF)                   AM_ROMBANK("bank1")
 ADDRESS_MAP_END
 
 static WRITE8_DEVICE_HANDLER(switch_A_w)
@@ -1253,20 +1263,20 @@ static void install_banks(running_machine *machine, int count, unsigned init)
 
 	for (i = 0; i < count; i++)
 	{
-		static const read8_space_func handler[] =
+		static const char *handler[] =
 		{
-			SMH_BANK(1),
-			SMH_BANK(2),
-			SMH_BANK(3),
-			SMH_BANK(4),
+			"bank1",
+			"bank2",
+			"bank3",
+			"bank4",
 		};
 
-		memory_install_read8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM),
+		memory_install_read_bank(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM),
 			0x1000 + (i + 0) * 0x1000 / count - 0,
 			0x1000 + (i + 1) * 0x1000 / count - 1, 0, 0, handler[i]);
 
 		bank_base[i + 1] = cart + init;
-		memory_set_bankptr(machine,i + 1, bank_base[i + 1]);
+		memory_set_bankptr(machine,handler[i], bank_base[i + 1]);
 	}
 }
 
@@ -1843,9 +1853,8 @@ static MACHINE_RESET( a2600 )
 		memory_install_read8_handler(space, 0x1fe0, 0x1fe7, 0, 0, modeE7_switch_r);
 		memory_install_write8_handler(space, 0x1fe8, 0x1feb, 0, 0, modeE7_RAM_switch_w);
 		memory_install_read8_handler(space, 0x1fe8, 0x1feb, 0, 0, modeE7_RAM_switch_r);
-		memory_install_write8_handler(space, 0x1800, 0x18ff, 0, 0, SMH_BANK(9));
-		memory_install_read8_handler(space, 0x1900, 0x19ff, 0, 0, SMH_BANK(9));
-		memory_set_bankptr(machine, 9, extra_RAM + 4 * 256 );
+		memory_install_readwrite_bank(space, 0x1800, 0x18ff, 0, 0, "bank9");
+		memory_set_bankptr(machine, "bank9", extra_RAM + 4 * 256 );
 		break;
 
 	case modeDC:
@@ -1868,8 +1877,8 @@ static MACHINE_RESET( a2600 )
 		memory_install_read8_handler(space, 0x1000, 0x1fff, 0, 0, modeSS_r);
 		bank_base[1] = extra_RAM + 2 * 0x800;
 		bank_base[2] = CART;
-		memory_set_bankptr(machine, 1, bank_base[1] );
-		memory_set_bankptr(machine, 2, bank_base[2] );
+		memory_set_bankptr(machine, "bank1", bank_base[1] );
+		memory_set_bankptr(machine, "bank2", bank_base[2] );
 		modeSS_write_enabled = 0;
 		modeSS_byte_started = 0;
 		memory_set_direct_update_handler(space, modeSS_opbase );
@@ -1902,8 +1911,8 @@ static MACHINE_RESET( a2600 )
 		break;
 
 	case mode32in1:
-		memory_set_bankptr(machine, 1, CART + current_reset_bank_counter * 0x800 );
-		memory_set_bankptr(machine, 2, CART + current_reset_bank_counter * 0x800 );
+		memory_set_bankptr(machine, "bank1", CART + current_reset_bank_counter * 0x800 );
+		memory_set_bankptr(machine, "bank2", CART + current_reset_bank_counter * 0x800 );
 		break;
 
 	case modeJVP:
@@ -1916,26 +1925,26 @@ static MACHINE_RESET( a2600 )
 
 	if (banking_mode == modeFA)
 	{
-		memory_install_write8_handler(space, 0x1000, 0x10ff, 0, 0, SMH_BANK(9));
-		memory_install_read8_handler(space, 0x1100, 0x11ff, 0, 0, SMH_BANK(9));
+		memory_install_write_bank(space, 0x1000, 0x10ff, 0, 0, "bank9");
+		memory_install_read_bank(space, 0x1100, 0x11ff, 0, 0, "bank9");
 
-		memory_set_bankptr(machine,9, extra_RAM);
+		memory_set_bankptr(machine,"bank9", extra_RAM);
 	}
 
 	if (banking_mode == modeCV)
 	{
-		memory_install_write8_handler(space, 0x1400, 0x17ff, 0, 0, SMH_BANK(9));
-		memory_install_read8_handler(space, 0x1000, 0x13ff, 0, 0, SMH_BANK(9));
+		memory_install_write_bank(space, 0x1400, 0x17ff, 0, 0, "bank9");
+		memory_install_read_bank(space, 0x1000, 0x13ff, 0, 0, "bank9");
 
-		memory_set_bankptr(machine,9, extra_RAM);
+		memory_set_bankptr(machine,"bank9", extra_RAM);
 	}
 
 	if (chip)
 	{
-		memory_install_write8_handler(space, 0x1000, 0x107f, 0, 0, SMH_BANK(9));
-		memory_install_read8_handler(space, 0x1080, 0x10ff, 0, 0, SMH_BANK(9));
+		memory_install_write_bank(space, 0x1000, 0x107f, 0, 0, "bank9");
+		memory_install_read_bank(space, 0x1080, 0x10ff, 0, 0, "bank9");
 
-		memory_set_bankptr(machine,9, extra_RAM);
+		memory_set_bankptr(machine,"bank9", extra_RAM);
 	}
 
 	/* Banks may have changed, reset the cpu so it uses the correct reset vector */
@@ -2183,6 +2192,6 @@ ROM_END
 
 #define rom_a2600p rom_a2600
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY     FULLNAME */
-CONS( 1977,	a2600,	0,		0,		a2600,	a2600,	0,		0,	"Atari",	"Atari 2600 (NTSC)" , 0)
-CONS( 1978,	a2600p,	a2600,	0,		a2600p,	a2600,	0,		0,  "Atari",    "Atari 2600 (PAL)", 0)
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY     FULLNAME */
+CONS( 1977,	a2600,	0,		0,		a2600,	a2600,	0,		"Atari",	"Atari 2600 (NTSC)" , 0)
+CONS( 1978,	a2600p,	a2600,	0,		a2600p,	a2600,	0,		"Atari",    "Atari 2600 (PAL)", 0)

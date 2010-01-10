@@ -118,25 +118,25 @@
 /* LX.382 CPU Board RAM */
 /* LX.382 CPU Board EPROM */
 static ADDRESS_MAP_START( z80ne_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x03ff ) AM_RAMBANK(1)
+	AM_RANGE( 0x0000, 0x03ff ) AM_RAMBANK("bank1")
 	AM_RANGE( 0x0400, 0x7fff ) AM_RAM
-	AM_RANGE( 0x8000, 0x83ff ) AM_ROMBANK(2)
-	AM_RANGE( 0x8400, 0xffff ) AM_READWRITE(SMH_NOP, SMH_NOP)
+	AM_RANGE( 0x8000, 0x83ff ) AM_ROMBANK("bank2")
+	AM_RANGE( 0x8400, 0xffff ) AM_READNOP AM_WRITENOP
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80net_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x03ff ) AM_RAMBANK(1)
+	AM_RANGE( 0x0000, 0x03ff ) AM_RAMBANK("bank1")
 	AM_RANGE( 0x0400, 0x7fff ) AM_RAM
-	AM_RANGE( 0x8000, 0x83ff ) AM_ROMBANK(2)
+	AM_RANGE( 0x8000, 0x83ff ) AM_ROMBANK("bank2")
 	AM_RANGE( 0x8400, 0xebff ) AM_RAM
-	AM_RANGE( 0xec00, 0xedff ) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size) /* (6847) */
+	AM_RANGE( 0xec00, 0xedff ) AM_RAM AM_BASE_SIZE_GENERIC(videoram) /* (6847) */
 	AM_RANGE( 0xee00, 0xffff ) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80netb_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x0000, 0x3fff ) AM_ROM
 	AM_RANGE( 0x4000, 0xebff ) AM_RAM
-	AM_RANGE( 0xec00, 0xedff ) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size) /* (6847) */
+	AM_RANGE( 0xec00, 0xedff ) AM_RAM AM_BASE_SIZE_GENERIC(videoram) /* (6847) */
 	AM_RANGE( 0xee00, 0xffff ) AM_RAM
 ADDRESS_MAP_END
 
@@ -157,16 +157,16 @@ static ADDRESS_MAP_START( z80net_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80netf_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x03ff ) AM_RAMBANK(1)
-	AM_RANGE( 0x0400, 0x3fff ) AM_RAMBANK(2)
+	AM_RANGE( 0x0000, 0x03ff ) AM_RAMBANK("bank1")
+	AM_RANGE( 0x0400, 0x3fff ) AM_RAMBANK("bank2")
 	AM_RANGE( 0x4000, 0x7fff ) AM_RAM
-	AM_RANGE( 0x8000, 0x83ff ) AM_RAMBANK(3)
+	AM_RANGE( 0x8000, 0x83ff ) AM_RAMBANK("bank3")
 	AM_RANGE( 0x8400, 0xdfff ) AM_RAM
-	AM_RANGE( 0xe000, 0xebff ) AM_READWRITE(SMH_NOP, SMH_NOP)
-	AM_RANGE( 0xec00, 0xedff ) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size) /* (6847) */
-	AM_RANGE( 0xee00, 0xefff ) AM_READWRITE(SMH_NOP, SMH_NOP)
-	AM_RANGE( 0xf000, 0xf3ff ) AM_RAMBANK(4)
-	AM_RANGE( 0xf400, 0xffff ) AM_READWRITE(SMH_NOP, SMH_NOP)
+	AM_RANGE( 0xe000, 0xebff ) AM_READNOP AM_WRITENOP
+	AM_RANGE( 0xec00, 0xedff ) AM_RAM AM_BASE_SIZE_GENERIC(videoram) /* (6847) */
+	AM_RANGE( 0xee00, 0xefff ) AM_READNOP AM_WRITENOP
+	AM_RANGE( 0xf000, 0xf3ff ) AM_RAMBANK("bank4")
+	AM_RANGE( 0xf400, 0xffff ) AM_READNOP AM_WRITENOP
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80netf_io, ADDRESS_SPACE_IO, 8 )
@@ -478,7 +478,7 @@ static MACHINE_DRIVER_START( z80ne )
 	MDRV_CASSETTE_ADD( "cassetteb", z80ne_cassetteb_config )
 
 	MDRV_DEFAULT_LAYOUT(layout_z80ne)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("32K")
@@ -510,11 +510,11 @@ static MACHINE_DRIVER_START( z80net )
 	MDRV_MC6847_PALETTE(lx388palette)
 
 	MDRV_DEFAULT_LAYOUT(layout_z80net)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("32K")
-	MDRV_RAM_EXTRA_OPTIONS("1K")	
+	MDRV_RAM_EXTRA_OPTIONS("1K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( z80netb )
@@ -546,7 +546,7 @@ static MACHINE_DRIVER_START( z80netb )
 	MDRV_MC6847_ADD("mc6847", z80net_mc6847_intf)
 	MDRV_MC6847_TYPE(M6847_VERSION_ORIGINAL_PAL)
 	MDRV_MC6847_PALETTE(lx388palette)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("32K")
@@ -586,7 +586,7 @@ static MACHINE_DRIVER_START( z80netf )
 	MDRV_FLOPPY_4_DRIVES_ADD(z80netf_floppy_config)
 
 	MDRV_DEFAULT_LAYOUT(layout_z80netf)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("56K")
@@ -645,8 +645,8 @@ ROM_START( z80netf )
 	ROM_LOAD( "ep2390.ic6", 0x14C00, 0x0400, CRC(28d28eee) SHA1(b80f75c1ac4905ae369ecbc9b9ce120cc85502ed) )
 ROM_END
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT     CONFIG   COMPANY               FULLNAME                      FLAGS */
-COMP( 1980,	z80ne,    0,        0,      z80ne,    z80ne,    z80ne,   0, "Nuova Elettronica",	"Z80NE",                      GAME_NO_SOUND | GAME_COMPUTER)
-COMP( 1980,	z80net,   z80ne,    0,      z80net,   z80net,   z80net,  0, "Nuova Elettronica",	"Z80NE + LX.388",             GAME_NO_SOUND | GAME_COMPUTER)
-COMP( 1980,	z80netb,  z80ne,    0,      z80netb,  z80net,   z80netb, 0, "Nuova Elettronica",	"Z80NE + LX.388 + Basic 16k", GAME_NO_SOUND | GAME_COMPUTER)
-COMP( 1980,	z80netf,  z80ne,    0,      z80netf,  z80netf,  z80netf, 0, "Nuova Elettronica",	"Z80NE + LX.388 + LX.390",    GAME_NO_SOUND | GAME_COMPUTER)
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT     COMPANY               FULLNAME                      FLAGS */
+COMP( 1980,	z80ne,    0,        0,      z80ne,    z80ne,    z80ne,   "Nuova Elettronica",	"Z80NE",                      GAME_NO_SOUND | GAME_COMPUTER)
+COMP( 1980,	z80net,   z80ne,    0,      z80net,   z80net,   z80net,  "Nuova Elettronica",	"Z80NE + LX.388",             GAME_NO_SOUND | GAME_COMPUTER)
+COMP( 1980,	z80netb,  z80ne,    0,      z80netb,  z80net,   z80netb, "Nuova Elettronica",	"Z80NE + LX.388 + Basic 16k", GAME_NO_SOUND | GAME_COMPUTER)
+COMP( 1980,	z80netf,  z80ne,    0,      z80netf,  z80netf,  z80netf, "Nuova Elettronica",	"Z80NE + LX.388 + LX.390",    GAME_NO_SOUND | GAME_COMPUTER)

@@ -26,7 +26,7 @@
 /* Memory Maps */
 
 static ADDRESS_MAP_START( program_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_ROMBANK(1)
+	AM_RANGE(0x0000, 0x03ff) AM_ROMBANK("bank1")
 	AM_RANGE(0x0400, 0x0fff) AM_ROM
 ADDRESS_MAP_END
 
@@ -85,7 +85,7 @@ static MACHINE_DRIVER_START( advision )
 
     /* video hardware */
 	MDRV_SCREEN_ADD(SCREEN_TAG, RASTER)
-	MDRV_SCREEN_REFRESH_RATE(8*15)
+	MDRV_SCREEN_REFRESH_RATE(4*15)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 200)
@@ -123,5 +123,5 @@ ROM_END
 
 /* Game Driver */
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE   INPUT     INIT        CONFIG      COMPANY                 FULLNAME            FLAGS */
-CONS( 1982, advision,	0,		0,		advision, advision,	0,			0,	"Entex Electronics",	"Adventure Vision", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE   INPUT     INIT        COMPANY                 FULLNAME            FLAGS */
+CONS( 1982, advision,	0,		0,		advision, advision,	0,			"Entex Industries Inc.",	"Adventure Vision", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )

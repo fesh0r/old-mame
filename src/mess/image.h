@@ -15,7 +15,7 @@
 #include "utils.h"
 #include "opresolv.h"
 #include "osdmess.h"
-
+#include "softlist.h"
 
 
 /***************************************************************************
@@ -37,7 +37,7 @@ typedef int (*device_image_verify_func)(const UINT8 *buf, size_t size);
 typedef void (*device_display_func)(const device_config *image);
 typedef void (*device_image_partialhash_func)(char *, const unsigned char *, unsigned long, unsigned int);
 typedef const char *(*device_get_name_func)(const device_config *device, char *buffer, size_t buffer_length);
-typedef void (*device_get_image_devices_func)(const device_config *device, device_config **listheadptr);
+typedef void (*device_get_image_devices_func)(const device_config *device, device_list *devlist);
 
 typedef enum
 {
@@ -57,7 +57,8 @@ typedef enum
     IO_QUICKLOAD,   /* 12 - Allow to load program/data into memory, without matching any actual device */
     IO_MEMCARD,     /* 13 - Memory card */
     IO_CDROM,       /* 14 - optical CD-ROM disc */
-    IO_COUNT        /* 15 - Total Number of IO_devices for searching */
+	IO_MAGTAPE,     /* 15 - Magentic tape */
+    IO_COUNT        /* 16 - Total Number of IO_devices for searching */
 } iodevice_t;
 
 
@@ -144,6 +145,7 @@ enum
     DEVINFO_STR_IMAGE_CREATE_OPTNAME,
     DEVINFO_STR_IMAGE_CREATE_OPTDESC = DEVINFO_STR_IMAGE_CREATE_OPTNAME + DEVINFO_CREATE_OPTMAX,
     DEVINFO_STR_IMAGE_CREATE_OPTEXTS = DEVINFO_STR_IMAGE_CREATE_OPTDESC + DEVINFO_CREATE_OPTMAX,
+	DEVINFO_STR_SOFTWARE_LIST,
     DEVINFO_STR_IMAGE_LAST = DEVINFO_STR_IMAGE_FIRST + 0x0fff
 };
 
@@ -264,6 +266,11 @@ int image_feof(const device_config *image);
 void *image_ptr(const device_config *image);
 
 
+UINT8 *image_get_software_region(const device_config *image, const char *tag);
+UINT32 image_get_software_region_length(const device_config *image, const char *tag);
+const software_entry *image_software_entry(const device_config *image);
+
+
 
 /****************************************************************************
   Memory allocators
@@ -338,6 +345,6 @@ const device_config *image_from_absolute_index(running_machine *machine, int abs
 #define DEVICE_GET_NAME(name)               const char *DEVICE_GET_NAME_NAME(name)(const device_config *device, char *buffer, size_t buffer_length)
 
 #define DEVICE_GET_IMAGE_DEVICES_NAME(name) device_get_image_devices_##name
-#define DEVICE_GET_IMAGE_DEVICES(name)      void DEVICE_GET_IMAGE_DEVICES_NAME(name)(const device_config *device, device_config **listheadptr)
+#define DEVICE_GET_IMAGE_DEVICES(name)      void DEVICE_GET_IMAGE_DEVICES_NAME(name)(const device_config *device, device_list *devlist)
 
 #endif /* __IMAGE_H__ */

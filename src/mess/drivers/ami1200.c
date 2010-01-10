@@ -61,15 +61,15 @@ static WRITE32_HANDLER( aga_overlay_w )
 		data = (data >> 16) & 1;
 
 		/* switch banks as appropriate */
-		memory_set_bank(space->machine, 1, data & 1);
+		memory_set_bank(space->machine, "bank1", data & 1);
 
 		/* swap the write handlers between ROM and bank 1 based on the bit */
 		if ((data & 1) == 0)
 			/* overlay disabled, map RAM on 0x000000 */
-			memory_install_write32_handler(space, 0x000000, 0x1fffff, 0, 0, SMH_BANK(1));
+			memory_install_write_bank(space, 0x000000, 0x1fffff, 0, 0, "bank1");
 		else
 			/* overlay enabled, map Amiga system ROM on 0x000000 */
-			memory_install_write32_handler(space, 0x000000, 0x1fffff, 0, 0, SMH_UNMAP);
+			memory_unmap_write(space, 0x000000, 0x1fffff, 0, 0);
 	}
 }
 
@@ -97,7 +97,7 @@ static WRITE8_DEVICE_HANDLER( cd32_cia_0_porta_w )
 		sound_set_output_gain(cdda, 0, BIT(data, 0) ? 0.0 : 1.0 );
 
 	/* bit 2 = Power Led on Amiga */
-	set_led_status(0, !BIT(data, 1));
+	set_led_status(device->machine, 0, !BIT(data, 1));
 
 	handle_cd32_joystick_cia(data, cia_r(device, 2));
 }
@@ -132,7 +132,7 @@ static WRITE8_DEVICE_HANDLER( cd32_cia_0_portb_w )
 
 static ADDRESS_MAP_START( a1200_map, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x000000, 0x1fffff) AM_RAMBANK(1) AM_BASE(&amiga_chip_ram32) AM_SIZE(&amiga_chip_ram_size)
+	AM_RANGE(0x000000, 0x1fffff) AM_RAMBANK("bank1") AM_BASE(&amiga_chip_ram32) AM_SIZE(&amiga_chip_ram_size)
 	AM_RANGE(0xbfa000, 0xbfa003) AM_WRITE(aga_overlay_w)
 	AM_RANGE(0xbfd000, 0xbfefff) AM_READWRITE16(amiga_cia_r, amiga_cia_w, 0xffffffff)
 	AM_RANGE(0xc00000, 0xdfffff) AM_READWRITE16(amiga_custom_r, amiga_custom_w, 0xffffffff) AM_BASE((UINT32**)&amiga_custom_regs)
@@ -142,7 +142,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cd32_map, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x000000, 0x1fffff) AM_RAMBANK(1) AM_BASE(&amiga_chip_ram32) AM_SIZE(&amiga_chip_ram_size)
+	AM_RANGE(0x000000, 0x1fffff) AM_RAMBANK("bank1") AM_BASE(&amiga_chip_ram32) AM_SIZE(&amiga_chip_ram_size)
 	AM_RANGE(0xb80000, 0xb8003f) AM_READWRITE(amiga_akiko32_r, amiga_akiko32_w)
 	AM_RANGE(0xbfa000, 0xbfa003) AM_WRITE(aga_overlay_w)
 	AM_RANGE(0xbfd000, 0xbfefff) AM_READWRITE16(amiga_cia_r, amiga_cia_w, 0xffffffff)
@@ -380,7 +380,7 @@ INPUT_PORTS_END
 static READ8_DEVICE_HANDLER( a1200_cia_0_portA_r )
 {
 	UINT8 ret = input_port_read(device->machine, "CIA0PORTA") & 0xc0;	/* Gameport 1 and 0 buttons */
-	ret |= amiga_fdc_status_r();
+	ret |= amiga_fdc_status_r(devtag_get_device(device->machine, "fdc"));
 	return ret;
 }
 
@@ -414,7 +414,7 @@ static const cia6526_interface a1200_cia_1_intf =
 	0,													/* tod_clock */
 	{
 		{ DEVCB_NULL, DEVCB_NULL },									/* port A */
-		{ DEVCB_NULL, DEVCB_HANDLER(amiga_fdc_control_w) }			/* port B */
+		{ DEVCB_NULL, DEVCB_DEVICE_HANDLER("fdc", amiga_fdc_control_w) }			/* port B */
 	}
 };
 
@@ -462,6 +462,8 @@ static MACHINE_DRIVER_START( a1200n )
 	/* cia */
 	MDRV_CIA8520_ADD("cia_0", AMIGA_68EC020_NTSC_CLOCK / 10, a1200_cia_0_intf)
 	MDRV_CIA8520_ADD("cia_1", AMIGA_68EC020_NTSC_CLOCK / 10, a1200_cia_1_intf)
+	
+	MDRV_AMIGA_FDC_ADD("fdc")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( a1200p )
@@ -555,7 +557,7 @@ ROM_END
 
 static UINT16 a1200_read_dskbytr(running_machine *machine)
 {
-	return amiga_fdc_get_byte();
+	return amiga_fdc_get_byte(devtag_get_device(machine, "fdc"));
 }
 
 static void a1200_write_dsklen(running_machine *machine, UINT16 data)
@@ -563,7 +565,7 @@ static void a1200_write_dsklen(running_machine *machine, UINT16 data)
 	if ( data & 0x8000 )
 	{
 		if ( CUSTOM_REG(REG_DSKLEN) & 0x8000 )
-			amiga_fdc_setup_dma(machine);
+			amiga_fdc_setup_dma(devtag_get_device(machine, "fdc"));
 	}
 }
 
@@ -587,8 +589,8 @@ static DRIVER_INIT( a1200 )
 	amiga_machine_config(machine, &cubocd32_intf);
 
 	/* set up memory */
-	memory_configure_bank(machine, 1, 0, 1, amiga_chip_ram32, 0);
-	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "user1"), 0);
+	memory_configure_bank(machine, "bank1", 0, 1, amiga_chip_ram32, 0);
+	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, "user1"), 0);
 
 	/* initialize keyboard */
 	amigakbd_init(machine);
@@ -613,25 +615,16 @@ static DRIVER_INIT( cd32 )
 	amiga_machine_config(machine, &cubocd32_intf);
 
 	/* set up memory */
-	memory_configure_bank(machine, 1, 0, 1, amiga_chip_ram32, 0);
-	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "user1"), 0);
+	memory_configure_bank(machine, "bank1", 0, 1, amiga_chip_ram32, 0);
+	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, "user1"), 0);
 
 	/* intialize akiko */
 	amiga_akiko_init(machine);
 }
 
-/***************************************************************************
-  System config
-***************************************************************************/
-
-static SYSTEM_CONFIG_START(a1200)
-	CONFIG_DEVICE(amiga_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-
 /***************************************************************************************************/
 
-/*    YEAR  NAME     PARENT   COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY       FULLNAME */
-COMP( 1992, a1200n,  0,       0,      a1200n, a1200,  a1200,  a1200,  "Commodore",  "Amiga 1200 (NTSC)" , GAME_NOT_WORKING )
-COMP( 1992, a1200p,  a1200n,  0,      a1200p, a1200,  a1200,  a1200,  "Commodore",  "Amiga 1200 (PAL)" , GAME_NOT_WORKING )
-CONS( 1993, cd32,    0,       0,      cd32,   cd32,   cd32,   0,      "Commodore",  "Amiga CD32 (NTSC)" , GAME_NOT_WORKING )
+/*    YEAR  NAME     PARENT   COMPAT  MACHINE INPUT   INIT      COMPANY       FULLNAME */
+COMP( 1992, a1200n,  0,       0,      a1200n, a1200,  a1200,  "Commodore",  "Amiga 1200 (NTSC)" , GAME_NOT_WORKING )
+COMP( 1992, a1200p,  a1200n,  0,      a1200p, a1200,  a1200,  "Commodore",  "Amiga 1200 (PAL)" , GAME_NOT_WORKING )
+CONS( 1993, cd32,    0,       0,      cd32,   cd32,   cd32,   "Commodore",  "Amiga CD32 (NTSC)" , GAME_NOT_WORKING )

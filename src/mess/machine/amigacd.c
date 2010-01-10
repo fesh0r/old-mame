@@ -10,7 +10,7 @@ DMAC controller.
 
 
 #include "driver.h"
-#include "amiga.h"
+#include "includes/amiga.h"
 #include "amigacd.h"
 #include "machine/6525tpi.h"
 #include "machine/6526cia.h"
@@ -396,8 +396,7 @@ static void	dmac_install(running_machine *machine, offs_t base)
 static void	dmac_uninstall(running_machine *machine, offs_t base)
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	memory_install_read16_handler(space, base, base + 0xFFFF, 0, 0, SMH_UNMAP);
-	memory_install_write16_handler(space, base, base + 0xFFFF, 0, 0, SMH_UNMAP);
+	memory_unmap_readwrite(space, base, base + 0xFFFF, 0, 0);
 }
 
 static const amiga_autoconfig_device dmac_device =
@@ -519,12 +518,13 @@ MACHINE_START( amigacd )
 
 	/* set up DMAC with autoconfig */
 	amiga_add_autoconfig( machine, &dmac_device );
+
+	matsucd_init( devtag_get_device(machine, "cdrom"), "cdda" );
 }
 
 MACHINE_RESET( amigacd )
 {
 	/* initialize the cdrom */
-	matsucd_init( devtag_get_device(machine, "cdrom"), "cdda" );
 	matsucd_set_status_enabled_callback( cdrom_status_enabled );
 	matsucd_set_status_changed_callback( cdrom_status_change );
 	matsucd_set_subcode_ready_callback( cdrom_subcode_ready );

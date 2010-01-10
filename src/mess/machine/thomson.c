@@ -382,64 +382,81 @@ static void thom_set_caps_led ( running_machine *machine, int led )
 
 static struct serial_connection to7_io_line;
 
-
-
-DEVICE_START( thom_serial )
-{
-	const device_config *acia = devtag_get_device(device->machine, "acia");
-	int idx = image_index_in_device(device);
-
-	DEVICE_START_CALL(serial_device);
-
-	switch ( idx ) {
-
-	case THOM_SERIAL_CC90323:
-		LOG(( "thom_serial_init: init CD 90-320 RS232 device\n" ));
-		serial_device_connect( device, &to7_io_line );
-		break;
-
-	case THOM_SERIAL_RF57232:
-		LOG(( "thom_serial_init: init RF 57-232 RS232 device\n" ));
-		acia_6551_connect_to_serial_device( acia, device );
-		break;
-
-	case THOM_SERIAL_MODEM:
-		LOG(( "thom_serial_init: init MODEM (MD 90-120) device\n" ));
-		break;
-
-	default:
-		fatalerror( "thom_serial_init: unknown serial device index %i\n", idx );
-		break;
-	}
-
-	serial_device_setup( device, 2400, 7, 2, SERIAL_PARITY_NONE ); /* default */
+static DEVICE_START( thom_serial_cc90323 )
+{	
+	DEVICE_START_CALL(serial);
+	LOG(( "thom_serial_init: init CD 90-320 RS232 device\n" ));
+	serial_device_connect( device, &to7_io_line );
+	serial_device_setup( device, 2400, 7, 2, SERIAL_PARITY_NONE );
 	serial_device_set_transmit_state( device, 1 );
 }
 
-
-
-DEVICE_IMAGE_UNLOAD( thom_serial )
+static DEVICE_START( thom_serial_rf57232 )
 {
-	device_unload_serial_device( image );
+	const device_config *acia = devtag_get_device(device->machine, "acia");
+	DEVICE_START_CALL(serial);
+	LOG(( "thom_serial_init: init RF 57-232 RS232 device\n" ));
+	acia_6551_connect_to_serial_device( acia, device );
+	serial_device_setup( device, 2400, 7, 2, SERIAL_PARITY_NONE );
+	serial_device_set_transmit_state( device, 1 );
 }
 
-
-
-DEVICE_IMAGE_LOAD( thom_serial )
+static DEVICE_START( thom_serial_modem )
 {
-	int idx = image_index_in_device( image );
+	DEVICE_START_CALL(serial);
+	LOG(( "thom_serial_init: init MODEM (MD 90-120) device\n" ));
+	serial_device_setup( device, 2400, 7, 2, SERIAL_PARITY_NONE );
+	serial_device_set_transmit_state( device, 1 );
+}
 
-	if ( device_load_serial_device( image ) != INIT_PASS )
+static DEVICE_IMAGE_LOAD( thom_serial )
+{
+	if ( device_load_serial( image ) != INIT_PASS )
 	{
-		logerror( "thom_serial_load: could not load serial image in device %i\n", idx );
+		logerror( "thom_serial_load: could not load serial image in device\n");
 		return INIT_FAIL;
 	}
 
 	return INIT_PASS;
 }
 
+DEVICE_GET_INFO( thom_serial_cc90323 )
+{
+	switch ( state )
+	{
+		case DEVINFO_FCT_START:		                info->start = DEVICE_START_NAME( thom_serial_cc90323 );    break;
+		case DEVINFO_FCT_IMAGE_LOAD:		        info->f = (genf *) DEVICE_IMAGE_LOAD_NAME( thom_serial );break;
+		case DEVINFO_STR_NAME:		                strcpy(info->s, "CD 90-320 RS232");	                 break;
+		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:	    strcpy(info->s, "txt");                                  break;
+		default: 									DEVICE_GET_INFO_CALL(serial);	break;
+	}
+}
+
+DEVICE_GET_INFO( thom_serial_rf57232 )
+{
+	switch ( state )
+	{
+		case DEVINFO_FCT_START:		                info->start = DEVICE_START_NAME( thom_serial_rf57232 );    break;
+		case DEVINFO_FCT_IMAGE_LOAD:		        info->f = (genf *) DEVICE_IMAGE_LOAD_NAME( thom_serial );break;
+		case DEVINFO_STR_NAME:		                strcpy(info->s, "RF 57-232 RS232");	                 break;
+		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:	    strcpy(info->s, "txt");                                  break;
+		default: 									DEVICE_GET_INFO_CALL(serial);	break;
+	}
+}
 
 
+DEVICE_GET_INFO( thom_serial_modem )
+{
+	switch ( state )
+	{
+		case DEVINFO_FCT_START:		                info->start = DEVICE_START_NAME( thom_serial_modem );    break;
+		case DEVINFO_FCT_IMAGE_LOAD:		        info->f = (genf *) DEVICE_IMAGE_LOAD_NAME( thom_serial );break;
+		case DEVINFO_STR_NAME:		                strcpy(info->s, "MODEM (MD 90-120)");	                 break;
+		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:	    strcpy(info->s, "txt");                                  break;
+		default: 									DEVICE_GET_INFO_CALL(serial);	break;
+	}
+}
+		
 /* ------------ 6850 defines ------------ */
 
 #define ACIA_6850_RDRF  0x01    /* Receive data register full */
@@ -684,8 +701,10 @@ static READ8_DEVICE_HANDLER ( to7_sys_porta_in )
 		int keyline = pia6821_get_output_b( device );
 		UINT8 val = 0xff;
 		int i;
-		static const char *const keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3",
-											"keyboard_4", "keyboard_5", "keyboard_6", "keyboard_7" };
+		static const char *const keynames[] = {
+			"keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3",
+			"keyboard_4", "keyboard_5", "keyboard_6", "keyboard_7"
+		};
 
 		for ( i = 0; i < 8; i++ )
 		{
@@ -751,10 +770,11 @@ typedef enum
 static to7_io_dev to7_io_mode( running_machine *machine )
 {
 	const device_config *centronics = devtag_get_device(machine, "centronics");
+	const device_config *serial = devtag_get_device(machine, "cc90232");
 
 	if (centronics_pe_r(centronics) == TRUE)
 		return TO7_IO_CENTRONICS;
-	else if ( image_exists( image_from_devtype_and_index( machine, IO_SERIAL, THOM_SERIAL_CC90323 ) ) )
+	else if ( image_exists( serial ))
 		return TO7_IO_RS232;
 	return TO7_IO_NONE;
 }
@@ -1564,8 +1584,8 @@ MACHINE_START ( to7 )
 		/* install 16 KB or 16 KB + 8 KB memory extensions */
 		/* BASIC instruction to see free memory: ?FRE(0) */
 		int extram = messram_get_size(devtag_get_device(machine, "messram")) - 24*1024;
-		memory_install_write8_handler(space, 0x8000, 0x8000 + extram - 1, 0, 0, (write8_space_func)(STATIC_BANK1 + THOM_RAM_BANK - 1) );
-		memory_install_read8_handler(space, 0x8000, 0x8000 + extram - 1, 0, 0, (read8_space_func)(STATIC_BANK1 + THOM_RAM_BANK - 1) );
+		memory_install_write_bank(space, 0x8000, 0x8000 + extram - 1, 0, 0, THOM_RAM_BANK);
+		memory_install_read_bank(space, 0x8000, 0x8000 + extram - 1, 0, 0, THOM_RAM_BANK );
 		memory_configure_bank( machine, THOM_RAM_BANK,  0, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x6000, extram );
 		memory_set_bank( machine, THOM_RAM_BANK, 0 );
 	}
@@ -1603,8 +1623,10 @@ static WRITE8_DEVICE_HANDLER ( to770_sys_cb2_out )
 static READ8_DEVICE_HANDLER ( to770_sys_porta_in )
 {
 	/* keyboard */
-	static const char *const keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3",
-										"keyboard_4", "keyboard_5", "keyboard_6", "keyboard_7" };
+	static const char *const keynames[] = {
+		"keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3",
+		"keyboard_4", "keyboard_5", "keyboard_6", "keyboard_7"
+	};
 	int keyline = pia6821_get_output_b( device ) & 7;
 
 	return input_port_read(device->machine, keynames[7 - keyline]);
@@ -1645,11 +1667,11 @@ static void to770_update_ram_bank(running_machine *machine)
 	if ( messram_get_size(devtag_get_device(machine, "messram")) == 128*1024 || bank < 2 )
 	{
 		memory_set_bank( machine, THOM_RAM_BANK, bank );
-		memory_install_write8_handler(space, 0xa000, 0xdfff, 0, 0, (write8_space_func)(STATIC_BANK1 + THOM_RAM_BANK - 1) );
+		memory_install_write_bank(space, 0xa000, 0xdfff, 0, 0, THOM_RAM_BANK);
 	}
 	else
 	{
-		memory_install_write8_handler(space, 0xa000, 0xdfff, 0, 0, SMH_UNMAP );
+		memory_unmap_write(space, 0xa000, 0xdfff, 0, 0);
 	}
 
 	old_ram_bank = bank;
@@ -1916,8 +1938,10 @@ static READ8_DEVICE_HANDLER ( mo5_sys_portb_in )
 	UINT8 portb = pia6821_get_output_b( device );
 	int col = (portb >> 1) & 7;       /* key column */
 	int lin = 7 - ((portb >> 4) & 7); /* key line */
-	static const char *const keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3",
-										"keyboard_4", "keyboard_5", "keyboard_6", "keyboard_7" };
+	static const char *const keynames[] = {
+		"keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3",
+		"keyboard_4", "keyboard_5", "keyboard_6", "keyboard_7"
+	};
 
 	return ( input_port_read(device->machine, keynames[lin]) & (1 << col) ) ? 0x80 : 0;
 }
@@ -2041,12 +2065,12 @@ static void mo5_update_cart_bank(running_machine *machine)
 	int rom_is_ram = mo5_reg_cart & 4;
 	int bank = 0;
 
-	memory_install_read8_handler( space, 0xb000, 0xefff, 0, 0, (read8_space_func)(STATIC_BANK1 + THOM_CART_BANK - 1) );
+	memory_install_read_bank( space, 0xb000, 0xefff, 0, 0, THOM_CART_BANK);
 
 	if ( rom_is_ram && thom_cart_nb_banks == 4 )
 	{
 		/* 64 KB ROM from "JANE" cartridge */
-		memory_install_write8_handler( space, 0xb000, 0xefff, 0, 0, SMH_NOP );
+		memory_nop_write( space, 0xb000, 0xefff, 0, 0);
 		bank = mo5_reg_cart & 3;
 		if ( bank != old_cart_bank )
 			LOG_BANK(( "mo5_update_cart_bank: CART is cartridge bank %i (A7CB style)\n", bank ));
@@ -2056,7 +2080,11 @@ static void mo5_update_cart_bank(running_machine *machine)
 		/* 64 KB RAM from network extension */
 		int write_enable = mo5_reg_cart & 8;
 		bank = 4 + ( mo5_reg_cart & 3 );
-		memory_install_write8_handler( space, 0xb000, 0xefff, 0, 0, write_enable ? (write8_space_func)(STATIC_BANK1 + THOM_CART_BANK - 1) :  SMH_NOP );
+		if (write_enable) {
+			memory_install_write_bank( space, 0xb000, 0xefff, 0, 0, THOM_CART_BANK);
+		} else {
+			memory_nop_write( space, 0xb000, 0xefff, 0, 0);
+		}
 		if ( bank != old_cart_bank )
 			LOG_BANK(( "mo5_update_cart_bank: CART is nanonetwork RAM bank %i (write-enable=%i)\n", mo5_reg_cart & 3, write_enable ? 1 : 0 ));
 	}
@@ -2403,7 +2431,7 @@ static void to9_update_cart_bank(running_machine *machine)
 	int slot = ( mc6846_get_output_port(devtag_get_device(machine, "mc6846")) >> 4 ) & 3; /* bits 4-5: ROM bank */
 
 	/* reset cartridge read handler */
-	memory_install_read8_handler( space, 0x0000, 0x0003, 0, 0, (read8_space_func)(STATIC_BANK1 + THOM_CART_BANK - 1) );
+	memory_install_read_bank( space, 0x0000, 0x0003, 0, 0, THOM_CART_BANK );
 
 	switch ( slot )
 	{
@@ -2515,11 +2543,11 @@ static void to9_update_ram_bank (running_machine *machine)
 	if ( messram_get_size(devtag_get_device(machine, "messram")) == 192*1024 || bank < 6 )
 	{
 		memory_set_bank( machine, THOM_RAM_BANK, bank );
-		memory_install_write8_handler( space, 0xa000, 0xdfff, 0, 0, (write8_space_func)(STATIC_BANK1 + THOM_RAM_BANK - 1) );
+		memory_install_write_bank( space, 0xa000, 0xdfff, 0, 0, THOM_RAM_BANK);
 	}
 	else
 	{
-		memory_install_write8_handler( space, 0xa000, 0xdfff, 0, 0, SMH_NOP );
+		memory_nop_write( space, 0xa000, 0xdfff, 0, 0);
 	}
 
 	old_ram_bank = bank;
@@ -2584,8 +2612,10 @@ static int to9_kbd_ktest ( running_machine *machine )
 {
 	int line, bit;
 	UINT8 port;
-	static const char *const keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", "keyboard_4",
-										"keyboard_5", "keyboard_6", "keyboard_7", "keyboard_8", "keyboard_9" };
+	static const char *const keynames[] = {
+		"keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", "keyboard_4",
+		"keyboard_5", "keyboard_6", "keyboard_7", "keyboard_8", "keyboard_9"
+	};
 
 	for ( line = 0; line < 10; line++ )
 	{
@@ -2818,8 +2848,10 @@ static int to9_kbd_get_key( running_machine *machine )
 	int shift   = ! (input_port_read(machine, "keyboard_9") & 1);
 	int key = -1, line, bit;
 	UINT8 port;
-	static const char *const keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", "keyboard_4",
-										"keyboard_5", "keyboard_6", "keyboard_7", "keyboard_8", "keyboard_9" };
+	static const char *const keynames[] = {
+		"keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", "keyboard_4",
+		"keyboard_5", "keyboard_6", "keyboard_7", "keyboard_8", "keyboard_9"
+	};
 
 	for ( line = 0; line < 10; line++ )
 	{
@@ -3217,8 +3249,10 @@ static int to8_kbd_ktest ( running_machine *machine )
 {
 	int line, bit;
 	UINT8 port;
-	static const char *const keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", "keyboard_4",
-										"keyboard_5", "keyboard_6", "keyboard_7", "keyboard_8", "keyboard_9" };
+	static const char *const keynames[] = {
+		"keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", "keyboard_4",
+		"keyboard_5", "keyboard_6", "keyboard_7", "keyboard_8", "keyboard_9"
+	};
 
 	if ( input_port_read(machine, "config") & 2 )
 		return 0; /* disabled */
@@ -3249,8 +3283,10 @@ static int to8_kbd_get_key( running_machine *machine )
 	int shift   = (input_port_read(machine, "keyboard_9") & 1) ? 0 : 0x080;
 	int key = -1, line, bit;
 	UINT8 port;
-	static const char *const keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", "keyboard_4",
-										"keyboard_5", "keyboard_6", "keyboard_7", "keyboard_8", "keyboard_9" };
+	static const char *const keynames[] = {
+		"keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", "keyboard_4",
+		"keyboard_5", "keyboard_6", "keyboard_7", "keyboard_8", "keyboard_9"
+	};
 
 	if ( input_port_read(machine, "config") & 2 )
 		return -1; /* disabled */
@@ -3575,13 +3611,19 @@ static void to8_update_ram_bank (running_machine *machine)
 	{
 		memory_set_bank( machine, TO8_DATA_LO, to8_data_vpage );
 		memory_set_bank( machine, TO8_DATA_HI, to8_data_vpage );
-		memory_install_write8_handler( space, 0xa000, 0xbfff, 0, 0, to8_data_vpage <= 4 ? to8_data_lo_w : (write8_space_func)(STATIC_BANK1 + TO8_DATA_LO - 1) );
-		memory_install_write8_handler( space, 0xc000, 0xdfff, 0, 0, to8_data_vpage <= 4 ? to8_data_hi_w : (write8_space_func)(STATIC_BANK1 + TO8_DATA_HI - 1) );
+
+		if (to8_data_vpage <= 4) {
+			memory_install_write8_handler( space, 0xa000, 0xbfff, 0, 0, to8_data_lo_w);
+			memory_install_write8_handler( space, 0xc000, 0xdfff, 0, 0, to8_data_hi_w);
+		} else {
+			memory_install_write_bank( space, 0xa000, 0xbfff, 0, 0, TO8_DATA_LO);
+			memory_install_write_bank( space, 0xc000, 0xdfff, 0, 0, TO8_DATA_HI);
+		}
 	}
 	else
 	{
-		memory_install_write8_handler( space, 0xa000, 0xbfff, 0, 0, SMH_NOP );
-		memory_install_write8_handler( space, 0xc000, 0xdfff, 0, 0, SMH_NOP );
+		memory_nop_write( space, 0xa000, 0xbfff, 0, 0);
+		memory_nop_write( space, 0xc000, 0xdfff, 0, 0);
 	}
 }
 
@@ -3600,18 +3642,22 @@ static void to8_update_cart_bank (running_machine *machine)
 	int bank = 0;
 
 	/* reset bank switch */
-	memory_install_read8_handler( space, 0x0000, 0x0003, 0, 0, (read8_space_func)(STATIC_BANK1 + THOM_CART_BANK - 1) );
+	memory_install_read_bank( space, 0x0000, 0x0003, 0, 0, THOM_CART_BANK );
 
 	if ( to8_reg_cart & 0x20 )
 	{
 		/* RAM space */
 		to8_cart_vpage = to8_reg_cart & 31;
 		bank = 8 + to8_cart_vpage;
-		memory_install_write8_handler( space, 0x0000, 0x3fff, 0, 0,
-					       ((to8_cart_vpage < 8 || messram_get_size(devtag_get_device(machine, "messram")) == 512*1024) && (to8_reg_cart & 0x40)) ?
-					       (to8_cart_vpage <= 4) ? to8_vcart_w :
-					       (write8_space_func)(STATIC_BANK1 + THOM_CART_BANK - 1) :
-					       SMH_NOP );
+		if ((to8_cart_vpage < 8 || messram_get_size(devtag_get_device(machine, "messram")) == 512*1024) && (to8_reg_cart & 0x40)) {
+			if (to8_cart_vpage <= 4) {
+				memory_install_write8_handler( space, 0x0000, 0x3fff, 0, 0,to8_vcart_w);
+			} else {
+				memory_install_write_bank( space, 0x0000, 0x3fff, 0, 0,THOM_CART_BANK);
+			}
+		} else {
+			memory_nop_write( space, 0x0000, 0x3fff, 0, 0);
+		}
 		if ( bank != old_cart_bank )
 			LOG_BANK(( "to8_update_cart_bank: CART is RAM bank %i (write-enable=%i)\n", to8_cart_vpage, (to8_reg_cart & 0x40) ? 1 : 0 ));
 	}
@@ -4362,7 +4408,7 @@ static void mo6_update_cart_bank (running_machine *machine)
 	int b = (pia6821_get_output_a( sys_pia ) >> 5) & 1;
 	int bank = 0;
 
-	memory_install_read8_handler( space, 0xb000, 0xefff, 0, 0, (read8_space_func)(STATIC_BANK1 + THOM_CART_BANK - 1) );
+	memory_install_read_bank( space, 0xb000, 0xefff, 0, 0, THOM_CART_BANK );
 
 	if ( ( ( to8_reg_sys1 & 0x40 ) && ( to8_reg_cart & 0x20 ) ) || ( ! ( to8_reg_sys1 & 0x40 ) && ( mo5_reg_cart & 4 ) ) )
 	{
@@ -4372,16 +4418,22 @@ static void mo6_update_cart_bank (running_machine *machine)
 			/* use a7e6 */
 			to8_cart_vpage = to8_reg_cart & 7; /* 128 KB RAM only = 8 pages */
 			bank = 8 + to8_cart_vpage;
-			memory_install_write8_handler( space, 0xb000, 0xefff, 0, 0,
-						       (to8_reg_cart & 0x40) ? (to8_cart_vpage <= 4) ? to8_vcart_w :
-						       (write8_space_func)(STATIC_BANK1 + THOM_CART_BANK - 1) : SMH_NOP );
+			if (to8_reg_cart & 0x40)  {
+				if (to8_cart_vpage <= 4) {
+					memory_install_write8_handler( space, 0xb000, 0xefff, 0, 0, to8_vcart_w);
+				} else {
+					memory_install_write_bank( space, 0xb000, 0xefff, 0, 0,THOM_CART_BANK);
+				}
+			} else {
+				memory_nop_write( space, 0xb000, 0xefff, 0, 0);
+			}
 			if ( bank != old_cart_bank )
 				LOG_BANK(( "mo6_update_cart_bank: CART is RAM bank %i (write-enable=%i)\n", to8_cart_vpage, (to8_reg_cart & 0x40) ? 1 : 0 ));
 		}
 		else if ( thom_cart_nb_banks == 4 )
 		{
 			/* "JANE"-style cartridge bank switching */
-			memory_install_write8_handler( space, 0xb000, 0xefff, 0, 0, SMH_NOP );
+			memory_nop_write( space, 0xb000, 0xefff, 0, 0);
 			bank = mo5_reg_cart & 3;
 			if ( bank != old_cart_bank )
 				LOG_BANK(( "mo6_update_cart_bank: CART is external cartridge bank %i (A7CB style)\n", bank ));
@@ -4392,8 +4444,11 @@ static void mo6_update_cart_bank (running_machine *machine)
 			int write_enable = mo5_reg_cart & 8;
 			to8_cart_vpage = (mo5_reg_cart & 3) | 4;
 			bank = 8 + to8_cart_vpage;
-			memory_install_write8_handler( space, 0xb000, 0xefff, 0, 0, write_enable ?
-						       (write8_space_func)(STATIC_BANK1 + THOM_CART_BANK - 1) :  SMH_NOP );
+			if (write_enable) {
+				memory_install_write_bank( space, 0xb000, 0xefff, 0, 0, THOM_CART_BANK);
+			} else {
+				memory_nop_write( space, 0xb000, 0xefff, 0, 0 );
+			}
 			if ( bank != old_cart_bank )
 				LOG_BANK(( "mo6_update_cart_bank: CART is RAM bank %i (write-enable=%i) (MO5 compat.)\n", to8_cart_vpage, write_enable ? 1 : 0 ));
 		}
@@ -4401,7 +4456,7 @@ static void mo6_update_cart_bank (running_machine *machine)
 	else
 	{
 		/* ROM space */
-		memory_install_write8_handler( space, 0xb000, 0xefff, 0, 0, SMH_NOP );
+		memory_nop_write( space, 0xb000, 0xefff, 0, 0 );
 		if ( to8_reg_sys2 & 0x20 )
 		{
 			/* internal ROM */
@@ -4603,8 +4658,10 @@ static READ8_DEVICE_HANDLER ( mo6_sys_portb_in )
 	UINT8 portb = pia6821_get_output_b( device );
 	int col = (portb >> 4) & 7;    /* B bits 4-6: kbd column */
 	int lin = (portb >> 1) & 7;    /* B bits 1-3: kbd line */
-	static const char *const keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", "keyboard_4",
-										"keyboard_5", "keyboard_6", "keyboard_7", "keyboard_8", "keyboard_9" };
+	static const char *const keynames[] = {
+		"keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3", "keyboard_4",
+		"keyboard_5", "keyboard_6", "keyboard_7", "keyboard_8", "keyboard_9"
+	};
 
 	if ( ! (porta & 8) )
 		lin = 8;     /* A bit 3: 9-th kbd line select */
@@ -5003,8 +5060,10 @@ static READ8_DEVICE_HANDLER ( mo5nr_sys_portb_in )
 	UINT8 portb = pia6821_get_output_b( device );
 	int col = (portb >> 4) & 7;    /* B bits 4-6: kbd column */
 	int lin = (portb >> 1) & 7;    /* B bits 1-3: kbd line */
-	static const char *const keynames[] = { "keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3",
-										"keyboard_4", "keyboard_5", "keyboard_6", "keyboard_7" };
+	static const char *const keynames[] = {
+		"keyboard_0", "keyboard_1", "keyboard_2", "keyboard_3",
+		"keyboard_4", "keyboard_5", "keyboard_6", "keyboard_7"
+	};
 
 	return ( input_port_read(device->machine, keynames[lin]) & (1 << col) ) ? 0x80 : 0;
 	/* bit 7: key up */

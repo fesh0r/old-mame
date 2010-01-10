@@ -5,6 +5,8 @@
 #include "machine/nes_mmc.h"
 #include "sound/nes_apu.h"
 #include "devices/cartslot.h"
+#include "devices/flopdrv.h"
+#include "formats/flopimg.h"
 #include "image.h"
 #include "hash.h"
 
@@ -76,13 +78,12 @@ static void init_nes_core( running_machine *machine )
 
 	/* Brutal hack put in as a consequence of the new memory system; we really
        need to fix the NES code */
-	memory_install_read8_handler(space, 0x0000, 0x07ff, 0, 0x1800, SMH_BANK(10));
-	memory_install_write8_handler(space, 0x0000, 0x07ff, 0, 0x1800, SMH_BANK(10));
+	memory_install_readwrite_bank(space, 0x0000, 0x07ff, 0, 0x1800, "bank10");
 
 	memory_install_readwrite8_handler(cpu_get_address_space(cputag_get_cpu(machine, "ppu"), ADDRESS_SPACE_PROGRAM), 0, 0x1fff, 0, 0, nes_chr_r, nes_chr_w);
 	memory_install_readwrite8_handler(cpu_get_address_space(cputag_get_cpu(machine, "ppu"), ADDRESS_SPACE_PROGRAM), 0x2000, 0x3eff, 0, 0, nes_nt_r, nes_nt_w);
 
-	memory_set_bankptr(machine, 10, nes.rom);
+	memory_set_bankptr(machine, "bank10", nes.rom);
 
 	nes_battery_ram = nes.wram;
 
@@ -96,31 +97,31 @@ static void init_nes_core( running_machine *machine )
             memory for the bank 2 pointer */
 			if (nes_fds.data == NULL)
 				nes_fds.data = auto_alloc_array(machine, UINT8, 0x8000 );
-			memory_install_read8_handler(space, 0x4030, 0x403f, 0, 0, fds_r);
-			memory_install_read8_handler(space, 0x6000, 0xdfff, 0, 0, SMH_BANK(2));
-			memory_install_read8_handler(space, 0xe000, 0xffff, 0, 0, SMH_BANK(1));
+			memory_install_read8_handler(space, 0x4030, 0x403f, 0, 0, nes_fds_r);
+			memory_install_read_bank(space, 0x6000, 0xdfff, 0, 0, "bank2");
+			memory_install_read_bank(space, 0xe000, 0xffff, 0, 0, "bank1");
 
-			memory_install_write8_handler(space, 0x4020, 0x402f, 0, 0, fds_w);
-			memory_install_write8_handler(space, 0x6000, 0xdfff, 0, 0, SMH_BANK(2));
+			memory_install_write8_handler(space, 0x4020, 0x402f, 0, 0, nes_fds_w);
+			memory_install_write_bank(space, 0x6000, 0xdfff, 0, 0, "bank2");
 
-			memory_set_bankptr(machine, 1, &nes.rom[0xe000]);
-			memory_set_bankptr(machine, 2, nes_fds.data );
+			memory_set_bankptr(machine, "bank1", &nes.rom[0xe000]);
+			memory_set_bankptr(machine, "bank2", nes_fds.data );
 			break;
 		case 50:
-			memory_install_write8_handler(space, 0x4020, 0x403f, 0, 0, mapper50_add_w);
-			memory_install_write8_handler(space, 0x40a0, 0x40bf, 0, 0, mapper50_add_w);
+			memory_install_write8_handler(space, 0x4020, 0x403f, 0, 0, nes_mapper50_add_w);
+			memory_install_write8_handler(space, 0x40a0, 0x40bf, 0, 0, nes_mapper50_add_w);
 		default:
 			nes.slow_banking = 0;
-			memory_install_read8_handler(space, 0x6000, 0x7fff, 0, 0, SMH_BANK(5));
-			memory_install_read8_handler(space, 0x8000, 0x9fff, 0, 0, SMH_BANK(1));
-			memory_install_read8_handler(space, 0xa000, 0xbfff, 0, 0, SMH_BANK(2));
-			memory_install_read8_handler(space, 0xc000, 0xdfff, 0, 0, SMH_BANK(3));
-			memory_install_read8_handler(space, 0xe000, 0xffff, 0, 0, SMH_BANK(4));
-			memory_set_bankptr(machine, 1, memory_region(machine, "maincpu") + 0x6000);
-			memory_set_bankptr(machine, 2, memory_region(machine, "maincpu") + 0x8000);
-			memory_set_bankptr(machine, 3, memory_region(machine, "maincpu") + 0xa000);
-			memory_set_bankptr(machine, 4, memory_region(machine, "maincpu") + 0xc000);
-			memory_set_bankptr(machine, 5, memory_region(machine, "maincpu") + 0xe000);
+			memory_install_read_bank(space, 0x6000, 0x7fff, 0, 0, "bank5");
+			memory_install_read_bank(space, 0x8000, 0x9fff, 0, 0, "bank1");
+			memory_install_read_bank(space, 0xa000, 0xbfff, 0, 0, "bank2");
+			memory_install_read_bank(space, 0xc000, 0xdfff, 0, 0, "bank3");
+			memory_install_read_bank(space, 0xe000, 0xffff, 0, 0, "bank4");
+			memory_set_bankptr(machine, "bank1", memory_region(machine, "maincpu") + 0x6000);
+			memory_set_bankptr(machine, "bank2", memory_region(machine, "maincpu") + 0x8000);
+			memory_set_bankptr(machine, "bank3", memory_region(machine, "maincpu") + 0xa000);
+			memory_set_bankptr(machine, "bank4", memory_region(machine, "maincpu") + 0xc000);
+			memory_set_bankptr(machine, "bank5", memory_region(machine, "maincpu") + 0xe000);
 
 			memory_install_write8_handler(space, 0x6000, 0x7fff, 0, 0, nes_mid_mapper_w);
 			memory_install_write8_handler(space, 0x8000, 0xffff, 0, 0, nes_mapper_w);
@@ -130,43 +131,44 @@ static void init_nes_core( running_machine *machine )
 	/* Set up the mapper callbacks */
 	if (nes.format == 1)
 	{
+		mmc_intf intf = { 0 };
 		const mmc *mapper;
 
 		mapper = nes_mapper_lookup(nes.mapper);
 		if (mapper)
 		{
-			mmc_write_low = mapper->mmc_write_low;
-			mmc_read_low = mapper->mmc_read_low;
-			mmc_write_mid = mapper->mmc_write_mid;
-			mmc_write = mapper->mmc_write;
+			intf.mmc_write_low = mapper->mmc_write_low;
+			intf.mmc_read_low = mapper->mmc_read_low;
+			intf.mmc_write_mid = mapper->mmc_write_mid;
+			intf.mmc_write = mapper->mmc_write;
+			nes_mapper_init(&intf);
 			ppu_latch = mapper->ppu_latch;
 		}
 		else
 		{
 			logerror("Mapper %d is not yet supported, defaulting to no mapper.\n",nes.mapper);
-			mmc_write_low = mmc_write_mid = mmc_write = NULL;
-			mmc_read_low = NULL;
-			ppu_latch = NULL;
+			nes_mapper_init(&intf);
 		}
 	}
 	else if (nes.format == 2)
 	{
+		mmc_intf intf = { 0 };
 		const unif *board;
 
 		board = nes_unif_lookup(nes.board);
 		if (board)
 		{
-			mmc_write_low = board->mmc_write_low;
-			mmc_read_low = board->mmc_read_low;
-			mmc_write_mid = board->mmc_write_mid;
-			mmc_write = board->mmc_write;
+			intf.mmc_write_low = board->mmc_write_low;
+			intf.mmc_read_low = board->mmc_read_low;
+			intf.mmc_write_mid = board->mmc_write_mid;
+			intf.mmc_write = board->mmc_write;
+			nes_mapper_init(&intf);
 			ppu_latch = board->ppu_latch;
 		}
 		else
 		{
 			logerror("Board %s is not yet supported, defaulting to no mapper.\n", nes.board);
-			mmc_write_low = mmc_write_mid = mmc_write = NULL;
-			mmc_read_low = NULL;
+			nes_mapper_init(&intf);
 			ppu_latch = NULL;
 		}
 	}
@@ -209,10 +211,10 @@ MACHINE_RESET( nes )
 
 	/* Reset the mapper variables. Will also mark the char-gen ram as dirty */
 	if (nes.format == 1)
-		mapper_reset(machine, nes.mapper);
+		nes_mapper_reset(machine, nes.mapper);
 
 	if (nes.format == 2)
-		unif_reset(machine, nes.board);
+		nes_unif_reset(machine, nes.board);
 
 	/* Reset the serial input ports */
 	in_0.shift = 0;
@@ -221,10 +223,20 @@ MACHINE_RESET( nes )
 	cputag_reset(machine, "maincpu");
 }
 
+emu_timer	*nes_irq_timer;
+
+static TIMER_CALLBACK( nes_irq_callback )
+{
+	cputag_set_input_line(machine, "maincpu", M6502_IRQ_LINE, HOLD_LINE);
+	timer_adjust_oneshot(nes_irq_timer, attotime_never, 0);
+}
+
 MACHINE_START( nes )
 {
 	init_nes_core(machine);
 	add_exit_callback(machine, nes_machine_stop);
+	
+	nes_irq_timer = timer_alloc(machine, nes_irq_callback, NULL);
 }
 
 static void nes_machine_stop( running_machine *machine )
@@ -913,8 +925,27 @@ void nes_partialhash( char *dest, const unsigned char *data, unsigned long lengt
 }
 
 
-DEVICE_START( nes_disk )
+static void nes_load_proc(const device_config *image)
 {
+	nes_fds.sides = 0;	
+	
+	image_fseek(image, 0, SEEK_END);
+	nes_fds.sides = (image_ftell(image) - 16) / 65500;
+	nes_fds.data = image_malloc(image, nes_fds.sides * 65500);
+	image_fseek(image, 0x10, SEEK_SET);
+	image_fread(image, nes_fds.data, 65500 * nes_fds.sides);
+	return;
+}
+
+static void nes_unload_proc(const device_config *image)
+{
+	/* TODO: should write out changes here as well */
+	nes_fds.sides =  0;
+	image_freeptr(image,nes_fds.data);
+}
+
+DRIVER_INIT( famicom) 
+{	
 	/* clear some of the cart variables we don't use */
 	nes.trainer = 0;
 	nes.battery = 0;
@@ -928,41 +959,7 @@ DEVICE_START( nes_disk )
 
 	nes_fds.sides = 0;
 	nes_fds.data = NULL;
-}
-
-
-DEVICE_IMAGE_LOAD( nes_disk )
-{
-	unsigned char magic[4];
-
-	/* See if it has a  redundant header on it */
-	image_fread(image, magic, 4);
-	if ((magic[0] == 'F') && (magic[1] == 'D') && (magic[2] == 'S'))
-	{
-		/* Skip past the redundant header */
-		image_fseek(image, 0x10, SEEK_SET);
-	}
-	else
-		/* otherwise, point to the start of the image */
-		image_fseek(image, 0, SEEK_SET);
-
-	/* read in all the sides */
-	while (!image_feof(image))
-	{
-		nes_fds.sides ++;
-		nes_fds.data = image_realloc(image, nes_fds.data, nes_fds.sides * 65500);
-		if (!nes_fds.data)
-			return INIT_FAIL;
-		image_fread(image, nes_fds.data + ((nes_fds.sides - 1) * 65500), 65500);
-	}
-
-	logerror("Number of sides: %d\n", nes_fds.sides);
-
-	return INIT_PASS;
-}
-
-DEVICE_IMAGE_UNLOAD( nes_disk )
-{
-	/* TODO: should write out changes here as well */
-	nes_fds.data = NULL;
+	
+	floppy_install_load_proc(floppy_get_device(machine,0), nes_load_proc);
+	floppy_install_unload_proc(floppy_get_device(machine,0), nes_unload_proc);
 }

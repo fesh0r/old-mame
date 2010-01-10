@@ -66,7 +66,7 @@
 
 /***************************************************************************
 
-	Terminal code
+    Terminal code
 
 ***************************************************************************/
 
@@ -74,7 +74,7 @@ typedef short termchar_t;
 
 struct terminal
 {
-	tilemap *tm;
+	tilemap_t *tm;
 	int gfx;
 	int blank_char;
 	int char_bits;

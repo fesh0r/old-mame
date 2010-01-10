@@ -85,11 +85,12 @@
 
     Sound:
 
-    external speaker connected to the parallel port
-    speaker is connected to all pins. All pins need to be toggled at the same time.
+    External speaker connected to the parallel port.
+    There was a dac you could make instead, this is supported.
 
 
     Kevin Thacker [MESS driver]
+    Robbbert [Various corrections and additions over the years]
 
  ******************************************************************************
 
@@ -98,7 +99,7 @@
     The Sorcerer has a bus connection for S100 equipment. This allows the connection
     of disk drives, provided that suitable driver/boot software is loaded.
 
-    The driver "exidy" emulates a Sorcerer with 4 floppy disk drives fitted, and 32k of ram.
+    The driver "exidy" emulates a Sorcerer with 4 floppy disk drives fitted, and 44k of ram.
 
     The driver "exidyd" emulates the most common form, a cassette-based system with 48k of ram.
 
@@ -133,12 +134,15 @@ of the tape during playback.
 
 The sorcerer has a UART device used by the serial interface and the cassette system.
 
+An examination of the disk controller boot rom shows the controller is not a
+standard one; a custom implementation will need to be written.
+
 
 ********************************************************************************/
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
-#include "sound/speaker.h"
+#include "sound/dac.h"
 #include "sound/wave.h"
 #include "machine/ctronics.h"
 #include "machine/wd17xx.h"
@@ -155,12 +159,12 @@ static READ8_HANDLER( exidy_read_ff ) { return 0xff; }
 
 static ADDRESS_MAP_START( exidy_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x07ff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x07ff) AM_RAMBANK("bank1")
 	AM_RANGE(0x0800, 0xbbff) AM_RAM AM_REGION("maincpu", 0x0800)
 	AM_RANGE(0xbc00, 0xbcff) AM_ROM						/* disk bios */
-	AM_RANGE(0xbd00, 0xbdff) AM_READWRITE(exidy_read_ff, SMH_NOP)
+	AM_RANGE(0xbd00, 0xbdff) AM_READ(exidy_read_ff) AM_WRITENOP
 	AM_RANGE(0xbe00, 0xbe03) AM_DEVREADWRITE("wd179x", wd17xx_r, wd17xx_w)
-	AM_RANGE(0xbe04, 0xbfff) AM_READWRITE(exidy_read_ff, SMH_NOP)
+	AM_RANGE(0xbe04, 0xbfff) AM_READ(exidy_read_ff) AM_WRITENOP
 	AM_RANGE(0xc000, 0xefff) AM_ROM						/* rom pac and bios */
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM AM_REGION("maincpu", 0xf000)		/* screen ram */
 	AM_RANGE(0xf800, 0xfbff) AM_ROM						/* char rom */
@@ -169,7 +173,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( exidyd_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x07ff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x07ff) AM_RAMBANK("bank1")
 	AM_RANGE(0x0800, 0xbfff) AM_RAM AM_REGION("maincpu", 0x0800)
 	AM_RANGE(0xc000, 0xefff) AM_ROM						/* rom pac and bios */
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM AM_REGION("maincpu", 0xf000)		/* screen ram */
@@ -319,6 +323,26 @@ static INPUT_PORTS_START(exidy)
 	PORT_CONFSETTING(    0x00, DEF_STR(Off))
 INPUT_PORTS_END
 
+/**************************** F4 CHARACTER DISPLAYER ******************************************************/
+
+static const gfx_layout exidy_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{  0*8,  1*8,  2*8,  3*8,  4*8,  5*8,  6*8,  7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+/* This will show the 128 characters in the ROM + whatever happens to be in the PCG */
+static GFXDECODE_START( exidy )
+	GFXDECODE_ENTRY( "maincpu", 0xf800, exidy_charlayout, 0, 1 )
+GFXDECODE_END
+
 /**********************************************************************************************************/
 
 static const ay31015_config exidy_ay31015_config =
@@ -367,6 +391,8 @@ static MACHINE_DRIVER_START( exidy )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 30*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 64*8-1, 0, 30*8-1)
+
+	MDRV_GFXDECODE(exidy)
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(black_and_white)
 
@@ -378,8 +404,8 @@ static MACHINE_DRIVER_START( exidy )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)	// cass1 speaker
 	MDRV_SOUND_WAVE_ADD("wave.2", "cassette2")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)	// cass2 speaker
-	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)	// speaker on parallel port
+	MDRV_SOUND_ADD("dac", DAC, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)	// speaker or music card on parallel port
 
 	MDRV_AY31015_ADD( "ay_3_1015", exidy_ay31015_config )
 
@@ -409,16 +435,13 @@ static MACHINE_DRIVER_START( exidyd )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(exidyd_mem)
 
-	MDRV_MACHINE_START( exidy )
-	MDRV_MACHINE_RESET( exidy )
-
 	MDRV_FLOPPY_4_DRIVES_REMOVE()
 MACHINE_DRIVER_END
 
 static DRIVER_INIT( exidy )
 {
 	UINT8 *RAM = memory_region(machine, "maincpu");
-	memory_configure_bank(machine, 1, 0, 2, &RAM[0x0000], 0xe000);
+	memory_configure_bank(machine, "bank1", 0, 2, &RAM[0x0000], 0xe000);
 }
 
 /***************************************************************************
@@ -449,7 +472,7 @@ ROM_START(exidyd)
 	ROM_LOAD_OPTIONAL("bruce.dat",   0x0000, 0x0020, CRC(fae922cb) SHA1(470a86844cfeab0d9282242e03ff1d8a1b2238d1)) /* video prom */
 ROM_END
 
-/*    YEAR  NAME    PARENT  COMPAT      MACHINE INPUT   INIT    CONFIG  COMPANY        FULLNAME */
-COMP(1979, exidy,   0,		0,	exidy,	exidy,	exidy,	0,	"Exidy Inc", "Sorcerer", 0 )
-COMP(1979, exidyd,  exidy,	0,	exidyd,	exidy,	exidy,	0,	"Exidy Inc", "Sorcerer (Cassette only)", 0 )
+/*    YEAR  NAME    PARENT  COMPAT      MACHINE INPUT   INIT    COMPANY        FULLNAME */
+COMP(1979, exidy,   0,		0,	exidy,	exidy,	exidy,		"Exidy Inc", "Sorcerer", 0 )
+COMP(1979, exidyd,  exidy,	0,	exidyd,	exidy,	exidy,		"Exidy Inc", "Sorcerer (Cassette only)", 0 )
 

@@ -24,6 +24,16 @@
     TODO:
     * Test the system? Call Debug, Call XB16.
     * Implement MEM8 timings.
+
+    2009-11-15
+    This driver found to be hopelessly broken.
+    1. Fixed crash in DRIVER_INIT - was trying to set up GROM when this model doesn't have any.
+    2. Fixed crash in MACHINE_RESET - new cart system depends on GROM.
+    3. Fixed crash when drawing the lower border - screen size changed to the same as ti99_4ev.
+    Now, it produces a black screen.
+    If you use memory view in the debugger, it crashes at 6000 and some higher addresses. This is
+    because the memory map has references to GROM handlers.
+
 */
 
 #include "driver.h"
@@ -48,28 +58,29 @@
 #include "devices/harddriv.h"
 #include "machine/idectrl.h"
 #include "machine/smc92x4.h"
+#include "machine/rtc65271.h"
 
 static ADDRESS_MAP_START(memmap, ADDRESS_SPACE_PROGRAM, 16)
-	AM_RANGE(0x0000, 0x1fff) AM_ROMBANK(1)								/*system ROM*/
-	AM_RANGE(0x2000, 0x2fff) AM_RAMBANK(3)								/*lower 8kb of RAM extension: AMS bank 2*/
-	AM_RANGE(0x3000, 0x3fff) AM_RAMBANK(4)								/*lower 8kb of RAM extension: AMS bank 3*/
+	AM_RANGE(0x0000, 0x1fff) AM_ROMBANK("bank1")								/*system ROM*/
+	AM_RANGE(0x2000, 0x2fff) AM_RAMBANK("bank3")								/*lower 8kb of RAM extension: AMS bank 2*/
+	AM_RANGE(0x3000, 0x3fff) AM_RAMBANK("bank4")								/*lower 8kb of RAM extension: AMS bank 3*/
 	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(ti99_4p_peb_r, ti99_4p_peb_w)	/*DSR ROM space*/
 	AM_RANGE(0x6000, 0x7fff) AM_READWRITE(ti99_4p_cart_r,ti99_4p_cart_w)/*cartridge space (internal or hsgpl)*/
-	AM_RANGE(0x8000, 0x83ff) AM_RAMBANK(2)								/*RAM PAD*/
+	AM_RANGE(0x8000, 0x83ff) AM_RAMBANK("bank2")								/*RAM PAD*/
 	AM_RANGE(0x8400, 0x87ff) AM_READWRITE(ti99_nop_8_r, ti99_wsnd_w)	/*soundchip write*/
 	AM_RANGE(0x8800, 0x8bff) AM_READWRITE(ti99_rv38_r, ti99_nop_8_w)	/*vdp read*/
 	AM_RANGE(0x8C00, 0x8fff) AM_READWRITE(ti99_nop_8_r, ti99_wv38_w)	/*vdp write*/
 	AM_RANGE(0x9000, 0x93ff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*speech read - installed dynamically*/
 	AM_RANGE(0x9400, 0x97ff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*speech write - installed dynamically*/
 	AM_RANGE(0x9800, 0x98ff) AM_READWRITE(ti99_4p_grom_r, ti99_nop_8_w)	/*GPL read*/
-	AM_RANGE(0x9900, 0x9bff) AM_RAMBANK(11)								/*extra RAM for debugger*/
+	AM_RANGE(0x9900, 0x9bff) AM_RAMBANK("bank11")								/*extra RAM for debugger*/
 	AM_RANGE(0x9c00, 0x9fff) AM_READWRITE(ti99_nop_8_r, ti99_4p_grom_w)	/*GPL write*/
-	AM_RANGE(0xa000, 0xafff) AM_RAMBANK(5)								/*upper 24kb of RAM extension: AMS bank 10*/
-	AM_RANGE(0xb000, 0xbfff) AM_RAMBANK(6)								/*upper 24kb of RAM extension: AMS bank 11*/
-	AM_RANGE(0xc000, 0xcfff) AM_RAMBANK(7)								/*upper 24kb of RAM extension: AMS bank 12*/
-	AM_RANGE(0xd000, 0xdfff) AM_RAMBANK(8)								/*upper 24kb of RAM extension: AMS bank 13*/
-	AM_RANGE(0xe000, 0xefff) AM_RAMBANK(9)								/*upper 24kb of RAM extension: AMS bank 14*/
-	AM_RANGE(0xf000, 0xffff) AM_RAMBANK(10)								/*upper 24kb of RAM extension: AMS bank 15*/
+	AM_RANGE(0xa000, 0xafff) AM_RAMBANK("bank5")								/*upper 24kb of RAM extension: AMS bank 10*/
+	AM_RANGE(0xb000, 0xbfff) AM_RAMBANK("bank6")								/*upper 24kb of RAM extension: AMS bank 11*/
+	AM_RANGE(0xc000, 0xcfff) AM_RAMBANK("bank7")								/*upper 24kb of RAM extension: AMS bank 12*/
+	AM_RANGE(0xd000, 0xdfff) AM_RAMBANK("bank8")								/*upper 24kb of RAM extension: AMS bank 13*/
+	AM_RANGE(0xe000, 0xefff) AM_RAMBANK("bank9")								/*upper 24kb of RAM extension: AMS bank 14*/
+	AM_RANGE(0xf000, 0xffff) AM_RAMBANK("bank10")								/*upper 24kb of RAM extension: AMS bank 15*/
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(cru_map, ADDRESS_SPACE_IO, 8)
@@ -260,8 +271,8 @@ static MACHINE_DRIVER_START(ti99_4p_60hz)
 	MDRV_SCREEN_REFRESH_RATE(60)	/* or 50Hz */
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(512+32, (212+16)*2)
-	MDRV_SCREEN_VISIBLE_AREA(0, 512+32 - 1, 0, (212+16)*2 - 1)
+	MDRV_SCREEN_SIZE(512+32, (212+28)*2)
+	MDRV_SCREEN_VISIBLE_AREA(0, 512+32 - 1, 0, (212+28)*2 - 1)
 
 	MDRV_PALETTE_LENGTH(512)
 
@@ -287,6 +298,7 @@ static MACHINE_DRIVER_START(ti99_4p_60hz)
 	MDRV_IMPORT_FROM( smc92x4_hd )
 
 	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
+	MDRV_RTC65271_ADD("ide_rtc", ti99_clk_interrupt_callback)
 
 	/* MDRV_CASSETTE_ADD( "cassette", default_cassette_config ) */
 
@@ -326,5 +338,5 @@ ROM_START(ti99_4p)
 	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7) SHA1(382292295c00dff348d7e17c5ce4da12a1d87763)) /* system speech ROM */
 ROM_END
 
-/*    YEAR  NAME      PARENT   COMPAT   MACHINE      INPUT    INIT     CONFIG   COMPANY     FULLNAME */
-COMP( 1996, ti99_4p,  0,	   0,		ti99_4p_60hz, ti99_4p, ti99_4p, 0,"snug",		"SGCPU (a.k.a. 99/4P)" , GAME_NOT_WORKING )
+/*    YEAR  NAME      PARENT   COMPAT   MACHINE      INPUT    INIT      COMPANY     FULLNAME */
+COMP( 1996, ti99_4p,  0,	   0,		ti99_4p_60hz, ti99_4p, ti99_4p, "snug",		"SGCPU (a.k.a. 99/4P)" , GAME_NOT_WORKING )

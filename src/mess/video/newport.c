@@ -166,8 +166,10 @@ static UINT32 nREX3_ClipMode;
 static UINT32 nREX3_Config;
 static UINT32 nREX3_Status;
 static UINT8 nREX3_XFerWidth;
-/*static UINT32 nREX3_CurrentX;
-static UINT32 nREX3_CurrentY;*/
+#if 0
+static UINT32 nREX3_CurrentX;
+static UINT32 nREX3_CurrentY;
+#endif
 static UINT32 nREX3_Kludge_SkipLine;
 
 static UINT32 *video_base;
@@ -504,12 +506,12 @@ static WRITE32_HANDLER( newport_vc2_w )
 		}
 		break;
 	case 0x03: /* Register Write */
-	switch( nREX3_DCBRegSelect )
-	{
-	case 0x00:
-		verboselog(machine, 2, "VC2 Register Setup:\n" );
-		nVC2_RegIdx = ( data & 0xff000000 ) >> 24;
-		nVC2_RegData = ( data & 0x00ffff00 ) >> 8;
+		switch( nREX3_DCBRegSelect )
+		{
+		case 0x00:
+			verboselog(machine, 2, "VC2 Register Setup:\n" );
+			nVC2_RegIdx = ( data & 0xff000000 ) >> 24;
+			nVC2_RegData = ( data & 0x00ffff00 ) >> 8;
 		switch( nVC2_RegIdx )
 		{
 		case 0x00:
@@ -565,17 +567,17 @@ static WRITE32_HANDLER( newport_vc2_w )
 			break;
 		case 0x1f:
 			verboselog(machine, 2, "    Configuration:        %04x\n", nVC2_RegData );
-				nVC2_Register[0x20] = nVC2_RegData;
+			nVC2_Register[0x20] = nVC2_RegData;
 			break;
 		default:
 			verboselog(machine, 2, "    Unknown VC2 Register: %04x\n", nVC2_RegData );
 			break;
 		}
 			nVC2_Register[nVC2_RegIdx] = nVC2_RegData;
-		break;
+			break;
 		default:
 			verboselog(machine, 2, "Unknown VC2 Register Write: %02x = %08x\n", nREX3_DCBRegSelect, data );
-		break;
+			break;
 		}
 		break;
 	default:

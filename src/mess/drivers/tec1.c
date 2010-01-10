@@ -166,7 +166,7 @@ static TIMER_CALLBACK( tec1_kbd_callback )
 
 ***************************************************************************/
 
-static MACHINE_RESET( tec1 )
+static MACHINE_START( tec1 )
 {
 	tec1_kbd_timer = timer_alloc(machine,  tec1_kbd_callback, NULL );
 	timer_adjust_periodic( tec1_kbd_timer, attotime_zero, 0, ATTOTIME_IN_HZ(500) );
@@ -243,7 +243,7 @@ static MACHINE_DRIVER_START( tec1 )
 	MDRV_CPU_PROGRAM_MAP(tec1_map)
 	MDRV_CPU_IO_MAP(tec1_io)
 
-	MDRV_MACHINE_RESET(tec1)
+	MDRV_MACHINE_START(tec1)
 
 	/* video hardware */
 	MDRV_DEFAULT_LAYOUT(layout_tec1)
@@ -270,5 +270,5 @@ ROM_START(tec1)
 //  ROMX_LOAD("tec1a.rom",   0x0000, 0x0800, CRC(60daea3c) SHA1(383b7e7f02e91fb18c87eb03c5949e31156771d4), ROM_BIOS(2))
 ROM_END
 
-/*    YEAR  NAME      PARENT  COMPAT  MACHINE     INPUT    INIT      CONFIG       COMPANY  FULLNAME */
-COMP( 1984, tec1,     0,      0,      tec1,       tec1,    0,        0,		"Talking Electronics magazine",  "TEC-1" , 0 )
+/*    YEAR  NAME      PARENT  COMPAT  MACHINE     INPUT    INIT       COMPANY  FULLNAME */
+COMP( 1984, tec1,     0,      0,      tec1,       tec1,    0,  		"Talking Electronics magazine",  "TEC-1" , 0 )

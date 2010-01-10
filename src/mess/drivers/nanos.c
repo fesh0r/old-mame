@@ -20,8 +20,8 @@
 static const UINT8 *FNT;
 
 static ADDRESS_MAP_START(nanos_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x0000, 0x0fff ) AM_READWRITE(SMH_BANK(1), SMH_BANK(3))
-	AM_RANGE( 0x1000, 0xffff ) AM_RAMBANK(2)
+	AM_RANGE( 0x0000, 0x0fff ) AM_READ_BANK("bank1") AM_WRITE_BANK("bank3")
+	AM_RANGE( 0x1000, 0xffff ) AM_RAMBANK("bank2")
 ADDRESS_MAP_END
 
 static WRITE8_HANDLER(nanos_tc_w)
@@ -297,9 +297,9 @@ static WRITE8_DEVICE_HANDLER (nanos_port_b_w)
 {
 	key_command = BIT(data,1);
 	if (BIT(data,7)) {
-		memory_set_bankptr(device->machine, 1, memory_region(device->machine, "maincpu"));
+		memory_set_bankptr(device->machine, "bank1", memory_region(device->machine, "maincpu"));
 	} else {
-		memory_set_bankptr(device->machine, 1, messram_get_ptr(devtag_get_device(device->machine, "messram")));
+		memory_set_bankptr(device->machine, "bank1", messram_get_ptr(devtag_get_device(device->machine, "messram")));
 	}
 }
 static UINT8 row_number(UINT8 code) {
@@ -397,21 +397,24 @@ static TIMER_CALLBACK(keyboard_callback)
 	}
 }
 
+static MACHINE_START(nanos)
+{
+	timer_pulse(machine, ATTOTIME_IN_HZ(24000), NULL, 0, keyboard_callback);
+}
+
 static MACHINE_RESET(nanos)
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
-	memory_install_write8_handler(space, 0x0000, 0x0fff, 0, 0, SMH_BANK(3));
-	memory_install_write8_handler(space, 0x1000, 0xffff, 0, 0, SMH_BANK(2));
+	memory_install_write_bank(space, 0x0000, 0x0fff, 0, 0, "bank3");
+	memory_install_write_bank(space, 0x1000, 0xffff, 0, 0, "bank2");
 
-	memory_set_bankptr(machine, 1, memory_region(machine, "maincpu"));
-	memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x1000);
-	memory_set_bankptr(machine, 3, messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_set_bankptr(machine, "bank1", memory_region(machine, "maincpu"));
+	memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x1000);
+	memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")));
 
-	floppy_drive_set_motor_state(floppy_get_device(space->machine, 0), 1);
-
+	floppy_mon_w(floppy_get_device(space->machine, 0), CLEAR_LINE);
 	floppy_drive_set_ready_state(floppy_get_device(space->machine, 0), 1,1);
-	timer_pulse(machine, ATTOTIME_IN_HZ(24000), NULL, 0, keyboard_callback);
 }
 
 static const z80pio_interface nanos_z80pio_intf =
@@ -456,30 +459,49 @@ static const floppy_config nanos_floppy_config =
 	DO_NOT_KEEP_GEOMETRY
 };
 
+/* F4 Character Displayer */
+static const gfx_layout nanos_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static GFXDECODE_START( nanos )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, nanos_charlayout, 0, 1 )
+GFXDECODE_END
+
 static MACHINE_DRIVER_START( nanos )
-    /* basic machine hardware */
-    MDRV_CPU_ADD("maincpu",Z80, XTAL_4MHz)
-    MDRV_CPU_PROGRAM_MAP(nanos_mem)
-    MDRV_CPU_IO_MAP(nanos_io)
-    MDRV_CPU_CONFIG(nanos_daisy_chain)
+	/* basic machine hardware */
+	MDRV_CPU_ADD("maincpu",Z80, XTAL_4MHz)
+	MDRV_CPU_PROGRAM_MAP(nanos_mem)
+	MDRV_CPU_IO_MAP(nanos_io)
+	MDRV_CPU_CONFIG(nanos_daisy_chain)
 
+	MDRV_MACHINE_START(nanos)
+	MDRV_MACHINE_RESET(nanos)
 
-    MDRV_MACHINE_RESET(nanos)
-
-    /* video hardware */
-    MDRV_SCREEN_ADD("screen", RASTER)
-    MDRV_SCREEN_REFRESH_RATE(50)
-    MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-    MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	/* video hardware */
+	MDRV_SCREEN_ADD("screen", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(80*8, 25*10)
 	MDRV_SCREEN_VISIBLE_AREA(0,80*8-1,0,25*10-1)
-    MDRV_PALETTE_LENGTH(2)
-    MDRV_PALETTE_INIT(black_and_white)
+	MDRV_GFXDECODE(nanos)
+	MDRV_PALETTE_LENGTH(2)
+	MDRV_PALETTE_INIT(black_and_white)
 
-    MDRV_VIDEO_START(nanos)
-    MDRV_VIDEO_UPDATE(nanos)
+	MDRV_VIDEO_START(nanos)
+	MDRV_VIDEO_UPDATE(nanos)
 
-    /* devices */
+	/* devices */
 	MDRV_Z80CTC_ADD( "z80ctc_0", XTAL_4MHz, ctc_intf)
 	MDRV_Z80CTC_ADD( "z80ctc_1", XTAL_4MHz, ctc_intf)
 	MDRV_Z80PIO_ADD( "z80pio_0", pio1_intf)
@@ -491,10 +513,10 @@ static MACHINE_DRIVER_START( nanos )
 	MDRV_UPD765A_ADD("upd765", nanos_upd765_interface)
 
 	MDRV_FLOPPY_4_DRIVES_ADD(nanos_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("64K")	
+	MDRV_RAM_DEFAULT_SIZE("64K")
 MACHINE_DRIVER_END
 
 /* ROM definition */
@@ -505,11 +527,10 @@ ROM_START( nanos )
 
 	ROM_REGION( 0x0800, "gfx1", 0 )
 	ROM_LOAD( "zg_nanos.rom", 0x0000, 0x0800, CRC(5682d3f9) SHA1(5b738972c815757821c050ee38b002654f8da163))
-
 ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( ????, nanos,  0,       0, 	nanos, 	nanos, 	 0,  	  0,  	 "Ingenieurhochschule fur Seefahrt Warnemunde/Wustrow",   "Nanos",		GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT COMPANY   FULLNAME       FLAGS */
+COMP( ????, nanos,  0,       0, 	nanos, 	nanos, 	 0,  	  "Ingenieurhochschule fur Seefahrt Warnemunde/Wustrow",   "Nanos",		GAME_NOT_WORKING)
 

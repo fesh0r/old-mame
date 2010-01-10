@@ -12,7 +12,7 @@
 static ADDRESS_MAP_START(a6809_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000,0xf7ff) AM_RAM
-	AM_RANGE(0x0400,0x07ff) AM_BASE(&videoram)
+	AM_RANGE(0x0400,0x07ff) AM_BASE_GENERIC(videoram)
 	AM_RANGE(0xf800,0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -72,6 +72,6 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( ????, a6809,  0,       0, 	a6809, 	a6809, 	 0,  	  0,  	 "Acorn",   "6809",		GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
+COMP( ????, a6809,  0,       0, 	a6809, 	a6809, 	 0,  	   	 "Acorn",   "6809",		GAME_NOT_WORKING)
 

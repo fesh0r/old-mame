@@ -174,14 +174,13 @@ static MACHINE_START( junior )
 {
 	state_save_register_item(machine, "junior", NULL, 0, junior_port_a );
 	state_save_register_item(machine, "junior", NULL, 0, junior_port_b );
+	timer_pulse(machine,  ATTOTIME_IN_HZ(50), NULL, 0, junior_update_leds );
 }
 
 
 static MACHINE_RESET(junior)
 {
 	int i;
-
-	timer_pulse(machine,  ATTOTIME_IN_HZ(50), NULL, 0, junior_update_leds );
 
 	for ( i = 0; i < 6; i++ )
 	{
@@ -220,6 +219,6 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1980, junior,  0,       0, 	junior, 	junior, 	 0,  	  0,  	 "Elektor Electronics",   "Junior Computer",		GAME_SUPPORTS_SAVE)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
+COMP( 1980, junior,  0,       0, 	junior, 	junior, 	 0,   "Elektor Electronics",   "Junior Computer",		GAME_SUPPORTS_SAVE)
 

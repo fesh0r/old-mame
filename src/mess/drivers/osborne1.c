@@ -50,12 +50,12 @@ TODO:
 
 
 static ADDRESS_MAP_START( osborne1_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x0FFF ) AM_READWRITE( SMH_BANK(1), osborne1_0000_w )
-	AM_RANGE( 0x1000, 0x1FFF ) AM_READWRITE( SMH_BANK(2), osborne1_1000_w )
+	AM_RANGE( 0x0000, 0x0FFF ) AM_READ_BANK("bank1") AM_WRITE( osborne1_0000_w )
+	AM_RANGE( 0x1000, 0x1FFF ) AM_READ_BANK("bank2") AM_WRITE( osborne1_1000_w )
 	AM_RANGE( 0x2000, 0x2FFF ) AM_READWRITE( osborne1_2000_r, osborne1_2000_w )
-	AM_RANGE( 0x3000, 0x3FFF ) AM_READWRITE( SMH_BANK(3), osborne1_3000_w )
+	AM_RANGE( 0x3000, 0x3FFF ) AM_READ_BANK("bank3") AM_WRITE( osborne1_3000_w )
 	AM_RANGE( 0x4000, 0xEFFF ) AM_RAM
-	AM_RANGE( 0xF000, 0xFFFF ) AM_READWRITE( SMH_BANK(4), osborne1_videoram_w )
+	AM_RANGE( 0xF000, 0xFFFF ) AM_READ_BANK("bank4") AM_WRITE( osborne1_videoram_w )
 ADDRESS_MAP_END
 
 
@@ -220,6 +220,24 @@ static const floppy_config osborne1_floppy_config =
 	DO_NOT_KEEP_GEOMETRY
 };
 
+/* F4 Character Displayer */
+static const gfx_layout osborne1_charlayout =
+{
+	8, 10,					/* 8 x 10 characters */
+	128,					/* 128 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*128*8, 1*128*8, 2*128*8, 3*128*8, 4*128*8, 5*128*8, 6*128*8, 7*128*8, 8*128*8, 9*128*8 },
+	8					/* every char takes 16 x 1 bytes */
+};
+
+static GFXDECODE_START( osborne1 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, osborne1_charlayout, 0, 1 )
+GFXDECODE_END
+
 static MACHINE_DRIVER_START( osborne1 )
 	MDRV_CPU_ADD( "maincpu", Z80, MAIN_CLOCK/4 )
 	MDRV_CPU_PROGRAM_MAP( osborne1_mem)
@@ -235,6 +253,7 @@ static MACHINE_DRIVER_START( osborne1 )
 	MDRV_SCREEN_RAW_PARAMS( MAIN_CLOCK/2, 512, 0, 416, 260, 0, 240 )
 	MDRV_VIDEO_START( generic_bitmapped )
 	MDRV_VIDEO_UPDATE( generic_bitmapped )
+	MDRV_GFXDECODE(osborne1)
 	MDRV_PALETTE_LENGTH( 3 )
 	MDRV_PALETTE_INIT( osborne1 )
 
@@ -248,7 +267,7 @@ static MACHINE_DRIVER_START( osborne1 )
 	MDRV_MB8877_ADD("mb8877", default_wd17xx_interface_2_drives )
 
 	MDRV_FLOPPY_2_DRIVES_ADD(osborne1_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("68K")	/* 64KB Main RAM and 4Kbit video attribute RAM */
@@ -275,5 +294,5 @@ ROM_START( osborne1 )
 	ROM_LOAD( "osbchr.bin", 0x0000, 0x800, BAD_DUMP CRC(6c1eab0d) SHA1(b04459d377a70abc9155a5486003cb795342c801) )
 ROM_END
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY     FULLNAME        FLAGS */
-COMP( 1981, osborne1,   0,      0,      osborne1,   osborne1,   osborne1,   0,   "Osborne",  "Osborne-1",    0 )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        COMPANY     FULLNAME        FLAGS */
+COMP( 1981, osborne1,   0,      0,      osborne1,   osborne1,   osborne1,   "Osborne",  "Osborne-1",    0 )

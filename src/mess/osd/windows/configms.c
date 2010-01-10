@@ -1,6 +1,6 @@
 //============================================================
 //
-//	configms.c - Win32 MESS specific options
+//  configms.c - Win32 MESS specific options
 //
 //============================================================
 
@@ -13,7 +13,6 @@
 #include "driver.h"
 #include "winmain.h"
 #include "menu.h"
-#include "device.h"
 #include "configms.h"
 #include "pool.h"
 #include "config.h"
@@ -21,7 +20,7 @@
 
 
 //============================================================
-//	GLOBAL VARIABLES
+//  GLOBAL VARIABLES
 //============================================================
 
 const options_entry mess_win_options[] =

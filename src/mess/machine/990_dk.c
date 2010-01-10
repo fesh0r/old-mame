@@ -139,10 +139,10 @@ static int fd800_read_id(int unit, int head, int *cylinder_id, int *sector_id)
 	/*UINT8 revolution_count;*/
 	chrn_id id;
 
-	/*revolution_count = 0;
+	/*revolution_count = 0;*/
 
-    while (revolution_count < 2)
-    {*/
+	/*while (revolution_count < 2)*/
+	/*{*/
 		if (floppy_drive_get_next_id(fd800.drv[unit].img, head, &id))
 		{
 			if (cylinder_id)
@@ -274,8 +274,7 @@ static int fd800_do_restore(int unit)
 	}
 
 	/* limit iterations to 76 to prevent an endless loop if the disc is locked */
-	while (! (seek_complete = floppy_drive_get_flag_state(fd800.drv[unit].img, FLOPPY_DRIVE_HEAD_AT_TRACK_0))
-			&& (seek_count < 76))
+	while (!(seek_complete = !floppy_tk00_r(fd800.drv[unit].img)) && (seek_count < 76))
 	{
 		floppy_drive_seek(fd800.drv[unit].img, -1);
 		seek_count++;

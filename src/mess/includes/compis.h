@@ -27,6 +27,7 @@ extern const msm8251_interface compis_usart_interface;
 extern const upd765_interface compis_fdc_interface;
 
 DRIVER_INIT(compis);
+MACHINE_START(compis);
 MACHINE_RESET(compis);
 INTERRUPT_GEN(compis_vblank_int);
 
@@ -39,8 +40,8 @@ READ16_HANDLER (compis_usart_r);
 WRITE16_HANDLER (compis_usart_w);
 
 /* 80186 Internal */
-READ16_HANDLER (i186_internal_port_r);
-WRITE16_HANDLER (i186_internal_port_w);
+READ16_HANDLER (compis_i186_internal_port_r);
+WRITE16_HANDLER (compis_i186_internal_port_w);
 
 /* FDC 8272 */
 READ16_HANDLER (compis_fdc_dack_r);

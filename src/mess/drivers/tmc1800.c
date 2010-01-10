@@ -196,35 +196,37 @@ static WRITE8_DEVICE_HANDLER( tmc2000_bankswitch_w )
 
 	/* enable RAM */
 
-	memory_set_bank(device->machine, 1, TMC2000_BANK_RAM);
+	memory_set_bank(device->machine, "bank1", TMC2000_BANK_RAM);
 
 	switch (messram_get_size(devtag_get_device(device->machine, "messram")))
 	{
 	case 4 * 1024:
-		memory_install_readwrite8_handler(cputag_get_address_space(device->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x0fff, 0, 0x7000, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(cputag_get_address_space(device->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x0fff, 0, 0x7000, "bank1");
 		break;
 
 	case 16 * 1024:
-		memory_install_readwrite8_handler(cputag_get_address_space(device->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0x4000, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(cputag_get_address_space(device->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0x4000, "bank1");
 		break;
 
 	case 32 * 1024:
-		memory_install_readwrite8_handler(cputag_get_address_space(device->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(cputag_get_address_space(device->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x7fff, 0, 0, "bank1");
 		break;
 	}
 
 	/* enable monitor or color RAM */
 
-	memory_set_bank(device->machine, 2, bank);
+	memory_set_bank(device->machine, "bank2", bank);
 
 	switch (bank)
 	{
 	case TMC2000_BANK_MONITOR:
-		memory_install_readwrite8_handler(cputag_get_address_space(device->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00, SMH_BANK(2), SMH_UNMAP);
+		memory_install_read_bank(cputag_get_address_space(device->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00, "bank2");
+		memory_unmap_write(cputag_get_address_space(device->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00 );
 		break;
 
 	case TMC2000_BANK_COLORRAM: // write-only
-		memory_install_readwrite8_handler(cputag_get_address_space(device->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00, SMH_UNMAP, SMH_BANK(2));
+		memory_install_write_bank(cputag_get_address_space(device->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00, "bank2");
+		memory_unmap_read(cputag_get_address_space(device->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00);
 		break;
 	}
 
@@ -237,9 +239,9 @@ static WRITE8_DEVICE_HANDLER( oscnano_bankswitch_w )
 {
 	/* enable RAM */
 
-	memory_set_bank(device->machine, 1, OSCNANO_BANK_RAM);
+	memory_set_bank(device->machine, "bank1", OSCNANO_BANK_RAM);
 
-	memory_install_readwrite8_handler(cputag_get_address_space(device->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x0fff, 0, 0x7000, SMH_BANK(1), SMH_BANK(1));
+	memory_install_readwrite_bank(cputag_get_address_space(device->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x0fff, 0, 0x7000, "bank1");
 
 	/* write to CDP1864 tone latch */
 
@@ -289,8 +291,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tmc2000_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK(1)
-	AM_RANGE(0x8000, 0xffff) AM_RAMBANK(2)
+	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x8000, 0xffff) AM_RAMBANK("bank2")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tmc2000_io_map, ADDRESS_SPACE_IO, 8 )
@@ -303,7 +305,7 @@ ADDRESS_MAP_END
 // OSCOM Nano
 
 static ADDRESS_MAP_START( oscnano_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x8000, 0x83ff) AM_ROM
 ADDRESS_MAP_END
 
@@ -574,7 +576,7 @@ static WRITE_LINE_DEVICE_HANDLER( tmc2000_q_w )
 	cdp1864_aoe_w(driver_state->cdp1864, state);
 
 	/* set Q led status */
-	set_led_status(1, state);
+	set_led_status(device->machine, 1, state);
 
 	/* tape output */
 	cassette_output(driver_state->cassette, state ? 1.0 : -1.0);
@@ -687,7 +689,7 @@ static WRITE_LINE_DEVICE_HANDLER( oscnano_q_w )
 	cdp1864_aoe_w(driver_state->cdp1864, state);
 
 	/* set Q led status */
-	set_led_status(1, state);
+	set_led_status(device->machine, 1, state);
 
 	/* tape output */
 	cassette_output(driver_state->cassette, state ? 1.0 : -1.0);
@@ -756,13 +758,13 @@ static MACHINE_START( tmc2000 )
 	UINT16 addr;
 
 	/* RAM banking */
-	memory_configure_bank(machine, 1, 0, 2, memory_region(machine, CDP1802_TAG), 0x8000);
+	memory_configure_bank(machine, "bank1", 0, 2, memory_region(machine, CDP1802_TAG), 0x8000);
 
 	/* ROM/colorram banking */
 	state->colorram = auto_alloc_array(machine, UINT8, TMC2000_COLORRAM_SIZE);
 
-	memory_configure_bank(machine, 2, TMC2000_BANK_MONITOR, 1, memory_region(machine, CDP1802_TAG) + 0x8000, 0);
-	memory_configure_bank(machine, 2, TMC2000_BANK_COLORRAM, 1, state->colorram, 0);
+	memory_configure_bank(machine, "bank2", TMC2000_BANK_MONITOR, 1, memory_region(machine, CDP1802_TAG) + 0x8000, 0);
+	memory_configure_bank(machine, "bank2", TMC2000_BANK_COLORRAM, 1, state->colorram, 0);
 
 	/* randomize color RAM contents */
 	for (addr = 0; addr < TMC2000_COLORRAM_SIZE; addr++)
@@ -789,12 +791,14 @@ static MACHINE_RESET( tmc2000 )
 	device_reset(state->cdp1864);
 
 	/* enable monitor mirror at 0x0000 */
-	memory_set_bank(machine, 1, TMC2000_BANK_ROM);
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x01ff, 0, 0x7e00, SMH_BANK(1), SMH_UNMAP);
+	memory_set_bank(machine, "bank1", TMC2000_BANK_ROM);
+	memory_install_readwrite_bank(cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x01ff, 0, 0x7e00, "bank1");
+	memory_unmap_write(cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x01ff, 0, 0x7e00);
 
 	/* enable monitor */
-	memory_set_bank(machine, 2, TMC2000_BANK_MONITOR);
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00, SMH_BANK(2), SMH_UNMAP);
+	memory_set_bank(machine, "bank2", TMC2000_BANK_MONITOR);
+	memory_install_readwrite_bank(cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00, "bank2");
+	memory_unmap_write(cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00);
 }
 
 // OSCOM Nano
@@ -804,7 +808,7 @@ static MACHINE_START( oscnano )
 	oscnano_state *state = machine->driver_data;
 
 	/* RAM/ROM banking */
-	memory_configure_bank(machine, 1, 0, 2, memory_region(machine, CDP1802_TAG), 0x8000);
+	memory_configure_bank(machine, "bank1", 0, 2, memory_region(machine, CDP1802_TAG), 0x8000);
 
 	/* allocate monitor timer */
 	state->ef4_timer = timer_alloc(machine, oscnano_ef4_tick, NULL);
@@ -831,8 +835,8 @@ static MACHINE_RESET( oscnano )
 	device_reset(state->cdp1864);
 
 	/* enable ROM */
-	memory_set_bank(machine, 1, OSCNANO_BANK_ROM);
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x01ff, 0, 0x7e00, SMH_BANK(1), SMH_BANK(1));
+	memory_set_bank(machine, "bank1", OSCNANO_BANK_ROM);
+	memory_install_readwrite_bank(cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x0000, 0x01ff, 0, 0x7e00, "bank1");
 }
 
 /* Machine Drivers */
@@ -868,11 +872,11 @@ static MACHINE_DRIVER_START( tmc1800 )
 	// devices
 	MDRV_QUICKLOAD_ADD("quickload", tmc1800, "bin", 0)
 	MDRV_CASSETTE_ADD( "cassette", tmc1800_cassette_config )
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("2K")
-	MDRV_RAM_EXTRA_OPTIONS("4K")	
+	MDRV_RAM_EXTRA_OPTIONS("4K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( osc1000b )
@@ -899,11 +903,11 @@ static MACHINE_DRIVER_START( osc1000b )
 	// devices
 	MDRV_QUICKLOAD_ADD("quickload", tmc1800, "bin", 0)
 	MDRV_CASSETTE_ADD( "cassette", tmc1800_cassette_config )
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("2K")
-	MDRV_RAM_EXTRA_OPTIONS("4K")	
+	MDRV_RAM_EXTRA_OPTIONS("4K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( tmc2000 )
@@ -924,11 +928,11 @@ static MACHINE_DRIVER_START( tmc2000 )
 	// devices
 	MDRV_QUICKLOAD_ADD("quickload", tmc1800, "bin", 0)
 	MDRV_CASSETTE_ADD( "cassette", tmc1800_cassette_config )
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("4K")
-	MDRV_RAM_EXTRA_OPTIONS("16K,32K")	
+	MDRV_RAM_EXTRA_OPTIONS("16K,32K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( oscnano )
@@ -949,7 +953,7 @@ static MACHINE_DRIVER_START( oscnano )
 	// devices
 	MDRV_QUICKLOAD_ADD("quickload", tmc1800, "bin", 0)
 	MDRV_CASSETTE_ADD( "cassette", tmc1800_cassette_config )
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("4K")
@@ -1019,8 +1023,8 @@ static DRIVER_INIT( tmc1800 )
 
 /* System Drivers */
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY         FULLNAME        FLAGS */
-COMP( 1977, tmc1800,    0,      0,      tmc1800,    tmc1800,    tmc1800,    0,    "Telercas Oy",  "Telmac 1800",  GAME_NOT_WORKING )
-COMP( 1977, osc1000b,   tmc1800,0,      osc1000b,   tmc1800,    tmc1800,    0,   "OSCOM Oy",		"OSCOM 1000B",  GAME_NOT_WORKING )
-COMP( 1980, tmc2000,    0,      0,      tmc2000,    tmc2000,    0,		    0,    "Telercas Oy",  "Telmac 2000",  GAME_SUPPORTS_SAVE )
-COMP( 1980, oscnano,	tmc2000,0,		oscnano,	oscnano,	0,			0,	"OSCOM Oy",		"OSCOM Nano",	GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        COMPANY         FULLNAME        FLAGS */
+COMP( 1977, tmc1800,    0,      0,      tmc1800,    tmc1800,    tmc1800,     "Telercas Oy",  "Telmac 1800",  GAME_NOT_WORKING )
+COMP( 1977, osc1000b,   tmc1800,0,      osc1000b,   tmc1800,    tmc1800,    "OSCOM Oy",		"OSCOM 1000B",  GAME_NOT_WORKING )
+COMP( 1980, tmc2000,    0,      0,      tmc2000,    tmc2000,    0,		    "Telercas Oy",  "Telmac 2000",  GAME_SUPPORTS_SAVE )
+COMP( 1980, oscnano,	tmc2000,0,		oscnano,	oscnano,	0,			"OSCOM Oy",		"OSCOM Nano",	GAME_SUPPORTS_SAVE )

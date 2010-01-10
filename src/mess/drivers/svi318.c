@@ -29,16 +29,16 @@
 #include "rendlay.h"
 
 static ADDRESS_MAP_START( svi318_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x7fff) AM_READWRITE( SMH_BANK(1), svi318_writemem1 )
-	AM_RANGE( 0x8000, 0xbfff) AM_READWRITE( SMH_BANK(2), svi318_writemem2 )
-	AM_RANGE( 0xc000, 0xffff) AM_READWRITE( SMH_BANK(3), svi318_writemem3 )
+	AM_RANGE( 0x0000, 0x7fff) AM_READ_BANK("bank1") AM_WRITE( svi318_writemem1 )
+	AM_RANGE( 0x8000, 0xbfff) AM_READ_BANK("bank2") AM_WRITE( svi318_writemem2 )
+	AM_RANGE( 0xc000, 0xffff) AM_READ_BANK("bank3") AM_WRITE( svi318_writemem3 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( svi328_806_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x7fff) AM_READWRITE( SMH_BANK(1), svi318_writemem1 )
-	AM_RANGE( 0x8000, 0xbfff) AM_READWRITE( SMH_BANK(2), svi318_writemem2 )
-	AM_RANGE( 0xc000, 0xefff) AM_READWRITE( SMH_BANK(3), svi318_writemem3 )
-	AM_RANGE( 0xf000, 0xffff) AM_READWRITE( SMH_BANK(4), svi318_writemem4 )
+	AM_RANGE( 0x0000, 0x7fff) AM_READ_BANK("bank1") AM_WRITE( svi318_writemem1 )
+	AM_RANGE( 0x8000, 0xbfff) AM_READ_BANK("bank2") AM_WRITE( svi318_writemem2 )
+	AM_RANGE( 0xc000, 0xefff) AM_READ_BANK("bank3") AM_WRITE( svi318_writemem3 )
+	AM_RANGE( 0xf000, 0xffff) AM_READ_BANK("bank4") AM_WRITE( svi318_writemem4 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( svi318_io, ADDRESS_SPACE_IO, 8 )
@@ -335,11 +335,11 @@ static MACHINE_DRIVER_START( svi318 )
 	MDRV_FLOPPY_2_DRIVES_ADD(svi318_floppy_config)
 
 	MDRV_IMPORT_FROM( svi318_cartslot )
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
-	MDRV_RAM_EXTRA_OPTIONS("32K,96K,160K")	
+	MDRV_RAM_EXTRA_OPTIONS("32K,96K,160K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( svi318n )
@@ -384,6 +384,24 @@ static const mc6845_interface svi806_crtc6845_interface =
 	NULL
 };
 
+/* F4 Character Displayer */
+static const gfx_layout svi328_charlayout =
+{
+	8, 8,					/* 8 x 16 characters */
+	256,					/* 128 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{  0*8,  1*8,  2*8,  3*8,  4*8,  5*8,  6*8,  7*8, 8*8,  9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
+	8*16					/* every char takes 16 bytes */
+};
+
+static GFXDECODE_START( svi328 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, svi328_charlayout, 0, 9 )
+GFXDECODE_END
+
 static MACHINE_DRIVER_START( svi328_806 )
 	/* Basic machine hardware */
 	MDRV_CPU_ADD( "maincpu", Z80, 3579545 )	/* 3.579545 MHz */
@@ -415,6 +433,7 @@ static MACHINE_DRIVER_START( svi328_806 )
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500))
 	MDRV_SCREEN_SIZE(640, 400)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 400-1)
+	MDRV_GFXDECODE(svi328)
 
 	MDRV_MC6845_ADD("crtc", MC6845, XTAL_12MHz / 8, svi806_crtc6845_interface)
 
@@ -445,7 +464,7 @@ static MACHINE_DRIVER_START( svi328_806 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
-	MDRV_RAM_EXTRA_OPTIONS("96K,160K")		
+	MDRV_RAM_EXTRA_OPTIONS("96K,160K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( svi328n_806 )
@@ -524,10 +543,10 @@ ROM_START( sv328n80 )
 ROM_END
 
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT   INIT    CONFIG  COMPANY         FULLNAME                    FLAGS */
-COMP( 1983, svi318,     0,      0,      svi318,     svi318, svi318, 0, "Spectravideo", "SVI-318 (PAL)",            0 )
-COMP( 1983, svi318n,    svi318, 0,      svi318n,    svi318, svi318, 0, "Spectravideo", "SVI-318 (NTSC)",           0 )
-COMP( 1983, svi328,     svi318, 0,      svi328,     svi328, svi318, 0, "Spectravideo", "SVI-328 (PAL)",            0 )
-COMP( 1983, svi328n,    svi318, 0,      svi328n,    svi328, svi318, 0, "Spectravideo", "SVI-328 (NTSC)",           0 )
-COMP( 1983, sv328p80,   svi318, 0,      svi328_806,    svi328, svi318, 0, "Spectravideo", "SVI-328 (PAL) + SVI-806 80 column card", 0 )
-COMP( 1983, sv328n80,   svi318, 0,      svi328n_806,   svi328, svi318, 0, "Spectravideo", "SVI-328 (NTSC) + SVI-806 80 column card", 0 )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT   INIT     COMPANY         FULLNAME                    FLAGS */
+COMP( 1983, svi318,     0,      0,      svi318,     svi318, svi318,  "Spectravideo", "SVI-318 (PAL)",            0 )
+COMP( 1983, svi318n,    svi318, 0,      svi318n,    svi318, svi318,  "Spectravideo", "SVI-318 (NTSC)",           0 )
+COMP( 1983, svi328,     svi318, 0,      svi328,     svi328, svi318,  "Spectravideo", "SVI-328 (PAL)",            0 )
+COMP( 1983, svi328n,    svi318, 0,      svi328n,    svi328, svi318,  "Spectravideo", "SVI-328 (NTSC)",           0 )
+COMP( 1983, sv328p80,   svi318, 0,      svi328_806,    svi328, svi318, "Spectravideo", "SVI-328 (PAL) + SVI-806 80 column card", 0 )
+COMP( 1983, sv328n80,   svi318, 0,      svi328n_806,   svi328, svi318, "Spectravideo", "SVI-328 (NTSC) + SVI-806 80 column card", 0 )

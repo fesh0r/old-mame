@@ -143,7 +143,7 @@ static WRITE8_HANDLER(svision_w)
 			break;
 		case 0x26: /* bits 5,6 memory management for a000? */
 			logerror("%.6f svision write %04x %02x\n", attotime_to_double(timer_get_time(space->machine)),offset,data);
-			memory_set_bankptr(space->machine, 1, memory_region(space->machine, "user1") + ((svision_reg[0x26] & 0xe0) << 9));
+			memory_set_bankptr(space->machine, "bank1", memory_region(space->machine, "user1") + ((svision_reg[0x26] & 0xe0) << 9));
 			svision_irq( space->machine );
 			break;
 		case 0x23: /* delta hero irq routine write */
@@ -247,19 +247,19 @@ static WRITE8_HANDLER(tvlink_w)
 static ADDRESS_MAP_START( svision_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_RAM
 	AM_RANGE( 0x2000, 0x3fff) AM_READWRITE(svision_r, svision_w) AM_BASE(&svision_reg)
-	AM_RANGE( 0x4000, 0x5fff) AM_RAM AM_BASE(&videoram)
+	AM_RANGE( 0x4000, 0x5fff) AM_RAM AM_BASE_GENERIC(videoram)
 	AM_RANGE( 0x6000, 0x7fff) AM_NOP
-	AM_RANGE( 0x8000, 0xbfff) AM_ROMBANK(1)
-	AM_RANGE( 0xc000, 0xffff) AM_ROMBANK(2)
+	AM_RANGE( 0x8000, 0xbfff) AM_ROMBANK("bank1")
+	AM_RANGE( 0xc000, 0xffff) AM_ROMBANK("bank2")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tvlink_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x1fff) AM_RAM
 	AM_RANGE( 0x2000, 0x3fff) AM_READWRITE(tvlink_r, tvlink_w) AM_BASE(&svision_reg)
-	AM_RANGE( 0x4000, 0x5fff) AM_RAM AM_BASE(&videoram)
+	AM_RANGE( 0x4000, 0x5fff) AM_RAM AM_BASE_GENERIC(videoram)
 	AM_RANGE( 0x6000, 0x7fff) AM_NOP
-	AM_RANGE( 0x8000, 0xbfff) AM_ROMBANK(1)
-	AM_RANGE( 0xc000, 0xffff) AM_ROMBANK(2)
+	AM_RANGE( 0x8000, 0xbfff) AM_ROMBANK("bank1")
+	AM_RANGE( 0xc000, 0xffff) AM_ROMBANK("bank2")
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( svision )
@@ -367,7 +367,7 @@ static PALETTE_INIT( svisionp )
 static VIDEO_UPDATE( svision )
 {
 	int x, y, i, j=XPOS/4+YPOS*0x30;
-	UINT8 *vram= videoram;
+	UINT8 *vram= screen->machine->generic.videoram.u8;
 
 	if (BANK&8)
 	{
@@ -398,7 +398,7 @@ static VIDEO_UPDATE( svision )
 static VIDEO_UPDATE( tvlink )
 {
 	int x, y, i, j = XPOS/4+YPOS*0x30;
-	UINT8 *vram = videoram;
+	UINT8 *vram = screen->machine->generic.videoram.u8;
 
 	if (BANK & 8)
 	{
@@ -443,13 +443,13 @@ static DRIVER_INIT( svision )
 {
 	svision.timer1 = timer_alloc(machine, svision_timer, NULL);
 	svision_pet.on = FALSE;
-	memory_set_bankptr(machine, 2, memory_region(machine, "user1") + 0x1c000);
+	memory_set_bankptr(machine, "bank2", memory_region(machine, "user1") + 0x1c000);
 }
 
 static DRIVER_INIT( svisions )
 {
 	svision.timer1 = timer_alloc(machine, svision_timer, NULL);
-	memory_set_bankptr(machine, 2, memory_region(machine, "user1") + 0x1c000);
+	memory_set_bankptr(machine, "bank2", memory_region(machine, "user1") + 0x1c000);
 	svision.timer1 = timer_alloc(machine, svision_timer, NULL);
 	svision_pet.on = TRUE;
 	svision_pet.timer = timer_alloc(machine, svision_pet_timer, NULL);
@@ -460,7 +460,7 @@ static MACHINE_RESET( svision )
 {
 	svision.timer_shot = FALSE;
 	svision_dma.finished = FALSE;
-	memory_set_bankptr(machine, 1, memory_region(machine, "user1"));
+	memory_set_bankptr(machine, "bank1", memory_region(machine, "user1"));
 }
 
 
@@ -468,7 +468,7 @@ static MACHINE_RESET( tvlink )
 {
 	svision.timer_shot = FALSE;
 	svision_dma.finished = FALSE;
-	memory_set_bankptr(machine, 1, memory_region(machine, "user1"));
+	memory_set_bankptr(machine, "bank1", memory_region(machine, "user1"));
 	tvlink.palette_on = FALSE;
 
 	memset(svision_reg + 0x800, 0xff, 0x40); // normally done from tvlink microcontroller
@@ -558,14 +558,14 @@ ROM_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY     FULLNAME */
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT             COMPANY     FULLNAME */
 // marketed under a ton of firms and names
-CONS(1992,	svision,	0,	0,	svision,	svision,	svision,	0,	"Watara",	"Super Vision", 0)
+CONS(1992,	svision,	0,	0,	svision,	svision,	svision,	"Watara",	"Super Vision", 0)
 // svdual 2 connected via communication port
-CONS( 1992, svisions,      svision,          0,svision,  svisions,    svisions,   0, "Watara", "Super Vision (PeT Communication Simulation)", 0 )
+CONS( 1992, svisions,      svision,          0,svision,  svisions,    svisions,   "Watara", "Super Vision (PeT Communication Simulation)", 0 )
 
-CONS( 1993, svisionp,      svision,          0,svisionp,  svision,    svision,   0, "Watara", "Super Vision (PAL TV Link Colored)", 0 )
-CONS( 1993, svisionn,      svision,          0,svisionn,  svision,    svision,   0, "Watara", "Super Vision (NTSC TV Link Colored)", 0 )
+CONS( 1993, svisionp,      svision,          0,svisionp,  svision,    svision,   "Watara", "Super Vision (PAL TV Link Colored)", 0 )
+CONS( 1993, svisionn,      svision,          0,svisionn,  svision,    svision,   "Watara", "Super Vision (NTSC TV Link Colored)", 0 )
 // svtvlink (2 supervisions)
 // tvlink (pad supervision simulated)
-CONS( 199?, tvlinkp,      svision,          0,tvlinkp,  svision,    svision,   0, "Watara", "TV Link PAL", 0 )
+CONS( 199?, tvlinkp,      svision,          0,tvlinkp,  svision,    svision,   "Watara", "TV Link PAL", 0 )

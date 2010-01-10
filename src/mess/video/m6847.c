@@ -1230,8 +1230,8 @@ INLINE void prepare_scanline(running_machine *machine, mc6847_state *mc6847, int
 			attrs = update_attributes(mc6847);
 
 			/* commenting out cause it breaks the coco3 border,
-			 * the whole 'attr' handling needs to be rewritten anyway
-			if (attrs != mc6847->attrs[scanline]) */
+             * the whole 'attr' handling needs to be rewritten anyway
+            if (attrs != mc6847->attrs[scanline]) */
 			{
 				mc6847->dirty = TRUE;
 				mc6847->attrs[scanline] = attrs;
@@ -1669,7 +1669,7 @@ static void text_mode(const device_config *device, int scanline, UINT32 *RESTRIC
 				char_data = 0xff;
 			}
 		} else {
-			if (mc6847->get_char_rom)
+			if ((attr & M6847_INTEXT) && !(attr & M6847_AS) && mc6847->get_char_rom)
 				char_data = mc6847->get_char_rom(device->machine,byte,scanline % 12);
 			else
 				char_data = mc6847->fontdata[attr_index][byte][scanline % 12];

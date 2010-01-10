@@ -16,7 +16,6 @@
 /* Components */
 #include "cpu/z80/z80.h"
 #include "includes/cbmserb.h"
-#include "includes/cbmdrive.h"
 #include "sound/speaker.h"
 
 /* Devices */
@@ -53,20 +52,20 @@ static void primo_update_memory(running_machine *machine)
 	switch (primo_port_FD & 0x03)
 	{
 		case 0x00:	/* Original ROM */
-			memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
-			memory_set_bankptr(machine,1, memory_region(machine, "maincpu")+0x10000);
+			memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
+			memory_set_bankptr(machine,"bank1", memory_region(machine, "maincpu")+0x10000);
 			break;
 		case 0x01:	/* EPROM extension 1 */
-			memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
-			memory_set_bankptr(machine,1, memory_region(machine, "maincpu")+0x14000);
+			memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
+			memory_set_bankptr(machine,"bank1", memory_region(machine, "maincpu")+0x14000);
 			break;
 		case 0x02:	/* RAM */
-			memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_BANK(1));
-			memory_set_bankptr(machine,1, memory_region(machine, "maincpu"));
+			memory_install_write_bank(space, 0x0000, 0x3fff, 0, 0, "bank1");
+			memory_set_bankptr(machine,"bank1", memory_region(machine, "maincpu"));
 			break;
 		case 0x03:	/* EPROM extension 2 */
-			memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
-			memory_set_bankptr(machine,1, memory_region(machine, "maincpu")+0x18000);
+			memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
+			memory_set_bankptr(machine,"bank1", memory_region(machine, "maincpu")+0x18000);
 			break;
 	}
 	logerror ("Memory update: %02x\n", primo_port_FD);
@@ -262,8 +261,8 @@ MACHINE_RESET( primob )
 {
 	primo_common_machine_init(machine);
 
-	cbm_drive_0_config(SERIAL, 8);
-	cbm_drive_1_config(SERIAL, 9);
+//removed	cbm_drive_0_config(SERIAL, 8);
+//removed	cbm_drive_1_config(SERIAL, 9);
 }
 
 /*******************************************************************************

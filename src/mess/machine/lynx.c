@@ -993,7 +993,7 @@ static void lynx_multiply( void )
 	}
 }
 
-READ8_HANDLER( suzy_read )
+static READ8_HANDLER( suzy_read )
 {
 	UINT8 value = 0, input;
 
@@ -1064,7 +1064,7 @@ READ8_HANDLER( suzy_read )
 	return value;
 }
 
-WRITE8_HANDLER(suzy_write)
+static WRITE8_HANDLER( suzy_write )
 {
 	suzy.data[offset] = data;
 
@@ -1233,7 +1233,7 @@ static void lynx_draw_lines(running_machine *machine, int newline)
 		{
 			for ( ; lynx_line_y < yend; lynx_line_y++)
 			{
-				line = BITMAP_ADDR16(tmpbitmap, lynx_line_y, 0);
+				line = BITMAP_ADDR16(machine->generic.tmpbitmap, lynx_line_y, 0);
 				for (x = 160 - 2; x >= 0; j++, x -= 2)
 				{
 					byte = lynx_read_vram(j);
@@ -1246,7 +1246,7 @@ static void lynx_draw_lines(running_machine *machine, int newline)
 		{
 			for ( ; lynx_line_y < yend; lynx_line_y++)
 			{
-				line = BITMAP_ADDR16(tmpbitmap, 102 - 1 - lynx_line_y, 0);
+				line = BITMAP_ADDR16(machine->generic.tmpbitmap, 102 - 1 - lynx_line_y, 0);
 				for (x = 0; x < 160; j++, x += 2)
 				{
 					byte = lynx_read_vram(j);
@@ -1263,7 +1263,7 @@ static void lynx_draw_lines(running_machine *machine, int newline)
 		{
 			for ( ; lynx_line_y < yend; lynx_line_y++)
 			{
-				line = BITMAP_ADDR16(tmpbitmap, 102 - 1 - lynx_line_y, 0);
+				line = BITMAP_ADDR16(machine->generic.tmpbitmap, 102 - 1 - lynx_line_y, 0);
 				for (x = 160 - 2; x >= 0; j++, x -= 2)
 				{
 					byte = lynx_read_vram(j);
@@ -1276,7 +1276,7 @@ static void lynx_draw_lines(running_machine *machine, int newline)
 		{
 			for ( ; lynx_line_y < yend; lynx_line_y++)
 			{
-				line = BITMAP_ADDR16(tmpbitmap, lynx_line_y, 0);
+				line = BITMAP_ADDR16(machine->generic.tmpbitmap, lynx_line_y, 0);
 				for (x = 0; x < 160; j++, x += 2)
 				{
 					byte = lynx_read_vram(j);
@@ -1611,7 +1611,7 @@ static WRITE8_HANDLER(lynx_uart_w)
 ****************************************/
 
 
-READ8_HANDLER(mikey_read)
+static READ8_HANDLER( mikey_read )
 {
 	UINT8 direction, value = 0x00;
 
@@ -1681,7 +1681,7 @@ READ8_HANDLER(mikey_read)
 	return value;
 }
 
-WRITE8_HANDLER(mikey_write)
+static WRITE8_HANDLER( mikey_write )
 {
 	switch (offset)
 	{
@@ -1795,22 +1795,27 @@ WRITE8_HANDLER( lynx_memory_config_w )
      * when these are safe in the cpu */
 	lynx_memory_config = data;
 
-	memory_install_read8_handler(space, 0xfc00, 0xfcff, 0, 0, (data & 1) ? SMH_BANK(1) : suzy_read);
-	memory_install_write8_handler(space, 0xfc00, 0xfcff, 0, 0, (data & 1) ? SMH_BANK(1) : suzy_write);
-	memory_install_read8_handler(space, 0xfd00, 0xfdff, 0, 0, (data & 2) ? SMH_BANK(2) : mikey_read);
-	memory_install_write8_handler(space, 0xfd00, 0xfdff, 0, 0, (data & 2) ? SMH_BANK(2) : mikey_write);
+	if (data & 1) {
+		memory_install_readwrite_bank(space, 0xfc00, 0xfcff, 0, 0, "bank1");
+	} else {
+		memory_install_readwrite8_handler(space, 0xfc00, 0xfcff, 0, 0, suzy_read, suzy_write);
+	}
+	if (data & 2) {
+		memory_install_readwrite_bank(space, 0xfd00, 0xfdff, 0, 0, "bank2");
+	} else {
+		memory_install_readwrite8_handler(space, 0xfd00, 0xfdff, 0, 0, mikey_read, mikey_write);
+	}
 
 	if (data & 1)
-		memory_set_bankptr(space->machine, 1, lynx_mem_fc00);
+		memory_set_bankptr(space->machine, "bank1", lynx_mem_fc00);
 	if (data & 2)
-		memory_set_bankptr(space->machine, 2, lynx_mem_fd00);
-	memory_set_bank(space->machine, 3, (data & 4) ? 1 : 0);
-	memory_set_bank(space->machine, 4, (data & 8) ? 1 : 0);
+		memory_set_bankptr(space->machine, "bank2", lynx_mem_fd00);
+	memory_set_bank(space->machine, "bank3", (data & 4) ? 1 : 0);
+	memory_set_bank(space->machine, "bank4", (data & 8) ? 1 : 0);
 }
 
 static void lynx_reset(running_machine *machine)
-{
-	int i;
+{	
 	lynx_memory_config_w(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0, 0);
 
 	cputag_set_input_line(machine, "maincpu", M65SC02_IRQ_LINE, CLEAR_LINE);
@@ -1831,9 +1836,6 @@ static void lynx_reset(running_machine *machine)
 
 	lynx_uart_reset();
 
-	for (i = 0; i < NR_LYNX_TIMERS; i++)
-		lynx_timer_init(machine, i);
-
 	lynx_audio_reset();
 
 	// hack to allow current object loading to work
@@ -1852,18 +1854,23 @@ static STATE_POSTLOAD( lynx_postload )
 
 MACHINE_START( lynx )
 {
+	int i;
 	state_save_register_global(machine, lynx_memory_config);
 	state_save_register_global_pointer(machine, lynx_mem_fe00, lynx_mem_fe00_size);
 	state_save_register_postload(machine, lynx_postload, NULL);
 
-	memory_configure_bank(machine, 3, 0, 1, memory_region(machine, "maincpu") + 0x0000, 0);
-	memory_configure_bank(machine, 3, 1, 1, lynx_mem_fe00, 0);
-	memory_configure_bank(machine, 4, 0, 1, memory_region(machine, "maincpu") + 0x01fa, 0);
-	memory_configure_bank(machine, 4, 1, 1, lynx_mem_fffa, 0);
+	memory_configure_bank(machine, "bank3", 0, 1, memory_region(machine, "maincpu") + 0x0000, 0);
+	memory_configure_bank(machine, "bank3", 1, 1, lynx_mem_fe00, 0);
+	memory_configure_bank(machine, "bank4", 0, 1, memory_region(machine, "maincpu") + 0x01fa, 0);
+	memory_configure_bank(machine, "bank4", 1, 1, lynx_mem_fffa, 0);
 
 	memset(&suzy, 0, sizeof(suzy));
 
 	add_reset_callback(machine, lynx_reset);
+	
+	for (i = 0; i < NR_LYNX_TIMERS; i++)
+		lynx_timer_init(machine, i);
+
 }
 
 

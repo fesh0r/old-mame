@@ -209,12 +209,8 @@ static void i8271_seek_to_track(const device_config *device,int track)
 
         /*logerror("step\n"); */
 
-		while (
-			/* track 0 not set */
-			(!floppy_drive_get_flag_state(img, FLOPPY_DRIVE_HEAD_AT_TRACK_0)) &&
-			/* not seeked more than 255 tracks */
-			(StepCount!=0)
-			)
+		/* track 0 not set, not seeked more than 255 tracks */
+		while (floppy_tk00_r(img) && (StepCount != 0))
 		{
 /*            logerror("step\n"); */
 			StepCount--;
@@ -872,24 +868,13 @@ static void i8271_command_execute(const device_config *device)
 					i8271->drive_control_input = (1<<6) | (1<<2);
 
 					/* bit 3 = 0 if write protected */
-					if (!floppy_drive_get_flag_state(img, FLOPPY_DRIVE_DISK_WRITE_PROTECTED))
-					{
-						i8271->drive_control_input |= (1<<3);
-					}
+					i8271->drive_control_input |= floppy_wpt_r(img) << 3;
 
 					/* bit 1 = 0 if head at track 0 */
-					if (!floppy_drive_get_flag_state(img, FLOPPY_DRIVE_HEAD_AT_TRACK_0))
-					{
-						i8271->drive_control_input |= (1<<1);
-					}
-
+					i8271->drive_control_input |= floppy_tk00_r(img) << 1;
 
 					/* need to setup this register based on drive selected */
 					data = i8271->drive_control_input;
-
-
-
-
 				}
 				break;
 
@@ -1019,7 +1004,7 @@ static void i8271_command_execute(const device_config *device)
 
 					/* load head - on mini-sized drives this turns on the disc motor,
                     on standard-sized drives this loads the head and turns the motor on */
-					floppy_drive_set_motor_state(img, i8271->CommandParameters[1] & 0x08);
+					floppy_mon_w(img, !BIT(i8271->CommandParameters[1], 3));
 					floppy_drive_set_ready_state(img, 1, 1);
 
 					/* step pin changed? if so perform a step in the direction indicated */
@@ -1094,16 +1079,10 @@ static void i8271_command_execute(const device_config *device)
 			}
 
 			/* bit 3 = 1 if write protected */
-			if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_DISK_WRITE_PROTECTED))
-			{
-				status |= (1<<3);
-			}
+			status |= !floppy_wpt_r(img) << 3;
 
 			/* bit 1 = 1 if head at track 0 */
-			if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_HEAD_AT_TRACK_0))
-			{
-				status |= (1<<1);
-			}
+			status |= !floppy_tk00_r(img) << 1;
 
 			i8271->ResultRegister = status;
 			i8271_command_complete(device,1,0);
@@ -1226,7 +1205,7 @@ static void i8271_command_execute(const device_config *device)
 			}
 			else
 			{
-				if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_DISK_WRITE_PROTECTED))
+				if (floppy_wpt_r(img) == CLEAR_LINE)
 				{
 					/* Completion type: operation intervention probably required for recovery */
 					/* Completion code: Drive write protected */
@@ -1271,7 +1250,7 @@ static void i8271_command_execute(const device_config *device)
 			}
 			else
 			{
-				if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_DISK_WRITE_PROTECTED))
+				if (floppy_wpt_r(img) == CLEAR_LINE)
 				{
 					/* Completion type: operation intervention probably required for recovery */
 					/* Completion code: Drive write protected */

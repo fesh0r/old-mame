@@ -203,18 +203,18 @@ WRITE8_HANDLER( osborne1_bankswitch_w )
 	}
 	if ( osborne1.bank2_enabled )
 	{
-		memory_set_bankptr(space->machine,1, memory_region(space->machine, "maincpu") );
-		memory_set_bankptr(space->machine,2, osborne1.empty_4K );
-		memory_set_bankptr(space->machine,3, osborne1.empty_4K );
+		memory_set_bankptr(space->machine,"bank1", memory_region(space->machine, "maincpu") );
+		memory_set_bankptr(space->machine,"bank2", osborne1.empty_4K );
+		memory_set_bankptr(space->machine,"bank3", osborne1.empty_4K );
 	}
 	else
 	{
-		memory_set_bankptr(space->machine,1, messram_get_ptr(devtag_get_device(space->machine, "messram")) );
-		memory_set_bankptr(space->machine,2, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x1000 );
-		memory_set_bankptr(space->machine,3, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x3000 );
+		memory_set_bankptr(space->machine,"bank1", messram_get_ptr(devtag_get_device(space->machine, "messram")) );
+		memory_set_bankptr(space->machine,"bank2", messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x1000 );
+		memory_set_bankptr(space->machine,"bank3", messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x3000 );
 	}
 	osborne1.bank4_ptr = messram_get_ptr(devtag_get_device(space->machine, "messram")) + ( ( osborne1.bank3_enabled ) ? 0x10000 : 0xF000 );
-	memory_set_bankptr(space->machine,4, osborne1.bank4_ptr );
+	memory_set_bankptr(space->machine,"bank4", osborne1.bank4_ptr );
 	osborne1.bankswitch = offset;
 	osborne1.in_irq_handler = 0;
 }
@@ -372,7 +372,7 @@ static TIMER_CALLBACK(osborne1_video_callback)
 	{
 		/* Draw a line of the display */
 		UINT16 address = osborne1.start_y * 128 + osborne1.new_start_x + 11;
-		UINT16 *p = BITMAP_ADDR16( tmpbitmap, y, 0 );
+		UINT16 *p = BITMAP_ADDR16( machine->generic.tmpbitmap, y, 0 );
 		int x;
 
 		for ( x = 0; x < 52; x++ )
@@ -466,11 +466,6 @@ MACHINE_RESET( osborne1 )
 
 	memset( messram_get_ptr(devtag_get_device(machine, "messram")) + 0x10000, 0xFF, 0x1000 );
 
-	osborne1.video_timer = timer_alloc(machine,  osborne1_video_callback , NULL);
-	timer_adjust_oneshot(osborne1.video_timer, video_screen_get_time_until_pos(machine->primary_screen, 1, 0 ), 0);
-
-	timer_set(machine,  attotime_zero, NULL, 0, setup_osborne1 );
-
 	for(drive=0;drive<2;drive++)
 	{
 		floppy_install_load_proc(floppy_get_device(machine, drive), osborne1_load_proc);
@@ -489,6 +484,10 @@ DRIVER_INIT( osborne1 )
 
 	/* Configure the 6850 ACIA */
 //  acia6850_config( 0, &osborne1_6850_config );
+	osborne1.video_timer = timer_alloc(machine,  osborne1_video_callback , NULL);
+	timer_adjust_oneshot(osborne1.video_timer, video_screen_get_time_until_pos(machine->primary_screen, 1, 0 ), 0);
+
+	timer_set(machine,  attotime_zero, NULL, 0, setup_osborne1 );
 }
 
 

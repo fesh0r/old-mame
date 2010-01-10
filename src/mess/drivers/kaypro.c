@@ -20,15 +20,13 @@
 
     Things that need doing:
 
-    - Need schematics of 2x and kaypro10 (used 2-84 which doesn't seem to be the same).
-      They currently are not reading any data from disk.
+    - Kaypro2x/4a are not booting.
 
-    - omni2 and kaypro4 would (I believe) boot up if we had a proper boot disk. The IMD
-      conversions seem to have the tracks scrambled (e.g reading side 0 track 1 gives us
-      side 1 track 0).
+    - Hard Disk not emulated.
+      The controller is a WD1002 (original version, for Winchester drives).
 
-    - Kaypro2x and Kaypro10 don't centre the display at boot, but a soft reset fixes it.
-      Perhaps the guesswork emulation of the video ULA is incomplete.
+    - Kaypro 4 plus 88 does work as a normal Kaypro, but the extra processor needs
+      to be worked out.
 
 
 **************************************************************************************************/
@@ -46,6 +44,7 @@
 #include "includes/kaypro.h"
 
 
+static READ8_HANDLER( kaypro2x_87) { return 0x7f; }	/* to bypass unemulated HD controller */
 
 /***********************************************************
 
@@ -55,7 +54,7 @@
 
 static ADDRESS_MAP_START( kaypro_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_ROM AM_REGION("maincpu", 0x0000)
-	AM_RANGE(0x3000, 0x3fff) AM_RAM AM_REGION("maincpu", 0x3000) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x3000, 0x3fff) AM_RAM AM_REGION("maincpu", 0x3000) AM_BASE_SIZE_GENERIC(videoram)
 	AM_RANGE(0x4000, 0xffff) AM_RAM AM_REGION("rambank", 0x4000)
 ADDRESS_MAP_END
 
@@ -95,9 +94,49 @@ static ADDRESS_MAP_START( kaypro2x_io, ADDRESS_SPACE_IO, 8 )
     AM_RANGE(0x85, 0x85) Hard Drive Cylinder high register I/O
     AM_RANGE(0x86, 0x86) Hard Drive Size / Drive / Head register I/O
     AM_RANGE(0x87, 0x87) Hard Drive READ status register, WRITE command register */
-	AM_RANGE(0x20, 0x87) AM_NOP
+	AM_RANGE(0x20, 0x86) AM_NOP
+	AM_RANGE(0x87, 0x87) AM_READ(kaypro2x_87)
 ADDRESS_MAP_END
 
+
+/***************************************************************
+
+    F4 CHARACTER DISPLAYER
+
+****************************************************************/
+static const gfx_layout kayproii_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static const gfx_layout kaypro2x_charlayout =
+{
+	8, 16,					/* 8 x 16 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
+	8*16					/* every char takes 16 bytes */
+};
+
+static GFXDECODE_START( kayproii )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, kayproii_charlayout, 0, 1 )
+GFXDECODE_END
+
+static GFXDECODE_START( kaypro2x )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, kaypro2x_charlayout, 0, 1 )
+GFXDECODE_END
 
 /***************************************************************
 
@@ -170,7 +209,7 @@ static const floppy_config kayproii_floppy_config =
 };
 static const floppy_config kaypro2x_floppy_config =
 {
-	DEVCB_NULL,
+	DEVCB_LINE(wd17xx_idx_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -197,6 +236,7 @@ static MACHINE_DRIVER_START( kayproii )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(80*7, 24*10)
 	MDRV_SCREEN_VISIBLE_AREA(0,80*7-1,0,24*10-1)
+	MDRV_GFXDECODE(kayproii)
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(kaypro)
 
@@ -236,10 +276,11 @@ static MACHINE_DRIVER_START( kaypro2x )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(80*8, 25*16)
 	MDRV_SCREEN_VISIBLE_AREA(0,80*8-1,0,25*16-1)
+	MDRV_GFXDECODE(kaypro2x)
 	MDRV_PALETTE_LENGTH(3)
 	MDRV_PALETTE_INIT(kaypro)
 
-	MDRV_MC6845_ADD("crtc", MC6845, 1500000, kaypro2x_crtc) /* comes out of ULA - needs to be measured */
+	MDRV_MC6845_ADD("crtc", MC6845, 2000000, kaypro2x_crtc) /* comes out of ULA - needs to be measured */
 
 	MDRV_VIDEO_START( kaypro )
 	MDRV_VIDEO_UPDATE( kaypro2x )
@@ -251,7 +292,7 @@ static MACHINE_DRIVER_START( kaypro2x )
 
 	/* devices */
 	MDRV_QUICKLOAD_ADD("quickload", kaypro2x, "com,cpm", 3)
-	MDRV_WD179X_ADD("wd1793", kaypro_wd1793_interface )
+	MDRV_WD1793_ADD("wd1793", kaypro_wd1793_interface )
 	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 	MDRV_Z80SIO_ADD( "z80sio", 4800, kaypro_sio_intf )
 	MDRV_Z80SIO_ADD( "z80sio_2x", 4800, kaypro_sio_intf )	/* extra sio for modem and printer */
@@ -353,12 +394,12 @@ ROM_START(kaypro10)
 	ROM_LOAD("81-817.u31",   0x0000, 0x1000, CRC(5f72da5b) SHA1(8a597000cce1a7e184abfb7bebcb564c6bf24fb7) )
 ROM_END
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT    INIT    CONFIG       COMPANY  FULLNAME */
-COMP( 1982, kayproii,   0,        0,    kayproii, kay_kbd, 0,      0,	"Non Linear Systems",  "Kaypro II - 2/83" , 0 )
-COMP( 1983, kaypro4,    kayproii, 0,    kayproii, kay_kbd, 0,      0,    "Non Linear Systems",  "Kaypro 4 - 4/83" , GAME_NOT_WORKING ) // model 81-004
-COMP( 1983, kaypro4p88, kayproii, 0,    kayproii, kay_kbd, 0,      0,    "Non Linear Systems",  "Kaypro 4 plus88 - 4/83" , GAME_NOT_WORKING ) // model 81-004 with an added 8088 daughterboard and rom
-COMP( 198?, omni2,      kayproii, 0,    omni2,    kay_kbd, 0,      0,    "Non Linear Systems",  "Omni II" , GAME_NOT_WORKING )
-COMP( 1984, kaypro2x,   0,        0,    kaypro2x, kay_kbd, 0,      0,    "Non Linear Systems",  "Kaypro 2x" , GAME_NOT_WORKING ) // model 81-025
-COMP( 1984, kaypro4a,   0,        0,    kaypro2x, kay_kbd, 0,      0,    "Non Linear Systems",  "Kaypro 4 - 4/84" , GAME_NOT_WORKING ) // model 81-015
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT    INIT    COMPANY  FULLNAME */
+COMP( 1982, kayproii,   0,        0,    kayproii, kay_kbd, 0,      "Non Linear Systems",  "Kaypro II - 2/83" , 0 )
+COMP( 1983, kaypro4,    kayproii, 0,    kayproii, kay_kbd, 0,      "Non Linear Systems",  "Kaypro 4 - 4/83" , 0 ) // model 81-004
+COMP( 1983, kaypro4p88, kayproii, 0,    kayproii, kay_kbd, 0,      "Non Linear Systems",  "Kaypro 4 plus88 - 4/83" , GAME_NOT_WORKING ) // model 81-004 with an added 8088 daughterboard and rom
+COMP( 198?, omni2,      kayproii, 0,    omni2,    kay_kbd, 0,      "Non Linear Systems",  "Omni II" , 0 )
+COMP( 1984, kaypro2x,   0,        0,    kaypro2x, kay_kbd, 0,      "Non Linear Systems",  "Kaypro 2x" , GAME_NOT_WORKING ) // model 81-025
+COMP( 1984, kaypro4a,   0,        0,    kaypro2x, kay_kbd, 0,      "Non Linear Systems",  "Kaypro 4 - 4/84" , GAME_NOT_WORKING ) // model 81-015
 // Kaypro 4/84 plus 88 goes here, model 81-015 with an added 8088 daughterboard and rom
-COMP( 1983, kaypro10,   0,        0,    kaypro2x, kay_kbd, 0,      0,    "Non Linear Systems",  "Kaypro 10" , GAME_NOT_WORKING ) // model 81-005
+COMP( 1983, kaypro10,   0,        0,    kaypro2x, kay_kbd, 0,      "Non Linear Systems",  "Kaypro 10" , 0 ) // model 81-005

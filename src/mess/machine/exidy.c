@@ -6,7 +6,7 @@
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
-#include "sound/speaker.h"
+#include "sound/dac.h"
 #include "sound/wave.h"
 #include "machine/ctronics.h"
 #include "devices/cassette.h"
@@ -162,7 +162,7 @@ static TIMER_CALLBACK(exidy_cassette_tc)
 /* after the first 4 bytes have been read from ROM, switch the ram back in */
 static TIMER_CALLBACK( exidy_reset )
 {
-	memory_set_bank(machine, 1, 0);
+	memory_set_bank(machine, "bank1", 0);
 }
 
 WRITE8_HANDLER(exidy_fc_w)
@@ -257,12 +257,12 @@ WRITE8_HANDLER(exidy_fe_w)
 WRITE8_HANDLER(exidy_ff_w)
 {
 	const device_config *printer = devtag_get_device(space->machine, "centronics");
-	const device_config *speaker = devtag_get_device(space->machine, "speaker");
+	const device_config *dac_device = devtag_get_device(space->machine, "dac");
 	/* reading the config switch */
 	switch (input_port_read(space->machine, "CONFIG") & 0x06)
 	{
 		case 0: /* speaker */
-			speaker_level_w(speaker, (data) ? 1 : 0);
+			dac_data_w(dac_device, data);
 			break;
 
 		case 2: /* Centronics 7-bit printer */
@@ -312,8 +312,10 @@ READ8_HANDLER(exidy_fe_r)
      - tied high, allowing PARIN and PAROUT bios routines to run */
 
 	UINT8 data = 0xc0;
-	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7",
-										"LINE8", "LINE9", "LINE10", "LINE11", "LINE12", "LINE13", "LINE14", "LINE15" };
+	static const char *const keynames[] = {
+		"LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7",
+		"LINE8", "LINE9", "LINE10", "LINE11", "LINE12", "LINE13", "LINE14", "LINE15"
+	};
 
 	/* bit 5 - vsync (inverted) */
 	data |= (((~input_port_read(space->machine, "VS")) & 0x01)<<5);
@@ -335,7 +337,7 @@ READ8_HANDLER(exidy_ff_r)
 	UINT8 data=0x7f;
 
 	/* bit 7 = printer busy
-	0 = printer is not busy */
+    0 = printer is not busy */
 
 	data |= centronics_busy_r(printer) << 7;
 
@@ -363,11 +365,13 @@ Z80BIN_EXECUTE( exidy )
 
 	if ((start_address == 0x1d5) || (execute_address == 0xc858))
 	{
-		UINT8 i, data[]={
+		UINT8 i;
+		static const UINT8 data[]={
 			0xcd, 0x26, 0xc4,	// CALL C426    ;set up other pointers
 			0x21, 0xd4, 1,		// LD HL,01D4   ;start of program address (used by C689)
 			0x36, 0,		// LD (HL),00   ;make sure dummy end-of-line is there
-			0xc3, 0x89, 0xc6,};	// JP C689  ;run program
+			0xc3, 0x89, 0xc6	// JP C689  ;run program
+		};
 
 		for (i = 0; i < ARRAY_LENGTH(data); i++)
 			memory_write_byte(space, 0xf01f + i, data[i]);
@@ -399,7 +403,7 @@ SNAPSHOT_LOAD(exidy)
 {
 	UINT8 *ptr = memory_region(image->machine, "maincpu");
 	const device_config *cpu = cputag_get_cpu(image->machine, "maincpu");
-	const UINT8 header[28];
+	UINT8 header[28];
 
 	/* check size */
 	if (snapshot_size != 0x1001c)
@@ -458,5 +462,5 @@ MACHINE_RESET( exidy )
 	exidy_fe_w(space, 0, 0);
 
 	timer_set(machine, ATTOTIME_IN_USEC(10), NULL, 0, exidy_reset);
-	memory_set_bank(machine, 1, 1);
+	memory_set_bank(machine, "bank1", 1);
 }

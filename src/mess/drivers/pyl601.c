@@ -33,11 +33,11 @@ static WRITE8_HANDLER (rom_page_w)
 	{
 		int chip = (data >> 4) % 5;
 		int page = data & 7;
-		memory_set_bankptr(space->machine, 2, memory_region(space->machine, "romdisk") + chip*0x10000 + page * 0x2000);
+		memory_set_bankptr(space->machine, "bank2", memory_region(space->machine, "romdisk") + chip*0x10000 + page * 0x2000);
 	}
 	else
 	{
-		memory_set_bankptr(space->machine, 2, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0xc000);
+		memory_set_bankptr(space->machine, "bank2", messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0xc000);
 	}
 }
 
@@ -156,7 +156,7 @@ static UPD765_GET_IMAGE( pyldin_upd765_get_image )
 	return get_floppy_image(device->machine, (floppy_index & 1)^1);
 }
 static UINT8 floppy_ctrl = 0;
-static WRITE8_HANDLER (floppy_w)
+static WRITE8_HANDLER( floppy_w )
 {
 	// bit 0 is reset (if zero)
 	// bit 1 is TC state
@@ -167,7 +167,7 @@ static WRITE8_HANDLER (floppy_w)
 		//reset
 		upd765_reset(floppy,0);
 	}
-	floppy_drive_set_motor_state(get_floppy_image(space->machine, BIT(data,2)), BIT(data,3));
+	floppy_mon_w(get_floppy_image(space->machine, BIT(data,2)), !BIT(data, 3));
 
 	floppy_drive_set_ready_state(get_floppy_image(space->machine, 0), BIT(data,2), 0);
 
@@ -191,9 +191,9 @@ static const struct upd765_interface pyldin_upd765_interface =
 
 static ADDRESS_MAP_START(pyl601_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE( 0x0000, 0xbfff ) AM_RAMBANK(1)
-	AM_RANGE( 0xc000, 0xdfff ) AM_RAMBANK(2)
-	AM_RANGE( 0xe000, 0xe5ff ) AM_RAMBANK(3)
+	AM_RANGE( 0x0000, 0xbfff ) AM_RAMBANK("bank1")
+	AM_RANGE( 0xc000, 0xdfff ) AM_RAMBANK("bank2")
+	AM_RANGE( 0xe000, 0xe5ff ) AM_RAMBANK("bank3")
 	AM_RANGE( 0xe600, 0xe600 ) AM_DEVWRITE("crtc", mc6845_address_w)
 	AM_RANGE( 0xe601, 0xe601 ) AM_DEVREADWRITE("crtc", mc6845_register_r , mc6845_register_w)
 	AM_RANGE( 0xe604, 0xe604 ) AM_DEVWRITE("crtc", mc6845_address_w)
@@ -212,8 +212,8 @@ static ADDRESS_MAP_START(pyl601_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0xe6d0, 0xe6d0 ) AM_DEVREAD("upd765", upd765_status_r)
 	AM_RANGE( 0xe6d1, 0xe6d1 ) AM_DEVREADWRITE("upd765", upd765_data_r, upd765_data_w)
 	AM_RANGE( 0xe6f0, 0xe6f0 ) AM_READWRITE(rom_page_r, rom_page_w)
-	AM_RANGE( 0xe700, 0xefff ) AM_RAMBANK(4)
-	AM_RANGE( 0xf000, 0xffff ) AM_READWRITE(SMH_BANK(5), SMH_BANK(6))
+	AM_RANGE( 0xe700, 0xefff ) AM_RAMBANK("bank4")
+	AM_RANGE( 0xf000, 0xffff ) AM_READ_BANK("bank5") AM_WRITE_BANK("bank6")
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -318,12 +318,12 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(pyl601)
 {
-	memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x0000);
-	memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
-	memory_set_bankptr(machine, 3, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xe000);
-	memory_set_bankptr(machine, 4, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xe700);
-	memory_set_bankptr(machine, 5, memory_region(machine, "maincpu") + 0xf000);
-	memory_set_bankptr(machine, 6, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xf000);
+	memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x0000);
+	memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
+	memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xe000);
+	memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xe700);
+	memory_set_bankptr(machine, "bank5", memory_region(machine, "maincpu") + 0xf000);
+	memory_set_bankptr(machine, "bank6", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xf000);
 
 	device_reset(cputag_get_cpu(machine, "maincpu"));
 }
@@ -484,6 +484,41 @@ static const floppy_config pyldin_floppy_config =
 	DO_NOT_KEEP_GEOMETRY
 };
 
+/* F4 Character Displayer */
+static const gfx_layout pyl601_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static const gfx_layout pyl601a_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*16					/* every char takes 16 bytes */
+};
+
+static GFXDECODE_START( pyl601 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, pyl601_charlayout, 0, 1 )
+GFXDECODE_END
+
+static GFXDECODE_START( pyl601a )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, pyl601a_charlayout, 0, 1 )
+GFXDECODE_END
+
 static MACHINE_DRIVER_START( pyl601 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",M6800, XTAL_1MHz)
@@ -499,6 +534,7 @@ static MACHINE_DRIVER_START( pyl601 )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(640, 200)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640 - 1, 0, 200 - 1)
+	MDRV_GFXDECODE(pyl601)
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(monochrome_green)
 
@@ -510,7 +546,7 @@ static MACHINE_DRIVER_START( pyl601 )
 	MDRV_UPD765A_ADD("upd765", pyldin_upd765_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(pyldin_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("576K") // 64 + 512
@@ -519,6 +555,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( pyl601a )
 	MDRV_IMPORT_FROM(pyl601)
 	MDRV_CPU_REPLACE("maincpu",M6800, XTAL_2MHz)
+	MDRV_GFXDECODE(pyl601a)
 	MDRV_DEVICE_REMOVE("crtc")
 	MDRV_MC6845_ADD("crtc", MC6845, XTAL_2MHz, pyl601a_crtc6845_interface)
 MACHINE_DRIVER_END
@@ -567,6 +604,6 @@ ROM_START( pyl601a )
 ROM_END
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1989, pyl601,  0,       0, 	pyl601, 	pyl601, pyl601,  	  0,  	 "Mikroelektronika",   "Pyldin-601",		GAME_NOT_WORKING)
-COMP( 1989, pyl601a, pyl601,  0, 	pyl601a, 	pyl601, pyl601,  	  0,  	 "Mikroelektronika",   "Pyldin-601A",		GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT   COMPANY   FULLNAME       FLAGS */
+COMP( 1989, pyl601,  0,       0, 	pyl601, 	pyl601, pyl601, "Mikroelektronika",   "Pyldin-601",		GAME_NOT_WORKING)
+COMP( 1989, pyl601a, pyl601,  0, 	pyl601a, 	pyl601, pyl601, "Mikroelektronika",   "Pyldin-601A",		GAME_NOT_WORKING)

@@ -32,12 +32,12 @@ READ8_HANDLER( galaxy_keyboard_r )
 	}
 }
 
-UINT8 gal_latch_value = 0;
+UINT8 galaxy_latch_value = 0;
 
 WRITE8_HANDLER( galaxy_latch_w )
 {
 	double val = (((data >>6) & 1 ) + ((data >> 2) & 1) - 1) * 32000;
-	gal_latch_value = data;
+	galaxy_latch_value = data;
 	cassette_output(devtag_get_device(space->machine, "cassette"), val);
 }
 
@@ -55,9 +55,8 @@ INTERRUPT_GEN( galaxy_interrupt )
 
 static IRQ_CALLBACK ( galaxy_irq_callback )
 {
-	gal_cnt = 0;
+	galaxy_set_timer();
 	galaxy_interrupts_enabled = TRUE;
-	timer_adjust_periodic(gal_video_timer, attotime_zero, 0, ATTOTIME_IN_HZ(6144000 / 8));
 	return 0xff;
 }
 
@@ -159,14 +158,12 @@ SNAPSHOT_LOAD( galaxy )
 DRIVER_INIT( galaxy )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	memory_install_read8_handler( space, 0x2800, 0x2800 + messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0, SMH_BANK(1));
-	memory_install_write8_handler(space, 0x2800, 0x2800 + messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0, SMH_BANK(1));
-	memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_install_readwrite_bank( space, 0x2800, 0x2800 + messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0, "bank1");
+	memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
 
 	if (messram_get_size(devtag_get_device(machine, "messram")) < (6 + 48) * 1024)
 	{
-		memory_install_read8_handler( space, 0x2800 + messram_get_size(devtag_get_device(machine, "messram")), 0xffff, 0, 0, SMH_NOP);
-		memory_install_write8_handler(space, 0x2800 + messram_get_size(devtag_get_device(machine, "messram")), 0xffff, 0, 0, SMH_NOP);
+		memory_nop_readwrite( space, 0x2800 + messram_get_size(devtag_get_device(machine, "messram")), 0xffff, 0, 0);
 	}
 }
 
@@ -179,15 +176,18 @@ MACHINE_RESET( galaxy )
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	/* ROM 2 enable/disable */
-	memory_install_read8_handler(space, 0x1000, 0x1fff, 0, 0, input_port_read(machine, "ROM2") ? SMH_BANK(10) : SMH_NOP);
-	memory_install_write8_handler(space, 0x1000, 0x1fff, 0, 0, SMH_NOP);
-	memory_set_bankptr(machine,10, memory_region(machine, "maincpu") + 0x1000);
+	if (input_port_read(machine, "ROM2")) {
+		memory_install_read_bank(space, 0x1000, 0x1fff, 0, 0, "bank10");
+	} else {
+		memory_nop_read(space, 0x1000, 0x1fff, 0, 0);
+	}
+	memory_nop_write(space, 0x1000, 0x1fff, 0, 0);
+
+	if (input_port_read(machine, "ROM2"))
+		memory_set_bankptr(machine,"bank10", memory_region(machine, "maincpu") + 0x1000);
 
 	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), galaxy_irq_callback);
 	galaxy_interrupts_enabled = TRUE;
-
-	gal_video_timer = timer_alloc(machine, gal_video, NULL);
-	timer_adjust_periodic(gal_video_timer, attotime_zero, 0,attotime_never);
 }
 
 DRIVER_INIT( galaxyp )
@@ -207,12 +207,8 @@ MACHINE_RESET( galaxyp )
 	ROM[0x03fa] = 0x00;
 	ROM[0x03fb] = 0xe0;
 
-	memory_install_read8_handler(space, 0xe000, 0xefff, 0, 0, SMH_BANK(11));
-	memory_install_write8_handler(space, 0xe000, 0xefff, 0, 0, SMH_NOP);
-	memory_set_bankptr(machine,11, memory_region(machine, "maincpu") + 0xe000);
+	memory_install_read_bank(space, 0xe000, 0xefff, 0, 0, "bank11");
+	memory_nop_write(space, 0xe000, 0xefff, 0, 0);
+	memory_set_bankptr(machine,"bank11", memory_region(machine, "maincpu") + 0xe000);
 	galaxy_interrupts_enabled = TRUE;
-
-	gal_video_timer = timer_alloc(machine, gal_video, NULL);
-	timer_adjust_periodic(gal_video_timer, attotime_zero, 0, attotime_never);
-
 }

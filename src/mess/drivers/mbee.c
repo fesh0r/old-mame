@@ -80,69 +80,69 @@ size_t mbee_size;
 
 static ADDRESS_MAP_START(mbee_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0x3fff) AM_RAM
 	AM_RANGE(0x4000, 0x7fff) AM_WRITENOP	/* Needed because quickload to here will crash MESS otherwise */
 	AM_RANGE(0x8000, 0xefff) AM_ROM
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_BANK(2), mbee_videoram_w) AM_SIZE(&videoram_size)
-	AM_RANGE(0xf800, 0xffff) AM_READWRITE(SMH_BANK(3), mbee_pcg_w)
+	AM_RANGE(0xf000, 0xf7ff) AM_READ_BANK("bank2") AM_WRITE(mbee_videoram_w) AM_SIZE_GENERIC(videoram)
+	AM_RANGE(0xf800, 0xffff) AM_READ_BANK("bank3") AM_WRITE(mbee_pcg_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(mbeeic_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0x7fff) AM_RAM
 	AM_RANGE(0x8000, 0xbfff) AM_ROM
-	AM_RANGE(0xc000, 0xdfff) AM_ROMBANK(4)
+	AM_RANGE(0xc000, 0xdfff) AM_ROMBANK("bank4")
 	AM_RANGE(0xe000, 0xefff) AM_ROM
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_BANK(2), mbee_videoram_w) AM_SIZE(&videoram_size)
-	AM_RANGE(0xf800, 0xffff) AM_READWRITE(SMH_BANK(3), mbee_pcg_color_w)
+	AM_RANGE(0xf000, 0xf7ff) AM_READ_BANK("bank2") AM_WRITE(mbee_videoram_w) AM_SIZE_GENERIC(videoram)
+	AM_RANGE(0xf800, 0xffff) AM_READ_BANK("bank3") AM_WRITE(mbee_pcg_color_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(mbeepc_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0x7fff) AM_RAM
 	AM_RANGE(0x8000, 0xbfff) AM_ROM
-	AM_RANGE(0xc000, 0xdfff) AM_ROMBANK(4)
-	AM_RANGE(0xe000, 0xefff) AM_ROMBANK(5)
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_BANK(2), mbee_videoram_w) AM_SIZE(&videoram_size)
-	AM_RANGE(0xf800, 0xffff) AM_READWRITE(SMH_BANK(3), mbee_pcg_color_w)
+	AM_RANGE(0xc000, 0xdfff) AM_ROMBANK("bank4")
+	AM_RANGE(0xe000, 0xefff) AM_ROMBANK("bank5")
+	AM_RANGE(0xf000, 0xf7ff) AM_READ_BANK("bank2") AM_WRITE(mbee_videoram_w) AM_SIZE_GENERIC(videoram)
+	AM_RANGE(0xf800, 0xffff) AM_READ_BANK("bank3") AM_WRITE(mbee_pcg_color_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(mbeepc85_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0x7fff) AM_RAM
 	AM_RANGE(0x8000, 0xbfff) AM_ROM
-	AM_RANGE(0xc000, 0xdfff) AM_ROMBANK(4)
-	AM_RANGE(0xe000, 0xefff) AM_ROMBANK(5)
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_BANK(2), mbee_videoram_w) AM_SIZE(&videoram_size)
-	AM_RANGE(0xf800, 0xffff) AM_READWRITE(SMH_BANK(3), mbee_pcg_color_w)
+	AM_RANGE(0xc000, 0xdfff) AM_ROMBANK("bank4")
+	AM_RANGE(0xe000, 0xefff) AM_ROMBANK("bank5")
+	AM_RANGE(0xf000, 0xf7ff) AM_READ_BANK("bank2") AM_WRITE(mbee_videoram_w) AM_SIZE_GENERIC(videoram)
+	AM_RANGE(0xf800, 0xffff) AM_READ_BANK("bank3") AM_WRITE(mbee_pcg_color_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(mbeeppc_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0x7fff) AM_RAM
-	AM_RANGE(0x8000, 0x9fff) AM_ROMBANK(6)
+	AM_RANGE(0x8000, 0x9fff) AM_ROMBANK("bank6")
 	AM_RANGE(0xa000, 0xbfff) AM_ROM
-	AM_RANGE(0xc000, 0xdfff) AM_ROMBANK(4)
-	AM_RANGE(0xe000, 0xefff) AM_ROMBANK(5)
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_BANK(2), mbee_videoram_w) AM_SIZE(&videoram_size)
-	AM_RANGE(0xf800, 0xffff) AM_READWRITE(SMH_BANK(3), mbee_pcg_color_w)
+	AM_RANGE(0xc000, 0xdfff) AM_ROMBANK("bank4")
+	AM_RANGE(0xe000, 0xefff) AM_ROMBANK("bank5")
+	AM_RANGE(0xf000, 0xf7ff) AM_READ_BANK("bank2") AM_WRITE(mbee_videoram_w) AM_SIZE_GENERIC(videoram)
+	AM_RANGE(0xf800, 0xffff) AM_READ_BANK("bank3") AM_WRITE(mbee_pcg_color_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(mbee56_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0xdfff) AM_RAM
 	AM_RANGE(0xe000, 0xefff) AM_ROM
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_BANK(2), mbee_videoram_w) AM_SIZE(&videoram_size)
-	AM_RANGE(0xf800, 0xffff) AM_READWRITE(SMH_BANK(3), mbee_pcg_color_w)
+	AM_RANGE(0xf000, 0xf7ff) AM_READ_BANK("bank2") AM_WRITE(mbee_videoram_w) AM_SIZE_GENERIC(videoram)
+	AM_RANGE(0xf800, 0xffff) AM_READ_BANK("bank3") AM_WRITE(mbee_pcg_color_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(mbee64_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0xdfff) AM_RAM
 	AM_RANGE(0xe000, 0xefff) AM_ROM
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_BANK(2), mbee_videoram_w) AM_SIZE(&videoram_size)
-	AM_RANGE(0xf800, 0xffff) AM_READWRITE(SMH_BANK(3), mbee_pcg_color_w)
+	AM_RANGE(0xf000, 0xf7ff) AM_READ_BANK("bank2") AM_WRITE(mbee_videoram_w) AM_SIZE_GENERIC(videoram)
+	AM_RANGE(0xf800, 0xffff) AM_READ_BANK("bank3") AM_WRITE(mbee_pcg_color_w)
 ADDRESS_MAP_END
 
 
@@ -331,6 +331,29 @@ static const z80_daisy_chain mbee_daisy_chain[] =
 	{ NULL }
 };
 
+/**************************** F4 CHARACTER DISPLAYER */
+static const gfx_layout mbee_charlayout =
+{
+	8,16,					/* 8 x 16 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{  0*8,  1*8,  2*8,  3*8,  4*8,  5*8,  6*8,  7*8, 8*8,  9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
+	8*16					/* every char takes 16 bytes */
+};
+
+/* This will show the 128 characters in the ROM + whatever happens to be in the PCG */
+static GFXDECODE_START( mbee )
+	GFXDECODE_ENTRY( "maincpu", 0x11000, mbee_charlayout, 0, 1 )
+GFXDECODE_END
+
+static GFXDECODE_START( mbeeic )
+	GFXDECODE_ENTRY( "maincpu", 0x11000, mbee_charlayout, 0, 48 )
+GFXDECODE_END
+
 static FLOPPY_OPTIONS_START(mbee)
 	FLOPPY_OPTION(ss80, "ss80", "SS80 disk image", basicdsk_identify_default, basicdsk_construct_default,
 		HEADS([1])
@@ -388,6 +411,8 @@ static MACHINE_DRIVER_START( mbee )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 19*16)			/* need at least 17 lines for NET */
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0, 19*16-1)
+
+	MDRV_GFXDECODE(mbee)
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(black_and_white)
 
@@ -427,6 +452,8 @@ static MACHINE_DRIVER_START( mbeeic )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(80*8, 310)
 	MDRV_SCREEN_VISIBLE_AREA(0, 80*8-1, 0, 19*16-1)
+
+	MDRV_GFXDECODE(mbeeic)
 	MDRV_PALETTE_LENGTH(96)
 	MDRV_PALETTE_INIT(mbeeic)
 
@@ -489,93 +516,93 @@ MACHINE_DRIVER_END
 static DRIVER_INIT( mbee )
 {
 	UINT8 *RAM = memory_region(machine, "maincpu");
-	memory_configure_bank(machine, 1, 0, 2, &RAM[0x0000],  0x8000);
-	memory_configure_bank(machine, 2, 0, 2, &RAM[0x11000], 0x4000);
-	memory_configure_bank(machine, 3, 0, 2, &RAM[0x11800], 0x4000);
-	memory_set_bank(machine, 2, 1);
-	memory_set_bank(machine, 3, 0);
+	memory_configure_bank(machine, "bank1", 0, 2, &RAM[0x0000],  0x8000);
+	memory_configure_bank(machine, "bank2", 0, 2, &RAM[0x11000], 0x4000);
+	memory_configure_bank(machine, "bank3", 0, 2, &RAM[0x11800], 0x4000);
+	memory_set_bank(machine, "bank2", 1);
+	memory_set_bank(machine, "bank3", 0);
 	mbee_size = 0x4000;
 }
 
 static DRIVER_INIT( mbeeic )
 {
 	UINT8 *RAM = memory_region(machine, "maincpu");
-	memory_configure_bank(machine, 1, 0, 2, &RAM[0x0000],  0x8000);
-	memory_configure_bank(machine, 2, 0, 2, &RAM[0x11000], 0x4000);
-	memory_configure_bank(machine, 3, 0, 2, &RAM[0x11800], 0x4000);
-	memory_configure_bank(machine, 4, 0, 8, &RAM[0x20000], 0x2000);
-	memory_set_bank(machine, 2, 1);
-	memory_set_bank(machine, 3, 0);
-	memory_set_bank(machine, 4, 0);
+	memory_configure_bank(machine, "bank1", 0, 2, &RAM[0x0000],  0x8000);
+	memory_configure_bank(machine, "bank2", 0, 2, &RAM[0x11000], 0x4000);
+	memory_configure_bank(machine, "bank3", 0, 2, &RAM[0x11800], 0x4000);
+	memory_configure_bank(machine, "bank4", 0, 8, &RAM[0x20000], 0x2000);
+	memory_set_bank(machine, "bank2", 1);
+	memory_set_bank(machine, "bank3", 0);
+	memory_set_bank(machine, "bank4", 0);
 	mbee_size = 0x8000;
 }
 
 static DRIVER_INIT( mbeepc )
 {
 	UINT8 *RAM = memory_region(machine, "maincpu");
-	memory_configure_bank(machine, 1, 0, 2, &RAM[0x0000],  0x8000);
-	memory_configure_bank(machine, 2, 0, 2, &RAM[0x11000], 0x4000);
-	memory_configure_bank(machine, 3, 0, 2, &RAM[0x11800], 0x4000);
-	memory_configure_bank(machine, 4, 0, 8, &RAM[0x20000], 0x2000);
-	memory_configure_bank(machine, 5, 0, 2, &RAM[0x18000], 0x1000);
-	memory_set_bank(machine, 2, 1);
-	memory_set_bank(machine, 3, 0);
-	memory_set_bank(machine, 4, 0);
-	memory_set_bank(machine, 5, 0);
+	memory_configure_bank(machine, "bank1", 0, 2, &RAM[0x0000],  0x8000);
+	memory_configure_bank(machine, "bank2", 0, 2, &RAM[0x11000], 0x4000);
+	memory_configure_bank(machine, "bank3", 0, 2, &RAM[0x11800], 0x4000);
+	memory_configure_bank(machine, "bank4", 0, 8, &RAM[0x20000], 0x2000);
+	memory_configure_bank(machine, "bank5", 0, 2, &RAM[0x18000], 0x1000);
+	memory_set_bank(machine, "bank2", 1);
+	memory_set_bank(machine, "bank3", 0);
+	memory_set_bank(machine, "bank4", 0);
+	memory_set_bank(machine, "bank5", 0);
 	mbee_size = 0x8000;
 }
 
 static DRIVER_INIT( mbeepc85 )
 {
 	UINT8 *RAM = memory_region(machine, "maincpu");
-	memory_configure_bank(machine, 1, 0, 2, &RAM[0x0000],  0x8000);
-	memory_configure_bank(machine, 2, 0, 2, &RAM[0x11000], 0x4000);
-	memory_configure_bank(machine, 3, 0, 2, &RAM[0x11800], 0x4000);
-	memory_configure_bank(machine, 4, 0, 8, &RAM[0x20000], 0x2000);
-	memory_configure_bank(machine, 5, 0, 2, &RAM[0x18000], 0x1000);
-	memory_set_bank(machine, 2, 1);
-	memory_set_bank(machine, 3, 0);
-	memory_set_bank(machine, 4, 5);
-	memory_set_bank(machine, 5, 0);
+	memory_configure_bank(machine, "bank1", 0, 2, &RAM[0x0000],  0x8000);
+	memory_configure_bank(machine, "bank2", 0, 2, &RAM[0x11000], 0x4000);
+	memory_configure_bank(machine, "bank3", 0, 2, &RAM[0x11800], 0x4000);
+	memory_configure_bank(machine, "bank4", 0, 8, &RAM[0x20000], 0x2000);
+	memory_configure_bank(machine, "bank5", 0, 2, &RAM[0x18000], 0x1000);
+	memory_set_bank(machine, "bank2", 1);
+	memory_set_bank(machine, "bank3", 0);
+	memory_set_bank(machine, "bank4", 5);
+	memory_set_bank(machine, "bank5", 0);
 	mbee_size = 0x8000;
 }
 
 static DRIVER_INIT( mbeeppc )
 {
 	UINT8 *RAM = memory_region(machine, "maincpu");
-	memory_configure_bank(machine, 1, 0, 2, &RAM[0x0000],  0x30000);
-	memory_configure_bank(machine, 2, 0, 2, &RAM[0x11000], 0x4000);
-	memory_configure_bank(machine, 3, 0, 2, &RAM[0x11800], 0x4000);
-	memory_configure_bank(machine, 4, 0, 8, &RAM[0x20000], 0x2000);
-	memory_configure_bank(machine, 5, 0, 2, &RAM[0x18000], 0x1000);
-	memory_configure_bank(machine, 6, 0, 2, &RAM[0x30000], 0x2000);
-	memory_set_bank(machine, 2, 1);
-	memory_set_bank(machine, 3, 0);
-	memory_set_bank(machine, 4, 5);
-	memory_set_bank(machine, 5, 0);
-	memory_set_bank(machine, 6, 0);
+	memory_configure_bank(machine, "bank1", 0, 2, &RAM[0x0000],  0x30000);
+	memory_configure_bank(machine, "bank2", 0, 2, &RAM[0x11000], 0x4000);
+	memory_configure_bank(machine, "bank3", 0, 2, &RAM[0x11800], 0x4000);
+	memory_configure_bank(machine, "bank4", 0, 8, &RAM[0x20000], 0x2000);
+	memory_configure_bank(machine, "bank5", 0, 2, &RAM[0x18000], 0x1000);
+	memory_configure_bank(machine, "bank6", 0, 2, &RAM[0x30000], 0x2000);
+	memory_set_bank(machine, "bank2", 1);
+	memory_set_bank(machine, "bank3", 0);
+	memory_set_bank(machine, "bank4", 5);
+	memory_set_bank(machine, "bank5", 0);
+	memory_set_bank(machine, "bank6", 0);
 	mbee_size = 0x8000;
 }
 
 static DRIVER_INIT( mbee56 )
 {
 	UINT8 *RAM = memory_region(machine, "maincpu");
-	memory_configure_bank(machine, 1, 0, 2, &RAM[0x0000],  0xe000);
-	memory_configure_bank(machine, 2, 0, 2, &RAM[0x11000], 0x4000);
-	memory_configure_bank(machine, 3, 0, 2, &RAM[0x11800], 0x4000);
-	memory_set_bank(machine, 2, 1);
-	memory_set_bank(machine, 3, 0);
+	memory_configure_bank(machine, "bank1", 0, 2, &RAM[0x0000],  0xe000);
+	memory_configure_bank(machine, "bank2", 0, 2, &RAM[0x11000], 0x4000);
+	memory_configure_bank(machine, "bank3", 0, 2, &RAM[0x11800], 0x4000);
+	memory_set_bank(machine, "bank2", 1);
+	memory_set_bank(machine, "bank3", 0);
 	mbee_size = 0xe000;
 }
 
 static DRIVER_INIT( mbee64 )
 {
 	UINT8 *RAM = memory_region(machine, "maincpu");
-	memory_configure_bank(machine, 1, 0, 2, &RAM[0x0000],  0xe000);
-	memory_configure_bank(machine, 2, 0, 2, &RAM[0x11000], 0x4000);
-	memory_configure_bank(machine, 3, 0, 2, &RAM[0x11800], 0x4000);
-	memory_set_bank(machine, 2, 1);
-	memory_set_bank(machine, 3, 0);
+	memory_configure_bank(machine, "bank1", 0, 2, &RAM[0x0000],  0xe000);
+	memory_configure_bank(machine, "bank2", 0, 2, &RAM[0x11000], 0x4000);
+	memory_configure_bank(machine, "bank3", 0, 2, &RAM[0x11800], 0x4000);
+	memory_set_bank(machine, "bank2", 1);
+	memory_set_bank(machine, "bank3", 0);
 	mbee_size = 0xe000;
 }
 
@@ -712,12 +739,12 @@ ROM_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      CONFIG    COMPANY         FULLNAME */
-COMP( 1982, mbee,     0,	0,	mbee,     mbee,     mbee,     0,	"Applied Technology",  "Microbee 16 Standard" , 0)
-COMP( 1982, mbeeic,   mbee,	0,	mbeeic,   mbee,     mbeeic,   0,	"Applied Technology",  "Microbee 32 IC" , 0)
-COMP( 1982, mbeepc,   mbee,	0,	mbeepc,   mbee,     mbeepc,   0,	"Applied Technology",  "Microbee 32 Personal Communicator" , 0)
-COMP( 1985, mbeepc85, mbee,	0,	mbeepc85, mbee,     mbeepc85, 0,	"Applied Technology",  "Microbee 32 PC85" , 0)
-COMP( 1985, mbeeppc,  mbee,	0,	mbeeppc,  mbee,     mbeeppc,  0,	"Applied Technology",  "Microbee 32 Premium PC85" , GAME_NOT_WORKING)
-COMP( 1986, mbee56,   mbee,	0,	mbee56,   mbee,     mbee56,   0,	"Applied Technology",  "Microbee 56k" , 0 )
-COMP( 1986, mbee64,   mbee,	0,	mbee64,   mbee,     mbee64,   0,	"Applied Technology",  "Microbee 64k" , GAME_NOT_WORKING)
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT       COMPANY         FULLNAME */
+COMP( 1982, mbee,     0,	0,	mbee,     mbee,     mbee,     		"Applied Technology",  "Microbee 16 Standard" , 0)
+COMP( 1982, mbeeic,   mbee,	0,	mbeeic,   mbee,     mbeeic,   		"Applied Technology",  "Microbee 32 IC" , 0)
+COMP( 1982, mbeepc,   mbee,	0,	mbeepc,   mbee,     mbeepc,   		"Applied Technology",  "Microbee 32 Personal Communicator" , 0)
+COMP( 1985, mbeepc85, mbee,	0,	mbeepc85, mbee,     mbeepc85, 		"Applied Technology",  "Microbee 32 PC85" , 0)
+COMP( 1985, mbeeppc,  mbee,	0,	mbeeppc,  mbee,     mbeeppc,  		"Applied Technology",  "Microbee 32 Premium PC85" , GAME_NOT_WORKING)
+COMP( 1986, mbee56,   mbee,	0,	mbee56,   mbee,     mbee56,   		"Applied Technology",  "Microbee 56k" , 0 )
+COMP( 1986, mbee64,   mbee,	0,	mbee64,   mbee,     mbee64,   		"Applied Technology",  "Microbee 64k" , GAME_NOT_WORKING)
 

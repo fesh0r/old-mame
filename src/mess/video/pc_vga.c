@@ -42,7 +42,7 @@
 ***************************************************************************/
 
 #define LOG_ACCESSES	0
-#define LOG_REGISTERS	1
+#define LOG_REGISTERS	0
 
 static PALETTE_INIT( ega );
 static PALETTE_INIT( vga );
@@ -301,7 +301,7 @@ static struct
 //#define CURSOR_POS (vga.crtc.data[0xf]|(vga.crtc.data[0xe]<<8))
 
 #define FONT1 ( ((vga.sequencer.data[3]&3)|((vga.sequencer.data[3]&0x10)<<2))*0x2000)
-#define FONT2 ( ((vga.sequencer.data[3]&c)>>2)|((vga.sequencer.data[3]&0x20)<<3))*0x2000)
+#define FONT2 ((((vga.sequencer.data[3]&c)>>2)|((vga.sequencer.data[3]&0x20)<<3))*0x2000)
 
 
 INLINE UINT8 rotate_right(UINT8 val, UINT8 rot)
@@ -582,7 +582,7 @@ static void vga_cpu_interface(running_machine *machine)
 	else if (vga.sequencer.data[4] & 4)
 	{
 		read_handler = vga_ega_r;
-		write_handler = vga_ega_w;		
+		write_handler = vga_ega_w;
 		read_handler16 = vga_ega16_r;
 		write_handler16 = vga_ega16_w;
 		read_handler32 = vga_ega32_r;
@@ -603,26 +603,18 @@ static void vga_cpu_interface(running_machine *machine)
 	}
 
 	/* remap the VGA memory */
+
 	if (vga.vga_intf.map_vga_memory)
 	{
 		sel = vga.gc.data[6] & 0x0c;
 		switch(sel)
 		{
 			case 0x00:
-				if (vga.vga_intf.vga_memory_bank != 0)
-				{
-					read_handler = (read8_space_func) (FPTR)vga.vga_intf.vga_memory_bank;
-					write_handler = (write8_space_func) (FPTR)vga.vga_intf.vga_memory_bank;
+				if (vga.vga_intf.vga_memory_bank != NULL)
+				{					
+					vga.vga_intf.map_vga_memory(machine, 0xA0000, 0xBFFFF, read_handler, write_handler);
+					memory_set_bankptr(machine, vga.vga_intf.vga_memory_bank, vga.memory);
 				}
-				else
-				{
-					read_handler = SMH_NOP;
-					write_handler = SMH_NOP;
-				}
-				vga.vga_intf.map_vga_memory(machine, 0xA0000, 0xBFFFF, read_handler, write_handler);
-
-				if (vga.vga_intf.vga_memory_bank != 0)
-					memory_set_bankptr(machine,vga.vga_intf.vga_memory_bank, vga.memory);
 				break;
 			case 0x04:
 				vga.vga_intf.map_vga_memory(machine, 0xA0000, 0xAFFFF, read_handler, write_handler);
@@ -644,18 +636,18 @@ static void vga_cpu_interface(running_machine *machine)
 				sel = vga.gc.data[6] & 0x0c;
 				if (sel)
 				{
-					memory_install_read8_handler(space,  0xa0000, 0xaffff, 0, 0, (sel == 0x04) ? read_handler  : SMH_NOP);
-					memory_install_read8_handler(space,  0xb0000, 0xb7fff, 0, 0, (sel == 0x08) ? read_handler  : SMH_NOP);
-					memory_install_read8_handler(space,  0xb8000, 0xbffff, 0, 0, (sel == 0x0C) ? read_handler  : SMH_NOP);
-					memory_install_write8_handler(space, 0xa0000, 0xaffff, 0, 0, (sel == 0x04) ? write_handler : SMH_NOP);
-					memory_install_write8_handler(space, 0xb0000, 0xb7fff, 0, 0, (sel == 0x08) ? write_handler : SMH_NOP);
-					memory_install_write8_handler(space, 0xb8000, 0xbffff, 0, 0, (sel == 0x0C) ? write_handler : SMH_NOP);
+					if (sel == 0x04) memory_install_read8_handler(space,  0xa0000, 0xaffff, 0, 0, read_handler ); else memory_nop_read(space,  0xa0000, 0xaffff, 0, 0);
+					if (sel == 0x08) memory_install_read8_handler(space,  0xb0000, 0xb7fff, 0, 0, read_handler ); else memory_nop_read(space,  0xb0000, 0xb7fff, 0, 0);
+					if (sel == 0x0C) memory_install_read8_handler(space,  0xb8000, 0xbffff, 0, 0, read_handler ); else memory_nop_read(space,  0xb8000, 0xbffff, 0, 0);
+					if (sel == 0x04) memory_install_write8_handler(space, 0xa0000, 0xaffff, 0, 0, write_handler); else memory_nop_write(space, 0xa0000, 0xaffff, 0, 0);
+					if (sel == 0x08) memory_install_write8_handler(space, 0xb0000, 0xb7fff, 0, 0, write_handler); else memory_nop_write(space, 0xb0000, 0xb7fff, 0, 0);
+					if (sel == 0x0C) memory_install_write8_handler(space, 0xb8000, 0xbffff, 0, 0, write_handler); else memory_nop_write(space, 0xb8000, 0xbffff, 0, 0);
 				}
 				else
 				{
-					memory_set_bankptr(machine,1, vga.memory);
-					memory_install_read8_handler(space,  0xa0000, 0xbffff, 0, 0, SMH_BANK(1) );
-					memory_install_write8_handler(space, 0xa0000, 0xbffff, 0, 0, SMH_BANK(1) );
+					memory_set_bankptr(machine,"bank1", vga.memory);
+					memory_install_read_bank(space,  0xa0000, 0xbffff, 0, 0, "bank1" );
+					memory_install_write_bank(space, 0xa0000, 0xbffff, 0, 0, "bank1" );
 				}
 				break;
 
@@ -663,18 +655,18 @@ static void vga_cpu_interface(running_machine *machine)
 				sel = vga.gc.data[6] & 0x0c;
 				if (sel)
 				{
-					memory_install_read16_handler(space,  0xa0000, 0xaffff, 0, 0, (sel == 0x04) ? read_handler16  : SMH_NOP);
-					memory_install_read16_handler(space,  0xb0000, 0xb7fff, 0, 0, (sel == 0x08) ? read_handler16  : SMH_NOP);
-					memory_install_read16_handler(space,  0xb8000, 0xbffff, 0, 0, (sel == 0x0C) ? read_handler16  : SMH_NOP);
-					memory_install_write16_handler(space, 0xa0000, 0xaffff, 0, 0, (sel == 0x04) ? write_handler16 : SMH_NOP);
-					memory_install_write16_handler(space, 0xb0000, 0xb7fff, 0, 0, (sel == 0x08) ? write_handler16 : SMH_NOP);
-					memory_install_write16_handler(space, 0xb8000, 0xbffff, 0, 0, (sel == 0x0C) ? write_handler16 : SMH_NOP);
+					if (sel == 0x04) memory_install_read16_handler(space,  0xa0000, 0xaffff, 0, 0, read_handler16 ); else memory_nop_read(space,  0xa0000, 0xaffff, 0, 0);
+					if (sel == 0x08) memory_install_read16_handler(space,  0xb0000, 0xb7fff, 0, 0, read_handler16 ); else memory_nop_read(space,  0xb0000, 0xb7fff, 0, 0);
+					if (sel == 0x0C) memory_install_read16_handler(space,  0xb8000, 0xbffff, 0, 0, read_handler16 ); else memory_nop_read(space,  0xb8000, 0xbffff, 0, 0);
+					if (sel == 0x04) memory_install_write16_handler(space, 0xa0000, 0xaffff, 0, 0, write_handler16); else memory_nop_write(space, 0xa0000, 0xaffff, 0, 0);
+					if (sel == 0x08) memory_install_write16_handler(space, 0xb0000, 0xb7fff, 0, 0, write_handler16); else memory_nop_write(space, 0xb0000, 0xb7fff, 0, 0);
+					if (sel == 0x0C) memory_install_write16_handler(space, 0xb8000, 0xbffff, 0, 0, write_handler16); else memory_nop_write(space, 0xb8000, 0xbffff, 0, 0);
 				}
 				else
 				{
-					memory_set_bankptr(machine,1, vga.memory);
-					memory_install_read16_handler(space,  0xa0000, 0xbffff, 0, 0, SMH_BANK(1) );
-					memory_install_write16_handler(space, 0xa0000, 0xbffff, 0, 0, SMH_BANK(1) );
+					memory_set_bankptr(machine,"bank1", vga.memory);
+					memory_install_read_bank(space,  0xa0000, 0xbffff, 0, 0, "bank1" );
+					memory_install_write_bank(space, 0xa0000, 0xbffff, 0, 0, "bank1" );
 				}
 				break;
 
@@ -682,18 +674,18 @@ static void vga_cpu_interface(running_machine *machine)
 				sel = vga.gc.data[6] & 0x0c;
 				if (sel)
 				{
-					memory_install_read32_handler(space,  0xa0000, 0xaffff, 0, 0, (sel == 0x04) ? read_handler32  : SMH_NOP);
-					memory_install_read32_handler(space,  0xb0000, 0xb7fff, 0, 0, (sel == 0x08) ? read_handler32  : SMH_NOP);
-					memory_install_read32_handler(space,  0xb8000, 0xbffff, 0, 0, (sel == 0x0C) ? read_handler32  : SMH_NOP);
-					memory_install_write32_handler(space, 0xa0000, 0xaffff, 0, 0, (sel == 0x04) ? write_handler32 : SMH_NOP);
-					memory_install_write32_handler(space, 0xb0000, 0xb7fff, 0, 0, (sel == 0x08) ? write_handler32 : SMH_NOP);
-					memory_install_write32_handler(space, 0xb8000, 0xbffff, 0, 0, (sel == 0x0C) ? write_handler32 : SMH_NOP);
+					if (sel == 0x04) memory_install_read32_handler(space,  0xa0000, 0xaffff, 0, 0, read_handler32 ); else memory_nop_read(space,  0xa0000, 0xaffff, 0, 0);
+					if (sel == 0x08) memory_install_read32_handler(space,  0xb0000, 0xb7fff, 0, 0, read_handler32 ); else memory_nop_read(space,  0xb0000, 0xb7fff, 0, 0);
+					if (sel == 0x0C) memory_install_read32_handler(space,  0xb8000, 0xbffff, 0, 0, read_handler32 ); else memory_nop_read(space,  0xb8000, 0xbffff, 0, 0);
+					if (sel == 0x04) memory_install_write32_handler(space, 0xa0000, 0xaffff, 0, 0, write_handler32); else memory_nop_write(space, 0xa0000, 0xaffff, 0, 0);
+					if (sel == 0x08) memory_install_write32_handler(space, 0xb0000, 0xb7fff, 0, 0, write_handler32); else memory_nop_write(space, 0xb0000, 0xb7fff, 0, 0);
+					if (sel == 0x0C) memory_install_write32_handler(space, 0xb8000, 0xbffff, 0, 0, write_handler32); else memory_nop_write(space, 0xb8000, 0xbffff, 0, 0);
 				}
 				else
 				{
-					memory_set_bankptr(machine,1, vga.memory);
-					memory_install_read32_handler(space,  0xa0000, 0xbffff, 0, 0, SMH_BANK(1) );
-					memory_install_write32_handler(space, 0xa0000, 0xbffff, 0, 0, SMH_BANK(1) );
+					memory_set_bankptr(machine,"bank1", vga.memory);
+					memory_install_read_bank(space,  0xa0000, 0xbffff, 0, 0, "bank1" );
+					memory_install_write_bank(space, 0xa0000, 0xbffff, 0, 0, "bank1" );
 				}
 				break;
 
@@ -701,18 +693,18 @@ static void vga_cpu_interface(running_machine *machine)
 				sel = vga.gc.data[6] & 0x0c;
 				if (sel)
 				{
-					memory_install_read64_handler(space,  0xa0000, 0xaffff, 0, 0, (sel == 0x04) ? read_handler64  : SMH_NOP);
-					memory_install_read64_handler(space,  0xb0000, 0xb7fff, 0, 0, (sel == 0x08) ? read_handler64  : SMH_NOP);
-					memory_install_read64_handler(space,  0xb8000, 0xbffff, 0, 0, (sel == 0x0C) ? read_handler64  : SMH_NOP);
-					memory_install_write64_handler(space, 0xa0000, 0xaffff, 0, 0, (sel == 0x04) ? write_handler64 : SMH_NOP);
-					memory_install_write64_handler(space, 0xb0000, 0xb7fff, 0, 0, (sel == 0x08) ? write_handler64 : SMH_NOP);
-					memory_install_write64_handler(space, 0xb8000, 0xbffff, 0, 0, (sel == 0x0C) ? write_handler64 : SMH_NOP);
+					if (sel == 0x04) memory_install_read64_handler(space,  0xa0000, 0xaffff, 0, 0, read_handler64 ); else memory_nop_read(space,  0xa0000, 0xaffff, 0, 0);
+					if (sel == 0x08) memory_install_read64_handler(space,  0xb0000, 0xb7fff, 0, 0, read_handler64 ); else memory_nop_read(space,  0xb0000, 0xb7fff, 0, 0);
+					if (sel == 0x0C) memory_install_read64_handler(space,  0xb8000, 0xbffff, 0, 0, read_handler64 ); else memory_nop_read(space,  0xb8000, 0xbffff, 0, 0);
+					if (sel == 0x04) memory_install_write64_handler(space, 0xa0000, 0xaffff, 0, 0, write_handler64); else memory_nop_write(space, 0xa0000, 0xaffff, 0, 0);
+					if (sel == 0x08) memory_install_write64_handler(space, 0xb0000, 0xb7fff, 0, 0, write_handler64); else memory_nop_write(space, 0xb0000, 0xb7fff, 0, 0);
+					if (sel == 0x0C) memory_install_write64_handler(space, 0xb8000, 0xbffff, 0, 0, write_handler64); else memory_nop_write(space, 0xb8000, 0xbffff, 0, 0);
 				}
 				else
 				{
-					memory_set_bankptr(machine,1, vga.memory);
-					memory_install_read64_handler(space,  0xa0000, 0xbffff, 0, 0, SMH_BANK(1) );
-					memory_install_write64_handler(space, 0xa0000, 0xbffff, 0, 0, SMH_BANK(1) );
+					memory_set_bankptr(machine,"bank1", vga.memory);
+					memory_install_read_bank(space,  0xa0000, 0xbffff, 0, 0, "bank1" );
+					memory_install_write_bank(space, 0xa0000, 0xbffff, 0, 0, "bank1" );
 				}
 				break;
 
@@ -1240,7 +1232,7 @@ void pc_vga_init(running_machine *machine, const struct pc_vga_interface *vga_in
 			memory_install_write8_handler(spacevga, vga.vga_intf.port_offset + 0x3c0, vga.vga_intf.port_offset + 0x3cf, 0, 0, vga_port_03c0_w );
 			memory_install_write8_handler(spacevga, vga.vga_intf.port_offset + 0x3d0, vga.vga_intf.port_offset + 0x3df, 0, 0, vga_port_03d0_w );
 			break;
-			
+
 		case 16:
 			memory_install_read16_handler(spacevga, vga.vga_intf.port_offset + 0x3b0, vga.vga_intf.port_offset + 0x3bf, 0, 0, vga_port16le_03b0_r );
 			memory_install_read16_handler(spacevga, vga.vga_intf.port_offset + 0x3c0, vga.vga_intf.port_offset + 0x3cf, 0, 0, vga_port16le_03c0_r );

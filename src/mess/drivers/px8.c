@@ -72,6 +72,25 @@ static INPUT_PORTS_START( px8 )
 INPUT_PORTS_END
 
 
+/* F4 Character Displayer ****************/
+static const gfx_layout px8_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static GFXDECODE_START( px8 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, px8_charlayout, 0, 1 )
+GFXDECODE_END
+
+
 /***************************************************************************
     MACHINE DRIVERS
 ***************************************************************************/
@@ -96,12 +115,13 @@ static MACHINE_DRIVER_START( px8 )
 	MDRV_SCREEN_SIZE(480, 64)
 	MDRV_SCREEN_VISIBLE_AREA(0, 479, 0, 63)
 
+	MDRV_GFXDECODE(px8)
 	MDRV_PALETTE_LENGTH(2)
-    MDRV_PALETTE_INIT(black_and_white)
+	MDRV_PALETTE_INIT(black_and_white)
 
-    MDRV_VIDEO_START(px8)
-    MDRV_VIDEO_UPDATE(px8)
-	
+	MDRV_VIDEO_START(px8)
+	MDRV_VIDEO_UPDATE(px8)
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
@@ -132,5 +152,5 @@ ROM_END
     GAME DRIVERS
 ***************************************************************************/
 
-/*    YEAR  NAME  PARENT  COMPAT  MACHINE  INPUT  INIT  CONFIG  COMPANY  FULLNAME  FLAGS */
-COMP( 1984, px8,  0,      0,      px8,     px8,   0,    0,    "Epson", "PX-8",   GAME_NOT_WORKING )
+/*    YEAR  NAME  PARENT  COMPAT  MACHINE  INPUT  INIT  COMPANY  FULLNAME  FLAGS */
+COMP( 1984, px8,  0,      0,      px8,     px8,   0,    "Epson", "PX-8",   GAME_NOT_WORKING )

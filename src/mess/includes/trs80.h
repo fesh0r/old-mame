@@ -17,7 +17,7 @@
 /*----------- defined in drivers/trs80.c -----------*/
 
 extern UINT8 trs80_model4;
-extern UINT8 *gfxram;
+extern UINT8 *trs80_gfxram;
 
 /*----------- defined in machine/trs80.c -----------*/
 
@@ -26,6 +26,7 @@ extern UINT8 trs80_mode;
 
 QUICKLOAD_LOAD( trs80_cmd );
 
+MACHINE_START( trs80 );
 MACHINE_RESET( trs80 );
 MACHINE_RESET( trs80m4 );
 MACHINE_RESET( lnw80 );

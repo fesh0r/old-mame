@@ -36,8 +36,8 @@
 #include "formats/pc_dsk.h"
 #include "devices/messram.h"
 
-static READ8_HANDLER(at_dma8237_1_r)  { return dma8237_r(devtag_get_device(space->machine, "dma8237_2"), offset / 2); }
-static WRITE8_HANDLER(at_dma8237_1_w) { dma8237_w(devtag_get_device(space->machine, "dma8237_2"), offset / 2, data); }
+static READ8_HANDLER(at_dma8237_1_r)  { return i8237_r(devtag_get_device(space->machine, "dma8237_2"), offset / 2); }
+static WRITE8_HANDLER(at_dma8237_1_w) { i8237_w(devtag_get_device(space->machine, "dma8237_2"), offset / 2, data); }
 
 static READ64_HANDLER( bebox_dma8237_1_r )
 {
@@ -57,7 +57,7 @@ static ADDRESS_MAP_START( bebox_mem, ADDRESS_SPACE_PROGRAM, 64 )
 	AM_RANGE(0x7FFFF3F0, 0x7FFFF3F7) AM_READWRITE( bebox_crossproc_interrupts_r, bebox_crossproc_interrupts_w )
 	AM_RANGE(0x7FFFF4F0, 0x7FFFF4F7) AM_WRITE( bebox_processor_resets_w )
 
-	AM_RANGE(0x80000000, 0x8000001F) AM_DEVREADWRITE8( "dma8237_1", dma8237_r, dma8237_w, U64(0xffffffffffffffff) )
+	AM_RANGE(0x80000000, 0x8000001F) AM_DEVREADWRITE8( "dma8237_1", i8237_r, i8237_w, U64(0xffffffffffffffff) )
 	AM_RANGE(0x80000020, 0x8000003F) AM_DEVREADWRITE8( "pic8259_master", pic8259_r, pic8259_w, U64(0xffffffffffffffff) )
 	AM_RANGE(0x80000040, 0x8000005f) AM_DEVREADWRITE8( "pit8254", pit8253_r, pit8253_w, U64(0xffffffffffffffff) )
 	AM_RANGE(0x80000060, 0x8000006F) AM_READWRITE( kbdc8042_64be_r, kbdc8042_64be_w )
@@ -77,7 +77,7 @@ static ADDRESS_MAP_START( bebox_mem, ADDRESS_SPACE_PROGRAM, 64 )
 
 	AM_RANGE(0xBFFFFFF0, 0xBFFFFFFF) AM_READ( bebox_interrupt_ack_r )
 
-	AM_RANGE(0xFFF00000, 0xFFF03FFF) AM_ROMBANK(2)
+	AM_RANGE(0xFFF00000, 0xFFF03FFF) AM_ROMBANK("bank2")
 	AM_RANGE(0xFFF04000, 0xFFFFFFFF) AM_READWRITE( bebox_flash_r, bebox_flash_w )
 ADDRESS_MAP_END
 
@@ -127,9 +127,9 @@ static MACHINE_DRIVER_START( bebox )
 
 	MDRV_PIT8254_ADD( "pit8254", bebox_pit8254_config )
 
-	MDRV_DMA8237_ADD( "dma8237_1", bebox_dma8237_1_config )
+	MDRV_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, bebox_dma8237_1_config )
 
-	MDRV_DMA8237_ADD( "dma8237_2", bebox_dma8237_2_config )
+	MDRV_I8237_ADD( "dma8237_2", XTAL_14_31818MHz/3, bebox_dma8237_2_config )
 
 	MDRV_PIC8259_ADD( "pic8259_master", bebox_pic8259_master_config )
 
@@ -169,7 +169,7 @@ static MACHINE_DRIVER_START( bebox )
 	MDRV_SMC37C78_ADD("smc37c78", pc_fdc_upd765_connected_1_drive_interface)
 
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, bebox_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("32M")
@@ -200,6 +200,6 @@ ROM_START(bebox2)
 	ROM_LOAD( "bootnub.rom", 0x000000, 0x4000, CRC(5348d09a) SHA1(1b637a3d7a2b072aa128dd5c037bbb440d525c1a) )
 ROM_END
 
-/*     YEAR   NAME      PARENT  COMPAT  MACHINE   INPUT     INIT    CONFIG  COMPANY             FULLNAME */
-COMP( 1995,  bebox,    0,      0,      bebox,    bebox,    bebox,  0,  "Be Incorporated",  "BeBox Dual603-66", GAME_NOT_WORKING )
-COMP( 1996,  bebox2,   bebox,  0,      bebox2,   bebox,    bebox,  0,  "Be Incorporated",  "BeBox Dual603-133", GAME_NOT_WORKING )
+/*     YEAR   NAME      PARENT  COMPAT  MACHINE   INPUT     INIT    COMPANY             FULLNAME */
+COMP( 1995,  bebox,    0,      0,      bebox,    bebox,    bebox,   "Be Incorporated",  "BeBox Dual603-66", GAME_NOT_WORKING )
+COMP( 1996,  bebox2,   bebox,  0,      bebox2,   bebox,    bebox,   "Be Incorporated",  "BeBox Dual603-133", GAME_NOT_WORKING )

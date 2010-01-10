@@ -1765,12 +1765,12 @@ static WRITE32_HANDLER( gba_io_w )
 			{
 //              printf("IE (%08x) = %04x raw %x (%08x) (scan %d PC %x)\n", 0x04000000 + ( offset << 2 ), data & mem_mask, data, ~mem_mask, video_screen_get_vpos(machine->primary_screen), cpu_get_pc(space->cpu));
 				gba_state->IE = ( gba_state->IE & ~mem_mask ) | ( data & mem_mask );
-				 /*
-                if (gba_state->IE & gba_state->IF)
-                {
-                    gba_request_irq(machine, gba_state->IF);
-                }
-                */
+#if 0
+				if (gba_state->IE & gba_state->IF)
+				{
+					gba_request_irq(machine, gba_state->IF);
+				}
+#endif
 			}
 			if( (mem_mask) & 0xffff0000 )
 			{
@@ -1889,7 +1889,7 @@ static WRITE32_HANDLER(gba_oam_w)
 }
 
 static ADDRESS_MAP_START( gbadvance_map, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x00000000, 0x00003fff) AM_ROMBANK(1)
+	AM_RANGE(0x00000000, 0x00003fff) AM_ROMBANK("bank1")
 	AM_RANGE(0x02000000, 0x0203ffff) AM_RAM AM_MIRROR(0xfc0000)
 	AM_RANGE(0x03000000, 0x03007fff) AM_RAM AM_MIRROR(0xff8000)
 	AM_RANGE(0x04000000, 0x040003ff) AM_READWRITE( gba_io_r, gba_io_w )
@@ -1903,15 +1903,15 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( gbadv )
 	PORT_START("IN0")
-	PORT_BIT( 0xfc00, IP_ACTIVE_HIGH, IPT_BUTTON6) PORT_UNUSED
-	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_NAME("P1 R") PORT_PLAYER(1)	// R
-	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_NAME("P1 L") PORT_PLAYER(1)	// L
+	PORT_BIT( 0xfc00, IP_ACTIVE_HIGH, IPT_BUTTON5) PORT_UNUSED
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_NAME("P1 R") PORT_PLAYER(1)	// R
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("P1 L") PORT_PLAYER(1)	// L
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_START ) PORT_PLAYER(1)	// START
-	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("SELECT") PORT_PLAYER(1)	// SELECT
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SELECT ) PORT_PLAYER(1)	// SELECT
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("B") PORT_PLAYER(1)	// B
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("A") PORT_PLAYER(1)	// A
 INPUT_PORTS_END
@@ -2525,11 +2525,11 @@ static DIRECT_UPDATE_HANDLER( gba_direct )
 {
 	if (address > 0x4000)
 	{
-		memory_set_bankptr(space->machine, 1, memory_region(space->machine, "bios")+0x4000);
+		memory_set_bankptr(space->machine, "bank1", memory_region(space->machine, "bios")+0x4000);
 	}
 	else
 	{
-		memory_set_bankptr(space->machine, 1, memory_region(space->machine, "bios"));
+		memory_set_bankptr(space->machine, "bank1", memory_region(space->machine, "bios"));
 	}
 
 	return address;
@@ -2540,5 +2540,5 @@ static DRIVER_INIT(gbadv)
 	memory_set_direct_update_handler( cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), gba_direct );
 }
 
-/*    YEAR  NAME PARENT COMPAT MACHINE INPUT   INIT   CONFIG COMPANY     FULLNAME */
-CONS( 2001, gba, 0,     0,     gbadv,  gbadv,  gbadv, 0,     "Nintendo", "Game Boy Advance", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND)
+/*    YEAR  NAME PARENT COMPAT MACHINE INPUT   INIT   COMPANY     FULLNAME */
+CONS( 2001, gba, 0,     0,     gbadv,  gbadv,  gbadv, "Nintendo", "Game Boy Advance", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND)

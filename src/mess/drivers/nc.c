@@ -330,24 +330,26 @@ static TIMER_CALLBACK(nc_keyboard_timer_callback)
 }
 
 
-static const read8_space_func nc_bankhandler_r[]={
-SMH_BANK(1), SMH_BANK(2), SMH_BANK(3), SMH_BANK(4)};
+static const char *nc_bankhandler_r[]={
+"bank1", "bank2", "bank3", "bank4"};
 
-static const write8_space_func nc_bankhandler_w[]={
-SMH_BANK(5), SMH_BANK(6), SMH_BANK(7), SMH_BANK(8)};
+static const char *nc_bankhandler_w[]={
+"bank5", "bank6", "bank7", "bank8"};
 
 static void nc_refresh_memory_bank_config(running_machine *machine, int bank)
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	int mem_type;
 	int mem_bank;
-	read8_space_func read_handler;
-	write8_space_func write_handler = NULL;
+	char bank1[10];
+	char bank5[10];
+	sprintf(bank1,"bank%d",bank+1);
+	sprintf(bank5,"bank%d",bank+5);
 
 	mem_type = (nc_memory_config[bank]>>6) & 0x03;
 	mem_bank = nc_memory_config[bank] & 0x03f;
 
-	read_handler = nc_bankhandler_r[bank];
+	memory_install_read_bank(space,(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, nc_bankhandler_r[bank]);
 
 	switch (mem_type)
 	{
@@ -361,9 +363,9 @@ static void nc_refresh_memory_bank_config(running_machine *machine, int bank)
 
 			addr = (memory_region(machine, "maincpu")+0x010000) + (mem_bank<<14);
 
-			memory_set_bankptr(machine, bank+1, addr);
+			memory_set_bankptr(machine, bank1, addr);
 
-			write_handler = SMH_NOP;
+			memory_nop_write(space,(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0);
 			LOG(("BANK %d: ROM %d\n",bank,mem_bank));
 		}
 		break;
@@ -377,10 +379,10 @@ static void nc_refresh_memory_bank_config(running_machine *machine, int bank)
 
 			addr = messram_get_ptr(devtag_get_device(machine, "messram")) + (mem_bank<<14);
 
-			memory_set_bankptr(machine, bank+1, addr);
-			memory_set_bankptr(machine, bank+5, addr);
+			memory_set_bankptr(machine, bank1, addr);
+			memory_set_bankptr(machine, bank5, addr);
 
-			write_handler = nc_bankhandler_w[bank];
+			memory_install_write_bank(space,(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, nc_bankhandler_w[bank]);
 			LOG(("BANK %d: RAM\n",bank));
 		}
 		break;
@@ -396,20 +398,20 @@ static void nc_refresh_memory_bank_config(running_machine *machine, int bank)
 				mem_bank = mem_bank & nc_membank_card_ram_mask;
 				addr = nc_card_ram + (mem_bank<<14);
 
-				memory_set_bankptr(machine, bank+1, addr);
+				memory_set_bankptr(machine, bank1, addr);
 
 				/* write enabled? */
 				if (input_port_read(machine, "EXTRA") & 0x02)
 				{
 					/* yes */
-					memory_set_bankptr(machine, bank+5, addr);
+					memory_set_bankptr(machine, bank5, addr);
 
-					write_handler = nc_bankhandler_w[bank];
+					memory_install_write_bank(space,(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, nc_bankhandler_w[bank]);
 				}
 				else
 				{
 					/* no */
-					write_handler = SMH_NOP;
+					memory_nop_write(space,(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0);
 				}
 
 				LOG(("BANK %d: CARD-RAM\n",bank));
@@ -417,20 +419,10 @@ static void nc_refresh_memory_bank_config(running_machine *machine, int bank)
 			else
 			{
 				/* if no card connected, then writes fail */
-				read_handler = SMH_NOP;
-				write_handler = SMH_NOP;
+				memory_nop_readwrite(space,(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0);
 			}
 		}
 		break;
-	}
-
-	memory_install_read8_handler(space,
-		(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, read_handler);
-
-	if (write_handler)
-	{
-		memory_install_write8_handler(space,
-			(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, write_handler);
 	}
 }
 
@@ -590,26 +582,16 @@ static void nc_common_init_machine(running_machine *machine)
 
     nc_refresh_memory_config(machine);
 	nc_update_interrupts(machine);
-
-	/* keyboard timer */
-	nc_keyboard_timer = timer_alloc(machine, nc_keyboard_timer_callback, NULL);
-	timer_adjust_oneshot(nc_keyboard_timer, ATTOTIME_IN_MSEC(10), 0);
-
-	/* dummy timer */
-	timer_pulse(machine, ATTOTIME_IN_HZ(50), NULL, 0, dummy_timer_callback);
-
-	/* serial timer */
-	nc_serial_timer = timer_alloc(machine, nc_serial_timer_callback, NULL);
-
+	
 	/* at reset set to 0x0ff */
 	nc_uart_control = 0x0ff;
 }
 
 static ADDRESS_MAP_START(nc_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK(1), SMH_BANK(5))
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK(2), SMH_BANK(6))
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK(3), SMH_BANK(7))
-	AM_RANGE(0xc000, 0xffff) AM_READWRITE(SMH_BANK(4), SMH_BANK(8))
+	AM_RANGE(0x0000, 0x3fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank5")
+	AM_RANGE(0x4000, 0x7fff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank6")
+	AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank3") AM_WRITE_BANK("bank7")
+	AM_RANGE(0xc000, 0xffff) AM_READ_BANK("bank4") AM_WRITE_BANK("bank8")
 ADDRESS_MAP_END
 
 
@@ -682,8 +664,10 @@ static READ8_HANDLER(nc_irq_status_r)
 
 static READ8_HANDLER(nc_key_data_in_r)
 {
-	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4",
-										"LINE5", "LINE6", "LINE7", "LINE8", "LINE9" };
+	static const char *const keynames[] = {
+		"LINE0", "LINE1", "LINE2", "LINE3", "LINE4",
+		"LINE5", "LINE6", "LINE7", "LINE8", "LINE9"
+	};
 
 	if (offset==9)
 	{
@@ -995,6 +979,16 @@ static MACHINE_START( nc100 )
     nc_type = NC_TYPE_1xx;
 
 	add_exit_callback(machine, nc100_machine_stop);
+
+	/* keyboard timer */
+	nc_keyboard_timer = timer_alloc(machine, nc_keyboard_timer_callback, NULL);
+	timer_adjust_oneshot(nc_keyboard_timer, ATTOTIME_IN_MSEC(10), 0);
+
+	/* dummy timer */
+	timer_pulse(machine, ATTOTIME_IN_HZ(50), NULL, 0, dummy_timer_callback);
+
+	/* serial timer */
+	nc_serial_timer = timer_alloc(machine, nc_serial_timer_callback, NULL);	
 }
 
 
@@ -1343,8 +1337,6 @@ static MACHINE_RESET( nc200 )
 
     nc_common_init_machine(machine);
 
-	mc146818_init(machine, MC146818_STANDARD);
-
 	nc200_uart_interrupt_irq = 0;
 
 	nc_common_open_stream_for_reading(machine);
@@ -1377,6 +1369,18 @@ static MACHINE_START( nc200 )
     nc_type = NC_TYPE_200;
 
 	add_exit_callback(machine, nc200_machine_stop);
+	
+	/* keyboard timer */
+	nc_keyboard_timer = timer_alloc(machine, nc_keyboard_timer_callback, NULL);
+	timer_adjust_oneshot(nc_keyboard_timer, ATTOTIME_IN_MSEC(10), 0);
+
+	/* dummy timer */
+	timer_pulse(machine, ATTOTIME_IN_HZ(50), NULL, 0, dummy_timer_callback);
+
+	/* serial timer */
+	nc_serial_timer = timer_alloc(machine, nc_serial_timer_callback, NULL);	
+
+	mc146818_init(machine, MC146818_STANDARD);	
 }
 
 /*
@@ -1621,6 +1625,49 @@ static INPUT_PORTS_START(nc200)
 INPUT_PORTS_END
 
 
+/* Serial */
+static DEVICE_IMAGE_LOAD( nc_serial )
+{
+	const device_config *uart = devtag_get_device(image->machine, "uart");
+
+	/* filename specified */
+	if (device_load_serial(image)==INIT_PASS)
+	{
+		/* setup transmit parameters */
+		serial_device_setup(image, 9600, 8, 1, SERIAL_PARITY_NONE);
+
+		/* connect serial chip to serial device */
+		msm8251_connect_to_serial_device(uart, image);
+
+		/* and start transmit */
+		serial_device_set_transmit_state(image,1);
+
+		return INIT_PASS;
+	}
+
+	return INIT_FAIL;
+
+}
+
+static DEVICE_GET_INFO( nc_serial )
+{
+	switch ( state )
+	{
+		case DEVINFO_FCT_IMAGE_LOAD:		        info->f = (genf *) DEVICE_IMAGE_LOAD_NAME( nc_serial );    break;
+		case DEVINFO_STR_NAME:		                strcpy(info->s, "NC serial port");	                    break;
+		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:	    strcpy(info->s, "txt");                                         break;
+		case DEVINFO_INT_IMAGE_READABLE:            info->i = 1;                                        	break;
+		case DEVINFO_INT_IMAGE_WRITEABLE:			info->i = 0;                                        	break;
+		case DEVINFO_INT_IMAGE_CREATABLE:	     	info->i = 0;                                        	break;		
+		default: 									DEVICE_GET_INFO_CALL(serial);	break;
+	}
+}
+
+#define NC_SERIAL	DEVICE_GET_INFO_NAME(nc_serial)
+
+#define MDRV_NC_SERIAL_ADD(_tag) \
+	MDRV_DEVICE_ADD(_tag, NC_SERIAL, 0)
+
 /**********************************************************************************************************/
 
 static MACHINE_DRIVER_START( nc100 )
@@ -1670,10 +1717,12 @@ static MACHINE_DRIVER_START( nc100 )
 	MDRV_CARTSLOT_START(nc_pcmcia_card)
 	MDRV_CARTSLOT_LOAD(nc_pcmcia_card)
 	MDRV_CARTSLOT_UNLOAD(nc_pcmcia_card)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
+	
+	MDRV_NC_SERIAL_ADD("serial")
 MACHINE_DRIVER_END
 
 static const floppy_config nc200_floppy_config =
@@ -1717,7 +1766,7 @@ static MACHINE_DRIVER_START( nc200 )
 	MDRV_UPD765A_ADD("upd765", nc200_upd765_interface)
 
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, nc200_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("128K")
@@ -1746,38 +1795,12 @@ ROM_END
 
 
 ROM_START(nc200)
-        ROM_REGION(((64*1024)+(512*1024)), "maincpu",0)
-        ROM_LOAD("nc200.rom", 0x010000, 0x080000, CRC(bb8180e7) SHA1(fb5c93b0a3e199202c6a12548d2617f7a09bae47))
+	ROM_REGION(((64*1024)+(512*1024)), "maincpu",0)
+	ROM_LOAD("nc200.rom", 0x010000, 0x080000, CRC(bb8180e7) SHA1(fb5c93b0a3e199202c6a12548d2617f7a09bae47))
 ROM_END
 
-static void nc_common_serial_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* serial */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 0; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(serial_device); break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(nc_serial); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(serial_device); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "txt"); break;
-	}
-}
-
-static SYSTEM_CONFIG_START(nc_common)
-	CONFIG_DEVICE(nc_common_serial_getinfo)
-SYSTEM_CONFIG_END
-
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY         FULLNAME    FLAGS */
-COMP( 1992, nc100,  0,      0,      nc100,  nc100,  0,      nc_common,  "Amstrad plc",  "NC100",    0 )
-COMP( 1992, nc150,  nc100,  0,      nc100,  nc100,  0,      nc_common,  "Amstrad plc",  "NC150",    0 )
-COMP( 1993, nc200,  0,      0,      nc200,  nc200,  0,      nc_common,  "Amstrad plc",  "NC200",    0 )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY         FULLNAME    FLAGS */
+COMP( 1992, nc100,  0,      0,      nc100,  nc100,  0,      "Amstrad plc",  "NC100",    0 )
+COMP( 1992, nc150,  nc100,  0,      nc100,  nc100,  0,      "Amstrad plc",  "NC150",    0 )
+COMP( 1993, nc200,  0,      0,      nc200,  nc200,  0,      "Amstrad plc",  "NC200",    0 )
 

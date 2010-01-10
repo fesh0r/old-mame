@@ -68,8 +68,10 @@ static TIMER_CALLBACK(keyboard_callback)
 {
 	int i,j;
 	UINT8 c;
-	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4",
-		"LINE5", "LINE6", "LINE7", "LINE8", "LINE9", "LINE10", "LINE11" };
+	static const char *const keynames[] = {
+		"LINE0", "LINE1", "LINE2", "LINE3", "LINE4",
+		"LINE5", "LINE6", "LINE7", "LINE8", "LINE9", "LINE10", "LINE11"
+	};
 
 	for(i = 0; i < 12; i++)
 	{
@@ -95,11 +97,11 @@ DRIVER_INIT(llc1)
 
 MACHINE_RESET( llc1 )
 {
-	timer_pulse(machine, ATTOTIME_IN_HZ(5), NULL, 0, keyboard_callback);
 }
 
 MACHINE_START(llc1)
 {
+	timer_pulse(machine, ATTOTIME_IN_HZ(5), NULL, 0, keyboard_callback);
 }
 
 DRIVER_INIT(llc2)
@@ -111,17 +113,17 @@ MACHINE_RESET( llc2 )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
-	memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
-	memory_set_bankptr(machine, 1, memory_region(machine, "maincpu"));
+	memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
+	memory_set_bankptr(machine, "bank1", memory_region(machine, "maincpu"));
 
-	memory_install_write8_handler(space, 0x4000, 0x5fff, 0, 0, SMH_UNMAP);
-	memory_set_bankptr(machine, 2, memory_region(machine, "maincpu") + 0x4000);
+	memory_unmap_write(space, 0x4000, 0x5fff, 0, 0);
+	memory_set_bankptr(machine, "bank2", memory_region(machine, "maincpu") + 0x4000);
 
-	memory_install_write8_handler(space, 0x6000, 0xbfff, 0, 0, SMH_UNMAP);
-	memory_set_bankptr(machine, 3, memory_region(machine, "maincpu") + 0x6000);
+	memory_unmap_write(space, 0x6000, 0xbfff, 0, 0);
+	memory_set_bankptr(machine, "bank3", memory_region(machine, "maincpu") + 0x6000);
 
-	memory_install_write8_handler(space, 0xc000, 0xffff, 0, 0, SMH_BANK(4));
-	memory_set_bankptr(machine, 4, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
+	memory_install_write_bank(space, 0xc000, 0xffff, 0, 0, "bank4");
+	memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xc000);
 
 }
 
@@ -129,17 +131,17 @@ WRITE8_HANDLER( llc2_rom_disable_w )
 {
 	const address_space *mem_space = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
-	memory_install_write8_handler(mem_space, 0x0000, 0xbfff, 0, 0, SMH_BANK(1));
-	memory_set_bankptr(space->machine, 1, messram_get_ptr(devtag_get_device(space->machine, "messram")));
+	memory_install_write_bank(mem_space, 0x0000, 0xbfff, 0, 0, "bank1");
+	memory_set_bankptr(space->machine, "bank1", messram_get_ptr(devtag_get_device(space->machine, "messram")));
 
-	memory_install_write8_handler(mem_space, 0x4000, 0x5fff, 0, 0, SMH_BANK(2));
-	memory_set_bankptr(space->machine, 2, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x4000);
+	memory_install_write_bank(mem_space, 0x4000, 0x5fff, 0, 0, "bank2");
+	memory_set_bankptr(space->machine, "bank2", messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x4000);
 
-	memory_install_write8_handler(mem_space, 0x6000, 0xbfff, 0, 0, SMH_BANK(3));
-	memory_set_bankptr(space->machine, 3, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x6000);
+	memory_install_write_bank(mem_space, 0x6000, 0xbfff, 0, 0, "bank3");
+	memory_set_bankptr(space->machine, "bank3", messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x6000);
 
-	memory_install_write8_handler(mem_space, 0xc000, 0xffff, 0, 0, SMH_BANK(4));
-	memory_set_bankptr(space->machine, 4, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0xc000);
+	memory_install_write_bank(mem_space, 0xc000, 0xffff, 0, 0, "bank4");
+	memory_set_bankptr(space->machine, "bank4", messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0xc000);
 
 }
 
@@ -148,11 +150,11 @@ WRITE8_HANDLER( llc2_basic_enable_w )
 
 	const address_space *mem_space = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	if (data & 0x02) {
-		memory_install_write8_handler(mem_space, 0x4000, 0x5fff, 0, 0, SMH_UNMAP);
-		memory_set_bankptr(space->machine, 2, memory_region(space->machine, "maincpu") + 0x10000);
+		memory_unmap_write(mem_space, 0x4000, 0x5fff, 0, 0);
+		memory_set_bankptr(space->machine, "bank2", memory_region(space->machine, "maincpu") + 0x10000);
 	} else {
-		memory_install_write8_handler(mem_space, 0x4000, 0x5fff, 0, 0, SMH_BANK(2));
-		memory_set_bankptr(space->machine, 2, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x4000);
+		memory_install_write_bank(mem_space, 0x4000, 0x5fff, 0, 0, "bank2");
+		memory_set_bankptr(space->machine, "bank2", messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x4000);
 	}
 
 }

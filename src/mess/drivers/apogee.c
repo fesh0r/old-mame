@@ -11,7 +11,7 @@
 #include "cpu/i8085/i8085.h"
 #include "sound/wave.h"
 #include "machine/i8255a.h"
-#include "machine/8257dma.h"
+#include "machine/i8257.h"
 #include "video/i8275.h"
 #include "devices/cassette.h"
 #include "formats/rk_cas.h"
@@ -19,13 +19,13 @@
 
 /* Address maps */
 static ADDRESS_MAP_START(apogee_mem, ADDRESS_SPACE_PROGRAM, 8)
-    AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK(1) // First bank
+    AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK("bank1") // First bank
     AM_RANGE( 0x1000, 0xebff ) AM_RAM  // RAM
     //AM_RANGE( 0xec00, 0xecff ) AM_RAM  // Timer
     AM_RANGE( 0xed00, 0xed03 ) AM_DEVREADWRITE("ppi8255_1", i8255a_r, i8255a_w) AM_MIRROR(0x00fc)
     //AM_RANGE( 0xee00, 0xee03 ) AM_DEVREADWRITE("ppi8255_2", i8255a_r, i8255a_w) AM_MIRROR(0x00fc)
     AM_RANGE( 0xef00, 0xef01 ) AM_DEVREADWRITE("i8275", i8275_r, i8275_w) AM_MIRROR(0x00fe) // video
-    AM_RANGE( 0xf000, 0xf0ff ) AM_DEVWRITE("dma8257", dma8257_w)	 // DMA
+    AM_RANGE( 0xf000, 0xf0ff ) AM_DEVWRITE("dma8257", i8257_w)	 // DMA
     AM_RANGE( 0xf000, 0xffff ) AM_ROM  // System ROM
 ADDRESS_MAP_END
 
@@ -130,6 +130,25 @@ static const cassette_config apogee_cassette_config =
 };
 
 
+/* F4 Character Displayer */
+static const gfx_layout apogee_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static GFXDECODE_START( apogee )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, apogee_charlayout, 0, 1 )
+GFXDECODE_END
+
+
 /* Machine driver */
 static MACHINE_DRIVER_START( apogee )
     /* basic machine hardware */
@@ -149,6 +168,7 @@ static MACHINE_DRIVER_START( apogee )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(78*6, 30*10)
 	MDRV_SCREEN_VISIBLE_AREA(0, 78*6-1, 0, 30*10-1)
+	MDRV_GFXDECODE(apogee)
 	MDRV_PALETTE_LENGTH(3)
 	MDRV_PALETTE_INIT(radio86)
 
@@ -159,7 +179,7 @@ static MACHINE_DRIVER_START( apogee )
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_DMA8257_ADD("dma8257", XTAL_16MHz / 9, radio86_dma)
+	MDRV_I8257_ADD("dma8257", XTAL_16MHz / 9, radio86_dma)
 
 	MDRV_CASSETTE_ADD( "cassette", apogee_cassette_config )
 MACHINE_DRIVER_END
@@ -174,5 +194,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT   INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1989, apogee, radio86,0, 		 apogee, 	apogee,radio86, 0,     "Zavod BRA", 	"Apogee BK-01",	0)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT   INIT    COMPANY   FULLNAME       FLAGS */
+COMP( 1989, apogee, radio86,0, 		 apogee, 	apogee,radio86, "Zavod BRA", 	"Apogee BK-01",	0)

@@ -106,12 +106,12 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( mz700_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(mz700_bank_0_w)
-	AM_RANGE(0xe1, 0xe1) AM_WRITE(mz_bank_1_w)
-	AM_RANGE(0xe2, 0xe2) AM_WRITE(mz_bank_2_w)
-	AM_RANGE(0xe3, 0xe3) AM_WRITE(mz_bank_3_w)
-	AM_RANGE(0xe4, 0xe4) AM_WRITE(mz_bank_4_w)
-	AM_RANGE(0xe5, 0xe5) AM_WRITE(mz_bank_5_w)
-	AM_RANGE(0xe6, 0xe6) AM_WRITE(mz_bank_6_w)
+	AM_RANGE(0xe1, 0xe1) AM_WRITE(mz700_bank_1_w)
+	AM_RANGE(0xe2, 0xe2) AM_WRITE(mz700_bank_2_w)
+	AM_RANGE(0xe3, 0xe3) AM_WRITE(mz700_bank_3_w)
+	AM_RANGE(0xe4, 0xe4) AM_WRITE(mz700_bank_4_w)
+	AM_RANGE(0xe5, 0xe5) AM_WRITE(mz700_bank_5_w)
+	AM_RANGE(0xe6, 0xe6) AM_WRITE(mz700_bank_6_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mz800_mem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -126,12 +126,12 @@ static ADDRESS_MAP_START( mz800_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xd0, 0xd3) AM_DEVREADWRITE("ppi8255", i8255a_r, i8255a_w)
 	AM_RANGE(0xd4, 0xd7) AM_DEVREADWRITE("pit8253", pit8253_r, pit8253_w)
 	AM_RANGE(0xe0, 0xe0) AM_READWRITE(mz800_bank_0_r, mz800_bank_0_w)
-	AM_RANGE(0xe1, 0xe1) AM_READWRITE(mz800_bank_1_r, mz_bank_1_w)
-	AM_RANGE(0xe2, 0xe2) AM_WRITE(mz_bank_2_w)
-	AM_RANGE(0xe3, 0xe3) AM_WRITE(mz_bank_3_w)
-	AM_RANGE(0xe4, 0xe4) AM_WRITE(mz_bank_4_w)
-	AM_RANGE(0xe5, 0xe5) AM_WRITE(mz_bank_5_w)
-	AM_RANGE(0xe6, 0xe6) AM_WRITE(mz_bank_6_w)
+	AM_RANGE(0xe1, 0xe1) AM_READWRITE(mz800_bank_1_r, mz700_bank_1_w)
+	AM_RANGE(0xe2, 0xe2) AM_WRITE(mz700_bank_2_w)
+	AM_RANGE(0xe3, 0xe3) AM_WRITE(mz700_bank_3_w)
+	AM_RANGE(0xe4, 0xe4) AM_WRITE(mz700_bank_4_w)
+	AM_RANGE(0xe5, 0xe5) AM_WRITE(mz700_bank_5_w)
+	AM_RANGE(0xe6, 0xe6) AM_WRITE(mz700_bank_6_w)
 	AM_RANGE(0xea, 0xea) AM_READWRITE( mz800_ramdisk_r, mz800_ramdisk_w )
 	AM_RANGE(0xeb, 0xeb) AM_WRITE( mz800_ramaddr_w )
 	AM_RANGE(0xf0, 0xf0) AM_READ_PORT("atari_joy1") AM_WRITE(mz800_palette_w)
@@ -304,23 +304,64 @@ INPUT_PORTS_END
     GFX LAYOUT
 ***************************************************************************/
 
-static const gfx_layout char_layout =
+static const gfx_layout mz700_layout =
 {
 	8, 8,		/* 8 x 8 graphics */
 	512,		/* 512 codes */
-	1,			/* 1 bit per pixel */
+	1,		/* 1 bit per pixel */
 	{ 0 },		/* no bitplanes */
 	{ 7, 6, 5, 4, 3, 2, 1, 0 },
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
 	8 * 8		/* code takes 8 times 8 bits */
 };
 
+static const gfx_layout mz2500_cg_layout =
+{
+	8, 8,		/* 8 x 8 graphics */
+	256,		/* 512 codes */
+	1,		/* 1 bit per pixel */
+	{ 0 },		/* no bitplanes */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8 * 8		/* code takes 8 times 8 bits */
+};
+
+/* gfx1 is mostly 16x16, but there are some 8x8 characters */
+static const gfx_layout mz2500_8_layout =
+{
+	8, 8,		/* 8 x 8 graphics */
+	1920,		/* 1920 codes */
+	1,		/* 1 bit per pixel */
+	{ 0 },		/* no bitplanes */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8 * 8		/* code takes 8 times 8 bits */
+};
+
+static const gfx_layout mz2500_16_layout =
+{
+	16, 16,		/* 16 x 16 graphics */
+	8192,		/* 8192 codes */
+	1,		/* 1 bit per pixel */
+	{ 0 },		/* no bitplanes */
+	{ 0, 1, 2, 3, 4, 5, 6, 7, 128, 129, 130, 131, 132, 133, 134, 135 },
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
+	16 * 16		/* code takes 16 times 16 bits */
+};
+
 static GFXDECODE_START( mz700 )
-	GFXDECODE_ENTRY("cgrom", 0, char_layout, 0, 256)
+	GFXDECODE_ENTRY("cgrom", 0, mz700_layout, 0, 256)
 GFXDECODE_END
 
 static GFXDECODE_START( mz800 )
-	GFXDECODE_ENTRY(NULL, 0, char_layout, 0, 256)
+	GFXDECODE_ENTRY(NULL, 0, mz700_layout, 0, 256)
+	GFXDECODE_ENTRY("monitor", 0x1000, mz700_layout, 0, 256)	// for mz800 viewer only
+GFXDECODE_END
+
+static GFXDECODE_START( mz2500 )
+	GFXDECODE_ENTRY("cgrom", 0, mz2500_cg_layout, 0, 256)
+	GFXDECODE_ENTRY("gfx1", 0x4400, mz2500_8_layout, 0, 256)	// for viewer only
+	GFXDECODE_ENTRY("gfx1", 0, mz2500_16_layout, 0, 256)		// for viewer only
 GFXDECODE_END
 
 
@@ -374,10 +415,10 @@ static MACHINE_DRIVER_START( mz700 )
 	MDRV_TTL74145_ADD("ls145", default_ttl74145)
 
 	MDRV_CASSETTE_ADD( "cassette", mz700_cassette_config )
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("64K")	
+	MDRV_RAM_DEFAULT_SIZE("64K")
 MACHINE_DRIVER_END
 
 
@@ -424,7 +465,7 @@ static MACHINE_DRIVER_START( mz2500 )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(XTAL_17_73447MHz/2, 568, 0, 40*8, 312, 0, 25*8)
 
-	MDRV_GFXDECODE(mz700)
+	MDRV_GFXDECODE(mz2500)
 	MDRV_PALETTE_LENGTH(256*2)
 	MDRV_PALETTE_INIT(mz700)
 
@@ -482,11 +523,11 @@ ROM_END
     GAME DRIVERS
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT    CONFIG  COMPANY      FULLNAME */
-COMP( 1982, mz700,    0,        0,      mz700,    mz700,    mz700,  0,  "Sharp",     "MZ-700", 0 )
-COMP( 1982, mz700j,   mz700,    0,      mz700,    mz700,    mz700,  0,  "Sharp",     "MZ-700 (Japan)", 0 )
-COMP( 1984, mz800,    0,        0,      mz800,    mz800,    mz800,  0,  "Sharp",     "MZ-800", GAME_NOT_WORKING )
-COMP( 1984, mz1500,   0,        0,      mz800,    mz800,    mz800,  0,  "Sharp",     "MZ-1500", GAME_NOT_WORKING )	// Japanese version of the MZ-800
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT    COMPANY      FULLNAME */
+COMP( 1982, mz700,    0,        0,      mz700,    mz700,    mz700,  "Sharp",     "MZ-700", 0 )
+COMP( 1982, mz700j,   mz700,    0,      mz700,    mz700,    mz700,  "Sharp",     "MZ-700 (Japan)", 0 )
+COMP( 1984, mz800,    0,        0,      mz800,    mz800,    mz800,  "Sharp",     "MZ-800", GAME_NOT_WORKING )
+COMP( 1984, mz1500,   0,        0,      mz800,    mz800,    mz800,  "Sharp",     "MZ-1500", GAME_NOT_WORKING )	// Japanese version of the MZ-800
 
 // MZ-2500 probably needs a separate driver...
-COMP( 1985, mz2500,   0,        0,      mz2500,   0,        0,      0,      "Sharp",     "MZ-2500", GAME_NOT_WORKING )
+COMP( 1985, mz2500,   0,        0,      mz2500,   0,        0,      "Sharp",     "MZ-2500", GAME_NOT_WORKING )

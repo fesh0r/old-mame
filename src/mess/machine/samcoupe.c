@@ -22,20 +22,23 @@
     MEMORY BANKING
 ***************************************************************************/
 
-static void samcoupe_update_bank(const address_space *space, int bank, UINT8 *memory, int is_readonly)
+static void samcoupe_update_bank(const address_space *space, int bank_num, UINT8 *memory, int is_readonly)
 {
-	read8_space_func rh = SMH_NOP;
-	write8_space_func wh = SMH_NOP;
+	char bank[10];
+	sprintf(bank,"bank%d",bank_num);
 
 	if (memory)
 	{
 		memory_set_bankptr(space->machine, bank, memory);
-		rh = (read8_space_func) (STATIC_BANK1 + (FPTR)bank - 1);
-		wh = is_readonly ? SMH_UNMAP : (write8_space_func) (STATIC_BANK1 + (FPTR)bank - 1);
+		memory_install_read_bank (space, ((bank_num-1) * 0x4000), ((bank_num-1) * 0x4000) + 0x3FFF, 0, 0, bank);
+		if (is_readonly) {
+			memory_unmap_write(space, ((bank_num-1) * 0x4000), ((bank_num-1) * 0x4000) + 0x3FFF, 0, 0);
+		} else {
+			memory_install_write_bank(space, ((bank_num-1) * 0x4000), ((bank_num-1) * 0x4000) + 0x3FFF, 0, 0, bank);
+		}
+	} else {
+		memory_nop_readwrite(space, ((bank_num-1) * 0x4000), ((bank_num-1) * 0x4000) + 0x3FFF, 0, 0);
 	}
-
-	memory_install_read8_handler(space, ((bank-1) * 0x4000), ((bank-1) * 0x4000) + 0x3FFF, 0, 0, rh);
-	memory_install_write8_handler(space, ((bank-1) * 0x4000), ((bank-1) * 0x4000) + 0x3FFF, 0, 0, wh);
 }
 
 
@@ -128,9 +131,9 @@ void samcoupe_update_memory(const address_space *space)
 
 	/* video memory location */
 	if (asic->vmpr & 0x40)	/* if bit set in 2 bank screen mode */
-		videoram = &messram_get_ptr(devtag_get_device(space->machine, "messram"))[((asic->vmpr & 0x1e) & PAGE_MASK) * 0x4000];
+		space->machine->generic.videoram.u8 = &messram_get_ptr(devtag_get_device(space->machine, "messram"))[((asic->vmpr & 0x1e) & PAGE_MASK) * 0x4000];
 	else
-		videoram = &messram_get_ptr(devtag_get_device(space->machine, "messram"))[((asic->vmpr & 0x1f) & PAGE_MASK) * 0x4000];
+		space->machine->generic.videoram.u8 = &messram_get_ptr(devtag_get_device(space->machine, "messram"))[((asic->vmpr & 0x1f) & PAGE_MASK) * 0x4000];
 }
 
 
@@ -223,6 +226,11 @@ UINT8 samcoupe_mouse_r(running_machine *machine)
 	return result;
 }
 
+MACHINE_START( samcoupe )
+{
+	coupe_asic *asic = machine->driver_data;
+	asic->mouse_reset = timer_alloc(machine, samcoupe_mouse_reset, 0);
+}
 
 /***************************************************************************
     RESET
@@ -242,7 +250,6 @@ MACHINE_RESET( samcoupe )
 	asic->status = 0x1f;    /* no interrupts active */
 
 	/* initialize mouse */
-	asic->mouse_reset = timer_alloc(space->machine, samcoupe_mouse_reset, 0);
 	asic->mouse_index = 0;
 	asic->mouse_data[0] = 0xff;
 	asic->mouse_data[1] = 0xff;
@@ -256,7 +263,7 @@ MACHINE_RESET( samcoupe )
 	else
 	{
 		/* no RTC support */
-		memory_install_readwrite8_handler(spaceio, 0xef, 0xef, 0xffff, 0xff00, SMH_UNMAP, SMH_UNMAP);
+		memory_unmap_readwrite(spaceio, 0xef, 0xef, 0xffff, 0xff00);
 	}
 
 	/* initialize memory */

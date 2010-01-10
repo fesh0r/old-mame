@@ -20,43 +20,48 @@ static void tvc_set_mem_page(running_machine *machine, UINT8 data)
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	switch(data & 0x18) {
 		case 0x00 : // system ROM selected
-				memory_install_readwrite8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_BANK(1), SMH_NOP);
-				memory_set_bankptr(space->machine, 1, memory_region(machine, "sys"));
+				memory_install_read_bank(space, 0x0000, 0x3fff, 0, 0, "bank1");
+				memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
+				memory_set_bankptr(space->machine, "bank1", memory_region(machine, "sys"));
 				break;
 		case 0x08 : // Cart ROM selected
-				memory_install_readwrite8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_BANK(1), SMH_NOP);
-				memory_set_bankptr(space->machine, 1, memory_region(machine, "cart"));
+				memory_install_read_bank(space, 0x0000, 0x3fff, 0, 0, "bank1");
+				memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
+				memory_set_bankptr(space->machine, "bank1", memory_region(machine, "cart"));
 				break;
 		case 0x10 : // RAM selected
-				memory_install_readwrite8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
-				memory_set_bankptr(space->machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
+				memory_install_readwrite_bank(space, 0x0000, 0x3fff, 0, 0, "bank1");
+				memory_set_bankptr(space->machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
 				break;
 	}
 	// Bank 2 is always RAM
-	memory_set_bankptr(space->machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
+	memory_set_bankptr(space->machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
 	if ((data & 0x20)==0) {
 		// Video RAM
-		memory_set_bankptr(space->machine, 3, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x10000);
+		memory_set_bankptr(space->machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x10000);
 	} else {
 		// System RAM page 3
-		memory_set_bankptr(space->machine, 3, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000);
+		memory_set_bankptr(space->machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000);
 	}
 	switch(data & 0xc0) {
 		case 0x00 : // Cart ROM selected
-				memory_install_readwrite8_handler(space, 0xc000, 0xffff, 0, 0, SMH_BANK(4), SMH_NOP);
-				memory_set_bankptr(space->machine, 4, memory_region(machine, "cart"));
+				memory_install_read_bank(space, 0xc000, 0xffff, 0, 0, "bank4");
+				memory_unmap_write(space, 0xc000, 0xffff, 0, 0);
+				memory_set_bankptr(space->machine, "bank4", memory_region(machine, "cart"));
 				break;
 		case 0x40 : // System ROM selected
-				memory_install_readwrite8_handler(space, 0xc000, 0xffff, 0, 0, SMH_BANK(4), SMH_NOP);
-				memory_set_bankptr(space->machine, 4, memory_region(machine, "sys"));
+				memory_install_read_bank(space, 0xc000, 0xffff, 0, 0, "bank4");
+				memory_unmap_write(space, 0xc000, 0xffff, 0, 0);
+				memory_set_bankptr(space->machine, "bank4", memory_region(machine, "sys"));
 				break;
 		case 0x80 : // RAM selected
-				memory_install_readwrite8_handler(space, 0xc000, 0xffff, 0, 0, SMH_BANK(4), SMH_BANK(4));
-				memory_set_bankptr(space->machine, 4, messram_get_ptr(devtag_get_device(machine, "messram"))+0xc000);
+				memory_install_readwrite_bank(space, 0xc000, 0xffff, 0, 0, "bank4");
+				memory_set_bankptr(space->machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram"))+0xc000);
 				break;
 		case 0xc0 : // External ROM selected
-				memory_install_readwrite8_handler(space, 0xc000, 0xffff, 0, 0, SMH_BANK(4), SMH_NOP);
-				memory_set_bankptr(space->machine, 4, memory_region(machine, "ext"));
+				memory_install_read_bank(space, 0xc000, 0xffff, 0, 0, "bank4");
+				memory_unmap_write(space, 0xc000, 0xffff, 0, 0);
+				memory_set_bankptr(space->machine, "bank4", memory_region(machine, "ext"));
 				break;
 
 	}
@@ -90,8 +95,10 @@ static WRITE8_HANDLER( tvc_keyboard_w )
 
 static READ8_HANDLER( tvc_keyboard_r )
 {
-	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7",
-											"LINE8", "LINE9", "LINEA", "LINEB", "LINEC", "LINED", "LINEE", "LINEF"};
+	static const char *const keynames[] = {
+		"LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7",
+		"LINE8", "LINE9", "LINEA", "LINEB", "LINEC", "LINED", "LINEE", "LINEF"
+	};
 	return input_port_read(space->machine, keynames[tvc_keyline & 0x0f]);
 }
 
@@ -110,13 +117,13 @@ static READ8_HANDLER( tvc_port59_r )
 }
 
 static WRITE8_HANDLER( tvc_port0_w )
-{	
+{
 }
 static ADDRESS_MAP_START(tvc_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK(1)
-	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK(2)
-	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK(3)
-	AM_RANGE(0xc000, 0xffff) AM_RAMBANK(4)
+	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank2")
+	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank3")
+	AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank4")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tvc_io , ADDRESS_SPACE_IO, 8)
@@ -342,7 +349,7 @@ static const mc6845_interface tvc_crtc6845_interface =
 	NULL
 };
 
-INTERRUPT_GEN( tvc_interrupt )
+static INTERRUPT_GEN( tvc_interrupt )
 {
 	tvc_flipflop  &= ~0x10;
 	cpu_set_input_line(device, 0, HOLD_LINE);
@@ -357,7 +364,7 @@ static MACHINE_DRIVER_START( tvc )
     MDRV_MACHINE_RESET(tvc)
 
 	MDRV_CPU_VBLANK_INT("screen", tvc_interrupt)
-	
+
  /* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
@@ -372,10 +379,10 @@ static MACHINE_DRIVER_START( tvc )
 
     MDRV_VIDEO_START(tvc)
     MDRV_VIDEO_UPDATE(tvc)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("80K")		
+	MDRV_RAM_DEFAULT_SIZE("80K")
 MACHINE_DRIVER_END
 
 /* ROM definition */
@@ -414,8 +421,8 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1985, tvc64,  0,   	 0, 	tvc, 	tvc, 	 0,  	  0,  	 "Videoton",   "TVC 64",		GAME_NOT_WORKING)
-COMP( 1985, tvc64p, tvc64,   0, 	tvc, 	tvc, 	 0,  	  0,  	 "Videoton",   "TVC 64+",		GAME_NOT_WORKING)
-COMP( 1985, tvc64pru,tvc64,   0, 	tvc, 	tvc, 	 0,  	  0,  	 "Videoton",   "TVC 64+ (Russian)",		GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT COMPANY   FULLNAME       FLAGS */
+COMP( 1985, tvc64,  0,   	 0, 	tvc, 	tvc, 	 0,  	  "Videoton",   "TVC 64",		GAME_NOT_WORKING)
+COMP( 1985, tvc64p, tvc64,   0, 	tvc, 	tvc, 	 0,  	  "Videoton",   "TVC 64+",		GAME_NOT_WORKING)
+COMP( 1985, tvc64pru,tvc64,   0, 	tvc, 	tvc, 	 0,  	  "Videoton",   "TVC 64+ (Russian)",		GAME_NOT_WORKING)
 

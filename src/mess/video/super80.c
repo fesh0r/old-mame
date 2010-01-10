@@ -7,7 +7,7 @@
 
 
 #include "driver.h"
-#include "super80.h"
+#include "includes/super80.h"
 
 
 static UINT16 vidpg=0xfe00;	/* Home position of video page being displayed */
@@ -19,7 +19,7 @@ static const UINT8 *FNT;
 static UINT8 chr,col,gfx,fg,bg;
 static UINT16 mem,x;
 static UINT8 options;
-
+extern UINT8 *super80_colorram;
 
 /**************************** PALETTES for super80m and super80v ******************************************/
 
@@ -305,40 +305,40 @@ static UINT16 cursor;
 READ8_HANDLER( super80v_low_r )
 {
 	if (super80_shared & 4)
-		return videoram[offset];
+		return space->machine->generic.videoram.u8[offset];
 	else
-		return colorram[offset];
+		return super80_colorram[offset];
 }
 
 WRITE8_HANDLER( super80v_low_w )
 {
 	if (super80_shared & 4)
-		videoram[offset] = data;
+		space->machine->generic.videoram.u8[offset] = data;
 	else
-		colorram[offset] = data;
+		super80_colorram[offset] = data;
 }
 
 READ8_HANDLER( super80v_high_r )
 {
 	if (~super80_shared & 4)
-		return colorram[0x800+offset];
+		return super80_colorram[0x800+offset];
 
 	if (super80_shared & 0x10)
-		return pcgram[0x800+offset];
+		return super80_pcgram[0x800+offset];
 	else
-		return pcgram[offset];
+		return super80_pcgram[offset];
 }
 
 WRITE8_HANDLER( super80v_high_w )
 {
 	if (~super80_shared & 4)
-		colorram[offset+0x800] = data;
+		super80_colorram[offset+0x800] = data;
 	else
 	{
-		videoram[offset+0x800] = data;
+		space->machine->generic.videoram.u8[offset+0x800] = data;
 
 		if (super80_shared & 0x10)
-			pcgram[0x800+offset] = data;
+			super80_pcgram[0x800+offset] = data;
 	}
 }
 
@@ -421,7 +421,7 @@ MC6845_UPDATE_ROW( super80v_update_row )
 		UINT8 inv=0;
 		//      if (x == cursor_x) inv=0xff;    /* uncomment when mame fixed */
 		mem = (ma + x) & 0xfff;
-		chr = videoram[mem];
+		chr = device->machine->generic.videoram.u8[mem];
 
 		/* get colour or b&w */
 		fg = 5;						/* green */
@@ -429,7 +429,7 @@ MC6845_UPDATE_ROW( super80v_update_row )
 
 		if (~options & 0x40)
 		{
- 			col = colorram[mem];					/* byte of colour to display */
+ 			col = super80_colorram[mem];					/* byte of colour to display */
 			fg = col & 0x0f;
 			bg = (col & 0xf0) >> 4;
 		}
@@ -449,7 +449,7 @@ MC6845_UPDATE_ROW( super80v_update_row )
 				inv ^= mc6845_cursor[ra];
 
 		/* get pattern of pixels for that character scanline */
-		gfx = pcgram[(chr<<4) | ra] ^ inv;
+		gfx = super80_pcgram[(chr<<4) | ra] ^ inv;
 
 		/* Display a scanline of a character (7 pixels) */
 		*p = ( gfx & 0x80 ) ? fg : bg; p++;

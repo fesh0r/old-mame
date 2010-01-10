@@ -16,6 +16,7 @@ static UINT16 *cat_sram;
 static UINT8 video_enable;
 static UINT16 pr_cont;
 static UINT8 keyboard_line;
+static emu_timer *keyboard_timer;
 
 static WRITE16_HANDLER( cat_video_status_w )
 {
@@ -250,10 +251,14 @@ static IRQ_CALLBACK(cat_int_ack)
 	return M68K_INT_ACK_AUTOVECTOR;
 }
 
+static MACHINE_START(cat)
+{
+	keyboard_timer = timer_alloc(machine, keyboard_callback, NULL);
+}
 static MACHINE_RESET(cat)
 {
 	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), cat_int_ack);
-	timer_pulse(machine, ATTOTIME_IN_HZ(120), NULL, 0, keyboard_callback);
+	timer_adjust_periodic(keyboard_timer, attotime_zero, 0, ATTOTIME_IN_HZ(120));
 }
 
 static VIDEO_START( cat )
@@ -295,7 +300,6 @@ static TIMER_CALLBACK( swyft_reset )
 static MACHINE_RESET(swyft)
 {
 	timer_set(machine, ATTOTIME_IN_USEC(10), NULL, 0, swyft_reset);
-
 }
 
 static VIDEO_START( swyft )
@@ -376,6 +380,7 @@ static MACHINE_DRIVER_START( cat )
 	MDRV_CPU_ADD("maincpu",M68000, XTAL_5MHz)
 	MDRV_CPU_PROGRAM_MAP(cat_mem)
 
+	MDRV_MACHINE_START(cat)
 	MDRV_MACHINE_RESET(cat)
 
 	/* video hardware */
@@ -437,6 +442,6 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME  PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1985, swyft,0,       0, 		swyft, 		swyft, 	 0,  	  0,  	 "Information Applicance Inc.",   "Swyft",		GAME_NOT_WORKING)
-COMP( 1987, cat,  swyft,   0, 		cat, 		cat, 	 0,  	  0,  	 "Canon",   "Cat",		GAME_NOT_WORKING)
+/*    YEAR  NAME  PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
+COMP( 1985, swyft,0,       0, 		swyft, 		swyft, 	 0,  	"Information Applicance Inc.",   "Swyft",		GAME_NOT_WORKING)
+COMP( 1987, cat,  swyft,   0, 		cat, 		cat, 	 0,  	"Canon",   "Cat",		GAME_NOT_WORKING)

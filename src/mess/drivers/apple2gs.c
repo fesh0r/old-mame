@@ -151,7 +151,7 @@ static const es5503_interface apple2gs_es5503_interface =
 	apple2gs_docram
 };
 
-/*
+#ifdef UNUSED_FUNCTION
 static void apple2gs_floppy35_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
     // 3.5" floppy
@@ -189,7 +189,8 @@ static void apple2gs_floppy525_getinfo(const mess_device_class *devclass, UINT32
 
         default:                                        apple525_device_getinfo(devclass, state, info); break;
     }
-}*/
+}
+#endif
 
 static const floppy_config apple2gs_floppy35_floppy_config =
 {
@@ -251,7 +252,7 @@ static MACHINE_DRIVER_START( apple2gs )
 	MDRV_FLOPPY_APPLE_2_DRIVES_REMOVE()
 	MDRV_FLOPPY_APPLE_2_DRIVES_ADD(apple2gs_floppy525_floppy_config,15,16)
 	MDRV_FLOPPY_SONY_2_DRIVES_ADDITIONAL_ADD(apple2gs_floppy35_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("2M")
@@ -332,9 +333,9 @@ static DRIVER_INIT(apple2gs)
 	state_save_register_global_array(machine, apple2gs_docram);
 }
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT       INIT      CONFIG      COMPANY            FULLNAME */
-COMP( 1989, apple2gs, 0,        apple2, apple2gs, apple2gs,   apple2gs, 0,	"Apple Computer", "Apple IIgs (ROM03)", 0 )
-COMP( 198?, apple2gsr3p, apple2gs, 0,   apple2gs, apple2gs,   apple2gs, 0,	"Apple Computer", "Apple IIgs (ROM03 prototype)", GAME_NOT_WORKING )
-COMP( 1989, apple2gsr3lp, apple2gs, 0,  apple2gs, apple2gs,   apple2gs, 0,	"Apple Computer", "Apple IIgs (ROM03 late prototype?)", GAME_NOT_WORKING )
-COMP( 1987, apple2gsr1, apple2gs, 0,    apple2gs, apple2gs,   apple2gs, 0,	"Apple Computer", "Apple IIgs (ROM01)", 0 )
-COMP( 1986, apple2gsr0, apple2gs, 0,    apple2gs, apple2gs,   apple2gs, 0,	"Apple Computer", "Apple IIgs (ROM00)", 0 )
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT       INIT      COMPANY            FULLNAME */
+COMP( 1989, apple2gs, 0,        apple2, apple2gs, apple2gs,   apple2gs, "Apple Computer", "Apple IIgs (ROM03)", 0 )
+COMP( 198?, apple2gsr3p, apple2gs, 0,   apple2gs, apple2gs,   apple2gs, "Apple Computer", "Apple IIgs (ROM03 prototype)", GAME_NOT_WORKING )
+COMP( 1989, apple2gsr3lp, apple2gs, 0,  apple2gs, apple2gs,   apple2gs, "Apple Computer", "Apple IIgs (ROM03 late prototype?)", GAME_NOT_WORKING )
+COMP( 1987, apple2gsr1, apple2gs, 0,    apple2gs, apple2gs,   apple2gs, "Apple Computer", "Apple IIgs (ROM01)", 0 )
+COMP( 1986, apple2gsr0, apple2gs, 0,    apple2gs, apple2gs,   apple2gs, "Apple Computer", "Apple IIgs (ROM00)", 0 )

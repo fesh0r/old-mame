@@ -25,7 +25,7 @@
 
 /*************************************
  *
- *	Code
+ *  Code
  *
  *************************************/
 
@@ -79,7 +79,7 @@ static void coco_field_sync_callback(running_machine *machine, int data)
 static const UINT8 *get_video_ram_coco(running_machine *machine,int scanline)
 {
 	coco_state *state = machine->driver_data;
-	return sam_m6847_get_video_ram(state->sam, scanline);
+	return sam6883_videoram(state->sam, scanline);
 }
 
 static void internal_video_start_coco(running_machine *machine, m6847_type type)
@@ -90,7 +90,7 @@ static void internal_video_start_coco(running_machine *machine, m6847_type type)
 	cfg.type = type;
 
 	/* NPW 14-May-2006 - Ugly hack; using CPU timing factor seems to break some
-	 * Dragon games */
+     * Dragon games */
 	if (machine->gamedrv->name[0] == 'c')
 		cfg.cpu0_timing_factor = 4;
 

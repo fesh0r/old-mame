@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "video/stic.h"
 #include "includes/intv.h"
 #include "cpu/cp1610/cp1610.h"
 #include "image.h"
@@ -328,7 +327,7 @@ static int intv_load_rom_file(const device_config *image)
 	UINT8 start_seg;
 	UINT8 end_seg;
 
-	UINT16 current_address;
+	UINT32 current_address;
 	UINT32 end_address;
 
 	UINT8 high_byte;
@@ -464,35 +463,8 @@ static int intv_load_rom_file(const device_config *image)
 	}
 }
 
-DEVICE_START( intv_cart )
-{
-	/* First, initialize these as empty so that the intellivision
-     * will think that the playcable and keyboard are not attached */
-	UINT8 *memory = memory_region(device->machine, "maincpu");
-
-	/* assume playcable is absent */
-	memory[0x4800 << 1] = 0xff;
-	memory[(0x4800 << 1) + 1] = 0xff;
-
-	/* assume keyboard is absent */
-	memory[0x7000 << 1] = 0xff;
-	memory[(0x7000 << 1) + 1] = 0xff;
-}
-
 DEVICE_IMAGE_LOAD( intv_cart )
 {
-	/* First, initialize these as empty so that the intellivision
-     * will think that the playcable and keyboard are not attached */
-	UINT8 *memory = memory_region(image->machine, "maincpu");
-
-	/* assume playcable is absent */
-	memory[0x4800 << 1] = 0xff;
-	memory[(0x4800 << 1) + 1] = 0xff;
-
-	/* assume keyboard is absent */
-	memory[0x7000 << 1] = 0xff;
-	memory[(0x7000 << 1) + 1] = 0xff;
-
 	return intv_load_rom_file(image);
 }
 
@@ -510,7 +482,9 @@ MACHINE_RESET( intv )
 	/* These are actually the same vector, and INTR is unused */
 	cpu_set_input_line_vector(cputag_get_cpu(machine, "maincpu"), CP1610_INT_INTRM, 0x1004);
 	cpu_set_input_line_vector(cputag_get_cpu(machine, "maincpu"), CP1610_INT_INTR,  0x1004);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), CP1610_R7, 0x2000);
+
+	/* Set initial PC */
+	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), CP1610_R7, 0x1000);
 
 	return;
 }
@@ -526,7 +500,7 @@ INTERRUPT_GEN( intv_interrupt )
 	cputag_set_input_line(device->machine, "maincpu", CP1610_INT_INTRM, ASSERT_LINE);
 	sr1_int_pending = 1;
 	timer_set(device->machine, cputag_clocks_to_attotime(device->machine, "maincpu", 3791), NULL, 0, intv_interrupt_complete);
-	stic_screenrefresh(device->machine);
+	intv_stic_screenrefresh(device->machine);
 }
 
 static const UINT8 controller_table[] =
@@ -570,7 +544,7 @@ READ8_HANDLER( intv_right_control_r )
 
 READ8_HANDLER( intv_left_control_r )
 {
-	return 0xff;
+	return intv_right_control_r(space, 0 ); //0xff; /* small patch to allow Frogger to be played */
 }
 
 /* Intellivision console + keyboard component */

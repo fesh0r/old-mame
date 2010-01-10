@@ -333,11 +333,57 @@ the Edu64-1 used the full C64 BIOS. Confirmations are needed, anyway.
 
 /* devices config */
 #include "includes/cbm.h"
-#include "includes/cbmserb.h"	// needed for MDRV_DEVICE_REMOVE
-#include "includes/cbmdrive.h"
-#include "includes/vc1541.h"
+#include "machine/cbmiec.h"
+#include "machine/c1541.h"
 
 #include "includes/c64.h"
+
+#define VC1540_ROM( cpu )	\
+	ROM_REGION( 0x10000, cpu, 0 )	\
+	ROM_LOAD( "325302-01.ua2", 0xc000, 0x2000, CRC(29ae9752) SHA1(8e0547430135ba462525c224e76356bd3d430f11) )	\
+	ROM_LOAD( "325303-01.ub3", 0xe000, 0x2000, CRC(10b39158) SHA1(56dfe79b26f50af4e83fd9604857756d196516b9) )
+
+/*
+    rev. 01 - It is believed to be the first revision of the 1541 firmware. The service manual says that this ROM
+        is for North America and Japan only.
+    rev. 02 - Second version of the 1541 firmware. The service manual says that this ROM was not available in North
+        America (Japan only?).
+    rev. 03 - It is said to be the first version that is usable in Europe (in the service manual?).
+    rev. 05 - From an old-style 1541 with short board.
+    rev. 06AA - From an old-style 1541 with short board.
+*/
+#define VC1541_ROM( cpu )	\
+	ROM_REGION( 0x10000, cpu, 0 )	\
+	ROM_SYSTEM_BIOS( 0, "rev1", "VC-1541 rev. 01" )	\
+	ROMX_LOAD( "325302-01.ua2", 0xc000, 0x2000, CRC(29ae9752) SHA1(8e0547430135ba462525c224e76356bd3d430f11), ROM_BIOS(1) )	\
+	ROMX_LOAD( "901229-01.ub3", 0xe000, 0x2000, CRC(9a48d3f0) SHA1(7a1054c6156b51c25410caec0f609efb079d3a77), ROM_BIOS(1) )	\
+	ROM_SYSTEM_BIOS( 1, "rev2", "VC-1541 rev. 02" )	\
+	ROMX_LOAD( "325302-01.ua2", 0xc000, 0x2000, CRC(29ae9752) SHA1(8e0547430135ba462525c224e76356bd3d430f11), ROM_BIOS(2) )	\
+	ROMX_LOAD( "901229-02.ub3", 0xe000, 0x2000, CRC(b29bab75) SHA1(91321142e226168b1139c30c83896933f317d000), ROM_BIOS(2) )	\
+	ROM_SYSTEM_BIOS( 2, "rev3", "VC-1541 rev. 03" )	\
+	ROMX_LOAD( "325302-01.ua2", 0xc000, 0x2000, CRC(29ae9752) SHA1(8e0547430135ba462525c224e76356bd3d430f11), ROM_BIOS(3) )	\
+	ROMX_LOAD( "901229-03.ub3", 0xe000, 0x2000, CRC(9126e74a) SHA1(03d17bd745066f1ead801c5183ac1d3af7809744), ROM_BIOS(3) )	\
+	ROM_SYSTEM_BIOS( 3, "rev5", "VC-1541 rev. 05" )	\
+	ROMX_LOAD( "325302-01.ua2", 0xc000, 0x2000, CRC(29ae9752) SHA1(8e0547430135ba462525c224e76356bd3d430f11), ROM_BIOS(4) )	\
+	ROMX_LOAD( "901229-05.ub3", 0xe000, 0x2000, CRC(361c9f37) SHA1(f5d60777440829e46dc91285e662ba072acd2d8b), ROM_BIOS(4) )	\
+	ROM_SYSTEM_BIOS( 4, "rev6aa", "VC-1541 rev. 06AA" )	\
+	ROMX_LOAD( "325302-01.ua2", 0xc000, 0x2000, CRC(29ae9752) SHA1(8e0547430135ba462525c224e76356bd3d430f11), ROM_BIOS(5) )	\
+	ROMX_LOAD( "901229-06aa.ub3", 0xe000, 0x2000, CRC(3a235039) SHA1(c7f94f4f51d6de4cdc21ecbb7e57bb209f0530c0), ROM_BIOS(5) )	\
+	ROM_SYSTEM_BIOS( 5, "rev1c", "VC-1541C rev. 01" )	\
+	ROMX_LOAD( "251968-01.ua2", 0xc000, 0x4000, CRC(1b3ca08d) SHA1(8e893932de8cce244117fcea4c46b7c39c6a7765), ROM_BIOS(6) )	\
+	ROM_SYSTEM_BIOS( 6, "rev2c", "VC-1541C rev. 02" )	\
+	ROMX_LOAD( "251968-02.ua2", 0xc000, 0x4000, CRC(2d862d20) SHA1(38a7a489c7bbc8661cf63476bf1eb07b38b1c704), ROM_BIOS(7) )	\
+	ROM_SYSTEM_BIOS( 7, "rev3ii", "VC-1541-II" )	\
+	ROMX_LOAD( "251968-03.u4", 0xc000, 0x4000, CRC(899fa3c5) SHA1(d3b78c3dbac55f5199f33f3fe0036439811f7fb3), ROM_BIOS(8) )	\
+	ROM_SYSTEM_BIOS( 8, "reviin", "VC-1541-II (with Newtronics D500)" )	\
+	ROMX_LOAD( "355640-01.u4", 0xc000, 0x4000, CRC(57224cde) SHA1(ab16f56989b27d89babe5f89c5a8cb3da71a82f0), ROM_BIOS(9) )	\
+
+
+
+// currently not used (hacked drive firmware with more RAM)
+#define DOLPHIN_ROM( cpu )	\
+	ROM_REGION( 0x10000, cpu, 0 )	\
+	ROM_LOAD( "c1541.rom", 0xa000, 0x6000, CRC(bd8e42b2) SHA1(d6aff55fc70876fa72be45c666b6f42b92689b4d) )
 
 
 /*************************************
@@ -351,18 +397,18 @@ static ADDRESS_MAP_START(ultimax_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x8000, 0x9fff) AM_ROM AM_BASE(&c64_roml)
 	AM_RANGE(0xd000, 0xd3ff) AM_READWRITE(vic2_port_r, vic2_port_w)
 	AM_RANGE(0xd400, 0xd7ff) AM_DEVREADWRITE("sid6581", sid6581_r, sid6581_w)
-	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(SMH_RAM, c64_colorram_write) AM_BASE(&c64_colorram) /* colorram  */
+	AM_RANGE(0xd800, 0xdbff) AM_RAM_WRITE( c64_colorram_write) AM_BASE(&c64_colorram) /* colorram  */
 	AM_RANGE(0xdc00, 0xdcff) AM_DEVREADWRITE("cia_0", cia_r, cia_w)
 	AM_RANGE(0xe000, 0xffff) AM_ROM AM_BASE(&c64_romh)				/* ram or kernel rom */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(c64_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_BASE(&c64_memory)
-	AM_RANGE(0x8000, 0x9fff) AM_READWRITE(SMH_BANK(1), SMH_BANK(2))		/* ram or external roml */
-	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK(3) AM_WRITEONLY				/* ram or basic rom or external romh */
+	AM_RANGE(0x8000, 0x9fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank2")		/* ram or external roml */
+	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK("bank3") AM_WRITEONLY				/* ram or basic rom or external romh */
 	AM_RANGE(0xc000, 0xcfff) AM_RAM
 	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(c64_ioarea_r, c64_ioarea_w)
-	AM_RANGE(0xe000, 0xffff) AM_READWRITE(SMH_BANK(4), SMH_BANK(5))	   /* ram or kernel rom or external romh */
+	AM_RANGE(0xe000, 0xffff) AM_READ_BANK("bank4") AM_WRITE_BANK("bank5")	   /* ram or kernel rom or external romh */
 ADDRESS_MAP_END
 
 
@@ -478,6 +524,12 @@ static const m6502_interface c64_m6510_interface =
 	c64_m6510_port_write
 };
 
+static CBM_IEC_DAISY( cbm_iec_daisy )
+{
+	{ "cia_1" },
+	{ C1541_IEC("c1541") },
+	{ NULL}
+};
 
 /*************************************
  *
@@ -522,7 +574,8 @@ static MACHINE_DRIVER_START( c64 )
 	MDRV_CIA6526_ADD("cia_1", CIA6526R1, VIC6567_CLOCK, c64_ntsc_cia1)
 
 	/* floppy from serial bus */
-	MDRV_IMPORT_FROM(simulated_drive)
+	MDRV_CBM_IEC_ADD("iec", cbm_iec_daisy)
+	MDRV_C1541_ADD("c1541", "iec", 8)
 
 	MDRV_IMPORT_FROM(c64_cartslot)
 MACHINE_DRIVER_END
@@ -563,7 +616,8 @@ static MACHINE_DRIVER_START( c64pal )
 	MDRV_CIA6526_ADD("cia_1", CIA6526R1, VIC6569_CLOCK, c64_pal_cia1)
 
 	/* floppy from serial bus */
-	MDRV_IMPORT_FROM(simulated_drive)
+	MDRV_CBM_IEC_ADD("iec", cbm_iec_daisy)
+	MDRV_C1541_ADD("c1541", "iec", 8)
 
 	MDRV_IMPORT_FROM(c64_cartslot)
 MACHINE_DRIVER_END
@@ -578,7 +632,8 @@ static MACHINE_DRIVER_START( ultimax )
 	MDRV_SOUND_CONFIG(c64_sound_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MDRV_DEVICE_REMOVE("serial_bus")	// in the current code, serial bus device is tied to the floppy drive
+	MDRV_DEVICE_REMOVE("iec")
+	MDRV_DEVICE_REMOVE("c1541")
 	MDRV_DEVICE_REMOVE("cart1")
 	MDRV_DEVICE_REMOVE("cart2")
 
@@ -596,14 +651,13 @@ static MACHINE_DRIVER_START( c64gs )
 	MDRV_DEVICE_REMOVE( "dac" )
 	MDRV_DEVICE_REMOVE( "cassette" )
 	MDRV_DEVICE_REMOVE( "quickload" )
+	//MDRV_DEVICE_REMOVE("iec")
+	//MDRV_DEVICE_REMOVE("c1541")
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( sx64 )
 	MDRV_IMPORT_FROM( c64pal )
-
-	MDRV_DEVICE_REMOVE("serial_bus")	// in the current code, serial bus device is tied to the floppy drive
-	MDRV_IMPORT_FROM( cpu_vc1541 )			// so we need to remove the one from MDRV_IMPORT_FROM(simulated_drive)!
 
 	MDRV_DEVICE_REMOVE( "dac" )
 	MDRV_DEVICE_REMOVE( "cassette" )
@@ -734,50 +788,32 @@ ROM_START( c64gs )
 	ROM_REGION( 0x80000, "cart", ROMREGION_ERASE00 )
 ROM_END
 
-
-
-/*************************************
- *
- *  System configuration(s)
- *
- *************************************/
-
-
-static SYSTEM_CONFIG_START(c64)
-	CONFIG_DEVICE(cbmfloppy_device_getinfo)
-SYSTEM_CONFIG_END
-
-static SYSTEM_CONFIG_START(sx64)
-	CONFIG_DEVICE(vc1541_device_getinfo)
-SYSTEM_CONFIG_END
-
 /***************************************************************************
 
   Game driver(s)
 
 ***************************************************************************/
 
-/*   YEAR  NAME   PARENT COMPAT MACHINE  INPUT    INIT    CONFIG    COMPANY                            FULLNAME */
+/*   YEAR  NAME   PARENT COMPAT MACHINE  INPUT    INIT     COMPANY                            FULLNAME */
 
-COMP(1982, max,	  0,    0,    ultimax, c64,     ultimax, 0,       "Commodore Business Machines Co.", "Commodore Max Machine", 0)
+COMP(1982, max,	    0,    0,    ultimax, c64,     ultimax, "Commodore Business Machines Co.", "Commodore Max Machine", 0)
 
-COMP(1982, c64,     0,    0,    c64,     c64,     c64,     c64,     "Commodore Business Machines Co.", "Commodore 64 (NTSC)", 0)
-COMP(1982, c64pal,  c64,  0,    c64pal,  c64,     c64pal,  c64,     "Commodore Business Machines Co.", "Commodore 64 (PAL)", 0)
-COMP(1982, c64jpn,  c64,  0,    c64,     c64,     c64,     c64,     "Commodore Business Machines Co.", "Commodore 64 (Japan)", 0)
-COMP(1982, vic64s,  c64,  0,    c64pal,  vic64s,  c64pal,  c64,     "Commodore Business Machines Co.", "VIC 64S", 0)
-COMP(1982, c64swe,  c64,  0,    c64pal,  vic64s,  c64pal,  c64,     "Commodore Business Machines Co.", "Commodore 64 (Sweden)", 0)
+COMP(1982, c64,     0,    0,    c64,     c64,     c64,     "Commodore Business Machines Co.", "Commodore 64 (NTSC)", 0)
+COMP(1982, c64pal,  c64,  0,    c64pal,  c64,     c64pal,  "Commodore Business Machines Co.", "Commodore 64 (PAL)", 0)
+COMP(1982, c64jpn,  c64,  0,    c64,     c64,     c64,     "Commodore Business Machines Co.", "Commodore 64 (Japan)", 0)
+COMP(1982, vic64s,  c64,  0,    c64pal,  vic64s,  c64pal,  "Commodore Business Machines Co.", "VIC 64S", 0)
+COMP(1982, c64swe,  c64,  0,    c64pal,  vic64s,  c64pal,  "Commodore Business Machines Co.", "Commodore 64 (Sweden/Finland)", 0)
 
-COMP(1983, pet64,	  c64,  0,    pet64,   c64,     c64,     c64,     "Commodore Business Machines Co.", "PET 64 (NTSC)", 0)
-COMP(1983, cbm4064, c64,  0,    pet64,   c64,     c64,     c64,     "Commodore Business Machines Co.", "CBM 4064 (NTSC)", 0)
-COMP(1983, edu64,   c64,  0,    pet64,   c64,     c64,     c64,     "Commodore Business Machines Co.", "Educator 64 (NTSC)", 0) // maybe different palette?
+COMP(1983, pet64,	c64,  0,    pet64,   c64,     c64,     "Commodore Business Machines Co.", "PET 64 (NTSC)", 0)
+COMP(1983, cbm4064, c64,  0,    pet64,   c64,     c64,     "Commodore Business Machines Co.", "CBM 4064 (NTSC)", 0)
+COMP(1983, edu64,   c64,  0,    pet64,   c64,     c64,     "Commodore Business Machines Co.", "Educator 64 (NTSC)", 0) // maybe different palette?
 
-// missing floppy emulation, among other things
-COMP(1984, sx64,    c64,  0,    sx64,    c64,     sx64,    sx64,    "Commodore Business Machines Co.", "SX-64 Executive Computer (PAL)", GAME_NOT_WORKING)
-COMP(1984, vip64,   c64,  0,    sx64,    vip64,   sx64,    sx64,    "Commodore Business Machines Co.", "VIP64 (SX64 PAL), Swedish Expansion Kit", GAME_NOT_WORKING)
-COMP(198?, dx64,    c64,  0,    sx64,    c64,     sx64,    sx64,    "Commodore Business Machines Co.", "DX-64 (Prototype, PAL)", GAME_NOT_WORKING)
+COMP(1984, sx64,    c64,  0,    sx64,    c64,     sx64,    "Commodore Business Machines Co.", "SX-64 Executive Computer (PAL)", GAME_NOT_WORKING)
+COMP(1984, vip64,   c64,  0,    sx64,    vip64,   sx64,    "Commodore Business Machines Co.", "VIP64 (SX64 PAL), Swedish Expansion Kit", GAME_NOT_WORKING)
+COMP(198?, dx64,    c64,  0,    sx64,    c64,     sx64,    "Commodore Business Machines Co.", "DX-64 (Prototype, PAL)", GAME_NOT_WORKING)
 
-COMP(1986, c64c,    c64,  0,    c64,     c64,     c64,     c64,     "Commodore Business Machines Co.", "Commodore 64C (NTSC)", 0)
-COMP(1986, c64cpal, c64,  0,    c64pal,  c64,     c64pal,  c64,     "Commodore Business Machines Co.", "Commodore 64C (PAL)", 0)
-COMP(1986, c64g,    c64,  0,    c64pal,  c64,     c64pal,  c64,     "Commodore Business Machines Co.", "Commodore 64G (PAL)", 0)
+COMP(1986, c64c,    c64,  0,    c64,     c64,     c64,     "Commodore Business Machines Co.", "Commodore 64C (NTSC)", 0)
+COMP(1986, c64cpal, c64,  0,    c64pal,  c64,     c64pal,  "Commodore Business Machines Co.", "Commodore 64C (PAL)", 0)
+COMP(1986, c64g,    c64,  0,    c64pal,  c64,     c64pal,  "Commodore Business Machines Co.", "Commodore 64G (PAL)", 0)
 
-CONS(1990, c64gs,   c64,  0,    c64gs,   c64gs,   c64gs,   0,       "Commodore Business Machines Co.", "Commodore 64 Games System (PAL)", 0)
+CONS(1990, c64gs,   c64,  0,    c64gs,   c64gs,   c64gs,   "Commodore Business Machines Co.", "Commodore 64 Games System (PAL)", 0)

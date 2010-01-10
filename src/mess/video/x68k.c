@@ -45,10 +45,10 @@ static bitmap_t* x68k_gfx_0_bitmap_256;  // 256 colour, 512x512, 2 pages
 static bitmap_t* x68k_gfx_1_bitmap_256;
 static bitmap_t* x68k_gfx_0_bitmap_65536;  // 65536 colour, 512x512, 1 page
 
-static tilemap* x68k_bg0_8;  // two 64x64 tilemaps, 8x8 characters
-static tilemap* x68k_bg1_8;
-static tilemap* x68k_bg0_16;  // two 64x64 tilemaps, 16x16 characters
-static tilemap* x68k_bg1_16;
+static tilemap_t* x68k_bg0_8;  // two 64x64 tilemaps, 8x8 characters
+static tilemap_t* x68k_bg1_8;
+static tilemap_t* x68k_bg0_16;  // two 64x64 tilemaps, 16x16 characters
+static tilemap_t* x68k_bg1_16;
 
 static int sprite_shift;
 
@@ -490,12 +490,15 @@ WRITE16_HANDLER( x68k_crtc_w )
 
 READ16_HANDLER( x68k_crtc_r )
 {
-/*  switch(offset)
-    {
-    default:
-        logerror("CRTC: [%08x] Read from CRTC register %i\n",activecpu_get_pc(),offset);
-        return 0xff;
-    }*/
+#if 0
+	switch(offset)
+	{
+	default:
+		logerror("CRTC: [%08x] Read from CRTC register %i\n",activecpu_get_pc(),offset);
+		return 0xff;
+	}
+#endif
+
 	if(offset < 24)
 	{
 //      logerror("CRTC: [%08x] Read %04x from CRTC register %i\n",cpu_get_pc(cputag_get_cpu(space->machine, "maincpu")),x68k_sys.crtc.reg[offset],offset);
@@ -706,7 +709,7 @@ READ16_HANDLER( x68k_tvram_r )
 READ32_HANDLER( x68k_tvram32_r )
 {
 	UINT32 ret = 0;
-	
+
 	if(ACCESSING_BITS_0_15)
 		ret |= (x68k_tvram_r(space,(offset*2)+1,0xffff));
 	if(ACCESSING_BITS_16_31)
@@ -718,7 +721,7 @@ READ32_HANDLER( x68k_tvram32_r )
 READ32_HANDLER( x68k_gvram32_r )
 {
 	UINT32 ret = 0;
-	
+
 	if(ACCESSING_BITS_0_15)
 		ret |= x68k_gvram_r(space,offset*2+1,0xffff);
 	if(ACCESSING_BITS_16_31)
@@ -1126,8 +1129,8 @@ VIDEO_UPDATE( x68000 )
 	int priority;
 	int xscr,yscr;
 	int x;
-	tilemap* x68k_bg0;
-	tilemap* x68k_bg1;
+	tilemap_t* x68k_bg0;
+	tilemap_t* x68k_bg1;
 	UINT8 *rom;
 
 	if((x68k_spritereg[0x408] & 0x03) == 0x00)  // Sprite/BG H-Res 0=8x8, 1=16x16, 2 or 3 = undefined.

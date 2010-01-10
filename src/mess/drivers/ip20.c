@@ -62,30 +62,6 @@ static const eeprom_interface eeprom_interface_93C56 =
 	"*10011xxxxxxx",	// unlock       100x 11xxxx
 };
 
-static NVRAM_HANDLER(93C56)
-{
-	if (read_or_write)
-	{
-		eeprom_save(file);
-	}
-	else
-	{
-		eeprom_init(machine, &eeprom_interface_93C56);
-		if (file)
-		{
-			eeprom_load(file);
-		}
-		else
-		{
-			UINT32 length;
-			void *dat;
-
-			dat = eeprom_get_data_pointer(&length, NULL);
-			memset(dat, 0, length);
-		}
-	}
-}
-
 static UINT8 nHPC_MiscStatus;
 static UINT32 nHPC_ParBufPtr;
 static UINT32 nHPC_LocalIOReg0Mask;
@@ -152,7 +128,7 @@ static READ32_HANDLER( hpc_r )
 		return nHPC_MiscStatus;
 	case 0x01bc:
 //      verboselog(machine, 2, "HPC CPU Serial EEPROM Read\n" );
-		return ( ( eeprom_read_bit() << 4 ) );
+		return ( ( eeprom_read_bit(devtag_get_device(space->machine, "eeprom")) << 4 ) );
 	case 0x01c4:
 		verboselog(machine, 2, "HPC Local IO Register 0 Mask Read: %08x (%08x)\n", nHPC_LocalIOReg0Mask, mem_mask );
 		return nHPC_LocalIOReg0Mask;
@@ -168,21 +144,21 @@ static READ32_HANDLER( hpc_r )
 	case 0x0d00:
 		verboselog(machine, 2, "HPC DUART0 Channel B Control Read\n" );
 //      return 0x00000004;
-		return 0x7c; //scc_r(machine, 0);
+		return 0x7c; //scc8530_r(machine, 0);
 	case 0x0d04:
 		verboselog(machine, 2, "HPC DUART0 Channel B Data Read\n" );
 //      return 0;
 		scc = devtag_get_device(space->machine, "scc");
-		return scc_r(scc, 2);
+		return scc8530_r(scc, 2);
 	case 0x0d08:
 		verboselog(machine, 2, "HPC DUART0 Channel A Control Read (%08x)\n", mem_mask	 );
 //      return 0x40;
-		return 0x7c; //scc_r(machine, 1);
+		return 0x7c; //scc8530_r(machine, 1);
 	case 0x0d0c:
 		verboselog(machine, 2, "HPC DUART0 Channel A Data Read\n" );
 //      return 0;
 		scc = devtag_get_device(space->machine, "scc");
-		return scc_r(scc, 3);
+		return scc8530_r(scc, 3);
 	case 0x0d10:
 //      verboselog(machine, 2, "HPC DUART1 Channel B Control Read\n" );
 		return 0x00000004;
@@ -227,8 +203,10 @@ static READ32_HANDLER( hpc_r )
 static WRITE32_HANDLER( hpc_w )
 {
 	const device_config *scc;
+	const device_config *eeprom;
 	running_machine *machine = space->machine;
 
+	eeprom = devtag_get_device(space->machine, "eeprom");
 	offset <<= 2;
 	if( offset >= 0x0e00 && offset <= 0x0e7c )
 	{
@@ -341,9 +319,9 @@ static WRITE32_HANDLER( hpc_w )
 		{
 			verboselog(machine, 2, "    CPU board LED on\n" );
 		}
-		eeprom_write_bit( (data & 0x00000008) ? 1 : 0 );
-		eeprom_set_cs_line( (data & 0x00000002) ? ASSERT_LINE : CLEAR_LINE );
-		eeprom_set_clock_line( (data & 0x00000004) ? CLEAR_LINE : ASSERT_LINE );
+		eeprom_write_bit(eeprom, (data & 0x00000008) ? 1 : 0 );
+		eeprom_set_cs_line(eeprom,(data & 0x00000002) ? ASSERT_LINE : CLEAR_LINE );
+		eeprom_set_clock_line(eeprom,(data & 0x00000004) ? CLEAR_LINE : ASSERT_LINE );
 		break;
 	case 0x01c4:
 		verboselog(machine, 2, "HPC Local IO Register 0 Mask Write: %08x (%08x)\n", data, mem_mask );
@@ -364,22 +342,22 @@ static WRITE32_HANDLER( hpc_w )
 	case 0x0d00:
 		verboselog(machine, 2, "HPC DUART0 Channel B Control Write: %08x (%08x)\n", data, mem_mask );
 		scc = devtag_get_device(space->machine, "scc");
-		scc_w(scc, 0, data);
+		scc8530_w(scc, 0, data);
 		break;
 	case 0x0d04:
 		verboselog(machine, 2, "HPC DUART0 Channel B Data Write: %08x (%08x)\n", data, mem_mask );
 		scc = devtag_get_device(space->machine, "scc");
-		scc_w(scc, 2, data);
+		scc8530_w(scc, 2, data);
 		break;
 	case 0x0d08:
 		verboselog(machine, 2, "HPC DUART0 Channel A Control Write: %08x (%08x)\n", data, mem_mask );
 		scc = devtag_get_device(space->machine, "scc");
-		scc_w(scc, 1, data);
+		scc8530_w(scc, 1, data);
 		break;
 	case 0x0d0c:
 		verboselog(machine, 2, "HPC DUART0 Channel A Data Write: %08x (%08x)\n", data, mem_mask );
 		scc = devtag_get_device(space->machine, "scc");
-		scc_w(scc, 3, data);
+		scc8530_w(scc, 3, data);
 		break;
 	case 0x0d10:
 		if( ( data & 0x000000ff ) >= 0x00000020 )
@@ -452,30 +430,30 @@ static WRITE32_HANDLER( int_w )
 }
 
 static ADDRESS_MAP_START( ip204415_map, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE( 0x00000000, 0x001fffff ) AM_RAM AM_SHARE(10)
-	AM_RANGE( 0x08000000, 0x08ffffff ) AM_RAM AM_SHARE(5)
-	AM_RANGE( 0x09000000, 0x097fffff ) AM_RAM AM_SHARE(6)
-	AM_RANGE( 0x0a000000, 0x0a7fffff ) AM_RAM AM_SHARE(7)
-	AM_RANGE( 0x0c000000, 0x0c7fffff ) AM_RAM AM_SHARE(8)
-	AM_RANGE( 0x10000000, 0x107fffff ) AM_RAM AM_SHARE(9)
-	AM_RANGE( 0x18000000, 0x187fffff ) AM_RAM AM_SHARE(1)
-	AM_RANGE( 0x1fa00000, 0x1fa1ffff ) AM_READWRITE( mc_r, mc_w )
+	AM_RANGE( 0x00000000, 0x001fffff ) AM_RAM AM_SHARE("share10")
+	AM_RANGE( 0x08000000, 0x08ffffff ) AM_RAM AM_SHARE("share5")
+	AM_RANGE( 0x09000000, 0x097fffff ) AM_RAM AM_SHARE("share6")
+	AM_RANGE( 0x0a000000, 0x0a7fffff ) AM_RAM AM_SHARE("share7")
+	AM_RANGE( 0x0c000000, 0x0c7fffff ) AM_RAM AM_SHARE("share8")
+	AM_RANGE( 0x10000000, 0x107fffff ) AM_RAM AM_SHARE("share9")
+	AM_RANGE( 0x18000000, 0x187fffff ) AM_RAM AM_SHARE("share1")
+	AM_RANGE( 0x1fa00000, 0x1fa1ffff ) AM_READWRITE( sgi_mc_r, sgi_mc_w )
 	AM_RANGE( 0x1fb80000, 0x1fb8ffff ) AM_READWRITE( hpc_r, hpc_w )
 	AM_RANGE( 0x1fbd9000, 0x1fbd903f ) AM_READWRITE( int_r, int_w )
-	AM_RANGE( 0x1fc00000, 0x1fc7ffff ) AM_ROM AM_SHARE(2) AM_REGION( "user1", 0 )
-	AM_RANGE( 0x80000000, 0x801fffff ) AM_RAM AM_SHARE(10)
-	AM_RANGE( 0x88000000, 0x88ffffff ) AM_RAM AM_SHARE(5)
-	AM_RANGE( 0xa0000000, 0xa01fffff ) AM_RAM AM_SHARE(10)
-	AM_RANGE( 0xa8000000, 0xa8ffffff ) AM_RAM AM_SHARE(5)
-	AM_RANGE( 0xa9000000, 0xa97fffff ) AM_RAM AM_SHARE(6)
-	AM_RANGE( 0xaa000000, 0xaa7fffff ) AM_RAM AM_SHARE(7)
-	AM_RANGE( 0xac000000, 0xac7fffff ) AM_RAM AM_SHARE(8)
-	AM_RANGE( 0xb0000000, 0xb07fffff ) AM_RAM AM_SHARE(9)
-	AM_RANGE( 0xb8000000, 0xb87fffff ) AM_RAM AM_SHARE(1)
-	AM_RANGE( 0xbfa00000, 0xbfa1ffff ) AM_READWRITE( mc_r, mc_w )
+	AM_RANGE( 0x1fc00000, 0x1fc7ffff ) AM_ROM AM_SHARE("share2") AM_REGION( "user1", 0 )
+	AM_RANGE( 0x80000000, 0x801fffff ) AM_RAM AM_SHARE("share10")
+	AM_RANGE( 0x88000000, 0x88ffffff ) AM_RAM AM_SHARE("share5")
+	AM_RANGE( 0xa0000000, 0xa01fffff ) AM_RAM AM_SHARE("share10")
+	AM_RANGE( 0xa8000000, 0xa8ffffff ) AM_RAM AM_SHARE("share5")
+	AM_RANGE( 0xa9000000, 0xa97fffff ) AM_RAM AM_SHARE("share6")
+	AM_RANGE( 0xaa000000, 0xaa7fffff ) AM_RAM AM_SHARE("share7")
+	AM_RANGE( 0xac000000, 0xac7fffff ) AM_RAM AM_SHARE("share8")
+	AM_RANGE( 0xb0000000, 0xb07fffff ) AM_RAM AM_SHARE("share9")
+	AM_RANGE( 0xb8000000, 0xb87fffff ) AM_RAM AM_SHARE("share1")
+	AM_RANGE( 0xbfa00000, 0xbfa1ffff ) AM_READWRITE( sgi_mc_r, sgi_mc_w )
 	AM_RANGE( 0xbfb80000, 0xbfb8ffff ) AM_READWRITE( hpc_r, hpc_w )
 	AM_RANGE( 0xbfbd9000, 0xbfbd903f ) AM_READWRITE( int_r, int_w )
-	AM_RANGE( 0xbfc00000, 0xbfc7ffff ) AM_ROM AM_SHARE(2) /* BIOS Mirror */
+	AM_RANGE( 0xbfc00000, 0xbfc7ffff ) AM_ROM AM_SHARE("share2") /* BIOS Mirror */
 ADDRESS_MAP_END
 
 static void scsi_irq(running_machine *machine, int state)
@@ -504,10 +482,10 @@ static DRIVER_INIT( ip204415 )
 	add_exit_callback(machine, ip204415_exit);
 }
 
-// mc_update wants once every millisecond (1/1000th of a second)
+// sgi_mc_update wants once every millisecond (1/1000th of a second)
 static TIMER_CALLBACK(ip20_timer)
 {
-	mc_update();
+	sgi_mc_update();
 
 	// update RTC every 10 milliseconds
 	nRTC_Temp++;
@@ -564,11 +542,13 @@ static TIMER_CALLBACK(ip20_timer)
 	timer_set(machine, ATTOTIME_IN_MSEC(1), NULL, 0, ip20_timer);
 }
 
-static MACHINE_RESET( ip204415 )
+static MACHINE_START( ip204415 )
 {
+	sgi_mc_timer_init(machine);
+
 	wd33c93_init(machine, &scsi_intf);
 
-	mc_init(machine);
+	sgi_mc_init(machine);
 
 	nHPC_MiscStatus = 0;
 	nHPC_ParBufPtr = 0;
@@ -598,8 +578,7 @@ static MACHINE_DRIVER_START( ip204415 )
 	MDRV_CPU_CONFIG( config )
 	MDRV_CPU_PROGRAM_MAP( ip204415_map)
 
-	MDRV_MACHINE_RESET( ip204415 )
-	MDRV_NVRAM_HANDLER(93C56)
+	MDRV_MACHINE_START( ip204415 )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -621,6 +600,8 @@ static MACHINE_DRIVER_START( ip204415 )
 	MDRV_SCC8530_ADD("scc")
 
 	MDRV_CDROM_ADD( "cdrom" )
+	
+	MDRV_EEPROM_ADD("eeprom", eeprom_interface_93C56)
 MACHINE_DRIVER_END
 
 ROM_START( ip204415 )
@@ -628,5 +609,5 @@ ROM_START( ip204415 )
 	ROM_LOAD( "ip204415.bin", 0x000000, 0x080000, CRC(940d960e) SHA1(596aba530b53a147985ff3f6f853471ce48c866c) )
 ROM_END
 
-/*    YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */
-COMP( 1993, ip204415, 0,        0,        ip204415, ip204415, ip204415, 0, "Silicon Graphics, Inc", "IRIS Indigo (R4400, 150MHz)", GAME_NOT_WORKING | GAME_NO_SOUND )
+/*    YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      COMPANY   FULLNAME */
+COMP( 1993, ip204415, 0,        0,        ip204415, ip204415, ip204415, "Silicon Graphics, Inc", "IRIS Indigo (R4400, 150MHz)", GAME_NOT_WORKING | GAME_NO_SOUND )

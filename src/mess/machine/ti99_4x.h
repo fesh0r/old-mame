@@ -168,9 +168,9 @@ VIDEO_START( ti99_4ev );
 INTERRUPT_GEN( ti99_vblank_interrupt );
 INTERRUPT_GEN( ti99_4ev_hblank_interrupt );
 
-void set_hsgpl_crdena(int data);
+void ti99_set_hsgpl_crdena(int data);
 void ti99_common_init(running_machine *machine, const TMS9928a_interface *gfxparm);
-int is_99_8(void);
+int ti99_is_99_8(void);
 
 READ16_HANDLER ( ti99_nop_8_r );
 WRITE16_HANDLER ( ti99_nop_8_w );
@@ -198,3 +198,4 @@ WRITE8_HANDLER ( ti99_8_w );
 extern const tms9901_interface tms9901reset_param_ti99_4x;
 extern const tms9901_interface tms9901reset_param_ti99_8;
 
+void ti99_clk_interrupt_callback(const device_config *device, int state);

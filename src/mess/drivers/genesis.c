@@ -90,8 +90,10 @@ static void mess_init_6buttons_pad(running_machine *machine)
 /* They're needed to give the users the choice between different controllers */
 static UINT8 mess_md_io_read_data_port(running_machine *machine, int portnum)
 {
-	static const char *const pad6names[2][4] = {{ "PAD1_6B", "PAD2_6B", "UNUSED", "UNUSED" },
-												{ "EXTRA1", "EXTRA2", "UNUSED", "UNUSED" }};
+	static const char *const pad6names[2][4] = {
+		{ "PAD1_6B", "PAD2_6B", "UNUSED", "UNUSED" },
+		{ "EXTRA1", "EXTRA2", "UNUSED", "UNUSED" }
+	};
 	static const char *const pad3names[4] = { "PAD1_3B", "PAD2_3B", "UNUSED", "UNUSED" };
 
 	UINT8 retdata;
@@ -322,17 +324,21 @@ INPUT_PORTS_END
  *
  *************************************/
 
+static MACHINE_START( ms_megadriv )
+{
+	mess_init_6buttons_pad(machine);
+}
+
 static MACHINE_RESET( ms_megadriv )
 {
 	MACHINE_RESET_CALL( megadriv );
 	MACHINE_RESET_CALL( md_mappers );
-
-	mess_init_6buttons_pad(machine);
 }
 
 static MACHINE_DRIVER_START( ms_megadriv )
 	MDRV_IMPORT_FROM(megadriv)
 
+	MDRV_MACHINE_START( ms_megadriv )
 	MDRV_MACHINE_RESET( ms_megadriv )
 
 	MDRV_IMPORT_FROM( genesis_cartslot )
@@ -341,6 +347,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( ms_megadpal )
 	MDRV_IMPORT_FROM(megadpal)
 
+	MDRV_MACHINE_START( ms_megadriv )
 	MDRV_MACHINE_RESET( ms_megadriv )
 
 	MDRV_IMPORT_FROM( genesis_cartslot )
@@ -349,6 +356,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( ms_megdsvp )
 	MDRV_IMPORT_FROM(megdsvp)
 
+	MDRV_MACHINE_START( ms_megadriv )
 	MDRV_MACHINE_RESET( ms_megadriv )
 
 	MDRV_IMPORT_FROM( genesis_cartslot )
@@ -394,7 +402,7 @@ ROM_END
 
 static DRIVER_INIT( mess_md_common )
 {
-	megadrive_io_read_data_port_ptr	= mess_md_io_read_data_port;
+	megadrive_io_read_data_port_ptr = mess_md_io_read_data_port;
 	megadrive_io_write_data_port_ptr = mess_md_io_write_data_port;
 }
 
@@ -433,18 +441,26 @@ static DRIVER_INIT( mess_32x )
 	DRIVER_INIT_CALL(mess_md_common);
 }
 
+static MACHINE_DRIVER_START( ms_32x )
+	MDRV_IMPORT_FROM( genesis_32x )
+
+	MDRV_IMPORT_FROM( _32x_cartslot )
+MACHINE_DRIVER_END
+
+
 ROM_START( 32x )
 	ROM_REGION16_BE( 0x400000, "gamecart", ROMREGION_ERASE00 ) /* 68000 Code */
+	ROM_CART_LOAD("cart", 0x000000, 0x400000, ROM_NOMIRROR)
 
-	ROM_REGION32_BE( 0x400000, "gamecart_sh2", 0 ) /* Copy for the SH2 */
-	ROM_COPY( "gamecart", 0x000000, 0x000000, 0x400000)
+	ROM_REGION32_BE( 0x400000, "gamecart_sh2", ROMREGION_ERASE00 ) /* Copy for the SH2 */
+	ROM_CART_LOAD("cart", 0x000000, 0x400000, ROM_NOMIRROR)
 
 	ROM_REGION16_BE( 0x400000, "32x_68k_bios", 0 ) /* 68000 Code */
 	ROM_LOAD( "32x_g_bios.bin", 0x000000,  0x000100, CRC(5c12eae8) SHA1(dbebd76a448447cb6e524ac3cb0fd19fc065d944) )
 
 	ROM_REGION16_BE( 0x400000, "maincpu", ROMREGION_ERASE00 )
 	// temp, rom should only be visible here when one of the regs is set, tempo needs it
-	ROM_COPY( "gamecart", 0x0, 0x0, 0x400000)
+	ROM_CART_LOAD("cart", 0x000000, 0x400000, ROM_NOMIRROR)
 	ROM_COPY( "32x_68k_bios", 0x0, 0x0, 0x100)
 
 	ROM_REGION( 0x400000, "32x_master_sh2", 0 ) /* SH2 Code */
@@ -811,27 +827,27 @@ ROM_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME        PARENT     COMPAT  MACHINE          INPUT   INIT     CONFIG COMPANY   FULLNAME */
-CONS( 1989, genesis,    0,         0,      ms_megadriv,     md,     genesis,   0,   "Sega",   "Genesis (USA, NTSC)", 0)
-CONS( 1993, gensvp,     genesis,   0,      ms_megdsvp,      md_sel, gensvp,    0,   "Sega",   "Genesis (USA, NTSC, w/SVP)", 0)
-CONS( 1990, megadriv,   genesis,   0,      ms_megadpal,     md,     md_eur,    0,   "Sega",   "Mega Drive (Europe, PAL)", 0)
-CONS( 1988, megadrij,   genesis,   0,      ms_megadriv,     md,     md_jpn,    0,   "Sega",   "Mega Drive (Japan, NTSC)", 0)
-CONS( 1994, pico,       0,         0,      picopal,         pico,   md_eur,    0,   "Sega",   "Pico (Europe, PAL)", 0)
-CONS( 1994, picou,      pico,      0,      pico,            pico,   genesis,   0,   "Sega",   "Pico (USA, NTSC)", 0)
-CONS( 1993, picoj,      pico,      0,      pico,            pico,   md_jpn,    0,   "Sega",   "Pico (Japan, NTSC)", 0)
+/*    YEAR  NAME        PARENT     COMPAT  MACHINE          INPUT   INIT       COMPANY   FULLNAME */
+CONS( 1989, genesis,    0,         0,      ms_megadriv,     md,     genesis,   "Sega",   "Genesis (USA, NTSC)", 0)
+CONS( 1993, gensvp,     genesis,   0,      ms_megdsvp,      md_sel, gensvp,    "Sega",   "Genesis (USA, NTSC, w/SVP)", 0)
+CONS( 1990, megadriv,   genesis,   0,      ms_megadpal,     md,     md_eur,    "Sega",   "Mega Drive (Europe, PAL)", 0)
+CONS( 1988, megadrij,   genesis,   0,      ms_megadriv,     md,     md_jpn,    "Sega",   "Mega Drive (Japan, NTSC)", 0)
+CONS( 1994, pico,       0,         0,      picopal,         pico,   md_eur,    "Sega",   "Pico (Europe, PAL)", 0)
+CONS( 1994, picou,      pico,      0,      pico,            pico,   genesis,   "Sega",   "Pico (USA, NTSC)", 0)
+CONS( 1993, picoj,      pico,      0,      pico,            pico,   md_jpn,    "Sega",   "Pico (Japan, NTSC)", 0)
 
 /* Not Working */
-CONS( 1994, 32x,        0,         0,      genesis_32x,     md_sel, mess_32x,  0,   "Sega",   "32X", GAME_NOT_WORKING )
-CONS( 1992, segacd,     0,         0,      genesis_scd,     md,     genesis,   0,   "Sega",   "Sega CD (USA, NTSC)", GAME_NOT_WORKING )
-CONS( 1993, megacd,     segacd,    0,      genesis_scd,     md,     md_eur,    0,   "Sega",   "Mega-CD (Europe, PAL)", GAME_NOT_WORKING )
-CONS( 1991, megacdj,    segacd,    0,      genesis_scd,     md,     md_jpn,    0,   "Sega",   "Mega-CD (Japan, NTSC)", GAME_NOT_WORKING )
-CONS( 1993, segacd2,    0,         0,      genesis_scd,     md,     genesis,   0,   "Sega",   "Sega CD 2 (USA, NTSC)", GAME_NOT_WORKING )
-CONS( 1993, megacd2,    segacd2,   0,      genesis_scd,     md,     md_eur,    0,   "Sega",   "Mega-CD 2 (Europe, PAL)", GAME_NOT_WORKING )
-CONS( 1993, megacd2j,   segacd2,   0,      genesis_scd,     md,     md_jpn,    0,   "Sega",   "Mega-CD 2 (Japan, NTSC)", GAME_NOT_WORKING )
-CONS( 1993, laseract,   0,         0,      genesis_scd,     md,     genesis,   0,   "Pioneer","LaserActive (USA, NTSC)", GAME_NOT_WORKING )
-CONS( 1993, laseractj,  laseract,  0,      genesis_scd,     md,     md_jpn,    0,   "Pioneer","LaserActive (Japan, NTSC)", GAME_NOT_WORKING )
-CONS( 1993, xeye,       0,         0,      genesis_scd,     md,     genesis,   0,   "JVC",    "X'eye (USA, NTSC)", GAME_NOT_WORKING )
-CONS( 1992, wmega,      xeye,      0,      genesis_scd,     md,     md_jpn,    0,   "Sega",   "Wondermega (Japan, NTSC)", GAME_NOT_WORKING )
-CONS( 1994, cdx,        0,         0,      genesis_scd,     md,     genesis,   0,   "Sega",   "CDX (USA, NTSC)", GAME_NOT_WORKING )
-CONS( 1994, multmega,   cdx,       0,      genesis_scd,     md,     md_eur,    0,   "Sega",   "Multi-Mega (Europe, PAL)", GAME_NOT_WORKING )
-CONS( 1994, 32x_scd,    segacd,    0,      genesis_32x_scd, md_sel, mess_32x,  0,   "Sega",   "Sega CD (USA, NTSC, w/32X)", GAME_NOT_WORKING )
+CONS( 1994, 32x,        0,         0,      ms_32x,          md_sel, mess_32x,  "Sega",   "32X", GAME_NOT_WORKING )
+CONS( 1992, segacd,     0,         0,      genesis_scd,     md,     genesis,   "Sega",   "Sega CD (USA, NTSC)", GAME_NOT_WORKING )
+CONS( 1993, megacd,     segacd,    0,      genesis_scd,     md,     md_eur,    "Sega",   "Mega-CD (Europe, PAL)", GAME_NOT_WORKING )
+CONS( 1991, megacdj,    segacd,    0,      genesis_scd,     md,     md_jpn,    "Sega",   "Mega-CD (Japan, NTSC)", GAME_NOT_WORKING )
+CONS( 1993, segacd2,    0,         0,      genesis_scd,     md,     genesis,   "Sega",   "Sega CD 2 (USA, NTSC)", GAME_NOT_WORKING )
+CONS( 1993, megacd2,    segacd2,   0,      genesis_scd,     md,     md_eur,    "Sega",   "Mega-CD 2 (Europe, PAL)", GAME_NOT_WORKING )
+CONS( 1993, megacd2j,   segacd2,   0,      genesis_scd,     md,     md_jpn,    "Sega",   "Mega-CD 2 (Japan, NTSC)", GAME_NOT_WORKING )
+CONS( 1993, laseract,   0,         0,      genesis_scd,     md,     genesis,   "Pioneer","LaserActive (USA, NTSC)", GAME_NOT_WORKING )
+CONS( 1993, laseractj,  laseract,  0,      genesis_scd,     md,     md_jpn,    "Pioneer","LaserActive (Japan, NTSC)", GAME_NOT_WORKING )
+CONS( 1993, xeye,       0,         0,      genesis_scd,     md,     genesis,   "JVC",    "X'eye (USA, NTSC)", GAME_NOT_WORKING )
+CONS( 1992, wmega,      xeye,      0,      genesis_scd,     md,     md_jpn,    "Sega",   "Wondermega (Japan, NTSC)", GAME_NOT_WORKING )
+CONS( 1994, cdx,        0,         0,      genesis_scd,     md,     genesis,   "Sega",   "CDX (USA, NTSC)", GAME_NOT_WORKING )
+CONS( 1994, multmega,   cdx,       0,      genesis_scd,     md,     md_eur,    "Sega",   "Multi-Mega (Europe, PAL)", GAME_NOT_WORKING )
+CONS( 1994, 32x_scd,    segacd,    0,      genesis_32x_scd, md_sel, mess_32x,  "Sega",   "Sega CD (USA, NTSC, w/32X)", GAME_NOT_WORKING )

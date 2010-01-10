@@ -71,14 +71,14 @@ INLINE const vt_video_interface *get_interface(const device_config *device)
 /***************************************************************************
     IMPLEMENTATION
 ***************************************************************************/
-READ8_DEVICE_HANDLER( lba7_r )
+READ8_DEVICE_HANDLER( vt_video_lba7_r )
 {
 	vt_video_t *vt = get_safe_token(device);
 	return vt->lba7;
 }
 
 
-WRITE8_DEVICE_HANDLER( dc012_w )
+WRITE8_DEVICE_HANDLER( vt_video_dc012_w )
 {
 	vt_video_t *vt = get_safe_token(device);
 
@@ -128,7 +128,7 @@ WRITE8_DEVICE_HANDLER( dc012_w )
 }
 
 
-WRITE8_DEVICE_HANDLER( dc011_w )
+WRITE8_DEVICE_HANDLER( vt_video_dc011_w )
 {
 	vt_video_t *vt = get_safe_token(device);
 	if (BIT(data,5)==0) {
@@ -265,6 +265,13 @@ void vt_video_update(const device_config *device, bitmap_t *bitmap, const rectan
 /*-------------------------------------------------
     DEVICE_START( vt_video )
 -------------------------------------------------*/
+static TIMER_CALLBACK(lba7_change)
+{
+	const device_config *device = ptr;
+	vt_video_t *vt = get_safe_token(device);
+
+	vt->lba7 = (vt->lba7) ? 0 : 1;
+}
 
 static DEVICE_START( vt_video )
 {
@@ -282,15 +289,10 @@ static DEVICE_START( vt_video )
   	vt->gfx = memory_region(device->machine, intf->char_rom_region_tag);
 	assert(vt->gfx != NULL);
 
+    // LBA7 is scan line frequency update
+	timer_pulse(device->machine, ATTOTIME_IN_NSEC(31778), (void *) device, 0, lba7_change);
 }
 
-static TIMER_CALLBACK(lba7_change)
-{
-	const device_config *device = ptr;
-	vt_video_t *vt = get_safe_token(device);
-
-	vt->lba7 = (vt->lba7) ? 0 : 1;
-}
 
 /*-------------------------------------------------
     DEVICE_RESET( vt_video )
@@ -314,12 +316,10 @@ static DEVICE_RESET( vt_video )
     vt->frequency = 60;
     vt->interlaced = 1;
 	vt->skip_lines = 2; // for 60Hz
-    // LBA7 is scan line frequency update
-	timer_pulse(device->machine, ATTOTIME_IN_NSEC(31778), (void *) device, 0, lba7_change);
 }
 
 /*-------------------------------------------------
-    DEVICE_GET_INFO( dc012 )
+    DEVICE_GET_INFO( vt100_video )
 -------------------------------------------------*/
 
 DEVICE_GET_INFO( vt100_video )

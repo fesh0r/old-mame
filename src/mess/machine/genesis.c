@@ -96,7 +96,7 @@ static WRITE16_HANDLER( genesis_ssf2_bank_w )
 		lastoffset = offset; lastdata = data;
 		switch (offset << 1)
 		{
-			case 0x00: /* write protect register // this is not a write protect, but seems to do nothing useful but reset bank0 after the checksum test (red screen otherwise) */
+			case 0x00: /* write protect register */ // this is not a write protect, but seems to do nothing useful but reset bank0 after the checksum test (red screen otherwise)
 				if (data == 2)
 				{
 					memcpy(ROM + 0x000000, ROM + 0x400000 + (((data & 0xf) - 2) * 0x080000), 0x080000);
@@ -127,16 +127,17 @@ static WRITE16_HANDLER( genesis_ssf2_bank_w )
 	}
 }
 
-/*static WRITE16_HANDLER( g_l3alt_pdat_w )
+#ifdef UNUSED_FUNCTION
+static WRITE16_HANDLER( g_l3alt_pdat_w )
 {
-    g_l3alt_pdat = data;
+	g_l3alt_pdat = data;
 }
 
 static WRITE16_HANDLER( g_l3alt_pcmd_w )
 {
-    g_l3alt_pcmd = data;
+	g_l3alt_pcmd = data;
 }
-*/
+#endif
 
 static READ16_HANDLER( g_l3alt_prot_r )
 {
@@ -1274,7 +1275,6 @@ static DEVICE_IMAGE_LOAD( genesis_cart )
 	return INIT_PASS;
 }
 
-
 /******* Image unloading (with SRAM saving) *******/
 
 static DEVICE_IMAGE_UNLOAD( genesis_cart )
@@ -1296,6 +1296,12 @@ MACHINE_DRIVER_START( genesis_cartslot )
 	MDRV_CARTSLOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(genesis_cart)
 	MDRV_CARTSLOT_UNLOAD(genesis_cart)
+MACHINE_DRIVER_END
+
+MACHINE_DRIVER_START( _32x_cartslot )
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("32x,bin")
+	MDRV_CARTSLOT_MANDATORY
 MACHINE_DRIVER_END
 
 MACHINE_DRIVER_START( pico_cartslot )

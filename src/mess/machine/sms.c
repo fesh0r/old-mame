@@ -3,7 +3,6 @@
 #include "includes/sms.h"
 #include "video/smsvdp.h"
 #include "sound/2413intf.h"
-#include "machine/eeprom.h"
 #include "devices/cartslot.h"
 
 #define VERBOSE 0
@@ -48,11 +47,11 @@ struct _sms_driver_data {
 	emu_timer *rapid_fire_timer;
 	UINT8 rapid_fire_state_1;
 	UINT8 rapid_fire_state_2;
-	
+
 	/* Data needed for Paddle Control controller */
 	UINT32 last_paddle_read_time;
 	UINT8 paddle_read_state;
-	
+
 	/* Data needed for Sports Pad controller */
 	UINT32 last_sports_pad_time_1;
 	UINT32 last_sports_pad_time_2;
@@ -64,14 +63,16 @@ struct _sms_driver_data {
 	UINT8 sports_pad_1_y;
 	UINT8 sports_pad_2_x;
 	UINT8 sports_pad_2_y;
-	
+
 	/* Data needed for Light Phaser */
 	UINT16 lphaser_latch;
-	UINT16 lphaser_1_x;
-	UINT16 lphaser_1_y;
-	UINT16 lphaser_2_x;
-	UINT16 lphaser_2_y;
 	int lphaser_x_offs;	/* Needed to 'calibrate' lphaser; set at cart loading */
+
+	/* Data needed for SegaScope (3D glasses) */
+	UINT8 sscope_state;
+
+	/* Data needed for Terebi Oekaki (TV Draw) */
+	UINT8 tvdraw_data;
 
 	/* Cartridge slot info */
 	UINT8 current_cartridge;
@@ -153,27 +154,17 @@ static WRITE8_HANDLER( sms_input_write )
 
 static TIMER_CALLBACK( lightgun_tick )
 {
+	/* is there a Light Phaser in P1 port? */
 	if ((input_port_read_safe(machine, "CTRLSEL", 0x00) & 0x0f) == 0x01)
-	{
-			/* enable crosshair */
-			crosshair_set_screen(machine, 0, CROSSHAIR_SCREEN_ALL);
-	}
+		crosshair_set_screen(machine, 0, CROSSHAIR_SCREEN_ALL);   /* enable crosshair */
 	else
-	{
-			/* disable crosshair */
-			crosshair_set_screen(machine, 0, CROSSHAIR_SCREEN_NONE);
-	}
-	
+		crosshair_set_screen(machine, 0, CROSSHAIR_SCREEN_NONE);  /* disable crosshair */
+
+	/* is there a Light Phaser in P2 port? */
 	if ((input_port_read_safe(machine, "CTRLSEL", 0x00) & 0xf0) == 0x10)
-	{
-			/* enable crosshair */
-			crosshair_set_screen(machine, 1, CROSSHAIR_SCREEN_ALL);
-	}
+		crosshair_set_screen(machine, 1, CROSSHAIR_SCREEN_ALL);   /* enable crosshair */
 	else
-	{
-			/* disable crosshair */
-			crosshair_set_screen(machine, 1, CROSSHAIR_SCREEN_NONE);
-	}
+		crosshair_set_screen(machine, 1, CROSSHAIR_SCREEN_NONE);  /* disable crosshair */
 }
 
 
@@ -183,7 +174,7 @@ static void sms_vdp_hcount_lphaser( running_machine *machine, int hpos)
 {
 	UINT8 tmp = ((hpos - 46) >> 1) & 0xff;
 	const device_config *smsvdp = devtag_get_device(machine, "sms_vdp");
-	
+
 	//printf ("sms_vdp_hcount_lphaser: hpos %3d => hcount %2X\n", hpos, tmp);
 	sms_vdp_hcount_latch_w(smsvdp, 0, tmp);
 }
@@ -192,23 +183,28 @@ static void sms_vdp_hcount_lphaser( running_machine *machine, int hpos)
 static UINT8 sms_vdp_hcount( running_machine *machine )
 {
 	UINT8 tmp;
+	const device_config *screen = video_screen_first(machine->config);
+	int hpos = video_screen_get_hpos(screen);
+
+	/* alternative method: pass HCounter test, but some others fail */
+	//int hpos_tmp = hpos;
+	//if ((hpos + 2) % 6 == 0) hpos_tmp--;
+	//tmp = ((hpos_tmp - 46) >> 1) & 0xff;
+
 	UINT64 calc_cycles;
 	attotime time_end;
-	const device_config *screen = video_screen_first(machine->config);
-
-	//int hpos = video_screen_get_hpos(screen);
 	int vpos = video_screen_get_vpos(screen);
-	int width = video_screen_get_width(screen);
-	
-	/* this is simpler and independent of other clocks */
-	//tmp = ((hpos - 46) >> 1) & 0xff;
-	
-	/* ... but this is closer to the behavior described by Flubba */
-	/* and makes use of his equation posted at SMSPower forum.    */
-	time_end = video_screen_get_time_until_pos(screen, vpos, width - 1);
+	int max_hpos = video_screen_get_width(screen) - 1;
+
+	if (hpos == max_hpos)
+		time_end = attotime_zero;
+	else
+		time_end = video_screen_get_time_until_pos(screen, vpos, max_hpos);
 	calc_cycles = cpu_attotime_to_clocks(cputag_get_cpu(machine, "maincpu"), time_end);
+
+	/* equation got from SMSPower forum, posted by Flubba. */
 	tmp = ((590 - (calc_cycles * 3)) / 4) & 0xff;
-	
+
 	//printf ("sms_vdp_hcount: hpos %3d => hcount %2X\n", hpos, tmp);
 	return tmp;
 }
@@ -218,55 +214,8 @@ static void sms_vdp_hcount_latch( running_machine *machine )
 {
 	UINT8 value = sms_vdp_hcount(machine);
 	const device_config *smsvdp = devtag_get_device(machine, "sms_vdp");
-	
+
 	sms_vdp_hcount_latch_w(smsvdp, 0, value);
-}
-
-static int lphaser_sensor_is_on( running_machine *machine, int x, int y )
-{
-	const device_config *screen = video_screen_first(machine->config);
-	int dx, dy;
-	//const int r_x_r = 20 * 20; /* radius^2 */
-	int hpos, vpos;
-	
-	if (x < LBORDER_START + LBORDER_X_PIXELS || x >= LBORDER_START + LBORDER_X_PIXELS + 256)
-	{
-		sms_state.lphaser_latch = 0;
-		return 0;
-	}
-	
-	hpos = video_screen_get_hpos(screen);
-	vpos = video_screen_get_vpos(screen);
-	
-	/* some offset seems needed for sms_vdp_hcount_latch() */
-	//hpos -= 44;
-	
-	dx = x - hpos;
-	dy = y - vpos;
-	
-	//printf ("Light Phaser polling at %3d x %3d for shot %3d x %3d\n", hpos, vpos, x, y);
-	
-	/* SMSPower Wiki: the Light Phaser sensor "sees" a circular portion of the screen */
-	//if ( (dx * dx) + (dy * dy) - (r_x_r) <= 0 )
-	if (abs(dy) <= 5 && abs(dx) <= 60) /* simpler method used by SMSPlus-GX */
-	{
-		/* avoid latching hcount more than once in a line */
-		if (sms_state.lphaser_latch == 0)
-		{
-			sms_state.lphaser_latch = 1;
-			//sms_vdp_hcount_latch(screen);
-			/* FIXME: sms_vdp_hcount_lphaser() is a hack necessary while normal latch gives too inconstant shot positions */
-			x += sms_state.lphaser_x_offs;
-			sms_vdp_hcount_lphaser(machine, x);
-		}
-
-		return 1;
-	}
-	else
-	{
-		sms_state.lphaser_latch = 0;
-		return 0;
-	}
 }
 
 
@@ -286,18 +235,40 @@ static UINT16 screen_vpos_nonscaled( const device_config *screen, int scaled_vpo
 }
 
 
+static int lphaser_sensor_is_on( running_machine *machine, const char *tag_x, const char *tag_y )
+{
+	int x = screen_hpos_nonscaled(machine->primary_screen, input_port_read(machine, tag_x));
+	int y = screen_vpos_nonscaled(machine->primary_screen, input_port_read(machine, tag_y));
+
+	if (sms_vdp_area_brightness(devtag_get_device(machine, "sms_vdp"), x, y, 60, 5) >= 0x7f)
+	{
+		/* avoid latching hcount more than once in a line */
+		if (sms_state.lphaser_latch == 0)
+		{
+			sms_state.lphaser_latch = 1;
+			//sms_vdp_hcount_latch(machine);
+			/* FIXME: sms_vdp_hcount_lphaser() is a hack necessary while normal latch gives too inconstant shot positions */
+			x += sms_state.lphaser_x_offs;
+			sms_vdp_hcount_lphaser(machine, x);
+		}
+		return 1;
+	}
+
+	sms_state.lphaser_latch = 0;
+	return 0;
+}
+
+
 static void sms_get_inputs( const address_space *space )
 {
 	UINT8 data = 0x00;
-	UINT8 data_x = 0x00;
-	UINT8 data_y = 0x00;
 	UINT32 cpu_cycles = cpu_get_total_cycles(space->cpu);
 	running_machine *machine = space->machine;
 
 	sms_state.input_port0 = 0xff;
 	sms_state.input_port1 = 0xff;
 
-	if (cpu_cycles - sms_state.last_paddle_read_time > 256) 
+	if (cpu_cycles - sms_state.last_paddle_read_time > 256)
 	{
 		sms_state.paddle_read_state ^= 0xff;
 		sms_state.last_paddle_read_time = cpu_cycles;
@@ -328,12 +299,6 @@ static void sms_get_inputs( const address_space *space )
 		{
 			if (input_port_read(machine, "RFU") & 0x01)
 				data |= sms_state.rapid_fire_state_1 & 0x10;
-
-			data_x = input_port_read(machine, "LPHASER0");
-			data_y = input_port_read(machine, "LPHASER1");
-
-			sms_state.lphaser_1_x = screen_hpos_nonscaled(machine->primary_screen, data_x);
-			sms_state.lphaser_1_y = screen_vpos_nonscaled(machine->primary_screen, data_y);
 		}
 		/* just consider the button (trigger) bit */
 		data |= ~0x10;
@@ -396,12 +361,6 @@ static void sms_get_inputs( const address_space *space )
 		{
 			if (input_port_read(machine, "RFU") & 0x04)
 				data |= sms_state.rapid_fire_state_2 & 0x04;
-
-			data_x = input_port_read(machine, "LPHASER2");
-			data_y = input_port_read(machine, "LPHASER3");
-
-			sms_state.lphaser_2_x = screen_hpos_nonscaled (machine->primary_screen, data_x);
-			sms_state.lphaser_2_y = screen_vpos_nonscaled (machine->primary_screen, data_y);
 		}
 		/* just consider the button (trigger) bit */
 		data |= ~0x04;
@@ -513,10 +472,10 @@ void sms_pause_callback( running_machine *machine )
 {
 	if (sms_state.is_gamegear && !(sms_state.cartridge[sms_state.current_cartridge].features & CF_GG_SMS_MODE))
 		return;
-	
-	if (!(input_port_read(machine, sms_state.is_gamegear ? "START" : "PAUSE") & 0x80)) 
+
+	if (!(input_port_read(machine, sms_state.is_gamegear ? "START" : "PAUSE") & 0x80))
 	{
-		if (!sms_state.paused) 
+		if (!sms_state.paused)
 		{
 			cputag_set_input_line(machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE);
 		}
@@ -546,33 +505,43 @@ READ8_HANDLER( sms_input_port_1_r )
 {
 	if (sms_state.bios_port & IO_CHIP)
 		return 0xff;
-	
+
 	sms_get_inputs(space);
-	
+
+	/* Reset Button */
+	sms_state.input_port1 = (sms_state.input_port1 & 0xef) | (input_port_read_safe(space->machine, "RESET", 0x01) & 0x01) << 4;
+
 	/* Do region detection if TH of ports A and B are set to output (0) */
 	if (!(sms_state.ctrl_reg & 0x0a))
  	{
 		/* Move bits 7,5 of IO control port into bits 7, 6 */
 		sms_state.input_port1 = (sms_state.input_port1 & 0x3f) | (sms_state.ctrl_reg & 0x80) | (sms_state.ctrl_reg & 0x20) << 1;
-		
+
 		/* Inverse region detect value for Japanese machines */
 		if (sms_state.is_region_japan)
 			sms_state.input_port1 ^= 0xc0;
 	}
-	else if (sms_state.ctrl_reg & 0x02 && lphaser_sensor_is_on(space->machine, sms_state.lphaser_1_x, sms_state.lphaser_1_y))
+	else
 	{
-		sms_state.input_port1 &= ~0x40;
+		if (sms_state.ctrl_reg & 0x02
+		    && (input_port_read_safe(space->machine, "CTRLSEL", 0x00) & 0x0f) == 0x01
+		    && lphaser_sensor_is_on(space->machine, "LPHASER0", "LPHASER1"))
+		{
+			sms_state.input_port1 &= ~0x40;
+		}
+		if (sms_state.ctrl_reg & 0x08
+		    && (input_port_read_safe(space->machine, "CTRLSEL", 0x00) & 0xf0) == 0x10
+		    && lphaser_sensor_is_on(space->machine, "LPHASER2", "LPHASER3"))
+		{
+			sms_state.input_port1 &= ~0x80;
+		}
 	}
-	else if (sms_state.ctrl_reg & 0x08 && lphaser_sensor_is_on(space->machine, sms_state.lphaser_2_x, sms_state.lphaser_2_y))
-	{	
-		sms_state.input_port1 &= ~0x80;
-	}	
-		
+
 	return sms_state.input_port1;
 }
-	
 
-	
+
+
 WRITE8_HANDLER( sms_ym2413_register_port_0_w )
 {
 	if (sms_state.has_fm)
@@ -601,9 +570,50 @@ READ8_HANDLER( gg_input_port_2_r )
 }
 
 
+READ8_HANDLER( sms_sscope_r )
+{
+	return sms_state.sscope_state;
+}
+
+
+WRITE8_HANDLER( sms_sscope_w )
+{
+	sms_state.sscope_state = data;
+}
+
+
 READ8_HANDLER( sms_mapper_r )
 {
 	return sms_state.mapper[offset];
+}
+
+/* Terebi Oekaki */
+/* The following code comes from sg1000.c. We should eventually merge these TV Draw implementations */
+static WRITE8_HANDLER( sms_tvdraw_axis_w )
+{
+	UINT8 tvboard_on = input_port_read_safe(space->machine, "TVDRAW", 0x00);
+	if (data & 0x01)
+	{
+		sms_state.tvdraw_data = tvboard_on ? input_port_read(space->machine, "TVDRAW_X") : 0x80;
+
+		if (sms_state.tvdraw_data < 4) sms_state.tvdraw_data = 4;
+		if (sms_state.tvdraw_data > 251) sms_state.tvdraw_data = 251;
+	}
+	else
+	{
+		sms_state.tvdraw_data = tvboard_on ? input_port_read(space->machine, "TVDRAW_Y") + 0x20 : 0x80;
+	}
+}
+
+static READ8_HANDLER( sms_tvdraw_status_r )
+{
+	UINT8 tvboard_on = input_port_read_safe(space->machine, "TVDRAW", 0x00);
+	return tvboard_on ? input_port_read(space->machine, "TVDRAW_PEN") : 0x01;
+}
+
+static READ8_HANDLER( sms_tvdraw_data_r )
+{
+	return sms_state.tvdraw_data;
 }
 
 
@@ -678,8 +688,8 @@ WRITE8_HANDLER( sms_mapper_w )
 				LOG(("ram 0 paged.\n"));
 				SOURCE = sms_state.cartridge[sms_state.current_cartridge].cartSRAM;
 			}
-			memory_set_bankptr(space->machine,  4, SOURCE);
-			memory_set_bankptr(space->machine,  5, SOURCE + 0x2000);
+			memory_set_bankptr(space->machine,  "bank4", SOURCE);
+			memory_set_bankptr(space->machine,  "bank5", SOURCE + 0x2000);
 		}
 		else /* it's rom */
 		{
@@ -694,8 +704,8 @@ WRITE8_HANDLER( sms_mapper_w )
 				SOURCE = sms_state.banking_bios[4];
 			}
 			LOG(("rom 2 paged in %x.\n", page));
-			memory_set_bankptr(space->machine,  4, SOURCE);
-			memory_set_bankptr(space->machine,  5, SOURCE + 0x2000);
+			memory_set_bankptr(space->machine,  "bank4", SOURCE);
+			memory_set_bankptr(space->machine,  "bank5", SOURCE + 0x2000);
 		}
 		break;
 
@@ -706,7 +716,7 @@ WRITE8_HANDLER( sms_mapper_w )
 		if (sms_state.is_gamegear)
 			SOURCE = SOURCE_CART;
 
-		memory_set_bankptr(space->machine,  2, SOURCE + 0x0400);
+		memory_set_bankptr(space->machine,  "bank2", SOURCE + 0x0400);
 		break;
 
 	case 2: /* Select 16k ROM bank for 4000-7FFF */
@@ -716,7 +726,7 @@ WRITE8_HANDLER( sms_mapper_w )
 		if (sms_state.is_gamegear)
 			SOURCE = SOURCE_CART;
 
-		memory_set_bankptr(space->machine,  3, SOURCE);
+		memory_set_bankptr(space->machine,  "bank3", SOURCE);
 		break;
 
 	case 3: /* Select 16k ROM bank for 8000-BFFF */
@@ -739,8 +749,8 @@ WRITE8_HANDLER( sms_mapper_w )
 		if (!(sms_state.mapper[0] & 0x08)) /* is RAM disabled? */
 		{
 			LOG(("rom 2 paged in %x.\n", page));
-			memory_set_bankptr(space->machine,  4, SOURCE);
-			memory_set_bankptr(space->machine,  5, SOURCE + 0x2000);
+			memory_set_bankptr(space->machine,  "bank4", SOURCE);
+			memory_set_bankptr(space->machine,  "bank5", SOURCE + 0x2000);
 		}
 		break;
 	}
@@ -754,8 +764,8 @@ static WRITE8_HANDLER( sms_codemasters_page0_w )
 		UINT8 rom_page_count = sms_state.cartridge[sms_state.current_cartridge].size / 0x4000;
 		sms_state.banking_cart[1] = sms_state.cartridge[sms_state.current_cartridge].ROM + ((rom_page_count > 0) ? data % rom_page_count : 0) * 0x4000;
 		sms_state.banking_cart[2] = sms_state.banking_cart[1] + 0x0400;
-		memory_set_bankptr(space->machine, 1, sms_state.banking_cart[1]);
-		memory_set_bankptr(space->machine, 2, sms_state.banking_cart[2]);
+		memory_set_bankptr(space->machine, "bank1", sms_state.banking_cart[1]);
+		memory_set_bankptr(space->machine, "bank2", sms_state.banking_cart[2]);
 	}
 }
 
@@ -768,14 +778,14 @@ static WRITE8_HANDLER( sms_codemasters_page1_w )
 		if (data & 0x80)
 		{
 			sms_state.cartridge[sms_state.current_cartridge].ram_page = data & 0x07;
-			memory_set_bankptr(space->machine, 5, sms_state.cartridge[sms_state.current_cartridge].cartRAM + sms_state.cartridge[sms_state.current_cartridge].ram_page * 0x2000);
+			memory_set_bankptr(space->machine, "bank5", sms_state.cartridge[sms_state.current_cartridge].cartRAM + sms_state.cartridge[sms_state.current_cartridge].ram_page * 0x2000);
 		}
 		else
 		{
 			UINT8 rom_page_count = sms_state.cartridge[sms_state.current_cartridge].size / 0x4000;
 			sms_state.banking_cart[3] = sms_state.cartridge[sms_state.current_cartridge].ROM + ((rom_page_count > 0) ? data % rom_page_count : 0) * 0x4000;
-			memory_set_bankptr(space->machine, 3, sms_state.banking_cart[3]);
-			memory_set_bankptr(space->machine, 5, sms_state.banking_cart[4] + 0x2000);
+			memory_set_bankptr(space->machine, "bank3", sms_state.banking_cart[3]);
+			memory_set_bankptr(space->machine, "bank5", sms_state.banking_cart[4] + 0x2000);
 		}
 	}
 }
@@ -818,8 +828,8 @@ WRITE8_HANDLER( sms_cartram2_w )
 			return;
 
 		sms_state.banking_cart[4] = sms_state.cartridge[sms_state.current_cartridge].ROM + page * 0x4000;
-		memory_set_bankptr(space->machine, 4, sms_state.banking_cart[4]);
-		memory_set_bankptr(space->machine, 5, sms_state.banking_cart[4] + 0x2000);
+		memory_set_bankptr(space->machine, "bank4", sms_state.banking_cart[4]);
+		memory_set_bankptr(space->machine, "bank5", sms_state.banking_cart[4] + 0x2000);
 		LOG(("rom 2 paged in %x dodgeball king.\n", page));
 	}
 }
@@ -850,8 +860,8 @@ WRITE8_HANDLER( sms_cartram_w )
 			if (!sms_state.cartridge[sms_state.current_cartridge].ROM)
 				return;
 			sms_state.banking_cart[4] = sms_state.cartridge[sms_state.current_cartridge].ROM + page * 0x4000;
-			memory_set_bankptr(space->machine, 4, sms_state.banking_cart[4]);
-			memory_set_bankptr(space->machine, 5, sms_state.banking_cart[4] + 0x2000);
+			memory_set_bankptr(space->machine, "bank4", sms_state.banking_cart[4]);
+			memory_set_bankptr(space->machine, "bank5", sms_state.banking_cart[4] + 0x2000);
 			LOG(("rom 2 paged in %x codemasters.\n", page));
 		}
 		else if (sms_state.cartridge[sms_state.current_cartridge].features & CF_ONCART_RAM)
@@ -916,29 +926,6 @@ READ8_HANDLER( gg_sio_r )
 	return sms_state.gg_sio[offset];
 }
 
-
-READ8_HANDLER( gg_psg_r )
-{
-	return 0xff;
-}
-
-
-WRITE8_HANDLER( gg_psg_w )
-{
-	logerror("write %02X to psg at offset #%d.\n",data , offset);
-
-	/* D7 = Noise Left */
-	/* D6 = Tone3 Left */
-	/* D5 = Tone2 Left */
-	/* D4 = Tone1 Left */
-
-	/* D3 = Noise Right */
-	/* D2 = Tone3 Right */
-	/* D1 = Tone2 Right */
-	/* D0 = Tone1 Right */
-}
-
-
 static void sms_machine_stop( running_machine *machine )
 {
 	/* Does the cartridge have SRAM that should be saved? */
@@ -952,11 +939,11 @@ static void setup_rom( const address_space *space )
 	running_machine *machine = space->machine;
 
 	/* 1. set up bank pointers to point to nothing */
-	memory_set_bankptr(machine, 1, sms_state.banking_none[1]);
-	memory_set_bankptr(machine, 2, sms_state.banking_none[2]);
-	memory_set_bankptr(machine, 3, sms_state.banking_none[3]);
-	memory_set_bankptr(machine, 4, sms_state.banking_none[4]);
-	memory_set_bankptr(machine, 5, sms_state.banking_none[4] + 0x2000);
+	memory_set_bankptr(machine, "bank1", sms_state.banking_none[1]);
+	memory_set_bankptr(machine, "bank2", sms_state.banking_none[2]);
+	memory_set_bankptr(machine, "bank3", sms_state.banking_none[3]);
+	memory_set_bankptr(machine, "bank4", sms_state.banking_none[4]);
+	memory_set_bankptr(machine, "bank5", sms_state.banking_none[4] + 0x2000);
 
 	/* 2. check and set up expansion port */
 	if (!(sms_state.bios_port & IO_EXPANSION) && (sms_state.bios_port & IO_CARTRIDGE) && (sms_state.bios_port & IO_CARD))
@@ -977,11 +964,11 @@ static void setup_rom( const address_space *space )
 	/* Out Run Europa initially writes a value to port 3E where IO_CARTRIDGE, IO_EXPANSION and IO_CARD are reset */
 	if ((!(sms_state.bios_port & IO_CARTRIDGE)) || sms_state.is_gamegear)
 	{
-		memory_set_bankptr(machine, 1, sms_state.banking_cart[1]);
-		memory_set_bankptr(machine, 2, sms_state.banking_cart[2]);
-		memory_set_bankptr(machine, 3, sms_state.banking_cart[3]);
-		memory_set_bankptr(machine, 4, sms_state.banking_cart[4]);
-		memory_set_bankptr(machine, 5, sms_state.banking_cart[4] + 0x2000);
+		memory_set_bankptr(machine, "bank1", sms_state.banking_cart[1]);
+		memory_set_bankptr(machine, "bank2", sms_state.banking_cart[2]);
+		memory_set_bankptr(machine, "bank3", sms_state.banking_cart[3]);
+		memory_set_bankptr(machine, "bank4", sms_state.banking_cart[4]);
+		memory_set_bankptr(machine, "bank5", sms_state.banking_cart[4] + 0x2000);
 		logerror("Switched in cartridge rom.\n");
 	}
 
@@ -991,31 +978,31 @@ static void setup_rom( const address_space *space )
 		/* 0x0400 bioses */
 		if (sms_state.has_bios_0400)
 		{
-			memory_set_bankptr(machine, 1, sms_state.banking_bios[1]);
+			memory_set_bankptr(machine, "bank1", sms_state.banking_bios[1]);
 			logerror("Switched in 0x0400 bios.\n");
 		}
 		/* 0x2000 bioses */
 		if (sms_state.has_bios_2000)
 		{
-			memory_set_bankptr(machine, 1, sms_state.banking_bios[1]);
-			memory_set_bankptr(machine, 2, sms_state.banking_bios[2]);
+			memory_set_bankptr(machine, "bank1", sms_state.banking_bios[1]);
+			memory_set_bankptr(machine, "bank2", sms_state.banking_bios[2]);
 			logerror("Switched in 0x2000 bios.\n");
 		}
 		if (sms_state.has_bios_full)
 		{
-			memory_set_bankptr(machine, 1, sms_state.banking_bios[1]);
-			memory_set_bankptr(machine, 2, sms_state.banking_bios[2]);
-			memory_set_bankptr(machine, 3, sms_state.banking_bios[3]);
-			memory_set_bankptr(machine, 4, sms_state.banking_bios[4]);
-			memory_set_bankptr(machine, 5, sms_state.banking_bios[4] + 0x2000);
+			memory_set_bankptr(machine, "bank1", sms_state.banking_bios[1]);
+			memory_set_bankptr(machine, "bank2", sms_state.banking_bios[2]);
+			memory_set_bankptr(machine, "bank3", sms_state.banking_bios[3]);
+			memory_set_bankptr(machine, "bank4", sms_state.banking_bios[4]);
+			memory_set_bankptr(machine, "bank5", sms_state.banking_bios[4] + 0x2000);
 			logerror("Switched in full bios.\n");
 		}
 	}
 
 	if (sms_state.cartridge[sms_state.current_cartridge].features & CF_ONCART_RAM)
 	{
-		memory_set_bankptr(machine, 4, sms_state.cartridge[sms_state.current_cartridge].cartRAM);
-		memory_set_bankptr(machine, 5, sms_state.cartridge[sms_state.current_cartridge].cartRAM);
+		memory_set_bankptr(machine, "bank4", sms_state.cartridge[sms_state.current_cartridge].cartRAM);
+		memory_set_bankptr(machine, "bank5", sms_state.cartridge[sms_state.current_cartridge].cartRAM);
 	}
 }
 
@@ -1031,40 +1018,47 @@ static int sms_verify_cart( UINT8 *magic, int size )
 	{
 		if (!strncmp((char*)&magic[0x7ff0], "TMR SEGA", 8))
 		{
-			/* Technically, it should be this, but remove for now until verified:
-            if (!strcmp(sysname, "gamegear"))
-            {
-                if ((unsigned char)magic[0x7ffd] < 0x50)
-                    retval = IMAGE_VERIFY_PASS;
-            }
-            if (!strcmp(sysname, "sms"))
-            {
-                if ((unsigned char)magic[0x7ffd] >= 0x50)
-                    retval = IMAGE_VERIFY_PASS;
-            }
-            */
+#if 0
+			/* Technically, it should be this, but remove for now until verified: */
+			if (!strcmp(sysname, "gamegear"))
+			{
+				if ((unsigned char)magic[0x7ffd] < 0x50)
+					retval = IMAGE_VERIFY_PASS;
+			}
+			if (!strcmp(sysname, "sms"))
+			{
+				if ((unsigned char)magic[0x7ffd] >= 0x50)
+					retval = IMAGE_VERIFY_PASS;
+			}
+#endif
 			retval = IMAGE_VERIFY_PASS;
 		}
-	}
 
+#if 0
 		/* Check at $81f0 also */
-		//if (!retval) {
-	 //  if (!strncmp(&magic[0x81f0], "TMR SEGA", 8)) {
-				/* Technically, it should be this, but remove for now until verified:
-                if (!strcmp(sysname, "gamegear")) 
+		if (!retval)
+		{
+			if (!strncmp(&magic[0x81f0], "TMR SEGA", 8))
 			{
-                    if ((unsigned char)magic[0x81fd] < 0x50)
-                        retval = IMAGE_VERIFY_PASS;
-                }
-                if (!strcmp(sysname, "sms")) 
-			{
-                    if ((unsigned char)magic[0x81fd] >= 0x50)
-                        retval = IMAGE_VERIFY_PASS;
-                }
-                */
-		 //  retval = IMAGE_VERIFY_PASS;
-		//  }
-		//}
+#if 0
+				/* Technically, it should be this, but remove for now until verified: */
+				if (!strcmp(sysname, "gamegear"))
+				{
+					if ((unsigned char)magic[0x81fd] < 0x50)
+						retval = IMAGE_VERIFY_PASS;
+				}
+				if (!strcmp(sysname, "sms"))
+				{
+					if ((unsigned char)magic[0x81fd] >= 0x50)
+						retval = IMAGE_VERIFY_PASS;
+				}
+#endif
+		 		retval = IMAGE_VERIFY_PASS;
+			}
+		}
+#endif
+
+	}
 
 	return retval;
 }
@@ -1118,6 +1112,18 @@ static int detect_korean_mapper( UINT8 *rom )
 	return 0;
 }
 
+
+static int detect_tvdraw( UINT8 *rom )
+{
+	static const UINT8 terebi_oekaki[7] = { 0x61, 0x6e, 0x6e, 0x61, 0x6b, 0x6d, 0x6e };	// "annakmn"
+
+	if (!memcmp(&rom[0x13b3], terebi_oekaki, 7))
+		return 1;
+
+	return 0;
+}
+
+
 static int detect_lphaser_xoffset( UINT8 *rom )
 {
 	static const UINT8 signatures[6][16] =
@@ -1135,26 +1141,26 @@ static int detect_lphaser_xoffset( UINT8 *rom )
 		/* Assault City */
 		{ 0x54, 0x4d, 0x52, 0x20, 0x53, 0x45, 0x47, 0x41, 0xff, 0xff, 0x9f, 0x74, 0x34, 0x70, 0x00, 0x40 },
 	};
-	
+
 	if (!(sms_state.bios_port & IO_CARTRIDGE) && sms_state.cartridge[sms_state.current_cartridge].size >= 0x8000)
 	{
 		if (!memcmp(&rom[0x7ff0], signatures[0], 16) || !memcmp(&rom[0x7ff0], signatures[1], 16))
 			return 40;
-		
+
 		if (!memcmp(&rom[0x7ff0], signatures[2], 16))
 			return 49;
-		
+
 		if (!memcmp(&rom[0x7ff0], signatures[3], 16))
 			return 47;
-		
+
 		if (!memcmp(&rom[0x7ff0], signatures[4], 16))
 			return 44;
-		
+
 		if (!memcmp(&rom[0x7ff0], signatures[5], 16))
 			return 53;
-		
+
 	}
-	return 50;	
+	return 50;
 }
 
 
@@ -1276,12 +1282,12 @@ DEVICE_IMAGE_LOAD( sms_cart )
 			sms_state.cartridge[index].features |= CF_GG_SMS_MODE;
 
 		/* Check for 93C46 eeprom */
-		if (strstr( extrainfo, "93C46"))
+		if (strstr(extrainfo, "93C46"))
 			sms_state.cartridge[index].features |= CF_93C46_EEPROM;
 
 		/* Check for 8KB on-cart RAM */
 		if (strstr(extrainfo, "8KB_CART_RAM"))
-		 {
+		{
 			sms_state.cartridge[index].features |= CF_ONCART_RAM;
 			sms_state.cartridge[index].ram_size = 0x2000;
 			sms_state.cartridge[index].cartRAM = auto_alloc_array(image->machine, UINT8, sms_state.cartridge[index].ram_size);
@@ -1317,9 +1323,19 @@ DEVICE_IMAGE_LOAD( sms_cart )
 		sms_state.cartridge[index].cartRAM = auto_alloc_array(image->machine, UINT8, sms_state.cartridge[index].ram_size);
 		sms_state.cartridge[index].ram_page = 0;
 	}
-	
+
 	/* For Light Phaser games, we have to detect the x offset */
 	sms_state.lphaser_x_offs = detect_lphaser_xoffset(sms_state.cartridge[index].ROM);
+
+	/* Terebi Oekaki (TV Draw) is a SG1000 game with special input device which is compatible with SG1000 Mark III */
+	if ((detect_tvdraw(sms_state.cartridge[index].ROM)) && sms_state.is_region_japan)
+	{
+		const address_space *program = cputag_get_address_space(image->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+		memory_install_write8_handler(program, 0x6000, 0x6000, 0, 0, &sms_tvdraw_axis_w);
+		memory_install_read8_handler(program, 0x8000, 0x8000, 0, 0, &sms_tvdraw_status_r);
+		memory_install_read8_handler(program, 0xa000, 0xa000, 0, 0, &sms_tvdraw_data_r);
+		memory_nop_write(program, 0xa000, 0xa000, 0, 0);
+	}
 
 	/* Load battery backed RAM, if available */
 	image_battery_load(image, sms_state.cartridge[index].cartSRAM, sizeof(UINT8) * NVRAM_SIZE);
@@ -1386,6 +1402,10 @@ static void setup_banks( running_machine *machine )
 MACHINE_START( sms )
 {
 	add_exit_callback(machine, sms_machine_stop);
+	sms_state.rapid_fire_timer = timer_alloc(machine, rapid_fire_callback , NULL);
+	timer_adjust_periodic(sms_state.rapid_fire_timer, ATTOTIME_IN_HZ(10), 0, ATTOTIME_IN_HZ(10));
+	/* Check if lightgun has been chosen as input: if so, enable crosshair */
+	timer_set(machine, attotime_zero, NULL, 0, lightgun_tick);	
 }
 
 
@@ -1410,7 +1430,7 @@ MACHINE_RESET( sms )
 	}
 
 	if (sms_state.cartridge[sms_state.current_cartridge].features & CF_GG_SMS_MODE)
-		sms_set_ggsmsmode(smsvdp, 1);
+		sms_vdp_set_ggsmsmode(smsvdp, 1);
 
 	/* Initialize SIO stuff for GG */
 	sms_state.gg_sio[0] = 0x7f;
@@ -1427,8 +1447,6 @@ MACHINE_RESET( sms )
 
 	sms_state.rapid_fire_state_1 = 0;
 	sms_state.rapid_fire_state_2 = 0;
-	sms_state.rapid_fire_timer = timer_alloc(machine, rapid_fire_callback , NULL);
-	timer_adjust_periodic(sms_state.rapid_fire_timer, ATTOTIME_IN_HZ(10), 0, ATTOTIME_IN_HZ(10));
 
 	sms_state.last_paddle_read_time = 0;
 	sms_state.paddle_read_state = 0;
@@ -1445,13 +1463,10 @@ MACHINE_RESET( sms )
 	sms_state.sports_pad_2_y = 0;
 
 	sms_state.lphaser_latch = 0;
-	sms_state.lphaser_1_x = 0;
-	sms_state.lphaser_1_y = 0;
-	sms_state.lphaser_2_x = 0;
-	sms_state.lphaser_2_x = 0;
 
-	/* Check if lightgun has been chosen as input: if so, enable crosshair */
-	timer_set(space->machine, attotime_zero, NULL, 0, lightgun_tick);
+	sms_state.sscope_state = 0;
+
+	sms_state.tvdraw_data = 0;
 }
 
 
@@ -1472,7 +1487,7 @@ WRITE8_HANDLER( sms_store_cart_select_w )
 		sms_state.current_cartridge = slot;
 
 	setup_cart_banks();
-	memory_set_bankptr(space->machine, 10, sms_state.banking_cart[3] + 0x2000);
+	memory_set_bankptr(space->machine, "bank10", sms_state.banking_cart[3] + 0x2000);
 	setup_rom(space);
 }
 
@@ -1525,7 +1540,7 @@ static void sms_set_zero_flag( void )
 	sms_state.has_bios_2000 = 0;
 	sms_state.has_bios_full = 0;
 	sms_state.has_bios = 0;
-	sms_state.has_fm = 0;	
+	sms_state.has_fm = 0;
 }
 
 DRIVER_INIT( sg1000m3 )
@@ -1580,4 +1595,78 @@ DRIVER_INIT( gamegeaj )
 	sms_state.is_region_japan = 1;
 	sms_state.is_gamegear = 1;
 	sms_state.has_bios_0400 = 1;
+}
+
+
+/* This needs to be here to check if segascope has been enabled */
+VIDEO_UPDATE( sms1 )
+{
+	const device_config *main_scr = devtag_get_device(screen->machine, "screen");
+	const device_config *left_lcd = devtag_get_device(screen->machine, "left_lcd");
+	const device_config *right_lcd = devtag_get_device(screen->machine, "right_lcd");
+	const device_config *smsvdp = devtag_get_device(screen->machine, "sms_vdp");
+	UINT8 segascope = input_port_read_safe(screen->machine, "SEGASCOPE", 0x00);
+
+	if (screen == main_scr)
+	{
+		sms_vdp_update(smsvdp, bitmap, cliprect);
+	}
+	else if (screen == left_lcd)
+	{
+		int width = video_screen_get_width(screen);
+		int height = video_screen_get_height(screen);
+		int x, y;
+
+		if (segascope)
+		{
+			if (sms_state.sscope_state & 0x01)  /* 1 = left screen ON, right screen OFF */
+				sms_vdp_update(smsvdp, bitmap, cliprect);
+			else                                /* 0 = left screen OFF, right screen ON */
+			{
+				for (y = 0; y < height; y++)
+					for (x = 0; x < width; x++)
+						*BITMAP_ADDR32(bitmap, y, x) = MAKE_RGB(0,0,0);
+			}
+		}
+		else	/* We only use the second screen for SegaScope, if it not selected return a black screen */
+		{
+			for (y = 0; y < height; y++)
+				for (x = 0; x < width; x++)
+					*BITMAP_ADDR32(bitmap, y, x) = MAKE_RGB(0,0,0);
+		}
+	}
+	else if (screen == right_lcd)
+	{
+		int width = video_screen_get_width(screen);
+		int height = video_screen_get_height(screen);
+		int x, y;
+
+		if (segascope)
+		{
+			if (sms_state.sscope_state & 0x01)  /* 1 = left screen ON, right screen OFF */
+			{
+				for (y = 0; y < height; y++)
+					for (x = 0; x < width; x++)
+						*BITMAP_ADDR32(bitmap, y, x) = MAKE_RGB(0,0,0);
+			}
+			else                                /* 0 = left screen OFF, right screen ON */
+				sms_vdp_update(smsvdp, bitmap, cliprect);
+		}
+		else	/* We only use the third screen for SegaScope, if it not selected return a black screen */
+		{
+			for (y = 0; y < height; y++)
+				for (x = 0; x < width; x++)
+					*BITMAP_ADDR32(bitmap, y, x) = MAKE_RGB(0,0,0);
+		}
+	}
+
+	return 0;
+}
+
+VIDEO_UPDATE( sms )
+{
+	const device_config *smsvdp = devtag_get_device(screen->machine, "sms_vdp");
+	sms_vdp_update(smsvdp, bitmap, cliprect);
+
+	return 0;
 }

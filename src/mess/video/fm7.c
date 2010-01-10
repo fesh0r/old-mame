@@ -30,12 +30,6 @@ static struct fm7_alu_flags
 	UINT8 busy;
 } fm7_alu;
 
-extern UINT8* fm7_video_ram;
-extern UINT8* shared_ram;
-extern emu_timer* fm7_subtimer;
-extern emu_timer* fm77av_vsync_timer;
-extern UINT8 fm7_type;
-
 /*
  * Main CPU: Sub-CPU interface (port 0xfd05)
  *
@@ -1110,7 +1104,7 @@ WRITE8_HANDLER( fm77av_video_flags_w )
 	UINT8* RAM = memory_region(space->machine,"subsyscg");
 
 	fm7_video.cgrom = data & 0x03;
-	memory_set_bankptr(space->machine,20,RAM+(fm7_video.cgrom*0x800));
+	memory_set_bankptr(space->machine,"bank20",RAM+(fm7_video.cgrom*0x800));
 	fm7_video.fine_offset = data & 0x04;
 	fm7_video.active_video_page = data & 0x20;
 	fm7_video.display_video_page = data & 0x40;
@@ -1182,25 +1176,25 @@ WRITE8_HANDLER( fm77av_sub_bank_w )
 		case 0x00:  // Type C, 640x200 (as used on the FM-7)
 			ROM = memory_region(space->machine,"subsys_c");
 		//  memory_set_bankptr(space->machine,20,ROM);
-			memory_set_bankptr(space->machine,21,ROM+0x800);
+			memory_set_bankptr(space->machine,"bank21",ROM+0x800);
 			logerror("VID: Sub ROM Type C selected\n");
 			break;
 		case 0x01:  // Type A, 640x200
 			ROM = memory_region(space->machine,"subsys_a");
 		//  memory_set_bankptr(space->machine,20,RAM+0xd800);
-			memory_set_bankptr(space->machine,21,ROM);
+			memory_set_bankptr(space->machine,"bank21",ROM);
 			logerror("VID: Sub ROM Type A selected\n");
 			break;
 		case 0x02:  // Type B, 320x200
 			ROM = memory_region(space->machine,"subsys_b");
 		//  memory_set_bankptr(space->machine,20,RAM+0xd800);
-			memory_set_bankptr(space->machine,21,ROM);
+			memory_set_bankptr(space->machine,"bank21",ROM);
 			logerror("VID: Sub ROM Type B selected\n");
 			break;
 		case 0x03:  // CG Font?
 			ROM = memory_region(space->machine,"subsyscg");
 		//  memory_set_bankptr(space->machine,20,RAM+0xd800);
-			memory_set_bankptr(space->machine,21,ROM);
+			memory_set_bankptr(space->machine,"bank21",ROM);
 			logerror("VID: Sub ROM CG selected\n");
 			break;
 	}
@@ -1404,7 +1398,7 @@ READ8_HANDLER( fm7_sub_ram_ports_banked_r )
 	if(offset < 0x380)  // work RAM
 		return RAM[0x1d000+offset];
 	if(offset >= 0x380 && offset < 0x400) // shared RAM
-		return shared_ram[offset-0x380];
+		return fm7_shared_ram[offset-0x380];
 	if(offset >= 0x500 && offset < 0x800) // work RAM
 		return RAM[0x1d000+offset];
 	if(offset > 0x800) // CGROM
@@ -1459,7 +1453,7 @@ WRITE8_HANDLER( fm7_sub_ram_ports_banked_w )
 	}
 	if(offset >= 0x380 && offset < 0x400) // shared RAM
 	{
-		shared_ram[offset-0x380] = data;
+		fm7_shared_ram[offset-0x380] = data;
 		return;
 	}
 	if(offset >= 0x500 && offset < 0x800) // work RAM

@@ -294,6 +294,8 @@ static MACHINE_START( kim1 )
 	state_save_register_item(machine, "kim1", NULL, 0, kim1_u2_port_b );
 	state_save_register_item(machine, "kim1", NULL, 0, kim1_311_output );
 	state_save_register_item(machine, "kim1", NULL, 0, kim1_cassette_high_count );
+	timer_pulse(machine,  ATTOTIME_IN_HZ(60), NULL, 0, kim1_update_leds );
+	timer_pulse(machine,  ATTOTIME_IN_HZ(44100), NULL, 0, kim1_cassette_input );
 }
 
 
@@ -301,8 +303,6 @@ static MACHINE_RESET( kim1 )
 {
 	int i;
 
-	timer_pulse(machine,  ATTOTIME_IN_HZ(60), NULL, 0, kim1_update_leds );
-	timer_pulse(machine,  ATTOTIME_IN_HZ(44100), NULL, 0, kim1_cassette_input );
 
 	for ( i = 0; i < 6; i++ )
 	{
@@ -354,5 +354,5 @@ ROM_START(kim1)
 ROM_END
 
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      CONFIG  COMPANY   FULLNAME */
-COMP( 1975, kim1,	  0, 		0,		kim1,	  kim1, 	0,		  0,	  "MOS Technologies",  "KIM-1" , GAME_SUPPORTS_SAVE)
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT    COMPANY   FULLNAME */
+COMP( 1975, kim1,	  0, 		0,		kim1,	  kim1, 	0,		"MOS Technologies",  "KIM-1" , GAME_SUPPORTS_SAVE)

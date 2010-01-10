@@ -71,17 +71,17 @@ static void tiki100_bankswitch(running_machine *machine)
 		if (!state->rome)
 		{
 			/* reserved */
-			memory_install_readwrite8_handler(program, 0x0000, 0xffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+			memory_unmap_readwrite(program, 0x0000, 0xffff, 0, 0);
 		}
 		else
 		{
 			/* GFXRAM, GFXRAM, RAM */
 			memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, gfxram_r, gfxram_w);
-			memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_BANK(3), SMH_BANK(3));
+			memory_install_readwrite_bank(program, 0x8000, 0xffff, 0, 0, "bank3");
 
-			memory_set_bank(machine, 1, BANK_VIDEO_RAM);
-			memory_set_bank(machine, 2, BANK_VIDEO_RAM);
-			memory_set_bank(machine, 3, BANK_RAM);
+			memory_set_bank(machine, "bank1", BANK_VIDEO_RAM);
+			memory_set_bank(machine, "bank2", BANK_VIDEO_RAM);
+			memory_set_bank(machine, "bank3", BANK_RAM);
 		}
 	}
 	else
@@ -89,24 +89,25 @@ static void tiki100_bankswitch(running_machine *machine)
 		if (!state->rome)
 		{
 			/* ROM, RAM, RAM */
-			memory_install_readwrite8_handler(program, 0x0000, 0x3fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
-			memory_install_readwrite8_handler(program, 0x4000, 0x7fff, 0, 0, SMH_BANK(2), SMH_BANK(2));
-			memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_BANK(3), SMH_BANK(3));
+			memory_install_read_bank(program, 0x0000, 0x3fff, 0, 0, "bank1");
+			memory_unmap_write( program, 0x0000, 0x3fff, 0, 0 );
+			memory_install_readwrite_bank(program, 0x4000, 0x7fff, 0, 0, "bank2");
+			memory_install_readwrite_bank(program, 0x8000, 0xffff, 0, 0, "bank3");
 
-			memory_set_bank(machine, 1, BANK_ROM);
-			memory_set_bank(machine, 2, BANK_RAM);
-			memory_set_bank(machine, 3, BANK_RAM);
+			memory_set_bank(machine, "bank1", BANK_ROM);
+			memory_set_bank(machine, "bank2", BANK_RAM);
+			memory_set_bank(machine, "bank3", BANK_RAM);
 		}
 		else
 		{
 			/* RAM, RAM, RAM */
-			memory_install_readwrite8_handler(program, 0x0000, 0x3fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
-			memory_install_readwrite8_handler(program, 0x4000, 0x7fff, 0, 0, SMH_BANK(2), SMH_BANK(2));
-			memory_install_readwrite8_handler(program, 0x8000, 0xffff, 0, 0, SMH_BANK(3), SMH_BANK(3));
+			memory_install_readwrite_bank(program, 0x0000, 0x3fff, 0, 0, "bank1");
+			memory_install_readwrite_bank(program, 0x4000, 0x7fff, 0, 0, "bank2");
+			memory_install_readwrite_bank(program, 0x8000, 0xffff, 0, 0, "bank3");
 
-			memory_set_bank(machine, 1, BANK_RAM);
-			memory_set_bank(machine, 2, BANK_RAM);
-			memory_set_bank(machine, 3, BANK_RAM);
+			memory_set_bank(machine, "bank1", BANK_RAM);
+			memory_set_bank(machine, "bank2", BANK_RAM);
+			memory_set_bank(machine, "bank3", BANK_RAM);
 		}
 	}
 }
@@ -213,16 +214,16 @@ static WRITE8_HANDLER( system_w )
 	wd17xx_set_density(state->fd1797, BIT(data, 4) ? DEN_FM_LO : DEN_FM_HI);
 
 	/* floppy motor */
-	floppy_drive_set_motor_state(get_floppy_image(space->machine, 0), BIT(data, 6));
-	floppy_drive_set_motor_state(get_floppy_image(space->machine, 1), BIT(data, 6));
+	floppy_mon_w(get_floppy_image(space->machine, 0), !BIT(data, 6));
+	floppy_mon_w(get_floppy_image(space->machine, 1), !BIT(data, 6));
 	floppy_drive_set_ready_state(get_floppy_image(space->machine, 0), BIT(data, 6), 1);
 	floppy_drive_set_ready_state(get_floppy_image(space->machine, 1), BIT(data, 6), 1);
 
 	/* GRAFIKK key led */
-	set_led_status(1, BIT(data, 5));
+	set_led_status(space->machine, 1, BIT(data, 5));
 
 	/* LOCK key led */
-	set_led_status(2, BIT(data, 7));
+	set_led_status(space->machine, 2, BIT(data, 7));
 
 	/* bankswitch */
 	state->rome = BIT(data, 2);
@@ -235,9 +236,9 @@ static WRITE8_HANDLER( system_w )
 
 static ADDRESS_MAP_START( tiki100_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK(1)
-	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK(2)
-	AM_RANGE(0x8000, 0xffff) AM_RAMBANK(3)
+	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank2")
+	AM_RANGE(0x8000, 0xffff) AM_RAMBANK("bank3")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tiki100_io, ADDRESS_SPACE_IO, 8 )
@@ -587,14 +588,14 @@ static MACHINE_START( tiki100 )
 	state->video_ram = auto_alloc_array(machine, UINT8, TIKI100_VIDEORAM_SIZE);
 
 	/* setup memory banking */
-	memory_configure_bank(machine, 1, BANK_ROM, 1, memory_region(machine, Z80_TAG), 0);
-	memory_configure_bank(machine, 1, BANK_RAM, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
-	memory_configure_bank(machine, 1, BANK_VIDEO_RAM, 1, state->video_ram, 0);
+	memory_configure_bank(machine, "bank1", BANK_ROM, 1, memory_region(machine, Z80_TAG), 0);
+	memory_configure_bank(machine, "bank1", BANK_RAM, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
+	memory_configure_bank(machine, "bank1", BANK_VIDEO_RAM, 1, state->video_ram, 0);
 
-	memory_configure_bank(machine, 2, BANK_RAM, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000, 0);
-	memory_configure_bank(machine, 2, BANK_VIDEO_RAM, 1, state->video_ram + 0x4000, 0);
+	memory_configure_bank(machine, "bank2", BANK_RAM, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000, 0);
+	memory_configure_bank(machine, "bank2", BANK_VIDEO_RAM, 1, state->video_ram + 0x4000, 0);
 
-	memory_configure_bank(machine, 3, BANK_RAM, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000, 0);
+	memory_configure_bank(machine, "bank3", BANK_RAM, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000, 0);
 
 	tiki100_bankswitch(machine);
 
@@ -679,13 +680,13 @@ static MACHINE_DRIVER_START( tiki100 )
 	MDRV_TIMER_ADD_PERIODIC("ctc", ctc_tick, HZ(2000000))
 	MDRV_WD179X_ADD(FD1797_TAG, tiki100_wd17xx_interface) // FD1767PL-02 or FD1797-PL
 	MDRV_FLOPPY_2_DRIVES_ADD(tiki100_floppy_config)
-	
+
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(AY8912_TAG, AY8912, 2000000)
 	MDRV_SOUND_CONFIG(ay8910_intf)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
@@ -710,6 +711,6 @@ ROM_END
 
 /* System Drivers */
 
-/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY             FULLNAME        FLAGS */
-COMP( 1984, kontiki,	0,			0,		tiki100,	tiki100,	0,		0,	"Kontiki Data A/S",	"KONTIKI 100",	GAME_SUPPORTS_SAVE )
-COMP( 1984, tiki100,	kontiki,	0,		tiki100,	tiki100,	0,		0,	"Tiki Data A/S",	"TIKI 100",		GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT    COMPANY             FULLNAME        FLAGS */
+COMP( 1984, kontiki,	0,			0,		tiki100,	tiki100,	0,		"Kontiki Data A/S",	"KONTIKI 100",	GAME_SUPPORTS_SAVE )
+COMP( 1984, tiki100,	kontiki,	0,		tiki100,	tiki100,	0,		"Tiki Data A/S",	"TIKI 100",		GAME_SUPPORTS_SAVE )

@@ -38,11 +38,6 @@
 #include "formats/basicdsk.h"
 #include "devices/messram.h"
 
-INLINE const device_config *get_floppy_image(running_machine *machine, int drive)
-{
-	return floppy_get_device(machine, drive);
-}
-
 /* Keyboard HACK */
 
 static const UINT8 xerox820_keycodes[3][9][8] =
@@ -147,20 +142,21 @@ static void xerox820_bankswitch(running_machine *machine, int bank)
 	if (bank)
 	{
 		/* ROM */
-		memory_install_readwrite8_handler(program, 0x0000, 0x0fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
-		memory_install_readwrite8_handler(program, 0x1000, 0x2fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_read_bank(program, 0x0000, 0x0fff, 0, 0, "bank1");
+		memory_unmap_write(program, 0x0000, 0x0fff, 0, 0);
+		memory_unmap_readwrite(program, 0x1000, 0x2fff, 0, 0);
 	}
 	else
 	{
 		/* RAM */
-		memory_install_readwrite8_handler(program, 0x0000, 0x0fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
-		memory_install_readwrite8_handler(program, 0x1000, 0x2fff, 0, 0, SMH_BANK(2), SMH_BANK(2));
+		memory_install_readwrite_bank(program, 0x0000, 0x0fff, 0, 0, "bank1");
+		memory_install_readwrite_bank(program, 0x1000, 0x2fff, 0, 0, "bank2");
 	}
 
-	memory_install_readwrite8_handler(program, 0x3000, 0x3fff, 0, 0, SMH_BANK(3), SMH_BANK(3));
+	memory_install_readwrite_bank(program, 0x3000, 0x3fff, 0, 0, "bank3");
 
-	memory_set_bank(machine, 1, bank);
-	memory_set_bank(machine, 3, bank);
+	memory_set_bank(machine, "bank1", bank);
+	memory_set_bank(machine, "bank3", bank);
 }
 
 static WRITE8_HANDLER( scroll_w )
@@ -194,9 +190,9 @@ static WRITE8_HANDLER( x120_system_w )
 
 static ADDRESS_MAP_START( xerox820_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK(1)
-	AM_RANGE(0x1000, 0x2fff) AM_RAMBANK(2)
-	AM_RANGE(0x3000, 0x3fff) AM_RAMBANK(3)
+	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x1000, 0x2fff) AM_RAMBANK("bank2")
+	AM_RANGE(0x3000, 0x3fff) AM_RAMBANK("bank3")
 	AM_RANGE(0x4000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -370,10 +366,11 @@ static WRITE8_DEVICE_HANDLER( xerox820_pio_port_a_w )
 	if (dvsel1) wd17xx_set_drive(state->wd1771, 0);
 	if (dvsel2) wd17xx_set_drive(state->wd1771, 1);
 
-	floppy_drive_set_motor_state(get_floppy_image(device->machine, 0), dvsel1);
-	floppy_drive_set_motor_state(get_floppy_image(device->machine, 1), dvsel2);
-	floppy_drive_set_ready_state(get_floppy_image(device->machine, 0), dvsel1, 1);
-	floppy_drive_set_ready_state(get_floppy_image(device->machine, 1), dvsel2, 1);
+	floppy_mon_w(floppy_get_device(device->machine, 0), !dvsel1);
+	floppy_mon_w(floppy_get_device(device->machine, 1), !dvsel2);
+
+	floppy_drive_set_ready_state(floppy_get_device(device->machine, 0), dvsel1, 1);
+	floppy_drive_set_ready_state(floppy_get_device(device->machine, 1), dvsel2, 1);
 
 	/* side select */
 	wd17xx_set_side(state->wd1771, BIT(data, 2));
@@ -635,14 +632,14 @@ static MACHINE_START( xerox820 )
 	state->video_ram = auto_alloc_array(machine, UINT8, XEROX820_LCD_VIDEORAM_SIZE);
 
 	/* setup memory banking */
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, Z80_TAG), 0);
-	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "monitor"), 0);
+	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, Z80_TAG), 0);
+	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, "monitor"), 0);
 
-	memory_configure_bank(machine, 2, 0, 1, memory_region(machine, Z80_TAG) + 0x1000, 0);
-	memory_set_bank(machine, 2, 0);
+	memory_configure_bank(machine, "bank2", 0, 1, memory_region(machine, Z80_TAG) + 0x1000, 0);
+	memory_set_bank(machine, "bank2", 0);
 
-	memory_configure_bank(machine, 3, 0, 1, memory_region(machine, Z80_TAG) + 0x3000, 0);
-	memory_configure_bank(machine, 3, 1, 1, state->video_ram, 0);
+	memory_configure_bank(machine, "bank3", 0, 1, memory_region(machine, Z80_TAG) + 0x3000, 0);
+	memory_configure_bank(machine, "bank3", 1, 1, state->video_ram, 0);
 
 	/* bank switch */
 	xerox820_bankswitch(machine, 1);
@@ -705,6 +702,25 @@ static const floppy_config xerox820_floppy_config =
 	DO_NOT_KEEP_GEOMETRY
 };
 
+/* F4 Character Displayer */
+static const gfx_layout xerox820_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{  0*8,  1*8,  2*8,  3*8,  4*8,  5*8,  6*8,  7*8, 8*8,  9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static GFXDECODE_START( xerox820 )
+	GFXDECODE_ENTRY( "chargen", 0x0000, xerox820_charlayout, 0, 1 )
+GFXDECODE_END
+
+
 /* Machine Drivers */
 
 static MACHINE_DRIVER_START( xerox820 )
@@ -723,6 +739,7 @@ static MACHINE_DRIVER_START( xerox820 )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(XTAL_10_69425MHz, 700, 0, 560, 260, 0, 240)
 
+	MDRV_GFXDECODE(xerox820)
 	MDRV_PALETTE_LENGTH(2)
     MDRV_PALETTE_INIT(black_and_white)
 
@@ -741,10 +758,10 @@ static MACHINE_DRIVER_START( xerox820 )
 	MDRV_WD1771_ADD(WD1771_TAG, wd1771_intf)
 	MDRV_FLOPPY_2_DRIVES_ADD(xerox820_floppy_config)
 	MDRV_COM8116_ADD(COM8116_TAG, XTAL_5_0688MHz, com8116_intf)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("64K")	
+	MDRV_RAM_DEFAULT_SIZE("64K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( xerox820ii )
@@ -790,11 +807,11 @@ ROM_END
 
 /* System Drivers */
 
-/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY                         FULLNAME        FLAGS */
-COMP( 1981, xerox820,	0,			0,		xerox820,	xerox820,	0,		0,	"Xerox",						"Xerox 820",	0)
+/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT    COMPANY                         FULLNAME        FLAGS */
+COMP( 1981, xerox820,	0,			0,		xerox820,	xerox820,	0,		"Xerox",						"Xerox 820",	0)
 /*
-COMP( 1980, bigboard,   0,          0,      bigboard,   bigboard,   0,      bigboard,   "Digital Research Computers",   "Big Board",    GAME_NOT_WORKING)
-COMP( 1983, bigbord2,   0,          0,      bigbord2,   bigboard,   0,      bigbord2,   "Digital Research Computers",   "Big Board II", GAME_NOT_WORKING)
-COMP( 1983, xerox820ii, 0,          0,      xerox820ii, xerox820,   0,      xerox820ii, "Xerox",                        "Xerox 820-II", GAME_NOT_WORKING)
-COMP( 1983, xerox168,   0,          0,      xerox168,   xerox168,   0,      xerox168,   "Xerox",                        "Xerox 16/8",   GAME_NOT_WORKING)
+COMP( 1980, bigboard,   0,          0,      bigboard,   bigboard,   0,      "Digital Research Computers",   "Big Board",    GAME_NOT_WORKING)
+COMP( 1983, bigbord2,   0,          0,      bigbord2,   bigboard,   0,      "Digital Research Computers",   "Big Board II", GAME_NOT_WORKING)
+COMP( 1983, xerox820ii, 0,          0,      xerox820ii, xerox820,   0,      "Xerox",                        "Xerox 820-II", GAME_NOT_WORKING)
+COMP( 1983, xerox168,   0,          0,      xerox168,   xerox168,   0,      "Xerox",                        "Xerox 16/8",   GAME_NOT_WORKING)
 */

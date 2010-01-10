@@ -220,6 +220,7 @@ static READ8_HANDLER( ems_r )
 
 static WRITE8_HANDLER( ems_w )
 {
+	char bank[10];
 	switch (offset)
 	{
 	case 0:
@@ -269,7 +270,8 @@ static WRITE8_HANDLER( ems_w )
 		{
 		case 0: /*external*/
 		case 1: /*ram*/
-		memory_set_bankptr( space->machine, ems.index+1, memory_region(space->machine, "maincpu") + (ems.mapper[ems.index].address&0xfffff) );
+		sprintf(bank,"bank%d",ems.index+1);
+		memory_set_bankptr( space->machine, bank, memory_region(space->machine, "maincpu") + (ems.mapper[ems.index].address&0xfffff) );
 		break;
 		case 3: /* rom 1 */
 		case 4: /* pc card a */
@@ -277,7 +279,8 @@ static WRITE8_HANDLER( ems_w )
 		default:
 		break;
 		case 2:
-		memory_set_bankptr( space->machine, ems.index+1, memory_region(space->machine, "user1") + (ems.mapper[ems.index].address&0xfffff) );
+		sprintf(bank,"bank%d",ems.index+1);
+		memory_set_bankptr( space->machine,  bank, memory_region(space->machine, "user1") + (ems.mapper[ems.index].address&0xfffff) );
 		break;
 		}
 		break;
@@ -289,36 +292,36 @@ static ADDRESS_MAP_START( pasogo_mem, ADDRESS_SPACE_PROGRAM, 8 )
 //  AM_RANGE( 0x4000, 0x7fff) AM_READWRITE(gmaster_io_r, gmaster_io_w)
 	ADDRESS_MAP_GLOBAL_MASK(0xffFFF)
 	AM_RANGE(0x00000, 0x7ffff) AM_RAM
-	AM_RANGE(0x80000, 0x83fff) AM_RAMBANK(1)
-	AM_RANGE(0x84000, 0x87fff) AM_RAMBANK(2)
-	AM_RANGE(0x88000, 0x8bfff) AM_RAMBANK(3)
-	AM_RANGE(0x8c000, 0x8ffff) AM_RAMBANK(4)
-	AM_RANGE(0x90000, 0x93fff) AM_RAMBANK(5)
-	AM_RANGE(0x94000, 0x97fff) AM_RAMBANK(6)
-	AM_RANGE(0x98000, 0x9bfff) AM_RAMBANK(7)
-	AM_RANGE(0x9c000, 0x9ffff) AM_RAMBANK(8)
-	AM_RANGE(0xa0000, 0xa3fff) AM_RAMBANK(9)
-	AM_RANGE(0xa4000, 0xa7fff) AM_RAMBANK(10)
-	AM_RANGE(0xa8000, 0xabfff) AM_RAMBANK(11)
-	AM_RANGE(0xac000, 0xaffff) AM_RAMBANK(12)
-	AM_RANGE(0xb0000, 0xb3fff) AM_RAMBANK(13)
-	AM_RANGE(0xb4000, 0xb7fff) AM_RAMBANK(14)
+	AM_RANGE(0x80000, 0x83fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x84000, 0x87fff) AM_RAMBANK("bank2")
+	AM_RANGE(0x88000, 0x8bfff) AM_RAMBANK("bank3")
+	AM_RANGE(0x8c000, 0x8ffff) AM_RAMBANK("bank4")
+	AM_RANGE(0x90000, 0x93fff) AM_RAMBANK("bank5")
+	AM_RANGE(0x94000, 0x97fff) AM_RAMBANK("bank6")
+	AM_RANGE(0x98000, 0x9bfff) AM_RAMBANK("bank7")
+	AM_RANGE(0x9c000, 0x9ffff) AM_RAMBANK("bank8")
+	AM_RANGE(0xa0000, 0xa3fff) AM_RAMBANK("bank9")
+	AM_RANGE(0xa4000, 0xa7fff) AM_RAMBANK("bank10")
+	AM_RANGE(0xa8000, 0xabfff) AM_RAMBANK("bank11")
+	AM_RANGE(0xac000, 0xaffff) AM_RAMBANK("bank12")
+	AM_RANGE(0xb0000, 0xb3fff) AM_RAMBANK("bank13")
+	AM_RANGE(0xb4000, 0xb7fff) AM_RAMBANK("bank14")
 //  AM_RANGE(0xb8000, 0xbffff) AM_RAM
-	AM_RANGE(0xb8000, 0xbffff) AM_RAMBANK(28)
-	AM_RANGE(0xc0000, 0xc3fff) AM_RAMBANK(15)
-	AM_RANGE(0xc4000, 0xc7fff) AM_RAMBANK(16)
-	AM_RANGE(0xc8000, 0xcbfff) AM_RAMBANK(17)
-	AM_RANGE(0xcc000, 0xcffff) AM_RAMBANK(18)
-	AM_RANGE(0xd0000, 0xd3fff) AM_RAMBANK(19)
-	AM_RANGE(0xd4000, 0xd7fff) AM_RAMBANK(20)
-	AM_RANGE(0xd8000, 0xdbfff) AM_RAMBANK(21)
-	AM_RANGE(0xdc000, 0xdffff) AM_RAMBANK(22)
-	AM_RANGE(0xe0000, 0xe3fff) AM_RAMBANK(23)
-	AM_RANGE(0xe4000, 0xe7fff) AM_RAMBANK(24)
-	AM_RANGE(0xe8000, 0xebfff) AM_RAMBANK(25)
-	AM_RANGE(0xec000, 0xeffff) AM_RAMBANK(26)
+	AM_RANGE(0xb8000, 0xbffff) AM_RAMBANK("bank28")
+	AM_RANGE(0xc0000, 0xc3fff) AM_RAMBANK("bank15")
+	AM_RANGE(0xc4000, 0xc7fff) AM_RAMBANK("bank16")
+	AM_RANGE(0xc8000, 0xcbfff) AM_RAMBANK("bank17")
+	AM_RANGE(0xcc000, 0xcffff) AM_RAMBANK("bank18")
+	AM_RANGE(0xd0000, 0xd3fff) AM_RAMBANK("bank19")
+	AM_RANGE(0xd4000, 0xd7fff) AM_RAMBANK("bank20")
+	AM_RANGE(0xd8000, 0xdbfff) AM_RAMBANK("bank21")
+	AM_RANGE(0xdc000, 0xdffff) AM_RAMBANK("bank22")
+	AM_RANGE(0xe0000, 0xe3fff) AM_RAMBANK("bank23")
+	AM_RANGE(0xe4000, 0xe7fff) AM_RAMBANK("bank24")
+	AM_RANGE(0xe8000, 0xebfff) AM_RAMBANK("bank25")
+	AM_RANGE(0xec000, 0xeffff) AM_RAMBANK("bank26")
 
-	AM_RANGE(0xf0000, 0xfffff) AM_ROMBANK(27)
+	AM_RANGE(0xf0000, 0xfffff) AM_ROMBANK("bank27")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(pasogo_io, ADDRESS_SPACE_IO, 8)
@@ -518,8 +521,6 @@ MACHINE_DRIVER_END
 
 ROM_START(pasogo)
 	ROM_REGION(0x100000,"maincpu", ROMREGION_ERASEFF) // 1 megabyte dram?
-//  ROM_LOAD("gmaster.bin", 0x0000, 0x1000, CRC(05cc45e5) SHA1(05d73638dea9657ccc2791c0202d9074a4782c1e) )
-//  ROM_CART_LOAD(0, "bin", 0x8000, 0x8000, 0)
 	ROM_REGION(0x100000,"user1", ROMREGION_ERASEFF)
 ROM_END
 
@@ -528,11 +529,11 @@ static DRIVER_INIT( pasogo )
 {
 	vg230_init(machine);
 	memset(&ems, 0, sizeof(ems));
-	memory_set_bankptr( machine, 27, memory_region(machine, "user1") + 0x00000 );
-	memory_set_bankptr( machine, 28, memory_region(machine, "maincpu") + 0xb8000/*?*/ );
+	memory_set_bankptr( machine, "bank27", memory_region(machine, "user1") + 0x00000 );
+	memory_set_bankptr( machine, "bank28", memory_region(machine, "maincpu") + 0xb8000/*?*/ );
 }
 
 /*    YEAR      NAME            PARENT  MACHINE   INPUT     INIT
       COMPANY                 FULLNAME */
-CONS( 1996, pasogo,       0,          0, pasogo,  pasogo,    pasogo,   0, "KOEI", "PasoGo", GAME_NO_SOUND|GAME_NOT_WORKING)
+CONS( 1996, pasogo,       0,          0, pasogo,  pasogo,    pasogo,   "KOEI", "PasoGo", GAME_NO_SOUND|GAME_NOT_WORKING)
 

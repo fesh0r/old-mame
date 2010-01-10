@@ -15,54 +15,53 @@
 
 /*
 
-	TODO:
+    TODO:
 
-	- add HRTC/VRTC output to i8275
-	- NEC uPD7220 GDC
-	- accurate video timing
-	- floppy DRQ during RECALL = 0
-	- write floppy TC only during DACK
-	- PCB layout
-	- NEC uPD7201 MPSC
+    - add HRTC/VRTC output to i8275
+    - NEC uPD7220 GDC
+    - accurate video timing
+    - floppy DRQ during RECALL = 0
+    - PCB layout
+    - NEC uPD7201 MPSC
 
 */
 
 /*
 
-	Nokia Elektroniikka pj
+    Nokia Elektroniikka pj
 
-	Controller ILC 9534
-	FDC-Interface ILC 9530
+    Controller ILC 9534
+    FDC-Interface ILC 9530
 
-	Parts:
+    Parts:
 
-	6,144 MHz xtal (CPU clock)
-	18,720 MHz xtal (pixel clock)
-	16 MHz xtal (FDC clock)
-	Intel 8085AP (CPU)
-	Intel 8253-5P (PIT)
-	Intel 8275P (CRTC)
-	Intel 8212P (I/OP)
-	Intel 8237A-5P (DMAC)
-	NEC uPD7220C (GDC)
-	NEC uPD7201P (MPSC=uart)
-	NEC uPD765 (FDC)
-	TMS4116-15 (16Kx4 DRAM)*4 = 32KB Video RAM for 7220
-	2164-6P (64Kx1 DRAM)*8 = 64KB Work RAM
+    6,144 MHz xtal (CPU clock)
+    18,720 MHz xtal (pixel clock)
+    16 MHz xtal (FDC clock)
+    Intel 8085AP (CPU)
+    Intel 8253-5P (PIT)
+    Intel 8275P (CRTC)
+    Intel 8212P (I/OP)
+    Intel 8237A-5P (DMAC)
+    NEC uPD7220C (GDC)
+    NEC uPD7201P (MPSC=uart)
+    NEC uPD765 (FDC)
+    TMS4116-15 (16Kx4 DRAM)*4 = 32KB Video RAM for 7220
+    2164-6P (64Kx1 DRAM)*8 = 64KB Work RAM
 
-	DMA channels:
+    DMA channels:
 
-	0	CRT
-	1	MPSC transmit
-	2	MPSC receive
-	3	FDC
+    0   CRT
+    1   MPSC transmit
+    2   MPSC receive
+    3   FDC
 
-	Interrupts:
+    Interrupts:
 
-	INTR	MPSC INT
-	RST5.5	FDC IRQ
-	RST6.5	8212 INT
-	RST7.5	DMA EOP
+    INTR    MPSC INT
+    RST5.5  FDC IRQ
+    RST6.5  8212 INT
+    RST7.5  DMA EOP
 
 */
 
@@ -78,12 +77,13 @@ static WRITE8_HANDLER( ls259_w )
 	{
 	case 0: /* IC24 A8 */
 		//logerror("IC24 A8 %u\n", d);
-		memory_set_bank(space->machine, 1, d);
+		memory_set_bank(space->machine, "bank1", d);
 
 		if (d)
-			memory_install_readwrite8_handler(program, 0x0000, 0x0fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+			memory_install_readwrite_bank(program, 0x0000, 0x0fff, 0, 0, "bank1");
 		else
-			memory_install_readwrite8_handler(program, 0x0000, 0x0fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
+			memory_install_read_bank(program, 0x0000, 0x0fff, 0, 0, "bank1");
+			memory_unmap_write(program, 0x0000, 0x0fff, 0, 0);
 		break;
 
 	case 1: /* RECALL */
@@ -115,9 +115,9 @@ static WRITE8_HANDLER( ls259_w )
 
 	case 7: /* MOTOR ON */
 		//logerror("MOTOR %u\n", d);
-		floppy_drive_set_motor_state(floppy_get_device(space->machine, 0), d);
+		floppy_mon_w(floppy_get_device(space->machine, 0), !d);
+		floppy_mon_w(floppy_get_device(space->machine, 1), !d);
 		floppy_drive_set_ready_state(floppy_get_device(space->machine, 0), d, 1);
-		floppy_drive_set_motor_state(floppy_get_device(space->machine, 1), d);
 		floppy_drive_set_ready_state(floppy_get_device(space->machine, 1), d, 1);
 
 		if (input_port_read(space->machine, "T5")) upd765_ready_w(state->upd765, d);
@@ -128,10 +128,10 @@ static WRITE8_HANDLER( ls259_w )
 /* Memory Maps */
 
 static ADDRESS_MAP_START( mm1_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x1000, 0xfeff) AM_RAM
-	AM_RANGE(0xff00, 0xff0f) AM_MIRROR(0x80) AM_DEVREADWRITE(I8237_TAG, dma8237_r, dma8237_w)
-//	AM_RANGE(0xff10, 0xff13) AM_MIRROR(0x8c) AM_DEVREADWRITE(UPD7201_TAG, upd7201_cd_ba_r, upd7201_cd_ba_w)
+	AM_RANGE(0xff00, 0xff0f) AM_MIRROR(0x80) AM_DEVREADWRITE(I8237_TAG, i8237_r, i8237_w)
+//  AM_RANGE(0xff10, 0xff13) AM_MIRROR(0x8c) AM_DEVREADWRITE(UPD7201_TAG, upd7201_cd_ba_r, upd7201_cd_ba_w)
     AM_RANGE(0xff20, 0xff21) AM_MIRROR(0x8e) AM_DEVREADWRITE(I8275_TAG, i8275_r, i8275_w)
 	AM_RANGE(0xff30, 0xff33) AM_MIRROR(0x8c) AM_DEVREADWRITE(I8253_TAG, pit8253_r, pit8253_w)
 	AM_RANGE(0xff40, 0xff40) AM_MIRROR(0x8f) AM_DEVREADWRITE(I8212_TAG, i8212_r, i8212_w)
@@ -273,13 +273,6 @@ static PALETTE_INIT( mm1 )
 	palette_set_color_rgb(machine, 2, 0x00, 0xff, 0x00); /* bright green */
 }
 
-static WRITE_LINE_DEVICE_HANDLER( drqcrt_w )
-{
-	mm1_state *driver_state = device->machine->driver_data;
-
-	dma8237_drq_write(driver_state->i8237, DMA_CRT, state);
-}
-
 static I8275_DISPLAY_PIXELS( crtc_display_pixels )
 {
 	mm1_state *state = device->machine->driver_data;
@@ -303,7 +296,7 @@ static I8275_DISPLAY_PIXELS( crtc_display_pixels )
 
 		int color = hlt_in ? 2 : (video_in ^ compl_in);
 
-		*BITMAP_ADDR16(tmpbitmap, y, x + i) = color;
+		*BITMAP_ADDR16(device->machine->generic.tmpbitmap, y, x + i) = color;
 	}
 }
 
@@ -312,7 +305,7 @@ static const i8275_interface mm1_i8275_intf =
 	SCREEN_TAG,
 	8,
 	0,
-	DEVCB_LINE(drqcrt_w),
+	DEVCB_DEVICE_LINE(I8237_TAG, i8237_dreq0_w),
 	DEVCB_NULL,
 	crtc_display_pixels
 };
@@ -353,7 +346,7 @@ static VIDEO_UPDATE( mm1 )
 
 	/* text */
 	i8275_update(state->i8275, bitmap, cliprect);
-	copybitmap(bitmap, tmpbitmap, 0, 0, 0, 0, cliprect);
+	copybitmap(bitmap, screen->machine->generic.tmpbitmap, 0, 0, 0, 0, cliprect);
 
 	/* graphics */
 	upd7220_update(state->upd7220, bitmap, cliprect);
@@ -395,88 +388,71 @@ static I8212_INTERFACE( mm1_i8212_intf )
 
 /* 8237 Interface */
 
-static DMA8237_HRQ_CHANGED( dma_hrq_changed )
+static WRITE_LINE_DEVICE_HANDLER( dma_hrq_changed )
 {
 	cputag_set_input_line(device->machine, I8085A_TAG, INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
 
 	/* Assert HLDA */
-	dma8237_set_hlda(device, state);
+	i8237_hlda_w(device, state);
 }
 
-static DMA8237_MEM_READ( memory_dma_r )
-{
-	const address_space *program = cputag_get_address_space(device->machine, I8085A_TAG, ADDRESS_SPACE_PROGRAM);
-
-	return memory_read_byte(program, offset);
-}
-
-static DMA8237_MEM_WRITE( memory_dma_w )
-{
-	const address_space *program = cputag_get_address_space(device->machine, I8085A_TAG, ADDRESS_SPACE_PROGRAM);
-
-	memory_write_byte(program, offset, data);
-}
-
-static DMA8237_CHANNEL_WRITE( crtc_dack_w )
-{
-	mm1_state *state = device->machine->driver_data;
-
-	i8275_dack_w(state->i8275, 0, data);
-}
-
-static DMA8237_CHANNEL_READ( mpsc_dack_r )
+static READ8_DEVICE_HANDLER( mpsc_dack_r )
 {
 	mm1_state *state = device->machine->driver_data;
 
 	/* clear data request */
-	dma8237_drq_write(state->i8237, DMA_MPSC_RX, CLEAR_LINE);
+	i8237_dreq2_w(state->i8237, CLEAR_LINE);
 
-	return upd7201_dtra_r(state->upd7201);
+	return upd7201_dtra_r(device);
 }
 
-static DMA8237_CHANNEL_WRITE( mpsc_dack_w )
+static WRITE8_DEVICE_HANDLER( mpsc_dack_w )
 {
 	mm1_state *state = device->machine->driver_data;
 
-	upd7201_hai_w(state->upd7201, data);
+	upd7201_hai_w(device, data);
 
 	/* clear data request */
-	dma8237_drq_write(state->i8237, DMA_MPSC_TX, CLEAR_LINE);
+	i8237_dreq1_w(state->i8237, CLEAR_LINE);
 }
 
-static DMA8237_CHANNEL_READ( fdc_dack_r )
-{
-	mm1_state *state = device->machine->driver_data;
-
-	return upd765_dack_r(state->upd765, 0);
-}
-
-static DMA8237_CHANNEL_WRITE( fdc_dack_w )
-{
-	mm1_state *state = device->machine->driver_data;
-
-	upd765_dack_w(state->upd765, 0, data);
-}
-
-static DMA8237_OUT_EOP( tc_w )
+static WRITE_LINE_DEVICE_HANDLER( tc_w )
 {
 	mm1_state *driver_state = device->machine->driver_data;
 
-	/* floppy terminal count */
-	upd765_tc_w(driver_state->upd765, !state);
+	if (!driver_state->dack3)
+	{
+		/* floppy terminal count */
+		upd765_tc_w(driver_state->upd765, !state);
+	}
+
+	driver_state->tc = !state;
 
 	cputag_set_input_line(device->machine, I8085A_TAG, I8085_RST75_LINE, state);
 }
 
-static const struct dma8237_interface mm1_dma8237_intf =
+static WRITE_LINE_DEVICE_HANDLER( dack3_w )
 {
-	XTAL_6_144MHz/2/2,
-	dma_hrq_changed,
-	memory_dma_r,
-	memory_dma_w,
-	{ NULL, NULL, mpsc_dack_r, fdc_dack_r },
-	{ crtc_dack_w, mpsc_dack_w, NULL, fdc_dack_w },
-	tc_w
+	mm1_state *driver_state = device->machine->driver_data;
+
+	driver_state->dack3 = state;
+
+	if (!driver_state->dack3)
+	{
+		/* floppy terminal count */
+		upd765_tc_w(driver_state->upd765, driver_state->tc);
+	}
+}
+
+static I8237_INTERFACE( mm1_dma8237_intf )
+{
+	DEVCB_LINE(dma_hrq_changed),
+	DEVCB_LINE(tc_w),
+	DEVCB_MEMORY_HANDLER(I8085A_TAG, PROGRAM, memory_read_byte),
+	DEVCB_MEMORY_HANDLER(I8085A_TAG, PROGRAM, memory_write_byte),
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_DEVICE_HANDLER(UPD7201_TAG, mpsc_dack_r), DEVCB_DEVICE_HANDLER(UPD765_TAG, upd765_dack_r) },
+	{ DEVCB_DEVICE_HANDLER(I8275_TAG, i8275_dack_w), DEVCB_DEVICE_HANDLER(UPD7201_TAG, mpsc_dack_w), DEVCB_NULL, DEVCB_DEVICE_HANDLER(UPD765_TAG, upd765_dack_w) },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_LINE(dack3_w) }
 };
 
 /* uPD765 Interface */
@@ -485,7 +461,7 @@ static UPD765_DMA_REQUEST( drq_w )
 {
 	mm1_state *driver_state = device->machine->driver_data;
 
-	dma8237_drq_write(driver_state->i8237, DMA_FDC, state);
+	i8237_dreq3_w(driver_state->i8237, state);
 }
 
 static const upd765_interface mm1_upd765_intf =
@@ -549,14 +525,14 @@ static WRITE_LINE_DEVICE_HANDLER( drq2_w )
 {
 	mm1_state *driver_state = device->machine->driver_data;
 
-	if (state) dma8237_drq_write(driver_state->i8237, DMA_MPSC_RX, ASSERT_LINE);
+	if (state) i8237_dreq2_w(driver_state->i8237, ASSERT_LINE);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( drq1_w )
 {
 	mm1_state *driver_state = device->machine->driver_data;
 
-	if (state) dma8237_drq_write(driver_state->i8237, DMA_MPSC_TX, ASSERT_LINE);
+	if (state) i8237_dreq1_w(driver_state->i8237, ASSERT_LINE);
 }
 
 static UPD7201_INTERFACE( mm1_upd7201_intf )
@@ -717,10 +693,11 @@ static MACHINE_START( mm1 )
 	state->key_rom = memory_region(machine, "keyboard");
 
 	/* setup memory banking */
-	memory_install_readwrite8_handler(program, 0x0000, 0x0fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, "bios"), 0);
-	memory_configure_bank(machine, 1, 1, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
-	memory_set_bank(machine, 1, 0);
+	memory_install_read_bank(program, 0x0000, 0x0fff, 0, 0, "bank1");
+	memory_unmap_write(program, 0x0000, 0x0fff, 0, 0);
+	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, "bios"), 0);
+	memory_configure_bank(machine, "bank1", 1, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
+	memory_set_bank(machine, "bank1", 0);
 
 	/* register for state saving */
 	state_save_register_global(machine, state->sense);
@@ -731,6 +708,7 @@ static MACHINE_START( mm1 )
 	state_save_register_global(machine, state->tx21);
 	state_save_register_global(machine, state->rcl);
 	state_save_register_global(machine, state->recall);
+	state_save_register_global(machine, state->dack3);
 }
 
 static MACHINE_RESET( mm1 )
@@ -789,7 +767,7 @@ static MACHINE_DRIVER_START( mm1 )
 
 	/* peripheral hardware */
 	MDRV_I8212_ADD(I8212_TAG, mm1_i8212_intf)
-	MDRV_DMA8237_ADD(I8237_TAG, /* XTAL_6_144MHz/2, */ mm1_dma8237_intf)
+	MDRV_I8237_ADD(I8237_TAG, XTAL_6_144MHz/2, mm1_dma8237_intf)
 	MDRV_PIT8253_ADD(I8253_TAG, mm1_pit8253_intf)
 	MDRV_UPD765A_ADD(UPD765_TAG, /* XTAL_16MHz/2/2, */ mm1_upd765_intf)
 	MDRV_UPD7201_ADD(UPD7201_TAG, XTAL_6_144MHz/2, mm1_upd7201_intf)
@@ -846,6 +824,6 @@ ROM_END
 
 /* System Drivers */
 
-//    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG    COMPANY           FULLNAME                FLAGS
-COMP( 1981, mm1m6,		0,		0,		mm1m6,		mm1,		0, 		0,	  "Nokia Data",		"MikroMikko 1 M6",		GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-COMP( 1981, mm1m7,		mm1m6,	0,		mm1m6,		mm1,		0, 		0,	  "Nokia Data",		"MikroMikko 1 M7",		GAME_NOT_WORKING )
+//    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    COMPANY           FULLNAME                FLAGS
+COMP( 1981, mm1m6,		0,		0,		mm1m6,		mm1,		0, 		"Nokia Data",		"MikroMikko 1 M6",		GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+COMP( 1981, mm1m7,		mm1m6,	0,		mm1m6,		mm1,		0, 		"Nokia Data",		"MikroMikko 1 M7",		GAME_NOT_WORKING )

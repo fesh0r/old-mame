@@ -53,7 +53,7 @@ struct _tape_control_menu_state
 INLINE int cassette_count( running_machine *machine )
 {
 	int count = 0;
-	const device_config *device = device_list_first( machine->config->devicelist, CASSETTE );
+	const device_config *device = device_list_first( &machine->config->devicelist, CASSETTE );
 
 	while ( device )
 	{
@@ -65,7 +65,7 @@ INLINE int cassette_count( running_machine *machine )
 
 /*-------------------------------------------------
     tapecontrol_gettime - returns a textual
-	representation of the time
+    representation of the time
 -------------------------------------------------*/
 
 astring *tapecontrol_gettime(astring *dest, const device_config *device, int *curpos, int *endpos)
@@ -92,7 +92,7 @@ astring *tapecontrol_gettime(astring *dest, const device_config *device, int *cu
 
 /*-------------------------------------------------
     menu_tape_control_populate - populates the
-	main tape control menu
+    main tape control menu
 -------------------------------------------------*/
 
 static void menu_tape_control_populate(running_machine *machine, ui_menu *menu, tape_control_menu_state *menustate)
@@ -175,7 +175,7 @@ void ui_mess_menu_tape_control(running_machine *machine, ui_menu *menu, void *pa
 	if (menustate->device == NULL)
 	{
 		int index = menustate->index;
-		const device_config *device = device_list_first( machine->config->devicelist, CASSETTE );
+		const device_config *device = device_list_first( &machine->config->devicelist, CASSETTE );
 
 		while ( index > 0 && device )
 		{

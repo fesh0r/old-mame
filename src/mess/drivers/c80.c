@@ -265,7 +265,7 @@ static MACHINE_DRIVER_START( c80 )
 	MDRV_Z80PIO_ADD(Z80PIO1_TAG, pio1_intf)
 	MDRV_Z80PIO_ADD(Z80PIO2_TAG, pio2_intf)
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, c80_cassette_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("1K")
@@ -281,5 +281,5 @@ ROM_END
 
 /* System Drivers */
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY             FULLNAME    FLAGS */
-COMP( 1986, c80,	0,		0,		c80,	c80,	0,		0,	"Joachim Czepa",	"C-80",		GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT  COMPANY             FULLNAME    FLAGS */
+COMP( 1986, c80,	0,		0,		c80,	c80,	0,	"Joachim Czepa",	"C-80",		GAME_SUPPORTS_SAVE )

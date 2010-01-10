@@ -21,8 +21,10 @@
 
 static UINT8 *textram;
 static UINT8 *border;
-static UINT8 io_reg[0x20] = { 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-						0, 0, 0, 0, 0, 0, 0, 0, 0, 0	};
+static UINT8 io_reg[0x20] = {
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
 
 static const UINT8 jr200_keycodes[4][9][8] =
 {
@@ -79,12 +81,12 @@ static const UINT8 jr200_keycodes[4][9][8] =
 	}
 };
 
-/*
+#if 0
 static READ8_HANDLER( test_r )
 {
-    return 0x00;
+	return 0x00;
 }
-*/
+#endif
 
 static WRITE8_HANDLER( io_reg_w )
 {
@@ -354,7 +356,7 @@ static const gfx_layout tiles8x8_layout =
 };
 
 static GFXDECODE_START( jr200 )
-	GFXDECODE_ENTRY( "char", 0, tiles8x8_layout, 0, 0x100 )
+	GFXDECODE_ENTRY( "char", 0, tiles8x8_layout, 0, 64 )
 GFXDECODE_END
 
 
@@ -373,9 +375,9 @@ static MACHINE_DRIVER_START( jr200 )
 	MDRV_CPU_ADD("maincpu", M6802, 890000) /* MN1800A */
 	MDRV_CPU_PROGRAM_MAP(jr200_mem)
 	MDRV_CPU_IO_MAP(jr200_io)
-// MDRV_CPU_VBLANK_INT("screen", jr200_irq)
-MDRV_CPU_PERIODIC_INT(jr200_nmi,20)
-MDRV_CPU_PERIODIC_INT(jr200_irq,20)
+	// MDRV_CPU_VBLANK_INT("screen", jr200_irq)
+	MDRV_CPU_PERIODIC_INT(jr200_nmi,20)
+	MDRV_CPU_PERIODIC_INT(jr200_irq,20)
 /*
     MDRV_CPU_ADD("mn1544", MN1544, ?)
 */
@@ -411,5 +413,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1982, jr200,  0,       0, 	jr200, 	jr200, 	 0,  	  0,  	 "National",   "JR-200",		GAME_NOT_WORKING )
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT   COMPANY   FULLNAME       FLAGS */
+COMP( 1982, jr200,  0,       0, 	jr200, 	jr200, 	 0,  	   	 "National",   "JR-200",		GAME_NOT_WORKING )

@@ -405,8 +405,6 @@ const ins8250_interface bebox_uart_inteface_3 =
  *
  *************************************/
 
-#define FDC_DMA 2
-
 static void bebox_fdc_interrupt(running_machine *machine, int state)
 {
 	bebox_set_irq_bit(machine, 13, state);
@@ -419,7 +417,7 @@ static void bebox_fdc_interrupt(running_machine *machine, int state)
 static void bebox_fdc_dma_drq(running_machine *machine, int state, int read_)
 {
 	if ( bebox_devices.dma8237_1 ) {
-		dma8237_drq_write(bebox_devices.dma8237_1, FDC_DMA, state);
+		i8237_dreq2_w(bebox_devices.dma8237_1, state);
 	}
 }
 
@@ -555,9 +553,6 @@ void bebox_ide_interrupt(const device_config *device, int state)
  *
  *************************************/
 
-static read8_space_func bebox_vga_memory_rh;
-static write8_space_func bebox_vga_memory_wh;
-
 static READ64_HANDLER( bebox_video_r )
 {
 	const UINT64 *mem = (const UINT64 *) pc_vga_memory();
@@ -574,39 +569,19 @@ static WRITE64_HANDLER( bebox_video_w )
 }
 
 
-static READ64_HANDLER( bebox_vga_memory_r )
-{
-	return read64be_with_read8_handler(bebox_vga_memory_rh, space, offset, mem_mask);
-}
-
-
-static WRITE64_HANDLER( bebox_vga_memory_w )
-{
-	write64be_with_write8_handler(bebox_vga_memory_wh, space, offset, data, mem_mask);
-}
-
-
 static void bebox_map_vga_memory(running_machine *machine, offs_t begin, offs_t end, read8_space_func rh, write8_space_func wh)
 {
 	const address_space *space = cputag_get_address_space(machine, "ppc1", ADDRESS_SPACE_PROGRAM);
 
-	read64_space_func rh64 = (rh == SMH_BANK(4)) ? SMH_BANK(4) : bebox_vga_memory_r;
-	write64_space_func wh64 = (wh == SMH_BANK(4)) ? SMH_BANK(4) : bebox_vga_memory_w;
+	memory_nop_readwrite(space, 0xC00A0000, 0xC00BFFFF, 0, 0);
 
-	bebox_vga_memory_rh = rh;
-	bebox_vga_memory_wh = wh;
-
-	memory_install_read64_handler(space, 0xC00A0000, 0xC00BFFFF, 0, 0, SMH_NOP);
-	memory_install_write64_handler(space, 0xC00A0000, 0xC00BFFFF, 0, 0, SMH_NOP);
-
-	memory_install_read64_handler(space, 0xC0000000 + begin, 0xC0000000 + end, 0, 0, rh64);
-	memory_install_write64_handler(space, 0xC0000000 + begin, 0xC0000000 + end, 0, 0, wh64);
+	memory_install_readwrite_bank(space, 0xC0000000 + begin, 0xC0000000 + end, 0, 0, "bank4");
 }
 
 
 static const struct pc_vga_interface bebox_vga_interface =
 {
-	4,
+	"bank4",
 	bebox_map_vga_memory,
 
 	NULL,
@@ -622,6 +597,7 @@ static const struct pc_vga_interface bebox_vga_interface =
  *
  *************************************/
 
+static int dma_channel;
 static UINT16 dma_offset[2][4];
 static UINT8 at_pages[0x10];
 
@@ -722,73 +698,77 @@ WRITE64_HANDLER(bebox_80000480_w)
 }
 
 
-static DMA8237_HRQ_CHANGED( bebox_dma_hrq_changed )
+static WRITE_LINE_DEVICE_HANDLER( bebox_dma_hrq_changed )
 {
 	cputag_set_input_line(device->machine, "ppc1", INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
 
 	/* Assert HLDA */
-	dma8237_set_hlda( device, state );
+	i8237_hlda_w( device, state );
 }
 
 
-static DMA8237_MEM_READ( bebox_dma_read_byte )
+static READ8_HANDLER( bebox_dma_read_byte )
 {
-	const address_space *space = cputag_get_address_space(device->machine, "ppc1", ADDRESS_SPACE_PROGRAM);
-	offs_t page_offset = (((offs_t) dma_offset[0][channel]) << 16)
+	offs_t page_offset = (((offs_t) dma_offset[0][dma_channel]) << 16)
 		& 0x7FFF0000;
 	return memory_read_byte(space, page_offset + offset);
 }
 
 
-static DMA8237_MEM_WRITE( bebox_dma_write_byte )
+static WRITE8_HANDLER( bebox_dma_write_byte )
 {
-	const address_space *space = cputag_get_address_space(device->machine, "ppc1", ADDRESS_SPACE_PROGRAM);
-	offs_t page_offset = (((offs_t) dma_offset[0][channel]) << 16)
+	offs_t page_offset = (((offs_t) dma_offset[0][dma_channel]) << 16)
 		& 0x7FFF0000;
 	memory_write_byte(space, page_offset + offset, data);
 }
 
 
-static DMA8237_CHANNEL_READ( bebox_dma8237_fdc_dack_r ) {
+static READ8_DEVICE_HANDLER( bebox_dma8237_fdc_dack_r ) {
 	return pc_fdc_dack_r(device->machine);
 }
 
 
-static DMA8237_CHANNEL_WRITE( bebox_dma8237_fdc_dack_w ) {
+static WRITE8_DEVICE_HANDLER( bebox_dma8237_fdc_dack_w ) {
 	pc_fdc_dack_w( device->machine, data );
 }
 
 
-static DMA8237_OUT_EOP( bebox_dma8237_out_eop ) {
+static WRITE_LINE_DEVICE_HANDLER( bebox_dma8237_out_eop ) {
 	pc_fdc_set_tc_state( device->machine, state );
 }
 
-
-const struct dma8237_interface bebox_dma8237_1_config =
+static void set_dma_channel(const device_config *device, int channel, int state)
 {
-	XTAL_14_31818MHz/3, /* this needs to be verified */
+	if (!state) dma_channel = channel;
+}
 
-	bebox_dma_hrq_changed,
-	bebox_dma_read_byte,
-	bebox_dma_write_byte,
+static WRITE_LINE_DEVICE_HANDLER( pc_dack0_w ) { set_dma_channel(device, 0, state); }
+static WRITE_LINE_DEVICE_HANDLER( pc_dack1_w ) { set_dma_channel(device, 1, state); }
+static WRITE_LINE_DEVICE_HANDLER( pc_dack2_w ) { set_dma_channel(device, 2, state); }
+static WRITE_LINE_DEVICE_HANDLER( pc_dack3_w ) { set_dma_channel(device, 3, state); }
 
-	{ 0, 0, bebox_dma8237_fdc_dack_r, 0 },
-	{ 0, 0, bebox_dma8237_fdc_dack_w, 0 },
-	bebox_dma8237_out_eop
+
+I8237_INTERFACE( bebox_dma8237_1_config )
+{
+	DEVCB_LINE(bebox_dma_hrq_changed),
+	DEVCB_LINE(bebox_dma8237_out_eop),
+	DEVCB_MEMORY_HANDLER("ppc1", PROGRAM, bebox_dma_read_byte),
+	DEVCB_MEMORY_HANDLER("ppc1", PROGRAM, bebox_dma_write_byte),
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(bebox_dma8237_fdc_dack_r), DEVCB_NULL },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(bebox_dma8237_fdc_dack_w), DEVCB_NULL },
+	{ DEVCB_LINE(pc_dack0_w), DEVCB_LINE(pc_dack1_w), DEVCB_LINE(pc_dack2_w), DEVCB_LINE(pc_dack3_w) }
 };
 
 
-const struct dma8237_interface bebox_dma8237_2_config =
+I8237_INTERFACE( bebox_dma8237_2_config )
 {
-	XTAL_14_31818MHz/3, /* this needs to be verified */
-
-	NULL,
-	NULL,
-	NULL,
-
-	{ NULL, NULL, NULL, NULL },
-	{ NULL, NULL, NULL, NULL },
-	NULL
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL }
 };
 
 
@@ -1115,15 +1095,13 @@ DRIVER_INIT( bebox )
 	mpc105_init(machine, 0);
 
 	/* set up boot and flash ROM */
-	memory_set_bankptr(machine, 2, memory_region(machine, "user2"));
+	memory_set_bankptr(machine, "bank2", memory_region(machine, "user2"));
 	intelflash_init(machine, 0, FLASH_FUJITSU_29F016A, memory_region(machine, "user1"));
 
 	/* install MESS managed RAM */
-	memory_install_read64_handler(space_0, 0, messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0x02000000, SMH_BANK(3));
-	memory_install_write64_handler(space_0, 0, messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0x02000000, SMH_BANK(3));
-	memory_install_read64_handler(space_1, 0, messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0x02000000, SMH_BANK(3));
-	memory_install_write64_handler(space_1, 0, messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0x02000000, SMH_BANK(3));
-	memory_set_bankptr(machine, 3, messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_install_readwrite_bank(space_0, 0, messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0x02000000, "bank3");
+	memory_install_readwrite_bank(space_1, 0, messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0x02000000, "bank3");
+	memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")));
 
 	mc146818_init(machine, MC146818_STANDARD);
 	pc_vga_init(machine, &bebox_vga_interface, &cirrus_svga_interface);
@@ -1132,10 +1110,8 @@ DRIVER_INIT( bebox )
 	/* install VGA memory */
 	vram_begin = 0xC1000000;
 	vram_end = vram_begin + pc_vga_memory_size() - 1;
-	memory_install_read64_handler(space_0, vram_begin, vram_end, 0, 0, bebox_video_r);
-	memory_install_write64_handler(space_0, vram_begin, vram_end, 0, 0, bebox_video_w);
-	memory_install_read64_handler(space_1, vram_begin, vram_end, 0, 0, bebox_video_r);
-	memory_install_write64_handler(space_1, vram_begin, vram_end, 0, 0, bebox_video_w);
+	memory_install_readwrite64_handler(space_0, vram_begin, vram_end, 0, 0, bebox_video_r, bebox_video_w);
+	memory_install_readwrite64_handler(space_1, vram_begin, vram_end, 0, 0, bebox_video_r, bebox_video_w);
 
 	/* The following is a verrrry ugly hack put in to support NetBSD for
      * NetBSD.  When NetBSD/bebox it does most of its work on CPU #0 and then
@@ -1155,7 +1131,7 @@ DRIVER_INIT( bebox )
 			/* bcctr 0x14, 0 */
 			U64(0x4E80042000000000)
 		};
-		memory_install_read64_handler(space_1, 0x9421FFF0, 0x9421FFFF, 0, 0, SMH_BANK(1));
-		memory_set_bankptr(machine, 1, ops);
+		memory_install_read_bank(space_1, 0x9421FFF0, 0x9421FFFF, 0, 0, "bank1");
+		memory_set_bankptr(machine, "bank1", ops);
 	}
 }

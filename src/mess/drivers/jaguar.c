@@ -161,9 +161,6 @@ static MACHINE_RESET( jaguar )
 	jaguargpu_ctrl_w(cputag_get_cpu(machine, "gpu"), G_CTRL, 0, 0xffffffff);
 	jaguardsp_ctrl_w(cputag_get_cpu(machine, "audiocpu"), D_CTRL, 0, 0xffffffff);
 
-	/* init the sound system */
-	cojag_sound_reset(machine);
-
 	joystick_data = 0xffffffff;
 	eeprom_bit_count = 0;
 }
@@ -178,8 +175,6 @@ static MACHINE_RESET( jaguar )
 *   0xF14000 (read data), F14800 (increment clock, write data), F15000 (reset for next word)
 *
 ********************************************************************/
-
-
 static mame_file *jaguar_nvram_fopen( running_machine *machine, UINT32 openflags)
 {
 	const device_config *image = devtag_get_device(machine, "cart");
@@ -202,20 +197,15 @@ static void jaguar_nvram_load(running_machine *machine)
 	mame_file *nvram_file = NULL;
 	const device_config *device;
 
-	if (machine->config->nvram_handler != NULL)
-	{
-		nvram_file = jaguar_nvram_fopen(machine, OPEN_FLAG_READ);
-		if (nvram_file) eeprom_load(nvram_file);
-	}
-
-	for (device = machine->config->devicelist; device != NULL; device = device->next)
+	for (device = (device_config *)machine->config->devicelist.head; device != NULL; device = device->next)
 	{
 		device_nvram_func nvram = (device_nvram_func)device_get_info_fct(device, DEVINFO_FCT_NVRAM);
 		if (nvram != NULL)
 		{
 			if (nvram_file == NULL)
-				nvram_file = nvram_fopen(machine, OPEN_FLAG_READ);
-			(*nvram)(device, nvram_file, 0);
+				nvram_file = jaguar_nvram_fopen(machine, OPEN_FLAG_READ);
+			if (nvram_file != NULL) 
+				(*nvram)(device, nvram_file, 0);		
 		}
 	}
 
@@ -228,21 +218,15 @@ static void jaguar_nvram_save(running_machine *machine)
 {
 	mame_file *nvram_file = NULL;
 	const device_config *device;
-
-	if (machine->config->nvram_handler != NULL)
-	{
-		nvram_file = jaguar_nvram_fopen(machine, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
-		if (nvram_file) eeprom_save(nvram_file);
-	}
-
-	for (device = machine->config->devicelist; device != NULL; device = device->next)
+	for (device = (device_config *)machine->config->devicelist.head; device != NULL; device = device->next)
 	{
 		device_nvram_func nvram = (device_nvram_func)device_get_info_fct(device, DEVINFO_FCT_NVRAM);
 		if (nvram != NULL)
 		{
 			if (nvram_file == NULL)
-				nvram_file = nvram_fopen(machine, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
-			(*nvram)(device, nvram_file, 1);
+				nvram_file = jaguar_nvram_fopen(machine, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
+			if (nvram_file != NULL)
+				(*nvram)(device, nvram_file, 1);		
 		}
 	}
 
@@ -251,13 +235,12 @@ static void jaguar_nvram_save(running_machine *machine)
 }
 
 static NVRAM_HANDLER( jaguar )
-{
-	if (read_or_write)
+{		
+	if (read_or_write)	{		
 		jaguar_nvram_save(machine);
+	}
 	else
 	{
-		eeprom_init(machine, &eeprom_interface_93C46);
-
 		if (file)
 			jaguar_nvram_load(machine);
 	}
@@ -265,26 +248,29 @@ static NVRAM_HANDLER( jaguar )
 
 static WRITE32_HANDLER( jaguar_eeprom_w )
 {
+	const device_config *eeprom = devtag_get_device(space->machine, "eeprom");
 	eeprom_bit_count++;
 	if (eeprom_bit_count != 9)		/* kill extra bit at end of address */
 	{
-		eeprom_write_bit(data >> 31);
-		eeprom_set_clock_line(PULSE_LINE);
+		eeprom_write_bit(eeprom,data >> 31);
+		eeprom_set_clock_line(eeprom,PULSE_LINE);
 	}
 }
 
 static READ32_HANDLER( jaguar_eeprom_clk )
 {
-	eeprom_set_clock_line(PULSE_LINE);	/* get next bit when reading */
+	const device_config *eeprom = devtag_get_device(space->machine, "eeprom");
+	eeprom_set_clock_line(eeprom,PULSE_LINE);	/* get next bit when reading */
 	return 0;
 }
 
 static READ32_HANDLER( jaguar_eeprom_cs )
 {
-	eeprom_set_cs_line(ASSERT_LINE);	/* must do at end of an operation */
-	eeprom_set_cs_line(CLEAR_LINE);		/* enable chip for next operation */
-	eeprom_write_bit(1);			/* write a start bit */
-	eeprom_set_clock_line(PULSE_LINE);
+	const device_config *eeprom = devtag_get_device(space->machine, "eeprom");
+	eeprom_set_cs_line(eeprom,ASSERT_LINE);	/* must do at end of an operation */
+	eeprom_set_cs_line(eeprom,CLEAR_LINE);		/* enable chip for next operation */
+	eeprom_write_bit(eeprom,1);			/* write a start bit */
+	eeprom_set_clock_line(eeprom,PULSE_LINE);
 	eeprom_bit_count = 0;
 	return 0;
 }
@@ -298,14 +284,12 @@ static READ32_HANDLER( jaguar_eeprom_cs )
 
 static READ32_HANDLER( gpuctrl_r )
 {
-	if (protection_check == 1)
-	{
-		protection_check++;
-		jaguar_gpu_ram[0] = 0x3d0dead;
-		return 0x80000000;
-	}
-	else
-		return jaguargpu_ctrl_r(cputag_get_cpu(space->machine, "gpu"), offset);
+	UINT32 result = jaguargpu_ctrl_r(cputag_get_cpu(space->machine, "gpu"), offset);
+	if (protection_check != 1) return result;
+
+	protection_check++;
+	jaguar_gpu_ram[0] = 0x3d0dead;
+	return 0x80000000;
 }
 
 
@@ -350,12 +334,10 @@ static READ32_HANDLER( joystick_r )
 	UINT16 joybuts_result = 0xffef;
 	int i;
 	static const char *const keynames[2][8] =
-			{
-				{ "JOY0", "JOY1", "JOY2", "JOY3",
-						"JOY4", "JOY5", "JOY6", "JOY7" },
-				{ "BUTTONS0", "BUTTONS1", "BUTTONS2", "BUTTONS3",
-						"BUTTONS4", "BUTTONS5", "BUTTONS6", "BUTTONS7" }
-			};
+	{
+		{ "JOY0", "JOY1", "JOY2", "JOY3", "JOY4", "JOY5", "JOY6", "JOY7" },
+		{ "BUTTONS0", "BUTTONS1", "BUTTONS2", "BUTTONS3", "BUTTONS4", "BUTTONS5", "BUTTONS6", "BUTTONS7" }
+	};
 
 	/*
      *   16        12        8         4         0
@@ -380,7 +362,7 @@ static READ32_HANDLER( joystick_r )
 		}
 	}
 
-	joystick_result |= eeprom_read_bit();
+	joystick_result |= eeprom_read_bit(devtag_get_device(space->machine, "eeprom"));
 	joybuts_result |= (input_port_read(space->machine, "CONFIG") & 0x10);
 
 	return (joystick_result << 16) | joybuts_result;
@@ -449,21 +431,21 @@ static WRITE32_HANDLER( joystick_w )
 
 static ADDRESS_MAP_START( jaguar_map, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_GLOBAL_MASK(0xffffff)
-	AM_RANGE(0x000000, 0x1fffff) AM_RAM AM_BASE(&jaguar_shared_ram) AM_MIRROR(0x200000) AM_SHARE(1) AM_REGION("maincpu", 0)
-	AM_RANGE(0x800000, 0xdfffff) AM_ROM AM_BASE(&cart_base) AM_SIZE(&cart_size) AM_SHARE(15) AM_REGION("maincpu", 0x800000)
-	AM_RANGE(0xe00000, 0xe1ffff) AM_ROM AM_BASE(&rom_base) AM_SIZE(&rom_size) AM_SHARE(16) AM_REGION("maincpu", 0xe00000)
+	AM_RANGE(0x000000, 0x1fffff) AM_RAM AM_BASE(&jaguar_shared_ram) AM_MIRROR(0x200000) AM_SHARE("share1") AM_REGION("maincpu", 0)
+	AM_RANGE(0x800000, 0xdfffff) AM_ROM AM_BASE(&cart_base) AM_SIZE(&cart_size) AM_SHARE("share15") AM_REGION("maincpu", 0x800000)
+	AM_RANGE(0xe00000, 0xe1ffff) AM_ROM AM_BASE(&rom_base) AM_SIZE(&rom_size) AM_SHARE("share16") AM_REGION("maincpu", 0xe00000)
 	AM_RANGE(0xf00000, 0xf003ff) AM_READWRITE(jaguar_tom_regs32_r, jaguar_tom_regs32_w)
-	AM_RANGE(0xf00400, 0xf005ff) AM_MIRROR(0x000200) AM_RAM AM_BASE(&jaguar_gpu_clut) AM_SHARE(2)
+	AM_RANGE(0xf00400, 0xf005ff) AM_MIRROR(0x000200) AM_RAM AM_BASE(&jaguar_gpu_clut) AM_SHARE("share2")
 	AM_RANGE(0xf02100, 0xf021ff) AM_MIRROR(0x008000) AM_READWRITE(gpuctrl_r, gpuctrl_w)
 	AM_RANGE(0xf02200, 0xf022ff) AM_MIRROR(0x008000) AM_READWRITE(jaguar_blitter_r, jaguar_blitter_w)
-	AM_RANGE(0xf03000, 0xf03fff) AM_MIRROR(0x008000) AM_RAM AM_BASE(&jaguar_gpu_ram) AM_SHARE(3)
+	AM_RANGE(0xf03000, 0xf03fff) AM_MIRROR(0x008000) AM_RAM AM_BASE(&jaguar_gpu_ram) AM_SHARE("share3")
 	AM_RANGE(0xf10000, 0xf103ff) AM_READWRITE(jaguar_jerry_regs32_r, jaguar_jerry_regs32_w)
 	AM_RANGE(0xf14000, 0xf14003) AM_READWRITE(joystick_r, joystick_w)
 	AM_RANGE(0xf14800, 0xf14803) AM_READWRITE(jaguar_eeprom_clk,jaguar_eeprom_w)	// GPI00
 	AM_RANGE(0xf15000, 0xf15003) AM_READ(jaguar_eeprom_cs)				// GPI01
 	AM_RANGE(0xf1a100, 0xf1a13f) AM_READWRITE(dspctrl_r, dspctrl_w)
 	AM_RANGE(0xf1a140, 0xf1a17f) AM_READWRITE(jaguar_serial_r, jaguar_serial_w)
-	AM_RANGE(0xf1b000, 0xf1cfff) AM_RAM AM_BASE(&jaguar_dsp_ram) AM_SHARE(4)
+	AM_RANGE(0xf1b000, 0xf1cfff) AM_RAM AM_BASE(&jaguar_dsp_ram) AM_SHARE("share4")
 	AM_RANGE(0xf1d000, 0xf1dfff) AM_ROM AM_REGION("maincpu", 0xf1d000)
 ADDRESS_MAP_END
 
@@ -475,19 +457,19 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gpu_map, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_GLOBAL_MASK(0xffffff)
-	AM_RANGE(0x000000, 0x1fffff) AM_MIRROR(0x200000) AM_RAM AM_SHARE(1) AM_REGION("maincpu", 0)
-	AM_RANGE(0x800000, 0xdfffff) AM_ROM AM_SHARE(15) AM_REGION("maincpu", 0x800000)
-	AM_RANGE(0xe00000, 0xe1ffff) AM_ROM AM_SHARE(16) AM_REGION("maincpu", 0xe00000)
+	AM_RANGE(0x000000, 0x1fffff) AM_MIRROR(0x200000) AM_RAM AM_SHARE("share1") AM_REGION("maincpu", 0)
+	AM_RANGE(0x800000, 0xdfffff) AM_ROM AM_SHARE("share15") AM_REGION("maincpu", 0x800000)
+	AM_RANGE(0xe00000, 0xe1ffff) AM_ROM AM_SHARE("share16") AM_REGION("maincpu", 0xe00000)
 	AM_RANGE(0xf00000, 0xf003ff) AM_READWRITE(jaguar_tom_regs32_r, jaguar_tom_regs32_w)
-	AM_RANGE(0xf00400, 0xf005ff) AM_MIRROR(0x000200) AM_RAM AM_SHARE(2)
+	AM_RANGE(0xf00400, 0xf005ff) AM_MIRROR(0x000200) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0xf02100, 0xf021ff) AM_MIRROR(0x008000) AM_READWRITE(gpuctrl_r, gpuctrl_w)
 	AM_RANGE(0xf02200, 0xf022ff) AM_MIRROR(0x008000) AM_READWRITE(jaguar_blitter_r, jaguar_blitter_w)
-	AM_RANGE(0xf03000, 0xf03fff) AM_MIRROR(0x008000) AM_RAM AM_SHARE(3)
+	AM_RANGE(0xf03000, 0xf03fff) AM_MIRROR(0x008000) AM_RAM AM_SHARE("share3")
 	AM_RANGE(0xf10000, 0xf103ff) AM_READWRITE(jaguar_jerry_regs32_r, jaguar_jerry_regs32_w)
 	AM_RANGE(0xf14000, 0xf14003) AM_READWRITE(joystick_r, joystick_w)
 	AM_RANGE(0xf1a100, 0xf1a13f) AM_READWRITE(dspctrl_r, dspctrl_w)
 	AM_RANGE(0xf1a140, 0xf1a17f) AM_READWRITE(jaguar_serial_r, jaguar_serial_w)
-	AM_RANGE(0xf1b000, 0xf1cfff) AM_RAM AM_SHARE(4)
+	AM_RANGE(0xf1b000, 0xf1cfff) AM_RAM AM_SHARE("share4")
 	AM_RANGE(0xf1d000, 0xf1dfff) AM_ROM AM_REGION("maincpu", 0xf1d000)
 ADDRESS_MAP_END
 
@@ -635,6 +617,8 @@ static MACHINE_DRIVER_START( jaguar )
 	MDRV_MACHINE_RESET(jaguar)
 	MDRV_NVRAM_HANDLER(jaguar)
 
+	MDRV_TIMER_ADD("serial_timer", jaguar_serial_callback)
+
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -660,6 +644,8 @@ static MACHINE_DRIVER_START( jaguar )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("jag,abs,rom,j64,j01")
 	MDRV_CARTSLOT_LOAD(jaguar)
+	
+	MDRV_EEPROM_93C46_ADD("eeprom")
 MACHINE_DRIVER_END
 
 
@@ -755,6 +741,6 @@ static DEVICE_IMAGE_LOAD( jaguar )
  *
  *************************************/
 
-/*    YEAR   NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      CONFIG  COMPANY    FULLNAME */
-CONS( 1993,  jaguar,   0,        0,      jaguar,   jaguar,   jaguar,   0,      "Atari",   "Atari Jaguar", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND)
-CONS( 1995,  jaguarcd, jaguar,   0,      jaguar,   jaguar,   jaguar,   0,      "Atari",   "Atari Jaguar CD", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING)
+/*    YEAR   NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      COMPANY    FULLNAME */
+CONS( 1993,  jaguar,   0,        0,      jaguar,   jaguar,   jaguar,   "Atari",   "Atari Jaguar", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND)
+CONS( 1995,  jaguarcd, jaguar,   0,      jaguar,   jaguar,   jaguar,   "Atari",   "Atari Jaguar CD", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING)

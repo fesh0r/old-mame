@@ -264,24 +264,24 @@ static WRITE8_HANDLER( bankswitch_w )
 
 	const address_space *program = cputag_get_address_space(space->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM);
 
-	memory_set_bank(space->machine, 1, VIP_BANK_RAM);
+	memory_set_bank(space->machine, "bank1", VIP_BANK_RAM);
 
 	switch (messram_get_size(devtag_get_device(space->machine, "messram")))
 	{
 	case 1 * 1024:
-		memory_install_readwrite8_handler(program, 0x0000, 0x03ff, 0, 0x7c00, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(program, 0x0000, 0x03ff, 0, 0x7c00, "bank1");
 		break;
 
 	case 2 * 1024:
-		memory_install_readwrite8_handler(program, 0x0000, 0x07ff, 0, 0x7800, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(program, 0x0000, 0x07ff, 0, 0x7800, "bank1");
 		break;
 
 	case 4 * 1024:
-		memory_install_readwrite8_handler(program, 0x0000, 0x0fff, 0, 0x7000, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(program, 0x0000, 0x0fff, 0, 0x7000, "bank1");
 		break;
 
 	case 32 * 1024:
-		memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
 		break;
 	}
 }
@@ -304,8 +304,8 @@ static WRITE8_DEVICE_HANDLER( vip_cdp1861_dispoff_w )
 
 static ADDRESS_MAP_START( vip_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-    AM_RANGE(0x0000, 0x7fff) AM_RAMBANK(1)
-	AM_RANGE(0x8000, 0xffff) AM_RAMBANK(2)
+    AM_RANGE(0x0000, 0x7fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x8000, 0xffff) AM_RAMBANK("bank2")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( vip_io_map, ADDRESS_SPACE_IO, 8 )
@@ -518,7 +518,7 @@ static CDP1802_EF_READ( vip_ef_r )
 
 	/* tape input */
 	if (cassette_input(state->cassette) < 0) flags -= EF2;
-	set_led_status(VIP_LED_TAPE, (cassette_input(state->cassette) > 0));
+	set_led_status(device->machine, VIP_LED_TAPE, (cassette_input(state->cassette) > 0));
 
 	/* keyboard */
 	if (input_port_read(device->machine, "KEYPAD") & (1 << state->keylatch)) flags -= EF3;
@@ -576,7 +576,7 @@ static WRITE_LINE_DEVICE_HANDLER( vip_q_w )
 	}
 
 	/* Q led */
-	set_led_status(VIP_LED_Q, state);
+	set_led_status(device->machine, VIP_LED_Q, state);
 
 	/* tape output */
 	cassette_output(driver_state->cassette, state ? 1.0 : -1.0);
@@ -630,12 +630,13 @@ static MACHINE_START( vip )
 	UINT16 addr;
 
 	/* RAM banking */
-	memory_configure_bank(machine, 1, 0, 2, memory_region(machine, CDP1802_TAG), 0x8000);
+	memory_configure_bank(machine, "bank1", 0, 2, memory_region(machine, CDP1802_TAG), 0x8000);
 
 	/* ROM banking */
-	memory_install_readwrite8_handler(cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00, SMH_BANK(2), SMH_UNMAP);
-	memory_configure_bank(machine, 2, 0, 1, memory_region(machine, CDP1802_TAG) + 0x8000, 0);
-	memory_set_bank(machine, 2, 0);
+	memory_install_read_bank(cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00, "bank2");
+	memory_unmap_write(cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), 0x8000, 0x81ff, 0, 0x7e00);
+	memory_configure_bank(machine, "bank2", 0, 1, memory_region(machine, CDP1802_TAG) + 0x8000, 0);
+	memory_set_bank(machine, "bank2", 0);
 
 	/* randomize RAM contents */
 	for (addr = 0; addr < messram_get_size(devtag_get_device(machine, "messram")); addr++)
@@ -647,7 +648,7 @@ static MACHINE_START( vip )
 	state->colorram = auto_alloc_array(machine, UINT8, VP590_COLOR_RAM_SIZE);
 
 	/* enable power LED */
-	set_led_status(VIP_LED_POWER, 1);
+	set_led_status(machine, VIP_LED_POWER, 1);
 
 	/* look up devices */
 	state->cdp1861 = devtag_get_device(machine, CDP1861_TAG);
@@ -692,8 +693,8 @@ static MACHINE_RESET( vip )
 	switch (input_port_read(machine, "VIDEO"))
 	{
 	case VIP_VIDEO_CDP1861:
-		memory_install_write8_handler(io, 0x05, 0x05, 0, 0, SMH_UNMAP);
-		memory_install_write8_handler(program, 0xc000, 0xdfff, 0, 0, SMH_UNMAP);
+		memory_unmap_write(io, 0x05, 0x05, 0, 0);
+		memory_unmap_write(program, 0xc000, 0xdfff, 0, 0);
 		break;
 
 	case VIP_VIDEO_CDP1862:
@@ -731,8 +732,9 @@ static MACHINE_RESET( vip )
 	}
 
 	/* enable ROM mirror at 0x0000 */
-	memory_install_readwrite8_handler(program, 0x0000, 0x01ff, 0, 0x7e00, SMH_BANK(1), SMH_UNMAP);
-	memory_set_bank(machine, 1, VIP_BANK_ROM);
+	memory_install_read_bank(program, 0x0000, 0x01ff, 0, 0x7e00, "bank1");
+	memory_unmap_write(program, 0x0000, 0x01ff, 0, 0x7e00);
+	memory_set_bank(machine, "bank1", VIP_BANK_ROM);
 }
 
 /* Machine Drivers */
@@ -780,7 +782,7 @@ static MACHINE_DRIVER_START( vip )
 	/* devices */
 	MDRV_QUICKLOAD_ADD("quickload", vip, "bin,c8,c8x", 0)
 	MDRV_CASSETTE_ADD("cassette", vip_cassette_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("2K")
@@ -789,7 +791,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( vp111 )
 	MDRV_IMPORT_FROM(vip)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("1K")
@@ -856,6 +858,6 @@ static QUICKLOAD_LOAD( vip )
 
 /* System Drivers */
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT   INIT    CONFIG  COMPANY FULLNAME                FLAGS */
-COMP( 1977, vip,	0,		0,		vip,		vip,	0,		0,	"RCA",	"Cosmac VIP (VP-711)",	GAME_SUPPORTS_SAVE | GAME_IMPERFECT_COLORS )
-COMP( 1977, vp111,	vip,	0,		vp111,		vip,	0,		0,	"RCA",	"Cosmac VIP (VP-111)",	GAME_SUPPORTS_SAVE | GAME_IMPERFECT_COLORS )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT   INIT    COMPANY FULLNAME                FLAGS */
+COMP( 1977, vip,	0,		0,		vip,		vip,	0,		"RCA",	"Cosmac VIP (VP-711)",	GAME_SUPPORTS_SAVE | GAME_IMPERFECT_COLORS )
+COMP( 1977, vp111,	vip,	0,		vp111,		vip,	0,		"RCA",	"Cosmac VIP (VP-111)",	GAME_SUPPORTS_SAVE | GAME_IMPERFECT_COLORS )

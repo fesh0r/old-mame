@@ -43,6 +43,7 @@ struct _floppy_drive
 	int drtn; /* direction */
 	int stp;  /* step */
 	int wtg;  /* write gate */
+	int mon;  /* motor on */
 
 	/* state of output lines */
 	int idx;  /* index pulse */
@@ -115,12 +116,14 @@ static const floppy_error_map errmap[] =
 /***************************************************************************
     IMPLEMENTATION
 ***************************************************************************/
+extern DEVICE_GET_INFO(apple525);
+extern DEVICE_GET_INFO(sonydriv);
 
 INLINE floppy_drive *get_safe_token(const device_config *device)
 {
 	assert( device != NULL );
 	assert( device->token != NULL );
-	assert( device->type == DEVICE_GET_INFO_NAME(floppy) );
+	assert( device->type == DEVICE_GET_INFO_NAME(floppy) || device->type == DEVICE_GET_INFO_NAME(apple525) || device->type == DEVICE_GET_INFO_NAME(sonydriv));
 	return (floppy_drive *) device->token;
 }
 
@@ -337,29 +340,6 @@ static TIMER_CALLBACK(floppy_drive_index_callback)
 /*************************************************************************/
 /* IO_FLOPPY device functions */
 
-/* return and set current status
-  use for setting:-
-  1) write protect/enable
-  2) drive present/missing
-*/
-
-int	floppy_status(const device_config *img, int new_status)
-{
-	/* return current status only? */
-	if (new_status!=-1)
-	{
-		/* we don't set the flags directly.
-        The flags are "cooked" when we do a floppy_drive_get_flag_state depending on
-        if drive is connected etc. So if we wrote the flags back it would
-        corrupt this information. Therefore we update the flags depending on new_status */
-
-		floppy_drive_set_flag_state(img, FLOPPY_DRIVE_DISK_WRITE_PROTECTED, (new_status & FLOPPY_DRIVE_DISK_WRITE_PROTECTED));
-	}
-
-	/* return current status */
-	return floppy_drive_get_flag_state(img,0x0ff);
-}
-
 /* set flag state */
 void floppy_drive_set_flag_state(const device_config *img, int flag, int state)
 {
@@ -392,66 +372,13 @@ void floppy_drive_set_flag_state(const device_config *img, int flag, int state)
 	}
 }
 
-void floppy_drive_set_motor_state(const device_config *img, int state)
-{
-	int new_motor_state = 0;
-	int previous_state = 0;
-
-	/* previous state */
-	if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_MOTOR_ON))
-		previous_state = 1;
-
-	/* calc new state */
-
-	/* drive present? */
-	if (image_slotexists(img))
-	{
-		/* disk inserted? */
-		if (image_exists(img))
-		{
-			/* drive present and disc inserted */
-
-			/* state of motor is same as the programmed state */
-			if (state)
-			{
-				new_motor_state = 1;
-			}
-		}
-	}
-
-	if ((new_motor_state^previous_state)!=0)
-	{
-		/* if timer already setup remove it */
-		if (image_slotexists(img))
-		{
-			floppy_drive *pDrive = get_safe_token( img );
-
-			pDrive->idx = 0;
-			if (new_motor_state)
-			{
-				/* off->on */
-				/* check it's in range */
-
-				/* setup timer to trigger at rpm */
-				floppy_drive_index_func(img);
-			}
-			else
-			{
-				/* on->off */
-				timer_adjust_oneshot(pDrive->index_timer, attotime_zero, 0);
-			}
-		}
-	}
-
-	floppy_drive_set_flag_state(img, FLOPPY_DRIVE_MOTOR_ON, new_motor_state);
-
-}
-
 /* for pc, drive is always ready, for amstrad,pcw,spectrum it is only ready under
 a fixed set of circumstances */
 /* use this to set ready state of drive */
 void floppy_drive_set_ready_state(const device_config *img, int state, int flag)
 {
+	floppy_drive *drive = get_safe_token(img);
+
 	if (flag)
 	{
 		/* set ready only if drive is present, disk is in the drive,
@@ -463,7 +390,7 @@ void floppy_drive_set_ready_state(const device_config *img, int state, int flag)
 			/* disk inserted? */
 			if (image_exists(img))
 			{
-				if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_MOTOR_ON))
+				if (drive->mon == CLEAR_LINE)
 				{
 					/* set state */
 					floppy_drive_set_flag_state(img, FLOPPY_DRIVE_READY, state);
@@ -492,28 +419,7 @@ int	floppy_drive_get_flag_state(const device_config *img, int flag)
 	drive_flags = drv->flags;
 
 	/* these flags are independant of a real drive/disk image */
-    flags |= drive_flags & (FLOPPY_DRIVE_READY | FLOPPY_DRIVE_MOTOR_ON | FLOPPY_DRIVE_INDEX);
-
-	flags |= drive_flags & FLOPPY_DRIVE_HEAD_AT_TRACK_0;
-
-	/* if disk image is read-only return write protected all the time */
-	if (!image_is_writable(img))
-	{
-		flags |= FLOPPY_DRIVE_DISK_WRITE_PROTECTED;
-	}
-	else
-	{
-		/* return real state of write protected flag */
-		flags |= drive_flags & FLOPPY_DRIVE_DISK_WRITE_PROTECTED;
-	}
-
-	/* drive present not */
-	if (!image_slotexists(img))
-	{
-		/* adjust some flags if drive is not present */
-		flags &= ~FLOPPY_DRIVE_HEAD_AT_TRACK_0;
-		flags |= FLOPPY_DRIVE_DISK_WRITE_PROTECTED;
-	}
+    flags |= drive_flags & (FLOPPY_DRIVE_READY | FLOPPY_DRIVE_INDEX);
 
     flags &= flag;
 
@@ -543,15 +449,7 @@ void floppy_drive_seek(const device_config *img, signed int signed_tracks)
 	}
 
 	/* set track 0 flag */
-	pDrive->tk00 = ASSERT_LINE;
-	pDrive->flags &= ~FLOPPY_DRIVE_HEAD_AT_TRACK_0;
-
-	if (pDrive->current_track==0)
-	{
-		pDrive->tk00 = CLEAR_LINE;
-		pDrive->flags |= FLOPPY_DRIVE_HEAD_AT_TRACK_0;
-	}
-
+	pDrive->tk00 = (pDrive->current_track == 0) ? CLEAR_LINE : ASSERT_LINE;
 	devcb_call_write_line(&pDrive->out_tk00_func, pDrive->tk00);
 
 	/* inform disk image of step operation so it can cache information */
@@ -726,6 +624,15 @@ DEVICE_START( floppy )
 	floppy->drive_id = floppy_get_drive(device);
 	floppy->active = FALSE;
 
+	/* by default we are write-protected */
+	floppy->wpt = CLEAR_LINE;
+
+	/* not at track 0 */
+	floppy->tk00 = ASSERT_LINE;
+
+	/* motor off */
+	floppy->mon = ASSERT_LINE;
+
 	/* resolve callbacks */
 	devcb_resolve_write_line(&floppy->out_idx_func, &floppy->config->out_idx_func, device);
 	devcb_resolve_read_line(&floppy->in_mon_func, &floppy->config->in_mon_func, device);
@@ -819,6 +726,17 @@ const device_config *floppy_get_device(running_machine *machine,int drive)
 		case 1 : return devtag_get_device(machine,FLOPPY_1);
 		case 2 : return devtag_get_device(machine,FLOPPY_2);
 		case 3 : return devtag_get_device(machine,FLOPPY_3);
+	}
+	return NULL;
+}
+
+const device_config *floppy_get_device_owner(const device_config *device,int drive)
+{
+	switch(drive) {
+		case 0 : return device_find_child_by_tag(device->owner,FLOPPY_0);
+		case 1 : return device_find_child_by_tag(device->owner,FLOPPY_1);
+		case 2 : return device_find_child_by_tag(device->owner,FLOPPY_2);
+		case 3 : return device_find_child_by_tag(device->owner,FLOPPY_3);
 	}
 	return NULL;
 }
@@ -932,6 +850,32 @@ WRITE8_DEVICE_HANDLER( floppy_ds_w )
 	floppy_ds3_w(device, BIT(data, 3));
 }
 
+/* motor on, active low */
+WRITE_LINE_DEVICE_HANDLER( floppy_mon_w )
+{
+	floppy_drive *drive = get_safe_token(device);
+
+	/* force off if there is no attached image */
+	if (!image_exists(device))
+		state = ASSERT_LINE;
+
+	if (image_slotexists(device))
+	{
+		/* off -> on */
+		if (drive->mon && state == CLEAR_LINE)
+		{
+			drive->idx = 0;
+			floppy_drive_index_func(device);
+		}
+
+		/* on -> off */
+		else if (drive->mon == CLEAR_LINE && state)
+			timer_adjust_oneshot(drive->index_timer, attotime_zero, 0);
+	}
+
+	drive->mon = state;
+}
+
 /* direction */
 WRITE_LINE_DEVICE_HANDLER( floppy_drtn_w )
 {
@@ -957,25 +901,17 @@ WRITE_LINE_DEVICE_HANDLER( floppy_stp_w )
 		if (drive->drtn)
 		{
 			/* move head outward */
-			drive->current_track--;
+			if (drive->current_track > 0)
+				drive->current_track--;
 
 			/* are we at track 0 now? */
-			if (drive->current_track <= 0)
-			{
-				drive->current_track = 0;
-				drive->tk00 = CLEAR_LINE;
-			}
-			else
-				drive->tk00 = ASSERT_LINE;
+			drive->tk00 = (drive->current_track == 0) ? CLEAR_LINE : ASSERT_LINE;
 		}
 		else
 		{
 			/* move head inward */
-			drive->current_track++;
-
-			/* are we over the maximum? */
-			if (drive->current_track >= drive->max_track)
-				drive->current_track = drive->max_track - 1;
+			if (drive->current_track < drive->max_track)
+				drive->current_track++;
 
 			/* we can't be at track 0 here, so reset the line */
 			drive->tk00 = ASSERT_LINE;
@@ -999,7 +935,23 @@ WRITE_LINE_DEVICE_HANDLER( floppy_wtg_w )
 READ_LINE_DEVICE_HANDLER( floppy_wpt_r )
 {
 	floppy_drive *drive = get_safe_token(device);
+
+	if (image_slotexists(device))
+	{
+		if (image_is_writable(device))
+			drive->wpt = ASSERT_LINE;
+		else
+			drive->wpt = CLEAR_LINE;
+	}
+
 	return drive->wpt;
+}
+
+/* track 0 detect */
+READ_LINE_DEVICE_HANDLER( floppy_tk00_r )
+{
+	floppy_drive *drive = get_safe_token(device);
+	return drive->tk00;
 }
 
 
@@ -1028,7 +980,8 @@ DEVICE_GET_INFO(floppy)
 		case DEVINFO_INT_IMAGE_TYPE:				info->i = IO_FLOPPY; break;
 		case DEVINFO_INT_IMAGE_READABLE:			info->i = 1; break;
 		case DEVINFO_INT_IMAGE_WRITEABLE:			info->i = 1; break;
-		case DEVINFO_INT_IMAGE_CREATABLE:	{
+		case DEVINFO_INT_IMAGE_CREATABLE:
+											{
 												int cnt = 0;
 												if ( device && device->static_config )
 												{
@@ -1047,14 +1000,15 @@ DEVICE_GET_INFO(floppy)
 		case DEVINFO_FCT_IMAGE_LOAD:				info->f = (genf *) DEVICE_IMAGE_LOAD_NAME(floppy); break;
 		case DEVINFO_FCT_IMAGE_UNLOAD:				info->f = (genf *) DEVICE_IMAGE_UNLOAD_NAME(floppy); break;
 		case DEVINFO_PTR_IMAGE_CREATE_OPTGUIDE:		info->p = (void *)floppy_option_guide; break;
-		case DEVINFO_INT_IMAGE_CREATE_OPTCOUNT:		{
+		case DEVINFO_INT_IMAGE_CREATE_OPTCOUNT:
+		{
 			const struct FloppyFormat *floppy_options = ((floppy_config*)device->static_config)->formats;
 			int count;
 			for (count = 0; floppy_options[count].construct; count++)
 				;
 			info->i = count;
 			break;
-			}
+		}
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:						strcpy(info->s, "Floppy Disk"); break;

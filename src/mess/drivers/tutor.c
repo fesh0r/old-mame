@@ -191,9 +191,9 @@ static DRIVER_INIT(tutor)
 {
 	tape_interrupt_timer = timer_alloc(machine, tape_interrupt_handler, NULL);
 
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, "maincpu") + basic_base, 0);
-	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, "maincpu") + cartridge_base, 0);
-	memory_set_bank(machine, 1, 0);
+	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, "maincpu") + basic_base, 0);
+	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, "maincpu") + cartridge_base, 0);
+	memory_set_bank(machine, "bank1", 0);
 }
 
 static const TMS9928a_interface tms9929a_interface =
@@ -313,13 +313,13 @@ static WRITE8_HANDLER(tutor_mapper_w)
 	case 0x08:
 		/* disable cartridge ROM, enable BASIC ROM at base >8000 */
 		cartridge_enable = 0;
-		memory_set_bank(space->machine, 1, 0);
+		memory_set_bank(space->machine, "bank1", 0);
 		break;
 
 	case 0x0c:
 		/* enable cartridge ROM, disable BASIC ROM at base >8000 */
 		cartridge_enable = 1;
-		memory_set_bank(space->machine, 1, 1);
+		memory_set_bank(space->machine, "bank1", 1);
 		break;
 
 	default:
@@ -479,7 +479,8 @@ static WRITE8_DEVICE_HANDLER(tutor_printer_w)
     @>f000-@>f0fb: tms9995 internal RAM 2
 */
 
-/*static WRITE8_HANDLER(test_w)
+#ifdef UNUSED_FUNCTION
+static WRITE8_HANDLER(test_w)
 {
     switch (offset)
     {
@@ -487,12 +488,13 @@ static WRITE8_DEVICE_HANDLER(tutor_printer_w)
         logerror("unmapped write %d %d\n", offset, data);
         break;
     }
-}*/
+}
+#endif
 
 static ADDRESS_MAP_START(tutor_memmap, ADDRESS_SPACE_PROGRAM, 8)
 
 	AM_RANGE(0x0000, 0x7fff) AM_ROM	/*system ROM*/
-	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(1)	AM_WRITENOP/*BASIC ROM & cartridge ROM*/
+	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK("bank1") AM_WRITENOP /*BASIC ROM & cartridge ROM*/
 	AM_RANGE(0xc000, 0xdfff) AM_NOP	/*free for expansion, or cartridge ROM?*/
 
 	AM_RANGE(0xe000, 0xe000) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)	/*VDP data*/
@@ -500,7 +502,7 @@ static ADDRESS_MAP_START(tutor_memmap, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xe100, 0xe1ff) AM_READWRITE(tutor_mapper_r, tutor_mapper_w)	/*cartridge mapper*/
 	AM_RANGE(0xe200, 0xe200) AM_DEVWRITE("sn76489a", sn76496_w)	/*sound chip*/
 	AM_RANGE(0xe800, 0xe8ff) AM_DEVREADWRITE("printer",tutor_printer_r, tutor_printer_w)	/*printer*/
-	AM_RANGE(0xee00, 0xeeff) AM_READWRITE(SMH_NOP, tutor_cassette_w)		/*cassette interface*/
+	AM_RANGE(0xee00, 0xeeff) AM_READNOP AM_WRITE( tutor_cassette_w)		/*cassette interface*/
 
 	AM_RANGE(0xf000, 0xffff) AM_NOP	/*free for expansion (and internal processor RAM)*/
 
@@ -692,5 +694,5 @@ ROM_START(tutor)
 	ROM_LOAD("tutor2.bin", 0x8000, 0x4000, CRC(05f228f5) SHA1(46a14a45f6f9e2c30663a2b87ce60c42768a78d0))      /* BASIC ROM */
 ROM_END
 
-/*      YEAR    NAME    PARENT      COMPAT  MACHINE     INPUT   INIT    CONFIG      COMPANY     FULLNAME */
-COMP(	1983?,	tutor,	0,			0,		tutor,		tutor,	tutor,	0,		"Tomy",		"Tomy Tutor" , 0)
+/*      YEAR    NAME    PARENT      COMPAT  MACHINE     INPUT   INIT    COMPANY     FULLNAME */
+COMP(	1983?,	tutor,	0,			0,		tutor,		tutor,	tutor,	"Tomy",		"Tomy Tutor" , 0)

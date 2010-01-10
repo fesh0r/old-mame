@@ -459,7 +459,7 @@ static const pia6821_interface pia_dummy_intf =
 /* Memory Maps */
 
 static ADDRESS_MAP_START( osi600_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x1fff) AM_RAMBANK("bank1")
 	AM_RANGE(0xa000, 0xbfff) AM_ROM
 	AM_RANGE(0xd000, 0xd3ff) AM_RAM AM_BASE_MEMBER(osi_state, video_ram)
 	AM_RANGE(0xdf00, 0xdf00) AM_READWRITE(osi600_keyboard_r, osi600_keyboard_w)
@@ -469,7 +469,7 @@ static ADDRESS_MAP_START( osi600_mem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( uk101_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x1fff) AM_RAMBANK("bank1")
 	AM_RANGE(0xa000, 0xbfff) AM_ROM
 	AM_RANGE(0xd000, 0xd3ff) AM_RAM AM_BASE_MEMBER(osi_state, video_ram)
 	AM_RANGE(0xdf00, 0xdf00) AM_MIRROR(0x03ff) AM_READWRITE(osi600_keyboard_r, uk101_keyboard_w)
@@ -479,7 +479,7 @@ static ADDRESS_MAP_START( uk101_mem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( c1p_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x4fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x4fff) AM_RAMBANK("bank1")
 	AM_RANGE(0xa000, 0xbfff) AM_ROM
 	AM_RANGE(0xc704, 0xc707) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
 	AM_RANGE(0xc708, 0xc70b) AM_DEVREADWRITE("pia_2", pia6821_r, pia6821_w)
@@ -496,7 +496,7 @@ static ADDRESS_MAP_START( c1p_mem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( c1pmf_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x4fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x4fff) AM_RAMBANK("bank1")
 	AM_RANGE(0xa000, 0xbfff) AM_ROM
 	AM_RANGE(0xc000, 0xc003) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w) // FDC
 	AM_RANGE(0xc010, 0xc010) AM_DEVREADWRITE("acia_1", acia6850_stat_r, acia6850_ctrl_w)
@@ -673,18 +673,18 @@ static MACHINE_START( osi600 )
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* configure RAM banking */
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, M6502_TAG), 0);
-	memory_set_bank(machine, 1, 0);
+	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, M6502_TAG), 0);
+	memory_set_bank(machine, "bank1", 0);
 
 	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 4*1024:
-		memory_install_readwrite8_handler(program, 0x0000, 0x0fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
-		memory_install_readwrite8_handler(program, 0x1000, 0x1fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite_bank(program, 0x0000, 0x0fff, 0, 0, "bank1");
+		memory_unmap_readwrite(program, 0x1000, 0x1fff, 0, 0);
 		break;
 
 	case 8*1024:
-		memory_install_readwrite8_handler(program, 0x0000, 0x1fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(program, 0x0000, 0x1fff, 0, 0, "bank1");
 		break;
 	}
 
@@ -703,18 +703,18 @@ static MACHINE_START( c1p )
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* configure RAM banking */
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, M6502_TAG), 0);
-	memory_set_bank(machine, 1, 0);
+	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, M6502_TAG), 0);
+	memory_set_bank(machine, "bank1", 0);
 
 	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 8*1024:
-		memory_install_readwrite8_handler(program, 0x0000, 0x1fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
-		memory_install_readwrite8_handler(program, 0x2000, 0x4fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite_bank(program, 0x0000, 0x1fff, 0, 0, "bank1");
+		memory_unmap_readwrite(program, 0x2000, 0x4fff, 0, 0);
 		break;
 
 	case 20*1024:
-		memory_install_readwrite8_handler(program, 0x0000, 0x4fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(program, 0x0000, 0x4fff, 0, 0, "bank1");
 		break;
 	}
 
@@ -755,6 +755,25 @@ static const floppy_config osi_floppy_config =
 	DO_NOT_KEEP_GEOMETRY
 };
 
+/* F4 Character Displayer */
+static const gfx_layout osi_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static GFXDECODE_START( osi )
+	GFXDECODE_ENTRY( "chargen", 0x0000, osi_charlayout, 0, 1 )
+GFXDECODE_END
+
+
 /* Machine Drivers */
 
 static MACHINE_DRIVER_START( osi600 )
@@ -766,8 +785,9 @@ static MACHINE_DRIVER_START( osi600 )
 
 	MDRV_MACHINE_START(osi600)
 
-    /* video hardware */
+	/* video hardware */
 	MDRV_IMPORT_FROM(osi600_video)
+	MDRV_GFXDECODE(osi)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -780,7 +800,7 @@ static MACHINE_DRIVER_START( osi600 )
 
 	/* cassette */
 	MDRV_CASSETTE_ADD("cassette", default_cassette_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("4K")
@@ -796,8 +816,9 @@ static MACHINE_DRIVER_START( uk101 )
 
 	MDRV_MACHINE_START(osi600)
 
-    /* video hardware */
+	/* video hardware */
 	MDRV_IMPORT_FROM(uk101_video)
+	MDRV_GFXDECODE(osi)
 
 	/* cassette ACIA */
 	MDRV_ACIA6850_ADD("acia_0", uk101_acia_intf)
@@ -808,7 +829,7 @@ static MACHINE_DRIVER_START( uk101 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("4K")
-	MDRV_RAM_EXTRA_OPTIONS("8K")	
+	MDRV_RAM_EXTRA_OPTIONS("8K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( c1p )
@@ -820,8 +841,9 @@ static MACHINE_DRIVER_START( c1p )
 
 	MDRV_MACHINE_START(c1p)
 
-    /* video hardware */
+	/* video hardware */
 	MDRV_IMPORT_FROM(osi630_video)
+	MDRV_GFXDECODE(osi)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -840,7 +862,7 @@ static MACHINE_DRIVER_START( c1p )
 
 	/* cassette */
 	MDRV_CASSETTE_ADD("cassette", default_cassette_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("8K")
@@ -861,7 +883,7 @@ static MACHINE_DRIVER_START( c1pmf )
 	MDRV_ACIA6850_ADD("acia_1", osi470_acia_intf)
 
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, osi_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("20K")
@@ -913,9 +935,9 @@ static DRIVER_INIT( c1p )
 
 /* System Drivers */
 
-//    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY            FULLNAME
-COMP( 1978, sb2m600b,	0,			0,		osi600,		osi600,		0, 		0,		"Ohio Scientific", "Superboard II Model 600 (Rev. B)", 0)
-//COMP( 1980, sb2m600c, 0,          0,      osi600c,    osi600,     0,      0,     "Ohio Scientific", "Superboard II Model 600 (Rev. C)", 0)
-COMP( 1980, c1p,		sb2m600b,	0,		c1p,		osi600,		c1p,	0,		"Ohio Scientific", "Challenger 1P Series 2", GAME_NOT_WORKING)
-COMP( 1980, c1pmf,		sb2m600b,	0,		c1pmf,		osi600,		c1p,	0,		"Ohio Scientific", "Challenger 1P MF Series 2", GAME_NOT_WORKING)
-COMP( 1979,	uk101,		sb2m600b,	0,		uk101,		uk101,		0, 		0,		"Compukit",        "UK101", GAME_NOT_WORKING)
+//    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT        COMPANY            FULLNAME
+COMP( 1978, sb2m600b,	0,		0,	osi600,   osi600,    0,		"Ohio Scientific", "Superboard II Model 600 (Rev. B)", GAME_NOT_WORKING)
+//COMP( 1980, sb2m600c, 0,      	0,      osi600c,  osi600,    0,		"Ohio Scientific", "Superboard II Model 600 (Rev. C)", GAME_NOT_WORKING)
+COMP( 1980, c1p,	sb2m600b,	0,	c1p,	  osi600,    c1p,	"Ohio Scientific", "Challenger 1P Series 2", GAME_NOT_WORKING)
+COMP( 1980, c1pmf,	sb2m600b,	0,	c1pmf,	  osi600,    c1p,	"Ohio Scientific", "Challenger 1P MF Series 2", GAME_NOT_WORKING)
+COMP( 1979, uk101,	sb2m600b,	0,	uk101,	  uk101,     0, 	"Compukit",        "UK101", GAME_NOT_WORKING)

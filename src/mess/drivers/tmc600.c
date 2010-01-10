@@ -103,7 +103,7 @@ static WRITE8_HANDLER( keyboard_latch_w )
 
 static ADDRESS_MAP_START( tmc600_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x4fff) AM_ROM
-	AM_RANGE(0x6000, 0xbfff) AM_RAMBANK(1)
+	AM_RANGE(0x6000, 0xbfff) AM_RAM
 	AM_RANGE(0xf400, 0xf7ff) AM_DEVREADWRITE(CDP1869_TAG, cdp1869_charram_r, cdp1869_charram_w)
 	AM_RANGE(0xf800, 0xffff) AM_DEVREADWRITE(CDP1869_TAG, cdp1869_pageram_r, cdp1869_pageram_w)
 ADDRESS_MAP_END
@@ -276,23 +276,14 @@ static MACHINE_START( tmc600 )
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* configure RAM */
-	memory_configure_bank(machine, 1, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
-	memory_set_bank(machine, 1, 0);
-
 	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 8*1024:
-		memory_install_readwrite8_handler(program, 0x6000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
-		memory_install_readwrite8_handler(program, 0x8000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_unmap_readwrite(program, 0x8000, 0xbfff, 0, 0);
 		break;
 
 	case 16*1024:
-		memory_install_readwrite8_handler(program, 0x6000, 0x9fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
-		memory_install_readwrite8_handler(program, 0xa000, 0xbfff, 0, 0, SMH_UNMAP, SMH_UNMAP);
-		break;
-
-	case 24*1024:
-		memory_install_readwrite8_handler(program, 0x6000, 0xbfff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_unmap_readwrite(program, 0xa000, 0xbfff, 0, 0);
 		break;
 	}
 
@@ -329,6 +320,24 @@ static const floppy_config tmc600_floppy_config =
 	DO_NOT_KEEP_GEOMETRY
 };
 
+/* F4 Character Displayer */
+static const gfx_layout tmc600_charlayout =
+{
+	6, 9,					/* 6 x 9 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 2048*8 },
+	8*8					/* every char takes 2 x 8 bytes */
+};
+
+static GFXDECODE_START( tmc600 )
+	GFXDECODE_ENTRY( "chargen", 0x0000, tmc600_charlayout, 0, 36 )
+GFXDECODE_END
+
 static MACHINE_DRIVER_START( tmc600 )
 	MDRV_DRIVER_DATA(tmc600_state)
 
@@ -345,6 +354,7 @@ static MACHINE_DRIVER_START( tmc600 )
 	// sound and video hardware
 
 	MDRV_IMPORT_FROM(tmc600_video)
+	MDRV_GFXDECODE(tmc600)
 
 	/* printer */
 	MDRV_CENTRONICS_ADD(CENTRONICS_TAG, standard_centronics)
@@ -353,10 +363,10 @@ static MACHINE_DRIVER_START( tmc600 )
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, tmc600_cassette_config)
 
 	MDRV_FLOPPY_4_DRIVES_ADD(tmc600_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("8K")		
+	MDRV_RAM_DEFAULT_SIZE("8K")
 	MDRV_RAM_EXTRA_OPTIONS("16K,24K")
 MACHINE_DRIVER_END
 
@@ -387,6 +397,6 @@ ROM_START( tmc600s2 )
 ROM_END
 
 /* System Drivers */
-//    YEAR  NAME      PARENT    COMPAT   MACHINE   INPUT     INIT    CONFIG    COMPANY        FULLNAME
-COMP( 1982, tmc600s1, 0,	0,	     tmc600,   tmc600,   0, 	0,   "Telercas Oy", "Telmac TMC-600 (Sarja I)",  GAME_NOT_WORKING )
-COMP( 1982, tmc600s2, 0,	0,	     tmc600,   tmc600,   0, 	0,   "Telercas Oy", "Telmac TMC-600 (Sarja II)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+//    YEAR  NAME      PARENT    COMPAT   MACHINE   INPUT     INIT    COMPANY        FULLNAME
+COMP( 1982, tmc600s1, 0,	0,	     tmc600,   tmc600,   0, 	   "Telercas Oy", "Telmac TMC-600 (Sarja I)",  GAME_NOT_WORKING )
+COMP( 1982, tmc600s2, 0,	0,	     tmc600,   tmc600,   0, 	   "Telercas Oy", "Telmac TMC-600 (Sarja II)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )

@@ -78,20 +78,20 @@ Notes: (all chips shown above)
       TMM331  - Toshiba TMM331AP 2k x8 MASKROM (DIP24)
                 Pinout (preliminary):
                            TMM331
-                   ? ? ?|----\/----|
-                    ?A7?|1 ? ? ? 24| VCC
-?                    A8?|2 ? ? ? 23| D0
-?                    A9?|3 ? ? ? 22| D1
-?                   A10 |4 ? ? ? 21| D2
-                    ?A0?|5 ? ? ? 20| D3
-?                    A1?|6 ? ? ? 19| D4
-                    ?A2?|7 ? ? ? 18| D5
-                    ?A3?|8 ? ? ? 17| D6
-                    ?A4?|9 ? ? ? 16| D7
-?                    A5?|10 ? ? ?15| CE (LOW)
-?                    A6?|11 ? ? ?14| ? (unknown, leave NC?)
-                    GND?|12 ? ? ?13| OE (LOW)
-? ? ?                   |----------|
+                        |----\/----|
+                     A7 |1       24| VCC
+                     A8 |2       23| D0
+                     A9 |3       22| D1
+                    A10 |4       21| D2
+                     A0 |5       20| D3
+                     A1 |6       19| D4
+                     A2 |7       18| D5
+                     A3 |8       17| D6
+                     A4 |9       16| D7
+                     A5 |10      15| CE (LOW)
+                     A6 |11      14| ? (unknown, leave NC?)
+                    GND |12      13| OE (LOW)
+                        |----------|
 
 */
 
@@ -254,8 +254,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( mpt02_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
 	AM_RANGE(0x0800, 0x09ff) AM_RAM
-	AM_RANGE(0x0a00, 0x0dff) AM_ROM
-	AM_RANGE(0x0e00, 0x0eff) AM_RAM AM_BASE_MEMBER(studio2_state, color_ram)
+	AM_RANGE(0x0b00, 0x0b3f) AM_RAM AM_BASE_MEMBER(studio2_state, color_ram)
+	AM_RANGE(0x0c00, 0x0dff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mpt02_io_map, ADDRESS_SPACE_IO, 8 )
@@ -610,6 +610,9 @@ static MACHINE_DRIVER_START( mpt02 )
 
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD("beep", BEEP, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
 	MDRV_CDP1864_ADD(CDP1864_TAG, CDP1864_CLOCK, mpt02_cdp1864_intf)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
@@ -646,10 +649,18 @@ ROM_END
 
 ROM_START( mpt02s )
 	ROM_REGION( 0x10000, CDP1802_TAG, 0 )
+	ROM_LOAD( "86676.ic13",  0x0000, 0x0400, CRC(a7d0dd3b) SHA1(e1881ab4d67a5d735dd2c8d7e924e41df6f2aeec) )
+	ROM_LOAD( "86677b.ic14", 0x0400, 0x0400, CRC(82a2d29e) SHA1(37e02089d611db10bad070d89c8801de41521189) )
+	ROM_LOAD( "87201.ic12",  0x0c00, 0x0400, CRC(8006a1e3) SHA1(b67612d98231485fce55d604915abd19b6d64eac) )
 ROM_END
 
 ROM_START( mpt02h )
 	ROM_REGION( 0x10000, CDP1802_TAG, 0 )
+ROM_END
+
+ROM_START( eti660 )
+	ROM_REGION( 0x10000, CDP1802_TAG, 0 )
+	ROM_LOAD( "eti660.bin", 0x0000, 0x0400, CRC(811dfa62) SHA1(c0c4951e02f873f15560bdc3f35cdf3f99653922) )
 ROM_END
 
 /* Driver Initialization */
@@ -668,10 +679,11 @@ static DRIVER_INIT( studio2 )
 
 /* Game Drivers */
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY   FULLNAME */
-CONS( 1977,	studio2,	0,		0,		studio2,	studio2,	studio2,	0,			"RCA",		"Studio II", GAME_SUPPORTS_SAVE )
-CONS( 1978, visicom,	studio2,0,		visicom,	studio2,	studio2,	0,			"Toshiba",	"Visicom (Japan)", GAME_IMPERFECT_GRAPHICS | GAME_SUPPORTS_SAVE )
-CONS( 1978,	mpt02s,		studio2,0,		mpt02,		studio2,	studio2,	0,			"Soundic",	"MPT-02 Victory Home TV Programmer (Austria)", GAME_NOT_WORKING )
-CONS( 1978,	mpt02h,		studio2,0,		mpt02,		studio2,	studio2,	0,			"Hanimex",	"MPT-02 Jeu TV Programmable (France)", GAME_NOT_WORKING )
-CONS( 1978,	mtc9016,	studio2,0,		mpt02,		studio2,	studio2,	0,			"Mustang",	"9016 Telespiel Computer (Germany)", GAME_NOT_WORKING )
-CONS( 1978, shmc1200,	studio2,0,		mpt02,		studio2,	studio2,	0,			"Sheen",	"1200 Micro Computer (Australia)", GAME_NOT_WORKING )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        COMPANY   FULLNAME */
+CONS( 1977,	studio2,	0,		0,		studio2,	studio2,	studio2,	"RCA",		"Studio II", GAME_SUPPORTS_SAVE )
+CONS( 1978, visicom,	studio2,0,		visicom,	studio2,	studio2,	"Toshiba",	"Visicom (Japan)", GAME_IMPERFECT_GRAPHICS | GAME_WRONG_COLORS | GAME_SUPPORTS_SAVE )
+CONS( 1978,	mpt02s,		studio2,0,		mpt02,		studio2,	studio2,	"Soundic",	"MPT-02 Victory Home TV Programmer (Austria)", GAME_NOT_WORKING )
+CONS( 1978,	mpt02h,		studio2,0,		mpt02,		studio2,	studio2,	"Hanimex",	"MPT-02 Jeu TV Programmable (France)", GAME_NOT_WORKING )
+CONS( 1978,	mtc9016,	studio2,0,		mpt02,		studio2,	studio2,	"Mustang",	"9016 Telespiel Computer (Germany)", GAME_NOT_WORKING )
+CONS( 1978, shmc1200,	studio2,0,		mpt02,		studio2,	studio2,	"Sheen",	"1200 Micro Computer (Australia)", GAME_NOT_WORKING )
+CONS( 1978, eti660,		studio2,0,		mpt02,		studio2,	studio2,	"Electronics Today International",	"ETI-660 (Australia)", GAME_NOT_WORKING )

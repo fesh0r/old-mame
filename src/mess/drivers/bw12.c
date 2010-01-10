@@ -61,35 +61,37 @@ static void bw12_bankswitch(running_machine *machine)
 	switch (state->bank)
 	{
 	case 0: /* ROM */
-		memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
+		memory_install_read_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
+		memory_unmap_write(program, 0x0000, 0x7fff, 0, 0);
 		break;
 
 	case 1: /* BK0 */
-		memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
 		break;
 
 	case 2: /* BK1 */
 	case 3: /* BK2 */
 		if (messram_get_size(devtag_get_device(machine, "messram")) > 64*1024)
 		{
-			memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+			memory_install_readwrite_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
 		}
 		else
 		{
-			memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+			memory_unmap_readwrite(program, 0x0000, 0x7fff, 0, 0);
 		}
 		break;
 	}
 
-	memory_set_bank(machine, 1, state->bank);
+	memory_set_bank(machine, "bank1", state->bank);
 }
 
 static TIMER_CALLBACK( floppy_motor_off_tick )
 {
 	bw12_state *state = machine->driver_data;
 
-	floppy_drive_set_motor_state(get_floppy_image(machine, 0), 0);
-	floppy_drive_set_motor_state(get_floppy_image(machine, 1), 0);
+	floppy_mon_w(get_floppy_image(machine, 0), ASSERT_LINE);
+	floppy_mon_w(get_floppy_image(machine, 1), ASSERT_LINE);
+
 	floppy_drive_set_ready_state(get_floppy_image(machine, 0), 0, 0);
 	floppy_drive_set_ready_state(get_floppy_image(machine, 1), 0, 0);
 
@@ -149,7 +151,7 @@ static void ls259_w(running_machine *machine, int address, int data)
 
 		if (data)
 		{
-			floppy_drive_set_motor_state(get_floppy_image(machine, 0), 1);
+			floppy_mon_w(get_floppy_image(machine, 0), CLEAR_LINE);
 			floppy_drive_set_ready_state(get_floppy_image(machine, 0), 1, 0);
 		}
 
@@ -161,7 +163,7 @@ static void ls259_w(running_machine *machine, int address, int data)
 
 		if (data)
 		{
-			floppy_drive_set_motor_state(get_floppy_image(machine, 1), 1);
+			floppy_mon_w(get_floppy_image(machine, 1), CLEAR_LINE);
 			floppy_drive_set_ready_state(get_floppy_image(machine, 1), 1, 0);
 		}
 
@@ -192,7 +194,7 @@ static READ8_HANDLER( bw12_ls259_r )
 /* Memory Maps */
 
 static ADDRESS_MAP_START( bw12_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x8000, 0xf7ff) AM_RAM
 	AM_RANGE(0xf800, 0xffff) AM_RAM AM_BASE_MEMBER(bw12_state, video_ram)
 ADDRESS_MAP_END
@@ -448,19 +450,14 @@ static UPD765_GET_IMAGE( bw12_upd765_get_image )
 
 static const struct upd765_interface bw12_upd765_interface =
 {
-	DEVCB_LINE(bw12_upd765_interrupt),		/* interrupt */
-	NULL,						/* DMA request */
-	bw12_upd765_get_image,		/* image lookup */
-	UPD765_RDY_PIN_CONNECTED,	/* ready pin */
-	{FLOPPY_0,FLOPPY_1, NULL, NULL}
+	DEVCB_LINE(bw12_upd765_interrupt),	/* interrupt */
+	NULL,								/* DMA request */
+	bw12_upd765_get_image,				/* image lookup */
+	UPD765_RDY_PIN_CONNECTED,			/* ready pin */
+	{ FLOPPY_0, FLOPPY_1, NULL, NULL }
 };
 
 /* PIA6821 Interface */
-
-static WRITE_LINE_DEVICE_HANDLER( bw12_interrupt )
-{
-	cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_IRQ0, state);
-}
 
 static READ8_DEVICE_HANDLER( bw12_pia6821_pa_r )
 {
@@ -495,20 +492,6 @@ static READ8_DEVICE_HANDLER( bw12_pia6821_pa_r )
 	return data;
 }
 
-static READ_LINE_DEVICE_HANDLER( bw12_pia6821_ca1_r )
-{
-	bw12_state *state = device->machine->driver_data;
-
-	return centronics_ack_r(state->centronics);
-}
-
-static WRITE_LINE_DEVICE_HANDLER( bw12_pia6821_ca2_w )
-{
-	bw12_state *driver_state = device->machine->driver_data;
-
-	centronics_strobe_w(driver_state->centronics, state);
-}
-
 static READ_LINE_DEVICE_HANDLER( bw12_pia6821_cb1_r )
 {
 	bw12_state *state = device->machine->driver_data;
@@ -534,18 +517,18 @@ static WRITE_LINE_DEVICE_HANDLER( bw12_pia6821_cb2_w )
 
 static const pia6821_interface bw12_pia_config =
 {
-	DEVCB_HANDLER(bw12_pia6821_pa_r),	/* port A input */
-	DEVCB_NULL,							/* port B input */
-	DEVCB_LINE(bw12_pia6821_ca1_r),		/* CA1 input */
-	DEVCB_LINE(bw12_pia6821_cb1_r),		/* CB1 input */
-	DEVCB_NULL,							/* CA2 input */
-	DEVCB_NULL,							/* CB2 input */
-	DEVCB_NULL, 						/* port A output */
+	DEVCB_HANDLER(bw12_pia6821_pa_r),							/* port A input */
+	DEVCB_NULL,													/* port B input */
+	DEVCB_DEVICE_LINE(CENTRONICS_TAG, centronics_ack_r),		/* CA1 input */
+	DEVCB_LINE(bw12_pia6821_cb1_r),								/* CB1 input */
+	DEVCB_NULL,													/* CA2 input */
+	DEVCB_NULL,													/* CB2 input */
+	DEVCB_NULL, 												/* port A output */
 	DEVCB_DEVICE_HANDLER(CENTRONICS_TAG, centronics_data_w),	/* port B output */
-	DEVCB_LINE(bw12_pia6821_ca2_w),		/* CA2 output */
-	DEVCB_LINE(bw12_pia6821_cb2_w),		/* CB2 output */
-	DEVCB_LINE(bw12_interrupt),			/* IRQA output */
-	DEVCB_LINE(bw12_interrupt)			/* IRQB output */
+	DEVCB_DEVICE_LINE(CENTRONICS_TAG, centronics_strobe_w),		/* CA2 output */
+	DEVCB_LINE(bw12_pia6821_cb2_w),								/* CB2 output */
+	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),				/* IRQA output */
+	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0)				/* IRQB output */
 };
 
 /* Centronics Interface */
@@ -559,6 +542,11 @@ static const centronics_interface bw12_centronics_intf =
 };
 
 /* Z80-SIO/0 Interface */
+
+static WRITE_LINE_DEVICE_HANDLER( bw12_interrupt )
+{
+	cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_IRQ0, state);
+}
 
 static const z80sio_interface bw12_z80sio_intf =
 {
@@ -691,9 +679,9 @@ static MACHINE_START( bw12 )
 	state->floppy_motor_off_timer = timer_alloc(machine, floppy_motor_off_tick, NULL);
 
 	/* setup memory banking */
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, Z80_TAG), 0);
-	memory_configure_bank(machine, 1, 1, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
-	memory_configure_bank(machine, 1, 2, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x10000, 0x8000);
+	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, Z80_TAG), 0);
+	memory_configure_bank(machine, "bank1", 1, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
+	memory_configure_bank(machine, "bank1", 2, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x10000, 0x8000);
 
 	/* register for state saving */
 	state_save_register_global(machine, state->bank);
@@ -797,6 +785,25 @@ static const floppy_config bw14_floppy_config =
 	DO_NOT_KEEP_GEOMETRY
 };
 
+/* F4 Character Displayer */
+static const gfx_layout bw12_charlayout =
+{
+	8, 9,					/* 8 x 9 characters */
+	256,					/* 128 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8 },
+	8*16					/* every char takes 16 bytes */
+};
+
+static GFXDECODE_START( bw12 )
+	GFXDECODE_ENTRY( "chargen", 0x0000, bw12_charlayout, 0, 1 )
+GFXDECODE_END
+
+
 /* Machine Driver */
 static MACHINE_DRIVER_START( common )
 	MDRV_DRIVER_DATA(bw12_state)
@@ -817,6 +824,7 @@ static MACHINE_DRIVER_START( common )
 	MDRV_SCREEN_SIZE(640, 200)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 200-1)
 
+	MDRV_GFXDECODE(bw12)
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(monochrome_amber)
 
@@ -878,6 +886,6 @@ ROM_END
 
 /* System Drivers */
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY                             FULLNAME        FLAGS */
-COMP( 1984,	bw12,	0,		0,		bw12, 	bw12,	0,		0,	"Bondwell International Limited",   "Bondwell 12",	GAME_SUPPORTS_SAVE )
-COMP( 1984,	bw14,	bw12,	0,		bw14,	bw12,	0,		0,	"Bondwell International Limited",   "Bondwell 14",	GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                             FULLNAME        FLAGS */
+COMP( 1984,	bw12,	0,		0,		bw12, 	bw12,	0,		"Bondwell International Limited",   "Bondwell 12",	GAME_SUPPORTS_SAVE )
+COMP( 1984,	bw14,	bw12,	0,		bw14,	bw12,	0,		"Bondwell International Limited",   "Bondwell 14",	GAME_SUPPORTS_SAVE )

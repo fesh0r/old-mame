@@ -60,7 +60,7 @@ static WRITE8_HANDLER( gmaster_io_w )
 	{
 		memory_region(space->machine, "maincpu")[0x4000 + offset] = data;
 		logerror("%.4x external memory %.4x written %.2x\n", (int)cpu_get_reg(space->cpu, CPUINFO_INT_PC), 0x4000 + offset, data);
-    }
+	}
 	else
 	{
 		switch (offset)
@@ -110,8 +110,8 @@ static WRITE8_HANDLER( gmaster_io_w )
 			break;
 		default:
 			logerror("%.4x memory %.4x written %.2x\n", (int)cpu_get_reg(space->cpu, CPUINFO_INT_PC), 0x4000 + offset, data);
+		}
 	}
-    }
 }
 
 static READ8_HANDLER( gmaster_port_r )
@@ -303,6 +303,5 @@ static int gmaster_load_rom(running_machine *machine, int id)
 }
 #endif
 
-/*    YEAR      NAME            PARENT  MACHINE   INPUT     INIT
-      COMPANY                 FULLNAME */
-CONS( 1990, gmaster,       0,          0, gmaster,  gmaster,    gmaster,   0, "Hartung", "Game Master", GAME_IMPERFECT_SOUND)
+/*    YEAR      NAME            PARENT  MACHINE   INPUT     INIT  COMPANY                 FULLNAME */
+CONS( 1990, gmaster,       0,          0, gmaster,  gmaster,    gmaster,    "Hartung", "Game Master", GAME_IMPERFECT_SOUND)

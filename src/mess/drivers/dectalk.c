@@ -25,10 +25,9 @@
 *    * pins OP0 and OP2 are connected to the primary serial port:
 *      * OP0 is RTS
 *      * OP2 is DTR
-*  * Attach m68k interrupts properly; I suspect the DUART INT and SPC INTs are both hooked up wrong
 *  * Actually store the X2212 nvram's eeprom data to disk rather than throwing it out on exit
 *    * is there some way i can hook this up using &generic_nvram?
-*  * emulate/simulate the MT8060 dtmf decoder as a 16-key input device?
+*  * emulate/simulate the MT8060 dtmf decoder as a 16-key input device? or hook it to some simple fft code?
 *  * discuss and figure out how to have an external application send data to the two serial ports to be spoken
 *
 * LED error code list (found by experimentation and help from leeeeee):
@@ -146,6 +145,7 @@ DUART is INT level 6
 #include "dectalk.lh" //  hack to avoid screenless system crash
 #include "machine/68681.h"
 #include "sound/dac.h"
+#include "machine/terminal.h"
 
 
 /* Components */
@@ -205,6 +205,8 @@ static void duart_output(const device_config *device, UINT8 data)
 
 static void duart_tx(const device_config *device, int channel, UINT8 data)
 {
+	const device_config	*devconf = devtag_get_device(device->machine, "terminal");
+	terminal_write(devconf,0,data);
 #ifdef SERIAL_TO_STDERR
 	fprintf(stderr, "%02X ",data);
 #endif
@@ -660,6 +662,8 @@ PORT_START("hacks")
 	PORT_CONFNAME( 0x01, 0x01, "Hack to prevent hang when skip self test is shorted" )
 	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
 	PORT_CONFSETTING(    0x01, DEF_STR( On ) )
+
+	PORT_INCLUDE(generic_terminal)
 INPUT_PORTS_END
 
 /******************************************************************************
@@ -677,24 +681,23 @@ static TIMER_CALLBACK( outfifo_read_cb )
 	dac_signed_data_16_w( speaker, data );
 }
 
-// the following function reads the keyboard and sends to the duart to allow for user input; it doesn't 'exist' on the real unit
-// it more or less simulates a half duplex input terminal
-static TIMER_CALLBACK( simulate_input_cb )
-{
-	// todo: check RTS line
-
-	timer_set(machine, ATTOTIME_IN_HZ(120), NULL, 0, simulate_input_cb);
-}
-
 /* Driver init: stuff that needs setting up which isn't directly affected by reset */
 static DRIVER_INIT( dectalk )
 {
 	dectalk_clear_all_fifos(machine);
 	dectalk.simulate_outfifo_error = 0;
 	timer_set(machine, ATTOTIME_IN_HZ(10000), NULL, 0,  outfifo_read_cb);
-	timer_set(machine, ATTOTIME_IN_HZ(120), NULL, 0, simulate_input_cb);
 }
 
+static WRITE8_DEVICE_HANDLER( dectalk_kbd_put )
+{
+	duart68681_rx_data(devtag_get_device(device->machine, "duart68681"), 1, data);
+}
+
+static GENERIC_TERMINAL_INTERFACE( dectalk_terminal_intf )
+{
+	DEVCB_HANDLER(dectalk_kbd_put)
+};
 
 static MACHINE_DRIVER_START(dectalk)
     /* basic machine hardware */
@@ -717,7 +720,7 @@ static MACHINE_DRIVER_START(dectalk)
     //MDRV_NVRAM_HANDLER(generic_0fill)
 
     /* video hardware */
-    MDRV_DEFAULT_LAYOUT(layout_dectalk) // hack to avoid screenless system crash
+    //MDRV_DEFAULT_LAYOUT(layout_dectalk) // hack to avoid screenless system crash
 
     /* sound hardware */
     MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -726,7 +729,8 @@ static MACHINE_DRIVER_START(dectalk)
 
     /* Y2 is a 3.579545 MHz xtal for the dtmf decoder chip */
 
-
+	MDRV_IMPORT_FROM( generic_terminal )
+	MDRV_GENERIC_TERMINAL_ADD(TERMINAL_TAG,dectalk_terminal_intf)
 MACHINE_DRIVER_END
 
 
@@ -786,5 +790,5 @@ ROM_END
  Drivers
 ******************************************************************************/
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY     FULLNAME            FLAGS */
-COMP( 1984, dectalk,	0,		0,		dectalk,	dectalk,	dectalk,	0,	"DEC",		"DECTalk DTC-01",	GAME_NOT_WORKING )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT      COMPANY     FULLNAME            FLAGS */
+COMP( 1984, dectalk,	0,		0,		dectalk,	dectalk,	dectalk,  "DEC",		"DECTalk DTC-01",	GAME_NOT_WORKING )

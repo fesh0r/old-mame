@@ -74,12 +74,12 @@ ADDRESS_MAP_END
 
 /* memory w/r functions */
 static ADDRESS_MAP_START( dai_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x0000, 0xbfff) AM_RAMBANK(1)
+	AM_RANGE( 0x0000, 0xbfff) AM_RAMBANK("bank1")
 	AM_RANGE( 0xc000, 0xdfff) AM_ROM
-	AM_RANGE( 0xe000, 0xefff) AM_ROMBANK(2)
+	AM_RANGE( 0xe000, 0xefff) AM_ROMBANK("bank2")
 	AM_RANGE( 0xf000, 0xf7ff) AM_WRITE( dai_stack_interrupt_circuit_w )
 	AM_RANGE( 0xf800, 0xf8ff) AM_RAM
-	AM_RANGE( 0xfb00, 0xfbff) AM_READWRITE( amd9511_r, amd9511_w )
+	AM_RANGE( 0xfb00, 0xfbff) AM_READWRITE( dai_amd9511_r, dai_amd9511_w )
 	AM_RANGE( 0xfc00, 0xfcff) AM_DEVREADWRITE("pit8253", pit8253_r, pit8253_w )
 	AM_RANGE( 0xfd00, 0xfdff) AM_READWRITE( dai_io_discrete_devices_r, dai_io_discrete_devices_w )
 	AM_RANGE( 0xfe00, 0xfeff) AM_DEVREADWRITE("ppi8255", i8255a_r, i8255a_w )
@@ -181,6 +181,24 @@ static const cassette_config dai_cassette_config =
 	CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED
 };
 
+/* F4 Character Displayer */
+static const gfx_layout dai_charlayout =
+{
+	8, 16,					/* 8 x 16 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 7, 6, 5, 4, 3, 2, 1, 0 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
+	8*16					/* every char takes 16 bytes */
+};
+
+static GFXDECODE_START( dai )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, dai_charlayout, 0, 8 )
+GFXDECODE_END
+
 /* machine definition */
 static MACHINE_DRIVER_START( dai )
 	/* basic machine hardware */
@@ -203,6 +221,7 @@ static MACHINE_DRIVER_START( dai )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(1056, 542)
 	MDRV_SCREEN_VISIBLE_AREA(0, 1056-1, 0, 302-1)
+	MDRV_GFXDECODE(dai)
 	MDRV_PALETTE_LENGTH(sizeof (dai_palette) / 3)
 	MDRV_PALETTE_INIT( dai )
 
@@ -223,7 +242,7 @@ static MACHINE_DRIVER_START( dai )
 
 	/* tms5501 */
 	MDRV_TMS5501_ADD( "tms5501", dai_tms5501_interface )
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("48K")
@@ -242,5 +261,5 @@ ROM_START(dai)
 	ROM_LOAD ("nch.bin", 0x0000, 0x1000, CRC(a9f5b30b) SHA1(24119b2984ab4e50dc0dabae1065ff6d6c1f237d))
 ROM_END
 
-/*    YEAR  NAME PARENT  COMPAT MACHINE INPUT   INIT    CONFIG  COMPANY                FULLNAME */
-COMP( 1978, dai, 0,      0,	dai,	dai,	0,	0,	"Data Applications International", "DAI Personal Computer", 0)
+/*    YEAR  NAME PARENT  COMPAT MACHINE INPUT   INIT     COMPANY                FULLNAME */
+COMP( 1978, dai, 0,      0,	dai,	dai,	0,		"Data Applications International", "DAI Personal Computer", 0)

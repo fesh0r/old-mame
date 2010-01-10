@@ -41,7 +41,7 @@ Historical notes: TI made several last minute design changes.
 #include "machine/idectrl.h"
 #include "machine/smc92x4.h"
 #include "machine/mm58274c.h"
-
+#include "machine/rtc65271.h"
 #include "devices/ti99cart.h"
 
 /*
@@ -55,7 +55,7 @@ static ADDRESS_MAP_START(memmap, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(ti99_4x_peb_r, ti99_4x_peb_w)	/*DSR ROM space*/
 //  AM_RANGE(0x6000, 0x7fff) AM_READWRITE(ti99_cart_r, ti99_cart_w)     /*cartridge memory*/
 	AM_RANGE(0x6000, 0x7fff) AM_DEVREADWRITE("ti99_multicart", ti99_multicart_r, ti99_multicart_w)
-	AM_RANGE(0x8000, 0x80ff) AM_MIRROR(0x0300) AM_RAMBANK(1)			/*RAM PAD, mirrored 4 times*/
+	AM_RANGE(0x8000, 0x80ff) AM_MIRROR(0x0300) AM_RAMBANK("bank1")			/*RAM PAD, mirrored 4 times*/
 	AM_RANGE(0x8400, 0x87ff) AM_READWRITE(ti99_nop_8_r, ti99_wsnd_w)	/*soundchip write*/
 	AM_RANGE(0x8800, 0x8bff) AM_READWRITE(ti99_rvdp_r, ti99_nop_8_w)	/*vdp read*/
 	AM_RANGE(0x8C00, 0x8fff) AM_READWRITE(ti99_nop_8_r, ti99_wvdp_w)	/*vdp write*/
@@ -72,7 +72,7 @@ static ADDRESS_MAP_START(memmap_4ev, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*lower 8kb of RAM extension - installed dynamically*/
 	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(ti99_4x_peb_r, ti99_4x_peb_w)	/*DSR ROM space*/
 	AM_RANGE(0x6000, 0x7fff) AM_DEVREADWRITE("ti99_multicart", ti99_multicart_r, ti99_multicart_w)
-	AM_RANGE(0x8000, 0x80ff) AM_MIRROR(0x0300) AM_RAMBANK(1)			/*RAM PAD, mirrored 4 times*/
+	AM_RANGE(0x8000, 0x80ff) AM_MIRROR(0x0300) AM_RAMBANK("bank1")			/*RAM PAD, mirrored 4 times*/
 	AM_RANGE(0x8400, 0x87ff) AM_READWRITE(ti99_nop_8_r, ti99_wsnd_w)	/*soundchip write*/
 	AM_RANGE(0x8800, 0x8bff) AM_READWRITE(ti99_rv38_r, ti99_nop_8_w)	/*vdp read*/
 	AM_RANGE(0x8C00, 0x8fff) AM_READWRITE(ti99_nop_8_r, ti99_wv38_w)	/*vdp write*/
@@ -295,16 +295,15 @@ static INPUT_PORTS_START(ti99_4)
 
 
 	/* 3 ports for mouse */
-	PORT_START("MOUSE0") /* Mouse - X AXIS */
+	PORT_START("MOUSEX") /* Mouse - X AXIS */
 		PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
 
-	PORT_START("MOUSE1") /* Mouse - Y AXIS */
+	PORT_START("MOUSEY") /* Mouse - Y AXIS */
 		PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
 
-	PORT_START("MOUSE2") /* Mouse - buttons */
+	PORT_START("MOUSE0") /* Mouse - buttons */
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_PLAYER(1)
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_PLAYER(1)
-
 
 	/* 4 ports for keyboard and joystick */
 	PORT_START("KEY0")	/* col 0 */
@@ -497,6 +496,92 @@ static INPUT_PORTS_START(ti99_4)
 
 INPUT_PORTS_END
 
+/* F4 Character Displayer */
+static const gfx_layout ti99_6_charlayout =
+{
+	8, 6,					/* 8 x 6 characters */
+	64,					/* 64 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8 },
+	8*6					/* every char takes 6 bytes */
+};
+
+static const gfx_layout ti99_7_charlayout =
+{
+	8, 7,					/* 8 x 7 characters */
+	95,					/* 95 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8 },
+	8*7					/* every char takes 7 bytes */
+};
+
+static const gfx_layout ti99_8_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	64,					/* 64 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static const gfx_layout ti99_c_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	1,					/* 1 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static const gfx_layout ti99_24_charlayout =
+{
+	24, 24,					/* 24 x 24 characters */
+	1,					/* 1 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7, 64, 65, 66, 67, 68, 69, 70, 71, 128, 129, 130, 131, 132, 133, 134, 135 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 24*8, 25*8, 26*8, 27*8, 28*8, 29*8, 30*8, 31*8, 48*8, 49*8, 50*8, 51*8, 52*8, 53*8, 54*8, 55*8 },
+	24*24					/* every char takes 72 bytes */
+};
+
+static GFXDECODE_START( ti99 )
+	GFXDECODE_ENTRY( region_grom, 0x0466, ti99_8_charlayout, 0, 8 )
+	GFXDECODE_ENTRY( region_grom, 0x0666, ti99_6_charlayout, 0, 8 )
+GFXDECODE_END
+
+static GFXDECODE_START( ti99a )
+	GFXDECODE_ENTRY( region_grom, 0x04b4, ti99_8_charlayout, 0, 8 )	// large
+	GFXDECODE_ENTRY( region_grom, 0x06b4, ti99_7_charlayout, 0, 8 ) // small
+	GFXDECODE_ENTRY( region_grom, 0x0950, ti99_24_charlayout, 0, 8 )// TI logo
+	GFXDECODE_ENTRY( region_grom, 0x0998, ti99_c_charlayout, 0, 8 )	// (c)
+GFXDECODE_END
+
+static GFXDECODE_START( ti99b )
+	GFXDECODE_ENTRY( region_grom, 0x04b4, ti99_8_charlayout, 2, 2 )
+	GFXDECODE_ENTRY( region_grom, 0x06b4, ti99_7_charlayout, 2, 2 )
+	GFXDECODE_ENTRY( region_grom, 0x0950, ti99_24_charlayout, 2, 2 )
+	GFXDECODE_ENTRY( region_grom, 0x0998, ti99_c_charlayout, 2, 2 )
+GFXDECODE_END
+
+
 /*
     TMS0285 speech synthesizer
 */
@@ -543,6 +628,7 @@ static MACHINE_DRIVER_START(ti99_4_60hz)
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MDRV_GFXDECODE(ti99)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -561,7 +647,8 @@ static MACHINE_DRIVER_START(ti99_4_60hz)
 
 	MDRV_IMPORT_FROM( smc92x4_hd )
 
-	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
+	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )	
+	MDRV_RTC65271_ADD("ide_rtc", ti99_clk_interrupt_callback)
 
 	MDRV_CASSETTE_ADD( "cassette1", default_cassette_config )
 	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
@@ -598,6 +685,7 @@ static MACHINE_DRIVER_START(ti99_4_50hz)
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MDRV_GFXDECODE(ti99)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -615,6 +703,7 @@ static MACHINE_DRIVER_START(ti99_4_50hz)
 	MDRV_IMPORT_FROM( smc92x4_hd )
 
 	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
+	MDRV_RTC65271_ADD("ide_rtc", ti99_clk_interrupt_callback)
 
 	MDRV_CASSETTE_ADD( "cassette1", default_cassette_config )
 	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
@@ -650,6 +739,7 @@ static MACHINE_DRIVER_START(ti99_4a_60hz)
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MDRV_GFXDECODE(ti99a)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -667,6 +757,7 @@ static MACHINE_DRIVER_START(ti99_4a_60hz)
 	MDRV_IMPORT_FROM( smc92x4_hd )
 
 	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
+	MDRV_RTC65271_ADD("ide_rtc", ti99_clk_interrupt_callback)
 
 	MDRV_CASSETTE_ADD( "cassette1", default_cassette_config )
 	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
@@ -704,6 +795,7 @@ static MACHINE_DRIVER_START(ti99_4a_50hz)
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+	MDRV_GFXDECODE(ti99a)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -721,6 +813,7 @@ static MACHINE_DRIVER_START(ti99_4a_50hz)
 	MDRV_IMPORT_FROM( smc92x4_hd )
 
 	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
+	MDRV_RTC65271_ADD("ide_rtc", ti99_clk_interrupt_callback)
 
 	MDRV_CASSETTE_ADD( "cassette1", default_cassette_config )
 	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
@@ -765,6 +858,7 @@ static MACHINE_DRIVER_START(ti99_4ev_60hz)
 	MDRV_PALETTE_INIT(v9938)
 	MDRV_VIDEO_START(ti99_4ev)
 	MDRV_VIDEO_UPDATE(generic_bitmapped)
+	MDRV_GFXDECODE(ti99b)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -782,6 +876,7 @@ static MACHINE_DRIVER_START(ti99_4ev_60hz)
 	MDRV_IMPORT_FROM( smc92x4_hd )
 
 	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
+	MDRV_RTC65271_ADD("ide_rtc", ti99_clk_interrupt_callback)
 
 	MDRV_CASSETTE_ADD( "cassette1", default_cassette_config )
 	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
@@ -899,9 +994,9 @@ ROM_END
 #define rom_ti99_4ae rom_ti99_4a
 
 
-/*    YEAR  NAME      PARENT   COMPAT   MACHINE      INPUT    INIT      CONFIG  COMPANY             FULLNAME */
-COMP( 1979, ti99_4,   0,	   0,		ti99_4_60hz,  ti99_4,  ti99_4,	0,	"Texas Instruments", "TI99/4 Home Computer (US)" , 0)
-COMP( 1980, ti99_4e,  ti99_4,  0,		ti99_4_50hz,  ti99_4,  ti99_4,	0,	"Texas Instruments", "TI99/4 Home Computer (Europe)" , 0)
-COMP( 1981, ti99_4a,  0,	   0,		ti99_4a_60hz, ti99_4a, ti99_4a,	0,	"Texas Instruments", "TI99/4A Home Computer (US)" , 0)
-COMP( 1981, ti99_4ae, ti99_4a, 0,		ti99_4a_50hz, ti99_4a, ti99_4a,	0,	"Texas Instruments", "TI99/4A Home Computer (Europe)" , 0)
-COMP( 1994, ti99_4ev, ti99_4a, 0,		ti99_4ev_60hz,ti99_4a, ti99_4ev,0,	"Texas Instruments", "TI99/4A Home Computer with EVPC" , 0)
+/*    YEAR  NAME      PARENT   COMPAT   MACHINE      INPUT    INIT      COMPANY             FULLNAME */
+COMP( 1979, ti99_4,   0,	   0,		ti99_4_60hz,  ti99_4,  ti99_4,	"Texas Instruments", "TI99/4 Home Computer (US)" , 0)
+COMP( 1980, ti99_4e,  ti99_4,  0,		ti99_4_50hz,  ti99_4,  ti99_4,	"Texas Instruments", "TI99/4 Home Computer (Europe)" , 0)
+COMP( 1981, ti99_4a,  0,	   0,		ti99_4a_60hz, ti99_4a, ti99_4a,	"Texas Instruments", "TI99/4A Home Computer (US)" , 0)
+COMP( 1981, ti99_4ae, ti99_4a, 0,		ti99_4a_50hz, ti99_4a, ti99_4a,	"Texas Instruments", "TI99/4A Home Computer (Europe)" , 0)
+COMP( 1994, ti99_4ev, ti99_4a, 0,		ti99_4ev_60hz,ti99_4a, ti99_4ev,"Texas Instruments", "TI99/4A Home Computer with EVPC" , 0)

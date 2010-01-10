@@ -212,18 +212,20 @@ static WRITE_LINE_DEVICE_HANDLER( pcw_fdc_interrupt )
     setup of the memory below.
 */
 static ADDRESS_MAP_START(pcw_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK(1), SMH_BANK(5))
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK(2), SMH_BANK(6))
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK(3), SMH_BANK(7))
-	AM_RANGE(0xc000, 0xffff) AM_READWRITE(SMH_BANK(4), SMH_BANK(8))
+	AM_RANGE(0x0000, 0x3fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank5")
+	AM_RANGE(0x4000, 0x7fff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank6")
+	AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank3") AM_WRITE_BANK("bank7")
+	AM_RANGE(0xc000, 0xffff) AM_READ_BANK("bank4") AM_WRITE_BANK("bank8")
 ADDRESS_MAP_END
 
 
 /* PCW keyboard is mapped into memory */
 static  READ8_HANDLER(pcw_keyboard_r)
 {
-	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7",
-										"LINE8", "LINE9", "LINE10", "LINE11", "LINE12", "LINE13", "LINE14", "LINE15" };
+	static const char *const keynames[] = {
+		"LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7",
+		"LINE8", "LINE9", "LINE10", "LINE11", "LINE12", "LINE13", "LINE14", "LINE15"
+	};
 
 	return input_port_read(space->machine, keynames[offset]);
 }
@@ -236,7 +238,9 @@ static  READ8_HANDLER(pcw_keyboard_r)
 static void pcw_update_read_memory_block(running_machine *machine, int block, int bank)
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	char block_name[10];
 
+	sprintf(block_name,"bank%d",block+1);
 	/* bank 3? */
 	if (bank == 3)
 	{
@@ -250,19 +254,20 @@ static void pcw_update_read_memory_block(running_machine *machine, int block, in
 	else
 	{
 		/* restore bank handler across entire block */
-		memory_install_read8_handler(space,
-			block * 0x04000 + 0x0000, block * 0x04000 + 0x3fff, 0, 0,
-			(read8_space_func) (STATIC_BANK1 + (FPTR)block));
+		memory_install_read_bank(space,block * 0x04000 + 0x0000, block * 0x04000 + 0x3fff, 0, 0,block_name);
 //      LOG(("MEM: read block %i -> bank %i\n",block,bank));
 	}
-	memory_set_bankptr(machine, block + 1, messram_get_ptr(devtag_get_device(machine, "messram")) + ((bank * 0x4000) % messram_get_size(devtag_get_device(machine, "messram"))));
+	memory_set_bankptr(machine, block_name, messram_get_ptr(devtag_get_device(machine, "messram")) + ((bank * 0x4000) % messram_get_size(devtag_get_device(machine, "messram"))));
 }
 
 
 
 static void pcw_update_write_memory_block(running_machine *machine, int block, int bank)
 {
-	memory_set_bankptr(machine, block + 5, messram_get_ptr(devtag_get_device(machine, "messram")) + ((bank * 0x4000) % messram_get_size(devtag_get_device(machine, "messram"))));
+	char block_name[10];
+
+	sprintf(block_name,"bank%d",block+5);
+	memory_set_bankptr(machine, block_name, messram_get_ptr(devtag_get_device(machine, "messram")) + ((bank * 0x4000) % messram_get_size(devtag_get_device(machine, "messram"))));
 //  LOG(("MEM: write block %i -> bank %i\n",block,bank));
 }
 
@@ -343,7 +348,7 @@ static void pcw_update_mem(running_machine *machine, int block, int data)
 
 		FakeROM = &memory_region(machine, "maincpu")[0x010000];
 
-		memory_set_bankptr(machine, 1, FakeROM);
+		memory_set_bankptr(machine, "bank1", FakeROM);
 	}
 }
 
@@ -531,8 +536,8 @@ static WRITE8_HANDLER(pcw_system_control_w)
 		/* disc motor on */
 		case 9:
 		{
-			floppy_drive_set_motor_state(floppy_get_device(space->machine, 0), 1);
-			floppy_drive_set_motor_state(floppy_get_device(space->machine, 1), 1);
+			floppy_mon_w(floppy_get_device(space->machine, 0), CLEAR_LINE);
+			floppy_mon_w(floppy_get_device(space->machine, 1), CLEAR_LINE);
 			floppy_drive_set_ready_state(floppy_get_device(space->machine, 0), 1,1);
 			floppy_drive_set_ready_state(floppy_get_device(space->machine, 1), 1,1);
 		}
@@ -541,8 +546,8 @@ static WRITE8_HANDLER(pcw_system_control_w)
 		/* disc motor off */
 		case 10:
 		{
-			floppy_drive_set_motor_state(floppy_get_device(space->machine, 0), 0);
-			floppy_drive_set_motor_state(floppy_get_device(space->machine, 1), 0);
+			floppy_mon_w(floppy_get_device(space->machine, 0), ASSERT_LINE);
+			floppy_mon_w(floppy_get_device(space->machine, 1), ASSERT_LINE);
 			floppy_drive_set_ready_state(floppy_get_device(space->machine, 0), 0,1);
 			floppy_drive_set_ready_state(floppy_get_device(space->machine, 1), 0,1);
 		}
@@ -1019,10 +1024,10 @@ static MACHINE_DRIVER_START( pcw )
 	MDRV_UPD765A_ADD("upd765", pcw_upd765_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(pcw_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("256K")		
+	MDRV_RAM_DEFAULT_SIZE("256K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(  pcw_512 )
@@ -1038,7 +1043,7 @@ static MACHINE_DRIVER_START( pcw9512 )
 	MDRV_IMPORT_FROM( pcw )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_IO_MAP(pcw9512_io)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("512K")
@@ -1075,9 +1080,9 @@ ROM_PCW(pcw10)
 
 /* these are all variants on the pcw design */
 /* major difference is memory configuration and drive type */
-/*     YEAR NAME        PARENT      COMPAT  MACHINE   INPUT INIT    CONFIG      COMPANY        FULLNAME */
-COMP( 1985, pcw8256,   0,			0,		pcw,	  pcw,	pcw,	0,	"Amstrad plc", "PCW8256",		GAME_NOT_WORKING)
-COMP( 1985, pcw8512,   pcw8256,	0,		pcw_512,	  pcw,	pcw,	0,	"Amstrad plc", "PCW8512",		GAME_NOT_WORKING)
-COMP( 1987, pcw9256,   pcw8256,	0,		pcw,	  pcw,	pcw,	0,	"Amstrad plc", "PCW9256",		GAME_NOT_WORKING)
-COMP( 1987, pcw9512,   pcw8256,	0,		pcw9512,  pcw,	pcw,	0,	"Amstrad plc", "PCW9512 (+)",	GAME_NOT_WORKING)
-COMP( 1993, pcw10,	    pcw8256,	0,		pcw9512,  pcw,	pcw,	0,	"Amstrad plc", "PCW10",			GAME_NOT_WORKING)
+/*     YEAR NAME        PARENT      COMPAT  MACHINE   INPUT INIT    COMPANY        FULLNAME */
+COMP( 1985, pcw8256,   0,			0,		pcw,	  pcw,	pcw,	"Amstrad plc", "PCW8256",		GAME_NOT_WORKING)
+COMP( 1985, pcw8512,   pcw8256,	0,		pcw_512,	  pcw,	pcw,	"Amstrad plc", "PCW8512",		GAME_NOT_WORKING)
+COMP( 1987, pcw9256,   pcw8256,	0,		pcw,	  pcw,	pcw,		"Amstrad plc", "PCW9256",		GAME_NOT_WORKING)
+COMP( 1987, pcw9512,   pcw8256,	0,		pcw9512,  pcw,	pcw,		"Amstrad plc", "PCW9512 (+)",	GAME_NOT_WORKING)
+COMP( 1993, pcw10,	    pcw8256,	0,		pcw9512,  pcw,	pcw,	"Amstrad plc", "PCW10",			GAME_NOT_WORKING)

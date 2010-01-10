@@ -43,7 +43,7 @@ WRITE8_HANDLER( dai_stack_interrupt_circuit_w )
 
 static void dai_update_memory(running_machine *machine, int dai_rom_bank)
 {
-	memory_set_bank(machine, 2, dai_rom_bank);
+	memory_set_bank(machine, "bank2", dai_rom_bank);
 }
 
 static TIMER_CALLBACK(dai_bootstrap_callback)
@@ -143,14 +143,14 @@ MACHINE_START( dai )
 {
 	dai_tms5501 = devtag_get_device(machine, "tms5501");
 
-	memory_configure_bank(machine, 2, 0, 4, memory_region(machine, "maincpu") + 0x010000, 0x1000);
+	memory_configure_bank(machine, "bank2", 0, 4, memory_region(machine, "maincpu") + 0x010000, 0x1000);
+	timer_set(machine, attotime_zero, NULL, 0, dai_bootstrap_callback);
+	timer_pulse(machine, ATTOTIME_IN_HZ(100),NULL,0,dai_timer);	/* timer for tms5501 */
 }
 
 MACHINE_RESET( dai )
 {
-	memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
-	timer_set(machine, attotime_zero, NULL, 0, dai_bootstrap_callback);
-	timer_pulse(machine, ATTOTIME_IN_HZ(100),NULL,0,dai_timer);	/* timer for tms5501 */
+	memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
 }
 
 /***************************************************************************
@@ -249,13 +249,13 @@ WRITE8_HANDLER( dai_io_discrete_devices_w )
 
 ***************************************************************************/
 
-READ8_HANDLER( amd9511_r )
+READ8_HANDLER( dai_amd9511_r )
 {
 	/* optional and no present at this moment */
 	return 0xff;
 }
 
-WRITE8_HANDLER( amd9511_w )
+WRITE8_HANDLER( dai_amd9511_w )
 {
 	logerror ("Writing to AMD9511 math chip, %04x, %02x\n", offset, data);
 }

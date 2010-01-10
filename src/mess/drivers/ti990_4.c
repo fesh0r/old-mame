@@ -71,9 +71,11 @@ static INTERRUPT_GEN( ti990_4_line_interrupt )
 	ti990_line_interrupt(device->machine);
 }
 
-/*static void idle_callback(int state)
+#ifdef UNUSED_FUNCTION
+static void idle_callback(int state)
 {
-}*/
+}
+#endif
 
 static WRITE8_HANDLER ( rset_callback )
 {
@@ -196,11 +198,12 @@ static ADDRESS_MAP_START(ti990_4_cru_map, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x7000, 0x7fff) AM_WRITE(lrex_callback)
 ADDRESS_MAP_END
 
-
-/*static tms9900reset_param reset_params =
+#if 0
+static const tms9900reset_param reset_params =
 {
     idle_callback
-};*/
+};
+#endif
 
 static const floppy_config ti990_4_floppy_config =
 {
@@ -323,5 +326,5 @@ static INPUT_PORTS_START(ti990_4)
 INPUT_PORTS_END
 
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY                 FULLNAME */
-COMP( 1976,	ti990_4,	0,		0,		ti990_4,	ti990_4,	ti990_4,	0,	"Texas Instruments",	"TI Model 990/4 Microcomputer System" , GAME_NOT_WORKING )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        COMPANY                 FULLNAME */
+COMP( 1976,	ti990_4,	0,		0,		ti990_4,	ti990_4,	ti990_4,	"Texas Instruments",	"TI Model 990/4 Microcomputer System" , GAME_NOT_WORKING )

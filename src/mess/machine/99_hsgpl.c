@@ -280,7 +280,7 @@ void ti99_hsgpl_reset(running_machine *machine)
 	hsgpl.cur_port = 0;
 	hsgpl.cur_bank = 0;
 	hsgpl.cru_reg = 0;
-	set_hsgpl_crdena(/*0*/1);
+	ti99_set_hsgpl_crdena(/*0*/1);
 
 	ti99_peb_set_card_handlers(0x1b00, & hsgpl_handlers);
 }
@@ -299,7 +299,7 @@ static void hsgpl_cru_w(running_machine *machine, int offset, int data)
 		hsgpl.cru_reg &= ~ (1 << offset);
 
 	if (offset == cr_crdena_bit)
-		set_hsgpl_crdena(data);
+		ti99_set_hsgpl_crdena(data);
 }
 
 /*
@@ -637,8 +637,10 @@ WRITE16_HANDLER ( ti99_hsgpl_rom6_w )
 		case 15:
 			/* feeprom is normally written to using GPL ports, and I don't know
             writing through >6000 page is enabled */
-			/*at29c040a_w(feeprom_rom6, 1 + 2*offset + 0x2000*hsgpl.cur_bank + 0x8000*port, data);
-            at29c040a_w(feeprom_rom6, 2*offset + 0x2000*hsgpl.cur_bank + 0x8000*port, data >> 8);*/
+#if 0
+			at29c040a_w(feeprom_rom6, 1 + 2*offset + 0x2000*hsgpl.cur_bank + 0x8000*port, data);
+			at29c040a_w(feeprom_rom6, 2*offset + 0x2000*hsgpl.cur_bank + 0x8000*port, data >> 8);
+#endif
 			break;
 
 		case 32:

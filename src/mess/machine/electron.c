@@ -119,8 +119,10 @@ static READ8_HANDLER( electron_read_keyboard )
 {
 	UINT8 data = 0;
 	int i;
-	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6",
-										"LINE7", "LINE8", "LINE9", "LINE10", "LINE11", "LINE12", "LINE13" };
+	static const char *const keynames[] = {
+		"LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6",
+		"LINE7", "LINE8", "LINE9", "LINE10", "LINE11", "LINE12", "LINE13"
+	};
 
 	//logerror( "PC=%04x: keyboard read from paged rom area, address: %04x", activecpu_get_pc(), offset );
 	for( i = 0; i < 14; i++ )
@@ -214,9 +216,9 @@ WRITE8_HANDLER( electron_ula_w )
 			}
 			else
 			{
-				memory_install_read8_handler( space, 0x8000, 0xbfff, 0, 0, SMH_BANK(2) );
+				memory_install_read_bank( space, 0x8000, 0xbfff, 0, 0, "bank2");
 			}
-			memory_set_bank(space->machine, 2, electron_ula.rompage);
+			memory_set_bank(space->machine, "bank2", electron_ula.rompage);
 		}
 		if ( data & 0x10 )
 		{
@@ -322,7 +324,7 @@ static TIMER_CALLBACK(setup_beep)
 
 static void electron_reset(running_machine *machine)
 {
-	memory_set_bank(machine, 2, 0);
+	memory_set_bank(machine, "bank2", 0);
 
 	electron_ula.communication_mode = 0x04;
 	electron_ula.screen_mode = 0;
@@ -339,7 +341,7 @@ static void electron_reset(running_machine *machine)
 
 MACHINE_START( electron )
 {
-	memory_configure_bank(machine, 2, 0, 16, memory_region(machine, "user1"), 0x4000);
+	memory_configure_bank(machine, "bank2", 0, 16, memory_region(machine, "user1"), 0x4000);
 
 	electron_ula.interrupt_status = 0x82;
 	electron_ula.interrupt_control = 0x00;

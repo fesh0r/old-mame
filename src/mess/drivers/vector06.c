@@ -22,21 +22,21 @@
 
 /* Address maps */
 static ADDRESS_MAP_START(vector06_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x0000, 0x7fff ) AM_READWRITE(SMH_BANK(1), SMH_BANK(2))
-  	AM_RANGE( 0x8000, 0xffff ) AM_READWRITE(SMH_BANK(3), SMH_BANK(4))
+	AM_RANGE( 0x0000, 0x7fff ) AM_READ_BANK("bank1") AM_WRITE_BANK("bank2")
+  	AM_RANGE( 0x8000, 0xffff ) AM_READ_BANK("bank3") AM_WRITE_BANK("bank4")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( vector06_io , ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE( 0x00, 0x03) AM_READWRITE(vector_8255_1_r, vector_8255_1_w )
-	AM_RANGE( 0x04, 0x07) AM_READWRITE(vector_8255_2_r, vector_8255_2_w )
+	AM_RANGE( 0x00, 0x03) AM_READWRITE(vector06_8255_1_r, vector06_8255_1_w )
+	AM_RANGE( 0x04, 0x07) AM_READWRITE(vector06_8255_2_r, vector06_8255_2_w )
 	AM_RANGE( 0x0C, 0x0C) AM_WRITE ( vector06_color_set )
 	AM_RANGE( 0x18, 0x18) AM_DEVREADWRITE("wd1793", wd17xx_data_r,wd17xx_data_w)
 	AM_RANGE( 0x19, 0x19) AM_DEVREADWRITE("wd1793", wd17xx_sector_r,wd17xx_sector_w)
 	AM_RANGE( 0x1A, 0x1A) AM_DEVREADWRITE("wd1793", wd17xx_track_r,wd17xx_track_w)
   	AM_RANGE( 0x1B, 0x1B) AM_DEVREADWRITE("wd1793", wd17xx_status_r,wd17xx_command_w)
-  	AM_RANGE( 0x1C, 0x1C) AM_WRITE(vector_disc_w)
+  	AM_RANGE( 0x1C, 0x1C) AM_WRITE(vector06_disc_w)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -199,10 +199,10 @@ static MACHINE_DRIVER_START( vector06 )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("emr")
 	MDRV_CARTSLOT_NOT_MANDATORY
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("64K")		
+	MDRV_RAM_DEFAULT_SIZE("64K")
 MACHINE_DRIVER_END
 
 /* ROM definition */
@@ -239,7 +239,7 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME         PARENT  COMPAT  MACHINE     INPUT       INIT     CONFIG COMPANY                  FULLNAME   FLAGS */
-COMP( 1987, vector06, 	 0,  	 	0,	vector06, 	vector06, 	vector06, 0,  "", 					 "Vector 06c",	 GAME_NOT_WORKING)
-COMP( 1987, vec1200, 	 vector06, 	0,	vector06, 	vector06, 	vector06, 0,  "", 					 "Vector 1200",	 GAME_NOT_WORKING)
-COMP( 1987, pk6128c, 	 vector06,  0,	vector06, 	vector06, 	vector06, 0,  "", 					 "PK-6128c",	 GAME_NOT_WORKING)
+/*    YEAR  NAME         PARENT  COMPAT  MACHINE     INPUT       INIT     COMPANY                  FULLNAME   FLAGS */
+COMP( 1987, vector06, 	 0,  	 	0,	vector06, 	vector06, 	vector06, "", 					 "Vector 06c",	 GAME_NOT_WORKING)
+COMP( 1987, vec1200, 	 vector06, 	0,	vector06, 	vector06, 	vector06, "", 					 "Vector 1200",	 GAME_NOT_WORKING)
+COMP( 1987, pk6128c, 	 vector06,  0,	vector06, 	vector06, 	vector06, "", 					 "PK-6128c",	 GAME_NOT_WORKING)

@@ -157,13 +157,13 @@ There don't seem to be any JV1 boot disks for Model III/4.
 #include "devices/cassette.h"
 #include "formats/trs_cas.h"
 
-UINT8 *gfxram;
+UINT8 *trs80_gfxram;
 UINT8 trs80_model4;
 
 static ADDRESS_MAP_START( trs80_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 	AM_RANGE(0x3800, 0x38ff) AM_READ(trs80_keyboard_r)
-	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(trs80_videoram_r, trs80_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(trs80_videoram_r, trs80_videoram_w) AM_BASE_GENERIC(videoram)
 	AM_RANGE(0x4000, 0x7fff) AM_RAM
 ADDRESS_MAP_END
 
@@ -184,7 +184,7 @@ static ADDRESS_MAP_START( model1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x37ee, 0x37ee) AM_DEVREADWRITE("wd179x", wd17xx_sector_r, wd17xx_sector_w)
 	AM_RANGE(0x37ef, 0x37ef) AM_DEVREADWRITE("wd179x", wd17xx_data_r, wd17xx_data_w)
 	AM_RANGE(0x3800, 0x38ff) AM_MIRROR(0x300) AM_READ(trs80_keyboard_r)
-	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(trs80_videoram_r, trs80_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(trs80_videoram_r, trs80_videoram_w) AM_BASE_GENERIC(videoram)
 	AM_RANGE(0x4000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -436,6 +436,93 @@ static INPUT_PORTS_START( trs80m3 )
 INPUT_PORTS_END
 
 
+/**************************** F4 CHARACTER DISPLAYER ***********************************************************/
+static const gfx_layout trs80_charlayout =
+{
+	8, 8,			/* 8 x 8 characters */
+	128,			/* 128 characters */
+	1,			/* 1 bits per pixel */
+	{ 0 },			/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{  0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8		   /* every char takes 8 bytes */
+};
+
+static const gfx_layout ht1080z_charlayout =
+{
+	5, 12,			/* 5 x 12 characters */
+	128,			/* 128 characters */
+	1,			/* 1 bits per pixel */
+	{ 0 },			/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{  0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
+	8*16		   /* every char takes 16 bytes */
+};
+
+static const gfx_layout trs80m4_charlayout =
+{
+	8, 8,			/* 8 x 8 characters */
+	256,			/* 256 characters */
+	1,			/* 1 bits per pixel */
+	{ 0 },			/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{  0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8		   /* every char takes 8 bytes */
+};
+
+static const gfx_layout lnw80_charlayout =
+{
+	8, 8,			/* 8 x 8 characters */
+	128,			/* 128 characters */
+	1,			/* 1 bits per pixel */
+	{ 0 },			/* no bitplanes */
+	/* x offsets */
+	{ 7, 5, 6, 1, 0, 2, 4, 3 },
+	/* y offsets */
+	{  0*8, 512*8, 256*8, 768*8, 1*8, 513*8, 257*8, 769*8 },
+	8*2		   /* every char takes 8 bytes */
+};
+
+static const gfx_layout radionic_charlayout =
+{
+	8, 16,			/* 8 x 16 characters */
+	256,			/* 256 characters */
+	1,			/* 1 bits per pixel */
+	{ 0 },			/* no bitplanes */
+	/* x offsets */
+	{ 7, 6, 5, 4, 3, 2, 1, 0 },
+	/* y offsets */
+	{  0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 2048*8, 2049*8, 2050*8, 2051*8, 2052*8, 2053*8, 2054*8, 2055*8 },
+	8*8		   /* every char takes 16 bytes */
+};
+
+static GFXDECODE_START(trs80)
+	GFXDECODE_ENTRY( "gfx1", 0, trs80_charlayout, 0, 1 )
+GFXDECODE_END
+
+static GFXDECODE_START(ht1080z)
+	GFXDECODE_ENTRY( "gfx1", 0, ht1080z_charlayout, 0, 1 )
+GFXDECODE_END
+
+static GFXDECODE_START(trs80m4)
+	GFXDECODE_ENTRY( "gfx1", 0, trs80m4_charlayout, 0, 1 )
+GFXDECODE_END
+
+static GFXDECODE_START(lnw80)
+	GFXDECODE_ENTRY( "gfx1", 0, lnw80_charlayout, 0, 4 )
+GFXDECODE_END
+
+static GFXDECODE_START(radionic)
+	GFXDECODE_ENTRY( "gfx1", 0, radionic_charlayout, 0, 1 )
+GFXDECODE_END
+
+
 static const cassette_config trs80l2_cassette_config =
 {
 	trs80l2_cassette_formats,
@@ -471,6 +558,7 @@ static MACHINE_DRIVER_START( trs80 )		// the original model I, level I, with no 
 	MDRV_CPU_PROGRAM_MAP(trs80_map)
 	MDRV_CPU_IO_MAP(trs80_io)
 
+	MDRV_MACHINE_START( trs80 )
 	MDRV_MACHINE_RESET( trs80 )
 
 	/* video hardware */
@@ -479,7 +567,9 @@ static MACHINE_DRIVER_START( trs80 )		// the original model I, level I, with no 
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*FW, 16*FH)
-	MDRV_SCREEN_VISIBLE_AREA(0*FW,64*FW-1,0*FH,16*FH-1)
+	MDRV_SCREEN_VISIBLE_AREA(0,64*FW-1,0,16*FH-1)
+
+	MDRV_GFXDECODE(trs80)
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(black_and_white)
 
@@ -523,6 +613,7 @@ static MACHINE_DRIVER_START( model3 )
 
 	MDRV_MACHINE_RESET( trs80m4 )
 
+	MDRV_GFXDECODE(trs80m4)
 	MDRV_VIDEO_UPDATE( trs80m4 )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_SIZE(80*8, 240)
@@ -550,6 +641,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( ht1080z )
 	MDRV_IMPORT_FROM( sys80 )
 	MDRV_VIDEO_UPDATE( ht1080z )
+	MDRV_GFXDECODE(ht1080z)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( lnw80 )
@@ -559,6 +651,7 @@ static MACHINE_DRIVER_START( lnw80 )
 	MDRV_CPU_IO_MAP( lnw80_io)
 	MDRV_MACHINE_RESET( lnw80 )
 
+	MDRV_GFXDECODE(lnw80)
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_PALETTE_INIT(lnw80)
 	MDRV_VIDEO_UPDATE(lnw80)
@@ -572,7 +665,8 @@ static MACHINE_DRIVER_START( radionic )
 	MDRV_VIDEO_UPDATE( radionic )
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_SIZE(64*8, 16*16)
-	MDRV_SCREEN_VISIBLE_AREA(0*8,64*8-1,0*16,16*16-1)
+	MDRV_SCREEN_VISIBLE_AREA(0,64*8-1,0,16*16-1)
+	MDRV_GFXDECODE(radionic)
 MACHINE_DRIVER_END
 
 
@@ -644,7 +738,7 @@ ROM_START(lnw80)
 	ROM_LOAD("lnw_chr.bin",  0x0000, 0x0800, CRC(c89b27df) SHA1(be2a009a07e4378d070002a558705e9a0de59389))
 
 	ROM_REGION(0x04400, "gfx2",0)
-	ROM_FILL(0, 0x4400, 0xff)	/* 0x4000 for gfxram + 0x400 for videoram */
+	ROM_FILL(0, 0x4400, 0xff)	/* 0x4000 for trs80_gfxram + 0x400 for videoram */
 ROM_END
 
 ROM_START(trs80m3)
@@ -748,33 +842,33 @@ static DRIVER_INIT( trs80m4 )
 {
 	trs80_mode = 0;
 	trs80_model4 = 2;
-	videoram = memory_region(machine, "maincpu")+0x4000;
+	machine->generic.videoram.u8 = memory_region(machine, "maincpu")+0x4000;
 }
 
 static DRIVER_INIT( trs80m4p )
 {
 	trs80_mode = 0;
 	trs80_model4 = 4;
-	videoram = memory_region(machine, "maincpu")+0x4000;
+	machine->generic.videoram.u8 = memory_region(machine, "maincpu")+0x4000;
 }
 
 static DRIVER_INIT( lnw80 )
 {
 	trs80_mode = 0;
 	trs80_model4 = 0;
-	gfxram = memory_region(machine, "gfx2");
-	videoram = memory_region(machine, "gfx2")+0x4000;
+	trs80_gfxram = memory_region(machine, "gfx2");
+	machine->generic.videoram.u8 = memory_region(machine, "gfx2")+0x4000;
 }
 
-/*    YEAR  NAME      PARENT  COMPAT  MACHINE     INPUT    INIT      CONFIG       COMPANY  FULLNAME */
-COMP( 1977, trs80,    0,	0,	trs80,    trs80,   trs80,    0,		"Tandy Radio Shack",  "TRS-80 Model I (Level I Basic)" , 0 )
-COMP( 1978, trs80l2,  trs80,	0,	model1,   trs80,   trs80l2,  0,	"Tandy Radio Shack",  "TRS-80 Model I (Level II Basic)" , 0 )
-COMP( 1983, radionic, trs80,	0,	radionic, trs80,   trs80,    0,	"Komtek",  "Radionic" , 0 )
-COMP( 1980, sys80,    trs80,	0,	sys80,    trs80,   trs80l2,  0,	"EACA Computers Ltd.","System-80" , 0 )
-COMP( 1981, lnw80,    trs80,	0,	lnw80,    trs80m3, lnw80,    0,	"LNW Research","LNW-80", 0 )
-COMP( 1980, trs80m3,  trs80,	0,	model3,   trs80m3, trs80m4,  0,	"Tandy Radio Shack",  "TRS-80 Model III", 0 )
-COMP( 1980, trs80m4,  trs80,	0,	model4,   trs80m3, trs80m4,  0,	"Tandy Radio Shack",  "TRS-80 Model 4", 0 )
-COMP( 1983, trs80m4p, trs80,	0,	model4p,  trs80m3, trs80m4p, 0,	"Tandy Radio Shack",  "TRS-80 Model 4P", 0 )
-COMP( 1983, ht1080z,  trs80,	0,	ht1080z,  trs80,   trs80l2,  0,	"Hiradastechnika Szovetkezet",  "HT-1080Z Series I" , 0 )
-COMP( 1984, ht1080z2, trs80,	0,	ht1080z,  trs80,   trs80l2,  0,	"Hiradastechnika Szovetkezet",  "HT-1080Z Series II" , 0 )
-COMP( 1985, ht108064, trs80,	0,	ht1080z,  trs80,   trs80,    0,	"Hiradastechnika Szovetkezet",  "HT-1080Z/64" , 0 )
+/*    YEAR  NAME      PARENT  COMPAT  MACHINE     INPUT    INIT  COMPANY  FULLNAME */
+COMP( 1977, trs80,    0,		0,	trs80,    trs80,   trs80,    "Tandy Radio Shack",  "TRS-80 Model I (Level I Basic)" , 0 )
+COMP( 1978, trs80l2,  trs80,	0,	model1,   trs80,   trs80l2,  "Tandy Radio Shack",  "TRS-80 Model I (Level II Basic)" , 0 )
+COMP( 1983, radionic, trs80,	0,	radionic, trs80,   trs80,    "Komtek",  "Radionic" , 0 )
+COMP( 1980, sys80,    trs80,	0,	sys80,    trs80,   trs80l2,  "EACA Computers Ltd.","System-80" , 0 )
+COMP( 1981, lnw80,    trs80,	0,	lnw80,    trs80m3, lnw80,    "LNW Research","LNW-80", 0 )
+COMP( 1980, trs80m3,  trs80,	0,	model3,   trs80m3, trs80m4,  "Tandy Radio Shack",  "TRS-80 Model III", 0 )
+COMP( 1980, trs80m4,  trs80,	0,	model4,   trs80m3, trs80m4,  "Tandy Radio Shack",  "TRS-80 Model 4", 0 )
+COMP( 1983, trs80m4p, trs80,	0,	model4p,  trs80m3, trs80m4p, "Tandy Radio Shack",  "TRS-80 Model 4P", 0 )
+COMP( 1983, ht1080z,  trs80,	0,	ht1080z,  trs80,   trs80l2,  "Hiradastechnika Szovetkezet",  "HT-1080Z Series I" , 0 )
+COMP( 1984, ht1080z2, trs80,	0,	ht1080z,  trs80,   trs80l2,  "Hiradastechnika Szovetkezet",  "HT-1080Z Series II" , 0 )
+COMP( 1985, ht108064, trs80,	0,	ht1080z,  trs80,   trs80,    "Hiradastechnika Szovetkezet",  "HT-1080Z/64" , 0 )

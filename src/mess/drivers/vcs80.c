@@ -210,10 +210,10 @@ static MACHINE_DRIVER_START( vcs80 )
 
 	/* devices */
 	MDRV_Z80PIO_ADD(Z80PIO_TAG, pio_intf)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("1K")	
+	MDRV_RAM_DEFAULT_SIZE("1K")
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -243,5 +243,5 @@ static DRIVER_INIT( vcs80 )
 
 /* System Drivers */
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY             FULLNAME    FLAGS */
-COMP( 1983, vcs80,  0,		0,		vcs80,	vcs80,	vcs80,	0,	"Eckhard Schiller",	"VCS-80",	GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY             FULLNAME    FLAGS */
+COMP( 1983, vcs80,  0,		0,		vcs80,	vcs80,	vcs80,	"Eckhard Schiller",	"VCS-80",	GAME_SUPPORTS_SAVE )

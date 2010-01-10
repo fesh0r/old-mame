@@ -176,13 +176,12 @@ static UINT8 IRQ_reset;
 static UINT8 IRQ_status;
 static UINT8 IRQ_mode;
 
-int MMC1_extended;	/* 0 = normal MMC1 cart, 1 = 512k MMC1, 2 = 1024k MMC1 */
+//int MMC1_extended;    /* 0 = normal MMC1 cart, 1 = 512k MMC1, 2 = 1024k MMC1 */
 
-write8_space_func mmc_write_low;
-read8_space_func mmc_read_low;
-write8_space_func mmc_write_mid;
-read8_space_func mmc_read_mid;
-write8_space_func mmc_write;
+static write8_space_func mmc_write_low;
+static read8_space_func mmc_read_low;
+static write8_space_func mmc_write_mid;
+static write8_space_func mmc_write;
 
 static int mult1, mult2;
 
@@ -216,8 +215,8 @@ static int MMC5_vram_protect;
 static int MMC5_scanline;
 static int MMC5_floodtile;
 static int MMC5_floodattr;
-UINT8 MMC5_vram[0x400];
-int MMC5_vram_control;
+UINT8 nes_mmc5_vram[0x400];
+int nes_mmc5_vram_control;
 
 // these might be unified in single mmc_reg[] array, together with mmc_cmd1 & mmc_cmd2
 // but be careful that MMC3 clones often use mmc_cmd1/mmc_cmd2 (from base MMC3) AND additional regs below!
@@ -264,8 +263,6 @@ static UINT8 map153_bank_latch;
 
 static int mapper_warning;
 
-static emu_timer	*nes_irq_timer;
-
 
 /*************************************************************
 
@@ -287,12 +284,6 @@ static emu_timer	*nes_irq_timer;
     care separately in init_nes_core
 
 *************************************************************/
-
-static TIMER_CALLBACK( nes_irq_callback )
-{
-	cputag_set_input_line(machine, "maincpu", M6502_IRQ_LINE, HOLD_LINE);
-	timer_adjust_oneshot(nes_irq_timer, attotime_never, 0);
-}
 
 WRITE8_HANDLER( nes_chr_w )
 {
@@ -420,10 +411,10 @@ static void prg32( running_machine *machine, int bank )
 		memcpy(&nes.rom[0x8000], &nes.rom[bank * 0x8000 + 0x10000], 0x8000);
 	else
 	{
-		memory_set_bankptr(machine, 1, &nes.rom[bank * 0x8000 + 0x10000]);
-		memory_set_bankptr(machine, 2, &nes.rom[bank * 0x8000 + 0x12000]);
-		memory_set_bankptr(machine, 3, &nes.rom[bank * 0x8000 + 0x14000]);
-		memory_set_bankptr(machine, 4, &nes.rom[bank * 0x8000 + 0x16000]);
+		memory_set_bankptr(machine, "bank1", &nes.rom[bank * 0x8000 + 0x10000]);
+		memory_set_bankptr(machine, "bank2", &nes.rom[bank * 0x8000 + 0x12000]);
+		memory_set_bankptr(machine, "bank3", &nes.rom[bank * 0x8000 + 0x14000]);
+		memory_set_bankptr(machine, "bank4", &nes.rom[bank * 0x8000 + 0x16000]);
 	}
 }
 
@@ -435,8 +426,8 @@ static void prg16_89ab( running_machine *machine, int bank )
 		memcpy(&nes.rom[0x8000], &nes.rom[bank * 0x4000 + 0x10000], 0x4000);
 	else
 	{
-		memory_set_bankptr(machine, 1, &nes.rom[bank * 0x4000 + 0x10000]);
-		memory_set_bankptr(machine, 2, &nes.rom[bank * 0x4000 + 0x12000]);
+		memory_set_bankptr(machine, "bank1", &nes.rom[bank * 0x4000 + 0x10000]);
+		memory_set_bankptr(machine, "bank2", &nes.rom[bank * 0x4000 + 0x12000]);
 	}
 }
 
@@ -448,8 +439,8 @@ static void prg16_cdef( running_machine *machine, int bank )
 		memcpy(&nes.rom[0xc000], &nes.rom[bank * 0x4000 + 0x10000], 0x4000);
 	else
 	{
-		memory_set_bankptr(machine, 3, &nes.rom[bank * 0x4000 + 0x10000]);
-		memory_set_bankptr(machine, 4, &nes.rom[bank * 0x4000 + 0x12000]);
+		memory_set_bankptr(machine, "bank3", &nes.rom[bank * 0x4000 + 0x10000]);
+		memory_set_bankptr(machine, "bank4", &nes.rom[bank * 0x4000 + 0x12000]);
 	}
 }
 
@@ -460,7 +451,7 @@ static void prg8_89( running_machine *machine, int bank )
 	if (nes.slow_banking)
 		memcpy(&nes.rom[0x8000], &nes.rom[bank * 0x2000 + 0x10000], 0x2000);
 	else
-		memory_set_bankptr(machine, 1, &nes.rom[bank * 0x2000 + 0x10000]);
+		memory_set_bankptr(machine, "bank1", &nes.rom[bank * 0x2000 + 0x10000]);
 }
 
 static void prg8_ab( running_machine *machine, int bank )
@@ -470,7 +461,7 @@ static void prg8_ab( running_machine *machine, int bank )
 	if (nes.slow_banking)
 		memcpy(&nes.rom[0xa000], &nes.rom[bank * 0x2000 + 0x10000], 0x2000);
 	else
-		memory_set_bankptr(machine, 2, &nes.rom[bank * 0x2000 + 0x10000]);
+		memory_set_bankptr(machine, "bank2", &nes.rom[bank * 0x2000 + 0x10000]);
 }
 
 static void prg8_cd( running_machine *machine, int bank )
@@ -480,7 +471,7 @@ static void prg8_cd( running_machine *machine, int bank )
 	if (nes.slow_banking)
 		memcpy(&nes.rom[0xc000], &nes.rom[bank * 0x2000 + 0x10000], 0x2000);
 	else
-		memory_set_bankptr(machine, 3, &nes.rom[bank * 0x2000 + 0x10000]);
+		memory_set_bankptr(machine, "bank3", &nes.rom[bank * 0x2000 + 0x10000]);
 }
 
 static void prg8_ef( running_machine *machine, int bank )
@@ -490,7 +481,7 @@ static void prg8_ef( running_machine *machine, int bank )
 	if (nes.slow_banking)
 		memcpy(&nes.rom[0xe000], &nes.rom[bank * 0x2000 + 0x10000], 0x2000);
 	else
-		memory_set_bankptr(machine, 4, &nes.rom[bank * 0x2000 + 0x10000]);
+		memory_set_bankptr(machine, "bank4", &nes.rom[bank * 0x2000 + 0x10000]);
 }
 
 /* We define an additional helper to map PRG-ROM to 0x6000-0x7000 */
@@ -500,7 +491,7 @@ static void prg8_67( running_machine *machine, int bank )
 {
 	/* assumes that bank references an 8k chunk */
 	bank &= ((nes.prg_chunks << 1) - 1);
-	memory_set_bankptr(machine, 5, &nes.rom[bank * 0x2000 + 0x10000]);
+	memory_set_bankptr(machine, "bank5", &nes.rom[bank * 0x2000 + 0x10000]);
 }
 
 /* CHR ROM in 1K, 2K, 4K or 8K blocks */
@@ -657,7 +648,7 @@ static void set_nt_page( int page, int source, int bank, int writable )
 			base_ptr = nes.vrom;
 			break;
 		case EXRAM:
-			base_ptr = MMC5_vram;
+			base_ptr = nes_mmc5_vram;
 			break;
 		case CIRAM:
 		default:
@@ -1004,7 +995,7 @@ static int mapper_initialize( running_machine *machine, int mmc_num )
 			mmc_chr_mask = 0x7f;
 			mapper4_set_prg(machine, mmc_prg_base, mmc_prg_mask);
 			mapper4_set_chr(machine, mmc_chr_source, mmc_chr_base, mmc_chr_mask);
-			memory_set_bankptr(machine, 5, nes.wram);
+			memory_set_bankptr(machine, "bank5", nes.wram);
 			break;
 		case 46:
 			prg32(machine, 0);
@@ -1042,7 +1033,7 @@ static int mapper_initialize( running_machine *machine, int mmc_num )
 			mmc_chr_mask = 0xff;
 			mapper4_set_prg(machine, mmc_prg_base, mmc_prg_mask);
 			mapper4_set_chr(machine, mmc_chr_source, mmc_chr_base, mmc_chr_mask);
-			memory_set_bankptr(machine, 5, nes.wram);
+			memory_set_bankptr(machine, "bank5", nes.wram);
 			break;
 		case 57:
 			mmc_cmd1 = 0x00;
@@ -1551,7 +1542,7 @@ static int mapper_initialize( running_machine *machine, int mmc_num )
 
 /*************************************************************
 
-    mapper_reset
+    nes_mapper_reset
 
     Resets the mapper bankswitch areas to their defaults.
     It returns a value "err" that indicates if it was
@@ -1563,7 +1554,7 @@ static int mapper_initialize( running_machine *machine, int mmc_num )
 
 *************************************************************/
 
-int mapper_reset( running_machine *machine, int mmc_num )
+int nes_mapper_reset( running_machine *machine, int mmc_num )
 {
 	nes_state *state = machine->driver_data;
 	int err = 0, i;
@@ -1585,16 +1576,13 @@ int mapper_reset( running_machine *machine, int mmc_num )
 	ppu2c0x_set_scanline_callback(state->ppu, mapper ? mapper->mmc_scanline : NULL);
 	ppu2c0x_set_hblank_callback(state->ppu, mapper ? mapper->mmc_hblank : NULL);
 
-	if (!nes_irq_timer)
-		nes_irq_timer = timer_alloc(machine, nes_irq_callback, NULL);
-
 	mapper_warning = 0;
 
-	MMC5_vram_control = 0;
+	nes_mmc5_vram_control = 0;
 
 	/* Point the WRAM/battery area to the first RAM bank */
 	if (mmc_num != 20)
-		memory_set_bankptr(machine, 5, &nes.wram[0x0000]);
+		memory_set_bankptr(machine, "bank5", &nes.wram[0x0000]);
 
 	/* Here, we init a few helpers: 4 prg banks and 16 chr banks - some mappers use them */
 	for (i = 0; i < 4; i++)
@@ -1614,6 +1602,14 @@ int mapper_reset( running_machine *machine, int mmc_num )
 	return err;
 }
 
+void nes_mapper_init(const mmc_intf *intf)
+{
+	mmc_write_low = intf->mmc_write_low;
+	mmc_read_low = intf->mmc_read_low;
+	mmc_write_mid = intf->mmc_write_mid;
+	mmc_write = intf->mmc_write;
+}
+
 /*************************************************************
 
     Support for .unf Files
@@ -1624,7 +1620,7 @@ int mapper_reset( running_machine *machine, int mmc_num )
 #include "machine/nes_unif.c"
 
 // WIP code
-int unif_reset( running_machine *machine, const char *board )
+int nes_unif_reset( running_machine *machine, const char *board )
 {
 	nes_state *state = machine->driver_data;
 	int err = 0;
@@ -1644,11 +1640,9 @@ int unif_reset( running_machine *machine, const char *board )
 	ppu2c0x_set_scanline_callback(state->ppu, unif_board ? unif_board->mmc_scanline : NULL);
 	ppu2c0x_set_hblank_callback(state->ppu, unif_board ? unif_board->mmc_hblank : NULL);
 
-	if (!nes_irq_timer)
-		nes_irq_timer = timer_alloc(machine, nes_irq_callback, NULL);
 
 	/* Point the WRAM/battery area to the first RAM bank */
-	memory_set_bankptr(machine, 5, &nes.wram[0x0000]);
+	memory_set_bankptr(machine, "bank5", &nes.wram[0x0000]);
 
 	switch (unif_board->board_idx)
 	{

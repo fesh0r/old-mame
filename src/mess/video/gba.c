@@ -27,8 +27,10 @@ INLINE void verboselog(running_machine *machine, int n_level, const char *s_fmt,
 	}
 }
 
-static int coeff[32] = {  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
-						 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16 };
+static int coeff[32] = {
+	0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
+	16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16
+};
 
 /* Drawing functions */
 static void draw_roz_bitmap_scanline(gba_state *gba_state, UINT32 *scanline, int ypos, UINT32 enablemask, UINT32 ctrl, INT32 X, INT32 Y, INT32 PA, INT32 PB, INT32 PC, INT32 PD, INT32 *currentx, INT32 *currenty, int changed, int depth);
@@ -1763,7 +1765,7 @@ INLINE UINT32 decrease_brightness(UINT32 color, int coeff)
 
 void gba_draw_scanline(running_machine *machine, int y)
 {
-	bitmap_t *bitmap = tmpbitmap;
+	bitmap_t *bitmap = machine->generic.tmpbitmap;
 	UINT16 *scanline = BITMAP_ADDR16(bitmap, y, 0);
 	int i, x;
 	static UINT32 xferscan[7][240+2048];	// up to 1024 pixels of slop on either side to allow easier clip handling

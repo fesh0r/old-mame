@@ -23,11 +23,11 @@
 
 /* Address maps */
 static ADDRESS_MAP_START(b2m_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE (0x0000, 0x27ff) AM_RAMBANK(1)
- 	AM_RANGE (0x2800, 0x2fff) AM_RAMBANK(2)
- 	AM_RANGE (0x3000, 0x6fff) AM_RAMBANK(3)
- 	AM_RANGE (0x7000, 0xdfff) AM_RAMBANK(4)
- 	AM_RANGE (0xe000, 0xffff) AM_RAMBANK(5)
+	AM_RANGE (0x0000, 0x27ff) AM_RAMBANK("bank1")
+ 	AM_RANGE (0x2800, 0x2fff) AM_RAMBANK("bank2")
+ 	AM_RANGE (0x3000, 0x6fff) AM_RAMBANK("bank3")
+ 	AM_RANGE (0x7000, 0xdfff) AM_RAMBANK("bank4")
+ 	AM_RANGE (0xe000, 0xffff) AM_RAMBANK("bank5")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( b2m_io, ADDRESS_SPACE_IO, 8 )
@@ -243,7 +243,7 @@ static MACHINE_DRIVER_START( b2m )
 	MDRV_WD1793_ADD("wd1793", default_wd17xx_interface_2_drives )
 
 	MDRV_FLOPPY_2_DRIVES_ADD(b2m_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("128K")
@@ -271,6 +271,6 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT       INIT     CONFIG COMPANY                  FULLNAME   FLAGS */
-COMP( 1989, b2m, 	0, 	 	0,		b2m, 		b2m, 		b2m, 	 0,  	"BNPO",					 "Bashkiria-2M",	 GAME_SUPPORTS_SAVE)
-COMP( 1989, b2mrom,	b2m, 	0,		b2mrom,		b2m, 		b2m, 	 0,  	"BNPO",					 "Bashkiria-2M ROM-disk",	 GAME_SUPPORTS_SAVE)
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT       INIT     COMPANY                  FULLNAME   FLAGS */
+COMP( 1989, b2m, 	0, 	 	0,		b2m, 		b2m, 		b2m, 	 "BNPO",					 "Bashkiria-2M",	 GAME_SUPPORTS_SAVE)
+COMP( 1989, b2mrom,	b2m, 	0,		b2mrom,		b2m, 		b2m, 	 "BNPO",					 "Bashkiria-2M ROM-disk",	 GAME_SUPPORTS_SAVE)

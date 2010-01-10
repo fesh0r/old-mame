@@ -11,9 +11,9 @@
 #include "sound/speaker.h"
 #include "machine/ctronics.h"
 #include "super80.lh"
-#include "super80.h"
+#include "includes/super80.h"
 
-UINT8 *pcgram;
+UINT8 *super80_pcgram;
 
 #define MASTER_CLOCK			(XTAL_12MHz)
 #define PIXEL_CLOCK			(MASTER_CLOCK/2)
@@ -36,24 +36,24 @@ UINT8 *pcgram;
 static READ8_HANDLER( super80_read_ff ) { return 0xff; }
 
 static ADDRESS_MAP_START( super80_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK(1) AM_REGION("maincpu", 0x0000)
+	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1") AM_REGION("maincpu", 0x0000)
 	AM_RANGE(0x4000, 0xbfff) AM_RAM AM_REGION("maincpu", 0x4000)
 	AM_RANGE(0xc000, 0xefff) AM_ROM
-	AM_RANGE(0xf000, 0xffff) AM_READWRITE(super80_read_ff, SMH_NOP)
+	AM_RANGE(0xf000, 0xffff) AM_READ(super80_read_ff) AM_WRITENOP
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( super80m_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK(1) AM_REGION("maincpu", 0x0000)
+	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1") AM_REGION("maincpu", 0x0000)
 	AM_RANGE(0x4000, 0xbfff) AM_RAM AM_REGION("maincpu", 0x4000)
 	AM_RANGE(0xc000, 0xefff) AM_ROM
 	AM_RANGE(0xf000, 0xffff) AM_RAM AM_REGION("maincpu", 0xf000)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( super80v_map, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x4000, 0xbfff) AM_RAM
 	AM_RANGE(0xc000, 0xefff) AM_ROM
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(super80v_low_r, super80v_low_w) AM_BASE(&pcgram)
+	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(super80v_low_r, super80v_low_w) AM_BASE(&super80_pcgram)
 	AM_RANGE(0xf800, 0xffff) AM_READWRITE(super80v_high_r, super80v_high_w)
 ADDRESS_MAP_END
 
@@ -337,6 +337,84 @@ static INPUT_PORTS_START( super80r )
 INPUT_PORTS_END
 
 
+/**************************** F4 CHARACTER DISPLAYER ***********************************************************/
+
+static const gfx_layout super80_charlayout =
+{
+	8,10,					/* 8 x 10 characters */
+	64,					/* 64 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{  0*8,  2*8,  4*8,  6*8,  8*8, 10*8, 12*8, 14*8, 1*8,  3*8,  5*8,  7*8,  9*8, 11*8, 13*8, 15*8 },
+	8*16					/* every char takes 16 bytes */
+};
+
+static const gfx_layout super80d_charlayout =
+{
+	8,10,					/* 8 x 10 characters */
+	128,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{  0*8,  2*8,  4*8,  6*8,  8*8, 10*8, 12*8, 14*8, 1*8,  3*8,  5*8,  7*8,  9*8, 11*8, 13*8, 15*8 },
+	8*16					/* every char takes 16 bytes */
+};
+
+static const gfx_layout super80e_charlayout =
+{
+	8,10,					/* 8 x 10 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{  0*8,  2*8,  4*8,  6*8,  8*8, 10*8, 12*8, 14*8, 1*8,  3*8,  5*8,  7*8,  9*8, 11*8, 13*8, 15*8 },
+	8*16					/* every char takes 16 bytes */
+};
+
+static const gfx_layout super80v_charlayout =
+{
+	8,16,					/* 8 x 16 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{  0*8,  1*8,  2*8,  3*8,  4*8,  5*8,  6*8,  7*8, 8*8,  9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
+	8*16					/* every char takes 16 bytes */
+};
+
+static GFXDECODE_START( super80 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, super80_charlayout, 0, 1 )
+GFXDECODE_END
+
+static GFXDECODE_START( super80d )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, super80d_charlayout, 0, 1 )
+GFXDECODE_END
+
+static GFXDECODE_START( super80e )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, super80e_charlayout, 0, 1 )
+GFXDECODE_END
+
+static GFXDECODE_START( super80m )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, super80e_charlayout, 0, 8 )
+	GFXDECODE_ENTRY( "gfx1", 0x1000, super80d_charlayout, 0, 8 )
+GFXDECODE_END
+
+/* This will show the 128 characters in the ROM + whatever happens to be in the PCG */
+static GFXDECODE_START( super80v )
+	GFXDECODE_ENTRY( "maincpu", 0xf000, super80v_charlayout, 0, 8 )
+GFXDECODE_END
+
+
+
 /**************************** BASIC MACHINE CONSTRUCTION ***********************************************************/
 
 
@@ -399,6 +477,7 @@ static MACHINE_DRIVER_START( super80 )
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(black_and_white)
 
+	MDRV_GFXDECODE(super80)
 	MDRV_DEFAULT_LAYOUT( layout_super80 )
 	MDRV_VIDEO_START(super80)
 	MDRV_VIDEO_UPDATE(super80)
@@ -425,11 +504,13 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( super80d )
 	MDRV_IMPORT_FROM(super80)
+	MDRV_GFXDECODE(super80d)
 	MDRV_VIDEO_UPDATE(super80d)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( super80e )
 	MDRV_IMPORT_FROM(super80)
+	MDRV_GFXDECODE(super80e)
 	MDRV_VIDEO_UPDATE(super80e)
 MACHINE_DRIVER_END
 
@@ -438,6 +519,7 @@ static MACHINE_DRIVER_START( super80m )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(super80m_map)
 
+	MDRV_GFXDECODE(super80m)
 	MDRV_PALETTE_LENGTH(16)
 	MDRV_PALETTE_INIT(super80m)
 	MDRV_VIDEO_EOF(super80m)
@@ -465,6 +547,7 @@ static MACHINE_DRIVER_START( super80v )
 
 	MDRV_MC6845_ADD("crtc", MC6845, MASTER_CLOCK / SUPER80V_DOTS, super80v_crtc)
 
+	MDRV_GFXDECODE(super80v)
 	MDRV_DEFAULT_LAYOUT( layout_super80 )
 	MDRV_VIDEO_START(super80v)
 	MDRV_VIDEO_EOF(super80m)
@@ -581,10 +664,10 @@ ROM_START( super80v )
 	ROM_LOAD("s80hmce.ic24",  0xf000, 0x0800, CRC(a6488a1e) SHA1(7ba613d70a37a6b738dcd80c2bb9988ff1f011ef) )
 ROM_END
 
-/*    YEAR  NAME      PARENT COMPAT MACHINE INPUT     INIT       CONFIG   COMPANY       FULLNAME */
-COMP( 1981, super80,  0,       0, super80,  super80,  super80,  0, "Dick Smith Electronics","Super-80 (V1.2)" , 0)
-COMP( 1981, super80d, super80, 0, super80d, super80d, super80,  0, "Dick Smith Electronics","Super-80 (V2.2)" , 0)
-COMP( 1981, super80e, super80, 0, super80e, super80d, super80,  0, "Dick Smith Electronics","Super-80 (El Graphix 4)" , 0)
-COMP( 1981, super80m, super80, 0, super80m, super80m, super80,  0, "Dick Smith Electronics","Super-80 (8R0)" , 0)
-COMP( 1981, super80r, super80, 0, super80r, super80r, super80v, 0, "Dick Smith Electronics","Super-80 (with VDUEB)" , 0)
-COMP( 1981, super80v, super80, 0, super80v, super80v, super80v, 0, "Dick Smith Electronics","Super-80 (with enhanced VDUEB)" , 0)
+/*    YEAR  NAME      PARENT COMPAT MACHINE INPUT     INIT      COMPANY       FULLNAME */
+COMP( 1981, super80,  0,       0, super80,  super80,  super80,  "Dick Smith Electronics","Super-80 (V1.2)" , 0)
+COMP( 1981, super80d, super80, 0, super80d, super80d, super80,  "Dick Smith Electronics","Super-80 (V2.2)" , 0)
+COMP( 1981, super80e, super80, 0, super80e, super80d, super80,  "Dick Smith Electronics","Super-80 (El Graphix 4)" , 0)
+COMP( 1981, super80m, super80, 0, super80m, super80m, super80,  "Dick Smith Electronics","Super-80 (8R0)" , 0)
+COMP( 1981, super80r, super80, 0, super80r, super80r, super80v, "Dick Smith Electronics","Super-80 (with VDUEB)" , 0)
+COMP( 1981, super80v, super80, 0, super80v, super80v, super80v, "Dick Smith Electronics","Super-80 (with enhanced VDUEB)" , 0)

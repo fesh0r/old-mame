@@ -47,7 +47,7 @@ static bitmap_t* lcdbitmap;
 
 #define VERBOSE_LEVEL	(5)
 
-#define ENABLE_VERBOSE_LOG (0)
+#define ENABLE_VERBOSE_LOG (1)
 
 #if ENABLE_VERBOSE_LOG
 INLINE void verboselog(running_machine *machine, int n_level, const char *s_fmt, ...)
@@ -1047,6 +1047,10 @@ typedef struct
 	INT32 audio_sample_freq;
 	INT32 audio_sample_size;
 
+	UINT16 decode_addr;
+	UINT8 decode_delay;
+	attotime decode_period;
+
 } cdic_regs_t;
 
 #define CDIC_SECTOR_SYNC		0
@@ -1475,43 +1479,55 @@ static void cdic_decode_audio_sector(running_machine *machine, const unsigned ch
 // After an appropriate delay for decoding to take place...
 static TIMER_CALLBACK( audio_sample_trigger )
 {
-	// Indicate that data has been decoded
-	verboselog(machine, 0, "Flagging that audio data has been decoded\n" );
-	cdic_regs.audio_buffer |= 0x8000;
-
-	// Set the CDIC interrupt line
-	verboselog(machine, 0, "Setting CDIC interrupt line for soundmap decode\n" );
-	cpu_set_input_line_vector(cputag_get_cpu(machine, "maincpu"), M68K_IRQ_4, 128);
-	cputag_set_input_line(machine, "maincpu", M68K_IRQ_4, ASSERT_LINE);
-
-	if(CDIC_IS_VALID_SAMPLE_BUF(cdic_regs.z_buffer & 0x3ffe))
+	if(cdic_regs.decode_addr == 0xffff)
 	{
-		attotime period;
+		verboselog(machine, 0, "Decode stop requested, stopping playback\n" );
+		timer_adjust_oneshot(cdic_regs.audio_sample_timer, attotime_never, 0);
+		return;
+	}
 
-		verboselog(machine, 0, "Hit audio_sample_trigger, with cdic_regs.z_buffer == %04x, calling cdic_decode_audio_sector\n", cdic_regs.z_buffer );
+	if(!cdic_regs.decode_delay)
+	{
+		// Indicate that data has been decoded
+		verboselog(machine, 0, "Flagging that audio data has been decoded\n" );
+		cdic_regs.audio_buffer |= 0x8000;
+
+		// Set the CDIC interrupt line
+		verboselog(machine, 0, "Setting CDIC interrupt line for soundmap decode\n" );
+		cpu_set_input_line_vector(cputag_get_cpu(machine, "maincpu"), M68K_IRQ_4, 128);
+		cputag_set_input_line(machine, "maincpu", M68K_IRQ_4, ASSERT_LINE);
+	}
+	else
+	{
+		cdic_regs.decode_delay = 0;
+	}
+
+	if(CDIC_IS_VALID_SAMPLE_BUF(cdic_regs.decode_addr & 0x3ffe))
+	{
+		verboselog(machine, 0, "Hit audio_sample_trigger, with cdic_regs.decode_addr == %04x, calling cdic_decode_audio_sector\n", cdic_regs.decode_addr );
 
 		// Decode the data at Z+4, the same offset as a normal CD sector.
-		cdic_decode_audio_sector(machine, ((UINT8*)cdram) + (cdic_regs.z_buffer & 0x3ffe) + 4, 1);
+		cdic_decode_audio_sector(machine, ((UINT8*)cdram) + (cdic_regs.decode_addr & 0x3ffe) + 4, 1);
 
 		// Swap buffer positions to indicate our new buffer position at the next read
-		cdic_regs.z_buffer ^= 0x1a00;
-		cdic_regs.data_buffer ^= 0x0001;
+		cdic_regs.decode_addr ^= 0x1a00;
 
-		verboselog(machine, 0, "Updated cdic_regs.z_buffer, new value is %04x\n", cdic_regs.z_buffer );
+		verboselog(machine, 0, "Updated cdic_regs.decode_addr, new value is %04x\n", cdic_regs.decode_addr );
 
 		//// Delay for Frequency * (18*28*2*size in bytes) before requesting more data
 		verboselog(machine, 0, "Data is valid, setting up a new callback\n" );
-		period = attotime_mul(ATTOTIME_IN_HZ(CDIC_SAMPLE_BUF_FREQ(cdic_regs.z_buffer & 0x3ffe)), 18*28*2*CDIC_SAMPLE_BUF_SIZE(cdic_regs.z_buffer & 0x3ffe));
-		timer_adjust_oneshot(cdic_regs.audio_sample_timer, period, 0);
+		cdic_regs.decode_period = attotime_mul(ATTOTIME_IN_HZ(CDIC_SAMPLE_BUF_FREQ(cdic_regs.decode_addr & 0x3ffe)), 18*28*2*CDIC_SAMPLE_BUF_SIZE(cdic_regs.decode_addr & 0x3ffe));
+		timer_adjust_oneshot(cdic_regs.audio_sample_timer, cdic_regs.decode_period, 0);
 		//dmadac_enable(&dmadac[0], 2, 0);
 	}
 	else
 	{
 		// Swap buffer positions to indicate our new buffer position at the next read
-		cdic_regs.z_buffer ^= 0x1a00;
-		cdic_regs.z_buffer &= 0xfffe;
-		verboselog(machine, 0, "Data is not valid, stopping playback\n" );
-		timer_adjust_oneshot(cdic_regs.audio_sample_timer, attotime_never, 0);
+		cdic_regs.decode_addr ^= 0x1a00;
+
+		verboselog(machine, 0, "Data is not valid, indicating to shut down on the next audio sample\n" );
+		cdic_regs.decode_addr = 0xffff;
+		timer_adjust_oneshot(cdic_regs.audio_sample_timer, cdic_regs.decode_period, 0);
 	}
 }
 
@@ -1590,6 +1606,7 @@ static TIMER_CALLBACK( cdic_trigger_readback_int )
 	switch(cdic_regs.command)
 	{
 		case 0x23: // Reset Mode 1
+		case 0x24: // Reset Mode 2
 		case 0x29: // Read Mode 1
 		case 0x2a: // Read Mode 2
 		//case 0x2c: // Seek
@@ -1673,6 +1690,9 @@ static TIMER_CALLBACK( cdic_trigger_readback_int )
 				}
 			}
 
+			cdic_regs.data_buffer &= ~0x0004;
+			cdic_regs.data_buffer ^= 0x0001;
+
 			//printf( "%02x\n", buffer[CDIC_SECTOR_SUBMODE2] );
 			if((buffer[CDIC_SECTOR_FILE2] << 8) == cdic_regs.file)
 			{
@@ -1684,10 +1704,8 @@ static TIMER_CALLBACK( cdic_trigger_readback_int )
 						{
 					 		verboselog(machine, 0, "Audio sector\n" );
 
-							cdic_regs.data_buffer ^= 0x0001;
-
 							cdic_regs.x_buffer |= 0x8000;
-							cdic_regs.data_buffer |= 0x4000;
+							//cdic_regs.data_buffer |= 0x4000;
 							cdic_regs.data_buffer |= 0x0004;
 
 							for(index = 6; index < 2352/2; index++)
@@ -1705,11 +1723,8 @@ static TIMER_CALLBACK( cdic_trigger_readback_int )
 					}
 					else if((buffer[CDIC_SECTOR_SUBMODE2] & (CDIC_SUBMODE_DATA | CDIC_SUBMODE_AUDIO | CDIC_SUBMODE_VIDEO)) == 0x00)
 					{
-						cdic_regs.data_buffer ^= 0x0001;
-
-						cdic_regs.data_buffer &= ~0x0004;
 						cdic_regs.x_buffer |= 0x8000;
-						cdic_regs.data_buffer |= 0x4000;
+						//cdic_regs.data_buffer |= 0x4000;
 
 						for(index = 6; index < 2352/2; index++)
 						{
@@ -1732,11 +1747,8 @@ static TIMER_CALLBACK( cdic_trigger_readback_int )
 					}
 					else /*if(buffer[CDIC_SECTOR_SUBMODE2] & (CDIC_SUBMODE_DATA | CDIC_SUBMODE_VIDEO))*/
 					{
-						cdic_regs.data_buffer ^= 0x0001;
-
-						cdic_regs.data_buffer &= ~0x0004;
 						cdic_regs.x_buffer |= 0x8000;
-						cdic_regs.data_buffer |= 0x4000;
+						//cdic_regs.data_buffer |= 0x4000;
 
 						for(index = 6; index < 2352/2; index++)
 						{
@@ -1765,10 +1777,10 @@ static TIMER_CALLBACK( cdic_trigger_readback_int )
 
 			break;
 		}
-		case 0x24: // Mode 2 Reset
+		//case 0x24: // Mode 2 Reset
 		case 0x2e: // Abort
 			timer_adjust_oneshot(cdic_regs.interrupt_timer, attotime_never, 0);
-			cdic_regs.data_buffer &= ~4;
+			//cdic_regs.data_buffer &= ~4;
 			break;
 		case 0x28: // Play CDDA audio
 		{
@@ -1812,16 +1824,16 @@ static TIMER_CALLBACK( cdic_trigger_readback_int )
 
 			}
 
-			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x924/2] = 0x0001;								//	CTRL
+			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x924/2] = 0x0001;								//  CTRL
 			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x926/2] = 0x0001; 								//  TRACK
-			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x928/2] = 0x0000;								// 	INDEX
-			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x92a/2] = (cdic_regs.time >> 24) & 0x000000ff;	// 	MIN
-			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x92c/2] = (cdic_regs.time >> 16) & 0x000000ff;	// 	SEC
-			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x92e/2] = (cdic_regs.time >>  8) & 0x0000007f;	// 	FRAC
+			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x928/2] = 0x0000;								//  INDEX
+			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x92a/2] = (cdic_regs.time >> 24) & 0x000000ff;	//  MIN
+			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x92c/2] = (cdic_regs.time >> 16) & 0x000000ff;	//  SEC
+			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x92e/2] = (cdic_regs.time >>  8) & 0x0000007f;	//  FRAC
 			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x930/2] = 0x0000;								//  ZERO
-			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x932/2] = (cdic_regs.time >> 24) & 0x000000ff;	// 	AMIN
-			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x934/2] = (cdic_regs.time >> 16) & 0x000000ff;	// 	ASEC
-			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x936/2] = (cdic_regs.time >>  8) & 0x0000007f;	// 	AFRAC
+			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x932/2] = (cdic_regs.time >> 24) & 0x000000ff;	//  AMIN
+			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x934/2] = (cdic_regs.time >> 16) & 0x000000ff;	//  ASEC
+			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x936/2] = (cdic_regs.time >>  8) & 0x0000007f;	//  AFRAC
 			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x938/2] = 0x0000;								//  CRC1
 			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x93a/2] = 0x0000;								//  CRC2
 
@@ -1830,7 +1842,7 @@ static TIMER_CALLBACK( cdic_trigger_readback_int )
 			timer_adjust_oneshot(cdic_regs.interrupt_timer, ATTOTIME_IN_HZ(75), 0);
 
 			cdic_regs.x_buffer |= 0x8000;
-			cdic_regs.data_buffer |= 0x4000;
+			//cdic_regs.data_buffer |= 0x4000;
 
 			for(index = 6; index < 2352/2; index++)
 			{
@@ -1873,16 +1885,16 @@ static TIMER_CALLBACK( cdic_trigger_readback_int )
 				cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + (index - 6)] = (buffer[index*2] << 8) | buffer[index*2 + 1];
 			}
 
-			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x924/2] = 0x0041;								//	CTRL
+			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x924/2] = 0x0041;								//  CTRL
 			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x926/2] = 0x0001; 								//  TRACK
-			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x928/2] = 0x0000;								// 	INDEX
-			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x92a/2] = (cdic_regs.time >> 24) & 0x000000ff;	// 	MIN
-			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x92c/2] = (cdic_regs.time >> 16) & 0x000000ff;	// 	SEC
-			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x92e/2] = (cdic_regs.time >>  8) & 0x0000007f;	// 	FRAC
+			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x928/2] = 0x0000;								//  INDEX
+			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x92a/2] = (cdic_regs.time >> 24) & 0x000000ff;	//  MIN
+			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x92c/2] = (cdic_regs.time >> 16) & 0x000000ff;	//  SEC
+			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x92e/2] = (cdic_regs.time >>  8) & 0x0000007f;	//  FRAC
 			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x930/2] = 0x0000;								//  ZERO
-			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x932/2] = (cdic_regs.time >> 24) & 0x000000ff;	// 	AMIN
-			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x934/2] = (cdic_regs.time >> 16) & 0x000000ff;	// 	ASEC
-			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x936/2] = (cdic_regs.time >>  8) & 0x0000007f;	// 	AFRAC
+			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x932/2] = (cdic_regs.time >> 24) & 0x000000ff;	//  AMIN
+			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x934/2] = (cdic_regs.time >> 16) & 0x000000ff;	//  ASEC
+			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x936/2] = (cdic_regs.time >>  8) & 0x0000007f;	//  AFRAC
 			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x938/2] = 0x0000;								//  CRC1
 			cdram[(cdic_regs.data_buffer & 5) * (0xa00/2) + 0x93a/2] = 0x0000;								//  CRC2
 
@@ -2071,17 +2083,16 @@ static WRITE16_HANDLER( cdic_w )
 			if(cdic_regs.z_buffer & 0x2000)
 			{
 				attotime period = timer_timeleft(cdic_regs.audio_sample_timer);
-				if(!attotime_is_never(period))
+				if(attotime_is_never(period))
 				{
-					timer_adjust_oneshot(cdic_regs.audio_sample_timer, period, 0);
-				}
-				else
-				{
+					cdic_regs.decode_addr = cdic_regs.z_buffer & 0x3a00;
+					cdic_regs.decode_delay = 1;
 					timer_adjust_oneshot(cdic_regs.audio_sample_timer, ATTOTIME_IN_HZ(75), 0);
 				}
 			}
 			else
 			{
+				cdic_regs.decode_addr = 0xffff;
 				timer_adjust_oneshot(cdic_regs.audio_sample_timer, attotime_never, 0);
 			}
 			break;
@@ -2098,12 +2109,12 @@ static WRITE16_HANDLER( cdic_w )
 			{
 				switch(cdic_regs.command)
 				{
-					case 0x24: // Reset Mode 2
+					//case 0x24: // Reset Mode 2
 					case 0x2e: // Abort
 					{
 						timer_adjust_oneshot(cdic_regs.interrupt_timer, attotime_never, 0);
 						dmadac_enable(&dmadac[0], 2, 0);
-						cdic_regs.data_buffer &= 0xbfff;
+						//cdic_regs.data_buffer &= 0xbfff;
 						break;
 					}
 					case 0x2b: // Stop CDDA
@@ -2117,17 +2128,16 @@ static WRITE16_HANDLER( cdic_w )
 					case 0x2c: // Seek
 					{
 						attotime period = timer_timeleft(cdic_regs.interrupt_timer);
-						//if(cdic_regs.command == 0x2c)
-						//{
-						//	cdic_regs.time &= 0xffff0000;
-						//}
 						if(!attotime_is_never(period))
 						{
 							timer_adjust_oneshot(cdic_regs.interrupt_timer, period, 0);
 						}
 						else
 						{
-							timer_adjust_oneshot(cdic_regs.interrupt_timer, ATTOTIME_IN_HZ(75), 0);
+							if(cdic_regs.command != 0x23 && cdic_regs.command != 0x24)
+							{
+								timer_adjust_oneshot(cdic_regs.interrupt_timer, ATTOTIME_IN_HZ(75), 0);
+							}
 						}
 						break;
 					}
@@ -2161,6 +2171,9 @@ static void cdic_init(running_machine *machine, cdic_regs_t *cdic)
 
 	cdic->audio_sample_freq = 0;
 	cdic->audio_sample_size = 0;
+
+	cdic->decode_addr = 0;
+	cdic->decode_delay = 0;
 }
 
 static void cdic_register_globals(running_machine *machine)
@@ -2838,7 +2851,7 @@ static READ16_HANDLER(mcd212_r)
 					}
 					//if(interrupt2)
 					//{
-					//	cputag_set_input_line(space->machine, "maincpu", M68K_IRQ_1 + (interrupt2 - 1), CLEAR_LINE);
+					//  cputag_set_input_line(space->machine, "maincpu", M68K_IRQ_1 + (interrupt2 - 1), CLEAR_LINE);
 					//}
 					return old_csr;
 				}
@@ -3174,7 +3187,7 @@ static void mcd212_process_ica(running_machine *machine, int channel)
 						cputag_set_input_line(machine, "maincpu", M68K_IRQ_1 + (interrupt - 1), ASSERT_LINE);
 					}
 				}
-				/*
+#if 0
 				if(mcd212_regs.channel[1].csrr & MCD212_CSR2R_IT2)
 				{
 					UINT8 interrupt = scc68070_regs.lir & 7;
@@ -3184,7 +3197,7 @@ static void mcd212_process_ica(running_machine *machine, int channel)
 						cputag_set_input_line(machine, "maincpu", M68K_IRQ_1 + (interrupt - 1), ASSERT_LINE);
 					}
 				}
-				*/
+#endif
 				break;
 			case 0x78: case 0x79: case 0x7a: case 0x7b: case 0x7c: case 0x7d: case 0x7e: case 0x7f: // RELOAD DISPLAY PARAMETERS
 				verboselog(machine, 6, "%08x: %08x: ICA %d: RELOAD DISPLAY PARAMETERS\n", addr * 2 + channel * 0x200000, cmd, channel );
@@ -3263,7 +3276,7 @@ static void mcd212_process_dca(running_machine *machine, int channel)
 						cputag_set_input_line(machine, "maincpu", M68K_IRQ_1 + (interrupt - 1), ASSERT_LINE);
 					}
 				}
-				/*
+#if 0
 				if(mcd212_regs.channel[1].csrr & MCD212_CSR2R_IT2)
 				{
 					UINT8 interrupt = scc68070_regs.lir & 7;
@@ -3273,7 +3286,7 @@ static void mcd212_process_dca(running_machine *machine, int channel)
 						cputag_set_input_line(machine, "maincpu", M68K_IRQ_1 + (interrupt - 1), ASSERT_LINE);
 					}
 				}
-				*/
+#endif
 				break;
 			case 0x78: case 0x79: case 0x7a: case 0x7b: case 0x7c: case 0x7d: case 0x7e: case 0x7f: // RELOAD DISPLAY PARAMETERS
 				verboselog(machine, 6, "%08x: %08x: DCA %d: RELOAD DISPLAY PARAMETERS\n", addr * 2 + channel * 0x200000, cmd, channel );
@@ -4146,7 +4159,7 @@ static void mcd212_mix_lines(running_machine *machine, UINT8 *plane_a_r, UINT8 *
 
 static void mcd212_draw_scanline(running_machine *machine, int y)
 {
-	bitmap_t *bitmap = tmpbitmap;
+	bitmap_t *bitmap = machine->generic.tmpbitmap;
 	UINT8 plane_a_r[768], plane_a_g[768], plane_a_b[768];
 	UINT8 plane_b_r[768], plane_b_g[768], plane_b_b[768];
 	UINT32 out[768];
@@ -4365,7 +4378,7 @@ static VIDEO_UPDATE(cdi)
 
 	if (screen == main_screen)
 	{
-		copybitmap(bitmap, tmpbitmap, 0, 0, 0, 0, cliprect);
+		copybitmap(bitmap, screen->machine->generic.tmpbitmap, 0, 0, 0, 0, cliprect);
 	}
 	else if (screen == lcd_screen)
 	{
@@ -4480,18 +4493,6 @@ static MACHINE_START( cdi )
 	scc68070_register_globals(machine);
 	cdic_register_globals(machine);
 	slave_register_globals(machine);
-}
-
-static MACHINE_RESET( cdi )
-{
-	UINT16 *src   = (UINT16*)memory_region(machine, "maincpu");
-	UINT16 *dst   = planea;
-	const device_config *cdrom_dev = devtag_get_device(machine, "cdrom");
-	memcpy(dst, src, 0x8);
-
-	scc68070_init(machine, &scc68070_regs);
-	cdic_init(machine, &cdic_regs);
-	slave_init(machine, &slave_regs);
 
 	scc68070_regs.timers.timer0_timer = timer_alloc(machine, scc68070_timer0_callback, 0);
 	timer_adjust_oneshot(scc68070_regs.timers.timer0_timer, attotime_never, 0);
@@ -4507,6 +4508,18 @@ static MACHINE_RESET( cdi )
 
 	cdic_regs.audio_sample_timer = timer_alloc(machine, audio_sample_trigger, 0);
 	timer_adjust_oneshot(cdic_regs.audio_sample_timer, attotime_never, 0);
+}
+
+static MACHINE_RESET( cdi )
+{
+	UINT16 *src   = (UINT16*)memory_region(machine, "maincpu");
+	UINT16 *dst   = planea;
+	const device_config *cdrom_dev = devtag_get_device(machine, "cdrom");
+	memcpy(dst, src, 0x8);
+
+	scc68070_init(machine, &scc68070_regs);
+	cdic_init(machine, &cdic_regs);
+	slave_init(machine, &slave_regs);
 
 	if( cdrom_dev )
 	{
@@ -4581,19 +4594,19 @@ ROM_START( cdimono1 )
 	ROM_REGION(0x80000, "maincpu", 0)
 	ROM_SYSTEM_BIOS( 0, "mcdi200", "Magnavox CD-i 200" )
 	ROMX_LOAD( "cdi200.rom", 0x000000, 0x80000, CRC(40c4e6b9) SHA1(d961de803c89b3d1902d656ceb9ce7c02dccb40a), ROM_BIOS(1) )
-	ROM_SYSTEM_BIOS( 1, "mcdi200", "Philips CD-i 220 F2" )
+	ROM_SYSTEM_BIOS( 1, "pcdi220", "Philips CD-i 220 F2" )
 	ROMX_LOAD( "cdi220b.rom", 0x000000, 0x80000, CRC(279683ca) SHA1(53360a1f21ddac952e95306ced64186a3fc0b93e), ROM_BIOS(2) )
 	// This one is a Mono-IV board, needs to be a separate driver
-	//ROM_SYSTEM_BIOS( 1, "pcdi490", "Philips CD-i 490" )
-	//ROMX_LOAD( "cdi490.rom", 0x000000, 0x80000, CRC(e115f45b) SHA1(f71be031a5dfa837de225081b2ddc8dcb74a0552), ROM_BIOS(2) )
+	//ROM_SYSTEM_BIOS( 2, "pcdi490", "Philips CD-i 490" )
+	//ROMX_LOAD( "cdi490.rom", 0x000000, 0x80000, CRC(e115f45b) SHA1(f71be031a5dfa837de225081b2ddc8dcb74a0552), ROM_BIOS(3) )
 	// This one is a Mini-MMC board, needs to be a separate driver
-	//ROM_SYSTEM_BIOS( 2, "pcdi910m", "Philips CD-i 910" )
-	//ROMX_LOAD( "cdi910.rom", 0x000000, 0x80000,  CRC(8ee44ed6) SHA1(3fcdfa96f862b0cb7603fb6c2af84cac59527b05), ROM_BIOS(3) )
+	//ROM_SYSTEM_BIOS( 3, "pcdi910m", "Philips CD-i 910" )
+	//ROMX_LOAD( "cdi910.rom", 0x000000, 0x80000,  CRC(8ee44ed6) SHA1(3fcdfa96f862b0cb7603fb6c2af84cac59527b05), ROM_BIOS(4) )
 ROM_END
 
 /*************************
 *      Game driver(s)    *
 *************************/
 
-/*    YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      CONFIG    COMPANY     FULLNAME   FLAGS */
-CONS( 1991, cdimono1, 0,        0,        cdimono1, cdi,      0,        0,        "Philips",  "CD-i (Mono-I)",   GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      COMPANY     FULLNAME   FLAGS */
+CONS( 1991, cdimono1, 0,        0,        cdimono1, cdi,      0,        "Philips",  "CD-i (Mono-I)",   GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )

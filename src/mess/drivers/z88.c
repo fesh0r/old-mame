@@ -181,26 +181,33 @@ static TIMER_CALLBACK(z88_rtc_timer_callback)
 
 static void z88_install_memory_handler_pair(running_machine *machine, offs_t start, offs_t size, int bank_base, void *read_addr, void *write_addr)
 {
-	read8_space_func read_handler;
-	write8_space_func write_handler;
+	char bank_0[10];
+	char bank_1[10];
+
+	sprintf(bank_0,"bank%d",bank_base + 0);
+	sprintf(bank_1,"bank%d",bank_base + 1);
 
 	/* special case */
 	if (read_addr == NULL)
 		read_addr = &memory_region(machine, "maincpu")[start];
 
-	/* determine the proper pointers to use */
-	read_handler  = (read_addr != NULL)  ? (read8_space_func)  (STATIC_BANK1 + (FPTR)(bank_base - 1 + 0)) : SMH_UNMAP;
-	write_handler = (write_addr != NULL) ? (write8_space_func) (STATIC_BANK1 + (FPTR)(bank_base - 1 + 1)) : SMH_UNMAP;
-
 	/* install the handlers */
-	memory_install_read8_handler(cputag_get_address_space(machine, "maincpu",  ADDRESS_SPACE_PROGRAM ), start, start + size - 1, 0, 0, read_handler);
-	memory_install_write8_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM ), start, start + size - 1, 0, 0, write_handler);
+	if (read_addr == NULL) {
+		memory_unmap_read(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM ), start, start + size - 1, 0, 0);
+	} else {
+		memory_install_read_bank(cputag_get_address_space(machine, "maincpu",  ADDRESS_SPACE_PROGRAM ), start, start + size - 1, 0, 0, bank_0);
+	}
+	if (write_addr == NULL) {
+		memory_unmap_write(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM ), start, start + size - 1, 0, 0);
+	} else {
+		memory_install_write_bank(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM ), start, start + size - 1, 0, 0, bank_1);
+	}
 
 	/* and set the banks */
 	if (read_addr != NULL)
-		memory_set_bankptr(machine, bank_base + 0, read_addr);
+		memory_set_bankptr(machine, bank_0, read_addr);
 	if (write_addr != NULL)
-		memory_set_bankptr(machine, bank_base + 1, write_addr);
+		memory_set_bankptr(machine, bank_1, write_addr);
 }
 
 
@@ -286,11 +293,14 @@ static void z88_refresh_memory_bank(running_machine *machine, int bank)
 	}
 }
 
+static MACHINE_START( z88 )
+{
+	timer_pulse(machine, ATTOTIME_IN_MSEC(5), NULL, 0, z88_rtc_timer_callback);
+}
+
 static MACHINE_RESET( z88 )
 {
 	memset(messram_get_ptr(devtag_get_device(machine, "messram")), 0x0ff, messram_get_size(devtag_get_device(machine, "messram")));
-
-	timer_pulse(machine, ATTOTIME_IN_MSEC(5), NULL, 0, z88_rtc_timer_callback);
 
 	blink_reset();
 
@@ -301,11 +311,11 @@ static MACHINE_RESET( z88 )
 }
 
 static ADDRESS_MAP_START(z88_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READWRITE(SMH_BANK(1), SMH_BANK(6))
-	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(SMH_BANK(2), SMH_BANK(7))
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK(3), SMH_BANK(8))
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK(4), SMH_BANK(9))
-	AM_RANGE(0xc000, 0xffff) AM_READWRITE(SMH_BANK(5), SMH_BANK(10))
+	AM_RANGE(0x0000, 0x1fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank6")
+	AM_RANGE(0x2000, 0x3fff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank7")
+	AM_RANGE(0x4000, 0x7fff) AM_READ_BANK("bank3") AM_WRITE_BANK("bank8")
+	AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank4") AM_WRITE_BANK("bank9")
+	AM_RANGE(0xc000, 0xffff) AM_READ_BANK("bank5") AM_WRITE_BANK("bank10")
 ADDRESS_MAP_END
 
 static void blink_pb_w(int offset, int data, int reg_index)
@@ -733,6 +743,7 @@ static MACHINE_DRIVER_START( z88 )
 	MDRV_CPU_IO_MAP(z88_io)
 	MDRV_QUANTUM_TIME(HZ(60))
 
+	MDRV_MACHINE_START( z88 )
 	MDRV_MACHINE_RESET( z88 )
 
 	/* video hardware */
@@ -775,5 +786,5 @@ ROM_START(z88)
   	ROMX_LOAD("z88v401fi.rom", 0x010000, 0x020000, CRC(ecd7f3f6) SHA1(bf8d3e083f1959e5a0d7e9c8d2ad0c14abd46381), ROM_BIOS(3) )
 ROM_END
 
-/*     YEAR     NAME    PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG  COMPANY                 FULLNAME */
-COMP( 1988,	z88,	0,		0,		z88,		z88,		0,		0,	"Cambridge Computers",	"Z88",GAME_NOT_WORKING)
+/*     YEAR     NAME    PARENT  COMPAT  MACHINE     INPUT       INIT     COMPANY                 FULLNAME */
+COMP( 1988,	z88,	0,		0,		z88,		z88,		0,			"Cambridge Computers",	"Z88",GAME_NOT_WORKING)

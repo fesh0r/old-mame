@@ -120,9 +120,9 @@ Keyboard: Full-sized 102 key QWERTY (19 key numeric keypad!; 4 direction
 
 
 static ADDRESS_MAP_START(cbmb_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x00000, 0x0ffff) AM_READ(SMH_RAM) AM_WRITENOP
+	AM_RANGE(0x00000, 0x0ffff) AM_READONLY AM_WRITENOP
 	AM_RANGE(0x10000, 0x4ffff) AM_RAM
-	AM_RANGE(0x50002, 0x5ffff) AM_READ(SMH_RAM) AM_WRITENOP
+	AM_RANGE(0x50002, 0x5ffff) AM_READONLY AM_WRITENOP
 	AM_RANGE(0x60000, 0xf07ff) AM_RAM
 #if 0
 	AM_RANGE(0xf0800, 0xf0fff) AM_READ(SMH_ROM)
@@ -132,7 +132,7 @@ static ADDRESS_MAP_START(cbmb_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xf4000, 0xf5fff) AM_ROM
 	AM_RANGE(0xf6000, 0xf7fff) AM_ROM
 	AM_RANGE(0xf8000, 0xfbfff) AM_ROM AM_BASE(&cbmb_basic)
-	AM_RANGE(0xfd000, 0xfd7ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size) /* VIDEORAM */
+	AM_RANGE(0xfd000, 0xfd7ff) AM_RAM AM_BASE_SIZE_GENERIC(videoram) /* VIDEORAM */
 	AM_RANGE(0xfd800, 0xfd800) AM_MIRROR(0xfe) AM_DEVWRITE("crtc", mc6845_address_w)
 	AM_RANGE(0xfd801, 0xfd801) AM_MIRROR(0xfe) AM_DEVREADWRITE("crtc", mc6845_register_r , mc6845_register_w)
 	/* disk units */
@@ -147,9 +147,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(p500_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x00000, 0x1ffff) AM_RAM
-	AM_RANGE(0x20000, 0x2ffff) AM_READ(SMH_RAM) AM_WRITENOP
+	AM_RANGE(0x20000, 0x2ffff) AM_READONLY AM_WRITENOP
 	AM_RANGE(0x30000, 0x7ffff) AM_RAM
-	AM_RANGE(0x80000, 0x8ffff) AM_READ(SMH_RAM) AM_WRITENOP
+	AM_RANGE(0x80000, 0x8ffff) AM_READONLY AM_WRITENOP
 	AM_RANGE(0x90000, 0xf07ff) AM_RAM
 #if 0
 	AM_RANGE(0xf0800, 0xf0fff) AM_READ(SMH_ROM)
@@ -609,20 +609,20 @@ ROM_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT  COMPAT  MACHINE    INPUT      INIT       CONFIG  COMPANY                             FULLNAME                                  FLAGS */
-COMP( 1983,	b500,     cbm610, 0,      cbm600,    cbm600,    cbm600,    0,      "Commodore Business Machines Co.",  "B500 (proto, 60Hz)",                     GAME_NOT_WORKING )
-COMP( 1983,	b128,     cbm610, 0,      cbm600pal, cbm600pal, cbm600pal, 0,      "Commodore Business Machines Co.",  "B128 (60Hz)",                            GAME_NOT_WORKING )
-COMP( 1983,	b256,     cbm610, 0,      cbm600pal, cbm600pal, cbm600hu,  0,      "Commodore Business Machines Co.",  "B256 (60Hz)",                            GAME_NOT_WORKING )
-COMP( 1983,	cbm610,   0,      0,      cbm600,    cbm600,    cbm600,    0,      "Commodore Business Machines Co.",  "CBM 610 (50Hz)",                         GAME_NOT_WORKING )
-COMP( 1983,	cbm620,   cbm610, 0,      cbm600pal, cbm600pal, cbm600pal, 0,      "Commodore Business Machines Co.",  "CBM 620 (50Hz)",                         GAME_NOT_WORKING )
-COMP( 1983,	cbm620hu, cbm610, 0,      cbm600pal, cbm600pal, cbm600hu,  0,      "Commodore Business Machines Co.",  "CBM 620 (Hungary, 50Hz)",                GAME_NOT_WORKING )
+/*    YEAR  NAME      PARENT  COMPAT  MACHINE    INPUT      INIT       COMPANY                             FULLNAME                                  FLAGS */
+COMP( 1983,	b500,     cbm610, 0,      cbm600,    cbm600,    cbm600,    "Commodore Business Machines Co.",  "B500 (proto, 60Hz)",                     GAME_NOT_WORKING )
+COMP( 1983,	b128,     cbm610, 0,      cbm600pal, cbm600pal, cbm600pal, "Commodore Business Machines Co.",  "B128 (60Hz)",                            GAME_NOT_WORKING )
+COMP( 1983,	b256,     cbm610, 0,      cbm600pal, cbm600pal, cbm600hu,  "Commodore Business Machines Co.",  "B256 (60Hz)",                            GAME_NOT_WORKING )
+COMP( 1983,	cbm610,   0,      0,      cbm600,    cbm600,    cbm600,    "Commodore Business Machines Co.",  "CBM 610 (50Hz)",                         GAME_NOT_WORKING )
+COMP( 1983,	cbm620,   cbm610, 0,      cbm600pal, cbm600pal, cbm600pal, "Commodore Business Machines Co.",  "CBM 620 (50Hz)",                         GAME_NOT_WORKING )
+COMP( 1983,	cbm620hu, cbm610, 0,      cbm600pal, cbm600pal, cbm600hu,  "Commodore Business Machines Co.",  "CBM 620 (Hungary, 50Hz)",                GAME_NOT_WORKING )
 
-COMP( 1983, b128hp,   cbm610, 0,      cbm700,    cbm700,    cbm700,    0,      "Commodore Business Machines Co.",  "B128-80HP (60Hz)",                       GAME_NOT_WORKING )
-COMP( 1983, b256hp,   cbm610, 0,      cbm700,    cbm700,    cbm700,    0,      "Commodore Business Machines Co.",  "B256-80HP (60Hz)",                       GAME_NOT_WORKING )
-COMP( 1983, cbm710,   cbm610, 0,      cbm700pal, cbm700,    cbm700,    0,      "Commodore Business Machines Co.",  "CBM 710 (50Hz)",                         GAME_NOT_WORKING )
-COMP( 1983, cbm720,   cbm610, 0,      cbm700pal, cbm700,    cbm700,    0,      "Commodore Business Machines Co.",  "CBM 720 (50Hz)",                         GAME_NOT_WORKING )
-COMP( 1983, cbm720se, cbm610, 0,      cbm700pal, cbm700,    cbm700,    0,      "Commodore Business Machines Co.",  "CBM 720 (Sweden/Finland, 50Hz)",         GAME_NOT_WORKING )
+COMP( 1983, b128hp,   cbm610, 0,      cbm700,    cbm700,    cbm700,    "Commodore Business Machines Co.",  "B128-80HP (60Hz)",                       GAME_NOT_WORKING )
+COMP( 1983, b256hp,   cbm610, 0,      cbm700,    cbm700,    cbm700,    "Commodore Business Machines Co.",  "B256-80HP (60Hz)",                       GAME_NOT_WORKING )
+COMP( 1983, cbm710,   cbm610, 0,      cbm700pal, cbm700,    cbm700,    "Commodore Business Machines Co.",  "CBM 710 (50Hz)",                         GAME_NOT_WORKING )
+COMP( 1983, cbm720,   cbm610, 0,      cbm700pal, cbm700,    cbm700,    "Commodore Business Machines Co.",  "CBM 720 (50Hz)",                         GAME_NOT_WORKING )
+COMP( 1983, cbm720se, cbm610, 0,      cbm700pal, cbm700,    cbm700,    "Commodore Business Machines Co.",  "CBM 720 (Sweden/Finland, 50Hz)",         GAME_NOT_WORKING )
 
-COMP( 1983,	bx256hp,  cbm610, 0,      bx256hp,   cbm700,    cbm700,    0,      "Commodore Business Machines Co.",  "BX256-80HP (60Hz)",                      GAME_NOT_WORKING )
+COMP( 1983,	bx256hp,  cbm610, 0,      bx256hp,   cbm700,    cbm700,    "Commodore Business Machines Co.",  "BX256-80HP (60Hz)",                      GAME_NOT_WORKING )
 
-COMP( 1983,	p500,     0,      0,      p500,      p500,      p500,      0,      "Commodore Business Machines Co.",  "P500 (proto, a.k.a. B128-40 or Pet-II)", GAME_NOT_WORKING )
+COMP( 1983,	p500,     0,      0,      p500,      p500,      p500,      "Commodore Business Machines Co.",  "P500 (proto, a.k.a. B128-40 or Pet-II)", GAME_NOT_WORKING )

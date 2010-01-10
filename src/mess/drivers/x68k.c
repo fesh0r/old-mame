@@ -186,13 +186,14 @@ static void mfp_init()
 	x68k_sys.mfp.irqline = 6;  // MFP is connected to 68000 IRQ line 6
 	x68k_sys.mfp.current_irq = -1;  // No current interrupt
 
-/*  mfp_timer[0] = timer_alloc(machine, mfp_timer_a_callback, NULL);
+#if 0
+    mfp_timer[0] = timer_alloc(machine, mfp_timer_a_callback, NULL);
     mfp_timer[1] = timer_alloc(machine, mfp_timer_b_callback, NULL);
     mfp_timer[2] = timer_alloc(machine, mfp_timer_c_callback, NULL);
     mfp_timer[3] = timer_alloc(machine, mfp_timer_d_callback, NULL);
     mfp_irq = timer_alloc(machine, mfp_update_irq, NULL);
     timer_adjust_periodic(mfp_irq, attotime_zero, 0, ATTOTIME_IN_USEC(32));
-*/
+#endif
 }
 
 #ifdef UNUSED_FUNCTION
@@ -540,7 +541,7 @@ static int x68k_read_mouse(running_machine *machine)
 	char val = 0;
 	char ipt = 0;
 
-	if(!(scc_get_reg_b(scc,5) & 0x02))
+	if(!(scc8530_get_reg_b(scc,5) & 0x02))
 		return 0xff;
 
 	switch(x68k_sys.mouse.inputtype)
@@ -562,11 +563,11 @@ static int x68k_read_mouse(running_machine *machine)
 	x68k_sys.mouse.inputtype++;
 	if(x68k_sys.mouse.inputtype > 2)
 	{
-		int val = scc_get_reg_b(scc, 0);
+		int val = scc8530_get_reg_b(scc, 0);
 		x68k_sys.mouse.inputtype = 0;
 		x68k_sys.mouse.bufferempty = 1;
 		val &= ~0x01;
-		scc_set_reg_b(scc, 0, val);
+		scc8530_set_reg_b(scc, 0, val);
 		logerror("SCC: mouse buffer empty\n");
 	}
 
@@ -586,13 +587,13 @@ static READ16_HANDLER( x68k_scc_r )
 	switch(offset)
 	{
 	case 0:
-		return scc_r(scc, 0);
+		return scc8530_r(scc, 0);
 	case 1:
 		return x68k_read_mouse(space->machine);
 	case 2:
-		return scc_r(scc, 1);
+		return scc8530_r(scc, 1);
 	case 3:
-		return scc_r(scc, 3);
+		return scc8530_r(scc, 3);
 	default:
 		return 0xff;
 	}
@@ -607,29 +608,29 @@ static WRITE16_HANDLER( x68k_scc_w )
 	switch(offset)
 	{
 	case 0:
-		scc_w(scc, 0,(UINT8)data);
-		if((scc_get_reg_b(scc, 5) & 0x02) != prev)
+		scc8530_w(scc, 0,(UINT8)data);
+		if((scc8530_get_reg_b(scc, 5) & 0x02) != prev)
 		{
-			if(scc_get_reg_b(scc, 5) & 0x02)  // Request to Send
+			if(scc8530_get_reg_b(scc, 5) & 0x02)  // Request to Send
 			{
-				int val = scc_get_reg_b(scc, 0);
+				int val = scc8530_get_reg_b(scc, 0);
 				x68k_sys.mouse.bufferempty = 0;
 				val |= 0x01;
-				scc_set_reg_b(scc, 0,val);
+				scc8530_set_reg_b(scc, 0,val);
 			}
 		}
 		break;
 	case 1:
-		scc_w(scc, 2,(UINT8)data);
+		scc8530_w(scc, 2,(UINT8)data);
 		break;
 	case 2:
-		scc_w(scc, 1,(UINT8)data);
+		scc8530_w(scc, 1,(UINT8)data);
 		break;
 	case 3:
-		scc_w(scc, 3,(UINT8)data);
+		scc8530_w(scc, 3,(UINT8)data);
 		break;
 	}
-	prev = scc_get_reg_b(scc, 5) & 0x02;
+	prev = scc8530_get_reg_b(scc, 5) & 0x02;
 }
 
 static TIMER_CALLBACK(x68k_scc_ack)
@@ -642,11 +643,11 @@ static TIMER_CALLBACK(x68k_scc_ack)
 //      return;
 
 	// hard-code the IRQ vector for now, until the SCC code is more complete
-	if((scc_get_reg_a(scc, 9) & 0x08) || (scc_get_reg_b(scc, 9) & 0x08))  // SCC reg WR9 is the same for both channels
+	if((scc8530_get_reg_a(scc, 9) & 0x08) || (scc8530_get_reg_b(scc, 9) & 0x08))  // SCC reg WR9 is the same for both channels
 	{
-		if((scc_get_reg_b(scc, 1) & 0x18) != 0)  // if bits 3 and 4 of WR1 are 0, then Rx IRQs are disabled on this channel
+		if((scc8530_get_reg_b(scc, 1) & 0x18) != 0)  // if bits 3 and 4 of WR1 are 0, then Rx IRQs are disabled on this channel
 		{
-			if(scc_get_reg_b(scc, 5) & 0x02)  // RTS signal
+			if(scc8530_get_reg_b(scc, 5) & 0x02)  // RTS signal
 			{
 				x68k_sys.mouse.irqactive = 1;
 				current_vector[5] = 0x54;
@@ -981,7 +982,7 @@ static WRITE16_HANDLER( x68k_fdc_w )
 					if(data & 0x20)  // ejects disk
 					{
 						image_unload(floppy_get_device(space->machine, drive));
-						floppy_drive_set_motor_state(floppy_get_device(space->machine, drive), 0);  // I'll presume ejecting the disk stops the drive motor :)
+						floppy_mon_w(floppy_get_device(space->machine, drive), ASSERT_LINE);
 					}
 				}
 			}
@@ -992,14 +993,14 @@ static WRITE16_HANDLER( x68k_fdc_w )
 	case 0x03:
 		x68k_sys.fdc.media_density[data & 0x03] = data & 0x10;
 		x68k_sys.fdc.motor[data & 0x03] = data & 0x80;
-		floppy_drive_set_motor_state(floppy_get_device(space->machine, data & 0x03), (data & 0x80));
+		floppy_mon_w(floppy_get_device(space->machine, data & 0x03), !BIT(data, 7));
 		if(data & 0x80)
 		{
 			for(drive=0;drive<4;drive++) // enable motor for this drive
 			{
 				if(drive == (data & 0x03))
 				{
-					floppy_drive_set_motor_state(floppy_get_device(space->machine, drive), 1);
+					floppy_mon_w(floppy_get_device(space->machine, drive), CLEAR_LINE);
 					output_set_indexed_value("access_drv",drive,0);
 				}
 				else
@@ -1010,7 +1011,7 @@ static WRITE16_HANDLER( x68k_fdc_w )
 		{
 			for(drive=0;drive<4;drive++)
 			{
-				floppy_drive_set_motor_state(floppy_get_device(space->machine, drive), 0);
+				floppy_mon_w(floppy_get_device(space->machine, drive), ASSERT_LINE);
 				output_set_indexed_value("access_drv",drive,1);
 			}
 		}
@@ -1261,12 +1262,14 @@ static READ16_HANDLER( x68k_sysport_r )
 	}
 }
 
-/*static READ16_HANDLER( x68k_mfp_r )
+#ifdef UNUSED_FUNCTION
+static READ16_HANDLER( x68k_mfp_r )
 {
-    const device_config *x68k_mfp = devtag_get_device(space->machine, MC68901_TAG);
+	const device_config *x68k_mfp = devtag_get_device(space->machine, MC68901_TAG);
 
-    return mc68901_register_r(x68k_mfp, offset);
-}*/
+	return mc68901_register_r(x68k_mfp, offset);
+}
+#endif
 
 static READ16_HANDLER( x68k_mfp_r )
 {
@@ -1276,7 +1279,8 @@ static READ16_HANDLER( x68k_mfp_r )
 //  logerror("MFP: [%08x] Reading offset %i\n",cpu_get_pc(space->cpu),offset);
     switch(offset)
     {
-/*    case 0x00:  // GPIP - General purpose I/O register (read-only)
+#if 0
+    case 0x00:  // GPIP - General purpose I/O register (read-only)
         ret = 0x23;
         if(video_screen_get_vpos(machine->primary_screen) == x68k_sys.crtc.reg[9])
             ret |= 0x40;
@@ -1317,7 +1321,8 @@ static READ16_HANDLER( x68k_mfp_r )
     case 17:  // TCDR
         return x68k_sys.mfp.timer[2].counter;
     case 18:  // TDDR
-        return x68k_sys.mfp.timer[3].counter;*/
+        return x68k_sys.mfp.timer[3].counter;
+#endif
     case 21:  // RSR
         return x68k_sys.mfp.rsr;
     case 22:  // TSR
@@ -1354,7 +1359,8 @@ static WRITE16_HANDLER( x68k_mfp_w )
     */
 	switch(offset)
 	{
-/*  case 0:  // GPDR
+#if 0
+  case 0:  // GPDR
         // All bits are inputs generally, so no action taken.
         break;
     case 1:  // AER
@@ -1431,7 +1437,8 @@ static WRITE16_HANDLER( x68k_mfp_w )
         break;
     case 20:
         x68k_sys.mfp.ucr = data;
-        break;*/
+        break;
+#endif
     case 21:
         if(data & 0x01)
             x68k_sys.mfp.usart.recv_enable = 1;
@@ -1501,7 +1508,7 @@ static WRITE16_HANDLER( x68k_sram_w )
 {
 	if(x68k_sys.sysport.sram_writeprotect == 0x31)
 	{
-		COMBINE_DATA(generic_nvram16+offset);
+		COMBINE_DATA(space->machine->generic.nvram.u16+offset);
 	}
 }
 
@@ -1512,33 +1519,37 @@ static READ16_HANDLER( x68k_sram_r )
 //      return 0x0000;
 	if(offset == 0x08/2)
 		return messram_get_size(devtag_get_device(space->machine, "messram")) >> 16;  // RAM size
-	/*if(offset == 0x46/2)
+#if 0
+	if(offset == 0x46/2)
         return 0x0024;
     if(offset == 0x6e/2)
         return 0xff00;
     if(offset == 0x70/2)
-        return 0x0700;*/
-	return generic_nvram16[offset];
+        return 0x0700;
+#endif
+	return space->machine->generic.nvram.u16[offset];
 }
 
 static READ32_HANDLER( x68k_sram32_r )
 {
 	if(offset == 0x08/4)
 		return (messram_get_size(devtag_get_device(space->machine, "messram")) & 0xffff0000);  // RAM size
-	/*if(offset == 0x46/2)
+#if 0
+	if(offset == 0x46/2)
         return 0x0024;
     if(offset == 0x6e/2)
         return 0xff00;
     if(offset == 0x70/2)
-        return 0x0700;*/
-	return generic_nvram32[offset];
+        return 0x0700;
+#endif
+	return space->machine->generic.nvram.u32[offset];
 }
 
 static WRITE32_HANDLER( x68k_sram32_w )
 {
 	if(x68k_sys.sysport.sram_writeprotect == 0x31)
 	{
-		COMBINE_DATA(generic_nvram32+offset);
+		COMBINE_DATA(space->machine->generic.nvram.u32+offset);
 	}
 }
 
@@ -1641,7 +1652,7 @@ static TIMER_CALLBACK(x68k_fake_bus_error)
 {
 	int val = param;
 	int v;
-	
+
 	if(strcmp(machine->gamedrv->name,"x68030") == 0)
 		v = 0x0b;
 	else
@@ -1710,8 +1721,8 @@ static WRITE16_HANDLER( x68k_rom0_w )
 
 static READ16_HANDLER( x68k_emptyram_r )
 {
-	/* this location is unused RAM, access here causes a bus error 
-	   Often a method for detecting amount of installed RAM, is to read or write at 1MB intervals, until a bus error occurs */
+	/* this location is unused RAM, access here causes a bus error
+       Often a method for detecting amount of installed RAM, is to read or write at 1MB intervals, until a bus error occurs */
 	current_vector[2] = 0x02;  // bus error
 	current_irq_line = 2;
 //  cputag_set_input_line_and_vector(space->machine, "maincpu",2,ASSERT_LINE,current_vector[2]);
@@ -1727,8 +1738,8 @@ static READ16_HANDLER( x68k_emptyram_r )
 
 static WRITE16_HANDLER( x68k_emptyram_w )
 {
-	/* this location is unused RAM, access here causes a bus error 
-	   Often a method for detecting amount of installed RAM, is to read or write at 1MB intervals, until a bus error occurs */
+	/* this location is unused RAM, access here causes a bus error
+       Often a method for detecting amount of installed RAM, is to read or write at 1MB intervals, until a bus error occurs */
 	current_vector[2] = 0x02;  // bus error
 	current_irq_line = 2;
 //  cputag_set_input_line_and_vector(space->machine, "maincpu",2,ASSERT_LINE,current_vector[2]);
@@ -1902,8 +1913,8 @@ static ADDRESS_MAP_START(x68k_map, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0xbffffc, 0xbfffff) AM_READWRITE(x68k_rom0_r, x68k_rom0_w)
 //  AM_RANGE(0xc00000, 0xdfffff) AM_READWRITE(x68k_gvram_r, x68k_gvram_w) AM_BASE(&x68k_gvram)
 //  AM_RANGE(0xe00000, 0xe7ffff) AM_READWRITE(x68k_tvram_r, x68k_tvram_w) AM_BASE(&x68k_tvram)
-	AM_RANGE(0xc00000, 0xdfffff) AM_RAMBANK(2)
-	AM_RANGE(0xe00000, 0xe7ffff) AM_RAMBANK(3)
+	AM_RANGE(0xc00000, 0xdfffff) AM_RAMBANK("bank2")
+	AM_RANGE(0xe00000, 0xe7ffff) AM_RAMBANK("bank3")
 	AM_RANGE(0xe80000, 0xe81fff) AM_READWRITE(x68k_crtc_r, x68k_crtc_w)
 	AM_RANGE(0xe82000, 0xe83fff) AM_READWRITE(x68k_vid_r, x68k_vid_w)
 	AM_RANGE(0xe84000, 0xe85fff) AM_READWRITE(x68k_dmac_r, x68k_dmac_w)
@@ -1926,20 +1937,20 @@ static ADDRESS_MAP_START(x68k_map, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0xeb8000, 0xebffff) AM_READWRITE(x68k_spriteram_r, x68k_spriteram_w)
 	AM_RANGE(0xec0000, 0xecffff) AM_NOP  // User I/O
 //  AM_RANGE(0xed0000, 0xed3fff) AM_READWRITE(sram_r, sram_w) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0xed0000, 0xed3fff) AM_RAMBANK(4) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0xed0000, 0xed3fff) AM_RAMBANK("bank4") AM_BASE_SIZE_GENERIC(nvram)
 	AM_RANGE(0xed4000, 0xefffff) AM_NOP
 	AM_RANGE(0xf00000, 0xfbffff) AM_ROM
-//	AM_RANGE(0xfc0000, 0xfdffff) AM_READWRITE(x68k_rom0_r, x68k_rom0_w)
+//  AM_RANGE(0xfc0000, 0xfdffff) AM_READWRITE(x68k_rom0_r, x68k_rom0_w)
 	AM_RANGE(0xfe0000, 0xffffff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(x68030_map, ADDRESS_SPACE_PROGRAM, 32)
-	AM_RANGE(0x000000, 0xbfffff) AM_RAMBANK(1)
+//  AM_RANGE(0x000000, 0xbfffff) AM_RAMBANK(1)
 	AM_RANGE(0xbffffc, 0xbfffff) AM_READWRITE16(x68k_rom0_r, x68k_rom0_w,0xffffffff)
 //  AM_RANGE(0xc00000, 0xdfffff) AM_READWRITE(x68k_gvram_r, x68k_gvram_w) AM_BASE(&x68k_gvram)
 //  AM_RANGE(0xe00000, 0xe7ffff) AM_READWRITE(x68k_tvram_r, x68k_tvram_w) AM_BASE(&x68k_tvram)
-	AM_RANGE(0xc00000, 0xdfffff) AM_RAMBANK(2)
-	AM_RANGE(0xe00000, 0xe7ffff) AM_RAMBANK(3)
+	AM_RANGE(0xc00000, 0xdfffff) AM_RAMBANK("bank2")
+	AM_RANGE(0xe00000, 0xe7ffff) AM_RAMBANK("bank3")
 	AM_RANGE(0xe80000, 0xe81fff) AM_READWRITE16(x68k_crtc_r, x68k_crtc_w,0xffffffff)
 	AM_RANGE(0xe82000, 0xe83fff) AM_READWRITE16(x68k_vid_r, x68k_vid_w,0xffffffff)
 	AM_RANGE(0xe84000, 0xe85fff) AM_READWRITE16(x68k_dmac_r, x68k_dmac_w,0xffffffff)
@@ -1961,10 +1972,10 @@ static ADDRESS_MAP_START(x68030_map, ADDRESS_SPACE_PROGRAM, 32)
 	AM_RANGE(0xeb8000, 0xebffff) AM_READWRITE16(x68k_spriteram_r, x68k_spriteram_w,0xffffffff)
 	AM_RANGE(0xec0000, 0xecffff) AM_NOP  // User I/O
 //  AM_RANGE(0xed0000, 0xed3fff) AM_READWRITE(sram_r, sram_w) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0xed0000, 0xed3fff) AM_RAMBANK(4) AM_BASE(&generic_nvram32) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0xed0000, 0xed3fff) AM_RAMBANK("bank4") AM_BASE_SIZE_GENERIC(nvram)
 	AM_RANGE(0xed4000, 0xefffff) AM_NOP
 	AM_RANGE(0xf00000, 0xfbffff) AM_ROM
-//	AM_RANGE(0xfc0000, 0xfdffff) AM_READWRITE16(x68k_rom0_r, x68k_rom0_w,0xffffffff)
+//  AM_RANGE(0xfc0000, 0xfdffff) AM_READWRITE16(x68k_rom0_r, x68k_rom0_w,0xffffffff)
 	AM_RANGE(0xfe0000, 0xffffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -2474,18 +2485,17 @@ static MACHINE_START( x68000 )
 	x68k_spriteram = (UINT16*)memory_region(machine, "user1");
 	memory_install_read16_handler(space,0x000000,0xbffffb,0xffffffff,0,(read16_space_func)x68k_emptyram_r);
 	memory_install_write16_handler(space,0x000000,0xbffffb,0xffffffff,0,(write16_space_func)x68k_emptyram_w);
-	memory_install_read16_handler(space,0x000000,messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,(read16_space_func)1);
-	memory_install_write16_handler(space,0x000000,messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,(write16_space_func)1);
-	memory_set_bankptr(machine, 1,messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_install_readwrite_bank(space,0x000000,messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,"bank1");
+	memory_set_bankptr(machine, "bank1",messram_get_ptr(devtag_get_device(machine, "messram")));
 	memory_install_read16_handler(space,0xc00000,0xdfffff,0xffffffff,0,x68k_gvram_r);
 	memory_install_write16_handler(space,0xc00000,0xdfffff,0xffffffff,0,x68k_gvram_w);
-	memory_set_bankptr(machine, 2,x68k_gvram);  // so that code in VRAM is executable - needed for Terra Cresta
+	memory_set_bankptr(machine, "bank2",x68k_gvram);  // so that code in VRAM is executable - needed for Terra Cresta
 	memory_install_read16_handler(space,0xe00000,0xe7ffff,0xffffffff,0,x68k_tvram_r);
 	memory_install_write16_handler(space,0xe00000,0xe7ffff,0xffffffff,0,x68k_tvram_w);
-	memory_set_bankptr(machine, 3,x68k_tvram);  // so that code in VRAM is executable - needed for Terra Cresta
+	memory_set_bankptr(machine, "bank3",x68k_tvram);  // so that code in VRAM is executable - needed for Terra Cresta
 	memory_install_read16_handler(space,0xed0000,0xed3fff,0xffffffff,0,x68k_sram_r);
 	memory_install_write16_handler(space,0xed0000,0xed3fff,0xffffffff,0,x68k_sram_w);
-	memory_set_bankptr(machine, 4,generic_nvram16);  // so that code in SRAM is executable, there is an option for booting from SRAM
+	memory_set_bankptr(machine, "bank4",space->machine->generic.nvram.u16);  // so that code in SRAM is executable, there is an option for booting from SRAM
 
 	// start keyboard timer
 	timer_adjust_periodic(kb_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(5));  // every 5ms
@@ -2505,21 +2515,20 @@ static MACHINE_START( x68030 )
 	x68k_spriteram = (UINT16*)memory_region(machine, "user1");
 	memory_install_read32_handler(space,0x000000,0xbffffb,0xffffffff,0,(read32_space_func)x68k_rom0_r);
 	memory_install_write32_handler(space,0x000000,0xbffffb,0xffffffff,0,(write32_space_func)x68k_rom0_w);
-	memory_install_read32_handler(space,0x000000,messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,(read32_space_func)1);
-	memory_install_write32_handler(space,0x000000,messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,(write32_space_func)1);
+	memory_install_readwrite_bank(space,0x000000,messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,"bank1");
 	// mirror? Human68k 3.02 explicitly adds 0x3000000 to some pointers
-	memory_install_read32_handler(space,0x3000000,0x3000000+messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,(read32_space_func)1);
-	memory_install_write32_handler(space,0x3000000,0x3000000+messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,(write32_space_func)1);
-	memory_set_bankptr(machine, 1,messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_install_readwrite_bank(space,0x3000000,0x3000000+messram_get_size(devtag_get_device(machine, "messram"))-1,0xffffffff,0,"bank5");
+	memory_set_bankptr(machine, "bank1",messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_set_bankptr(machine, "bank5",messram_get_ptr(devtag_get_device(machine, "messram")));
 	memory_install_read32_handler(space,0xc00000,0xdfffff,0xffffffff,0,x68k_gvram32_r);
 	memory_install_write32_handler(space,0xc00000,0xdfffff,0xffffffff,0,x68k_gvram32_w);
-	memory_set_bankptr(machine, 2,x68k_gvram);  // so that code in VRAM is executable - needed for Terra Cresta
+	memory_set_bankptr(machine, "bank2",x68k_gvram);  // so that code in VRAM is executable - needed for Terra Cresta
 	memory_install_read32_handler(space,0xe00000,0xe7ffff,0xffffffff,0,x68k_tvram32_r);
 	memory_install_write32_handler(space,0xe00000,0xe7ffff,0xffffffff,0,x68k_tvram32_w);
-	memory_set_bankptr(machine, 3,x68k_tvram);  // so that code in VRAM is executable - needed for Terra Cresta
+	memory_set_bankptr(machine, "bank3",x68k_tvram);  // so that code in VRAM is executable - needed for Terra Cresta
 	memory_install_read32_handler(space,0xed0000,0xed3fff,0xffffffff,0,x68k_sram32_r);
 	memory_install_write32_handler(space,0xed0000,0xed3fff,0xffffffff,0,x68k_sram32_w);
-	memory_set_bankptr(machine, 4,generic_nvram32);  // so that code in SRAM is executable, there is an option for booting from SRAM
+	memory_set_bankptr(machine, "bank4",machine->generic.nvram.u32);  // so that code in SRAM is executable, there is an option for booting from SRAM
 
 	// start keyboard timer
 	timer_adjust_periodic(kb_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(5));  // every 5ms
@@ -2631,7 +2640,7 @@ static MACHINE_DRIVER_START( x68000 )
 
 	MDRV_UPD72065_ADD("upd72065", fdc_interface)
 	MDRV_FLOPPY_4_DRIVES_ADD(x68k_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("4M")
@@ -2640,13 +2649,13 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( x68kxvi )
 	MDRV_IMPORT_FROM( x68000 )
-	
+
 	MDRV_CPU_REPLACE("maincpu", M68000, 16000000)  /* 16 MHz */
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( x68030 )
 	MDRV_IMPORT_FROM( x68000 )
-	
+
 	MDRV_CPU_REPLACE("maincpu", M68030, 25000000)  /* 25 MHz 68EC030 */
 	MDRV_CPU_PROGRAM_MAP(x68030_map)
 
@@ -2713,7 +2722,7 @@ ROM_START( x68030 )
 ROM_END
 
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY     FULLNAME        FLAGS */
-COMP( 1987, x68000, 0,      0,      x68000, x68000, x68000, 0, "Sharp",    "X68000", GAME_IMPERFECT_GRAPHICS )
-COMP( 1991, x68kxvi,x68000, 0,      x68kxvi,x68000, x68000, 0, "Sharp",    "X68000 XVI", GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )
-COMP( 1993, x68030, x68000, 0,      x68030, x68000, x68030, 0, "Sharp",    "X68030", GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY     FULLNAME        FLAGS */
+COMP( 1987, x68000, 0,      0,      x68000, x68000, x68000, "Sharp",    "X68000", GAME_IMPERFECT_GRAPHICS )
+COMP( 1991, x68kxvi,x68000, 0,      x68kxvi,x68000, x68000, "Sharp",    "X68000 XVI", GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )
+COMP( 1993, x68030, x68000, 0,      x68030, x68000, x68030, "Sharp",    "X68030", GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )

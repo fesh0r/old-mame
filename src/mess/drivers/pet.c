@@ -393,7 +393,6 @@ normal keyboards?
 
 /* devices config */
 #include "includes/cbm.h"
-#include "includes/cbmdrive.h"
 #include "includes/cbmieeeb.h"
 
 /*************************************
@@ -403,7 +402,7 @@ normal keyboards?
  *************************************/
 
 static ADDRESS_MAP_START(pet_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size )
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM AM_BASE_SIZE_GENERIC(videoram)
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
@@ -413,7 +412,7 @@ static ADDRESS_MAP_START(pet_mem , ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pet40_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size )
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM AM_BASE_SIZE_GENERIC(videoram)
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
@@ -424,13 +423,13 @@ static ADDRESS_MAP_START( pet40_mem , ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pet80_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x8000, 0x8fff) AM_RAMBANK(1)
-	AM_RANGE(0x9000, 0x9fff) AM_RAMBANK(2)
-	AM_RANGE(0xa000, 0xafff) AM_RAMBANK(3)
-	AM_RANGE(0xb000, 0xbfff) AM_RAMBANK(4)
-	AM_RANGE(0xc000, 0xe7ff) AM_RAMBANK(6)
+	AM_RANGE(0x8000, 0x8fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x9000, 0x9fff) AM_RAMBANK("bank2")
+	AM_RANGE(0xa000, 0xafff) AM_RAMBANK("bank3")
+	AM_RANGE(0xb000, 0xbfff) AM_RAMBANK("bank4")
+	AM_RANGE(0xc000, 0xe7ff) AM_RAMBANK("bank6")
 #if 1
-	AM_RANGE(0xe800, 0xefff) AM_RAMBANK(7)
+	AM_RANGE(0xe800, 0xefff) AM_RAMBANK("bank7")
 #else
 	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
@@ -438,9 +437,9 @@ static ADDRESS_MAP_START( pet80_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE("crtc", mc6845_address_w)
 	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE("crtc", mc6845_register_r, mc6845_register_w)
 #endif
-	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_BANK(8))
-	AM_RANGE(0xf000, 0xffef) AM_WRITE(SMH_BANK(8))
-	AM_RANGE(0xfff1, 0xffff) AM_WRITE(SMH_BANK(9))
+	AM_RANGE(0xf000, 0xffff) AM_READ_BANK("bank8")
+	AM_RANGE(0xf000, 0xffef) AM_WRITE_BANK("bank8")
+	AM_RANGE(0xfff1, 0xffff) AM_WRITE_BANK("bank9")
 ADDRESS_MAP_END
 
 
@@ -460,8 +459,8 @@ ADDRESS_MAP_END
 
 */
 static ADDRESS_MAP_START( superpet_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_SHARE(1) AM_BASE(&pet_memory)
-	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_SHARE(2) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_SHARE("share1") AM_BASE(&pet_memory)
+	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_SHARE("share2") AM_BASE_SIZE_GENERIC(videoram)
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
@@ -475,9 +474,9 @@ static ADDRESS_MAP_START( superpet_mem , ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( superpet_m6809_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_SHARE(1)	/* same memory as m6502 */
-	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_SHARE(2)	/* same memory as m6502 */
-    AM_RANGE(0x9000, 0x9fff) AM_RAMBANK(1)	/* 64 kbyte ram turned in */
+	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_SHARE("share1")	/* same memory as m6502 */
+	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_SHARE("share2")	/* same memory as m6502 */
+    AM_RANGE(0x9000, 0x9fff) AM_RAMBANK("bank1")	/* 64 kbyte ram turned in */
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xe820, 0xe823) AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
@@ -694,7 +693,7 @@ static MACHINE_DRIVER_START( pet )
 	MDRV_IMPORT_FROM( pet_general )
 	MDRV_QUICKLOAD_ADD("quickload", cbm_pet, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 	MDRV_IMPORT_FROM(pet_cartslot)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("32K")
@@ -711,11 +710,11 @@ static MACHINE_DRIVER_START( pet2001 )
 	MDRV_IMPORT_FROM( pet_general )
 	MDRV_QUICKLOAD_ADD("quickload", cbm_pet1, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 	MDRV_IMPORT_FROM(pet_cartslot)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("8K")
-	MDRV_RAM_EXTRA_OPTIONS("4K")	
+	MDRV_RAM_EXTRA_OPTIONS("4K")
 MACHINE_DRIVER_END
 
 
@@ -761,10 +760,10 @@ static MACHINE_DRIVER_START( pet80 )
 	MDRV_PIA6821_MODIFY( "pia_0", petb_pia0 )
 
 	MDRV_IMPORT_FROM(pet4_cartslot)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
-	MDRV_RAM_DEFAULT_SIZE("32K")		
+	MDRV_RAM_DEFAULT_SIZE("32K")
 MACHINE_DRIVER_END
 
 
@@ -1120,55 +1119,42 @@ ROM_START( mmf9000s )
 	ROM_LOAD("skand.gen.ub3", 0x0000, 0x1000, CRC(da1cd630) SHA1(35f472114ff001259bdbae073ae041b0759e32cb) )	// Actual label was "901640-01 SKAND.GEN."
 ROM_END
 
-
-
-
-/*************************************
- *
- *  System configuration(s)
- *
- *************************************/
-
-static SYSTEM_CONFIG_START( pet )
-	CONFIG_DEVICE(cbmfloppy_device_getinfo)
-SYSTEM_CONFIG_END
-
 /***************************************************************************
 
   Game driver(s)
 
 ***************************************************************************/
 
-/* YEAR    NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      CONFIG     COMPANY                             FULLNAME */
+/* YEAR    NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      COMPANY                             FULLNAME */
 
-COMP(1977, pet2001,  0,        0,        pet2001,  pet,      pet2001,  pet, 	  "Commodore Business Machines Co.",  "PET 2001", GAME_NO_SOUND)
-COMP(1979, pet2001n, pet2001,  0,        pet,      pet,      pet,      pet,      "Commodore Business Machines Co.",  "PET 2001-N", GAME_NO_SOUND)
-COMP(1979, pet2001b, pet2001,  0,        petb,     petb,     pet,      pet,      "Commodore Business Machines Co.",  "PET 2001-B", GAME_NO_SOUND)
-COMP(1979, cbm30,    pet2001,  0,        pet,      pet,      pet,      pet,      "Commodore Business Machines Co.",  "CBM 30xx", GAME_NO_SOUND)
-COMP(1979, cbm30b,   pet2001,  0,        petb,     petb,     pet,      pet,      "Commodore Business Machines Co.",  "CBM 30xx (Business keyboard)", GAME_NO_SOUND)
-COMP(1979, cbm30nor, pet2001,  0,        petb,     petb,     pet,      pet,      "Commodore Business Machines Co.",  "CBM 30xx (Norway, Business keyboard)", GAME_NO_SOUND)
+COMP(1977, pet2001,  0,        0,        pet2001,  pet,      pet2001, "Commodore Business Machines Co.",  "PET 2001", GAME_NO_SOUND)
+COMP(1979, pet2001n, pet2001,  0,        pet,      pet,      pet,     "Commodore Business Machines Co.",  "PET 2001-N", GAME_NO_SOUND)
+COMP(1979, pet2001b, pet2001,  0,        petb,     petb,     pet,     "Commodore Business Machines Co.",  "PET 2001-B", GAME_NO_SOUND)
+COMP(1979, cbm30,    pet2001,  0,        pet,      pet,      pet,     "Commodore Business Machines Co.",  "CBM 30xx", GAME_NO_SOUND)
+COMP(1979, cbm30b,   pet2001,  0,        petb,     petb,     pet,     "Commodore Business Machines Co.",  "CBM 30xx (Business keyboard)", GAME_NO_SOUND)
+COMP(1979, cbm30nor, pet2001,  0,        petb,     petb,     pet,     "Commodore Business Machines Co.",  "CBM 30xx (Norway, Business keyboard)", GAME_NO_SOUND)
 
 /* So called, THIN-40 */
-COMP(1980, pet40on,  pet2001,  0,        pet,      pet,      pet,      pet,      "Commodore Business Machines Co.",  "PET 40xx (Basic 4, no CRTC, Normal keyboard)", GAME_NO_SOUND)
-COMP(1980, pet40ob,  pet2001,  0,        petb,     petb,     pet,      pet,      "Commodore Business Machines Co.",  "PET 40xx (Basic 4, no CRTC, Business keyboard)", GAME_NO_SOUND)
-COMP(1980, cbm40o,   pet2001,  0,        pet,      pet,      pet,      pet,      "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, no CRTC, Normal keyboard)", GAME_NO_SOUND)
-COMP(1980, cbm40ob,  pet2001,  0,        petb,     petb,     pet,      pet,      "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, no CRTC, Business keyboard)", GAME_NO_SOUND)
+COMP(1980, pet40on,  pet2001,  0,        pet,      pet,      pet,     "Commodore Business Machines Co.",  "PET 40xx (Basic 4, no CRTC, Normal keyboard)", GAME_NO_SOUND)
+COMP(1980, pet40ob,  pet2001,  0,        petb,     petb,     pet,     "Commodore Business Machines Co.",  "PET 40xx (Basic 4, no CRTC, Business keyboard)", GAME_NO_SOUND)
+COMP(1980, cbm40o,   pet2001,  0,        pet,      pet,      pet,     "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, no CRTC, Normal keyboard)", GAME_NO_SOUND)
+COMP(1980, cbm40ob,  pet2001,  0,        petb,     petb,     pet,     "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, no CRTC, Business keyboard)", GAME_NO_SOUND)
 
-COMP(1981, pet80,    0,        0,        pet80,    cbm8096,  pet80,    pet,      "Commodore Business Machines Co.",  "PET 80xx (Basic 4, CRTC 60Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, cbm80,    pet80,    0,        pet80pal, cbm8096,  pet80,    pet,      "Commodore Business Machines Co.",  "CBM 80xx (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, cbm80ger, pet80,    0,        pet80pal, cbm8096,  pet80,    pet,      "Commodore Business Machines Co.",  "CBM 80xx (Germany, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, cbm80hun, pet80,    0,        pet80pal, cbm8096,  pet80,    pet,      "Commodore Business Machines Co.",  "CBM 80xx (Hungary, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, cbm80swe, pet80,    0,        pet80pal, cbm8096,  pet80,    pet,      "Commodore Business Machines Co.",  "CBM 80xx (Sweden, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, pet80,    0,        0,        pet80,    cbm8096,  pet80,   "Commodore Business Machines Co.",  "PET 80xx (Basic 4, CRTC 60Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, cbm80,    pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines Co.",  "CBM 80xx (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, cbm80ger, pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines Co.",  "CBM 80xx (Germany, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, cbm80hun, pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines Co.",  "CBM 80xx (Hungary, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, cbm80swe, pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines Co.",  "CBM 80xx (Sweden, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
 
 /* So called, FAT-40 */
-COMP(1981, pet40b,   pet80,    0,        pet80,    cbm8096,  pet80,    pet,      "Commodore Business Machines Co.",  "PET 40xx (Basic 4, CRTC 60Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, pet40n,   pet2001,  0,        pet40,    pet,      pet,      pet,     "Commodore Business Machines Co.",  "PET 40xx (Basic 4, CRTC 60Hz, 40 columns)", GAME_NO_SOUND)
-COMP(1981, cbm40b,   pet80,    0,        pet80pal, cbm8096,  pet80,    pet,      "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, cbm40n,   pet2001,  0,        pet40pal, pet,      pet,      pet,     "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, CRTC 50Hz, 40 columns)", GAME_NO_SOUND)
+COMP(1981, pet40b,   pet80,    0,        pet80,    cbm8096,  pet80,   "Commodore Business Machines Co.",  "PET 40xx (Basic 4, CRTC 60Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, pet40n,   pet2001,  0,        pet40,    pet,      pet,     "Commodore Business Machines Co.",  "PET 40xx (Basic 4, CRTC 60Hz, 40 columns)", GAME_NO_SOUND)
+COMP(1981, cbm40b,   pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, cbm40n,   pet2001,  0,        pet40pal, pet,      pet,     "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, CRTC 50Hz, 40 columns)", GAME_NO_SOUND)
 
-COMP(1981, superpet, 0,        0,        superpet, superpet, superpet, pet,      "Commodore Business Machines Co.",  "SuperPET (CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
-COMP(1981, sp9000,   superpet, 0,        superpet, superpet, superpet, pet,      "Commodore Business Machines Co.",  "CBM SP9000 / MicroMainFrame 9000 (CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
-COMP(198?, mmf9000s, superpet, 0,        superpet, superpet, superpet, pet,      "Commodore Business Machines Co.",  "MicroMainFrame 9000 (Sweden, CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
+COMP(1981, superpet, 0,        0,        superpet, superpet, superpet,"Commodore Business Machines Co.",  "SuperPET (CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
+COMP(1981, sp9000,   superpet, 0,        superpet, superpet, superpet,"Commodore Business Machines Co.",  "CBM SP9000 / MicroMainFrame 9000 (CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
+COMP(198?, mmf9000s, superpet, 0,        superpet, superpet, superpet,"Commodore Business Machines Co.",  "MicroMainFrame 9000 (Sweden, CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
 
-COMP(1984, cbm8296,  pet80,    0,        pet80pal, cbm8096,  pet80,    pet,      "Commodore Business Machines Co.",  "CBM 8296 (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1984, cbm8296d, pet80,    0,        pet80pal, cbm8096,  pet80,    pet,      "Commodore Business Machines Co.",  "CBM 8296D", GAME_NO_SOUND)
+COMP(1984, cbm8296,  pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines Co.",  "CBM 8296 (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1984, cbm8296d, pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines Co.",  "CBM 8296D", GAME_NO_SOUND)

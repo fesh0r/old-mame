@@ -89,7 +89,7 @@ static ADDRESS_MAP_START( atom_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0a00, 0x0a03) AM_DEVREADWRITE("i8271", i8271_r, i8271_w)
 	AM_RANGE(0x0a04, 0x0a04) AM_DEVREADWRITE("i8271", i8271_data_r, i8271_data_w)
 	AM_RANGE(0x0a05, 0x7fff) AM_RAM
-	AM_RANGE(0x8000, 0x97ff) AM_RAM AM_BASE(&videoram) /* VDG 6847 */
+	AM_RANGE(0x8000, 0x97ff) AM_RAM AM_BASE_GENERIC(videoram) /* VDG 6847 */
 	AM_RANGE(0x9800, 0x9fff) AM_RAM
 	AM_RANGE(0xb000, 0xb003) AM_DEVREADWRITE("ppi8255", i8255a_r, i8255a_w)
 	AM_RANGE(0xb800, 0xbbff) AM_DEVREADWRITE("via6522_0", via_r, via_w)
@@ -105,9 +105,9 @@ static ADDRESS_MAP_START( atomeb_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0a00, 0x0a03) AM_DEVREADWRITE("i8271", i8271_r, i8271_w)
 	AM_RANGE(0x0a04, 0x0a04) AM_DEVREADWRITE("i8271", i8271_data_r, i8271_data_w)
 	AM_RANGE(0x0a05, 0x7fff) AM_RAM
-	AM_RANGE(0x8000, 0x97ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size) /* VDG 6847 */
+	AM_RANGE(0x8000, 0x97ff) AM_RAM AM_BASE_SIZE_GENERIC(videoram) /* VDG 6847 */
 	AM_RANGE(0x9800, 0x9fff) AM_RAM
-	AM_RANGE(0xa000, 0xafff) AM_READ(SMH_BANK(1))	/* eprom data from eprom box */
+	AM_RANGE(0xa000, 0xafff) AM_READ_BANK("bank1")	/* eprom data from eprom box */
 	AM_RANGE(0xb000, 0xb003) AM_DEVREADWRITE("ppi8255", i8255a_r, i8255a_w)
 	AM_RANGE(0xb800, 0xbbff) AM_DEVREADWRITE("via6522_0", via_r, via_w)
 	AM_RANGE(0xbfff, 0xbfff) AM_READWRITE(atom_eprom_box_r, atom_eprom_box_w)
@@ -251,7 +251,7 @@ INPUT_PORTS_END
 static const centronics_interface atom_centronics_config =
 {
 	FALSE,
-	DEVCB_DEVICE_HANDLER("via6522_0", via_ca1_w),
+	DEVCB_DEVICE_LINE("via6522_0", via_ca1_w),
 	DEVCB_NULL,
 	DEVCB_NULL
 };
@@ -299,7 +299,7 @@ static MACHINE_DRIVER_START( atom )
 	MDRV_CPU_ADD("maincpu", M65C02, X2 / 4)
 	MDRV_CPU_PROGRAM_MAP(atom_mem)
 
-	MDRV_MACHINE_RESET( atom )
+	MDRV_MACHINE_START( atom )
 
 	MDRV_I8255A_ADD( "ppi8255", atom_8255_int )
 
@@ -344,7 +344,7 @@ static MACHINE_DRIVER_START( atomeb )
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP(atomeb_mem)
 
-	MDRV_MACHINE_RESET( atomeb )
+	MDRV_MACHINE_START( atomeb )
 MACHINE_DRIVER_END
 
 
@@ -374,6 +374,6 @@ ROM_START (atomeb)
 	ROM_LOAD ("atomicw.rom",0x018000,0x1000, CRC(a3fd737d) SHA1(d418d9322c69c49106ed2c268ad0864c0f2c4c1b))    // Atomic Windows
 ROM_END
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      CONFIG   COMPANY   FULLNAME */
-COMP( 1979, atom,     0,        0,		atom,     atom,     0,        0,    "Acorn",  "Atom" , 0)
-COMP( 1979, atomeb,   atom,     0,		atomeb,   atom,     0,        0,    "Acorn",  "Atom with Eprom Box" , 0)
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT      COMPANY   FULLNAME */
+COMP( 1979, atom,     0,        0,		atom,     atom,     0,        "Acorn",  "Atom" , 0)
+COMP( 1979, atomeb,   atom,     0,		atomeb,   atom,     0,        "Acorn",  "Atom with Eprom Box" , 0)

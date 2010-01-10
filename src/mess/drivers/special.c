@@ -26,7 +26,7 @@
 
 /* Address maps */
 static ADDRESS_MAP_START(specialist_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x0000, 0x2fff ) AM_RAMBANK(1) // First bank
+	AM_RANGE( 0x0000, 0x2fff ) AM_RAMBANK("bank1") // First bank
     AM_RANGE( 0x3000, 0x8fff ) AM_RAM  // RAM
     AM_RANGE( 0x9000, 0xbfff ) AM_RAM  AM_BASE(&specialist_video_ram) // Video RAM
     AM_RANGE( 0xc000, 0xf000 ) AM_ROM  // System ROM
@@ -35,7 +35,7 @@ static ADDRESS_MAP_START(specialist_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(specialp_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x0000, 0x2fff ) AM_RAMBANK(1) // First bank
+	AM_RANGE( 0x0000, 0x2fff ) AM_RAMBANK("bank1") // First bank
     AM_RANGE( 0x3000, 0x7fff ) AM_RAM  // RAM
     AM_RANGE( 0x8000, 0xbfff ) AM_RAM  AM_BASE(&specialist_video_ram) // Video RAM
     AM_RANGE( 0xc000, 0xf000 ) AM_ROM  // System ROM
@@ -44,12 +44,12 @@ static ADDRESS_MAP_START(specialp_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(erik_mem, ADDRESS_SPACE_PROGRAM, 8)
-    AM_RANGE( 0x0000, 0x3fff ) AM_RAMBANK(1)
-    AM_RANGE( 0x4000, 0x8fff ) AM_RAMBANK(2)
-    AM_RANGE( 0x9000, 0xbfff ) AM_RAMBANK(3)
-    AM_RANGE( 0xc000, 0xefff ) AM_RAMBANK(4)
-    AM_RANGE( 0xf000, 0xf7ff ) AM_RAMBANK(5)
-    AM_RANGE( 0xf800, 0xffff ) AM_RAMBANK(6)
+    AM_RANGE( 0x0000, 0x3fff ) AM_RAMBANK("bank1")
+    AM_RANGE( 0x4000, 0x8fff ) AM_RAMBANK("bank2")
+    AM_RANGE( 0x9000, 0xbfff ) AM_RAMBANK("bank3")
+    AM_RANGE( 0xc000, 0xefff ) AM_RAMBANK("bank4")
+    AM_RANGE( 0xf000, 0xf7ff ) AM_RAMBANK("bank5")
+    AM_RANGE( 0xf800, 0xffff ) AM_RAMBANK("bank6")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( erik_io_map, ADDRESS_SPACE_IO, 8 )
@@ -65,10 +65,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(specimx_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-    AM_RANGE( 0x0000, 0x8fff ) AM_RAMBANK(1)
-	AM_RANGE( 0x9000, 0xbfff ) AM_RAMBANK(2)
-  	AM_RANGE( 0xc000, 0xffbf ) AM_RAMBANK(3)
-    AM_RANGE( 0xffc0, 0xffdf ) AM_RAMBANK(4)
+    AM_RANGE( 0x0000, 0x8fff ) AM_RAMBANK("bank1")
+	AM_RANGE( 0x9000, 0xbfff ) AM_RAMBANK("bank2")
+  	AM_RANGE( 0xc000, 0xffbf ) AM_RAMBANK("bank3")
+    AM_RANGE( 0xffc0, 0xffdf ) AM_RAMBANK("bank4")
     AM_RANGE( 0xffe0, 0xffe3 ) AM_READWRITE(specialist_keyboard_r,specialist_keyboard_w) // 8255 for keyboard
     AM_RANGE( 0xffe4, 0xffe7 ) AM_RAM //external 8255
     AM_RANGE( 0xffe8, 0xffe8 ) AM_DEVREADWRITE("wd1793", wd17xx_status_r,wd17xx_command_w)
@@ -479,10 +479,10 @@ static MACHINE_DRIVER_START( specimx )
 	MDRV_WD1793_ADD("wd1793", default_wd17xx_interface_2_drives )
 
 	MDRV_FLOPPY_2_DRIVES_ADD(specimx_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("128K")	
+	MDRV_RAM_DEFAULT_SIZE("128K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( erik )
@@ -519,10 +519,10 @@ static MACHINE_DRIVER_START( erik )
 	MDRV_WD1793_ADD("wd1793", default_wd17xx_interface_2_drives )
 
 	MDRV_FLOPPY_2_DRIVES_ADD(specimx_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("192K")	
+	MDRV_RAM_DEFAULT_SIZE("192K")
 MACHINE_DRIVER_END
 
 /* ROM definition */
@@ -566,9 +566,9 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME        PARENT  COMPAT   MACHINE    INPUT       INIT    CONFIG      COMPANY              FULLNAME       FLAGS */
-COMP( 1985, special,    0,     	0, 		special, 	special, 	special, 0,         "", 				 "Specialist",		0)
-COMP( 1985, specialp,   special,0, 		specialp, 	specialp, 	special, 0,         "", 				 "Specialist + hires graph",		0)
-COMP( 1985, lik,    	special,0, 		special, 	lik,		special, 0,         "", 				 "Lik",		 		0)
-COMP( 1985, specimx,   	special,0, 		specimx, 	specimx, 	specimx, 0,   		"", 				 "Specialist MX", 	0)
-COMP( 1994, erik,   	special,0, 		erik, 		special, 	erik, 	 0,     	"", 				 "Erik", 	0)
+/*    YEAR  NAME        PARENT  COMPAT   MACHINE    INPUT       INIT        COMPANY              FULLNAME       FLAGS */
+COMP( 1985, special,    0,     	0, 		special, 	special, 	special,    "", 				 "Specialist",		0)
+COMP( 1985, specialp,   special,0, 		specialp, 	specialp, 	special,    "", 				 "Specialist + hires graph",		0)
+COMP( 1985, lik,    	special,0, 		special, 	lik,		special,    "", 				 "Lik",		 		0)
+COMP( 1985, specimx,   	special,0, 		specimx, 	specimx, 	specimx,	"", 				 "Specialist MX", 	0)
+COMP( 1994, erik,   	special,0, 		erik, 		special, 	erik, 		"", 				 "Erik", 	0)

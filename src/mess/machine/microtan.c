@@ -344,9 +344,9 @@ static TIMER_CALLBACK(microtan_read_cassette)
 
 	LOG(("microtan_read_cassette: %g\n", level));
 	if (level < -0.07)
-		via_cb2_w(via_0, 0, 0);
+		via_cb2_w(via_0, 0);
 	else if (level > +0.07)
-		via_cb2_w(via_0, 0, 1);
+		via_cb2_w(via_0, 1);
 }
 
 READ8_HANDLER( microtan_sound_r )
@@ -644,7 +644,7 @@ INTERRUPT_GEN( microtan_interrupt )
         lastrow = row;
         /* CapsLock LED */
 		if( row == 3 && chg == 0x80 )
-			set_led_status(1, (keyrows[3] & 0x80) ? 0 : 1);
+			set_led_status(device->machine, 1, (keyrows[3] & 0x80) ? 0 : 1);
 
         if (new & chg)  /* key(s) pressed ? */
         {
@@ -910,21 +910,18 @@ DRIVER_INIT( microtan )
     switch (read_dsw(machine) & 3)
     {
         case 0:  // 1K only :)
-            memory_install_read8_handler(space, 0x0400, 0xbbff, 0, 0, SMH_NOP);
-            memory_install_write8_handler(space, 0x0400, 0xbbff, 0, 0, SMH_NOP);
+            memory_nop_readwrite(space, 0x0400, 0xbbff, 0, 0);
             break;
         case 1:  // +7K TANEX
-            memory_install_read8_handler(space, 0x0400, 0x1fff, 0, 0, SMH_RAM);
-            memory_install_write8_handler(space, 0x0400, 0x1fff, 0, 0, SMH_RAM);
-            memory_install_read8_handler(space, 0x2000, 0xbbff, 0, 0, SMH_NOP);
-            memory_install_write8_handler(space, 0x2000, 0xbbff, 0, 0, SMH_NOP);
+            memory_install_ram(space, 0x0400, 0x1fff, 0, 0 ,NULL);
+            memory_nop_readwrite(space, 0x2000, 0xbbff, 0, 0);
             break;
         default: // +7K TANEX + 40K TANRAM
-            memory_install_read8_handler(space, 0x0400, 0xbbff, 0, 0, SMH_RAM);
-            memory_install_write8_handler(space, 0x0400, 0xbbff, 0, 0, SMH_RAM);
+            memory_install_ram(space, 0x0400, 0xbbff, 0, 0, NULL);
             break;
     }
 
+	microtan_timer = timer_alloc(machine, microtan_read_cassette, NULL);
 }
 
 MACHINE_RESET( microtan )
@@ -936,7 +933,5 @@ MACHINE_RESET( microtan )
 	{
         keyrows[i] = input_port_read(machine, keynames[i-1]);
 	}
-    set_led_status(1, (keyrows[3] & 0x80) ? 0 : 1);
-
-	microtan_timer = timer_alloc(machine, microtan_read_cassette, NULL);
+    set_led_status(machine, 1, (keyrows[3] & 0x80) ? 0 : 1);
 }

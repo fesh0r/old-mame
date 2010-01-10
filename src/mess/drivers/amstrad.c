@@ -163,14 +163,14 @@ static DRIVER_INIT( aleste )
 pages the memory in 8k blocks! The ROM can
 be paged into bank 0 and bank 3. */
 static ADDRESS_MAP_START(amstrad_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x00000, 0x01fff) AM_READWRITE(SMH_BANK(1), SMH_BANK(9))
-	AM_RANGE(0x02000, 0x03fff) AM_READWRITE(SMH_BANK(2), SMH_BANK(10))
-	AM_RANGE(0x04000, 0x05fff) AM_READWRITE(SMH_BANK(3), SMH_BANK(11))
-	AM_RANGE(0x06000, 0x07fff) AM_READWRITE(SMH_BANK(4), SMH_BANK(12))
-	AM_RANGE(0x08000, 0x09fff) AM_READWRITE(SMH_BANK(5), SMH_BANK(13))
-	AM_RANGE(0x0a000, 0x0bfff) AM_READWRITE(SMH_BANK(6), SMH_BANK(14))
-	AM_RANGE(0x0c000, 0x0dfff) AM_READWRITE(SMH_BANK(7), SMH_BANK(15))
-	AM_RANGE(0x0e000, 0x0ffff) AM_READWRITE(SMH_BANK(8), SMH_BANK(16))
+	AM_RANGE(0x00000, 0x01fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank9")
+	AM_RANGE(0x02000, 0x03fff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank10")
+	AM_RANGE(0x04000, 0x05fff) AM_READ_BANK("bank3") AM_WRITE_BANK("bank11")
+	AM_RANGE(0x06000, 0x07fff) AM_READ_BANK("bank4") AM_WRITE_BANK("bank12")
+	AM_RANGE(0x08000, 0x09fff) AM_READ_BANK("bank5") AM_WRITE_BANK("bank13")
+	AM_RANGE(0x0a000, 0x0bfff) AM_READ_BANK("bank6") AM_WRITE_BANK("bank14")
+	AM_RANGE(0x0c000, 0x0dfff) AM_READ_BANK("bank7") AM_WRITE_BANK("bank15")
+	AM_RANGE(0x0e000, 0x0ffff) AM_READ_BANK("bank8") AM_WRITE_BANK("bank16")
 ADDRESS_MAP_END
 
 /* I've handled the I/O ports in this way, because the ports
@@ -876,6 +876,7 @@ static MACHINE_DRIVER_START( amstrad )
 
 	MDRV_QUANTUM_TIME(HZ(60))
 
+	MDRV_MACHINE_START( amstrad )
 	MDRV_MACHINE_RESET( amstrad )
 
 	MDRV_I8255A_ADD( "ppi8255", amstrad_ppi8255_interface )
@@ -889,7 +890,7 @@ static MACHINE_DRIVER_START( amstrad )
 	MDRV_PALETTE_LENGTH(32)
 	MDRV_PALETTE_INIT(amstrad_cpc)
 
-	MDRV_MC6845_ADD( "mc6845", MC6845, XTAL_16MHz / 16, mc6845_amstrad_intf )
+	MDRV_MC6845_ADD( "mc6845", MC6845, XTAL_16MHz / 16, amstrad_mc6845_intf )
 
 	MDRV_VIDEO_START(amstrad)
 	MDRV_VIDEO_UPDATE(amstrad)
@@ -914,7 +915,7 @@ static MACHINE_DRIVER_START( amstrad )
 	MDRV_UPD765A_ADD("upd765", amstrad_upd765_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(cpc6128_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("128K")
@@ -951,7 +952,7 @@ static MACHINE_DRIVER_START( cpcplus )
 	MDRV_PALETTE_LENGTH(4096)
 	MDRV_PALETTE_INIT(amstrad_plus)
 
-	MDRV_MC6845_ADD( "mc6845", MC6845, XTAL_40MHz / 40, mc6845_amstrad_plus_intf )
+	MDRV_MC6845_ADD( "mc6845", MC6845, XTAL_40MHz / 40, amstrad_plus_mc6845_intf )
 
 	MDRV_VIDEO_START(amstrad)
 	MDRV_VIDEO_UPDATE(amstrad)
@@ -978,10 +979,10 @@ static MACHINE_DRIVER_START( cpcplus )
 	MDRV_IMPORT_FROM(cpcplus_cartslot)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(cpc6128_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("128K")	
+	MDRV_RAM_DEFAULT_SIZE("128K")
 MACHINE_DRIVER_END
 
 
@@ -1007,7 +1008,7 @@ static MACHINE_DRIVER_START( gx4000 )
 	MDRV_PALETTE_LENGTH(4096)
 	MDRV_PALETTE_INIT(amstrad_plus)
 
-	MDRV_MC6845_ADD( "mc6845", MC6845, XTAL_40MHz / 40, mc6845_amstrad_plus_intf )
+	MDRV_MC6845_ADD( "mc6845", MC6845, XTAL_40MHz / 40, amstrad_plus_mc6845_intf )
 
 	MDRV_VIDEO_START(amstrad)
 	MDRV_VIDEO_UPDATE(amstrad)
@@ -1020,10 +1021,10 @@ static MACHINE_DRIVER_START( gx4000 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MDRV_IMPORT_FROM(cpcplus_cartslot)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("64K")	
+	MDRV_RAM_DEFAULT_SIZE("64K")
 MACHINE_DRIVER_END
 
 
@@ -1040,7 +1041,7 @@ static MACHINE_DRIVER_START( aleste )
 	MDRV_UPD765A_MODIFY("upd765", aleste_8272_interface)
 
 	MDRV_FLOPPY_2_DRIVES_MODIFY(aleste_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("2M")
@@ -1165,14 +1166,14 @@ ROM_END
  *
  *************************************/
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE  INPUT     INIT     CONFIG   COMPANY                FULLNAME                                     FLAGS */
-COMP( 1984, cpc464,   0,        0,      amstrad, cpc464,   0,       0, "Amstrad plc",         "Amstrad CPC464",                            0 )
-COMP( 1985, cpc664,   cpc464,   0,      amstrad, cpc664,   0,       0, "Amstrad plc",         "Amstrad CPC664",                            0 )
-COMP( 1985, cpc6128,  cpc464,   0,      amstrad, cpc6128,  0,       0, "Amstrad plc",         "Amstrad CPC6128",                           0 )
-COMP( 1985, cpc6128f, cpc464,   0,      amstrad, cpc6128f, 0,       0, "Amstrad plc",         "Amstrad CPC6128 (France, AZERTY Keyboard)", 0 )
-COMP( 1985, cpc6128s, cpc464,   0,      amstrad, cpc6128s, 0,       0, "Amstrad plc",         "Amstrad CPC6128 (Sweden/Finland)",			 0 )
-COMP( 1990, cpc464p,  0,        0,      cpcplus, plus,     0,       0, "Amstrad plc",         "Amstrad CPC464+",                           0 )
-COMP( 1990, cpc6128p, 0,        0,      cpcplus, plus,     0,       0, "Amstrad plc",         "Amstrad CPC6128+",                          0 )
-CONS( 1990, gx4000,   0,        0,      gx4000,  gx4000,   0,       0,  "Amstrad plc",         "Amstrad GX4000",                            0 )
-COMP( 1989, kccomp,   cpc464,   0,      kccomp,  kccomp,   0,       0, "VEB Mikroelektronik", "KC Compact",                                0 )
-COMP( 1993, al520ex,  cpc464,   0,      aleste,  aleste,   aleste,  0,  "Patisonic",           "Aleste 520EX",                              GAME_IMPERFECT_SOUND )
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE  INPUT     INIT     COMPANY                FULLNAME                                     FLAGS */
+COMP( 1984, cpc464,   0,        0,      amstrad, cpc464,   0,       "Amstrad plc",         "Amstrad CPC464",                            0 )
+COMP( 1985, cpc664,   cpc464,   0,      amstrad, cpc664,   0,       "Amstrad plc",         "Amstrad CPC664",                            0 )
+COMP( 1985, cpc6128,  cpc464,   0,      amstrad, cpc6128,  0,       "Amstrad plc",         "Amstrad CPC6128",                           0 )
+COMP( 1985, cpc6128f, cpc464,   0,      amstrad, cpc6128f, 0,       "Amstrad plc",         "Amstrad CPC6128 (France, AZERTY Keyboard)", 0 )
+COMP( 1985, cpc6128s, cpc464,   0,      amstrad, cpc6128s, 0,       "Amstrad plc",         "Amstrad CPC6128 (Sweden/Finland)",			 0 )
+COMP( 1990, cpc464p,  0,        0,      cpcplus, plus,     0,       "Amstrad plc",         "Amstrad CPC464+",                           0 )
+COMP( 1990, cpc6128p, 0,        0,      cpcplus, plus,     0,       "Amstrad plc",         "Amstrad CPC6128+",                          0 )
+CONS( 1990, gx4000,   0,        0,      gx4000,  gx4000,   0,       "Amstrad plc",         "Amstrad GX4000",                            0 )
+COMP( 1989, kccomp,   cpc464,   0,      kccomp,  kccomp,   0,       "VEB Mikroelektronik", "KC Compact",                                0 )
+COMP( 1993, al520ex,  cpc464,   0,      aleste,  aleste,   aleste,  "Patisonic",           "Aleste 520EX",                              GAME_IMPERFECT_SOUND )

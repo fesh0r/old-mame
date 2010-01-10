@@ -75,6 +75,8 @@
 #include "devices/flopdrv.h"
 #include "formats/basicdsk.h"
 #include "devices/messram.h"
+#include "machine/serial.h"
+
 
 /**************************** common *******************************/
 
@@ -196,76 +198,23 @@ static INPUT_PORTS_START( thom_lightpen )
 
 INPUT_PORTS_END
 
-
 /* ------------ serial ------------ */
 
-static const char *const thom_serial_names[3][3]=
-{
-	{ "cc90232", "c232", "RS232 (older, CC 90-232)" },
-	{ "rf57932", "r232", "RS232 (newer, RF 57-932)" },
-	{ "modem", "modm", "Modem" }
-};
+#define THOM_SERIAL_CC90323	DEVICE_GET_INFO_NAME(thom_serial_cc90323)
 
-static void thom_serial_getinfo ( const mess_device_class *devclass, UINT32 state, union devinfo *info )
-{
-	switch ( state ) {
-	case MESS_DEVINFO_INT_COUNT:
-		info->i = 3;
-		break;
-	case MESS_DEVINFO_INT_TYPE:
-		info->i = IO_SERIAL;
-		break;
-	case MESS_DEVINFO_INT_READABLE:
-		info->i = 1;
-		break;
-	case MESS_DEVINFO_INT_WRITEABLE:
-		info->i = 1;
-		break;
-	case MESS_DEVINFO_INT_CREATABLE:
-		info->i = 1;
-		break;
+#define MDRV_THOM_SERIAL_CC90323_ADD(_tag) \
+	MDRV_DEVICE_ADD(_tag, THOM_SERIAL_CC90323, 0)
+	
+#define THOM_SERIAL_RF57232	DEVICE_GET_INFO_NAME(thom_serial_rf57232)
 
-	case MESS_DEVINFO_PTR_START:
-		info->start = DEVICE_START_NAME(thom_serial);
-		break;
-	case MESS_DEVINFO_PTR_LOAD:
-		info->load = DEVICE_IMAGE_LOAD_NAME(thom_serial);
-		break;
-	case MESS_DEVINFO_PTR_UNLOAD:
-		info->unload = DEVICE_IMAGE_UNLOAD_NAME(thom_serial);
-		break;
+#define MDRV_THOM_SERIAL_RF57232_ADD(_tag) \
+	MDRV_DEVICE_ADD(_tag, THOM_SERIAL_RF57232, 0)
+	
+#define THOM_SERIAL_MODEM	DEVICE_GET_INFO_NAME(thom_serial_modem)
 
-	case MESS_DEVINFO_STR_NAME+0:
-	case MESS_DEVINFO_STR_NAME+1:
-	case MESS_DEVINFO_STR_NAME+2:
-		strcpy( info->s = device_temp_str(),
-			thom_serial_names[ state - MESS_DEVINFO_STR_NAME ][ 0 ] );
-		break;
-	case MESS_DEVINFO_STR_SHORT_NAME+0:
-	case MESS_DEVINFO_STR_SHORT_NAME+1:
-	case MESS_DEVINFO_STR_SHORT_NAME+2:
-		strcpy( info->s = device_temp_str(),
-			thom_serial_names[ state - MESS_DEVINFO_STR_SHORT_NAME ][ 1 ] );
-		break;
-	case MESS_DEVINFO_STR_DESCRIPTION+0:
-	case MESS_DEVINFO_STR_DESCRIPTION+1:
-	case MESS_DEVINFO_STR_DESCRIPTION+2:
-		strcpy( info->s = device_temp_str(),
-			thom_serial_names[ state - MESS_DEVINFO_STR_DESCRIPTION ][ 2 ] );
-		break;
-
-	case MESS_DEVINFO_STR_DEV_FILE:
-		strcpy( info->s = device_temp_str(), "serial" );
-		break;
-	case MESS_DEVINFO_STR_FILE_EXTENSIONS:
-		strcpy( info->s = device_temp_str(), "txt" );
-		break;
-
-	}
-}
-
-
-
+#define MDRV_THOM_SERIAL_MODEM_ADD(_tag) \
+	MDRV_DEVICE_ADD(_tag, THOM_SERIAL_MODEM, 0)
+	
 /************************** T9000 / TO7 *******************************
 
 TO7 (1982)
@@ -366,8 +315,8 @@ They can run the same software and accept the same devices and extensions.
 
 static ADDRESS_MAP_START ( to7, ADDRESS_SPACE_PROGRAM, 8 )
 
-     AM_RANGE ( 0x0000, 0x3fff ) AM_READWRITE ( SMH_BANK(THOM_CART_BANK), to7_cartridge_w ) /* 4 * 16 KB */
-     AM_RANGE ( 0x4000, 0x5fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to7_vram_w )
+     AM_RANGE ( 0x0000, 0x3fff ) AM_READ_BANK ( THOM_CART_BANK ) AM_WRITE(to7_cartridge_w ) /* 4 * 16 KB */
+     AM_RANGE ( 0x4000, 0x5fff ) AM_READ_BANK ( THOM_VRAM_BANK ) AM_WRITE(to7_vram_w )
      AM_RANGE ( 0x6000, 0x7fff ) AM_RAMBANK   ( THOM_BASE_BANK ) /* 1 * 8 KB */
      AM_RANGE ( 0x8000, 0xbfff ) AM_NOP       /* 16 KB (for extension) */
      AM_RANGE ( 0xc000, 0xdfff ) AM_NOP       /*  8 KB (for extension) */
@@ -645,13 +594,6 @@ static const floppy_config thomson_floppy_config =
 	DO_NOT_KEEP_GEOMETRY
 };
 
-/* ------------ config ------------ */
-
-static SYSTEM_CONFIG_START ( to )
-     CONFIG_DEVICE ( thom_serial_getinfo )
-SYSTEM_CONFIG_END
-
-
 /* ------------ driver ------------ */
 
 static MACHINE_DRIVER_START ( to7 )
@@ -727,7 +669,11 @@ static MACHINE_DRIVER_START ( to7 )
 /* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("40K")
-	MDRV_RAM_EXTRA_OPTIONS("24K,48K")	 
+	MDRV_RAM_EXTRA_OPTIONS("24K,48K")
+	
+	MDRV_THOM_SERIAL_CC90323_ADD("cc90232")
+	MDRV_THOM_SERIAL_RF57232_ADD("rf57932")
+	MDRV_THOM_SERIAL_MODEM_ADD("modem")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START ( t9000 )
@@ -735,9 +681,9 @@ static MACHINE_DRIVER_START ( t9000 )
 MACHINE_DRIVER_END
 
 
-COMP ( 1982, to7, 0, 0, to7, to7, 0, to, "Thomson", "TO7", 0 )
+COMP ( 1982, to7, 0, 0, to7, to7, 0,  "Thomson", "TO7", 0 )
 
-COMP ( 1980, t9000, to7, 0, t9000, t9000, 0, to, "Thomson", "T9000", 0 )
+COMP ( 1980, t9000, to7, 0, t9000, t9000,  0, "Thomson", "T9000", 0 )
 
 
 /***************************** TO7/70 *********************************
@@ -791,8 +737,8 @@ In arabic mode, Ctrl+E / Ctrl+X to start / stop typing in-line latin.
 
 static ADDRESS_MAP_START ( to770, ADDRESS_SPACE_PROGRAM, 8 )
 
-     AM_RANGE ( 0x0000, 0x3fff ) AM_READWRITE ( SMH_BANK(THOM_CART_BANK), to7_cartridge_w ) /* 4 * 16 KB */
-     AM_RANGE ( 0x4000, 0x5fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to770_vram_w )
+     AM_RANGE ( 0x0000, 0x3fff ) AM_READ_BANK ( THOM_CART_BANK) AM_WRITE( to7_cartridge_w ) /* 4 * 16 KB */
+     AM_RANGE ( 0x4000, 0x5fff ) AM_READ_BANK ( THOM_VRAM_BANK) AM_WRITE( to770_vram_w )
      AM_RANGE ( 0x6000, 0x9fff ) AM_RAMBANK   ( THOM_BASE_BANK ) /* 16 KB */
      AM_RANGE ( 0xa000, 0xdfff ) AM_RAMBANK   ( THOM_RAM_BANK )  /* 6 * 16 KB */
      AM_RANGE ( 0xe000, 0xe7bf ) AM_ROMBANK   ( THOM_FLOP_BANK )
@@ -906,20 +852,20 @@ static MACHINE_DRIVER_START ( to770 )
 	MDRV_PIA6821_MODIFY( THOM_PIA_SYS, to770_pia6821_sys )
 
     MDRV_MC6846_MODIFY( "mc6846", to770_timer )
-	 
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("128K")
-	MDRV_RAM_EXTRA_OPTIONS("64K")	 
+	MDRV_RAM_EXTRA_OPTIONS("64K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START ( to770a )
      MDRV_IMPORT_FROM ( to770 )
 MACHINE_DRIVER_END
 
-COMP ( 1984, to770, 0, 0, to770, to770, 0, to, "Thomson", "TO7/70", 0 )
+COMP ( 1984, to770, 0, 0, to770, to770, 0, "Thomson", "TO7/70", 0 )
 
-COMP ( 1984, to770a, to770, 0, to770a, to770a, 0, to, "Thomson", "TO7/70 arabic", 0 )
+COMP ( 1984, to770a, to770, 0, to770a, to770a, 0, "Thomson", "TO7/70 arabic", 0 )
 
 
 /************************* MO5 / MO5E *********************************
@@ -983,7 +929,7 @@ Differences include:
 
 static ADDRESS_MAP_START ( mo5, ADDRESS_SPACE_PROGRAM, 8 )
 
-     AM_RANGE ( 0x0000, 0x1fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to770_vram_w )
+     AM_RANGE ( 0x0000, 0x1fff ) AM_READ_BANK ( THOM_VRAM_BANK ) AM_WRITE( to770_vram_w )
      AM_RANGE ( 0x2000, 0x9fff ) AM_RAMBANK   ( THOM_BASE_BANK )
      AM_RANGE ( 0xa000, 0xa7bf ) AM_ROMBANK   ( THOM_FLOP_BANK )
      AM_RANGE ( 0xa7c0, 0xa7c3 ) AM_DEVREADWRITE ( "pia_0", pia6821_alt_r,  pia6821_alt_w )
@@ -996,7 +942,7 @@ static ADDRESS_MAP_START ( mo5, ADDRESS_SPACE_PROGRAM, 8 )
      AM_RANGE ( 0xa7e8, 0xa7eb ) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
      AM_RANGE ( 0xa7f2, 0xa7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
      AM_RANGE ( 0xa7fe, 0xa7ff ) AM_DEVREADWRITE("mea8000", mea8000_r, mea8000_w)
-     AM_RANGE ( 0xb000, 0xefff ) AM_READWRITE ( SMH_BANK(THOM_CART_BANK), mo5_cartridge_w )
+     AM_RANGE ( 0xb000, 0xefff ) AM_READ_BANK ( THOM_CART_BANK) AM_WRITE( mo5_cartridge_w )
      AM_RANGE ( 0xf000, 0xffff ) AM_ROM       /* system bios */
 
 /* 0x10000 - 0x1ffff: 16 KB integrated BASIC / 64 KB external cartridge */
@@ -1094,7 +1040,7 @@ static MACHINE_DRIVER_START ( mo5 )
 	MDRV_CARTSLOT_MODIFY("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("m5,rom")
 	MDRV_CARTSLOT_LOAD(mo5_cartridge)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("112K")
@@ -1105,9 +1051,9 @@ static MACHINE_DRIVER_START ( mo5e )
 MACHINE_DRIVER_END
 
 
-COMP ( 1984, mo5, 0, 0, mo5, mo5, 0, to, "Thomson", "MO5", 0 )
+COMP ( 1984, mo5, 0, 0, mo5, mo5, 0, "Thomson", "MO5", 0 )
 
-COMP ( 1986, mo5e, mo5, 0, mo5e, mo5e, 0, to, "Thomson", "MO5E", 0 )
+COMP ( 1986, mo5e, mo5, 0, mo5e, mo5e, 0, "Thomson", "MO5E", 0 )
 
 
 /********************************* TO9 *******************************
@@ -1184,8 +1130,8 @@ It was replaced quickly with the improved TO9+.
 
 static ADDRESS_MAP_START ( to9, ADDRESS_SPACE_PROGRAM, 8 )
 
-     AM_RANGE ( 0x0000, 0x3fff ) AM_READWRITE ( SMH_BANK(THOM_CART_BANK), to9_cartridge_w )/* 4 * 16 KB */
-     AM_RANGE ( 0x4000, 0x5fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to770_vram_w )
+     AM_RANGE ( 0x0000, 0x3fff ) AM_READ_BANK ( THOM_CART_BANK ) AM_WRITE( to9_cartridge_w )/* 4 * 16 KB */
+     AM_RANGE ( 0x4000, 0x5fff ) AM_READ_BANK ( THOM_VRAM_BANK ) AM_WRITE( to770_vram_w )
      AM_RANGE ( 0x6000, 0x9fff ) AM_RAMBANK   ( THOM_BASE_BANK ) /* 16 KB */
      AM_RANGE ( 0xa000, 0xdfff ) AM_RAMBANK   ( THOM_RAM_BANK )  /* 10 * 16 KB */
      AM_RANGE ( 0xe000, 0xe7bf ) AM_ROMBANK   ( THOM_FLOP_BANK )
@@ -1433,7 +1379,7 @@ static MACHINE_DRIVER_START ( to9 )
 	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 
      MDRV_MC6846_MODIFY( "mc6846", to9_timer )
-	 
+
 	 /* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("192K")
@@ -1441,7 +1387,7 @@ static MACHINE_DRIVER_START ( to9 )
 MACHINE_DRIVER_END
 
 
-COMP ( 1985, to9, 0, 0, to9, to9, 0, to, "Thomson", "TO9", GAME_IMPERFECT_COLORS )
+COMP ( 1985, to9, 0, 0, to9, to9, 0, "Thomson", "TO9", GAME_IMPERFECT_COLORS )
 
 
 /******************************** TO8 ********************************
@@ -1509,12 +1455,12 @@ The TO8D is simply a TO8 with an integrated 3"1/2 floppy drive.
 
 static ADDRESS_MAP_START ( to8, ADDRESS_SPACE_PROGRAM, 8 )
 
-     AM_RANGE ( 0x0000, 0x3fff ) AM_READWRITE ( SMH_BANK(THOM_CART_BANK), to8_cartridge_w ) /* 4 * 16 KB */
-     AM_RANGE ( 0x4000, 0x5fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to770_vram_w )
-     AM_RANGE ( 0x6000, 0x7fff ) AM_READWRITE ( SMH_BANK(TO8_SYS_LO), to8_sys_lo_w )
-     AM_RANGE ( 0x8000, 0x9fff ) AM_READWRITE ( SMH_BANK(TO8_SYS_HI), to8_sys_hi_w )
-     AM_RANGE ( 0xa000, 0xbfff ) AM_READWRITE ( SMH_BANK(TO8_DATA_LO), to8_data_lo_w )
-     AM_RANGE ( 0xc000, 0xdfff ) AM_READWRITE ( SMH_BANK(TO8_DATA_HI), to8_data_hi_w )
+     AM_RANGE ( 0x0000, 0x3fff ) AM_READ_BANK ( THOM_CART_BANK) AM_WRITE( to8_cartridge_w ) /* 4 * 16 KB */
+     AM_RANGE ( 0x4000, 0x5fff ) AM_READ_BANK ( THOM_VRAM_BANK) AM_WRITE( to770_vram_w )
+     AM_RANGE ( 0x6000, 0x7fff ) AM_READ_BANK ( TO8_SYS_LO) AM_WRITE( to8_sys_lo_w )
+     AM_RANGE ( 0x8000, 0x9fff ) AM_READ_BANK ( TO8_SYS_HI) AM_WRITE( to8_sys_hi_w )
+     AM_RANGE ( 0xa000, 0xbfff ) AM_READ_BANK ( TO8_DATA_LO) AM_WRITE( to8_data_lo_w )
+     AM_RANGE ( 0xc000, 0xdfff ) AM_READ_BANK ( TO8_DATA_HI) AM_WRITE( to8_data_hi_w )
      AM_RANGE ( 0xe000, 0xe7bf ) AM_ROMBANK   ( THOM_FLOP_BANK ) /* 2 * 2 KB */
      AM_RANGE ( 0xe7c0, 0xe7c7 ) AM_DEVREADWRITE("mc6846", mc6846_r, mc6846_w)
      AM_RANGE ( 0xe7c8, 0xe7cb ) AM_DEVREADWRITE ( "pia_0", pia6821_alt_r,  pia6821_alt_w )
@@ -1652,7 +1598,7 @@ static MACHINE_DRIVER_START ( to8 )
 	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 
      MDRV_MC6846_MODIFY( "mc6846", to8_timer )
-	 
+
 	 /* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("512K")
@@ -1664,9 +1610,9 @@ static MACHINE_DRIVER_START ( to8d )
 MACHINE_DRIVER_END
 
 
-COMP ( 1986, to8, 0, 0, to8, to8, 0, to, "Thomson", "TO8", 0 )
+COMP ( 1986, to8, 0, 0, to8, to8, 0, "Thomson", "TO8", 0 )
 
-COMP ( 1987, to8d, to8, 0, to8d, to8d, 0, to, "Thomson", "TO8D", 0 )
+COMP ( 1987, to8d, to8, 0, to8d, to8d, 0, "Thomson", "TO8D", 0 )
 
 
 /******************************** TO9+ *******************************
@@ -1708,12 +1654,12 @@ The differences with the TO8 are:
 
 static ADDRESS_MAP_START ( to9p, ADDRESS_SPACE_PROGRAM, 8 )
 
-     AM_RANGE ( 0x0000, 0x3fff ) AM_READWRITE ( SMH_BANK(THOM_CART_BANK), to8_cartridge_w ) /* 4 * 16 KB */
-     AM_RANGE ( 0x4000, 0x5fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to770_vram_w )
-     AM_RANGE ( 0x6000, 0x7fff ) AM_READWRITE ( SMH_BANK(TO8_SYS_LO), to8_sys_lo_w )
-     AM_RANGE ( 0x8000, 0x9fff ) AM_READWRITE ( SMH_BANK(TO8_SYS_HI), to8_sys_hi_w )
-     AM_RANGE ( 0xa000, 0xbfff ) AM_READWRITE ( SMH_BANK(TO8_DATA_LO), to8_data_lo_w )
-     AM_RANGE ( 0xc000, 0xdfff ) AM_READWRITE ( SMH_BANK(TO8_DATA_HI), to8_data_hi_w )
+     AM_RANGE ( 0x0000, 0x3fff ) AM_READ_BANK ( THOM_CART_BANK) AM_WRITE( to8_cartridge_w ) /* 4 * 16 KB */
+     AM_RANGE ( 0x4000, 0x5fff ) AM_READ_BANK ( THOM_VRAM_BANK) AM_WRITE( to770_vram_w )
+     AM_RANGE ( 0x6000, 0x7fff ) AM_READ_BANK ( TO8_SYS_LO) AM_WRITE( to8_sys_lo_w )
+     AM_RANGE ( 0x8000, 0x9fff ) AM_READ_BANK ( TO8_SYS_HI) AM_WRITE( to8_sys_hi_w )
+     AM_RANGE ( 0xa000, 0xbfff ) AM_READ_BANK ( TO8_DATA_LO) AM_WRITE( to8_data_lo_w )
+     AM_RANGE ( 0xc000, 0xdfff ) AM_READ_BANK ( TO8_DATA_HI) AM_WRITE( to8_data_hi_w )
      AM_RANGE ( 0xe000, 0xe7bf ) AM_ROMBANK   ( THOM_FLOP_BANK ) /* 2 * 2 KB */
      AM_RANGE ( 0xe7c0, 0xe7c7 ) AM_DEVREADWRITE("mc6846", mc6846_r, mc6846_w)
      AM_RANGE ( 0xe7c8, 0xe7cb ) AM_DEVREADWRITE ( "pia_0", pia6821_alt_r,  pia6821_alt_w )
@@ -1803,13 +1749,13 @@ static MACHINE_DRIVER_START ( to9p )
 	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 
      MDRV_MC6846_MODIFY( "mc6846", to9p_timer )
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("512K")
 MACHINE_DRIVER_END
 
-COMP ( 1986, to9p, 0, 0, to9p, to9p, 0, to, "Thomson", "TO9+", 0 )
+COMP ( 1986, to9p, 0, 0, to9p, to9p, 0, "Thomson", "TO9+", 0 )
 
 
 
@@ -1873,11 +1819,11 @@ a PC XT.
 
 static ADDRESS_MAP_START ( mo6, ADDRESS_SPACE_PROGRAM, 8 )
 
-     AM_RANGE ( 0x0000, 0x1fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to770_vram_w )
-     AM_RANGE ( 0x2000, 0x3fff ) AM_READWRITE ( SMH_BANK(TO8_SYS_LO), to8_sys_lo_w )
-     AM_RANGE ( 0x4000, 0x5fff ) AM_READWRITE ( SMH_BANK(TO8_SYS_HI), to8_sys_hi_w )
-     AM_RANGE ( 0x6000, 0x7fff ) AM_READWRITE ( SMH_BANK(TO8_DATA_LO), to8_data_lo_w )
-     AM_RANGE ( 0x8000, 0x9fff ) AM_READWRITE ( SMH_BANK(TO8_DATA_HI), to8_data_hi_w )
+     AM_RANGE ( 0x0000, 0x1fff ) AM_READ_BANK ( THOM_VRAM_BANK) AM_WRITE( to770_vram_w )
+     AM_RANGE ( 0x2000, 0x3fff ) AM_READ_BANK ( TO8_SYS_LO) AM_WRITE( to8_sys_lo_w )
+     AM_RANGE ( 0x4000, 0x5fff ) AM_READ_BANK ( TO8_SYS_HI) AM_WRITE( to8_sys_hi_w )
+     AM_RANGE ( 0x6000, 0x7fff ) AM_READ_BANK ( TO8_DATA_LO) AM_WRITE( to8_data_lo_w )
+     AM_RANGE ( 0x8000, 0x9fff ) AM_READ_BANK ( TO8_DATA_HI) AM_WRITE( to8_data_hi_w )
      AM_RANGE ( 0xa000, 0xa7bf ) AM_ROMBANK   ( THOM_FLOP_BANK )
      AM_RANGE ( 0xa7c0, 0xa7c3 ) AM_DEVREADWRITE ( "pia_0", pia6821_alt_r,  pia6821_alt_w )
      AM_RANGE ( 0xa7cb, 0xa7cb ) AM_WRITE     ( mo6_ext_w )
@@ -2140,19 +2086,19 @@ static MACHINE_DRIVER_START ( mo6 )
 	MDRV_CARTSLOT_MODIFY("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("m5,rom")
 	MDRV_CARTSLOT_LOAD(mo5_cartridge)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
-	MDRV_RAM_DEFAULT_SIZE("128K")	
+	MDRV_RAM_DEFAULT_SIZE("128K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START ( pro128 )
      MDRV_IMPORT_FROM ( mo6 )
 MACHINE_DRIVER_END
 
-COMP ( 1986, mo6, 0, 0, mo6, mo6, 0, to, "Thomson", "MO6", 0 )
+COMP ( 1986, mo6, 0, 0, mo6, mo6, 0, "Thomson", "MO6", 0 )
 
-COMP ( 1986, pro128, mo6, 0, pro128, pro128, 0, to, "Olivetti / Thomson", "Prodest PC 128", 0 )
+COMP ( 1986, pro128, mo6, 0, pro128, pro128, 0, "Olivetti / Thomson", "Prodest PC 128", 0 )
 
 
 
@@ -2187,11 +2133,11 @@ Here are the differences between the MO6 and MO5NR:
 
 static ADDRESS_MAP_START ( mo5nr, ADDRESS_SPACE_PROGRAM, 8 )
 
-     AM_RANGE ( 0x0000, 0x1fff ) AM_READWRITE ( SMH_BANK(THOM_VRAM_BANK), to770_vram_w )
-     AM_RANGE ( 0x2000, 0x3fff ) AM_READWRITE ( SMH_BANK(TO8_SYS_LO), to8_sys_lo_w )
-     AM_RANGE ( 0x4000, 0x5fff ) AM_READWRITE ( SMH_BANK(TO8_SYS_HI), to8_sys_hi_w )
-     AM_RANGE ( 0x6000, 0x7fff ) AM_READWRITE ( SMH_BANK(TO8_DATA_LO), to8_data_lo_w )
-     AM_RANGE ( 0x8000, 0x9fff ) AM_READWRITE ( SMH_BANK(TO8_DATA_HI), to8_data_hi_w )
+     AM_RANGE ( 0x0000, 0x1fff ) AM_READ_BANK ( THOM_VRAM_BANK) AM_WRITE( to770_vram_w )
+     AM_RANGE ( 0x2000, 0x3fff ) AM_READ_BANK ( TO8_SYS_LO) AM_WRITE( to8_sys_lo_w )
+     AM_RANGE ( 0x4000, 0x5fff ) AM_READ_BANK ( TO8_SYS_HI) AM_WRITE( to8_sys_hi_w )
+     AM_RANGE ( 0x6000, 0x7fff ) AM_READ_BANK ( TO8_DATA_LO) AM_WRITE( to8_data_lo_w )
+     AM_RANGE ( 0x8000, 0x9fff ) AM_READ_BANK ( TO8_DATA_HI) AM_WRITE( to8_data_hi_w )
      AM_RANGE ( 0xa000, 0xa7bf ) AM_ROMBANK   ( THOM_FLOP_BANK )
      AM_RANGE ( 0xa7c0, 0xa7c3 ) AM_DEVREADWRITE ( "pia_0", pia6821_alt_r,  pia6821_alt_w )
      AM_RANGE ( 0xa7cb, 0xa7cb ) AM_WRITE     ( mo6_ext_w )
@@ -2207,7 +2153,7 @@ static ADDRESS_MAP_START ( mo5nr, ADDRESS_SPACE_PROGRAM, 8 )
      AM_RANGE ( 0xa7f2, 0xa7f3 ) AM_READWRITE ( to7_midi_r, to7_midi_w )
      AM_RANGE ( 0xa7f8, 0xa7fb ) AM_DEVREADWRITE ( "pia_3", pia6821_alt_r, pia6821_alt_w )
      AM_RANGE ( 0xa7fe, 0xa7ff ) AM_DEVREADWRITE("mea8000", mea8000_r, mea8000_w)
-     AM_RANGE ( 0xb000, 0xefff ) AM_READWRITE ( SMH_BANK(THOM_CART_BANK), mo6_cartridge_w ) /* 4 * 16 KB */
+     AM_RANGE ( 0xb000, 0xefff ) AM_READ_BANK ( THOM_CART_BANK) AM_WRITE( mo6_cartridge_w ) /* 4 * 16 KB */
      AM_RANGE ( 0xf000, 0xffff ) AM_ROMBANK   ( TO8_BIOS_BANK )
 
 /* 0x10000 - 0x1ffff: 64 KB external ROM cartridge */
@@ -2368,10 +2314,10 @@ static MACHINE_DRIVER_START ( mo5nr )
 	MDRV_CARTSLOT_MODIFY("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("m5,rom")
 	MDRV_CARTSLOT_LOAD(mo5_cartridge)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
-	MDRV_RAM_DEFAULT_SIZE("128K")	
+	MDRV_RAM_DEFAULT_SIZE("128K")
 MACHINE_DRIVER_END
 
-COMP ( 1986, mo5nr, 0, 0, mo5nr, mo5nr, 0, to, "Thomson", "MO5 NR", 0 )
+COMP ( 1986, mo5nr, 0, 0, mo5nr, mo5nr, 0, "Thomson", "MO5 NR", 0 )

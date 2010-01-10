@@ -538,11 +538,13 @@ static void tms3556_draw_line(bitmap_t *bmp, int line)
 
 	double_lines = 0;
 
-	/*if (vdp.controlRegs[4] & 0x??)
-    {   // interlaced mode
-        ln = BITMAP_ADDR16(bmp, line, vdp.field);
-    }
-    else*/
+#if 0
+	if ( vdp.controlRegs[4] & 0x?? )
+	{   // interlaced mode
+		ln = BITMAP_ADDR16(bmp, line, vdp.field);
+	}
+	else
+#endif
 	{	/* non-interlaced mode */
 		ln = BITMAP_ADDR16(bmp, line, 0);
 		ln2 = BITMAP_ADDR16(bmp, line, 1);
@@ -616,7 +618,7 @@ static void tms3556_interrupt_start_vblank(void)
 
     scanline handler
 */
-void tms3556_interrupt()
+void tms3556_interrupt(running_machine *machine)
 {
 	/* check for start of vblank */
 	if (vdp.scanline == 310)	/*no idea what the real value is*/
@@ -626,7 +628,7 @@ void tms3556_interrupt()
 	if ((vdp.scanline >= 0) && (vdp.scanline < TOTAL_HEIGHT))
 	{
 		//if (!video_skip_this_frame())
-			tms3556_draw_line(tmpbitmap, vdp.scanline);
+			tms3556_draw_line(machine->generic.tmpbitmap, vdp.scanline);
 	}
 
 	if (++vdp.scanline == 313)

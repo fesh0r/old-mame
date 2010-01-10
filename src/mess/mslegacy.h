@@ -1,9 +1,9 @@
 /*********************************************************************
 
-	mslegacy.h
+    mslegacy.h
 
-	Defines since removed from MAME, but kept in MESS for legacy
-	reasons
+    Defines since removed from MAME, but kept in MESS for legacy
+    reasons
 
 *********************************************************************/
 
@@ -65,7 +65,8 @@ enum
 	UI_snapshot,
 	UI_quickload,
 	UI_memcard,
-	UI_cdrom
+	UI_cdrom,
+	UI_magtape
 };
 
 

@@ -18,7 +18,7 @@
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 #include "sound/qsound.h"
-#include "cps1.h"
+#include "includes/cpschngr.h"
 
 static READ16_HANDLER( cps1_dsw_r )
 {
@@ -33,7 +33,7 @@ static WRITE8_HANDLER( cps1_snd_bankswitch_w )
 	int bankaddr;
 
 	bankaddr = ((data & 1) * 0x4000);
-	memory_set_bankptr(space->machine, 1,&RAM[0x10000 + bankaddr]);
+	memory_set_bankptr(space->machine, "bank1",&RAM[0x10000 + bankaddr]);
 }
 
 static WRITE8_DEVICE_HANDLER( cps1_oki_pin7_w )
@@ -57,10 +57,10 @@ static WRITE16_HANDLER( cps1_coinctrl_w )
 {
 	if (ACCESSING_BITS_8_15)
 	{
-		coin_counter_w(0,data & 0x0100);
-		coin_counter_w(1,data & 0x0200);
-		coin_lockout_w(0,~data & 0x0400);
-		coin_lockout_w(1,~data & 0x0800);
+		coin_counter_w(space->machine,0,data & 0x0100);
+		coin_counter_w(space->machine,1,data & 0x0200);
+		coin_lockout_w(space->machine,0,~data & 0x0400);
+		coin_lockout_w(space->machine,1,~data & 0x0800);
 	}
 }
 
@@ -68,10 +68,10 @@ static WRITE16_HANDLER( cpsq_coinctrl2_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		coin_counter_w(2,data & 0x01);
-		coin_lockout_w(2,~data & 0x02);
-		coin_counter_w(3,data & 0x04);
-		coin_lockout_w(3,~data & 0x08);
+		coin_counter_w(space->machine,2,data & 0x01);
+		coin_lockout_w(space->machine,2,~data & 0x02);
+		coin_counter_w(space->machine,3,data & 0x04);
+		coin_lockout_w(space->machine,3,~data & 0x08);
 	}
 }
 
@@ -135,7 +135,7 @@ static WRITE8_HANDLER( qsound_banksw_w )
 	if (bankaddress >= memory_region_length(space->machine, "audiocpu"))
 		bankaddress=0x10000;
 
-	memory_set_bankptr(space->machine, 1, &RAM[bankaddress]);
+	memory_set_bankptr(space->machine, "bank1", &RAM[bankaddress]);
 }
 
 
@@ -158,26 +158,15 @@ static const eeprom_interface qsound_eeprom_interface =
 	"0111"	/* erase command */
 };
 
-static NVRAM_HANDLER( qsound )
-{
-	if (read_or_write)
-		eeprom_save(file);
-	else
-	{
-		eeprom_init(machine, &qsound_eeprom_interface);
-
-		if (file)
-			eeprom_load(file);
-	}
-}
-
 static READ16_HANDLER( cps1_eeprom_port_r )
 {
-	return eeprom_read_bit();
+	const device_config *eeprom = devtag_get_device(space->machine, "eeprom");
+	return eeprom_read_bit(eeprom);
 }
 
 static WRITE16_HANDLER( cps1_eeprom_port_w )
 {
+	const device_config *eeprom = devtag_get_device(space->machine, "eeprom");
 	if (ACCESSING_BITS_0_7)
 	{
 		/*
@@ -185,9 +174,9 @@ static WRITE16_HANDLER( cps1_eeprom_port_w )
         bit 6 = clock
         bit 7 = cs
         */
-		eeprom_write_bit(data & 0x01);
-		eeprom_set_cs_line((data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
-		eeprom_set_clock_line((data & 0x40) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit(eeprom,data & 0x01);
+		eeprom_set_cs_line(eeprom,(data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line(eeprom,(data & 0x40) ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -214,7 +203,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sub_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(1)
+	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK("bank1")
 	AM_RANGE(0xd000, 0xd7ff) AM_RAM
 	AM_RANGE(0xf000, 0xf001) AM_DEVREADWRITE("2151", ym2151_r, ym2151_w)
 	AM_RANGE(0xf002, 0xf002) AM_DEVREADWRITE("oki", okim6295_r, okim6295_w)
@@ -244,7 +233,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( qsound_sub_map, ADDRESS_SPACE_PROGRAM, 8 )	// used by cps2.c too
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(1)	/* banked (contains music data) */
+	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK("bank1")	/* banked (contains music data) */
 	AM_RANGE(0xc000, 0xcfff) AM_RAM AM_BASE(&qsound_sharedram1)
 	AM_RANGE(0xd000, 0xd002) AM_DEVWRITE("qsound", qsound_w)
 	AM_RANGE(0xd003, 0xd003) AM_WRITE(qsound_banksw_w)
@@ -425,8 +414,6 @@ static MACHINE_DRIVER_START( qsound )
 	MDRV_CPU_PROGRAM_MAP(qsound_sub_map)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, 250)	/* ?? */
 
-	MDRV_NVRAM_HANDLER(qsound)
-
 	/* sound hardware */
 	MDRV_DEVICE_REMOVE("mono")
 	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
@@ -437,6 +424,8 @@ static MACHINE_DRIVER_START( qsound )
 	MDRV_SOUND_ADD("qsound", QSOUND, QSOUND_CLOCK)
 	MDRV_SOUND_ROUTE(0, "lspeaker", 1.0)
 	MDRV_SOUND_ROUTE(1, "rspeaker", 1.0)
+	
+	MDRV_EEPROM_ADD("eeprom", qsound_eeprom_interface)
 MACHINE_DRIVER_END
 
 /***************************************
@@ -603,8 +592,8 @@ ROM_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT     INIT      CONFIG  COMPANY     FULLNAME */
-CONS( 1995, sfach,    sfzch,    0,	cps1_10MHz, sfzch,    cps1,     NULL,   "Capcom", "CPS Changer - Street Fighter Alpha - Warriors' Dreams (Publicity US 950727)", 0 )
-CONS( 1995, sfzch,    0,        0,	cps1_10MHz, sfzch,    cps1,     NULL,   "Capcom", "CPS Changer - Street Fighter Zero (Japan 951020)", 0 )
-CONS( 1995, sfzbch,   sfzch,    0,	cps1_10MHz, sfzch,    cps1,     NULL,   "Capcom", "CPS Changer - Street Fighter Zero (Brazil 950727)", 0 )
-CONS( 1995, wofch,    0,        0,	qsound,     sfzch,    wof,      NULL,   "Capcom", "CPS Changer - Tenchi Wo Kurau II (Japan 921031)", 0 )
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT     INIT     COMPANY     FULLNAME */
+CONS( 1995, sfach,    sfzch,    0,	cps1_10MHz, sfzch,    cps1,        "Capcom", "CPS Changer - Street Fighter Alpha - Warriors' Dreams (Publicity US 950727)", 0 )
+CONS( 1995, sfzch,    0,        0,	cps1_10MHz, sfzch,    cps1,        "Capcom", "CPS Changer - Street Fighter Zero (Japan 951020)", 0 )
+CONS( 1995, sfzbch,   sfzch,    0,	cps1_10MHz, sfzch,    cps1,        "Capcom", "CPS Changer - Street Fighter Zero (Brazil 950727)", 0 )
+CONS( 1995, wofch,    0,        0,	qsound,     sfzch,    wof,         "Capcom", "CPS Changer - Tenchi Wo Kurau II (Japan 921031)", 0 )

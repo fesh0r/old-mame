@@ -46,10 +46,10 @@ UINT8 *mtx_ram;
  *************************************/
 
 static ADDRESS_MAP_START( mtx_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_ROMBANK(1)
-	AM_RANGE(0x2000, 0x3fff) AM_ROMBANK(2)
-	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK(3)
-	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK(4)
+	AM_RANGE(0x0000, 0x1fff) AM_ROMBANK("bank1")
+	AM_RANGE(0x2000, 0x3fff) AM_ROMBANK("bank2")
+	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank3")
+	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank4")
 	AM_RANGE(0xc000, 0xffff) AM_RAM AM_BASE(&mtx_ram)
 ADDRESS_MAP_END
 
@@ -303,7 +303,7 @@ static MACHINE_DRIVER_START( mtx512 )
 
 	/* snapshot */
 	MDRV_SNAPSHOT_ADD("snapshot", mtx, "mtb", 0.5)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
@@ -324,7 +324,7 @@ static MACHINE_DRIVER_START( rs128 )
 	MDRV_IMPORT_FROM(mtx512)
 
 	MDRV_Z80DART_ADD("z80dart", MTX_SYSTEM_CLOCK, mtx_dart_intf)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("128K")
@@ -358,7 +358,7 @@ ROM_END
  *
  *************************************/
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT     CONFIG,  COMPANY          FULLNAME   FLAGS */
-COMP( 1983, mtx512,   0,		0,		mtx512,   mtx512,   mtx512,  0,  "Memotech Ltd.", "MTX 512", 0 )
-COMP( 1983, mtx500,   mtx512,   0,      mtx500,   mtx512,   mtx512,  0,  "Memotech Ltd.", "MTX 500", 0 )
-COMP( 1984, rs128,    mtx512,   0,      rs128,    mtx512,   rs128,   0,   "Memotech Ltd.", "RS 128",  0 )
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT     COMPANY          FULLNAME   FLAGS */
+COMP( 1983, mtx512,   0,		0,		mtx512,   mtx512,   mtx512,  "Memotech Ltd.", "MTX 512", 0 )
+COMP( 1983, mtx500,   mtx512,   0,      mtx500,   mtx512,   mtx512,  "Memotech Ltd.", "MTX 500", 0 )
+COMP( 1984, rs128,    mtx512,   0,      rs128,    mtx512,   rs128,   "Memotech Ltd.", "RS 128",  0 )

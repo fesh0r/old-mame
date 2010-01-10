@@ -6,7 +6,7 @@
 #include "devices/cassette.h"
 #include "sound/speaker.h"
 #include "machine/ctronics.h"
-#include "super80.h"
+#include "includes/super80.h"
 
 /* Bits in shared variable:
     d5 cassette LED
@@ -15,7 +15,7 @@
     d2 super80 screen off (=2mhz) or on (bursts of 2mhz at 50hz = 1mhz) */
 
 UINT8 super80_shared=0xff;
-
+UINT8 *super80_colorram;
 static const device_config *super80_z80pio;
 static const device_config *super80_speaker;
 static const device_config *super80_cassette;
@@ -122,7 +122,7 @@ static TIMER_CALLBACK( super80_timer )
 /* after the first 4 bytes have been read from ROM, switch the ram back in */
 static TIMER_CALLBACK( super80_reset )
 {
-	memory_set_bank(machine, 1, 0);
+	memory_set_bank(machine, "bank1", 0);
 }
 
 static TIMER_CALLBACK( super80_halfspeed )
@@ -249,7 +249,7 @@ MACHINE_RESET( super80 )
 {
 	super80_shared=0xff;
 	timer_set(machine, ATTOTIME_IN_USEC(10), NULL, 0, super80_reset);
-	memory_set_bank(machine, 1, 1);
+	memory_set_bank(machine, "bank1", 1);
 	super80_z80pio = devtag_get_device(machine, "z80pio");
 	super80_speaker = devtag_get_device(machine, "speaker");
 	super80_cassette = devtag_get_device(machine, "cassette");
@@ -259,7 +259,7 @@ MACHINE_RESET( super80 )
 static void driver_init_common( running_machine *machine )
 {
 	UINT8 *RAM = memory_region(machine, "maincpu");
-	memory_configure_bank(machine, 1, 0, 2, &RAM[0x0000], 0xc000);
+	memory_configure_bank(machine, "bank1", 0, 2, &RAM[0x0000], 0xc000);
 	timer_pulse(machine, ATTOTIME_IN_HZ(200000),NULL,0,super80_timer);	/* timer for keyboard and cassette */
 }
 
@@ -271,9 +271,9 @@ DRIVER_INIT( super80 )
 
 DRIVER_INIT( super80v )
 {
-	pcgram = memory_region(machine, "maincpu")+0xf000;
-	videoram = memory_region(machine, "maincpu")+0x18000;
-	colorram = memory_region(machine, "maincpu")+0x1C000;
+	super80_pcgram = memory_region(machine, "maincpu")+0xf000;
+	machine->generic.videoram.u8 = memory_region(machine, "maincpu")+0x18000;
+	super80_colorram = memory_region(machine, "maincpu")+0x1C000;
 	driver_init_common(machine);
 }
 

@@ -18,6 +18,7 @@
 #include "video/generic.h"
 #include "render.h"
 #include "messopts.h"
+#include "device.h"
 #include "devices/messram.h"
 #include "debug/debugcpu.h"
 
@@ -330,8 +331,8 @@ static messtest_result_t run_test(int flags, messtest_results *results)
 	screenshot_num = 0;
 	runtime_hash = 0;
 	had_failure = FALSE;
-	videoram = NULL;
-	videoram_size = 0;
+	//videoram = NULL;
+	//videoram_size = 0;
 
 	/* set up options */
 	opts = mame_options_init(win_mess_opts);
@@ -494,7 +495,7 @@ static const input_setting_config *find_switch(running_machine *machine, const c
 
 	/* find switch with the name */
 	found = FALSE;
-	for (port = machine->portconfig; !found && (port != NULL); port = port->next)
+	for (port = machine->portlist.head; !found && (port != NULL); port = port->next)
 	{
 		for (field = port->fieldlist; !found && (field != NULL); field = field->next)
 		{
@@ -704,18 +705,13 @@ static void command_image_preload(running_machine *machine)
 
 static const device_config *find_device_by_identity(running_machine *machine, const messtest_device_identity *ident)
 {
-	const device_config *device;
+	const device_config *device = NULL;
 
 	/* look up the image slot */
 	if (ident->type == IO_UNKNOWN)
 	{
 		/* no device_type was specified; use the new preferred mechanism */
 		device = devtag_get_device(machine, ident->tag);
-	}
-	else
-	{
-		/* perform a legacy lookup by device type */
-		device = image_from_devtype_and_index(machine, ident->type, ident->slot);
 	}
 
 	/* did the image slot lookup fail? */
@@ -1503,7 +1499,7 @@ void node_testmess(xml_data_node *node)
 
 	/* 'ramsize' attribute */
 	attr_node = xml_get_attribute(node, "ramsize");
-	current_testcase.ram = attr_node ? ram_parse_string(attr_node->value) : 0;
+	current_testcase.ram = attr_node ? messram_parse_string(attr_node->value) : 0;
 
 	/* 'wavwrite' attribute */
 	attr_node = xml_get_attribute(node, "wavwrite");

@@ -30,6 +30,7 @@ READ8_HANDLER ( amstrad_psg_porta_read );
 
 WRITE_LINE_DEVICE_HANDLER( aleste_interrupt );
 
+MACHINE_START( amstrad );
 MACHINE_RESET( amstrad );
 MACHINE_RESET( kccomp );
 MACHINE_START( plus );
@@ -41,8 +42,8 @@ SNAPSHOT_LOAD( amstrad );
 
 DEVICE_IMAGE_LOAD(amstrad_plus_cartridge);
 
-extern const mc6845_interface mc6845_amstrad_intf;
-extern const mc6845_interface mc6845_amstrad_plus_intf;
+extern const mc6845_interface amstrad_mc6845_intf;
+extern const mc6845_interface amstrad_plus_mc6845_intf;
 
 VIDEO_START( amstrad );
 VIDEO_UPDATE( amstrad );

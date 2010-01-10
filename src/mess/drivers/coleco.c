@@ -533,6 +533,7 @@ static const TMS9928a_interface tms9928a_interface =
 static MACHINE_START( coleco )
 {
 	TMS9928A_configure(&tms9928a_interface);
+	timer_pulse(machine, ATTOTIME_IN_MSEC(20), NULL, 0, paddle_callback);
 }
 
 static MACHINE_RESET( coleco )
@@ -540,7 +541,6 @@ static MACHINE_RESET( coleco )
 	last_state = 0;
 	cpu_set_input_line_vector(cputag_get_cpu(machine, "maincpu"), INPUT_LINE_IRQ0, 0xff);
 	memset(&memory_region(machine, "maincpu")[0x6000], 0xff, 0x400);	// initialize RAM
-	timer_pulse(machine, ATTOTIME_IN_MSEC(20), NULL, 0, paddle_callback);
 }
 
 //static int coleco_cart_verify(const UINT8 *cartdata, size_t size)
@@ -665,10 +665,10 @@ ROM_END
 
 /* System Drivers */
 
-//    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT    CONFIG  COMPANY             FULLNAME                            FLAGS
-CONS( 1982, coleco,   0,		0,		coleco,   coleco,   0,		0,	"Coleco",			"ColecoVision",						0 )
-CONS( 1982, colecoa,  coleco,	0,		coleco,   coleco,   0,		0,	"Coleco",			"ColecoVision (Thick Characters)",	0 )
-CONS( 1983, colecob,  coleco,	0,		coleco,   coleco,   0,		0,	"Spectravideo",		"SVI-603 Coleco Game Adapter",		0 )
-CONS( 1986, czz50,	  0,		0,		czz50,	  czz50,	0,		0,	"Bit Corporation",	"Chuang Zao Zhe 50",				0 )
-CONS( 1988, dina,	  czz50,	0,		dina,	  czz50,	0,		0,	"Telegames",		"Dina",								0 )
-CONS( 1988, prsarcde, czz50,	0,		czz50,	  czz50,	0,		0,	"Telegames",		"Personal Arcade",					0 )
+//    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT    COMPANY             FULLNAME                            FLAGS
+CONS( 1982, coleco,   0,		0,		coleco,   coleco,   0,		"Coleco",			"ColecoVision",						0 )
+CONS( 1982, colecoa,  coleco,	0,		coleco,   coleco,   0,		"Coleco",			"ColecoVision (Thick Characters)",	0 )
+CONS( 1983, colecob,  coleco,	0,		coleco,   coleco,   0,		"Spectravideo",		"SVI-603 Coleco Game Adapter",		0 )
+CONS( 1986, czz50,	  0,		0,		czz50,	  czz50,	0,		"Bit Corporation",	"Chuang Zao Zhe 50",				0 )
+CONS( 1988, dina,	  czz50,	0,		dina,	  czz50,	0,		"Telegames",		"Dina",								0 )
+CONS( 1988, prsarcde, czz50,	0,		czz50,	  czz50,	0,		"Telegames",		"Personal Arcade",					0 )

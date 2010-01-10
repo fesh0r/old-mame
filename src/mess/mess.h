@@ -1,8 +1,8 @@
 /*********************************************************************
 
-	mess.h
+    mess.h
 
-	Core MESS headers
+    Core MESS headers
 
 *********************************************************************/
 
@@ -11,10 +11,7 @@
 
 #include <stdarg.h>
 
-struct SystemConfigurationParamBlock;
-
 #include "image.h"
-#include "artworkx.h"
 #include "memory.h"
 #include "configms.h"
 #include "messopts.h"
@@ -23,7 +20,7 @@ struct SystemConfigurationParamBlock;
 
 /***************************************************************************
 
-	Constants
+    Constants
 
 ***************************************************************************/
 
@@ -42,6 +39,7 @@ struct SystemConfigurationParamBlock;
 
 /* mess specific layout files */
 extern const char layout_lcd[];	/* generic 1:1 lcd screen layout */
+extern const char layout_lcd_rot[];	/* same, for use with ROT90 or ROT270 */
 
 
 /***************************************************************************/

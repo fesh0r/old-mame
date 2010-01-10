@@ -39,6 +39,7 @@
 #define LOG_KBDC	0
 
 static const SOUNDBLASTER_CONFIG soundblaster = { 1,5, {1,0} };
+static int poll_delay;
 
 
 /*************************************************************
@@ -169,9 +170,9 @@ static void init_at_common(running_machine *machine, const struct kbdc8042_inter
 	if (messram_get_size(devtag_get_device(machine, "messram")) > 0x0a0000)
 	{
 		offs_t ram_limit = 0x100000 + messram_get_size(devtag_get_device(machine, "messram")) - 0x0a0000;
-		memory_install_read_handler(space, 0x100000,  ram_limit - 1, 0, 0, 1);
-		memory_install_write_handler(space, 0x100000,  ram_limit - 1, 0, 0, 1);
-		memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")) + 0xa0000);
+		memory_install_read_bank(space, 0x100000,  ram_limit - 1, 0, 0, "bank1");
+		memory_install_write_bank(space, 0x100000,  ram_limit - 1, 0, 0, "bank1");
+		memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")) + 0xa0000);
 	}
 }
 
@@ -191,6 +192,7 @@ static void at_keyboard_interrupt(running_machine *machine, int state)
  *
  *************************************************************************/
 
+static int dma_channel;
 static UINT8 dma_offset[2][4];
 static UINT8 at_pages[0x10];
 
@@ -244,86 +246,91 @@ WRITE8_HANDLER(at_page8_w)
 }
 
 
-static DMA8237_HRQ_CHANGED( pc_dma_hrq_changed )
+static WRITE_LINE_DEVICE_HANDLER( pc_dma_hrq_changed )
 {
 	at_state *st = device->machine->driver_data;
 	cpu_set_input_line(st->maincpu, INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
 
 	/* Assert HLDA */
-	dma8237_set_hlda( device, state );
+	i8237_hlda_w( device, state );
 }
 
-static DMA8237_MEM_READ( pc_dma_read_byte )
+static READ8_HANDLER( pc_dma_read_byte )
 {
 	UINT8 result;
-	offs_t page_offset = (((offs_t) dma_offset[0][channel]) << 16)
+	offs_t page_offset = (((offs_t) dma_offset[0][dma_channel]) << 16)
 		& 0xFF0000;
 
-	result = memory_read_byte(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM), page_offset + offset);
+	result = memory_read_byte(space, page_offset + offset);
 	return result;
 }
 
 
-static DMA8237_MEM_WRITE( pc_dma_write_byte )
+static WRITE8_HANDLER( pc_dma_write_byte )
 {
-	offs_t page_offset = (((offs_t) dma_offset[0][channel]) << 16)
+	offs_t page_offset = (((offs_t) dma_offset[0][dma_channel]) << 16)
 		& 0xFF0000;
 
-	memory_write_byte(cputag_get_address_space(device->machine, "maincpu", ADDRESS_SPACE_PROGRAM), page_offset + offset, data);
+	memory_write_byte(space, page_offset + offset, data);
 }
 
 
-static DMA8237_CHANNEL_READ( at_dma8237_fdc_dack_r ) {
+static READ8_DEVICE_HANDLER( at_dma8237_fdc_dack_r ) {
 	return pc_fdc_dack_r(device->machine);
 }
 
 
-static DMA8237_CHANNEL_READ( at_dma8237_hdc_dack_r ) {
+static READ8_DEVICE_HANDLER( at_dma8237_hdc_dack_r ) {
 	return pc_hdc_dack_r( device->machine );
 }
 
 
-static DMA8237_CHANNEL_WRITE( at_dma8237_fdc_dack_w ) {
+static WRITE8_DEVICE_HANDLER( at_dma8237_fdc_dack_w ) {
 	pc_fdc_dack_w( device->machine, data );
 }
 
 
-static DMA8237_CHANNEL_WRITE( at_dma8237_hdc_dack_w ) {
+static WRITE8_DEVICE_HANDLER( at_dma8237_hdc_dack_w ) {
 	pc_hdc_dack_w( device->machine, data );
 }
 
 
-static DMA8237_OUT_EOP( at_dma8237_out_eop ) {
+static WRITE_LINE_DEVICE_HANDLER( at_dma8237_out_eop ) {
 	pc_fdc_set_tc_state( device->machine, state );
 }
 
-
-const struct dma8237_interface at_dma8237_1_config =
+static void set_dma_channel(const device_config *device, int channel, int state)
 {
-	XTAL_14_31818MHz/3,
+	if (!state) dma_channel = channel;
+}
 
-	pc_dma_hrq_changed,
-	pc_dma_read_byte,
-	pc_dma_write_byte,
+static WRITE_LINE_DEVICE_HANDLER( pc_dack0_w ) { set_dma_channel(device, 0, state); }
+static WRITE_LINE_DEVICE_HANDLER( pc_dack1_w ) { set_dma_channel(device, 1, state); }
+static WRITE_LINE_DEVICE_HANDLER( pc_dack2_w ) { set_dma_channel(device, 2, state); }
+static WRITE_LINE_DEVICE_HANDLER( pc_dack3_w ) { set_dma_channel(device, 3, state); }
 
-	{ 0, 0, at_dma8237_fdc_dack_r, at_dma8237_hdc_dack_r },
-	{ 0, 0, at_dma8237_fdc_dack_w, at_dma8237_hdc_dack_w },
-	at_dma8237_out_eop
+I8237_INTERFACE( at_dma8237_1_config )
+{
+	DEVCB_LINE(pc_dma_hrq_changed),
+	DEVCB_LINE(at_dma8237_out_eop),
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, pc_dma_read_byte),
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, pc_dma_write_byte),
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(at_dma8237_fdc_dack_r), DEVCB_HANDLER(at_dma8237_hdc_dack_r) },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_HANDLER(at_dma8237_fdc_dack_w), DEVCB_HANDLER(at_dma8237_hdc_dack_w) },
+	{ DEVCB_LINE(pc_dack0_w), DEVCB_LINE(pc_dack1_w), DEVCB_LINE(pc_dack2_w), DEVCB_LINE(pc_dack3_w) }
 };
 
 
 /* TODO: How is this hooked up in the actual machine? */
-const struct dma8237_interface at_dma8237_2_config =
+I8237_INTERFACE( at_dma8237_2_config )
 {
-	XTAL_14_31818MHz/3,
-
-	pc_dma_hrq_changed,
-	pc_dma_read_byte,
-	pc_dma_write_byte,
-
-	{ NULL, NULL, NULL, NULL },
-	{ NULL, NULL, NULL, NULL },
-	NULL
+	DEVCB_LINE(pc_dma_hrq_changed),
+	DEVCB_NULL,
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, pc_dma_read_byte),
+	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, pc_dma_write_byte),
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL }
 };
 
 
@@ -415,7 +422,7 @@ static void at_fdc_interrupt(running_machine *machine, int state)
 static void at_fdc_dma_drq(running_machine *machine, int state, int read_)
 {
 	at_state *st = machine->driver_data;
-	dma8237_drq_write( st->dma8237_1, FDC_DMA, state);
+	i8237_dreq2_w( st->dma8237_1, state);
 }
 
 static const device_config *at_get_device(running_machine *machine)
@@ -478,14 +485,12 @@ static struct {
 	UINT8					offset1;
 	UINT8					clock_signal;
 	UINT8					data_signal;
-	write8_space_func		clock_callback;
-	write8_space_func		data_callback;
 } at_kbdc8042;
 
 
 static READ8_HANDLER( at_kbdc8042_p1_r )
 {
-	logerror("%04x: reading P1\n", cpu_get_pc(cputag_get_cpu(space->machine, "maincpu")) );
+	//logerror("%04x: reading P1\n", cpu_get_pc(cputag_get_cpu(space->machine, "maincpu")) );
 	return 0xFF;
 }
 
@@ -499,22 +504,23 @@ static READ8_HANDLER( at_kbdc8042_p2_r )
 static WRITE8_HANDLER( at_kbdc8042_p2_w )
 {
 	at_state *st = space->machine->driver_data;
+	const device_config *keyboard = devtag_get_device(space->machine, "keyboard");
 
-	logerror("%04x: writing $%02x to P2\n", cpu_get_pc(cputag_get_cpu(space->machine, "maincpu")), data );
+	//logerror("%04x: writing $%02x to P2\n", cpu_get_pc(cputag_get_cpu(space->machine, "maincpu")), data );
 
 	at_set_gate_a20( space->machine, ( data & 0x02 ) ? 1 : 0 );
 
 	cputag_set_input_line(space->machine, "maincpu", INPUT_LINE_RESET, ( data & 0x01 ) ? CLEAR_LINE : ASSERT_LINE );
 
 	/* OPT BUF FULL is connected to IR1 on the master 8259 */
-	if ( st->pic8259_master )
+	if ( st->pic8259_master)
 		pic8259_set_irq_line(st->pic8259_master, 1, ( data & 0x10 ) ? ASSERT_LINE : CLEAR_LINE );
 
-	at_kbdc8042.clock_signal = ( data & 0x40 ) ? 1 : 0;
+	at_kbdc8042.clock_signal = ( data & 0x40 ) ? 0 : 1;
 	at_kbdc8042.data_signal = ( data & 0x80 ) ? 1 : 0;
 
-	at_kbdc8042.data_callback( space, 0, at_kbdc8042.data_signal );
-	at_kbdc8042.clock_callback( space, 0, at_kbdc8042.clock_signal );
+	kb_keytronic_data_w(keyboard, at_kbdc8042.data_signal);
+	kb_keytronic_clock_w(keyboard, at_kbdc8042.clock_signal);
 }
 
 
@@ -530,23 +536,15 @@ static READ8_HANDLER( at_kbdc8042_t1_r )
 }
 
 
-static WRITE8_HANDLER( at_kbdc8042_set_clock_signal )
+WRITE8_HANDLER( at_kbdc8042_set_clock_signal )
 {
 	at_kbdc8042.clock_signal = data;
 }
 
 
-static WRITE8_HANDLER( at_kbdc8042_set_data_signal )
+WRITE8_HANDLER( at_kbdc8042_set_data_signal )
 {
 	at_kbdc8042.data_signal = data;
-}
-
-
-static void at_kbdc8042_set_keyboard_interface( running_machine *machine, write8_space_func clock_cb, write8_space_func data_cb )
-{
-	at_kbdc8042.offset1 = 0xFF;
-	at_kbdc8042.clock_callback = clock_cb;
-	at_kbdc8042.data_callback = data_cb;
 }
 
 
@@ -566,7 +564,6 @@ MACHINE_DRIVER_END
 
 READ8_HANDLER(at_kbdc8042_r)
 {
-	static int poll_delay = 4;
     UINT8 data = 0;
 	at_state *st = space->machine->driver_data;
 
@@ -648,8 +645,8 @@ static READ8_HANDLER( input_port_0_r ) { return input_port_read(space->machine, 
 
 static const struct pc_vga_interface vga_interface =
 {
-	1,
-	NULL, //at_map_vga_memory,
+	NULL,
+	NULL,
 
 	input_port_0_r,
 
@@ -666,9 +663,7 @@ DRIVER_INIT( atcga )
 	};
 	init_at_common(machine, &at8042);
 
-	/* Attach keyboard to the keyboard controller */
-	at_kbdc8042_set_keyboard_interface( machine, kb_keytronic_set_clock_signal, kb_keytronic_set_data_signal );
-	kb_keytronic_set_host_interface( machine, at_kbdc8042_set_clock_signal, at_kbdc8042_set_data_signal );
+	at_kbdc8042.offset1 = 0xff;
 }
 
 
@@ -690,9 +685,7 @@ DRIVER_INIT( atega )
 		*dst++ = *src--;
 	}
 
-	/* Attach keyboard to the keyboard controller */
-	at_kbdc8042_set_keyboard_interface( machine, kb_keytronic_set_clock_signal, kb_keytronic_set_data_signal );
-	kb_keytronic_set_host_interface( machine, at_kbdc8042_set_clock_signal, at_kbdc8042_set_data_signal );
+	at_kbdc8042.offset1 = 0xff;
 }
 
 
@@ -706,41 +699,8 @@ DRIVER_INIT( at386 )
 	init_at_common(machine, &at8042);
 	pc_vga_init(machine, &vga_interface, NULL);
 
-	/* Attach keyboard to the keyboard controller */
-	at_kbdc8042_set_keyboard_interface( machine, kb_keytronic_set_clock_signal, kb_keytronic_set_data_signal );
-	kb_keytronic_set_host_interface( machine, at_kbdc8042_set_clock_signal, at_kbdc8042_set_data_signal );
+	at_kbdc8042.offset1 = 0xff;
 }
-
-
-
-DRIVER_INIT( at586 )
-{
-	DRIVER_INIT_CALL(at386);
-	intel82439tx_init(machine);
-}
-
-
-/*
-static void at_map_vga_memory(running_machine *machine, offs_t begin, offs_t end, read8_space_func rh, write8_space_func wh)
-{
-	int buswidth;
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	buswidth = cpu_get_databus_width(cputag_get_cpu(machine, "maincpu"), ADDRESS_SPACE_PROGRAM);
-	switch(buswidth)
-	{
-		case 8:
-			memory_install_read8_handler(space, 0xA0000, 0xBFFFF, 0, 0, SMH_NOP);
-			memory_install_write8_handler(space, 0xA0000, 0xBFFFF, 0, 0, SMH_NOP);
-
-			memory_install_read8_handler(space, begin, end, 0, 0, rh);
-			memory_install_write8_handler(space, begin, end, 0, 0, wh);
-			break;
-	}
-}
-
-*/
-
-
 
 DRIVER_INIT( at_vga )
 {
@@ -753,9 +713,7 @@ DRIVER_INIT( at_vga )
 	pc_turbo_setup(machine, machine->firstcpu, "DSW2", 0x02, 4.77/12, 1);
 	pc_vga_init(machine, &vga_interface, NULL);
 
-	/* Attach keyboard to the keyboard controller */
-	at_kbdc8042_set_keyboard_interface( machine, kb_keytronic_set_clock_signal, kb_keytronic_set_data_signal );
-	kb_keytronic_set_host_interface( machine, at_kbdc8042_set_clock_signal, at_kbdc8042_set_data_signal );
+	at_kbdc8042.offset1 = 0xff;
 }
 
 
@@ -770,9 +728,7 @@ DRIVER_INIT( ps2m30286 )
 	pc_turbo_setup(machine, machine->firstcpu, "DSW2", 0x02, 4.77/12, 1);
 	pc_vga_init(machine, &vga_interface, NULL);
 
-	/* Attach keyboard to the keyboard controller */
-	at_kbdc8042_set_keyboard_interface( machine, kb_keytronic_set_clock_signal, kb_keytronic_set_data_signal );
-	kb_keytronic_set_host_interface( machine, at_kbdc8042_set_clock_signal, at_kbdc8042_set_data_signal );
+	at_kbdc8042.offset1 = 0xff;
 }
 
 
@@ -783,12 +739,17 @@ static IRQ_CALLBACK(at_irq_callback)
 	return pic8259_acknowledge( st->pic8259_master);
 }
 
-
+static void pc_set_irq_line(running_machine *machine,int irq, int state) {
+	pc_state *st = machine->driver_data;
+	pic8259_set_irq_line(st->pic8259, irq, state);
+}
 
 MACHINE_START( at )
 {
 	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), at_irq_callback);
+	/* FDC/HDC hardware */
 	pc_fdc_init( machine, &fdc_interface );
+	pc_hdc_setup(machine, pc_set_irq_line);
 }
 
 
@@ -803,5 +764,6 @@ MACHINE_RESET( at )
 	st->dma8237_2 = devtag_get_device(machine, "dma8237_2");
 	st->pit8254 = devtag_get_device(machine, "pit8254");
 	pc_mouse_set_serial_port( devtag_get_device(machine, "ns16450_0") );
+	pc_hdc_set_dma8237_device( st->dma8237_1 );
+	poll_delay = 4;
 }
-

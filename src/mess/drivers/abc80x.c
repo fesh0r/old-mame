@@ -80,7 +80,6 @@
 #include "sound/discrete.h"
 
 /* Devices */
-#include "devices/flopdrv.h"
 #include "devices/cassette.h"
 #include "devices/printer.h"
 #include "devices/messram.h"
@@ -216,15 +215,13 @@ static void abc800_bankswitch(running_machine *machine)
 	if (state->fetch_charram)
 	{
 		/* HR video RAM selected */
-		memory_install_readwrite8_handler(program, 0x0000, 0x3fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_install_ram(program, 0x0000, 0x3fff, 0, 0, state->videoram);
 	}
 	else
 	{
 		/* BASIC ROM selected */
-		memory_install_readwrite8_handler(program, 0x0000, 0x3fff, 0, 0, SMH_BANK(1), SMH_UNMAP);
+		memory_install_rom(program, 0x0000, 0x3fff, 0, 0, memory_region(machine, Z80_TAG));
 	}
-
-	memory_set_bank(machine, 1, state->fetch_charram);
 }
 
 static void abc802_bankswitch(running_machine *machine)
@@ -235,16 +232,16 @@ static void abc802_bankswitch(running_machine *machine)
 	if (state->lrs)
 	{
 		/* ROM and video RAM selected */
-		memory_install_readwrite8_handler(program, 0x0000, 0x77ff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(program, 0x0000, 0x77ff, 0, 0, "bank1");
 		memory_install_readwrite8_handler(program, 0x7800, 0x7fff, 0, 0, abc802_charram_r, abc802_charram_w);
 	}
 	else
 	{
 		/* low RAM selected */
-		memory_install_readwrite8_handler(program, 0x0000, 0x7fff, 0, 0, SMH_BANK(1), SMH_BANK(1));
+		memory_install_readwrite_bank(program, 0x0000, 0x7fff, 0, 0, "bank1");
 	}
 
-	memory_set_bank(machine, 1, state->lrs);
+	memory_set_bank(machine, "bank1", state->lrs);
 }
 
 static void abc806_bankswitch(running_machine *machine)
@@ -252,7 +249,8 @@ static void abc806_bankswitch(running_machine *machine)
 	abc806_state *state = machine->driver_data;
 	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 	UINT32 videoram_mask = messram_get_size(devtag_get_device(machine, "messram")) - (32 * 1024) - 1;
-	FPTR bank;
+	int bank;
+	char bank_name[10];
 
 	if (!state->keydtr)
 	{
@@ -267,12 +265,12 @@ static void abc806_bankswitch(running_machine *machine)
 			UINT16 start_addr = 0x1000 * (bank - 1);
 			UINT16 end_addr = start_addr + 0xfff;
 			UINT32 videoram_offset = (videoram_start + start_addr) & videoram_mask;
-
+			sprintf(bank_name,"bank%d",bank);
 			//logerror("%04x-%04x: Video RAM %04x (32K)\n", start_addr, end_addr, videoram_offset);
 
-			memory_install_readwrite8_handler(program, start_addr, end_addr, 0, 0, SMH_BANK(bank), SMH_BANK(bank));
-			memory_configure_bank(machine, bank, 1, 1, state->videoram + videoram_offset, 0);
-			memory_set_bank(machine, bank, 1);
+			memory_install_readwrite_bank(program, start_addr, end_addr, 0, 0, bank_name);
+			memory_configure_bank(machine, bank_name, 1, 1, state->videoram + videoram_offset, 0);
+			memory_set_bank(machine, bank_name, 1);
 		}
 
 		for (bank = 9; bank <= 16; bank++)
@@ -281,11 +279,11 @@ static void abc806_bankswitch(running_machine *machine)
 
 			UINT16 start_addr = 0x1000 * (bank - 1);
 			UINT16 end_addr = start_addr + 0xfff;
-
+			sprintf(bank_name,"bank%d",bank);
 			//logerror("%04x-%04x: Work RAM (32K)\n", start_addr, end_addr);
 
-			memory_install_readwrite8_handler(program, start_addr, end_addr, 0, 0, SMH_BANK(bank), SMH_BANK(bank));
-			memory_set_bank(machine, bank, 0);
+			memory_install_readwrite_bank(program, start_addr, end_addr, 0, 0, bank_name);
+			memory_set_bank(machine, bank_name, 0);
 		}
 	}
 	else
@@ -298,15 +296,15 @@ static void abc806_bankswitch(running_machine *machine)
 			UINT16 end_addr = start_addr + 0xfff;
 			UINT8 map = state->map[bank - 1];
 			UINT32 videoram_offset = ((map & 0x7f) << 12) & videoram_mask;
-
+			sprintf(bank_name,"bank%d",bank);
 			if (BIT(map, 7) && state->eme)
 			{
 				/* map to video RAM */
 				//logerror("%04x-%04x: Video RAM %04x (4K)\n", start_addr, end_addr, videoram_offset);
 
-				memory_install_readwrite8_handler(program, start_addr, end_addr, 0, 0, SMH_BANK(bank), SMH_BANK(bank));
-				memory_configure_bank(machine, bank, 1, 1, state->videoram + videoram_offset, 0);
-				memory_set_bank(machine, bank, 1);
+				memory_install_readwrite_bank(program, start_addr, end_addr, 0, 0, bank_name);
+				memory_configure_bank(machine, bank_name, 1, 1, state->videoram + videoram_offset, 0);
+				memory_set_bank(machine, bank_name, 1);
 			}
 			else
 			{
@@ -318,25 +316,27 @@ static void abc806_bankswitch(running_machine *machine)
 					/* ROM */
 					//logerror("%04x-%04x: ROM (4K)\n", start_addr, end_addr);
 
-					memory_install_readwrite8_handler(program, start_addr, end_addr, 0, 0, SMH_BANK(bank), SMH_UNMAP);
-					memory_set_bank(machine, bank, 0);
+					memory_install_read_bank(program, start_addr, end_addr, 0, 0, bank_name);
+					memory_unmap_write(program, start_addr, end_addr, 0, 0);
+					memory_set_bank(machine, bank_name, 0);
 					break;
 
 				case 8:
 					/* ROM/char RAM */
 					//logerror("%04x-%04x: ROM (4K)\n", start_addr, end_addr);
 
-					memory_install_readwrite8_handler(program, 0x7000, 0x77ff, 0, 0, SMH_BANK(bank), SMH_UNMAP);
+					memory_install_read_bank(program, 0x7000, 0x77ff, 0, 0, bank_name);
+					memory_unmap_write(program, 0x7000, 0x77ff, 0, 0);
 					memory_install_readwrite8_handler(program, 0x7800, 0x7fff, 0, 0, abc806_charram_r, abc806_charram_w);
-					memory_set_bank(machine, bank, 0);
+					memory_set_bank(machine, bank_name, 0);
 					break;
 
 				default:
 					/* work RAM */
 					//logerror("%04x-%04x: Work RAM (4K)\n", start_addr, end_addr);
 
-					memory_install_readwrite8_handler(program, start_addr, end_addr, 0, 0, SMH_BANK(bank), SMH_BANK(bank));
-					memory_set_bank(machine, bank, 0);
+					memory_install_readwrite_bank(program, start_addr, end_addr, 0, 0, bank_name);
+					memory_set_bank(machine, bank_name, 0);
 					break;
 				}
 			}
@@ -356,21 +356,21 @@ static void abc806_bankswitch(running_machine *machine)
 			UINT16 start_addr = 0x1000 * (bank - 1);
 			UINT16 end_addr = start_addr + 0xfff;
 			UINT32 videoram_offset = (videoram_start + start_addr) & videoram_mask;
-
+			sprintf(bank_name,"bank%d",bank);
 			//logerror("%04x-%04x: Video RAM %04x (30K)\n", start_addr, end_addr, videoram_offset);
 
 			if (start_addr == 0x7000)
 			{
-				memory_install_readwrite8_handler(program, 0x7000, 0x77ff, 0, 0, SMH_BANK(bank), SMH_BANK(bank));
+				memory_install_readwrite_bank(program, 0x7000, 0x77ff, 0, 0, bank_name);
 				memory_install_readwrite8_handler(program, 0x7800, 0x7fff, 0, 0, abc806_charram_r, abc806_charram_w);
 			}
 			else
 			{
-				memory_install_readwrite8_handler(program, start_addr, end_addr, 0, 0, SMH_BANK(bank), SMH_BANK(bank));
+				memory_install_readwrite_bank(program, start_addr, end_addr, 0, 0, bank_name);
 			}
 
-			memory_configure_bank(machine, bank, 1, 1, state->videoram + videoram_offset, 0);
-			memory_set_bank(machine, bank, 1);
+			memory_configure_bank(machine, bank_name, 1, 1, state->videoram + videoram_offset, 0);
+			memory_set_bank(machine, bank_name, 1);
 		}
 	}
 }
@@ -480,9 +480,9 @@ static READ8_HANDLER( abc802_pling_r )
 
 static ADDRESS_MAP_START( abc800m_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x3fff) AM_RAM AM_BASE_MEMBER(abc800_state, videoram)
 	AM_RANGE(0x4000, 0x77ff) AM_ROM
-	AM_RANGE(0x7800, 0x7fff) AM_RAM AM_READWRITE(abc800_charram_r, abc800_charram_w)
+	AM_RANGE(0x7800, 0x7fff) AM_RAM AM_BASE_MEMBER(abc800_state, charram)
 	AM_RANGE(0x8000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -505,9 +505,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( abc800c_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x3fff) AM_RAM AM_BASE_MEMBER(abc800_state, videoram)
 	AM_RANGE(0x4000, 0x7bff) AM_ROM
-	AM_RANGE(0x7c00, 0x7fff) AM_RAM AM_READWRITE(abc800_charram_r, abc800_charram_w)
+	AM_RANGE(0x7c00, 0x7fff) AM_RAM AM_BASE_MEMBER(abc800_state, charram)
 	AM_RANGE(0x8000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -527,7 +527,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( abc802_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK(1)
+	AM_RANGE(0x0000, 0x7fff) AM_RAMBANK("bank1")
 	AM_RANGE(0x8000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -549,22 +549,22 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( abc806_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK(1)
-	AM_RANGE(0x1000, 0x1fff) AM_RAMBANK(2)
-	AM_RANGE(0x2000, 0x2fff) AM_RAMBANK(3)
-	AM_RANGE(0x3000, 0x3fff) AM_RAMBANK(4)
-	AM_RANGE(0x4000, 0x4fff) AM_RAMBANK(5)
-	AM_RANGE(0x5000, 0x5fff) AM_RAMBANK(6)
-	AM_RANGE(0x6000, 0x6fff) AM_RAMBANK(7)
-	AM_RANGE(0x7000, 0x7fff) AM_RAMBANK(8)
-	AM_RANGE(0x8000, 0x8fff) AM_RAMBANK(9)
-	AM_RANGE(0x9000, 0x9fff) AM_RAMBANK(10)
-	AM_RANGE(0xa000, 0xafff) AM_RAMBANK(11)
-	AM_RANGE(0xb000, 0xbfff) AM_RAMBANK(12)
-	AM_RANGE(0xc000, 0xcfff) AM_RAMBANK(13)
-	AM_RANGE(0xd000, 0xdfff) AM_RAMBANK(14)
-	AM_RANGE(0xe000, 0xefff) AM_RAMBANK(15)
-	AM_RANGE(0xf000, 0xffff) AM_RAMBANK(16)
+	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x1000, 0x1fff) AM_RAMBANK("bank2")
+	AM_RANGE(0x2000, 0x2fff) AM_RAMBANK("bank3")
+	AM_RANGE(0x3000, 0x3fff) AM_RAMBANK("bank4")
+	AM_RANGE(0x4000, 0x4fff) AM_RAMBANK("bank5")
+	AM_RANGE(0x5000, 0x5fff) AM_RAMBANK("bank6")
+	AM_RANGE(0x6000, 0x6fff) AM_RAMBANK("bank7")
+	AM_RANGE(0x7000, 0x7fff) AM_RAMBANK("bank8")
+	AM_RANGE(0x8000, 0x8fff) AM_RAMBANK("bank9")
+	AM_RANGE(0x9000, 0x9fff) AM_RAMBANK("bank10")
+	AM_RANGE(0xa000, 0xafff) AM_RAMBANK("bank11")
+	AM_RANGE(0xb000, 0xbfff) AM_RAMBANK("bank12")
+	AM_RANGE(0xc000, 0xcfff) AM_RAMBANK("bank13")
+	AM_RANGE(0xd000, 0xdfff) AM_RAMBANK("bank14")
+	AM_RANGE(0xe000, 0xefff) AM_RAMBANK("bank15")
+	AM_RANGE(0xf000, 0xffff) AM_RAMBANK("bank16")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( abc806_io_map, ADDRESS_SPACE_IO, 8 )
@@ -715,44 +715,9 @@ INPUT_PORTS_END
 
 /* ABC 77 */
 
-static WRITE_LINE_DEVICE_HANDLER( abc800_abc77_txd_w )
-{
-	abc800_state *driver_state = device->machine->driver_data;
-
-	driver_state->abc77_txd = state;
-}
-
 static ABC77_INTERFACE( abc800_abc77_intf )
 {
-	DEVCB_LINE(abc800_abc77_txd_w),
-	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_rxtxcb_w),
-	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_dcdb_w)
-};
-
-static WRITE_LINE_DEVICE_HANDLER( abc802_abc77_txd_w )
-{
-	abc802_state *driver_state = device->machine->driver_data;
-
-	driver_state->abc77_txd = state;
-}
-
-static ABC77_INTERFACE( abc802_abc77_intf )
-{
-	DEVCB_LINE(abc802_abc77_txd_w),
-	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_rxtxcb_w),
-	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_dcdb_w)
-};
-
-static WRITE_LINE_DEVICE_HANDLER( abc806_abc77_txd_w )
-{
-	abc806_state *driver_state = device->machine->driver_data;
-
-	driver_state->abc77_txd = state;
-}
-
-static ABC77_INTERFACE( abc806_abc77_intf )
-{
-	DEVCB_LINE(abc806_abc77_txd_w),
+	DEVCB_NULL,
 	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_rxtxcb_w),
 	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_dcdb_w)
 };
@@ -879,14 +844,6 @@ static const z80sio_interface sio_intf =
 
 /* Z80 DART */
 
-static READ_LINE_DEVICE_HANDLER( abc800_dart_rxdb_r )
-{
-	abc800_state *state = device->machine->driver_data;
-
-	/* receive bit from keyboard */
-	return state->abc77_txd;
-}
-
 static Z80DART_INTERFACE( abc800_dart_intf )
 {
 	0,
@@ -899,7 +856,7 @@ static Z80DART_INTERFACE( abc800_dart_intf )
 	DEVCB_NULL,
 	DEVCB_NULL,
 
-	DEVCB_LINE(abc800_dart_rxdb_r),
+	DEVCB_NULL, /* DEVCB_DEVICE_LINE(ABC77_TAG, abc77_txd_r), */
 	DEVCB_NULL, /* DEVCB_DEVICE_LINE(ABC77_TAG, abc77_rxd_w), */
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -907,14 +864,6 @@ static Z80DART_INTERFACE( abc800_dart_intf )
 
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0)
 };
-
-static READ_LINE_DEVICE_HANDLER( abc802_dart_rxdb_r )
-{
-	abc802_state *state = device->machine->driver_data;
-
-	/* receive bit from keyboard */
-	return state->abc77_txd;
-}
 
 static WRITE_LINE_DEVICE_HANDLER( abc802_dart_dtrb_r )
 {
@@ -946,7 +895,7 @@ static Z80DART_INTERFACE( abc802_dart_intf )
 	DEVCB_NULL,
 	DEVCB_NULL,
 
-	DEVCB_LINE(abc802_dart_rxdb_r),
+	DEVCB_NULL, /* DEVCB_DEVICE_LINE(ABC77_TAG, abc77_txd_r), */
 	DEVCB_NULL, /* DEVCB_DEVICE_LINE(ABC77_TAG, abc77_rxd_w), */
 	DEVCB_LINE(abc802_dart_dtrb_r),
 	DEVCB_LINE(abc802_dart_rtsb_r),
@@ -954,14 +903,6 @@ static Z80DART_INTERFACE( abc802_dart_intf )
 
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0)
 };
-
-static READ_LINE_DEVICE_HANDLER( abc806_dart_rxdb_r )
-{
-	abc806_state *state = device->machine->driver_data;
-
-	/* receive bit from keyboard */
-	return state->abc77_txd;
-}
 
 static WRITE_LINE_DEVICE_HANDLER( abc806_dart_dtrb_w )
 {
@@ -984,7 +925,7 @@ static Z80DART_INTERFACE( abc806_dart_intf )
 	DEVCB_NULL,
 	DEVCB_NULL,
 
-	DEVCB_LINE(abc806_dart_rxdb_r),
+	DEVCB_NULL, /* DEVCB_DEVICE_LINE(ABC77_TAG, abc77_txd_r), */
 	DEVCB_NULL, /* DEVCB_DEVICE_LINE(ABC77_TAG, abc77_rxd_w), */
 	DEVCB_LINE(abc806_dart_dtrb_w),
 	DEVCB_NULL,
@@ -1007,13 +948,13 @@ static const z80_daisy_chain abc800_daisy_chain[] =
 
 static ABCBUS_CONFIG( abcbus_config )
 {
-	{ LUXOR_55_21046, CONKORT_TAG },
+	{ CONKORT_TAG },
 	{ NULL }
 };
 
 static ABCBUS_CONFIG( abc802_abcbus_config )
 {
-//  { LUXOR_55_21046, CONKORT_TAG }, won't boot with this enabled
+//  { CONKORT_TAG }, won't boot with this enabled
 	{ NULL }
 };
 
@@ -1033,21 +974,16 @@ static MACHINE_START( abc800 )
 	/* initialize the ABC BUS */
 	abcbus_init(machine, Z80_TAG, abcbus_config);
 
-	/* configure memory */
-	state->videoram = auto_alloc_array(machine, UINT8, ABC800_VIDEO_RAM_SIZE);
-
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, Z80_TAG), 0);
-	memory_configure_bank(machine, 1, 1, 1, state->videoram, 0);
-
 	/* register for state saving */
 	state_save_register_global(machine, state->fetch_charram);
-	state_save_register_global(machine, state->abc77_txd);
 	state_save_register_global(machine, state->pling);
 }
 
 static MACHINE_RESET( abc800 )
 {
-	/* memory banking */
+	abc800_state *state = machine->driver_data;
+
+	state->fetch_charram = 0;
 	abc800_bankswitch(machine);
 }
 
@@ -1066,12 +1002,11 @@ static MACHINE_START( abc802 )
 	abcbus_init(machine, Z80_TAG, abc802_abcbus_config); // TODO: enable floppy
 
 	/* configure memory */
-	memory_configure_bank(machine, 1, 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
-	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, Z80_TAG), 0);
+	memory_configure_bank(machine, "bank1", 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
+	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, Z80_TAG), 0);
 
 	/* register for state saving */
 	state_save_register_global(machine, state->lrs);
-	state_save_register_global(machine, state->abc77_txd);
 	state_save_register_global(machine, state->pling);
 }
 
@@ -1082,7 +1017,7 @@ static MACHINE_RESET( abc802 )
 	UINT8 config = input_port_read(machine, "CONFIG");
 
 	/* memory banking */
-	memory_set_bank(machine, 1, 1);
+	memory_set_bank(machine, "bank1", 1);
 
 	/* clear screen time out (S1) */
 	z80sio_set_dcd(state->z80sio, 1, BIT(config, 0));
@@ -1104,6 +1039,7 @@ static MACHINE_START( abc806 )
 	UINT8 *mem = memory_region(machine, Z80_TAG);
 	UINT32 videoram_size = messram_get_size(devtag_get_device(machine, "messram")) - (32 * 1024);
 	int bank;
+	char bank_name[10];
 
 	/* find devices */
 	state->z80ctc = devtag_get_device(machine, Z80CTC_TAG);
@@ -1121,13 +1057,13 @@ static MACHINE_START( abc806 )
 
 	for (bank = 1; bank <= 16; bank++)
 	{
-		memory_configure_bank(machine, bank, 0, 1, mem + (0x1000 * (bank - 1)), 0);
-		memory_configure_bank(machine, bank, 1, 1, state->videoram, 0);
-		memory_set_bank(machine, bank, 0);
+		sprintf(bank_name,"bank%d",bank);
+		memory_configure_bank(machine, bank_name, 0, 1, mem + (0x1000 * (bank - 1)), 0);
+		memory_configure_bank(machine, bank_name, 1, 1, state->videoram, 0);
+		memory_set_bank(machine, bank_name, 0);
 	}
 
 	/* register for state saving */
-	state_save_register_global(machine, state->abc77_txd);
 	state_save_register_global(machine, state->keydtr);
 	state_save_register_global(machine, state->eme);
 	state_save_register_global(machine, state->fetch_charram);
@@ -1140,10 +1076,12 @@ static MACHINE_RESET( abc806 )
 
 	/* setup memory banking */
 	int bank;
+	char bank_name[10];
 
 	for (bank = 1; bank <= 16; bank++)
 	{
-		memory_set_bank(machine, bank, 0);
+		sprintf(bank_name,"bank%d",bank);
+		memory_set_bank(machine, bank_name, 0);
 	}
 
 	abc806_bankswitch(machine);
@@ -1164,19 +1102,41 @@ static MACHINE_RESET( abc806 )
 	z80dart_ctsb_w(state->z80dart, 0); // 0 = 50Hz, 1 = 60Hz
 }
 
-/* Machine Drivers */
-
-static const floppy_config abc800_floppy_config =
+static DEVICE_IMAGE_LOAD( abc800_serial )
 {
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	FLOPPY_DRIVE_DS_80,
-	FLOPPY_OPTIONS_NAME(abc80),
-	DO_NOT_KEEP_GEOMETRY
-};
+	/* filename specified */
+	if (device_load_serial(image)==INIT_PASS)
+	{
+		/* setup transmit parameters */
+		serial_device_setup(image, 9600 >> input_port_read(image->machine, "BAUD"), 8, 1, SERIAL_PARITY_NONE);
+
+		/* and start transmit */
+		serial_device_set_transmit_state(image, 1);
+
+		return INIT_PASS;
+	}
+
+	return INIT_FAIL;
+}
+
+
+static DEVICE_GET_INFO( abc800_serial )
+{
+	switch ( state )
+	{
+		case DEVINFO_FCT_IMAGE_LOAD:		        info->f = (genf *) DEVICE_IMAGE_LOAD_NAME( abc800_serial );    break;
+		case DEVINFO_STR_NAME:		                strcpy(info->s, "ABC800 serial port");	                         break;
+		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:	    strcpy(info->s, "txt");                                           break;
+		default: 									DEVICE_GET_INFO_CALL(serial);	break;
+	}
+}
+
+#define ABC800_SERIAL	DEVICE_GET_INFO_NAME(abc800_serial)
+
+#define MDRV_ABC800_SERIAL_ADD(_tag) \
+	MDRV_DEVICE_ADD(_tag, ABC800_SERIAL, 0)
+	
+/* Machine Drivers */
 
 static MACHINE_DRIVER_START( abc800m )
 	MDRV_DRIVER_DATA(abc800_state)
@@ -1212,12 +1172,12 @@ static MACHINE_DRIVER_START( abc800m )
 	/* fake keyboard */
 	MDRV_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, USEC(2500))
 
-	MDRV_FLOPPY_2_DRIVES_ADD(abc800_floppy_config)
-	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
 	MDRV_RAM_EXTRA_OPTIONS("32K")
+	
+	MDRV_ABC800_SERIAL_ADD("serial")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( abc800c )
@@ -1254,12 +1214,12 @@ static MACHINE_DRIVER_START( abc800c )
 	/* fake keyboard */
 	MDRV_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, USEC(2500))
 
-	MDRV_FLOPPY_2_DRIVES_ADD(abc800_floppy_config)
-	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
-	MDRV_RAM_EXTRA_OPTIONS("32K")	
+	MDRV_RAM_EXTRA_OPTIONS("32K")
+	
+	MDRV_ABC800_SERIAL_ADD("serial")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( abc802 )
@@ -1288,7 +1248,7 @@ static MACHINE_DRIVER_START( abc802 )
 	MDRV_TIMER_ADD_PERIODIC("ctc", ctc_tick, HZ(ABC800_X01/2/2/2))
 	MDRV_Z80SIO_ADD(Z80SIO_TAG, ABC800_X01/2/2, sio_intf)
 	MDRV_Z80DART_ADD(Z80DART_TAG, ABC800_X01/2/2, abc802_dart_intf)
-//  MDRV_ABC77_ADD(abc802_abc77_intf)
+//  MDRV_ABC77_ADD(abc800_abc77_intf)
 	MDRV_LUXOR_55_21046_ADD
 	MDRV_PRINTER_ADD("printer")
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
@@ -1296,11 +1256,11 @@ static MACHINE_DRIVER_START( abc802 )
 	/* fake keyboard */
 	MDRV_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, USEC(2500))
 
-	MDRV_FLOPPY_2_DRIVES_ADD(abc800_floppy_config)
-	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
+	
+	MDRV_ABC800_SERIAL_ADD("serial")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( abc806 )
@@ -1327,7 +1287,7 @@ static MACHINE_DRIVER_START( abc806 )
 	MDRV_TIMER_ADD_PERIODIC("ctc", ctc_tick, HZ(ABC800_X01/2/2/2))
 	MDRV_Z80SIO_ADD(Z80SIO_TAG, ABC800_X01/2/2, sio_intf)
 	MDRV_Z80DART_ADD(Z80DART_TAG, ABC800_X01/2/2, abc806_dart_intf)
-//  MDRV_ABC77_ADD(abc806_abc77_intf)
+//  MDRV_ABC77_ADD(abc800_abc77_intf)
 	MDRV_LUXOR_55_21046_ADD
 	MDRV_PRINTER_ADD("printer")
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
@@ -1335,12 +1295,12 @@ static MACHINE_DRIVER_START( abc806 )
 	/* fake keyboard */
 	MDRV_TIMER_ADD_PERIODIC("keyboard", keyboard_tick, USEC(2500))
 
-	MDRV_FLOPPY_2_DRIVES_ADD(abc800_floppy_config)
-	
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("160K") // 32KB + 128KB
 	MDRV_RAM_EXTRA_OPTIONS("544K") // 32KB + 512KB
+	
+	MDRV_ABC800_SERIAL_ADD("serial")
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -1390,23 +1350,7 @@ ROM_START( abc800m )
 	ROM_LOAD( "fgctl.bin",  0x0000, 0x0200, BAD_DUMP CRC(7a19de8d) SHA1(e7cc49e749b37f7d7dd14f3feda53eae843a8fe0) )
 ROM_END
 
-ROM_START( abc800c )
-	ROM_REGION( 0x10000, Z80_TAG, 0 )
-	ROM_LOAD( "abc c-12.1m", 0x0000, 0x1000, NO_DUMP )
-	ROM_LOAD( "abc 1-12.1l", 0x1000, 0x1000, CRC(1e99fbdc) SHA1(ec6210686dd9d03a5ed8c4a4e30e25834aeef71d) )
-	ROM_LOAD( "abc 2-12.1k", 0x2000, 0x1000, CRC(ac196ba2) SHA1(64fcc0f03fbc78e4c8056e1fa22aee12b3084ef5) )
-	ROM_LOAD( "abc 3-12.1j", 0x3000, 0x1000, CRC(3ea2b5ee) SHA1(5a51ac4a34443e14112a6bae16c92b5eb636603f) )
-	ROM_LOAD( "abc 4-12.2m", 0x4000, 0x1000, CRC(695cb626) SHA1(9603ce2a7b2d7b1cbeb525f5493de7e5c1e5a803) )
-	ROM_LOAD( "abc 5-12.2l", 0x5000, 0x1000, CRC(b4b02358) SHA1(95338efa3b64b2a602a03bffc79f9df297e9534a) )
-	ROM_LOAD( "abc 6-13.2k", 0x6000, 0x1000, CRC(6fa71fb6) SHA1(b037dfb3de7b65d244c6357cd146376d4237dab6) )
-	ROM_LOAD( "abc 7-21.2j", 0x7000, 0x1000, CRC(fd137866) SHA1(3ac914d90db1503f61397c0ea26914eb38725044) )
-
-	ROM_REGION( 0x800, "chargen", 0 )
-	ROM_LOAD( "vu c-se.bin", 0x0000, 0x0800, NO_DUMP )
-
-	ROM_REGION( 0x200, "fgctl", 0 )
-	ROM_LOAD( "fgctl.bin",  0x0000, 0x0200, BAD_DUMP CRC(7a19de8d) SHA1(e7cc49e749b37f7d7dd14f3feda53eae843a8fe0) )
-ROM_END
+#define rom_abc800c rom_abc800m
 
 ROM_START( abc802 )
 	ROM_REGION( 0x10000, Z80_TAG, 0 )
@@ -1467,47 +1411,6 @@ ROM_START( abc806 )
 	ROM_LOAD( "64 90239-01.1b", 0x0000, 0x0400, NO_DUMP ) // "ABC P3-11" PAL16R4, color encoder
 	ROM_LOAD( "64 90240-01.2d", 0x0000, 0x0400, NO_DUMP ) // "ABC P4-11" PAL16L8, memory mapper
 ROM_END
-
-/* System Configuration */
-static DEVICE_IMAGE_LOAD( abc800_serial )
-{
-	/* filename specified */
-	if (device_load_serial_device(image)==INIT_PASS)
-	{
-		/* setup transmit parameters */
-		serial_device_setup(image, 9600 >> input_port_read(image->machine, "BAUD"), 8, 1, SERIAL_PARITY_NONE);
-
-		/* and start transmit */
-		serial_device_set_transmit_state(image, 1);
-
-		return INIT_PASS;
-	}
-
-	return INIT_FAIL;
-}
-
-static void abc800_serial_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* serial */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
-		case MESS_DEVINFO_INT_COUNT:						info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:						info->start = DEVICE_START_NAME(serial_device); break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(abc800_serial); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(serial_device); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "txt"); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( abc800 )
-	CONFIG_DEVICE(abc800_serial_getinfo)
-SYSTEM_CONFIG_END
 
 /* Driver Initialization */
 
@@ -1601,8 +1504,8 @@ static DRIVER_INIT( abc806 )
 
 /* System Drivers */
 
-/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT    CONFIG  COMPANY             FULLNAME        FLAGS */
-COMP( 1981, abc800m,    0,			0,      abc800m,    abc800, abc800, abc800, "Luxor Datorer AB", "ABC 800 M/HR", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-COMP( 1981, abc800c,    abc800m,    0,      abc800c,    abc800, abc800, abc800, "Luxor Datorer AB", "ABC 800 C/HR", GAME_NOT_WORKING )
-COMP( 1983, abc802,     0,          0,      abc802,     abc802, abc802, abc800, "Luxor Datorer AB", "ABC 802",		GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-COMP( 1983, abc806,     0,          0,      abc806,     abc806, abc806, abc800, "Luxor Datorer AB", "ABC 806",		GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT    COMPANY             FULLNAME        FLAGS */
+COMP( 1981, abc800m,    0,			0,      abc800m,    abc800, abc800, "Luxor Datorer AB", "ABC 800 M/HR", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+COMP( 1981, abc800c,    abc800m,    0,      abc800c,    abc800, abc800, "Luxor Datorer AB", "ABC 800 C/HR", GAME_NOT_WORKING )
+COMP( 1983, abc802,     0,          0,      abc802,     abc802, abc802, "Luxor Datorer AB", "ABC 802",		GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+COMP( 1983, abc806,     0,          0,      abc806,     abc806, abc806, "Luxor Datorer AB", "ABC 806",		GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )

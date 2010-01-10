@@ -11,7 +11,7 @@
 #include "cpu/i8085/i8085.h"
 #include "sound/wave.h"
 #include "machine/i8255a.h"
-#include "machine/8257dma.h"
+#include "machine/i8257.h"
 #include "machine/pit8253.h"
 #include "video/i8275.h"
 #include "devices/cassette.h"
@@ -20,7 +20,7 @@
 
 /* Address maps */
 static ADDRESS_MAP_START(mikrosha_mem, ADDRESS_SPACE_PROGRAM, 8)
-    AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK(1) // First bank
+    AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK("bank1") // First bank
     AM_RANGE( 0x1000, 0x7fff ) AM_RAM // RAM
     AM_RANGE( 0x8000, 0xbfff ) AM_READ(radio_cpu_state_r) // Not connected
     AM_RANGE( 0xc000, 0xc003 ) AM_DEVREADWRITE("ppi8255_1", i8255a_r, i8255a_w) AM_MIRROR(0x07fc)
@@ -28,7 +28,7 @@ static ADDRESS_MAP_START(mikrosha_mem, ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE( 0xd000, 0xd001 ) AM_DEVREADWRITE("i8275", i8275_r, i8275_w) AM_MIRROR(0x07fe) // video
     AM_RANGE( 0xd800, 0xd803 ) AM_DEVREADWRITE("pit8253", pit8253_r,pit8253_w) AM_MIRROR(0x07fc) // Timer
     AM_RANGE( 0xe000, 0xf7ff ) AM_READ(radio_cpu_state_r) // Not connected
-  	AM_RANGE( 0xf800, 0xffff ) AM_DEVWRITE("dma8257", dma8257_w)	 // DMA
+  	AM_RANGE( 0xf800, 0xffff ) AM_DEVWRITE("dma8257", i8257_w)	 // DMA
     AM_RANGE( 0xf800, 0xffff ) AM_ROM  // System ROM
 ADDRESS_MAP_END
 
@@ -162,6 +162,24 @@ static const struct pit8253_config mikrosha_pit8253_intf =
 	}
 };
 
+/* F4 Character Displayer */
+static const gfx_layout mikrosha_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static GFXDECODE_START( mikrosha )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, mikrosha_charlayout, 0, 1 )
+GFXDECODE_END
+
 static MACHINE_DRIVER_START( mikrosha )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", 8080, XTAL_16MHz / 9)
@@ -185,6 +203,7 @@ static MACHINE_DRIVER_START( mikrosha )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(78*6, 30*10)
 	MDRV_SCREEN_VISIBLE_AREA(0, 78*6-1, 0, 30*10-1)
+	MDRV_GFXDECODE(mikrosha)
 	MDRV_PALETTE_LENGTH(3)
 	MDRV_PALETTE_INIT(radio86)
 
@@ -195,7 +214,7 @@ static MACHINE_DRIVER_START( mikrosha )
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_DMA8257_ADD("dma8257", XTAL_16MHz / 9, radio86_dma)
+	MDRV_I8257_ADD("dma8257", XTAL_16MHz / 9, radio86_dma)
 
 	MDRV_CASSETTE_ADD( "cassette", mikrosha_cassette_config )
 MACHINE_DRIVER_END
@@ -211,5 +230,5 @@ ROM_END
 
 
 /* Driver */
-/*    YEAR  NAME      PARENT  COMPAT    MACHINE     INPUT       INIT        CONFIG      COMPANY     FULLNAME        FLAGS */
-COMP( 1987, mikrosha, radio86,0, 		mikrosha, 	mikrosha,	radio86,	0,  		"Lianozovo Electromechanical Factory", 		"Mikrosha",		0)
+/*    YEAR  NAME      PARENT  COMPAT    MACHINE     INPUT       INIT        COMPANY     FULLNAME        FLAGS */
+COMP( 1987, mikrosha, radio86,0, 		mikrosha, 	mikrosha,	radio86,	"Lianozovo Electromechanical Factory", 		"Mikrosha",		0)

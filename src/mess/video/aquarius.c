@@ -9,7 +9,9 @@
 #include "driver.h"
 #include "includes/aquarius.h"
 
-static tilemap *aquarius_tilemap;
+static tilemap_t *aquarius_tilemap;
+
+UINT8 *aquarius_colorram;
 
 static const rgb_t aquarius_colors[] =
 {
@@ -66,21 +68,21 @@ PALETTE_INIT( aquarius )
 
 WRITE8_HANDLER( aquarius_videoram_w )
 {
-	videoram[offset] = data;
+	space->machine->generic.videoram.u8[offset] = data;
 	tilemap_mark_tile_dirty(aquarius_tilemap, offset);
 }
 
 WRITE8_HANDLER( aquarius_colorram_w )
 {
-	colorram[offset] = data;
+	aquarius_colorram[offset] = data;
 	tilemap_mark_tile_dirty(aquarius_tilemap, offset);
 }
 
 static TILE_GET_INFO(aquarius_gettileinfo)
 {
 	int bank = 0;
-	int code = videoram[tile_index];
-	int color = colorram[tile_index];
+	int code = machine->generic.videoram.u8[tile_index];
+	int color = aquarius_colorram[tile_index];
 	int flags = 0;
 
 	SET_TILE_INFO(bank, code, color, flags);

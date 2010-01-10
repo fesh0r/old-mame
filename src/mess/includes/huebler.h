@@ -9,9 +9,14 @@
 #define Z80PIO2_TAG		"z80pio2"
 #define CASSETTE_TAG	"cassette"
 
-typedef struct _huebler_state huebler_state;
-struct _huebler_state
+typedef struct _amu880_state amu880_state;
+struct _amu880_state
 {
+	/* keyboard state */
+	int key_y;
+	int keylatch;
+	const UINT8 *keyboard_rom;
+
 	/* video state */
 	UINT8 *video_ram;
 	const UINT8 *char_rom;

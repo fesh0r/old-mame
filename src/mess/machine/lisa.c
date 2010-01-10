@@ -222,19 +222,22 @@ static void lisa_field_interrupts(running_machine *machine)
 	if (parity_error_pending)
 		return;	/* don't touch anything... */
 
-	/*if (RSIR)
-        // serial interrupt
-        cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_6, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
-    else if (int0)
-        // external interrupt
-        cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_5, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
-    else if (int1)
-        // external interrupt
-        cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_4, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
-    else if (int2)
-        // external interrupt
-        cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_3, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
-    else*/ if (KBIR)
+#if 0
+	if (RSIR)
+		// serial interrupt
+		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_6, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+	else if (int0)
+		// external interrupt
+		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_5, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+	else if (int1)
+		// external interrupt
+		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_4, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+	else if (int2)
+		// external interrupt
+		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_3, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+	else
+#endif
+	if (KBIR)
 		/* COPS VIA interrupt */
 		cputag_set_input_line_and_vector(machine, "maincpu", M68K_IRQ_2, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	else if (FDIR || VTIR)
@@ -348,8 +351,8 @@ INLINE void COPS_send_data_if_possible(running_machine *machine)
 			mouse_data_offset = -1;	/* we just phased out the mouse data in buffer */
 		fifo_head = (fifo_head+1) & 0x7;
 		fifo_size--;
-		via_ca1_w(via_0, 0, 1);		/* pulse ca1 so that VIA reads it */
-		via_ca1_w(via_0, 0, 0);		/* BTW, I have no idea how a real COPS does it ! */
+		via_ca1_w(via_0, 1);		/* pulse ca1 so that VIA reads it */
+		via_ca1_w(via_0, 0);		/* BTW, I have no idea how a real COPS does it ! */
 	}
 }
 
@@ -446,8 +449,10 @@ static TIMER_CALLBACK(handle_mouse)
 	int diff_x = 0, diff_y = 0;
 	int new_mx, new_my;
 
-	/*if (COPS_force_unplug)
-        return;*/	/* ???? */
+#if 0
+	if (COPS_force_unplug)
+		return;	/* ???? */
+#endif
 
 	new_mx = input_port_read(machine, "MOUSE_X");
 	new_my = input_port_read(machine, "MOUSE_Y");
@@ -758,9 +763,6 @@ static void plug_keyboard(running_machine *machine)
 static void init_COPS(running_machine *machine)
 {
 	COPS_Ready = 0;
-
-	/* read command every ms (don't know the real value) */
-	timer_pulse(machine, ATTOTIME_IN_MSEC(1), NULL, 0, set_COPS_ready);
 
 	reset_COPS();
 }
@@ -1082,14 +1084,16 @@ NVRAM_HANDLER(lisa)
 #endif
 }
 
-/*void init_lisa1(void)
+#ifdef UNUSED_FUNCTION
+void init_lisa1(void)
 {
-    lisa_model = lisa1;
-    lisa_features.has_fast_timers = 0;
-    lisa_features.floppy_hardware = twiggy;
-    lisa_features.has_double_sided_floppy = 1;
-    lisa_features.has_mac_xl_video = 0;
-}*/
+	lisa_model = lisa1;
+	lisa_features.has_fast_timers = 0;
+	lisa_features.floppy_hardware = twiggy;
+	lisa_features.has_double_sided_floppy = 1;
+	lisa_features.has_mac_xl_video = 0;
+}
+#endif
 
 DRIVER_INIT( lisa2 )
 {
@@ -1130,10 +1134,16 @@ DRIVER_INIT( mac_xl )
 	bad_parity_table = auto_alloc_array(machine, UINT8, 0x40000);  /* 1 bit per byte of CPU RAM */
 }
 
-MACHINE_RESET( lisa )
+MACHINE_START( lisa )
 {
 	mouse_timer = timer_alloc(machine, handle_mouse, NULL);
 
+	/* read command every ms (don't know the real value) */
+	timer_pulse(machine, ATTOTIME_IN_MSEC(1), NULL, 0, set_COPS_ready);	
+}
+
+MACHINE_RESET( lisa )
+{
 	lisa_ram_ptr = memory_region(machine, "maincpu") + RAM_OFFSET;
 	lisa_rom_ptr = memory_region(machine, "maincpu") + ROM_OFFSET;
 
@@ -1324,9 +1334,12 @@ INLINE void lisa_fdc_ttl_glue_access(running_machine *machine, offs_t offset)
 		break;
 	case 5:
 		/*HDS = offset & 1;*/		/* head select (-> disk side) on twiggy */
-		/*if (lisa_features.floppy_hardware == twiggy)
-            twiggy_set_head_line(offset & 1);
-        else*/ if (lisa_features.floppy_hardware == sony_lisa210)
+#if 0
+		if (lisa_features.floppy_hardware == twiggy)
+			twiggy_set_head_line(offset & 1);
+		else
+#endif
+		if (lisa_features.floppy_hardware == sony_lisa210)
 			sony_set_sel_line(devtag_get_device(machine, "fdc"), offset & 1);
 		break;
 	case 6:
@@ -1383,9 +1396,12 @@ WRITE8_HANDLER ( lisa_fdc_io_w )
 
 	case 2:	/* writes the PWM register */
 		/* the written value is used to generate the motor speed control signal */
-		/*if (lisa_features.floppy_hardware == twiggy)
-            twiggy_set_speed((256-data) * ??? + ???);
-        else*/ if (lisa_features.floppy_hardware == sony_lisa210)
+#if 0
+		if (lisa_features.floppy_hardware == twiggy)
+			twiggy_set_speed((256-data) * 1.3 /* ??? */ + 237 /* ??? */);
+		else
+#endif
+		if (lisa_features.floppy_hardware == sony_lisa210)
 			sony_set_speed(((256-data) * 1.3) + 237);
 		break;
 

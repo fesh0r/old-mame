@@ -50,7 +50,7 @@ ADDRESS_MAP_END
 static READ8_HANDLER(vt100_flags_r)
 {
 	UINT8 retVal = 0;
- 	retVal |= lba7_r(devtag_get_device(space->machine, "vt100_video"),0) * 0x40;
+ 	retVal |= vt_video_lba7_r(devtag_get_device(space->machine, "vt100_video"),0) * 0x40;
 	retVal |= vt100_keyboard_int * 0x80;
 	return retVal;
 }
@@ -60,10 +60,12 @@ static UINT8 vt100_key_scan = 0;
 static TIMER_CALLBACK(keyboard_callback)
 {
 	int i;
-	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3",
-											"LINE4", "LINE5", "LINE6", "LINE7",
-											"LINE8", "LINE9", "LINEA", "LINEB",
-											"LINEC", "LINED", "LINEE", "LINEF" };
+	static const char *const keynames[] = {
+		"LINE0", "LINE1", "LINE2", "LINE3",
+		"LINE4", "LINE5", "LINE6", "LINE7",
+		"LINE8", "LINE9", "LINEA", "LINEB",
+		"LINEC", "LINED", "LINEE", "LINEF"
+	};
 	UINT8 code;
 	if (vt100_key_scan == 1) {
 		for(i = 0; i < 16; i++)
@@ -100,8 +102,10 @@ static READ8_HANDLER(vt100_keyboard_r)
 }
 static WRITE8_HANDLER(vt100_baud_rate_w)
 {
-	double baud_rate[] = { 50, 75, 110, 134.5, 150, 200, 300, 600, 1200,
-		1800, 2000, 2400, 3600, 4800, 9600, 19200 };
+	static const double baud_rate[] = {
+		50, 75, 110, 134.5, 150, 200, 300, 600, 1200,
+		1800, 2000, 2400, 3600, 4800, 9600, 19200
+	};
 
 	vt100_send_baud_rate = baud_rate[(data >>4) & 0x0f];
 	vt100_recv_baud_rate = baud_rate[data & 0x0f];
@@ -130,9 +134,9 @@ static ADDRESS_MAP_START( vt100_io , ADDRESS_SPACE_IO, 8)
 	// 0x82 Keyboard UART data input
 	AM_RANGE (0x82, 0x82) AM_WRITE(vt100_keyboard_w)
 	// 0xA2 Video processor DC012
-	AM_RANGE (0xa2, 0xa2) AM_DEVWRITE("vt100_video", dc012_w)
+	AM_RANGE (0xa2, 0xa2) AM_DEVWRITE("vt100_video", vt_video_dc012_w)
 	// 0xC2 Video processor DC011
-	AM_RANGE (0xc2, 0xc2) AM_DEVWRITE("vt100_video", dc011_w)
+	AM_RANGE (0xc2, 0xc2) AM_DEVWRITE("vt100_video", vt_video_dc011_w)
 	// 0xE2 Graphics port
 	// AM_RANGE (0xe2, 0xe2)
 ADDRESS_MAP_END
@@ -275,6 +279,11 @@ static IRQ_CALLBACK(vt100_irq_callback)
 	return retVal;
 }
 
+static MACHINE_START(vt100)
+{
+	timer_pulse(machine, ATTOTIME_IN_HZ(240), NULL, 0, keyboard_callback);
+}
+
 static MACHINE_RESET(vt100)
 {
 	vt100_keyboard_int = 0;
@@ -289,7 +298,6 @@ static MACHINE_RESET(vt100)
 	output_set_value("l4_led", 	  1);
 
 	vt100_key_scan = 0;
-	timer_pulse(machine, ATTOTIME_IN_HZ(240), NULL, 0, keyboard_callback);
 
 	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), vt100_irq_callback);
 }
@@ -317,6 +325,25 @@ static INTERRUPT_GEN( vt100_vertical_interrupt )
 	cpu_set_input_line(device, 0, HOLD_LINE);
 }
 
+/* F4 Character Displayer */
+static const gfx_layout vt100_charlayout =
+{
+	8, 16,					/* 8 x 16 characters */
+	256,					/* 2 x 128 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{  0*8,  1*8,  2*8,  3*8,  4*8,  5*8,  6*8,  7*8, 8*8,  9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
+	8*16					/* every char takes 16 bytes */
+};
+
+static GFXDECODE_START( vt100 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, vt100_charlayout, 0, 1 )
+GFXDECODE_END
+
+
 #define XTAL_24_8832MHz	 24883200
 
 static MACHINE_DRIVER_START( vt100 )
@@ -326,6 +353,7 @@ static MACHINE_DRIVER_START( vt100 )
 	MDRV_CPU_IO_MAP(vt100_io)
 	MDRV_CPU_VBLANK_INT("screen", vt100_vertical_interrupt)
 
+	MDRV_MACHINE_START(vt100)
 	MDRV_MACHINE_RESET(vt100)
 
     /* video hardware */
@@ -335,6 +363,7 @@ static MACHINE_DRIVER_START( vt100 )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(80*10, 30*10)
 	MDRV_SCREEN_VISIBLE_AREA(0, 80*10-1, 0, 30*10-1)
+	MDRV_GFXDECODE(vt100)
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(monochrome_green)
 
@@ -432,7 +461,7 @@ MACHINE_DRIVER_END
  * VT1xx-CB or CL: GPO "ReGIS" board vt100->vt125 upgrade kit (p/n 5414275 paddle board and 5414277 gpo board)
  * VT1xx-CE : DECWord Conversion kit
  * VT1xx-FB : Anti-glare kit
- 
+
  * Info about mask roms and other nasties:
  * A normal 2716 rom has pin 18: /CE; pin 20: /OE; pin 21: VPP (acts as CE2)
  * The vt100 23-031e2/23-061e2, 23-032e2, 23-033e2, and 23-034e2 mask roms
@@ -672,16 +701,16 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1978, vt100,  0,       0,     vt100, 	 vt100, 	 0,  	  0,  	 "DEC",   "VT100",		GAME_NOT_WORKING)
-COMP( 1978, vt100wp,  vt100, 0,     vt100, 	 vt100, 	 0,  	  0,  	 "DEC",   "VT100-Wx",		GAME_NOT_WORKING)
-//COMP( 1978, vt100stp,  vt100,       0,    vt100,   vt100,      0,       0,     "DEC",   "VT100 w/VT1xx-AC STP",       GAME_NOT_WORKING)
-COMP( 1981, vt101,  0,       0,     vt100, 	 vt100, 	 0,  	  0,  	 "DEC",   "VT101",		GAME_NOT_WORKING)
-COMP( 1981, vt102,  vt101,   0,     vt100, 	 vt100, 	 0,  	  0,  	 "DEC",   "VT102",		GAME_NOT_WORKING)
-COMP( 1979, vt103,  vt100,   0,     vt100, 	 vt100, 	 0,  	  0,  	 "DEC",   "VT103",		GAME_NOT_WORKING)
-COMP( 1978, vt105,  vt100,   0,     vt100,   vt100, 	 0,  	  0,  	 "DEC",   "VT105",		GAME_NOT_WORKING)
-COMP( 1978, vt110,  vt100,   0,     vt100, 	 vt100, 	 0,  	  0,  	 "DEC",   "VT110",		GAME_NOT_WORKING)
-COMP( 1981, vt125,  vt100,   0,     vt100, 	 vt100, 	 0,  	  0,  	 "DEC",   "VT125",		GAME_NOT_WORKING)
-COMP( 1981, vt131,  /*vt101*/0,       0,     vt100, 		vt100, 	 0,  	  0,  	 "DEC",   "VT131",		GAME_NOT_WORKING)	// this should be a vt101 clone, once the vt101 has been enabled (i.e. its roms dumped)
-//COMP( 1979, vt132,  vt100,   0,    vt100,   vt100,     0,       0,     "DEC",   "VT132",      GAME_NOT_WORKING)
-COMP( 1983, vt180,  vt100,   0,     vt100,   vt100, 	 0,  	  0,  	 "DEC",   "VT180",		GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY FULLNAME       FLAGS */
+COMP( 1978, vt100,  0,       0,     vt100, 	 vt100, 	 0,  	 "DEC",   "VT100",		GAME_NOT_WORKING)
+COMP( 1978, vt100wp,  vt100, 0,     vt100, 	 vt100, 	 0,  	 "DEC",   "VT100-Wx",		GAME_NOT_WORKING)
+//COMP( 1978, vt100stp,  vt100,       0,    vt100,   vt100,       0,     "DEC",   "VT100 w/VT1xx-AC STP",       GAME_NOT_WORKING)
+COMP( 1981, vt101,  0,       0,     vt100, 	 vt100, 	 0,  	 "DEC",   "VT101",		GAME_NOT_WORKING)
+COMP( 1981, vt102,  vt101,   0,     vt100, 	 vt100, 	 0,  	 "DEC",   "VT102",		GAME_NOT_WORKING)
+COMP( 1979, vt103,  vt100,   0,     vt100, 	 vt100, 	 0,  	 "DEC",   "VT103",		GAME_NOT_WORKING)
+COMP( 1978, vt105,  vt100,   0,     vt100,   vt100, 	 0,  	 "DEC",   "VT105",		GAME_NOT_WORKING)
+COMP( 1978, vt110,  vt100,   0,     vt100, 	 vt100, 	 0,  	 "DEC",   "VT110",		GAME_NOT_WORKING)
+COMP( 1981, vt125,  vt100,   0,     vt100, 	 vt100, 	 0,  	 "DEC",   "VT125",		GAME_NOT_WORKING)
+COMP( 1981, vt131,  /*vt101*/0, 0,  vt100, 	 vt100, 	 0,  	 "DEC",   "VT131",		GAME_NOT_WORKING)	// this should be a vt101 clone, once the vt101 has been enabled (i.e. its roms dumped)
+//COMP( 1979, vt132,  vt100,   0,    vt100,   vt100,     0,      "DEC",   "VT132",      GAME_NOT_WORKING)
+COMP( 1983, vt180,  vt100,   0,     vt100,   vt100, 	 0,  	 "DEC",   "VT180",		GAME_NOT_WORKING)

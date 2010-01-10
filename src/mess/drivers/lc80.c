@@ -33,11 +33,11 @@
 
 static ADDRESS_MAP_START( lc80_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
-	AM_RANGE(0x0000, 0x07ff) AM_ROMBANK(1)
-	AM_RANGE(0x0800, 0x0fff) AM_ROMBANK(2)
-	AM_RANGE(0x1000, 0x17ff) AM_ROMBANK(3)
+	AM_RANGE(0x0000, 0x07ff) AM_ROMBANK("bank1")
+	AM_RANGE(0x0800, 0x0fff) AM_ROMBANK("bank2")
+	AM_RANGE(0x1000, 0x17ff) AM_ROMBANK("bank3")
 	AM_RANGE(0x2000, 0x23ff) AM_RAM
-	AM_RANGE(0x2400, 0x2fff) AM_RAMBANK(4)
+	AM_RANGE(0x2400, 0x2fff) AM_RAMBANK("bank4")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sc80_mem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -298,44 +298,44 @@ static MACHINE_START( lc80 )
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
 
 	/* setup memory banking */
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, Z80_TAG), 0); // TODO
-	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, Z80_TAG), 0);
-	memory_set_bank(machine, 1, 1);
+	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, Z80_TAG), 0); // TODO
+	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, Z80_TAG), 0);
+	memory_set_bank(machine, "bank1", 1);
 
-	memory_configure_bank(machine, 2, 0, 1, memory_region(machine, Z80_TAG) + 0x800, 0); // TODO
-	memory_configure_bank(machine, 2, 1, 1, memory_region(machine, Z80_TAG) + 0x800, 0);
-	memory_set_bank(machine, 2, 1);
+	memory_configure_bank(machine, "bank2", 0, 1, memory_region(machine, Z80_TAG) + 0x800, 0); // TODO
+	memory_configure_bank(machine, "bank2", 1, 1, memory_region(machine, Z80_TAG) + 0x800, 0);
+	memory_set_bank(machine, "bank2", 1);
 
-	memory_configure_bank(machine, 3, 0, 1, memory_region(machine, Z80_TAG) + 0x1000, 0); // TODO
-	memory_configure_bank(machine, 3, 1, 1, memory_region(machine, Z80_TAG) + 0x1000, 0);
-	memory_set_bank(machine, 3, 1);
+	memory_configure_bank(machine, "bank3", 0, 1, memory_region(machine, Z80_TAG) + 0x1000, 0); // TODO
+	memory_configure_bank(machine, "bank3", 1, 1, memory_region(machine, Z80_TAG) + 0x1000, 0);
+	memory_set_bank(machine, "bank3", 1);
 
-	memory_configure_bank(machine, 4, 0, 1, memory_region(machine, Z80_TAG) + 0x2000, 0);
-	memory_set_bank(machine, 4, 0);
+	memory_configure_bank(machine, "bank4", 0, 1, memory_region(machine, Z80_TAG) + 0x2000, 0);
+	memory_set_bank(machine, "bank4", 0);
 
-	memory_install_readwrite8_handler(program, 0x0000, 0x07ff, 0, 0, SMH_BANK(1), SMH_BANK(1));
-	memory_install_readwrite8_handler(program, 0x0800, 0x0fff, 0, 0, SMH_BANK(2), SMH_BANK(2));
-	memory_install_readwrite8_handler(program, 0x1000, 0x17ff, 0, 0, SMH_BANK(3), SMH_BANK(3));
+	memory_install_readwrite_bank(program, 0x0000, 0x07ff, 0, 0, "bank1");
+	memory_install_readwrite_bank(program, 0x0800, 0x0fff, 0, 0, "bank2");
+	memory_install_readwrite_bank(program, 0x1000, 0x17ff, 0, 0, "bank3");
 
 	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	case 1*1024:
-		memory_install_readwrite8_handler(program, 0x2000, 0x23ff, 0, 0, SMH_BANK(4), SMH_BANK(4));
-		memory_install_readwrite8_handler(program, 0x2400, 0x2fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite_bank(program, 0x2000, 0x23ff, 0, 0, "bank4");
+		memory_unmap_readwrite(program, 0x2400, 0x2fff, 0, 0);
 		break;
 
 	case 2*1024:
-		memory_install_readwrite8_handler(program, 0x2000, 0x27ff, 0, 0, SMH_BANK(4), SMH_BANK(4));
-		memory_install_readwrite8_handler(program, 0x2800, 0x2fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite_bank(program, 0x2000, 0x27ff, 0, 0, "bank4");
+		memory_unmap_readwrite(program, 0x2800, 0x2fff, 0, 0);
 		break;
 
 	case 3*1024:
-		memory_install_readwrite8_handler(program, 0x2000, 0x2bff, 0, 0, SMH_BANK(4), SMH_BANK(4));
-		memory_install_readwrite8_handler(program, 0x2c00, 0x2fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite_bank(program, 0x2000, 0x2bff, 0, 0, "bank4");
+		memory_unmap_readwrite(program, 0x2c00, 0x2fff, 0, 0);
 		break;
 
 	case 4*1024:
-		memory_install_readwrite8_handler(program, 0x2000, 0x2fff, 0, 0, SMH_BANK(4), SMH_BANK(4));
+		memory_install_readwrite_bank(program, 0x2000, 0x2fff, 0, 0, "bank4");
 		break;
 	}
 
@@ -377,9 +377,9 @@ static MACHINE_DRIVER_START( lc80 )
 	MDRV_Z80PIO_ADD(Z80PIO2_TAG, pio2_intf)
 
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, lc80_cassette_config)
-	
+
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("1K")	
+	MDRV_RAM_DEFAULT_SIZE("1K")
 	MDRV_RAM_EXTRA_OPTIONS("2K,3K,4K")
 MACHINE_DRIVER_END
 
@@ -407,10 +407,10 @@ static MACHINE_DRIVER_START( lc80_2 )
 	MDRV_Z80PIO_ADD(Z80PIO2_TAG, pio2_intf)
 
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, lc80_cassette_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("4K")	
+	MDRV_RAM_DEFAULT_SIZE("4K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( sc80 )
@@ -446,7 +446,7 @@ ROM_END
 
 /* System Drivers */
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY                 FULLNAME                FLAGS */
-COMP( 1984, lc80,	0,		0,		lc80,	lc80,	0,		0,	"VEB Mikroelektronik",	"Lerncomputer LC 80",	GAME_SUPPORTS_SAVE )
-COMP( 1984, lc80_2,	lc80,	0,		lc80_2,	lc80,	0,		0,	"VEB Mikroelektronik",	"Lerncomputer LC 80.2",	GAME_SUPPORTS_SAVE )
-COMP( 1984, sc80,	lc80,	0,		lc80_2,	lc80,	0,		0,	"VEB Mikroelektronik",	"Schachcomputer SC-80",	GAME_SUPPORTS_SAVE )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                 FULLNAME                FLAGS */
+COMP( 1984, lc80,	0,		0,		lc80,	lc80,	0,		"VEB Mikroelektronik",	"Lerncomputer LC 80",	GAME_SUPPORTS_SAVE )
+COMP( 1984, lc80_2,	lc80,	0,		lc80_2,	lc80,	0,		"VEB Mikroelektronik",	"Lerncomputer LC 80.2",	GAME_SUPPORTS_SAVE )
+COMP( 1984, sc80,	lc80,	0,		lc80_2,	lc80,	0,		"VEB Mikroelektronik",	"Schachcomputer SC-80",	GAME_SUPPORTS_SAVE )

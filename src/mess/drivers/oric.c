@@ -59,9 +59,9 @@
 
 static ADDRESS_MAP_START(oric_mem, ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE( 0x0000, 0xbfff) AM_RAM AM_BASE( &oric_ram )
-    AM_RANGE( 0xc000, 0xdfff) AM_READWRITE( SMH_BANK(1), SMH_BANK(5) )
-	AM_RANGE( 0xe000, 0xf7ff) AM_READWRITE( SMH_BANK(2), SMH_BANK(6) )
-	AM_RANGE( 0xf800, 0xffff) AM_READWRITE( SMH_BANK(3), SMH_BANK(7) )
+    AM_RANGE( 0xc000, 0xdfff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank5")
+	AM_RANGE( 0xe000, 0xf7ff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank6")
+	AM_RANGE( 0xf800, 0xffff) AM_READ_BANK("bank3") AM_WRITE_BANK("bank7")
 ADDRESS_MAP_END
 
 /*
@@ -74,7 +74,7 @@ static ADDRESS_MAP_START(telestrat_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x031c, 0x031f) AM_DEVREADWRITE("acia",  acia_6551_r, acia_6551_w )
 	AM_RANGE( 0x0320, 0x032f) AM_DEVREADWRITE("via6522_1", via_r, via_w)
 	AM_RANGE( 0x0400, 0xbfff) AM_RAM
-	AM_RANGE( 0xc000, 0xffff) AM_READWRITE( SMH_BANK(1), SMH_BANK(2) )
+	AM_RANGE( 0xc000, 0xffff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank2")
 ADDRESS_MAP_END
 
 
@@ -355,7 +355,7 @@ static const cassette_config oric_cassette_config =
 static const centronics_interface oric_centronics_config =
 {
 	FALSE,
-	DEVCB_DEVICE_HANDLER("via6522_0", via_ca1_w),
+	DEVCB_DEVICE_LINE("via6522_0", via_ca1_w),
 	DEVCB_NULL,
 	DEVCB_NULL
 };
@@ -380,7 +380,7 @@ static const floppy_config prav8d_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	FLOPPY_DRIVE_DS_80,
-	FLOPPY_OPTIONS_NAME(apple2),
+    FLOPPY_OPTIONS_NAME(apple2),
 	DO_NOT_KEEP_GEOMETRY
 };
 
@@ -537,9 +537,9 @@ ROM_START(prav8dd)
 ROM_END
 
 
-/*    YEAR   NAME       PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG    COMPANY         FULLNAME */
-COMP( 1983, oric1,     0,		0,		oric,       oric,	    0,	    0,    "Tangerine",    "Oric 1" , 0)
-COMP( 1984, orica,     oric1,	0,		oric,	    orica,	    0,	    0,    "Tangerine",    "Oric Atmos" , 0)
-COMP( 1985, prav8d,    oric1,	0,		prav8d,     prav8d,     0,      0,    "Pravetz",      "Pravetz 8D", 0)
-COMP( 1989, prav8dd,   oric1,	0,		prav8d,     prav8d,     0,      0,    "Pravetz",      "Pravetz 8D (Disk ROM)", GAME_COMPUTER_MODIFIED)
-COMP( 1986, telstrat,  oric1,	0,		telstrat,   telstrat,   0,      0,    "Tangerine",    "Oric Telestrat", GAME_NOT_WORKING )
+/*    YEAR   NAME       PARENT  COMPAT  MACHINE     INPUT       INIT    COMPANY         FULLNAME */
+COMP( 1983, oric1,     0,		0,		oric,       oric,	    0,	    "Tangerine",    "Oric 1" , 0)
+COMP( 1984, orica,     oric1,	0,		oric,	    orica,	    0,	    "Tangerine",    "Oric Atmos" , 0)
+COMP( 1985, prav8d,    oric1,	0,		prav8d,     prav8d,     0,      "Pravetz",      "Pravetz 8D", 0)
+COMP( 1989, prav8dd,   oric1,	0,		prav8d,     prav8d,     0,      "Pravetz",      "Pravetz 8D (Disk ROM)", GAME_COMPUTER_MODIFIED)
+COMP( 1986, telstrat,  oric1,	0,		telstrat,   telstrat,   0,      "Tangerine",    "Oric Telestrat", GAME_NOT_WORKING )

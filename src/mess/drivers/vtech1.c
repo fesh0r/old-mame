@@ -119,6 +119,7 @@ Notes:
 #include "sound/wave.h"
 #include "sound/speaker.h"
 #include "devices/cartslot.h"
+#include "devices/flopdrv.h"
 #include "devices/snapquik.h"
 #include "devices/cassette.h"
 #include "devices/z80bin.h"
@@ -263,14 +264,16 @@ static Z80BIN_EXECUTE( vtech1 )
 
 	if (start_address == 0x7ae9)
 	{
-		UINT8 i, data[]={
+		UINT8 i;
+		static const UINT8 data[]={
 			0xe5,			// PUSH HL  ;save pcode pointer
 			0x2a, 0x1c, 0x79,	// LD HL,(791C) ;get saved end_addr+1
 			0x22, 0xf9, 0x78,	// LD (78F9),HL ;move it to correct place
 			0x21, 0x39, 0x78,	// LD HL,7839   ;point to control flag
 			0xcb, 0xf6,		// SET 6,(HL)   ;turn on autorun (cb b6 = manual run)
 			0xcb, 0x9e,		// RES 3,(HL)   ;turn off verify (just in case)
-			0xc3, 0xcf, 0x36,};	// JP 36CF  ;enter bios at autorun point
+			0xc3, 0xcf, 0x36	// JP 36CF  ;enter bios at autorun point
+		};
 
 		for (i = 0; i < ARRAY_LENGTH(data); i++)
 			memory_write_byte(space, 0x791e + i, data[i]);
@@ -291,28 +294,15 @@ static Z80BIN_EXECUTE( vtech1 )
 /***************************************************************************
     FLOPPY DRIVE
 ***************************************************************************/
-
-static const device_config *vtech1_file(running_machine *machine)
-{
-	vtech1_state *vtech1 = machine->driver_data;
-
-	if (vtech1->drive < 0)
-		return NULL;
-
-	return image_from_devtype_and_index(machine, IO_FLOPPY, vtech1->drive);
-}
-
-static DEVICE_IMAGE_LOAD( vtech1_floppy )
+static void vtech1_load_proc(const device_config *image)
 {
 	vtech1_state *vtech1 = image->machine->driver_data;
-	int id = image_index_in_device(image);
-
+	int id = floppy_get_drive(image);
+	
 	if (image_is_writable(image))
 		vtech1->fdc_wrprot[id] = 0x00;
 	else
 		vtech1->fdc_wrprot[id] = 0x80;
-
-	return INIT_PASS;
 }
 
 static void vtech1_get_track(running_machine *machine)
@@ -320,13 +310,13 @@ static void vtech1_get_track(running_machine *machine)
 	vtech1_state *vtech1 = machine->driver_data;
 
 	/* drive selected or and image file ok? */
-	if (vtech1->drive >= 0 && image_exists(vtech1_file(machine)))
+	if (vtech1->drive >= 0 && image_exists(floppy_get_device(machine,vtech1->drive)))
 	{
 		int size, offs;
 		size = TRKSIZE_VZ;
 		offs = TRKSIZE_VZ * vtech1->fdc_track_x2[vtech1->drive]/2;
-		image_fseek(vtech1_file(machine), offs, SEEK_SET);
-		size = image_fread(vtech1_file(machine), vtech1->fdc_data, size);
+		image_fseek(floppy_get_device(machine,vtech1->drive), offs, SEEK_SET);
+		size = image_fread(floppy_get_device(machine,vtech1->drive), vtech1->fdc_data, size);
 		if (LOG_VTECH1_FDC)
 			logerror("get track @$%05x $%04x bytes\n", offs, size);
     }
@@ -339,12 +329,12 @@ static void vtech1_put_track(running_machine *machine)
 	vtech1_state *vtech1 = machine->driver_data;
 
     /* drive selected and image file ok? */
-	if (vtech1->drive >= 0 && vtech1_file(machine) != NULL)
+	if (vtech1->drive >= 0 && floppy_get_device(machine,vtech1->drive) != NULL)
 	{
 		int size, offs;
 		offs = TRKSIZE_VZ * vtech1->fdc_track_x2[vtech1->drive]/2;
-		image_fseek(vtech1_file(machine), offs + vtech1->fdc_start, SEEK_SET);
-		size = image_fwrite(vtech1_file(machine), &vtech1->fdc_data[vtech1->fdc_start], vtech1->fdc_write);
+		image_fseek(floppy_get_device(machine,vtech1->drive), offs + vtech1->fdc_start, SEEK_SET);
+		size = image_fwrite(floppy_get_device(machine,vtech1->drive), &vtech1->fdc_data[vtech1->fdc_start], vtech1->fdc_write);
 		if (LOG_VTECH1_FDC)
 			logerror("put track @$%05X+$%X $%04X/$%04X bytes\n", offs, vtech1->fdc_start, size, vtech1->fdc_write);
     }
@@ -494,6 +484,40 @@ static WRITE8_HANDLER( vtech1_fdc_w )
     }
 }
 
+static FLOPPY_IDENTIFY( vtech1_dsk_identify )
+{
+	*vote = 100;
+	return FLOPPY_ERROR_SUCCESS;
+}
+
+
+static FLOPPY_CONSTRUCT( vtech1_dsk_construct )
+{
+	return FLOPPY_ERROR_SUCCESS;
+}
+
+FLOPPY_OPTIONS_START( vtech1_only )
+	FLOPPY_OPTION(
+		vtech1_dsk,
+		"dsk",
+		"Laser floppy disk image",
+		vtech1_dsk_identify,
+		vtech1_dsk_construct,
+		NULL
+	)
+FLOPPY_OPTIONS_END0
+
+static const floppy_config vtech1_floppy_config =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	FLOPPY_DRIVE_DS_80,
+	FLOPPY_OPTIONS_NAME(vtech1_only),
+	DO_NOT_KEEP_GEOMETRY
+};
 
 /***************************************************************************
     PRINTER
@@ -591,7 +615,7 @@ static WRITE8_HANDLER( vtech1_latch_w )
 		logerror("vtech1_latch_w $%02X\n", data);
 
 	/* bit 1, SHRG mod (if installed) */
-	if (videoram_size == 0x2000)
+	if (space->machine->generic.videoram_size == 0x2000)
 	{
 		mc6847_gm0_w(vtech1->mc6847, BIT(data, 1));
 		mc6847_gm2_w(vtech1->mc6847, BIT(data, 1));
@@ -621,13 +645,13 @@ static WRITE8_HANDLER( vtech1_memory_bank_w )
 
 	if (data >= 1)
 		if ((data <= 3 && vtech1->ram_size == 66*1024) || (vtech1->ram_size == 4098*1024))
-			memory_set_bank(space->machine, 3, data - 1);
+			memory_set_bank(space->machine, "bank3", data - 1);
 }
 
 static WRITE8_HANDLER( vtech1_video_bank_w )
 {
 	logerror("vtech1_video_bank_w $%02X\n", data);
-	memory_set_bank(space->machine, 4, data & 0x03);
+	memory_set_bank(space->machine, "bank4", data & 0x03);
 }
 
 
@@ -637,10 +661,10 @@ static WRITE8_HANDLER( vtech1_video_bank_w )
 
 static READ8_DEVICE_HANDLER( vtech1_mc6847_videoram_r )
 {
-	mc6847_inv_w(device, BIT(videoram[offset], 6));
-	mc6847_as_w(device, BIT(videoram[offset], 7));
+	mc6847_inv_w(device, BIT(device->machine->generic.videoram.u8[offset], 6));
+	mc6847_as_w(device, BIT(device->machine->generic.videoram.u8[offset], 7));
 
-	return videoram[offset];
+	return device->machine->generic.videoram.u8[offset];
 }
 
 static VIDEO_UPDATE( vtech1 )
@@ -658,6 +682,7 @@ static DRIVER_INIT( vtech1 )
 {
 	vtech1_state *vtech1 = machine->driver_data;
 	const address_space *prg = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	int id;
 
 	/* find devices */
 	vtech1->mc6847 = devtag_get_device(machine, "mc6847");
@@ -670,27 +695,27 @@ static DRIVER_INIT( vtech1 )
 	vtech1->ram_size = messram_get_size(devtag_get_device(machine, "messram"));
 
 	/* setup memory banking */
-	memory_set_bankptr(machine, 1, vtech1->ram);
+	memory_set_bankptr(machine, "bank1", vtech1->ram);
 
 	/* 16k memory expansion? */
 	if (vtech1->ram_size == 18*1024 || vtech1->ram_size == 22*1024 || vtech1->ram_size == 32*1024)
 	{
 		offs_t base = 0x7800 + (vtech1->ram_size - 0x4000);
-		memory_install_readwrite8_handler(prg, base, base + 0x3fff, 0, 0, SMH_BANK(2), SMH_BANK(2));
-		memory_set_bankptr(machine, 2, vtech1->ram + base - 0x7800);
+		memory_install_readwrite_bank(prg, base, base + 0x3fff, 0, 0, "bank2");
+		memory_set_bankptr(machine, "bank2", vtech1->ram + base - 0x7800);
 	}
 
 	/* 64k expansion? */
 	if (vtech1->ram_size >= 66*1024)
 	{
 		/* install fixed first bank */
-		memory_install_readwrite8_handler(prg, 0x8000, 0xbfff, 0, 0, SMH_BANK(2), SMH_BANK(2));
-		memory_set_bankptr(machine, 2, vtech1->ram + 0x800);
+		memory_install_readwrite_bank(prg, 0x8000, 0xbfff, 0, 0, "bank2");
+		memory_set_bankptr(machine, "bank2", vtech1->ram + 0x800);
 
 		/* install the others, dynamically banked in */
-		memory_install_readwrite8_handler(prg, 0xc000, 0xffff, 0, 0, SMH_BANK(3), SMH_BANK(3));
-		memory_configure_bank(machine, 3, 0, (vtech1->ram_size - 0x4800) / 0x4000, vtech1->ram + 0x4800, 0x4000);
-		memory_set_bank(machine, 3, 0);
+		memory_install_readwrite_bank(prg, 0xc000, 0xffff, 0, 0, "bank3");
+		memory_configure_bank(machine, "bank3", 0, (vtech1->ram_size - 0x4800) / 0x4000, vtech1->ram + 0x4800, 0x4000);
+		memory_set_bank(machine, "bank3", 0);
 	}
 
 	/* initialize floppy */
@@ -706,23 +731,27 @@ static DRIVER_INIT( vtech1 )
 	vtech1->fdc_write = 0;
 	vtech1->fdc_offs = 0;
 	vtech1->fdc_latch = 0;
+	
+	for(id=0;id<2;id++) 
+	{
+		floppy_install_load_proc(floppy_get_device(machine, id), vtech1_load_proc);
+	}	
 }
 
 static DRIVER_INIT( vtech1h )
 {
-	const address_space *prg = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	const address_space *prg = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);	
 
 	DRIVER_INIT_CALL(vtech1);
 
 	/* the SHRG mod replaces the standard videoram chip with an 8k chip */
-	videoram_size = 0x2000;
-	videoram = auto_alloc_array(machine, UINT8, videoram_size);
+	machine->generic.videoram_size = 0x2000;
+	machine->generic.videoram.u8 = auto_alloc_array(machine, UINT8, machine->generic.videoram_size);
 
-	memory_install_readwrite8_handler(prg, 0x7000, 0x77ff, 0, 0, SMH_BANK(4), SMH_BANK(4));
-	memory_configure_bank(machine, 4, 0, 4, videoram, 0x800);
-	memory_set_bank(machine, 4, 0);
+	memory_install_readwrite_bank(prg, 0x7000, 0x77ff, 0, 0, "bank4");
+	memory_configure_bank(machine, "bank4", 0, 4, machine->generic.videoram.u8, 0x800);
+	memory_set_bank(machine, "bank4", 0);	
 }
-
 
 /***************************************************************************
     ADDRESS MAPS
@@ -733,8 +762,8 @@ static ADDRESS_MAP_START( laser110_mem, ADDRESS_SPACE_PROGRAM, 8 )
     AM_RANGE(0x4000, 0x5fff) AM_ROM	/* dos rom or other catridges */
     AM_RANGE(0x6000, 0x67ff) AM_ROM	/* reserved for cartridges */
     AM_RANGE(0x6800, 0x6fff) AM_READWRITE(vtech1_keyboard_r, vtech1_latch_w)
-    AM_RANGE(0x7000, 0x77ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size) /* (6847) */
-    AM_RANGE(0x7800, 0x7fff) AM_RAMBANK(1) /* 2k user ram */
+    AM_RANGE(0x7000, 0x77ff) AM_RAM AM_BASE_SIZE_GENERIC(videoram) /* (6847) */
+    AM_RANGE(0x7800, 0x7fff) AM_RAMBANK("bank1") /* 2k user ram */
     AM_RANGE(0x8000, 0xbfff) AM_NOP /* 16k ram expansion */
     AM_RANGE(0xc000, 0xffff) AM_NOP
 ADDRESS_MAP_END
@@ -744,8 +773,8 @@ static ADDRESS_MAP_START( laser210_mem, ADDRESS_SPACE_PROGRAM, 8 )
     AM_RANGE(0x4000, 0x5fff) AM_ROM	/* dos rom or other catridges */
     AM_RANGE(0x6000, 0x67ff) AM_ROM	/* reserved for cartridges */
     AM_RANGE(0x6800, 0x6fff) AM_READWRITE(vtech1_keyboard_r, vtech1_latch_w)
-    AM_RANGE(0x7000, 0x77ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size) /* U7 (6847) */
-    AM_RANGE(0x7800, 0x8fff) AM_RAMBANK(1) /* 6k user ram */
+    AM_RANGE(0x7000, 0x77ff) AM_RAM AM_BASE_SIZE_GENERIC(videoram) /* U7 (6847) */
+    AM_RANGE(0x7800, 0x8fff) AM_RAMBANK("bank1") /* 6k user ram */
     AM_RANGE(0x9000, 0xcfff) AM_NOP /* 16k ram expansion */
     AM_RANGE(0xd000, 0xffff) AM_NOP
 ADDRESS_MAP_END
@@ -755,8 +784,8 @@ static ADDRESS_MAP_START( laser310_mem, ADDRESS_SPACE_PROGRAM, 8 )
     AM_RANGE(0x4000, 0x5fff) AM_ROM	/* dos rom or other catridges */
     AM_RANGE(0x6000, 0x67ff) AM_ROM	/* reserved for cartridges */
     AM_RANGE(0x6800, 0x6fff) AM_READWRITE(vtech1_keyboard_r, vtech1_latch_w)
-    AM_RANGE(0x7000, 0x77ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size) /* (6847) */
-    AM_RANGE(0x7800, 0xb7ff) AM_RAMBANK(1) /* 16k user ram */
+    AM_RANGE(0x7000, 0x77ff) AM_RAM AM_BASE_SIZE_GENERIC(videoram) /* (6847) */
+    AM_RANGE(0x7800, 0xb7ff) AM_RAMBANK("bank1") /* 16k user ram */
     AM_RANGE(0xb800, 0xf7ff) AM_NOP /* 16k ram expansion */
     AM_RANGE(0xf8ff, 0xffff) AM_NOP
 ADDRESS_MAP_END
@@ -1015,6 +1044,8 @@ static MACHINE_DRIVER_START( laser110 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("66K")
 	MDRV_RAM_EXTRA_OPTIONS("2K,18K,4098K")
+	
+	MDRV_FLOPPY_2_DRIVES_ADD(vtech1_floppy_config)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( laser200 )
@@ -1108,49 +1139,20 @@ ROM_END
 #define rom_vz300       rom_laser310
 #define rom_laser310h   rom_laser310
 
-
-/***************************************************************************
-    SYSTEM_CONFIG
-***************************************************************************/
-
-static void vtech1_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	switch (state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:				info->i = IO_FLOPPY; break;
-		case MESS_DEVINFO_INT_READABLE:			info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:		info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:		info->i = 1; break;
-		case MESS_DEVINFO_INT_COUNT:			info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:				info->load = DEVICE_IMAGE_LOAD_NAME(vtech1_floppy); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:	strcpy(info->s = device_temp_str(), "dsk"); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( vtech1 )
-    CONFIG_DEVICE(vtech1_floppy_getinfo)
-SYSTEM_CONFIG_END
-
-
 /***************************************************************************
     GAME DRIVERS
 ***************************************************************************/
 
-/*    YEAR  NAME       PARENT    COMPAT  MACHINE    INPUT   INIT     CONFIG  COMPANY                   FULLNAME                          FLAGS */
-COMP( 1983, laser110,  0,        0,      laser110,  vtech1, vtech1,  vtech1, "Video Technology",       "Laser 110",                      0 )
-COMP( 1983, las110de,  laser110, 0,      laser110,  vtech1, vtech1,  vtech1, "Sanyo",                  "Laser 110 (Germany)",            0 )
-COMP( 1983, laser200,  0,        0,      laser200,  vtech1, vtech1,  vtech1, "Video Technology",       "Laser 200",                      0 )
-COMP( 1983, vz200de,   laser200, 0,      laser200,  vtech1, vtech1,  vtech1, "Video Technology",       "VZ-200 (Germany & Netherlands)", 0 )
-COMP( 1983, fellow,    laser200, 0,      laser200,  vtech1, vtech1,  vtech1, "Salora",                 "Fellow (Finland)",               0 )
-COMP( 1983, tx8000,    laser200, 0,      laser200,  vtech1, vtech1,  vtech1, "Texet",                  "TX-8000 (UK)",                   0 )
-COMP( 1984, laser210,  0,        0,      laser210,  vtech1, vtech1,  vtech1, "Video Technology",       "Laser 210",                      0 )
-COMP( 1984, vz200,     laser210, 0,      laser210,  vtech1, vtech1,  vtech1, "Dick Smith Electronics", "VZ-200 (Oceania)",               0 )
-COMP( 1984, las210de,  laser210, 0,      laser210,  vtech1, vtech1,  vtech1, "Sanyo",                  "Laser 210 (Germany)",            0 )
-COMP( 1984, laser310,  0,        0,      laser310,  vtech1, vtech1,  vtech1, "Video Technology",       "Laser 310",                      0 )
-COMP( 1984, vz300,     laser310, 0,      laser310,  vtech1, vtech1,  vtech1, "Dick Smith Electronics", "VZ-300 (Oceania)",               0 )
-COMP( 1984, laser310h, laser310, 0,      laser310h, vtech1, vtech1h, vtech1, "Video Technology",       "Laser 310 (SHRG)",               GAME_COMPUTER_MODIFIED )
+/*    YEAR  NAME       PARENT    COMPAT  MACHINE    INPUT   INIT     COMPANY                   FULLNAME                          FLAGS */
+COMP( 1983, laser110,  0,        0,      laser110,  vtech1, vtech1,  "Video Technology",       "Laser 110",                      0 )
+COMP( 1983, las110de,  laser110, 0,      laser110,  vtech1, vtech1,  "Sanyo",                  "Laser 110 (Germany)",            0 )
+COMP( 1983, laser200,  0,        0,      laser200,  vtech1, vtech1,  "Video Technology",       "Laser 200",                      0 )
+COMP( 1983, vz200de,   laser200, 0,      laser200,  vtech1, vtech1,  "Video Technology",       "VZ-200 (Germany & Netherlands)", 0 )
+COMP( 1983, fellow,    laser200, 0,      laser200,  vtech1, vtech1,  "Salora",                 "Fellow (Finland)",               0 )
+COMP( 1983, tx8000,    laser200, 0,      laser200,  vtech1, vtech1,  "Texet",                  "TX-8000 (UK)",                   0 )
+COMP( 1984, laser210,  0,        0,      laser210,  vtech1, vtech1,  "Video Technology",       "Laser 210",                      0 )
+COMP( 1984, vz200,     laser210, 0,      laser210,  vtech1, vtech1,  "Dick Smith Electronics", "VZ-200 (Oceania)",               0 )
+COMP( 1984, las210de,  laser210, 0,      laser210,  vtech1, vtech1,  "Sanyo",                  "Laser 210 (Germany)",            0 )
+COMP( 1984, laser310,  0,        0,      laser310,  vtech1, vtech1,  "Video Technology",       "Laser 310",                      0 )
+COMP( 1984, vz300,     laser310, 0,      laser310,  vtech1, vtech1,  "Dick Smith Electronics", "VZ-300 (Oceania)",               0 )
+COMP( 1984, laser310h, laser310, 0,      laser310h, vtech1, vtech1h, "Video Technology",       "Laser 310 (SHRG)",               GAME_COMPUTER_MODIFIED )

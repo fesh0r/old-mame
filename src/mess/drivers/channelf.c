@@ -131,8 +131,8 @@ static WRITE8_HANDLER( channelf_port_0_w )
     if (data & 0x20)
 	{
 		offs = channelf_row_reg*128+channelf_col_reg;
-		if (videoram[offs] != channelf_val_reg)
-			videoram[offs] = channelf_val_reg;
+		if (space->machine->generic.videoram.u8[offs] != channelf_val_reg)
+			space->machine->generic.videoram.u8[offs] = channelf_val_reg;
 	}
 }
 
@@ -373,12 +373,12 @@ ROM_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY         FULLNAME        FLAGS */
-CONS( 1976, channelf,   0,       0,    channelf,  channelf,   0,      0,   "Fairchild",    "Channel F",                            0)
-CONS( 1977, sabavdpl,  channelf, 0,    sabavdpl,  channelf,   0,      0,   "SABA",         "SABA Videoplay",                       0)
-CONS( 197?, luxorves,  channelf, 0,    sabavdpl,  channelf,   0,      0,   "Luxor",        "Luxor Video Entertainment System",     0)
-CONS( 1978, channlf2,   0,       0,    channlf2,  channelf,   0,      0,   "Fairchild",    "Channel F II",                         0)
-CONS( 1978, sabavpl2,  channlf2, 0,    sabavpl2,  channelf,   0,      0,   "SABA",         "SABA Videoplay 2",                     0)
-CONS( 197?, luxorvec,  channlf2, 0,    sabavpl2,  channelf,   0,      0,   "Luxor",        "Luxor Video Entertainment Computer",   0)
-CONS( 197?, itttelma,  channlf2, 0,    sabavpl2,  channelf,   0,      0,   "ITT",          "ITT Tele-Match Processor",             0)
-CONS( 1978, ingtelma,  channlf2, 0,    sabavpl2,  channelf,   0,      0,   "Ingelen",      "Ingelen Tele-Match Processor",         0)
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT     INIT   COMPANY         FULLNAME        FLAGS */
+CONS( 1976, channelf,   0,       0,    channelf,  channelf,   0,      "Fairchild",    "Channel F",                            0)
+CONS( 1977, sabavdpl,  channelf, 0,    sabavdpl,  channelf,   0,      "SABA",         "SABA Videoplay",                       0)
+CONS( 197?, luxorves,  channelf, 0,    sabavdpl,  channelf,   0,      "Luxor",        "Luxor Video Entertainment System",     0)
+CONS( 1978, channlf2,   0,       0,    channlf2,  channelf,   0,      "Fairchild",    "Channel F II",                         0)
+CONS( 1978, sabavpl2,  channlf2, 0,    sabavpl2,  channelf,   0,      "SABA",         "SABA Videoplay 2",                     0)
+CONS( 197?, luxorvec,  channlf2, 0,    sabavpl2,  channelf,   0,      "Luxor",        "Luxor Video Entertainment Computer",   0)
+CONS( 197?, itttelma,  channlf2, 0,    sabavpl2,  channelf,   0,      "ITT",          "ITT Tele-Match Processor",             0)
+CONS( 1978, ingtelma,  channlf2, 0,    sabavpl2,  channelf,   0,      "Ingelen",      "Ingelen Tele-Match Processor",         0)

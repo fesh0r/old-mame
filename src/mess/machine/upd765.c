@@ -18,11 +18,11 @@
     - resolve "ready" state stuff (ready state when reset for PC, ready state change while processing command AND
     while idle)
 
-	Changes:
-	091006 (Mariusz Wojcieszek, changes needed by QX-10):
-	- allowed "Sense Interrupt Status" command when Seek is active
-	- DIO bit in status register (0x40) is cleared when "Read Data" command is executed,
-	  it is later set during result phase.
+    Changes:
+    091006 (Mariusz Wojcieszek, changes needed by QX-10):
+    - allowed "Sense Interrupt Status" command when Seek is active
+    - DIO bit in status register (0x40) is cleared when "Read Data" command is executed,
+      it is later set during result phase.
 
 ***************************************************************************/
 
@@ -50,8 +50,8 @@ typedef enum
 
 
 /* uncomment the following line for verbose information */
-#define LOG_VERBOSE		1
-#define LOG_COMMAND		1
+#define LOG_VERBOSE		0
+#define LOG_COMMAND		0
 #define LOG_EXTRA		0
 #define LOG_INTERRUPT	0
 
@@ -297,40 +297,24 @@ static void upd765_seek_complete(const device_config *device)
 
 	fdc->pcn[fdc->drive] = fdc->ncn;
 
+	fdc->upd765_status[0] = 0x20;
+
 	/* drive ready? */
 	if (img != NULL && floppy_drive_get_flag_state(img, FLOPPY_DRIVE_READY))
 	{
-		/* yes */
-
 		/* recalibrate? */
 		if (fdc->upd765_flags & UPD765_SEEK_OPERATION_IS_RECALIBRATE)
 		{
-			/* yes */
-
-			/* at track 0? */
-			if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_HEAD_AT_TRACK_0))
-			{
-				/* yes. Seek complete */
-				fdc->upd765_status[0] = 0x020;
-			}
-			else
-			{
+			/* not at track 0? */
+			if (floppy_tk00_r(img))
 				/* no, track 0 failed after 77 steps */
-				fdc->upd765_status[0] = 0x040 | 0x020 | 0x010;
-			}
-		}
-		else
-		{
-			/* no, seek */
-
-			/* seek complete */
-			fdc->upd765_status[0] = 0x020;
+				fdc->upd765_status[0] |= 0x40 | 0x10;
 		}
 	}
 	else
 	{
 		/* abnormal termination, not ready */
-		fdc->upd765_status[0] = 0x040 | 0x020 | 0x08;
+		fdc->upd765_status[0] |= 0x40 | 0x08;
 	}
 
 	/* set drive and side */
@@ -513,7 +497,7 @@ static void upd765_seek_setup(const device_config *device, int is_recalibrate)
 		fdc->ncn = 0;
 
 		/* if drive is already at track 0, or drive is not ready */
-		if (img == NULL || floppy_drive_get_flag_state(img, FLOPPY_DRIVE_HEAD_AT_TRACK_0) ||
+		if (img == NULL || floppy_tk00_r(img) == CLEAR_LINE ||
 			(!floppy_drive_get_flag_state(img, FLOPPY_DRIVE_READY))
 			)
 		{
@@ -721,7 +705,8 @@ static void upd765_set_ready_change_callback(const device_config *controller, co
 	upd765_t *fdc = get_safe_token(controller);
 	int drive = floppy_get_drive(img);
 
-	logerror("upd765: ready state change\n");
+	if (LOG_EXTRA)
+		logerror("upd765: ready state change\n");
 
 	/* drive that changed state */
 	fdc->upd765_status[0] = 0x0c0 | drive;
@@ -1060,7 +1045,7 @@ static void upd765_format_track(const device_config *device)
 	const device_config *img = current_image(device);
 
 	/* write protected? */
-	if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_DISK_WRITE_PROTECTED))
+	if (floppy_wpt_r(img) == CLEAR_LINE)
 	{
 		fdc->upd765_status[1] |= UPD765_ST1_NOT_WRITEABLE;
 
@@ -1186,7 +1171,7 @@ static void upd765_write_data(const device_config *device)
 	}
 
 	/* write protected? */
-	if (floppy_drive_get_flag_state(current_image(device), FLOPPY_DRIVE_DISK_WRITE_PROTECTED))
+	if (floppy_wpt_r(current_image(device)) == CLEAR_LINE)
 	{
 		fdc->upd765_status[1] |= UPD765_ST1_NOT_WRITEABLE;
 
@@ -1533,7 +1518,7 @@ static TIMER_CALLBACK(upd765_continue_command)
 
 				/* sector id == EOT */
 				if (upd765_sector_count_complete(device) || upd765_read_data_stop(device))
-			    {
+				{
 					upd765_read_complete(device);
 				}
 				else
@@ -1541,8 +1526,8 @@ static TIMER_CALLBACK(upd765_continue_command)
 					upd765_increment_sector(device);
 					upd765_read_data(device);
 				}
-				}
-				break;
+			}
+			break;
 
 			default:
 				break;
@@ -1758,7 +1743,7 @@ READ8_DEVICE_HANDLER(upd765_data_r)
 {
 	upd765_t *fdc = get_safe_token(device);
 
-//	if ((fdc->FDC_main & 0x0c0) == 0x0c0)
+//  if ((fdc->FDC_main & 0x0c0) == 0x0c0)
 	if ((fdc->FDC_main & 0x080) == 0x080)
 	{
 		if (
@@ -1892,19 +1877,12 @@ static void upd765_setup_command(const device_config *device)
 
 			if (img)
 			{
-				if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_DISK_WRITE_PROTECTED))
-				{
-					fdc->upd765_status[3] |= 0x40;
-				}
+				fdc->upd765_status[3] |= !floppy_tk00_r(img) << 4;
+				fdc->upd765_status[3] |= !floppy_wpt_r(img) << 6;
 
 				if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_READY))
 				{
 					fdc->upd765_status[3] |= 0x20;
-				}
-
-				if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_HEAD_AT_TRACK_0))
-				{
-					fdc->upd765_status[3] |= 0x10;
 				}
 			}
 

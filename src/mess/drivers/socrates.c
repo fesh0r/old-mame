@@ -106,13 +106,13 @@ UINT8 speech_load_settings_count; // number of times load settings has happened
 
 static void socrates_set_rom_bank( running_machine *machine )
 {
- memory_set_bankptr( machine, 1, memory_region(machine, "maincpu") + ( socrates.rom_bank * 0x4000 ));
+ memory_set_bankptr( machine, "bank1", memory_region(machine, "maincpu") + ( socrates.rom_bank * 0x4000 ));
 }
 
 static void socrates_set_ram_bank( running_machine *machine )
 {
- memory_set_bankptr( machine, 2, memory_region(machine, "vram") + ( (socrates.ram_bank&0x3) * 0x4000 )); // window 0
- memory_set_bankptr( machine, 3, memory_region(machine, "vram") + ( ((socrates.ram_bank&0xC)>>2) * 0x4000 )); // window 1
+ memory_set_bankptr( machine, "bank2", memory_region(machine, "vram") + ( (socrates.ram_bank&0x3) * 0x4000 )); // window 0
+ memory_set_bankptr( machine, "bank3", memory_region(machine, "vram") + ( ((socrates.ram_bank&0xC)>>2) * 0x4000 )); // window 1
 }
 
 static void socrates_update_kb( running_machine *machine )
@@ -465,8 +465,8 @@ static WRITE8_HANDLER( socrates_scroll_w )
 
 static rgb_t socrates_create_color(UINT8 color)
 {
-rgb_t composedcolor;
-double lumatable[256] = {
+  rgb_t composedcolor;
+  double lumatable[256] = {
     LUMA_COL_0
     LUMA_COL_COMMON
     LUMA_COL_2
@@ -484,7 +484,7 @@ double lumatable[256] = {
     LUMA_COL_COMMON
     LUMA_COL_F
   };
-double chromaintensity[256] = {
+  double chromaintensity[256] = {
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
     CHROMA_COL_COMMON
     CHROMA_COL_2
@@ -633,9 +633,9 @@ static WRITE8_HANDLER(socrates_sound_w)
 static ADDRESS_MAP_START(z80_mem, ADDRESS_SPACE_PROGRAM, 8)
     ADDRESS_MAP_UNMAP_HIGH
     AM_RANGE(0x0000, 0x3fff) AM_ROM /* system rom, bank 0 (fixed) */
-    AM_RANGE(0x4000, 0x7fff) AM_ROMBANK(1) /* banked rom space; system rom is banks 0 thru F, cartridge rom is banks 10 onward, usually banks 10 thru 17. area past the end of the cartridge, and the whole 10-ff area when no cartridge is inserted, reads as 0xF3 */
-    AM_RANGE(0x8000, 0xbfff) AM_RAMBANK(2) /* banked ram 'window' 0 */
-    AM_RANGE(0xc000, 0xffff) AM_RAMBANK(3) /* banked ram 'window' 1 */
+    AM_RANGE(0x4000, 0x7fff) AM_ROMBANK("bank1") /* banked rom space; system rom is banks 0 thru F, cartridge rom is banks 10 onward, usually banks 10 thru 17. area past the end of the cartridge, and the whole 10-ff area when no cartridge is inserted, reads as 0xF3 */
+    AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank2") /* banked ram 'window' 0 */
+    AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank3") /* banked ram 'window' 1 */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(z80_io, ADDRESS_SPACE_IO, 8)
@@ -1005,9 +1005,9 @@ ROM_END
  Drivers
 ******************************************************************************/
 
-/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT CONFIG      COMPANY                     FULLNAME                            FLAGS */
-COMP( 1988, socrates,   0,          0,      socrates,   socrates, socrates,   0,   "V-tech",        "Socrates Educational Video System", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // English NTSC
-COMP( 1988, socratfc,   socrates,   0,      socrates,   socrates, socrates,   0,   "V-tech",        "Socrates SAITOUT", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // French Canandian NTSC
+/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT       COMPANY                     FULLNAME                            FLAGS */
+COMP( 1988, socrates,   0,          0,      socrates,   socrates, socrates, "V-tech",        "Socrates Educational Video System", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // English NTSC
+COMP( 1988, socratfc,   socrates,   0,      socrates,   socrates, socrates, "V-tech",        "Socrates SAITOUT", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // French Canandian NTSC
 // Yeno Professor Weiss-Alles goes here (german PAL)
 // Yeno Professeur Saitout goes here (french SECAM)
 // ? goes here (spanish PAL)

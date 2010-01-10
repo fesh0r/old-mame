@@ -87,10 +87,11 @@ static WRITE8_HANDLER(printer_w)
 }
 static WRITE8_HANDLER(status_w)
 {
-/*  UINT8 mem_lamp = BIT(data,0);
-    UINT8 over_lamp = BIT(data,1);
-    UINT8 minus_lamp = BIT(data,2);
-*/
+#if 0
+	UINT8 mem_lamp = BIT(data,0);
+	UINT8 over_lamp = BIT(data,1);
+	UINT8 minus_lamp = BIT(data,2);
+#endif
 	//logerror("status %c %c %c\n",mem_lamp ? 'M':'x',over_lamp ? 'O':'x',minus_lamp ? '-':'x');
 }
 
@@ -189,13 +190,18 @@ static TIMER_CALLBACK(timer_callback)
 	i4004_set_test(cputag_get_cpu(machine, "maincpu"),timer);
 
 }
+
+static MACHINE_START(busicom)
+{
+	timer_pulse(machine, ATTOTIME_IN_MSEC(28*2), NULL, 0, timer_callback);
+}
+
 static MACHINE_RESET(busicom)
 {
 	int i,j;
 	drum_index =0;
 	keyboard_shifter = 0;
 	printer_shifter = 0;
-	timer_pulse(machine, ATTOTIME_IN_MSEC(28*2), NULL, 0, timer_callback);
 
 	for(i=0;i<17;i++) {
 		for(j=0;j<11;j++) {
@@ -216,6 +222,7 @@ static MACHINE_DRIVER_START( busicom )
     MDRV_CPU_IO_MAP(busicom_io)
 
     MDRV_MACHINE_RESET(busicom)
+	MDRV_MACHINE_START(busicom)
 
     /* video hardware */
     MDRV_SCREEN_ADD("screen", RASTER)
@@ -243,6 +250,6 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1974, busicom,  0,       0, 	busicom, 	busicom, 	 0,  	  0,    "Business Computer Corporation",   "Busicom 141-PF",		GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
+COMP( 1974, busicom,  0,       0, 	busicom, 	busicom, 	 0,  "Business Computer Corporation",   "Busicom 141-PF",		GAME_NOT_WORKING)
 

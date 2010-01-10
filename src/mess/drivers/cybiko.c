@@ -98,7 +98,7 @@ static ADDRESS_MAP_START( cybikov2_mem, ADDRESS_SPACE_PROGRAM, 16 )
 #if 0
 	AM_RANGE( 0x000000, 0x007fff ) AM_ROM
 #endif
-	AM_RANGE( 0x100000, 0x13ffff ) AM_READ( SMH_BANK(2) ) AM_MIRROR( 0x0c0000 )
+	AM_RANGE( 0x100000, 0x13ffff ) AM_READ_BANK("bank2") AM_MIRROR( 0x0c0000 )
 //  AM_RANGE( 0x200000, 0x23ffff ) AM_RAM AM_MIRROR( 0x1c0000 )
 	AM_RANGE( 0x600000, 0x600001 ) AM_READWRITE( cybiko_lcd_r, cybiko_lcd_w )
 	AM_RANGE( 0xe00000, 0xffdbff ) AM_READ( cybiko_key_r )
@@ -112,7 +112,7 @@ static ADDRESS_MAP_START( cybikoxt_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE( 0x100000, 0x100001 ) AM_READWRITE( cybiko_lcd_r, cybiko_lcd_w )
 	AM_RANGE( 0x200000, 0x200003 ) AM_WRITE( cybiko_unk1_w )
 //  AM_RANGE( 0x400000, 0x5fffff ) AM_RAM
-	AM_RANGE( 0x600000, 0x67ffff ) AM_READ( SMH_BANK(2) )
+	AM_RANGE( 0x600000, 0x67ffff ) AM_READ_BANK("bank2")
 	AM_RANGE( 0x7ff800, 0x7fffff ) AM_READ( cybiko_unk2_r )
 	AM_RANGE( 0xe00000, 0xffdbff ) AM_READ( cybiko_key_r )
 ADDRESS_MAP_END
@@ -263,7 +263,7 @@ static MACHINE_DRIVER_START( cybikov1 )
 	/* rtc */
 	MDRV_PCF8593_ADD("rtc")
 	MDRV_AT45DB041_ADD("flash1")
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("512K")
@@ -283,7 +283,7 @@ static MACHINE_DRIVER_START( cybikov2 )
 	// non-volatile ram
 //  MDRV_NVRAM_HANDLER(cybikov2)
 	MDRV_SST39VF020_ADD("flash2", 16, ENDIANNESS_BIG)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("256K")
@@ -307,7 +307,7 @@ static MACHINE_DRIVER_START( cybikoxt )
 //  MDRV_NVRAM_HANDLER(cybikoxt)
 	MDRV_DEVICE_REMOVE("flash1")
 	MDRV_SST39VF020_ADD("flash2", 16, ENDIANNESS_BIG)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("2M")
@@ -337,7 +337,7 @@ ROM_END
 // DRIVERS  //
 //////////////
 
-/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT        CONFIG      COMPANY         FULLNAME                FLAGS */
-COMP( 2000, cybikov1,   0,          0,      cybikov1,   cybiko, cybikov1,   0,   "Cybiko, Inc.", "Cybiko Classic (V1)",  GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
-COMP( 2000, cybikov2,   cybikov1,   0,      cybikov2,   cybiko, cybikov2,   0,   "Cybiko, Inc.", "Cybiko Classic (V2)",  GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
-COMP( 2001, cybikoxt,   cybikov1,   0,      cybikoxt,   cybiko, cybikoxt,   0,   "Cybiko, Inc.", "Cybiko Xtreme",        GAME_NO_SOUND | GAME_NOT_WORKING )
+/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT        COMPANY         FULLNAME                FLAGS */
+COMP( 2000, cybikov1,   0,          0,      cybikov1,   cybiko, cybikov1,   "Cybiko, Inc.", "Cybiko Classic (V1)",  GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
+COMP( 2000, cybikov2,   cybikov1,   0,      cybikov2,   cybiko, cybikov2,   "Cybiko, Inc.", "Cybiko Classic (V2)",  GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
+COMP( 2001, cybikoxt,   cybikov1,   0,      cybikoxt,   cybiko, cybikoxt,   "Cybiko, Inc.", "Cybiko Xtreme",        GAME_NO_SOUND | GAME_NOT_WORKING )

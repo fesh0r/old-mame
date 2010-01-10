@@ -33,17 +33,21 @@ static TIMER_CALLBACK( irisha_key )
 	irisha_keyboard_cnt = 0;
 }
 
+MACHINE_START( irisha )
+{
+	timer_pulse(machine, ATTOTIME_IN_MSEC(30), NULL, 0, irisha_key);
+}
 
 MACHINE_RESET( irisha )
 {
-	timer_pulse(machine, ATTOTIME_IN_MSEC(30), NULL, 0, irisha_key);
-  irisha_keypressed = 0;
+	irisha_keypressed = 0;
 }
 
 static const char *const keynames[] = {
 							"LINE0", "LINE1", "LINE2", "LINE3",
 							"LINE4", "LINE5", "LINE6", "LINE7",
-							"LINE8", "LINE9"};
+							"LINE8", "LINE9"
+};
 
 static READ8_DEVICE_HANDLER (irisha_8255_portb_r )
 {

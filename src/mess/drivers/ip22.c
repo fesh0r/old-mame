@@ -373,8 +373,10 @@ static READ32_HANDLER( hpc3_hd_enet_r )
 	switch( offset )
 	{
 	case 0x0004/4:
+		verboselog(machine, 0, "HPC3 SCSI0DESC Read: %08x (%08x): %08x\n", 0x1fb90000 + ( offset << 2), mem_mask, nHPC_SCSI0Descriptor );
 		return nHPC_SCSI0Descriptor;
 	case 0x1004/4:
+		verboselog(machine, 0, "HPC3 SCSI0DMACTRL Read: %08x (%08x): %08x\n", 0x1fb90000 + ( offset << 2), mem_mask, nHPC_SCSI0DMACtrl );
 		return nHPC_SCSI0DMACtrl;
 	case 0x4000/4:
 		verboselog(machine, 2, "HPC3 ENETR CBP Read: %08x (%08x): %08x\n", 0x1fb90000 + ( offset << 2), mem_mask, nHPC3_enetr_nbdp );
@@ -396,9 +398,11 @@ static WRITE32_HANDLER( hpc3_hd_enet_w )
 	switch( offset )
 	{
 	case 0x0004/4:
+		verboselog(machine, 2, "HPC3 SCSI0DESC Write: %08x\n", data );
 		nHPC_SCSI0Descriptor = data;
 		break;
 	case 0x1004/4:
+		verboselog(machine, 2, "HPC3 SCSI0DMACTRL Write: %08x\n", data );
 		nHPC_SCSI0DMACtrl = data;
 		break;
 	case 0x4000/4:
@@ -841,14 +845,14 @@ static WRITE32_HANDLER( rtc_w )
 static WRITE32_HANDLER( ip22_write_ram )
 {
 	// if banks 2 or 3 are enabled, do nothing, we don't support that much memory
-	if (mc_r(space, 0xc8/4, 0xffffffff) & 0x10001000)
+	if (sgi_mc_r(space, 0xc8/4, 0xffffffff) & 0x10001000)
 	{
 		// a random perturbation so the memory test fails
 		data ^= 0xffffffff;
 	}
 
 	// if banks 0 or 1 have 2 subbanks, also kill it, we only want 128 MB
-	if (mc_r(space, 0xc0/4, 0xffffffff) & 0x40004000)
+	if (sgi_mc_r(space, 0xc0/4, 0xffffffff) & 0x40004000)
 	{
 		// a random perturbation so the memory test fails
 		data ^= 0xffffffff;
@@ -1027,6 +1031,8 @@ static UINT32 nPBUS_DMA_WordsLeft;
 
 static TIMER_CALLBACK(ip22_dma)
 {
+	timer_set(machine, attotime_never, NULL, 0, ip22_dma);
+#if 0
 	if( nPBUS_DMA_Active )
 	{
 		UINT16 temp16 = ( ip22_mainram[(nPBUS_DMA_CurPtr - 0x08000000)/4] & 0xffff0000 ) >> 16;
@@ -1054,6 +1060,7 @@ static TIMER_CALLBACK(ip22_dma)
 		}
 		timer_set(machine, ATTOTIME_IN_HZ(44100), NULL, 0, ip22_dma);
 	}
+#endif
 }
 
 static READ32_HANDLER( hpc3_pbusdma_r )
@@ -1130,35 +1137,58 @@ static WRITE32_HANDLER( hpc3_pbusdma_w )
 	verboselog(machine, 0, "Unknown PBUS DMA Channel %d Write: 0x%08x: 0x%08x (%08x)\n", channel, 0x1fb80000 + offset*4, data, mem_mask );
 }
 
+static UINT32 *unkpbus0;
+static READ32_HANDLER( hpc3_unkpbus0_r )
+{
+	return 0;
+	//verboselog(space->machine, 0, "Unknown PBUS Read: 0x%08x (%08x)\n", 0x1fbc8000 + offset*4, mem_mask );
+	//return unkpbus0[offset];
+}
+
+static WRITE32_HANDLER( hpc3_unkpbus0_w )
+{
+	//verboselog(space->machine, 0, "Unknown PBUS Write: 0x%08x = 0x%08x (%08x)\n", 0x1fbc8000 + offset*4, data, mem_mask );
+	//COMBINE_DATA(&unkpbus0[offset]);
+}
+
 static ADDRESS_MAP_START( ip225015_map, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE( 0x00000000, 0x0007ffff ) AM_READWRITE( SMH_BANK(1), SMH_BANK(1) )	/* mirror of first 512k of main RAM */
-	AM_RANGE( 0x08000000, 0x0fffffff ) AM_SHARE(1) AM_BASE( &ip22_mainram ) AM_RAM_WRITE(ip22_write_ram)		/* 128 MB of main RAM */
+	AM_RANGE( 0x00000000, 0x0007ffff ) AM_RAMBANK( "bank1" )	/* mirror of first 512k of main RAM */
+	AM_RANGE( 0x08000000, 0x0fffffff ) AM_SHARE("share1") AM_BASE( &ip22_mainram ) AM_RAM_WRITE(ip22_write_ram)		/* 128 MB of main RAM */
 	AM_RANGE( 0x1f0f0000, 0x1f0f1fff ) AM_READWRITE( newport_rex3_r, newport_rex3_w )
-	AM_RANGE( 0x1fa00000, 0x1fa1ffff ) AM_READWRITE( mc_r, mc_w )
+	AM_RANGE( 0x1fa00000, 0x1fa1ffff ) AM_READWRITE( sgi_mc_r, sgi_mc_w )
 	AM_RANGE( 0x1fb90000, 0x1fb9ffff ) AM_READWRITE( hpc3_hd_enet_r, hpc3_hd_enet_w )
 	AM_RANGE( 0x1fbb0000, 0x1fbb0003 ) AM_RAM 	/* unknown, but read a lot and discarded */
 	AM_RANGE( 0x1fbc0000, 0x1fbc7fff ) AM_READWRITE( hpc3_hd0_r, hpc3_hd0_w )
+	AM_RANGE( 0x1fbc8000, 0x1fbcffff ) AM_READWRITE( hpc3_unkpbus0_r, hpc3_unkpbus0_w ) AM_BASE(&unkpbus0)
 	AM_RANGE( 0x1fb80000, 0x1fb8ffff ) AM_READWRITE( hpc3_pbusdma_r, hpc3_pbusdma_w )
 	AM_RANGE( 0x1fbd8000, 0x1fbd83ff ) AM_READWRITE( hal2_r, hal2_w )
+	AM_RANGE( 0x1fbd8400, 0x1fbd87ff ) AM_RAM /* hack */
 	AM_RANGE( 0x1fbd9000, 0x1fbd93ff ) AM_READWRITE( hpc3_pbus4_r, hpc3_pbus4_w )
 	AM_RANGE( 0x1fbd9800, 0x1fbd9bff ) AM_READWRITE( hpc3_pbus6_r, hpc3_pbus6_w )
+	AM_RANGE( 0x1fbdc000, 0x1fbdc7ff ) AM_RAM
+	AM_RANGE( 0x1fbdd000, 0x1fbdd3ff ) AM_RAM
 	AM_RANGE( 0x1fbe0000, 0x1fbe04ff ) AM_READWRITE( rtc_r, rtc_w )
 	AM_RANGE( 0x1fc00000, 0x1fc7ffff ) AM_ROM AM_REGION( "user1", 0 )
-	AM_RANGE( 0x20000000, 0x27ffffff ) AM_SHARE(1) AM_RAM_WRITE(ip22_write_ram)
+	AM_RANGE( 0x20000000, 0x27ffffff ) AM_SHARE("share1") AM_RAM_WRITE(ip22_write_ram)
 ADDRESS_MAP_END
 
 static UINT32 nIntCounter;
 
-// mc_update wants once every millisecond (1/1000th of a second)
+// sgi_mc_update wants once every millisecond (1/1000th of a second)
 static TIMER_CALLBACK(ip22_timer)
 {
-	mc_update();
+	sgi_mc_update();
 	timer_set(machine, ATTOTIME_IN_MSEC(1), NULL, 0, ip22_timer);
+}
+
+static MACHINE_START( ip225015 )
+{
+	sgi_mc_timer_init(machine);
 }
 
 static MACHINE_RESET( ip225015 )
 {
-	mc_init(machine);
+	sgi_mc_init(machine);
 	nHPC3_enetr_nbdp = 0x80000000;
 	nHPC3_enetr_cbp = 0x80000000;
 	nIntCounter = 0;
@@ -1168,15 +1198,17 @@ static MACHINE_RESET( ip225015 )
 	timer_set(machine, ATTOTIME_IN_MSEC(1), NULL, 0, ip22_timer);
 
 	// set up low RAM mirror
-	memory_set_bankptr(machine, 1, ip22_mainram);
+	memory_set_bankptr(machine, "bank1", ip22_mainram);
 
 	nPBUS_DMA_Active = 0;
+
+	mips3drc_set_options(cputag_get_cpu(machine, "maincpu"), MIPS3DRC_COMPATIBLE_OPTIONS | MIPS3DRC_CHECK_OVERFLOWS);
 }
 
 static void dump_chain(const address_space *space, UINT32 ch_base)
 {
 
-//  mame_printf_info("node: %08x %08x %08x (len = %x)\n", memory_read_dword(space, ch_base), memory_read_dword(space, ch_base+4), memory_read_dword(space, ch_base+8), memory_read_dword(space, ch_base+4) & 0x3fff);
+	printf("node: %08x %08x %08x (len = %x)\n", memory_read_dword(space, ch_base), memory_read_dword(space, ch_base+4), memory_read_dword(space, ch_base+8), memory_read_dword(space, ch_base+4) & 0x3fff);
 
 	if ((memory_read_dword(space, ch_base+8) != 0) && !(memory_read_dword(space, ch_base+4) & 0x80000000))
 	{
@@ -1200,6 +1232,7 @@ static void scsi_irq(running_machine *machine, int state)
 	{
 		if (wd33c93_get_dma_count())
 		{
+			printf("wd33c93_get_dma_count() is %d\n", wd33c93_get_dma_count() );
 			if (nHPC_SCSI0DMACtrl & HPC3_DMACTRL_ENABLE)
 			{
 				if (nHPC_SCSI0DMACtrl & HPC3_DMACTRL_IRQ) logerror("IP22: Unhandled SCSI DMA IRQ\n");
@@ -1208,20 +1241,107 @@ static void scsi_irq(running_machine *machine, int state)
 			// HPC3 DMA: host to device
 			if ((nHPC_SCSI0DMACtrl & HPC3_DMACTRL_ENABLE) && (nHPC_SCSI0DMACtrl & HPC3_DMACTRL_DIR))
 			{
-				UINT32 rptr, dptr, tmpword;
-				int length;
+				UINT32 wptr, tmpword;
+				int words, dptr, twords;
 
-				rptr = memory_read_dword(space, nHPC_SCSI0Descriptor);
-				length = memory_read_dword(space, nHPC_SCSI0Descriptor + 4) & 0x3fff;
+				words = wd33c93_get_dma_count();
+				words /= 4;
 
-/*              mame_printf_info("DMA to device: length %x\n", length);
-                mame_printf_info("first words: %08x %08x %08x %08x\n",
-                    memory_read_dword(space, rptr),
-                    memory_read_dword(space, rptr+4),
-                    memory_read_dword(space, rptr+8),
-                    memory_read_dword(space, rptr+12));*/
+				wptr = memory_read_dword(space, nHPC_SCSI0Descriptor);
+				nHPC_SCSI0Descriptor += words*4;
+				dptr = 0;
 
-				if (length <= 4096)
+				printf("DMA to device: %d words @ %x\n", words, wptr);
+
+				dump_chain(space, nHPC_SCSI0Descriptor);
+
+				if (words <= (512/4))
+				{
+					// one-shot
+					//wd33c93_get_dma_data(wd33c93_get_dma_count(), dma_buffer);
+
+					while (words)
+					{
+						tmpword = memory_read_dword(space, wptr);
+
+						if (nHPC_SCSI0DMACtrl & HPC3_DMACTRL_ENDIAN)
+						{
+							dma_buffer[dptr+3] = (tmpword>>24)&0xff;
+							dma_buffer[dptr+2] = (tmpword>>16)&0xff;
+							dma_buffer[dptr+1] = (tmpword>>8)&0xff;
+							dma_buffer[dptr] = tmpword&0xff;
+						}
+						else
+						{
+							dma_buffer[dptr] = (tmpword>>24)&0xff;
+							dma_buffer[dptr+1] = (tmpword>>16)&0xff;
+							dma_buffer[dptr+2] = (tmpword>>8)&0xff;
+							dma_buffer[dptr+3] = tmpword&0xff;
+						}
+
+						wptr += 4;
+						dptr += 4;
+						words--;
+					}
+
+					words = wd33c93_get_dma_count();
+					wd33c93_write_data(words, dma_buffer);
+				}
+				else
+				{
+					while (words)
+					{
+						//wd33c93_get_dma_data(512, dma_buffer);
+						twords = 512/4;
+						nHPC_SCSI0Descriptor += 512;
+						dptr = 0;
+
+						while (twords)
+						{
+							tmpword = memory_read_dword(space, wptr);
+
+							if (nHPC_SCSI0DMACtrl & HPC3_DMACTRL_ENDIAN)
+							{
+								dma_buffer[dptr+3] = (tmpword>>24)&0xff;
+								dma_buffer[dptr+2] = (tmpword>>16)&0xff;
+								dma_buffer[dptr+1] = (tmpword>>8)&0xff;
+								dma_buffer[dptr] = tmpword&0xff;
+							}
+							else
+							{
+								dma_buffer[dptr] = (tmpword>>24)&0xff;
+								dma_buffer[dptr+1] = (tmpword>>16)&0xff;
+								dma_buffer[dptr+2] = (tmpword>>8)&0xff;
+								dma_buffer[dptr+3] = tmpword&0xff;
+							}
+
+							wptr += 4;
+							dptr += 4;
+							twords--;
+						}
+
+						wd33c93_write_data(512, dma_buffer);
+
+						words -= (512/4);
+					}
+				}
+
+				// clear DMA on the controller too
+				wd33c93_clear_dma();
+#if 0
+				UINT32 dptr, tmpword;
+				UINT32 bc = memory_read_dword(space, nHPC_SCSI0Descriptor + 4);
+				UINT32 rptr = memory_read_dword(space, nHPC_SCSI0Descriptor);
+				int length = bc & 0x3fff;
+				int xie = (bc & 0x20000000) ? 1 : 0;
+				int eox = (bc & 0x80000000) ? 1 : 0;
+
+				dump_chain(space, nHPC_SCSI0Descriptor);
+
+				printf("PC is %08x\n", cpu_get_pc(cputag_get_cpu(machine, "maincpu")));
+				printf("DMA to device: length %x xie %d eox %d\n", length, xie, eox);
+
+				if (length <= 0x4000)
 				{
 					dptr = 0;
 					while (length > 0)
@@ -1257,6 +1377,7 @@ static void scsi_irq(running_machine *machine, int state)
 				{
 					logerror("IP22: overly large host to device transfer, can't handle!\n");
 				}
+#endif
 			}
 
 			// HPC3 DMA: device to host
@@ -1345,9 +1466,11 @@ static void scsi_irq(running_machine *machine, int state)
 
 static const SCSIConfigTable dev_table =
 {
-        1,                                      /* 1 SCSI device */
-        { { SCSI_ID_4, "cdrom", SCSI_DEVICE_CDROM } }  /* SCSI ID 4, using CD 0, and it's a CD-ROM */
-//    { SCSI_ID_2, "cdrom", SCSI_DEVICE_CDROM } } /* SCSI ID 2, using HD 0, and it's a CD-ROM */
+	2,                                      /* 1 SCSI device */
+	{
+		{ SCSI_ID_1, "harddisk1", SCSI_DEVICE_HARDDISK },
+		{ SCSI_ID_4, "cdrom", SCSI_DEVICE_CDROM }  /* SCSI ID 4, using CD 0, and it's a CD-ROM */
+	}
 };
 
 static const struct WD33C93interface scsi_intf =
@@ -1501,6 +1624,7 @@ static MACHINE_DRIVER_START( ip225015 )
 	MDRV_CPU_PROGRAM_MAP( ip225015_map)
 	MDRV_CPU_VBLANK_INT("screen", ip22_vbl)
 
+	MDRV_MACHINE_START( ip225015 )
 	MDRV_MACHINE_RESET( ip225015 )
 	MDRV_NVRAM_HANDLER( ip22 )
 
@@ -1532,6 +1656,7 @@ static MACHINE_DRIVER_START( ip225015 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 	MDRV_CDROM_ADD( "cdrom" )
+	MDRV_HARDDISK_ADD( "harddisk1" )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ip224613 )
@@ -1559,7 +1684,7 @@ ROM_START( ip244415 )
 	ROM_LOAD( "ip244415.bin", 0x000000, 0x080000, CRC(2f37825a) SHA1(0d48c573b53a307478820b85aacb57b868297ca3) )
 ROM_END
 
-/*     YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      CONFIG    COMPANY   FULLNAME */
-COMP( 1993, ip225015, 0,        0,        ip225015, ip225015, ip225015, 0, "Silicon Graphics, Inc", "Indy (R5000, 150MHz)", GAME_NOT_WORKING )
-COMP( 1993, ip224613, 0,        0,        ip224613, ip225015, ip225015, 0, "Silicon Graphics, Inc", "Indy (R4600, 133MHz)", GAME_NOT_WORKING )
-COMP( 1994, ip244415, 0,        0,        ip244415, ip225015, ip225015, 0, "Silicon Graphics, Inc", "Indigo2 (R4400, 150MHz)", GAME_NOT_WORKING )
+/*     YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT     COMPANY   FULLNAME */
+COMP( 1993, ip225015, 0,        0,        ip225015, ip225015, ip225015, "Silicon Graphics, Inc", "Indy (R5000, 150MHz)", GAME_NOT_WORKING )
+COMP( 1993, ip224613, 0,        0,        ip224613, ip225015, ip225015, "Silicon Graphics, Inc", "Indy (R4600, 133MHz)", GAME_NOT_WORKING )
+COMP( 1994, ip244415, 0,        0,        ip244415, ip225015, ip225015, "Silicon Graphics, Inc", "Indigo2 (R4400, 150MHz)", GAME_NOT_WORKING )

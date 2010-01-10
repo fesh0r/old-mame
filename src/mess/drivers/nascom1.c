@@ -74,7 +74,7 @@ Nascom Memory map
 
 static ADDRESS_MAP_START( nascom1_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
-	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_BASE_SIZE_GENERIC(videoram)
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM
 	AM_RANGE(0x1000, 0x13ff) AM_RAM	/* 1Kb */
 	AM_RANGE(0x1400, 0x4fff) AM_RAM	/* 16Kb */
@@ -304,11 +304,11 @@ static MACHINE_DRIVER_START( nascom1 )
 	MDRV_SNAPSHOT_ADD("snapshot", nascom1, "nas", 0.5)
 
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("40K")
-	MDRV_RAM_EXTRA_OPTIONS("1K,16K,32K")	
+	MDRV_RAM_EXTRA_OPTIONS("1K,16K,32K")
 MACHINE_DRIVER_END
 
 static FLOPPY_OPTIONS_START(nascom2)
@@ -427,6 +427,6 @@ ROM_END
  *
  *************************************/
 
-/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY                     FULLNAME        FLAGS */
-COMP( 1978, nascom1,    0,          0,      nascom1,    nascom1,    nascom1,    0,    "Nascom Microcomputers",    "Nascom 1",     0 )
-COMP( 1979, nascom2,    nascom1,    0,      nascom2,    nascom2,    nascom1,    0,    "Nascom Microcomputers",    "Nascom 2",     0 )
+/*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT       COMPANY                     FULLNAME        FLAGS */
+COMP( 1978, nascom1,    0,          0,      nascom1,    nascom1,    nascom1,   "Nascom Microcomputers",    "Nascom 1",     0 )
+COMP( 1979, nascom2,    nascom1,    0,      nascom2,    nascom2,    nascom1,   "Nascom Microcomputers",    "Nascom 2",     0 )

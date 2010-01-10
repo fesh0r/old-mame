@@ -53,33 +53,33 @@ static WRITE8_HANDLER(mekd2_kbd_w)
 	case 2:
 		if( data & 0x20 )
 		{
-			videoram[0*2+0] = ~pia[0];
-			videoram[0*2+1] = 14;
+			space->machine->generic.videoram.u8[0*2+0] = ~pia[0];
+			space->machine->generic.videoram.u8[0*2+1] = 14;
 		}
 		if( data & 0x10 )
 		{
-			videoram[1*2+0] = ~pia[0];
-			videoram[1*2+1] = 14;
+			space->machine->generic.videoram.u8[1*2+0] = ~pia[0];
+			space->machine->generic.videoram.u8[1*2+1] = 14;
 		}
 		if( data & 0x08 )
 		{
-			videoram[2*2+0] = ~pia[0];
-			videoram[2*2+1] = 14;
+			space->machine->generic.videoram.u8[2*2+0] = ~pia[0];
+			space->machine->generic.videoram.u8[2*2+1] = 14;
 		}
 		if( data & 0x04 )
 		{
-			videoram[3*2+0] = ~pia[0];
-			videoram[3*2+1] = 14;
+			space->machine->generic.videoram.u8[3*2+0] = ~pia[0];
+			space->machine->generic.videoram.u8[3*2+1] = 14;
 		}
 		if( data & 0x02 )
 		{
-			videoram[4*2+0] = ~pia[0];
-			videoram[4*2+1] = 14;
+			space->machine->generic.videoram.u8[4*2+0] = ~pia[0];
+			space->machine->generic.videoram.u8[4*2+1] = 14;
 		}
 		if( data & 0x01 )
 		{
-			videoram[5*2+0] = ~pia[0];
-			videoram[5*2+1] = 14;
+			space->machine->generic.videoram.u8[5*2+0] = ~pia[0];
+			space->machine->generic.videoram.u8[5*2+1] = 14;
 		}
 		break;
 	}
@@ -244,5 +244,5 @@ ROM_END
 
 ***************************************************************************/
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE   INPUT     INIT    CONFIG  COMPANY     FULLNAME */
-CONS( 1977, mekd2,	0,		0,		mekd2,	  mekd2,	mekd2,	0,		"Motorola",	"MEK6800D2" , GAME_NOT_WORKING )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE   INPUT     INIT    COMPANY     FULLNAME */
+CONS( 1977, mekd2,	0,		0,		mekd2,	  mekd2,	mekd2,	"Motorola",	"MEK6800D2" , GAME_NOT_WORKING )

@@ -20,12 +20,12 @@ static const UINT8 *FNT;
 
 static READ8_HANDLER( bcs3_videoram_r )
 {
-	return videoram[offset];
+	return space->machine->generic.videoram.u8[offset];
 }
 
 static WRITE8_HANDLER( bcs3_videoram_w )
 {
-	videoram[offset] = data;
+	space->machine->generic.videoram.u8[offset] = data;
 }
 
 static READ8_HANDLER( bcs3_keyboard_r )
@@ -60,7 +60,7 @@ static ADDRESS_MAP_START(bcs3_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x1000, 0x11ff ) AM_READ_PORT("LINE9")
 	AM_RANGE( 0x1200, 0x13ff ) AM_READ(bcs3_keyboard_r)
 	AM_RANGE( 0x3c00, 0xffff ) AM_RAM
-	AM_RANGE( 0x3c50, 0x3d9f ) AM_READWRITE(bcs3_videoram_r,bcs3_videoram_w) AM_SIZE(&videoram_size) AM_BASE(&videoram)
+	AM_RANGE( 0x3c50, 0x3d9f ) AM_READWRITE(bcs3_videoram_r,bcs3_videoram_w) AM_BASE_SIZE_GENERIC(videoram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(bcs3a_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -69,7 +69,7 @@ static ADDRESS_MAP_START(bcs3a_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x1000, 0x11ff ) AM_READ_PORT("LINE9")
 	AM_RANGE( 0x1200, 0x13ff ) AM_READ(bcs3_keyboard_r)
 	AM_RANGE( 0x3c00, 0xefff ) AM_RAM
-	AM_RANGE( 0x3c00, 0x5a7f ) AM_READWRITE(bcs3_videoram_r,bcs3_videoram_w) AM_SIZE(&videoram_size) AM_BASE(&videoram)
+	AM_RANGE( 0x3c00, 0x5a7f ) AM_READWRITE(bcs3_videoram_r,bcs3_videoram_w) AM_BASE_SIZE_GENERIC(videoram)
 	AM_RANGE( 0xf000, 0xf3ff ) AM_ROM
 ADDRESS_MAP_END
 
@@ -79,7 +79,7 @@ static ADDRESS_MAP_START(bcs3b_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x1000, 0x11ff ) AM_READ_PORT("LINE9")
 	AM_RANGE( 0x1200, 0x13ff ) AM_READ(bcs3_keyboard_r)
 	AM_RANGE( 0x3c00, 0xefff ) AM_RAM
-	AM_RANGE( 0x3c00, 0x657f ) AM_READWRITE(bcs3_videoram_r,bcs3_videoram_w) AM_SIZE(&videoram_size) AM_BASE(&videoram)
+	AM_RANGE( 0x3c00, 0x657f ) AM_READWRITE(bcs3_videoram_r,bcs3_videoram_w) AM_BASE_SIZE_GENERIC(videoram)
 	AM_RANGE( 0xf000, 0xf3ff ) AM_ROM
 ADDRESS_MAP_END
 
@@ -89,7 +89,7 @@ static ADDRESS_MAP_START(bcs3c_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x1000, 0x11ff ) AM_READ_PORT("LINE9")
 	AM_RANGE( 0x1200, 0x13ff ) AM_READ(bcs3_keyboard_r)
 	AM_RANGE( 0x3c00, 0xffff ) AM_RAM
-	AM_RANGE( 0x3c00, 0x5ab3 ) AM_READWRITE(bcs3_videoram_r,bcs3_videoram_w) AM_SIZE(&videoram_size) AM_BASE(&videoram)
+	AM_RANGE( 0x3c00, 0x5ab3 ) AM_READWRITE(bcs3_videoram_r,bcs3_videoram_w) AM_BASE_SIZE_GENERIC(videoram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( bcs3_io, ADDRESS_SPACE_IO, 8)
@@ -227,7 +227,7 @@ static VIDEO_UPDATE( bcs3 )
 			{
 				if (ra < 8)
 				{
-					chr = videoram[x] & 0x7f;
+					chr = screen->machine->generic.videoram.u8[x] & 0x7f;
 
 					/* get pattern of pixels for that character scanline */
 					gfx = FNT[(chr<<3) | rat ];
@@ -257,7 +257,7 @@ static VIDEO_UPDATE( bcs3a )
 {
 	UINT8 y,ra,chr,gfx,rat;
 	UINT16 sy=0,ma=128,x;
-	UINT16 cursor = (videoram[0x7a] | (videoram[0x7b] << 8)) - 0x3c80;	// get cursor relative position
+	UINT16 cursor = (screen->machine->generic.videoram.u8[0x7a] | (screen->machine->generic.videoram.u8[0x7b] << 8)) - 0x3c80;	// get cursor relative position
 	rat = cursor / 30;
 	if (rat > 11) ma = (rat-11) * 30 + 128;
 
@@ -272,7 +272,7 @@ static VIDEO_UPDATE( bcs3a )
 			{
 				if (ra < 8)
 				{
-					chr = videoram[x] & 0x7f;
+					chr = screen->machine->generic.videoram.u8[x] & 0x7f;
 
 					/* get pattern of pixels for that character scanline */
 					gfx = FNT[(chr<<3) | rat ];
@@ -300,7 +300,7 @@ static VIDEO_UPDATE( bcs3b )
 {
 	UINT8 y,ra,chr,gfx,rat;
 	UINT16 sy=0,ma=128,x;
-	UINT16 cursor = (videoram[0x7a] | (videoram[0x7b] << 8)) - 0x3c80;	// get cursor relative position
+	UINT16 cursor = (screen->machine->generic.videoram.u8[0x7a] | (screen->machine->generic.videoram.u8[0x7b] << 8)) - 0x3c80;	// get cursor relative position
 	rat = cursor / 41;
 	if (rat > 23) ma = (rat-23) * 41 + 128;
 
@@ -315,7 +315,7 @@ static VIDEO_UPDATE( bcs3b )
 			{
 				if (ra < 8)
 				{
-					chr = videoram[x] & 0x7f;
+					chr = screen->machine->generic.videoram.u8[x] & 0x7f;
 
 					/* get pattern of pixels for that character scanline */
 					gfx = FNT[(chr<<3) | rat ];
@@ -343,7 +343,7 @@ static VIDEO_UPDATE( bcs3c )
 {
 	UINT8 y,ra,chr,gfx,rat;
 	UINT16 sy=0,ma=0xb4,x;
-	UINT16 cursor = (videoram[0x08] | (videoram[0x09] << 8)) - 0x3c80;	// get cursor relative position
+	UINT16 cursor = (screen->machine->generic.videoram.u8[0x08] | (screen->machine->generic.videoram.u8[0x09] << 8)) - 0x3c80;	// get cursor relative position
 	rat = cursor / 30;
 	if (rat > 11) ma = (rat-11) * 30 + 0xb4;
 
@@ -358,7 +358,7 @@ static VIDEO_UPDATE( bcs3c )
 			{
 				if (ra < 8)
 				{
-					chr = videoram[x] & 0x7f;
+					chr = screen->machine->generic.videoram.u8[x] & 0x7f;
 
 					/* get pattern of pixels for that character scanline */
 					gfx = FNT[(chr<<3) | rat ];
@@ -382,6 +382,25 @@ static VIDEO_UPDATE( bcs3c )
 	return 0;
 }
 
+/* F4 Character Displayer */
+static const gfx_layout bcs3_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	128,					/* 128 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 0*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static GFXDECODE_START( bcs3 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, bcs3_charlayout, 0, 1 )
+GFXDECODE_END
+
+
 static MACHINE_DRIVER_START( bcs3 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",Z80, XTAL_5MHz /2)
@@ -397,6 +416,7 @@ static MACHINE_DRIVER_START( bcs3 )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(28*8, 12*10)
 	MDRV_SCREEN_VISIBLE_AREA(0,28*8-1,0,12*10-1)
+	MDRV_GFXDECODE(bcs3)
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(black_and_white)
 
@@ -477,8 +497,8 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1984, bcs3,   0,       0,      bcs3, 	bcs3, 	 0,  	  0,  "Eckhard Schiller",   "BCS 3 rev 2.4", GAME_NOT_WORKING)
-COMP( 1986, bcs3a,  bcs3,    0,      bcs3a, 	bcs3, 	 0,  	  0,  "Eckhard Schiller",   "BCS 3 rev 3.1 29-column", GAME_NOT_WORKING)
-COMP( 1986, bcs3b,  bcs3,    0,      bcs3b, 	bcs3, 	 0,  	  0,  "Eckhard Schiller",   "BCS 3 rev 3.1 40-column", GAME_NOT_WORKING)
-COMP( 198?, bcs3c,  bcs3,    0,      bcs3c, 	bcs3, 	 0,  	  0,  "Eckhard Schiller",   "BCS 3 rev 3.3", GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
+COMP( 1984, bcs3,   0,       0,      bcs3, 	bcs3, 	 0,  	 "Eckhard Schiller",   "BCS 3 rev 2.4", GAME_NOT_WORKING)
+COMP( 1986, bcs3a,  bcs3,    0,      bcs3a, 	bcs3, 	 0,  	 "Eckhard Schiller",   "BCS 3 rev 3.1 29-column", GAME_NOT_WORKING)
+COMP( 1986, bcs3b,  bcs3,    0,      bcs3b, 	bcs3, 	 0,  	 "Eckhard Schiller",   "BCS 3 rev 3.1 40-column", GAME_NOT_WORKING)
+COMP( 198?, bcs3c,  bcs3,    0,      bcs3c, 	bcs3, 	 0,  	 "Eckhard Schiller",   "BCS 3 rev 3.3", GAME_NOT_WORKING)

@@ -14,6 +14,8 @@
 #include "devices/cassette.h"
 #include "machine/rescap.h"
 #include "devices/messram.h"
+#include "newbrain.lh"
+
 /*
 
     NewBrain
@@ -47,7 +49,6 @@
     - bitmapped graphics mode
     - COP420 microbus access
     - escape key is missing
-    - layout for the 16-segment displays
     - CP/M 2.2 ROMs
     - floppy disc controller
     - convert FDC into a device
@@ -72,13 +73,14 @@ static void check_interrupt(running_machine *machine)
 /* Bank Switching */
 
 #define memory_install_unmapped(program, bank, bank_start, bank_end) \
-	memory_install_readwrite8_handler(program, bank_start, bank_end, 0, 0, SMH_UNMAP, SMH_UNMAP);
+	memory_unmap_readwrite(program, bank_start, bank_end, 0, 0);
 
-#define memory_install_rom(program, bank, bank_start, bank_end) \
-	memory_install_readwrite8_handler(program, bank_start, bank_end, 0, 0, SMH_BANK((FPTR)bank), SMH_UNMAP);
+#define memory_install_rom_helper(program, bank, bank_start, bank_end) \
+	memory_install_read_bank(program, bank_start, bank_end, 0, 0, bank); \
+	memory_unmap_write(program, bank_start, bank_end, 0, 0);
 
-#define memory_install_ram(program, bank, bank_start, bank_end) \
-	memory_install_readwrite8_handler(program, bank_start, bank_end, 0, 0, SMH_BANK((FPTR)bank), SMH_BANK((FPTR)bank));
+#define memory_install_ram_helper(program, bank, bank_start, bank_end) \
+	memory_install_readwrite_bank(program, bank_start, bank_end, 0, 0, bank);
 
 static void newbrain_eim_bankswitch(running_machine *machine)
 {
@@ -97,19 +99,20 @@ static void newbrain_eim_bankswitch(running_machine *machine)
 		UINT16 eim_bank_start = eim_bank * 0x2000;
 		UINT16 bank_start = (bank - 1) * 0x2000;
 		UINT16 bank_end = bank_start + 0x1fff;
-
+		char bank_name[10];
+		sprintf(bank_name,"bank%d",bank);
 		switch (ch)
 		{
 		case 0:
 			/* ROM */
-			memory_install_rom(program, bank, bank_start, bank_end);
-			memory_configure_bank(machine, bank, 0, 1, memory_region(machine, "eim") + eim_bank_start, 0);
+			memory_install_rom_helper(program, bank_name, bank_start, bank_end);
+			memory_configure_bank(machine, bank_name, 0, 1, memory_region(machine, "eim") + eim_bank_start, 0);
 			break;
 
 		case 2:
 			/* RAM */
-			memory_install_ram(program, bank, bank_start, bank_end);
-			memory_configure_bank(machine, bank, 0, 1, state->eim_ram + eim_bank_start, 0);
+			memory_install_ram_helper(program, bank_name, bank_start, bank_end);
+			memory_configure_bank(machine, bank_name, 0, 1, state->eim_ram + eim_bank_start, 0);
 			break;
 
 		default:
@@ -137,21 +140,23 @@ static void newbrain_a_bankswitch(running_machine *machine)
 	{
 		UINT16 bank_start = (bank - 1) * 0x2000;
 		UINT16 bank_end = bank_start + 0x1fff;
+		char bank_name[10];
+		sprintf(bank_name,"bank%d",bank);
 
 		if (state->pwrup)
 		{
 			/* all banks point to ROM at 0xe000 */
-			memory_install_rom(program, bank, bank_start, bank_end);
-			memory_configure_bank(machine, bank, 0, 1, memory_region(machine, Z80_TAG) + 0xe000, 0);
+			memory_install_rom_helper(program, bank_name, bank_start, bank_end);
+			memory_configure_bank(machine, bank_name, 0, 1, memory_region(machine, Z80_TAG) + 0xe000, 0);
 		}
 		else
 		{
-			memory_configure_bank(machine, bank, 0, 1, memory_region(machine, Z80_TAG) + bank_start, 0);
+			memory_configure_bank(machine, bank_name, 0, 1, memory_region(machine, Z80_TAG) + bank_start, 0);
 
 			if (bank < 5)
 			{
 				/* bank is RAM */
-				memory_install_ram(program, bank, bank_start, bank_end);
+				memory_install_ram_helper(program, bank_name, bank_start, bank_end);
 			}
 			else if (bank == 5)
 			{
@@ -159,8 +164,8 @@ static void newbrain_a_bankswitch(running_machine *machine)
 				if (memory_region(machine, "eim"))
 				{
 					/* expansion interface ROM */
-					memory_install_rom(program, bank, bank_start, bank_end);
-					memory_configure_bank(machine, bank, 0, 1, memory_region(machine, "eim") + 0x4000, 0);
+					memory_install_rom_helper(program, bank_name, bank_start, bank_end);
+					memory_configure_bank(machine, bank_name, 0, 1, memory_region(machine, "eim") + 0x4000, 0);
 				}
 				else
 				{
@@ -168,15 +173,15 @@ static void newbrain_a_bankswitch(running_machine *machine)
 					if (memory_region(machine, Z80_TAG)[0xa001] == 0)
 					{
 						/* unmapped on the M model */
-						memory_install_unmapped(program, bank, bank_start, bank_end);
+						memory_install_unmapped(program, bank_name, bank_start, bank_end);
 					}
 					else
 					{
 						/* bank is ROM on the A model */
-						memory_install_rom(program, bank, bank_start, bank_end);
+						memory_install_rom_helper(program, bank_name, bank_start, bank_end);
 					}
 
-					memory_configure_bank(machine, bank, 0, 1, memory_region(machine, Z80_TAG) + 0xa000, 0);
+					memory_configure_bank(machine, bank_name, 0, 1, memory_region(machine, Z80_TAG) + 0xa000, 0);
 				}
 			}
 			else if (bank == 6)
@@ -185,22 +190,22 @@ static void newbrain_a_bankswitch(running_machine *machine)
 				if (memory_region(machine, Z80_TAG)[0xa001] == 0)
 				{
 					/* unmapped on the M model */
-					memory_install_unmapped(program, bank, bank_start, bank_end);
+					memory_install_unmapped(program, bank_name, bank_start, bank_end);
 				}
 				else
 				{
 					/* bank is ROM on the A model */
-					memory_install_rom(program, bank, bank_start, bank_end);
+					memory_install_rom_helper(program, bank_name, bank_start, bank_end);
 				}
 			}
 			else
 			{
 				/* bank is ROM */
-				memory_install_rom(program, bank, bank_start, bank_end);
+				memory_install_rom_helper(program, bank_name, bank_start, bank_end);
 			}
 		}
 
-		memory_set_bank(machine, bank, 0);
+		memory_set_bank(machine, bank_name, 0);
 	}
 }
 
@@ -501,8 +506,10 @@ static WRITE8_HANDLER( newbrain_cop_d_w )
 
 	newbrain_state *state = space->machine->driver_data;
 
-	static const char *const keynames[] = { "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7",
-										"D8", "D9", "D10", "D11", "D12", "D13", "D14", "D15" };
+	static const char *const keynames[] = {
+		"D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7",
+		"D8", "D9", "D10", "D11", "D12", "D13", "D14", "D15"
+	};
 
 	/* keyboard row reset */
 
@@ -656,7 +663,7 @@ static WRITE8_HANDLER( fdc_auxiliary_w )
 
 	newbrain_state *state = space->machine->driver_data;
 
-	floppy_drive_set_motor_state(floppy_get_device(space->machine, 0), BIT(data, 0));
+	floppy_mon_w(floppy_get_device(space->machine, 0), !BIT(data, 0));
 	floppy_drive_set_ready_state(floppy_get_device(space->machine, 0), 1, 0);
 
 	upd765_reset_w(state->upd765, BIT(data, 1));
@@ -776,12 +783,13 @@ static WRITE8_HANDLER( cop_w )
 
 			break;
 
-/*      case NEWBRAIN_COPCMD_TIMCOM:
-            copregint = 0;
-            copbytes = 6;
-            copstate = NEWBRAIN_COP_STATE_DATA;
-            break;
-*/
+#if 0
+		case NEWBRAIN_COPCMD_TIMCOM:
+			copregint = 0;
+			copbytes = 6;
+			copstate = NEWBRAIN_COP_STATE_DATA;
+			break;
+#endif
 		case NEWBRAIN_COPCMD_PDNCOM:
 			/* power down */
 			copregint = 0;
@@ -1084,14 +1092,14 @@ static ADC080X_INTERFACE( newbrain_adc0809_intf )
 
 static ADDRESS_MAP_START( newbrain_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x1fff) AM_RAMBANK(1)
-	AM_RANGE(0x2000, 0x3fff) AM_RAMBANK(2)
-	AM_RANGE(0x4000, 0x5fff) AM_RAMBANK(3)
-	AM_RANGE(0x6000, 0x7fff) AM_RAMBANK(4)
-	AM_RANGE(0x8000, 0x9fff) AM_RAMBANK(5)
-	AM_RANGE(0xa000, 0xbfff) AM_RAMBANK(6)
-	AM_RANGE(0xc000, 0xdfff) AM_RAMBANK(7)
-	AM_RANGE(0xe000, 0xffff) AM_RAMBANK(8)
+	AM_RANGE(0x0000, 0x1fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x2000, 0x3fff) AM_RAMBANK("bank2")
+	AM_RANGE(0x4000, 0x5fff) AM_RAMBANK("bank3")
+	AM_RANGE(0x6000, 0x7fff) AM_RAMBANK("bank4")
+	AM_RANGE(0x8000, 0x9fff) AM_RAMBANK("bank5")
+	AM_RANGE(0xa000, 0xbfff) AM_RAMBANK("bank6")
+	AM_RANGE(0xc000, 0xdfff) AM_RAMBANK("bank7")
+	AM_RANGE(0xe000, 0xffff) AM_RAMBANK("bank8")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( newbrain_ei_io_map, ADDRESS_SPACE_IO, 8 )
@@ -1484,6 +1492,59 @@ static const cassette_config newbrain_cassette_config =
 	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED
 };
 
+
+static DEVICE_IMAGE_LOAD( newbrain_serial )
+{
+	if (device_load_serial(image)==INIT_PASS)
+	{
+		serial_device_setup(image, 9600, 8, 1, SERIAL_PARITY_NONE);
+
+		serial_device_set_transmit_state(image, 1);
+
+		return INIT_PASS;
+	}
+
+	return INIT_FAIL;
+}
+
+
+static DEVICE_GET_INFO( newbrain_serial )
+{
+	switch ( state )
+	{
+		case DEVINFO_FCT_IMAGE_LOAD:		        info->f = (genf *) DEVICE_IMAGE_LOAD_NAME( newbrain_serial );    break;
+		case DEVINFO_STR_NAME:		                strcpy(info->s, "Newbrain serial port");	                    break;
+		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:	    strcpy(info->s, "txt");                                         break;
+		case DEVINFO_INT_IMAGE_READABLE:            info->i = 1;                                        	break;
+		case DEVINFO_INT_IMAGE_WRITEABLE:			info->i = 0;                                        	break;
+		case DEVINFO_INT_IMAGE_CREATABLE:	     	info->i = 0;                                        	break;		
+		default: 									DEVICE_GET_INFO_CALL(serial);	break;
+	}
+}
+
+/* F4 Character Displayer */
+static const gfx_layout newbrain_charlayout =
+{
+	8, 10,					/* 8 x 10 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*256*8, 1*256*8, 2*256*8, 3*256*8, 4*256*8, 5*256*8, 6*256*8, 7*256*8, 8*256*8, 9*256*8, 10*256*8, 11*256*8, 12*256*8, 13*256*8, 14*256*8, 15*256*8 },
+	8					/* every char takes 16 x 1 bytes */
+};
+
+static GFXDECODE_START( newbrain )
+	GFXDECODE_ENTRY( "chargen", 0x0000, newbrain_charlayout, 0, 1 )
+GFXDECODE_END
+
+#define NEWBRAIN_SERIAL	DEVICE_GET_INFO_NAME(newbrain_serial)
+
+#define MDRV_NEWBRAIN_SERIAL_ADD(_tag) \
+	MDRV_DEVICE_ADD(_tag, NEWBRAIN_SERIAL, 0)
+
 static MACHINE_DRIVER_START( newbrain_a )
 	MDRV_DRIVER_DATA(newbrain_state)
 
@@ -1497,21 +1558,26 @@ static MACHINE_DRIVER_START( newbrain_a )
 	MDRV_CPU_IO_MAP(newbrain_cop_io_map)
 	MDRV_CPU_CONFIG(newbrain_cop_intf)
 
+	MDRV_GFXDECODE(newbrain)
+
 	MDRV_TIMER_ADD_PERIODIC("cop_regint", cop_regint_tick, MSEC(12.5)) // HACK
 
 	MDRV_MACHINE_START(newbrain)
 	MDRV_MACHINE_RESET(newbrain)
 
 	/* video hardware */
+	MDRV_DEFAULT_LAYOUT(layout_newbrain)
 	MDRV_IMPORT_FROM(newbrain_video)
 
 	/* cassette */
 	MDRV_CASSETTE_ADD("cassette1", newbrain_cassette_config)
 	MDRV_CASSETTE_ADD("cassette2", newbrain_cassette_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("32K")
+	
+	MDRV_NEWBRAIN_SERIAL_ADD("serial")
 MACHINE_DRIVER_END
 
 static FLOPPY_OPTIONS_START(newbrain)
@@ -1557,10 +1623,10 @@ static MACHINE_DRIVER_START( newbrain_eim )
 	MDRV_UPD765A_ADD(UPD765_TAG, newbrain_upd765_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(newbrain_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
-	MDRV_RAM_DEFAULT_SIZE("96K")	
+	MDRV_RAM_DEFAULT_SIZE("96K")
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -1596,7 +1662,7 @@ ROM_START( newbrain )
 	ROM_REGION( 0x400, COP420_TAG, 0 )
 	ROM_LOAD( "cop420.419", 0x000, 0x400, NO_DUMP )
 
-	ROM_REGION( 0x1000, "chargen", 0 )
+	ROM_REGION( 0x1000, "chargen", 0 )	/* The missing part of this rom should be filled with zeroes */
 	ROM_LOAD( "char eprom iss 1.ic453", 0x0000, 0x0a01, BAD_DUMP CRC(46ecbc65) SHA1(3fe064d49a4de5e3b7383752e98ad35a674e26dd) ) // 8248R7
 ROM_END
 
@@ -1659,52 +1725,11 @@ ROM_START( newbraim )
 	ROM_REGION( 0x1000, "chargen", 0 )
 	ROM_LOAD( "char eprom iss 1.ic453", 0x0000, 0x0a01, BAD_DUMP CRC(46ecbc65) SHA1(3fe064d49a4de5e3b7383752e98ad35a674e26dd) ) // 8248R7
 ROM_END
-
-/* System Configuration */
-static DEVICE_IMAGE_LOAD( newbrain_serial )
-{
-	/* filename specified */
-	if (device_load_serial_device(image)==INIT_PASS)
-	{
-		/* setup transmit parameters */
-		serial_device_setup(image, 9600, 8, 1, SERIAL_PARITY_NONE);
-
-		/* and start transmit */
-		serial_device_set_transmit_state(image, 1);
-
-		return INIT_PASS;
-	}
-
-	return INIT_FAIL;
-}
-
-static void newbrain_serial_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* serial */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
-		case MESS_DEVINFO_INT_COUNT:						info->i = 2; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_START:						info->start = DEVICE_START_NAME(serial_device); break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(newbrain_serial); break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(serial_device); break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "txt"); break;
-	}
-}
-
-static SYSTEM_CONFIG_START( newbrain )	
-	CONFIG_DEVICE(newbrain_serial_getinfo)
-SYSTEM_CONFIG_END
-
+	
 /* System Drivers */
 
-//    YEAR  NAME        PARENT      COMPAT  MACHINE         INPUT       INIT    CONFIG          COMPANY                         FULLNAME        FLAGS
-COMP( 1981, newbrain,	0,			0,		newbrain_a,		newbrain,   0, 		newbrain,		"Grundy Business Systems Ltd.",	"NewBrain AD",	GAME_NOT_WORKING | GAME_NO_SOUND )
-COMP( 1981, newbraie,	newbrain,	0,		newbrain_eim,	newbrain,   0, 		newbrain,		"Grundy Business Systems Ltd.",	"NewBrain AD with Expansion Interface",	GAME_NOT_WORKING | GAME_NO_SOUND )
-COMP( 1981, newbraia,	newbrain,	0,		newbrain_a,		newbrain,   0, 		newbrain,		"Grundy Business Systems Ltd.",	"NewBrain A",	GAME_NOT_WORKING | GAME_NO_SOUND )
-COMP( 1981, newbraim,	newbrain,	0,		newbrain_a,		newbrain,   0, 		newbrain,		"Grundy Business Systems Ltd.",	"NewBrain MD",	GAME_NOT_WORKING | GAME_NO_SOUND )
+//    YEAR  NAME        PARENT      COMPAT  MACHINE         INPUT       INIT    COMPANY                         FULLNAME        FLAGS
+COMP( 1981, newbrain,	0,	    0,      newbrain_a,	    newbrain,   0, 	"Grundy Business Systems Ltd.",	"NewBrain AD",	GAME_NOT_WORKING | GAME_NO_SOUND )
+COMP( 1981, newbraie,	newbrain,   0,	    newbrain_eim,   newbrain,   0, 	"Grundy Business Systems Ltd.",	"NewBrain AD with Expansion Interface",	GAME_NOT_WORKING | GAME_NO_SOUND )
+COMP( 1981, newbraia,	newbrain,   0,	    newbrain_a,	    newbrain,   0, 	"Grundy Business Systems Ltd.",	"NewBrain A",	GAME_NOT_WORKING | GAME_NO_SOUND )
+COMP( 1981, newbraim,	newbrain,   0,	    newbrain_a,	    newbrain,   0, 	"Grundy Business Systems Ltd.",	"NewBrain MD",	GAME_NOT_WORKING | GAME_NO_SOUND )

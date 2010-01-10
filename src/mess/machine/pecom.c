@@ -42,16 +42,16 @@ MACHINE_RESET( pecom )
 
 	pecom_state *state = machine->driver_data;
 
-	memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
-	memory_install_write8_handler(space, 0x4000, 0x7fff, 0, 0, SMH_BANK(2));
-	memory_install_write8_handler(space, 0xf000, 0xf7ff, 0, 0, SMH_UNMAP);
-	memory_install_write8_handler(space, 0xf800, 0xffff, 0, 0, SMH_UNMAP);
-	memory_install_read8_handler (space, 0xf000, 0xf7ff, 0, 0, SMH_BANK(3));
-	memory_install_read8_handler (space, 0xf800, 0xffff, 0, 0, SMH_BANK(4));
-	memory_set_bankptr(machine, 1, rom + 0x8000);
-	memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
-	memory_set_bankptr(machine, 3, rom + 0xf000);
-	memory_set_bankptr(machine, 4, rom + 0xf800);
+	memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
+	memory_install_write_bank(space, 0x4000, 0x7fff, 0, 0, "bank2");
+	memory_unmap_write(space, 0xf000, 0xf7ff, 0, 0);
+	memory_unmap_write(space, 0xf800, 0xffff, 0, 0);
+	memory_install_read_bank (space, 0xf000, 0xf7ff, 0, 0, "bank3");
+	memory_install_read_bank (space, 0xf800, 0xffff, 0, 0, "bank4");
+	memory_set_bankptr(machine, "bank1", rom + 0x8000);
+	memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
+	memory_set_bankptr(machine, "bank3", rom + 0xf000);
+	memory_set_bankptr(machine, "bank4", rom + 0xf800);
 
 	pecom_caps_state = 4;
 	pecom_prev_caps_state = 4;
@@ -66,8 +66,8 @@ WRITE8_HANDLER( pecom_bank_w )
 	const device_config *cdp1869 = devtag_get_device(space->machine, CDP1869_TAG);
 	const address_space *space2 = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 *rom = memory_region(space->machine, "maincpu");
-	memory_install_write8_handler(cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0, SMH_BANK(1));
-	memory_set_bankptr(space->machine, 1, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x0000);
+	memory_install_write_bank(cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, 0x3fff, 0, 0, "bank1");
+	memory_set_bankptr(space->machine, "bank1", messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x0000);
 
 	if (data==2)
 	{
@@ -78,20 +78,22 @@ WRITE8_HANDLER( pecom_bank_w )
 	}
 	else
 	{
-		memory_install_write8_handler(space2, 0xf000, 0xf7ff, 0, 0, SMH_UNMAP);
-		memory_install_write8_handler(space2, 0xf800, 0xffff, 0, 0, SMH_UNMAP);
-		memory_install_read8_handler (space2, 0xf000, 0xf7ff, 0, 0, SMH_BANK(3));
-		memory_install_read8_handler (space2, 0xf800, 0xffff, 0, 0, SMH_BANK(4));
-		memory_set_bankptr(space->machine, 3, rom + 0xf000);
-		memory_set_bankptr(space->machine, 4, rom + 0xf800);
+		memory_unmap_write(space2, 0xf000, 0xf7ff, 0, 0);
+		memory_unmap_write(space2, 0xf800, 0xffff, 0, 0);
+		memory_install_read_bank (space2, 0xf000, 0xf7ff, 0, 0, "bank3");
+		memory_install_read_bank (space2, 0xf800, 0xffff, 0, 0, "bank4");
+		memory_set_bankptr(space->machine, "bank3", rom + 0xf000);
+		memory_set_bankptr(space->machine, "bank4", rom + 0xf800);
 	}
 }
 
 READ8_HANDLER (pecom_keyboard_r)
 {
-	static const char *const keynames[] = { 	"LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7",
-										"LINE8", "LINE9", "LINE10", "LINE11", "LINE12", "LINE13", "LINE14", "LINE15", "LINE16",
-										"LINE17", "LINE18", "LINE19", "LINE20", "LINE21", "LINE22", "LINE23", "LINE24","LINE25" };
+	static const char *const keynames[] = {
+		"LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7",
+		"LINE8", "LINE9", "LINE10", "LINE11", "LINE12", "LINE13", "LINE14", "LINE15", "LINE16",
+		"LINE17", "LINE18", "LINE19", "LINE20", "LINE21", "LINE22", "LINE23", "LINE24","LINE25"
+	};
 	/*
        INP command BUS -> M(R(X)) BUS -> D
        so on each input, address is also set, 8 lower bits are used as input for keyboard

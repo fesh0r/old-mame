@@ -18,6 +18,7 @@
 #include "machine/ins8250.h"
 #include "machine/mc146818.h"
 #include "machine/pic8259.h"
+#include "machine/i82371ab.h"
 #include "machine/i82439tx.h"
 
 #include "machine/pit8253.h"
@@ -85,7 +86,7 @@
 #define GAMEBLASTER
 
 static ADDRESS_MAP_START( at16_map, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x09ffff) AM_MIRROR(0xff000000) AM_RAMBANK(10)
+	AM_RANGE(0x000000, 0x09ffff) AM_MIRROR(0xff000000) AM_RAMBANK("bank10")
 //  AM_RANGE(0x0a0000, 0x0bffff) AM_READWRITE(SMH_RAM, pc_video_videoram16le_w) AM_BASE((UINT16 **)&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x0c0000, 0x0c7fff) AM_ROM
 	AM_RANGE(0x0c8000, 0x0cffff) AM_ROM
@@ -95,22 +96,25 @@ static ADDRESS_MAP_START( at16_map, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 
+
 static ADDRESS_MAP_START( at386_map, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_GLOBAL_MASK(0x00ffffff)
-	AM_RANGE(0x00000000, 0x0009ffff) AM_RAMBANK(10)
+	AM_RANGE(0x00000000, 0x0009ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0x000a0000, 0x000bffff) AM_NOP
 //  AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(SMH_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x000c0000, 0x000c7fff) AM_ROM
 	AM_RANGE(0x000c8000, 0x000cffff) AM_ROM
 	AM_RANGE(0x000d0000, 0x000effff) AM_ROM
-	AM_RANGE(0x000f0000, 0x000fffff) AM_ROM AM_REGION("maincpu", 0x0f0000)
+	AM_RANGE(0x000f0000, 0x000fffff) AM_ROM
+	AM_RANGE(0x00800000, 0x00800bff) AM_RAM AM_BASE_SIZE_GENERIC(nvram)
 	AM_RANGE(0x00ff0000, 0x00ffffff) AM_ROM AM_REGION("maincpu", 0x0f0000)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( at586_map, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x00000000, 0x0009ffff) AM_RAMBANK(10)
+	AM_RANGE(0x00000000, 0x0009ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0x000a0000, 0x000bffff) AM_NOP
 //  AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(SMH_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x00800000, 0x00800bff) AM_RAM AM_BASE_SIZE_GENERIC(nvram)
 	AM_RANGE(0xfffe0000, 0xffffffff) AM_ROM AM_REGION("user1", 0x20000)
 ADDRESS_MAP_END
 
@@ -118,12 +122,12 @@ ADDRESS_MAP_END
 
 static READ8_DEVICE_HANDLER(at_dma8237_1_r)
 {
-	return dma8237_r( device, offset / 2);
+	return i8237_r( device, offset / 2);
 }
 
 static WRITE8_DEVICE_HANDLER(at_dma8237_1_w)
 {
-	dma8237_w( device, offset / 2, data);
+	i8237_w( device, offset / 2, data);
 }
 
 static READ16_DEVICE_HANDLER( at16_388_r )
@@ -161,8 +165,9 @@ static WRITE32_HANDLER( at_kbdc8042_32le_w )
 	write32le_with_write8_handler(at_kbdc8042_w, space, offset, data, mem_mask);
 }
 
+
 static ADDRESS_MAP_START(at16_io, ADDRESS_SPACE_IO, 16)
-	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", dma8237_r, dma8237_w, 0xffff)
+	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", i8237_r, i8237_w, 0xffff)
 	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x006f) AM_READWRITE8(at_kbdc8042_r,            at_kbdc8042_w, 0xffff)
@@ -176,8 +181,8 @@ static ADDRESS_MAP_START(at16_io, ADDRESS_SPACE_IO, 16)
 	AM_RANGE(0x0278, 0x027f) AM_DEVREADWRITE8("lpt_2", pc_lpt_r, pc_lpt_w, 0x00ff)
 	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8("ns16450_3", ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ns16450_1", ins8250_r, ins8250_w, 0xffff)
-//  AM_RANGE(0x0320, 0x0323) AM_READWRITE8(pc_HDC1_r,                pc_HDC1_w, 0xffff)
-//  AM_RANGE(0x0324, 0x0327) AM_READWRITE8(pc_HDC2_r,                pc_HDC2_w, 0xffff)
+    AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc16le_HDC1_r, pc16le_HDC1_w)
+    AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc16le_HDC2_r, pc16le_HDC2_w)
 	AM_RANGE(0x0378, 0x037f) AM_DEVREADWRITE8("lpt_1", pc_lpt_r, pc_lpt_w, 0x00ff)
 #ifdef ADLIB
 	AM_RANGE(0x0388, 0x0389) AM_DEVREADWRITE("ym3812", at16_388_r, at16_388_w )
@@ -190,7 +195,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(at386_io, ADDRESS_SPACE_IO, 32)
-	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", dma8237_r, dma8237_w, 0xffffffff)
+	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", i8237_r, i8237_w, 0xffffffff)
 	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_r, pic8259_w, 0xffffffff)
 	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8253_r, pit8253_w, 0xffffffff)
 	AM_RANGE(0x0060, 0x006f) AM_READWRITE(at_kbdc8042_32le_r,      at_kbdc8042_32le_w)
@@ -212,7 +217,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(at586_io, ADDRESS_SPACE_IO, 32)
-	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", dma8237_r, dma8237_w, 0xffffffff)
+	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", i8237_r, i8237_w, 0xffffffff)
 	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_r, pic8259_w, 0xffffffff)
 	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8253_r, pit8253_w, 0xffffffff)
 	AM_RANGE(0x0060, 0x006f) AM_READWRITE(at_kbdc8042_32le_r,      at_kbdc8042_32le_w)
@@ -338,7 +343,7 @@ static INPUT_PORTS_START( atcga )
 	PORT_INCLUDE( kb_keytronic_at )		/* IN4 - IN11 */
 	PORT_INCLUDE( pc_mouse_microsoft )	/* IN12 - IN14 */
 	PORT_INCLUDE( pc_joystick )			/* IN15 - IN19 */
-	PORT_INCLUDE( pcvideo_cga_at )
+	PORT_INCLUDE( pcvideo_cga )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( atvga )
@@ -454,6 +459,13 @@ static const floppy_config ibmat_floppy_config =
 	DO_NOT_KEEP_GEOMETRY
 };
 
+static const kb_keytronic_interface at_keytronic_intf =
+{
+	DEVCB_MEMORY_HANDLER("kbdc8042", IO, at_kbdc8042_set_clock_signal),
+	DEVCB_MEMORY_HANDLER("kbdc8042", IO, at_kbdc8042_set_data_signal),
+};
+
+
 static MACHINE_DRIVER_START( ibm5170 )
 	MDRV_DRIVER_DATA(at_state)
 	/* basic machine hardware */
@@ -466,9 +478,9 @@ static MACHINE_DRIVER_START( ibm5170 )
 
 	MDRV_PIT8254_ADD( "pit8254", at_pit8254_config )
 
-	MDRV_DMA8237_ADD( "dma8237_1", at_dma8237_1_config )
+	MDRV_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, at_dma8237_1_config )
 
-	MDRV_DMA8237_ADD( "dma8237_2", at_dma8237_2_config )
+	MDRV_I8237_ADD( "dma8237_2", XTAL_14_31818MHz/3, at_dma8237_2_config )
 
 	MDRV_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
 
@@ -500,7 +512,7 @@ static MACHINE_DRIVER_START( ibm5170 )
 #endif
 	MDRV_IMPORT_FROM( at_kbdc8042 )
 
-	MDRV_IMPORT_FROM( kb_keytronic )
+	MDRV_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
 
 	MDRV_NVRAM_HANDLER( mc146818 )
 
@@ -540,9 +552,9 @@ static MACHINE_DRIVER_START( ibm5162 )
 
 	MDRV_PIT8254_ADD( "pit8254", at_pit8254_config )
 
-	MDRV_DMA8237_ADD( "dma8237_1", at_dma8237_1_config )
+	MDRV_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, at_dma8237_1_config )
 
-	MDRV_DMA8237_ADD( "dma8237_2", at_dma8237_2_config )
+	MDRV_I8237_ADD( "dma8237_2", XTAL_14_31818MHz/3, at_dma8237_2_config )
 
 	MDRV_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
 
@@ -570,7 +582,7 @@ static MACHINE_DRIVER_START( ibm5162 )
 
 	MDRV_IMPORT_FROM( at_kbdc8042 )
 
-	MDRV_IMPORT_FROM( kb_keytronic )
+	MDRV_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
 
 	MDRV_NVRAM_HANDLER( mc146818 )
 
@@ -585,7 +597,7 @@ static MACHINE_DRIVER_START( ibm5162 )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("1664K")
@@ -602,9 +614,9 @@ static MACHINE_DRIVER_START( ps2m30286 )
 
 	MDRV_PIT8254_ADD( "pit8254", at_pit8254_config )
 
-	MDRV_DMA8237_ADD( "dma8237_1", at_dma8237_1_config )
+	MDRV_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, at_dma8237_1_config )
 
-	MDRV_DMA8237_ADD( "dma8237_2", at_dma8237_2_config )
+	MDRV_I8237_ADD( "dma8237_2", XTAL_14_31818MHz/3, at_dma8237_2_config )
 
 	MDRV_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
 
@@ -642,7 +654,7 @@ static MACHINE_DRIVER_START( ps2m30286 )
 
 	MDRV_IMPORT_FROM( at_kbdc8042 )
 
-	MDRV_IMPORT_FROM( kb_keytronic )
+	MDRV_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
 
 	MDRV_NVRAM_HANDLER( mc146818 )
 
@@ -657,10 +669,10 @@ static MACHINE_DRIVER_START( ps2m30286 )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("1664K")	
+	MDRV_RAM_DEFAULT_SIZE("1664K")
 MACHINE_DRIVER_END
 
 
@@ -674,9 +686,9 @@ static MACHINE_DRIVER_START( atvga )
 
 	MDRV_PIT8254_ADD( "pit8254", at_pit8254_config )
 
-	MDRV_DMA8237_ADD( "dma8237_1", at_dma8237_1_config )
+	MDRV_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, at_dma8237_1_config )
 
-	MDRV_DMA8237_ADD( "dma8237_2", at_dma8237_2_config )
+	MDRV_I8237_ADD( "dma8237_2", XTAL_14_31818MHz/3, at_dma8237_2_config )
 
 	MDRV_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
 
@@ -716,7 +728,7 @@ static MACHINE_DRIVER_START( atvga )
 
 	MDRV_IMPORT_FROM( at_kbdc8042 )
 
-	MDRV_IMPORT_FROM( kb_keytronic )
+	MDRV_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
 
 	MDRV_NVRAM_HANDLER( mc146818 )
 
@@ -731,10 +743,10 @@ static MACHINE_DRIVER_START( atvga )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("1664K")	
+	MDRV_RAM_DEFAULT_SIZE("1664K")
 MACHINE_DRIVER_END
 
 
@@ -745,16 +757,16 @@ static MACHINE_DRIVER_START( at386 )
 	MDRV_CPU_ADD("maincpu", I386, 12000000)
 	MDRV_CPU_PROGRAM_MAP(at386_map)
 	MDRV_CPU_IO_MAP(at386_io)
-	MDRV_CPU_CONFIG(i286_address_mask)
+	//MDRV_CPU_CONFIG(i286_address_mask)
 
 	MDRV_MACHINE_START( at )
 	MDRV_MACHINE_RESET( at )
 
 	MDRV_PIT8254_ADD( "pit8254", at_pit8254_config )
 
-	MDRV_DMA8237_ADD( "dma8237_1", at_dma8237_1_config )
+	MDRV_I8237_ADD( "dma8237_1", XTAL_14_31818MHz/3, at_dma8237_1_config )
 
-	MDRV_DMA8237_ADD( "dma8237_2", at_dma8237_2_config )
+	MDRV_I8237_ADD( "dma8237_2", XTAL_14_31818MHz/3, at_dma8237_2_config )
 
 	MDRV_PIC8259_ADD( "pic8259_master", at_pic8259_master_config )
 
@@ -791,9 +803,10 @@ static MACHINE_DRIVER_START( at386 )
 
 	MDRV_IMPORT_FROM( at_kbdc8042 )
 
-	MDRV_IMPORT_FROM( kb_keytronic )
+	MDRV_KB_KEYTRONIC_ADD("keyboard", at_keytronic_intf)
 
 	MDRV_NVRAM_HANDLER( mc146818 )
+//	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* printers */
 	MDRV_PC_LPT_ADD("lpt_0", at_lpt_config)
@@ -806,7 +819,7 @@ static MACHINE_DRIVER_START( at386 )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmat_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("1664K")
@@ -826,8 +839,12 @@ static MACHINE_DRIVER_START( at586 )
 	MDRV_CPU_PROGRAM_MAP(at586_map)
 	MDRV_CPU_IO_MAP(at586_io)
 
+	MDRV_I82371AB_ADD("i82371ab")
+	MDRV_I82439TX_ADD("i82439tx", "maincpu", "user1")
+
 	MDRV_PCI_BUS_ADD("pcibus", 0)
-	MDRV_PCI_BUS_DEVICE(0, NULL, intel82439tx_pci_read, intel82439tx_pci_write)
+	MDRV_PCI_BUS_DEVICE(0, "i82439tx", i82439tx_pci_read, i82439tx_pci_write)
+	MDRV_PCI_BUS_DEVICE(1, "i82371ab", i82371ab_pci_read, i82371ab_pci_write)
 MACHINE_DRIVER_END
 
 
@@ -889,10 +906,6 @@ ROM_START( ibm5170 )
 	ROM_REGION( 0x0800, "kbdc8042", 0 )
 	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
 
-	/* 8051 Keytronic KB3270-PC keyboard row/column decoder */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
-
 	/* Mainboard PALS */
 	ROM_REGION( 0x2000, "pals", 0 )
 	ROM_LOAD("1501824.pal14l4.u87", 0x0000, 0x0800, NO_DUMP) /* MMI 1501824 717750 // (C)1983 IBM(M) */
@@ -931,10 +944,6 @@ ROM_START( ibm5170a )
 	ROM_REGION( 0x0800, "kbdc8042", 0 )
 	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
 
-	/* 8051 Keytronic KB3270-PC keyboard row/column decoder */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
-
 	/* Mainboard PALS */
 	ROM_REGION( 0x2000, "pals", 0 )
 	ROM_LOAD("1501824.pal14l4.u87", 0x0000, 0x0800, NO_DUMP) /* MMI 1501824 717750 // (C)1983 IBM(M) */
@@ -964,10 +973,6 @@ ROM_START( ibm5162 ) //MB p/n 62x1168
 	ROM_REGION( 0x0800, "kbdc8042", 0 )
 	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
 
-	/* 8051 Keytronic KB3270-PC keyboard row/column decoder */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
-
 	/* Mainboard PALS */
 	ROM_REGION( 0x2000, "pals", 0 )
 	ROM_LOAD("59x7599.pal20l8.u27", 0x0000, 0x0800, NO_DUMP) /* MMI PAL20L8ACN5 8631 // N59X7599 IBM (C)85 K3 */
@@ -994,20 +999,46 @@ ROM_START( i8530286 )
 	/* 8042 keyboard controller */
 	ROM_REGION( 0x0800, "kbdc8042", 0 )
 	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
-
-	/* 8051 Keytronic KB3270-PC keyboard row/column decoder */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
 
 
 ROM_START( at )
     ROM_REGION(0x1000000,"maincpu", 0)
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
-    ROM_LOAD16_BYTE("at110387.1", 0xf0001, 0x8000, CRC(679296a7) SHA1(ae891314cac614dfece686d8e1d74f4763cf40e3))
-	ROM_RELOAD(0xff0001,0x8000)
-    ROM_LOAD16_BYTE("at110387.0", 0xf0000, 0x8000, CRC(65ae1f97) SHA1(91a29c7deecf7a9afbba330e64e0eee9aafee4d1))
-	ROM_RELOAD(0xff0000,0x8000)
+	ROM_SYSTEM_BIOS(0, "at", "PC 286")
+    ROMX_LOAD("at110387.1", 0xf0001, 0x8000, CRC(679296a7) SHA1(ae891314cac614dfece686d8e1d74f4763cf40e3),ROM_SKIP(1) | ROM_BIOS(1) )
+    ROMX_LOAD("at110387.0", 0xf0000, 0x8000, CRC(65ae1f97) SHA1(91a29c7deecf7a9afbba330e64e0eee9aafee4d1),ROM_SKIP(1) | ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS(1, "ami211", "AMI 21.1")
+	ROMX_LOAD( "ami211.bin", 	 0xf0000, 0x10000,CRC(a0b5d269) SHA1(44db8227d35a09e39b93ed944f85dcddb0dd0d39), ROM_BIOS(2))
+	ROM_SYSTEM_BIOS(2, "ami206", "AMI C 206.1")
+	ROMX_LOAD( "amic206.bin", 	 0xf0000, 0x10000,CRC(25a67c34) SHA1(91e9d8cdc2f1b40a601a23ceaff2189fd1245f3b), ROM_BIOS(3) )
+	ROM_SYSTEM_BIOS(3, "amic21", "AMI C 21.1")
+	ROMX_LOAD( "amic21-1.bin",  0xf0001, 0x8000, CRC(5644ed38) SHA1(963555ec77845defc3b42b433280908e1797076e),ROM_SKIP(1) | ROM_BIOS(4) )
+	ROMX_LOAD( "amic21-2.bin",  0xf0000, 0x8000, CRC(8ffe7752) SHA1(68215f07a170ee7bdcb3e52b370d470af1741f7e),ROM_SKIP(1) | ROM_BIOS(4) )
+	ROM_SYSTEM_BIOS(4, "amicg", "AMI CG")
+	ROMX_LOAD( "amicg.1", 		 0xf0000, 0x10000,CRC(8408965a) SHA1(9893d3ac851e01b06a68a67d3721df36ca2c96f5), ROM_BIOS(5) )
+	ROM_SYSTEM_BIOS(5, "ami101", "AMI HT 101.1")
+	ROMX_LOAD( "amiht-h.bin",   0xf0001, 0x8000, CRC(8022545f) SHA1(42541d4392ad00b0e064b3a8ccf2786d875c7c19),ROM_SKIP(1) | ROM_BIOS(6) )
+	ROMX_LOAD( "amiht-l.bin",   0xf0000, 0x8000, CRC(285f6b8f) SHA1(2fce4ec53b68c9a7580858e16c926dc907820872),ROM_SKIP(1) | ROM_BIOS(6) )
+	ROM_SYSTEM_BIOS(6, "ami121", "AMI HT 12.1")
+	ROMX_LOAD( "ami2ev86.bin",  0xf0001, 0x8000, CRC(55deb5c2) SHA1(19ce1a7cc985b5895c585e39211475de2e3b0dd1),ROM_SKIP(1) | ROM_BIOS(7) )
+	ROMX_LOAD( "ami2od86.bin",  0xf0000, 0x8000, CRC(04a2cec4) SHA1(564d37a8b2c0f4d0e23cd1e280a09d47c9945da8),ROM_SKIP(1) | ROM_BIOS(7) )
+	ROM_SYSTEM_BIOS(7, "ami122", "AMI HT 12.2")
+	ROMX_LOAD( "ami2ev89.bin",  0xf0001, 0x8000, CRC(705d36e0) SHA1(0c9cfb71ced4587f109b9b6dfc2a9c92302fdb99),ROM_SKIP(1) | ROM_BIOS(8) )
+	ROMX_LOAD( "ami2od89.bin",  0xf0000, 0x8000, CRC(7c81bbe8) SHA1(a2c7eca586f6e2e76b9101191e080a1f1cb8b833),ROM_SKIP(1) | ROM_BIOS(8) )
+	ROM_SYSTEM_BIOS(8, "ami123", "AMI HT 12.3")
+	ROMX_LOAD( "ht12h.bin",     0xf0001, 0x8000, CRC(db8b471e) SHA1(7b5fa1c131061fa7719247db3e282f6d30226778),ROM_SKIP(1) | ROM_BIOS(9) )
+	ROMX_LOAD( "ht12l.bin",     0xf0000, 0x8000, CRC(74fd178a) SHA1(97c8283e574abbed962b701f3e8091fb82823b80),ROM_SKIP(1) | ROM_BIOS(9) )
+	ROM_SYSTEM_BIOS(9, "ami181", "AMI HT 18.1")
+	ROMX_LOAD( "ht18.bin",     0xf0000, 0x10000, CRC(f65a6f9a) SHA1(7dfdf7d243f9f645165dc009c5097dd515f86fbb), ROM_BIOS(10) )
+	ROM_SYSTEM_BIOS(10, "amiht21", "AMI HT 21.1")
+	ROMX_LOAD( "ht21e.bin",    0xf0000, 0x10000, CRC(e80f7fed) SHA1(62d958d98c95e9e4d1b290a6c1054ae98770f276), ROM_BIOS(11) )
+	ROM_SYSTEM_BIOS(11, "amip1", "AMI P.1")
+	ROMX_LOAD( "poisk-h.bin",   0xf0001, 0x8000, CRC(83fd3f8c) SHA1(ca94850bbd949b97b11710629886b0ee69489a81),ROM_SKIP(1) | ROM_BIOS(12) )
+	ROMX_LOAD( "poisk-l.bin",   0xf0000, 0x8000, CRC(0b2ed291) SHA1(bb51a3f317cf4d429a6cfb44a46ca0ac39d9aaa7),ROM_SKIP(1) | ROM_BIOS(12) )
+	ROM_SYSTEM_BIOS(12, "aw201", "Award 201")
+	ROMX_LOAD( "83201-5h.bin",  0xf0001, 0x8000, CRC(968d1fc0) SHA1(dc4122a6c696f0b43e7894dc1b669346eed755d5),ROM_SKIP(1) | ROM_BIOS(13) )
+	ROMX_LOAD( "83201-5l.bin",  0xf0000, 0x8000, CRC(bf50a89a) SHA1(2349a1db6017a7fb0673e99d3680c8753407be8d),ROM_SKIP(1) | ROM_BIOS(13) )
 
 	/* Character rom */
 	ROM_REGION(0x2000,"gfx1", 0)
@@ -1018,10 +1049,6 @@ ROM_START( at )
 	/* 8042 keyboard controller */
 	ROM_REGION( 0x0800, "kbdc8042", 0 )
 	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
-
-	/* 8051 Keytronic KB3270-PC keyboard row/column decoder */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
 
 
@@ -1029,18 +1056,40 @@ ROM_START( atvga )
     ROM_REGION(0x1000000,"maincpu", 0)
     ROM_LOAD("et4000.bin", 0xc0000, 0x8000, CRC(f01e4be0) SHA1(95d75ff41bcb765e50bd87a8da01835fd0aa01d5))
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
-    ROM_LOAD16_BYTE("at110387.1", 0xf0001, 0x8000, CRC(679296a7) SHA1(ae891314cac614dfece686d8e1d74f4763cf40e3))
-	ROM_RELOAD(0xff0001,0x8000)
-    ROM_LOAD16_BYTE("at110387.0", 0xf0000, 0x8000, CRC(65ae1f97) SHA1(91a29c7deecf7a9afbba330e64e0eee9aafee4d1))
-	ROM_RELOAD(0xff0000,0x8000)
-
+	ROM_SYSTEM_BIOS(0, "at", "PC 286")
+    ROMX_LOAD("at110387.1", 0xf0001, 0x8000, CRC(679296a7) SHA1(ae891314cac614dfece686d8e1d74f4763cf40e3),ROM_SKIP(1) | ROM_BIOS(1) )
+    ROMX_LOAD("at110387.0", 0xf0000, 0x8000, CRC(65ae1f97) SHA1(91a29c7deecf7a9afbba330e64e0eee9aafee4d1),ROM_SKIP(1) | ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS(1, "ami211", "AMI 21.1")
+	ROMX_LOAD( "ami211.bin", 	 0xf0000, 0x10000,CRC(a0b5d269) SHA1(44db8227d35a09e39b93ed944f85dcddb0dd0d39), ROM_BIOS(2))
+	ROM_SYSTEM_BIOS(2, "ami206", "AMI C 206.1")
+	ROMX_LOAD( "amic206.bin", 	 0xf0000, 0x10000,CRC(25a67c34) SHA1(91e9d8cdc2f1b40a601a23ceaff2189fd1245f3b), ROM_BIOS(3) )
+	ROM_SYSTEM_BIOS(3, "amic21", "AMI C 21.1")
+	ROMX_LOAD( "amic21-1.bin",  0xf0001, 0x8000, CRC(5644ed38) SHA1(963555ec77845defc3b42b433280908e1797076e),ROM_SKIP(1) | ROM_BIOS(4) )
+	ROMX_LOAD( "amic21-2.bin",  0xf0000, 0x8000, CRC(8ffe7752) SHA1(68215f07a170ee7bdcb3e52b370d470af1741f7e),ROM_SKIP(1) | ROM_BIOS(4) )
+	ROM_SYSTEM_BIOS(4, "amicg", "AMI CG")
+	ROMX_LOAD( "amicg.1", 		 0xf0000, 0x10000,CRC(8408965a) SHA1(9893d3ac851e01b06a68a67d3721df36ca2c96f5), ROM_BIOS(5) )
+	ROM_SYSTEM_BIOS(5, "ami101", "AMI HT 101.1")
+	ROMX_LOAD( "amiht-h.bin",   0xf0001, 0x8000, CRC(8022545f) SHA1(42541d4392ad00b0e064b3a8ccf2786d875c7c19),ROM_SKIP(1) | ROM_BIOS(6) )
+	ROMX_LOAD( "amiht-l.bin",   0xf0000, 0x8000, CRC(285f6b8f) SHA1(2fce4ec53b68c9a7580858e16c926dc907820872),ROM_SKIP(1) | ROM_BIOS(6) )
+	ROM_SYSTEM_BIOS(6, "ami121", "AMI HT 12.1")
+	ROMX_LOAD( "ami2ev86.bin",  0xf0001, 0x8000, CRC(55deb5c2) SHA1(19ce1a7cc985b5895c585e39211475de2e3b0dd1),ROM_SKIP(1) | ROM_BIOS(7) )
+	ROMX_LOAD( "ami2od86.bin",  0xf0000, 0x8000, CRC(04a2cec4) SHA1(564d37a8b2c0f4d0e23cd1e280a09d47c9945da8),ROM_SKIP(1) | ROM_BIOS(7) )
+	ROM_SYSTEM_BIOS(7, "ami122", "AMI HT 12.2")
+	ROMX_LOAD( "ami2ev89.bin",  0xf0001, 0x8000, CRC(705d36e0) SHA1(0c9cfb71ced4587f109b9b6dfc2a9c92302fdb99),ROM_SKIP(1) | ROM_BIOS(8) )
+	ROMX_LOAD( "ami2od89.bin",  0xf0000, 0x8000, CRC(7c81bbe8) SHA1(a2c7eca586f6e2e76b9101191e080a1f1cb8b833),ROM_SKIP(1) | ROM_BIOS(8) )
+	ROM_SYSTEM_BIOS(8, "ami123", "AMI HT 12.3")
+	ROMX_LOAD( "ht12h.bin",     0xf0001, 0x8000, CRC(db8b471e) SHA1(7b5fa1c131061fa7719247db3e282f6d30226778),ROM_SKIP(1) | ROM_BIOS(9) )
+	ROMX_LOAD( "ht12l.bin",     0xf0000, 0x8000, CRC(74fd178a) SHA1(97c8283e574abbed962b701f3e8091fb82823b80),ROM_SKIP(1) | ROM_BIOS(9) )
+	ROM_SYSTEM_BIOS(9, "ami181", "AMI HT 18.1")
+	ROMX_LOAD( "ht18.bin",     0xf0000, 0x10000, CRC(f65a6f9a) SHA1(7dfdf7d243f9f645165dc009c5097dd515f86fbb), ROM_BIOS(10) )
+	ROM_SYSTEM_BIOS(10, "amiht21", "AMI HT 21.1")
+	ROMX_LOAD( "ht21e.bin",    0xf0000, 0x10000, CRC(e80f7fed) SHA1(62d958d98c95e9e4d1b290a6c1054ae98770f276), ROM_BIOS(11) )
+	ROM_SYSTEM_BIOS(11, "amip1", "AMI P.1")
+	ROMX_LOAD( "poisk-h.bin",   0xf0001, 0x8000, CRC(83fd3f8c) SHA1(ca94850bbd949b97b11710629886b0ee69489a81),ROM_SKIP(1) | ROM_BIOS(12) )
+	ROMX_LOAD( "poisk-l.bin",   0xf0000, 0x8000, CRC(0b2ed291) SHA1(bb51a3f317cf4d429a6cfb44a46ca0ac39d9aaa7),ROM_SKIP(1) | ROM_BIOS(12) )
 	/* 8042 keyboard controller */
 	ROM_REGION( 0x0800, "kbdc8042", 0 )
 	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
-
-	/* 8051 Keytronic KB3270-PC keyboard row/column decoder */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
 
 
@@ -1048,9 +1097,9 @@ ROM_START( neat )
     ROM_REGION(0x1000000,"maincpu", 0)
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
     ROM_LOAD16_BYTE("at030389.0", 0xf0000, 0x8000, CRC(4c36e61d) SHA1(094e8d5e6819889163cb22a2cf559186de782582))
-	ROM_RELOAD(0xff0000,0x8000)
+	//ROM_RELOAD(0xff0000,0x8000)
     ROM_LOAD16_BYTE("at030389.1", 0xf0001, 0x8000, CRC(4e90f294) SHA1(18c21fd8d7e959e2292a9afbbaf78310f9cad12f))
-	ROM_RELOAD(0xff0001,0x8000)
+	//ROM_RELOAD(0xff0001,0x8000)
 
 	/* Character rom */
 	ROM_REGION(0x2000,"gfx1", 0)
@@ -1061,10 +1110,6 @@ ROM_START( neat )
 	/* 8042 keyboard controller */
 	ROM_REGION( 0x0800, "kbdc8042", 0 )
 	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
-
-	/* 8051 Keytronic KB3270-PC keyboard row/column decoder */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
 
 
@@ -1073,15 +1118,11 @@ ROM_START( at386 )
     ROM_LOAD("et4000.bin", 0xc0000, 0x08000, CRC(f01e4be0) SHA1(95d75ff41bcb765e50bd87a8da01835fd0aa01d5))
     ROM_LOAD("wdbios.rom", 0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
     ROM_LOAD("at386.bin",  0xf0000, 0x10000, CRC(3df9732a) SHA1(def71567dee373dc67063f204ef44ffab9453ead))
-	ROM_RELOAD(0xff0000,0x10000)
+	//ROM_RELOAD(0xff0000,0x10000)
 
 	/* 8042 keyboard controller */
 	ROM_REGION( 0x0800, "kbdc8042", 0 )
 	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
-
-	/* 8051 Keytronic KB3270-PC keyboard row/column decoder */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
 
 
@@ -1096,15 +1137,72 @@ ROM_START( at486 )
 	ROMX_LOAD("mg48602.bin", 0x0f0000, 0x10000, CRC(45797823) SHA1(a5fab258aecabde615e1e97af5911d6cf9938c11), ROM_BIOS(2))
 	ROM_SYSTEM_BIOS(2, "ft01232", "Free Tech 01-232")	\
 	ROMX_LOAD("ft01232.bin", 0x0f0000, 0x10000, CRC(30efaf92) SHA1(665c8ef05ca052dcc06bb473c9539546bfef1e86), ROM_BIOS(3))
-	ROM_COPY("maincpu", 0, 0xff0000, 0x10000)
+
+	/* 486 boards from FIC
+
+	naming convention
+    xxxxx101 --> for EPROM
+    xxxxx701 --> for EEPROM using a Flash Utility v5.02
+    xxxxBxxx --> NS 311/312 IO Core Logic
+    xxxxCxxx --> NS 332 IO Core Logic
+    xxxxGxxx --> Winbond W83787F IO Core Logic
+    xxxxJxxx --> Winbond W83877F IO Core Logic
+
+	*/
+
+	/* this is the year 2000 beta bios from FIC, supports GIO-VT, GAC-V, GAC-2, VIP-IO, VIO-VP and GVT-2 */
+	ROM_SYSTEM_BIOS(3, "ficy2k", "FIC 486 3.276GN1") /* 1997-06-16, includes CL-GD5429 VGA BIOS 1.00a */
+	ROMX_LOAD("3276gn1.bin",  0x0e0000, 0x20000, CRC(d4ff0cc4) SHA1(567b6bdbc9bff306c8c955f275e01ae4c45fd5f2), ROM_BIOS(4))
+
+	ROM_SYSTEM_BIOS(4, "ficgac2", "FIC 486-GAC-2") /* 1994-04-29, includes CL-GD542X VGA BIOS 1.50 */
+	ROMX_LOAD("att409be.bin", 0x0e0000, 0x20000, CRC(c58e017b) SHA1(14c19e720ce62eb2afe28a70f4e4ebafab0f9e77), ROM_BIOS(5))
+	ROM_SYSTEM_BIOS(5, "ficgacv", "FIC 486-GAC-V 3.27GN1") /* 1996-04-08, includes CL-GD542X VGA BIOS 1.41 */
+	ROMX_LOAD("327gn1.awd",   0x0e0000, 0x20000, CRC(017614d4) SHA1(2228c28f21a7e78033d24319449297936465b164), ROM_BIOS(6))
+	ROM_SYSTEM_BIOS(6, "ficgiovp", "FIC 486-GIO-VP 3.15GN") /* 1994-05-06 */
+	ROMX_LOAD("giovp315.rom", 0x0f0000, 0x10000, CRC(e102c3f5) SHA1(f15a7e9311cc17afe86da0b369607768b030ddec), ROM_BIOS(7))
+	ROM_SYSTEM_BIOS(7, "ficgiovt", "FIC 486-GIO-VT 3.06G") /* 1994-11-20 */
+	ROMX_LOAD("306gcd00.awd", 0x0f0000, 0x10000, CRC(75f3ded4) SHA1(999d4b58204e0b0f33262d0613c855b528bf9597), ROM_BIOS(8))
+
+	ROM_SYSTEM_BIOS(8, "ficgiovt2_326", "FIC 486-GIO-VT2 3.26G")  /* 1994-07-06 */
+	ROMX_LOAD("326g1c00.awd", 0x0f0000, 0x10000, CRC(2e729ab5) SHA1(b713f97fa0e0b62856dab917f417f5b21020b354), ROM_BIOS(9))
+	ROM_SYSTEM_BIOS(9, "ficgiovt2_3276", "FIC 486-GIO-VT2 3.276") /* 1997-07-17 */
+	ROMX_LOAD("32760000.bin", 0x0f0000, 0x10000, CRC(ad179128) SHA1(595f67ba4a1c8eb5e118d75bf657fff3803dcf4f), ROM_BIOS(10))
+
+	ROM_SYSTEM_BIOS(10, "ficgvt2", "FIC 486-GVT-2 3.07G") /* 1994-11-02 */
+	ROMX_LOAD("3073.bin",     0x0f0000, 0x10000, CRC(a6723863) SHA1(ee93a2f1ec84a3d67e267d0a490029f9165f1533), ROM_BIOS(11))
+	ROM_SYSTEM_BIOS(11, "ficgpak2", "FIC 486-PAK-2 5.15S") /* 1995-06-27, includes Phoenix S3 TRIO64 Enhanced VGA BIOS 1.4-01 */
+	ROMX_LOAD("515sbd8a.awd", 0x0e0000, 0x20000, CRC(778247e1) SHA1(07d8f0f2464abf507be1e8dfa06cd88737782411), ROM_BIOS(12))
+
+	ROM_SYSTEM_BIOS(12, "ficpio2c7", "FIC 486-PIO-2 1.15C701") /* pnp, i/o core: NS 332 */
+	ROMX_LOAD("115c701.awd",  0x0e0000, 0x20000, CRC(b0dd7975) SHA1(bfde13b0fbd141bc945d37d92faca9f4f59b716d), ROM_BIOS(13))
+	ROM_SYSTEM_BIOS(13, "ficpio2b7", "FIC 486-PIO-2 1.15B701") /* pnp, i/o core: NS 311/312 */
+	ROMX_LOAD("115b701.awd",  0x0e0000, 0x20000, CRC(ac24abad) SHA1(01174d84ed32fb1d95cd632d09f773acb8666c83), ROM_BIOS(14))
+	ROM_SYSTEM_BIOS(14, "ficpio2c1", "FIC 486-PIO-2 1.15C101") /* non-pnp, i/o core: NS 332  */
+	ROMX_LOAD("115c101.awd",  0x0e0000, 0x20000, CRC(5fadde88) SHA1(eff79692c1ecf34b6ea3f02409d14ce1f5c51bf9), ROM_BIOS(15))
+	ROM_SYSTEM_BIOS(15, "ficpio2b1", "FIC 486-PIO-2 1.15B101") /* non-pnp, i/o core: NS 311/312  */
+	ROMX_LOAD("115b101.awd",  0x0e0000, 0x20000, CRC(ff69617d) SHA1(ecbfc7315dcf6bd3e5b59e3ae9258759f64fe7a0), ROM_BIOS(16))
+
+	ROM_SYSTEM_BIOS(16, "ficpio3g7", "FIC 486-PIO-3 1.15G705") /* pnp */
+	ROMX_LOAD("115g705.awd",  0x0e0000, 0x20000, CRC(ddb1544a) SHA1(d165c9ecdc9397789abddfe0fef69fdf954fa41b), ROM_BIOS(17))
+	ROM_SYSTEM_BIOS(17, "ficpio3g1", "FIC 486-PIO-3 1.15G105") /* non-pnp */
+	ROMX_LOAD("115g105.awd",  0x0e0000, 0x20000, CRC(b327eb83) SHA1(9e1ff53e07ca035d8d43951bac345fec7131678d), ROM_BIOS(18))
+
+	ROM_SYSTEM_BIOS(18, "ficpos", "FIC 486-POS")
+	ROMX_LOAD("116di6b7.bin", 0x0e0000, 0x20000, CRC(d1d84616) SHA1(2f2b27ce100cf784260d8e155b48db8cfbc63285), ROM_BIOS(19))
+	ROM_SYSTEM_BIOS(19, "ficpvt", "FIC 486-PVT 5.15")          /* 1995-06-27 */
+	ROMX_LOAD("5150eef3.awd", 0x0e0000, 0x20000, CRC(eb35785d) SHA1(1e601bc8da73f22f11effe9cdf5a84d52576142b), ROM_BIOS(20))
+	ROM_SYSTEM_BIOS(20, "ficpvtio", "FIC 486-PVT-IO 5.162W2")  /* 1995-10-05 */
+	ROMX_LOAD("5162cf37.awd", 0x0e0000, 0x20000, CRC(378d813d) SHA1(aa674eff5b972b31924941534c3c988f6f78dc93), ROM_BIOS(21))
+	ROM_SYSTEM_BIOS(21, "ficvipio426", "FIC 486-VIP-IO 4.26GN2") /* 1994-12-07 */
+	ROMX_LOAD("426gn2.awd",   0x0e0000, 0x20000, CRC(5f472aa9) SHA1(9160abefae32b450e973651c052657b4becc72ba), ROM_BIOS(22))
+	ROM_SYSTEM_BIOS(22, "ficvipio427", "FIC 486-VIP-IO 4.27GN2A") /* 1996-02-14 */
+	ROMX_LOAD("427gn2a.awd",  0x0e0000, 0x20000, CRC(035ad56d) SHA1(0086db3eff711fc710b30e7f422fc5b4ab8d47aa), ROM_BIOS(23))
+	ROM_SYSTEM_BIOS(23, "ficvipio2", "FIC 486-VIP-IO2")
+	ROMX_LOAD("1164g701.awd", 0x0e0000, 0x20000, CRC(7b762683) SHA1(84debce7239c8b1978246688ae538f7c4f519d13), ROM_BIOS(24))
 
 	/* 8042 keyboard controller */
 	ROM_REGION( 0x0800, "kbdc8042", 0 )
 	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
-
-	/* 8051 Keytronic KB3270-PC keyboard row/column decoder */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
 
 
@@ -1112,31 +1210,54 @@ ROM_START( at586 )
 	ROM_REGION32_LE(0x40000, "user1", 0)
 	ROM_LOAD("et4000.bin",  0x00000, 0x08000, CRC(f01e4be0) SHA1(95d75ff41bcb765e50bd87a8da01835fd0aa01d5))
     ROM_LOAD("wdbios.rom",  0x08000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
-    ROM_LOAD("at586.bin",   0x20000, 0x20000, CRC(717037f5) SHA1(1d49d1b7a4a40d07d1a897b7f8c827754d76f824))
+	ROM_SYSTEM_BIOS(0, "sptx", "SP-586TX")
+    ROMX_LOAD("sp586tx.bin",   0x20000, 0x20000, CRC(1003d72c) SHA1(ec9224ff9b0fdfd6e462cb7bbf419875414739d6), ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "unisys", "Unisys 586") // probably bad dump due to need of hac in i82439tx to work
+    ROMX_LOAD("at586.bin",     0x20000, 0x20000, CRC(717037f5) SHA1(1d49d1b7a4a40d07d1a897b7f8c827754d76f824), ROM_BIOS(2))
+	/* 8042 keyboard controller */
+	ROM_REGION( 0x0800, "kbdc8042", 0 )
+	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
+ROM_END
+
+
+/* FIC VT-503 (Intel TX chipset, ITE 8679 Super I/O) */
+ROM_START( ficvt503 )
+	ROM_REGION32_LE(0x40000, "user1", 0)
+	ROM_LOAD("et4000.bin",  0x00000, 0x08000, CRC(f01e4be0) SHA1(95d75ff41bcb765e50bd87a8da01835fd0aa01d5))
+	ROM_LOAD("wdbios.rom",  0x08000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+
+	ROM_SYSTEM_BIOS(0, "109gi13", "1.09GI13") /* 1997-10-02 */
+	ROMX_LOAD("109gi13.bin", 0x20000, 0x20000, CRC(0c32af48) SHA1(2cce40a98598f1ed1f398975f7a90c8be4200667), ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "109gi14", "1.09GI14") /* 1997-11-07 */
+	ROMX_LOAD("109gi14.awd", 0x20000, 0x20000, CRC(588c5cc8) SHA1(710e5405850fd975b362a422bfe9bc6d6c9a36cd), ROM_BIOS(2))
+	ROM_SYSTEM_BIOS(2, "109gi15", "1.09GI15") /* 1997-11-07 */
+	ROMX_LOAD("109gi15.awd", 0x20000, 0x20000, CRC(649a3481) SHA1(e681c6ab55a67cec5978dfffa75fcddc2aa0de4d), ROM_BIOS(3))
+	ROM_SYSTEM_BIOS(3, "109gi16", "1.09GI16") /* 2000-03-23 */
+	ROMX_LOAD("109gi16.bin", 0x20000, 0x20000, CRC(a928f271) SHA1(127a83a60752cc33b3ca49774488e511ec7bac55), ROM_BIOS(4))
+	ROM_SYSTEM_BIOS(4, "115gk140", "1.15GK140") /* 1999-03-03 */
+	ROMX_LOAD("115gk140.awd", 0x20000, 0x20000, CRC(65e88956) SHA1(f94bb0732e00b5b0f18f4e349db24a289f8379c5), ROM_BIOS(5))
 
 	/* 8042 keyboard controller */
 	ROM_REGION( 0x0800, "kbdc8042", 0 )
 	ROM_LOAD("1503033.bin", 0x0000, 0x0800, CRC(5a81c0d2) SHA1(0100f8789fb4de74706ae7f9473a12ec2b9bd729))
-
-	/* 8051 Keytronic KB3270-PC keyboard row/column decoder */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
-	
+
+
 /***************************************************************************
 
   Game driver(s)
 
 ***************************************************************************/
 
-/*     YEAR  NAME      PARENT   COMPAT   MACHINE    INPUT       INIT        CONFIG   COMPANY     FULLNAME */
-COMP ( 1984, ibm5170,  0,       ibm5160, ibm5170,   atcga,	atega,	    0,   "International Business Machines",  "IBM PC/AT 5170", GAME_NOT_WORKING )
-COMP ( 1985, ibm5170a, ibm5170, 0,       ibm5170a,  atcga,  atega,      0,   "International Business Machines",  "IBM PC/AT 5170 8MHz", GAME_NOT_WORKING )
-COMP ( 1985, ibm5162,  ibm5170, 0,       ibm5162,   atcga,  atcga,      0,   "International Business Machines",  "IBM PC/XT-286 5162", GAME_NOT_WORKING )
-COMP ( 1988, i8530286, ibm5170, 0,       ps2m30286, atvga,	ps2m30286,  0,   "International Business Machines",  "IBM PS2 Model 30 286", GAME_NOT_WORKING )
-COMP ( 1987, at,       ibm5170, 0,       ibm5162,  atcga,	atcga,	    0,   "",  "PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1989, neat,     ibm5170, 0,       ibm5162,  atcga,	atcga,	    0,   "",  "NEAT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1988, at386,    ibm5170, 0,       at386,     atvga,	at386,	    0,   "MITAC INC",  "PC/AT 386 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1990, at486,    ibm5170, 0,       at486,     atvga,	at386,	    0,   "",  "PC/AT 486 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1990, at586,    ibm5170, 0,       at586,     atvga,	at586,	    0,   "",  "PC/AT 586 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1987, atvga,    ibm5170, 0,       atvga,     atvga,	at_vga,     0,   "",  "PC/AT (VGA, MF2 Keyboard)" , GAME_NOT_WORKING )
+/*     YEAR  NAME      PARENT   COMPAT   MACHINE    INPUT       INIT    COMPANY     FULLNAME */
+COMP ( 1984, ibm5170,  0,       ibm5160, ibm5170,   atcga,	atega,	    "International Business Machines",  "IBM PC/AT 5170", GAME_NOT_WORKING )
+COMP ( 1985, ibm5170a, ibm5170, 0,       ibm5170a,  atcga,  atega,      "International Business Machines",  "IBM PC/AT 5170 8MHz", GAME_NOT_WORKING )
+COMP ( 1985, ibm5162,  ibm5170, 0,       ibm5162,   atcga,  atcga,      "International Business Machines",  "IBM PC/XT-286 5162", GAME_NOT_WORKING )
+COMP ( 1988, i8530286, ibm5170, 0,       ps2m30286, atvga,	ps2m30286,  "International Business Machines",  "IBM PS2 Model 30 286", GAME_NOT_WORKING )
+COMP ( 1987, at,       ibm5170, 0,       ibm5162,  atcga,	atcga,	    "",  "PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1989, neat,     ibm5170, 0,       ibm5162,  atcga,	atcga,	    "",  "NEAT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1988, at386,    ibm5170, 0,       at386,     atvga,	at386,	    "MITAC INC",  "PC/AT 386 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1990, at486,    ibm5170, 0,       at486,     atvga,	at386,	    "",  "PC/AT 486 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1990, at586,    ibm5170, 0,       at586,     atvga,	at386,	    "",  "PC/AT 586 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1987, atvga,    ibm5170, 0,       atvga,     atvga,	at_vga,     "",  "PC/AT (VGA, MF2 Keyboard)" , GAME_NOT_WORKING )
+COMP ( 1997, ficvt503, ibm5170, 0,       at586,     atvga,  at386,      "FIC", "VT-503", GAME_NOT_WORKING )

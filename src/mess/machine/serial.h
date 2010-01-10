@@ -104,7 +104,6 @@ enum
 struct serial_connection
 {
 	int id;
-
 	/* state of this side */
 	unsigned long State;
 
@@ -124,17 +123,14 @@ struct serial_connection
 /* setup out and in callbacks */
 void serial_connection_init(running_machine *machine, struct serial_connection *connection);
 
-/* set callback which will be executed when out status has changed */
-void serial_connection_set_out_callback(running_machine *machine, struct serial_connection *connection, void (*out_cb)(running_machine *machine, int id, unsigned long state));
-
 /* set callback which will be executed when in status has changed */
-void serial_connection_set_in_callback(running_machine *machine, struct serial_connection *connection, void (*in_cb)(running_machine *machine, int id, unsigned long state));
+void serial_connection_set_in_callback(running_machine *machine, struct serial_connection *connection, void (*in_cb)(running_machine *machine, int id, unsigned long status));
 
 /* output status, if callback is setup it will be executed with the new status */
 void serial_connection_out(running_machine *machine, struct serial_connection *connection);
 
 /* join two serial connections */
-void serial_connection_link(running_machine *machine, struct serial_connection *connection_a, struct serial_connection *connection_b);
+void serial_connection_link(running_machine *machine, struct serial_connection *connection_a, struct serial_connection *connection_b);  
 
 
 /*******************************************************************************/
@@ -211,8 +207,6 @@ struct serial_transmit_register
 	unsigned long bit_count;
 };
 
-/* get a bit from the transmit register */
-int transmit_register_get_data_bit(struct serial_transmit_register *transmit_reg);
 /* setup transmit reg ready for transmit */
 void transmit_register_setup(struct serial_transmit_register *transmit_reg, struct data_form *data_form,unsigned char data_byte);
 void	transmit_register_send_bit(running_machine *machine, struct serial_transmit_register *transmit_reg, struct serial_connection *connection);
@@ -222,64 +216,26 @@ void	transmit_register_reset(struct serial_transmit_register *transmit_reg);
 /**** SERIAL HELPER ****/
 
 void serial_helper_setup(void);
-unsigned char serial_helper_get_parity(unsigned char data);
 
 /*******************************************************************************/
 /**** SERIAL DEVICE ****/
 
-/* a read/write bit stream. used to transmit data and to receive data */
-struct data_stream
-{
-	/* pointer to buffer */
-	unsigned char *pData;
-	/* length of buffer */
-	unsigned long DataLength;
-
-	/* bit offset within current byte */
-	unsigned long BitCount;
-	/* byte offset within data */
-	unsigned long ByteCount;
-};
-
-/* a serial device */
-struct serial_device
-{
-	/* transmit data bit-stream */
-	struct data_stream transmit;
-	/* receive data bit-stream */
-	struct data_stream receive;
-
-	/* register to receive data */
-	struct serial_receive_register	receive_reg;
-	/* register to transmit data */
-	struct serial_transmit_register transmit_reg;
-
-	/* connection to transmit/receive data over */
-	struct serial_connection connection;
-
-	/* data form to transmit/receive */
-	struct data_form data_form;
-
-	int transmit_state;
-
-	/* baud rate */
-	unsigned long BaudRate;
-
-	/* baud rate timer */
-	void	*timer;
-};
-
-unsigned long serial_device_get_state(int id);
+unsigned long serial_device_get_state(const device_config *device);
 
 /* connect this device to the emulated serial chip */
 /* id is the serial device to connect to */
 /* connection is the serial connection to connect to the serial device */
 void serial_device_connect(const device_config *image, struct serial_connection *connection);
 
-/* init this device */
-DEVICE_START(serial_device);
-DEVICE_IMAGE_LOAD(serial_device);
-DEVICE_IMAGE_UNLOAD(serial_device);
+#define SERIAL	DEVICE_GET_INFO_NAME(serial)
+
+#define MDRV_SERIAL_ADD(_tag) \
+	MDRV_DEVICE_ADD(_tag, SERIAL, 0)
+
+/* device interface */
+DEVICE_GET_INFO( serial );
+DEVICE_START(serial);
+DEVICE_IMAGE_LOAD(serial);
 
 void serial_device_setup(const device_config *image, int baud_rate, int num_data_bits, int stop_bit_count, int parity_code);
 

@@ -30,7 +30,7 @@
 
 static ADDRESS_MAP_START( exp85_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x07ff) AM_ROMBANK(1)
+	AM_RANGE(0x0000, 0x07ff) AM_ROMBANK("bank1")
 	AM_RANGE(0xc000, 0xdfff) AM_ROM
 	AM_RANGE(0xf000, 0xf7ff) AM_ROM
 	AM_RANGE(0xf800, 0xf8ff) AM_RAM
@@ -180,10 +180,11 @@ static MACHINE_START( exp85 )
 	const address_space *program = cputag_get_address_space(machine, I8085A_TAG, ADDRESS_SPACE_PROGRAM);
 
 	/* setup memory banking */
-	memory_install_readwrite8_handler(program, 0x0000, 0x07ff, 0, 0, SMH_BANK(1), SMH_UNMAP);
-	memory_configure_bank(machine, 1, 0, 1, memory_region(machine, I8085A_TAG) + 0xf000, 0);
-	memory_configure_bank(machine, 1, 1, 1, memory_region(machine, I8085A_TAG), 0);
-	memory_set_bank(machine, 1, 0);
+	memory_install_read_bank(program, 0x0000, 0x07ff, 0, 0, "bank1");
+	memory_unmap_write(program, 0x0000, 0x07ff, 0, 0 );
+	memory_configure_bank(machine, "bank1", 0, 1, memory_region(machine, I8085A_TAG) + 0xf000, 0);
+	memory_configure_bank(machine, "bank1", 1, 1, memory_region(machine, I8085A_TAG), 0);
+	memory_set_bank(machine, "bank1", 0);
 
 	/* find devices */
 	state->speaker = devtag_get_device(machine, SPEAKER_TAG);
@@ -234,7 +235,7 @@ static MACHINE_DRIVER_START( exp85 )
 	MDRV_I8355_ADD(I8355_TAG, XTAL_6_144MHz/2, i8355_intf)
 
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, exp85_cassette_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("256")
@@ -264,5 +265,5 @@ ROM_START( exp85 )
 ROM_END
 
 /* System Drivers */
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY         FULLNAME        FLAGS */
-COMP( 1979, exp85,  0,		0,		exp85,	exp85,	0,		0,	"Netronics",	"Explorer/85",	GAME_NOT_WORKING )
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY         FULLNAME        FLAGS */
+COMP( 1979, exp85,  0,		0,		exp85,	exp85,	0,		"Netronics",	"Explorer/85",	GAME_NOT_WORKING )

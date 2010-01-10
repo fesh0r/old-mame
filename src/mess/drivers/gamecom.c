@@ -24,14 +24,14 @@ UINT8 *gamecom_vram;
 UINT8 *gamecom_iram;
 
 static ADDRESS_MAP_START(gamecom_mem_map, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x0000, 0x007F )  AM_RAM AM_BASE(&gamecom_iram) AM_READWRITE( gamecom_internal_r, gamecom_internal_w )/* CPU internal register file */
+	AM_RANGE( 0x0000, 0x007F )  AM_BASE(&gamecom_iram) AM_READWRITE( gamecom_internal_r, gamecom_internal_w )/* CPU internal register file */
 	AM_RANGE( 0x0080, 0x03FF )  AM_RAM						/* RAM */
 	AM_RANGE( 0x0400, 0x0FFF )  AM_NOP                                              /* Nothing */
 	AM_RANGE( 0x1000, 0x1FFF )  AM_ROM                                              /* Internal ROM (initially), or External ROM/Flash. Controlled by MMU0 (never swapped out in game.com) */
-	AM_RANGE( 0x2000, 0x3FFF )  AM_ROMBANK(1)                                       /* External ROM/Flash. Controlled by MMU1 */
-	AM_RANGE( 0x4000, 0x5FFF )  AM_ROMBANK(2)                                       /* External ROM/Flash. Controlled by MMU2 */
-	AM_RANGE( 0x6000, 0x7FFF )  AM_ROMBANK(3)                                       /* External ROM/Flash. Controlled by MMU3 */
-	AM_RANGE( 0x8000, 0x9FFF )  AM_ROMBANK(4)                                       /* External ROM/Flash. Controlled by MMU4 */
+	AM_RANGE( 0x2000, 0x3FFF )  AM_ROMBANK("bank1")                                       /* External ROM/Flash. Controlled by MMU1 */
+	AM_RANGE( 0x4000, 0x5FFF )  AM_ROMBANK("bank2")                                       /* External ROM/Flash. Controlled by MMU2 */
+	AM_RANGE( 0x6000, 0x7FFF )  AM_ROMBANK("bank3")                                       /* External ROM/Flash. Controlled by MMU3 */
+	AM_RANGE( 0x8000, 0x9FFF )  AM_ROMBANK("bank4")                                       /* External ROM/Flash. Controlled by MMU4 */
 	AM_RANGE( 0xA000, 0xDFFF )  AM_RAM AM_BASE(&gamecom_vram)			/* VRAM */
 	AM_RANGE( 0xE000, 0xFFFF )  AM_RAM                                              /* Extended I/O, Extended RAM */
 ADDRESS_MAP_END
@@ -136,7 +136,7 @@ ROM_START( gamecom )
 	ROM_REGION( 0x200000, "user2", ROMREGION_ERASEFF )
 ROM_END
 
-/*    YEAR  NAME     PARENT COMPAT MACHINE  INPUT    INIT CONFIG   COMPANY  FULLNAME */
-CONS( 1997, gamecom, 0,     0,     gamecom, gamecom, gamecom,   0, "Tiger", "Game.com", GAME_NOT_WORKING )
+/*    YEAR  NAME     PARENT COMPAT MACHINE  INPUT    INIT    COMPANY  FULLNAME */
+CONS( 1997, gamecom, 0,     0,     gamecom, gamecom, gamecom,"Tiger", "Game.com", GAME_NOT_WORKING )
 
 

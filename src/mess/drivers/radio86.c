@@ -11,7 +11,7 @@
 #include "cpu/i8085/i8085.h"
 #include "sound/wave.h"
 #include "machine/i8255a.h"
-#include "machine/8257dma.h"
+#include "machine/i8257.h"
 #include "video/i8275.h"
 #include "devices/cassette.h"
 #include "formats/rk_cas.h"
@@ -19,12 +19,12 @@
 
 /* Address maps */
 static ADDRESS_MAP_START(radio86_mem, ADDRESS_SPACE_PROGRAM, 8)
-    AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK(1) // First bank
+    AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK("bank1") // First bank
     AM_RANGE( 0x1000, 0x7fff ) AM_RAM  // RAM
     AM_RANGE( 0x8000, 0x8003 ) AM_DEVREADWRITE("ppi8255_1", i8255a_r, i8255a_w) AM_MIRROR(0x1ffc)
     //AM_RANGE( 0xa000, 0xa003 ) AM_DEVREADWRITE("ppi8255_2", i8255a_r, i8255a_w) AM_MIRROR(0x1ffc)
     AM_RANGE( 0xc000, 0xc001 ) AM_DEVREADWRITE("i8275", i8275_r, i8275_w) AM_MIRROR(0x1ffe) // video
-    AM_RANGE( 0xe000, 0xffff ) AM_DEVWRITE("dma8257", dma8257_w)	 // DMA
+    AM_RANGE( 0xe000, 0xffff ) AM_DEVWRITE("dma8257", i8257_w)	 // DMA
     AM_RANGE( 0xf000, 0xffff ) AM_ROM  // System ROM
 ADDRESS_MAP_END
 
@@ -39,17 +39,17 @@ static ADDRESS_MAP_START( rk7007_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(radio86rom_mem, ADDRESS_SPACE_PROGRAM, 8)
-    AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK(1) // First bank
+    AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK("bank1") // First bank
     AM_RANGE( 0x1000, 0x7fff ) AM_RAM  // RAM
     AM_RANGE( 0x8000, 0x8003 ) AM_DEVREADWRITE("ppi8255_1", i8255a_r, i8255a_w) AM_MIRROR(0x1ffc)
     AM_RANGE( 0xa000, 0xa003 ) AM_DEVREADWRITE("ppi8255_2", i8255a_r, i8255a_w) AM_MIRROR(0x1ffc)
     AM_RANGE( 0xc000, 0xc001 ) AM_DEVREADWRITE("i8275", i8275_r, i8275_w) AM_MIRROR(0x1ffe) // video
-    AM_RANGE( 0xe000, 0xffff ) AM_DEVWRITE("dma8257", dma8257_w)	 // DMA
+    AM_RANGE( 0xe000, 0xffff ) AM_DEVWRITE("dma8257", i8257_w)	 // DMA
     AM_RANGE( 0xf000, 0xffff ) AM_ROM  // System ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(radio86ram_mem, ADDRESS_SPACE_PROGRAM, 8)
-    AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK(1) // First bank
+    AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK("bank1") // First bank
     AM_RANGE( 0x1000, 0xdfff ) AM_RAM  // RAM
     AM_RANGE( 0xe000, 0xe7ff ) AM_ROM  // System ROM page 2
     AM_RANGE( 0xe800, 0xf5ff ) AM_RAM  // RAM
@@ -57,30 +57,30 @@ static ADDRESS_MAP_START(radio86ram_mem, ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE( 0xf780, 0xf7bf ) AM_DEVREADWRITE("i8275", i8275_r, i8275_w) // video
     AM_RANGE( 0xf684, 0xf687 ) AM_DEVREADWRITE("ppi8255_2", i8255a_r, i8255a_w)
 	AM_RANGE( 0xf688, 0xf688 ) AM_WRITE( radio86_pagesel )
-    AM_RANGE( 0xf800, 0xffff ) AM_DEVWRITE("dma8257", dma8257_w)	 // DMA
+    AM_RANGE( 0xf800, 0xffff ) AM_DEVWRITE("dma8257", i8257_w)	 // DMA
     AM_RANGE( 0xf800, 0xffff ) AM_ROM  // System ROM page 1
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(radio86_16_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-    AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK(1) // First bank
+    AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK("bank1") // First bank
     AM_RANGE( 0x1000, 0x3fff ) AM_RAM  // RAM
     AM_RANGE( 0x4000, 0x7fff ) AM_READ(radio_cpu_state_r)
     AM_RANGE( 0x8000, 0x8003 ) AM_DEVREADWRITE("ppi8255_1", i8255a_r, i8255a_w) AM_MIRROR(0x1ffc)
     //AM_RANGE( 0xa000, 0xa003 ) AM_DEVREADWRITE("ppi8255_2", i8255a_r, i8255a_w) AM_MIRROR(0x1ffc)
     AM_RANGE( 0xc000, 0xc001 ) AM_DEVREADWRITE("i8275", i8275_r, i8275_w) AM_MIRROR(0x1ffe) // video
-    AM_RANGE( 0xe000, 0xffff ) AM_DEVWRITE("dma8257", dma8257_w)	 // DMA
+    AM_RANGE( 0xe000, 0xffff ) AM_DEVWRITE("dma8257", i8257_w)	 // DMA
     AM_RANGE( 0xf000, 0xffff ) AM_ROM  // System ROM
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(mikron2_mem, ADDRESS_SPACE_PROGRAM, 8)
-    AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK(1) // First bank
+    AM_RANGE( 0x0000, 0x0fff ) AM_RAMBANK("bank1") // First bank
     AM_RANGE( 0x1000, 0x7fff ) AM_RAM  // RAM
     AM_RANGE( 0xc000, 0xc003 ) AM_DEVREADWRITE("ppi8255_1", i8255a_r, i8255a_w) AM_MIRROR(0x00fc)
     //AM_RANGE( 0xc100, 0xc103 ) AM_DEVREADWRITE("ppi8255_2", i8255a_r, i8255a_w) AM_MIRROR(0x00fc)
     AM_RANGE( 0xc200, 0xc201 ) AM_DEVREADWRITE("i8275", i8275_r, i8275_w) AM_MIRROR(0x00fe) // video
-    AM_RANGE( 0xc300, 0xc3ff ) AM_DEVWRITE("dma8257", dma8257_w)	 // DMA
+    AM_RANGE( 0xc300, 0xc3ff ) AM_DEVWRITE("dma8257", i8257_w)	 // DMA
     AM_RANGE( 0xf000, 0xffff ) AM_ROM  // System ROM
 ADDRESS_MAP_END
 
@@ -314,6 +314,25 @@ static const cassette_config radio86_cassette_config =
 };
 
 
+/* F4 Character Displayer */
+static const gfx_layout radio86_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	128,					/* 128 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static GFXDECODE_START( radio86 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, radio86_charlayout, 0, 1 )
+GFXDECODE_END
+
+
 /* Machine driver */
 static MACHINE_DRIVER_START( radio86 )
 	/* basic machine hardware */
@@ -332,6 +351,7 @@ static MACHINE_DRIVER_START( radio86 )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(78*6, 30*10)
 	MDRV_SCREEN_VISIBLE_AREA(0, 78*6-1, 0, 30*10-1)
+	MDRV_GFXDECODE(radio86)
 	MDRV_PALETTE_LENGTH(3)
 	MDRV_PALETTE_INIT(radio86)
 
@@ -342,7 +362,7 @@ static MACHINE_DRIVER_START( radio86 )
 	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_DMA8257_ADD("dma8257", XTAL_16MHz / 9, radio86_dma)
+	MDRV_I8257_ADD("dma8257", XTAL_16MHz / 9, radio86_dma)
 
 	MDRV_CASSETTE_ADD( "cassette", radio86_cassette_config )
 MACHINE_DRIVER_END
@@ -474,13 +494,13 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1986, radio86,  0,       0, 	radio86, 	radio86, radio86,  0,  "", "Radio-86RK",	0)
-COMP( 1986, radio16,  radio86, 0, 	radio16, 	radio86, radio86,  0,  "", "Radio-86RK (16K RAM)",	0)
-COMP( 1986, radio4k,  radio86, 0, 	radio86, 	radio86, radio86,  0,  "", "Radio-86RK (4K ROM)",	0)
-COMP( 1986, radiorom, radio86, 0, 	radiorom, 	radio86, radio86,  0,  "", "Radio-86RK (ROM-Disk)",	0)
-COMP( 1986, radioram, radio86, 0, 	radioram, 	radio86, radioram, 0,  "", "Radio-86RK (ROM/RAM Disk)",	0)
-COMP( 1986, spektr01, radio86, 0, 	radio86, 	radio86, radio86,  0,  "", "Spektr-001",	0)
-COMP( 1986, rk7007,   radio86, 0, 	rk7007, 	ms7007,  radio86,  0,  "", "Radio-86RK (MS7007)",	0)
-COMP( 1986, rk700716, radio86, 0, 	rk700716, 	ms7007,  radio86,  0,  "", "Radio-86RK (MS7007 16K RAM)",	0)
-COMP( 1986, mikron2,  radio86, 0, 	mikron2, 	radio86, radio86,  0,  "", "Mikron-2",	0)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
+COMP( 1986, radio86,  0,       0, 	radio86, 	radio86, radio86, "", "Radio-86RK",	0)
+COMP( 1986, radio16,  radio86, 0, 	radio16, 	radio86, radio86, "", "Radio-86RK (16K RAM)",	0)
+COMP( 1986, radio4k,  radio86, 0, 	radio86, 	radio86, radio86, "", "Radio-86RK (4K ROM)",	0)
+COMP( 1986, radiorom, radio86, 0, 	radiorom, 	radio86, radio86, "", "Radio-86RK (ROM-Disk)",	0)
+COMP( 1986, radioram, radio86, 0, 	radioram, 	radio86, radioram,"", "Radio-86RK (ROM/RAM Disk)",	0)
+COMP( 1986, spektr01, radio86, 0, 	radio86, 	radio86, radio86, "", "Spektr-001",	0)
+COMP( 1986, rk7007,   radio86, 0, 	rk7007, 	ms7007,  radio86, "", "Radio-86RK (MS7007)",	0)
+COMP( 1986, rk700716, radio86, 0, 	rk700716, 	ms7007,  radio86, "", "Radio-86RK (MS7007 16K RAM)",	0)
+COMP( 1986, mikron2,  radio86, 0, 	mikron2, 	radio86, radio86, "", "Mikron-2",	0)

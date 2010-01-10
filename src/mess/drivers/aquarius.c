@@ -219,8 +219,8 @@ static DRIVER_INIT( aquarius )
 	{
 		const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
-		memory_install_readwrite8_handler(space, 0x4000, 0x4000 + messram_get_size(devtag_get_device(machine, "messram")) - 0x1000 - 1, 0, 0, SMH_BANK(1), SMH_BANK(1));
-		memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
+		memory_install_readwrite_bank(space, 0x4000, 0x4000 + messram_get_size(devtag_get_device(machine, "messram")) - 0x1000 - 1, 0, 0, "bank1");
+		memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
 	}
 }
 
@@ -231,8 +231,8 @@ static DRIVER_INIT( aquarius )
 
 static ADDRESS_MAP_START( aquarius_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
-	AM_RANGE(0x3000, 0x33ff) AM_RAM_WRITE(aquarius_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x3400, 0x37ff) AM_RAM_WRITE(aquarius_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0x3000, 0x33ff) AM_RAM_WRITE(aquarius_videoram_w) AM_BASE_SIZE_GENERIC(videoram)
+	AM_RANGE(0x3400, 0x37ff) AM_RAM_WRITE(aquarius_colorram_w) AM_BASE(&aquarius_colorram)
 	AM_RANGE(0x3800, 0x3fff) AM_RAM
 	AM_RANGE(0x4000, 0xbfff) AM_NOP /* expansion ram */
 	AM_RANGE(0xc000, 0xffff) AM_READ(cartridge_r)
@@ -431,11 +431,11 @@ static MACHINE_DRIVER_START( aquarius )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("bin")
 	MDRV_CARTSLOT_NOT_MANDATORY
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("4K")
-	MDRV_RAM_EXTRA_OPTIONS("8K,20K,36K")	
+	MDRV_RAM_EXTRA_OPTIONS("8K,20K,36K")
 MACHINE_DRIVER_END
 
 static FLOPPY_OPTIONS_START(aquarius)
@@ -511,7 +511,7 @@ ROM_END
     GAME DRIVERS
 ***************************************************************************/
 
-/*    YEAR  NAME         PARENT    COMPAT  MACHINE      INPUT     INIT      CONFIG       COMPANY   FULLNAME                         FLAGS */
-COMP( 1983, aquarius,    0,        0,      aquarius,    aquarius, aquarius, 0,    "Mattel", "Aquarius (NTSC)",               0 )
-COMP( 1983, aquarius_qd, aquarius, 0,      aquarius_qd, aquarius, aquarius, 0, "Mattel", "Aquarius w/ Quick Disk (NTSC)", 0 )
-//COMP( 1984,   aquariu2,   aquarius,   0,      aquarius,   aquarius,   0,      0,   "Mattel",   "Aquarius II",  GAME_NOT_WORKING )
+/*    YEAR  NAME         PARENT    COMPAT  MACHINE      INPUT     INIT      COMPANY   FULLNAME                         FLAGS */
+COMP( 1983, aquarius,    0,        0,      aquarius,    aquarius, aquarius, "Mattel", "Aquarius (NTSC)",               0 )
+COMP( 1983, aquarius_qd, aquarius, 0,      aquarius_qd, aquarius, aquarius, "Mattel", "Aquarius w/ Quick Disk (NTSC)", 0 )
+//COMP( 1984,   aquariu2,   aquarius,   0,      aquarius,   aquarius,   0,  "Mattel",   "Aquarius II",  GAME_NOT_WORKING )

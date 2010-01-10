@@ -1,6 +1,5 @@
 #include "driver.h"
 #include "includes/intv.h"
-#include "video/stic.h"
 
 #define FOREGROUND_BIT 0x0010
 
@@ -15,7 +14,7 @@ VIDEO_START( intv )
 
 	VIDEO_START_CALL(generic_bitmapped);
 
-/*
+#if 0
     for (i = 0; i < 8; i++) {
         struct intv_sprite_type* s = &intv_sprite[i];
         s->visible = 0;
@@ -58,7 +57,7 @@ VIDEO_START( intv )
         intv_gram[i] = 0;
         intv_gramdirtybytes[i] = 1;
     }
-*/
+#endif
 }
 
 
@@ -589,7 +588,7 @@ static void draw_background(running_machine *machine, bitmap_t *bitmap, int tran
 #endif
 
 /* TBD: need to handle sprites behind foreground? */
-/*
+#ifdef UNUSED_FUNCTION
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap, int behind_foreground)
 {
     int i;
@@ -683,7 +682,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, int behind_
         }
     }
 }
-*/
+#endif
 
 static void draw_borders(running_machine *machine, bitmap_t *bm)
 {
@@ -697,7 +696,7 @@ static void draw_borders(running_machine *machine, bitmap_t *bm)
 static int col_delay = 0;
 static int row_delay = 0;
 
-void stic_screenrefresh(running_machine *machine)
+void intv_stic_screenrefresh(running_machine *machine)
 {
 	int i;
 
@@ -705,21 +704,21 @@ void stic_screenrefresh(running_machine *machine)
 	{
 		intv_stic_handshake = 0;
 		// Render the background
-		render_background(machine, tmpbitmap);
+		render_background(machine, machine->generic.tmpbitmap);
 		// Render the sprites into their buffers
 		render_sprites(machine);
 		for (i = 0; i < 8; i++) intv_sprite[i].collision = 0;
 		// Copy the sprites to the background
-		copy_sprites_to_background(machine, tmpbitmap);
+		copy_sprites_to_background(machine, machine->generic.tmpbitmap);
 		determine_sprite_collisions();
 		for (i = 0; i < 8; i++) intv_collision_registers[i] |= intv_sprite[i].collision;
 		/* draw the screen borders if enabled */
-		draw_borders(machine, tmpbitmap);
+		draw_borders(machine, machine->generic.tmpbitmap);
 	}
 	else
 	{
 		/* STIC disabled, just fill with border color */
-		bitmap_fill(tmpbitmap, NULL, (intv_border_color<<1)+1);
+		bitmap_fill(machine->generic.tmpbitmap, NULL, (intv_border_color<<1)+1);
 	}
 	col_delay = intv_col_delay;
 	row_delay = intv_row_delay;
@@ -799,7 +798,7 @@ VIDEO_UPDATE( intvkbd )
 				offs = current_row*64+x;
 				drawgfx_transpen(bitmap, NULL,
 					screen->machine->gfx[2],
-					videoram[offs],
+					screen->machine->generic.videoram.u8[offs],
 					7, /* white */
 					0,0,
 					x*8,y*8, 0);

@@ -75,6 +75,26 @@
 
 static UINT8 *system_rom;
 
+// Ram banking handlers.
+static WRITE8_HANDLER( dgnbeta_ram_b0_w );
+static WRITE8_HANDLER( dgnbeta_ram_b1_w );
+static WRITE8_HANDLER( dgnbeta_ram_b2_w );
+static WRITE8_HANDLER( dgnbeta_ram_b3_w );
+static WRITE8_HANDLER( dgnbeta_ram_b4_w );
+static WRITE8_HANDLER( dgnbeta_ram_b5_w );
+static WRITE8_HANDLER( dgnbeta_ram_b6_w );
+static WRITE8_HANDLER( dgnbeta_ram_b7_w );
+static WRITE8_HANDLER( dgnbeta_ram_b8_w );
+static WRITE8_HANDLER( dgnbeta_ram_b9_w );
+static WRITE8_HANDLER( dgnbeta_ram_bA_w );
+static WRITE8_HANDLER( dgnbeta_ram_bB_w );
+static WRITE8_HANDLER( dgnbeta_ram_bC_w );
+static WRITE8_HANDLER( dgnbeta_ram_bD_w );
+static WRITE8_HANDLER( dgnbeta_ram_bE_w );
+static WRITE8_HANDLER( dgnbeta_ram_bF_w );
+static WRITE8_HANDLER( dgnbeta_ram_bG_w );
+
+
 #define VERBOSE 0
 
 
@@ -139,8 +159,6 @@ static int DMA_NMI_LAST;
 #define NO_KEY_PRESSED	0x7F			/* retrurned by hardware if no key pressed */
 
 static int SelectedKeyrow(int	Rows);
-
-int dgnbeta_font=0;
 
 const pia6821_interface dgnbeta_pia_intf[] =
 {
@@ -278,10 +296,13 @@ static void UpdateBanks(running_machine *machine, int first, int last)
 	int		bank_start;
 	int		bank_end;
 	int		MapPage;
+	char page_num[10];
 
 	LOG_BANK_UPDATE(("\n\nUpdating banks %d to %d at PC=$%X\n",first,last,cpu_get_pc(space_0->cpu)));
 	for(Page=first;Page<=last;Page++)
 	{
+		sprintf(page_num,"bank%d",Page+1);
+
 		bank_start	= bank_info[Page].start;
 		bank_end	= bank_info[Page].end;
 
@@ -307,6 +328,8 @@ static void UpdateBanks(running_machine *machine, int first, int last)
 				logerror("Error RAM in IO PAGE !\n");
 			}
 			writebank=bank_info[Page].handler;
+			memory_install_write8_handler(space_0, bank_start, bank_end,0,0,writebank);
+			memory_install_write8_handler(space_1, bank_start, bank_end,0,0,writebank);
 		}
 		else					// Block is rom, or undefined
 		{
@@ -320,13 +343,12 @@ static void UpdateBanks(running_machine *machine, int first, int last)
 			else
 				readbank=system_rom;
 
-			writebank = SMH_UNMAP;
+			memory_unmap_write(space_0, bank_start, bank_end,0,0);
+			memory_unmap_write(space_1, bank_start, bank_end,0,0);
 		}
 
 		PageRegs[TaskReg][Page].memory=readbank;
-		memory_set_bankptr(machine, Page+1,readbank);
-		memory_install_write8_handler(space_0, bank_start, bank_end,0,0,writebank);
-		memory_install_write8_handler(space_1, bank_start, bank_end,0,0,writebank);
+		memory_set_bankptr(machine, page_num,readbank);
 
 		LOG_BANK_UPDATE(("UpdateBanks:MapPage=$%02X readbank=$%X\n",MapPage,(int)(FPTR)readbank));
 		LOG_BANK_UPDATE(("PageRegsSet Task=%X Page=%x\n",TaskReg,Page));
@@ -369,7 +391,7 @@ static void SetDefaultTask(running_machine *machine)
 
 	/* Map video ram to base of area it can use, that way we can take the literal RA */
 	/* from the 6845 without having to mask it ! */
-	videoram=&messram_get_ptr(devtag_get_device(machine, "messram"))[TextVidBasePage*RamPageSize];
+	machine->generic.videoram.u8=&messram_get_ptr(devtag_get_device(machine, "messram"))[TextVidBasePage*RamPageSize];
 }
 
 // Return the value of a page register
@@ -403,87 +425,87 @@ static void dgn_beta_bank_memory(int offset, int data, int bank)
 	PageRegs[TaskReg][bank].memory[offset]=data;
 }
 
-WRITE8_HANDLER( dgnbeta_ram_b0_w )
+static WRITE8_HANDLER( dgnbeta_ram_b0_w )
 {
 	dgn_beta_bank_memory(offset,data,0);
 }
 
-WRITE8_HANDLER( dgnbeta_ram_b1_w )
+static WRITE8_HANDLER( dgnbeta_ram_b1_w )
 {
 	dgn_beta_bank_memory(offset,data,1);
 }
 
-WRITE8_HANDLER( dgnbeta_ram_b2_w )
+static WRITE8_HANDLER( dgnbeta_ram_b2_w )
 {
 	dgn_beta_bank_memory(offset,data,2);
 }
 
-WRITE8_HANDLER( dgnbeta_ram_b3_w )
+static WRITE8_HANDLER( dgnbeta_ram_b3_w )
 {
 	dgn_beta_bank_memory(offset,data,3);
 }
 
-WRITE8_HANDLER( dgnbeta_ram_b4_w )
+static WRITE8_HANDLER( dgnbeta_ram_b4_w )
 {
 	dgn_beta_bank_memory(offset,data,4);
 }
 
-WRITE8_HANDLER( dgnbeta_ram_b5_w )
+static WRITE8_HANDLER( dgnbeta_ram_b5_w )
 {
 	dgn_beta_bank_memory(offset,data,5);
 }
 
-WRITE8_HANDLER( dgnbeta_ram_b6_w )
+static WRITE8_HANDLER( dgnbeta_ram_b6_w )
 {
 	dgn_beta_bank_memory(offset,data,6);
 }
 
-WRITE8_HANDLER( dgnbeta_ram_b7_w )
+static WRITE8_HANDLER( dgnbeta_ram_b7_w )
 {
 	dgn_beta_bank_memory(offset,data,7);
 }
 
-WRITE8_HANDLER( dgnbeta_ram_b8_w )
+static WRITE8_HANDLER( dgnbeta_ram_b8_w )
 {
 	dgn_beta_bank_memory(offset,data,8);
 }
 
-WRITE8_HANDLER( dgnbeta_ram_b9_w )
+static WRITE8_HANDLER( dgnbeta_ram_b9_w )
 {
 	dgn_beta_bank_memory(offset,data,9);
 }
 
-WRITE8_HANDLER( dgnbeta_ram_bA_w )
+static WRITE8_HANDLER( dgnbeta_ram_bA_w )
 {
 	dgn_beta_bank_memory(offset,data,10);
 }
 
-WRITE8_HANDLER( dgnbeta_ram_bB_w )
+static WRITE8_HANDLER( dgnbeta_ram_bB_w )
 {
 	dgn_beta_bank_memory(offset,data,11);
 }
 
-WRITE8_HANDLER( dgnbeta_ram_bC_w )
+static WRITE8_HANDLER( dgnbeta_ram_bC_w )
 {
 	dgn_beta_bank_memory(offset,data,12);
 }
 
-WRITE8_HANDLER( dgnbeta_ram_bD_w )
+static WRITE8_HANDLER( dgnbeta_ram_bD_w )
 {
 	dgn_beta_bank_memory(offset,data,13);
 }
 
-WRITE8_HANDLER( dgnbeta_ram_bE_w )
+static WRITE8_HANDLER( dgnbeta_ram_bE_w )
 {
 	dgn_beta_bank_memory(offset,data,14);
 }
 
-WRITE8_HANDLER( dgnbeta_ram_bF_w )
+static WRITE8_HANDLER( dgnbeta_ram_bF_w )
 {
 	dgn_beta_bank_memory(offset,data,15);
 }
 
-WRITE8_HANDLER( dgnbeta_ram_bG_w )
+static WRITE8_HANDLER( dgnbeta_ram_bG_w )
 {
 	dgn_beta_bank_memory(offset,data,16);
 }
@@ -578,8 +600,10 @@ static READ8_DEVICE_HANDLER(d_pia0_pb_r)
 	int RetVal;
 	int Idx;
 	int Selected;
-	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4",
-										"KEY5", "KEY6", "KEY7", "KEY8", "KEY9" };
+	static const char *const keynames[] = {
+		"KEY0", "KEY1", "KEY2", "KEY3", "KEY4",
+		"KEY5", "KEY6", "KEY7", "KEY8", "KEY9"
+	};
 
 	LOG_KEYBOARD(("PB Read\n"));
 
@@ -1006,8 +1030,10 @@ static void ScanInKeyboard(void)
 #if 0
 	int	Idx;
 	int	Row;
-	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4",
-										"KEY5", "KEY6", "KEY7", "KEY8", "KEY9" };
+	static const char *const keynames[] = {
+		"KEY0", "KEY1", "KEY2", "KEY3", "KEY4",
+		"KEY5", "KEY6", "KEY7", "KEY8", "KEY9"
+	};
 
 	LOG_KEYBOARD(("Scanning Host keyboard\n"));
 
@@ -1048,6 +1074,7 @@ void dgn_beta_frame_interrupt (running_machine *machine, int data)
 	ScanInKeyboard();
 }
 
+#ifdef UNUSED_FUNCTION
 void dgn_beta_line_interrupt (int data)
 {
 //  /* Set PIA line, so it recognises inturrupt */
@@ -1060,6 +1087,7 @@ void dgn_beta_line_interrupt (int data)
 //      pia_0_cb1_w(machine, 0,CLEAR_LINE);
 //  }
 }
+#endif
 
 
 /********************************* Machine/Driver Initialization ****************************************/
@@ -1106,7 +1134,7 @@ static void dgnbeta_reset(running_machine *machine)
 	wd17xx_set_density(fdc, DEN_MFM_LO);
 	wd17xx_set_drive(fdc, 0);
 
-	videoram = messram_get_ptr(devtag_get_device(machine, "messram"));		/* Point video ram at the start of physical ram */
+	machine->generic.videoram.u8 = messram_get_ptr(devtag_get_device(machine, "messram"));		/* Point video ram at the start of physical ram */
 }
 
 

@@ -1022,7 +1022,7 @@ INLINE void gdc_cmd_gchrd(void)
                UINT16 bit = (gdc.pram[15-row] >> bitnbr) & 0x01;
                writeWord = bit ? 0xffff : 0x0000;
                writeWord = (dispregs->mask & writeWord) |
-                  ((~dispregs->mask) & gdc_mess.vram[dispregs->ead]);
+                  ((~dispregs->mask) & gdc_mess.vram[dispregs->ead % gdc_mess.vramsize]);
                /* The mode is set by wdat */
                gdc_write_data(writeWord, 0xffff, dispregs->cur_mod);
 
@@ -1218,13 +1218,13 @@ static void gdc_command_processor(UINT8 command)
 /*-------------------------------------------------------------------------*/
 static int gdc_nbr_expected_params(UINT8 command)
 {
-	switch(command)
-	{
-		/* Video control commands */
+    switch(command)
+    {
+      /* Video control commands */
 
-		case CMD_START:
-		case CMD_VSYNC_SLAVE:
-		case CMD_VSYNC_MASTER:
+      case CMD_START:
+      case CMD_VSYNC_SLAVE:
+      case CMD_VSYNC_MASTER:
       case CMD_BCTRL_OFF:
       case CMD_BCTRL_ON:
       case CMD_FIGD:
@@ -1263,8 +1263,7 @@ static int gdc_nbr_expected_params(UINT8 command)
                   return 16;
             }
          }
-   }
-
+    }
 }
 
 
@@ -1384,8 +1383,8 @@ READ8_HANDLER (compis_gdc_r)
          data = 0xff;
          data = 0x00;
          break;
-   }
-   LOG((" returns %1X\n", data));
+	}
+	LOG((" returns %1X\n", data));
 	return(data);
 }
 
@@ -1470,7 +1469,7 @@ static void compis_gdc_start(running_machine *machine, const compis_gdc_interfac
 
 	gdc_mess.tmpbmp = auto_bitmap_alloc (machine, 640, 400, BITMAP_FORMAT_INDEXED16);
 	gdc_fifo_reset(&gdc);
-	videoram_size = gdc_mess.vramsize;
+	machine->generic.videoram_size = gdc_mess.vramsize;
 
 	VIDEO_START_CALL(generic_bitmapped);
 }

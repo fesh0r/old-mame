@@ -9,7 +9,7 @@
 #include "driver.h"
 #include "sgi.h"
 
-#define VERBOSE_LEVEL ( 1 )
+#define VERBOSE_LEVEL ( 2 )
 
 INLINE void ATTR_PRINTF(3,4) verboselog( running_machine *machine, int n_level, const char *s_fmt, ... )
 {
@@ -68,14 +68,14 @@ static UINT32 nMC_DMAMode;
 static UINT32 nMC_DMAZoomByteCnt;
 static UINT32 nMC_DMARunning;
 
-READ32_HANDLER( mc_r )
+READ32_HANDLER( sgi_mc_r )
 {
 	offset <<= 2;
 	switch( offset )
 	{
 	case 0x0000:
 	case 0x0004:
-		verboselog( space->machine, 2, "CPU Control 0 Read: %08x (%08x)\n", nMC_CPUControl0, mem_mask );
+		verboselog( space->machine, 3, "CPU Control 0 Read: %08x (%08x)\n", nMC_CPUControl0, mem_mask );
 		return nMC_CPUControl0;
 	case 0x0008:
 	case 0x000c:
@@ -264,7 +264,7 @@ READ32_HANDLER( mc_r )
 	return 0;
 }
 
-WRITE32_HANDLER( mc_w )
+WRITE32_HANDLER( sgi_mc_w )
 {
 	offset <<= 2;
 	switch( offset )
@@ -305,12 +305,12 @@ WRITE32_HANDLER( mc_w )
 		break;
 	case 0x0088:
 	case 0x008c:
-		verboselog( space->machine, 2, "Arbiter CPU Time Write: %08x (%08x)\n", data, mem_mask );
+		verboselog( space->machine, 3, "Arbiter CPU Time Write: %08x (%08x)\n", data, mem_mask );
 		nMC_ArbCPUTime = data;
 		break;
 	case 0x0098:
 	case 0x009c:
-		verboselog( space->machine, 2, "Arbiter Long Burst Time Write: %08x (%08x)\n", data, mem_mask );
+		verboselog( space->machine, 3, "Arbiter Long Burst Time Write: %08x (%08x)\n", data, mem_mask );
 		nMC_ArbBurstTime = data;
 		break;
 	case 0x00c0:
@@ -479,17 +479,23 @@ WRITE32_HANDLER( mc_w )
 	}
 }
 
-void mc_update(void)
+void sgi_mc_update(void)
 {
 	nMC_RPSSCounter += 1000;
 }
 
 static TIMER_CALLBACK(mc_update_callback)
 {
-	mc_update();
+	sgi_mc_update();
 }
 
-void mc_init(running_machine *machine)
+void sgi_mc_timer_init(running_machine *machine)
+{
+	tMC_UpdateTimer = timer_alloc(machine,  mc_update_callback , NULL);
+	timer_adjust_periodic(tMC_UpdateTimer, ATTOTIME_IN_HZ(10000), 0, ATTOTIME_IN_HZ(10000));
+}
+
+void sgi_mc_init(running_machine *machine)
 {
 	nMC_CPUControl0 = 0;
 	nMC_CPUControl1 = 0;
@@ -532,8 +538,6 @@ void mc_init(running_machine *machine)
 	nMC_DMAGIO64Addr = 0;
 	nMC_DMAMode = 0;
 	nMC_DMAZoomByteCnt = 0;
-	tMC_UpdateTimer = timer_alloc(machine,  mc_update_callback , NULL);
-	timer_adjust_periodic(tMC_UpdateTimer, ATTOTIME_IN_HZ(10000), 0, ATTOTIME_IN_HZ(10000));
 
 	// if Indigo2, ID appropriately
 	if (!strcmp(machine->gamedrv->name, "ip244415"))

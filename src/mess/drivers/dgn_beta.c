@@ -135,36 +135,36 @@ static const unsigned char dgnbeta_palette[] =
 */
 
 static ADDRESS_MAP_START( dgnbeta_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0FFF) 	AM_READWRITE(SMH_BANK(1)		,SMH_BANK(1))
-	AM_RANGE(0x1000, 0x1FFF) 	AM_READWRITE(SMH_BANK(2)		,SMH_BANK(2))
-	AM_RANGE(0x2000, 0x2FFF) 	AM_READWRITE(SMH_BANK(3)		,SMH_BANK(3))
-	AM_RANGE(0x3000, 0x3FFF) 	AM_READWRITE(SMH_BANK(4)		,SMH_BANK(4))
-	AM_RANGE(0x4000, 0x4FFF) 	AM_READWRITE(SMH_BANK(5)		,SMH_BANK(5))
-	AM_RANGE(0x5000, 0x5FFF) 	AM_READWRITE(SMH_BANK(6)		,SMH_BANK(6))
-	AM_RANGE(0x6000, 0x6FFF) 	AM_READWRITE(SMH_BANK(7)		,SMH_BANK(7)) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x7000, 0x7FFF) 	AM_READWRITE(SMH_BANK(8)		,SMH_BANK(8))
-	AM_RANGE(0x8000, 0x8FFF) 	AM_READWRITE(SMH_BANK(9)		,SMH_BANK(9))
-	AM_RANGE(0x9000, 0x9FFF) 	AM_READWRITE(SMH_BANK(10)	,SMH_BANK(10))
-	AM_RANGE(0xA000, 0xAFFF) 	AM_READWRITE(SMH_BANK(11)	,SMH_BANK(11))
-	AM_RANGE(0xB000, 0xBFFF) 	AM_READWRITE(SMH_BANK(12)	,SMH_BANK(12))
-	AM_RANGE(0xC000, 0xCFFF) 	AM_READWRITE(SMH_BANK(13)	,SMH_BANK(13))
-	AM_RANGE(0xD000, 0xDFFF) 	AM_READWRITE(SMH_BANK(14)	,SMH_BANK(14))
-	AM_RANGE(0xE000, 0xEFFF) 	AM_READWRITE(SMH_BANK(15)	,SMH_BANK(15))
-	AM_RANGE(0xF000, 0xFBFF) 	AM_READWRITE(SMH_BANK(16)	,SMH_BANK(16))
-	AM_RANGE(0xfC00, 0xfC1F)	AM_READWRITE(SMH_NOP		,SMH_NOP)
+	AM_RANGE(0x0000, 0x0FFF) 	AM_RAMBANK("bank1")
+	AM_RANGE(0x1000, 0x1FFF) 	AM_RAMBANK("bank2")
+	AM_RANGE(0x2000, 0x2FFF) 	AM_RAMBANK("bank3")
+	AM_RANGE(0x3000, 0x3FFF) 	AM_RAMBANK("bank4")
+	AM_RANGE(0x4000, 0x4FFF) 	AM_RAMBANK("bank5")
+	AM_RANGE(0x5000, 0x5FFF) 	AM_RAMBANK("bank6")
+	AM_RANGE(0x6000, 0x6FFF) 	AM_RAMBANK("bank7") AM_BASE_SIZE_GENERIC(videoram)
+	AM_RANGE(0x7000, 0x7FFF) 	AM_RAMBANK("bank8")
+	AM_RANGE(0x8000, 0x8FFF) 	AM_RAMBANK("bank9")
+	AM_RANGE(0x9000, 0x9FFF) 	AM_RAMBANK("bank10")
+	AM_RANGE(0xA000, 0xAFFF) 	AM_RAMBANK("bank11")
+	AM_RANGE(0xB000, 0xBFFF) 	AM_RAMBANK("bank12")
+	AM_RANGE(0xC000, 0xCFFF) 	AM_RAMBANK("bank13")
+	AM_RANGE(0xD000, 0xDFFF) 	AM_RAMBANK("bank14")
+	AM_RANGE(0xE000, 0xEFFF) 	AM_RAMBANK("bank15")
+	AM_RANGE(0xF000, 0xFBFF) 	AM_RAMBANK("bank16")
+	AM_RANGE(0xfC00, 0xfC1F)	AM_NOP
 	AM_RANGE(0xFC20, 0xFC23)	AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xFC24, 0xFC27)	AM_DEVREADWRITE("pia_1", pia6821_r, pia6821_w)
-	AM_RANGE(0xFC28, 0xfC7F)	AM_READWRITE(SMH_NOP		,SMH_NOP)
+	AM_RANGE(0xFC28, 0xfC7F)	AM_NOP
 	AM_RANGE(0xfc80, 0xfc81)	AM_READWRITE(dgnbeta_6845_r	,dgnbeta_6845_w)
-	AM_RANGE(0xfc82, 0xfC9F)	AM_READWRITE(SMH_NOP		,SMH_NOP)
-	AM_RANGE(0xFCA0, 0xFCA3)	AM_READWRITE(SMH_NOP		,dgnbeta_colour_ram_w)		/* 4x4bit colour ram for graphics modes */
+	AM_RANGE(0xfc82, 0xfC9F)	AM_NOP
+	AM_RANGE(0xFCA0, 0xFCA3)	AM_READNOP AM_WRITE(dgnbeta_colour_ram_w)		/* 4x4bit colour ram for graphics modes */
 	AM_RANGE(0xFCC0, 0xFCC3)	AM_DEVREADWRITE("pia_2", pia6821_r, pia6821_w)
-	AM_RANGE(0xfcC4, 0xfcdf)	AM_READWRITE(SMH_NOP		,SMH_NOP)
+	AM_RANGE(0xfcC4, 0xfcdf)	AM_NOP
 	AM_RANGE(0xfce0, 0xfce3)	AM_READWRITE(dgnbeta_wd2797_r	,dgnbeta_wd2797_w)	/* Onboard disk interface */
-	AM_RANGE(0xfce4, 0xfdff)	AM_READWRITE(SMH_NOP		,SMH_NOP)
+	AM_RANGE(0xfce4, 0xfdff)	AM_NOP
 	AM_RANGE(0xFE00, 0xFE0F)	AM_READWRITE(dgn_beta_page_r	,dgn_beta_page_w)
-	AM_RANGE(0xfe10, 0xfEff)	AM_READWRITE(SMH_NOP		,SMH_NOP)
-	AM_RANGE(0xFF00, 0xFFFF) 	AM_READWRITE(SMH_BANK(17)	,SMH_BANK(17))
+	AM_RANGE(0xfe10, 0xfEff)	AM_NOP
+	AM_RANGE(0xFF00, 0xFFFF) 	AM_RAMBANK("bank17")
 
 ADDRESS_MAP_END
 
@@ -297,6 +297,25 @@ static const floppy_config dgnbeta_floppy_config =
 	DO_NOT_KEEP_GEOMETRY
 };
 
+/* F4 Character Displayer */
+static const gfx_layout dgnbeta_charlayout =
+{
+	8, 10,					/* 8 x 10 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8 },
+	8*16					/* every char takes 16 bytes */
+};
+
+static GFXDECODE_START( dgnbeta )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, dgnbeta_charlayout, 0, 8 )
+GFXDECODE_END
+
+
 static MACHINE_DRIVER_START( dgnbeta )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", M6809E, DGNBETA_CPU_SPEED_HZ)        /* 2 MHz */
@@ -316,6 +335,7 @@ static MACHINE_DRIVER_START( dgnbeta )
 
 	MDRV_SCREEN_SIZE(700,550)
 	MDRV_SCREEN_VISIBLE_AREA(0, 699, 0, 549)
+	MDRV_GFXDECODE(dgnbeta)
 	MDRV_PALETTE_LENGTH(ARRAY_LENGTH(dgnbeta_palette) / 3)
 	MDRV_PALETTE_INIT( dgnbeta )
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
@@ -330,7 +350,7 @@ static MACHINE_DRIVER_START( dgnbeta )
 	MDRV_WD179X_ADD("wd179x", dgnbeta_wd17xx_interface )
 
 	MDRV_FLOPPY_4_DRIVES_ADD(dgnbeta_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("256K")
@@ -339,7 +359,7 @@ static MACHINE_DRIVER_START( dgnbeta )
 	/* the Dragon 128, I have added a config for 128K, however, the only working machine known  */
 	/* to exist was fitted with 256K, so I have made this the default. Also available           */
 	/* documentation seems to sugest a maximum of 768K, so I have included configs increasing   */
-	/* in blocks of 128K up to this maximum.                                                    */	
+	/* in blocks of 128K up to this maximum.                                                    */
 MACHINE_DRIVER_END
 
 ROM_START(dgnbeta)
@@ -357,5 +377,5 @@ ROM_START(dgnbeta)
 	ROM_LOAD("betachar.rom"	,0x0000	,0x2000	,CRC(ca79d66c) SHA1(8e2090d471dd97a53785a7f44a49d3c8c85b41f2))
 ROM_END
 
-/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG      COMPANY             FULLNAME                    FLAGS */
-COMP( 1984, dgnbeta,    0,      0,      dgnbeta,    dgnbeta,    0,      0,    "Dragon Data Ltd",  "Dragon Beta Prototype",    0 )
+/*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    COMPANY             FULLNAME                    FLAGS */
+COMP( 1984, dgnbeta,    0,      0,      dgnbeta,    dgnbeta,    0,      "Dragon Data Ltd",  "Dragon Beta Prototype",    0 )

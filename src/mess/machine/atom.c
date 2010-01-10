@@ -174,7 +174,7 @@ static TIMER_CALLBACK(atom_timer_callback)
 	}
 }
 
-MACHINE_RESET( atom )
+MACHINE_START( atom )
 {
 	atom_8255_porta = 0xff;
 	atom_8255_portb = 0xff;
@@ -277,8 +277,10 @@ READ8_DEVICE_HANDLER (atom_8255_porta_r )
 READ8_DEVICE_HANDLER ( atom_8255_portb_r )
 {
 	int row;
-	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5",
-										"KEY6", "KEY7", "KEY8", "KEY9", "KEY10", "KEY11" };
+	static const char *const keynames[] = {
+		"KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5",
+		"KEY6", "KEY7", "KEY8", "KEY9", "KEY10", "KEY11"
+	};
 
 	row = atom_8255_porta & 0x0f;
 	/* logerror("8255: Read port b: %02X %02X\n", input_port_read(machine, port),
@@ -363,7 +365,7 @@ static void atom_eprom_box_refresh(running_machine *machine)
 	/* get address of eprom data */
 	eprom_data = memory_region(machine, "maincpu") + 0x010000 + (selected_eprom<<12);
 	/* set bank address */
-	memory_set_bankptr(machine, 1, eprom_data);
+	memory_set_bankptr(machine, "bank1", eprom_data);
 }
 
 void atom_eprom_box_init(running_machine *machine)
@@ -389,9 +391,9 @@ READ8_HANDLER(atom_eprom_box_r)
 	return selected_eprom;
 }
 
-MACHINE_RESET( atomeb )
+MACHINE_START( atomeb )
 {
-	MACHINE_RESET_CALL(atom);
+	MACHINE_START_CALL(atom);
 	atom_eprom_box_init(machine);
 }
 
@@ -402,11 +404,11 @@ MACHINE_RESET( atomeb )
 
 READ8_DEVICE_HANDLER( atom_mc6847_videoram_r )
 {
-	mc6847_as_w(device, BIT(videoram[offset], 6));
-	mc6847_intext_w(device, BIT(videoram[offset], 6));
-	mc6847_inv_w(device, BIT(videoram[offset], 7));
+	mc6847_as_w(device, BIT(device->machine->generic.videoram.u8[offset], 6));
+	mc6847_intext_w(device, BIT(device->machine->generic.videoram.u8[offset], 6));
+	mc6847_inv_w(device, BIT(device->machine->generic.videoram.u8[offset], 7));
 
-	return videoram[offset];
+	return device->machine->generic.videoram.u8[offset];
 }
 
 VIDEO_UPDATE( atom )

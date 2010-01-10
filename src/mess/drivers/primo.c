@@ -113,8 +113,7 @@ Interrupts:
 #include "devices/snapquik.h"
 #include "devices/cartslot.h"
 #include "formats/primoptp.h"
-
-#include "includes/cbmdrive.h"
+#include "includes/cbmserb.h"
 
 static ADDRESS_MAP_START( primoa_port, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
@@ -130,18 +129,18 @@ static ADDRESS_MAP_START( primob_port, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( primo32_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x3fff ) AM_RAMBANK(1)
+	AM_RANGE( 0x0000, 0x3fff ) AM_RAMBANK("bank1")
 	AM_RANGE( 0x4000, 0x7fff ) AM_RAM AM_MIRROR ( 0x8000 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( primo48_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x3fff ) AM_RAMBANK(1)
+	AM_RANGE( 0x0000, 0x3fff ) AM_RAMBANK("bank1")
 	AM_RANGE( 0x4000, 0x7fff ) AM_RAM
 	AM_RANGE( 0x8000, 0xbfff ) AM_RAM AM_MIRROR ( 0x4000 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( primo64_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x3fff ) AM_RAMBANK(1)
+	AM_RANGE( 0x0000, 0x3fff ) AM_RAMBANK("bank1")
 	AM_RANGE( 0x4000, 0xffff ) AM_RAM
 ADDRESS_MAP_END
 
@@ -246,6 +245,20 @@ static const cassette_config primo_cassette_config =
 	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED
 };
 
+static const cbm_serial_bus_interface primo_drive_interface =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+
+	DEVCB_NULL
+};
+
 static MACHINE_DRIVER_START( primoa32 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD( "maincpu", Z80, 2500000 )
@@ -283,7 +296,7 @@ static MACHINE_DRIVER_START( primoa32 )
 	/* floppy from serial bus */
 	/* for some reason machine/primo.c sets up the serial bus
     but no floppy drive has been apparently added... incomplete driver? */
-	MDRV_IMPORT_FROM(simulated_drive)
+	MDRV_CBM_SERBUS_ADD("serial_bus", primo_drive_interface)
 
 	/* cartridge */
 	MDRV_CARTSLOT_ADD("cart1")
@@ -403,27 +416,11 @@ ROM_START( primoc64 )
 	ROM_CART_LOAD("cart1", 0x18000, 0x4000, ROM_FILL_FF | ROM_OPTIONAL)
 ROM_END
 
-
-/*static void primo_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-    switch(state)
-    {
-        case MESS_DEVINFO_STR_DESCRIPTION+0:                    strcpy(info->s = device_temp_str(), "EPROM Expansion Bank #1"); break;
-        case MESS_DEVINFO_STR_DESCRIPTION+1:                    strcpy(info->s = device_temp_str(), "EPROM Expansion Bank #2"); break;
-        case MESS_DEVINFO_STR_DESCRIPTION+2:                    strcpy(info->s = device_temp_str(), "EPROM Expansion Bank #3"); break;
-        case MESS_DEVINFO_STR_DESCRIPTION+3:                    strcpy(info->s = device_temp_str(), "EPROM Expansion Bank #4"); break;
-
-        default:                                        cartslot_device_getinfo(devclass, state, info); break;
-    }
-}
-
-*/
-
-/*     YEAR  NAME      PARENT    COMPAT MACHINE   INPUT  INIT     CONFIG COMPANY  FULLNAME */
-COMP ( 1984, primoa32, 0,        0,     primoa32, primo, primo32, 0, "Microkey", "Primo A-32" , 0)
-COMP ( 1984, primoa48, primoa32, 0,     primoa48, primo, primo48, 0, "Microkey", "Primo A-48" , 0)
-COMP ( 1984, primoa64, primoa32, 0,     primoa64, primo, primo64, 0, "Microkey", "Primo A-64" , 0)
-COMP ( 1984, primob32, primoa32, 0,     primob32, primo, primo32, 0, "Microkey", "Primo B-32" , 0)
-COMP ( 1984, primob48, primoa32, 0,     primob48, primo, primo48, 0, "Microkey", "Primo B-48" , 0)
-COMP ( 1984, primob64, primoa32, 0,     primob64, primo, primo64, 0, "Microkey", "Primo B-64" , 0)
-COMP ( 1984, primoc64, primoa32, 0,     primoc64, primo, primo64, 0, "Microkey", "Primo C-64" , GAME_NOT_WORKING)
+/*     YEAR  NAME      PARENT    COMPAT MACHINE   INPUT  INIT     COMPANY  FULLNAME */
+COMP ( 1984, primoa32, 0,        0,     primoa32, primo, primo32, "Microkey", "Primo A-32" , 0)
+COMP ( 1984, primoa48, primoa32, 0,     primoa48, primo, primo48, "Microkey", "Primo A-48" , 0)
+COMP ( 1984, primoa64, primoa32, 0,     primoa64, primo, primo64, "Microkey", "Primo A-64" , 0)
+COMP ( 1984, primob32, primoa32, 0,     primob32, primo, primo32, "Microkey", "Primo B-32" , 0)
+COMP ( 1984, primob48, primoa32, 0,     primob48, primo, primo48, "Microkey", "Primo B-48" , 0)
+COMP ( 1984, primob64, primoa32, 0,     primob64, primo, primo64, "Microkey", "Primo B-64" , 0)
+COMP ( 1984, primoc64, primoa32, 0,     primoc64, primo, primo64, "Microkey", "Primo C-64" , GAME_NOT_WORKING)

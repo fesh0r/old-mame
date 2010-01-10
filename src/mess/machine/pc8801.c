@@ -52,7 +52,7 @@ WRITE8_HANDLER( pc88_rtc_w )
 	upd1990a_c0_w(state->upd1990a, BIT(data, 0));
 	upd1990a_c1_w(state->upd1990a, BIT(data, 1));
 	upd1990a_c2_w(state->upd1990a, BIT(data, 2));
-	upd1990a_data_w(state->upd1990a, BIT(data, 3));
+	upd1990a_data_in_w(state->upd1990a, BIT(data, 3));
 
 	/* printer */
 	centronics_data_w(state->centronics, 0, data);
@@ -130,7 +130,6 @@ static void pc8801_init_interrupt(running_machine *machine)
 	interrupt_mask_reg = 0xf8;
 	interrupt_trig_reg = 0x0;
 	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), pc8801_interrupt_callback);
-	timer_pulse(machine, ATTOTIME_IN_HZ(600), NULL, 0, pc8801_timer_interrupt);
 }
 
 WRITE8_HANDLER( pc88sr_outport_30 )
@@ -181,7 +180,7 @@ READ8_HANDLER( pc88sr_inport_40 )
 	r = centronics_busy_r(state->centronics);
 	r |= pc8801_is_24KHz ? 0x00 : 0x02;
 	r |= use_5FD ? 0x00 : 0x08;
-	r |= state->rtc_data ? 0x10 : 0x00;
+	r |= upd1990a_data_out_r(state->upd1990a) ? 0x10 : 0x00;
 	if(video_screen_get_vblank(space->machine->primary_screen)) r|=0x20;
 
 	return r|0xc0;
@@ -324,19 +323,19 @@ void pc8801_update_bank(running_machine *machine)
 		}
 
 		/* extension memory */
-		memory_set_bankptr(machine, 1, ext_r + 0x0000);
-		memory_set_bankptr(machine, 2, ext_r + 0x6000);
+		memory_set_bankptr(machine, "bank1", ext_r + 0x0000);
+		memory_set_bankptr(machine, "bank2", ext_r + 0x6000);
 		if(ext_w==NULL)
 		{
 			/* read only mode */
-			memory_install_write8_handler(program, 0x0000, 0x5fff, 0, 0, SMH_NOP);
-			memory_install_write8_handler(program, 0x6000, 0x7fff, 0, 0, SMH_NOP);
+			memory_nop_write(program, 0x0000, 0x5fff, 0, 0);
+			memory_nop_write(program, 0x6000, 0x7fff, 0, 0);
 		}
 		else
 		{
 			/* r/w mode */
-			memory_install_write8_handler(program, 0x0000, 0x5fff, 0, 0, SMH_BANK(1));
-			memory_install_write8_handler(program, 0x6000, 0x7fff, 0, 0, SMH_BANK(2));
+			memory_install_write_bank(program, 0x0000, 0x5fff, 0, 0, "bank1");
+			memory_install_write_bank(program, 0x6000, 0x7fff, 0, 0, "bank2");
 			if(ext_w!=ext_r) logerror("differnt between read and write bank of extension memory.\n");
 		}
 	}
@@ -346,10 +345,10 @@ void pc8801_update_bank(running_machine *machine)
 		if(RAMmode)
 		{
 			/* RAM */
-			memory_install_write8_handler(program, 0x0000, 0x5fff, 0, 0, SMH_BANK(1));
-			memory_install_write8_handler(program, 0x6000, 0x7fff, 0, 0, SMH_BANK(2));
-			memory_set_bankptr(machine, 1, pc8801_mainRAM + 0x0000);
-			memory_set_bankptr(machine, 2, pc8801_mainRAM + 0x6000);
+			memory_install_write_bank(program, 0x0000, 0x5fff, 0, 0, "bank1");
+			memory_install_write_bank(program, 0x6000, 0x7fff, 0, 0, "bank2");
+			memory_set_bankptr(machine, "bank1", pc8801_mainRAM + 0x0000);
+			memory_set_bankptr(machine, "bank2", pc8801_mainRAM + 0x6000);
 		}
 		else
 		{
@@ -360,46 +359,47 @@ void pc8801_update_bank(running_machine *machine)
 			if(ROMmode)
 			{
 				/* N-BASIC */
-				memory_set_bankptr(machine, 1, mainROM + 0x0000);
-				memory_set_bankptr(machine, 2, mainROM + 0x6000);
+				memory_set_bankptr(machine, "bank1", mainROM + 0x0000);
+				memory_set_bankptr(machine, "bank2", mainROM + 0x6000);
 			}
 			else
 			{
 				/* N88-BASIC */
-				memory_set_bankptr(machine, 1, mainROM + 0x8000);
+				memory_set_bankptr(machine, "bank1", mainROM + 0x8000);
 				if(no4throm==1) {
 					/* 4th ROM 1 */
-					memory_set_bankptr(machine, 2, mainROM + 0x10000 + 0x2000 * no4throm2);
+					memory_set_bankptr(machine, "bank2", mainROM + 0x10000 + 0x2000 * no4throm2);
 				} else {
-					memory_set_bankptr(machine, 2, mainROM + 0xe000);
+					memory_set_bankptr(machine, "bank2", mainROM + 0xe000);
 				}
 			}
 		}
 	}
 
 	/* 0x8000 to 0xffff */
-	memory_install_read8_handler(program, 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? SMH_BANK(3) : pc8801_read_textwindow);
-	memory_install_write8_handler(program, 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? SMH_BANK(3) : pc8801_write_textwindow);
+	if (RAMmode || ROMmode)  {
+		memory_install_readwrite_bank(program, 0x8000, 0x83ff, 0, 0, "bank3");
+	} else {
+		memory_install_readwrite8_handler(program, 0x8000, 0x83ff, 0, 0, pc8801_read_textwindow, pc8801_write_textwindow);
+	}
 
-	memory_set_bankptr(machine, 4, pc8801_mainRAM + 0x8400);
+	memory_set_bankptr(machine, "bank4", pc8801_mainRAM + 0x8400);
 
-	if(is_pc8801_vram_select(machine))
+	if (pc8801_is_vram_select(machine))
 	{
 		/* VRAM */
 		/* already maped */
 	}
 	else
 	{
-		memory_install_read8_handler(program, 0xc000, 0xefff, 0, 0, SMH_BANK(5));
-		memory_install_write8_handler(program, 0xc000, 0xefff, 0, 0, SMH_BANK(5));
-		memory_install_read8_handler(program, 0xf000, 0xffff, 0, 0, SMH_BANK(6));
-		memory_install_write8_handler(program, 0xf000, 0xffff, 0, 0, SMH_BANK(6));
+		memory_install_readwrite_bank(program, 0xc000, 0xefff, 0, 0, "bank5");
+		memory_install_readwrite_bank(program, 0xf000, 0xffff, 0, 0, "bank6");
 
-		memory_set_bankptr(machine, 5, pc8801_mainRAM + 0xc000);
+		memory_set_bankptr(machine, "bank5", pc8801_mainRAM + 0xc000);
 		if(maptvram)
-			memory_set_bankptr(machine, 6, pc88sr_textRAM);
+			memory_set_bankptr(machine, "bank6", pc88sr_textRAM);
 		else
-			memory_set_bankptr(machine, 6, pc8801_mainRAM + 0xf000);
+			memory_set_bankptr(machine, "bank6", pc8801_mainRAM + 0xf000);
 	}
 }
 
@@ -599,7 +599,8 @@ static void fix_V1V2(void)
   if(is_V2mode) pc88sr_is_highspeed=1;
   switch((is_Nbasic ? 1 : 0) |
 	 (is_V2mode ? 2 : 0) |
-	 (pc88sr_is_highspeed ? 4 : 0)) {
+	 (pc88sr_is_highspeed ? 4 : 0))
+  {
   case 0:
     logerror("N88-BASIC(V1-S)");
     break;
@@ -707,7 +708,7 @@ READ8_HANDLER( pc8801fd_upd765_tc )
 	pc88_state *state = space->machine->driver_data;
 
 	upd765_tc_w(state->upd765, 1);
-	timer_set(space->machine,  attotime_zero, NULL, 0, pc8801fd_upd765_tc_to_zero );	
+	timer_set(space->machine,  attotime_zero, NULL, 0, pc8801fd_upd765_tc_to_zero );
 	return 0;
 }
 
@@ -723,16 +724,16 @@ const upd765_interface pc8801_fdc_interface =
 static void pc8801_init_5fd(running_machine *machine)
 {
 	use_5FD = (input_port_read(machine, "DSW2") & 0x80) != 0x00;
-	
+
 	if (!use_5FD)
 		cputag_suspend(machine, "sub", SUSPEND_REASON_DISABLE, 1);
 	else
 		cputag_resume(machine, "sub", SUSPEND_REASON_DISABLE);
 
 	cpu_set_input_line_vector(cputag_get_cpu(machine, "sub"), 0, 0);
-	
-	floppy_drive_set_motor_state(floppy_get_device(machine, 0), 1);
-	floppy_drive_set_motor_state(floppy_get_device(machine, 1), 1);
+
+	floppy_mon_w(floppy_get_device(machine, 0), CLEAR_LINE);
+	floppy_mon_w(floppy_get_device(machine, 1), CLEAR_LINE);
 	floppy_drive_set_ready_state(floppy_get_device(machine, 0), 1, 1);
 	floppy_drive_set_ready_state(floppy_get_device(machine, 1), 1, 1);
 }
@@ -825,6 +826,8 @@ MACHINE_START( pc88srl )
 	/* initialize RTC */
 	upd1990a_cs_w(state->upd1990a, 1);
 	upd1990a_oe_w(state->upd1990a, 1);
+	
+	timer_pulse(machine, ATTOTIME_IN_HZ(600), NULL, 0, pc8801_timer_interrupt);
 }
 
 MACHINE_RESET( pc88srl )

@@ -80,6 +80,10 @@ static int load_cartridge(const device_config *device, const rom_entry *romrgn, 
 		/* read the ROM */
 		pos = read_length = image_fread(device, ptr, length);
 
+		/* reset the ROM to the initial point. */
+		/* eventually, we could add a flag to allow the ROM to continue instead of restarting whenever a new cart region is present */
+		image_fseek(device, 0, SEEK_SET);
+
 		/* do we need to mirror the ROM? */
 		if (flags & ROM_MIRROR)
 		{
@@ -140,7 +144,7 @@ static int process_cartridge(const device_config *image, process_mode mode)
 {
 	const rom_source *source;
 	const rom_entry *romrgn, *roment;
-	int result;
+	int result = 0;
 
 	for (source = rom_first_source(image->machine->gamedrv, image->machine->config); source != NULL; source = rom_next_source(image->machine->gamedrv, image->machine->config, source))
 	{
@@ -153,8 +157,10 @@ static int process_cartridge(const device_config *image, process_mode mode)
 				{
 					if (strcmp(roment->_hashdata,image->tag)==0)
 					{
-						result = load_cartridge(image, romrgn, roment, mode);
-						if (!result)
+						result |= load_cartridge(image, romrgn, roment, mode);
+
+						/* if loading failed in any cart region, stop loading */
+						if (result)
 							return result;
 					}
 				}
@@ -162,6 +168,7 @@ static int process_cartridge(const device_config *image, process_mode mode)
 			}
 		}
 	}
+
 	return INIT_PASS;
 }
 
@@ -325,7 +332,7 @@ static const cartslot_pcb_type *identify_pcb(const device_config *device)
 	multicart *mc;
 	int i;
 
-	if (image_exists(device))
+	if (image_software_entry(device) == NULL && image_exists(device))
 	{
 		/* try opening this as if it were a multicart */
 		multicart_open_error me = multicart_open(image_filename(device), device->machine->gamedrv->name, MULTICART_FLAGS_DONT_LOAD_RESOURCES, &mc);
@@ -338,7 +345,7 @@ static const cartslot_pcb_type *identify_pcb(const device_config *device)
 		else
 		{
 			if (me != MCERR_NOT_MULTICART)
-				fatalerror("multicart error: %s\n", mc_error_text(me));
+				fatalerror("multicart error: %s\n", multicart_error_text(me));
 			if (image_pcb(device) != NULL)
 			{
 				/* read from hash file */
@@ -384,7 +391,7 @@ static DEVICE_GET_IMAGE_DEVICES(cartslot)
 	if (pcb_type != NULL)
 	{
 		device_list_add(
-			listheadptr,
+			devlist,
 			device,
 			pcb_type->devtype,
 			device_build_tag(tempstring, device, TAG_PCB),
@@ -412,24 +419,26 @@ DEVICE_GET_INFO( cartslot )
 		case DEVINFO_INT_IMAGE_WRITEABLE:			info->i = 0; break;
 		case DEVINFO_INT_IMAGE_CREATABLE:			info->i = 0; break;
 		case DEVINFO_INT_IMAGE_RESET_ON_LOAD:		info->i = 1; break;
-		case DEVINFO_INT_IMAGE_MUST_BE_LOADED:		if ( device && device->inline_config) {
-														info->i = get_config(device)->must_be_loaded;
-													} else {
-														info->i = 0;
-													}
-													break;
+		case DEVINFO_INT_IMAGE_MUST_BE_LOADED:
+			if ( device && device->inline_config) {
+				info->i = get_config(device)->must_be_loaded;
+			} else {
+				info->i = 0;
+			}
+			break;
 
 		/* --- the following bits of info are returned as pointers to functions --- */
 		case DEVINFO_FCT_START:						info->start = DEVICE_START_NAME(cartslot);					break;
 		case DEVINFO_FCT_IMAGE_LOAD:				info->f = (genf *) DEVICE_IMAGE_LOAD_NAME(cartslot);		break;
 		case DEVINFO_FCT_IMAGE_UNLOAD:				info->f = (genf *) DEVICE_IMAGE_UNLOAD_NAME(cartslot);		break;
 		case DEVINFO_FCT_GET_IMAGE_DEVICES:			info->f = (genf *) DEVICE_GET_IMAGE_DEVICES_NAME(cartslot);	break;
-		case DEVINFO_FCT_IMAGE_PARTIAL_HASH:		if ( device && device->inline_config && get_config(device)->device_partialhash) {
-														info->f = (genf *) get_config(device)->device_partialhash;
-													} else {
-														info->f = NULL;
-													}
-													break;
+		case DEVINFO_FCT_IMAGE_PARTIAL_HASH:
+			if ( device && device->inline_config && get_config(device)->device_partialhash) {
+				info->f = (genf *) get_config(device)->device_partialhash;
+			} else {
+				info->f = NULL;
+			}
+			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:						strcpy(info->s, "Cartslot"); break;
@@ -443,6 +452,12 @@ DEVICE_GET_INFO( cartslot )
 			else
 			{
 				strcpy(info->s, "bin");
+			}
+			break;
+		case DEVINFO_STR_SOFTWARE_LIST:
+			if ( device && device->inline_config && get_config(device)->software_list_name )
+			{
+				strcpy(info->s, get_config(device)->software_list_name );
 			}
 			break;
 	}

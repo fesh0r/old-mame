@@ -48,12 +48,6 @@
   28/04/2009 : Lord Nightmare
   Add READY line readback; cleaned up struct a bit. Cleaned up comments.
   Add more TODOs. Fixed some unsaved savestate related stuff.
-  
-  04/11/2009 : Lord Nightmare
-  Changed the way that the invert works (it now selects between XOR and XNOR
-  for the taps), and added R->OldNoise to simulate the extra 0 that is always
-  output before the noise LFSR contents are after an LFSR reset.
-  This fixes SN76489/A to match chips. Added SN94624.
 
   04/11/2009 : Lord Nightmare
   Changed the way that the invert works (it now selects between XOR and XNOR
@@ -114,7 +108,6 @@ struct _sn76496_state
 	INT32 StereoMask;	/* the stereo output mask */
 	INT32 Period[4];	/* Length of 1/2 of waveform */
 	INT32 Count[4];		/* Position within the waveform */
-	INT32 OldNoise;		/* 1 bit output of the PREVIOUS noise output */
 	INT32 Output[4];	/* 1-bit output of each channel, pre-volume */
 	INT32 CyclestoREADY;/* number of cycles until the READY line goes active */
 };
@@ -211,9 +204,7 @@ WRITE8_DEVICE_HANDLER( sn76496_w )
 				R->Period[3] = ((n&3) == 3) ? 2 * R->Period[2] : (1 << (5+(n&3)));
 			        /* Reset noise shifter */
 				R->RNG = R->FeedbackMask;
-				R->OldNoise = 0;
-				R->Output[3] = R->OldNoise;
-				R->OldNoise = R->RNG & 1;
+				R->Output[3] = R->RNG & 1;
 			}
 			break;
 	}
@@ -371,9 +362,7 @@ static int SN76496_init(const device_config *device, sn76496_state *R, int stere
 	R->StereoMask = 0xFF; /* all channels enabled */
 
 	R->RNG = R->FeedbackMask;
-	R->OldNoise = 0;
-	R->Output[3] = R->OldNoise;
-	R->OldNoise = R->RNG & 1;
+	R->Output[3] = R->RNG & 1;
 
 	return 0;
 }
@@ -406,7 +395,6 @@ static void generic_start(const device_config *device, int feedbackmask, int noi
 	state_save_register_device_item(device, 0, chip->StereoMask);
 	state_save_register_device_item_array(device, 0, chip->Period);
 	state_save_register_device_item_array(device, 0, chip->Count);
-	state_save_register_device_item(device, 0, chip->OldNoise);
 	state_save_register_device_item_array(device, 0, chip->Output);
 	state_save_register_device_item(device, 0, chip->CyclestoREADY);
 }
@@ -486,16 +474,6 @@ DEVICE_GET_INFO( sn76489 )
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( sn76489 );		break;
 		case DEVINFO_STR_NAME:							strcpy(info->s, "SN76489");						break;
 		default:										DEVICE_GET_INFO_CALL(sn76496);						break;
-	}
-}
-
-DEVICE_GET_INFO( sn94624 )
-{
-	switch (state)
-	{
-		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME( sn94624 );		break;
-		case DEVINFO_STR_NAME:							strcpy(info->s, "SN94624");						break;
-		default: 										DEVICE_GET_INFO_CALL(sn76496);						break;
 	}
 }
 

@@ -189,7 +189,7 @@ TODO: Which clock signals are available in a PC Jr?
 
 static ADDRESS_MAP_START( pc8_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
+	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0xa0000, 0xbffff) AM_NOP
 	AM_RANGE(0xc0000, 0xc7fff) AM_ROM
 	AM_RANGE(0xc8000, 0xcffff) AM_ROM
@@ -201,7 +201,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pc16_map, ADDRESS_SPACE_PROGRAM, 16 )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
+	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0xa0000, 0xbffff) AM_NOP
 	AM_RANGE(0xc0000, 0xc7fff) AM_ROM
 	AM_RANGE(0xc8000, 0xcffff) AM_ROM
@@ -212,7 +212,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(pc8_io, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE("dma8237", dma8237_r, dma8237_w)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE("dma8237", i8237_r, i8237_w)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE("pic8259", pic8259_r, pic8259_w)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE("pit8253", pit8253_r, pit8253_w)
 	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE("ppi8255", i8255a_r, i8255a_w)
@@ -269,7 +269,7 @@ static WRITE16_DEVICE_HANDLER( pc16_388_w )
 
 static ADDRESS_MAP_START(pc16_io, ADDRESS_SPACE_IO, 16)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", dma8237_r, dma8237_w, 0xffff)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", i8237_r, i8237_w, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8("pic8259", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE8("ppi8255", i8255a_r, i8255a_w, 0xffff)
@@ -299,9 +299,9 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( europc_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
+	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0xa0000, 0xaffff) AM_NOP
-	AM_RANGE(0xb0000, 0xbffff) AM_READWRITE(pc_aga_videoram_r, pc_aga_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0xb0000, 0xbffff) AM_READWRITE(pc_aga_videoram_r, pc_aga_videoram_w) AM_BASE_SIZE_GENERIC(videoram)
 	AM_RANGE(0xc0000, 0xc7fff) AM_NOP
 	AM_RANGE(0xc8000, 0xcffff) AM_ROM
 	AM_RANGE(0xd0000, 0xeffff) AM_NOP
@@ -311,7 +311,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(europc_io, ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE("dma8237", dma8237_r, dma8237_w)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE("dma8237", i8237_r, i8237_w)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE("pic8259", pic8259_r, pic8259_w)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE("pit8253", pit8253_r, pit8253_w)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE(europc_pio_r,			europc_pio_w)
@@ -338,7 +338,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(tandy1000_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
+	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0xa0000, 0xaffff) AM_RAM
 	AM_RANGE(0xb0000, 0xb7fff) AM_NOP
 	AM_RANGE(0xb8000, 0xbffff) AM_READWRITE(pc_t1t_videoram_r, pc_video_videoram_w)
@@ -352,7 +352,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(tandy1000_io, ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE("dma8237", dma8237_r, dma8237_w)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE("dma8237", i8237_r, i8237_w)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE("pic8259", pic8259_r, pic8259_w)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE("pit8253", pit8253_r, pit8253_w)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE(tandy1000_pio_r,			tandy1000_pio_w)
@@ -372,21 +372,21 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(tandy1000_16_map, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
+	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0xa0000, 0xaffff) AM_RAM
 	AM_RANGE(0xb0000, 0xb7fff) AM_NOP
 	AM_RANGE(0xb8000, 0xbffff) AM_READWRITE8(pc_t1t_videoram_r, pc_video_videoram_w, 0xffff)
 	AM_RANGE(0xc0000, 0xc7fff) AM_NOP
 	AM_RANGE(0xc8000, 0xc9fff) AM_ROM
 	AM_RANGE(0xca000, 0xcffff) AM_NOP
-	AM_RANGE(0xe0000, 0xeffff) AM_ROMBANK(11)						/* Banked part of the BIOS */
+	AM_RANGE(0xe0000, 0xeffff) AM_ROMBANK("bank11")						/* Banked part of the BIOS */
 	AM_RANGE(0xf0000, 0xfffff) AM_ROM AM_REGION("maincpu", 0x70000)
 ADDRESS_MAP_END
 
 
 
 static ADDRESS_MAP_START(tandy1000_16_io, ADDRESS_SPACE_IO, 16)
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", dma8237_r, dma8237_w, 0xffff)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", i8237_r, i8237_w, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8("pic8259", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(tandy1000_pio_r,			tandy1000_pio_w, 0xffff)
@@ -407,10 +407,10 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(ibmpcjr_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
+	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0xa0000, 0xaffff) AM_RAM
 	AM_RANGE(0xb0000, 0xb7fff) AM_NOP
-	AM_RANGE(0xb8000, 0xbffff) AM_RAMBANK(14)
+	AM_RANGE(0xb8000, 0xbffff) AM_RAMBANK("bank14")
 	AM_RANGE(0xc0000, 0xc7fff) AM_NOP
 	AM_RANGE(0xc8000, 0xc9fff) AM_ROM
 	AM_RANGE(0xca000, 0xcffff) AM_NOP
@@ -438,7 +438,7 @@ static ADDRESS_MAP_START(ibmpcjr_io, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ppc512_map, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x00000, 0x7ffff) AM_RAMBANK(10)
+	AM_RANGE(0x00000, 0x7ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0x80000, 0xbffff) AM_NOP
 	AM_RANGE(0xc0000, 0xc7fff) AM_ROM
 	AM_RANGE(0xc8000, 0xcffff) AM_ROM
@@ -447,7 +447,7 @@ static ADDRESS_MAP_START( ppc512_map, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ppc640_map, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
+	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0xa0000, 0xbffff) AM_NOP
 	AM_RANGE(0xc0000, 0xc7fff) AM_ROM
 	AM_RANGE(0xc8000, 0xcffff) AM_ROM
@@ -456,7 +456,7 @@ static ADDRESS_MAP_START( ppc640_map, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(ppc512_io, ADDRESS_SPACE_IO, 16)
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", dma8237_r, dma8237_w, 0xffff)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", i8237_r, i8237_w, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8("pic8259", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0065) AM_READWRITE(pc1640_16le_port60_r,			pc1640_16le_port60_w)
@@ -478,7 +478,7 @@ static ADDRESS_MAP_START(ppc512_io, ADDRESS_SPACE_IO, 16)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pc200_map, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
+	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0xa0000, 0xbffff) AM_NOP
 	AM_RANGE(0xc0000, 0xc7fff) AM_ROM
 	AM_RANGE(0xc8000, 0xcffff) AM_ROM
@@ -487,7 +487,7 @@ static ADDRESS_MAP_START( pc200_map, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(pc200_io, ADDRESS_SPACE_IO, 16)
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", dma8237_r, dma8237_w, 0xffff)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", i8237_r, i8237_w, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8("pic8259", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0065) AM_READWRITE(pc1640_16le_port60_r,			pc1640_16le_port60_w)
@@ -510,7 +510,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( pc1640_map, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
+	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0xa0000, 0xbffff) AM_NOP
 	AM_RANGE(0xc0000, 0xc7fff) AM_ROM
 	AM_RANGE(0xc8000, 0xcffff) AM_ROM
@@ -520,7 +520,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(pc1640_io, ADDRESS_SPACE_IO, 16)
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", dma8237_r, dma8237_w, 0xffff)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", i8237_r, i8237_w, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8("pic8259", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0065) AM_READWRITE(pc1640_16le_port60_r,			pc1640_16le_port60_w)
@@ -542,7 +542,7 @@ static ADDRESS_MAP_START(pc1640_io, ADDRESS_SPACE_IO, 16)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pc1512_map, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
+	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0xa0000, 0xbffff) AM_NOP
 	AM_RANGE(0xc0000, 0xc7fff) AM_ROM
 	AM_RANGE(0xc8000, 0xcffff) AM_ROM
@@ -551,7 +551,7 @@ static ADDRESS_MAP_START( pc1512_map, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(pc1512_io, ADDRESS_SPACE_IO, 16)
-	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", dma8237_r, dma8237_w, 0xffff)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", i8237_r, i8237_w, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8("pic8259", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0065) AM_READWRITE(pc1640_16le_port60_r,			pc1640_16le_port60_w)
@@ -1458,6 +1458,12 @@ static const floppy_config ibmpc_floppy_config =
 	DO_NOT_KEEP_GEOMETRY
 };
 
+static const kb_keytronic_interface pc_keytronic_intf =
+{
+	DEVCB_MEMORY_HANDLER("maincpu", IO, ibm5150_kb_set_clock_signal),
+	DEVCB_MEMORY_HANDLER("maincpu", IO, ibm5150_kb_set_data_signal),
+};
+
 
 #define MDRV_CPU_PC(mem, port, type, clock, vblankfunc)	\
 	MDRV_CPU_ADD("maincpu", type, clock)				\
@@ -1466,6 +1472,38 @@ static const floppy_config ibmpc_floppy_config =
 	MDRV_CPU_VBLANK_INT_HACK(vblankfunc, 4)					\
 	MDRV_CPU_CONFIG(i86_address_mask)
 
+
+/* F4 Character Displayer */
+static const gfx_layout pc_16_charlayout =
+{
+	8, 16,					/* 8 x 16 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 2048*8, 2049*8, 2050*8, 2051*8, 2052*8, 2053*8, 2054*8, 2055*8 },
+	8*8					/* every char takes 2 x 8 bytes */
+};
+
+static const gfx_layout pc_8_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	512,					/* 512 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static GFXDECODE_START( pcmda )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, pc_16_charlayout, 1, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0x1000, pc_8_charlayout, 1, 1 )
+GFXDECODE_END
 
 static MACHINE_DRIVER_START( pcmda )
 	MDRV_DRIVER_DATA(pc_state)
@@ -1482,7 +1520,7 @@ static MACHINE_DRIVER_START( pcmda )
 
 	MDRV_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
-	MDRV_DMA8237_ADD( "dma8237", ibm5150_dma8237_config )
+	MDRV_I8237_ADD( "dma8237", XTAL_14_31818MHz/3, ibm5150_dma8237_config )
 
 	MDRV_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
@@ -1495,6 +1533,7 @@ static MACHINE_DRIVER_START( pcmda )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_mda )
+	MDRV_GFXDECODE(pcmda)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1513,7 +1552,7 @@ static MACHINE_DRIVER_START( pcmda )
 #endif
 
 	/* keyboard */
-	MDRV_IMPORT_FROM( kb_keytronic )
+	MDRV_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)
 
 	/* printer */
 	MDRV_PC_LPT_ADD("lpt_0", pc_lpt_config)
@@ -1526,12 +1565,16 @@ static MACHINE_DRIVER_START( pcmda )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("640K")
 MACHINE_DRIVER_END
 
+
+static GFXDECODE_START( pcherc )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, pc_16_charlayout, 1, 1 )
+GFXDECODE_END
 
 static MACHINE_DRIVER_START( pcherc )
 	MDRV_DRIVER_DATA(pc_state)
@@ -1546,7 +1589,7 @@ static MACHINE_DRIVER_START( pcherc )
 
 	MDRV_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
-	MDRV_DMA8237_ADD( "dma8237", ibm5150_dma8237_config )
+	MDRV_I8237_ADD( "dma8237", XTAL_14_31818MHz/3, ibm5150_dma8237_config )
 
 	MDRV_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
@@ -1559,6 +1602,7 @@ static MACHINE_DRIVER_START( pcherc )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_hercules )
+	MDRV_GFXDECODE(pcherc)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1577,7 +1621,7 @@ static MACHINE_DRIVER_START( pcherc )
 #endif
 
 	/* keyboard */
-	MDRV_IMPORT_FROM( kb_keytronic )
+	MDRV_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)
 
 	/* printer */
 	MDRV_PC_LPT_ADD("lpt_0", pc_lpt_config)
@@ -1590,7 +1634,7 @@ static MACHINE_DRIVER_START( pcherc )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("640K")
@@ -1603,6 +1647,11 @@ static const cassette_config ibm5150_cassette_config =
 	NULL,
 	CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED
 };
+
+static GFXDECODE_START( ibm5150 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, pc_16_charlayout, 3, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0x1000, pc_8_charlayout, 3, 1 )
+GFXDECODE_END
 
 static MACHINE_DRIVER_START( ibm5150 )
 	MDRV_DRIVER_DATA(pc_state)
@@ -1619,7 +1668,7 @@ static MACHINE_DRIVER_START( ibm5150 )
 
 	MDRV_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
-	MDRV_DMA8237_ADD( "dma8237", ibm5150_dma8237_config )
+	MDRV_I8237_ADD( "dma8237", XTAL_14_31818MHz/3, ibm5150_dma8237_config )
 
 	MDRV_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
@@ -1632,6 +1681,7 @@ static MACHINE_DRIVER_START( ibm5150 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_cga )
+	MDRV_GFXDECODE(ibm5150)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1650,7 +1700,7 @@ static MACHINE_DRIVER_START( ibm5150 )
 #endif
 
 	/* keyboard */
-	MDRV_IMPORT_FROM( kb_keytronic )
+	MDRV_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)
 
 	/* printer */
 	MDRV_PC_LPT_ADD("lpt_0", pc_lpt_config)
@@ -1665,7 +1715,7 @@ static MACHINE_DRIVER_START( ibm5150 )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("640K")
@@ -1684,7 +1734,7 @@ static MACHINE_DRIVER_START( pccga )
 
 	MDRV_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
-	MDRV_DMA8237_ADD( "dma8237", ibm5150_dma8237_config )
+	MDRV_I8237_ADD( "dma8237", XTAL_14_31818MHz/3, ibm5150_dma8237_config )
 
 	MDRV_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
@@ -1697,6 +1747,7 @@ static MACHINE_DRIVER_START( pccga )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_cga )
+	MDRV_GFXDECODE(ibm5150)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1715,7 +1766,7 @@ static MACHINE_DRIVER_START( pccga )
 #endif
 
 	/* keyboard */
-	MDRV_IMPORT_FROM( kb_keytronic )
+	MDRV_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)
 
 	/* printer */
 	MDRV_PC_LPT_ADD("lpt_0", pc_lpt_config)
@@ -1728,12 +1779,43 @@ static MACHINE_DRIVER_START( pccga )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("640K")	
+	MDRV_RAM_DEFAULT_SIZE("640K")
 MACHINE_DRIVER_END
 
+
+static const gfx_layout europc_8_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*16					/* every char takes 16 bytes */
+};
+
+static const gfx_layout europc_16_charlayout =
+{
+	8, 16,					/* 8 x 16 characters */
+	256,					/* 256 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
+	8*16					/* every char takes 16 bytes */
+};
+
+static GFXDECODE_START( europc )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, europc_8_charlayout, 3, 1 )
+	GFXDECODE_ENTRY( "gfx1", 0x0800, europc_16_charlayout, 3, 1 )
+GFXDECODE_END
 
 static MACHINE_DRIVER_START( europc )
 	MDRV_DRIVER_DATA(pc_state)
@@ -1745,7 +1827,7 @@ static MACHINE_DRIVER_START( europc )
 
 	MDRV_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
-	MDRV_DMA8237_ADD( "dma8237", ibm5150_dma8237_config )
+	MDRV_I8237_ADD( "dma8237", XTAL_14_31818MHz/3, ibm5150_dma8237_config )
 
 	MDRV_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
@@ -1758,6 +1840,7 @@ static MACHINE_DRIVER_START( europc )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_aga )
+	MDRV_GFXDECODE(europc)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1782,10 +1865,10 @@ static MACHINE_DRIVER_START( europc )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("640K")	
+	MDRV_RAM_DEFAULT_SIZE("640K")
 MACHINE_DRIVER_END
 
 
@@ -1799,7 +1882,7 @@ static MACHINE_DRIVER_START( ibm5160 )
 
 	MDRV_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
-	MDRV_DMA8237_ADD( "dma8237", ibm5150_dma8237_config )
+	MDRV_I8237_ADD( "dma8237", XTAL_14_31818MHz/3, ibm5150_dma8237_config )
 
 	MDRV_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
@@ -1812,6 +1895,7 @@ static MACHINE_DRIVER_START( ibm5160 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_cga )
+	MDRV_GFXDECODE(ibm5150)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1830,7 +1914,7 @@ static MACHINE_DRIVER_START( ibm5160 )
 #endif
 
 	/* keyboard */
-	MDRV_IMPORT_FROM( kb_keytronic )
+	MDRV_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)
 
 	/* printer */
 	MDRV_PC_LPT_ADD("lpt_0", pc_lpt_config)
@@ -1843,12 +1927,29 @@ static MACHINE_DRIVER_START( ibm5160 )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("640K")	
+	MDRV_RAM_DEFAULT_SIZE("640K")
 MACHINE_DRIVER_END
 
+
+static const gfx_layout pc200_charlayout =
+{
+	8, 16,					/* 8 x 16 characters */
+	2048,					/* 2048 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8, 10*8, 11*8, 12*8, 13*8, 14*8, 15*8 },
+	8*16					/* every char takes 16 bytes */
+};
+
+static GFXDECODE_START( pc200 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, pc200_charlayout, 3, 1 )
+GFXDECODE_END
 
 static MACHINE_DRIVER_START( pc200 )
 	MDRV_DRIVER_DATA(pc_state)
@@ -1860,7 +1961,7 @@ static MACHINE_DRIVER_START( pc200 )
 
 	MDRV_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
-	MDRV_DMA8237_ADD( "dma8237", ibm5150_dma8237_config )
+	MDRV_I8237_ADD( "dma8237", XTAL_14_31818MHz/3, ibm5150_dma8237_config )
 
 	MDRV_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
@@ -1873,6 +1974,7 @@ static MACHINE_DRIVER_START( pc200 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_pc200 )
+	MDRV_GFXDECODE(pc200)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1890,14 +1992,31 @@ static MACHINE_DRIVER_START( pc200 )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("640K")	
+	MDRV_RAM_DEFAULT_SIZE("640K")
 MACHINE_DRIVER_END
 
 
 
+
+static const gfx_layout pc1512_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	1024,					/* 1024 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static GFXDECODE_START( pc1512 )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, pc1512_charlayout, 3, 1 )
+GFXDECODE_END
 
 static MACHINE_DRIVER_START( ppc512 )
 	MDRV_DRIVER_DATA(pc_state)
@@ -1913,7 +2032,7 @@ static MACHINE_DRIVER_START( ppc512 )
 
 	MDRV_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
-	MDRV_DMA8237_ADD( "dma8237", ibm5150_dma8237_config )
+	MDRV_I8237_ADD( "dma8237", XTAL_14_31818MHz/3, ibm5150_dma8237_config )
 
 	MDRV_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
@@ -1926,6 +2045,7 @@ static MACHINE_DRIVER_START( ppc512 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_pc200 )
+	MDRV_GFXDECODE(pc200)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1943,17 +2063,17 @@ static MACHINE_DRIVER_START( ppc512 )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("512K")	
+	MDRV_RAM_DEFAULT_SIZE("512K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ppc640 )
 	MDRV_IMPORT_FROM( ppc512 )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_PROGRAM_MAP(ppc640_map)
-	
+
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("640K")
@@ -1969,7 +2089,7 @@ static MACHINE_DRIVER_START( pc1512 )
 
 	MDRV_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
-	MDRV_DMA8237_ADD( "dma8237", ibm5150_dma8237_config )
+	MDRV_I8237_ADD( "dma8237", XTAL_14_31818MHz/3, ibm5150_dma8237_config )
 
 	MDRV_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
@@ -1982,6 +2102,7 @@ static MACHINE_DRIVER_START( pc1512 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_pc1512 )
+	MDRV_GFXDECODE(pc1512)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -2001,7 +2122,7 @@ static MACHINE_DRIVER_START( pc1512 )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("640K")
@@ -2018,7 +2139,7 @@ static MACHINE_DRIVER_START( pc1640 )
 
 	MDRV_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
-	MDRV_DMA8237_ADD( "dma8237", ibm5150_dma8237_config )
+	MDRV_I8237_ADD( "dma8237", XTAL_14_31818MHz/3, ibm5150_dma8237_config )
 
 	MDRV_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
@@ -2031,6 +2152,7 @@ static MACHINE_DRIVER_START( pc1640 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_ega )
+	MDRV_GFXDECODE(pc1512)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -2050,7 +2172,7 @@ static MACHINE_DRIVER_START( pc1640 )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("640K")
@@ -2067,7 +2189,7 @@ static MACHINE_DRIVER_START( xtvga )
 
 	MDRV_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
-	MDRV_DMA8237_ADD( "dma8237", ibm5150_dma8237_config )
+	MDRV_I8237_ADD( "dma8237", XTAL_14_31818MHz/3, ibm5150_dma8237_config )
 
 	MDRV_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
@@ -2111,7 +2233,7 @@ static MACHINE_DRIVER_START( xtvga )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("640K")
@@ -2128,7 +2250,7 @@ static MACHINE_DRIVER_START( t1000hx )
 
 	MDRV_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
-	MDRV_DMA8237_ADD( "dma8237", ibm5150_dma8237_config )
+	MDRV_I8237_ADD( "dma8237", XTAL_14_31818MHz/3, ibm5150_dma8237_config )
 
 	MDRV_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
@@ -2139,12 +2261,13 @@ static MACHINE_DRIVER_START( t1000hx )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_t1000 )
+	MDRV_GFXDECODE(europc)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MDRV_SOUND_ADD("sn76496", SN76496, 2386360)
+	MDRV_SOUND_ADD("sn76496", NCR7496, 2386360)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_NVRAM_HANDLER( tandy1000 )
@@ -2160,7 +2283,7 @@ static MACHINE_DRIVER_START( t1000hx )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("640K")
@@ -2177,7 +2300,7 @@ static MACHINE_DRIVER_START( t1000_16 )
 
 	MDRV_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
-	MDRV_DMA8237_ADD( "dma8237", ibm5150_dma8237_config )
+	MDRV_I8237_ADD( "dma8237", XTAL_14_31818MHz/3, ibm5150_dma8237_config )
 
 	MDRV_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
 
@@ -2188,12 +2311,13 @@ static MACHINE_DRIVER_START( t1000_16 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_t1000 )
+	MDRV_GFXDECODE(europc)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MDRV_SOUND_ADD("sn76496", SN76496, 2386360)
+	MDRV_SOUND_ADD("sn76496", NCR7496, 2386360)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_NVRAM_HANDLER( tandy1000 )
@@ -2209,12 +2333,16 @@ static MACHINE_DRIVER_START( t1000_16 )
 	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("640K")
 MACHINE_DRIVER_END
 
+
+static GFXDECODE_START( ibmpcjr )
+	GFXDECODE_ENTRY( "gfx1", 0x0000, pc_8_charlayout, 3, 1 )
+GFXDECODE_END
 
 static MACHINE_DRIVER_START( ibmpcjr )
 	MDRV_DRIVER_DATA(pc_state)
@@ -2235,6 +2363,7 @@ static MACHINE_DRIVER_START( ibmpcjr )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_pcjr )
+	MDRV_GFXDECODE(ibmpcjr)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -2266,7 +2395,7 @@ static MACHINE_DRIVER_START( ibmpcjr )
 	MDRV_CARTSLOT_EXTENSION_LIST("jrc")
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(pcjr_cartridge)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("640K")
@@ -2376,10 +2505,6 @@ ROM_START( ibm5150 )
 	/* IBM 1501981(CGA) and 1501985(MDA) Character rom */
 	ROM_REGION(0x2000,"gfx1", 0)
 	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f)) /* "AMI 8412PI // 5788005 // (C) IBM CORP. 1981 // KOREA" */
-
-	/* 8051 keytronic KB3270/PC keyboard controller */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
 
 #ifdef UNUSED_DEFINITION
@@ -2406,10 +2531,6 @@ ROM_START( bw230 )
 	/* IBM 1501981(CGA) and 1501985(MDA) Character rom */
 	ROM_REGION(0x2000,"gfx1", 0)
 	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f)) /* "AMI 8412PI // 5788005 // (C) IBM CORP. 1981 // KOREA" */
-
-	/* 8051 keytronic KB3270/PC keyboard controller */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
 
 
@@ -2421,10 +2542,6 @@ ROM_START( pcmda )
 	/* IBM 1501981(CGA) and 1501985(MDA) Character rom */
 	ROM_REGION(0x08100,"gfx1", 0)
 	ROM_LOAD("5788005.u33", 0x00000, 0x02000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f)) /* "AMI 8412PI // 5788005 // (C) IBM CORP. 1981 // KOREA" */
-
-	/* 8051 keytronic KB3270/PC keyboard controller */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
 
 
@@ -2434,10 +2551,6 @@ ROM_START( pcherc )
 	ROM_LOAD("pcxt.rom",    0xfe000, 0x02000, CRC(031aafad) SHA1(a641b505bbac97b8775f91fe9b83d9afdf4d038f))
 	ROM_REGION(0x1000,"gfx1", 0)
 	ROM_LOAD("um2301.bin",  0x00000, 0x1000, CRC(0827bdac) SHA1(15f1aceeee8b31f0d860ff420643e3c7f29b5ffc))
-
-	/* 8051 keytronic KB3270/PC keyboard controller */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
 
 
@@ -2450,10 +2563,6 @@ ROM_START( pc )
 	/* IBM 1501981(CGA) and 1501985(MDA) Character rom */
 	ROM_REGION(0x2000,"gfx1", 0)
 	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f)) /* "AMI 8412PI // 5788005 // (C) IBM CORP. 1981 // KOREA" */
-
-	/* 8051 keytronic KB3270/PC keyboard controller */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
 
 
@@ -2695,10 +2804,6 @@ ROM_START( ibm5160 )
 //  ROM_REGION(0x4000,"gfx2", 0)
 //      ROM_LOAD("1504161.u11", 0x00000, 0x2000, CRC(d9246cf5) SHA1(2eaed495893a4e6649b04d10dada7b5ef4abd140)) /* silkscreen: "AMI 8613MAJ // 9591-041 // S2364B // 1504161 // PHILIPPINES" - Purpose: Pixels 0 thru 7 of built-in 3270 terminal font*/
 //      ROM_LOAD("1504162.u26", 0x02000, 0x2000, CRC(59e1dc32) SHA1(337b5cced203345a5acfb02532d6b5f526902ee7)) /* silkscreen: "AMI 8607MAH // 9591-042 // S2364B // 1504162 // PHILIPPINES" - Purpose: Pixel 8 of built-in 3270 terminal font*/
-
-	/* 8051 keytronic KB3270/PC keyboard controller */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
 
 
@@ -2838,11 +2943,8 @@ ROM_START( dgone )
 	/* IBM 1501981(CGA) and 1501985(MDA) Character rom */
 	ROM_REGION(0x2000,"gfx1", 0)
 	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f)) /* "AMI 8412PI // 5788005 // (C) IBM CORP. 1981 // KOREA" */
-
-	/* 8051 keytronic keyboard controller */
-	ROM_REGION( 0x2000, KEYTRONIC_KB3270PC_CPU, 0 )
-	ROM_LOAD("14166.bin", 0x0000, 0x2000, CRC(1aea1b53) SHA1(b75b6d4509036406052157bc34159f7039cdc72e))
 ROM_END
+
 
 /***************************************************************************
 
@@ -2850,32 +2952,32 @@ ROM_END
 
 ***************************************************************************/
 
-/*     YEAR     NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG   COMPANY     FULLNAME */
-COMP(  1981,	ibm5150,	0,			0,	ibm5150,    ibm5150,    ibm5150,    0, "International Business Machines",  "IBM PC 5150" , 0)
-COMP(  1984,	dgone,		ibm5150,	0,	pccga,      pccga,	    pccga,	    0, "Data General",  "Data General/One" , GAME_NOT_WORKING)	/* CGA, 2x 3.5" disk drives */
-COMP(  1985,	bw230,		ibm5150,	0,	pccga,		bondwell,   bondwell,	0, "Bondwell Holding",  "BW230 (PRO28 Series)", 0 )
-COMP(  1988,	europc,		ibm5150,	0,	europc,     europc,		europc,     0, "Schneider Rdf. AG",  "EURO PC", GAME_NOT_WORKING)
+/*     YEAR     NAME		PARENT		COMPAT  MACHINE     INPUT       INIT        COMPANY     FULLNAME */
+COMP(  1981,	ibm5150,	0,		0,	ibm5150,    ibm5150,	ibm5150,    "International Business Machines",  "IBM PC 5150" , 0)
+COMP(  1984,	dgone,		ibm5150,	0,	pccga,      pccga,	pccga,	    "Data General",  "Data General/One" , GAME_NOT_WORKING)	/* CGA, 2x 3.5" disk drives */
+COMP(  1985,	bw230,		ibm5150,	0,	pccga,	    bondwell,   bondwell,   "Bondwell Holding",  "BW230 (PRO28 Series)", GAME_NOT_WORKING )
+COMP(  1988,	europc,		ibm5150,	0,	europc,     europc,	europc,     "Schneider Rdf. AG",  "EURO PC", GAME_NOT_WORKING)
 
 // pcjr (better graphics, better sound)
-COMP(  1983,	ibmpcjr,	ibm5150,	0,	ibmpcjr,    tandy1t,	pcjr,       0, "International Business Machines",  "IBM PC Jr", GAME_NOT_WORKING|GAME_IMPERFECT_COLORS )
+COMP(  1983,	ibmpcjr,	ibm5150,	0,	ibmpcjr,    tandy1t,	pcjr,       "International Business Machines",  "IBM PC Jr", GAME_IMPERFECT_COLORS )
 
 // tandy 1000
-COMP(  1987,	t1000hx,	ibm5150,	0,	t1000hx,    tandy1t,	t1000hx,	0, "Tandy Radio Shack",  "Tandy 1000HX", 0)
-COMP(  1987,	t1000sx,	ibm5150,	0,	t1000hx,    tandy1t,	t1000hx,	0, "Tandy Radio Shack",  "Tandy 1000SX", GAME_NOT_WORKING)
-COMP(  1989,    t1000rl,    ibm5150,    0,  t1000_16,   tandy1t,    t1000hx,    0, "Tandy Radio Shack",  "Tandy 1000RL", GAME_NOT_WORKING )
+COMP(  1987,	t1000hx,	ibm5150,	0,	t1000hx,    tandy1t,	t1000hx,    "Tandy Radio Shack",  "Tandy 1000HX", 0)
+COMP(  1987,	t1000sx,	ibm5150,	0,	t1000hx,    tandy1t,	t1000hx,    "Tandy Radio Shack",  "Tandy 1000SX", GAME_NOT_WORKING)
+COMP(  1989,    t1000rl,	ibm5150,	0,	t1000_16,   tandy1t,    t1000hx,    "Tandy Radio Shack",  "Tandy 1000RL", 0)
 
 // xt class (pc but 8086)
-COMP(  1982,	ibm5160,	ibm5150,	0,	ibm5160,    ibm5150,	ibm5150,	0, "International Business Machines",  "IBM XT 5160" , 0)
-COMP(  1988,	pc200,		ibm5150,	0,	pc200,		pc200,		pc200,		0, "Sinclair Research",  "PC200 Professional Series", GAME_NOT_WORKING)
-COMP(  1988,	pc20,		ibm5150,	0,	pc200,		pc200,		pc200,		0, "Amstrad plc",  "Amstrad PC20" , GAME_NOT_WORKING)
-COMP(  1987,	ppc512,		ibm5150,	0,	ppc512,		pc200,		ppc512,		0, "Amstrad plc",  "Amstrad PPC512", GAME_NOT_WORKING)
-COMP(  1987,	ppc640,		ibm5150,	0,	ppc640,		pc200,		ppc512,		0, "Amstrad plc",  "Amstrad PPC640", GAME_NOT_WORKING)
-COMP(  1986,	pc1512,		ibm5150,	0,	pc1512,     pc1512,		pc1512,		0, "Amstrad plc",  "Amstrad PC1512 (version 1)", GAME_NOT_WORKING)
-COMP(  198?,	pc1512v2,	ibm5150,	0,	pc1512,     pc1512,		pc1512,		0, "Amstrad plc",  "Amstrad PC1512 (version 2)", GAME_NOT_WORKING)
-COMP(  1987,	pc1640,		ibm5150,	0,	pc1640,     pc1640,		pc1640,		0, "Amstrad plc",  "Amstrad PC1640 / PC6400 (US)", GAME_NOT_WORKING )
+COMP(  1982,	ibm5160,	ibm5150,	0,	ibm5160,    ibm5150,	ibm5150,    "International Business Machines",  "IBM XT 5160" , 0)
+COMP(  1988,	pc200,		ibm5150,	0,	pc200,	    pc200,	pc200,	    "Sinclair Research",  "PC200 Professional Series", GAME_NOT_WORKING)
+COMP(  1988,	pc20,		ibm5150,	0,	pc200,	    pc200,	pc200,	    "Amstrad plc",  "Amstrad PC20" , GAME_NOT_WORKING)
+COMP(  1987,	ppc512,		ibm5150,	0,	ppc512,	    pc200,	ppc512,	    "Amstrad plc",  "Amstrad PPC512", GAME_NOT_WORKING)
+COMP(  1987,	ppc640,		ibm5150,	0,	ppc640,	    pc200,	ppc512,	    "Amstrad plc",  "Amstrad PPC640", GAME_NOT_WORKING)
+COMP(  1986,	pc1512,		ibm5150,	0,	pc1512,     pc1512,	pc1512,	    "Amstrad plc",  "Amstrad PC1512 (version 1)", GAME_NOT_WORKING)
+COMP(  198?,	pc1512v2,	ibm5150,	0,	pc1512,     pc1512,	pc1512,	    "Amstrad plc",  "Amstrad PC1512 (version 2)", GAME_NOT_WORKING)
+COMP(  1987,	pc1640,		ibm5150,	0,	pc1640,     pc1640,	pc1640,	    "Amstrad plc",  "Amstrad PC1640 / PC6400 (US)", GAME_NOT_WORKING )
 // pc2086 pc1512 with vga??
-COMP(  1987,	pc,			ibm5150,	0,	pccga,		pccga,		pccga,		0, "Generic",  "PC (CGA)" , 0)
-COMP ( 1987,	pcmda,		ibm5150,	0,	pcmda,      pcmda,		ibm5150,    0, "Generic",  "PC (MDA)" , 0)
-COMP ( 1987,    pcherc,		ibm5150,	0,	pcherc,     pcmda,      ibm5150,	0, "Generic",  "PC (Hercules)" , 0)
-COMP ( 1987,	xtvga,		ibm5150,	0,	xtvga,      xtvga,		pc_vga,		0, "Generic",  "PC/XT (VGA, MF2 Keyboard)" , GAME_NOT_WORKING)
+COMP(  1987,	pc,		ibm5150,	0,	pccga,	    pccga,	pccga,	    "Generic",  "PC (CGA)" , 0)
+COMP ( 1987,	pcmda,		ibm5150,	0,	pcmda,      pcmda,	ibm5150,    "Generic",  "PC (MDA)" , 0)
+COMP ( 1987,    pcherc,		ibm5150,	0,	pcherc,     pcmda,      ibm5150,    "Generic",  "PC (Hercules)" , 0)
+COMP ( 1987,	xtvga,		ibm5150,	0,	xtvga,      xtvga,	pc_vga,	    "Generic",  "PC/XT (VGA, MF2 Keyboard)" , GAME_NOT_WORKING)
 

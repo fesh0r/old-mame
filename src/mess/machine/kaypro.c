@@ -42,7 +42,7 @@ static READ8_DEVICE_HANDLER( pio_system_r )
 static WRITE8_DEVICE_HANDLER( pio_system_w )
 {
 /*  d7 bank select
-    d6 disk drive motors - not emulated
+    d6 disk drive motors - not emulated (0=on)
     d5 double-density enable (0=double density)
     d4 Centronics strobe
     d2 side select (1=side 1)
@@ -54,17 +54,18 @@ static WRITE8_DEVICE_HANDLER( pio_system_w )
 
 	if (data & 0x80)
 	{
-		memory_install_readwrite8_handler (mem, 0x0000, 0x3fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
-		memory_install_read8_handler (mem, 0x0000, 0x0fff, 0, 0, SMH_BANK(1));
-		memory_set_bankptr(mem->machine, 1, memory_region(mem->machine, "maincpu"));
+		memory_unmap_readwrite (mem, 0x0000, 0x3fff, 0, 0);
+		memory_install_read_bank (mem, 0x0000, 0x0fff, 0, 0, "bank1");
+		memory_set_bankptr(mem->machine, "bank1", memory_region(mem->machine, "maincpu"));
 		memory_install_readwrite8_handler (mem, 0x3000, 0x3fff, 0, 0, kaypro_videoram_r, kaypro_videoram_w);
 	}
 	else
 	{
-		memory_install_readwrite8_handler (mem, 0x0000, 0x3fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
- 		memory_install_readwrite8_handler (mem, 0x0000, 0x3fff, 0, 0, SMH_BANK(2), SMH_BANK(3));
-		memory_set_bankptr(mem->machine, 2, memory_region(mem->machine, "rambank"));
-		memory_set_bankptr(mem->machine, 3, memory_region(mem->machine, "rambank"));
+		memory_unmap_readwrite(mem, 0x0000, 0x3fff, 0, 0);
+ 		memory_install_read_bank (mem, 0x0000, 0x3fff, 0, 0, "bank2");
+		memory_install_write_bank (mem, 0x0000, 0x3fff, 0, 0, "bank3");
+		memory_set_bankptr(mem->machine, "bank2", memory_region(mem->machine, "rambank"));
+		memory_set_bankptr(mem->machine, "bank3", memory_region(mem->machine, "rambank"));
 	}
 
 	wd17xx_set_density(kaypro_fdc, (data & 0x20) ? 0 : 1);
@@ -78,6 +79,9 @@ static WRITE8_DEVICE_HANDLER( pio_system_w )
 		wd17xx_set_drive(kaypro_fdc, 1);
 
 	wd17xx_set_side(kaypro_fdc, (data & 4) ? 1 : 0);	/* only has one side but this circuit exists... */
+
+	output_set_value("ledA",(data & 1) ? 1 : 0);		/* LEDs in artwork */
+	output_set_value("ledB",(data & 2) ? 1 : 0);
 
 	kaypro_system_port = data;
 }
@@ -151,7 +155,7 @@ WRITE8_HANDLER( kaypro2x_system_port_w )
 /*  d7 bank select
     d6 alternate character set (write only)
     d5 double-density enable
-    d4 disk drive motors - not emulated
+    d4 disk drive motors (1=on)
     d3 Centronics strobe
     d2 side select (appears that 0=side 1?)
     d1 drive B
@@ -162,16 +166,17 @@ WRITE8_HANDLER( kaypro2x_system_port_w )
 
 	if (data & 0x80)
 	{
-		memory_install_readwrite8_handler (mem, 0x0000, 0x3fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
-		memory_install_read8_handler (mem, 0x0000, 0x1fff, 0, 0, SMH_BANK(1));
-		memory_set_bankptr(mem->machine, 1, memory_region(mem->machine, "maincpu"));
+		memory_unmap_readwrite (mem, 0x0000, 0x3fff, 0, 0);
+		memory_install_read_bank (mem, 0x0000, 0x1fff, 0, 0, "bank1");
+		memory_set_bankptr(mem->machine, "bank1", memory_region(mem->machine, "maincpu"));
 	}
 	else
 	{
-		memory_install_readwrite8_handler (mem, 0x0000, 0x3fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
- 		memory_install_readwrite8_handler (mem, 0x0000, 0x3fff, 0, 0, SMH_BANK(2), SMH_BANK(3));
-		memory_set_bankptr(mem->machine, 2, memory_region(mem->machine, "rambank"));
-		memory_set_bankptr(mem->machine, 3, memory_region(mem->machine, "rambank"));
+		memory_unmap_readwrite (mem, 0x0000, 0x3fff, 0, 0);
+		memory_install_read_bank (mem, 0x0000, 0x3fff, 0, 0, "bank2");
+		memory_install_write_bank (mem, 0x0000, 0x3fff, 0, 0, "bank3");
+		memory_set_bankptr(mem->machine, "bank2", memory_region(mem->machine, "rambank"));
+		memory_set_bankptr(mem->machine, "bank3", memory_region(mem->machine, "rambank"));
 	}
 
 	wd17xx_set_density(kaypro_fdc, (data & 0x20) ? 0 : 1);
@@ -185,6 +190,13 @@ WRITE8_HANDLER( kaypro2x_system_port_w )
 		wd17xx_set_drive(kaypro_fdc, 1);
 
 	wd17xx_set_side(kaypro_fdc, (data & 4) ? 0 : 1);
+
+	output_set_value("ledA",(data & 1) ? 1 : 0);		/* LEDs in artwork */
+	output_set_value("ledB",(data & 2) ? 1 : 0);
+
+	/* CLEAR_LINE means to turn motors on */
+	floppy_mon_w(floppy_get_device(space->machine, 0), (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+	floppy_mon_w(floppy_get_device(space->machine, 1), (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 
 	kaypro_system_port = data;
 }

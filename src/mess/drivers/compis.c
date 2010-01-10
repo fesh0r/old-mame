@@ -82,7 +82,7 @@ static ADDRESS_MAP_START( compis_io, ADDRESS_SPACE_IO, 16 )
 	AM_RANGE( 0x0330, 0x033f) AM_READWRITE( compis_gdc_16_r, compis_gdc_16_w )	/* GDC 82720 PCS6:6     */
 	AM_RANGE( 0x0340, 0x0343) AM_READWRITE( compis_fdc_r, compis_fdc_w )	/* iSBX0 (J8) FDC 8272      */
 	AM_RANGE( 0x0350, 0x0351) AM_READ( compis_fdc_dack_r)	/* iSBX0 (J8) DMA ACK       */
-	AM_RANGE( 0xff00, 0xffff) AM_READWRITE( i186_internal_port_r, i186_internal_port_w)/* CPU 80186         */
+	AM_RANGE( 0xff00, 0xffff) AM_READWRITE( compis_i186_internal_port_r, compis_i186_internal_port_w)/* CPU 80186         */
 //{ 0x0100, 0x017e, compis_null_r },    /* RTC              */
 //{ 0x0180, 0x01ff, compis_null_r },    /* PCS3?            */
 //{ 0x0200, 0x027f, compis_null_r },    /* Reserved         */
@@ -103,10 +103,10 @@ static ADDRESS_MAP_START( compis_io, ADDRESS_SPACE_IO, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( keyboard_io, ADDRESS_SPACE_IO, 8 )
-//	AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1) 
-//	AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2) 
-//	AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1) 
-//	AM_RANGE(MCS48_PORT_BUS, MCS48_PORT_BUS) 
+//  AM_RANGE(MCS48_PORT_P1, MCS48_PORT_P1)
+//  AM_RANGE(MCS48_PORT_P2, MCS48_PORT_P2)
+//  AM_RANGE(MCS48_PORT_T1, MCS48_PORT_T1)
+//  AM_RANGE(MCS48_PORT_BUS, MCS48_PORT_BUS)
 ADDRESS_MAP_END
 
 /* COMPIS Keyboard */
@@ -281,6 +281,7 @@ static MACHINE_DRIVER_START( compis )
 
 	MDRV_QUANTUM_TIME(HZ(60))
 
+	MDRV_MACHINE_START(compis)
 	MDRV_MACHINE_RESET(compis)
 
 	MDRV_PIT8253_ADD( "pit8253", compis_pit8253_config )
@@ -352,6 +353,6 @@ ROM_START( compis2 )
 	ROM_LOAD( "cmpkey13.u1", 0x0000, 0x0800, CRC(3f87d138) SHA1(c04e2d325b9c04818bc7c47c3bf32b13862b11ec) )
 ROM_END
 
-/*   YEAR   NAME        PARENT  COMPAT MACHINE  INPUT   INIT    CONFIG  COMPANY     FULLNAME */
-COMP(1985,	compis,		0,		0,     compis,	compis,	compis,	0,	"Telenova", "Compis" , GAME_NOT_WORKING)
-COMP(1986,	compis2,	compis,	0,     compis,	compis,	compis,	0,	"Telenova", "Compis II" , GAME_NOT_WORKING)
+/*   YEAR   NAME        PARENT  COMPAT MACHINE  INPUT   INIT    COMPANY     FULLNAME */
+COMP(1985,	compis,		0,		0,     compis,	compis,	compis,	"Telenova", "Compis" , GAME_NOT_WORKING)
+COMP(1986,	compis2,	compis,	0,     compis,	compis,	compis,	"Telenova", "Compis II" , GAME_NOT_WORKING)

@@ -169,17 +169,14 @@ WRITE_LINE_DEVICE_HANDLER(aim65_riot_irq)
 MACHINE_START( aim65 )
 {
 	const device_config *via_0 = devtag_get_device(machine, "via6522_0");
+	const device_config *ram = devtag_get_device(machine, "messram");
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	/* Init RAM */
-	memory_install_readwrite8_handler(space, 0, messram_get_size(devtag_get_device(machine, "messram")) - 1, 0, 0, SMH_BANK(1), SMH_BANK(1));
-	memory_set_bankptr(machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_install_ram(space, 0x0000, messram_get_size(ram) - 1, 0, 0, messram_get_ptr(ram));
 
-	if (messram_get_size(devtag_get_device(machine, "messram")) < 4 * 1024)
-		memory_install_readwrite8_handler(space, messram_get_size(devtag_get_device(machine, "messram")), 0x0fff, 0, 0, SMH_NOP, SMH_NOP);
-
-	via_cb1_w(via_0, 1, 1);
-	via_ca1_w(via_0, 1, 0);
+	via_cb1_w(via_0, 1);
+	via_ca1_w(via_0, 0);
 }
 
 

@@ -21,19 +21,19 @@ static UINT8 GMODE;
 
 static ADDRESS_MAP_START(spc1000_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE( 0x0000, 0x7fff ) AM_READWRITE(SMH_BANK(1), SMH_BANK(2))
-	AM_RANGE( 0x8000, 0xffff ) AM_READWRITE(SMH_BANK(3), SMH_BANK(4))
+	AM_RANGE( 0x0000, 0x7fff ) AM_READ_BANK("bank1") AM_WRITE_BANK("bank2")
+	AM_RANGE( 0x8000, 0xffff ) AM_READ_BANK("bank3") AM_WRITE_BANK("bank4")
 ADDRESS_MAP_END
 
 static WRITE8_HANDLER(spc1000_iplk_w)
 {
 	IPLK = IPLK ? 0 : 1;
 	if (IPLK == 1) {
-		memory_set_bankptr(space->machine, 1, memory_region(space->machine, "maincpu"));
-		memory_set_bankptr(space->machine, 3, memory_region(space->machine, "maincpu"));
+		memory_set_bankptr(space->machine, "bank1", memory_region(space->machine, "maincpu"));
+		memory_set_bankptr(space->machine, "bank3", memory_region(space->machine, "maincpu"));
 	} else {
-		memory_set_bankptr(space->machine, 1, messram_get_ptr(devtag_get_device(space->machine, "messram")));
-		memory_set_bankptr(space->machine, 3, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x8000);
+		memory_set_bankptr(space->machine, "bank1", messram_get_ptr(devtag_get_device(space->machine, "messram")));
+		memory_set_bankptr(space->machine, "bank3", messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x8000);
 	}
 }
 
@@ -41,11 +41,11 @@ static READ8_HANDLER(spc1000_iplk_r)
 {
 	IPLK = IPLK ? 0 : 1;
 	if (IPLK == 1) {
-		memory_set_bankptr(space->machine, 1, memory_region(space->machine, "maincpu"));
-		memory_set_bankptr(space->machine, 3, memory_region(space->machine, "maincpu"));
+		memory_set_bankptr(space->machine, "bank1", memory_region(space->machine, "maincpu"));
+		memory_set_bankptr(space->machine, "bank3", memory_region(space->machine, "maincpu"));
 	} else {
-		memory_set_bankptr(space->machine, 1, messram_get_ptr(devtag_get_device(space->machine, "messram")));
-		memory_set_bankptr(space->machine, 3, messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x8000);
+		memory_set_bankptr(space->machine, "bank1", messram_get_ptr(devtag_get_device(space->machine, "messram")));
+		memory_set_bankptr(space->machine, "bank3", messram_get_ptr(devtag_get_device(space->machine, "messram")) + 0x8000);
 	}
 	return 0;
 }
@@ -63,9 +63,10 @@ static READ8_HANDLER(spc1000_video_ram_r)
 }
 
 static READ8_HANDLER(spc1000_keyboard_r) {
-	static const char *const keynames[] = { "LINE0", "LINE1", "LINE2", "LINE3",
-											"LINE4", "LINE5", "LINE6", "LINE7",
-											"LINE8", "LINE9" };
+	static const char *const keynames[] = {
+		"LINE0", "LINE1", "LINE2", "LINE3", "LINE4",
+		"LINE5", "LINE6", "LINE7", "LINE8", "LINE9"
+	};
 	return input_port_read(space->machine, keynames[offset]);
 }
 
@@ -73,10 +74,12 @@ static WRITE8_DEVICE_HANDLER(spc1000_gmode_w)
 {
 	GMODE = data;
 
+	// GMODE layout: CSS|NA|PS2|PS1|~A/G|GM0|GM1|NA
+	//	[PS2,PS1] is used to set screen 0/1 pages
 	mc6847_gm1_w(device, BIT(data, 1));
-	mc6847_gm2_w(device, BIT(data, 2));
+	mc6847_gm0_w(device, BIT(data, 2));
 	mc6847_ag_w(device, BIT(data, 3));
-	mc6847_gm0_w(device, BIT(data, 7));
+	mc6847_css_w(device, BIT(data, 7));	
 }
 
 static READ8_DEVICE_HANDLER(spc1000_gmode_r)
@@ -193,25 +196,40 @@ static MACHINE_RESET(spc1000)
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
-	memory_install_read8_handler(space, 0x0000, 0x7fff, 0, 0, SMH_BANK(1));
-	memory_install_read8_handler(space, 0x8000, 0xffff, 0, 0, SMH_BANK(3));
+	memory_install_read_bank(space, 0x0000, 0x7fff, 0, 0, "bank1");
+	memory_install_read_bank(space, 0x8000, 0xffff, 0, 0, "bank3");
 
-	memory_install_write8_handler(space, 0x0000, 0x7fff, 0, 0, SMH_BANK(2));
-	memory_install_write8_handler(space, 0x8000, 0xffff, 0, 0, SMH_BANK(4));
+	memory_install_write_bank(space, 0x0000, 0x7fff, 0, 0, "bank2");
+	memory_install_write_bank(space, 0x8000, 0xffff, 0, 0, "bank4");
 
-	memory_set_bankptr(machine, 1, memory_region(machine, "maincpu"));
-	memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")));
-	memory_set_bankptr(machine, 3, memory_region(machine, "maincpu"));
-	memory_set_bankptr(machine, 4, messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000);
+	memory_set_bankptr(machine, "bank1", memory_region(machine, "maincpu"));
+	memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_set_bankptr(machine, "bank3", memory_region(machine, "maincpu"));
+	memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x8000);
 
 	IPLK = 1;
 }
 
 static READ8_DEVICE_HANDLER( spc1000_mc6847_videoram_r )
-{
-	mc6847_inv_w(device, BIT(spc1000_video_ram[offset], 7));
+{	
+	// GMODE layout: CSS|NA|PS2|PS1|~A/G|GM0|GM1|NA
+	//	[PS2,PS1] is used to set screen 0/1 pages
+	if ( !BIT(GMODE, 3) ) {	// text mode (~A/G set to A)
+		unsigned int page = (BIT(GMODE, 5) << 1) | BIT(GMODE, 4);
+		mc6847_inv_w(device, BIT(spc1000_video_ram[offset+page*0x200+0x800], 0));
+		mc6847_css_w(device, BIT(spc1000_video_ram[offset+page*0x200+0x800], 1));
+		mc6847_as_w(device, BIT(spc1000_video_ram[offset+page*0x200+0x800], 2));
+		mc6847_intext_w(device, BIT(spc1000_video_ram[offset+page*0x200+0x800], 3));
+		return spc1000_video_ram[offset+page*0x200];
+	} else {	// graphics mode: uses full 6KB of VRAM
+		return spc1000_video_ram[offset];
+	}
+}
 
-	return spc1000_video_ram[offset];
+
+static UINT8 spc1000_get_char_rom(running_machine *machine, UINT8 ch, int line)
+{
+	return spc1000_video_ram[0x1000+(ch&0x7F)*16+line];
 }
 
 static VIDEO_START( spc1000 )
@@ -241,18 +259,18 @@ static const cassette_config spc1000_cassette_config =
 
 static const mc6847_interface spc1000_mc6847_intf =
 {
-	DEVCB_HANDLER(spc1000_mc6847_videoram_r),
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL
+	DEVCB_HANDLER(spc1000_mc6847_videoram_r),	// data fetch
+	DEVCB_LINE_VCC,								// GM2 [hardwired to 1]
+	DEVCB_NULL,									// GM1
+	DEVCB_NULL,									// GM0
+	DEVCB_NULL,									// INVEXT
+	DEVCB_NULL,									// INV
+	DEVCB_NULL,									// ~A/S
+	DEVCB_NULL,									// ~A/G
+	DEVCB_NULL,									// CSS
+	DEVCB_NULL,									// FS (output)
+	DEVCB_NULL,									// HS (output)
+	DEVCB_NULL									// RS (output)
 };
 
 static MACHINE_DRIVER_START( spc1000 )
@@ -274,7 +292,8 @@ static MACHINE_DRIVER_START( spc1000 )
 	MDRV_VIDEO_UPDATE(spc1000)
 
 	MDRV_MC6847_ADD("mc6847", spc1000_mc6847_intf)
-	MDRV_MC6847_TYPE(M6847_VERSION_M6847T1_NTSC)
+	MDRV_MC6847_TYPE(M6847_VERSION_ORIGINAL_NTSC)
+	MDRV_MC6847_CHAR_ROM(spc1000_get_char_rom)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -285,10 +304,10 @@ static MACHINE_DRIVER_START( spc1000 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", spc1000_cassette_config )
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("64K")		
+	MDRV_RAM_DEFAULT_SIZE("64K")
 MACHINE_DRIVER_END
 
 /* ROM definition */
@@ -299,5 +318,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1982, spc1000,  0,       0, 	spc1000, 	spc1000, 	 0,  	  0,  	 "Samsung",   "SPC-1000",		GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
+COMP( 1982, spc1000,  0,       0, 	spc1000, 	spc1000, 	 0,  "Samsung",   "SPC-1000",		GAME_NOT_WORKING)

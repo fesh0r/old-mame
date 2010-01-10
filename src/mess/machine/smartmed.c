@@ -36,13 +36,15 @@ INLINE UINT32 get_UINT32BE(UINT32BE word)
 	return (word.bytes[0] << 24) | (word.bytes[1] << 16) | (word.bytes[2] << 8) | word.bytes[3];
 }
 
-/*INLINE void set_UINT32BE(UINT32BE *word, UINT32 data)
+#ifdef UNUSED_FUNCTION
+INLINE void set_UINT32BE(UINT32BE *word, UINT32 data)
 {
-    word->bytes[0] = (data >> 24) & 0xff;
-    word->bytes[1] = (data >> 16) & 0xff;
-    word->bytes[2] = (data >> 8) & 0xff;
-    word->bytes[3] = data & 0xff;
-}*/
+	word->bytes[0] = (data >> 24) & 0xff;
+	word->bytes[1] = (data >> 16) & 0xff;
+	word->bytes[2] = (data >> 8) & 0xff;
+	word->bytes[3] = data & 0xff;
+}
+#endif
 
 /* SmartMedia image header */
 typedef struct disk_image_header
@@ -53,6 +55,15 @@ typedef struct disk_image_header
 	UINT32BE num_pages;
 	UINT32BE log2_pages_per_block;
 } disk_image_header;
+
+typedef struct disk_image_format_2_header
+{
+	UINT8 data1[3];
+	UINT8 padding1[256-3];
+	UINT8 data2[16];
+	UINT8 data3[16];
+	UINT8 padding2[768-32];
+} disk_image_format_2_header;
 
 enum
 {
@@ -70,6 +81,7 @@ struct _smartmedia_t
 	int log2_pages_per_block;	// log2 of number of pages per erase block (usually 4 or 5)
 
 	UINT8 *data_ptr;	// FEEPROM data area
+	UINT8 *data_uid_ptr;
 
 	enum
 	{
@@ -78,7 +90,8 @@ struct _smartmedia_t
 		SM_M_PROGRAM,	// program page data
 		SM_M_ERASE,		// erase block data
 		SM_M_READSTATUS,// read status
-		SM_M_READID		// read ID
+		SM_M_READID,		// read ID
+		SM_M_30
 	} mode;				// current operation mode
 	enum
 	{
@@ -95,8 +108,10 @@ struct _smartmedia_t
 	int accumulated_status;	// accumulated status
 
 	UINT8 *pagereg;	// page register used by program command
-	UINT8 id[2];		// chip ID
+	UINT8 id[3];		// chip ID
 	UINT8 mp_opcode;	// multi-plane operation code
+
+	int mode_3065;
 };
 
 
@@ -122,6 +137,7 @@ static DEVICE_START( smartmedia )
 	sm->num_pages = 0;
 	sm->log2_pages_per_block = 0;
 	sm->data_ptr = NULL;
+	sm->data_uid_ptr = NULL;
 	sm->mode = SM_M_INIT;
 	sm->pointer_mode = SM_PM_A;
 	sm->page_addr = 0;
@@ -129,14 +145,15 @@ static DEVICE_START( smartmedia )
 	sm->status = 0x40;
 	sm->accumulated_status = 0;
 	sm->pagereg = NULL;
-	sm->id[0] = sm->id[1] = 0;
+	sm->id[0] = sm->id[1] = sm->id[2] = 0;
 	sm->mp_opcode = 0;
+	sm->mode_3065 = 0;
 }
 
 /*
     Load a SmartMedia image
 */
-static DEVICE_IMAGE_LOAD( smartmedia )
+static DEVICE_IMAGE_LOAD( smartmedia_format_1 )
 {
 	smartmedia_t *sm = get_safe_token(image);
 	disk_image_header custom_header;
@@ -149,7 +166,7 @@ static DEVICE_IMAGE_LOAD( smartmedia )
 		return INIT_FAIL;
 	}
 
-	if (custom_header.version != 0)
+	if (custom_header.version > 1)
 	{
 		return INIT_FAIL;
 	}
@@ -159,6 +176,7 @@ static DEVICE_IMAGE_LOAD( smartmedia )
 	sm->num_pages = get_UINT32BE(custom_header.num_pages);
 	sm->log2_pages_per_block = get_UINT32BE(custom_header.log2_pages_per_block);
 	sm->data_ptr = auto_alloc_array(image->machine, UINT8, sm->page_total_size*sm->num_pages);
+	sm->data_uid_ptr = auto_alloc_array(image->machine, UINT8, 256 + 16);
 	sm->mode = SM_M_INIT;
 	sm->pointer_mode = SM_PM_A;
 	sm->page_addr = 0;
@@ -168,13 +186,113 @@ static DEVICE_IMAGE_LOAD( smartmedia )
 		sm->status |= 0x80;
 	sm->accumulated_status = 0;
 	sm->pagereg = auto_alloc_array(image->machine, UINT8, sm->page_total_size);
-	sm->id[0] = sm->id[1] = 0;
+	sm->id[0] = sm->id[1] = sm->id[2] = 0;
 
-	image_fread(image, sm->id, 2);
-	image_fread(image, &sm->mp_opcode, 1);
+	if (custom_header.version == 0)
+	{
+		image_fread(image, sm->id, 2);
+		image_fread(image, &sm->mp_opcode, 1);
+	}
+	else if (custom_header.version == 1)
+	{
+		image_fread(image, sm->id, 3);
+		image_fread(image, &sm->mp_opcode, 1);
+		image_fread(image, sm->data_uid_ptr, 256 + 16);
+	}
 	image_fread(image, sm->data_ptr, sm->page_total_size*sm->num_pages);
 
 	return INIT_PASS;
+}
+
+static int detect_geometry( smartmedia_t *sm, UINT8 id1, UINT8 id2)
+{
+	int result = 0;
+
+	switch (id1)
+	{
+		case 0xEC :
+		{
+			switch (id2)
+			{
+				case 0xA4 : sm->page_data_size = 0x0100; sm->num_pages = 0x00800; sm->page_total_size = 0x0108; sm->log2_pages_per_block = 0; result = 1; break;
+				case 0x6E : sm->page_data_size = 0x0100; sm->num_pages = 0x01000; sm->page_total_size = 0x0108; sm->log2_pages_per_block = 0; result = 1; break;
+				case 0xEA : sm->page_data_size = 0x0100; sm->num_pages = 0x02000; sm->page_total_size = 0x0108; sm->log2_pages_per_block = 0; result = 1; break;
+				case 0xE3 : sm->page_data_size = 0x0200; sm->num_pages = 0x02000; sm->page_total_size = 0x0210; sm->log2_pages_per_block = 0; result = 1; break;
+				case 0xE6 : sm->page_data_size = 0x0200; sm->num_pages = 0x04000; sm->page_total_size = 0x0210; sm->log2_pages_per_block = 0; result = 1; break;
+				case 0x73 : sm->page_data_size = 0x0200; sm->num_pages = 0x08000; sm->page_total_size = 0x0210; sm->log2_pages_per_block = 0; result = 1; break;
+				case 0x75 : sm->page_data_size = 0x0200; sm->num_pages = 0x10000; sm->page_total_size = 0x0210; sm->log2_pages_per_block = 0; result = 1; break;
+				case 0x76 : sm->page_data_size = 0x0200; sm->num_pages = 0x20000; sm->page_total_size = 0x0210; sm->log2_pages_per_block = 0; result = 1; break;
+				case 0x79 : sm->page_data_size = 0x0200; sm->num_pages = 0x40000; sm->page_total_size = 0x0210; sm->log2_pages_per_block = 0; result = 1; break;
+			}
+		}
+		break;
+	}
+
+	return result;
+}
+
+static DEVICE_IMAGE_LOAD( smartmedia_format_2 )
+{
+	smartmedia_t *sm = get_safe_token(image);
+	disk_image_format_2_header custom_header;
+	int bytes_read, i, j;
+
+	bytes_read = image_fread(image, &custom_header, sizeof(custom_header));
+	if (bytes_read != sizeof(custom_header))
+	{
+		return INIT_FAIL;
+	}
+
+	if (custom_header.data1[0] != 0xEC)
+	{
+		return INIT_FAIL;
+	}
+
+	if (!detect_geometry( sm, custom_header.data1[0], custom_header.data1[1]))
+	{
+		return INIT_FAIL;
+	}
+
+	sm->data_ptr = auto_alloc_array(image->machine, UINT8, sm->page_total_size*sm->num_pages);
+	sm->data_uid_ptr = auto_alloc_array(image->machine, UINT8, 256 + 16);
+	sm->mode = SM_M_INIT;
+	sm->pointer_mode = SM_PM_A;
+	sm->page_addr = 0;
+	sm->byte_addr = 0;
+	sm->status = 0x40;
+	if (!image_is_writable(image))
+		sm->status |= 0x80;
+	sm->accumulated_status = 0;
+	sm->pagereg = auto_alloc_array(image->machine, UINT8, sm->page_total_size);
+	memcpy( sm->id, custom_header.data1, 3);
+	sm->mp_opcode = 0;
+
+	for (i=0;i<8;i++)
+	{
+		memcpy( sm->data_uid_ptr + i * 32, custom_header.data2, 16);
+		for (j=0;j<16;j++) sm->data_uid_ptr[i*32+16+j] = custom_header.data2[j] ^ 0xFF;
+	}
+	memcpy( sm->data_uid_ptr + 256, custom_header.data3, 16);
+
+	image_fread(image, sm->data_ptr, sm->page_total_size*sm->num_pages);
+
+	return INIT_PASS;
+}
+
+static DEVICE_IMAGE_LOAD( smartmedia )
+{
+	int result;
+	UINT64 position;
+	// try format 1
+	position = image_ftell( image);
+	result = DEVICE_IMAGE_LOAD_NAME(smartmedia_format_1)(image);
+	if (result != INIT_PASS)
+	{
+			// try format 2
+			image_fseek( image, position, SEEK_SET);
+			result = DEVICE_IMAGE_LOAD_NAME(smartmedia_format_2)(image);
+	}
+	return result;
 }
 
 /*
@@ -189,6 +307,7 @@ static DEVICE_IMAGE_UNLOAD( smartmedia )
 	sm->num_pages = 0;
 	sm->log2_pages_per_block = 0;
 	sm->data_ptr = NULL;
+	sm->data_uid_ptr = NULL;
 	sm->mode = SM_M_INIT;
 	sm->pointer_mode = SM_PM_A;
 	sm->page_addr = 0;
@@ -196,8 +315,9 @@ static DEVICE_IMAGE_UNLOAD( smartmedia )
 	sm->status = 0x40;
 	sm->accumulated_status = 0;
 	sm->pagereg = auto_alloc_array(image->machine, UINT8, sm->page_total_size);
-	sm->id[0] = sm->id[1] = 0;
+	sm->id[0] = sm->id[1] = sm->id[2] = 0;
 	sm->mp_opcode = 0;
+	sm->mode_3065 = 0;
 
 	return;
 }
@@ -231,6 +351,7 @@ void smartmedia_command_w(const device_config *device, UINT8 data)
 		sm->pointer_mode = SM_PM_A;
 		sm->status = (sm->status & 0x80) | 0x40;
 		sm->accumulated_status = 0;
+		sm->mode_3065 = 0;
 		break;
 	case 0x00:
 		sm->mode = SM_M_READ;
@@ -315,9 +436,24 @@ void smartmedia_command_w(const device_config *device, UINT8 data)
         break;*/
 	case 0x90:
 		sm->mode = SM_M_READID;
+		sm->addr_load_ptr = 0;
 		break;
 	/*case 0x91:
         break;*/
+	case 0x30:
+		sm->mode = SM_M_30;
+		break;
+	case 0x65:
+		if (sm->mode != SM_M_30)
+		{
+			logerror("smartmedia: unexpected address port write\n");
+			sm->mode = SM_M_INIT;
+		}
+		else
+		{
+			sm->mode_3065 = 1;
+		}
+		break;
 	default:
 		logerror("smartmedia: unsupported command 0x%02x\n", data);
 		sm->mode = SM_M_INIT;
@@ -354,7 +490,10 @@ void smartmedia_address_w(const device_config *device, UINT8 data)
 				sm->pointer_mode = SM_PM_A;
 				break;
 			case SM_PM_C:
-				sm->byte_addr = (data & 0x0f) + sm->page_data_size;
+				if (!sm->mode_3065)
+					sm->byte_addr = (data & 0x0f) + sm->page_data_size;
+				else
+					sm->byte_addr = (data & 0x0f) + 256;
 				break;
 			}
 		}
@@ -369,6 +508,7 @@ void smartmedia_address_w(const device_config *device, UINT8 data)
 		sm->addr_load_ptr++;
 		break;
 	case SM_M_READSTATUS:
+	case SM_M_30:
 		logerror("smartmedia: unexpected address port write\n");
 		break;
 	case SM_M_READID:
@@ -393,10 +533,14 @@ UINT8 smartmedia_data_r(const device_config *device)
 	switch (sm->mode)
 	{
 	case SM_M_INIT:
+	case SM_M_30:
 		logerror("smartmedia: unexpected data port read\n");
 		break;
 	case SM_M_READ:
-		reply = sm->data_ptr[sm->page_addr*sm->page_total_size + sm->byte_addr];
+		if (!sm->mode_3065)
+			reply = sm->data_ptr[sm->page_addr*sm->page_total_size + sm->byte_addr];
+		else
+			reply = sm->data_uid_ptr[sm->page_addr*sm->page_total_size + sm->byte_addr];
 		sm->byte_addr++;
 		if (sm->byte_addr == sm->page_total_size)
 		{
@@ -416,8 +560,9 @@ UINT8 smartmedia_data_r(const device_config *device)
 		reply = sm->status & 0xc1;
 		break;
 	case SM_M_READID:
-		if (sm->byte_addr < 2)
+		if (sm->byte_addr < 3)
 			reply = sm->id[sm->byte_addr];
+		sm->byte_addr++;
 		break;
 	}
 
@@ -438,6 +583,7 @@ void smartmedia_data_w(const device_config *device, UINT8 data)
 	{
 	case SM_M_INIT:
 	case SM_M_READ:
+	case SM_M_30:
 		logerror("smartmedia: unexpected data port write\n");
 		break;
 	case SM_M_PROGRAM:
@@ -487,6 +633,6 @@ DEVICE_GET_INFO( smartmedia )
 		case DEVINFO_STR_NAME:		                strcpy( info->s, "SmartMedia Flash ROM");	                         break;
 		case DEVINFO_STR_FAMILY:                    strcpy(info->s, "SmartMedia Flash ROM");	                         break;
 		case DEVINFO_STR_SOURCE_FILE:		        strcpy(info->s, __FILE__);                                        break;
-		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:	    strcpy(info->s, "");                                           break;
+		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:	    strcpy(info->s, "smc");                                           break;
 	}
 }

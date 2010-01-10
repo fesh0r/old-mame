@@ -237,16 +237,16 @@ void spectrum_plus3_update_memory(running_machine *machine)
 			ram_page = spectrum_128_port_7ffd_data & 0x07;
 			ram_data = messram_get_ptr(devtag_get_device(machine, "messram")) + (ram_page<<14);
 
-			memory_set_bankptr(machine, 4, ram_data);
+			memory_set_bankptr(machine, "bank4", ram_data);
 
 			logerror("RAM at 0xc000: %02x\n", ram_page);
 
 			/* Reset memory between 0x4000 - 0xbfff in case extended paging was being used */
 			/* Bank 5 in 0x4000 - 0x7fff */
-			memory_set_bankptr(machine, 2, messram_get_ptr(devtag_get_device(machine, "messram")) + (5 << 14));
+			memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + (5 << 14));
 
 			/* Bank 2 in 0x8000 - 0xbfff */
-			memory_set_bankptr(machine, 3, messram_get_ptr(devtag_get_device(machine, "messram")) + (2 << 14));
+			memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + (2 << 14));
 
 
 			ROMSelection = ((spectrum_128_port_7ffd_data >> 4) & 0x01) |
@@ -256,8 +256,8 @@ void spectrum_plus3_update_memory(running_machine *machine)
 
 			ChosenROM = memory_region(machine, "maincpu") + 0x010000 + (ROMSelection << 14);
 
-			memory_set_bankptr(machine, 1, ChosenROM);
-			memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
+			memory_set_bankptr(machine, "bank1", ChosenROM);
+			memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
 
 			logerror("rom switch: %02x\n", ROMSelection);
 	}
@@ -274,21 +274,21 @@ void spectrum_plus3_update_memory(running_machine *machine)
 			memory_selection = &spectrum_plus3_memory_selections[(MemorySelection << 2)];
 
 			ram_data = messram_get_ptr(devtag_get_device(machine, "messram")) + (memory_selection[0] << 14);
-			memory_set_bankptr(machine, 1, ram_data);
+			memory_set_bankptr(machine, "bank1", ram_data);
 			/* allow writes to 0x0000-0x03fff */
-			memory_install_write8_handler(space, 0x0000, 0x3fff, 0, 0, SMH_BANK(1));
+			memory_install_write_bank(space, 0x0000, 0x3fff, 0, 0, "bank1");
 
 			ram_data = messram_get_ptr(devtag_get_device(machine, "messram")) + (memory_selection[1] << 14);
-			memory_set_bankptr(machine, 2, ram_data);
+			memory_set_bankptr(machine, "bank2", ram_data);
 
 			ram_data = messram_get_ptr(devtag_get_device(machine, "messram")) + (memory_selection[2] << 14);
-			memory_set_bankptr(machine, 3, ram_data);
+			memory_set_bankptr(machine, "bank3", ram_data);
 
 			ram_data = messram_get_ptr(devtag_get_device(machine, "messram")) + (memory_selection[3] << 14);
-			memory_set_bankptr(machine, 4, ram_data);
+			memory_set_bankptr(machine, "bank4", ram_data);
 
 			logerror("extended memory paging: %02x\n", MemorySelection);
-		}
+	}
 }
 
 
@@ -318,8 +318,8 @@ static WRITE8_HANDLER(spectrum_plus3_port_1ffd_w)
 	/* D3 - Disk motor on/off */
 	/* D4 - parallel port strobe */
 
-	floppy_drive_set_motor_state(floppy_get_device(space->machine, 0), data & (1<<3));
-	floppy_drive_set_motor_state(floppy_get_device(space->machine, 1), data & (1<<3));
+	floppy_mon_w(floppy_get_device(space->machine, 0), !BIT(data, 3));
+	floppy_mon_w(floppy_get_device(space->machine, 1), !BIT(data, 3));
 	floppy_drive_set_ready_state(floppy_get_device(space->machine, 0), 1, 1);
 	floppy_drive_set_ready_state(floppy_get_device(space->machine, 1), 1, 1);
 
@@ -371,12 +371,31 @@ static const floppy_config specpls3_floppy_config =
 	DO_NOT_KEEP_GEOMETRY
 };
 
+/* F4 Character Displayer */
+static const gfx_layout spectrum_charlayout =
+{
+	8, 8,					/* 8 x 8 characters */
+	96,					/* 96 characters */
+	1,					/* 1 bits per pixel */
+	{ 0 },					/* no bitplanes */
+	/* x offsets */
+	{ 0, 1, 2, 3, 4, 5, 6, 7 },
+	/* y offsets */
+	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
+	8*8					/* every char takes 8 bytes */
+};
+
+static GFXDECODE_START( specpls3 )
+	GFXDECODE_ENTRY( "maincpu", 0x1fd00, spectrum_charlayout, 0, 8 )
+GFXDECODE_END
+
 static MACHINE_DRIVER_START( spectrum_plus3 )
 	MDRV_IMPORT_FROM( spectrum_128 )
 	MDRV_CPU_MODIFY("maincpu")
 	MDRV_CPU_IO_MAP(spectrum_plus3_io)
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_REFRESH_RATE(50.01)
+	MDRV_GFXDECODE(specpls3)
 
 	MDRV_MACHINE_RESET( spectrum_plus3 )
 
@@ -460,10 +479,10 @@ ROM_START(sp3eata)
 	ROM_CART_LOAD("cart", 0x10000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
-/*    YEAR  NAME      PARENT    COMPAT  MACHINE         INPUT       INIT    CONFIG      COMPANY     FULLNAME */
-COMP( 1987, specpl2a, spec128,  0,		spectrum_plus3, spec_plus,	0,		0,	"Amstrad plc",          "ZX Spectrum +2a" , 0 )
-COMP( 1987, specpls3, spec128,  0,		spectrum_plus3, spec_plus,	0,		0,	"Amstrad plc",          "ZX Spectrum +3" , 0 )
-COMP( 2000, specpl3e, spec128,  0,		spectrum_plus3, spec_plus,	0,		0,	"Amstrad plc",          "ZX Spectrum +3e" , GAME_COMPUTER_MODIFIED )
-COMP( 2002, sp3e8bit, spec128,  0,		spectrum_plus3, spec_plus,	0,		0,	"Amstrad plc",          "ZX Spectrum +3e 8bit IDE" , GAME_COMPUTER_MODIFIED )
-COMP( 2002, sp3eata,  spec128,  0,		spectrum_plus3, spec_plus,	0,		0,	"Amstrad plc",          "ZX Spectrum +3e 8bit ZXATASP" , GAME_COMPUTER_MODIFIED )
-COMP( 2002, sp3ezcf,  spec128,  0,		spectrum_plus3, spec_plus,	0,		0,	"Amstrad plc",          "ZX Spectrum +3e 8bit ZXCF" , GAME_COMPUTER_MODIFIED )
+/*    YEAR  NAME      PARENT    COMPAT  MACHINE         INPUT       INIT    COMPANY     FULLNAME */
+COMP( 1987, specpl2a, spec128,  0,		spectrum_plus3, spec_plus,	0,		"Amstrad plc",          "ZX Spectrum +2a" , 0 )
+COMP( 1987, specpls3, spec128,  0,		spectrum_plus3, spec_plus,	0,		"Amstrad plc",          "ZX Spectrum +3" , 0 )
+COMP( 2000, specpl3e, spec128,  0,		spectrum_plus3, spec_plus,	0,		"Amstrad plc",          "ZX Spectrum +3e" , GAME_COMPUTER_MODIFIED )
+COMP( 2002, sp3e8bit, spec128,  0,		spectrum_plus3, spec_plus,	0,		"Amstrad plc",          "ZX Spectrum +3e 8bit IDE" , GAME_COMPUTER_MODIFIED )
+COMP( 2002, sp3eata,  spec128,  0,		spectrum_plus3, spec_plus,	0,		"Amstrad plc",          "ZX Spectrum +3e 8bit ZXATASP" , GAME_COMPUTER_MODIFIED )
+COMP( 2002, sp3ezcf,  spec128,  0,		spectrum_plus3, spec_plus,	0,		"Amstrad plc",          "ZX Spectrum +3e 8bit ZXCF" , GAME_COMPUTER_MODIFIED )

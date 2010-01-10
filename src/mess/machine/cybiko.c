@@ -81,9 +81,9 @@ static void cybiko_rs232_reset( void);
 
 static void init_ram_handler(running_machine *machine, offs_t start, offs_t size, offs_t mirror)
 {
-	memory_install_read_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), start, start + size - 1, 0, mirror - size, STATIC_BANK1);
-	memory_install_write_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), start, start + size - 1, 0, mirror - size, STATIC_BANK1);
-	memory_set_bankptr( machine, 1, messram_get_ptr(devtag_get_device(machine, "messram")));
+	memory_install_read_bank(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), start, start + size - 1, 0, mirror - size, "bank1");
+	memory_install_write_bank(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), start, start + size - 1, 0, mirror - size, "bank1");
+	memory_set_bankptr( machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
 }
 
 DRIVER_INIT( cybikov1 )
@@ -108,33 +108,29 @@ DRIVER_INIT( cybikoxt )
 // NVRAM HANDLERS //
 ////////////////////
 
-/*
+#ifdef UNUSED_FUNCTION
 NVRAM_HANDLER( cybikov1 )
 {
-    _logerror( 0, ("nvram_handler_cybikov1 (%p/%d)\n", file, read_or_write));
-    nvram_handler_at45dbxx( machine, file, read_or_write);
-    nvram_handler_pcf8593( machine, file, read_or_write);
+	_logerror( 0, ("nvram_handler_cybikov1 (%p/%d)\n", file, read_or_write));
+	nvram_handler_at45dbxx( machine, file, read_or_write);
+	nvram_handler_pcf8593( machine, file, read_or_write);
 }
-*/
 
-/*
 NVRAM_HANDLER( cybikov2 )
 {
-    _logerror( 0, ("nvram_handler_cybikov2 (%p/%d)\n", file, read_or_write));
-    nvram_handler_at45dbxx( machine, file, read_or_write);
-    nvram_handler_sst39vfx( machine, file, read_or_write);
-    nvram_handler_pcf8593( machine, file, read_or_write);
+	_logerror( 0, ("nvram_handler_cybikov2 (%p/%d)\n", file, read_or_write));
+	nvram_handler_at45dbxx( machine, file, read_or_write);
+	nvram_handler_sst39vfx( machine, file, read_or_write);
+	nvram_handler_pcf8593( machine, file, read_or_write);
 }
-*/
 
-/*
 NVRAM_HANDLER( cybikoxt )
 {
-    _logerror( 0, ("nvram_handler_cybikoxt (%p/%d)\n", file, read_or_write));
-    nvram_handler_sst39vfx( machine, file, read_or_write);
-    nvram_handler_pcf8593( machine, file, read_or_write);
+	_logerror( 0, ("nvram_handler_cybikoxt (%p/%d)\n", file, read_or_write));
+	nvram_handler_sst39vfx( machine, file, read_or_write);
+	nvram_handler_pcf8593( machine, file, read_or_write);
 }
-*/
+#endif
 
 ///////////////////
 // MACHINE START //
@@ -243,7 +239,7 @@ MACHINE_START( cybikov2 )
 	nvram_system_load( machine, "flash1", cybiko_at45dbxx_load, 1);
 	// multi-purpose flash
 	nvram_system_load( machine, "flash2", cybiko_sst39vfx_load, 1);
-	memory_set_bankptr( machine, 2, sst39vfx_get_base(flash2));
+	memory_set_bankptr( machine, "bank2", sst39vfx_get_base(flash2));
 	// serial port
 	cybiko_rs232_init();
 	// other
@@ -258,7 +254,7 @@ MACHINE_START( cybikoxt )
 	nvram_system_load( machine, "rtc", cybiko_pcf8593_load, 0);
 	// multi-purpose flash
 	nvram_system_load( machine, "flash2", cybiko_sst39vfx_load, 1);
-	memory_set_bankptr( machine, 2, sst39vfx_get_base(flash2));
+	memory_set_bankptr( machine, "bank2", sst39vfx_get_base(flash2));
 	// serial port
 	cybiko_rs232_init();
 	// other
@@ -479,11 +475,12 @@ static READ8_HANDLER( cybiko_io_reg_r )
 		}
 		break;
 		// serial dataflash
-		case H8S_IO_PORT3 :  {
+		case H8S_IO_PORT3 :
+		{
 				const device_config *device = devtag_get_device(space->machine, "flash1");
 				if (at45dbxx_pin_so(device)) data = data | H8S_P3_RXD1;
-			}
-			break;
+		}
+		break;
 
 		// rs232
 		case H8S_IO_PORT5 : if (cybiko_rs232_pin_rxd()) data = data | H8S_P5_RXD2; break;

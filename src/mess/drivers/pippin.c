@@ -4,6 +4,21 @@
 
         17/07/2009 Skeleton driver.
 
+    Apple ASICs identified:
+    -----------------------
+    343S1125    Grand Central (SWIM III, Sound, VIA)
+    341S0060    Cuda (ADB, PRAM)
+    343S1146    ??? (likely SCSI due to position on board)
+    343S1191 (x2)   ??? (apparently clock generators)
+
+
+    Other chips
+    -----------
+    Z8530 SCC
+    CS4217 audio DAC
+    Bt856 video DAC
+
+
 ****************************************************************************/
 
 #include "driver.h"
@@ -103,5 +118,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    CONFIG COMPANY   FULLNAME       FLAGS */
-COMP( 1996, pippin,  0,       0, 	pippin, 	pippin, 	 0,  	  0,  	 "Apple/Bandai",   "Pippin @mark",		GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
+COMP( 1996, pippin,  0,       0, 	pippin, 	pippin, 	 0,  "Apple/Bandai",   "Pippin @mark",		GAME_NOT_WORKING)

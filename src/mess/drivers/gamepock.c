@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "softlist.h"
 #include "cpu/upd7810/upd7810.h"
 #include "sound/speaker.h"
 #include "devices/cartslot.h"
@@ -9,7 +10,7 @@ static ADDRESS_MAP_START(gamepock_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000,0x0fff) AM_ROM
 	AM_RANGE(0x1000,0x3fff) AM_NOP
-	AM_RANGE(0x4000,0xBfff) AM_ROMBANK(1)
+	AM_RANGE(0x4000,0xBfff) AM_ROMBANK("bank1")
 	AM_RANGE(0xC000,0xC7ff) AM_MIRROR(0x0800) AM_RAM
 	AM_RANGE(0xff80,0xffff) AM_RAM				/* 128 bytes microcontroller RAM */
 ADDRESS_MAP_END
@@ -40,19 +41,26 @@ static const UPD7810_CONFIG gamepock_cpu_config = { TYPE_78C06, gamepock_io_call
 
 static DEVICE_START(gamepock_cart)
 {
-	memory_set_bankptr( device->machine, 1, memory_region(device->machine,  "user1" ) );
+	memory_set_bankptr( device->machine, "bank1", memory_region(device->machine,  "user1" ) );
 }
 
 static DEVICE_IMAGE_LOAD(gamepock_cart) {
 	UINT8 *cart = memory_region(image->machine,  "user1" );
-	int size = image_length( image );
 
-	if ( image_fread( image, cart, size ) != size ) {
-		image_seterror( image, IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file" );
-		return INIT_FAIL;
+	if ( image_software_entry(image) == NULL )
+	{
+		int size = image_length( image );
+		if ( image_fread( image, cart, size ) != size ) {
+			image_seterror( image, IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file" );
+			return INIT_FAIL;
+		}
+	}
+	else
+	{
+		cart = image_get_software_region( image, CARTRIDGE_REGION_ROM );
 	}
 
-	memory_set_bankptr( image->machine, 1, memory_region(image->machine,  "user1" ) );
+	memory_set_bankptr( image->machine, "bank1", cart );
 
 	return INIT_PASS;
 }
@@ -87,7 +95,9 @@ static MACHINE_DRIVER_START( gamepock )
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_START(gamepock_cart)
 	MDRV_CARTSLOT_LOAD(gamepock_cart)
+	MDRV_CARTSLOT_SOFTWARE_LIST(gamepock_cart)
 MACHINE_DRIVER_END
+
 
 ROM_START( gamepock )
 	ROM_REGION( 0x1000, "maincpu", ROMREGION_ERASEFF )
@@ -95,5 +105,6 @@ ROM_START( gamepock )
 	ROM_REGION( 0x8000, "user1", ROMREGION_ERASEFF )
 ROM_END
 
-CONS( 1984, gamepock, 0, 0, gamepock, gamepock, 0, 0, "Epoch", "Game Pocket Computer", 0 )
+
+CONS( 1984, gamepock, 0, 0, gamepock, gamepock, 0, "Epoch", "Game Pocket Computer", 0 )
 

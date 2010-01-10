@@ -1,3 +1,173 @@
+0.136
+
+New System Drivers Supported:
+-----------------------------
+- Consul 2717 with PMD-32 [Miodrag Milanovic]
+- Elektor SC/MP [Miodrag Milanovic]
+- Epoch Super Cassette Vision [Wilbert Pol]
+- Hawthorne Technologies TinyGiant HT68k [Miodrag Milanovic]
+- Hector MX40c [JJ Stacino]
+- Hector MX80c [JJ Stacino]
+- Microsystems International Limited MOD-8 [Miodrag Milanovic]
+- MITS Altair 8800bt [Miodrag Milanovic]
+- Robotron K1003 [Miodrag Milanovic]
+- Science of Cambridge MK-14 [Miodrag Milanovic]
+
+
+
+Systems Promoted from GAME_NOT_WORKING:
+---------------------------------------
+- Ausbaufähiger Mikrocomputer mit dem U 880 (Huebler/Everts) [Curt Coder]
+- Hector 2HR+ [JJ Stacino]
+- Hector 2HR [JJ Stacino]
+- Hector HRX [JJ Stacino]
+- Kaypro 4 [Robbbert]
+- Kaypro 10 [Robbbert]
+- Omni II [Robbbert]
+- Victor [JJ Stacino]
+- XOR S-100-12 [Curt Coder]
+
+
+
+Skeleton drivers: 
+-----------------
+- Callan Unistar Terminal
+- CCS Model 2422B
+- CCS Model 2810
+- Commodore LCD [Curt Coder]
+- Dual Systems 68000
+- ETI-660 [Curt Coder]
+- Exelvision Exeltel
+- Funtech Super A'can [Wilbert Pol]
+- Hewlett-Packard HP16500b [R. Belmont]
+- Indiana University 68030 board
+- Intel SDK-85
+- Intel RPC 86
+- Intel iPB
+- Intel iPC
+- Intel iPDS
+- Intel iSBC 86/12A
+- Intel iSBC 286
+- Intel iSBC 286-10
+- MCS Basic 52
+- MCS Basic 31
+- Micronic 1000 [Curt Coder]
+- MITS Altair 680b
+- Morrow Designs Micro Decision MD-2 and MD-3
+- Morrow Tricep
+- NorthStar Horizon
+- Onmibyte MSBC-1
+- Plan-80
+- Protec Pro-80
+- PIMPS
+- QT Computer Systems SBC +2/4
+- Sage II
+- SAPI-1 ZPS 2
+- SAPI-1 ZPS 3
+- SBC6510
+- Sharp PC-E220
+- Sun-1
+- SWTPC 6800
+- Vector Graphic Vector 1+
+- Vector Graphics - Vector 4
+
+
+
+System Driver Changes:
+----------------------
+- [APEXC] Fixed image loading [Robbbert]
+
+- [BETA] Fixed display flickering. [Curt Coder]
+
+- [C64] Emulated the Commodore 1541 disk drive at hardware level. 
+  G64 images are now supported (D64 support coming) [Curt Coder]
+
+- [EXL100] Added 7041 rom dump.  [Wilbert Pol]
+
+- [EXIDY] Improved sound compatibility.  [Robbbert]
+
+- [FMTOWNS] Various updates: [Barry Rodewald]
+  * Added FDC IRQ and disk density select
+  * Fixed ANK CG ROM enable
+  * Re-worked VRAM access, allowing startup logos to display on the Marty and Car Marty
+  * Added basic keyboard support
+  * Added standard 2 button joystick support
+  * Corrected text mode colours
+  * Implemented CD-ROM controller, and CD-DA support
+  * Hooked up YM3438 interrupts
+  * Re-worked video code to support a basic CRTC implementation
+  * Fixed VBlank IRQ
+  * Added sprite implementation
+  * Mapped RF5C68 wave RAM
+
+- [GBA] Remapped Select button to MESS default.  [Justin Kerk]
+
+- [GLASGOW] Upgraded artwork to be clickable. Fixed various driver
+  problems. Chess can be played by using the mouse.  [Robbbert]
+
+- [HUEBLER] Added keyboard. [Curt Coder]
+
+- [INTV] Fixed intvkbd. Fixed disassembler.  [Robbbert]
+
+- [MPF1] Converted to use driver state, added speech and printer
+  ROMs, implemented MONI/INTR keys, monitor BREAK logic, added
+  artwork for mpf1b, added layout for mpf1p. [Curt Coder]
+
+- [ORIC] Telstrat regression has been fixed.  [Robbbert]
+
+- [SMS] Added SegaScope (3D-Glasses) support to Sega Master System I
+  drivers (i.e. sms1, sms1pal, smsj & sg1000m3). To enable this, enter
+  Driver Configuration menu and turn on SegaScope, then go in the Video
+  Options menu and choose one of the SegaScope views. [Fabio Priuli]
+
+- [SMS] Added Terebi Oekaki graphic board support to Japanese drivers 
+  (i.e. smsj & sg1000m3). To enable this, start emulation of "Terebi
+  Oekaki", then enter Driver Configuration menu and turn on the Tablet.
+  Once enabled, remappable controls will also appear in the Input (this 
+  System) menu. [Fabio Priuli]
+
+- [SMS] Added Reset button to SMS1 and improved Lightgun behavior based 
+  on "Color & Switch Test". [Enik Land]
+
+- [TI81] Added v1.6K BIOS dump. [critor]
+
+- [TI85/TI86] Converted the serial interface to a device. [Wilbert Pol]
+
+- [TI99] Fixed a crash when the user mounts cartridge dump files in legacy
+  mode.  [Michael Zapf]
+
+- [XOR100] Added terminal support. [Curt Coder]
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.136.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Cleanups (static qualifiers, headers, renames, reduced global symbols, dead
+  code cleanups, brace cleanups, and more multisession friendly init code).
+  [Atari Ace]
+
+- WD17xx write track supported in proper way instead of using more 
+  sector writes [Michael Zapf]
+
+- Added F4 character-set viewer to many computers [Robbbert]
+
+- The -listdevices option has been temporarily renamed to -listmedia,
+  until it is merged with MAME's -listdevices command [Robbbert]
+
+- Fixed bug 1770. Listmedia will indicate if a driver has no devices,
+  or if the driver doesn't exist. [Robbbert]
+
+
+
 0.135
 
 New System Drivers Supported (in no particular order):

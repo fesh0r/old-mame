@@ -103,9 +103,9 @@ static MACHINE_RESET( ti99_2 )
 {
 	state = ASSERT_LINE;
 	if (! ROM_paged)
-		memory_set_bankptr(machine, 1, memory_region(machine, "maincpu")+0x4000);
+		memory_set_bankptr(machine, "bank1", memory_region(machine, "maincpu")+0x4000);
 	else
-		memory_set_bankptr(machine, 1, (memory_region(machine, "maincpu")+0x4000));
+		memory_set_bankptr(machine, "bank1", (memory_region(machine, "maincpu")+0x4000));
 }
 
 static INTERRUPT_GEN( ti99_2_vblank_interrupt )
@@ -145,7 +145,7 @@ static VIDEO_UPDATE(ti99_2)
 	for (i = 0; i < 768; i++)
 	{
 		/* Is the char code masked or not ??? */
-		drawgfx_opaque(bitmap, cliprect, screen->machine->gfx[0], videoram[i] & 0x7F, 0,
+		drawgfx_opaque(bitmap, cliprect, screen->machine->gfx[0], screen->machine->generic.videoram.u8[i] & 0x7F, 0,
 			0, 0, sx, sy);
 
 		sx += 8;
@@ -183,10 +183,10 @@ GFXDECODE_END
 
 static ADDRESS_MAP_START( ti99_2_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM		    /* system ROM */
-	AM_RANGE(0x4000, 0x5fff) AM_ROMBANK(1)	/* system ROM, banked on 32kb ROMs protos */
+	AM_RANGE(0x4000, 0x5fff) AM_ROMBANK("bank1")	/* system ROM, banked on 32kb ROMs protos */
 	AM_RANGE(0x6000, 0xdfff) AM_NOP		    /* free for expansion */
 	AM_RANGE(0xe000, 0xebff) AM_RAM		    /* system RAM */
-	AM_RANGE(0xec00, 0xeeff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0xec00, 0xeeff) AM_RAM AM_BASE_SIZE_GENERIC(videoram)
 	AM_RANGE(0xef00, 0xefff) AM_RAM		    /* system RAM */
 	AM_RANGE(0xf000, 0xffff) AM_NOP		    /* free for expansion (and internal processor RAM) */
 ADDRESS_MAP_END
@@ -215,7 +215,7 @@ static WRITE8_HANDLER ( ti99_2_write_kbd )
 	/* now, we handle ROM paging */
 	if (ROM_paged)
 	{	/* if we have paged ROMs, page according to S0 keyboard interface line */
-		memory_set_bankptr(space->machine, 1, (KeyRow == 0) ? TI99_2_32_ROMPAGE1 : TI99_2_32_ROMPAGE0);
+		memory_set_bankptr(space->machine, "bank1", (KeyRow == 0) ? TI99_2_32_ROMPAGE1 : TI99_2_32_ROMPAGE0);
 	}
 }
 
@@ -399,6 +399,6 @@ ROM_END
 /* Hex-bus disk controller: supports up to 4 floppy disk drives */
 /* None of these is supported (tape should be easy to emulate) */
 
-/*      YEAR    NAME        PARENT      COMPAT  MACHINE     INPUT   INIT        CONFIG      COMPANY                 FULLNAME */
-COMP(	1983,	ti99_224,	0,		0,	ti99_2,	ti99_2,	ti99_2_24,	0,		"Texas Instruments",	"TI-99/2 BASIC Computer (24kb ROMs)" , GAME_NOT_WORKING )
-COMP(	1983,	ti99_232,	ti99_224,	0,	ti99_2,	ti99_2,	ti99_2_32,	0,		"Texas Instruments",	"TI-99/2 BASIC Computer (32kb ROMs)" , GAME_NOT_WORKING )
+/*      YEAR    NAME        PARENT      COMPAT  MACHINE     INPUT   INIT        COMPANY                 FULLNAME */
+COMP(	1983,	ti99_224,	0,			0,	ti99_2,	ti99_2,	ti99_2_24,			"Texas Instruments",	"TI-99/2 BASIC Computer (24kb ROMs)" , GAME_NOT_WORKING )
+COMP(	1983,	ti99_232,	ti99_224,	0,	ti99_2,	ti99_2,	ti99_2_32,			"Texas Instruments",	"TI-99/2 BASIC Computer (32kb ROMs)" , GAME_NOT_WORKING )

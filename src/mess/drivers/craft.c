@@ -309,7 +309,8 @@ static READ8_HANDLER( avr8_read )
         case 0x84:
         {
             //INT64 divisor = 1;
-            /*INT64 update = (INT64)(cpu_get_total_cycles(space->cpu)) - last_tcnt1_cycle;
+#if 0
+            INT64 update = (INT64)(cpu_get_total_cycles(space->cpu)) - last_tcnt1_cycle;
             switch(device->tccr1b & 0x07)
             {
                 case 0: // No clock source (Timer/Counter stopped).
@@ -345,7 +346,8 @@ static READ8_HANDLER( avr8_read )
             diff /= divisor;
             diff %= regs.ocr1a;
             printf( "AVR8: R: regs.tcnt1l read: %04x\n",  );
-            */break;
+#endif
+            break;
         }
 
         case 0x85:
@@ -554,5 +556,5 @@ ROM_START( craft )
 	ROM_LOAD( "eeprom.raw", 0x0000, 0x0200, CRC(e18a2af9) SHA1(81fc6f2d391edfd3244870214fac37929af0ac0c) )
 ROM_END
 
-/*   YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      CONFIG    COMPANY          FULLNAME */
-CONS(2008, craft,    0,        0,        craft,    craft,    craft,    0,        "Linus Akesson", "Craft", GAME_NO_SOUND | GAME_NOT_WORKING)
+/*   YEAR  NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      COMPANY          FULLNAME */
+CONS(2008, craft,    0,        0,        craft,    craft,    craft,    "Linus Akesson", "Craft", GAME_NO_SOUND | GAME_NOT_WORKING)

@@ -119,21 +119,21 @@ static ADDRESS_MAP_START(kc85_4_io, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(kc85_4_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK(1), SMH_BANK(7))
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK(2), SMH_BANK(8))
-	AM_RANGE(0x8000, 0xa7ff) AM_READWRITE(SMH_BANK(3), SMH_BANK(9))
+	AM_RANGE(0x0000, 0x3fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank7")
+	AM_RANGE(0x4000, 0x7fff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank8")
+	AM_RANGE(0x8000, 0xa7ff) AM_READ_BANK("bank3") AM_WRITE_BANK("bank9")
 //  AM_RANGE(0xa800, 0xbfff) AM_RAM
-	AM_RANGE(0xa800, 0xbfff) AM_READWRITE(SMH_BANK(4), SMH_BANK(10))
-	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_BANK(5))
-	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_BANK(6))
+	AM_RANGE(0xa800, 0xbfff) AM_READ_BANK("bank4") AM_WRITE_BANK("bank10")
+	AM_RANGE(0xc000, 0xdfff) AM_READ_BANK("bank5")
+	AM_RANGE(0xe000, 0xffff) AM_READ_BANK("bank6")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(kc85_3_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK(1), SMH_BANK(6))
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK(2), SMH_BANK(7))
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK(3), SMH_BANK(8))
-	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_BANK(4))
-	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_BANK(5))
+	AM_RANGE(0x0000, 0x3fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank6")
+	AM_RANGE(0x4000, 0x7fff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank7")
+	AM_RANGE(0x8000, 0xbfff) AM_READ_BANK("bank3") AM_WRITE_BANK("bank8")
+	AM_RANGE(0xc000, 0xdfff) AM_READ_BANK("bank4")
+	AM_RANGE(0xe000, 0xffff) AM_READ_BANK("bank5")
 ADDRESS_MAP_END
 
 static READ8_HANDLER(kc85_3_port_r)
@@ -387,6 +387,7 @@ static MACHINE_DRIVER_START( kc85_3 )
 	MDRV_CPU_CONFIG(kc85_daisy_chain)
 	MDRV_QUANTUM_TIME(HZ(60))
 
+	MDRV_MACHINE_START( kc85 )
 	MDRV_MACHINE_RESET( kc85_3 )
 
 	MDRV_Z80PIO_ADD( "z80pio", kc85_pio_intf )
@@ -416,10 +417,10 @@ static MACHINE_DRIVER_START( kc85_3 )
 	MDRV_QUICKLOAD_ADD("quickload", kc, "kcc", 0)
 
 	MDRV_CASSETTE_ADD( "cassette", default_cassette_config )
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("64K")	
+	MDRV_RAM_DEFAULT_SIZE("64K")
 MACHINE_DRIVER_END
 
 
@@ -431,6 +432,7 @@ static MACHINE_DRIVER_START( kc85_4 )
 	MDRV_CPU_IO_MAP(kc85_4_io)
 
 	MDRV_MACHINE_RESET( kc85_4 )
+	
 	MDRV_VIDEO_START( kc85_4 )
 	MDRV_VIDEO_UPDATE( kc85_4 )
 MACHINE_DRIVER_END
@@ -439,6 +441,7 @@ static MACHINE_DRIVER_START( kc85_4d )
 	MDRV_IMPORT_FROM( kc85_4 )
 	MDRV_IMPORT_FROM( cpu_kc_disc )
 	MDRV_QUANTUM_TIME(HZ(120))
+	
 	MDRV_MACHINE_RESET( kc85_4d )
 
 	MDRV_FLOPPY_4_DRIVES_ADD(kc85_floppy_config)
@@ -508,9 +511,9 @@ ROM_START(kc85_5)
 	ROMX_LOAD( "caos43e.855", 0x1A000, 0x2000, CRC(b66fc6c3) SHA1(521ac2fbded4148220f8af2d5a5ab99634364079), ROM_BIOS(2))
 ROM_END
 
-/*     YEAR  NAME      PARENT   COMPAT  MACHINE  INPUT     INIT  CONFIG  COMPANY   FULLNAME */
-COMP( 1987, kc85_2,   0,	   0,		kc85_3,  kc85,     0,    0,   "VEB Mikroelektronik", "HC900 / KC 85/2", GAME_NOT_WORKING)
-COMP( 1987, kc85_3,   kc85_2,  0,		kc85_3,  kc85,     0,    0,   "VEB Mikroelektronik", "KC 85/3", GAME_NOT_WORKING)
-COMP( 1989, kc85_4,   kc85_2,  0,		kc85_4,  kc85,     0,    0,   "VEB Mikroelektronik", "KC 85/4", GAME_NOT_WORKING)
-COMP( 1989, kc85_4d,  kc85_2,  0,		kc85_4d, kc85,     0,    0,  "VEB Mikroelektronik", "KC 85/4 + Disk Interface Module (D004)", GAME_NOT_WORKING)
-COMP( 1989, kc85_5,   kc85_2,  0,		kc85_4,  kc85,     0,    0,   "VEB Mikroelektronik", "KC 85/5", GAME_NOT_WORKING)
+/*     YEAR  NAME      PARENT   COMPAT  MACHINE  INPUT     INIT  COMPANY   FULLNAME */
+COMP( 1987, kc85_2,   0,	   0,		kc85_3,  kc85,     0,    "VEB Mikroelektronik", "HC900 / KC 85/2", GAME_NOT_WORKING)
+COMP( 1987, kc85_3,   kc85_2,  0,		kc85_3,  kc85,     0,    "VEB Mikroelektronik", "KC 85/3", GAME_NOT_WORKING)
+COMP( 1989, kc85_4,   kc85_2,  0,		kc85_4,  kc85,     0,    "VEB Mikroelektronik", "KC 85/4", GAME_NOT_WORKING)
+COMP( 1989, kc85_4d,  kc85_2,  0,		kc85_4d, kc85,     0,    "VEB Mikroelektronik", "KC 85/4 + Disk Interface Module (D004)", GAME_NOT_WORKING)
+COMP( 1989, kc85_5,   kc85_2,  0,		kc85_4,  kc85,     0,    "VEB Mikroelektronik", "KC 85/5", GAME_NOT_WORKING)

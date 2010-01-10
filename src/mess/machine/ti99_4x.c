@@ -287,7 +287,7 @@ static void create_grom_high2k(int first, int last)
         }
 }
 
-int is_99_8()
+int ti99_is_99_8()
 {
 	return ti99_model == model_99_8;
 }
@@ -357,8 +357,10 @@ DRIVER_INIT( ti99_4p )
 
 	/* set up memory pointers */
 	xRAM_ptr = (UINT16 *) (memory_region(machine, "maincpu") + offset_xram_4p);
-	/*console_GROMs.data_ptr = memory_region(machine, region_grom);*/
+#if 0
+	console_GROMs.data_ptr = memory_region(machine, region_grom);
 	create_grom_high2k(0x0000, 0x5fff);
+#endif
 }
 
 static const TMS9928a_interface tms9918_interface =
@@ -460,23 +462,25 @@ MACHINE_RESET( ti99 )
 		UINT8* mem = memory_region(machine, "maincpu");
 
 		/* set up system ROM and scratch pad pointers */
-		memory_set_bankptr(machine, 1, mem + offset_rom0_4p);	/* system ROM */
-		memory_set_bankptr(machine, 2, mem + offset_sram_4p);	/* scratch pad */
-		memory_set_bankptr(machine, 11, mem + offset_dram_4p);	/* extra RAM for debugger */
+		memory_set_bankptr(machine, "bank1", mem + offset_rom0_4p);	/* system ROM */
+		memory_set_bankptr(machine, "bank2", mem + offset_sram_4p);	/* scratch pad */
+		memory_set_bankptr(machine, "bank11", mem + offset_dram_4p);	/* extra RAM for debugger */
 	}
 	else
 	{
 		/* set up scratch pad pointer */
-		memory_set_bankptr(machine, 1, memory_region(machine, "maincpu") + offset_sram);
+		memory_set_bankptr(machine, "bank1", memory_region(machine, "maincpu") + offset_sram);
 	}
 
-/*  if (ti99_model != model_99_4p)
-    {
-        if (ti99_model == model_99_8)
-            current_page_ptr_8 = cartridge_pages_8[0];
-        else
-            current_page_ptr = cartridge_pages[0];
-    } */
+#if 0
+	if (ti99_model != model_99_4p)
+	{
+		if (ti99_model == model_99_8)
+			current_page_ptr_8 = cartridge_pages_8[0];
+		else
+			current_page_ptr = cartridge_pages[0];
+	}
+#endif
 
 	if (!has_evpc) TMS9928A_reset();
         else v9938_reset(0);
@@ -538,8 +542,9 @@ MACHINE_RESET( ti99 )
 		memory_install_read16_handler(space, 0x9000, 0x93ff, 0, 0, ti99_nop_8_r);
 		memory_install_write16_handler(space, 0x9400, 0x97ff, 0, 0, ti99_nop_8_w);
 	}
-	/* Check whether we have locked the cartslot. */
-	lock_cartridge_slot(cartslots, (input_port_read(machine, "CFG") >> config_cartslot_bit) & config_cartslot_mask);
+	/* Check whether we have locked the cartslot. This uses GROM, which the 4p doesn't have. */
+	if (ti99_model != model_99_4p)
+		ti99_lock_cartridge_slot(cartslots, (input_port_read(machine, "CFG") >> config_cartslot_bit) & config_cartslot_mask);
 
 	switch (xRAM_kind)
 	{
@@ -591,7 +596,6 @@ MACHINE_RESET( ti99 )
 
 	if (has_ide) {
 		ti99_ide_reset(machine, ti99_model == model_99_8);
-		ti99_ide_load_memcard(machine);
 	}
 
 	if (has_hsgpl)	{
@@ -620,9 +624,6 @@ MACHINE_RESET( ti99 )
 #ifdef UNUSED_FUNCTION
 void machine_stop_ti99(void)
 {
-	if (has_ide)
-		ti99_ide_save_memcard();
-
 	if (has_hsgpl)
 		ti99_hsgpl_save_memcard();
 
@@ -640,7 +641,7 @@ void machine_stop_ti99(void)
 VIDEO_START( ti99_4ev )
 {
 	VIDEO_START_CALL(generic_bitmapped);
-	v9938_init(machine, 0, machine->primary_screen, tmpbitmap, MODEL_V9938, 0x20000, tms9901_set_int2);	/* v38 with 128 kb of video RAM */
+	v9938_init(machine, 0, machine->primary_screen, machine->generic.tmpbitmap, MODEL_V9938, 0x20000, tms9901_set_int2);	/* v38 with 128 kb of video RAM */
 }
 
 /*
@@ -674,7 +675,7 @@ INTERRUPT_GEN( ti99_4ev_hblank_interrupt )
     Backdoor function that is called by hsgpl, so that the machine code knows
     whether hsgpl or console GROMs are active
 */
-void set_hsgpl_crdena(int data)
+void ti99_set_hsgpl_crdena(int data)
 {
 	hsgpl_crdena = (data != 0);
 }
@@ -927,7 +928,7 @@ static UINT8 GROM_dataread(void)
 	{
 		/* Pass the (one and only) program counter for GROMs. The
            buffer is set and used in the cartridge chip. */
-		reply = cartridge_grom_read(cartslots, console_GROMs.addr-0x6000);
+		reply = ti99_cartridge_grom_read(cartslots, console_GROMs.addr-0x6000);
 	}
 	else
 	{
@@ -983,7 +984,7 @@ READ16_HANDLER ( ti99_grom_r )
     */
 
 	/* Activates a slot in the multi-cartridge extender. */
-	cartridge_slot_set(cartslots, (offset & 0x01fe)/2);
+	ti99_cartridge_slot_set(cartslots, (offset & 0x01fe)/2);
 
 	if (offset & 1)
 	{	/* Read GROM address
@@ -1034,7 +1035,7 @@ WRITE16_HANDLER ( ti99_grom_w )
 //  cpu_spinuntil_time(space->machine->firstcpu, ATTOTIME_IN_USEC(6));
 
 	/* Activates a slot in the multi-cartridge extender. */
-	cartridge_slot_set(cartslots, (offset & 0x01fe)/2);
+	ti99_cartridge_slot_set(cartslots, (offset & 0x01fe)/2);
 
 	// 1001 1wbb bbbb bbr0
 
@@ -1095,7 +1096,7 @@ static READ8_HANDLER ( ti99_grom_r8 )
 
 	/* Activates a slot in the multi-cartridge extender. */
 	// 1001 1wbb bbbb bbr0
-	cartridge_slot_set(cartslots, (offset & 0x03fc)/4);
+	ti99_cartridge_slot_set(cartslots, (offset & 0x03fc)/4);
 
 	if (offset & 2)
 	{
@@ -1127,7 +1128,7 @@ static WRITE8_HANDLER ( ti99_grom_w8 )
 	cpu_adjust_icount(space->machine->firstcpu,-4/*20+3*/);		/* from 4 to 23? */
 
 	/* Activates a slot in the multi-cartridge extender. */
-	cartridge_slot_set(cartslots, (offset & 0x03fc)/4);
+	ti99_cartridge_slot_set(cartslots, (offset & 0x03fc)/4);
 
 	if (offset & 2)
 	{
@@ -1266,13 +1267,15 @@ READ8_HANDLER( ti99_8_r )
 	mapper_reg = ti99_8_mapper_regs[page];
 	offset = (mapper_reg + (offset & 0x0fff)) & 0x00ffffff;
 
+#if 0
 	/* test read protect */
-	/*if (mapper_reg & 0x20000000)
-        ;*/
+	if (mapper_reg & 0x20000000)
+		;
 
 	/* test execute protect */
-	/*if (mapper_reg & 0x40000000)
-        ;*/
+	if (mapper_reg & 0x40000000)
+		;
+#endif
 
 	if (offset < 0x010000)
 		/* Read RAM */
@@ -1445,9 +1448,11 @@ WRITE8_HANDLER ( ti99_8_w )
 	/* 4 KiB page size */
 	offset = (mapper_reg + (offset & 0x0fff)) & 0x00ffffff;
 
+#if 0
 	/* test write protect */
-	/*if (mapper_reg & 0x80000000)
-        ;*/
+	if (mapper_reg & 0x80000000)
+		;
+#endif
 
 	if (offset < 0x010000)
 	{	/* Write RAM */
@@ -2065,8 +2070,10 @@ static READ8_DEVICE_HANDLER( ti99_R9901_1 )
 	}
 
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
-	/*if (cassette_input(devtag_get_device(device->machine, "cassette1")) > 0)
-        answer |= 8;*/
+#if 0
+	if (cassette_input(devtag_get_device(device->machine, "cassette1")) > 0)
+		answer |= 8;
+#endif
 
 	return answer;
 }
@@ -2149,8 +2156,10 @@ static WRITE8_DEVICE_HANDLER( ti99_AlphaW )
 static READ8_DEVICE_HANDLER( ti99_8_R9901_0 )
 {
 	int answer;
-	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7",
-										"KEY8", "KEY9", "KEY10", "KEY11", "KEY12", "KEY13", "KEY14", "KEY15" };
+	static const char *const keynames[] = {
+		"KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7",
+		"KEY8", "KEY9", "KEY10", "KEY11", "KEY12", "KEY13", "KEY14", "KEY15"
+	};
 
 	if (has_mecmouse && (KeyCol == 15))
 	{
@@ -2182,8 +2191,10 @@ static READ8_DEVICE_HANDLER( ti99_8_R9901_0 )
 static READ8_DEVICE_HANDLER( ti99_8_R9901_1 )
 {
 	int answer;
-	static const char *const keynames[] = { "KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7",
-										"KEY8", "KEY9", "KEY10", "KEY11", "KEY12", "KEY13", "KEY14", "KEY15" };
+	static const char *const keynames[] = {
+		"KEY0", "KEY1", "KEY2", "KEY3", "KEY4", "KEY5", "KEY6", "KEY7",
+		"KEY8", "KEY9", "KEY10", "KEY11", "KEY12", "KEY13", "KEY14", "KEY15"
+	};
 
 	if (has_mecmouse && (KeyCol == 15))
 	{
@@ -2201,8 +2212,10 @@ static READ8_DEVICE_HANDLER( ti99_8_R9901_1 )
 	}
 
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
-	/*if (cassette_input(devtag_get_device(machine, "cassette")) > 0)
-        answer |= 8;*/
+#if 0
+	if (cassette_input(devtag_get_device(machine, "cassette")) > 0)
+		answer |= 8;
+#endif
 
 	return answer;
 }
@@ -2631,9 +2644,10 @@ static int ti99_4p_mapper_lookup[16];
 static void ti99_4p_mapper_init(running_machine *machine)
 {
 	int i;
-
+	char bank_name[10];
 	/* Not required at run-time */
-	/*memory_install_read16_handler(space, 0x2000, 0x2fff, SMH_BANK(3));
+#if 0
+	memory_install_read16_handler(space, 0x2000, 0x2fff, SMH_BANK(3));
     memory_install_write16_handler(space, 0x2000, 0x2fff, SMH_BANK(3));
     memory_install_read16_handler(space, 0x3000, 0x3fff, SMH_BANK(4));
     memory_install_write16_handler(space, 0x3000, 0x3fff, SMH_BANK(4));
@@ -2648,7 +2662,8 @@ static void ti99_4p_mapper_init(running_machine *machine)
     memory_install_read16_handler(space, 0xe000, 0xefff, SMH_BANK(9));
     memory_install_write16_handler(space, 0xe000, 0xefff, SMH_BANK(9));
     memory_install_read16_handler(space, 0xf000, 0xffff, SMH_BANK(10));
-    memory_install_write16_handler(space, 0xf000, 0xffff, SMH_BANK(10));*/
+    memory_install_write16_handler(space, 0xf000, 0xffff, SMH_BANK(10));
+#endif
 
 	ti99_peb_set_16bit_card_handlers(0x1e00, & ti99_4p_mapper_handlers);
 
@@ -2663,7 +2678,8 @@ static void ti99_4p_mapper_init(running_machine *machine)
 		{
 		case 2:
 		case 3:
-			memory_set_bankptr(machine,3+(i-2), xRAM_ptr + (i<<11));
+			sprintf(bank_name,"bank%d",3+(i-2));
+			memory_set_bankptr(machine,bank_name, xRAM_ptr + (i<<11));
 			break;
 
 		case 10:
@@ -2672,7 +2688,8 @@ static void ti99_4p_mapper_init(running_machine *machine)
 		case 13:
 		case 14:
 		case 15:
-			memory_set_bankptr(machine,5+(i-10), xRAM_ptr + (i<<11));
+			sprintf(bank_name,"bank%d",5+(i-10));
+			memory_set_bankptr(machine,bank_name, xRAM_ptr + (i<<11));
 			break;
 		}
 	}
@@ -2684,7 +2701,8 @@ static void ti99_4p_mapper_init(running_machine *machine)
 static void ti99_4p_mapper_cru_w(running_machine *machine, int offset, int data)
 {
 	int i;
-
+	char bank_name[10];
+	
 	if (offset == 1)
 	{
 		if (ti99_4p_mapper_on != data)
@@ -2698,7 +2716,8 @@ static void ti99_4p_mapper_cru_w(running_machine *machine, int offset, int data)
 				{
 				case 2:
 				case 3:
-					memory_set_bankptr(machine,3+(i-2), xRAM_ptr + (ti99_4p_mapper_on ? (ti99_4p_mapper_lookup[i]) : (i<<11)));
+					sprintf(bank_name,"bank%d",3+(i-2));
+					memory_set_bankptr(machine,bank_name, xRAM_ptr + (ti99_4p_mapper_on ? (ti99_4p_mapper_lookup[i]) : (i<<11)));
 					break;
 
 				case 10:
@@ -2707,7 +2726,8 @@ static void ti99_4p_mapper_cru_w(running_machine *machine, int offset, int data)
 				case 13:
 				case 14:
 				case 15:
-					memory_set_bankptr(machine,5+(i-10), xRAM_ptr + (ti99_4p_mapper_on ? (ti99_4p_mapper_lookup[i]) : (i<<11)));
+					sprintf(bank_name,"bank%d",5+(i-10));
+					memory_set_bankptr(machine,bank_name, xRAM_ptr + (ti99_4p_mapper_on ? (ti99_4p_mapper_lookup[i]) : (i<<11)));
 					break;
 				}
 			}
@@ -2726,7 +2746,7 @@ static READ16_HANDLER(ti99_4p_mapper_r)
 static WRITE16_HANDLER(ti99_4p_mapper_w)
 {
 	int page = offset & 0xf;
-
+	char bank_name[10];
 	ti99_4p_mapper_lookup[page] = (data & 0xff00) << 3;
 
 	if (ti99_4p_mapper_on)
@@ -2736,7 +2756,8 @@ static WRITE16_HANDLER(ti99_4p_mapper_w)
 		{
 		case 2:
 		case 3:
-			memory_set_bankptr(space->machine,3+(page-2), xRAM_ptr+ti99_4p_mapper_lookup[page]);
+			sprintf(bank_name,"bank%d",3+(page-2));
+			memory_set_bankptr(space->machine,bank_name, xRAM_ptr+ti99_4p_mapper_lookup[page]);
 			break;
 
 		case 10:
@@ -2745,7 +2766,8 @@ static WRITE16_HANDLER(ti99_4p_mapper_w)
 		case 13:
 		case 14:
 		case 15:
-			memory_set_bankptr(space->machine,5+(page-10), xRAM_ptr+ti99_4p_mapper_lookup[page]);
+			sprintf(bank_name,"bank%d",5+(page-10));
+			memory_set_bankptr(space->machine,bank_name, xRAM_ptr+ti99_4p_mapper_lookup[page]);
 			break;
 		}
 	}

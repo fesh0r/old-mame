@@ -62,11 +62,10 @@ bus serial (available in all modes), a Fast and a Burst serial bus
 
 /* devices config */
 #include "includes/cbm.h"
-#include "includes/cbmdrive.h"
 
 #include "includes/c64.h"
 #include "includes/c65.h"
-
+#include "includes/cbmserb.h"
 #include "devices/messram.h"
 
 /*************************************
@@ -76,14 +75,14 @@ bus serial (available in all modes), a Fast and a Burst serial bus
  *************************************/
 
 static ADDRESS_MAP_START( c65_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x00000, 0x07fff) AM_RAMBANK(11)
-	AM_RANGE(0x08000, 0x09fff) AM_READWRITE(SMH_BANK(1), SMH_BANK(12))
-	AM_RANGE(0x0a000, 0x0bfff) AM_READWRITE(SMH_BANK(2), SMH_BANK(13))
-	AM_RANGE(0x0c000, 0x0cfff) AM_READWRITE(SMH_BANK(3), SMH_BANK(14))
-	AM_RANGE(0x0d000, 0x0d7ff) AM_READWRITE(SMH_BANK(4), SMH_BANK(5))
-	AM_RANGE(0x0d800, 0x0dbff) AM_READWRITE(SMH_BANK(6), SMH_BANK(7))
-	AM_RANGE(0x0dc00, 0x0dfff) AM_READWRITE(SMH_BANK(8), SMH_BANK(9))
-	AM_RANGE(0x0e000, 0x0ffff) AM_READWRITE(SMH_BANK(10), SMH_BANK(15))
+	AM_RANGE(0x00000, 0x07fff) AM_RAMBANK("bank11")
+	AM_RANGE(0x08000, 0x09fff) AM_READ_BANK("bank1") AM_WRITE_BANK("bank12")
+	AM_RANGE(0x0a000, 0x0bfff) AM_READ_BANK("bank2") AM_WRITE_BANK("bank13")
+	AM_RANGE(0x0c000, 0x0cfff) AM_READ_BANK("bank3") AM_WRITE_BANK("bank14")
+	AM_RANGE(0x0d000, 0x0d7ff) AM_READ_BANK("bank4") AM_WRITE_BANK("bank5")
+	AM_RANGE(0x0d800, 0x0dbff) AM_READ_BANK("bank6") AM_WRITE_BANK("bank7")
+	AM_RANGE(0x0dc00, 0x0dfff) AM_READ_BANK("bank8") AM_WRITE_BANK("bank9")
+	AM_RANGE(0x0e000, 0x0ffff) AM_READ_BANK("bank10") AM_WRITE_BANK("bank15")
 	AM_RANGE(0x10000, 0x1f7ff) AM_RAM
 	AM_RANGE(0x1f800, 0x1ffff) AM_RAM AM_BASE( &c64_colorram)
 
@@ -201,6 +200,19 @@ static const sid6581_interface c65_sound_interface =
 	c64_paddle_read
 };
 
+static const cbm_serial_bus_interface c65_drive_interface =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+
+	DEVCB_NULL
+};
 
 
 /*************************************
@@ -245,10 +257,10 @@ static MACHINE_DRIVER_START( c65 )
 	MDRV_CIA6526_ADD("cia_1", CIA6526R1, 3500000, c65_ntsc_cia1)
 
 	/* floppy from serial bus */
-	MDRV_IMPORT_FROM(simulated_drive)
+	MDRV_CBM_SERBUS_ADD("serial_bus", c65_drive_interface)
 
 	MDRV_IMPORT_FROM(c64_cartslot)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("128K")
@@ -304,24 +316,13 @@ ROM_START( c64dx )
 	ROM_LOAD( "910429.bin", 0x20000, 0x20000, CRC(b025805c) SHA1(c3b05665684f74adbe33052a2d10170a1063ee7d) )
 ROM_END
 
-
-/*************************************
- *
- *  System configuration(s)
- *
- *************************************/
-static SYSTEM_CONFIG_START( c65 )
-	// to investigate which carts could work in the c65 expansion port!
-	CONFIG_DEVICE(cbmfloppy_device_getinfo)
-SYSTEM_CONFIG_END
-
 /***************************************************************************
 
   Game driver(s)
 
 ***************************************************************************/
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY                         FULLNAME                                              FLAGS */
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                         FULLNAME                                              FLAGS */
 
-COMP( 1991, c65,    0,      0,      c65,    c65,    c65,    c65,    "Commodore Electronics, Ltd.",  "Commodore 65 Development System (Prototype, NTSC)", GAME_NOT_WORKING )
-COMP( 1991, c64dx,  c65,    0,      c65pal, c65ger, c65pal, c65,    "Commodore Electronics, Ltd.",  "Commodore 64DX Development System (Prototype, PAL, German)", GAME_NOT_WORKING )
+COMP( 1991, c65,    0,      0,      c65,    c65,    c65,    "Commodore Electronics, Ltd.",  "Commodore 65 Development System (Prototype, NTSC)", GAME_NOT_WORKING )
+COMP( 1991, c64dx,  c65,    0,      c65pal, c65ger, c65pal, "Commodore Electronics, Ltd.",  "Commodore 64DX Development System (Prototype, PAL, German)", GAME_NOT_WORKING )

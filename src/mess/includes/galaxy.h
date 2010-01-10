@@ -23,16 +23,15 @@ extern WRITE8_HANDLER( galaxy_latch_w );
 
 extern MACHINE_RESET( galaxyp );
 
-extern UINT8 gal_latch_value;
+extern UINT8 galaxy_latch_value;
 
 extern DRIVER_INIT( galaxyp );
 
 /*----------- defined in video/galaxy.c -----------*/
 
-extern UINT32 gal_cnt;
+extern VIDEO_START( galaxy );
 extern VIDEO_UPDATE( galaxy );
-extern TIMER_CALLBACK( gal_video );
 
-extern emu_timer *gal_video_timer;
+void galaxy_set_timer(void);
 
 #endif /* GALAXY_H_ */

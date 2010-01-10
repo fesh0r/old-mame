@@ -43,6 +43,8 @@ static void enterprise_update_memory_page(const address_space *space, offs_t pag
 {
 	int start = (page - 1) * 0x4000;
 	int end = (page - 1) * 0x4000 + 0x3fff;
+	char page_num[10];
+	sprintf(page_num,"bank%d",page);
 
 	switch (index)
 	{
@@ -50,22 +52,25 @@ static void enterprise_update_memory_page(const address_space *space, offs_t pag
 	case 0x01:
 	case 0x02:
 	case 0x03:
-		memory_install_readwrite8_handler(space, start, end, 0, 0, SMH_BANK((FPTR)page), SMH_NOP);
-		memory_set_bankptr(space->machine, page, memory_region(space->machine, "exos") + (index * 0x4000));
+		memory_install_read_bank(space, start, end, 0, 0, page_num);
+		memory_nop_write(space, start, end, 0, 0 );
+		memory_set_bankptr(space->machine, page_num, memory_region(space->machine, "exos") + (index * 0x4000));
 		break;
 
 	case 0x04:
 	case 0x05:
 	case 0x06:
 	case 0x07:
-		memory_install_readwrite8_handler(space, start, end, 0, 0, SMH_BANK((FPTR)page), SMH_NOP);
-		memory_set_bankptr(space->machine, page, memory_region(space->machine, "cartridges") + ((index - 0x04) * 0x4000));
+		memory_install_read_bank(space, start, end, 0, 0, page_num);
+		memory_nop_write(space, start, end, 0, 0);
+		memory_set_bankptr(space->machine, page_num, memory_region(space->machine, "cartridges") + ((index - 0x04) * 0x4000));
 		break;
 
 	case 0x20:
 	case 0x21:
-		memory_install_readwrite8_handler(space, start, end, 0, 0, SMH_BANK((FPTR)page), SMH_NOP);
-		memory_set_bankptr(space->machine, page, memory_region(space->machine, "exdos") + ((index - 0x20) * 0x4000));
+		memory_install_read_bank(space, start, end, 0, 0, page_num);
+		memory_nop_write(space, start, end, 0, 0);
+		memory_set_bankptr(space->machine, page_num, memory_region(space->machine, "exdos") + ((index - 0x20) * 0x4000));
 		break;
 
 	case 0xf8:
@@ -75,12 +80,12 @@ static void enterprise_update_memory_page(const address_space *space, offs_t pag
 		/* additional 64k ram */
 		if (messram_get_size(devtag_get_device(space->machine, "messram")) == 128*1024)
 		{
-			memory_install_readwrite8_handler(space, start, end, 0, 0, SMH_BANK((FPTR)page), SMH_BANK((FPTR)page));
-			memory_set_bankptr(space->machine, page, messram_get_ptr(devtag_get_device(space->machine, "messram")) + (index - 0xf4) * 0x4000);
+			memory_install_readwrite_bank(space, start, end, 0, 0, page_num);
+			memory_set_bankptr(space->machine, page_num, messram_get_ptr(devtag_get_device(space->machine, "messram")) + (index - 0xf4) * 0x4000);
 		}
 		else
 		{
-			memory_install_readwrite8_handler(space, start, end, 0, 0, SMH_UNMAP, SMH_UNMAP);
+			memory_unmap_readwrite(space, start, end, 0, 0);
 		}
 		break;
 
@@ -89,12 +94,12 @@ static void enterprise_update_memory_page(const address_space *space, offs_t pag
 	case 0xfe:
 	case 0xff:
 		/* basic 64k ram */
-		memory_install_readwrite8_handler(space, start, end, 0, 0, SMH_BANK((FPTR)page), SMH_BANK((FPTR)page));
-		memory_set_bankptr(space->machine, page, messram_get_ptr(devtag_get_device(space->machine, "messram")) + (index - 0xfc) * 0x4000);
+		memory_install_readwrite_bank(space, start, end, 0, 0, page_num);
+		memory_set_bankptr(space->machine, page_num, messram_get_ptr(devtag_get_device(space->machine, "messram")) + (index - 0xfc) * 0x4000);
 		break;
 
 	default:
-		memory_install_readwrite8_handler(space, start, end, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_unmap_readwrite(space, start, end, 0, 0);
 	}
 }
 
@@ -250,10 +255,10 @@ static WRITE8_HANDLER( exdos_card_w )
 ***************************************************************************/
 
 static ADDRESS_MAP_START( enterprise_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK(1)
-	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK(2)
-	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK(3)
-	AM_RANGE(0xc000, 0xffff) AM_RAMBANK(4)
+	AM_RANGE(0x0000, 0x3fff) AM_RAMBANK("bank1")
+	AM_RANGE(0x4000, 0x7fff) AM_RAMBANK("bank2")
+	AM_RANGE(0x8000, 0xbfff) AM_RAMBANK("bank3")
+	AM_RANGE(0xc000, 0xffff) AM_RAMBANK("bank4")
 ADDRESS_MAP_END
 
 
@@ -261,7 +266,7 @@ static ADDRESS_MAP_START( enterprise_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x10, 0x13) AM_MIRROR(0x04) AM_DEVREADWRITE("wd1770", wd17xx_r, wd17xx_w)
 	AM_RANGE(0x18, 0x18) AM_MIRROR(0x04) AM_READWRITE(exdos_card_r, exdos_card_w)
-	AM_RANGE(0x80, 0x8f) AM_WRITE(Nick_reg_w)
+	AM_RANGE(0x80, 0x8f) AM_WRITE(epnick_reg_w)
 	AM_RANGE(0xa0, 0xbf) AM_DEVREADWRITE("custom", dave_reg_r, dave_reg_w)
 ADDRESS_MAP_END
 
@@ -466,10 +471,10 @@ static MACHINE_DRIVER_START( ep64 )
 	MDRV_SCREEN_VISIBLE_AREA(0, ENTERPRISE_SCREEN_WIDTH-1, 0, ENTERPRISE_SCREEN_HEIGHT-1)
 
 	MDRV_PALETTE_LENGTH(NICK_PALETTE_SIZE)
-	MDRV_PALETTE_INIT(nick)
+	MDRV_PALETTE_INIT(epnick)
 
-	MDRV_VIDEO_START(nick)
-	MDRV_VIDEO_UPDATE(nick)
+	MDRV_VIDEO_START(epnick)
+	MDRV_VIDEO_UPDATE(epnick)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -480,17 +485,17 @@ static MACHINE_DRIVER_START( ep64 )
 	MDRV_WD1770_ADD("wd1770", enterp_wd1770_interface )
 
 	MDRV_FLOPPY_4_DRIVES_ADD(enterprise_floppy_config)
-	
+
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
-	MDRV_RAM_DEFAULT_SIZE("64K") 	
+	MDRV_RAM_DEFAULT_SIZE("64K")
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ep128 )
 	MDRV_IMPORT_FROM(ep64)
 	/* internal ram */
 	MDRV_RAM_MODIFY("messram")
-	MDRV_RAM_DEFAULT_SIZE("128K") 	
+	MDRV_RAM_DEFAULT_SIZE("128K")
 MACHINE_DRIVER_END
 
 
@@ -550,7 +555,7 @@ ROM_END
     GAME DRIVERS
 ***************************************************************************/
 
-/*    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT  INIT  CONFIG  COMPANY                 FULLNAME */
-COMP( 1985, ep64,  0,      0,      ep64,    ep64, 0,    0,   "Intelligent Software", "Enterprise 64", GAME_IMPERFECT_SOUND )
-COMP( 1985, ep128, ep64,   0,      ep128,   ep64, 0,    0,  "Intelligent Software", "Enterprise 128", GAME_IMPERFECT_SOUND )
-COMP( 1985, phc64, ep64,   0,      ep64,    ep64, 0,    0,   "Hegener & Glaser",     "Mephisto PHC 64", GAME_IMPERFECT_SOUND )
+/*    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT  INIT  COMPANY                 FULLNAME */
+COMP( 1985, ep64,  0,      0,      ep64,    ep64, 0,     "Intelligent Software", "Enterprise 64", GAME_IMPERFECT_SOUND )
+COMP( 1985, ep128, ep64,   0,      ep128,   ep64, 0,     "Intelligent Software", "Enterprise 128", GAME_IMPERFECT_SOUND )
+COMP( 1985, phc64, ep64,   0,      ep64,    ep64, 0,     "Hegener & Glaser",     "Mephisto PHC 64", GAME_IMPERFECT_SOUND )
