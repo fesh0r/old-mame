@@ -1,8 +1,8 @@
 /***************************************************************************
 
-    sndintrf.h
+    validity.h
 
-    Core sound interface functions and definitions.
+    Validity checks
 
     Copyright Nicola Salmoria and the MAME Team.
     Visit http://mamedev.org for licensing and usage restrictions.
@@ -11,13 +11,10 @@
 
 #pragma once
 
-#ifndef __SNDINTRF_H__
-#define __SNDINTRF_H__
+#ifndef __VALIDITY_H__
+#define __VALIDITY_H__
 
-#include "memory.h"
-#include "mame.h"
-#include "state.h"
-#include "sound.h"
+extern int mame_validitychecks(const game_driver *driver);
 
+#endif
 
-#endif	/* __SNDINTRF_H__ */
