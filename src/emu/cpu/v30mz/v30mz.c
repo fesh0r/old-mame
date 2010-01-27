@@ -53,14 +53,24 @@ typedef UINT32 DWORD;
 #include "v30mz.h"
 #include "nec.h"
 
-extern int necv_dasm_one(char *buffer, UINT32 eip, const UINT8 *oprom);
-
 /* NEC registers */
 typedef union
 {                   /* eight general registers */
     UINT16 w[8];    /* viewed as 16 bits registers */
     UINT8  b[16];   /* or as 8 bit registers */
 } necbasicregs;
+
+typedef struct _nec_config nec_config;
+struct _nec_config
+{
+	const UINT8*	v25v35_decryptiontable; // internal decryption table
+};
+
+/* default configuration */
+static const nec_config default_config =
+{
+	NULL
+};
 
 typedef struct _v30mz_state v30mz_state;
 struct _v30mz_state
@@ -80,7 +90,7 @@ struct _v30mz_state
 	UINT8	no_interrupt;
 
 	cpu_irq_callback irq_callback;
-	const device_config *device;
+	running_device *device;
 	const address_space *program;
 	const address_space *io;
 	int icount;
@@ -91,9 +101,13 @@ struct _v30mz_state
 	UINT32 ea;
 	UINT16 eo;
 	UINT16 e16;
+
+	const nec_config *config;
 };
 
-INLINE v30mz_state *get_safe_token(const device_config *device)
+extern int necv_dasm_one(char *buffer, UINT32 eip, const UINT8 *oprom, const nec_config *config);
+
+INLINE v30mz_state *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -920,12 +934,16 @@ static void set_irq_line(v30mz_state *cpustate, int irqline, int state)
 
 static CPU_DISASSEMBLE( nec )
 {
-	return necv_dasm_one(buffer, pc, oprom);
+	v30mz_state *cpustate = get_safe_token(device);
+
+	return necv_dasm_one(buffer, pc, oprom, cpustate->config);
 }
 
-static void nec_init(const device_config *device, cpu_irq_callback irqcallback, int type)
+static void nec_init(running_device *device, cpu_irq_callback irqcallback, int type)
 {
 	v30mz_state *cpustate = get_safe_token(device);
+
+	const nec_config *config = &default_config;
 
 	state_save_register_device_item_array(device, 0, cpustate->regs.w);
 	state_save_register_device_item_array(device, 0, cpustate->sregs);
@@ -946,6 +964,7 @@ static void nec_init(const device_config *device, cpu_irq_callback irqcallback, 
 	state_save_register_device_item(device, 0, cpustate->CarryVal);
 	state_save_register_device_item(device, 0, cpustate->ParityVal);
 
+	cpustate->config = config;
 	cpustate->irq_callback = irqcallback;
 	cpustate->device = device;
 	cpustate->program = device->space(AS_PROGRAM);
@@ -1060,15 +1079,15 @@ CPU_GET_INFO( v30mz )
 		case CPUINFO_INT_MIN_CYCLES:					info->i = 1;							break;
 		case CPUINFO_INT_MAX_CYCLES:					info->i = 80;							break;
 
-		case CPUINFO_INT_DATABUS_WIDTH_PROGRAM:	info->i = 8;					break;
-		case CPUINFO_INT_ADDRBUS_WIDTH_PROGRAM: info->i = 20;					break;
-		case CPUINFO_INT_ADDRBUS_SHIFT_PROGRAM: info->i = 0;					break;
-		case CPUINFO_INT_DATABUS_WIDTH_DATA:	info->i = 0;					break;
-		case CPUINFO_INT_ADDRBUS_WIDTH_DATA:	info->i = 0;					break;
-		case CPUINFO_INT_ADDRBUS_SHIFT_DATA:	info->i = 0;					break;
-		case CPUINFO_INT_DATABUS_WIDTH_IO:		info->i = 8;					break;
-		case CPUINFO_INT_ADDRBUS_WIDTH_IO:		info->i = 16;					break;
-		case CPUINFO_INT_ADDRBUS_SHIFT_IO:		info->i = 0;					break;
+		case DEVINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 8;					break;
+		case DEVINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_PROGRAM: info->i = 20;					break;
+		case DEVINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_PROGRAM: info->i = 0;					break;
+		case DEVINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_DATA:	info->i = 0;					break;
+		case DEVINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_DATA:	info->i = 0;					break;
+		case DEVINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_DATA:	info->i = 0;					break;
+		case DEVINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 8;					break;
+		case DEVINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 16;					break;
+		case DEVINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_IO:		info->i = 0;					break;
 
 		case CPUINFO_INT_INPUT_STATE + 0:				info->i = (cpustate->pending_irq & INT_IRQ) ? ASSERT_LINE : CLEAR_LINE; break;
 		case CPUINFO_INT_INPUT_STATE + INPUT_LINE_NMI:	info->i = cpustate->nmi_state;					break;

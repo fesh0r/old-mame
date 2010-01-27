@@ -56,7 +56,6 @@
 // commonly-referenecd utilities imported from lib/util
 #include "chd.h"
 #include "palette.h"
-#include "tagmap.h"
 #include "unicode.h"
 
 // emulator-specific utilities
@@ -92,6 +91,12 @@
 #include "state.h"
 
 // the running machine
+#ifdef MESS
+#include "mess.h"
+#include "uimess.h"
+#include "image.h"
+#include "messdrv.h"
+#endif /* MESS */
 #include "mame.h"
 
 // video-related
