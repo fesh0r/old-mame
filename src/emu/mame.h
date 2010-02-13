@@ -62,6 +62,7 @@ enum
 #define DEBUG_FLAG_WPW_PROGRAM	0x00000100		/* watchpoints are enabled for PROGRAM memory writes */
 #define DEBUG_FLAG_WPW_DATA		0x00000200		/* watchpoints are enabled for DATA memory writes */
 #define DEBUG_FLAG_WPW_IO		0x00000400		/* watchpoints are enabled for IO memory writes */
+#define DEBUG_FLAG_OSD_ENABLED	0x00001000		/* The OSD debugger is enabled */
 
 
 /* MESS vs. MAME abstractions */
@@ -284,7 +285,6 @@ public:
 	generic_audio_private *	generic_audio_data;	/* internal data from audio/generic.c */
 #ifdef MESS
 	images_private *		images_data;		/* internal data from image.c */
-	ui_mess_private *		ui_mess_data;		/* internal data from uimess.c */
 #endif /* MESS */
 
 	/* driver-specific information */
@@ -465,14 +465,6 @@ void mame_get_base_datetime(running_machine *machine, mame_system_time *systime)
 
 /* retrieve the current system time */
 void mame_get_current_datetime(running_machine *machine, mame_system_time *systime);
-
-
-
-#ifdef MESS
-#include "mess.h"
-#endif /* MESS */
-
-
 
 /***************************************************************************
     INLINE FUNCTIONS
