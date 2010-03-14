@@ -159,7 +159,7 @@ Known Issues (MZ, 2009-04-26)
   neither reset nor restarted.
 */
 
-#include "driver.h"
+#include "emu.h"
 
 #include "machine/ti99_4x.h"
 #include "machine/tms9901.h"
@@ -182,6 +182,8 @@ Known Issues (MZ, 2009-04-26)
 #include "machine/mm58274c.h"
 #include "devices/ti99cart.h"
 #include "machine/rtc65271.h"
+#include "formats/ti99_dsk.h"
+
 
 /*
     Memory map - see description above

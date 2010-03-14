@@ -160,7 +160,7 @@ cpu #0 (PC=0601023A): unmapped program memory dword write to 02000000 = 00000000
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/sh2/sh2.h"
 #include "machine/stvcd.h"
@@ -169,7 +169,7 @@ cpu #0 (PC=0601023A): unmapped program memory dword write to 02000000 = 00000000
 #include "devices/chd_cd.h"
 #include "devices/cartslot.h"
 #include "includes/stv.h"
-
+#include "coreutil.h"
 
 #define USE_SLAVE 1
 
@@ -209,7 +209,7 @@ static UINT8 NMI_reset;
 static void system_reset(void);
 static UINT8 en_68k;
 /*SCU stuff*/
-static int 	  timer_0;			/* Counter for Timer 0 irq*/
+static int	  timer_0;			/* Counter for Timer 0 irq*/
 static int    timer_1;          /* Counter for Timer 1 irq*/
 /*Maybe add these in a struct...*/
 static UINT32 scu_src_0,		/* Source DMA lv 0 address*/
@@ -228,7 +228,7 @@ static INT32  scu_size_0,		/* Transfer DMA size lv 0*/
 			  scu_size_1,		/* lv 1*/
 			  scu_size_2;		/* lv 2*/
 
-struct
+struct stv_irq_t
 {
 	UINT8 vblank_out;
 	UINT8 vblank_in;
@@ -539,7 +539,7 @@ static UINT8 stv_SMPC_r8(const address_space *space, int offset)
 
 	if (offset == 0x33) return_data = saturn_region;
 
-	if (LOG_SMPC) logerror ("cpu %s (PC=%08X) SMPC: Read from Byte Offset %02x (%d) Returns %02x\n", space->cpu->tag, cpu_get_pc(space->cpu), offset, offset>>1, return_data);
+	if (LOG_SMPC) logerror ("cpu %s (PC=%08X) SMPC: Read from Byte Offset %02x (%d) Returns %02x\n", space->cpu->tag(), cpu_get_pc(space->cpu), offset, offset>>1, return_data);
 
 
 	return return_data;
@@ -680,7 +680,7 @@ static void stv_SMPC_w8(const address_space *space, int offset, UINT8 data)
 		                if(LOG_SMPC) logerror ("SMPC: Status Acquire (IntBack)\n");
 				smpc_ram[0x5f]=0x10;
 				smpc_ram[0x21] = (0x80) | ((NMI_reset & 1) << 6);
-			  	smpc_ram[0x23] = dec_2_bcd(systime.local_time.year / 100);
+				smpc_ram[0x23] = dec_2_bcd(systime.local_time.year / 100);
 			    	smpc_ram[0x25] = dec_2_bcd(systime.local_time.year % 100);
 		    		smpc_ram[0x27] = (systime.local_time.weekday << 4) | (systime.local_time.month + 1);
 			    	smpc_ram[0x29] = dec_2_bcd(systime.local_time.mday);
@@ -743,10 +743,10 @@ static void stv_SMPC_w8(const address_space *space, int offset, UINT8 data)
 			/* SMPC memory setting*/
 			case 0x17:
 				if(LOG_SMPC) logerror ("SMPC: memory setting\n");
-		       		SMEM[0] = smpc_ram[1];
-		       		SMEM[1] = smpc_ram[3];
-		       		SMEM[2] = smpc_ram[5];
-		       		SMEM[3] = smpc_ram[7];
+		    		SMEM[0] = smpc_ram[1];
+		    		SMEM[1] = smpc_ram[3];
+		    		SMEM[2] = smpc_ram[5];
+		    		SMEM[3] = smpc_ram[7];
 
 				smpc_ram[0x5f]=0x17;
 			break;
@@ -770,7 +770,7 @@ static void stv_SMPC_w8(const address_space *space, int offset, UINT8 data)
 
 				break;
 			default:
-				if(LOG_SMPC) logerror ("cpu %s (PC=%08X) SMPC: undocumented Command %02x\n", space->cpu->tag, cpu_get_pc(space->cpu), data);
+				if(LOG_SMPC) logerror ("cpu %s (PC=%08X) SMPC: undocumented Command %02x\n", space->cpu->tag(), cpu_get_pc(space->cpu), data);
 		}
 
 		// we've processed the command, clear status flag
@@ -919,8 +919,8 @@ DMA TODO:
 #define D0MV_1	if(!(DMA_STATUS & 0x10))    DMA_STATUS^=0x10
 #define D1MV_1	if(!(DMA_STATUS & 0x100))   DMA_STATUS^=0x100
 #define D2MV_1	if(!(DMA_STATUS & 0x1000))  DMA_STATUS^=0x1000
-#define D0MV_0	if(DMA_STATUS & 0x10) 	    DMA_STATUS^=0x10
-#define D1MV_0	if(DMA_STATUS & 0x100) 	    DMA_STATUS^=0x100
+#define D0MV_0	if(DMA_STATUS & 0x10)	    DMA_STATUS^=0x10
+#define D1MV_0	if(DMA_STATUS & 0x100)	    DMA_STATUS^=0x100
 #define D2MV_0	if(DMA_STATUS & 0x1000)     DMA_STATUS^=0x1000
 
 static UINT32 scu_index_0,scu_index_1,scu_index_2;
@@ -991,7 +991,7 @@ static READ32_HANDLER( stv_scu_r32 )
     {
     	if(LOG_SCU) logerror("(PC=%08x) SCU reg read at %d = %08x\n",cpu_get_pc(space->cpu),offset,stv_scu[offset]);
     	return stv_scu[offset];
-   	}
+	}
 }
 
 static WRITE32_HANDLER( stv_scu_w32 )
@@ -1202,7 +1202,7 @@ static WRITE32_HANDLER( stv_scu_w32 )
 		stv_irq.vblank_in =  (((stv_scu[40] & 0x0001)>>0) ^ 1);
 		stv_irq.vblank_out = (((stv_scu[40] & 0x0002)>>1) ^ 1);
 		stv_irq.hblank_in =  (((stv_scu[40] & 0x0004)>>2) ^ 1);
-		stv_irq.timer_0 = 	 (((stv_scu[40] & 0x0008)>>3) ^ 1);
+		stv_irq.timer_0 =	 (((stv_scu[40] & 0x0008)>>3) ^ 1);
 		stv_irq.timer_1 =    (((stv_scu[40] & 0x0010)>>4) ^ 1);
 		stv_irq.dsp_end =    (((stv_scu[40] & 0x0020)>>5) ^ 1);
 		stv_irq.sound_req =  (((stv_scu[40] & 0x0040)>>6) ^ 1);
@@ -1221,7 +1221,7 @@ static WRITE32_HANDLER( stv_scu_w32 )
 		   stv_scu[40] != 0xffffffff)
 		{
 			if(LOG_SCU) logerror("cpu %s (PC=%08X) IRQ mask reg set %08x = %d%d%d%d|%d%d%d%d|%d%d%d%d|%d%d%d%d\n",
-			space->cpu->tag, cpu_get_pc(space->cpu),
+			space->cpu->tag(), cpu_get_pc(space->cpu),
 			stv_scu[offset],
 			stv_scu[offset] & 0x8000 ? 1 : 0, /*A-Bus irq*/
 			stv_scu[offset] & 0x4000 ? 1 : 0, /*<reserved>*/
@@ -1636,7 +1636,7 @@ static void dma_indirect_lv0(const address_space *space)
 		}
 
 		if(LOG_SCU) logerror("DMA lv 0 indirect mode transfer START\n"
-			 	 "Start %08x End %08x Size %04x\n",scu_src_0,scu_dst_0,scu_size_0);
+				 "Start %08x End %08x Size %04x\n",scu_src_0,scu_dst_0,scu_size_0);
 		if(LOG_SCU) logerror("Start Add %04x Destination Add %04x\n",scu_src_add_0,scu_dst_add_0);
 
 		//guess,but I believe it's right.
@@ -1703,7 +1703,7 @@ static void dma_indirect_lv1(const address_space *space)
 		}
 
 		if(LOG_SCU) logerror("DMA lv 1 indirect mode transfer START\n"
-			 	 "Start %08x End %08x Size %04x\n",scu_src_1,scu_dst_1,scu_size_1);
+				 "Start %08x End %08x Size %04x\n",scu_src_1,scu_dst_1,scu_size_1);
 		if(LOG_SCU) logerror("Start Add %04x Destination Add %04x\n",scu_src_add_1,scu_dst_add_1);
 
 		//guess,but I believe it's right.
@@ -1772,7 +1772,7 @@ static void dma_indirect_lv2(const address_space *space)
 		}
 
 		if(LOG_SCU) logerror("DMA lv 2 indirect mode transfer START\n"
-			 	 "Start %08x End %08x Size %04x\n",scu_src_2,scu_dst_2,scu_size_2);
+				 "Start %08x End %08x Size %04x\n",scu_src_2,scu_dst_2,scu_size_2);
 		if(LOG_SCU) logerror("Start Add %04x Destination Add %04x\n",scu_src_add_2,scu_dst_add_2);
 
 		//guess,but I believe it's right.
@@ -1827,7 +1827,7 @@ static READ32_HANDLER( stv_sh2_soundram_r )
 
 static READ32_HANDLER( stv_scsp_regs_r32 )
 {
-	const device_config *scsp = devtag_get_device(space->machine, "scsp");
+	running_device *scsp = devtag_get_device(space->machine, "scsp");
 
 	offset <<= 1;
 	return (scsp_r(scsp, offset+1, 0xffff) | (scsp_r(scsp, offset, 0xffff)<<16));
@@ -1835,7 +1835,7 @@ static READ32_HANDLER( stv_scsp_regs_r32 )
 
 static WRITE32_HANDLER( stv_scsp_regs_w32 )
 {
-	const device_config *scsp = devtag_get_device(space->machine, "scsp");
+	running_device *scsp = devtag_get_device(space->machine, "scsp");
 
 	offset <<= 1;
 	scsp_w(scsp, offset, data>>16, mem_mask >> 16);
@@ -1846,17 +1846,17 @@ static WRITE32_HANDLER( stv_scsp_regs_w32 )
  * Enter into Radiant Silver Gun specific menu for a test...                       */
 static WRITE32_HANDLER( minit_w )
 {
-	logerror("cpu %s (PC=%08X) MINIT write = %08x\n", space->cpu->tag, cpu_get_pc(space->cpu),data);
+	logerror("cpu %s (PC=%08X) MINIT write = %08x\n", space->cpu->tag(), cpu_get_pc(space->cpu),data);
 	cpuexec_boost_interleave(space->machine, minit_boost_timeslice, ATTOTIME_IN_USEC(minit_boost));
 	cpuexec_trigger(space->machine, 1000);
-	sh2_set_frt_input(cputag_get_cpu(space->machine, "slave"), PULSE_LINE);
+	sh2_set_frt_input(devtag_get_device(space->machine, "slave"), PULSE_LINE);
 }
 
 static WRITE32_HANDLER( sinit_w )
 {
-	logerror("cpu %s (PC=%08X) SINIT write = %08x\n", space->cpu->tag, cpu_get_pc(space->cpu),data);
+	logerror("cpu %s (PC=%08X) SINIT write = %08x\n", space->cpu->tag(), cpu_get_pc(space->cpu),data);
 	cpuexec_boost_interleave(space->machine, sinit_boost_timeslice, ATTOTIME_IN_USEC(sinit_boost));
-	sh2_set_frt_input(cputag_get_cpu(space->machine, "maincpu"), PULSE_LINE);
+	sh2_set_frt_input(devtag_get_device(space->machine, "maincpu"), PULSE_LINE);
 }
 
 static UINT32 backup[64*1024/4];
@@ -1885,7 +1885,7 @@ static NVRAM_HANDLER(saturn)
 	{
 		if (file)
 		{
-		 	mame_fread(file, backup, 64*1024/4);
+			mame_fread(file, backup, 64*1024/4);
 		}
 		else
 		{
@@ -2041,7 +2041,7 @@ SCU register[40] is for IRQ masking.
 
 /* to do, update bios idle skips so they work better with this arrangement.. */
 
-static const device_config *vblank_out_timer,*scan_timer,*t1_timer;
+static running_device *vblank_out_timer,*scan_timer,*t1_timer;
 static int h_sync,v_sync;
 static int cur_scan;
 
@@ -2172,8 +2172,8 @@ static void saturn_init_driver(running_machine *machine, int rgn)
 	saturn_region = rgn;
 
 	// set compatible options
-	sh2drc_set_options(cputag_get_cpu(machine, "maincpu"), SH2DRC_STRICT_VERIFY|SH2DRC_STRICT_PCREL);
-	sh2drc_set_options(cputag_get_cpu(machine, "slave"), SH2DRC_STRICT_VERIFY|SH2DRC_STRICT_PCREL);
+	sh2drc_set_options(devtag_get_device(machine, "maincpu"), SH2DRC_STRICT_VERIFY|SH2DRC_STRICT_PCREL);
+	sh2drc_set_options(devtag_get_device(machine, "slave"), SH2DRC_STRICT_VERIFY|SH2DRC_STRICT_PCREL);
 
 	/* get the current date/time from the core */
 	mame_get_current_datetime(machine, &systime);
@@ -2197,7 +2197,7 @@ static void saturn_init_driver(running_machine *machine, int rgn)
 	smpc_ram[0x2f] = dec_2_bcd(systime.local_time.second);
 	smpc_ram[0x31] = 0x00; //CTG1=0 CTG0=0 (correct??)
 //  smpc_ram[0x33] = input_port_read(machine, "???");
- 	smpc_ram[0x5f] = 0x10;
+	smpc_ram[0x5f] = 0x10;
 }
 
 static DRIVER_INIT( saturnus )
@@ -2353,7 +2353,7 @@ GFXDECODE_END
 static const sh2_cpu_core sh2_conf_master = { 0 };
 static const sh2_cpu_core sh2_conf_slave  = { 1 };
 
-static void scsp_irq(const device_config *device, int irq)
+static void scsp_irq(running_device *device, int irq)
 {
 	// don't bother the 68k if it's off
 	if (!en_68k)

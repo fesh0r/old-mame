@@ -114,7 +114,7 @@ Notes:
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/cdp1802/cdp1802.h"
 #include "machine/wd17xx.h"
 #include "devices/printer.h"
@@ -160,7 +160,7 @@ static UINT8 read_expansion(running_machine *machine)
 	return result;
 }
 
-static const device_config *printer_device(running_machine *machine)
+static running_device *printer_device(running_machine *machine)
 {
 	return devtag_get_device(machine, "printer");
 }
@@ -172,7 +172,7 @@ static int expansion_box_installed(running_machine *machine)
 
 static int dos_card_active(running_machine *machine)
 {
-	comx35_state *state = machine->driver_data;
+	comx35_state *state = (comx35_state *)machine->driver_data;
 
 	if (expansion_box_installed(machine))
 	{
@@ -187,13 +187,13 @@ static int dos_card_active(running_machine *machine)
 /* Floppy Disc Controller */
 static WRITE_LINE_DEVICE_HANDLER( comx35_fdc_intrq_w )
 {
-	comx35_state *driver_state = device->machine->driver_data;
+	comx35_state *driver_state = (comx35_state *)device->machine->driver_data;
 	driver_state->fdc_irq = state;
 }
 
 static WRITE_LINE_DEVICE_HANDLER( comx35_fdc_drq_w )
 {
-	comx35_state *driver_state = device->machine->driver_data;
+	comx35_state *driver_state = (comx35_state *)device->machine->driver_data;
 
 	if (driver_state->fdc_drq_enable)
 		driver_state->cdp1802_ef4 = state;
@@ -201,6 +201,7 @@ static WRITE_LINE_DEVICE_HANDLER( comx35_fdc_drq_w )
 
 const wd17xx_interface comx35_wd17xx_interface =
 {
+	DEVCB_NULL,
 	DEVCB_LINE(comx35_fdc_intrq_w),
 	DEVCB_LINE(comx35_fdc_drq_w),
 	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
@@ -208,8 +209,8 @@ const wd17xx_interface comx35_wd17xx_interface =
 
 static UINT8 fdc_r(const address_space *space)
 {
-	comx35_state *state = space->machine->driver_data;
-	const device_config *fdc = devtag_get_device(space->machine, WD1770_TAG);
+	comx35_state *state = (comx35_state *)space->machine->driver_data;
+	running_device *fdc = devtag_get_device(space->machine, WD1770_TAG);
 
 	UINT8 data;
 
@@ -227,7 +228,7 @@ static UINT8 fdc_r(const address_space *space)
 
 static void fdc_w(const address_space *space, UINT8 data)
 {
-	const device_config *fdc = devtag_get_device(space->machine, WD1770_TAG);
+	running_device *fdc = devtag_get_device(space->machine, WD1770_TAG);
 	/*
 
         bit     description
@@ -241,7 +242,7 @@ static void fdc_w(const address_space *space, UINT8 data)
 
     */
 
-	comx35_state *state = space->machine->driver_data;
+	comx35_state *state = (comx35_state *)space->machine->driver_data;
 
 	if (state->cdp1802_q)
 	{
@@ -279,7 +280,7 @@ static void fdc_w(const address_space *space, UINT8 data)
 
 static UINT8 printer_r(running_machine *machine)
 {
-//  comx35_state *state = machine->driver_data;
+//  comx35_state *state = (comx35_state *)machine->driver_data;
 
 	int printer = input_port_read(machine, "PRINTER") & 0x07;
 	UINT8 data = 0;
@@ -320,7 +321,7 @@ static UINT8 printer_r(running_machine *machine)
 
 static void printer_w(running_machine *machine, UINT8 data)
 {
-//  comx35_state *state = machine->driver_data;
+//  comx35_state *state = (comx35_state *)machine->driver_data;
 	int printer = input_port_read(machine, "PRINTER") & 0x07;
 
 	switch (printer)
@@ -356,7 +357,7 @@ static void printer_w(running_machine *machine, UINT8 data)
 
 static void get_active_bank(running_machine *machine, UINT8 data)
 {
-	comx35_state *state = machine->driver_data;
+	comx35_state *state = (comx35_state *)machine->driver_data;
 	static const char *const slotnames[] = { "", "SLOT1", "SLOT2", "SLOT3", "SLOT4" };
 
 	if (expansion_box_installed(machine))
@@ -390,7 +391,7 @@ static void get_active_bank(running_machine *machine, UINT8 data)
 
 static void set_active_bank(running_machine *machine)
 {
-	comx35_state *state = machine->driver_data;
+	comx35_state *state = (comx35_state *)machine->driver_data;
 	const address_space *program = cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM);
 	int bank = state->bank;
 
@@ -435,7 +436,7 @@ static void set_active_bank(running_machine *machine)
 
 	case BANK_80_COLUMNS:
 		{
-			const device_config *mc6845 = devtag_get_device(machine, MC6845_TAG);
+			running_device *mc6845 = devtag_get_device(machine, MC6845_TAG);
 
 			memory_install_read_bank(program, 0xc000, 0xc7ff, 0, 0, "bank1"); // ROM
 			memory_unmap_write(program, 0xc000, 0xc7ff, 0, 0); // ROM
@@ -468,7 +469,7 @@ WRITE8_HANDLER( comx35_bank_select_w )
 
 READ8_HANDLER( comx35_io_r )
 {
-	comx35_state *state = space->machine->driver_data;
+	comx35_state *state = (comx35_state *)space->machine->driver_data;
 
 	UINT8 data = 0xff;
 
@@ -504,7 +505,7 @@ READ8_HANDLER( comx35_io_r )
 
 READ8_HANDLER( comx35_io2_r )
 {
-	comx35_state *state = space->machine->driver_data;
+	comx35_state *state = (comx35_state *)space->machine->driver_data;
 
 	UINT8 data = 0xff;
 
@@ -538,7 +539,7 @@ READ8_HANDLER( comx35_io2_r )
 
 WRITE8_HANDLER( comx35_io_w )
 {
-	comx35_state *state = space->machine->driver_data;
+	comx35_state *state = (comx35_state *)space->machine->driver_data;
 
 	switch (state->bank)
 	{
@@ -571,7 +572,7 @@ WRITE8_HANDLER( comx35_io_w )
 
 static TIMER_CALLBACK( reset_tick )
 {
-	comx35_state *state = machine->driver_data;
+	comx35_state *state = (comx35_state *)machine->driver_data;
 
 	state->cdp1802_mode = CDP1802_MODE_RUN;
 }
@@ -598,7 +599,7 @@ static STATE_POSTLOAD( comx35_state_save_postload )
 
 MACHINE_START( comx35p )
 {
-	comx35_state *state = machine->driver_data;
+	comx35_state *state = (comx35_state *)machine->driver_data;
 	const address_space *program = cputag_get_address_space(machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM);
 
 	/* opbase handling for DOS Card */
@@ -677,7 +678,7 @@ MACHINE_START( comx35p )
 
 MACHINE_START( comx35n )
 {
-	comx35_state *state = machine->driver_data;
+	comx35_state *state = (comx35_state *)machine->driver_data;
 
 	MACHINE_START_CALL(comx35p);
 
@@ -688,7 +689,7 @@ MACHINE_START( comx35n )
 
 MACHINE_RESET( comx35 )
 {
-	comx35_state *state = machine->driver_data;
+	comx35_state *state = (comx35_state *)machine->driver_data;
 	int t = RES_K(27) * CAP_U(1) * 1000; // t = R1 * C1
 
 	state->cdp1802_mode = CDP1802_MODE_RESET;
@@ -709,7 +710,7 @@ INPUT_CHANGED( comx35_reset )
 
 /* Quickload */
 
-static void image_fread_memory(const device_config *image, UINT16 addr, UINT32 count)
+static void image_fread_memory(running_device *image, UINT16 addr, UINT32 count)
 {
 	void *ptr = memory_get_write_ptr(cputag_get_address_space(image->machine, CDP1802_TAG, ADDRESS_SPACE_PROGRAM), addr);
 

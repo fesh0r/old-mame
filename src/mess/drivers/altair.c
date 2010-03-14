@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/terminal.h"
 #include "devices/snapquik.h"
@@ -34,7 +34,7 @@ static READ8_HANDLER(sio_data_r)
 
 static WRITE8_HANDLER(sio_data_w)
 {
-	const device_config	*devconf = devtag_get_device(space->machine, "terminal");
+	running_device *devconf = devtag_get_device(space->machine, "terminal");
 	terminal_write(devconf,0,data);
 }
 
@@ -82,7 +82,7 @@ QUICKLOAD_LOAD(altair)
 static MACHINE_RESET(altair)
 {
 	// Set startup addess done by turn-key
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), I8085_PC, 0xFD00);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), I8085_PC, 0xFD00);
 
 	term_data = 0;
 }
@@ -123,5 +123,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( 1975, al8800bt,  0,       0, 	altair, 	altair, 	 0,   "MITS",   "Altair 8800bt",		GAME_NOT_WORKING)
+COMP( 1975, al8800bt,  0,       0,	altair, 	altair, 	 0,   "MITS",   "Altair 8800bt",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

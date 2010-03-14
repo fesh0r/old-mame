@@ -39,7 +39,7 @@ TODO:
 
 ******************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 
 #include "cpu/f8/f8.h"
 #include "machine/f3853.h"
@@ -162,9 +162,9 @@ static MACHINE_START( mk1 )
 }
 
 
-static void mk1_interrupt( const device_config *device, UINT16 addr, int level )
+static void mk1_interrupt( running_device *device, UINT16 addr, int level )
 {
-	cpu_set_input_line_vector(cputag_get_cpu(device->machine, "maincpu"), 0, addr );
+	cpu_set_input_line_vector(devtag_get_device(device->machine, "maincpu"), 0, addr );
 	cputag_set_input_line(device->machine,"maincpu", 0, level ? F8_INT_INTR : F8_INT_NONE );
 }
 
@@ -205,5 +205,5 @@ ROM_END
 
 // seams to be developed by mostek (MK)
 /*     YEAR   NAME  PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                 FULLNAME */
-CONS( 1979,  mk1,  0, 		0,		mk1,	mk1,	0,		"Computer Electronic",  "Chess Champion MK I", 0 )
+CONS( 1979,  mk1,  0,		0,		mk1,	mk1,	0,		"Computer Electronic",  "Chess Champion MK I", GAME_NO_SOUND )
 

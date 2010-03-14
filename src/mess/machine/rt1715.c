@@ -7,17 +7,12 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "video/i8275.h"
 #include "includes/rt1715.h"
 #include "devices/messram.h"
 
-/* Driver initialization */
-DRIVER_INIT(rt1715)
-{
-	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,64*1024);
-}
 
 MACHINE_RESET( rt1715 )
 {

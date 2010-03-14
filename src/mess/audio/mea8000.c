@@ -27,7 +27,7 @@
 
 #include <math.h>
 
-#include "driver.h"
+#include "emu.h"
 #include "mea8000.h"
 #include "sound/dac.h"
 
@@ -121,7 +121,7 @@ typedef struct
 #define SAMPLING ATTOTIME_IN_HZ((SUPERSAMPLING*F0))
 
 
-INLINE mea8000_t* get_safe_token( const device_config *device )
+INLINE mea8000_t* get_safe_token( running_device *device )
 {
 	assert( device != NULL );
 	assert( device->token != NULL );
@@ -198,7 +198,7 @@ static int mea8000_accept_byte( mea8000_t* mea8000 )
 		(mea8000->state == MEA8000_STARTED && mea8000->bufpos < 4);
 }
 
-static void mea8000_update_req( const device_config *device )
+static void mea8000_update_req( running_device *device )
 {
 	mea8000_t* mea8000 = get_safe_token( device );
 	/* actually, req pulses less than 3us for each new byte,
@@ -480,7 +480,7 @@ static void mea8000_stop_frame( running_machine *machine, mea8000_t* mea8000 )
 /* next sample in frame, sampling at 64 kHz */
 static TIMER_CALLBACK( mea8000_timer_expire )
 {
-	const device_config* device = (const device_config*) ptr;
+	running_device* device = (running_device*) ptr;
 	mea8000_t* mea8000 = get_safe_token( device );
 	int pos = mea8000->framepos % SUPERSAMPLING;
 
@@ -667,37 +667,37 @@ static DEVICE_START( mea8000 )
 {
 	mea8000_t* mea8000 = get_safe_token( device );
 	int i;
-	mea8000->iface = device->static_config;
+	mea8000->iface = (const mea8000_interface*)device->baseconfig().static_config;
 
 	mea8000_init_tables(device->machine);
 
 	mea8000->timer = timer_alloc( device->machine, mea8000_timer_expire , (void*)device );
 
-	state_save_register_item( device->machine, "mea8000", device->tag, 0, mea8000->state );
-	state_save_register_item_array( device->machine, "mea8000", device->tag, 0, mea8000->buf );
-	state_save_register_item( device->machine, "mea8000", device->tag, 0, mea8000->bufpos );
-	state_save_register_item( device->machine, "mea8000", device->tag, 0, mea8000->cont );
-	state_save_register_item( device->machine, "mea8000", device->tag, 0, mea8000->roe );
-	state_save_register_item( device->machine, "mea8000", device->tag, 0, mea8000->framelength );
-	state_save_register_item( device->machine, "mea8000", device->tag, 0, mea8000->framepos );
-	state_save_register_item( device->machine, "mea8000", device->tag, 0, mea8000->framelog );
-	state_save_register_item( device->machine, "mea8000", device->tag, 0, mea8000->lastsample );
-	state_save_register_item( device->machine, "mea8000", device->tag, 0, mea8000->sample );
-	state_save_register_item( device->machine, "mea8000", device->tag, 0, mea8000->phi );
+	state_save_register_item( device->machine, "mea8000", device->tag(), 0, mea8000->state );
+	state_save_register_item_array( device->machine, "mea8000", device->tag(), 0, mea8000->buf );
+	state_save_register_item( device->machine, "mea8000", device->tag(), 0, mea8000->bufpos );
+	state_save_register_item( device->machine, "mea8000", device->tag(), 0, mea8000->cont );
+	state_save_register_item( device->machine, "mea8000", device->tag(), 0, mea8000->roe );
+	state_save_register_item( device->machine, "mea8000", device->tag(), 0, mea8000->framelength );
+	state_save_register_item( device->machine, "mea8000", device->tag(), 0, mea8000->framepos );
+	state_save_register_item( device->machine, "mea8000", device->tag(), 0, mea8000->framelog );
+	state_save_register_item( device->machine, "mea8000", device->tag(), 0, mea8000->lastsample );
+	state_save_register_item( device->machine, "mea8000", device->tag(), 0, mea8000->sample );
+	state_save_register_item( device->machine, "mea8000", device->tag(), 0, mea8000->phi );
 	for (i=0; i<4; i++)
 	{
-		state_save_register_item( device->machine, "mea8000", device->tag, i, mea8000->f[i].fm );
-		state_save_register_item( device->machine, "mea8000", device->tag, i, mea8000->f[i].last_fm );
-		state_save_register_item( device->machine, "mea8000", device->tag, i, mea8000->f[i].bw );
-		state_save_register_item( device->machine, "mea8000", device->tag, i, mea8000->f[i].last_bw );
-		state_save_register_item( device->machine, "mea8000", device->tag, i, mea8000->f[i].output );
-		state_save_register_item( device->machine, "mea8000", device->tag, i, mea8000->f[i].last_output );
+		state_save_register_item( device->machine, "mea8000", device->tag(), i, mea8000->f[i].fm );
+		state_save_register_item( device->machine, "mea8000", device->tag(), i, mea8000->f[i].last_fm );
+		state_save_register_item( device->machine, "mea8000", device->tag(), i, mea8000->f[i].bw );
+		state_save_register_item( device->machine, "mea8000", device->tag(), i, mea8000->f[i].last_bw );
+		state_save_register_item( device->machine, "mea8000", device->tag(), i, mea8000->f[i].output );
+		state_save_register_item( device->machine, "mea8000", device->tag(), i, mea8000->f[i].last_output );
 	}
-	state_save_register_item( device->machine, "mea8000", device->tag, 0, mea8000->last_ampl );
-	state_save_register_item( device->machine, "mea8000", device->tag, 0, mea8000->ampl );
-	state_save_register_item( device->machine, "mea8000", device->tag, 0, mea8000->last_pitch );
-	state_save_register_item( device->machine, "mea8000", device->tag, 0, mea8000->pitch );
-	state_save_register_item( device->machine, "mea8000", device->tag, 0, mea8000->noise );
+	state_save_register_item( device->machine, "mea8000", device->tag(), 0, mea8000->last_ampl );
+	state_save_register_item( device->machine, "mea8000", device->tag(), 0, mea8000->ampl );
+	state_save_register_item( device->machine, "mea8000", device->tag(), 0, mea8000->last_pitch );
+	state_save_register_item( device->machine, "mea8000", device->tag(), 0, mea8000->pitch );
+	state_save_register_item( device->machine, "mea8000", device->tag(), 0, mea8000->noise );
 }
 
 

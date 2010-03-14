@@ -84,7 +84,7 @@ Notes:
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "conkort.h"
 #include "machine/z80dma.h"
 #include "machine/z80pio.h"
@@ -114,18 +114,17 @@ struct _slow_t
 {
 	UINT8 status;			/* ABC BUS status */
 	UINT8 data;				/* ABC BUS data */
-	int pio_ardy;			/* PIO port A ready */
 	int fdc_irq;			/* floppy interrupt */
 	int fdc_drq;			/* floppy data request */
 	int fdc_dden;			/* floppy density */
 	int wait_enable;		/* wait enable */
 
 	/* devices */
-	const device_config *cpu;
-	const device_config *z80pio;
-	const device_config *wd1791;
-	const device_config *image0;
-	const device_config *image1;
+	running_device *cpu;
+	running_device *z80pio;
+	running_device *wd1791;
+	running_device *image0;
+	running_device *image1;
 };
 
 typedef struct _fast_t fast_t;
@@ -136,25 +135,25 @@ struct _fast_t
 	int fdc_irq;			/* FDC interrupt */
 
 	/* devices */
-	const device_config *cpu;
-	const device_config *z80dma;
-	const device_config *wd1793;
-	const device_config *image0;
-	const device_config *image1;
+	running_device *cpu;
+	running_device *z80dma;
+	running_device *wd1793;
+	running_device *image0;
+	running_device *image1;
 };
 
 /***************************************************************************
     INLINE FUNCTIONS
 ***************************************************************************/
 
-INLINE slow_t *get_safe_token_slow(const device_config *device)
+INLINE slow_t *get_safe_token_slow(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
 	return (slow_t *)device->token;
 }
 
-INLINE fast_t *get_safe_token_fast(const device_config *device)
+INLINE fast_t *get_safe_token_fast(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -163,13 +162,13 @@ INLINE fast_t *get_safe_token_fast(const device_config *device)
 
 INLINE slow_t *get_safe_token_machine_slow(running_machine *machine)
 {
-   	const device_config *device = devtag_get_device(machine, CONKORT_TAG);
+	running_device *device = devtag_get_device(machine, CONKORT_TAG);
 	return get_safe_token_slow(device);
 }
 
 INLINE fast_t *get_safe_token_machine_fast(running_machine *machine)
 {
-   	const device_config *device = devtag_get_device(machine, CONKORT_TAG);
+	running_device *device = devtag_get_device(machine, CONKORT_TAG);
 	return get_safe_token_fast(device);
 }
 
@@ -215,7 +214,7 @@ static READ8_HANDLER( slow_bus_stat_r )
 {
 	slow_t *conkort = get_safe_token_machine_slow(space->machine);
 
-	return (conkort->status & 0xfe) | conkort->pio_ardy;
+	return (conkort->status & 0xfe) | z80pio_ardy_r(conkort->z80pio);
 }
 
 static WRITE8_HANDLER( slow_bus_c1_w )
@@ -480,7 +479,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( slow_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x70, 0x73) AM_MIRROR(0x0c) AM_DEVREADWRITE(Z80PIO_TAG, z80pio_alt_r, z80pio_alt_w)
+	AM_RANGE(0x70, 0x73) AM_MIRROR(0x0c) AM_DEVREADWRITE(Z80PIO_TAG, z80pio_ba_cd_r, z80pio_ba_cd_w)
 	AM_RANGE(0xb0, 0xb3) AM_MIRROR(0x0c) AM_DEVREADWRITE(WD1791_TAG, wd17xx_r, wd17xx_w)
 	AM_RANGE(0xd0, 0xd0) AM_MIRROR(0x0f) AM_WRITE(slow_status_w)
 	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x0f) AM_WRITE(slow_ctrl_w)
@@ -615,25 +614,18 @@ static WRITE8_DEVICE_HANDLER( conkort_pio_port_b_w )
 	slow_t *conkort = get_safe_token_machine_slow(device->machine);
 
 	/* disk density */
-	wd17xx_set_density(conkort->wd1791, BIT(data, 3) ? DEN_FM_HI : DEN_FM_LO);
 	conkort->fdc_dden = BIT(data, 3);
+	wd17xx_dden_w(conkort->wd1791, conkort->fdc_dden);
 }
 
-static WRITE_LINE_DEVICE_HANDLER( conkort_pio_ardy_w )
-{
-	slow_t *conkort = get_safe_token_machine_slow(device->machine);
-
-	conkort->pio_ardy = state;
-}
-
-static const z80pio_interface conkort_pio_intf =
+static Z80PIO_INTERFACE( conkort_pio_intf )
 {
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),		/* interrupt callback */
 	DEVCB_HANDLER(conkort_pio_port_a_r),	/* port A read callback */
-	DEVCB_HANDLER(conkort_pio_port_b_r),	/* port B read callback */
 	DEVCB_HANDLER(conkort_pio_port_a_w),	/* port A write callback */
+	DEVCB_NULL,								/* port A ready callback */
+	DEVCB_HANDLER(conkort_pio_port_b_r),	/* port B read callback */
 	DEVCB_HANDLER(conkort_pio_port_b_w),	/* port B write callback */
-	DEVCB_LINE(conkort_pio_ardy_w),			/* port A ready callback */
 	DEVCB_NULL								/* port B ready callback */
 };
 
@@ -737,6 +729,7 @@ static WRITE_LINE_DEVICE_HANDLER( slow_wd1791_drq_w )
 
 static const wd17xx_interface slow_wd17xx_interface =
 {
+	DEVCB_NULL,
 	DEVCB_LINE(slow_wd1791_intrq_w),
 	DEVCB_LINE(slow_wd1791_drq_w),
 	{ FLOPPY_0, FLOPPY_1, NULL, NULL }
@@ -746,6 +739,7 @@ static const wd17xx_interface slow_wd17xx_interface =
 
 static const wd17xx_interface fast_wd17xx_interface =
 {
+	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_DEVICE_LINE(Z80DMA_TAG, z80dma_rdy_w),
 	{ FLOPPY_0, FLOPPY_1, NULL, NULL }
@@ -771,7 +765,7 @@ static MACHINE_DRIVER_START( luxor_55_10828 )
 	MDRV_CPU_IO_MAP(slow_io_map)
 	MDRV_CPU_CONFIG(slow_daisy_chain)
 
-	MDRV_Z80PIO_ADD(Z80PIO_TAG, conkort_pio_intf)
+	MDRV_Z80PIO_ADD(Z80PIO_TAG, XTAL_4MHz/2, conkort_pio_intf)
 	MDRV_WD179X_ADD(WD1791_TAG, slow_wd17xx_interface)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(abc800_floppy_config)
@@ -842,21 +836,20 @@ ROM_END
 
 static DEVICE_START( luxor_55_10828 )
 {
-	slow_t *conkort = device->token;
+	slow_t *conkort = (slow_t *)device->token;
 
 	/* find our CPU */
-	conkort->cpu = device_find_child_by_tag(device, Z80_TAG);
+	conkort->cpu = device->subdevice(Z80_TAG);
 
 	/* find devices */
-	conkort->z80pio = device_find_child_by_tag(device, Z80PIO_TAG);
-	conkort->wd1791 = device_find_child_by_tag(device, WD1791_TAG);
-	conkort->image0 = device_find_child_by_tag(device, FLOPPY_0);
-	conkort->image1 = device_find_child_by_tag(device, FLOPPY_1);
+	conkort->z80pio = device->subdevice(Z80PIO_TAG);
+	conkort->wd1791 = device->subdevice(WD1791_TAG);
+	conkort->image0 = device->subdevice(FLOPPY_0);
+	conkort->image1 = device->subdevice(FLOPPY_1);
 
 	/* register for state saving */
 	state_save_register_device_item(device, 0, conkort->status);
 	state_save_register_device_item(device, 0, conkort->data);
-	state_save_register_device_item(device, 0, conkort->pio_ardy);
 	state_save_register_device_item(device, 0, conkort->fdc_irq);
 	state_save_register_device_item(device, 0, conkort->fdc_drq);
 	state_save_register_device_item(device, 0, conkort->fdc_dden);
@@ -910,16 +903,16 @@ DEVICE_GET_INFO( luxor_55_10828 )
 
 static DEVICE_START( luxor_55_21046 )
 {
-	fast_t *conkort = device->token;
+	fast_t *conkort = (fast_t *)device->token;
 
 	/* find our CPU */
-	conkort->cpu = device_find_child_by_tag(device, Z80_TAG);
+	conkort->cpu = device->subdevice(Z80_TAG);
 
 	/* find devices */
-	conkort->z80dma = device_find_child_by_tag(device, Z80DMA_TAG);
-	conkort->wd1793 = device_find_child_by_tag(device, SAB1793_TAG);
-	conkort->image0 = device_find_child_by_tag(device, FLOPPY_0);
-	conkort->image1 = device_find_child_by_tag(device, FLOPPY_1);
+	conkort->z80dma = device->subdevice(Z80DMA_TAG);
+	conkort->wd1793 = device->subdevice(SAB1793_TAG);
+	conkort->image0 = device->subdevice(FLOPPY_0);
+	conkort->image1 = device->subdevice(FLOPPY_1);
 
 	/* register for state saving */
 	state_save_register_device_item(device, 0, conkort->status);
@@ -933,7 +926,7 @@ static DEVICE_START( luxor_55_21046 )
 
 static DEVICE_RESET( luxor_55_21046 )
 {
-	fast_t *conkort = device->token;
+	fast_t *conkort = (fast_t *)device->token;
 
 	floppy_mon_w(conkort->image0, CLEAR_LINE);
 	floppy_mon_w(conkort->image1, CLEAR_LINE);

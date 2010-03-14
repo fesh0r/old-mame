@@ -18,7 +18,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/aquarius.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
@@ -62,7 +62,7 @@ static UINT8 scrambler;
 */
 static READ8_HANDLER( cassette_r )
 {
-	const device_config *cassette = devtag_get_device(space->machine, "cassette");
+	running_device *cassette = devtag_get_device(space->machine, "cassette");
 	return (cassette_input(cassette) < +0.0) ? 0 : 1;
 }
 
@@ -74,8 +74,8 @@ static READ8_HANDLER( cassette_r )
 */
 static WRITE8_HANDLER( cassette_w )
 {
-	const device_config *speaker = devtag_get_device(space->machine, "speaker");
-	const device_config *cassette = devtag_get_device(space->machine, "cassette");
+	running_device *speaker = devtag_get_device(space->machine, "speaker");
+	running_device *cassette = devtag_get_device(space->machine, "cassette");
 
 	speaker_level_w(speaker, BIT(data, 0));
 	cassette_output(cassette, BIT(data, 0) ? +1.0 : -1.0);
@@ -96,7 +96,7 @@ static WRITE8_HANDLER( cassette_w )
 */
 static READ8_HANDLER( vsync_r )
 {
-	const device_config *screen = space->machine->primary_screen;
+	running_device *screen = space->machine->primary_screen;
 	return video_screen_get_vblank(screen) ? 0 : 1;
 }
 
@@ -388,7 +388,7 @@ static const cassette_config aquarius_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED)
 };
 
 static MACHINE_DRIVER_START( aquarius )
@@ -500,6 +500,7 @@ ROM_START( aquarius_qd )
 
 	/* quickdisk floppy drive */
 	ROM_LOAD("qd1_01.bin", 0xc000, 0x4000, CRC(06dc0ef3) SHA1(94b18c2f3f4baca8f5ab0feb2458c88b1682f8b2))
+	ROM_LOAD("qd1_02.bin", 0xc000, 0x4000, CRC(10fb3dca) SHA1(ea38ce45628c9d9e4e633c7638e8d860a40c3ffa))
 
 	/* charrom */
 	ROM_REGION(0x800, "gfx1", 0)

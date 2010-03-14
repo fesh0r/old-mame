@@ -8,11 +8,8 @@
 
 #include <stddef.h>
 
-#include "driver.h"
+#include "emu.h"
 #include "device.h"
-#include "mslegacy.h"
-#include "pool.h"
-#include "tagpool.h"
 
 typedef struct _mess_device_type_info mess_device_type_info;
 struct _mess_device_type_info
@@ -42,7 +39,7 @@ static const mess_device_type_info device_info_array[] =
 	{ IO_PARALLEL,	"parallel",		"parl" }, /*  9 */
 	{ IO_SNAPSHOT,	"snapshot",		"dump" }, /* 10 */
 	{ IO_QUICKLOAD,	"quickload",	"quik" }, /* 11 */
-	{ IO_MEMCARD,	"memcard",		"memc" }, /* 12 */	
+	{ IO_MEMCARD,	"memcard",		"memc" }, /* 12 */
 	{ IO_CDROM,     "cdrom",        "cdrm" }, /* 13 */
 	{ IO_MAGTAPE,	"magtape",		"magt" }, /* 14 */
 };
@@ -89,5 +86,5 @@ iodevice_t device_typeid(const char *name)
 		if (!mame_stricmp(name, device_info_array[i].name) || !mame_stricmp(name, device_info_array[i].shortname))
 			return device_info_array[i].type;
 	}
-	return -1;
+	return (iodevice_t)-1;
 }

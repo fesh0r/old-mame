@@ -6,7 +6,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m6502/m6502.h"
 #include "aim65_40.lh"
 
@@ -59,4 +59,4 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     INIT  COMPANY     FULLNAME     FLAGS */
-COMP( 1981, aim65_40, 0,      0,      aim65_40, aim65_40, 0,    "Rockwell", "AIM-65/40", GAME_NOT_WORKING )
+COMP( 1981, aim65_40, 0,      0,      aim65_40, aim65_40, 0,    "Rockwell", "AIM-65/40", GAME_NOT_WORKING | GAME_NO_SOUND )

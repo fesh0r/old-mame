@@ -7,7 +7,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "includes/mc80.h"
 
@@ -22,7 +22,7 @@ static IRQ_CALLBACK(mc8020_irq_callback)
 
 MACHINE_RESET(mc8020)
 {
-	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), mc8020_irq_callback);
+	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), mc8020_irq_callback);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( ctc_z0_w )
@@ -68,14 +68,14 @@ static WRITE8_DEVICE_HANDLER (mc80_port_b_w)
 {
 }
 
-const z80pio_interface mc8020_z80pio_intf =
+Z80PIO_INTERFACE( mc8020_z80pio_intf )
 {
 	DEVCB_NULL,	/* callback when change interrupt status */
 	DEVCB_HANDLER(mc80_port_a_r),
-	DEVCB_HANDLER(mc80_port_b_r),
 	DEVCB_HANDLER(mc80_port_a_w),
-	DEVCB_HANDLER(mc80_port_b_w),
 	DEVCB_NULL,
+	DEVCB_HANDLER(mc80_port_b_r),
+	DEVCB_HANDLER(mc80_port_b_w),
 	DEVCB_NULL
 };
 
@@ -119,7 +119,7 @@ static IRQ_CALLBACK(mc8030_irq_callback)
 
 MACHINE_RESET(mc8030)
 {
-	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), mc8030_irq_callback);
+	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), mc8030_irq_callback);
 }
 
 static READ8_DEVICE_HANDLER (zve_port_a_r)
@@ -140,14 +140,14 @@ static WRITE8_DEVICE_HANDLER (zve_port_b_w)
 {
 }
 
-const z80pio_interface mc8030_zve_z80pio_intf =
+Z80PIO_INTERFACE( mc8030_zve_z80pio_intf )
 {
 	DEVCB_NULL,	/* callback when change interrupt status */
 	DEVCB_HANDLER(zve_port_a_r),
-	DEVCB_HANDLER(zve_port_b_r),
 	DEVCB_HANDLER(zve_port_a_w),
-	DEVCB_HANDLER(zve_port_b_w),
 	DEVCB_NULL,
+	DEVCB_HANDLER(zve_port_b_r),
+	DEVCB_HANDLER(zve_port_b_w),
 	DEVCB_NULL
 };
 
@@ -169,14 +169,14 @@ static WRITE8_DEVICE_HANDLER (asp_port_b_w)
 {
 }
 
-const z80pio_interface mc8030_asp_z80pio_intf =
+Z80PIO_INTERFACE( mc8030_asp_z80pio_intf )
 {
 	DEVCB_NULL,	/* callback when change interrupt status */
 	DEVCB_HANDLER(asp_port_a_r),
-	DEVCB_HANDLER(asp_port_b_r),
 	DEVCB_HANDLER(asp_port_a_w),
-	DEVCB_HANDLER(asp_port_b_w),
 	DEVCB_NULL,
+	DEVCB_HANDLER(asp_port_b_r),
+	DEVCB_HANDLER(asp_port_b_w),
 	DEVCB_NULL
 };
 

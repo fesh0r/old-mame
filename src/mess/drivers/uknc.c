@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/t11/t11.h"
 
 static ADDRESS_MAP_START(uknc_mem, ADDRESS_SPACE_PROGRAM, 16)
@@ -81,5 +81,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1987, uknc,  0,       0, 			uknc, 	uknc, 	 0,  	 "????",   "UKNC",		GAME_NOT_WORKING)
+COMP( 1987, uknc,  0,       0,			uknc,	uknc,	 0, 	 "????",   "UKNC",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

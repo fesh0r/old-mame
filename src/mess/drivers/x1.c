@@ -37,6 +37,8 @@
       does a 1->0 transition, any write to the i/o space accesses 2 or 3 banks gradients of the bitmap RAM
       with a single write (generally used for layer clearances and bitmap-style sprites).
       Any i/o read disables this extended bitmap ram.
+    - I/O port $700 bit 7 of X1 Turbo is a sound (dip-)switch / jumper setting. I don't know yet what is for,
+      but King's Knight needs it to be active otherwise it refuses to boot.
 
 =================================================================================================
 
@@ -171,7 +173,7 @@
 
 ************************************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
 #include "machine/z80ctc.h"
@@ -284,7 +286,7 @@ static void draw_fgtilemap(running_machine *machine, bitmap_t *bitmap,const rect
 
 						pcg_pen = pen[2]<<2|pen[1]<<1|pen[0]<<0;
 
-						if(color & 0x10 && 	video_screen_get_frame_number(machine->primary_screen) & 0x10) //reverse flickering
+						if(color & 0x10 &&	video_screen_get_frame_number(machine->primary_screen) & 0x10) //reverse flickering
 							pcg_pen^=7;
 
 						if(pcg_pen == 0 && (!(color & 8)))
@@ -721,7 +723,7 @@ static void cmt_command( running_machine* machine, UINT8 cmd )
 
 static TIMER_CALLBACK( cmt_wind_timer )
 {
-	const device_config* cmt = devtag_get_device(machine,"cass");
+	running_device* cmt = devtag_get_device(machine,"cass");
 	switch(cmt_current_cmd)
 	{
 		case 0x03:
@@ -818,7 +820,7 @@ static WRITE8_HANDLER( sub_io_w )
 	logerror("SUB: Command byte 0x%02x\n",data);
 }
 
-static int x1_keyboard_irq_state(const device_config* device)
+static int x1_keyboard_irq_state(running_device* device)
 {
 	if(key_irq_flag != 0)
 		return Z80_DAISY_INT;
@@ -826,7 +828,7 @@ static int x1_keyboard_irq_state(const device_config* device)
 	return 0;
 }
 
-static int x1_keyboard_irq_ack(const device_config* device)
+static int x1_keyboard_irq_ack(running_device* device)
 {
 	key_irq_flag = 0;
 	cputag_set_input_line(device->machine,"maincpu",INPUT_LINE_IRQ0,CLEAR_LINE);
@@ -913,7 +915,7 @@ static WRITE8_HANDLER( rom_data_w )
 
 static READ8_HANDLER( x1_fdc_r )
 {
-	const device_config* dev = devtag_get_device(space->machine,"fdc");
+	running_device* dev = devtag_get_device(space->machine,"fdc");
 	//UINT8 ret = 0;
 
 	switch(offset+0xff8)
@@ -939,7 +941,7 @@ static READ8_HANDLER( x1_fdc_r )
 
 static WRITE8_HANDLER( x1_fdc_w )
 {
-	const device_config* dev = devtag_get_device(space->machine,"fdc");
+	running_device* dev = devtag_get_device(space->machine,"fdc");
 
 	switch(offset+0xff8)
 	{
@@ -971,6 +973,7 @@ static WRITE8_HANDLER( x1_fdc_w )
 
 static const wd17xx_interface x1_mb8877a_interface =
 {
+	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
@@ -1043,14 +1046,14 @@ static READ8_HANDLER( x1_pcg_r )
 	}
 	else
 	{
- 		gfx_data = memory_region(space->machine, "pcg");
- 		calc_pcg_offset = (pcg_index_r[addr-1]) | ((addr-1)*0x800);
- 		res = gfx_data[0x0000+calc_pcg_offset+(pcg_write_addr*8)];
+		gfx_data = memory_region(space->machine, "pcg");
+		calc_pcg_offset = (pcg_index_r[addr-1]) | ((addr-1)*0x800);
+		res = gfx_data[0x0000+calc_pcg_offset+(pcg_write_addr*8)];
 
- 		pcg_index_r[addr-1]++;
+		pcg_index_r[addr-1]++;
 		pcg_index_r[addr-1]&=0x7;
- 		return res;
- 	}
+		return res;
+	}
 
 	return mame_rand(space->machine);
 }
@@ -1100,8 +1103,8 @@ static WRITE8_HANDLER( x1_pcg_w )
 
     		gfx_element_mark_dirty(space->machine->gfx[1], pcg_offset >> 3);
 
-  			pcg_index[addr-1]++;
-  			pcg_index[addr-1]&=7;
+			pcg_index[addr-1]++;
+			pcg_index[addr-1]&=7;
 		}
 	}
 }
@@ -1332,10 +1335,10 @@ static READ8_HANDLER( x1_io_r )
 
 static WRITE8_HANDLER( x1_io_w )
 {
-	if(io_bank_mode == 1)                        	{ x1_ex_gfxram_w(space, offset, data); }
+	if(io_bank_mode == 1)                       	{ x1_ex_gfxram_w(space, offset, data); }
 //  else if(offset >= 0x0704 && offset <= 0x0707)   { z80ctc_w(devtag_get_device(space->machine, "ctc"), offset-0x0704,data); }
 //  else if(offset >= 0x0c00 && offset <= 0x0cff)   { x1_rs232c_w(space->machine, 0, data); }
-	else if(offset >= 0x0e00 && offset <= 0x0e02)  	{ x1_rom_w(space, offset-0xe00,data); }
+	else if(offset >= 0x0e00 && offset <= 0x0e02)	{ x1_rom_w(space, offset-0xe00,data); }
 //  else if(offset >= 0x0e80 && offset <= 0x0e82)   { x1_kanji_w(space->machine, offset-0xe80,data); }
 	else if(offset >= 0x0ff8 && offset <= 0x0fff)	{ x1_fdc_w(space, offset-0xff8,data); }
 	else if(offset >= 0x1000 && offset <= 0x10ff)	{ x1_pal_b_w(space, 0,data); }
@@ -1374,9 +1377,10 @@ static READ8_HANDLER( x1turbo_io_r )
 {
 	io_bank_mode = 0; //any read disables the extended mode.
 
-	if(offset == 0x0700 || offset == 0x0701)		{ return ym2151_r(devtag_get_device(space->machine, "ym"), offset-0x0700); }
+	if(offset == 0x0700)							{ return (ym2151_r(devtag_get_device(space->machine, "ym"), offset-0x0700) & 0x7f) | (input_port_read(space->machine, "SOUND_SW") & 0x80); }
+	else if(offset == 0x0701)		                { return ym2151_r(devtag_get_device(space->machine, "ym"), offset-0x0700); }
 	else if(offset >= 0x0704 && offset <= 0x0707)   { return z80ctc_r(devtag_get_device(space->machine, "ctc"), offset-0x0704); }
-	else if(offset == 0x0e03)                    	{ return x1_rom_r(space, 0); }
+	else if(offset == 0x0e03)                   	{ return x1_rom_r(space, 0); }
 	else if(offset >= 0x0e80 && offset <= 0x0e83)	{ return x1_kanji_r(space, offset-0xe80); }
 	else if(offset >= 0x0ff8 && offset <= 0x0fff)	{ return x1_fdc_r(space, offset-0xff8); }
 	else if(offset >= 0x1400 && offset <= 0x17ff)	{ return x1_pcg_r(space, offset-0x1400); }
@@ -1408,11 +1412,11 @@ static READ8_HANDLER( x1turbo_io_r )
 
 static WRITE8_HANDLER( x1turbo_io_w )
 {
-	if(io_bank_mode == 1)                        	{ x1_ex_gfxram_w(space, offset, data); }
+	if(io_bank_mode == 1)                       	{ x1_ex_gfxram_w(space, offset, data); }
 	else if(offset == 0x0700 || offset == 0x0701)	{ ym2151_w(devtag_get_device(space->machine, "ym"), offset-0x0700,data); }
 	else if(offset >= 0x0704 && offset <= 0x0707)	{ z80ctc_w(devtag_get_device(space->machine, "ctc"), offset-0x0704,data); }
 //  else if(offset >= 0x0c00 && offset <= 0x0cff)   { x1_rs232c_w(space->machine, 0, data); }
-	else if(offset >= 0x0e00 && offset <= 0x0e02)  	{ x1_rom_w(space, offset-0xe00,data); }
+	else if(offset >= 0x0e00 && offset <= 0x0e02)	{ x1_rom_w(space, offset-0xe00,data); }
 	else if(offset >= 0x0e80 && offset <= 0x0e83)	{ x1_kanji_w(space, offset-0xe80,data); }
 	else if(offset >= 0x0ff8 && offset <= 0x0fff)	{ x1_fdc_w(space, offset-0xff8,data); }
 	else if(offset >= 0x1000 && offset <= 0x10ff)	{ x1_pal_b_w(space, 0,data); }
@@ -1620,6 +1624,11 @@ static INPUT_PORTS_START( x1 )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CHANGED(ipl_reset,0) PORT_NAME("IPL reset")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CHANGED(nmi_reset,0) PORT_NAME("NMI reset")
 
+	PORT_START("SOUND_SW") //FIXME: this is X1Turbo specific
+	PORT_DIPNAME( 0x80, 0x80, "OPM Sound Setting?" )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
 	PORT_START("SYSTEM")
 	PORT_DIPNAME( 0x10, 0x10, "unk" )
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
@@ -1647,7 +1656,7 @@ static INPUT_PORTS_START( x1 )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x80, 0x80, "Sound Setting?" )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
@@ -1975,7 +1984,7 @@ static const cassette_config x1_cassette_config =
 {
 	x1_cassette_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED)
 };
 
 
@@ -2063,7 +2072,7 @@ static MACHINE_RESET( x1 )
 	io_bank_mode = 0;
 	pcg_index[0] = pcg_index[1] = pcg_index[2] = 0;
 
-	//cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), x1_irq_callback);
+	//cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), x1_irq_callback);
 
 	cmt_current_cmd = 0;
 	cmt_test = 0;
@@ -2080,7 +2089,7 @@ static MACHINE_RESET( x1 )
 }
 
 static MACHINE_START( x1 )
-{	
+{
 	timer_pulse(machine, ATTOTIME_IN_HZ(240), NULL, 0, keyboard_callback);
 	timer_pulse(machine, ATTOTIME_IN_HZ(16), NULL, 0, cmt_wind_timer);
 }

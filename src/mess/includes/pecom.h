@@ -7,15 +7,18 @@
 #define PECOM_PAGE_RAM_SIZE	0x400
 #define PECOM_PAGE_RAM_MASK	0x3ff
 
-typedef struct _pecom_state pecom_state;
-
-struct _pecom_state
+class pecom_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, pecom_state(machine)); }
+
+	pecom_state(running_machine &machine) { }
+
 	UINT8 *page_ram;		/* page memory */
 	UINT8 *charram;			/* character generator ROM */
 	int cdp1802_mode;		/* CPU mode */
 	int dma;				/* memory refresh DMA */
-	const device_config *cdp1869;
+	running_device *cdp1869;
 
 	/* timers */
 	emu_timer *reset_timer;	/* power on reset timer */
@@ -24,7 +27,6 @@ struct _pecom_state
 
 /*----------- defined in machine/pecom.c -----------*/
 
-extern DRIVER_INIT( pecom );
 extern MACHINE_START( pecom );
 extern MACHINE_RESET( pecom );
 extern WRITE8_HANDLER( pecom_bank_w );

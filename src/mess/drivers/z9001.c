@@ -6,15 +6,23 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 
-static UINT8 *z9001_video_ram;
+class z9001_state
+{
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, z9001_state(machine)); }
+
+	z9001_state(running_machine &machine) { }
+
+	UINT8 *videoram;
+};
 
 static ADDRESS_MAP_START(z9001_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE( 0x0000, 0xebff ) AM_RAM
-	AM_RANGE( 0xec00, 0xefff ) AM_RAM AM_BASE(&z9001_video_ram)
+	AM_RANGE( 0xec00, 0xefff ) AM_RAM AM_BASE_MEMBER(z9001_state,videoram)
 	AM_RANGE( 0xf000, 0xffff ) AM_ROM
 ADDRESS_MAP_END
 
@@ -30,7 +38,7 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(z9001)
 {
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_PC, 0xf000);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_PC, 0xf000);
 }
 
 static VIDEO_START( z9001 )
@@ -39,8 +47,9 @@ static VIDEO_START( z9001 )
 
 static VIDEO_UPDATE( z9001 )
 {
+	z9001_state *state = (z9001_state *)screen->machine->driver_data;
 	UINT8 code;
- 	UINT8 line;
+	UINT8 line;
 	int y, x, j, b;
 
 	UINT8 *gfx = memory_region(screen->machine, "gfx1");
@@ -49,7 +58,7 @@ static VIDEO_UPDATE( z9001 )
 	{
 		for (x = 0; x < 40; x++)
 		{
-			code = z9001_video_ram[y*40 + x];
+			code = state->videoram[y*40 + x];
 			for(j = 0; j < 8; j++ )
 			{
 				line = gfx[code*8 + j];
@@ -83,6 +92,9 @@ GFXDECODE_END
 
 
 static MACHINE_DRIVER_START( z9001 )
+
+    MDRV_DRIVER_DATA( z9001_state )
+
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",Z80, XTAL_9_8304MHz / 4)
     MDRV_CPU_PROGRAM_MAP(z9001_mem)
@@ -166,9 +178,9 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT COMPANY   FULLNAME       FLAGS */
-COMP( 198?, z9001,   0,       0, 	z9001, 	z9001, 	 0,  	  "Robotron",   "Z9001 (KC 85/1.10)",	GAME_NOT_WORKING)
-COMP( 198?, kc85_111,z9001,   0, 	z9001, 	z9001, 	 0,  	  "Robotron",   "KC 85/1.11",			GAME_NOT_WORKING)
-COMP( 198?, kc87_10, z9001,   0, 	z9001, 	z9001, 	 0,  	  "Robotron",   "KC 87.10",				GAME_NOT_WORKING)
-COMP( 198?, kc87_11, z9001,   0, 	z9001, 	z9001, 	 0,  	  "Robotron",   "KC 87.11",				GAME_NOT_WORKING)
-COMP( 198?, kc87_20, z9001,   0, 	z9001, 	z9001, 	 0,  	  "Robotron",   "KC 87.20",				GAME_NOT_WORKING)
-COMP( 198?, kc87_21, z9001,   0, 	z9001, 	z9001, 	 0,  	  "Robotron",   "KC 87.21",				GAME_NOT_WORKING)
+COMP( 198?, z9001,   0,       0,	z9001,	z9001,	 0, 	  "Robotron",   "Z9001 (KC 85/1.10)",	GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 198?, kc85_111,z9001,   0,	z9001,	z9001,	 0, 	  "Robotron",   "KC 85/1.11",			GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 198?, kc87_10, z9001,   0,	z9001,	z9001,	 0, 	  "Robotron",   "KC 87.10",				GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 198?, kc87_11, z9001,   0,	z9001,	z9001,	 0, 	  "Robotron",   "KC 87.11",				GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 198?, kc87_20, z9001,   0,	z9001,	z9001,	 0, 	  "Robotron",   "KC 87.20",				GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 198?, kc87_21, z9001,   0,	z9001,	z9001,	 0, 	  "Robotron",   "KC 87.21",				GAME_NOT_WORKING | GAME_NO_SOUND)

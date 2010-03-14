@@ -10,7 +10,7 @@
 #include <stdarg.h>
 #include <assert.h>
 
-#include "driver.h"
+#include "emu.h"
 #include "utils.h"
 #include "image.h"
 #include "messopts.h"
@@ -30,6 +30,23 @@ const char mess_disclaimer[] =
 		"with these files is a violation of copyright law and should be promptly\n"
 		"reported to the authors so that appropriate legal action can be taken.\n\n";
 
+static char *filename_basename(char *filename)
+{
+	char *c;
+
+	// NULL begets NULL
+	if (!filename)
+		return NULL;
+
+	// start at the end and return when we hit a slash or colon
+	for (c = filename + strlen(filename) - 1; c >= filename; c--)
+		if (*c == '\\' || *c == '/' || *c == ':')
+			return c + 1;
+
+	// otherwise, return the whole thing
+	return filename;
+}
+
 /*-------------------------------------------------
     mess_predevice_init - initialize devices for a specific
     running_machine
@@ -37,105 +54,63 @@ const char mess_disclaimer[] =
 
 void mess_predevice_init(running_machine *machine)
 {
-	int result = INIT_FAIL;
 	const char *image_name;
-	const device_config *image;
-	device_config *dev;
+	running_device *image;
 	image_device_info info;
 	device_get_image_devices_func get_image_devices;
-	device_list *devlist;
-
-	/* initialize natural keyboard support */
-	inputx_init(machine);
 
 	/* init all devices */
 	image_init(machine);
 
-	devlist = &((machine_config *)machine->config)->devicelist;
-
 	/* make sure that any required devices have been allocated */
-	for (image = image_device_first(machine->config); image != NULL; image = image_device_next(image))
-	{
-		/* get the device info */
-		info = image_device_getinfo(machine->config, image);
-
-		/* is an image specified for this image */
-		image_name = mess_get_device_option(&info);
-
-		if ((image_name != NULL) && (image_name[0] != '\0'))
+    for (image = machine->devicelist.first(); image != NULL; image = image->next)
+    {
+        if (is_image_device(image))
 		{
-			/* try to load this image */
-			result = image_load(image, image_name);
+			/* get the device info */
+			info = image_device_getinfo(machine->config, image);
 
-			/* did the image load fail? */
-			if (result)
+			/* is an image specified for this image */
+			image_name = mess_get_device_option(&info);
+
+			if ((image_name != NULL) && (image_name[0] != '\0'))
 			{
-				/* retrieve image error message */
-				const char *image_err = image_error(image);
+				int result = INIT_FAIL;
 
-				/* unload all images */
-				image_unload_all(machine);
+				/* mark init state */
+				set_init_phase(image);
 
-				/* FIXME: image_name is always empty in this message because of the image_unload_all() call */
-				fatalerror_exitcode(machine, MAMERR_DEVICE, "Device %s load (%s) failed: %s\n",
-					info.name,
-					osd_basename((char *) image_name),
-					image_err);
-			}
-		}
-		else
-		{
-			/* no image... must this device be loaded? */
-			if (info.must_be_loaded)
-			{
-				/* unload all images */
-				image_unload_all(machine);
+				/* try to load this image */
+				result = image_load(image, image_name);
 
-				fatalerror_exitcode(machine, MAMERR_DEVICE, "Driver requires that device \"%s\" must have an image to load\n", info.instance_name);
-			}
-		}
-
-		/* get image-specific hardware */
-		get_image_devices = (device_get_image_devices_func) device_get_info_fct(image, DEVINFO_FCT_GET_IMAGE_DEVICES);
-		if (get_image_devices != NULL)
-			(*get_image_devices)(image, devlist);
-	}
-
-	/* ensure that any added devices have a machine */
-	for (dev = machine->config->devicelist.head; dev != NULL; dev = dev->next)
-	{
-		if (dev->machine == NULL)
-		{
-			const machine_config_token *tokens;
-			machine_config *config;
-			device_config *config_dev;
-			device_config *new_dev;
-			astring *tempstring = astring_alloc();
-
-			dev->machine = machine;
-
-			tokens = device_get_info_ptr(dev, DEVINFO_PTR_MACHINE_CONFIG);
-			if (tokens != NULL)
-			{
-				config = machine_config_alloc(tokens);
-				for (config_dev = config->devicelist.head; config_dev != NULL; config_dev = config_dev->next)
+				/* did the image load fail? */
+				if (result)
 				{
-					new_dev = device_list_add(
-						devlist,
-						dev,
-						config_dev->type,
-						device_build_tag(tempstring, dev, config_dev->tag),
-						config_dev->clock);
+					/* retrieve image error message */
+					const char *image_err = image_error(image);
 
-					new_dev->static_config = config_dev->static_config;
-					memcpy(
-						new_dev->inline_config,
-						config_dev->inline_config,
-						device_get_info_int(new_dev, DEVINFO_INT_INLINE_CONFIG_BYTES));
+					/* unload all images */
+					image_unload_all(machine);
+					/* FIXME: image_name is always empty in this message because of the image_unload_all() call */
+					fatalerror_exitcode(machine, MAMERR_DEVICE, "Device %s load (%s) failed: %s\n",
+						info.name,
+						filename_basename((char *) image_name),
+						image_err);
 				}
-				machine_config_free(config);
 			}
-			astring_free(tempstring);
+			else
+			{
+				/* no image... must this device be loaded? */
+				if (info.must_be_loaded)
+				{
+					fatalerror_exitcode(machine, MAMERR_DEVICE, "Driver requires that device \"%s\" must have an image to load\n", info.instance_name);
+				}
+			}
+
+			/* get image-specific hardware */
+			get_image_devices = (device_get_image_devices_func) image->get_config_fct(DEVINFO_FCT_GET_IMAGE_DEVICES);
+			if (get_image_devices != NULL)
+				(*get_image_devices)(image);
 		}
 	}
 }
@@ -149,38 +124,18 @@ void mess_predevice_init(running_machine *machine)
 
 void mess_postdevice_init(running_machine *machine)
 {
-	const device_config *device;
+	running_device *device;
 
 	/* make sure that any required devices have been allocated */
-	for (device = image_device_first(machine->config); device != NULL; device = image_device_next(device))
-	{
-		image_finish_load(device);
+    for (device = machine->devicelist.first(); device != NULL; device = device->next)
+    {
+        if (is_image_device(device))
+		{
+			image_finish_load(device);
+		}
 	}
 
 	/* add a callback for when we shut down */
 	add_exit_callback(machine, image_unload_all);
 }
 
-const game_driver *mess_next_compatible_driver(const game_driver *drv)
-{
-	if (driver_get_clone(drv))
-		drv = driver_get_clone(drv);
-	else if (drv->compatible_with)
-		drv = driver_get_name(drv->compatible_with);
-	else
-		drv = NULL;
-	return drv;
-}
-
-
-
-int mess_count_compatible_drivers(const game_driver *drv)
-{
-	int count = 0;
-	while(drv)
-	{
-		count++;
-		drv = mess_next_compatible_driver(drv);
-	}
-	return count;
-}

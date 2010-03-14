@@ -1,4 +1,5 @@
-#include "driver.h"
+#include "emu.h"
+#include "crsshair.h"
 #include "image.h"
 #include "includes/sms.h"
 #include "video/smsvdp.h"
@@ -173,7 +174,7 @@ static TIMER_CALLBACK( lightgun_tick )
 static void sms_vdp_hcount_lphaser( running_machine *machine, int hpos)
 {
 	UINT8 tmp = ((hpos - 46) >> 1) & 0xff;
-	const device_config *smsvdp = devtag_get_device(machine, "sms_vdp");
+	running_device *smsvdp = devtag_get_device(machine, "sms_vdp");
 
 	//printf ("sms_vdp_hcount_lphaser: hpos %3d => hcount %2X\n", hpos, tmp);
 	sms_vdp_hcount_latch_w(smsvdp, 0, tmp);
@@ -183,7 +184,7 @@ static void sms_vdp_hcount_lphaser( running_machine *machine, int hpos)
 static UINT8 sms_vdp_hcount( running_machine *machine )
 {
 	UINT8 tmp;
-	const device_config *screen = video_screen_first(machine->config);
+	running_device *screen = video_screen_first(machine);
 	int hpos = video_screen_get_hpos(screen);
 
 	/* alternative method: pass HCounter test, but some others fail */
@@ -200,7 +201,7 @@ static UINT8 sms_vdp_hcount( running_machine *machine )
 		time_end = attotime_zero;
 	else
 		time_end = video_screen_get_time_until_pos(screen, vpos, max_hpos);
-	calc_cycles = cpu_attotime_to_clocks(cputag_get_cpu(machine, "maincpu"), time_end);
+	calc_cycles = cpu_attotime_to_clocks(devtag_get_device(machine, "maincpu"), time_end);
 
 	/* equation got from SMSPower forum, posted by Flubba. */
 	tmp = ((590 - (calc_cycles * 3)) / 4) & 0xff;
@@ -213,13 +214,13 @@ static UINT8 sms_vdp_hcount( running_machine *machine )
 static void sms_vdp_hcount_latch( running_machine *machine )
 {
 	UINT8 value = sms_vdp_hcount(machine);
-	const device_config *smsvdp = devtag_get_device(machine, "sms_vdp");
+	running_device *smsvdp = devtag_get_device(machine, "sms_vdp");
 
 	sms_vdp_hcount_latch_w(smsvdp, 0, value);
 }
 
 
-static UINT16 screen_hpos_nonscaled( const device_config *screen, int scaled_hpos )
+static UINT16 screen_hpos_nonscaled( running_device *screen, int scaled_hpos )
 {
 	const rectangle *visarea = video_screen_get_visible_area(screen);
 	int offset_x = (scaled_hpos * (visarea->max_x - visarea->min_x)) / 255;
@@ -227,7 +228,7 @@ static UINT16 screen_hpos_nonscaled( const device_config *screen, int scaled_hpo
 }
 
 
-static UINT16 screen_vpos_nonscaled( const device_config *screen, int scaled_vpos )
+static UINT16 screen_vpos_nonscaled( running_device *screen, int scaled_vpos )
 {
 	const rectangle *visarea = video_screen_get_visible_area(screen);
 	int offset_y = (scaled_vpos * (visarea->max_y - visarea->min_y)) / 255;
@@ -455,7 +456,7 @@ WRITE8_HANDLER( sms_io_control_w )
 
 READ8_HANDLER( sms_count_r )
 {
-	const device_config *smsvdp = devtag_get_device(space->machine, "sms_vdp");
+	running_device *smsvdp = devtag_get_device(space->machine, "sms_vdp");
 
 	if (offset & 0x01)
 		return sms_vdp_hcount_latch_r(smsvdp, offset);
@@ -513,7 +514,7 @@ READ8_HANDLER( sms_input_port_1_r )
 
 	/* Do region detection if TH of ports A and B are set to output (0) */
 	if (!(sms_state.ctrl_reg & 0x0a))
- 	{
+	{
 		/* Move bits 7,5 of IO control port into bits 7, 6 */
 		sms_state.input_port1 = (sms_state.input_port1 & 0x3f) | (sms_state.ctrl_reg & 0x80) | (sms_state.ctrl_reg & 0x20) << 1;
 
@@ -546,7 +547,7 @@ WRITE8_HANDLER( sms_ym2413_register_port_0_w )
 {
 	if (sms_state.has_fm)
 	{
-		const device_config *ym = devtag_get_device(space->machine, "ym2413");
+		running_device *ym = devtag_get_device(space->machine, "ym2413");
 		ym2413_w(ym, 0, (data & 0x3f));
 	}
 }
@@ -556,7 +557,7 @@ WRITE8_HANDLER( sms_ym2413_data_port_0_w )
 {
 	if (sms_state.has_fm)
 	{
-		const device_config *ym = devtag_get_device(space->machine, "ym2413");
+		running_device *ym = devtag_get_device(space->machine, "ym2413");
 		logerror("data_port_0_w %x %x\n", offset, data);
 		ym2413_w(ym, 1, data);
 	}
@@ -1053,7 +1054,7 @@ static int sms_verify_cart( UINT8 *magic, int size )
 						retval = IMAGE_VERIFY_PASS;
 				}
 #endif
-		 		retval = IMAGE_VERIFY_PASS;
+				retval = IMAGE_VERIFY_PASS;
 			}
 		}
 #endif
@@ -1198,38 +1199,38 @@ DEVICE_IMAGE_LOAD( sms_cart )
 	int fname_len = fname ? strlen(fname) : 0;
 	const char *extrainfo = image_extrainfo(image);
 
-	if (strcmp(image->tag,"cart1") == 0)
+	if (strcmp(image->tag(),"cart1") == 0)
 		index = 0;
 
-	if (strcmp(image->tag,"cart2") == 0)
+	if (strcmp(image->tag(),"cart2") == 0)
 		index = 1;
-	if (strcmp(image->tag,"cart3") == 0)
+	if (strcmp(image->tag(),"cart3") == 0)
 		index = 2;
-	if (strcmp(image->tag,"cart4") == 0)
+	if (strcmp(image->tag(),"cart4") == 0)
 		index = 3;
-	if (strcmp(image->tag,"cart5") == 0)
+	if (strcmp(image->tag(),"cart5") == 0)
 		index = 4;
-	if (strcmp(image->tag,"cart6") == 0)
+	if (strcmp(image->tag(),"cart6") == 0)
 		index = 5;
-	if (strcmp(image->tag,"cart7") == 0)
+	if (strcmp(image->tag(),"cart7") == 0)
 		index = 6;
-	if (strcmp(image->tag,"cart8") == 0)
+	if (strcmp(image->tag(),"cart8") == 0)
 		index = 7;
-	if (strcmp(image->tag,"cart9") == 0)
+	if (strcmp(image->tag(),"cart9") == 0)
 		index = 8;
-	if (strcmp(image->tag,"cart10") == 0)
+	if (strcmp(image->tag(),"cart10") == 0)
 		index = 9;
-	if (strcmp(image->tag,"cart11") == 0)
+	if (strcmp(image->tag(),"cart11") == 0)
 		index = 10;
-	if (strcmp(image->tag,"cart12") == 0)
+	if (strcmp(image->tag(),"cart12") == 0)
 		index = 11;
-	if (strcmp(image->tag,"cart13") == 0)
+	if (strcmp(image->tag(),"cart13") == 0)
 		index = 12;
-	if (strcmp(image->tag,"cart14") == 0)
+	if (strcmp(image->tag(),"cart14") == 0)
 		index = 13;
-	if (strcmp(image->tag,"cart15") == 0)
+	if (strcmp(image->tag(),"cart15") == 0)
 		index = 14;
-	if (strcmp(image->tag,"cart16") == 0)
+	if (strcmp(image->tag(),"cart16") == 0)
 		index = 15;
 
 	/* Check for 512-byte header */
@@ -1405,20 +1406,20 @@ MACHINE_START( sms )
 	sms_state.rapid_fire_timer = timer_alloc(machine, rapid_fire_callback , NULL);
 	timer_adjust_periodic(sms_state.rapid_fire_timer, ATTOTIME_IN_HZ(10), 0, ATTOTIME_IN_HZ(10));
 	/* Check if lightgun has been chosen as input: if so, enable crosshair */
-	timer_set(machine, attotime_zero, NULL, 0, lightgun_tick);	
+	timer_set(machine, attotime_zero, NULL, 0, lightgun_tick);
 }
 
 
 MACHINE_RESET( sms )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	const device_config *smsvdp = devtag_get_device(machine, "sms_vdp");
+	running_device *smsvdp = devtag_get_device(machine, "sms_vdp");
 
 	sms_state.ctrl_reg = 0xff;
 	if (sms_state.has_fm)
 		sms_state.fm_detect = 0x01;
 
-	sms_state.mapper_ram = memory_get_write_ptr(space, 0xdffc);
+	sms_state.mapper_ram = (UINT8*)memory_get_write_ptr(space, 0xdffc);
 
 	sms_state.bios_port = 0;
 
@@ -1520,7 +1521,7 @@ WRITE8_HANDLER( sms_store_control_w )
 	else
 	{
 		/* Pull reset line of CPU #0 low */
-		device_reset(cputag_get_cpu(space->machine, "maincpu"));
+		devtag_get_device(space->machine, "maincpu")->reset();
 		cputag_suspend(space->machine, "maincpu", SUSPEND_REASON_HALT, 1);
 	}
 	sms_state.store_control = data;
@@ -1601,10 +1602,10 @@ DRIVER_INIT( gamegeaj )
 /* This needs to be here to check if segascope has been enabled */
 VIDEO_UPDATE( sms1 )
 {
-	const device_config *main_scr = devtag_get_device(screen->machine, "screen");
-	const device_config *left_lcd = devtag_get_device(screen->machine, "left_lcd");
-	const device_config *right_lcd = devtag_get_device(screen->machine, "right_lcd");
-	const device_config *smsvdp = devtag_get_device(screen->machine, "sms_vdp");
+	running_device *main_scr = devtag_get_device(screen->machine, "screen");
+	running_device *left_lcd = devtag_get_device(screen->machine, "left_lcd");
+	running_device *right_lcd = devtag_get_device(screen->machine, "right_lcd");
+	running_device *smsvdp = devtag_get_device(screen->machine, "sms_vdp");
 	UINT8 segascope = input_port_read_safe(screen->machine, "SEGASCOPE", 0x00);
 
 	if (screen == main_scr)
@@ -1665,7 +1666,7 @@ VIDEO_UPDATE( sms1 )
 
 VIDEO_UPDATE( sms )
 {
-	const device_config *smsvdp = devtag_get_device(screen->machine, "sms_vdp");
+	running_device *smsvdp = devtag_get_device(screen->machine, "sms_vdp");
 	sms_vdp_update(smsvdp, bitmap, cliprect);
 
 	return 0;

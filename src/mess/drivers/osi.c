@@ -176,7 +176,7 @@ Notes:
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m6502/m6502.h"
 #include "includes/osi.h"
 #include "machine/6850acia.h"
@@ -233,7 +233,7 @@ DISCRETE_SOUND_END
 
 static READ8_HANDLER( osi600_keyboard_r )
 {
-	osi_state *state = space->machine->driver_data;
+	osi_state *state = (osi_state *)space->machine->driver_data;
 
 	static const char *const keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7" };
 
@@ -250,8 +250,8 @@ static READ8_HANDLER( osi600_keyboard_r )
 
 static WRITE8_HANDLER( osi600_keyboard_w )
 {
-	const device_config *discrete = devtag_get_device(space->machine, "discrete");
-	osi_state *state = space->machine->driver_data;
+	running_device *discrete = devtag_get_device(space->machine, "discrete");
+	osi_state *state = (osi_state *)space->machine->driver_data;
 
 	state->keylatch = data;
 
@@ -260,7 +260,7 @@ static WRITE8_HANDLER( osi600_keyboard_w )
 
 static WRITE8_HANDLER( uk101_keyboard_w )
 {
-	osi_state *state = space->machine->driver_data;
+	osi_state *state = (osi_state *)space->machine->driver_data;
 
 	state->keylatch = data;
 }
@@ -282,8 +282,8 @@ static WRITE8_HANDLER( osi600_ctrl_w )
 
     */
 
-	const device_config *discrete = devtag_get_device(space->machine, "discrete");
-	osi_state *state = space->machine->driver_data;
+	running_device *discrete = devtag_get_device(space->machine, "discrete");
+	osi_state *state = (osi_state *)space->machine->driver_data;
 
 	state->_32 = BIT(data, 0);
 	state->coloren = BIT(data, 1);
@@ -293,7 +293,7 @@ static WRITE8_HANDLER( osi600_ctrl_w )
 
 static WRITE8_HANDLER( osi630_ctrl_w )
 {
-	const device_config *speaker = devtag_get_device(space->machine, "beep");
+	running_device *speaker = devtag_get_device(space->machine, "beep");
 	/*
 
         bit     description
@@ -314,7 +314,7 @@ static WRITE8_HANDLER( osi630_ctrl_w )
 
 static WRITE8_HANDLER( osi630_sound_w )
 {
-	const device_config *speaker = devtag_get_device(space->machine, "beep");
+	running_device *speaker = devtag_get_device(space->machine, "beep");
 	if (data) beep_set_frequency(speaker, 49152/data);
 }
 
@@ -354,9 +354,9 @@ static WRITE8_HANDLER( osi630_sound_w )
     C011 ACIAIO         DISK CONTROLLER ACIA I/O PORT
 */
 
-static void osi470_index_callback(const device_config *controller, const device_config *img, int state)
+static void osi470_index_callback(running_device *controller, running_device *img, int state)
 {
-	osi_state *driver_state = img->machine->driver_data;
+	osi_state *driver_state = (osi_state *)img->machine->driver_data;
 
 	driver_state->fdc_index = state;
 }
@@ -379,7 +379,7 @@ static READ8_DEVICE_HANDLER( osi470_pia_a_r )
 
     */
 
-	osi_state *state = device->machine->driver_data;
+	osi_state *state = (osi_state *)device->machine->driver_data;
 
 	return (state->fdc_index << 7);
 }
@@ -615,14 +615,14 @@ INPUT_PORTS_END
 
 static READ_LINE_DEVICE_HANDLER( cassette_rx )
 {
-	osi_state *driver_state = device->machine->driver_data;
+	osi_state *driver_state = (osi_state *)device->machine->driver_data;
 
 	return (cassette_input(driver_state->cassette) > 0.0) ? 1 : 0;
 }
 
 static WRITE_LINE_DEVICE_HANDLER( cassette_tx )
 {
-	osi_state *driver_state = device->machine->driver_data;
+	osi_state *driver_state = (osi_state *)device->machine->driver_data;
 
 	cassette_output(driver_state->cassette, state ? +1.0 : -1.0);
 }
@@ -665,7 +665,7 @@ static ACIA6850_INTERFACE( osi470_acia_intf )
 
 static MACHINE_START( osi600 )
 {
-	osi_state *state = machine->driver_data;
+	osi_state *state = (osi_state *)machine->driver_data;
 
 	const address_space *program = cputag_get_address_space(machine, M6502_TAG, ADDRESS_SPACE_PROGRAM);
 
@@ -695,7 +695,7 @@ static MACHINE_START( osi600 )
 
 static MACHINE_START( c1p )
 {
-	osi_state *state = machine->driver_data;
+	osi_state *state = (osi_state *)machine->driver_data;
 
 	const address_space *program = cputag_get_address_space(machine, M6502_TAG, ADDRESS_SPACE_PROGRAM);
 
@@ -922,7 +922,7 @@ ROM_END
 
 static TIMER_CALLBACK( setup_beep )
 {
-	const device_config *speaker = devtag_get_device(machine, "beep");
+	running_device *speaker = devtag_get_device(machine, "beep");
 	beep_set_state(speaker, 0);
 	beep_set_frequency(speaker, 300);
 }
@@ -937,7 +937,7 @@ static DRIVER_INIT( c1p )
 
 //    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT       INIT        COMPANY            FULLNAME
 COMP( 1978, sb2m600b,	0,		0,	osi600,   osi600,    0,		"Ohio Scientific", "Superboard II Model 600 (Rev. B)", GAME_NOT_WORKING)
-//COMP( 1980, sb2m600c, 0,      	0,      osi600c,  osi600,    0,		"Ohio Scientific", "Superboard II Model 600 (Rev. C)", GAME_NOT_WORKING)
+//COMP( 1980, sb2m600c, 0,          0,      osi600c,  osi600,    0,     "Ohio Scientific", "Superboard II Model 600 (Rev. C)", GAME_NOT_WORKING)
 COMP( 1980, c1p,	sb2m600b,	0,	c1p,	  osi600,    c1p,	"Ohio Scientific", "Challenger 1P Series 2", GAME_NOT_WORKING)
 COMP( 1980, c1pmf,	sb2m600b,	0,	c1pmf,	  osi600,    c1p,	"Ohio Scientific", "Challenger 1P MF Series 2", GAME_NOT_WORKING)
-COMP( 1979, uk101,	sb2m600b,	0,	uk101,	  uk101,     0, 	"Compukit",        "UK101", GAME_NOT_WORKING)
+COMP( 1979, uk101,	sb2m600b,	0,	uk101,	  uk101,     0, 	"Compukit",        "UK101", GAME_NOT_WORKING | GAME_NO_SOUND)

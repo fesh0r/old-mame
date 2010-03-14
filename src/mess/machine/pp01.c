@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "includes/pp01.h"
 #include "devices/messram.h"
@@ -16,17 +16,10 @@ static UINT8 memory_block[16];
 UINT8 pp01_video_scroll;
 static UINT8 pp01_video_write_mode;
 
-WRITE8_HANDLER (pp01_video_write_mode_w)
+WRITE8_HANDLER( pp01_video_write_mode_w )
 {
 	pp01_video_write_mode = data & 0x0f;
 }
-
-/* Driver initialization */
-DRIVER_INIT(pp01)
-{
-	memset(messram_get_ptr(devtag_get_device(machine, "messram")), 0, 64 * 1024);
-}
-
 
 static void pp01_video_w(running_machine *machine,UINT8 block,UINT16 offset,UINT8 data,UINT8 part)
 {
@@ -155,7 +148,7 @@ WRITE8_HANDLER (pp01_mem_block_w)
 
 READ8_HANDLER (pp01_mem_block_r)
 {
-	return 	memory_block[offset];
+	return	memory_block[offset];
 }
 
 MACHINE_START(pp01)
@@ -163,34 +156,31 @@ MACHINE_START(pp01)
 }
 
 
-static PIT8253_OUTPUT_CHANGED(pp01_pit_out0)
+static WRITE_LINE_DEVICE_HANDLER( pp01_pit_out0 )
 {
 }
 
-static PIT8253_OUTPUT_CHANGED(pp01_pit_out1)
+static WRITE_LINE_DEVICE_HANDLER( pp01_pit_out1 )
 {
 }
-
-static PIT8253_OUTPUT_CHANGED(pp01_pit_out2)
-{
-	pit8253_set_clock_signal( device, 0, state );
-}
-
 
 const struct pit8253_config pp01_pit8253_intf =
 {
 	{
 		{
 			0,
-			pp01_pit_out0
+			DEVCB_NULL,
+			DEVCB_LINE(pp01_pit_out0)
 		},
 		{
 			2000000,
-			pp01_pit_out1
+			DEVCB_NULL,
+			DEVCB_LINE(pp01_pit_out1)
 		},
 		{
 			2000000,
-			pp01_pit_out2
+			DEVCB_NULL,
+			DEVCB_LINE(pit8253_clk0_w)
 		}
 	}
 };

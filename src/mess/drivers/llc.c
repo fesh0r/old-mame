@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
 #include "machine/z80pio.h"
@@ -27,8 +27,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( llc1_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0xEC, 0xEF) AM_DEVREADWRITE("z80pio", z80pio_r, z80pio_w)
-	//AM_RANGE(0xF4, 0xF7) AM_DEVREADWRITE("z80pio", z80pio_r, z80pio_w)
+	AM_RANGE(0xEC, 0xEF) AM_DEVREADWRITE("z80pio", z80pio_cd_ba_r, z80pio_cd_ba_w)
+	//AM_RANGE(0xF4, 0xF7) AM_DEVREADWRITE("z80pio", z80pio_cd_ba_r, z80pio_cd_ba_w)
 	AM_RANGE(0xF8, 0xFB) AM_DEVREADWRITE("z80ctc", z80ctc_r, z80ctc_w)
 ADDRESS_MAP_END
 
@@ -43,7 +43,7 @@ static ADDRESS_MAP_START( llc2_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0xE0, 0xE3) AM_WRITE(llc2_rom_disable_w)
-	AM_RANGE(0xE8, 0xEB) AM_DEVREADWRITE("z80pio", z80pio_r, z80pio_w)
+	AM_RANGE(0xE8, 0xEB) AM_DEVREADWRITE("z80pio", z80pio_cd_ba_r, z80pio_cd_ba_w)
 	AM_RANGE(0xEC, 0xEC) AM_WRITE(llc2_basic_enable_w)
 	AM_RANGE(0xF8, 0xFB) AM_DEVREADWRITE("z80ctc", z80ctc_r, z80ctc_w)
 ADDRESS_MAP_END
@@ -160,7 +160,7 @@ static INPUT_PORTS_START( llc1 )
 		PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("=") PORT_CODE(KEYCODE_EQUALS)	// this alone acts like Enter and gives no result with Shift
 INPUT_PORTS_END
 
-INPUT_PORTS_START( k7659 )
+extern INPUT_PORTS_START( k7659 )
 	PORT_START("A1")
 		PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1") PORT_CODE(KEYCODE_1)
 		PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Q") PORT_CODE(KEYCODE_Q)
@@ -338,7 +338,7 @@ static MACHINE_DRIVER_START( llc1 )
 	MDRV_VIDEO_START(llc1)
 	MDRV_VIDEO_UPDATE(llc1)
 
-	MDRV_Z80PIO_ADD( "z80pio", llc1_z80pio_intf )
+	MDRV_Z80PIO_ADD( "z80pio", XTAL_3MHz, llc1_z80pio_intf )
 	MDRV_Z80CTC_ADD( "z80ctc", XTAL_3MHz, llc1_ctc_intf )
 MACHINE_DRIVER_END
 
@@ -364,7 +364,7 @@ static MACHINE_DRIVER_START( llc2 )
 	MDRV_VIDEO_START(llc2)
 	MDRV_VIDEO_UPDATE(llc2)
 
-	MDRV_Z80PIO_ADD( "z80pio", llc2_z80pio_intf )
+	MDRV_Z80PIO_ADD( "z80pio", XTAL_3MHz, llc2_z80pio_intf )
 	MDRV_Z80CTC_ADD( "z80ctc", XTAL_3MHz, llc2_ctc_intf )
 
 	/* internal ram */
@@ -397,5 +397,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT       INIT     COMPANY          FULLNAME       FLAGS */
-COMP( 1984, llc1,	0,		0,		llc1, 		llc1, 		llc1, 	 "",		 "LLC-1",	 	GAME_NOT_WORKING)
-COMP( 1984, llc2,	llc1,	0,		llc2, 		k7659, 		llc2, 	 "",		 "LLC-2",	 	0)
+COMP( 1984, llc1,	0,		0,		llc1,		llc1,		llc1,	 "",		 "LLC-1",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1984, llc2,	llc1,	0,		llc2,		k7659,		llc2,	 "",		 "LLC-2",		GAME_NO_SOUND)

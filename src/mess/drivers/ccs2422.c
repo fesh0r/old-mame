@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "machine/terminal.h"
 
@@ -14,7 +14,7 @@ static UINT8 *ccs_ram;
 
 static WRITE8_HANDLER(ccs2422_terminal_w)
 {
-	const device_config	*devconf = devtag_get_device(space->machine, "terminal");
+	running_device *devconf = devtag_get_device(space->machine, "terminal");
 	terminal_write(devconf,0,data);
 }
 
@@ -76,5 +76,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( ????, ccs2422,  0,       0, 	ccs2422, 	ccs2422, 	 0,   "California Computer Systems",   "CCS Model 2422B",		GAME_NOT_WORKING)
+COMP( ????, ccs2422,  0,       0,	ccs2422,	ccs2422,	 0,   "California Computer Systems",   "CCS Model 2422B",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

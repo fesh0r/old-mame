@@ -62,7 +62,7 @@
 */
 
 /* Core includes */
-#include "driver.h"
+#include "emu.h"
 #include "includes/abc80x.h"
 
 /* Components */
@@ -84,7 +84,7 @@
 #include "devices/printer.h"
 #include "devices/messram.h"
 
-static const device_config *cassette_device_image(running_machine *machine)
+static running_device *cassette_device_image(running_machine *machine)
 {
 	return devtag_get_device(machine, CASSETTE_TAG);
 }
@@ -178,7 +178,7 @@ static void scan_keyboard(running_machine *machine)
 	{
 		if (keycode != keylatch)
 		{
-			const device_config *z80dart = devtag_get_device(machine, Z80DART_TAG);
+			running_device *z80dart = devtag_get_device(machine, Z80DART_TAG);
 
 			z80dart_dcdb_w(z80dart, 0);
 			z80dart_receive_data(z80dart, Z80DART_CH_B, keycode);
@@ -190,7 +190,7 @@ static void scan_keyboard(running_machine *machine)
 	{
 		if (keylatch)
 		{
-			const device_config *z80dart = devtag_get_device(machine, Z80DART_TAG);
+			running_device *z80dart = devtag_get_device(machine, Z80DART_TAG);
 
 			z80dart_dcdb_w(z80dart, 1);
 			z80dart_receive_data(z80dart, Z80DART_CH_B, 0);
@@ -209,7 +209,7 @@ static TIMER_DEVICE_CALLBACK( keyboard_tick )
 
 static void abc800_bankswitch(running_machine *machine)
 {
-	abc800_state *state = machine->driver_data;
+	abc800_state *state = (abc800_state *)machine->driver_data;
 	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 
 	if (state->fetch_charram)
@@ -226,7 +226,7 @@ static void abc800_bankswitch(running_machine *machine)
 
 static void abc802_bankswitch(running_machine *machine)
 {
-	abc802_state *state = machine->driver_data;
+	abc802_state *state = (abc802_state *)machine->driver_data;
 	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 
 	if (state->lrs)
@@ -246,7 +246,7 @@ static void abc802_bankswitch(running_machine *machine)
 
 static void abc806_bankswitch(running_machine *machine)
 {
-	abc806_state *state = machine->driver_data;
+	abc806_state *state = (abc806_state *)machine->driver_data;
 	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 	UINT32 videoram_mask = messram_get_size(devtag_get_device(machine, "messram")) - (32 * 1024) - 1;
 	int bank;
@@ -377,7 +377,7 @@ static void abc806_bankswitch(running_machine *machine)
 
 static READ8_HANDLER( abc806_mai_r )
 {
-	abc806_state *state = space->machine->driver_data;
+	abc806_state *state = (abc806_state *)space->machine->driver_data;
 
 	int bank = offset >> 12;
 
@@ -401,7 +401,7 @@ static WRITE8_HANDLER( abc806_mao_w )
 
     */
 
-	abc806_state *state = space->machine->driver_data;
+	abc806_state *state = (abc806_state *)space->machine->driver_data;
 
 	int bank = offset >> 12;
 
@@ -410,50 +410,12 @@ static WRITE8_HANDLER( abc806_mao_w )
 	abc806_bankswitch(space->machine);
 }
 
-/* Z80 SIO/2 */
-
-static READ8_DEVICE_HANDLER( sio2_r )
-{
-	switch (offset)
-	{
-	case 0:
-		return z80sio_d_r(device, 0);
-	case 1:
-		return z80sio_c_r(device, 0);
-	case 2:
-		return z80sio_d_r(device, 1);
-	case 3:
-		return z80sio_c_r(device, 1);
-	}
-
-	return 0;
-}
-
-static WRITE8_DEVICE_HANDLER( sio2_w )
-{
-	switch (offset)
-	{
-	case 0:
-		z80sio_d_w(device, 0, data);
-		break;
-	case 1:
-		z80sio_c_w(device, 0, data);
-		break;
-	case 2:
-		z80sio_d_w(device, 1, data);
-		break;
-	case 3:
-		z80sio_c_w(device, 1, data);
-		break;
-	}
-}
-
 /* Pling */
 
 static READ8_HANDLER( abc800_pling_r )
 {
-	const device_config *discrete = devtag_get_device(space->machine, "discrete");
-	abc800_state *state = space->machine->driver_data;
+	running_device *discrete = devtag_get_device(space->machine, "discrete");
+	abc800_state *state = (abc800_state *)space->machine->driver_data;
 
 	state->pling = !state->pling;
 
@@ -464,8 +426,8 @@ static READ8_HANDLER( abc800_pling_r )
 
 static READ8_HANDLER( abc802_pling_r )
 {
-	const device_config *discrete = devtag_get_device(space->machine, "discrete");
-	abc802_state *state = space->machine->driver_data;
+	running_device *discrete = devtag_get_device(space->machine, "discrete");
+	abc802_state *state = (abc802_state *)space->machine->driver_data;
 
 	state->pling = !state->pling;
 
@@ -497,7 +459,7 @@ static ADDRESS_MAP_START( abc800m_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x31, 0x31) AM_MIRROR(0x06) AM_DEVREAD(MC6845_TAG, mc6845_register_r)
 	AM_RANGE(0x38, 0x38) AM_MIRROR(0x06) AM_DEVWRITE(MC6845_TAG, mc6845_address_w)
 	AM_RANGE(0x39, 0x39) AM_MIRROR(0x06) AM_DEVWRITE(MC6845_TAG, mc6845_register_w)
-	AM_RANGE(0x40, 0x43) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80SIO_TAG, sio2_r, sio2_w)
+	AM_RANGE(0x40, 0x43) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80SIO_TAG, z80sio_ba_cd_r, z80sio_ba_cd_w)
 	AM_RANGE(0x60, 0x63) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80CTC_TAG, z80ctc_r, z80ctc_w)
 ADDRESS_MAP_END
 
@@ -519,7 +481,7 @@ static ADDRESS_MAP_START( abc800c_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x06, 0x06) AM_MIRROR(0x18) AM_WRITE(abc800_hrs_w)
 	AM_RANGE(0x07, 0x07) AM_MIRROR(0x18) AM_READWRITE(abcbus_reset_r, abc800_hrc_w)
 	AM_RANGE(0x20, 0x23) AM_MIRROR(0x0c) AM_DEVREADWRITE(Z80DART_TAG, z80dart_ba_cd_r, z80dart_ba_cd_w)
-	AM_RANGE(0x40, 0x43) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80SIO_TAG, sio2_r, sio2_w)
+	AM_RANGE(0x40, 0x43) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80SIO_TAG, z80sio_ba_cd_r, z80sio_ba_cd_w)
 	AM_RANGE(0x60, 0x63) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80CTC_TAG, z80ctc_r, z80ctc_w)
 ADDRESS_MAP_END
 
@@ -541,7 +503,7 @@ static ADDRESS_MAP_START( abc802_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x31, 0x31) AM_MIRROR(0x06) AM_DEVREAD(MC6845_TAG, mc6845_register_r)
 	AM_RANGE(0x38, 0x38) AM_MIRROR(0x06) AM_DEVWRITE(MC6845_TAG, mc6845_address_w)
 	AM_RANGE(0x39, 0x39) AM_MIRROR(0x06) AM_DEVWRITE(MC6845_TAG, mc6845_register_w)
-	AM_RANGE(0x40, 0x43) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80SIO_TAG, sio2_r, sio2_w)
+	AM_RANGE(0x40, 0x43) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80SIO_TAG, z80sio_ba_cd_r, z80sio_ba_cd_w)
 	AM_RANGE(0x60, 0x63) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80CTC_TAG, z80ctc_r, z80ctc_w)
 ADDRESS_MAP_END
 
@@ -580,7 +542,7 @@ static ADDRESS_MAP_START( abc806_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x37, 0x37) AM_MIRROR(0xff00) AM_MASK(0xff00) AM_READWRITE(abc806_cli_r, abc806_sso_w)
 	AM_RANGE(0x38, 0x38) AM_MIRROR(0xff06) AM_DEVWRITE(MC6845_TAG, mc6845_address_w)
 	AM_RANGE(0x39, 0x39) AM_MIRROR(0xff06) AM_DEVWRITE(MC6845_TAG, mc6845_register_w)
-	AM_RANGE(0x40, 0x43) AM_MIRROR(0xff1c) AM_DEVREADWRITE(Z80SIO_TAG, sio2_r, sio2_w)
+	AM_RANGE(0x40, 0x43) AM_MIRROR(0xff1c) AM_DEVREADWRITE(Z80SIO_TAG, z80sio_ba_cd_r, z80sio_ba_cd_w)
 	AM_RANGE(0x60, 0x63) AM_MIRROR(0xff1c) AM_DEVREADWRITE(Z80CTC_TAG, z80ctc_r, z80ctc_w)
 ADDRESS_MAP_END
 
@@ -726,7 +688,7 @@ static ABC77_INTERFACE( abc800_abc77_intf )
 
 static TIMER_DEVICE_CALLBACK( ctc_tick )
 {
-	const device_config *z80ctc = devtag_get_device(timer->machine, Z80CTC_TAG);
+	running_device *z80ctc = devtag_get_device(timer->machine, Z80CTC_TAG);
 
 	z80ctc_trg0_w(z80ctc, 1);
 	z80ctc_trg0_w(z80ctc, 0);
@@ -740,7 +702,7 @@ static TIMER_DEVICE_CALLBACK( ctc_tick )
 
 static WRITE_LINE_DEVICE_HANDLER( ctc_z0_w )
 {
-	//const device_config *z80sio = devtag_get_device(device->machine, Z80SIO_TAG);
+	//running_device *z80sio = devtag_get_device(device->machine, Z80SIO_TAG);
 
 	UINT8 sb = input_port_read(device->machine, "SB");
 
@@ -762,7 +724,7 @@ static WRITE_LINE_DEVICE_HANDLER( ctc_z0_w )
 
 static WRITE_LINE_DEVICE_HANDLER( ctc_z1_w )
 {
-	//const device_config *z80sio = devtag_get_device(device->machine, Z80SIO_TAG);
+	//running_device *z80sio = devtag_get_device(device->machine, Z80SIO_TAG);
 
 	UINT8 sb = input_port_read(device->machine, "SB");
 
@@ -782,7 +744,7 @@ static WRITE_LINE_DEVICE_HANDLER( ctc_z1_w )
 
 static WRITE_LINE_DEVICE_HANDLER( ctc_z2_w )
 {
-	const device_config *z80dart = devtag_get_device(device->machine, Z80DART_TAG);
+	running_device *z80dart = devtag_get_device(device->machine, Z80DART_TAG);
 
 	/* connected to DART channel A clock inputs */
 	z80dart_rxca_w(z80dart, state);
@@ -800,7 +762,7 @@ static Z80CTC_INTERFACE( ctc_intf )
 
 /* Z80 SIO/2 */
 
-static void sio_interrupt(const device_config *device, int state)
+static void sio_interrupt(running_device *device, int state)
 {
 	cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_IRQ0, state);
 }
@@ -822,7 +784,7 @@ static WRITE8_DEVICE_HANDLER( sio_serial_transmit )
 	}
 }
 
-static int sio_serial_receive( const device_config *device, int channel )
+static int sio_serial_receive( running_device *device, int channel )
 {
 	if (channel == 1)
 	{
@@ -867,7 +829,7 @@ static Z80DART_INTERFACE( abc800_dart_intf )
 
 static WRITE_LINE_DEVICE_HANDLER( abc802_dart_dtrb_r )
 {
-	abc802_state *driver_state = device->machine->driver_data;
+	abc802_state *driver_state = (abc802_state *)device->machine->driver_data;
 
 	/* low RAM select */
 	driver_state->lrs = state;
@@ -877,7 +839,7 @@ static WRITE_LINE_DEVICE_HANDLER( abc802_dart_dtrb_r )
 
 static WRITE_LINE_DEVICE_HANDLER( abc802_dart_rtsb_r )
 {
-	abc802_state *driver_state = device->machine->driver_data;
+	abc802_state *driver_state = (abc802_state *)device->machine->driver_data;
 
 	/* _MUX 80/40 */
 	driver_state->mux80_40 = state;
@@ -906,7 +868,7 @@ static Z80DART_INTERFACE( abc802_dart_intf )
 
 static WRITE_LINE_DEVICE_HANDLER( abc806_dart_dtrb_w )
 {
-	abc806_state *driver_state = device->machine->driver_data;
+	abc806_state *driver_state = (abc806_state *)device->machine->driver_data;
 
 	driver_state->keydtr = state;
 
@@ -962,7 +924,7 @@ static ABCBUS_CONFIG( abc802_abcbus_config )
 
 static MACHINE_START( abc800 )
 {
-	abc800_state *state = machine->driver_data;
+	abc800_state *state = (abc800_state *)machine->driver_data;
 
 	/* find devices */
 	state->z80ctc = devtag_get_device(machine, Z80CTC_TAG);
@@ -981,7 +943,7 @@ static MACHINE_START( abc800 )
 
 static MACHINE_RESET( abc800 )
 {
-	abc800_state *state = machine->driver_data;
+	abc800_state *state = (abc800_state *)machine->driver_data;
 
 	state->fetch_charram = 0;
 	abc800_bankswitch(machine);
@@ -989,7 +951,7 @@ static MACHINE_RESET( abc800 )
 
 static MACHINE_START( abc802 )
 {
-	abc802_state *state = machine->driver_data;
+	abc802_state *state = (abc802_state *)machine->driver_data;
 
 	/* find devices */
 	state->z80ctc = devtag_get_device(machine, Z80CTC_TAG);
@@ -1012,7 +974,7 @@ static MACHINE_START( abc802 )
 
 static MACHINE_RESET( abc802 )
 {
-	abc802_state *state = machine->driver_data;
+	abc802_state *state = (abc802_state *)machine->driver_data;
 
 	UINT8 config = input_port_read(machine, "CONFIG");
 
@@ -1034,7 +996,7 @@ static MACHINE_RESET( abc802 )
 
 static MACHINE_START( abc806 )
 {
-	abc806_state *state = machine->driver_data;
+	abc806_state *state = (abc806_state *)machine->driver_data;
 
 	UINT8 *mem = memory_region(machine, Z80_TAG);
 	UINT32 videoram_size = messram_get_size(devtag_get_device(machine, "messram")) - (32 * 1024);
@@ -1072,7 +1034,7 @@ static MACHINE_START( abc806 )
 
 static MACHINE_RESET( abc806 )
 {
-	abc806_state *state = machine->driver_data;
+	abc806_state *state = (abc806_state *)machine->driver_data;
 
 	/* setup memory banking */
 	int bank;
@@ -1127,7 +1089,7 @@ static DEVICE_GET_INFO( abc800_serial )
 		case DEVINFO_FCT_IMAGE_LOAD:		        info->f = (genf *) DEVICE_IMAGE_LOAD_NAME( abc800_serial );    break;
 		case DEVINFO_STR_NAME:		                strcpy(info->s, "ABC800 serial port");	                         break;
 		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:	    strcpy(info->s, "txt");                                           break;
-		default: 									DEVICE_GET_INFO_CALL(serial);	break;
+		default:									DEVICE_GET_INFO_CALL(serial);	break;
 	}
 }
 
@@ -1135,7 +1097,7 @@ static DEVICE_GET_INFO( abc800_serial )
 
 #define MDRV_ABC800_SERIAL_ADD(_tag) \
 	MDRV_DEVICE_ADD(_tag, ABC800_SERIAL, 0)
-	
+
 /* Machine Drivers */
 
 static MACHINE_DRIVER_START( abc800m )
@@ -1176,7 +1138,7 @@ static MACHINE_DRIVER_START( abc800m )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
 	MDRV_RAM_EXTRA_OPTIONS("32K")
-	
+
 	MDRV_ABC800_SERIAL_ADD("serial")
 MACHINE_DRIVER_END
 
@@ -1218,7 +1180,7 @@ static MACHINE_DRIVER_START( abc800c )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
 	MDRV_RAM_EXTRA_OPTIONS("32K")
-	
+
 	MDRV_ABC800_SERIAL_ADD("serial")
 MACHINE_DRIVER_END
 
@@ -1259,7 +1221,7 @@ static MACHINE_DRIVER_START( abc802 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
-	
+
 	MDRV_ABC800_SERIAL_ADD("serial")
 MACHINE_DRIVER_END
 
@@ -1299,7 +1261,7 @@ static MACHINE_DRIVER_START( abc806 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("160K") // 32KB + 128KB
 	MDRV_RAM_EXTRA_OPTIONS("544K") // 32KB + 512KB
-	
+
 	MDRV_ABC800_SERIAL_ADD("serial")
 MACHINE_DRIVER_END
 
@@ -1416,7 +1378,7 @@ ROM_END
 
 static DIRECT_UPDATE_HANDLER( abc800_direct_update_handler )
 {
-	abc800_state *state = space->machine->driver_data;
+	abc800_state *state = (abc800_state *)space->machine->driver_data;
 
 	if (address >= 0x7800 && address < 0x8000)
 	{
@@ -1442,7 +1404,7 @@ static DIRECT_UPDATE_HANDLER( abc800_direct_update_handler )
 
 static DIRECT_UPDATE_HANDLER( abc802_direct_update_handler )
 {
-	abc802_state *state = space->machine->driver_data;
+	abc802_state *state = (abc802_state *)space->machine->driver_data;
 
 	if (state->lrs)
 	{
@@ -1463,7 +1425,7 @@ static DIRECT_UPDATE_HANDLER( abc802_direct_update_handler )
 
 static DIRECT_UPDATE_HANDLER( abc806_direct_update_handler )
 {
-	abc806_state *state = space->machine->driver_data;
+	abc806_state *state = (abc806_state *)space->machine->driver_data;
 
 	if (address >= 0x7800 && address < 0x8000)
 	{
@@ -1508,4 +1470,4 @@ static DRIVER_INIT( abc806 )
 COMP( 1981, abc800m,    0,			0,      abc800m,    abc800, abc800, "Luxor Datorer AB", "ABC 800 M/HR", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 COMP( 1981, abc800c,    abc800m,    0,      abc800c,    abc800, abc800, "Luxor Datorer AB", "ABC 800 C/HR", GAME_NOT_WORKING )
 COMP( 1983, abc802,     0,          0,      abc802,     abc802, abc802, "Luxor Datorer AB", "ABC 802",		GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-COMP( 1983, abc806,     0,          0,      abc806,     abc806, abc806, "Luxor Datorer AB", "ABC 806",		GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+COMP( 1983, abc806,     0,          0,      abc806,     abc806, abc806, "Luxor Datorer AB", "ABC 806",		GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NO_SOUND)

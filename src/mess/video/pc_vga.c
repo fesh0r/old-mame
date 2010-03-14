@@ -28,7 +28,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "pc_vga.h"
 #include "pc_video.h"
 
@@ -611,7 +611,7 @@ static void vga_cpu_interface(running_machine *machine)
 		{
 			case 0x00:
 				if (vga.vga_intf.vga_memory_bank != NULL)
-				{					
+				{
 					vga.vga_intf.map_vga_memory(machine, 0xA0000, 0xBFFFF, read_handler, write_handler);
 					memory_set_bankptr(machine, vga.vga_intf.vga_memory_bank, vga.memory);
 				}
@@ -629,7 +629,7 @@ static void vga_cpu_interface(running_machine *machine)
 	}
 	else
 	{
-		buswidth = cpu_get_databus_width(machine->firstcpu, ADDRESS_SPACE_PROGRAM);
+		buswidth = machine->firstcpu->databus_width(AS_PROGRAM);
 		switch(buswidth)
 		{
 			case 8:
@@ -1219,7 +1219,7 @@ void pc_vga_init(running_machine *machine, const struct pc_vga_interface *vga_in
 	memset(vga.crtc.data, '\0', vga.svga_intf.crtc_regcount);
 	memset(vga.gc.data, '\0', vga.svga_intf.gc_regcount);
 
-	buswidth = cpu_get_databus_width(machine->firstcpu, ADDRESS_SPACE_PROGRAM);
+	buswidth = machine->firstcpu->databus_width(AS_PROGRAM);
 	spacevga =cpu_get_address_space(machine->firstcpu,vga.vga_intf.port_addressspace);
 	switch(buswidth)
 	{

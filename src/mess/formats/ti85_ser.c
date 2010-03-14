@@ -1,5 +1,5 @@
 
-#include "driver.h"
+#include "emu.h"
 #include "ti85_ser.h"
 
 enum
@@ -108,7 +108,7 @@ typedef struct
 } ti85serial_state;
 
 
-INLINE ti85serial_state *get_token(const device_config *device)
+INLINE ti85serial_state *get_token(running_device *device)
 {
 	assert(device != NULL);
 	assert((device->type == TI85SERIAL) || (device->type == TI86SERIAL));
@@ -143,7 +143,7 @@ static UINT16 ti85_variables_count (const UINT8 * ti85_data, unsigned int ti85_d
 }
 
 
-static void ti85_free_serial_data_memory (const device_config *device)
+static void ti85_free_serial_data_memory (running_device *device)
 {
 	ti85serial_state *ti85serial = get_token( device );
 
@@ -160,7 +160,7 @@ static void ti85_free_serial_data_memory (const device_config *device)
 }
 
 
-static int ti85_alloc_serial_data_memory (const device_config *device, UINT32 size)
+static int ti85_alloc_serial_data_memory (running_device *device, UINT32 size)
 {
 	ti85serial_state *ti85serial = get_token( device );
 
@@ -221,7 +221,7 @@ static void ti85_variables_read (const UINT8 * ti85_data, unsigned int ti85_data
 }
 
 
-static int ti85_receive_serial (const device_config *device, UINT8* received_data, UINT32 received_data_size)
+static int ti85_receive_serial (running_device *device, UINT8* received_data, UINT32 received_data_size)
 {
 	ti85serial_state *ti85serial = get_token( device );
 
@@ -254,7 +254,7 @@ static int ti85_receive_serial (const device_config *device, UINT8* received_dat
 }
 
 
-static int ti85_send_serial(const device_config *device, UINT8* serial_data, UINT32 serial_data_size)
+static int ti85_send_serial(running_device *device, UINT8* serial_data, UINT32 serial_data_size)
 {
 	ti85serial_state *ti85serial = get_token( device );
 
@@ -292,7 +292,7 @@ static void ti85_convert_data_to_stream (const UINT8* file_data, unsigned int si
 	unsigned int i, bits;
 
 	for (i=0; i<size; i++)
- 		for (bits = 0; bits < 8; bits++)
+		for (bits = 0; bits < 8; bits++)
 			serial_data[i*8+bits] = (file_data[i]>>bits) & 0x01;
 }
 
@@ -307,13 +307,13 @@ static void ti85_convert_stream_to_data (const UINT8* serial_data, UINT32 size, 
 	for (i=0; i<size; i++)
 	{
 		data[i] = 0;
- 		for (bits = 0; bits < 8; bits++)
+		for (bits = 0; bits < 8; bits++)
 			data[i] |= serial_data[i*8+bits]<<bits;
 	}
 }
 
 
-static int ti85_convert_file_data_to_serial_stream (const device_config *device, const UINT8* file_data, unsigned int file_size, ti85_serial_data*  serial_data)
+static int ti85_convert_file_data_to_serial_stream (running_device *device, const UINT8* file_data, unsigned int file_size, ti85_serial_data*  serial_data)
 {
 	ti85serial_state *ti85serial = get_token( device );
 	UINT16 i;
@@ -337,7 +337,7 @@ static int ti85_convert_file_data_to_serial_stream (const device_config *device,
 	number_of_entries = (file_data[0x3b]==0x1d) ? 3 : ti85_variables_count(file_data, file_size);
 	if (!number_of_entries) return 0;
 
-	serial_data->variables = malloc(sizeof(ti85_serial_variable)*number_of_entries);
+	serial_data->variables = (ti85_serial_variable*)malloc(sizeof(ti85_serial_variable)*number_of_entries);
 	if (!serial_data->variables) return 0;
 
 	for (i=0; i<number_of_entries; i++)
@@ -525,7 +525,7 @@ static void ti85_free_serial_stream (ti85_serial_data*  serial_data)
 }
 
 
-static void ti85_send_variables (const device_config *device)
+static void ti85_send_variables (running_device *device)
 {
 	ti85serial_state *ti85serial = get_token( device );
 
@@ -642,7 +642,7 @@ static void ti85_send_variables (const device_config *device)
 }
 
 
-static void ti85_send_backup (const device_config *device)
+static void ti85_send_backup (running_device *device)
 {
 	ti85serial_state *ti85serial = get_token( device );
 
@@ -714,7 +714,7 @@ static void ti85_send_backup (const device_config *device)
 }
 
 
-static void ti85_receive_variables (const device_config *device)
+static void ti85_receive_variables (running_device *device)
 {
 	ti85serial_state *ti85serial = get_token( device );
 	char var_file_name[16];
@@ -847,7 +847,7 @@ static void ti85_receive_variables (const device_config *device)
 						ti85serial->var_file_size = 0x39;
 					}
 				}
-				temp = malloc (ti85serial->var_file_size+ti85serial->var_data[0]+2+ti85serial->var_data[2]+ti85serial->var_data[3]*256+2);
+				temp = (UINT8*)malloc (ti85serial->var_file_size+ti85serial->var_data[0]+2+ti85serial->var_data[2]+ti85serial->var_data[3]*256+2);
 				if (temp)
 				{
 					memcpy (temp, ti85serial->var_file_data, ti85serial->var_file_size);
@@ -905,7 +905,7 @@ static void ti85_receive_variables (const device_config *device)
 }
 
 
-static void ti85_receive_backup (const device_config *device)
+static void ti85_receive_backup (running_device *device)
 {
 	ti85serial_state *ti85serial = get_token( device );
 
@@ -922,7 +922,7 @@ static void ti85_receive_backup (const device_config *device)
 				ti85serial->backup_data_size[0] = ti85serial->receive_data[4] + ti85serial->receive_data[5]*256;
 				ti85serial->backup_data_size[1] = ti85serial->receive_data[7] + ti85serial->receive_data[8]*256;
 				ti85serial->backup_data_size[2] = ti85serial->receive_data[9] + ti85serial->receive_data[10]*256;
-				ti85serial->backup_file_data = malloc (0x42+0x06+ti85serial->backup_data_size[0]+ti85serial->backup_data_size[1]+ti85serial->backup_data_size[2]+0x02);
+				ti85serial->backup_file_data = (UINT8*)malloc (0x42+0x06+ti85serial->backup_data_size[0]+ti85serial->backup_data_size[1]+ti85serial->backup_data_size[2]+0x02);
 				if(!ti85serial->backup_file_data)
 				{
 					ti85serial->backup_variable_number = 0;
@@ -1046,7 +1046,7 @@ static void ti85_receive_backup (const device_config *device)
 	}
 }
 
-static void ti85_receive_screen (const device_config *device)
+static void ti85_receive_screen (running_device *device)
 {
 	ti85serial_state *ti85serial = get_token( device );
 	char image_file_name[] = "00000000.85i";
@@ -1098,7 +1098,7 @@ static void ti85_receive_screen (const device_config *device)
 				filerr = mame_fopen(SEARCHPATH_IMAGE, image_file_name, OPEN_FLAG_READ | OPEN_FLAG_WRITE | OPEN_FLAG_CREATE, &image_file);
 				if (filerr == FILERR_NONE)
 				{
-					image_file_data = malloc (0x49+1008);
+					image_file_data = (UINT8*)malloc (0x49+1008);
 					if(!image_file_data)
 					{
 						ti85_free_serial_data_memory(device);
@@ -1150,7 +1150,7 @@ static void ti85_receive_screen (const device_config *device)
 }
 
 
-void ti85_update_serial (const device_config *device)
+void ti85_update_serial (running_device *device)
 {
 	ti85serial_state *ti85serial = get_token( device );
 

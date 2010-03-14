@@ -8,7 +8,7 @@
 
 ******************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m6502/m6502.h"
 #include "machine/ins8154.h"
 #include "machine/74145.h"
@@ -21,7 +21,7 @@
 
 static READ8_DEVICE_HANDLER( ins8154_b1_port_a_r )
 {
-	const device_config *ttl74145 = devtag_get_device(device->machine, "ic8_7445");
+	running_device *ttl74145 = devtag_get_device(device->machine, "ic8_7445");
 	UINT8 key_line = ttl74145_r(ttl74145, 0, 0);
 
 	switch (key_line)
@@ -52,7 +52,7 @@ static WRITE8_DEVICE_HANDLER( ins8154_b1_port_a_w )
 
 static WRITE8_DEVICE_HANDLER( acrnsys1_led_segment_w )
 {
-	const device_config *ttl74145 = devtag_get_device(device->machine, "ic8_7445");
+	running_device *ttl74145 = devtag_get_device(device->machine, "ic8_7445");
 	UINT8 key_line = ttl74145_r(ttl74145, 0, 0);
 
 	output_set_digit_value(key_line, data);
@@ -146,11 +146,11 @@ INPUT_PORTS_END
 
 static const ins8154_interface ins8154_b1 =
 {
-	ins8154_b1_port_a_r,
-	NULL,
-	ins8154_b1_port_a_w,
-	acrnsys1_led_segment_w,
-	NULL
+	DEVCB_HANDLER(ins8154_b1_port_a_r),
+	DEVCB_HANDLER(ins8154_b1_port_a_w),
+	DEVCB_NULL,
+	DEVCB_HANDLER(acrnsys1_led_segment_w),
+	DEVCB_NULL
 };
 
 static MACHINE_DRIVER_START( acrnsys1 )
@@ -184,4 +184,4 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME      PARENT COMPAT MACHINE   INPUT     INIT  COMPANY  FULLNAME    FLAGS */
-COMP( 1978, acrnsys1, 0,     0,     acrnsys1, acrnsys1, 0,    "Acorn", "System 1", GAME_NOT_WORKING )
+COMP( 1978, acrnsys1, 0,     0,     acrnsys1, acrnsys1, 0,    "Acorn", "System 1", GAME_NOT_WORKING | GAME_NO_SOUND )

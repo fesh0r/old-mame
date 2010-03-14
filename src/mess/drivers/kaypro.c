@@ -32,7 +32,7 @@
 **************************************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
 #include "machine/ctronics.h"
@@ -63,10 +63,10 @@ static ADDRESS_MAP_START( kayproii_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00, 0x03) AM_WRITE(kaypro_baud_a_w)
 	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE("z80sio", kaypro_sio_r, kaypro_sio_w)
-	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("z80pio_g", kayproii_pio_r, kayproii_pio_w)
+	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("z80pio_g", z80pio_ba_cd_r, z80pio_ba_cd_w)
 	AM_RANGE(0x0c, 0x0f) AM_WRITE(kayproii_baud_b_w)
 	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE("wd1793", wd17xx_r, wd17xx_w)
-	AM_RANGE(0x1c, 0x1f) AM_DEVREADWRITE("z80pio_s", kayproii_pio_r, kayproii_pio_w)
+	AM_RANGE(0x1c, 0x1f) AM_DEVREADWRITE("z80pio_s", z80pio_ba_cd_r, z80pio_ba_cd_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kaypro2x_io, ADDRESS_SPACE_IO, 8 )
@@ -75,7 +75,7 @@ static ADDRESS_MAP_START( kaypro2x_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x03) AM_WRITE(kaypro_baud_a_w)
 	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE("z80sio", kaypro_sio_r, kaypro_sio_w)
 	AM_RANGE(0x08, 0x0b) AM_WRITE(kaypro2x_baud_a_w)
-	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE("z80sio_2x", kaypro2x_sio_r, kaypro2x_sio_w)
+	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE("z80sio_2x", z80sio_cd_ba_r, z80sio_cd_ba_w)
 	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE("wd1793", wd17xx_r, wd17xx_w)
 	AM_RANGE(0x14, 0x17) AM_READWRITE(kaypro2x_system_port_r,kaypro2x_system_port_w)
 	AM_RANGE(0x18, 0x1b) AM_DEVWRITE("centronics", centronics_data_w)
@@ -227,6 +227,7 @@ static MACHINE_DRIVER_START( kayproii )
 	MDRV_CPU_VBLANK_INT("screen", kay_kbd_interrupt)	/* this doesn't actually exist, it is to run the keyboard */
 	MDRV_CPU_CONFIG(kayproii_daisy_chain)
 
+	MDRV_MACHINE_START( kayproii )
 	MDRV_MACHINE_RESET( kayproii )
 
 	/* video hardware */
@@ -252,11 +253,18 @@ static MACHINE_DRIVER_START( kayproii )
 	MDRV_QUICKLOAD_ADD("quickload", kayproii, "com,cpm", 3)
 	MDRV_WD1793_ADD("wd1793", kaypro_wd1793_interface )
 	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
-	MDRV_Z80PIO_ADD( "z80pio_g", kayproii_pio_g_intf )
-	MDRV_Z80PIO_ADD( "z80pio_s", kayproii_pio_s_intf )
+	MDRV_Z80PIO_ADD( "z80pio_g", 2500000, kayproii_pio_g_intf )
+	MDRV_Z80PIO_ADD( "z80pio_s", 2500000, kayproii_pio_s_intf )
 	MDRV_Z80SIO_ADD( "z80sio", 4800, kaypro_sio_intf )	/* start at 300 baud */
 
 	MDRV_FLOPPY_2_DRIVES_ADD(kayproii_floppy_config)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( kaypro4 )
+	MDRV_IMPORT_FROM(kayproii)
+
+	MDRV_DEVICE_REMOVE("z80pio_s")
+	MDRV_Z80PIO_ADD( "z80pio_s", 2500000, kaypro4_pio_s_intf )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( kaypro2x )
@@ -267,6 +275,7 @@ static MACHINE_DRIVER_START( kaypro2x )
 	MDRV_CPU_VBLANK_INT("screen", kay_kbd_interrupt)
 	MDRV_CPU_CONFIG(kaypro2x_daisy_chain)
 
+	MDRV_MACHINE_START( kaypro2x )
 	MDRV_MACHINE_RESET( kaypro2x )
 
 	/* video hardware */
@@ -301,7 +310,7 @@ static MACHINE_DRIVER_START( kaypro2x )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( omni2 )
-	MDRV_IMPORT_FROM( kayproii )
+	MDRV_IMPORT_FROM( kaypro4 )
 	MDRV_VIDEO_UPDATE( omni2 )
 MACHINE_DRIVER_END
 
@@ -396,8 +405,8 @@ ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT    INIT    COMPANY  FULLNAME */
 COMP( 1982, kayproii,   0,        0,    kayproii, kay_kbd, 0,      "Non Linear Systems",  "Kaypro II - 2/83" , 0 )
-COMP( 1983, kaypro4,    kayproii, 0,    kayproii, kay_kbd, 0,      "Non Linear Systems",  "Kaypro 4 - 4/83" , 0 ) // model 81-004
-COMP( 1983, kaypro4p88, kayproii, 0,    kayproii, kay_kbd, 0,      "Non Linear Systems",  "Kaypro 4 plus88 - 4/83" , GAME_NOT_WORKING ) // model 81-004 with an added 8088 daughterboard and rom
+COMP( 1983, kaypro4,    kayproii, 0,    kaypro4,  kay_kbd, 0,      "Non Linear Systems",  "Kaypro 4 - 4/83" , 0 ) // model 81-004
+COMP( 1983, kaypro4p88, kayproii, 0,    kaypro4,  kay_kbd, 0,      "Non Linear Systems",  "Kaypro 4 plus88 - 4/83" , GAME_NOT_WORKING ) // model 81-004 with an added 8088 daughterboard and rom
 COMP( 198?, omni2,      kayproii, 0,    omni2,    kay_kbd, 0,      "Non Linear Systems",  "Omni II" , 0 )
 COMP( 1984, kaypro2x,   0,        0,    kaypro2x, kay_kbd, 0,      "Non Linear Systems",  "Kaypro 2x" , GAME_NOT_WORKING ) // model 81-025
 COMP( 1984, kaypro4a,   0,        0,    kaypro2x, kay_kbd, 0,      "Non Linear Systems",  "Kaypro 4 - 4/84" , GAME_NOT_WORKING ) // model 81-015

@@ -15,7 +15,7 @@ and should be verified against real hardware.
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "6530miot.h"
 
 
@@ -77,7 +77,7 @@ struct _miot6530_state
     into a miot6530_state
 -------------------------------------------------*/
 
-INLINE miot6530_state *get_safe_token(const device_config *device)
+INLINE miot6530_state *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -91,7 +91,7 @@ INLINE miot6530_state *get_safe_token(const device_config *device)
     based on interrupt enables
 -------------------------------------------------*/
 
-INLINE void update_irqstate(const device_config *device)
+INLINE void update_irqstate(running_device *device)
 {
 	miot6530_state *miot = get_safe_token(device);
 	UINT8 out = miot->port[1].out;
@@ -102,7 +102,7 @@ INLINE void update_irqstate(const device_config *device)
 	if (miot->port[1].out_func != NULL)
 		(*miot->port[1].out_func)(device, out, out);
 	else
-		logerror("6530MIOT chip %s: Port B is being written to but has no handler.\n", device->tag);
+		logerror("6530MIOT chip %s: Port B is being written to but has no handler.\n", device->tag());
 }
 
 
@@ -137,7 +137,7 @@ INLINE UINT8 get_timer(miot6530_state *miot)
 
 static TIMER_CALLBACK( timer_end_callback )
 {
-	const device_config *device = ptr;
+	running_device *device = (running_device *)ptr;
 	miot6530_state *miot = get_safe_token(device);
 
 	assert(miot->timerstate != TIMER_IDLE);
@@ -227,7 +227,7 @@ WRITE8_DEVICE_HANDLER( miot6530_w )
 			if (port->out_func != NULL)
 				(*port->out_func)(device, data, olddata);
 			else
-				logerror("6530MIOT chip %s: Port %c is being written to but has no handler.  PC: %08X - %02X\n", device->tag, 'A' + (offset & 1), cpu_get_pc(device->machine->firstcpu), data);
+				logerror("6530MIOT chip %s: Port %c is being written to but has no handler.  PC: %08X - %02X\n", device->tag(), 'A' + (offset & 1), cpu_get_pc(device->machine->firstcpu), data);
 		}
 	}
 }
@@ -289,7 +289,7 @@ READ8_DEVICE_HANDLER( miot6530_r )
 				port->in = (*port->in_func)(device, port->in);
 			}
 			else
-				logerror("6530MIOT chip %s: Port %c is being read but has no handler.  PC: %08X\n", device->tag, 'A' + (offset & 1), cpu_get_pc(device->machine->firstcpu));
+				logerror("6530MIOT chip %s: Port %c is being read but has no handler.  PC: %08X\n", device->tag(), 'A' + (offset & 1), cpu_get_pc(device->machine->firstcpu));
 
 			/* apply the DDR to the result */
 			val = (out & port->ddr) | (port->in & ~port->ddr);
@@ -304,7 +304,7 @@ READ8_DEVICE_HANDLER( miot6530_r )
     value
 -------------------------------------------------*/
 
-void miot6530_porta_in_set(const device_config *device, UINT8 data, UINT8 mask)
+void miot6530_porta_in_set(running_device *device, UINT8 data, UINT8 mask)
 {
 	miot6530_state *miot = get_safe_token(device);
 	miot->port[0].in = (miot->port[0].in & ~mask) | (data & mask);
@@ -316,7 +316,7 @@ void miot6530_porta_in_set(const device_config *device, UINT8 data, UINT8 mask)
     value
 -------------------------------------------------*/
 
-void miot6530_portb_in_set(const device_config *device, UINT8 data, UINT8 mask)
+void miot6530_portb_in_set(running_device *device, UINT8 data, UINT8 mask)
 {
 	miot6530_state *miot = get_safe_token(device);
 	miot->port[1].in = (miot->port[1].in & ~mask) | (data & mask);
@@ -328,7 +328,7 @@ void miot6530_portb_in_set(const device_config *device, UINT8 data, UINT8 mask)
     value
 -------------------------------------------------*/
 
-UINT8 miot6530_porta_in_get(const device_config *device)
+UINT8 miot6530_porta_in_get(running_device *device)
 {
 	miot6530_state *miot = get_safe_token(device);
 	return miot->port[0].in;
@@ -340,7 +340,7 @@ UINT8 miot6530_porta_in_get(const device_config *device)
     value
 -------------------------------------------------*/
 
-UINT8 miot6530_portb_in_get(const device_config *device)
+UINT8 miot6530_portb_in_get(running_device *device)
 {
 	miot6530_state *miot = get_safe_token(device);
 	return miot->port[1].in;
@@ -352,7 +352,7 @@ UINT8 miot6530_portb_in_get(const device_config *device)
     value
 -------------------------------------------------*/
 
-UINT8 miot6530_porta_out_get(const device_config *device)
+UINT8 miot6530_porta_out_get(running_device *device)
 {
 	miot6530_state *miot = get_safe_token(device);
 	return miot->port[0].out;
@@ -364,7 +364,7 @@ UINT8 miot6530_porta_out_get(const device_config *device)
     value
 -------------------------------------------------*/
 
-UINT8 miot6530_portb_out_get(const device_config *device)
+UINT8 miot6530_portb_out_get(running_device *device)
 {
 	miot6530_state *miot = get_safe_token(device);
 	return miot->port[1].out;
@@ -381,10 +381,10 @@ static DEVICE_START( miot6530 )
 
 	/* validate arguments */
 	assert(device != NULL);
-	assert(device->tag != NULL);
+	assert(device->tag() != NULL);
 
 	/* set static values */
-	miot->intf = device->static_config;
+	miot->intf = (const miot6530_interface*)device->baseconfig().static_config;
 	miot->clock = device->clock;
 
 	/* configure the ports */

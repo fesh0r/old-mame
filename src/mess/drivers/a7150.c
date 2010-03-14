@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i86/i86.h"
 
 static ADDRESS_MAP_START(a7150_mem, ADDRESS_SPACE_PROGRAM, 16)
@@ -63,5 +63,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1986, a7150,  0,       0, 	a7150, 	a7150, 	 0,  	   	 "Robotron",   "A7150",		GAME_NOT_WORKING)
+COMP( 1986, a7150,  0,       0, 	a7150,	a7150,	 0, 		 "Robotron",   "A7150",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

@@ -4,7 +4,7 @@
     Raphael Nabet, Brett Wyer, 2003-2005
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/concept.h"
 #include "machine/6522via.h"
 #include "machine/mm58274c.h"	/* mm58274 seems to be compatible with mm58174 */
@@ -47,7 +47,7 @@ static WRITE8_DEVICE_HANDLER(via_out_a);
 static READ8_DEVICE_HANDLER(via_in_b);
 static WRITE8_DEVICE_HANDLER(via_out_b);
 static WRITE8_DEVICE_HANDLER(via_out_cb2);
-static void via_irq_func(const device_config *device, int state);
+static void via_irq_func(running_device *device, int state);
 
 
 const via6522_interface concept_via6522_intf =
@@ -267,7 +267,7 @@ static WRITE8_DEVICE_HANDLER(via_out_cb2)
 /*
     VIA irq -> 68k level 5
 */
-static void via_irq_func(const device_config *device, int state)
+static void via_irq_func(running_device *device, int state)
 {
 	concept_set_interrupt(device->machine, TIMINT_level, state);
 }
@@ -378,7 +378,7 @@ READ16_HANDLER(concept_io_r)
 			/* NVIA versatile system interface */
 			LOG(("concept_io_r: VIA read at address 0x03%4.4x\n", offset << 1));
 			{
-				const device_config *via_0 = devtag_get_device(space->machine, "via6522_0");
+				running_device *via_0 = devtag_get_device(space->machine, "via6522_0");
 				return via_r(via_0, offset & 0xf);
 			}
 			break;
@@ -491,7 +491,7 @@ WRITE16_HANDLER(concept_io_w)
 		case 3:
 			/* NVIA versatile system interface */
 			{
-				const device_config *via_0 = devtag_get_device(space->machine, "via6522_0");
+				running_device *via_0 = devtag_get_device(space->machine, "via6522_0");
 				via_w(via_0, offset & 0xf, data);
 			}
 			break;
@@ -598,6 +598,7 @@ static WRITE_LINE_DEVICE_HANDLER( concept_fdc_drq_w )
 
 const wd17xx_interface concept_wd17xx_interface =
 {
+	DEVCB_NULL,
 	DEVCB_LINE(concept_fdc_intrq_w),
 	DEVCB_LINE(concept_fdc_drq_w),
 	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
@@ -605,7 +606,7 @@ const wd17xx_interface concept_wd17xx_interface =
 
 static  READ8_HANDLER(concept_fdc_reg_r)
 {
-	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
+	running_device *fdc = devtag_get_device(space->machine, "wd179x");
 	switch (offset)
 	{
 	case 0:
@@ -635,7 +636,7 @@ static  READ8_HANDLER(concept_fdc_reg_r)
 static WRITE8_HANDLER(concept_fdc_reg_w)
 {
 	int current_drive;
-	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
+	running_device *fdc = devtag_get_device(space->machine, "wd179x");
 	switch (offset)
 	{
 	case 0:
@@ -648,7 +649,7 @@ static WRITE8_HANDLER(concept_fdc_reg_w)
 		/*motor_on = (data & LC_MOTOROF_mask) == 0;*/
 		// floppy_drive_set_motor_state(floppy_get_device(machine,  current_drive), (data & LC_MOTOROF_mask) == 0 ? 1 : 0);
 		/*flp_8in = (data & LC_FLP8IN_mask) != 0;*/
-		wd17xx_set_density(fdc, (data & LC_FMMFM_mask) ? DEN_FM_LO : DEN_MFM_LO);
+		wd17xx_dden_w(fdc, BIT(data, 7));
 		floppy_drive_set_ready_state(floppy_get_device(space->machine, current_drive), 1, 0);
 		break;
 
@@ -676,7 +677,7 @@ static WRITE8_HANDLER(concept_fdc_reg_w)
 
 static  READ8_HANDLER(concept_fdc_rom_r)
 {
-	static const UINT8 data[8] = "CORVUS01";
+	static const UINT8 data[] = "CORVUS01";
 	return (offset < 8) ? data[offset] : 0;
 }
 

@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "devices/messram.h"
 #include "includes/pp01.h"
@@ -224,6 +224,7 @@ static MACHINE_DRIVER_START( pp01 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
+	MDRV_RAM_DEFAULT_VALUE(0x00)
 MACHINE_DRIVER_END
 
 /* ROM definition */
@@ -252,5 +253,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT       INIT	 COMPANY                  FULLNAME   FLAGS */
-COMP( 198?, pp01, 	0, 	 	0,		pp01, 		pp01, 		pp01, 	 "ZVT",					 "PP-01",	 GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT       INIT     COMPANY                  FULLNAME   FLAGS */
+COMP( 198?, pp01,	0,		0,		pp01,		pp01,		0,  	 "ZVT",					 "PP-01",	 GAME_NOT_WORKING | GAME_NO_SOUND)

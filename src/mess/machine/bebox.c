@@ -88,7 +88,7 @@
 ***************************************************************************/
 
 /* Core includes */
-#include "driver.h"
+#include "emu.h"
 #include "memconv.h"
 #include "includes/bebox.h"
 
@@ -119,10 +119,10 @@ static UINT32 bebox_interrupts;
 static UINT32 bebox_crossproc_interrupts;
 
 static struct {
-	const device_config	*pic8259_master;
-	const device_config	*pic8259_slave;
-	const device_config	*dma8237_1;
-	const device_config	*dma8237_2;
+	running_device *pic8259_master;
+	running_device *pic8259_slave;
+	running_device *dma8237_1;
+	running_device *dma8237_2;
 } bebox_devices;
 
 
@@ -324,8 +324,8 @@ static void bebox_set_irq_bit(running_machine *machine, unsigned int interrupt_b
 		assert_always((interrupt_bit < ARRAY_LENGTH(interrupt_names)) && (interrupt_names[interrupt_bit] != NULL), "Raising invalid interrupt");
 
 		logerror("bebox_set_irq_bit(): pc[0]=0x%08x pc[1]=0x%08x %s interrupt #%u (%s)\n",
-			(unsigned) cpu_get_reg(cputag_get_cpu(machine, "ppc1"), REG_GENPC),
-			(unsigned) cpu_get_reg(cputag_get_cpu(machine, "ppc2"), REG_GENPC),
+			(unsigned) cpu_get_reg(devtag_get_device(machine, "ppc1"), REG_GENPC),
+			(unsigned) cpu_get_reg(devtag_get_device(machine, "ppc2"), REG_GENPC),
 			val ? "Asserting" : "Clearing",
 			interrupt_bit, interrupt_names[interrupt_bit]);
 	}
@@ -409,7 +409,7 @@ static void bebox_fdc_interrupt(running_machine *machine, int state)
 {
 	bebox_set_irq_bit(machine, 13, state);
 	if ( bebox_devices.pic8259_master ) {
-		pic8259_set_irq_line(bebox_devices.pic8259_master, 6, state);
+		pic8259_ir6_w(bebox_devices.pic8259_master, state);
 	}
 }
 
@@ -422,14 +422,14 @@ static void bebox_fdc_dma_drq(running_machine *machine, int state, int read_)
 }
 
 
-static const device_config *bebox_fdc_get_image(running_machine *machine, int floppy_index)
+static running_device *bebox_fdc_get_image(running_machine *machine, int floppy_index)
 {
 	/* the BeBox boot ROM seems to query for floppy #1 when it should be
      * querying for floppy #0 */
 	return floppy_get_device(machine, 0);
 }
 
-static const device_config * bebox_get_device(running_machine *machine )
+static running_device * bebox_get_device(running_machine *machine )
 {
 	return devtag_get_device(machine, "smc37c78");
 }
@@ -467,25 +467,25 @@ READ64_HANDLER( bebox_interrupt_ack_r )
  *
  *************************************************************/
 
-static PIC8259_SET_INT_LINE( bebox_pic8259_master_set_int_line ) {
-	bebox_set_irq_bit(device->machine, 5, interrupt);
+static WRITE_LINE_DEVICE_HANDLER( bebox_pic8259_master_set_int_line )
+{
+	bebox_set_irq_bit(device->machine, 5, state);
 }
 
-
-static PIC8259_SET_INT_LINE( bebox_pic8259_slave_set_int_line ) {
-	if ( bebox_devices.pic8259_master ) {
-		pic8259_set_irq_line( bebox_devices.pic8259_master, 2, interrupt );
-	}
+static WRITE_LINE_DEVICE_HANDLER( bebox_pic8259_slave_set_int_line )
+{
+	if (bebox_devices.pic8259_master)
+		pic8259_ir2_w(bebox_devices.pic8259_master, state);
 }
 
-
-const struct pic8259_interface bebox_pic8259_master_config = {
-	bebox_pic8259_master_set_int_line
+const struct pic8259_interface bebox_pic8259_master_config =
+{
+	DEVCB_LINE(bebox_pic8259_master_set_int_line)
 };
 
-
-const struct pic8259_interface bebox_pic8259_slave_config = {
-	bebox_pic8259_slave_set_int_line
+const struct pic8259_interface bebox_pic8259_slave_config =
+{
+	DEVCB_LINE(bebox_pic8259_slave_set_int_line)
 };
 
 
@@ -495,7 +495,7 @@ const struct pic8259_interface bebox_pic8259_slave_config = {
  *
  *************************************/
 
-static const device_config *ide_device(running_machine *machine)
+static running_device *ide_device(running_machine *machine)
 {
 	return devtag_get_device(machine, "ide");
 }
@@ -538,11 +538,11 @@ WRITE64_HANDLER( bebox_800003F0_w )
 }
 
 
-void bebox_ide_interrupt(const device_config *device, int state)
+void bebox_ide_interrupt(running_device *device, int state)
 {
 	bebox_set_irq_bit(device->machine, 7, state);
 	if ( bebox_devices.pic8259_master ) {
-		pic8259_set_irq_line( bebox_devices.pic8259_master, 6, state);
+		pic8259_ir6_w(bebox_devices.pic8259_master, state);
 	}
 }
 
@@ -737,7 +737,7 @@ static WRITE_LINE_DEVICE_HANDLER( bebox_dma8237_out_eop ) {
 	pc_fdc_set_tc_state( device->machine, state );
 }
 
-static void set_dma_channel(const device_config *device, int channel, int state)
+static void set_dma_channel(running_device *device, int channel, int state)
 {
 	if (!state) dma_channel = channel;
 }
@@ -778,11 +778,10 @@ I8237_INTERFACE( bebox_dma8237_2_config )
  *
  *************************************/
 
-static void bebox_timer0_w(const device_config *device, int state)
+static WRITE_LINE_DEVICE_HANDLER( bebox_timer0_w )
 {
-	if ( bebox_devices.pic8259_master ) {
-		pic8259_set_irq_line(bebox_devices.pic8259_master, 0, state);
-	}
+	if (bebox_devices.pic8259_master)
+		pic8259_ir0_w(bebox_devices.pic8259_master, state);
 }
 
 
@@ -791,15 +790,18 @@ const struct pit8253_config bebox_pit8254_config =
 	{
 		{
 			4772720/4,				/* heartbeat IRQ */
-			bebox_timer0_w
+			DEVCB_NULL,
+			DEVCB_LINE(bebox_timer0_w)
 		},
 		{
 			4772720/4,				/* dram refresh */
-			NULL
+			DEVCB_NULL,
+			DEVCB_NULL
 		},
 		{
 			4772720/4,				/* pio port c pin 4, and speaker polling enough */
-			NULL
+			DEVCB_NULL,
+			DEVCB_NULL
 		}
 	}
 };
@@ -847,7 +849,7 @@ static void bebox_keyboard_interrupt(running_machine *machine,int state)
 {
 	bebox_set_irq_bit(machine, 16, state);
 	if ( bebox_devices.pic8259_master ) {
-		pic8259_set_irq_line( bebox_devices.pic8259_master, 1, state);
+		pic8259_ir1_w(bebox_devices.pic8259_master, state);
 	}
 }
 
@@ -959,7 +961,7 @@ static void scsi53c810_dma_callback(running_machine *machine, UINT32 src, UINT32
 }
 
 
-UINT32 scsi53c810_pci_read(const device_config *busdevice, const device_config *device, int function, int offset, UINT32 mem_mask)
+UINT32 scsi53c810_pci_read(running_device *busdevice, running_device *device, int function, int offset, UINT32 mem_mask)
 {
 	UINT32 result = 0;
 
@@ -984,7 +986,7 @@ UINT32 scsi53c810_pci_read(const device_config *busdevice, const device_config *
 }
 
 
-void scsi53c810_pci_write(const device_config *busdevice, const device_config *device, int function, int offset, UINT32 data, UINT32 mem_mask)
+void scsi53c810_pci_write(running_device *busdevice, running_device *device, int function, int offset, UINT32 data, UINT32 mem_mask)
 {
 	offs_t addr;
 

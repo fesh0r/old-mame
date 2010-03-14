@@ -6,7 +6,7 @@
 
 *********************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "snapquik.h"
 #include "z80bin.h"
 
@@ -34,10 +34,10 @@ struct _snapquick_token
     that a given device is a snapshot or quickload
 -------------------------------------------------*/
 
-INLINE void assert_is_snapshot_or_quickload(const device_config *device)
+INLINE void assert_is_snapshot_or_quickload(running_device *device)
 {
 	assert(device != NULL);
-	assert(device->inline_config != NULL);
+	assert(device->baseconfig().inline_config != NULL);
 	assert((device->type == SNAPSHOT) || (device->type == QUICKLOAD)
 		|| (device->type == Z80BIN));
 }
@@ -48,7 +48,7 @@ INLINE void assert_is_snapshot_or_quickload(const device_config *device)
     get_token - safely gets the snapshot/quickload data
 -------------------------------------------------*/
 
-INLINE snapquick_token *get_token(const device_config *device)
+INLINE snapquick_token *get_token(running_device *device)
 {
 	assert_is_snapshot_or_quickload(device);
 	return (snapquick_token *) device->token;
@@ -57,16 +57,51 @@ INLINE snapquick_token *get_token(const device_config *device)
 
 
 /*-------------------------------------------------
-    get_config - safely gets the bitbanger config
+    get_config - safely gets the quickload config
 -------------------------------------------------*/
 
-INLINE const snapquick_config *get_config(const device_config *device)
+INLINE const snapquick_config *get_config(running_device *device)
 {
 	assert_is_snapshot_or_quickload(device);
+	return (const snapquick_config *) device->baseconfig().inline_config;
+}
+
+INLINE const snapquick_config *get_config_dev(const device_config *device)
+{
+	assert(device != NULL);
+	assert(device->inline_config != NULL);
+	assert((device->type == SNAPSHOT) || (device->type == QUICKLOAD)
+		|| (device->type == Z80BIN));
 	return (const snapquick_config *) device->inline_config;
 }
 
+/*-------------------------------------------------
+    log_quickload - logs and displays useful
+    data for the end user
+-------------------------------------------------*/
 
+void log_quickload(const char *type, UINT32 start, UINT32 length, UINT32 exec, const char *exec_format)
+{
+    astring tempstring;
+
+    logerror("Loading %04X bytes of RAM at %04X\n", length, start);
+
+    tempstring.catprintf("Quickload type: %s   Length: %d bytes\n", type, length);
+    tempstring.catprintf("Start: 0x%04X   End: 0x%04X   Exec: ", start, start + length - 1);
+
+    logerror("Quickload loaded.\n");
+    if (!mame_stricmp(exec_format, EXEC_NA))
+        tempstring.cat("N/A");
+    else
+    {
+        logerror("Execution can resume with ");
+        logerror(exec_format, exec);
+        logerror("\n");
+        tempstring.catprintf(exec_format, exec);
+    }
+
+    ui_popup_time(10, "%s", tempstring.cstr());
+}
 
 /***************************************************************************
     IMPLEMENTATION
@@ -78,7 +113,7 @@ INLINE const snapquick_config *get_config(const device_config *device)
 
 static TIMER_CALLBACK(process_snapshot_or_quickload)
 {
-	const device_config *device = (const device_config *) ptr;
+	running_device *device = (running_device *) ptr;
 	snapquick_token *token = get_token(device);
 
 	/* invoke the load */
@@ -104,7 +139,7 @@ static DEVICE_START( snapquick )
 	token->timer = timer_alloc(device->machine, process_snapshot_or_quickload, (void *) device);
 
 	/* locate the load function */
-	token->load = (snapquick_load_func) device_get_info_fct(device, DEVINFO_FCT_SNAPSHOT_QUICKLOAD_LOAD);
+	token->load = (snapquick_load_func) device->get_config_fct(DEVINFO_FCT_SNAPSHOT_QUICKLOAD_LOAD);
 }
 
 
@@ -149,11 +184,11 @@ static DEVICE_GET_INFO(snapquick)
 		/* --- the following bits of info are returned as pointers to functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(snapquick); break;
 		case DEVINFO_FCT_IMAGE_LOAD:					info->f = (genf *) DEVICE_IMAGE_LOAD_NAME(snapquick); break;
-		case DEVINFO_FCT_SNAPSHOT_QUICKLOAD_LOAD:		info->f = (genf *) get_config(device)->load; break;
+		case DEVINFO_FCT_SNAPSHOT_QUICKLOAD_LOAD:		info->f = (genf *) get_config_dev(device)->load; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__); break;
-		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:			strcpy(info->s, get_config(device)->file_extensions); break;
+		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:			strcpy(info->s, get_config_dev(device)->file_extensions); break;
 	}
 }
 

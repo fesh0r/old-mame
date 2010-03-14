@@ -1,4 +1,4 @@
-#include "driver.h"
+#include "emu.h"
 
 #include "machine/pit8253.h"
 #include "machine/pc_lpt.h"
@@ -154,7 +154,7 @@ WRITE8_HANDLER( pc1640_port60_w )
 		pc1640.port61=data;
 		if (data==0x30) pc1640.port62=(pc1640.port65&0x10)>>4;
 		else if (data==0x34) pc1640.port62=pc1640.port65&0xf;
-		pit8253_gate_w( devtag_get_device(space->machine, "pit8253"), 2, data & 1);
+		pit8253_gate2_w(devtag_get_device(space->machine, "pit8253"), BIT(data, 0));
 		pc_speaker_set_spkrdata( space->machine, data & 0x02 );
 		pc_keyb_set_clock(data&0x40);
 		break;
@@ -201,7 +201,7 @@ WRITE8_HANDLER( pc1640_port60_w )
 
 READ8_HANDLER( pc200_port378_r )
 {
-	const device_config *lpt = devtag_get_device(space->machine, "lpt_1");
+	running_device *lpt = devtag_get_device(space->machine, "lpt_1");
 	UINT8 data = pc_lpt_r(lpt, offset);
 
 	if (offset == 1)
@@ -214,7 +214,7 @@ READ8_HANDLER( pc200_port378_r )
 
 static READ8_HANDLER( pc200_port278_r )
 {
-	const device_config *lpt = devtag_get_device(space->machine, "lpt_2");
+	running_device *lpt = devtag_get_device(space->machine, "lpt_2");
 	UINT8 data = pc_lpt_r(lpt, offset);
 
 	if (offset == 1)
@@ -228,7 +228,7 @@ static READ8_HANDLER( pc200_port278_r )
 
 READ8_HANDLER( pc1640_port378_r )
 {
-	 const device_config *lpt = devtag_get_device(space->machine, "lpt_1");
+	 running_device *lpt = devtag_get_device(space->machine, "lpt_1");
 	 UINT8 data = pc_lpt_r(lpt, offset);
 
 	if (offset == 1)

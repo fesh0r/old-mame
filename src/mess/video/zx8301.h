@@ -33,7 +33,7 @@
 #ifndef __ZX8301__
 #define __ZX8301__
 
-#include "driver.h"
+#include "emu.h"
 #include "devcb.h"
 
 /***************************************************************************
@@ -87,6 +87,6 @@ READ8_DEVICE_HANDLER( zx8301_ram_r );
 WRITE8_DEVICE_HANDLER( zx8301_ram_w );
 
 /* screen update */
-void zx8301_update(const device_config *device, bitmap_t *bitmap, const rectangle *cliprect);
+void zx8301_update(running_device *device, bitmap_t *bitmap, const rectangle *cliprect);
 
 #endif

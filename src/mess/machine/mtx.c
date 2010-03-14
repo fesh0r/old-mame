@@ -7,7 +7,7 @@
 **************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "utils.h"
 #include "includes/mtx.h"
 #include "cpu/z80/z80.h"
@@ -261,7 +261,7 @@ DRIVER_INIT( mtx512 )
 
 DRIVER_INIT( rs128 )
 {
-	const device_config *device;
+	running_device *device;
 	const address_space *space;
 
 	DRIVER_INIT_CALL(mtx512);

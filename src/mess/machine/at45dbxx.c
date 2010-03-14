@@ -76,7 +76,7 @@ struct _at45dbxx_t
     INLINE FUNCTIONS
 ***************************************************************************/
 
-INLINE at45dbxx_t *get_token(const device_config *device)
+INLINE at45dbxx_t *get_token(running_device *device)
 {
 	assert(device != NULL);
 	return (at45dbxx_t *) device->token;
@@ -87,7 +87,7 @@ INLINE at45dbxx_t *get_token(const device_config *device)
     IMPLEMENTATION
 ***************************************************************************/
 
-static void common_start(const device_config *device, int device_type)
+static void common_start(running_device *device, int device_type)
 {
 	at45dbxx_t *flash = get_token(device);
 
@@ -105,15 +105,15 @@ static void common_start(const device_config *device, int device_type)
 	flash->buffer2 = auto_alloc_array(device->machine, UINT8, flash->page_size);
 
 	// data
-	state_save_register_item_pointer(device->machine, "at45dbxx", device->tag, 0, flash->data, flash->size);
+	state_save_register_item_pointer(device->machine, "at45dbxx", device->tag(), 0, flash->data, flash->size);
 	// pins
-	state_save_register_item(device->machine, "at45dbxx", device->tag, 0, flash->pin.cs);
-	state_save_register_item(device->machine, "at45dbxx", device->tag, 0, flash->pin.sck);
-	state_save_register_item(device->machine, "at45dbxx", device->tag, 0, flash->pin.si);
-	state_save_register_item(device->machine, "at45dbxx", device->tag, 0, flash->pin.so);
-	state_save_register_item(device->machine, "at45dbxx", device->tag, 0, flash->pin.wp);
-	state_save_register_item(device->machine, "at45dbxx", device->tag, 0, flash->pin.reset);
-	state_save_register_item(device->machine, "at45dbxx", device->tag, 0, flash->pin.busy);
+	state_save_register_item(device->machine, "at45dbxx", device->tag(), 0, flash->pin.cs);
+	state_save_register_item(device->machine, "at45dbxx", device->tag(), 0, flash->pin.sck);
+	state_save_register_item(device->machine, "at45dbxx", device->tag(), 0, flash->pin.si);
+	state_save_register_item(device->machine, "at45dbxx", device->tag(), 0, flash->pin.so);
+	state_save_register_item(device->machine, "at45dbxx", device->tag(), 0, flash->pin.wp);
+	state_save_register_item(device->machine, "at45dbxx", device->tag(), 0, flash->pin.reset);
+	state_save_register_item(device->machine, "at45dbxx", device->tag(), 0, flash->pin.busy);
 }
 
 static DEVICE_START( at45db041 )
@@ -160,7 +160,7 @@ static DEVICE_RESET( at45dbxx )
 	flash->si_bits = 0;
 }
 
-static UINT8 at45dbxx_read_byte( const device_config *device)
+static UINT8 at45dbxx_read_byte( running_device *device)
 {
 	UINT8 data;
 	at45dbxx_t *flash = get_token(device);
@@ -173,7 +173,7 @@ static UINT8 at45dbxx_read_byte( const device_config *device)
 	return data;
 }
 
-static void flash_set_io( const device_config *device, UINT8* data, UINT32 size, UINT32 pos)
+static void flash_set_io( running_device *device, UINT8* data, UINT32 size, UINT32 pos)
 {
 	at45dbxx_t *flash = get_token(device);
 	flash->io.data = data;
@@ -181,7 +181,7 @@ static void flash_set_io( const device_config *device, UINT8* data, UINT32 size,
 	flash->io.pos  = pos;
 }
 
-static UINT32 flash_get_page_addr( const device_config *device)
+static UINT32 flash_get_page_addr( running_device *device)
 {
 	at45dbxx_t *flash = get_token(device);
 	switch (flash->devid)
@@ -193,7 +193,7 @@ static UINT32 flash_get_page_addr( const device_config *device)
 	}
 }
 
-static UINT32 flash_get_byte_addr( const device_config *device)
+static UINT32 flash_get_byte_addr( running_device *device)
 {
 	at45dbxx_t *flash = get_token(device);
 	switch (flash->devid)
@@ -205,7 +205,7 @@ static UINT32 flash_get_byte_addr( const device_config *device)
 	}
 }
 
-static void at45dbxx_write_byte(const device_config *device,  UINT8 data)
+static void at45dbxx_write_byte(running_device *device,  UINT8 data)
 {
 	at45dbxx_t *flash = get_token(device);
 	// check mode
@@ -306,21 +306,21 @@ static void at45dbxx_write_byte(const device_config *device,  UINT8 data)
 	}
 }
 
-int at45dbxx_pin_so( const device_config *device)
+int at45dbxx_pin_so( running_device *device)
 {
 	at45dbxx_t *flash = get_token(device);
 	if (flash->pin.cs == 0) return 0;
 	return flash->pin.so;
 }
 
-void at45dbxx_pin_si(const device_config *device,  int data)
+void at45dbxx_pin_si(running_device *device,  int data)
 {
 	at45dbxx_t *flash = get_token(device);
 	if (flash->pin.cs == 0) return;
 	flash->pin.si = data;
 }
 
-void at45dbxx_pin_cs(const device_config *device,  int data)
+void at45dbxx_pin_cs(running_device *device,  int data)
 {
 	at45dbxx_t *flash = get_token(device);
 	// check if changed
@@ -344,7 +344,7 @@ void at45dbxx_pin_cs(const device_config *device,  int data)
 	flash->pin.cs = data;
 }
 
-void at45dbxx_pin_sck(const device_config *device,  int data)
+void at45dbxx_pin_sck(running_device *device,  int data)
 {
 	at45dbxx_t *flash = get_token(device);
 	// check if changed
@@ -375,14 +375,14 @@ void at45dbxx_pin_sck(const device_config *device,  int data)
 	flash->pin.sck = data;
 }
 
-void at45dbxx_load(const device_config *device, mame_file *file)
+void at45dbxx_load(running_device *device, mame_file *file)
 {
 	at45dbxx_t *flash = get_token(device);
 	_logerror( 0, ("at45dbxx_load (%p)\n", file));
 	mame_fread( file, flash->data, flash->size);
 }
 
-void at45dbxx_save(const device_config *device, mame_file *file)
+void at45dbxx_save(running_device *device, mame_file *file)
 {
 	at45dbxx_t *flash = get_token(device);
 	_logerror( 0, ("at45dbxx_save (%p)\n", file));
@@ -449,7 +449,7 @@ DEVICE_GET_INFO( at45db081 )
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(at45db081);	break;
 
-		default: 										DEVICE_GET_INFO_CALL(at45db041);				break;
+		default:										DEVICE_GET_INFO_CALL(at45db041);				break;
 	}
 }
 
@@ -463,6 +463,6 @@ DEVICE_GET_INFO( at45db161 )
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:							info->start = DEVICE_START_NAME(at45db161);	break;
 
-		default: 										DEVICE_GET_INFO_CALL(at45db041);				break;
+		default:										DEVICE_GET_INFO_CALL(at45db041);				break;
 	}
 }

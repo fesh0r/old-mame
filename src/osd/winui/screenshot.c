@@ -27,7 +27,7 @@
 #include <windowsx.h>
 
 // MAME/MAMEUI headers
-#include "driver.h"
+#include "emu.h"
 #include "png.h"
 #include "osdepend.h"
 #include "unzip.h"
@@ -77,7 +77,7 @@ BOOL ScreenShotLoaded(void)
 static BOOL LoadSoftwareScreenShot(const game_driver *drv, LPCSTR lpSoftwareName, int nType)
 {
 	BOOL result;
-	char *s = alloca(strlen(drv->name) + 1 + strlen(lpSoftwareName) + 5);
+	char *s = (char*)alloca(strlen(drv->name) + 1 + strlen(lpSoftwareName) + 5);
 	sprintf(s, "%s/%s.png", drv->name, lpSoftwareName);
 	result = LoadDIB(s, &m_hDIB, &m_hPal, nType);
 	return result;
@@ -195,7 +195,7 @@ static const zip_file_header *zip_file_seek_file(zip_file *zip, const char *file
 	int i;
 
 	// we need to change filename; allocate a copy
-	new_filename = malloc(strlen(filename) + 1);
+	new_filename = (char*)malloc(strlen(filename) + 1);
 	if (!new_filename)
 		return NULL;
 	
@@ -211,7 +211,7 @@ static const zip_file_header *zip_file_seek_file(zip_file *zip, const char *file
 		header = zip_file_next_file(zip);
 	}
 
-	free(new_filename);
+	global_free(new_filename);
 	return header;
 }
 
@@ -345,7 +345,7 @@ BOOL LoadDIB(const char *filename, HGLOBAL *phDIB, HPALETTE *pPal, int pic_type)
 
 	// free the buffer if we have to
 	if (buffer != NULL) {
-		free(buffer);
+		global_free(buffer);
 	}
 	return success;
 }
@@ -446,7 +446,7 @@ BOOL AllocatePNG(png_info *p, HGLOBAL *phDIB, HPALETTE *pPal)
 		return FALSE;
 	}
 
-	lpbi = (LPVOID)hDIB;
+	lpbi = (LPBITMAPINFOHEADER)hDIB;
 	memcpy(lpbi, &bi, sizeof(BITMAPINFOHEADER));
 	pRgb = (RGBQUAD*)((LPSTR)lpbi + bi.biSize);
 	lpDIBBits = (LPVOID)((LPSTR)lpbi + bi.biSize + (nColors * sizeof(RGBQUAD)));
@@ -498,11 +498,11 @@ BOOL AllocatePNG(png_info *p, HGLOBAL *phDIB, HPALETTE *pPal)
 		
 		*pPal = CreatePalette(pLP);
 		
-		free (pLP);
+		global_free (pLP);
 	}
 	
 	copy_size = dibSize;
-	pixel_ptr = lpDIBBits;
+	pixel_ptr = (char*)lpDIBBits;
 	*phDIB = hDIB;
 	return TRUE;
 }
@@ -514,19 +514,19 @@ static int png_read_bitmap_gui(LPVOID mfile, HGLOBAL *phDIB, HPALETTE *pPAL)
 	UINT32 i;
 	int bytespp;
 	
-	if (png_read_file(mfile, &p) != PNGERR_NONE)
+	if (png_read_file((core_file*)mfile, &p) != PNGERR_NONE)
 		return 0;
 
 	if (p.color_type != 3 && p.color_type != 2)
 	{
 		logerror("Unsupported color type %i (has to be 3)\n", p.color_type);
-		free(p.image);
+		global_free(p.image);
 		return 0;
 	}
 	if (p.interlace_method != 0)
 	{
 		logerror("Interlace unsupported\n");
-		free (p.image);
+		global_free (p.image);
 		return 0;
 	}
  
@@ -536,7 +536,7 @@ static int png_read_bitmap_gui(LPVOID mfile, HGLOBAL *phDIB, HPALETTE *pPAL)
 	if (!AllocatePNG(&p, phDIB, pPAL))
 	{
 		logerror("Unable to allocate memory for artwork\n");
-		free(p.image);
+		global_free(p.image);
 		return 0;
 	}
 
@@ -562,7 +562,7 @@ static int png_read_bitmap_gui(LPVOID mfile, HGLOBAL *phDIB, HPALETTE *pPAL)
 		store_pixels(p.image + i * (p.width * bytespp), p.width * bytespp);
 	}
 
-	free(p.image);
+	global_free(p.image);
 
 	return 1;
 }

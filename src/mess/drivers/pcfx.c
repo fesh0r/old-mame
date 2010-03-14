@@ -6,7 +6,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/v810/v810.h"
 #include "video/vdc.h"
 
@@ -70,5 +70,5 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT   INIT    COMPANY FULLNAME        FLAGS */
-CONS( 1994, pcfx,       0,      0,      pcfx,       pcfx,      0,      "NEC",  "PC-FX",        GAME_NOT_WORKING )
+CONS( 1994, pcfx,       0,      0,      pcfx,       pcfx,      0,      "NEC",  "PC-FX",        GAME_NOT_WORKING | GAME_NO_SOUND )
 

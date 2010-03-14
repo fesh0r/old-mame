@@ -11,15 +11,19 @@
 
 #include "machine/8237dma.h"
 
-typedef struct _at_state at_state;
-struct _at_state
+class at_state
 {
-	const device_config *maincpu;
-	const device_config	*pic8259_master;
-	const device_config	*pic8259_slave;
-	const device_config	*dma8237_1;
-	const device_config	*dma8237_2;
-	const device_config	*pit8254;
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, at_state(machine)); }
+
+	at_state(running_machine &machine) { }
+
+	running_device *maincpu;
+	running_device *pic8259_master;
+	running_device *pic8259_slave;
+	running_device *dma8237_1;
+	running_device *dma8237_2;
+	running_device *pit8254;
 };
 
 

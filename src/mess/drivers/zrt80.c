@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "video/mc6845.h"
 #include "machine/ins8250.h"
@@ -126,7 +126,7 @@ static VIDEO_START( zrt80 )
 
 static VIDEO_UPDATE( zrt80 )
 {
-	const device_config *mc6845 = devtag_get_device(screen->machine, "crtc");
+	running_device *mc6845 = devtag_get_device(screen->machine, "crtc");
 	mc6845_update(mc6845, bitmap, cliprect);
 	return 0;
 }
@@ -243,5 +243,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1982, zrt80,  0,       0, 	zrt80, 	zrt80, 	 0,  	   	 "Digital Research Computers",   "ZRT-80",		GAME_NOT_WORKING)
+COMP( 1982, zrt80,  0,       0, 	zrt80,	zrt80,	 0, 		 "Digital Research Computers",   "ZRT-80",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

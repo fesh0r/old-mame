@@ -16,7 +16,7 @@
     Raphael Nabet 2004
 */
 
-#include "driver.h"
+#include "emu.h"
 
 #include "smartmed.h"
 
@@ -70,6 +70,24 @@ enum
 	header_len = sizeof(disk_image_header)
 };
 
+enum sm_mode_t
+{
+	SM_M_INIT,		// initial state
+	SM_M_READ,		// read page data
+	SM_M_PROGRAM,	// program page data
+	SM_M_ERASE,		// erase block data
+	SM_M_READSTATUS,// read status
+	SM_M_READID,		// read ID
+	SM_M_30
+};
+
+enum pointer_sm_mode_t
+{
+	SM_PM_A,		// accessing first 256-byte half of 512-byte data field
+	SM_PM_B,		// accessing second 256-byte half of 512-byte data field
+	SM_PM_C			// accessing spare field
+};
+
 typedef struct _smartmedia_t smartmedia_t;
 struct _smartmedia_t
 {
@@ -83,22 +101,8 @@ struct _smartmedia_t
 	UINT8 *data_ptr;	// FEEPROM data area
 	UINT8 *data_uid_ptr;
 
-	enum
-	{
-		SM_M_INIT,		// initial state
-		SM_M_READ,		// read page data
-		SM_M_PROGRAM,	// program page data
-		SM_M_ERASE,		// erase block data
-		SM_M_READSTATUS,// read status
-		SM_M_READID,		// read ID
-		SM_M_30
-	} mode;				// current operation mode
-	enum
-	{
-		SM_PM_A,		// accessing first 256-byte half of 512-byte data field
-		SM_PM_B,		// accessing second 256-byte half of 512-byte data field
-		SM_PM_C			// accessing spare field
-	} pointer_mode;		// pointer mode
+	sm_mode_t mode;				// current operation mode
+	pointer_sm_mode_t pointer_mode;		// pointer mode
 
 	int page_addr;		// page address pointer
 	int byte_addr;		// byte address pointer
@@ -115,7 +119,7 @@ struct _smartmedia_t
 };
 
 
-INLINE smartmedia_t *get_safe_token(const device_config *device)
+INLINE smartmedia_t *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -322,13 +326,13 @@ static DEVICE_IMAGE_UNLOAD( smartmedia )
 	return;
 }
 
-int smartmedia_present(const device_config *device)
+int smartmedia_present(running_device *device)
 {
 	smartmedia_t *sm = get_safe_token(device);
 	return sm->num_pages != 0;
 }
 
-int smartmedia_protected(const device_config *device)
+int smartmedia_protected(running_device *device)
 {
 	smartmedia_t *sm = get_safe_token(device);
 	return (sm->status & 0x80) != 0;
@@ -337,7 +341,7 @@ int smartmedia_protected(const device_config *device)
 /*
     write a byte to SmartMedia command port
 */
-void smartmedia_command_w(const device_config *device, UINT8 data)
+void smartmedia_command_w(running_device *device, UINT8 data)
 {
 	smartmedia_t *sm = get_safe_token(device);
 
@@ -464,7 +468,7 @@ void smartmedia_command_w(const device_config *device, UINT8 data)
 /*
     write a byte to SmartMedia address port
 */
-void smartmedia_address_w(const device_config *device, UINT8 data)
+void smartmedia_address_w(running_device *device, UINT8 data)
 {
 	smartmedia_t *sm = get_safe_token(device);
 
@@ -522,7 +526,7 @@ void smartmedia_address_w(const device_config *device, UINT8 data)
 /*
     read a byte from SmartMedia data port
 */
-UINT8 smartmedia_data_r(const device_config *device)
+UINT8 smartmedia_data_r(running_device *device)
 {
 	UINT8 reply = 0;
 	smartmedia_t *sm = get_safe_token(device);
@@ -572,7 +576,7 @@ UINT8 smartmedia_data_r(const device_config *device)
 /*
     write a byte to SmartMedia data port
 */
-void smartmedia_data_w(const device_config *device, UINT8 data)
+void smartmedia_data_w(running_device *device, UINT8 data)
 {
 	smartmedia_t *sm = get_safe_token(device);
 
@@ -625,7 +629,7 @@ DEVICE_GET_INFO( smartmedia )
 		case DEVINFO_INT_IMAGE_TYPE:	            info->i = IO_MEMCARD;                                      break;
 		case DEVINFO_INT_IMAGE_READABLE:            info->i = 1;                                               break;
 		case DEVINFO_INT_IMAGE_WRITEABLE:			info->i = 1;                                               break;
-		case DEVINFO_INT_IMAGE_CREATABLE:	     	info->i = 0;                                               break;
+		case DEVINFO_INT_IMAGE_CREATABLE:	    	info->i = 0;                                               break;
 		case DEVINFO_FCT_START:		                info->start = DEVICE_START_NAME( smartmedia );              break;
 		case DEVINFO_FCT_RESET:						info->reset = DEVICE_RESET_NAME( smartmedia );			break;
 		case DEVINFO_FCT_IMAGE_LOAD:		        info->f = (genf *) DEVICE_IMAGE_LOAD_NAME( smartmedia );    break;

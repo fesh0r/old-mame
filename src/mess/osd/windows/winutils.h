@@ -15,12 +15,12 @@
 //  FILE DIALOG WRAPPERS
 //============================================================
 
-typedef enum _win_file_dialog_type win_file_dialog_type;
 enum _win_file_dialog_type
 {
 	WIN_FILE_DIALOG_OPEN = 1,
 	WIN_FILE_DIALOG_SAVE
 };
+typedef enum _win_file_dialog_type win_file_dialog_type;
 
 typedef struct _win_open_file_name win_open_file_name;
 struct _win_open_file_name
@@ -47,9 +47,5 @@ BOOL win_get_file_name_dialog(win_open_file_name *ofn);
 //============================================================
 
 void win_scroll_window(HWND window, WPARAM wparam, int scroll_bar, int scroll_delta_line);
-DWORD win_get_file_attributes_utf8(const char *filename);
-
-/* expand wildcards so '*' can be used */
-void win_expand_wildcards(int *argc, char **argv[]);
 
 #endif // WINUTILS_H

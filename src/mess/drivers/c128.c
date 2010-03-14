@@ -170,7 +170,7 @@ to use an EEPROM reader, in order to obtain a dump of the whole content.
 */
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/sid6581.h"
@@ -252,12 +252,12 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( c128_z80_io , ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x1000, 0x13ff) AM_READWRITE(c64_colorram_read, c64_colorram_write)
-	AM_RANGE(0xd000, 0xd3ff) AM_READWRITE(vic2_port_r, vic2_port_w)
+	AM_RANGE(0xd000, 0xd3ff) AM_DEVREADWRITE("vic2e", vic2_port_r, vic2_port_w)
 	AM_RANGE(0xd400, 0xd4ff) AM_DEVREADWRITE("sid6581", sid6581_r, sid6581_w)
 	AM_RANGE(0xd500, 0xd5ff) AM_READWRITE(c128_mmu8722_port_r, c128_mmu8722_port_w)
-	AM_RANGE(0xd600, 0xd7ff) AM_READWRITE(vdc8563_port_r, vdc8563_port_w)
-	AM_RANGE(0xdc00, 0xdcff) AM_DEVREADWRITE("cia_0", cia_r, cia_w)
-	AM_RANGE(0xdd00, 0xddff) AM_DEVREADWRITE("cia_1", cia_r, cia_w)
+	AM_RANGE(0xd600, 0xd7ff) AM_DEVREADWRITE("vdc8563", vdc8563_port_r, vdc8563_port_w)
+	AM_RANGE(0xdc00, 0xdcff) AM_DEVREADWRITE("cia_0", mos6526_r, mos6526_w)
+	AM_RANGE(0xdd00, 0xddff) AM_DEVREADWRITE("cia_1", mos6526_r, mos6526_w)
 /*  AM_RANGE(0xdf00, 0xdfff) AM_READWRITE(dma_port_r, dma_port_w) */
 ADDRESS_MAP_END
 
@@ -509,17 +509,95 @@ INPUT_PORTS_END
  *
  *************************************/
 
+static const unsigned char vic2_palette[] =
+{
+/* black, white, red, cyan */
+/* purple, green, blue, yellow */
+/* orange, brown, light red, dark gray, */
+/* medium gray, light green, light blue, light gray */
+/* taken from the vice emulator */
+	0x00, 0x00, 0x00,  0xfd, 0xfe, 0xfc,  0xbe, 0x1a, 0x24,  0x30, 0xe6, 0xc6,
+	0xb4, 0x1a, 0xe2,  0x1f, 0xd2, 0x1e,  0x21, 0x1b, 0xae,  0xdf, 0xf6, 0x0a,
+	0xb8, 0x41, 0x04,  0x6a, 0x33, 0x04,  0xfe, 0x4a, 0x57,  0x42, 0x45, 0x40,
+	0x70, 0x74, 0x6f,  0x59, 0xfe, 0x59,  0x5f, 0x53, 0xfe,  0xa4, 0xa7, 0xa2
+};
+
+/* permutation for c64/vic6567 conversion to vdc8563
+ 0 --> 0 black
+ 1 --> 0xf white
+ 2 --> 8 red
+ 3 --> 7 cyan
+ 4 --> 0xb violett
+ 5 --> 4 green
+ 6 --> 2 blue
+ 7 --> 0xd yellow
+ 8 --> 0xa orange
+ 9 --> 0xc brown
+ 0xa --> 9 light red
+ 0xb --> 6 dark gray
+ 0xc --> 1 gray
+ 0xd --> 5 light green
+ 0xe --> 3 light blue
+ 0xf --> 0xf light gray
+ */
+
+/* c128
+ commodore assignment!?
+ black gray orange yellow dardgrey vio red lgreen
+ lred lgray brown blue white green cyan lblue
+*/
+const unsigned char vdc8563_palette[] =
+{
+#if 0
+	0x00, 0x00, 0x00, /* black */
+	0x70, 0x74, 0x6f, /* gray */
+	0x21, 0x1b, 0xae, /* blue */
+	0x5f, 0x53, 0xfe, /* light blue */
+	0x1f, 0xd2, 0x1e, /* green */
+	0x59, 0xfe, 0x59, /* light green */
+	0x42, 0x45, 0x40, /* dark gray */
+	0x30, 0xe6, 0xc6, /* cyan */
+	0xbe, 0x1a, 0x24, /* red */
+	0xfe, 0x4a, 0x57, /* light red */
+	0xb8, 0x41, 0x04, /* orange */
+	0xb4, 0x1a, 0xe2, /* purple */
+	0x6a, 0x33, 0x04, /* brown */
+	0xdf, 0xf6, 0x0a, /* yellow */
+	0xa4, 0xa7, 0xa2, /* light gray */
+	0xfd, 0xfe, 0xfc /* white */
+#else
+	/* vice */
+	0x00, 0x00, 0x00, /* black */
+	0x20, 0x20, 0x20, /* gray */
+	0x00, 0x00, 0x80, /* blue */
+	0x00, 0x00, 0xff, /* light blue */
+	0x00, 0x80, 0x00, /* green */
+	0x00, 0xff, 0x00, /* light green */
+	0x00, 0x80, 0x80, /* cyan */
+	0x00, 0xff, 0xff, /* light cyan */
+	0x80, 0x00, 0x00, /* red */
+	0xff, 0x00, 0x00, /* light red */
+	0x80, 0x00, 0x80, /* purble */
+	0xff, 0x00, 0xff, /* light purble */
+	0x80, 0x80, 0x00, /* brown */
+	0xff, 0xff, 0x00, /* yellow */
+	0xc0, 0xc0, 0xc0, /* light gray */
+	0xff, 0xff, 0xff  /* white */
+#endif
+};
 
 static PALETTE_INIT( c128 )
 {
 	int i;
 
-	for ( i = 0; i < sizeof(vic2_palette) / 3; i++ ) {
-		palette_set_color_rgb(machine, i, vic2_palette[i*3], vic2_palette[i*3+1], vic2_palette[i*3+2]);
+	for (i = 0; i < sizeof(vic2_palette) / 3; i++)
+	{
+		palette_set_color_rgb(machine, i, vic2_palette[i * 3], vic2_palette[i * 3 + 1], vic2_palette[i * 3 + 2]);
 	}
 
-	for ( i = 0; i < sizeof(vdc8563_palette) / 3; i++ ) {
-		palette_set_color_rgb(machine, i + sizeof(vic2_palette) / 3, vdc8563_palette[i*3], vdc8563_palette[i*3+1], vdc8563_palette[i*3+2]);
+	for (i = 0; i < sizeof(vdc8563_palette) / 3; i++)
+	{
+		palette_set_color_rgb(machine, i + sizeof(vic2_palette) / 3, vdc8563_palette[i * 3], vdc8563_palette[i * 3 + 1], vdc8563_palette[i * 3 + 2]);
 	}
 }
 
@@ -581,19 +659,79 @@ static const m6502_interface c128_m8502_interface =
 
 static CBM_IEC_DAISY( c128_iec_bus )
 {
-	{ "cia_1", DEVCB_DEVICE_LINE("cia_0", mos6526_flag_w) },
+	{ "cia_0", DEVCB_DEVICE_LINE("cia_0", c128_iec_srq_w), DEVCB_NULL, DEVCB_NULL, DEVCB_DEVICE_LINE("cia_0", c128_iec_data_w) },
+	{ "cia_1" },
 	{ C1571_IEC("c1571") },
 	{ NULL}
 };
 
 static CBM_IEC_DAISY( c128d81_iec_bus )
 {
-	{ "cia_1", DEVCB_DEVICE_LINE("cia_0", mos6526_flag_w) },
+	{ "cia_0", DEVCB_DEVICE_LINE("cia_0", c128_iec_srq_w), DEVCB_NULL, DEVCB_NULL, DEVCB_DEVICE_LINE("cia_0", c128_iec_data_w) },
+	{ "cia_1" },
 	{ C1581_IEC("c1563") },
 	{ NULL}
 };
 
 /*************************************
+ *
+ *  VIC II / VDC interfaces
+ *
+ *************************************/
+
+static UINT8 c128_lightpen_x_cb( running_machine *machine )
+{
+	return input_port_read(machine, "LIGHTX") & ~0x01;
+}
+
+static UINT8 c128_lightpen_y_cb( running_machine *machine )
+{
+	return input_port_read(machine, "LIGHTY") & ~0x01;
+}
+
+static UINT8 c128_lightpen_button_cb( running_machine *machine )
+{
+	return input_port_read(machine, "OTHER") & 0x04;
+}
+
+static UINT8 c128_rdy_cb( running_machine *machine )
+{
+	return input_port_read(machine, "CTRLSEL") & 0x08;
+}
+
+static const vic2_interface c128_vic2_ntsc_intf = {
+	"screen",
+	"maincpu",
+	VIC8564,
+	c128_lightpen_x_cb,
+	c128_lightpen_y_cb,
+	c128_lightpen_button_cb,
+	c128_dma_read,
+	c128_dma_read_color,
+	c128_vic_interrupt,
+	c128_rdy_cb
+};
+
+static const vic2_interface c128_vic2_pal_intf = {
+	"screen",
+	"maincpu",
+	VIC8566,
+	c128_lightpen_x_cb,
+	c128_lightpen_y_cb,
+	c128_lightpen_button_cb,
+	c128_dma_read,
+	c128_dma_read_color,
+	c128_vic_interrupt,
+	c128_rdy_cb
+};
+
+static const vdc8563_interface c128_vdc8563_intf = {
+	"screen",
+	0
+};
+
+/*************************************
+
  *
  *  Machine driver
  *
@@ -616,7 +754,7 @@ static MACHINE_DRIVER_START( c128 )
 	MDRV_MACHINE_START( c128 )
 	MDRV_MACHINE_RESET( c128 )
 
-    /* video hardware */
+	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
@@ -628,8 +766,10 @@ static MACHINE_DRIVER_START( c128 )
 	MDRV_PALETTE_LENGTH((ARRAY_LENGTH(vic2_palette) + ARRAY_LENGTH(vdc8563_palette)) / 3 )
 	MDRV_PALETTE_INIT( c128 )
 
-	MDRV_VIDEO_START( c128 )
 	MDRV_VIDEO_UPDATE( c128 )
+
+	MDRV_VIC2_ADD("vic2e", c128_vic2_ntsc_intf)
+	MDRV_VDC8563_ADD("vdc8563", c128_vdc8563_intf)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -646,8 +786,8 @@ static MACHINE_DRIVER_START( c128 )
 	MDRV_CASSETTE_ADD( "cassette", cbm_cassette_config )
 
 	/* cia */
-	MDRV_CIA6526_ADD("cia_0", CIA6526R1, VIC6567_CLOCK, c128_ntsc_cia0)
-	MDRV_CIA6526_ADD("cia_1", CIA6526R1, VIC6567_CLOCK, c128_ntsc_cia1)
+	MDRV_MOS6526R1_ADD("cia_0", VIC6567_CLOCK, c128_ntsc_cia0)
+	MDRV_MOS6526R1_ADD("cia_1", VIC6567_CLOCK, c128_ntsc_cia1)
 
 	/* floppy from serial bus */
 	MDRV_CBM_IEC_ADD("iec", c128_iec_bus)
@@ -689,6 +829,9 @@ static MACHINE_DRIVER_START( c128pal )
 	MDRV_SCREEN_SIZE(VIC6569_COLUMNS * 2, VIC6569_LINES)
 	MDRV_SCREEN_VISIBLE_AREA(0, VIC6569_VISIBLECOLUMNS - 1, 0, VIC6569_VISIBLELINES - 1)
 
+	MDRV_DEVICE_REMOVE("vic2e")
+	MDRV_VIC2_ADD("vic2e", c128_vic2_pal_intf)
+
 	/* sound hardware */
 	MDRV_SOUND_REPLACE("sid6581", SID6581, VIC6569_CLOCK)
 	MDRV_SOUND_CONFIG(c128_sound_interface)
@@ -696,8 +839,8 @@ static MACHINE_DRIVER_START( c128pal )
 	/* cia */
 	MDRV_DEVICE_REMOVE("cia_0")
 	MDRV_DEVICE_REMOVE("cia_1")
-	MDRV_CIA6526_ADD("cia_0", CIA6526R1, VIC6569_CLOCK, c128_pal_cia0)
-	MDRV_CIA6526_ADD("cia_1", CIA6526R1, VIC6569_CLOCK, c128_pal_cia1)
+	MDRV_MOS6526R1_ADD("cia_0", VIC6569_CLOCK, c128_pal_cia0)
+	MDRV_MOS6526R1_ADD("cia_1", VIC6569_CLOCK, c128_pal_cia1)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( c128dpal )
@@ -940,25 +1083,25 @@ ROM_END
 
 /*    YEAR  NAME     PARENT COMPAT MACHINE   INPUT    INIT      COMPANY                             FULLNAME            FLAGS */
 
-COMP( 1985, c128,      0,     0,   c128,     c128,    c128,     "Commodore Business Machines Co.", "Commodore 128 (NTSC)", 0)
-COMP( 1985, c128cr,    c128,  0,   c128,     c128,    c128,     "Commodore Business Machines Co.", "Commodore 128CR (NTSC, proto?)", 0)
+COMP( 1985, c128,      0,     0,   c128,     c128,    c128,     "Commodore Business Machines", "Commodore 128 (NTSC)", 0)
+COMP( 1985, c128cr,    c128,  0,   c128,     c128,    c128,     "Commodore Business Machines", "Commodore 128CR (NTSC, proto?)", 0)
 
-COMP( 1985, c128sfi,   c128,  0,   c128pal,  c128fra, c128pal,  "Commodore Business Machines Co.", "Commodore 128 (PAL, Swedish / Finnish)", 0)
-COMP( 1985, c128fino,  c128,  0,   c128pal,  c128swe, c128pal,  "Commodore Business Machines Co.", "Commodore 128 (PAL, Finland, Unconfirmed Dumps)", 0)
-COMP( 1985, c128fra,   c128,  0,   c128pal,  c128fra, c128pal,  "Commodore Business Machines Co.", "Commodore 128 (PAL, France)", 0)
-COMP( 1985, c128ger,   c128,  0,   c128pal,  c128ger, c128pal,  "Commodore Business Machines Co.", "Commodore 128 (PAL, Germany)", 0)
-COMP( 1985, c128nor,   c128,  0,   c128pal,  c128ita, c128pal,  "Commodore Business Machines Co.", "Commodore 128 (PAL, Norway)", 0)
+COMP( 1985, c128sfi,   c128,  0,   c128pal,  c128fra, c128pal,  "Commodore Business Machines", "Commodore 128 (PAL, Swedish / Finnish)", 0)
+COMP( 1985, c128fino,  c128,  0,   c128pal,  c128swe, c128pal,  "Commodore Business Machines", "Commodore 128 (PAL, Finland, Unconfirmed Dumps)", 0)
+COMP( 1985, c128fra,   c128,  0,   c128pal,  c128fra, c128pal,  "Commodore Business Machines", "Commodore 128 (PAL, France)", 0)
+COMP( 1985, c128ger,   c128,  0,   c128pal,  c128ger, c128pal,  "Commodore Business Machines", "Commodore 128 (PAL, Germany)", 0)
+COMP( 1985, c128nor,   c128,  0,   c128pal,  c128ita, c128pal,  "Commodore Business Machines", "Commodore 128 (PAL, Norway)", 0)
 // we miss other countries: Spain, Belgium, etc.
 
 // the following drivers use a 1571 floppy drive
-COMP( 1985, c128dpr,   c128,  0,   c128d,    c128,    c128d,   "Commodore Business Machines Co.", "Commodore 128D (NTSC, proto)", GAME_NOT_WORKING)
-COMP( 1985, c128d,     c128,  0,   c128dpal, c128,    c128dpal,"Commodore Business Machines Co.", "Commodore 128D (PAL)", GAME_NOT_WORKING)
+COMP( 1985, c128dpr,   c128,  0,   c128d,    c128,    c128d,   "Commodore Business Machines", "Commodore 128D (NTSC, proto)", GAME_NOT_WORKING )
+COMP( 1985, c128d,     c128,  0,   c128dpal, c128,    c128dpal,"Commodore Business Machines", "Commodore 128D (PAL)", GAME_NOT_WORKING )
 
 // the following drivers use a 1571CR floppy drive
-COMP( 1986, c128dcr,   c128,  0,   c128dcr,  c128,    c128dcr, "Commodore Business Machines Co.", "Commodore 128DCR (NTSC)", GAME_NOT_WORKING)
-COMP( 1986, c128drde,  c128,  0,   c128dcrp, c128ger, c128dcrp,"Commodore Business Machines Co.", "Commodore 128DCR (PAL, Germany)", GAME_NOT_WORKING)
-COMP( 1986, c128drit,  c128,  0,   c128dcrp, c128ita, c128dcrp,"Commodore Business Machines Co.", "Commodore 128DCR (PAL, Italy)", GAME_NOT_WORKING)
-COMP( 1986, c128drsw,  c128,  0,   c128dcrp, c128swe, c128dcrp,"Commodore Business Machines Co.", "Commodore 128DCR (PAL, Sweden)", GAME_NOT_WORKING)
+COMP( 1986, c128dcr,   c128,  0,   c128dcr,  c128,    c128dcr, "Commodore Business Machines", "Commodore 128DCR (NTSC)", GAME_NOT_WORKING)
+COMP( 1986, c128drde,  c128,  0,   c128dcrp, c128ger, c128dcrp,"Commodore Business Machines", "Commodore 128DCR (PAL, Germany)", GAME_NOT_WORKING)
+COMP( 1986, c128drit,  c128,  0,   c128dcrp, c128ita, c128dcrp,"Commodore Business Machines", "Commodore 128DCR (PAL, Italy)", GAME_NOT_WORKING)
+COMP( 1986, c128drsw,  c128,  0,   c128dcrp, c128swe, c128dcrp,"Commodore Business Machines", "Commodore 128DCR (PAL, Sweden)", GAME_NOT_WORKING)
 
 // the following driver is a c128 with 1581 floppy drive. it allows us to document 1581 firmware dumps, but it does not do much more
-COMP( 1986, c128d81,   c128,  0,   c128d81,  c128,    c128d81, "Commodore Business Machines Co.", "Commodore 128D/81 (NTSC, proto)", GAME_NOT_WORKING)
+COMP( 1986, c128d81,   c128,  0,   c128d81,  c128,    c128d81, "Commodore Business Machines", "Commodore 128D/81 (NTSC, proto)", GAME_NOT_WORKING)

@@ -37,7 +37,7 @@
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/mcs51/mcs51.h"
 #include "includes/ql.h"
 #include "cpu/mcs48/mcs48.h"
@@ -59,7 +59,7 @@ static QUICKLOAD_LOAD( ql );
 
 static WRITE8_HANDLER( ipc_w )
 {
-	ql_state *state = space->machine->driver_data;
+	ql_state *state = (ql_state *)space->machine->driver_data;
 
 	// pulse COMCTL line
 
@@ -84,7 +84,7 @@ static WRITE8_HANDLER( ipc_port1_w )
 
     */
 
-	ql_state *state = space->machine->driver_data;
+	ql_state *state = (ql_state *)space->machine->driver_data;
 
 	state->keylatch = data;
 }
@@ -106,8 +106,8 @@ static WRITE8_HANDLER( ipc_port2_w )
 
     */
 
-	const device_config *speaker = devtag_get_device(space->machine, "speaker");
-	ql_state *state = space->machine->driver_data;
+	running_device *speaker = devtag_get_device(space->machine, "speaker");
+	ql_state *state = (ql_state *)space->machine->driver_data;
 
 	int ipl = (BIT(data, 2) << 1) | BIT(data, 3);
 
@@ -163,7 +163,7 @@ static READ8_HANDLER( ipc_port2_r )
 
     */
 
-	ql_state *state = space->machine->driver_data;
+	ql_state *state = (ql_state *)space->machine->driver_data;
 
 	int irq = (state->ser2_rxd | state->ser1_txd);
 
@@ -174,14 +174,14 @@ static READ8_HANDLER( ipc_port2_r )
 
 static READ8_HANDLER( ipc_t1_r )
 {
-	ql_state *state = space->machine->driver_data;
+	ql_state *state = (ql_state *)space->machine->driver_data;
 
 	return state->baudx4;
 }
 
 static READ8_HANDLER( ipc_bus_r )
 {
-	ql_state *state = space->machine->driver_data;
+	ql_state *state = (ql_state *)space->machine->driver_data;
 
 	/*
 
@@ -494,14 +494,14 @@ static ZX8301_INTERFACE( ql_zx8301_intf )
 
 static WRITE_LINE_DEVICE_HANDLER( ql_baudx4_w )
 {
-	ql_state *driver_state = device->machine->driver_data;
+	ql_state *driver_state = (ql_state *)device->machine->driver_data;
 
 	driver_state->baudx4 = state;
 }
 
 static WRITE_LINE_DEVICE_HANDLER( ql_comdata_w )
 {
-	ql_state *driver_state = device->machine->driver_data;
+	ql_state *driver_state = (ql_state *)device->machine->driver_data;
 
 	driver_state->comdata = state;
 }
@@ -518,7 +518,7 @@ static ZX8302_INTERFACE( ql_zx8302_intf )
 
 static VIDEO_UPDATE( ql )
 {
-	ql_state *state = screen->machine->driver_data;
+	ql_state *state = (ql_state *)screen->machine->driver_data;
 
 	zx8301_update(state->zx8301, bitmap, cliprect);
 
@@ -529,7 +529,7 @@ static VIDEO_UPDATE( ql )
 
 static MACHINE_START( ql )
 {
-	ql_state *state = machine->driver_data;
+	ql_state *state = (ql_state *)machine->driver_data;
 
 	const address_space *program = cputag_get_address_space(machine, M68008_TAG, ADDRESS_SPACE_PROGRAM);
 
@@ -664,7 +664,7 @@ static DEVICE_GET_INFO( ql_serial )
 	{
 		case DEVINFO_STR_NAME:		                strcpy(info->s, "QL serial port");	                    break;
 		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:	    strcpy(info->s, "txt");                                 break;
-		default: 									DEVICE_GET_INFO_CALL(serial);	break;
+		default:									DEVICE_GET_INFO_CALL(serial);	break;
 	}
 }
 
@@ -675,7 +675,7 @@ static DEVICE_GET_INFO( ql_serial )
 
 #define MDRV_QL_SERIAL_REMOVE(_tag)		\
   MDRV_DEVICE_REMOVE(_tag)
-  
+
 static MACHINE_DRIVER_START( ql )
 	MDRV_DRIVER_DATA(ql_state)
 
@@ -749,7 +749,7 @@ static MACHINE_DRIVER_START( opd )
 	MDRV_RAM_MODIFY("messram")
 	MDRV_RAM_DEFAULT_SIZE("128K")
 	MDRV_RAM_EXTRA_OPTIONS("256K")
-	
+
 	MDRV_QL_SERIAL_REMOVE("serial0")
 	MDRV_QL_SERIAL_REMOVE("serial1")
 MACHINE_DRIVER_END
@@ -931,7 +931,7 @@ static QUICKLOAD_LOAD( ql )
 
 	return INIT_PASS;
 }
-	
+
 /* Computer Drivers */
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT   INIT    COMPANY                     FULLNAME        FLAGS */

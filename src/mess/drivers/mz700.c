@@ -63,7 +63,7 @@
  *
  *****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/mz700.h"
 #include "cpu/z80/z80.h"
 #include "machine/i8255a.h"
@@ -85,13 +85,13 @@
 
 static TIMER_DEVICE_CALLBACK( ne556_cursor_callback )
 {
-	mz_state *mz = timer->machine->driver_data;
+	mz_state *mz = (mz_state *)timer->machine->driver_data;
 	mz->cursor_timer ^= 1;
 }
 
 static TIMER_DEVICE_CALLBACK( ne556_other_callback )
 {
-	mz_state *mz = timer->machine->driver_data;
+	mz_state *mz = (mz_state *)timer->machine->driver_data;
 	mz->other_timer ^= 1;
 }
 
@@ -221,7 +221,7 @@ static INPUT_PORTS_START( mz700 )
 	PORT_BIT(0x80, 0x80, IPT_KEYBOARD) PORT_CODE(KEYCODE_1) 			PORT_CHAR('1') PORT_CHAR('!')
 
 	PORT_START("ROW6")
-	PORT_BIT(0x01, 0x01, IPT_KEYBOARD) PORT_CODE(KEYCODE_STOP) 			PORT_CHAR('.') PORT_CHAR('>')
+	PORT_BIT(0x01, 0x01, IPT_KEYBOARD) PORT_CODE(KEYCODE_STOP)			PORT_CHAR('.') PORT_CHAR('>')
 	PORT_BIT(0x02, 0x02, IPT_KEYBOARD) PORT_CODE(KEYCODE_COMMA) 		PORT_CHAR(',') PORT_CHAR('<')
 	PORT_BIT(0x04, 0x04, IPT_KEYBOARD) PORT_CODE(KEYCODE_9) 			PORT_CHAR('9') PORT_CHAR(')')
 	PORT_BIT(0x08, 0x08, IPT_KEYBOARD) PORT_NAME("0  Pi")				PORT_CODE(KEYCODE_0) PORT_CHAR('0')
@@ -248,11 +248,11 @@ static INPUT_PORTS_START( mz700 )
 
 	PORT_START("ROW9")
 	PORT_BIT(0x07, 0x07, IPT_UNUSED)
-    PORT_BIT(0x08, 0x08, IPT_KEYBOARD) PORT_CODE(KEYCODE_F5) 			PORT_CHAR(UCHAR_MAMEKEY(F5))
-    PORT_BIT(0x10, 0x10, IPT_KEYBOARD) PORT_CODE(KEYCODE_F4) 			PORT_CHAR(UCHAR_MAMEKEY(F4))
-    PORT_BIT(0x20, 0x20, IPT_KEYBOARD) PORT_CODE(KEYCODE_F3) 			PORT_CHAR(UCHAR_MAMEKEY(F3))
-    PORT_BIT(0x40, 0x40, IPT_KEYBOARD) PORT_CODE(KEYCODE_F2) 			PORT_CHAR(UCHAR_MAMEKEY(F2))
-    PORT_BIT(0x80, 0x80, IPT_KEYBOARD) PORT_CODE(KEYCODE_F1) 			PORT_CHAR(UCHAR_MAMEKEY(F1))
+    PORT_BIT(0x08, 0x08, IPT_KEYBOARD) PORT_CODE(KEYCODE_F5)			PORT_CHAR(UCHAR_MAMEKEY(F5))
+    PORT_BIT(0x10, 0x10, IPT_KEYBOARD) PORT_CODE(KEYCODE_F4)			PORT_CHAR(UCHAR_MAMEKEY(F4))
+    PORT_BIT(0x20, 0x20, IPT_KEYBOARD) PORT_CODE(KEYCODE_F3)			PORT_CHAR(UCHAR_MAMEKEY(F3))
+    PORT_BIT(0x40, 0x40, IPT_KEYBOARD) PORT_CODE(KEYCODE_F2)			PORT_CHAR(UCHAR_MAMEKEY(F2))
+    PORT_BIT(0x80, 0x80, IPT_KEYBOARD) PORT_CODE(KEYCODE_F1)			PORT_CHAR(UCHAR_MAMEKEY(F1))
 
 	PORT_START("JOY")
 	PORT_BIT(0x01, 0x00, IPT_UNUSED)
@@ -373,7 +373,7 @@ static const cassette_config mz700_cassette_config =
 {
 	mz700_cassette_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED)
 };
 
 
@@ -440,7 +440,7 @@ static MACHINE_DRIVER_START( mz800 )
 	/* devices */
 	MDRV_DEVICE_REMOVE("pit8253")
 	MDRV_PIT8253_ADD("pit8253", mz800_pit8253_config)
-	MDRV_Z80PIO_ADD("z80pio", mz800_z80pio_config)
+	MDRV_Z80PIO_ADD("z80pio", XTAL_17_73447MHz/5, mz800_z80pio_config)
 	MDRV_CENTRONICS_ADD("centronics", standard_centronics)
 MACHINE_DRIVER_END
 
@@ -530,4 +530,4 @@ COMP( 1984, mz800,    0,        0,      mz800,    mz800,    mz800,  "Sharp",    
 COMP( 1984, mz1500,   0,        0,      mz800,    mz800,    mz800,  "Sharp",     "MZ-1500", GAME_NOT_WORKING )	// Japanese version of the MZ-800
 
 // MZ-2500 probably needs a separate driver...
-COMP( 1985, mz2500,   0,        0,      mz2500,   0,        0,      "Sharp",     "MZ-2500", GAME_NOT_WORKING )
+COMP( 1985, mz2500,   0,        0,      mz2500,   0,        0,      "Sharp",     "MZ-2500", GAME_NOT_WORKING | GAME_NO_SOUND)

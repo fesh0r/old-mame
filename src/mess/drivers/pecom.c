@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/cdp1802/cdp1802.h"
 #include "sound/cdp1869.h"
 #include "sound/wave.h"
@@ -167,7 +167,7 @@ static const cassette_config pecom_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED)
 };
 
 /* Machine driver */
@@ -177,11 +177,11 @@ static MACHINE_DRIVER_START( pecom64 )
     /* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", CDP1802, CDP1869_DOT_CLK_PAL/3)
 	MDRV_CPU_PROGRAM_MAP(pecom64_mem)
-  	MDRV_CPU_IO_MAP(pecom64_io)
-  	MDRV_CPU_CONFIG(pecom64_cdp1802_config)
+	MDRV_CPU_IO_MAP(pecom64_io)
+	MDRV_CPU_CONFIG(pecom64_cdp1802_config)
 
-  	MDRV_MACHINE_START( pecom )
-  	MDRV_MACHINE_RESET( pecom )
+	MDRV_MACHINE_START( pecom )
+	MDRV_MACHINE_RESET( pecom )
 
 	// sound and video hardware
 
@@ -192,6 +192,7 @@ static MACHINE_DRIVER_START( pecom64 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("32K")
+	MDRV_RAM_DEFAULT_VALUE(0x00)
 MACHINE_DRIVER_END
 
 /* ROM definition */
@@ -208,4 +209,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME   PARENT  COMPAT       MACHINE     INPUT   INIT   COMPANY  FULLNAME      FLAGS */
-COMP( 1987, pecom64,     0,      0, 	pecom64, 	pecom, 	pecom, "Ei Nis", "Pecom 64",	0)
+COMP( 1987, pecom64,     0,      0, 	pecom64,	pecom,	0,     "Ei Nis", "Pecom 64",	0)

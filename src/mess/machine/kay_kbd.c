@@ -15,7 +15,7 @@
  *
  ******************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "sound/beep.h"
 #include "kay_kbd.h"
 
@@ -80,10 +80,10 @@ INPUT_PORTS_START( kay_kbd )
 	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_9) 			PORT_CHAR('9') PORT_CHAR('(')
 	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_0) 			PORT_CHAR('0') PORT_CHAR(')')
 	PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_MINUS) 			PORT_CHAR('-') PORT_CHAR('_')
-	PORT_BIT(0x10, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_EQUALS) 			PORT_CHAR('=') PORT_CHAR('+')
+	PORT_BIT(0x10, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_EQUALS)			PORT_CHAR('=') PORT_CHAR('+')
 	PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_TILDE) 			PORT_CHAR('`') PORT_CHAR('~')
-	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_NAME("BACK SPACE") 			PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(8)
-	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_TAB) 			PORT_CHAR('\t')
+	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_NAME("BACK SPACE")			PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(8)
+	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_TAB)			PORT_CHAR('\t')
 
 	PORT_START("ROW2")
 	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_Q) 			PORT_CHAR('q') PORT_CHAR('Q')
@@ -138,10 +138,10 @@ INPUT_PORTS_START( kay_kbd )
 	PORT_START("ROW7")
 	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_NAME("LINE FEED")			PORT_CODE(KEYCODE_END) PORT_CHAR(UCHAR_MAMEKEY(END))
 	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_SPACE)			PORT_CHAR(' ')
-	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_MINUS_PAD)		 	PORT_CHAR(UCHAR_MAMEKEY(MINUS_PAD))
+	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_MINUS_PAD)			PORT_CHAR(UCHAR_MAMEKEY(MINUS_PAD))
 	PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_NAME("Keypad ,")			PORT_CODE(KEYCODE_PLUS_PAD)
 	PORT_BIT(0x10, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_ENTER_PAD)			PORT_CHAR(UCHAR_MAMEKEY(ENTER_PAD))
-	PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_DEL_PAD) 			PORT_CHAR(UCHAR_MAMEKEY(DEL_PAD))
+	PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_DEL_PAD)			PORT_CHAR(UCHAR_MAMEKEY(DEL_PAD))
 	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_0_PAD) 			PORT_CHAR(UCHAR_MAMEKEY(0_PAD))
 	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_1_PAD) 			PORT_CHAR(UCHAR_MAMEKEY(1_PAD))
 
@@ -164,14 +164,14 @@ INPUT_PORTS_START( kay_kbd )
 INPUT_PORTS_END
 
 static void kay_kbd_in( running_machine *machine, UINT8 data );
-static const device_config *kay_kbd_beeper;
+static running_device *kay_kbd_beeper;
 static UINT8 kbd_buff[16];
 static UINT8 kbd_head = 0;
 static UINT8 kbd_tail = 0;
 static UINT8 beep_on = 0;
 static UINT8 control_status = 0;
 static UINT8 keyrows[10] = { 0,0,0,0,0,0,0,0,0,0 };
-static const char keyboard[8][10][8] = {
+static const UINT8 keyboard[8][10][8] = {
 	{ /* normal */
 		{ 27,'1','2','3','4','5','6','7'},
 		{'8','9','0','-','=','`',  8,  9},
@@ -292,7 +292,7 @@ MACHINE_RESET( kay_kbd )
  ******************************************************/
 INTERRUPT_GEN( kay_kbd_interrupt )
 {
-	int mod, row, col, chg, new;
+	int mod, row, col, chg, newval;
 	static int lastrow = 0, mask = 0x00, key = 0x00, repeat = 0, repeater = 0;
 
 	if( repeat )
@@ -307,18 +307,18 @@ INTERRUPT_GEN( kay_kbd_interrupt )
 	}
 
 	row = 9;
-	new = input_port_read(device->machine, "ROW9");
-	chg = keyrows[row] ^ new;
+	newval = input_port_read(device->machine, "ROW9");
+	chg = keyrows[row] ^ newval;
 
-	if (!chg) { new = input_port_read(device->machine, "ROW8"); chg = keyrows[--row] ^ new; }
-	if (!chg) { new = input_port_read(device->machine, "ROW7"); chg = keyrows[--row] ^ new; }
-	if (!chg) { new = input_port_read(device->machine, "ROW6"); chg = keyrows[--row] ^ new; }
-	if (!chg) { new = input_port_read(device->machine, "ROW5"); chg = keyrows[--row] ^ new; }
-	if (!chg) { new = input_port_read(device->machine, "ROW4"); chg = keyrows[--row] ^ new; }
-	if (!chg) { new = input_port_read(device->machine, "ROW3"); chg = keyrows[--row] ^ new; }
-	if (!chg) { new = input_port_read(device->machine, "ROW2"); chg = keyrows[--row] ^ new; }
-	if (!chg) { new = input_port_read(device->machine, "ROW1"); chg = keyrows[--row] ^ new; }
-	if (!chg) { new = input_port_read(device->machine, "ROW0"); chg = keyrows[--row] ^ new; }
+	if (!chg) { newval = input_port_read(device->machine, "ROW8"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine, "ROW7"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine, "ROW6"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine, "ROW5"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine, "ROW4"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine, "ROW3"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine, "ROW2"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine, "ROW1"); chg = keyrows[--row] ^ newval; }
+	if (!chg) { newval = input_port_read(device->machine, "ROW0"); chg = keyrows[--row] ^ newval; }
 	if (!chg) --row;
 
 	if (row >= 0)
@@ -331,7 +331,7 @@ INTERRUPT_GEN( kay_kbd_interrupt )
 		if( row == 3 && chg == 0x80 )
 			set_led_status(device->machine, 1, (keyrows[3] & 0x80) ? 0 : 1);
 
-		if (new & chg)	/* key(s) pressed ? */
+		if (newval & chg)	/* key(s) pressed ? */
 		{
 			mod = 0;
 
@@ -347,13 +347,13 @@ INTERRUPT_GEN( kay_kbd_interrupt )
 			if (keyrows[3] & 0x80)
 				mod |= 4;
 
-			/* find new key */
+			/* find newval key */
 			mask = 0x01;
 			for (col = 0; col < 8; col ++)
 			{
 				if (chg & mask)
 				{
-					new &= mask;
+					newval &= mask;
 					key = keyboard[mod][row][col];
 					break;
 				}
@@ -367,11 +367,11 @@ INTERRUPT_GEN( kay_kbd_interrupt )
 			else
 			if( (row == 0) && (chg == 0x04) ) /* Ctrl-@ (NUL) */
 				kay_kbd_in(device->machine, 0);
-			keyrows[row] |= new;
+			keyrows[row] |= newval;
 		}
 		else
 		{
-			keyrows[row] = new;
+			keyrows[row] = newval;
 		}
 		repeat = repeater;
 	}

@@ -1,5 +1,6 @@
 
-#include "driver.h"
+#include "emu.h"
+#include "coreutil.h"
 #include "cpu/h6280/h6280.h"
 #include "includes/pce.h"
 #include "devices/chd_cd.h"
@@ -73,7 +74,7 @@ static struct {
 } pce_cd;
 
 /* MSM5205 ADPCM decoder definition */
-static void pce_cd_msm5205_int(const device_config *device);
+static void pce_cd_msm5205_int(running_device *device);
 const msm5205_interface pce_cd_msm5205_interface = {
 	pce_cd_msm5205_int,	/* interrupt function */
 	MSM5205_S48_4B		/* 1/48 prescaler, 4bit data */
@@ -301,7 +302,7 @@ static void pce_set_cd_bram( running_machine *machine )
   the MSM5205. Currently we can only use static clocks for the
   MSM5205.
  */
-static void pce_cd_msm5205_int(const device_config *device)
+static void pce_cd_msm5205_int(running_device *device)
 {
 	pce_cd.adpcm_clock_count = ( pce_cd.adpcm_clock_count + 1 ) % pce_cd.adpcm_clock_divider;
 	if ( ! pce_cd.adpcm_clock_count )
@@ -407,7 +408,7 @@ static void pce_cd_nec_set_audio_start_position( running_machine *machine )
 		frame = pce_cd.toc->tracks[ bcd_2_dec( pce_cd.command_buffer[2] ) - 1 ].physframeofs;
 		break;
 	default:
-		assert( NULL == pce_cd_nec_set_audio_start_position );
+		//assert( NULL == pce_cd_nec_set_audio_start_position );
 		break;
 	}
 
@@ -453,7 +454,7 @@ static void pce_cd_nec_set_audio_stop_position( running_machine *machine )
 		frame = pce_cd.toc->tracks[ bcd_2_dec( pce_cd.command_buffer[2] ) - 1 ].physframeofs;
 		break;
 	default:
-		assert( NULL == pce_cd_nec_set_audio_start_position );
+		//assert( NULL == pce_cd_nec_set_audio_start_position );
 		break;
 	}
 
@@ -476,7 +477,7 @@ static void pce_cd_nec_set_audio_stop_position( running_machine *machine )
 		pce_cd.cdda_status = PCE_CD_CDDA_OFF;
 		cdda_stop_audio( devtag_get_device( machine, "cdda" ) );
 		pce_cd.end_frame = pce_cd.last_frame;
-		assert( NULL == pce_cd_nec_set_audio_stop_position );
+//      assert( NULL == pce_cd_nec_set_audio_stop_position );
 	}
 
 	pce_cd_reply_status_byte( SCSI_STATUS_OK );
@@ -610,7 +611,7 @@ static void pce_cd_nec_get_dir_info( running_machine *machine )
 		pce_cd.data_buffer_size = 4;
 		break;
 	default:
-		assert( pce_cd_nec_get_dir_info == NULL );  // Not implemented yet
+//      assert( pce_cd_nec_get_dir_info == NULL );  // Not implemented yet
 		break;
 	}
 
@@ -908,7 +909,7 @@ static TIMER_CALLBACK( pce_cd_data_timer_callback )
 
 static void pce_cd_init( running_machine *machine )
 {
-	const device_config *device;
+	running_device *device;
 
 	/* Initialize pce_cd struct */
 	memset( &pce_cd, 0, sizeof(pce_cd) );

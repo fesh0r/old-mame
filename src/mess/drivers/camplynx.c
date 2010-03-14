@@ -76,12 +76,20 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "video/mc6845.h"
 #include "sound/dac.h"
 
-static const device_config *mc6845;
+class camplynx_state
+{
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, camplynx_state(machine)); }
+
+	camplynx_state(running_machine &machine) { }
+
+	running_device *mc6845;
+};
 
 /* These bankswitch handlers are very incomplete, just enough to get the
     computer working. Also, as it happens 6 times for every scanline
@@ -401,12 +409,16 @@ static MC6845_UPDATE_ROW( lynx128k_update_row )
 
 static VIDEO_START( lynx48k )
 {
-	mc6845 = devtag_get_device(machine, "crtc");
+	camplynx_state *state = (camplynx_state *)machine->driver_data;
+
+	state->mc6845 = devtag_get_device(machine, "crtc");
 }
 
 static VIDEO_UPDATE( lynx48k )
 {
-	mc6845_update(mc6845, bitmap, cliprect);
+	camplynx_state *state = (camplynx_state *)screen->machine->driver_data;
+
+	mc6845_update(state->mc6845, bitmap, cliprect);
 	return 0;
 }
 
@@ -439,6 +451,9 @@ static const mc6845_interface lynx128k_crtc6845_interface = {
 
 
 static MACHINE_DRIVER_START( lynx48k )
+
+	MDRV_DRIVER_DATA( camplynx_state )
+
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_4MHz)
 	MDRV_CPU_PROGRAM_MAP(lynx48k_mem)
@@ -467,6 +482,9 @@ static MACHINE_DRIVER_START( lynx48k )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( lynx128k )
+
+	MDRV_DRIVER_DATA( camplynx_state )
+
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_6MHz)
 	MDRV_CPU_PROGRAM_MAP(lynx128k_mem)

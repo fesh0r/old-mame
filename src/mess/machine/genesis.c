@@ -18,7 +18,7 @@
 ***************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m68000/m68000.h"
 
 #include "devices/cartslot.h"
@@ -577,7 +577,7 @@ static WRITE16_HANDLER( genesis_TMSS_bank_w )
 
 static void alloc_sram(running_machine *machine)
 {
-	genesis_sram = alloc_array_or_die(UINT16, (genesis_sram_end - genesis_sram_start + 1) / sizeof(UINT16));
+	genesis_sram = auto_alloc_array(machine, UINT16, (genesis_sram_end - genesis_sram_start + 1) / sizeof(UINT16));
 	image_battery_load(devtag_get_device(machine, "cart"), genesis_sram, genesis_sram_end - genesis_sram_start + 1);
 	memcpy(megadriv_backupram, genesis_sram, genesis_sram_end - genesis_sram_start + 1);
 }
@@ -905,7 +905,7 @@ static int allendianmemcmp(const void *s1, const void *s2, size_t n)
 
 #else
 
-	realbuf = s2;
+	realbuf = (unsigned char *)s2;
 
 #endif
 	return memcmp(s1,realbuf,n);
@@ -1037,7 +1037,7 @@ static DEVICE_IMAGE_LOAD( genesis_cart )
 	else if ((rawROM[0x2080] == 'E') && (rawROM[0x2081] == 'A') &&
 				(rawROM[0x2082] == 'M' || rawROM[0x2082] == 'G'))
 	{
-		tmpROMnew = malloc(length);
+		tmpROMnew = (unsigned char *)osd_malloc(length);
 		secondhalf = &tmpROMnew[length >> 1];
 
 		if (!tmpROMnew)
@@ -1075,7 +1075,7 @@ static DEVICE_IMAGE_LOAD( genesis_cart )
 		relocate = 0x2000;
 		genesis_last_loaded_image_length = length;
 
- 		for (ptr = 0; ptr < MAX_MD_CART_SIZE + relocate; ptr += 2)		/* mangle bytes for little endian machines */
+		for (ptr = 0; ptr < MAX_MD_CART_SIZE + relocate; ptr += 2)		/* mangle bytes for little endian machines */
 		{
 #ifdef LSB_FIRST
 			int temp = ROM[relocate + ptr];

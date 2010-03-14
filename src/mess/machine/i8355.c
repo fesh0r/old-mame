@@ -61,18 +61,18 @@ struct _i8355_t
     INLINE FUNCTIONS
 ***************************************************************************/
 
-INLINE i8355_t *get_safe_token(const device_config *device)
+INLINE i8355_t *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
 	return (i8355_t *)device->token;
 }
 
-INLINE const i8355_interface *get_interface(const device_config *device)
+INLINE const i8355_interface *get_interface(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->type == I8355);
-	return (const i8355_interface *) device->static_config;
+	return (const i8355_interface *) device->baseconfig().static_config;
 }
 
 INLINE UINT8 read_port(i8355_t *i8355, int port)
@@ -138,13 +138,13 @@ WRITE8_DEVICE_HANDLER( i8355_w )
 	{
 	case I8355_REGISTER_PORT_A:
 	case I8355_REGISTER_PORT_B:
-		if (LOG) logerror("I8355 '%s' Port %c Write %02x\n", device->tag, 'A' + port, data);
+		if (LOG) logerror("I8355 '%s' Port %c Write %02x\n", device->tag(), 'A' + port, data);
 		write_port(i8355, port, data);
 		break;
 
 	case I8355_REGISTER_PORT_A_DDR:
 	case I8355_REGISTER_PORT_B_DDR:
-		if (LOG) logerror("I8355 '%s' Port %c DDR: %02x\n", device->tag, 'A' + port, data);
+		if (LOG) logerror("I8355 '%s' Port %c DDR: %02x\n", device->tag(), 'A' + port, data);
 		i8355->ddr[port] = data;
 		write_port(i8355, port, data);
 		break;
@@ -168,7 +168,7 @@ READ8_DEVICE_HANDLER( i8355_rom_r )
 
 static DEVICE_START( i8355 )
 {
-	i8355_t *i8355 = device->token;
+	i8355_t *i8355 = (i8355_t *)device->token;
 	const i8355_interface *intf = get_interface(device);
 
 	/* resolve callbacks */
@@ -178,7 +178,7 @@ static DEVICE_START( i8355 )
 	devcb_resolve_write8(&i8355->out_port_func[PORT_B], &intf->out_pb_func, device);
 
 	/* find memory region */
-	i8355->rom = memory_region(device->machine, device->tag);
+	i8355->rom = memory_region(device->machine, device->tag());
 	assert(i8355->rom != NULL);
 
 	/* register for state saving */
@@ -192,7 +192,7 @@ static DEVICE_START( i8355 )
 
 static DEVICE_RESET( i8355 )
 {
-	i8355_t *i8355 = device->token;
+	i8355_t *i8355 = (i8355_t *)device->token;
 
 	/* set ports to input mode */
 	i8355->ddr[PORT_A] = 0;

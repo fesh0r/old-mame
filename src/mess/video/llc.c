@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/llc.h"
 
 UINT8 *llc_video_ram;
@@ -18,7 +18,7 @@ VIDEO_START( llc1 )
 
 VIDEO_UPDATE( llc1 )
 {
- 	UINT8 code,disp;
+	UINT8 code,disp;
 	int y, x, b,c,inv;
 	UINT8 *gfx = memory_region(screen->machine, "gfx1");
 
@@ -49,7 +49,7 @@ VIDEO_START( llc2 )
 
 VIDEO_UPDATE( llc2 )
 {
- 	UINT8 code,disp;
+	UINT8 code,disp;
 	int y, x, b,c;
 	UINT8 *gfx = memory_region(screen->machine, "gfx1");
 

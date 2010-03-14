@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/mac.h"
 #include "streams.h"
 #include "devices/messram.h"
@@ -47,7 +47,7 @@ struct _mac_sound
     INLINE FUNCTIONS
 ***************************************************************************/
 
-INLINE mac_sound *get_token(const device_config *device)
+INLINE mac_sound *get_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(sound_get_type(device) == SOUND_MAC_SOUND);
@@ -68,6 +68,13 @@ static STREAM_UPDATE( mac_sound_update )
 	INT16 last_val = 0;
 	stream_sample_t *buffer = outputs[0];
 	mac_sound *token = get_token(device);
+	mac_state *mac = (mac_state *)device->machine->driver_data;
+
+	if ((mac->mac_model == MODEL_MAC_PORTABLE) || (mac->mac_model == MODEL_MAC_PB100))
+	{
+		memset(buffer, 0, samples * sizeof(*buffer));
+		return;
+	}
 
 	/* if we're not enabled, just fill with 0 */
 	if (device->machine->sample_rate == 0)
@@ -104,6 +111,7 @@ static DEVICE_START(mac_sound)
 	mac_sound *token = get_token(device);
 
 	memset(token, 0, sizeof(*token));
+
 	token->snd_cache = auto_alloc_array(device->machine, UINT8, SND_CACHE_SIZE);
 	token->mac_stream = stream_create(device, 0, 1, MAC_SAMPLE_RATE, 0, mac_sound_update);
 }
@@ -113,7 +121,7 @@ static DEVICE_START(mac_sound)
 /*
     Set the sound enable flag (VIA port line)
 */
-void mac_enable_sound(const device_config *device, int on)
+void mac_enable_sound(running_device *device, int on)
 {
 	mac_sound *token = get_token(device);
 	token->sample_enable = on;
@@ -124,7 +132,7 @@ void mac_enable_sound(const device_config *device, int on)
 /*
     Set the current sound buffer (one VIA port line)
 */
-void mac_set_sound_buffer(const device_config *device, int buffer)
+void mac_set_sound_buffer(running_device *device, int buffer)
 {
 	mac_sound *token = get_token(device);
 
@@ -139,7 +147,7 @@ void mac_set_sound_buffer(const device_config *device, int buffer)
 /*
     Set the current sound volume (3 VIA port line)
 */
-void mac_set_volume(const device_config *device, int volume)
+void mac_set_volume(running_device *device, int volume)
 {
 	mac_sound *token = get_token(device);
 
@@ -153,7 +161,7 @@ void mac_set_volume(const device_config *device, int volume)
 /*
     Fetch one byte from sound buffer and put it to sound output (called every scanline)
 */
-void mac_sh_updatebuffer(const device_config *device)
+void mac_sh_updatebuffer(running_device *device)
 {
 	mac_sound *token = get_token(device);
 	UINT16 *base = token->mac_snd_buf_ptr;

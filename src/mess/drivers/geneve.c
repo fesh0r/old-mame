@@ -197,7 +197,7 @@
     keyboard will be cleared as soon as it is buffered by the gate array.
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/tms9900/tms9900.h"
 #include "sound/sn76496.h"
 #include "sound/tms5220.h"
@@ -219,6 +219,7 @@
 #include "machine/smc92x4.h"
 #include "machine/mm58274c.h"
 #include "machine/rtc65271.h"
+#include "formats/ti99_dsk.h"
 
 /*
     memory map
@@ -468,7 +469,7 @@ static const floppy_config geneve_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_DRIVE_DS_80,
 	FLOPPY_OPTIONS_NAME(ti99),
-	KEEP_GEOMETRY
+	DO_NOT_KEEP_GEOMETRY
 };
 
 static MACHINE_DRIVER_START(geneve_60hz)

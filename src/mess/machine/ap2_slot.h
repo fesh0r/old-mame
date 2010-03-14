@@ -9,7 +9,7 @@
 #ifndef __AP2_SLOT__
 #define __AP2_SLOT__
 
-#include "driver.h"
+#include "emu.h"
 
 
 /***************************************************************************
@@ -60,6 +60,6 @@ READ8_DEVICE_HANDLER(apple2_slot_r);
 WRITE8_DEVICE_HANDLER(apple2_slot_w);
 
 /* slot device lookup */
-const device_config *apple2_slot(running_machine *machine, int slotnum);
+running_device *apple2_slot(running_machine *machine, int slotnum);
 
 #endif /* __AP2_SLOT__ */

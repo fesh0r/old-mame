@@ -7,37 +7,50 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8008/i8008.h"
 #include "machine/teleprinter.h"
 
-static UINT16 tty_data;
-static UINT8 tty_key_data;
-static int tty_cnt  = 0;
+class mod8_state
+{
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, mod8_state(machine)); }
+
+	mod8_state(running_machine &machine) { }
+
+	UINT16 tty_data;
+	UINT8 tty_key_data;
+	int tty_cnt;
+};
 
 static WRITE8_HANDLER(out_w)
 {
-	const device_config	*devconf = devtag_get_device(space->machine, TELEPRINTER_TAG);
+	mod8_state *state = (mod8_state *)space->machine->driver_data;
+	running_device *devconf = devtag_get_device(space->machine, TELEPRINTER_TAG);
 
-	tty_data >>= 1;
-	tty_data |= (data & 0x01) ? 0x8000 : 0;
-	tty_cnt++;
-	if (tty_cnt==10) {
-		teleprinter_write(devconf,0,(tty_data >> 7) & 0x7f);
-		tty_cnt = 0;
+	state->tty_data >>= 1;
+	state->tty_data |= (data & 0x01) ? 0x8000 : 0;
+	state->tty_cnt++;
+	if (state->tty_cnt==10) {
+		teleprinter_write(devconf,0,(state->tty_data >> 7) & 0x7f);
+		state->tty_cnt = 0;
 	}
 }
 
 static WRITE8_HANDLER(tty_w)
 {
-	tty_data = 0;
-	tty_cnt = 0;
+	mod8_state *state = (mod8_state *)space->machine->driver_data;
+
+	state->tty_data = 0;
+	state->tty_cnt = 0;
 }
 
 static READ8_HANDLER(tty_r)
 {
-	UINT8 d = tty_key_data & 0x01;
-	tty_key_data >>= 1;
+	mod8_state *state = (mod8_state *)space->machine->driver_data;
+	UINT8 d = state->tty_key_data & 0x01;
+
+	state->tty_key_data >>= 1;
 	return d;
 }
 
@@ -66,12 +79,14 @@ static IRQ_CALLBACK ( mod8_irq_callback )
 
 static MACHINE_RESET(mod8)
 {
-	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), mod8_irq_callback);
+	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), mod8_irq_callback);
 }
 
 static WRITE8_DEVICE_HANDLER( mod8_kbd_put )
 {
-	tty_key_data = data ^ 0xff;
+	mod8_state *state = (mod8_state *)device->machine->driver_data;
+
+	state->tty_key_data = data ^ 0xff;
 	cputag_set_input_line(device->machine, "maincpu", 0, HOLD_LINE);
 }
 
@@ -81,6 +96,9 @@ static GENERIC_TELEPRINTER_INTERFACE( mod8_teleprinter_intf )
 };
 
 static MACHINE_DRIVER_START( mod8 )
+
+    MDRV_DRIVER_DATA( mod8_state )
+
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",I8008, 800000)
     MDRV_CPU_PROGRAM_MAP(mod8_mem)
@@ -110,5 +128,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT   COMPANY   FULLNAME       FLAGS */
-COMP( 1974, mod8,   0,       0, 		mod8, 	mod8, 	 0,  	"Microsystems International Ltd.",   "MOD-8",		0)
+COMP( 1974, mod8,   0,       0, 		mod8,	mod8,	 0, 	"Microsystems International Ltd.",   "MOD-8",		GAME_NO_SOUND)
 

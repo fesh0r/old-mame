@@ -6,7 +6,7 @@
 
 *********************************************************************/
 
-#include "mame.h"
+#include "emu.h"
 #include "formats/z80ne_dsk.h"
 #include "formats/basicdsk.h"
 #include "devices/flopdrv.h"
@@ -60,8 +60,6 @@ struct dmk_tag
 	UINT32 track_size;
 };
 
-#define DMK_TAG "z80nedmk"
-
 /* DMK file structure
  * See WD1711 documentation
  */
@@ -74,7 +72,7 @@ struct dmk_tag
 		/* For every sector (10) 301 bytes */
 		#define DMK_IDAM_LEN			7	/* IDAM (0xFE, Track, 0x00, Sector, 0x00, CRChi, CRClo) */
 		#define DMK_ID_GAP_LEN			17	/* GAP2 (11 bytes 0xFF and 6 bytes 0x00) */
-		#define DMK_DAM_LEN  			1	/* Data Address Mark (0xFB) */
+		#define DMK_DAM_LEN 			1	/* Data Address Mark (0xFB) */
 		#define DMK_DATA_LEN			256 /* Data */
 		#define DMK_DATA_CRC_LEN		2	/* Data CRC (CRChi, CRClo) */
 		#define DMK_DATA_GAP_LEN		18  /* GAP3 (12 bytes 0xFF and 6 bytes 0x00) (not for last sector) */
@@ -97,7 +95,7 @@ static const char needle_deleted_data_f8[] = "\x00\x00\x00\x00\x00\x00\x00\x00\x
 
 static struct dmk_tag *get_dmk_tag(floppy_image *floppy)
 {
-	return floppy_tag(floppy, DMK_TAG);
+	return (dmk_tag *)floppy_tag(floppy);
 }
 
 
@@ -211,7 +209,7 @@ static floperr_t z80ne_dmk_format_track(floppy_image *floppy, int head, int trac
 	track_data = (UINT8 *) track_data_v;
 
 	/* set up sector map */
-	sector_map = malloc(sectors * sizeof(*sector_map));
+	sector_map = (int*)malloc(sectors * sizeof(*sector_map));
 	if (!sector_map)
 	{
 		err = FLOPPY_ERROR_OUTOFMEMORY;
@@ -240,7 +238,7 @@ static floperr_t z80ne_dmk_format_track(floppy_image *floppy, int head, int trac
 			             sector_length +
 			             DMK_DATA_CRC_LEN +
 			             DMK_DATA_GAP_LEN);
-	local_sector = malloc(local_sector_size);
+	local_sector = (UINT8*)malloc(local_sector_size);
 	if (!local_sector)
 	{
 		err = FLOPPY_ERROR_OUTOFMEMORY;
@@ -392,7 +390,7 @@ static floperr_t z80ne_dmk_seek_sector_in_track(floppy_image *floppy, int head, 
 	UINT16 calculated_crc;
 	size_t i, j;
 	size_t offs;
-	int state;
+	/*int state;*/
 	UINT8 *track_data;
 	void *track_data_v;
 	size_t track_length;
@@ -414,7 +412,7 @@ static floperr_t z80ne_dmk_seek_sector_in_track(floppy_image *floppy, int head, 
 			             DMK_ID_GAP_LEN +
 			             DMK_DAM_LEN +
 			             DMK_DATA_GAP_LEN);
-	local_idam = malloc(local_idam_size);
+	local_idam = (UINT8*)malloc(local_idam_size);
 	if (!local_idam)
 	{
 		err = FLOPPY_ERROR_OUTOFMEMORY;
@@ -479,7 +477,7 @@ static floperr_t z80ne_dmk_seek_sector_in_track(floppy_image *floppy, int head, 
 	}
 
 	/* we found a matching sector ID */
-	state = 0;
+	/*state = 0;*/
 	offs = idam_offset + 2 * DMK_IDAM_LEN;
 
 	/* find pattern 0x0000FB; this represents the start of a data sector */
@@ -603,7 +601,7 @@ static floperr_t internal_z80ne_dmk_read_sector(floppy_image *floppy, int head, 
 
 	/* set up a local physical sector space (DAM + data + crc + GAP) */
 	local_sector_size = (DMK_DAM_LEN + sector_length + DMK_DATA_CRC_LEN + DMK_DATA_GAP_LEN);
-	local_sector = malloc(local_sector_size);
+	local_sector = (UINT8*)malloc(local_sector_size);
 	if (!local_sector)
 	{
 		err = FLOPPY_ERROR_OUTOFMEMORY;
@@ -658,7 +656,7 @@ static floperr_t internal_z80ne_dmk_write_sector(floppy_image *floppy, int head,
 
 	/* set up a local physical sector space */
 	local_sector_size = (DMK_DAM_LEN + sector_length + DMK_DATA_CRC_LEN + DMK_DATA_GAP_LEN);
-	local_sector = malloc(local_sector_size);
+	local_sector = (UINT8*)malloc(local_sector_size);
 	if (!local_sector)
 	{
 		err = FLOPPY_ERROR_OUTOFMEMORY;
@@ -785,7 +783,7 @@ FLOPPY_CONSTRUCT(z80ne_dmk_construct)
 		z80ne_dmk_interpret_header(floppy, &heads, &tracks, &sectors, &track_size);
 	}
 
-	tag = floppy_create_tag(floppy, DMK_TAG, sizeof(struct dmk_tag));
+	tag = (dmk_tag*)floppy_create_tag(floppy, sizeof(struct dmk_tag));
 	if (!tag)
 		return FLOPPY_ERROR_OUTOFMEMORY;
 	tag->heads = heads;

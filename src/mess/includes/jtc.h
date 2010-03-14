@@ -9,9 +9,13 @@
 
 #define JTC_ES40_VIDEORAM_SIZE	0x2000
 
-typedef struct _jtc_state jtc_state;
-struct _jtc_state
+class jtc_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, jtc_state(machine)); }
+
+	jtc_state(running_machine &machine) { }
+
 	/* video state */
 	UINT8 video_bank;
 	UINT8 *video_ram;
@@ -20,9 +24,9 @@ struct _jtc_state
 	UINT8 *color_ram_b;
 
 	/* devices */
-	const device_config *cassette;
-	const device_config *speaker;
-	const device_config *centronics;
+	running_device *cassette;
+	running_device *speaker;
+	running_device *centronics;
 };
 
 #endif

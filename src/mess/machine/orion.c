@@ -8,7 +8,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "devices/cassette.h"
 #include "machine/mc146818.h"
@@ -61,18 +61,9 @@ I8255A_INTERFACE( orion128_ppi8255_interface_1)
 	DEVCB_HANDLER(orion_romdisk_portc_w)
 };
 
-/* Driver initialization */
-DRIVER_INIT( orion128 )
-{
-	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,256*1024);
-}
-
 
 MACHINE_START( orion128 )
 {
-	const device_config *fdc = devtag_get_device(machine, "wd1793");
-
-	wd17xx_set_density (fdc,DEN_FM_HI);
 	orion_video_mode_mask = 7;
 }
 
@@ -187,21 +178,21 @@ MACHINE_RESET ( orion128 )
 
 static WRITE8_HANDLER ( orion_disk_control_w )
 {
-	const device_config *fdc = devtag_get_device(space->machine, "wd1793");
+	running_device *fdc = devtag_get_device(space->machine, "wd1793");
 
 	wd17xx_set_side(fdc,((data & 0x10) >> 4) ^ 1);
- 	wd17xx_set_drive(fdc,data & 3);
+	wd17xx_set_drive(fdc,data & 3);
 }
 
 READ8_HANDLER ( orion128_floppy_r )
 {
-	const device_config *fdc = devtag_get_device(space->machine, "wd1793");
+	running_device *fdc = devtag_get_device(space->machine, "wd1793");
 
 	switch(offset)
 	{
 		case 0x0	:
 		case 0x10 : return wd17xx_status_r(fdc,0);
-		case 0x1 	:
+		case 0x1	:
 		case 0x11 : return wd17xx_track_r(fdc,0);
 		case 0x2  :
 		case 0x12 : return wd17xx_sector_r(fdc,0);
@@ -213,13 +204,13 @@ READ8_HANDLER ( orion128_floppy_r )
 
 WRITE8_HANDLER ( orion128_floppy_w )
 {
-	const device_config *fdc = devtag_get_device(space->machine, "wd1793");
+	running_device *fdc = devtag_get_device(space->machine, "wd1793");
 
 	switch(offset)
 	{
 		case 0x0	:
 		case 0x10 : wd17xx_command_w(fdc,0,data); break;
-		case 0x1 	:
+		case 0x1	:
 		case 0x11 : wd17xx_track_w(fdc,0,data);break;
 		case 0x2  :
 		case 0x12 : wd17xx_sector_w(fdc,0,data);break;
@@ -255,17 +246,8 @@ static WRITE8_HANDLER ( orionz80_floppy_rtc_w )
 }
 
 
-DRIVER_INIT( orionz80 )
-{
-	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,512*1024);
-}
-
-
 MACHINE_START( orionz80 )
 {
-	const device_config *fdc = devtag_get_device(machine, "wd1793");
-
-	wd17xx_set_density (fdc,DEN_FM_HI);
 	mc146818_init(machine, MC146818_IGNORE_CENTURY);
 	orion_video_mode_mask = 7;
 }
@@ -273,7 +255,7 @@ MACHINE_START( orionz80 )
 static UINT8 orion_speaker;
 WRITE8_HANDLER ( orionz80_sound_w )
 {
-	const device_config *speaker = devtag_get_device(space->machine, "speaker");
+	running_device *speaker = devtag_get_device(space->machine, "speaker");
 	if (orion_speaker == 0)
 	{
 		orion_speaker = data;
@@ -288,7 +270,7 @@ WRITE8_HANDLER ( orionz80_sound_w )
 
 static WRITE8_HANDLER ( orionz80_sound_fe_w )
 {
-	const device_config *speaker = devtag_get_device(space->machine, "speaker");
+	running_device *speaker = devtag_get_device(space->machine, "speaker");
 	speaker_level_w(speaker,(data>>4) & 0x01);
 }
 
@@ -428,7 +410,7 @@ WRITE8_HANDLER ( orionz80_io_w )
 					  break;
 		case 0xbffd :
 		case 0xbefd : ay8910_data_w(devtag_get_device(space->machine, "ay8912"), 0, data);
-		 			  break;
+					  break;
 	}
 }
 
@@ -443,17 +425,6 @@ static UINT8 orionpro_rom2_segment;
 static UINT8 orionpro_dispatcher;
 UINT8 orionpro_pseudo_color;
 
-DRIVER_INIT( orionpro )
-{
-	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,512*1024);
-}
-
-
-MACHINE_START( orionpro )
-{
-	const device_config *fdc = devtag_get_device(machine, "wd1793");
-	wd17xx_set_density (fdc,DEN_FM_HI);
-}
 
 static WRITE8_HANDLER ( orionpro_memory_page_w );
 
@@ -589,7 +560,7 @@ MACHINE_RESET ( orionpro )
 
 READ8_HANDLER ( orionpro_io_r )
 {
-	const device_config *fdc = devtag_get_device(space->machine, "wd1793");
+	running_device *fdc = devtag_get_device(space->machine, "wd1793");
 
 	switch (offset & 0xff)
 	{
@@ -623,14 +594,14 @@ READ8_HANDLER ( orionpro_io_r )
 
 WRITE8_HANDLER ( orionpro_io_w )
 {
-	const device_config *fdc = devtag_get_device(space->machine, "wd1793");
+	running_device *fdc = devtag_get_device(space->machine, "wd1793");
 
 	switch (offset & 0xff)
 	{
 		case 0x04 : orionpro_ram0_segment = data; orionpro_bank_switch(space->machine); break;
 		case 0x05 : orionpro_ram1_segment = data; orionpro_bank_switch(space->machine); break;
 		case 0x06 : orionpro_ram2_segment = data; orionpro_bank_switch(space->machine); break;
-		case 0x08 : orionpro_page = data; 		  orionpro_bank_switch(space->machine); break;
+		case 0x08 : orionpro_page = data;		  orionpro_bank_switch(space->machine); break;
 		case 0x09 : orionpro_rom2_segment = data; orionpro_bank_switch(space->machine); break;
 		case 0x0a : orionpro_dispatcher = data;   orionpro_bank_switch(space->machine); break;
 		case 0x10 : wd17xx_command_w(fdc,0,data); break;
@@ -660,6 +631,6 @@ WRITE8_HANDLER ( orionpro_io_w )
 					  break;
 		case 0xbffd :
 		case 0xbefd : ay8910_data_w(devtag_get_device(space->machine, "ay8912"), 0, data);
-		 			  break;
+					  break;
 	}
 }

@@ -34,9 +34,13 @@
 #define INT_EXPANSION_B		0x40
 #define INT_EXPANSION_A		0x80
 
-typedef struct _v1050_state v1050_state;
-struct _v1050_state
+class v1050_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, v1050_state(machine)); }
+
+	v1050_state(running_machine &machine) { }
+
 	/* interrupt state */
 	UINT8 int_mask;				/* interrupt mask */
 	UINT8 int_state;			/* interrupt status */
@@ -62,16 +66,16 @@ struct _v1050_state
 	UINT8 attr;					/* attribute latch */
 
 	/* devices */
-	const device_config *i8214;
-	const device_config *msm58321;
-	const device_config *i8255a_crt_z80;
-	const device_config *i8255a_crt_m6502;
-	const device_config *i8251_kb;
-	const device_config *i8251_sio;
-	const device_config *mb8877;
-	const device_config *mc6845;
-	const device_config *centronics;
-	const device_config *timer_sio;
+	running_device *i8214;
+	running_device *msm58321;
+	running_device *i8255a_crt_z80;
+	running_device *i8255a_crt_m6502;
+	running_device *i8251_kb;
+	running_device *i8251_sio;
+	running_device *mb8877;
+	running_device *mc6845;
+	running_device *centronics;
+	running_device *timer_sio;
 };
 
 /*----------- defined in drivers/v1050.c -----------*/

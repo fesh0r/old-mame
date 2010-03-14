@@ -8,7 +8,6 @@
 
 #include "testimgt.h"
 #include "utils.h"
-#include "osdmess.h"
 #include "../imgtool/imgtool.h"
 #include "../imgtool/modules.h"
 
@@ -42,7 +41,7 @@ struct _expected_dirent
 static const char *tempfile_name(void)
 {
 	static char buffer[256];
-	osd_get_temp_filename(buffer, ARRAY_LENGTH(buffer), NULL);
+//  osd_get_temp_filename(buffer, ARRAY_LENGTH(buffer), NULL);
 	return buffer;
 }
 

@@ -23,12 +23,12 @@ static struct hd_state hd;
 
 static TIMER_CALLBACK( req_delay )
 {
-	sasi_ctrl_t* sasi = ptr;
+	sasi_ctrl_t* sasi = (sasi_ctrl_t*)ptr;
 	sasi->req = 1;
 	sasi->status_port |= 0x01;
 }
 
-static unsigned char SASIReadByte(const device_config* device)
+static unsigned char SASIReadByte(running_device* device)
 {
 	//int ret;
 	unsigned char val;
@@ -38,14 +38,14 @@ static unsigned char SASIReadByte(const device_config* device)
 	return val;
 }
 
-static void SASIWriteByte(const device_config* device, unsigned char val)
+static void SASIWriteByte(running_device* device, unsigned char val)
 {
 	image_fwrite(device,&val,1);
 }
 
 DEVICE_START( x68k_hdc )
 {
-	sasi_ctrl_t* sasi = device->token;
+	sasi_ctrl_t* sasi = (sasi_ctrl_t*)device->token;
 
 	sasi->status = 0x00;
 	sasi->status_port = 0x00;
@@ -73,7 +73,7 @@ DEVICE_IMAGE_CREATE( sasihd )
 
 WRITE16_DEVICE_HANDLER( x68k_hdc_w )
 {
-	sasi_ctrl_t* sasi = device->token;
+	sasi_ctrl_t* sasi = (sasi_ctrl_t*)device->token;
 	unsigned int lba = 0;
 	char* blk;
 
@@ -275,7 +275,7 @@ WRITE16_DEVICE_HANDLER( x68k_hdc_w )
 						lba |= sasi->command[2] << 8;
 						lba |= (sasi->command[1] & 0x1f) << 16;
 						image_fseek(device,lba * 256,SEEK_SET);
-						blk = malloc(256*33);
+						blk = (char*)malloc(256*33);
 						memset(blk,0,256*33);
 						// formats 33 256-byte blocks
 						image_fwrite(device,blk,256*33);
@@ -328,7 +328,7 @@ WRITE16_DEVICE_HANDLER( x68k_hdc_w )
 
 READ16_DEVICE_HANDLER( x68k_hdc_r )
 {
-	sasi_ctrl_t* sasi = device->token;
+	sasi_ctrl_t* sasi = (sasi_ctrl_t*)device->token;
 	int retval = 0xff;
 
 	switch(offset)
@@ -462,8 +462,8 @@ DEVICE_GET_INFO(x68k_hdc)
 		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");							break;
 		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);							break;
 		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team"); 		break;
-		case DEVINFO_STR_IMAGE_INSTANCE_NAME:			strcpy(info->s, "sasihd"); 			break;
-		case DEVINFO_STR_IMAGE_BRIEF_INSTANCE_NAME:		strcpy(info->s, "sasi"); 			break;
+		case DEVINFO_STR_IMAGE_INSTANCE_NAME:			strcpy(info->s, "sasihd");			break;
+		case DEVINFO_STR_IMAGE_BRIEF_INSTANCE_NAME:		strcpy(info->s, "sasi");			break;
 		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:			strcpy(info->s, "hdf"); break;
 	}
 }

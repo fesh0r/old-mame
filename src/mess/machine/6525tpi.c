@@ -72,7 +72,7 @@
   read clears highest interrupt
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "6525tpi.h"
 
 
@@ -128,7 +128,7 @@ struct _tpi6525_state
     INLINE FUNCTIONS
 *****************************************************************************/
 
-INLINE tpi6525_state *get_safe_token(const device_config *device)
+INLINE tpi6525_state *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -147,7 +147,7 @@ static DEVICE_START( tpi6525 )
 	tpi6525_state *tpi6525 = get_safe_token(device);
 
 	/* verify that we have an interface assigned */
-	assert(device->static_config != NULL);
+	assert(device->baseconfig().static_config != NULL);
 
 	/* register for state saving */
 	state_save_register_device_item(device, 0, tpi6525->port_a);
@@ -176,7 +176,7 @@ static DEVICE_RESET( tpi6525 )
 	memset(tpi6525, 0, sizeof(*tpi6525));
 
 	/* copy interface pointer */
-	tpi6525->intf = device->static_config;
+	tpi6525->intf = (const tpi6525_interface*)device->baseconfig().static_config;
 
 	/* setup some initial values */
 	tpi6525->in_a = 0xff;
@@ -212,7 +212,7 @@ DEVICE_GET_INFO( tpi6525 )
     IMPLEMENTATION
 ***************************************************************************/
 
-static void tpi6525_set_interrupt(const device_config *device)
+static void tpi6525_set_interrupt(running_device *device)
 {
 	tpi6525_state *tpi6525 = get_safe_token(device);
 
@@ -220,7 +220,7 @@ static void tpi6525_set_interrupt(const device_config *device)
 	{
 		tpi6525->interrupt_level = 1;
 
-		DBG_LOG(device->machine, 3, "tpi6525", ("%s set interrupt\n", device->tag));
+		DBG_LOG(device->machine, 3, "tpi6525", ("%s set interrupt\n", device->tag()));
 
 		if (tpi6525->intf->irq_func != NULL)
 			tpi6525->intf->irq_func(device, tpi6525->interrupt_level);
@@ -228,7 +228,7 @@ static void tpi6525_set_interrupt(const device_config *device)
 }
 
 
-static void tpi6525_clear_interrupt(const device_config *device)
+static void tpi6525_clear_interrupt(running_device *device)
 {
 	tpi6525_state *tpi6525 = get_safe_token(device);
 
@@ -236,7 +236,7 @@ static void tpi6525_clear_interrupt(const device_config *device)
 	{
 		tpi6525->interrupt_level = 0;
 
-		DBG_LOG(device->machine, 3, "tpi6525", ("%s clear interrupt\n", device->tag));
+		DBG_LOG(device->machine, 3, "tpi6525", ("%s clear interrupt\n", device->tag()));
 
 		if (tpi6525->intf->irq_func != NULL)
 			tpi6525->intf->irq_func(device, tpi6525->interrupt_level);
@@ -244,7 +244,7 @@ static void tpi6525_clear_interrupt(const device_config *device)
 }
 
 
-void tpi6525_irq0_level(const device_config *device, int level)
+void tpi6525_irq0_level(running_device *device, int level)
 {
 	tpi6525_state *tpi6525 = get_safe_token(device);
 
@@ -261,7 +261,7 @@ void tpi6525_irq0_level(const device_config *device, int level)
 }
 
 
-void tpi6525_irq1_level(const device_config *device, int level)
+void tpi6525_irq1_level(running_device *device, int level)
 {
 	tpi6525_state *tpi6525 = get_safe_token(device);
 
@@ -278,7 +278,7 @@ void tpi6525_irq1_level(const device_config *device, int level)
 }
 
 
-void tpi6525_irq2_level(const device_config *device, int level)
+void tpi6525_irq2_level(running_device *device, int level)
 {
 	tpi6525_state *tpi6525 = get_safe_token(device);
 
@@ -295,7 +295,7 @@ void tpi6525_irq2_level(const device_config *device, int level)
 }
 
 
-void tpi6525_irq3_level(const device_config *device, int level)
+void tpi6525_irq3_level(running_device *device, int level)
 {
 	tpi6525_state *tpi6525 = get_safe_token(device);
 
@@ -314,7 +314,7 @@ void tpi6525_irq3_level(const device_config *device, int level)
 }
 
 
-void tpi6525_irq4_level(const device_config *device, int level)
+void tpi6525_irq4_level(running_device *device, int level)
 {
 	tpi6525_state *tpi6525 = get_safe_token(device);
 
@@ -450,7 +450,7 @@ READ8_DEVICE_HANDLER( tpi6525_r )
 			data = (data & ~tpi6525->ddr_c) | (tpi6525->ddr_c & tpi6525->port_c);
 		}
 
-		DBG_LOG(device->machine, 2, "tpi6525", ("%s read %.2x %.2x\n", device->tag, offset, data));
+		DBG_LOG(device->machine, 2, "tpi6525", ("%s read %.2x %.2x\n", device->tag(), offset, data));
 		break;
 
 	case 3:
@@ -509,7 +509,7 @@ READ8_DEVICE_HANDLER( tpi6525_r )
 
 	}
 
-	DBG_LOG(device->machine, 3, "tpi6525", ("%s read %.2x %.2x\n", device->tag, offset, data));
+	DBG_LOG(device->machine, 3, "tpi6525", ("%s read %.2x %.2x\n", device->tag(), offset, data));
 
 	return data;
 }
@@ -519,7 +519,7 @@ WRITE8_DEVICE_HANDLER( tpi6525_w )
 {
 	tpi6525_state *tpi6525 = get_safe_token(device);
 
-	DBG_LOG(device->machine, 2, "tpi6525", ("%s write %.2x %.2x\n", device->tag, offset, data));
+	DBG_LOG(device->machine, 2, "tpi6525", ("%s write %.2x %.2x\n", device->tag(), offset, data));
 
 	switch (offset & 7)
 	{
@@ -609,19 +609,19 @@ WRITE8_DEVICE_HANDLER( tpi6525_w )
 
 /* this should probably be done better, needed for amigacd.c */
 
-UINT8 tpi6525_get_ddr_a(const device_config *device)
+UINT8 tpi6525_get_ddr_a(running_device *device)
 {
 	tpi6525_state *tpi6525 = get_safe_token(device);
 	return tpi6525->ddr_a;
 }
 
-UINT8 tpi6525_get_ddr_b(const device_config *device)
+UINT8 tpi6525_get_ddr_b(running_device *device)
 {
 	tpi6525_state *tpi6525 = get_safe_token(device);
 	return tpi6525->ddr_b;
 }
 
-UINT8 tpi6525_get_ddr_c(const device_config *device)
+UINT8 tpi6525_get_ddr_c(running_device *device)
 {
 	tpi6525_state *tpi6525 = get_safe_token(device);
 	return tpi6525->ddr_c;

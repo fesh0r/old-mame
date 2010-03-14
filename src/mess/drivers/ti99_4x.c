@@ -18,7 +18,7 @@ Historical notes: TI made several last minute design changes.
     * early TI99/4 prototypes were designed for a tms9985, not a tms9900.
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "deprecat.h"
 #include "cpu/tms9900/tms9900.h"
 #include "sound/sn76496.h"
@@ -43,6 +43,7 @@ Historical notes: TI made several last minute design changes.
 #include "machine/mm58274c.h"
 #include "machine/rtc65271.h"
 #include "devices/ti99cart.h"
+#include "formats/ti99_dsk.h"
 
 /*
     memory map
@@ -609,7 +610,7 @@ static const floppy_config ti99_4_floppy_config =
 	DEVCB_NULL,
 	FLOPPY_DRIVE_DS_80,
 	FLOPPY_OPTIONS_NAME(ti99),
-	KEEP_GEOMETRY
+	DO_NOT_KEEP_GEOMETRY
 };
 
 static MACHINE_DRIVER_START(ti99_4_60hz)
@@ -636,7 +637,7 @@ static MACHINE_DRIVER_START(ti99_4_60hz)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 	MDRV_SOUND_WAVE_ADD("wave.2", "cassette2")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
-	MDRV_SOUND_ADD("sn76496", SN76496, 3579545)	/* 3.579545 MHz */
+	MDRV_SOUND_ADD("sn76496", SN94624, 3579545/8)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(ti99_4x_tms5220interface)
@@ -647,7 +648,7 @@ static MACHINE_DRIVER_START(ti99_4_60hz)
 
 	MDRV_IMPORT_FROM( smc92x4_hd )
 
-	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )	
+	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
 	MDRV_RTC65271_ADD("ide_rtc", ti99_clk_interrupt_callback)
 
 	MDRV_CASSETTE_ADD( "cassette1", default_cassette_config )
@@ -689,7 +690,7 @@ static MACHINE_DRIVER_START(ti99_4_50hz)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sn76496", SN76496, 3579545)	/* 3.579545 MHz */
+	MDRV_SOUND_ADD("sn76496", SN94624, 3579545/8)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(ti99_4x_tms5220interface)
@@ -743,7 +744,7 @@ static MACHINE_DRIVER_START(ti99_4a_60hz)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sn76496", SN94624, 3579545)	/* 3.579545 MHz SN94624N */
+	MDRV_SOUND_ADD("sn76496", SN94624, 3579545/8)	/* 3.579545 MHz SN94624N */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(ti99_4x_tms5220interface)
@@ -799,7 +800,7 @@ static MACHINE_DRIVER_START(ti99_4a_50hz)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sn76496", SN94624, 3579545)	/* 3.579545 MHz */
+	MDRV_SOUND_ADD("sn76496", SN94624, 3579545/8)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(ti99_4x_tms5220interface)
@@ -862,7 +863,7 @@ static MACHINE_DRIVER_START(ti99_4ev_60hz)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD("sn76496", SN94624, 3579545)	/* 3.579545 MHz */
+	MDRV_SOUND_ADD("sn76496", SN94624, 3579545/8)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(ti99_4x_tms5220interface)

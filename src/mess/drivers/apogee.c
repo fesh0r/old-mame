@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "sound/wave.h"
 #include "machine/i8255a.h"
@@ -126,7 +126,7 @@ static const cassette_config apogee_cassette_config =
 {
 	rka_cassette_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED)
 };
 
 
@@ -195,4 +195,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT   INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1989, apogee, radio86,0, 		 apogee, 	apogee,radio86, "Zavod BRA", 	"Apogee BK-01",	0)
+COMP( 1989, apogee, radio86,0,		 apogee,	apogee,radio86, "Zavod BRA",	"Apogee BK-01",	0)

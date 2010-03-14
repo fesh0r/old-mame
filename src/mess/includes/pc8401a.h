@@ -18,9 +18,13 @@
 #define PC8500_LCD_VIDEORAM_SIZE	0x4000
 #define PC8500_LCD_VIDEORAM_MASK	0x3fff
 
-typedef struct _pc8401a_state pc8401a_state;
-struct _pc8401a_state
+class pc8401a_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, pc8401a_state(machine)); }
+
+	pc8401a_state(running_machine &machine) { }
+
 	/* keyboard state */
 	int key_strobe;			/* key pressed */
 
@@ -36,10 +40,10 @@ struct _pc8401a_state
 	UINT8 *video_ram;		/* LCD video RAM */
 	UINT8 *crt_ram;			/* CRT video RAM */
 
-	const device_config *upd1990a;
-	const device_config *sed1330;
-	const device_config *mc6845;
-	const device_config *lcd;
+	running_device *upd1990a;
+	running_device *sed1330;
+	running_device *mc6845;
+	running_device *lcd;
 };
 
 /* ---------- defined in video/pc8401a.c ---------- */

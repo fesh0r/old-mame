@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "mmd1.lh"
 #include "mmd2.lh"
@@ -202,6 +202,6 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1976, mmd1,  	0,       0, 		mmd1, 	mmd1, 	 0,  	 "E&L Instruments, Inc.",   "MMD-1",		0)
-COMP( 1976, mmd2,  	mmd1,    0, 		mmd2, 	mmd2, 	 0,  	 "E&L Instruments, Inc.",   "MMD-2",		GAME_NOT_WORKING)
+COMP( 1976, mmd1,	0,       0, 		mmd1,	mmd1,	 0, 	 "E&L Instruments, Inc.",   "MMD-1",		GAME_NO_SOUND)
+COMP( 1976, mmd2,	mmd1,    0, 		mmd2,	mmd2,	 0, 	 "E&L Instruments, Inc.",   "MMD-2",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

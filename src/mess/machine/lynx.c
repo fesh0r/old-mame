@@ -2,7 +2,7 @@
  PeT mess@utanet.at 2000,2001
 ******************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/lynx.h"
 #include "cpu/m6502/m6502.h"
 
@@ -612,7 +612,7 @@ static void lynx_blit_lines(void)
 
 	ydir = 1;
 
-	if (blitter.mem[blitter.cmd] & 0x10) 	/* Vertical Flip */
+	if (blitter.mem[blitter.cmd] & 0x10)	/* Vertical Flip */
 	{
 		ydir = -1;
 		blitter.y--;	/*?*/
@@ -785,7 +785,7 @@ static void lynx_blitter(running_machine *machine)
 	int i; int o;int colors;
 
 	blitter.memory_accesses = 0;
-	blitter.mem = memory_get_read_ptr(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000);
+	blitter.mem = (UINT8*)memory_get_read_ptr(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000);
 
 	blitter.xoff   = GET_WORD(suzy.data, 0x04);
 	blitter.yoff   = GET_WORD(suzy.data, 0x06);
@@ -1343,7 +1343,7 @@ typedef struct {
 	UINT8	cntrl1;
 	UINT8	cntrl2;
 	int		counter;
-	void	*timer;
+	emu_timer	*timer;
 	int		timer_active;
 } LYNX_TIMER;
 
@@ -1815,7 +1815,7 @@ WRITE8_HANDLER( lynx_memory_config_w )
 }
 
 static void lynx_reset(running_machine *machine)
-{	
+{
 	lynx_memory_config_w(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0, 0);
 
 	cputag_set_input_line(machine, "maincpu", M65SC02_IRQ_LINE, CLEAR_LINE);
@@ -1867,7 +1867,7 @@ MACHINE_START( lynx )
 	memset(&suzy, 0, sizeof(suzy));
 
 	add_reset_callback(machine, lynx_reset);
-	
+
 	for (i = 0; i < NR_LYNX_TIMERS; i++)
 		lynx_timer_init(machine, i);
 
@@ -1924,7 +1924,7 @@ INTERRUPT_GEN( lynx_frame_int )
 		lynx_rotate=input_port_read(device->machine, "ROTATION") & 0x03;
 }
 
-void lynx_crc_keyword(const device_config *image)
+void lynx_crc_keyword(running_device *image)
 {
     const char *info;
 

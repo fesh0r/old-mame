@@ -11,7 +11,7 @@
 
 **********************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "machine/pc_fdc.h"
 #include "machine/upd765.h"
 #include "memconv.h"
@@ -88,7 +88,7 @@ const upd765_interface pc_fdc_upd765_not_connected_interface =
 	{FLOPPY_0, FLOPPY_1, NULL, NULL}
 };
 
-static const device_config* pc_get_device(running_machine *machine)
+static running_device* pc_get_device(running_machine *machine)
 {
 	return (*fdc->fdc_interface.get_device)(machine);
 }
@@ -128,7 +128,7 @@ void pc_fdc_init(running_machine *machine, const struct pc_fdc_interface *iface)
 
 static UPD765_GET_IMAGE ( pc_fdc_get_image )
 {
-	const device_config *image = NULL;
+	running_device *image = NULL;
 
 	if (!fdc->fdc_interface.get_image)
 	{
@@ -226,7 +226,7 @@ static void pc_fdc_data_rate_w(running_machine *machine, UINT8 data)
 
 		/* toggle reset state */
 		upd765_reset_w(pc_get_device(machine), 1);
- 		upd765_reset_w(pc_get_device(machine), 0);
+		upd765_reset_w(pc_get_device(machine), 0);
 
 		/* bit is self-clearing */
 		data &= ~0x080;

@@ -8,7 +8,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "video/generic.h"
 #include "includes/gba.h"
 
@@ -23,7 +23,7 @@ INLINE void verboselog(running_machine *machine, int n_level, const char *s_fmt,
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror( "%08x: %s", cpu_get_pc(cputag_get_cpu(machine, "maincpu")), buf );
+		logerror( "%08x: %s", cpu_get_pc(devtag_get_device(machine, "maincpu")), buf );
 	}
 }
 
@@ -33,25 +33,25 @@ static int coeff[32] = {
 };
 
 /* Drawing functions */
-static void draw_roz_bitmap_scanline(gba_state *gba_state, UINT32 *scanline, int ypos, UINT32 enablemask, UINT32 ctrl, INT32 X, INT32 Y, INT32 PA, INT32 PB, INT32 PC, INT32 PD, INT32 *currentx, INT32 *currenty, int changed, int depth);
-static void draw_roz_scanline(gba_state *gba_state, UINT32 *scanline, int ypos, UINT32 enablemask, UINT32 ctrl, INT32 X, INT32 Y, INT32 PA, INT32 PB, INT32 PC, INT32 PD, INT32 *currentx, INT32 *currenty, int changed);
-static void draw_bg_scanline(gba_state *gba_state, UINT32 *scanline, int ypos, UINT32 enablemask, UINT32 ctrl, UINT32 hofs, UINT32 vofs);
-static void draw_gba_oam_window(gba_state *gba_state, running_machine *machine, UINT32 *scanline, int y);
-static void draw_gba_oam(gba_state *gba_state, running_machine *machine, UINT32 *scanline, int y);
-static void invalid_gba_draw_function(running_machine *machine, gba_state *gba_state, int y, UINT32* line0, UINT32* line1, UINT32* line2, UINT32* line3, UINT32* lineOBJ, UINT32* lineOBJWin, UINT32* lineMix, int aux);
+static void draw_roz_bitmap_scanline(gba_state *state, UINT32 *scanline, int ypos, UINT32 enablemask, UINT32 ctrl, INT32 X, INT32 Y, INT32 PA, INT32 PB, INT32 PC, INT32 PD, INT32 *currentx, INT32 *currenty, int changed, int depth);
+static void draw_roz_scanline(gba_state *state, UINT32 *scanline, int ypos, UINT32 enablemask, UINT32 ctrl, INT32 X, INT32 Y, INT32 PA, INT32 PB, INT32 PC, INT32 PD, INT32 *currentx, INT32 *currenty, int changed);
+static void draw_bg_scanline(gba_state *state, UINT32 *scanline, int ypos, UINT32 enablemask, UINT32 ctrl, UINT32 hofs, UINT32 vofs);
+static void draw_gba_oam_window(gba_state *state, running_machine *machine, UINT32 *scanline, int y);
+static void draw_gba_oam(gba_state *state, running_machine *machine, UINT32 *scanline, int y);
+static void invalid_gba_draw_function(running_machine *machine, gba_state *state, int y, UINT32* line0, UINT32* line1, UINT32* line2, UINT32* line3, UINT32* lineOBJ, UINT32* lineOBJWin, UINT32* lineMix, int aux);
 
 /* Utility functions */
-INLINE int is_in_window(gba_state *gba_state, int x, int window);
+INLINE int is_in_window(gba_state *state, int x, int window);
 INLINE UINT32 alpha_blend_pixel(UINT32 color0, UINT32 color1, int ca, int cb);
-INLINE UINT32 increase_brightness(UINT32 color, int coeff);
-INLINE UINT32 decrease_brightness(UINT32 color, int coeff);
+INLINE UINT32 increase_brightness(UINT32 color, int coeff_);
+INLINE UINT32 decrease_brightness(UINT32 color, int coeff_);
 
 #include "gbamode0.c"
 #include "gbamode1.c"
 #include "gbamode2.c"
 #include "gbam345.c"
 
-static void (*const gba_draw_scanline_modes[8][3])(running_machine *machine, gba_state *gba_state, int y, UINT32* line0, UINT32* line1, UINT32* line2, UINT32* line3, UINT32* lineOBJ, UINT32* lineOBJWin, UINT32* lineMix, int aux) =
+static void (*const gba_draw_scanline_modes[8][3])(running_machine *machine, gba_state *state, int y, UINT32* line0, UINT32* line1, UINT32* line2, UINT32* line3, UINT32* lineOBJ, UINT32* lineOBJWin, UINT32* lineMix, int aux) =
 {
 	/* All modes have three sub-modes: No effects, effects, and windowed effects. */
 	{	/* Mode 0: 4 non-rotatable tilemaps and 1 OAM layer */
@@ -96,16 +96,16 @@ static void (*const gba_draw_scanline_modes[8][3])(running_machine *machine, gba
 	},
 };
 
-static void invalid_gba_draw_function(running_machine *machine, gba_state *gba_state, int y, UINT32* line0, UINT32* line1, UINT32* line2, UINT32* line3, UINT32* lineOBJ, UINT32* lineOBJWin, UINT32* lineMix, int aux)
+static void invalid_gba_draw_function(running_machine *machine, gba_state *state, int y, UINT32* line0, UINT32* line1, UINT32* line2, UINT32* line3, UINT32* lineOBJ, UINT32* lineOBJWin, UINT32* lineMix, int aux)
 {
 	fatalerror( "Invalid screen mode (6 or 7)!\n" );
 }
 
-static void draw_roz_bitmap_scanline(gba_state *gba_state, UINT32 *scanline, int ypos, UINT32 enablemask, UINT32 ctrl, INT32 X, INT32 Y, INT32 PA, INT32 PB, INT32 PC, INT32 PD, INT32 *currentx, INT32 *currenty, int changed, int depth)
+static void draw_roz_bitmap_scanline(gba_state *state, UINT32 *scanline, int ypos, UINT32 enablemask, UINT32 ctrl, INT32 X, INT32 Y, INT32 PA, INT32 PB, INT32 PC, INT32 PD, INT32 *currentx, INT32 *currenty, int changed, int depth)
 {
-	UINT8 *src8 = (UINT8 *)gba_state->gba_vram;
-	UINT16 *src16 = (UINT16 *)gba_state->gba_vram;
-	UINT16 *palette = (UINT16 *)gba_state->gba_pram;
+	UINT8 *src8 = (UINT8 *)state->gba_vram;
+	UINT16 *src16 = (UINT16 *)state->gba_vram;
+	UINT16 *palette = (UINT16 *)state->gba_pram;
 	INT32 sx = 240;
 	INT32 sy = 160;
 	UINT32 prio = ((ctrl & BGCNT_PRIORITY) << 25) + 0x1000000;
@@ -114,7 +114,7 @@ static void draw_roz_bitmap_scanline(gba_state *gba_state, UINT32 *scanline, int
 
 	if(depth == 8)
 	{
-		if(gba_state->DISPCNT & DISPCNT_FRAMESEL)
+		if(state->DISPCNT & DISPCNT_FRAMESEL)
 		{
 			src8 += 0xa000;
 		}
@@ -164,7 +164,7 @@ static void draw_roz_bitmap_scanline(gba_state *gba_state, UINT32 *scanline, int
 
 	if(ctrl & BGCNT_MOSAIC)
 	{
-		INT32 mosaic_line = ((gba_state->MOSAIC & 0x00f0) >> 4) + 1;
+		INT32 mosaic_line = ((state->MOSAIC & 0x00f0) >> 4) + 1;
 		INT32 tempy = (ypos / mosaic_line) * mosaic_line;
 		rx = startx + tempy*dmx;
 		ry = starty + tempy*dmy;
@@ -209,7 +209,7 @@ static void draw_roz_bitmap_scanline(gba_state *gba_state, UINT32 *scanline, int
 
 	if(ctrl & BGCNT_MOSAIC)
 	{
-		INT32 mosaicx = (gba_state->MOSAIC & 0x0f) + 1;
+		INT32 mosaicx = (state->MOSAIC & 0x0f) + 1;
 		if(mosaicx > 1)
 		{
 			INT32 m = 1;
@@ -227,14 +227,14 @@ static void draw_roz_bitmap_scanline(gba_state *gba_state, UINT32 *scanline, int
 	}
 }
 
-static void draw_roz_scanline(gba_state *gba_state, UINT32 *scanline, int ypos, UINT32 enablemask, UINT32 ctrl, INT32 X, INT32 Y, INT32 PA, INT32 PB, INT32 PC, INT32 PD, INT32 *currentx, INT32 *currenty, int changed)
+static void draw_roz_scanline(gba_state *state, UINT32 *scanline, int ypos, UINT32 enablemask, UINT32 ctrl, INT32 X, INT32 Y, INT32 PA, INT32 PB, INT32 PC, INT32 PD, INT32 *currentx, INT32 *currenty, int changed)
 {
 	UINT32 base, mapbase, size;
 	INT32 sizes[4] = { 128, 256, 512, 1024 };
 	INT32 cx, cy, x, pixx, pixy;
-	UINT8 *mgba_vram = (UINT8 *)gba_state->gba_vram;
+	UINT8 *mgba_vram = (UINT8 *)state->gba_vram;
 	UINT32 tile;
-	UINT16 *pgba_pram = (UINT16 *)gba_state->gba_pram;
+	UINT16 *pgba_pram = (UINT16 *)state->gba_pram;
 	UINT16 pixel;
 	UINT32 prio = ((ctrl & BGCNT_PRIORITY) << 25) + 0x1000000;
 
@@ -243,7 +243,7 @@ static void draw_roz_scanline(gba_state *gba_state, UINT32 *scanline, int ypos, 
 		scanline[x] = 0x80000000;
 	}
 
-	if (gba_state->DISPCNT & enablemask)
+	if (state->DISPCNT & enablemask)
 	{
 		base = ((ctrl & BGCNT_CHARBASE) >> BGCNT_CHARBASE_SHIFT) * 0x4000;			// VRAM base of tiles
 		mapbase = ((ctrl & BGCNT_SCREENBASE) >> BGCNT_SCREENBASE_SHIFT) * 0x800;	// VRAM base of map
@@ -285,7 +285,7 @@ static void draw_roz_scanline(gba_state *gba_state, UINT32 *scanline, int ypos, 
 
 		if(ctrl & BGCNT_MOSAIC)
 		{
-			int mosaicy = ((gba_state->MOSAIC & 0xf0) >> 4) + 1;
+			int mosaicy = ((state->MOSAIC & 0xf0) >> 4) + 1;
 			int y = ypos % mosaicy;
 			cx -= y*PB;
 			cy -= y*PD;
@@ -393,7 +393,7 @@ static void draw_roz_scanline(gba_state *gba_state, UINT32 *scanline, int ypos, 
 
 		if(ctrl & BGCNT_MOSAIC)
 		{
-			int mosaicx = (gba_state->MOSAIC & 0x0f) + 1;
+			int mosaicx = (state->MOSAIC & 0x0f) + 1;
 			if(mosaicx > 1)
 			{
 				int m = 1;
@@ -412,10 +412,10 @@ static void draw_roz_scanline(gba_state *gba_state, UINT32 *scanline, int ypos, 
 	}
 }
 
-static void draw_bg_scanline(gba_state *gba_state, UINT32 *scanline, int ypos, UINT32 enablemask, UINT32 ctrl, UINT32 hofs, UINT32 vofs)
+static void draw_bg_scanline(gba_state *state, UINT32 *scanline, int ypos, UINT32 enablemask, UINT32 ctrl, UINT32 hofs, UINT32 vofs)
 {
-	UINT8 *vram = (UINT8*)gba_state->gba_vram;
-	UINT16 *palette = (UINT16*)gba_state->gba_pram;
+	UINT8 *vram = (UINT8*)state->gba_vram;
+	UINT16 *palette = (UINT16*)state->gba_pram;
 	UINT8 *chardata = &vram[((ctrl & BGCNT_CHARBASE) >> BGCNT_CHARBASE_SHIFT) * 0x4000];
 	UINT16 *screendata = (UINT16*)&vram[((ctrl & BGCNT_SCREENBASE) >> BGCNT_SCREENBASE_SHIFT) * 0x800];
 	UINT32 priority = ((ctrl & BGCNT_PRIORITY) << 25) + 0x1000000;
@@ -423,12 +423,12 @@ static void draw_bg_scanline(gba_state *gba_state, UINT32 *scanline, int ypos, U
 	INT32 height = 256;
 	INT32 maskx, masky, pixx, pixy;
 	UINT8 use_mosaic = (ctrl & BGCNT_MOSAIC) ? 1 : 0;
-	INT32 mosaicx = (gba_state->MOSAIC & 0x000f) + 1;
-	INT32 mosaicy = ((gba_state->MOSAIC & 0x00f0) >> 4) + 1;
+	INT32 mosaicx = (state->MOSAIC & 0x000f) + 1;
+	INT32 mosaicy = ((state->MOSAIC & 0x00f0) >> 4) + 1;
 	INT32 stride;
 	INT32 x;
 
-	if(!(gba_state->DISPCNT & enablemask))
+	if(!(state->DISPCNT & enablemask))
 	{
 		for(x = 0; x < 240; x++)
 		{
@@ -482,7 +482,6 @@ static void draw_bg_scanline(gba_state *gba_state, UINT32 *scanline, int ypos, U
 	if(ctrl & BGCNT_PALETTE256)
 	{
 		UINT16 *src = screendata + 0x400 * (pixx >> 8) + ((pixx & 255) >> 3) + stride;
-		INT32 x = 0;
 		for(x = 0; x < 240; x++)
 		{
 			UINT16 data = *src;
@@ -546,7 +545,6 @@ static void draw_bg_scanline(gba_state *gba_state, UINT32 *scanline, int ypos, U
 	else
 	{
 		UINT16 *src = screendata + 0x400 * (pixx >> 8) + ((pixx & 255) >> 3) + stride;
-		INT32 x = 0;
 		for(x = 0; x < 240; x++)
 		{
 			UINT16 data = *src;
@@ -638,21 +636,21 @@ static void draw_bg_scanline(gba_state *gba_state, UINT32 *scanline, int ypos, U
 	}
 }
 
-static void draw_gba_oam_window(gba_state *gba_state, running_machine *machine, UINT32 *scanline, int y)
+static void draw_gba_oam_window(gba_state *state, running_machine *machine, UINT32 *scanline, int y)
 {
 	INT16 gba_oamindex;
 	UINT32 tilebytebase, tileindex, tiledrawindex;
 	UINT32 width, height;
-	UINT16 *pgba_oam = (UINT16 *)gba_state->gba_oam;
+	UINT16 *pgba_oam = (UINT16 *)state->gba_oam;
 	int x = 0;
-	UINT8 *src = (UINT8*)gba_state->gba_vram;
+	UINT8 *src = (UINT8*)state->gba_vram;
 
 	for(x = 0; x < 240; x++)
 	{
 		scanline[x] = 0x80000000;
 	}
 
-	if( gba_state->DISPCNT & DISPCNT_OBJWIN_EN )
+	if( state->DISPCNT & DISPCNT_OBJWIN_EN )
 	{
 		for( gba_oamindex = 127; gba_oamindex >= 0; gba_oamindex-- )
 		{
@@ -755,7 +753,7 @@ static void draw_gba_oam_window(gba_state *gba_state, running_machine *machine, 
 				tiledrawindex = tileindex = (attr2 & OBJ_TILENUM);
 				tilebytebase = 0x10000;	// the index doesn't change in the higher modes, we just ignore sprites that are out of range
 
- 				if (attr0 & OBJ_ROZMODE_ROZ)
+				if (attr0 & OBJ_ROZMODE_ROZ)
 				{
 					INT32 fx, fy, ax, ay, rx, ry;
 					INT16 dx, dy, dmx, dmy;
@@ -796,11 +794,11 @@ static void draw_gba_oam_window(gba_state *gba_state, running_machine *machine, 
 							if((attr0 & OBJ_PALMODE) == OBJ_PALMODE_256)
 							{
 								int inc = 32;
-								if((gba_state->DISPCNT & DISPCNT_MODE) > 2 && tiledrawindex < 0x200)
+								if((state->DISPCNT & DISPCNT_MODE) > 2 && tiledrawindex < 0x200)
 								{
 									continue;
 								}
-								if((gba_state->DISPCNT & DISPCNT_VRAM_MAP) == DISPCNT_VRAM_MAP_1D)
+								if((state->DISPCNT & DISPCNT_VRAM_MAP) == DISPCNT_VRAM_MAP_1D)
 								{
 									inc = sx >> 2;
 								}
@@ -835,11 +833,11 @@ static void draw_gba_oam_window(gba_state *gba_state, running_machine *machine, 
 							else
 							{
 								int inc = 32;
-								if((gba_state->DISPCNT & DISPCNT_MODE) > 2 && tiledrawindex < 0x200)
+								if((state->DISPCNT & DISPCNT_MODE) > 2 && tiledrawindex < 0x200)
 								{
 									continue;
 								}
-								if((gba_state->DISPCNT & DISPCNT_VRAM_MAP) == DISPCNT_VRAM_MAP_1D)
+								if((state->DISPCNT & DISPCNT_VRAM_MAP) == DISPCNT_VRAM_MAP_1D)
 								{
 									inc = sx >> 3;
 								}
@@ -882,12 +880,12 @@ static void draw_gba_oam_window(gba_state *gba_state, running_machine *machine, 
 				else
 				{
 					INT32 ax;
-					int cury = y - sy;
+					int cury_ = y - sy;
 
 					width *= 8;
 					height *= 8;
 
-					if(cury >= 0 && cury < height)
+					if(cury_ >= 0 && cury_ < height)
 					{
 						if( ( (sx < 240) || ( ( (sx + width) & 0x1ff ) < 240 ) ) && (attr0 & OBJ_ROZMODE_DISABLE) == 0)
 						{
@@ -897,14 +895,14 @@ static void draw_gba_oam_window(gba_state *gba_state, running_machine *machine, 
 								int address = 0;
 								if(attr1 & OBJ_VFLIP)
 								{
-									cury = height - cury - 1;
+									cury_ = height - cury_ - 1;
 								}
-								if((gba_state->DISPCNT & DISPCNT_MODE) > 2 && tiledrawindex < 0x200)
+								if((state->DISPCNT & DISPCNT_MODE) > 2 && tiledrawindex < 0x200)
 								{
 									continue;
 								}
 
-								if((gba_state->DISPCNT & DISPCNT_VRAM_MAP) == DISPCNT_VRAM_MAP_1D)
+								if((state->DISPCNT & DISPCNT_VRAM_MAP) == DISPCNT_VRAM_MAP_1D)
 								{
 									inc = width >> 2;
 								}
@@ -919,7 +917,7 @@ static void draw_gba_oam_window(gba_state *gba_state, running_machine *machine, 
 									ax = width - 1;
 								}
 
-								address = 0x10000 + ((((tiledrawindex + (cury >> 3) * inc) << 5) + ((cury & 7) << 3) + ((ax >> 3) << 6) + (ax & 7)) & 0x7fff);
+								address = 0x10000 + ((((tiledrawindex + (cury_ >> 3) * inc) << 5) + ((cury_ & 7) << 3) + ((ax >> 3) << 6) + (ax & 7)) & 0x7fff);
 
 								if(attr1 & OBJ_HFLIP)
 								{
@@ -976,14 +974,14 @@ static void draw_gba_oam_window(gba_state *gba_state, running_machine *machine, 
 								UINT32 address;
 								if(attr1 & OBJ_VFLIP)
 								{
-									cury = height - cury - 1;
+									cury_ = height - cury_ - 1;
 								}
-								if((gba_state->DISPCNT & DISPCNT_MODE) > 2 && tiledrawindex < 0x200)
+								if((state->DISPCNT & DISPCNT_MODE) > 2 && tiledrawindex < 0x200)
 								{
 									continue;
 								}
 
-								if((gba_state->DISPCNT & DISPCNT_VRAM_MAP) == DISPCNT_VRAM_MAP_1D)
+								if((state->DISPCNT & DISPCNT_VRAM_MAP) == DISPCNT_VRAM_MAP_1D)
 								{
 									inc = width >> 3;
 								}
@@ -994,7 +992,7 @@ static void draw_gba_oam_window(gba_state *gba_state, running_machine *machine, 
 									ax = width - 1;
 								}
 
-								address = 0x10000 + ((((tiledrawindex + (cury >> 3) * inc) << 5) + ((cury & 0x07) << 2) + ((ax >> 3) << 5) + ((ax & 0x07) >> 1)) & 0x7fff);
+								address = 0x10000 + ((((tiledrawindex + (cury_ >> 3) * inc) << 5) + ((cury_ & 0x07) << 2) + ((ax >> 3) << 5) + ((ax & 0x07) >> 1)) & 0x7fff);
 								if(attr1 & OBJ_HFLIP)
 								{
 									ax = 7;
@@ -1084,17 +1082,17 @@ static void draw_gba_oam_window(gba_state *gba_state, running_machine *machine, 
 	}
 }
 
-static void draw_gba_oam(gba_state *gba_state, running_machine *machine, UINT32 *scanline, int y)
+static void draw_gba_oam(gba_state *state, running_machine *machine, UINT32 *scanline, int y)
 {
 	INT16 gba_oamindex;
 	INT32 mosaiccnt = 0;
-	INT32 mosaicy = ((gba_state->MOSAIC & 0xf000) >> 12) + 1;
-	INT32 mosaicx = ((gba_state->MOSAIC & 0x0f00) >>  8) + 1;
+	INT32 mosaicy = ((state->MOSAIC & 0xf000) >> 12) + 1;
+	INT32 mosaicx = ((state->MOSAIC & 0x0f00) >>  8) + 1;
 	UINT32 tilebytebase, tileindex, tiledrawindex;
 	UINT8 width, height;
-	UINT16 *pgba_oam = (UINT16 *)gba_state->gba_oam;
-	UINT8 *src = (UINT8 *)gba_state->gba_vram;
-	UINT16 *palette = (UINT16*)gba_state->gba_pram;
+	UINT16 *pgba_oam = (UINT16 *)state->gba_oam;
+	UINT8 *src = (UINT8 *)state->gba_vram;
+	UINT16 *palette = (UINT16*)state->gba_pram;
 	int x = 0;
 
 	for(x = 0; x < 240; x++)
@@ -1102,7 +1100,7 @@ static void draw_gba_oam(gba_state *gba_state, running_machine *machine, UINT32 
 		scanline[x] = 0x80000000;
 	}
 
-	if( gba_state->DISPCNT & DISPCNT_OBJ_EN )
+	if( state->DISPCNT & DISPCNT_OBJ_EN )
 	{
 		for( gba_oamindex = 0; gba_oamindex < 128; gba_oamindex++ )
 		{
@@ -1196,7 +1194,7 @@ static void draw_gba_oam(gba_state *gba_state, running_machine *machine, UINT32 
 				tiledrawindex = tileindex = (attr2 & OBJ_TILENUM);
 				tilebytebase = 0x10000;	// the index doesn't change in the higher modes, we just ignore sprites that are out of range
 
- 				if (attr0 & OBJ_ROZMODE_ROZ)
+				if (attr0 & OBJ_ROZMODE_ROZ)
 				{
 					INT32 sx, sy;
 					INT32 fx, fy, rx, ry;
@@ -1252,12 +1250,12 @@ static void draw_gba_oam(gba_state *gba_state, running_machine *machine, UINT32 
 							{
 								INT32 inc = 32;
 
-								if((gba_state->DISPCNT & DISPCNT_MODE) > 2 && tiledrawindex < 0x200)
+								if((state->DISPCNT & DISPCNT_MODE) > 2 && tiledrawindex < 0x200)
 								{
 									continue;
 								}
 
-								if((gba_state->DISPCNT & DISPCNT_VRAM_MAP) == DISPCNT_VRAM_MAP_1D)
+								if((state->DISPCNT & DISPCNT_VRAM_MAP) == DISPCNT_VRAM_MAP_1D)
 								{
 									inc = width >> 2;
 								}
@@ -1313,12 +1311,12 @@ static void draw_gba_oam(gba_state *gba_state, running_machine *machine, UINT32 
 								INT32 inc = 32;
 								INT32 palentry = (attr2 >> 8) & 0xf0;
 
-								if((gba_state->DISPCNT & DISPCNT_MODE) > 2 && tiledrawindex < 0x200)
+								if((state->DISPCNT & DISPCNT_MODE) > 2 && tiledrawindex < 0x200)
 								{
 									continue;
 								}
 
-								if((gba_state->DISPCNT & DISPCNT_VRAM_MAP) == DISPCNT_VRAM_MAP_1D)
+								if((state->DISPCNT & DISPCNT_VRAM_MAP) == DISPCNT_VRAM_MAP_1D)
 								{
 									inc = width >> 3;
 								}
@@ -1417,12 +1415,12 @@ static void draw_gba_oam(gba_state *gba_state, running_machine *machine, UINT32 
 									cury = height - cury - 1;
 								}
 
-								if((gba_state->DISPCNT & DISPCNT_MODE) > 2 && tiledrawindex < 0x200)
+								if((state->DISPCNT & DISPCNT_MODE) > 2 && tiledrawindex < 0x200)
 								{
 									continue;
 								}
 
-								if((gba_state->DISPCNT & DISPCNT_VRAM_MAP) == DISPCNT_VRAM_MAP_1D)
+								if((state->DISPCNT & DISPCNT_VRAM_MAP) == DISPCNT_VRAM_MAP_1D)
 								{
 									inc = width >> 2;
 								}
@@ -1525,12 +1523,12 @@ static void draw_gba_oam(gba_state *gba_state, running_machine *machine, UINT32 
 									cury = height - cury - 1;
 								}
 
-								if((gba_state->DISPCNT & DISPCNT_MODE) > 2 && tiledrawindex < 0x200)
+								if((state->DISPCNT & DISPCNT_MODE) > 2 && tiledrawindex < 0x200)
 								{
 									continue;
 								}
 
-								if((gba_state->DISPCNT & DISPCNT_VRAM_MAP) == DISPCNT_VRAM_MAP_1D)
+								if((state->DISPCNT & DISPCNT_VRAM_MAP) == DISPCNT_VRAM_MAP_1D)
 								{
 									inc = width >> 3;
 								}
@@ -1677,15 +1675,15 @@ static void draw_gba_oam(gba_state *gba_state, running_machine *machine, UINT32 
 	}
 }
 
-INLINE int is_in_window(gba_state *gba_state, int x, int window)
+INLINE int is_in_window(gba_state *state, int x, int window)
 {
-	int x0 = gba_state->WIN0H >> 8;
-	int x1 = gba_state->WIN0H & 0x00ff;
+	int x0 = state->WIN0H >> 8;
+	int x1 = state->WIN0H & 0x00ff;
 
 	if(window == 1)
 	{
-		x0 = gba_state->WIN1H >> 8;
-		x1 = gba_state->WIN1H & 0x00ff;
+		x0 = state->WIN1H >> 8;
+		x1 = state->WIN1H & 0x00ff;
 	}
 
 	if(x0 <= x1)
@@ -1729,15 +1727,15 @@ INLINE UINT32 alpha_blend_pixel(UINT32 color0, UINT32 color1, int ca, int cb)
 	return color0;
 }
 
-INLINE UINT32 increase_brightness(UINT32 color, int coeff)
+INLINE UINT32 increase_brightness(UINT32 color, int coeff_)
 {
 	int r = (color >>  0) & 0x1f;
 	int g = (color >>  5) & 0x1f;
 	int b = (color >> 10) & 0x1f;
 
-	r += ((0x1f - r) * coeff) >> 4;
-	g += ((0x1f - g) * coeff) >> 4;
-	b += ((0x1f - b) * coeff) >> 4;
+	r += ((0x1f - r) * coeff_) >> 4;
+	g += ((0x1f - g) * coeff_) >> 4;
+	b += ((0x1f - b) * coeff_) >> 4;
 
 	if(r > 0x1f) r = 0x1f;
 	if(g > 0x1f) g = 0x1f;
@@ -1746,15 +1744,15 @@ INLINE UINT32 increase_brightness(UINT32 color, int coeff)
 	return (color & 0xffff0000) | (b << 10) | (g << 5) | r;
 }
 
-INLINE UINT32 decrease_brightness(UINT32 color, int coeff)
+INLINE UINT32 decrease_brightness(UINT32 color, int coeff_)
 {
 	int r = (color >>  0) & 0x1f;
 	int g = (color >>  5) & 0x1f;
 	int b = (color >> 10) & 0x1f;
 
-	r -= (r * coeff) >> 4;
-	g -= (g * coeff) >> 4;
-	b -= (b * coeff) >> 4;
+	r -= (r * coeff_) >> 4;
+	g -= (g * coeff_) >> 4;
+	b -= (b * coeff_) >> 4;
 
 	if(r < 0) r = 0;
 	if(g < 0) g = 0;
@@ -1769,12 +1767,12 @@ void gba_draw_scanline(running_machine *machine, int y)
 	UINT16 *scanline = BITMAP_ADDR16(bitmap, y, 0);
 	int i, x;
 	static UINT32 xferscan[7][240+2048];	// up to 1024 pixels of slop on either side to allow easier clip handling
-	gba_state *gba_state = machine->driver_data;
+	gba_state *state = (gba_state *)machine->driver_data;
 	UINT8 submode = 0;
 	int bpp = 0;
 
 	// forced blank
-	if (gba_state->DISPCNT & DISPCNT_BLANK)
+	if (state->DISPCNT & DISPCNT_BLANK)
 	{
 		// forced blank is white
 		for (i = 0; i < 240; i++)
@@ -1784,11 +1782,11 @@ void gba_draw_scanline(running_machine *machine, int y)
 		return;
 	}
 
-	if(!gba_state->fxOn && !gba_state->windowOn && !(gba_state->DISPCNT & DISPCNT_OBJWIN_EN))
+	if(!state->fxOn && !state->windowOn && !(state->DISPCNT & DISPCNT_OBJWIN_EN))
 	{
 		submode = 0;
 	}
-	else if(gba_state->fxOn && !gba_state->windowOn && !(gba_state->DISPCNT & DISPCNT_OBJWIN_EN))
+	else if(state->fxOn && !state->windowOn && !(state->DISPCNT & DISPCNT_OBJWIN_EN))
 	{
 		submode = 1;
 	}
@@ -1797,9 +1795,9 @@ void gba_draw_scanline(running_machine *machine, int y)
 		submode = 2;
 	}
 
-	//printf( "mode = %d, %d\n", gba_state->DISPCNT & 7, submode );
+	//printf( "mode = %d, %d\n", state->DISPCNT & 7, submode );
 
-	switch(gba_state->DISPCNT & 7)
+	switch(state->DISPCNT & 7)
 	{
 		case 3:
 			bpp = 16;
@@ -1812,7 +1810,7 @@ void gba_draw_scanline(running_machine *machine, int y)
 			break;
 	}
 
-	gba_draw_scanline_modes[gba_state->DISPCNT & 7][submode](machine, gba_state, y, &xferscan[0][1024], &xferscan[1][1024], &xferscan[2][1024], &xferscan[3][1024], &xferscan[4][1024], &xferscan[5][1024], &xferscan[6][1024], bpp);
+	gba_draw_scanline_modes[state->DISPCNT & 7][submode](machine, state, y, &xferscan[0][1024], &xferscan[1][1024], &xferscan[2][1024], &xferscan[3][1024], &xferscan[4][1024], &xferscan[5][1024], &xferscan[6][1024], bpp);
 
 	for(x = 0; x < 240; x++)
 	{

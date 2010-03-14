@@ -7,7 +7,7 @@
 
 **********************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "adc080x.h"
 
 typedef struct _adc080x_t adc080x_t;
@@ -30,7 +30,7 @@ struct _adc080x_t
 	emu_timer *cycle_timer;				/* cycle timer */
 };
 
-INLINE adc080x_t *get_safe_token(const device_config *device)
+INLINE adc080x_t *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -42,7 +42,7 @@ INLINE adc080x_t *get_safe_token(const device_config *device)
 
 static TIMER_CALLBACK( cycle_tick )
 {
-	const device_config *device = ptr;
+	running_device *device = (running_device *)ptr;
 	adc080x_t *adc080x = get_safe_token(device);
 
 	if (!adc080x->start)
@@ -86,7 +86,7 @@ static TIMER_CALLBACK( cycle_tick )
 
 /* Address Latch Enable */
 
-void adc080x_ale_w(const device_config *device, int level, int address)
+void adc080x_ale_w(running_device *device, int level, int address)
 {
 	adc080x_t *adc080x = get_safe_token(device);
 
@@ -100,7 +100,7 @@ void adc080x_ale_w(const device_config *device, int level, int address)
 
 /* Start Conversion */
 
-void adc080x_start_w(const device_config *device, int level)
+void adc080x_start_w(running_device *device, int level)
 {
 	adc080x_t *adc080x = get_safe_token(device);
 
@@ -138,9 +138,9 @@ static DEVICE_START( adc080x )
 
 	/* validate arguments */
 	assert(device != NULL);
-	assert(device->tag != NULL);
+	assert(device->tag() != NULL);
 
-	adc080x->intf = device->static_config;
+	adc080x->intf = (const adc080x_interface*)device->baseconfig().static_config;
 
 	assert(adc080x->intf != NULL);
 	assert(device->clock > 0);
@@ -153,14 +153,14 @@ static DEVICE_START( adc080x )
 	timer_adjust_periodic(adc080x->cycle_timer, attotime_zero, 0, ATTOTIME_IN_HZ(device->clock));
 
 	/* register for state saving */
-	state_save_register_item(device->machine, "adc080x", device->tag, 0, adc080x->address);
-	state_save_register_item(device->machine, "adc080x", device->tag, 0, adc080x->ale);
-	state_save_register_item(device->machine, "adc080x", device->tag, 0, adc080x->start);
-	state_save_register_item(device->machine, "adc080x", device->tag, 0, adc080x->eoc);
-	state_save_register_item(device->machine, "adc080x", device->tag, 0, adc080x->next_eoc);
-	state_save_register_item(device->machine, "adc080x", device->tag, 0, adc080x->sar);
-	state_save_register_item(device->machine, "adc080x", device->tag, 0, adc080x->cycle);
-	state_save_register_item(device->machine, "adc080x", device->tag, 0, adc080x->bit);
+	state_save_register_item(device->machine, "adc080x", device->tag(), 0, adc080x->address);
+	state_save_register_item(device->machine, "adc080x", device->tag(), 0, adc080x->ale);
+	state_save_register_item(device->machine, "adc080x", device->tag(), 0, adc080x->start);
+	state_save_register_item(device->machine, "adc080x", device->tag(), 0, adc080x->eoc);
+	state_save_register_item(device->machine, "adc080x", device->tag(), 0, adc080x->next_eoc);
+	state_save_register_item(device->machine, "adc080x", device->tag(), 0, adc080x->sar);
+	state_save_register_item(device->machine, "adc080x", device->tag(), 0, adc080x->cycle);
+	state_save_register_item(device->machine, "adc080x", device->tag(), 0, adc080x->bit);
 }
 
 DEVICE_GET_INFO( adc0808 )

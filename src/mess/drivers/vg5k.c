@@ -36,7 +36,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "devices/messram.h"
 
@@ -98,7 +98,7 @@ static DRIVER_INIT( vg5k )
 				for (d = 0; d < 64; d+=4)
 					FNT[dest++]=FNT[a|b|c|d];
 }
-	
+
 static MACHINE_DRIVER_START( vg5k )
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",Z80, XTAL_4MHz)
@@ -140,4 +140,4 @@ ROM_END
 
 /* Driver */
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE  INPUT  INIT   COMPANY     FULLNAME   FLAGS */
-COMP( 1984, vg5k,   0,      0,      vg5k,    vg5k,  vg5k, "Philips",  "VG-5000", GAME_NOT_WORKING)
+COMP( 1984, vg5k,   0,      0,      vg5k,    vg5k,  vg5k, "Philips",  "VG-5000", GAME_NOT_WORKING | GAME_NO_SOUND)

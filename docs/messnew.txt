@@ -1,3 +1,163 @@
+0.137
+
+New System Drivers Supported:
+-----------------------------
+- Casio PV-1000  [Wilbert Pol, plgDavid]
+- Research Machines Nimbus [Phill Harvey-Smith]
+- Iskra-1031 [Miodrag Milanovic]
+- Iskra-1030M [Miodrag Milanovic]
+- EC-1840, EC-1841, EC-1845 [Miodrag Milanovic]
+- Spektr BK-001 [Miodrag Milanovic]
+- Zvezda [Miodrag Milanovic]
+- MK-88 [Miodrag Milanovic]
+- Poisk-1, Poisk-2 [Miodrag Milanovic]
+- PK8020 Neiva, PK8020 Kontur [Miodrag Milanovic]
+- C64 Direct-to-TV (not working) [Guru, Fabio Priuli]
+
+
+
+Systems Promoted from GAME_NOT_WORKING:
+---------------------------------------
+- Victory MPT-02 and clones [Curt Coder]
+
+
+
+Skeleton drivers:
+-----------------
+- Amstrad MegaPC
+- Amstrad MegaPC Plus
+- BestZX
+- Contel Codata Corporation Codata
+- Digital Microsystems DMS-86
+- Digital Microsystems DMS-5000
+- Digital Microsystems ZSBC-3
+- Sanyo PHC-25 [Gilles Fetis, Curt Coder]
+- Tandy 2000 [Curt Coder]
+- TRS-80 Model II [Curt Coder]
+- TRS-80 Model II/16 [Curt Coder]
+- Victor 9000 [Curt Coder]
+- Xerox 820-II [Curt Coder]
+- Xerox 16/8 [Curt Coder]
+
+
+
+System Driver Changes:
+----------------------
+
+- [ABC80] Partially fixed keyboard input. [Curt Coder]
+
+- [APEXC] Fixed disassembly in the debugger. [Robbbert]
+
+- [C16] Connected Commodore 1551 floppy drive. [Curt Coder]
+
+- [C64] Added read-only access to D64 floppies. [Fabio Priuli, Curt Coder]
+
+- [C128] Added read-only access to double-sided D71 floppies. [Curt Coder]
+
+- [C128] Fast IEC serial bus is now supported with a 1571/1581. [Curt Coder]
+
+- [COCO3] Fixed broken Coco3 high-res timer emulation
+  (bug #1913) [John W. Linville]
+
+- [INTV] Fixed collision detection. [H@P]
+
+- [MIKROMIK] Fixed memory banking regression. [Curt Coder]
+
+- [ODYSSEY2] Fixed shape of $ character (bug #1582). [Justin Kerk]
+
+- [PDP1] Fixed crash when debugger invoked (bug #1371]. [Robbbert]
+
+- [PET] Changed floppy drive to Commodore 4040 for 2001/30xx/40xx series.
+  Changed floppy drive to Commodore 8050 for 80xx series. [Curt Coder]
+
+- [SCV] Implemented upd177c audio. [plgDavid]
+
+- [SMS] Fixed PGA Tour Golf freeze based on Flubba's & RetroRalph's
+  research (bug #1911). [Enik Land]
+
+- [SNES] SNES video wip, part 1: [Fabio Priuli]
+  * moved color blending (background & subscreen color
+    addition/subtraction) at the end of the drawing process
+  * updated hires blending to work with two pixel at time.
+  * fixed clipmasks with hires modes
+
+- [SNES] reverted implementation of mult/div through timers since it broke 
+  many games in 0.136. [Fabio Priuli]
+
+- [SNES] SNES video wip, part 2: [Fabio Priuli]
+  * simplified drawing routines
+  * changed drawing logic: before we were drawing for each line first 
+    subscreen BGs and then mainscreen BGs; now we draw for each BGs both 
+    subscreen and mainscreen at once. This fixes most regressions introduced 
+    in the part 1 of video rewrite
+  * added preliminary support for offset-per-tile
+  * cleaned up the code
+
+- [SNES] Fixed remaining issues in hires modes. [Fabio Priuli]
+
+- [SNES] Fixed serial joystick reads, broken in 0.134. Super Double Dragon 
+  and Super Star Wars Empire Strikes Back (and probably other games as well) 
+  can be started again. [Fabio Priuli]
+
+- [SNES] Fixed Offset-per-tile graphics. [jbo_85]
+
+- [SNES] Fixed scrolling problems. [Fabio Priuli]
+
+- [SNES] Added SNES Mouse and SNES SuperScope support. You can use the 
+  Categories submenu to select the controller in each controller ports 
+  (None, Joypad, Mouse or Superscope). Notice that you can plug the 
+  Superscope in both controller ports, but it only works in Port2 (like on 
+  a real SNES). [Fabio Priuli]
+
+- [SNES] Fixed OAM overflow. [jbo_85, Fabio Priuli]
+
+- [SPECTRUM] Added support for .ach, .frz, .plusd, .prg, .sem, .sit,
+  .snp, .snx and .zx snapshot formats. Hopefully fixed existing issues
+  with .sna and .sp formats (both VGASpec-style and Spanish Spectrum-style
+  formats are supported now).
+
+- [SPECTRUM] Added .raw quickload support. Converted to use messram device.
+
+- [TX0] Fixed disassembly in the debugger. [Robbbert]
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.136u4.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Refactored MOS6526 CIA interface, added SP/CNT callbacks, and fixed serial
+  port transfer. [Curt Coder]
+
+- Cleanups for driver_data and Standard C library usage.  [Atari Ace]
+
+- Fixed some 'uninitialized variable' errors.  [Scott Michel]
+
+- Placed floppy drive head initially on track 0 to fix alignment issues
+  with Commodore drives, where physical track 1 is a half track. [Curt Coder]
+
+- Implemented 'disk changed' (DSKCHG) floppy drive signal. [Curt Coder]
+
+- Implemented floppy drive write protect signal toggling on floppy
+  disk insert/eject. [Curt Coder]
+
+- Implemented 'disk double sided' (TWOSID) floppy drive signal. [Curt Coder]
+
+- Emulated the following Commodore floppy disk drives at hardware level:
+  1551, 1571, 1581, 2040, 3040, 4040, 8050, 8250, SFD-1001. [Curt Coder]
+
+- Added read-only support for the following disk image formats:
+  D64, D71, D81, D80, D82. [Curt Coder]
+
+
+
 0.136
 
 New System Drivers Supported:
@@ -29,7 +189,7 @@ Systems Promoted from GAME_NOT_WORKING:
 
 
 
-Skeleton drivers: 
+Skeleton drivers:
 -----------------
 - Callan Unistar Terminal
 - CCS Model 2422B
@@ -79,7 +239,7 @@ System Driver Changes:
 
 - [BETA] Fixed display flickering. [Curt Coder]
 
-- [C64] Emulated the Commodore 1541 disk drive at hardware level. 
+- [C64] Emulated the Commodore 1541 disk drive at hardware level.
   G64 images are now supported (D64 support coming) [Curt Coder]
 
 - [EXL100] Added 7041 rom dump.  [Wilbert Pol]
@@ -120,13 +280,13 @@ System Driver Changes:
   Driver Configuration menu and turn on SegaScope, then go in the Video
   Options menu and choose one of the SegaScope views. [Fabio Priuli]
 
-- [SMS] Added Terebi Oekaki graphic board support to Japanese drivers 
+- [SMS] Added Terebi Oekaki graphic board support to Japanese drivers
   (i.e. smsj & sg1000m3). To enable this, start emulation of "Terebi
   Oekaki", then enter Driver Configuration menu and turn on the Tablet.
-  Once enabled, remappable controls will also appear in the Input (this 
+  Once enabled, remappable controls will also appear in the Input (this
   System) menu. [Fabio Priuli]
 
-- [SMS] Added Reset button to SMS1 and improved Lightgun behavior based 
+- [SMS] Added Reset button to SMS1 and improved Lightgun behavior based
   on "Color & Switch Test". [Enik Land]
 
 - [TI81] Added v1.6K BIOS dump. [critor]
@@ -155,7 +315,7 @@ Source Changes:
   code cleanups, brace cleanups, and more multisession friendly init code).
   [Atari Ace]
 
-- WD17xx write track supported in proper way instead of using more 
+- WD17xx write track supported in proper way instead of using more
   sector writes [Michael Zapf]
 
 - Added F4 character-set viewer to many computers [Robbbert]
@@ -174,7 +334,7 @@ New System Drivers Supported (in no particular order):
 ------------------------------------------------------
 - Philips CD-i [Harmony]
 - Fujitsu FM Towns Car Marty (not working)  [Barry Rodewald]
-- Macintosh II (FDHD), IIx, IIcx, IIci, IIsi, LC, LC II, and 
+- Macintosh II (FDHD), IIx, IIcx, IIci, IIsi, LC, LC II, and
   Classic II (not working) [R. Belmont]
 - P8000 (not working) [Matt Knoth, Fabio Priuli]
 - Sharp X68000 XVI and X68030 (not working). [Barry Rodewald]
@@ -195,7 +355,7 @@ Systems Promoted from GAME_NOT_WORKING:
 
 
 
-Skeleton drivers: 
+Skeleton drivers:
 -----------------
 - Amiga 3000
 - Amstrad PenPad PDA 600
@@ -208,12 +368,12 @@ Skeleton drivers:
 
 System Driver Changes:
 ----------------------
-- [A5200] Changed default start button mapping to match other drivers 
+- [A5200] Changed default start button mapping to match other drivers
   ("1" key by default). [Justin Kerk]
 
 - [APPLE2] Fixed corrupt lo-res graphics (bug #1842). [Harmony]
 
-- [AT] Fixed keyboard for at486 driver, so it boots into bios.[Miodrag 
+- [AT] Fixed keyboard for at486 driver, so it boots into bios.[Miodrag
   Milanovic]
 
 - [AT] Fixed display for PC/AT and NEAT. [Miodrag Milanovic]
@@ -221,20 +381,20 @@ System Driver Changes:
 - [AT] Changed the display for the 386-class drivers from CGA to VGA.
   [Justin Kerk]
 
-- [ATARIXL] TRIG3 GTIA register handling is fixed, so more games boot 
+- [ATARIXL] TRIG3 GTIA register handling is fixed, so more games boot
   and work properly [Mariusz Wojcieszek]
 
-- [ATVGA] Improved emulation. Now some output is showed. [Miodrag 
+- [ATVGA] Improved emulation. Now some output is showed. [Miodrag
   Milanovic]
 
-- [BETA] Added display, keyboard and EPROM read/write. 
+- [BETA] Added display, keyboard and EPROM read/write.
   Screen still flickers, and EPROM cannot be written
   back to file yet. [Curt Coder]
 
-- [C16] Fixed graphical corruptions in multisession runs (bug #1387) 
-  [Fabio Priuli] 
+- [C16] Fixed graphical corruptions in multisession runs (bug #1387)
+  [Fabio Priuli]
 
-- [CBM] Fixed old regression in sx64 and c16c when trying to start 
+- [CBM] Fixed old regression in sx64 and c16c when trying to start
   emulation with a floppy inserted [Fabio Priuli]
 
 - [CDI] Implemented support for a Mono-I class CD-i player. [Harmony]
@@ -242,15 +402,15 @@ System Driver Changes:
   * Theoretically conatins the extra 1MByte of RAM of a DVC cartridge.
   * Supports savestates.
 
-- [CDI] Split LCD into a secondary screen, added appropriate default 
+- [CDI] Split LCD into a secondary screen, added appropriate default
   layouts. [Carlos]
 
-- [CDTV] Added workaround for crash due to CDDA failing initialization 
-  (more work needed to properly fix this) and fixed CIA0 problem which 
+- [CDTV] Added workaround for crash due to CDDA failing initialization
+  (more work needed to properly fix this) and fixed CIA0 problem which
   was crashing MESS with some games (e.g. Turrican). [Fabio Priuli]
 
-- [COCO/COCO3/DRAGON] Converted inputs to use PORT_CATEGORY (i.e. you 
-  now select controller type in the Categories submenu). When Joystick 
+- [COCO/COCO3/DRAGON] Converted inputs to use PORT_CATEGORY (i.e. you
+  now select controller type in the Categories submenu). When Joystick
   is selected in either Right or Left Controller Port, Hi-Res Interface
   becomes available in the Driver Configuration submenu. [Fabio Priuli]
 
@@ -261,28 +421,28 @@ System Driver Changes:
 - [CPC family] Fixed screen dimensions. [Wilbert Pol]
 
 - [CRVISION] Many improvements: [Luca Antignano]
-  * Merged the Dick Smith Wizzard into the Crvision machine because they 
-    are exactly the same computers and share the same hardware and 
+  * Merged the Dick Smith Wizzard into the Crvision machine because they
+    are exactly the same computers and share the same hardware and
     peripherals
   * Optional memory expansion can be chained to 14K not 32K
-  * Totally rewritten ROM loading routines into RAM. As a result, all 6K, 
+  * Totally rewritten ROM loading routines into RAM. As a result, all 6K,
     10K and 12K ROMs now load correctly
   * Fixed system info, manufacturers, etc.
 
-- [DGONE] Added proper CGA char dump. Now the system shows correct output. 
+- [DGONE] Added proper CGA char dump. Now the system shows correct output.
   [Miodrag Milanovic]
 
 - [DRAGON] Added same input devices as CoCo. [Fabio Priuli]
 
-- [EINSTEIN] Made it possible to select single or double sided disk 
+- [EINSTEIN] Made it possible to select single or double sided disk
   drives.  [Dirk Best]
 
 - [ELWRO800] Updates: [Mariusz Wojcieszek]
   * reworked keyboard mapping, added keys with Polish characters
   * added network id
-  * added support for NMI firing (not used yet, as Junet is not working)	
+  * added support for NMI firing (not used yet, as Junet is not working)
 
-- [EXIDY] Added SNP support for the 6 games commonly found on the net. 
+- [EXIDY] Added SNP support for the 6 games commonly found on the net.
   [RObbbert]
 
 - [EXIDY] Added preliminary floppy support, not working. [Robbbert]
@@ -309,7 +469,7 @@ System Driver Changes:
 
 - [GBCOLOR] Added BIOS. [Wilbert Pol]
 
-- [GBCOLOR] RAM bank #0 cannot be selected at d000-dfff. This fixes many 
+- [GBCOLOR] RAM bank #0 cannot be selected at d000-dfff. This fixes many
   games. [Wilbert Pol]
 
 - [GBCOLOR] Made SVBK readable. [Wilbert Pol]
@@ -323,7 +483,7 @@ System Driver Changes:
 
 - [INTV] Fixed multisession problem (bug #1884) [Robbbert]
 
-- [IP22] Fixed crash in Indy driver: boot tune works, and you can get in 
+- [IP22] Fixed crash in Indy driver: boot tune works, and you can get in
   the boot menus. [Harmony]
 
 - [JR200] Various progresses: [Roberto Zandona']
@@ -332,28 +492,28 @@ System Driver Changes:
   * Fixed palette.
   * Implemented borders.
 
-- [MAC] Greatly expanded support for post-68000 models.  Many now POST 
+- [MAC] Greatly expanded support for post-68000 models.  Many now POST
   and want a disk to boot from. [R. Belmont]
 
-- [MAC] Various minor tweeks plus preliminary boot tone from models with 
+- [MAC] Various minor tweeks plus preliminary boot tone from models with
   the Apple Sound Chip. [R. Belmont]
 
 - [MAC] Many updates: [R. Belmont]
   * Fixed ID readbacks for all models.
   * Fixed SCSI handshake on Mac II and later machines.
-  * Fixed ADB timing to specs; prevents hangs of System >6.0.3 on 
+  * Fixed ADB timing to specs; prevents hangs of System >6.0.3 on
     ADB systems and improves mouse pointer smoothness.
-  * Complete emulation of SE/30 on-board video and RasterOps 
+  * Complete emulation of SE/30 on-board video and RasterOps
     264 ColorBoard.
 
 - [MC10] Reorganized and cleaned up the driver. [Dirk Best]
 
-- [MIKROMIK] Added proper ROM dumps, fixed keyboard and added drive 
+- [MIKROMIK] Added proper ROM dumps, fixed keyboard and added drive
   B: motor. [Curt Coder, Kara Trace]
 
 - [MPF1] Cleaned up, added cassette support.  [Dirk Best]
 
-- [N64] Ported numerous fixes over from Mupen64's software rasterizer 
+- [N64] Ported numerous fixes over from Mupen64's software rasterizer
   et al, some games appear considerably improved. [Harmony]
 
 - [NES] Various progresses: [Fabio Priuli]
@@ -361,25 +521,25 @@ System Driver Changes:
   * Fixed Pinball Quest graphics problems.
   * Fixed Super Spike V'Ball + Nintendo World Cup menu (last known
     graphical regression compared to MESS 0.130 and earlier).
-  * Re-checked all supported mappers against docs and fixed many mirroring 
-    and IRQ problems. Improvements can be seen in Mappers: 16, 18, 22, 32, 
-    40, 45, 46, 65, 67, 69, 75, 78, 82, 86, 87, 91, 93, 95, 115, 118, 133, 
+  * Re-checked all supported mappers against docs and fixed many mirroring
+    and IRQ problems. Improvements can be seen in Mappers: 16, 18, 22, 32,
+    40, 45, 46, 65, 67, 69, 75, 78, 82, 86, 87, 91, 93, 95, 115, 118, 133,
     232, 241.
-  * Added the following Mappers (a few may still have graphical problems): 
-    12, 14, 35, 36, 37, 48, 50, 52, 54, 74, 104, 106, 114, 117, 121, 132, 
-    134, 136, 137, 138, 139, 141, 143, 145, 146, 147, 148, 149, 150, 152, 
-    153, 155, 156, 159, 166, 167, 171, 172, 173, 176, 177, 178, 179, 191, 
-    192, 194, 195, 196, 197, 199, 201, 202, 204, 205, 207, 212, 213, 214, 
+  * Added the following Mappers (a few may still have graphical problems):
+    12, 14, 35, 36, 37, 48, 50, 52, 54, 74, 104, 106, 114, 117, 121, 132,
+    134, 136, 137, 138, 139, 141, 143, 145, 146, 147, 148, 149, 150, 152,
+    153, 155, 156, 159, 166, 167, 171, 172, 173, 176, 177, 178, 179, 191,
+    192, 194, 195, 196, 197, 199, 201, 202, 204, 205, 207, 212, 213, 214,
     216, 217, 221, 243, 245, 246, 250.
-  * Added preliminary emulation of the following Mappers: 38, 39, 157, 158, 
+  * Added preliminary emulation of the following Mappers: 38, 39, 157, 158,
     185, 187, 198, 208, 215, 222, 249, 252, 255.
   * Added info about various Mappers in the source.
-  * Added partial support for UNIF files and support for UNIF boards which 
+  * Added partial support for UNIF files and support for UNIF boards which
     correspond to already emulated iNES Mappers.
-  * Added the following UNIF only boards: BMC-64IN1NOREPEAT, BMC-190IN1, 
-    BMC-A65AS, BMC-SUPER24IN1SC03, BMC-T-262, BMC-WS, DREAMTECH01, 
+  * Added the following UNIF only boards: BMC-64IN1NOREPEAT, BMC-190IN1,
+    BMC-A65AS, BMC-SUPER24IN1SC03, BMC-T-262, BMC-WS, DREAMTECH01,
     UNL-AX5705, UNL-CC-21, UNL-T-230.
-  * Added (very) preliminary support for the following UNIF only boards: 
+  * Added (very) preliminary support for the following UNIF only boards:
     BMC-GS2004, BMC-GS2013, UNL-8237, UNL-KOF97.
 
 - [ODYSSEY2] Fixed a multisession issue (bug #1517) [Harmony]
@@ -390,12 +550,12 @@ System Driver Changes:
   * Added keyboard emulation.
   * Added audio timer irq and basic joystic controls.
   * Added basic bankswitch.
-  * Rewritten the video emulation adding 128x192x2 support (most games use 
+  * Rewritten the video emulation adding 128x192x2 support (most games use
     it) and 256x192x1 mode (used by The Amazon).
   * Implemented 2x2 squares on a single cell mode.
   * Implemented color bank for 128x192x2 mode.
   * Implemented cartslot support.
-  * Added skeleton support for the cassette interface, it doesn't work 
+  * Added skeleton support for the cassette interface, it doesn't work
     mainly because the MCU directly controls the tape handling
 
 - [PC98] Various progresses: [Angelo Salese]
@@ -409,7 +569,7 @@ System Driver Changes:
   * Implemented ROM banking
   * Implemented correct interrupts
   * Driver supports savestates
-  
+
 - [PX4] Added external cassette support.  [Dirk Best]
 
 - [QX10] Driver boots and load CP/M from floppy image. [Mariusz Wojcieszek]
@@ -422,7 +582,7 @@ System Driver Changes:
   * Added Light Phaser support. (bug #1123)
   * Fixed border and sprite problems (affecting e.g. Fantastic Dizzy,
     bug #1773).
-  * Fixed rapid-fire to only fire when buttons are pressed. (bug #1864)  
+  * Fixed rapid-fire to only fire when buttons are pressed. (bug #1864)
   * Improved Line IRQ Hcount emulation.
   * Fixed various Hcounter problems.
 
@@ -430,10 +590,10 @@ System Driver Changes:
 
 - [SNES] Added Capcom CX4 emulation [Harmony]
 
-- [SNES] Fixed a bug in DSP1_sin function. This makes Super Mario Kart and 
+- [SNES] Fixed a bug in DSP1_sin function. This makes Super Mario Kart and
   Pilotwings (and probably more DSP-1 games) playable again [Fabio Priuli]
 
-- [SNES] Added S-DD1 emulation and properly fixed cart loading and mirroring 
+- [SNES] Added S-DD1 emulation and properly fixed cart loading and mirroring
   to support it [Harmony, Fabio Priuli]
 
 - [SNES] Added preliminary SPC7110 emulation [Harmony]
@@ -470,13 +630,13 @@ System Driver Changes:
 - [X1] Various progresses: [Angelo Salese]
   * Hooked up kanji ports.
   * Added Z80 daisy chain.
-  * Rewritten bitmap routine in order to support tile height feature (fixing 
+  * Rewritten bitmap routine in order to support tile height feature (fixing
     gfxs in e.g. Xevious and King's Knight).
   * Implemented IPL & NMI reset front panel buttons.
 
 - [X1TURBO] Implemented 2bpp colors on tilemap layer. [Angelo Salese]
 
-- [X680x0] Added small workaround for avoiding MFP spurious interrupts. 
+- [X680x0] Added small workaround for avoiding MFP spurious interrupts.
   Parodius, Detana Twinbee and others work again. [Barry Rodewald]
 
 - [XTVGA] Fixed bus problem. [Miodrag Milanovic]
@@ -491,9 +651,9 @@ User Interface Changes:
 
 - Fixed Tape UI display for systems with multiple cassettes (bug #1677)
   [Dirk Best]
-  
-- Fixed assert in newui when trying to configure an emulated controller 
-  and no controller has been connected (through PORT_CATEGORY) to the 
+
+- Fixed assert in newui when trying to configure an emulated controller
+  and no controller has been connected (through PORT_CATEGORY) to the
   emulated system (bug #1878) [Fabio Priuli]
 
 
@@ -521,7 +681,7 @@ Source Changes:
 
 - Converted all drivers to use messram device.  [Miodrag Milanovic]
 
-- Removed XMODEM implementation from serial, was not used, and it should be 
+- Removed XMODEM implementation from serial, was not used, and it should be
   implemented inside machine software not a MESS code [Miodrag Milanovic]
 
 
@@ -548,7 +708,7 @@ Systems Promoted from GAME_NOT_WORKING:
 - Sharp X1 / X1 Turbo [Angelo Salese]
 
 
-Skeleton drivers: 
+Skeleton drivers:
 -----------------
 - HC-88
 - Cobra / Cobra 80K
@@ -577,7 +737,7 @@ System Driver Changes:
 
 - [GBCOLOR] Added preliminary support for the bootstrap rom.  [Wilbert Pol]
 
-- [MEGADRIVE]  Fixed multisession issues, fixed SRAM size and SRAM memory 
+- [MEGADRIVE]  Fixed multisession issues, fixed SRAM size and SRAM memory
   leak. [Enik]
 
 - [IBMPCJR] Fixed the floppy watchdog timer.  [Wilbert Pol]
@@ -598,7 +758,7 @@ System Driver Changes:
 - [NES] Changed the PPU to use a device memory map (bug #1831), enhancements
   and improvements to mappers 5, 68, 88, 119. [Robert Bohms]
 
-- [NES] Improved NES APU when reading reading $4015 and sprite overflow 
+- [NES] Improved NES APU when reading reading $4015 and sprite overflow
   emulation, fixed 4-screen mirroring. [Robert Bohms]
 
 - [ORIC] Revert commented floppy code [Miodrag Milanovic]
@@ -612,8 +772,8 @@ System Driver Changes:
 
 - [SAMCOUPE] Added support for tapes.  [Dirk Best]
 
-- [SNES] Plenty of improvements to SNES emulation (see MAME whatsnew for 
-  more details) [Fabio Priuli, Angelo Salese]: 
+- [SNES] Plenty of improvements to SNES emulation (see MAME whatsnew for
+  more details) [Fabio Priuli, Angelo Salese]:
   * fixes to hi-res in Mode 5/6, interlaced graphics, rowscroll, window effect
   * implemented open bus
   * added proper priority tables for various bg/obj layers
@@ -630,7 +790,7 @@ System Driver Changes:
 
 - [SNES] Added support for SuperFX games. [Harmony]
 
-- [SNES] Added support for DSP-3 and DSP-4 add-on chips. [ZSNES Team, Fabio 
+- [SNES] Added support for DSP-3 and DSP-4 add-on chips. [ZSNES Team, Fabio
   Priuli]
 
 - [SNES] Added preliminary support for S-DD1 and S-RTC emulation. [Harmony]
@@ -639,13 +799,13 @@ System Driver Changes:
 
 - [V1050] Fixed centronics output. [Curt Coder]
 
-- [VBOY] Updates to graphics handling and port reading, some demos 
+- [VBOY] Updates to graphics handling and port reading, some demos
   work [Miodrag Milanovic]
 
-- [X1] Many improvements to Sharp X1 emulation [Angelo Salese]: 
+- [X1] Many improvements to Sharp X1 emulation [Angelo Salese]:
   * Fixed memory maps and added basic graphic emulation
   * Hooked up 320 bitmap mode and added char double height feature
-  * properly emulated PCG in order to support bitplane mask and color 
+  * properly emulated PCG in order to support bitplane mask and color
     revert features
   * added .D88 disk image support
   * allow the X1Turbo versions to boot properly and hooked up YM-2151
@@ -715,7 +875,7 @@ Systems Promoted from GAME_NOT_WORKING:
 - Visual 1050 [Curt Coder, rbramante]
 
 
-Skeleton drivers: 
+Skeleton drivers:
 -----------------
 - ACT Apricot Xi / F1 / F10 / Portable
 - AIM 65/40
@@ -756,7 +916,7 @@ System Driver Changes:
 
 - [GENESIS] Save RAM emulation improved for several games (bugs #1691, #1696,
   #1823, #1824) [Enik]
-  
+
 - [LC80] System is now fully working. [Curt Coder]
 
 - [MC1000] System is now basically working. [Curt Coder]
@@ -776,12 +936,12 @@ System Driver Changes:
 - [SEGA CD] Rearranged sets and added new and better dumps. [Justin Kerk, TmEE,
   segaloco]
 
-- [SNES] Fixed a blending flag bug (see Micro Machines bg colors), added basic 
-  Horizontal Mosaic effect, fixed 16x16 tiles in 2bpp mode (see e.g. Super 
+- [SNES] Fixed a blending flag bug (see Micro Machines bg colors), added basic
+  Horizontal Mosaic effect, fixed 16x16 tiles in 2bpp mode (see e.g. Super
   Adventure Island, but also many others). [Angelo Salese]
 
-- [SPECTRUM] Added logging support for Text/Message/Archive/Hardware/Custom 
-  Blocks in TZX files. Info are not (and won't be) used directly by the 
+- [SPECTRUM] Added logging support for Text/Message/Archive/Hardware/Custom
+  Blocks in TZX files. Info are not (and won't be) used directly by the
   emulator, but can be of use to improve bug reports. Also, updated TZX
   support to v1.20 by deprecating some block types. [Fabio Priuli]
 
@@ -826,7 +986,7 @@ Source Changes:
   - Added support for head loaded feedback from floppy drive.
   - Busy flag was cleared too early.
   - Added support for the WD1771.  [Roberto Lavarone]
-  
+
 - Changes to the NEC765 implementation:
   - Fixed interrupt timing in FM/MFM modes.
   - NO DATA error flag is no longer set during EOT condition. [Curt Coder]
@@ -835,7 +995,7 @@ Source Changes:
 
 - Static/const/include improvements.  [Atari Ace]
 
-- Cleaned up the makefile: grouped drivers by manufacturer, sorted 
+- Cleaned up the makefile: grouped drivers by manufacturer, sorted
   manufacturers in alphabetical order, and moved general use ICs
   to shared group. [Curt Coder]
 
@@ -866,7 +1026,7 @@ New System Drivers Supported (in no particular order):
 - Nintendo M82 Display Unit (not working) [Andy Welburn, Fabio Priuli]
 - NTS DreamWriter T200 (not working)  [Roberto Carlos
   Fernandez Gerhardt, Wilbert Pol]
-- Palm IIIc,Palm m100,Palm m130,Palm m505,Palm m515 
+- Palm IIIc,Palm m100,Palm m130,Palm m505,Palm m515
   Palm V, Palm Vx,Visor Edge,Symbol SPT1500,
   Symbol SPT1700, Symbol SPT1740 (not working) [Miodrag Milanovic]
 - PC/M Mugler [Miodrag Milanovic]
@@ -887,7 +1047,7 @@ New System Drivers Supported (in no particular order):
 
 
 
-Skeleton drivers : 
+Skeleton drivers :
 ------------------
 - Agat-7
 - Agat-9
@@ -903,7 +1063,7 @@ Skeleton drivers :
 - Camputers Lynx 128
 - Canon X-07
 - CCE MC-1000
-- Chess-Master	
+- Chess-Master
 - DEC VK-100
 - Dunfield 6809 Portable
 - Elektronika MK-85
@@ -952,7 +1112,7 @@ Skeleton drivers :
 - Philips VG-8000
 - Philips VG-8010
 - Philips VG-8010F
-- Plydin-601 
+- Plydin-601
 - Plydin-601A
 - PK8000 Vesta
 - PK8000 Sura/Hobby
@@ -992,7 +1152,7 @@ Skeleton drivers :
 - Visual 1050
 - Videotone TVC64,TVC64+,TVC64+ russian
 - Vector 1200
-- V-Tech Socrates 
+- V-Tech Socrates
 - XOR-100-12
 
 
@@ -1000,14 +1160,14 @@ Skeleton drivers :
 System Driver Changes:
 ----------------------
 - [ATARI] Added proper labels and dumps to Atari 400, 800 and XE/XL. A
-  few are still marked as BAD_DUMP while waiting for confirmation. [Freddy 
+  few are still marked as BAD_DUMP while waiting for confirmation. [Freddy
   Offenga, Fabio Priuli]
 
 - [C128] Added verified Swedish / Finnish dump [Iggy Drougge, Fabio Priuli]
 
-- [CBM] Added floppy drive firmwares and enabled floppy emulation code 
-  (with some fix) in sx64, c16c, c16v, vic20v, c128d, c128dcr, c128d81. 
-  The code is still not working, but it can be enabled since it does 
+- [CBM] Added floppy drive firmwares and enabled floppy emulation code
+  (with some fix) in sx64, c16c, c16v, vic20v, c128d, c128dcr, c128d81.
+  The code is still not working, but it can be enabled since it does
   not crash MESS anymore. [Fabio Priuli]
 
 - [COLECO] Fixed controller bug introduced in 0.131. [Fabio Priuli]
@@ -1061,8 +1221,8 @@ Source Changes:
 
 - Implemented following devices: PIO8155, RP5C01A, HD44102, HD61830. [Curt Coder]
 
-- Changed the Commodore Serial Bus and IEEE Bus implementations to be devices. 
-  More work is needed to make the code flexible enough to support all the possible 
+- Changed the Commodore Serial Bus and IEEE Bus implementations to be devices.
+  More work is needed to make the code flexible enough to support all the possible
   devices which could have been connected to the real thing. [Fabio Priuli]
 
 
@@ -1118,15 +1278,15 @@ System Driver Changes:
 
 - [ATARI] Refactored MESS specific code from MAME to MESS source. [Fabio Priuli]
 
-- [ATARI] Updated keyboard and keypad scan handling to be more accurate. Added 
+- [ATARI] Updated keyboard and keypad scan handling to be more accurate. Added
   natural keyboard support. [Fabio Priuli]
 
 - [ATARI] Fixed PIA regression. Floppy disks work again. [Fabio Priuli]
 
 - [ATMOS] Added Basic v1.2x enhanced BIOS [Fabio Priuli]
 
-- [COLECO] Converted to use PORT_CATEGORY for controller selection. Look into 
-  the Category Menu (after pressing TAB) to enable Extra controllers. [Fabio 
+- [COLECO] Converted to use PORT_CATEGORY for controller selection. Look into
+  the Category Menu (after pressing TAB) to enable Extra controllers. [Fabio
   Priuli]
 
 - [COLECO] Fixed Super Action Controller emulation (it was missing additional
@@ -1141,8 +1301,8 @@ System Driver Changes:
   The shell multi-rom selector is working. The bad dump of Telcom 3.21 has
   been replaced. The rom banking feature of Telcom 3.21 is now emulated. [Robbbert]
 
-- [SPECTRUM] Removed Spectrum+ keyboard keys from earlier models (and from 
-  some clones). Moved Joystick interface selection to the Category Menu. [Fabio 
+- [SPECTRUM] Removed Spectrum+ keyboard keys from earlier models (and from
+  some clones). Moved Joystick interface selection to the Category Menu. [Fabio
   Priuli]
 
 - [SPECTRUM] Added natural keyboard support. [Fabio Priuli]
@@ -1165,14 +1325,14 @@ System Driver Changes:
 
 - [X68000] Added support for 3 and 6 button Megadrive gamepads. [Barry Rodewald]
 
-- [ZX] Improved natural keyboard support. Removed hacky double mappings for Cursor 
+- [ZX] Improved natural keyboard support. Removed hacky double mappings for Cursor
   Keys (and a few others). To access these keys, now you have to either press Shift
-  together with another key, like in the real keyboard, or simply switch to natural 
+  together with another key, like in the real keyboard, or simply switch to natural
   keyboard emulation [Fabio Priuli]
 
 - Added natural keyboard support to a number of drivers: ac1.c, amiga.c, apogee.c,
   b2m.c, bk.c, einstein.c, galeb.c, homelab.c, irisha.c, mikro80.c, mikrosha.c,
-  mz80.c, orao.c, partner.c, pecom.c, radio86.c, sapi1.c, special.c, ti99_8.c, 
+  mz80.c, orao.c, partner.c, pecom.c, radio86.c, sapi1.c, special.c, ti99_8.c,
   tm990189.c, ut88.c [Fabio Priuli]
 
 
@@ -1207,9 +1367,9 @@ New System Drivers Supported (in no particular order):
 - Amateurcomputer AC1 [Miodrag Milanovic]
 - Pilot 1000, Pilot 5000, PalmPilot Personal, PalmPilot Pro, Palm III
   [MooglyGuy, R. Belmont]
-- Hewlett Packard HP 48 S/SX/G/GX/G+ [Antoine Min?]
+- Hewlett Packard HP 48 S/SX/G/GX/G+ [Antoine Miné]
 - Epson PX-4  [Dirk Best]
-- Various Channel F clones [Fredric QJ Bl?holtz]
+- Various Channel F clones [Fredric QJ Blåholtz]
 - Radionic [Incog, Robbbert]
 
 
@@ -1234,7 +1394,7 @@ System Driver Changes:
 - [BW2] Updated to use the new centronics interface.  [Dirk Best]
 
 - [CHANNELF] Added support for "new" sound, fixed PAL clock.  [Fredric QJ
-  Bl?holtz]
+  Blåholtz]
 
 - [COCO] Cleanups  [Nathan Woods]
 
@@ -1279,7 +1439,7 @@ System Driver Changes:
 - [SAMCOUPE] Added centronics printer support.  [Dirk Best]
 
 - [SF7000] Updated to use the new centronics support.  [Dirk Best]
- 
+
 - [SMS/GG] Fixed scrolling for 8 rightmost columns.  (bug #1497) [Enik Land]
 
 - [SORDM5] Updated to use the new centronics support.  [Dirk Best]
@@ -1341,7 +1501,7 @@ Source Changes:
 
 - Fixed a bug that caused the day of the week to not be properly returned by
   the DS1315.  (bug #1755) [Nathan Woods]
-  
+
 - Global symbol, const/static cleanups.  [Atari Ace]
 
 - Fixed image loading related memory leaks. [Curt Coder]
@@ -1387,12 +1547,12 @@ System Driver Changes:
   on the Master driver, to allow correct debugging of code in this area
   when ROM is paged in for read.  [Phill Harvey-Smith]
 
-- [BBC] Added version 3.20 of the Master MOS, selectable as a bios, as this is the 
+- [BBC] Added version 3.20 of the Master MOS, selectable as a bios, as this is the
   more common version of the bios.  [Phill Harvey-Smith]
 
 - [BBC] Fixed up loading of 8K roms as cartriges so that they mirror correctly
   and don't cause an error on loading, 16K was already working correctly.
-  [Phill Harvey-Smith]  
+  [Phill Harvey-Smith]
 
 - [BBC] Changed to use MAME's 6850 implemenation.  Deleted MESS's private 6850
   implementation.  [Nathan Woods]
@@ -1575,9 +1735,9 @@ System Driver Changes:
   had plugged your joystick in port 2). This helps with games which expect
   joystick inputs from port 2 of the C64 [Fabio Priuli]
 
-- [C64] Fixed memory leaks with floppies [Oliver St?neberg]
+- [C64] Fixed memory leaks with floppies [Oliver Stöneberg]
 
-- [C64] Fixed floppy unmounting [Oliver St?neberg]
+- [C64] Fixed floppy unmounting [Oliver Stöneberg]
 
 - [C65] Added preliminary cartridge support through MESS core functions.
   Currently, .crt emulation uses unmodified C64 cart code and therefore
@@ -1626,7 +1786,7 @@ System Driver Changes:
 
 - [OSCNANO] Implemented RUN/MONITOR keys properly, changed video to
   black and white, and fixed quickloading. System is now fully
-  working, including the "S?kkij?rven polkka" program. [Curt Coder]
+  working, including the "Säkkijärven polkka" program. [Curt Coder]
 
 - [JUPITER] Fixed regression; driver works again.  [Wilbert Pol]
 
@@ -1635,7 +1795,7 @@ System Driver Changes:
   Priuli]
 
 - [MK1/MK2] Added clickable artwork [Hobie Troxell]
-  
+
 - [Mephisto 8/16/32 Bit] Added clickable artwork [Dirk Verwiebe]
 
 - [MSX] Added some Brazilian clones [Miodrag Milanovic]
@@ -1687,7 +1847,7 @@ System Driver Changes:
   single VP-580 Auxiliary Keyboard emulation. The VIP Blockout game can
   now be played in color with sound using 2 keypads. [Curt Coder]
 
-- [X68000] Fixed SASI harddisk device info [Oliver St?neberg]
+- [X68000] Fixed SASI harddisk device info [Oliver Stöneberg]
 
 
 
@@ -1700,10 +1860,10 @@ User Interface Changes:
   Woods]
 
 - Added "Keyboard Mode" menu to switch between emulated and natural keyboard
-  during emulation. [Oliver St?neberg]
+  during emulation. [Oliver Stöneberg]
 
 - Fixed toggling through multiple cassettes in Tape Control menu [Oliver
-  St?neberg]
+  Stöneberg]
 
 - MESSUI now shows the actual values of the system configuration
   settings instead of the defaults. (bug #1679) [Curt Coder]
@@ -1729,7 +1889,7 @@ Source Changes:
   Woods]
 
 - Removed MESS_DEBUG and the TESTDRIVER define and enabled a lot of
-  non-working drivers [Oliver St?neberg]
+  non-working drivers [Oliver Stöneberg]
 
 - Changed the cassette implementation into a regular mame device.  [Wilbert Pol]
 
@@ -2019,13 +2179,13 @@ System Driver Changes:
 
 - [CBM, C16] Simplified keyboard and interrupt handling code.  [Fabio Priuli]
 
-- [C64] Fixed some timings in c64 pal. [Roberto Zandon?]
+- [C64] Fixed some timings in c64 pal. [Roberto Zandonà]
 
 - [C64] Partial input fix, joystick 2 still not working. (bug #1150) [Roberto
-  Zandon?]
+  Zandonà]
 
 - [C64] Implentation of sprite wrapping at the top of the screen. (bug #1599)
-  [Roberto Zandon?]
+  [Roberto Zandonà]
 
 - [COCO/COCO3] Transitioned Bitbanger and VHD support to use MAME's core
   device system.  [Nate Woods]
@@ -2203,7 +2363,7 @@ System Driver Changes:
 
 - [COCO] Added a quickload for .BIN files.  [Nate Woods]
 
-- [COUPE] Added many new BIOS revisions.  [Oliver St?neberg]
+- [COUPE] Added many new BIOS revisions.  [Oliver Stöneberg]
 
 - [EP128] Fixed 0.119 regression in graphics display. (bug #1478)
   [Wilbert Pol]
@@ -2485,7 +2645,7 @@ System Driver Changes:
   to the data port.  (bug #1378 and bug #1418) [Wilbert Pol]
 
 - [MEPHISTO] Implemented artwork/code for real chess board usage. [Ralf
-  Sch?fer, Cowering]
+  Schäfer, Cowering]
 
 - [ORIC] Fixed floppy interface detection.  [Dirk Best]
 
@@ -8121,9 +8281,9 @@ Other Changes:
   *"Engine" is separate from the "shell"; which gives the potential for front ends for
    those who don't like command lines. [Nate Woods]
 
-- Disk write support for AMSTRAD CPC [Oscar Mart?n Gonz?lez]
+- Disk write support for AMSTRAD CPC [Oscar Martín González]
 
-- Wave timer fix [Oscar Mart?n Gonz?lez]
+- Wave timer fix [Oscar Martín González]
 
 - m6510t/m7501/m8502 CPU cores added [Peter Trauner]
 

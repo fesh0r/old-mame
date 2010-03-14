@@ -7,10 +7,22 @@
 
 **********************************************************************/
 
-#include "driver.h"
+/*
+
+    TODO:
+
+    - fast serial only works with PAL C128
+    - 1541/1571 Alignment shows drive speed as 266 rpm, should be 310
+    - CP/M disks
+    - power/activity LEDs
+
+*/
+
+#include "emu.h"
 #include "c1571.h"
 #include "cpu/m6502/m6502.h"
 #include "devices/flopdrv.h"
+#include "formats/d64_dsk.h"
 #include "formats/g64_dsk.h"
 #include "machine/6522via.h"
 #include "machine/6526cia.h"
@@ -21,26 +33,12 @@
     PARAMETERS
 ***************************************************************************/
 
-#define LOG 0
-
 #define M6502_TAG		"u1"
-#define M6522_0_TAG		"u4"
-#define M6522_1_TAG		"u9"
+#define M6522_0_TAG		"u9"
+#define M6522_1_TAG		"u4"
 #define M6526_TAG		"u20"
 #define WD1770_TAG		"u11"
-
-static const double C1571_BITRATE[4] =
-{
-	XTAL_16MHz/13.0,	/* tracks 1-17 */
-	XTAL_16MHz/14.0,	/* tracks 18-24 */
-	XTAL_16MHz/15.0, 	/* tracks 25-30 */
-	XTAL_16MHz/16.0		/* tracks 31-42 */
-};
-
-#define SYNC_MARK			0x3ff		/* 10 consecutive 1-bits */
-
-#define TRACK_BUFFER_SIZE	8194		/* 2 bytes track length + maximum of 8192 bytes of GCR encoded data */
-#define TRACK_DATA_START	2
+#define C64H156_TAG		"u6"
 
 /***************************************************************************
     TYPE DEFINITIONS
@@ -49,40 +47,48 @@ static const double C1571_BITRATE[4] =
 typedef struct _c1571_t c1571_t;
 struct _c1571_t
 {
-	/* abstractions */
-	int address;
-	UINT8 track_buffer[TRACK_BUFFER_SIZE];				/* track data buffer */
-	int track_len;						/* track length */
-	int buffer_pos;						/* current byte position within track buffer */
-	int bit_pos;						/* current bit position within track buffer byte */
-	int bit_count;						/* current data byte bit counter */
-	UINT16 data;						/* data shift register */
+	/* IEC bus */
+	int address;							/* device number */
+	int data_out;							/* serial data out */
+	int atn_ack;							/* attention acknowledge */
+	int ser_dir;							/* fast serial direction */
+	int sp_out;								/* fast serial data out */
+	int cnt_out;							/* fast serial clock out */
+
+	/* motors */
+	int stp;								/* stepper motor phase */
+	int mtr;								/* spindle motor on */
+
+	/* track */
+	UINT8 track_buffer[G64_BUFFER_SIZE];	/* track data buffer */
+	int track_len;							/* track length */
+	int buffer_pos;							/* current byte position within track buffer */
+	int bit_pos;							/* current bit position within track buffer byte */
+	int bit_count;							/* current data byte bit counter */
+	UINT16 data;							/* data shift register */
+	UINT8 yb;								/* GCR data byte to write */
 
 	/* signals */
-	UINT8 yb;							/* GCR data byte to write */
-	int byte;							/* byte ready */
-	int atna;							/* attention acknowledge */
-	int ds;								/* density select */
-	int stp;							/* stepping motor */
-	int soe;							/* s? output enable */
-	int mode;							/* mode (0 = write, 1 = read) */
-
-	int data_out;
-	int atn_ack;
+	int ds;									/* density select */
+	int soe;								/* s? output enable */
+	int byte;								/* byte ready */
+	int mode;								/* mode (0 = write, 1 = read) */
+	int side;								/* disk side select */
+	int clock;								/* clock speed */
 
 	/* interrupts */
-	int via0_irq;						/* VIA #0 interrupt request */
-	int via1_irq;						/* VIA #1 interrupt request */
-	int cia_irq;						/* CIA interrupt request */
+	int via0_irq;							/* VIA #0 interrupt request */
+	int via1_irq;							/* VIA #1 interrupt request */
+	int cia_irq;							/* CIA interrupt request */
 
 	/* devices */
-	const device_config *cpu;
-	const device_config *via0;
-	const device_config *via1;
-	const device_config *cia;
-	const device_config *wd1770;
-	const device_config *serial_bus;
-	const device_config *image;
+	running_device *cpu;
+	running_device *via0;
+	running_device *via1;
+	running_device *cia;
+	running_device *wd1770;
+	running_device *serial_bus;
+	running_device *image;
 
 	/* timers */
 	emu_timer *bit_timer;
@@ -92,7 +98,7 @@ struct _c1571_t
     INLINE FUNCTIONS
 ***************************************************************************/
 
-INLINE c1571_t *get_safe_token(const device_config *device)
+INLINE c1571_t *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -100,11 +106,36 @@ INLINE c1571_t *get_safe_token(const device_config *device)
 	return (c1571_t *)device->token;
 }
 
-INLINE c1571_config *get_safe_config(const device_config *device)
+INLINE c1571_config *get_safe_config(running_device *device)
 {
 	assert(device != NULL);
 	assert((device->type == C1570) || (device->type == C1571) || (device->type == C1571CR));
-	return (c1571_config *)device->inline_config;
+	return (c1571_config *)device->baseconfig().inline_config;
+}
+
+INLINE void iec_data_w(running_device *device)
+{
+	c1571_t *c1571 = get_safe_token(device);
+
+	int atn = cbm_iec_atn_r(c1571->serial_bus);
+	int data = !c1571->data_out & !(c1571->atn_ack ^ !atn);
+
+	/* fast serial data */
+	if (c1571->ser_dir) data &= c1571->sp_out;
+
+	cbm_iec_data_w(c1571->serial_bus, device, data);
+}
+
+INLINE void iec_srq_w(running_device *device)
+{
+	c1571_t *c1571 = get_safe_token(device);
+
+	int srq = 1;
+
+	/* fast serial clock */
+	if (c1571->ser_dir) srq &= c1571->cnt_out;
+
+	cbm_iec_srq_w(c1571->serial_bus, device, srq);
 }
 
 /***************************************************************************
@@ -117,7 +148,7 @@ INLINE c1571_config *get_safe_config(const device_config *device)
 
 static TIMER_CALLBACK( bit_tick )
 {
-	const device_config *device = (device_config *)ptr;
+	running_device *device = (running_device *)ptr;
 	c1571_t *c1571 = get_safe_token(device);
 	int byte = 0;
 
@@ -135,11 +166,11 @@ static TIMER_CALLBACK( bit_tick )
 		if (c1571->buffer_pos > c1571->track_len + 1)
 		{
 			/* loop to the start of the track */
-			c1571->buffer_pos = TRACK_DATA_START;
+			c1571->buffer_pos = G64_DATA_START;
 		}
 	}
 
-	if ((c1571->data & SYNC_MARK) == SYNC_MARK)
+	if ((c1571->data & G64_SYNC_MARK) == G64_SYNC_MARK)
 	{
 		/* SYNC detected */
 		c1571->bit_count = 0;
@@ -151,10 +182,12 @@ static TIMER_CALLBACK( bit_tick )
 		c1571->bit_count = 0;
 		byte = 1;
 
-		if (!(c1571->data & 0xff))
+		c1571->yb = c1571->data & 0xff;
+
+		if (!c1571->yb)
 		{
 			/* simulate weak bits with randomness */
-			c1571->data = (c1571->data & 0xff00) | (mame_rand(machine) & 0xff);
+			c1571->yb = mame_rand(machine) & 0xff;
 		}
 	}
 
@@ -170,17 +203,132 @@ static TIMER_CALLBACK( bit_tick )
 }
 
 /*-------------------------------------------------
+    read_current_track - read track from disk
+-------------------------------------------------*/
+
+static void read_current_track(c1571_t *c1571)
+{
+	c1571->track_len = G64_BUFFER_SIZE;
+	c1571->buffer_pos = G64_DATA_START;
+	c1571->bit_pos = 7;
+	c1571->bit_count = 0;
+
+	/* read track data */
+	floppy_drive_read_track_data_info_buffer(c1571->image, c1571->side, c1571->track_buffer, &c1571->track_len);
+
+	/* extract track length */
+	c1571->track_len = G64_DATA_START + ((c1571->track_buffer[1] << 8) | c1571->track_buffer[0]);
+}
+
+/*-------------------------------------------------
+    set_side - set disk side
+-------------------------------------------------*/
+
+static void set_side(c1571_t *c1571, int side)
+{
+	if (c1571->side != side)
+	{
+		c1571->side = side;
+		wd17xx_set_side(c1571->wd1770, side);
+
+		if (c1571->mtr)
+		{
+			/* read track data */
+			read_current_track(c1571);
+		}
+	}
+}
+
+/*-------------------------------------------------
+    spindle_motor - spindle motor control
+-------------------------------------------------*/
+
+static void spindle_motor(c1571_t *c1571, int mtr)
+{
+	if (c1571->mtr != mtr)
+	{
+		if (mtr)
+		{
+			/* read track data */
+			read_current_track(c1571);
+		}
+
+		floppy_mon_w(c1571->image, !mtr);
+		timer_enable(c1571->bit_timer, mtr);
+
+		c1571->mtr = mtr;
+	}
+}
+
+/*-------------------------------------------------
+    step_motor - stepper motor control
+-------------------------------------------------*/
+
+static void step_motor(c1571_t *c1571, int stp)
+{
+	if (c1571->mtr & (c1571->stp != stp))
+	{
+		int tracks = 0;
+
+		switch (c1571->stp)
+		{
+		case 0:	if (stp == 1) tracks++; else if (stp == 3) tracks--; break;
+		case 1:	if (stp == 2) tracks++; else if (stp == 0) tracks--; break;
+		case 2: if (stp == 3) tracks++; else if (stp == 1) tracks--; break;
+		case 3: if (stp == 0) tracks++; else if (stp == 2) tracks--; break;
+		}
+
+		if (tracks != 0)
+		{
+			/* step read/write head */
+			floppy_drive_seek(c1571->image, tracks);
+
+			/* read new track data */
+			read_current_track(c1571);
+		}
+
+		c1571->stp = stp;
+	}
+}
+
+/*-------------------------------------------------
     c1571_iec_atn_w - serial bus attention
 -------------------------------------------------*/
 
 WRITE_LINE_DEVICE_HANDLER( c1571_iec_atn_w )
 {
 	c1571_t *c1571 = get_safe_token(device);
-	int data_out = !c1571->data_out && !(c1571->atn_ack ^ !state);
 
 	via_ca1_w(c1571->via0, !state);
+	iec_data_w(device);
+}
 
-	cbm_iec_data_w(c1571->serial_bus, device, data_out);
+/*-------------------------------------------------
+    c1571_iec_srq_w - serial bus fast clock
+-------------------------------------------------*/
+
+WRITE_LINE_DEVICE_HANDLER( c1571_iec_srq_w )
+{
+	c1571_t *c1571 = get_safe_token(device);
+
+	if (!c1571->ser_dir)
+	{
+		mos6526_cnt_w(c1571->cia, state);
+	}
+}
+
+/*-------------------------------------------------
+    c1571_iec_data_w - serial bus fast data
+-------------------------------------------------*/
+
+WRITE_LINE_DEVICE_HANDLER( c1571_iec_data_w )
+{
+	c1571_t *c1571 = get_safe_token(device);
+
+	if (!c1571->ser_dir)
+	{
+		mos6526_sp_w(c1571->cia, state);
+	}
 }
 
 /*-------------------------------------------------
@@ -191,7 +339,7 @@ WRITE_LINE_DEVICE_HANDLER( c1571_iec_reset_w )
 {
 	if (!state)
 	{
-		device_reset(device);
+		device->reset();
 	}
 }
 
@@ -204,7 +352,7 @@ static ADDRESS_MAP_START( c1570_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1800, 0x180f) AM_DEVREADWRITE(M6522_0_TAG, via_r, via_w)
 	AM_RANGE(0x1c00, 0x1c0f) AM_DEVREADWRITE(M6522_1_TAG, via_r, via_w)
 	AM_RANGE(0x2000, 0x2003) AM_DEVREADWRITE(WD1770_TAG, wd17xx_r, wd17xx_w)
-	AM_RANGE(0x4000, 0x400f) AM_DEVREADWRITE(M6526_TAG, cia_r, cia_w)
+	AM_RANGE(0x4000, 0x400f) AM_DEVREADWRITE(M6526_TAG, mos6526_r, mos6526_w)
 	AM_RANGE(0x8000, 0xffff) AM_ROM AM_REGION("c1570", 0)
 ADDRESS_MAP_END
 
@@ -214,10 +362,10 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( c1571_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM
-	AM_RANGE(0x1800, 0x180f) AM_DEVREADWRITE(M6522_0_TAG, via_r, via_w)
-	AM_RANGE(0x1c00, 0x1c0f) AM_DEVREADWRITE(M6522_1_TAG, via_r, via_w)
-	AM_RANGE(0x2000, 0x2003) AM_DEVREADWRITE(WD1770_TAG, wd17xx_r, wd17xx_w)
-	AM_RANGE(0x4000, 0x400f) AM_DEVREADWRITE(M6526_TAG, cia_r, cia_w)
+	AM_RANGE(0x1800, 0x180f) AM_MIRROR(0x03f0) AM_DEVREADWRITE(M6522_0_TAG, via_r, via_w)
+	AM_RANGE(0x1c00, 0x1c0f) AM_MIRROR(0x03f0) AM_DEVREADWRITE(M6522_1_TAG, via_r, via_w)
+	AM_RANGE(0x2000, 0x2003) AM_MIRROR(0x1ffc) AM_DEVREADWRITE(WD1770_TAG, wd17xx_r, wd17xx_w)
+	AM_RANGE(0x4000, 0x400f) AM_MIRROR(0x3ff0) AM_DEVREADWRITE(M6526_TAG, mos6526_r, mos6526_w)
 	AM_RANGE(0x8000, 0xffff) AM_ROM AM_REGION("c1571", 0)
 ADDRESS_MAP_END
 
@@ -237,7 +385,7 @@ static ADDRESS_MAP_START( c1571cr_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
-    via6522_interface c1571_via0_intf
+    via6522_interface via0_intf
 -------------------------------------------------*/
 
 static WRITE_LINE_DEVICE_HANDLER( via0_irq_w )
@@ -267,8 +415,15 @@ static READ8_DEVICE_HANDLER( via0_pa_r )
     */
 
 	c1571_t *c1571 = get_safe_token(device->owner);
+	UINT8 data = 0;
 
-	return floppy_tk00_r(c1571->image);
+	/* track 0 sense */
+	data |= floppy_tk00_r(c1571->image);
+
+	/* byte ready */
+	data |= !(c1571->byte && c1571->soe) << 7;
+
+	return data;
 }
 
 static WRITE8_DEVICE_HANDLER( via0_pa_w )
@@ -291,15 +446,31 @@ static WRITE8_DEVICE_HANDLER( via0_pa_w )
 	c1571_t *c1571 = get_safe_token(device->owner);
 
 	/* 1/2 MHz */
-	UINT32 clock = BIT(data, 5) ? XTAL_16MHz/8 : XTAL_16MHz/16;
+	int clock_1_2 = BIT(data, 5);
 
-	device_set_clock(c1571->cpu, clock);
-	device_set_clock(c1571->cia, clock);
-	device_set_clock(c1571->via0, clock);
-	device_set_clock(c1571->via1, clock);
+	if (c1571->clock != clock_1_2)
+	{
+		UINT32 clock = clock_1_2 ? XTAL_16MHz/8 : XTAL_16MHz/16;
 
-	/* side */
-	wd17xx_set_side(c1571->wd1770, BIT(data, 2));
+		cpu_set_clock(c1571->cpu, clock);
+		c1571->cia->set_clock(clock);
+		c1571->via0->set_clock(clock);
+		c1571->via1->set_clock(clock);
+
+		c1571->clock = clock_1_2;
+	}
+
+	/* fast serial direction */
+	c1571->ser_dir = BIT(data, 1);
+	iec_data_w(device->owner);
+	iec_srq_w(device->owner);
+
+	/* side select */
+	int side = BIT(data, 2);
+	set_side(c1571, side);
+
+	/* attention out */
+	cbm_iec_atn_w(c1571->serial_bus, device->owner, !BIT(data, 6));
 }
 
 static READ8_DEVICE_HANDLER( via0_pb_r )
@@ -356,43 +527,52 @@ static WRITE8_DEVICE_HANDLER( via0_pb_w )
 
 	c1571_t *c1571 = get_safe_token(device->owner);
 
-	int data_out = BIT(data, 1);
-	int clk_out = BIT(data, 3);
-	int atn_ack = BIT(data, 4);
+	/* attention acknowledge */
+	c1571->atn_ack = BIT(data, 4);
 
 	/* data out */
-	int serial_data = !data_out && !(atn_ack ^ !cbm_iec_atn_r(c1571->serial_bus));
-	cbm_iec_data_w(c1571->serial_bus, device->owner, serial_data);
-	c1571->data_out = data_out;
+	c1571->data_out = BIT(data, 1);
+	iec_data_w(device->owner);
 
 	/* clock out */
-	cbm_iec_clk_w(c1571->serial_bus, device->owner, !clk_out);
-
-	/* attention acknowledge */
-	c1571->atn_ack = atn_ack;
+	cbm_iec_clk_w(c1571->serial_bus, device->owner, !BIT(data, 3));
 }
 
-static const via6522_interface c1571_via0_intf =
+static READ_LINE_DEVICE_HANDLER( atn_in_r )
+{
+	c1571_t *c1571 = get_safe_token(device->owner);
+
+	return !cbm_iec_atn_r(c1571->serial_bus);
+}
+
+static READ_LINE_DEVICE_HANDLER( wprt_r )
+{
+	c1571_t *c1571 = get_safe_token(device->owner);
+
+	return !floppy_wpt_r(c1571->image);
+}
+
+static const via6522_interface via0_intf =
 {
 	DEVCB_HANDLER(via0_pa_r),
 	DEVCB_HANDLER(via0_pb_r),
+	DEVCB_LINE(atn_in_r),
 	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
+	DEVCB_LINE(wprt_r),
 	DEVCB_NULL,
 
 	DEVCB_HANDLER(via0_pa_w),
 	DEVCB_HANDLER(via0_pb_w),
-	DEVCB_NULL, /* ATN IN */
 	DEVCB_NULL,
-	DEVCB_NULL, /* _WPRT */
+	DEVCB_NULL,
+	DEVCB_NULL,
 	DEVCB_NULL,
 
 	DEVCB_LINE(via0_irq_w)
 };
 
 /*-------------------------------------------------
-    via6522_interface c1571_via1_intf
+    via6522_interface via1_intf
 -------------------------------------------------*/
 
 static WRITE_LINE_DEVICE_HANDLER( via1_irq_w )
@@ -421,7 +601,9 @@ static READ8_DEVICE_HANDLER( yb_r )
 
     */
 
-	return 0;
+	c1571_t *c1571 = get_safe_token(device->owner);
+
+	return c1571->yb;
 }
 
 static WRITE8_DEVICE_HANDLER( yb_w )
@@ -440,6 +622,10 @@ static WRITE8_DEVICE_HANDLER( yb_w )
         PA7     YB7
 
     */
+
+	c1571_t *c1571 = get_safe_token(device->owner);
+
+	c1571->yb = data;
 }
 
 static READ8_DEVICE_HANDLER( via1_pb_r )
@@ -466,6 +652,7 @@ static READ8_DEVICE_HANDLER( via1_pb_r )
 	data |= !floppy_wpt_r(c1571->image) << 4;
 
 	/* SYNC detect line */
+	data |= !((c1571->data & G64_SYNC_MARK) == G64_SYNC_MARK) << 7;
 
 	return data;
 }
@@ -488,55 +675,32 @@ static WRITE8_DEVICE_HANDLER( via1_pb_w )
     */
 
 	c1571_t *c1571 = get_safe_token(device->owner);
-	int stp = data & 0x03;
-	int ds = (data >> 5) & 0x03;
-	int mtr = BIT(data, 2);
-
-	/* stepper motor */
-	if (c1571->stp != stp)
-	{
-		int tracks = 0;
-
-		switch (c1571->stp)
-		{
-		case 0:	if (stp == 1) tracks++; else if (stp == 3) tracks--; break;
-		case 1:	if (stp == 2) tracks++; else if (stp == 0) tracks--; break;
-		case 2: if (stp == 3) tracks++; else if (stp == 1) tracks--; break;
-		case 3: if (stp == 0) tracks++; else if (stp == 2) tracks--; break;
-		}
-
-		if (tracks != 0)
-		{
-			c1571->track_len = TRACK_BUFFER_SIZE;
-			c1571->buffer_pos = TRACK_DATA_START;
-			c1571->bit_pos = 7;
-			c1571->bit_count = 0;
-
-			/* step read/write head */
-			floppy_drive_seek(c1571->image, tracks);
-
-			/* read track data */
-			floppy_drive_read_track_data_info_buffer(c1571->image, 0, c1571->track_buffer, &c1571->track_len);
-
-			/* extract track length */
-			c1571->track_len = (c1571->track_buffer[1] << 8) | c1571->track_buffer[0];
-		}
-
-		c1571->stp = stp;
-	}
 
 	/* spindle motor */
-	floppy_mon_w(c1571->image, !mtr);
-	timer_enable(c1571->bit_timer, mtr);
+	int mtr = BIT(data, 2);
+	spindle_motor(c1571, mtr);
 
-	/* activity LED */
+	/* stepper motor */
+	int stp = data & 0x03;
+	step_motor(c1571, stp);
+
+	/* TODO activity LED */
 
 	/* density select */
+	int ds = (data >> 5) & 0x03;
+
 	if (c1571->ds != ds)
 	{
-		timer_adjust_periodic(c1571->bit_timer, attotime_zero, 0, ATTOTIME_IN_HZ(C1571_BITRATE[ds]/4));
+		timer_adjust_periodic(c1571->bit_timer, attotime_zero, 0, ATTOTIME_IN_HZ(C2040_BITRATE[ds]/4));
 		c1571->ds = ds;
 	}
+}
+
+static READ_LINE_DEVICE_HANDLER( byte_ready_r )
+{
+	c1571_t *c1571 = get_safe_token(device->owner);
+
+	return !(c1571->byte && c1571->soe);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( soe_w )
@@ -557,11 +721,11 @@ static WRITE_LINE_DEVICE_HANDLER( mode_w )
 	c1571->mode = state;
 }
 
-static const via6522_interface c1571_via1_intf =
+static const via6522_interface via1_intf =
 {
 	DEVCB_HANDLER(yb_r),
 	DEVCB_HANDLER(via1_pb_r),
-	DEVCB_NULL, /* BYTE READY */
+	DEVCB_LINE(byte_ready_r),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -577,7 +741,7 @@ static const via6522_interface c1571_via1_intf =
 };
 
 /*-------------------------------------------------
-    cia6526_interface c1571_cia_intf
+    mos6526_interface cia_intf
 -------------------------------------------------*/
 
 static WRITE_LINE_DEVICE_HANDLER( cia_irq_w )
@@ -589,23 +753,44 @@ static WRITE_LINE_DEVICE_HANDLER( cia_irq_w )
 	cpu_set_input_line(c1571->cpu, INPUT_LINE_IRQ0, (c1571->via0_irq | c1571->via1_irq | c1571->cia_irq) ? ASSERT_LINE : CLEAR_LINE);
 }
 
-static const cia6526_interface c1571_cia_intf =
+static WRITE_LINE_DEVICE_HANDLER( cia_cnt_w )
 {
+	c1571_t *c1571 = get_safe_token(device->owner);
+
+	/* fast serial clock out */
+	c1571->cnt_out = state;
+	iec_srq_w(device->owner);
+}
+
+static WRITE_LINE_DEVICE_HANDLER( cia_sp_w )
+{
+	c1571_t *c1571 = get_safe_token(device->owner);
+
+	/* fast serial data out */
+	c1571->sp_out = state;
+	iec_data_w(device->owner);
+}
+
+static MOS6526_INTERFACE( cia_intf )
+{
+	0,
 	DEVCB_LINE(cia_irq_w),
 	DEVCB_NULL,
-	10, /* 1/10 second */
-	{
-		{ DEVCB_NULL, DEVCB_NULL },
-		{ DEVCB_NULL, DEVCB_NULL }
-	}
+	DEVCB_LINE(cia_cnt_w),
+	DEVCB_LINE(cia_sp_w),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 /*-------------------------------------------------
-    wd17xx_interface c1571_wd1770_intf
+    wd17xx_interface wd1770_intf
 -------------------------------------------------*/
 
-static const wd17xx_interface c1571_wd1770_intf =
+static const wd17xx_interface wd1770_intf =
 {
+	DEVCB_LINE_GND,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	{ FLOPPY_0, NULL, NULL, NULL }
@@ -616,21 +801,28 @@ static const wd17xx_interface c1571_wd1770_intf =
 -------------------------------------------------*/
 
 static FLOPPY_OPTIONS_START( c1571 )
-	FLOPPY_OPTION( c1571, "g64", "Commodore 1571 GCR Disk Image", g64_dsk_identify, g64_dsk_construct, NULL )
-//  FLOPPY_OPTION( c1571, "d64", "Commodore 1571 Disk Image", d64_dsk_identify, d64_dsk_construct, NULL )
-//  FLOPPY_OPTION( c1571, "d71", "Commodore 1571 Disk Image", d64_dsk_identify, d64_dsk_construct, NULL )
+	FLOPPY_OPTION( c1571, "g64", "Commodore 1541 GCR Disk Image", g64_dsk_identify, g64_dsk_construct, NULL )
+	FLOPPY_OPTION( c1571, "d64", "Commodore 1541 Disk Image", d64_dsk_identify, d64_dsk_construct, NULL )
+	FLOPPY_OPTION( c1571, "d71", "Commodore 1571 Disk Image", d71_dsk_identify, d64_dsk_construct, NULL )
 FLOPPY_OPTIONS_END
 
 /*-------------------------------------------------
     floppy_config c1570_floppy_config
 -------------------------------------------------*/
 
+static WRITE_LINE_DEVICE_HANDLER( wpt_w )
+{
+	c1571_t *c1571 = get_safe_token(device->owner);
+
+	via_ca2_w(c1571->via0, !state);
+}
+
 static const floppy_config c1570_floppy_config =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_NULL,
+	DEVCB_LINE(wpt_w),
 	DEVCB_NULL,
 	FLOPPY_DRIVE_SS_80,
 	FLOPPY_OPTIONS_NAME(c1571),
@@ -646,7 +838,7 @@ static const floppy_config c1571_floppy_config =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_NULL,
+	DEVCB_LINE(wpt_w),
 	DEVCB_NULL,
 	FLOPPY_DRIVE_DS_80,
 	FLOPPY_OPTIONS_NAME(c1571),
@@ -658,13 +850,13 @@ static const floppy_config c1571_floppy_config =
 -------------------------------------------------*/
 
 static MACHINE_DRIVER_START( c1570 )
-	MDRV_CPU_ADD(M6502_TAG, M6502, XTAL_16MHz/8)
+	MDRV_CPU_ADD(M6502_TAG, M6502, XTAL_16MHz/16)
 	MDRV_CPU_PROGRAM_MAP(c1570_map)
 
-	MDRV_VIA6522_ADD(M6522_0_TAG, XTAL_16MHz/8, c1571_via0_intf)
-	MDRV_VIA6522_ADD(M6522_1_TAG, XTAL_16MHz/8, c1571_via1_intf)
-	MDRV_CIA6526_ADD(M6526_TAG, CIA6526R1, XTAL_16MHz/8, c1571_cia_intf)
-	MDRV_WD1770_ADD(WD1770_TAG, c1571_wd1770_intf)
+	MDRV_VIA6522_ADD(M6522_0_TAG, XTAL_16MHz/16, via0_intf)
+	MDRV_VIA6522_ADD(M6522_1_TAG, XTAL_16MHz/16, via1_intf)
+	MDRV_MOS6526R1_ADD(M6526_TAG, XTAL_16MHz/16, cia_intf)
+	MDRV_WD1770_ADD(WD1770_TAG, /* XTAL_16MHz/2, */ wd1770_intf)
 
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, c1570_floppy_config)
 MACHINE_DRIVER_END
@@ -674,13 +866,13 @@ MACHINE_DRIVER_END
 -------------------------------------------------*/
 
 static MACHINE_DRIVER_START( c1571 )
-	MDRV_CPU_ADD(M6502_TAG, M6502, XTAL_16MHz/8)
+	MDRV_CPU_ADD(M6502_TAG, M6502, XTAL_16MHz/16)
 	MDRV_CPU_PROGRAM_MAP(c1571_map)
 
-	MDRV_VIA6522_ADD(M6522_0_TAG, XTAL_16MHz/8, c1571_via0_intf)
-	MDRV_VIA6522_ADD(M6522_1_TAG, XTAL_16MHz/8, c1571_via1_intf)
-	MDRV_CIA6526_ADD(M6526_TAG, CIA6526R1, XTAL_16MHz/8, c1571_cia_intf)
-	MDRV_WD1770_ADD(WD1770_TAG, c1571_wd1770_intf)
+	MDRV_VIA6522_ADD(M6522_0_TAG, XTAL_16MHz/16, via0_intf)
+	MDRV_VIA6522_ADD(M6522_1_TAG, XTAL_16MHz/16, via1_intf)
+	MDRV_MOS6526R1_ADD(M6526_TAG, XTAL_16MHz/16, cia_intf)
+	MDRV_WD1770_ADD(WD1770_TAG, /* XTAL_16MHz/2, */ wd1770_intf)
 
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, c1571_floppy_config)
 MACHINE_DRIVER_END
@@ -690,13 +882,13 @@ MACHINE_DRIVER_END
 -------------------------------------------------*/
 
 static MACHINE_DRIVER_START( c1571cr )
-	MDRV_CPU_ADD(M6502_TAG, M6502, XTAL_16MHz/8)
+	MDRV_CPU_ADD(M6502_TAG, M6502, XTAL_16MHz/16)
 	MDRV_CPU_PROGRAM_MAP(c1571cr_map)
 
-	MDRV_VIA6522_ADD(M6522_0_TAG, XTAL_16MHz/8, c1571_via0_intf)
-	MDRV_VIA6522_ADD(M6522_1_TAG, XTAL_16MHz/8, c1571_via1_intf)
-	MDRV_CIA6526_ADD(M6526_TAG, CIA6526R1, XTAL_16MHz/8, c1571_cia_intf)
-	MDRV_WD1770_ADD(WD1770_TAG, c1571_wd1770_intf)
+	MDRV_VIA6522_ADD(M6522_0_TAG, XTAL_16MHz/16, via0_intf)
+	MDRV_VIA6522_ADD(M6522_1_TAG, XTAL_16MHz/16, via1_intf)
+	MDRV_MOS6526R1_ADD(M6526_TAG, XTAL_16MHz/16, cia_intf)
+	MDRV_WD1770_ADD(WD1770_TAG, /* XTAL_16MHz/2, */ wd1770_intf)
 
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, c1571_floppy_config)
 MACHINE_DRIVER_END
@@ -743,23 +935,42 @@ static DEVICE_START( c1571 )
 	c1571->address = config->address - 8;
 
 	/* find our CPU */
-	c1571->cpu = device_find_child_by_tag(device, M6502_TAG);
+	c1571->cpu = device->subdevice(M6502_TAG);
 
 	/* find devices */
-	c1571->via0 = device_find_child_by_tag(device, M6522_0_TAG);
-	c1571->via1 = device_find_child_by_tag(device, M6522_1_TAG);
-	c1571->cia = device_find_child_by_tag(device, M6526_TAG);
-	c1571->wd1770 = device_find_child_by_tag(device, WD1770_TAG);
+	c1571->via0 = device->subdevice(M6522_0_TAG);
+	c1571->via1 = device->subdevice(M6522_1_TAG);
+	c1571->cia = device->subdevice(M6526_TAG);
+	c1571->wd1770 = device->subdevice(WD1770_TAG);
 	c1571->serial_bus = devtag_get_device(device->machine, config->serial_bus_tag);
-	c1571->image = device_find_child_by_tag(device, FLOPPY_0);
-
-	/* set floppy density */
-	wd17xx_set_density(c1571->wd1770, DEN_MFM_LO);
+	c1571->image = device->subdevice(FLOPPY_0);
 
 	/* allocate data timer */
 	c1571->bit_timer = timer_alloc(device->machine, bit_tick, (void *)device);
 
 	/* register for state saving */
+	state_save_register_device_item(device, 0, c1571->address);
+	state_save_register_device_item(device, 0, c1571->data_out);
+	state_save_register_device_item(device, 0, c1571->atn_ack);
+	state_save_register_device_item(device, 0, c1571->ser_dir);
+	state_save_register_device_item(device, 0, c1571->sp_out);
+	state_save_register_device_item(device, 0, c1571->cnt_out);
+	state_save_register_device_item(device, 0, c1571->stp);
+	state_save_register_device_item(device, 0, c1571->mtr);
+	state_save_register_device_item(device, 0, c1571->track_len);
+	state_save_register_device_item(device, 0, c1571->buffer_pos);
+	state_save_register_device_item(device, 0, c1571->bit_pos);
+	state_save_register_device_item(device, 0, c1571->bit_count);
+	state_save_register_device_item(device, 0, c1571->data);
+	state_save_register_device_item(device, 0, c1571->yb);
+	state_save_register_device_item(device, 0, c1571->ds);
+	state_save_register_device_item(device, 0, c1571->soe);
+	state_save_register_device_item(device, 0, c1571->byte);
+	state_save_register_device_item(device, 0, c1571->mode);
+	state_save_register_device_item(device, 0, c1571->side);
+	state_save_register_device_item(device, 0, c1571->via0_irq);
+	state_save_register_device_item(device, 0, c1571->via1_irq);
+	state_save_register_device_item(device, 0, c1571->cia_irq);
 }
 
 /*-------------------------------------------------
@@ -770,11 +981,14 @@ static DEVICE_RESET( c1571 )
 {
 	c1571_t *c1571 = get_safe_token(device);
 
-	device_reset(c1571->cpu);
-	device_reset(c1571->via0);
-	device_reset(c1571->via1);
-	device_reset(c1571->cia);
-	device_reset(c1571->wd1770);
+	c1571->cpu->reset();
+	c1571->via0->reset();
+	c1571->via1->reset();
+	c1571->cia->reset();
+	c1571->wd1770->reset();
+
+	c1571->sp_out = 1;
+	c1571->cnt_out = 1;
 }
 
 /*-------------------------------------------------

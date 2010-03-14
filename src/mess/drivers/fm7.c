@@ -35,7 +35,7 @@
 
 ************************************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/ay8910.h"
 #include "sound/2203intf.h"
@@ -452,7 +452,7 @@ static WRITE_LINE_DEVICE_HANDLER( fm7_fdc_drq_w )
 
 static READ8_HANDLER( fm7_fdc_r )
 {
-	const device_config* dev = devtag_get_device(space->machine,"fdc");
+	running_device* dev = devtag_get_device(space->machine,"fdc");
 	UINT8 ret = 0;
 
 	switch(offset)
@@ -486,7 +486,7 @@ static READ8_HANDLER( fm7_fdc_r )
 
 static WRITE8_HANDLER( fm7_fdc_w )
 {
-	const device_config* dev = devtag_get_device(space->machine,"fdc");
+	running_device* dev = devtag_get_device(space->machine,"fdc");
 	switch(offset)
 	{
 		case 0:
@@ -774,7 +774,7 @@ static READ8_HANDLER( fm7_cassette_printer_r )
 	// bit 0: printer busy
 	UINT8 ret = 0x00;
 	double data = cassette_input(devtag_get_device(space->machine,"cass"));
-	const device_config* printer_dev = devtag_get_device(space->machine,"lpt");
+	running_device* printer_dev = devtag_get_device(space->machine,"lpt");
 	UINT8 pdata;
 	int x;
 
@@ -1376,7 +1376,7 @@ static IRQ_CALLBACK(fm7_sub_irq_ack)
 	return -1;
 }
 
-static void fm77av_fmirq(const device_config* device,int irq)
+static void fm77av_fmirq(running_device* device,int irq)
 {
 	if(irq == 1)
 	{
@@ -1704,8 +1704,8 @@ static DRIVER_INIT(fm7)
 	fm7_keyboard_timer = timer_alloc(machine,fm7_keyboard_poll,NULL);
 	if(fm7_type != SYS_FM7)
 		fm77av_vsync_timer = timer_alloc(machine,fm77av_vsync,NULL);
-	cpu_set_irq_callback(cputag_get_cpu(machine,"maincpu"),fm7_irq_ack);
-	cpu_set_irq_callback(cputag_get_cpu(machine,"sub"),fm7_sub_irq_ack);
+	cpu_set_irq_callback(devtag_get_device(machine,"maincpu"),fm7_irq_ack);
+	cpu_set_irq_callback(devtag_get_device(machine,"sub"),fm7_sub_irq_ack);
 }
 
 static MACHINE_START(fm7)
@@ -1799,12 +1799,13 @@ static MACHINE_RESET(fm7)
 	}
 	if(fm7_type != SYS_FM7)  // set default RAM banks
 	{
-		fm7_mmr_refresh(cpu_get_address_space(cputag_get_cpu(machine,"maincpu"),ADDRESS_SPACE_PROGRAM));
+		fm7_mmr_refresh(cpu_get_address_space(devtag_get_device(machine,"maincpu"),ADDRESS_SPACE_PROGRAM));
 	}
 }
 
 static const wd17xx_interface fm7_mb8877a_interface =
 {
+	DEVCB_NULL,
 	DEVCB_LINE(fm7_fdc_intrq_w),
 	DEVCB_LINE(fm7_fdc_drq_w),
 	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
@@ -1837,7 +1838,7 @@ static const cassette_config fm7_cassette_config =
 {
 	fm7_cassette_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED)
 };
 
 static const floppy_config fm7_floppy_config =

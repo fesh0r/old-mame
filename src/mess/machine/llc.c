@@ -7,19 +7,19 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "includes/llc.h"
 #include "devices/messram.h"
 
-static UINT8 code = 0;
+static UINT8 s_code = 0;
 
 static UINT8 llc1_key_state = 0;
 
 static READ8_DEVICE_HANDLER (llc1_port_b_r)
 {
 	UINT8 retVal = 0;
-	if (code!=0) {
+	if (s_code!=0) {
 		if (llc1_key_state==0) {
 			llc1_key_state = 1;
 			retVal = 0x5F;
@@ -29,8 +29,8 @@ static READ8_DEVICE_HANDLER (llc1_port_b_r)
 				retVal = 0;
 			} else {
 				llc1_key_state = 0;
-				retVal = code;
-				code =0;
+				retVal = s_code;
+				s_code =0;
 			}
 		}
 	} else {
@@ -82,7 +82,7 @@ static TIMER_CALLBACK(keyboard_callback)
 			{
 				if (c == (1 << j))
 				{
-					code = j + i*8;
+					s_code = j + i*8;
 					break;
 				}
 			}
@@ -224,24 +224,24 @@ static READ8_DEVICE_HANDLER (llc2_port_a_r)
 }
 
 
-const z80pio_interface llc2_z80pio_intf =
+Z80PIO_INTERFACE( llc2_z80pio_intf )
 {
 	DEVCB_NULL,	/* callback when change interrupt status */
 	DEVCB_HANDLER(llc2_port_a_r),
+	DEVCB_NULL,
+	DEVCB_NULL,
 	DEVCB_HANDLER(llc2_port_b_r),
-	DEVCB_NULL,
-	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL
 };
 
-const z80pio_interface llc1_z80pio_intf =
+Z80PIO_INTERFACE( llc1_z80pio_intf )
 {
 	DEVCB_NULL,	/* callback when change interrupt status */
 	DEVCB_HANDLER(llc1_port_a_r),
+	DEVCB_NULL,
+	DEVCB_NULL,
 	DEVCB_HANDLER(llc1_port_b_r),
-	DEVCB_NULL,
-	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL
 };

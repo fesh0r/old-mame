@@ -1,4 +1,5 @@
-#include "driver.h"
+#include "emu.h"
+#include "crsshair.h"
 #include "cpu/m6502/m6502.h"
 #include "video/ppu2c0x.h"
 #include "includes/nes.h"
@@ -59,9 +60,9 @@ static void nes_machine_stop(running_machine *machine);
     FUNCTIONS
 ***************************************************************************/
 
-static const device_config *cartslot_image( running_machine *machine )
+static running_device *cartslot_image( running_machine *machine )
 {
-	nes_state *state = machine->driver_data;
+	nes_state *state = (nes_state *)machine->driver_data;
 	return state->cart;
 }
 
@@ -80,8 +81,8 @@ static void init_nes_core( running_machine *machine )
        need to fix the NES code */
 	memory_install_readwrite_bank(space, 0x0000, 0x07ff, 0, 0x1800, "bank10");
 
-	memory_install_readwrite8_handler(cpu_get_address_space(cputag_get_cpu(machine, "ppu"), ADDRESS_SPACE_PROGRAM), 0, 0x1fff, 0, 0, nes_chr_r, nes_chr_w);
-	memory_install_readwrite8_handler(cpu_get_address_space(cputag_get_cpu(machine, "ppu"), ADDRESS_SPACE_PROGRAM), 0x2000, 0x3eff, 0, 0, nes_nt_r, nes_nt_w);
+	memory_install_readwrite8_handler(cpu_get_address_space(devtag_get_device(machine, "ppu"), ADDRESS_SPACE_PROGRAM), 0, 0x1fff, 0, 0, nes_chr_r, nes_chr_w);
+	memory_install_readwrite8_handler(cpu_get_address_space(devtag_get_device(machine, "ppu"), ADDRESS_SPACE_PROGRAM), 0x2000, 0x3eff, 0, 0, nes_nt_r, nes_nt_w);
 
 	memory_set_bankptr(machine, "bank10", nes.rom);
 
@@ -185,7 +186,7 @@ static void init_nes_core( running_machine *machine )
 	memcpy(nes_battery_ram, battery_data, BATTERY_SIZE);
 }
 
-int nes_ppu_vidaccess( const device_config *device, int address, int data )
+int nes_ppu_vidaccess( running_device *device, int address, int data )
 {
 	/* TODO: this is a bit of a hack, needed to get Argus, ASO, etc to work */
 	/* but, B-Wings, submath (j) seem to use this location differently... */
@@ -200,7 +201,7 @@ int nes_ppu_vidaccess( const device_config *device, int address, int data )
 
 MACHINE_RESET( nes )
 {
-	nes_state *state = machine->driver_data;
+	nes_state *state = (nes_state *)machine->driver_data;
 
 	state->ppu = devtag_get_device(machine, "ppu");
 	state->sound = devtag_get_device(machine, "nessound");
@@ -220,7 +221,7 @@ MACHINE_RESET( nes )
 	in_0.shift = 0;
 	in_1.shift = 0;
 
-	cputag_reset(machine, "maincpu");
+	devtag_get_device(machine, "maincpu")->reset();
 }
 
 emu_timer	*nes_irq_timer;
@@ -235,7 +236,7 @@ MACHINE_START( nes )
 {
 	init_nes_core(machine);
 	add_exit_callback(machine, nes_machine_stop);
-	
+
 	nes_irq_timer = timer_alloc(machine, nes_irq_callback, NULL);
 }
 
@@ -250,7 +251,7 @@ static void nes_machine_stop( running_machine *machine )
 
 READ8_HANDLER( nes_IN0_r )
 {
-	nes_state *state = space->machine->driver_data;
+	nes_state *state = (nes_state *)space->machine->driver_data;
 	int ret;
 
 	/* Some games expect bit 6 to be set because the last entry on the data bus shows up */
@@ -294,7 +295,7 @@ READ8_HANDLER( nes_IN0_r )
 
 READ8_HANDLER( nes_IN1_r )
 {
-	nes_state *state = space->machine->driver_data;
+	nes_state *state = (nes_state *)space->machine->driver_data;
 	int ret;
 
 	/* Some games expect bit 6 to be set because the last entry on the data bus shows up */
@@ -925,27 +926,27 @@ void nes_partialhash( char *dest, const unsigned char *data, unsigned long lengt
 }
 
 
-static void nes_load_proc(const device_config *image)
+static void nes_load_proc(running_device *image)
 {
-	nes_fds.sides = 0;	
-	
+	nes_fds.sides = 0;
+
 	image_fseek(image, 0, SEEK_END);
 	nes_fds.sides = (image_ftell(image) - 16) / 65500;
-	nes_fds.data = image_malloc(image, nes_fds.sides * 65500);
+	nes_fds.data = (UINT8*)image_malloc(image, nes_fds.sides * 65500);
 	image_fseek(image, 0x10, SEEK_SET);
 	image_fread(image, nes_fds.data, 65500 * nes_fds.sides);
 	return;
 }
 
-static void nes_unload_proc(const device_config *image)
+static void nes_unload_proc(running_device *image)
 {
 	/* TODO: should write out changes here as well */
 	nes_fds.sides =  0;
 	image_freeptr(image,nes_fds.data);
 }
 
-DRIVER_INIT( famicom) 
-{	
+DRIVER_INIT( famicom)
+{
 	/* clear some of the cart variables we don't use */
 	nes.trainer = 0;
 	nes.battery = 0;
@@ -959,7 +960,7 @@ DRIVER_INIT( famicom)
 
 	nes_fds.sides = 0;
 	nes_fds.data = NULL;
-	
+
 	floppy_install_load_proc(floppy_get_device(machine,0), nes_load_proc);
 	floppy_install_unload_proc(floppy_get_device(machine,0), nes_unload_proc);
 }

@@ -43,7 +43,7 @@ It's only taken 25 years to get around to emulating it...
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "sound/speaker.h"
 #include "tec1.lh"
@@ -52,7 +52,7 @@ static emu_timer *tec1_kbd_timer;
 static UINT8 tec1_kbd=0;
 static UINT8 tec1_segment=0;
 static UINT8 tec1_digit=0;
-static const device_config *tec1_speaker;
+static running_device *tec1_speaker;
 
 
 /***************************************************************************
@@ -271,4 +271,4 @@ ROM_START(tec1)
 ROM_END
 
 /*    YEAR  NAME      PARENT  COMPAT  MACHINE     INPUT    INIT       COMPANY  FULLNAME */
-COMP( 1984, tec1,     0,      0,      tec1,       tec1,    0,  		"Talking Electronics magazine",  "TEC-1" , 0 )
+COMP( 1984, tec1,     0,      0,      tec1,       tec1,    0,		"Talking Electronics magazine",  "TEC-1" , 0 )

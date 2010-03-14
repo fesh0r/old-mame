@@ -358,8 +358,6 @@ If no differences arise we can merge back the following sets:
 
 * Add sound support, for systems which had it
 
-* Add IEEE488 Interface support
-
 * Find out answers to the following details:
 
 + Did BASIC 2 also come as upgrade ROMs for PET 2001 with Static Board? If
@@ -380,7 +378,7 @@ normal keyboards?
 */
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/m6502/m6502.h"
 
@@ -390,10 +388,11 @@ normal keyboards?
 #include "machine/cbmipt.h"
 #include "video/mc6845.h"
 #include "devices/messram.h"
+#include "machine/c2040.h"
 
 /* devices config */
 #include "includes/cbm.h"
-#include "includes/cbmieeeb.h"
+#include "machine/ieee488.h"
 
 /*************************************
  *
@@ -639,11 +638,19 @@ static VIDEO_START( pet_crtc )
 
 static VIDEO_UPDATE( pet_crtc )
 {
-	const device_config *mc6845 = devtag_get_device(screen->machine, "crtc");
+	running_device *mc6845 = devtag_get_device(screen->machine, "crtc");
 	mc6845_update(mc6845, bitmap, cliprect);
 	return 0;
 }
 
+static IEEE488_DAISY( ieee488_daisy )
+{
+	{ "pia_0" },
+	{ "pia_1", DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_DEVICE_HANDLER("pia_1", pia6821_cb1_w), DEVCB_DEVICE_HANDLER("pia_1", pia6821_ca1_w), DEVCB_NULL },
+	{ "via6522_0" },
+	{ C2040_IEEE488("c4040") },
+	{ NULL}
+};
 
 /*************************************
  *
@@ -654,7 +661,7 @@ static VIDEO_UPDATE( pet_crtc )
 static MACHINE_DRIVER_START( pet_general )
 	MDRV_DRIVER_DATA(pet_state)
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", M6502, 7833600)        /* 7.8336 MHz */
+	MDRV_CPU_ADD("maincpu", M6502, XTAL_8MHz/8)
 	MDRV_CPU_PROGRAM_MAP(pet_mem)
 	MDRV_CPU_VBLANK_INT("screen", pet_frame_interrupt)
 
@@ -674,8 +681,8 @@ static MACHINE_DRIVER_START( pet_general )
 	MDRV_VIDEO_UPDATE( pet )
 
 	/* cassette */
-	MDRV_CASSETTE_ADD( "cassette1", default_cassette_config )
-	MDRV_CASSETTE_ADD( "cassette2", default_cassette_config )
+	MDRV_CASSETTE_ADD( "cassette1", cbm_cassette_config )
+	MDRV_CASSETTE_ADD( "cassette2", cbm_cassette_config )
 
 	/* via */
 	MDRV_VIA6522_ADD( "via6522_0", 0, pet_via)
@@ -683,9 +690,6 @@ static MACHINE_DRIVER_START( pet_general )
 	/* pias */
 	MDRV_PIA6821_ADD( "pia_0", pet_pia0)
 	MDRV_PIA6821_ADD( "pia_1", pet_pia1)
-
-	/* IEEE bus */
-	MDRV_CBM_IEEEBUS_ADD("ieee_bus")
 MACHINE_DRIVER_END
 
 
@@ -698,6 +702,10 @@ static MACHINE_DRIVER_START( pet )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("32K")
 	MDRV_RAM_EXTRA_OPTIONS("8K,16K")
+
+	/* IEEE bus */
+	MDRV_IEEE488_ADD("ieee_bus", ieee488_daisy)
+	MDRV_C4040_ADD("c4040", "ieee_bus", 8)
 MACHINE_DRIVER_END
 
 
@@ -715,6 +723,10 @@ static MACHINE_DRIVER_START( pet2001 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("8K")
 	MDRV_RAM_EXTRA_OPTIONS("4K")
+
+	/* IEEE bus */
+	MDRV_IEEE488_ADD("ieee_bus", ieee488_daisy)
+	MDRV_C4040_ADD("c4040", "ieee_bus", 8)
 MACHINE_DRIVER_END
 
 
@@ -741,7 +753,10 @@ MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( pet80 )
-	MDRV_IMPORT_FROM( pet )
+	MDRV_IMPORT_FROM( pet_general )
+	MDRV_QUICKLOAD_ADD("quickload", cbm_pet, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
+	MDRV_IMPORT_FROM(pet_cartslot)
+
 	MDRV_CPU_MODIFY( "maincpu" )
 	MDRV_CPU_PROGRAM_MAP( pet80_mem)
 
@@ -762,8 +777,12 @@ static MACHINE_DRIVER_START( pet80 )
 	MDRV_IMPORT_FROM(pet4_cartslot)
 
 	/* internal ram */
-	MDRV_RAM_MODIFY("messram")
+	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("32K")
+
+	/* IEEE bus */
+	MDRV_IEEE488_ADD("ieee_bus", ieee488_daisy)
+	MDRV_C8050_ADD("c4040", "ieee_bus", 8)
 MACHINE_DRIVER_END
 
 
@@ -1127,34 +1146,34 @@ ROM_END
 
 /* YEAR    NAME      PARENT    COMPAT    MACHINE   INPUT     INIT      COMPANY                             FULLNAME */
 
-COMP(1977, pet2001,  0,        0,        pet2001,  pet,      pet2001, "Commodore Business Machines Co.",  "PET 2001", GAME_NO_SOUND)
-COMP(1979, pet2001n, pet2001,  0,        pet,      pet,      pet,     "Commodore Business Machines Co.",  "PET 2001-N", GAME_NO_SOUND)
-COMP(1979, pet2001b, pet2001,  0,        petb,     petb,     pet,     "Commodore Business Machines Co.",  "PET 2001-B", GAME_NO_SOUND)
-COMP(1979, cbm30,    pet2001,  0,        pet,      pet,      pet,     "Commodore Business Machines Co.",  "CBM 30xx", GAME_NO_SOUND)
-COMP(1979, cbm30b,   pet2001,  0,        petb,     petb,     pet,     "Commodore Business Machines Co.",  "CBM 30xx (Business keyboard)", GAME_NO_SOUND)
-COMP(1979, cbm30nor, pet2001,  0,        petb,     petb,     pet,     "Commodore Business Machines Co.",  "CBM 30xx (Norway, Business keyboard)", GAME_NO_SOUND)
+COMP(1977, pet2001,  0,        0,        pet2001,  pet,      pet2001, "Commodore Business Machines",  "PET 2001", GAME_NO_SOUND)
+COMP(1979, pet2001n, pet2001,  0,        pet,      pet,      pet,     "Commodore Business Machines",  "PET 2001-N", GAME_NO_SOUND)
+COMP(1979, pet2001b, pet2001,  0,        petb,     petb,     pet,     "Commodore Business Machines",  "PET 2001-B", GAME_NO_SOUND)
+COMP(1979, cbm30,    pet2001,  0,        pet,      pet,      pet,     "Commodore Business Machines",  "CBM 30xx", GAME_NO_SOUND)
+COMP(1979, cbm30b,   pet2001,  0,        petb,     petb,     pet,     "Commodore Business Machines",  "CBM 30xx (Business keyboard)", GAME_NO_SOUND)
+COMP(1979, cbm30nor, pet2001,  0,        petb,     petb,     pet,     "Commodore Business Machines",  "CBM 30xx (Norway, Business keyboard)", GAME_NO_SOUND)
 
 /* So called, THIN-40 */
-COMP(1980, pet40on,  pet2001,  0,        pet,      pet,      pet,     "Commodore Business Machines Co.",  "PET 40xx (Basic 4, no CRTC, Normal keyboard)", GAME_NO_SOUND)
-COMP(1980, pet40ob,  pet2001,  0,        petb,     petb,     pet,     "Commodore Business Machines Co.",  "PET 40xx (Basic 4, no CRTC, Business keyboard)", GAME_NO_SOUND)
-COMP(1980, cbm40o,   pet2001,  0,        pet,      pet,      pet,     "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, no CRTC, Normal keyboard)", GAME_NO_SOUND)
-COMP(1980, cbm40ob,  pet2001,  0,        petb,     petb,     pet,     "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, no CRTC, Business keyboard)", GAME_NO_SOUND)
+COMP(1980, pet40on,  pet2001,  0,        pet,      pet,      pet,     "Commodore Business Machines",  "PET 40xx (Basic 4, no CRTC, Normal keyboard)", GAME_NO_SOUND)
+COMP(1980, pet40ob,  pet2001,  0,        petb,     petb,     pet,     "Commodore Business Machines",  "PET 40xx (Basic 4, no CRTC, Business keyboard)", GAME_NO_SOUND)
+COMP(1980, cbm40o,   pet2001,  0,        pet,      pet,      pet,     "Commodore Business Machines",  "CBM 40xx (Basic 4, no CRTC, Normal keyboard)", GAME_NO_SOUND)
+COMP(1980, cbm40ob,  pet2001,  0,        petb,     petb,     pet,     "Commodore Business Machines",  "CBM 40xx (Basic 4, no CRTC, Business keyboard)", GAME_NO_SOUND)
 
-COMP(1981, pet80,    0,        0,        pet80,    cbm8096,  pet80,   "Commodore Business Machines Co.",  "PET 80xx (Basic 4, CRTC 60Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, cbm80,    pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines Co.",  "CBM 80xx (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, cbm80ger, pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines Co.",  "CBM 80xx (Germany, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, cbm80hun, pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines Co.",  "CBM 80xx (Hungary, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, cbm80swe, pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines Co.",  "CBM 80xx (Sweden, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, pet80,    0,        0,        pet80,    cbm8096,  pet80,   "Commodore Business Machines",  "PET 80xx (Basic 4, CRTC 60Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, cbm80,    pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines",  "CBM 80xx (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, cbm80ger, pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines",  "CBM 80xx (Germany, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, cbm80hun, pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines",  "CBM 80xx (Hungary, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, cbm80swe, pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines",  "CBM 80xx (Sweden, Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
 
 /* So called, FAT-40 */
-COMP(1981, pet40b,   pet80,    0,        pet80,    cbm8096,  pet80,   "Commodore Business Machines Co.",  "PET 40xx (Basic 4, CRTC 60Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, pet40n,   pet2001,  0,        pet40,    pet,      pet,     "Commodore Business Machines Co.",  "PET 40xx (Basic 4, CRTC 60Hz, 40 columns)", GAME_NO_SOUND)
-COMP(1981, cbm40b,   pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1981, cbm40n,   pet2001,  0,        pet40pal, pet,      pet,     "Commodore Business Machines Co.",  "CBM 40xx (Basic 4, CRTC 50Hz, 40 columns)", GAME_NO_SOUND)
+COMP(1981, pet40b,   pet80,    0,        pet80,    cbm8096,  pet80,   "Commodore Business Machines",  "PET 40xx (Basic 4, CRTC 60Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, pet40n,   pet2001,  0,        pet40,    pet,      pet,     "Commodore Business Machines",  "PET 40xx (Basic 4, CRTC 60Hz, 40 columns)", GAME_NO_SOUND)
+COMP(1981, cbm40b,   pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines",  "CBM 40xx (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1981, cbm40n,   pet2001,  0,        pet40pal, pet,      pet,     "Commodore Business Machines",  "CBM 40xx (Basic 4, CRTC 50Hz, 40 columns)", GAME_NO_SOUND)
 
-COMP(1981, superpet, 0,        0,        superpet, superpet, superpet,"Commodore Business Machines Co.",  "SuperPET (CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
-COMP(1981, sp9000,   superpet, 0,        superpet, superpet, superpet,"Commodore Business Machines Co.",  "CBM SP9000 / MicroMainFrame 9000 (CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
-COMP(198?, mmf9000s, superpet, 0,        superpet, superpet, superpet,"Commodore Business Machines Co.",  "MicroMainFrame 9000 (Sweden, CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
+COMP(1981, superpet, 0,        0,        superpet, superpet, superpet,"Commodore Business Machines",  "SuperPET (CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
+COMP(1981, sp9000,   superpet, 0,        superpet, superpet, superpet,"Commodore Business Machines",  "CBM SP9000 / MicroMainFrame 9000 (CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
+COMP(198?, mmf9000s, superpet, 0,        superpet, superpet, superpet,"Commodore Business Machines",  "MicroMainFrame 9000 (Sweden, CRTC 50Hz)", GAME_NO_SOUND | GAME_NOT_WORKING)
 
-COMP(1984, cbm8296,  pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines Co.",  "CBM 8296 (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
-COMP(1984, cbm8296d, pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines Co.",  "CBM 8296D", GAME_NO_SOUND)
+COMP(1984, cbm8296,  pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines",  "CBM 8296 (Basic 4, CRTC 50Hz, 80 columns)", GAME_NO_SOUND)
+COMP(1984, cbm8296d, pet80,    0,        pet80pal, cbm8096,  pet80,   "Commodore Business Machines",  "CBM 8296D", GAME_NO_SOUND)

@@ -13,11 +13,9 @@
  */
 
 #include <string.h>
-#include "driver.h"
+#include "emu.h"
 #include "formats/flopimg.h"
 #include "devices/flopdrv.h"
-
-#define TD0_DSK_TAG	"td0tag"
 
 struct td0dsk_tag
 {
@@ -32,7 +30,7 @@ struct td0dsk_tag
 static struct td0dsk_tag *get_tag(floppy_image *floppy)
 {
 	struct td0dsk_tag *tag;
-	tag = floppy_tag(floppy, TD0_DSK_TAG);
+	tag = (td0dsk_tag *)floppy_tag(floppy);
 	return tag;
 }
 
@@ -176,26 +174,25 @@ static floperr_t internal_td0_read_sector(floppy_image *floppy, int head, int tr
 				//      size of data that should be reapeted next byte times
 				while(buff_pos<realsize) {
 					if (data[data_pos]==0x00) {
-						int size = data[data_pos+1];
-						memcpy(buf+buff_pos,data + data_pos + 2,size);
-						data_pos += 2 + size;
-						buff_pos += size;
+						int size_ = data[data_pos+1];
+						memcpy(buf+buff_pos,data + data_pos + 2,size_);
+						data_pos += 2 + size_;
+						buff_pos += size_;
 					} else {
-						int size   = 2*data[data_pos];
+						int size_  = 2*data[data_pos];
 						int repeat = data[data_pos+1];
 						data_pos+=2;
 
 						for (i=0;i<repeat;i++) {
-							memcpy(buf + buff_pos,data + data_pos,size);
-							buff_pos += size;
+							memcpy(buf + buff_pos,data + data_pos,size_);
+							buff_pos += size_;
 						}
-						data_pos += size;
+						data_pos += size_;
 					}
 				}
 				break;
 		default:
 				return FLOPPY_ERROR_INTERNAL;
-				break;
 	}
 	return FLOPPY_ERROR_SUCCESS;
 }
@@ -657,7 +654,7 @@ FLOPPY_CONSTRUCT( td0_dsk_construct )
 		return FLOPPY_ERROR_UNSUPPORTED;
 	}
 
-	tag = (struct td0dsk_tag *) floppy_create_tag(floppy, TD0_DSK_TAG, sizeof(struct td0dsk_tag));
+	tag = (struct td0dsk_tag *) floppy_create_tag(floppy, sizeof(struct td0dsk_tag));
 	if (!tag)
 		return FLOPPY_ERROR_OUTOFMEMORY;
 

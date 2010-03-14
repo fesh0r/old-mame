@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "machine/terminal.h"
 
@@ -40,12 +40,12 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(horizon)
 {
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_PC, 0xe800);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_PC, 0xe800);
 }
 
 static MACHINE_RESET(horizon_sd)
 {
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_PC, 0xe900);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_PC, 0xe900);
 }
 
 static WRITE8_DEVICE_HANDLER( horizon_kbd_put )
@@ -97,7 +97,7 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT   COMPANY   FULLNAME       FLAGS */
-COMP( 1979, horizon,  0,       0, 	horizon, 	horizon, 	 0,  "NorthStar",   "Horizon (DD drive)",		GAME_NOT_WORKING)
-COMP( 1979, horizsd,  horizon, 0, 	horizsd, 	horizon, 	 0,  "NorthStar",   "Horizon (SD drive)",		GAME_NOT_WORKING)
-COMP( 1979, vector1,  horizon, 0, 	horizon, 	horizon, 	 0,  "Vector Graphic",   "Vector 1+ (DD drive)",		GAME_NOT_WORKING)
+COMP( 1979, horizon,  0,       0,	horizon,	horizon,	 0,  "NorthStar",   "Horizon (DD drive)",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1979, horizsd,  horizon, 0,	horizsd,	horizon,	 0,  "NorthStar",   "Horizon (SD drive)",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1979, vector1,  horizon, 0,	horizon,	horizon,	 0,  "Vector Graphic",   "Vector 1+ (DD drive)",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

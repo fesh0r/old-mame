@@ -17,7 +17,7 @@
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "hd44102.h"
 
 /***************************************************************************
@@ -46,7 +46,7 @@
 typedef struct _hd44102_t hd44102_t;
 struct _hd44102_t
 {
-	const device_config *screen;	/* screen */
+	running_device *screen;	/* screen */
 
 	UINT8 ram[4][50];				/* display memory */
 
@@ -63,18 +63,18 @@ struct _hd44102_t
     INLINE FUNCTIONS
 ***************************************************************************/
 
-INLINE hd44102_t *get_safe_token(const device_config *device)
+INLINE hd44102_t *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
 	return (hd44102_t *)device->token;
 }
 
-INLINE hd44102_config *get_safe_config(const device_config *device)
+INLINE hd44102_config *get_safe_config(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->type == HD44102);
-	return (hd44102_config *)device->inline_config;
+	return (hd44102_config *)device->baseconfig().inline_config;
 }
 
 /***************************************************************************
@@ -105,25 +105,25 @@ static WRITE8_DEVICE_HANDLER( hd44102_control_w )
 	switch (data)
 	{
 	case HD44102_CONTROL_DISPLAY_OFF:
-		if (LOG) logerror("HD44102 '%s' Display Off\n", device->tag);
+		if (LOG) logerror("HD44102 '%s' Display Off\n", device->tag());
 
 		hd44102->status |= HD44102_STATUS_DISPLAY_OFF;
 		break;
 
 	case HD44102_CONTROL_DISPLAY_ON:
-		if (LOG) logerror("HD44102 '%s' Display On\n", device->tag);
+		if (LOG) logerror("HD44102 '%s' Display On\n", device->tag());
 
 		hd44102->status &= ~HD44102_STATUS_DISPLAY_OFF;
 		break;
 
 	case HD44102_CONTROL_COUNT_DOWN_MODE:
-		if (LOG) logerror("HD44102 '%s' Count Down Mode\n", device->tag);
+		if (LOG) logerror("HD44102 '%s' Count Down Mode\n", device->tag());
 
 		hd44102->status &= ~HD44102_STATUS_COUNT_UP;
 		break;
 
 	case HD44102_CONTROL_COUNT_UP_MODE:
-		if (LOG) logerror("HD44102 '%s' Count Up Mode\n", device->tag);
+		if (LOG) logerror("HD44102 '%s' Count Up Mode\n", device->tag());
 
 		hd44102->status |= HD44102_STATUS_COUNT_UP;
 		break;
@@ -135,17 +135,17 @@ static WRITE8_DEVICE_HANDLER( hd44102_control_w )
 
 		if ((data & HD44102_CONTROL_Y_ADDRESS_MASK) == HD44102_CONTROL_DISPLAY_START_PAGE)
 		{
-			if (LOG) logerror("HD44102 '%s' Display Start Page %u\n", device->tag, x);
+			if (LOG) logerror("HD44102 '%s' Display Start Page %u\n", device->tag(), x);
 
 			hd44102->page = x;
 		}
 		else if (y > 49)
 		{
-			logerror("HD44102 '%s' Invalid Address X %u Y %u (%02x)!\n", device->tag, data, x, y);
+			logerror("HD44102 '%s' Invalid Address X %u Y %u (%02x)!\n", device->tag(), data, x, y);
 		}
 		else
 		{
-			if (LOG) logerror("HD44102 '%s' Address X %u Y %u (%02x)\n", device->tag, data, x, y);
+			if (LOG) logerror("HD44102 '%s' Address X %u Y %u (%02x)\n", device->tag(), data, x, y);
 
 			hd44102->x = x;
 			hd44102->y = y;
@@ -204,7 +204,7 @@ static WRITE8_DEVICE_HANDLER( hd44102_data_w )
     hd44102_update - update screen
 -------------------------------------------------*/
 
-void hd44102_update(const device_config *device, bitmap_t *bitmap, const rectangle *cliprect)
+void hd44102_update(running_device *device, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	hd44102_t *hd44102 = get_safe_token(device);
 	const hd44102_config *config = get_safe_config(device);

@@ -23,7 +23,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/bw12.h"
 #include "cpu/z80/z80.h"
 #include "devices/flopdrv.h"
@@ -47,14 +47,14 @@
 
 */
 
-INLINE const device_config *get_floppy_image(running_machine *machine, int drive)
+INLINE running_device *get_floppy_image(running_machine *machine, int drive)
 {
 	return floppy_get_device(machine, drive);
 }
 
 static void bw12_bankswitch(running_machine *machine)
 {
-	bw12_state *state = machine->driver_data;
+	bw12_state *state =(bw12_state *) machine->driver_data;
 
 	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 
@@ -87,7 +87,7 @@ static void bw12_bankswitch(running_machine *machine)
 
 static TIMER_CALLBACK( floppy_motor_off_tick )
 {
-	bw12_state *state = machine->driver_data;
+	bw12_state *state =(bw12_state *) machine->driver_data;
 
 	floppy_mon_w(get_floppy_image(machine, 0), ASSERT_LINE);
 	floppy_mon_w(get_floppy_image(machine, 1), ASSERT_LINE);
@@ -100,7 +100,7 @@ static TIMER_CALLBACK( floppy_motor_off_tick )
 
 static void bw12_set_floppy_motor_off_timer(running_machine *machine)
 {
-	bw12_state *state = machine->driver_data;
+	bw12_state *state =(bw12_state *) machine->driver_data;
 
 	if (state->motor0 || state->motor1)
 	{
@@ -122,7 +122,7 @@ static void bw12_set_floppy_motor_off_timer(running_machine *machine)
 
 static void ls259_w(running_machine *machine, int address, int data)
 {
-	bw12_state *state = machine->driver_data;
+	bw12_state *state =(bw12_state *) machine->driver_data;
 
 	switch (address)
 	{
@@ -363,7 +363,7 @@ INPUT_PORTS_END
 
 static MC6845_UPDATE_ROW( bw12_update_row )
 {
-	bw12_state *state = device->machine->driver_data;
+	bw12_state *state =(bw12_state *) device->machine->driver_data;
 
 	int column, bit;
 
@@ -406,7 +406,7 @@ static const mc6845_interface bw12_mc6845_interface =
 
 static VIDEO_START( bw12 )
 {
-	bw12_state *state = machine->driver_data;
+	bw12_state *state =(bw12_state *) machine->driver_data;
 
 	/* find devices */
 	state->mc6845 = devtag_get_device(machine, MC6845_TAG);
@@ -417,7 +417,7 @@ static VIDEO_START( bw12 )
 
 static VIDEO_UPDATE( bw12 )
 {
-	bw12_state *state = screen->machine->driver_data;
+	bw12_state *state =(bw12_state *) screen->machine->driver_data;
 
 	mc6845_update(state->mc6845, bitmap, cliprect);
 
@@ -428,7 +428,7 @@ static VIDEO_UPDATE( bw12 )
 
 static WRITE_LINE_DEVICE_HANDLER( bw12_upd765_interrupt )
 {
-	bw12_state *driver_state = device->machine->driver_data;
+	bw12_state *driver_state = (bw12_state *)device->machine->driver_data;
 
 	driver_state->fdcint = state;
 }
@@ -476,7 +476,7 @@ static READ8_DEVICE_HANDLER( bw12_pia6821_pa_r )
 
     */
 
-	bw12_state *state = device->machine->driver_data;
+	bw12_state *state =(bw12_state *) device->machine->driver_data;
 
 	UINT8 data = 0;
 
@@ -494,14 +494,14 @@ static READ8_DEVICE_HANDLER( bw12_pia6821_pa_r )
 
 static READ_LINE_DEVICE_HANDLER( bw12_pia6821_cb1_r )
 {
-	bw12_state *state = device->machine->driver_data;
+	bw12_state *state =(bw12_state *) device->machine->driver_data;
 
 	return state->key_stb;
 }
 
 static WRITE_LINE_DEVICE_HANDLER( bw12_pia6821_cb2_w )
 {
-	bw12_state *driver_state = device->machine->driver_data;
+	bw12_state *driver_state = (bw12_state *)device->machine->driver_data;
 
 	if (state)
 	{
@@ -572,7 +572,7 @@ static WRITE_LINE_DEVICE_HANDLER( bw12_pit8253_out1_w )
 
 static WRITE_LINE_DEVICE_HANDLER( bw12_pit8253_out2_w )
 {
-	bw12_state *driver_state = device->machine->driver_data;
+	bw12_state *driver_state = (bw12_state *)device->machine->driver_data;
 
 	/* PIA6821 PA4 */
 	driver_state->pit_out2 = state;
@@ -583,15 +583,18 @@ static const struct pit8253_config bw12_pit8253_intf =
 	{
 		{
 			XTAL_1_8432MHz,
-			bw12_pit8253_out0_w,
+			DEVCB_NULL,
+			DEVCB_LINE(bw12_pit8253_out0_w)
 		},
 		{
 			XTAL_1_8432MHz,
-			bw12_pit8253_out1_w,
+			DEVCB_NULL,
+			DEVCB_LINE(bw12_pit8253_out1_w)
 		},
 		{
 			XTAL_1_8432MHz,
-			bw12_pit8253_out2_w,
+			DEVCB_NULL,
+			DEVCB_LINE(bw12_pit8253_out2_w)
 		}
 	}
 };
@@ -630,7 +633,7 @@ static READ_LINE_DEVICE_HANDLER( bw2_ay3600_control_r )
 
 static WRITE_LINE_DEVICE_HANDLER( bw2_ay3600_data_ready_w )
 {
-	bw12_state *driver_state = device->machine->driver_data;
+	bw12_state *driver_state = (bw12_state *)device->machine->driver_data;
 
 	driver_state->key_stb = state;
 
@@ -668,7 +671,7 @@ static AY3600_INTERFACE( bw12_ay3600_intf )
 
 static MACHINE_START( bw12 )
 {
-	bw12_state *state = machine->driver_data;
+	bw12_state *state =(bw12_state *) machine->driver_data;
 
 	/* find devices */
 	state->pia6821 = devtag_get_device(machine, PIA6821_TAG);
@@ -887,5 +890,5 @@ ROM_END
 /* System Drivers */
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                             FULLNAME        FLAGS */
-COMP( 1984,	bw12,	0,		0,		bw12, 	bw12,	0,		"Bondwell International Limited",   "Bondwell 12",	GAME_SUPPORTS_SAVE )
+COMP( 1984,	bw12,	0,		0,		bw12,	bw12,	0,		"Bondwell International Limited",   "Bondwell 12",	GAME_SUPPORTS_SAVE )
 COMP( 1984,	bw14,	bw12,	0,		bw14,	bw12,	0,		"Bondwell International Limited",   "Bondwell 14",	GAME_SUPPORTS_SAVE )

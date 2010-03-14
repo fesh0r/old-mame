@@ -15,9 +15,13 @@
 #include "machine/6526cia.h"
 #include "devices/cartslot.h"
 
-typedef struct _cbmb_state cbmb_state;
-struct _cbmb_state
+class cbmb_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, cbmb_state(machine)); }
+
+	cbmb_state(running_machine &machine) { }
+
 	/* keyboard lines */
 	int cbmb_keyline_a;
 	int cbmb_keyline_b;
@@ -37,12 +41,14 @@ extern UINT8 *cbmb_kernal;
 extern UINT8 *cbmb_videoram;
 extern UINT8 *cbmb_colorram;
 
-extern const cia6526_interface cbmb_cia;
+extern const mos6526_interface cbmb_cia;
 
 WRITE8_HANDLER ( cbmb_colorram_w );
 
 READ8_DEVICE_HANDLER( cbmb_tpi0_port_a_r );
 WRITE8_DEVICE_HANDLER( cbmb_tpi0_port_a_w );
+READ8_DEVICE_HANDLER( cbmb_tpi0_port_b_r );
+WRITE8_DEVICE_HANDLER( cbmb_tpi0_port_b_w );
 
 WRITE8_DEVICE_HANDLER( cbmb_keyboard_line_select_a );
 WRITE8_DEVICE_HANDLER( cbmb_keyboard_line_select_b );
@@ -50,7 +56,10 @@ WRITE8_DEVICE_HANDLER( cbmb_keyboard_line_select_c );
 READ8_DEVICE_HANDLER( cbmb_keyboard_line_a );
 READ8_DEVICE_HANDLER( cbmb_keyboard_line_b );
 READ8_DEVICE_HANDLER( cbmb_keyboard_line_c );
-void cbmb_irq(const device_config *device, int level);
+void cbmb_irq(running_device *device, int level);
+
+int cbmb_dma_read(running_machine *machine, int offset);
+int cbmb_dma_read_color(running_machine *machine, int offset);
 
 WRITE8_DEVICE_HANDLER( cbmb_change_font );
 

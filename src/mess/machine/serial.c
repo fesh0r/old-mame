@@ -29,7 +29,7 @@ setup serial interface software in driver and let the transfer begin */
     3. There should be at least 1 stop bit.
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "serial.h"
 
 
@@ -75,14 +75,14 @@ struct _serial_t
 	unsigned long BaudRate;
 
 	/* baud rate timer */
-	void	*timer;
+	emu_timer	*timer;
 };
 
-INLINE serial_t *get_safe_token(const device_config *device)
+INLINE serial_t *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
-	
+
 	return (serial_t *)device->token;
 }
 
@@ -128,13 +128,13 @@ static unsigned char serial_helper_get_parity(unsigned char data)
 
 static void serial_device_in_callback(running_machine *machine, int id, unsigned long status)
 {
-/*	serial_t *ser = get_safe_token(device);
-	
-	ser->connection.input_state = status;*/
+/*  serial_t *ser = get_safe_token(device);
+
+    ser->connection.input_state = status;*/
 }
 
 /***** SERIAL DEVICE ******/
-void serial_device_setup(const device_config *device, int baud_rate, int num_data_bits, int stop_bit_count, int parity_code)
+void serial_device_setup(running_device *device, int baud_rate, int num_data_bits, int stop_bit_count, int parity_code)
 {
 	serial_t *ser = get_safe_token(device);
 
@@ -162,14 +162,14 @@ void serial_device_setup(const device_config *device, int baud_rate, int num_dat
 }
 
 
-unsigned long serial_device_get_state(const device_config *device)
+unsigned long serial_device_get_state(running_device *device)
 {
 	serial_t *ser = get_safe_token(device);
-	
+
 	return ser->connection.State;
 }
 
-void serial_device_set_transmit_state(const device_config *device, int state)
+void serial_device_set_transmit_state(running_device *device, int state)
 {
 	int previous_state;
 	serial_t *ser = get_safe_token(device);
@@ -471,13 +471,13 @@ void	transmit_register_send_bit(running_machine *machine, struct serial_transmit
 	serial_connection_out(machine, connection);
 }
 
-static void serial_protocol_none_sent_char(const device_config *device)
+static void serial_protocol_none_sent_char(running_device *device)
 {
 	int i;
 	int bit;
 	unsigned char data_byte;
 	serial_t *ser = get_safe_token(device);
-	
+
 	/* generate byte to transmit */
 	data_byte = 0;
 	for (i=0; i<ser->data_form.word_length; i++)
@@ -494,7 +494,7 @@ static void serial_protocol_none_sent_char(const device_config *device)
 
 static TIMER_CALLBACK(serial_device_baud_rate_callback)
 {
-	serial_t *ser = get_safe_token(ptr);
+	serial_t *ser = get_safe_token((running_device*)ptr);
 
 	/* receive data into receive register */
 	receive_register_update_bit(&ser->receive_reg, get_in_data_bit(ser->connection.input_state));
@@ -511,7 +511,7 @@ static TIMER_CALLBACK(serial_device_baud_rate_callback)
 	if (ser->transmit_reg.flags & TRANSMIT_REGISTER_EMPTY)
 	{
 		/* char has been sent, execute callback */
-		serial_protocol_none_sent_char(ptr);
+		serial_protocol_none_sent_char((running_device*)ptr);
 	}
 
 	/* other side says it is clear to send? */
@@ -523,7 +523,7 @@ static TIMER_CALLBACK(serial_device_baud_rate_callback)
 }
 
 /* connect the specified connection to this serial device */
-void serial_device_connect(const device_config *device, struct serial_connection *connection)
+void serial_device_connect(running_device *device, struct serial_connection *connection)
 {
 	serial_t *ser = get_safe_token(device);
 	serial_connection_link(device->machine, connection, &ser->connection);
@@ -531,7 +531,7 @@ void serial_device_connect(const device_config *device, struct serial_connection
 
 
 /* load image */
-static int serial_device_load_internal(const device_config *image, unsigned char **ptr, int *pDataSize)
+static int serial_device_load_internal(running_device *image, unsigned char **ptr, int *pDataSize)
 {
 	int datasize;
 	unsigned char *data;
@@ -542,7 +542,7 @@ static int serial_device_load_internal(const device_config *image, unsigned char
 	if (datasize!=0)
 	{
 		/* malloc memory for this data */
-		data = malloc(datasize);
+		data = (unsigned char *)malloc(datasize);
 
 		if (data!=NULL)
 		{
@@ -591,12 +591,12 @@ static void data_stream_init(struct data_stream *stream, unsigned char *pData, u
 
 DEVICE_START(serial)
 {
-	//serial_t *ser = get_safe_token(device);		
+	//serial_t *ser = get_safe_token(device);
 }
 
 DEVICE_RESET(serial)
 {
-//	serial_t *ser = get_safe_token(device);
+//  serial_t *ser = get_safe_token(device);
 }
 
 DEVICE_IMAGE_LOAD(serial)
@@ -633,17 +633,17 @@ DEVICE_GET_INFO( serial )
 {
 	switch ( state )
 	{
-		case DEVINFO_INT_CLASS:	                    info->i = DEVICE_CLASS_PERIPHERAL;           			break;
+		case DEVINFO_INT_CLASS:	                    info->i = DEVICE_CLASS_PERIPHERAL;          			break;
 		case DEVINFO_INT_TOKEN_BYTES:				info->i = sizeof(serial_t);								break;
 		case DEVINFO_INT_INLINE_CONFIG_BYTES:		info->i = 0;											break;
 		case DEVINFO_INT_IMAGE_TYPE:	            info->i = IO_SERIAL;                                	break;
 		case DEVINFO_INT_IMAGE_READABLE:            info->i = 1;                                        	break;
 		case DEVINFO_INT_IMAGE_WRITEABLE:			info->i = 1;                                        	break;
-		case DEVINFO_INT_IMAGE_CREATABLE:	     	info->i = 1;                                        	break;
+		case DEVINFO_INT_IMAGE_CREATABLE:	    	info->i = 1;                                        	break;
 
 		case DEVINFO_FCT_START:		                info->start = DEVICE_START_NAME( serial );          	break;
 		case DEVINFO_FCT_RESET:						info->reset = DEVICE_RESET_NAME( serial );				break;
-		case DEVINFO_FCT_IMAGE_LOAD:		        info->f = (genf *) DEVICE_IMAGE_LOAD_NAME( serial ); 	break;
+		case DEVINFO_FCT_IMAGE_LOAD:		        info->f = (genf *) DEVICE_IMAGE_LOAD_NAME( serial );	break;
 		case DEVINFO_FCT_IMAGE_UNLOAD:		        info->f = (genf *) DEVICE_IMAGE_UNLOAD_NAME(serial );	break;
 		case DEVINFO_STR_NAME:		                strcpy( info->s, "Serial port");	                    break;
 		case DEVINFO_STR_FAMILY:                    strcpy(info->s, "Serial port");	                        break;
@@ -726,4 +726,4 @@ void	serial_connection_link(running_machine *machine, struct serial_connection *
 	serial_connection_out(machine,connection_a);
 	/* let a know the state of b */
 	serial_connection_out(machine,connection_b);
-} 
+}

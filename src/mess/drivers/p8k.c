@@ -15,7 +15,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z8000/z8000.h"
 #include "cpu/z80/z80daisy.h"
@@ -29,42 +29,6 @@
 #include "sound/beep.h"
 
 
-static READ8_DEVICE_HANDLER( sio2_r )
-{
-	switch (offset)
-	{
-	case 0:
-		return z80sio_d_r(device, 0);
-	case 1:
-		return z80sio_c_r(device, 0);
-	case 2:
-		return z80sio_d_r(device, 1);
-	case 3:
-		return z80sio_c_r(device, 1);
-	}
-
-	return 0;
-}
-
-static WRITE8_DEVICE_HANDLER( sio2_w )
-{
-	switch (offset)
-	{
-	case 0:
-		z80sio_d_w(device, 0, data);
-		break;
-	case 1:
-		z80sio_c_w(device, 0, data);
-		break;
-	case 2:
-		z80sio_d_w(device, 1, data);
-		break;
-	case 3:
-		z80sio_c_w(device, 1, data);
-		break;
-	}
-}
-
 static ADDRESS_MAP_START(p8k_memmap, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2000, 0xffff) AM_RAM
@@ -73,13 +37,13 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START(p8k_iomap, ADDRESS_SPACE_IO, 8)
 //  AM_RANGE(0x00, 0x07) // MH7489
 	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("z80ctc_0", z80ctc_r, z80ctc_w)
-	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE("z80pio_0", z80pio_alt_r, z80pio_alt_w)
-	AM_RANGE(0x18, 0x1b) AM_DEVREADWRITE("z80pio_1", z80pio_alt_r, z80pio_alt_w)
-	AM_RANGE(0x1c, 0x1f) AM_DEVREADWRITE("z80pio_2", z80pio_alt_r, z80pio_alt_w)
+	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE("z80pio_0", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x18, 0x1b) AM_DEVREADWRITE("z80pio_1", z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x1c, 0x1f) AM_DEVREADWRITE("z80pio_2", z80pio_ba_cd_r, z80pio_ba_cd_w)
 	AM_RANGE(0x20, 0x20) AM_DEVREADWRITE("i8272", upd765_data_r, upd765_data_w)
 	AM_RANGE(0x21, 0x21) AM_DEVREAD("i8272", upd765_status_r)
-	AM_RANGE(0x24, 0x27) AM_DEVREADWRITE("z80sio_0", sio2_r, sio2_w)
-	AM_RANGE(0x28, 0x2b) AM_DEVREADWRITE("z80sio_1", sio2_r, sio2_w)
+	AM_RANGE(0x24, 0x27) AM_DEVREADWRITE("z80sio_0", z80sio_ba_cd_r, z80sio_ba_cd_w)
+	AM_RANGE(0x28, 0x2b) AM_DEVREADWRITE("z80sio_1", z80sio_ba_cd_r, z80sio_ba_cd_w)
 	AM_RANGE(0x2c, 0x2f) AM_DEVREADWRITE("z80ctc_1", z80ctc_r, z80ctc_w)
 	AM_RANGE(0x3c, 0x3c) AM_DEVREADWRITE("z80dma", z80dma_r, z80dma_w)
 ADDRESS_MAP_END
@@ -202,7 +166,7 @@ static VIDEO_UPDATE( p8k )
 
 ****************************************************************************/
 
-static void p8k_daisy_interrupt(const device_config *device, int state)
+static void p8k_daisy_interrupt(running_device *device, int state)
 {
 	cputag_set_input_line(device->machine, "maincpu", 0, state);
 }
@@ -213,7 +177,7 @@ static WRITE_LINE_DEVICE_HANDLER( p8k_dma_irq_w )
 {
 	if (state)
 	{
-		const device_config *i8272 = devtag_get_device(device->machine, "i8272");
+		running_device *i8272 = devtag_get_device(device->machine, "i8272");
 		upd765_tc_w(i8272, state);
 	}
 
@@ -242,7 +206,7 @@ static Z80CTC_INTERFACE( p8k_ctc_0_intf )
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),	/* interrupt handler */
 	DEVCB_NULL,			/* ZC/TO0 callback */
 	DEVCB_NULL,			/* ZC/TO1 callback */
-	DEVCB_NULL    		/* ZC/TO2 callback */
+	DEVCB_NULL  		/* ZC/TO2 callback */
 };
 
 /* Z80 CTC 1 */
@@ -261,7 +225,7 @@ static Z80CTC_INTERFACE( p8k_ctc_1_intf )
 
 /* Z80 PIO 0 */
 
-static const z80pio_interface p8k_pio_0_intf =
+static Z80PIO_INTERFACE( p8k_pio_0_intf )
 {
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),
 	DEVCB_NULL,
@@ -274,7 +238,7 @@ static const z80pio_interface p8k_pio_0_intf =
 
 /* Z80 PIO 1 */
 
-static const z80pio_interface p8k_pio_1_intf =
+static Z80PIO_INTERFACE( p8k_pio_1_intf )
 {
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),
 	DEVCB_NULL,
@@ -287,7 +251,7 @@ static const z80pio_interface p8k_pio_1_intf =
 
 /* Z80 PIO 2 */
 
-static const z80pio_interface p8k_pio_2_intf =
+static Z80PIO_INTERFACE( p8k_pio_2_intf )
 {
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),
 	DEVCB_NULL,
@@ -351,14 +315,14 @@ static const z80_daisy_chain p8k_daisy_chain[] =
 
 static WRITE_LINE_DEVICE_HANDLER( p8k_i8272_irq_w )
 {
-	const device_config *z80pio = devtag_get_device(device->machine, "z80pio_2");
+	running_device *z80pio = devtag_get_device(device->machine, "z80pio_2");
 
-	z80pio_p_w(z80pio, 1, (state) ? 0x10 : 0x00);
+	z80pio_pb_w(z80pio, 0, (state) ? 0x10 : 0x00);
 }
 
 static UPD765_DMA_REQUEST( p8k_i8272_drq_w )
 {
-	const device_config *z80dma = devtag_get_device(device->machine, "z80dma");
+	running_device *z80dma = devtag_get_device(device->machine, "z80dma");
 
 	z80dma_rdy_w(z80dma, state);
 }
@@ -390,7 +354,7 @@ static const floppy_config p8k_floppy_config =
 
 ****************************************************************************/
 
-static void p8k_16_daisy_interrupt(const device_config *device, int state)
+static void p8k_16_daisy_interrupt(running_device *device, int state)
 {
 	// this must be studied a little bit more :-)
 }
@@ -403,7 +367,7 @@ static Z80CTC_INTERFACE( p8k_16_ctc_0_intf )
 	DEVCB_LINE(p8k_16_daisy_interrupt),	/* interrupt handler */
 	DEVCB_NULL,				/* ZC/TO0 callback */
 	DEVCB_NULL,				/* ZC/TO1 callback */
-	DEVCB_NULL    			/* ZC/TO2 callback */
+	DEVCB_NULL  			/* ZC/TO2 callback */
 };
 
 /* Z80 CTC 1 */
@@ -545,9 +509,9 @@ static MACHINE_DRIVER_START( p8k )
 	MDRV_Z80CTC_ADD("z80ctc_1", 1229000, p8k_ctc_1_intf)	/* 1.22MHz clock */
 	MDRV_Z80SIO_ADD("z80sio_0", 9600, p8k_sio_0_intf)	/* 9.6kBaud default */
 	MDRV_Z80SIO_ADD("z80sio_1", 9600, p8k_sio_1_intf)	/* 9.6kBaud default */
-	MDRV_Z80PIO_ADD("z80pio_0", p8k_pio_0_intf)
-	MDRV_Z80PIO_ADD("z80pio_1", p8k_pio_1_intf)
-	MDRV_Z80PIO_ADD("z80pio_2", p8k_pio_2_intf)
+	MDRV_Z80PIO_ADD("z80pio_0", 1229000, p8k_pio_0_intf)
+	MDRV_Z80PIO_ADD("z80pio_1", 1229000, p8k_pio_1_intf)
+	MDRV_Z80PIO_ADD("z80pio_2", 1229000, p8k_pio_2_intf)
 	MDRV_UPD765A_ADD("i8272", p8k_i8272_intf)
 	MDRV_FLOPPY_2_DRIVES_ADD(p8k_floppy_config)
 
@@ -586,9 +550,9 @@ static MACHINE_DRIVER_START( p8k_16 )
 	MDRV_Z80CTC_ADD("z80ctc_1", XTAL_4MHz, p8k_16_ctc_1_intf)
 	MDRV_Z80SIO_ADD("z80sio_0", 9600, p8k_16_sio_0_intf)
 	MDRV_Z80SIO_ADD("z80sio_1", 9600, p8k_16_sio_1_intf)
-	MDRV_Z80PIO_ADD("z80pio_0", p8k_16_pio_0_intf )
-	MDRV_Z80PIO_ADD("z80pio_1", p8k_16_pio_1_intf )
-	MDRV_Z80PIO_ADD("z80pio_2", p8k_16_pio_2_intf )
+	MDRV_Z80PIO_ADD("z80pio_0", XTAL_4MHz, p8k_16_pio_0_intf )
+	MDRV_Z80PIO_ADD("z80pio_1", XTAL_4MHz, p8k_16_pio_1_intf )
+	MDRV_Z80PIO_ADD("z80pio_2", XTAL_4MHz, p8k_16_pio_2_intf )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

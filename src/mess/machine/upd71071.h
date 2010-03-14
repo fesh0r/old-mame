@@ -1,7 +1,7 @@
 #ifndef UPD71071_H_
 #define UPD71071_H_
 
-#include "driver.h"
+#include "emu.h"
 
 typedef struct _upd71071_interface upd71071_intf;
 struct _upd71071_interface
@@ -12,7 +12,7 @@ struct _upd71071_interface
 	void (*dma_write[4])(running_machine* machine, UINT16 data);
 };
 
-int upd71071_dmarq(const device_config* device,int state,int channel);
+int upd71071_dmarq(running_device* device,int state,int channel);
 
 DEVICE_GET_INFO(upd71071);
 

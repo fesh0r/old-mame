@@ -8,17 +8,17 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "devices/flopdrv.h"
 #include "includes/mbee.h"
 
 static UINT8 mbee_vsync;
 static UINT8 fdc_status = 0;
-static const device_config *mbee_fdc;
-static const device_config *mbee_z80pio;
-static const device_config *mbee_speaker;
-static const device_config *mbee_cassette;
-static const device_config *mbee_printer;
+static running_device *mbee_fdc;
+static running_device *mbee_z80pio;
+static running_device *mbee_speaker;
+static running_device *mbee_cassette;
+static running_device *mbee_printer;
 
 /***********************************************************
 
@@ -80,41 +80,12 @@ const z80pio_interface mbee_z80pio_intf =
 {
 	DEVCB_HANDLER(mbee_pio_interrupt),	/* callback when change interrupt status */
 	DEVCB_NULL,
-	DEVCB_HANDLER(pio_port_b_r),
 	DEVCB_HANDLER(pio_port_a_w),
-	DEVCB_HANDLER(pio_port_b_w),
 	DEVCB_HANDLER(pio_ardy),
+	DEVCB_HANDLER(pio_port_b_r),
+	DEVCB_HANDLER(pio_port_b_w),
 	DEVCB_NULL
 };
-
-READ8_DEVICE_HANDLER( mbee_pio_r )
-{
-	if (!offset)
-		return z80pio_d_r(device, 0);
-	else
-	if (offset == 1)
-		return z80pio_c_r(device, 0);
-	else
-	if (offset == 2)
-		return z80pio_d_r(device, 1);
-	else
-		return z80pio_c_r(device, 1);
-}
-
-WRITE8_DEVICE_HANDLER( mbee_pio_w )
-{
-	if (!offset)
-		z80pio_d_w(device, 0, data);
-	else
-	if (offset == 1)
-		z80pio_c_w(device, 0, data);
-	else
-	if (offset == 2)
-		z80pio_d_w(device, 1, data);
-	else
-		z80pio_c_w(device, 1, data);
-}
-
 
 /*************************************************************************************
 
@@ -143,6 +114,7 @@ static WRITE_LINE_DEVICE_HANDLER( mbee_fdc_drq_w )
 
 const wd17xx_interface mbee_wd17xx_interface =
 {
+	DEVCB_NULL,
 	DEVCB_LINE(mbee_fdc_intrq_w),
 	DEVCB_LINE(mbee_fdc_drq_w),
 	{FLOPPY_0, FLOPPY_1, NULL, NULL }
@@ -165,7 +137,7 @@ WRITE8_HANDLER ( mbee_fdc_motor_w )
 
 	wd17xx_set_drive(mbee_fdc, data & 3);
 	wd17xx_set_side(mbee_fdc, (data & 4) ? 1 : 0);
-	wd17xx_set_density(mbee_fdc, (data & 8) ? 1 : 0);
+	wd17xx_dden_w(mbee_fdc, !BIT(data, 3));
 }
 
 /***********************************************************
@@ -224,7 +196,7 @@ INTERRUPT_GEN( mbee_interrupt )
 
 Z80BIN_EXECUTE( mbee )
 {
-	const device_config *cpu = cputag_get_cpu(machine, "maincpu");
+	running_device *cpu = devtag_get_device(machine, "maincpu");
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	memory_write_word_16le(space, 0xa6, execute_address);			/* fix the EXEC command */
@@ -242,7 +214,7 @@ Z80BIN_EXECUTE( mbee )
 
 QUICKLOAD_LOAD( mbee )
 {
-	const device_config *cpu = cputag_get_cpu(image->machine, "maincpu");
+	running_device *cpu = devtag_get_device(image->machine, "maincpu");
 	const address_space *space = cputag_get_address_space(image->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT16 i, j;
 	UINT8 data, sw = input_port_read(image->machine, "CONFIG") & 1;	/* reading the dipswitch: 1 = autorun */

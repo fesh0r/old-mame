@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 
 static ADDRESS_MAP_START(unistar_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -91,5 +91,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT        COMPANY                  FULLNAME                    FLAGS */
-COMP( ????, unistar,  0,       0, 	unistar, 	unistar, 	 0,  	 "Callan Data Systems",   "Unistar Terminal",		GAME_NOT_WORKING)
+COMP( ????, unistar,  0,       0,	unistar,	unistar,	 0, 	 "Callan Data Systems",   "Unistar Terminal",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

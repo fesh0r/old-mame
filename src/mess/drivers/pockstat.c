@@ -28,7 +28,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/arm7/arm7.h"
 #include "cpu/arm7/arm7core.h"
 #include "devices/cartslot.h"
@@ -304,19 +304,19 @@ static void ps_intc_set_interrupt_line(running_machine *machine, UINT32 line, in
 	}
 	if(intc_regs.hold & intc_regs.enable & PS_INT_IRQ_MASK)
 	{
-		cpu_set_input_line(cputag_get_cpu(machine, "maincpu"), ARM7_IRQ_LINE, ASSERT_LINE);
+		cpu_set_input_line(devtag_get_device(machine, "maincpu"), ARM7_IRQ_LINE, ASSERT_LINE);
 	}
 	else
 	{
-		cpu_set_input_line(cputag_get_cpu(machine, "maincpu"), ARM7_IRQ_LINE, CLEAR_LINE);
+		cpu_set_input_line(devtag_get_device(machine, "maincpu"), ARM7_IRQ_LINE, CLEAR_LINE);
 	}
 	if(intc_regs.hold & intc_regs.enable & PS_INT_FIQ_MASK)
 	{
-		cpu_set_input_line(cputag_get_cpu(machine, "maincpu"), ARM7_FIRQ_LINE, ASSERT_LINE);
+		cpu_set_input_line(devtag_get_device(machine, "maincpu"), ARM7_FIRQ_LINE, ASSERT_LINE);
 	}
 	else
 	{
-		cpu_set_input_line(cputag_get_cpu(machine, "maincpu"), ARM7_FIRQ_LINE, CLEAR_LINE);
+		cpu_set_input_line(devtag_get_device(machine, "maincpu"), ARM7_FIRQ_LINE, CLEAR_LINE);
 	}
 }
 
@@ -427,9 +427,9 @@ static READ32_HANDLER( ps_timer_r )
 		case 0x0004/4:
 		case 0x0014/4:
 		case 0x0024/4:
- 			verboselog(space->machine, 0, "ps_timer_r: Timer %d Count = %08x & %08x\n", offset / (0x10/4), timer_regs.timer[offset / (0x10/4)].count, mem_mask );
- 			if(timer_regs.timer[offset / (0x10/4)].control & 4)
- 			{
+			verboselog(space->machine, 0, "ps_timer_r: Timer %d Count = %08x & %08x\n", offset / (0x10/4), timer_regs.timer[offset / (0x10/4)].count, mem_mask );
+			if(timer_regs.timer[offset / (0x10/4)].control & 4)
+			{
 				timer_regs.timer[offset / (0x10/4)].count--;
 				if(timer_regs.timer[offset / (0x10/4)].count > timer_regs.timer[offset / (0x10/4)].period)
 				{
@@ -737,9 +737,9 @@ static INPUT_CHANGED( input_update )
 	UINT32 buttons = input_port_read(field->port->machine, "BUTTONS");
 
 	ps_intc_set_interrupt_line(field->port->machine, PS_INT_BTN_ACTION, (buttons &  1) ? 1 : 0);
-	ps_intc_set_interrupt_line(field->port->machine, PS_INT_BTN_RIGHT, 	(buttons &  2) ? 1 : 0);
-	ps_intc_set_interrupt_line(field->port->machine, PS_INT_BTN_LEFT, 	(buttons &  4) ? 1 : 0);
-	ps_intc_set_interrupt_line(field->port->machine, PS_INT_BTN_DOWN, 	(buttons &  8) ? 1 : 0);
+	ps_intc_set_interrupt_line(field->port->machine, PS_INT_BTN_RIGHT,	(buttons &  2) ? 1 : 0);
+	ps_intc_set_interrupt_line(field->port->machine, PS_INT_BTN_LEFT,	(buttons &  4) ? 1 : 0);
+	ps_intc_set_interrupt_line(field->port->machine, PS_INT_BTN_DOWN,	(buttons &  8) ? 1 : 0);
 	ps_intc_set_interrupt_line(field->port->machine, PS_INT_BTN_UP, 	(buttons & 16) ? 1 : 0);
 }
 
@@ -825,11 +825,11 @@ ADDRESS_MAP_END
 /* Input ports */
 static INPUT_PORTS_START( pockstat )
 	PORT_START("BUTTONS")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1) 		PORT_NAME("Action Button")	PORT_CHANGED(input_update, 0)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1)		PORT_NAME("Action Button")	PORT_CHANGED(input_update, 0)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT) PORT_NAME("Right")			PORT_CHANGED(input_update, 0)
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT) 	PORT_NAME("Left")			PORT_CHANGED(input_update, 0)
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN) 	PORT_NAME("Down")			PORT_CHANGED(input_update, 0)
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP) 	PORT_NAME("Up")				PORT_CHANGED(input_update, 0)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT)	PORT_NAME("Left")			PORT_CHANGED(input_update, 0)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN)	PORT_NAME("Down")			PORT_CHANGED(input_update, 0)
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP)	PORT_NAME("Up")				PORT_CHANGED(input_update, 0)
 	PORT_BIT( 0xe0, IP_ACTIVE_HIGH, IPT_UNUSED)
 INPUT_PORTS_END
 
@@ -884,7 +884,7 @@ static MACHINE_START( pockstat )
 
 static MACHINE_RESET( pockstat )
 {
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), REG_GENPC, 0x4000000);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), REG_GENPC, 0x4000000);
 
 	ps_flash_write_enable_count = 0;
 	ps_flash_write_count = 0;

@@ -186,15 +186,14 @@ Notes:
 
     TODO:
 
-    - studio2 cpu clock from schematics
-    - visicom alternate videoram @ 0x1300 ?
-    - mpt02/mustang cdp1864 colors
-    - discrete sound
-    - Academy Apollo 80 (Germany)
+    - disable ic13/14 when cartridge plugged in
+    - mpt02 clones' colors
+    - visicom colors
+    - NE555 discrete sound
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/studio2.h"
 #include "cpu/cdp1802/cdp1802.h"
 #include "video/cdp1861.h"
@@ -207,7 +206,7 @@ Notes:
 
 static WRITE8_HANDLER( keylatch_w )
 {
-	studio2_state *state = space->machine->driver_data;
+	studio2_state *state = (studio2_state *)space->machine->driver_data;
 
 	state->keylatch = data & 0x0f;
 }
@@ -229,21 +228,22 @@ static WRITE8_DEVICE_HANDLER( visicom_cdp1861_dispon_w )
 /* Memory Maps */
 
 static ADDRESS_MAP_START( studio2_map, ADDRESS_SPACE_PROGRAM, 8 )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
 	AM_RANGE(0x0800, 0x09ff) AM_MIRROR(0xf400) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( studio2_io_map, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x01, 0x01) AM_DEVREAD(CDP1861_TAG, studio2_cdp1861_dispon_r)
 	AM_RANGE(0x02, 0x02) AM_WRITE(keylatch_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( visicom_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
-	AM_RANGE(0x1000, 0x10ff) AM_MIRROR(0x200) AM_RAM
-	AM_RANGE(0x1100, 0x11ff) AM_RAM
-//  AM_RANGE(0x1200, 0x12ff) AM_RAM
-	AM_RANGE(0x1300, 0x13ff) AM_RAM
+	AM_RANGE(0x1000, 0x10ff) AM_RAM
+	AM_RANGE(0x1100, 0x11ff) AM_RAM AM_BASE_MEMBER(studio2_state, color_ram)
+	AM_RANGE(0x1300, 0x13ff) AM_RAM AM_BASE_MEMBER(studio2_state, color_ram1)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( visicom_io_map, ADDRESS_SPACE_IO, 8 )
@@ -255,7 +255,7 @@ static ADDRESS_MAP_START( mpt02_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
 	AM_RANGE(0x0800, 0x09ff) AM_RAM
 	AM_RANGE(0x0b00, 0x0b3f) AM_RAM AM_BASE_MEMBER(studio2_state, color_ram)
-	AM_RANGE(0x0c00, 0x0dff) AM_ROM
+	AM_RANGE(0x0c00, 0x0fff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mpt02_io_map, ADDRESS_SPACE_IO, 8 )
@@ -296,7 +296,7 @@ INPUT_PORTS_END
 
 static WRITE_LINE_DEVICE_HANDLER( studio2_efx_w )
 {
-	studio2_state *driver_state = device->machine->driver_data;
+	studio2_state *driver_state = (studio2_state *)device->machine->driver_data;
 
 	driver_state->cdp1861_efx = state;
 }
@@ -312,18 +312,47 @@ static CDP1861_INTERFACE( studio2_cdp1861_intf )
 
 static VIDEO_UPDATE( studio2 )
 {
-	studio2_state *state = screen->machine->driver_data;
+	studio2_state *state = (studio2_state *)screen->machine->driver_data;
 
 	cdp1861_update(state->cdp1861, bitmap, cliprect);
 
 	return 0;
 }
 
+static PALETTE_INIT( visicom )
+{
+    palette_set_color_rgb(machine, 0, 0x00, 0x80, 0x00);
+    palette_set_color_rgb(machine, 1, 0x00, 0x00, 0xff);
+    palette_set_color_rgb(machine, 2, 0x00, 0xff, 0x00);
+    palette_set_color_rgb(machine, 3, 0xff, 0x00, 0x00);
+}
+
 static WRITE_LINE_DEVICE_HANDLER( mpt02_efx_w )
 {
-	studio2_state *driver_state = device->machine->driver_data;
+	studio2_state *driver_state = (studio2_state *)device->machine->driver_data;
 
 	driver_state->cdp1864_efx = state;
+}
+
+static READ_LINE_DEVICE_HANDLER( rdata_r )
+{
+	studio2_state *state = (studio2_state *)device->machine->driver_data;
+
+	return BIT(state->color, 0);
+}
+
+static READ_LINE_DEVICE_HANDLER( bdata_r )
+{
+	studio2_state *state = (studio2_state *)device->machine->driver_data;
+
+	return BIT(state->color, 1);
+}
+
+static READ_LINE_DEVICE_HANDLER( gdata_r )
+{
+	studio2_state *state = (studio2_state *)device->machine->driver_data;
+
+	return BIT(state->color, 2);
 }
 
 static CDP1864_INTERFACE( mpt02_cdp1864_intf )
@@ -331,9 +360,9 @@ static CDP1864_INTERFACE( mpt02_cdp1864_intf )
 	CDP1802_TAG,
 	SCREEN_TAG,
 	CDP1864_INTERLACED,
-	DEVCB_LINE_VCC, // ?
-	DEVCB_LINE_VCC, // ?
-	DEVCB_LINE_VCC, // ?
+	DEVCB_LINE(rdata_r),
+	DEVCB_LINE(bdata_r),
+	DEVCB_LINE(gdata_r),
 	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, CDP1802_INPUT_LINE_INT),
 	DEVCB_CPU_INPUT_LINE(CDP1802_TAG, CDP1802_INPUT_LINE_DMAOUT),
 	DEVCB_LINE(mpt02_efx_w),
@@ -345,7 +374,7 @@ static CDP1864_INTERFACE( mpt02_cdp1864_intf )
 
 static VIDEO_UPDATE( mpt02 )
 {
-	studio2_state *state = screen->machine->driver_data;
+	studio2_state *state = (studio2_state *)screen->machine->driver_data;
 
 	cdp1864_update(state->cdp1864, bitmap, cliprect);
 
@@ -356,14 +385,14 @@ static VIDEO_UPDATE( mpt02 )
 
 static CDP1802_MODE_READ( studio2_mode_r )
 {
-	studio2_state *state = device->machine->driver_data;
+	studio2_state *state = (studio2_state *)device->machine->driver_data;
 
 	return state->cdp1802_mode;
 }
 
 static CDP1802_EF_READ( studio2_ef_r )
 {
-	studio2_state *state = device->machine->driver_data;
+	studio2_state *state = (studio2_state *)device->machine->driver_data;
 
 	int ef = 0x0f;
 
@@ -377,7 +406,7 @@ static CDP1802_EF_READ( studio2_ef_r )
 
 static WRITE_LINE_DEVICE_HANDLER( studio2_q_w )
 {
-	const device_config *speaker = devtag_get_device(device->machine, "beep");
+	running_device *speaker = devtag_get_device(device->machine, "beep");
 	beep_set_state(speaker, state);
 }
 
@@ -393,7 +422,7 @@ static CDP1802_INTERFACE( studio2_config )
 
 static CDP1802_EF_READ( mpt02_ef_r )
 {
-	studio2_state *state = device->machine->driver_data;
+	studio2_state *state = (studio2_state *)device->machine->driver_data;
 
 	int ef = 0x0f;
 
@@ -407,9 +436,10 @@ static CDP1802_EF_READ( mpt02_ef_r )
 
 static WRITE8_DEVICE_HANDLER( mpt02_dma_w )
 {
-	studio2_state *state = device->machine->driver_data;
+	studio2_state *state = (studio2_state *)device->machine->driver_data;
+	UINT8 addr = ((offset & 0xe0) >> 2) | (offset & 0x07);
 
-	state->color = state->color_ram[offset / 4];
+	state->color = state->color_ram[addr];
 
 	cdp1864_con_w(state->cdp1864, 0); // HACK
 	cdp1864_dma_w(state->cdp1864, offset, data);
@@ -429,14 +459,14 @@ static CDP1802_INTERFACE( mpt02_config )
 
 static TIMER_CALLBACK( set_cpu_mode )
 {
-	studio2_state *state = machine->driver_data;
+	studio2_state *state = (studio2_state *)machine->driver_data;
 
 	state->cdp1802_mode = CDP1802_MODE_RUN;
 }
 
 static MACHINE_START( studio2 )
 {
-	studio2_state *state = machine->driver_data;
+	studio2_state *state = (studio2_state *)machine->driver_data;
 
 	/* find devices */
 	state->cdp1861 = devtag_get_device(machine, CDP1861_TAG);
@@ -449,19 +479,19 @@ static MACHINE_START( studio2 )
 
 static MACHINE_RESET( studio2 )
 {
-	studio2_state *state = machine->driver_data;
+	studio2_state *state = (studio2_state *)machine->driver_data;
 
 	/* reset CPU */
 	state->cdp1802_mode = CDP1802_MODE_RESET;
 	timer_set(machine, ATTOTIME_IN_MSEC(200), NULL, 0, set_cpu_mode);
 
 	/* reset CDP1861 */
-	device_reset(state->cdp1861);
+	state->cdp1861->reset();
 }
 
 static MACHINE_START( mpt02 )
 {
-	studio2_state *state = machine->driver_data;
+	studio2_state *state = (studio2_state *)machine->driver_data;
 
 	/* find devices */
 	state->cdp1864 = devtag_get_device(machine, CDP1864_TAG);
@@ -474,14 +504,14 @@ static MACHINE_START( mpt02 )
 
 static MACHINE_RESET( mpt02 )
 {
-	studio2_state *state = machine->driver_data;
+	studio2_state *state = (studio2_state *)machine->driver_data;
 
 	/* reset CPU */
 	state->cdp1802_mode = CDP1802_MODE_RESET;
 	timer_set(machine, ATTOTIME_IN_MSEC(200), NULL, 0, set_cpu_mode);
 
 	/* reset CDP1864 */
-	device_reset(state->cdp1864);
+	state->cdp1864->reset();
 }
 
 static DEVICE_IMAGE_LOAD( studio2_cart )
@@ -535,8 +565,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( studio2 )
 	MDRV_DRIVER_DATA(studio2_state)
 
-	// basic machine hardware
-	MDRV_CPU_ADD(CDP1802_TAG, CDP1802, 3579545/2) // the real clock is derived from an oscillator circuit
+	/* basic machine hardware */
+	MDRV_CPU_ADD(CDP1802_TAG, CDP1802, 1760000) /* the real clock is derived from an oscillator circuit */
 	MDRV_CPU_PROGRAM_MAP(studio2_map)
 	MDRV_CPU_IO_MAP(studio2_io_map)
 	MDRV_CPU_CONFIG(studio2_config)
@@ -544,16 +574,16 @@ static MACHINE_DRIVER_START( studio2 )
 	MDRV_MACHINE_START(studio2)
 	MDRV_MACHINE_RESET(studio2)
 
-    // video hardware
-	MDRV_CDP1861_SCREEN_ADD(SCREEN_TAG, 3579545/2)
+    /* video hardware */
+	MDRV_CDP1861_SCREEN_ADD(SCREEN_TAG, 1760000)
 
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(black_and_white)
 	MDRV_VIDEO_UPDATE(studio2)
 
-	MDRV_CDP1861_ADD(CDP1861_TAG, 3579545/2, studio2_cdp1861_intf)
+	MDRV_CDP1861_ADD(CDP1861_TAG, 1760000, studio2_cdp1861_intf)
 
-	// sound hardware
+	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("beep", BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
@@ -564,7 +594,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( visicom )
 	MDRV_DRIVER_DATA(studio2_state)
 
-	// basic machine hardware
+	/* basic machine hardware */
 	MDRV_CPU_ADD(CDP1802_TAG, CDP1802, XTAL_3_579545MHz/2)
 	MDRV_CPU_PROGRAM_MAP(visicom_map)
 	MDRV_CPU_IO_MAP(visicom_io_map)
@@ -573,16 +603,16 @@ static MACHINE_DRIVER_START( visicom )
 	MDRV_MACHINE_START(studio2)
 	MDRV_MACHINE_RESET(studio2)
 
-    // video hardware
-	MDRV_CDP1864_SCREEN_ADD(SCREEN_TAG, XTAL_3_579545MHz/2)
+    /* video hardware */
+	MDRV_CDP1861_SCREEN_ADD(SCREEN_TAG, XTAL_3_579545MHz/2)
 
-	MDRV_PALETTE_LENGTH(2)
-	MDRV_PALETTE_INIT(black_and_white)
+	MDRV_PALETTE_LENGTH(4)
+	MDRV_PALETTE_INIT(visicom)
 	MDRV_VIDEO_UPDATE(studio2)
 
 	MDRV_CDP1861_ADD(CDP1861_TAG, XTAL_3_579545MHz/2/8, studio2_cdp1861_intf)
 
-	// sound hardware
+	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("beep", BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
@@ -593,7 +623,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( mpt02 )
 	MDRV_DRIVER_DATA(studio2_state)
 
-	// basic machine hardware
+	/* basic machine hardware */
 	MDRV_CPU_ADD(CDP1802_TAG, CDP1802, CDP1864_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(mpt02_map)
 	MDRV_CPU_IO_MAP(mpt02_io_map)
@@ -602,13 +632,13 @@ static MACHINE_DRIVER_START( mpt02 )
 	MDRV_MACHINE_START(mpt02)
 	MDRV_MACHINE_RESET(mpt02)
 
-    // video hardware
+    /* video hardware */
 	MDRV_CDP1864_SCREEN_ADD(SCREEN_TAG, CDP1864_CLOCK)
 
 	MDRV_PALETTE_LENGTH(8+8)
 	MDRV_VIDEO_UPDATE(mpt02)
 
-	// sound hardware
+	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("beep", BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
@@ -623,11 +653,10 @@ MACHINE_DRIVER_END
 
 ROM_START( studio2 )
 	ROM_REGION( 0x10000, CDP1802_TAG, 0 )
-	ROM_LOAD( "84932", 0x0000, 0x0200, NO_DUMP )
-	ROM_LOAD( "84933", 0x0200, 0x0200, NO_DUMP )
-	ROM_LOAD( "85456", 0x0400, 0x0200, NO_DUMP )
-	ROM_LOAD( "85457", 0x0600, 0x0200, NO_DUMP )
-	ROM_LOAD( "studio2.rom", 0x0000, 0x0800, BAD_DUMP CRC(a494b339) SHA1(f2650dacc9daab06b9fdf0e7748e977b2907010c) )
+	ROM_LOAD( "84932.ic11", 0x0000, 0x0200, CRC(283b7e65) SHA1(4b6d21cde59712ecb5941ff63d8eb161420b0aac) )
+	ROM_LOAD( "84933.ic12", 0x0200, 0x0200, CRC(a396b77c) SHA1(023517f67af61790e6916b6c4dbe2d9dc07ae3ff) )
+	ROM_LOAD( "85456.ic13", 0x0400, 0x0200, CRC(d25cf97f) SHA1(d489f41f1125c76cc8ed9defa82a877ae014ef21) )
+	ROM_LOAD( "85457.ic14", 0x0600, 0x0200, CRC(74aa724f) SHA1(085832f29e0d2a387c75463d66c54fb6c1e9e72c) )
 ROM_END
 
 ROM_START( visicom )
@@ -635,39 +664,24 @@ ROM_START( visicom )
 	ROM_LOAD( "visicom.q003", 0x0000, 0x0800, CRC(23d22074) SHA1(a0a8be23f70621a2bd8010b1134e8a0019075bf1) )
 ROM_END
 
-ROM_START( mtc9016 )
-	ROM_REGION( 0x10000, CDP1802_TAG, 0 )
-	ROM_LOAD( "86676.ic13",  0x0000, 0x0400, NO_DUMP )
-	ROM_LOAD( "86677b.ic14", 0x0400, 0x0400, NO_DUMP )
-	ROM_LOAD( "87201.ic12",  0x0a00, 0x0400, NO_DUMP )
-ROM_END
-
-ROM_START( shmc1200 )
-	ROM_REGION( 0x10000, CDP1802_TAG, 0 )
-	ROM_LOAD( "shmc1200.bin",  0x0000, 0x0800, NO_DUMP )
-ROM_END
-
-ROM_START( mpt02s )
+ROM_START( mpt02 )
 	ROM_REGION( 0x10000, CDP1802_TAG, 0 )
 	ROM_LOAD( "86676.ic13",  0x0000, 0x0400, CRC(a7d0dd3b) SHA1(e1881ab4d67a5d735dd2c8d7e924e41df6f2aeec) )
 	ROM_LOAD( "86677b.ic14", 0x0400, 0x0400, CRC(82a2d29e) SHA1(37e02089d611db10bad070d89c8801de41521189) )
 	ROM_LOAD( "87201.ic12",  0x0c00, 0x0400, CRC(8006a1e3) SHA1(b67612d98231485fce55d604915abd19b6d64eac) )
 ROM_END
 
-ROM_START( mpt02h )
-	ROM_REGION( 0x10000, CDP1802_TAG, 0 )
-ROM_END
-
-ROM_START( eti660 )
-	ROM_REGION( 0x10000, CDP1802_TAG, 0 )
-	ROM_LOAD( "eti660.bin", 0x0000, 0x0400, CRC(811dfa62) SHA1(c0c4951e02f873f15560bdc3f35cdf3f99653922) )
-ROM_END
+#define rom_mpt02h rom_mpt02
+#define rom_mtc9016 rom_mpt02
+#define rom_shmc1200 rom_mpt02
+#define rom_cm1200 rom_mpt02
+#define rom_apollo80 rom_mpt02
 
 /* Driver Initialization */
 
 static TIMER_CALLBACK( setup_beep )
 {
-	const device_config *speaker = devtag_get_device(machine, "beep");
+	running_device *speaker = devtag_get_device(machine, "beep");
 	beep_set_state(speaker, 0);
 	beep_set_frequency(speaker, 300);
 }
@@ -681,9 +695,10 @@ static DRIVER_INIT( studio2 )
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        COMPANY   FULLNAME */
 CONS( 1977,	studio2,	0,		0,		studio2,	studio2,	studio2,	"RCA",		"Studio II", GAME_SUPPORTS_SAVE )
-CONS( 1978, visicom,	studio2,0,		visicom,	studio2,	studio2,	"Toshiba",	"Visicom (Japan)", GAME_IMPERFECT_GRAPHICS | GAME_WRONG_COLORS | GAME_SUPPORTS_SAVE )
-CONS( 1978,	mpt02s,		studio2,0,		mpt02,		studio2,	studio2,	"Soundic",	"MPT-02 Victory Home TV Programmer (Austria)", GAME_NOT_WORKING )
-CONS( 1978,	mpt02h,		studio2,0,		mpt02,		studio2,	studio2,	"Hanimex",	"MPT-02 Jeu TV Programmable (France)", GAME_NOT_WORKING )
-CONS( 1978,	mtc9016,	studio2,0,		mpt02,		studio2,	studio2,	"Mustang",	"9016 Telespiel Computer (Germany)", GAME_NOT_WORKING )
-CONS( 1978, shmc1200,	studio2,0,		mpt02,		studio2,	studio2,	"Sheen",	"1200 Micro Computer (Australia)", GAME_NOT_WORKING )
-CONS( 1978, eti660,		studio2,0,		mpt02,		studio2,	studio2,	"Electronics Today International",	"ETI-660 (Australia)", GAME_NOT_WORKING )
+CONS( 1978, visicom,	studio2,0,		visicom,	studio2,	studio2,	"Toshiba",	"Visicom COM-100 (Japan)", GAME_IMPERFECT_GRAPHICS | GAME_WRONG_COLORS | GAME_SUPPORTS_SAVE )
+CONS( 1978,	mpt02,		studio2,0,		mpt02,		studio2,	studio2,	"Soundic",	"Victory MPT-02 Home TV Programmer (Austria)", GAME_WRONG_COLORS | GAME_SUPPORTS_SAVE )
+CONS( 1978,	mpt02h,		studio2,0,		mpt02,		studio2,	studio2,	"Hanimex",	"MPT-02 Jeu TV Programmable (France)", GAME_WRONG_COLORS | GAME_SUPPORTS_SAVE)
+CONS( 1978,	mtc9016,	studio2,0,		mpt02,		studio2,	studio2,	"Mustang",	"9016 Telespiel Computer (Germany)", GAME_WRONG_COLORS | GAME_SUPPORTS_SAVE )
+CONS( 1978, shmc1200,	studio2,0,		mpt02,		studio2,	studio2,	"Sheen",	"1200 Micro Computer (Australia)", GAME_WRONG_COLORS | GAME_SUPPORTS_SAVE )
+CONS( 1978, cm1200,		studio2,0,		mpt02,		studio2,	studio2,	"Conic",	"M-1200 (?)", GAME_WRONG_COLORS | GAME_SUPPORTS_SAVE )
+CONS( 1978, apollo80,	studio2,0,		mpt02,		studio2,	studio2,	"Academy",	"Apollo 80 (Germany)", GAME_WRONG_COLORS | GAME_SUPPORTS_SAVE )

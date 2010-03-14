@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/i8255a.h"
 #include "machine/pit8253.h"
@@ -52,8 +52,8 @@ static const char *const keynames[] = {
 static READ8_DEVICE_HANDLER (irisha_8255_portb_r )
 {
   if (irisha_keypressed==1) {
-  	irisha_keypressed =0;
-  	return 0x80;
+	irisha_keypressed =0;
+	return 0x80;
   }
 
 	return 0x00;
@@ -68,7 +68,7 @@ static READ8_DEVICE_HANDLER (irisha_8255_portc_r )
 READ8_HANDLER (irisha_keyboard_r)
 {
 	UINT8 keycode;
- 	if (irisha_keyboard_cnt!=0 && irisha_keyboard_cnt<11) {
+	if (irisha_keyboard_cnt!=0 && irisha_keyboard_cnt<11) {
 		keycode = input_port_read(space->machine, keynames[irisha_keyboard_cnt-1]) ^ 0xff;
 	} else {
 		keycode = 0xff;
@@ -102,13 +102,14 @@ I8255A_INTERFACE( irisha_ppi8255_interface )
 	DEVCB_HANDLER(irisha_8255_portc_w),
 };
 
-static PIC8259_SET_INT_LINE( irisha_pic_set_int_line )
+static WRITE_LINE_DEVICE_HANDLER( irisha_pic_set_int_line )
 {
-	cputag_set_input_line(device->machine, "maincpu", 0, interrupt ?  HOLD_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "maincpu", 0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
-const struct pic8259_interface irisha_pic8259_config = {
-	irisha_pic_set_int_line
+const struct pic8259_interface irisha_pic8259_config =
+{
+	DEVCB_LINE(irisha_pic_set_int_line)
 };
 
 const struct pit8253_config irisha_pit8253_intf =
@@ -116,15 +117,18 @@ const struct pit8253_config irisha_pit8253_intf =
 	{
 		{
 			0,
-			NULL
+			DEVCB_NULL,
+			DEVCB_NULL
 		},
 		{
 			0,
-			NULL
+			DEVCB_NULL,
+			DEVCB_NULL
 		},
 		{
 			2000000,
-			NULL
+			DEVCB_NULL,
+			DEVCB_NULL
 		}
 	}
 };

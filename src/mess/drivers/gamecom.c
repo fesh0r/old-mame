@@ -15,7 +15,7 @@ Todo:
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/gamecom.h"
 #include "cpu/sm8500/sm8500.h"
 #include "devices/cartslot.h"
@@ -137,6 +137,6 @@ ROM_START( gamecom )
 ROM_END
 
 /*    YEAR  NAME     PARENT COMPAT MACHINE  INPUT    INIT    COMPANY  FULLNAME */
-CONS( 1997, gamecom, 0,     0,     gamecom, gamecom, gamecom,"Tiger", "Game.com", GAME_NOT_WORKING )
+CONS( 1997, gamecom, 0,     0,     gamecom, gamecom, gamecom,"Tiger", "Game.com", GAME_NOT_WORKING | GAME_NO_SOUND)
 
 

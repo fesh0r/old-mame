@@ -57,7 +57,7 @@
 ******************************************************************************/
 
 /* Core includes */
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "votrpss.lh"
 
@@ -186,5 +186,5 @@ ROM_END
 ******************************************************************************/
 
 /*    YEAR  NAME        PARENT      COMPAT  MACHINE     INPUT   INIT      COMPANY                     FULLNAME                            FLAGS */
-COMP( 1982, votrpss,   0,          0,      votrpss,   votrpss, 0,      "Votrax",        "Personal Speech System",                        GAME_NOT_WORKING )
+COMP( 1982, votrpss,   0,          0,      votrpss,   votrpss, 0,      "Votrax",        "Personal Speech System",                        GAME_NOT_WORKING | GAME_NO_SOUND)
 

@@ -75,7 +75,7 @@ Notes:
 */
 
 /* Core includes */
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "includes/abc80.h"
 
@@ -165,9 +165,16 @@ static const UINT8 abc80_keycodes[7*4][8] =
 	{ 0x5f, 0x09, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00 }
 };
 
+static TIMER_CALLBACK( keyboard_data_clear )
+{
+	abc80_state *state = (abc80_state *)machine->driver_data;
+
+	state->key_data = 0;
+}
+
 static void abc80_keyboard_scan(running_machine *machine)
 {
-	abc80_state *state = machine->driver_data;
+	abc80_state *state = (abc80_state *)machine->driver_data;
 
 	static const char *const keynames[] = { "ROW0", "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6" };
 	int table = 0, row, col;
@@ -198,6 +205,9 @@ static void abc80_keyboard_scan(running_machine *machine)
 			{
 				UINT8 keydata = abc80_keycodes[row + (table * 7)][col];
 
+				/* set key strobe */
+				state->key_strobe = 1;
+
 				if (state->key_data != keydata)
 				{
 					UINT8 pio_data = 0x80 | keydata;
@@ -205,15 +215,17 @@ static void abc80_keyboard_scan(running_machine *machine)
 					/* latch key data */
 					state->key_data = keydata;
 
-					/* set key strobe */
-					state->key_strobe = 1;
-
-					z80pio_p_w(state->z80pio, 0, pio_data);
-
+					z80pio_pa_w(state->z80pio, 0, pio_data);
 					return;
 				}
 			}
 		}
+	}
+
+	if (!state->key_strobe && state->key_data)
+	{
+		z80pio_pa_w(state->z80pio, 0, state->key_data);
+		timer_set(machine, ATTOTIME_IN_MSEC(50), NULL, 0, keyboard_data_clear);
 	}
 }
 
@@ -242,7 +254,7 @@ static ADDRESS_MAP_START( abc80_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x01, 0x01) AM_WRITE(abcbus_channel_w)
 	AM_RANGE(0x06, 0x06) AM_DEVWRITE(SN76477_TAG, abc80_sound_w)
 	AM_RANGE(0x07, 0x07) AM_READ(abcbus_reset_r)
-	AM_RANGE(0x10, 0x13) AM_MIRROR(0x04) AM_DEVREADWRITE(Z80PIO_TAG, z80pio_alt_r, z80pio_alt_w)
+	AM_RANGE(0x10, 0x13) AM_MIRROR(0x04) AM_DEVREADWRITE(Z80PIO_TAG, z80pio_ba_cd_r, z80pio_ba_cd_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -362,7 +374,7 @@ static INTERRUPT_GEN( abc80_nmi_interrupt )
 
 static TIMER_DEVICE_CALLBACK( z80pio_astb_tick )
 {
-	abc80_state *state = timer->machine->driver_data;
+	abc80_state *state = (abc80_state *)timer->machine->driver_data;
 
 	/* toggle ASTB every other video line */
 	state->z80pio_astb = !state->z80pio_astb;
@@ -389,7 +401,7 @@ static READ8_DEVICE_HANDLER( abc80_pio_port_a_r )
 
     */
 
-	abc80_state *state = device->machine->driver_data;
+	abc80_state *state = (abc80_state *)device->machine->driver_data;
 
 	return (state->key_strobe << 7) | state->key_data;
 };
@@ -411,7 +423,7 @@ static READ8_DEVICE_HANDLER( abc80_pio_port_b_r )
 
     */
 
-	abc80_state *state = device->machine->driver_data;
+	abc80_state *state = (abc80_state *)device->machine->driver_data;
 
 	/* cassette data */
 	UINT8 data = (cassette_input(state->cassette) > +1.0) ? 0x80 : 0;
@@ -436,7 +448,7 @@ static WRITE8_DEVICE_HANDLER( abc80_pio_port_b_w )
 
     */
 
-	abc80_state *state = device->machine->driver_data;
+	abc80_state *state = (abc80_state *)device->machine->driver_data;
 
 	/* cassette motor */
 	cassette_change_state(state->cassette, BIT(data, 5) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
@@ -445,14 +457,14 @@ static WRITE8_DEVICE_HANDLER( abc80_pio_port_b_w )
 	cassette_output(state->cassette, BIT(data, 6) ? -1.0 : +1.0);
 };
 
-static const z80pio_interface abc80_pio_intf =
+static Z80PIO_INTERFACE( abc80_pio_intf )
 {
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0), /* callback when change interrupt status */
 	DEVCB_HANDLER(abc80_pio_port_a_r),			/* port A read callback */
-	DEVCB_HANDLER(abc80_pio_port_b_r),			/* port B read callback */
 	DEVCB_NULL,						/* port A write callback */
-	DEVCB_HANDLER(abc80_pio_port_b_w),			/* port B write callback */
 	DEVCB_NULL,						/* portA ready active callback */
+	DEVCB_HANDLER(abc80_pio_port_b_r),			/* port B read callback */
+	DEVCB_HANDLER(abc80_pio_port_b_w),			/* port B write callback */
 	DEVCB_NULL						/* portB ready active callback */
 };
 
@@ -474,7 +486,7 @@ static ABCBUS_CONFIG( abcbus_config )
 
 static MACHINE_START( abc80 )
 {
-	abc80_state *state = machine->driver_data;
+	abc80_state *state = (abc80_state *)machine->driver_data;
 
 	/* configure RAM expansion */
 	memory_configure_bank(machine, "bank1", 0, 1, messram_get_ptr(devtag_get_device(machine, "messram")), 0);
@@ -523,7 +535,7 @@ static MACHINE_DRIVER_START( abc80 )
 
 	/* Z80PIO */
 	MDRV_TIMER_ADD_SCANLINE("pio_astb", z80pio_astb_tick, SCREEN_TAG, 0, 1)
-	MDRV_Z80PIO_ADD(Z80PIO_TAG, abc80_pio_intf)
+	MDRV_Z80PIO_ADD(Z80PIO_TAG, ABC80_XTAL/2/2, abc80_pio_intf)
 
 	/* Luxor Conkort 55-10828 */
 	MDRV_LUXOR_55_10828_ADD

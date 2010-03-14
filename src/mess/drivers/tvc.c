@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "video/mc6845.h"
 #include "devices/messram.h"
@@ -248,7 +248,7 @@ static VIDEO_START( tvc )
 
 static VIDEO_UPDATE( tvc )
 {
-	const device_config *mc6845 = devtag_get_device(screen->machine, "crtc");
+	running_device *mc6845 = devtag_get_device(screen->machine, "crtc");
 	mc6845_update(mc6845, bitmap, cliprect);
 	return 0;
 }
@@ -422,7 +422,7 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT COMPANY   FULLNAME       FLAGS */
-COMP( 1985, tvc64,  0,   	 0, 	tvc, 	tvc, 	 0,  	  "Videoton",   "TVC 64",		GAME_NOT_WORKING)
-COMP( 1985, tvc64p, tvc64,   0, 	tvc, 	tvc, 	 0,  	  "Videoton",   "TVC 64+",		GAME_NOT_WORKING)
-COMP( 1985, tvc64pru,tvc64,   0, 	tvc, 	tvc, 	 0,  	  "Videoton",   "TVC 64+ (Russian)",		GAME_NOT_WORKING)
+COMP( 1985, tvc64,  0,  	 0, 	tvc,	tvc,	 0, 	  "Videoton",   "TVC 64",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1985, tvc64p, tvc64,   0, 	tvc,	tvc,	 0, 	  "Videoton",   "TVC 64+",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1985, tvc64pru,tvc64,   0,	tvc,	tvc,	 0, 	  "Videoton",   "TVC 64+ (Russian)",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

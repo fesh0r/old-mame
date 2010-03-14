@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i86/i86.h"
 #include "cpu/i86/i286.h"
 #include "machine/terminal.h"
@@ -15,7 +15,7 @@ static UINT8 received_char = 0;
 
 static WRITE16_HANDLER(isbc_terminal_w)
 {
-	const device_config	*devconf = devtag_get_device(space->machine, "terminal");
+	running_device *devconf = devtag_get_device(space->machine, "terminal");
 	terminal_write(devconf,0,data);
 }
 
@@ -183,8 +183,8 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT COMPANY   FULLNAME       FLAGS */
-COMP( ????, rpc86,  0,       0, 	rpc86, 	isbc, 	 0,  	  "Intel",   "RPC 86",	GAME_NOT_WORKING)
-COMP( ????, isbc86, 0,       0, 	isbc86,	isbc, 	 0,  	  "Intel",   "iSBC 86/12A",		GAME_NOT_WORKING)
-COMP( ????, isbc286, 0,      0, 	isbc286,isbc, 	 0,  	  "Intel",   "iSBC 286",		GAME_NOT_WORKING)
-COMP( ????, isbc2861, 0,      0, 	isbc2861,isbc, 	 0,  	  "Intel",   "iSBC 286-10",		GAME_NOT_WORKING)
+COMP( ????, rpc86,  0,       0, 	rpc86,	isbc,	 0, 	  "Intel",   "RPC 86",			GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( ????, isbc86, 0,       0, 	isbc86,	isbc,	 0, 	  "Intel",   "iSBC 86/12A",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( ????, isbc286, 0,      0, 	isbc286,isbc,	 0, 	  "Intel",   "iSBC 286",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( ????, isbc2861, 0,      0,	isbc2861,isbc,	 0, 	  "Intel",   "iSBC 286-10",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

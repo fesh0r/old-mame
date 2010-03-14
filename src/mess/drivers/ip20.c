@@ -16,7 +16,7 @@
 *
 \*********************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/mips/mips3.h"
 #include "sound/cdda.h"
 #include "machine/8530scc.h"
@@ -38,7 +38,7 @@ INLINE void ATTR_PRINTF(3,4) verboselog(running_machine *machine, int n_level, c
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror( "%08x: %s", cpu_get_pc(cputag_get_cpu(machine, "maincpu")), buf );
+		logerror( "%08x: %s", cpu_get_pc(devtag_get_device(machine, "maincpu")), buf );
 	}
 }
 
@@ -85,7 +85,7 @@ static UINT32 nHPC_SCSI0Descriptor, nHPC_SCSI0DMACtrl;
 
 static READ32_HANDLER( hpc_r )
 {
-	const device_config *scc;
+	running_device *scc;
 	running_machine *machine = space->machine;
 
 	offset <<= 2;
@@ -202,8 +202,8 @@ static READ32_HANDLER( hpc_r )
 
 static WRITE32_HANDLER( hpc_w )
 {
-	const device_config *scc;
-	const device_config *eeprom;
+	running_device *scc;
+	running_device *eeprom;
 	running_machine *machine = space->machine;
 
 	eeprom = devtag_get_device(space->machine, "eeprom");
@@ -600,7 +600,7 @@ static MACHINE_DRIVER_START( ip204415 )
 	MDRV_SCC8530_ADD("scc")
 
 	MDRV_CDROM_ADD( "cdrom" )
-	
+
 	MDRV_EEPROM_ADD("eeprom", eeprom_interface_93C56)
 MACHINE_DRIVER_END
 

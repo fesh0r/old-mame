@@ -17,7 +17,7 @@
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/huebler.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
@@ -31,7 +31,7 @@
 
 static TIMER_DEVICE_CALLBACK( keyboard_tick )
 {
-	amu880_state *state = timer->machine->driver_data;
+	amu880_state *state = (amu880_state *)timer->machine->driver_data;
 
 	state->key_y++;
 
@@ -42,30 +42,6 @@ static TIMER_DEVICE_CALLBACK( keyboard_tick )
 }
 
 /* Read/Write Handlers */
-
-static READ8_DEVICE_HANDLER( amu880_z80sio_r )
-{
-	switch (offset)
-	{
-	case 0: return z80sio_d_r(device, 0);
-	case 1: return z80sio_c_r(device, 0);
-	case 2: return z80sio_d_r(device, 1);
-	case 3: return z80sio_c_r(device, 1);
-	}
-
-	return 0;
-}
-
-static WRITE8_DEVICE_HANDLER( amu880_z80sio_w )
-{
-	switch (offset)
-	{
-	case 0: z80sio_d_w(device, 0, data); break;
-	case 1: z80sio_c_w(device, 0, data); break;
-	case 2: z80sio_d_w(device, 1, data); break;
-	case 3: z80sio_c_w(device, 1, data); break;
-	}
-}
 
 static READ8_HANDLER( keyboard_r )
 {
@@ -81,7 +57,7 @@ static READ8_HANDLER( keyboard_r )
 
     */
 
-	amu880_state *state = space->machine->driver_data;
+	amu880_state *state = (amu880_state *)space->machine->driver_data;
 
 	static const char *const keynames[] = { "Y0", "Y1", "Y2", "Y3", "Y4", "Y5", "Y6", "Y7", "Y8", "Y9", "Y10", "Y11", "Y12", "Y13", "Y14", "Y15" };
 
@@ -124,10 +100,10 @@ static ADDRESS_MAP_START( amu880_io, ADDRESS_SPACE_IO, 8 )
 //  AM_RANGE(0x04, 0x04) AM_MIRROR(0x02) AM_WRITE(tone_off_w)
 //  AM_RANGE(0x05, 0x05) AM_MIRROR(0x02) AM_WRITE(tone_on_w)
 	AM_RANGE(0x08, 0x09) AM_MIRROR(0x02) AM_READ(keyboard_r)
-	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE(Z80PIO2_TAG, z80pio_alt_r, z80pio_alt_w)
-	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE(Z80PIO1_TAG, z80pio_alt_r, z80pio_alt_w)
+	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE(Z80PIO2_TAG, z80pio_ba_cd_r, z80pio_ba_cd_w)
+	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE(Z80PIO1_TAG, z80pio_ba_cd_r, z80pio_ba_cd_w)
 	AM_RANGE(0x14, 0x17) AM_DEVREADWRITE(Z80CTC_TAG, z80ctc_r, z80ctc_w)
-	AM_RANGE(0x18, 0x1b) AM_DEVREADWRITE(Z80SIO_TAG, amu880_z80sio_r, amu880_z80sio_w)
+	AM_RANGE(0x18, 0x1b) AM_DEVREADWRITE(Z80SIO_TAG, z80sio_ba_cd_r, z80sio_ba_cd_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -239,7 +215,7 @@ INPUT_PORTS_END
 
 static VIDEO_START( amu880 )
 {
-	amu880_state *state = machine->driver_data;
+	amu880_state *state = (amu880_state *)machine->driver_data;
 
 	/* find memory regions */
 	state->char_rom = memory_region(machine, "chargen");
@@ -247,7 +223,7 @@ static VIDEO_START( amu880 )
 
 static VIDEO_UPDATE( amu880 )
 {
-	amu880_state *state = screen->machine->driver_data;
+	amu880_state *state = (amu880_state *)screen->machine->driver_data;
 
 	int y, sx, x, line;
 
@@ -298,36 +274,36 @@ static Z80CTC_INTERFACE( ctc_intf )
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* interrupt handler */
 	DEVCB_LINE(ctc_z0_w),	/* ZC/TO0 callback */
 	DEVCB_LINE(ctc_z1_w),	/* ZC/TO1 callback */
-	DEVCB_LINE(ctc_z2_w) 	/* ZC/TO2 callback */
+	DEVCB_LINE(ctc_z2_w)	/* ZC/TO2 callback */
 };
 
 /* Z80-PIO Interface */
 
-static const z80pio_interface pio1_intf =
+static Z80PIO_INTERFACE( pio1_intf )
 {
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* callback when change interrupt status */
 	DEVCB_NULL,						/* port A read callback */
-	DEVCB_NULL,						/* port B read callback */
 	DEVCB_NULL,						/* port A write callback */
-	DEVCB_NULL,						/* port B write callback */
 	DEVCB_NULL,						/* portA ready active callback */
+	DEVCB_NULL,						/* port B read callback */
+	DEVCB_NULL,						/* port B write callback */
 	DEVCB_NULL						/* portB ready active callback */
 };
 
-static const z80pio_interface pio2_intf =
+static Z80PIO_INTERFACE( pio2_intf )
 {
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* callback when change interrupt status */
 	DEVCB_NULL,						/* port A read callback */
-	DEVCB_NULL,						/* port B read callback */
 	DEVCB_NULL,						/* port A write callback */
-	DEVCB_NULL,						/* port B write callback */
 	DEVCB_NULL,						/* portA ready active callback */
+	DEVCB_NULL,						/* port B read callback */
+	DEVCB_NULL,						/* port B write callback */
 	DEVCB_NULL						/* portB ready active callback */
 };
 
 /* Z80-SIO Interface */
 
-static void z80daisy_interrupt(const device_config *device, int state)
+static void z80daisy_interrupt(running_device *device, int state)
 {
 	cputag_set_input_line(device->machine, Z80_TAG, INPUT_LINE_IRQ0, state);
 }
@@ -357,7 +333,7 @@ static const z80_daisy_chain amu880_daisy_chain[] =
 
 static MACHINE_START( amu880 )
 {
-	amu880_state *state = machine->driver_data;
+	amu880_state *state = (amu880_state *)machine->driver_data;
 
 	/* find devices */
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
@@ -376,7 +352,7 @@ static const cassette_config amu880_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED)
 };
 
 /* F4 Character Displayer */
@@ -425,8 +401,8 @@ static MACHINE_DRIVER_START( amu880 )
 
 	/* devices */
 	MDRV_Z80CTC_ADD(Z80CTC_TAG, XTAL_10MHz/4, ctc_intf)
-	MDRV_Z80PIO_ADD(Z80PIO1_TAG, pio1_intf)
-	MDRV_Z80PIO_ADD(Z80PIO2_TAG, pio2_intf)
+	MDRV_Z80PIO_ADD(Z80PIO1_TAG, XTAL_10MHz/4, pio1_intf)
+	MDRV_Z80PIO_ADD(Z80PIO2_TAG, XTAL_10MHz/4, pio2_intf)
 	MDRV_Z80SIO_ADD(Z80SIO_TAG, XTAL_10MHz/4, sio_intf)
 
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, amu880_cassette_config)

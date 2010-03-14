@@ -10,23 +10,30 @@
 #define Z80CTC_TAG		"u99"
 #define WD1771_TAG		"u109"
 #define COM8116_TAG		"u76"
+#define I8086_TAG		"i8086"
 
-#define XEROX820_LCD_VIDEORAM_SIZE	0x1000
-#define XEROX820_LCD_VIDEORAM_MASK	0x0fff
+#define XEROX820_VIDEORAM_SIZE	0x1000
+#define XEROX820_VIDEORAM_MASK	0x0fff
 
-typedef struct _xerox820_state xerox820_state;
-struct _xerox820_state
+class xerox820_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, xerox820_state(machine)); }
+
+	xerox820_state(running_machine &machine) { }
+
 	/* keyboard state */
-	int pbrdy;							/* key pressed */
 	int keydata;						/* keyboard data */
 
 	/* video state */
 	UINT8 *video_ram;					/* video RAM */
 	UINT8 *char_rom;					/* character ROM */
 	UINT8 scroll;						/* vertical scroll */
+	UINT8 framecnt;
 	int ncset2;							/* national character set */
 	int vatt;							/* X120 video attribute */
+	int lowlite;						/* low light attribute */
+	int chrom;							/* character ROM index */
 
 	/* floppy state */
 	int fdc_irq;						/* interrupt request */
@@ -35,9 +42,9 @@ struct _xerox820_state
 	int dsdd;							/* double sided disk detect */
 
 	/* devices */
-	const device_config *kbpio;
-	const device_config *z80ctc;
-	const device_config *wd1771;
+	running_device *kbpio;
+	running_device *z80ctc;
+	running_device *wd1771;
 };
 
 #endif

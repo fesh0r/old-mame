@@ -9,7 +9,8 @@
 #include <stdio.h>
 #include <ctype.h>
 
-#include "driver.h"
+#include "emu.h"
+#include "emuopts.h"
 #include "messram.h"
 
 
@@ -37,7 +38,7 @@ struct _messram_state
     INLINE FUNCTIONS
 *****************************************************************************/
 
-INLINE messram_state *get_safe_token(const device_config *device)
+INLINE messram_state *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -120,10 +121,10 @@ const char *messram_string(char *buffer, UINT32 ram)
 static DEVICE_START( messram )
 {
 	messram_state *messram = get_safe_token(device);
-	ram_config *config = device->inline_config;
+	ram_config *config = (ram_config *)device->baseconfig().inline_config;
 
 	/* the device named 'messram' can get ram options from command line */
-	if (strcmp(device->tag, "messram") == 0)
+	if (strcmp(device->tag(), "messram") == 0)
 	{
 		const char *ramsize_string = options_get_string(mame_options(), OPTION_RAMSIZE);
 
@@ -148,7 +149,7 @@ static DEVICE_START( messram )
 
 static DEVICE_VALIDITY_CHECK( messram )
 {
-	ram_config *config = device->inline_config;
+	ram_config *config = (ram_config *)device->inline_config;
 	const char *ramsize_string = NULL;
 	int is_valid = FALSE;
 	UINT32 specified_ram = 0;
@@ -163,7 +164,7 @@ static DEVICE_VALIDITY_CHECK( messram )
 	}
 
 	/* command line options are only parsed for the device named "messram" */
-	if (device->tag!=NULL && strcmp(device->tag, "messram") == 0)
+	if (device->tag()!=NULL && strcmp(device->tag(), "messram") == 0)
 	{
 		if (mame_options()==NULL) return FALSE;
 		/* verify command line ram option */
@@ -190,11 +191,11 @@ static DEVICE_VALIDITY_CHECK( messram )
 				{
 					const char *s;
 
-					astring *buffer = astring_alloc();
-					astring_cpyc(buffer, config->extra_options);
-					astring_replacechr(buffer, ',', 0);
+					astring buffer;
+					astring_cpyc(&buffer, config->extra_options);
+					astring_replacechr(&buffer, ',', 0);
 
-					s = astring_c(buffer);
+					s = astring_c(&buffer);
 
 					/* try to parse each option */
 					while(*s != '\0')
@@ -212,8 +213,6 @@ static DEVICE_VALIDITY_CHECK( messram )
 
 						s += strlen(s) + 1;
 					}
-
-					astring_free(buffer);
 				}
 
 			} else {
@@ -277,14 +276,14 @@ DEVICE_GET_INFO( messram )
     IMPLEMENTATION
 ***************************************************************************/
 
-UINT32 messram_get_size(const device_config *device)
+UINT32 messram_get_size(running_device *device)
 {
 	messram_state *messram = get_safe_token(device);
 	return messram->size;
 }
 
 
-UINT8 *messram_get_ptr(const device_config *device)
+UINT8 *messram_get_ptr(running_device *device)
 {
 	messram_state *messram = get_safe_token(device);
 	return messram->ram;
@@ -292,7 +291,7 @@ UINT8 *messram_get_ptr(const device_config *device)
 
 
 #ifdef UNUSED_FUNCTION
-void messram_dump(const device_config *device, const char *filename)
+void messram_dump(running_device *device, const char *filename)
 {
 	messram_state *messram = get_safe_token(device);
 	file_error filerr;

@@ -10,12 +10,14 @@
 #ifndef __HD61830__
 #define __HD61830__
 
-#include "driver.h"
+#include "emu.h"
 #include "devcb.h"
 
 /***************************************************************************
     MACROS / CONSTANTS
 ***************************************************************************/
+
+#define HD61830_TAG		"hd61830"
 
 #define HD61830 DEVICE_GET_INFO_NAME( hd61830 )
 
@@ -51,6 +53,6 @@ READ8_DEVICE_HANDLER( hd61830_data_r );
 WRITE8_DEVICE_HANDLER( hd61830_data_w );
 
 /* screen update */
-void hd61830_update(const device_config *device, bitmap_t *bitmap, const rectangle *cliprect);
+void hd61830_update(running_device *device, bitmap_t *bitmap, const rectangle *cliprect);
 
 #endif

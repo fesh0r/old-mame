@@ -5,7 +5,7 @@
 **********************************************************************/
 
 /* Core includes */
-#include "driver.h"
+#include "emu.h"
 #include "includes/nascom1.h"
 
 /* Components */
@@ -30,7 +30,7 @@
  *
  *************************************/
 
-static const device_config *nascom1_hd6402;
+static running_device *nascom1_hd6402;
 static int nascom1_tape_size = 0;
 static UINT8 *nascom1_tape_image = NULL;
 static int nascom1_tape_index = 0;
@@ -68,6 +68,7 @@ static WRITE_LINE_DEVICE_HANDLER( nascom2_fdc_drq_w )
 
 const wd17xx_interface nascom2_wd17xx_interface =
 {
+	DEVCB_LINE_VCC,
 	DEVCB_LINE(nascom2_fdc_intrq_w),
 	DEVCB_LINE(nascom2_fdc_drq_w),
 	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
@@ -82,7 +83,7 @@ READ8_HANDLER( nascom2_fdc_select_r )
 
 WRITE8_HANDLER( nascom2_fdc_select_w )
 {
-	const device_config *fdc = devtag_get_device(space->machine, "wd1793");
+	running_device *fdc = devtag_get_device(space->machine, "wd1793");
 	nascom2_fdc.select = data;
 
 	logerror("nascom2_fdc_select_w: %02x\n", data);
@@ -198,7 +199,7 @@ WRITE8_DEVICE_HANDLER( nascom1_hd6402_so )
 DEVICE_IMAGE_LOAD( nascom1_cassette )
 {
 	nascom1_tape_size = image_length(image);
-	nascom1_tape_image = image_ptr(image);
+	nascom1_tape_image = (UINT8*)image_ptr(image);
 	if (!nascom1_tape_image)
 		return INIT_FAIL;
 
@@ -270,15 +271,6 @@ MACHINE_RESET( nascom1 )
 	ay31015_set_input_pin( nascom1_hd6402, AY31015_EPS, 1 );
 	ay31015_set_input_pin( nascom1_hd6402, AY31015_TSB, 1 );
 	ay31015_set_input_pin( nascom1_hd6402, AY31015_CS, 1 );
-}
-
-MACHINE_RESET( nascom2 )
-{
-	const device_config *fdc = devtag_get_device(machine, "wd1793");
-
-	wd17xx_set_density(fdc,DEN_FM_HI);
-
-	MACHINE_RESET_CALL(nascom1);
 }
 
 DRIVER_INIT( nascom1 )

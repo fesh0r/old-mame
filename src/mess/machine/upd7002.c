@@ -8,7 +8,7 @@
 
 ******************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "upd7002.h"
 
 
@@ -55,7 +55,7 @@ struct _uPD7002_t
  Implementation
 *****************************************************************************/
 
-INLINE uPD7002_t *get_safe_token(const device_config *device)
+INLINE uPD7002_t *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -72,7 +72,7 @@ READ8_DEVICE_HANDLER ( uPD7002_EOC_r )
 
 static TIMER_CALLBACK(uPD7002_conversioncomplete)
 {
-	const device_config *device = ptr;
+	running_device *device = (running_device *)ptr;
 	uPD7002_t *uPD7002 = get_safe_token(device);
 
 	int counter_value = param;
@@ -181,10 +181,10 @@ static DEVICE_START( uPD7002 )
 	// validate arguments
 
 	assert(device != NULL);
-	assert(device->tag != NULL);
-	assert(device->static_config != NULL);
+	assert(device->tag() != NULL);
+	assert(device->baseconfig().static_config != NULL);
 
-	uPD7002->intf = device->static_config;
+	uPD7002->intf = (const uPD7002_interface*)device->baseconfig().static_config;
 	uPD7002->status = 0;
 	uPD7002->data1 = 0;
 	uPD7002->data0 = 0;
@@ -192,11 +192,11 @@ static DEVICE_START( uPD7002 )
 	uPD7002->conversion_counter = 0;
 
 	// register for state saving
-	state_save_register_item(device->machine, "uPD7002", device->tag, 0, uPD7002->status);
-	state_save_register_item(device->machine, "uPD7002", device->tag, 0, uPD7002->data1);
-	state_save_register_item(device->machine, "uPD7002", device->tag, 0, uPD7002->data0);
-	state_save_register_item(device->machine, "uPD7002", device->tag, 0, uPD7002->digitalvalue);
-	state_save_register_item(device->machine, "uPD7002", device->tag, 0, uPD7002->conversion_counter);
+	state_save_register_item(device->machine, "uPD7002", device->tag(), 0, uPD7002->status);
+	state_save_register_item(device->machine, "uPD7002", device->tag(), 0, uPD7002->data1);
+	state_save_register_item(device->machine, "uPD7002", device->tag(), 0, uPD7002->data0);
+	state_save_register_item(device->machine, "uPD7002", device->tag(), 0, uPD7002->digitalvalue);
+	state_save_register_item(device->machine, "uPD7002", device->tag(), 0, uPD7002->conversion_counter);
 }
 
 static DEVICE_RESET( uPD7002 )

@@ -20,7 +20,7 @@
     Raphael Nabet, 2003.
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "ti99_4x.h"
 #include "99_peb.h"
 #include "tms9902.h"
@@ -62,7 +62,7 @@ struct _card_t
 	int i;
 };
 
-INLINE pio_t *get_safe_token_pio(const device_config *device)
+INLINE pio_t *get_safe_token_pio(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -130,12 +130,12 @@ static DEVICE_RESET( ti99_4_pio )
 */
 static DEVICE_IMAGE_LOAD( ti99_4_rs232 )
 {
-	const device_config *tms9902 = NULL;
+	running_device *tms9902 = NULL;
 
-	if (strcmp(image->tag, "rs232:port0")) {
+	if (strcmp(image->tag(), "rs232:port0")) {
 		tms9902 = devtag_get_device(image->machine, "rs232:tms9902_0");
 	}
-	if (strcmp(image->tag, "rs232:port1")) {
+	if (strcmp(image->tag(), "rs232:port1")) {
 		tms9902 = devtag_get_device(image->machine, "rs232:tms9902_1");
 	}
 
@@ -412,7 +412,7 @@ static TMS9902_INT_CALLBACK( int_callback_1 )
 static TMS9902_XMIT_CALLBACK( xmit_callback_0 )
 {
 	UINT8 buf = data;
-	const device_config *rs232_fp = devtag_get_device(device->machine, "rs232:port0");
+	running_device *rs232_fp = devtag_get_device(device->machine, "rs232:port0");
 
 	if (rs232_fp)
 		image_fwrite(rs232_fp, &buf, 1);
@@ -421,7 +421,7 @@ static TMS9902_XMIT_CALLBACK( xmit_callback_0 )
 static TMS9902_XMIT_CALLBACK( xmit_callback_1 )
 {
 	UINT8 buf = data;
-	const device_config *rs232_fp = devtag_get_device(device->machine, "rs232:port1");
+	running_device *rs232_fp = devtag_get_device(device->machine, "rs232:port1");
 
 	if (rs232_fp)
 		image_fwrite(rs232_fp, &buf, 1);
@@ -454,7 +454,7 @@ static DEVICE_GET_INFO( ti99_4_rs232 )
 		case DEVINFO_INT_IMAGE_TYPE:	            info->i = IO_SERIAL;                                      break;
 		case DEVINFO_INT_IMAGE_READABLE:            info->i = 1;                                               break;
 		case DEVINFO_INT_IMAGE_WRITEABLE:			info->i = 1;                                               break;
-		case DEVINFO_INT_IMAGE_CREATABLE:	     	info->i = 1;                                               break;
+		case DEVINFO_INT_IMAGE_CREATABLE:	    	info->i = 1;                                               break;
 
 		case DEVINFO_FCT_START:		                info->start = DEVICE_START_NAME( ti99_4_rs232 );              break;
 		case DEVINFO_FCT_RESET:						info->reset = DEVICE_RESET_NAME( ti99_4_rs232 );			break;
@@ -487,7 +487,7 @@ DEVICE_GET_INFO( ti99_4_pio )
 		case DEVINFO_INT_IMAGE_TYPE:	            info->i = IO_PARALLEL;                                      break;
 		case DEVINFO_INT_IMAGE_READABLE:            info->i = 1;                                               break;
 		case DEVINFO_INT_IMAGE_WRITEABLE:			info->i = 1;                                               break;
-		case DEVINFO_INT_IMAGE_CREATABLE:	     	info->i = 1;                                               break;
+		case DEVINFO_INT_IMAGE_CREATABLE:	    	info->i = 1;                                               break;
 
 		case DEVINFO_FCT_START:		                info->start = DEVICE_START_NAME( ti99_4_pio );              break;
 		case DEVINFO_FCT_RESET:						info->reset = DEVICE_RESET_NAME( ti99_4_pio );			break;

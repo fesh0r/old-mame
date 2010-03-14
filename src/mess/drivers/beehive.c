@@ -8,7 +8,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 
 static ADDRESS_MAP_START(beehive_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -74,5 +74,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( ????, beehive,  0,       0, 	beehive, 	beehive, 	 0,  "BeeHive",   "DM3270",		GAME_NOT_WORKING)
+COMP( ????, beehive,  0,       0,	beehive,	beehive,	 0,  "BeeHive",   "DM3270",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

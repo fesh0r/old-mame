@@ -4,18 +4,17 @@
     peter.trauner@jk.uni-linz.ac.at
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m6502/m6509.h"
 #include "sound/sid6581.h"
 #include "machine/6525tpi.h"
 #include "machine/6526cia.h"
 
 #include "includes/cbm.h"
-#include "video/vic6567.h"
-#include "includes/cbmserb.h"
-#include "includes/cbmieeeb.h"
+#include "machine/ieee488.h"
 
 #include "includes/cbmb.h"
+#include "crsshair.h"
 
 #include "devices/cartslot.h"
 
@@ -69,41 +68,62 @@ static UINT8 *cbmb_memory;
  */
 READ8_DEVICE_HANDLER( cbmb_tpi0_port_a_r )
 {
-	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
-	int data = 0;
+	running_device *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	UINT8 data = 0;
 
-	if (cbm_ieee_nrfd_r(ieeebus, 0))
+	if (ieee488_nrfd_r(ieeebus))
 		data |= 0x80;
 
-	if (cbm_ieee_ndac_r(ieeebus, 0))
+	if (ieee488_ndac_r(ieeebus))
 		data |= 0x40;
 
-	if (cbm_ieee_eoi_r(ieeebus, 0))
+	if (ieee488_eoi_r(ieeebus))
 		data |= 0x20;
 
-	if (cbm_ieee_dav_r(ieeebus, 0))
+	if (ieee488_dav_r(ieeebus))
 		data |= 0x10;
 
-	if (cbm_ieee_atn_r(ieeebus, 0))
+	if (ieee488_atn_r(ieeebus))
 		data |= 0x08;
 
-/*  if (cbm_ieee_ren_r(ieeebus, 0))
-        data |= 0x04; */
+	if (ieee488_ren_r(ieeebus))
+        data |= 0x04;
 
 	return data;
 }
 
 WRITE8_DEVICE_HANDLER( cbmb_tpi0_port_a_w )
 {
-	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	running_device *ieeebus = devtag_get_device(device->machine, "ieee_bus");
 
-	cbm_ieee_nrfd_write(ieeebus, 0, data & 0x80);
-	cbm_ieee_ndac_write(ieeebus, 0, data & 0x40);
-	cbm_ieee_eoi_write(ieeebus, 0, data & 0x20);
-	cbm_ieee_dav_write(ieeebus, 0, data & 0x10);
-	cbm_ieee_atn_write(ieeebus, 0, data & 0x08);
-/*  cbm_ieee_ren_write(ieeebus, 0, data & 0x04); */
-	logerror("cbm ieee %d %d\n", data & 0x02, data & 0x01);
+	ieee488_nrfd_w(ieeebus, device, BIT(data, 7));
+	ieee488_ndac_w(ieeebus, device, BIT(data, 6));
+	ieee488_eoi_w(ieeebus, device, BIT(data, 5));
+	ieee488_dav_w(ieeebus, device, BIT(data, 4));
+	ieee488_atn_w(ieeebus, device, BIT(data, 3));
+	ieee488_ren_w(ieeebus, device, BIT(data, 2));
+}
+
+READ8_DEVICE_HANDLER( cbmb_tpi0_port_b_r )
+{
+	running_device *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	UINT8 data = 0;
+
+	if (ieee488_srq_r(ieeebus))
+		data |= 0x02;
+
+	if (ieee488_ifc_r(ieeebus))
+		data |= 0x01;
+
+	return data;
+}
+
+WRITE8_DEVICE_HANDLER( cbmb_tpi0_port_b_w )
+{
+	running_device *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+
+	ieee488_srq_w(ieeebus, device, BIT(data, 1));
+	ieee488_ifc_w(ieeebus, device, BIT(data, 0));
 }
 
 /* tpi at 0xfdf00
@@ -184,7 +204,7 @@ READ8_DEVICE_HANDLER( cbmb_keyboard_line_b )
 READ8_DEVICE_HANDLER( cbmb_keyboard_line_c )
 {
 	int data = 0;
-	cbmb_state *state = device->machine->driver_data;
+	cbmb_state *state = (cbmb_state *)device->machine->driver_data;
 	if ((input_port_read(device->machine, "ROW0") & ~cbmb_keyline_a) ||
 				(input_port_read(device->machine, "ROW1") & ~cbmb_keyline_b))
 		 data |= 0x01;
@@ -220,7 +240,7 @@ READ8_DEVICE_HANDLER( cbmb_keyboard_line_c )
 	return data ^0xff;
 }
 
-void cbmb_irq( const device_config *device, int level )
+void cbmb_irq( running_device *device, int level )
 {
 	static int old_level = 0;
 
@@ -243,26 +263,27 @@ void cbmb_irq( const device_config *device, int level )
  */
 static READ8_DEVICE_HANDLER( cbmb_cia_port_a_r )
 {
-	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
-	return cbm_ieee_data_r(ieeebus, 0);
+	running_device *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	return ieee488_dio_r(ieeebus, 0);
 }
 
 static WRITE8_DEVICE_HANDLER( cbmb_cia_port_a_w )
 {
-	const device_config *ieeebus = devtag_get_device(device->machine, "ieee_bus");
-	cbm_ieee_data_write(ieeebus, 0, data);
+	running_device *ieeebus = devtag_get_device(device->machine, "ieee_bus");
+	ieee488_dio_w(ieeebus, device, data);
 }
 
-const cia6526_interface cbmb_cia =
+const mos6526_interface cbmb_cia =
 {
+	60,
 	DEVCB_DEVICE_LINE("tpi6525_0", tpi6525_irq2_level),
 	DEVCB_NULL,	/* pc_func */
-	60,
-
-	{
-		{ DEVCB_HANDLER(cbmb_cia_port_a_r), DEVCB_HANDLER(cbmb_cia_port_a_w) },
-		{ DEVCB_NULL, DEVCB_NULL }
-	}
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(cbmb_cia_port_a_r),
+	DEVCB_HANDLER(cbmb_cia_port_a_w),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 WRITE8_HANDLER( cbmb_colorram_w )
@@ -270,7 +291,7 @@ WRITE8_HANDLER( cbmb_colorram_w )
 	cbmb_colorram[offset] = data | 0xf0;
 }
 
-static int cbmb_dma_read( running_machine *machine, int offset )
+int cbmb_dma_read( running_machine *machine, int offset )
 {
 	if (offset >= 0x1000)
 		return cbmb_videoram[offset & 0x3ff];
@@ -278,7 +299,7 @@ static int cbmb_dma_read( running_machine *machine, int offset )
 		return cbmb_chargen[offset & 0xfff];
 }
 
-static int cbmb_dma_read_color( running_machine *machine, int offset )
+int cbmb_dma_read_color( running_machine *machine, int offset )
 {
 	return cbmb_colorram[offset & 0x3ff];
 }
@@ -290,7 +311,7 @@ WRITE8_DEVICE_HANDLER( cbmb_change_font )
 
 static void cbmb_common_driver_init( running_machine *machine )
 {
-	cbmb_state *state = machine->driver_data;
+	cbmb_state *state = (cbmb_state *)machine->driver_data;
 	cbmb_chargen = memory_region(machine, "maincpu") + 0x100000;
 	/*    memset(c64_memory, 0, 0xfd00); */
 
@@ -302,7 +323,7 @@ static void cbmb_common_driver_init( running_machine *machine )
 
 DRIVER_INIT( cbm600 )
 {
-	cbmb_state *state = machine->driver_data;
+	cbmb_state *state = (cbmb_state *)machine->driver_data;
 	cbmb_common_driver_init(machine);
 	state->cbm_ntsc = 1;
 	cbm600_vh_init(machine);
@@ -310,7 +331,7 @@ DRIVER_INIT( cbm600 )
 
 DRIVER_INIT( cbm600pal )
 {
-	cbmb_state *state = machine->driver_data;
+	cbmb_state *state = (cbmb_state *)machine->driver_data;
 	cbmb_common_driver_init(machine);
 	state->cbm_ntsc = 0;
 	cbm600_vh_init(machine);
@@ -318,14 +339,14 @@ DRIVER_INIT( cbm600pal )
 
 DRIVER_INIT( cbm600hu )
 {
-	cbmb_state *state = machine->driver_data;
+	cbmb_state *state = (cbmb_state *)machine->driver_data;
 	cbmb_common_driver_init(machine);
 	state->cbm_ntsc = 0;
 }
 
 DRIVER_INIT( cbm700 )
 {
-	cbmb_state *state = machine->driver_data;
+	cbmb_state *state = (cbmb_state *)machine->driver_data;
 	cbmb_common_driver_init(machine);
 	state->cbm700 = 1;
 	state->cbm_ntsc = 0;
@@ -334,24 +355,37 @@ DRIVER_INIT( cbm700 )
 
 DRIVER_INIT( p500 )
 {
-	cbmb_state *state = machine->driver_data;
+	cbmb_state *state = (cbmb_state *)machine->driver_data;
 	cbmb_common_driver_init(machine);
 	state->p500 = 1;
 	state->cbm_ntsc = 1;
-	vic6567_init(0, 0, cbmb_dma_read, cbmb_dma_read_color, NULL);
 }
 
 MACHINE_RESET( cbmb )
 {
-//removed	cbm_drive_0_config (IEEE8ON ? IEEE : 0, 8);
-//removed	cbm_drive_1_config (IEEE9ON ? IEEE : 0, 9);
+//removed   cbm_drive_0_config (IEEE8ON ? IEEE : 0, 8);
+//removed   cbm_drive_1_config (IEEE9ON ? IEEE : 0, 9);
 }
 
+
+static TIMER_CALLBACK( p500_lightpen_tick )
+{
+	if ((input_port_read_safe(machine, "CTRLSEL", 0x00) & 0x07) == 0x04)
+	{
+		/* enable lightpen crosshair */
+		crosshair_set_screen(machine, 0, CROSSHAIR_SCREEN_ALL);
+	}
+	else
+	{
+		/* disable lightpen crosshair */
+		crosshair_set_screen(machine, 0, CROSSHAIR_SCREEN_NONE);
+	}
+}
 
 static TIMER_CALLBACK(cbmb_frame_interrupt)
 {
 	static int level = 0;
-	const device_config *tpi_0 = devtag_get_device(machine, "tpi6525_0");
+	running_device *tpi_0 = devtag_get_device(machine, "tpi6525_0");
 
 #if 0
 	int controller1 = input_port_read(machine, "CTRLSEL") & 0x07;
@@ -450,6 +484,9 @@ static TIMER_CALLBACK(cbmb_frame_interrupt)
 // 128u4 FIXME
 //  vic2_frame_interrupt (device);
 
+	/* for p500, check if lightpen has been chosen as input: if so, enable crosshair (but c64-like inputs for p500 are not working atm) */
+	timer_set(machine, attotime_zero, NULL, 0, p500_lightpen_tick);
+
 	set_led_status(machine, 1, input_port_read(machine, "SPECIAL") & 0x04 ? 1 : 0);		/* Shift Lock */
 }
 
@@ -471,7 +508,7 @@ static DEVICE_IMAGE_LOAD(cbmb_cart)
 
 	filetype = image_filetype(image);
 
- 	if (!mame_stricmp(filetype, "crt"))
+	if (!mame_stricmp(filetype, "crt"))
 	{
 	/* We temporarily remove .crt loading. Previous versions directly used
     the same routines used to load C64 .crt file, but I seriously doubt the

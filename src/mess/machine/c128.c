@@ -9,7 +9,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/c128.h"
 #include "includes/c64.h"
 #include "includes/cbm.h"
@@ -20,6 +20,42 @@
 #include "sound/sid6581.h"
 #include "video/vic6567.h"
 #include "video/vdc8563.h"
+
+#define MMU_PAGE1 ((((c128_mmu[10]&0xf)<<8)|c128_mmu[9])<<8)
+#define MMU_PAGE0 ((((c128_mmu[8]&0xf)<<8)|c128_mmu[7])<<8)
+#define MMU_VIC_ADDR ((c128_mmu[6]&0xc0)<<10)
+#define MMU_RAM_RCR_ADDR ((c128_mmu[6]&0x30)<<14)
+#define MMU_SIZE (c128_mmu_helper[c128_mmu[6]&3])
+#define MMU_BOTTOM (c128_mmu[6]&4)
+#define MMU_TOP (c128_mmu[6]&8)
+#define MMU_CPU8502 (c128_mmu[5]&1)	   /* else z80 */
+/* fastio output (c128_mmu[5]&8) else input */
+#define MMU_FSDIR (c128_mmu[5]&0x08)
+#define MMU_GAME_IN (c128_mmu[5]&0x10)
+#define MMU_EXROM_IN (c128_mmu[5]&0x20)
+#define MMU_64MODE (c128_mmu[5]&0x40)
+#define MMU_40_IN (c128_mmu[5]&0x80)
+
+#define MMU_RAM_CR_ADDR ((c128_mmu[0]&0xc0)<<10)
+#define MMU_RAM_LO (c128_mmu[0]&2)	   /* else rom at 0x4000 */
+#define MMU_RAM_MID ((c128_mmu[0]&0xc)==0xc)	/* 0x8000 - 0xbfff */
+#define MMU_ROM_MID ((c128_mmu[0]&0xc)==0)
+#define MMU_EXTERNAL_ROM_MID ((c128_mmu[0]&0xc)==8)
+#define MMU_INTERNAL_ROM_MID ((c128_mmu[0]&0xc)==4)
+
+#define MMU_IO_ON (!(c128_mmu[0]&1))   /* io window at 0xd000 */
+#define MMU_ROM_HI ((c128_mmu[0]&0x30)==0)	/* rom at 0xc000 */
+#define MMU_EXTERNAL_ROM_HI ((c128_mmu[0]&0x30)==0x20)
+#define MMU_INTERNAL_ROM_HI ((c128_mmu[0]&0x30)==0x10)
+#define MMU_RAM_HI ((c128_mmu[0]&0x30)==0x30)
+
+#define MMU_RAM_ADDR (MMU_RAM_RCR_ADDR|MMU_RAM_CR_ADDR)
+
+static UINT8 c128_mmu[0x0b];
+static const int c128_mmu_helper[4] =
+{0x400, 0x1000, 0x2000, 0x4000};
+static int mmu_cpu;
+static int mmu_page0, mmu_page1;
 
 #define VERBOSE_LEVEL 0
 #define DBG_LOG( MACHINE, N, M, A ) \
@@ -67,6 +103,7 @@ static UINT8 c64_port_data;
 
 static UINT8 c128_keyline[3] = {0xff, 0xff, 0xff};
 
+static int c128_cnt1 = 1, c128_sp1 = 1, c128_data_out = 0;
 static int c128_va1617;
 static int c128_cia1_on;
 static UINT8 vicirq;
@@ -74,8 +111,8 @@ static UINT8 vicirq;
 static void c128_nmi( running_machine *machine )
 {
 	static int nmilevel = 0;
-	const device_config *cia_1 = devtag_get_device(machine, "cia_1");
-	int cia1irq = cia_get_irq(cia_1);
+	running_device *cia_1 = devtag_get_device(machine, "cia_1");
+	int cia1irq = mos6526_irq_r(cia_1);
 
 	if (nmilevel != (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq)	/* KEY_RESTORE */
 	{
@@ -111,7 +148,7 @@ static void c128_nmi( running_machine *machine )
 
 static READ8_DEVICE_HANDLER( c128_cia0_port_a_r )
 {
-	UINT8 cia0portb = cia_get_output_b(devtag_get_device(device->machine, "cia_0"));
+	UINT8 cia0portb = mos6526_pb_r(devtag_get_device(device->machine, "cia_0"), 0);
 
 	return cbm_common_cia0_port_a_r(device, cia0portb);
 }
@@ -119,15 +156,16 @@ static READ8_DEVICE_HANDLER( c128_cia0_port_a_r )
 static READ8_DEVICE_HANDLER( c128_cia0_port_b_r )
 {
 	UINT8 value = 0xff;
-	UINT8 cia0porta = cia_get_output_a(devtag_get_device(device->machine, "cia_0"));
+	UINT8 cia0porta = mos6526_pa_r(devtag_get_device(device->machine, "cia_0"), 0);
+	running_device *vic2e = devtag_get_device(device->machine, "vic2e");
 
 	value &= cbm_common_cia0_port_b_r(device, cia0porta);
 
-	if (!vic2e_k0_r())
+	if (!vic2e_k0_r(vic2e))
 		value &= c128_keyline[0];
-	if (!vic2e_k1_r())
+	if (!vic2e_k1_r(vic2e))
 		value &= c128_keyline[1];
-	if (!vic2e_k2_r())
+	if (!vic2e_k2_r(vic2e))
 		value &= c128_keyline[2];
 
     return value;
@@ -135,7 +173,8 @@ static READ8_DEVICE_HANDLER( c128_cia0_port_b_r )
 
 static WRITE8_DEVICE_HANDLER( c128_cia0_port_b_w )
 {
-    vic2_lightpen_write(data & 0x10);
+	running_device *vic2e = devtag_get_device(device->machine, "vic2e");
+	vic2_lightpen_write(vic2e, data & 0x10);
 }
 
 static void c128_irq( running_machine *machine, int level )
@@ -159,47 +198,103 @@ static void c128_irq( running_machine *machine, int level )
 	}
 }
 
-static void c128_cia0_interrupt( const device_config *device, int level )
+static void c128_cia0_interrupt( running_device *device, int level )
 {
-	c128_irq (device->machine, level || vicirq);
+	c128_irq(device->machine, level || vicirq);
 }
 
-static void c128_vic_interrupt( running_machine *machine, int level )
+void c128_vic_interrupt( running_machine *machine, int level )
 {
-	const device_config *cia_0 = devtag_get_device(machine, "cia_0");
+	running_device *cia_0 = devtag_get_device(machine, "cia_0");
 #if 1
 	if (level != vicirq)
 	{
-		c128_irq (machine, level || cia_get_irq(cia_0));
+		c128_irq (machine, level || mos6526_irq_r(cia_0));
 		vicirq = level;
 	}
 #endif
 }
 
-const cia6526_interface c128_ntsc_cia0 =
+static void c128_iec_data_out_w(running_machine *machine)
 {
-	DEVCB_LINE(c128_cia0_interrupt),
-	DEVCB_NULL,	/* pc_func */
+	running_device *cia_1 = devtag_get_device(machine, "cia_1");
+	running_device *iec = devtag_get_device(machine, "iec");
+	int data = !c128_data_out;
+
+	/* fast serial data */
+	if (MMU_FSDIR) data &= c128_sp1;
+
+	cbm_iec_data_w(iec, cia_1, data);
+}
+
+static void c128_iec_srq_out_w(running_machine *machine)
+{
+	running_device *cia_1 = devtag_get_device(machine, "cia_1");
+	running_device *iec = devtag_get_device(machine, "iec");
+	int srq = 1;
+
+	/* fast serial clock */
+	if (MMU_FSDIR) srq &= c128_cnt1;
+
+	cbm_iec_srq_w(iec, cia_1, srq);
+}
+
+static WRITE_LINE_DEVICE_HANDLER( cia0_cnt_w )
+{
+	/* fast clock out */
+	c128_cnt1 = state;
+	c128_iec_srq_out_w(device->machine);
+}
+
+static WRITE_LINE_DEVICE_HANDLER( cia0_sp_w )
+{
+	/* fast data out */
+	c128_sp1 = state;
+	c128_iec_data_out_w(device->machine);
+}
+
+const mos6526_interface c128_ntsc_cia0 =
+{
 	60,
-
-	{
-		{ DEVCB_HANDLER(c128_cia0_port_a_r), DEVCB_NULL },
-		{ DEVCB_HANDLER(c128_cia0_port_b_r), DEVCB_HANDLER(c128_cia0_port_b_w) }
-	}
-};
-
-const cia6526_interface c128_pal_cia0 =
-{
 	DEVCB_LINE(c128_cia0_interrupt),
 	DEVCB_NULL,	/* pc_func */
-	50,
-
-	{
-		{ DEVCB_HANDLER(c128_cia0_port_a_r), DEVCB_NULL },
-		{ DEVCB_HANDLER(c128_cia0_port_b_r), DEVCB_HANDLER(c128_cia0_port_b_w) }
-	}
+	DEVCB_LINE(cia0_cnt_w),
+	DEVCB_LINE(cia0_sp_w),
+	DEVCB_HANDLER(c128_cia0_port_a_r),
+	DEVCB_NULL,
+	DEVCB_HANDLER(c128_cia0_port_b_r),
+	DEVCB_HANDLER(c128_cia0_port_b_w)
 };
 
+const mos6526_interface c128_pal_cia0 =
+{
+	50,
+	DEVCB_LINE(c128_cia0_interrupt),
+	DEVCB_NULL,	/* pc_func */
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(c128_cia0_port_a_r),
+	DEVCB_NULL,
+	DEVCB_HANDLER(c128_cia0_port_b_r),
+	DEVCB_HANDLER(c128_cia0_port_b_w)
+};
+
+WRITE_LINE_DEVICE_HANDLER( c128_iec_srq_w )
+{
+	if (!MMU_FSDIR)
+	{
+		mos6526_flag_w(device, state);
+		mos6526_cnt_w(device, state);
+	}
+}
+
+WRITE_LINE_DEVICE_HANDLER( c128_iec_data_w )
+{
+	if (!MMU_FSDIR)
+	{
+		mos6526_sp_w(device, state);
+	}
+}
 
 /*
  * CIA 1 - Port A
@@ -227,7 +322,7 @@ const cia6526_interface c128_pal_cia0 =
 static READ8_DEVICE_HANDLER( c128_cia1_port_a_r )
 {
 	UINT8 value = 0xff;
-	const device_config *serbus = devtag_get_device(device->machine, "iec");
+	running_device *serbus = devtag_get_device(device->machine, "iec");
 
 	if (!cbm_iec_clk_r(serbus))
 		value &= ~0x40;
@@ -241,42 +336,48 @@ static READ8_DEVICE_HANDLER( c128_cia1_port_a_r )
 static WRITE8_DEVICE_HANDLER( c128_cia1_port_a_w )
 {
 	static const int helper[4] = {0xc000, 0x8000, 0x4000, 0x0000};
-	const device_config *serbus = devtag_get_device(device->machine, "iec");
+	running_device *serbus = devtag_get_device(device->machine, "iec");
 
-	cbm_iec_clk_w(serbus, device, !(data & 0x10));
-	cbm_iec_data_w(serbus, device, !(data & 0x20));
-	cbm_iec_atn_w(serbus, device, !(data & 0x08));
+	c128_data_out = BIT(data, 5);
+	c128_iec_data_out_w(device->machine);
+
+	cbm_iec_clk_w(serbus, device, !BIT(data, 4));
+
+	cbm_iec_atn_w(serbus, device, !BIT(data, 3));
+
 	c64_vicaddr = c64_memory + helper[data & 0x03];
 	c128_vicaddr = c64_memory + helper[data & 0x03] + c128_va1617;
 }
 
-static void c128_cia1_interrupt( const device_config *device, int level )
+static void c128_cia1_interrupt( running_device *device, int level )
 {
 	c128_nmi(device->machine);
 }
 
-const cia6526_interface c128_ntsc_cia1 =
+const mos6526_interface c128_ntsc_cia1 =
 {
+	60,
 	DEVCB_LINE(c128_cia1_interrupt),
 	DEVCB_NULL,	/* pc_func */
-	60,
-
-	{
-		{ DEVCB_HANDLER(c128_cia1_port_a_r), DEVCB_HANDLER(c128_cia1_port_a_w) },
-		{ DEVCB_NULL, DEVCB_NULL }
-	}
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(c128_cia1_port_a_r),
+	DEVCB_HANDLER(c128_cia1_port_a_w),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
-const cia6526_interface c128_pal_cia1 =
+const mos6526_interface c128_pal_cia1 =
 {
+	50,
 	DEVCB_LINE(c128_cia1_interrupt),
 	DEVCB_NULL,	/* pc_func */
-	50,
-
-	{
-		{ DEVCB_HANDLER(c128_cia1_port_a_r), DEVCB_HANDLER(c128_cia1_port_a_w) },
-		{ DEVCB_NULL, DEVCB_NULL }
-	}
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(c128_cia1_port_a_r),
+	DEVCB_HANDLER(c128_cia1_port_a_w),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 /***********************************************
@@ -297,11 +398,13 @@ static READ8_HANDLER( c128_dma8726_port_r )
 
 WRITE8_HANDLER( c128_write_d000 )
 {
-	const device_config *cia_0 = devtag_get_device(space->machine, "cia_0");
-	const device_config *cia_1 = devtag_get_device(space->machine, "cia_1");
-	const device_config *sid = devtag_get_device(space->machine, "sid6581");
+	running_device *cia_0 = devtag_get_device(space->machine, "cia_0");
+	running_device *cia_1 = devtag_get_device(space->machine, "cia_1");
+	running_device *sid = devtag_get_device(space->machine, "sid6581");
+	running_device *vic2e = devtag_get_device(space->machine, "vic2e");
+	running_device *vdc8563 = devtag_get_device(space->machine, "vdc8563");
 
-	UINT8 c64_port6510 = (UINT8) devtag_get_info_int(space->machine, "maincpu", CPUINFO_INT_M6510_PORT);
+	UINT8 c64_port6510 = (UINT8) space->machine->device("maincpu")->get_runtime_int(CPUINFO_INT_M6510_PORT);
 
 	if (!c128_write_io)
 	{
@@ -315,7 +418,7 @@ WRITE8_HANDLER( c128_write_d000 )
 		switch ((offset&0xf00)>>8)
 		{
 		case 0:case 1: case 2: case 3:
-			vic2_port_w(space, offset & 0x3ff, data);
+			vic2_port_w(vic2e, offset & 0x3ff, data);
 			break;
 		case 4:
 			sid6581_w(sid, offset & 0x3f, data);
@@ -324,7 +427,7 @@ WRITE8_HANDLER( c128_write_d000 )
 			c128_mmu8722_port_w(space, offset & 0xff, data);
 			break;
 		case 6:case 7:
-			vdc8563_port_w(space, offset & 0xff, data);
+			vdc8563_port_w(vdc8563, offset & 0xff, data);
 			break;
 		case 8: case 9: case 0xa: case 0xb:
 		    if (c64mode)
@@ -333,10 +436,10 @@ WRITE8_HANDLER( c128_write_d000 )
 				c64_colorram[(offset & 0x3ff)|((c64_port6510&3)<<10)] = data | 0xf0; // maybe all 8 bit connected!
 		    break;
 		case 0xc:
-			cia_w(cia_0, offset, data);
+			mos6526_w(cia_0, offset, data);
 			break;
 		case 0xd:
-			cia_w(cia_1, offset, data);
+			mos6526_w(cia_1, offset, data);
 			break;
 		case 0xf:
 			c128_dma8726_port_w(space, offset&0xff,data);
@@ -352,34 +455,36 @@ WRITE8_HANDLER( c128_write_d000 )
 
 static READ8_HANDLER( c128_read_io )
 {
-	const device_config *cia_0 = devtag_get_device(space->machine, "cia_0");
-	const device_config *cia_1 = devtag_get_device(space->machine, "cia_1");
-	const device_config *sid = devtag_get_device(space->machine, "sid6581");
+	running_device *cia_0 = devtag_get_device(space->machine, "cia_0");
+	running_device *cia_1 = devtag_get_device(space->machine, "cia_1");
+	running_device *sid = devtag_get_device(space->machine, "sid6581");
+	running_device *vic2e= devtag_get_device(space->machine, "vic2e");
+	running_device *vdc8563 = devtag_get_device(space->machine, "vdc8563");
 
 	if (offset < 0x400)
-		return vic2_port_r(space, offset & 0x3ff);
+		return vic2_port_r(vic2e, offset & 0x3ff);
 	else if (offset < 0x500)
 		return sid6581_r(sid, offset & 0xff);
 	else if (offset < 0x600)
 		return c128_mmu8722_port_r(space, offset & 0xff);
 	else if (offset < 0x800)
-		return vdc8563_port_r(space, offset & 0xff);
+		return vdc8563_port_r(vdc8563, offset & 0xff);
 	else if (offset < 0xc00)
 		return c64_colorram[offset & 0x3ff];
 	else if (offset == 0xc00)
 		{
 			cia_set_port_mask_value(cia_0, 0, input_port_read(space->machine, "CTRLSEL") & 0x80 ? c64_keyline[8] : c64_keyline[9] );
-			return cia_r(cia_0, offset);
+			return mos6526_r(cia_0, offset);
 		}
 	else if (offset == 0xc01)
 		{
 			cia_set_port_mask_value(cia_0, 1, input_port_read(space->machine, "CTRLSEL") & 0x80 ? c64_keyline[9] : c64_keyline[8] );
-			return cia_r(cia_0, offset);
+			return mos6526_r(cia_0, offset);
 		}
 	else if (offset < 0xd00)
-		return cia_r(cia_0, offset);
+		return mos6526_r(cia_0, offset);
 	else if (offset < 0xe00)
-		return cia_r(cia_1, offset);
+		return mos6526_r(cia_1, offset);
 	else if ((offset >= 0xf00) & (offset <= 0xfff))
 		return c128_dma8726_port_r(space, offset&0xff);
 	DBG_LOG(space->machine, 1, "io read", ("%.3x\n", offset));
@@ -394,7 +499,7 @@ void c128_bankswitch_64( running_machine *machine, int reset )
 	if (!c64mode)
 		return;
 
-	data = (UINT8) devtag_get_info_int(machine, "maincpu", CPUINFO_INT_M6510_PORT) & 0x07;
+	data = (UINT8) machine->device("maincpu")->get_runtime_int(CPUINFO_INT_M6510_PORT) & 0x07;
 	if ((data == old) && (exrom == c64_exrom) && (game == c64_game) && !reset)
 		return;
 
@@ -417,12 +522,12 @@ void c128_bankswitch_64( running_machine *machine, int reset )
 
 	if ((!c64_game && c64_exrom) || (charen && (loram || hiram)))
 	{
-		memory_install_read8_handler(cpu_get_address_space(cputag_get_cpu(machine, "m8502"), ADDRESS_SPACE_PROGRAM), 0xd000, 0xdfff, 0, 0, c128_read_io);
+		memory_install_read8_handler(cpu_get_address_space(devtag_get_device(machine, "m8502"), ADDRESS_SPACE_PROGRAM), 0xd000, 0xdfff, 0, 0, c128_read_io);
 		c128_write_io = 1;
 	}
 	else
 	{
-		memory_install_read_bank(cpu_get_address_space(cputag_get_cpu(machine, "m8502"), ADDRESS_SPACE_PROGRAM), 0xd000, 0xdfff, 0, 0, "bank5");
+		memory_install_read_bank(cpu_get_address_space(devtag_get_device(machine, "m8502"), ADDRESS_SPACE_PROGRAM), 0xd000, 0xdfff, 0, 0, "bank5");
 		c128_write_io = 0;
 		if ((!charen && (loram || hiram)))
 			memory_set_bankptr(machine, "bank13", c64_chargen);
@@ -455,41 +560,6 @@ void c128_bankswitch_64( running_machine *machine, int reset )
 	exrom = c64_exrom;
 	game =c64_game;
 }
-
-static UINT8 c128_mmu[0x0b];
-static const int c128_mmu_helper[4] =
-{0x400, 0x1000, 0x2000, 0x4000};
-static int mmu_cpu;
-static int mmu_page0, mmu_page1;
-
-#define MMU_PAGE1 ((((c128_mmu[10]&0xf)<<8)|c128_mmu[9])<<8)
-#define MMU_PAGE0 ((((c128_mmu[8]&0xf)<<8)|c128_mmu[7])<<8)
-#define MMU_VIC_ADDR ((c128_mmu[6]&0xc0)<<10)
-#define MMU_RAM_RCR_ADDR ((c128_mmu[6]&0x30)<<14)
-#define MMU_SIZE (c128_mmu_helper[c128_mmu[6]&3])
-#define MMU_BOTTOM (c128_mmu[6]&4)
-#define MMU_TOP (c128_mmu[6]&8)
-#define MMU_CPU8502 (c128_mmu[5]&1)	   /* else z80 */
-/* fastio output (c128_mmu[5]&8) else input */
-#define MMU_GAME_IN (c128_mmu[5]&0x10)
-#define MMU_EXROM_IN (c128_mmu[5]&0x20)
-#define MMU_64MODE (c128_mmu[5]&0x40)
-#define MMU_40_IN (c128_mmu[5]&0x80)
-
-#define MMU_RAM_CR_ADDR ((c128_mmu[0]&0xc0)<<10)
-#define MMU_RAM_LO (c128_mmu[0]&2)	   /* else rom at 0x4000 */
-#define MMU_RAM_MID ((c128_mmu[0]&0xc)==0xc)	/* 0x8000 - 0xbfff */
-#define MMU_ROM_MID ((c128_mmu[0]&0xc)==0)
-#define MMU_EXTERNAL_ROM_MID ((c128_mmu[0]&0xc)==8)
-#define MMU_INTERNAL_ROM_MID ((c128_mmu[0]&0xc)==4)
-
-#define MMU_IO_ON (!(c128_mmu[0]&1))   /* io window at 0xd000 */
-#define MMU_ROM_HI ((c128_mmu[0]&0x30)==0)	/* rom at 0xc000 */
-#define MMU_EXTERNAL_ROM_HI ((c128_mmu[0]&0x30)==0x20)
-#define MMU_INTERNAL_ROM_HI ((c128_mmu[0]&0x30)==0x10)
-#define MMU_RAM_HI ((c128_mmu[0]&0x30)==0x30)
-
-#define MMU_RAM_ADDR (MMU_RAM_RCR_ADDR|MMU_RAM_CR_ADDR)
 
 /* typical z80 configuration
    0x3f 0x3f 0x7f 0x3e 0x7e 0xb0 0x0b 0x00 0x00 0x01 0x00 */
@@ -636,17 +706,17 @@ static void c128_bankswitch_128( running_machine *machine, int reset )
 		else
 			c128_ram_top = 0x10000;
 
-		memory_install_read8_handler(cpu_get_address_space(cputag_get_cpu(machine, "m8502"), ADDRESS_SPACE_PROGRAM), 0xff00, 0xff04, 0, 0, c128_mmu8722_ff00_r);
+		memory_install_read8_handler(cpu_get_address_space(devtag_get_device(machine, "m8502"), ADDRESS_SPACE_PROGRAM), 0xff00, 0xff04, 0, 0, c128_mmu8722_ff00_r);
 
 		if (MMU_IO_ON)
 		{
 			c128_write_io = 1;
-			memory_install_read8_handler(cpu_get_address_space(cputag_get_cpu(machine, "m8502"), ADDRESS_SPACE_PROGRAM), 0xd000, 0xdfff, 0, 0, c128_read_io);
+			memory_install_read8_handler(cpu_get_address_space(devtag_get_device(machine, "m8502"), ADDRESS_SPACE_PROGRAM), 0xd000, 0xdfff, 0, 0, c128_read_io);
 		}
 		else
 		{
 			c128_write_io = 0;
-			memory_install_read_bank(cpu_get_address_space(cputag_get_cpu(machine, "m8502"), ADDRESS_SPACE_PROGRAM), 0xd000, 0xdfff, 0, 0, "bank13");
+			memory_install_read_bank(cpu_get_address_space(devtag_get_device(machine, "m8502"), ADDRESS_SPACE_PROGRAM), 0xd000, 0xdfff, 0, 0, "bank13");
 		}
 
 
@@ -758,8 +828,8 @@ static void c128_bankswitch( running_machine *machine, int reset )
              * driver used to work with this behavior, so I am doing this hack
              * where I set CPU #1's PC to 0x1100 on reset.
              */
-			if (cpu_get_reg(cputag_get_cpu(machine, "m8502"), REG_GENPC) == 0x0000)
-				cpu_set_reg(cputag_get_cpu(machine, "m8502"), REG_GENPC, 0x1100);
+			if (cpu_get_reg(devtag_get_device(machine, "m8502"), REG_GENPC) == 0x0000)
+				cpu_set_reg(devtag_get_device(machine, "m8502"), REG_GENPC, 0x1100);
 		}
 		mmu_cpu = MMU_CPU8502;
 		return;
@@ -794,8 +864,13 @@ WRITE8_HANDLER( c128_mmu8722_port_w )
 	case 10:
 		c128_mmu[offset] = data;
 		break;
-	case 0:
 	case 5:
+		c128_mmu[offset] = data;
+		c128_bankswitch (space->machine, 0);
+		c128_iec_srq_out_w(space->machine);
+		c128_iec_data_out_w(space->machine);
+		break;
+	case 0:
 	case 6:
 		c128_mmu[offset] = data;
 		c128_bankswitch (space->machine, 0);
@@ -950,9 +1025,9 @@ WRITE8_HANDLER( c128_write_ff05 )
  * a15 and a14 portlines
  * 0x1000-0x1fff, 0x9000-0x9fff char rom
  */
-static int c128_dma_read(running_machine *machine, int offset)
+int c128_dma_read(running_machine *machine, int offset)
 {
-	UINT8 c64_port6510 = (UINT8) devtag_get_info_int(machine, "maincpu", CPUINFO_INT_M6510_PORT);
+	UINT8 c64_port6510 = (UINT8) machine->device("maincpu")->get_runtime_int(CPUINFO_INT_M6510_PORT);
 
 	/* main memory configuration to include */
 	if (c64mode)
@@ -967,20 +1042,19 @@ static int c128_dma_read(running_machine *machine, int offset)
 			return c64_chargen[offset & 0xfff];
 		return c64_vicaddr[offset];
 	}
-	if (!(c64_port6510&4)
-		 && (((c128_vicaddr - c64_memory + offset) & 0x7000) == 0x1000))
+	if (!(c64_port6510 & 4) && (((c128_vicaddr - c64_memory + offset) & 0x7000) == 0x1000))
 		return c128_chargen[offset & 0xfff];
 	return c128_vicaddr[offset];
 }
 
-static int c128_dma_read_color(running_machine *machine, int offset)
+int c128_dma_read_color(running_machine *machine, int offset)
 {
-	UINT8 c64_port6510 = (UINT8) devtag_get_info_int(machine, "maincpu", CPUINFO_INT_M6510_PORT);
+	UINT8 c64_port6510 = (UINT8) machine->device("maincpu")->get_runtime_int(CPUINFO_INT_M6510_PORT);
 
 	if (c64mode)
 		return c64_colorram[offset & 0x3ff] & 0xf;
 	else
-		return c64_colorram[(offset & 0x3ff)|((c64_port6510&0x3)<<10)] & 0xf;
+		return c64_colorram[(offset & 0x3ff)|((c64_port6510 & 0x3) << 10)] & 0xf;
 }
 
 /* 2008-09-01
@@ -991,7 +1065,7 @@ static int c128_dma_read_color(running_machine *machine, int offset)
 
 static emu_timer *datasette_timer;
 
-void c128_m6510_port_write( const device_config *device, UINT8 direction, UINT8 data )
+void c128_m6510_port_write( running_device *device, UINT8 direction, UINT8 data )
 {
 	/* if line is marked as input then keep current value */
 	data = (c64_port_data & ~direction) | (data & direction);
@@ -1036,7 +1110,7 @@ void c128_m6510_port_write( const device_config *device, UINT8 direction, UINT8 
 	c64_memory[0x001] = memory_read_byte( cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM), 1 );
 }
 
-UINT8 c128_m6510_port_read( const device_config *device, UINT8 direction )
+UINT8 c128_m6510_port_read( running_device *device, UINT8 direction )
 {
 	UINT8 data = c64_port_data;
 
@@ -1087,24 +1161,26 @@ static void c128_common_driver_init( running_machine *machine )
 
 DRIVER_INIT( c128 )
 {
+	running_device *vic2e = devtag_get_device(machine, "vic2e");
+	running_device *vdc8563 = devtag_get_device(machine, "vdc8563");
+
 	c64_tape_on = 1;
 	c64_pal = 0;
 	c128_common_driver_init(machine);
-	vic6567_init(1, c64_pal, c128_dma_read, c128_dma_read_color, c128_vic_interrupt);
-	vic2_set_rastering(0);
-	vdc8563_init(0);
-	vdc8563_set_rastering(1);
+	vic2_set_rastering(vic2e, 0);
+	vdc8563_set_rastering(vdc8563, 1);
 }
 
 DRIVER_INIT( c128pal )
 {
+	running_device *vic2e = devtag_get_device(machine, "vic2e");
+	running_device *vdc8563 = devtag_get_device(machine, "vdc8563");
+
 	c64_tape_on = 1;
 	c64_pal = 1;
 	c128_common_driver_init(machine);
-	vic6567_init(1, c64_pal, c128_dma_read, c128_dma_read_color, c128_vic_interrupt);
-	vic2_set_rastering(1);
-	vdc8563_init(0);
-	vdc8563_set_rastering(0);
+	vic2_set_rastering(vic2e, 1);
+	vdc8563_set_rastering(vdc8563, 0);
 }
 
 DRIVER_INIT( c128d )
@@ -1155,6 +1231,8 @@ INTERRUPT_GEN( c128_frame_interrupt )
 	static int monitor = -1;
 	static const char *const c128ports[] = { "KP0", "KP1", "KP2" };
 	int i, value;
+	running_device *vic2e = devtag_get_device(device->machine, "vic2e");
+	running_device *vdc8563 = devtag_get_device(device->machine, "vdc8563");
 
 	c128_nmi(device->machine);
 
@@ -1162,14 +1240,14 @@ INTERRUPT_GEN( c128_frame_interrupt )
 	{
 		if (input_port_read(device->machine, "SPECIAL") & 0x08)
 		{
-			vic2_set_rastering(0);
-			vdc8563_set_rastering(1);
+			vic2_set_rastering(vic2e, 0);
+			vdc8563_set_rastering(vdc8563, 1);
 			video_screen_set_visarea(device->machine->primary_screen, 0, 655, 0, 215);
 		}
 		else
 		{
-			vic2_set_rastering(1);
-			vdc8563_set_rastering(0);
+			vic2_set_rastering(vic2e, 1);
+			vdc8563_set_rastering(vdc8563, 0);
 			if (c64_pal)
 				video_screen_set_visarea(device->machine->primary_screen, 0, VIC6569_VISIBLECOLUMNS - 1, 0, VIC6569_VISIBLELINES - 1);
 			else
@@ -1196,16 +1274,12 @@ INTERRUPT_GEN( c128_frame_interrupt )
 	}
 }
 
-
-VIDEO_START( c128 )
-{
-	VIDEO_START_CALL(vdc8563);
-	VIDEO_START_CALL(vic2);
-}
-
 VIDEO_UPDATE( c128 )
 {
-	VIDEO_UPDATE_CALL(vdc8563);
-	VIDEO_UPDATE_CALL(vic2);
+	running_device *vic2e = devtag_get_device(screen->machine, "vic2e");
+	running_device *vdc8563 = devtag_get_device(screen->machine, "vdc8563");
+
+	vdc8563_video_update(vdc8563, bitmap, cliprect);
+	vic2_video_update(vic2e, bitmap, cliprect);
 	return 0;
 }

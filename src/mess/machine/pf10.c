@@ -8,7 +8,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "pf10.h"
 #include "cpu/m6800/m6800.h"
 #include "machine/upd765.h"
@@ -29,7 +29,7 @@ struct _pf10_state
     INLINE FUNCTIONS
 *****************************************************************************/
 
-INLINE pf10_state *get_safe_token(const device_config *device)
+INLINE pf10_state *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -113,7 +113,7 @@ DEVICE_GET_INFO( pf10 )
 
 		/* --- the following bits of info are returned as pointers --- */
 		case DEVINFO_PTR_MACHINE_CONFIG:		info->machine_config = MACHINE_DRIVER_NAME(pf10);	break;
-		case DEVINFO_PTR_ROM_REGION:			info->romregion = ROM_NAME(pf10); 				break;
+		case DEVINFO_PTR_ROM_REGION:			info->romregion = ROM_NAME(pf10);				break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_FCT_START:					info->start = DEVICE_START_NAME(pf10);			break;

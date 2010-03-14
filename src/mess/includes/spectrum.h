@@ -4,11 +4,16 @@
  *
  ****************************************************************************/
 
-#ifndef SPECTRUM_H
-#define SPECTRUM_H
+#ifndef __SPECTRUM_H__
+#define __SPECTRUM_H__
 
 #include "devices/snapquik.h"
 #include "devices/cartslot.h"
+
+/* Spectrum crystals */
+
+#define X1 XTAL_14MHz		// Main clock
+#define X2 XTAL_4_433619MHz // PAL color subcarrier
 
 /* Spectrum screen size in pixels */
 #define SPEC_UNSEEN_LINES  16   /* Non-visible scanlines before first border
@@ -46,61 +51,66 @@
 #define TS2068_RIGHT_BORDER  96   /* Number of right hand border pixels */
 #define TS2068_SCREEN_WIDTH (TS2068_LEFT_BORDER + TS2068_DISPLAY_XSIZE + TS2068_RIGHT_BORDER)
 
-typedef enum
+class spectrum_state
 {
-	TIMEX_CART_NONE,
-	TIMEX_CART_DOCK,
-	TIMEX_CART_EXROM,
-	TIMEX_CART_HOME
-} TIMEX_CART_TYPE;
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, spectrum_state(machine)); }
 
-/*----------- defined in machine/spectrum.c -----------*/
-extern TIMEX_CART_TYPE timex_cart_type;
-extern UINT8 timex_cart_chunks;
-extern UINT8 * timex_cart_data;
+	spectrum_state(running_machine &machine) { }
 
-DEVICE_IMAGE_LOAD( timex_cart );
-DEVICE_IMAGE_UNLOAD( timex_cart );
+	int port_fe_data;
+	int port_7ffd_data;
+	int port_1ffd_data;	/* scorpion and plus3 */
+	int port_ff_data; /* Display enhancement control */
+	int port_f4_data; /* Horizontal Select Register */
 
-extern MACHINE_RESET( spectrum );
+	int floppy;
 
-extern SNAPSHOT_LOAD( spectrum );
-extern QUICKLOAD_LOAD( spectrum );
+	/* video support */
+	int frame_number;    /* Used for handling FLASH 1 */
+	int flash_invert;
+	UINT8 retrace_cycles;
+	UINT8 *video_ram;
+	UINT8 *screen_location;
+
+	int ROMSelection;
+
+	/* for elwro800 */
+	/* RAM mapped at 0 */
+	UINT8 ram_at_0000;
+
+	/* NR signal */
+	UINT8 NR;
+	UINT8 df_on_databus;
+};
 
 
 /*----------- defined in drivers/spectrum.c -----------*/
-extern unsigned char *spectrum_screen_location;
 
 INPUT_PORTS_EXTERN( spectrum );
 INPUT_PORTS_EXTERN( spec_plus );
 
 MACHINE_DRIVER_EXTERN( spectrum );
+extern MACHINE_RESET( spectrum );
 
 extern READ8_HANDLER(spectrum_port_1f_r);
 extern READ8_HANDLER(spectrum_port_7f_r);
 extern READ8_HANDLER(spectrum_port_df_r);
 extern READ8_HANDLER(spectrum_port_fe_r);
 extern WRITE8_HANDLER(spectrum_port_fe_w);
-extern int spectrum_PreviousFE;
 
 /*----------- defined in drivers/spec128.c -----------*/
 MACHINE_DRIVER_EXTERN( spectrum_128 );
 
 extern void spectrum_128_update_memory(running_machine *machine);
-extern int spectrum_128_port_7ffd_data;
 
 /*----------- defined in drivers/specpls3.c -----------*/
-extern int spectrum_plus3_port_1ffd_data;
 extern void spectrum_plus3_update_memory(running_machine *machine);
 
 /*----------- defined in drivers/timex.c -----------*/
 extern void ts2068_update_memory(running_machine *machine);
-extern int ts2068_port_ff_data;
-extern int ts2068_port_f4_data;
 
 /*----------- defined in video/spectrum.c -----------*/
-extern int spectrum_frame_number;    /* Used for handling FLASH 1 */
-extern int spectrum_flash_invert;
 
 extern PALETTE_INIT( spectrum );
 
@@ -110,12 +120,10 @@ extern VIDEO_START( spectrum_128 );
 extern VIDEO_UPDATE( spectrum );
 extern VIDEO_EOF( spectrum );
 
-extern unsigned char *spectrum_video_ram;
-
 /*----------- defined in video/timex.c -----------*/
 extern VIDEO_EOF( ts2068 );
 extern VIDEO_UPDATE( ts2068 );
 
 extern VIDEO_UPDATE( tc2048 );
 
-#endif /* SPECTRUM_H */
+#endif /* __SPECTRUM_H__ */

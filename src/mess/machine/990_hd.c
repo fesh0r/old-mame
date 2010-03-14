@@ -16,7 +16,7 @@
     Raphael Nabet 2002-2003
 */
 
-#include "driver.h"
+#include "emu.h"
 
 #include "990_hd.h"
 
@@ -74,11 +74,17 @@ enum
 	header_len = sizeof(disk_image_header)
 };
 
+enum format_t
+{
+	format_mame,
+	format_old
+};
+
 /* disk drive unit descriptor */
 typedef struct hd_unit_t
 {
-	const device_config *img;						/* image descriptor */
-	enum { format_mame, format_old } format;
+	running_device *img;						/* image descriptor */
+	format_t format;
 	hard_disk_file *hd_handle;		/* mame hard disk descriptor - only if format == format_mame */
 	unsigned int wp : 1;					/* TRUE if disk is write-protected */
 	unsigned int unsafe : 1;				/* TRUE when a disk has just been connected */
@@ -161,23 +167,23 @@ static const UINT16 w_mask[8] =
 static hdc_t hdc;
 
 
-static int get_id_from_device( const device_config *device )
+static int get_id_from_device( running_device *device )
 {
 	int id = -1;
 
-	if ( ! strcmp( "harddisk1", device->tag ) )
+	if ( ! strcmp( "harddisk1", device->tag() ) )
 	{
 		id = 0;
 	}
-	else if ( ! strcmp( "harddisk2", device->tag ) )
+	else if ( ! strcmp( "harddisk2", device->tag() ) )
 	{
 		id = 1;
 	}
-	else if ( ! strcmp( "harddisk3", device->tag ) )
+	else if ( ! strcmp( "harddisk3", device->tag() ) )
 	{
 		id = 2;
 	}
-	else if ( ! strcmp( "harddisk4", device->tag ) )
+	else if ( ! strcmp( "harddisk4", device->tag() ) )
 	{
 		id = 3;
 	}

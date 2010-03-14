@@ -51,7 +51,7 @@ Super System Card:
 - Ankoku Densetsu: graphics flake out during intro (DMA issues)
 **********************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "deprecat.h"
 #include "video/vdc.h"
 #include "cpu/h6280/h6280.h"
@@ -265,6 +265,6 @@ ROM_END
 #define rom_sgx rom_pce
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT    INIT   COMPANY  FULLNAME */
-CONS( 1987, pce,    0,      0,      pce,    pce,     pce,   "Nippon Electronic Company", "PC Engine", GAME_IMPERFECT_SOUND )
-CONS( 1989, tg16,   pce,    0,      pce,    pce,     tg16,  "Nippon Electronic Company", "TurboGrafx 16", GAME_IMPERFECT_SOUND )
-CONS( 1989, sgx,    pce,    0,      sgx,    pce,     sgx,   "Nippon Electronic Company", "SuperGrafx", GAME_IMPERFECT_SOUND )
+CONS( 1987, pce,    0,      0,      pce,    pce,     pce,   "Nippon Electronic Company", "PC Engine", GAME_IMPERFECT_SOUND)
+CONS( 1989, tg16,   pce,    0,      pce,    pce,     tg16,  "Nippon Electronic Company", "TurboGrafx 16", GAME_IMPERFECT_SOUND)
+CONS( 1989, sgx,    pce,    0,      sgx,    pce,     sgx,   "Nippon Electronic Company", "SuperGrafx", GAME_IMPERFECT_SOUND)

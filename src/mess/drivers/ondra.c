@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "sound/wave.h"
 #include "devices/cassette.h"
@@ -97,8 +97,8 @@ static INPUT_PORTS_START( ondra )
 	PORT_START("LINE9")
 		PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_CODE(KEYCODE_2_PAD) PORT_CODE(JOYCODE_Y_DOWN_SWITCH)  PORT_PLAYER(1)
 		PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_CODE(KEYCODE_4_PAD) PORT_CODE(JOYCODE_X_LEFT_SWITCH)  PORT_PLAYER(1)
-		PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP)   PORT_CODE(KEYCODE_8_PAD) PORT_CODE(JOYCODE_Y_UP_SWITCH)  	PORT_PLAYER(1)
-		PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_BUTTON1) 		 PORT_CODE(KEYCODE_0_PAD) PORT_CODE(JOYCODE_BUTTON1)		PORT_PLAYER(1)
+		PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP)   PORT_CODE(KEYCODE_8_PAD) PORT_CODE(JOYCODE_Y_UP_SWITCH)	PORT_PLAYER(1)
+		PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_BUTTON1)		 PORT_CODE(KEYCODE_0_PAD) PORT_CODE(JOYCODE_BUTTON1)		PORT_PLAYER(1)
 		PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT)PORT_CODE(KEYCODE_6_PAD) PORT_CODE(JOYCODE_X_RIGHT_SWITCH) PORT_PLAYER(1)
 		PORT_BIT(0xE0, IP_ACTIVE_LOW, IPT_UNUSED)
 	PORT_START("NMI")
@@ -114,7 +114,7 @@ static const cassette_config ondra_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED)
 };
 
 /* Machine driver */
@@ -151,6 +151,7 @@ static MACHINE_DRIVER_START( ondra )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
+	MDRV_RAM_DEFAULT_VALUE(0x00)
 MACHINE_DRIVER_END
 
 /* ROM definition */
@@ -182,6 +183,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT       INIT     COMPANY          FULLNAME       FLAGS */
-COMP( 1989, ondrat, 0, 		0,		ondra, 		ondra, 		ondra, 	 "Tesla",		 "Ondra",	 	0)
-COMP( 1989, ondrav, ondrat,	0,		ondra, 		ondra, 		ondra, 	 "ViLi",		 	 "Ondra ViLi",	0)
-
+COMP( 1989, ondrat, 0,		0,		ondra,		ondra,		0,       "Tesla",		 "Ondra",		0)
+COMP( 1989, ondrav, ondrat,	0,		ondra,		ondra,		0,       "ViLi",		 "Ondra ViLi",	0)

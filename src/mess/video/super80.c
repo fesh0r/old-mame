@@ -1,4 +1,4 @@
-/* Super80.c written by Robbbert, 2005-2009. See the MESS wiki for documentation. */
+/* Super80.c written by Robbbert, 2005-2010. See the MESS wiki for documentation. */
 
 /* Notes on using MAME MC6845 Device (MMD).
     1. Speed of MMD is about 20% slower than pre-MMD coding
@@ -6,7 +6,7 @@
     3. MMD doesn't support auto-screen-resize, so we do it here. */
 
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/super80.h"
 
 
@@ -16,9 +16,7 @@ static UINT8 current_palette;	/* for super80m and super80v */
 static UINT8 current_charset;	/* for super80m */
 
 static const UINT8 *FNT;
-static UINT8 chr,col,gfx,fg,bg;
-static UINT16 mem,x;
-static UINT8 options;
+static UINT8 s_options;
 extern UINT8 *super80_colorram;
 
 /**************************** PALETTES for super80m and super80v ******************************************/
@@ -122,14 +120,14 @@ VIDEO_UPDATE( super80 )
 				gfx = FNT[(chr<<4) | ((ra & 8) >> 3) | ((ra & 7) << 1)];
 
 				/* Display a scanline of a character (8 pixels) */
-				*p = ( gfx & 0x80 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x40 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x20 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x10 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x08 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x04 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x02 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x01 ) ? 1 : 0; p++;
+				*p++ = ( gfx & 0x80 ) ? 1 : 0;
+				*p++ = ( gfx & 0x40 ) ? 1 : 0;
+				*p++ = ( gfx & 0x20 ) ? 1 : 0;
+				*p++ = ( gfx & 0x10 ) ? 1 : 0;
+				*p++ = ( gfx & 0x08 ) ? 1 : 0;
+				*p++ = ( gfx & 0x04 ) ? 1 : 0;
+				*p++ = ( gfx & 0x02 ) ? 1 : 0;
+				*p++ = ( gfx & 0x01 ) ? 1 : 0;
 			}
 		}
 		ma+=32;
@@ -163,14 +161,14 @@ VIDEO_UPDATE( super80d )
 				gfx = FNT[((chr & 0x7f)<<4) | ((ra & 8) >> 3) | ((ra & 7) << 1)] ^ ((chr & 0x80) ? 0xff : 0);
 
 				/* Display a scanline of a character (8 pixels) */
-				*p = ( gfx & 0x80 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x40 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x20 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x10 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x08 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x04 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x02 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x01 ) ? 1 : 0; p++;
+				*p++ = ( gfx & 0x80 ) ? 1 : 0;
+				*p++ = ( gfx & 0x40 ) ? 1 : 0;
+				*p++ = ( gfx & 0x20 ) ? 1 : 0;
+				*p++ = ( gfx & 0x10 ) ? 1 : 0;
+				*p++ = ( gfx & 0x08 ) ? 1 : 0;
+				*p++ = ( gfx & 0x04 ) ? 1 : 0;
+				*p++ = ( gfx & 0x02 ) ? 1 : 0;
+				*p++ = ( gfx & 0x01 ) ? 1 : 0;
 			}
 		}
 		ma+=32;
@@ -204,14 +202,14 @@ VIDEO_UPDATE( super80e )
 				gfx = FNT[(chr<<4) | ((ra & 8) >> 3) | ((ra & 7) << 1)];
 
 				/* Display a scanline of a character (8 pixels) */
-				*p = ( gfx & 0x80 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x40 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x20 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x10 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x08 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x04 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x02 ) ? 1 : 0; p++;
-				*p = ( gfx & 0x01 ) ? 1 : 0; p++;
+				*p++ = ( gfx & 0x80 ) ? 1 : 0;
+				*p++ = ( gfx & 0x40 ) ? 1 : 0;
+				*p++ = ( gfx & 0x20 ) ? 1 : 0;
+				*p++ = ( gfx & 0x10 ) ? 1 : 0;
+				*p++ = ( gfx & 0x08 ) ? 1 : 0;
+				*p++ = ( gfx & 0x04 ) ? 1 : 0;
+				*p++ = ( gfx & 0x02 ) ? 1 : 0;
+				*p++ = ( gfx & 0x01 ) ? 1 : 0;
 			}
 		}
 		ma+=32;
@@ -255,7 +253,7 @@ VIDEO_UPDATE( super80m )
 
 				if (!(options & 0x40))
 				{
-		 			col = RAM[0xfe00 | ma | x];	/* byte of colour to display */
+					col = RAM[0xfe00 | ma | x];	/* byte of colour to display */
 					fg = col & 0x0f;
 					bg = (col & 0xf0) >> 4;
 				}
@@ -267,14 +265,14 @@ VIDEO_UPDATE( super80m )
 					gfx = FNT[0x1000 | ((chr & 0x7f)<<4) | ((ra & 8) >> 3) | ((ra & 7) << 1)] ^ ((chr & 0x80) ? 0xff : 0);
 
 				/* Display a scanline of a character (8 pixels) */
-				*p = ( gfx & 0x80 ) ? fg : bg; p++;
-				*p = ( gfx & 0x40 ) ? fg : bg; p++;
-				*p = ( gfx & 0x20 ) ? fg : bg; p++;
-				*p = ( gfx & 0x10 ) ? fg : bg; p++;
-				*p = ( gfx & 0x08 ) ? fg : bg; p++;
-				*p = ( gfx & 0x04 ) ? fg : bg; p++;
-				*p = ( gfx & 0x02 ) ? fg : bg; p++;
-				*p = ( gfx & 0x01 ) ? fg : bg; p++;
+				*p++ = ( gfx & 0x80 ) ? fg : bg;
+				*p++ = ( gfx & 0x40 ) ? fg : bg;
+				*p++ = ( gfx & 0x20 ) ? fg : bg;
+				*p++ = ( gfx & 0x10 ) ? fg : bg;
+				*p++ = ( gfx & 0x08 ) ? fg : bg;
+				*p++ = ( gfx & 0x04 ) ? fg : bg;
+				*p++ = ( gfx & 0x02 ) ? fg : bg;
+				*p++ = ( gfx & 0x01 ) ? fg : bg;
 			}
 		}
 		ma+=32;
@@ -297,7 +295,7 @@ static UINT8 mc6845_cursor[16];				// cursor shape
 static UINT8 mc6845_reg[20];				/* registers */
 static UINT8 mc6845_ind;				/* register index */
 static const UINT8 mc6845_mask[]={0xff,0xff,0xff,0x0f,0x7f,0x1f,0x7f,0x7f,3,0x1f,0x7f,0x1f,0x3f,0xff,0x3f,0xff,0,0};
-static const device_config *mc6845;
+static running_device *mc6845;
 static UINT8 framecnt=0;
 static UINT8 speed,flash;
 static UINT16 cursor;
@@ -404,9 +402,9 @@ VIDEO_START( super80v )
 VIDEO_UPDATE( super80v )
 {
 	framecnt++;
-	speed = mc6845_reg[10]&0x20, flash = mc6845_reg[10]&0x40, bg=0;			// cursor modes
+	speed = mc6845_reg[10]&0x20, flash = mc6845_reg[10]&0x40;			// cursor modes
 	cursor = (mc6845_reg[14]<<8) | mc6845_reg[15];					// get cursor position
-	options=input_port_read(screen->machine, "CONFIG");
+	s_options=input_port_read(screen->machine, "CONFIG");
 	output_set_value("cass_led",(super80_shared & 0x20) ? 1 : 0);
 	mc6845_update(mc6845, bitmap, cliprect);
 	return 0;
@@ -414,6 +412,8 @@ VIDEO_UPDATE( super80v )
 
 MC6845_UPDATE_ROW( super80v_update_row )
 {
+	UINT8 chr,col,gfx,fg,bg=0;
+	UINT16 mem,x;
 	UINT16  *p = BITMAP_ADDR16(bitmap, y, 0);
 
 	for (x = 0; x < x_count; x++)				// for each character
@@ -425,11 +425,11 @@ MC6845_UPDATE_ROW( super80v_update_row )
 
 		/* get colour or b&w */
 		fg = 5;						/* green */
-		if ((options & 0x60) == 0x60) fg = 15;		/* b&w */
+		if ((s_options & 0x60) == 0x60) fg = 15;		/* b&w */
 
-		if (~options & 0x40)
+		if (~s_options & 0x40)
 		{
- 			col = super80_colorram[mem];					/* byte of colour to display */
+			col = super80_colorram[mem];					/* byte of colour to display */
 			fg = col & 0x0f;
 			bg = (col & 0xf0) >> 4;
 		}
@@ -452,13 +452,13 @@ MC6845_UPDATE_ROW( super80v_update_row )
 		gfx = super80_pcgram[(chr<<4) | ra] ^ inv;
 
 		/* Display a scanline of a character (7 pixels) */
-		*p = ( gfx & 0x80 ) ? fg : bg; p++;
-		*p = ( gfx & 0x40 ) ? fg : bg; p++;
-		*p = ( gfx & 0x20 ) ? fg : bg; p++;
-		*p = ( gfx & 0x10 ) ? fg : bg; p++;
-		*p = ( gfx & 0x08 ) ? fg : bg; p++;
-		*p = ( gfx & 0x04 ) ? fg : bg; p++;
-		*p = ( gfx & 0x02 ) ? fg : bg; p++;
+		*p++ = ( gfx & 0x80 ) ? fg : bg;
+		*p++ = ( gfx & 0x40 ) ? fg : bg;
+		*p++ = ( gfx & 0x20 ) ? fg : bg;
+		*p++ = ( gfx & 0x10 ) ? fg : bg;
+		*p++ = ( gfx & 0x08 ) ? fg : bg;
+		*p++ = ( gfx & 0x04 ) ? fg : bg;
+		*p++ = ( gfx & 0x02 ) ? fg : bg;
 	}
 }
 

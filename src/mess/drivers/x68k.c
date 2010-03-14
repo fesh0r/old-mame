@@ -118,7 +118,7 @@
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/68901mfp.h"
 #include "machine/i8255a.h"
@@ -349,13 +349,13 @@ static TIMER_CALLBACK( x68k_led_callback )
 // 4 channel DMA controller (Hitachi HD63450)
 static WRITE16_HANDLER( x68k_dmac_w )
 {
-	const device_config* device = devtag_get_device(space->machine, "hd63450");
+	running_device* device = devtag_get_device(space->machine, "hd63450");
 	hd63450_w(device, offset, data, mem_mask);
 }
 
 static READ16_HANDLER( x68k_dmac_r )
 {
-	const device_config* device = devtag_get_device(space->machine, "hd63450");
+	running_device* device = devtag_get_device(space->machine, "hd63450");
 	return hd63450_r(device, offset, mem_mask);
 }
 
@@ -537,7 +537,7 @@ void mfp_recv_data(int data)
 // typically read from the SCC data port on receive buffer full interrupt per byte
 static int x68k_read_mouse(running_machine *machine)
 {
-	const device_config *scc = devtag_get_device(machine, "scc");
+	running_device *scc = devtag_get_device(machine, "scc");
 	char val = 0;
 	char ipt = 0;
 
@@ -563,11 +563,11 @@ static int x68k_read_mouse(running_machine *machine)
 	x68k_sys.mouse.inputtype++;
 	if(x68k_sys.mouse.inputtype > 2)
 	{
-		int val = scc8530_get_reg_b(scc, 0);
+		int i_val = scc8530_get_reg_b(scc, 0);
 		x68k_sys.mouse.inputtype = 0;
 		x68k_sys.mouse.bufferempty = 1;
-		val &= ~0x01;
-		scc8530_set_reg_b(scc, 0, val);
+		i_val &= ~0x01;
+		scc8530_set_reg_b(scc, 0, i_val);
 		logerror("SCC: mouse buffer empty\n");
 	}
 
@@ -582,7 +582,7 @@ static int x68k_read_mouse(running_machine *machine)
 */
 static READ16_HANDLER( x68k_scc_r )
 {
-	const device_config *scc = devtag_get_device(space->machine, "scc");
+	running_device *scc = devtag_get_device(space->machine, "scc");
 	offset %= 4;
 	switch(offset)
 	{
@@ -601,7 +601,7 @@ static READ16_HANDLER( x68k_scc_r )
 
 static WRITE16_HANDLER( x68k_scc_w )
 {
-	const device_config *scc = devtag_get_device(space->machine, "scc");
+	running_device *scc = devtag_get_device(space->machine, "scc");
 	static unsigned char prev;
 	offset %= 4;
 
@@ -635,7 +635,7 @@ static WRITE16_HANDLER( x68k_scc_w )
 
 static TIMER_CALLBACK(x68k_scc_ack)
 {
-	const device_config *scc = devtag_get_device(machine, "scc");
+	running_device *scc = devtag_get_device(machine, "scc");
 	if(x68k_sys.mouse.bufferempty != 0)  // nothing to do if the mouse data buffer is empty
 		return;
 
@@ -660,7 +660,7 @@ static TIMER_CALLBACK(x68k_scc_ack)
 
 static void x68k_set_adpcm(running_machine* machine)
 {
-	const device_config *dev = devtag_get_device(machine, "hd63450");
+	running_device *dev = devtag_get_device(machine, "hd63450");
 	UINT32 rate = 0;
 
 	switch(x68k_sys.adpcm.rate & 0x0c)
@@ -689,7 +689,7 @@ static void x68k_set_adpcm(running_machine* machine)
 // Button inputs (Start, A, B and C) are read in bits 5 and 6 (rather than 4
 // and 5 like on a Megadrive)
 
-static UINT8 md_3button_r(const device_config* device, int port)
+static UINT8 md_3button_r(running_device* device, int port)
 {
 	if(port == 1)
 	{
@@ -737,7 +737,7 @@ static void md_6button_init(running_machine* machine)
 	x68k_sys.mdctrl.io_timeout2 = timer_alloc(machine,md_6button_port2_timeout,NULL);
 }
 
-static UINT8 md_6button_r(const device_config* device, int port)
+static UINT8 md_6button_r(running_device* device, int port)
 {
 	if(port == 1)
 	{
@@ -825,7 +825,7 @@ static UINT8 md_6button_r(const device_config* device, int port)
 // Output is the same as for standard controllers, but when ctl is high,
 // the directions refer to the right D-pad, and when low, the left D-pad
 // The buttons are read the same as normal, regardless of ctl.
-static UINT8 xpd1lr_r(const device_config* device, int port)
+static UINT8 xpd1lr_r(running_device* device, int port)
 {
 	if(port == 1)
 	{
@@ -917,7 +917,7 @@ static READ8_DEVICE_HANDLER( ppi_port_c_r )
 static WRITE8_DEVICE_HANDLER( ppi_port_c_w )
 {
 	// ADPCM / Joystick control
-	const device_config *oki = devtag_get_device(device->machine, "okim6258");
+	running_device *oki = devtag_get_device(device->machine, "okim6258");
 	static UINT16 prev1;
 	static UINT16 prev2;
 	static UINT16 prevA;
@@ -960,7 +960,7 @@ static WRITE8_DEVICE_HANDLER( ppi_port_c_w )
 // NEC uPD72065 at 0xe94000
 static WRITE16_HANDLER( x68k_fdc_w )
 {
-	const device_config *fdc = devtag_get_device(space->machine, "upd72065");
+	running_device *fdc = devtag_get_device(space->machine, "upd72065");
 	unsigned int drive, x;
 	switch(offset)
 	{
@@ -1038,7 +1038,7 @@ static READ16_HANDLER( x68k_fdc_r )
 {
 	unsigned int ret;
 	int x;
-	const device_config *fdc = devtag_get_device(space->machine, "upd72065");
+	running_device *fdc = devtag_get_device(space->machine, "upd72065");
 
 	switch(offset)
 	{
@@ -1087,7 +1087,7 @@ static WRITE_LINE_DEVICE_HANDLER( fdc_irq )
 static int x68k_fdc_read_byte(running_machine *machine,int addr)
 {
 	int data = -1;
-	const device_config *fdc = devtag_get_device(machine, "upd72065");
+	running_device *fdc = devtag_get_device(machine, "upd72065");
 
 	if(x68k_sys.fdc.drq_state != 0)
 		data = upd765_dack_r(fdc, 0);
@@ -1097,7 +1097,7 @@ static int x68k_fdc_read_byte(running_machine *machine,int addr)
 
 static void x68k_fdc_write_byte(running_machine *machine,int addr, int data)
 {
-	const device_config *fdc = devtag_get_device(machine, "upd72065");
+	running_device *fdc = devtag_get_device(machine, "upd72065");
 	upd765_dack_w(fdc, 0, data);
 }
 
@@ -1127,8 +1127,8 @@ static READ16_HANDLER( x68k_fm_r )
 
 static WRITE8_DEVICE_HANDLER( x68k_ct_w )
 {
-	const device_config *fdc = devtag_get_device(device->machine, "upd72065");
-	const device_config *okim = devtag_get_device(device->machine, "okim6258");
+	running_device *fdc = devtag_get_device(device->machine, "upd72065");
+	running_device *okim = devtag_get_device(device->machine, "okim6258");
 
 	// CT1 and CT2 bits from YM2151 port 0x1b
 	// CT1 - ADPCM clock - 0 = 8MHz, 1 = 4MHz
@@ -1265,7 +1265,7 @@ static READ16_HANDLER( x68k_sysport_r )
 #ifdef UNUSED_FUNCTION
 static READ16_HANDLER( x68k_mfp_r )
 {
-	const device_config *x68k_mfp = devtag_get_device(space->machine, MC68901_TAG);
+	running_device *x68k_mfp = devtag_get_device(space->machine, MC68901_TAG);
 
 	return mc68901_register_r(x68k_mfp, offset);
 }
@@ -1273,7 +1273,7 @@ static READ16_HANDLER( x68k_mfp_r )
 
 static READ16_HANDLER( x68k_mfp_r )
 {
-	const device_config *x68k_mfp = devtag_get_device(space->machine, MC68901_TAG);
+	running_device *x68k_mfp = devtag_get_device(space->machine, MC68901_TAG);
     // Initial settings indicate that IRQs are generated for FM (YM2151), Receive buffer error or full,
     // MFP Timer C, and the power switch
 //  logerror("MFP: [%08x] Reading offset %i\n",cpu_get_pc(space->cpu),offset);
@@ -1337,7 +1337,7 @@ static READ16_HANDLER( x68k_mfp_r )
 
 static WRITE16_HANDLER( x68k_mfp_w )
 {
-	const device_config *x68k_mfp = devtag_get_device(space->machine, MC68901_TAG);
+	running_device *x68k_mfp = devtag_get_device(space->machine, MC68901_TAG);
 
 	/* For the Interrupt registers, the bits are set out as such:
        Reg A - bit 7: GPIP7 (HSync)
@@ -1662,15 +1662,15 @@ static TIMER_CALLBACK(x68k_fake_bus_error)
 	if(messram_get_ptr(devtag_get_device(machine, "messram"))[v] != 0x02)  // normal vector for bus errors points to 02FF0540
 	{
 		int addr = (messram_get_ptr(devtag_get_device(machine, "messram"))[0x09] << 24) | (messram_get_ptr(devtag_get_device(machine, "messram"))[0x08] << 16) |(messram_get_ptr(devtag_get_device(machine, "messram"))[0x0b] << 8) | messram_get_ptr(devtag_get_device(machine, "messram"))[0x0a];
-		int sp = cpu_get_reg(cputag_get_cpu(machine, "maincpu"), REG_GENSP);
-		int pc = cpu_get_reg(cputag_get_cpu(machine, "maincpu"), REG_GENPC);
-		int sr = cpu_get_reg(cputag_get_cpu(machine, "maincpu"), M68K_SR);
-		//int pda = cpu_get_reg(cputag_get_cpu(machine, "maincpu"), M68K_PREF_DATA);
+		int sp = cpu_get_reg(devtag_get_device(machine, "maincpu"), REG_GENSP);
+		int pc = cpu_get_reg(devtag_get_device(machine, "maincpu"), REG_GENPC);
+		int sr = cpu_get_reg(devtag_get_device(machine, "maincpu"), M68K_SR);
+		//int pda = cpu_get_reg(devtag_get_device(machine, "maincpu"), M68K_PREF_DATA);
 		if(strcmp(machine->gamedrv->name,"x68030") == 0)
 		{  // byte order varies on the 68030
 			addr = (messram_get_ptr(devtag_get_device(machine, "messram"))[0x0b] << 24) | (messram_get_ptr(devtag_get_device(machine, "messram"))[0x0a] << 16) |(messram_get_ptr(devtag_get_device(machine, "messram"))[0x09] << 8) | messram_get_ptr(devtag_get_device(machine, "messram"))[0x08];
 		}
-		cpu_set_reg(cputag_get_cpu(machine, "maincpu"), REG_GENSP, sp - 14);
+		cpu_set_reg(devtag_get_device(machine, "maincpu"), REG_GENSP, sp - 14);
 		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-11] = (val & 0xff000000) >> 24;
 		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-12] = (val & 0x00ff0000) >> 16;
 		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-9] = (val & 0x0000ff00) >> 8;
@@ -1681,7 +1681,7 @@ static TIMER_CALLBACK(x68k_fake_bus_error)
 		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-2] = (pc & 0x000000ff);  // place PC onto the stack
 		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-5] = (sr & 0xff00) >> 8;
 		messram_get_ptr(devtag_get_device(machine, "messram"))[sp-6] = (sr & 0x00ff);  // place SR onto the stack
-		cpu_set_reg(cputag_get_cpu(machine, "maincpu"), REG_GENPC, addr);  // real exceptions seem to take too long to be acknowledged
+		cpu_set_reg(devtag_get_device(machine, "maincpu"), REG_GENPC, addr);  // real exceptions seem to take too long to be acknowledged
 		popmessage("Expansion access [%08x]: PC jump to %08x", val, addr);
 	}
 }
@@ -1785,7 +1785,7 @@ static WRITE16_HANDLER( x68k_exp_w )
 
 static void x68k_dma_irq(running_machine *machine, int channel)
 {
-	const device_config *device = devtag_get_device(machine, "hd63450");
+	running_device *device = devtag_get_device(machine, "hd63450");
 	current_vector[3] = hd63450_get_vector(device, channel);
 	current_irq_line = 3;
 	logerror("DMA#%i: DMA End (vector 0x%02x)\n",channel,current_vector[3]);
@@ -1802,7 +1802,7 @@ static void x68k_dma_end(running_machine *machine, int channel,int irq)
 
 static void x68k_dma_error(running_machine *machine, int channel, int irq)
 {
-	const device_config *device = devtag_get_device(machine, "hd63450");
+	running_device *device = devtag_get_device(machine, "hd63450");
 	if(irq != 0)
 	{
 		current_vector[3] = hd63450_get_error_vector(device,channel);
@@ -1811,7 +1811,7 @@ static void x68k_dma_error(running_machine *machine, int channel, int irq)
 	}
 }
 
-static void x68k_fm_irq(const device_config *device, int irq)
+static void x68k_fm_irq(running_device *device, int irq)
 {
 	if(irq == CLEAR_LINE)
 	{
@@ -1881,7 +1881,7 @@ static INTERRUPT_GEN( x68k_vsync_irq )
 
 static IRQ_CALLBACK(x68k_int_ack)
 {
-	const device_config *x68k_mfp = devtag_get_device(device->machine, MC68901_TAG);
+	running_device *x68k_mfp = devtag_get_device(device->machine, MC68901_TAG);
 
 	if(irqline == 6)  // MFP
 	{
@@ -2358,7 +2358,7 @@ static INPUT_PORTS_START( x68000 )
 
 INPUT_PORTS_END
 
-static void x68k_load_proc(const device_config *image)
+static void x68k_load_proc(running_device *image)
 {
 	if(x68k_sys.ioc.irqstatus & 0x02)
 	{
@@ -2371,7 +2371,7 @@ static void x68k_load_proc(const device_config *image)
 	x68k_sys.fdc.disk_inserted[floppy_get_drive(image)] = 1;
 }
 
-static void x68k_unload_proc(const device_config *image)
+static void x68k_unload_proc(running_device *image)
 {
 	if(x68k_sys.ioc.irqstatus & 0x02)
 	{
@@ -2475,7 +2475,7 @@ static MACHINE_RESET( x68000 )
 	}
 
 	// reset CPU
-	device_reset(cputag_get_cpu(machine, "maincpu"));
+	devtag_get_device(machine, "maincpu")->reset();
 }
 
 static MACHINE_START( x68000 )
@@ -2565,7 +2565,7 @@ static DRIVER_INIT( x68000 )
 
 	mfp_init();
 
-	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), x68k_int_ack);
+	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), x68k_int_ack);
 
 	// init keyboard
 	x68k_sys.keyboard.delay = 500;  // 3*100+200

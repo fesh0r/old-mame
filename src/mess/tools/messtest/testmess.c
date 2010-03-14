@@ -10,8 +10,9 @@
 #include <ctype.h>
 #include <setjmp.h>
 
+#include "emu.h"
+#include "emuopts.h"
 #include "testmess.h"
-#include "inputx.h"
 #include "pile.h"
 #include "pool.h"
 #include "sound/wavwrite.h"
@@ -132,7 +133,7 @@ struct _messtest_testcase
 
 
 typedef struct _messtest_specific_state messtest_specific_state;
-struct messtest_specific_state
+struct _messtest_specific_state
 {
 	messtest_testcase testcase;
 	int command_count;
@@ -224,7 +225,7 @@ static void dump_screenshot(running_machine *machine, int write_file)
 		if (filerr == FILERR_NONE)
 		{
 			/* choose a screen */
-			const device_config *screen = video_screen_first(machine->config);
+			running_device *screen = video_screen_first(machine);
 			while((screen != NULL) && !render_is_live_screen(screen))
 			{
 				screen = video_screen_next(screen);
@@ -341,7 +342,6 @@ static messtest_result_t run_test(int flags, messtest_results *results)
 		options_set_string(opts, OPTION_BIOS, current_testcase.bios, OPTION_PRIORITY_CMDLINE);
 	options_set_bool(opts, OPTION_SKIP_GAMEINFO, TRUE, OPTION_PRIORITY_CMDLINE);
 	options_set_bool(opts, OPTION_THROTTLE, FALSE, OPTION_PRIORITY_CMDLINE);
-	options_set_bool(opts, OPTION_SKIP_WARNINGS, TRUE, OPTION_PRIORITY_CMDLINE);
 	if (current_testcase.ram != 0)
 	{
 		options_set_int(opts, OPTION_RAMSIZE, current_testcase.ram, OPTION_PRIORITY_CMDLINE);
@@ -480,7 +480,7 @@ void osd_stop_audio_stream(void)
 void osd_update_audio_stream(running_machine *machine, INT16 *buffer, int samples_this_frame)
 {
 	if (wavptr && (machine->sample_rate != 0))
-		wav_add_data_16(wavptr, buffer, samples_this_frame * 2);
+		wav_add_data_16((wav_file*)wavptr, buffer, samples_this_frame * 2);
 }
 
 
@@ -495,7 +495,7 @@ static const input_setting_config *find_switch(running_machine *machine, const c
 
 	/* find switch with the name */
 	found = FALSE;
-	for (port = machine->portlist.head; !found && (port != NULL); port = port->next)
+	for (port = machine->portlist.first(); !found && (port != NULL); port = port->next)
 	{
 		for (field = port->fieldlist; !found && (field != NULL); field = field->next)
 		{
@@ -703,9 +703,9 @@ static void command_image_preload(running_machine *machine)
 
 
 
-static const device_config *find_device_by_identity(running_machine *machine, const messtest_device_identity *ident)
+static running_device *find_device_by_identity(running_machine *machine, const messtest_device_identity *ident)
 {
-	const device_config *device = NULL;
+	running_device *device = NULL;
 
 	/* look up the image slot */
 	if (ident->type == IO_UNKNOWN)
@@ -729,7 +729,7 @@ static const device_config *find_device_by_identity(running_machine *machine, co
 
 static void command_image_loadcreate(running_machine *machine)
 {
-	const device_config *image;
+	running_device *image;
 	const char *filename;
 	const char *format_name;
 	char buf[128];
@@ -775,12 +775,12 @@ static void command_image_loadcreate(running_machine *machine)
 	{
 		snprintf(buf, ARRAY_LENGTH(buf),	"%s.%s",
 			current_testcase.name, file_extensions);
-		osd_get_temp_filename(buf, ARRAY_LENGTH(buf), buf);
+		//osd_get_temp_filename(buf, ARRAY_LENGTH(buf), buf);
 		filename = buf;
 	}
 
 	success = FALSE;
-	for (gamedrv = machine->gamedrv; !success && gamedrv; gamedrv = mess_next_compatible_driver(gamedrv))
+	for (gamedrv = machine->gamedrv; !success && gamedrv; gamedrv = driver_get_compatible(gamedrv))
 	{
 		/* assemble the full path */
 		filepath = assemble_software_path(astring_alloc(), gamedrv, filename);
@@ -881,7 +881,7 @@ static void command_verify_image(running_machine *machine)
 	size_t verify_data_size;
 	size_t offset, offset_start, offset_end;
 	const char *filename;
-	const device_config *image;
+	running_device *image;
 	FILE *f;
 	UINT8 c;
 	char filename_buf[512];
@@ -939,14 +939,14 @@ static void command_verify_image(running_machine *machine)
 
 static void command_trace(running_machine *machine)
 {
-	const device_config *cpu;
+	running_device *cpu;
 	int cpunum = 0;
 	FILE *file;
 	char filename[256];
 
-	for (cpu = cpu_first(machine->config); cpu != NULL; cpu = cpu_next(cpu))
+	for (cpu = cpu_first(machine); cpu != NULL; cpu = cpu_next(cpu))
 	{
-		if (cpu_next(cpu_first(machine->config)) == NULL)
+		if (cpu_next(cpu_first(machine)) == NULL)
 			snprintf(filename, ARRAY_LENGTH(filename), "_%s.tr", current_testcase.name);
 		else
 			snprintf(filename, ARRAY_LENGTH(filename), "_%s.%d.tr", current_testcase.name, cpunum);
@@ -1288,7 +1288,7 @@ static void node_image(xml_data_node *node, messtest_command_type_t command)
 	attr_node = xml_get_attribute(node, "preload");
 	preload = attr_node ? atoi(attr_node->value) : 0;
 	if (preload)
-		new_command.command_type += 2;
+		new_command.command_type = (messtest_command_type_t) (new_command.command_type + 2);
 
 	/* 'filename' attribute */
 	attr_node = xml_get_attribute(node, "filename");
@@ -1359,7 +1359,7 @@ static void node_memverify(xml_data_node *node)
 
 	pile_init(&pile);
 	messtest_get_data(node, &pile);
-	new_buffer = pool_malloc(command_pool, pile_size(&pile));
+	new_buffer = pool_malloc_lib(command_pool, pile_size(&pile));
 	memcpy(new_buffer, pile_getptr(&pile), pile_size(&pile));
 	new_command.u.verify_args.verify_data = new_buffer;
 	new_command.u.verify_args.verify_data_size = pile_size(&pile);
@@ -1389,7 +1389,7 @@ static void node_imageverify(xml_data_node *node)
 
 	pile_init(&pile);
 	messtest_get_data(node, &pile);
-	new_buffer = pool_malloc(command_pool, pile_size(&pile));
+	new_buffer = pool_malloc_lib(command_pool, pile_size(&pile));
 	memcpy(new_buffer, pile_getptr(&pile), pile_size(&pile));
 	new_command.u.verify_args.verify_data = new_buffer;
 	new_command.u.verify_args.verify_data_size = pile_size(&pile);
@@ -1407,7 +1407,7 @@ static void node_imageverify(xml_data_node *node)
 static void verify_end_handler(const void *buffer, size_t size)
 {
 	void *new_buffer;
-	new_buffer = pool_malloc(command_pool, size);
+	new_buffer = pool_malloc_lib(command_pool, size);
 	memcpy(new_buffer, buffer, size);
 
 	new_command.u.verify_args.verify_data = new_buffer;
@@ -1475,7 +1475,7 @@ void node_testmess(xml_data_node *node)
 	int result;
 
 	pile_init(&command_pile);
-	command_pool = pool_alloc(NULL);
+	command_pool = pool_alloc_lib(NULL);
 
 	memset(&new_command, 0, sizeof(new_command));
 	command_count = 0;
@@ -1565,5 +1565,5 @@ void node_testmess(xml_data_node *node)
 
 	report_testcase_ran(result);
 	pile_delete(&command_pile);
-	pool_free(command_pool);
+	pool_free_lib(command_pool);
 }

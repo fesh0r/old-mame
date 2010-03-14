@@ -184,7 +184,7 @@ TO DO:
 ***************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "sound/sn76496.h"
 #include "video/tms9928a.h"
@@ -600,7 +600,7 @@ static MACHINE_START( adam )
 
 static MACHINE_RESET( adam )
 {
-	const device_config *img;
+	running_device *img;
 
 	img = devtag_get_device(machine, "cart");
 

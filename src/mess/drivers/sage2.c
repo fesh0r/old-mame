@@ -10,7 +10,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/msm8251.h"
 #include "machine/terminal.h"
@@ -37,7 +37,7 @@ static MACHINE_RESET(sage2)
 
 	memcpy((UINT8*)sage2_ram,user1,0x2000);
 
-	device_reset(cputag_get_cpu(machine, "maincpu"));
+	devtag_get_device(machine, "maincpu")->reset();
 }
 
 static WRITE8_DEVICE_HANDLER( sage2_kbd_put )
@@ -74,5 +74,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT   COMPANY                 FULLNAME       FLAGS */
-COMP( 1982, sage2,  0,       0, 	sage2, 		sage2, 	 0,  	"Sage Technology",   "Sage II",		GAME_NOT_WORKING)
+COMP( 1982, sage2,  0,       0, 	sage2,		sage2,	 0, 	"Sage Technology",   "Sage II",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

@@ -24,7 +24,7 @@
 #include <stdio.h>
 
 // MAME/MAMEUI headers
-#include "driver.h"
+#include "emu.h"
 #include "mui_util.h"
 #include "datafile.h"
 #include "history.h"
@@ -37,7 +37,7 @@
 // Load indexes from history.dat if found
 char * GetGameHistory(int driver_index)
 {
-	static char buffer[32768];
+	static char buffer[1024 * 1024];
 	buffer[0] = '\0';
 
 	if (load_driver_history(drivers[driver_index],buffer,sizeof(buffer)) != 0)

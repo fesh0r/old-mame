@@ -1,7 +1,7 @@
-#include "driver.h"
+#include "emu.h"
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
-
+#include "crsshair.h"
 #include "includes/cbm.h"
 #include "formats/cbm_tap.h"
 
@@ -36,7 +36,7 @@ static TIMER_CALLBACK( lightpen_tick )
 	}
 }
 
-void cbm_common_interrupt( const device_config *device )
+void cbm_common_interrupt( running_device *device )
 {
 	int value, i;
 	int controller1 = input_port_read(device->machine, "CTRLSEL") & 0x07;
@@ -178,7 +178,7 @@ components (to select/read additional keyboard lines) */
  * irq to irq connected
  */
 
-UINT8 cbm_common_cia0_port_a_r( const device_config *device, UINT8 output_b )
+UINT8 cbm_common_cia0_port_a_r( running_device *device, UINT8 output_b )
 {
 	UINT8 value = 0xff;
 
@@ -302,7 +302,7 @@ UINT8 cbm_common_cia0_port_a_r( const device_config *device, UINT8 output_b )
 	return value;
 }
 
-UINT8 cbm_common_cia0_port_b_r( const device_config *device, UINT8 output_a )
+UINT8 cbm_common_cia0_port_b_r( running_device *device, UINT8 output_a )
 {
 	UINT8 value = 0xff;
 
@@ -331,7 +331,7 @@ UINT8 cbm_common_cia0_port_b_r( const device_config *device, UINT8 output_a )
 ***********************************************/
 
 
-static int general_cbm_loadsnap( const device_config *image, const char *file_type, int snapshot_size,
+static int general_cbm_loadsnap( running_device *image, const char *file_type, int snapshot_size,
 	offs_t offset, void (*cbm_sethiaddress)(running_machine *machine, UINT16 hiaddress) )
 {
 	char buffer[7];
@@ -339,7 +339,7 @@ static int general_cbm_loadsnap( const device_config *image, const char *file_ty
 	UINT32 bytesread;
 	UINT16 address = 0;
 	int i;
-	const address_space *space = cputag_get_address_space(image->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cpu_get_address_space(image->machine->firstcpu, ADDRESS_SPACE_PROGRAM);
 
 	if (!file_type)
 		goto error;
@@ -379,7 +379,7 @@ static int general_cbm_loadsnap( const device_config *image, const char *file_ty
 		address = 2049;
 	snapshot_size -= 2;
 
-	data = malloc(snapshot_size);
+	data = (UINT8*)malloc(snapshot_size);
 	if (!data)
 		goto error;
 
@@ -402,7 +402,7 @@ error:
 
 static void cbm_quick_sethiaddress( running_machine *machine, UINT16 hiaddress )
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cpu_get_address_space(machine->firstcpu, ADDRESS_SPACE_PROGRAM);
 
 	memory_write_byte(space, 0x31, hiaddress & 0xff);
 	memory_write_byte(space, 0x2f, hiaddress & 0xff);
@@ -429,7 +429,7 @@ QUICKLOAD_LOAD( cbm_vc20 )
 
 static void cbm_pet_quick_sethiaddress( running_machine *machine, UINT16 hiaddress )
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cpu_get_address_space(machine->firstcpu, ADDRESS_SPACE_PROGRAM);
 
 	memory_write_byte(space, 0x2e, hiaddress & 0xff);
 	memory_write_byte(space, 0x2c, hiaddress & 0xff);
@@ -446,7 +446,7 @@ QUICKLOAD_LOAD( cbm_pet )
 
 static void cbm_pet1_quick_sethiaddress(running_machine *machine, UINT16 hiaddress)
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cpu_get_address_space(machine->firstcpu, ADDRESS_SPACE_PROGRAM);
 
 	memory_write_byte(space, 0x80, hiaddress & 0xff);
 	memory_write_byte(space, 0x7e, hiaddress & 0xff);
@@ -463,7 +463,7 @@ QUICKLOAD_LOAD( cbm_pet1 )
 
 static void cbmb_quick_sethiaddress(running_machine *machine, UINT16 hiaddress)
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cpu_get_address_space(machine->firstcpu, ADDRESS_SPACE_PROGRAM);
 
 	memory_write_byte(space, 0xf0046, hiaddress & 0xff);
 	memory_write_byte(space, 0xf0047, hiaddress >> 8);
@@ -481,7 +481,7 @@ QUICKLOAD_LOAD( p500 )
 
 static void cbm_c65_quick_sethiaddress( running_machine *machine, UINT16 hiaddress )
 {
-	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	const address_space *space = cpu_get_address_space(machine->firstcpu, ADDRESS_SPACE_PROGRAM);
 
 	memory_write_byte(space, 0x82, hiaddress & 0xff);
 	memory_write_byte(space, 0x83, hiaddress >> 8);
@@ -519,5 +519,5 @@ const cassette_config cbm_cassette_config =
 {
 	cbm_cassette_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED
+	(cassette_state) (CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED)
 };

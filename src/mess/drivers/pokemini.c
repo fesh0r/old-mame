@@ -7,7 +7,7 @@ The LCD is likely to be a SSD1828 LCD.
 
 ********************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "sound/speaker.h"
 #include "machine/i2cmem.h"
 #include "includes/pokemini.h"
@@ -103,5 +103,4 @@ ROM_START( pokemini )
 ROM_END
 
 
-CONS( 1999, pokemini, 0, 0, pokemini, pokemini, pokemini, "Nintendo", "Pokemon Mini", GAME_NOT_WORKING )
-
+CONS( 2001, pokemini, 0, 0, pokemini, pokemini, pokemini, "Nintendo", "Pokemon Mini", GAME_NOT_WORKING )

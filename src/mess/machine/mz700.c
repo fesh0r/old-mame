@@ -9,7 +9,7 @@
  *
  *****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/mz700.h"
 #include "cpu/z80/z80.h"
 #include "machine/pit8253.h"
@@ -52,27 +52,26 @@ I8255A_INTERFACE( mz700_ppi8255_interface )
 };
 
 
-static PIT8253_OUTPUT_CHANGED( pit_out0_changed );
-static PIT8253_OUTPUT_CHANGED( pit_out1_changed );
-static PIT8253_OUTPUT_CHANGED( pit_irq_2 );
+static WRITE_LINE_DEVICE_HANDLER( pit_out0_changed );
+static WRITE_LINE_DEVICE_HANDLER( pit_irq_2 );
 
 const struct pit8253_config mz700_pit8253_config =
 {
 	{
-		/* clockin             callback */
-		{ XTAL_17_73447MHz/20, pit_out0_changed },
-		{	          15611.0, pit_out1_changed },
-		{		            0, pit_irq_2        },
+		/* clockin             gate            callback */
+		{ XTAL_17_73447MHz/20, DEVCB_NULL,     DEVCB_LINE(pit_out0_changed) },
+		{	          15611.0, DEVCB_LINE_VCC, DEVCB_LINE(pit8253_clk2_w)   },
+		{		            0, DEVCB_LINE_VCC, DEVCB_LINE(pit_irq_2)        },
 	}
 };
 
 const struct pit8253_config mz800_pit8253_config =
 {
 	{
-		/* clockin             callback */
-		{ XTAL_17_73447MHz/16, pit_out0_changed },
-		{	          15611.0, pit_out1_changed },
-		{		            0, pit_irq_2        },
+		/* clockin             gate            callback */
+		{ XTAL_17_73447MHz/16, DEVCB_NULL,     DEVCB_LINE(pit_out0_changed) },
+		{	          15611.0, DEVCB_LINE_VCC, DEVCB_LINE(pit8253_clk2_w)   },
+		{		            0, DEVCB_LINE_VCC, DEVCB_LINE(pit_irq_2)        },
 	}
 };
 
@@ -83,7 +82,7 @@ const struct pit8253_config mz800_pit8253_config =
 
 DRIVER_INIT( mz700 )
 {
-	mz_state *mz = machine->driver_data;
+	mz_state *mz = (mz_state *)machine->driver_data;
 	mz->mz700 = TRUE;
 	mz->mz700_mode = TRUE;
 
@@ -94,7 +93,7 @@ DRIVER_INIT( mz700 )
 
 DRIVER_INIT( mz800 )
 {
-	mz_state *mz = machine->driver_data;
+	mz_state *mz = (mz_state *)machine->driver_data;
 	mz->mz700 = FALSE;
 	mz->mz700_mode = FALSE;
 
@@ -109,7 +108,7 @@ DRIVER_INIT( mz800 )
 
 MACHINE_START( mz700 )
 {
-	mz_state *mz = machine->driver_data;
+	mz_state *mz = (mz_state *)machine->driver_data;
 
 	mz->pit = devtag_get_device(machine, "pit8253");
 	mz->ppi = devtag_get_device(machine, "ppi8255");
@@ -125,16 +124,22 @@ MACHINE_START( mz700 )
 
 static READ8_HANDLER( mz700_e008_r )
 {
-	mz_state *mz = space->machine->driver_data;
+	mz_state *mz = (mz_state *)space->machine->driver_data;
 	UINT8 data = 0;
 
 	data |= mz->other_timer;
 	data |= input_port_read(space->machine, "JOY");
-	data |= video_screen_get_hblank(space->machine->primary_screen);
+	data |= video_screen_get_hblank(space->machine->primary_screen) << 7;
 
 	LOG(1, "mz700_e008_r", ("%02X\n", data), space->machine);
 
 	return data;
+}
+
+static WRITE8_HANDLER( mz700_e008_w )
+{
+	mz_state *mz = (mz_state *)space->machine->driver_data;
+	pit8253_gate0_w(mz->pit, BIT(data, 0));
 }
 
 
@@ -145,7 +150,7 @@ static READ8_HANDLER( mz700_e008_r )
 READ8_HANDLER( mz800_bank_0_r )
 {
 	const address_space *spc = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	mz_state *mz = space->machine->driver_data;
+	mz_state *mz = (mz_state *)space->machine->driver_data;
 
 	/* switch in cgrom */
 	memory_install_read_bank(spc, 0x1000, 0x1fff, 0, 0, "bank2");
@@ -201,7 +206,7 @@ WRITE8_HANDLER( mz800_bank_0_w )
 READ8_HANDLER( mz800_bank_1_r )
 {
 	const address_space *spc = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	mz_state *mz = space->machine->driver_data;
+	mz_state *mz = (mz_state *)space->machine->driver_data;
 
 	/* switch in ram from 0x1000 to 0x1fff */
 	memory_install_readwrite_bank(spc, 0x1000, 0x1fff, 0x1000, 0, "bank2");
@@ -226,7 +231,7 @@ READ8_HANDLER( mz800_bank_1_r )
 WRITE8_HANDLER( mz700_bank_1_w )
 {
 	const address_space *spc = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	mz_state *mz = space->machine->driver_data;
+	mz_state *mz = (mz_state *)space->machine->driver_data;
 
 	if (mz->mz700_mode)
 	{
@@ -262,7 +267,7 @@ WRITE8_HANDLER( mz700_bank_2_w )
 WRITE8_HANDLER( mz700_bank_3_w )
 {
 	const address_space *spc = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	mz_state *mz = space->machine->driver_data;
+	mz_state *mz = (mz_state *)space->machine->driver_data;
 
 	if (mz->mz700_mode)
 	{
@@ -283,15 +288,13 @@ WRITE8_HANDLER( mz700_bank_3_w )
 			{
 				memory_install_readwrite8_device_handler(spc, mz->ppi, 0xe000, 0xfff3, 0, 0x1ff0, i8255a_r, i8255a_w);
 				memory_install_readwrite8_device_handler(spc, mz->pit, 0xe004, 0xfff7, 0, 0x1ff0, pit8253_r, pit8253_w);
-				memory_install_read8_handler(spc, 0xe008, 0xfff8, 0, 0x1ff0, mz700_e008_r);
-				memory_install_write8_device_handler(spc, mz->pit, 0xe008, 0xfff8, 0, 0x1ff0, pit8253_gate_w);
+				memory_install_readwrite8_handler(spc, 0xe008, 0xfff8, 0, 0x1ff0, mz700_e008_r, mz700_e008_w);
 			}
 			else
 			{
 				memory_install_readwrite8_device_handler(spc, mz->ppi, 0xe000, 0xe003, 0, 0, i8255a_r, i8255a_w);
 				memory_install_readwrite8_device_handler(spc, mz->pit, 0xe004, 0xe007, 0, 0, pit8253_r, pit8253_w);
-				memory_install_read8_handler(spc, 0xe008, 0xe008, 0, 0, mz700_e008_r);
-				memory_install_write8_device_handler(spc, mz->pit, 0xe008, 0xe008, 0, 0, pit8253_gate_w);
+				memory_install_readwrite8_handler(spc, 0xe008, 0xe008, 0, 0, mz700_e008_r, mz700_e008_w);
 			}
 		}
 	}
@@ -311,7 +314,7 @@ WRITE8_HANDLER( mz700_bank_3_w )
 WRITE8_HANDLER( mz700_bank_4_w )
 {
 	const address_space *spc = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	mz_state *mz = space->machine->driver_data;
+	mz_state *mz = (mz_state *)space->machine->driver_data;
 
 	if (mz->mz700_mode)
 	{
@@ -368,7 +371,7 @@ WRITE8_HANDLER( mz700_bank_4_w )
 WRITE8_HANDLER( mz700_bank_5_w )
 {
 	const address_space *spc = cputag_get_address_space(space->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	mz_state *mz = space->machine->driver_data;
+	mz_state *mz = (mz_state *)space->machine->driver_data;
 
 	if (mz->mz700_mode)
 	{
@@ -386,7 +389,7 @@ WRITE8_HANDLER( mz700_bank_5_w )
 
 WRITE8_HANDLER( mz700_bank_6_w )
 {
-	mz_state *mz = space->machine->driver_data;
+	mz_state *mz = (mz_state *)space->machine->driver_data;
 
 	if (mz->mz700_mode)
 	{
@@ -417,9 +420,9 @@ WRITE8_HANDLER( mz700_bank_6_w )
 static UINT8 speaker_level = 0;
 static UINT8 prev_state = 0;
 
-static PIT8253_OUTPUT_CHANGED( pit_out0_changed )
+static WRITE_LINE_DEVICE_HANDLER( pit_out0_changed )
 {
-	const device_config *speaker = devtag_get_device(device->machine, "speaker");
+	running_device *speaker = devtag_get_device(device->machine, "speaker");
 	if((prev_state==0) && (state==1)) {
 		speaker_level ^= 1;
 	}
@@ -427,18 +430,10 @@ static PIT8253_OUTPUT_CHANGED( pit_out0_changed )
 	speaker_level_w( speaker, speaker_level);
 }
 
-
-/* Timer 1 is the clock for timer 2 clock input */
-static PIT8253_OUTPUT_CHANGED( pit_out1_changed )
-{
-	pit8253_set_clock_signal(device, 2, state);
-}
-
-
 /* timer 2 is the AM/PM (12 hour) interrupt */
-static PIT8253_OUTPUT_CHANGED( pit_irq_2 )
+static WRITE_LINE_DEVICE_HANDLER( pit_irq_2 )
 {
-	mz_state *mz = device->machine->driver_data;
+	mz_state *mz = (mz_state *)device->machine->driver_data;
 
 	if (mz->intmsk)
 		cputag_set_input_line(device->machine, "maincpu", 0, ASSERT_LINE);
@@ -479,8 +474,8 @@ static READ8_DEVICE_HANDLER( pio_port_b_r )
  */
 static READ8_DEVICE_HANDLER( pio_port_c_r )
 {
-	const device_config *cas = devtag_get_device(device->machine, "cassette");
-	mz_state *mz = device->machine->driver_data;
+	running_device *cas = devtag_get_device(device->machine, "cassette");
+	mz_state *mz = (mz_state *)device->machine->driver_data;
 	UINT8 data = 0;
 
 	/* note: this is actually connected to Q output of the motor-control flip-flop (see below) */
@@ -501,7 +496,7 @@ static READ8_DEVICE_HANDLER( pio_port_c_r )
 
 static WRITE8_DEVICE_HANDLER( pio_port_a_w )
 {
-	const device_config *timer = devtag_get_device(device->machine, "cursor");
+	running_device *timer = devtag_get_device(device->machine, "cursor");
 
 	LOG(2,"mz700_pio_port_a_w",("%02X\n", data),device->machine);
 
@@ -564,14 +559,14 @@ static UINT8 mz800_palette_bank;
     Z80 PIO
 ***************************************************************************/
 
-static void mz800_z80pio_irq(const device_config *device, int which)
+static void mz800_z80pio_irq(running_device *device, int which)
 {
 	cputag_set_input_line(device->machine, "maincpu", 0, which);
 }
 
 static READ8_DEVICE_HANDLER( mz800_z80pio_port_a_r )
 {
-	const device_config *printer = devtag_get_device(device->machine, "centronics");
+	running_device *printer = devtag_get_device(device->machine, "centronics");
 	UINT8 result = 0;
 
 	result |= centronics_busy_r(printer);
@@ -583,7 +578,7 @@ static READ8_DEVICE_HANDLER( mz800_z80pio_port_a_r )
 
 static WRITE8_DEVICE_HANDLER( mz800_z80pio_port_a_w )
 {
-	const device_config *printer = devtag_get_device(device->machine, "centronics");
+	running_device *printer = devtag_get_device(device->machine, "centronics");
 
 	centronics_prime_w(printer, BIT(data, 6));
 	centronics_strobe_w(printer, BIT(data, 7));
@@ -591,7 +586,7 @@ static WRITE8_DEVICE_HANDLER( mz800_z80pio_port_a_w )
 
 static WRITE8_DEVICE_HANDLER( mz800_printer_data_w )
 {
-	const device_config *printer = devtag_get_device(device->machine, "centronics");
+	running_device *printer = devtag_get_device(device->machine, "centronics");
 	centronics_data_w(printer, 0, data);
 }
 
@@ -599,10 +594,10 @@ const z80pio_interface mz800_z80pio_config =
 {
 	DEVCB_LINE(mz800_z80pio_irq),
 	DEVCB_HANDLER(mz800_z80pio_port_a_r),
-	DEVCB_NULL,
 	DEVCB_HANDLER(mz800_z80pio_port_a_w),
-	DEVCB_HANDLER(mz800_printer_data_w),
 	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(mz800_printer_data_w),
 	DEVCB_NULL,
 };
 
@@ -649,7 +644,7 @@ WRITE8_HANDLER( mz800_read_format_w )
  */
 WRITE8_HANDLER( mz800_display_mode_w )
 {
-	mz_state *mz = space->machine->driver_data;
+	mz_state *mz = (mz_state *)space->machine->driver_data;
 
 	mz->mz700_mode = BIT(data, 3);
 	mz->hires_mode = BIT(data, 2);
@@ -683,7 +678,7 @@ WRITE8_HANDLER( mz800_ramdisk_w )
 /* port EB */
 WRITE8_HANDLER( mz800_ramaddr_w )
 {
-	mz800_ramaddr = (cpu_get_reg(cputag_get_cpu(space->machine, "maincpu"), Z80_BC) & 0xff00) | (data & 0xff);
+	mz800_ramaddr = (cpu_get_reg(devtag_get_device(space->machine, "maincpu"), Z80_BC) & 0xff00) | (data & 0xff);
 	LOG(1,"mz800_ramaddr_w",("%04X\n", mz800_ramaddr),space->machine);
 }
 

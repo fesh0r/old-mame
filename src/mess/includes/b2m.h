@@ -13,9 +13,13 @@
 #include "sound/speaker.h"
 #include "sound/wave.h"
 
-typedef struct _b2m_state b2m_state;
-struct _b2m_state
+class b2m_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, b2m_state(machine)); }
+
+	b2m_state(running_machine &machine) { }
+
 	UINT8 b2m_8255_porta;
 	UINT8 b2m_video_scroll;
 	UINT8 b2m_8255_portc;
@@ -32,9 +36,9 @@ struct _b2m_state
 	UINT8 vblank_state;
 
 	/* devices */
-	const device_config *fdc;
-	const device_config *pic;
-	const device_config *speaker;
+	running_device *fdc;
+	running_device *pic;
+	running_device *speaker;
 };
 
 /*----------- defined in machine/b2m.c -----------*/

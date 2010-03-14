@@ -16,12 +16,15 @@
 //#define MC14412_TAG   "m8"
 #define RP5C01A_TAG		"m301"
 #define TCM5089_TAG		"m11"
-#define HD61830_TAG		"m18"
 #define MSM8251_TAG		"m20"
 
-typedef struct _kc85_state kc85_state;
-struct _kc85_state
+class kc85_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, kc85_state(machine)); }
+
+	kc85_state(running_machine &machine) { }
+
 	/* memory state */
 	UINT8 bank;				/* memory bank selection */
 
@@ -35,18 +38,22 @@ struct _kc85_state
 	/* peripheral state */
 	int iosel;				/* serial interface select */
 
-	const device_config *hd44102[10];
-	const device_config *im6042;
-	const device_config *upd1990a;
-	const device_config *mc14412;
-	const device_config *centronics;
-	const device_config *speaker;
-	const device_config *cassette;
+	running_device *hd44102[10];
+	running_device *im6042;
+	running_device *upd1990a;
+	running_device *mc14412;
+	running_device *centronics;
+	running_device *speaker;
+	running_device *cassette;
 };
 
-typedef struct _tandy200_state tandy200_state;
-struct _tandy200_state
+class tandy200_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, tandy200_state(machine)); }
+
+	tandy200_state(running_machine &machine) { }
+
 	/* memory state */
 	UINT8 bank;				/* memory bank selection */
 
@@ -58,13 +65,13 @@ struct _tandy200_state
 	int buzzer;				/* buzzer select */
 	int bell;				/* bell output */
 
-	const device_config *hd61830;
-	const device_config *im6042;
-	const device_config *mc14412;
-	const device_config *tcm5089;
-	const device_config *centronics;
-	const device_config *speaker;
-	const device_config *cassette;
+	running_device *hd61830;
+	running_device *im6042;
+	running_device *mc14412;
+	running_device *tcm5089;
+	running_device *centronics;
+	running_device *speaker;
+	running_device *cassette;
 };
 
 /* ---------- defined in video/kyocera.c ---------- */

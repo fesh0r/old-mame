@@ -8,7 +8,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "pc_t1t.h"
 #include "video/mc6845.h"
 #include "machine/pic8259.h"
@@ -175,7 +175,7 @@ static VIDEO_START( pc_pcjr )
 
 static VIDEO_UPDATE( mc6845_t1000 )
 {
-	const device_config *devconf = devtag_get_device(screen->machine, T1000_MC6845_NAME);
+	running_device *devconf = devtag_get_device(screen->machine, T1000_MC6845_NAME);
 	mc6845_update( devconf, bitmap, cliprect);
 	return 0;
 }
@@ -485,7 +485,7 @@ static void pc_t1t_mode_switch( void )
 
 static void pc_pcjr_mode_switch( running_machine *machine )
 {
-	const device_config *mc6845 = devtag_get_device(machine, T1000_MC6845_NAME);
+	running_device *mc6845 = devtag_get_device(machine, T1000_MC6845_NAME);
 
 	switch( pcjr.reg.data[0] & 0x1A )
 	{
@@ -782,7 +782,7 @@ static int pc_t1t_bank_r(void)
 
 WRITE8_HANDLER ( pc_T1T_w )
 {
-	const device_config *devconf;
+	running_device *devconf;
 
 	switch( offset )
 	{
@@ -822,7 +822,7 @@ WRITE8_HANDLER ( pc_T1T_w )
 
 WRITE8_HANDLER( pc_pcjr_w )
 {
-	const device_config *devconf;
+	running_device *devconf;
 
 	switch( offset )
 	{
@@ -862,7 +862,7 @@ WRITE8_HANDLER( pc_pcjr_w )
 
  READ8_HANDLER ( pc_T1T_r )
 {
-	const device_config *devconf;
+	running_device *devconf;
 	int				data = 0xff;
 
 	switch( offset )
@@ -932,6 +932,5 @@ static WRITE_LINE_DEVICE_HANDLER( pcjr_vsync_changed )
 	{
 		pcjr.pc_framecnt++;
 	}
-	pic8259_set_irq_line(devtag_get_device(device->machine, "pic8259"), 5, state);
+	pic8259_ir5_w(devtag_get_device(device->machine, "pic8259"), state);
 }
-

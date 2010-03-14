@@ -84,7 +84,7 @@ Some bugs left :
  ******************************************************************************/
 
 /* Core includes */
-#include "driver.h"
+#include "emu.h"
 #include "includes/amstrad.h"
 
 /* Components */
@@ -795,7 +795,7 @@ static const gfx_layout asic_sprite_layout =
 	4,
 	{ 4,5,6,7 },
 	{ 0,8,16,24,32,40,48,56,64,72,80,88,96,104,112,120 },
-   	{ 0*128, 1*128, 2*128, 3*128, 4*128, 5*128, 6*128, 7*128, 8*128, 9*128, 10*128, 11*128, 12*128, 13*128, 14*128, 15*128 },
+	{ 0*128, 1*128, 2*128, 3*128, 4*128, 5*128, 6*128, 7*128, 8*128, 9*128, 10*128, 11*128, 12*128, 13*128, 14*128, 15*128 },
 	16*16*8
 };
 
@@ -834,7 +834,7 @@ static const cassette_config amstrad_cassette_config =
 {
 	cdt_cassette_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED
+	(cassette_state) (CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED)
 };
 
 static const floppy_config cpc6128_floppy_config =
@@ -924,6 +924,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( kccomp )
 	MDRV_IMPORT_FROM(amstrad)
+	MDRV_MACHINE_START(kccomp)
 	MDRV_MACHINE_RESET(kccomp)
 
 	MDRV_PALETTE_INIT(kccomp)
@@ -994,7 +995,7 @@ static MACHINE_DRIVER_START( gx4000 )
 
 	MDRV_QUANTUM_TIME(HZ(60))
 
-	MDRV_MACHINE_START( plus )
+	MDRV_MACHINE_START( gx4000 )
 	MDRV_MACHINE_RESET( gx4000 )
 
 	MDRV_I8255A_ADD( "ppi8255", amstrad_ppi8255_interface )
@@ -1030,6 +1031,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( aleste )
 	MDRV_IMPORT_FROM(amstrad)
+	MDRV_MACHINE_START(aleste)
 	MDRV_MACHINE_RESET(aleste)
 
 	MDRV_SOUND_REPLACE("ay", AY8910, XTAL_16MHz / 16)

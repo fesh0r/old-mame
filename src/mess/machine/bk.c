@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "devices/cassette.h"
 #include "machine/i8255a.h"
 #include "includes/bk.h"
@@ -29,7 +29,7 @@ static TIMER_CALLBACK(keyboard_callback)
 
 	for(i = 1; i < 12; i++)
 	{
-		code = 	input_port_read(machine, keynames[i-1]);
+		code =	input_port_read(machine, keynames[i-1]);
 		if (code != 0)
 		{
 			for(j = 0; j < 8; j++)
@@ -84,7 +84,7 @@ static IRQ_CALLBACK(bk0010_irq_callback)
 
 MACHINE_RESET( bk0010 )
 {
-	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), bk0010_irq_callback);
+	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), bk0010_irq_callback);
 
 	kbd_state = 0;
 	bk_scrool = 01330;
@@ -111,8 +111,8 @@ READ16_HANDLER (bk_key_press_r)
 	UINT16 cas;
 	if (level < 0)
 	{
-	 	cas = 0x00;
- 	}
+		cas = 0x00;
+	}
 	else
 	{
 		cas = 0x20;

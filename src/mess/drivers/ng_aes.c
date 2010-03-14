@@ -28,7 +28,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m68000/m68000.h"
 #include "includes/neogeo.h"
 #include "machine/pd4990a.h"
@@ -120,7 +120,7 @@ void neogeo_set_display_counter_lsb( const address_space *space, UINT16 data )
 	if (state->display_position_interrupt_control & IRQ2CTRL_LOAD_RELATIVE)
 	{
 		if (LOG_VIDEO_SYSTEM) logerror("AUTOLOAD_RELATIVE ");
- 		adjust_display_position_interrupt_timer(space->machine);
+		adjust_display_position_interrupt_timer(space->machine);
 	}
 }
 
@@ -229,7 +229,7 @@ static void start_interrupt_timers( running_machine *machine )
  *
  *************************************/
 
-static void audio_cpu_irq(const device_config *device, int assert)
+static void audio_cpu_irq(running_device *device, int assert)
 {
 	neogeo_state *state = (neogeo_state *)device->machine->driver_data;
 	cpu_set_input_line(state->audiocpu, 0, assert ? ASSERT_LINE : CLEAR_LINE);
@@ -310,8 +310,8 @@ static WRITE16_HANDLER( io_control_w )
 	switch (offset)
 	{
 	case 0x00: select_controller(space->machine, data & 0x00ff); break;
-//	case 0x18: set_output_latch(space->machine, data & 0x00ff); break;
-//	case 0x20: set_output_data(space->machine, data & 0x00ff); break;
+//  case 0x18: set_output_latch(space->machine, data & 0x00ff); break;
+//  case 0x20: set_output_data(space->machine, data & 0x00ff); break;
 	case 0x28: upd4990a_control_16_w(state->upd4990a, 0, data, mem_mask); break;
 //  case 0x30: break; // coin counters
 //  case 0x31: break; // coin counters
@@ -546,7 +546,7 @@ static CUSTOM_INPUT( get_audio_result )
 	neogeo_state *state = (neogeo_state *)field->port->machine->driver_data;
 	UINT32 ret = state->audio_result;
 
-//  if (LOG_CPU_COMM) logerror("MAIN CPU PC %06x: audio_result_r %02x\n", cpu_get_pc(cputag_get_cpu(field->port->machine, "maincpu")), ret);
+//  if (LOG_CPU_COMM) logerror("MAIN CPU PC %06x: audio_result_r %02x\n", cpu_get_pc(devtag_get_device(field->port->machine, "maincpu")), ret);
 
 	return ret;
 }
@@ -732,7 +732,7 @@ static void audio_cpu_banking_init( running_machine *machine )
 	UINT32 address_mask;
 
 	/* audio bios/cartridge selection */
- 	if (memory_region(machine, "audiobios"))
+	if (memory_region(machine, "audiobios"))
 		memory_configure_bank(machine, NEOGEO_BANK_AUDIO_CPU_MAIN_BANK, 0, 1, memory_region(machine, "audiobios"), 0);
 	memory_configure_bank(machine, NEOGEO_BANK_AUDIO_CPU_MAIN_BANK, 1, 1, memory_region(machine, "audiocpu"), 0);
 
@@ -881,7 +881,7 @@ static MACHINE_RESET( neogeo )
 	for (offs = 0; offs < 8; offs++)
 		system_control_w(space, offs, 0, 0x00ff);
 
-	device_reset(cputag_get_cpu(machine, "maincpu"));
+	devtag_get_device(machine, "maincpu")->reset();
 
 	neogeo_reset_rng(machine);
 
@@ -1033,7 +1033,7 @@ static const ym2610_interface ym2610_config =
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )													\
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* having this ACTIVE_HIGH causes you to start with 2 credits using USA bios roms */	\
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* having this ACTIVE_HIGH causes you to start with 2 credits using USA bios roms */	\
-	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_SPECIAL ) /* what is this? */ 								\
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_SPECIAL ) /* what is this? */								\
 	PORT_BIT( 0x00c0, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(get_calendar_status, NULL)			\
 	PORT_BIT( 0xff00, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(get_audio_result, NULL)
 

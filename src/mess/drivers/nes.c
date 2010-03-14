@@ -10,7 +10,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "video/ppu2c0x.h"
 #include "machine/nes_mmc.h"
 #include "includes/nes.h"
@@ -38,7 +38,7 @@ static WRITE8_DEVICE_HANDLER( psg_4017_w )
 
 static WRITE8_HANDLER(nes_vh_sprite_dma_w)
 {
-	nes_state *state = space->machine->driver_data;
+	nes_state *state = (nes_state *)space->machine->driver_data;
 	ppu2c0x_spriteram_dma(space, state->ppu, data);
 }
 
@@ -170,7 +170,7 @@ static const nes_interface nes_apu_interface =
 };
 
 
-static void ppu_nmi(const device_config *device, int *ppu_regs)
+static void ppu_nmi(running_device *device, int *ppu_regs)
 {
 	cputag_set_input_line(device->machine, "maincpu", INPUT_LINE_NMI, PULSE_LINE);
 }
@@ -288,7 +288,7 @@ static MACHINE_DRIVER_START( famicom )
 	MDRV_CARTSLOT_NOT_MANDATORY
 	MDRV_CARTSLOT_LOAD(nes_cart)
 	MDRV_CARTSLOT_PARTIALHASH(nes_partialhash)
-	
+
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, nes_floppy_config)
 MACHINE_DRIVER_END
 
@@ -408,4 +408,4 @@ CONS( 1983, famicom,   nes,    0,     famicom,  famicom, famicom,"Nintendo",  "F
 CONS( 1986, famitwin,  nes,    0,     famicom,  famicom, famicom,"Sharp",     "Famicom Twin", GAME_IMPERFECT_GRAPHICS )
 CONS( 198?, m82,       nes,    0,     nes,      nes,     0,      "Nintendo",  "M82 Display Unit", GAME_IMPERFECT_GRAPHICS )
 CONS( 1996, drpcjr,    nes,    0,     famicom,  famicom, famicom,"Bung",      "Doctor PC Jr", GAME_IMPERFECT_GRAPHICS )
-CONS( 199?, dendy,     nes,    0,     dendy,    nes,     0,      "Steepler",  "Dendy Classic", GAME_IMPERFECT_GRAPHICS )
+CONS( 1992, dendy,     nes,    0,     dendy,    nes,     0,      "Steepler",  "Dendy Classic", GAME_IMPERFECT_GRAPHICS )

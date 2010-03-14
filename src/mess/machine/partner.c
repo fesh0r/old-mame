@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "devices/cassette.h"
 #include "machine/i8255a.h"
@@ -23,9 +23,8 @@ static UINT8 partner_mem_page;
 static UINT8 partner_win_mem_page;
 
 /* Driver initialization */
-DRIVER_INIT(partner)
+DRIVER_INIT( partner )
 {
-	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,64*1024);
 	radio86_tape_value = 0x80;
 }
 
@@ -37,16 +36,16 @@ static WRITE_LINE_DEVICE_HANDLER( partner_wd17xx_drq_w )
 
 const wd17xx_interface partner_wd17xx_interface =
 {
+	DEVCB_LINE_GND,
 	DEVCB_NULL,
 	DEVCB_DEVICE_LINE("dma8257", partner_wd17xx_drq_w),
 	{FLOPPY_0, FLOPPY_1, NULL, NULL}
 };
 
-MACHINE_START(partner)
+MACHINE_START( partner )
 {
-	const device_config *fdc = devtag_get_device(machine, "wd1793");
-	wd17xx_set_density (fdc,DEN_MFM_HI);
-	wd17xx_set_pause_time(fdc,10);
+	running_device *fdc = devtag_get_device(machine, "wd1793");
+	wd17xx_set_pause_time(fdc, 10);
 }
 
 static void partner_window_1(running_machine *machine, UINT8 bank_num, UINT16 offset,UINT8 *rom)
@@ -81,7 +80,7 @@ static void partner_window_2(running_machine *machine, UINT8 bank_num, UINT16 of
 }
 
 static READ8_HANDLER ( partner_floppy_r ) {
-	const device_config *fdc = devtag_get_device(space->machine, "wd1793");
+	running_device *fdc = devtag_get_device(space->machine, "wd1793");
 
 	if (offset<0x100) {
 		switch(offset & 3) {
@@ -97,7 +96,7 @@ static READ8_HANDLER ( partner_floppy_r ) {
 }
 
 static WRITE8_HANDLER ( partner_floppy_w ) {
-	const device_config *fdc = devtag_get_device(space->machine, "wd1793");
+	running_device *fdc = devtag_get_device(space->machine, "wd1793");
 
 	if (offset<0x100) {
 		switch(offset & 3) {

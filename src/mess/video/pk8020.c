@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/pk8020.h"
 #include "devices/messram.h"
 
@@ -16,7 +16,7 @@ VIDEO_START( pk8020 )
 
 VIDEO_UPDATE( pk8020 )
 {
- 	int y, x, b, j;
+	int y, x, b, j;
 	UINT8 *gfx = memory_region(screen->machine, "gfx1");
 
 	for (y = 0; y < 16; y++)

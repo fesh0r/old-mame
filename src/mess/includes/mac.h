@@ -130,9 +130,9 @@ WRITE16_HANDLER ( macii_scsi_w );
 READ32_HANDLER (macii_scsi_drq_r);
 WRITE32_HANDLER (macii_scsi_drq_w);
 NVRAM_HANDLER( mac );
-void mac_scc_ack(const device_config *device);
+void mac_scc_irq(running_device *device, int status);
 void mac_scc_mouse_irq( running_machine *machine, int x, int y );
-void mac_fdc_set_enable_lines(const device_config *device, int enable_mask);
+void mac_fdc_set_enable_lines(running_device *device, int enable_mask);
 
 void mac_nubus_slot_interrupt(running_machine *machine, UINT8 slot, UINT32 state);
 
@@ -161,16 +161,21 @@ INTERRUPT_GEN( mac_cb264_vbl );
 
 DEVICE_GET_INFO( mac_sound );
 
-void mac_enable_sound( const device_config *device, int on );
-void mac_set_sound_buffer( const device_config *device, int buffer );
-void mac_set_volume( const device_config *device, int volume );
+void mac_enable_sound( running_device *device, int on );
+void mac_set_sound_buffer( running_device *device, int buffer );
+void mac_set_volume( running_device *device, int volume );
 
-void mac_sh_updatebuffer(const device_config *device);
+void mac_sh_updatebuffer(running_device *device);
 
 /* Mac driver data */
 
-typedef struct
+class mac_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, mac_state(machine)); }
+
+	mac_state(running_machine &machine) { }
+
 	mac_model_t mac_model;
 
 	UINT32 mac_overlay;
@@ -243,7 +248,7 @@ typedef struct
 	// Apple Sound Chip
 	UINT8 mac_asc_regs[0x2000];
 	INT16 xfersamples[0x800];
-} mac_state;
+};
 
 #endif /* MAC_H_ */
 

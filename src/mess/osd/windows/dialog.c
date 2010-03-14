@@ -10,9 +10,7 @@
 #include <tchar.h>
 
 #include "dialog.h"
-#include "mame.h"
-#include "mslegacy.h"
-#include "inputx.h"
+#include "emu.h"
 #include "utils.h"
 #include "strconv.h"
 #include "pool.h"
@@ -129,7 +127,7 @@ struct _seqselect_info
 #define DLGITEM_SCROLLBAR		((const WCHAR *) dlgitem_scrollbar)
 #define DLGITEM_COMBOBOX		((const WCHAR *) dlgitem_combobox)
 
-#define DLGTEXT_OK				ui_getstring(UI_OK)
+#define DLGTEXT_OK				"OK"
 #define DLGTEXT_APPLY			"Apply"
 #define DLGTEXT_CANCEL			"Cancel"
 
@@ -217,7 +215,7 @@ static void calc_dlgunits_multiple(void)
 			goto done;
 
 		dialog_prime(dialog);
-		dlg_window = CreateDialogIndirectParam(NULL, dialog->handle, NULL, NULL, 0);
+		dlg_window = CreateDialogIndirectParam(NULL, (const DLGTEMPLATE*)dialog->handle, NULL, NULL, 0);
 		child_window = GetDlgItem(dlg_window, id);
 
 		GetWindowRect(child_window, &r);
@@ -382,8 +380,8 @@ static int dialog_write(struct _dialog_box *di, const void *ptr, size_t sz, int 
 			newhandle = GlobalAlloc(GMEM_ZEROINIT, base + sz);
 			if (newhandle)
 			{
-				mem = GlobalLock(di->handle);
-				mem2 = GlobalLock(newhandle);
+				mem = (UINT8*)GlobalLock(di->handle);
+				mem2 = (UINT8*)GlobalLock(newhandle);
 				memcpy(mem2, mem, base);
 				GlobalUnlock(di->handle);
 				GlobalUnlock(newhandle);
@@ -394,7 +392,7 @@ static int dialog_write(struct _dialog_box *di, const void *ptr, size_t sz, int 
 	if (!newhandle)
 		return 1;
 
-	mem = GlobalLock(newhandle);
+	mem = (UINT8*)GlobalLock(newhandle);
 	memcpy(mem + base, ptr, sz);
 	GlobalUnlock(newhandle);
 	di->handle = newhandle;
@@ -450,7 +448,7 @@ static int dialog_write_item(dialog_box *di, DWORD style, short x, short y,
 	w_str = str ? wstring_from_utf8(str) : NULL;
 	rc = dialog_write_string(di, w_str);
 	if (w_str)
-		free(w_str);
+		global_free(w_str);
 	if (rc)
 		return 1;
 
@@ -481,7 +479,7 @@ static int dialog_add_trigger(struct _dialog_box *di, WORD dialog_item,
 	assert(di);
 	assert(trigger_flags);
 
-	trigger = (struct dialog_info_trigger *) pool_malloc(di->mempool, sizeof(struct dialog_info_trigger));
+	trigger = (struct dialog_info_trigger *) pool_malloc_lib(di->mempool, sizeof(struct dialog_info_trigger));
 	if (!trigger)
 		return 1;
 
@@ -516,7 +514,7 @@ static int dialog_add_object(dialog_box *di, HGDIOBJ obj)
 
 	if (!di->objpool)
 	{
-		objpool = pool_malloc(di->mempool, sizeof(struct dialog_object_pool));
+		objpool = (dialog_object_pool*)pool_malloc_lib(di->mempool, sizeof(struct dialog_object_pool));
 		if (!objpool)
 			return 1;
 		memset(objpool, 0, sizeof(struct dialog_object_pool));
@@ -656,13 +654,13 @@ dialog_box *win_dialog_init(const char *title, const struct dialog_layout *layou
 		layout = &default_layout;
 
 	// create the dialog structure
-	di = malloc(sizeof(struct _dialog_box));
+	di = (_dialog_box *)malloc(sizeof(struct _dialog_box));
 	if (!di)
 		goto error;
 	memset(di, 0, sizeof(*di));
 
 	di->layout = layout;
-	di->mempool = pool_alloc(NULL);
+	di->mempool = pool_alloc_lib(NULL);
 
 	memset(&dlg_template, 0, sizeof(dlg_template));
 	dlg_template.style = di->style = DIALOG_STYLE;
@@ -678,7 +676,7 @@ dialog_box *win_dialog_init(const char *title, const struct dialog_layout *layou
 
 	w_title = wstring_from_utf8(title);
 	rc = dialog_write_string(di, w_title);
-	free(w_title);
+	global_free(w_title);
 	if (rc)
 		goto error;
 
@@ -825,7 +823,7 @@ int win_dialog_add_combobox_item(dialog_box *dialog, const char *item_label, int
 		if( !tmp )
 			return 1;
 		t_item_label = win_dialog_tcsdup(dialog, tmp);
-		free(tmp);
+		global_free(tmp);
 		if (!t_item_label)
 			return 1;
 	}
@@ -1060,7 +1058,7 @@ static seqselect_info *get_seqselect_info(HWND editwnd)
 static void seqselect_settext(HWND editwnd)
 {
 	seqselect_info *stuff;
-	astring *seqstring;
+	astring seqstring;
 	char buffer[128];
 
 	// the basics
@@ -1069,13 +1067,12 @@ static void seqselect_settext(HWND editwnd)
 		return;	// this should not happen - need to fix this
 
 	// retrieve the seq name
-	seqstring = astring_alloc();
 	input_seq_name(Machine, seqstring, stuff->code);
 
 	// change the text - avoid calls to SetWindowText() if we can
 	win_get_window_text_utf8(editwnd, buffer, ARRAY_LENGTH(buffer));
-	if (strcmp(buffer, astring_c(seqstring)))
-		win_set_window_text_utf8(editwnd, astring_c(seqstring));
+	if (strcmp(buffer, seqstring))
+		win_set_window_text_utf8(editwnd, seqstring);
 
 	// reset the selection
 	if (GetFocus() == editwnd)
@@ -1085,8 +1082,6 @@ static void seqselect_settext(HWND editwnd)
 		if ((start != 0) || (end != strlen(buffer)))
 			SendMessage(editwnd, EM_SETSEL, 0, -1);
 	}
-
-	astring_free(seqstring);
 }
 
 
@@ -1278,7 +1273,7 @@ static int dialog_add_single_seqselect(struct _dialog_box *di, short x, short y,
 		return 1;
 
 	// allocate a seqselect_info
-	stuff = (seqselect_info *) pool_malloc(di->mempool, sizeof(seqselect_info));
+	stuff = (seqselect_info *) pool_malloc_lib(di->mempool, sizeof(seqselect_info));
 	if (!stuff)
 		return 1;
 
@@ -1581,8 +1576,8 @@ void win_dialog_exit(dialog_box *dialog)
 
 	if (dialog->handle)
 		GlobalFree(dialog->handle);
-	pool_free(dialog->mempool);
-	free(dialog);
+	pool_free_lib(dialog->mempool);
+	global_free(dialog);
 }
 
 
@@ -1593,7 +1588,7 @@ void win_dialog_exit(dialog_box *dialog)
 
 void *win_dialog_malloc(dialog_box *dialog, size_t size)
 {
-	return pool_malloc(dialog->mempool, size);
+	return pool_malloc_lib(dialog->mempool, size);
 }
 
 
@@ -1604,7 +1599,7 @@ void *win_dialog_malloc(dialog_box *dialog, size_t size)
 
 char *win_dialog_strdup(dialog_box *dialog, const char *s)
 {
-	return pool_strdup(dialog->mempool, s);
+	return pool_strdup_lib(dialog->mempool, s);
 }
 
 
@@ -1615,7 +1610,7 @@ char *win_dialog_strdup(dialog_box *dialog, const char *s)
 
 WCHAR *win_dialog_wcsdup(dialog_box *dialog, const WCHAR *s)
 {
-	WCHAR *result = (WCHAR *) pool_malloc(dialog->mempool, (wcslen(s) + 1) * sizeof(*s));
+	WCHAR *result = (WCHAR *) pool_malloc_lib(dialog->mempool, (wcslen(s) + 1) * sizeof(*s));
 	if (result)
 		wcscpy(result, s);
 	return result;
@@ -1672,12 +1667,7 @@ void win_dialog_runmodal(running_machine *machine, HWND wnd, dialog_box *dialog)
 
 	// show the dialog
 	before_display_dialog(machine);
-#ifndef UNICODE
-	if (GetVersion() & 0x80000000)
-		DialogBoxIndirectParamA(NULL, dialog->handle, wnd, dialog_proc, (LPARAM) dialog);
-	else
-#endif // UNICODE
-		DialogBoxIndirectParamW(NULL, dialog->handle, wnd, dialog_proc, (LPARAM) dialog);
+	DialogBoxIndirectParamW(NULL, (const DLGTEMPLATE*)dialog->handle, wnd, dialog_proc, (LPARAM) dialog);
 	after_display_dialog(machine);
 }
 
@@ -1767,7 +1757,7 @@ BOOL win_file_dialog(running_machine *machine,
 		dialog_prime(custom_dialog);
 
 		ofn.flags |= OFN_ENABLETEMPLATEHANDLE | OFN_ENABLEHOOK;
-		ofn.instance = custom_dialog->handle;
+		ofn.instance = (HINSTANCE)custom_dialog->handle;
 		ofn.custom_data = (LPARAM) custom_dialog;
 		ofn.hook = file_dialog_hook;
 	}

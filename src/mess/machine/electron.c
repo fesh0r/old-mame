@@ -7,7 +7,7 @@
 
 ******************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/electron.h"
 #include "sound/beep.h"
 #include "devices/cassette.h"
@@ -15,7 +15,7 @@
 ULA electron_ula;
 static emu_timer *electron_tape_timer;
 
-static const device_config *cassette_device_image( running_machine *machine )
+static running_device *cassette_device_image( running_machine *machine )
 {
 	return devtag_get_device(machine, "cassette");
 }
@@ -179,7 +179,7 @@ static const UINT16 electron_screen_base[8] = { 0x3000, 0x3000, 0x3000, 0x4000, 
 
 WRITE8_HANDLER( electron_ula_w )
 {
-	const device_config *speaker = devtag_get_device(space->machine, "beep");
+	running_device *speaker = devtag_get_device(space->machine, "beep");
 	int i = electron_palette_offset[(( offset >> 1 ) & 0x03)];
 	logerror( "ULA: write offset %02x <- %02x\n", offset & 0x0f, data );
 	switch( offset & 0x0f )
@@ -266,7 +266,7 @@ WRITE8_HANDLER( electron_ula_w )
 		electron_ula.screen_mode = ( data >> 3 ) & 0x07;
 		electron_ula.screen_base = electron_screen_base[ electron_ula.screen_mode ];
 		electron_ula.screen_size = 0x8000 - electron_ula.screen_base;
-		electron_ula.vram = memory_get_read_ptr( space, electron_ula.screen_base );
+		electron_ula.vram = (UINT8 *)memory_get_read_ptr( space, electron_ula.screen_base );
 		logerror( "ULA: screen mode set to %d\n", electron_ula.screen_mode );
 		electron_ula.cassette_motor_mode = ( data >> 6 ) & 0x01;
 		cassette_change_state( cassette_device_image( space->machine ), electron_ula.cassette_motor_mode ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MOTOR_DISABLED );
@@ -317,7 +317,7 @@ void electron_interrupt_handler(running_machine *machine, int mode, int interrup
 
 static TIMER_CALLBACK(setup_beep)
 {
-	const device_config *speaker = devtag_get_device(machine, "beep");
+	running_device *speaker = devtag_get_device(machine, "beep");
 	beep_set_state( speaker, 0 );
 	beep_set_frequency( speaker, 300 );
 }
@@ -336,7 +336,7 @@ static void electron_reset(running_machine *machine)
 	electron_ula.screen_size = 0x8000 - 0x3000;
 	electron_ula.screen_addr = 0;
 	electron_ula.tape_running = 0;
-	electron_ula.vram = memory_get_read_ptr(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), electron_ula.screen_base);
+	electron_ula.vram = (UINT8 *)memory_get_read_ptr(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), electron_ula.screen_base);
 }
 
 MACHINE_START( electron )

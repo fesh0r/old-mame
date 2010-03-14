@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "devices/messram.h"
 
@@ -113,5 +113,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT COMPANY   FULLNAME       FLAGS */
-COMP( 1991, pce220,  0,       0, 	pce220, 	pce220,  0,   "Sharp",   "PC-E220",		GAME_NOT_WORKING)
+COMP( 1991, pce220,  0,       0,	pce220, 	pce220,  0,   "Sharp",   "PC-E220",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

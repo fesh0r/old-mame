@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/c80.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
@@ -25,8 +25,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( c80_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x7c, 0x7f) AM_DEVREADWRITE(Z80PIO2_TAG, z80pio_r, z80pio_w)
-	AM_RANGE(0xbc, 0xbf) AM_DEVREADWRITE(Z80PIO1_TAG, z80pio_r, z80pio_w)
+	AM_RANGE(0x7c, 0x7f) AM_DEVREADWRITE(Z80PIO2_TAG, z80pio_cd_ba_r, z80pio_cd_ba_w)
+	AM_RANGE(0xbc, 0xbf) AM_DEVREADWRITE(Z80PIO1_TAG, z80pio_cd_ba_r, z80pio_cd_ba_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -96,7 +96,7 @@ static READ8_DEVICE_HANDLER( pio1_port_a_r )
 
     */
 
-	c80_state *state = device->machine->driver_data;
+	c80_state *state = (c80_state *)device->machine->driver_data;
 
 	UINT8 data = !state->pio1_brdy << 4 | 0x07;
 
@@ -134,7 +134,7 @@ static WRITE8_DEVICE_HANDLER( pio1_port_a_w )
 
     */
 
-	c80_state *state = device->machine->driver_data;
+	c80_state *state = (c80_state *)device->machine->driver_data;
 
 	state->pio1_a5 = BIT(data, 5);
 
@@ -163,7 +163,7 @@ static WRITE8_DEVICE_HANDLER( pio1_port_b_w )
 
     */
 
-	c80_state *state = device->machine->driver_data;
+	c80_state *state = (c80_state *)device->machine->driver_data;
 
 	if (!state->pio1_a5)
 	{
@@ -175,7 +175,7 @@ static WRITE8_DEVICE_HANDLER( pio1_port_b_w )
 
 static WRITE_LINE_DEVICE_HANDLER( pio1_brdy_w )
 {
-	c80_state *driver_state = device->machine->driver_data;
+	c80_state *driver_state = (c80_state *)device->machine->driver_data;
 
 	driver_state->pio1_brdy = state;
 
@@ -191,25 +191,25 @@ static WRITE_LINE_DEVICE_HANDLER( pio1_brdy_w )
 	}
 }
 
-static const z80pio_interface pio1_intf =
+static Z80PIO_INTERFACE( pio1_intf )
 {
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* callback when change interrupt status */
 	DEVCB_HANDLER(pio1_port_a_r),	/* port A read callback */
-	DEVCB_NULL,						/* port B read callback */
 	DEVCB_HANDLER(pio1_port_a_w),	/* port A write callback */
-	DEVCB_HANDLER(pio1_port_b_w),	/* port B write callback */
 	DEVCB_NULL,						/* portA ready active callback */
+	DEVCB_NULL,						/* port B read callback */
+	DEVCB_HANDLER(pio1_port_b_w),	/* port B write callback */
 	DEVCB_LINE(pio1_brdy_w)			/* portB ready active callback */
 };
 
-static const z80pio_interface pio2_intf =
+static Z80PIO_INTERFACE( pio2_intf )
 {
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* callback when change interrupt status */
 	DEVCB_NULL,						/* port A read callback */
-	DEVCB_NULL,						/* port B read callback */
 	DEVCB_NULL,						/* port A write callback */
-	DEVCB_NULL,						/* port B write callback */
 	DEVCB_NULL,						/* portA ready active callback */
+	DEVCB_NULL,						/* port B read callback */
+	DEVCB_NULL,						/* port B write callback */
 	DEVCB_NULL						/* portB ready active callback */
 };
 
@@ -226,7 +226,7 @@ static const z80_daisy_chain c80_daisy_chain[] =
 
 static MACHINE_START( c80 )
 {
-	c80_state *state = machine->driver_data;
+	c80_state *state = (c80_state *)machine->driver_data;
 
 	/* find devices */
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
@@ -244,7 +244,7 @@ static const cassette_config c80_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED)
 };
 
 static MACHINE_DRIVER_START( c80 )
@@ -262,8 +262,8 @@ static MACHINE_DRIVER_START( c80 )
 	MDRV_DEFAULT_LAYOUT( layout_c80 )
 
 	/* devices */
-	MDRV_Z80PIO_ADD(Z80PIO1_TAG, pio1_intf)
-	MDRV_Z80PIO_ADD(Z80PIO2_TAG, pio2_intf)
+	MDRV_Z80PIO_ADD(Z80PIO1_TAG, 2500000, pio1_intf)
+	MDRV_Z80PIO_ADD(Z80PIO2_TAG, 2500000, pio2_intf)
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, c80_cassette_config)
 
 	/* internal ram */
@@ -282,4 +282,4 @@ ROM_END
 /* System Drivers */
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT  COMPANY             FULLNAME    FLAGS */
-COMP( 1986, c80,	0,		0,		c80,	c80,	0,	"Joachim Czepa",	"C-80",		GAME_SUPPORTS_SAVE )
+COMP( 1986, c80,	0,		0,		c80,	c80,	0,	"Joachim Czepa",	"C-80",		GAME_SUPPORTS_SAVE | GAME_NO_SOUND)

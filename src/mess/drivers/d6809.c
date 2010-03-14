@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m6809/m6809.h"
 
 static ADDRESS_MAP_START(d6809_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -68,5 +68,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( 198?, d6809,  0,       0, 	d6809, 	d6809, 	 0,  	  	 "Dunfield",   "6809 Portable",		GAME_NOT_WORKING)
+COMP( 198?, d6809,  0,       0, 	d6809,	d6809,	 0, 		 "Dunfield",   "6809 Portable",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

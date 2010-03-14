@@ -7,7 +7,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "bob85.lh"
 
@@ -97,7 +97,7 @@ ADDRESS_MAP_END
 
 /* Input ports */
 static INPUT_PORTS_START( bob85 )
-   	PORT_START("LINE0")
+	PORT_START("LINE0")
 		PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_0) PORT_CHAR('0')
 		PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_1) PORT_CHAR('1')
 		PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_2) PORT_CHAR('2')
@@ -151,4 +151,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT COMPANY   FULLNAME       FLAGS */
-COMP( ????, bob85,  0,       0, 	bob85, 	bob85, 	 0,  	  "Unknown",   "BOB85",		GAME_NOT_WORKING)
+COMP( ????, bob85,  0,       0, 	bob85,	bob85,	 0, 	  "Unknown",   "BOB85",		GAME_NOT_WORKING | GAME_NO_SOUND)

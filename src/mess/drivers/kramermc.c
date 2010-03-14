@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "machine/z80pio.h"
 #include "includes/kramermc.h"
@@ -31,7 +31,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kramermc_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0xfc, 0x0ff) AM_DEVREADWRITE("z80pio", z80pio_r, z80pio_w)
+	AM_RANGE(0xfc, 0x0ff) AM_DEVREADWRITE("z80pio", z80pio_cd_ba_r, z80pio_cd_ba_w)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -111,7 +111,7 @@ static MACHINE_DRIVER_START( kramermc )
 	MDRV_CPU_IO_MAP(kramermc_io)
 	MDRV_MACHINE_RESET( kramermc )
 
-	MDRV_Z80PIO_ADD( "z80pio", kramermc_z80pio_intf )
+	MDRV_Z80PIO_ADD( "z80pio", 1500000, kramermc_z80pio_intf )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -144,5 +144,5 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT   INIT  				 COMPANY                 FULLNAME   FLAGS */
-COMP( 1987, kramermc,     0,      0, 	kramermc, 	kramermc, 	kramermc,"Manfred Kramer", "Kramer MC",		 0)
+/*    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT   INIT                 COMPANY                 FULLNAME   FLAGS */
+COMP( 1987, kramermc,     0,      0,	kramermc,	kramermc,	kramermc,"Manfred Kramer", "Kramer MC",		 GAME_NO_SOUND)

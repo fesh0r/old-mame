@@ -82,7 +82,7 @@ char g_szSelectedItem[MAX_PATH];
 //  LOCAL VARIABLES
 //============================================================
 
-static software_config *config;
+static software_config *s_config;
 static BOOL s_bIgnoreSoftwarePickerNotifies;
 
 static int *mess_icon_index;
@@ -245,7 +245,7 @@ BOOL CreateMessIcons(void)
 	// create the icon index, if we havn't already
     if (!mess_icon_index)
 	{
-		mess_icon_index = pool_malloc(GetMameUIMemoryPool(), driver_list_get_count(drivers) * IO_COUNT * sizeof(*mess_icon_index));
+		mess_icon_index = (int*)pool_malloc_lib(GetMameUIMemoryPool(), driver_list_get_count(drivers) * IO_COUNT * sizeof(*mess_icon_index));
     }
 
     for (i = 0; i < (driver_list_get_count(drivers) * IO_COUNT); i++)
@@ -276,7 +276,7 @@ static int GetMessIcon(int drvindex, int nSoftwareType)
 
     if ((nSoftwareType >= 0) && (nSoftwareType < IO_COUNT))
 	{
-		iconname = device_brieftypename(nSoftwareType);
+		iconname = device_brieftypename((iodevice_t)nSoftwareType);
         the_index = (drvindex * IO_COUNT) + nSoftwareType;
 
         nIconPos = mess_icon_index[the_index];
@@ -346,7 +346,15 @@ static BOOL AddSoftwarePickerDirs(HWND hwndPicker, LPCSTR pszDirectories, LPCSTR
 	return TRUE;
 }
 
-
+void MySoftwareListClose(void)
+{
+	// free the machine config, if necessary
+	if (s_config != NULL)
+	{
+		software_config_free(s_config);
+		s_config = NULL;
+	}
+}
 
 void MyFillSoftwareList(int drvindex, BOOL bForce)
 {
@@ -358,8 +366,8 @@ void MyFillSoftwareList(int drvindex, BOOL bForce)
 	// do we have to do anything?
 	if (!bForce)
 	{
-		if (config != NULL)
-			is_same = (drvindex == config->driver_index);
+		if (s_config != NULL)
+			is_same = (drvindex == s_config->driver_index);
 		else
 			is_same = (drvindex < 0);
 		if (is_same)
@@ -367,16 +375,12 @@ void MyFillSoftwareList(int drvindex, BOOL bForce)
 	}
 
 	// free the machine config, if necessary
-	if (config != NULL)
-	{
-		software_config_free(config);
-		config = NULL;
-	}
+	MySoftwareListClose();
 
 	// allocate the machine config, if necessary
 	if (drvindex >= 0)
 	{
-		config = software_config_alloc(drvindex, MameUIGlobal(), NULL);
+		s_config = software_config_alloc(drvindex, MameUIGlobal(), NULL);
 	}
 
 	// locate key widgets
@@ -384,18 +388,18 @@ void MyFillSoftwareList(int drvindex, BOOL bForce)
 	hwndSoftwareDevView = GetDlgItem(GetMainWindow(), IDC_SWDEVVIEW);
 
 	// set up the device view
-	DevView_SetDriver(hwndSoftwareDevView, config);
+	DevView_SetDriver(hwndSoftwareDevView, s_config);
 
 	// set up the software picker
 	SoftwarePicker_Clear(hwndSoftwarePicker);
-	SoftwarePicker_SetDriver(hwndSoftwarePicker, config);
+	SoftwarePicker_SetDriver(hwndSoftwarePicker, s_config);
 
 	// add the relevant paths
 	drv = drivers[drvindex];
 	while(drv != NULL)
 	{
 		AddSoftwarePickerDirs(hwndSoftwarePicker, GetSoftwareDirs(), drv->name);
-		drv = mess_next_compatible_driver(drv);
+		drv = driver_get_compatible(drv);
 	}
 	AddSoftwarePickerDirs(hwndSoftwarePicker, GetExtraSoftwarePaths(drvindex), NULL);
 }
@@ -414,36 +418,39 @@ BOOL MessApproveImageList(HWND hParent, int drvindex)
 {
 	machine_config *config;
 	const device_config *dev;
-	int nPos;
+	//int nPos;
 	char szMessage[256];
 	LPCSTR pszSoftware;
 	BOOL bResult = FALSE;
 
-	begin_resource_tracking();
+//  begin_resource_tracking();
 
-	// allocate the machine config	
+	// allocate the machine config
 	config = machine_config_alloc(drivers[drvindex]->machine_config);
 
-	nPos = 0;
-	for (dev = image_device_first(config); dev != NULL; dev = image_device_next(dev))
+	//nPos = 0;
+	for (dev = config->devicelist.first(); dev != NULL; dev = dev->next)
 	{
-		image_device_info info = image_device_getinfo(config, dev);
-
-		// confirm any mandatory devices are loaded
-		if (info.must_be_loaded)
+		if (is_image_device(dev))
 		{
-			pszSoftware = GetSelectedSoftware(drvindex, config, dev);
-			if (!pszSoftware || !*pszSoftware)
-			{
-				snprintf(szMessage, ARRAY_LENGTH(szMessage),
-					"System '%s' requires that device %s must have an image to load\n",
-					drivers[drvindex]->description,
-					device_typename(info.type));
-				goto done;
-			}
-		}
+			image_device_info info = image_device_getinfo(config, dev);
 
-		nPos++;
+			// confirm any mandatory devices are loaded
+			if (info.must_be_loaded)
+			{
+				pszSoftware = GetSelectedSoftware(drvindex, config, dev);
+				if (!pszSoftware || !*pszSoftware)
+				{
+					snprintf(szMessage, ARRAY_LENGTH(szMessage),
+						"System '%s' requires that device %s must have an image to load\n",
+						drivers[drvindex]->description,
+						device_typename(info.type));
+					goto done;
+				}
+			}
+
+			//nPos++;
+		}
 	}
 	bResult = TRUE;
 
@@ -492,11 +499,14 @@ static void MessSpecifyImage(int drvindex, const device_config *device, LPCSTR p
 	// if device is NULL, this is a special case; try to find existing image
 	if (device == NULL)
 	{
-		for (device = image_device_first(config->mconfig); device != NULL; device = image_device_next(device))
+		for (device = s_config->mconfig->devicelist.first(); device != NULL;device = device->next)
 		{
-			s = GetSelectedSoftware(drvindex, config->mconfig, device);
-			if ((s != NULL) && !mame_stricmp(s, pszFilename))
-				break;
+			if (is_image_device(device))
+			{
+				s = GetSelectedSoftware(drvindex, s_config->mconfig, device);
+				if ((s != NULL) && !mame_stricmp(s, pszFilename))
+					break;
+			}
 		}
 	}
 
@@ -512,11 +522,14 @@ static void MessSpecifyImage(int drvindex, const device_config *device, LPCSTR p
 
 		if (file_extension != NULL)
 		{
-			for (device = image_device_first(config->mconfig); device != NULL; device = image_device_next(device))
+			for (device = s_config->mconfig->devicelist.first(); device != NULL;device = device->next)
 			{
-				s = GetSelectedSoftware(drvindex, config->mconfig, device);
-				if (is_null_or_empty(s) && image_device_uses_file_extension(device, file_extension))
-					break;
+				if (is_image_device(device))
+				{
+					s = GetSelectedSoftware(drvindex, s_config->mconfig, device);
+					if (is_null_or_empty(s) && image_device_uses_file_extension(device, file_extension))
+						break;
+				}
 			}
 		}
 	}
@@ -524,7 +537,7 @@ static void MessSpecifyImage(int drvindex, const device_config *device, LPCSTR p
 	if (device != NULL)
 	{
 		// place the image
-		InternalSetSelectedSoftware(drvindex, config->mconfig, device, pszFilename);
+		InternalSetSelectedSoftware(drvindex, s_config->mconfig, device, pszFilename);
 	}
 	else
 	{
@@ -541,11 +554,14 @@ static void MessRemoveImage(int drvindex, const char *pszFilename)
 	const device_config *device;
 	const char *s;
 
-	for (device = image_device_first(config->mconfig); device != NULL; device = image_device_next(device))
+	for (device = s_config->mconfig->devicelist.first(); device != NULL;device = device->next)
 	{
-		s = GetSelectedSoftware(drvindex, config->mconfig, device);
-		if ((s != NULL) && !strcmp(pszFilename, s))
-			MessSpecifyImage(drvindex, device, NULL);
+		if (is_image_device(device))
+		{
+			s = GetSelectedSoftware(drvindex, s_config->mconfig, device);
+			if ((s != NULL) && !strcmp(pszFilename, s))
+				MessSpecifyImage(drvindex, device, NULL);
+		}
 	}
 }
 
@@ -578,24 +594,27 @@ static void MessRefreshPicker(void)
 	// be problematic
 	ListView_SetItemState(hwndSoftware, -1, 0, LVIS_SELECTED);
 
-	for (dev = image_device_first(config->mconfig); dev != NULL; dev = image_device_next(dev))
+	for (dev = s_config->mconfig->devicelist.first(); dev != NULL;dev = dev->next)
 	{
-		pszSoftware = GetSelectedSoftware(config->driver_index, config->mconfig, dev);
-		if (pszSoftware && *pszSoftware)
+		if (is_image_device(dev))
 		{
-			i = SoftwarePicker_LookupIndex(hwndSoftware, pszSoftware);
-			if (i < 0)
+			pszSoftware = GetSelectedSoftware(s_config->driver_index, s_config->mconfig, dev);
+			if (pszSoftware && *pszSoftware)
 			{
-				SoftwarePicker_AddFile(hwndSoftware, pszSoftware);
 				i = SoftwarePicker_LookupIndex(hwndSoftware, pszSoftware);
-			}
-			if (i >= 0)
-			{
-				memset(&lvfi, 0, sizeof(lvfi));
-				lvfi.flags = LVFI_PARAM;
-				lvfi.lParam = i;
-				i = ListView_FindItem(hwndSoftware, -1, &lvfi);
-				ListView_SetItemState(hwndSoftware, i, LVIS_SELECTED, LVIS_SELECTED);
+				if (i < 0)
+				{
+					SoftwarePicker_AddFile(hwndSoftware, pszSoftware);
+					i = SoftwarePicker_LookupIndex(hwndSoftware, pszSoftware);
+				}
+				if (i >= 0)
+				{
+					memset(&lvfi, 0, sizeof(lvfi));
+					lvfi.flags = LVFI_PARAM;
+					lvfi.lParam = i;
+					i = ListView_FindItem(hwndSoftware, -1, &lvfi);
+					ListView_SetItemState(hwndSoftware, i, LVIS_SELECTED, LVIS_SELECTED);
+				}
 			}
 		}
 	}
@@ -610,7 +629,7 @@ void InitMessPicker(void)
 	struct PickerOptions opts;
 	HWND hwndSoftware;
 
-	config = NULL;
+	s_config = NULL;
 	hwndSoftware = GetDlgItem(GetMainWindow(), IDC_SWLIST);
 
 	memset(&opts, 0, sizeof(opts));
@@ -712,7 +731,7 @@ static BOOL CommonFileImageDialog(LPTSTR the_last_directory, common_file_dialog_
 		t_filter[i] = (t_buffer[i] != '|') ? t_buffer[i] : '\0';
 	t_filter[i++] = '\0';
 	t_filter[i++] = '\0';
-	free(t_buffer);
+	global_free(t_buffer);
 
     of.lStructSize = sizeof(of);
     of.hwndOwner = GetMainWindow();
@@ -767,12 +786,15 @@ static void SetupImageTypes(const machine_config *config, mess_image_type *types
 	if (dev == NULL)
 	{
 		/* special case; all non-printer devices */
-		for (dev = image_device_first(config); dev != NULL; dev = image_device_next(dev))
+		for (dev = config->devicelist.first(); dev != NULL;dev = dev->next)
 		{
-			image_device_info info = image_device_getinfo(config, dev);
+			if (is_image_device(dev))
+			{
+				image_device_info info = image_device_getinfo(config, dev);
 
-			if (info.type != IO_PRINTER)
-				SetupImageTypes(config, &types[num_extensions], count - num_extensions, FALSE, dev);
+				if (info.type != IO_PRINTER)
+					SetupImageTypes(config, &types[num_extensions], count - num_extensions, FALSE, dev);
+			}
 		}
 
 	}
@@ -809,7 +831,7 @@ static void MessSetupDevice(common_file_dialog_proc cfd, const device_config *de
 	char* utf8_filename;
 	machine_config *config;
 
-	begin_resource_tracking();
+//  begin_resource_tracking();
 
 	hwndList = GetDlgItem(GetMainWindow(), IDC_LIST);
 	drvindex = Picker_GetSelectedItem(hwndList);
@@ -826,7 +848,7 @@ static void MessSetupDevice(common_file_dialog_proc cfd, const device_config *de
 			return;
 		// TODO - this should go against InternalSetSelectedSoftware()
 		SoftwarePicker_AddFile(GetDlgItem(GetMainWindow(), IDC_SWLIST), utf8_filename);
-		free(utf8_filename);
+		global_free(utf8_filename);
 	}
 
 	machine_config_free(config);
@@ -869,52 +891,55 @@ static BOOL DevView_GetOpenFileName(HWND hwndDevView, const machine_config *conf
 	mess_image_type imagetypes[64];
 	HWND hwndList = GetDlgItem(GetMainWindow(), IDC_LIST);
 	int drvindex = Picker_GetSelectedItem(hwndList);
-	astring *as = astring_alloc();
+	astring as;
 
 	/* Get the path to the currently mounted image */
-	zippath_parent(as, GetSelectedSoftware(drvindex, config, dev));
-	s = (TCHAR*)astring_c(as);
+	zippath_parent(&as, GetSelectedSoftware(drvindex, config, dev));
+	s = tstring_from_utf8(astring_c(&as));
 
 	/* See if an image was loaded, and that the path still exists */
-	if ((!osd_opendir(astring_c(as))) || (astring_chr(as, 0, ':') == -1))
+	if ((!osd_opendir(astring_c(&as))) || (astring_chr(&as, 0, ':') == -1))
 	{
 		/* Get the path from the software tab */
-		astring_cpyc(as, GetExtraSoftwarePaths(drvindex));
+		astring_cpyc(&as, GetExtraSoftwarePaths(drvindex));
 
 		/* We only want the first path; throw out the rest */
-		i = astring_chr(as, 0, ';');
-		if (i > 0) astring_substr(as, 0, i);
-		s = (TCHAR*)astring_c(as);
+		i = astring_chr(&as, 0, ';');
+		if (i > 0) astring_substr(&as, 0, i);
+		s = tstring_from_utf8(astring_c(&as));
 
 		/* Make sure a folder was specified in the tab, and that it exists */
-		if ((!osd_opendir(astring_c(as))) || (astring_chr(as, 0, ':') == -1))
+		if ((!osd_opendir(astring_c(&as))) || (astring_chr(&as, 0, ':') == -1))
 		{
 			/* Get the path from the system-wide software setting in the drop-down directory setup */
-			astring_cpyc(as, GetSoftwareDirs());
+			astring_cpyc(&as, GetSoftwareDirs());
 
 			/* We only want the first path; throw out the rest */
-			i = astring_chr(as, 0, ';');
-			if (i > 0) astring_substr(as, 0, i);
-			s = (TCHAR*)astring_c(as);
+			i = astring_chr(&as, 0, ';');
+			if (i > 0) astring_substr(&as, 0, i);
+			s = tstring_from_utf8(astring_c(&as));
 
 			/* Make sure a folder was specified in the tab, and that it exists */
-			if ((!osd_opendir(astring_c(as))) || (astring_chr(as, 0, ':') == -1))
+			if ((!osd_opendir(astring_c(&as))) || (astring_chr(&as, 0, ':') == -1))
 			{
+				char *dst = NULL;
+
+				osd_get_full_path(&dst,".");
 				/* Default to emu directory */
-				char mess_directory[1024];
-				osd_get_emulator_directory(mess_directory, ARRAY_LENGTH(mess_directory));
-				s = (TCHAR*)mess_directory;
+				s = tstring_from_utf8(dst);
 
 				/* If software folder exists, use it instead */
-				zippath_combine(as, mess_directory, "software");
-				if (osd_opendir(astring_c(as))) s = (TCHAR*)astring_c(as);
+				zippath_combine(&as, dst, "software");
+				if (osd_opendir(astring_c(&as))) s = tstring_from_utf8(astring_c(&as));
+				global_free(dst);
 			}
 		}
 	}
 
-	astring_free(as);
 	SetupImageTypes(config, imagetypes, ARRAY_LENGTH(imagetypes), TRUE, dev);
 	bResult = CommonFileImageDialog(s, GetOpenFileName, pszFilename, config, imagetypes);
+	
+	/* TODO: free() calls? */
 
 	return bResult;
 }
@@ -937,45 +962,47 @@ static BOOL DevView_GetCreateFileName(HWND hwndDevView, const machine_config *co
 	mess_image_type imagetypes[64];
 	HWND hwndList = GetDlgItem(GetMainWindow(), IDC_LIST);
 	int drvindex = Picker_GetSelectedItem(hwndList);
-	astring *as = astring_alloc();
+	astring as;
 
 	/* Get the path from the software tab */
-	astring_cpyc(as, GetExtraSoftwarePaths(drvindex));
+	astring_cpyc(&as, GetExtraSoftwarePaths(drvindex));
 
 	/* We only want the first path; throw out the rest */
-	i = astring_chr(as, 0, ';');
-	if (i > 0) astring_substr(as, 0, i);
-	s = (TCHAR*)astring_c(as);
+	i = astring_chr(&as, 0, ';');
+	if (i > 0) astring_substr(&as, 0, i);
+	s = tstring_from_utf8(astring_c(&as));
 
 	/* Make sure a folder was specified in the tab, and that it exists */
-	if ((!osd_opendir(astring_c(as))) || (astring_chr(as, 0, ':') == -1))
+	if ((!osd_opendir(astring_c(&as))) || (astring_chr(&as, 0, ':') == -1))
 	{
 		/* Get the path from the system-wide software setting in the drop-down directory setup */
-		astring_cpyc(as, GetSoftwareDirs());
+		astring_cpyc(&as, GetSoftwareDirs());
 
 		/* We only want the first path; throw out the rest */
-		i = astring_chr(as, 0, ';');
-		if (i > 0) astring_substr(as, 0, i);
-		s = (TCHAR*)astring_c(as);
+		i = astring_chr(&as, 0, ';');
+		if (i > 0) astring_substr(&as, 0, i);
+		s = tstring_from_utf8(astring_c(&as));
 
 		/* Make sure a folder was specified in the tab, and that it exists */
-		if ((!osd_opendir(astring_c(as))) || (astring_chr(as, 0, ':') == -1))
+		if ((!osd_opendir(astring_c(&as))) || (astring_chr(&as, 0, ':') == -1))
 		{
+			char *dst = NULL;
+
+			osd_get_full_path(&dst,".");
 			/* Default to emu directory */
-			char mess_directory[1024];
-			osd_get_emulator_directory(mess_directory, ARRAY_LENGTH(mess_directory));
-			s = (TCHAR*) mess_directory;
+			s = tstring_from_utf8(dst);
 
 			/* If software folder exists, use it instead */
-			zippath_combine(as, mess_directory, "software");
-			if (osd_opendir(astring_c(as))) s = (TCHAR*)astring_c(as);
+			zippath_combine(&as, dst, "software");
+			if (osd_opendir(astring_c(&as))) s = tstring_from_utf8(astring_c(&as));
+			global_free(dst);
 		}
 	}
 
-	astring_free(as);
-
 	SetupImageTypes(config, imagetypes, ARRAY_LENGTH(imagetypes), TRUE, dev);
 	bResult = CommonFileImageDialog(s, GetSaveFileName, pszFilename, config, imagetypes);
+	
+	/* TODO: free() calls? */
 
 	return bResult;
 }
@@ -990,7 +1017,7 @@ static void DevView_SetSelectedSoftware(HWND hwndDevView, int drvindex,
 		return;
 	MessSpecifyImage(drvindex, dev, utf8_filename);
 	MessRefreshPicker();
-	free(utf8_filename);
+	global_free(utf8_filename);
 }
 
 
@@ -1007,7 +1034,7 @@ static LPCTSTR DevView_GetSelectedSoftware(HWND hwndDevView, int nDriverIndex,
 		return t_buffer;
 
 	_sntprintf(pszBuffer, nBufferLength, TEXT("%s"), t_s);
-	free(t_s);
+	global_free(t_s);
 	t_buffer = pszBuffer;
 
 	return t_buffer;
@@ -1036,7 +1063,7 @@ static int SoftwarePicker_GetItemImage(HWND hwndPicker, int nItem)
 	if (!nIcon)
 	{
 		if (nType == 0)
-			nType = IO_BAD;
+			nType = (iodevice_t)IO_BAD;
 		switch(nType)
 		{
 			case IO_UNKNOWN:
@@ -1087,6 +1114,7 @@ static void SoftwarePicker_EnteringItem(HWND hwndSoftwarePicker, int nItem)
 {
 	LPCSTR pszFullName;
 	LPCSTR pszName;
+	const char* tmp;
 	LPSTR s;
 	int drvindex;
 	HWND hwndList;
@@ -1099,8 +1127,8 @@ static void SoftwarePicker_EnteringItem(HWND hwndSoftwarePicker, int nItem)
 
 		// Get the fullname and partialname for this file
 		pszFullName = SoftwarePicker_LookupFilename(hwndSoftwarePicker, nItem);
-		s = strchr(pszFullName, '\\');
-		pszName = s ? s + 1 : pszFullName;
+		tmp = strchr(pszFullName, '\\');
+		pszName = tmp ? tmp + 1 : pszFullName;
 
 		// Do the dirty work
 		MessSpecifyImage(drvindex, NULL, pszFullName);
@@ -1154,7 +1182,6 @@ static void MySetColumnInfo(int *order, int *shown)
 }
 
 
-
 static INT_PTR CALLBACK MyColumnDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
 	INT_PTR result = 0;
@@ -1178,8 +1205,8 @@ static BOOL RunColumnDialog(HWND hwndPicker)
 	MyColumnDialogProc_hwndPicker = hwndPicker;
 	nColumnCount = Picker_GetColumnCount(MyColumnDialogProc_hwndPicker);
 
-	MyColumnDialogProc_order = alloca(nColumnCount * sizeof(int));
-	MyColumnDialogProc_shown = alloca(nColumnCount * sizeof(int));
+	MyColumnDialogProc_order = (int*)alloca(nColumnCount * sizeof(int));
+	MyColumnDialogProc_shown = (int*)alloca(nColumnCount * sizeof(int));
 	bResult = DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_COLUMNS), GetMainWindow(), MyColumnDialogProc);
 	return bResult;
 }
@@ -1316,6 +1343,7 @@ static void SoftwareTabView_OnMoveSize(void)
 	HWND hwndSoftwarePicker;
 	HWND hwndSoftwareDevView;
 	RECT rMain, rSoftwareTabView, rClient, rTab;
+	BOOL res;
 
 	hwndSoftwareTabView = GetDlgItem(GetMainWindow(), IDC_SWTAB);
 	hwndSoftwarePicker = GetDlgItem(GetMainWindow(), IDC_SWLIST);
@@ -1336,7 +1364,7 @@ static void SoftwareTabView_OnMoveSize(void)
 	// not being covered up
 	if (GetWindowLong(hwndSoftwareTabView, GWL_STYLE) & WS_VISIBLE)
 	{
-		TabCtrl_GetItemRect(hwndSoftwareTabView, 0, &rTab);
+		res = TabCtrl_GetItemRect(hwndSoftwareTabView, 0, &rTab);
 		rClient.top += rTab.bottom - rTab.top + 4;
 	}
 

@@ -19,9 +19,13 @@
 #include "machine/upd765.h"
 #include "machine/i8255a.h"
 
-typedef struct _pc88_state pc88_state;
-struct _pc88_state
+class pc88_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, pc88_state(machine)); }
+
+	pc88_state(running_machine &machine) { }
+
 	/* floppy state */
 	UINT8 i8255_0_pc;
 	UINT8 i8255_1_pc;
@@ -30,10 +34,10 @@ struct _pc88_state
 	UINT16 kanji;
 	UINT16 kanji2;
 
-	const device_config *upd765;
-	const device_config *upd1990a;
-	const device_config *cassette;
-	const device_config *centronics;
+	running_device *upd765;
+	running_device *upd1990a;
+	running_device *cassette;
+	running_device *centronics;
 };
 
 /*----------- defined in machine/pc8801.c -----------*/
@@ -67,7 +71,7 @@ void pc8801_update_bank(running_machine *machine);
 extern unsigned char *pc8801_mainRAM;
 extern int pc88sr_is_highspeed;
 READ8_HANDLER(pc8801fd_upd765_tc);
-void pc88sr_sound_interupt(const device_config *device, int irq);
+void pc88sr_sound_interupt(running_device *device, int irq);
 WRITE8_HANDLER(pc88_kanji_w);
 READ8_HANDLER(pc88_kanji_r);
 WRITE8_HANDLER(pc88_kanji2_w);

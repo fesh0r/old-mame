@@ -48,9 +48,9 @@ MESS adaptation by R. Belmont
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "sound/2612intf.h"
-#include "../../mame/drivers/megadriv.h"
+#include "includes/megadriv.h"
 
 /* cart device, custom mappers & sram init */
 #include "includes/genesis.h"

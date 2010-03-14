@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "machine/terminal.h"
 
@@ -14,7 +14,7 @@ static UINT8 received_char = 0;
 
 static WRITE8_HANDLER(vector_terminal_w)
 {
-	const device_config	*devconf = devtag_get_device(space->machine, "terminal");
+	running_device *devconf = devtag_get_device(space->machine, "terminal");
 	terminal_write(devconf,0,data);
 }
 
@@ -56,7 +56,7 @@ INPUT_PORTS_END
 static MACHINE_RESET(vector4)
 {
 	received_char = 0;
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_PC, 0xe000);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_PC, 0xe000);
 }
 
 static WRITE8_DEVICE_HANDLER( vector4_kbd_put )
@@ -99,5 +99,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT        COMPANY                 FULLNAME       FLAGS */
-COMP( ????, vector4,  0,       0, 	vector4, 	vector4,	0,  	 "Vector Graphics",   "Vector 4",		GAME_NOT_WORKING)
+COMP( ????, vector4,  0,       0,	vector4,	vector4,	0,  	 "Vector Graphics",   "Vector 4",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

@@ -32,18 +32,11 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef enum
-{
-	DEN_FM_LO = 0,
-	DEN_FM_HI,
-	DEN_MFM_LO,
-	DEN_MFM_HI
-} DENSITY;
-
 /* Interface */
 typedef struct _wd17xx_interface wd17xx_interface;
 struct _wd17xx_interface
 {
+	devcb_read_line in_dden_func;
 	devcb_write_line out_intrq_func;
 	devcb_write_line out_drq_func;
 	const char *floppy_drive_tags[4];
@@ -65,15 +58,15 @@ extern DEVICE_GET_INFO(wd2793);
 extern DEVICE_GET_INFO(wd177x);
 extern DEVICE_GET_INFO(mb8877);
 
-void wd17xx_reset(const device_config *device);
+void wd17xx_reset(running_device *device);
 
 /* the following are not strictly part of the wd179x hardware/emulation
 but will be put here for now until the flopdrv code has been finalised more */
-void wd17xx_set_drive(const device_config *device, UINT8);		/* set drive wd179x is accessing */
-void wd17xx_set_side(const device_config *device, UINT8);		/* set side wd179x is accessing */
-void wd17xx_set_density(const device_config *device, DENSITY);	/* set density */
+void wd17xx_set_drive(running_device *device, UINT8);		/* set drive wd179x is accessing */
+void wd17xx_set_side(running_device *device, UINT8);		/* set side wd179x is accessing */
 
-void wd17xx_set_pause_time(const device_config *device, int usec); /* default is 40 usec if not set */
+void wd17xx_set_pause_time(running_device *device, int usec);       /* default is 40 usec if not set */
+void wd17xx_set_complete_command_delay(running_device *device, int usec);   /* default is 12 usec if not set */
 
 READ8_DEVICE_HANDLER( wd17xx_status_r );
 READ8_DEVICE_HANDLER( wd17xx_track_r );
@@ -94,6 +87,7 @@ READ_LINE_DEVICE_HANDLER( wd17xx_mo_r );
 WRITE_LINE_DEVICE_HANDLER( wd17xx_tr00_w );
 WRITE_LINE_DEVICE_HANDLER( wd17xx_idx_w );
 WRITE_LINE_DEVICE_HANDLER( wd17xx_wprt_w );
+WRITE_LINE_DEVICE_HANDLER( wd17xx_dden_w );
 READ_LINE_DEVICE_HANDLER( wd17xx_drq_r );
 READ_LINE_DEVICE_HANDLER( wd17xx_intrq_r );
 

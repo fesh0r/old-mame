@@ -1,6 +1,6 @@
 /* Super80.c written by Robbbert, 2005-2009. See the MESS wiki for documentation. */
 
-#include "driver.h"
+#include "emu.h"
 //#include "cpu/z80/z80.h"
 #include "sound/wave.h"
 #include "devices/cassette.h"
@@ -16,17 +16,17 @@
 
 UINT8 super80_shared=0xff;
 UINT8 *super80_colorram;
-static const device_config *super80_z80pio;
-static const device_config *super80_speaker;
-static const device_config *super80_cassette;
-static const device_config *super80_printer;
+static running_device *super80_z80pio;
+static running_device *super80_speaker;
+static running_device *super80_cassette;
+static running_device *super80_printer;
 
 /**************************** PIO ******************************************************************************/
 
 static UINT8 keylatch;
 
 /* This activates when Control + C + 4 pressed */
-static void super80_pio_interrupt(const device_config *device, int state)
+static void super80_pio_interrupt(running_device *device, int state)
 {
 	cputag_set_input_line(device->machine, "maincpu", 0, state );
 }
@@ -51,14 +51,14 @@ static READ8_DEVICE_HANDLER( pio_port_b_r )
 	return data;
 };
 
-const z80pio_interface super80_pio_intf =
+Z80PIO_INTERFACE( super80_pio_intf )
 {
 	DEVCB_LINE(super80_pio_interrupt),		/* callback when change interrupt status */
 	DEVCB_NULL,
-	DEVCB_HANDLER(pio_port_b_r),
 	DEVCB_HANDLER(pio_port_a_w),
-	DEVCB_NULL,
 	DEVCB_NULL,			/* portA ready active callback (not used in super80) */
+	DEVCB_HANDLER(pio_port_b_r),
+	DEVCB_NULL,
 	DEVCB_NULL			/* portB ready active callback (not used in super80) */
 };
 
@@ -116,7 +116,7 @@ static TIMER_CALLBACK( super80_timer )
 		cass_data[1] = 0;
 	}
 
-	z80pio_p_w(super80_z80pio,1,pio_port_b_r(super80_z80pio,0));
+	z80pio_pb_w(super80_z80pio,1,pio_port_b_r(super80_z80pio,0));
 }
 
 /* after the first 4 bytes have been read from ROM, switch the ram back in */
@@ -213,34 +213,6 @@ WRITE8_HANDLER( super80r_f0_w )
 {
 	super80_f0_w(space, 0, data);
 	super80_shared |= 0x14;
-}
-
-READ8_DEVICE_HANDLER( super80_pio_r )
-{
-	if (!offset)
-		return z80pio_d_r(device, 0);
-	else
-	if (offset == 1)
-		return z80pio_c_r(device, 0);
-	else
-	if (offset == 2)
-		return z80pio_d_r(device, 1);
-	else
-		return z80pio_c_r(device, 1);
-}
-
-WRITE8_DEVICE_HANDLER( super80_pio_w )
-{
-	if (!offset)
-		z80pio_d_w(device, 0, data);
-	else
-	if (offset == 1)
-		z80pio_c_w(device, 0, data);
-	else
-	if (offset == 2)
-		z80pio_d_w(device, 1, data);
-	else
-		z80pio_c_w(device, 1, data);
 }
 
 /**************************** BASIC MACHINE CONSTRUCTION ***********************************************************/

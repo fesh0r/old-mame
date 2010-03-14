@@ -4,7 +4,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "pc_lpt.h"
 #include "machine/ctronics.h"
 
@@ -23,7 +23,7 @@ static WRITE_LINE_DEVICE_HANDLER( pc_lpt_ack_w );
 typedef struct _pc_lpt_state pc_lpt_state;
 struct _pc_lpt_state
 {
-	const device_config *centronics;
+	running_device *centronics;
 
 	devcb_resolved_write_line out_irq_func;
 
@@ -59,7 +59,7 @@ MACHINE_DRIVER_END
     INLINE FUNCTIONS
 *****************************************************************************/
 
-INLINE pc_lpt_state *get_safe_token(const device_config *device)
+INLINE pc_lpt_state *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -76,23 +76,13 @@ INLINE pc_lpt_state *get_safe_token(const device_config *device)
 static DEVICE_START( pc_lpt )
 {
 	pc_lpt_state *lpt = get_safe_token(device);
-	const pc_lpt_interface *intf = device->static_config;
-	astring *tempstring = astring_alloc();
-
+	const pc_lpt_interface *intf = (const pc_lpt_interface *)device->baseconfig().static_config;
 	/* validate some basic stuff */
-	assert(device->static_config != NULL);
+	assert(device->baseconfig().static_config != NULL);
 
 	/* get centronics device */
-	lpt->centronics = devtag_get_device(device->machine, device_build_tag(tempstring, device, "centronics"));
+	lpt->centronics = device->subdevice("centronics");
 	assert(lpt->centronics != NULL);
-
-	/* make sure it's running */
-	if (!lpt->centronics->started)
-	{
-		device_delay_init(device);
-		astring_free(tempstring);
-		return;
-	}
 
 	/* resolve callbacks */
 	devcb_resolve_write_line(&lpt->out_irq_func, &intf->out_irq_func, device);
@@ -104,8 +94,6 @@ static DEVICE_START( pc_lpt )
 	state_save_register_device_item(device, 0, lpt->init);
 	state_save_register_device_item(device, 0, lpt->select);
 	state_save_register_device_item(device, 0, lpt->irq_enabled);
-
-	astring_free(tempstring);
 }
 
 static DEVICE_RESET( pc_lpt )
@@ -240,7 +228,7 @@ READ8_DEVICE_HANDLER( pc_lpt_r )
 	}
 
 	/* if we reach this its an error */
-	logerror("PC-LPT %s: Read from invalid offset %x\n", device->tag, offset);
+	logerror("PC-LPT %s: Read from invalid offset %x\n", device->tag(), offset);
 
 	return 0xff;
 }

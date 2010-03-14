@@ -30,8 +30,7 @@
 
 // MAME/MAMEUI headers
 #include "unzip.h"
-#include "devintrf.h"
-#include "sndintrf.h"
+#include "emu.h"
 #include "sound/samples.h"
 #include "winutf8.h"
 #include "strconv.h"
@@ -204,7 +203,7 @@ void DisplayTextFile(HWND hWnd, const char *cName)
 	hErr = ShellExecute(hWnd, NULL, tName, NULL, NULL, SW_SHOWNORMAL);
 	if ((FPTR)hErr > 32) 
 	{
-		free(tName);
+		global_free(tName);
 		return;
 	}
 
@@ -240,7 +239,7 @@ void DisplayTextFile(HWND hWnd, const char *cName)
  
 	MessageBox(NULL, msg, tName, MB_OK);
 	
-	free(tName);
+	global_free(tName);
 }
 
 char* MyStrStrI(const char* pFirst, const char* pSrch)
@@ -267,7 +266,7 @@ char* MyStrStrI(const char* pFirst, const char* pSrch)
 
 char * ConvertToWindowsNewlines(const char *source)
 {
-	static char buf[40000];
+	static char buf[1024 * 1024];
 	char *dest;
 
 	dest = buf;
@@ -293,7 +292,7 @@ char * ConvertToWindowsNewlines(const char *source)
 const char * GetDriverFilename(int nIndex)
 {
 	static char tmp[40];
-	char *ptmp;
+	const char *ptmp;
 
 	const char *s = drivers[nIndex]->source_file;
 
@@ -304,7 +303,7 @@ const char * GetDriverFilename(int nIndex)
 		ptmp = strrchr(s, '/');
 	}
 	else {
-		char *ptmp2;
+		const char *ptmp2;
 		ptmp2 = strrchr(ptmp, '/');
 		if (ptmp2 != NULL) {
 			ptmp = ptmp2;
@@ -323,7 +322,7 @@ BOOL isDriverVector(const machine_config *config)
 	const device_config *screen = video_screen_first(config);
 
 	if (screen != NULL) {
-		const screen_config *scrconfig = screen->inline_config;
+		const screen_config *scrconfig = (const screen_config *)screen->inline_config;
 
 		/* parse "vector.ini" for vector games */
 		if (SCREEN_TYPE_VECTOR == scrconfig->type)
@@ -357,7 +356,7 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 	if (drivers_info == NULL)
 	{
 		int ndriver;
-		drivers_info = malloc(sizeof(struct DriversInfo) * driver_list_get_count(drivers));
+		drivers_info = (DriversInfo*)malloc(sizeof(struct DriversInfo) * driver_list_get_count(drivers));
 		for (ndriver = 0; ndriver < driver_list_get_count(drivers); ndriver++)
 		{
 			const game_driver *gamedrv = drivers[ndriver];
@@ -415,7 +414,6 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 			}
 			gameinfo->usesSamples = FALSE;
 			
-			if (HAS_SAMPLES || HAS_VLM5030)
 			{
 				const device_config *sound;
 				const char * const * samplenames = NULL;
@@ -424,10 +422,8 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 				{
 
 					{
-#if (HAS_SAMPLES)
 						if( sound_get_type(sound) == SOUND_SAMPLES )
 							samplenames = ((const samples_interface *)sound->static_config)->samplenames;
-#endif
 					}
 
 					if (samplenames != 0 && samplenames[0] != 0)
@@ -445,11 +441,11 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 			if (gamedrv->ipt != NULL)
 			{
 				const input_port_config *port;
-				input_port_list portlist;
+				ioport_list portlist;
 				
-				input_port_list_init(&portlist, gamedrv->ipt, NULL, 0, FALSE);
+				input_port_list_init(portlist, gamedrv->ipt, NULL, 0, FALSE);
 
-				for (port = portlist.head; port != NULL; port = port->next)
+				for (port = portlist.first(); port != NULL; port = port->next)
 				{
 					const input_field_config *field;
 					for (field = port->fieldlist; field != NULL; field = field->next)
@@ -468,7 +464,7 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 							gameinfo->usesMouse = TRUE;
 					}
 				}
-				input_port_list_deinit(&portlist);
+				//input_port_list_deinit(&portlist);
 			}
 		}
 	}
@@ -561,7 +557,7 @@ void FlushFileCaches(void)
 void FreeIfAllocated(char **s)
 {
 	if (*s)
-		free(*s);
+		global_free(*s);
 	*s = NULL;
 }
 
@@ -607,7 +603,7 @@ HICON win_extract_icon_utf8(HINSTANCE inst, const char* exefilename, UINT iconin
 	
 	icon = ExtractIcon(inst, t_exefilename, iconindex);
 	
-	free(t_exefilename);
+	global_free(t_exefilename);
 	
 	return icon;
 }
@@ -623,7 +619,7 @@ TCHAR* win_tstring_strdup(LPCTSTR str)
 	TCHAR *cpy = NULL;
 	if (str != NULL)
 	{
-		cpy = malloc((_tcslen(str) + 1) * sizeof(TCHAR));
+		cpy = (TCHAR*)malloc((_tcslen(str) + 1) * sizeof(TCHAR));
 		if (cpy != NULL)
 			_tcscpy(cpy, str);
 	}
@@ -646,7 +642,7 @@ HANDLE win_create_file_utf8(const char* filename, DWORD desiredmode, DWORD share
 	result = CreateFile(t_filename, desiredmode, sharemode, securityattributes, creationdisposition,
 						flagsandattributes, templatehandle);
 
-	free(t_filename);
+	global_free(t_filename);
 						
 	return result;
 }
@@ -662,7 +658,7 @@ DWORD win_get_current_directory_utf8(DWORD bufferlength, char* buffer)
 	char* utf8_buffer = NULL;
 	
 	if( bufferlength > 0 ) {
-		t_buffer = malloc((bufferlength * sizeof(TCHAR)) + 1);
+		t_buffer = (TCHAR*)malloc((bufferlength * sizeof(TCHAR)) + 1);
 		if( !t_buffer )
 			return result;
 	}
@@ -672,7 +668,7 @@ DWORD win_get_current_directory_utf8(DWORD bufferlength, char* buffer)
 	if( bufferlength > 0 ) {
 		utf8_buffer = utf8_from_tstring(t_buffer);
 		if( !utf8_buffer ) {
-			free(t_buffer);
+			global_free(t_buffer);
 			return result;
 		}
 	}
@@ -680,10 +676,10 @@ DWORD win_get_current_directory_utf8(DWORD bufferlength, char* buffer)
 	strncpy(buffer, utf8_buffer, bufferlength);
 	
 	if( utf8_buffer )
-		free(utf8_buffer);
+		global_free(utf8_buffer);
 	
 	if( t_buffer )
-		free(t_buffer);
+		global_free(t_buffer);
 	
 	return result;
 }
@@ -701,7 +697,7 @@ HANDLE win_find_first_file_utf8(const char* filename, LPWIN32_FIND_DATA findfile
 	
 	result = FindFirstFile(t_filename, findfiledata);
 	
-	free(t_filename);
+	global_free(t_filename);
 	
 	return result;
 }

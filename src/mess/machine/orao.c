@@ -7,7 +7,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "sound/dac.h"
 #include "devices/cassette.h"
 #include "includes/orao.h"
@@ -34,30 +34,30 @@ READ8_HANDLER( orao_io_r )
 	double level;
 
 	 switch(offset) {
-	 	/* Keyboard*/
-	 	case 0x07FC : return input_port_read(space->machine, "LINE0");
-	 	case 0x07FD : return input_port_read(space->machine, "LINE1");
-	 	case 0x07FA : return input_port_read(space->machine, "LINE2");
-	 	case 0x07FB : return input_port_read(space->machine, "LINE3");
-	 	case 0x07F6 : return input_port_read(space->machine, "LINE4");
-	 	case 0x07F7 : return input_port_read(space->machine, "LINE5");
-	 	case 0x07EE : return input_port_read(space->machine, "LINE6");
-	 	case 0x07EF : return input_port_read(space->machine, "LINE7");
-	 	case 0x07DE : return input_port_read(space->machine, "LINE8");
-	 	case 0x07DF : return input_port_read(space->machine, "LINE9");
-	 	case 0x07BE : return input_port_read(space->machine, "LINE10");
-	 	case 0x07BF : return input_port_read(space->machine, "LINE11");
-	 	case 0x077E : return input_port_read(space->machine, "LINE12");
-	 	case 0x077F : return input_port_read(space->machine, "LINE13");
-	 	case 0x06FE : return input_port_read(space->machine, "LINE14");
-	 	case 0x06FF : return input_port_read(space->machine, "LINE15");
-	 	case 0x05FE : return input_port_read(space->machine, "LINE16");
-	 	case 0x05FF : return input_port_read(space->machine, "LINE17");
-	 	case 0x03FE : return input_port_read(space->machine, "LINE18");
-	 	case 0x03FF : return input_port_read(space->machine, "LINE19");
-	 	/* Tape */
-	 	case 0x07FF :
-	 				level = cassette_input(devtag_get_device(space->machine, "cassette"));
+		/* Keyboard*/
+		case 0x07FC : return input_port_read(space->machine, "LINE0");
+		case 0x07FD : return input_port_read(space->machine, "LINE1");
+		case 0x07FA : return input_port_read(space->machine, "LINE2");
+		case 0x07FB : return input_port_read(space->machine, "LINE3");
+		case 0x07F6 : return input_port_read(space->machine, "LINE4");
+		case 0x07F7 : return input_port_read(space->machine, "LINE5");
+		case 0x07EE : return input_port_read(space->machine, "LINE6");
+		case 0x07EF : return input_port_read(space->machine, "LINE7");
+		case 0x07DE : return input_port_read(space->machine, "LINE8");
+		case 0x07DF : return input_port_read(space->machine, "LINE9");
+		case 0x07BE : return input_port_read(space->machine, "LINE10");
+		case 0x07BF : return input_port_read(space->machine, "LINE11");
+		case 0x077E : return input_port_read(space->machine, "LINE12");
+		case 0x077F : return input_port_read(space->machine, "LINE13");
+		case 0x06FE : return input_port_read(space->machine, "LINE14");
+		case 0x06FF : return input_port_read(space->machine, "LINE15");
+		case 0x05FE : return input_port_read(space->machine, "LINE16");
+		case 0x05FF : return input_port_read(space->machine, "LINE17");
+		case 0x03FE : return input_port_read(space->machine, "LINE18");
+		case 0x03FF : return input_port_read(space->machine, "LINE19");
+		/* Tape */
+		case 0x07FF :
+					level = cassette_input(devtag_get_device(space->machine, "cassette"));
 					if (level <  0) {
 						return 0x00;
 					}
@@ -73,7 +73,7 @@ WRITE8_HANDLER( orao_io_w )
 {
 	if (offset == 0x0800)
 	{
-		const device_config *dac_device = devtag_get_device(space->machine, "dac");
+		running_device *dac_device = devtag_get_device(space->machine, "dac");
 		dac_data_w(dac_device, data); //beeper
 	}
 }

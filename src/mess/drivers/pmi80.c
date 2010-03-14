@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 
 static ADDRESS_MAP_START(pmi80_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -69,5 +69,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1982, pmi80,  0,       0, 	pmi80, 	pmi80, 	 0,  	   	 "Tesla",   "PMI-80",		GAME_NOT_WORKING)
+COMP( 1982, pmi80,  0,       0, 	pmi80,	pmi80,	 0, 		 "Tesla",   "PMI-80",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

@@ -6,7 +6,7 @@
 
 *********************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/apple2.h"
 #include "ap2_lang.h"
 
@@ -27,7 +27,7 @@
     apple2_langcard_touch - device read callback
 -------------------------------------------------*/
 
-static void apple2_langcard_touch(const device_config *device, offs_t offset)
+static void apple2_langcard_touch(running_device *device, offs_t offset)
 {
 	UINT32 val, mask;
 

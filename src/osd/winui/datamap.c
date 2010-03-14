@@ -25,6 +25,7 @@
 #include <tchar.h>
 
 // standard C headers
+#include <stdlib.h>
 #include <stdarg.h>
 #include <ctype.h>
 #include <assert.h>
@@ -45,7 +46,6 @@
 //  TYPE DEFINITIONS
 //============================================================
 
-typedef enum _control_type control_type;
 enum _control_type
 {
 	CT_UNKNOWN,
@@ -57,6 +57,7 @@ enum _control_type
 	CT_LISTVIEW
 };
 
+typedef enum _control_type control_type;
 
 
 typedef struct _datamap_entry datamap_entry;
@@ -112,7 +113,7 @@ static	char *tztrim(float float_value);
 
 datamap *datamap_create(void)
 {
-	datamap *map = malloc(sizeof(*map));
+	datamap *map = (datamap *)malloc(sizeof(*map));
 	if (!map)
 		return NULL;
 

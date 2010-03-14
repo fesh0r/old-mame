@@ -27,7 +27,7 @@
 #include <assert.h>
 #include <math.h>
 
-#include "driver.h"
+#include "emu.h"
 #include "machine/6883sam.h"
 #include "video/coco6847.h"
 #include "includes/coco.h"
@@ -402,11 +402,11 @@ VIDEO_UPDATE( coco3 )
 	UINT32 rc = 0;
 
 	/* bad screen */
-	if (!strcmp(screen->tag, "composite"))
+	if (!strcmp(screen->tag(), "composite"))
 	{
 		video->video_type = 0;
 	}
-	else if (!strcmp(screen->tag, "rgb"))
+	else if (!strcmp(screen->tag(), "rgb"))
 	{
 		video->video_type = 1;
 	}
@@ -791,7 +791,7 @@ static STATE_POSTLOAD( coco3_video_postload )
 
 static const UINT8 *get_video_ram_coco3(running_machine *machine,int scanline)
 {
-	const device_config *sam = devtag_get_device(machine, "sam");
+	running_device *sam = devtag_get_device(machine, "sam");
 	return sam6883_videoram(sam,scanline);
 }
 

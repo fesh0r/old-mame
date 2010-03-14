@@ -3,6 +3,8 @@
 
 #include "resource.h"
 
+#include "..\windows\messres.h"
+
 #define IDC_SPLITTER3				    2000
 #define IDC_SWTAB                       2001
 #define IDC_SWLIST                      2002

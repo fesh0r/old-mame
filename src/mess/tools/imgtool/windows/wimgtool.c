@@ -10,6 +10,7 @@
 #include <tchar.h>
 #include <ctype.h>
 
+#include "emu.h"
 #include "wimgtool.h"
 #include "wimgres.h"
 #include "pile.h"
@@ -20,7 +21,6 @@
 #include "winutf8.h"
 #include "winutil.h"
 #include "winutils.h"
-#include "mame.h"
 
 const TCHAR wimgtool_class[] = TEXT("wimgtool_class");
 const char wimgtool_producttext[] = "MESS Image Tool";
@@ -73,7 +73,19 @@ static wimgtool_info *get_wimgtool_info(HWND window)
 	return info;
 }
 
+static DWORD win_get_file_attributes_utf8(const char *filename)
+{
+	DWORD result = ~0;
+	LPTSTR t_filename;
 
+	t_filename = tstring_from_utf8(filename);
+	if (t_filename != NULL)
+	{
+		result = GetFileAttributes(t_filename);
+		free(t_filename);
+	}
+	return result;
+}
 
 struct foreach_entry
 {
@@ -93,7 +105,7 @@ static imgtoolerr_t foreach_selected_item(HWND window,
 	struct foreach_entry *first_entry = NULL;
 	struct foreach_entry *last_entry = NULL;
 	struct foreach_entry *entry;
-
+	HRESULT res;
 	info = get_wimgtool_info(window);
 
 	if (info->image)
@@ -111,7 +123,7 @@ static imgtoolerr_t foreach_selected_item(HWND window,
 				{
 					item.mask = LVIF_PARAM;
 					item.iItem = selected_index;
-					ListView_GetItem(info->listview, &item);
+					res = ListView_GetItem(info->listview, &item);
 					selected_item = item.lParam;
 				}
 			}
@@ -119,7 +131,7 @@ static imgtoolerr_t foreach_selected_item(HWND window,
 
 			if (selected_item >= 0)
 			{
-				entry = alloca(sizeof(*entry));
+				entry = (foreach_entry*)alloca(sizeof(*entry));
 				entry->next = NULL;
 
 				// retrieve the directory entry
@@ -176,7 +188,7 @@ void wimgtool_report_error(HWND window, imgtoolerr_t err, const char *imagename,
 	switch(ERRORSOURCE(err))
 	{
 		case IMGTOOLERR_SRC_IMAGEFILE:
-			source = osd_basename((char *) imagename);
+			source = imgtool_basename((char *) imagename);
 			break;
 		case IMGTOOLERR_SRC_FILEONIMAGE:
 			source = filename;
@@ -399,7 +411,7 @@ static imgtoolerr_t append_dirent(HWND window, int index, const imgtool_dirent *
 			if (!extension)
 				extension = ".bin";
 
-			ptr = pile_getptr(&info->iconlist_extensions);
+			ptr = (const char *)pile_getptr(&info->iconlist_extensions);
 			size = pile_size(&info->iconlist_extensions);
 			icon_index = -1;
 
@@ -497,7 +509,7 @@ static imgtoolerr_t append_dirent(HWND window, int index, const imgtool_dirent *
 	{
 		ListView_SetItemText(info->listview, new_index, column_index++, (LPTSTR) TEXT("Corrupt"));
 	}
-	return 0;
+	return (imgtoolerr_t)0;
 }
 
 
@@ -515,11 +527,12 @@ static imgtoolerr_t refresh_image(HWND window)
 	imgtool_partition_features features;
 	char path_separator;
 	TCHAR *tempstr;
+	HRESULT res;
 
 	info = get_wimgtool_info(window);
 	size_buf[0] = '\0';
 
-	ListView_DeleteAllItems(info->listview);
+	res = ListView_DeleteAllItems(info->listview);
 
 	if (info->image)
 	{
@@ -656,7 +669,7 @@ static imgtoolerr_t full_refresh_image(HWND window)
 				file_title, imageinfo);
 		}
 
-		statusbar_text[0] = osd_basename((char *) info->filename);
+		statusbar_text[0] = imgtool_basename((char *) info->filename);
 		statusbar_text[1] = imgtool_image_module(info->image)->description;
 
 		free(file_title);
@@ -807,7 +820,7 @@ static imgtoolerr_t setup_openfilename_struct(win_open_file_name *ofn, object_po
 	}
 	pile_putc(&pile, '\0');
 
-	filter = pool_malloc(pool, pile_size(&pile));
+	filter = (char*)pool_malloc_lib(pool, pile_size(&pile));
 	if (!filter)
 	{
 		err = IMGTOOLERR_OUTOFMEMORY;
@@ -829,7 +842,7 @@ static imgtoolerr_t setup_openfilename_struct(win_open_file_name *ofn, object_po
 		snprintf(ofn->filename, ARRAY_LENGTH(ofn->filename), "%s", info->filename);
 
 		// specify an initial directory
-		initial_dir = alloca((strlen(info->filename) + 1) * sizeof(*info->filename));
+		initial_dir = (char*)alloca((strlen(info->filename) + 1) * sizeof(*info->filename));
 		strcpy(initial_dir, info->filename);
 		dir_char = strrchr(initial_dir, '\\');
 		if (dir_char)
@@ -869,6 +882,71 @@ const imgtool_module *find_filter_module(int filter_index,
 	return NULL;
 }
 
+//============================================================
+//  win_error_to_mame_file_error
+//============================================================
+
+static file_error win_error_to_mame_file_error(DWORD error)
+{
+	file_error filerr;
+
+	// convert a Windows error to a file_error
+	switch (error)
+	{
+		case ERROR_SUCCESS:
+			filerr = FILERR_NONE;
+			break;
+
+		case ERROR_OUTOFMEMORY:
+			filerr = FILERR_OUT_OF_MEMORY;
+			break;
+
+		case ERROR_FILE_NOT_FOUND:
+		case ERROR_PATH_NOT_FOUND:
+			filerr = FILERR_NOT_FOUND;
+			break;
+
+		case ERROR_ACCESS_DENIED:
+			filerr = FILERR_ACCESS_DENIED;
+			break;
+
+		case ERROR_SHARING_VIOLATION:
+			filerr = FILERR_ALREADY_OPEN;
+			break;
+
+		default:
+			filerr = FILERR_FAILURE;
+			break;
+	}
+	return filerr;
+}
+
+//============================================================
+//  win_mkdir
+//============================================================
+
+file_error win_mkdir(const char *dir)
+{
+	file_error filerr = FILERR_NONE;
+
+	TCHAR *tempstr = tstring_from_utf8(dir);
+	if (!tempstr)
+	{
+		filerr = FILERR_OUT_OF_MEMORY;
+		goto done;
+	}
+
+	if (!CreateDirectory(tempstr, NULL))
+	{
+		filerr = win_error_to_mame_file_error(GetLastError());
+		goto done;
+	}
+
+done:
+	if (tempstr)
+		free(tempstr);
+	return filerr;
+}
 
 
 static imgtoolerr_t get_recursive_directory(imgtool_partition *partition, const char *path, LPCSTR local_path)
@@ -879,7 +957,7 @@ static imgtoolerr_t get_recursive_directory(imgtool_partition *partition, const 
 	const char *subpath;
 	char local_subpath[MAX_PATH];
 
-	if (osd_mkdir(local_path) != FILERR_NONE)
+	if (win_mkdir(local_path) != FILERR_NONE)
 	{
 		err = IMGTOOLERR_UNEXPECTED;
 		goto done;
@@ -1069,7 +1147,7 @@ static void menu_new(HWND window)
 	const imgtool_module *module;
 	option_resolution *resolution = NULL;
 
-	pool = pool_alloc(NULL);
+	pool = pool_alloc_lib(NULL);
 
 	err = setup_openfilename_struct(&ofn, pool, window, TRUE);
 	if (err)
@@ -1099,7 +1177,7 @@ done:
 	if (resolution)
 		option_resolution_close(resolution);
 	if (pool)
-		pool_free(pool);
+		pool_free_lib(pool);
 }
 
 
@@ -1113,7 +1191,7 @@ static void menu_open(HWND window)
 	wimgtool_info *info;
 	int read_or_write;
 
-	pool = pool_alloc(NULL);
+	pool = pool_alloc_lib(NULL);
 	if (!pool)
 	{
 		err = IMGTOOLERR_OUTOFMEMORY;
@@ -1146,7 +1224,7 @@ done:
 	if (err)
 		wimgtool_report_error(window, err, ofn.filename, NULL);
 	if (pool)
-		pool_free(pool);
+		pool_free_lib(pool);
 }
 
 
@@ -1178,7 +1256,7 @@ static void menu_insert(HWND window)
 	ofn.flags = OFN_FILEMUSTEXIST | OFN_EXPLORER;
 	if (!win_get_file_name_dialog(&ofn))
 	{
-		err = 0;
+		err = (imgtoolerr_t)0;
 		goto done;
 	}
 
@@ -1553,7 +1631,7 @@ static LRESULT wimgtool_create(HWND window, CREATESTRUCT *pcs)
 	wimgtool_info *info;
 	static const int status_widths[3] = { 200, 400, -1 };
 
-	info = malloc(sizeof(*info));
+	info = (wimgtool_info*)malloc(sizeof(*info));
 	if (!info)
 		return -1;
 	memset(info, 0, sizeof(*info));
@@ -1585,7 +1663,7 @@ static LRESULT wimgtool_create(HWND window, CREATESTRUCT *pcs)
 	(void)ListView_SetImageList(info->listview, info->iconlist_small, LVSIL_SMALL);
 
 	// get icons
-	info->readonly_icon = LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_READONLY), IMAGE_ICON, 16, 16, 0);
+	info->readonly_icon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_READONLY), IMAGE_ICON, 16, 16, 0);
 	info->readonly_icon_index = ImageList_AddIcon(info->iconlist_normal, info->readonly_icon);
 	ImageList_AddIcon(info->iconlist_small, info->readonly_icon);
 	info->directory_icon_index = append_associated_icon(window, FOLDER_ICON);
@@ -1637,7 +1715,7 @@ static void drop_files(HWND window, HDROP drop)
 
 		// figure out the file/dir name on the image
 		snprintf(subpath, ARRAY_LENGTH(subpath), "%s%s",
-			info->current_directory ? info->current_directory : "", osd_basename(filename));
+			info->current_directory ? info->current_directory : "", imgtool_basename(filename));
 
 		if (GetFileAttributes(buffer) & FILE_ATTRIBUTE_DIRECTORY)
 			err = put_recursive_directory(info->partition, buffer, subpath);
@@ -1687,6 +1765,7 @@ static imgtoolerr_t double_click(HWND window)
 	DWORD pos;
 	imgtool_dirent entry;
 	int selected_item;
+	HRESULT res;
 
 	info = get_wimgtool_info(window);
 
@@ -1696,7 +1775,7 @@ static imgtoolerr_t double_click(HWND window)
 	GetWindowRect(info->listview, &r);
 	htinfo.pt.x = pt.x - r.left;
 	htinfo.pt.y = pt.y - r.top;
-	ListView_HitTest(info->listview, &htinfo);
+	res = ListView_HitTest(info->listview, &htinfo);
 
 	if (htinfo.flags & LVHT_ONITEM)
 	{
@@ -1704,7 +1783,7 @@ static imgtoolerr_t double_click(HWND window)
 
 		item.mask = LVIF_PARAM;
 		item.iItem = htinfo.iItem;
-		ListView_GetItem(info->listview, &item);
+		res = ListView_GetItem(info->listview, &item);
 
 		selected_item = item.lParam;
 
@@ -1738,6 +1817,7 @@ static BOOL context_menu(HWND window, LONG x, LONG y)
 	LVHITTESTINFO hittest;
 	BOOL rc = FALSE;
 	HMENU menu;
+	HRESULT res;
 
 	info = get_wimgtool_info(window);
 
@@ -1745,7 +1825,7 @@ static BOOL context_menu(HWND window, LONG x, LONG y)
 	hittest.pt.x = x;
 	hittest.pt.y = y;
 	ScreenToClient(info->listview, &hittest.pt);
-	ListView_HitTest(info->listview, &hittest);
+	res = ListView_HitTest(info->listview, &hittest);
 
 	if (hittest.flags & LVHT_ONITEM)
 	{

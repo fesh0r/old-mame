@@ -8,6 +8,9 @@
 
 ***************************************************************************/
 
+#ifdef WIN32
+#include "winutils.h"
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -15,12 +18,9 @@
 #include <time.h>
 #include <assert.h>
 
-#include "mame.h"
+#include "emu.h"
 #include "mess.h"
 #include "fileio.h"
-#ifdef WIN32
-#include "winutils.h"
-#endif
 
 #include "devices/cassette.h"
 
@@ -32,7 +32,7 @@
 #include "formats/csw_cas.h"
 #include "formats/fmsx_cas.h"
 #include "formats/gtp_cas.h"
-#include "formats/hect_tap.h" 
+#include "formats/hect_tap.h"
 #include "formats/jupi_tap.h"
 #include "formats/kim1_cas.h"
 #include "formats/lviv_lvt.h"
@@ -125,24 +125,13 @@ static void display_formats(void)
 	}
 }
 
-#ifdef WIN32
-int CLIB_DECL utf8_main(int argc, char *argv[])
-#else
 int CLIB_DECL main(int argc, char *argv[])
-#endif
 {
 	int i;
 	int found =0;
 	const struct CassetteFormat * const *selected_formats = NULL;
 	cassette_image *cassette;
 	FILE *f;
-#ifdef WIN32
-	win_expand_wildcards(&argc, &argv);
-#endif /* WIN32 */
-
-
-	init_resource_tracking();
-	begin_resource_tracking();
 
 	if (argc > 1)
 	{
@@ -195,8 +184,5 @@ int CLIB_DECL main(int argc, char *argv[])
 	fprintf(stderr, "        castool.exe convert tzx game.tzx game.wav\n\n");
 
 theend :
-	/* clean up our tracked resources */
-	exit_resource_tracking();
-
 	return 0;
 }

@@ -264,13 +264,13 @@ static int intl_toupper(int c)
 static int intl_stricmp(const char *s1, const char *s2)
 {
 	for (;;)
- 	{
+	{
 		int c1 = intl_toupper(*s1++);
 		int c2 = intl_toupper(*s2++);
 
 		if (c1 == 0 || c1 != c2)
 			return c1 - c2;
- 	}
+	}
 }
 
 
@@ -411,7 +411,7 @@ static UINT32 block_checksum(UINT8 *buffer, int length)
 /* Returns the total number of blocks in the image */
 static int get_total_blocks(imgtool_image *img)
 {
-	amiga_floppy *f = imgtool_image_extra_bytes(img);
+	amiga_floppy *f = (amiga_floppy *)imgtool_image_extra_bytes(img);
 
 	return 2 * 80 * f->sectors;
 }
@@ -1106,8 +1106,6 @@ static imgtoolerr_t find_entry(imgtool_image *img, const char *path, int start_b
 
 		/* TODO: Softlink support */
 		return IMGTOOLERR_UNIMPLEMENTED;
-
-		break;
 
 	case ST_LINKDIR:
 	case ST_LINKFILE:

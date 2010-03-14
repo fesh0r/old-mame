@@ -10,9 +10,13 @@
 
 #define ST2_BLOCK_SIZE 256
 
-typedef struct _studio2_state studio2_state;
-struct _studio2_state
+class studio2_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, studio2_state(machine)); }
+
+	studio2_state(running_machine &machine) { }
+
 	/* cpu state */
 	cdp1802_control_mode cdp1802_mode;
 
@@ -23,11 +27,12 @@ struct _studio2_state
 	int cdp1861_efx;
 	int cdp1864_efx;
 	UINT8 *color_ram;
+	UINT8 *color_ram1;
 	UINT8 color;
 
 	/* devices */
-	const device_config *cdp1861;
-	const device_config *cdp1864;
+	running_device *cdp1861;
+	running_device *cdp1864;
 };
 
 typedef struct _st2_header st2_header;

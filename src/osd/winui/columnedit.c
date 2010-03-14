@@ -37,10 +37,12 @@ static int DoExchangeItem(HWND hFrom, HWND hTo, int nMinItem)
 {
 	LV_ITEM lvi;
 	TCHAR	buf[80];
-	int 	nFrom, nTo;
+	//int 	nFrom, nTo;
+	int 	res;
+	BOOL 	b_res;
 
-	nFrom = ListView_GetItemCount(hFrom);
-	nTo   = ListView_GetItemCount(hTo);
+	//nFrom = ListView_GetItemCount(hFrom);
+	//nTo   = ListView_GetItemCount(hTo);
 
 	lvi.iItem = ListView_GetNextItem(hFrom, -1, LVIS_SELECTED | LVIS_FOCUSED);
 	if (lvi.iItem < nMinItem)
@@ -57,9 +59,9 @@ static int DoExchangeItem(HWND hFrom, HWND hTo, int nMinItem)
 	if (ListView_GetItem(hFrom, &lvi))
 	{
 		// Add this item to the Show and delete it from Available
-		ListView_DeleteItem(hFrom, lvi.iItem);
+		b_res = ListView_DeleteItem(hFrom, lvi.iItem);
 		lvi.iItem = ListView_GetItemCount(hTo);
-		ListView_InsertItem(hTo, &lvi);
+		res = ListView_InsertItem(hTo, &lvi);
 		ListView_SetItemState(hTo, lvi.iItem,
 							  LVIS_FOCUSED | LVIS_SELECTED,
 							  LVIS_FOCUSED | LVIS_SELECTED);
@@ -74,6 +76,8 @@ static void DoMoveItem( HWND hWnd, BOOL bDown)
 	LV_ITEM lvi;
 	TCHAR	buf[80];
 	int 	nMaxpos;
+	int		res;
+	BOOL 	b_res;
 	
 	lvi.iItem = ListView_GetNextItem(hWnd, -1, LVIS_SELECTED | LVIS_FOCUSED);
 	nMaxpos = ListView_GetItemCount(hWnd);
@@ -92,9 +96,9 @@ static void DoMoveItem( HWND hWnd, BOOL bDown)
 	if (ListView_GetItem(hWnd, &lvi))
 	{
 		// Add this item to the Show and delete it from Available
-		ListView_DeleteItem(hWnd, lvi.iItem);
+		b_res = ListView_DeleteItem(hWnd, lvi.iItem);
 		lvi.iItem += (bDown) ? 1 : -1;
-		ListView_InsertItem(hWnd,&lvi);
+		res = ListView_InsertItem(hWnd,&lvi);
 		ListView_SetItemState(hWnd, lvi.iItem,
 							  LVIS_FOCUSED | LVIS_SELECTED,
 							  LVIS_FOCUSED | LVIS_SELECTED);
@@ -114,7 +118,7 @@ static void DoMoveItem( HWND hWnd, BOOL bDown)
 
 INT_PTR InternalColumnDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lParam,
 	int nColumnMax, int *shown, int *order,
-	LPCTSTR *names, void (*pfnGetRealColumnOrder)(int *),
+	const LPCTSTR *names, void (*pfnGetRealColumnOrder)(int *),
 	void (*pfnGetColumnInfo)(int *pnOrder, int *pnShown),
 	void (*pfnSetColumnInfo)(int *pnOrder, int *pnShown))
 {
@@ -125,7 +129,9 @@ INT_PTR InternalColumnDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPar
 	int         nAvail;
 	int         i, nCount = 0;
 	LV_ITEM     lvi;
-	DWORD dwShowStyle, dwAvailableStyle, dwView;
+	DWORD		dwShowStyle, dwAvailableStyle, dwView;
+	int			res;
+	BOOL		b_res;
 
 	switch (Msg)
 	{
@@ -177,13 +183,13 @@ INT_PTR InternalColumnDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPar
 			if (shown[order[i]])
 			{
 				lvi.iItem = nShown;
-				ListView_InsertItem(hShown, &lvi);
+				res = ListView_InsertItem(hShown, &lvi);
 				nShown++;
 			}
 			else
 			{
 				lvi.iItem = nAvail;
-				ListView_InsertItem(hAvailable, &lvi);
+				res = ListView_InsertItem(hAvailable, &lvi);
 				nAvail++;
 			}
 		}
@@ -408,7 +414,7 @@ INT_PTR InternalColumnDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPar
 						lvi.mask     = LVIF_PARAM;
 						lvi.pszText  = 0;
 						lvi.iItem    = i;
-						ListView_GetItem(hShown, &lvi);
+						b_res = ListView_GetItem(hShown, &lvi);
 						order[nCount++]   = lvi.lParam;
 						shown[lvi.lParam] = TRUE;
 					}
@@ -418,7 +424,7 @@ INT_PTR InternalColumnDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPar
 						lvi.mask     = LVIF_PARAM;
 						lvi.pszText  = 0;
 						lvi.iItem    = i;
-						ListView_GetItem(hAvailable, &lvi);
+						b_res = ListView_GetItem(hAvailable, &lvi);
 						order[nCount++]   = lvi.lParam;
 						shown[lvi.lParam] = FALSE;
 					}
@@ -467,8 +473,7 @@ INT_PTR CALLBACK ColumnDialogProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lPa
 {
 	static int shown[COLUMN_MAX];
 	static int order[COLUMN_MAX];
-	extern LPCTSTR column_names[COLUMN_MAX]; // from win32ui.c, should improve
-
+	extern const LPCTSTR column_names[COLUMN_MAX]; // from winui.c, should improve
 
 	return InternalColumnDialogProc(hDlg, Msg, wParam, lParam, COLUMN_MAX,
 		shown, order, column_names, GetRealColumnOrder, GetColumnInfo, SetColumnInfo);

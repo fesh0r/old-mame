@@ -8,7 +8,7 @@
     Raphael Nabet 2003
 */
 
-#include "driver.h"
+#include "emu.h"
 
 #include "990_dk.h"
 #include "formats/basicdsk.h"
@@ -16,6 +16,9 @@
 
 #define MAX_FLOPPIES 4
 
+enum buf_mode_t {
+	bm_off, bm_read, bm_write
+};
 static struct
 {
 	running_machine *machine;
@@ -29,7 +32,7 @@ static struct
 
 	UINT8 buf[128];
 	int buf_pos;
-	enum { bm_off, bm_read, bm_write } buf_mode;
+	buf_mode_t buf_mode;
 	int unit;
 	int head;
 	int sector;
@@ -38,7 +41,7 @@ static struct
 
 	struct
 	{
-		const device_config *img;
+		running_device *img;
 		int phys_cylinder;
 		int log_cylinder[2];
 		int seclen;
@@ -92,7 +95,7 @@ static void fd800_field_interrupt(void)
 		(*fd800.interrupt_callback)(fd800.machine, (fd800.stat_reg & status_interrupt) && ! fd800.interrupt_f_f);
 }
 
-static void fd800_unload_proc(const device_config *image)
+static void fd800_unload_proc(running_device *image)
 {
 	int unit = floppy_get_drive(image);
 

@@ -10,7 +10,7 @@ TODO:
 */
 
 
-#include "driver.h"
+#include "emu.h"
 #include "911_vdt.h"
 #include "911_chr.h"
 #include "911_key.h"
@@ -26,9 +26,9 @@ static const gfx_layout fontlayout_7bit =
 	128,			/* 128 characters */
 	1,				/* 1 bit per pixel */
 	{ 0 },
-	{ 1, 2, 3, 4, 5, 6, 7 }, 			/* straightforward layout */
+	{ 1, 2, 3, 4, 5, 6, 7 },			/* straightforward layout */
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8 },
-	10*8 			/* every char takes 10 consecutive bytes */
+	10*8			/* every char takes 10 consecutive bytes */
 };
 
 static const gfx_layout fontlayout_8bit =
@@ -37,9 +37,9 @@ static const gfx_layout fontlayout_8bit =
 	128,			/* 128 characters */
 	1,				/* 1 bit per pixel */
 	{ 0 },
-	{ 1, 2, 3, 4, 5, 6, 7 }, 				/* straightforward layout */
+	{ 1, 2, 3, 4, 5, 6, 7 },				/* straightforward layout */
 	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8, 8*8, 9*8 },
-	10*8 			/* every char takes 10 consecutive bytes */
+	10*8			/* every char takes 10 consecutive bytes */
 };
 
 GFXDECODE_START( vdt911 )
@@ -91,7 +91,7 @@ typedef struct vdt_t
 	unsigned int cursor_address;		/* current cursor address (controlled by the computer, affects both display and I/O protocol) */
 	unsigned int cursor_address_mask;	/* 1023 for 960-char model, 2047 for 1920-char model */
 
-	void *beep_timer;					/* beep clock (beeps ends when timer times out) */
+	emu_timer *beep_timer;					/* beep clock (beeps ends when timer times out) */
 	/*void *blink_clock;*/				/* cursor blink clock */
 
 	UINT8 keyboard_data;				/* last code pressed on keyboard */

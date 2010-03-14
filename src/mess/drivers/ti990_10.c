@@ -67,7 +67,7 @@ TODO :
     15: PROM programmer (actually not used)
 */
 
-#include "driver.h"
+#include "emu.h"
 
 #include "cpu/tms9900/tms9900.h"
 #include "sound/beep.h"
@@ -103,7 +103,7 @@ static void idle_callback(int state)
 }
 #endif
 
-static void rset_callback(const device_config *device)
+static void rset_callback(running_device *device)
 {
 	ti990_cpuboard_reset();
 
@@ -113,7 +113,7 @@ static void rset_callback(const device_config *device)
 	/* clear controller panel and smi fault LEDs */
 }
 
-static void lrex_callback(const device_config *device)
+static void lrex_callback(running_device *device)
 {
 	/* right??? */
 	ti990_hold_load(device->machine);
@@ -228,7 +228,7 @@ static MACHINE_DRIVER_START(ti990_10)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	MDRV_IMPORT_FROM( ti990_hdc )
-	
+
 	MDRV_TI990_TAPE_CTRL_ADD("tpc",ti990_tpc)
 MACHINE_DRIVER_END
 

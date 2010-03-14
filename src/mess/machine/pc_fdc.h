@@ -7,7 +7,7 @@
 #ifndef PC_FDC_H
 #define PC_FDC_H
 
-#include "driver.h"
+#include "emu.h"
 #include "machine/upd765.h"
 
 /* interface has been seperated, so that it can be used in the super i/o chip */
@@ -28,8 +28,8 @@ struct pc_fdc_interface
 {
 	void (*pc_fdc_interrupt)(running_machine*,int);
 	void (*pc_fdc_dma_drq)(running_machine*,int,int);
-	const device_config *(*get_image)(running_machine*, int floppy_index);
-	const device_config *(*get_device)(running_machine*);
+	running_device *(*get_image)(running_machine*, int floppy_index);
+	running_device *(*get_device)(running_machine*);
 };
 
 extern const upd765_interface pc_fdc_upd765_connected_interface;

@@ -13,7 +13,7 @@
     - tape writing works
 */
 
-#include "driver.h"
+#include "emu.h"
 
 #include "cpu/m6502/m6502.h"
 #include "cpu/z80/z80.h"
@@ -21,7 +21,6 @@
 #include "machine/6526cia.h"
 #include "machine/cbmiec.h"
 #include "video/vic6567.h"
-#include "video/vdc8563.h"
 
 #include "includes/cbm.h"
 #include "includes/c64.h"
@@ -72,8 +71,8 @@ static UINT8 vicirq;
 static void c64_nmi( running_machine *machine )
 {
 	static int nmilevel = 0;
-	const device_config *cia_1 = devtag_get_device(machine, "cia_1");
-	int cia1irq = cia_get_irq(cia_1);
+	running_device *cia_1 = devtag_get_device(machine, "cia_1");
+	int cia1irq = mos6526_irq_r(cia_1);
 
 	if (nmilevel != (input_port_read(machine, "SPECIAL") & 0x80) || cia1irq)	/* KEY_RESTORE */
 	{
@@ -102,21 +101,22 @@ static void c64_nmi( running_machine *machine )
 
 static READ8_DEVICE_HANDLER( c64_cia0_port_a_r )
 {
-	UINT8 cia0portb = cia_get_output_b(devtag_get_device(device->machine, "cia_0"));
+	UINT8 cia0portb = mos6526_pb_r(devtag_get_device(device->machine, "cia_0"), 0);
 
 	return cbm_common_cia0_port_a_r(device, cia0portb);
 }
 
 static READ8_DEVICE_HANDLER( c64_cia0_port_b_r )
 {
-	UINT8 cia0porta = cia_get_output_a(devtag_get_device(device->machine, "cia_0"));
+	UINT8 cia0porta = mos6526_pa_r(devtag_get_device(device->machine, "cia_0"), 0);
 
 	return cbm_common_cia0_port_b_r(device, cia0porta);
 }
 
 static WRITE8_DEVICE_HANDLER( c64_cia0_port_b_w )
 {
-    vic2_lightpen_write(data & 0x10);
+	running_device *vic2 = devtag_get_device(device->machine, "vic2");
+	vic2_lightpen_write(vic2, data & 0x10);
 }
 
 static void c64_irq( running_machine *machine, int level )
@@ -131,45 +131,47 @@ static void c64_irq( running_machine *machine, int level )
 	}
 }
 
-static void c64_cia0_interrupt( const device_config *device, int level )
+static void c64_cia0_interrupt( running_device *device, int level )
 {
 	c64_irq (device->machine, level || vicirq);
 }
 
 void c64_vic_interrupt( running_machine *machine, int level )
 {
-	const device_config *cia_0 = devtag_get_device(machine, "cia_0");
+	running_device *cia_0 = devtag_get_device(machine, "cia_0");
 #if 1
 	if (level != vicirq)
 	{
-		c64_irq (machine, level || cia_get_irq(cia_0));
+		c64_irq(machine, level || mos6526_irq_r(cia_0));
 		vicirq = level;
 	}
 #endif
 }
 
-const cia6526_interface c64_ntsc_cia0 =
+const mos6526_interface c64_ntsc_cia0 =
 {
+	10, /* 1/10 second */
 	DEVCB_LINE(c64_cia0_interrupt),
 	DEVCB_NULL,	/* pc_func */
-	10, /* 1/10 second */
-
-	{
-		{ DEVCB_HANDLER(c64_cia0_port_a_r), DEVCB_NULL },
-		{ DEVCB_HANDLER(c64_cia0_port_b_r), DEVCB_HANDLER(c64_cia0_port_b_w) }
-	}
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(c64_cia0_port_a_r),
+	DEVCB_NULL,
+	DEVCB_HANDLER(c64_cia0_port_b_r),
+	DEVCB_HANDLER(c64_cia0_port_b_w)
 };
 
-const cia6526_interface c64_pal_cia0 =
+const mos6526_interface c64_pal_cia0 =
 {
+	10, /* 1/10 second */
 	DEVCB_LINE(c64_cia0_interrupt),
 	DEVCB_NULL,	/* pc_func */
-	10, /* 1/10 second */
-
-	{
-		{ DEVCB_HANDLER(c64_cia0_port_a_r), DEVCB_NULL },
-		{ DEVCB_HANDLER(c64_cia0_port_b_r), DEVCB_HANDLER(c64_cia0_port_b_w) }
-	}
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(c64_cia0_port_a_r),
+	DEVCB_NULL,
+	DEVCB_HANDLER(c64_cia0_port_b_r),
+	DEVCB_HANDLER(c64_cia0_port_b_w)
 };
 
 
@@ -199,7 +201,7 @@ const cia6526_interface c64_pal_cia0 =
 static READ8_DEVICE_HANDLER( c64_cia1_port_a_r )
 {
 	UINT8 value = 0xff;
-	const device_config *serbus = devtag_get_device(device->machine, "iec");
+	running_device *serbus = devtag_get_device(device->machine, "iec");
 
 	if (!cbm_iec_clk_r(serbus))
 		value &= ~0x40;
@@ -213,7 +215,7 @@ static READ8_DEVICE_HANDLER( c64_cia1_port_a_r )
 static WRITE8_DEVICE_HANDLER( c64_cia1_port_a_w )
 {
 	static const int helper[4] = {0xc000, 0x8000, 0x4000, 0x0000};
-	const device_config *serbus = devtag_get_device(device->machine, "iec");
+	running_device *serbus = devtag_get_device(device->machine, "iec");
 
 	cbm_iec_clk_w(serbus, device, !(data & 0x10));
 	cbm_iec_data_w(serbus, device, !(data & 0x20));
@@ -221,33 +223,35 @@ static WRITE8_DEVICE_HANDLER( c64_cia1_port_a_w )
 	c64_vicaddr = c64_memory + helper[data & 0x03];
 }
 
-static void c64_cia1_interrupt( const device_config *device, int level )
+static void c64_cia1_interrupt( running_device *device, int level )
 {
 	c64_nmi(device->machine);
 }
 
-const cia6526_interface c64_ntsc_cia1 =
+const mos6526_interface c64_ntsc_cia1 =
 {
+	10, /* 1/10 second */
 	DEVCB_LINE(c64_cia1_interrupt),
 	DEVCB_NULL,	/* pc_func */
-	10, /* 1/10 second */
-
-	{
-		{ DEVCB_HANDLER(c64_cia1_port_a_r), DEVCB_HANDLER(c64_cia1_port_a_w) },
-		{ DEVCB_NULL, DEVCB_NULL }
-	}
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(c64_cia1_port_a_r),
+	DEVCB_HANDLER(c64_cia1_port_a_w),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
-const cia6526_interface c64_pal_cia1 =
+const mos6526_interface c64_pal_cia1 =
 {
+	10, /* 1/10 second */
 	DEVCB_LINE(c64_cia1_interrupt),
 	DEVCB_NULL,	/* pc_func */
-	10, /* 1/10 second */
-
-	{
-		{ DEVCB_HANDLER(c64_cia1_port_a_r), DEVCB_HANDLER(c64_cia1_port_a_w) },
-		{ DEVCB_NULL, DEVCB_NULL }
-	}
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(c64_cia1_port_a_r),
+	DEVCB_HANDLER(c64_cia1_port_a_w),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 /***********************************************
@@ -261,28 +265,29 @@ static UINT8 *c64_io_ram_r_ptr;
 
 WRITE8_HANDLER( c64_write_io )
 {
-	const device_config *cia_0 = devtag_get_device(space->machine, "cia_0");
-	const device_config *cia_1 = devtag_get_device(space->machine, "cia_1");
-	const device_config *sid = devtag_get_device(space->machine, "sid6581");
+	running_device *cia_0 = devtag_get_device(space->machine, "cia_0");
+	running_device *cia_1 = devtag_get_device(space->machine, "cia_1");
+	running_device *sid = devtag_get_device(space->machine, "sid6581");
+	running_device *vic2 = devtag_get_device(space->machine, "vic2");
 
 	c64_io_mirror[offset] = data;
 	if (offset < 0x400)
-		vic2_port_w(space, offset & 0x3ff, data);
+		vic2_port_w(vic2, offset & 0x3ff, data);
 	else if (offset < 0x800)
 		sid6581_w(sid, offset & 0x3ff, data);
 	else if (offset < 0xc00)
 		c64_colorram[offset & 0x3ff] = data | 0xf0;
 	else if (offset < 0xd00)
-		cia_w(cia_0, offset, data);
+		mos6526_w(cia_0, offset, data);
 	else if (offset < 0xe00)
 	{
 		if (c64_cia1_on)
-			cia_w(cia_1, offset, data);
+			mos6526_w(cia_1, offset, data);
 		else
 			DBG_LOG(space->machine, 1, "io write", ("%.3x %.2x\n", offset, data));
 	}
 	else if (offset < 0xf00)
-		DBG_LOG(space->machine, 1, "io write", ("%.3x %.2x\n", offset, data)); 		/* i/o 1 */
+		DBG_LOG(space->machine, 1, "io write", ("%.3x %.2x\n", offset, data));		/* i/o 1 */
 	else
 		DBG_LOG(space->machine, 1, "io write", ("%.3x %.2x\n", offset, data));		/* i/o 2 */
 }
@@ -297,12 +302,13 @@ WRITE8_HANDLER( c64_ioarea_w )
 
 READ8_HANDLER( c64_read_io )
 {
-	const device_config *cia_0 = devtag_get_device(space->machine, "cia_0");
-	const device_config *cia_1 = devtag_get_device(space->machine, "cia_1");
-	const device_config *sid = devtag_get_device(space->machine, "sid6581");
+	running_device *cia_0 = devtag_get_device(space->machine, "cia_0");
+	running_device *cia_1 = devtag_get_device(space->machine, "cia_1");
+	running_device *sid = devtag_get_device(space->machine, "sid6581");
+	running_device *vic2 = devtag_get_device(space->machine, "vic2");
 
 	if (offset < 0x400)
-		return vic2_port_r(space, offset & 0x3ff);
+		return vic2_port_r(vic2, offset & 0x3ff);
 
 	else if (offset < 0x800)
 		return sid6581_r(sid, offset & 0x3ff);
@@ -313,20 +319,20 @@ READ8_HANDLER( c64_read_io )
 	else if (offset == 0xc00)
 		{
 			cia_set_port_mask_value(cia_0, 0, input_port_read(space->machine, "CTRLSEL") & 0x80 ? c64_keyline[8] : c64_keyline[9] );
-			return cia_r(cia_0, offset);
+			return mos6526_r(cia_0, offset);
 		}
 
 	else if (offset == 0xc01)
 		{
 			cia_set_port_mask_value(cia_0, 1, input_port_read(space->machine, "CTRLSEL") & 0x80 ? c64_keyline[9] : c64_keyline[8] );
-			return cia_r(cia_0, offset);
+			return mos6526_r(cia_0, offset);
 		}
 
 	else if (offset < 0xd00)
-		return cia_r(cia_0, offset);
+		return mos6526_r(cia_0, offset);
 
 	else if (c64_cia1_on && (offset < 0xe00))
-		return cia_r(cia_1, offset);
+		return mos6526_r(cia_1, offset);
 
 	DBG_LOG(space->machine, 1, "io read", ("%.3x\n", offset));
 
@@ -457,7 +463,7 @@ static void c64_bankswitch( running_machine *machine, int reset )
 	static int old = -1, exrom, game;
 	int loram, hiram, charen;
 	int ultimax_mode = 0;
-	int data = (UINT8) devtag_get_info_int(machine, "maincpu", CPUINFO_INT_M6510_PORT) & 0x07;
+	int data = (UINT8) machine->device("maincpu")->get_runtime_int(CPUINFO_INT_M6510_PORT) & 0x07;
 
 	/* If nothing has changed or reset = 0, don't do anything */
 	if ((data == old) && (exrom == c64_exrom) && (game == c64_game) && !reset)
@@ -564,7 +570,7 @@ static void c64_bankswitch( running_machine *machine, int reset )
 
 static emu_timer *datasette_timer;
 
-void c64_m6510_port_write( const device_config *device, UINT8 direction, UINT8 data )
+void c64_m6510_port_write( running_device *device, UINT8 direction, UINT8 data )
 {
 	/* if line is marked as input then keep current value */
 	data = (c64_port_data & ~direction) | (data & direction);
@@ -610,7 +616,7 @@ void c64_m6510_port_write( const device_config *device, UINT8 direction, UINT8 d
 	c64_memory[0x001] = memory_read_byte(cpu_get_address_space(device, ADDRESS_SPACE_PROGRAM), 1);
 }
 
-UINT8 c64_m6510_port_read( const device_config *device, UINT8 direction )
+UINT8 c64_m6510_port_read( running_device *device, UINT8 direction )
 {
 	UINT8 data = c64_port_data;
 
@@ -626,11 +632,11 @@ UINT8 c64_m6510_port_read( const device_config *device, UINT8 direction )
 }
 
 
-int c64_paddle_read( const device_config *device, int which )
+int c64_paddle_read( running_device *device, int which )
 {
 	running_machine *machine = device->machine;
 	int pot1 = 0xff, pot2 = 0xff, pot3 = 0xff, pot4 = 0xff, temp;
-	UINT8 cia0porta = cia_get_output_a(devtag_get_device(machine, "cia_0"));
+	UINT8 cia0porta = mos6526_pa_r(devtag_get_device(machine, "cia_0"), 0);
 	int controller1 = input_port_read(machine, "CTRLSEL") & 0x07;
 	int controller2 = input_port_read(machine, "CTRLSEL") & 0x70;
 
@@ -738,51 +744,12 @@ WRITE8_HANDLER( c64_colorram_write )
 	c64_colorram[offset & 0x3ff] = data | 0xf0;
 }
 
-/*
- * only 14 address lines
- * a15 and a14 portlines
- * 0x1000-0x1fff, 0x9000-0x9fff char rom
- */
-static int c64_dma_read( running_machine *machine, int offset )
-{
-	if (!c64_game && c64_exrom)
-	{
-		if (offset < 0x3000)
-			return c64_memory[offset];
-
-		return c64_romh[offset & 0x1fff];
-	}
-
-	if (((c64_vicaddr - c64_memory + offset) & 0x7000) == 0x1000)
-		return c64_chargen[offset & 0xfff];
-
-	return c64_vicaddr[offset];
-}
-
-static int c64_dma_read_ultimax( running_machine *machine, int offset )
-{
-	if (offset < 0x3000)
-		return c64_memory[offset];
-
-	return c64_romh[offset & 0x1fff];
-}
-
-static int c64_dma_read_color( running_machine *machine, int offset )
-{
-	return c64_colorram[offset & 0x3ff] & 0xf;
-}
-
-static double last = 0;
-
 TIMER_CALLBACK( c64_tape_timer )
 {
 	double tmp = cassette_input(devtag_get_device(machine, "cassette"));
-	const device_config *cia_0 = devtag_get_device(machine, "cia_0");
+	running_device *cia_0 = devtag_get_device(machine, "cia_0");
 
-	if((last > +0.0) && (tmp < +0.0))
-		cia_issue_index(cia_0);
-
-	last = tmp;
+	mos6526_flag_w(cia_0, tmp > +0.0);
 }
 
 static void c64_common_driver_init( running_machine *machine )
@@ -800,11 +767,6 @@ static void c64_common_driver_init( running_machine *machine )
 
 	if (c64_tape_on)
 		datasette_timer = timer_alloc(machine, c64_tape_timer, NULL);
-
-	if (ultimax)
-		vic6567_init(0, c64_pal, c64_dma_read_ultimax, c64_dma_read_color, c64_vic_interrupt);
-	else
-		vic6567_init(0, c64_pal, c64_dma_read, c64_dma_read_color, c64_vic_interrupt);
 
 	// "cyberload" tape loader check the e000-ffff ram; the init ram need to return different value
 	{
@@ -992,10 +954,10 @@ static DEVICE_START( c64_cart )
 {
 	int index = 0;
 
-	if (strcmp(device->tag, "cart1") == 0)
+	if (strcmp(device->tag(), "cart1") == 0)
 		index = 0;
 
-	if (strcmp(device->tag, "cart2") == 0)
+	if (strcmp(device->tag(), "cart2") == 0)
 		index = 1;
 
 
@@ -1316,7 +1278,7 @@ static WRITE8_HANDLER( ocean1_bank_w )
 		else
 			memcpy(romh, cart + (bank - 16) * 0x2000, 0x2000);
 	}
-	else  											// Terminator II
+	else											// Terminator II
 	{
 		memcpy(roml, cart + bank * 0x2000, 0x2000);
 	}

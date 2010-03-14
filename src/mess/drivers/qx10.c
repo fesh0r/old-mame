@@ -15,7 +15,7 @@
     - Interrupts (pic8295)
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "machine/pit8253.h"
 #include "machine/pic8259.h"
@@ -33,9 +33,13 @@
     Driver data
 */
 
-typedef struct _qx10_state qx10_state;
-struct _qx10_state
+class qx10_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, qx10_state(machine)); }
+
+	qx10_state(running_machine &machine) { }
+
 	int		mc146818_offset;
 
 	/* FDD */
@@ -50,10 +54,10 @@ struct _qx10_state
 	UINT8	cmosram[0x800];
 
 	/* devices */
-	const device_config *pic8259_master;
-	const device_config *pic8259_slave;
-	const device_config *dma8237_1;
-	const device_config *upd765;
+	running_device *pic8259_master;
+	running_device *pic8259_slave;
+	running_device *dma8237_1;
+	running_device *upd765;
 };
 
 /*
@@ -62,7 +66,7 @@ struct _qx10_state
 static void update_memory_mapping(running_machine *machine)
 {
 	int drambank = 0;
-	qx10_state *state = machine->driver_data;
+	qx10_state *state = (qx10_state *)machine->driver_data;
 
 	if (state->membank & 1)
 	{
@@ -101,21 +105,21 @@ static void update_memory_mapping(running_machine *machine)
 
 static WRITE8_HANDLER(qx10_18_w)
 {
-	qx10_state *state = space->machine->driver_data;
+	qx10_state *state = (qx10_state *)space->machine->driver_data;
 	state->membank = (data >> 4) & 0x0f;
 	update_memory_mapping(space->machine);
 }
 
 static WRITE8_HANDLER(prom_sel_w)
 {
-	qx10_state *state = space->machine->driver_data;
+	qx10_state *state = (qx10_state *)space->machine->driver_data;
 	state->memprom = data & 1;
 	update_memory_mapping(space->machine);
 }
 
 static WRITE8_HANDLER(cmos_sel_w)
 {
-	qx10_state *state = space->machine->driver_data;
+	qx10_state *state = (qx10_state *)space->machine->driver_data;
 	state->memcmos = data & 1;
 	update_memory_mapping(space->machine);
 }
@@ -138,17 +142,17 @@ static const floppy_config qx10_floppy_config =
 
 static WRITE_LINE_DEVICE_HANDLER(qx10_upd765_interrupt)
 {
-	qx10_state *driver_state = device->machine->driver_data;
+	qx10_state *driver_state = (qx10_state *)device->machine->driver_data;
 	driver_state->fdcint = state;
 
 	//logerror("Interrupt from upd765: %d\n", state);
 	// signal interrupt
-	pic8259_set_irq_line(driver_state->pic8259_master, 6, state);
+	pic8259_ir6_w(driver_state->pic8259_master, state);
 };
 
 static UPD765_DMA_REQUEST( drq_w )
 {
-	qx10_state *driver_state = device->machine->driver_data;
+	qx10_state *driver_state = (qx10_state *)device->machine->driver_data;
 	//logerror("DMA Request from upd765: %d\n", state);
 	i8237_dreq0_w(driver_state->dma8237_1, !state);
 }
@@ -164,7 +168,7 @@ static const struct upd765_interface qx10_upd765_interface =
 
 static WRITE8_HANDLER(fdd_motor_w)
 {
-	qx10_state *driver_state = space->machine->driver_data;
+	qx10_state *driver_state = (qx10_state *)space->machine->driver_data;
 	driver_state->fdcmotor = 1;
 
 	floppy_mon_w(floppy_get_device(space->machine, 0), CLEAR_LINE);
@@ -174,7 +178,7 @@ static WRITE8_HANDLER(fdd_motor_w)
 
 static READ8_HANDLER(qx10_30_r)
 {
-	qx10_state *driver_state = space->machine->driver_data;
+	qx10_state *driver_state = (qx10_state *)space->machine->driver_data;
 	return driver_state->fdcint |
 		   /*driver_state->fdcmotor*/ 0 << 1 |
 		   driver_state->membank << 4;
@@ -202,7 +206,7 @@ static WRITE8_DEVICE_HANDLER( gdc_dack_w )
 
 static WRITE_LINE_DEVICE_HANDLER( tc_w )
 {
-	qx10_state *driver_state = device->machine->driver_data;
+	qx10_state *driver_state = (qx10_state *)device->machine->driver_data;
 
 	/* floppy terminal count */
 	upd765_tc_w(driver_state->upd765, !state);
@@ -261,19 +265,19 @@ static I8255A_INTERFACE(qx10_i8255_interface)
 */
 static READ8_HANDLER(mc146818_data_r)
 {
-	qx10_state *state = space->machine->driver_data;
+	qx10_state *state = (qx10_state *)space->machine->driver_data;
 	return mc146818_port_r(space, state->mc146818_offset);
 };
 
 static WRITE8_HANDLER(mc146818_data_w)
 {
-	qx10_state *state = space->machine->driver_data;
+	qx10_state *state = (qx10_state *)space->machine->driver_data;
 	mc146818_port_w(space, state->mc146818_offset, data);
 };
 
 static WRITE8_HANDLER(mc146818_offset_w)
 {
-	qx10_state *state = space->machine->driver_data;
+	qx10_state *state = (qx10_state *)space->machine->driver_data;
 	state->mc146818_offset = data;
 };
 
@@ -327,9 +331,9 @@ static UPD7201_INTERFACE(qx10_upd7201_interface)
 static const struct pit8253_config qx10_pit8253_1_config =
 {
 	{
-		{ 1200, NULL },
-		{ 1200, NULL },
-		{ MAIN_CLK / 8, NULL },
+		{ 1200,         DEVCB_NULL,     DEVCB_NULL },
+		{ 1200,         DEVCB_LINE_VCC, DEVCB_NULL },
+		{ MAIN_CLK / 8, DEVCB_NULL,     DEVCB_NULL },
 	}
 };
 
@@ -343,9 +347,9 @@ static const struct pit8253_config qx10_pit8253_1_config =
 static const struct pit8253_config qx10_pit8253_2_config =
 {
 	{
-		{ MAIN_CLK / 8, NULL },
-		{ MAIN_CLK / 8, NULL },
-		{ MAIN_CLK / 8, NULL },
+		{ MAIN_CLK / 8, DEVCB_LINE_VCC, DEVCB_NULL },
+		{ MAIN_CLK / 8, DEVCB_LINE_VCC, DEVCB_NULL },
+		{ MAIN_CLK / 8, DEVCB_LINE_VCC, DEVCB_NULL },
 	}
 };
 
@@ -361,15 +365,14 @@ static const struct pit8253_config qx10_pit8253_2_config =
     IR6     Floppy controller interrupt
 */
 
-static PIC8259_SET_INT_LINE( qx10_pic8259_master_set_int_line )
+static WRITE_LINE_DEVICE_HANDLER( qx10_pic8259_master_set_int_line )
 {
-	cputag_set_input_line(device->machine, "maincpu", 0, interrupt ? HOLD_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "maincpu", 0, state ? HOLD_LINE : CLEAR_LINE);
 }
-
 
 static const struct pic8259_interface qx10_pic8259_master_config =
 {
-	qx10_pic8259_master_set_int_line
+	DEVCB_LINE(qx10_pic8259_master_set_int_line)
 };
 
 /*
@@ -385,17 +388,12 @@ static const struct pic8259_interface qx10_pic8259_master_config =
 
 */
 
-static PIC8259_SET_INT_LINE( qx10_pic8259_slave_set_int_line )
-{
-	pic8259_set_irq_line(((qx10_state*)device->machine->driver_data)->pic8259_master, 7, interrupt);
-}
-
 static const struct pic8259_interface qx10_pic8259_slave_config =
 {
-	qx10_pic8259_slave_set_int_line
+	DEVCB_DEVICE_LINE("pic8259_master", pic8259_ir7_w)
 };
 
-static IRQ_CALLBACK(irq_callback)
+static IRQ_CALLBACK( irq_callback )
 {
 	int r = 0;
 	r = pic8259_acknowledge( ((qx10_state*)device->machine->driver_data)->pic8259_slave );
@@ -455,9 +453,9 @@ static const compis_gdc_interface i82720_interface =
 
 static MACHINE_START(qx10)
 {
-	qx10_state *state = machine->driver_data;
+	qx10_state *state = (qx10_state *)machine->driver_data;
 
-	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), irq_callback);
+	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), irq_callback);
 
 	mc146818_init(machine, MC146818_STANDARD);
 	compis_init( &i82720_interface );
@@ -472,7 +470,7 @@ static MACHINE_START(qx10)
 
 static MACHINE_RESET(qx10)
 {
-	qx10_state *state = machine->driver_data;
+	qx10_state *state = (qx10_state *)machine->driver_data;
 
 	i8237_dreq0_w(state->dma8237_1, 1);
 
@@ -584,4 +582,4 @@ static DRIVER_INIT(qx10)
 }
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( 1983, qx10,  0,       0, 	qx10, 	qx10, 	 qx10,  	   	  "Epson",   "QX-10",		GAME_NOT_WORKING)
+COMP( 1983, qx10,  0,       0,	qx10,	qx10,	 qx10,  		  "Epson",   "QX-10",		GAME_NOT_WORKING | GAME_NO_SOUND )

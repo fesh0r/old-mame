@@ -31,7 +31,7 @@
 
  ******************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i86/i86.h"
 #include "cpu/mcs48/mcs48.h"
 #include "machine/i8255a.h"
@@ -354,5 +354,5 @@ ROM_START( compis2 )
 ROM_END
 
 /*   YEAR   NAME        PARENT  COMPAT MACHINE  INPUT   INIT    COMPANY     FULLNAME */
-COMP(1985,	compis,		0,		0,     compis,	compis,	compis,	"Telenova", "Compis" , GAME_NOT_WORKING)
-COMP(1986,	compis2,	compis,	0,     compis,	compis,	compis,	"Telenova", "Compis II" , GAME_NOT_WORKING)
+COMP(1985,	compis,		0,		0,     compis,	compis,	compis,	"Telenova", "Compis" , GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP(1986,	compis2,	compis,	0,     compis,	compis,	compis,	"Telenova", "Compis II" , GAME_NOT_WORKING | GAME_NO_SOUND)

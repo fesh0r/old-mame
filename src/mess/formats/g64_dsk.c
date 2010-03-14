@@ -1,4 +1,182 @@
+/*********************************************************************
+
+    formats/g64_dsk.c
+
+    Floppy format code for Commodore 1541 GCR disk images
+
+*********************************************************************/
+
 /*
+
+    TODO:
+
+    - speed zones
+    - writing
+
+*/
+
+#include "emu.h"
+#include "g64_dsk.h"
+#include "formats/flopimg.h"
+#include "devices/flopdrv.h"
+
+/***************************************************************************
+    PARAMETERS
+***************************************************************************/
+
+#define LOG 0
+
+#define HEADER_LENGTH	0x2ac				/* standard length for 84 half tracks */
+#define MAX_TRACKS		84
+
+/***************************************************************************
+    TYPE DEFINITIONS
+***************************************************************************/
+
+struct g64dsk_tag
+{
+	int version;
+	int heads;								/* number of physical heads */
+	int tracks;								/* number of physical tracks */
+	UINT16 track_size;						/* size of each track */
+	UINT32 track_offset[MAX_TRACKS];		/* offset within data for each track */
+	UINT32 speed_zone_offset[MAX_TRACKS];	/* offset within data for each track */
+};
+
+/***************************************************************************
+    INLINE FUNCTIONS
+***************************************************************************/
+
+INLINE struct g64dsk_tag *get_tag(floppy_image *floppy)
+{
+	return (g64dsk_tag *)floppy_tag(floppy);
+}
+
+INLINE float get_dos_track(int track)
+{
+	return ((float)track / 2) + 1;
+}
+
+/***************************************************************************
+    IMPLEMENTATION
+***************************************************************************/
+
+/*-------------------------------------------------
+    g64_get_heads_per_disk - returns the number
+    of heads in the disk image
+-------------------------------------------------*/
+
+static int g64_get_heads_per_disk(floppy_image *floppy)
+{
+	return get_tag(floppy)->heads;
+}
+
+/*-------------------------------------------------
+    g64_get_tracks_per_disk - returns the number
+    of DOS tracks in the disk image
+-------------------------------------------------*/
+
+static int g64_get_tracks_per_disk(floppy_image *floppy)
+{
+	return get_tag(floppy)->tracks;
+}
+
+/*-------------------------------------------------
+    get_track_offset - returns the offset within
+    the disk image for a given track
+-------------------------------------------------*/
+
+static floperr_t get_track_offset(floppy_image *floppy, int track, UINT64 *offset)
+{
+	struct g64dsk_tag *tag = get_tag(floppy);
+	UINT64 offs = 0;
+
+	if ((track < 0) || (track >= tag->tracks))
+		return FLOPPY_ERROR_SEEKERROR;
+
+	offs = tag->track_offset[track];
+
+	if (offset)
+		*offset = offs;
+
+	return FLOPPY_ERROR_SUCCESS;
+}
+
+/*-------------------------------------------------
+    g64_read_track - reads a full track from the
+    disk image
+-------------------------------------------------*/
+
+static floperr_t g64_read_track(floppy_image *floppy, int head, int track, UINT64 offset, void *buffer, size_t buflen)
+{
+	struct g64dsk_tag *tag = get_tag(floppy);
+	floperr_t err;
+	UINT64 track_offset;
+	UINT16 track_length = 0;
+
+	/* get track offset */
+	err = get_track_offset(floppy, track, &track_offset);
+
+	if (err)
+		return err;
+
+	if (!head && track_offset)
+	{
+		if (buflen < (tag->track_size + G64_DATA_START)) fatalerror("G64 track buffer too small: %u!\n", (UINT32)buflen);
+
+		/* read track */
+		floppy_image_read(floppy, buffer, track_offset, tag->track_size + G64_DATA_START);
+	}
+	else
+	{
+		/* set track length to 0 */
+		memset(buffer, 0, buflen);
+	}
+
+	if (LOG) logerror("G64 track %.1f length %u\n", get_dos_track(track), track_length);
+
+	return FLOPPY_ERROR_SUCCESS;
+}
+
+/*-------------------------------------------------
+    g64_write_track - writes a full track to the
+    disk image
+-------------------------------------------------*/
+
+static floperr_t g64_write_track(floppy_image *floppy, int head, int track, UINT64 offset, const void *buffer, size_t buflen)
+{
+	return FLOPPY_ERROR_UNSUPPORTED;
+}
+
+/*-------------------------------------------------
+    FLOPPY_IDENTIFY( g64_dsk_identify )
+-------------------------------------------------*/
+
+FLOPPY_IDENTIFY( g64_dsk_identify )
+{
+	UINT8 header[8];
+
+	floppy_image_read(floppy, header, 0, 8);
+
+	if (!strncmp((const char *)header, "GCR-1541", 8))
+	{
+		*vote = 100;
+	}
+	else
+	{
+		*vote = 0;
+	}
+
+	return FLOPPY_ERROR_SUCCESS;
+}
+
+/*-------------------------------------------------
+    FLOPPY_CONSTRUCT( g64_dsk_construct )
+-------------------------------------------------*/
+
+/*
+
+    G64 File Header Format
 
   Bytes: $0000-0007: File signature "GCR-1541"
                0008: G64 version (presently only $00 defined)
@@ -27,134 +205,6 @@
 
 */
 
-/*
-
-    TODO:
-
-    - speed zones
-    - writing
-
-*/
-
-#include "driver.h"
-#include "formats/flopimg.h"
-#include "devices/flopdrv.h"
-
-#define LOG 0
-
-#define G64_DSK_TAG		"g64tag"
-
-#define HEADER_LENGTH	0x2ac		 /* standard length for 84 half tracks */
-#define HALF_TRACKS		84
-
-struct g64dsk_tag
-{
-	int version;
-	int tracks;
-	UINT16 track_size;
-	UINT32 track_offset[HALF_TRACKS];		/* offset within data for each half track */
-	UINT32 speed_zone_offset[HALF_TRACKS]; /* offset within data for each half track */
-};
-
-INLINE float get_track_index(int track)
-{
-	return ((float)track / 2) + 1;
-}
-
-static struct g64dsk_tag *get_tag(floppy_image *floppy)
-{
-	struct g64dsk_tag *tag;
-	tag = floppy_tag(floppy, G64_DSK_TAG);
-	return tag;
-}
-
-static int g64_get_heads_per_disk(floppy_image *floppy)
-{
-	return 1;
-}
-
-static int g64_get_tracks_per_disk(floppy_image *floppy)
-{
-	return get_tag(floppy)->tracks;
-}
-
-static floperr_t get_track_offset(floppy_image *floppy, int track, UINT64 *offset)
-{
-	struct g64dsk_tag *tag = get_tag(floppy);
-	UINT64 offs = 0;
-
-	if ((track < 0) || (track >= tag->tracks))
-		return FLOPPY_ERROR_SEEKERROR;
-
-	offs = tag->track_offset[track];
-
-	if (offset)
-		*offset = offs;
-
-	return FLOPPY_ERROR_SUCCESS;
-}
-
-static floperr_t g64_read_track(floppy_image *floppy, int head, int track, UINT64 offset, void *buffer, size_t buflen)
-{
-	floperr_t err;
-	UINT64 track_offset;
-	UINT8 header[2];
-	UINT16 track_length = 0;
-
-	/* get track offset */
-	err = get_track_offset(floppy, track, &track_offset);
-
-	if (err)
-		return err;
-
-	if (track_offset)
-	{
-		/* get track length */
-		floppy_image_read(floppy, header, track_offset, 2);
-		track_length = (header[1] << 8) | header[0];
-
-		if (buflen < track_length) fatalerror("G64 track buffer too small: %u!\n", (UINT32)buflen);
-
-		if (track_length)
-		{
-			/* read track */
-			floppy_image_read(floppy, buffer, track_offset, track_length);
-		}
-	}
-	else
-	{
-		/* set track length to 0 */
-		memset(buffer, 0, buflen);
-	}
-
-	if (LOG) logerror("G64 track %.1f length %u\n", get_track_index(track), track_length);
-
-	return FLOPPY_ERROR_SUCCESS;
-}
-
-static floperr_t g64_write_track(floppy_image *floppy, int head, int track, UINT64 offset, const void *buffer, size_t buflen)
-{
-	return FLOPPY_ERROR_UNSUPPORTED;
-}
-
-FLOPPY_IDENTIFY( g64_dsk_identify )
-{
-	UINT8 header[8];
-
-	floppy_image_read(floppy, header, 0, 8);
-
-	if (!strncmp((const char *)header, "GCR-1541", 8))
-	{
-		*vote = 100;
-	}
-	else
-	{
-		*vote = 0;
-	}
-
-	return FLOPPY_ERROR_SUCCESS;
-}
-
 FLOPPY_CONSTRUCT( g64_dsk_construct )
 {
 	struct FloppyCallbacks *callbacks;
@@ -169,7 +219,7 @@ FLOPPY_CONSTRUCT( g64_dsk_construct )
 		return FLOPPY_ERROR_UNSUPPORTED;
 	}
 
-	tag = (struct g64dsk_tag *) floppy_create_tag(floppy, G64_DSK_TAG, sizeof(struct g64dsk_tag));
+	tag = (struct g64dsk_tag *) floppy_create_tag(floppy, sizeof(struct g64dsk_tag));
 
 	if (!tag) return FLOPPY_ERROR_OUTOFMEMORY;
 
@@ -179,6 +229,7 @@ FLOPPY_CONSTRUCT( g64_dsk_construct )
 	if (LOG) logerror("G64 version: %u\n", tag->version);
 
 	/* number of half tracks */
+	tag->heads = 1;
 	tag->tracks = header[9];
 	if (LOG) logerror("G64 tracks: %u\n", tag->tracks);
 
@@ -192,7 +243,7 @@ FLOPPY_CONSTRUCT( g64_dsk_construct )
 		floppy_image_read(floppy, header, pos, 4); pos += 4;
 		tag->track_offset[i] = (header[3] << 24) | (header[2] << 16) | (header[1] << 8) | header[0];
 
-		if (LOG) logerror("G64 track %.1f data offset: %04x\n", get_track_index(i), tag->track_offset[i]);
+		if (LOG) logerror("G64 track %.1f data offset: %04x\n", get_dos_track(i), tag->track_offset[i]);
 	}
 
 	/* speed zone offsets */
@@ -204,9 +255,9 @@ FLOPPY_CONSTRUCT( g64_dsk_construct )
 		if (LOG)
 		{
 			if (tag->speed_zone_offset[i] < 4)
-				logerror("G64 track %.1f speed zone: %u\n", get_track_index(i), tag->speed_zone_offset[i]);
+				logerror("G64 track %.1f speed zone: %u\n", get_dos_track(i), tag->speed_zone_offset[i]);
 			else
-				logerror("G64 track %.1f speed zone offset: %04x\n", get_track_index(i), tag->speed_zone_offset[i]);
+				logerror("G64 track %.1f speed zone offset: %04x\n", get_dos_track(i), tag->speed_zone_offset[i]);
 		}
 	}
 

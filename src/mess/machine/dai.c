@@ -10,7 +10,7 @@
 ***************************************************************************/
 
 #include <stdarg.h>
-#include "driver.h"
+#include "emu.h"
 #include "devices/cassette.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/i8255a.h"
@@ -30,7 +30,7 @@ UINT8 dai_osc_volume[3];
 static UINT8 dai_paddle_select;
 static UINT8 dai_paddle_enable;
 static UINT8 dai_cassette_motor[2];
-static const device_config *dai_tms5501;
+static running_device *dai_tms5501;
 
 
 /* Memory */
@@ -48,12 +48,12 @@ static void dai_update_memory(running_machine *machine, int dai_rom_bank)
 
 static TIMER_CALLBACK(dai_bootstrap_callback)
 {
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), REG_GENPC, 0xc000);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), REG_GENPC, 0xc000);
 }
 
 static UINT8 dai_keyboard_scan_mask = 0;
 
-static UINT8 dai_keyboard_read (const device_config *device)
+static UINT8 dai_keyboard_read (running_device *device)
 {
 	UINT8 data = 0x00;
 	int i;
@@ -67,12 +67,12 @@ static UINT8 dai_keyboard_read (const device_config *device)
 	return data;
 }
 
-static void dai_keyboard_write (const device_config *device, UINT8 data)
+static void dai_keyboard_write (running_device *device, UINT8 data)
 {
 	dai_keyboard_scan_mask = data;
 }
 
-static void dai_interrupt_callback(const device_config *device, int intreq, UINT8 vector)
+static void dai_interrupt_callback(running_device *device, int intreq, UINT8 vector)
 {
 	if (intreq)
 		cputag_set_input_line_and_vector(device->machine, "maincpu", 0, HOLD_LINE, vector);
@@ -98,19 +98,19 @@ I8255A_INTERFACE( dai_ppi82555_intf )
 	DEVCB_NULL	/* Port C write */
 };
 
-static PIT8253_OUTPUT_CHANGED(dai_pit_out0)
+static WRITE_LINE_DEVICE_HANDLER( dai_pit_out0 )
 {
 	dai_set_input(device->machine, 0, state);
 }
 
 
-static PIT8253_OUTPUT_CHANGED(dai_pit_out1)
+static WRITE_LINE_DEVICE_HANDLER( dai_pit_out1 )
 {
 	dai_set_input(device->machine, 1, state);
 }
 
 
-static PIT8253_OUTPUT_CHANGED(dai_pit_out2)
+static WRITE_LINE_DEVICE_HANDLER( dai_pit_out2 )
 {
 	dai_set_input(device->machine, 2, state);
 }
@@ -121,15 +121,18 @@ const struct pit8253_config dai_pit8253_intf =
 	{
 		{
 			2000000,
-			dai_pit_out0
+			DEVCB_NULL,
+			DEVCB_LINE(dai_pit_out0)
 		},
 		{
 			2000000,
-			dai_pit_out1
+			DEVCB_NULL,
+			DEVCB_LINE(dai_pit_out1)
 		},
 		{
 			2000000,
-			dai_pit_out2
+			DEVCB_NULL,
+			DEVCB_LINE(dai_pit_out2)
 		}
 	}
 };

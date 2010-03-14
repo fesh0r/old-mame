@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 
 static ADDRESS_MAP_START(iq151_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -110,5 +110,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT   COMPANY   FULLNAME       FLAGS */
-COMP( 198?, iq151,  0,       0, 	iq151, 	iq151, 	 0,  	"ZPA Novy Bor", "IQ-151", GAME_NOT_WORKING)
+COMP( 198?, iq151,  0,       0, 	iq151,	iq151,	 0, 	"ZPA Novy Bor", "IQ-151", GAME_NOT_WORKING | GAME_NO_SOUND)
 

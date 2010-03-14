@@ -4,10 +4,10 @@
 
 ***************************************************************************/
 
+#include "emu.h"
 #include "machine/scsidev.h"
 #include "cdrom.h"
 #include "sound/cdda.h"
-#include "state.h"
 #ifdef MESS
 #include "devices/chd_cd.h"
 #endif
@@ -24,7 +24,7 @@ typedef struct
 	UINT32 play_err_flag;
 	UINT32 read_type;	// for command 0x30 only
 	UINT32 data_select;	// for command 0x30 only
- 	cdrom_file *cdrom;
+	cdrom_file *cdrom;
 } SCSIGd;
 
 static const UINT8 GDROM_Cmd11_Reply[32] =
@@ -53,7 +53,7 @@ static int scsicd_exec_command( SCSIInstance *scsiInstance, UINT8 *statusCode )
 	SCSIGd *our_this = (SCSIGd *)SCSIThis( &SCSIClassGDROM, scsiInstance );
 
 	cdrom_file *cdrom = our_this->cdrom;
-	const device_config *cdda;
+	running_device *cdda;
 	int trk;
 
 	SCSIGetCommand( scsiInstance, &command, &commandLength );
@@ -382,7 +382,7 @@ static void scsicd_read_data( SCSIInstance *scsiInstance, UINT8 *data, int dataL
 	cdrom_file *cdrom = our_this->cdrom;
 	UINT32 temp;
 	UINT8 tmp_buffer[2048];
-	const device_config *cdda;
+	running_device *cdda;
 
 	SCSIGetCommand( scsiInstance, &command, &commandLength );
 

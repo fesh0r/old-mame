@@ -11,7 +11,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m6502/m6502.h"
 #include "includes/apple2.h"
 #include "machine/ap2_slot.h"
@@ -113,7 +113,7 @@ void apple2_update_memory(running_machine *machine)
 	UINT32 rom_length, slot_length, offset;
 	bank_disposition_t bank_disposition;
 	int wh_nop = 0;
-	
+
 	/* need to build list of current info? */
 	if (!apple2_current_meminfo)
 	{
@@ -148,7 +148,7 @@ void apple2_update_memory(running_machine *machine)
 			sprintf(rbank,"bank%d",bank);
 			begin = apple2_mem_config.memmap[i].begin;
 			end_r = apple2_mem_config.memmap[i].end;
-			rh = NULL; 
+			rh = NULL;
 
 			LOG(("apple2_update_memory():  Updating RD {%06X..%06X} [#%02d] --> %08X\n",
 				begin, end_r, bank, meminfo.read_mem));
@@ -199,7 +199,7 @@ void apple2_update_memory(running_machine *machine)
 			if (begin <= end_r) {
 				if (rh) {
 					memory_install_read8_handler(space, begin, end_r, 0, 0, rh);
-				} else {				
+				} else {
 					memory_install_read_bank(space, begin, end_r, 0, 0, rbank);
 				}
 			}
@@ -334,7 +334,7 @@ READ8_HANDLER(apple2_c0xx_r)
 		};
 		UINT8 result = 0x00;
 		int slotnum;
-		const device_config *slotdevice;
+		running_device *slotdevice;
 
 		offset &= 0xFF;
 
@@ -378,7 +378,7 @@ WRITE8_HANDLER(apple2_c0xx_w)
 		apple2_c07x_w
 	};
 	int slotnum;
-	const device_config *slotdevice;
+	running_device *slotdevice;
 
 	offset &= 0xFF;
 
@@ -590,7 +590,7 @@ static const apple2_memmap_entry apple2_memmap_entries[] =
 void apple2_setvar(running_machine *machine, UINT32 val, UINT32 mask)
 {
 	LOG(("apple2_setvar(): val=0x%06x mask=0x%06x pc=0x%04x\n", val, mask,
-					(unsigned int) cpu_get_reg(cputag_get_cpu(machine, "maincpu"), REG_GENPC)));
+					(unsigned int) cpu_get_reg(devtag_get_device(machine, "maincpu"), REG_GENPC)));
 
 	assert((val & mask) == val);
 
@@ -995,7 +995,7 @@ READ8_HANDLER ( apple2_c03x_r )
 	{
 		if (!offset)
 		{
-			const device_config *speaker_device = devtag_get_device(space->machine, "a2speaker");
+			running_device *speaker_device = devtag_get_device(space->machine, "a2speaker");
 
 			if (a2_speaker_state == 1)
 			{
@@ -1161,7 +1161,7 @@ static int apple2_fdc_has_525(running_machine *machine)
 	return apple525_get_count(machine) > 0;
 }
 
-static void apple2_fdc_set_lines(const device_config *device, UINT8 lines)
+static void apple2_fdc_set_lines(running_device *device, UINT8 lines)
 {
 	if (apple2_fdc_diskreg & 0x40)
 	{
@@ -1183,7 +1183,7 @@ static void apple2_fdc_set_lines(const device_config *device, UINT8 lines)
 
 
 
-static void apple2_fdc_set_enable_lines(const device_config *device,int enable_mask)
+static void apple2_fdc_set_enable_lines(running_device *device,int enable_mask)
 {
 	int slot5_enable_mask = 0;
 	int slot6_enable_mask = 0;
@@ -1208,7 +1208,7 @@ static void apple2_fdc_set_enable_lines(const device_config *device,int enable_m
 
 
 
-static UINT8 apple2_fdc_read_data(const device_config *device)
+static UINT8 apple2_fdc_read_data(running_device *device)
 {
 	UINT8 result = 0x00;
 
@@ -1233,7 +1233,7 @@ static UINT8 apple2_fdc_read_data(const device_config *device)
 
 
 
-static void apple2_fdc_write_data(const device_config *device, UINT8 data)
+static void apple2_fdc_write_data(running_device *device, UINT8 data)
 {
 	if (apple2_fdc_diskreg & 0x40)
 	{
@@ -1255,7 +1255,7 @@ static void apple2_fdc_write_data(const device_config *device, UINT8 data)
 
 
 
-static int apple2_fdc_read_status(const device_config *device)
+static int apple2_fdc_read_status(running_device *device)
 {
 	int result = 0;
 
@@ -1325,9 +1325,6 @@ void apple2_init_common(running_machine *machine)
 	state_save_register_global(machine, apple2_flags);
 	state_save_register_postload(machine, apple2_update_memory_postload, NULL);
 
-	/* apple2 behaves much better when the default memory is zero */
-	memset(messram_get_ptr(devtag_get_device(machine, "messram")), 0, messram_get_size(devtag_get_device(machine, "messram")));
-
 	/* --------------------------------------------- *
      * set up the softswitch mask/set                *
      * --------------------------------------------- */
@@ -1361,7 +1358,7 @@ MACHINE_START( apple2 )
 	memset(&mem_cfg, 0, sizeof(mem_cfg));
 	mem_cfg.first_bank = 1;
 	mem_cfg.memmap = apple2_memmap_entries;
-	mem_cfg.auxmem = apple2cp_ce00_ram;
+	mem_cfg.auxmem = (UINT8*)apple2cp_ce00_ram;
 	apple2_setup_memory(machine, &mem_cfg);
 
 	/* perform initial reset */

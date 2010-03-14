@@ -26,7 +26,7 @@ IRQ mode 1
 NMI
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "includes/cgenie.h"
 #include "devices/flopdrv.h"
@@ -162,7 +162,7 @@ static INPUT_PORTS_START( cgenie )
 		PORT_BIT(0x08, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_COLON) 		PORT_CHAR(';') PORT_CHAR('+')
 		PORT_BIT(0x10, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_COMMA) 		PORT_CHAR(',') PORT_CHAR('<')
 		PORT_BIT(0x20, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_QUOTE) 		PORT_CHAR('-') PORT_CHAR('=')
-		PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_STOP) 			PORT_CHAR('.') PORT_CHAR('>')
+		PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_STOP)			PORT_CHAR('.') PORT_CHAR('>')
 		PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_CODE(KEYCODE_SLASH) 		PORT_CHAR('/') PORT_CHAR('?')
 
 	PORT_START("ROW6")
@@ -490,7 +490,7 @@ static const cassette_config cgenie_cassette_config =
 {
 	cgenie_cassette_formats,
 	NULL,
-	CASSETTE_STOPPED
+	(cassette_state)(CASSETTE_STOPPED)
 };
 
 // This is currently broken

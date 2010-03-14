@@ -29,7 +29,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "machine/pc_hdc.h"
 #include "machine/8237dma.h"
 #include "devices/harddriv.h"
@@ -95,13 +95,13 @@ static int ecc[MAX_HARD];			/* ECC bytes */
 /* indexes */
 static int cylinder[MAX_HARD];			/* current cylinder */
 static int head[MAX_HARD];				/* current head */
-static int sector[MAX_HARD]; 			/* current sector */
+static int sector[MAX_HARD];			/* current sector */
 static int sector_cnt[MAX_HARD];		/* sector count */
 static int control[MAX_HARD];			/* control */
 
 static int csb[MAX_BOARD];				/* command status byte */
 static int status[MAX_BOARD];			/* drive status */
-static int error[MAX_BOARD]; 			/* error code */
+static int error[MAX_BOARD];			/* error code */
 static int dip[MAX_BOARD];				/* dip switches */
 static emu_timer *timer[MAX_BOARD];
 
@@ -111,7 +111,7 @@ static UINT8 *buffer;					/* data buffer */
 static UINT8 *buffer_ptr = 0;			/* data pointer */
 static UINT8 hdc_control;
 static void (*hdc_set_irq)(running_machine *,int,int);
-static const device_config *pc_hdc_dma8237;
+static running_device *pc_hdc_dma8237;
 
 
 static const char *const hdc_command_names[] =
@@ -218,7 +218,7 @@ int pc_hdc_setup(running_machine *machine, void (*hdc_set_irq_func)(running_mach
 }
 
 
-void pc_hdc_set_dma8237_device( const device_config *dma8237 )
+void pc_hdc_set_dma8237_device( running_device *dma8237 )
 {
 	pc_hdc_dma8237 = dma8237;
 }
@@ -226,7 +226,7 @@ void pc_hdc_set_dma8237_device( const device_config *dma8237 )
 
 static hard_disk_file *pc_hdc_file(running_machine *machine, int id)
 {
-	const device_config *img = NULL;
+	running_device *img = NULL;
 
 	switch( id )
 	{
@@ -738,7 +738,7 @@ static void pc_hdc_select_w(int n, int data)
 
 static void pc_hdc_control_w(running_machine *machine, int n, int data)
 {
-	int irq = irq = (dip[n] & 0x40) ? 5 : 2;
+	int irq = (dip[n] & 0x40) ? 5 : 2;
 
 	if (LOG_HDC_STATUS)
 		logerror("pc_hdc_control_w(): Control write pc=0x%08x data=%d\n", (unsigned) cpu_get_reg(machine->firstcpu, REG_GENPC), data);

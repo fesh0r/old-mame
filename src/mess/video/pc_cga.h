@@ -1,4 +1,4 @@
-#include "driver.h"
+#include "emu.h"
 #include "video/pc_video.h"
 
 #define CGA_PALETTE_SETS 83	/* one for colour, one for mono,
@@ -20,4 +20,5 @@ READ16_HANDLER( pc1512_16le_r );
 WRITE16_HANDLER( pc1512_16le_w );
 WRITE16_HANDLER( pc1512_videoram16le_w );
 
+MACHINE_DRIVER_EXTERN( pcvideo_poisk2 );
 

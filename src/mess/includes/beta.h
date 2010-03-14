@@ -7,9 +7,13 @@
 #define EPROM_TAG		"eprom"
 #define SPEAKER_TAG		"b237"
 
-typedef struct _beta_state beta_state;
-struct _beta_state
+class beta_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, beta_state(machine)); }
+
+	beta_state(running_machine &machine) { }
+
 	/* EPROM state */
 	int eprom_oe;
 	int eprom_ce;
@@ -24,7 +28,7 @@ struct _beta_state
 	emu_timer *led_refresh_timer;
 
 	/* devices */
-	const device_config *speaker;
+	running_device *speaker;
 };
 
 #endif

@@ -17,7 +17,8 @@ software_config *software_config_alloc(int driver_index, core_options *opts, has
 	software_config *config;
 
 	// allocate the software_config
-	config = alloc_clear_or_die(software_config);
+	config = (software_config *)malloc(sizeof(software_config));
+	memset(config,0,sizeof(software_config));
 
 	// allocate the machine config
 	config->mconfig = machine_config_alloc(drivers[driver_index]->machine_config);
@@ -27,7 +28,7 @@ software_config *software_config_alloc(int driver_index, core_options *opts, has
 	while((driver != NULL) && (config->hashfile != NULL))
 	{
 		config->hashfile = hashfile_open_options(opts, driver->name, TRUE, error_proc);
-		driver = mess_next_compatible_driver(driver);
+		driver = driver_get_compatible(driver);
 	}
 
 	// other stuff
@@ -51,5 +52,5 @@ void software_config_free(software_config *config)
 		hashfile_close(config->hashfile);
 		config->hashfile = NULL;
 	}
-	free(config);
+	global_free(config);
 }

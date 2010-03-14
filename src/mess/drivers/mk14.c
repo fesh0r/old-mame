@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/scmp/scmp.h"
 #include "machine/ins8154.h"
 #include "mk14.lh"
@@ -120,11 +120,11 @@ static MACHINE_RESET(mk14)
 
 static const ins8154_interface mk14_ins8154 =
 {
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 static MACHINE_DRIVER_START( mk14 )
@@ -152,5 +152,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME   PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY                   FULLNAME     FLAGS */
-COMP( 1977, mk14,  0,       0, 		mk14, 		mk14, 	 0,  	"Science of Cambridge",   "MK-14",		0)
+COMP( 1977, mk14,  0,       0,		mk14,		mk14,	 0, 	"Science of Cambridge",   "MK-14",		GAME_NO_SOUND)
 

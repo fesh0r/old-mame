@@ -41,9 +41,13 @@ enum
 	IKBD_MOUSE_PHASE_NEGATIVE
 };
 
-typedef struct _atarist_state atarist_state;
-struct _atarist_state
+class atarist_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, atarist_state(machine)); }
+
+	atarist_state(running_machine &machine) { }
+
 	/* memory state */
 	UINT8 mmu;
 	UINT16 megaste_cache;
@@ -129,10 +133,10 @@ struct _atarist_state
 	int dmasnd_active;
 
 	/* devices */
-	const device_config *mc68901;
-	const device_config *lmc1992;
-	const device_config *wd1772;
-	const device_config *centronics;
+	running_device *mc68901;
+	running_device *lmc1992;
+	running_device *wd1772;
+	running_device *centronics;
 
 	/* timers */
 	emu_timer *glue_timer;

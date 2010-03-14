@@ -37,7 +37,7 @@
     Raphael Nabet 2003
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/tms9900/tms9900.h"
 #include "machine/tms9901.h"
 #include "machine/tms9902.h"
@@ -53,16 +53,16 @@ static int ic_state;
 static int digitsel;
 static int segment;
 
-static void *displayena_timer;
+static emu_timer *displayena_timer;
 #define displayena_duration ATTOTIME_IN_USEC(4500)	/* Can anyone confirm this? 74LS123 connected to C=0.1uF and R=100kOhm */
 static UINT8 segment_state[10];
 static UINT8 old_segment_state[10];
 static UINT8 LED_state;
 
-static void *joy1x_timer;
-static void *joy1y_timer;
-static void *joy2x_timer;
-static void *joy2y_timer;
+static emu_timer *joy1x_timer;
+static emu_timer *joy1y_timer;
+static emu_timer *joy2x_timer;
+static emu_timer *joy2y_timer;
 
 enum
 {
@@ -82,7 +82,7 @@ static int LED_display_window_height;
 static void hold_load(running_machine *machine);
 
 
-static const device_config *rs232_fp;
+static running_device *rs232_fp;
 static UINT8 rs232_rts;
 static emu_timer *rs232_input_timer;
 
@@ -106,7 +106,7 @@ static const TMS9928a_interface tms9918_interface =
 static MACHINE_START( tm990_189_v )
 {
 	TMS9928A_configure(&tms9918_interface);
-	
+
 	displayena_timer = timer_alloc(machine, NULL, NULL);
 
 	joy1x_timer = timer_alloc(machine, NULL, NULL);
@@ -208,7 +208,7 @@ static VIDEO_UPDATE( tm990_189 )
 
 static VIDEO_START( tm990_189_v )
 {
-	const device_config *screen = video_screen_first(machine->config);
+	running_device *screen = video_screen_first(machine);
 	const rectangle *visarea = video_screen_get_visible_area(screen);
 
 	/* NPW 27-Feb-2006 - ewwww gross!!! maybe this can be fixed when
@@ -344,7 +344,7 @@ static WRITE8_DEVICE_HANDLER( sys9901_shiftlight_w )
 
 static WRITE8_DEVICE_HANDLER( sys9901_spkrdrive_w )
 {
-	const device_config *speaker = devtag_get_device(device->machine, "speaker");
+	running_device *speaker = devtag_get_device(device->machine, "speaker");
 	speaker_level_w(speaker, data);
 }
 
@@ -363,7 +363,7 @@ static TIMER_CALLBACK(rs232_input_callback)
 
 	if (/*rs232_rts &&*/ /*(mame_ftell(rs232_fp) < mame_fsize(rs232_fp))*/1)
 	{
-		if (image_fread(ptr, &buf, 1) == 1)
+		if (image_fread((running_device*)ptr, &buf, 1) == 1)
 			tms9902_push_data(devtag_get_device(machine, "tms9902"), buf);
 	}
 }
@@ -400,8 +400,8 @@ static DEVICE_GET_INFO( tm990_189_rs232 )
 		case DEVINFO_STR_IMAGE_FILE_EXTENSIONS:	    strcpy(info->s, "");                                         break;
 		case DEVINFO_INT_IMAGE_READABLE:            info->i = 1;                                        	break;
 		case DEVINFO_INT_IMAGE_WRITEABLE:			info->i = 1;                                        	break;
-		case DEVINFO_INT_IMAGE_CREATABLE:	     	info->i = 1;                                        	break;		
-		default: 									DEVICE_GET_INFO_CALL(serial);	break;
+		case DEVINFO_INT_IMAGE_CREATABLE:	    	info->i = 1;                                        	break;
+		default:									DEVICE_GET_INFO_CALL(serial);	break;
 	}
 }
 
@@ -409,7 +409,7 @@ static DEVICE_GET_INFO( tm990_189_rs232 )
 
 #define MDRV_TM990_189_RS232_ADD(_tag) \
 	MDRV_DEVICE_ADD(_tag, TM990_189_RS232, 0)
-	
+
 
 static TMS9902_RST_CALLBACK( rts_callback )
 {
@@ -447,7 +447,7 @@ static WRITE8_HANDLER(ext_instr_decode)
 	case 5: /* CKON: set DECKCONTROL */
 		LED_state |= 0x20;
 		{
-			const device_config *img = devtag_get_device(space->machine, "cassette");
+			running_device *img = devtag_get_device(space->machine, "cassette");
 			cassette_change_state(img, CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
 		}
 		break;
@@ -455,7 +455,7 @@ static WRITE8_HANDLER(ext_instr_decode)
 	case 6: /* CKOF: clear DECKCONTROL */
 		LED_state &= ~0x20;
 		{
-			const device_config *img = devtag_get_device(space->machine, "cassette");
+			running_device *img = devtag_get_device(space->machine, "cassette");
 			cassette_change_state(img, CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 		}
 		break;
@@ -466,7 +466,7 @@ static WRITE8_HANDLER(ext_instr_decode)
 	}
 }
 
-static void idle_callback(const device_config *device, int state)
+static void idle_callback(running_device *device, int state)
 {
 	if (state)
 		LED_state |= 0x40;
@@ -795,7 +795,7 @@ static MACHINE_DRIVER_START(tm990_189)
 	MDRV_TMS9901_ADD("tms9901_1", sys9901reset_param)
 	/* tms9902 */
 	MDRV_TMS9902_ADD("tms9902", tms9902_params)
-	
+
 	MDRV_TM990_189_RS232_ADD("rs232")
 MACHINE_DRIVER_END
 
@@ -841,7 +841,7 @@ static MACHINE_DRIVER_START(tm990_189_v)
 	MDRV_TMS9901_ADD("tms9901_1", sys9901reset_param)
 	/* tms9902 */
 	MDRV_TMS9902_ADD("tms9902", tms9902_params)
-	
+
 	MDRV_TM990_189_RS232_ADD("rs232")
 MACHINE_DRIVER_END
 

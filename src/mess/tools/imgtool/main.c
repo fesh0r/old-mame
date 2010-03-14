@@ -5,6 +5,9 @@
     Imgtool command line front end
 
 ***************************************************************************/
+#ifdef WIN32
+#include "winutils.h"
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -13,17 +16,13 @@
 #include <time.h>
 #include <assert.h>
 
-#include "mame.h"
+#include "emu.h"
 #include "imgtool.h"
 #include "mess.h"
 #include "main.h"
 #include "utils.h"
-#include "osdmess.h"
 #include "fileio.h"
 #include "modules.h"
-#ifdef WIN32
-#include "winutils.h"
-#endif
 
 /* ---------------------------------------------------------------------- */
 
@@ -31,7 +30,7 @@ static void writeusage(FILE *f, int write_word_usage, const struct command *c, c
 {
 	fprintf(f, "%s %s %s %s\n",
 		(write_word_usage ? "Usage:" : "      "),
-		osd_basename(argv[0]),
+		imgtool_basename(argv[0]),
 		c->name,
 		c->usage ? c->usage : "");
 }
@@ -342,7 +341,7 @@ static int cmd_put(const struct command *c, int argc, char *argv[])
 	module = imgtool_find_module(argv[0]);
 	if (!module)
 	{
-		err = IMGTOOLERR_MODULENOTFOUND | IMGTOOLERR_SRC_MODULE;
+		err = (imgtoolerr_t)(IMGTOOLERR_MODULENOTFOUND | IMGTOOLERR_SRC_MODULE);
 		goto done;
 	}
 
@@ -362,7 +361,7 @@ static int cmd_put(const struct command *c, int argc, char *argv[])
 			goto done;
 
 		writefile_optguide = (const option_guide *) imgtool_partition_get_info_ptr(partition, IMGTOOLINFO_PTR_WRITEFILE_OPTGUIDE);
-		writefile_optspec = imgtool_partition_get_info_ptr(partition, IMGTOOLINFO_STR_WRITEFILE_OPTSPEC);
+		writefile_optspec = (const char *)imgtool_partition_get_info_ptr(partition, IMGTOOLINFO_STR_WRITEFILE_OPTSPEC);
 
 		if (writefile_optguide && writefile_optspec)
 		{
@@ -595,7 +594,7 @@ static int cmd_create(const struct command *c, int argc, char *argv[])
 	module = imgtool_find_module(argv[0]);
 	if (!module)
 	{
-		err = IMGTOOLERR_MODULENOTFOUND | IMGTOOLERR_SRC_MODULE;
+		err = (imgtoolerr_t)(IMGTOOLERR_MODULENOTFOUND | IMGTOOLERR_SRC_MODULE);
 		goto error;
 	}
 
@@ -666,7 +665,7 @@ static int cmd_readsector(const struct command *c, int argc, char *argv[])
 	stream = stream_open(argv[5], OSD_FOPEN_WRITE);
 	if (!stream)
 	{
-		err = IMGTOOLERR_FILENOTFOUND | IMGTOOLERR_SRC_NATIVEFILE;
+		err = (imgtoolerr_t)(IMGTOOLERR_FILENOTFOUND | IMGTOOLERR_SRC_NATIVEFILE);
 		goto done;
 	}
 
@@ -704,7 +703,7 @@ static int cmd_writesector(const struct command *c, int argc, char *argv[])
 	stream = stream_open(argv[5], OSD_FOPEN_READ);
 	if (!stream)
 	{
-		err = IMGTOOLERR_FILENOTFOUND | IMGTOOLERR_SRC_NATIVEFILE;
+		err = (imgtoolerr_t)(IMGTOOLERR_FILENOTFOUND | IMGTOOLERR_SRC_NATIVEFILE);
 		goto done;
 	}
 
@@ -713,7 +712,7 @@ static int cmd_writesector(const struct command *c, int argc, char *argv[])
 	buffer = malloc(size);
 	if (!buffer)
 	{
-		err = IMGTOOLERR_OUTOFMEMORY;
+		err = (imgtoolerr_t)(IMGTOOLERR_OUTOFMEMORY);
 		goto done;
 	}
 
@@ -887,7 +886,7 @@ static int cmd_listdriveroptions(const struct command *c, int argc, char *argv[]
 	return 0;
 
 error:
-	reporterror(IMGTOOLERR_MODULENOTFOUND|IMGTOOLERR_SRC_MODULE, c, argv[0], NULL, NULL, NULL, NULL);
+	reporterror((imgtoolerr_t)(IMGTOOLERR_MODULENOTFOUND|IMGTOOLERR_SRC_MODULE), c, argv[0], NULL, NULL, NULL, NULL);
 	return -1;
 }
 
@@ -928,10 +927,6 @@ int CLIB_DECL main(int argc, char *argv[])
 	if (imgtool_validitychecks())
 		return -1;
 #endif /* MAME_DEBUG */
-
-#ifdef WIN32
-	win_expand_wildcards(&argc, &argv);
-#endif /* WIN32 */
 
 	putchar('\n');
 
@@ -986,9 +981,9 @@ int CLIB_DECL main(int argc, char *argv[])
 	fprintf(stderr, "<imagename> is the image filename; can specify a ZIP file for image name\n");
 
 	fprintf(stderr, "\nExample usage:\n");
-	fprintf(stderr, "\t%s dir %s myimageinazip.zip\n", osd_basename(argv[0]), sample_format);
-	fprintf(stderr, "\t%s get %s myimage.dsk myfile.bin mynewfile.txt\n", osd_basename(argv[0]), sample_format);
-	fprintf(stderr, "\t%s getall %s myimage.dsk\n", osd_basename(argv[0]), sample_format);
+	fprintf(stderr, "\t%s dir %s myimageinazip.zip\n", imgtool_basename(argv[0]), sample_format);
+	fprintf(stderr, "\t%s get %s myimage.dsk myfile.bin mynewfile.txt\n", imgtool_basename(argv[0]), sample_format);
+	fprintf(stderr, "\t%s getall %s myimage.dsk\n", imgtool_basename(argv[0]), sample_format);
 	result = 0;
 	goto done;
 

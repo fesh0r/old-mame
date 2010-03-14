@@ -11,7 +11,7 @@
  * - wd2793, nms8255
  */
 
-#include "driver.h"
+#include "emu.h"
 #include "machine/i8255a.h"
 #include "includes/msx_slot.h"
 #include "includes/msx.h"
@@ -94,15 +94,15 @@ DEVICE_IMAGE_LOAD (msx_cart)
 	slot_state *state;
 	int id = -1;
 
-	if (strcmp(image->tag,"cart1")==0) {
+	if (strcmp(image->tag(),"cart1")==0) {
 		id = 0;
 	}
-	if (strcmp(image->tag,"cart2")==0) {
+	if (strcmp(image->tag(),"cart2")==0) {
 		id = 1;
 	}
 
 	if( id == -1 ) {
-		logerror ("error: invalid cart tag '%s'\n", image->tag);
+		//logerror ("error: invalid cart tag '%s'\n", image->tag);
 		return INIT_FAIL;
 	}
 
@@ -118,7 +118,7 @@ DEVICE_IMAGE_LOAD (msx_cart)
 	while (size_aligned < size) {
 		size_aligned *= 2;
 	}
-	mem = image_malloc (image, size_aligned);
+	mem = (UINT8*)image_malloc (image, size_aligned);
 	if (!mem) {
 		logerror ("cart #%d: error: failed to allocate memory for cartridge\n",
 						id);
@@ -166,7 +166,7 @@ DEVICE_IMAGE_LOAD (msx_cart)
 	if (!type && size_aligned != 0x10000)
 	{
 		size_aligned = 0x10000;
-		mem = image_realloc(image, mem, 0x10000);
+		mem = (UINT8*)image_realloc(image, mem, 0x10000);
 		if (!mem) {
 			logerror ("cart #%d: error: cannot allocate memory\n", id);
 			return INIT_FAIL;
@@ -250,7 +250,7 @@ DEVICE_IMAGE_LOAD (msx_cart)
 	memset (state, 0, sizeof (slot_state));
 
 	state->type = type;
-	sramfile = image_malloc(image, strlen (image_filename (image) + 1));
+	sramfile = (char*)image_malloc(image, strlen (image_filename (image) + 1));
 
 	if (sramfile) {
 		char *ext;
@@ -280,15 +280,15 @@ DEVICE_IMAGE_UNLOAD (msx_cart)
 {
 	int id = -1;
 
-	if (strcmp(image->tag,"cart1")==0) {
+	if (strcmp(image->tag(),"cart1")==0) {
 		id = 0;
 	}
-	if (strcmp(image->tag,"cart2")==0) {
+	if (strcmp(image->tag(),"cart2")==0) {
 		id = 1;
 	}
 
 	if( id == -1 ) {
-		logerror ("error: invalid cart tag '%s'\n", image->tag);
+		//logerror ("error: invalid cart tag '%s'\n", image->tag);
 		return;
 	}
 
@@ -326,8 +326,6 @@ MACHINE_START( msx )
 
 MACHINE_START( msx2 )
 {
-	const device_config *fdc = devtag_get_device(machine, "wd179x");
-	wd17xx_set_density (fdc,DEN_FM_HI);
 	msx1.dsk_stat = 0x7f;
 }
 
@@ -485,11 +483,11 @@ DRIVER_INIT( msx )
 		msx1.cart_state[i] = cart_state[i];
 	}
 
-	cpu_set_input_line_vector (cputag_get_cpu(machine, "maincpu"), 0, 0xff);
+	cpu_set_input_line_vector (devtag_get_device(machine, "maincpu"), 0, 0xff);
 
 	msx_memory_init (machine);
 
-	z80_set_cycle_tables( cputag_get_cpu(machine, "maincpu"), cc_op, cc_cb, cc_ed, cc_xy, cc_xycb, cc_ex );
+	z80_set_cycle_tables( devtag_get_device(machine, "maincpu"), cc_op, cc_cb, cc_ed, cc_xy, cc_xycb, cc_ex );
 }
 
 INTERRUPT_GEN( msx2_interrupt )
@@ -517,7 +515,7 @@ INTERRUPT_GEN( msx_interrupt )
 ** The I/O funtions
 */
 
-static const device_config *cassette_device_image(running_machine *machine)
+static running_device *cassette_device_image(running_machine *machine)
 {
 	return devtag_get_device(machine, "cassette");
 }
@@ -643,7 +641,7 @@ WRITE8_HANDLER (msx_fmpac_w)
 {
 	if (msx1.opll_active)
 	{
-		const device_config *ym = devtag_get_device(space->machine, "ym2413");
+		running_device *ym = devtag_get_device(space->machine, "ym2413");
 
 		if (offset == 1)
 			ym2413_w (ym, 1, data);
@@ -663,19 +661,19 @@ WRITE8_HANDLER (msx_rtc_latch_w)
 
 WRITE8_HANDLER (msx_rtc_reg_w)
 {
-	const device_config *rtc = devtag_get_device(space->machine, "rtc");
+	running_device *rtc = devtag_get_device(space->machine, "rtc");
 	tc8521_w(rtc, msx1.rtc_latch, data);
 }
 
 READ8_HANDLER (msx_rtc_reg_r)
 {
-	const device_config *rtc = devtag_get_device(space->machine, "rtc");
+	running_device *rtc = devtag_get_device(space->machine, "rtc");
 	return tc8521_r(rtc, msx1.rtc_latch);
 }
 
 NVRAM_HANDLER( msx2 )
 {
-	const device_config *rtc = devtag_get_device(machine, "rtc");
+	running_device *rtc = devtag_get_device(machine, "rtc");
 	if (file)
 	{
 		if (read_or_write)
@@ -734,6 +732,7 @@ static WRITE_LINE_DEVICE_HANDLER( msx_wd179x_drq_w )
 
 const wd17xx_interface msx_wd17xx_interface =
 {
+	DEVCB_LINE_VCC,
 	DEVCB_LINE(msx_wd179x_intrq_w),
 	DEVCB_LINE(msx_wd179x_drq_w),
 	{FLOPPY_0, FLOPPY_1, NULL, NULL}

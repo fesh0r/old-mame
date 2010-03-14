@@ -6,7 +6,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m68000/m68000.h"
 
 
@@ -80,4 +80,4 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME   PARENT  COMPAT  MACHINE  INPUT  INIT  COMPANY      FULLNAME      FLAGS */
-COMP( 1990, a3000, 0,      0,      a3000,   a3000, 0,    "Commodore", "Amiga 3000", GAME_NOT_WORKING )
+COMP( 1990, a3000, 0,      0,      a3000,   a3000, 0,    "Commodore", "Amiga 3000", GAME_NOT_WORKING | GAME_NO_SOUND )

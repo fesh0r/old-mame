@@ -15,9 +15,13 @@
 #define BW12_VIDEORAM_MASK	0x7ff
 #define BW12_CHARROM_MASK	0xfff
 
-typedef struct _bw12_state bw12_state;
-struct _bw12_state
+class bw12_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, bw12_state(machine)); }
+
+	bw12_state(running_machine &machine) { }
+
 	/* memory state */
 	int bank;
 
@@ -41,10 +45,10 @@ struct _bw12_state
 	int motor1;
 
 	/* devices */
-	const device_config *pia6821;
-	const device_config *mc6845;
-	const device_config *upd765;
-	const device_config *centronics;
+	running_device *pia6821;
+	running_device *mc6845;
+	running_device *upd765;
+	running_device *centronics;
 
 	/* timers */
 	emu_timer	*floppy_motor_off_timer;

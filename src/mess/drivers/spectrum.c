@@ -120,31 +120,156 @@ Initialisation values used when determining which model is being emulated:
  128K/+2    Bank switches with port 7ffd only.
  +3/+2a     Bank switches with both ports.
 
-Notes:
- 1. No contented memory.
- 2. No hi-res colour effects (need contended memory first for accurate timing).
- 3. Multiface 1 and Interface 1 not supported.
- 4. Horace and the Spiders cartridge doesn't run properly.
- 5. Tape images not supported:
-    .TZX, .SPC, .ITM, .PAN, .TAP(Warajevo), .VOC, .ZXS.
- 6. Snapshot images not supported:
-    .ACH, .PRG, .RAW, .SEM, .SIT, .SNX, .ZX, .ZXS, .ZX82.
- 7. 128K emulation is not perfect - the 128K machines crash and hang while
+TODO: (the best resource for ZX Spectrum HW informations is the http://www.zxdesign.info/
+       blog, a project devored to reverse-engineer the ZX Spectrum in h/w).
+
+ 1. No contended memory. The different Spectrum models have different contention timings
+    Updated info can be found here: http://scratchpad.wikia.com/wiki/Contended_memory
+    Of course, neither "late timing" contention effects are emulated.
+
+ 2. Russian models (at least Pentagon and Scorpion) reportedly don't have contended memory.
+    Information about screen timings are here: http://www.worldofspectrum.org/rusfaq/
+
+ 3. Similarly, contended I/O is not emulated: http://scratchpad.wikia.com/wiki/Contended_IO
+
+ 4. Finally, the Floating Bus implementation is incomplete: http://scratchpad.wikia.com/wiki/Floating_bus
+    The page hosts a couple of testing programs.
+
+ 5. A NTSC model exists: it's not the Timex, but a plain ZX Spectrum made for the Chilean market:
+    http://scratchpad.wikia.com/wiki/NTSC_Spectrum
+
+ 6. No hi-res colour effects (need contended memory first for accurate timing).
+
+ 7. Keyboard autorepeat is broken.
+
+ 8. Port decoding on all models needs to be checked and, in case, corrected.
+
+ 9. The actual Issue 2/3 effect is a bit more complicated than implemented:
+    http://piters.tripod.com/cassport.htm for an explanation/test suite.
+
+10. Tape formats not supported:
+    .001, .CSW, .LTP, .PZX, .SPC, .STA, .ITM/.PAN, .TAP(Warajevo), .VOC, .ZXS, .ZXT
+
+11. Disk formats not supported:
+    .CPD, .DSK, .FDD, .FDI, .HDF, .IMG, .MDR, .MGT, .SCL, .TRD, .ZXD
+
+12. 128K emulation is not perfect - the 128K machines crash and hang while
     running quite a lot of games.
- 8. Disk errors occur on some +3 games.
- 9. Video hardware of all machines is timed incorrectly.
-10. EXROM and HOME cartridges are not emulated.
-11. The TK90X and TK95 roms output 0 to port #df on start up.
-12. The purpose of this port is unknown (probably display mode as TS2068) and
-    thus is not emulated.
 
-Very detailed infos about the ZX Spectrum +3e can be found at
+13. Disk errors occur on some +3 games.
 
-http://www.z88forever.org.uk/zxplus3e/
+14. EXROM and HOME cartridges are not emulated on Timex machines.
+
+15. The TK90X and TK95 roms output 0 to port #df on start up. The purpose of this port is unknown
+    (probably display mode as TS2068) and thus is not emulated.
+
+16. Very detailed infos about the ZX Spectrum +3e can be found at
+    http://www.worldofspectrum.org/zxplus3e/
+
+17. The ZX Spectrum is known to support a huge number of peripherals, daisy-chained through its expansion bus.
+    In the earlier part of its life cycle, a common configuration consisted of a "docking station"-type
+    peripheral providing drive controllers (the disk drives were not part of the packages), a game
+    interface (joystick and/or sound chip) and the ZX Printer (which, if present, must terminate the chain).
+
+    Later, all-in-one peripherals became more common. The following list is just a little part of the huge
+    catalog of peripherals available to the ZX Spectrum; however these peripherals are both the most successful
+    and the better documented ones.
+
+    Except when noted, technical and usage manuals are available at http://www.worldofspectrum.org/
+
+------------------------
+Mass storage controllers
+------------------------
+
+ZX Interface 1
+	up to 8 Microdrives
+	1 RS-232 port
+	2 ZX Network ports - http://scratchpad.wikia.com/wiki/ZX_Net
+
+Opus Discovery
+	up to 2 Disk drives
+	1 Centronics port
+	1 Joystick port (Kempston)
+
+DISCiPLE Interface
+	up to 2 Disk drives
+	1 Centronics port
+	2 Joystick ports (RH: Sinclair/Kempston, LH: Sinclair)
+	2 ZX Network ports
+
+Plus D Interface
+	up to 2 Disk drives
+	1 Centronics port
+
+Rotronics Wafadrive
+	2 "Stringy" drives
+	1 RS-232 port
+	1 Centronics port
+
+Kempston Disc Interface
+	up to 4 Disk drives (KDOS)
+
+Beta 128 Disk Interface
+	up to 4 Disk drives (TR-DOS)
+
+Philips Disc ROM
+	???
+
+----------------
+Game controllers
+----------------
+
+ZX Interface 2
+	2 Joystick ports (Sinclair)
+	1 ROM slot
+
+Kempston Interface
+	1 Joystick port (Kempston)
+
+Protek/AGF/Cursor Interface
+	1 Joystick port (Protek)
+
+Fuller Box
+	1 Joystick port (Fuller)
+	1 G1-AY-3-8912 sound chip - the chip is identical to the one present on the 128 model,
+	                            but the I/O ports are different: http://scratchpad.wikia.com/wiki/AY-3-8912(a) and
+	                            http://scratchpad.wikia.com/wiki/Timex_2000_series#Sound_Chip
+
+Mikro-Plus Interface
+	1 Joystick port (Mikrogen)
+	1 ROM slot - http://www.worldofspectrum.org/showmag.cgi?mag=Crash/Issue19/Pages/Crash1900020.jpg
+
+------------
+Misc devices
+------------
+
+DK'Tronics Light Pen (identical to TK90X light pen)
+
+AMX Mouse
+    Schematics and test software at http://velesoft.speccy.cz/othermouse-cz.htm
+
+Kempston Mouse
+    Schematics and test software at http://8bit.yarek.pl/hardware/zx.mouse/
+
+Currah uSpeech
+    Speech synthesis thru allophones (SP0256-AL2)
+
+MGT Messenger
+    Allows connection between ZX Spectrum and SAM Coupé
+
+Soft-ROM
+    A development system board - http://www.wearmouth.demon.co.uk/softrom.htm
+
+Multiface 1/128/+3
+    The classic snapshot interface for ZX Spectrum, 128 and +3 models, with 8K internal RAM.
+
+SamRam
+    A more versatile "Multiface I"-type interface - http://8bit.yarek.pl/upgrade/zx.samram/samram.html
+
 
 *******************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "sound/speaker.h"
 #include "sound/wave.h"
@@ -153,9 +278,10 @@ http://www.z88forever.org.uk/zxplus3e/
 #include "devices/snapquik.h"
 #include "devices/cartslot.h"
 #include "devices/cassette.h"
+#include "devices/messram.h"
 #include "formats/tzx_cas.h"
+#include "formats/spec_snqk.h"
 
-unsigned char *spectrum_screen_location = NULL;
 
 /****************************************************************************************************/
 /* Spectrum 48k functions */
@@ -167,14 +293,13 @@ unsigned char *spectrum_screen_location = NULL;
  bit 2-0: border colour
 */
 
-int spectrum_PreviousFE = 0;
-
 WRITE8_HANDLER(spectrum_port_fe_w)
 {
-	const device_config *speaker = devtag_get_device(space->machine, "speaker");
+	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
+	running_device *speaker = devtag_get_device(space->machine, "speaker");
 	unsigned char Changed;
 
-	Changed = spectrum_PreviousFE^data;
+	Changed = state->port_fe_data^data;
 
 	/* border colour changed? */
 	if ((Changed & 0x07)!=0)
@@ -195,14 +320,20 @@ WRITE8_HANDLER(spectrum_port_fe_w)
 		cassette_output(devtag_get_device(space->machine, "cassette"), (data & (1<<3)) ? -1.0 : +1.0);
 	}
 
-	spectrum_PreviousFE = data;
+	state->port_fe_data = data;
 }
 
-static ADDRESS_MAP_START (spectrum_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x3fff) AM_ROM
-	AM_RANGE(0x4000, 0x5aff) AM_RAM AM_BASE(&spectrum_video_ram )
-	AM_RANGE(0x5b00, 0xffff) AM_RAM
-ADDRESS_MAP_END
+static DIRECT_UPDATE_HANDLER(spectrum_direct)
+{
+    /* Hack for correct handling 0xffff interrupt vector */
+    if (address == 0x0001)
+        if (cpu_get_reg(devtag_get_device(space->machine, "maincpu"), REG_GENPCBASE)==0xffff)
+        {
+            cpu_set_reg(devtag_get_device(space->machine, "maincpu"), Z80_PC, 0xfff4);
+            return 0xfff4;
+        }
+    return address;
+}
 
 /* KT: more accurate keyboard reading */
 /* DJR: Spectrum+ keys added */
@@ -293,10 +424,22 @@ READ8_HANDLER(spectrum_port_df_r)
 	return input_port_read(space->machine, "MIKROGEN") | (0xff^0x1f);
 }
 
-static  READ8_HANDLER ( spectrum_port_ula_r )
+static READ8_HANDLER ( spectrum_port_ula_r )
 {
-	return video_screen_get_vpos(space->machine->primary_screen)<193 ? spectrum_video_ram[(video_screen_get_vpos(space->machine->primary_screen)&0xf8)<<2]:0xff;
+	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
+	int vpos = video_screen_get_vpos(space->machine->primary_screen);
+
+	return vpos<193 ? state->video_ram[(vpos&0xf8)<<2]:0xff;
 }
+
+/* Memory Maps */
+
+static ADDRESS_MAP_START (spectrum_mem, ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x0000, 0x3fff) AM_ROM
+	AM_RANGE(0x4000, 0x5aff) AM_RAM AM_BASE_MEMBER(spectrum_state,video_ram)
+//	AM_RANGE(0x5b00, 0x7fff) AM_RAM
+//	AM_RANGE(0x8000, 0xffff) AM_RAM
+ADDRESS_MAP_END
 
 /* ports are not decoded full.
 The function decodes the ports appropriately */
@@ -307,6 +450,8 @@ static ADDRESS_MAP_START (spectrum_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0xdf, 0xdf) AM_READ(spectrum_port_df_r) AM_MIRROR(0xff00)
 	AM_RANGE(0x01, 0x01) AM_READ(spectrum_port_ula_r) AM_MIRROR(0xfffe)
 ADDRESS_MAP_END
+
+/* Input ports */
 
 /****************************************************************************************************/
 
@@ -474,6 +619,31 @@ INPUT_PORTS_START( spec_plus )
 	PORT_BIT(0xf3, IP_ACTIVE_LOW, IPT_UNUSED)
 INPUT_PORTS_END
 
+/* Machine initialization */
+
+DRIVER_INIT( spectrum )
+{
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+	UINT8 *ram = messram_get_ptr(devtag_get_device(machine, "messram"));
+
+	switch (messram_get_size(devtag_get_device(machine, "messram")))
+	{
+	    case 48*1024:
+		memory_install_ram(space, 0x8000, 0xffff, 0, 0, ram); // Fall through
+	    case 16*1024:
+		memory_install_ram(space, 0x5b00, 0x7fff, 0, 0, ram);
+	}
+}
+
+MACHINE_RESET( spectrum )
+{
+	spectrum_state *state = (spectrum_state *)machine->driver_data;
+	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
+
+	memory_set_direct_update_handler(space, spectrum_direct);
+	state->port_7ffd_data = -1;
+	state->port_1ffd_data = -1;
+}
 
 /* F4 Character Displayer */
 static const gfx_layout spectrum_charlayout =
@@ -503,12 +673,15 @@ static const cassette_config spectrum_cassette_config =
 {
 	tzx_cassette_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED)
 };
 
-MACHINE_DRIVER_START( spectrum )
+MACHINE_DRIVER_START( spectrum_common )
+
+	MDRV_DRIVER_DATA( spectrum_state )
+
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", Z80, 3500000)        /* 3.5 MHz */
+	MDRV_CPU_ADD("maincpu", Z80, X1 / 4)        /* This is verified only for the ZX Spectum. Other clones are reported to have different clocks */
 	MDRV_CPU_PROGRAM_MAP(spectrum_mem)
 	MDRV_CPU_IO_MAP(spectrum_io)
 	MDRV_CPU_VBLANK_INT("screen", spec_interrupt)
@@ -538,14 +711,24 @@ MACHINE_DRIVER_START( spectrum )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
-	MDRV_SNAPSHOT_ADD("snapshot", spectrum, "sna,z80,sp", 0)
-	MDRV_QUICKLOAD_ADD("quickload", spectrum, "scr", 0)
+	MDRV_SNAPSHOT_ADD("snapshot", spectrum, "ach,frz,plusd,prg,sem,sit,sna,snp,snx,sp,z80,zx", 0)
+	MDRV_QUICKLOAD_ADD("quickload", spectrum, "raw,scr", 2) // The delay prevents the screen from being cleared by the RAM test at boot
 	MDRV_CASSETTE_ADD( "cassette", spectrum_cassette_config )
 
 	/* cartridge */
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("rom")
 	MDRV_CARTSLOT_NOT_MANDATORY
+MACHINE_DRIVER_END
+
+MACHINE_DRIVER_START( spectrum )
+	MDRV_IMPORT_FROM( spectrum_common )
+
+	/* internal ram */
+	MDRV_RAM_ADD("messram")				// This configuration is verified only for the original ZX Spectrum.
+	MDRV_RAM_DEFAULT_SIZE("48K")		// It's likely, but still to be checked, that many clones were produced only
+	MDRV_RAM_EXTRA_OPTIONS("16K")		// in the 48k configuration, while others have extra memory (80k, 128K, 1024K)
+	MDRV_RAM_DEFAULT_VALUE(0xff)		// available via bankswitching.
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -787,33 +970,48 @@ ROM_START(compani1)
 	ROM_CART_LOAD("cart", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
+ROM_START(spektrbk)
+	ROM_REGION(0x10000,"maincpu",0)
+	ROM_LOAD("spektr-bk001.rom", 0x0000, 0x4000, CRC(c011eecc) SHA1(35fdc8cd083e50452655997a997873627b131520))
+	ROM_CART_LOAD("cart", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
+ROM_START(zvezda)
+	ROM_REGION(0x10000,"maincpu",0)
+	ROM_LOAD( "2764-near-cpu_red.bin", 0x0000, 0x2000, CRC(a4ae4938) SHA1(ea1763b9dee29381ddcf882fbc4e404ba5366942))
+	ROM_LOAD( "2764-far-cpu_blue.bin", 0x2000, 0x2000, CRC(ebab64bc) SHA1(8c98a8b6e927b02cf602c20a1b50838e60f7785b))
+	ROM_CART_LOAD("cart", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
+ROM_END
+
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT       INIT    COMPANY     FULLNAME */
-COMP( 1982, spectrum, 0,        0,		spectrum,		spectrum,	0,	"Sinclair Research",	"ZX Spectrum" , 0)
-COMP( 1987, spec80k,  spectrum, 0,		spectrum,		spectrum,	0,	"",	"ZX Spectrum 80K" , GAME_COMPUTER_MODIFIED)
-COMP( 1995, specide,  spectrum, 0,		spectrum,		spectrum,	0,	"",	"ZX Spectrum IDE" , GAME_COMPUTER_MODIFIED)
-COMP( 1986, inves,    spectrum, 0,		spectrum,		spec_plus,	0,	"Investronica",	"Inves Spectrum 48K+" , 0)
-COMP( 1985, tk90x,    spectrum, 0,		spectrum,		spectrum,	0,	"Micro Digital",	"TK 90X Color Computer" , 0)
-COMP( 1986, tk95,     spectrum, 0,		spectrum,		spec_plus,	0,	"Micro Digital",	"TK 95 Color Computer" , 0)
-COMP( 1985, hc85,     spectrum, 0,		spectrum,		spectrum,	0,	"ICE-Felix",	"HC-85" , 0)
-COMP( 1988, hc88,     spectrum, 0,		spectrum,		spectrum,	0,	"ICE-Felix",	"HC-88" , GAME_NOT_WORKING)
-COMP( 1990, hc90,     spectrum, 0,		spectrum,		spectrum,	0,	"ICE-Felix",	"HC-90" , 0)
-COMP( 1991, hc91,     spectrum, 0,		spectrum,		spec_plus,	0,	"ICE-Felix",	"HC-91" , 0)
-COMP( 1988, cobra,    spectrum, 0,		spectrum,		spectrum,	0,	"ITCI",	"Cobra" , GAME_NOT_WORKING)
-COMP( 1988, cobra80,  spectrum, 0,		spectrum,		spectrum,	0,	"ITCI",	"Cobra 80K" , GAME_NOT_WORKING)
-COMP( 1987, cip01,    spectrum, 0,		spectrum,		spectrum,	0,	"Electronica",	"CIP-01" , 0)	// keyboard should be spectrum, but image was not clear
-COMP( 1988, cip03,    spectrum, 0,		spectrum,		spectrum,	0,	"Electronica",	"CIP-03" , 0)	// keyboard should be spectrum, but image was not clear
-COMP( 1990, jet,      spectrum, 0,		spectrum,		spectrum,	0,	"Electromagnetica",	"JET" , 0)	// keyboard should be spectrum, but image was not clear
-COMP( 1987, dgama87,  spectrum, 0,		spectrum,		spectrum,	0,	"Didaktik Skalica",	"Didaktik Gama 87" , 0)
-COMP( 1988, dgama88,  spectrum, 0,		spectrum,		spectrum,	0,	"Didaktik Skalica",	"Didaktik Gama 88" , 0)
-COMP( 1989, dgama89,  spectrum, 0,		spectrum,		spectrum,	0,	"Didaktik Skalica",	"Didaktik Gama 89" , 0)
-COMP( 1990, didakt90, spectrum, 0,		spectrum,		spectrum,	0,	"Didaktik Skalica",	"Didaktik 90" , 0)
-COMP( 1991, didakm91, spectrum, 0,		spectrum,		spec_plus,	0,	"Didaktik Skalica",	"Didaktik M 91" , 0)
-COMP( 1992, didaktk,  spectrum, 0,		spectrum,		spec_plus,	0,	"Didaktik Skalica",	"Didaktik Kompakt" , 0)
-COMP( 1993, didakm93, spectrum, 0,		spectrum,		spec_plus,	0,	"Didaktik Skalica",	"Didaktik M 93" , 0)
-COMP( 1988, mistrum,  spectrum, 0,		spectrum,		spectrum,	0,	"Amaterske RADIO",	"Mistrum" , 0)	// keyboard could be spectrum in some models (since it was a build-yourself design)
-COMP( 1990, blitz,    spectrum, 0,		spectrum,		spectrum,	0,	"",	"Blic" , 0)		// no keyboard images found
-COMP( 1990, byte,     spectrum, 0,		spectrum,		spectrum,	0,	"",	"Byte" , 0)		// no keyboard images found
-COMP( 199?, orizon,   spectrum, 0,		spectrum,		spectrum,	0,	"",	"Orizon-Micro" , 0)		// no keyboard images found
-COMP( 1993, quorum48, spectrum, 0,		spectrum,		spectrum,	0,	"",	"Kvorum 48K" , GAME_NOT_WORKING)
-COMP( 1993, magic6,   spectrum, 0,		spectrum,		spectrum,	0,	"",	"Magic 6" , GAME_NOT_WORKING)	// keyboard should be spectrum, but image was not clear
-COMP( 1990, compani1, spectrum, 0,		spectrum,		spectrum,	0,	"",	"Kompanion 1" , 0)		// no keyboard images found
+COMP( 1982, spectrum, 0,        0,		spectrum,		spectrum,	spectrum,	"Sinclair Research",	"ZX Spectrum" , 0)
+COMP( 1987, spec80k,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"ZX Spectrum 80K" , GAME_UNOFFICIAL)
+COMP( 1995, specide,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"ZX Spectrum IDE" , GAME_UNOFFICIAL)
+COMP( 1986, inves,    spectrum, 0,		spectrum,		spec_plus,	spectrum,	"Investronica",	"Inves Spectrum 48K+" , 0)
+COMP( 1985, tk90x,    spectrum, 0,		spectrum,		spectrum,	spectrum,	"Micro Digital",	"TK 90X Color Computer" , 0)
+COMP( 1986, tk95,     spectrum, 0,		spectrum,		spec_plus,	spectrum,	"Micro Digital",	"TK 95 Color Computer" , 0)
+COMP( 1985, hc85,     spectrum, 0,		spectrum,		spectrum,	spectrum,	"ICE-Felix",	"HC-85" , 0)
+COMP( 1988, hc88,     spectrum, 0,		spectrum,		spectrum,	spectrum,	"ICE-Felix",	"HC-88" , GAME_NOT_WORKING)
+COMP( 1990, hc90,     spectrum, 0,		spectrum,		spectrum,	spectrum,	"ICE-Felix",	"HC-90" , 0)
+COMP( 1991, hc91,     spectrum, 0,		spectrum,		spec_plus,	spectrum,	"ICE-Felix",	"HC-91" , 0)
+COMP( 1988, cobra,    spectrum, 0,		spectrum,		spectrum,	spectrum,	"ITCI",	"Cobra" , GAME_NOT_WORKING)
+COMP( 1988, cobra80,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"ITCI",	"Cobra 80K" , GAME_NOT_WORKING)
+COMP( 1987, cip01,    spectrum, 0,		spectrum,		spectrum,	spectrum,	"Electronica",	"CIP-01" , 0)	// keyboard should be spectrum, but image was not clear
+COMP( 1988, cip03,    spectrum, 0,		spectrum,		spectrum,	spectrum,	"Electronica",	"CIP-03" , 0)	// keyboard should be spectrum, but image was not clear
+COMP( 1990, jet,      spectrum, 0,		spectrum,		spectrum,	spectrum,	"Electromagnetica",	"JET" , 0)	// keyboard should be spectrum, but image was not clear
+COMP( 1987, dgama87,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"Didaktik Skalica",	"Didaktik Gama 87" , 0)
+COMP( 1988, dgama88,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"Didaktik Skalica",	"Didaktik Gama 88" , 0)
+COMP( 1989, dgama89,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"Didaktik Skalica",	"Didaktik Gama 89" , 0)
+COMP( 1990, didakt90, spectrum, 0,		spectrum,		spectrum,	spectrum,	"Didaktik Skalica",	"Didaktik 90" , 0)
+COMP( 1991, didakm91, spectrum, 0,		spectrum,		spec_plus,	spectrum,	"Didaktik Skalica",	"Didaktik M 91" , 0)
+COMP( 1992, didaktk,  spectrum, 0,		spectrum,		spec_plus,	spectrum,	"Didaktik Skalica",	"Didaktik Kompakt" , 0)
+COMP( 1993, didakm93, spectrum, 0,		spectrum,		spec_plus,	spectrum,	"Didaktik Skalica",	"Didaktik M 93" , 0)
+COMP( 1988, mistrum,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"Amaterske RADIO",	"Mistrum" , 0)	// keyboard could be spectrum in some models (since it was a build-yourself design)
+COMP( 1990, blitz,    spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"Blic" , 0)		// no keyboard images found
+COMP( 1990, byte,     spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"Byte" , 0)		// no keyboard images found
+COMP( 199?, orizon,   spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"Orizon-Micro" , 0)		// no keyboard images found
+COMP( 1993, quorum48, spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"Kvorum 48K" , GAME_NOT_WORKING)
+COMP( 1993, magic6,   spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"Magic 6" , GAME_NOT_WORKING)	// keyboard should be spectrum, but image was not clear
+COMP( 1990, compani1, spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"Kompanion 1" , 0)		// no keyboard images found
+COMP( 1990, spektrbk, spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"Spektr BK-001" , 0)
+COMP( 1990, zvezda,   spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"Zvezda" , 0)

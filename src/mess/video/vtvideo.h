@@ -13,7 +13,7 @@
 #ifndef __VT_VIDEO__
 #define __VT_VIDEO__
 
-#include "driver.h"
+#include "emu.h"
 #include "devcb.h"
 
 /***************************************************************************
@@ -55,6 +55,6 @@ WRITE8_DEVICE_HANDLER ( vt_video_brightness_w );
 
 
 /* screen update */
-void vt_video_update(const device_config *device, bitmap_t *bitmap, const rectangle *cliprect);
+void vt_video_update(running_device *device, bitmap_t *bitmap, const rectangle *cliprect);
 
 #endif

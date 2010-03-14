@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "machine/z80pio.h"
 #include "includes/z1013.h"
@@ -21,7 +21,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z1013_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE( 0x00, 0x03 ) AM_DEVREADWRITE("z80pio", z1013_z80pio_r, z1013_z80pio_w)
+	AM_RANGE( 0x00, 0x03 ) AM_DEVREADWRITE("z80pio", z80pio_ba_cd_r, z80pio_ba_cd_w)
 	AM_RANGE( 0x08, 0x08 ) AM_WRITE(z1013_keyboard_w)
 ADDRESS_MAP_END
 
@@ -189,7 +189,7 @@ static MACHINE_DRIVER_START( z1013 )
 	MDRV_VIDEO_START(z1013)
 	MDRV_VIDEO_UPDATE(z1013)
 
-	MDRV_Z80PIO_ADD( "z80pio", z1013_z80pio_intf )
+	MDRV_Z80PIO_ADD( "z80pio", XTAL_1MHz, z1013_z80pio_intf )
 
 	/* snapshot */
 	MDRV_SNAPSHOT_ADD("snapshot", z1013, "z80", 0)
@@ -198,7 +198,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( z1013k76 )
 	MDRV_IMPORT_FROM(z1013)
 	MDRV_DEVICE_REMOVE("z80pio")
-	MDRV_Z80PIO_ADD("z80pio", z1013k7659_z80pio_intf)
+	MDRV_Z80PIO_ADD("z80pio", XTAL_1MHz, z1013k7659_z80pio_intf)
 MACHINE_DRIVER_END
 
 /* ROM definition */
@@ -252,8 +252,8 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME   PARENT  COMPAT  MACHINE      INPUT       INIT   COMPANY                 FULLNAME   FLAGS */
-COMP( 1985, z1013,     0,      0, 	z1013, 		z1013_8x4, 	z1013, "VEB Robotron Electronics Riesa", 	 "Z1013 (matrix 8x4)",		 0)
-COMP( 1985, z1013a2,   z1013,  0, 	z1013, 		z1013_8x8, 	z1013, "VEB Robotron Electronics Riesa", 	 "Z1013 (matrix 8x8)",		 0)
-COMP( 1985, z1013k76,  z1013,  0, 	z1013k76, 	k7659, 		z1013, "VEB Robotron Electronics Riesa", 	 "Z1013 (K7659)",		 GAME_NOT_WORKING)
-COMP( 1985, z1013s60,  z1013,  0, 	z1013k76, 	z1013_8x8,  z1013, "VEB Robotron Electronics Riesa", 	 "Z1013 (K7652/S6009)",	 GAME_NOT_WORKING)
-COMP( 1985, z1013k69,  z1013,  0, 	z1013k76, 	k7659, 		z1013, "VEB Robotron Electronics Riesa", 	 "Z1013 (K7669)",		 GAME_NOT_WORKING)
+COMP( 1985, z1013,     0,      0,	z1013,		z1013_8x4,	z1013, "VEB Robotron Electronics Riesa",	 "Z1013 (matrix 8x4)",		 GAME_NO_SOUND)
+COMP( 1985, z1013a2,   z1013,  0,	z1013,		z1013_8x8,	z1013, "VEB Robotron Electronics Riesa",	 "Z1013 (matrix 8x8)",		 GAME_NO_SOUND)
+COMP( 1985, z1013k76,  z1013,  0,	z1013k76,	k7659,		z1013, "VEB Robotron Electronics Riesa",	 "Z1013 (K7659)",		 GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1985, z1013s60,  z1013,  0,	z1013k76,	z1013_8x8,  z1013, "VEB Robotron Electronics Riesa",	 "Z1013 (K7652/S6009)",	 GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1985, z1013k69,  z1013,  0,	z1013k76,	k7659,		z1013, "VEB Robotron Electronics Riesa",	 "Z1013 (K7669)",		 GAME_NOT_WORKING | GAME_NO_SOUND)

@@ -5,36 +5,36 @@
     Ensoniq ESQ-1 and SQ-80 Digital Wave Synthesizers
     Preliminary driver by R. Belmont
 
-	Map for ESQ-1:
-	0000-1fff: OS RAM
-	2000-3fff: Cartridge
-	4000-5fff: SEQRAM
-	6000-63ff: ES5503 DOC
-	6400-67ff: MC2681 DUART
-	6800-6fff: AD7524 (CV_MUX)
-	7000-7fff: OS ROM low (banked)
-	8000-ffff: OS ROM high (fixed)
+    Map for ESQ-1:
+    0000-1fff: OS RAM
+    2000-3fff: Cartridge
+    4000-5fff: SEQRAM
+    6000-63ff: ES5503 DOC
+    6400-67ff: MC2681 DUART
+    6800-6fff: AD7524 (CV_MUX)
+    7000-7fff: OS ROM low (banked)
+    8000-ffff: OS ROM high (fixed)
 
-	Map for SQ-80:
-	0000-1fff: OS RAM
-	2000-3fff: Cartridge
-	4000-5fff: DOSRAM or SEQRAM (banked)
-	6000-63ff: ES5503 DOC
-	6400-67ff: MC2681 DUART
-	6800-6bff: AD7524 (CV_MUX)
-	6c00-6dff: Mapper (bit 0 only - determines DOSRAM or SEQRAM at 4000)
-	6e00-6fff: WD1772 FDC (not present on ESQ1)
-	7000-7fff: OS ROM low (banked)
-	8000-ffff: OS ROM high (fixed)
+    Map for SQ-80:
+    0000-1fff: OS RAM
+    2000-3fff: Cartridge
+    4000-5fff: DOSRAM or SEQRAM (banked)
+    6000-63ff: ES5503 DOC
+    6400-67ff: MC2681 DUART
+    6800-6bff: AD7524 (CV_MUX)
+    6c00-6dff: Mapper (bit 0 only - determines DOSRAM or SEQRAM at 4000)
+    6e00-6fff: WD1772 FDC (not present on ESQ1)
+    7000-7fff: OS ROM low (banked)
+    8000-ffff: OS ROM high (fixed)
 
-	CV_MUX area:
-	write to        output goes to
-	$68f8 	$00 	D/A converter
-	$68f0 	-$08 	Filter Frequency (FF)
-	$68e8 	-$10 	Filter Resonance (Q)
-	$68d8 	-$20 	Final DCA (ENV4)
-	$68b8 	-$40 	Panning (PAN)
-	$6878 	-$80 	Floppy (Motor/LED on)
+    CV_MUX area:
+    write to        output goes to
+    $68f8   $00     D/A converter
+    $68f0   -$08    Filter Frequency (FF)
+    $68e8   -$10    Filter Resonance (Q)
+    $68d8   -$20    Final DCA (ENV4)
+    $68b8   -$40    Panning (PAN)
+    $6878   -$80    Floppy (Motor/LED on)
 
 If SEQRAM is mapped at 4000, DUART port 2 determines the 32KB "master bank" and ports 0 and 1
 determine which of the 4 8KB "sub banks" is visible.
@@ -45,19 +45,19 @@ IRQ sources are the DUART and the DRQ line from the FDC (SQ-80 only).
 NMI is from the IRQ line on the FDC (again, SQ-80 only).
 
 TODO:
-	- VFD display
-	- Keyboard
-	- Analog filters and VCA on the back end of the 5503
-	- SQ-80 support (additional banking, FDC)
+    - VFD display
+    - Keyboard
+    - Analog filters and VCA on the back end of the 5503
+    - SQ-80 support (additional banking, FDC)
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/es5503.h"
 #include "machine/68681.h"
 
-static void esq1_doc_irq(const device_config *device, int state)
+static void esq1_doc_irq(running_device *device, int state)
 {
 }
 
@@ -107,33 +107,33 @@ ADDRESS_MAP_END
 // IP1 = sequencer expansion cartridge inserted
 // IP2 = patch cartridge inserted
 // IP3 & 4 are 0.5 MHz, IP 5 & 6 are 1 MHz (note 0.5 MHz / 16 = MIDI baud rate)
-// 
+//
 // OP0 = to display processor
 // OP1/2/3 = bank select 0, 1, and 2
 // OP4 = metronome low
 // OP5 = metronome hi
 // OP6/7 = tape out
 
-static void duart_irq_handler(const device_config *device, UINT8 vector)
+static void duart_irq_handler(running_device *device, UINT8 vector)
 {
 	cputag_set_input_line(device->machine, "maincpu", 0, HOLD_LINE);
 };
 
-static UINT8 duart_input(const device_config *device)
+static UINT8 duart_input(running_device *device)
 {
 	return 0;
 }
 
-static void duart_output(const device_config *device, UINT8 data)
+static void duart_output(running_device *device, UINT8 data)
 {
 	int bank = ((data >> 1) & 0x7);
 
-//	printf("DP [%02x]: %d mlo %d mhi %d tape %d\n", data, data&1, (data>>4)&1, (data>>5)&1, (data>>6)&3);
-//	printf("[%02x] bank %d => offset %x (PC=%x)\n", data, bank, bank * 0x1000, cpu_get_pc(device->machine->firstcpu));
+//  printf("DP [%02x]: %d mlo %d mhi %d tape %d\n", data, data&1, (data>>4)&1, (data>>5)&1, (data>>6)&3);
+//  printf("[%02x] bank %d => offset %x (PC=%x)\n", data, bank, bank * 0x1000, cpu_get_pc(device->machine->firstcpu));
 	memory_set_bankptr(device->machine, "osbank", memory_region(device->machine, "osrom") + (bank * 0x1000) );
 }
 
-static void duart_tx(const device_config *device, int channel, UINT8 data)
+static void duart_tx(running_device *device, int channel, UINT8 data)
 {
 	if ((data != 0) && (channel == 1)) printf("[%d]: %02x %c\n", channel, data, data);
 }

@@ -9,18 +9,19 @@
 
 /*
 
-	TODO:
+    TODO:
 
-	- move M6510T port handling to cpu core
-	- TCBM bus
-	- connect to C16/Plus4
+    - byte latching does not match hardware behavior
+      (CPU skips data bytes if implemented per schematics)
+    - activity LED
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "c1551.h"
 #include "cpu/m6502/m6502.h"
 #include "devices/flopdrv.h"
+#include "formats/d64_dsk.h"
 #include "formats/g64_dsk.h"
 #include "machine/6525tpi.h"
 
@@ -28,26 +29,12 @@
     PARAMETERS
 ***************************************************************************/
 
-#define LOG 0
-
 #define M6510T_TAG		"u2"
-#define M6525_TAG		"u3"
-#define M6523_TAG		"ci_u2"
+#define M6523_0_TAG		"u3"
+#define M6523_1_TAG		"ci_u2"
 
-#define FLOPPY_TAG		"c1551_floppy"
-
-static const double C1551_BITRATE[4] =
-{
-	XTAL_16MHz/13.0,	/* tracks 1-17 */
-	XTAL_16MHz/14.0,	/* tracks 18-24 */
-	XTAL_16MHz/15.0, 	/* tracks 25-30 */
-	XTAL_16MHz/16.0		/* tracks 31-42 */
-};
-
-#define SYNC_MARK			0x3ff		/* 10 consecutive 1-bits */
-
-#define TRACK_BUFFER_SIZE	8194		/* 2 bytes track length + maximum of 8192 bytes of GCR encoded data */
-#define TRACK_DATA_START	2
+#define SYNC \
+	!(c1551->mode && ((c1551->data & G64_SYNC_MARK) == G64_SYNC_MARK))
 
 /***************************************************************************
     TYPE DEFINITIONS
@@ -56,27 +43,37 @@ static const double C1551_BITRATE[4] =
 typedef struct _c1551_t c1551_t;
 struct _c1551_t
 {
-	UINT8 track_buffer[TRACK_BUFFER_SIZE];				/* track data buffer */
-	int track_len;						/* track length */
-	int buffer_pos;						/* current byte position within track buffer */
-	int bit_pos;						/* current bit position within track buffer byte */
-	int bit_count;						/* current data byte bit counter */
-	UINT16 data;						/* data shift register */
+	/* TCBM bus */
+	int address;							/* device address - 8 */
+	UINT8 tcbm_data;						/* data */
+	int status;								/* status */
+	int dav;								/* data valid */
+	int ack;								/* acknowledge */
+
+	/* motors */
+	int stp;								/* stepper motor phase */
+	int mtr;								/* spindle motor on */
+
+	/* track */
+	UINT8 track_buffer[G64_BUFFER_SIZE];	/* track data buffer */
+	int track_len;							/* track length */
+	int buffer_pos;							/* current byte position within track buffer */
+	int bit_pos;							/* current bit position within track buffer byte */
+	int bit_count;							/* current data byte bit counter */
+	UINT16 data;							/* data shift register */
+	UINT8 yb;								/* GCR data byte */
 
 	/* signals */
-	UINT8 yb;							/* GCR data byte to write */
-	int byte;							/* byte ready */
-	int atna;							/* attention acknowledge */
-	int ds;								/* density select */
-	int stp;							/* stepping motor */
-	int soe;							/* s? output enable */
-	int mode;							/* mode (0 = write, 1 = read) */
+	int ds;									/* density select */
+	int soe;								/* s? output enable */
+	int byte;								/* byte ready */
+	int mode;								/* mode (0 = write, 1 = read) */
 
 	/* devices */
-	const device_config *cpu;
-	const device_config *tpi0;
-	const device_config *tpi1;
-	const device_config *image;
+	running_device *cpu;
+	running_device *tpi0;
+	running_device *tpi1;
+	running_device *image;
 
 	/* timers */
 	emu_timer *bit_timer;
@@ -86,7 +83,7 @@ struct _c1551_t
     INLINE FUNCTIONS
 ***************************************************************************/
 
-INLINE c1551_t *get_safe_token(const device_config *device)
+INLINE c1551_t *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -94,9 +91,28 @@ INLINE c1551_t *get_safe_token(const device_config *device)
 	return (c1551_t *)device->token;
 }
 
+INLINE c1551_config *get_safe_config(running_device *device)
+{
+	assert(device != NULL);
+	assert(device->type == C1551);
+	return (c1551_config *)device->baseconfig().inline_config;
+}
+
 /***************************************************************************
     IMPLEMENTATION
 ***************************************************************************/
+
+/*-------------------------------------------------
+    TIMER_DEVICE_CALLBACK( irq_tick )
+-------------------------------------------------*/
+
+static TIMER_DEVICE_CALLBACK( irq_tick )
+{
+	c1551_t *c1551 = get_safe_token(timer->owner);
+
+	cpu_set_input_line(c1551->cpu, M6502_IRQ_LINE, ASSERT_LINE);
+	cpu_set_input_line(c1551->cpu, M6502_IRQ_LINE, CLEAR_LINE);
+}
 
 /*-------------------------------------------------
     TIMER_CALLBACK( bit_tick )
@@ -104,7 +120,7 @@ INLINE c1551_t *get_safe_token(const device_config *device)
 
 static TIMER_CALLBACK( bit_tick )
 {
-	const device_config *device = (device_config *)ptr;
+	running_device *device = (running_device *)ptr;
 	c1551_t *c1551 = get_safe_token(device);
 	int byte = 0;
 
@@ -122,11 +138,11 @@ static TIMER_CALLBACK( bit_tick )
 		if (c1551->buffer_pos > c1551->track_len + 1)
 		{
 			/* loop to the start of the track */
-			c1551->buffer_pos = TRACK_DATA_START;
+			c1551->buffer_pos = G64_DATA_START;
 		}
 	}
 
-	if ((c1551->data & SYNC_MARK) == SYNC_MARK)
+	if (!SYNC)
 	{
 		/* SYNC detected */
 		c1551->bit_count = 0;
@@ -138,78 +154,56 @@ static TIMER_CALLBACK( bit_tick )
 		c1551->bit_count = 0;
 		byte = 1;
 
-		if (!(c1551->data & 0xff))
+		c1551->yb = c1551->data & 0xff;
+
+		if (!c1551->yb)
 		{
 			/* simulate weak bits with randomness */
-			c1551->data = (c1551->data & 0xff00) | (mame_rand(machine) & 0xff);
+			c1551->yb = mame_rand(machine) & 0xff;
 		}
-	}
 
-	c1551->byte = byte;
+		c1551->byte = byte;
+	}
 }
 
 /*-------------------------------------------------
     c1551_port_r - M6510T port read
 -------------------------------------------------*/
 
-static READ8_DEVICE_HANDLER( c1551_port_r )
+static void read_current_track(c1551_t *c1551)
 {
-	/*
+	c1551->track_len = G64_BUFFER_SIZE;
+	c1551->buffer_pos = G64_DATA_START;
+	c1551->bit_pos = 7;
+	c1551->bit_count = 0;
 
-        bit     description
+	/* read track data */
+	floppy_drive_read_track_data_info_buffer(c1551->image, 0, c1551->track_buffer, &c1551->track_len);
 
-        P0      STEP0
-        P1      STEP1
-        P2      MOTOR ON
-        P3      ACT
-        P4      WPRT
-        P5      DS0
-        P6      DS1
-        P7      BYTE READY
-
-    */
-
-	c1551_t *c1551 = get_safe_token(device->owner);
-	UINT8 data = 0;
-
-	/* write protect sense */
-	data |= !floppy_wpt_r(c1551->image) << 4;
-	
-	/* byte ready */
-	data |= !(c1551->soe && c1551->byte) << 7;
-
-	return data;
+	/* extract track length */
+	c1551->track_len = G64_DATA_START + ((c1551->track_buffer[1] << 8) | c1551->track_buffer[0]);
 }
 
-/*-------------------------------------------------
-    c1551_port_w - M6510T port write
--------------------------------------------------*/
-
-static WRITE8_DEVICE_HANDLER( c1551_port_w )
+static void spindle_motor(c1551_t *c1551, int mtr)
 {
-	/*
+	if (c1551->mtr != mtr)
+	{
+		if (mtr)
+		{
+			/* read track data */
+			read_current_track(c1551);
+		}
 
-        bit     description
+		floppy_mon_w(c1551->image, !mtr);
+		timer_enable(c1551->bit_timer, mtr);
 
-        P0      STEP0
-        P1      STEP1
-        P2      MOTOR ON
-        P3      ACT
-        P4      WPRT
-        P5      DS0
-        P6      DS1
-        P7      BYTE READY
+		c1551->mtr = mtr;
+	}
+}
 
-    */
-
-	c1551_t *c1551 = get_safe_token(device->owner);
-
-	int stp = data & 0x03;
-	int ds = (data >> 5) & 0x03;
-	int mtr = BIT(data, 2);
-
-	/* stepper motor */
-	if (c1551->stp != stp)
+static void step_motor(c1551_t *c1551, int mtr, int stp)
+{
+	if (mtr && (c1551->stp != stp))
 	{
 		int tracks = 0;
 
@@ -223,92 +217,156 @@ static WRITE8_DEVICE_HANDLER( c1551_port_w )
 
 		if (tracks != 0)
 		{
-			c1551->track_len = TRACK_BUFFER_SIZE;
-			c1551->buffer_pos = TRACK_DATA_START;
-			c1551->bit_pos = 7;
-			c1551->bit_count = 0;
-
 			/* step read/write head */
 			floppy_drive_seek(c1551->image, tracks);
 
-			/* read track data */
-			floppy_drive_read_track_data_info_buffer(c1551->image, 0, c1551->track_buffer, &c1551->track_len);
-
-			/* extract track length */
-			c1551->track_len = (c1551->track_buffer[1] << 8) | c1551->track_buffer[0];
+			/* read new track data */
+			read_current_track(c1551);
 		}
 
 		c1551->stp = stp;
 	}
+}
+
+static UINT8 c1551_port_r( running_device *device, UINT8 direction )
+{
+	/*
+
+        bit     description
+
+        P0      STP0A
+        P1      STP0B
+        P2      MTR0
+        P3      ACT0
+        P4      WPS
+        P5      DS0
+        P6      DS1
+        P7      BYTE LTCHED
+
+    */
+
+	c1551_t *c1551 = get_safe_token(device->owner);
+	UINT8 data = 0;
+
+	/* write protect sense */
+	data |= !floppy_wpt_r(c1551->image) << 4;
+
+	/* byte latched */
+	data |= (c1551->soe & c1551->byte) << 7;
+
+	return data;
+}
+
+/*-------------------------------------------------
+    c1551_port_w - M6510T port write
+-------------------------------------------------*/
+
+static void c1551_port_w( running_device *device, UINT8 direction, UINT8 data )
+{
+	/*
+
+        bit     description
+
+        P0      STP0A
+        P1      STP0B
+        P2      MTR0
+        P3      ACT0
+        P4      WPS
+        P5      DS0
+        P6      DS1
+        P7      BYTE LTCHED
+
+    */
+
+	c1551_t *c1551 = get_safe_token(device->owner);
 
 	/* spindle motor */
-	floppy_mon_w(c1551->image, !mtr);
-	timer_enable(c1551->bit_timer, mtr);
+	int mtr = BIT(data, 2);
+	spindle_motor(c1551, mtr);
 
-	/* activity LED */
+	/* stepper motor */
+	int stp = data & 0x03;
+	step_motor(c1551, mtr, stp);
+
+	/* TODO activity LED */
 
 	/* density select */
+	int ds = (data >> 5) & 0x03;
+
 	if (c1551->ds != ds)
 	{
-		timer_adjust_periodic(c1551->bit_timer, attotime_zero, 0, ATTOTIME_IN_HZ(C1551_BITRATE[ds]/4));
+		timer_adjust_periodic(c1551->bit_timer, attotime_zero, 0, ATTOTIME_IN_HZ(C2040_BITRATE[ds]/4));
 		c1551->ds = ds;
 	}
 }
+
+static const m6502_interface m6510t_intf =
+{
+	NULL,			/* read_indexed_func */
+	NULL,			/* write_indexed_func */
+	c1551_port_r,	/* port_read_func */
+	c1551_port_w	/* port_write_func */
+};
 
 /*-------------------------------------------------
     ADDRESS_MAP( c1551_map )
 -------------------------------------------------*/
 
 static ADDRESS_MAP_START( c1551_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0001) AM_DEVREADWRITE(M6510T_TAG, c1551_port_r, c1551_port_w)
-	AM_RANGE(0x0002, 0x07ff) AM_RAM
-	AM_RANGE(0x4000, 0x4007) AM_DEVREADWRITE(M6525_TAG, tpi6525_r, tpi6525_w)
+	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x0800) AM_RAM
+	AM_RANGE(0x4000, 0x4007) AM_MIRROR(0x3ff8) AM_DEVREADWRITE(M6523_0_TAG, tpi6525_r, tpi6525_w)
 	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION("c1551", 0)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
-    tpi6525_interface c1551_tpi_intf
+    tpi6525_interface tpi0_intf
 -------------------------------------------------*/
 
-static READ8_DEVICE_HANDLER( c1551_tpi_pa_r )
+static READ8_DEVICE_HANDLER( tpi0_pa_r )
 {
 	/*
 
         bit     description
 
-        PA0     6523 P0
-        PA1     6523 P1
-        PA2     6523 P2
-        PA3     6523 P3
-        PA4     6523 P4
-        PA5     6523 P5
-        PA6     6523 P6
-        PA7     6523 P7
+        PA0     TCBM PA0
+        PA1     TCBM PA1
+        PA2     TCBM PA2
+        PA3     TCBM PA3
+        PA4     TCBM PA4
+        PA5     TCBM PA5
+        PA6     TCBM PA6
+        PA7     TCBM PA7
 
     */
 
-	return 0;
+	c1551_t *c1551 = get_safe_token(device->owner);
+
+	return c1551->tcbm_data;
 }
 
-static WRITE8_DEVICE_HANDLER( c1551_tpi_pa_w )
+static WRITE8_DEVICE_HANDLER( tpi0_pa_w )
 {
 	/*
 
         bit     description
 
-        PA0     6523 P0
-        PA1     6523 P1
-        PA2     6523 P2
-        PA3     6523 P3
-        PA4     6523 P4
-        PA5     6523 P5
-        PA6     6523 P6
-        PA7     6523 P7
+        PA0     TCBM PA0
+        PA1     TCBM PA1
+        PA2     TCBM PA2
+        PA3     TCBM PA3
+        PA4     TCBM PA4
+        PA5     TCBM PA5
+        PA6     TCBM PA6
+        PA7     TCBM PA7
 
     */
+
+	c1551_t *c1551 = get_safe_token(device->owner);
+
+	c1551->tcbm_data = data;
 }
 
-static READ8_DEVICE_HANDLER( c1551_tpi_pb_r )
+static READ8_DEVICE_HANDLER( tpi0_pb_r )
 {
 	/*
 
@@ -327,10 +385,12 @@ static READ8_DEVICE_HANDLER( c1551_tpi_pb_r )
 
 	c1551_t *c1551 = get_safe_token(device->owner);
 
-	return c1551->data & 0xff;
+	c1551->byte = 0;
+
+	return c1551->yb;
 }
 
-static WRITE8_DEVICE_HANDLER( c1551_tpi_pb_w )
+static WRITE8_DEVICE_HANDLER( tpi0_pb_w )
 {
 	/*
 
@@ -352,63 +412,210 @@ static WRITE8_DEVICE_HANDLER( c1551_tpi_pb_w )
 	c1551->yb = data;
 }
 
-static READ8_DEVICE_HANDLER( c1551_tpi_pc_r )
+static READ8_DEVICE_HANDLER( tpi0_pc_r )
 {
 	/*
 
         bit     description
 
-        PC0     6523 _IRQ
-        PC1     6523 _RES
-        PC2     interface J1
-        PC3     6523 pin 20
-        PC4     SOE
+        PC0     TCBM STATUS0
+        PC1     TCBM STATUS1
+        PC2     TCBM DEV
+        PC3     TCBM ACK
+        PC4     MODE
         PC5     JP1
         PC6     _SYNC
-        PC7     6523 phi2
+        PC7     TCBM DAV
 
     */
 
 	c1551_t *c1551 = get_safe_token(device->owner);
 	UINT8 data = 0;
 
+	/* JP1 */
+	data |= c1551->address << 5;
+
 	/* SYNC detect line */
-	data |= !(c1551->mode && ((c1551->data & SYNC_MARK) == SYNC_MARK)) << 6;
+	data |= SYNC << 6;
+
+	/* TCBM data valid */
+	data |= c1551->dav << 7;
 
 	return data;
 }
 
-static WRITE8_DEVICE_HANDLER( c1551_tpi_pc_w )
+static WRITE8_DEVICE_HANDLER( tpi0_pc_w )
 {
 	/*
 
         bit     description
 
-        PC0     6523 _IRQ
-        PC1     6523 _RES
-        PC2     interface J1
-        PC3     6523 pin 20
-        PC4     SOE
+        PC0     TCBM STATUS0
+        PC1     TCBM STATUS1
+        PC2     TCBM DEV
+        PC3     TCBM ACK
+        PC4     MODE
         PC5     JP1
         PC6     _SYNC
-        PC7     6523 phi2
+        PC7     TCBM DAV
 
     */
 
 	c1551_t *c1551 = get_safe_token(device->owner);
 
-	/* SOE */
-	c1551->soe = BIT(data, 4);
+	/* TCBM status */
+	c1551->status = data & 0x03;
+
+	/* TODO TCBM device number */
+
+	/* TCBM acknowledge */
+	c1551->ack = BIT(data, 3);
+
+	/* read/write mode */
+	c1551->mode = BIT(data, 4);
 }
 
-static const tpi6525_interface c1551_tpi_intf =
+static const tpi6525_interface tpi0_intf =
 {
-	c1551_tpi_pa_r,
-	c1551_tpi_pb_r,
-	c1551_tpi_pc_r,
-	c1551_tpi_pa_w,
-	c1551_tpi_pb_w,
-	c1551_tpi_pc_w,
+	tpi0_pa_r,
+	tpi0_pb_r,
+	tpi0_pc_r,
+	tpi0_pa_w,
+	tpi0_pb_w,
+	tpi0_pc_w,
+	NULL,
+	NULL,
+	NULL
+};
+
+/*-------------------------------------------------
+    tpi6525_interface tpi1_intf
+-------------------------------------------------*/
+
+static READ8_DEVICE_HANDLER( tpi1_pa_r )
+{
+	/*
+
+        bit     description
+
+        PA0     TCBM PA0
+        PA1     TCBM PA1
+        PA2     TCBM PA2
+        PA3     TCBM PA3
+        PA4     TCBM PA4
+        PA5     TCBM PA5
+        PA6     TCBM PA6
+        PA7     TCBM PA7
+
+    */
+
+	c1551_t *c1551 = get_safe_token(device->owner);
+
+	return c1551->tcbm_data;
+}
+
+static WRITE8_DEVICE_HANDLER( tpi1_pa_w )
+{
+	/*
+
+        bit     description
+
+        PA0     TCBM PA0
+        PA1     TCBM PA1
+        PA2     TCBM PA2
+        PA3     TCBM PA3
+        PA4     TCBM PA4
+        PA5     TCBM PA5
+        PA6     TCBM PA6
+        PA7     TCBM PA7
+
+    */
+
+	c1551_t *c1551 = get_safe_token(device->owner);
+
+	c1551->tcbm_data = data;
+}
+
+static READ8_DEVICE_HANDLER( tpi1_pb_r )
+{
+	/*
+
+        bit     description
+
+        PB0     STATUS0
+        PB1     STATUS1
+        PB2
+        PB3
+        PB4
+        PB5
+        PB6
+        PB7
+
+    */
+
+	c1551_t *c1551 = get_safe_token(device->owner);
+
+	return c1551->status;
+}
+
+static READ8_DEVICE_HANDLER( tpi1_pc_r )
+{
+	/*
+
+        bit     description
+
+        PC0
+        PC1
+        PC2
+        PC3
+        PC4
+        PC5
+        PC6     TCBM DAV
+        PC7     TCBM ACK
+
+    */
+
+	c1551_t *c1551 = get_safe_token(device->owner);
+
+	UINT8 data = 0;
+
+	/* TCBM acknowledge */
+	data |= c1551->ack << 7;
+
+	return data;
+}
+
+static WRITE8_DEVICE_HANDLER( tpi1_pc_w )
+{
+	/*
+
+        bit     description
+
+        PC0
+        PC1
+        PC2
+        PC3
+        PC4
+        PC5
+        PC6     TCBM DAV
+        PC7     TCBM ACK
+
+    */
+
+	c1551_t *c1551 = get_safe_token(device->owner);
+
+	/* TCBM data valid */
+	c1551->dav = BIT(data, 6);
+}
+
+static const tpi6525_interface tpi1_intf =
+{
+	tpi1_pa_r,
+	tpi1_pb_r,
+	tpi1_pc_r,
+	tpi1_pa_w,
+	NULL,
+	tpi1_pc_w,
 	NULL,
 	NULL,
 	NULL
@@ -419,8 +626,8 @@ static const tpi6525_interface c1551_tpi_intf =
 -------------------------------------------------*/
 
 static FLOPPY_OPTIONS_START( c1551 )
-//  FLOPPY_OPTION( c1551, "d64", "Commodore 1551 Disk Image", d64_dsk_identify, d64_dsk_construct, NULL )
 	FLOPPY_OPTION( c1551, "g64", "Commodore 1551 GCR Disk Image", g64_dsk_identify, g64_dsk_construct, NULL )
+	FLOPPY_OPTION( c1551, "d64", "Commodore 1551 Disk Image", d64_dsk_identify, d64_dsk_construct, NULL )
 FLOPPY_OPTIONS_END
 
 /*-------------------------------------------------
@@ -444,20 +651,23 @@ static const floppy_config c1551_floppy_config =
 -------------------------------------------------*/
 
 static MACHINE_DRIVER_START( c1551 )
-	MDRV_CPU_ADD(M6510T_TAG, M6510T, 2000000)
+	MDRV_CPU_ADD(M6510T_TAG, M6510T, XTAL_16MHz/8)
 	MDRV_CPU_PROGRAM_MAP(c1551_map)
+	MDRV_CPU_CONFIG(m6510t_intf)
 
-	MDRV_TPI6525_ADD(M6525_TAG, c1551_tpi_intf)
-//  MDRV_MOS6523_ADD(M6523_TAG, 2000000, c1551_mos6523_intf)
+	MDRV_TPI6525_ADD(M6523_0_TAG, tpi0_intf) // 6523
+	MDRV_TPI6525_ADD(M6523_1_TAG, tpi1_intf) // 6523
 
-	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_TAG, c1551_floppy_config)
+	MDRV_TIMER_ADD_PERIODIC("irq", irq_tick, HZ(120))
+
+	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, c1551_floppy_config)
 MACHINE_DRIVER_END
 
 /*-------------------------------------------------
     ROM( c1551 )
 -------------------------------------------------*/
 
-ROM_START( c1551 )
+ROM_START( c1551 ) // schematic 251860
 	ROM_REGION( 0x4000, "c1551", ROMREGION_LOADBYNAME )
 	ROM_LOAD( "318001-01.u4", 0x0000, 0x4000, CRC(6d16d024) SHA1(fae3c788ad9a6cc2dbdfbcf6c0264b2ca921d55e) )
 ROM_END
@@ -469,34 +679,45 @@ ROM_END
 static DEVICE_START( c1551 )
 {
 	c1551_t *c1551 = get_safe_token(device);
+	const c1551_config *config = get_safe_config(device);
+
+	/* set address */
+	assert((config->address > 7) && (config->address < 10));
+	c1551->address = config->address - 8;
 
 	/* find our CPU */
-	c1551->cpu = device_find_child_by_tag(device, M6510T_TAG);
+	c1551->cpu = device->subdevice(M6510T_TAG);
 
 	/* find devices */
-	c1551->tpi0 = device_find_child_by_tag(device, M6525_TAG);
-	c1551->tpi1 = device_find_child_by_tag(device, M6523_TAG);
-	c1551->image = device_find_child_by_tag(device, FLOPPY_0);
-
-	/* allocate track buffer */
-//  c1551->track_buffer = auto_alloc_array(device->machine, UINT8, TRACK_BUFFER_SIZE);
+	c1551->tpi0 = device->subdevice(M6523_0_TAG);
+	c1551->tpi1 = device->subdevice(M6523_1_TAG);
+	c1551->image = device->subdevice(FLOPPY_0);
 
 	/* allocate data timer */
 	c1551->bit_timer = timer_alloc(device->machine, bit_tick, (void *)device);
 
+	/* map TPI1 to host CPU memory space */
+	const address_space *program = cpu_get_address_space(devtag_get_device(device->machine, config->cpu_tag), ADDRESS_SPACE_PROGRAM);
+	UINT32 start_address = c1551->address ? 0xfec0 : 0xfef0;
+
+	memory_install_readwrite8_device_handler(program, c1551->tpi1, start_address, start_address + 7, 0, 0, tpi6525_r, tpi6525_w);
+
 	/* register for state saving */
-//  state_save_register_device_item_pointer(device, 0, c1551->track_buffer, TRACK_BUFFER_SIZE);
+	state_save_register_device_item(device, 0, c1551->tcbm_data);
+	state_save_register_device_item(device, 0, c1551->status);
+	state_save_register_device_item(device, 0, c1551->dav);
+	state_save_register_device_item(device, 0, c1551->ack);
+	state_save_register_device_item(device, 0, c1551->stp);
+	state_save_register_device_item(device, 0, c1551->mtr);
 	state_save_register_device_item(device, 0, c1551->track_len);
 	state_save_register_device_item(device, 0, c1551->buffer_pos);
 	state_save_register_device_item(device, 0, c1551->bit_pos);
 	state_save_register_device_item(device, 0, c1551->bit_count);
 	state_save_register_device_item(device, 0, c1551->data);
 	state_save_register_device_item(device, 0, c1551->yb);
-	state_save_register_device_item(device, 0, c1551->byte);
-	state_save_register_device_item(device, 0, c1551->atna);
 	state_save_register_device_item(device, 0, c1551->ds);
-	state_save_register_device_item(device, 0, c1551->stp);
 	state_save_register_device_item(device, 0, c1551->soe);
+	state_save_register_device_item(device, 0, c1551->byte);
 	state_save_register_device_item(device, 0, c1551->mode);
 }
 
@@ -506,6 +727,12 @@ static DEVICE_START( c1551 )
 
 static DEVICE_RESET( c1551 )
 {
+	c1551_t *c1551 = get_safe_token(device);
+
+	c1551->cpu->reset();
+	c1551->tpi0->reset();
+
+	c1551->soe = 1;
 }
 
 /*-------------------------------------------------
@@ -518,7 +745,7 @@ DEVICE_GET_INFO( c1551 )
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 		case DEVINFO_INT_TOKEN_BYTES:					info->i = sizeof(c1551_t);									break;
-		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = 0;												break;
+		case DEVINFO_INT_INLINE_CONFIG_BYTES:			info->i = sizeof(c1551_config);								break;
 		case DEVINFO_INT_CLASS:							info->i = DEVICE_CLASS_PERIPHERAL;							break;
 
 		/* --- the following bits of info are returned as pointers --- */
@@ -532,7 +759,7 @@ DEVICE_GET_INFO( c1551 )
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:							strcpy(info->s, "Commodore 1551");							break;
-		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Commodore VIC-1540");						break;
+		case DEVINFO_STR_FAMILY:						strcpy(info->s, "Commodore Plus/4");						break;
 		case DEVINFO_STR_VERSION:						strcpy(info->s, "1.0");										break;
 		case DEVINFO_STR_SOURCE_FILE:					strcpy(info->s, __FILE__);									break;
 		case DEVINFO_STR_CREDITS:						strcpy(info->s, "Copyright the MESS Team"); 				break;

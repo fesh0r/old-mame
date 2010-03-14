@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/mbee.h"
 
 
@@ -190,7 +190,7 @@ static void m6545_update_strobe(running_machine *machine, int param)
 
 READ8_HANDLER ( m6545_status_r )
 {
-	const device_config *screen = video_screen_first(space->machine->config);
+	running_device *screen = video_screen_first(space->machine);
 	const rectangle *visarea = video_screen_get_visible_area(screen);
 
 	int data = 0, y = video_screen_get_vpos(space->machine->primary_screen);

@@ -5,7 +5,7 @@
 **
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "video/mc6845.h"
 #include "includes/svi318.h"
 #include "cpu/z80/z80.h"
@@ -47,7 +47,7 @@ typedef struct {
 	/* SVI-806 80 column card */
 	UINT8	svi806_present;
 	UINT8	svi806_ram_enabled;
-	UINT8	*svi806_ram;
+	region_info	*svi806_ram;
 	UINT8	*svi806_gfx;
 } SVI_318;
 
@@ -117,7 +117,7 @@ DEVICE_IMAGE_LOAD( svi318_cart )
 
 	size = MAX(0x8000,image_length(image));
 
-	p = image_malloc(image, size);
+	p = (UINT8*)image_malloc(image, size);
 	if (!p)
 		return INIT_FAIL;
 
@@ -327,6 +327,7 @@ static WRITE_LINE_DEVICE_HANDLER( svi_fdc_drq_w )
 
 const wd17xx_interface svi_wd17xx_interface =
 {
+	DEVCB_NULL,
 	DEVCB_LINE(svi_fdc_intrq_w),
 	DEVCB_LINE(svi_fdc_drq_w),
 	{FLOPPY_0, FLOPPY_1, NULL, NULL}
@@ -334,7 +335,7 @@ const wd17xx_interface svi_wd17xx_interface =
 
 static WRITE8_HANDLER( svi318_fdc_drive_motor_w )
 {
-	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
+	running_device *fdc = devtag_get_device(space->machine, "wd179x");
 	switch (data & 3)
 	{
 	case 1:
@@ -350,12 +351,10 @@ static WRITE8_HANDLER( svi318_fdc_drive_motor_w )
 
 static WRITE8_HANDLER( svi318_fdc_density_side_w )
 {
-	//const device_config *image;
-	const device_config *fdc = devtag_get_device(space->machine, "wd179x");
+	running_device *fdc = devtag_get_device(space->machine, "wd179x");
 
-	wd17xx_set_density(fdc, data & 0x01 ? DEN_FM_LO:DEN_MFM_LO);
-
-	wd17xx_set_side(fdc, data & 0x02 ? 1:0);
+	wd17xx_dden_w(fdc, BIT(data, 0));
+	wd17xx_set_side(fdc, BIT(data, 1));
 }
 
 static READ8_HANDLER( svi318_fdc_irqdrq_r )
@@ -375,7 +374,7 @@ MC6845_UPDATE_ROW( svi806_crtc6845_update_row )
 	for( i = 0; i < x_count; i++ )
 	{
 		int j;
-		UINT8	data = svi.svi806_gfx[ svi.svi806_ram[ ( ma + i ) & 0x7FF ] * 16 + ra ];
+		UINT8	data = svi.svi806_gfx[ svi.svi806_ram->base.u8[ ( ma + i ) & 0x7FF ] * 16 + ra ];
 
 		if ( i == cursor_x )
 		{
@@ -397,8 +396,8 @@ static void svi318_80col_init(running_machine *machine)
 	/* 2K RAM, but allocating 4KB to make banking easier */
 	/* The upper 2KB will be set to FFs and will never be written to */
 	svi.svi806_ram = memory_region_alloc( machine, "gfx2", 0x1000, 0 );
-	memset( svi.svi806_ram, 0x00, 0x800 );
-	memset( svi.svi806_ram + 0x800, 0xFF, 0x800 );
+	memset( svi.svi806_ram->base.u8, 0x00, 0x800 );
+	memset( svi.svi806_ram->base.u8 + 0x800, 0xFF, 0x800 );
 	svi.svi806_gfx = memory_region(machine, "gfx1");
 }
 
@@ -416,18 +415,18 @@ VIDEO_START( svi328_806 )
 
 VIDEO_UPDATE( svi328_806 )
 {
-	if (!strcmp(screen->tag, "screen"))
+	if (!strcmp(screen->tag(), "screen"))
 	{
 		VIDEO_UPDATE_CALL(tms9928a);
 	}
-	else if (!strcmp(screen->tag, "svi806"))
+	else if (!strcmp(screen->tag(), "svi806"))
 	{
-		const device_config *mc6845 = devtag_get_device(screen->machine, "crtc");
+		running_device *mc6845 = devtag_get_device(screen->machine, "crtc");
 		mc6845_update(mc6845, bitmap, cliprect);
 	}
 	else
 	{
-		fatalerror("Unknown screen '%s'\n", screen->tag);
+		fatalerror("Unknown screen '%s'\n", screen->tag());
 	}
 	return 0;
 }
@@ -572,7 +571,7 @@ static const UINT8 cc_ex[0x100] = {
 DRIVER_INIT( svi318 )
 {
 	/* z80 stuff */
-	z80_set_cycle_tables( cputag_get_cpu(machine, "maincpu"), cc_op, cc_cb, cc_ed, cc_xy, cc_xycb, cc_ex );
+	z80_set_cycle_tables( devtag_get_device(machine, "maincpu"), cc_op, cc_cb, cc_ed, cc_xy, cc_xycb, cc_ex );
 
 	memset(&svi, 0, sizeof (svi) );
 
@@ -581,7 +580,7 @@ DRIVER_INIT( svi318 )
 		svi.svi318 = 1;
 	}
 
-	cpu_set_input_line_vector(cputag_get_cpu(machine, "maincpu"), 0, 0xff);
+	cpu_set_input_line_vector(devtag_get_device(machine, "maincpu"), 0, 0xff);
 
 	/* memory */
 	svi.empty_bank = auto_alloc_array(machine, UINT8, 0x8000);
@@ -616,7 +615,7 @@ MACHINE_START( svi318_pal )
 	TMS9928A_configure(&svi318_tms9929a_interface);
 }
 
-static void svi318_load_proc(const device_config *image)
+static void svi318_load_proc(running_device *image)
 {
 	int size;
 	int id = floppy_get_drive(image);
@@ -692,7 +691,7 @@ WRITE8_HANDLER( svi318_writemem4 )
 	{
 		if ( offset < 0x800 )
 		{
-			svi.svi806_ram[ offset ] = data;
+			svi.svi806_ram->base.u8[ offset ] = data;
 		}
 	}
 	else
@@ -819,7 +818,7 @@ static void svi318_set_banks(running_machine *machine)
 
 int svi318_cassette_present(running_machine *machine, int id)
 {
-	const device_config *img = devtag_get_device(machine, "cassette");
+	running_device *img = devtag_get_device(machine, "cassette");
 
 	if ( img == NULL )
 		return FALSE;
@@ -831,7 +830,7 @@ int svi318_cassette_present(running_machine *machine, int id)
 READ8_HANDLER( svi318_io_ext_r )
 {
 	UINT8 data = 0xff;
-	const device_config *device;
+	running_device *device;
 
 	if (svi.bankLow == SVI_CART)
 	{
@@ -899,7 +898,7 @@ READ8_HANDLER( svi318_io_ext_r )
 
 WRITE8_HANDLER( svi318_io_ext_w )
 {
-	const device_config *device;
+	running_device *device;
 
 	if (svi.bankLow == SVI_CART)
 	{

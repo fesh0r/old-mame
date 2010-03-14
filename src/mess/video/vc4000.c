@@ -1,5 +1,5 @@
 #include <assert.h>
-#include "driver.h"
+#include "emu.h"
 
 #include "includes/vc4000.h"
 #include "cpu/s2650/s2650.h"
@@ -77,7 +77,7 @@ static UINT8 joy1_x,joy1_y,joy2_x,joy2_y;
 
 VIDEO_START(vc4000)
 {
-	const device_config *screen = video_screen_first(machine->config);
+	running_device *screen = video_screen_first(machine);
 	int width = video_screen_get_width(screen);
 	int height = video_screen_get_height(screen);
 	int i;
@@ -182,7 +182,7 @@ READ8_HANDLER(vc4000_video_r)
 	case 0xcc:		/* left joystick */
 		if (input_port_read(space->machine, "CONFIG")&1)
 		{		/* paddle */
-			if (!cpu_get_reg(cputag_get_cpu(space->machine, "maincpu"), S2650_FO))
+			if (!cpu_get_reg(devtag_get_device(space->machine, "maincpu"), S2650_FO))
 			{
 				data = input_port_read(space->machine, "JOYS") & 0x03;
 				switch (data)
@@ -221,7 +221,7 @@ READ8_HANDLER(vc4000_video_r)
 		}
 		else
 		{		/* buttons */
-			if (!cpu_get_reg(cputag_get_cpu(space->machine, "maincpu"), S2650_FO))
+			if (!cpu_get_reg(devtag_get_device(space->machine, "maincpu"), S2650_FO))
 			{
 				data = input_port_read(space->machine, "JOYS") & 0x03;
 				switch (data)
@@ -259,7 +259,7 @@ READ8_HANDLER(vc4000_video_r)
 	case 0xcd:		/* right joystick */
 		if (input_port_read(space->machine, "CONFIG")&1)
 		{
-			if (!cpu_get_reg(cputag_get_cpu(space->machine, "maincpu"), S2650_FO))
+			if (!cpu_get_reg(devtag_get_device(space->machine, "maincpu"), S2650_FO))
 			{
 				data = input_port_read(space->machine, "JOYS") & 0x30;
 				switch (data)
@@ -298,7 +298,7 @@ READ8_HANDLER(vc4000_video_r)
 		}
 		else
 		{
-			if (!cpu_get_reg(cputag_get_cpu(space->machine, "maincpu"), S2650_FO))
+			if (!cpu_get_reg(devtag_get_device(space->machine, "maincpu"), S2650_FO))
 			{
 				data = input_port_read(space->machine, "JOYS") & 0x30;
 				switch (data)
@@ -565,7 +565,7 @@ static void vc4000_sprite_update(bitmap_t *bitmap, UINT8 *collision, SPRITE *Thi
 
 INLINE void vc4000_draw_grid(running_machine *machine, UINT8 *collision)
 {
-	const device_config *screen = video_screen_first(machine->config);
+	running_device *screen = video_screen_first(machine);
 	int width = video_screen_get_width(screen);
 	int height = video_screen_get_height(screen);
 	int i, j, m, x, line=vc4000_video.line-20;

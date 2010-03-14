@@ -13,7 +13,7 @@
 
 *********************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "image.h"
 #include "ui.h"
 #include "uimenu.h"
@@ -76,7 +76,7 @@ struct _file_selector_entry
 typedef struct _file_manager_menu_state file_manager_menu_state;
 struct _file_manager_menu_state
 {
-	const device_config *selected_device;
+	running_device *selected_device;
 	astring *current_directory;
 	astring *current_file;
 };
@@ -151,7 +151,7 @@ static void extra_text_draw_box(float origx1, float origx2, float origy, float y
 	float x1, y1, x2, y2, temp;
 
 	/* get the size of the text */
-	ui_draw_text_full(text, 0.0f, 0.0f, 1.0f, JUSTIFY_LEFT, WRAP_WORD,
+	ui_draw_text_full( render_container_get_ui(),text, 0.0f, 0.0f, 1.0f, JUSTIFY_LEFT, WRAP_WORD,
 		DRAW_NONE, ARGB_WHITE, ARGB_BLACK, &text_width, &text_height);
 	width = text_width + (2 * UI_BOX_LR_BORDER);
 	maxwidth = MAX(width, origx2 - origx1);
@@ -170,7 +170,7 @@ static void extra_text_draw_box(float origx1, float origx2, float origy, float y
 	}
 
 	/* draw a box */
-	ui_draw_outlined_box(x1, y1, x2, y2, UI_BACKGROUND_COLOR);
+	ui_draw_outlined_box(render_container_get_ui(),x1, y1, x2, y2, UI_BACKGROUND_COLOR);
 
 	/* take off the borders */
 	x1 += UI_BOX_LR_BORDER;
@@ -179,7 +179,7 @@ static void extra_text_draw_box(float origx1, float origx2, float origy, float y
 	y2 -= UI_BOX_TB_BORDER;
 
 	/* draw the text within it */
-	ui_draw_text_full(text, x1, y1, text_width, JUSTIFY_LEFT, WRAP_WORD,
+	ui_draw_text_full(render_container_get_ui(),text, x1, y1, text_width, JUSTIFY_LEFT, WRAP_WORD,
 					  DRAW_NORMAL, ARGB_WHITE, ARGB_BLACK, NULL, NULL);
 }
 
@@ -304,17 +304,17 @@ static void file_create_render_extra(running_machine *machine, ui_menu *menu, vo
 
 static void menu_file_create_populate(running_machine *machine, ui_menu *menu, void *state, void *selection)
 {
-	astring *buffer = astring_alloc();
+	astring buffer;
 	file_create_menu_state *menustate = (file_create_menu_state *) state;
-	const device_config *device = menustate->manager_menustate->selected_device;
+	running_device *device = menustate->manager_menustate->selected_device;
 	const image_device_format *format;
 	const char *new_image_name;
 
 	/* append the "New Image Name" item */
 	if (selection == ITEMREF_NEW_IMAGE_NAME)
 	{
-		astring_assemble_2(buffer, menustate->filename_buffer, "_");
-		new_image_name = astring_c(buffer);
+		astring_assemble_2(&buffer, menustate->filename_buffer, "_");
+		new_image_name = astring_c(&buffer);
 	}
 	else
 	{
@@ -336,9 +336,6 @@ static void menu_file_create_populate(running_machine *machine, ui_menu *menu, v
 
 	/* set up custom render proc */
 	ui_menu_set_custom_render(menu, file_create_render_extra, ui_get_line_height() + 3.0f * UI_BOX_TB_BORDER, 0);
-
-	/* cleanup */
-	astring_free(buffer);
 }
 
 
@@ -347,7 +344,7 @@ static void menu_file_create_populate(running_machine *machine, ui_menu *menu, v
     create_new_image - creates a new disk image
 -------------------------------------------------*/
 
-static int create_new_image(const device_config *device, const char *directory, const char *filename, int *yes)
+static int create_new_image(running_device *device, const char *directory, const char *filename, int *yes)
 {
 	astring *path;
 	osd_directory_entry *entry;
@@ -379,8 +376,8 @@ static int create_new_image(const device_config *device, const char *directory, 
 
 		case ENTTYPE_FILE:
 			/* a file exists here - ask for permission from the user */
-			child_menu = ui_menu_alloc(device->machine, menu_confirm_save_as, NULL);
-			child_menustate = ui_menu_alloc_state(child_menu, sizeof(*child_menustate), NULL);
+			child_menu = ui_menu_alloc(device->machine, render_container_get_ui(), menu_confirm_save_as, NULL);
+			child_menustate = (confirm_save_as_menu_state*)ui_menu_alloc_state(child_menu, sizeof(*child_menustate), NULL);
 			child_menustate->yes = yes;
 			ui_menu_stack_push(child_menu);
 			do_create = FALSE;
@@ -677,9 +674,10 @@ static file_error menu_file_selector_populate(running_machine *machine, ui_menu 
 	const osd_directory_entry *dirent;
 	const file_selector_entry *entry;
 	const file_selector_entry *selected_entry = NULL;
-	int count, i;
+	int i;
+	const char *volume_name;
 	image_device_info info;
-	const device_config *device = menustate->manager_menustate->selected_device;
+	running_device *device = menustate->manager_menustate->selected_device;
 	const char *path = astring_c(menustate->manager_menustate->current_directory);
 
 	/* open the directory */
@@ -701,11 +699,12 @@ static file_error menu_file_selector_populate(running_machine *machine, ui_menu 
 	}
 
 	/* add the drives */
-	count = osd_num_devices();
-	for (i = 0; i < count; i++)
+	i = 0;
+	while((volume_name = osd_get_volume_name(i))!=NULL)
 	{
 		append_file_selector_entry(menu, menustate, SELECTOR_ENTRY_TYPE_DRIVE,
-			osd_get_device_name(i), osd_get_device_name(i));
+			volume_name, volume_name);
+		i++;
 	}
 
 	/* build the menu for each item */
@@ -804,8 +803,8 @@ static void menu_file_selector(running_machine *machine, ui_menu *menu, void *pa
 
 				case SELECTOR_ENTRY_TYPE_CREATE:
 					/* create */
-					child_menu = ui_menu_alloc(machine, menu_file_create, NULL);
-					child_menustate = ui_menu_alloc_state(child_menu, sizeof(*child_menustate), NULL);
+					child_menu = ui_menu_alloc(machine, render_container_get_ui(), menu_file_create, NULL);
+					child_menustate = (file_create_menu_state*)ui_menu_alloc_state(child_menu, sizeof(*child_menustate), NULL);
 					child_menustate->manager_menustate = menustate->manager_menustate;
 					ui_menu_stack_push(child_menu);
 					break;
@@ -821,7 +820,7 @@ static void menu_file_selector(running_machine *machine, ui_menu *menu, void *pa
 						break;
 					}
 					astring_cpyc(menustate->manager_menustate->current_directory, entry->fullpath);
-					ui_menu_reset(menu, 0);
+					ui_menu_reset(menu, (ui_menu_reset_options)0);
 					break;
 
 				case SELECTOR_ENTRY_TYPE_FILE:
@@ -846,7 +845,7 @@ static void menu_file_selector(running_machine *machine, ui_menu *menu, void *pa
     "makes sense"
 -------------------------------------------------*/
 
-static void fix_working_directory(const device_config *device)
+static void fix_working_directory(running_device *device)
 {
 	/* if the image exists, set the working directory to the parent directory */
 	if (image_exists(device))
@@ -890,22 +889,25 @@ static void file_manager_render_extra(running_machine *machine, ui_menu *menu, v
 static void menu_file_manager_populate(running_machine *machine, ui_menu *menu, void *state)
 {
 	char buffer[2048];
-	const device_config *device;
+	running_device *device;
 	const char *entry_basename;
 
 	/* cycle through all devices for this system */
-	for (device = image_device_first(machine->config); device != NULL; device = image_device_next(device))
+	for (device = machine->devicelist.first(); device != NULL; device = device->next)
 	{
-		/* get the image type/id */
-		snprintf(buffer, ARRAY_LENGTH(buffer),
-			"%s",
-			image_typename_id(device));
+		if (is_image_device(device))
+		{
+			/* get the image type/id */
+			snprintf(buffer, ARRAY_LENGTH(buffer),
+				"%s",
+				image_typename_id(device));
 
-		/* get the base name */
-		entry_basename = image_basename(device);
+			/* get the base name */
+			entry_basename = image_basename(device);
 
-		/* record the menu item */
-		ui_menu_item_append(menu, buffer, (entry_basename != NULL) ? entry_basename : "---", 0, (void *) device);
+			/* record the menu item */
+			ui_menu_item_append(menu, buffer, (entry_basename != NULL) ? entry_basename : "---", 0, (void *) device);
+		}
 	}
 
 	/* set up custom render proc */
@@ -958,13 +960,13 @@ void ui_mess_menu_file_manager(running_machine *machine, ui_menu *menu, void *pa
 		menu_file_manager_populate(machine, menu, state);
 
 	/* update the selected device */
-	menustate->selected_device = (const device_config *) ui_menu_get_selection(menu);
+	menustate->selected_device = (running_device *) ui_menu_get_selection(menu);
 
 	/* process the menu */
 	event = ui_menu_process(machine, menu, 0);
 	if (event != NULL && event->iptkey == IPT_UI_SELECT)
 	{
-		menustate->selected_device = (const device_config *) event->itemref;
+		menustate->selected_device = (running_device *) event->itemref;
 		if (menustate->selected_device != NULL)
 		{
 			/* ensure that the working directory for this device exists */
@@ -978,8 +980,8 @@ void ui_mess_menu_file_manager(running_machine *machine, ui_menu *menu, void *pa
 			ui_menu_reset(menu, UI_MENU_RESET_REMEMBER_POSITION);
 
 			/* push the menu */
-			child_menu = ui_menu_alloc(machine, menu_file_selector, NULL);
-			child_menustate = ui_menu_alloc_state(child_menu, sizeof(*child_menustate), NULL);
+			child_menu = ui_menu_alloc(machine, render_container_get_ui(), menu_file_selector, NULL);
+			child_menustate = (file_selector_menu_state *)ui_menu_alloc_state(child_menu, sizeof(*child_menustate), NULL);
 			child_menustate->manager_menustate = menustate;
 			ui_menu_stack_push(child_menu);
 		}

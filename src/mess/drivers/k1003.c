@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8008/i8008.h"
 #include "k1003.lh"
 
@@ -139,6 +139,6 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( ????, k1003,  0,       0, 	k1003, 	k1003, 	 0,  	   	 "Robotron",   "K1003",		GAME_NOT_WORKING)
+COMP( ????, k1003,  0,       0, 	k1003,	k1003,	 0, 		 "Robotron",   "K1003",		GAME_NOT_WORKING | GAME_NO_SOUND)
 
 

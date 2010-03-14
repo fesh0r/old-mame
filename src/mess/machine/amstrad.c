@@ -35,7 +35,7 @@ This gives a total of 19968 NOPs per frame.
 ***************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "machine/i8255a.h"
 #include "machine/mc146818.h"
@@ -206,7 +206,7 @@ static const rgb_t amstrad_palette[32] =
 	MAKE_RGB(0x060, 0x000, 0x000),			   /* Red */
 	MAKE_RGB(0x060, 0x000, 0x0ff),			   /* mauve */
 	MAKE_RGB(0x060, 0x060, 0x000),			   /* yellow */
-	MAKE_RGB(0x060, 0x060, 0x0ff)	  		   /* pastel blue */
+	MAKE_RGB(0x060, 0x060, 0x0ff)			   /* pastel blue */
 };
 
 
@@ -549,7 +549,7 @@ static void amstrad_plus_dma_parse(running_machine *machine, int channel)
 	{
 	case 0x0000:  // Load PSG register
 		{
-			const device_config *ay8910 = devtag_get_device(machine, "ay");
+			running_device *ay8910 = devtag_get_device(machine, "ay");
 			ay8910_address_w(ay8910, 0, (command & 0x0f00) >> 8);
 			ay8910_data_w(ay8910, 0, command & 0x00ff);
 			ay8910_address_w(ay8910, 0, prev_reg);
@@ -1306,7 +1306,7 @@ VIDEO_START( amstrad )
 
 VIDEO_UPDATE( amstrad )
 {
-	const device_config *mc6845 = devtag_get_device(screen->machine, "mc6845" );
+	running_device *mc6845 = devtag_get_device(screen->machine, "mc6845" );
 	mc6845_update( mc6845, bitmap, cliprect );
 	return 0;
 }
@@ -1369,7 +1369,7 @@ static DIRECT_UPDATE_HANDLER( amstrad_multiface_directoverride )
 {
 		int pc;
 
-		pc = cpu_get_pc(cputag_get_cpu(space->machine, "maincpu"));
+		pc = cpu_get_pc(devtag_get_device(space->machine, "maincpu"));
 
 		/* there are two places where CALL &0065 can be found
         in the multiface rom. At this address there is a RET.
@@ -1895,7 +1895,7 @@ WRITE8_HANDLER( amstrad_plus_asic_6000_w )
 		if ( asic.enabled )
 		{
 			vector = (data & 0xf8) + (amstrad_plus_irq_cause);
-			cpu_set_input_line_vector(cputag_get_cpu(space->machine, "maincpu"), 0, vector);
+			cpu_set_input_line_vector(devtag_get_device(space->machine, "maincpu"), 0, vector);
 			logerror("ASIC: IM 2 vector write %02x, data = &%02x\n",vector,data);
 		}
 		asic.dma_clear = data & 0x01;
@@ -2062,7 +2062,7 @@ Bit Value Function        Bit Value Function
 1   x     |               1   x     |
 0   x     |               0   x     |
 */
-  	case 0x00:
+	case 0x00:
 		/* Select Border Number, get b4 */
 		/* if b4 = 0 : Select Pen Number, get b3-b0 */
 		gate_array.pen_selected = ( dataToGateArray & 0x10 ) ? 0x10 : ( dataToGateArray & 0x0f );
@@ -2294,8 +2294,8 @@ Expansion Peripherals Read/Write -   -   -   -   -   0   -   -   -   -   -   -  
 
 READ8_HANDLER ( amstrad_cpc_io_r )
 {
-	const device_config *fdc = devtag_get_device(space->machine, "upd765");
-	const device_config *mc6845 = devtag_get_device(space->machine, "mc6845" );
+	running_device *fdc = devtag_get_device(space->machine, "upd765");
+	running_device *mc6845 = devtag_get_device(space->machine, "mc6845" );
 
 	unsigned char data = 0xFF;
 	unsigned int r1r0 = (unsigned int)((offset & 0x0300) >> 8);
@@ -2377,7 +2377,7 @@ The exception is the case where none of b7-b0 are reset (i.e. port &FBFF), which
  */
 	if ( amstrad_system_type != SYSTEM_GX4000 )
 	{
- 		if ( ( offset & (1<<10) ) == 0 )
+		if ( ( offset & (1<<10) ) == 0 )
 		{
 			if ( ( offset & (1<<10) ) == 0 )
 			{
@@ -2385,14 +2385,14 @@ The exception is the case where none of b7-b0 are reset (i.e. port &FBFF), which
 
 				switch (b8b0)
 				{
-  				case 0x02:
-  					data = upd765_status_r(fdc, 0);
-  					break;
-  				case 0x03:
-  					data = upd765_data_r(fdc, 0);
-  					break;
-  				default:
-  					break;
+				case 0x02:
+					data = upd765_status_r(fdc, 0);
+					break;
+				case 0x03:
+					data = upd765_data_r(fdc, 0);
+					break;
+				default:
+					break;
 				}
 			}
 		}
@@ -2431,8 +2431,8 @@ static void amstrad_plus_seqcheck(int data)
 /* Offset handler for write */
 WRITE8_HANDLER ( amstrad_cpc_io_w )
 {
-	const device_config *fdc = devtag_get_device(space->machine, "upd765");
-	const device_config *mc6845 = devtag_get_device(space->machine, "mc6845");
+	running_device *fdc = devtag_get_device(space->machine, "upd765");
+	running_device *mc6845 = devtag_get_device(space->machine, "mc6845");
 
 	static int printer_bit8_selected = FALSE;
 
@@ -2446,7 +2446,7 @@ WRITE8_HANDLER ( amstrad_cpc_io_w )
 		{
 			/* if b15 = 0 and b14 = 1 : Gate-Array Write Selected*/
 			if ((offset & (1<<14)) != 0)
-	   			amstrad_GateArray_write(space->machine, data);
+				amstrad_GateArray_write(space->machine, data);
 
 			/* if b15 = 0 : RAM Configuration Write Selected*/
 			AmstradCPC_GA_SetRamConfiguration(space->machine);
@@ -2459,7 +2459,7 @@ WRITE8_HANDLER ( amstrad_cpc_io_w )
 	{
 		switch ((offset & 0x0300) >> 8) // r1r0
 		{
-  		case 0x00:		/* Select internal 6845 register Write Only */
+		case 0x00:		/* Select internal 6845 register Write Only */
 			mc6845_address_w( mc6845, 0, data );
 			if ( amstrad_system_type == SYSTEM_PLUS || amstrad_system_type == SYSTEM_GX4000 )
 				amstrad_plus_seqcheck(data);
@@ -2476,7 +2476,7 @@ WRITE8_HANDLER ( amstrad_cpc_io_w )
 			/* printer port bit 8 */
 			if (printer_bit8_selected && amstrad_system_type == SYSTEM_PLUS)
 			{
-				const device_config *printer = devtag_get_device(space->machine, "centronics");
+				running_device *printer = devtag_get_device(space->machine, "centronics");
 				centronics_d7_w(printer, BIT(data, 3));
 				printer_bit8_selected = FALSE;
 			}
@@ -2500,7 +2500,7 @@ WRITE8_HANDLER ( amstrad_cpc_io_w )
 	{
 		if ((offset & (1<<12)) == 0)
 		{
-			const device_config *printer = devtag_get_device(space->machine, "centronics");
+			running_device *printer = devtag_get_device(space->machine, "centronics");
 
 			/* CPC has a 7-bit data port, bit 8 is the STROBE signal */
 			centronics_data_w(printer, 0, data & 0x7f);
@@ -2593,77 +2593,77 @@ The exception is the case where none of b7-b0 are reset (i.e. port &FBFF), which
 static void amstrad_handle_snapshot(running_machine *machine, unsigned char *pSnapshot)
 {
 	const address_space* space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	const device_config *mc6845 = devtag_get_device(space->machine, "mc6845" );
-	const device_config *ay8910 = devtag_get_device(machine, "ay");
+	running_device *mc6845 = devtag_get_device(space->machine, "mc6845" );
+	running_device *ay8910 = devtag_get_device(machine, "ay");
 	int RegData;
 	int i;
 
 	/* init Z80 */
 	RegData = (pSnapshot[0x011] & 0x0ff) | ((pSnapshot[0x012] & 0x0ff)<<8);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_AF, RegData);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_AF, RegData);
 
 	RegData = (pSnapshot[0x013] & 0x0ff) | ((pSnapshot[0x014] & 0x0ff)<<8);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_BC, RegData);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_BC, RegData);
 
 	RegData = (pSnapshot[0x015] & 0x0ff) | ((pSnapshot[0x016] & 0x0ff)<<8);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_DE, RegData);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_DE, RegData);
 
 	RegData = (pSnapshot[0x017] & 0x0ff) | ((pSnapshot[0x018] & 0x0ff)<<8);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_HL, RegData);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_HL, RegData);
 
 	RegData = (pSnapshot[0x019] & 0x0ff) ;
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_R, RegData);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_R, RegData);
 
 	RegData = (pSnapshot[0x01a] & 0x0ff);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_I, RegData);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_I, RegData);
 
 	if ((pSnapshot[0x01b] & 1)==1)
 	{
-		cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_IFF1, 1);
+		cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_IFF1, 1);
 	}
 	else
 	{
-		cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_IFF1, 0);
+		cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_IFF1, 0);
 	}
 
 	if ((pSnapshot[0x01c] & 1)==1)
 	{
-		cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_IFF2, 1);
+		cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_IFF2, 1);
 	}
 	else
 	{
-		cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_IFF2, 0);
+		cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_IFF2, 0);
 	}
 
 	RegData = (pSnapshot[0x01d] & 0x0ff) | ((pSnapshot[0x01e] & 0x0ff)<<8);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_IX, RegData);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_IX, RegData);
 
 	RegData = (pSnapshot[0x01f] & 0x0ff) | ((pSnapshot[0x020] & 0x0ff)<<8);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_IY, RegData);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_IY, RegData);
 
 	RegData = (pSnapshot[0x021] & 0x0ff) | ((pSnapshot[0x022] & 0x0ff)<<8);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_SP, RegData);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), REG_GENSP, RegData);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_SP, RegData);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), REG_GENSP, RegData);
 
 	RegData = (pSnapshot[0x023] & 0x0ff) | ((pSnapshot[0x024] & 0x0ff)<<8);
 
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_PC, RegData);
-//  cpu_set_reg(cputag_get_cpu(machine, "maincpu"), REG_SP, RegData);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_PC, RegData);
+//  cpu_set_reg(devtag_get_device(machine, "maincpu"), REG_SP, RegData);
 
 	RegData = (pSnapshot[0x025] & 0x0ff);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_IM, RegData);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_IM, RegData);
 
 	RegData = (pSnapshot[0x026] & 0x0ff) | ((pSnapshot[0x027] & 0x0ff)<<8);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_AF2, RegData);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_AF2, RegData);
 
 	RegData = (pSnapshot[0x028] & 0x0ff) | ((pSnapshot[0x029] & 0x0ff)<<8);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_BC2, RegData);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_BC2, RegData);
 
 	RegData = (pSnapshot[0x02a] & 0x0ff) | ((pSnapshot[0x02b] & 0x0ff)<<8);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_DE2, RegData);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_DE2, RegData);
 
 	RegData = (pSnapshot[0x02c] & 0x0ff) | ((pSnapshot[0x02d] & 0x0ff)<<8);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_HL2, RegData);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_HL2, RegData);
 
 	/* init GA */
 	for (i=0; i<17; i++)
@@ -2864,7 +2864,7 @@ static unsigned char amstrad_Psg_FunctionSelected;
 static void update_psg(running_machine *machine)
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	const device_config *ay8910 = devtag_get_device(machine, "ay");
+	running_device *ay8910 = devtag_get_device(machine, "ay");
 
 	if(aleste_mode & 0x20)  // RTC selected
 	{
@@ -2884,26 +2884,26 @@ static void update_psg(running_machine *machine)
 	}
 	switch (amstrad_Psg_FunctionSelected)
 	{
-  	case 0:
+	case 0:
 		{/* Inactive */
 		} break;
-  	case 1:
+	case 1:
 		{/* b6 = 1 ? : Read from selected PSG register and make the register data available to PPI Port A */
-  			ppi_port_inputs[amstrad_ppi_PortA] = ay8910_r(ay8910, 0);
-  		}
+			ppi_port_inputs[amstrad_ppi_PortA] = ay8910_r(ay8910, 0);
+		}
 		break;
-  	case 2:
+	case 2:
 		{/* b7 = 1 ? : Write to selected PSG register and write data to PPI Port A */
-  			ay8910_data_w(ay8910, 0, ppi_port_outputs[amstrad_ppi_PortA]);
-  		}
+			ay8910_data_w(ay8910, 0, ppi_port_outputs[amstrad_ppi_PortA]);
+		}
 		break;
-  	case 3:
+	case 3:
 		{/* b6 and b7 = 1 ? : The register will now be selected and the user can read from or write to it.  The register will remain selected until another is chosen.*/
-  			ay8910_address_w(ay8910, 0, ppi_port_outputs[amstrad_ppi_PortA]);
+			ay8910_address_w(ay8910, 0, ppi_port_outputs[amstrad_ppi_PortA]);
 			prev_reg = ppi_port_outputs[amstrad_ppi_PortA];
-  		}
+		}
 		break;
-  	default:
+	default:
 		{
 		} break;
 	}
@@ -2964,7 +2964,7 @@ READ8_DEVICE_HANDLER (amstrad_ppi_portb_r)
 /* Set b6 with Parallel/Printer port ready */
 	if(amstrad_system_type != SYSTEM_GX4000)
 	{
-		const device_config *printer = devtag_get_device(device->machine, "centronics");
+		running_device *printer = devtag_get_device(device->machine, "centronics");
 		data |= centronics_busy_r(printer) << 6;
 	}
 /* Set b4-b1 50Hz/60Hz state and manufacturer name defined by links on PCB */
@@ -3259,11 +3259,11 @@ static void amstrad_common_init(running_machine *machine)
 	memory_install_write_bank(space, 0xc000, 0xdfff, 0, 0, "bank15");
 	memory_install_write_bank(space, 0xe000, 0xffff, 0, 0, "bank16");
 
-	device_reset(cputag_get_cpu(space->machine, "maincpu"));
+	devtag_get_device(space->machine, "maincpu")->reset();
 	if ( amstrad_system_type == SYSTEM_CPC || amstrad_system_type == SYSTEM_ALESTE )
-		cpu_set_input_line_vector(cputag_get_cpu(machine, "maincpu"), 0, 0xff);
+		cpu_set_input_line_vector(devtag_get_device(machine, "maincpu"), 0, 0xff);
 	else
-		cpu_set_input_line_vector(cputag_get_cpu(machine, "maincpu"), 0, 0x00);
+		cpu_set_input_line_vector(devtag_get_device(machine, "maincpu"), 0, 0x00);
 
 	/* The opcode timing in the Amstrad is different to the opcode
     timing in the core for the Z80 CPU.
@@ -3275,16 +3275,16 @@ static void amstrad_common_init(running_machine *machine)
 
 	/* Using the cool code Juergen has provided, I will override
     the timing tables with the values for the amstrad */
-	z80_set_cycle_tables(cputag_get_cpu(machine, "maincpu"),
-		(void*)amstrad_cycle_table_op,
-		(void*)amstrad_cycle_table_cb,
-		(void*)amstrad_cycle_table_ed,
-		(void*)amstrad_cycle_table_xy,
-		(void*)amstrad_cycle_table_xycb,
-		(void*)amstrad_cycle_table_ex);
+	z80_set_cycle_tables(devtag_get_device(machine, "maincpu"),
+		(const UINT8*)amstrad_cycle_table_op,
+		(const UINT8*)amstrad_cycle_table_cb,
+		(const UINT8*)amstrad_cycle_table_ed,
+		(const UINT8*)amstrad_cycle_table_xy,
+		(const UINT8*)amstrad_cycle_table_xycb,
+		(const UINT8*)amstrad_cycle_table_ex);
 
 	/* Juergen is a cool dude! */
-	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), amstrad_cpu_acknowledge_int);
+	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), amstrad_cpu_acknowledge_int);
 }
 
 
@@ -3292,13 +3292,12 @@ MACHINE_START( amstrad )
 {
 
 	multiface_init(machine);
+	amstrad_system_type = SYSTEM_CPC;
 }
 MACHINE_RESET( amstrad )
 {
 	int i;
 	UINT8 *rom = memory_region(machine, "maincpu");
-
-	amstrad_system_type = SYSTEM_CPC;
 
 	for (i=0; i<256; i++)
 	{
@@ -3317,6 +3316,7 @@ MACHINE_RESET( amstrad )
 MACHINE_START( plus )
 {
 	amstrad_plus_asic_ram = memory_region(machine, "user1");  // 16kB RAM for ASIC, memory-mapped registers.
+	amstrad_system_type = SYSTEM_PLUS;
 }
 
 
@@ -3324,8 +3324,6 @@ MACHINE_RESET( plus )
 {
 	int i;
 	UINT8 *rom = memory_region(machine, "maincpu");
-
-	amstrad_system_type = SYSTEM_PLUS;
 
 	for (i=0; i<128; i++)  // fill ROM table
 	{
@@ -3359,13 +3357,16 @@ MACHINE_RESET( plus )
 	//  multiface_init();
 }
 
+MACHINE_START( gx4000 )
+{
+	amstrad_plus_asic_ram = memory_region(machine, "user1");  // 16kB RAM for ASIC, memory-mapped registers.
+	amstrad_system_type = SYSTEM_GX4000;
+}
 
 MACHINE_RESET( gx4000 )
 {
 	int i;
 	UINT8 *rom = memory_region(machine, "maincpu");
-
-	amstrad_system_type = SYSTEM_GX4000;
 
 	for (i=0; i<128; i++)  // fill ROM table
 	{
@@ -3398,13 +3399,17 @@ MACHINE_RESET( gx4000 )
 	//  multiface_init();
 }
 
+MACHINE_START( kccomp )
+{
+	multiface_init(machine);
+	amstrad_system_type = SYSTEM_CPC;
+}
+
 
 MACHINE_RESET( kccomp )
 {
 	int i;
 	UINT8 *rom = memory_region(machine, "maincpu");
-
-	amstrad_system_type = SYSTEM_CPC;
 
 	for (i=0; i<256; i++)
 	{
@@ -3424,12 +3429,16 @@ MACHINE_RESET( kccomp )
 }
 
 
+MACHINE_START( aleste )
+{
+	multiface_init(machine);
+	amstrad_system_type = SYSTEM_ALESTE;
+}
+
 MACHINE_RESET( aleste )
 {
 	int i;
 	UINT8 *rom = memory_region(machine, "maincpu");
-
-	amstrad_system_type = SYSTEM_ALESTE;
 
 	for (i=0; i<256; i++)
 	{
@@ -3452,7 +3461,7 @@ SNAPSHOT_LOAD(amstrad)
 	if (snapshot_size < 8)
 		return INIT_FAIL;
 
-	snapshot = malloc(snapshot_size);
+	snapshot = (UINT8 *)malloc(snapshot_size);
 	if (!snapshot)
 		return INIT_FAIL;
 

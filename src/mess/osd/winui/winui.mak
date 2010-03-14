@@ -5,18 +5,20 @@
 #-------------------------------------------------
 # object and source roots
 #-------------------------------------------------
-
+# messtest executable name
+MESSUINAME = messui
+MESSUIEXE = $(PREFIX)$(PREFIXSDL)$(MESSUINAME)$(SUFFIX)$(SUFFIX64)$(SUFFIXDEBUG)$(EXE)
+BUILD += $(MESSUIEXE)
 WINUISRC = $(SRC)/osd/winui
 WINUIOBJ = $(OBJ)/osd/winui
 
 OBJDIRS += $(WINUIOBJ)
-	
+
 MESS_WINUISRC = $(SRC)/mess/osd/winui
 MESS_WINUIOBJ = $(OBJ)/mess/osd/winui
 OBJDIRS += $(MESS_WINUIOBJ)
 CFLAGS += -I$(WINUISRC) -I$(MESS_WINUISRC)
-
-
+RCFLAGS += -DMESS
 
 #-------------------------------------------------
 # Windows UI object files
@@ -47,9 +49,10 @@ WINUIOBJS += \
 	$(WINUIOBJ)/mui_opts.o \
 	$(WINUIOBJ)/winui.o \
 	$(WINUIOBJ)/helpids.o \
+	$(WINUIOBJ)/mui_main.o \
 	$(MESS_WINUIOBJ)/messui.o \
 	$(MESS_WINUIOBJ)/optionsms.o \
- 	$(MESS_WINUIOBJ)/layoutms.o \
+	$(MESS_WINUIOBJ)/layoutms.o \
 	$(MESS_WINUIOBJ)/msuiutil.o \
 	$(MESS_WINUIOBJ)/propertiesms.o \
 	$(MESS_WINUIOBJ)/swconfig.o \
@@ -58,13 +61,10 @@ WINUIOBJS += \
 
 
 # add resource file
-GUIRESFILE = $(MESS_WINUIOBJ)/messui.res
-
-$(LIBOSD): $(WINUIOBJS)
-
+RESFILEUI = $(MESS_WINUIOBJ)/messui.res
 
 #-------------------------------------------------
-# rules for creating helpids.c 
+# rules for creating helpids.c
 #-------------------------------------------------
 
 $(WINUIOBJ)/helpids.o : $(WINUIOBJ)/helpids.c
@@ -72,7 +72,7 @@ $(WINUIOBJ)/helpids.o : $(WINUIOBJ)/helpids.c
 	$(CC) $(CDEFS) $(CFLAGS) -c $< -o $@
 
 $(WINUIOBJ)/helpids.c : $(WINUIOBJ)/mkhelp$(EXE) $(WINUISRC)/resource.h $(WINUISRC)/resource.hm $(WINUISRC)/mameui.rc
-	$(WINUIOBJ)/mkhelp$(EXE) $(WINUISRC)/mameui.rc >$@
+	@"$(WINUIOBJ)/mkhelp$(EXE)" $(WINUISRC)/mameui.rc >$@
 
 # rule to build the generator
 $(WINUIOBJ)/mkhelp$(EXE): $(WINUIOBJ)/mkhelp.o $(LIBOCORE)
@@ -94,7 +94,7 @@ DEFS += -DWINVER=0x0400
 endif
 
 DEFS += \
-	-D_WIN32_IE=0x0500 \
+	-D_WIN32_IE=0x0501 \
 	-DDECL_SPEC= \
 	-DZEXTERN=extern \
 
@@ -126,4 +126,8 @@ $(MESS_WINUIOBJ)/messui.res:	$(WINUISRC)/mameui.rc $(MESS_WINUISRC)/messui.rc $(
 
 $(WINUIOBJ)/mamevers.rc: $(OBJ)/build/verinfo$(EXE) $(SRC)/version.c
 	@echo Emitting $@...
-	@$(VERINFO) -b mess $(SRC)/version.c  > $@
+	@"$(VERINFO)" -b mess $(SRC)/version.c  > $@
+
+$(MESSUIEXE): $(WINUIOBJS) $(VERSIONOBJ) $(DRVLIBS) $(LIBOSD) $(LIBEMU) $(LIBCPU) $(LIBDASM) $(LIBSOUND) $(LIBUTIL) $(EXPAT) $(ZLIB) $(SOFTFLOAT) $(LIBOCORE_NOMAIN) $(RESFILEUI)
+	@echo Linking $@...
+	$(LD) $(LDFLAGS) -mwindows  $^ $(LIBS) $(EXPAT) -o $@

@@ -108,7 +108,7 @@ TODO: Which clock signals are available in a PC Jr?
 ***************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/nec/nec.h"
 #include "cpu/i86/i86.h"
 #include "sound/speaker.h"
@@ -273,6 +273,7 @@ static ADDRESS_MAP_START(pc16_io, ADDRESS_SPACE_IO, 16)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8("pic8259", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE8("ppi8255", i8255a_r, i8255a_w, 0xffff)
+	AM_RANGE(0x0070, 0x007f) AM_RAM // needed for Poisk-2
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,				pc_page_w, 0xffff)
 	AM_RANGE(0x00a0, 0x00a1) AM_WRITE8( pc_nmi_enable_w, 0x00ff )
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE(pc16le_JOY_r,				pc16le_JOY_w)
@@ -281,6 +282,7 @@ static ADDRESS_MAP_START(pc16_io, ADDRESS_SPACE_IO, 16)
 #endif
 	AM_RANGE(0x0240, 0x0257) AM_READWRITE(pc16le_rtc_r,				pc16le_rtc_w)
 	AM_RANGE(0x0278, 0x027b) AM_DEVREADWRITE8("lpt_2", pc_lpt_r, pc_lpt_w, 0x00ff)
+	AM_RANGE(0x02b0, 0x02bf) AM_RAM // needed for EC-18xx
 	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8("ins8250_3", ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ins8250_1", ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc16le_HDC1_r,			pc16le_HDC1_w)
@@ -391,7 +393,7 @@ static ADDRESS_MAP_START(tandy1000_16_io, ADDRESS_SPACE_IO, 16)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8("pit8253", pit8253_r, pit8253_w, 0xffff)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(tandy1000_pio_r,			tandy1000_pio_w, 0xffff)
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,				pc_page_w, 0xffff)
-	AM_RANGE(0x00c0, 0x00c1) AM_DEVWRITE8("sn76496", 	sn76496_w, 0xffff)
+	AM_RANGE(0x00c0, 0x00c1) AM_DEVWRITE8("sn76496",	sn76496_w, 0xffff)
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE8(pc_JOY_r,					pc_JOY_w, 0xffff)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ins8250_1", ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x0320, 0x0323) AM_READWRITE8(pc_HDC1_r,				pc_HDC1_w, 0xffff)
@@ -1432,7 +1434,7 @@ static const unsigned i86_address_mask = 0x000fffff;
 
 #if defined(ADLIB)
 /* irq line not connected to pc on adlib cards (and compatibles) */
-static void pc_irqhandler(const device_config *device, int linestate) {}
+static void pc_irqhandler(running_device *device, int linestate) {}
 
 static const ym3812_interface pc_ym3812_interface =
 {
@@ -1645,7 +1647,7 @@ static const cassette_config ibm5150_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED
+	(cassette_state)(CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED)
 };
 
 static GFXDECODE_START( ibm5150 )
@@ -2401,6 +2403,134 @@ static MACHINE_DRIVER_START( ibmpcjr )
 	MDRV_RAM_DEFAULT_SIZE("640K")
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( iskr1031 )
+	MDRV_DRIVER_DATA(pc_state)
+	/* basic machine hardware */
+	MDRV_CPU_PC(pc16, pc16, I8086, 4772720, pc_frame_interrupt)
+
+	MDRV_QUANTUM_TIME(HZ(60))
+
+	MDRV_MACHINE_START(pc)
+	MDRV_MACHINE_RESET(pc)
+
+	MDRV_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
+
+	MDRV_I8237_ADD( "dma8237", XTAL_14_31818MHz/3, ibm5150_dma8237_config )
+
+	MDRV_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
+
+	MDRV_I8255A_ADD( "ppi8255", ibm5160_ppi8255_interface )
+
+	MDRV_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
+	MDRV_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
+	MDRV_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2] )			/* TODO: Verify model */
+	MDRV_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3] )			/* TODO: Verify model */
+
+	/* video hardware */
+	MDRV_IMPORT_FROM( pcvideo_cga )
+	MDRV_GFXDECODE(ibm5150)
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+#ifdef ADLIB
+	MDRV_SOUND_ADD("ym3812", YM3812, ym3812_StdClock)
+	MDRV_SOUND_CONFIG(pc_ym3812_interface)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+#endif
+#ifdef GAMEBLASTER
+	MDRV_SOUND_ADD("saa1099.1", SAA1099, 4772720)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MDRV_SOUND_ADD("saa1099.2", SAA1099, 4772720)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+#endif
+
+	/* keyboard */
+	MDRV_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)
+
+	/* printer */
+	MDRV_PC_LPT_ADD("lpt_0", pc_lpt_config)
+	MDRV_PC_LPT_ADD("lpt_1", pc_lpt_config)
+	MDRV_PC_LPT_ADD("lpt_2", pc_lpt_config)
+
+	/* harddisk */
+	MDRV_IMPORT_FROM( pc_hdc )
+
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
+
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("640K")
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( poisk2 )
+	MDRV_DRIVER_DATA(pc_state)
+	/* basic machine hardware */
+	MDRV_CPU_PC(pc16, pc16, I8086, 4772720, pc_frame_interrupt)
+
+	MDRV_QUANTUM_TIME(HZ(60))
+
+	MDRV_MACHINE_START(pc)
+	MDRV_MACHINE_RESET(pc)
+
+	MDRV_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
+
+	MDRV_I8237_ADD( "dma8237", XTAL_14_31818MHz/3, ibm5150_dma8237_config )
+
+	MDRV_PIC8259_ADD( "pic8259", ibm5150_pic8259_config )
+
+	MDRV_I8255A_ADD( "ppi8255", ibm5160_ppi8255_interface )
+
+	MDRV_INS8250_ADD( "ins8250_0", ibm5150_com_interface[0] )			/* TODO: Verify model */
+	MDRV_INS8250_ADD( "ins8250_1", ibm5150_com_interface[1] )			/* TODO: Verify model */
+	MDRV_INS8250_ADD( "ins8250_2", ibm5150_com_interface[2] )			/* TODO: Verify model */
+	MDRV_INS8250_ADD( "ins8250_3", ibm5150_com_interface[3] )			/* TODO: Verify model */
+
+	/* video hardware */
+	MDRV_IMPORT_FROM( pcvideo_poisk2 )
+	MDRV_GFXDECODE(ibm5150)
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD("speaker", SPEAKER, 0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+#ifdef ADLIB
+	MDRV_SOUND_ADD("ym3812", YM3812, ym3812_StdClock)
+	MDRV_SOUND_CONFIG(pc_ym3812_interface)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+#endif
+#ifdef GAMEBLASTER
+	MDRV_SOUND_ADD("saa1099.1", SAA1099, 4772720)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MDRV_SOUND_ADD("saa1099.2", SAA1099, 4772720)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+#endif
+
+	/* keyboard */
+	MDRV_KB_KEYTRONIC_ADD("keyboard", pc_keytronic_intf)
+
+	/* printer */
+	MDRV_PC_LPT_ADD("lpt_0", pc_lpt_config)
+	MDRV_PC_LPT_ADD("lpt_1", pc_lpt_config)
+	MDRV_PC_LPT_ADD("lpt_2", pc_lpt_config)
+
+	/* harddisk */
+	MDRV_IMPORT_FROM( pc_hdc )
+
+	MDRV_UPD765A_ADD("upd765", pc_fdc_upd765_not_connected_interface)
+
+	MDRV_FLOPPY_2_DRIVES_ADD(ibmpc_floppy_config)
+
+	/* internal ram */
+	MDRV_RAM_ADD("messram")
+	MDRV_RAM_DEFAULT_SIZE("640K")
+MACHINE_DRIVER_END
+
+
 #if 0
 	//pcjr roms? (incomplete dump, most likely 64 kbyte)
 	// basic c1.20
@@ -2945,17 +3075,155 @@ ROM_START( dgone )
 	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f)) /* "AMI 8412PI // 5788005 // (C) IBM CORP. 1981 // KOREA" */
 ROM_END
 
+ROM_START( iskr1031 )
+	ROM_REGION16_LE(0x100000,"maincpu", 0)
+	ROM_SYSTEM_BIOS(0, "v1", "v1")
+	ROMX_LOAD( "150-02.bin", 0xfc000, 0x2000, CRC(e33fb974) SHA1(f5f3ece67c025c0033716ff516e1a34fbeb32749), ROM_SKIP(1) | ROM_BIOS(1))
+	ROMX_LOAD( "150-03.bin", 0xfc001, 0x2000, CRC(8c482258) SHA1(90ef48955e0df556dc06a000a797ef42ccf430c5), ROM_SKIP(1) | ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "v2", "v2")
+	ROMX_LOAD( "150-06.bin", 0xfc000, 0x2000, CRC(1adbf969) SHA1(08c0a0fc50a75e6207b1987bae389cca60893eac), ROM_SKIP(1) | ROM_BIOS(2))
+	ROMX_LOAD( "150-07.bin", 0xfc001, 0x2000, CRC(0dc4b65a) SHA1(c96f066251a7343eac8113ea9dcb2cb12d0334d5), ROM_SKIP(1) | ROM_BIOS(2))
 
+	ROM_REGION(0x2000,"gfx1", 0)
+	ROM_LOAD( "iskra-1031_font.bin", 0x0000, 0x2000, CRC(f4d62e80) SHA1(ad7e81a0c9abc224671422bbcf6f6262da92b510))
+ROM_END
+
+ROM_START( iskr1030m )
+	ROM_REGION16_LE(0x100000,"maincpu", 0)
+	ROMX_LOAD( "iskra-1030m_0.rom", 0xfc000, 0x2000, CRC(0d698e19) SHA1(2fe117c9f4f8c4b59085d5a41f919d743c425fdd), ROM_SKIP(1))
+	ROMX_LOAD( "iskra-1030m_1.rom", 0xfc001, 0x2000, CRC(fe808337) SHA1(b0b7ebe14324ada8aa9a6926a82b18e80f78a257), ROM_SKIP(1))
+	ROM_REGION(0x2000,"gfx1", 0)
+	ROM_LOAD( "iskra-1030m.chr", 0x0000, 0x2000, CRC(50b162eb) SHA1(5bd7cb1705a69bd16115a4c9ed1c2748a5c8ad51))
+ROM_END
+
+ROM_START( ec1840 )
+	ROM_REGION16_LE(0x100000,"maincpu", 0)
+	ROM_SYSTEM_BIOS(0, "v4", "EC-1840.04")
+	ROMX_LOAD( "000-04-971b.bin", 0xfe000, 0x0800, CRC(06aeaee8) SHA1(9f954e4c48156d573a8e0109e7ca652be9e6036a), ROM_SKIP(1) | ROM_BIOS(1))
+	ROMX_LOAD( "001-04-92b7.bin", 0xff000, 0x0800, CRC(3fae650a) SHA1(c98b777fdeceadd72d6eb9465b3501b9ead55a08), ROM_SKIP(1) | ROM_BIOS(1))
+	ROMX_LOAD( "002-04-9e17.bin", 0xfe001, 0x0800, CRC(d59712df) SHA1(02ea1b3ae9662f5c64c58920a32ca9db0f6fbd12), ROM_SKIP(1) | ROM_BIOS(1))
+	ROMX_LOAD( "003-04-3ccb.bin", 0xff001, 0x0800, CRC(7fc362c7) SHA1(538e13639ad2b4c30bd72582e323181e63513306), ROM_SKIP(1) | ROM_BIOS(1))
+
+	ROM_REGION(0x2000,"gfx1", ROMREGION_ERASE00)
+ROM_END
+
+ROM_START( ec1841 )
+	ROM_REGION16_LE(0x100000,"maincpu", 0)
+	ROM_SYSTEM_BIOS(0, "v1", "EC-1841.01")
+	ROMX_LOAD( "012-01-3107.bin", 0xfc000, 0x0800, CRC(77957396) SHA1(785f1dceb6e2b4618f5c5f0af15eb74a8c951448), ROM_SKIP(1) | ROM_BIOS(1))
+	ROMX_LOAD( "013-01-203f.bin", 0xfc001, 0x0800, CRC(768bd3d5) SHA1(2e948f2ad262de306d889b7964c3f1aad45ff5bc), ROM_SKIP(1) | ROM_BIOS(1))
+	ROMX_LOAD( "014-01-fa40.bin", 0xfd000, 0x0800, CRC(47722b58) SHA1(a6339ee8af516f834826b7828a5cf79cb650480c), ROM_SKIP(1) | ROM_BIOS(1))
+	ROMX_LOAD( "015-01-bf1d.bin", 0xfd001, 0x0800, CRC(b585b5ea) SHA1(d0ebed586eb13031477c2e071c50416682f80489), ROM_SKIP(1) | ROM_BIOS(1))
+	ROMX_LOAD( "016-01-65f7.bin", 0xfe000, 0x0800, CRC(28a07db4) SHA1(17fbcd60dacd1d3f8d8355db429f97e4d1d1ac88), ROM_SKIP(1) | ROM_BIOS(1))
+	ROMX_LOAD( "017-01-5be1.bin", 0xfe001, 0x0800, CRC(928bda26) SHA1(ee889184067e2680b29a8ef1c3a76cf5afd4c78d), ROM_SKIP(1) | ROM_BIOS(1))
+	ROMX_LOAD( "018-01-7090.bin", 0xff000, 0x0800, CRC(75ca7d7e) SHA1(6356426820c5326a7893a437d54b02f250ef8609), ROM_SKIP(1) | ROM_BIOS(1))
+	ROMX_LOAD( "019-01-0492.bin", 0xff001, 0x0800, CRC(8a9d593e) SHA1(f3936d2cb4e6d130dd732973f126c3aa20612463), ROM_SKIP(1) | ROM_BIOS(1))
+
+	ROM_SYSTEM_BIOS(1, "v2", "EC-1841.02")
+	ROMX_LOAD( "012-02-37f6.bin", 0xfc000, 0x0800, CRC(8f5c6a20) SHA1(874b62f9cee8d3b974f33732f94eff10fc002c44), ROM_SKIP(1) | ROM_BIOS(2))
+	ROMX_LOAD( "013-02-2552.bin", 0xfc001, 0x0800, CRC(e3c10128) SHA1(d6ed743ebe9c130925c9f17aad1a45db9194c967), ROM_SKIP(1) | ROM_BIOS(2))
+	ROMX_LOAD( "014-02-0fbe.bin", 0xfd000, 0x0800, CRC(f8517e5e) SHA1(8034cd6ff5778365dc9daa494524f1753a74f1ed), ROM_SKIP(1) | ROM_BIOS(2))
+	ROMX_LOAD( "015-02-d736.bin", 0xfd001, 0x0800, CRC(8538c52a) SHA1(ee981ce90870b6546a18f2a2e64d71b0038ce0dd), ROM_SKIP(1) | ROM_BIOS(2))
+	ROMX_LOAD( "016-02-5b2c.bin", 0xfe000, 0x0800, CRC(3d1d1e67) SHA1(c527e29796537787c0f6c329f3c203f6131ca77f), ROM_SKIP(1) | ROM_BIOS(2))
+	ROMX_LOAD( "017-02-4b9d.bin", 0xfe001, 0x0800, CRC(1b985264) SHA1(5ddcb9c13564be208c5068c105444a87159c67ee), ROM_SKIP(1) | ROM_BIOS(2))
+	ROMX_LOAD( "018-02-7090.bin", 0xff000, 0x0800, CRC(75ca7d7e) SHA1(6356426820c5326a7893a437d54b02f250ef8609), ROM_SKIP(1) | ROM_BIOS(2))
+	ROMX_LOAD( "019-02-0493.bin", 0xff001, 0x0800, CRC(61aae23d) SHA1(7b3aa24a63ee31b194297eb1e61c3827edfcb95a), ROM_SKIP(1) | ROM_BIOS(2))
+
+	ROM_SYSTEM_BIOS(2, "v3", "EC-1841.03")
+	ROMX_LOAD( "012-03-37e7.bin", 0xfc000, 0x0800, CRC(49992bd5) SHA1(119121e1b4af1c44b9b8c2edabe7dc1d3019c4a6), ROM_SKIP(1) | ROM_BIOS(3))
+	ROMX_LOAD( "013-03-2554.bin", 0xfc001, 0x0800, CRC(834bd7d7) SHA1(e37514fc4cb8a5cbe68e7564e0e07d5116c4021a), ROM_SKIP(1) | ROM_BIOS(3))
+	ROMX_LOAD( "014-03-0fbe.bin", 0xfd000, 0x0800, CRC(f8517e5e) SHA1(8034cd6ff5778365dc9daa494524f1753a74f1ed), ROM_SKIP(1) | ROM_BIOS(3))
+	ROMX_LOAD( "015-03-d736.bin", 0xfd001, 0x0800, CRC(8538c52a) SHA1(ee981ce90870b6546a18f2a2e64d71b0038ce0dd), ROM_SKIP(1) | ROM_BIOS(3))
+	ROMX_LOAD( "016-03-5b2c.bin", 0xfe000, 0x0800, CRC(3d1d1e67) SHA1(c527e29796537787c0f6c329f3c203f6131ca77f), ROM_SKIP(1) | ROM_BIOS(3))
+	ROMX_LOAD( "017-03-4b9d.bin", 0xfe001, 0x0800, CRC(1b985264) SHA1(5ddcb9c13564be208c5068c105444a87159c67ee), ROM_SKIP(1) | ROM_BIOS(3))
+	ROMX_LOAD( "018-03-7090.bin", 0xff000, 0x0800, CRC(75ca7d7e) SHA1(6356426820c5326a7893a437d54b02f250ef8609), ROM_SKIP(1) | ROM_BIOS(3))
+	ROMX_LOAD( "019-03-0493.bin", 0xff001, 0x0800, CRC(61aae23d) SHA1(7b3aa24a63ee31b194297eb1e61c3827edfcb95a), ROM_SKIP(1) | ROM_BIOS(3))
+
+	ROM_REGION(0x2000,"gfx1", ROMREGION_ERASE00)
+ROM_END
+
+ROM_START( ec1845 )
+	ROM_REGION16_LE(0x100000,"maincpu", 0)
+	ROMX_LOAD( "184500.bin", 0xfc000, 0x0800, CRC(7c472ef7) SHA1(3af53f27b49bbc731bf51f9300fbada23a1bfcfc), ROM_SKIP(1))
+	ROMX_LOAD( "184501.bin", 0xfc001, 0x0800, CRC(db240dc6) SHA1(d7bb022213d09bbf2a8107fe4f1cd27b23939e18), ROM_SKIP(1))
+	ROMX_LOAD( "184502.bin", 0xfd000, 0x0800, CRC(149e7e29) SHA1(7f2a297588fef1bc750c57e6ae0d5acf3d27c486), ROM_SKIP(1))
+	ROMX_LOAD( "184503.bin", 0xfd001, 0x0800, CRC(e28cbd74) SHA1(cf1fba4e67c8e1dd8cdda547118e84b704029b03), ROM_SKIP(1))
+	ROMX_LOAD( "184504.bin", 0xfe000, 0x0800, CRC(55fa7a1d) SHA1(58f7abab08b9d2f0a1c1636e11bb72af2694c95f), ROM_SKIP(1))
+	ROMX_LOAD( "184505.bin", 0xfe001, 0x0800, CRC(c807e3f5) SHA1(08117e449f0d04f96041cff8d34893f500f3760d), ROM_SKIP(1))
+	ROMX_LOAD( "184506.bin", 0xff000, 0x0800, CRC(24f5c27c) SHA1(7822dd7f715ef00ccf6d8408be8bbfe01c2eba20), ROM_SKIP(1))
+	ROMX_LOAD( "184507.bin", 0xff001, 0x0800, CRC(75122203) SHA1(7b0fbdf1315230633e39574ac7360163bc7361e1), ROM_SKIP(1))
+	ROM_REGION(0x2000,"gfx1", ROMREGION_ERASE00)
+ROM_END
+
+
+ROM_START( mk88 )
+	ROM_REGION16_LE(0x100000,"maincpu", 0)
+	ROM_DEFAULT_BIOS("v392")
+	ROM_SYSTEM_BIOS(0, "v290", "v2.90")
+	ROMX_LOAD( "mk88m.bin", 0xfc000, 0x2000, CRC(09c9da3b) SHA1(d1e7ad23b5f5b3576ad128c1198294129754f39f), ROM_BIOS(1))
+	ROMX_LOAD( "mk88b.bin", 0xfe000, 0x2000, CRC(8a922476) SHA1(c19c3644ab92fd12e13f32b410cd26e3c844a03b), ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "v391", "v3.91")
+	ROMX_LOAD( "mkm.bin", 0xfc000, 0x2000, CRC(65f979e8) SHA1(13e85be9bc8ceb5ab9e559e7d0089e26fbbb84fc), ROM_BIOS(2))
+	ROMX_LOAD( "mkb.bin", 0xfe000, 0x2000, CRC(830a0447) SHA1(11bc200fdbcfbbe335f4c282020750c0b5ca4167), ROM_BIOS(2))
+	ROM_SYSTEM_BIOS(2, "v392", "v3.92")
+	ROMX_LOAD( "m88.bin", 0xfc000, 0x2000, CRC(fe1b4e36) SHA1(fcb420af0ff09a7d43fcb9b7d0b0233a2071c159), ROM_BIOS(3))
+	ROMX_LOAD( "b88.bin", 0xfe000, 0x2000, CRC(58a418df) SHA1(216398d4e4302ee7efcc2c8f9ff9d8a1161229ea), ROM_BIOS(3))
+	ROM_REGION(0x2000,"gfx1", ROMREGION_ERASE00)
+	// Here CGA rom with cyrillic support should be added
+ROM_END
+
+ROM_START( poisk1 )
+	ROM_REGION16_LE(0x100000,"maincpu", 0)
+	ROM_LOAD( "b_hd_v11.rf2", 0xc8000, 0x0800, CRC(a19c39b2) SHA1(57faa56b320abf801fedbed578cf97d253e5b777)) // HDD controller ver 1.1
+    ROM_LOAD( "b942_5mb.bin", 0x00000, 0x0800, CRC(a3cfa240) SHA1(0b0aa1ce839a957153bfbbe70310480ca9fe21b6)) // HDD controller ver 1.4
+
+	ROM_LOAD( "b_ngmd_n.rf2", 0x0000, 0x0800, CRC(967e172a) SHA1(95117c40fd9f624fee08ccf37f615b16ff249688)) // Floppy
+	ROM_LOAD( "b_ngmd_t.rf2", 0x0000, 0x0800, CRC(630010b1) SHA1(50876fe4f5f4f32a242faa70f9154574cd315ec4)) // Floppy
+	ROM_LOAD( "biosp1s.rf4",  0xfe000, 0x2000, CRC(1a85f671) SHA1(f0e59b2c4d92164abca55a96a58071ce869ff988)) // Main BIOS
+	ROM_LOAD( "boot_net.rf4", 0x0000, 0x2000, CRC(316c2030) SHA1(d043325596455772252e465b85321f1b5c529d0b)) // NET BUIS
+	// probably card BIOSes
+	ROM_LOAD( "p1_t_i_o.rf4", 0x0000, 0x2000, CRC(18a781de) SHA1(7267970ee27e3ea1d972bee8e74b17bac1051619))
+	ROM_LOAD( "p1_t_pls.rf4", 0x0000, 0x2000, CRC(c8210ffb) SHA1(f2d1a6c90e4708bcc56186b2fb906fa852667084))
+	ROM_LOAD( "p1_t_pol.rf4", 0x0000, 0x2000, CRC(c8210ffb) SHA1(f2d1a6c90e4708bcc56186b2fb906fa852667084))
+	ROM_LOAD( "p1_t_ram.rf4", 0x0000, 0x2000, CRC(e42f5a61) SHA1(ce2554eae8f0d2b6d482890dd198cf7e2d29c655))
+
+	ROM_REGION(0x2000,"gfx1", ROMREGION_ERASE00)
+    ROM_LOAD( "poisk.cga", 0x0000, 0x0800, CRC(f6eb39f0) SHA1(0b788d8d7a8e92cc612d044abcb2523ad964c200))
+ROM_END
+
+ROM_START( poisk2 )
+	ROM_REGION16_LE(0x100000,"maincpu", 0)
+	ROM_SYSTEM_BIOS(0, "v20", "v2.0")
+	ROMX_LOAD( "b_p2_20h.rf4", 0xfc001, 0x2000, CRC(d53189b7) SHA1(ace40f1a40642b51fe5d2874acef81e48768b23b), ROM_SKIP(1) | ROM_BIOS(1))
+	ROMX_LOAD( "b_p2_20l.rf4", 0xfc000, 0x2000, CRC(2d61fcc9) SHA1(11873c8741ba37d6c2fe1f482296aece514b7618), ROM_SKIP(1) | ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "v21", "v2.1")
+	ROMX_LOAD( "b_p2_21h.rf4", 0xfc001, 0x2000, CRC(22197297) SHA1(506c7e63027f734d62ef537f484024548546011f), ROM_SKIP(1) | ROM_BIOS(2))
+	ROMX_LOAD( "b_p2_21l.rf4", 0xfc000, 0x2000, CRC(0eb2ea7f) SHA1(67bb5fec53ebfa2a5cad2a3d3d595678d6023024), ROM_SKIP(1) | ROM_BIOS(2))
+	ROM_SYSTEM_BIOS(2, "v24", "v2.4")
+	ROMX_LOAD( "b_p2_24h.rf4", 0xfc001, 0x2000, CRC(ea842c9e) SHA1(dcdbf27374149dae0ef76d410cc6c615d9b99372), ROM_SKIP(1) | ROM_BIOS(3))
+	ROMX_LOAD( "b_p2_24l.rf4", 0xfc000, 0x2000, CRC(02f21250) SHA1(f0b133fb4470bddf2f7bf59688cf68198ed8ce55), ROM_SKIP(1) | ROM_BIOS(3))
+	ROM_SYSTEM_BIOS(3, "v21d", "v2.1d")
+	ROMX_LOAD( "opp2_1h.rf4", 0xfc001, 0x2000, CRC(b7cd7f4f) SHA1(ac473822fb44d7b898d628732cf0a27fcb4d26d6), ROM_SKIP(1) | ROM_BIOS(4))
+	ROMX_LOAD( "opp2_1l.rf4", 0xfc000, 0x2000, CRC(1971dca3) SHA1(ecd61cc7952af834d8abc11db372c3e70775489d), ROM_SKIP(1) | ROM_BIOS(4))
+	ROM_SYSTEM_BIOS(4, "v22d", "v2.2d")
+	ROMX_LOAD( "opp2_2h.rf4", 0xfc001, 0x2000, CRC(b9e3a5cc) SHA1(0a28afbff612471ee81d69a98789e75253c57a30), ROM_SKIP(1) | ROM_BIOS(5))
+	ROMX_LOAD( "opp2_2l.rf4", 0xfc000, 0x2000, CRC(6877aad6) SHA1(1d0031d044beb4f9f321e3c8fdedf57467958900), ROM_SKIP(1) | ROM_BIOS(5))
+	ROM_SYSTEM_BIOS(5, "v23d", "v2.3d")
+	ROMX_LOAD( "opp2_3h.rf4", 0xfc001, 0x2000, CRC(ac7d4f06) SHA1(858d6e084a38814280b3e29fb54971f4f532e484), ROM_SKIP(1) | ROM_BIOS(6))
+	ROMX_LOAD( "opp2_3l.rf4", 0xfc000, 0x2000, CRC(3c877ea1) SHA1(0753168659653538311c0ad1df851cbbdba426f4), ROM_SKIP(1) | ROM_BIOS(6))
+	ROM_REGION(0x2000,"gfx1", ROMREGION_ERASE00)
+	ROM_LOAD( "p2_ecga.rf4", 0x0000, 0x2000, CRC(d537f665) SHA1(d70f085b9b0cbd53df7c3122fbe7592998ba8fed))
+ROM_END
 /***************************************************************************
 
   Game driver(s)
 
 ***************************************************************************/
 
-/*     YEAR     NAME		PARENT		COMPAT  MACHINE     INPUT       INIT        COMPANY     FULLNAME */
+/*     YEAR     NAME        PARENT      COMPAT  MACHINE     INPUT       INIT        COMPANY     FULLNAME */
 COMP(  1981,	ibm5150,	0,		0,	ibm5150,    ibm5150,	ibm5150,    "International Business Machines",  "IBM PC 5150" , 0)
 COMP(  1984,	dgone,		ibm5150,	0,	pccga,      pccga,	pccga,	    "Data General",  "Data General/One" , GAME_NOT_WORKING)	/* CGA, 2x 3.5" disk drives */
-COMP(  1985,	bw230,		ibm5150,	0,	pccga,	    bondwell,   bondwell,   "Bondwell Holding",  "BW230 (PRO28 Series)", GAME_NOT_WORKING )
+COMP(  1985,	bw230,		ibm5150,	0,	pccga,	    bondwell,   bondwell,   "Bondwell Holding",  "BW230 (PRO28 Series)", 0 )
 COMP(  1988,	europc,		ibm5150,	0,	europc,     europc,	europc,     "Schneider Rdf. AG",  "EURO PC", GAME_NOT_WORKING)
 
 // pcjr (better graphics, better sound)
@@ -2980,4 +3248,13 @@ COMP(  1987,	pc,		ibm5150,	0,	pccga,	    pccga,	pccga,	    "Generic",  "PC (CGA)
 COMP ( 1987,	pcmda,		ibm5150,	0,	pcmda,      pcmda,	ibm5150,    "Generic",  "PC (MDA)" , 0)
 COMP ( 1987,    pcherc,		ibm5150,	0,	pcherc,     pcmda,      ibm5150,    "Generic",  "PC (Hercules)" , 0)
 COMP ( 1987,	xtvga,		ibm5150,	0,	xtvga,      xtvga,	pc_vga,	    "Generic",  "PC/XT (VGA, MF2 Keyboard)" , GAME_NOT_WORKING)
+
+COMP ( 1989,	iskr1031,	ibm5150,	0,	iskr1031,      pccga,	pccga,	    "",  "Iskra-1031" , GAME_NOT_WORKING)
+COMP ( 1989,	iskr1030m,	ibm5150,	0,	iskr1031,      pccga,	pccga,	    "",  "Iskra-1030M" , GAME_NOT_WORKING)
+COMP ( 1987,	ec1840,		ibm5150,	0,	iskr1031,      pccga,	pccga,	    "",  "EC-1840" , GAME_NOT_WORKING)
+COMP ( 1987,	ec1841,		ibm5150,	0,	iskr1031,      pccga,	pccga,	    "",  "EC-1841" , GAME_NOT_WORKING)
+COMP ( 1989,	ec1845,		ibm5150,	0,	iskr1031,      pccga,	pccga,	    "",  "EC-1845" , GAME_NOT_WORKING)
+COMP ( 1989,	mk88,		ibm5150,	0,	iskr1031,      pccga,	pccga,	    "",  "MK-88" , GAME_NOT_WORKING)
+COMP ( 1990,	poisk1,		ibm5150,	0,	iskr1031,      pccga,	pccga,	    "",  "Poisk-1" , GAME_NOT_WORKING)
+COMP ( 1991,	poisk2,		ibm5150,	0,	poisk2,        pccga,	pccga,	    "",  "Poisk-2" , GAME_NOT_WORKING)
 

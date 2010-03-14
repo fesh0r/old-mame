@@ -23,7 +23,7 @@
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/tiki100.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
@@ -36,7 +36,7 @@
 #include "sound/ay8910.h"
 #include "devices/messram.h"
 
-INLINE const device_config *get_floppy_image(running_machine *machine, int drive)
+INLINE running_device *get_floppy_image(running_machine *machine, int drive)
 {
 	return floppy_get_device(machine, drive);
 }
@@ -45,7 +45,7 @@ INLINE const device_config *get_floppy_image(running_machine *machine, int drive
 
 static READ8_HANDLER( gfxram_r )
 {
-	tiki100_state *state = space->machine->driver_data;
+	tiki100_state *state = (tiki100_state *)space->machine->driver_data;
 
 	UINT16 addr = (offset + (state->scroll << 7)) & TIKI100_VIDEORAM_MASK;
 
@@ -54,7 +54,7 @@ static READ8_HANDLER( gfxram_r )
 
 static WRITE8_HANDLER( gfxram_w )
 {
-	tiki100_state *state = space->machine->driver_data;
+	tiki100_state *state = (tiki100_state *)space->machine->driver_data;
 
 	UINT16 addr = (offset + (state->scroll << 7)) & TIKI100_VIDEORAM_MASK;
 
@@ -63,7 +63,7 @@ static WRITE8_HANDLER( gfxram_w )
 
 static void tiki100_bankswitch(running_machine *machine)
 {
-	tiki100_state *state = machine->driver_data;
+	tiki100_state *state = (tiki100_state *)machine->driver_data;
 	const address_space *program = cputag_get_address_space(machine, Z80_TAG, ADDRESS_SPACE_PROGRAM);
 
 	if (state->vire)
@@ -116,7 +116,7 @@ static void tiki100_bankswitch(running_machine *machine)
 
 static READ8_HANDLER( keyboard_r )
 {
-	tiki100_state *state = space->machine->driver_data;
+	tiki100_state *state = (tiki100_state *)space->machine->driver_data;
 
 	static const char *const keynames[] = { "ROW1", "ROW2", "ROW3", "ROW4", "ROW5", "ROW6", "ROW7", "ROW8", "ROW9", "ROW10", "ROW11", "ROW12" };
 	UINT8 data = input_port_read(space->machine, keynames[state->keylatch]);
@@ -130,7 +130,7 @@ static READ8_HANDLER( keyboard_r )
 
 static WRITE8_HANDLER( keyboard_w )
 {
-	tiki100_state *state = space->machine->driver_data;
+	tiki100_state *state = (tiki100_state *)space->machine->driver_data;
 
 	state->keylatch = 0;
 }
@@ -152,7 +152,7 @@ static WRITE8_HANDLER( video_mode_w )
 
     */
 
-	tiki100_state *state = space->machine->driver_data;
+	tiki100_state *state = (tiki100_state *)space->machine->driver_data;
 
 	state->mode = data;
 
@@ -182,7 +182,7 @@ static WRITE8_HANDLER( palette_w )
 
     */
 
-	tiki100_state *state = space->machine->driver_data;
+	tiki100_state *state = (tiki100_state *)space->machine->driver_data;
 
 	state->palette = data;
 }
@@ -204,14 +204,14 @@ static WRITE8_HANDLER( system_w )
 
     */
 
-	tiki100_state *state = space->machine->driver_data;
+	tiki100_state *state = (tiki100_state *)space->machine->driver_data;
 
 	/* drive select */
 	if (BIT(data, 0)) wd17xx_set_drive(state->fd1797, 0);
 	if (BIT(data, 1)) wd17xx_set_drive(state->fd1797, 1);
 
 	/* density select */
-	wd17xx_set_density(state->fd1797, BIT(data, 4) ? DEN_FM_LO : DEN_FM_HI);
+	wd17xx_dden_w(state->fd1797, BIT(data, 4));
 
 	/* floppy motor */
 	floppy_mon_w(get_floppy_image(space->machine, 0), !BIT(data, 6));
@@ -246,7 +246,7 @@ static ADDRESS_MAP_START( tiki100_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x03) AM_READWRITE(keyboard_r, keyboard_w)
 	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE(Z80DART_TAG, z80dart_cd_ba_r, z80dart_cd_ba_w)
-	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE(Z80PIO_TAG, z80pio_r, z80pio_w)
+	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE(Z80PIO_TAG, z80pio_cd_ba_r, z80pio_cd_ba_w)
 	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0x03) AM_WRITE(video_mode_w)
 	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE(FD1797_TAG, wd17xx_r, wd17xx_w)
 	AM_RANGE(0x14, 0x14) AM_MIRROR(0x01) AM_WRITE(palette_w)
@@ -407,7 +407,7 @@ INPUT_PORTS_END
 
 static VIDEO_UPDATE( tiki100 )
 {
-	tiki100_state *state = screen->machine->driver_data;
+	tiki100_state *state = (tiki100_state *)screen->machine->driver_data;
 
 	UINT16 addr = (state->scroll << 7);
 	int sx, y, pixel, mode = (state->mode >> 4) & 0x03;
@@ -499,14 +499,14 @@ static Z80DART_INTERFACE( dart_intf )
 
 /* Z80-PIO Interface */
 
-static const z80pio_interface pio_intf =
+static Z80PIO_INTERFACE( pio_intf )
 {
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),	/* callback when change interrupt status */
 	DEVCB_NULL,						/* port A read callback */
-	DEVCB_NULL,						/* port B read callback */
 	DEVCB_NULL,						/* port A write callback */
-	DEVCB_NULL,						/* port B write callback */
 	DEVCB_NULL,						/* portA ready active callback */
+	DEVCB_NULL,						/* port B read callback */
+	DEVCB_NULL,						/* port B write callback */
 	DEVCB_NULL						/* portB ready active callback */
 };
 
@@ -514,7 +514,7 @@ static const z80pio_interface pio_intf =
 
 static TIMER_DEVICE_CALLBACK( ctc_tick )
 {
-	tiki100_state *state = timer->machine->driver_data;
+	tiki100_state *state = (tiki100_state *)timer->machine->driver_data;
 
 	z80ctc_trg0_w(state->z80ctc, 1);
 	z80ctc_trg0_w(state->z80ctc, 0);
@@ -542,6 +542,7 @@ static const wd17xx_interface tiki100_wd17xx_interface =
 {
 	DEVCB_NULL,
 	DEVCB_NULL,
+	DEVCB_NULL,
 	{ FLOPPY_0, FLOPPY_1, NULL, NULL }
 };
 
@@ -549,7 +550,7 @@ static const wd17xx_interface tiki100_wd17xx_interface =
 
 static WRITE8_DEVICE_HANDLER( video_scroll_w )
 {
-	tiki100_state *state = device->machine->driver_data;
+	tiki100_state *state = (tiki100_state *)device->machine->driver_data;
 
 	state->scroll = data;
 }
@@ -578,7 +579,7 @@ static const z80_daisy_chain tiki100_daisy_chain[] =
 
 static MACHINE_START( tiki100 )
 {
-	tiki100_state *state = machine->driver_data;
+	tiki100_state *state = (tiki100_state *)machine->driver_data;
 
 	/* find devices */
 	state->fd1797 = devtag_get_device(machine, FD1797_TAG);
@@ -675,7 +676,7 @@ static MACHINE_DRIVER_START( tiki100 )
 
 	/* devices */
 	MDRV_Z80DART_ADD(Z80DART_TAG, 2000000, dart_intf)
-	MDRV_Z80PIO_ADD(Z80PIO_TAG, pio_intf)
+	MDRV_Z80PIO_ADD(Z80PIO_TAG, 2000000, pio_intf)
 	MDRV_Z80CTC_ADD(Z80CTC_TAG, 2000000, ctc_intf)
 	MDRV_TIMER_ADD_PERIODIC("ctc", ctc_tick, HZ(2000000))
 	MDRV_WD179X_ADD(FD1797_TAG, tiki100_wd17xx_interface) // FD1767PL-02 or FD1797-PL

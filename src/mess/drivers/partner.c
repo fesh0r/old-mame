@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "sound/wave.h"
 #include "machine/i8255a.h"
@@ -142,7 +142,7 @@ static const cassette_config partner_cassette_config =
 {
 	rkp_cassette_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED)
 };
 
 static FLOPPY_OPTIONS_START(partner)
@@ -225,6 +225,7 @@ static MACHINE_DRIVER_START( partner )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
+	MDRV_RAM_DEFAULT_VALUE(0x00)
 MACHINE_DRIVER_END
 
 /* ROM definition */
@@ -240,5 +241,5 @@ ROM_START( partner )
 ROM_END
 
 /* Driver */
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT   INIT    	COMPANY   FULLNAME       FLAGS */
-COMP( 1987, partner, radio86,   0, 	partner, 	partner,partner,  	"SAM SKB VM", 	"Partner-01.01",	GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT   INIT        COMPANY   FULLNAME       FLAGS */
+COMP( 1987, partner, radio86,   0,	partner,	partner,partner,	"SAM SKB VM",	"Partner-01.01",	GAME_NOT_WORKING)

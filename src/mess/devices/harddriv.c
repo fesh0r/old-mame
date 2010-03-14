@@ -15,7 +15,7 @@
 
 *********************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "harddisk.h"
 #include "harddriv.h"
 
@@ -76,7 +76,7 @@ struct _dev_harddisk_t
 };
 
 
-INLINE dev_harddisk_t *get_safe_token(const device_config *device)
+INLINE dev_harddisk_t *get_safe_token(running_device *device)
 {
 	assert( device != NULL );
 	assert( device->token != NULL );
@@ -95,10 +95,10 @@ INLINE dev_harddisk_t *get_safe_token(const device_config *device)
  *
  *************************************/
 
-static int internal_load_mess_hd(const device_config *image, const char *metadata)
+static int internal_load_mess_hd(running_device *image, const char *metadata)
 {
 	dev_harddisk_t	*harddisk = get_safe_token( image );
-	chd_error		err = 0;
+	chd_error		err = (chd_error)0;
 	int				is_writeable;
 
 	/* open the CHD file */
@@ -232,7 +232,7 @@ static DEVICE_IMAGE_UNLOAD( mess_hd )
  *
  *************************************/
 
-hard_disk_file *mess_hd_get_hard_disk_file(const device_config *device)
+hard_disk_file *mess_hd_get_hard_disk_file(running_device *device)
 {
 	dev_harddisk_t	*harddisk = get_safe_token( device );
 
@@ -247,7 +247,7 @@ hard_disk_file *mess_hd_get_hard_disk_file(const device_config *device)
  *
  *************************************/
 
-chd_file *mess_hd_get_chd_file(const device_config *device)
+chd_file *mess_hd_get_chd_file(running_device *device)
 {
 	chd_file *result = NULL;
 	hard_disk_file *hd_file;
@@ -270,7 +270,7 @@ static DEVICE_START(mess_hd)
 {
 	dev_harddisk_t	*harddisk = get_safe_token( device );
 
-	harddisk->config = device->static_config;
+	harddisk->config = (const harddisk_callback_config*)device->baseconfig().static_config;
 	harddisk->chd = NULL;
 	harddisk->hard_disk_handle = NULL;
 }
@@ -384,39 +384,6 @@ static DEVICE_IMAGE_UNLOAD(mess_ide)
 }
 
 
-#ifdef UNUSED_FUNCTION
-/*-------------------------------------------------
-    ide_hd_validity_check - check this device's validity
--------------------------------------------------*/
-
-static int ide_hd_validity_check(const mess_device_class *devclass)
-{
-	int error = 0;
-	int which_address;
-	INT64 count;
-	struct ide_interface *intf;
-
-	which_address = (int) mess_device_get_info_int(devclass, DEVINFO_INT_IDEDRIVE_ADDRESS);
-	intf = (struct ide_interface *) mess_device_get_info_ptr(devclass, DEVINFO_PTR_IDEDRIVE_INTERFACE);
-	count = mess_device_get_info_int(devclass, MESS_DEVINFO_INT_COUNT);
-
-	if (which_address != 0)
-	{
-		mame_printf_error("%s: IDE device has non-zero address\n", devclass->gamedrv->name);
-		error = 1;
-	}
-
-	if (!intf)
-	{
-		mame_printf_error("%s: IDE device does not specify an interface\n", devclass->gamedrv->name);
-		error = 1;
-	}
-
-	return error;
-}
-#endif
-
-
 DEVICE_GET_INFO(mess_ide)
 {
 	switch( state )
@@ -425,7 +392,6 @@ DEVICE_GET_INFO(mess_ide)
 		case DEVINFO_FCT_START:						info->start = DEVICE_START_NAME(mess_ide); break;
 		case DEVINFO_FCT_IMAGE_LOAD:				info->f = (genf *) DEVICE_IMAGE_LOAD_NAME(mess_ide); break;
 		case DEVINFO_FCT_IMAGE_UNLOAD:				info->f = (genf *) DEVICE_IMAGE_UNLOAD_NAME(mess_ide); break;
-//      case DEVINFO_FCT_IMAGE_VERIFY:              info->f = (genf *) ide_hd_validity_check; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case DEVINFO_STR_NAME:						strcpy(info->s, "IDE harddisk"); break;

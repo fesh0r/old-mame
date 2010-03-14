@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 
 static ADDRESS_MAP_START(pc2000_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -67,5 +67,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1993, pc2000,  0,       0, 	pc2000, 	pc2000, 	 0,  "VTech",   "PreComputer 2000",		GAME_NOT_WORKING)
+COMP( 1993, pc2000,  0,       0,	pc2000, 	pc2000, 	 0,  "VTech",   "PreComputer 2000",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

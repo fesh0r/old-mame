@@ -29,7 +29,7 @@
  *
  *****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "machine/wd17xx.h"
 #include "devices/flopdrv.h"
 #include "cpu/arm/arm.h"
@@ -202,6 +202,7 @@ INPUT_PORTS_END
 
 static const wd17xx_interface a310_wd17xx_interface =
 {
+	DEVCB_NULL,
 	DEVCB_LINE(a310_wd177x_intrq_w),
 	DEVCB_LINE(a310_wd177x_drq_w),
 	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}

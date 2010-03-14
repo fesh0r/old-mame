@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/terminal.h"
 
@@ -82,5 +82,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT   COMPANY   FULLNAME       FLAGS */
-COMP( ????, pimps,  0,       0, 	pimps, 	pimps, 	 0,  		"Henry Colford",   "PIMPS",		GAME_NOT_WORKING)
+COMP( ????, pimps,  0,       0, 	pimps,	pimps,	 0, 		"Henry Colford",   "PIMPS",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

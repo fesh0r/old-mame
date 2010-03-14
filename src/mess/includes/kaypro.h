@@ -11,18 +11,15 @@
 
 extern const z80pio_interface kayproii_pio_g_intf;
 extern const z80pio_interface kayproii_pio_s_intf;
+extern const z80pio_interface kaypro4_pio_s_intf;
 extern const z80sio_interface kaypro_sio_intf;
 extern const wd17xx_interface kaypro_wd1793_interface;
 
-READ8_DEVICE_HANDLER( kayproii_pio_r );
 READ8_DEVICE_HANDLER( kaypro_sio_r );
-READ8_DEVICE_HANDLER( kaypro2x_sio_r );
 
 READ8_HANDLER( kaypro2x_system_port_r );
 
-WRITE8_DEVICE_HANDLER( kayproii_pio_w );
 WRITE8_DEVICE_HANDLER( kaypro_sio_w );
-WRITE8_DEVICE_HANDLER( kaypro2x_sio_w );
 
 WRITE8_HANDLER( kaypro_baud_a_w );
 WRITE8_HANDLER( kayproii_baud_b_w );
@@ -30,7 +27,9 @@ WRITE8_HANDLER( kaypro2x_baud_a_w );
 WRITE8_HANDLER( kaypro2x_system_port_w );
 
 MACHINE_RESET( kayproii );
+MACHINE_START( kayproii );
 MACHINE_RESET( kaypro2x );
+MACHINE_START( kaypro2x );
 
 QUICKLOAD_LOAD( kayproii );
 QUICKLOAD_LOAD( kaypro2x );

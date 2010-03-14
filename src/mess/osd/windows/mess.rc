@@ -25,17 +25,17 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // Menu
 //
 
-IDR_RUNTIME_MENU MENU 
+IDR_RUNTIME_MENU MENU
 BEGIN
     POPUP "&File"
     BEGIN
-        MENUITEM "&Load State...",              ID_FILE_LOADSTATE
+        MENUITEM "&Load State...",              ID_FILE_LOADSTATE_NEWUI
         MENUITEM "&Save State",                 ID_FILE_SAVESTATE
         MENUITEM "S&ave State As...",           ID_FILE_SAVESTATE_AS
         MENUITEM SEPARATOR
         MENUITEM "Save Sc&reenshot",            ID_FILE_SAVESCREENSHOT
         MENUITEM SEPARATOR
-        MENUITEM "&Exit",                       ID_FILE_EXIT
+        MENUITEM "&Exit",                       ID_FILE_EXIT_NEWUI
     END
     POPUP "&Edit"
     BEGIN
@@ -83,7 +83,7 @@ BEGIN
         END
         MENUITEM "Show &FPS",                   ID_OPTIONS_TOGGLEFPS
         MENUITEM SEPARATOR
-        MENUITEM "&Hide Menubar\tScrLk",        ID_OPTIONS_TOGGLEMENUBAR
+        MENUITEM "&Hide Menubar",        		ID_OPTIONS_TOGGLEMENUBAR
         MENUITEM "&Full Screen\tAlt+Enter",     ID_OPTIONS_FULLSCREEN
         MENUITEM "Show P&rofiler",              ID_OPTIONS_PROFILER, GRAYED
         MENUITEM "&Debugger...",                ID_OPTIONS_DEBUGGER
@@ -95,7 +95,7 @@ BEGIN
     POPUP "&Help"
     BEGIN
         MENUITEM "About This System...",        ID_HELP_ABOUTSYSTEM
-        MENUITEM "&About MESS...",              ID_HELP_ABOUT
+        MENUITEM "&About MESS...",              ID_HELP_ABOUT_NEWUI
     END
 END
 
@@ -106,17 +106,17 @@ END
 // TEXTINCLUDE
 //
 
-1 TEXTINCLUDE 
+1 TEXTINCLUDE
 BEGIN
     "messres.h\0"
 END
 
-2 TEXTINCLUDE 
+2 TEXTINCLUDE
 BEGIN
     "#include <windows.h>\0"
 END
 
-3 TEXTINCLUDE 
+3 TEXTINCLUDE
 BEGIN
     "\r\n"
     "\0"
@@ -132,14 +132,14 @@ END
 
 #ifndef UNDER_CE
 IDD_TAPEDIALOG DIALOGEX 0, 0, 172, 65
-STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION |
     WS_SYSMENU
 CAPTION "Tape Control"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    CONTROL         "",IDC_SLIDER,"msctls_trackbar32",TBS_BOTH | 
+    CONTROL         "",IDC_SLIDER,"msctls_trackbar32",TBS_BOTH |
                     TBS_NOTICKS | WS_TABSTOP,6,24,162,15
-    PUSHBUTTON      "Play",IDC_PLAY,6,41,35,17
+    PUSHBUTTON      "Play",IDC_PLAY_NEWUI,6,41,35,17
     PUSHBUTTON      "Stop",IDC_STOP,72,41,35,17
     PUSHBUTTON      "Pause",IDC_PAUSE,132,41,35,17
     LTEXT           "",IDC_CAPTION,12,6,102,12
@@ -154,6 +154,7 @@ END
 // Icon
 //
 
+IDI_ICON_MESS           ICON    DISCARDABLE     "../../osd/winui/res/mess.ico"
 IDI_ICON_CART           ICON    DISCARDABLE     "../../osd/winui/res/cpu.ico"
 IDI_ICON_HARD           ICON    DISCARDABLE     "../../osd/winui/res/harddisk.ico"
 IDI_ICON_CASS           ICON    DISCARDABLE     "../../mess/osd/winui/res/win_cass.ico"
@@ -169,7 +170,7 @@ IDI_ICON_SNAP           ICON    DISCARDABLE     "../../mess/osd/winui/res/win_sn
 //
 
 #ifdef APSTUDIO_INVOKED
-GUIDELINES DESIGNINFO 
+GUIDELINES DESIGNINFO
 BEGIN
     IDD_TAPEDIALOG, DIALOG
     BEGIN

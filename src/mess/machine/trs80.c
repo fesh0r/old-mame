@@ -8,7 +8,7 @@
 ***************************************************************************/
 
 /* Core includes */
-#include "driver.h"
+#include "emu.h"
 #include "machine/ctronics.h"
 #include "machine/ay31015.h"
 #include "sound/speaker.h"
@@ -42,12 +42,12 @@ static UINT8 trs80_nmi_data=0xff;	/* Passes FDC int to NMI handler */
 UINT8 trs80_mode = 0;			/* Control bits passed to video output routine */
 
 #define IRQ_M1_RTC		0x80	/* RTC on Model I */
-#define IRQ_M1_FDC 		0x40	/* FDC on Model I */
+#define IRQ_M1_FDC		0x40	/* FDC on Model I */
 #define IRQ_M4_RTC		0x04	/* RTC on Model 4 */
 #define CASS_RISE		0x01	/* high speed cass on Model III/4) */
 #define CASS_FALL		0x02	/* high speed cass on Model III/4) */
 
-#define MAX_LUMPS	192	 	/* crude storage units - don't know much about it */
+#define MAX_LUMPS	192		/* crude storage units - don't know much about it */
 #define MAX_GRANULES	8		/* lumps consisted of granules.. aha */
 #define MAX_SECTORS 	5		/* and granules of sectors */
 
@@ -63,11 +63,11 @@ static UINT8 sector[4] = {0, }; 			/* current sector per drive */
 
 static UINT8 cassette_data;
 static emu_timer *cassette_data_timer;
-static const device_config *trs80_printer;
-static const device_config *trs80_ay31015;
-static const device_config *trs80_cass;
-static const device_config *trs80_speaker;
-static const device_config *trs80_fdc;
+static running_device *trs80_printer;
+static running_device *trs80_ay31015;
+static running_device *trs80_cass;
+static running_device *trs80_speaker;
+static running_device *trs80_fdc;
 
 static TIMER_CALLBACK( cassette_data_callback )
 {
@@ -110,7 +110,7 @@ QUICKLOAD_LOAD( trs80_cmd )
 	unsigned offs = 0;
 	UINT8 *cmd_buff;
 
-	cmd_buff = malloc(quickload_size);
+	cmd_buff = (UINT8 *)malloc(quickload_size);
 	if (!cmd_buff)
 		return INIT_FAIL;
 
@@ -163,7 +163,7 @@ QUICKLOAD_LOAD( trs80_cmd )
 			quickload_size--;
 		}
 	}
-	cpu_set_reg(cputag_get_cpu(image->machine, "maincpu"), Z80_PC, entry);
+	cpu_set_reg(devtag_get_device(image->machine, "maincpu"), Z80_PC, entry);
 
 	free(cmd_buff);
 	return INIT_PASS;
@@ -641,7 +641,13 @@ WRITE8_HANDLER( trs80m4_f4_w )
 		wd17xx_set_side(trs80_fdc,head);
 	}
 
-	wd17xx_set_density(trs80_fdc, (data & 0x80) ? 1 : 0);
+	wd17xx_dden_w(trs80_fdc, !BIT(data, 7));
+
+	/* CLEAR_LINE means to turn motors on */
+	floppy_mon_w(floppy_get_device(space->machine, 0), (data & 0x0f) ? CLEAR_LINE : ASSERT_LINE);
+	floppy_mon_w(floppy_get_device(space->machine, 1), (data & 0x0f) ? CLEAR_LINE : ASSERT_LINE);
+	floppy_mon_w(floppy_get_device(space->machine, 2), (data & 0x0f) ? CLEAR_LINE : ASSERT_LINE);
+	floppy_mon_w(floppy_get_device(space->machine, 3), (data & 0x0f) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 WRITE8_HANDLER( sys80_f8_w )
@@ -682,7 +688,7 @@ WRITE8_HANDLER( lnw80_fe_w )
 	else
 	{
 		memory_unmap_readwrite (mem, 0x0000, 0x3fff, 0, 0);
- 		memory_install_read_bank (mem, 0x0000, 0x2fff, 0, 0, "bank1");
+		memory_install_read_bank (mem, 0x0000, 0x2fff, 0, 0, "bank1");
 		memory_set_bankptr(mem->machine, "bank1", memory_region(mem->machine, "maincpu"));
 		memory_install_readwrite8_handler (mem, 0x37e0, 0x37e3, 0, 0, trs80_irq_status_r, trs80_motor_w);
 		memory_install_readwrite8_handler (mem, 0x37e8, 0x37eb, 0, 0, trs80_printer_r, trs80_printer_w);
@@ -792,6 +798,7 @@ static WRITE_LINE_DEVICE_HANDLER( trs80_fdc_intrq_w )
 
 const wd17xx_interface trs80_wd17xx_interface =
 {
+	DEVCB_NULL,
 	DEVCB_LINE(trs80_fdc_intrq_w),
 	DEVCB_NULL,
 	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
@@ -902,11 +909,22 @@ WRITE8_HANDLER( trs80_motor_w )
 	}
 
 	if (drive > 3)
+	{	/* Turn motors off */
+		floppy_mon_w(floppy_get_device(space->machine, 0), ASSERT_LINE);
+		floppy_mon_w(floppy_get_device(space->machine, 1), ASSERT_LINE);
+		floppy_mon_w(floppy_get_device(space->machine, 2), ASSERT_LINE);
+		floppy_mon_w(floppy_get_device(space->machine, 3), ASSERT_LINE);
 		return;
+	}
 
 	wd17xx_set_drive(trs80_fdc,drive);
 	wd17xx_set_side(trs80_fdc,head);
 
+	/* Turn motors on */
+	floppy_mon_w(floppy_get_device(space->machine, 0), CLEAR_LINE);
+	floppy_mon_w(floppy_get_device(space->machine, 1), CLEAR_LINE);
+	floppy_mon_w(floppy_get_device(space->machine, 2), CLEAR_LINE);
+	floppy_mon_w(floppy_get_device(space->machine, 3), CLEAR_LINE);
 }
 
 /*************************************

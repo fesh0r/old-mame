@@ -1,9 +1,13 @@
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m6805/m6805.h"
 
-typedef struct _comxpl80_state comxpl80_state;
-struct _comxpl80_state
+class comxpl80_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, comxpl80_state(machine)); }
+
+	comxpl80_state(running_machine &machine) { }
+
 	/* printer state */
 	UINT8 centronics_data;	/* centronics data */
 
@@ -36,7 +40,7 @@ static WRITE8_HANDLER( pl80_port_a_w )
 
     */
 
-	comxpl80_state *state = space->machine->driver_data;
+	comxpl80_state *state = (comxpl80_state *)space->machine->driver_data;
 
 	state->y_motor_phase = data & 0x0f;
 	state->font_addr = (BIT(data, 4) << 12) | (state->font_addr & 0xfff);
@@ -85,7 +89,7 @@ static WRITE8_HANDLER( pl80_port_b_w )
 
     */
 
-	comxpl80_state *state = space->machine->driver_data;
+	comxpl80_state *state = (comxpl80_state *)space->machine->driver_data;
 
 	state->z_motor_phase = data & 0x0f;
 
@@ -109,7 +113,7 @@ static WRITE8_HANDLER( pl80_port_c_w )
 
     */
 
-	comxpl80_state *state = space->machine->driver_data;
+	comxpl80_state *state = (comxpl80_state *)space->machine->driver_data;
 
 	state->font_addr = (state->font_addr & 0x1f00) | data;
 
@@ -136,7 +140,7 @@ static READ8_HANDLER( pl80_port_d_r )
 
     */
 
-	comxpl80_state *state = space->machine->driver_data;
+	comxpl80_state *state = (comxpl80_state *)space->machine->driver_data;
 
 	return state->plotter_data;
 }
@@ -216,4 +220,4 @@ ROM_END
 /* System Drivers */
 
 //    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT     INIT  COMPANY                         FULLNAME        FLAGS
-COMP( 1987, comxpl80,	0,		0,		comxpl80,	comxpl80, 0, 	"Comx World Operations Ltd",	"COMX PL-80",	GAME_NOT_WORKING | GAME_NO_SOUND )
+COMP( 1987, comxpl80,	0,		0,		comxpl80,	comxpl80, 0,	"Comx World Operations Ltd",	"COMX PL-80",	GAME_NOT_WORKING | GAME_NO_SOUND )

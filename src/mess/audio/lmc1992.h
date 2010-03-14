@@ -24,7 +24,7 @@
 #ifndef __LMC1992_AUDIO__
 #define __LMC1992_AUDIO__
 
-#include "driver.h"
+#include "emu.h"
 
 #define LMC1992		DEVICE_GET_INFO_NAME(lmc1992)
 
@@ -72,8 +72,8 @@ enum
 
 DEVICE_GET_INFO(lmc1992);
 
-void lmc1992_clock_w(const device_config *device, int level);
-void lmc1992_data_w(const device_config *device, int level);
-void lmc1992_enable_w(const device_config *device, int level);
+void lmc1992_clock_w(running_device *device, int level);
+void lmc1992_data_w(running_device *device, int level);
+void lmc1992_enable_w(running_device *device, int level);
 
 #endif

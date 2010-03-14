@@ -89,7 +89,7 @@
 ******************************************************************************/
 
 /* Core includes */
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "includes/z80ne.h"
 #include "devices/flopdrv.h"
@@ -419,14 +419,14 @@ static const cassette_config z80ne_cassettea_config =
 {
 	cassette_default_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED)
 };
 
 static const cassette_config z80ne_cassetteb_config =
 {
 	cassette_default_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED)
 };
 
 static const kr2376_interface lx388_kr2376_interface =
@@ -646,7 +646,7 @@ ROM_START( z80netf )
 ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT     COMPANY               FULLNAME                      FLAGS */
-COMP( 1980,	z80ne,    0,        0,      z80ne,    z80ne,    z80ne,   "Nuova Elettronica",	"Z80NE",                      GAME_NO_SOUND | GAME_COMPUTER)
-COMP( 1980,	z80net,   z80ne,    0,      z80net,   z80net,   z80net,  "Nuova Elettronica",	"Z80NE + LX.388",             GAME_NO_SOUND | GAME_COMPUTER)
-COMP( 1980,	z80netb,  z80ne,    0,      z80netb,  z80net,   z80netb, "Nuova Elettronica",	"Z80NE + LX.388 + Basic 16k", GAME_NO_SOUND | GAME_COMPUTER)
-COMP( 1980,	z80netf,  z80ne,    0,      z80netf,  z80netf,  z80netf, "Nuova Elettronica",	"Z80NE + LX.388 + LX.390",    GAME_NO_SOUND | GAME_COMPUTER)
+COMP( 1980,	z80ne,    0,        0,      z80ne,    z80ne,    z80ne,   "Nuova Elettronica",	"Z80NE",                      GAME_NO_SOUND)
+COMP( 1980,	z80net,   z80ne,    0,      z80net,   z80net,   z80net,  "Nuova Elettronica",	"Z80NE + LX.388",             GAME_NO_SOUND)
+COMP( 1980,	z80netb,  z80ne,    0,      z80netb,  z80net,   z80netb, "Nuova Elettronica",	"Z80NE + LX.388 + Basic 16k", GAME_NO_SOUND)
+COMP( 1980,	z80netf,  z80ne,    0,      z80netf,  z80netf,  z80netf, "Nuova Elettronica",	"Z80NE + LX.388 + LX.390",    GAME_NO_SOUND)

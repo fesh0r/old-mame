@@ -223,7 +223,7 @@
 
 ***************************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i386/i386.h"
 #include "machine/i8255a.h"
 #include "machine/pit8253.h"
@@ -649,12 +649,12 @@ static MACHINE_RESET(pc9801)
 {
 	UINT8 *ROM = memory_region(machine, "cpudata");
 
-	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), irq_callback);
+	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), irq_callback);
 
 	cputag_set_input_line(machine, "maincpu", INPUT_LINE_A20, 0);
 
 	gate_a20 = 0;
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), I386_EIP, 0xffff0+0x10000);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), I386_EIP, 0xffff0+0x10000);
 
 	memory_set_bankptr(machine, "bank1", &ROM[0x20000]);
 
@@ -665,12 +665,12 @@ static MACHINE_RESET(pc9801)
 static MACHINE_RESET(pc9821)
 {
 	UINT8 *ROM = memory_region(machine, "cpudata");
-	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), irq_callback);
+	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), irq_callback);
 
 	cputag_set_input_line(machine, "maincpu", INPUT_LINE_A20, 0);
 
 	gate_a20 = 0;
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), I386_EIP, 0xffff0+0x10000);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), I386_EIP, 0xffff0+0x10000);
 
 	memory_set_bankptr(machine, "bank1", &ROM[0x20000]);
 
@@ -684,24 +684,20 @@ static MACHINE_RESET(pc9821)
  *
  *************************************************************/
 
-static PIC8259_SET_INT_LINE( pc98_master_set_int_line ) {
+static WRITE_LINE_DEVICE_HANDLER( pc98_master_set_int_line )
+{
 	//printf("%02x\n",interrupt);
-	cputag_set_input_line(device->machine, "maincpu", 0, interrupt ? HOLD_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "maincpu", 0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
-
-static PIC8259_SET_INT_LINE( pc98_slave_set_int_line ) {
-	pic8259_set_irq_line( devtag_get_device( device->machine, "pic8259_master" ), 2, interrupt);
-}
-
-
-static const struct pic8259_interface pic8259_master_config = {
-	pc98_master_set_int_line
+static const struct pic8259_interface pic8259_master_config =
+{
+	DEVCB_LINE(pc98_master_set_int_line)
 };
 
-
-static const struct pic8259_interface pic8259_slave_config = {
-	pc98_slave_set_int_line
+static const struct pic8259_interface pic8259_slave_config =
+{
+	DEVCB_DEVICE_LINE("pic8259_master", pic8259_ir2_w)
 };
 
 static VIDEO_START( pc9821 )
@@ -820,23 +816,21 @@ static I8255A_INTERFACE( printer_intf )
 	DEVCB_NULL					/* Port C write */
 };
 
-static PIT8253_OUTPUT_CHANGED( pc_timer0_w )
-{
-	pic8259_set_irq_line(devtag_get_device( device->machine, "pic8259_master" ), 0, state);
-}
-
 static const struct pit8253_config pit8253_config =
 {
 	{
 		{
 			16000000/4,				/* heartbeat IRQ */
-			pc_timer0_w
+			DEVCB_NULL,
+			DEVCB_DEVICE_LINE("pic8259_master", pic8259_ir0_w)
 		}, {
 			16000000/4,				/* dram refresh */
-			NULL
+			DEVCB_NULL,
+			DEVCB_NULL
 		}, {
 			16000000/4,				/* pio port c pin 4, and speaker polling enough */
-			NULL
+			DEVCB_NULL,
+			DEVCB_NULL
 		}
 	}
 };
@@ -925,7 +919,7 @@ static WRITE8_HANDLER( pc_dma_write_byte )
 	memory_write_byte(space, page_offset + offset, data);
 }
 
-static void set_dma_channel(const device_config *device, int channel, int state)
+static void set_dma_channel(running_device *device, int channel, int state)
 {
 	if (!state) dma_channel = channel;
 }
@@ -1041,5 +1035,5 @@ ROM_END
 
 
 /*    YEAR  NAME      PARENT   COMPAT MACHINE   INPUT     INIT    COMPANY                        FULLNAME    FLAGS */
-COMP( 1981, pc9801,   0,       0,     pc9801,   pc9801,   0,      "Nippon Electronic Company",   "PC-9801",  GAME_NOT_WORKING )
-COMP( 1993, pc9821,   0,       0,     pc9801,   pc9801,   0,      "Nippon Electronic Company",   "PC-9821 (98MATE)",  GAME_NOT_WORKING )
+COMP( 1981, pc9801,   0,       0,     pc9801,   pc9801,   0,      "Nippon Electronic Company",   "PC-9801",  GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1993, pc9821,   0,       0,     pc9801,   pc9801,   0,      "Nippon Electronic Company",   "PC-9821 (98MATE)",  GAME_NOT_WORKING | GAME_NO_SOUND)

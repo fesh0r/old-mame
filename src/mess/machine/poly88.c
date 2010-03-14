@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/poly88.h"
 #include "cpu/i8085/i8085.h"
 #include "devices/cassette.h"
@@ -24,7 +24,7 @@ static int clk_level_tape;
 static TIMER_CALLBACK(poly88_usart_timer_callback)
 {
 	int_vector = 0xe7;
-	cpu_set_input_line(cputag_get_cpu(machine, "maincpu"), 0, HOLD_LINE);
+	cpu_set_input_line(devtag_get_device(machine, "maincpu"), 0, HOLD_LINE);
 }
 
 WRITE8_HANDLER(poly88_baud_rate_w)
@@ -60,7 +60,7 @@ static TIMER_CALLBACK(keyboard_callback)
 	for(i = 0; i < 7; i++)
 	{
 
-		code = 	input_port_read(machine, keynames[i]);
+		code =	input_port_read(machine, keynames[i]);
 		if (code != 0)
 		{
 			if (i==0 && shift==0) {
@@ -222,7 +222,7 @@ DRIVER_INIT ( poly88 )
 
 MACHINE_RESET(poly88)
 {
-	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), poly88_irq_callback);
+	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), poly88_irq_callback);
 	intr = 0;
 	last_code = 0;
 
@@ -234,7 +234,7 @@ INTERRUPT_GEN( poly88_interrupt )
 	int_vector = 0xf7;
 	cpu_set_input_line(device, 0, HOLD_LINE);
 }
-static void poly88_usart_rxready (const device_config *device, int state)
+static void poly88_usart_rxready (running_device *device, int state)
 {
 	//int_vector = 0xe7;
 	//cpu_set_input_line(device, 0, HOLD_LINE);
@@ -304,7 +304,7 @@ SNAPSHOT_LOAD( poly88 )
 					break;
 			case 3 :
     				/* 03 Auto Start @ Address */
-    				cpu_set_reg(cputag_get_cpu(image->machine, "maincpu"), I8085_PC, address);
+    				cpu_set_reg(devtag_get_device(image->machine, "maincpu"), I8085_PC, address);
     				theend = 1;
     				break;
     		case 4 :
@@ -329,6 +329,6 @@ SNAPSHOT_LOAD( poly88 )
 		}
 		pos+=recordLen;
 	}
-	device_reset(devtag_get_device(image->machine, "uart"));
+	devtag_get_device(image->machine, "uart")->reset();
 	return INIT_PASS;
 }

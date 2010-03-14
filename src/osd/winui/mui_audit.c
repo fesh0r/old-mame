@@ -63,16 +63,16 @@ static const char * StatusString(int iStatus);
 #define SAMPLES_NOT_USED    3
 #define MAX_AUDITBOX_TEXT	0x7FFFFFFE
 
-static HWND hAudit;
-static int rom_index;
-static int roms_correct;
-static int roms_incorrect;
-static int sample_index;
-static int samples_correct;
-static int samples_incorrect;
+static volatile HWND hAudit;
+static volatile int rom_index;
+static volatile int roms_correct;
+static volatile int roms_incorrect;
+static volatile int sample_index;
+static volatile int samples_correct;
+static volatile int samples_incorrect;
 
-static BOOL bPaused = FALSE;
-static BOOL bCancel = FALSE;
+static volatile BOOL bPaused = FALSE;
+static volatile BOOL bCancel = FALSE;
 
 /***************************************************************************
     External functions  
@@ -119,7 +119,6 @@ const char * GetAuditString(int audit_result)
 	case NOTFOUND :
 	case INCORRECT :
 		return "No";
-		break;
 
 	case UNKNOWN :
 		return "?";
@@ -182,7 +181,7 @@ int MameUIVerifyRomSet(int game)
 	audit_records = audit_images(MameUIGlobal(), drivers[game], AUDIT_VALIDATE_FAST, &audit);
 	res = ProcessAuditResults(game, audit, audit_records);
 	if (audit_records > 0)
-		free(audit);
+		global_free(audit);
 
 	SetRomAuditResults(game, res);
 	return res;
@@ -199,7 +198,7 @@ int MameUIVerifySampleSet(int game)
 	audit_records = audit_samples(MameUIGlobal(), drivers[game], &audit);
 	res = ProcessAuditResults(game, audit, audit_records);
 	if (audit_records > 0)
-		free(audit);
+		global_free(audit);
 
 	SetSampleAuditResults(game, res);
 	return res;
@@ -217,7 +216,7 @@ static DWORD WINAPI AuditThreadProc(LPVOID hDlg)
 			{
 				sprintf(buffer, "Checking Game %s - %s",
 					drivers[rom_index]->name, drivers[rom_index]->description);
-				win_set_window_text_utf8(hDlg, buffer);
+				win_set_window_text_utf8((HWND)hDlg, buffer);
 				ProcessNextRom();
 			}
 			else
@@ -226,13 +225,13 @@ static DWORD WINAPI AuditThreadProc(LPVOID hDlg)
 				{
 					sprintf(buffer, "Checking Game %s - %s",
 						drivers[sample_index]->name, drivers[sample_index]->description);
-					win_set_window_text_utf8(hDlg, buffer);
+					win_set_window_text_utf8((HWND)hDlg, buffer);
 					ProcessNextSample();
 				}
 				else
 				{
-					win_set_window_text_utf8(hDlg, "File Audit");
-					EnableWindow(GetDlgItem(hDlg, IDPAUSE), FALSE);
+					win_set_window_text_utf8((HWND)hDlg, "File Audit");
+					EnableWindow(GetDlgItem((HWND)hDlg, IDPAUSE), FALSE);
 					ExitThread(1);
 				}
 			}
@@ -268,7 +267,6 @@ static INT_PTR CALLBACK AuditWindowProc(HWND hDlg, UINT Msg, WPARAM wParam, LPAR
 		rom_index = 0;
 		hThread = CreateThread(NULL, 0, AuditThreadProc, hDlg, 0, &dwThreadID);
 		return 1;
-
 	case WM_COMMAND:
 		switch (LOWORD(wParam))
 		{
@@ -277,8 +275,8 @@ static INT_PTR CALLBACK AuditWindowProc(HWND hDlg, UINT Msg, WPARAM wParam, LPAR
 			if (hThread)
 			{
 				bCancel = TRUE;
-				if (GetExitCodeThread(hThread, &dwExitCode) && dwExitCode == STILL_ACTIVE)
-				{
+				if (GetExitCodeThread(hThread, &dwExitCode) && (dwExitCode == STILL_ACTIVE))
+				{					
 					PostMessage(hDlg, WM_COMMAND, wParam, lParam);
 					return 1;
 				}
@@ -302,7 +300,7 @@ static INT_PTR CALLBACK AuditWindowProc(HWND hDlg, UINT Msg, WPARAM wParam, LPAR
 		}
 		return 1;
 	}
-	return 0;
+	return 0;	
 }
 
 /* Callback for the Audit property sheet */
@@ -454,7 +452,7 @@ static void CLIB_DECL DetailsPrintf(const char *fmt, ...)
 	Edit_SetSel(hEdit, textLength, textLength);
 	SendMessage( hEdit, EM_REPLACESEL, FALSE, (WPARAM)(LPCTSTR)win_tstring_strdup(t_s) );
 	
-	free(t_s);
+	global_free(t_s);
 }
 
 static const char * StatusString(int iStatus)

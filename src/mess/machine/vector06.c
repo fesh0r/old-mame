@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/i8255a.h"
 #include "machine/wd17xx.h"
@@ -19,13 +19,8 @@ UINT8 vector06_keyboard_mask;
 UINT8 vector06_color_index;
 UINT8 vector06_video_mode;
 
-/* Driver initialization */
-DRIVER_INIT(vector06)
-{
-	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,64*1024);
-}
 
-static READ8_DEVICE_HANDLER (vector06_8255_portb_r )
+static READ8_DEVICE_HANDLER( vector06_8255_portb_r )
 {
 	UINT8 key = 0xff;
 	if ((vector06_keyboard_mask & 0x01)!=0) { key &= input_port_read(device->machine,"LINE0"); }
@@ -45,7 +40,7 @@ static READ8_DEVICE_HANDLER (vector06_8255_portc_r )
 	UINT8 retVal = input_port_read(device->machine, "LINE8");
 	if (level >  0) {
 		retVal |= 0x10;
- 	}
+	}
 	return retVal;
 }
 
@@ -161,25 +156,23 @@ static TIMER_CALLBACK(reset_check_callback)
 	UINT8 val = input_port_read(machine, "RESET");
 	if ((val & 1)==1) {
 		memory_set_bankptr(machine, "bank1", memory_region(machine, "maincpu") + 0x10000);
-		device_reset(cputag_get_cpu(machine, "maincpu"));
+		devtag_get_device(machine, "maincpu")->reset();
 	}
 	if ((val & 2)==2) {
 		memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x0000);
-		device_reset(cputag_get_cpu(machine, "maincpu"));
+		devtag_get_device(machine, "maincpu")->reset();
 	}
 }
 
 WRITE8_HANDLER(vector06_disc_w)
 {
-	const device_config *fdc = devtag_get_device(space->machine, "wd1793");
+	running_device *fdc = devtag_get_device(space->machine, "wd1793");
 	wd17xx_set_side (fdc,((data & 4) >> 2) ^ 1);
- 	wd17xx_set_drive(fdc,data & 1);
+	wd17xx_set_drive(fdc,data & 1);
 }
 
 MACHINE_START( vector06 )
 {
-	const device_config *fdc = devtag_get_device(machine, "wd1793");
-	wd17xx_set_density (fdc, DEN_FM_HI);
 	timer_pulse(machine, ATTOTIME_IN_HZ(50), NULL, 0, reset_check_callback);
 }
 
@@ -187,7 +180,7 @@ MACHINE_RESET( vector06 )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
-	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), vector06_irq_callback);
+	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), vector06_irq_callback);
 	memory_install_read_bank (space, 0x0000, 0x7fff, 0, 0, "bank1");
 	memory_install_write_bank(space, 0x0000, 0x7fff, 0, 0, "bank2");
 	memory_install_read_bank (space, 0x8000, 0xffff, 0, 0, "bank3");

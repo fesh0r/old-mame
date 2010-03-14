@@ -1,6 +1,6 @@
 /* Olivetti M20 skeleton driver, by incog (19/05/2009) */
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z8000/z8000.h"
 
 #define MAIN_CLOCK 4000000 /* 4 MHz */
@@ -42,7 +42,7 @@ static MACHINE_DRIVER_START( m20 )
     MDRV_CPU_PROGRAM_MAP(m20_mem)
     MDRV_CPU_IO_MAP(m20_io)
 
-  	MDRV_MACHINE_RESET(m20)
+	MDRV_MACHINE_RESET(m20)
 
     /* video hardware */
     MDRV_SCREEN_ADD("screen", RASTER)
@@ -75,13 +75,13 @@ ROM_START(m40)
 	ROM_SYSTEM_BIOS( 0, "m40-81", "M40 15.dec.81" )
 	ROMX_LOAD( "m40rom-15-dec-81", 0x0000, 0x2000, CRC(e8e7df84) SHA1(e86018043bf5a23ff63434f9beef7ce2972d8153), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS( 1, "m40-82", "M40 17.dec.82" )
-  	ROMX_LOAD( "m40rom-17-dec-82", 0x0000, 0x2000, CRC(cf55681c) SHA1(fe4ae14a6751fef5d7bde49439286f1da3689437), ROM_BIOS(2))
-  	ROM_SYSTEM_BIOS( 2, "m40-41", "M40 4.1" )
-  	ROMX_LOAD( "m40rom-4.1", 0x0000, 0x2000, CRC(cf55681c) SHA1(fe4ae14a6751fef5d7bde49439286f1da3689437), ROM_BIOS(3))
-  	ROM_SYSTEM_BIOS( 3, "m40-60", "M40 6.0" )
-  	ROMX_LOAD( "m40rom-6.0", 0x0000, 0x4000, CRC(8114ebec) SHA1(4e2c65b95718c77a87dbee0288f323bd1c8837a3), ROM_BIOS(4))
+	ROMX_LOAD( "m40rom-17-dec-82", 0x0000, 0x2000, CRC(cf55681c) SHA1(fe4ae14a6751fef5d7bde49439286f1da3689437), ROM_BIOS(2))
+	ROM_SYSTEM_BIOS( 2, "m40-41", "M40 4.1" )
+	ROMX_LOAD( "m40rom-4.1", 0x0000, 0x2000, CRC(cf55681c) SHA1(fe4ae14a6751fef5d7bde49439286f1da3689437), ROM_BIOS(3))
+	ROM_SYSTEM_BIOS( 3, "m40-60", "M40 6.0" )
+	ROMX_LOAD( "m40rom-6.0", 0x0000, 0x4000, CRC(8114ebec) SHA1(4e2c65b95718c77a87dbee0288f323bd1c8837a3), ROM_BIOS(4))
 ROM_END
 
 /*    YEAR  NAME   PARENT  COMPAT  MACHINE INPUT   INIT COMPANY     FULLNAME        FLAGS */
-COMP( 1981, m20,   0,      0,      m20,    m20,    m20,	"Olivetti", "Olivetti L1 M20", GAME_NOT_WORKING)
-COMP( 1981, m40,   m20,    0,      m20,    m20,    m20, "Olivetti", "Olivetti L1 M40", GAME_NOT_WORKING)
+COMP( 1981, m20,   0,      0,      m20,    m20,    m20,	"Olivetti", "Olivetti L1 M20", GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1981, m40,   m20,    0,      m20,    m20,    m20, "Olivetti", "Olivetti L1 M40", GAME_NOT_WORKING | GAME_NO_SOUND)

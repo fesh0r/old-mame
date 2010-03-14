@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m6502/m6502.h"
 #include "machine/6532riot.h"
 #include "junior.lh"
@@ -29,7 +29,7 @@ ADDRESS_MAP_END
 static INPUT_CHANGED( junior_reset )
 {
 	if (newval == 0)
-		device_reset(field->port->machine->firstcpu);
+		field->port->machine->firstcpu->reset();
 }
 
 
@@ -220,5 +220,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( 1980, junior,  0,       0, 	junior, 	junior, 	 0,   "Elektor Electronics",   "Junior Computer",		GAME_SUPPORTS_SAVE)
+COMP( 1980, junior,  0,       0,	junior, 	junior, 	 0,   "Elektor Electronics",   "Junior Computer",		GAME_SUPPORTS_SAVE | GAME_NO_SOUND)
 

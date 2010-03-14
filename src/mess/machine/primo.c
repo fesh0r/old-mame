@@ -10,12 +10,12 @@
 *******************************************************************************/
 
 /* Core includes */
-#include "driver.h"
+#include "emu.h"
 #include "includes/primo.h"
 
 /* Components */
 #include "cpu/z80/z80.h"
-#include "includes/cbmserb.h"
+#include "machine/cbmiec.h"
 #include "sound/speaker.h"
 
 /* Devices */
@@ -26,7 +26,6 @@
 
 static UINT8 primo_port_FD = 0x00;
 static int primo_nmi = 0;
-static int serial_atn = 1, serial_clock = 1, serial_data = 1;
 
 /*******************************************************************************
 
@@ -106,25 +105,26 @@ READ8_HANDLER( primo_be_1_r )
 READ8_HANDLER( primo_be_2_r )
 {
 	UINT8 data = 0xff;
-	const device_config *serbus = devtag_get_device(space->machine, "serial_bus");
+	running_device *serbus = devtag_get_device(space->machine, "serial_bus");
 
 	// bit 7, 6 - not used
 
 	// bit 5 - SCLK
-	if (!serial_clock || !cbm_serial_clock_read(serbus, 0))
+	if (!cbm_iec_clk_r(serbus))
 		data &= ~0x20;
 
 	// bit 4 - SDATA
-	if (!serial_data || !cbm_serial_data_read(serbus, 0))
+	if (!cbm_iec_data_r(serbus))
 		data &= ~0x10;
 
 	// bit 3 - SRQ
-//  data &= (!cbm_serial_request_read(serbus, 0)) ? ~0x08 : ~0x00;
+	if (!cbm_iec_srq_r(serbus))
+		data &= ~0x08;
 
 	// bit 2 - joystic 2 (not implemeted yet)
 
 	// bit 1 - ATN
-	if (!serial_atn || !cbm_serial_atn_read(serbus, 0))
+	if (!cbm_iec_atn_r(serbus))
 		data &= ~0x02;
 
 	// bit 0 - joystic 1 (not implemeted yet)
@@ -135,7 +135,7 @@ READ8_HANDLER( primo_be_2_r )
 
 WRITE8_HANDLER( primo_ki_1_w )
 {
-	const device_config *speaker = devtag_get_device(space->machine, "speaker");
+	running_device *speaker = devtag_get_device(space->machine, "speaker");
 	// bit 7 - NMI generator enable/disable
 	primo_nmi = (data & 0x80) ? 1 : 0;
 
@@ -172,31 +172,26 @@ WRITE8_HANDLER( primo_ki_1_w )
 
 WRITE8_HANDLER( primo_ki_2_w )
 {
-	const device_config *serbus = devtag_get_device(space->machine, "serial_bus");
+	running_device *serbus = devtag_get_device(space->machine, "serial_bus");
 
 	// bit 7, 6 - not used
 
 	// bit 5 - SCLK
-	cbm_serial_clock_write(serbus, 0, serial_clock = !(data & 0x20));
-	logerror ("W - SCLK: %d ", serial_clock ? 1 : 0);
+	cbm_iec_clk_w(serbus, NULL, !BIT(data, 5));
 
 	// bit 4 - SDATA
-	cbm_serial_data_write(serbus, 0, serial_data = !(data & 0x10));
-	logerror ("SDATA: %d ", serial_data ? 1 : 0);
+	cbm_iec_data_w(serbus, NULL, !BIT(data, 4));
 
 	// bit 3 - not used
 
 	// bit 2 - SRQ
-	cbm_serial_request_write(serbus, 0, !(data & 0x04));
+	cbm_iec_srq_w(serbus, NULL, !BIT(data, 2));
 
 	// bit 1 - ATN
-	cbm_serial_atn_write(serbus, 0, serial_atn = !(data & 0x02));
-	logerror ("ATN: %d\n", serial_atn ? 1 : 0);
+	cbm_iec_atn_w(serbus, NULL, !BIT(data, 1));
 
 	// bit 0 - not used
 
-	if (data & 0x04)
-		logerror ("SRQ WRITE\n");
 //  logerror ("IOW KI-2 data:%02x\n", data);
 }
 
@@ -249,7 +244,7 @@ static void primo_common_machine_init (running_machine *machine)
 	if (input_port_read(machine, "MEMORY_EXPANSION"))
 		primo_port_FD = 0x00;
 	primo_update_memory(machine);
-	cpu_set_clockscale(cputag_get_cpu(machine, "maincpu"), input_port_read(machine, "CPU_CLOCK") ? 1.5 : 1.0);
+	cpu_set_clockscale(devtag_get_device(machine, "maincpu"), input_port_read(machine, "CPU_CLOCK") ? 1.5 : 1.0);
 }
 
 MACHINE_RESET( primoa )
@@ -261,8 +256,8 @@ MACHINE_RESET( primob )
 {
 	primo_common_machine_init(machine);
 
-//removed	cbm_drive_0_config(SERIAL, 8);
-//removed	cbm_drive_1_config(SERIAL, 9);
+//removed   cbm_drive_0_config(SERIAL, 8);
+//removed   cbm_drive_1_config(SERIAL, 9);
 }
 
 /*******************************************************************************
@@ -274,24 +269,24 @@ MACHINE_RESET( primob )
 static void primo_setup_pss (running_machine *machine, UINT8* snapshot_data, UINT32 snapshot_size)
 {
 	int i;
-	const device_config *speaker = devtag_get_device(machine, "speaker");
+	running_device *speaker = devtag_get_device(machine, "speaker");
 
 	/* Z80 registers */
 
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_BC, snapshot_data[4] + snapshot_data[5]*256);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_DE, snapshot_data[6] + snapshot_data[7]*256);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_HL, snapshot_data[8] + snapshot_data[9]*256);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_AF, snapshot_data[10] + snapshot_data[11]*256);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_BC2, snapshot_data[12] + snapshot_data[13]*256);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_DE2, snapshot_data[14] + snapshot_data[15]*256);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_HL2, snapshot_data[16] + snapshot_data[17]*256);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_AF2, snapshot_data[18] + snapshot_data[19]*256);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_PC, snapshot_data[20] + snapshot_data[21]*256);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_SP, snapshot_data[22] + snapshot_data[23]*256);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_I, snapshot_data[24]);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_R, snapshot_data[25]);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_IX, snapshot_data[26] + snapshot_data[27]*256);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_IY, snapshot_data[28] + snapshot_data[29]*256);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_BC, snapshot_data[4] + snapshot_data[5]*256);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_DE, snapshot_data[6] + snapshot_data[7]*256);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_HL, snapshot_data[8] + snapshot_data[9]*256);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_AF, snapshot_data[10] + snapshot_data[11]*256);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_BC2, snapshot_data[12] + snapshot_data[13]*256);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_DE2, snapshot_data[14] + snapshot_data[15]*256);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_HL2, snapshot_data[16] + snapshot_data[17]*256);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_AF2, snapshot_data[18] + snapshot_data[19]*256);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_PC, snapshot_data[20] + snapshot_data[21]*256);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_SP, snapshot_data[22] + snapshot_data[23]*256);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_I, snapshot_data[24]);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_R, snapshot_data[25]);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_IX, snapshot_data[26] + snapshot_data[27]*256);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_IY, snapshot_data[28] + snapshot_data[29]*256);
 
 
 	/* IO ports */
@@ -354,7 +349,7 @@ static void primo_setup_pp (running_machine *machine,UINT8* quickload_data, UINT
 	for (i=4; i<quickload_size; i++)
 		memory_write_byte(cputag_get_address_space(machine, "maincpu",ADDRESS_SPACE_PROGRAM), start_addr+i-4, quickload_data[i]);
 
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), Z80_PC, start_addr);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), Z80_PC, start_addr);
 
 	logerror ("Quickload .pp l: %04x r: %04x s: %04x\n", load_addr, start_addr, quickload_size-4);
 }

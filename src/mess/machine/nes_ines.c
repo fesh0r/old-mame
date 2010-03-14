@@ -236,7 +236,7 @@ static void mapper4_set_chr( running_machine *machine, UINT8 chr, int chr_base, 
 }
 
 /* Here, IRQ counter decrements every scanline. */
-static void mapper4_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void mapper4_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 	if (scanline < PPU_BOTTOM_VISIBLE_SCANLINE)
 	{
@@ -300,7 +300,7 @@ static WRITE8_HANDLER( mapper4_w )
 			break;
 
 		case 0x2001: /* extra RAM enable/disable */
-			mmc_cmd2 = data; 	/* This actually is made of two parts: data&0x80 = WRAM enabled and data&0x40 = WRAM readonly!  */
+			mmc_cmd2 = data;	/* This actually is made of two parts: data&0x80 = WRAM enabled and data&0x40 = WRAM readonly!  */
 						/* We save this twice because we will need mmc_cmd2 in some clone mapper */
 			nes.mid_ram_enable = data;
 			break;
@@ -339,7 +339,7 @@ static WRITE8_HANDLER( mapper4_w )
 
 *************************************************************/
 
-static void mapper5_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void mapper5_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 #if 1
 	if (scanline == 0)
@@ -424,7 +424,7 @@ static READ8_HANDLER( mapper5_l_r )
 
 static WRITE8_HANDLER( mapper5_l_w )
 {
-	nes_state *state = space->machine->driver_data;
+	nes_state *state = (nes_state *)space->machine->driver_data;
 
 //  static int vrom_next[4];
 	static int vrom_page_a;
@@ -912,7 +912,7 @@ static WRITE8_HANDLER( mapper5_w )
 /* Here, IRQ counter decrements every CPU cycle. Since we update it every scanline,
 we need to decrement it by 114 (Each scanline consists of 341 dots and, on NTSC,
 there are 3 dots to every 1 CPU cycle, hence 114 is the number of cycles per scanline ) */
-static void ffe_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void ffe_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 	/* 114 is the number of cycles per scanline */
 	/* TODO: change to reflect the actual number of cycles spent */
@@ -1021,7 +1021,7 @@ static WRITE8_HANDLER( mapper8_w )
 
 *************************************************************/
 
-static void mapper9_latch (const device_config *device, offs_t offset)
+static void mapper9_latch (running_device *device, offs_t offset)
 {
 	if ((offset & 0x3ff0) == 0x0fd0)
 	{
@@ -1453,7 +1453,7 @@ static WRITE8_HANDLER( mapper15_w )
 /* Here, IRQ counter decrements every CPU cycle. Since we update it every scanline,
 we need to decrement it by 114 (Each scanline consists of 341 dots and, on NTSC,
 there are 3 dots to every 1 CPU cycle, hence 114 is the number of cycles per scanline ) */
-static void bandai_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void bandai_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 	/* 114 is the number of cycles per scanline */
 	/* TODO: change to reflect the actual number of cycles spent */
@@ -1591,7 +1591,7 @@ static WRITE8_HANDLER( mapper17_l_w )
 /* Here, IRQ counter decrements every CPU cycle. Since we update it every scanline,
 we need to decrement it by 114 (Each scanline consists of 341 dots and, on NTSC,
 there are 3 dots to every 1 CPU cycle, hence 114 is the number of cycles per scanline ) */
-static void jaleco_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void jaleco_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 	/* Increment & check the IRQ scanline counter */
 	if (IRQ_enable)
@@ -1611,7 +1611,7 @@ static void jaleco_irq( const device_config *device, int scanline, int vblank, i
 			if ((IRQ_count & 0x00ff) < 114)
 			{
 				cputag_set_input_line(device->machine, "maincpu", M6502_IRQ_LINE, HOLD_LINE);
-				IRQ_count = (IRQ_count & ~0x00ff) | (0xff - 114 + (IRQ_count & 0x00ff)); 	// wrap around the 8 bits counter
+				IRQ_count = (IRQ_count & ~0x00ff) | (0xff - 114 + (IRQ_count & 0x00ff));	// wrap around the 8 bits counter
 			}
 			else
 				IRQ_count -= 114;
@@ -1621,7 +1621,7 @@ static void jaleco_irq( const device_config *device, int scanline, int vblank, i
 			if ((IRQ_count & 0x0fff)  < 114)
 			{
 				cputag_set_input_line(device->machine, "maincpu", M6502_IRQ_LINE, HOLD_LINE);
-				IRQ_count = (IRQ_count & ~0x0fff) | (0xfff - 114 + (IRQ_count & 0x0fff)); 	// wrap around the 12 bits counter
+				IRQ_count = (IRQ_count & ~0x0fff) | (0xfff - 114 + (IRQ_count & 0x0fff));	// wrap around the 12 bits counter
 			}
 			else
 				IRQ_count -= 114;
@@ -1736,7 +1736,7 @@ static WRITE8_HANDLER( mapper18_w )
 /* Here, IRQ counter decrements every CPU cycle. Since we update it every scanline,
 we need to decrement it by 114 (Each scanline consists of 341 dots and, on NTSC,
 there are 3 dots to every 1 CPU cycle, hence 114 is the number of cycles per scanline ) */
-static void namcot_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void namcot_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 	if (IRQ_enable)
 	{
@@ -1844,7 +1844,7 @@ static WRITE8_HANDLER( mapper19_w )
 
 *************************************************************/
 
-static void fds_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void fds_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 	if (IRQ_enable_latch)
 		cputag_set_input_line(device->machine, "maincpu", M6502_IRQ_LINE, HOLD_LINE);
@@ -1969,7 +1969,21 @@ WRITE8_HANDLER( nes_fds_w )
 
 *************************************************************/
 
-static void konami_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void vrc4_set_prg( running_machine *machine )
+{
+	if (mmc_cmd1 & 0x02)
+	{
+		prg8_89(machine, 0xfe);
+		prg8_cd(machine, prg_bank[0]);
+	}
+	else
+	{
+		prg8_89(machine, prg_bank[0]);
+		prg8_cd(machine, 0xfe);
+	}
+}
+
+static void konami_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 	/* Increment & check the IRQ scanline counter */
 	if (IRQ_enable && (++IRQ_count == 0x100))
@@ -1980,16 +1994,26 @@ static void konami_irq( const device_config *device, int scanline, int vblank, i
 	}
 }
 
-static WRITE8_HANDLER( konami_vrc4_w )
+static WRITE8_HANDLER( konami_vrc4a_w )
 {
-	LOG_MMC(("konami_vrc4_w, offset: %04x, data: %02x\n", offset, data));
+	LOG_MMC(("konami_vrc4a_w, offset: %04x, data: %02x\n", offset, data));
 
-	switch (offset & 0x7007)
+	switch (offset & 0x7fff)
 	{
 		case 0x0000:
-			prg8_89(space->machine, data);
+		case 0x0002:
+		case 0x0004:
+		case 0x0006:
+		case 0x0040:
+		case 0x0080:
+		case 0x00c0:
+			prg_bank[0] = data;
+			vrc4_set_prg(space->machine);
 			break;
+
 		case 0x1000:
+		case 0x1002:
+		case 0x1040:
 			switch (data & 0x03)
 			{
 				case 0x00: set_nt_mirroring(PPU_MIRROR_VERT); break;
@@ -1999,26 +2023,40 @@ static WRITE8_HANDLER( konami_vrc4_w )
 			}
 			break;
 
-		/* $1001 is uncaught */
+		case 0x1004:
+		case 0x1006:
+		case 0x1080:
+		case 0x10c0:
+			mmc_cmd1 = data & 0x02;
+			vrc4_set_prg(space->machine);
+			break;
 
 		case 0x2000:
+		case 0x2002:
+		case 0x2004:
+		case 0x2006:
+		case 0x2040:
+		case 0x2080:
+		case 0x20c0:
 			prg8_ab(space->machine, data);
 			break;
+
 		case 0x3000:
 			vrom_bank[0] = (vrom_bank[0] & 0xf0) | (data & 0x0f);
 			chr1_0(space->machine, vrom_bank[0], CHRROM);
 			break;
 		case 0x3002:
+		case 0x3040:
 			vrom_bank[0] = (vrom_bank[0] & 0x0f) | (data << 4);
 			chr1_0(space->machine, vrom_bank[0], CHRROM);
 			break;
-		case 0x3001:
 		case 0x3004:
+		case 0x3080:
 			vrom_bank[1] = (vrom_bank[1] & 0xf0) | (data & 0x0f);
 			chr1_1(space->machine, vrom_bank[1], CHRROM);
 			break;
-		case 0x3003:
 		case 0x3006:
+		case 0x30c0:
 			vrom_bank[1] = (vrom_bank[1] & 0x0f) | (data << 4);
 			chr1_1(space->machine, vrom_bank[1], CHRROM);
 			break;
@@ -2027,16 +2065,17 @@ static WRITE8_HANDLER( konami_vrc4_w )
 			chr1_2(space->machine, vrom_bank[2], CHRROM);
 			break;
 		case 0x4002:
+		case 0x4040:
 			vrom_bank[2] = (vrom_bank[2] & 0x0f) | (data << 4);
 			chr1_2(space->machine, vrom_bank[2], CHRROM);
 			break;
-		case 0x4001:
 		case 0x4004:
+		case 0x4080:
 			vrom_bank[3] = (vrom_bank[3] & 0xf0) | (data & 0x0f);
 			chr1_3(space->machine, vrom_bank[3], CHRROM);
 			break;
-		case 0x4003:
 		case 0x4006:
+		case 0x40c0:
 			vrom_bank[3] = (vrom_bank[3] & 0x0f) | (data << 4);
 			chr1_3(space->machine, vrom_bank[3], CHRROM);
 			break;
@@ -2045,16 +2084,17 @@ static WRITE8_HANDLER( konami_vrc4_w )
 			chr1_4(space->machine, vrom_bank[4], CHRROM);
 			break;
 		case 0x5002:
+		case 0x5040:
 			vrom_bank[4] = (vrom_bank[4] & 0x0f) | (data << 4);
 			chr1_4(space->machine, vrom_bank[4], CHRROM);
 			break;
-		case 0x5001:
 		case 0x5004:
+		case 0x5080:
 			vrom_bank[5] = (vrom_bank[5] & 0xf0) | (data & 0x0f);
 			chr1_5(space->machine, vrom_bank[5], CHRROM);
 			break;
-		case 0x5003:
 		case 0x5006:
+		case 0x50c0:
 			vrom_bank[5] = (vrom_bank[5] & 0x0f) | (data << 4);
 			chr1_5(space->machine, vrom_bank[5], CHRROM);
 			break;
@@ -2063,16 +2103,17 @@ static WRITE8_HANDLER( konami_vrc4_w )
 			chr1_6(space->machine, vrom_bank[6], CHRROM);
 			break;
 		case 0x6002:
+		case 0x6040:
 			vrom_bank[6] = (vrom_bank[6] & 0x0f) | (data << 4);
 			chr1_6(space->machine, vrom_bank[6], CHRROM);
 			break;
-		case 0x6001:
 		case 0x6004:
+		case 0x6080:
 			vrom_bank[7] = (vrom_bank[7] & 0xf0) | (data & 0x0f);
 			chr1_7(space->machine, vrom_bank[7], CHRROM);
 			break;
-		case 0x6003:
 		case 0x6006:
+		case 0x60c0:
 			vrom_bank[7] = (vrom_bank[7] & 0x0f) | (data << 4);
 			chr1_7(space->machine, vrom_bank[7], CHRROM);
 			break;
@@ -2085,7 +2126,6 @@ static WRITE8_HANDLER( konami_vrc4_w )
 			IRQ_count_latch = (IRQ_count_latch & 0x0f) | ((data & 0x0f) << 4 );
 			break;
 		case 0x7004:
-		case 0x7001:
 		case 0x7080:
 			IRQ_mode = data & 0x04;	// currently not implemented: 0 = prescaler mode / 1 = CPU mode
 			IRQ_enable = data & 0x02;
@@ -2094,12 +2134,160 @@ static WRITE8_HANDLER( konami_vrc4_w )
 				IRQ_count = IRQ_count_latch;
 			break;
 		case 0x7006:
-		case 0x7003:
 		case 0x70c0:
 			IRQ_enable = IRQ_enable_latch;
 			break;
 		default:
-			LOG_MMC(("konami_vrc4_w uncaught offset: %04x value: %02x\n", offset, data));
+			LOG_MMC(("konami_vrc4a_w uncaught offset: %04x value: %02x\n", offset, data));
+			break;
+	}
+}
+
+static WRITE8_HANDLER( konami_vrc4b_w )
+{
+	LOG_MMC(("konami_vrc4b_w, offset: %04x, data: %02x\n", offset, data));
+
+	switch (offset & 0x7fff)
+	{
+		case 0x0000:
+		case 0x0001:
+		case 0x0002:
+		case 0x0003:
+		case 0x0004:
+		case 0x0008:
+		case 0x000c:
+			prg_bank[0] = data;
+			vrc4_set_prg(space->machine);
+			break;
+
+		case 0x1000:
+		case 0x1002:
+		case 0x1008:
+			switch (data & 0x03)
+			{
+				case 0x00: set_nt_mirroring(PPU_MIRROR_VERT); break;
+				case 0x01: set_nt_mirroring(PPU_MIRROR_HORZ); break;
+				case 0x02: set_nt_mirroring(PPU_MIRROR_LOW); break;
+				case 0x03: set_nt_mirroring(PPU_MIRROR_HIGH); break;
+			}
+			break;
+
+		case 0x1001:
+		case 0x1003:
+		case 0x1004:
+		case 0x100c:
+			mmc_cmd1 = data & 0x02;
+			vrc4_set_prg(space->machine);
+			break;
+
+		case 0x2000:
+		case 0x2001:
+		case 0x2002:
+		case 0x2003:
+		case 0x2004:
+		case 0x2008:
+		case 0x200c:
+			prg8_ab(space->machine, data);
+			break;
+
+		case 0x3000:
+			vrom_bank[0] = (vrom_bank[0] & 0xf0) | (data & 0x0f);
+			chr1_0(space->machine, vrom_bank[0], CHRROM);
+			break;
+		case 0x3002:
+		case 0x3008:
+			vrom_bank[0] = (vrom_bank[0] & 0x0f) | (data << 4);
+			chr1_0(space->machine, vrom_bank[0], CHRROM);
+			break;
+		case 0x3001:
+		case 0x3004:
+			vrom_bank[1] = (vrom_bank[1] & 0xf0) | (data & 0x0f);
+			chr1_1(space->machine, vrom_bank[1], CHRROM);
+			break;
+		case 0x3003:
+		case 0x300c:
+			vrom_bank[1] = (vrom_bank[1] & 0x0f) | (data << 4);
+			chr1_1(space->machine, vrom_bank[1], CHRROM);
+			break;
+		case 0x4000:
+			vrom_bank[2] = (vrom_bank[2] & 0xf0) | (data & 0x0f);
+			chr1_2(space->machine, vrom_bank[2], CHRROM);
+			break;
+		case 0x4002:
+		case 0x4008:
+			vrom_bank[2] = (vrom_bank[2] & 0x0f) | (data << 4);
+			chr1_2(space->machine, vrom_bank[2], CHRROM);
+			break;
+		case 0x4001:
+		case 0x4004:
+			vrom_bank[3] = (vrom_bank[3] & 0xf0) | (data & 0x0f);
+			chr1_3(space->machine, vrom_bank[3], CHRROM);
+			break;
+		case 0x4003:
+		case 0x400c:
+			vrom_bank[3] = (vrom_bank[3] & 0x0f) | (data << 4);
+			chr1_3(space->machine, vrom_bank[3], CHRROM);
+			break;
+		case 0x5000:
+			vrom_bank[4] = (vrom_bank[4] & 0xf0) | (data & 0x0f);
+			chr1_4(space->machine, vrom_bank[4], CHRROM);
+			break;
+		case 0x5002:
+		case 0x5008:
+			vrom_bank[4] = (vrom_bank[4] & 0x0f) | (data << 4);
+			chr1_4(space->machine, vrom_bank[4], CHRROM);
+			break;
+		case 0x5001:
+		case 0x5004:
+			vrom_bank[5] = (vrom_bank[5] & 0xf0) | (data & 0x0f);
+			chr1_5(space->machine, vrom_bank[5], CHRROM);
+			break;
+		case 0x5003:
+		case 0x500c:
+			vrom_bank[5] = (vrom_bank[5] & 0x0f) | (data << 4);
+			chr1_5(space->machine, vrom_bank[5], CHRROM);
+			break;
+		case 0x6000:
+			vrom_bank[6] = (vrom_bank[6] & 0xf0) | (data & 0x0f);
+			chr1_6(space->machine, vrom_bank[6], CHRROM);
+			break;
+		case 0x6002:
+		case 0x6008:
+			vrom_bank[6] = (vrom_bank[6] & 0x0f) | (data << 4);
+			chr1_6(space->machine, vrom_bank[6], CHRROM);
+			break;
+		case 0x6001:
+		case 0x6004:
+			vrom_bank[7] = (vrom_bank[7] & 0xf0) | (data & 0x0f);
+			chr1_7(space->machine, vrom_bank[7], CHRROM);
+			break;
+		case 0x6003:
+		case 0x600c:
+			vrom_bank[7] = (vrom_bank[7] & 0x0f) | (data << 4);
+			chr1_7(space->machine, vrom_bank[7], CHRROM);
+			break;
+
+		case 0x7000:
+			IRQ_count_latch = (IRQ_count_latch & 0xf0) | (data & 0x0f);
+			break;
+		case 0x7002:
+		case 0x7008:
+			IRQ_count_latch = (IRQ_count_latch & 0x0f) | ((data & 0x0f) << 4 );
+			break;
+		case 0x7001:
+		case 0x7004:
+			IRQ_mode = data & 0x04;	// currently not implemented: 0 = prescaler mode / 1 = CPU mode
+			IRQ_enable = data & 0x02;
+			IRQ_enable_latch = data & 0x01;
+			if (data & 0x02)
+				IRQ_count = IRQ_count_latch;
+			break;
+		case 0x7003:
+		case 0x700c:
+			IRQ_enable = IRQ_enable_latch;
+			break;
+		default:
+			LOG_MMC(("konami_vrc4b_w uncaught offset: %04x value: %02x\n", offset, data));
 			break;
 	}
 }
@@ -2585,7 +2773,7 @@ static WRITE8_HANDLER( mapper34_w )
 	/* Deadly Towers is really a Mapper 34 game - the demo screens look wrong using mapper 7. */
 	LOG_MMC(("mapper34_w, offset: %04x, data: %02x\n", offset, data));
 
-	if (!nes.crc_hack) 	// is it plain BxROM?
+	if (!nes.crc_hack)	// is it plain BxROM?
 		prg32(space->machine, data);
 }
 
@@ -2600,7 +2788,7 @@ static WRITE8_HANDLER( mapper34_w )
 
 *************************************************************/
 
-static void mapper35_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void mapper35_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 	if (scanline < PPU_BOTTOM_VISIBLE_SCANLINE && IRQ_enable)
 	{
@@ -2756,7 +2944,7 @@ static WRITE8_HANDLER( mapper39_w )
 
 *************************************************************/
 
-static void mapper40_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void mapper40_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 	if (IRQ_enable)
 	{
@@ -3172,7 +3360,7 @@ static WRITE8_HANDLER( mapper49_m_w )
 
 *************************************************************/
 
-static void mapper50_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void mapper50_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 	if (IRQ_enable)
 	{
@@ -3535,7 +3723,7 @@ static WRITE8_HANDLER( mapper62_w )
 
 *************************************************************/
 
-static void mapper64_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void mapper64_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 	if (!IRQ_mode)	// we are in scanline mode!
 	{
@@ -3712,7 +3900,7 @@ static WRITE8_HANDLER( mapper64_w )
 /* Here, IRQ counter decrements every CPU cycle. Since we update it every scanline,
 we need to decrement it by 114 (Each scanline consists of 341 dots and, on NTSC,
 there are 3 dots to every 1 CPU cycle, hence 114 is the number of cycles per scanline ) */
-static void irem_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void irem_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 	if (IRQ_enable)
 	{
@@ -3814,7 +4002,7 @@ static WRITE8_HANDLER( mapper66_w )
 /* Here, IRQ counter decrements every CPU cycle. Since we update it every scanline,
 we need to decrement it by 114 (Each scanline consists of 341 dots and, on NTSC,
 there are 3 dots to every 1 CPU cycle, hence 114 is the number of cycles per scanline ) */
-static void mapper67_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void mapper67_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 	/* TODO: change to reflect the actual number of cycles spent: both using 114 or cycling 114,114,113
     produces a 1-line glitch in Fantasy Zone 2: it really requires the counter to be updated each CPU cycle! */
@@ -3889,9 +4077,9 @@ static WRITE8_HANDLER( mapper67_w )
 
 *************************************************************/
 
-static void mapper68_mirror( running_machine *machine, int m68_mirror, int m0, int m1 )
+static void mapper68_mirror( running_machine *machine, int mirror, int mirr0, int mirr1 )
 {
-	switch (m68_mirror)
+	switch (mirror)
 	{
 		case 0x00:
 			set_nt_mirroring(PPU_MIRROR_HORZ);
@@ -3906,28 +4094,28 @@ static void mapper68_mirror( running_machine *machine, int m68_mirror, int m0, i
 			set_nt_mirroring(PPU_MIRROR_HIGH);
 			break;
 		case 0x10:
-			set_nt_page(0, ROM, m0 | 0x80, 0);
-			set_nt_page(1, ROM, m1 | 0x80, 0);
-			set_nt_page(2, ROM, m0 | 0x80, 0);
-			set_nt_page(3, ROM, m1 | 0x80, 0);
+			set_nt_page(0, ROM, mirr0 | 0x80, 0);
+			set_nt_page(1, ROM, mirr1 | 0x80, 0);
+			set_nt_page(2, ROM, mirr0 | 0x80, 0);
+			set_nt_page(3, ROM, mirr1 | 0x80, 0);
 			break;
 		case 0x11:
-			set_nt_page(0, ROM, m0 | 0x80, 0);
-			set_nt_page(1, ROM, m0 | 0x80, 0);
-			set_nt_page(2, ROM, m1 | 0x80, 0);
-			set_nt_page(3, ROM, m1 | 0x80, 0);
+			set_nt_page(0, ROM, mirr0 | 0x80, 0);
+			set_nt_page(1, ROM, mirr0 | 0x80, 0);
+			set_nt_page(2, ROM, mirr1 | 0x80, 0);
+			set_nt_page(3, ROM, mirr1 | 0x80, 0);
 			break;
 		case 0x12:
-			set_nt_page(0, ROM, m0 | 0x80, 0);
-			set_nt_page(1, ROM, m0 | 0x80, 0);
-			set_nt_page(2, ROM, m0 | 0x80, 0);
-			set_nt_page(3, ROM, m0 | 0x80, 0);
+			set_nt_page(0, ROM, mirr0 | 0x80, 0);
+			set_nt_page(1, ROM, mirr0 | 0x80, 0);
+			set_nt_page(2, ROM, mirr0 | 0x80, 0);
+			set_nt_page(3, ROM, mirr0 | 0x80, 0);
 			break;
 		case 0x13:
-			set_nt_page(0, ROM, m1 | 0x80, 0);
-			set_nt_page(1, ROM, m1 | 0x80, 0);
-			set_nt_page(2, ROM, m1 | 0x80, 0);
-			set_nt_page(3, ROM, m1 | 0x80, 0);
+			set_nt_page(0, ROM, mirr1 | 0x80, 0);
+			set_nt_page(1, ROM, mirr1 | 0x80, 0);
+			set_nt_page(2, ROM, mirr1 | 0x80, 0);
+			set_nt_page(3, ROM, mirr1 | 0x80, 0);
 			break;
 	}
 }
@@ -3986,7 +4174,7 @@ static WRITE8_HANDLER( mapper68_w )
 /* Here, IRQ counter decrements every CPU cycle. Since we update it every scanline,
 we need to decrement it by 114 (Each scanline consists of 341 dots and, on NTSC,
 there are 3 dots to every 1 CPU cycle, hence 114 is the number of cycles per scanline ) */
-static void mapper69_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void mapper69_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 	/* TODO: change to reflect the actual number of cycles spent */
 	if ((IRQ_enable & 0x80) && (IRQ_enable & 0x01))
@@ -5250,7 +5438,7 @@ static WRITE8_HANDLER( mapper104_w )
 
 *************************************************************/
 
-static void mapper106_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void mapper106_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 	if (IRQ_enable)
 	{
@@ -5641,7 +5829,7 @@ static WRITE8_HANDLER( mapper115_w )
 
 *************************************************************/
 
-static void mapper117_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void mapper117_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 //  if (scanline < PPU_BOTTOM_VISIBLE_SCANLINE)
 	{
@@ -9391,7 +9579,7 @@ static WRITE8_HANDLER( mapper221_w )
 *************************************************************/
 
 /* Scanline based IRQ ? */
-static void mapper222_irq( const device_config *device, int scanline, int vblank, int blanked )
+static void mapper222_irq( running_device *device, int scanline, int vblank, int blanked )
 {
 	if (scanline < PPU_BOTTOM_VISIBLE_SCANLINE)
 	{
@@ -9607,34 +9795,34 @@ static WRITE8_HANDLER( mapper227_w )
 
 static WRITE8_HANDLER( mapper228_w )
 {
-	int prg_bank, prg_chip, chr_bank;
-	UINT8 prg_mode;
+	int pbank, pchip, cbank;
+	UINT8 pmode;
 	LOG_MMC(("mapper228_w, offset: %04x, data: %02x\n", offset, data));
 
 	set_nt_mirroring((offset & 0x2000) ? PPU_MIRROR_HORZ : PPU_MIRROR_VERT);
 
-	chr_bank = (data & 0x03) | ((offset & 0x0f) << 2);
-	chr8(space->machine, chr_bank, CHRROM);
+	cbank = (data & 0x03) | ((offset & 0x0f) << 2);
+	chr8(space->machine, cbank, CHRROM);
 
-	prg_bank = (offset & 0x7c0) >> 6;
-	prg_chip = (offset & 0x1800) >> 11;
-	prg_mode = offset & 0x20;
+	pbank = (offset & 0x7c0) >> 6;
+	pchip = (offset & 0x1800) >> 11;
+	pmode = offset & 0x20;
 
-	switch (prg_chip)
+	switch (pchip)
 	{
 		case 0: break;			// we are already at the correct bank
-		case 1: prg_bank |= 0x10; break;	// chip 1 starts at block 16
+		case 1: pbank |= 0x10; break;	// chip 1 starts at block 16
 		case 2: break;			// chip 2 was an empty socket
-		case 3: prg_bank |= 0x20; break;	// chip 3 starts at block 32
+		case 3: pbank |= 0x20; break;	// chip 3 starts at block 32
 	}
 
-	if (prg_mode)
+	if (pmode)
 	{
-		prg16_89ab(space->machine, prg_bank);
-		prg16_cdef(space->machine, prg_bank);
+		prg16_89ab(space->machine, pbank);
+		prg16_cdef(space->machine, pbank);
 	}
 	else
-		prg32(space->machine, prg_bank >> 1);
+		prg32(space->machine, pbank >> 1);
 }
 
 /*************************************************************
@@ -10331,7 +10519,7 @@ static WRITE8_HANDLER( mapper252_w )
 			vrom_bank[bank] = (vrom_bank[bank] & 0xf0) | (data & 0x0f);
 		chr1_x(space->machine, bank, vrom_bank[bank], CHRROM);
 		break;
-	case 0xf000:
+	case 0x7000:
 		switch (offset & 0x0c)
 		{
 		case 0x00:
@@ -10437,11 +10625,11 @@ static const mmc mmc_list[] =
 	{ 18, "Jaleco SS88006",            NULL, NULL, NULL, mapper18_w, NULL, NULL, jaleco_irq },
 	{ 19, "Namcot 106 + N106",         mapper19_l_w, mapper19_l_r, NULL, mapper19_w, NULL, NULL, namcot_irq },
 	{ 20, "Famicom Disk System",       NULL, NULL, NULL, NULL, NULL, NULL, fds_irq },
-	{ 21, "Konami VRC 4",              NULL, NULL, NULL, konami_vrc4_w, NULL, NULL, konami_irq },
+	{ 21, "Konami VRC 4a",             NULL, NULL, NULL, konami_vrc4a_w, NULL, NULL, konami_irq },
 	{ 22, "Konami VRC 2a",             NULL, NULL, NULL, konami_vrc2a_w, NULL, NULL, NULL },
 	{ 23, "Konami VRC 2b",             NULL, NULL, NULL, konami_vrc2b_w, NULL, NULL, konami_irq },
 	{ 24, "Konami VRC 6a",             NULL, NULL, NULL, konami_vrc6a_w, NULL, NULL, konami_irq },
-	{ 25, "Konami VRC 4",              NULL, NULL, NULL, konami_vrc4_w, NULL, NULL, konami_irq },
+	{ 25, "Konami VRC 4b",             NULL, NULL, NULL, konami_vrc4b_w, NULL, NULL, konami_irq },
 	{ 26, "Konami VRC 6b",             NULL, NULL, NULL, konami_vrc6b_w, NULL, NULL, konami_irq },
 // 27 World Hero
 // 28, 29, 30, 31 Unused

@@ -1,11 +1,21 @@
 /**********************************************************************
 
-    Commodore 1540/1541 Single Disk Drive emulation
+    Commodore 1540/1541/1541C/1541-II/2031 Single Disk Drive emulation
 
     Copyright MESS Team.
     Visit http://mamedev.org for licensing and usage restrictions.
 
 **********************************************************************/
+
+/*
+
+    TODO:
+
+    - some copy protections fail
+    - more accurate timing
+    - power/activity LEDs
+
+*/
 
 /*
 
@@ -123,49 +133,24 @@
 
 */
 
-/*
-
-    TODO:
-
-    - allocate track buffer runtime
-    - accurate timing
-    - D64 to G64 conversion
-    - activity led
-    - write to G64
-
-*/
-
-#include "driver.h"
+#include "emu.h"
 #include "c1541.h"
 #include "cpu/m6502/m6502.h"
 #include "devices/flopdrv.h"
+#include "formats/d64_dsk.h"
 #include "formats/g64_dsk.h"
 #include "machine/6522via.h"
 #include "machine/cbmiec.h"
+#include "machine/ieee488.h"
 
 /***************************************************************************
     PARAMETERS
 ***************************************************************************/
 
-#define LOG 0
-
 #define M6502_TAG		"ucd5"
 #define M6522_0_TAG		"uab1"
 #define M6522_1_TAG		"ucd4"
 #define TIMER_BIT_TAG	"ue7"
-
-static const double C1541_BITRATE[4] =
-{
-	XTAL_16MHz/13.0,	/* tracks 1-17 */
-	XTAL_16MHz/14.0,	/* tracks 18-24 */
-	XTAL_16MHz/15.0, 	/* tracks 25-30 */
-	XTAL_16MHz/16.0		/* tracks 31-42 */
-};
-
-#define SYNC_MARK			0x3ff		/* 10 consecutive 1-bits */
-
-#define TRACK_BUFFER_SIZE	8194		/* 2 bytes track length + maximum of 8192 bytes of GCR encoded data */
-#define TRACK_DATA_START	2
 
 /***************************************************************************
     TYPE DEFINITIONS
@@ -174,35 +159,44 @@ static const double C1541_BITRATE[4] =
 typedef struct _c1541_t c1541_t;
 struct _c1541_t
 {
-	/* abstractions */
-	int address;						/* serial bus address - 8 */
-	UINT8 track_buffer[TRACK_BUFFER_SIZE];				/* track data buffer */
-	int track_len;						/* track length */
-	int buffer_pos;						/* current byte position within track buffer */
-	int bit_pos;						/* current bit position within track buffer byte */
-	int bit_count;						/* current data byte bit counter */
-	UINT16 data;						/* data shift register */
+	/* IEC bus */
+	int address;							/* device address - 8 */
+	int atna;								/* attention acknowledge */
+	int data_out;							/* serial bus data output */
+
+	/* IEEE-488 bus */
+	int nrfd_out;							/* not ready for data */
+	int ndac_out;							/* not data accepted */
+
+	/* motors */
+	int stp;								/* stepper motor phase */
+	int mtr;								/* spindle motor on */
+
+	/* track */
+	UINT8 track_buffer[G64_BUFFER_SIZE];	/* track data buffer */
+	int track_len;							/* track length */
+	int buffer_pos;							/* current byte position within track buffer */
+	int bit_pos;							/* current bit position within track buffer byte */
+	int bit_count;							/* current data byte bit counter */
+	UINT16 data;							/* data shift register */
+	UINT8 yb;								/* GCR data byte to write */
 
 	/* signals */
-	UINT8 yb;							/* GCR data byte to write */
-	int byte;							/* byte ready */
-	int atna;							/* attention acknowledge */
-	int ds;								/* density select */
-	int stp;							/* stepping motor */
-	int soe;							/* s? output enable */
-	int mode;							/* mode (0 = write, 1 = read) */
-	int via0_irq;						/* VIA #0 interrupt request */
-	int via1_irq;						/* VIA #1 interrupt request */
+	int ds;									/* density select */
+	int soe;								/* s? output enable */
+	int byte;								/* byte ready */
+	int mode;								/* mode (0 = write, 1 = read) */
 
-	/* serial bus */
-	int data_out;						/* serial bus data output */
+	/* interrupts */
+	int via0_irq;							/* VIA #0 interrupt request */
+	int via1_irq;							/* VIA #1 interrupt request */
 
 	/* devices */
-	const device_config *cpu;
-	const device_config *via0;
-	const device_config *via1;
-	const device_config *serial_bus;
-	const device_config *image;
+	running_device *cpu;
+	running_device *via0;
+	running_device *via1;
+	running_device *bus;
+	running_device *image;
 
 	/* timers */
 	emu_timer *bit_timer;
@@ -212,7 +206,7 @@ struct _c1541_t
     INLINE FUNCTIONS
 ***************************************************************************/
 
-INLINE c1541_t *get_safe_token(const device_config *device)
+INLINE c1541_t *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -220,11 +214,11 @@ INLINE c1541_t *get_safe_token(const device_config *device)
 	return (c1541_t *)device->token;
 }
 
-INLINE c1541_config *get_safe_config(const device_config *device)
+INLINE c1541_config *get_safe_config(running_device *device)
 {
 	assert(device != NULL);
 	assert((device->type == C1540) || (device->type == C1541) || (device->type == C1541C) || (device->type == C1541II) || (device->type == C2031));
-	return (c1541_config *)device->inline_config;
+	return (c1541_config *)device->baseconfig().inline_config;
 }
 
 /***************************************************************************
@@ -237,7 +231,7 @@ INLINE c1541_config *get_safe_config(const device_config *device)
 
 static TIMER_CALLBACK( bit_tick )
 {
-	const device_config *device = (device_config *)ptr;
+	running_device *device = (running_device *)ptr;
 	c1541_t *c1541 = get_safe_token(device);
 	int byte = 0;
 
@@ -255,11 +249,11 @@ static TIMER_CALLBACK( bit_tick )
 		if (c1541->buffer_pos > c1541->track_len + 1)
 		{
 			/* loop to the start of the track */
-			c1541->buffer_pos = TRACK_DATA_START;
+			c1541->buffer_pos = G64_DATA_START;
 		}
 	}
 
-	if ((c1541->data & SYNC_MARK) == SYNC_MARK)
+	if ((c1541->data & G64_SYNC_MARK) == G64_SYNC_MARK)
 	{
 		/* SYNC detected */
 		c1541->bit_count = 0;
@@ -290,6 +284,76 @@ static TIMER_CALLBACK( bit_tick )
 }
 
 /*-------------------------------------------------
+    read_current_track - read track from disk
+-------------------------------------------------*/
+
+static void read_current_track(c1541_t *c1541)
+{
+	c1541->track_len = G64_BUFFER_SIZE;
+	c1541->buffer_pos = G64_DATA_START;
+	c1541->bit_pos = 7;
+	c1541->bit_count = 0;
+
+	/* read track data */
+	floppy_drive_read_track_data_info_buffer(c1541->image, 0, c1541->track_buffer, &c1541->track_len);
+
+	/* extract track length */
+	c1541->track_len = G64_DATA_START + ((c1541->track_buffer[1] << 8) | c1541->track_buffer[0]);
+}
+
+/*-------------------------------------------------
+    spindle_motor - spindle motor control
+-------------------------------------------------*/
+
+static void spindle_motor(c1541_t *c1541, int mtr)
+{
+	if (c1541->mtr != mtr)
+	{
+		if (mtr)
+		{
+			/* read track data */
+			read_current_track(c1541);
+		}
+
+		floppy_mon_w(c1541->image, !mtr);
+		timer_enable(c1541->bit_timer, mtr);
+
+		c1541->mtr = mtr;
+	}
+}
+
+/*-------------------------------------------------
+    step_motor - stepper motor control
+-------------------------------------------------*/
+
+static void step_motor(c1541_t *c1541, int mtr, int stp)
+{
+	if (mtr & (c1541->stp != stp))
+	{
+		int tracks = 0;
+
+		switch (c1541->stp)
+		{
+		case 0:	if (stp == 1) tracks++; else if (stp == 3) tracks--; break;
+		case 1:	if (stp == 2) tracks++; else if (stp == 0) tracks--; break;
+		case 2: if (stp == 3) tracks++; else if (stp == 1) tracks--; break;
+		case 3: if (stp == 0) tracks++; else if (stp == 2) tracks--; break;
+		}
+
+		if (tracks != 0)
+		{
+			/* step read/write head */
+			floppy_drive_seek(c1541->image, tracks);
+
+			/* read new track data */
+			read_current_track(c1541);
+		}
+
+		c1541->stp = stp;
+	}
+}
+
+/*-------------------------------------------------
     c1541_iec_atn_w - serial bus attention
 -------------------------------------------------*/
 
@@ -300,7 +364,7 @@ WRITE_LINE_DEVICE_HANDLER( c1541_iec_atn_w )
 
 	via_ca1_w(c1541->via0, !state);
 
-	cbm_iec_data_w(c1541->serial_bus, device, data_out);
+	cbm_iec_data_w(c1541->bus, device, data_out);
 }
 
 /*-------------------------------------------------
@@ -311,7 +375,40 @@ WRITE_LINE_DEVICE_HANDLER( c1541_iec_reset_w )
 {
 	if (!state)
 	{
-		device_reset(device);
+		device->reset();
+	}
+}
+
+/*-------------------------------------------------
+    c2031_ieee488_atn_w - IEEE-488 bus attention
+-------------------------------------------------*/
+
+WRITE_LINE_DEVICE_HANDLER( c2031_ieee488_atn_w )
+{
+	c1541_t *c1541 = get_safe_token(device);
+	int nrfd = c1541->nrfd_out;
+	int ndac = c1541->ndac_out;
+
+	via_ca1_w(c1541->via0, !state);
+
+	if (!state ^ c1541->atna)
+	{
+		nrfd = ndac = 0;
+	}
+
+	ieee488_nrfd_w(c1541->bus, device, nrfd);
+	ieee488_ndac_w(c1541->bus, device, ndac);
+}
+
+/*-------------------------------------------------
+    c2031_ieee488_ifc_w - IEEE-488 bus reset
+-------------------------------------------------*/
+
+WRITE_LINE_DEVICE_HANDLER( c2031_ieee488_ifc_w )
+{
+	if (!state)
+	{
+		device->reset();
 	}
 }
 
@@ -320,10 +417,10 @@ WRITE_LINE_DEVICE_HANDLER( c1541_iec_reset_w )
 -------------------------------------------------*/
 
 static ADDRESS_MAP_START( c1540_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_RAM
-	AM_RANGE(0x1800, 0x180f) AM_DEVREADWRITE(M6522_0_TAG, via_r, via_w)
-	AM_RANGE(0x1c00, 0x1c0f) AM_DEVREADWRITE(M6522_1_TAG, via_r, via_w)
-	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION("c1540", 0x0000)
+	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x6000) AM_RAM
+	AM_RANGE(0x1800, 0x180f) AM_MIRROR(0x63f0) AM_DEVREADWRITE(M6522_0_TAG, via_r, via_w)
+	AM_RANGE(0x1c00, 0x1c0f) AM_MIRROR(0x63f0) AM_DEVREADWRITE(M6522_1_TAG, via_r, via_w)
+	AM_RANGE(0x8000, 0xbfff) AM_MIRROR(0x4000) AM_ROM AM_REGION("c1540", 0x0000)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -331,10 +428,10 @@ ADDRESS_MAP_END
 -------------------------------------------------*/
 
 static ADDRESS_MAP_START( c1541_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_RAM
-	AM_RANGE(0x1800, 0x180f) AM_DEVREADWRITE(M6522_0_TAG, via_r, via_w)
-	AM_RANGE(0x1c00, 0x1c0f) AM_DEVREADWRITE(M6522_1_TAG, via_r, via_w)
-	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION("c1541", 0x0000)
+	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x6000) AM_RAM
+	AM_RANGE(0x1800, 0x180f) AM_MIRROR(0x63f0) AM_DEVREADWRITE(M6522_0_TAG, via_r, via_w)
+	AM_RANGE(0x1c00, 0x1c0f) AM_MIRROR(0x63f0) AM_DEVREADWRITE(M6522_1_TAG, via_r, via_w)
+	AM_RANGE(0x8000, 0xbfff) AM_MIRROR(0x4000) AM_ROM AM_REGION("c1541", 0x0000)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -342,10 +439,10 @@ ADDRESS_MAP_END
 -------------------------------------------------*/
 
 static ADDRESS_MAP_START( c1541c_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_RAM
-	AM_RANGE(0x1800, 0x180f) AM_DEVREADWRITE(M6522_0_TAG, via_r, via_w)
-	AM_RANGE(0x1c00, 0x1c0f) AM_DEVREADWRITE(M6522_1_TAG, via_r, via_w)
-	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION("c1541c", 0x0000)
+	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x6000) AM_RAM
+	AM_RANGE(0x1800, 0x180f) AM_MIRROR(0x63f0) AM_DEVREADWRITE(M6522_0_TAG, via_r, via_w)
+	AM_RANGE(0x1c00, 0x1c0f) AM_MIRROR(0x63f0) AM_DEVREADWRITE(M6522_1_TAG, via_r, via_w)
+	AM_RANGE(0x8000, 0xbfff) AM_MIRROR(0x4000) AM_ROM AM_REGION("c1541c", 0x0000)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -353,10 +450,10 @@ ADDRESS_MAP_END
 -------------------------------------------------*/
 
 static ADDRESS_MAP_START( c1541ii_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_RAM
-	AM_RANGE(0x1800, 0x180f) AM_DEVREADWRITE(M6522_0_TAG, via_r, via_w)
-	AM_RANGE(0x1c00, 0x1c0f) AM_DEVREADWRITE(M6522_1_TAG, via_r, via_w)
-	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION("c1541ii", 0x0000)
+	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x6000) AM_RAM
+	AM_RANGE(0x1800, 0x180f) AM_MIRROR(0x63f0) AM_DEVREADWRITE(M6522_0_TAG, via_r, via_w)
+	AM_RANGE(0x1c00, 0x1c0f) AM_MIRROR(0x63f0) AM_DEVREADWRITE(M6522_1_TAG, via_r, via_w)
+	AM_RANGE(0x8000, 0xbfff) AM_MIRROR(0x4000) AM_ROM AM_REGION("c1541ii", 0x0000)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -364,10 +461,10 @@ ADDRESS_MAP_END
 -------------------------------------------------*/
 
 static ADDRESS_MAP_START( c2031_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_RAM
-	AM_RANGE(0x1800, 0x180f) AM_DEVREADWRITE(M6522_0_TAG, via_r, via_w)
-	AM_RANGE(0x1c00, 0x1c0f) AM_DEVREADWRITE(M6522_1_TAG, via_r, via_w)
-	AM_RANGE(0xc000, 0xffff) AM_ROM AM_REGION("c2031", 0x0000)
+	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x6000) AM_RAM
+	AM_RANGE(0x1800, 0x180f) AM_MIRROR(0x63f0) AM_DEVREADWRITE(M6522_0_TAG, via_r, via_w)
+	AM_RANGE(0x1c00, 0x1c0f) AM_MIRROR(0x63f0) AM_DEVREADWRITE(M6522_1_TAG, via_r, via_w)
+	AM_RANGE(0x8000, 0xbfff) AM_MIRROR(0x4000) AM_ROM AM_REGION("c2031", 0x0000)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -410,16 +507,16 @@ static READ8_DEVICE_HANDLER( via0_pb_r )
 	UINT8 data = 0;
 
 	/* data in */
-	data = !cbm_iec_data_r(c1541->serial_bus);
+	data = !cbm_iec_data_r(c1541->bus);
 
 	/* clock in */
-	data |= !cbm_iec_clk_r(c1541->serial_bus) << 2;
+	data |= !cbm_iec_clk_r(c1541->bus) << 2;
 
 	/* serial bus address */
 	data |= c1541->address << 5;
 
 	/* attention in */
-	data |= !cbm_iec_atn_r(c1541->serial_bus) << 7;
+	data |= !cbm_iec_atn_r(c1541->bus) << 7;
 
 	return data;
 }
@@ -448,29 +545,36 @@ static WRITE8_DEVICE_HANDLER( via0_pb_w )
 	int atna = BIT(data, 4);
 
 	/* data out */
-	int serial_data = !data_out && !(atna ^ !cbm_iec_atn_r(c1541->serial_bus));
-	cbm_iec_data_w(c1541->serial_bus, device->owner, serial_data);
+	int serial_data = !data_out && !(atna ^ !cbm_iec_atn_r(c1541->bus));
+	cbm_iec_data_w(c1541->bus, device->owner, serial_data);
 	c1541->data_out = data_out;
 
 	/* clock out */
-	cbm_iec_clk_w(c1541->serial_bus, device->owner, !clk_out);
+	cbm_iec_clk_w(c1541->bus, device->owner, !clk_out);
 
 	/* attention acknowledge */
 	c1541->atna = atna;
+}
+
+static READ_LINE_DEVICE_HANDLER( atn_in_r )
+{
+	c1541_t *c1541 = get_safe_token(device->owner);
+
+	return !cbm_iec_atn_r(c1541->bus);
 }
 
 static const via6522_interface c1541_via0_intf =
 {
 	DEVCB_HANDLER(via0_pa_r),
 	DEVCB_HANDLER(via0_pb_r),
-	DEVCB_NULL,
+	DEVCB_LINE(atn_in_r),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 
 	DEVCB_NULL,
 	DEVCB_HANDLER(via0_pb_w),
-	DEVCB_NULL, /* ATN IN */
+	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -508,14 +612,14 @@ static const via6522_interface c1541c_via0_intf =
 {
 	DEVCB_HANDLER(c1541c_via0_pa_r),
 	DEVCB_HANDLER(via0_pb_r),
-	DEVCB_NULL,
+	DEVCB_LINE(atn_in_r),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 
 	DEVCB_NULL,
 	DEVCB_HANDLER(via0_pb_w),
-	DEVCB_NULL, /* ATN IN */
+	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -544,7 +648,9 @@ static READ8_DEVICE_HANDLER( c2031_via0_pa_r )
 
     */
 
-	return 0;
+	c1541_t *c1541 = get_safe_token(device->owner);
+
+	return ieee488_dio_r(c1541->bus, 0);
 }
 
 static WRITE8_DEVICE_HANDLER( c2031_via0_pa_w )
@@ -563,6 +669,10 @@ static WRITE8_DEVICE_HANDLER( c2031_via0_pa_w )
         PA7     DI7
 
     */
+
+	c1541_t *c1541 = get_safe_token(device->owner);
+
+	ieee488_dio_w(c1541->bus, device->owner, data);
 }
 
 static READ8_DEVICE_HANDLER( c2031_via0_pb_r )
@@ -582,7 +692,26 @@ static READ8_DEVICE_HANDLER( c2031_via0_pb_r )
 
     */
 
-	return 0;
+	c1541_t *c1541 = get_safe_token(device->owner);
+
+	UINT8 data = 0;
+
+	/* not ready for data */
+	data |= ieee488_nrfd_r(c1541->bus) << 1;
+
+	/* not data accepted */
+	data |= ieee488_ndac_r(c1541->bus) << 2;
+
+	/* end or identify */
+	data |= ieee488_eoi_r(c1541->bus) << 3;
+
+	/* data valid */
+	data |= ieee488_dav_r(c1541->bus) << 6;
+
+	/* attention */
+	data |= !ieee488_atn_r(c1541->bus) << 7;
+
+	return data;
 }
 
 static WRITE8_DEVICE_HANDLER( c2031_via0_pb_w )
@@ -601,15 +730,68 @@ static WRITE8_DEVICE_HANDLER( c2031_via0_pb_w )
         PB7     _ATN
 
     */
+
+	c1541_t *c1541 = get_safe_token(device->owner);
+
+	int atna = BIT(data, 0);
+	int nrfd = BIT(data, 1);
+	int ndac = BIT(data, 2);
+
+	/* not ready for data */
+	c1541->nrfd_out = nrfd;
+
+	/* not data accepted */
+	c1541->ndac_out = ndac;
+
+	/* end or identify */
+	ieee488_eoi_w(c1541->bus, device->owner, BIT(data, 3));
+
+	/* data valid */
+	ieee488_dav_w(c1541->bus, device->owner, BIT(data, 6));
+
+	/* attention acknowledge */
+	c1541->atna = atna;
+
+	if (!ieee488_atn_r(c1541->bus) ^ atna)
+	{
+		nrfd = ndac = 0;
+	}
+
+	ieee488_nrfd_w(c1541->bus, device->owner, nrfd);
+	ieee488_ndac_w(c1541->bus, device->owner, ndac);
+}
+
+static READ_LINE_DEVICE_HANDLER( c2031_via0_ca1_r )
+{
+	c1541_t *c1541 = get_safe_token(device->owner);
+
+	return !ieee488_atn_r(c1541->bus);
+}
+
+static READ_LINE_DEVICE_HANDLER( c2031_via0_ca2_r )
+{
+	c1541_t *c1541 = get_safe_token(device->owner);
+	int state = 0;
+
+	/* device # selection */
+	switch (c1541->address)
+	{
+	case 0: state = (c1541->atna | c1541->nrfd_out);	break;
+	case 1: state = c1541->atna;						break;
+	case 2: state = c1541->nrfd_out;					break;
+	case 3: state = 0;									break;
+	}
+
+	return state;
 }
 
 static const via6522_interface c2031_via0_intf =
 {
 	DEVCB_HANDLER(c2031_via0_pa_r),
 	DEVCB_HANDLER(c2031_via0_pb_r),
+	DEVCB_LINE(c2031_via0_ca1_r),
 	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
+	DEVCB_LINE(c2031_via0_ca2_r),
 	DEVCB_NULL,
 
 	DEVCB_HANDLER(c2031_via0_pa_w),
@@ -617,7 +799,7 @@ static const via6522_interface c2031_via0_intf =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_NULL,
+	DEVCB_NULL, /* PLL SYN */
 
 	DEVCB_LINE(via0_irq_w)
 };
@@ -703,7 +885,7 @@ static READ8_DEVICE_HANDLER( via1_pb_r )
 	data |= !floppy_wpt_r(c1541->image) << 4;
 
 	/* SYNC detect line */
-	data |= !(c1541->mode && ((c1541->data & SYNC_MARK) == SYNC_MARK)) << 7;
+	data |= !(c1541->mode && ((c1541->data & G64_SYNC_MARK) == G64_SYNC_MARK)) << 7;
 
 	return data;
 }
@@ -727,55 +909,31 @@ static WRITE8_DEVICE_HANDLER( via1_pb_w )
 
 	c1541_t *c1541 = get_safe_token(device->owner);
 
-	int stp = data & 0x03;
-	int ds = (data >> 5) & 0x03;
+	/* spindle motor */
 	int mtr = BIT(data, 2);
+	spindle_motor(c1541, mtr);
 
 	/* stepper motor */
-	if (c1541->stp != stp)
-	{
-		int tracks = 0;
-
-		switch (c1541->stp)
-		{
-		case 0:	if (stp == 1) tracks++; else if (stp == 3) tracks--; break;
-		case 1:	if (stp == 2) tracks++; else if (stp == 0) tracks--; break;
-		case 2: if (stp == 3) tracks++; else if (stp == 1) tracks--; break;
-		case 3: if (stp == 0) tracks++; else if (stp == 2) tracks--; break;
-		}
-
-		if (tracks != 0)
-		{
-			c1541->track_len = TRACK_BUFFER_SIZE;
-			c1541->buffer_pos = TRACK_DATA_START;
-			c1541->bit_pos = 7;
-			c1541->bit_count = 0;
-
-			/* step read/write head */
-			floppy_drive_seek(c1541->image, tracks);
-
-			/* read track data */
-			floppy_drive_read_track_data_info_buffer(c1541->image, 0, c1541->track_buffer, &c1541->track_len);
-
-			/* extract track length */
-			c1541->track_len = (c1541->track_buffer[1] << 8) | c1541->track_buffer[0];
-		}
-
-		c1541->stp = stp;
-	}
-
-	/* spindle motor */
-	floppy_mon_w(c1541->image, !mtr);
-	timer_enable(c1541->bit_timer, mtr);
+	int stp = data & 0x03;
+	step_motor(c1541, mtr, stp);
 
 	/* activity LED */
 
 	/* density select */
+	int ds = (data >> 5) & 0x03;
+
 	if (c1541->ds != ds)
 	{
-		timer_adjust_periodic(c1541->bit_timer, attotime_zero, 0, ATTOTIME_IN_HZ(C1541_BITRATE[ds]/4));
+		timer_adjust_periodic(c1541->bit_timer, attotime_zero, 0, ATTOTIME_IN_HZ(C2040_BITRATE[ds]/4));
 		c1541->ds = ds;
 	}
+}
+
+static READ_LINE_DEVICE_HANDLER( byte_ready_r )
+{
+	c1541_t *c1541 = get_safe_token(device->owner);
+
+	return !(c1541->byte && c1541->soe);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( soe_w )
@@ -800,7 +958,7 @@ static const via6522_interface c1541_via1_intf =
 {
 	DEVCB_HANDLER(yb_r),
 	DEVCB_HANDLER(via1_pb_r),
-	DEVCB_NULL, /* BYTE READY */
+	DEVCB_LINE(byte_ready_r),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -820,8 +978,8 @@ static const via6522_interface c1541_via1_intf =
 -------------------------------------------------*/
 
 static FLOPPY_OPTIONS_START( c1541 )
-//  FLOPPY_OPTION( c1541, "d64", "Commodore 1541 Disk Image", d64_dsk_identify, d64_dsk_construct, NULL )
 	FLOPPY_OPTION( c1541, "g64", "Commodore 1541 GCR Disk Image", g64_dsk_identify, g64_dsk_construct, NULL )
+	FLOPPY_OPTION( c1541, "d64", "Commodore 1541 Disk Image", d64_dsk_identify, d64_dsk_construct, NULL )
 FLOPPY_OPTIONS_END
 
 /*-------------------------------------------------
@@ -930,33 +1088,6 @@ ROM_START( c1541 ) // schematic 1540008
 ROM_END
 
 /*-------------------------------------------------
-    ROM( c1541cr )
--------------------------------------------------*/
-
-ROM_START( c1541cr ) // schematic 1540049
-	ROM_REGION( 0x4000, "c1541cr", ROMREGION_LOADBYNAME )
-	ROM_LOAD( "325302-01.ub3", 0x0000, 0x2000, CRC(29ae9752) SHA1(8e0547430135ba462525c224e76356bd3d430f11) )
-	ROM_LOAD( "901229-01.ub4", 0x2000, 0x2000, CRC(9a48d3f0) SHA1(7a1054c6156b51c25410caec0f609efb079d3a77) )
-	ROM_LOAD( "901229-02.ub4", 0x2000, 0x2000, CRC(b29bab75) SHA1(91321142e226168b1139c30c83896933f317d000) )
-	ROM_LOAD( "901229-03.ub4", 0x2000, 0x2000, CRC(9126e74a) SHA1(03d17bd745066f1ead801c5183ac1d3af7809744) )
-	ROM_LOAD( "901229-04.ub4", 0x2000, 0x2000, NO_DUMP )
-	ROM_LOAD( "901229-05 ae.ub4", 0x2000, 0x2000, CRC(361c9f37) SHA1(f5d60777440829e46dc91285e662ba072acd2d8b) )
-	ROM_LOAD( "901229-06 aa.ub4", 0x2000, 0x2000, CRC(3a235039) SHA1(c7f94f4f51d6de4cdc21ecbb7e57bb209f0530c0) )
-ROM_END
-
-/*-------------------------------------------------
-    ROM( c1541a )
--------------------------------------------------*/
-
-#define rom_c1541a rom_c1541cr // schematic 251748
-
-/*-------------------------------------------------
-    ROM( c1541a2 )
--------------------------------------------------*/
-
-#define rom_c1541a2 rom_c1541cr // schematic 251748
-
-/*-------------------------------------------------
     ROM( c1541c )
 -------------------------------------------------*/
 
@@ -965,12 +1096,6 @@ ROM_START( c1541c ) // schematic ?
 	ROM_LOAD( "251968-01.ua2", 0x0000, 0x4000, CRC(1b3ca08d) SHA1(8e893932de8cce244117fcea4c46b7c39c6a7765) )
 	ROM_LOAD( "251968-02.ua2", 0x0000, 0x4000, CRC(2d862d20) SHA1(38a7a489c7bbc8661cf63476bf1eb07b38b1c704) )
 ROM_END
-
-/*-------------------------------------------------
-    ROM( c1541b )
--------------------------------------------------*/
-
-#define rom_c1541b rom_c1541c // schematic ?
 
 /*-------------------------------------------------
     ROM( c1541ii )
@@ -1006,22 +1131,22 @@ static DEVICE_START( c1541 )
 	c1541->address = config->address - 8;
 
 	/* find our CPU */
-	c1541->cpu = device_find_child_by_tag(device, M6502_TAG);
+	c1541->cpu = device->subdevice(M6502_TAG);
 
 	/* find devices */
-	c1541->via0 = device_find_child_by_tag(device, M6522_0_TAG);
-	c1541->via1 = device_find_child_by_tag(device, M6522_1_TAG);
-	c1541->serial_bus = devtag_get_device(device->machine, config->serial_bus_tag);
-	c1541->image = device_find_child_by_tag(device, FLOPPY_0);
+	c1541->via0 = device->subdevice(M6522_0_TAG);
+	c1541->via1 = device->subdevice(M6522_1_TAG);
+	c1541->bus = devtag_get_device(device->machine, config->bus_tag);
+	c1541->image = device->subdevice(FLOPPY_0);
 
 	/* allocate track buffer */
-//  c1541->track_buffer = auto_alloc_array(device->machine, UINT8, TRACK_BUFFER_SIZE);
+//  c1541->track_buffer = auto_alloc_array(device->machine, UINT8, G64_BUFFER_SIZE);
 
 	/* allocate data timer */
 	c1541->bit_timer = timer_alloc(device->machine, bit_tick, (void *)device);
 
 	/* register for state saving */
-//  state_save_register_device_item_pointer(device, 0, c1541->track_buffer, TRACK_BUFFER_SIZE);
+//  state_save_register_device_item_pointer(device, 0, c1541->track_buffer, G64_BUFFER_SIZE);
 	state_save_register_device_item(device, 0, c1541->address);
 	state_save_register_device_item(device, 0, c1541->track_len);
 	state_save_register_device_item(device, 0, c1541->buffer_pos);
@@ -1038,6 +1163,8 @@ static DEVICE_START( c1541 )
 	state_save_register_device_item(device, 0, c1541->via0_irq);
 	state_save_register_device_item(device, 0, c1541->via1_irq);
 	state_save_register_device_item(device, 0, c1541->data_out);
+	state_save_register_device_item(device, 0, c1541->nrfd_out);
+	state_save_register_device_item(device, 0, c1541->ndac_out);
 }
 
 /*-------------------------------------------------
@@ -1048,9 +1175,9 @@ static DEVICE_RESET( c1541 )
 {
 	c1541_t *c1541 = get_safe_token(device);
 
-	device_reset(c1541->cpu);
-	device_reset(c1541->via0);
-	device_reset(c1541->via1);
+	c1541->cpu->reset();
+	c1541->via0->reset();
+	c1541->via1->reset();
 }
 
 /*-------------------------------------------------

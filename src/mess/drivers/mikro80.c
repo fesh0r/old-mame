@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "sound/wave.h"
 #include "machine/i8255a.h"
@@ -41,7 +41,7 @@ static ADDRESS_MAP_START( radio99_io , ADDRESS_SPACE_IO, 8)
 	AM_RANGE( 0x04, 0x04) AM_DEVWRITE  ( "dac", radio99_dac_w )
 	AM_RANGE( 0x05, 0x05) AM_READWRITE ( mikro80_8255_portc_r, mikro80_8255_portc_w )
 	AM_RANGE( 0x06, 0x06) AM_READ	   ( mikro80_8255_portb_r)
-	AM_RANGE( 0x07, 0x07) AM_WRITE 	   ( mikro80_8255_porta_w)
+	AM_RANGE( 0x07, 0x07) AM_WRITE	   ( mikro80_8255_porta_w)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -142,7 +142,7 @@ static const cassette_config mikro80_cassette_config =
 {
 	rk8_cassette_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED)
 };
 
 
@@ -187,8 +187,8 @@ static MACHINE_DRIVER_START( mikro80 )
 	MDRV_VIDEO_START(mikro80)
 	MDRV_VIDEO_UPDATE(mikro80)
 
- 	MDRV_SPEAKER_STANDARD_MONO("mono")
-   	MDRV_SOUND_WAVE_ADD("wave", "cassette")
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_WAVE_ADD("wave", "cassette")
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_CASSETTE_ADD( "cassette", mikro80_cassette_config )
@@ -224,5 +224,5 @@ ROM_END
 
 /* Driver */
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE     INPUT       INIT     COMPANY                  FULLNAME   FLAGS */
-COMP( 1983, mikro80, 	 0,  	 0,	mikro80, 	mikro80, 	mikro80, "", "Mikro-80",	 0)
-COMP( 1993, radio99, mikro80,  	 0,	radio99, 	mikro80, 	radio99, "", "Radio-99DM",	 0)
+COMP( 1983, mikro80,	 0, 	 0,	mikro80,	mikro80,	mikro80, "", "Mikro-80",	 0)
+COMP( 1993, radio99, mikro80,	 0,	radio99,	mikro80,	radio99, "", "Radio-99DM",	 0)

@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/68681.h"
 #include "devices/flopdrv.h"
@@ -37,37 +37,37 @@ static MACHINE_RESET(ht68k)
 
 	memcpy((UINT8*)ht68k_ram,user1,0x8000);
 
-	device_reset(cputag_get_cpu(machine, "maincpu"));
+	devtag_get_device(machine, "maincpu")->reset();
 }
 
-static void duart_irq_handler(const device_config *device, UINT8 vector)
+static void duart_irq_handler(running_device *device, UINT8 vector)
 {
 	cputag_set_input_line_and_vector(device->machine, "maincpu", M68K_IRQ_3, HOLD_LINE, M68K_INT_ACK_AUTOVECTOR);
 }
 
-static void duart_tx(const device_config *device, int channel, UINT8 data)
+static void duart_tx(running_device *device, int channel, UINT8 data)
 {
-	const device_config	*devconf = devtag_get_device(device->machine, "terminal");
+	running_device *devconf = devtag_get_device(device->machine, "terminal");
 	terminal_write(devconf,0,data);
 }
 
-static UINT8 duart_input(const device_config *device)
+static UINT8 duart_input(running_device *device)
 {
 	return 0;
 }
 
-static void duart_output(const device_config *device, UINT8 data)
+static void duart_output(running_device *device, UINT8 data)
 {
-	const device_config *fdc = devtag_get_device(device->machine, "wd1770");
+	running_device *fdc = devtag_get_device(device->machine, "wd1770");
 	wd17xx_set_side(fdc,BIT(data,3) ? 0 : 1);
 	if (BIT(data,7)==0) {
- 		wd17xx_set_drive(fdc,0);
+		wd17xx_set_drive(fdc,0);
 	} else if (BIT(data,6)==0) {
- 		wd17xx_set_drive(fdc,1);
+		wd17xx_set_drive(fdc,1);
 	} else if (BIT(data,5)==0) {
- 		wd17xx_set_drive(fdc,2);
+		wd17xx_set_drive(fdc,2);
 	} else if (BIT(data,4)==0) {
- 		wd17xx_set_drive(fdc,3);
+		wd17xx_set_drive(fdc,3);
 	}
 }
 
@@ -96,6 +96,7 @@ static WRITE_LINE_DEVICE_HANDLER( ht68k_fdc_intrq_w )
 
 static const wd17xx_interface ht68k_wd17xx_interface =
 {
+	DEVCB_NULL,
 	DEVCB_LINE(ht68k_fdc_intrq_w),
 	DEVCB_NULL,
 	{FLOPPY_0, FLOPPY_1, FLOPPY_2, FLOPPY_3}
@@ -139,5 +140,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY                     FULLNAME                    FLAGS */
-COMP( 1987, ht68k,  0,       0, 	 ht68k, 	ht68k, 	 0,  	 "Hawthorne Technologies",   "TinyGiant HT68k",		0)
+COMP( 1987, ht68k,  0,       0, 	 ht68k, 	ht68k,	 0, 	 "Hawthorne Technologies",   "TinyGiant HT68k",		GAME_NO_SOUND)
 

@@ -65,7 +65,7 @@ are attached to two switches. The keys appear twice in the keyboard matrix.
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "kb_keytro.h"
 #include "cpu/mcs51/mcs51.h"
 
@@ -84,7 +84,7 @@ are attached to two switches. The keys appear twice in the keyboard matrix.
 typedef struct _kb_keytr_state kb_keytr_state;
 struct _kb_keytr_state
 {
-	const device_config *cpu;
+	running_device *cpu;
 
 	devcb_resolved_write_line out_clock_func;
 	devcb_resolved_write_line out_data_func;
@@ -106,7 +106,7 @@ struct _kb_keytr_state
     INLINE FUNCTIONS
 *****************************************************************************/
 
-INLINE kb_keytr_state *get_safe_token(const device_config *device)
+INLINE kb_keytr_state *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -250,7 +250,7 @@ static INPUT_PORTS_START( kb_keytronic_common )
 	PORT_START( "kb_keytronic_37_0" )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("PA1")					/* 7b */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("|<--")					/* 7e */
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("/a\\") 					/* 7a */
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD )									PORT_NAME("/a\\")					/* 7a */
 	PORT_BIT( 0x30, IP_ACTIVE_LOW, IPT_KEYBOARD )	PORT_CODE(KEYCODE_PLUS_PAD)		PORT_NAME("KP +")					/* 4e */
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
@@ -602,10 +602,10 @@ ROM_END
 static DEVICE_START( kb_keytr )
 {
 	kb_keytr_state *keytronic = get_safe_token(device);
-	const kb_keytronic_interface *intf = device->static_config;
+	const kb_keytronic_interface *intf = (const kb_keytronic_interface *)device->baseconfig().static_config;
 
 	/* find our cpu */
-	keytronic->cpu = device_find_child_by_tag(device, "kb_keytr");
+	keytronic->cpu = device->subdevice("kb_keytr");
 
 	/* some basic checks */
 	assert(keytronic->cpu != NULL);

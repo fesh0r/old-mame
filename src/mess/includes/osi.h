@@ -11,9 +11,13 @@
 #define OSI600_VIDEORAM_SIZE	0x400
 #define OSI630_COLORRAM_SIZE	0x400
 
-typedef struct _osi_state osi_state;
-struct _osi_state
+class osi_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, osi_state(machine)); }
+
+	osi_state(running_machine &machine) { }
+
 	/* keyboard state */
 	UINT8 keylatch;
 
@@ -27,7 +31,7 @@ struct _osi_state
 	int fdc_index;
 
 	/* devices */
-	const device_config *cassette;
+	running_device *cassette;
 };
 
 /* ---------- defined in video/osi.c ---------- */

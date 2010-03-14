@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 
 static ADDRESS_MAP_START(a5105_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -70,5 +70,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( ????, a5105,  0,       0, 	a5105, 	a5105, 	 0,  	  	 "BIC",   "A5105",		GAME_NOT_WORKING)
+COMP( ????, a5105,  0,       0, 	a5105,	a5105,	 0, 		 "BIC",   "A5105",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

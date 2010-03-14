@@ -77,7 +77,7 @@
 #define OBJ_SIZE_32			0x8000
 #define OBJ_SIZE_64			0xc000
 
-#define OBJ_TILENUM    			0x03ff
+#define OBJ_TILENUM 			0x03ff
 #define OBJ_PRIORITY			0x0c00
 #define OBJ_PRIORITY_SHIFT		10
 #define OBJ_PALNUM			0xf000
@@ -146,8 +146,13 @@ enum
 };
 
 /* driver state */
-typedef struct
+class gba_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, gba_state(machine)); }
+
+	gba_state(running_machine &machine) { }
+
 	UINT32 DISPSTAT;
 	UINT32 BG2X, BG2Y, BG3X, BG3Y;
 	UINT16 DISPCNT,	GRNSWAP;
@@ -207,7 +212,7 @@ typedef struct
 
 	int fifo_a_ptr, fifo_b_ptr, fifo_a_in, fifo_b_in;
 	UINT8 fifo_a[20], fifo_b[20];
-} gba_state;
+};
 
 /*----------- defined in video/gba.c -----------*/
 

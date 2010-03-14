@@ -22,7 +22,7 @@
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/mpf1.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
@@ -57,7 +57,7 @@ static ADDRESS_MAP_START( mpf1_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x03) AM_MIRROR(0x3c) AM_DEVREADWRITE(I8255A_TAG, i8255a_r, i8255a_w)
 	AM_RANGE(0x40, 0x43) AM_MIRROR(0x3c) AM_DEVREADWRITE(Z80CTC_TAG, z80ctc_r, z80ctc_w)
-	AM_RANGE(0x80, 0x83) AM_MIRROR(0x3c) AM_DEVREADWRITE(Z80PIO_TAG, z80pio_r, z80pio_w)
+	AM_RANGE(0x80, 0x83) AM_MIRROR(0x3c) AM_DEVREADWRITE(Z80PIO_TAG, z80pio_cd_ba_r, z80pio_cd_ba_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mpf1b_io_map, ADDRESS_SPACE_IO, 8 )
@@ -65,7 +65,7 @@ static ADDRESS_MAP_START( mpf1b_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x03) AM_MIRROR(0x3c) AM_DEVREADWRITE(I8255A_TAG, i8255a_r, i8255a_w)
 	AM_RANGE(0x40, 0x43) AM_MIRROR(0x3c) AM_DEVREADWRITE(Z80CTC_TAG, z80ctc_r, z80ctc_w)
-	AM_RANGE(0x80, 0x83) AM_MIRROR(0x3c) AM_DEVREADWRITE(Z80PIO_TAG, z80pio_r, z80pio_w)
+	AM_RANGE(0x80, 0x83) AM_MIRROR(0x3c) AM_DEVREADWRITE(Z80PIO_TAG, z80pio_cd_ba_r, z80pio_cd_ba_w)
 	AM_RANGE(0xfe, 0xfe) AM_MIRROR(0x01) AM_DEVREADWRITE(TMS5220_TAG, tms5220_status_r, tms5220_data_w)
 ADDRESS_MAP_END
 
@@ -74,7 +74,7 @@ static ADDRESS_MAP_START( mpf1p_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x03) AM_MIRROR(0x3c) AM_DEVREADWRITE(I8255A_TAG, i8255a_r, i8255a_w)
 	AM_RANGE(0x40, 0x43) AM_MIRROR(0x3c) AM_DEVREADWRITE(Z80CTC_TAG, z80ctc_r, z80ctc_w)
-	AM_RANGE(0x80, 0x83) AM_MIRROR(0x3c) AM_DEVREADWRITE(Z80PIO_TAG, z80pio_r, z80pio_w)
+	AM_RANGE(0x80, 0x83) AM_MIRROR(0x3c) AM_DEVREADWRITE(Z80PIO_TAG, z80pio_cd_ba_r, z80pio_cd_ba_w)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -207,7 +207,7 @@ INPUT_PORTS_END
 
 static TIMER_CALLBACK( led_refresh )
 {
-	mpf1_state *state = machine->driver_data;
+	mpf1_state *state = (mpf1_state *)machine->driver_data;
 
 	if (BIT(state->lednum, 5)) output_set_digit_value(0, param);
 	if (BIT(state->lednum, 4)) output_set_digit_value(1, param);
@@ -219,7 +219,7 @@ static TIMER_CALLBACK( led_refresh )
 
 static READ8_DEVICE_HANDLER( mpf1_porta_r )
 {
-	mpf1_state *state = device->machine->driver_data;
+	mpf1_state *state = (mpf1_state *)device->machine->driver_data;
 	UINT8 data = 0x7f;
 
 	/* bit 0 to 5, keyboard rows 0 to 5 */
@@ -241,7 +241,7 @@ static READ8_DEVICE_HANDLER( mpf1_porta_r )
 
 static WRITE8_DEVICE_HANDLER( mpf1_portb_w )
 {
-	mpf1_state *state = device->machine->driver_data;
+	mpf1_state *state = (mpf1_state *)device->machine->driver_data;
 
 	/* swap bits around for the mame 7-segment emulation */
 	UINT8 led_data = BITSWAP8(data, 6, 1, 2, 0, 7, 5, 4, 3);
@@ -252,7 +252,7 @@ static WRITE8_DEVICE_HANDLER( mpf1_portb_w )
 
 static WRITE8_DEVICE_HANDLER( mpf1_portc_w )
 {
-	mpf1_state *state = device->machine->driver_data;
+	mpf1_state *state = (mpf1_state *)device->machine->driver_data;
 
 	/* bits 0-5, led select and keyboard latch */
 	state->lednum = data & 0x3f;
@@ -296,7 +296,7 @@ static Z80CTC_INTERFACE( mpf1_ctc_intf )
 
 /* Z80PIO Interface */
 
-static const z80pio_interface mpf1_pio_intf =
+static Z80PIO_INTERFACE( mpf1_pio_intf )
 {
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0),
 	DEVCB_NULL,
@@ -322,7 +322,7 @@ static const cassette_config mpf1_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED)
 };
 
 /* TMS5220 Interface */
@@ -343,13 +343,13 @@ static TIMER_CALLBACK( check_halt_callback )
 {
 	// halt-LED; the red one, is turned on when the processor is halted
 	// TODO: processor seems to halt, but restarts(?) at 0x0000 after a while -> fix
-	INT64 led_halt = devtag_get_info_int(machine, Z80_TAG, CPUINFO_INT_REGISTER + Z80_HALT);
+	INT64 led_halt = machine->device(Z80_TAG)->get_runtime_int(CPUINFO_INT_REGISTER + Z80_HALT);
 	set_led_status(machine, 1, led_halt);
 }
 
 static MACHINE_START( mpf1 )
 {
-	mpf1_state *state = machine->driver_data;
+	mpf1_state *state = (mpf1_state *)machine->driver_data;
 
 	/* find devices */
 	state->speaker = devtag_get_device(machine, SPEAKER_TAG);
@@ -367,7 +367,7 @@ static MACHINE_START( mpf1 )
 
 static MACHINE_RESET( mpf1 )
 {
-	mpf1_state *state = machine->driver_data;
+	mpf1_state *state = (mpf1_state *)machine->driver_data;
 
 	state->lednum = 0;
 }
@@ -387,7 +387,7 @@ static MACHINE_DRIVER_START( mpf1 )
 	MDRV_MACHINE_RESET(mpf1)
 
 	/* devices */
-	MDRV_Z80PIO_ADD(Z80PIO_TAG, mpf1_pio_intf)
+	MDRV_Z80PIO_ADD(Z80PIO_TAG, XTAL_3_579545MHz/2, mpf1_pio_intf)
 	MDRV_Z80CTC_ADD(Z80CTC_TAG, XTAL_3_579545MHz/2, mpf1_ctc_intf)
 	MDRV_I8255A_ADD(I8255A_TAG, ppi8255_intf)
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, mpf1_cassette_config)
@@ -414,7 +414,7 @@ static MACHINE_DRIVER_START( mpf1b )
 	MDRV_MACHINE_RESET(mpf1)
 
 	/* devices */
-	MDRV_Z80PIO_ADD(Z80PIO_TAG, mpf1_pio_intf)
+	MDRV_Z80PIO_ADD(Z80PIO_TAG, XTAL_3_579545MHz/2, mpf1_pio_intf)
 	MDRV_Z80CTC_ADD(Z80CTC_TAG, XTAL_3_579545MHz/2, mpf1_ctc_intf)
 	MDRV_I8255A_ADD(I8255A_TAG, ppi8255_intf)
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, mpf1_cassette_config)
@@ -448,8 +448,8 @@ static MACHINE_DRIVER_START( mpf1p )
 	MDRV_DEFAULT_LAYOUT(layout_mpf1p)
 
 	/* devices */
-	MDRV_Z80PIO_ADD(Z80PIO_TAG, mpf1_pio_intf)
-	MDRV_Z80CTC_ADD(Z80CTC_TAG, 3579500/2, mpf1_ctc_intf)
+	MDRV_Z80PIO_ADD(Z80PIO_TAG, 2500000, mpf1_pio_intf)
+	MDRV_Z80CTC_ADD(Z80CTC_TAG, 2500000, mpf1_ctc_intf)
 	MDRV_I8255A_ADD(I8255A_TAG, ppi8255_intf)
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, mpf1_cassette_config)
 
@@ -484,7 +484,7 @@ ROM_END
 
 static DIRECT_UPDATE_HANDLER( mpf1_direct_update_handler )
 {
-	mpf1_state *state = space->machine->driver_data;
+	mpf1_state *state = (mpf1_state *)space->machine->driver_data;
 
 	if (!state->_break)
 	{

@@ -6,7 +6,7 @@
 
 **********************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "timer.h"
 #include "state.h"
 #include "sound/dac.h"
@@ -53,7 +53,7 @@ typedef struct
 	write8_space_func write;
 	void* data;                  /* non-NULL for banks */
 	int isnop;
-	
+
 	/* configurable part */
 	UINT8  state;                /* one of HP48_MODULE_ */
 	UINT32 base;                 /* base address */
@@ -194,8 +194,8 @@ void hp48_rs232_start_recv_byte( running_machine *machine, UINT8 data )
 /* end of send event */
 static TIMER_CALLBACK( hp48_rs232_byte_sent_cb )
 {
-	const device_config *xmodem = devtag_get_device(machine, "rs232_x");
-	const device_config *kermit = devtag_get_device(machine, "rs232_k");
+	running_device *xmodem = devtag_get_device(machine, "rs232_x");
+	running_device *kermit = devtag_get_device(machine, "rs232_k");
 
 	LOG_SERIAL(( "%f hp48_rs232_byte_sent_cb: end of send, data=%02x\n",
 		     attotime_to_double(timer_get_time(machine)), param ));
@@ -222,7 +222,7 @@ static void hp48_rs232_send_byte( running_machine *machine )
 	UINT8 data = HP48_IO_8(0x16); /* byte to send */
 
 	LOG_SERIAL(( "%05x %f hp48_rs232_send_byte: start sending, data=%02x\n",
-		     cpu_get_previouspc(cputag_get_cpu(machine, "maincpu")), attotime_to_double(timer_get_time(machine)), data ));
+		     cpu_get_previouspc(devtag_get_device(machine, "maincpu")), attotime_to_double(timer_get_time(machine)), data ));
 
 	/* set byte sending and send buffer full */
 	hp48_io[0x12] |= 3;
@@ -293,10 +293,10 @@ static const chardev_interface hp48_chardev_iface =
 
 
 /* CPU sets OUT register (keyboard + beeper) */
-void hp48_reg_out( const device_config *device, int out )
+void hp48_reg_out( running_device *device, int out )
 {
 	LOG(( "%05x %f hp48_reg_out: %03x\n",
-	      cpu_get_previouspc(cputag_get_cpu(device->machine, "maincpu")), attotime_to_double(timer_get_time(device->machine)), out ));
+	      cpu_get_previouspc(devtag_get_device(device->machine, "maincpu")), attotime_to_double(timer_get_time(device->machine)), out ));
 
 	/* bits 0-8: keyboard lines */
 	hp48_out = out & 0x1ff;
@@ -329,11 +329,11 @@ static int hp48_get_in( running_machine *machine )
 }
 
 /* CPU reads IN register (keyboard) */
-int hp48_reg_in( const device_config *device )
+int hp48_reg_in( running_device *device )
 {
 	int in = hp48_get_in( device->machine );
 	LOG(( "%05x %f hp48_reg_in: %04x\n",
-	      cpu_get_previouspc(cputag_get_cpu(device->machine, "maincpu")), attotime_to_double(timer_get_time(device->machine)), in ));
+	      cpu_get_previouspc(devtag_get_device(device->machine, "maincpu")), attotime_to_double(timer_get_time(device->machine)), in ));
 	return in;
 }
 
@@ -373,9 +373,9 @@ static TIMER_CALLBACK( hp48_kbd_cb )
 }
 
 /* RSI opcode */
-void hp48_rsi( const device_config *device )
+void hp48_rsi( running_device *device )
 {
-	LOG(( "%05x %f hp48_rsi\n", cpu_get_previouspc(cputag_get_cpu(device->machine, "maincpu")), attotime_to_double(timer_get_time(device->machine)) ));
+	LOG(( "%05x %f hp48_rsi\n", cpu_get_previouspc(devtag_get_device(device->machine, "maincpu")), attotime_to_double(timer_get_time(device->machine)) ));
 
 	/* enables interrupts on key repeat
        (normally, there is only one interrupt, when the key is pressed)
@@ -594,8 +594,8 @@ static READ8_HANDLER ( hp48_io_r )
 	{
                 /* second nibble of received data */
 
-		const device_config *xmodem = devtag_get_device(space->machine, "rs232_x");
-		const device_config *kermit = devtag_get_device(space->machine, "rs232_k");
+		running_device *xmodem = devtag_get_device(space->machine, "rs232_x");
+		running_device *kermit = devtag_get_device(space->machine, "rs232_k");
 
 		hp48_io[0x11] &= ~1;  /* clear byte received */
 		data = hp48_io[offset];
@@ -801,7 +801,7 @@ static void hp48_apply_modules( running_machine *machine, void* param )
 		UINT32 end = base + (off_mask & nselect_mask);
 		char bank[10];
 		sprintf(bank,"bank%d",i);
-		
+
 		if ( hp48_modules[i].state != HP48_MODULE_CONFIGURED ) continue;
 
 		if ( (i == 4) && !nce2_enable ) continue;
@@ -813,24 +813,22 @@ static void hp48_apply_modules( running_machine *machine, void* param )
 				  select_mask, hp48_module_names[i] );
 			continue;
 		}
-		if ((hp48_modules[i].data == NULL) && (hp48_modules[i].write == NULL) && (hp48_modules[i].read == NULL)) {
-			memory_unmap_readwrite(space, base, end, 0, mirror);
-		} else {
-			if (hp48_modules[i].data !=NULL) {
-				memory_install_read_bank( space, base, end, 0, mirror, bank );
-			} else {
-				memory_install_read8_handler( space, base, end, 0, mirror, hp48_modules[i].read );
-			}
-			if (hp48_modules[i].isnop == 1) {
-				memory_nop_write(space, base, end, 0, mirror);
-			} else {
-				if (hp48_modules[i].data !=NULL) {
-					memory_install_write_bank( space, base, end, 0, mirror, bank );
-				} else {
-					memory_install_write8_handler( space, base, end, 0, mirror, hp48_modules[i].write );
-				}
-			}
+
+		if (hp48_modules[i].data)
+			memory_install_read_bank( space, base, end, 0, mirror, bank );
+		else
+			memory_install_read8_handler( space, base, end, 0, mirror, hp48_modules[i].read );
+
+		if (hp48_modules[i].isnop)
+			memory_nop_write(space, base, end, 0, mirror);
+		else
+		{
+			if (hp48_modules[i].data)
+				memory_install_write_bank( space, base, end, 0, mirror, bank );
+			else
+				memory_install_write8_handler( space, base, end, 0, mirror, hp48_modules[i].write );
 		}
+
 		LOG(( "hp48_apply_modules: module %s configured at %05x-%05x, mirror %05x\n",
 		      hp48_module_names[i], base, end, mirror ));
 
@@ -870,19 +868,19 @@ static void hp48_reset_modules( running_machine *machine )
 
 
 /* RESET opcode */
-void hp48_mem_reset( const device_config *device )
+void hp48_mem_reset( running_device *device )
 {
-	LOG(( "%05x %f hp48_mem_reset\n", cpu_get_previouspc(cputag_get_cpu(device->machine, "maincpu")), attotime_to_double(timer_get_time(device->machine)) ));
+	LOG(( "%05x %f hp48_mem_reset\n", cpu_get_previouspc(devtag_get_device(device->machine, "maincpu")), attotime_to_double(timer_get_time(device->machine)) ));
 	hp48_reset_modules( device->machine );
 }
 
 
 /* CONFIG opcode */
-void hp48_mem_config( const device_config *device, int v )
+void hp48_mem_config( running_device *device, int v )
 {
 	int i;
 
-	LOG(( "%05x %f hp48_mem_config: %05x\n", cpu_get_previouspc(cputag_get_cpu(device->machine, "maincpu")), attotime_to_double(timer_get_time(device->machine)), v ));
+	LOG(( "%05x %f hp48_mem_config: %05x\n", cpu_get_previouspc(devtag_get_device(device->machine, "maincpu")), attotime_to_double(timer_get_time(device->machine)), v ));
 
 	/* find the highest priority unconfigured module (except non-configurable NCE1)... */
 	for ( i = 0; i < 5; i++ )
@@ -910,10 +908,10 @@ void hp48_mem_config( const device_config *device, int v )
 
 
 /* UNCFG opcode */
-void hp48_mem_unconfig( const device_config *device, int v )
+void hp48_mem_unconfig( running_device *device, int v )
 {
 	int i;
-	LOG(( "%05x %f hp48_mem_unconfig: %05x\n", cpu_get_previouspc(cputag_get_cpu(device->machine, "maincpu")), attotime_to_double(timer_get_time(device->machine)), v ));
+	LOG(( "%05x %f hp48_mem_unconfig: %05x\n", cpu_get_previouspc(devtag_get_device(device->machine, "maincpu")), attotime_to_double(timer_get_time(device->machine)), v ));
 
 	/* find the highest priority fully configured module at address v (except NCE1)... */
 	for ( i = 0; i < 5; i++ )
@@ -932,7 +930,7 @@ void hp48_mem_unconfig( const device_config *device, int v )
 
 
 /* C=ID opcode */
-int  hp48_mem_id( const device_config *device )
+int  hp48_mem_id( running_device *device )
 {
 	int i;
 	int data = 0; /* 0 = everything is configured */
@@ -956,7 +954,7 @@ int  hp48_mem_id( const device_config *device )
 	}
 
 	LOG(( "%05x %f hp48_mem_id = %02x\n",
-	      cpu_get_previouspc(cputag_get_cpu(device->machine, "maincpu")), attotime_to_double(timer_get_time(device->machine)), data ));
+	      cpu_get_previouspc(devtag_get_device(device->machine, "maincpu")), attotime_to_double(timer_get_time(device->machine)), data ));
 
 	return data; /* everything is configured */
 }
@@ -966,7 +964,7 @@ int  hp48_mem_id( const device_config *device )
 /* --------- CRC ---------- */
 
 /* each memory read by the CPU updates the internal CRC state */
-void hp48_mem_crc( const device_config *device, int addr, int data )
+void hp48_mem_crc( running_device *device, int addr, int data )
 {
 	/* no CRC for I/O RAM */
 	if ( addr >= hp48_io_addr && addr < hp48_io_addr + 0x40 ) return;
@@ -1011,12 +1009,12 @@ const struct hp48_port_config hp48gx_port1_config = { 0, 3,    128*1024, "p1", "
 const struct hp48_port_config hp48gx_port2_config = { 1, 4, 4*1024*1024, "p2", "port2" };
 
 /* helper for load and create */
-static void hp48_fill_port( const device_config* image )
+static void hp48_fill_port( running_device* image )
 {
-	struct hp48_port_config* conf = (struct hp48_port_config*) image->static_config;
+	struct hp48_port_config* conf = (struct hp48_port_config*) image->baseconfig().static_config;
 	int size = hp48_port_size[conf->port];
 	LOG(( "hp48_fill_port: %s module=%i size=%i rw=%i\n", conf->name, conf->module, size, hp48_port_write[conf->port] ));
-	hp48_port_data[conf->port] = malloc( 2 * size );
+	hp48_port_data[conf->port] = (UINT8*)malloc( 2 * size );
 	memset( hp48_port_data[conf->port], 0, 2 * size );
 	hp48_modules[conf->module].off_mask = 2 * (( size > 128 * 1024 ) ? 128 * 1024 : size) - 1;
 	hp48_modules[conf->module].read     = NULL;
@@ -1024,15 +1022,15 @@ static void hp48_fill_port( const device_config* image )
 	hp48_modules[conf->module].isnop    = 0;
 	if (hp48_port_write[conf->port]) {
 		hp48_modules[conf->module].isnop    = 1;
-	} 
+	}
 	hp48_modules[conf->module].data     = hp48_port_data[conf->port];
 	hp48_apply_modules( image->machine, NULL );
 }
 
 /* helper for start and unload */
-static void hp48_unfill_port( const device_config* image )
+static void hp48_unfill_port( running_device* image )
 {
-	struct hp48_port_config* conf = (struct hp48_port_config*) image->static_config;
+	struct hp48_port_config* conf = (struct hp48_port_config*) image->baseconfig().static_config;
 	hp48_modules[conf->module].off_mask = 0x00fff;  /* 2 KB */
 	hp48_modules[conf->module].read     = NULL;
 	hp48_modules[conf->module].write    = NULL;
@@ -1042,7 +1040,7 @@ static void hp48_unfill_port( const device_config* image )
 
 static DEVICE_IMAGE_LOAD( hp48_port )
 {
-	struct hp48_port_config* conf = (struct hp48_port_config*) image->static_config;
+	struct hp48_port_config* conf = (struct hp48_port_config*) image->baseconfig().static_config;
 	int size = image_length( image );
 	if ( size == 0 ) size = conf->max_size; /* default size */
 
@@ -1063,7 +1061,7 @@ static DEVICE_IMAGE_LOAD( hp48_port )
 
 static DEVICE_IMAGE_CREATE( hp48_port )
 {
-	struct hp48_port_config* conf = (struct hp48_port_config*) image->static_config;
+	struct hp48_port_config* conf = (struct hp48_port_config*) image->baseconfig().static_config;
 	int size = conf->max_size;
         /* XXX defaults to max_size; get user-specified size instead */
 
@@ -1083,7 +1081,7 @@ static DEVICE_IMAGE_CREATE( hp48_port )
 
 static DEVICE_IMAGE_UNLOAD( hp48_port )
 {
-	struct hp48_port_config* conf = (struct hp48_port_config*) image->static_config;
+	struct hp48_port_config* conf = (struct hp48_port_config*) image->baseconfig().static_config;
 	LOG(( "hp48_port image unload: %s size=%i rw=%i\n",
 	      conf->name, hp48_port_size[conf->port] ,hp48_port_write[conf->port] ));
 	if ( hp48_port_write[conf->port] )

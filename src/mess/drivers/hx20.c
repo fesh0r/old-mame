@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m6800/m6800.h"
 
 static ADDRESS_MAP_START(ehx20_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -110,5 +110,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( 1983, ehx20,  0,       0, 	ehx20, 	ehx20, 	 0,  	  	 "Epson",   "HX20",		GAME_NOT_WORKING)
+COMP( 1983, ehx20,  0,       0, 	ehx20,	ehx20,	 0, 		 "Epson",   "HX20",		GAME_NOT_WORKING | GAME_NO_SOUND )
 

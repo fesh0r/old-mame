@@ -50,9 +50,13 @@
 #define SN76477_TAG		"g8"
 #define CASSETTE_TAG	"cassette"
 
-typedef struct _abc80_state abc80_state;
-struct _abc80_state
+class abc80_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, abc80_state(machine)); }
+
+	abc80_state(running_machine &machine) { }
+
 	/* keyboard state */
 	int key_data;
 	int key_strobe;
@@ -74,8 +78,8 @@ struct _abc80_state
 	const UINT8 *attr_prom;		/* character attribute PROM */
 
 	/* devices */
-	const device_config *z80pio;
-	const device_config *cassette;
+	running_device *z80pio;
+	running_device *cassette;
 };
 
 /*----------- defined in video/abc80.c -----------*/

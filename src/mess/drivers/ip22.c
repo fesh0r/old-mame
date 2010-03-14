@@ -38,7 +38,7 @@
 *
 \*********************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/mips/mips3.h"
 #include "sound/cdda.h"
 #include "machine/sgi.h"
@@ -69,7 +69,7 @@ INLINE void ATTR_PRINTF(3,4) verboselog( running_machine *machine, int n_level, 
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror("%08x: %s", cpu_get_pc(cputag_get_cpu(machine, "maincpu")), buf);
+		logerror("%08x: %s", cpu_get_pc(devtag_get_device(machine, "maincpu")), buf);
 	}
 }
 
@@ -84,13 +84,16 @@ static const struct pit8253_config ip22_pit8254_config =
 	{
 		{
 			1000000,				/* Timer 0: 1MHz */
-			NULL
+			DEVCB_NULL,
+			DEVCB_NULL
 		}, {
 			1000000,				/* Timer 1: 1MHz */
-			NULL
+			DEVCB_NULL,
+			DEVCB_NULL
 		}, {
 			1000000,				/* Timer 2: 1MHz */
-			NULL
+			DEVCB_NULL,
+			DEVCB_NULL
 		}
 	}
 };
@@ -132,9 +135,9 @@ static NVRAM_HANDLER( ip22 )
 #define INT3_LOCAL1_PANEL	(0x02)
 #define INT3_LOCAL1_GP2		(0x04)
 #define INT3_LOCAL1_MAPPABLE1   (0x08)
-#define INT3_LOCAL1_HPC_DMA    	(0x10)
+#define INT3_LOCAL1_HPC_DMA 	(0x10)
 #define INT3_LOCAL1_AC_FAIL     (0x20)
-#define INT3_LOCAL1_VSYNC 	(0x40)
+#define INT3_LOCAL1_VSYNC	(0x40)
 #define INT3_LOCAL1_RETRACE	(0x80)
 
 static UINT32 int3_regs[64];
@@ -183,7 +186,7 @@ static void int3_lower_local1_irq(UINT8 source_mask)
 
 static READ32_HANDLER( hpc3_pbus6_r )
 {
-	const device_config *lpt = devtag_get_device(space->machine, "lpt_0");
+	running_device *lpt = devtag_get_device(space->machine, "lpt_0");
 	UINT8 ret8;
 	running_machine *machine = space->machine;
 
@@ -258,7 +261,7 @@ static READ32_HANDLER( hpc3_pbus6_r )
 
 static WRITE32_HANDLER( hpc3_pbus6_w )
 {
-	const device_config *lpt = devtag_get_device(space->machine, "lpt_0");
+	running_device *lpt = devtag_get_device(space->machine, "lpt_0");
 	char cChar;
 	running_machine *machine = space->machine;
 
@@ -1157,7 +1160,7 @@ static ADDRESS_MAP_START( ip225015_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE( 0x1f0f0000, 0x1f0f1fff ) AM_READWRITE( newport_rex3_r, newport_rex3_w )
 	AM_RANGE( 0x1fa00000, 0x1fa1ffff ) AM_READWRITE( sgi_mc_r, sgi_mc_w )
 	AM_RANGE( 0x1fb90000, 0x1fb9ffff ) AM_READWRITE( hpc3_hd_enet_r, hpc3_hd_enet_w )
-	AM_RANGE( 0x1fbb0000, 0x1fbb0003 ) AM_RAM 	/* unknown, but read a lot and discarded */
+	AM_RANGE( 0x1fbb0000, 0x1fbb0003 ) AM_RAM	/* unknown, but read a lot and discarded */
 	AM_RANGE( 0x1fbc0000, 0x1fbc7fff ) AM_READWRITE( hpc3_hd0_r, hpc3_hd0_w )
 	AM_RANGE( 0x1fbc8000, 0x1fbcffff ) AM_READWRITE( hpc3_unkpbus0_r, hpc3_unkpbus0_w ) AM_BASE(&unkpbus0)
 	AM_RANGE( 0x1fb80000, 0x1fb8ffff ) AM_READWRITE( hpc3_pbusdma_r, hpc3_pbusdma_w )
@@ -1202,7 +1205,7 @@ static MACHINE_RESET( ip225015 )
 
 	nPBUS_DMA_Active = 0;
 
-	mips3drc_set_options(cputag_get_cpu(machine, "maincpu"), MIPS3DRC_COMPATIBLE_OPTIONS | MIPS3DRC_CHECK_OVERFLOWS);
+	mips3drc_set_options(devtag_get_device(machine, "maincpu"), MIPS3DRC_COMPATIBLE_OPTIONS | MIPS3DRC_CHECK_OVERFLOWS);
 }
 
 static void dump_chain(const address_space *space, UINT32 ch_base)
@@ -1338,7 +1341,7 @@ static void scsi_irq(running_machine *machine, int state)
 
 				dump_chain(space, nHPC_SCSI0Descriptor);
 
-				printf("PC is %08x\n", cpu_get_pc(cputag_get_cpu(machine, "maincpu")));
+				printf("PC is %08x\n", cpu_get_pc(devtag_get_device(machine, "maincpu")));
 				printf("DMA to device: length %x xie %d eox %d\n", length, xie, eox);
 
 				if (length <= 0x4000)

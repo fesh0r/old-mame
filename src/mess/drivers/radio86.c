@@ -7,13 +7,14 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "sound/wave.h"
 #include "machine/i8255a.h"
 #include "machine/i8257.h"
 #include "video/i8275.h"
 #include "devices/cassette.h"
+#include "devices/cartslot.h"
 #include "formats/rk_cas.h"
 #include "includes/radio86.h"
 
@@ -310,7 +311,7 @@ static const cassette_config radio86_cassette_config =
 {
 	rkr_cassette_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED)
 };
 
 
@@ -369,53 +370,57 @@ MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( radio16 )
-  	/* basic machine hardware */
-  	MDRV_IMPORT_FROM(radio86)
-  	MDRV_CPU_MODIFY("maincpu")
-  	MDRV_CPU_PROGRAM_MAP(radio86_16_mem)
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(radio86)
+	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_PROGRAM_MAP(radio86_16_mem)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( radiorom )
-  	/* basic machine hardware */
-  	MDRV_IMPORT_FROM(radio86)
-  	MDRV_CPU_MODIFY("maincpu")
-  	MDRV_CPU_PROGRAM_MAP(radio86rom_mem)
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(radio86)
+	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_PROGRAM_MAP(radio86rom_mem)
 
 	MDRV_I8255A_ADD( "ppi8255_2", radio86_ppi8255_interface_2 )
+	
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("bin,rom")
+	MDRV_CARTSLOT_NOT_MANDATORY
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( radioram )
-  	/* basic machine hardware */
-  	MDRV_IMPORT_FROM(radio86)
-  	MDRV_CPU_MODIFY("maincpu")
-  	MDRV_CPU_PROGRAM_MAP(radio86ram_mem)
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(radio86)
+	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_PROGRAM_MAP(radio86ram_mem)
 
 	MDRV_I8255A_ADD( "ppi8255_2", radio86_ppi8255_interface_2 )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( rk7007 )
-  	/* basic machine hardware */
-  	MDRV_IMPORT_FROM(radio86)
-  	MDRV_CPU_MODIFY("maincpu")
-  	MDRV_CPU_IO_MAP(rk7007_io)
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(radio86)
+	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_IO_MAP(rk7007_io)
 
 	MDRV_I8255A_ADD( "ms7007", rk7007_ppi8255_interface )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( rk700716 )
-  	/* basic machine hardware */
-  	MDRV_IMPORT_FROM(radio16)
-  	MDRV_CPU_MODIFY("maincpu")
-  	MDRV_CPU_IO_MAP(rk7007_io)
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(radio16)
+	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_IO_MAP(rk7007_io)
 
 	MDRV_I8255A_ADD( "ms7007", rk7007_ppi8255_interface )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( mikron2 )
-  	/* basic machine hardware */
-  	MDRV_IMPORT_FROM(radio86)
-  	MDRV_CPU_MODIFY("maincpu")
-  	MDRV_CPU_PROGRAM_MAP(mikron2_mem)
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(radio86)
+	MDRV_CPU_MODIFY("maincpu")
+	MDRV_CPU_PROGRAM_MAP(mikron2_mem)
 MACHINE_DRIVER_END
 
 /* ROM definition */
@@ -451,10 +456,13 @@ ROM_START( radio16 )
 ROM_END
 
 ROM_START( radiorom )
-	ROM_REGION( 0x18000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "radiorom.rom", 0xf800, 0x0800, CRC(B5CDEAB7) SHA1(1c80d72082f2fb2190b575726cb82d86ae0ee7d8))
+	ROM_REGION( 0x20000, "maincpu", ROMREGION_ERASEFF )
+	ROM_SYSTEM_BIOS(0, "32k", "32 KB rom disk")
+	ROMX_LOAD( "radiorom.rom", 0xf800, 0x0800, CRC(B5CDEAB7) SHA1(1c80d72082f2fb2190b575726cb82d86ae0ee7d8), ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "64k", "64 KB rom disk")
+	ROMX_LOAD( "radiorom.64",  0xf800, 0x0800, CRC(5250b927) SHA1(e885e0f5b2325190b38a4c92b20a8b4fa78fbd8f), ROM_BIOS(2))
 	ROM_COPY( "maincpu", 0xf800, 0xf000, 0x0800 )
-	ROM_LOAD( "romdisk.rk", 0x10000, 0x8000, CRC(6B16FC04) SHA1(8c09322ae184f4d900f1032d20b5cf3eb2f1a24b))
+	ROM_CART_LOAD("cart", 0x10000,  0x10000, ROM_NOMIRROR | ROM_OPTIONAL)
 	ROM_REGION(0x0800, "gfx1",0)
 	ROM_LOAD ("radio86.fnt", 0x0000, 0x0400, CRC(7666bd5e) SHA1(8652787603bee9b4da204745e3b2aa07a4783dfc))
 ROM_END
@@ -486,7 +494,7 @@ ROM_END
 
 ROM_START( mikron2 )
     ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-  	ROM_LOAD( "mikron2.bin", 0xf800, 0x0800, CRC(2cd79bb4) SHA1(501df47e65aaa8f4ce27751bc2a7e7089e2e888c))
+	ROM_LOAD( "mikron2.bin", 0xf800, 0x0800, CRC(2cd79bb4) SHA1(501df47e65aaa8f4ce27751bc2a7e7089e2e888c))
 	ROM_COPY( "maincpu", 0xf800, 0xf000, 0x0800 )
 	ROM_REGION(0x0800, "gfx1",0)
 	ROM_LOAD ("radio86.fnt", 0x0000, 0x0400, CRC(7666bd5e) SHA1(8652787603bee9b4da204745e3b2aa07a4783dfc))
@@ -495,12 +503,12 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( 1986, radio86,  0,       0, 	radio86, 	radio86, radio86, "", "Radio-86RK",	0)
-COMP( 1986, radio16,  radio86, 0, 	radio16, 	radio86, radio86, "", "Radio-86RK (16K RAM)",	0)
-COMP( 1986, radio4k,  radio86, 0, 	radio86, 	radio86, radio86, "", "Radio-86RK (4K ROM)",	0)
-COMP( 1986, radiorom, radio86, 0, 	radiorom, 	radio86, radio86, "", "Radio-86RK (ROM-Disk)",	0)
-COMP( 1986, radioram, radio86, 0, 	radioram, 	radio86, radioram,"", "Radio-86RK (ROM/RAM Disk)",	0)
-COMP( 1986, spektr01, radio86, 0, 	radio86, 	radio86, radio86, "", "Spektr-001",	0)
-COMP( 1986, rk7007,   radio86, 0, 	rk7007, 	ms7007,  radio86, "", "Radio-86RK (MS7007)",	0)
-COMP( 1986, rk700716, radio86, 0, 	rk700716, 	ms7007,  radio86, "", "Radio-86RK (MS7007 16K RAM)",	0)
-COMP( 1986, mikron2,  radio86, 0, 	mikron2, 	radio86, radio86, "", "Mikron-2",	0)
+COMP( 1986, radio86,  0,       0,	radio86,	radio86, radio86, "", "Radio-86RK",	0)
+COMP( 1986, radio16,  radio86, 0,	radio16,	radio86, radio86, "", "Radio-86RK (16K RAM)",	0)
+COMP( 1986, radio4k,  radio86, 0,	radio86,	radio86, radio86, "", "Radio-86RK (4K ROM)",	0)
+COMP( 1986, radiorom, radio86, 0,	radiorom,	radio86, radio86, "", "Radio-86RK (ROM-Disk)",	0)
+COMP( 1986, radioram, radio86, 0,	radioram,	radio86, radioram,"", "Radio-86RK (ROM/RAM Disk)",	0)
+COMP( 1986, spektr01, radio86, 0,	radio86,	radio86, radio86, "", "Spektr-001",	0)
+COMP( 1986, rk7007,   radio86, 0,	rk7007, 	ms7007,  radio86, "", "Radio-86RK (MS7007)",	0)
+COMP( 1986, rk700716, radio86, 0,	rk700716,	ms7007,  radio86, "", "Radio-86RK (MS7007 16K RAM)",	0)
+COMP( 1986, mikron2,  radio86, 0,	mikron2,	radio86, radio86, "", "Mikron-2",	0)

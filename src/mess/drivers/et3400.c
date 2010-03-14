@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m6800/m6800.h"
 
 static ADDRESS_MAP_START(et3400_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -64,5 +64,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1976, et3400,  0,       0, 	et3400, 	et3400, 	 0,    	 "Heath, Inc.",   "Heathkit ET-3400",		GAME_NOT_WORKING)
+COMP( 1976, et3400,  0,       0,	et3400, 	et3400, 	 0, 	 "Heath, Inc.",   "Heathkit ET-3400",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

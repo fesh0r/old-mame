@@ -12,7 +12,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i86/i86.h"
 
 static ADDRESS_MAP_START(sdk86_mem, ADDRESS_SPACE_PROGRAM, 16)
@@ -93,5 +93,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1979, sdk86,  0,       0, 	sdk86, 	sdk86, 	 0,  	  	 "Intel",   "SDK-86",		GAME_NOT_WORKING)
+COMP( 1979, sdk86,  0,       0, 	sdk86,	sdk86,	 0, 		 "Intel",   "SDK-86",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

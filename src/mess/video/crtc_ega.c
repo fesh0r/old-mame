@@ -6,7 +6,7 @@
 
 **********************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "crtc_ega.h"
 
 
@@ -32,7 +32,7 @@ struct _crtc_ega_t
 {
 	int device_type;
 	const crtc_ega_interface *intf;
-	const device_config *screen;
+	running_device *screen;
 
 	/* ega/vga register file */
 	UINT8	horiz_char_total;	/* 0x00 */
@@ -110,7 +110,7 @@ static void update_vblank_changed_timers(crtc_ega_t *crtc_ega);
 
 
 /* makes sure that the passed in device is the right type */
-INLINE crtc_ega_t *get_safe_token(const device_config *device)
+INLINE crtc_ega_t *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -123,7 +123,7 @@ INLINE crtc_ega_t *get_safe_token(const device_config *device)
 
 static STATE_POSTLOAD( crtc_ega_state_save_postload )
 {
-	recompute_parameters(param, TRUE);
+	recompute_parameters((crtc_ega_t*)param, TRUE);
 }
 
 
@@ -417,7 +417,7 @@ static void update_vblank_changed_timers(crtc_ega_t *crtc_ega)
 
 static TIMER_CALLBACK( de_changed_timer_cb )
 {
-	const device_config *device = ptr;
+	running_device *device = (running_device *)ptr;
 	crtc_ega_t *crtc_ega = get_safe_token(device);
 
 	/* call the callback function -- we know it exists */
@@ -429,7 +429,7 @@ static TIMER_CALLBACK( de_changed_timer_cb )
 
 static TIMER_CALLBACK( vsync_on_timer_cb )
 {
-	const device_config *device = ptr;
+	running_device *device = (running_device *)ptr;
 	crtc_ega_t *crtc_ega = get_safe_token(device);
 
 	/* call the callback function -- we know it exists */
@@ -439,7 +439,7 @@ static TIMER_CALLBACK( vsync_on_timer_cb )
 
 static TIMER_CALLBACK( vsync_off_timer_cb )
 {
-	const device_config *device = ptr;
+	running_device *device = (running_device *)ptr;
 	crtc_ega_t *crtc_ega = get_safe_token(device);
 
 	/* call the callback function -- we know it exists */
@@ -451,7 +451,7 @@ static TIMER_CALLBACK( vsync_off_timer_cb )
 
 static TIMER_CALLBACK( hsync_on_timer_cb )
 {
-	const device_config *device = ptr;
+	running_device *device = (running_device *)ptr;
 	crtc_ega_t *crtc_ega = get_safe_token(device);
 
 	/* call the callback function -- we know it exists */
@@ -461,7 +461,7 @@ static TIMER_CALLBACK( hsync_on_timer_cb )
 
 static TIMER_CALLBACK( hsync_off_timer_cb )
 {
-	const device_config *device = ptr;
+	running_device *device = (running_device *)ptr;
 	crtc_ega_t *crtc_ega = get_safe_token(device);
 
 	/* call the callback function -- we know it exists */
@@ -473,7 +473,7 @@ static TIMER_CALLBACK( hsync_off_timer_cb )
 
 static TIMER_CALLBACK( vblank_on_timer_cb )
 {
-	const device_config *device = ptr;
+	running_device *device = (running_device *)ptr;
 	crtc_ega_t *crtc_ega = get_safe_token(device);
 
 	/* call the callback function -- we know it exists */
@@ -485,7 +485,7 @@ static TIMER_CALLBACK( vblank_on_timer_cb )
 
 static TIMER_CALLBACK( vblank_off_timer_cb )
 {
-	const device_config *device = ptr;
+	running_device *device = (running_device *)ptr;
 	crtc_ega_t *crtc_ega = get_safe_token(device);
 
 	/* call the callback function -- we know it exists */
@@ -496,7 +496,7 @@ static TIMER_CALLBACK( vblank_off_timer_cb )
 
 
 
-UINT16 crtc_ega_get_ma(const device_config *device)
+UINT16 crtc_ega_get_ma(running_device *device)
 {
 	UINT16 ret;
 	crtc_ega_t *crtc_ega = get_safe_token(device);
@@ -526,7 +526,7 @@ UINT16 crtc_ega_get_ma(const device_config *device)
 }
 
 
-UINT8 crtc_ega_get_ra(const device_config *device)
+UINT8 crtc_ega_get_ra(running_device *device)
 {
 	UINT8 ret;
 	crtc_ega_t *crtc_ega = get_safe_token(device);
@@ -550,7 +550,7 @@ UINT8 crtc_ega_get_ra(const device_config *device)
 
 static TIMER_CALLBACK( light_pen_latch_timer_cb )
 {
-	const device_config *device = ptr;
+	running_device *device = (running_device *)ptr;
 	crtc_ega_t *crtc_ega = get_safe_token(device);
 
 	crtc_ega->light_pen_addr = crtc_ega_get_ma(device);
@@ -558,7 +558,7 @@ static TIMER_CALLBACK( light_pen_latch_timer_cb )
 }
 
 
-void crtc_ega_assert_light_pen_input(const device_config *device)
+void crtc_ega_assert_light_pen_input(running_device *device)
 {
 	int y, x;
 	int char_x;
@@ -591,7 +591,7 @@ void crtc_ega_assert_light_pen_input(const device_config *device)
 }
 
 
-void crtc_ega_set_clock(const device_config *device, int clock)
+void crtc_ega_set_clock(running_device *device, int clock)
 {
 	crtc_ega_t *crtc_ega = get_safe_token(device);
 
@@ -606,7 +606,7 @@ void crtc_ega_set_clock(const device_config *device, int clock)
 }
 
 
-void crtc_ega_set_hpixels_per_column(const device_config *device, int hpixels_per_column)
+void crtc_ega_set_hpixels_per_column(running_device *device, int hpixels_per_column)
 {
 	crtc_ega_t *crtc_ega = get_safe_token(device);
 
@@ -652,7 +652,7 @@ static void update_cursor_state(crtc_ega_t *crtc_ega)
 }
 
 
-void crtc_ega_update(const device_config *device, bitmap_t *bitmap, const rectangle *cliprect)
+void crtc_ega_update(running_device *device, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	crtc_ega_t *crtc_ega = get_safe_token(device);
 	assert(bitmap != NULL);
@@ -688,10 +688,10 @@ void crtc_ega_update(const device_config *device, bitmap_t *bitmap, const rectan
 
 			/* check if the cursor is visible and is on this scanline */
 			int cursor_visible = crtc_ega->cursor_state &&
-							 	(ra >= (crtc_ega->cursor_start_ras & 0x1f)) &&
-							 	(ra <= crtc_ega->cursor_end_ras) &&
-							 	(crtc_ega->cursor_addr >= crtc_ega->current_disp_addr) &&
-							 	(crtc_ega->cursor_addr < (crtc_ega->current_disp_addr + ( crtc_ega->horiz_disp + 1 )));
+								(ra >= (crtc_ega->cursor_start_ras & 0x1f)) &&
+								(ra <= crtc_ega->cursor_end_ras) &&
+								(crtc_ega->cursor_addr >= crtc_ega->current_disp_addr) &&
+								(crtc_ega->cursor_addr < (crtc_ega->current_disp_addr + ( crtc_ega->horiz_disp + 1 )));
 
 			/* compute the cursor X position, or -1 if not visible */
 			INT8 cursor_x = cursor_visible ? (crtc_ega->cursor_addr - crtc_ega->current_disp_addr) : -1;
@@ -714,16 +714,16 @@ void crtc_ega_update(const device_config *device, bitmap_t *bitmap, const rectan
 
 
 /* device interface */
-static void common_start(const device_config *device, int device_type)
+static void common_start(running_device *device, int device_type)
 {
 	crtc_ega_t *crtc_ega = get_safe_token(device);
 
 	/* validate arguments */
 	assert(device != NULL);
-	assert(device->tag != NULL);
+	assert(device->tag() != NULL);
 	assert(device->clock > 0);
 
-	crtc_ega->intf = device->static_config;
+	crtc_ega->intf = (const crtc_ega_interface*)device->baseconfig().static_config;
 	crtc_ega->device_type = device_type;
 
 	if (crtc_ega->intf != NULL)
@@ -767,44 +767,44 @@ static void common_start(const device_config *device, int device_type)
 
 	state_save_register_postload(device->machine, crtc_ega_state_save_postload, crtc_ega);
 
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->clock);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->hpixels_per_column);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->register_address_latch);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->horiz_char_total);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->horiz_disp);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->horiz_blank_start);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->mode_control);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->cursor_start_ras);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->cursor_end_ras);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->disp_start_addr);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->cursor_addr);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->light_pen_addr);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->light_pen_latched);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->cursor_state);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->cursor_blink_count);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->horiz_blank_end);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->ena_vert_access);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->de_skew);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->horiz_retr_start);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->horiz_retr_end);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->horiz_retr_skew);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->vert_total);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->preset_row_scan);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->byte_panning);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->max_ras_addr);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->scan_doubling);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->cursor_disable);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->cursor_skew);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->vert_retr_start);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->vert_retr_end);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->protect);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->bandwidth);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->vert_disp_end);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->offset);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->underline_loc);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->vert_blank_start);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->vert_blank_end);
-	state_save_register_item(device->machine, device->tag, NULL, 0, crtc_ega->line_compare);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->clock);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->hpixels_per_column);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->register_address_latch);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->horiz_char_total);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->horiz_disp);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->horiz_blank_start);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->mode_control);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->cursor_start_ras);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->cursor_end_ras);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->disp_start_addr);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->cursor_addr);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->light_pen_addr);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->light_pen_latched);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->cursor_state);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->cursor_blink_count);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->horiz_blank_end);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->ena_vert_access);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->de_skew);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->horiz_retr_start);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->horiz_retr_end);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->horiz_retr_skew);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->vert_total);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->preset_row_scan);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->byte_panning);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->max_ras_addr);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->scan_doubling);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->cursor_disable);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->cursor_skew);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->vert_retr_start);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->vert_retr_end);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->protect);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->bandwidth);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->vert_disp_end);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->offset);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->underline_loc);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->vert_blank_start);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->vert_blank_end);
+	state_save_register_item(device->machine, device->tag(), NULL, 0, crtc_ega->line_compare);
 }
 
 

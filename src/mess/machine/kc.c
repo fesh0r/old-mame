@@ -1,5 +1,5 @@
 /* Core includes */
-#include "driver.h"
+#include "emu.h"
 #include "includes/kc.h"
 
 /* Components */
@@ -18,7 +18,7 @@
 #define LOG(x) do { if (KC_DEBUG) logerror x; } while (0)
 
 static int kc85_pio_data[2];
-static const device_config *kc85_z80pio;
+static running_device *kc85_z80pio;
 
 static void kc85_4_update_0x0c000(running_machine *machine);
 static void kc85_4_update_0x0e000(running_machine *machine);
@@ -48,7 +48,7 @@ bit 0: TRUCK */
 
 
 /* load image */
-static int kc_load(const device_config *image, unsigned char **ptr)
+static int kc_load(running_device *image, unsigned char **ptr)
 {
 	int datasize;
 	unsigned char *data;
@@ -59,7 +59,7 @@ static int kc_load(const device_config *image, unsigned char **ptr)
 	if (datasize!=0)
 	{
 		/* malloc memory for this data */
-		data = malloc(datasize);
+		data = (unsigned char *)malloc(datasize);
 
 		if (data!=NULL)
 		{
@@ -191,7 +191,7 @@ WRITE8_HANDLER(kc85_disc_interface_latch_w)
 
 WRITE8_HANDLER(kc85_disc_hw_terminal_count_w)
 {
-	const device_config *fdc = devtag_get_device(space->machine, "upd765");
+	running_device *fdc = devtag_get_device(space->machine, "upd765");
 	logerror("kc85 disc hw tc w: %02x\n",data);
 	upd765_tc_w(fdc, data & 0x01);
 }
@@ -224,8 +224,8 @@ const upd765_interface kc_fdc_interface=
 
 static TIMER_CALLBACK(kc85_disk_reset_timer_callback)
 {
-	cpu_set_reg(cputag_get_cpu(machine, "disc"), REG_GENPC, 0x0f000);
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), REG_GENPC, 0x0f000);
+	cpu_set_reg(devtag_get_device(machine, "disc"), REG_GENPC, 0x0f000);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), REG_GENPC, 0x0f000);
 }
 
 static void kc_disc_interface_init(running_machine *machine)
@@ -1352,7 +1352,7 @@ bit 0: TRUCK */
 
 WRITE8_HANDLER ( kc85_4_pio_data_w )
 {
-	const device_config *speaker = devtag_get_device(space->machine, "speaker");
+	running_device *speaker = devtag_get_device(space->machine, "speaker");
 	kc85_pio_data[offset] = data;
 	z80pio_d_w(kc85_z80pio, offset, data);
 
@@ -1581,7 +1581,7 @@ bit 0: TRUCK */
 
 WRITE8_HANDLER ( kc85_3_pio_data_w )
 {
-	const device_config *speaker = devtag_get_device(space->machine, "speaker");
+	running_device *speaker = devtag_get_device(space->machine, "speaker");
 	kc85_pio_data[offset] = data;
 	z80pio_d_w(kc85_z80pio, offset, data);
 
@@ -1652,7 +1652,7 @@ static DIRECT_UPDATE_HANDLER( kc85_4_opbaseoverride )
 
 static TIMER_CALLBACK(kc85_reset_timer_callback)
 {
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), REG_GENPC, 0x0f000);
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), REG_GENPC, 0x0f000);
 }
 
  READ8_HANDLER ( kc85_pio_data_r )
@@ -1689,14 +1689,14 @@ WRITE8_DEVICE_HANDLER ( kc85_ctc_w )
 	z80ctc_w(device, offset,data);
 }
 
-static void kc85_pio_interrupt(const device_config *device, int state)
+static void kc85_pio_interrupt(running_device *device, int state)
 {
 	cputag_set_input_line(device->machine, "maincpu", 0, state);
 }
 
 /* callback for ardy output from PIO */
 /* used in KC85/4 & KC85/3 cassette interface */
-static void kc85_pio_ardy_callback(const device_config *device, int state)
+static void kc85_pio_ardy_callback(running_device *device, int state)
 {
 	kc_ardy = state & 0x01;
 
@@ -1708,7 +1708,7 @@ static void kc85_pio_ardy_callback(const device_config *device, int state)
 
 /* callback for brdy output from PIO */
 /* used in KC85/4 & KC85/3 keyboard interface */
-static void kc85_pio_brdy_callback(const device_config *device, int state)
+static void kc85_pio_brdy_callback(running_device *device, int state)
 {
 	kc_brdy = state & 0x01;
 
@@ -1746,7 +1746,7 @@ static WRITE_LINE_DEVICE_HANDLER(kc85_zc1_callback)
 
 static TIMER_CALLBACK(kc85_15khz_timer_callback)
 {
-	const device_config *device = ptr;
+	running_device *device = (running_device *)ptr;
 
 	/* toggle state of square wave */
 	kc85_15khz_state^=1;
@@ -1791,16 +1791,16 @@ Z80CTC_INTERFACE( kc85_ctc_intf )
     DEVCB_LINE(kc85_zc2_callback)
 };
 
-MACHINE_START(kc85) 
+MACHINE_START(kc85)
 {
 	kc_cassette_init(machine);
-	
+
 	// from keyboard init
 	/* 50 Hz is just a arbitrary value - used to put scan-codes into the queue for transmitting */
 	timer_pulse(machine, ATTOTIME_IN_HZ(50), NULL, 0, kc_keyboard_update);
 
 	/* timer to transmit pulses to kc base unit */
-	timer_pulse(machine, ATTOTIME_IN_USEC(1024), NULL, 0, kc_keyboard_transmit_timer_callback);	
+	timer_pulse(machine, ATTOTIME_IN_USEC(1024), NULL, 0, kc_keyboard_transmit_timer_callback);
 
 	timer_pulse(machine, ATTOTIME_IN_HZ(15625), (void *)devtag_get_device(machine, "z80ctc"), 0, kc85_15khz_timer_callback);
 	timer_set(machine, attotime_zero, NULL, 0, kc85_reset_timer_callback);

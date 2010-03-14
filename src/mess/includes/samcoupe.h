@@ -20,9 +20,13 @@
 #define SAM_MIDIOUT_INT  0x10
 
 
-typedef struct _coupe_asic coupe_asic;
-struct _coupe_asic
+class coupe_asic
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, coupe_asic(machine)); }
+
+	coupe_asic(running_machine &machine) { }
+
 	UINT8 lmpr, hmpr, vmpr; /* memory pages */
 	UINT8 lext, hext;       /* extended memory page */
 	UINT8 border;           /* border */
@@ -43,7 +47,7 @@ struct _coupe_asic
 
 /*----------- defined in drivers/samcoupe.c -----------*/
 
-void samcoupe_irq(const device_config *device, UINT8 src);
+void samcoupe_irq(running_device *device, UINT8 src);
 
 
 /*----------- defined in machine/samcoupe.c -----------*/

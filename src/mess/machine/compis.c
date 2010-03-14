@@ -12,7 +12,7 @@
 /* Include files                                                           */
 /*-------------------------------------------------------------------------*/
 
-#include "driver.h"
+#include "emu.h"
 #include "video/i82720.h"
 #include "machine/i8255a.h"
 #include "machine/mm58274c.h"
@@ -90,8 +90,8 @@ static struct i186_state
 } i186;
 
 static struct {
-	const device_config	*pic8259_master;
-	const device_config	*pic8259_slave;
+	running_device *pic8259_master;
+	running_device *pic8259_slave;
 } compis_devices;
 
 /* Keyboard */
@@ -193,17 +193,6 @@ void compis_irq_set(UINT8 irq)
 }
 #endif
 
-/*-------------------------------------------------------------------------*/
-/*  OSP PIC 8259                                                           */
-/*-------------------------------------------------------------------------*/
-
-static void compis_osp_pic_irq(UINT8 irq)
-{
-	if ( compis_devices.pic8259_master ) {
-		pic8259_set_irq_line(compis_devices.pic8259_master, irq, 1);
-		pic8259_set_irq_line(compis_devices.pic8259_master, irq, 0);
-	}
-}
 
 /*-------------------------------------------------------------------------*/
 /*  Keyboard                                                               */
@@ -276,7 +265,7 @@ static void compis_keyb_init(void)
 /*-------------------------------------------------------------------------*/
 static void compis_fdc_reset(running_machine *machine)
 {
-	const device_config *fdc = devtag_get_device(machine, "upd765");
+	running_device *fdc = devtag_get_device(machine, "upd765");
 
 	upd765_reset(fdc, 0);
 
@@ -286,9 +275,9 @@ static void compis_fdc_reset(running_machine *machine)
 
 static void compis_fdc_tc(running_machine *machine, int state)
 {
-	const device_config *fdc = devtag_get_device(machine, "upd765");
+	running_device *fdc = devtag_get_device(machine, "upd765");
 	/* Terminal count if iSBX-218A has DMA enabled */
-  	if (input_port_read(machine, "DSW1"))
+	if (input_port_read(machine, "DSW1"))
 	{
 		upd765_tc_w(fdc, state);
 	}
@@ -297,16 +286,20 @@ static void compis_fdc_tc(running_machine *machine, int state)
 static WRITE_LINE_DEVICE_HANDLER( compis_fdc_int )
 {
 	/* No interrupt requests if iSBX-218A has DMA enabled */
-  	if (!input_port_read(device->machine, "DSW1") && state)
+	if (!input_port_read(device->machine, "DSW1") && state)
 	{
-		compis_osp_pic_irq(COMPIS_IRQ_SBX0_INT1);
+		if (compis_devices.pic8259_master)
+		{
+			pic8259_ir0_w(compis_devices.pic8259_master, 1);
+			pic8259_ir0_w(compis_devices.pic8259_master, 0);
+		}
 	}
 }
 
 static UPD765_DMA_REQUEST( compis_fdc_dma_drq )
 {
 	/* DMA requst if iSBX-218A has DMA enabled */
-  	if (input_port_read(device->machine, "DSW1") && state)
+	if (input_port_read(device->machine, "DSW1") && state)
 	{
 		//compis_dma_drq(state, read);
 	}
@@ -323,12 +316,12 @@ const upd765_interface compis_fdc_interface =
 
 READ16_HANDLER (compis_fdc_dack_r)
 {
-	const device_config *fdc = devtag_get_device(space->machine, "upd765");
+	running_device *fdc = devtag_get_device(space->machine, "upd765");
 	UINT16 data;
 	data = 0xffff;
 	/* DMA acknowledge if iSBX-218A has DMA enabled */
-  	if (input_port_read(space->machine, "DSW1"))
-  	{
+	if (input_port_read(space->machine, "DSW1"))
+	{
 		data = upd765_dack_r(fdc, 0);
 	}
 
@@ -337,7 +330,7 @@ READ16_HANDLER (compis_fdc_dack_r)
 
 WRITE16_HANDLER (compis_fdc_w)
 {
-	const device_config *fdc = devtag_get_device(space->machine, "upd765");
+	running_device *fdc = devtag_get_device(space->machine, "upd765");
 	switch(offset)
 	{
 		case 2:
@@ -351,7 +344,7 @@ WRITE16_HANDLER (compis_fdc_w)
 
 READ16_HANDLER (compis_fdc_r)
 {
-	const device_config *fdc = devtag_get_device(space->machine, "upd765");
+	running_device *fdc = devtag_get_device(space->machine, "upd765");
 	UINT16 data;
 	data = 0xffff;
 	switch(offset)
@@ -438,11 +431,11 @@ const struct pit8253_config compis_pit8253_config =
 {
 	{
 		/* Timer0 */
-		{4770000/4, NULL },
+		{4770000/4, DEVCB_NULL, DEVCB_NULL },
 		/* Timer1 */
-		{4770000/4, NULL },
+		{4770000/4, DEVCB_NULL, DEVCB_NULL },
 		/* Timer2 */
-		{4770000/4, NULL }
+		{4770000/4, DEVCB_NULL, DEVCB_NULL }
 	}
 };
 
@@ -450,11 +443,11 @@ const struct pit8253_config compis_pit8254_config =
 {
 	{
 		/* Timer0 */
-		{4770000/4, NULL },
+		{4770000/4, DEVCB_NULL, DEVCB_NULL },
 		/* Timer1 */
-		{4770000/4, NULL },
+		{4770000/4, DEVCB_NULL, DEVCB_NULL },
 		/* Timer2 */
-		{4770000/4, NULL }
+		{4770000/4, DEVCB_NULL, DEVCB_NULL }
 	}
 };
 
@@ -476,7 +469,7 @@ WRITE16_DEVICE_HANDLER ( compis_osp_pit_w )
 /*-------------------------------------------------------------------------*/
 /*  USART 8251                                                             */
 /*-------------------------------------------------------------------------*/
-static void compis_usart_rxready(const device_config *device, int state)
+static void compis_usart_rxready(running_device *device, int state)
 {
 #if 0
 	if (state)
@@ -493,13 +486,13 @@ const msm8251_interface compis_usart_interface=
 
 READ16_HANDLER ( compis_usart_r )
 {
-	const device_config *uart = devtag_get_device(space->machine, "uart");
+	running_device *uart = devtag_get_device(space->machine, "uart");
 	return msm8251_data_r(uart, offset);
 }
 
 WRITE16_HANDLER ( compis_usart_w )
 {
-	const device_config *uart = devtag_get_device(space->machine, "uart");
+	running_device *uart = devtag_get_device(space->machine, "uart");
 	switch (offset)
 	{
 		case 0x00:
@@ -660,7 +653,7 @@ static void handle_eoi(running_machine *machine,int data)
 			case 0x0d:	i186.intr.in_service &= ~0x20;	break;
 			case 0x0e:	i186.intr.in_service &= ~0x40;	break;
 			case 0x0f:	i186.intr.in_service &= ~0x80;	break;
-			default:	logerror("%05X:ERROR - 80186 EOI with unknown vector %02X\n", cpu_get_pc(cputag_get_cpu(machine, "maincpu")), data & 0x1f);
+			default:	logerror("%05X:ERROR - 80186 EOI with unknown vector %02X\n", cpu_get_pc(devtag_get_device(machine, "maincpu")), data & 0x1f);
 		}
 		if (LOG_INTERRUPTS) logerror("(%f) **** Got EOI for vector %02X\n", attotime_to_double(timer_get_time(machine)), data & 0x1f);
 	}
@@ -793,7 +786,7 @@ static void internal_timer_update(running_machine *machine,
 		t->maxA = new_maxA;
 		if (new_maxA == 0)
 		{
-         		new_maxA = 0x10000;
+        		new_maxA = 0x10000;
 		}
 	}
 
@@ -810,9 +803,9 @@ static void internal_timer_update(running_machine *machine,
 
 		if (new_maxB == 0)
 		{
-         		new_maxB = 0x10000;
+        		new_maxB = 0x10000;
 		}
-   	}
+	}
 
 
 	/* handle control changes */
@@ -832,7 +825,7 @@ static void internal_timer_update(running_machine *machine,
 		diff = new_control ^ t->control;
 		if (diff & 0x001c)
 		  logerror("%05X:ERROR! -unsupported timer mode %04X\n",
-			   cpu_get_pc(cputag_get_cpu(machine, "maincpu")), new_control);
+			   cpu_get_pc(devtag_get_device(machine, "maincpu")), new_control);
 
 		/* if we have real changes, update things */
 		if (diff != 0)
@@ -871,20 +864,20 @@ static void internal_timer_update(running_machine *machine,
 	}
 
 	/* update the interrupt timer */
-   	if (update_int_timer)
-   	{
-	      	if ((t->control & 0x8000) && (t->control & 0x2000))
-	      	{
+	if (update_int_timer)
+	{
+	    	if ((t->control & 0x8000) && (t->control & 0x2000))
+	    	{
 	        	int diff = t->maxA - t->count;
-	         	if (diff <= 0)
-	         		diff += 0x10000;
-	         	timer_adjust_oneshot(t->int_timer, attotime_mul(ATTOTIME_IN_HZ(2000000), diff), which);
-	         	if (LOG_TIMER) logerror("Set interrupt timer for %d\n", which);
-	      	}
-	      	else
-	      	{
+	        	if (diff <= 0)
+	        		diff += 0x10000;
+	        	timer_adjust_oneshot(t->int_timer, attotime_mul(ATTOTIME_IN_HZ(2000000), diff), which);
+	        	if (LOG_TIMER) logerror("Set interrupt timer for %d\n", which);
+	    	}
+	    	else
+	    	{
 	        	timer_adjust_oneshot(t->int_timer, attotime_never, which);
-	      	}
+	    	}
 	}
 }
 
@@ -933,7 +926,7 @@ static void update_dma_control(running_machine *machine, int which, int new_cont
 	diff = new_control ^ d->control;
 	if (diff & 0x6811)
 	  logerror("%05X:ERROR! - unsupported DMA mode %04X\n",
-		   cpu_get_pc(cputag_get_cpu(machine, "maincpu")), new_control);
+		   cpu_get_pc(devtag_get_device(machine, "maincpu")), new_control);
 
 	/* if we're going live, set a timer */
 	if ((diff & 0x0002) && (new_control & 0x0002))
@@ -958,7 +951,7 @@ static void update_dma_control(running_machine *machine, int which, int new_cont
 //          int count = d->count;
 
 			/* adjust for redline racer */
-         	// int dacnum = (d->dest & 0x3f) / 2;
+        	// int dacnum = (d->dest & 0x3f) / 2;
 
 			if (LOG_DMA) logerror("Initiated DMA %d - count = %04X, source = %04X, dest = %04X\n", which, d->count, d->source, d->dest);
 
@@ -994,7 +987,7 @@ READ16_HANDLER( compis_i186_internal_port_r )
 		case 0x12:
 			if (LOG_PORTS) logerror("%05X:read 80186 interrupt poll\n", cpu_get_pc(space->cpu));
 			if (i186.intr.poll_status & 0x8000)
-				int_callback(cputag_get_cpu(space->machine, "maincpu"), 0);
+				int_callback(devtag_get_device(space->machine, "maincpu"), 0);
 			return i186.intr.poll_status;
 
 		case 0x13:
@@ -1431,34 +1424,31 @@ static void compis_cpu_init(running_machine *machine)
  *
  *************************************************************/
 
-static PIC8259_SET_INT_LINE( compis_pic8259_master_set_int_line )
+static WRITE_LINE_DEVICE_HANDLER( compis_pic8259_master_set_int_line )
 {
-	cputag_set_input_line(device->machine, "maincpu", 0, interrupt ? HOLD_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "maincpu", 0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
-
-static PIC8259_SET_INT_LINE( compis_pic8259_slave_set_int_line )
+static WRITE_LINE_DEVICE_HANDLER( compis_pic8259_slave_set_int_line )
 {
-	if ( compis_devices.pic8259_master )
-	{
-		pic8259_set_irq_line(compis_devices.pic8259_master, 2, interrupt);
-	}
+	if (compis_devices.pic8259_master)
+		pic8259_ir2_w(compis_devices.pic8259_master, state);
 }
 
+const struct pic8259_interface compis_pic8259_master_config =
+{
+	DEVCB_LINE(compis_pic8259_master_set_int_line)
+};
 
-const struct pic8259_interface compis_pic8259_master_config = {
-	compis_pic8259_master_set_int_line
+const struct pic8259_interface compis_pic8259_slave_config =
+{
+	DEVCB_LINE(compis_pic8259_slave_set_int_line)
 };
 
 
-const struct pic8259_interface compis_pic8259_slave_config = {
-	compis_pic8259_slave_set_int_line
-};
-
-
-static IRQ_CALLBACK(compis_irq_callback)
+static IRQ_CALLBACK( compis_irq_callback )
 {
-	return pic8259_acknowledge( compis_devices.pic8259_master);
+	return pic8259_acknowledge(compis_devices.pic8259_master);
 }
 
 static const compis_gdc_interface i82720_interface =
@@ -1471,7 +1461,7 @@ static const compis_gdc_interface i82720_interface =
 DRIVER_INIT( compis )
 {
 	compis_init( &i82720_interface );
-	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), compis_irq_callback);
+	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), compis_irq_callback);
 	memset (&compis, 0, sizeof (compis) );
 }
 
@@ -1493,7 +1483,7 @@ MACHINE_RESET( compis )
 	compis_keyb_init();
 
 	/* OSP PIC 8259 */
-	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), compis_irq_callback);
+	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), compis_irq_callback);
 
 	compis_devices.pic8259_master = devtag_get_device(machine, "pic8259_master");
 	compis_devices.pic8259_slave = devtag_get_device(machine, "pic8259_slave");

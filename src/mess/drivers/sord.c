@@ -27,7 +27,7 @@
 
  ******************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "video/tms9928a.h"
 #include "sound/sn76496.h"
 #include "cpu/z80/z80.h"
@@ -58,9 +58,21 @@
 /* PI-5 interface is required. mode 2 of the 8255 is used to communicate with the FD-5 */
 
 
-static MACHINE_RESET( sord_m5 );
+class sord_state
+{
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, sord_state(machine)); }
 
-static UINT8 fd5_databus;
+	sord_state(running_machine &machine) { }
+
+	UINT8 fd5_databus;
+	int fd5_port_0x020_data;
+	int obfa;
+	int ibfa;
+	int intra;
+};
+
+static MACHINE_RESET( sord_m5 );
 
 static ADDRESS_MAP_START( sord_fd5_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x03fff) AM_ROM	/* internal rom */
@@ -68,25 +80,25 @@ static ADDRESS_MAP_START( sord_fd5_mem , ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 
-static int obfa,ibfa, intra;
-static int fd5_port_0x020_data;
-
 /* stb and ack automatically set on read/write? */
 static WRITE8_HANDLER(fd5_communication_w)
 {
+	sord_state *state = (sord_state *)space->machine->driver_data;
+
 	cpu_yield(space->cpu);
 
-	fd5_port_0x020_data = data;
+	state->fd5_port_0x020_data = data;
 	LOG(("fd5 0x020: %02x %04x\n",data,cpu_get_pc(space->cpu)));
 }
 
 static  READ8_HANDLER(fd5_communication_r)
 {
+	sord_state *state = (sord_state *)space->machine->driver_data;
 	int data;
 
 	cpu_yield(space->cpu);
 
-	data = (obfa<<3)|(ibfa<<2)|2;
+	data = (state->obfa<<3)|(state->ibfa<<2)|2;
 	LOG(("fd5 0x030: %02x %04x\n",data, cpu_get_pc(space->cpu)));
 
 	return data;
@@ -94,22 +106,26 @@ static  READ8_HANDLER(fd5_communication_r)
 
 static READ8_HANDLER(fd5_data_r)
 {
+	sord_state *state = (sord_state *)space->machine->driver_data;
+
 	cpu_yield(space->cpu);
 
-	LOG(("fd5 0x010 r: %02x %04x\n",fd5_databus,cpu_get_pc(space->cpu)));
+	LOG(("fd5 0x010 r: %02x %04x\n",state->fd5_databus,cpu_get_pc(space->cpu)));
 
 	ppi8255_set_port_c(devtag_get_device(space->machine, "ppi8255"), 0x50);
 	ppi8255_set_port_c(devtag_get_device(space->machine, "ppi8255"), 0x10);
 	ppi8255_set_port_c(devtag_get_device(space->machine, "ppi8255"), 0x50);
 
-	return fd5_databus;
+	return state->fd5_databus;
 }
 
 static WRITE8_HANDLER(fd5_data_w)
 {
+	sord_state *state = (sord_state *)space->machine->driver_data;
+
 	LOG(("fd5 0x010 w: %02x %04x\n",data,cpu_get_pc(space->cpu)));
 
-	fd5_databus = data;
+	state->fd5_databus = data;
 
 	/* set stb on data write */
 	ppi8255_set_port_c(devtag_get_device(space->machine, "ppi8255"), 0x50);
@@ -138,7 +154,7 @@ static WRITE8_HANDLER( fd5_drive_control_w )
 
 static WRITE8_HANDLER( fd5_tc_w )
 {
-	const device_config *fdc = devtag_get_device(space->machine, "upd765");
+	running_device *fdc = devtag_get_device(space->machine, "upd765");
 	upd765_tc_w(fdc, 1);
 	upd765_tc_w(fdc, 0);
 }
@@ -185,25 +201,29 @@ static MACHINE_RESET( sord_m5_fd5 )
 
 static READ8_DEVICE_HANDLER(sord_ppi_porta_r)
 {
-	cpu_yield(cputag_get_cpu(device->machine, "maincpu"));
+	sord_state *state = (sord_state *)device->machine->driver_data;
 
-	return fd5_databus;
+	cpu_yield(devtag_get_device(device->machine, "maincpu"));
+
+	return state->fd5_databus;
 }
 
 static READ8_DEVICE_HANDLER(sord_ppi_portb_r)
 {
-	cpu_yield(cputag_get_cpu(device->machine, "maincpu"));
+	cpu_yield(devtag_get_device(device->machine, "maincpu"));
 
-	LOG(("m5 read from pi5 port b %04x\n", cpu_get_pc(cputag_get_cpu(device->machine, "maincpu"))));
+	LOG(("m5 read from pi5 port b %04x\n", cpu_get_pc(devtag_get_device(device->machine, "maincpu"))));
 
 	return 0x0ff;
 }
 
 static READ8_DEVICE_HANDLER(sord_ppi_portc_r)
 {
-	cpu_yield(cputag_get_cpu(device->machine, "maincpu"));
+	sord_state *state = (sord_state *)device->machine->driver_data;
 
-	LOG(("m5 read from pi5 port c %04x\n", cpu_get_pc(cputag_get_cpu(device->machine, "maincpu"))));
+	cpu_yield(devtag_get_device(device->machine, "maincpu"));
+
+	LOG(("m5 read from pi5 port c %04x\n", cpu_get_pc(devtag_get_device(device->machine, "maincpu"))));
 
 /* from fd5 */
 /* 00 = 0000 = write */
@@ -222,24 +242,26 @@ static READ8_DEVICE_HANDLER(sord_ppi_portc_r)
 	/* FD5 bit 1 -> M5 bit 0 */
 	return (
 			/* FD5 bit 0-> M5 bit 2 */
-			((fd5_port_0x020_data & 0x01)<<2) |
+			((state->fd5_port_0x020_data & 0x01)<<2) |
 			/* FD5 bit 2-> M5 bit 1 */
-			((fd5_port_0x020_data & 0x04)>>1) |
+			((state->fd5_port_0x020_data & 0x04)>>1) |
 			/* FD5 bit 1-> M5 bit 0 */
-			((fd5_port_0x020_data & 0x02)>>1)
+			((state->fd5_port_0x020_data & 0x02)>>1)
 			);
 }
 
 static WRITE8_DEVICE_HANDLER(sord_ppi_porta_w)
 {
-	cpu_yield(cputag_get_cpu(device->machine, "maincpu"));
+	sord_state *state = (sord_state *)device->machine->driver_data;
 
-	fd5_databus = data;
+	cpu_yield(devtag_get_device(device->machine, "maincpu"));
+
+	state->fd5_databus = data;
 }
 
 static WRITE8_DEVICE_HANDLER(sord_ppi_portb_w)
 {
-	cpu_yield(cputag_get_cpu(device->machine, "maincpu"));
+	cpu_yield(devtag_get_device(device->machine, "maincpu"));
 
 	/* f0, 40 */
 	/* 1111 */
@@ -250,7 +272,7 @@ static WRITE8_DEVICE_HANDLER(sord_ppi_portb_w)
 		cputag_set_input_line(device->machine, "floppy", INPUT_LINE_RESET, ASSERT_LINE);
 		cputag_set_input_line(device->machine, "floppy", INPUT_LINE_RESET, CLEAR_LINE);
 	}
-	LOG(("m5 write to pi5 port b: %02x %04x\n", data, cpu_get_pc(cputag_get_cpu(device->machine, "maincpu"))));
+	LOG(("m5 write to pi5 port b: %02x %04x\n", data, cpu_get_pc(devtag_get_device(device->machine, "maincpu"))));
 }
 
 /* A,  B,  C,  D,  E,   F,  G,  H,  I,  J, K,  L,  M,   N, O, P, Q, R,   */
@@ -261,12 +283,14 @@ static WRITE8_DEVICE_HANDLER(sord_ppi_portb_w)
 
 static WRITE8_DEVICE_HANDLER(sord_ppi_portc_w)
 {
-	obfa = (data & 0x80) ? 1 : 0;
-	intra = (data & 0x08) ? 1 : 0;
-	ibfa = (data & 0x20) ? 1 : 0;
+	sord_state *state = (sord_state *)device->machine->driver_data;
 
-	cpu_yield(cputag_get_cpu(device->machine, "maincpu"));
-	LOG(("m5 write to pi5 port c: %02x %04x\n", data, cpu_get_pc(cputag_get_cpu(device->machine, "maincpu"))));
+	state->obfa = (data & 0x80) ? 1 : 0;
+	state->intra = (data & 0x08) ? 1 : 0;
+	state->ibfa = (data & 0x20) ? 1 : 0;
+
+	cpu_yield(devtag_get_device(device->machine, "maincpu"));
+	LOG(("m5 write to pi5 port c: %02x %04x\n", data, cpu_get_pc(devtag_get_device(device->machine, "maincpu"))));
 }
 
 static const ppi8255_interface sord_ppi8255_interface =
@@ -306,8 +330,8 @@ static INTERRUPT_GEN( sord_interrupt )
 /* bit 7 is the reset/halt key */
 static READ8_HANDLER( sord_sts_r )
 {
-	const device_config *printer = devtag_get_device(space->machine, "centronics");
-	const device_config *cassette = devtag_get_device(space->machine, "cassette");
+	running_device *printer = devtag_get_device(space->machine, "centronics");
+	running_device *cassette = devtag_get_device(space->machine, "cassette");
 	UINT8 data = 0;
 
 	data |= cassette_input(cassette) >= 0 ? 1 : 0;
@@ -324,8 +348,8 @@ static READ8_HANDLER( sord_sts_r )
 /* bit 1 is cassette remote */
 static WRITE8_HANDLER( sord_com_w )
 {
-	const device_config *printer = devtag_get_device(space->machine, "centronics");
-	const device_config *cassette = devtag_get_device(space->machine, "cassette");
+	running_device *printer = devtag_get_device(space->machine, "centronics");
+	running_device *cassette = devtag_get_device(space->machine, "cassette");
 
 	/* cassette data */
 	cassette_output(cassette, BIT(data, 0) ? -1.0 : 1.0);
@@ -396,57 +420,57 @@ static INPUT_PORTS_START( sord_m5 )
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_ENTER)		PORT_CHAR(13)
 
 	PORT_START("keyboard_row_1")
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_1) 			PORT_CHAR('1') PORT_CHAR('!')
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_2) 			PORT_CHAR('2') PORT_CHAR('"')
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_3) 			PORT_CHAR('3') PORT_CHAR('#')
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_4) 			PORT_CHAR('4') PORT_CHAR('$')
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_5) 			PORT_CHAR('5') PORT_CHAR('%')
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_6) 			PORT_CHAR('6') PORT_CHAR('&')
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_7) 			PORT_CHAR('7') PORT_CHAR('\'')
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_8) 			PORT_CHAR('8') PORT_CHAR('(')
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_1)			PORT_CHAR('1') PORT_CHAR('!')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_2)			PORT_CHAR('2') PORT_CHAR('"')
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_3)			PORT_CHAR('3') PORT_CHAR('#')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_4)			PORT_CHAR('4') PORT_CHAR('$')
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_5)			PORT_CHAR('5') PORT_CHAR('%')
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_6)			PORT_CHAR('6') PORT_CHAR('&')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_7)			PORT_CHAR('7') PORT_CHAR('\'')
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_8)			PORT_CHAR('8') PORT_CHAR('(')
 
 	PORT_START("keyboard_row_2")
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Q) 			PORT_CHAR('q') PORT_CHAR('Q')
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_W) 			PORT_CHAR('w') PORT_CHAR('W')
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_E) 			PORT_CHAR('e') PORT_CHAR('E')
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_R) 			PORT_CHAR('r') PORT_CHAR('R')
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_T) 			PORT_CHAR('t') PORT_CHAR('T')
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Y) 			PORT_CHAR('y') PORT_CHAR('Y')
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_U) 			PORT_CHAR('u') PORT_CHAR('U')
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_I) 			PORT_CHAR('i') PORT_CHAR('I')
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Q)			PORT_CHAR('q') PORT_CHAR('Q')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_W)			PORT_CHAR('w') PORT_CHAR('W')
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_E)			PORT_CHAR('e') PORT_CHAR('E')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_R)			PORT_CHAR('r') PORT_CHAR('R')
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_T)			PORT_CHAR('t') PORT_CHAR('T')
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Y)			PORT_CHAR('y') PORT_CHAR('Y')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_U)			PORT_CHAR('u') PORT_CHAR('U')
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_I)			PORT_CHAR('i') PORT_CHAR('I')
 
 	PORT_START("keyboard_row_3")
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_A) 			PORT_CHAR('a') PORT_CHAR('A')
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_S) 			PORT_CHAR('s') PORT_CHAR('S')
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_D) 			PORT_CHAR('d') PORT_CHAR('D')
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F) 			PORT_CHAR('f') PORT_CHAR('F')
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_G) 			PORT_CHAR('g') PORT_CHAR('G')
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_H) 			PORT_CHAR('h') PORT_CHAR('H')
-	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_J) 			PORT_CHAR('j') PORT_CHAR('J')
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_K) 			PORT_CHAR('k') PORT_CHAR('K')
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_A)			PORT_CHAR('a') PORT_CHAR('A')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_S)			PORT_CHAR('s') PORT_CHAR('S')
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_D)			PORT_CHAR('d') PORT_CHAR('D')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_F)			PORT_CHAR('f') PORT_CHAR('F')
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_G)			PORT_CHAR('g') PORT_CHAR('G')
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_H)			PORT_CHAR('h') PORT_CHAR('H')
+	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_J)			PORT_CHAR('j') PORT_CHAR('J')
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_K)			PORT_CHAR('k') PORT_CHAR('K')
 
 	PORT_START("keyboard_row_4")
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Z) 			PORT_CHAR('z') PORT_CHAR('Z')
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_X) 			PORT_CHAR('x') PORT_CHAR('X')
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_C) 			PORT_CHAR('c') PORT_CHAR('C')
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_Z)			PORT_CHAR('z') PORT_CHAR('Z')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_X)			PORT_CHAR('x') PORT_CHAR('X')
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_C)			PORT_CHAR('c') PORT_CHAR('C')
 	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_V)			PORT_CHAR('v') PORT_CHAR('V')
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_B) 			PORT_CHAR('b') PORT_CHAR('B')
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_N) 			PORT_CHAR('n') PORT_CHAR('N')
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_B)			PORT_CHAR('b') PORT_CHAR('B')
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_N)			PORT_CHAR('n') PORT_CHAR('N')
 	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_M)			PORT_CHAR('m') PORT_CHAR('M')
-	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_COMMA) 		PORT_CHAR(',') PORT_CHAR('<')
+	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_COMMA)		PORT_CHAR(',') PORT_CHAR('<')
 
 	PORT_START("keyboard_row_5")
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_9) 			PORT_CHAR('9') PORT_CHAR(')')
-	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_0) 			PORT_CHAR('0')
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_MINUS) 		PORT_CHAR('-') PORT_CHAR('=')
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_EQUALS) 	PORT_CHAR('^') PORT_CHAR('~')
-	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_STOP) 		PORT_CHAR('.') PORT_CHAR('>')
-	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_SLASH) 		PORT_CHAR('/') PORT_CHAR('?') PORT_CHAR(UCHAR_MAMEKEY(DOWN))
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_9)			PORT_CHAR('9') PORT_CHAR(')')
+	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_0)			PORT_CHAR('0')
+	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_MINUS)		PORT_CHAR('-') PORT_CHAR('=')
+	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_EQUALS)	PORT_CHAR('^') PORT_CHAR('~')
+	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_STOP)		PORT_CHAR('.') PORT_CHAR('>')
+	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_SLASH)		PORT_CHAR('/') PORT_CHAR('?') PORT_CHAR(UCHAR_MAMEKEY(DOWN))
 	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("_  Triangle") PORT_CODE(KEYCODE_TILDE) PORT_CHAR('_')
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_BACKSLASH2)	PORT_CHAR('\\') PORT_CHAR('|')
 
 	PORT_START("keyboard_row_6")
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_O) 			PORT_CHAR('o') PORT_CHAR('O')
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_O)			PORT_CHAR('o') PORT_CHAR('O')
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_P)			PORT_CHAR('p') PORT_CHAR('P')
 	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_OPENBRACE)	PORT_CHAR('@') PORT_CHAR('`') PORT_CHAR(UCHAR_MAMEKEY(UP))
 	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_CODE(KEYCODE_CLOSEBRACE)	PORT_CHAR('[') PORT_CHAR('{')
@@ -493,7 +517,7 @@ static const cassette_config sordm5_cassette_config =
 {
 	sordm5_cassette_formats,
 	NULL,
-	CASSETTE_PLAY
+	(cassette_state)(CASSETTE_PLAY)
 };
 
 static const TMS9928a_interface tms9928a_interface =
@@ -517,6 +541,9 @@ static MACHINE_RESET( sord_m5 )
 
 
 static MACHINE_DRIVER_START( sord_m5 )
+
+	MDRV_DRIVER_DATA( sord_state )
+
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu", Z80, XTAL_14_31818MHz/4)
 	MDRV_CPU_PROGRAM_MAP(sord_m5_mem)

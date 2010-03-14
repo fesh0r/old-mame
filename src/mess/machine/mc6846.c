@@ -18,7 +18,7 @@
 
 **********************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "mc6846.h"
 
 #define VERBOSE 0
@@ -81,7 +81,7 @@ typedef struct
 
 
 
-INLINE mc6846_t* get_safe_token( const device_config *device )
+INLINE mc6846_t* get_safe_token( running_device *device )
 {
 	assert( device != NULL );
 	assert( device->token != NULL );
@@ -90,7 +90,7 @@ INLINE mc6846_t* get_safe_token( const device_config *device )
 }
 
 
-INLINE UINT16 mc6846_counter( const device_config *device )
+INLINE UINT16 mc6846_counter( running_device *device )
 {
 	mc6846_t* mc6846 = get_safe_token( device );
 	if ( mc6846->timer_started )
@@ -104,7 +104,7 @@ INLINE UINT16 mc6846_counter( const device_config *device )
 
 
 
-INLINE void mc6846_update_irq( const device_config *device )
+INLINE void mc6846_update_irq( running_device *device )
 {
 	mc6846_t* mc6846 = get_safe_token( device );
 	static int old_cif;
@@ -137,7 +137,7 @@ INLINE void mc6846_update_irq( const device_config *device )
 
 
 
-INLINE void mc6846_update_cto ( const device_config *device )
+INLINE void mc6846_update_cto ( running_device *device )
 {
 	mc6846_t* mc6846 = get_safe_token( device );
 	int cto = CTO;
@@ -153,7 +153,7 @@ INLINE void mc6846_update_cto ( const device_config *device )
 
 
 
-INLINE void mc6846_timer_launch ( const device_config *device )
+INLINE void mc6846_timer_launch ( running_device *device )
 {
 	mc6846_t* mc6846 = get_safe_token( device );
 	int delay = FACTOR * (mc6846->preset+1);
@@ -201,7 +201,7 @@ INLINE void mc6846_timer_launch ( const device_config *device )
 
 static TIMER_CALLBACK( mc6846_timer_expire )
 {
-	const device_config* device = (const device_config*) ptr;
+	running_device* device = (running_device*) ptr;
 	mc6846_t* mc6846 = get_safe_token( device );
 	int delay = FACTOR * (mc6846->latch+1);
 
@@ -246,7 +246,7 @@ static TIMER_CALLBACK( mc6846_timer_expire )
 
 static TIMER_CALLBACK( mc6846_timer_one_shot )
 {
-	const device_config* device = (const device_config*) ptr;
+	running_device* device = (running_device*) ptr;
 	mc6846_t* mc6846 = get_safe_token( device );
 	LOG (( "%f: mc6846 timer one shot called\n", attotime_to_double(timer_get_time(device->machine)) ));
 
@@ -482,7 +482,7 @@ WRITE8_DEVICE_HANDLER ( mc6846_w )
 
 
 
-void mc6846_set_input_cp1 ( const device_config *device, int data )
+void mc6846_set_input_cp1 ( running_device *device, int data )
 {
 	mc6846_t* mc6846 = get_safe_token( device );
 	data = (data != 0 );
@@ -497,7 +497,7 @@ void mc6846_set_input_cp1 ( const device_config *device, int data )
 	}
 }
 
-void mc6846_set_input_cp2 ( const device_config *device, int data )
+void mc6846_set_input_cp2 ( running_device *device, int data )
 {
 	mc6846_t* mc6846 = get_safe_token( device );
 	data = (data != 0 );
@@ -521,7 +521,7 @@ void mc6846_set_input_cp2 ( const device_config *device, int data )
 
 
 
-UINT8 mc6846_get_output_port ( const device_config *device )
+UINT8 mc6846_get_output_port ( running_device *device )
 {
 	mc6846_t* mc6846 = get_safe_token( device );
 	return PORT;
@@ -529,7 +529,7 @@ UINT8 mc6846_get_output_port ( const device_config *device )
 
 
 
-UINT8 mc6846_get_output_cto ( const device_config *device )
+UINT8 mc6846_get_output_cto ( running_device *device )
 {
 	mc6846_t* mc6846 = get_safe_token( device );
 	return CTO;
@@ -537,7 +537,7 @@ UINT8 mc6846_get_output_cto ( const device_config *device )
 
 
 
-UINT8 mc6846_get_output_cp2 ( const device_config *device )
+UINT8 mc6846_get_output_cp2 ( running_device *device )
 {
 	mc6846_t* mc6846 = get_safe_token( device );
 	return mc6846->cp2_cpu;
@@ -545,7 +545,7 @@ UINT8 mc6846_get_output_cp2 ( const device_config *device )
 
 
 
-UINT16 mc6846_get_preset ( const device_config *device )
+UINT16 mc6846_get_preset ( running_device *device )
 {
 	mc6846_t* mc6846 = get_safe_token( device );
 	return mc6846->preset;
@@ -587,26 +587,26 @@ static DEVICE_START( mc6846 )
 {
 	mc6846_t* mc6846 = get_safe_token( device );
 
-	mc6846->iface = device->static_config;
+	mc6846->iface = (const mc6846_interface*)device->baseconfig().static_config;
 	mc6846->interval = timer_alloc( device->machine, mc6846_timer_expire , (void*) device );
 	mc6846->one_shot = timer_alloc( device->machine, mc6846_timer_one_shot , (void*) device );
 
-	state_save_register_item( device->machine, "mc6846", device->tag, 0, mc6846->csr );
-	state_save_register_item( device->machine, "mc6846", device->tag, 0, mc6846->pcr );
-	state_save_register_item( device->machine, "mc6846", device->tag, 0, mc6846->ddr );
-	state_save_register_item( device->machine, "mc6846", device->tag, 0, mc6846->pdr );
-	state_save_register_item( device->machine, "mc6846", device->tag, 0, mc6846->tcr );
-	state_save_register_item( device->machine, "mc6846", device->tag, 0, mc6846->cp1 );
-	state_save_register_item( device->machine, "mc6846", device->tag, 0, mc6846->cp2 );
-	state_save_register_item( device->machine, "mc6846", device->tag, 0, mc6846->cp2_cpu );
-	state_save_register_item( device->machine, "mc6846", device->tag, 0, mc6846->cto );
-	state_save_register_item( device->machine, "mc6846", device->tag, 0, mc6846->time_MSB );
-	state_save_register_item( device->machine, "mc6846", device->tag, 0, mc6846->csr0_to_be_cleared );
-	state_save_register_item( device->machine, "mc6846", device->tag, 0, mc6846->csr1_to_be_cleared );
-	state_save_register_item( device->machine, "mc6846", device->tag, 0, mc6846->csr2_to_be_cleared );
-	state_save_register_item( device->machine, "mc6846", device->tag, 0, mc6846->latch );
-	state_save_register_item( device->machine, "mc6846", device->tag, 0, mc6846->preset );
-	state_save_register_item( device->machine, "mc6846", device->tag, 0, mc6846->timer_started );
+	state_save_register_item( device->machine, "mc6846", device->tag(), 0, mc6846->csr );
+	state_save_register_item( device->machine, "mc6846", device->tag(), 0, mc6846->pcr );
+	state_save_register_item( device->machine, "mc6846", device->tag(), 0, mc6846->ddr );
+	state_save_register_item( device->machine, "mc6846", device->tag(), 0, mc6846->pdr );
+	state_save_register_item( device->machine, "mc6846", device->tag(), 0, mc6846->tcr );
+	state_save_register_item( device->machine, "mc6846", device->tag(), 0, mc6846->cp1 );
+	state_save_register_item( device->machine, "mc6846", device->tag(), 0, mc6846->cp2 );
+	state_save_register_item( device->machine, "mc6846", device->tag(), 0, mc6846->cp2_cpu );
+	state_save_register_item( device->machine, "mc6846", device->tag(), 0, mc6846->cto );
+	state_save_register_item( device->machine, "mc6846", device->tag(), 0, mc6846->time_MSB );
+	state_save_register_item( device->machine, "mc6846", device->tag(), 0, mc6846->csr0_to_be_cleared );
+	state_save_register_item( device->machine, "mc6846", device->tag(), 0, mc6846->csr1_to_be_cleared );
+	state_save_register_item( device->machine, "mc6846", device->tag(), 0, mc6846->csr2_to_be_cleared );
+	state_save_register_item( device->machine, "mc6846", device->tag(), 0, mc6846->latch );
+	state_save_register_item( device->machine, "mc6846", device->tag(), 0, mc6846->preset );
+	state_save_register_item( device->machine, "mc6846", device->tag(), 0, mc6846->timer_started );
 }
 
 
@@ -626,7 +626,7 @@ DEVICE_GET_INFO( mc6846 ) {
 		case DEVINFO_FCT_RESET:				info->reset = DEVICE_RESET_NAME(mc6846);	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-   	        case DEVINFO_STR_NAME:				strcpy(info->s, "Motorola MC6846 programmable timer");	break;
+	        case DEVINFO_STR_NAME:				strcpy(info->s, "Motorola MC6846 programmable timer");	break;
 		case DEVINFO_STR_FAMILY:			strcpy(info->s, "MC6846");				break;
 		case DEVINFO_STR_VERSION:			strcpy(info->s, "1.00");				break;
 		case DEVINFO_STR_SOURCE_FILE:			strcpy(info->s, __FILE__);				break;

@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/poly88.h"
 
 UINT8* poly88_video_ram;
@@ -182,9 +182,9 @@ VIDEO_START( poly88 )
 VIDEO_UPDATE( poly88 )
 {
 	int x,y,j,b;
-  	UINT16 addr;
-  	int xpos;
-  	UINT8 l,r;
+	UINT16 addr;
+	int xpos;
+	UINT8 l,r;
 
 	for(y = 0; y < 16; y++ )
 	{
@@ -228,7 +228,7 @@ VIDEO_UPDATE( poly88 )
 				  l = get_mcm6571a_line(code &0x7f, j);
 				  for(b = 0; b < 7; b++ )
 				  {
-			  		*BITMAP_ADDR16(bitmap, y*15+j, xpos+b ) =  (l >> (6-b)) & 1;
+					*BITMAP_ADDR16(bitmap, y*15+j, xpos+b ) =  (l >> (6-b)) & 1;
 				  }
 				  *BITMAP_ADDR16(bitmap, y*15+j, xpos+7 ) =  0;
 				  *BITMAP_ADDR16(bitmap, y*15+j, xpos+8 ) =  0;

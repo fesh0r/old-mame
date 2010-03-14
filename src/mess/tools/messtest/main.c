@@ -6,15 +6,15 @@
 
 *********************************************************************/
 
+#ifdef WIN32
+#include "winutils.h"
+#endif
 #include <time.h>
 
 #include "core.h"
 #include "hashfile.h"
 #include "emuopts.h"
 #include "../imgtool/imgtool.h"
-#ifdef _WIN32
-#include "winutils.h"
-#endif
 
 extern int mame_validitychecks(int game);
 
@@ -79,14 +79,6 @@ int CLIB_DECL main(int argc, char *argv[])
 	clock_t begin_time;
 	double elapsed_time;
 	core_options *messtest_options = NULL;
-
-	/* test case for memory allocation system */
-	test_memory_pools();
-
-#ifdef _WIN32
-	/* expand wildcards so '*' can be used */
-	win_expand_wildcards(&argc, &argv);
-#endif
 
 	test_count = 0;
 	failure_count = 0;

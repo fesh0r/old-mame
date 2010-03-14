@@ -15,7 +15,7 @@
 
 #include "osdepend.h"
 #include "formats/flopimg.h"
-#include "tagpool.h"
+#include "pool.h"
 #include "utils.h"
 
 #define TRACK_LOADED		0x01
@@ -38,7 +38,8 @@ struct _floppy_image
 	UINT8 flags;
 
 	/* tagging system */
-	tag_pool tags;
+	object_pool *tags;
+	void *tag_data;
 };
 
 
@@ -74,12 +75,13 @@ static floppy_image *floppy_init(void *fp, const struct io_procs *procs, int fla
 {
 	floppy_image *floppy;
 
-	floppy = malloc(sizeof(struct _floppy_image));
+	floppy = (floppy_image *)malloc(sizeof(struct _floppy_image));
 	if (!floppy)
 		return NULL;
 
 	memset(floppy, 0, sizeof(*floppy));
-	tagpool_init(&floppy->tags);
+	floppy->tags = pool_alloc_lib(NULL);
+	floppy->tag_data = NULL;
 	floppy->io.file = fp;
 	floppy->io.procs = procs;
 	floppy->io.filler = 0xFF;
@@ -321,7 +323,7 @@ static void floppy_close_internal(floppy_image *floppy, int close_file)
 			io_generic_close(&floppy->io);
 		if (floppy->loaded_track_data)
 			free(floppy->loaded_track_data);
-		tagpool_exit(&floppy->tags);
+		pool_free_lib(floppy->tags);
 	}
 
 	free(floppy);
@@ -348,17 +350,18 @@ struct FloppyCallbacks *floppy_callbacks(floppy_image *floppy)
 
 
 
-void *floppy_tag(floppy_image *floppy, const char *tagname)
+void *floppy_tag(floppy_image *floppy)
 {
 	assert(floppy);
-	return tagpool_lookup(&floppy->tags, tagname);
+	return floppy->tag_data;
 }
 
 
 
-void *floppy_create_tag(floppy_image *floppy, const char *tagname, size_t tagsize)
+void *floppy_create_tag(floppy_image *floppy, size_t tagsize)
 {
-	return tagpool_alloc(&floppy->tags, tagname, tagsize);
+	floppy->tag_data = pool_malloc_lib(floppy->tags,tagsize);
+	return floppy->tag_data;
 }
 
 
@@ -420,9 +423,8 @@ static floperr_t floppy_readwrite_sector(floppy_image *floppy, int head, int tra
 	const struct FloppyCallbacks *fmt;
 	size_t this_buffer_len;
 	UINT8 *alloc_buf = NULL;
-	UINT8 *new_alloc_buf;
 	UINT32 sector_length;
-	UINT8 *buffer_ptr = buffer;
+	UINT8 *buffer_ptr = (UINT8 *)buffer;
 	floperr_t (*read_sector)(floppy_image *floppy, int head, int track, int sector, void *buffer, size_t buflen);
 	floperr_t (*write_sector)(floppy_image *floppy, int head, int track, int sector, const void *buffer, size_t buflen, int ddam);
 
@@ -476,13 +478,13 @@ static floperr_t floppy_readwrite_sector(floppy_image *floppy, int head, int tra
 			{
 				/* we will be doing an partial read/write; in other words we
                  * will not be reading/writing a full sector */
-				new_alloc_buf = realloc(alloc_buf, sector_length);
-				if (!new_alloc_buf)
+				if (alloc_buf) free(alloc_buf);
+				alloc_buf = (UINT8*)malloc(sector_length);
+				if (!alloc_buf)
 				{
 					err = FLOPPY_ERROR_OUTOFMEMORY;
 					goto done;
 				}
-				alloc_buf = new_alloc_buf;
 
 				/* read the sector (we need to do this even when writing */
 				err = read_sector(floppy, head, track, sector, alloc_buf, sector_length);
@@ -827,7 +829,8 @@ floperr_t floppy_load_track(floppy_image *floppy, int head, int track, int dirti
 
 		track_size = floppy_callbacks(floppy)->get_track_size(floppy, head, track);
 
-		new_loaded_track_data = realloc(floppy->loaded_track_data, track_size);
+		if (floppy->loaded_track_data) free(floppy->loaded_track_data);
+		new_loaded_track_data = malloc(track_size);
 		if (!new_loaded_track_data)
 		{
 			err = FLOPPY_ERROR_OUTOFMEMORY;
@@ -871,7 +874,7 @@ static floperr_t floppy_track_unload(floppy_image *floppy)
 	{
 		err = floppy_callbacks(floppy)->write_track(floppy, floppy->loaded_track_head, floppy->loaded_track_index, 0, floppy->loaded_track_data, floppy->loaded_track_size);
 		if (err)
-			return err;
+			return (floperr_t)err;
 	}
 
 	floppy->loaded_track_status &= ~(TRACK_LOADED | TRACK_DIRTY);

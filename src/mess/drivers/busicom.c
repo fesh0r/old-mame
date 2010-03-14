@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i4004/i4004.h"
 #include "includes/busicom.h"
 
@@ -187,7 +187,7 @@ static TIMER_CALLBACK(timer_callback)
 	timer ^=1;
 	if (timer==1) drum_index++;
 	if (drum_index==13) drum_index=0;
-	i4004_set_test(cputag_get_cpu(machine, "maincpu"),timer);
+	i4004_set_test(devtag_get_device(machine, "maincpu"),timer);
 
 }
 
@@ -251,5 +251,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1974, busicom,  0,       0, 	busicom, 	busicom, 	 0,  "Business Computer Corporation",   "Busicom 141-PF",		GAME_NOT_WORKING)
+COMP( 1974, busicom,  0,       0,	busicom,	busicom,	 0,  "Business Computer Corporation",   "Busicom 141-PF",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

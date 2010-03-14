@@ -32,7 +32,7 @@
     mess/drivers/amiga.c
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/6526cia.h"
 
@@ -91,7 +91,7 @@ static WRITE32_HANDLER( aga_overlay_w )
 static WRITE8_DEVICE_HANDLER( cd32_cia_0_porta_w )
 {
 	/* bit 1 = cd audio mute */
-	const device_config *cdda = devtag_get_device(device->machine, "cdda");
+	running_device *cdda = devtag_get_device(device->machine, "cdda");
 
 	if (cdda != NULL)
 		sound_set_output_gain(cdda, 0, BIT(data, 0) ? 0.0 : 1.0 );
@@ -99,7 +99,7 @@ static WRITE8_DEVICE_HANDLER( cd32_cia_0_porta_w )
 	/* bit 2 = Power Led on Amiga */
 	set_led_status(device->machine, 0, !BIT(data, 1));
 
-	handle_cd32_joystick_cia(data, cia_r(device, 2));
+	handle_cd32_joystick_cia(data, mos6526_r(device, 2));
 }
 
 /*************************************
@@ -385,48 +385,56 @@ static READ8_DEVICE_HANDLER( a1200_cia_0_portA_r )
 }
 
 
-static const cia6526_interface a1200_cia_0_intf =
+static const mos6526_interface a1200_cia_0_intf =
 {
+	0,													/* tod_clock */
 	DEVCB_LINE(amiga_cia_0_irq),									/* irq_func */
 	DEVCB_NULL,	/* pc_func */
-	0,													/* tod_clock */
-	{
-		{ DEVCB_HANDLER(a1200_cia_0_portA_r), DEVCB_HANDLER(cd32_cia_0_porta_w) },		/* port A */
-		{ DEVCB_HANDLER(cd32_cia_0_portb_r), DEVCB_HANDLER(cd32_cia_0_portb_w) }		/* port B */
-	}
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_HANDLER(a1200_cia_0_portA_r),
+	DEVCB_HANDLER(cd32_cia_0_porta_w),		/* port A */
+	DEVCB_HANDLER(cd32_cia_0_portb_r),
+	DEVCB_HANDLER(cd32_cia_0_portb_w)		/* port B */
 };
 
-static const cia6526_interface cd32_cia_0_intf =
+static const mos6526_interface cd32_cia_0_intf =
 {
+	0,													/* tod_clock */
 	DEVCB_LINE(amiga_cia_0_irq),									/* irq_func */
 	DEVCB_NULL,	/* pc_func */
-	0,													/* tod_clock */
-	{
-		{ DEVCB_INPUT_PORT("CIA0PORTA"), DEVCB_HANDLER(cd32_cia_0_porta_w) },		/* port A */
-		{ DEVCB_HANDLER(cd32_cia_0_portb_r), DEVCB_HANDLER(cd32_cia_0_portb_w) }		/* port B */
-	}
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_INPUT_PORT("CIA0PORTA"),
+	DEVCB_HANDLER(cd32_cia_0_porta_w),		/* port A */
+	DEVCB_HANDLER(cd32_cia_0_portb_r),
+	DEVCB_HANDLER(cd32_cia_0_portb_w)		/* port B */
 };
 
-static const cia6526_interface a1200_cia_1_intf =
+static const mos6526_interface a1200_cia_1_intf =
 {
+	0,													/* tod_clock */
 	DEVCB_LINE(amiga_cia_1_irq),									/* irq_func */
 	DEVCB_NULL,	/* pc_func */
-	0,													/* tod_clock */
-	{
-		{ DEVCB_NULL, DEVCB_NULL },									/* port A */
-		{ DEVCB_NULL, DEVCB_DEVICE_HANDLER("fdc", amiga_fdc_control_w) }			/* port B */
-	}
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,									/* port A */
+	DEVCB_NULL,
+	DEVCB_DEVICE_HANDLER("fdc", amiga_fdc_control_w)			/* port B */
 };
 
-static const cia6526_interface cd32_cia_1_intf =
+static const mos6526_interface cd32_cia_1_intf =
 {
+	0,													/* tod_clock */
 	DEVCB_LINE(amiga_cia_1_irq),									/* irq_func */
 	DEVCB_NULL,	/* pc_func */
-	0,													/* tod_clock */
-	{
-		{ DEVCB_NULL, DEVCB_NULL },									/* port A */
-		{ DEVCB_NULL, DEVCB_NULL }									/* port B */
-	}
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,									/* port A */
+	DEVCB_NULL,
+	DEVCB_NULL									/* port B */
 };
 
 static MACHINE_DRIVER_START( a1200n )
@@ -460,9 +468,9 @@ static MACHINE_DRIVER_START( a1200n )
     MDRV_SOUND_ROUTE(3, "lspeaker", 0.25)
 
 	/* cia */
-	MDRV_CIA8520_ADD("cia_0", AMIGA_68EC020_NTSC_CLOCK / 10, a1200_cia_0_intf)
-	MDRV_CIA8520_ADD("cia_1", AMIGA_68EC020_NTSC_CLOCK / 10, a1200_cia_1_intf)
-	
+	MDRV_MOS8520_ADD("cia_0", AMIGA_68EC020_NTSC_CLOCK / 10, a1200_cia_0_intf)
+	MDRV_MOS8520_ADD("cia_1", AMIGA_68EC020_NTSC_CLOCK / 10, a1200_cia_1_intf)
+
 	MDRV_AMIGA_FDC_ADD("fdc")
 MACHINE_DRIVER_END
 
@@ -523,8 +531,8 @@ static MACHINE_DRIVER_START( cd32 )
 	MDRV_SOUND_ROUTE( 1, "rspeaker", 0.50 )
 
 	/* cia */
-	MDRV_CIA8520_ADD("cia_0", AMIGA_68EC020_PAL_CLOCK / 10, cd32_cia_0_intf)
-	MDRV_CIA8520_ADD("cia_1", AMIGA_68EC020_PAL_CLOCK / 10, cd32_cia_1_intf)
+	MDRV_MOS8520_ADD("cia_0", AMIGA_68EC020_PAL_CLOCK / 10, cd32_cia_0_intf)
+	MDRV_MOS8520_ADD("cia_1", AMIGA_68EC020_PAL_CLOCK / 10, cd32_cia_1_intf)
 MACHINE_DRIVER_END
 
 
@@ -605,7 +613,7 @@ static DRIVER_INIT( cd32 )
 		cd32_potgo_w,		/* potgo_w */
 		NULL, NULL,			/* dskbytr_r & dsklen_w */
 		NULL,				/* serdat_w */
-		NULL, 				/* scanline0_callback */
+		NULL,				/* scanline0_callback */
 		NULL,				/* reset_callback */
 		NULL,				/* nmi_callback */
 		FLAGS_AGA_CHIPSET	/* flags */
@@ -626,5 +634,5 @@ static DRIVER_INIT( cd32 )
 
 /*    YEAR  NAME     PARENT   COMPAT  MACHINE INPUT   INIT      COMPANY       FULLNAME */
 COMP( 1992, a1200n,  0,       0,      a1200n, a1200,  a1200,  "Commodore",  "Amiga 1200 (NTSC)" , GAME_NOT_WORKING )
-COMP( 1992, a1200p,  a1200n,  0,      a1200p, a1200,  a1200,  "Commodore",  "Amiga 1200 (PAL)" , GAME_NOT_WORKING )
+COMP( 1992, a1200p,  a1200n,  0,      a1200p, a1200,  a1200,  "Commodore",  "Amiga 1200 (PAL)" , GAME_NOT_WORKING  )
 CONS( 1993, cd32,    0,       0,      cd32,   cd32,   cd32,   "Commodore",  "Amiga CD32 (NTSC)" , GAME_NOT_WORKING )

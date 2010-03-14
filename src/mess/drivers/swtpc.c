@@ -6,13 +6,13 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m6800/m6800.h"
 #include "machine/terminal.h"
 
 static WRITE8_HANDLER(swtpc_terminal_w)
 {
-	const device_config	*devconf = devtag_get_device(space->machine, "terminal");
+	running_device *devconf = devtag_get_device(space->machine, "terminal");
 	terminal_write(devconf,0,data);
 }
 
@@ -66,6 +66,6 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT	COMPANY   FULLNAME       FLAGS */
-COMP( ????, swtpc,  0,       0, 		swtpc, 	swtpc, 	 0,  	"Southwest Technical Products Corporation",   "SWTPC 6800",		GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT   COMPANY   FULLNAME       FLAGS */
+COMP( ????, swtpc,  0,       0, 		swtpc,	swtpc,	 0, 	"Southwest Technical Products Corporation",   "SWTPC 6800",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

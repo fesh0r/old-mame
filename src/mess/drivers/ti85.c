@@ -185,7 +185,7 @@ TI-86 ports:
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "sound/speaker.h"
 #include "includes/ti85.h"
@@ -662,7 +662,7 @@ ROM_START (ti83p)
 	ROM_SYSTEM_BIOS( 1, "v103m", "V 1.03 [m]" )
     ROMX_LOAD( "ti83pv103m.bin", 0x10000, 0x80000, CRC(281c9375) SHA1(80d698fed42976015a3e53fd59ebe7f49699b27e), ROM_BIOS(2))
     ROM_SYSTEM_BIOS( 2, "v103m2", "V 1.03 [m2]" )
-  	ROMX_LOAD( "ti83pv103m2.bin", 0x10000, 0x80000, CRC(690d9d30) SHA1(d215d3880e06c2ae31ec24b21d542d5bb2f3935b), ROM_BIOS(3))
+	ROMX_LOAD( "ti83pv103m2.bin", 0x10000, 0x80000, CRC(690d9d30) SHA1(d215d3880e06c2ae31ec24b21d542d5bb2f3935b), ROM_BIOS(3))
 	ROM_SYSTEM_BIOS( 3, "v110", "V 1.10" )
 	ROMX_LOAD( "ti83pv110.bin", 0x10000, 0x80000, CRC(62683990) SHA1(F86CDEFE4ED5EF9965CD9EB667CB859E2CB10E19), ROM_BIOS(4) )
 	ROM_SYSTEM_BIOS( 4, "v112", "V 1.12" )
@@ -734,14 +734,14 @@ ROM_END
 
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE INPUT   INIT   COMPANY                 FULLNAME                        FLAGS */
-COMP( 1990, ti81,       0,      0,      ti81,   ti81,   0,     "Texas Instruments",    "TI-81",                        0 )
-COMP( 1992, ti85,       0,      0,      ti85d,  ti85,   0,     "Texas Instruments",    "TI-85",                        0 )
-COMP( 1993, ti82,       0,      0,      ti82,   ti82,   0,     "Texas Instruments",    "TI-82",                        0 )
-COMP( 1994, ti81v2,     ti81,   0,      ti82,   ti81,   0,     "Texas Instruments",    "TI-81 v2.0",                   0 )
-COMP( 1996, ti83,       0,      0,      ti83,   ti83,   0,     "Texas Instruments",    "TI-83",                        0 )
-COMP( 1997, ti86,       0,      0,      ti86d,  ti85,   0,     "Texas Instruments",    "TI-86",                        0 )
-COMP( 1998, ti73,       0,      0,      ti83p,  ti82,   0,     "Texas Instruments",    "TI-73",                        GAME_NOT_WORKING )
-COMP( 1999, ti83p,      0,      0,      ti83p,  ti82,   0,     "Texas Instruments",    "TI-83 Plus",                   0 )
-COMP( 2001, ti83pse,    0,      0,      ti85,   ti85,   0,     "Texas Instruments",    "TI-83 Plus Silver Edition",    GAME_NOT_WORKING )
-//COMP( 2004, ti84p,      0,      0,      ti85,   ti85,   0,   "Texas Instruments",    "TI-84 Plus",                   GAME_NOT_WORKING )
-COMP( 2004, ti84pse,    0,      0,      ti85,   ti85,   0,     "Texas Instruments",    "TI-84 Plus Silver Edition",    GAME_NOT_WORKING )
+COMP( 1990, ti81,       0,      0,      ti81,   ti81,   0,     "Texas Instruments",    "TI-81",                        GAME_NO_SOUND )
+COMP( 1992, ti85,       0,      0,      ti85d,  ti85,   0,     "Texas Instruments",    "TI-85",                        GAME_NO_SOUND )
+COMP( 1993, ti82,       0,      0,      ti82,   ti82,   0,     "Texas Instruments",    "TI-82",                        GAME_NO_SOUND )
+COMP( 1994, ti81v2,     ti81,   0,      ti82,   ti81,   0,     "Texas Instruments",    "TI-81 v2.0",                   GAME_NO_SOUND )
+COMP( 1996, ti83,       0,      0,      ti83,   ti83,   0,     "Texas Instruments",    "TI-83",                        GAME_NO_SOUND )
+COMP( 1997, ti86,       0,      0,      ti86d,  ti85,   0,     "Texas Instruments",    "TI-86",                        GAME_NO_SOUND )
+COMP( 1998, ti73,       0,      0,      ti83p,  ti82,   0,     "Texas Instruments",    "TI-73",                        GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1999, ti83p,      0,      0,      ti83p,  ti82,   0,     "Texas Instruments",    "TI-83 Plus",                   GAME_NO_SOUND )
+COMP( 2001, ti83pse,    0,      0,      ti85,   ti85,   0,     "Texas Instruments",    "TI-83 Plus Silver Edition",    GAME_NOT_WORKING | GAME_NO_SOUND)
+//COMP( 2004, ti84p,      0,      0,      ti85,   ti85,   0,   "Texas Instruments",    "TI-84 Plus",                   GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 2004, ti84pse,    0,      0,      ti85,   ti85,   0,     "Texas Instruments",    "TI-84 Plus Silver Edition",    GAME_NOT_WORKING | GAME_NO_SOUND)

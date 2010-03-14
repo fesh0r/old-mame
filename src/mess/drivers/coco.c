@@ -21,7 +21,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/hd6309/hd6309.h"
 #include "sound/wave.h"
@@ -270,9 +270,9 @@ static ADDRESS_MAP_START( dgnalpha_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xff00, 0xff03) AM_DEVREADWRITE("pia_0", pia6821_r, pia6821_w)
 	AM_RANGE(0xff04, 0xff07) AM_DEVREADWRITE("acia", acia_6551_r, acia_6551_w)
 	AM_RANGE(0xff20, 0xff23) AM_DEVREADWRITE("pia_1", pia6821_r, coco_pia_1_w)
-	AM_RANGE(0xff24, 0xff27) AM_DEVREADWRITE("pia_2", pia6821_r, pia6821_w) 	/* Third PIA on Dragon Alpha */
+	AM_RANGE(0xff24, 0xff27) AM_DEVREADWRITE("pia_2", pia6821_r, pia6821_w) 	    /* Third PIA on Dragon Alpha */
 	AM_RANGE(0Xff28, 0xff2b) AM_READWRITE(dgnalpha_modem_r, dgnalpha_modem_w)		/* Modem, dummy to stop eror log ! */
-	AM_RANGE(0xff2c, 0xff2f) AM_READWRITE(dgnalpha_wd2797_r, dgnalpha_wd2797_w)				/* Alpha onboard disk interface */
+	AM_RANGE(0xff2c, 0xff2f) AM_READWRITE(dgnalpha_wd2797_r, dgnalpha_wd2797_w)	/* Alpha onboard disk interface */
 	AM_RANGE(0xff40, 0xff7f) AM_DEVREADWRITE("coco_cartslot", coco_cartridge_r, coco_cartridge_w)
 	AM_RANGE(0xff90, 0xffbf) AM_NOP
 	AM_RANGE(0xffc0, 0xffdf) AM_DEVWRITE("sam", sam6883_w)
@@ -559,7 +559,7 @@ static INPUT_PORTS_START( coco )
 	PORT_CATEGORY_ITEM(  0x30, "Diecom Light Gun Adaptor",		23 ) PORT_CONDITION("ctrl_sel", 0x0f, PORTCOND_NOTEQUALS, 0x03)
 
 	PORT_START("hires_intf")
-	PORT_CONFNAME( 0x07, 0x00, "Hi-Res Joystick Interfaces" )// PORT_CHANGED( coco_joystick_mode_changed, 0 )
+	PORT_CONFNAME( 0x07, 0x00, "Hi-Res Joystick Interfaces" )
 	PORT_CONFSETTING(    0x00, "None" )
 	PORT_CONFSETTING(    0x01, "Hi-Res in Right Port" )                     PORT_CONDITION("ctrl_sel", 0x0f, PORTCOND_EQUALS, 0x01)
 	PORT_CONFSETTING(    0x02, "Hi-Res CoCoMax 3 Style in Right Port" )     PORT_CONDITION("ctrl_sel", 0x0f, PORTCOND_EQUALS, 0x01)
@@ -694,7 +694,7 @@ INPUT_PORTS_END
   Bitbanger port
 ***************************************************************************/
 
-static int coco_bitbanger_filter(const device_config *img, const int *pulses, int total_pulses, int total_duration)
+static int coco_bitbanger_filter(running_device *img, const int *pulses, int total_pulses, int total_duration)
 {
 	int i;
 	int result = 0;
@@ -743,7 +743,7 @@ static const ay8910_interface ay8912_interface =
 	AY8910_LEGACY_OUTPUT,
 	AY8910_DEFAULT_LOADS,
 	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, dgnalpha_psg_porta_read),	/* portA read */
-	DEVCB_NULL,    					/* portB read */
+	DEVCB_NULL, 					/* portB read */
 	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, dgnalpha_psg_porta_write),	/* portA write */
 	DEVCB_NULL						/* portB write */
 };
@@ -761,7 +761,7 @@ static const cassette_config coco_cassette_config =
 {
 	coco_cassette_formats,
 	NULL,
-	CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_MUTED
+	(cassette_state)(CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_MUTED)
 };
 
 static const floppy_config coco_floppy_config =
@@ -818,7 +818,7 @@ static MACHINE_DRIVER_START( dragon32 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("32K")
 	MDRV_RAM_EXTRA_OPTIONS("64K")
-	
+
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 MACHINE_DRIVER_END
 
@@ -867,7 +867,7 @@ static MACHINE_DRIVER_START( dragon64 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
-	
+
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 MACHINE_DRIVER_END
 
@@ -917,7 +917,7 @@ static MACHINE_DRIVER_START( d64plus )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("128K")
-	
+
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 MACHINE_DRIVER_END
 
@@ -928,6 +928,7 @@ static MACHINE_DRIVER_START( dgnalpha )
 
 	MDRV_MACHINE_START( dgnalpha )
 	MDRV_DRIVER_DATA( coco_state )
+    MDRV_MACHINE_RESET( dgnalpha )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -1024,7 +1025,7 @@ static MACHINE_DRIVER_START( tanodr64 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
-	
+
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 MACHINE_DRIVER_END
 
@@ -1073,7 +1074,7 @@ static MACHINE_DRIVER_START( coco )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("16K")
 	MDRV_RAM_EXTRA_OPTIONS("4K,32K,64K")
-	
+
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 MACHINE_DRIVER_END
 
@@ -1121,7 +1122,7 @@ static MACHINE_DRIVER_START( coco2 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
 	MDRV_RAM_EXTRA_OPTIONS("16K")
-	
+
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 MACHINE_DRIVER_END
 
@@ -1169,7 +1170,7 @@ static MACHINE_DRIVER_START( coco2b )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
 	MDRV_RAM_EXTRA_OPTIONS("16K")
-	
+
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 MACHINE_DRIVER_END
 
@@ -1229,7 +1230,7 @@ static MACHINE_DRIVER_START( coco3 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("512K")
 	MDRV_RAM_EXTRA_OPTIONS("128K,2M,8M")
-	
+
 	MDRV_FLOPPY_4_DRIVES_ADD(coco_floppy_config)
 MACHINE_DRIVER_END
 
@@ -1337,7 +1338,7 @@ ROM_END
 ROM_START(coco2)
 	ROM_REGION(0x8000,"maincpu",0)
 	ROM_LOAD(			"bas12.rom",	0x2000, 0x2000, CRC(54368805) SHA1(0f14dc46c647510eb0b7bd3f53e33da07907d04f))
-	ROM_LOAD(      	"extbas11.rom",	0x0000, 0x2000, CRC(a82a6254) SHA1(ad927fb4f30746d820cb8b860ebb585e7f095dea))
+	ROM_LOAD(   	"extbas11.rom",	0x0000, 0x2000, CRC(a82a6254) SHA1(ad927fb4f30746d820cb8b860ebb585e7f095dea))
 
 	ROM_REGION(0x4000,"cart",0)
 	ROM_LOAD_OPTIONAL(	"disk11.rom",	0x0000, 0x2000, CRC(0b9c5415) SHA1(10bdc5aa2d7d7f205f67b47b19003a4bd89defd1))
@@ -1347,7 +1348,7 @@ ROM_END
 ROM_START(coco2b)
 	ROM_REGION(0x8000,"maincpu",0)
 	ROM_LOAD(			"bas13.rom",	0x2000, 0x2000, CRC(d8f4d15e) SHA1(28b92bebe35fa4f026a084416d6ea3b1552b63d3))
-	ROM_LOAD(      	"extbas11.rom",	0x0000, 0x2000, CRC(a82a6254) SHA1(ad927fb4f30746d820cb8b860ebb585e7f095dea))
+	ROM_LOAD(   	"extbas11.rom",	0x0000, 0x2000, CRC(a82a6254) SHA1(ad927fb4f30746d820cb8b860ebb585e7f095dea))
 
 	ROM_REGION(0x4000,"cart",0)
 	ROM_LOAD_OPTIONAL(	"disk11.rom",	0x0000, 0x2000, CRC(0b9c5415) SHA1(10bdc5aa2d7d7f205f67b47b19003a4bd89defd1))
@@ -1400,7 +1401,7 @@ COMP(  1983,    coco2,      coco,   0,      coco2,     coco,      0,      "Tandy
 COMP(  1985?,   coco2b,     coco,   0,      coco2b,    coco,      0,      "Tandy Radio Shack",	         "Color Computer 2B", 0)
 COMP(  1986,    coco3,      coco,   0,      coco3,     coco3,     0,      "Tandy Radio Shack",	         "Color Computer 3 (NTSC)", 0)
 COMP(  1986,    coco3p,     coco,   0,      coco3p,    coco3,     0,      "Tandy Radio Shack",	         "Color Computer 3 (PAL)", 0)
-COMP(  19??,    coco3h,     coco,   0,      coco3h,    coco3,     0,      "Tandy Radio Shack",	         "Color Computer 3 (NTSC; HD6309)", GAME_COMPUTER_MODIFIED)
+COMP(  19??,    coco3h,     coco,   0,      coco3h,    coco3,     0,      "Tandy Radio Shack",	         "Color Computer 3 (NTSC; HD6309)", GAME_UNOFFICIAL)
 COMP(  1982,    dragon32,   coco,   0,      dragon32,  dragon32,  0,      "Dragon Data Ltd",            "Dragon 32", 0)
 COMP(  1983,    dragon64,   coco,   0,      dragon64,  dragon32,  0,      "Dragon Data Ltd",            "Dragon 64", 0)
 COMP(  1983,    d64plus,    coco,   0,      d64plus,   dragon32,  0,      "Dragon Data Ltd",            "Dragon 64 Plus", 0)

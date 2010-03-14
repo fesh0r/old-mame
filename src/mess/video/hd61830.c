@@ -16,7 +16,7 @@
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "hd61830.h"
 
 /***************************************************************************
@@ -76,7 +76,7 @@ struct _hd61830_t
 	int cp;						/* cursor position */
 
 	/* devices */
-	const device_config *screen;
+	running_device *screen;
 
 	/* timers */
 	emu_timer *busy_timer;
@@ -86,18 +86,18 @@ struct _hd61830_t
     INLINE FUNCTIONS
 ***************************************************************************/
 
-INLINE hd61830_t *get_safe_token(const device_config *device)
+INLINE hd61830_t *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
 	return (hd61830_t *)device->token;
 }
 
-INLINE hd61830_config *get_safe_config(const device_config *device)
+INLINE hd61830_config *get_safe_config(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->type == HD61830);
-	return (hd61830_config *)device->inline_config;
+	return (hd61830_config *)device->baseconfig().inline_config;
 }
 
 /***************************************************************************
@@ -110,7 +110,7 @@ INLINE hd61830_config *get_safe_config(const device_config *device)
 
 static TIMER_CALLBACK( busy_tick )
 {
-	const device_config *device = ptr;
+	running_device *device = (running_device *)ptr;
 	hd61830_t *hd61830 = get_safe_token(device);
 
 	/* clear busy flag */
@@ -139,7 +139,7 @@ READ8_DEVICE_HANDLER( hd61830_status_r )
 {
 	hd61830_t *hd61830 = get_safe_token(device);
 
-	if (LOG) logerror("HD61380 '%s' Status Read: %s\n", device->tag, hd61830->bf ? "busy" : "ready");
+	if (LOG) logerror("HD61380 '%s' Status Read: %s\n", device->tag(), hd61830->bf ? "busy" : "ready");
 
 	return hd61830->bf << 7;
 }
@@ -162,12 +162,12 @@ WRITE8_DEVICE_HANDLER( hd61830_control_w )
 READ8_DEVICE_HANDLER( hd61830_data_r )
 {
 	hd61830_t *hd61830 = get_safe_token(device);
-
+	const address_space *space = cputag_get_address_space(device->machine, HD61830_TAG, ADDRESS_SPACE_PROGRAM);
 	UINT8 data = hd61830->dor;
 
-	if (LOG) logerror("HD61380 '%s' Display Data Read %02x\n", device->tag, hd61830->dor);
+	if (LOG) logerror("HD61380 '%s' Display Data Read %02x\n", device->tag(), hd61830->dor);
 
-	hd61830->dor = memory_read_byte(device->space[0], hd61830->cac);
+	hd61830->dor = memory_read_byte(space, hd61830->cac);
 
 	hd61830->cac++;
 
@@ -181,7 +181,7 @@ READ8_DEVICE_HANDLER( hd61830_data_r )
 WRITE8_DEVICE_HANDLER( hd61830_data_w )
 {
 	hd61830_t *hd61830 = get_safe_token(device);
-
+	const address_space *space = cputag_get_address_space(device->machine, HD61830_TAG, ADDRESS_SPACE_PROGRAM);
 	switch (hd61830->ir)
 	{
 	case HD61830_INSTRUCTION_MODE_CONTROL:
@@ -189,12 +189,12 @@ WRITE8_DEVICE_HANDLER( hd61830_data_w )
 
 		if (LOG)
 		{
-			logerror("HD61380 '%s' %s CG\n", device->tag, (data & HD61830_MODE_EXTERNAL_CG) ? "External" : "Internal");
-			logerror("HD61380 '%s' %s Display Mode\n", device->tag, (data & HD61830_MODE_GRAPHIC) ? "Graphic" : "Character");
-			logerror("HD61380 '%s' %s Mode\n", device->tag, (data & HD61830_MODE_MASTER) ? "Master" : "Slave");
-			logerror("HD61380 '%s' Cursor %s\n", device->tag, (data & HD61830_MODE_CURSOR) ? "On" : "Off");
-			logerror("HD61380 '%s' Blink %s\n", device->tag, (data & HD61830_MODE_BLINK) ? "On" : "Off");
-			logerror("HD61380 '%s' Display %s\n", device->tag, (data & HD61830_MODE_DISPLAY_ON) ? "On" : "Off");
+			logerror("HD61380 '%s' %s CG\n", device->tag(), (data & HD61830_MODE_EXTERNAL_CG) ? "External" : "Internal");
+			logerror("HD61380 '%s' %s Display Mode\n", device->tag(), (data & HD61830_MODE_GRAPHIC) ? "Graphic" : "Character");
+			logerror("HD61380 '%s' %s Mode\n", device->tag(), (data & HD61830_MODE_MASTER) ? "Master" : "Slave");
+			logerror("HD61380 '%s' Cursor %s\n", device->tag(), (data & HD61830_MODE_CURSOR) ? "On" : "Off");
+			logerror("HD61380 '%s' Blink %s\n", device->tag(), (data & HD61830_MODE_BLINK) ? "On" : "Off");
+			logerror("HD61380 '%s' Display %s\n", device->tag(), (data & HD61830_MODE_DISPLAY_ON) ? "On" : "Off");
 		}
 		break;
 
@@ -202,38 +202,38 @@ WRITE8_DEVICE_HANDLER( hd61830_data_w )
 		hd61830->hp = (data & 0x07) + 1;
 		hd61830->vp = (data >> 4) + 1;
 
-		if (LOG) logerror("HD61380 '%s' Horizontal Character Pitch: %u\n", device->tag, hd61830->hp);
-		if (LOG) logerror("HD61380 '%s' Vertical Character Pitch: %u\n", device->tag, hd61830->vp);
+		if (LOG) logerror("HD61380 '%s' Horizontal Character Pitch: %u\n", device->tag(), hd61830->hp);
+		if (LOG) logerror("HD61380 '%s' Vertical Character Pitch: %u\n", device->tag(), hd61830->vp);
 		break;
 
 	case HD61830_INSTRUCTION_NUMBER_OF_CHARACTERS:
 		hd61830->hn = (data & 0x7f) + 1;
 
-		if (LOG) logerror("HD61380 '%s' Number of Characters: %u\n", device->tag, hd61830->hn);
+		if (LOG) logerror("HD61380 '%s' Number of Characters: %u\n", device->tag(), hd61830->hn);
 		break;
 
 	case HD61830_INSTRUCTION_NUMBER_OF_TIME_DIVISIONS:
 		hd61830->nx = (data & 0x7f) + 1;
 
-		if (LOG) logerror("HD61380 '%s' Number of Time Divisions: %u\n", device->tag, hd61830->nx);
+		if (LOG) logerror("HD61380 '%s' Number of Time Divisions: %u\n", device->tag(), hd61830->nx);
 		break;
 
 	case HD61830_INSTRUCTION_CURSOR_POSITION:
 		hd61830->cp = (data & 0x7f) + 1;
 
-		if (LOG) logerror("HD61380 '%s' Cursor Position: %u\n", device->tag, hd61830->cp);
+		if (LOG) logerror("HD61380 '%s' Cursor Position: %u\n", device->tag(), hd61830->cp);
 		break;
 
 	case HD61830_INSTRUCTION_DISPLAY_START_LOW:
 		hd61830->dsa = (hd61830->dsa & 0xff00) | data;
 
-		if (LOG) logerror("HD61380 '%s' Display Start Address Low %04x\n", device->tag, hd61830->dsa);
+		if (LOG) logerror("HD61380 '%s' Display Start Address Low %04x\n", device->tag(), hd61830->dsa);
 		break;
 
 	case HD61830_INSTRUCTION_DISPLAY_START_HIGH:
 		hd61830->dsa = (data << 8) | (hd61830->dsa & 0xff);
 
-		if (LOG) logerror("HD61380 '%s' Display Start Address High %04x\n", device->tag, hd61830->dsa);
+		if (LOG) logerror("HD61380 '%s' Display Start Address High %04x\n", device->tag(), hd61830->dsa);
 		break;
 
 	case HD61830_INSTRUCTION_CURSOR_ADDRESS_LOW:
@@ -246,19 +246,19 @@ WRITE8_DEVICE_HANDLER( hd61830_data_w )
 			hd61830->cac = (hd61830->cac & 0xff00) | data;
 		}
 
-		if (LOG) logerror("HD61380 '%s' Cursor Address Low %02x: %04x\n", device->tag, data, hd61830->cac);
+		if (LOG) logerror("HD61380 '%s' Cursor Address Low %02x: %04x\n", device->tag(), data, hd61830->cac);
 		break;
 
 	case HD61830_INSTRUCTION_CURSOR_ADDRESS_HIGH:
 		hd61830->cac = (data << 8) | (hd61830->cac & 0xff);
 
-		if (LOG) logerror("HD61380 '%s' Cursor Address High %02x: %04x\n", device->tag, data, hd61830->cac);
+		if (LOG) logerror("HD61380 '%s' Cursor Address High %02x: %04x\n", device->tag(), data, hd61830->cac);
 		break;
 
 	case HD61830_INSTRUCTION_DISPLAY_DATA_WRITE:
-		memory_write_byte(device->space[0], hd61830->cac, data);
+		memory_write_byte(space, hd61830->cac, data);
 
-		if (LOG) logerror("HD61380 '%s' Display Data Write %02x -> %04x row %u col %u\n", device->tag, data, hd61830->cac, hd61830->cac / 40, hd61830->cac % 40);
+		if (LOG) logerror("HD61380 '%s' Display Data Write %02x -> %04x row %u col %u\n", device->tag(), data, hd61830->cac, hd61830->cac / 40, hd61830->cac % 40);
 
 		hd61830->cac++;
 		break;
@@ -266,13 +266,13 @@ WRITE8_DEVICE_HANDLER( hd61830_data_w )
 	case HD61830_INSTRUCTION_CLEAR_BIT:
 		{
 		int nb = data & 0x07;
-		UINT8 data = memory_read_byte(device->space[0], hd61830->cac);
+		UINT8 data_ = memory_read_byte(space, hd61830->cac);
 
-		data &= ~(2 << nb);
+		data_ &= ~(2 << nb);
 
-		if (LOG) logerror("HD61380 '%s' Clear Bit %u at %04x\n", device->tag, nb + 1, hd61830->cac);
+		if (LOG) logerror("HD61380 '%s' Clear Bit %u at %04x\n", device->tag(), nb + 1, hd61830->cac);
 
-		memory_write_byte(device->space[0], hd61830->cac, data);
+		memory_write_byte(space, hd61830->cac, data_);
 
 		hd61830->cac++;
 		}
@@ -281,20 +281,20 @@ WRITE8_DEVICE_HANDLER( hd61830_data_w )
 	case HD61830_INSTRUCTION_SET_BIT:
 		{
 		int nb = data & 0x07;
-		UINT8 data = memory_read_byte(device->space[0], hd61830->cac);
+		UINT8 data_ = memory_read_byte(space, hd61830->cac);
 
-		data |= 2 << nb;
+		data_ |= 2 << nb;
 
-		if (LOG) logerror("HD61380 '%s' Set Bit %u at %04x\n", device->tag, nb + 1, hd61830->cac);
+		if (LOG) logerror("HD61380 '%s' Set Bit %u at %04x\n", device->tag(), nb + 1, hd61830->cac);
 
-		memory_write_byte(device->space[0], hd61830->cac, data);
+		memory_write_byte(space, hd61830->cac, data_);
 
 		hd61830->cac++;
 		}
 		break;
 
 	default:
-		logerror("HD61830 '%s' Illegal Instruction %02x!\n", device->tag, hd61830->ir);
+		logerror("HD61830 '%s' Illegal Instruction %02x!\n", device->tag(), hd61830->ir);
 		return;
 	}
 
@@ -306,14 +306,15 @@ WRITE8_DEVICE_HANDLER( hd61830_data_w )
     draw_scanline - draw one scanline
 -------------------------------------------------*/
 
-static void draw_scanline(const device_config *device, bitmap_t *bitmap, const rectangle *cliprect, int y, UINT16 ra)
+static void draw_scanline(running_device *device, bitmap_t *bitmap, const rectangle *cliprect, int y, UINT16 ra)
 {
 	hd61830_t *hd61830 = get_safe_token(device);
 	int sx, x;
+	const address_space *space = cputag_get_address_space(device->machine, HD61830_TAG, ADDRESS_SPACE_PROGRAM);
 
 	for (sx = 0; sx < hd61830->hn; sx++)
 	{
-		UINT8 data = memory_read_byte(device->space[0], ra++);
+		UINT8 data = memory_read_byte(space, ra++);
 
 		for (x = 0; x < hd61830->hp; x++)
 		{
@@ -327,7 +328,7 @@ static void draw_scanline(const device_config *device, bitmap_t *bitmap, const r
     update_graphics - draw graphics mode screen
 -------------------------------------------------*/
 
-static void update_graphics(const device_config *device, bitmap_t *bitmap, const rectangle *cliprect)
+static void update_graphics(running_device *device, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	hd61830_t *hd61830 = get_safe_token(device);
 	int y;
@@ -349,7 +350,7 @@ static void update_graphics(const device_config *device, bitmap_t *bitmap, const
     hd61830_update - update screen
 -------------------------------------------------*/
 
-void hd61830_update(const device_config *device, bitmap_t *bitmap, const rectangle *cliprect)
+void hd61830_update(running_device *device, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	hd61830_t *hd61830 = get_safe_token(device);
 

@@ -1,4 +1,4 @@
-#include "driver.h"
+#include "emu.h"
 #include "includes/spectrum.h"
 #include "eventlst.h"
 #include "devices/snapquik.h"
@@ -10,25 +10,24 @@
 #include "machine/beta.h"
 #include "devices/messram.h"
 
-static int ROMSelection;
-static const device_config* beta;
-
 static DIRECT_UPDATE_HANDLER( pentagon_direct )
 {
-	UINT16 pc = cpu_get_reg(cputag_get_cpu(space->machine, "maincpu"), REG_GENPCBASE);
+	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
+	running_device *beta = devtag_get_device(space->machine, BETA_DISK_TAG);
+	UINT16 pc = cpu_get_reg(devtag_get_device(space->machine, "maincpu"), REG_GENPCBASE);
 
 	if (beta->started && betadisk_is_active(beta))
 	{
 		if (pc >= 0x4000)
 		{
-			ROMSelection = ((spectrum_128_port_7ffd_data>>4) & 0x01) ? 1 : 0;
+			state->ROMSelection = ((state->port_7ffd_data>>4) & 0x01) ? 1 : 0;
 			betadisk_disable(beta);
 			memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
-			memory_set_bankptr(space->machine, "bank1", memory_region(space->machine, "maincpu") + 0x010000 + (ROMSelection<<14));
+			memory_set_bankptr(space->machine, "bank1", memory_region(space->machine, "maincpu") + 0x010000 + (state->ROMSelection<<14));
 		}
-	} else if (((pc & 0xff00) == 0x3d00) && (ROMSelection==1))
+	} else if (((pc & 0xff00) == 0x3d00) && (state->ROMSelection==1))
 	{
-		ROMSelection = 3;
+		state->ROMSelection = 3;
 		if (beta->started)
 			betadisk_enable(beta);
 
@@ -36,11 +35,11 @@ static DIRECT_UPDATE_HANDLER( pentagon_direct )
 	if((address>=0x0000) && (address<=0x3fff))
 	{
 		memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
-		if (ROMSelection == 3) {
+		if (state->ROMSelection == 3) {
 			if (beta->started)
 				direct->raw = direct->decrypted =  memory_region(space->machine, "beta:beta");
 		} else {
-			direct->raw = direct->decrypted =  memory_region(space->machine, "maincpu") + 0x010000 + (ROMSelection<<14);
+			direct->raw = direct->decrypted =  memory_region(space->machine, "maincpu") + 0x010000 + (state->ROMSelection<<14);
 		}
 		memory_set_bankptr(space->machine, "bank1", direct->raw);
 		return ~0;
@@ -50,35 +49,40 @@ static DIRECT_UPDATE_HANDLER( pentagon_direct )
 
 static void pentagon_update_memory(running_machine *machine)
 {
-	spectrum_screen_location = messram_get_ptr(devtag_get_device(machine, "messram")) + ((spectrum_128_port_7ffd_data & 8) ? (7<<14) : (5<<14));
+	spectrum_state *state = (spectrum_state *)machine->driver_data;
+	running_device *beta = devtag_get_device(machine, BETA_DISK_TAG);
+	UINT8 *messram = messram_get_ptr(devtag_get_device(machine, "messram"));
+	state->screen_location = messram + ((state->port_7ffd_data & 8) ? (7<<14) : (5<<14));
 
-	memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + ((spectrum_128_port_7ffd_data & 0x07) * 0x4000));
+	memory_set_bankptr(machine, "bank4", messram + ((state->port_7ffd_data & 0x07) * 0x4000));
 
-	if (beta->started && betadisk_is_active(beta) && !( spectrum_128_port_7ffd_data & 0x10 ) )
+	if (beta->started && betadisk_is_active(beta) && !( state->port_7ffd_data & 0x10 ) )
 	{
 		/* GLUK */
 		if (strcmp(machine->gamedrv->name, "pent1024")==0) {
-			ROMSelection = 2;
+			state->ROMSelection = 2;
 		} else {
-			ROMSelection = ((spectrum_128_port_7ffd_data>>4) & 0x01) ;
+			state->ROMSelection = ((state->port_7ffd_data>>4) & 0x01) ;
 		}
 	}
 	else {
 		/* ROM switching */
-		ROMSelection = ((spectrum_128_port_7ffd_data>>4) & 0x01) ;
+		state->ROMSelection = ((state->port_7ffd_data>>4) & 0x01) ;
 	}
 	/* rom 0 is 128K rom, rom 1 is 48 BASIC */
-	memory_set_bankptr(machine, "bank1", memory_region(machine, "maincpu") + 0x010000 + (ROMSelection<<14));
+	memory_set_bankptr(machine, "bank1", memory_region(machine, "maincpu") + 0x010000 + (state->ROMSelection<<14));
 }
 
 static WRITE8_HANDLER(pentagon_port_7ffd_w)
 {
+	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
+
 	/* disable paging */
-	if (spectrum_128_port_7ffd_data & 0x20)
+	if (state->port_7ffd_data & 0x20)
 		return;
 
 	/* store new state */
-	spectrum_128_port_7ffd_data = data;
+	state->port_7ffd_data = data;
 
 	/* update memory */
 	pentagon_update_memory(space->machine);
@@ -99,8 +103,10 @@ ADDRESS_MAP_END
 
 static MACHINE_RESET( pentagon )
 {
+	spectrum_state *state = (spectrum_state *)machine->driver_data;
+	UINT8 *messram = messram_get_ptr(devtag_get_device(machine, "messram"));
+	running_device *beta = devtag_get_device(machine, BETA_DISK_TAG);
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	beta = devtag_get_device(machine, BETA_DISK_TAG);
 
 	memory_install_read_bank(space, 0x0000, 0x3fff, 0, 0, "bank1");
 	memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
@@ -112,16 +118,16 @@ static MACHINE_RESET( pentagon )
 
 	memory_set_direct_update_handler( space, pentagon_direct );
 
-	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,128*1024);
+	memset(messram,0,128*1024);
 
 	/* Bank 5 is always in 0x4000 - 0x7fff */
-	memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + (5<<14));
+	memory_set_bankptr(machine, "bank2", messram + (5<<14));
 
 	/* Bank 2 is always in 0x8000 - 0xbfff */
-	memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + (2<<14));
+	memory_set_bankptr(machine, "bank3", messram + (2<<14));
 
-	spectrum_128_port_7ffd_data = 0;
-
+	state->port_7ffd_data = 0;
+	state->port_1ffd_data = -1;
 	pentagon_update_memory(machine);
 }
 
@@ -194,19 +200,19 @@ ROM_START(pentagon)
     ROMX_LOAD( "zxvgs-22-0.rom", 0x010000, 0x4000, CRC(63041c61) SHA1(f6718097d939afa8881b4436741a5a23d7e93d78), ROM_BIOS(9))
     ROMX_LOAD( "zxvgs-22-1.rom", 0x014000, 0x4000, CRC(f3736047) SHA1(f3739bf460a57e3f10e8dfb1e7120842938d27ea), ROM_BIOS(9))
 	ROM_SYSTEM_BIOS(9, "v10", "ZXVGS v0.29 by Yarek")
-  	ROMX_LOAD( "zxvg-29-0.rom", 0x010000, 0x4000, CRC(3b66f433) SHA1(d21df9e7f1ee99d8b38c2e6a32727aac0f1d5dc6), ROM_BIOS(10))
-  	ROMX_LOAD( "zxvg-1.rom", 0x014000, 0x4000, CRC(a8baca3e) SHA1(f2f131eaa4de832eda76290e48f86e465d28ded7), ROM_BIOS(10))
+	ROMX_LOAD( "zxvg-29-0.rom", 0x010000, 0x4000, CRC(3b66f433) SHA1(d21df9e7f1ee99d8b38c2e6a32727aac0f1d5dc6), ROM_BIOS(10))
+	ROMX_LOAD( "zxvg-1.rom", 0x014000, 0x4000, CRC(a8baca3e) SHA1(f2f131eaa4de832eda76290e48f86e465d28ded7), ROM_BIOS(10))
 	ROM_SYSTEM_BIOS(10, "v11", "ZXVGS v0.30 by Yarek")
-  	ROMX_LOAD( "zxvg-30-0.rom", 0x010000, 0x4000, CRC(533e0f26) SHA1(b5f157c5d0da414ec77e445fdc40b78450129709), ROM_BIOS(11))
-  	ROMX_LOAD( "zxvg-1.rom", 0x014000, 0x4000, CRC(a8baca3e) SHA1(f2f131eaa4de832eda76290e48f86e465d28ded7), ROM_BIOS(11))
+	ROMX_LOAD( "zxvg-30-0.rom", 0x010000, 0x4000, CRC(533e0f26) SHA1(b5f157c5d0da414ec77e445fdc40b78450129709), ROM_BIOS(11))
+	ROMX_LOAD( "zxvg-1.rom", 0x014000, 0x4000, CRC(a8baca3e) SHA1(f2f131eaa4de832eda76290e48f86e465d28ded7), ROM_BIOS(11))
 	ROM_SYSTEM_BIOS(11, "v12", "ZXVGS v0.31 by Yarek")
-  	ROMX_LOAD( "zxvg-31-0.rom", 0x010000, 0x4000, CRC(76f43500) SHA1(1c7cd52894847668418876d55b93b213d89d92ee), ROM_BIOS(12))
-  	ROMX_LOAD( "zxvg-1.rom", 0x014000, 0x4000, CRC(a8baca3e) SHA1(f2f131eaa4de832eda76290e48f86e465d28ded7), ROM_BIOS(12))
+	ROMX_LOAD( "zxvg-31-0.rom", 0x010000, 0x4000, CRC(76f43500) SHA1(1c7cd52894847668418876d55b93b213d89d92ee), ROM_BIOS(12))
+	ROMX_LOAD( "zxvg-1.rom", 0x014000, 0x4000, CRC(a8baca3e) SHA1(f2f131eaa4de832eda76290e48f86e465d28ded7), ROM_BIOS(12))
 	ROM_SYSTEM_BIOS(12, "v13", "ZXVGS v0.35 by Yarek")
-  	ROMX_LOAD( "zxvg-35-0.rom", 0x010000, 0x4000, CRC(5cc8b3b1) SHA1(6c6d0ef1b65d7dc4f607d17204488264575ce48c), ROM_BIOS(13))
-  	ROMX_LOAD( "zxvg-1.rom", 0x014000, 0x4000, CRC(a8baca3e) SHA1(f2f131eaa4de832eda76290e48f86e465d28ded7), ROM_BIOS(13))
+	ROMX_LOAD( "zxvg-35-0.rom", 0x010000, 0x4000, CRC(5cc8b3b1) SHA1(6c6d0ef1b65d7dc4f607d17204488264575ce48c), ROM_BIOS(13))
+	ROMX_LOAD( "zxvg-1.rom", 0x014000, 0x4000, CRC(a8baca3e) SHA1(f2f131eaa4de832eda76290e48f86e465d28ded7), ROM_BIOS(13))
 	ROM_SYSTEM_BIOS(13, "v14", "NeOS 512")
-  	ROMX_LOAD("neos_512.rom", 0x010000, 0x4000, CRC(1657fa43) SHA1(647545f06257bce9b1919fcb86b2a49a21c851a7), ROM_BIOS(14))
+	ROMX_LOAD("neos_512.rom", 0x010000, 0x4000, CRC(1657fa43) SHA1(647545f06257bce9b1919fcb86b2a49a21c851a7), ROM_BIOS(14))
 	ROMX_LOAD("128p-1.rom",   0x014000, 0x4000, CRC(b96a36be) SHA1(80080644289ed93d71a1103992a154cc9802b2fa), ROM_BIOS(14))
 	ROM_CART_LOAD("cart", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END

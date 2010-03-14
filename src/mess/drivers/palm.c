@@ -9,7 +9,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m68000/m68000.h"
 #include "includes/mc68328.h"
 #include "sound/dac.h"
@@ -28,7 +28,7 @@ static UINT16 spim_data;
 static INPUT_CHANGED( pen_check )
 {
     UINT8 button = input_port_read(field->port->machine, "PENB");
-    const device_config *mc68328_device = devtag_get_device(field->port->machine, "dragonball");
+    running_device *mc68328_device = devtag_get_device(field->port->machine, "dragonball");
     if(button)
     {
         mc68328_set_penirq_line(mc68328_device, 1);
@@ -42,7 +42,7 @@ static INPUT_CHANGED( pen_check )
 static INPUT_CHANGED( button_check )
 {
     UINT8 button_state = input_port_read(field->port->machine, "PORTD");
-    const device_config *mc68328_device = devtag_get_device(field->port->machine, "dragonball");
+    running_device *mc68328_device = devtag_get_device(field->port->machine, "dragonball");
 
     mc68328_set_port_d_lines(mc68328_device, button_state, (int)(FPTR)param);
 }
@@ -72,7 +72,7 @@ static READ16_DEVICE_HANDLER( palm_spim_in )
     return spim_data;
 }
 
-static void palm_spim_exchange( const device_config *device )
+static void palm_spim_exchange( running_device *device )
 {
     UINT8 x = input_port_read(device->machine, "PENX");
     UINT8 y = input_port_read(device->machine, "PENY");
@@ -107,7 +107,7 @@ static MACHINE_RESET( palm )
     memset(messram_get_ptr(devtag_get_device(machine, "messram")), 0, messram_get_size(devtag_get_device(machine, "messram")));
     memcpy(messram_get_ptr(devtag_get_device(machine, "messram")), bios, 0x20000);
 
-    device_reset(cputag_get_cpu(machine, "maincpu"));
+    devtag_get_device(machine, "maincpu")->reset();
 }
 
 
@@ -137,7 +137,7 @@ static WRITE8_DEVICE_HANDLER( palm_dac_transition )
 
 static DRIVER_INIT( palm )
 {
-    debug_cpu_set_dasm_override(cputag_get_cpu(machine, "maincpu"), CPU_DISASSEMBLE_NAME(palm_dasm_override));
+    debug_cpu_set_dasm_override(devtag_get_device(machine, "maincpu"), CPU_DISASSEMBLE_NAME(palm_dasm_override));
 }
 
 static const mc68328_interface palm_dragonball_iface =
@@ -390,14 +390,14 @@ ROM_END
 ROM_START( spt1500 )
 	ROM_REGION16_BE( 0x208000, "bios", 0 )
     ROM_SYSTEM_BIOS( 0, "4.1pim", "Version 4.1 (pim)" )
-  	ROMX_LOAD( "spt1500v41-pim.rom",      0x008000, 0x200000, CRC(29e50eaf) SHA1(3e920887bdf74f8f83935977b02f22d5217723eb), ROM_GROUPWORD | ROM_BIOS(1) )
-  	ROM_RELOAD(0x000000, 0x004000)
-  	ROM_SYSTEM_BIOS( 1, "4.1pim", "Version 4.1 (pimnoft)" )
-  	ROMX_LOAD( "spt1500v41-pimnoft.rom",  0x008000, 0x200000, CRC(4b44f284) SHA1(4412e946444706628b94d2303b02580817e1d370), ROM_GROUPWORD | ROM_BIOS(2) )
-  	ROM_RELOAD(0x000000, 0x004000)
-  	ROM_SYSTEM_BIOS( 2, "4.1pim", "Version 4.1 (nopimnoft)" )
-  	ROMX_LOAD( "spt1500v41-nopimnoft.rom",0x008000, 0x200000, CRC(4ba19190) SHA1(d713c1390b82eb4e5fbb39aa10433757c5c49e02), ROM_GROUPWORD | ROM_BIOS(3) )
-  	ROM_RELOAD(0x000000, 0x004000)
+	ROMX_LOAD( "spt1500v41-pim.rom",      0x008000, 0x200000, CRC(29e50eaf) SHA1(3e920887bdf74f8f83935977b02f22d5217723eb), ROM_GROUPWORD | ROM_BIOS(1) )
+	ROM_RELOAD(0x000000, 0x004000)
+	ROM_SYSTEM_BIOS( 1, "4.1pim", "Version 4.1 (pimnoft)" )
+	ROMX_LOAD( "spt1500v41-pimnoft.rom",  0x008000, 0x200000, CRC(4b44f284) SHA1(4412e946444706628b94d2303b02580817e1d370), ROM_GROUPWORD | ROM_BIOS(2) )
+	ROM_RELOAD(0x000000, 0x004000)
+	ROM_SYSTEM_BIOS( 2, "4.1pim", "Version 4.1 (nopimnoft)" )
+	ROMX_LOAD( "spt1500v41-nopimnoft.rom",0x008000, 0x200000, CRC(4ba19190) SHA1(d713c1390b82eb4e5fbb39aa10433757c5c49e02), ROM_GROUPWORD | ROM_BIOS(3) )
+	ROM_RELOAD(0x000000, 0x004000)
 ROM_END
 
 ROM_START( spt1700 )

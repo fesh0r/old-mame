@@ -7,7 +7,7 @@
 
 **********************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "dm9368.h"
 
 /***************************************************************************
@@ -33,25 +33,25 @@ struct _dm9368_t
 
 	int rbi;
 
-	const device_config *rbo_device;
+	running_device *rbo_device;
 };
 
 /***************************************************************************
     INLINE FUNCTIONS
 ***************************************************************************/
 
-INLINE dm9368_t *get_safe_token(const device_config *device)
+INLINE dm9368_t *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
 	return (dm9368_t *)device->token;
 }
 
-INLINE dm9368_config *get_safe_config(const device_config *device)
+INLINE dm9368_config *get_safe_config(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->type == DM9368);
-	return (dm9368_config *)device->inline_config;
+	return (dm9368_config *)device->baseconfig().inline_config;
 }
 
 /***************************************************************************
@@ -70,7 +70,7 @@ WRITE8_DEVICE_HANDLER( dm9368_w )
 
 	if (!dm9368->rbi && !a)
 	{
-		if (LOG) logerror("DM9368 '%s' Blanked Rippling Zero\n", device->tag);
+		if (LOG) logerror("DM9368 '%s' Blanked Rippling Zero\n", device->tag());
 
 		/* blank rippling 0 */
 		output_set_digit_value(dm9368->digit, 0);
@@ -82,7 +82,7 @@ WRITE8_DEVICE_HANDLER( dm9368_w )
 	}
 	else
 	{
-		if (LOG) logerror("DM9368 '%s' Output Data: %u = %02x\n", device->tag, a, OUTPUT[a]);
+		if (LOG) logerror("DM9368 '%s' Output Data: %u = %02x\n", device->tag(), a, OUTPUT[a]);
 
 		output_set_digit_value(dm9368->digit, OUTPUT[a]);
 
@@ -103,7 +103,7 @@ WRITE_LINE_DEVICE_HANDLER( dm9368_rbi_w )
 
 	dm9368->rbi = state;
 
-	if (LOG) logerror("DM9368 '%s' Ripple Blanking Input: %u\n", device->tag, state);
+	if (LOG) logerror("DM9368 '%s' Ripple Blanking Input: %u\n", device->tag(), state);
 }
 
 /*-------------------------------------------------

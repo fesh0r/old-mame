@@ -9,9 +9,13 @@
 #define CASSETTE_TAG	"cassette"
 #define SPEAKER_TAG		"speaker"
 
-typedef struct _mpf1_state mpf1_state;
-struct _mpf1_state
+class mpf1_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, mpf1_state(machine)); }
+
+	mpf1_state(running_machine &machine) { }
+
 	int _break;
 	int m1;
 
@@ -20,9 +24,9 @@ struct _mpf1_state
 	emu_timer *led_refresh_timer;
 
 	/* devices */
-	const device_config *z80ctc;
-	const device_config *speaker;
-	const device_config *cassette;
+	running_device *z80ctc;
+	running_device *speaker;
+	running_device *cassette;
 };
 
 #endif

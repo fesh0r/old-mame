@@ -11,21 +11,17 @@
 
     TODO:
 
-	- D81 sector translation
-	- WD1770 MO/RDY pin confusion
-	- ready signal polarity
-	- floppy access
-    - fast serial
-    - power LED
-    - activity LED
+    - power/activity LEDs
+
+    http://www.unusedino.de/ec64/technical/aay/c1581/ro81main.htm
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "c1581.h"
 #include "cpu/m6502/m6502.h"
 #include "devices/flopdrv.h"
-#include "formats/basicdsk.h"
+#include "formats/d81_dsk.h"
 #include "machine/6526cia.h"
 #include "machine/cbmiec.h"
 #include "machine/wd17xx.h"
@@ -33,8 +29,6 @@
 /***************************************************************************
     PARAMETERS
 ***************************************************************************/
-
-#define LOG 0
 
 #define M6502_TAG		"u1"
 #define M8520_TAG		"u5"
@@ -47,24 +41,27 @@
 typedef struct _c1581_t c1581_t;
 struct _c1581_t
 {
-	int address;
-
-	int data_out;
-	int atn_ack;
+	/* IEC bus */
+	int address;							/* device number */
+	int data_out;							/* serial data out */
+	int atn_ack;							/* attention acknowledge */
+	int ser_dir;							/* fast serial direction */
+	int sp_out;								/* fast serial data out */
+	int cnt_out;							/* fast serial clock out */
 
 	/* devices */
-	const device_config *cpu;
-	const device_config *cia;
-	const device_config *wd1770;
-	const device_config *serial_bus;
-	const device_config *image;
+	running_device *cpu;
+	running_device *cia;
+	running_device *wd1770;
+	running_device *serial_bus;
+	running_device *image;
 };
 
 /***************************************************************************
     INLINE FUNCTIONS
 ***************************************************************************/
 
-INLINE c1581_t *get_safe_token(const device_config *device)
+INLINE c1581_t *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -72,11 +69,36 @@ INLINE c1581_t *get_safe_token(const device_config *device)
 	return (c1581_t *)device->token;
 }
 
-INLINE c1581_config *get_safe_config(const device_config *device)
+INLINE c1581_config *get_safe_config(running_device *device)
 {
 	assert(device != NULL);
 	assert((device->type == C1581) || (device->type == C1563));
-	return (c1581_config *)device->inline_config;
+	return (c1581_config *)device->baseconfig().inline_config;
+}
+
+INLINE void set_iec_data(running_device *device)
+{
+	c1581_t *c1581 = get_safe_token(device);
+
+	int atn = cbm_iec_atn_r(c1581->serial_bus);
+	int data = !c1581->data_out & !(c1581->atn_ack & !atn);
+
+	/* fast serial data */
+	if (c1581->ser_dir) data &= c1581->sp_out;
+
+	cbm_iec_data_w(c1581->serial_bus, device, data);
+}
+
+INLINE void set_iec_srq(running_device *device)
+{
+	c1581_t *c1581 = get_safe_token(device);
+
+	int srq = 1;
+
+	/* fast serial clock */
+	if (c1581->ser_dir) srq &= c1581->cnt_out;
+
+	cbm_iec_srq_w(c1581->serial_bus, device, srq);
 }
 
 /***************************************************************************
@@ -90,11 +112,37 @@ INLINE c1581_config *get_safe_config(const device_config *device)
 WRITE_LINE_DEVICE_HANDLER( c1581_iec_atn_w )
 {
 	c1581_t *c1581 = get_safe_token(device);
-	int data_out = !c1581->data_out && !(c1581->atn_ack && !state);
 
 	mos6526_flag_w(c1581->cia, state);
+	set_iec_data(device);
+}
 
-	cbm_iec_data_w(c1581->serial_bus, device, data_out);
+/*-------------------------------------------------
+    c1581_iec_srq_w - serial bus fast clock
+-------------------------------------------------*/
+
+WRITE_LINE_DEVICE_HANDLER( c1581_iec_srq_w )
+{
+	c1581_t *c1581 = get_safe_token(device);
+
+	if (!c1581->ser_dir)
+	{
+		mos6526_cnt_w(c1581->cia, state);
+	}
+}
+
+/*-------------------------------------------------
+    c1581_iec_data_w - serial bus fast data
+-------------------------------------------------*/
+
+WRITE_LINE_DEVICE_HANDLER( c1581_iec_data_w )
+{
+	c1581_t *c1581 = get_safe_token(device);
+
+	if (!c1581->ser_dir)
+	{
+		mos6526_sp_w(c1581->cia, state);
+	}
 }
 
 /*-------------------------------------------------
@@ -105,7 +153,7 @@ WRITE_LINE_DEVICE_HANDLER( c1581_iec_reset_w )
 {
 	if (!state)
 	{
-		device_reset(device);
+		device->reset();
 	}
 }
 
@@ -115,7 +163,7 @@ WRITE_LINE_DEVICE_HANDLER( c1581_iec_reset_w )
 
 static ADDRESS_MAP_START( c1581_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_MIRROR(0x2000) AM_RAM
-	AM_RANGE(0x4000, 0x400f) AM_MIRROR(0x1ff0) AM_DEVREADWRITE(M8520_TAG, cia_r, cia_w)
+	AM_RANGE(0x4000, 0x400f) AM_MIRROR(0x1ff0) AM_DEVREADWRITE(M8520_TAG, mos6526_r, mos6526_w)
 	AM_RANGE(0x6000, 0x6003) AM_MIRROR(0x1ffc) AM_DEVREADWRITE(WD1770_TAG, wd17xx_r, wd17xx_w)
 	AM_RANGE(0x8000, 0xffff) AM_ROM AM_REGION("c1581", 0)
 ADDRESS_MAP_END
@@ -126,16 +174,41 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( c1563_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_MIRROR(0x2000) AM_RAM
-	AM_RANGE(0x4000, 0x400f) AM_MIRROR(0x1ff0) AM_DEVREADWRITE(M8520_TAG, cia_r, cia_w)
+	AM_RANGE(0x4000, 0x400f) AM_MIRROR(0x1ff0) AM_DEVREADWRITE(M8520_TAG, mos6526_r, mos6526_w)
 	AM_RANGE(0x6000, 0x6003) AM_MIRROR(0x1ffc) AM_DEVREADWRITE(WD1770_TAG, wd17xx_r, wd17xx_w)
 	AM_RANGE(0x8000, 0xffff) AM_ROM AM_REGION("c1563", 0)
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
-    cia6526_interface c1581_cia_intf
+    mos6526_interface cia_intf
 -------------------------------------------------*/
 
-static READ8_DEVICE_HANDLER( c1581_cia_pa_r )
+static WRITE_LINE_DEVICE_HANDLER( cia_irq_w )
+{
+	c1581_t *c1581 = get_safe_token(device->owner);
+
+	cpu_set_input_line(c1581->cpu, M6502_IRQ_LINE, state);
+}
+
+static WRITE_LINE_DEVICE_HANDLER( cia_cnt_w )
+{
+	c1581_t *c1581 = get_safe_token(device->owner);
+
+	/* fast serial clock out */
+	c1581->cnt_out = state;
+	set_iec_srq(device->owner);
+}
+
+static WRITE_LINE_DEVICE_HANDLER( cia_sp_w )
+{
+	c1581_t *c1581 = get_safe_token(device->owner);
+
+	/* fast serial data out */
+	c1581->sp_out = state;
+	set_iec_data(device->owner);
+}
+
+static READ8_DEVICE_HANDLER( cia_pa_r )
 {
 	/*
 
@@ -158,13 +231,16 @@ static READ8_DEVICE_HANDLER( c1581_cia_pa_r )
 	/* ready */
 	data |= !(floppy_drive_get_flag_state(c1581->image, FLOPPY_DRIVE_READY) == FLOPPY_DRIVE_READY) << 1;
 
-	/* serial address */
+	/* device number */
 	data |= c1581->address << 3;
+
+	/* disk change */
+	data |= floppy_dskchg_r(c1581->image) << 7;
 
 	return data;
 }
 
-static WRITE8_DEVICE_HANDLER( c1581_cia_pa_w )
+static WRITE8_DEVICE_HANDLER( cia_pa_w )
 {
 	/*
 
@@ -182,22 +258,21 @@ static WRITE8_DEVICE_HANDLER( c1581_cia_pa_w )
     */
 
 	c1581_t *c1581 = get_safe_token(device->owner);
-	int motor = BIT(data, 2);
 
 	/* side 0 */
 	wd17xx_set_side(c1581->wd1770, !BIT(data, 0));
 
 	/* motor */
+	int motor = BIT(data, 2);
 	floppy_mon_w(c1581->image, motor);
 	floppy_drive_set_ready_state(c1581->image, !motor, 1);
 
-	/* power led */
+	/* TODO power led */
 
-	/* active led */
-
+	/* TODO activity led */
 }
 
-static READ8_DEVICE_HANDLER( c1581_cia_pb_r )
+static READ8_DEVICE_HANDLER( cia_pb_r )
 {
 	/*
 
@@ -232,7 +307,7 @@ static READ8_DEVICE_HANDLER( c1581_cia_pb_r )
 	return data;
 }
 
-static WRITE8_DEVICE_HANDLER( c1581_cia_pb_w )
+static WRITE8_DEVICE_HANDLER( cia_pb_w )
 {
 	/*
 
@@ -251,39 +326,43 @@ static WRITE8_DEVICE_HANDLER( c1581_cia_pb_w )
 
 	c1581_t *c1581 = get_safe_token(device->owner);
 
-	int data_out = BIT(data, 1);
-	int clk_out = BIT(data, 3);
-	int atn_ack = BIT(data, 4);
-
 	/* data out */
-	int serial_data = !data_out && !(atn_ack && !cbm_iec_atn_r(c1581->serial_bus));
-	cbm_iec_data_w(c1581->serial_bus, device->owner, serial_data);
-	c1581->data_out = data_out;
+	c1581->data_out = BIT(data, 1);
 
 	/* clock out */
-	cbm_iec_clk_w(c1581->serial_bus, device->owner, !clk_out);
+	cbm_iec_clk_w(c1581->serial_bus, device->owner, !BIT(data, 3));
 
 	/* attention acknowledge */
 	c1581->atn_ack = BIT(data, 4);
+
+	/* fast serial direction */
+	c1581->ser_dir = BIT(data, 5);
+
+	set_iec_data(device->owner);
+	set_iec_srq(device->owner);
 }
 
-static const cia6526_interface c1581_cia_intf =
+static MOS8520_INTERFACE( cia_intf )
 {
-	DEVCB_CPU_INPUT_LINE(M6502_TAG, INPUT_LINE_IRQ0),
-	DEVCB_NULL,
 	XTAL_16MHz/8,
-	{
-		{ DEVCB_HANDLER(c1581_cia_pa_r), DEVCB_HANDLER(c1581_cia_pa_w) },
-		{ DEVCB_HANDLER(c1581_cia_pb_r), DEVCB_HANDLER(c1581_cia_pb_w) }
-	}
+//  DEVCB_CPU_INPUT_LINE(M6502_TAG, INPUT_LINE_IRQ0),
+	DEVCB_LINE(cia_irq_w),
+	DEVCB_NULL,
+	DEVCB_LINE(cia_cnt_w),
+	DEVCB_LINE(cia_sp_w),
+	DEVCB_HANDLER(cia_pa_r),
+	DEVCB_HANDLER(cia_pa_w),
+	DEVCB_HANDLER(cia_pb_r),
+	DEVCB_HANDLER(cia_pb_w)
 };
 
 /*-------------------------------------------------
-    wd17xx_interface c1581_wd1770_intf
+    wd17xx_interface wd1770_intf
 -------------------------------------------------*/
 
-static const wd17xx_interface c1581_wd1770_intf =
+static const wd17xx_interface wd1770_intf =
 {
+	DEVCB_LINE_GND,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	{ FLOPPY_0, NULL, NULL, NULL }
@@ -294,12 +373,7 @@ static const wd17xx_interface c1581_wd1770_intf =
 -------------------------------------------------*/
 
 static FLOPPY_OPTIONS_START( c1581 )
-	FLOPPY_OPTION( c1581, "d81", "Commodore 1581 Disk Image", basicdsk_identify_default, basicdsk_construct_default,
-		HEADS([2])
-		TRACKS([80])
-		SECTORS([10])
-		SECTOR_LENGTH([512])
-		FIRST_SECTOR_ID([1]))
+	FLOPPY_OPTION( c1581, "d81", "Commodore 1581 Disk Image", d81_dsk_identify, d81_dsk_construct, NULL )
 FLOPPY_OPTIONS_END
 
 /*-------------------------------------------------
@@ -326,8 +400,8 @@ static MACHINE_DRIVER_START( c1581 )
 	MDRV_CPU_ADD(M6502_TAG, M6502, XTAL_16MHz/8)
 	MDRV_CPU_PROGRAM_MAP(c1581_map)
 
-	MDRV_CIA8520_ADD(M8520_TAG, XTAL_16MHz/8, c1581_cia_intf)
-	MDRV_WD1770_ADD(WD1770_TAG, /*XTAL_16MHz/2,*/ c1581_wd1770_intf)
+	MDRV_MOS8520_ADD(M8520_TAG, XTAL_16MHz/8, cia_intf)
+	MDRV_WD1770_ADD(WD1770_TAG, /*XTAL_16MHz/2,*/ wd1770_intf)
 
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, c1581_floppy_config)
 MACHINE_DRIVER_END
@@ -340,8 +414,8 @@ static MACHINE_DRIVER_START( c1563 )
 	MDRV_CPU_ADD(M6502_TAG, M6502, XTAL_16MHz/8)
 	MDRV_CPU_PROGRAM_MAP(c1563_map)
 
-	MDRV_CIA8520_ADD(M8520_TAG, XTAL_16MHz/8, c1581_cia_intf)
-	MDRV_WD1770_ADD(WD1770_TAG, /*XTAL_16MHz/2,*/ c1581_wd1770_intf)
+	MDRV_MOS8520_ADD(M8520_TAG, XTAL_16MHz/8, cia_intf)
+	MDRV_WD1770_ADD(WD1770_TAG, /*XTAL_16MHz/2,*/ wd1770_intf)
 
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, c1581_floppy_config)
 MACHINE_DRIVER_END
@@ -380,18 +454,21 @@ static DEVICE_START( c1581 )
 	c1581->address = config->address - 8;
 
 	/* find our CPU */
-	c1581->cpu = device_find_child_by_tag(device, M6502_TAG);
+	c1581->cpu = device->subdevice(M6502_TAG);
 
 	/* find devices */
-	c1581->cia = device_find_child_by_tag(device, M8520_TAG);
-	c1581->wd1770 = device_find_child_by_tag(device, WD1770_TAG);
+	c1581->cia = device->subdevice(M8520_TAG);
+	c1581->wd1770 = device->subdevice(WD1770_TAG);
 	c1581->serial_bus = devtag_get_device(device->machine, config->serial_bus_tag);
-	c1581->image = device_find_child_by_tag(device, FLOPPY_0);
-
-	/* set floppy density */
-	wd17xx_set_density(c1581->wd1770, DEN_MFM_LO);
+	c1581->image = device->subdevice(FLOPPY_0);
 
 	/* register for state saving */
+	state_save_register_device_item(device, 0, c1581->address);
+	state_save_register_device_item(device, 0, c1581->data_out);
+	state_save_register_device_item(device, 0, c1581->atn_ack);
+	state_save_register_device_item(device, 0, c1581->ser_dir);
+	state_save_register_device_item(device, 0, c1581->sp_out);
+	state_save_register_device_item(device, 0, c1581->cnt_out);
 }
 
 /*-------------------------------------------------
@@ -402,9 +479,12 @@ static DEVICE_RESET( c1581 )
 {
 	c1581_t *c1581 = get_safe_token(device);
 
-	device_reset(c1581->cpu);
-	device_reset(c1581->cia);
-	device_reset(c1581->wd1770);
+	c1581->cpu->reset();
+	c1581->cia->reset();
+	c1581->wd1770->reset();
+
+	c1581->sp_out = 1;
+	c1581->cnt_out = 1;
 }
 
 /*-------------------------------------------------

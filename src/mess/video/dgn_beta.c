@@ -79,7 +79,7 @@ the access to the video memory is unclear to me at the moment.
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/dgn_beta.h"
 #include "video/m6845.h"
 #include "devices/messram.h"
@@ -87,27 +87,27 @@ the access to the video memory is unclear to me at the moment.
 #include "debug/debugcpu.h"
 #include "debug/debugcon.h"
 
-//#define LOG_VIDEO
+#define LOG_VIDEO
 
 /* Names for 6845 regs, to save having to remember their offsets */
 /* perhaps these should move into 6845 header ? */
 typedef enum {
 	H_TOTAL = 0,		// Horizontal total
 	H_DISPLAYED,		// Horizontal displayed
-	H_SYNC_POS,		// Horizontal sync pos
+	H_SYNC_POS,		    // Horizontal sync pos
 	H_SYNC_WIDTH,		// Horizontal sync width
-	V_TOTAL,		// Vertical total
+	V_TOTAL,		    // Vertical total
 	V_TOTAL_ADJ,		// Vertical total adjust
 	V_DISPLAYED,		// Vertical displayed
-	V_SYNC_POS,		// Vertical sync pos
-	INTERLACE,		// Interlace
-	MAX_SCAN,		// Maximum scan line
-	CURS_START,		// Cursor start pos
-	CURS_END,		// Cursor end pos
+	V_SYNC_POS,		    // Vertical sync pos
+	INTERLACE,		    // Interlace
+	MAX_SCAN,		    // Maximum scan line
+	CURS_START,		    // Cursor start pos
+	CURS_END,		    // Cursor end pos
 	START_ADDR_H,		// Start address High
 	START_ADDR_L,		// Start address low
-	CURS_H,			// Cursor addr High
-	CURS_L			// CURSOR addr Low
+	CURS_H,			    // Cursor addr High
+	CURS_L			    // CURSOR addr Low
 } m6845_regs;
 
 static int beta_6845_RA = 0;
@@ -120,8 +120,8 @@ static int beta_DE      = 0;
 //static BETA_VID_MODES VIDMODE = TEXT_40x25;
 
 /* Debugging variables */
-static int LogRegWrites	= 0;	// Log register writes to debug console.
-static int BoxColour		= 1;
+static int LogRegWrites	= 1;	// Log register writes to debug console.
+static int BoxColour	= 1;
 static int BoxMinX		= 100;
 static int BoxMinY		= 100;
 static int BoxMaxX		= 500;
@@ -141,12 +141,12 @@ static void execute_beta_vid_limits(running_machine *machine, int ref, int param
 static void execute_beta_vid_clkmax(running_machine *machine, int ref, int params, const char *param[]);
 
 static bitmap_t	*bit;
-static int MinAddr	= 0xFFFF;
-static int MaxAddr	= 0x0000;
-static int MinX	= 0xFFFF;
-static int MaxX	= 0x0000;
-static int MinY	= 0xFFFF;
-static int MaxY	= 0x0000;
+static int MinAddr	    = 0xFFFF;
+static int MaxAddr	    = 0x0000;
+static int MinX	        = 0xFFFF;
+static int MaxX	        = 0x0000;
+static int MinY	        = 0xFFFF;
+static int MaxY	        = 0x0000;
 
 static int VidAddr		= 0;	// Last address reg written
 
@@ -156,24 +156,24 @@ static void beta_Set_VSync(running_machine *machine, int offset, int data);
 static void beta_Set_DE(int offset, int data);
 
 static const struct m6845_interface beta_m6845_interface = {
-	0,		// Memory Address register
+	0,		        // Memory Address register
 	beta_Set_RA,	// Row Address register
 	beta_Set_HSync,	// Horizontal status
 	beta_Set_VSync,	// Vertical status
 	beta_Set_DE,	// Display Enabled status
-	0,		// Cursor status
+	0,		        // Cursor status
 	0
 };
 
-static int 	ClkMax;		/* max crtc clock, used to timeout screen refresh */
+static int	ClkMax;		/* max crtc clock, used to timeout screen refresh */
 static int	GCtrl;		/* Graphics control reg, from I28 PB0..5, PB6-7, top address lines for text mode */
 
 static	int	FlashCount;	/* Flash counter, IC2, LS393 decade counter */
-static int 	FlashBit;	/* Flash bit, FL input to I38 */
-static int	DoubleY;	/* Double height latch, 'Y' in I38 */
-static int 	DoubleHL;	/* Double height second row 'HL' in I38 */
+static int	FlashBit;	/* Flash bit, FL input to I38 */
+static int	s_DoubleY;	/* Double height latch, 'Y' in I38 */
+static int	DoubleHL;	/* Double height second row 'HL' in I38 */
 
-static int 	ColourRAM[4];	/* I59, 74ls670, 4x4bit colour ram for graphics modes */
+static int	ColourRAM[4];	/* I59, 74ls670, 4x4bit colour ram for graphics modes */
 
 static int	Field;		/* will be 0 or 1, for even or odd field, used by interlaced display */
 static int	DrawInterlace;	/* Should we draw interlaced or not ? */
@@ -195,7 +195,7 @@ typedef enum {
 #define GCtrlFS		0x20	/* labeled F/S, not yet sure of function Fast or Slow scan ? */
 #define GCtrlAddrLines	0xC0	/* Top two address lines for text mode */
 
-#define IsTextMode 	(GCtrl & GCtrlChrGfx) ? 1 : 0					// Is this text mode ?
+#define IsTextMode	(GCtrl & GCtrlChrGfx) ? 1 : 0					// Is this text mode ?
 #define IsGfx16 	((~GCtrl & GCtrlChrGfx) && (~GCtrl & GCtrlControl)) ? 1 : 0	// is this 320x256x16bpp mode
 #define IsGfx2		((GCtrl & GCtrlHiLo) && (~GCtrl & GCtrlFS)) ? 1 : 0		// Is this a 2 colour mode
 #define SWChar		(GCtrl & GCtrlSWChar)>>1					// Swchar bit
@@ -230,7 +230,7 @@ void dgnbeta_vid_set_gctrl(running_machine *machine, int data)
 				     data & GCtrlHiLo		? "Hi" : "Lo",
 				     data & GCtrlSWChar		? "C0" : "C1",
 				     data & GCtrlWI		? "Wi" : "  ",
-				     cpu_get_pc(cputag_get_cpu(machine,"maincpu")));
+				     cpu_get_pc(devtag_get_device(machine,"maincpu")));
 }
 
 // called when the 6845 changes the character row
@@ -242,7 +242,7 @@ static void beta_Set_RA(int offset, int data)
 // called when the 6845 changes the HSync
 static void beta_Set_HSync(running_machine *machine, int offset, int data)
 {
-	int Dots; 	/* Pixels per 16 bits */
+	int Dots;	/* Pixels per 16 bits */
 
 	beta_HSync=data;
 
@@ -253,8 +253,8 @@ static void beta_Set_HSync(running_machine *machine, int offset, int data)
 
 	if(!beta_HSync)
 	{
-		int HT=m6845_get_register(H_TOTAL);			// Get H total
-		int HS=m6845_get_register(H_SYNC_POS);		// Get Hsync pos
+		int HT=m6845_get_register(H_TOTAL);			    // Get H total
+		int HS=m6845_get_register(H_SYNC_POS);		    // Get Hsync pos
 		int HW=m6845_get_register(H_SYNC_WIDTH)&0xF;	// Hsync width (in chars)
 
 		beta_scr_y++;
@@ -320,7 +320,7 @@ void dgnbeta_init_video(running_machine *machine)
 	FlashCount=0;
 	FlashBit=0;
 	DoubleHL=1;			/* Default to normal height */
-	DoubleY=1;
+	s_DoubleY=1;
 	DrawInterlace=INTERLACE_OFF;	/* No interlace by default */
 
 	/* setup debug commands */
@@ -334,6 +334,12 @@ void dgnbeta_init_video(running_machine *machine)
 		debug_console_register_command(machine, "beta_vid_clkmax", CMDFLAG_NONE, 0, 0, 1, execute_beta_vid_clkmax);
 	}
 	LogRegWrites=0;
+}
+
+void dgnbeta_video_reset(running_machine *machine)
+{
+    logerror("dgnbeta_video_reset\n");
+    m6845_reset();
 }
 
 /**************************/
@@ -385,7 +391,7 @@ static void plot_text_pixel(int x, int y,int Dot,int Colour, int CharsPerLine, b
 static void beta_plot_char_line(running_machine *machine, int x,int y, bitmap_t *bitmap)
 {
 	int CharsPerLine	= m6845_get_register(H_DISPLAYED);	// Get chars per line.
-	unsigned char *data 	= memory_region(machine, "gfx1");		// ptr to char rom
+	unsigned char *data = memory_region(machine, "gfx1");		// ptr to char rom
 	int Dot;
 	unsigned char data_byte;
 	int char_code;
@@ -411,7 +417,7 @@ static void beta_plot_char_line(running_machine *machine, int x,int y, bitmap_t 
 			Offset=0;
 
 		/* Get the character to display */
-		char_code 	= machine->generic.videoram.u8[Offset];
+		char_code	= machine->generic.videoram.u8[Offset];
 
 		/* Extract non-colour attributes, in character set 1, undeline is used */
 		/* We will extract the colours below, when we have decoded inverse */
@@ -423,9 +429,9 @@ static void beta_plot_char_line(running_machine *machine, int x,int y, bitmap_t 
 		ULActive=(UnderLine && (beta_6845_RA==9) && ~SWChar);
 
 		/* If Character set one, and undeline set, latch double height */
-		DoubleY=(UnderLine & SWChar & DoubleHL) |
-		        (SWChar & ~DoubleY & DoubleHL) |
-			(SWChar & ~DoubleY & (beta_6845_RA==9));
+		s_DoubleY=(UnderLine & SWChar & DoubleHL) |
+		        (SWChar & ~s_DoubleY & DoubleHL) |
+			(SWChar & ~s_DoubleY & (beta_6845_RA==9));
 
 		/* Invert forground and background if flashing char and flash acive */
 		Invert=(FlashChar & FlashBit);
@@ -621,7 +627,7 @@ static void beta_plot_gfx_line(running_machine *machine,int x,int y, bitmap_t *b
 			}
 		}
 
- 	}
+	}
 	else
 	{
 		for (Dot=0;Dot<Dots;Dot++)
@@ -707,8 +713,8 @@ WRITE8_HANDLER(dgnbeta_6845_w)
 	else
 	{
 		m6845_address_w(offset,data);
-		VidAddr=data;				/* Record reg being written to */
-	}
+		VidAddr=data;				        /* Record reg being written to */
+    }
 	if (LogRegWrites)
 		RegLog(space->machine, offset,data);
 }
@@ -753,12 +759,12 @@ static void RegLog(running_machine *machine, int offset, int data)
 		case CURS_END		: sprintf(RegName,"Cusrsor End  "); break;
 		case START_ADDR_H	: sprintf(RegName,"Start Addr H "); break;
 		case START_ADDR_L	: sprintf(RegName,"Start Addr L "); break;
-		case CURS_H		: sprintf(RegName,"Cursor H     "); break;
-		case CURS_L		: sprintf(RegName,"Cursor L     "); break;
+		case CURS_H		    : sprintf(RegName,"Cursor H     "); break;
+		case CURS_L		    : sprintf(RegName,"Cursor L     "); break;
 	}
 
 	if(offset&0x1)
-		debug_console_printf(machine, "6845 write Reg %s Addr=%3d Data=%3d ($%2.2X) \n",RegName,VidAddr,data,data);
+		debug_console_printf(machine, "6845 write Reg %s Addr=%3d Data=%3d ($%02X) \n",RegName,VidAddr,data,data);
 }
 
 static void execute_beta_vid_fill(running_machine *machine, int ref, int params, const char *param[])

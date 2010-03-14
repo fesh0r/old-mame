@@ -8,7 +8,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6800/m6800.h"
 #include "devices/messram.h"
@@ -106,7 +106,7 @@ static MACHINE_DRIVER_START( px8 )
 	MDRV_CPU_PROGRAM_MAP(px8_slave_mem)
 
     /* sub CPU (uPD7508) */
-//	MDRV_CPU_ADD("sub", UPD7508, 200000) /* 200 kHz */
+//  MDRV_CPU_ADD("sub", UPD7508, 200000) /* 200 kHz */
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("screen", LCD)
@@ -153,4 +153,4 @@ ROM_END
 ***************************************************************************/
 
 /*    YEAR  NAME  PARENT  COMPAT  MACHINE  INPUT  INIT  COMPANY  FULLNAME  FLAGS */
-COMP( 1984, px8,  0,      0,      px8,     px8,   0,    "Epson", "PX-8",   GAME_NOT_WORKING )
+COMP( 1984, px8,  0,      0,      px8,     px8,   0,    "Epson", "PX-8",   GAME_NOT_WORKING | GAME_NO_SOUND )

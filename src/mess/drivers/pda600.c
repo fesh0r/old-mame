@@ -53,7 +53,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z180/z180.h"
 
 static ADDRESS_MAP_START(pda600_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -122,6 +122,6 @@ ROM_END
 
 /* Driver */
 
-/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   	FULLNAME       FLAGS */
-COMP( 1993, pda600,  0,       0, 	pda600, 	pda600,  0,  	 "Amstrad",   "PenPad PDA 600",		GAME_NOT_WORKING)
+/*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY    FULLNAME       FLAGS */
+COMP( 1993, pda600,  0,       0,	pda600, 	pda600,  0, 	 "Amstrad",   "PenPad PDA 600",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

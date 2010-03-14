@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <tchar.h>
 
-#include "driver.h"
+#include "emu.h"
 #include "image.h"
 #include "screenshot.h"
 #include "datamap.h"
@@ -58,11 +58,12 @@ static void MarkChanged(HWND hDlg)
 static void AppendList(HWND hList, LPCTSTR lpItem, int nItem)
 {
     LV_ITEM Item;
+	HRESULT res;
 	memset(&Item, 0, sizeof(LV_ITEM));
 	Item.mask = LVIF_TEXT;
 	Item.pszText = (LPTSTR) lpItem;
 	Item.iItem = nItem;
-	ListView_InsertItem(hList, &Item);
+	res = ListView_InsertItem(hList, &Item);
 }
 
 
@@ -74,6 +75,7 @@ static BOOL SoftwareDirectories_OnInsertBrowse(HWND hDlg, BOOL bBrowse, LPCTSTR 
     TCHAR outbuf[MAX_PATH];
     HWND hList;
 	LPTSTR lpIn;
+	BOOL res;
 
 	g_bModifiedSoftwarePaths = TRUE;
 
@@ -105,7 +107,7 @@ static BOOL SoftwareDirectories_OnInsertBrowse(HWND hDlg, BOOL bBrowse, LPCTSTR 
 
 	AppendList(hList, lpItem, nItem);
 	if (bBrowse)
-		ListView_DeleteItem(hList, nItem+1);
+		res = ListView_DeleteItem(hList, nItem+1);
 	MarkChanged(hDlg);
 	return TRUE;
 }
@@ -118,6 +120,7 @@ static BOOL SoftwareDirectories_OnDelete(HWND hDlg)
     int     nSelect;
     int     nItem;
     HWND    hList = GetDlgItem(hDlg, IDC_DIR_LIST);
+	BOOL res;
 
 	g_bModifiedSoftwarePaths = TRUE;
 
@@ -130,7 +133,7 @@ static BOOL SoftwareDirectories_OnDelete(HWND hDlg)
     if (nItem == ListView_GetItemCount(hList) - 1)
         return FALSE;
 
-	ListView_DeleteItem(hList, nItem);
+	res = ListView_DeleteItem(hList, nItem);
 
     nCount = ListView_GetItemCount(hList);
     if (nCount <= 1)
@@ -209,7 +212,7 @@ static BOOL SoftwareDirectories_OnEndLabelEdit(HWND hDlg, NMHDR* pNMHDR)
 
 BOOL PropSheetFilter_Config(const machine_config *drv, const game_driver *gamedrv)
 {
-	return (device_list_first(&drv->devicelist, MESSRAM)!=NULL) || DriverHasDevice(gamedrv, IO_PRINTER);
+	return (drv->devicelist.first(MESSRAM)!=NULL) || DriverHasDevice(gamedrv, IO_PRINTER);
 }
 
 
@@ -282,6 +285,7 @@ static BOOL DirListReadControl(datamap *map, HWND dialog, HWND control, core_opt
 	TCHAR buffer[2048];
 	char *dir_list;
 	int i, pos, driver_index;
+	BOOL res;
 
 	// determine the directory count; note that one item is the "<    >" entry
 	directory_count = ListView_GetItemCount(control);
@@ -303,7 +307,7 @@ static BOOL DirListReadControl(datamap *map, HWND dialog, HWND control, core_opt
 		lvi.iItem = i;
 		lvi.pszText = &buffer[pos];
 		lvi.cchTextMax = ARRAY_LENGTH(buffer) - pos;
-		ListView_GetItem(control, &lvi);
+		res = ListView_GetItem(control, &lvi);
 
 		// advance the position
 		pos += _tcslen(&buffer[pos]);
@@ -314,7 +318,7 @@ static BOOL DirListReadControl(datamap *map, HWND dialog, HWND control, core_opt
 	{
 		driver_index = PropertiesCurrentGame(dialog);
 		SetExtraSoftwarePaths(driver_index, dir_list);
-		free(dir_list);
+		global_free(dir_list);
 	}
 	return TRUE;
 }
@@ -329,6 +333,8 @@ static BOOL DirListPopulateControl(datamap *map, HWND dialog, HWND control, core
 	TCHAR *s;
 	LV_COLUMN lvc;
 	RECT r;
+	HRESULT res;
+	BOOL b_res;
 
 	// access the directory list, and convert to TCHARs
 	driver_index = PropertiesCurrentGame(dialog);
@@ -338,14 +344,14 @@ static BOOL DirListPopulateControl(datamap *map, HWND dialog, HWND control, core
 		return FALSE;
 
 	// delete all items in the list control
-	ListView_DeleteAllItems(control);
+	b_res = ListView_DeleteAllItems(control);
 
 	// add the column
 	GetClientRect(control, &r);
 	memset(&lvc, 0, sizeof(LVCOLUMN));
 	lvc.mask = LVCF_WIDTH;
 	lvc.cx = r.right - r.left - GetSystemMetrics(SM_CXHSCROLL);
-	ListView_InsertColumn(control, 0, &lvc);
+	res = ListView_InsertColumn(control, 0, &lvc);
 
 	// add each of the directories
 	pos = 0;
@@ -375,7 +381,7 @@ static BOOL DirListPopulateControl(datamap *map, HWND dialog, HWND control, core
 	// finish up
 	AppendList(control, TEXT(DIRLIST_NEWENTRYTEXT), current_item);
 	ListView_SetItemState(control, 0, LVIS_SELECTED, LVIS_SELECTED);
-	free(t_dir_list);
+	global_free(t_dir_list);
 	return TRUE;
 }
 
@@ -402,14 +408,14 @@ static BOOL RamPopulateControl(datamap *map, HWND dialog, HWND control, core_opt
 	cfg = machine_config_alloc(gamedrv->machine_config);
 
 	// identify how many options that we have
-	device = device_list_first(&cfg->devicelist, MESSRAM);
+	device = cfg->devicelist.first(MESSRAM);
 
 	EnableWindow(control, (device != NULL));
 	i = 0;
 	// we can only do something meaningful if there is more than one option
 	if (device != NULL)
 	{
-		ram_config *config = device->inline_config;
+		ram_config *config = (ram_config *)device->inline_config;
 
 		// identify the current amount of RAM
 		this_ram_string = options_get_string(opts, OPTION_RAMSIZE);
@@ -433,11 +439,11 @@ static BOOL RamPopulateControl(datamap *map, HWND dialog, HWND control, core_opt
 		{
 			const char *s;
 
-			astring *buffer = astring_alloc();
-			astring_cpyc(buffer, config->extra_options);
-			astring_replacechr(buffer, ',', 0);
+			astring buffer;
+			astring_cpyc(&buffer, config->extra_options);
+			astring_replacechr(&buffer, ',', 0);
 
-			s = astring_c(buffer);
+			s = astring_c(&buffer);
 
 			/* try to parse each option */
 			while(*s != '\0')
@@ -455,7 +461,7 @@ static BOOL RamPopulateControl(datamap *map, HWND dialog, HWND control, core_opt
 				(void)ComboBox_InsertString(control, i, win_tstring_strdup(t_ramstring));
 				(void)ComboBox_SetItemData(control, i, ram);
 
-				free(t_ramstring);
+				global_free(t_ramstring);
 
 				// is this the current option?  record the index if so
 				if (ram == current_ram)
@@ -463,7 +469,6 @@ static BOOL RamPopulateControl(datamap *map, HWND dialog, HWND control, core_opt
 
 				s += strlen(s) + 1;
 			}
-			astring_free(buffer);
 		}
 
 		// set the combo box
@@ -483,7 +488,6 @@ void MessBuildDataMap(datamap *properties_datamap)
 	// MESS specific stuff
 	datamap_add(properties_datamap, IDC_DIR_LIST,				DM_STRING,	NULL);
 	datamap_add(properties_datamap, IDC_RAM_COMBOBOX,			DM_INT,		OPTION_RAMSIZE);
-	datamap_add(properties_datamap, IDC_SKIP_WARNINGS,			DM_BOOL,	OPTION_SKIP_WARNINGS);
 	datamap_add(properties_datamap, IDC_USE_NEW_UI,				DM_BOOL,	"newui");
 
 	// set up callbacks

@@ -12,7 +12,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/spectrum.h"
 
 /* Components */
@@ -32,23 +32,6 @@
 
 /*************************************
  *
- *  State/Globals
- *
- *************************************/
-static UINT8 elwro800_df_on_databus = 0xdf;
-
-typedef struct _elwro800_state elwro800_state;
-struct _elwro800_state
-{
-	/* RAM mapped at 0 */
-	UINT8 ram_at_0000;
-
-	/* NR signal */
-	UINT8 NR;
-};
-
-/*************************************
- *
  * When RAM is mapped at 0x0000 - 0x1fff (in CP/J mode), reading a location 66 with /M1=0
  * (effectively reading NMI vector) is hardwired to return 0xDF (RST #18)
  * (note that in CP/J mode address 66 is used for FCB)
@@ -56,10 +39,10 @@ struct _elwro800_state
  *************************************/
 static DIRECT_UPDATE_HANDLER(elwro800_direct_handler)
 {
-	elwro800_state *state = space->machine->driver_data;
+	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
 	if (state->ram_at_0000 && address == 0x66)
 	{
-		direct->raw = direct->decrypted = &elwro800_df_on_databus;
+		direct->raw = direct->decrypted = &state->df_on_databus;
 		direct->bytemask = 0;
 		return ~0;
 	}
@@ -83,7 +66,7 @@ static const struct upd765_interface elwro800jr_upd765_interface =
 
 static WRITE8_HANDLER(elwro800jr_fdc_control_w)
 {
-	const device_config *fdc = devtag_get_device(space->machine, "upd765");
+	running_device *fdc = devtag_get_device(space->machine, "upd765");
 
 	floppy_mon_w(floppy_get_device(space->machine, 0), !BIT(data, 0));
 	floppy_mon_w(floppy_get_device(space->machine, 1), !BIT(data, 1));
@@ -104,9 +87,10 @@ static WRITE8_HANDLER(elwro800jr_fdc_control_w)
 static void elwro800jr_mmu_w(running_machine *machine, UINT8 data)
 {
 	UINT8 *prom = memory_region(machine, "proms") + 0x200;
+	UINT8 *messram = messram_get_ptr(devtag_get_device(machine, "messram"));
 	UINT8 cs;
 	UINT8 ls175;
-	elwro800_state *state = machine->driver_data;
+	spectrum_state *state = (spectrum_state *)machine->driver_data;
 
 	ls175 = BITSWAP8(data, 7, 6, 5, 4, 4, 5, 7, 6) & 0x0f;
 
@@ -128,7 +112,7 @@ static void elwro800jr_mmu_w(running_machine *machine, UINT8 data)
 	else
 	{
 		// RAM
-		memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")));
+		memory_set_bankptr(machine, "bank1", messram);
 		memory_install_write_bank(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x0000, 0x1fff, 0, 0, "bank1");
 		state->ram_at_0000 = 1;
 	}
@@ -141,18 +125,18 @@ static void elwro800jr_mmu_w(running_machine *machine, UINT8 data)
 	}
 	else
 	{
-		memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x2000); /* RAM */
+		memory_set_bankptr(machine, "bank2", messram + 0x2000); /* RAM */
 		memory_install_write_bank(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0x2000, 0x3fff, 0, 0, "bank2");
 	}
 
 	if (BIT(ls175,2))
 	{
 		// relok
-		spectrum_screen_location = messram_get_ptr(devtag_get_device(machine, "messram")) + 0xe000;
+		state->screen_location = messram + 0xe000;
 	}
 	else
 	{
-		spectrum_screen_location = messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000;
+		state->screen_location = messram + 0x4000;
 	}
 
 	state->NR = BIT(ls175,3);
@@ -170,13 +154,13 @@ static void elwro800jr_mmu_w(running_machine *machine, UINT8 data)
 
 static READ8_DEVICE_HANDLER(i8255_port_c_r)
 {
-	const device_config *printer = devtag_get_device(device->machine, "centronics");
+	running_device *printer = devtag_get_device(device->machine, "centronics");
 	return (centronics_ack_r(printer) << 2);
 }
 
 static WRITE8_DEVICE_HANDLER(i8255_port_c_w)
 {
-	const device_config *printer = devtag_get_device(device->machine, "centronics");
+	running_device *printer = devtag_get_device(device->machine, "centronics");
 	centronics_strobe_w(printer, (data >> 7) & 0x01);
 }
 
@@ -224,7 +208,7 @@ static READ8_HANDLER(elwro800jr_io_r)
 {
 	UINT8 *prom = memory_region(space->machine, "proms");
 	UINT8 cs = prom[offset & 0x1ff];
-	elwro800_state *state = space->machine->driver_data;
+	spectrum_state *state = (spectrum_state *)space->machine->driver_data;
 
 	if (!BIT(cs,0))
 	{
@@ -277,13 +261,13 @@ static READ8_HANDLER(elwro800jr_io_r)
 	else if (!BIT(cs,2))
 	{
 		// CS55
-		const device_config *ppi = devtag_get_device(space->machine, "ppi8255");
+		running_device *ppi = devtag_get_device(space->machine, "ppi8255");
 		return i8255a_r(ppi, (offset & 0x03) ^ 0x03);
 	}
 	else if (!BIT(cs,3))
 	{
 		// CSFDC
-		const device_config *fdc = devtag_get_device(space->machine, "upd765");
+		running_device *fdc = devtag_get_device(space->machine, "upd765");
 		if (offset & 1)
 		{
 			return upd765_data_r(fdc,0);
@@ -296,7 +280,7 @@ static READ8_HANDLER(elwro800jr_io_r)
 	else if (!BIT(cs,4))
 	{
 		// CS51
-		const device_config *usart = devtag_get_device(space->machine, "msm8251");
+		running_device *usart = devtag_get_device(space->machine, "msm8251");
 		if (offset & 1)
 		{
 			return msm8251_status_r(usart, 0);
@@ -335,13 +319,13 @@ static WRITE8_HANDLER(elwro800jr_io_w)
 	else if (!BIT(cs,2))
 	{
 		// CS55
-		const device_config *ppi = devtag_get_device(space->machine, "ppi8255");
+		running_device *ppi = devtag_get_device(space->machine, "ppi8255");
 		i8255a_w(ppi, (offset & 0x03) ^ 0x03, data);
 	}
 	else if (!BIT(cs,3))
 	{
 		// CSFDC
-		const device_config *fdc = devtag_get_device(space->machine, "upd765");
+		running_device *fdc = devtag_get_device(space->machine, "upd765");
 		if (offset & 1)
 		{
 			upd765_data_w(fdc, 0, data);
@@ -350,7 +334,7 @@ static WRITE8_HANDLER(elwro800jr_io_w)
 	else if (!BIT(cs,4))
 	{
 		// CS51
-		const device_config *usart = devtag_get_device(space->machine, "msm8251");
+		running_device *usart = devtag_get_device(space->machine, "msm8251");
 		if (offset & 1)
 		{
 			msm8251_control_w(usart, 0, data);
@@ -507,9 +491,16 @@ INPUT_PORTS_END
 
 static MACHINE_RESET(elwro800)
 {
-	memset(messram_get_ptr(devtag_get_device(machine, "messram")), 0, 64*1024);
+	spectrum_state *state = (spectrum_state *)machine->driver_data;
+	UINT8 *messram = messram_get_ptr(devtag_get_device(machine, "messram"));
 
-	memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x4000);
+	state->df_on_databus = 0xdf;
+	memset(messram, 0, 64*1024);
+
+	memory_set_bankptr(machine, "bank3", messram + 0x4000);
+
+	state->port_7ffd_data = 0;
+	state->port_1ffd_data = -1;
 
 	// this is a reset of ls175 in mmu
 	elwro800jr_mmu_w(machine, 0);
@@ -521,7 +512,7 @@ static const cassette_config elwro800jr_cassette_config =
 {
 	tzx_cassette_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_ENABLED)
 };
 
 static INTERRUPT_GEN( elwro800jr_interrupt )
@@ -562,7 +553,7 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( elwro800 )
 
-	MDRV_DRIVER_DATA(elwro800_state)
+	MDRV_DRIVER_DATA(spectrum_state)
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD("maincpu",Z80, 3500000)	/* 3.5 MHz */
@@ -631,4 +622,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1986, elwro800,  0,       0, 	elwro800, 	elwro800, 	 0,  "Elwro",   "800 Junior",		0)
+COMP( 1986, elwro800,  0,       0,	elwro800,	elwro800,	 0,  "Elwro",   "800 Junior",		0)

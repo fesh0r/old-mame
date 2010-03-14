@@ -13,7 +13,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "sound/speaker.h"
 #include "video/vtvideo.h"
@@ -50,7 +50,7 @@ ADDRESS_MAP_END
 static READ8_HANDLER(vt100_flags_r)
 {
 	UINT8 retVal = 0;
- 	retVal |= vt_video_lba7_r(devtag_get_device(space->machine, "vt100_video"),0) * 0x40;
+	retVal |= vt_video_lba7_r(devtag_get_device(space->machine, "vt100_video"),0) * 0x40;
 	retVal |= vt100_keyboard_int * 0x80;
 	return retVal;
 }
@@ -70,7 +70,7 @@ static TIMER_CALLBACK(keyboard_callback)
 	if (vt100_key_scan == 1) {
 		for(i = 0; i < 16; i++)
 		{
-			code = 	input_port_read(machine, keynames[i]);
+			code =	input_port_read(machine, keynames[i]);
 			if (code!=0xff) {
 				vt100_keyboard_int = 1;
 				cputag_set_input_line(machine, "maincpu", 0, HOLD_LINE);
@@ -83,15 +83,15 @@ static TIMER_CALLBACK(keyboard_callback)
 static WRITE8_HANDLER(vt100_keyboard_w)
 {
 
-	const device_config *speaker = devtag_get_device(space->machine, "speaker");
+	running_device *speaker = devtag_get_device(space->machine, "speaker");
 
 	output_set_value("online_led",BIT(data,5) ? 0 : 1);
 	output_set_value("local_led", BIT(data,5));
 	output_set_value("locked_led",BIT(data,4) ? 0 : 1);
-	output_set_value("l1_led", 	  BIT(data,3) ? 0 : 1);
-	output_set_value("l2_led", 	  BIT(data,2) ? 0 : 1);
-	output_set_value("l3_led", 	  BIT(data,1) ? 0 : 1);
-	output_set_value("l4_led", 	  BIT(data,0) ? 0 : 1);
+	output_set_value("l1_led",	  BIT(data,3) ? 0 : 1);
+	output_set_value("l2_led",	  BIT(data,2) ? 0 : 1);
+	output_set_value("l3_led",	  BIT(data,1) ? 0 : 1);
+	output_set_value("l4_led",	  BIT(data,0) ? 0 : 1);
 	vt100_key_scan = BIT(data,6);
 	speaker_level_w(speaker, BIT(data,7));
 }
@@ -261,7 +261,7 @@ INPUT_PORTS_END
 
 static VIDEO_UPDATE( vt100 )
 {
-	const device_config	*devconf = devtag_get_device(screen->machine, "vt100_video");
+	running_device *devconf = devtag_get_device(screen->machine, "vt100_video");
 	vt_video_update( devconf, bitmap, cliprect);
 	return 0;
 }
@@ -292,14 +292,14 @@ static MACHINE_RESET(vt100)
 	output_set_value("online_led",1);
 	output_set_value("local_led", 1);
 	output_set_value("locked_led",1);
-	output_set_value("l1_led", 	  1);
-	output_set_value("l2_led", 	  1);
-	output_set_value("l3_led", 	  1);
-	output_set_value("l4_led", 	  1);
+	output_set_value("l1_led",	  1);
+	output_set_value("l2_led",	  1);
+	output_set_value("l3_led",	  1);
+	output_set_value("l4_led",	  1);
 
 	vt100_key_scan = 0;
 
-	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), vt100_irq_callback);
+	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), vt100_irq_callback);
 }
 
 static READ8_DEVICE_HANDLER (vt100_read_video_ram_r )
@@ -702,15 +702,15 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY FULLNAME       FLAGS */
-COMP( 1978, vt100,  0,       0,     vt100, 	 vt100, 	 0,  	 "DEC",   "VT100",		GAME_NOT_WORKING)
-COMP( 1978, vt100wp,  vt100, 0,     vt100, 	 vt100, 	 0,  	 "DEC",   "VT100-Wx",		GAME_NOT_WORKING)
+COMP( 1978, vt100,  0,       0,     vt100,	 vt100, 	 0, 	 "DEC",   "VT100",		GAME_NOT_WORKING)
+COMP( 1978, vt100wp,  vt100, 0,     vt100,	 vt100, 	 0, 	 "DEC",   "VT100-Wx",		GAME_NOT_WORKING)
 //COMP( 1978, vt100stp,  vt100,       0,    vt100,   vt100,       0,     "DEC",   "VT100 w/VT1xx-AC STP",       GAME_NOT_WORKING)
-COMP( 1981, vt101,  0,       0,     vt100, 	 vt100, 	 0,  	 "DEC",   "VT101",		GAME_NOT_WORKING)
-COMP( 1981, vt102,  vt101,   0,     vt100, 	 vt100, 	 0,  	 "DEC",   "VT102",		GAME_NOT_WORKING)
-COMP( 1979, vt103,  vt100,   0,     vt100, 	 vt100, 	 0,  	 "DEC",   "VT103",		GAME_NOT_WORKING)
-COMP( 1978, vt105,  vt100,   0,     vt100,   vt100, 	 0,  	 "DEC",   "VT105",		GAME_NOT_WORKING)
-COMP( 1978, vt110,  vt100,   0,     vt100, 	 vt100, 	 0,  	 "DEC",   "VT110",		GAME_NOT_WORKING)
-COMP( 1981, vt125,  vt100,   0,     vt100, 	 vt100, 	 0,  	 "DEC",   "VT125",		GAME_NOT_WORKING)
-COMP( 1981, vt131,  /*vt101*/0, 0,  vt100, 	 vt100, 	 0,  	 "DEC",   "VT131",		GAME_NOT_WORKING)	// this should be a vt101 clone, once the vt101 has been enabled (i.e. its roms dumped)
+COMP( 1981, vt101,  0,       0,     vt100,	 vt100, 	 0, 	 "DEC",   "VT101",		GAME_NOT_WORKING)
+COMP( 1981, vt102,  vt101,   0,     vt100,	 vt100, 	 0, 	 "DEC",   "VT102",		GAME_NOT_WORKING)
+COMP( 1979, vt103,  vt100,   0,     vt100,	 vt100, 	 0, 	 "DEC",   "VT103",		GAME_NOT_WORKING)
+COMP( 1978, vt105,  vt100,   0,     vt100,   vt100, 	 0, 	 "DEC",   "VT105",		GAME_NOT_WORKING)
+COMP( 1978, vt110,  vt100,   0,     vt100,	 vt100, 	 0, 	 "DEC",   "VT110",		GAME_NOT_WORKING)
+COMP( 1981, vt125,  vt100,   0,     vt100,	 vt100, 	 0, 	 "DEC",   "VT125",		GAME_NOT_WORKING)
+COMP( 1981, vt131,  /*vt101*/0, 0,  vt100,	 vt100, 	 0, 	 "DEC",   "VT131",		GAME_NOT_WORKING)	// this should be a vt101 clone, once the vt101 has been enabled (i.e. its roms dumped)
 //COMP( 1979, vt132,  vt100,   0,    vt100,   vt100,     0,      "DEC",   "VT132",      GAME_NOT_WORKING)
-COMP( 1983, vt180,  vt100,   0,     vt100,   vt100, 	 0,  	 "DEC",   "VT180",		GAME_NOT_WORKING)
+COMP( 1983, vt180,  vt100,   0,     vt100,   vt100, 	 0, 	 "DEC",   "VT180",		GAME_NOT_WORKING)

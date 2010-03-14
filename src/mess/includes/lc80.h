@@ -9,17 +9,21 @@
 #define CASSETTE_TAG	"cassette"
 #define SPEAKER_TAG		"b237"
 
-typedef struct _lc80_state lc80_state;
-struct _lc80_state
+class lc80_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, lc80_state(machine)); }
+
+	lc80_state(running_machine &machine) { }
+
 	/* display state */
 	UINT8 digit;
 	UINT8 segment;
 
 	/* devices */
-	const device_config *z80pio2;
-	const device_config *speaker;
-	const device_config *cassette;
+	running_device *z80pio2;
+	running_device *speaker;
+	running_device *cassette;
 };
 
 #endif

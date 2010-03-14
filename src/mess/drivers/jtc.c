@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/jtc.h"
 #include "cpu/z8/z8.h"
 #include "devices/cassette.h"
@@ -34,7 +34,7 @@ static WRITE8_HANDLER( p2_w )
 
     */
 
-	jtc_state *state = space->machine->driver_data;
+	jtc_state *state = (jtc_state *)space->machine->driver_data;
 
 	centronics_strobe_w(state->centronics, BIT(data, 5));
 }
@@ -56,7 +56,7 @@ static READ8_HANDLER( p3_r )
 
     */
 
-	jtc_state *state = space->machine->driver_data;
+	jtc_state *state = (jtc_state *)space->machine->driver_data;
 
 	UINT8 data = 0;
 
@@ -83,7 +83,7 @@ static WRITE8_HANDLER( p3_w )
 
     */
 
-	jtc_state *state = space->machine->driver_data;
+	jtc_state *state = (jtc_state *)space->machine->driver_data;
 
 	/* tape */
 	cassette_output(state->cassette, BIT(data, 6) ? +1.0 : -1.0);
@@ -94,7 +94,7 @@ static WRITE8_HANDLER( p3_w )
 
 static READ8_HANDLER( es40_videoram_r )
 {
-	jtc_state *state = space->machine->driver_data;
+	jtc_state *state = (jtc_state *)space->machine->driver_data;
 
 	UINT8 data = 0;
 
@@ -108,7 +108,7 @@ static READ8_HANDLER( es40_videoram_r )
 
 static WRITE8_HANDLER( es40_videoram_w )
 {
-	jtc_state *state = space->machine->driver_data;
+	jtc_state *state = (jtc_state *)space->machine->driver_data;
 
 	if (state->video_bank & 0x80) state->color_ram_r[offset] = data;
 	if (state->video_bank & 0x40) state->color_ram_g[offset] = data;
@@ -118,7 +118,7 @@ static WRITE8_HANDLER( es40_videoram_w )
 
 static WRITE8_HANDLER( es40_banksel_w )
 {
-	jtc_state *state = space->machine->driver_data;
+	jtc_state *state = (jtc_state *)space->machine->driver_data;
 
 	state->video_bank = offset & 0xf0;
 }
@@ -510,7 +510,7 @@ static VIDEO_START( jtc )
 
 static VIDEO_UPDATE( jtc )
 {
-	jtc_state *state = screen->machine->driver_data;
+	jtc_state *state = (jtc_state *)screen->machine->driver_data;
 
 	int x, y, sx;
 
@@ -537,7 +537,7 @@ static VIDEO_START( jtc_es23 )
 
 static VIDEO_UPDATE( jtc_es23 )
 {
-	jtc_state *state = screen->machine->driver_data;
+	jtc_state *state = (jtc_state *)screen->machine->driver_data;
 
 	int x, y, sx;
 
@@ -564,7 +564,7 @@ static PALETTE_INIT( jtc_es40 )
 
 static VIDEO_START( jtc_es40 )
 {
-	jtc_state *state = machine->driver_data;
+	jtc_state *state = (jtc_state *)machine->driver_data;
 
 	/* allocate memory */
 	state->video_ram = auto_alloc_array(machine, UINT8, JTC_ES40_VIDEORAM_SIZE);
@@ -582,7 +582,7 @@ static VIDEO_START( jtc_es40 )
 
 static VIDEO_UPDATE( jtc_es40 )
 {
-	jtc_state *state = screen->machine->driver_data;
+	jtc_state *state = (jtc_state *)screen->machine->driver_data;
 
 	int x, y, sx;
 
@@ -611,7 +611,7 @@ static VIDEO_UPDATE( jtc_es40 )
 
 static MACHINE_START( jtc )
 {
-	jtc_state *state = machine->driver_data;
+	jtc_state *state = (jtc_state *)machine->driver_data;
 
 	/* find devices */
 	state->cassette = devtag_get_device(machine, CASSETTE_TAG);
@@ -628,7 +628,7 @@ static const cassette_config jtc_cassette_config =
 {
 	cassette_default_formats,
 	NULL,
-	CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED
+	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_ENABLED)
 };
 
 /* F4 Character Displayer */
@@ -781,34 +781,34 @@ MACHINE_DRIVER_END
 
 ROM_START( jtc )
 	ROM_REGION( 0x10000, UB8830D_TAG, 0 )
-  	ROM_LOAD( "u883rom.bin", 0x0000, 0x0800, CRC(2453c8c1) SHA1(816f5d08f8064b69b1779eb6661fde091aa58ba8) )
+	ROM_LOAD( "u883rom.bin", 0x0000, 0x0800, CRC(2453c8c1) SHA1(816f5d08f8064b69b1779eb6661fde091aa58ba8) )
 	ROM_LOAD( "u2716c1.bin", 0x0800, 0x0800, NO_DUMP )
 	ROM_LOAD( "u2716c2.bin", 0x2000, 0x0800, NO_DUMP )
 ROM_END
 
 ROM_START( jtces88 )
 	ROM_REGION( 0x10000, UB8830D_TAG, 0 )
-  	ROM_LOAD( "u883rom.bin", 0x0000, 0x0800, CRC(2453c8c1) SHA1(816f5d08f8064b69b1779eb6661fde091aa58ba8) )
-  	ROM_LOAD( "es1988_0800.bin", 0x0800, 0x0800, CRC(af3e882f) SHA1(65af0d0f5f882230221e9552707d93ed32ba794d) )
-  	ROM_LOAD( "es1988_2000.bin", 0x2000, 0x0800, CRC(5ff87c1e) SHA1(fbd2793127048bd9706970b7bce84af2cb258dc5) )
+	ROM_LOAD( "u883rom.bin", 0x0000, 0x0800, CRC(2453c8c1) SHA1(816f5d08f8064b69b1779eb6661fde091aa58ba8) )
+	ROM_LOAD( "es1988_0800.bin", 0x0800, 0x0800, CRC(af3e882f) SHA1(65af0d0f5f882230221e9552707d93ed32ba794d) )
+	ROM_LOAD( "es1988_2000.bin", 0x2000, 0x0800, CRC(5ff87c1e) SHA1(fbd2793127048bd9706970b7bce84af2cb258dc5) )
 ROM_END
 
 ROM_START( jtces23 )
 	ROM_REGION( 0x10000, UB8830D_TAG, 0 )
-  	ROM_LOAD( "u883rom.bin", 0x0000, 0x0800, CRC(2453c8c1) SHA1(816f5d08f8064b69b1779eb6661fde091aa58ba8) )
-  	ROM_LOAD( "es23_0800.bin", 0x0800, 0x1000, CRC(16128b64) SHA1(90fb0deeb5660f4a2bb38d51981cc6223d5ddf6b) )
+	ROM_LOAD( "u883rom.bin", 0x0000, 0x0800, CRC(2453c8c1) SHA1(816f5d08f8064b69b1779eb6661fde091aa58ba8) )
+	ROM_LOAD( "es23_0800.bin", 0x0800, 0x1000, CRC(16128b64) SHA1(90fb0deeb5660f4a2bb38d51981cc6223d5ddf6b) )
 ROM_END
 
 ROM_START( jtces40 )
 	ROM_REGION( 0x10000, UB8830D_TAG, 0 )
-  	ROM_LOAD( "u883rom.bin", 0x0000, 0x0800, CRC(2453c8c1) SHA1(816f5d08f8064b69b1779eb6661fde091aa58ba8) )
-  	ROM_LOAD( "es40_0800.bin", 0x0800, 0x1800, CRC(770c87ce) SHA1(1a5227ba15917f2a572cb6c27642c456f5b32b90) )
+	ROM_LOAD( "u883rom.bin", 0x0000, 0x0800, CRC(2453c8c1) SHA1(816f5d08f8064b69b1779eb6661fde091aa58ba8) )
+	ROM_LOAD( "es40_0800.bin", 0x0800, 0x1800, CRC(770c87ce) SHA1(1a5227ba15917f2a572cb6c27642c456f5b32b90) )
 ROM_END
 
 /* System Drivers */
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY                 FULLNAME                    FLAGS */
-COMP( 1987, jtc,	0,       0, 	jtc, 	jtc, 	 0,		"Jugend+Technik",   "CompJU+TEr",					GAME_NOT_WORKING )
-COMP( 1988, jtces88,	jtc,     0, 	jtces88,jtc, 	 0,		"Jugend+Technik",   "CompJU+TEr (EMR-ES 1988)",	GAME_NOT_WORKING )
+COMP( 1987, jtc,	0,       0, 	jtc,	jtc,	 0,		"Jugend+Technik",   "CompJU+TEr",					GAME_NOT_WORKING )
+COMP( 1988, jtces88,	jtc,     0, 	jtces88,jtc,	 0,		"Jugend+Technik",   "CompJU+TEr (EMR-ES 1988)",	GAME_NOT_WORKING )
 COMP( 1989, jtces23,	jtc,     0, 	jtces23,jtces23, 0,		"Jugend+Technik",   "CompJU+TEr (ES 2.3)",		GAME_NOT_WORKING )
 COMP( 1990, jtces40,	jtc,     0, 	jtces40,jtces40, 0,		"Jugend+Technik",   "CompJU+TEr (ES 4.0)",		GAME_NOT_WORKING )

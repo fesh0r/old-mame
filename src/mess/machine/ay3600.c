@@ -15,7 +15,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "machine/ay3600.h"
 #include "includes/apple2.h"
 
@@ -161,7 +161,7 @@ static const unsigned char ay3600_key_remap_2e[2][9*8][4] =
 		{ 0x77,0x17,0x57,0x17 },	/* w W          */
 		{ 0x78,0x18,0x58,0x18 },	/* x X          */
 		{ 0x79,0x19,0x59,0x19 },	/* y Y          */
-		{ 0x7a,0x1a,0x5a,0x1a }, 	/* z Z          */
+		{ 0x7a,0x1a,0x5a,0x1a },	/* z Z          */
 		{ 0x30,0x30,0x30,0x30 },	/* 0 (KP)       */
 		{ 0x31,0x31,0x31,0x31 },	/* 1 (KP)       */
 		{ 0x32,0x32,0x32,0x32 },	/* 2 (KP)       */
@@ -236,7 +236,7 @@ static const unsigned char ay3600_key_remap_2e[2][9*8][4] =
 		{ 0x57,0x17,0x77,0x17 },	/* W w          */
 		{ 0x58,0x18,0x78,0x18 },	/* X x          */
 		{ 0x59,0x19,0x79,0x19 },	/* Y y          */
-		{ 0x5a,0x1a,0x7a,0x1a }, 	/* Z z          */
+		{ 0x5a,0x1a,0x7a,0x1a },	/* Z z          */
 		{ 0x30,0x30,0x30,0x30 },	/* 0 (KP)       */
 		{ 0x31,0x31,0x31,0x31 },	/* 1 (KP)       */
 		{ 0x32,0x32,0x32,0x32 },	/* 2 (KP)       */
@@ -290,17 +290,17 @@ static UINT8 keymodreg;
 
 INLINE int a2_has_keypad(running_machine *machine)
 {
-	return input_port_by_tag(&machine->portlist, "keypad_1") != NULL;
+	return machine->portlist.find("keypad_1") != NULL;
 }
 
 INLINE int a2_has_reset_dip(running_machine *machine)
 {
-	return input_port_by_tag(&machine->portlist, "reset_dip") != NULL;
+	return machine->portlist.find("reset_dip") != NULL;
 }
 
 INLINE int a2_has_repeat(running_machine *machine)
 {
-	return input_port_by_tag(&machine->portlist, "keyb_repeat") != NULL;
+	return machine->portlist.find("keyb_repeat") != NULL;
 }
 
 INLINE int a2_has_capslock(running_machine *machine)
@@ -362,7 +362,7 @@ static TIMER_CALLBACK(AY3600_poll)
 
 	static int reset_flag = 0;
 	static int last_key = 0xff; 	/* necessary for special repeat key behaviour */
-	static int last_key_unmodified = 0xff; 	/* necessary for special repeat key behaviour */
+	static int last_key_unmodified = 0xff;	/* necessary for special repeat key behaviour */
 
 	static unsigned int time_until_repeat = MAGIC_KEY_REPEAT_NUMBER;
 

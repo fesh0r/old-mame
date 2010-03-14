@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "includes/pk8020.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/wd17xx.h"
@@ -26,13 +26,8 @@ static void pk8020_set_bank(running_machine *machine,UINT8 data);
 static UINT8 sound_gate = 0;
 static UINT8 sound_level = 0;
 
-/* Driver initialization */
-DRIVER_INIT(pk8020)
-{
-	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,(64 + 4*48 + 2)*1024);
-}
 
-static READ8_HANDLER(keyboard_r)
+static READ8_HANDLER( keyboard_r )
 {
 	static const char *const keynames[] = {
 		"LINE0", "LINE1", "LINE2", "LINE3", "LINE4", "LINE5", "LINE6", "LINE7",
@@ -152,28 +147,28 @@ static WRITE8_HANDLER(gzu_w)
 	} else {
 		// Plane mode
 		UINT8 mask = (pk8020_color & 1) ? data : 0;
-   		if (!(pk8020_color & 0x02)) {
-	   		plane_0[offset] = (plane_0[offset] & ~data) | mask;
-   		}
-   		if (!(pk8020_color & 0x04)) {
-	   		plane_1[offset] = (plane_1[offset] & ~data) | mask;
-   		}
-   		if (!(pk8020_color & 0x08)) {
-	   		plane_2[offset] = (plane_2[offset] & ~data) | mask;
-   		}
+		if (!(pk8020_color & 0x02)) {
+			plane_0[offset] = (plane_0[offset] & ~data) | mask;
+		}
+		if (!(pk8020_color & 0x04)) {
+			plane_1[offset] = (plane_1[offset] & ~data) | mask;
+		}
+		if (!(pk8020_color & 0x08)) {
+			plane_2[offset] = (plane_2[offset] & ~data) | mask;
+		}
 	}
 }
 
 static READ8_HANDLER(devices_r)
 {
-	const device_config *ppi1 = devtag_get_device(space->machine, "ppi8255_1");
-	const device_config *ppi2 = devtag_get_device(space->machine, "ppi8255_2");
-	const device_config *ppi3 = devtag_get_device(space->machine, "ppi8255_3");
-	const device_config *pit = devtag_get_device(space->machine, "pit8253");
-	const device_config *pic = devtag_get_device(space->machine, "pic8259");
-	const device_config *rs232 = devtag_get_device(space->machine, "rs232");
-	const device_config *lan = devtag_get_device(space->machine, "lan");
-	const device_config *fdc = devtag_get_device(space->machine, "wd1793");
+	running_device *ppi1 = devtag_get_device(space->machine, "ppi8255_1");
+	running_device *ppi2 = devtag_get_device(space->machine, "ppi8255_2");
+	running_device *ppi3 = devtag_get_device(space->machine, "ppi8255_3");
+	running_device *pit = devtag_get_device(space->machine, "pit8253");
+	running_device *pic = devtag_get_device(space->machine, "pic8259");
+	running_device *rs232 = devtag_get_device(space->machine, "rs232");
+	running_device *lan = devtag_get_device(space->machine, "lan");
+	running_device *fdc = devtag_get_device(space->machine, "wd1793");
 
 	switch(offset & 0x38)
 	{
@@ -181,7 +176,7 @@ static READ8_HANDLER(devices_r)
 		case 0x08: return i8255a_r(ppi3,offset & 3);
 		case 0x10: switch(offset & 1) {
 						case 0 : return msm8251_data_r(rs232,0);
-				   		case 1 : return msm8251_status_r(rs232,0);
+						case 1 : return msm8251_status_r(rs232,0);
 				   }
 				   break;
 		case 0x18: switch(offset & 3) {
@@ -193,7 +188,7 @@ static READ8_HANDLER(devices_r)
 					break;
 		case 0x20: switch(offset & 1) {
 						case 0 : return msm8251_data_r(lan,0);
-				   		case 1 : return msm8251_status_r(lan,0);
+						case 1 : return msm8251_status_r(lan,0);
 				   }
 				   break;
 		case 0x28: return pic8259_r(pic,offset & 1);
@@ -205,14 +200,14 @@ static READ8_HANDLER(devices_r)
 
 static WRITE8_HANDLER(devices_w)
 {
-	const device_config *ppi1 = devtag_get_device(space->machine, "ppi8255_1");
-	const device_config *ppi2 = devtag_get_device(space->machine, "ppi8255_2");
-	const device_config *ppi3 = devtag_get_device(space->machine, "ppi8255_3");
-	const device_config *pit = devtag_get_device(space->machine, "pit8253");
-	const device_config *pic = devtag_get_device(space->machine, "pic8259");
-	const device_config *rs232 = devtag_get_device(space->machine, "rs232");
-	const device_config *lan = devtag_get_device(space->machine, "lan");
-	const device_config *fdc = devtag_get_device(space->machine, "wd1793");
+	running_device *ppi1 = devtag_get_device(space->machine, "ppi8255_1");
+	running_device *ppi2 = devtag_get_device(space->machine, "ppi8255_2");
+	running_device *ppi3 = devtag_get_device(space->machine, "ppi8255_3");
+	running_device *pit = devtag_get_device(space->machine, "pit8253");
+	running_device *pic = devtag_get_device(space->machine, "pic8259");
+	running_device *rs232 = devtag_get_device(space->machine, "rs232");
+	running_device *lan = devtag_get_device(space->machine, "lan");
+	running_device *fdc = devtag_get_device(space->machine, "wd1793");
 
 	switch(offset & 0x38)
 	{
@@ -220,7 +215,7 @@ static WRITE8_HANDLER(devices_w)
 		case 0x08: i8255a_w(ppi3,offset & 3,data); break;
 		case 0x10: switch(offset & 1) {
 						case 0 : msm8251_data_w(rs232,0,data); break;
-				   		case 1 : msm8251_control_w(rs232,0,data); break;
+						case 1 : msm8251_control_w(rs232,0,data); break;
 				   }
 				   break;
 		case 0x18: switch(offset & 3) {
@@ -232,7 +227,7 @@ static WRITE8_HANDLER(devices_w)
 					break;
 		case 0x20: switch(offset & 1) {
 						case 0 : msm8251_data_w(lan,0,data); break;
-				   		case 1 : msm8251_control_w(lan,0,data); break;
+						case 1 : msm8251_control_w(lan,0,data); break;
 				   }
 				   break;
 		case 0x28: pic8259_w(pic,offset & 1,data);break;
@@ -874,16 +869,16 @@ static WRITE8_DEVICE_HANDLER(pk8020_portc_w)
 
 static WRITE8_DEVICE_HANDLER(pk8020_portb_w)
 {
-	const device_config *fdc = devtag_get_device(device->machine, "wd1793");
+	running_device *fdc = devtag_get_device(device->machine, "wd1793");
 	wd17xx_set_side(fdc,BIT(data,4));
 	if (BIT(data,0)) {
- 		wd17xx_set_drive(fdc,0);
+		wd17xx_set_drive(fdc,0);
 	} else if (BIT(data,1)) {
- 		wd17xx_set_drive(fdc,1);
+		wd17xx_set_drive(fdc,1);
 	} else if (BIT(data,2)) {
- 		wd17xx_set_drive(fdc,2);
+		wd17xx_set_drive(fdc,2);
 	} else if (BIT(data,3)) {
- 		wd17xx_set_drive(fdc,3);
+		wd17xx_set_drive(fdc,3);
 	}
 }
 
@@ -905,7 +900,7 @@ I8255A_INTERFACE( pk8020_ppi8255_interface_1 )
 
 static WRITE8_DEVICE_HANDLER(pk8020_2_portc_w)
 {
-	const device_config *speaker = devtag_get_device(device->machine, "speaker");
+	running_device *speaker = devtag_get_device(device->machine, "speaker");
 
 	sound_gate = BIT(data,3);
 
@@ -932,9 +927,9 @@ I8255A_INTERFACE( pk8020_ppi8255_interface_3 )
 	DEVCB_NULL
 };
 
-static PIT8253_OUTPUT_CHANGED(pk8020_pit_out0)
+static WRITE_LINE_DEVICE_HANDLER( pk8020_pit_out0 )
 {
-	const device_config *speaker = devtag_get_device(device->machine, "speaker");
+	running_device *speaker = devtag_get_device(device->machine, "speaker");
 
 	sound_level = state;
 
@@ -942,13 +937,8 @@ static PIT8253_OUTPUT_CHANGED(pk8020_pit_out0)
 }
 
 
-static PIT8253_OUTPUT_CHANGED(pk8020_pit_out1)
+static WRITE_LINE_DEVICE_HANDLER(pk8020_pit_out1)
 {
-}
-
-static PIT8253_OUTPUT_CHANGED(pk8020_pit_out2)
-{
-	pic8259_set_irq_line(devtag_get_device(device->machine, "pic8259"),5,state);
 }
 
 
@@ -957,40 +947,41 @@ const struct pit8253_config pk8020_pit8253_intf =
 	{
 		{
 			XTAL_20MHz / 10,
-			pk8020_pit_out0
+			DEVCB_NULL,
+			DEVCB_LINE(pk8020_pit_out0)
 		},
 		{
 			XTAL_20MHz / 10,
-			pk8020_pit_out1
+			DEVCB_NULL,
+			DEVCB_LINE(pk8020_pit_out1)
 		},
 		{
 			(XTAL_20MHz / 8) / 164,
-			pk8020_pit_out2
+			DEVCB_NULL,
+			DEVCB_DEVICE_LINE("pic8259", pic8259_ir5_w)
 		}
 	}
 };
 
-static PIC8259_SET_INT_LINE( pk8020_pic_set_int_line )
+static WRITE_LINE_DEVICE_HANDLER( pk8020_pic_set_int_line )
 {
-	cputag_set_input_line(device->machine, "maincpu", 0, interrupt ?  HOLD_LINE : CLEAR_LINE);
+	cputag_set_input_line(device->machine, "maincpu", 0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
-const struct pic8259_interface pk8020_pic8259_config = {
-	pk8020_pic_set_int_line
+const struct pic8259_interface pk8020_pic8259_config =
+{
+	DEVCB_LINE(pk8020_pic_set_int_line)
 };
 
-static IRQ_CALLBACK(pk8020_irq_callback)
+static IRQ_CALLBACK( pk8020_irq_callback )
 {
 	return pic8259_acknowledge(devtag_get_device(device->machine, "pic8259"));
 }
 
 MACHINE_RESET( pk8020 )
 {
-	const device_config *fdc = devtag_get_device(machine, "wd1793");
 	pk8020_set_bank(machine,0);
-	cpu_set_irq_callback(cputag_get_cpu(machine, "maincpu"), pk8020_irq_callback);
-
-	wd17xx_set_density (fdc,DEN_FM_HI);
+	cpu_set_irq_callback(devtag_get_device(machine, "maincpu"), pk8020_irq_callback);
 
 	sound_gate = 0;
 	sound_level = 0;
@@ -999,6 +990,5 @@ MACHINE_RESET( pk8020 )
 INTERRUPT_GEN( pk8020_interrupt )
 {
 	takt ^= 1;
-	pic8259_set_irq_line(devtag_get_device(device->machine, "pic8259"),4,1);
+	pic8259_ir4_w(devtag_get_device(device->machine, "pic8259"), 1);
 }
-

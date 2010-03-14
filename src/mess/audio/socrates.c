@@ -7,7 +7,7 @@
 
 ****************************************************************************/
 
-#include "sndintrf.h"
+#include "emu.h"
 #include "streams.h"
 #include "socrates.h"
 
@@ -24,7 +24,7 @@ typedef struct
 } SocratesASIC;
 
 
-INLINE SocratesASIC *get_safe_token(const device_config *device)
+INLINE SocratesASIC *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -72,14 +72,9 @@ static void socrates_snd_clock(SocratesASIC *chip) /* called once per clock */
  *************************************/
 static STREAM_UPDATE( socrates_snd_pcm_update )
 {
-	INT32 mix[48000];
-	INT32 *mixp;
 	SocratesASIC *chip = (SocratesASIC *)param;
 	int i;
 
-	memset(mix, 0, sizeof(mix));
-
-	mixp = &mix[0];
 	for (i = 0; i < samples; i++)
 	{
 		socrates_snd_clock(chip);
@@ -109,21 +104,21 @@ static DEVICE_START( socrates_snd )
 }
 
 
-void socrates_snd_reg0_w(const device_config *device, int data)
+void socrates_snd_reg0_w(running_device *device, int data)
 {
 	SocratesASIC *chip = get_safe_token(device);
 	stream_update(chip->stream);
 	chip->freq[0] = data;
 }
 
-void socrates_snd_reg1_w(const device_config *device, int data)
+void socrates_snd_reg1_w(running_device *device, int data)
 {
 	SocratesASIC *chip = get_safe_token(device);
 	stream_update(chip->stream);
 	chip->freq[1] = data;
 }
 
-void socrates_snd_reg2_w(const device_config *device, int data)
+void socrates_snd_reg2_w(running_device *device, int data)
 {
 	SocratesASIC *chip = get_safe_token(device);
 	stream_update(chip->stream);
@@ -131,7 +126,7 @@ void socrates_snd_reg2_w(const device_config *device, int data)
 	chip->enable[0] = (data&0x10)>>4;
 }
 
-void socrates_snd_reg3_w(const device_config *device, int data)
+void socrates_snd_reg3_w(running_device *device, int data)
 {
 	SocratesASIC *chip = get_safe_token(device);
 	stream_update(chip->stream);
@@ -139,7 +134,7 @@ void socrates_snd_reg3_w(const device_config *device, int data)
 	chip->enable[1] = (data&0x10)>>4;
 }
 
-void socrates_snd_reg4_w(const device_config *device, int data)
+void socrates_snd_reg4_w(running_device *device, int data)
 {
 	SocratesASIC *chip = get_safe_token(device);
 	stream_update(chip->stream);

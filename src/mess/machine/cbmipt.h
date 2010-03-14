@@ -13,7 +13,6 @@ INPUT_PORTS_EXTERN( c64_controls );			/* shared with c65, c128, cbmb */
 
 INPUT_PORTS_EXTERN( c16_special );
 INPUT_PORTS_EXTERN( c16_controls );
-INPUT_PORTS_EXTERN( c16_config );
 
 
 /* Commodore 65 */
@@ -45,7 +44,6 @@ INPUT_PORTS_EXTERN( cbmb_special );
 INPUT_PORTS_EXTERN( vic_keyboard );
 INPUT_PORTS_EXTERN( vic_special );
 INPUT_PORTS_EXTERN( vic_controls );
-INPUT_PORTS_EXTERN( vic_expansion );
 
 
 #endif /* CBMIPT_H_ */

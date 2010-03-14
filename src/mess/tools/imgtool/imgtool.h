@@ -12,8 +12,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "emu.h"
 #include "osdepend.h"
-#include "mame.h"
 #include "formats/flopimg.h"
 #include "opresolv.h"
 #include "library.h"
@@ -26,6 +26,14 @@
 #define EOLN_CRLF	"\x0d\x0a"
 
 #define FILENAME_BOOTBLOCK	((const char *) 1)
+
+enum
+{
+	OSD_FOPEN_READ,
+	OSD_FOPEN_WRITE,
+	OSD_FOPEN_RW,
+	OSD_FOPEN_RW_CREATE
+};
 
 /* ---------------------------------------------------------------------------
  * Image calls
@@ -75,6 +83,7 @@ void imgtool_exit(void);
 const imgtool_module *imgtool_find_module(const char *modulename);
 imgtool_module_features imgtool_get_module_features(const imgtool_module *module);
 void imgtool_warn(const char *format, ...) ATTR_PRINTF(1,2);
+char *imgtool_basename(char *filename);
 
 /* ----- image management ----- */
 imgtoolerr_t imgtool_identify_file(const char *filename, imgtool_module **modules, size_t count);

@@ -41,7 +41,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "sound/dac.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/mc146818.h" /* TOD clock */
@@ -62,7 +62,7 @@ INLINE void ATTR_PRINTF(3,4) verboselog( running_machine *machine, int n_level, 
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror("%08x: %s", cpu_get_pc(cputag_get_cpu(machine, "maincpu")), buf);
+		logerror("%08x: %s", cpu_get_pc(devtag_get_device(machine, "maincpu")), buf);
 	}
 }
 #else
@@ -337,49 +337,49 @@ static ADDRESS_MAP_START(sgi_ip2_map, ADDRESS_SPACE_PROGRAM, 32)
 	AM_RANGE(0x00000000, 0x00ffffff) AM_RAM AM_BASE(&mainram)
 	AM_RANGE(0x02100000, 0x0210ffff) AM_RAM AM_BASE(&bss) // ??? I don't understand the need for this...
 	AM_RANGE(0x30000000, 0x30017fff) AM_ROM AM_REGION("user1", 0)
-	AM_RANGE(0x30800000, 0x30800003) AM_READWRITE8(sgi_ip2_m_but_r, 		sgi_ip2_m_but_w, 		0xffffffff)
-	AM_RANGE(0x31000000, 0x31000003) AM_READWRITE16(sgi_ip2_m_quad_r,		sgi_ip2_m_quad_w, 		0xffffffff)
+	AM_RANGE(0x30800000, 0x30800003) AM_READWRITE8(sgi_ip2_m_but_r, 		sgi_ip2_m_but_w,		0xffffffff)
+	AM_RANGE(0x31000000, 0x31000003) AM_READWRITE16(sgi_ip2_m_quad_r,		sgi_ip2_m_quad_w,		0xffffffff)
 	AM_RANGE(0x31800000, 0x31800003) AM_READ16(sgi_ip2_swtch_r,										0xffffffff)
-	AM_RANGE(0x32000000, 0x3200000f) AM_DEVREADWRITE8("duart68681a", 		duart68681_r, 		duart68681_w, 0xffffffff)
-	AM_RANGE(0x32800000, 0x3280000f) AM_DEVREADWRITE8("duart68681b", 		duart68681_r, 		duart68681_w, 0xffffffff)
+	AM_RANGE(0x32000000, 0x3200000f) AM_DEVREADWRITE8("duart68681a",		duart68681_r,		duart68681_w, 0xffffffff)
+	AM_RANGE(0x32800000, 0x3280000f) AM_DEVREADWRITE8("duart68681b",		duart68681_r,		duart68681_w, 0xffffffff)
 	AM_RANGE(0x33000000, 0x330007ff) AM_RAM
 	AM_RANGE(0x34000000, 0x34000003) AM_READWRITE8(sgi_ip2_clock_ctl_r, 	sgi_ip2_clock_ctl_w,	0xffffffff)
 	AM_RANGE(0x35000000, 0x35000003) AM_READWRITE8(sgi_ip2_clock_data_r,	sgi_ip2_clock_data_w,	0xffffffff)
-	AM_RANGE(0x36000000, 0x36000003) AM_READWRITE8(sgi_ip2_os_base_r, 		sgi_ip2_os_base_w, 		0xffffffff)
-	AM_RANGE(0x38000000, 0x38000003) AM_READWRITE16(sgi_ip2_status_r, 		sgi_ip2_status_w, 		0xffffffff)
-	AM_RANGE(0x39000000, 0x39000003) AM_READWRITE8(sgi_ip2_parctl_r, 		sgi_ip2_parctl_w, 		0xffffffff)
-	AM_RANGE(0x3a000000, 0x3a000003) AM_READWRITE8(sgi_ip2_mbp_r, 			sgi_ip2_mbp_w, 			0xffffffff)
+	AM_RANGE(0x36000000, 0x36000003) AM_READWRITE8(sgi_ip2_os_base_r,		sgi_ip2_os_base_w,		0xffffffff)
+	AM_RANGE(0x38000000, 0x38000003) AM_READWRITE16(sgi_ip2_status_r,		sgi_ip2_status_w,		0xffffffff)
+	AM_RANGE(0x39000000, 0x39000003) AM_READWRITE8(sgi_ip2_parctl_r,		sgi_ip2_parctl_w,		0xffffffff)
+	AM_RANGE(0x3a000000, 0x3a000003) AM_READWRITE8(sgi_ip2_mbp_r,			sgi_ip2_mbp_w,			0xffffffff)
 	AM_RANGE(0x3b000000, 0x3b003fff) AM_READWRITE(sgi_ip2_ptmap_r, sgi_ip2_ptmap_w) AM_BASE(&sgi_ip2_ptmap)
-	AM_RANGE(0x3c000000, 0x3c000003) AM_READWRITE16(sgi_ip2_tdbase_r, 		sgi_ip2_tdbase_w, 		0xffffffff)
-	AM_RANGE(0x3d000000, 0x3d000003) AM_READWRITE16(sgi_ip2_tdlmt_r, 		sgi_ip2_tdlmt_w, 		0xffffffff)
-	AM_RANGE(0x3e000000, 0x3e000003) AM_READWRITE16(sgi_ip2_stkbase_r, 		sgi_ip2_stkbase_w, 		0xffffffff)
-	AM_RANGE(0x3f000000, 0x3f000003) AM_READWRITE16(sgi_ip2_stklmt_r, 		sgi_ip2_stklmt_w, 		0xffffffff)
+	AM_RANGE(0x3c000000, 0x3c000003) AM_READWRITE16(sgi_ip2_tdbase_r,		sgi_ip2_tdbase_w,		0xffffffff)
+	AM_RANGE(0x3d000000, 0x3d000003) AM_READWRITE16(sgi_ip2_tdlmt_r,		sgi_ip2_tdlmt_w,		0xffffffff)
+	AM_RANGE(0x3e000000, 0x3e000003) AM_READWRITE16(sgi_ip2_stkbase_r,		sgi_ip2_stkbase_w,		0xffffffff)
+	AM_RANGE(0x3f000000, 0x3f000003) AM_READWRITE16(sgi_ip2_stklmt_r,		sgi_ip2_stklmt_w,		0xffffffff)
 ADDRESS_MAP_END
 
 /***************************************************************************
     MACHINE DRIVERS
 ***************************************************************************/
 
-static void duarta_irq_handler(const device_config *device, UINT8 vector)
+static void duarta_irq_handler(running_device *device, UINT8 vector)
 {
 	verboselog(device->machine, 0, "duarta_irq_handler\n");
 	cputag_set_input_line_and_vector(device->machine, "maincpu", M68K_IRQ_6, HOLD_LINE, M68K_INT_ACK_AUTOVECTOR);
 };
 
-static UINT8 duarta_input(const device_config *device)
+static UINT8 duarta_input(running_device *device)
 {
 	verboselog(device->machine, 0, "duarta_input\n");
 	return 0;
 }
 
-static void duarta_output(const device_config *device, UINT8 data)
+static void duarta_output(running_device *device, UINT8 data)
 {
 	verboselog(device->machine, 0, "duarta_output: RTS: %d, DTR: %d\n", data & 1, (data & 4) >> 2);
 }
 
-static void duarta_tx(const device_config *device, int channel, UINT8 data)
+static void duarta_tx(running_device *device, int channel, UINT8 data)
 {
-	const device_config	*devconf = devtag_get_device(device->machine, "terminal");
+	running_device *devconf = devtag_get_device(device->machine, "terminal");
 	verboselog(device->machine, 0, "duarta_tx: %02x\n", data);
 	terminal_write(devconf,0,data);
 }
@@ -392,24 +392,24 @@ static const duart68681_config sgi_ip2_duart68681a_config =
 	duarta_output
 };
 
-static void duartb_irq_handler(const device_config *device, UINT8 vector)
+static void duartb_irq_handler(running_device *device, UINT8 vector)
 {
 	verboselog(device->machine, 0, "duartb_irq_handler\n");
 	cputag_set_input_line_and_vector(device->machine, "maincpu", M68K_IRQ_6, HOLD_LINE, M68K_INT_ACK_AUTOVECTOR);
 };
 
-static UINT8 duartb_input(const device_config *device)
+static UINT8 duartb_input(running_device *device)
 {
 	verboselog(device->machine, 0, "duartb_input\n");
 	return 0;
 }
 
-static void duartb_output(const device_config *device, UINT8 data)
+static void duartb_output(running_device *device, UINT8 data)
 {
 	verboselog(device->machine, 0, "duartb_output: RTS: %d, DTR: %d\n", data & 1, (data & 4) >> 2);
 }
 
-static void duartb_tx(const device_config *device, int channel, UINT8 data)
+static void duartb_tx(running_device *device, int channel, UINT8 data)
 {
 	verboselog(device->machine, 0, "duartb_tx: %02x\n", data);
 }
@@ -500,7 +500,7 @@ static DRIVER_INIT( sgi_ip2 )
 	UINT32 *dst = mainram;
 	memcpy(dst, src, 8);
 
-	device_reset(cputag_get_cpu(machine, "maincpu"));
+	devtag_get_device(machine, "maincpu")->reset();
 
 	mc146818_init(machine, MC146818_IGNORE_CENTURY);
 }

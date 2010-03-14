@@ -6,7 +6,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "machine/upd765.h"
 #include "devices/flopdrv.h"
@@ -16,7 +16,7 @@ static UINT8 received_char = 0;
 
 static WRITE8_HANDLER(microdec_terminal_w)
 {
-	const device_config	*devconf = devtag_get_device(space->machine, "terminal");
+	running_device *devconf = devtag_get_device(space->machine, "terminal");
 	terminal_write(devconf,0,data);
 }
 
@@ -138,6 +138,6 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( 1982, md2,  	0,       0, 	microdec, 	microdec, 	 0,   "Morrow Designs",   "Micro Decision MD-2",		GAME_NOT_WORKING)
-COMP( 1982, md3,  	md2,       0, 	microdec, 	microdec, 	 0,   "Morrow Designs",   "Micro Decision MD-3",		GAME_NOT_WORKING)
+COMP( 1982, md2,	0,       0, 	microdec,	microdec,	 0,   "Morrow Designs",   "Micro Decision MD-2",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1982, md3,	md2,       0,	microdec,	microdec,	 0,   "Morrow Designs",   "Micro Decision MD-3",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

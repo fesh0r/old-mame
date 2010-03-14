@@ -8,7 +8,7 @@
 ***********************************************************************/
 
 /* Core includes */
-#include "driver.h"
+#include "emu.h"
 #include "devintrf.h"
 #include "includes/z80ne.h"
 
@@ -30,9 +30,9 @@ static UINT8 lx383_key[LX383_KEYS];
 static int   lx383_downsampler;
 static int   nmi_delay_counter;
 static int   reset_delay_counter;
-static const device_config *z80ne_ay31015;
+static running_device *z80ne_ay31015;
 static UINT8 lx385_ctrl = 0x1f;
-static const device_config *lx388_kr2376;
+static running_device *lx388_kr2376;
 
 
 
@@ -73,7 +73,7 @@ static struct _wd17xx_state {
 	UINT8 head;  /* current head */
 } wd17xx_state;
 
-static const device_config *cassette_device_image(running_machine *machine)
+static running_device *cassette_device_image(running_machine *machine)
 {
 	if (lx385_ctrl & 0x08)
 		return devtag_get_device(machine, "cassetteb");
@@ -395,14 +395,10 @@ MACHINE_RESET(z80netb)
 
 MACHINE_RESET(z80netf)
 {
-	const device_config *z80ne_fdc;
-
 	LOG(("In MACHINE_RESET z80netf\n"));
 	reset_lx390_banking(machine);
 	MACHINE_RESET_CALL( z80ne_base );
 	reset_lx388(machine);
-	z80ne_fdc = devtag_get_device(machine, "wd1771");
-	wd17xx_set_density (z80ne_fdc, DEN_FM_HI); /* Datarate 64 usec */
 }
 
 INPUT_CHANGED( z80ne_reset )
@@ -436,7 +432,7 @@ MACHINE_START( z80ne )
 	state_save_register_item_array( machine, "z80ne", NULL, 0, lx383_key );
 	state_save_register_item( machine, "z80ne", NULL, 0, nmi_delay_counter );
 	cassette_timer = timer_alloc(machine, z80ne_cassette_tc, NULL);
-    timer_pulse(machine,  ATTOTIME_IN_HZ(1000), NULL, 0, z80ne_kbd_scan );	
+    timer_pulse(machine,  ATTOTIME_IN_HZ(1000), NULL, 0, z80ne_kbd_scan );
 }
 
 MACHINE_START( z80net )
@@ -661,7 +657,7 @@ READ8_DEVICE_HANDLER( lx388_mc6847_videoram_r )
 
 VIDEO_UPDATE( lx388 )
 {
-	const device_config *mc6847 = devtag_get_device(screen->machine, "mc6847");
+	running_device *mc6847 = devtag_get_device(screen->machine, "mc6847");
 	return mc6847_update(mc6847, bitmap, cliprect);
 }
 
@@ -676,7 +672,7 @@ READ8_HANDLER(lx388_data_r)
 
 READ8_HANDLER( lx388_read_field_sync )
 {
-	const device_config *mc6847 = devtag_get_device(space->machine, "mc6847");
+	running_device *mc6847 = devtag_get_device(space->machine, "mc6847");
 	return mc6847_fs_r(mc6847) << 7;
 }
 
@@ -741,7 +737,7 @@ READ8_DEVICE_HANDLER(lx390_reset_bank)
 	offs_t pc;
 
 	/* if PC is not in range, we are under integrated debugger control, DON'T SWAP */
-	pc = cpu_get_pc(cputag_get_cpu(device->machine, "z80ne"));
+	pc = cpu_get_pc(devtag_get_device(device->machine, "z80ne"));
 	if((pc >= 0xf000) && (pc <=0xffff))
 	{
 		LOG(("lx390_reset_bank, reset memory bank 1\n"));

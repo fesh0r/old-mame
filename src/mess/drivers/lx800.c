@@ -6,7 +6,7 @@
 
 ***************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/upd7810/upd7810.h"
 #include "machine/e05a03.h"
 #include "sound/beep.h"
@@ -17,10 +17,14 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _lx800_state lx800_state;
-struct _lx800_state
+class lx800_state
 {
-	const device_config *speaker;
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, lx800_state(machine)); }
+
+	lx800_state(running_machine &machine) { }
+
+	running_device *speaker;
 };
 
 
@@ -80,7 +84,7 @@ static READ8_HANDLER( lx800_portc_r )
 
 static WRITE8_HANDLER( lx800_portc_w )
 {
-	lx800_state *lx800 = space->machine->driver_data;
+	lx800_state *lx800 = (lx800_state *)space->machine->driver_data;
 
 	logerror("%s: lx800_portc_w(%02x): %02x\n", cpuexec_describe_context(space->machine), offset, data);
 	logerror("--> err: %d, ack: %d, fire: %d, buzzer: %d\n", BIT(data, 4), BIT(data, 5), BIT(data, 6), BIT(data, 7));
@@ -112,7 +116,7 @@ static WRITE_LINE_DEVICE_HANDLER( lx800_paperempty_led_w )
 
 static WRITE_LINE_DEVICE_HANDLER( lx800_reset_w )
 {
-	cputag_reset(device->machine, "maincpu");
+	devtag_get_device(device->machine, "maincpu")->reset();
 }
 
 
@@ -122,7 +126,7 @@ static WRITE_LINE_DEVICE_HANDLER( lx800_reset_w )
 
 static MACHINE_START( lx800 )
 {
-	lx800_state *lx800 = machine->driver_data;
+	lx800_state *lx800 = (lx800_state *)machine->driver_data;
 
 	lx800->speaker = devtag_get_device(machine, "beep");
 

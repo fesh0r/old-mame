@@ -7,7 +7,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/z80/z80.h"
 #include "cpu/i8085/i8085.h"
 #include "machine/i8255a.h"
@@ -83,6 +83,7 @@ static MACHINE_DRIVER_START( rt1715 )
 	/* internal ram */
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("64K")
+	MDRV_RAM_DEFAULT_VALUE(0x00)
 MACHINE_DRIVER_END
 
 /* ROM definition */
@@ -103,5 +104,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT   INIT   COMPANY   FULLNAME       FLAGS */
-COMP( 1986, rt1715, 0,      0, 		rt1715, 	rt1715,rt1715, "Robotron", 	"Robotron 1715",	GAME_NOT_WORKING)
-COMP( 1986, rt1715w,rt1715, 0, 		rt1715, 	rt1715,rt1715, "Robotron", 	"Robotron 1715W",	GAME_NOT_WORKING)
+COMP( 1986, rt1715, 0,      0,		rt1715, 	rt1715, 0,     "Robotron",	"Robotron 1715",	GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1986, rt1715w,rt1715, 0,		rt1715, 	rt1715, 0,     "Robotron",	"Robotron 1715W",	GAME_NOT_WORKING | GAME_NO_SOUND)

@@ -23,12 +23,17 @@ extern UINT8 *c65_interface;
 void c65_bankswitch (running_machine *machine);
 void c65_colorram_write (int offset, int value);
 
+int c65_dma_read(running_machine *machine, int offset);
+int c65_dma_read_color(running_machine *machine, int offset);
+void c65_vic_interrupt(running_machine *machine, int level);
+void c65_bankswitch_interface(running_machine *machine, int value);
+
 DRIVER_INIT( c65 );
 DRIVER_INIT( c65pal );
 MACHINE_START( c65 );
 INTERRUPT_GEN( c65_frame_interrupt );
 
-extern const cia6526_interface c65_ntsc_cia0, c65_pal_cia0;
-extern const cia6526_interface c65_ntsc_cia1, c65_pal_cia1;
+extern const mos6526_interface c65_ntsc_cia0, c65_pal_cia0;
+extern const mos6526_interface c65_ntsc_cia1, c65_pal_cia1;
 
 #endif /* C65_H_ */

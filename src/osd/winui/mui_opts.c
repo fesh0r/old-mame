@@ -32,7 +32,8 @@
 #include <sys/stat.h>
 #include <math.h>
 #include <direct.h>
-#include <driver.h>
+#include <emu.h>
+#include <emuopts.h>
 #include <stddef.h>
 #include <tchar.h>
 
@@ -523,7 +524,7 @@ core_options *CreateGameOptions(int driver_index)
 BOOL OptionsInit()
 {
 	// create a memory pool for our data
-	options_memory_pool = pool_alloc(memory_error);
+	options_memory_pool = pool_alloc_lib(memory_error);
 	if (!options_memory_pool)
 		return FALSE;
 
@@ -545,7 +546,7 @@ BOOL OptionsInit()
 		while(perGameOptions[game_option_count].name)
 			game_option_count++;
 
-		driver_per_game_options = (options_entry *) pool_malloc(options_memory_pool,
+		driver_per_game_options = (options_entry *) pool_malloc_lib(options_memory_pool,
 			(game_option_count * driver_list_get_count(drivers) + 1) * sizeof(*driver_per_game_options));
 
 		for (i = 0; i < driver_list_get_count(drivers); i++)
@@ -557,7 +558,7 @@ BOOL OptionsInit()
 				snprintf(buffer, ARRAY_LENGTH(buffer), "%s%s", drivers[i]->name, perGameOptions[j].name);
 
 				memset(ent, 0, sizeof(*ent));
-				ent->name = pool_strdup(options_memory_pool, buffer);
+				ent->name = pool_strdup_lib(options_memory_pool, buffer);
 				ent->defvalue = perGameOptions[j].defvalue;
 				ent->flags = perGameOptions[j].flags;
 				ent->description = perGameOptions[j].description;
@@ -574,7 +575,7 @@ BOOL OptionsInit()
 	// set up folders
 	size_folder_filters = 1;
 	num_folder_filters = 0;
-	folder_filters = (folder_filter_type *) pool_malloc(options_memory_pool, size_folder_filters * sizeof(*folder_filters));
+	folder_filters = (folder_filter_type *) pool_malloc_lib(options_memory_pool, size_folder_filters * sizeof(*folder_filters));
 #endif
 	// now load the options and settings
 	LoadOptionsAndSettings();
@@ -594,7 +595,7 @@ void OptionsExit(void)
 	settings = NULL;
 
 	// free the memory pool
-	pool_free(options_memory_pool);
+	pool_free_lib(options_memory_pool);
 	options_memory_pool = NULL;
 }
 
@@ -2155,8 +2156,8 @@ static void SplitterDecodeString(const char *str, int *value)
 /* Parse the given comma-delimited string into a LOGFONT structure */
 static void FontDecodeString(const char* str, LOGFONT *f)
 {
-	char*	 ptr;
-	TCHAR* 	 t_ptr;
+	const char*	ptr;
+	TCHAR*		t_ptr;
 
 	sscanf(str, "%li,%li,%li,%li,%li,%i,%i,%i,%i,%i,%i,%i,%i",
 		   &f->lfHeight,
@@ -2178,7 +2179,7 @@ static void FontDecodeString(const char* str, LOGFONT *f)
 		if( !t_ptr )
 			return;
 		_tcscpy(f->lfFaceName, t_ptr);
-		free(t_ptr);
+		global_free(t_ptr);
 	}
 }
 
@@ -2205,7 +2206,7 @@ static void FontEncodeString(const LOGFONT *f, char *str)
 			f->lfPitchAndFamily,
 			utf8_FaceName);
 
-	free(utf8_FaceName);
+	global_free(utf8_FaceName);
 }
 
 static void TabFlagsEncodeString(int data, char *str)
@@ -2288,9 +2289,12 @@ static file_error SaveSettingsFile(core_options *opts, core_options *baseopts, c
 	{
 		filerr = core_fopen(filename, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
 		if (filerr == FILERR_NONE)
-		{
+		{	
+			#ifdef MESS
 			options_output_ini_file(opts, file);	/* required for MESS */
-//			options_output_diff_ini_file(opts, baseopts, file);
+			#else
+			options_output_diff_ini_file(opts, baseopts, file);
+			#endif
 			core_fclose(file);
 		}
 	}
@@ -2540,7 +2544,7 @@ static void copy_options_ex(core_options *pDestOpts, core_options *pSourceOpts)
 }
 
 // Adds our folder flags to a temporarty core_options, for saving.
-static core_options * AddFolderFlags(core_options *settings)
+static core_options * AddFolderFlags(core_options *opts_param)
 {
 	core_options *opts;
 	int numFolders;
@@ -2557,7 +2561,7 @@ static core_options * AddFolderFlags(core_options *settings)
 	}
 
 	options_add_entries(opts, regSettings);
-	copy_options_ex(opts, settings);
+	copy_options_ex(opts, opts_param);
 
 	memcpy(entries, filterOptions, sizeof(filterOptions));
 	entries[0].name = NULL;
@@ -2821,10 +2825,10 @@ void save_options(OPTIONS_TYPE opt_type, core_options *opts, int game_num)
 		if (OPTIONS_VERTICAL == opt_type) {
 			//since VERTICAL and HORIZONTAL are equally ranked
 			//we need to subtract 2 from vertical to also get to global
-			baseopts = load_options(opt_type - 2, game_num);
+			baseopts = load_options((OPTIONS_TYPE)(opt_type - 2), game_num);
 		}
 		else {
-			baseopts = load_options(opt_type - 1, game_num);
+			baseopts = load_options((OPTIONS_TYPE)(opt_type - 1), game_num);
 		}
 	}
 

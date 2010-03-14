@@ -10,7 +10,7 @@
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/upd7201.h"
 #include "machine/terminal.h"
@@ -26,7 +26,7 @@ static READ16_HANDLER(sun1_upd7201_r)
 
 static WRITE16_HANDLER(sun1_upd7201_w)
 {
-	const device_config	*devconf = devtag_get_device(space->machine, "terminal");
+	running_device *devconf = devtag_get_device(space->machine, "terminal");
 	if (offset==0) terminal_write(devconf,0,data >> 8);
 }
 
@@ -49,7 +49,7 @@ static MACHINE_RESET(sun1)
 
 	memcpy((UINT8*)sun1_ram,user1,0x4000);
 
-	device_reset(cputag_get_cpu(machine, "maincpu"));
+	devtag_get_device(machine, "maincpu")->reset();
 }
 
 
@@ -101,5 +101,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( 1982, sun1,  0,       0, 		 sun1, 		sun1, 	 0,  	 "Sun Microsystems",   "Sun-1",		GAME_NOT_WORKING)
+COMP( 1982, sun1,  0,       0,		 sun1,		sun1,	 0, 	 "Sun Microsystems",   "Sun-1",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

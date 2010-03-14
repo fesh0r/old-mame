@@ -1,7 +1,7 @@
 #ifndef __MESSUI_H__
 #define __MESSUI_H__
 
-#include "driver.h"
+#include "emu.h"
 #include "resourcems.h"
 #include "devview.h"
 #include "options.h"
@@ -15,5 +15,6 @@ BOOL MessCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify);
 void MessReadMountedSoftware(int nGame);
 BOOL CreateMessIcons(void);
 BOOL MessApproveImageList(HWND hParent, int nDriver);
+void MySoftwareListClose(void);
 
 #endif // __MESSUI_H__

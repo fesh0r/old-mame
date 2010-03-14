@@ -1,12 +1,12 @@
 /***************************************************************************
-   
+
         Intel iPB
 
         17/12/2009 Skeleton driver.
 
 ****************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 
 static ADDRESS_MAP_START(ipb_mem, ADDRESS_SPACE_PROGRAM, 8)
@@ -25,9 +25,9 @@ INPUT_PORTS_START( ipb )
 INPUT_PORTS_END
 
 
-static MACHINE_RESET(ipb) 
-{	
-	cpu_set_reg(cputag_get_cpu(machine, "maincpu"), I8085_PC, 0xE800);	
+static MACHINE_RESET(ipb)
+{
+	cpu_set_reg(devtag_get_device(machine, "maincpu"), I8085_PC, 0xE800);
 }
 
 static VIDEO_START( ipb )
@@ -43,10 +43,10 @@ static MACHINE_DRIVER_START( ipb )
     /* basic machine hardware */
     MDRV_CPU_ADD("maincpu",8080, XTAL_19_6608MHz / 4)
     MDRV_CPU_PROGRAM_MAP(ipb_mem)
-    MDRV_CPU_IO_MAP(ipb_io)	
+    MDRV_CPU_IO_MAP(ipb_io)
 
     MDRV_MACHINE_RESET(ipb)
-	
+
     /* video hardware */
     MDRV_SCREEN_ADD("screen", RASTER)
     MDRV_SCREEN_REFRESH_RATE(50)
@@ -72,5 +72,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( ????, ipb,  0,      	 0, 		ipb, 	ipb, 	 0,		 "Intel",   "iPB",		GAME_NOT_WORKING)
+COMP( ????, ipb,  0,    	 0, 		ipb,	ipb,	 0,		 "Intel",   "iPB",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

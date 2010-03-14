@@ -8,7 +8,7 @@
 ****************************************************************************/
 
 
-#include "driver.h"
+#include "emu.h"
 #include "cpu/i8085/i8085.h"
 #include "sound/dac.h"
 #include "devices/cassette.h"
@@ -74,7 +74,7 @@ static READ8_DEVICE_HANDLER (specialist_8255_portb_r )
 	if (level >=  0)
 	{
 			dat ^= 0x01;
- 	}
+	}
 	return dat & 0xff;
 }
 
@@ -98,7 +98,7 @@ static WRITE8_DEVICE_HANDLER (specialist_8255_portb_w )
 }
 static WRITE8_DEVICE_HANDLER (specialist_8255_portc_w )
 {
-	const device_config *dac_device = devtag_get_device(device->machine, "dac");
+	running_device *dac_device = devtag_get_device(device->machine, "dac");
 
 	specialist_8255_portc = data;
 
@@ -207,26 +207,21 @@ WRITE8_HANDLER( specimx_select_bank )
 	specimx_set_bank(space->machine, offset, data);
 }
 
-DRIVER_INIT(specimx)
-{
-	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,128*1024);
-}
-
-static PIT8253_OUTPUT_CHANGED(specimx_pit8253_out0_changed)
+static WRITE_LINE_DEVICE_HANDLER( specimx_pit8253_out0_changed )
 {
 	specimx_set_input( device->machine, 0, state );
 }
 
 
 
-static PIT8253_OUTPUT_CHANGED(specimx_pit8253_out1_changed)
+static WRITE_LINE_DEVICE_HANDLER(specimx_pit8253_out1_changed)
 {
 	specimx_set_input( device->machine, 1, state );
 }
 
 
 
-static PIT8253_OUTPUT_CHANGED(specimx_pit8253_out2_changed)
+static WRITE_LINE_DEVICE_HANDLER(specimx_pit8253_out2_changed)
 {
 	specimx_set_input( device->machine, 2, state );
 }
@@ -238,32 +233,35 @@ const struct pit8253_config specimx_pit8253_intf =
 	{
 		{
 			2000000,
-			specimx_pit8253_out0_changed
+			DEVCB_NULL,
+			DEVCB_LINE(specimx_pit8253_out0_changed)
 		},
 		{
 			2000000,
-			specimx_pit8253_out1_changed
+			DEVCB_NULL,
+			DEVCB_LINE(specimx_pit8253_out1_changed)
 		},
 		{
 			2000000,
-			specimx_pit8253_out2_changed
+			DEVCB_NULL,
+			DEVCB_LINE(specimx_pit8253_out2_changed)
 		}
 	}
 };
 
 MACHINE_START( specimx )
 {
-	const device_config *fdc = devtag_get_device(machine, "wd1793");
-	wd17xx_set_density (fdc,DEN_FM_HI);
+	running_device *fdc = devtag_get_device(machine, "wd1793");
+	wd17xx_dden_w(fdc, ASSERT_LINE);
 }
 
 static TIMER_CALLBACK( setup_pit8253_gates )
 {
-	const device_config *pit8253 = devtag_get_device(machine, "pit8253");
+	running_device *pit8253 = devtag_get_device(machine, "pit8253");
 
-	pit8253_gate_w(pit8253, 0, 0);
-	pit8253_gate_w(pit8253, 1, 0);
-	pit8253_gate_w(pit8253, 2, 0);
+	pit8253_gate0_w(pit8253, 0);
+	pit8253_gate1_w(pit8253, 0);
+	pit8253_gate2_w(pit8253, 0);
 }
 
 MACHINE_RESET( specimx )
@@ -281,16 +279,16 @@ READ8_HANDLER ( specimx_disk_ctrl_r )
 
 WRITE8_HANDLER( specimx_disk_ctrl_w )
 {
-	const device_config *fdc = devtag_get_device(space->machine, "wd1793");
+	running_device *fdc = devtag_get_device(space->machine, "wd1793");
 
 	switch(offset)
 	{
 		case 2 :
-		 		wd17xx_set_side(fdc,data & 1);
+				wd17xx_set_side(fdc,data & 1);
 				break;
 		case 3 :
-		 		wd17xx_set_drive(fdc,data & 1);
-		 		break;
+				wd17xx_set_drive(fdc,data & 1);
+				break;
 
 	}
 }
@@ -319,50 +317,50 @@ static void erik_set_bank(running_machine *machine)
 
 	switch(bank1)
 	{
-		case 	1:
-		case 	2:
-		case 	3:
+		case	1:
+		case	2:
+		case	3:
 						memory_set_bankptr(machine, "bank1", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x10000*(bank1-1));
 						break;
-		case 	0:
+		case	0:
 						memory_unmap_write(space, 0x0000, 0x3fff, 0, 0);
 						memory_set_bankptr(machine, "bank1", mem + 0x10000);
 						break;
 	}
 	switch(bank2)
 	{
-		case 	1:
-		case 	2:
-		case 	3:
+		case	1:
+		case	2:
+		case	3:
 						memory_set_bankptr(machine, "bank2", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x10000*(bank2-1) + 0x4000);
 						break;
-		case 	0:
+		case	0:
 						memory_unmap_write(space, 0x4000, 0x8fff, 0, 0);
 						memory_set_bankptr(machine, "bank2", mem + 0x14000);
 						break;
 	}
 	switch(bank3)
 	{
-		case 	1:
-		case 	2:
-		case 	3:
+		case	1:
+		case	2:
+		case	3:
 						memory_set_bankptr(machine, "bank3", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x10000*(bank3-1) + 0x9000);
 						break;
-		case 	0:
+		case	0:
 						memory_unmap_write(space, 0x9000, 0xbfff, 0, 0);
 						memory_set_bankptr(machine, "bank3", mem + 0x19000);
 						break;
 	}
 	switch(bank4)
 	{
-		case 	1:
-		case 	2:
-		case 	3:
+		case	1:
+		case	2:
+		case	3:
 						memory_set_bankptr(machine, "bank4", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x10000*(bank4-1) + 0x0c000);
 						memory_set_bankptr(machine, "bank5", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x10000*(bank4-1) + 0x0f000);
 						memory_set_bankptr(machine, "bank6", messram_get_ptr(devtag_get_device(machine, "messram")) + 0x10000*(bank4-1) + 0x0f800);
 						break;
-		case 	0:
+		case	0:
 						memory_unmap_write(space, 0xc000, 0xefff, 0, 0);
 						memory_set_bankptr(machine, "bank4", mem + 0x1c000);
 						memory_unmap_write(space, 0xf000, 0xf7ff, 0, 0);
@@ -373,9 +371,8 @@ static void erik_set_bank(running_machine *machine)
 	}
 }
 
-DRIVER_INIT(erik)
+DRIVER_INIT( erik )
 {
-	memset(messram_get_ptr(devtag_get_device(machine, "messram")),0,192*1024);
 	erik_color_1 = 0;
 	erik_color_2 = 0;
 	erik_background = 0;
@@ -419,16 +416,9 @@ READ8_HANDLER ( erik_disk_reg_r )
 
 WRITE8_HANDLER( erik_disk_reg_w )
 {
-	const device_config *fdc = devtag_get_device(space->machine, "wd1793");
+	running_device *fdc = devtag_get_device(space->machine, "wd1793");
 
 	wd17xx_set_side (fdc,data & 1);
 	wd17xx_set_drive(fdc,(data >> 1) & 1);
-	if((data >>2) & 1)
-	{
-		wd17xx_set_density (fdc,DEN_FM_LO);
-	}
-	else
-	{
-		wd17xx_set_density (fdc,DEN_FM_HI);
-	}
+	wd17xx_dden_w(fdc, BIT(data, 2));
 }

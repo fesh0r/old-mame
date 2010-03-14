@@ -16,7 +16,7 @@
 
 */
 
-#include "driver.h"
+#include "emu.h"
 #include "zx8301.h"
 
 /***************************************************************************
@@ -38,7 +38,7 @@ struct _zx8301_t
 	devcb_resolved_write8		out_ram_func;
 	devcb_resolved_write_line	out_vsync_func;
 
-	const device_config *screen;	/* screen */
+	running_device *screen;	/* screen */
 
 	int dispoff;					/* display off */
 	int mode8;						/* mode8 active */
@@ -51,14 +51,14 @@ struct _zx8301_t
 	emu_timer *flash_timer;			/* flash timer */
 	emu_timer *vsync_timer;			/* vertical sync timer */
 
-	const device_config *cpu;
+	running_device *cpu;
 };
 
 /***************************************************************************
     INLINE FUNCTIONS
 ***************************************************************************/
 
-INLINE zx8301_t *get_safe_token(const device_config *device)
+INLINE zx8301_t *get_safe_token(running_device *device)
 {
 	assert(device != NULL);
 	assert(device->token != NULL);
@@ -66,11 +66,11 @@ INLINE zx8301_t *get_safe_token(const device_config *device)
 	return (zx8301_t *)device->token;
 }
 
-INLINE const zx8301_interface *get_interface(const device_config *device)
+INLINE const zx8301_interface *get_interface(running_device *device)
 {
 	assert(device != NULL);
 	assert((device->type == ZX8301));
-	return (const zx8301_interface *) device->static_config;
+	return (const zx8301_interface *) device->baseconfig().static_config;
 }
 
 /***************************************************************************
@@ -83,7 +83,7 @@ INLINE const zx8301_interface *get_interface(const device_config *device)
 
 static TIMER_CALLBACK( zx8301_flash_tick )
 {
-	zx8301_t *zx8301 = get_safe_token(ptr);
+	zx8301_t *zx8301 = get_safe_token((running_device *)ptr);
 
 	zx8301->flash = !zx8301->flash;
 }
@@ -94,7 +94,7 @@ static TIMER_CALLBACK( zx8301_flash_tick )
 
 static TIMER_CALLBACK( zx8301_vsync_tick )
 {
-	zx8301_t *zx8301 = get_safe_token(ptr);
+	zx8301_t *zx8301 = get_safe_token((running_device *)ptr);
 
 	//zx8301->vsync = !zx8301->vsync;
 
@@ -173,7 +173,7 @@ WRITE8_DEVICE_HANDLER( zx8301_ram_w )
     line drawing routine
 -------------------------------------------------*/
 
-static void zx8301_draw_line_mode4(const device_config *device, bitmap_t *bitmap, int y, UINT16 da)
+static void zx8301_draw_line_mode4(running_device *device, bitmap_t *bitmap, int y, UINT16 da)
 {
 	zx8301_t *zx8301 = get_safe_token(device);
 
@@ -203,7 +203,7 @@ static void zx8301_draw_line_mode4(const device_config *device, bitmap_t *bitmap
     line drawing routine
 -------------------------------------------------*/
 
-static void zx8301_draw_line_mode8(const device_config *device, bitmap_t *bitmap, int y, UINT16 da)
+static void zx8301_draw_line_mode8(running_device *device, bitmap_t *bitmap, int y, UINT16 da)
 {
 	zx8301_t *zx8301 = get_safe_token(device);
 
@@ -241,7 +241,7 @@ static void zx8301_draw_line_mode8(const device_config *device, bitmap_t *bitmap
     zx8301_draw_screen - draw screen
 -------------------------------------------------*/
 
-static void zx8301_draw_screen(const device_config *device, bitmap_t *bitmap)
+static void zx8301_draw_screen(running_device *device, bitmap_t *bitmap)
 {
 	zx8301_t *zx8301 = get_safe_token(device);
 
@@ -271,7 +271,7 @@ static void zx8301_draw_screen(const device_config *device, bitmap_t *bitmap)
     zx8301_draw_screen - screen update
 -------------------------------------------------*/
 
-void zx8301_update(const device_config *device, bitmap_t *bitmap, const rectangle *cliprect)
+void zx8301_update(running_device *device, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	zx8301_t *zx8301 = get_safe_token(device);
 
@@ -303,7 +303,7 @@ static DEVICE_START( zx8301 )
 	zx8301->vsync = 1;
 
 	/* get the cpu */
-	zx8301->cpu = cputag_get_cpu(device->machine, intf->cpu_tag);
+	zx8301->cpu = devtag_get_device(device->machine, intf->cpu_tag);
 
 	/* get the screen device */
 	zx8301->screen = devtag_get_device(device->machine, intf->screen_tag);
@@ -317,12 +317,12 @@ static DEVICE_START( zx8301 )
 	timer_adjust_periodic(zx8301->flash_timer, ATTOTIME_IN_HZ(2), 0, ATTOTIME_IN_HZ(2));
 
 	/* register for state saving */
-	state_save_register_item(device->machine, "zx8301", device->tag, 0, zx8301->dispoff);
-	state_save_register_item(device->machine, "zx8301", device->tag, 0, zx8301->mode8);
-	state_save_register_item(device->machine, "zx8301", device->tag, 0, zx8301->base);
-	state_save_register_item(device->machine, "zx8301", device->tag, 0, zx8301->flash);
-	state_save_register_item(device->machine, "zx8301", device->tag, 0, zx8301->vsync);
-	state_save_register_item(device->machine, "zx8301", device->tag, 0, zx8301->vda);
+	state_save_register_item(device->machine, "zx8301", device->tag(), 0, zx8301->dispoff);
+	state_save_register_item(device->machine, "zx8301", device->tag(), 0, zx8301->mode8);
+	state_save_register_item(device->machine, "zx8301", device->tag(), 0, zx8301->base);
+	state_save_register_item(device->machine, "zx8301", device->tag(), 0, zx8301->flash);
+	state_save_register_item(device->machine, "zx8301", device->tag(), 0, zx8301->vsync);
+	state_save_register_item(device->machine, "zx8301", device->tag(), 0, zx8301->vda);
 }
 
 /*-------------------------------------------------

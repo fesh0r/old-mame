@@ -111,7 +111,7 @@ Notes:
 
 ******************************************************************************/
 
-#include "driver.h"
+#include "emu.h"
 #include "utils.h"
 #include "cpu/z80/z80.h"
 #include "video/m6847.h"
@@ -153,14 +153,18 @@ Notes:
     TYPE DEFINITIONS
 ***************************************************************************/
 
-typedef struct _vtech1_state vtech1_state;
-struct _vtech1_state
+class vtech1_state
 {
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, vtech1_state(machine)); }
+
+	vtech1_state(running_machine &machine) { }
+
 	/* devices */
-	const device_config *mc6847;
-	const device_config *speaker;
-	const device_config *cassette;
-	const device_config *printer;
+	running_device *mc6847;
+	running_device *speaker;
+	running_device *cassette;
+	running_device *printer;
 
 	UINT8 *ram;
 	UINT32 ram_size;
@@ -187,7 +191,7 @@ struct _vtech1_state
 
 static SNAPSHOT_LOAD( vtech1 )
 {
-	vtech1_state *vtech1 = image->machine->driver_data;
+	vtech1_state *vtech1 = (vtech1_state *)image->machine->driver_data;
 	const address_space *space = cputag_get_address_space(image->machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	UINT8 i, header[24];
 	UINT16 start, end, size;
@@ -235,7 +239,7 @@ static SNAPSHOT_LOAD( vtech1 )
 		memory_write_byte(space, 0x788e, start % 256); /* usr subroutine address */
 		memory_write_byte(space, 0x788f, start / 256);
 		image_message(image, " %s (M)\nsize=%04X : start=%04X : end=%04X",pgmname,size,start,end);
-		cpu_set_reg(cputag_get_cpu(image->machine, "maincpu"), REG_GENPC, start);				/* start program */
+		cpu_set_reg(devtag_get_device(image->machine, "maincpu"), REG_GENPC, start);				/* start program */
 		break;
 
 	default:
@@ -249,7 +253,7 @@ static SNAPSHOT_LOAD( vtech1 )
 
 static Z80BIN_EXECUTE( vtech1 )
 {
-	const device_config *cpu = cputag_get_cpu(machine, "maincpu");
+	running_device *cpu = devtag_get_device(machine, "maincpu");
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	/* A Microsoft Basic program needs some manipulation before it can be run.
@@ -294,11 +298,11 @@ static Z80BIN_EXECUTE( vtech1 )
 /***************************************************************************
     FLOPPY DRIVE
 ***************************************************************************/
-static void vtech1_load_proc(const device_config *image)
+static void vtech1_load_proc(running_device *image)
 {
-	vtech1_state *vtech1 = image->machine->driver_data;
+	vtech1_state *vtech1 = (vtech1_state *)image->machine->driver_data;
 	int id = floppy_get_drive(image);
-	
+
 	if (image_is_writable(image))
 		vtech1->fdc_wrprot[id] = 0x00;
 	else
@@ -307,7 +311,7 @@ static void vtech1_load_proc(const device_config *image)
 
 static void vtech1_get_track(running_machine *machine)
 {
-	vtech1_state *vtech1 = machine->driver_data;
+	vtech1_state *vtech1 = (vtech1_state *)machine->driver_data;
 
 	/* drive selected or and image file ok? */
 	if (vtech1->drive >= 0 && image_exists(floppy_get_device(machine,vtech1->drive)))
@@ -326,7 +330,7 @@ static void vtech1_get_track(running_machine *machine)
 
 static void vtech1_put_track(running_machine *machine)
 {
-	vtech1_state *vtech1 = machine->driver_data;
+	vtech1_state *vtech1 = (vtech1_state *)machine->driver_data;
 
     /* drive selected and image file ok? */
 	if (vtech1->drive >= 0 && floppy_get_device(machine,vtech1->drive) != NULL)
@@ -342,7 +346,7 @@ static void vtech1_put_track(running_machine *machine)
 
 static READ8_HANDLER( vtech1_fdc_r )
 {
-	vtech1_state *vtech1 = space->machine->driver_data;
+	vtech1_state *vtech1 = (vtech1_state *)space->machine->driver_data;
     int data = 0xff;
 
     switch (offset)
@@ -390,7 +394,7 @@ static READ8_HANDLER( vtech1_fdc_r )
 
 static WRITE8_HANDLER( vtech1_fdc_w )
 {
-	vtech1_state *vtech1 = space->machine->driver_data;
+	vtech1_state *vtech1 = (vtech1_state *)space->machine->driver_data;
 	int drive;
 
     switch (offset)
@@ -525,11 +529,7 @@ static const floppy_config vtech1_floppy_config =
 
 static READ8_DEVICE_HANDLER( vtech1_printer_r )
 {
-	UINT8 result = 0xff;
-
-	result &= ~(!centronics_busy_r(device));
-
-	return result;
+	return 0xfe | centronics_busy_r(device);
 }
 
 /* TODO: figure out how this really works */
@@ -580,7 +580,7 @@ static READ8_HANDLER( vtech1_joystick_r )
 
 static READ8_HANDLER( vtech1_keyboard_r )
 {
-	vtech1_state *vtech1 = space->machine->driver_data;
+	vtech1_state *vtech1 = (vtech1_state *)space->machine->driver_data;
 	UINT8 result = 0x3f;
 
 	/* bit 0 to 5, keyboard input */
@@ -609,7 +609,7 @@ static READ8_HANDLER( vtech1_keyboard_r )
 
 static WRITE8_HANDLER( vtech1_latch_w )
 {
-	vtech1_state *vtech1 = space->machine->driver_data;
+	vtech1_state *vtech1 = (vtech1_state *)space->machine->driver_data;
 
 	if (LOG_VTECH1_LATCH)
 		logerror("vtech1_latch_w $%02X\n", data);
@@ -639,7 +639,7 @@ static WRITE8_HANDLER( vtech1_latch_w )
 
 static WRITE8_HANDLER( vtech1_memory_bank_w )
 {
-	vtech1_state *vtech1 = space->machine->driver_data;
+	vtech1_state *vtech1 = (vtech1_state *)space->machine->driver_data;
 
 	logerror("vtech1_memory_bank_w $%02X\n", data);
 
@@ -669,7 +669,7 @@ static READ8_DEVICE_HANDLER( vtech1_mc6847_videoram_r )
 
 static VIDEO_UPDATE( vtech1 )
 {
-	vtech1_state *vtech1 = screen->machine->driver_data;
+	vtech1_state *vtech1 = (vtech1_state *)screen->machine->driver_data;
 	return mc6847_update(vtech1->mc6847, bitmap, cliprect);
 }
 
@@ -680,7 +680,7 @@ static VIDEO_UPDATE( vtech1 )
 
 static DRIVER_INIT( vtech1 )
 {
-	vtech1_state *vtech1 = machine->driver_data;
+	vtech1_state *vtech1 = (vtech1_state *)machine->driver_data;
 	const address_space *prg = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 	int id;
 
@@ -731,16 +731,16 @@ static DRIVER_INIT( vtech1 )
 	vtech1->fdc_write = 0;
 	vtech1->fdc_offs = 0;
 	vtech1->fdc_latch = 0;
-	
-	for(id=0;id<2;id++) 
+
+	for(id=0;id<2;id++)
 	{
 		floppy_install_load_proc(floppy_get_device(machine, id), vtech1_load_proc);
-	}	
+	}
 }
 
 static DRIVER_INIT( vtech1h )
 {
-	const address_space *prg = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);	
+	const address_space *prg = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
 
 	DRIVER_INIT_CALL(vtech1);
 
@@ -750,7 +750,7 @@ static DRIVER_INIT( vtech1h )
 
 	memory_install_readwrite_bank(prg, 0x7000, 0x77ff, 0, 0, "bank4");
 	memory_configure_bank(machine, "bank4", 0, 4, machine->generic.videoram.u8, 0x800);
-	memory_set_bank(machine, "bank4", 0);	
+	memory_set_bank(machine, "bank4", 0);
 }
 
 /***************************************************************************
@@ -963,7 +963,7 @@ static const cassette_config laser_cassette_config =
 {
 	vtech1_cassette_formats,
 	NULL,
-	CASSETTE_PLAY
+	(cassette_state)(CASSETTE_PLAY)
 };
 
 static const mc6847_interface vtech1_mc6847_intf =
@@ -1044,7 +1044,7 @@ static MACHINE_DRIVER_START( laser110 )
 	MDRV_RAM_ADD("messram")
 	MDRV_RAM_DEFAULT_SIZE("66K")
 	MDRV_RAM_EXTRA_OPTIONS("2K,18K,4098K")
-	
+
 	MDRV_FLOPPY_2_DRIVES_ADD(vtech1_floppy_config)
 MACHINE_DRIVER_END
 
@@ -1155,4 +1155,4 @@ COMP( 1984, vz200,     laser210, 0,      laser210,  vtech1, vtech1,  "Dick Smith
 COMP( 1984, las210de,  laser210, 0,      laser210,  vtech1, vtech1,  "Sanyo",                  "Laser 210 (Germany)",            0 )
 COMP( 1984, laser310,  0,        0,      laser310,  vtech1, vtech1,  "Video Technology",       "Laser 310",                      0 )
 COMP( 1984, vz300,     laser310, 0,      laser310,  vtech1, vtech1,  "Dick Smith Electronics", "VZ-300 (Oceania)",               0 )
-COMP( 1984, laser310h, laser310, 0,      laser310h, vtech1, vtech1h, "Video Technology",       "Laser 310 (SHRG)",               GAME_COMPUTER_MODIFIED )
+COMP( 1984, laser310h, laser310, 0,      laser310h, vtech1, vtech1h, "Video Technology",       "Laser 310 (SHRG)",               GAME_UNOFFICIAL)
