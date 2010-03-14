@@ -6,7 +6,7 @@
 *
 \**************************/
 
-#include "cpuintrf.h"
+#include "emu.h"
 #include <stdarg.h>
 
 static char *output;
@@ -164,7 +164,7 @@ CPU_DISASSEMBLE( unsp )
 
 				// ALU, Direct 16
 				case 3:
-					print("%s [%04x], %s", alu[OP0], imm16, reg[OPB]);
+					print("%s [%04x], %s, %s", alu[OP0], imm16, reg[OPA], reg[OPB]);
 					return UNSP_DASM_OK;
 
 				// ALU, Shifted
@@ -202,6 +202,14 @@ CPU_DISASSEMBLE( unsp )
 			if(OPA == 0)
 			{
 				print("call %06x", ((OPIMM << 16) | imm16) << 1);
+			}
+			return UNSP_DASM_OK;
+
+		// Far Jump
+		case 0x2f: case 0x3f: case 0x6f: case 0x7f:
+			if (OPA == 7 && OPA == 2)
+			{
+				print("goto %06x", ((OPIMM << 16) | imm16) << 1);
 			}
 			return UNSP_DASM_OK;
 
