@@ -27,7 +27,7 @@
 ***************************************************************************/
 
 #include "emu.h"
-#include "video/generic.h"
+#include "audio/snes_snd.h"
 #include "cpu/spc700/spc700.h"
 #include "cpu/superfx/superfx.h"
 #include "cpu/g65816/g65816.h"
@@ -43,14 +43,14 @@
  *
  *************************************/
 
-static READ8_HANDLER( spc_ram_100_r )
+static READ8_DEVICE_HANDLER( spc_ram_100_r )
 {
-	return spc_ram_r(space, offset + 0x100);
+	return spc_ram_r(device, offset + 0x100);
 }
 
-static WRITE8_HANDLER( spc_ram_100_w )
+static WRITE8_DEVICE_HANDLER( spc_ram_100_w )
 {
-	spc_ram_w(space, offset + 0x100, data);
+	spc_ram_w(device, offset + 0x100, data);
 }
 
 /*************************************
@@ -80,11 +80,11 @@ static ADDRESS_MAP_START( superfx_map, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( spc_map, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x00ef) AM_READWRITE(spc_ram_r, spc_ram_w) AM_BASE(&spc_ram)   	/* lower 32k ram */
-	AM_RANGE(0x00f0, 0x00ff) AM_READWRITE(spc_io_r, spc_io_w)   	/* spc io */
-	AM_RANGE(0x0100, 0xffff) AM_WRITE(spc_ram_100_w)
-	AM_RANGE(0x0100, 0xffbf) AM_READ(spc_ram_100_r)
-	AM_RANGE(0xffc0, 0xffff) AM_READ(spc_ipl_r)
+	AM_RANGE(0x0000, 0x00ef) AM_DEVREADWRITE("spc700", spc_ram_r, spc_ram_w)	/* lower 32k ram */
+	AM_RANGE(0x00f0, 0x00ff) AM_DEVREADWRITE("spc700", spc_io_r, spc_io_w)  	/* spc io */
+	AM_RANGE(0x0100, 0xffff) AM_DEVWRITE("spc700", spc_ram_100_w)
+	AM_RANGE(0x0100, 0xffbf) AM_DEVREAD("spc700", spc_ram_100_r)
+	AM_RANGE(0xffc0, 0xffff) AM_DEVREAD("spc700", spc_ipl_r)
 ADDRESS_MAP_END
 
 
@@ -279,63 +279,75 @@ static INPUT_PORTS_START( snes )
 	PORT_CATEGORY_ITEM(  0x01, "Gamepad",		11 )
 	PORT_CATEGORY_ITEM(  0x02, "Mouse",			12 )
 	PORT_CATEGORY_ITEM(  0x03, "Superscope",		13 )
-//	PORT_CATEGORY_ITEM(  0x04, "Justfier",		14 )
-//	PORT_CATEGORY_ITEM(  0x05, "Multitap",		15 )
+//  PORT_CATEGORY_ITEM(  0x04, "Justfier",      14 )
+//  PORT_CATEGORY_ITEM(  0x05, "Multitap",      15 )
 	PORT_CATEGORY_CLASS( 0xf0, 0x10, "P2 Controller")
 	PORT_CATEGORY_ITEM(  0x00, "Unconnected",		20 )
 	PORT_CATEGORY_ITEM(  0x10, "Gamepad",		21 )
 	PORT_CATEGORY_ITEM(  0x20, "Mouse",			22 )
 	PORT_CATEGORY_ITEM(  0x30, "Superscope",		23 )
-//	PORT_CATEGORY_ITEM(  0x40, "Justfier",		24 )
-//	PORT_CATEGORY_ITEM(  0x50, "Multitap",		25 )
+//  PORT_CATEGORY_ITEM(  0x40, "Justfier",      24 )
+//  PORT_CATEGORY_ITEM(  0x50, "Multitap",      25 )
 
 	PORT_INCLUDE(snes_joypads)
 	PORT_INCLUDE(snes_mouse)
 	PORT_INCLUDE(snes_superscope)
 
+	PORT_START("OPTIONS")
+	PORT_CONFNAME( 0x01, 0x00, "Hi-Res pixels blurring (TV effect)")
+	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
+	PORT_CONFSETTING(    0x01, DEF_STR( On ) )
 
 #ifdef SNES_LAYER_DEBUG
-	PORT_START("INTERNAL")
-	PORT_CONFNAME( 0x1, 0x1, "Enforce 32 sprites/line" )
-	PORT_CONFSETTING(   0x0, DEF_STR( No ) )
-	PORT_CONFSETTING(   0x1, DEF_STR( Yes ) )
-
 	PORT_START("DEBUG1")
-	PORT_CONFNAME( 0x3, 0x0, "Browse tiles" )
-	PORT_CONFSETTING(   0x0, DEF_STR( Off ) )
-	PORT_CONFSETTING(   0x1, "2bpl" )
-	PORT_CONFSETTING(   0x2, "4bpl" )
-	PORT_CONFSETTING(   0x3, "8bpl" )
-	PORT_CONFNAME( 0xc, 0x0, "Browse maps" )
-	PORT_CONFSETTING(   0x0, DEF_STR( Off ) )
-	PORT_CONFSETTING(   0x4, "2bpl" )
-	PORT_CONFSETTING(   0x8, "4bpl" )
-	PORT_CONFSETTING(   0xc, "8bpl" )
+	PORT_CONFNAME( 0x03, 0x00, "Select BG1 priority" )
+	PORT_CONFSETTING(    0x00, "All" )
+	PORT_CONFSETTING(    0x01, "BG1B (lower) only" )
+	PORT_CONFSETTING(    0x02, "BG1A (higher) only" )
+	PORT_CONFNAME( 0x0c, 0x00, "Select BG2 priority" )
+	PORT_CONFSETTING(    0x00, "All" )
+	PORT_CONFSETTING(    0x04, "BG2B (lower) only" )
+	PORT_CONFSETTING(    0x08, "BG2A (higher) only" )
+	PORT_CONFNAME( 0x30, 0x00, "Select BG3 priority" )
+	PORT_CONFSETTING(    0x00, "All" )
+	PORT_CONFSETTING(    0x10, "BG3B (lower) only" )
+	PORT_CONFSETTING(    0x20, "BG3A (higher) only" )
+	PORT_CONFNAME( 0xc0, 0x00, "Select BG4 priority" )
+	PORT_CONFSETTING(    0x00, "All" )
+	PORT_CONFSETTING(    0x40, "BG4B (lower) only" )
+	PORT_CONFSETTING(    0x80, "BG4A (higher) only" )
 
 	PORT_START("DEBUG2")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle BG 1") PORT_CODE(KEYCODE_1_PAD)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle BG 2") PORT_CODE(KEYCODE_2_PAD)
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle BG 3") PORT_CODE(KEYCODE_3_PAD)
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle BG 4") PORT_CODE(KEYCODE_4_PAD)
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Objects") PORT_CODE(KEYCODE_5_PAD)
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Main/Sub") PORT_CODE(KEYCODE_6_PAD)
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Back col") PORT_CODE(KEYCODE_7_PAD)
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Windows") PORT_CODE(KEYCODE_8_PAD)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle BG 1") PORT_CODE(KEYCODE_1_PAD) PORT_TOGGLE
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle BG 2") PORT_CODE(KEYCODE_2_PAD) PORT_TOGGLE
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle BG 3") PORT_CODE(KEYCODE_3_PAD) PORT_TOGGLE
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle BG 4") PORT_CODE(KEYCODE_4_PAD) PORT_TOGGLE
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Objects") PORT_CODE(KEYCODE_5_PAD) PORT_TOGGLE
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Main/Sub") PORT_CODE(KEYCODE_6_PAD) PORT_TOGGLE
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Color Math") PORT_CODE(KEYCODE_7_PAD) PORT_TOGGLE
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Windows") PORT_CODE(KEYCODE_8_PAD) PORT_TOGGLE
 
 	PORT_START("DEBUG3")
-	PORT_BIT( 0x1, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Pal prev") PORT_CODE(KEYCODE_B)
-	PORT_BIT( 0x2, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Pal next") PORT_CODE(KEYCODE_N)
-	PORT_BIT( 0x4, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Transparency") PORT_CODE(KEYCODE_9_PAD)
+	PORT_BIT( 0x4, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mosaic") PORT_CODE(KEYCODE_9_PAD) PORT_TOGGLE
+	PORT_CONFNAME( 0x70, 0x00, "Select OAM priority" )
+	PORT_CONFSETTING(    0x00, "All" )
+	PORT_CONFSETTING(    0x10, "OAM0 only" )
+	PORT_CONFSETTING(    0x20, "OAM1 only" )
+	PORT_CONFSETTING(    0x30, "OAM2 only" )
+	PORT_CONFSETTING(    0x40, "OAM3 only" )
+	PORT_CONFNAME( 0x80, 0x00, "Draw sprite in reverse order" )
+	PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
+	PORT_CONFSETTING(    0x80, DEF_STR( On ) )
 
 	PORT_START("DEBUG4")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mode 0 draw")
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mode 1 draw")
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mode 2 draw")
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mode 3 draw")
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mode 4 draw")
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mode 5 draw")
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mode 6 draw")
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mode 7 draw")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mode 0 draw") PORT_TOGGLE
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mode 1 draw") PORT_TOGGLE
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mode 2 draw") PORT_TOGGLE
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mode 3 draw") PORT_TOGGLE
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mode 4 draw") PORT_TOGGLE
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mode 5 draw") PORT_TOGGLE
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mode 6 draw") PORT_TOGGLE
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("Toggle Mode 7 draw") PORT_TOGGLE
 #endif
 INPUT_PORTS_END
 
@@ -502,9 +514,9 @@ static void snes_input_read_superscope( running_machine *machine, int port )
 		state->scope[port].pause_lock = 0;
 
 	/* If we have pressed fire or cursor and we are on-screen and SuperScope is in Port2, then latch video signal.
-	Notice that we only latch Port2 because its IOBit pin is connected to bit7 of the IO Port, while Port1 has 
-	IOBit pin connected to bit6 of the IO Port, and the latter is not detected by the H/V Counters. In other
-	words, you can connect SuperScope to Port1, but there is no way SNES could detect its on-screen position */
+    Notice that we only latch Port2 because its IOBit pin is connected to bit7 of the IO Port, while Port1 has
+    IOBit pin connected to bit6 of the IO Port, and the latter is not detected by the H/V Counters. In other
+    words, you can connect SuperScope to Port1, but there is no way SNES could detect its on-screen position */
 	if ((state->scope[port].buttons & 0xc0) && !(state->scope[port].buttons & 0x02) && port == 1)
 		snes_gun_latch(machine, state->scope[port].x, state->scope[port].y);
 
@@ -674,13 +686,13 @@ static MACHINE_RESET( snes_mess )
 	state->oldjoy2_read = snes_oldjoy2_read;
 }
 
-static MACHINE_DRIVER_START( snes )
+static MACHINE_DRIVER_START( snes_base )
 
 	/* driver data */
 	MDRV_DRIVER_DATA(snes_state)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD("maincpu", G65816, MCLK_NTSC/6)	/* 2.68 MHz, also 3.58 MHz */
+	MDRV_CPU_ADD("maincpu", 5A22, MCLK_NTSC)	/* 2.68 MHz, also 3.58 MHz */
 	MDRV_CPU_PROGRAM_MAP(snes_map)
 
 	MDRV_CPU_ADD("soundcpu", SPC700, 1024000)	/* 1.024 MHz */
@@ -693,7 +705,7 @@ static MACHINE_DRIVER_START( snes )
 	MDRV_MACHINE_RESET(snes_mess)
 
 	/* video hardware */
-	MDRV_VIDEO_START(generic_bitmapped)
+	MDRV_VIDEO_START(snes)
 	MDRV_VIDEO_UPDATE(snes)
 
 	MDRV_SCREEN_ADD("screen", RASTER)
@@ -703,9 +715,13 @@ static MACHINE_DRIVER_START( snes )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
-	MDRV_SOUND_ADD("custom", SNES, 0)
+	MDRV_SOUND_ADD("spc700", SNES, 0)
 	MDRV_SOUND_ROUTE(0, "lspeaker", 1.00)
 	MDRV_SOUND_ROUTE(1, "rspeaker", 1.00)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( snes )
+	MDRV_IMPORT_FROM(snes_base)
 
 	MDRV_IMPORT_FROM(snes_cartslot)
 MACHINE_DRIVER_END
@@ -725,7 +741,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( snespal )
 	MDRV_IMPORT_FROM(snes)
-	MDRV_CPU_REPLACE("maincpu", G65816, MCLK_PAL/6)
+	MDRV_CPU_REPLACE("maincpu", 5A22, MCLK_PAL)
 
 	MDRV_SCREEN_MODIFY("screen")
 	MDRV_SCREEN_RAW_PARAMS(DOTCLK_PAL, SNES_HTOTAL, 0, SNES_SCR_WIDTH, SNES_VTOTAL_PAL, 0, SNES_SCR_HEIGHT_PAL)
@@ -738,6 +754,21 @@ static MACHINE_DRIVER_START( snespsfx )
 	MDRV_CPU_PROGRAM_MAP(superfx_map)
 	MDRV_CPU_CONFIG(snes_superfx_config)
 MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( snesst )
+	MDRV_IMPORT_FROM(snes_base)
+
+	MDRV_MACHINE_START(snesst)
+
+	MDRV_IMPORT_FROM(sufami_cartslot)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( snesbsx )
+	MDRV_IMPORT_FROM(snes_base)
+
+	MDRV_IMPORT_FROM(bsx_cartslot)
+MACHINE_DRIVER_END
+
 
 /*************************************
  *
@@ -813,15 +844,56 @@ ROM_START( sfcbox )
 	ROM_REGION( MAX_SNES_CART_SIZE, "cart", ROMREGION_ERASE00 )
 ROM_END
 
+ROM_START( snesst )
+	ROM_REGION( 0x1000000, "maincpu", ROMREGION_ERASE00 )
+
+	ROM_REGION( 0x100, "user5", 0 )		/* IPL ROM */
+	ROM_LOAD( "spc700.rom", 0, 0x40, CRC(44bb3a40) SHA1(97e352553e94242ae823547cd853eecda55c20f0) )	/* boot rom */
+
+	ROM_REGION( 0x1000, "addons", ROMREGION_ERASE00 )		/* add-on chip ROMs (DSP, SFX, etc) */
+
+	ROM_REGION( 0x40000, "sufami", 0 )		/* add-on chip ROMs (DSP, SFX, etc) */
+	ROM_LOAD( "shvc-qh-0.bin", 0,	0x40000, CRC(9b4ca911) SHA1(ef86ea192eed03d5c413fdbbfd46043be1d7a127) )
+
+	ROM_REGION( MAX_SNES_CART_SIZE, "slot_a", ROMREGION_ERASE00 )
+	ROM_REGION( MAX_SNES_CART_SIZE, "slot_b", ROMREGION_ERASE00 )
+ROM_END
+
+ROM_START( snesbsx )
+	ROM_REGION( 0x1000000, "maincpu", ROMREGION_ERASE00 )
+
+	ROM_REGION( 0x100, "user5", 0 )		/* IPL ROM */
+	ROM_LOAD( "spc700.rom", 0, 0x40, CRC(44bb3a40) SHA1(97e352553e94242ae823547cd853eecda55c20f0) )	/* boot rom */
+
+	ROM_REGION( 0x1000, "addons", 0 )		/* add-on chip ROMs (DSP, SFX, etc) */
+	ROM_LOAD( "dsp1data.bin", 0x000000, 0x000800, CRC(4b02d66d) SHA1(1534f4403d2a0f68ba6e35186fe7595d33de34b1) )
+	ROM_LOAD( "dsp3data.bin", 0x000800, 0x000800, CRC(4a1c5453) SHA1(2f69c652109938cde21df5eb89890bf090256dbb) )
+
+	ROM_REGION( MAX_SNES_CART_SIZE, "cart", ROMREGION_ERASE00 )
+	ROM_REGION( MAX_SNES_CART_SIZE, "flash", ROMREGION_ERASE00 )
+ROM_END
+
+
+
 /*************************************
  *
  *  Game driver(s)
  *
  *************************************/
 
-/*    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT  INIT  COMPANY     FULLNAME                                      FLAGS */
-CONS( 1989, snes,     0,      0,      snes,     snes,  0,    "Nintendo", "Super Nintendo Entertainment System / Super Famicom (NTSC)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-CONS( 1989, snessfx,  snes,   0,      snessfx,  snes,  0,    "Nintendo", "Super Nintendo Entertainment System / Super Famicom (NTSC, w/SuperFX)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-CONS( 1991, snespal,  snes,   0,      snespal,  snes,  0,    "Nintendo", "Super Nintendo Entertainment System (PAL)",  GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-CONS( 1991, snespsfx, snes,   0,      snespsfx, snes,  0,    "Nintendo", "Super Nintendo Entertainment System (PAL, w/SuperFX)",  GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
-CONS( 199?, sfcbox,   snes,   0,      snes,     snes,  0,    "Nintendo", "Super Famicom Box (NTSC)", GAME_NOT_WORKING )
+/*    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT  INIT          COMPANY     FULLNAME                                      FLAGS */
+CONS( 1989, snes,     0,      0,      snes,     snes,  snes_mess,    "Nintendo", "Super Nintendo Entertainment System / Super Famicom (NTSC)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+CONS( 1991, snespal,  snes,   0,      snespal,  snes,  snes_mess,    "Nintendo", "Super Nintendo Entertainment System (PAL)",  GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+CONS( 199?, sfcbox,   snes,   0,      snes,     snes,  snes_mess,    "Nintendo", "Super Famicom Box (NTSC)", GAME_NOT_WORKING )
+
+// FIXME: the "hacked" drivers below, currently needed due to limitations in the core device design, should eventually be removed
+
+// These would require CPU to be added/removed depending on the cart which is loaded
+CONS( 1989, snessfx,  snes,   0,      snessfx,  snes,  snes_mess,    "Nintendo", "Super Nintendo Entertainment System / Super Famicom (NTSC, w/SuperFX)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+CONS( 1991, snespsfx, snes,   0,      snespsfx, snes,  snes_mess,    "Nintendo", "Super Nintendo Entertainment System (PAL, w/SuperFX)",  GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+//CONS( 1989, snessa1,  snes,   0,      snessa1,  snes,  snes_mess,    "Nintendo", "Super Nintendo Entertainment System / Super Famicom (NTSC, w/SA-1)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+//CONS( 1991, snespsa1, snes,   0,      snespsa1, snes,  snes_mess,    "Nintendo", "Super Nintendo Entertainment System (PAL, w/SA-1)",  GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+
+// These would require cartslot to be added/removed depending on the cart which is loaded
+CONS( 1989, snesst,   snes,   0,      snesst,  snes,  snesst,       "Nintendo", "Super Nintendo Entertainment System / Super Famicom (NTSC, w/Sufami Turbo)", GAME_NOT_WORKING )
+CONS( 1989, snesbsx,  snes,   0,      snesbsx, snes,  snes_mess,    "Nintendo", "Super Nintendo Entertainment System / Super Famicom (NTSC, w/BS-X Satellaview slotted cart)",  GAME_NOT_WORKING )

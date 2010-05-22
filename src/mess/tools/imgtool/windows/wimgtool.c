@@ -82,7 +82,7 @@ static DWORD win_get_file_attributes_utf8(const char *filename)
 	if (t_filename != NULL)
 	{
 		result = GetFileAttributes(t_filename);
-		free(t_filename);
+		osd_free(t_filename);
 	}
 	return result;
 }
@@ -336,7 +336,7 @@ static int append_associated_icon(HWND window, const char *extension)
 		{
 			t_extension = tstring_from_utf8(extension);
 			_tcscat(file_path, t_extension);
-			free(t_extension);
+			osd_free(t_extension);
 		}
 
 		file = CreateFile(file_path, GENERIC_WRITE, 0, NULL, CREATE_NEW, 0, NULL);
@@ -457,7 +457,7 @@ static imgtoolerr_t append_dirent(HWND window, int index, const imgtool_dirent *
 
 	new_index = ListView_InsertItem(info->listview, &lvi);
 
-	free(t_entry_filename);
+	osd_free(t_entry_filename);
 
 	if (entry->directory)
 	{
@@ -501,9 +501,9 @@ static imgtoolerr_t append_dirent(HWND window, int index, const imgtool_dirent *
 	// set attributes and corruption notice
 	if (entry->attr)
 	{
-		TCHAR *tempstr = tstring_from_utf8(entry->attr);
-		ListView_SetItemText(info->listview, new_index, column_index++, tempstr);
-		free(tempstr);
+		TCHAR *t_tempstr = tstring_from_utf8(entry->attr);
+		ListView_SetItemText(info->listview, new_index, column_index++, t_tempstr);
+		osd_free(t_tempstr);
 	}
 	if (entry->corrupt)
 	{
@@ -597,7 +597,7 @@ static imgtoolerr_t refresh_image(HWND window)
 
 	tempstr = tstring_from_utf8(size_buf);
 	SendMessage(info->statusbar, SB_SETTEXT, 2, (LPARAM) tempstr);
-	free(tempstr);
+	osd_free(tempstr);
 
 done:
 	if (imageenum)
@@ -617,7 +617,7 @@ static imgtoolerr_t full_refresh_image(HWND window)
 	char imageinfo_buf[256];
 	const char *imageinfo = NULL;
 	TCHAR file_title_buf[MAX_PATH];
-	char *file_title;
+	char *utf8_file_title;
 	const char *statusbar_text[2];
 	TCHAR *t_filename;
 	imgtool_partition_features features;
@@ -635,8 +635,8 @@ static imgtoolerr_t full_refresh_image(HWND window)
 		// get file title from Windows
 		t_filename = tstring_from_utf8(info->filename);
 		GetFileTitle(t_filename, file_title_buf, ARRAY_LENGTH(file_title_buf));
-		free(t_filename);
-		file_title = utf8_from_tstring(file_title_buf);
+		osd_free(t_filename);
+		utf8_file_title = utf8_from_tstring(file_title_buf);
 
 		// get info from image
 		if (info->image && (imgtool_image_info(info->image, imageinfo_buf, sizeof(imageinfo_buf)
@@ -653,12 +653,12 @@ static imgtoolerr_t full_refresh_image(HWND window)
 			if (imageinfo)
 			{
 				snprintf(buf, ARRAY_LENGTH(buf),
-					"%s (\"%s\") - %s", file_title, imageinfo, info->current_directory);
+					"%s (\"%s\") - %s", utf8_file_title, imageinfo, info->current_directory);
 			}
 			else
 			{
 				snprintf(buf, ARRAY_LENGTH(buf),
-					"%s - %s", file_title, info->current_directory);
+					"%s - %s", utf8_file_title, info->current_directory);
 			}
 		}
 		else
@@ -666,13 +666,13 @@ static imgtoolerr_t full_refresh_image(HWND window)
 			// no current directory
 			snprintf(buf, ARRAY_LENGTH(buf),
 				imageinfo ? "%s (\"%s\")" : "%s",
-				file_title, imageinfo);
+				utf8_file_title, imageinfo);
 		}
 
 		statusbar_text[0] = imgtool_basename((char *) info->filename);
 		statusbar_text[1] = imgtool_image_module(info->image)->description;
 
-		free(file_title);
+		osd_free(utf8_file_title);
 	}
 	else
 	{
@@ -686,10 +686,10 @@ static imgtoolerr_t full_refresh_image(HWND window)
 
 	for (i = 0; i < ARRAY_LENGTH(statusbar_text); i++)
 	{
-		TCHAR *tempstr = statusbar_text[i] ? tstring_from_utf8(statusbar_text[i]) : NULL;
-		SendMessage(info->statusbar, SB_SETTEXT, i, (LPARAM) tempstr);
-		if (tempstr)
-			free(tempstr);
+		TCHAR *t_tempstr = statusbar_text[i] ? tstring_from_utf8(statusbar_text[i]) : NULL;
+		SendMessage(info->statusbar, SB_SETTEXT, i, (LPARAM) t_tempstr);
+		if (t_tempstr)
+			osd_free(t_tempstr);
 	}
 
 	// set the icon
@@ -944,7 +944,7 @@ file_error win_mkdir(const char *dir)
 
 done:
 	if (tempstr)
-		free(tempstr);
+		osd_free(tempstr);
 	return filerr;
 }
 
@@ -1023,7 +1023,7 @@ static imgtoolerr_t put_recursive_directory(imgtool_partition *partition, LPCTST
 				_sntprintf(local_subpath, ARRAY_LENGTH(local_subpath), TEXT("%s\\%s"), local_path, wfd.cFileName);
 				filename = utf8_from_tstring(wfd.cFileName);
 				subpath = imgtool_partition_path_concatenate(partition, path, filename);
-				free(filename);
+				osd_free(filename);
 
 				if (wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 				{
@@ -1033,7 +1033,7 @@ static imgtoolerr_t put_recursive_directory(imgtool_partition *partition, LPCTST
 				{
 					char *tempstr = utf8_from_tstring(local_subpath);
 					err = imgtool_partition_put_file(partition, subpath, NULL, tempstr, NULL, NULL);
-					free(tempstr);
+					osd_free(tempstr);
 				}
 				if (err)
 					goto done;
@@ -1081,6 +1081,8 @@ imgtoolerr_t wimgtool_open_image(HWND window, const imgtool_module *module,
 			read_or_write = OSD_FOPEN_READ;
 	}
 
+	if (info->filename)
+		osd_free(info->filename);
 	info->filename = mame_strdup(filename);
 	if (!info->filename)
 	{
@@ -1114,7 +1116,7 @@ imgtoolerr_t wimgtool_open_image(HWND window, const imgtool_module *module,
 	info->open_mode = read_or_write;
 	if (info->current_directory)
 	{
-		free(info->current_directory);
+		osd_free(info->current_directory);
 		info->current_directory = NULL;
 	}
 
@@ -1188,7 +1190,7 @@ static void menu_open(HWND window)
 	object_pool *pool;
 	win_open_file_name ofn;
 	const imgtool_module *module;
-	wimgtool_info *info;
+	//wimgtool_info *info;
 	int read_or_write;
 
 	pool = pool_alloc_lib(NULL);
@@ -1198,7 +1200,7 @@ static void menu_open(HWND window)
 		goto done;
 	}
 
-	info = get_wimgtool_info(window);
+	//info = get_wimgtool_info(window);
 
 	err = setup_openfilename_struct(&ofn, pool, window, FALSE);
 	if (err)
@@ -1239,7 +1241,7 @@ static void menu_insert(HWND window)
 	wimgtool_info *info;
 	option_resolution *opts = NULL;
 	BOOL cancel;
-	const imgtool_module *module;
+	//const imgtool_module *module;
 	const char *fork = NULL;
 	struct transfer_suggestion_info suggestion_info;
 	int use_suggestion_info;
@@ -1268,7 +1270,7 @@ static void menu_insert(HWND window)
 		goto done;
 	}
 
-	module = imgtool_image_module(info->image);
+	//module = imgtool_image_module(info->image);
 
 	/* figure out which filters are appropriate for this file */
 	imgtool_partition_suggest_file_filters(info->partition, NULL, stream, suggestion_info.suggestions,
@@ -1301,8 +1303,9 @@ static void menu_insert(HWND window)
 	/* append the current directory, if appropriate */
 	if (info->current_directory != NULL)
 	{
-		s2 = (char *) alloca(strlen(info->current_directory) + strlen(image_filename) + 1);
+		s2 = (char *) alloca(strlen(info->current_directory) + strlen(image_filename) + 1 + 1);
 		strcpy(s2, info->current_directory);
+		strcat(s2, "\\");
 		strcat(s2, image_filename);
 		image_filename = s2;
 	}
@@ -1531,7 +1534,7 @@ static void menu_createdir(HWND window)
 	imgtoolerr_t err = IMGTOOLERR_SUCCESS;
 	struct createdir_dialog_info cdi;
 	wimgtool_info *info;
-	char *dirname = NULL;
+	char *utf8_dirname = NULL;
 	char *s;
 
 	info = get_wimgtool_info(window);
@@ -1542,18 +1545,19 @@ static void menu_createdir(HWND window)
 
 	if (cdi.buf[0] == '\0')
 		goto done;
-	dirname = utf8_from_tstring(cdi.buf);
+	utf8_dirname = utf8_from_tstring(cdi.buf);
 
 	if (info->current_directory)
 	{
-		s = (char *) alloca(strlen(info->current_directory) + strlen(dirname) + 1);
+		s = (char *) alloca(strlen(info->current_directory) + strlen(utf8_dirname) + 1 + 1);
 		strcpy(s, info->current_directory);
-		strcat(s, dirname);
-		free(dirname);
-		dirname = mame_strdup(s);
+		strcat(s, "\\");
+		strcat(s, utf8_dirname);
+		osd_free(utf8_dirname);
+		utf8_dirname = mame_strdup(s);
 	}
 
-	err = imgtool_partition_create_directory(info->partition, dirname);
+	err = imgtool_partition_create_directory(info->partition, utf8_dirname);
 	if (err)
 		goto done;
 
@@ -1563,9 +1567,9 @@ static void menu_createdir(HWND window)
 
 done:
 	if (err)
-		wimgtool_report_error(window, err, NULL, dirname);
-	if (dirname)
-		free(dirname);
+		wimgtool_report_error(window, err, NULL, utf8_dirname);
+	if (utf8_dirname)
+		osd_free(utf8_dirname);
 }
 
 
@@ -1682,6 +1686,8 @@ static void wimgtool_destroy(HWND window)
 
 	if (info)
 	{
+		if (info->filename)
+			osd_free(info->filename);
 		if (info->partition)
 			imgtool_partition_close(info->partition);
 		if (info->image)
@@ -1689,7 +1695,7 @@ static void wimgtool_destroy(HWND window)
 		pile_delete(&info->iconlist_extensions);
 		DestroyIcon(info->readonly_icon);
 		if (info->current_directory)
-			free(info->current_directory);
+			osd_free(info->current_directory);
 		free(info);
 	}
 }
@@ -1724,7 +1730,7 @@ static void drop_files(HWND window, HDROP drop)
 		if (err)
 			goto done;
 
-		free(filename);
+		osd_free(filename);
 		filename = NULL;
 	}
 
@@ -1733,7 +1739,7 @@ done:
 	if (err)
 		wimgtool_report_error(window, err, NULL, NULL);
 	if (filename)
-		free(filename);
+		osd_free(filename);
 }
 
 

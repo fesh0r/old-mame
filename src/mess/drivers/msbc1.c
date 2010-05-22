@@ -16,7 +16,7 @@ static ADDRESS_MAP_START(msbc1_mem, ADDRESS_SPACE_PROGRAM, 16)
 ADDRESS_MAP_END
 
 /* Input ports */
-INPUT_PORTS_START( msbc1 )
+static INPUT_PORTS_START( msbc1 )
 INPUT_PORTS_END
 
 
@@ -57,12 +57,11 @@ MACHINE_DRIVER_END
 /* ROM definition */
 ROM_START( msbc1 )
     ROM_REGION( 0x8000, "user1", ROMREGION_ERASEFF )
-	ROM_LOAD16_BYTE( "msbc1_u19.bin", 0x0000, 0x4000, CRC(4814b9e1) SHA1(d96cf75084c6588cb33513830c6beeeffc2de853))
-	ROM_LOAD16_BYTE( "msbc1_u18.bin", 0x0001, 0x4000, CRC(14f25d47) SHA1(964bc49c1dd9e9680c0d3d89ff3794c5044bea62))
+	ROM_LOAD16_BYTE( "msbc1.u19", 0x0000, 0x4000, CRC(4814b9e1) SHA1(d96cf75084c6588cb33513830c6beeeffc2de853))
+	ROM_LOAD16_BYTE( "msbc1.u18", 0x0001, 0x4000, CRC(14f25d47) SHA1(964bc49c1dd9e9680c0d3d89ff3794c5044bea62))
 ROM_END
 
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( ????, msbc1,  0,       0, 	msbc1,	msbc1,	 0,			 "Omnibyte",   "MSBC-1",		GAME_NOT_WORKING | GAME_NO_SOUND)
-
+COMP( 19??, msbc1,  0,       0, 	msbc1,	msbc1,	 0,			 "Omnibyte",   "MSBC-1",		GAME_NOT_WORKING | GAME_NO_SOUND)

@@ -163,10 +163,10 @@ static TIMER_CALLBACK( bit_tick )
 		c1571->bit_pos = 7;
 		c1571->buffer_pos++;
 
-		if (c1571->buffer_pos > c1571->track_len + 1)
+		if (c1571->buffer_pos >= c1571->track_len)
 		{
 			/* loop to the start of the track */
-			c1571->buffer_pos = G64_DATA_START;
+			c1571->buffer_pos = 0;
 		}
 	}
 
@@ -209,7 +209,7 @@ static TIMER_CALLBACK( bit_tick )
 static void read_current_track(c1571_t *c1571)
 {
 	c1571->track_len = G64_BUFFER_SIZE;
-	c1571->buffer_pos = G64_DATA_START;
+	c1571->buffer_pos = 0;
 	c1571->bit_pos = 7;
 	c1571->bit_count = 0;
 
@@ -217,7 +217,18 @@ static void read_current_track(c1571_t *c1571)
 	floppy_drive_read_track_data_info_buffer(c1571->image, c1571->side, c1571->track_buffer, &c1571->track_len);
 
 	/* extract track length */
-	c1571->track_len = G64_DATA_START + ((c1571->track_buffer[1] << 8) | c1571->track_buffer[0]);
+	c1571->track_len = floppy_drive_get_current_track_size(c1571->image, c1571->side);
+}
+
+/*-------------------------------------------------
+    on_disk_change - disk change handler
+-------------------------------------------------*/
+
+static void on_disk_change(running_device *image)
+{
+	c1571_t *c1571 = get_safe_token(image->owner);
+
+	read_current_track(c1571);
 }
 
 /*-------------------------------------------------
@@ -907,9 +918,10 @@ ROM_END
 -------------------------------------------------*/
 
 ROM_START( c1571 )
-	ROM_REGION( 0x8000, "c1571", ROMREGION_LOADBYNAME )
+	ROM_REGION( 0x10000, "c1571", ROMREGION_LOADBYNAME )
 	ROM_LOAD( "310654-03.u2", 0x0000, 0x8000, CRC(3889b8b8) SHA1(e649ef4419d65829d2afd65e07d31f3ce147d6eb) )
 	ROM_LOAD( "310654-05.u2", 0x0000, 0x8000, CRC(5755bae3) SHA1(f1be619c106641a685f6609e4d43d6fc9eac1e70) )
+	ROM_LOAD( "jiffydos 1571.u2", 0x8000, 0x8000, CRC(fe6cac6d) SHA1(d4b79b60cf1eaa399d0932200eb7811e00455249) )
 ROM_END
 
 /*-------------------------------------------------
@@ -917,8 +929,9 @@ ROM_END
 -------------------------------------------------*/
 
 ROM_START( c1571cr )
-	ROM_REGION( 0x8000, "c1571cr", ROMREGION_LOADBYNAME )
-	ROM_LOAD( "318047-01.", 0x0000, 0x8000, CRC(f24efcc4) SHA1(14ee7a0fb7e1c59c51fbf781f944387037daa3ee) )
+	ROM_REGION( 0x10000, "c1571cr", ROMREGION_LOADBYNAME )
+	ROM_LOAD( "318047-01.u102", 0x0000, 0x8000, CRC(f24efcc4) SHA1(14ee7a0fb7e1c59c51fbf781f944387037daa3ee) )
+	ROM_LOAD( "jiffydos 1571d.u102", 0x8000, 0x8000, CRC(9cba146d) SHA1(823b178561302b403e6bfd8dd741d757efef3958) )
 ROM_END
 
 /*-------------------------------------------------
@@ -944,6 +957,10 @@ static DEVICE_START( c1571 )
 	c1571->wd1770 = device->subdevice(WD1770_TAG);
 	c1571->serial_bus = devtag_get_device(device->machine, config->serial_bus_tag);
 	c1571->image = device->subdevice(FLOPPY_0);
+
+	/* install image callbacks */
+	floppy_install_unload_proc(c1571->image, on_disk_change);
+	floppy_install_load_proc(c1571->image, on_disk_change);
 
 	/* allocate data timer */
 	c1571->bit_timer = timer_alloc(device->machine, bit_tick, (void *)device);

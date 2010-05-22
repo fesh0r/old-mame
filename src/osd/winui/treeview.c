@@ -194,7 +194,7 @@ void FreeFolders(void)
 			treeFolders[i] = NULL;
 			numFolders--;
 		}
-		global_free(treeFolders);
+		free(treeFolders);
 		treeFolders = NULL;
 	}
 	numFolders = 0;
@@ -560,7 +560,7 @@ void CreateManufacturerFolders(int parent_index)
 			const char *s = ParseManufacturer(manufacturer, &iChars);
 			manufacturer += iChars;
 			//shift to next start char
-			if( s != NULL && strlen(s) > 0 )
+			if( s != NULL && *s != 0 )
  			{
 				const char *t = TrimManufacturer(s);
 				for (i=numFolders-1;i>=start_folder;i--)
@@ -914,7 +914,7 @@ static const char* TrimManufacturer(const char *s)
 				break;
 		}
 	}
-	if( strlen(strTemp2) == 0 )
+	if( *strTemp2 == 0 )
 		return s;
 	return strTemp2;
 }
@@ -1163,7 +1163,7 @@ void CreateDumpingFolders(int parent_index)
 	int nGames = driver_list_get_count(drivers);
 	LPTREEFOLDER lpFolder = treeFolders[parent_index];
 	const rom_entry *region, *rom;
-	const char *name;
+	//const char *name;
 	const game_driver *gamedrv;
 	machine_config *config;
 
@@ -1216,7 +1216,7 @@ void CreateDumpingFolders(int parent_index)
 				{
 					if (ROMREGION_ISROMDATA(region) || ROMREGION_ISDISKDATA(region) )
 					{
-						name = ROM_GETNAME(rom);
+						//name = ROM_GETNAME(rom);
 						if (hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_BAD_DUMP))				
 							bBadDump = TRUE;
 						if (hash_data_has_info(ROM_GETHASHDATA(rom), HASH_INFO_NO_DUMP))				
@@ -1313,7 +1313,7 @@ void CreateAllChildFolders(void)
 
 		if (lpFolderData != NULL)
 		{
-			//dprintf("Found built-in-folder id %i %i",i,lpFolder->m_nFolderId);
+			//dprintf("Found built-in-folder id %i %i\n",i,lpFolder->m_nFolderId);
 			if (lpFolderData->m_pfnCreateFolders != NULL)
 				lpFolderData->m_pfnCreateFolders(i);
 		}
@@ -1321,11 +1321,11 @@ void CreateAllChildFolders(void)
 		{
 			if ((lpFolder->m_dwFlags & F_CUSTOM) == 0)
 			{
-				dprintf("Internal inconsistency with non-built-in folder, but not custom");
+				dprintf("Internal inconsistency with non-built-in folder, but not custom\n");
 				continue;
 			}
 
-			//dprintf("Loading custom folder %i %i",i,lpFolder->m_nFolderId);
+			//dprintf("Loading custom folder %i %i\n",i,lpFolder->m_nFolderId);
 
 			// load the extra folder files, which also adds children
 			if (TryAddExtraFolderAndChildren(i) == FALSE)
@@ -1353,7 +1353,7 @@ void ResetTreeViewFolders(void)
 
 	res = TreeView_DeleteAllItems(hTreeView);
 
-	//dprintf("Adding folders to tree ui indices %i to %i",start_index,end_index);
+	//dprintf("Adding folders to tree ui indices %i to %i\n",start_index,end_index);
 
 	tvs.hInsertAfter = TVI_SORT;
 
@@ -1518,7 +1518,7 @@ static BOOL AddFolder(LPTREEFOLDER lpFolder)
 		folderArrayLength += 500;
 		tmpTree = (TREEFOLDER **)malloc(sizeof(TREEFOLDER **) * folderArrayLength);
 		memcpy(tmpTree,treeFolders,sizeof(TREEFOLDER **) * oldFolderArrayLength);
-		if (treeFolders) global_free(treeFolders);
+		if (treeFolders) free(treeFolders);
 		treeFolders = tmpTree;
 	}
 
@@ -1559,11 +1559,11 @@ static void DeleteFolder(LPTREEFOLDER lpFolder)
 			DeleteBits(lpFolder->m_lpGameBits);
 			lpFolder->m_lpGameBits = 0;
 		}
-		global_free(lpFolder->m_lptTitle);
+		osd_free(lpFolder->m_lptTitle);
 		lpFolder->m_lptTitle = 0;
-		global_free(lpFolder->m_lpTitle);
+		free(lpFolder->m_lpTitle);
 		lpFolder->m_lpTitle = 0;
-		global_free(lpFolder);
+		free(lpFolder);
 		lpFolder = 0;
 	}
 }
@@ -1618,7 +1618,7 @@ BOOL InitFolders(void)
 		// OR in the saved folder flags
 		dwFolderFlags = fExData->m_dwFlags | GetFolderFlags(numFolders);
 		// create the folder
-		//dprintf("creating top level custom folder with icon %i",fExData->m_nIconId);
+		//dprintf("creating top level custom folder with icon %i\n",fExData->m_nIconId);
 		AddFolder(NewFolder(fExData->m_szTitle,fExData->m_nFolderId,fExData->m_nParent,
 							fExData->m_nIconId,dwFolderFlags));
 	}
@@ -1642,7 +1642,7 @@ static BOOL CreateTreeIcons()
 	int numIcons = ICON_MAX + numExtraIcons;
 	hTreeSmall = ImageList_Create (16, 16, ILC_COLORDDB | ILC_MASK, numIcons, numIcons);
 
-	//dprintf("Trying to load %i normal icons",ICON_MAX);
+	//dprintf("Trying to load %i normal icons\n",ICON_MAX);
 	for (i = 0; i < ICON_MAX; i++)
 	{
 		hIcon = LoadIconFromFile(treeIconNames[i].lpName);
@@ -1656,7 +1656,7 @@ static BOOL CreateTreeIcons()
 		}
 	}
 
-	//dprintf("Trying to load %i extra custom-folder icons",numExtraIcons);
+	//dprintf("Trying to load %i extra custom-folder icons\n",numExtraIcons);
 	for (i = 0; i < numExtraIcons; i++)
 	{
 		if ((hIcon = LoadIconFromFile(ExtraFolderIcons[i])) == 0)
@@ -2025,7 +2025,7 @@ static int InitExtraFolders(void)
 						ExtraFolderData[count]->m_dwFlags	  = F_CUSTOM;
 						ExtraFolderData[count]->m_nIconId	  = icon[0] ? -icon[0] : IDI_FOLDER;
 						ExtraFolderData[count]->m_nSubIconId  = icon[1] ? -icon[1] : IDI_FOLDER;
-						//dprintf("extra folder with icon %i, subicon %i",
+						//dprintf("extra folder with icon %i, subicon %i\n",
 						//ExtraFolderData[count]->m_nIconId,
 						//ExtraFolderData[count]->m_nSubIconId);
 						count++;
@@ -2047,14 +2047,14 @@ void FreeExtraFolders(void)
 	{
 		if (ExtraFolderData[i])
 		{
-			global_free(ExtraFolderData[i]);
+			free(ExtraFolderData[i]);
 			ExtraFolderData[i] = NULL;
 		}
 	}
 
 	for (i = 0; i < numExtraIcons; i++)
     {
-		global_free(ExtraFolderIcons[i]);
+		free(ExtraFolderIcons[i]);
     }
 
 	numExtraIcons = 0;
@@ -2252,13 +2252,13 @@ BOOL TryRenameCustomFolder(LPTREEFOLDER lpFolder, const char *new_name)
 		if (TrySaveExtraFolder(lpFolder) == FALSE)
 		{
 			// failed, so free newly allocated title and restore old
-			global_free(lpFolder->m_lpTitle);
+			free(lpFolder->m_lpTitle);
 			lpFolder->m_lpTitle = old_title;
 			return FALSE;
 		}
 		TryRenameCustomFolderIni(lpFolder, old_title, new_name);
 		// successful, so free old title
-		global_free(old_title);
+		free(old_title);
 		return TRUE;
 	}
 	
@@ -2272,7 +2272,7 @@ BOOL TryRenameCustomFolder(LPTREEFOLDER lpFolder, const char *new_name)
 	if (retval)
 	{
 		TryRenameCustomFolderIni(lpFolder, lpFolder->m_lpTitle, new_name);
-		global_free(lpFolder->m_lpTitle);
+		free(lpFolder->m_lpTitle);
 		lpFolder->m_lpTitle = (char *)malloc(strlen(new_name) + 1);
 		strcpy(lpFolder->m_lpTitle,new_name);
 	}

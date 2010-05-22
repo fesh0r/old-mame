@@ -124,7 +124,7 @@ const char * GetAuditString(int audit_result)
 		return "?";
 
 	default:
-		dprintf("unknown audit value %i",audit_result);
+		dprintf("unknown audit value %i\n",audit_result);
 	}
 
 	return "?";
@@ -434,7 +434,7 @@ static void CLIB_DECL DetailsPrintf(const char *fmt, ...)
 	
 	if (hEdit == NULL)
 	{
-		dprintf("audit detailsprintf() can't find any audit control");
+		dprintf("audit detailsprintf() can't find any audit control\n");
 		return;
 	}
 
@@ -452,7 +452,7 @@ static void CLIB_DECL DetailsPrintf(const char *fmt, ...)
 	Edit_SetSel(hEdit, textLength, textLength);
 	SendMessage( hEdit, EM_REPLACESEL, FALSE, (WPARAM)(LPCTSTR)win_tstring_strdup(t_s) );
 	
-	global_free(t_s);
+	osd_free(t_s);
 }
 
 static const char * StatusString(int iStatus)

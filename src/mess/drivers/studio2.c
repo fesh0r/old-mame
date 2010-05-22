@@ -1,6 +1,6 @@
 /*
 
-RCA Studio II ******* PRESS Q for a car racing game *********** X to accelerate, left & right arrow to steer.
+RCA Studio II
 
 PCB Layout
 ----------
@@ -196,11 +196,12 @@ Notes:
 #include "emu.h"
 #include "includes/studio2.h"
 #include "cpu/cdp1802/cdp1802.h"
-#include "video/cdp1861.h"
-#include "sound/cdp1864.h"
 #include "devices/cartslot.h"
+#include "formats/studio2_st2.h"
 #include "sound/beep.h"
+#include "sound/cdp1864.h"
 #include "sound/discrete.h"
+#include "video/cdp1861.h"
 
 /* Read/Write Handlers */
 
@@ -267,29 +268,29 @@ ADDRESS_MAP_END
 /* Input Ports */
 
 static INPUT_PORTS_START( studio2 )
-	PORT_START("KEYPAD_L")
-	PORT_BIT( 0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 0") PORT_CODE(KEYCODE_0) PORT_CODE(KEYCODE_X)
-	PORT_BIT( 0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 1") PORT_CODE(KEYCODE_1)
-	PORT_BIT( 0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 2") PORT_CODE(KEYCODE_2)
-	PORT_BIT( 0x008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 3") PORT_CODE(KEYCODE_3)
-	PORT_BIT( 0x010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 4") PORT_CODE(KEYCODE_4) PORT_CODE(KEYCODE_Q)
-	PORT_BIT( 0x020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 5") PORT_CODE(KEYCODE_5) PORT_CODE(KEYCODE_W)
-	PORT_BIT( 0x040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 6") PORT_CODE(KEYCODE_6) PORT_CODE(KEYCODE_E)
-	PORT_BIT( 0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 7") PORT_CODE(KEYCODE_7) PORT_CODE(KEYCODE_A)
-	PORT_BIT( 0x100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 8") PORT_CODE(KEYCODE_8) PORT_CODE(KEYCODE_S)
-	PORT_BIT( 0x200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 9") PORT_CODE(KEYCODE_9) PORT_CODE(KEYCODE_D)
+	PORT_START("A")
+	PORT_BIT( 0x001, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("A 0") PORT_CODE(KEYCODE_LALT)
+	PORT_BIT( 0x002, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("A 1") PORT_CODE(KEYCODE_Q)
+	PORT_BIT( 0x004, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("A 2") PORT_CODE(KEYCODE_W)
+	PORT_BIT( 0x008, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("A 3") PORT_CODE(KEYCODE_E)
+	PORT_BIT( 0x010, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("A 4") PORT_CODE(KEYCODE_A)
+	PORT_BIT( 0x020, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("A 5") PORT_CODE(KEYCODE_S)
+	PORT_BIT( 0x040, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("A 6") PORT_CODE(KEYCODE_D)
+	PORT_BIT( 0x080, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("A 7") PORT_CODE(KEYCODE_Z)
+	PORT_BIT( 0x100, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("A 8") PORT_CODE(KEYCODE_X)
+	PORT_BIT( 0x200, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("A 9") PORT_CODE(KEYCODE_C)
 
-	PORT_START("KEYPAD_R")
-	PORT_BIT( 0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 0") PORT_CODE(KEYCODE_0_PAD)
-	PORT_BIT( 0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 1") PORT_CODE(KEYCODE_7_PAD)
-	PORT_BIT( 0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 2") PORT_CODE(KEYCODE_8_PAD) PORT_CODE(KEYCODE_UP)
-	PORT_BIT( 0x008, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 3") PORT_CODE(KEYCODE_9_PAD)
-	PORT_BIT( 0x010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 4") PORT_CODE(KEYCODE_4_PAD) PORT_CODE(KEYCODE_LEFT)
-	PORT_BIT( 0x020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 5") PORT_CODE(KEYCODE_5_PAD)
-	PORT_BIT( 0x040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 6") PORT_CODE(KEYCODE_6_PAD) PORT_CODE(KEYCODE_RIGHT)
-	PORT_BIT( 0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 7") PORT_CODE(KEYCODE_1_PAD)
-	PORT_BIT( 0x100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 8") PORT_CODE(KEYCODE_2_PAD) PORT_CODE(KEYCODE_DOWN)
-	PORT_BIT( 0x200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 9") PORT_CODE(KEYCODE_3_PAD)
+	PORT_START("B")
+	PORT_BIT( 0x001, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("B 0") PORT_CODE(KEYCODE_0_PAD)
+	PORT_BIT( 0x002, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("B 1") PORT_CODE(KEYCODE_7_PAD)
+	PORT_BIT( 0x004, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("B 2") PORT_CODE(KEYCODE_8_PAD)
+	PORT_BIT( 0x008, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("B 3") PORT_CODE(KEYCODE_9_PAD)
+	PORT_BIT( 0x010, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("B 4") PORT_CODE(KEYCODE_4_PAD)
+	PORT_BIT( 0x020, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("B 5") PORT_CODE(KEYCODE_5_PAD)
+	PORT_BIT( 0x040, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("B 6") PORT_CODE(KEYCODE_6_PAD)
+	PORT_BIT( 0x080, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("B 7") PORT_CODE(KEYCODE_1_PAD)
+	PORT_BIT( 0x100, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("B 8") PORT_CODE(KEYCODE_2_PAD)
+	PORT_BIT( 0x200, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("B 9") PORT_CODE(KEYCODE_3_PAD)
 INPUT_PORTS_END
 
 /* Video */
@@ -398,8 +399,8 @@ static CDP1802_EF_READ( studio2_ef_r )
 
 	if (state->cdp1861_efx) ef -= EF1;
 
-	if (input_port_read(device->machine, "KEYPAD_L") & (1 << state->keylatch)) ef -= EF3;
-	if (input_port_read(device->machine, "KEYPAD_R") & (1 << state->keylatch)) ef -= EF4;
+	if (input_port_read(device->machine, "A") & (1 << state->keylatch)) ef -= EF3;
+	if (input_port_read(device->machine, "B") & (1 << state->keylatch)) ef -= EF4;
 
 	return ef;
 }
@@ -428,8 +429,8 @@ static CDP1802_EF_READ( mpt02_ef_r )
 
 	if (state->cdp1864_efx) ef -= EF1;
 
-	if (input_port_read(device->machine, "KEYPAD_L") & (1 << state->keylatch)) ef -= EF3;
-	if (input_port_read(device->machine, "KEYPAD_R") & (1 << state->keylatch)) ef -= EF4;
+	if (input_port_read(device->machine, "A") & (1 << state->keylatch)) ef -= EF3;
+	if (input_port_read(device->machine, "B") & (1 << state->keylatch)) ef -= EF4;
 
 	return ef;
 }
@@ -514,53 +515,14 @@ static MACHINE_RESET( mpt02 )
 	state->cdp1864->reset();
 }
 
-static DEVICE_IMAGE_LOAD( studio2_cart )
-{
-	st2_header header;
-	int block;
-
-	/* check file size */
-	int filesize = image_length(image);
-
-	if (filesize <= ST2_BLOCK_SIZE) {
-		logerror( "Error loading cartridge: Invalid ROM file: %s.\n", image_filename(image));
-		return INIT_FAIL;
-	}
-
-	/* read ST2 header */
-	if (image_fread(image, &header, ST2_BLOCK_SIZE) != ST2_BLOCK_SIZE) {
-		logerror( "Error loading cartridge: Unable to read header from file: %s.\n", image_filename(image));
-		return INIT_FAIL;
-	}
-
-	//logerror("ST2 Catalogue: %s\n", header.catalogue);
-	//logerror("ST2 Title: %s\n", header.title);
-
-	/* read ST2 cartridge into memory */
-	for (block = 0; block < (header.blocks - 1); block++)
-	{
-		UINT16 offset = header.page[block] << 8;
-		UINT8 *ptr = ((UINT8 *) memory_region(image->machine, CDP1802_TAG)) + offset;
-
-		//logerror("ST2 Reading block %u to %04x\n", block, offset);
-
-		if (image_fread(image, ptr, ST2_BLOCK_SIZE) != ST2_BLOCK_SIZE) {
-			logerror( "Error loading cartridge: Unable to read contents from file: %s.\n", image_filename(image));
-			return INIT_FAIL;
-		}
-	}
-
-	return INIT_PASS;
-}
+/* Machine Drivers */
 
 static MACHINE_DRIVER_START( studio2_cartslot )
 	MDRV_CARTSLOT_ADD("cart")
 	MDRV_CARTSLOT_EXTENSION_LIST("st2")
 	MDRV_CARTSLOT_NOT_MANDATORY
-	MDRV_CARTSLOT_LOAD(studio2_cart)
+	MDRV_CARTSLOT_LOAD(st2_cartslot_load)
 MACHINE_DRIVER_END
-
-/* Machine Drivers */
 
 static MACHINE_DRIVER_START( studio2 )
 	MDRV_DRIVER_DATA(studio2_state)

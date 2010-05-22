@@ -40,7 +40,7 @@ static ADDRESS_MAP_START( pimps_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 /* Input ports */
-INPUT_PORTS_START( pimps )
+static INPUT_PORTS_START( pimps )
 	PORT_INCLUDE(generic_terminal)
 INPUT_PORTS_END
 
@@ -82,5 +82,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT   COMPANY   FULLNAME       FLAGS */
-COMP( ????, pimps,  0,       0, 	pimps,	pimps,	 0, 		"Henry Colford",   "PIMPS",		GAME_NOT_WORKING | GAME_NO_SOUND)
-
+COMP( 19??, pimps,  0,       0, 	pimps,	pimps,	 0, 		"Henry Colford",   "PIMPS",		GAME_NOT_WORKING | GAME_NO_SOUND)

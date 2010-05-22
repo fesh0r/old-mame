@@ -16,12 +16,30 @@ static WRITE8_HANDLER( scv_porta_w );
 static READ8_HANDLER( scv_portb_r );
 static READ8_HANDLER( scv_portc_r );
 static WRITE8_HANDLER( scv_portc_w );
+static WRITE8_HANDLER( scv_cart_ram_w );
+static WRITE8_HANDLER( scv_cart_ram2_w );
+
+
+class scv_state
+{
+public:
+	static void *alloc(running_machine &machine) { return auto_alloc_clear(&machine, scv_state(machine)); }
+
+	scv_state(running_machine &machine) { }
+
+	UINT8	*vram;
+	UINT8	porta;
+	UINT8	portc;
+	emu_timer	*vb_timer;
+	UINT8	*cart_rom;
+	UINT32	cart_rom_size;
+	UINT8	*cart_ram;
+	UINT32	cart_ram_size;
+	bool	cart_ram_enabled;
+};
 
 
 static UINT8 *scv_vram;
-static UINT8 scv_porta;
-static UINT8 scv_portc;
-static emu_timer *scv_vb_timer;
 
 
 static ADDRESS_MAP_START( scv_mem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -31,7 +49,11 @@ static ADDRESS_MAP_START( scv_mem, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE( 0x3600, 0x3600 ) AM_DEVWRITE( "upd1771c", upd1771_w )
 
-	AM_RANGE( 0x8000, 0xff7f ) AM_ROM AM_REGION("cart", 0)
+	AM_RANGE( 0x8000, 0x9fff ) AM_ROMBANK("bank0")
+	AM_RANGE( 0xa000, 0xbfff ) AM_ROMBANK("bank1")
+	AM_RANGE( 0xc000, 0xdfff ) AM_ROMBANK("bank2")
+	AM_RANGE( 0xe000, 0xefff ) AM_READ_BANK("bank3")	AM_WRITE( scv_cart_ram_w )
+	AM_RANGE( 0xf000, 0xff7f ) AM_READ_BANK("bank4")	AM_WRITE( scv_cart_ram2_w )
 	AM_RANGE( 0xff80, 0xffff ) AM_RAM		/* upd7801 internal RAM */
 ADDRESS_MAP_END
 
@@ -71,8 +93,8 @@ static INPUT_PORTS_START( scv )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("0") PORT_CODE(KEYCODE_0)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("1") PORT_CODE(KEYCODE_1)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("0") PORT_CODE(KEYCODE_0_PAD)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("1") PORT_CODE(KEYCODE_1_PAD)
 
 	PORT_START( "PA3" )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -81,8 +103,8 @@ static INPUT_PORTS_START( scv )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("2") PORT_CODE(KEYCODE_2)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("3") PORT_CODE(KEYCODE_3)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("2") PORT_CODE(KEYCODE_2_PAD)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("3") PORT_CODE(KEYCODE_3_PAD)
 
 	PORT_START( "PA4" )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -91,8 +113,8 @@ static INPUT_PORTS_START( scv )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("4") PORT_CODE(KEYCODE_4)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("5") PORT_CODE(KEYCODE_5)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("4") PORT_CODE(KEYCODE_4_PAD)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("5") PORT_CODE(KEYCODE_5_PAD)
 
 	PORT_START( "PA5" )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -101,8 +123,8 @@ static INPUT_PORTS_START( scv )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("6") PORT_CODE(KEYCODE_6)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("7") PORT_CODE(KEYCODE_7)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("6") PORT_CODE(KEYCODE_6_PAD)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("7") PORT_CODE(KEYCODE_7_PAD)
 
 	PORT_START( "PA6" )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -111,8 +133,8 @@ static INPUT_PORTS_START( scv )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("8") PORT_CODE(KEYCODE_8)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("9") PORT_CODE(KEYCODE_9)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("8") PORT_CODE(KEYCODE_8_PAD)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("9") PORT_CODE(KEYCODE_9_PAD)
 
 	PORT_START( "PA7" )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -121,46 +143,76 @@ static INPUT_PORTS_START( scv )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("Cl") PORT_CODE(KEYCODE_BACKSPACE)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("En") PORT_CODE(KEYCODE_ENTER)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("Cl") PORT_CODE(KEYCODE_MINUS_PAD)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("En") PORT_CODE(KEYCODE_PLUS_PAD)
 
 	PORT_START( "PC0" )
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME(DEF_STR(Pause)) PORT_CODE(KEYCODE_O)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME(DEF_STR(Pause)) PORT_CODE(KEYCODE_O)
 INPUT_PORTS_END
+
+
+static WRITE8_HANDLER( scv_cart_ram_w )
+{
+	scv_state *state = (scv_state *)space->machine->driver_data;
+
+	/* Check if cartridge ram is enabled */
+	if ( state->cart_ram_enabled )
+	{
+		state->cart_ram[offset] = data;
+	}
+}
+
+
+static WRITE8_HANDLER( scv_cart_ram2_w )
+{
+	scv_state *state = (scv_state *)space->machine->driver_data;
+
+	/* Check if cartridge ram is enabled */
+	if ( state->cart_ram_enabled )
+	{
+		if ( state->cart_ram_size > 0x1000 )
+			offset += 0x1000;
+
+		state->cart_ram[offset] = data;
+	}
+}
 
 
 static WRITE8_HANDLER( scv_porta_w )
 {
-	scv_porta = data;
+	scv_state *state = (scv_state *)space->machine->driver_data;
+
+	state->porta = data;
 }
 
 
 static READ8_HANDLER( scv_portb_r )
 {
+	scv_state *state = (scv_state *)space->machine->driver_data;
 	UINT8 data = 0xff;
 
-	if ( ! ( scv_porta & 0x01 ) )
+	if ( ! ( state->porta & 0x01 ) )
 		data &= input_port_read( space->machine, "PA0" );
 
-	if ( ! ( scv_porta & 0x02 ) )
+	if ( ! ( state->porta & 0x02 ) )
 		data &= input_port_read( space->machine, "PA1" );
 
-	if ( ! ( scv_porta & 0x04 ) )
+	if ( ! ( state->porta & 0x04 ) )
 		data &= input_port_read( space->machine, "PA2" );
 
-	if ( ! ( scv_porta & 0x08 ) )
+	if ( ! ( state->porta & 0x08 ) )
 		data &= input_port_read( space->machine, "PA3" );
 
-	if ( ! ( scv_porta & 0x10 ) )
+	if ( ! ( state->porta & 0x10 ) )
 		data &= input_port_read( space->machine, "PA4" );
 
-	if ( ! ( scv_porta & 0x20 ) )
+	if ( ! ( state->porta & 0x20 ) )
 		data &= input_port_read( space->machine, "PA5" );
 
-	if ( ! ( scv_porta & 0x40 ) )
+	if ( ! ( state->porta & 0x40 ) )
 		data &= input_port_read( space->machine, "PA6" );
 
-	if ( ! ( scv_porta & 0x80 ) )
+	if ( ! ( state->porta & 0x80 ) )
 		data &= input_port_read( space->machine, "PA7" );
 
 	return data;
@@ -169,7 +221,8 @@ static READ8_HANDLER( scv_portb_r )
 
 static READ8_HANDLER( scv_portc_r )
 {
-	UINT8 data = 0xff;
+	scv_state *state = (scv_state *)space->machine->driver_data;
+	UINT8 data = state->portc;
 
 	data = ( data & 0xfe ) | ( input_port_read( space->machine, "PC0" ) & 0x01 );
 
@@ -177,29 +230,137 @@ static READ8_HANDLER( scv_portc_r )
 }
 
 
+static void scv_set_banks( running_machine *machine )
+{
+	scv_state *state = (scv_state *)machine->driver_data;
+
+	state->cart_ram_enabled = false;
+
+	switch( state->cart_rom_size )
+	{
+	case 0:
+	case 0x2000:
+		memory_set_bankptr( machine, "bank0", state->cart_rom );
+		memory_set_bankptr( machine, "bank1", state->cart_rom );
+		memory_set_bankptr( machine, "bank2", state->cart_rom );
+		memory_set_bankptr( machine, "bank3", state->cart_rom );
+		memory_set_bankptr( machine, "bank4", state->cart_rom + 0x1000 );
+		break;
+	case 0x4000:
+		memory_set_bankptr( machine, "bank0", state->cart_rom );
+		memory_set_bankptr( machine, "bank1", state->cart_rom + 0x2000 );
+		memory_set_bankptr( machine, "bank2", state->cart_rom );
+		memory_set_bankptr( machine, "bank3", state->cart_rom + 0x2000 );
+		memory_set_bankptr( machine, "bank4", state->cart_rom + 0x3000 );
+		break;
+	case 0x8000:
+		memory_set_bankptr( machine, "bank0", state->cart_rom );
+		memory_set_bankptr( machine, "bank1", state->cart_rom + 0x2000 );
+		memory_set_bankptr( machine, "bank2", state->cart_rom + 0x4000 );
+		memory_set_bankptr( machine, "bank3", state->cart_rom + 0x6000 );
+		memory_set_bankptr( machine, "bank4", state->cart_rom + 0x7000 );
+		break;
+	case 0x10000:
+		memory_set_bankptr( machine, "bank0", state->cart_rom + ( ( state->portc & 0x20 ) ? 0x8000 : 0 ) );
+		memory_set_bankptr( machine, "bank1", state->cart_rom + ( ( state->portc & 0x20 ) ? 0xa000 : 0x2000 ) );
+		memory_set_bankptr( machine, "bank2", state->cart_rom + ( ( state->portc & 0x20 ) ? 0xc000 : 0x4000 ) );
+		memory_set_bankptr( machine, "bank3", state->cart_rom + ( ( state->portc & 0x20 ) ? 0xe000 : 0x6000 ) );
+		memory_set_bankptr( machine, "bank4", state->cart_rom + ( ( state->portc & 0x20 ) ? 0xf000 : 0x7000 ) );
+		break;
+	case 0x20000:	/* Pole Position 2 */
+		int base = ( ( state->portc >> 5 ) & 0x03 ) * 0x8000 ;
+		memory_set_bankptr( machine, "bank0", state->cart_rom + base + 0 );
+		memory_set_bankptr( machine, "bank1", state->cart_rom + base + 0x2000 );
+		memory_set_bankptr( machine, "bank2", state->cart_rom + base + 0x4000 );
+		memory_set_bankptr( machine, "bank3", state->cart_rom + base + 0x6000 );
+		memory_set_bankptr( machine, "bank4", state->cart_rom + base + 0x7000 );
+		/* On-cart RAM is enabled when PC6 is high */
+		if ( state->cart_ram && state->portc & 0x40 )
+		{
+			state->cart_ram_enabled = true;
+			memory_set_bankptr( machine, "bank4", state->cart_ram );
+		}
+		break;
+	}
+
+	/* Check if cartridge RAM is available and should be enabled */
+	if ( state->cart_rom_size < 0x20000 && state->cart_ram && state->cart_ram_size && ( state->portc & 0x20 ) )
+	{
+		if ( state->cart_ram_size == 0x1000 )
+		{
+			memory_set_bankptr( machine, "bank4", state->cart_ram );
+		}
+		else
+		{
+			memory_set_bankptr( machine, "bank3", state->cart_ram );
+			memory_set_bankptr( machine, "bank4", state->cart_ram + 0x1000 );
+		}
+		state->cart_ram_enabled = true;
+	}
+
+}
+
+
 static WRITE8_HANDLER( scv_portc_w )
 {
-	scv_portc = data;
+	scv_state *state = (scv_state *)space->machine->driver_data;
+
+	//logerror("%04x: scv_portc_w: data = 0x%02x\n", cpu_get_pc(devtag_get_device(space->machine, "maincpu")), data );
+	state->portc = data;
+
+	scv_set_banks( space->machine );
+	upd1771_pcm_w( devtag_get_device( space->machine, "upd1771c" ), state->portc & 0x08 );
+}
+
+
+static DEVICE_START( scv_cart )
+{
+	scv_state *state = (scv_state *)device->machine->driver_data;
+
+	state->cart_rom = memory_region( device->machine, "cart" );
+	state->cart_rom_size = 0;
+	state->cart_ram = NULL;
+	state->cart_ram_size = 0;
+
+	scv_set_banks( device->machine );
 }
 
 
 static DEVICE_IMAGE_LOAD( scv_cart )
 {
+	scv_state *state = (scv_state *)image->machine->driver_data;
 
-	UINT8 *cart = memory_region( image->machine, "cart" );
-	int size = image_length( image );
-
-	if ( size > 0x8000 )
+	if ( image_software_entry(image) == NULL )
 	{
-		image_seterror( image, IMAGE_ERROR_UNSPECIFIED, "Unsupported cartridge size" );
-		return INIT_FAIL;
+		UINT8 *cart = memory_region( image->machine, "cart" );
+		int size = image_length( image );
+
+		if ( size > memory_region_length( image->machine, "cart" ) )
+		{
+			image_seterror( image, IMAGE_ERROR_UNSPECIFIED, "Unsupported cartridge size" );
+			return INIT_FAIL;
+		}
+
+		if ( image_fread( image, cart, size ) != size )
+		{
+			image_seterror( image, IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file" );
+			return INIT_FAIL;
+		}
+
+		state->cart_rom = cart;
+		state->cart_rom_size = size;
+		state->cart_ram = NULL;
+		state->cart_ram_size = 0;
+	}
+	else
+	{
+		state->cart_rom = image_get_software_region( image, "rom" );
+		state->cart_rom_size = image_get_software_region_length( image, "rom" );
+		state->cart_ram = image_get_software_region( image, "ram" );
+		state->cart_ram_size = image_get_software_region_length( image, "ram" );
 	}
 
-	if ( image_fread( image, cart, size ) != size )
-	{
-		image_seterror( image, IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file" );
-		return INIT_FAIL;
-	}
+	scv_set_banks( image->machine );
 
 	return INIT_PASS;
 }
@@ -207,28 +368,59 @@ static DEVICE_IMAGE_LOAD( scv_cart )
 
 static PALETTE_INIT( scv )
 {
-	/* Palette borrowed from eSCV. No idea if this is correct */
-	palette_set_color_rgb( machine,  0,   0,  90, 156 );
-	palette_set_color_rgb( machine,  1,   0,   0,   0 );
-	palette_set_color_rgb( machine,  2,  58, 148, 255 );
-	palette_set_color_rgb( machine,  3,   0,   0, 255 );
-	palette_set_color_rgb( machine,  4,  16, 214,   0 );
-	palette_set_color_rgb( machine,  5,  66, 255,  16 );
-	palette_set_color_rgb( machine,  6, 123, 230, 197 );
-	palette_set_color_rgb( machine,  7,   0, 173,   0 );
-	palette_set_color_rgb( machine,  8, 255,  41, 148 );
-	palette_set_color_rgb( machine,  9, 255,  49,  16 );
-	palette_set_color_rgb( machine, 10, 255,  58, 255 );
-	palette_set_color_rgb( machine, 11, 239, 156, 255 );
-	palette_set_color_rgb( machine, 12, 255, 206,  33 );
-	palette_set_color_rgb( machine, 13,  74, 123,  16 );
-	palette_set_color_rgb( machine, 14, 165, 148, 165 );
-	palette_set_color_rgb( machine, 15, 255, 255, 255 );
+	/*
+      SCV Epoch-1A chip RGB voltage readouts from paused Bios color test:
+
+      (values in millivolts)
+
+            R   G   B
+      0    29  29 325
+      1    29  27  22
+      2    25  24 510
+      3   337  28 508
+      4    29 515  22
+      5   336 512 329
+      6    26 515 511
+      7    29 337  25
+      8   520  24  22
+      9   517 338  21
+      10  520  25 512
+      11  521 336 333
+      12  518 515  21
+      13  342 336  22
+      14  337 336 330
+      15  516 511 508
+
+      Only tree 'bins' of values are obviously captured
+       25 ish
+      330 ish
+      520 ish.
+
+      Quamtizing/scaling/rounding between 0 and 255 we thus get:
+
+    */
+	palette_set_color_rgb( machine,   0,   0,   0, 155);
+	palette_set_color_rgb( machine,   1,   0,   0,   0);
+	palette_set_color_rgb( machine,   2,   0,   0, 255);
+	palette_set_color_rgb( machine,   3, 161,   0, 255);
+	palette_set_color_rgb( machine,   4,   0, 255,   0);
+	palette_set_color_rgb( machine,   5, 160, 255, 157);
+	palette_set_color_rgb( machine,   6,   0, 255, 255);
+	palette_set_color_rgb( machine,   7,   0, 161,   0);
+	palette_set_color_rgb( machine,   8, 255,   0,   0);
+	palette_set_color_rgb( machine,   9, 255, 161,   0);
+	palette_set_color_rgb( machine,  10, 255,   0, 255);
+	palette_set_color_rgb( machine,  11, 255, 160, 159);
+	palette_set_color_rgb( machine,  12, 255, 255,   0);
+	palette_set_color_rgb( machine,  13, 163, 160,   0);
+	palette_set_color_rgb( machine,  14, 161, 160, 157);
+	palette_set_color_rgb( machine,  15, 255, 255, 255);
 }
 
 
 static TIMER_CALLBACK( scv_vb_callback )
 {
+	scv_state *state = (scv_state *)machine->driver_data;
 	int vpos = video_screen_get_vpos(machine->primary_screen);
 
 	switch( vpos )
@@ -241,7 +433,7 @@ static TIMER_CALLBACK( scv_vb_callback )
 		break;
 	}
 
-	timer_adjust_oneshot( scv_vb_timer, video_screen_get_time_until_pos( machine->primary_screen, ( vpos + 1 ) % 262, 0 ), 0 );
+	timer_adjust_oneshot( state->vb_timer, video_screen_get_time_until_pos( machine->primary_screen, ( vpos + 1 ) % 262, 0 ), 0 );
 }
 
 
@@ -535,13 +727,17 @@ static WRITE_LINE_DEVICE_HANDLER( scv_upd1771_ack_w )
 
 static MACHINE_START( scv )
 {
-	scv_vb_timer = timer_alloc( machine, scv_vb_callback, NULL );
+	scv_state *state = (scv_state *)machine->driver_data;
+
+	state->vb_timer = timer_alloc( machine, scv_vb_callback, NULL );
 }
 
 
 static MACHINE_RESET( scv )
 {
-	timer_adjust_oneshot( scv_vb_timer, video_screen_get_time_until_pos( machine->primary_screen, 0, 0 ), 0 );
+	scv_state *state = (scv_state *)machine->driver_data;
+
+	timer_adjust_oneshot( state->vb_timer, video_screen_get_time_until_pos( machine->primary_screen, 0, 0 ), 0 );
 }
 
 
@@ -569,6 +765,8 @@ static const upd1771_interface scv_upd1771c_config = { DEVCB_LINE( scv_upd1771_a
 
 
 static MACHINE_DRIVER_START( scv )
+	MDRV_DRIVER_DATA( scv_state )
+
 	MDRV_CPU_ADD( "maincpu", UPD7801, XTAL_4MHz )
 	MDRV_CPU_PROGRAM_MAP( scv_mem )
 	MDRV_CPU_IO_MAP( scv_io )
@@ -597,11 +795,18 @@ static MACHINE_DRIVER_START( scv )
 	MDRV_CARTSLOT_ADD( "cart" )
 	MDRV_CARTSLOT_EXTENSION_LIST( "bin" )
 	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_INTERFACE("scv_cart")
+	MDRV_CARTSLOT_START( scv_cart )
 	MDRV_CARTSLOT_LOAD( scv_cart )
+
+	/* Software lists */
+	MDRV_SOFTWARE_LIST_ADD("scv")
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( scv_pal )
+	MDRV_DRIVER_DATA( scv_state )
+
 	MDRV_CPU_ADD( "maincpu", UPD7801, 3780000 )
 	MDRV_CPU_PROGRAM_MAP( scv_mem )
 	MDRV_CPU_IO_MAP( scv_io )
@@ -630,7 +835,12 @@ static MACHINE_DRIVER_START( scv_pal )
 	MDRV_CARTSLOT_ADD( "cart" )
 	MDRV_CARTSLOT_EXTENSION_LIST( "bin" )
 	MDRV_CARTSLOT_NOT_MANDATORY
+	MDRV_CARTSLOT_INTERFACE("scv_cart")
+	MDRV_CARTSLOT_START( scv_cart )
 	MDRV_CARTSLOT_LOAD( scv_cart )
+
+	/* Software lists */
+	MDRV_SOFTWARE_LIST_ADD("scv")
 MACHINE_DRIVER_END
 
 
@@ -641,7 +851,7 @@ ROM_START( scv )
 	ROM_REGION( 0x400, "charrom", 0 )
 	ROM_LOAD( "epochtv.chr", 0, 0x400, BAD_DUMP CRC(db521533) SHA1(40b4e44838c35191f115437a14f200f052e71509) )
 
-	ROM_REGION( 0x8000, "cart", ROMREGION_ERASEFF )
+	ROM_REGION( 0x20000, "cart", ROMREGION_ERASEFF )
 ROM_END
 
 
@@ -651,7 +861,7 @@ ROM_START( scv_pal )
 	ROM_REGION( 0x400, "charrom", 0 )
 	ROM_LOAD( "epochtv.chr", 0, 0x400, BAD_DUMP CRC(db521533) SHA1(40b4e44838c35191f115437a14f200f052e71509) )
 
-	ROM_REGION( 0x8000, "cart", ROMREGION_ERASEFF )
+	ROM_REGION( 0x20000, "cart", ROMREGION_ERASEFF )
 ROM_END
 
 

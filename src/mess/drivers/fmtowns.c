@@ -1,23 +1,24 @@
 /*
 
     Fujitsu FM-Towns
+    driver by Barry Rodewald
 
     Japanese computer system released in 1989.
 
     CPU:  AMD 80386SX(DX?) (80387 available as add-on?)
     Sound:  Yamaha YM3438
             Ricoh RF5c68
-    Video:  VGA + some custom extra video hardware
-            320x200 - 640x480
-            16 - 32768 colours from a possible palette of between 4096 and
-              16.7m colours (depending on video mode)
-            1024 sprites (16x16)
+    Video:  Custom
+            16 or 256 colours from a 24-bit palette, or 15-bit high-colour
+            1024 sprites (16x16), rendered direct to VRAM
+            16 colour text mode, rendered direct to VRAM
 
 
     Fujitsu FM-Towns Marty
 
     Japanese console, based on the FM-Towns computer, using an AMD 80386SX CPU,
     released in 1993
+
 
     Issues: i386 protected mode is far from complete.
             Video emulation is far from complete.
@@ -42,16 +43,16 @@
  * 0x0042   : 8253 PIT counter 1
  * 0x0044   : 8253 PIT counter 2
  * 0x0046   : 8253 PIT mode port
- * 0x0060   : 8253 PIT ???
+ * 0x0060   : 8253 PIT timer control
  * 0x006c RW: returns 0x00? (read) timer? (write)
  * 0x00a0-af: DMA controller 1 (uPD71071)
  * 0x00b0-bf: DMA controller 2 (uPD71071)
  * 0x0200-0f: Floppy controller (MB8877A)
  * 0x0400   : Video / CRTC (unknown)
  * 0x0404   : Disable VRAM, CMOS, memory-mapped I/O (everything in low memory except the BIOS)
- * 0x0440-5f: Video / CRTC 
+ * 0x0440-5f: Video / CRTC
  * 0x0480 RW: bit 1 = disable BIOS ROM
- * 0x04c0-cf: CD-ROM controller 
+ * 0x04c0-cf: CD-ROM controller
  * 0x04d5   : Sound mute
  * 0x04d8   : YM3438 control port A / status
  * 0x04da   : YM3438 data port A / status
@@ -80,8 +81,8 @@
  *      IRQ9 - Built-in CD-ROM controller
  *      IRQ11 - VSync interrupt
  *      IRQ12 - Printer port
- *      IRQ13 - Sound (FM?), Mouse
- *      IRQ15 - PCM
+ *      IRQ13 - Sound (YM3438/RF5c68), Mouse
+ *      IRQ15 - 16-bit PCM (expansion?)
  *
  * Machine ID list (I/O port 0x31)
  *
@@ -127,6 +128,16 @@
 #define TOWNS_CD_IRQ_MPU 1
 #define TOWNS_CD_IRQ_DMA 2
 
+enum
+{
+	MOUSE_START,
+	MOUSE_SYNC,
+	MOUSE_X_HIGH,
+	MOUSE_X_LOW,
+	MOUSE_Y_HIGH,
+	MOUSE_Y_LOW
+};
+
 static UINT8 ftimer;
 static UINT8 nmi_mask;
 static UINT8 compat_mode;
@@ -156,11 +167,15 @@ static UINT8 towns_kb_irq1_enable;
 static UINT8 towns_kb_output;  // key output
 static UINT8 towns_kb_extend;  // extended key output
 static emu_timer* towns_kb_timer;
+static emu_timer* towns_mouse_timer;
 static UINT8 towns_fm_irq_flag;
 static UINT8 towns_pcm_irq_flag;
 static UINT8 towns_pcm_channel_flag;
 static UINT8 towns_pcm_channel_mask;
 static UINT8 towns_pad_mask;
+static UINT8 towns_mouse_output;
+static UINT8 towns_mouse_x;
+static UINT8 towns_mouse_y;
 
 static struct towns_cdrom_controller
 {
@@ -282,7 +297,7 @@ static READ8_HANDLER(towns_system_r)
 			ftimer -= 0x13;
 			return ftimer;
 		case 0x08:
-			logerror("SYS: (0x28) NMI mask read\n");
+			//logerror("SYS: (0x28) NMI mask read\n");
 			return nmi_mask & 0x01;
 		case 0x10:
 			logerror("SYS: (0x30) Machine ID read\n");
@@ -314,7 +329,7 @@ static WRITE8_HANDLER(towns_system_w)
 			logerror("SYS: (0x22) power port write %02x\n",data);
 			break;
 		case 0x08:
-			logerror("SYS: (0x28) NMI mask write %02x\n",data);
+			//logerror("SYS: (0x28) NMI mask write %02x\n",data);
 			nmi_mask = data & 0x01;
 			break;
 		case 0x12:
@@ -389,6 +404,7 @@ static WRITE_LINE_DEVICE_HANDLER( towns_mb8877a_irq_w )
 	if(towns_fdc_irq6mask == 0)
 		state = 0;
 	pic8259_ir6_w(device, state);  // IRQ6 = FDC
+	logerror("PIC: IRQ6 (FDC) set to %i\n",state);
 }
 
 static WRITE_LINE_DEVICE_HANDLER( towns_mb8877a_drq_w )
@@ -552,7 +568,10 @@ static void towns_kb_sendcode(running_machine* machine, UINT8 scancode, int rele
 	}
 	towns_kb_status |= 0x01;
 	if(towns_kb_irq1_enable)
+	{
 		pic8259_ir1_w(dev, 1);
+		logerror("PIC: IRQ1 (keyboard) set high\n");
+	}
 	logerror("KB: sending scancode 0x%02x\n",scancode);
 }
 
@@ -590,8 +609,9 @@ static READ8_HANDLER(towns_keyboard_r)
 	{
 		case 0:  // scancode output
 			ret = towns_kb_output;
-			logerror("KB: read keyboard output port, returning %02x\n",ret);
+			//logerror("KB: read keyboard output port, returning %02x\n",ret);
 			pic8259_ir1_w(devtag_get_device(space->machine,"pic8259_master"), 0);
+			logerror("PIC: IRQ1 (keyboard) set low\n");
 			if(towns_kb_extend != 0xff)
 			{
 				towns_kb_sendcode(space->machine,towns_kb_extend,2);
@@ -631,7 +651,7 @@ static WRITE8_HANDLER(towns_keyboard_w)
  *  Port 0x60 - PIT Timer control
  *  On read:    bit 0: Timer 0 output level
  *              bit 1: Timer 1 output level
- *              bits 4-2: Timer masks (timer 2 = sound)
+ *              bits 4-2: Timer masks (timer 2 = beeper)
  *  On write:   bits 2-0: Timer mask set
  *              bit 7: Timer 0 output reset
  */
@@ -727,6 +747,7 @@ static READ8_HANDLER(towns_sound_ctrl_r)
 			towns_pcm_channel_flag = 0;
 			towns_pcm_irq_flag = 0;
 			pic8259_ir5_w(devtag_get_device(space->machine,"pic8259_slave"), 0);
+			logerror("PIC: IRQ13 (PCM) set low\n");
 			break;
 		default:
 			logerror("FM: unimplemented port 0x%04x read\n",offset + 0x4e8);
@@ -748,47 +769,212 @@ static WRITE8_HANDLER(towns_sound_ctrl_w)
 
 // Controller ports
 // Joysticks are multiplexed, with fire buttons available when bits 0 and 1 of port 0x4d6 are high. (bits 2 and 3 for second port?)
+static TIMER_CALLBACK(towns_mouse_timeout)
+{
+	towns_mouse_output = MOUSE_START;  // reset mouse data
+}
+
 static READ32_HANDLER(towns_padport_r)
 {
 	UINT32 ret = 0;
-	UINT8 extra1 = input_port_read(space->machine,"joy1_ex");
-	UINT8 extra2 = input_port_read(space->machine,"joy2_ex");
+	UINT32 porttype = input_port_read(space->machine,"ctrltype");
+	UINT8 extra1;
+	UINT8 extra2;
+	UINT32 state;
 
-	if(towns_pad_mask & 0x10)
-		ret |= (input_port_read(space->machine,"joy1") & 0x3f) | 0x00000040;
-	else
-		ret |= (input_port_read(space->machine,"joy1") & 0x0f) | 0x00000030;
+	if((porttype & 0x0f) == 0x00)
+		ret |= 0x000000ff;
+	if((porttype & 0xf0) == 0x00)
+		ret |= 0x00ff0000;
+	if((porttype & 0x0f) == 0x01)
+	{
+		extra1 = input_port_read(space->machine,"joy1_ex");
 
-	if(towns_pad_mask & 0x20)
-		ret |= ((input_port_read(space->machine,"joy2") & 0x3f) << 16) | 0x00400000;
-	else
-		ret |= ((input_port_read(space->machine,"joy2") & 0x0f) << 16) | 0x00300000;
+		if(towns_pad_mask & 0x10)
+			ret |= (input_port_read(space->machine,"joy1") & 0x3f) | 0x00000040;
+		else
+			ret |= (input_port_read(space->machine,"joy1") & 0x0f) | 0x00000030;
 
-	if(extra1 & 0x01) // Run button = left+right
-		ret &= ~0x0000000c;
-	if(extra2 & 0x01)
-		ret &= ~0x000c0000;
-	if(extra1 & 0x02) // Select button = up+down
-		ret &= ~0x00000003;
-	if(extra2 & 0x02)
-		ret &= ~0x00030000;
+		if(extra1 & 0x01) // Run button = left+right
+			ret &= ~0x0000000c;
+		if(extra1 & 0x02) // Select button = up+down
+			ret &= ~0x00000003;
 
-	if((extra1 & 0x10) && (towns_pad_mask & 0x01))
-		ret &= ~0x00000010;
-	if((extra1 & 0x20) && (towns_pad_mask & 0x02))
-		ret &= ~0x00000020;
-	if((extra2 & 0x10) && (towns_pad_mask & 0x04))
-		ret &= ~0x00100000;
-	if((extra2 & 0x20) && (towns_pad_mask & 0x08))
-		ret &= ~0x00200000;
+		if((extra1 & 0x10) && (towns_pad_mask & 0x01))
+			ret &= ~0x00000010;
+		if((extra1 & 0x20) && (towns_pad_mask & 0x02))
+			ret &= ~0x00000020;
+	}
+	if((porttype & 0xf0) == 0x10)
+	{
+		extra2 = input_port_read(space->machine,"joy2_ex");
+
+		if(towns_pad_mask & 0x20)
+			ret |= ((input_port_read(space->machine,"joy2") & 0x3f) << 16) | 0x00400000;
+		else
+			ret |= ((input_port_read(space->machine,"joy2") & 0x0f) << 16) | 0x00300000;
+
+		if(extra2 & 0x01)
+			ret &= ~0x000c0000;
+		if(extra2 & 0x02)
+			ret &= ~0x00030000;
+
+		if((extra2 & 0x10) && (towns_pad_mask & 0x04))
+			ret &= ~0x00100000;
+		if((extra2 & 0x20) && (towns_pad_mask & 0x08))
+			ret &= ~0x00200000;
+	}
+	if((porttype & 0x0f) == 0x02)  // mouse
+	{
+		switch(towns_mouse_output)
+		{
+			case MOUSE_X_HIGH:
+				ret |= ((towns_mouse_x & 0xf0) >> 4);
+				break;
+			case MOUSE_X_LOW:
+				ret |= (towns_mouse_x & 0x0f);
+				break;
+			case MOUSE_Y_HIGH:
+				ret |= ((towns_mouse_y & 0xf0) >> 4);
+				break;
+			case MOUSE_Y_LOW:
+				ret |= (towns_mouse_y & 0x0f);
+				break;
+			case MOUSE_START:
+			case MOUSE_SYNC:
+			default:
+				if(towns_mouse_output < MOUSE_Y_LOW)
+					ret |= 0x0000000f;
+		}
+
+		// button states are always visible
+		state = input_port_read(space->machine,"mouse1");
+		if(!(state & 0x01))
+			ret |= 0x00000010;
+		if(!(state & 0x02))
+			ret |= 0x00000020;
+		if(towns_pad_mask & 0x10)
+			ret |= 0x00000040;
+	}
+	if((porttype & 0xf0) == 0x20)  // mouse
+	{
+		switch(towns_mouse_output)
+		{
+			case MOUSE_X_HIGH:
+				ret |= ((towns_mouse_x & 0xf0) << 12);
+				break;
+			case MOUSE_X_LOW:
+				ret |= ((towns_mouse_x & 0x0f) << 16);
+				break;
+			case MOUSE_Y_HIGH:
+				ret |= ((towns_mouse_y & 0xf0) << 12);
+				break;
+			case MOUSE_Y_LOW:
+				ret |= ((towns_mouse_y & 0x0f) << 16);
+				break;
+			case MOUSE_START:
+			case MOUSE_SYNC:
+			default:
+				if(towns_mouse_output < MOUSE_Y_LOW)
+					ret |= 0x000f0000;
+		}
+
+		// button states are always visible
+		state = input_port_read(space->machine,"mouse1");
+		if(!(state & 0x01))
+			ret |= 0x00100000;
+		if(!(state & 0x02))
+			ret |= 0x00200000;
+		if(towns_pad_mask & 0x20)
+			ret |= 0x00400000;
+	}
 
 	return ret;
 }
 
 static WRITE32_HANDLER(towns_pad_mask_w)
 {
+	static UINT8 prev;
+	static UINT8 prev_x,prev_y;
+	UINT8 current_x,current_y;
+	UINT32 type = input_port_read(space->machine,"ctrltype");
+
 	if(ACCESSING_BITS_16_23)
+	{
 		towns_pad_mask = (data & 0x00ff0000) >> 16;
+		if((type & 0x0f) == 0x02)  // mouse
+		{
+			if((towns_pad_mask & 0x10) != 0 && (prev & 0x10) == 0)
+			{
+				if(towns_mouse_output == MOUSE_START)
+				{
+					towns_mouse_output = MOUSE_X_HIGH;
+					current_x = input_port_read(space->machine,"mouse2");
+					current_y = input_port_read(space->machine,"mouse3");
+					towns_mouse_x = prev_x - current_x;
+					towns_mouse_y = prev_y - current_y;
+					prev_x = current_x;
+					prev_y = current_y;
+				}
+				else
+					towns_mouse_output++;
+				timer_adjust_periodic(towns_mouse_timer,ATTOTIME_IN_USEC(600),0,attotime_zero);
+			}
+			if((towns_pad_mask & 0x10) == 0 && (prev & 0x10) != 0)
+			{
+				if(towns_mouse_output == MOUSE_START)
+				{
+					towns_mouse_output = MOUSE_SYNC;
+					current_x = input_port_read(space->machine,"mouse2");
+					current_y = input_port_read(space->machine,"mouse3");
+					towns_mouse_x = prev_x - current_x;
+					towns_mouse_y = prev_y - current_y;
+					prev_x = current_x;
+					prev_y = current_y;
+				}
+				else
+					towns_mouse_output++;
+				timer_adjust_periodic(towns_mouse_timer,ATTOTIME_IN_USEC(600),0,attotime_zero);
+			}
+			prev = towns_pad_mask;
+		}
+		if((type & 0xf0) == 0x20)  // mouse
+		{
+			if((towns_pad_mask & 0x20) != 0 && (prev & 0x20) == 0)
+			{
+				if(towns_mouse_output == MOUSE_START)
+				{
+					towns_mouse_output = MOUSE_X_HIGH;
+					current_x = input_port_read(space->machine,"mouse2");
+					current_y = input_port_read(space->machine,"mouse3");
+					towns_mouse_x = prev_x - current_x;
+					towns_mouse_y = prev_y - current_y;
+					prev_x = current_x;
+					prev_y = current_y;
+				}
+				else
+					towns_mouse_output++;
+				timer_adjust_periodic(towns_mouse_timer,ATTOTIME_IN_USEC(600),0,attotime_zero);
+			}
+			if((towns_pad_mask & 0x20) == 0 && (prev & 0x20) != 0)
+			{
+				if(towns_mouse_output == MOUSE_START)
+				{
+					towns_mouse_output = MOUSE_SYNC;
+					current_x = input_port_read(space->machine,"mouse2");
+					current_y = input_port_read(space->machine,"mouse3");
+					towns_mouse_x = prev_x - current_x;
+					towns_mouse_y = prev_y - current_y;
+					prev_x = current_x;
+					prev_y = current_y;
+				}
+				else
+					towns_mouse_output++;
+				timer_adjust_periodic(towns_mouse_timer,ATTOTIME_IN_USEC(600),0,attotime_zero);
+			}
+			prev = towns_pad_mask;
+		}
+	}
 }
 
 static READ8_HANDLER( towns_cmos8_r )
@@ -843,7 +1029,6 @@ void towns_update_video_banks(const address_space* space)
 //      memory_set_bankptr(space->machine,10,messram_get_ptr(devtag_get_device(space->machine, "messram"))+0xca800);
 		memory_set_bankptr(space->machine,"bank6",messram_get_ptr(devtag_get_device(space->machine, "messram"))+0xcb000);
 		memory_set_bankptr(space->machine,"bank7",messram_get_ptr(devtag_get_device(space->machine, "messram"))+0xcb000);
-		memory_set_bankptr(space->machine,"bank8",messram_get_ptr(devtag_get_device(space->machine, "messram"))+0xcc000);
 		if(towns_system_port & 0x02)
 			memory_set_bankptr(space->machine,"bank11",messram_get_ptr(devtag_get_device(space->machine, "messram"))+0xf8000);
 		else
@@ -869,7 +1054,6 @@ void towns_update_video_banks(const address_space* space)
 		else
 			memory_set_bankptr(space->machine,"bank6",messram_get_ptr(devtag_get_device(space->machine, "messram"))+0xcb000);
 		memory_set_bankptr(space->machine,"bank7",messram_get_ptr(devtag_get_device(space->machine, "messram"))+0xcb000);
-		memory_set_bankptr(space->machine,"bank8",messram_get_ptr(devtag_get_device(space->machine, "messram"))+0xcc000);
 		if(towns_system_port & 0x02)
 			memory_set_bankptr(space->machine,"bank11",messram_get_ptr(devtag_get_device(space->machine, "messram"))+0xf8000);
 		else
@@ -961,13 +1145,17 @@ static void towns_cdrom_set_irq(running_machine* machine,int line,int state)
 				{
 					towns_cd.status |= 0x80;
 					if(towns_cd.mpu_irq_enable)
+					{
 						pic8259_ir1_w(devtag_get_device(machine,"pic8259_slave"), 1);
+						logerror("PIC: IRQ9 (CD-ROM) set high\n");
+					}
 				}
 			}
 			else
 			{
 				towns_cd.status &= ~0x80;
 				pic8259_ir1_w(devtag_get_device(machine,"pic8259_slave"), 0);
+				logerror("PIC: IRQ9 (CD-ROM) set low\n");
 			}
 			break;
 		case TOWNS_CD_IRQ_DMA:
@@ -977,13 +1165,17 @@ static void towns_cdrom_set_irq(running_machine* machine,int line,int state)
 				{
 					towns_cd.status |= 0x40;
 					if(towns_cd.dma_irq_enable)
+					{
 						pic8259_ir1_w(devtag_get_device(machine,"pic8259_slave"), 1);
+						logerror("PIC: IRQ9 (CD-ROM DMA) set high\n");
+					}
 				}
 			}
 			else
 			{
 				towns_cd.status &= ~0x40;
 				pic8259_ir1_w(devtag_get_device(machine,"pic8259_slave"), 0);
+				logerror("PIC: IRQ9 (CD-ROM DMA) set low\n");
 			}
 			break;
 	}
@@ -1096,52 +1288,8 @@ static void towns_cdrom_read(running_device* device)
 	track = cdrom_get_track(mess_cd_get_cdrom_file(device),towns_cd.lba_current);
 	if(track < 2)
 	{  // recalculate LBA
-		if((towns_cd.parameter[6] & 0x0f) < 2)
-		{
-			lba1 = 0;
-			if((towns_cd.parameter[6] & 0xf0) == 0x00)
-			{
-				lba1 |= (((towns_cd.parameter[6] + 8) & 0x0f) << 8);
-				lba1 |= (((towns_cd.parameter[6] + 0x80) & 0xf0) << 8);
-				lba1 |= ((towns_cd.parameter[7] - 1) << 16);
-			}
-			else
-			{
-				lba1 |= (((towns_cd.parameter[6] + 8) & 0x0f) << 8);
-				lba1 |= (((towns_cd.parameter[6] - 0x10) & 0xf0) << 8);
-				lba1 |= ((towns_cd.parameter[7]) << 16);
-			}
-		}
-		else
-		{
-			lba1 = (towns_cd.parameter[7] << 16);
-			lba1 |= ((towns_cd.parameter[6] - 2) << 8);
-		}
-		lba1 |= towns_cd.parameter[5];
-		if((towns_cd.parameter[3] & 0x0f) < 2)
-		{
-			lba2 = 0;
-			if((towns_cd.parameter[3] & 0xf0) == 0x00)
-			{
-				lba2 |= (((towns_cd.parameter[3] + 8) & 0x0f) << 8);
-				lba2 |= (((towns_cd.parameter[3] + 0x80) & 0xf0) << 8);
-				lba2 |= ((towns_cd.parameter[4] - 1) << 16);
-			}
-			else
-			{
-				lba2 |= (((towns_cd.parameter[3] + 8) & 0x0f) << 8);
-				lba2 |= (((towns_cd.parameter[3] - 0x10) & 0xf0) << 8);
-				lba2 |= ((towns_cd.parameter[4]) << 16);
-			}
-		}
-		else
-		{
-			lba2 = (towns_cd.parameter[4] << 16);
-			lba2 |= ((towns_cd.parameter[3] - 2) << 8);
-		}
-		lba2 |= towns_cd.parameter[2];
-		towns_cd.lba_current = msf_to_lba(lba1);
-		towns_cd.lba_last = msf_to_lba(lba2);
+		towns_cd.lba_current -= 150;
+		towns_cd.lba_last -= 150;
 	}
 
 	logerror("CD: Mode 1 read from LBA next:%i last:%i track:%i\n",towns_cd.lba_current,towns_cd.lba_last,track);
@@ -1202,6 +1350,7 @@ static void towns_cdrom_execute_command(running_device* device)
 	}
 	else
 	{
+		towns_cd.status &= ~0x02;
 		switch(towns_cd.command & 0x9f)
 		{
 			case 0x00:  // Seek
@@ -1211,6 +1360,14 @@ static void towns_cdrom_execute_command(running_device* device)
 					towns_cd_set_status(device->machine,0x00,0x00,0x00,0x00);
 				}
 				logerror("CD: Command 0x00: SEEK\n");
+				break;
+			case 0x01:  // unknown
+				if(towns_cd.command & 0x20)
+				{
+					towns_cd.extra_status = 0;
+					towns_cd_set_status(device->machine,0x00,0x00,0x00,0x00);
+				}
+				logerror("CD: Command 0x01: unknown\n");
 				break;
 			case 0x02:  // Read (MODE1)
 				logerror("CD: Command 0x02: READ MODE1\n");
@@ -1231,6 +1388,7 @@ static void towns_cdrom_execute_command(running_device* device)
 				towns_cd_set_status(device->machine,0x00,0x00,0x00,0x00);
 				break;
 			case 0x80:  // set state
+				logerror("CD: Command 0x80: set state\n");
 				if(towns_cd.command & 0x20)
 				{
 					towns_cd.extra_status = 0;
@@ -1245,7 +1403,6 @@ static void towns_cdrom_execute_command(running_device* device)
 						towns_cd_set_status(device->machine,0x00,0x01,0x00,0x00);
 
 				}
-				logerror("CD: Command 0x80: set state\n");
 				break;
 			case 0x81:  // set state (CDDASET)
 				if(towns_cd.command & 0x20)
@@ -1598,11 +1755,13 @@ void towns_fm_irq(running_device* device, int irq)
 	{
 		towns_fm_irq_flag = 1;
 		pic8259_ir5_w(pic, 1);
+		logerror("PIC: IRQ13 (FM) set high\n");
 	}
 	else
 	{
 		towns_fm_irq_flag = 0;
 		pic8259_ir5_w(pic, 0);
+		logerror("PIC: IRQ13 (FM) set low\n");
 	}
 }
 
@@ -1612,9 +1771,12 @@ void towns_pcm_irq(running_device* device, int channel)
 	running_device* pic = devtag_get_device(device->machine,"pic8259_slave");
 
 	towns_pcm_irq_flag = 1;
-	towns_pcm_channel_flag |= (1 << channel);
-	if(towns_pcm_channel_flag & (1 << channel))
+	if(towns_pcm_channel_mask & (1 << channel))
+	{
+		towns_pcm_channel_flag |= (1 << channel);
 		pic8259_ir5_w(pic, 1);
+		logerror("PIC: IRQ13 (PCM) set high\n");
+	}
 }
 
 static WRITE_LINE_DEVICE_HANDLER( towns_pic_irq )
@@ -1630,6 +1792,7 @@ static WRITE_LINE_DEVICE_HANDLER( towns_pit_out0_changed )
 	if(towns_timer_mask & 0x01)
 	{
 		pic8259_ir0_w(dev, state);
+		logerror("PIC: IRQ0 (PIT Timer) set to %i\n",state);
 	}
 }
 
@@ -1650,8 +1813,8 @@ static ADDRESS_MAP_START(towns_mem, ADDRESS_SPACE_PROGRAM, 32)
   AM_RANGE(0x000c0000, 0x000c7fff) AM_READWRITE8(towns_gfx_r,towns_gfx_w,0xffffffff)
   AM_RANGE(0x000c8000, 0x000cafff) AM_READWRITE8(towns_spriteram_low_r,towns_spriteram_low_w,0xffffffff)
   AM_RANGE(0x000cb000, 0x000cbfff) AM_READ_BANK("bank6") AM_WRITE_BANK("bank7")
-  AM_RANGE(0x000cc000, 0x000cff7f) AM_RAMBANK("bank8")
-  AM_RANGE(0x000cff80, 0x000cffff) AM_READWRITE8(towns_video_cff80_r,towns_video_cff80_w,0xffffffff)
+  AM_RANGE(0x000cc000, 0x000cff7f) AM_RAM
+  AM_RANGE(0x000cff80, 0x000cffff) AM_READWRITE8(towns_video_cff80_mem_r,towns_video_cff80_mem_w,0xffffffff)
   AM_RANGE(0x000d0000, 0x000d7fff) AM_RAM
   AM_RANGE(0x000d8000, 0x000d9fff) AM_READWRITE8(towns_cmos_low_r,towns_cmos_low_w,0xffffffff) // CMOS? RAM
   AM_RANGE(0x000da000, 0x000effff) AM_RAM //READWRITE(SMH_BANK(11),SMH_BANK(11))
@@ -1665,7 +1828,7 @@ static ADDRESS_MAP_START(towns_mem, ADDRESS_SPACE_PROGRAM, 32)
   AM_RANGE(0xc2100000, 0xc213ffff) AM_ROM AM_REGION("user",0x180000)  // FONT ROM
   AM_RANGE(0xc2140000, 0xc2141fff) AM_READWRITE8(towns_cmos_r,towns_cmos_w,0xffffffff) // CMOS (mirror?)
   AM_RANGE(0xc2180000, 0xc21fffff) AM_ROM AM_REGION("user",0x080000)  // F20 ROM
-  AM_RANGE(0xc2200000, 0xc2200fff) AM_DEVREADWRITE8("pcm",rf5c68_mem_r,rf5c68_mem_w,0xffffffff)  // WAVE RAM
+  AM_RANGE(0xc2200000, 0xc220ffff) AM_DEVREADWRITE8("pcm",rf5c68_mem_r,rf5c68_mem_w,0xffffffff)  // WAVE RAM
   AM_RANGE(0xfffc0000, 0xffffffff) AM_ROM AM_REGION("user",0x200000)  // SYSTEM ROM
 ADDRESS_MAP_END
 
@@ -1674,7 +1837,7 @@ static ADDRESS_MAP_START(marty_mem, ADDRESS_SPACE_PROGRAM, 32)
   AM_RANGE(0x000c0000, 0x000c7fff) AM_READWRITE8(towns_gfx_r,towns_gfx_w,0xffffffff)
   AM_RANGE(0x000c8000, 0x000cafff) AM_READWRITE8(towns_spriteram_low_r,towns_spriteram_low_w,0xffffffff)
   AM_RANGE(0x000cb000, 0x000cbfff) AM_READ_BANK("bank6") AM_WRITE_BANK("bank7")
-  AM_RANGE(0x000cc000, 0x000cff7f) AM_RAMBANK("bank8")
+  AM_RANGE(0x000cc000, 0x000cff7f) AM_RAM
   AM_RANGE(0x000cff80, 0x000cffff) AM_READWRITE8(towns_video_cff80_r,towns_video_cff80_w,0xffffffff)
   AM_RANGE(0x000d0000, 0x000d7fff) AM_RAM
   AM_RANGE(0x000d8000, 0x000d9fff) AM_READWRITE8(towns_cmos_low_r,towns_cmos_low_w,0xffffffff) // CMOS? RAM
@@ -1689,7 +1852,7 @@ static ADDRESS_MAP_START(marty_mem, ADDRESS_SPACE_PROGRAM, 32)
   AM_RANGE(0x00d00000, 0x00dfffff) AM_RAM // ?? - used by ssf2
   AM_RANGE(0x00e80000, 0x00efffff) AM_ROM AM_REGION("user",0x100000)  // DIC ROM
   AM_RANGE(0x00f00000, 0x00f7ffff) AM_ROM AM_REGION("user",0x180000)  // FONT
-  AM_RANGE(0x00f80000, 0x00f80fff) AM_DEVREADWRITE8("pcm",rf5c68_mem_r,rf5c68_mem_w,0xffffffff)  // WAVE RAM
+  AM_RANGE(0x00f80000, 0x00f8ffff) AM_DEVREADWRITE8("pcm",rf5c68_mem_r,rf5c68_mem_w,0xffffffff)  // WAVE RAM
   AM_RANGE(0x00fc0000, 0x00ffffff) AM_ROM AM_REGION("user",0x200000)  // SYSTEM ROM
   AM_RANGE(0xfffc0000, 0xffffffff) AM_ROM AM_REGION("user",0x200000)  // SYSTEM ROM
 ADDRESS_MAP_END
@@ -1737,7 +1900,7 @@ static ADDRESS_MAP_START( towns_io , ADDRESS_SPACE_IO, 32)
   AM_RANGE(0x0c30,0x0c33) AM_READ8(towns_unknown_r,0x00ff0000)
   // CMOS
   AM_RANGE(0x3000,0x3fff) AM_READWRITE8(towns_cmos8_r, towns_cmos8_w,0x00ff00ff)
-  // Something (MS-DOS wants this 0x41ff be 1
+  // Something (MS-DOS wants this 0x41ff to be 1)
   AM_RANGE(0x41fc,0x41ff) AM_READ8(towns_41ff_r,0xff000000)
   // CRTC / Video (again)
   AM_RANGE(0xfd90,0xfda3) AM_READWRITE8(towns_video_fd90_r, towns_video_fd90_w, 0xffffffff)
@@ -1747,6 +1910,16 @@ ADDRESS_MAP_END
 
 /* Input ports */
 static INPUT_PORTS_START( towns )
+  PORT_START("ctrltype")
+    PORT_CATEGORY_CLASS(0x0f,0x01,"Joystick port 1")
+    PORT_CATEGORY_ITEM(0x00,"Nothing",10)
+    PORT_CATEGORY_ITEM(0x01,"Standard 2-button joystick",11)
+    PORT_CATEGORY_ITEM(0x02,"Mouse",12)
+    PORT_CATEGORY_CLASS(0xf0,0x20,"Joystick port 2")
+    PORT_CATEGORY_ITEM(0x00,"Nothing",20)
+    PORT_CATEGORY_ITEM(0x10,"Standard 2-button joystick",21)
+    PORT_CATEGORY_ITEM(0x20,"Mouse",22)
+
 // Keyboard
   PORT_START( "key1" )  // scancodes 0x00-0x1f
     PORT_BIT(0x00000001,IP_ACTIVE_HIGH,IPT_UNUSED)
@@ -1883,44 +2056,55 @@ static INPUT_PORTS_START( towns )
     PORT_BIT(0x20000000,IP_ACTIVE_HIGH,IPT_KEYBOARD) PORT_NAME("COPY")
 
   PORT_START("joy1")
-    PORT_BIT(0x00000001,IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_PLAYER(1)
-    PORT_BIT(0x00000002,IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_PLAYER(1)
-    PORT_BIT(0x00000004,IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_PLAYER(1)
-    PORT_BIT(0x00000008,IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_PLAYER(1)
-    PORT_BIT(0x00000010,IP_ACTIVE_LOW, IPT_UNUSED)
-    PORT_BIT(0x00000020,IP_ACTIVE_LOW, IPT_UNUSED)
-    PORT_BIT(0x00000040,IP_ACTIVE_HIGH, IPT_UNUSED)
-    PORT_BIT(0x00000080,IP_ACTIVE_HIGH, IPT_UNUSED)
+    PORT_BIT(0x00000001,IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_PLAYER(1) PORT_CATEGORY(11)
+    PORT_BIT(0x00000002,IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_PLAYER(1) PORT_CATEGORY(11)
+    PORT_BIT(0x00000004,IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_PLAYER(1) PORT_CATEGORY(11)
+    PORT_BIT(0x00000008,IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_PLAYER(1) PORT_CATEGORY(11)
+    PORT_BIT(0x00000010,IP_ACTIVE_LOW, IPT_UNUSED) PORT_CATEGORY(11)
+    PORT_BIT(0x00000020,IP_ACTIVE_LOW, IPT_UNUSED) PORT_CATEGORY(11)
+    PORT_BIT(0x00000040,IP_ACTIVE_HIGH, IPT_UNUSED) PORT_CATEGORY(11)
+    PORT_BIT(0x00000080,IP_ACTIVE_HIGH, IPT_UNUSED) PORT_CATEGORY(11)
 
   PORT_START("joy1_ex")
-    PORT_BIT(0x00000001,IP_ACTIVE_HIGH, IPT_START) PORT_NAME("1P Run") PORT_PLAYER(1)
-    PORT_BIT(0x00000002,IP_ACTIVE_HIGH, IPT_BUTTON3) PORT_NAME("1P Select") PORT_PLAYER(1)
-    PORT_BIT(0x00000004,IP_ACTIVE_LOW, IPT_UNUSED)
-    PORT_BIT(0x00000008,IP_ACTIVE_LOW, IPT_UNUSED)
-    PORT_BIT(0x00000010,IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_PLAYER(1)
-    PORT_BIT(0x00000020,IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_PLAYER(1)
-    PORT_BIT(0x00000040,IP_ACTIVE_HIGH, IPT_UNUSED)
-    PORT_BIT(0x00000080,IP_ACTIVE_HIGH, IPT_UNUSED)
+    PORT_BIT(0x00000001,IP_ACTIVE_HIGH, IPT_START) PORT_NAME("1P Run") PORT_PLAYER(1) PORT_CATEGORY(11)
+    PORT_BIT(0x00000002,IP_ACTIVE_HIGH, IPT_BUTTON3) PORT_NAME("1P Select") PORT_PLAYER(1) PORT_CATEGORY(11)
+    PORT_BIT(0x00000004,IP_ACTIVE_LOW, IPT_UNUSED) PORT_CATEGORY(11)
+    PORT_BIT(0x00000008,IP_ACTIVE_LOW, IPT_UNUSED) PORT_CATEGORY(11)
+    PORT_BIT(0x00000010,IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_PLAYER(1) PORT_CATEGORY(11)
+    PORT_BIT(0x00000020,IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_PLAYER(1) PORT_CATEGORY(11)
+    PORT_BIT(0x00000040,IP_ACTIVE_HIGH, IPT_UNUSED) PORT_CATEGORY(11)
+    PORT_BIT(0x00000080,IP_ACTIVE_HIGH, IPT_UNUSED) PORT_CATEGORY(11)
 
   PORT_START("joy2")
-    PORT_BIT(0x00000001,IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_PLAYER(2)
-    PORT_BIT(0x00000002,IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_PLAYER(2)
-    PORT_BIT(0x00000004,IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_PLAYER(2)
-    PORT_BIT(0x00000008,IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_PLAYER(2)
-    PORT_BIT(0x00000010,IP_ACTIVE_LOW, IPT_UNUSED)
-    PORT_BIT(0x00000020,IP_ACTIVE_LOW, IPT_UNUSED)
-    PORT_BIT(0x00000040,IP_ACTIVE_HIGH, IPT_UNUSED)
-    PORT_BIT(0x00000080,IP_ACTIVE_HIGH, IPT_UNUSED)
+    PORT_BIT(0x00000001,IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_PLAYER(2) PORT_CATEGORY(21)
+    PORT_BIT(0x00000002,IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_PLAYER(2) PORT_CATEGORY(21)
+    PORT_BIT(0x00000004,IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_PLAYER(2) PORT_CATEGORY(21)
+    PORT_BIT(0x00000008,IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_PLAYER(2) PORT_CATEGORY(21)
+    PORT_BIT(0x00000010,IP_ACTIVE_LOW, IPT_UNUSED) PORT_CATEGORY(21)
+    PORT_BIT(0x00000020,IP_ACTIVE_LOW, IPT_UNUSED) PORT_CATEGORY(21)
+    PORT_BIT(0x00000040,IP_ACTIVE_HIGH, IPT_UNUSED) PORT_CATEGORY(21)
+    PORT_BIT(0x00000080,IP_ACTIVE_HIGH, IPT_UNUSED) PORT_CATEGORY(21)
 
   PORT_START("joy2_ex")
-    PORT_BIT(0x00000001,IP_ACTIVE_HIGH, IPT_START) PORT_NAME("2P Run") PORT_PLAYER(2)
-    PORT_BIT(0x00000002,IP_ACTIVE_HIGH, IPT_BUTTON3) PORT_NAME("2P Select") PORT_PLAYER(2)
-    PORT_BIT(0x00000004,IP_ACTIVE_LOW, IPT_UNUSED)
-    PORT_BIT(0x00000008,IP_ACTIVE_LOW, IPT_UNUSED)
-    PORT_BIT(0x00000010,IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_PLAYER(2)
-    PORT_BIT(0x00000020,IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_PLAYER(2)
-    PORT_BIT(0x00000040,IP_ACTIVE_HIGH, IPT_UNUSED)
-    PORT_BIT(0x00000080,IP_ACTIVE_HIGH, IPT_UNUSED)
+    PORT_BIT(0x00000001,IP_ACTIVE_HIGH, IPT_START) PORT_NAME("2P Run") PORT_PLAYER(2) PORT_CATEGORY(21)
+    PORT_BIT(0x00000002,IP_ACTIVE_HIGH, IPT_BUTTON3) PORT_NAME("2P Select") PORT_PLAYER(2) PORT_CATEGORY(21)
+    PORT_BIT(0x00000004,IP_ACTIVE_LOW, IPT_UNUSED) PORT_CATEGORY(21)
+    PORT_BIT(0x00000008,IP_ACTIVE_LOW, IPT_UNUSED) PORT_CATEGORY(21)
+    PORT_BIT(0x00000010,IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_PLAYER(2) PORT_CATEGORY(21)
+    PORT_BIT(0x00000020,IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_PLAYER(2) PORT_CATEGORY(21)
+    PORT_BIT(0x00000040,IP_ACTIVE_HIGH, IPT_UNUSED) PORT_CATEGORY(21)
+    PORT_BIT(0x00000080,IP_ACTIVE_HIGH, IPT_UNUSED) PORT_CATEGORY(21)
+
+  PORT_START("mouse1")  // buttons
+	PORT_BIT( 0x00000001, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_NAME("Left mouse button") PORT_CODE(MOUSECODE_BUTTON1)
+	PORT_BIT( 0x00000002, IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_NAME("Right mouse button") PORT_CODE(MOUSECODE_BUTTON2)
+
+  PORT_START("mouse2")  // X-axis
+	PORT_BIT( 0xff, 0x00, IPT_MOUSE_X) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
+
+  PORT_START("mouse3")  // Y-axis
+	PORT_BIT( 0xff, 0x00, IPT_MOUSE_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
+
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( marty )
@@ -1948,6 +2132,7 @@ static DRIVER_INIT( towns )
 	towns_init_rtc();
 	towns_rtc_timer = timer_alloc(machine,rtc_second,NULL);
 	towns_kb_timer = timer_alloc(machine,poll_keyboard,NULL);
+	towns_mouse_timer = timer_alloc(machine,towns_mouse_timeout,NULL);
 
 	// CD-ROM init
 	towns_cd.read_timer = timer_alloc(machine,towns_cdrom_read_byte,(void*)devtag_get_device(machine,"dma_1"));
@@ -1973,6 +2158,7 @@ static MACHINE_RESET( towns )
 	towns_kb_status = 0x18;
 	towns_kb_irq1_enable = 0;
 	towns_pad_mask = 0x7f;
+	towns_mouse_output = MOUSE_START;
 	towns_cd.status = 0x01;  // CDROM controller ready
 	towns_cd.buffer_ptr = -1;
 	timer_adjust_periodic(towns_rtc_timer,attotime_zero,0,ATTOTIME_IN_HZ(1));

@@ -116,7 +116,8 @@ static UINT32 *cart_base;
 static size_t cart_size;
 static UINT8 eeprom_bit_count;
 static UINT8 protection_check = 0;	/* 0 = check hasn't started yet; 1= check in progress; 2 = check is finished. */
-
+extern UINT8 blitter_status;
+static UINT8 using_cart = 0;
 
 static IRQ_CALLBACK(jaguar_irq_callback)
 {
@@ -136,7 +137,7 @@ static MACHINE_RESET( jaguar )
 	protection_check = 0;
 
 	/* Set up pointers for Jaguar logo */
-	memcpy(jaguar_shared_ram, rom_base, 0x10);
+	memcpy(jaguar_shared_ram, rom_base, 0x400);	// do not increase, or Doom breaks
 	cpu_set_reg(devtag_get_device(machine, "maincpu"), REG_GENPC, rom_base[1]);
 
 #if 0
@@ -164,6 +165,12 @@ static MACHINE_RESET( jaguar )
 
 	joystick_data = 0xffffffff;
 	eeprom_bit_count = 0;
+	blitter_status = 1;
+	if ((using_cart) && (input_port_read(machine, "CONFIG") & 2))
+	{
+		cart_base[0x102] = 1;
+		using_cart = 0;
+	}
 }
 
 
@@ -225,7 +232,9 @@ static void jaguar_nvram_save(running_machine *machine)
 		{
 			if (nvram_file == NULL)
 				nvram_file = jaguar_nvram_fopen(machine, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
-			(*nvram)(device, nvram_file, 1);
+			// check nvram_file to avoid crash when no image is mounted or cannot be created
+			if (nvram_file)
+				(*nvram)(device, nvram_file, 1);
 		}
 	}
 
@@ -489,45 +498,45 @@ static INPUT_PORTS_START( jaguar )
 	PORT_BIT( 0xf0ff, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("JOY1")
-	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Keypad 1") PORT_CODE(KEYCODE_1) PORT_PLAYER(1)
-	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Keypad 4") PORT_CODE(KEYCODE_4) PORT_PLAYER(1)
-	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Keypad 7") PORT_CODE(KEYCODE_7) PORT_PLAYER(1)
-	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Keypad *") PORT_CODE(KEYCODE_K) PORT_PLAYER(1)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P1 Keypad 1") PORT_CODE(KEYCODE_1) PORT_PLAYER(1)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P1 Keypad 4") PORT_CODE(KEYCODE_4) PORT_PLAYER(1)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P1 Keypad 7") PORT_CODE(KEYCODE_7) PORT_PLAYER(1)
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P1 Keypad *") PORT_CODE(KEYCODE_K) PORT_PLAYER(1)
 	PORT_BIT( 0xf0ff, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("JOY2")
-	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Keypad 2") PORT_CODE(KEYCODE_2) PORT_PLAYER(1)
-	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Keypad 5") PORT_CODE(KEYCODE_5) PORT_PLAYER(1)
-	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Keypad 8") PORT_CODE(KEYCODE_8) PORT_PLAYER(1)
-	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Keypad 0") PORT_CODE(KEYCODE_0) PORT_PLAYER(1)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P1 Keypad 2") PORT_CODE(KEYCODE_2) PORT_PLAYER(1)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P1 Keypad 5") PORT_CODE(KEYCODE_5) PORT_PLAYER(1)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P1 Keypad 8") PORT_CODE(KEYCODE_8) PORT_PLAYER(1)
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P1 Keypad 0") PORT_CODE(KEYCODE_0) PORT_PLAYER(1)
 	PORT_BIT( 0xf0ff, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("JOY3")
-	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Keypad 3") PORT_CODE(KEYCODE_3) PORT_PLAYER(1)
-	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Keypad 6") PORT_CODE(KEYCODE_6) PORT_PLAYER(1)
-	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Keypad 9") PORT_CODE(KEYCODE_9) PORT_PLAYER(1)
-	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Keypad #") PORT_CODE(KEYCODE_L) PORT_PLAYER(1)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P1 Keypad 3") PORT_CODE(KEYCODE_3) PORT_PLAYER(1)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P1 Keypad 6") PORT_CODE(KEYCODE_6) PORT_PLAYER(1)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P1 Keypad 9") PORT_CODE(KEYCODE_9) PORT_PLAYER(1)
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P1 Keypad #") PORT_CODE(KEYCODE_L) PORT_PLAYER(1)
 	PORT_BIT( 0xf0ff, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("JOY4")
-	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P2 Keypad 3") PORT_PLAYER(2)
-	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P2 Keypad 6") PORT_PLAYER(2)
-	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P2 Keypad 9") PORT_PLAYER(2)
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P2 Keypad #") PORT_PLAYER(2)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P2 Keypad 3") PORT_PLAYER(2)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P2 Keypad 6") PORT_PLAYER(2)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P2 Keypad 9") PORT_PLAYER(2)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P2 Keypad #") PORT_PLAYER(2)
 	PORT_BIT( 0x0fff, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("JOY5")
-	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P2 Keypad 2") PORT_PLAYER(2)
-	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P2 Keypad 5") PORT_PLAYER(2)
-	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P2 Keypad 8") PORT_PLAYER(2)
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P2 Keypad 0") PORT_PLAYER(2)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P2 Keypad 2") PORT_PLAYER(2)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P2 Keypad 5") PORT_PLAYER(2)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P2 Keypad 8") PORT_PLAYER(2)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P2 Keypad 0") PORT_PLAYER(2)
 	PORT_BIT( 0x0fff, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("JOY6")
-	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P2 Keypad 1") PORT_PLAYER(2)
-	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P2 Keypad 4") PORT_PLAYER(2)
-	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P2 Keypad 7") PORT_PLAYER(2)
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P2 Keypad *") PORT_PLAYER(2)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P2 Keypad 1") PORT_PLAYER(2)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P2 Keypad 4") PORT_PLAYER(2)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P2 Keypad 7") PORT_PLAYER(2)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_KEYPAD ) PORT_NAME("P2 Keypad *") PORT_PLAYER(2)
 	PORT_BIT( 0x0fff, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("JOY7")
@@ -572,9 +581,9 @@ static INPUT_PORTS_START( jaguar )
 	PORT_BIT( 0xfffc, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START("CONFIG")
-//  PORT_CONFNAME( 0x02, 0x02, "Show Logo")
-//  PORT_CONFSETTING(    0x00, "Yes")
-//  PORT_CONFSETTING(    0x02, "No")
+	PORT_CONFNAME( 0x02, 0x02, "Show Logo")
+	PORT_CONFSETTING(    0x00, "Yes")
+	PORT_CONFSETTING(    0x02, "No")
 	PORT_CONFNAME( 0x10, 0x10, "TV System")
 	PORT_CONFSETTING(    0x00, "PAL")
 	PORT_CONFSETTING(    0x10, "NTSC")
@@ -637,12 +646,16 @@ static MACHINE_DRIVER_START( jaguar )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 1.0)
 
 	/* quickload */
-	MDRV_QUICKLOAD_ADD("quickload", jaguar, "bin", 0)
+	MDRV_QUICKLOAD_ADD("quickload", jaguar, "abs,bin,cof,jag,prg", 0)
 
 	/* cartridge */
 	MDRV_CARTSLOT_ADD("cart")
-	MDRV_CARTSLOT_EXTENSION_LIST("jag,abs,rom,j64,j01")
+	MDRV_CARTSLOT_EXTENSION_LIST("j64,rom")
+	MDRV_CARTSLOT_INTERFACE("jaguar_cart")
 	MDRV_CARTSLOT_LOAD(jaguar)
+
+	/* software lists */
+	MDRV_SOFTWARE_LIST_ADD("jaguar")
 
 	MDRV_EEPROM_93C46_ADD("eeprom")
 MACHINE_DRIVER_END
@@ -678,56 +691,131 @@ ROM_END
  *
  *************************************/
 
+static void jaguar_fix_endian( running_machine *machine, UINT32 addr, UINT32 size )
+{
+	UINT8 j[4], *RAM = memory_region(machine, "maincpu");
+	UINT32 i;
+	size += addr;
+	logerror("File Loaded to address range %X to %X\n",addr,size-1);
+	for (i = addr; i < size; i+=4)
+	{
+		j[0] = RAM[i];
+		j[1] = RAM[i+1];
+		j[2] = RAM[i+2];
+		j[3] = RAM[i+3];
+		RAM[i] = j[3];
+		RAM[i+1] = j[2];
+		RAM[i+2] = j[1];
+		RAM[i+3] = j[0];
+	}
+}
+
 static DRIVER_INIT( jaguar )
 {
 	state_save_register_global(machine, joystick_data);
+	using_cart = 0;
 }
 
 static QUICKLOAD_LOAD( jaguar )
 {
-	int i,j;
-	offs_t quickload_begin = 0x4000;
+	offs_t quickload_begin = 0x4000, start = quickload_begin, skip = 0;
 	memset(jaguar_shared_ram, 0, 0x200000);
 	quickload_size = MIN(quickload_size, 0x200000 - quickload_begin);
+
 	image_fread(image, &memory_region(image->machine, "maincpu")[quickload_begin], quickload_size);
 
-	/* Fix endian-ness */
-	for (i = quickload_begin / 4; i < quickload_size / 4; i++)
+	jaguar_fix_endian(image->machine, quickload_begin, quickload_size);
+
+	/* Deal with some of the numerous homebrew header systems */
+		/* COF */
+	if ((jaguar_shared_ram[0x1000] & 0xffff0000) == 0x01500000)
 	{
-		j = jaguar_shared_ram[i];
-		jaguar_shared_ram[i] = ((j & 0xff) << 24) | ((j & 0xff00) << 8) | ((j & 0xff0000) >> 8) | ((j & 0xff000000) >> 24);
+		start = jaguar_shared_ram[0x100e];
+		skip = jaguar_shared_ram[0x1011];
 	}
+	else	/* PRG */
+	if (((jaguar_shared_ram[0x1000] & 0xffff0000) == 0x601A0000) && (jaguar_shared_ram[0x1007] == 0x4A414752))
+	{
+		UINT32 type = jaguar_shared_ram[0x1008] >> 16;
+		start = ((jaguar_shared_ram[0x1008] & 0xffff) << 16) | (jaguar_shared_ram[0x1009] >> 16);
+		skip = 28;
+		if (type == 2) skip = 42;
+		else if (type == 3) skip = 46;
+	}
+	else	/* ABS with header */
+	if ((jaguar_shared_ram[0x1000] & 0xffff0000) == 0x601B0000)
+	{
+		start = ((jaguar_shared_ram[0x1005] & 0xffff) << 16) | (jaguar_shared_ram[0x1006] >> 16);
+		skip = 36;
+	}
+
+	else	/* A header used by Badcoder */
+	if ((jaguar_shared_ram[0x1000] & 0xffff0000) == 0x72000000)
+		skip = 96;
+
+	else	/* ABS binary */
+	if (!mame_stricmp(image_filetype(image), "abs"))
+		start = 0xc000;
+
+	else	/* JAG binary */
+	if (!mame_stricmp(image_filetype(image), "jag"))
+		start = 0x5000;
+
+
+	/* Now that we have the info, reload the file */
+	if ((start != quickload_begin) || (skip))
+	{
+		memset(jaguar_shared_ram, 0, 0x200000);
+		image_fseek(image, 0, SEEK_SET);
+		image_fread(image, &memory_region(image->machine, "maincpu")[start-skip], quickload_size);
+		quickload_begin = start;
+		jaguar_fix_endian(image->machine, (start-skip)&0xfffffc, quickload_size);
+	}
+
+
+	/* Some programs are too lazy to set a stack pointer */
+	cpu_set_reg(devtag_get_device(image->machine, "maincpu"), REG_GENSP, 0x1000);
+	jaguar_shared_ram[0]=0x1000;
 
 	/* Transfer control to image */
 	cpu_set_reg(devtag_get_device(image->machine, "maincpu"), REG_GENPC, quickload_begin);
+	jaguar_shared_ram[1]=quickload_begin;
 	return INIT_PASS;
 }
 
 static DEVICE_IMAGE_LOAD( jaguar )
 {
-	int i,j;
-	image_fread(image, cart_base, image_length(image));
+	UINT32 size, load_offset = 0;
+
+	if (image_software_entry(image) == NULL)
+	{
+		size = image_length(image);
+
+		/* .rom files load & run at 802000 */
+		if (!mame_stricmp(image_filetype(image), "rom"))
+		{
+			load_offset = 0x2000;		// fix load address
+			cart_base[0x101]=0x802000;	// fix exec address
+		}
+
+		/* Load cart into memory */
+		image_fread(image, &memory_region(image->machine, "maincpu")[0x800000+load_offset], size);
+	}
+	else
+	{
+		size = image_get_software_region_length(image, "rom");
+
+		memcpy(cart_base, image_get_software_region(image, "rom"), size);
+	}
+
 	memset(jaguar_shared_ram, 0, 0x200000);
 	memcpy(jaguar_shared_ram, rom_base, 0x10);
 
-	/* Fix endian-ness */
-	if (!mame_stricmp(image_filetype(image), "j01"))
-	{
-		for (i = 0; i < image_length(image) / 4; i++)
-		{
-			j = cart_base[i];
-			cart_base[i] = ((j & 0xff) << 16) | ((j & 0xff00) << 16) | ((j & 0xff0000) >> 16) | ((j & 0xff000000) >> 16);
-		}
-	}
-	else
-	for (i = 0; i < image_length(image) / 4; i++)
-	{
-		j = cart_base[i];
-		cart_base[i] = ((j & 0xff) << 24) | ((j & 0xff00) << 8) | ((j & 0xff0000) >> 8) | ((j & 0xff000000) >> 24);
-	}
+	jaguar_fix_endian(image->machine, 0x800000+load_offset, size);
 
 	/* Skip the logo */
-	cart_base[0x102] = 1;
+	using_cart = 1;
+//	cart_base[0x102] = 1;
 
 	/* Transfer control to the bios */
 	cpu_set_reg(devtag_get_device(image->machine, "maincpu"), REG_GENPC, rom_base[1]);

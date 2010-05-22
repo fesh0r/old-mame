@@ -140,12 +140,8 @@ b) Exit the dialog.
 #include "winmain.h"
 #include "strconv.h"
 #include "winutf8.h"
-#include "sound/2413intf.h"
-#include "sound/3812intf.h"
 #include "sound/samples.h"
 #include "sound/vlm5030.h"
-
-typedef HANDLE HTHEME;
 
 #ifdef _MSC_VER
 #define snprintf _snprintf
@@ -156,17 +152,6 @@ typedef HANDLE HTHEME;
 #include "messopts.h"
 #include "resourcems.h"
 #include "propertiesms.h"
-#endif
-
-// missing win32 api defines
-#ifndef TBCD_TICS
-#define TBCD_TICS 1
-#endif
-#ifndef TBCD_THUMB
-#define TBCD_THUMB 2
-#endif
-#ifndef TBCD_CHANNEL
-#define TBCD_CHANNEL 3
 #endif
 
 #if defined(__GNUC__)
@@ -183,8 +168,6 @@ typedef HANDLE HTHEME;
  * Local function prototypes
  **************************************************************/
 
-static void SetStereoEnabled(HWND hWnd, int nIndex);
-static void SetYM3812Enabled(HWND hWnd, int nIndex);
 static void SetSamplesEnabled(HWND hWnd, int nIndex, BOOL bSoundEnabled);
 static void InitializeOptions(HWND hDlg);
 static void InitializeMisc(HWND hDlg);
@@ -198,7 +181,6 @@ static void UpdateSelectScreenUI(HWND hwnd);
 static void InitializeSelectScreenUI(HWND hwnd);
 static void InitializeD3DVersionUI(HWND hwnd);
 static void InitializeVideoUI(HWND hwnd);
-static void InitializeEffectUI(HWND hWnd);
 static void InitializeBIOSUI(HWND hwnd);
 static void InitializeControllerMappingUI(HWND hwnd);
 static void UpdateOptions(HWND hDlg, datamap *map, core_options *opts);
@@ -230,7 +212,7 @@ static HBRUSH hBkBrush;
 /* No longer used by the core, but we need it to predefine configurable screens for all games. */
 #ifndef MAX_SCREENS
 /* maximum number of screens for one game */
-#define MAX_SCREENS					8
+#define MAX_SCREENS					4
 #endif
 
 static core_options *pOrigOpts, *pDefaultOpts;
@@ -244,7 +226,7 @@ static int  g_nFolderGame      = 0;
 static int  g_nPropertyMode    = 0;
 static BOOL g_bUseDefaults     = FALSE;
 static BOOL g_bReset           = FALSE;
-static BOOL  g_bAutoAspect[MAX_SCREENS] = {FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE};
+static BOOL  g_bAutoAspect[MAX_SCREENS] = {FALSE, FALSE, FALSE, FALSE};
 static BOOL  g_bAutoSnapSize = FALSE;
 static HICON g_hIcon = NULL;
 
@@ -375,7 +357,7 @@ static int GetSelectedScreen(HWND hWnd)
 	HWND hCtrl = GetDlgItem(hWnd, IDC_SCREENSELECT);
 	if (hCtrl)
 		nSelectedScreen = ComboBox_GetCurSel(hCtrl);
-	if ((nSelectedScreen < 0) || (nSelectedScreen >= MAX_SCREENS))
+	if ((nSelectedScreen < 0) || (nSelectedScreen >= NUMSELECTSCREEN))
 		nSelectedScreen = 0;
 	return nSelectedScreen;
 
@@ -489,7 +471,7 @@ void InitDefaultPropertyPage(HINSTANCE hInst, HWND hWnd)
 		win_message_box_utf8(0, temp, "Error", IDOK);
 	}
 
-	global_free(pspage);
+	free(pspage);
 }
 
 /* Initilize the property pages for anything but the Default option set */
@@ -607,8 +589,8 @@ void InitPropertyPageToPage(HINSTANCE hInst, HWND hWnd, HICON hIcon, OPTIONS_TYP
 		win_message_box_utf8(0, temp, "Error", IDOK);
 	}
 
-	global_free(t_description);
-	global_free(pspage);
+	osd_free(t_description);
+	free(pspage);
 }
 
 
@@ -1759,7 +1741,6 @@ static void SetPropEnabledControls(HWND hWnd)
 	BOOL d3d = FALSE;
 	BOOL gdi = FALSE;
 	BOOL useart = TRUE;
-	BOOL multimon = (DirectDraw_GetNumDisplays() >= 2);
 	int joystick_attached = 0;
 	int in_window = 0;
 
@@ -1800,16 +1781,15 @@ static void SetPropEnabledControls(HWND hWnd)
 	EnableWindow(GetDlgItem(hWnd, IDC_SNAPSIZEWIDTH), !g_bAutoSnapSize);
 	EnableWindow(GetDlgItem(hWnd, IDC_SNAPSIZEX), !g_bAutoSnapSize);
 
-
 	EnableWindow(GetDlgItem(hWnd,IDC_D3D_FILTER),d3d);
 	EnableWindow(GetDlgItem(hWnd,IDC_D3D_VERSION),d3d);
 	
 	//Switchres and D3D or ddraw enable the per screen parameters
 
-	EnableWindow(GetDlgItem(hWnd, IDC_NUMSCREENS),                 (ddraw || d3d) && multimon);
-	EnableWindow(GetDlgItem(hWnd, IDC_NUMSCREENSDISP),             (ddraw || d3d) && multimon);
-	EnableWindow(GetDlgItem(hWnd, IDC_SCREENSELECT),               (ddraw || d3d) && multimon);
-	EnableWindow(GetDlgItem(hWnd, IDC_SCREENSELECTTEXT),           (ddraw || d3d) && multimon);
+	EnableWindow(GetDlgItem(hWnd, IDC_NUMSCREENS),                 (ddraw || d3d));
+	EnableWindow(GetDlgItem(hWnd, IDC_NUMSCREENSDISP),             (ddraw || d3d));
+	EnableWindow(GetDlgItem(hWnd, IDC_SCREENSELECT),               (ddraw || d3d));
+	EnableWindow(GetDlgItem(hWnd, IDC_SCREENSELECTTEXT),           (ddraw || d3d));
 
 	EnableWindow(GetDlgItem(hWnd, IDC_ARTWORK_CROP),	useart);
 	EnableWindow(GetDlgItem(hWnd, IDC_BACKDROPS),		useart);
@@ -1892,8 +1872,6 @@ static void SetPropEnabledControls(HWND hWnd)
 		EnableWindow(GetDlgItem(hWnd,IDC_AUDIO_LATENCY_DISP),sound);
 		EnableWindow(GetDlgItem(hWnd,IDC_AUDIO_LATENCY_TEXT),sound);
 		SetSamplesEnabled(hWnd, nIndex, sound);
-		SetStereoEnabled(hWnd, nIndex);
-		SetYM3812Enabled(hWnd, nIndex);
 	}
     
 	if (Button_GetCheck(GetDlgItem(hWnd, IDC_AUTOFRAMESKIP)))
@@ -1973,7 +1951,7 @@ static BOOL ScreenReadControl(datamap *map, HWND dialog, HWND control, core_opti
 	TCHAR *screen_option_value;
 	int selected_screen;
 	int screen_option_index;
-	const char *op_val;
+	char *op_val;
 
 	selected_screen = GetSelectedScreen(dialog);
 	screen_option_index = ComboBox_GetCurSel(control);
@@ -1981,6 +1959,7 @@ static BOOL ScreenReadControl(datamap *map, HWND dialog, HWND control, core_opti
 	snprintf(screen_option_name, ARRAY_LENGTH(screen_option_name), "screen%d", selected_screen);
 	op_val = utf8_from_tstring(screen_option_value);
 	options_set_string(opts, screen_option_name, op_val, OPTION_PRIORITY_CMDLINE);
+	osd_free(op_val);
 	return FALSE;
 }
 
@@ -1997,7 +1976,7 @@ static BOOL ScreenPopulateControl(datamap *map, HWND dialog, HWND control, core_
 	/* Remove all items in the list. */
 	(void)ComboBox_ResetContent(control);
 	(void)ComboBox_InsertString(control, 0, TEXT("Auto"));
-	(void)ComboBox_SetItemData(control, 0, (const char*)mame_strdup("auto"));
+	(void)ComboBox_SetItemData(control, 0, (void*)tstring_from_utf8("auto"));
 
 	//Dynamically populate it, by enumerating the Monitors
 	//iMonitors = GetSystemMetrics(SM_CMONITORS); // this gets the count of monitors attached
@@ -2019,7 +1998,7 @@ static BOOL ScreenPopulateControl(datamap *map, HWND dialog, HWND control, core_
 				return FALSE;
 			if (_tcscmp(t_option, dd.DeviceName) == 0)
 				nSelection = i+1;
-			global_free(t_option);
+			osd_free(t_option);
 		}
 	}
 	(void)ComboBox_SetCurSel(control, nSelection);
@@ -2083,12 +2062,13 @@ static BOOL DefaultInputReadControl(datamap *map, HWND dialog, HWND control, cor
 {
 	TCHAR *input_option_value;	
 	int input_option_index;
-	const char *op_val;
+	char *op_val;
 
 	input_option_index = ComboBox_GetCurSel(control);
 	input_option_value = (TCHAR*) ComboBox_GetItemData(control, input_option_index);	
 	op_val = utf8_from_tstring(input_option_value);
 	options_set_string(opts, OPTION_CTRLR, op_val, OPTION_PRIORITY_CMDLINE);
+	osd_free(op_val);
 	return FALSE;
 }
 
@@ -2102,7 +2082,7 @@ static BOOL DefaultInputPopulateControl(datamap *map, HWND dialog, HWND control,
 	int selected = 0;
 	int index = 0;
 	LPCTSTR t_ctrlr_option = 0;
-	LPTSTR buf = 0;
+	LPTSTR t_buf = 0;
 	const char *ctrlr_option;
 	TCHAR* t_ctrldir;
 
@@ -2110,10 +2090,10 @@ static BOOL DefaultInputPopulateControl(datamap *map, HWND dialog, HWND control,
 	ctrlr_option = options_get_string(opts, OPTION_CTRLR);
 	if( ctrlr_option != NULL )
 	{
-		buf = tstring_from_utf8(ctrlr_option);
-		if( !buf )
+		t_buf = tstring_from_utf8(ctrlr_option);
+		if( !t_buf )
 			return FALSE;
-		t_ctrlr_option = buf;
+		t_ctrlr_option = t_buf;
 	}
 	else
 	{
@@ -2129,14 +2109,14 @@ static BOOL DefaultInputPopulateControl(datamap *map, HWND dialog, HWND control,
 	t_ctrldir = tstring_from_utf8(GetCtrlrDir());
 	if( !t_ctrldir )
 	{
-		if( buf )
-			global_free(buf);
+		if( t_buf )
+			osd_free(t_buf);
 		return FALSE;
 	}
 
 	_stprintf (path, TEXT("%s\\*.*"), t_ctrldir);
 	
-	global_free(t_ctrldir);
+	osd_free(t_ctrldir);
 
 	hFind = FindFirstFile(path, &FindFileData);
 
@@ -2175,8 +2155,8 @@ static BOOL DefaultInputPopulateControl(datamap *map, HWND dialog, HWND control,
 
 	(void)ComboBox_SetCurSel(control, selected);
 	
-	if( buf )
-		global_free(buf);
+	if( t_buf )
+		osd_free(t_buf);
 
 	return FALSE;
 }
@@ -2300,7 +2280,7 @@ static BOOL ResolutionPopulateControl(datamap *map, HWND dialog, HWND control_, 
 				}
 			}
 		}
-		global_free(t_screen);
+		osd_free(t_screen);
 
 		(void)ComboBox_SetCurSel(sizes_control, sizes_selection);
 		(void)ComboBox_SetCurSel(refresh_control, refresh_selection);
@@ -2603,63 +2583,6 @@ BOOL IsControlOptionValue(HWND hDlg,HWND hwnd_ctrl, core_options *opts )
 }
 #endif
 
-static void SetStereoEnabled(HWND hWnd, int nIndex)
-{
-	BOOL enabled = FALSE;
-	HWND hCtrl;
-	int num_speakers = 0;
-
-	if ( nIndex > -1)
-	{
-		machine_config *config = machine_config_alloc(drivers[nIndex]->machine_config);
-		num_speakers = numberOfSpeakers(config);
-		machine_config_free(config);
-	}
-
-	hCtrl = GetDlgItem(hWnd, IDC_STEREO);
-	if (hCtrl)
-	{
-		if (nIndex <= -1 || num_speakers == 2)
-			enabled = TRUE;
-
-		EnableWindow(hCtrl, enabled);
-	}
-}
-
-static void SetYM3812Enabled(HWND hWnd, int nIndex)
-{
-	BOOL enabled;
-	HWND hCtrl;
-	machine_config *config = NULL;
-	const device_config *sound;
-
-	if (nIndex > -1)
-	{
-		config = machine_config_alloc(drivers[nIndex]->machine_config);
-	}
-
-	hCtrl = GetDlgItem(hWnd, IDC_USE_FM_YM3812);
-	if (hCtrl)
-	{
-		enabled = FALSE;
-
-		for (sound = config->devicelist.first(DEVICE_CLASS_SOUND_CHIP); sound != NULL; sound = sound->next)
-		{
-			if (nIndex <= -1
-				||  sound->type == SOUND_YM3812
-				||  sound->type == SOUND_YM2413
-			)
-				enabled = TRUE;
-		}
-    
-		EnableWindow(hCtrl, enabled);
-	}
-	if (nIndex > -1)
-	{
-		machine_config_free(config);
-	}
-}
-
 static void SetSamplesEnabled(HWND hWnd, int nIndex, BOOL bSoundEnabled)
 {
 	machine_config *config = NULL;
@@ -2704,7 +2627,6 @@ static void InitializeOptions(HWND hDlg)
 	InitializeSkippingUI(hDlg);
 	InitializeRotateUI(hDlg);
 	InitializeSelectScreenUI(hDlg);
-	InitializeEffectUI(hDlg);
 	InitializeBIOSUI(hDlg);
 	InitializeControllerMappingUI(hDlg);
 	InitializeD3DVersionUI(hDlg);
@@ -2855,19 +2777,19 @@ static void UpdateSelectScreenUI(HWND hwnd)
 	{
 		int i, curSel;
 		curSel = ComboBox_GetCurSel(hCtrl);
-		if ((curSel < 0) || (curSel >= MAX_SCREENS))
+		if ((curSel < 0) || (curSel >= NUMSELECTSCREEN))
 			curSel = 0;
-		(void)ComboBox_ResetContent(hCtrl );
+		(void)ComboBox_ResetContent(hCtrl);
 		for (i = 0; i < NUMSELECTSCREEN && i < options_get_int(pCurrentOpts, WINOPTION_NUMSCREENS) ; i++)
 		{
 			(void)ComboBox_InsertString(hCtrl, i, g_ComboBoxSelectScreen[i].m_pText);
 			(void)ComboBox_SetItemData( hCtrl, i, g_ComboBoxSelectScreen[i].m_pData);
 		}
 		// Smaller Amount of screens was selected, so use 0
-		if( i< curSel )
-			(void)ComboBox_SetCurSel(hCtrl, 0 );
+		if( i < curSel )
+			(void)ComboBox_SetCurSel(hCtrl, 0);
 		else
-			(void)ComboBox_SetCurSel(hCtrl, curSel );
+			(void)ComboBox_SetCurSel(hCtrl, curSel);
 	}
 }
 
@@ -2875,10 +2797,6 @@ static void UpdateSelectScreenUI(HWND hwnd)
 static void InitializeSelectScreenUI(HWND hwnd)
 {
 	UpdateSelectScreenUI(hwnd);
-}
-
-static void InitializeEffectUI(HWND hwnd)
-{
 }
 
 static void InitializeControllerMappingUI(HWND hwnd)
@@ -3001,7 +2919,7 @@ static void InitializeBIOSUI(HWND hwnd)
 							return;
 						(void)ComboBox_InsertString(hCtrl, i, win_tstring_strdup(t_s));
 						(void)ComboBox_SetItemData( hCtrl, i++, biosname);
-						global_free(t_s);
+						osd_free(t_s);
 					}
 				}
 			}
@@ -3030,7 +2948,7 @@ static void InitializeBIOSUI(HWND hwnd)
 						return;
 					(void)ComboBox_InsertString(hCtrl, i, win_tstring_strdup(t_s));
 					(void)ComboBox_SetItemData( hCtrl, i++, biosname);
-					global_free(t_s);
+					osd_free(t_s);
 				}
 			}
 		}

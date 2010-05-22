@@ -48,7 +48,7 @@ static ADDRESS_MAP_START( vector4_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 /* Input ports */
-INPUT_PORTS_START( vector4 )
+static INPUT_PORTS_START( vector4 )
 	PORT_INCLUDE(generic_terminal)
 INPUT_PORTS_END
 
@@ -99,5 +99,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT        COMPANY                 FULLNAME       FLAGS */
-COMP( ????, vector4,  0,       0,	vector4,	vector4,	0,  	 "Vector Graphics",   "Vector 4",		GAME_NOT_WORKING | GAME_NO_SOUND)
-
+COMP( 19??, vector4,  0,       0,	vector4,	vector4,	0,  	 "Vector Graphics",   "Vector 4",		GAME_NOT_WORKING | GAME_NO_SOUND )

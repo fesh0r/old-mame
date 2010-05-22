@@ -23,7 +23,6 @@
 #include "opcntrl.h"
 #include "strconv.h"
 #include "utils.h"
-#include "png.h"
 #include "debug/debugcpu.h"
 #include "inptport.h"
 #include "devices/cassette.h"
@@ -95,166 +94,12 @@ enum
 //  LOCAL VARIABLES
 //============================================================
 
-static HICON device_icons[IO_COUNT];
 static int use_input_categories;
 static int joystick_menu_setup;
 static char state_filename[MAX_PATH];
 
 static int add_filter_entry(char *dest, size_t dest_len, const char *description, const char *extensions);
 
-/***************************************************************************
-
-    Constants
-
-***************************************************************************/
-
-typedef enum
-{
-	ARTWORK_CUSTTYPE_JOYSTICK = 0,
-	ARTWORK_CUSTTYPE_KEYBOARD,
-	ARTWORK_CUSTTYPE_MISC,
-	ARTWORK_CUSTTYPE_INVALID
-} artwork_cust_type;
-
-
-
-/***************************************************************************
-
-    Type definitions
-
-***************************************************************************/
-
-struct inputform_customization
-{
-	UINT32 ipt;
-	int x, y;
-	int width, height;
-};
-
-
-//============================================================
-//  artwork_get_inputscreen_customizations
-//============================================================
-
-int artwork_get_inputscreen_customizations(png_info *png, artwork_cust_type cust_type,
-	const char *section,
-	struct inputform_customization *customizations,
-	int customizations_length)
-{
-	file_error filerr;
-	mame_file *file;
-	char buffer[1000];
-	char current_section[64];
-	char ipt_name[64];
-	char *p;
-	int x1, y1, x2, y2;
-	const char *png_filename;
-	const char *ini_filename;
-	int enabled = TRUE;
-	int item_count = 0;
-
-	static const char *const cust_files[] =
-	{
-		"ctrlr.png",		"ctrlr.ini",
-		"keyboard.png",		"keyboard.ini"
-		"misc.png",			"misc.ini"
-	};
-
-	if ((cust_type >= 0) && (cust_type < (ARRAY_LENGTH(cust_files) / 2)))
-	{
-		png_filename = cust_files[cust_type * 2 + 0];
-		ini_filename = cust_files[cust_type * 2 + 1];
-	}
-	else
-	{
-		png_filename = NULL;
-		ini_filename = NULL;
-	}
-
-	/* subtract one from the customizations length; so we can place IPT_END */
-	customizations_length--;
-
-	/* open the INI file, if available */
-	if (ini_filename)
-	{
-		filerr = mame_fopen(SEARCHPATH_ARTWORK, ini_filename, OPEN_FLAG_READ, &file);
-		if (filerr == FILERR_NONE)
-		{
-			/* loop until we run out of lines */
-			while (customizations_length && mame_fgets(buffer, sizeof(buffer), file))
-			{
-				/* strip off any comments */
-				p = strstr(buffer, "//");
-				if (p)
-					*p = 0;
-
-				/* section header? */
-				if (buffer[0] == '[')
-				{
-					strncpyz(current_section, &buffer[1],
-						ARRAY_LENGTH(current_section));
-					p = strchr(current_section, ']');
-					if (!p)
-						continue;
-					*p = '\0';
-					if (section)
-						enabled = !mame_stricmp(current_section, section);
-					continue;
-				}
-
-				if (!enabled || sscanf(buffer, "%64s (%d,%d)-(%d,%d)", ipt_name, &x1, &y1, &x2, &y2) != 5)
-					continue;
-
-#if 0
-				/* temporarily disabled */
-				for (pik = input_keywords; pik->name[0]; pik++)
-				{
-					pik_name = pik->name;
-					if ((pik_name[0] == 'P') && (pik_name[1] == '1') && (pik_name[2] == '_'))
-						pik_name += 3;
-
-					if (!strcmp(ipt_name, pik_name))
-					{
-						if ((x1 > 0) && (y1 > 0) && (x2 > x1) && (y2 > y1))
-						{
-							customizations->ipt = pik->val;
-							customizations->x = x1;
-							customizations->y = y1;
-							customizations->width = x2 - x1;
-							customizations->height = y2 - y1;
-							customizations++;
-							customizations_length--;
-							item_count++;
-						}
-						break;
-					}
-				}
-#endif
-			}
-			mame_fclose(file);
-		}
-	}
-
-	/* terminate list */
-	customizations->ipt = IPT_END;
-	customizations->x = -1;
-	customizations->y = -1;
-	customizations->width = -1;
-	customizations->height = -1;
-
-	/* open the PNG, if available */
-	memset(png, 0, sizeof(*png));
-	if (png_filename && item_count > 0)
-	{
-		filerr = mame_fopen(SEARCHPATH_ARTWORK, ini_filename, OPEN_FLAG_READ, &file);
-		if (filerr == FILERR_NONE)
-		{
-			png_read_file(mame_core_file(file), png);
-			mame_fclose(file);
-		}
-	}
-	return item_count;
-}
 
 
 //============================================================
@@ -342,40 +187,22 @@ static int serial_number_from_input_item(running_machine *machine, const input_p
 //  customize_input
 //============================================================
 
-static void customize_input(running_machine *machine, HWND wnd, const char *title, artwork_cust_type cust_type, int player, int inputclass, const char *section)
+static void customize_input(running_machine *machine, HWND wnd, const char *title, int player, int inputclass)
 {
 	dialog_box *dlg;
 	const input_port_config *port;
 	const input_field_config *field;
-	png_info png;
-	struct inputform_customization customizations[128];
-	RECT *pr;
-	int this_inputclass, this_player, portslot_count, i;
+	int this_inputclass, this_player, portslot_count = 0, i;
 
 	struct
 	{
 		const input_field_config *field;
-		const RECT *pr;
 	} portslots[256];
-
-	/* check to see if there is any custom artwork for this configure dialog,
-     * and if so, retrieve the info */
-	portslot_count = artwork_get_inputscreen_customizations(&png, cust_type, section,
-		customizations, ARRAY_LENGTH(customizations));
-
-	/* zero out the portslots that correspond to customizations */
-	memset(portslots, 0, sizeof(portslots[0]) * portslot_count);
 
 	/* create the dialog */
 	dlg = win_dialog_init(title, NULL);
 	if (!dlg)
 		goto done;
-
-	if (png.width > 0)
-	{
-		win_dialog_add_image(dlg, &png);
-		win_dialog_add_separator(dlg);
-	}
 
 	for (port = machine->portlist.first(); port != NULL; port = port->next)
 	{
@@ -394,32 +221,14 @@ static void customize_input(running_machine *machine, HWND wnd, const char *titl
 
 				if (this_player == player)
 				{
-					/* check to see if the custom artwork for this configure dialog
-                     * says anything about this input */
-					pr = NULL;
-					for (i = 0; customizations[i].ipt != IPT_END; i++)
-					{
-						if (field->type == customizations[i].ipt)
-						{
-							pr = (RECT *) alloca(sizeof(*pr));
-							pr->left = customizations[i].x;
-							pr->top = customizations[i].y;
-							pr->right = pr->left + customizations[i].width;
-							pr->bottom = pr->top + customizations[i].height;
-							break;
-						}
-					}
-
 					/* store this InputPort/RECT combo in our list.  we do not
                      * necessarily want to add it yet because we the INI might
                      * want to reorder the tab order */
-					if (customizations[i].ipt == IPT_END)
-						i = portslot_count++;
-					if (i < ARRAY_LENGTH(portslots))
+					if (portslot_count < ARRAY_LENGTH(portslots))
 					{
-						portslots[i].field = field;
-						portslots[i].pr = pr;
+						portslots[portslot_count].field = field;
 					}
+					portslot_count++;
 				}
 			}
 		}
@@ -432,7 +241,7 @@ static void customize_input(running_machine *machine, HWND wnd, const char *titl
 	{
 		if (portslots[i].field)
 		{
-			if (win_dialog_add_portselect(dlg, portslots[i].field, portslots[i].pr))
+			if (win_dialog_add_portselect(dlg, portslots[i].field))
 				goto done;
 		}
 	}
@@ -457,7 +266,7 @@ done:
 
 static void customize_joystick(running_machine *machine, HWND wnd, int joystick_num)
 {
-	customize_input(machine, wnd, "Joysticks/Controllers", ARTWORK_CUSTTYPE_JOYSTICK, joystick_num, INPUT_CLASS_CONTROLLER, NULL);
+	customize_input(machine, wnd, "Joysticks/Controllers", joystick_num, INPUT_CLASS_CONTROLLER);
 }
 
 
@@ -468,7 +277,7 @@ static void customize_joystick(running_machine *machine, HWND wnd, int joystick_
 
 static void customize_keyboard(running_machine *machine, HWND wnd)
 {
-	customize_input(machine, wnd, "Emulated Keyboard", ARTWORK_CUSTTYPE_KEYBOARD, 0, INPUT_CLASS_KEYBOARD, NULL);
+	customize_input(machine, wnd, "Emulated Keyboard", 0, INPUT_CLASS_KEYBOARD);
 }
 
 
@@ -479,7 +288,7 @@ static void customize_keyboard(running_machine *machine, HWND wnd)
 
 static void customize_miscinput(running_machine *machine, HWND wnd)
 {
-	customize_input(machine, wnd, "Miscellaneous Input", ARTWORK_CUSTTYPE_MISC, 0, INPUT_CLASS_MISC, NULL);
+	customize_input(machine, wnd, "Miscellaneous Input", 0, INPUT_CLASS_MISC);
 }
 
 
@@ -488,10 +297,10 @@ static void customize_miscinput(running_machine *machine, HWND wnd)
 //  customize_categorizedinput
 //============================================================
 
-static void customize_categorizedinput(running_machine *machine, HWND wnd, const char *section, int category)
+static void customize_categorizedinput(running_machine *machine, HWND wnd, int category)
 {
 	assert(category > 0);
-	customize_input(machine, wnd, "Input", ARTWORK_CUSTTYPE_JOYSTICK, category, INPUT_CLASS_CATEGORIZED, section);
+	customize_input(machine, wnd, "Input", category, INPUT_CLASS_CATEGORIZED);
 }
 
 
@@ -722,7 +531,7 @@ done:
 //  win_dirname
 //============================================================
 
-char *win_dirname(const char *filename)
+static char *win_dirname(const char *filename)
 {
 	char *dirname;
 	char *c;
@@ -763,29 +572,12 @@ static void state_dialog(HWND wnd, win_file_dialog_type dlgtype,
 	running_machine *machine)
 {
 	win_open_file_name ofn;
-	char *dir;
+	char *dir = NULL;
 	int result = 0;
-	char *src;
-	char *dst;
 
 	if (state_filename[0])
 	{
 		dir = win_dirname(state_filename);
-	}
-	else
-	{
-		snprintf(state_filename, ARRAY_LENGTH(state_filename),
-			"%s State.sta", machine->gamedrv->description);
-		dir = NULL;
-
-		src = state_filename;
-		dst = state_filename;
-		do
-		{
-			if ((*src == '\0') || isalnum(*src) || isspace(*src) || strchr("(),.", *src))
-				*(dst++) = *src;
-		}
-		while(*(src++));
 	}
 
 	memset(&ofn, 0, sizeof(ofn));
@@ -795,17 +587,24 @@ static void state_dialog(HWND wnd, win_file_dialog_type dlgtype,
 	ofn.filter = "State Files (*.sta)|*.sta|All Files (*.*)|*.*";
 	ofn.initial_directory = dir;
 
-	snprintf(ofn.filename, ARRAY_LENGTH(ofn.filename), "%s", state_filename);
+	if (!core_filename_ends_with(ofn.filename, "sta"))
+		snprintf(ofn.filename, ARRAY_LENGTH(ofn.filename), "%s.sta", state_filename);
+	else
+		snprintf(ofn.filename, ARRAY_LENGTH(ofn.filename), "%s", state_filename);
 
 	result = win_get_file_name_dialog(&ofn);
 	if (result)
 	{
-		snprintf(state_filename, ARRAY_LENGTH(state_filename), "%s", ofn.filename);
+		// the core doesn't add the extension if it's an absolute path
+		if (osd_is_absolute_path(ofn.filename) && !core_filename_ends_with(ofn.filename, "sta"))
+			snprintf(state_filename, ARRAY_LENGTH(state_filename), "%s.sta", ofn.filename);
+		else
+			snprintf(state_filename, ARRAY_LENGTH(state_filename), "%s", ofn.filename);
 
 		mameproc(machine, state_filename);
 	}
 	if (dir)
-		global_free(dir);
+		free(dir);
 }
 
 
@@ -848,7 +647,7 @@ static void format_combo_changed(dialog_box *dialog, HWND dlgwnd, NMHDR *notific
 	struct file_dialog_params *params;
 	int has_option;
 	TCHAR t_buf1[128];
-	char *buf1;
+	char *utf8_buf1;
 
 	params = (struct file_dialog_params *) changed_param;
 
@@ -873,12 +672,12 @@ static void format_combo_changed(dialog_box *dialog, HWND dlgwnd, NMHDR *notific
 	{
 		// get label text, removing trailing NULL
 		GetWindowText(wnd, t_buf1, ARRAY_LENGTH(t_buf1));
-		buf1 = utf8_from_tstring(t_buf1);
-		assert(buf1[strlen(buf1)-1] == ':');
-		buf1[strlen(buf1)-1] = '\0';
+		utf8_buf1 = utf8_from_tstring(t_buf1);
+		assert(utf8_buf1[strlen(utf8_buf1)-1] == ':');
+		utf8_buf1[strlen(utf8_buf1)-1] = '\0';
 
 		// find guide entry
-		while(guide->option_type && strcmp(buf1, guide->display_name))
+		while(guide->option_type && strcmp(utf8_buf1, guide->display_name))
 			guide++;
 
 		wnd = GetNextWindow(wnd, GW_HWNDNEXT);
@@ -894,7 +693,7 @@ static void format_combo_changed(dialog_box *dialog, HWND dlgwnd, NMHDR *notific
 				has_option ? guide : NULL,
 				has_option ? optspec : NULL);
 		}
-		global_free(buf1);
+		osd_free(utf8_buf1);
 	}
 }
 
@@ -1130,12 +929,10 @@ static void change_device(HWND wnd, running_device *device, int is_save)
 	dialog_box *dialog = NULL;
 	char filter[2048];
 	char filename[MAX_PATH];
-	char buffer[512];
 	const char *initial_dir;
 	BOOL result;
 	int create_format = 0;
 	option_resolution *create_args = NULL;
-	image_error_t err;
 	image_device_info info;
 
 	// sanity check
@@ -1181,20 +978,12 @@ static void change_device(HWND wnd, running_device *device, int is_save)
 	{
 		// mount the image
 		if (is_save)
-			err = (image_error_t)image_create(device, filename, image_device_get_indexed_creatable_format(device, create_format), create_args);
+			(image_error_t)image_create(device, filename, image_device_get_indexed_creatable_format(device, create_format), create_args);
 		else
-			err = (image_error_t)image_load(device, filename);
+			(image_error_t)image_load(device, filename);
 
-		// error?
-		if (err)
-		{
-			snprintf(buffer, ARRAY_LENGTH(buffer),
-				"Error when %s the image: %s",
-				is_save ? "creating" : "loading",
-				image_error(device));
-
-			win_message_box_utf8(wnd, buffer, APPNAME, MB_OK);
-		}
+		// no need to check the returnvalue and show a messagebox anymore.
+		// a UI message will now be generated by the image code
 	}
 
 done:
@@ -1270,13 +1059,13 @@ static HMENU find_sub_menu(HMENU menu, const char *menutext, int create_sub_menu
 		{
 			if (!get_menu_item_string(menu, ++i, TRUE, &sub_menu, buf, ARRAY_LENGTH(buf)))
 			{
-				global_free(t_menutext);
+				osd_free(t_menutext);
 				return NULL;
 			}
 		}
 		while(_tcscmp(t_menutext, buf));
 
-		global_free(t_menutext);
+		osd_free(t_menutext);
 
 		if (!sub_menu && create_sub_menu)
 		{
@@ -1325,30 +1114,6 @@ static void set_command_state(HMENU menu_bar, UINT command, UINT state)
 #endif
 }
 
-
-
-//============================================================
-//  append_menu_utf8
-//============================================================
-
-static void append_menu_utf8(HMENU menu, UINT flags, UINT_PTR id, const char *str)
-{
-	TCHAR *t_str = str ? tstring_from_utf8(str) : NULL;
-	AppendMenu(menu, flags, id, t_str);
-	if (t_str)
-		global_free(t_str);
-}
-
-
-
-//============================================================
-//  append_menu_uistring
-//============================================================
-
-static void append_menu_uistring(HMENU menu, UINT flags, UINT_PTR id, const char *uistring)
-{
-	append_menu_utf8(menu, flags, id, uistring);
-}
 
 
 
@@ -1415,14 +1180,14 @@ static void setup_joystick_menu(running_machine *machine, HMENU menu_bar)
 					for (setting = field->settinglist; setting != NULL; setting = setting->next)
 					{
 						command = ID_INPUT_0 + serial_number_from_input_item(machine, port, field, setting);
-						append_menu_utf8(submenu, MF_STRING, command, setting->name);
+						win_append_menu_utf8(submenu, MF_STRING, command, setting->name);
 					}
 
 					// tack on the final items and the menu item
 					command = ID_INPUT_0 + serial_number_from_input_item(machine, port, field, NULL);
 					AppendMenu(submenu, MF_SEPARATOR, 0, NULL);
 					AppendMenu(submenu, MF_STRING, command, TEXT("&Configure..."));
-					append_menu_utf8(joystick_menu, MF_STRING | MF_POPUP, (UINT_PTR) submenu, field->name);
+					win_append_menu_utf8(joystick_menu, MF_STRING | MF_POPUP, (UINT_PTR) submenu, field->name);
 					child_count++;
 				}
 			}
@@ -1439,7 +1204,7 @@ static void setup_joystick_menu(running_machine *machine, HMENU menu_bar)
 			for (i = 0; i < joystick_count; i++)
 			{
 				snprintf(buf, ARRAY_LENGTH(buf), "Joystick %i", i + 1);
-				append_menu_utf8(joystick_menu, MF_STRING, ID_JOYSTICK_0 + i, buf);
+				win_append_menu_utf8(joystick_menu, MF_STRING, ID_JOYSTICK_0 + i, buf);
 				child_count++;
 			}
 		}
@@ -1497,7 +1262,6 @@ static void prepare_menus(HWND wnd)
 	HMENU device_menu;
 	HMENU sub_menu;
 	UINT_PTR new_item;
-	UINT flags;
 	UINT flags_for_exists;
 	UINT flags_for_writing;
 	running_device *img;
@@ -1625,7 +1389,7 @@ static void prepare_menus(HWND wnd)
 		TCHAR *t_view_name = tstring_from_utf8(view_name);
 		InsertMenu(video_menu, i, MF_BYPOSITION | (i == view_index ? MF_CHECKED : 0),
 			ID_VIDEO_VIEW_0 + i, t_view_name);
-		global_free(t_view_name);
+		osd_free(t_view_name);
 		i++;
 	}
 
@@ -1636,7 +1400,7 @@ static void prepare_menus(HWND wnd)
 	// then set up the actual devices
 	for ( img = window->machine->devicelist.first();  img != NULL;  img =  img->next)
 	{
-		if (is_image_device( img))
+		if (is_image_device(img))
 		{
 			image_device_info info = image_device_getinfo(window->machine->config, img);
 
@@ -1651,29 +1415,28 @@ static void prepare_menus(HWND wnd)
 				flags_for_writing |= MF_GRAYED;
 
 			sub_menu = CreateMenu();
-			append_menu_uistring(sub_menu, MF_STRING,		new_item + DEVOPTION_OPEN,		"Mount...");
+			win_append_menu_utf8(sub_menu, MF_STRING,		new_item + DEVOPTION_OPEN,		"Mount...");
 
 			if (info.creatable)
-				append_menu_uistring(sub_menu, MF_STRING,	new_item + DEVOPTION_CREATE,	"Create...");
+				win_append_menu_utf8(sub_menu, MF_STRING,	new_item + DEVOPTION_CREATE,	"Create...");
 
-			append_menu_uistring(sub_menu, flags_for_exists,	new_item + DEVOPTION_CLOSE,	"Unmount");
+			win_append_menu_utf8(sub_menu, flags_for_exists,	new_item + DEVOPTION_CLOSE,	"Unmount");
 
 			if ((img->type == CASSETTE) && !strcmp(info.file_extensions, "wav"))
 			{
 				cassette_state state;
 				state = (cassette_state)(image_exists(img) ? (cassette_get_state(img) & CASSETTE_MASK_UISTATE) : CASSETTE_STOPPED);
-				append_menu_uistring(sub_menu, MF_SEPARATOR, 0, NULL);
-				append_menu_uistring(sub_menu, flags_for_exists	| ((state == CASSETTE_STOPPED)	? MF_CHECKED : 0),	new_item + DEVOPTION_CASSETTE_STOPPAUSE,	"Pause/Stop");
-				append_menu_uistring(sub_menu, flags_for_exists	| ((state == CASSETTE_PLAY)		? MF_CHECKED : 0),	new_item + DEVOPTION_CASSETTE_PLAY,			"Play");
-				append_menu_uistring(sub_menu, flags_for_writing	| ((state == CASSETTE_RECORD)	? MF_CHECKED : 0),	new_item + DEVOPTION_CASSETTE_RECORD,		"Record");
-				append_menu_uistring(sub_menu, flags_for_exists,														new_item + DEVOPTION_CASSETTE_REWIND,		"Rewind");
-				append_menu_uistring(sub_menu, flags_for_exists,														new_item + DEVOPTION_CASSETTE_FASTFORWARD,	"Fast Forward");
+				win_append_menu_utf8(sub_menu, MF_SEPARATOR, 0, NULL);
+				win_append_menu_utf8(sub_menu, flags_for_exists	| ((state == CASSETTE_STOPPED)	? MF_CHECKED : 0),	new_item + DEVOPTION_CASSETTE_STOPPAUSE,	"Pause/Stop");
+				win_append_menu_utf8(sub_menu, flags_for_exists	| ((state == CASSETTE_PLAY)		? MF_CHECKED : 0),	new_item + DEVOPTION_CASSETTE_PLAY,			"Play");
+				win_append_menu_utf8(sub_menu, flags_for_writing	| ((state == CASSETTE_RECORD)	? MF_CHECKED : 0),	new_item + DEVOPTION_CASSETTE_RECORD,		"Record");
+				win_append_menu_utf8(sub_menu, flags_for_exists,														new_item + DEVOPTION_CASSETTE_REWIND,		"Rewind");
+				win_append_menu_utf8(sub_menu, flags_for_exists,														new_item + DEVOPTION_CASSETTE_FASTFORWARD,	"Fast Forward");
 			}
 			s = image_exists(img) ? image_filename(img) : "[empty slot]";
-			flags = MF_POPUP;
 
 			snprintf(buf, ARRAY_LENGTH(buf), "%s: %s", image_typename_id(img), s);
-			append_menu_utf8(device_menu, flags, (UINT_PTR) sub_menu, buf);
+			win_append_menu_utf8(device_menu, MF_POPUP, (UINT_PTR)sub_menu, buf);
 		}
 	}
 }
@@ -1792,11 +1555,11 @@ static void device_command(HWND wnd, running_device *img, int devoption)
 						break;
 
 					case DEVOPTION_CASSETTE_REWIND:
-						cassette_seek(img, -1.0, SEEK_CUR);
+						cassette_seek(img, -60.0, SEEK_CUR);
 						break;
 
 					case DEVOPTION_CASSETTE_FASTFORWARD:
-						cassette_seek(img, +1.0, SEEK_CUR);
+						cassette_seek(img, +60.0, SEEK_CUR);
 						break;
 				}
 			}
@@ -1837,7 +1600,7 @@ static void help_display(HWND wnd, const char *chapter)
 	{
 		TCHAR *t_chapter = tstring_from_utf8(chapter);
 		htmlhelp(wnd, t_chapter, 0 /*HH_DISPLAY_TOPIC*/, 0);
-		global_free(t_chapter);
+		osd_free(t_chapter);
 	}
 }
 
@@ -1928,7 +1691,6 @@ static int invoke_command(HWND wnd, UINT command)
 	int dev_command;
 	running_device *img;
 	UINT16 category;
-	const char *section;
 	const input_field_config *field;
 	const input_setting_config *setting;
 	LONG_PTR ptr = GetWindowLongPtr(wnd, GWLP_USERDATA);
@@ -2127,18 +1889,16 @@ static int invoke_command(HWND wnd, UINT command)
 					// customize the input type
 					input_field_get_user_settings(field, &settings);
 					category = 0;
-					section = NULL;
 
 					for (setting = field->settinglist; setting != NULL; setting = setting->next)
 					{
 						if (settings.value == setting->value)
 						{
 							category = setting->category;
-							section = setting->name;
 						}
 					}
 					if (category)
-						customize_categorizedinput(window->machine, wnd, section, category);
+						customize_categorizedinput(window->machine, wnd, category);
 				}
 				else
 				{
@@ -2183,7 +1943,7 @@ static void set_menu_text(HMENU menu_bar, int command, const char *text)
 	SetMenuItemInfo(menu_bar, command, FALSE, &mii);
 
 	// cleanup
-	global_free(t_text);
+	osd_free(t_text);
 }
 
 
@@ -2198,27 +1958,11 @@ int win_setup_menus(running_machine *machine, HMODULE module, HMENU menu_bar)
 	char buf[256];
 	int i;
 
-	static const int bitmap_ids[][2] =
-	{
-		{ IO_CARTSLOT,	IDI_ICON_CART },
-		{ IO_HARDDISK,	IDI_ICON_HARD },
-		{ IO_CASSETTE,	IDI_ICON_CASS },
-		{ IO_FLOPPY,	IDI_ICON_FLOP },
-		{ IO_PRINTER,	IDI_ICON_PRIN },
-		{ IO_SERIAL,	IDI_ICON_SERL },
-		{ IO_SNAPSHOT,	IDI_ICON_SNAP }
-	};
-
 	// verify that our magic numbers work
 	assert((ID_DEVICE_0 + IO_COUNT * DEVOPTION_MAX) < ID_JOYSTICK_0);
 
 	// initialize critical values
 	joystick_menu_setup = 0;
-
-	// get the device icons
-	memset(device_icons, 0, sizeof(device_icons));
-	for (i = 0; i < ARRAY_LENGTH(bitmap_ids); i++)
-		device_icons[bitmap_ids[i][0]] = LoadIcon(module, MAKEINTRESOURCE(bitmap_ids[i][1]));
 
 	// remove the profiler menu item if it doesn't exist
 #if HAS_PROFILER
@@ -2245,12 +1989,31 @@ int win_setup_menus(running_machine *machine, HMODULE module, HMENU menu_bar)
 	for(i = 0; i < frameskip_level_count(); i++)
 	{
 		snprintf(buf, ARRAY_LENGTH(buf), "%i", i);
-		append_menu_utf8(frameskip_menu, MF_STRING, ID_FRAMESKIP_0 + i, buf);
+		win_append_menu_utf8(frameskip_menu, MF_STRING, ID_FRAMESKIP_0 + i, buf);
 	}
 
 	// set the help menu to refer to this machine
 	snprintf(buf, ARRAY_LENGTH(buf), "About %s (%s)...", machine->gamedrv->description, machine->gamedrv->name);
 	set_menu_text(menu_bar, ID_HELP_ABOUTSYSTEM, buf);
+
+	// initialize state_filename for each driver, so we don't carry names in-between them
+	{
+		char *src;
+		char *dst;
+
+		snprintf(state_filename, ARRAY_LENGTH(state_filename),
+			"%s State", machine->gamedrv->description);
+
+		src = state_filename;
+		dst = state_filename;
+		do
+		{
+			if ((*src == '\0') || isalnum(*src) || isspace(*src) || strchr("(),.", *src))
+				*(dst++) = *src;
+		}
+		while(*(src++));
+	}
+
 	return 0;
 }
 

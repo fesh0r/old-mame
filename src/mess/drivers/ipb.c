@@ -21,7 +21,7 @@ static ADDRESS_MAP_START( ipb_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 /* Input ports */
-INPUT_PORTS_START( ipb )
+static INPUT_PORTS_START( ipb )
 INPUT_PORTS_END
 
 
@@ -72,5 +72,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS */
-COMP( ????, ipb,  0,    	 0, 		ipb,	ipb,	 0,		 "Intel",   "iPB",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 19??, ipb,  0,    	 0, 		ipb,	ipb,	 0,		 "Intel",   "iPB",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

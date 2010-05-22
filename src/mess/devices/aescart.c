@@ -16,6 +16,7 @@
 #include "cartslot.h"
 #include "machine/ti99_4x.h"
 #include "multcart.h"
+#include "includes/neogeo.h"
 
 typedef int assmfct(running_machine *machine, running_device *);
 
@@ -141,7 +142,7 @@ static aescartridge_t *assemble_common(running_machine *machine, running_device 
 	}
 
 	// up to 8 YM sample ROMs
-	romrgn = (UINT8 *)memory_region(machine, "ym");
+	romrgn = (UINT8 *)memory_region(machine, "ymsnd");
 	blockofs = 0;
 	for (i = 0; i < 8; i++)
 	{
@@ -158,7 +159,7 @@ static aescartridge_t *assemble_common(running_machine *machine, running_device 
 	}
 
 	// up to 8 YM delta-T sample ROMs
-	romrgn = (UINT8 *)memory_region(machine, "ym.deltat");
+	romrgn = (UINT8 *)memory_region(machine, "ymsnd.deltat");
 	blockofs = 0;
 	for (i = 0; i < 8; i++)
 	{
@@ -258,9 +259,9 @@ static DEVICE_START(aes_pcb_std)
 */
 static int assemble_std(running_machine *machine, running_device *image)
 {
-	aescartridge_t *cart;
+//  aescartridge_t *cart;
 //  printf("assemble_std, %s\n", image->tag);
-	cart = assemble_common(machine, image);
+	/*cart = */assemble_common(machine, image);
 
 	return INIT_PASS;
 }
@@ -274,13 +275,13 @@ static int assemble_std(running_machine *machine, running_device *image)
 */
 static int disassemble_std(running_device *image)
 {
-	int slotnumber;
+//  int slotnumber;
 //  int i;
-	aescartridge_t *cart;
-	running_device *cartsys = image->owner;
-	aes_multicart_t *cartslots = (aes_multicart_t *)cartsys->token;
+//  aescartridge_t *cart;
+//  running_device *cartsys = image->owner;
+//  aes_multicart_t *cartslots = (aes_multicart_t *)cartsys->token;
 
-	slotnumber = get_index_from_tagname(image)-1;
+//  slotnumber = get_index_from_tagname(image)-1;
 //  printf("Disassemble cartridge %d\n", slotnumber);
 #if 0
 	/* Search the highest remaining cartridge. */
@@ -299,7 +300,7 @@ static int disassemble_std(running_device *image)
 	}
 #endif
 	/* Do we have RAM? If so, swap the bytes (undo the BIG_ENDIANIZE) */
-	cart = &cartslots->cartridge[slotnumber];
+//  cart = &cartslots->cartridge[slotnumber];
 
 //  clear_slot(cartsys, slotnumber);
 
@@ -397,10 +398,22 @@ DEVICE_GET_INFO(aes_cartridge_pcb_std)
 static DEVICE_START( aes_cartridge )
 {
 	cartslot_t *cart = (cartslot_t *)device->token;
-	astring tempstring;
 
 	/* find the PCB device */
 	cart->pcb_device = device->subdevice(TAG_PCB);
+}
+
+// handle protected carts
+static void install_protection(running_device* image)
+{
+	if(image_get_feature(image) == NULL)
+		return;
+		
+	if(strcmp(image_get_feature(image),"fatfury2_prot") == 0)
+	{
+		fatfury2_install_protection(image->machine);
+		logerror("Installed Fatal Fury 2 protection\n");
+	}
 }
 
 /*
@@ -414,9 +427,57 @@ static DEVICE_IMAGE_LOAD( aes_cartridge )
 	aes_pcb_t *pcb;
 	cartslot_t *cart;
 	multicart_open_error me;
+	UINT32 size;
+	running_device* ym = devtag_get_device(image->machine,"ymsnd");
+
+	// first check software list
+	if(image_software_entry(image) != NULL)
+	{
+		// create memory regions
+		size = image_get_software_region_length(image,"maincpu");
+		memory_region_free(image->machine,"maincpu");
+		memory_region_alloc(image->machine,"maincpu",size,0);
+		memcpy(memory_region(image->machine,"maincpu"),image_get_software_region(image,"maincpu"),size);
+		size = image_get_software_region_length(image,"fixed");
+		memory_region_free(image->machine,"fixed");
+		memory_region_alloc(image->machine,"fixed",size,ROMREGION_ERASEFF);
+		memcpy(memory_region(image->machine,"fixed"),image_get_software_region(image,"fixed"),size);
+		size = image_get_software_region_length(image,"audiocpu");
+		memory_region_free(image->machine,"audiocpu");
+		memory_region_alloc(image->machine,"audiocpu",size,ROMREGION_ERASEFF);
+		memcpy(memory_region(image->machine,"audiocpu"),image_get_software_region(image,"audiocpu"),size);
+		size = image_get_software_region_length(image,"ymsnd");
+		memory_region_free(image->machine,"ymsnd");
+		memory_region_alloc(image->machine,"ymsnd",size,ROMREGION_ERASEFF);
+		memcpy(memory_region(image->machine,"ymsnd"),image_get_software_region(image,"ymsnd"),size);
+		if(image_get_software_region(image,"ymsnd.deltat") != NULL)
+		{
+			size = image_get_software_region_length(image,"ymsnd.deltat");
+			memory_region_free(image->machine,"ymsnd.deltat");
+			memory_region_alloc(image->machine,"ymsnd.deltat",size,ROMREGION_ERASEFF);
+			memcpy(memory_region(image->machine,"ymsnd.deltat"),image_get_software_region(image,"ymsnd.deltat"),size);
+		}
+		else
+			memory_region_free(image->machine,"ymsnd.deltat");  // removing the region will fix sound glitches in non-Delta-T games
+		
+		ym->reset();
+		size = image_get_software_region_length(image,"sprites");
+		memory_region_free(image->machine,"sprites");
+		memory_region_alloc(image->machine,"sprites",size,ROMREGION_ERASEFF);
+		memcpy(memory_region(image->machine,"sprites"),image_get_software_region(image,"sprites"),size);
+		
+		// setup cartridge ROM area
+		memory_install_read_bank(cputag_get_address_space(image->machine,"maincpu",ADDRESS_SPACE_PROGRAM),0x000080,0x0fffff,0,0,"cart_rom");
+		memory_set_bankptr(image->machine,"cart_rom",&memory_region(image->machine,"maincpu")[0x80]);
+		
+		// handle possible protection
+		install_protection(image);
+		
+		return INIT_PASS;
+	}
 
 	if (pcbdev == NULL)
-		fatalerror("Error loading multicart: no pcb found.\n");
+		fatalerror("Error loading multicart: no pcb found.");
 
 	/* If we are here, we have a multicart. */
 	pcb = (aes_pcb_t *)pcbdev->token;
@@ -433,7 +494,7 @@ static DEVICE_IMAGE_LOAD( aes_cartridge )
     for a quick access by the memory handlers. Every PCB defines an
     own assembly method. */
     if (me != MCERR_NONE)
-		fatalerror("Error loading multicart: %s\n", multicart_error_text(me));
+		fatalerror("Error loading multicart: %s", multicart_error_text(me));
 
 	return pcb->assemble(pcbdev->machine, image);
 }
@@ -473,7 +534,7 @@ static DEVICE_IMAGE_UNLOAD( aes_cartridge )
 			cart->mc = NULL;
 		}
 //      else
-//          fatalerror("Lost pointer to multicart in cartridge. Report bug.\n");
+//          fatalerror("Lost pointer to multicart in cartridge. Report bug.");
 	}
 }
 
@@ -529,6 +590,7 @@ static MACHINE_DRIVER_START(aes_multicart)
 	MDRV_CARTSLOT_START(aes_cartridge)
 	MDRV_CARTSLOT_LOAD(aes_cartridge)
 	MDRV_CARTSLOT_UNLOAD(aes_cartridge)
+	MDRV_CARTSLOT_INTERFACE("aes_cart")
 	MDRV_CARTSLOT_MANDATORY
 MACHINE_DRIVER_END
 

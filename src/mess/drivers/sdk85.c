@@ -23,7 +23,7 @@ static ADDRESS_MAP_START( sdk85_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 /* Input ports */
-INPUT_PORTS_START( sdk85 )
+static INPUT_PORTS_START( sdk85 )
 INPUT_PORTS_END
 
 
@@ -71,5 +71,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT   COMPANY   FULLNAME       FLAGS */
-COMP( ????, sdk85,  0,       0, 		sdk85,	sdk85,	 0,		 "Intel",   "SDK-85",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1977, sdk85,  0,       0, 		sdk85,	sdk85,	 0,		 "Intel",   "SDK-85",		GAME_NOT_WORKING | GAME_NO_SOUND)
 

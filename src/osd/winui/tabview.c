@@ -75,7 +75,7 @@ static LRESULT CALLBACK TabViewWndProc(HWND hWnd, UINT message, WPARAM wParam, L
 	switch(message)
 	{
 		case WM_DESTROY:
-			global_free(pTabViewInfo);
+			free(pTabViewInfo);
 			SetWindowLongPtr(hWnd, GWLP_WNDPROC, (LONG_PTR) pfnParentWndProc);
 			SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR) NULL);
 			break;
@@ -115,7 +115,7 @@ static int TabView_GetTabFromTabIndex(HWND hwndTabView, int tab_index)
 				return i;
 		}
 	}
-	dprintf("invalid tab index %i", tab_index);
+	dprintf("invalid tab index %i\n", tab_index);
 	return 0;
 }
 
@@ -295,7 +295,7 @@ void TabView_Reset(HWND hwndTabView)
 				return;
 			tci.pszText = t_text;
 			res = TabCtrl_InsertItem(hwndTabView, i, &tci);
-			global_free(t_text);
+			osd_free(t_text);
 		}
 	}
 	TabView_UpdateSelection(hwndTabView);

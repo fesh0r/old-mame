@@ -72,7 +72,6 @@
 */
 #include "emu.h"
 #include "99_peb.h"
-#include "devices/ti99cart.h"
 #include "ti99_4x.h"
 #include "ti99pcod.h"
 
@@ -126,7 +125,7 @@ static UINT8 GROM_dataread(void)
 	pcode_GROMs.buf = pcode_GROMs.data_ptr[pcode_GROMs.addr];
 
 	/* The program counter wraps at each GROM chip size (8K),
-       so 0x5fff + 1 = 0x4000. */
+    so 0x5fff + 1 = 0x4000. */
 	pcode_GROMs.addr = ((pcode_GROMs.addr + 1) & 0x1FFF) | (pcode_GROMs.addr & 0xE000);
 
 	/* Reset the read and write address flipflops. */
@@ -265,8 +264,8 @@ static  READ8_HANDLER( pcode_mem_r )
 		/* Check if we access the GROM port */
 		switch (offset)
 		{
-		/* GROMs only answer at even addresses. The odd addresses are
-        undefined, so we can as well just ignore these cases. */
+			/* GROMs only answer at even addresses. The odd addresses are
+            undefined, so we can as well just ignore these cases. */
 		case 0x1bfc:
 		case 0x1bfe:
 			reply = ti99_pcode_grom_r(space, offset);
@@ -278,8 +277,8 @@ static  READ8_HANDLER( pcode_mem_r )
 			break;
 		default:
 			/* Accesses ROM 4764 (2*4K)
-               We have two banks here which are activated according
-               to the setting of CRU bit 4
+            We have two banks here which are activated according
+            to the setting of CRU bit 4
             */
 			reply = (bank_select==0)? ti99_pcode_rom1[offset-0x1000] : ti99_pcode_rom2[offset-0x1000];
 		}

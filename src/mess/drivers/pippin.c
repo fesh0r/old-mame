@@ -7,9 +7,9 @@
     Apple ASICs identified:
     -----------------------
     343S1125    Grand Central (SWIM III, Sound, VIA)
-    341S0060    Cuda (ADB, PRAM)
+    341S0060    Cuda (68HC05 MCU, handles ADB and parameter ("CMOS") RAM)
     343S1146    ??? (likely SCSI due to position on board)
-    343S1191 (x2)   ??? (apparently clock generators)
+    343S1191(x2) Athens Prime PLL Clock Generator
 
 
     Other chips
@@ -18,6 +18,13 @@
     CS4217 audio DAC
     Bt856 video DAC
 
+    PowerMac 6500 partial memory map (Pippin should be similar)
+    These are base addresses; Apple typically mirrors each chip over at least a 0x1000 byte range
+
+    F3010000 : SCSI
+    F3012000 : 8530 SCC
+    F3015000 : SWIM III (Apple custom NEC765 derivative with GCR support, supposedly)
+    F3016000 : 6522 VIA (look at machine/mac.c for Apple's unique register mapping)
 
 ****************************************************************************/
 
@@ -26,10 +33,66 @@
 #include "devices/chd_cd.h"
 #include "sound/cdda.h"
 
+static READ64_HANDLER( unk1_r )
+{
+	static UINT16 test;
+
+	test ^= 0x0400; //PC=ff808760
+
+	return test << 16 | 0;
+}
+
+static READ64_HANDLER( unk2_r )
+{
+	if(ACCESSING_BITS_32_47)
+		return (UINT64)0xe1 << 32; //PC=fff04810
+
+	return 0;
+}
+
+static UINT8 portb_data;
+
+static READ64_HANDLER( adb_portb_r )
+{
+	if(ACCESSING_BITS_56_63)
+	{
+		if(portb_data == 0x10)
+			return (UINT64)0x08 << 56;
+
+		if(portb_data == 0x38)	//fff04c80
+			return (UINT64)0x20 << 56; //almost sure this is wrong
+
+		//printf("PORTB R %02x\n",portb_data);
+
+
+		return 0;
+	}
+
+	return 0;
+}
+
+static WRITE64_HANDLER( adb_portb_w )
+{
+	if(ACCESSING_BITS_56_63)
+	{
+		portb_data = (UINT64)data >> 56;
+	}
+}
+
 static ADDRESS_MAP_START( pippin_mem, ADDRESS_SPACE_PROGRAM, 64 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000000, 0x005fffff) AM_RAM
-	AM_RANGE(0xf3016000, 0xf3016007) AM_NOP // ADB PORTB
+
+	/* writes at 0x0*c01000 the string "Mr. Kesh" and wants it to be read back, true color VRAMs perhaps? */
+	AM_RANGE(0x00c00000, 0x00c01007) AM_RAM
+	AM_RANGE(0x01c00000, 0x01c01007) AM_RAM
+	AM_RANGE(0x02c00000, 0x02c01007) AM_RAM
+	AM_RANGE(0x03c00000, 0x03c01007) AM_RAM
+
+	AM_RANGE(0xf00dfff8, 0xf00dffff) AM_READ(unk2_r)
+
+	AM_RANGE(0xf3008800, 0xf3008807) AM_READ(unk1_r)
+	AM_RANGE(0xf3016000, 0xf3016007) AM_READWRITE(adb_portb_r,adb_portb_w) // ADB PORTB
 	AM_RANGE(0xf3016400, 0xf3016407) AM_NOP // ADB DDRB
 	AM_RANGE(0xf3016600, 0xf3016607) AM_NOP // ?
 	AM_RANGE(0xf3016800, 0xf3016807) AM_NOP // ?

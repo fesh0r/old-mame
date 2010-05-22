@@ -88,13 +88,14 @@ void mess_predevice_init(running_machine *machine)
 				{
 					/* retrieve image error message */
 					const char *image_err = image_error(image);
+					char *image_basename = auto_strdup(machine, filename_basename((char *)image_name));
 
 					/* unload all images */
 					image_unload_all(machine);
-					/* FIXME: image_name is always empty in this message because of the image_unload_all() call */
-					fatalerror_exitcode(machine, MAMERR_DEVICE, "Device %s load (%s) failed: %s\n",
+
+					fatalerror_exitcode(machine, MAMERR_DEVICE, "Device %s load (%s) failed: %s",
 						info.name,
-						filename_basename((char *) image_name),
+						image_basename,
 						image_err);
 				}
 			}
@@ -103,7 +104,7 @@ void mess_predevice_init(running_machine *machine)
 				/* no image... must this device be loaded? */
 				if (info.must_be_loaded)
 				{
-					fatalerror_exitcode(machine, MAMERR_DEVICE, "Driver requires that device \"%s\" must have an image to load\n", info.instance_name);
+					fatalerror_exitcode(machine, MAMERR_DEVICE, "Driver requires that device \"%s\" must have an image to load", info.instance_name);
 				}
 			}
 
@@ -131,7 +132,23 @@ void mess_postdevice_init(running_machine *machine)
     {
         if (is_image_device(device))
 		{
-			image_finish_load(device);
+			int result = image_finish_load(device);
+			/* did the image load fail? */
+			if (result)
+			{
+				/* retrieve image error message */
+				const char *image_err = image_error(device);
+				char *image_basename_str = auto_strdup(machine, image_basename(device));
+				image_device_info info = image_device_getinfo(machine->config, device);
+
+				/* unload all images */
+				image_unload_all(machine);
+
+				fatalerror_exitcode(machine, MAMERR_DEVICE, "Device %s load (%s) failed: %s",
+					info.name,
+					image_basename_str,
+					image_err);
+			}
 		}
 	}
 

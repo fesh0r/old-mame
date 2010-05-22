@@ -42,9 +42,41 @@ static UINT64 *dc_ram;
 
 int jvsboard_type;
 
+static READ64_HANDLER( dcus_idle_skip_r )
+{
+	if (cpu_get_pc(space->cpu)==0xc0ba52a)
+		cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(2500));
+	//  cpu_spinuntil_int(space->cpu);
+
+	return dc_ram[0x2303b0/8];
+}
+
+static READ64_HANDLER( dcjp_idle_skip_r )
+{
+	if (cpu_get_pc(space->cpu)==0xc0bac62)
+		cpu_spinuntil_time(space->cpu, ATTOTIME_IN_USEC(2500));
+	//  cpu_spinuntil_int(space->cpu);
+
+	return dc_ram[0x2302f8/8];
+}
+
 static DRIVER_INIT(dc)
 {
 	dreamcast_atapi_init(machine);
+}
+
+static DRIVER_INIT(dcus)
+{
+	memory_install_read64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc2303b0, 0xc2303b7, 0, 0, dcus_idle_skip_r);
+
+	DRIVER_INIT_CALL(dc);
+}
+
+static DRIVER_INIT(dcjp)
+{
+	memory_install_read64_handler(cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM), 0xc2302f8, 0xc2302ff, 0, 0, dcjp_idle_skip_r);
+
+	DRIVER_INIT_CALL(dc);
 }
 
 static UINT64 PDTRA, PCTRA;
@@ -186,11 +218,6 @@ static const aica_interface dc_aica_interface =
 	aica_irq
 };
 
-static INTERRUPT_GEN( dc_dispatch_vblank )
-{
-	dc_vblank(device->machine);
-}
-
 static const struct sh4_config sh4cpu_config = {  1,  0,  1,  0,  0,  0,  1,  1,  0, CPU_CLOCK };
 
 static MACHINE_DRIVER_START( dc )
@@ -199,7 +226,6 @@ static MACHINE_DRIVER_START( dc )
 	MDRV_CPU_CONFIG(sh4cpu_config)
 	MDRV_CPU_PROGRAM_MAP(dc_map)
 	MDRV_CPU_IO_MAP(dc_port)
-	MDRV_CPU_VBLANK_INT("screen", dc_dispatch_vblank)
 
 	MDRV_CPU_ADD("soundcpu", ARM7, ((XTAL_33_8688MHz*2)/3)/8)	// AICA bus clock is 2/3rds * 33.8688.  ARM7 gets 1 bus cycle out of each 8.
 	MDRV_CPU_PROGRAM_MAP(dc_audio_map)
@@ -339,8 +365,8 @@ INPUT_PORTS_END
 
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT      COMPANY FULLNAME */
-CONS( 1999, dc,		dcjp,	0,	dc,	dc,	dc,	"Sega", "Dreamcast (US NTSC)", GAME_NOT_WORKING )
-CONS( 1998, dcjp,	0,		0,	dc,	dc,	dc,	"Sega", "Dreamcast (Japan NTSC)", GAME_NOT_WORKING )
-CONS( 1999, dceu,	dcjp,	0,	dc,	dc,	dc,	"Sega", "Dreamcast (European PAL)", GAME_NOT_WORKING )
+CONS( 1999, dc,		dcjp,	0,	dc,	dc,	dcus,	"Sega", "Dreamcast (US NTSC)", GAME_NOT_WORKING )
+CONS( 1998, dcjp,	0,		0,	dc,	dc,	dcjp,	"Sega", "Dreamcast (Japan NTSC)", GAME_NOT_WORKING )
+CONS( 1999, dceu,	dcjp,	0,	dc,	dc,	dcus,	"Sega", "Dreamcast (European PAL)", GAME_NOT_WORKING )
 CONS( 1998, dcdev,	dcjp,	0,	dc,	dc,	dc,	"Sega", "HKT-0120 Sega Dreamcast Development Box", GAME_NOT_WORKING )
 

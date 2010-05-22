@@ -20,7 +20,7 @@ static ADDRESS_MAP_START( unistar_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 /* Input ports */
-INPUT_PORTS_START( unistar )
+static INPUT_PORTS_START( unistar )
 INPUT_PORTS_END
 
 
@@ -91,5 +91,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT        COMPANY                  FULLNAME                    FLAGS */
-COMP( ????, unistar,  0,       0,	unistar,	unistar,	 0, 	 "Callan Data Systems",   "Unistar Terminal",		GAME_NOT_WORKING | GAME_NO_SOUND)
-
+COMP( 198?, unistar,  0,       0,	unistar,	unistar,	 0, 	 "Callan Data Systems",   "Unistar Terminal",		GAME_NOT_WORKING | GAME_NO_SOUND)

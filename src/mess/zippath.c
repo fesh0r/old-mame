@@ -359,7 +359,7 @@ done:
 	if (temp2 != NULL)
 		astring_free(temp2);
 	if (alloc_fullpath != NULL)
-		global_free(alloc_fullpath);
+		osd_free(alloc_fullpath);
 	return filerr;
 }
 
@@ -571,7 +571,7 @@ static file_error zippath_resolve(const char *path, osd_dir_entry_type *entry_ty
 			apath = parent;
 		}
 	}
-	while((current_entry_type == ENTTYPE_NONE) && (apath != NULL));
+	while((current_entry_type == ENTTYPE_NONE) && (apath != NULL) && !is_root(astring_c(apath)));
 
 	/* if we did not find anything, then error out */
 	if (current_entry_type == ENTTYPE_NONE)

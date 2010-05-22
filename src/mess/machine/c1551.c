@@ -135,10 +135,10 @@ static TIMER_CALLBACK( bit_tick )
 		c1551->bit_pos = 7;
 		c1551->buffer_pos++;
 
-		if (c1551->buffer_pos > c1551->track_len + 1)
+		if (c1551->buffer_pos >= c1551->track_len)
 		{
 			/* loop to the start of the track */
-			c1551->buffer_pos = G64_DATA_START;
+			c1551->buffer_pos = 0;
 		}
 	}
 
@@ -173,7 +173,7 @@ static TIMER_CALLBACK( bit_tick )
 static void read_current_track(c1551_t *c1551)
 {
 	c1551->track_len = G64_BUFFER_SIZE;
-	c1551->buffer_pos = G64_DATA_START;
+	c1551->buffer_pos = 0;
 	c1551->bit_pos = 7;
 	c1551->bit_count = 0;
 
@@ -181,8 +181,23 @@ static void read_current_track(c1551_t *c1551)
 	floppy_drive_read_track_data_info_buffer(c1551->image, 0, c1551->track_buffer, &c1551->track_len);
 
 	/* extract track length */
-	c1551->track_len = G64_DATA_START + ((c1551->track_buffer[1] << 8) | c1551->track_buffer[0]);
+	c1551->track_len = floppy_drive_get_current_track_size(c1551->image, 0);
 }
+
+/*-------------------------------------------------
+    on_disk_change - disk change handler
+-------------------------------------------------*/
+
+static void on_disk_change(running_device *image)
+{
+	c1551_t *c1551 = get_safe_token(image->owner);
+
+	read_current_track(c1551);
+}
+
+/*-------------------------------------------------
+    spindle_motor - spindle motor control
+-------------------------------------------------*/
 
 static void spindle_motor(c1551_t *c1551, int mtr)
 {
@@ -200,6 +215,10 @@ static void spindle_motor(c1551_t *c1551, int mtr)
 		c1551->mtr = mtr;
 	}
 }
+
+/*-------------------------------------------------
+    step_motor - stepper motor control
+-------------------------------------------------*/
 
 static void step_motor(c1551_t *c1551, int mtr, int stp)
 {
@@ -227,6 +246,10 @@ static void step_motor(c1551_t *c1551, int mtr, int stp)
 		c1551->stp = stp;
 	}
 }
+
+/*-------------------------------------------------
+    c1551_port_r - M6510T port read
+-------------------------------------------------*/
 
 static UINT8 c1551_port_r( running_device *device, UINT8 direction )
 {
@@ -692,6 +715,10 @@ static DEVICE_START( c1551 )
 	c1551->tpi0 = device->subdevice(M6523_0_TAG);
 	c1551->tpi1 = device->subdevice(M6523_1_TAG);
 	c1551->image = device->subdevice(FLOPPY_0);
+
+	/* install image callbacks */
+	floppy_install_unload_proc(c1551->image, on_disk_change);
+	floppy_install_load_proc(c1551->image, on_disk_change);
 
 	/* allocate data timer */
 	c1551->bit_timer = timer_alloc(device->machine, bit_tick, (void *)device);

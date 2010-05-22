@@ -253,7 +253,6 @@ static DEVICE_START( cartslot )
 {
 	cartslot_t *cart = get_token(device);
 	const cartslot_config *config = get_config(device);
-	astring tempstring;
 
 	/* if this cartridge has a custom DEVICE_START, use it */
 	if (config->device_start != NULL)
@@ -349,7 +348,7 @@ static const cartslot_pcb_type *identify_pcb(running_device *device)
 		else
 		{
 			if (me != MCERR_NOT_MULTICART)
-				fatalerror("multicart error: %s\n", multicart_error_text(me));
+				fatalerror("multicart error: %s", multicart_error_text(me));
 			if (image_pcb(device) != NULL)
 			{
 				/* read from hash file */
@@ -369,7 +368,7 @@ static const cartslot_pcb_type *identify_pcb(running_device *device)
 
 		/* check for unknown PCB type */
 		if ((mc != NULL) && (pcb_type == NULL))
-			fatalerror("Unknown PCB type \"%s\"\n", astring_c(&pcb_name));
+			fatalerror("Unknown PCB type \"%s\"", astring_c(&pcb_name));
 	}
 	else
 	{
@@ -476,10 +475,10 @@ DEVICE_GET_INFO( cartslot )
 				strcpy(info->s, "bin");
 			}
 			break;
-		case DEVINFO_STR_SOFTWARE_LIST:
-			if ( device && device->inline_config && get_config_dev(device)->software_list_name )
+		case DEVINFO_STR_INTERFACE:
+			if ( device && device->inline_config && get_config_dev(device)->interface )
 			{
-				strcpy(info->s, get_config_dev(device)->software_list_name );
+				strcpy(info->s, get_config_dev(device)->interface );
 			}
 			break;
 	}

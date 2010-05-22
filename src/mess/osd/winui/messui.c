@@ -55,7 +55,7 @@ typedef struct _mess_image_type mess_image_type;
 struct _mess_image_type
 {
 	const device_config *dev;
-    const char *ext;
+    char *ext;
 	const char *dlgname;
 };
 
@@ -136,7 +136,6 @@ static void SoftwareTabView_OnMoveSize(void);
 static void SetupSoftwareTabView(void);
 
 static void MessOpenOtherSoftware(const device_config *dev);
-static void MessCreateDevice(const device_config *dev);
 static void MessRefreshPicker(void);
 
 static int SoftwarePicker_GetItemImage(HWND hwndPicker, int nItem);
@@ -205,18 +204,6 @@ static const struct TabViewCallbacks s_softwareTabViewCallbacks =
 };
 
 
-
-//============================================================
-//  Image types
-//
-//  IO_ZIP is used for ZIP files
-//  IO_UNKNOWN is used for unknown types
-//  IO_BAD is used for bad files
-//============================================================
-
-#define IO_ZIP		(IO_COUNT + 0)
-#define IO_BAD		(IO_COUNT + 1)
-#define IO_UNKNOWN	(IO_COUNT + 2)
 
 //============================================================
 //  IMPLEMENTATION
@@ -731,7 +718,7 @@ static BOOL CommonFileImageDialog(LPTSTR the_last_directory, common_file_dialog_
 		t_filter[i] = (t_buffer[i] != '|') ? t_buffer[i] : '\0';
 	t_filter[i++] = '\0';
 	t_filter[i++] = '\0';
-	global_free(t_buffer);
+	osd_free(t_buffer);
 
     of.lStructSize = sizeof(of);
     of.hwndOwner = GetMainWindow();
@@ -769,7 +756,6 @@ static BOOL CommonFileImageDialog(LPTSTR the_last_directory, common_file_dialog_
 static void SetupImageTypes(const machine_config *config, mess_image_type *types, int count, BOOL bZip, const device_config *dev)
 {
     int num_extensions = 0;
-	;
 
 	memset(types, 0, sizeof(*types) * count);
     count--;
@@ -777,7 +763,7 @@ static void SetupImageTypes(const machine_config *config, mess_image_type *types
     if (bZip)
 	{
 		/* add the ZIP extension */
-		types[num_extensions].ext = "zip";
+		types[num_extensions].ext = mame_strdup("zip");
 		types[num_extensions].dev = NULL;
 		types[num_extensions].dlgname = NULL;
 		num_extensions++;
@@ -810,7 +796,7 @@ static void SetupImageTypes(const machine_config *config, mess_image_type *types
 				if (num_extensions < count)
 				{
 					types[num_extensions].dev = dev;
-					types[num_extensions].ext = ext;
+					types[num_extensions].ext = mame_strdup(ext);
 					types[num_extensions].dlgname = lookupdevice(info.type)->dlgname;
 					num_extensions++;
 				}
@@ -821,6 +807,16 @@ static void SetupImageTypes(const machine_config *config, mess_image_type *types
 }
 
 
+static void CleanupImageTypes(mess_image_type *types, int count)
+{
+	int i;
+	for (i = 0; i < count; ++i)
+	{
+		if (types[i].ext)
+			osd_free(types[i].ext);
+	}
+}
+
 
 static void MessSetupDevice(common_file_dialog_proc cfd, const device_config *dev)
 {
@@ -830,6 +826,7 @@ static void MessSetupDevice(common_file_dialog_proc cfd, const device_config *de
 	HWND hwndList;
 	char* utf8_filename;
 	machine_config *config;
+	BOOL cfd_res;
 
 //  begin_resource_tracking();
 
@@ -840,15 +837,17 @@ static void MessSetupDevice(common_file_dialog_proc cfd, const device_config *de
 	config = machine_config_alloc(drivers[drvindex]->machine_config);
 
 	SetupImageTypes(config, imagetypes, ARRAY_LENGTH(imagetypes), TRUE, dev);
+	cfd_res = CommonFileImageDialog(last_directory, cfd, filename, config, imagetypes);
+	CleanupImageTypes(imagetypes, ARRAY_LENGTH(imagetypes));
 
-	if (CommonFileImageDialog(last_directory, cfd, filename, config, imagetypes))
+	if (cfd_res)
 	{
 		utf8_filename = utf8_from_tstring(filename);
 		if( !utf8_filename )
 			return;
 		// TODO - this should go against InternalSetSelectedSoftware()
 		SoftwarePicker_AddFile(GetDlgItem(GetMainWindow(), IDC_SWLIST), utf8_filename);
-		global_free(utf8_filename);
+		osd_free(utf8_filename);
 	}
 
 	machine_config_free(config);
@@ -861,12 +860,6 @@ static void MessOpenOtherSoftware(const device_config *dev)
 	MessSetupDevice(GetOpenFileName, dev);
 }
 
-
-
-static void MessCreateDevice(const device_config *dev)
-{
-	MessSetupDevice(GetSaveFileName, dev);
-}
 
 
 /* This is used to Mount an image in the device view of MESSUI. The directory in the dialog box is not
@@ -886,7 +879,7 @@ static void MessCreateDevice(const device_config *dev)
 static BOOL DevView_GetOpenFileName(HWND hwndDevView, const machine_config *config, const device_config *dev, LPTSTR pszFilename, UINT nFilenameLength)
 {
 	BOOL bResult;
-	TCHAR *s;
+	TCHAR *t_s;
 	int i;
 	mess_image_type imagetypes[64];
 	HWND hwndList = GetDlgItem(GetMainWindow(), IDC_LIST);
@@ -895,7 +888,7 @@ static BOOL DevView_GetOpenFileName(HWND hwndDevView, const machine_config *conf
 
 	/* Get the path to the currently mounted image */
 	zippath_parent(&as, GetSelectedSoftware(drvindex, config, dev));
-	s = tstring_from_utf8(astring_c(&as));
+	t_s = tstring_from_utf8(astring_c(&as));
 
 	/* See if an image was loaded, and that the path still exists */
 	if ((!osd_opendir(astring_c(&as))) || (astring_chr(&as, 0, ':') == -1))
@@ -906,7 +899,8 @@ static BOOL DevView_GetOpenFileName(HWND hwndDevView, const machine_config *conf
 		/* We only want the first path; throw out the rest */
 		i = astring_chr(&as, 0, ';');
 		if (i > 0) astring_substr(&as, 0, i);
-		s = tstring_from_utf8(astring_c(&as));
+		osd_free(t_s);
+		t_s = tstring_from_utf8(astring_c(&as));
 
 		/* Make sure a folder was specified in the tab, and that it exists */
 		if ((!osd_opendir(astring_c(&as))) || (astring_chr(&as, 0, ':') == -1))
@@ -917,7 +911,8 @@ static BOOL DevView_GetOpenFileName(HWND hwndDevView, const machine_config *conf
 			/* We only want the first path; throw out the rest */
 			i = astring_chr(&as, 0, ';');
 			if (i > 0) astring_substr(&as, 0, i);
-			s = tstring_from_utf8(astring_c(&as));
+			osd_free(t_s);
+			t_s = tstring_from_utf8(astring_c(&as));
 
 			/* Make sure a folder was specified in the tab, and that it exists */
 			if ((!osd_opendir(astring_c(&as))) || (astring_chr(&as, 0, ':') == -1))
@@ -926,20 +921,26 @@ static BOOL DevView_GetOpenFileName(HWND hwndDevView, const machine_config *conf
 
 				osd_get_full_path(&dst,".");
 				/* Default to emu directory */
-				s = tstring_from_utf8(dst);
+				osd_free(t_s);
+				t_s = tstring_from_utf8(dst);
 
 				/* If software folder exists, use it instead */
 				zippath_combine(&as, dst, "software");
-				if (osd_opendir(astring_c(&as))) s = tstring_from_utf8(astring_c(&as));
-				global_free(dst);
+				if (osd_opendir(astring_c(&as)))
+				{
+					osd_free(t_s);
+					t_s = tstring_from_utf8(astring_c(&as));
+				}
+				osd_free(dst);
 			}
 		}
 	}
 
 	SetupImageTypes(config, imagetypes, ARRAY_LENGTH(imagetypes), TRUE, dev);
-	bResult = CommonFileImageDialog(s, GetOpenFileName, pszFilename, config, imagetypes);
-	
-	/* TODO: free() calls? */
+	bResult = CommonFileImageDialog(t_s, GetOpenFileName, pszFilename, config, imagetypes);
+	CleanupImageTypes(imagetypes, ARRAY_LENGTH(imagetypes));
+
+	osd_free(t_s);
 
 	return bResult;
 }
@@ -957,7 +958,7 @@ static BOOL DevView_GetOpenFileName(HWND hwndDevView, const machine_config *conf
 static BOOL DevView_GetCreateFileName(HWND hwndDevView, const machine_config *config, const device_config *dev, LPTSTR pszFilename, UINT nFilenameLength)
 {
 	BOOL bResult;
-	TCHAR *s;
+	TCHAR *t_s;
 	int i;
 	mess_image_type imagetypes[64];
 	HWND hwndList = GetDlgItem(GetMainWindow(), IDC_LIST);
@@ -970,7 +971,7 @@ static BOOL DevView_GetCreateFileName(HWND hwndDevView, const machine_config *co
 	/* We only want the first path; throw out the rest */
 	i = astring_chr(&as, 0, ';');
 	if (i > 0) astring_substr(&as, 0, i);
-	s = tstring_from_utf8(astring_c(&as));
+	t_s = tstring_from_utf8(astring_c(&as));
 
 	/* Make sure a folder was specified in the tab, and that it exists */
 	if ((!osd_opendir(astring_c(&as))) || (astring_chr(&as, 0, ':') == -1))
@@ -981,7 +982,8 @@ static BOOL DevView_GetCreateFileName(HWND hwndDevView, const machine_config *co
 		/* We only want the first path; throw out the rest */
 		i = astring_chr(&as, 0, ';');
 		if (i > 0) astring_substr(&as, 0, i);
-		s = tstring_from_utf8(astring_c(&as));
+		osd_free(t_s);
+		t_s = tstring_from_utf8(astring_c(&as));
 
 		/* Make sure a folder was specified in the tab, and that it exists */
 		if ((!osd_opendir(astring_c(&as))) || (astring_chr(&as, 0, ':') == -1))
@@ -990,19 +992,25 @@ static BOOL DevView_GetCreateFileName(HWND hwndDevView, const machine_config *co
 
 			osd_get_full_path(&dst,".");
 			/* Default to emu directory */
-			s = tstring_from_utf8(dst);
+			osd_free(t_s);
+			t_s = tstring_from_utf8(dst);
 
 			/* If software folder exists, use it instead */
 			zippath_combine(&as, dst, "software");
-			if (osd_opendir(astring_c(&as))) s = tstring_from_utf8(astring_c(&as));
-			global_free(dst);
+			if (osd_opendir(astring_c(&as)))
+			{
+				osd_free(t_s);
+				t_s = tstring_from_utf8(astring_c(&as));
+			}
+			osd_free(dst);
 		}
 	}
 
 	SetupImageTypes(config, imagetypes, ARRAY_LENGTH(imagetypes), TRUE, dev);
-	bResult = CommonFileImageDialog(s, GetSaveFileName, pszFilename, config, imagetypes);
-	
-	/* TODO: free() calls? */
+	bResult = CommonFileImageDialog(t_s, GetSaveFileName, pszFilename, config, imagetypes);
+	CleanupImageTypes(imagetypes, ARRAY_LENGTH(imagetypes));
+
+	osd_free(t_s);
 
 	return bResult;
 }
@@ -1017,7 +1025,7 @@ static void DevView_SetSelectedSoftware(HWND hwndDevView, int drvindex,
 		return;
 	MessSpecifyImage(drvindex, dev, utf8_filename);
 	MessRefreshPicker();
-	global_free(utf8_filename);
+	osd_free(utf8_filename);
 }
 
 
@@ -1034,7 +1042,7 @@ static LPCTSTR DevView_GetSelectedSoftware(HWND hwndDevView, int nDriverIndex,
 		return t_buffer;
 
 	_sntprintf(pszBuffer, nBufferLength, TEXT("%s"), t_s);
-	global_free(t_s);
+	osd_free(t_s);
 	t_buffer = pszBuffer;
 
 	return t_buffer;
@@ -1062,18 +1070,9 @@ static int SoftwarePicker_GetItemImage(HWND hwndPicker, int nItem)
 	nIcon = GetMessIcon(drvindex, nType);
 	if (!nIcon)
 	{
-		if (nType == 0)
-			nType = (iodevice_t)IO_BAD;
 		switch(nType)
 		{
 			case IO_UNKNOWN:
-				// Unknowns
-				nIcon = FindIconIndex(IDI_WIN_UNKNOWN);
-				break;
-
-			case IO_BAD:
-			case IO_ZIP:
-				// Bad files
 				nIcon = FindIconIndex(IDI_WIN_REDX);
 				break;
 
@@ -1083,7 +1082,7 @@ static int SoftwarePicker_GetItemImage(HWND hwndPicker, int nItem)
 					icon_name = device_typename(nType);
 				nIcon = FindIconIndexByName(icon_name);
 				if (nIcon < 0)
-					nIcon = FindIconIndexByName("unknown");
+					nIcon = FindIconIndex(IDI_WIN_UNKNOWN);
 				break;
 		}
     }
@@ -1267,10 +1266,6 @@ BOOL MessCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 	{
 		case ID_MESS_OPEN_SOFTWARE:
 			MessOpenOtherSoftware(NULL);
-			break;
-
-		case ID_MESS_CREATE_SOFTWARE:
-			MessCreateDevice(NULL);
 			break;
 
 #ifdef MAME_DEBUG

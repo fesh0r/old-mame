@@ -18,16 +18,19 @@ Known unemulated graphical effects:
 - Unemulated 1bpp ROZ mode, used by the Super A'Can BIOS logo;
 - Priorities;
 - Boom Zoo: missing window effect applied on sprites;
+- C.U.G.: gameplay backgrounds are broken (wrong tile bank);
+- C.U.G.: roz paging is wrong;
 - Sango Fighter: Missing rowscroll effect;
-- Sango Fighter: sprites doesn't get drawn on the far right of the screen;
 - Sango Fighter: sprites have some bad gaps of black;
 - Sango Fighter: Missing black masking on the top-down edges of the screen on gameplay?
 - Sango Fighter: intro looks bogus, dunno what's supposed to draw...
+- Speedy Dragon: backgrounds are broken (wrong tile bank)
 - Super Taiwanese Baseball League: Missing window effect applied on a tilemap;
 - Super Taiwanese Baseball League: Unemulated paging mode;
-- Super Dragon Force: sprite y masking limit looks wrong;
 - Super Dragon Force: priority issues with the text;
 - Super Dragon Force: wrong ysize on character select screen;
+- The Son of Evil: has problems with irq mask
+- The Son of Evil: has many gfx artifacts
 
 baseball game debug trick:
 wpset e90020,1f,w
@@ -160,7 +163,7 @@ static void draw_tilemap(running_machine *machine, bitmap_t *bitmap, const recta
 	switch(gfx_mode)
 	{
 		case 7:  region = 2; tile_bank = 0x1c00; pal_bank = 0x00; break;
-		case 4:  region = 0; tile_bank = 0x400;  pal_bank = 0x00; break;
+		case 4:  region = 1; tile_bank = 0x800;  pal_bank = 0x00; break;
 		case 2:  region = 1; tile_bank = 0x400;  pal_bank = 0x00; break;
 		case 0:  region = 1; tile_bank = 0;      pal_bank = 0x00; break;
 		default: region = 1; tile_bank = 0;      pal_bank = 0x00; break;
@@ -280,30 +283,31 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 	/*
         [0]
         ---h hhh- ---- ---- Y size
-        ---- ---- yyyy yyyy Y offset
+        ---- ---y yyyy yyyy Y offset
         [1]
         bbbb ---- ---- ---- sprite offset bank
         ---- d--- ---- ---- horizontal direction
         ---- ---- ---- -www X size
         [2]
         zzz- ---- ---- ---- X shrinking
-        ---- ---S xxxx xxxx X offset
+        ---- ---x xxxx xxxx X offset
         [3]
         oooo oooo oooo oooo sprite pointer
     */
 
 	for(i=spr_base/2;i<(spr_base+(state->spr_limit*8))/2;i+=4)
 	{
-		x = supracan_vram[i+2] & 0x00ff;
-		y = supracan_vram[i+0] & 0x00ff;
+		x = supracan_vram[i+2] & 0x01ff;
+		y = supracan_vram[i+0] & 0x01ff;
 		spr_offs = supracan_vram[i+3] << 2;
 		bank = (supracan_vram[i+1] & 0xf000) >> 12;
 		hflip = (supracan_vram[i+1] & 0x0800) ? 1 : 0;
 		vflip = (supracan_vram[i+1] & 0x0400) ? 1 : 0;
 
-		/* FIXME: Sango Fighter doesn't like this, check why ... */
-		if(supracan_vram[i+2] & 0x100)
-			x-=256;
+		if(x > cliprect->max_x)
+			x-=0x200;
+		if(y > cliprect->max_y)
+			y-=0x200;
 
 		if(supracan_vram[i+3] != 0)
 		{
@@ -525,7 +529,7 @@ static WRITE16_HANDLER( supracan_dma_w )
 					}
 				}
 			}
-			else
+			else if(data != 0x0000) // fake DMA, used by C.U.G.
 			{
 				verboselog(space->machine, 0, "supracan_dma_w: Unknown DMA kickoff value of %04x (other regs %08x, %08x, %d)\n", data, acan_dma_regs->source[ch], acan_dma_regs->dest[ch], acan_dma_regs->count[ch] + 1);
 				fatalerror("supracan_dma_w: Unknown DMA kickoff value of %04x (other regs %08x, %08x, %d)",data, acan_dma_regs->source[ch], acan_dma_regs->dest[ch], acan_dma_regs->count[ch] + 1);
@@ -921,19 +925,29 @@ static WRITE16_HANDLER( supracan_video_w )
 
 static DEVICE_IMAGE_LOAD( supracan_cart )
 {
-	UINT8 *cart = memory_region( image->machine, "cart" );
-	int size = image_length( image );
+	UINT8 *cart = memory_region(image->machine, "cart");
+	UINT32 size;
 
-	if ( size > 0x400000 )
+	if (image_software_entry(image) == NULL)
 	{
-		image_seterror( image, IMAGE_ERROR_UNSPECIFIED, "Unsupported cartridge size" );
-		return INIT_FAIL;
+		size = image_length(image);
+
+		if (size > 0x400000)
+		{
+			image_seterror(image, IMAGE_ERROR_UNSPECIFIED, "Unsupported cartridge size");
+			return INIT_FAIL;
+		}
+
+		if (image_fread(image, cart, size) != size)
+		{
+			image_seterror(image, IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file");
+			return INIT_FAIL;
+		}
 	}
-
-	if ( image_fread( image, cart, size ) != size )
+	else
 	{
-		image_seterror( image, IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file" );
-		return INIT_FAIL;
+		size = image_get_software_region_length(image, "rom");
+		memcpy(cart, image_get_software_region(image, "rom"), size);
 	}
 
 	return INIT_PASS;
@@ -1027,10 +1041,13 @@ static MACHINE_DRIVER_START( supracan )
 	MDRV_PALETTE_INIT( supracan )
 	MDRV_GFXDECODE( supracan )
 
-	MDRV_CARTSLOT_ADD( "cart" )
-	MDRV_CARTSLOT_EXTENSION_LIST( "bin" )
+	MDRV_CARTSLOT_ADD("cart")
+	MDRV_CARTSLOT_EXTENSION_LIST("bin")
 	MDRV_CARTSLOT_MANDATORY
-	MDRV_CARTSLOT_LOAD( supracan_cart )
+	MDRV_CARTSLOT_INTERFACE("supracan_cart")
+	MDRV_CARTSLOT_LOAD(supracan_cart)
+
+	MDRV_SOFTWARE_LIST_ADD("supracan")
 
 	MDRV_VIDEO_START( supracan )
 	MDRV_VIDEO_UPDATE( supracan )

@@ -283,7 +283,7 @@ static BOOL DirListReadControl(datamap *map, HWND dialog, HWND control, core_opt
 	int directory_count;
     LV_ITEM lvi;
 	TCHAR buffer[2048];
-	char *dir_list;
+	char *utf8_dir_list;
 	int i, pos, driver_index;
 	BOOL res;
 
@@ -313,12 +313,12 @@ static BOOL DirListReadControl(datamap *map, HWND dialog, HWND control, core_opt
 		pos += _tcslen(&buffer[pos]);
 	}
 
-	dir_list = utf8_from_tstring(buffer);
-	if (dir_list != NULL)
+	utf8_dir_list = utf8_from_tstring(buffer);
+	if (utf8_dir_list != NULL)
 	{
 		driver_index = PropertiesCurrentGame(dialog);
-		SetExtraSoftwarePaths(driver_index, dir_list);
-		global_free(dir_list);
+		SetExtraSoftwarePaths(driver_index, utf8_dir_list);
+		osd_free(utf8_dir_list);
 	}
 	return TRUE;
 }
@@ -381,7 +381,7 @@ static BOOL DirListPopulateControl(datamap *map, HWND dialog, HWND control, core
 	// finish up
 	AppendList(control, TEXT(DIRLIST_NEWENTRYTEXT), current_item);
 	ListView_SetItemState(control, 0, LVIS_SELECTED, LVIS_SELECTED);
-	global_free(t_dir_list);
+	osd_free(t_dir_list);
 	return TRUE;
 }
 
@@ -434,24 +434,28 @@ static BOOL RamPopulateControl(datamap *map, HWND dialog, HWND control, core_opt
 
 			(void)ComboBox_InsertString(control, i, win_tstring_strdup(t_ramstring));
 			(void)ComboBox_SetItemData(control, i, ram);
+
+			osd_free(t_ramstring);
 		}
 		if (config->extra_options != NULL)
 		{
-			const char *s;
-
-			astring buffer;
-			astring_cpyc(&buffer, config->extra_options);
-			astring_replacechr(&buffer, ',', 0);
-
-			s = astring_c(&buffer);
+			int j;
+			int size = strlen(config->extra_options);
+			char * const s = mame_strdup(config->extra_options);
+			char * const e = s + size;
+			char *p = s;
+			for (j=0;j<size;j++) {
+				if (p[j]==',') p[j]=0;
+			}
 
 			/* try to parse each option */
-			while(*s != '\0')
+			while(p <= e)
 			{
 				i++;
 				// identify this option
-				ram = messram_parse_string(s);
-				this_ram_string = s;
+				ram = messram_parse_string(p);
+
+				this_ram_string = p;
 
 				t_ramstring = tstring_from_utf8(this_ram_string);
 				if( !t_ramstring )
@@ -461,18 +465,29 @@ static BOOL RamPopulateControl(datamap *map, HWND dialog, HWND control, core_opt
 				(void)ComboBox_InsertString(control, i, win_tstring_strdup(t_ramstring));
 				(void)ComboBox_SetItemData(control, i, ram);
 
-				global_free(t_ramstring);
+				osd_free(t_ramstring);
 
 				// is this the current option?  record the index if so
 				if (ram == current_ram)
 					current_index = i;
 
-				s += strlen(s) + 1;
+				p+= strlen(p);
+				if (p == e)
+					break;
+
+				p += 1;
 			}
+
+			osd_free(s);
 		}
 
 		// set the combo box
 		(void)ComboBox_SetCurSel(control, current_index);
+	}
+	if (cfg != NULL)
+	{
+		/* Free the structure */
+		machine_config_free(cfg);
 	}
 	return TRUE;
 }

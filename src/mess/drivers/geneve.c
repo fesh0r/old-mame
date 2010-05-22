@@ -220,6 +220,7 @@
 #include "machine/mm58274c.h"
 #include "machine/rtc65271.h"
 #include "formats/ti99_dsk.h"
+#include "devices/ti99_hd.h"
 
 /*
     memory map
@@ -249,31 +250,49 @@ ADDRESS_MAP_END
 
 /* 101-key PC XT keyboard + TI joysticks */
 static INPUT_PORTS_START(geneve)
+	PORT_START( "BOOTROM" )	/* config */
+	PORT_CONFNAME( 0x01, 0x00, "Boot ROM" )
+		PORT_CONFSETTING(    0x00, "Version 0.9" )
+		PORT_CONFSETTING(    0x01, "Version 1.0" )
 
-	PORT_START("CFG")	/* config */
-		PORT_DIPNAME( config_boot_mask << config_boot_bit, 0x0000, "Boot ROM")
-			PORT_DIPSETTING( 0x0000, "1.0" )
-			PORT_DIPSETTING( 1 << config_boot_bit, "0.9" )
-		PORT_DIPNAME( config_speech_mask << config_speech_bit, 1 << config_speech_bit, "Speech synthesis")
-			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
-			PORT_DIPSETTING( 1 << config_speech_bit, DEF_STR( On ) )
-		PORT_DIPNAME( config_fdc_mask << config_fdc_bit, fdc_kind_hfdc << config_fdc_bit, "Floppy disk controller")
-			PORT_DIPSETTING( fdc_kind_none << config_fdc_bit, DEF_STR( None ) )
-			PORT_DIPSETTING( fdc_kind_TI << config_fdc_bit, "Texas Instruments SD" )
-#if HAS_99CCFDC
-			PORT_DIPSETTING( fdc_kind_CC << config_fdc_bit, "CorComp" )
-#endif
-			PORT_DIPSETTING( fdc_kind_BwG << config_fdc_bit, "SNUG's BwG" )
-			PORT_DIPSETTING( fdc_kind_hfdc << config_fdc_bit, "Myarc's HFDC" )
-		PORT_DIPNAME( config_ide_mask << config_ide_bit, /*1 << config_ide_bit*/0, "Nouspickel's IDE card")
-			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
-			PORT_DIPSETTING( 1 << config_ide_bit, DEF_STR( On ) )
-		PORT_DIPNAME( config_rs232_mask << config_rs232_bit, 1 << config_rs232_bit, "TI RS232 card")
-			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
-			PORT_DIPSETTING( 1 << config_rs232_bit, DEF_STR( On ) )
-		PORT_DIPNAME( config_usbsm_mask << config_usbsm_bit, 1 << config_usbsm_bit, "Nouspickel's USB-SM card")
-			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
-			PORT_DIPSETTING( 1 << config_usbsm_bit, DEF_STR( On ) )
+	PORT_START( "SPEECH" )
+	PORT_CONFNAME( 0x01, 0x00, "Speech synthesizer" )
+		PORT_CONFSETTING( 0x00, DEF_STR( Off ) )
+		PORT_CONFSETTING( 0x01, DEF_STR( On ) )
+
+	PORT_START( "DISKCTRL" )
+	PORT_CONFNAME( 0x07, 0x00, "Disk controller" )
+		PORT_CONFSETTING(    0x00, DEF_STR( None ) )
+		PORT_CONFSETTING(    0x01, "TI SD Floppy Controller" )
+		PORT_CONFSETTING(    0x02, "SNUG BwG Controller" )
+		PORT_CONFSETTING(    0x03, "Myarc HFDC" )
+//      PORT_CONFSETTING(    0x04, "Corcomp" )
+
+	PORT_START( "HDCTRL" )
+	PORT_CONFNAME( 0x03, 0x00, "HD controller" )
+		PORT_CONFSETTING(    0x00, DEF_STR( None ) )
+		PORT_CONFSETTING(    0x01, "Nouspikel IDE Controller" )
+//      PORT_CONFSETTING(    0x02, "WHTech SCSI Controller" )
+	PORT_CONFNAME( 0x08, 0x00, "USB-SM card" )
+		PORT_CONFSETTING(    0x00, DEF_STR( Off ) )
+		PORT_CONFSETTING(    0x08, DEF_STR( On ) )
+
+	PORT_START( "SERIAL" )
+	PORT_CONFNAME( 0x03, 0x00, "Serial/Parallel interface" )
+		PORT_CONFSETTING(    0x00, DEF_STR( None ) )
+		PORT_CONFSETTING(    0x01, "TI RS-232 card" )
+
+	PORT_START( "HFDCDIP" )
+	PORT_DIPNAME( 0xff, 0x55, "HFDC drive config" ) PORT_CONDITION( "DISKCTRL", 0x07, PORTCOND_EQUALS, 0x03 )
+		PORT_DIPSETTING( 0x00, "40 track, 16 ms")
+		PORT_DIPSETTING( 0xaa, "40 track, 8 ms")
+		PORT_DIPSETTING( 0x55, "80 track, 2 ms")
+		PORT_DIPSETTING( 0xff, "80 track HD, 2 ms")
+
+	PORT_START( "DRVSPD" )
+	PORT_CONFNAME( 0x01, 0x01, "Floppy and HD speed" ) PORT_CONDITION( "DISKCTRL", 0x07, PORTCOND_EQUALS, 0x03 )
+		PORT_CONFSETTING( 0x00, "No delay")
+		PORT_CONFSETTING( 0x01, "Realistic")
 
 	PORT_START("JOY")	/* col 1: "wired handset 1" (= joystick 1) */
 		PORT_BIT(0x0080, IP_ACTIVE_LOW, IPT_JOYSTICK_UP/*, "(1UP)", CODE_NONE, OSD_JOY_UP*/) PORT_PLAYER(1)
@@ -501,16 +520,13 @@ static MACHINE_DRIVER_START(geneve_60hz)
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD("sn76496", SN76496, 3579545)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
-	MDRV_SOUND_ADD("tms5220", TMS5220, 680000L)
+	MDRV_SOUND_ADD("tmc0285", TMC0285, 680000L)
 	MDRV_SOUND_CONFIG(geneve_tms5220interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
 	MDRV_IDE_CONTROLLER_ADD( "ide", ti99_ide_interrupt )	/* FIXME */
 
-	MDRV_IMPORT_FROM( smc92x4_hd )
-
-	MDRV_IDE_HARDDISK_ADD( "ide_harddisk" )
 	MDRV_RTC65271_ADD("ide_rtc", ti99_clk_interrupt_callback)
 
 	/* rtc */
@@ -521,8 +537,10 @@ static MACHINE_DRIVER_START(geneve_60hz)
 	MDRV_TMS9901_ADD("tms9901", tms9901reset_param_ti99)
 
 	MDRV_WD179X_ADD("wd179x", ti99_wd17xx_interface )
+	MDRV_SMC92X4_ADD("smc92x4", ti99_smc92x4_interface )
 
 	MDRV_FLOPPY_4_DRIVES_ADD(geneve_floppy_config)
+	MDRV_MFMHD_3_DRIVES_ADD()
 
 	MDRV_SMARTMEDIA_ADD("smartmedia")
 
@@ -552,7 +570,7 @@ ROM_START(geneve)
 	ROM_LOAD_OPTIONAL("hfdc.bin", offset_hfdc_dsr, 0x4000, CRC(66fbe0ed) SHA1(11df2ecef51de6f543e4eaf8b2529d3e65d0bd59)) /* HFDC disk DSR ROM */
 	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb) SHA1(ee609a18a21f1a3ddab334e8798d5f2a0fcefa91)) /* TI rs232 DSR ROM */
 
-	/*TMS5220 ROM space*/
+	/*TMC0285 ROM space*/
 	ROM_REGION(0x8000, region_speech_rom, 0)
 	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7) SHA1(382292295c00dff348d7e17c5ce4da12a1d87763)) /* system speech ROM */
 ROM_END
@@ -572,7 +590,7 @@ ROM_START(genmod)
 	ROM_LOAD_OPTIONAL("hfdc.bin", offset_hfdc_dsr, 0x4000, CRC(66fbe0ed) SHA1(11df2ecef51de6f543e4eaf8b2529d3e65d0bd59)) /* HFDC disk DSR ROM */
 	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb) SHA1(ee609a18a21f1a3ddab334e8798d5f2a0fcefa91)) /* TI rs232 DSR ROM */
 
-	/*TMS5220 ROM space*/
+	/*TMC0285 ROM space*/
 	ROM_REGION(0x8000, region_speech_rom, 0)
 	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7) SHA1(382292295c00dff348d7e17c5ce4da12a1d87763)) /* system speech ROM */
 ROM_END

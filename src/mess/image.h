@@ -87,6 +87,7 @@ struct _image_device_info
     char file_extensions[256];
     char instance_name[32];
     char brief_instance_name[16];
+	char interface_name[64];
 };
 
 typedef struct _image_device_format image_device_format;
@@ -141,7 +142,7 @@ enum
     DEVINFO_STR_IMAGE_CREATE_OPTNAME,
     DEVINFO_STR_IMAGE_CREATE_OPTDESC = DEVINFO_STR_IMAGE_CREATE_OPTNAME + DEVINFO_CREATE_OPTMAX,
     DEVINFO_STR_IMAGE_CREATE_OPTEXTS = DEVINFO_STR_IMAGE_CREATE_OPTDESC + DEVINFO_CREATE_OPTMAX,
-	DEVINFO_STR_SOFTWARE_LIST,
+	DEVINFO_STR_INTERFACE,
     DEVINFO_STR_IMAGE_LAST = DEVINFO_STR_IMAGE_FIRST + 0x0fff
 };
 
@@ -178,7 +179,7 @@ int image_device_uses_file_extension(running_device *device, const char *file_ex
 int image_device_uses_file_extension(const device_config *device, const char *file_extension);
 
 /* compute a hash, using this device's partial hash if appropriate */
-void image_device_compute_hash(char *dest, running_device *device,
+void image_device_compute_hash(char *dest, const device_config *device,
     const void *data, size_t length, unsigned int functions);
 
 /* ----- creation formats ----- */
@@ -263,7 +264,8 @@ void set_init_phase(running_device *device);
 
 UINT8 *image_get_software_region(running_device *image, const char *tag);
 UINT32 image_get_software_region_length(running_device *image, const char *tag);
-const software_entry *image_software_entry(running_device *image);
+const char *image_get_feature(running_device *image);
+const software_info *image_software_entry(running_device *image);
 
 
 
@@ -305,10 +307,10 @@ const char *image_extrainfo(running_device *device);
   image; typically for cartridges.
 ****************************************************************************/
 
-void image_battery_load_by_name(const char *filename, void *buffer, int length);
+void image_battery_load_by_name(const char *filename, void *buffer, int length, int fill);
 void image_battery_save_by_name(const char *filename, const void *buffer, int length);
 
-void image_battery_load(running_device *img, void *buffer, int length);
+void image_battery_load(running_device *img, void *buffer, int length, int fill);
 void image_battery_save(running_device *img, const void *buffer, int length);
 
 

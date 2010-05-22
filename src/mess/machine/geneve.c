@@ -46,8 +46,7 @@ static UINT8 *DRAM_ptr;
 */
 /* TRUE if speech synthesizer present */
 static char has_speech;
-/* floppy disk controller type */
-static fdc_kind_t fdc_kind;
+
 /* TRUE if ide card present */
 static char has_ide;
 /* TRUE if rs232 card present */
@@ -56,9 +55,6 @@ static char has_rs232;
 /*static char has_genmod;*/
 /* TRUE if usb-sm card present */
 static char has_usb_sm;
-
-/* TRUE if we are using the alternative boot ROM */
-static char has_alt_boot;
 
 /* keyboard interface */
 static int JoySel;
@@ -132,7 +128,11 @@ enum
 /* tms9995_ICount: used to implement memory waitstates (hack) */
 /* NPW 23-Feb-2004 - externs no longer needed because we now use cpu_adjust_icount(devtag_get_device(space->machine, "maincpu"),) */
 
-
+enum
+{
+	BOOT_V09 = 0,
+	BOOT_V10 = 1
+};
 
 /*===========================================================================*/
 /*
@@ -196,12 +196,10 @@ MACHINE_RESET( geneve )
 	KeyReset = 1;
 
 	/* read config */
-	has_speech = (input_port_read(machine, "CFG") >> config_speech_bit) & config_speech_mask;
-	fdc_kind = (fdc_kind_t)((input_port_read(machine, "CFG") >> config_fdc_bit) & config_fdc_mask);
-	has_ide = (input_port_read(machine, "CFG") >> config_ide_bit) & config_ide_mask;
-	has_rs232 = (input_port_read(machine, "CFG") >> config_rs232_bit) & config_rs232_mask;
-	has_usb_sm = (input_port_read(machine, "CFG") >> config_usbsm_bit) & config_usbsm_mask;
-	has_alt_boot = (input_port_read(machine, "CFG") >> config_boot_bit) & config_boot_mask;
+	has_speech = input_port_read(machine, "SPEECH");
+	has_ide =  input_port_read(machine, "HDCTRL") & HD_IDE;
+	has_rs232 = input_port_read(machine, "SERIAL") & SERIAL_TI;
+	has_usb_sm = input_port_read(machine, "HDCTRL") & HD_USB;
 
 	/* set up optional expansion hardware */
 	ti99_peb_reset(0, inta_callback, intb_callback);
@@ -209,27 +207,26 @@ MACHINE_RESET( geneve )
 	if (has_speech)
 	{
 		static const spchroms_interface speech_intf = { region_speech_rom };
-
 		spchroms_config(machine, &speech_intf);
 	}
 
-	switch (fdc_kind)
+	switch (input_port_read(machine, "DISKCTRL"))
 	{
-	case fdc_kind_TI:
+	case DISK_TIFDC:
 		ti99_fdc_reset(machine);
 		break;
 #if HAS_99CCFDC
-	case fdc_kind_CC:
+	case DISK_CC:
 		ti99_ccfdc_reset(machine);
 		break;
 #endif
-	case fdc_kind_BwG:
+	case DISK_BWG:
 		ti99_bwg_reset(machine);
 		break;
-	case fdc_kind_hfdc:
+	case DISK_HFDC:
 		ti99_hfdc_reset(machine);
 		break;
-	case fdc_kind_none:
+	case DISK_NONE:
 		break;
 	}
 
@@ -303,14 +300,14 @@ static  READ8_HANDLER ( geneve_speech_r )
 {
 	cpu_adjust_icount(devtag_get_device(space->machine, "maincpu"),-8);		/* this is just a minimum, it can be more */
 
-	return tms5220_status_r(devtag_get_device(space->machine, "tms5220"), offset);
+	return tms5220_status_r(devtag_get_device(space->machine, "tmc0285"), offset);
 }
 
 #if 0
 
 static void speech_kludge_callback(int dummy)
 {
-	if (! tms5220_readyq_r(devtag_get_device(space->machine, "tms5220")))
+	if (! tms5220_readyq_r(devtag_get_device(space->machine, "tmc0285")))
 	{
 		/* Weirdly enough, we are always seeing some problems even though
         everything is working fine. */
@@ -336,9 +333,9 @@ static WRITE8_HANDLER ( geneve_speech_w )
     there are 15 bytes in FIFO.  It should be 16.  Of course, if it were the
     case, we would need to store the value on the bus, which would be more
     complex. */
-	if (! tms5220_readyq_r(devtag_get_device(space->machine, "tms5220")))
+	if (! tms5220_readyq_r(devtag_get_device(space->machine, "tmc0285")))
 	{
-		attotime time_to_ready = double_to_attotime(tms5220_time_to_ready(devtag_get_device(space->machine, "tms5220")));
+		attotime time_to_ready = double_to_attotime(tms5220_time_to_ready(devtag_get_device(space->machine, "tmc0285")));
 		int cycles_to_ready = cputag_attotime_to_clocks(space->machine, "maincpu", time_to_ready);
 
 		logerror("time to ready: %f -> %d\n", attotime_to_double(time_to_ready), (int) cycles_to_ready);
@@ -348,7 +345,7 @@ static WRITE8_HANDLER ( geneve_speech_w )
 	}
 #endif
 
-	tms5220_data_w(devtag_get_device(space->machine, "tms5220"), offset, data);
+	tms5220_data_w(devtag_get_device(space->machine, "tmc0285"), offset, data);
 }
 
 READ8_HANDLER ( geneve_r )
@@ -545,12 +542,12 @@ READ8_HANDLER ( geneve_r )
 	offset &= 0x1fff;
 
 	/* Although we could have 128K boot ROM (page f0...ff), the stock
-       Geneve only has 16K. The address is incompletely decoded, so page
-       f0 is mirrored on all even pages up to fe, and f1 is mirrored on
-       f3, f5, ... ff.
-       Currently, MESS is delivered with the 16K ROM only. So for the time
-       being, we won't lose much if we mask the page bits.
-       Michael Zapf, 2008-01-23
+    Geneve only has 16K. The address is incompletely decoded, so page
+    f0 is mirrored on all even pages up to fe, and f1 is mirrored on
+    f3, f5, ... ff.
+    Currently, MESS is delivered with the 16K ROM only. So for the time
+    being, we won't lose much if we mask the page bits.
+    Michael Zapf, 2008-01-23
     */
 	if (page > 0xf1) page &= 0xf1;
 
@@ -559,8 +556,10 @@ READ8_HANDLER ( geneve_r )
 	case 0xf0:
 	case 0xf1:
 		/* Boot ROM */
-		if (has_alt_boot) return AROM_ptr[(page-0xf0)*0x2000 + offset];
-		else return ROM_ptr[(page-0xf0)*0x2000 + offset];
+		if (input_port_read(space->machine, "BOOTROM")==BOOT_V09)
+			return AROM_ptr[(page-0xf0)*0x2000 + offset];
+		else
+			return ROM_ptr[(page-0xf0)*0x2000 + offset];
 
 	case 0xe8:
 	case 0xe9:

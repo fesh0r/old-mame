@@ -21,7 +21,7 @@ static ADDRESS_MAP_START( qtsbc_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 /* Input ports */
-INPUT_PORTS_START( qtsbc )
+static INPUT_PORTS_START( qtsbc )
 INPUT_PORTS_END
 
 
@@ -69,4 +69,4 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT     COMPANY   FULLNAME       FLAGS */
-COMP( ????, qtsbc,  0,       0, 	qtsbc,	qtsbc,	 0, 		 "Computer Systems Inc.",   "QT SBC +2/4",		GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 19??, qtsbc,  0,       0, 	qtsbc,	qtsbc,	 0, 		 "Computer Systems Inc.",   "QT SBC +2/4",		GAME_NOT_WORKING | GAME_NO_SOUND)

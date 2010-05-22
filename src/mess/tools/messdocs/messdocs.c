@@ -2,7 +2,7 @@
 #include <windows.h>
 #include <ctype.h>
 #include <tchar.h>
-#include <shlwapi.h> 
+#include <shlwapi.h>
 #include <stdio.h>
 #include <ctype.h>
 
@@ -109,7 +109,7 @@ file_error osd_mkdir(const char *dir)
 
 done:
 	if (tempstr)
-		free(tempstr);
+		osd_free(tempstr);
 	return filerr;
 }
 
@@ -137,9 +137,9 @@ file_error osd_rmdir(const char *dir)
 
 done:
 	if (tempstr)
-		free(tempstr);
+		osd_free(tempstr);
 	return filerr;
-} 
+}
 
 
 //============================================================
@@ -153,7 +153,7 @@ file_error osd_copyfile(const char *destfile, const char *srcfile)
 		return win_error_to_mame_file_error(GetLastError());
 
 	return FILERR_NONE;
-} 
+}
 
 /***************************************************************************
     CORE IMPLEMENTATION

@@ -74,6 +74,7 @@ block of RAM instead of 8.
 #include "emu.h"
 #include "includes/vic20.h"
 #include "includes/cbm.h"
+#include "formats/cbm_snqk.h"
 #include "cpu/m6502/m6502.h"
 #include "devices/cartslot.h"
 #include "devices/messram.h"
@@ -643,7 +644,7 @@ static MACHINE_DRIVER_START( vic20_common )
 	MDRV_VIA6522_ADD(M6522_0_TAG, 0, vic20_via0_intf)
 	MDRV_VIA6522_ADD(M6522_1_TAG, 0, vic20_via1_intf)
 
-	MDRV_QUICKLOAD_ADD("quickload", cbm_vc20, "p00,prg", 0)
+	MDRV_QUICKLOAD_ADD("quickload", cbm_vc20, "p00,prg", CBM_QUICKLOAD_DELAY_SECONDS)
 	MDRV_CASSETTE_ADD(CASSETTE_TAG, cbm_cassette_config )
 	MDRV_CBM_IEC_ADD(IEC_TAG, cbm_iec_daisy)
 	MDRV_C1540_ADD(C1540_TAG, IEC_TAG, 8)
@@ -738,14 +739,20 @@ ROM_START( vic20 )
 	ROM_REGION( 0x10000, M6502_TAG, 0 )
 	ROM_LOAD( "901460-03.ud7",  0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4) )
 	ROM_LOAD( "901486-01.ue11", 0xc000, 0x2000, CRC(db4c43c1) SHA1(587d1e90950675ab6b12d91248a3f0d640d02e8d) )
-	ROM_LOAD( "901486-06.ue12", 0xe000, 0x2000, CRC(e5e7c174) SHA1(06de7ec017a5e78bd6746d89c2ecebb646efeb19) )
+	ROM_SYSTEM_BIOS( 0, "cbm", "Original" )
+	ROMX_LOAD( "901486-06.ue12", 0xe000, 0x2000, CRC(e5e7c174) SHA1(06de7ec017a5e78bd6746d89c2ecebb646efeb19), ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS( 1, "jiffydos", "JiffyDOS" )
+	ROMX_LOAD( "jiffydos vic-20 ntsc.ue12", 0xe000, 0x2000, CRC(683a757f) SHA1(83fb83e97b5a840311dbf7e1fe56fe828f41936d), ROM_BIOS(2) )
 ROM_END
 
 ROM_START( vic20p )
 	ROM_REGION( 0x10000, M6502_TAG, 0 )
 	ROM_LOAD( "901460-03.ud7",  0x8000, 0x1000, CRC(83e032a6) SHA1(4fd85ab6647ee2ac7ba40f729323f2472d35b9b4) )
 	ROM_LOAD( "901486-01.ue11", 0xc000, 0x2000, CRC(db4c43c1) SHA1(587d1e90950675ab6b12d91248a3f0d640d02e8d) )
-	ROM_LOAD( "901486-07.ue12", 0xe000, 0x2000, CRC(4be07cb4) SHA1(ce0137ed69f003a299f43538fa9eee27898e621e) )
+	ROM_SYSTEM_BIOS( 0, "cbm", "Original" )
+	ROMX_LOAD( "901486-07.ue12", 0xe000, 0x2000, CRC(4be07cb4) SHA1(ce0137ed69f003a299f43538fa9eee27898e621e), ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS( 1, "jiffydos", "JiffyDOS" )
+	ROMX_LOAD( "jiffydos vic-20 pal.ue12", 0xe000, 0x2000, CRC(705e7810) SHA1(5a03623a4b855531b8bffd756f701306f128be2d), ROM_BIOS(2) )
 ROM_END
 
 ROM_START( vic20s )

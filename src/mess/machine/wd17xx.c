@@ -119,8 +119,11 @@
 
       This should probably be considdered a minor hack but it does seem to work !
 
-    2009-02-04 Phill Harvey-Smith
+    2010-02-04 Phill Harvey-Smith
     - Added multiple sector write as the RM Nimbus needs it.
+
+    2010-March-22 Curt Coder:
+    - Implemented immediate and index pulse interrupts.
 
     TODO:
         - Multiple record write
@@ -140,7 +143,7 @@
     CONSTANTS
 ***************************************************************************/
 
-#define VERBOSE			1	/* General logging */
+#define VERBOSE			0	/* General logging */
 #define VERBOSE_DATA	0	/* Logging of each byte during read and write */
 
 #define DELAY_ERROR		3
@@ -296,6 +299,7 @@ struct _wd1770_state
 	UINT8 sector;
 	UINT8 command;
 	UINT8 status;
+	UINT8 interrupt;
 
 	int stepping_rate[4];  /* track stepping rate in ms */
 
@@ -309,6 +313,7 @@ struct _wd1770_state
 	UINT8	read_cmd;				/* last read command issued */
 	UINT8	write_cmd;				/* last write command issued */
 	INT8	direction;				/* last step direction */
+	UINT8   last_command_data;		/* last command data */
 
 	UINT8	status_drq; 			/* status register data request bit */
 	UINT8	busy_count; 			/* how long to keep busy bit set */
@@ -460,7 +465,12 @@ static void	wd17xx_set_intrq(running_device *device)
 static TIMER_CALLBACK( wd17xx_command_callback )
 {
 	running_device *device = (running_device *)ptr;
-	wd17xx_set_intrq(device);
+	wd1770_state *w = get_safe_token(device);
+
+	if (w->last_command_data != FDC_FORCE_INT)
+	{
+		wd17xx_set_intrq(device);
+	}
 }
 
 /* set drq after delay */
@@ -530,29 +540,6 @@ static void wd17xx_command_restore(running_device *device)
 }
 
 /*
-        Gets the size in bytes of the current track. For real hardware this
-    may vary per system in small degree, and there even for each track
-    and head, so we should not assume a fixed value here.
-    As we are using a buffered track writing, we have to find out how long
-    the track will become. The only object which can tell us is the
-    selected format.
-*/
-static int get_track_size(wd1770_state *w)
-{
-        int size = 0;
-        floppy_image *floppy = flopimg_get_image(w->drive);
-        if (floppy != NULL)
-        {
-                const struct FloppyCallbacks *fmt = floppy_callbacks(floppy);
-                if (fmt != NULL)
-                {
-                        size = fmt->get_track_size(floppy, w->hd, w->track);
-                }
-        }
-        return size;
-}
-
-/*
     Write an entire track. Formats which do not define a write_track
     function pointer will cause a silent return.
     What is written to the image depends on the selected format. Sector
@@ -563,6 +550,7 @@ static int get_track_size(wd1770_state *w)
 static void write_track(running_device *device)
 {
 	wd1770_state *w = get_safe_token(device);
+	floppy_image *floppy;
 #if 0
 	int i;
 	for (i=0;i+4<w->data_offset;)
@@ -585,9 +573,17 @@ static void write_track(running_device *device)
 	}
 #endif
 
-	/* Determine the track size. We cannot allow different sizes in this
-       design. */
-        w->data_count = get_track_size(w);
+	/* Get the size in bytes of the current track. For real hardware this
+    may vary per system in small degree, and there even for each track
+    and head, so we should not assume a fixed value here.
+    As we are using a buffered track writing, we have to find out how long
+    the track will become. The only object which can tell us is the
+    selected format.
+    */
+	w->data_count = 0;
+	floppy = flopimg_get_image(w->drive);
+	if (floppy != NULL)
+		w->data_count = floppy_get_track_size(floppy, w->hd, w->track);
 
         if (w->data_count==0)
         {
@@ -615,6 +611,7 @@ static void write_track(running_device *device)
 static void read_track(running_device *device)
 {
 	wd1770_state *w = get_safe_token(device);
+	floppy_image *floppy;
 #if 0
 	UINT8 *psrc;		/* pointer to track format structure */
 	UINT8 *pdst;		/* pointer to track buffer */
@@ -734,8 +731,11 @@ static void read_track(running_device *device)
 	}
 #endif
 	/* Determine the track size. We cannot allow different sizes in this
-       design. */
-        w->data_count = get_track_size(w);
+    design (see above, write_track). */
+	w->data_count = 0;
+	floppy = flopimg_get_image(w->drive);
+	if (floppy != NULL)
+		w->data_count = floppy_get_track_size(floppy, w->hd, w->track);
 
         if (w->data_count==0)
         {
@@ -821,6 +821,9 @@ static void wd17xx_index_pulse_callback(running_device *controller, running_devi
 		return;
 
 	w->idx = state;
+
+	if (!state && w->idx && BIT(w->interrupt, 2))
+		wd17xx_set_intrq(controller);
 
 	if (w->hld_count)
 		w->hld_count--;
@@ -1231,6 +1234,9 @@ WRITE_LINE_DEVICE_HANDLER( wd17xx_idx_w )
 {
 	wd1770_state *w = get_safe_token(device);
 	w->idx = state;
+
+	if (!state && w->idx && BIT(w->interrupt, 2))
+		wd17xx_set_intrq(device);
 }
 
 /* write protect status */
@@ -1247,7 +1253,7 @@ WRITE_LINE_DEVICE_HANDLER( wd17xx_dden_w )
 
 	/* not supported on FD1771, FD1792, FD1794, FD1762 and FD1764 */
 	if (device->type == WD1771)
-		fatalerror("wd17xx_dden_w: double density input not supported on this model!\n");
+		fatalerror("wd17xx_dden_w: double density input not supported on this model!");
 	else if (w->in_dden_func.read != NULL)
 		logerror("wd17xx_dden_w: write has no effect because a read handler is already defined!\n");
 	else
@@ -1274,7 +1280,10 @@ READ8_DEVICE_HANDLER( wd17xx_status_r )
 	wd1770_state *w = get_safe_token(device);
 	int result;
 
-	wd17xx_clear_intrq(device);
+	if (!BIT(w->interrupt, 3))
+	{
+		wd17xx_clear_intrq(device);
+	}
 
 	/* bit 7, 'not ready' or 'motor on' */
 	if (device->type == WD1770 || device->type == WD1772)
@@ -1421,6 +1430,7 @@ READ8_DEVICE_HANDLER( wd17xx_data_r )
 	{
 		logerror("wd17xx_data_r: (no new data) $%02X (data_count %d)\n", w->data, w->data_count);
 	}
+
 	return w->data;
 }
 
@@ -1428,6 +1438,8 @@ READ8_DEVICE_HANDLER( wd17xx_data_r )
 WRITE8_DEVICE_HANDLER( wd17xx_command_w )
 {
 	wd1770_state *w = get_safe_token(device);
+
+	w->last_command_data = data;
 
 	/* only the WD1770 and WD1772 have a 'motor on' line */
 	if (device->type == WD1770 || device->type == WD1772)
@@ -1438,8 +1450,10 @@ WRITE8_DEVICE_HANDLER( wd17xx_command_w )
 
 	floppy_drive_set_ready_state(w->drive, 1,0);
 
-	/* also cleared by writing command */
-	wd17xx_clear_intrq(device);
+	if (!BIT(w->interrupt, 3))
+	{
+		wd17xx_clear_intrq(device);
+	}
 
 	/* clear write protected. On read sector, read track and read dam, write protected bit is clear */
 	w->status &= ~((1<<6) | (1<<5) | (1<<4));
@@ -1456,13 +1470,32 @@ WRITE8_DEVICE_HANDLER( wd17xx_command_w )
 
 		wd17xx_clear_drq(device);
 
-		if (data & 0x0f)
+		if (!BIT(w->interrupt, 3) && BIT(data, 3))
 		{
-
-
-
+			/* set immediate interrupt */
+			wd17xx_set_intrq(device);
 		}
 
+		if (BIT(w->interrupt, 3))
+		{
+			if (data == FDC_FORCE_INT)
+			{
+				/* clear immediate interrupt */
+				w->interrupt = data & 0x0f;
+			}
+			else
+			{
+				/* keep immediate interrupt */
+				w->interrupt = 0x08 | (data & 0x07);
+			}
+		}
+		else
+		{
+			w->interrupt = data & 0x0f;
+		}
+
+		/* terminate command */
+		wd17xx_complete_command(device, DELAY_ERROR);
 
 //      w->status_ipl = STA_1_IPL;
 /*      w->status_ipl = 0; */

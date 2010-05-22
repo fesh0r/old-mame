@@ -479,11 +479,11 @@ void AddOptions(core_options *opts, const options_entry *entrylist, BOOL is_glob
 				}
 			}
 		}
-
+#ifndef MESS
 		// if is_global is FALSE, blacklist global options
 		if (entrylist->name && !is_global && IsGlobalOption(entrylist->name))
 			good_option = FALSE;
-
+#endif
 		if (good_option)
 		{
 			memcpy(entries, entrylist, sizeof(options_entry));
@@ -612,7 +612,7 @@ core_options * MameUIGlobal(void)
 #if 0
 static void LoadFolderFilter(int folder_index,int filters)
 {
-	//dprintf("loaded folder filter %i %i",folder_index,filters);
+	//dprintf("loaded folder filter %i %i\n",folder_index,filters);
 
 	if (num_folder_filters == size_folder_filters)
 	{
@@ -2179,7 +2179,7 @@ static void FontDecodeString(const char* str, LOGFONT *f)
 		if( !t_ptr )
 			return;
 		_tcscpy(f->lfFaceName, t_ptr);
-		global_free(t_ptr);
+		osd_free(t_ptr);
 	}
 }
 
@@ -2206,7 +2206,7 @@ static void FontEncodeString(const LOGFONT *f, char *str)
 			f->lfPitchAndFamily,
 			utf8_FaceName);
 
-	global_free(utf8_FaceName);
+	osd_free(utf8_FaceName);
 }
 
 static void TabFlagsEncodeString(int data, char *str)
@@ -2289,7 +2289,7 @@ static file_error SaveSettingsFile(core_options *opts, core_options *baseopts, c
 	{
 		filerr = core_fopen(filename, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS, &file);
 		if (filerr == FILERR_NONE)
-		{	
+		{
 			#ifdef MESS
 			options_output_ini_file(opts, file);	/* required for MESS */
 			#else
@@ -2370,7 +2370,7 @@ DWORD GetFolderFlags(int folder_index)
 	{
 		if (folder_filters[i].folder_index == folder_index)
 		{
-			//dprintf("found folder filter %i %i",folder_index,folder_filters[i].filters);
+			//dprintf("found folder filter %i %i\n",folder_index,folder_filters[i].filters);
 			return folder_filters[i].filters;
 		}
 	}
@@ -2907,7 +2907,7 @@ static void remove_all_source_options(void) {
 		astring_free(match);
 		utf8_filename = utf8_from_tstring(findFileData.cFileName);
 		match = astring_assemble_3(astring_alloc(), astring_c(pathname), PATH_SEPARATOR, utf8_filename );
-		free(utf8_filename);
+		osd_free(utf8_filename);
 		osd_rmfile(astring_c(match));
 		astring_free(match);
 
@@ -2915,7 +2915,7 @@ static void remove_all_source_options(void) {
 		{
 			utf8_filename = utf8_from_tstring(findFileData.cFileName);
 			match = astring_assemble_3(astring_alloc(), astring_c(pathname), PATH_SEPARATOR, utf8_filename );
-			free(utf8_filename);
+			osd_free(utf8_filename);
 			osd_rmfile(astring_c(match));
 			astring_free(match);
 		}

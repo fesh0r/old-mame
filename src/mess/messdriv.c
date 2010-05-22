@@ -64,10 +64,12 @@ const game_driver * const drivers[] =
 	DRIVER( gbpocket )  /* Nintendo Game Boy Pocket Handheld    */
 	DRIVER( gblight )   /* Nintendo Game Boy Light Handheld  */
 	DRIVER( gbcolor )   /* Nintendo Game Boy Color Handheld  */
-	DRIVER( snes )	  /* Nintendo Super Nintendo NTSC    */
-	DRIVER( snessfx )	/* Nintendo Super Nintendo NTSC, SuperFX    */
+	DRIVER( snes )		/* Nintendo Super Nintendo NTSC    */
 	DRIVER( snespal )   /* Nintendo Super Nintendo PAL    */
-	DRIVER( snespsfx )	/* Nintendo Super Nintendo PAL, SuperFX  */
+	DRIVER( snessfx )	/* Nintendo Super Nintendo NTSC w/SuperFX CPU*/
+	DRIVER( snespsfx )	/* Nintendo Super Nintendo PAL w/SuperFX CPU */
+	DRIVER( snesst )	/* Nintendo Super Nintendo NTSC w/Sufami Turbo base cart */
+	DRIVER( snesbsx )	/* Nintendo Super Nintendo NTSC w/BS-X compatible cart  */
 	DRIVER( sfcbox )	/* Nintendo Super Famicom Box      */
 	DRIVER( n64 )	   /* Nintendo N64   */
 	DRIVER( pokemini )  /* Nintendo Pokemon Mini    */
@@ -597,6 +599,7 @@ const game_driver * const drivers[] =
 	DRIVER( mk88 )
 	DRIVER( poisk1 )
 	DRIVER( poisk2 )
+	DRIVER( mc1702 )
 
 	/* AT */
 	DRIVER( ibm5170 )   /* 1984 IBM PC/AT 5170, original 6 MHz model    */
@@ -611,6 +614,7 @@ const game_driver * const drivers[] =
 	DRIVER( ficvt503 )	/* 1997 FIC VT-503  */
 	DRIVER( megapc )
 	DRIVER( megapcpl )
+	DRIVER( ec1849 )
 
 	/* 3Com / Palm / USRobotics */
 	DRIVER( pilot1k )   /* Pilot 1000 */
@@ -770,6 +774,8 @@ const game_driver * const drivers[] =
 	DRIVER( ti89 )	  /* 1998 TI-89    */
 	DRIVER( ti92 )	  /* 1995 TI-92    */
 	DRIVER( ti92p )	 /* 1999 TI-92 Plus   */
+	DRIVER( v200 )	  /* 2002 Voyage 200 PLT    */
+	DRIVER( ti89t )	 /* 2004 TI-89 Titanium   */
 
 	/* NEC */
 	DRIVER( pc6001 )
@@ -1096,6 +1102,7 @@ const game_driver * const drivers[] =
 	DRIVER(vt520) /* 1994 Digital Equipment Corporation */
 	DRIVER(vk100) /* 1980 Digital Equipment Corporation */
 	DRIVER(dectalk) /* 1982 Digital Equipment Corporation */
+	DRIVER(mc7105) /* Elektronika MC7105 */
 
 	/* Memotech */
 	DRIVER( mtx512 )	/* 1983 Memotech MTX 512    */
@@ -1572,6 +1579,7 @@ const game_driver * const drivers[] =
 	DRIVER( x07)
 	DRIVER( vesta)
 	DRIVER( hobby)
+	DRIVER( pk8002)
 	DRIVER( unior)
 	DRIVER( vec1200)
 	DRIVER( pk6128c)
@@ -1671,5 +1679,25 @@ const game_driver * const drivers[] =
 	DRIVER( vcc )
 	DRIVER( victor9k )
 	DRIVER( phc25 )
+	DRIVER( pv9234 )
+	DRIVER( dm7000 )
+	DRIVER( dm5620 )
+	DRIVER( dm500 )
+	DRIVER( cgc7900 )
+	DRIVER( hr16 )
+	DRIVER( hr16b )
+	DRIVER( sr16 )
+	DRIVER( vidbrain )
+	DRIVER( cd2650 )
+	DRIVER( pipbug )
+	DRIVER( elektor )
+	DRIVER( instruct )
+	DRIVER( dolphin )
+	DRIVER( chaos )
+	DRIVER( z80dev )
+	DRIVER( pegasus )
+	DRIVER( pegasusm )
+	DRIVER( e01 )
+	DRIVER( e01s )
 
 #endif /* DRIVER_RECURSIVE */

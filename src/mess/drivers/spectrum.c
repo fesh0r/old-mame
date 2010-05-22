@@ -182,62 +182,62 @@ Mass storage controllers
 ------------------------
 
 ZX Interface 1
-	up to 8 Microdrives
-	1 RS-232 port
-	2 ZX Network ports - http://scratchpad.wikia.com/wiki/ZX_Net
+    up to 8 Microdrives
+    1 RS-232 port
+    2 ZX Network ports - http://scratchpad.wikia.com/wiki/ZX_Net
 
 Opus Discovery
-	up to 2 Disk drives
-	1 Centronics port
-	1 Joystick port (Kempston)
+    up to 2 Disk drives
+    1 Centronics port
+    1 Joystick port (Kempston)
 
 DISCiPLE Interface
-	up to 2 Disk drives
-	1 Centronics port
-	2 Joystick ports (RH: Sinclair/Kempston, LH: Sinclair)
-	2 ZX Network ports
+    up to 2 Disk drives
+    1 Centronics port
+    2 Joystick ports (RH: Sinclair/Kempston, LH: Sinclair)
+    2 ZX Network ports
 
 Plus D Interface
-	up to 2 Disk drives
-	1 Centronics port
+    up to 2 Disk drives
+    1 Centronics port
 
 Rotronics Wafadrive
-	2 "Stringy" drives
-	1 RS-232 port
-	1 Centronics port
+    2 "Stringy" drives
+    1 RS-232 port
+    1 Centronics port
 
 Kempston Disc Interface
-	up to 4 Disk drives (KDOS)
+    up to 4 Disk drives (KDOS)
 
 Beta 128 Disk Interface
-	up to 4 Disk drives (TR-DOS)
+    up to 4 Disk drives (TR-DOS)
 
 Philips Disc ROM
-	???
+    ???
 
 ----------------
 Game controllers
 ----------------
 
 ZX Interface 2
-	2 Joystick ports (Sinclair)
-	1 ROM slot
+    2 Joystick ports (Sinclair)
+    1 ROM slot
 
 Kempston Interface
-	1 Joystick port (Kempston)
+    1 Joystick port (Kempston)
 
 Protek/AGF/Cursor Interface
-	1 Joystick port (Protek)
+    1 Joystick port (Protek)
 
 Fuller Box
-	1 Joystick port (Fuller)
-	1 G1-AY-3-8912 sound chip - the chip is identical to the one present on the 128 model,
-	                            but the I/O ports are different: http://scratchpad.wikia.com/wiki/AY-3-8912(a) and
-	                            http://scratchpad.wikia.com/wiki/Timex_2000_series#Sound_Chip
+    1 Joystick port (Fuller)
+    1 G1-AY-3-8912 sound chip - the chip is identical to the one present on the 128 model,
+                                but the I/O ports are different: http://scratchpad.wikia.com/wiki/AY-3-8912(a) and
+                                http://scratchpad.wikia.com/wiki/Timex_2000_series#Sound_Chip
 
 Mikro-Plus Interface
-	1 Joystick port (Mikrogen)
-	1 ROM slot - http://www.worldofspectrum.org/showmag.cgi?mag=Crash/Issue19/Pages/Crash1900020.jpg
+    1 Joystick port (Mikrogen)
+    1 ROM slot - http://www.worldofspectrum.org/showmag.cgi?mag=Crash/Issue19/Pages/Crash1900020.jpg
 
 ------------
 Misc devices
@@ -255,7 +255,7 @@ Currah uSpeech
     Speech synthesis thru allophones (SP0256-AL2)
 
 MGT Messenger
-    Allows connection between ZX Spectrum and SAM Coupé
+    Allows connection between ZX Spectrum and SAM Coup??
 
 Soft-ROM
     A development system board - http://www.wearmouth.demon.co.uk/softrom.htm
@@ -437,8 +437,8 @@ static READ8_HANDLER ( spectrum_port_ula_r )
 static ADDRESS_MAP_START (spectrum_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x5aff) AM_RAM AM_BASE_MEMBER(spectrum_state,video_ram)
-//	AM_RANGE(0x5b00, 0x7fff) AM_RAM
-//	AM_RANGE(0x8000, 0xffff) AM_RAM
+//  AM_RANGE(0x5b00, 0x7fff) AM_RAM
+//  AM_RANGE(0x8000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 /* ports are not decoded full.
@@ -624,14 +624,13 @@ INPUT_PORTS_END
 DRIVER_INIT( spectrum )
 {
 	const address_space *space = cputag_get_address_space(machine, "maincpu", ADDRESS_SPACE_PROGRAM);
-	UINT8 *ram = messram_get_ptr(devtag_get_device(machine, "messram"));
 
 	switch (messram_get_size(devtag_get_device(machine, "messram")))
 	{
 	    case 48*1024:
-		memory_install_ram(space, 0x8000, 0xffff, 0, 0, ram); // Fall through
+		memory_install_ram(space, 0x8000, 0xffff, 0, 0, NULL); // Fall through
 	    case 16*1024:
-		memory_install_ram(space, 0x5b00, 0x7fff, 0, 0, ram);
+		memory_install_ram(space, 0x5b00, 0x7fff, 0, 0, NULL);
 	}
 }
 
@@ -985,8 +984,8 @@ ROM_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE     INPUT       INIT    COMPANY     FULLNAME */
 COMP( 1982, spectrum, 0,        0,		spectrum,		spectrum,	spectrum,	"Sinclair Research",	"ZX Spectrum" , 0)
-COMP( 1987, spec80k,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"ZX Spectrum 80K" , GAME_UNOFFICIAL)
-COMP( 1995, specide,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"ZX Spectrum IDE" , GAME_UNOFFICIAL)
+COMP( 1987, spec80k,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"ZX Spectrum 80K" , GAME_UNOFFICIAL)
+COMP( 1995, specide,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"ZX Spectrum IDE" , GAME_UNOFFICIAL)
 COMP( 1986, inves,    spectrum, 0,		spectrum,		spec_plus,	spectrum,	"Investronica",	"Inves Spectrum 48K+" , 0)
 COMP( 1985, tk90x,    spectrum, 0,		spectrum,		spectrum,	spectrum,	"Micro Digital",	"TK 90X Color Computer" , 0)
 COMP( 1986, tk95,     spectrum, 0,		spectrum,		spec_plus,	spectrum,	"Micro Digital",	"TK 95 Color Computer" , 0)
@@ -1007,11 +1006,11 @@ COMP( 1991, didakm91, spectrum, 0,		spectrum,		spec_plus,	spectrum,	"Didaktik Sk
 COMP( 1992, didaktk,  spectrum, 0,		spectrum,		spec_plus,	spectrum,	"Didaktik Skalica",	"Didaktik Kompakt" , 0)
 COMP( 1993, didakm93, spectrum, 0,		spectrum,		spec_plus,	spectrum,	"Didaktik Skalica",	"Didaktik M 93" , 0)
 COMP( 1988, mistrum,  spectrum, 0,		spectrum,		spectrum,	spectrum,	"Amaterske RADIO",	"Mistrum" , 0)	// keyboard could be spectrum in some models (since it was a build-yourself design)
-COMP( 1990, blitz,    spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"Blic" , 0)		// no keyboard images found
-COMP( 1990, byte,     spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"Byte" , 0)		// no keyboard images found
-COMP( 199?, orizon,   spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"Orizon-Micro" , 0)		// no keyboard images found
-COMP( 1993, quorum48, spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"Kvorum 48K" , GAME_NOT_WORKING)
-COMP( 1993, magic6,   spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"Magic 6" , GAME_NOT_WORKING)	// keyboard should be spectrum, but image was not clear
-COMP( 1990, compani1, spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"Kompanion 1" , 0)		// no keyboard images found
-COMP( 1990, spektrbk, spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"Spektr BK-001" , 0)
-COMP( 1990, zvezda,   spectrum, 0,		spectrum,		spectrum,	spectrum,	"",	"Zvezda" , 0)
+COMP( 1990, blitz,    spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"Blic" , 0)		// no keyboard images found
+COMP( 1990, byte,     spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"Byte" , 0)		// no keyboard images found
+COMP( 199?, orizon,   spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"Orizon-Micro" , 0)		// no keyboard images found
+COMP( 1993, quorum48, spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"Kvorum 48K" , GAME_NOT_WORKING)
+COMP( 1993, magic6,   spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"Magic 6" , GAME_NOT_WORKING)	// keyboard should be spectrum, but image was not clear
+COMP( 1990, compani1, spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"Kompanion 1" , 0)		// no keyboard images found
+COMP( 1990, spektrbk, spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"Spektr BK-001" , 0)
+COMP( 1990, zvezda,   spectrum, 0,		spectrum,		spectrum,	spectrum,	"<unknown>",	"Zvezda" , 0)

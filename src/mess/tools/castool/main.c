@@ -8,9 +8,6 @@
 
 ***************************************************************************/
 
-#ifdef WIN32
-#include "winutils.h"
-#endif
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -165,11 +162,13 @@ int CLIB_DECL main(int argc, char *argv[])
 
 				if (cassette_open_choices(NULL, f, &stdio_ioprocs, get_extension(argv[3]), selected_formats, CASSETTE_FLAG_READONLY, &cassette))	{
 					fprintf(stderr, "Invalid format of input file.\n");
+					fclose(f);
 					return -1;
 				}
 
 				cassette_dump(cassette,argv[4]);
 				cassette_close(cassette);
+				fclose(f);
 				goto theend;
 			}
 		}

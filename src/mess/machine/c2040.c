@@ -11,7 +11,11 @@
 
     TODO:
 
-    - 2040 DOS 1 FDC rom
+    - 2040 DOS 1 FDC rom (jumps to 104d while getting block header)
+
+        FE70: jsr  $104D
+        104D: m6502_brk#$00
+
     - Micropolis 8x50 stepper motor is same as 4040, except it takes 4 pulses to step a track instead of 1
     - error/activity LEDs
 
@@ -25,7 +29,7 @@
 #include "formats/g64_dsk.h"
 #include "machine/6522via.h"
 #include "machine/6532riot.h"
-#include "machine/6530miot.h"
+#include "machine/mos6530.h"
 #include "machine/ieee488.h"
 
 /***************************************************************************
@@ -234,7 +238,7 @@ static TIMER_CALLBACK( bit_tick )
 		if (c2040->unit[c2040->drive].buffer_pos >= c2040->unit[c2040->drive].track_len)
 		{
 			/* loop to the start of the track */
-			c2040->unit[c2040->drive].buffer_pos = G64_DATA_START;
+			c2040->unit[c2040->drive].buffer_pos = 0;
 		}
 	}
 
@@ -273,7 +277,7 @@ static TIMER_CALLBACK( bit_tick )
 static void read_current_track(c2040_t *c2040, int unit)
 {
 	c2040->unit[unit].track_len = G64_BUFFER_SIZE;
-	c2040->unit[unit].buffer_pos = G64_DATA_START;
+	c2040->unit[unit].buffer_pos = 0;
 	c2040->unit[unit].bit_pos = 7;
 	c2040->bit_count = 0;
 
@@ -281,7 +285,29 @@ static void read_current_track(c2040_t *c2040, int unit)
 	floppy_drive_read_track_data_info_buffer(c2040->unit[unit].image, c2040->side, c2040->unit[unit].track_buffer, &c2040->unit[unit].track_len);
 
 	/* extract track length */
-	c2040->unit[unit].track_len = G64_DATA_START + ((c2040->unit[unit].track_buffer[1] << 8) | c2040->unit[unit].track_buffer[0]);
+	c2040->unit[unit].track_len = floppy_drive_get_current_track_size(c2040->unit[unit].image, c2040->side);
+}
+
+/*-------------------------------------------------
+    on_disk_0_change - disk 0 change handler
+-------------------------------------------------*/
+
+static void on_disk_0_change(running_device *image)
+{
+	c2040_t *c2040 = get_safe_token(image->owner);
+
+	read_current_track(c2040, 0);
+}
+
+/*-------------------------------------------------
+    on_disk_1_change - disk 1 change handler
+-------------------------------------------------*/
+
+static void on_disk_1_change(running_device *image)
+{
+	c2040_t *c2040 = get_safe_token(image->owner);
+
+	read_current_track(c2040, 1);
 }
 
 /*-------------------------------------------------
@@ -418,7 +444,7 @@ static ADDRESS_MAP_START( c2040_fdc_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x003f) AM_MIRROR(0x0300) AM_RAM // 6530
 	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6522_TAG, via_r, via_w)
-	AM_RANGE(0x0080, 0x008f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6530_TAG, miot6530_r, miot6530_w)
+	AM_RANGE(0x0080, 0x008f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6530_TAG, mos6530_r, mos6530_w)
 	AM_RANGE(0x0400, 0x07ff) AM_RAM AM_SHARE("share1")
 	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_SHARE("share3")
@@ -451,7 +477,7 @@ static ADDRESS_MAP_START( c4040_fdc_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x003f) AM_MIRROR(0x0300) AM_RAM // 6530
 	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6522_TAG, via_r, via_w)
-	AM_RANGE(0x0080, 0x008f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6530_TAG, miot6530_r, miot6530_w)
+	AM_RANGE(0x0080, 0x008f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6530_TAG, mos6530_r, mos6530_w)
 	AM_RANGE(0x0400, 0x07ff) AM_RAM AM_SHARE("share1")
 	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_SHARE("share3")
@@ -483,7 +509,7 @@ static ADDRESS_MAP_START( c8050_fdc_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x003f) AM_MIRROR(0x0300) AM_RAM // 6530
 	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6522_TAG, via_r, via_w)
-	AM_RANGE(0x0080, 0x008f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6530_TAG, miot6530_r, miot6530_w)
+	AM_RANGE(0x0080, 0x008f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6530_TAG, mos6530_r, mos6530_w)
 	AM_RANGE(0x0400, 0x07ff) AM_RAM AM_SHARE("share1")
 	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_SHARE("share3")
@@ -515,7 +541,7 @@ static ADDRESS_MAP_START( sfd1001_fdc_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x003f) AM_MIRROR(0x0300) AM_RAM // 6530
 	AM_RANGE(0x0040, 0x004f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6522_TAG, via_r, via_w)
-	AM_RANGE(0x0080, 0x008f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6530_TAG, miot6530_r, miot6530_w)
+	AM_RANGE(0x0080, 0x008f) AM_MIRROR(0x0330) AM_DEVREADWRITE(M6530_TAG, mos6530_r, mos6530_w)
 	AM_RANGE(0x0400, 0x07ff) AM_RAM AM_SHARE("share1")
 	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_SHARE("share2")
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_SHARE("share3")
@@ -942,7 +968,7 @@ static const via6522_interface c8050_via_intf =
     mos6530_interface miot_intf uk3
 -------------------------------------------------*/
 
-static UINT8 pi_r(running_device *device, UINT8 olddata)
+static READ8_DEVICE_HANDLER( pi_r )
 {
 	/*
 
@@ -964,7 +990,7 @@ static UINT8 pi_r(running_device *device, UINT8 olddata)
 	return c2040->pi;
 }
 
-static void pi_w(running_device *device, UINT8 newdata, UINT8 olddata)
+static WRITE8_DEVICE_HANDLER( pi_w )
 {
 	/*
 
@@ -983,10 +1009,10 @@ static void pi_w(running_device *device, UINT8 newdata, UINT8 olddata)
 
 	c2040_t *c2040 = get_safe_token(device->owner);
 
-	c2040->pi = newdata;
+	c2040->pi = data;
 }
 
-static UINT8 miot_pb_r(running_device *device, UINT8 olddata)
+static READ8_DEVICE_HANDLER( miot_pb_r )
 {
 	/*
 
@@ -1016,7 +1042,7 @@ static UINT8 miot_pb_r(running_device *device, UINT8 olddata)
 	return data;
 }
 
-static void miot_pb_w(running_device *device, UINT8 newdata, UINT8 olddata)
+static WRITE8_DEVICE_HANDLER( miot_pb_w )
 {
 	/*
 
@@ -1036,10 +1062,10 @@ static void miot_pb_w(running_device *device, UINT8 newdata, UINT8 olddata)
 	c2040_t *c2040 = get_safe_token(device->owner);
 
 	/* drive select */
-	c2040->drive = BIT(newdata, 0);
+	c2040->drive = BIT(data, 0);
 
 	/* density select */
-	int ds = (newdata >> 1) & 0x03;
+	int ds = (data >> 1) & 0x03;
 
 	if (c2040->ds != ds)
 	{
@@ -1048,26 +1074,26 @@ static void miot_pb_w(running_device *device, UINT8 newdata, UINT8 olddata)
 	}
 
 	/* interrupt */
-	if (c2040->miot_irq != BIT(newdata, 7))
+	if (c2040->miot_irq != BIT(data, 7))
 	{
-		cpu_set_input_line(c2040->cpu_fdc, M6502_IRQ_LINE, BIT(newdata, 7) ? CLEAR_LINE : ASSERT_LINE);
-		c2040->miot_irq = BIT(newdata, 7);
+		cpu_set_input_line(c2040->cpu_fdc, M6502_IRQ_LINE, BIT(data, 7) ? CLEAR_LINE : ASSERT_LINE);
+		c2040->miot_irq = BIT(data, 7);
 	}
 }
 
-static const miot6530_interface miot_intf =
+static MOS6530_INTERFACE( miot_intf )
 {
-	pi_r,
-	miot_pb_r,
-	pi_w,
-	miot_pb_w
+	DEVCB_HANDLER(pi_r),
+	DEVCB_HANDLER(pi_w),
+	DEVCB_HANDLER(miot_pb_r),
+	DEVCB_HANDLER(miot_pb_w)
 };
 
 /*-------------------------------------------------
     mos6530_interface c8050_miot_intf uk3
 -------------------------------------------------*/
 
-static UINT8 c8050_miot_pb_r(running_device *device, UINT8 olddata)
+static READ8_DEVICE_HANDLER( c8050_miot_pb_r )
 {
 	/*
 
@@ -1103,7 +1129,7 @@ static UINT8 c8050_miot_pb_r(running_device *device, UINT8 olddata)
 	return data;
 }
 
-static void c8050_miot_pb_w(running_device *device, UINT8 newdata, UINT8 olddata)
+static WRITE8_DEVICE_HANDLER( c8050_miot_pb_w )
 {
 	/*
 
@@ -1125,11 +1151,11 @@ static void c8050_miot_pb_w(running_device *device, UINT8 newdata, UINT8 olddata
 	/* drive select */
 	if ((device->owner->type == C8050) || (device->owner->type == C8250))
 	{
-		c2040->drive = BIT(newdata, 0);
+		c2040->drive = BIT(data, 0);
 	}
 
 	/* density select */
-	int ds = (newdata >> 1) & 0x03;
+	int ds = (data >> 1) & 0x03;
 
 	if (c2040->ds != ds)
 	{
@@ -1140,23 +1166,23 @@ static void c8050_miot_pb_w(running_device *device, UINT8 newdata, UINT8 olddata
 	/* side select */
 	if ((device->owner->type == C8250) || (device->owner->type == SFD1001))
 	{
-		c2040->side = !BIT(newdata, 4);
+		c2040->side = !BIT(data, 4);
 	}
 
 	/* interrupt */
-	if (c2040->miot_irq != BIT(newdata, 7))
+	if (c2040->miot_irq != BIT(data, 7))
 	{
-		cpu_set_input_line(c2040->cpu_fdc, M6502_IRQ_LINE, BIT(newdata, 7) ? CLEAR_LINE : ASSERT_LINE);
-		c2040->miot_irq = BIT(newdata, 7);
+		cpu_set_input_line(c2040->cpu_fdc, M6502_IRQ_LINE, BIT(data, 7) ? CLEAR_LINE : ASSERT_LINE);
+		c2040->miot_irq = BIT(data, 7);
 	}
 }
 
-static const miot6530_interface c8050_miot_intf =
+static MOS6530_INTERFACE( c8050_miot_intf )
 {
-	pi_r,
-	c8050_miot_pb_r,
-	pi_w,
-	c8050_miot_pb_w
+	DEVCB_HANDLER(pi_r),
+	DEVCB_HANDLER(pi_w),
+	DEVCB_HANDLER(c8050_miot_pb_r),
+	DEVCB_HANDLER(c8050_miot_pb_w)
 };
 
 /*-------------------------------------------------
@@ -1275,7 +1301,7 @@ static MACHINE_DRIVER_START( c2040 )
 	MDRV_CPU_PROGRAM_MAP(c2040_fdc_map)
 
 	MDRV_VIA6522_ADD(M6522_TAG, XTAL_16MHz/16, via_intf)
-	MDRV_MIOT6530_ADD(M6530_TAG, XTAL_16MHz/16, miot_intf)
+	MDRV_MOS6530_ADD(M6530_TAG, XTAL_16MHz/16, miot_intf)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(c2040_floppy_config)
 MACHINE_DRIVER_END
@@ -1297,7 +1323,7 @@ static MACHINE_DRIVER_START( c4040 )
 	MDRV_CPU_PROGRAM_MAP(c4040_fdc_map)
 
 	MDRV_VIA6522_ADD(M6522_TAG, XTAL_16MHz/16, via_intf)
-	MDRV_MIOT6530_ADD(M6530_TAG, XTAL_16MHz/16, miot_intf)
+	MDRV_MOS6530_ADD(M6530_TAG, XTAL_16MHz/16, miot_intf)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(c4040_floppy_config)
 MACHINE_DRIVER_END
@@ -1319,7 +1345,7 @@ static MACHINE_DRIVER_START( c8050 )
 	MDRV_CPU_PROGRAM_MAP(c8050_fdc_map)
 
 	MDRV_VIA6522_ADD(M6522_TAG, XTAL_12MHz/12, c8050_via_intf)
-	MDRV_MIOT6530_ADD(M6530_TAG, XTAL_12MHz/12, c8050_miot_intf)
+	MDRV_MOS6530_ADD(M6530_TAG, XTAL_12MHz/12, c8050_miot_intf)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(c8050_floppy_config)
 MACHINE_DRIVER_END
@@ -1341,7 +1367,7 @@ static MACHINE_DRIVER_START( c8250 )
 	MDRV_CPU_PROGRAM_MAP(c8050_fdc_map)
 
 	MDRV_VIA6522_ADD(M6522_TAG, XTAL_12MHz/12, c8050_via_intf)
-	MDRV_MIOT6530_ADD(M6530_TAG, XTAL_12MHz/12, c8050_miot_intf)
+	MDRV_MOS6530_ADD(M6530_TAG, XTAL_12MHz/12, c8050_miot_intf)
 
 	MDRV_FLOPPY_2_DRIVES_ADD(c8250_floppy_config)
 MACHINE_DRIVER_END
@@ -1363,7 +1389,7 @@ static MACHINE_DRIVER_START( sfd1001 )
 	MDRV_CPU_PROGRAM_MAP(sfd1001_fdc_map)
 
 	MDRV_VIA6522_ADD(M6522_TAG, XTAL_12MHz/12, c8050_via_intf)
-	MDRV_MIOT6530_ADD(M6530_TAG, XTAL_12MHz/12, c8050_miot_intf)
+	MDRV_MOS6530_ADD(M6530_TAG, XTAL_12MHz/12, c8050_miot_intf)
 
 	MDRV_FLOPPY_DRIVE_ADD(FLOPPY_0, c8250_floppy_config)
 MACHINE_DRIVER_END
@@ -1379,7 +1405,7 @@ ROM_START( c2040 ) // schematic 320806
 	ROM_LOAD( "901468-07.uh1", 0x1000, 0x1000, CRC(9b09ae83) SHA1(6a51c7954938439ca8342fc295bda050c06e1791) )
 
 	/* RIOT DOS 1 */
-	ROM_LOAD( "901466-02.uk3", 0x2000, 0x0400, NO_DUMP )
+	ROM_LOAD( "901466-02.uk3", 0x2000, 0x0400, BAD_DUMP /* parsed in from disassembly */ CRC(e1c86c43) SHA1(d8209c66fde3f2937688ba934ba968678a9d2ebb) )
 
 	/* ROM GCR */
 	ROM_LOAD( "901467.uk6",    0x2400, 0x0800, CRC(a23337eb) SHA1(97df576397608455616331f8e837cb3404363fa2) )
@@ -1490,6 +1516,12 @@ static DEVICE_START( c2040 )
 	c2040->bus = devtag_get_device(device->machine, config->bus_tag);
 	c2040->unit[0].image = device->subdevice(FLOPPY_0);
 	c2040->unit[1].image = device->subdevice(FLOPPY_1);
+
+	/* install image callbacks */
+	floppy_install_unload_proc(c2040->unit[0].image, on_disk_0_change);
+	floppy_install_load_proc(c2040->unit[0].image, on_disk_0_change);
+	floppy_install_unload_proc(c2040->unit[1].image, on_disk_1_change);
+	floppy_install_load_proc(c2040->unit[1].image, on_disk_1_change);
 
 	/* find GCR ROM */
 	const region_info *region = device->subregion(C4040_REGION);

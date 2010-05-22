@@ -21,7 +21,7 @@ static ADDRESS_MAP_START( ipds_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 /* Input ports */
-INPUT_PORTS_START( ipds )
+static INPUT_PORTS_START( ipds )
 INPUT_PORTS_END
 
 
@@ -123,5 +123,5 @@ ROM_END
 /* Driver */
 
 /*    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT   COMPANY   FULLNAME       FLAGS */
-COMP( ????, ipds,  0,       0,	     ipds,	ipds,	 0, 	"Intel",   "iPDS",	GAME_NOT_WORKING | GAME_NO_SOUND)
+COMP( 1982, ipds,  0,       0,	     ipds,	ipds,	 0, 	"Intel",   "iPDS",	GAME_NOT_WORKING | GAME_NO_SOUND)
 

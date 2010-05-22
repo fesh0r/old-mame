@@ -96,7 +96,7 @@ static LPCSTR NormalizePath(LPCSTR pszPath, LPSTR pszBuffer, size_t nBufferSize)
 		pszBuffer[2] = '\0';
 		bChanged = TRUE;
 	}
-	else if (!_istalpha(pszPath[0]) || (pszPath[1] != ':'))
+	else if (!isalpha(pszPath[0]) || (pszPath[1] != ':'))
 	{
 		win_get_current_directory_utf8(nBufferSize, pszBuffer);
 		bChanged = TRUE;
@@ -225,7 +225,7 @@ static void ComputeFileHash(software_picker_info *pPickerInfo,
 	functions = hashfile_functions_used(pPickerInfo->config->hashfile, info.type);
 
 	// compute the hash
-	//image_device_compute_hash(pFileInfo->hash_string, pFileInfo->device, pBuffer, nLength, functions);
+	image_device_compute_hash(pFileInfo->hash_string, pFileInfo->device, pBuffer, nLength, functions);
 }
 
 
@@ -277,7 +277,7 @@ static BOOL SoftwarePicker_CalculateHash(HWND hwndPicker, int nIndex)
 							ComputeFileHash(pPickerInfo, pFileInfo, pBuffer, zipent->uncompressed_length);
 							rc = TRUE;
 						}
-						global_free(pBuffer);
+						free(pBuffer);
 					}
 				}
 				zipent = zip_file_next_file(zip);
@@ -429,7 +429,7 @@ static BOOL SoftwarePicker_AddFileEntry(HWND hwndPicker, LPCSTR pszFilename,
 
 	ppNewIndex = (file_info**)malloc((pPickerInfo->file_index_length + 1) * sizeof(*pPickerInfo->file_index));
 	memcpy(ppNewIndex,pPickerInfo->file_index,pPickerInfo->file_index_length * sizeof(*pPickerInfo->file_index));
-	if (pPickerInfo->file_index) global_free(pPickerInfo->file_index);
+	if (pPickerInfo->file_index) free(pPickerInfo->file_index);
 	if (!ppNewIndex)
 		goto error;
 
@@ -446,7 +446,7 @@ static BOOL SoftwarePicker_AddFileEntry(HWND hwndPicker, LPCSTR pszFilename,
 
 error:
 	if (pInfo)
-		global_free(pInfo);
+		free(pInfo);
 	return FALSE;
 }
 
@@ -562,7 +562,7 @@ static void SoftwarePicker_FreeSearchInfo(directory_search_info *pSearchInfo)
 {
 	if (pSearchInfo->find_handle != INVALID_HANDLE_VALUE)
 		FindClose(pSearchInfo->find_handle);
-	global_free(pSearchInfo);
+	free(pSearchInfo);
 }
 
 
@@ -573,7 +573,7 @@ static void SoftwarePicker_InternalClear(software_picker_info *pPickerInfo)
 	int i;
 
 	for (i = 0; i < pPickerInfo->file_index_length; i++)
-		global_free(pPickerInfo->file_index[i]);
+		free(pPickerInfo->file_index[i]);
 
 	while(pPickerInfo->first_search_info)
 	{
@@ -605,19 +605,19 @@ void SoftwarePicker_Clear(HWND hwndPicker)
 static BOOL SoftwarePicker_AddEntry(HWND hwndPicker,
 	directory_search_info *pSearchInfo)
 {
-	software_picker_info *pPickerInfo;
+	//software_picker_info *pPickerInfo;
 	LPSTR pszFilename;
 	BOOL rc;
 	char* utf8_FileName;
 
-	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
+	//pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
 
 	utf8_FileName = utf8_from_tstring(pSearchInfo->fd.cFileName);
 	if( !utf8_FileName )
 		return FALSE;
 
 	if (!strcmp(utf8_FileName, ".") || !strcmp(utf8_FileName, "..")) {
-		global_free(utf8_FileName);
+		osd_free(utf8_FileName);
 		return TRUE;
 	}
 
@@ -631,7 +631,7 @@ static BOOL SoftwarePicker_AddEntry(HWND hwndPicker,
 	else
 		rc = SoftwarePicker_InternalAddFile(hwndPicker, pszFilename, FALSE);
 
-		global_free(utf8_FileName);
+	osd_free(utf8_FileName);
 	return rc;
 }
 
@@ -752,7 +752,7 @@ LPCTSTR SoftwarePicker_GetItemString(HWND hwndPicker, int nRow, int nColumn,
 				return s;
 			_sntprintf(pszBuffer, nBufferLength, TEXT("%s"), t_buf);
 			s = pszBuffer;
-			global_free(t_buf);
+			osd_free(t_buf);
 			break;
 
 		case MESS_COLUMN_GOODNAME:
@@ -783,7 +783,7 @@ LPCTSTR SoftwarePicker_GetItemString(HWND hwndPicker, int nRow, int nColumn,
 						return s;
 					_sntprintf(pszBuffer, nBufferLength, TEXT("%s"), t_buf);
 					s = pszBuffer;
-					global_free(t_buf);
+					osd_free(t_buf);
 				}
 			}
 			break;
@@ -804,7 +804,7 @@ LPCTSTR SoftwarePicker_GetItemString(HWND hwndPicker, int nRow, int nColumn,
 					return s;
 				_sntprintf(pszBuffer, nBufferLength, TEXT("%s"), t_buf);
 				s = pszBuffer;
-				global_free(t_buf);
+				osd_free(t_buf);
 			}
 			break;
 	}
@@ -826,7 +826,7 @@ static LRESULT CALLBACK SoftwarePicker_WndProc(HWND hwndPicker, UINT nMessage,
 	{
 		SoftwarePicker_InternalClear(pPickerInfo);
 		SoftwarePicker_SetDriver(hwndPicker, NULL);
-		global_free(pPickerInfo);
+		free(pPickerInfo);
 	}
 
 	return rc;
@@ -857,6 +857,6 @@ BOOL SetupSoftwarePicker(HWND hwndPicker, const struct PickerOptions *pOptions)
 
 error:
 	if (pPickerInfo)
-		global_free(pPickerInfo);
+		free(pPickerInfo);
 	return FALSE;
 }

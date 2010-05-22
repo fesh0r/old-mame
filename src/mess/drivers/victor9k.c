@@ -2,8 +2,8 @@
 
     Victor 9000
 
-	- very exciting hardware, disk controller is a direct descendant
-	  of the Commodore drives (designed by Chuck Peddle)
+    - very exciting hardware, disk controller is a direct descendant
+      of the Commodore drives (designed by Chuck Peddle)
 
     Skeleton driver
 
@@ -11,16 +11,16 @@
 
 /*
 
-	TODO:
+    TODO:
 
-	- floppy 8048
-	- keyboard
-	- add HD46505S variant to mc6845.c
-	- hires graphics
-	- character attributes
-	- brightness/contrast
-	- MC6852
-	- codec sound
+    - floppy 8048
+    - keyboard
+    - add HD46505S variant to mc6845.c
+    - hires graphics
+    - character attributes
+    - brightness/contrast
+    - MC6852
+    - codec sound
 
 */
 
@@ -33,6 +33,7 @@
 #include "machine/ctronics.h"
 #include "machine/6522via.h"
 #include "machine/ieee488.h"
+#include "machine/mc6852.h"
 #include "machine/pit8253.h"
 #include "machine/pic8259.h"
 #include "machine/upd7201.h"
@@ -42,7 +43,7 @@
 /* Memory Maps */
 
 static ADDRESS_MAP_START( victor9k_mem, ADDRESS_SPACE_PROGRAM, 8 )
-//	AM_RANGE(0x00000, 0xdffff) AM_RAM
+//  AM_RANGE(0x00000, 0xdffff) AM_RAM
 	AM_RANGE(0xe0000, 0xe0001) AM_DEVREADWRITE(I8259A_TAG, pic8259_r, pic8259_w)
 	AM_RANGE(0xe0020, 0xe0023) AM_DEVREADWRITE(I8253_TAG, pit8253_r, pit8253_w)
 	AM_RANGE(0xe0040, 0xe0043) AM_DEVREADWRITE(UPD7201_TAG, upd7201_cd_ba_r, upd7201_cd_ba_w)
@@ -50,7 +51,7 @@ static ADDRESS_MAP_START( victor9k_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe8001, 0xe8001) AM_DEVREADWRITE(HD46505S_TAG, mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0xe8020, 0xe802f) AM_DEVREADWRITE(M6522_1_TAG, via_r, via_w)
 	AM_RANGE(0xe8040, 0xe804f) AM_DEVREADWRITE(M6522_2_TAG, via_r, via_w)
-//	AM_RANGE(0xe8060, 0xe806f) AM_DEVREADWRITE(MC6852_TAG, mc6852_r, mc6852_w)
+	AM_RANGE(0xe8060, 0xe8061) AM_DEVREADWRITE(MC6852_TAG, mc6852_r, mc6852_w)
 	AM_RANGE(0xe8080, 0xe808f) AM_DEVREADWRITE(M6522_3_TAG, via_r, via_w)
 	AM_RANGE(0xe80a0, 0xe80af) AM_DEVREADWRITE(M6522_4_TAG, via_r, via_w)
 	AM_RANGE(0xe80c0, 0xe80cf) AM_DEVREADWRITE(M6522_6_TAG, via_r, via_w)
@@ -191,16 +192,16 @@ static const struct pit8253_config pit_intf =
 
 /*
 
-	pin		signal		description
+    pin     signal      description
 
-	IR0		SYN			sync detect
-	IR1		COMM		serial communications (7201)
-	IR2		TIMER		8253 timer
-	IR3		PARALLEL	all 6522 IRQ (including disk)
-	IR4		IR4			expansion IR4
-	IR5		IR5			expansion IR5
-	IR6		KBINT		keyboard data ready
-	IR7		VINT		vertical sync or nonspecific interrupt
+    IR0     SYN         sync detect
+    IR1     COMM        serial communications (7201)
+    IR2     TIMER       8253 timer
+    IR3     PARALLEL    all 6522 IRQ (including disk)
+    IR4     IR4         expansion IR4
+    IR5     IR5         expansion IR5
+    IR6     KBINT       keyboard data ready
+    IR7     VINT        vertical sync or nonspecific interrupt
 
 */
 
@@ -243,6 +244,30 @@ static UPD7201_INTERFACE( mpsc_intf )
 			DEVCB_NULL			/* sync output */
 		}
 	}
+};
+
+/* MC6852 Interface */
+
+static WRITE_LINE_DEVICE_HANDLER( ssda_irq_w )
+{
+	victor9k_state *driver_state = (victor9k_state *)device->machine->driver_data;
+
+	driver_state->via6_irq = state;
+
+	pic8259_ir3_w(driver_state->pic, driver_state->ssda_irq | driver_state->via1_irq | driver_state->via2_irq | driver_state->via3_irq | driver_state->via4_irq | driver_state->via5_irq | driver_state->via6_irq);
+}
+
+static MC6852_INTERFACE( ssda_intf )
+{
+	0,
+	0,
+	DEVCB_NULL,
+	DEVCB_DEVICE_LINE(HC55516_TAG, hc55516_digit_w),
+	DEVCB_LINE(ssda_irq_w),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 /* M6522 Interface */
@@ -393,7 +418,7 @@ static WRITE_LINE_DEVICE_HANDLER( via1_irq_w )
 
 	driver_state->via1_irq = state;
 
-	pic8259_ir3_w(driver_state->pic, driver_state->via1_irq | driver_state->via2_irq | driver_state->via3_irq | driver_state->via4_irq | driver_state->via5_irq | driver_state->via6_irq);
+	pic8259_ir3_w(driver_state->pic, driver_state->ssda_irq | driver_state->via1_irq | driver_state->via2_irq | driver_state->via3_irq | driver_state->via4_irq | driver_state->via5_irq | driver_state->via6_irq);
 }
 
 static const via6522_interface via1_intf =
@@ -492,7 +517,7 @@ static WRITE_LINE_DEVICE_HANDLER( via2_irq_w )
 
 	driver_state->via2_irq = state;
 
-	pic8259_ir3_w(driver_state->pic, driver_state->via1_irq | driver_state->via2_irq | driver_state->via3_irq | driver_state->via4_irq | driver_state->via5_irq | driver_state->via6_irq);
+	pic8259_ir3_w(driver_state->pic, driver_state->ssda_irq | driver_state->via1_irq | driver_state->via2_irq | driver_state->via3_irq | driver_state->via4_irq | driver_state->via5_irq | driver_state->via6_irq);
 }
 
 static const via6522_interface via2_intf =
@@ -589,9 +614,11 @@ static WRITE8_DEVICE_HANDLER( via3_pb_w )
 
     */
 
+	victor9k_state *state = (victor9k_state *)device->machine->driver_data;
+
 	/* codec clock output */
-	//mc6852_rxclk_w(state->ssda, BIT(data, 7));
-	//mc6852_txclk_w(state->ssda, BIT(data, 7));
+	mc6852_rx_clk_w(state->ssda, BIT(data, 7));
+	mc6852_tx_clk_w(state->ssda, BIT(data, 7));
 }
 
 static WRITE_LINE_DEVICE_HANDLER( via3_irq_w )
@@ -600,7 +627,7 @@ static WRITE_LINE_DEVICE_HANDLER( via3_irq_w )
 
 	driver_state->via3_irq = state;
 
-	pic8259_ir3_w(driver_state->pic, driver_state->via1_irq | driver_state->via2_irq | driver_state->via3_irq | driver_state->via4_irq | driver_state->via5_irq | driver_state->via6_irq);
+	pic8259_ir3_w(driver_state->pic, driver_state->ssda_irq | driver_state->via1_irq | driver_state->via2_irq | driver_state->via3_irq | driver_state->via4_irq | driver_state->via5_irq | driver_state->via6_irq);
 }
 
 static const via6522_interface via3_intf =
@@ -649,7 +676,7 @@ static WRITE8_DEVICE_HANDLER( via4_pb_w )
         PB0     L1MS0
         PB1     L1MS1
         PB2     L1MS2
-        PB3		L1MS3
+        PB3     L1MS3
         PB4     ST1A
         PB5     ST1B
         PB6     ST1C
@@ -668,7 +695,7 @@ static WRITE_LINE_DEVICE_HANDLER( via4_irq_w )
 
 	driver_state->via4_irq = state;
 
-	pic8259_ir3_w(driver_state->pic, driver_state->via1_irq | driver_state->via2_irq | driver_state->via3_irq | driver_state->via4_irq | driver_state->via5_irq | driver_state->via6_irq);
+	pic8259_ir3_w(driver_state->pic, driver_state->ssda_irq | driver_state->via1_irq | driver_state->via2_irq | driver_state->via3_irq | driver_state->via4_irq | driver_state->via5_irq | driver_state->via6_irq);
 }
 
 static const via6522_interface via4_intf =
@@ -734,7 +761,7 @@ static WRITE_LINE_DEVICE_HANDLER( via5_irq_w )
 
 	driver_state->via5_irq = state;
 
-	pic8259_ir3_w(driver_state->pic, driver_state->via1_irq | driver_state->via2_irq | driver_state->via3_irq | driver_state->via4_irq | driver_state->via5_irq | driver_state->via6_irq);
+	pic8259_ir3_w(driver_state->pic, driver_state->ssda_irq | driver_state->via1_irq | driver_state->via2_irq | driver_state->via3_irq | driver_state->via4_irq | driver_state->via5_irq | driver_state->via6_irq);
 }
 
 static const via6522_interface via5_intf =
@@ -891,7 +918,7 @@ static WRITE_LINE_DEVICE_HANDLER( via6_irq_w )
 
 	driver_state->via6_irq = state;
 
-	pic8259_ir3_w(driver_state->pic, driver_state->via1_irq | driver_state->via2_irq | driver_state->via3_irq | driver_state->via4_irq | driver_state->via5_irq | driver_state->via6_irq);
+	pic8259_ir3_w(driver_state->pic, driver_state->ssda_irq | driver_state->via1_irq | driver_state->via2_irq | driver_state->via3_irq | driver_state->via4_irq | driver_state->via5_irq | driver_state->via6_irq);
 }
 
 static const via6522_interface via6_intf =
@@ -979,8 +1006,8 @@ static MACHINE_DRIVER_START( victor9k )
 	MDRV_CPU_ADD(I8048_TAG, I8048, XTAL_30MHz/6)
 	MDRV_CPU_IO_MAP(floppy_io)
 
-//	MDRV_CPU_ADD(I8022_TAG, I8022, 100000)
-//	MDRV_CPU_IO_MAP(keyboard_io)
+//  MDRV_CPU_ADD(I8022_TAG, I8022, 100000)
+//  MDRV_CPU_IO_MAP(keyboard_io)
 
 	MDRV_MACHINE_START(victor9k)
 
@@ -1010,7 +1037,7 @@ static MACHINE_DRIVER_START( victor9k )
 	MDRV_PIC8259_ADD(I8259A_TAG, pic_intf)
 	MDRV_PIT8253_ADD(I8253_TAG, pit_intf)
 	MDRV_UPD7201_ADD(UPD7201_TAG, XTAL_30MHz/30, mpsc_intf)
-//	MDRV_MC6852_ADD(MC6852_TAG, XTAL_30MHz/30, mc6852_intf)
+	MDRV_MC6852_ADD(MC6852_TAG, XTAL_30MHz/30, ssda_intf)
 	MDRV_VIA6522_ADD(M6522_1_TAG, XTAL_30MHz/30, via1_intf)
 	MDRV_VIA6522_ADD(M6522_2_TAG, XTAL_30MHz/30, via2_intf)
 	MDRV_VIA6522_ADD(M6522_3_TAG, XTAL_30MHz/30, via3_intf)
@@ -1049,5 +1076,5 @@ ROM_END
 
 /* System Drivers */
 
-/*    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     INIT  COMPANY						FULLNAME		FLAGS */
+/*    YEAR  NAME      PARENT  COMPAT  MACHINE   INPUT     INIT  COMPANY                     FULLNAME        FLAGS */
 COMP( 1982, victor9k, 0,      0,      victor9k, victor9k, 0,    "Victor Business Products", "Victor 9000",	GAME_NOT_WORKING )
